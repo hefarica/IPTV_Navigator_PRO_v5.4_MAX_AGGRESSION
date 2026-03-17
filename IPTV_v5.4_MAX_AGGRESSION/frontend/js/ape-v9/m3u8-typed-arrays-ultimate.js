@@ -833,6 +833,56 @@
             "X-Max-Buffer-Time": "12,18,25",
             "X-Request-Priority": "ultra-high",
             "X-Prefetch-Enabled": "true,adaptive,auto",
+
+            // ── QUALITY UPGRADE v2 — 38 new EXTHTTP fields ───────────────
+            // Package A: CMAF
+            "X-CMAF-Part-Target": cfg.cmaf_chunk_duration || "1.0",
+            "X-CMAF-Server-Control": "CAN-BLOCK-RELOAD=YES",
+            "X-CMAF-Playlist-Type": "LIVE",
+            "X-CMAF-Delta-Playlist": "true",
+            "X-CMAF-Program-Date-Time": new Date().toISOString(),
+            // Package B: fMP4
+            "X-FMP4-Edit-List": "true",
+            "X-FMP4-EMSG-Box": "true",
+            "X-FMP4-PSSH-Box": "true",
+            "X-FMP4-Client-Data": "true",
+            // Package C: LCEVC Phase 3
+            "X-LCEVC-Rate-Control": "CRF+VBR",
+            "X-LCEVC-Psycho-Visual": "true",
+            "X-LCEVC-B-Frames": cfg.lcevc_bframes || "8",
+            "X-LCEVC-Ref-Frames": cfg.lcevc_refframes || "16",
+            "X-LCEVC-Lookahead": cfg.lcevc_lookahead || "60",
+            // Package D: AI-SR
+            "X-AI-SR-Precision": "FP16",
+            "X-AI-SR-Tile-Size": "256",
+            "X-AI-Motion-Estimation": "OPTICAL-FLOW",
+            "X-AI-Content-Type": cfg.group || "GENERAL",
+            // Package E: VVC
+            "X-VVC-Toolset": "FULL",
+            "X-VVC-Subpictures": "true",
+            "X-VVC-LMCS": "true",
+            // Package F: EVC
+            "X-EVC-Level": cfg.evc_level || "5.1",
+            "X-EVC-Toolset": "MAIN",
+            // Package G: HDR Advanced
+            "X-HDR-Mastering-Display": "G(0.265,0.690)B(0.150,0.060)R(0.680,0.320)WP(0.3127,0.3290)L(10000,0.001)",
+            "X-HDR-Reference-White": "203nits",
+            "X-HDR-Vivid": "true",
+            "X-HDR-Filmmaker-Mode": "true",
+            "X-HDR-Extended-Range": "true",
+            // Package H: Audio
+            "X-Audio-Bitrate": cfg.audio_bitrate || "640kbps",
+            "X-Audio-Objects": cfg.audio_objects || "128",
+            "X-Audio-TrueHD": "true",
+            "X-Audio-DRC-Profile": "FILM-STANDARD",
+            // Package I: Trick Play
+            "X-Thumbnail-Format": "WebP+JPEG+AVIF",
+            "X-Trick-Play-Rates": "2,4,8,16,32",
+            "X-Chapter-Markers": "true",
+            // Package J: SCTE-35
+            "X-SCTE35-PID": "0x0086",
+            "X-SCTE35-Segmentation-Type": "PROGRAM_START",
+            "X-SCTE35-Blackout-Override": "true",
             "X-Video-Codecs": "av1,hevc,vp9,h264,mpeg2",
             "X-Audio-Codecs": "opus,aac,eac3,ac3,dolby,mp3",
             "X-DRM-Support": "widevine,playready,fairplay",
@@ -1011,7 +1061,7 @@
             `#EXT-X-APE-LCEVC-SCALE-FACTOR:${cfg.lcevc_scale_factor || '2x'}`,
 
             // ── SECTION 3 — QoS/QoE (6 tags) ──────────────────────────────
-            `#EXT-X-APE-AI-SR-ENABLED:false`,
+            `#EXT-X-APE-AI-SR-ENABLED:true`,
             `#EXT-X-APE-QOE-SCORE:5.0`,
             `#EXT-X-APE-QOS-DSCP:EF`,
             `#EXT-X-APE-QOS-BITRATE:${cfg.bitrate || 5000}kbps`,
@@ -1080,7 +1130,7 @@
             `#EXT-X-APE-CMAF:ENABLED`,
             `#EXT-X-APE-FMP4:ENABLED`,
             `#EXT-X-APE-HDR10:ENABLED`,
-            `#EXT-X-APE-DOLBY-VISION:DISABLED`,
+            `#EXT-X-APE-DOLBY-VISION:ENABLED-PROFILE-8.1-LEVEL-6`,
             `#EXT-X-APE-ATMOS:ENABLED`,
 
             // ── SECTION 13 — ISP Throttle (10 tags) ───────────────────────
@@ -1127,7 +1177,115 @@
             `#EXT-X-APE-LCEVC-HW-ACCELERATION:${lc.hw_accel}`,
             `#EXT-X-APE-LCEVC-SW-FALLBACK:1`,
             `#EXT-X-APE-LCEVC-COMPAT:UNIVERSAL`,
-            `#EXT-X-APE-LCEVC-GRACEFUL-DEGRADATION:BASE_CODEC_PASSTHROUGH`
+            `#EXT-X-APE-LCEVC-GRACEFUL-DEGRADATION:BASE_CODEC_PASSTHROUGH`,
+            // ══════════════════════════════════════════════════════════════
+            // QUALITY UPGRADE PACKAGE v2 — 85 new tags (Packages A-J)
+            // ══════════════════════════════════════════════════════════════
+
+            // ── PACKAGE A: CMAF Chunked Transfer v2 (10 new tags) ────────
+            `#EXT-X-APE-CMAF-PART-TARGET:${cfg.cmaf_chunk_duration || '1.0'}`,
+            `#EXT-X-APE-CMAF-SERVER-CONTROL:CAN-BLOCK-RELOAD=YES,HOLD-BACK=6.0`,
+            `#EXT-X-APE-CMAF-PLAYLIST-TYPE:LIVE`,
+            `#EXT-X-APE-CMAF-TARGET-DURATION:${Math.ceil((cfg.buffer_live || 30000) / 1000)}`,
+            `#EXT-X-APE-CMAF-MEDIA-SEQUENCE:dynamic`,
+            `#EXT-X-APE-CMAF-DISCONTINUITY-SEQUENCE:auto`,
+            `#EXT-X-APE-CMAF-PROGRAM-DATE-TIME:${new Date().toISOString()}`,
+            `#EXT-X-APE-CMAF-DATERANGE-ENABLED:true`,
+            `#EXT-X-APE-CMAF-SKIP-BOUNDARY:6.0`,
+            `#EXT-X-APE-CMAF-DELTA-PLAYLIST:true`,
+
+            // ── PACKAGE B: fMP4 Enhancement Tracks v2 (10 new tags) ──────
+            `#EXT-X-APE-FMP4-EDIT-LIST:true`,
+            `#EXT-X-APE-FMP4-CTTS-BOX:true`,
+            `#EXT-X-APE-FMP4-SGPD-BOX:true`,
+            `#EXT-X-APE-FMP4-SBGP-BOX:true`,
+            `#EXT-X-APE-FMP4-EMSG-BOX:true`,
+            `#EXT-X-APE-FMP4-PSSH-BOX:true`,
+            `#EXT-X-APE-FMP4-TENC-BOX:true`,
+            `#EXT-X-APE-FMP4-SENC-BOX:true`,
+            `#EXT-X-APE-FMP4-TRACK-ENCRYPTION:CBCS`,
+            `#EXT-X-APE-FMP4-COMMON-MEDIA-CLIENT-DATA:true`,
+
+            // ── PACKAGE C: LCEVC v2 Phase 3 (15 new tags) ────────────────
+            `#EXT-X-APE-LCEVC-RATE-CONTROL:CRF+VBR`,
+            `#EXT-X-APE-LCEVC-PSYCHO-VISUAL:true`,
+            `#EXT-X-APE-LCEVC-AQ-MODE:VARIANCE`,
+            `#EXT-X-APE-LCEVC-LOOKAHEAD:${cfg.lcevc_lookahead || 60}`,
+            `#EXT-X-APE-LCEVC-B-FRAMES:${cfg.lcevc_bframes || 8}`,
+            `#EXT-X-APE-LCEVC-REF-FRAMES:${cfg.lcevc_refframes || 16}`,
+            `#EXT-X-APE-LCEVC-SUBPEL-REFINE:7`,
+            `#EXT-X-APE-LCEVC-ME-RANGE:24`,
+            `#EXT-X-APE-LCEVC-TRELLIS:2`,
+            `#EXT-X-APE-LCEVC-DEBLOCK-ALPHA:${cfg.lcevc_deblock_alpha || -2}`,
+            `#EXT-X-APE-LCEVC-DEBLOCK-BETA:${cfg.lcevc_deblock_beta || -2}`,
+            `#EXT-X-APE-LCEVC-SAR:${cfg.resolution || '3840x2160'}`,
+            `#EXT-X-APE-LCEVC-COLORMATRIX:${cfg.color_space || 'BT.2020'}`,
+            `#EXT-X-APE-LCEVC-TRANSFER:${cfg.transfer_function || 'SMPTE-ST-2084'}`,
+            `#EXT-X-APE-LCEVC-PRIMARIES:${cfg.color_primaries || 'BT.2020'}`,
+
+            // ── PACKAGE D: AI Super Resolution (7 new tags) ──────────────
+            `#EXT-X-APE-AI-SR-PRECISION:FP16`,
+            `#EXT-X-APE-AI-SR-BATCH-SIZE:1`,
+            `#EXT-X-APE-AI-SR-TILE-SIZE:256`,
+            `#EXT-X-APE-AI-SR-OVERLAP:32`,
+            `#EXT-X-APE-AI-MOTION-ESTIMATION:OPTICAL-FLOW`,
+            `#EXT-X-APE-AI-SCENE-DETECTION:true`,
+            `#EXT-X-APE-AI-CONTENT-TYPE:${cfg.group || 'GENERAL'}`,
+
+            // ── PACKAGE E: VVC/H.266 (6 new tags) ────────────────────────
+            `#EXT-X-APE-VVC-TOOLSET:FULL`,
+            `#EXT-X-APE-VVC-SUBPICTURES:true`,
+            `#EXT-X-APE-VVC-WRAP-AROUND:true`,
+            `#EXT-X-APE-VVC-LMCS:true`,
+            `#EXT-X-APE-VVC-AFFINE-ME:true`,
+            `#EXT-X-APE-VVC-BDOF:true`,
+
+            // ── PACKAGE F: EVC/MPEG-5 P1 (4 new tags) ────────────────────
+            `#EXT-X-APE-EVC-LEVEL:${cfg.evc_level || '5.1'}`,
+            `#EXT-X-APE-EVC-TOOLSET:MAIN`,
+            `#EXT-X-APE-EVC-ADAPTIVE-LOOP-FILTER:true`,
+            `#EXT-X-APE-EVC-CHROMA-QP-OFFSET:true`,
+
+            // ── PACKAGE G: HDR Advanced (10 new tags) ─────────────────────
+            `#EXT-X-APE-HDR-MASTERING-DISPLAY:G(0.265,0.690)B(0.150,0.060)R(0.680,0.320)WP(0.3127,0.3290)L(10000,0.001)`,
+            `#EXT-X-APE-HDR-CONTENT-LIGHT-LEVEL:${cfg.max_cll || '4000,400'}`,
+            `#EXT-X-APE-HDR-AMBIENT-VIEWING-ENV:DIM`,
+            `#EXT-X-APE-HDR-REFERENCE-WHITE:203nits`,
+            `#EXT-X-APE-HDR-SCENE-LUMINANCE:true`,
+            `#EXT-X-APE-HDR-EXTENDED-RANGE:true`,
+            `#EXT-X-APE-HDR-VIVID-ENABLED:true`,
+            `#EXT-X-APE-HDR-SLHDR2:true`,
+            `#EXT-X-APE-HDR-TECHNICOLOR:true`,
+            `#EXT-X-APE-HDR-FILMMAKER-MODE:true`,
+
+            // ── PACKAGE H: Audio Advanced (8 new tags) ────────────────────
+            `#EXT-X-APE-AUDIO-BITRATE:${cfg.audio_bitrate || '640'}kbps`,
+            `#EXT-X-APE-AUDIO-OBJECTS:${cfg.audio_objects || '128'}`,
+            `#EXT-X-APE-AUDIO-BEDS:${cfg.audio_beds || '10'}`,
+            `#EXT-X-APE-AUDIO-DIALNORM:-27`,
+            `#EXT-X-APE-AUDIO-COMPR-MODE:RF`,
+            `#EXT-X-APE-AUDIO-DRC-PROFILE:FILM-STANDARD`,
+            `#EXT-X-APE-AUDIO-DOWNMIX:LtRt+LoRo`,
+            `#EXT-X-APE-AUDIO-TRUEHD:true`,
+
+            // ── PACKAGE I: Trick Play + Thumbnails (8 new tags) ───────────
+            `#EXT-X-APE-THUMBNAIL-FORMAT:WebP+JPEG+AVIF`,
+            `#EXT-X-APE-THUMBNAIL-COLS:10`,
+            `#EXT-X-APE-THUMBNAIL-ROWS:10`,
+            `#EXT-X-APE-THUMBNAIL-BANDWIDTH:200000`,
+            `#EXT-X-APE-TRICK-PLAY-RATES:2,4,8,16,32`,
+            `#EXT-X-APE-TRICK-PLAY-IFRAME-ONLY:true`,
+            `#EXT-X-APE-SEEK-MODE:IFRAME+KEYFRAME`,
+            `#EXT-X-APE-CHAPTER-MARKERS:true`,
+
+            // ── PACKAGE J: SCTE-35 Broadcast (7 new tags) ─────────────────
+            `#EXT-X-APE-SCTE35-PID:0x0086`,
+            `#EXT-X-APE-SCTE35-DURATION-HINT:30s`,
+            `#EXT-X-APE-SCTE35-SEGMENTATION-TYPE:PROGRAM_START`,
+            `#EXT-X-APE-SCTE35-UPID-TYPE:URI`,
+            `#EXT-X-APE-SCTE35-AVAIL-NUM:1`,
+            `#EXT-X-APE-SCTE35-AVAILS-EXPECTED:1`,
+            `#EXT-X-APE-SCTE35-BLACKOUT-OVERRIDE:true`
         ];
     }
 
