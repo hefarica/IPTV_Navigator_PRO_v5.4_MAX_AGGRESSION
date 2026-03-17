@@ -1233,7 +1233,14 @@
             // PACKAGE C — LCEVC v2 PHASE 3 COMPLETE (15 new tags)
             // (Base 97 already in sections 2 + 14 above)
             // ══════════════════════════════════════════════════════════════
-            `#EXT-X-APE-LCEVC-RATE-CONTROL:CRF+VBR`,
+            `#EXT-X-APE-LCEVC-PHASE-3-ENABLED:true,
+                        #EXT-X-APE-LCEVC-NEURAL-UPSCALE:ESRGAN-4x,
+                        #EXT-X-APE-LCEVC-GRAIN-SYNTHESIS:true,
+                        #EXT-X-APE-LCEVC-SPATIAL-DITHERING:true,
+                        #EXT-X-APE-LCEVC-L1-MOTION-COMPENSATION:true,
+                        #EXT-X-APE-LCEVC-L2-CHROMA-ENHANCEMENT:true,
+                        #EXT-X-APE-LCEVC-L2-DETAIL-ENHANCEMENT:true,
+            #EXT-X-APE-LCEVC-RATE-CONTROL:CRF+VBR`,
             `#EXT-X-APE-LCEVC-PSYCHO-VISUAL:true`,
             `#EXT-X-APE-LCEVC-AQ-MODE:VARIANCE`,
             `#EXT-X-APE-LCEVC-LOOKAHEAD:${cfg.lcevc_lookahead || 60}`,
