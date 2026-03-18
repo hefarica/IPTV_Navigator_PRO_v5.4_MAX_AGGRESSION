@@ -4030,6 +4030,7 @@ El servidor analizará 26,000+ canales en ~10 minutos.
     _ensureClassificationFields() {
         const classificationFields = [
             { id: '_region', label: '🌎 Región', category: 'classification' },
+            { id: '_language', label: '🗣️ Idioma', category: 'classification' },
             { id: '_category', label: '📂 Categoría', category: 'classification' },
             { id: '_quality', label: '📺 Calidad', category: 'classification' }
         ];
@@ -4067,6 +4068,16 @@ El servidor analizará 26,000+ canales en ~10 minutos.
             .sort((a, b) => b[1] - a[1])
             .map(([name, count]) => `<span style="background:rgba(56,189,248,0.15); padding:3px 8px; border-radius:6px; font-size:0.72rem; border:1px solid rgba(56,189,248,0.25);">${name.replace(/_/g, ' ')}: <b>${count.toLocaleString()}</b></span>`)
             .join('');
+
+        // Generar HTML para idiomas
+        if (stats.by_language) {
+            const languageHTML = Object.entries(stats.by_language)
+                .sort((a, b) => b[1] - a[1])
+                .map(([name, count]) => `<span style="background:rgba(180, 83, 9, 0.15); padding:3px 8px; border-radius:6px; font-size:0.72rem; color:#fcd34d; border:1px solid rgba(245, 158, 11, 0.3);">${name}: <b>${count.toLocaleString()}</b></span>`)
+                .join('');
+            const langContainer = document.getElementById('classStatLanguage');
+            if (langContainer) langContainer.innerHTML = languageHTML;
+        }
 
         // Generar HTML para categorías con emojis (Cyan/Teal theme)
         const categoryEmojis = {
@@ -4942,7 +4953,8 @@ El servidor analizará 26,000+ canales en ~10 minutos.
             // 1️⃣ Primero obtener info del usuario (incluye allowed_output_formats)
             const authResponse = await axios.get(`${baseUrl}/player_api.php`, {
                 params: { username: u, password: p },
-                timeout: 15000
+                timeout: 15000,
+                withCredentials: true
             });
 
             const userInfo = authResponse.data?.user_info || {};
@@ -4960,7 +4972,8 @@ El servidor analizará 26,000+ canales en ~10 minutos.
             try {
                 const catResponse = await axios.get(`${baseUrl}/player_api.php`, {
                     params: { username: u, password: p, action: 'get_live_categories' },
-                    timeout: 30000
+                    timeout: 30000,
+                    withCredentials: true
                 });
 
                 if (Array.isArray(catResponse.data)) {
@@ -4999,6 +5012,8 @@ El servidor analizará 26,000+ canales en ~10 minutos.
                 // ✅ FIX: Eliminar límites de tamaño de respuesta
                 maxContentLength: Infinity,
                 maxBodyLength: Infinity,
+                // ✅ V4.27.6: Cookies de sesión Xtream Codes
+                withCredentials: true,
                 // ✅ Progress callback para visibilidad
                 onDownloadProgress: (progressEvent) => {
                     const mbLoaded = (progressEvent.loaded / (1024 * 1024)).toFixed(2);
@@ -8749,7 +8764,7 @@ El servidor analizará 26,000+ canales en ~10 minutos.
                         // ═══════════════════════════════════════════════════════════════
                         if (window.APEChannelClassifier && this.state.channelsMaster.length > 0) {
                             console.log('🏷️ Iniciando clasificación jerárquica...');
-                            const classStats = { by_region: {}, by_category: {}, by_quality: {} };
+                            const classStats = { by_region: {}, by_language: {}, by_category: {}, by_quality: {} };
                             const startTime = performance.now();
 
                             this.state.channelsMaster.forEach((ch, idx) => {
@@ -8758,16 +8773,19 @@ El servidor analizará 26,000+ canales en ~10 minutos.
 
                                     // Almacenar clasificación completa en el canal
                                     ch._classification = result;
-                                    ch._region = `${result.region.emoji} ${result.region.group.replace(/_/g, ' ')}`;
-                                    ch._category = `${result.category.emoji} ${result.category.category}`;
+                                    ch._region = `${result.region.emoji || '🌎'} ${result.region.group.replace(/_/g, ' ')}`;
+                                    ch._language = `${result.language.emoji || '🗣️'} ${result.language.language}`;
+                                    ch._category = `${result.category.emoji || '📂'} ${result.category.category}`;
                                     ch._quality = result.quality.quality;
                                     ch._qualityIcon = result.quality.icon;
 
                                     // Acumular estadísticas
                                     const rg = result.region.group;
+                                    const lang = result.language.language;
                                     const cat = result.category.category;
                                     const qual = result.quality.quality;
                                     classStats.by_region[rg] = (classStats.by_region[rg] || 0) + 1;
+                                    classStats.by_language[lang] = (classStats.by_language[lang] || 0) + 1;
                                     classStats.by_category[cat] = (classStats.by_category[cat] || 0) + 1;
                                     classStats.by_quality[qual] = (classStats.by_quality[qual] || 0) + 1;
                                 } catch (e) {
@@ -8879,22 +8897,25 @@ El servidor analizará 26,000+ canales en ~10 minutos.
                         // ═══════════════════════════════════════════════════════════════
                         if (window.APEChannelClassifier && this.state.channelsMaster.length > 0) {
                             console.log('🏷️ [quality_done] Iniciando clasificación jerárquica...');
-                            const classStats = { by_region: {}, by_category: {}, by_quality: {} };
+                            const classStats = { by_region: {}, by_language: {}, by_category: {}, by_quality: {} };
                             const startTime = performance.now();
 
                             this.state.channelsMaster.forEach((ch, idx) => {
                                 try {
                                     const result = window.APEChannelClassifier.classify(ch);
                                     ch._classification = result;
-                                    ch._region = `${result.region.emoji} ${result.region.group.replace(/_/g, ' ')}`;
-                                    ch._category = `${result.category.emoji} ${result.category.category}`;
+                                    ch._region = `${result.region.emoji || '🌎'} ${result.region.group.replace(/_/g, ' ')}`;
+                                    ch._language = `${result.language.emoji || '🗣️'} ${result.language.language}`;
+                                    ch._category = `${result.category.emoji || '📂'} ${result.category.category}`;
                                     ch._quality = result.quality.quality;
                                     ch._qualityIcon = result.quality.icon;
 
                                     const rg = result.region.group;
+                                    const lang = result.language.language;
                                     const cat = result.category.category;
                                     const qual = result.quality.quality;
                                     classStats.by_region[rg] = (classStats.by_region[rg] || 0) + 1;
+                                    classStats.by_language[lang] = (classStats.by_language[lang] || 0) + 1;
                                     classStats.by_category[cat] = (classStats.by_category[cat] || 0) + 1;
                                     classStats.by_quality[qual] = (classStats.by_quality[qual] || 0) + 1;
                                 } catch (e) {

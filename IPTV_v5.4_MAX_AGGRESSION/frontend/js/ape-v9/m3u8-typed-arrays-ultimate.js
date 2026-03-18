@@ -140,7 +140,7 @@
             if (cores >= 8 && mem >= 4) return 3; // BRUTAL
             if (cores >= 4 && mem >= 2) return 2; // SAVAGE
             return 1; // EXTREME (default seguro)
-        } catch(e) { return 1; }
+        } catch (e) { return 1; }
     })();
     console.log(`🖥️ [DEVICE-TIER] Nivel detectado: \${DEVICE_TIER} (\${['','EXTREME','SAVAGE','BRUTAL','NUCLEAR'][DEVICE_TIER]})`);
 
@@ -264,13 +264,13 @@
             availability_target: 99.999,
             // HEVC/H.265 Optimization (configurable)
             hevc_tier: 'HIGH',
-            hevc_level: '5.1',
+            hevc_level: '6.1,5.1,5.0,4.1,4.0,3.1',
             hevc_profile: 'MAIN-12,MAIN-10,MAIN',
             color_space: 'BT2020',
             chroma_subsampling: '4:2:0',
             transfer_function: 'SMPTE2084',
             matrix_coefficients: 'BT2020NC',
-            compression_level: 9,
+            compression_level: 1,
             rate_control: 'VBR',
             entropy_coding: 'CABAC',
             video_profile: 'main10',
@@ -303,7 +303,7 @@
             bandwidth_guarantee: 400,
             codec_primary: 'HEVC',
             codec_fallback: 'H264',
-            codec_priority: 'hevc,h265,H265,h.265,av1,h264',
+            codec_priority: 'hevc,h265,h.265,av1,vp9,h264,mpeg2',
             hdr_support: ['hdr10', 'hlg'],
             color_depth: 10,
             audio_channels: 6,
@@ -313,13 +313,13 @@
             reconnect_delay_ms: 50,
             availability_target: 99.999,
             hevc_tier: 'HIGH',
-            hevc_level: '5.0',
+            hevc_level: '6.1,5.1,5.0,4.1,4.0,3.1',
             hevc_profile: 'MAIN-12,MAIN-10,MAIN',
             color_space: 'BT2020',
             chroma_subsampling: '4:2:0',
             transfer_function: 'SMPTE2084',
             matrix_coefficients: 'BT2020NC',
-            compression_level: 9,
+            compression_level: 1,
             rate_control: 'VBR',
             entropy_coding: 'CABAC',
             video_profile: 'main10',
@@ -349,7 +349,7 @@
             bandwidth_guarantee: 350,
             codec_primary: 'HEVC',
             codec_fallback: 'H264',
-            codec_priority: 'hevc,h265,H265,h.265,av1,vp9,h264',
+            codec_priority: 'hevc,h265,h.265,av1,vp9,h264,mpeg2',
             hdr_support: ['hdr10'],
             color_depth: 10,
             audio_channels: 6,
@@ -359,13 +359,13 @@
             reconnect_delay_ms: 50,
             availability_target: 99.999,
             hevc_tier: 'HIGH',
-            hevc_level: '5.0',
+            hevc_level: '6.1,5.1,5.0,4.1,4.0,3.1',
             hevc_profile: 'MAIN-12,MAIN-10,MAIN',
             color_space: 'BT2020',
             chroma_subsampling: '4:2:0',
             transfer_function: 'SMPTE2084',
             matrix_coefficients: 'BT2020NC',
-            compression_level: 9,
+            compression_level: 1,
             rate_control: 'VBR',
             entropy_coding: 'CABAC',
             video_profile: 'main10',
@@ -393,11 +393,11 @@
             prefetch_min_bandwidth: 300000000,
             segment_duration: 2,
             bandwidth_guarantee: 300,
-            codec_primary: 'H264',
-            codec_fallback: 'MPEG2',
-            codec_priority: 'hevc,h265,H265,h.265,h264,mpeg2',
-            hdr_support: [],
-            color_depth: 8,
+            codec_primary: 'HEVC',
+            codec_fallback: 'H264',
+            codec_priority: 'hevc,h265,h.265,av1,vp9,h264,mpeg2',
+            hdr_support: ['hdr10', 'hlg'],
+            color_depth: 10,
             audio_channels: 2,
             device_class: 'FHD_ADVANCED',
             reconnect_timeout_ms: 5,
@@ -405,13 +405,13 @@
             reconnect_delay_ms: 50,
             availability_target: 99.999,
             hevc_tier: 'HIGH',
-            hevc_level: '4.1',
+            hevc_level: '6.1,5.1,5.0,4.1,4.0,3.1',
             hevc_profile: 'MAIN-12,MAIN-10,MAIN',
-            color_space: 'BT709',
+            color_space: 'BT2020',
             chroma_subsampling: '4:2:0',
-            transfer_function: 'BT1886',
-            matrix_coefficients: 'BT709',
-            compression_level: 9,
+            transfer_function: 'SMPTE2084',
+            matrix_coefficients: 'BT2020NC',
+            compression_level: 1,
             rate_control: 'VBR',
             entropy_coding: 'CABAC',
             video_profile: 'main10',
@@ -439,11 +439,11 @@
             prefetch_min_bandwidth: 250000000,
             segment_duration: 2,
             bandwidth_guarantee: 250,
-            codec_primary: 'H264',
-            codec_fallback: 'MPEG2',
-            codec_priority: 'hevc,h265,H265,h.265,h264,mpeg2',
-            hdr_support: [],
-            color_depth: 8,
+            codec_primary: 'HEVC',
+            codec_fallback: 'H264',
+            codec_priority: 'hevc,h265,h.265,av1,vp9,h264,mpeg2',
+            hdr_support: ['hdr10', 'hlg'],
+            color_depth: 10,
             audio_channels: 2,
             device_class: 'HD_STABLE',
             reconnect_timeout_ms: 5,
@@ -451,17 +451,17 @@
             reconnect_delay_ms: 50,
             availability_target: 99.999,
             hevc_tier: 'MAIN',
-            hevc_level: '4.0',
+            hevc_level: '6.1,5.1,5.0,4.1,4.0,3.1',
             hevc_profile: 'MAIN-12,MAIN-10,MAIN',
-            color_space: 'BT709',
+            color_space: 'BT2020',
             chroma_subsampling: '4:2:0',
-            transfer_function: 'BT1886',
-            matrix_coefficients: 'BT709',
-            compression_level: 9,
+            transfer_function: 'SMPTE2084',
+            matrix_coefficients: 'BT2020NC',
+            compression_level: 1,
             rate_control: 'VBR',
             entropy_coding: 'CABAC',
-            video_profile: 'main',
-            pixel_format: 'yuv420p'
+            video_profile: 'main10',
+            pixel_format: 'yuv420p10le'
         },
         P5: {
             name: 'SD_FAILSAFE',
@@ -485,11 +485,11 @@
             prefetch_min_bandwidth: 200000000,
             segment_duration: 2,
             bandwidth_guarantee: 200,
-            codec_primary: 'H264',
-            codec_fallback: 'MPEG2',
-            codec_priority: 'hevc,h265,H265,h.265,h264,mpeg2',
-            hdr_support: [],
-            color_depth: 8,
+            codec_primary: 'HEVC',
+            codec_fallback: 'H264',
+            codec_priority: 'hevc,h265,h.265,av1,vp9,h264,mpeg2',
+            hdr_support: ['hdr10', 'hlg'],
+            color_depth: 10,
             audio_channels: 2,
             device_class: 'SD_FAILSAFE',
             reconnect_timeout_ms: 5,
@@ -497,17 +497,17 @@
             reconnect_delay_ms: 50,
             availability_target: 99.999,
             hevc_tier: 'MAIN',
-            hevc_level: '3.1',
+            hevc_level: '6.1,5.1,5.0,4.1,4.0,3.1',
             hevc_profile: 'MAIN-12,MAIN-10,MAIN',
-            color_space: 'BT709',
+            color_space: 'BT2020',
             chroma_subsampling: '4:2:0',
-            transfer_function: 'BT1886',
-            matrix_coefficients: 'BT709',
-            compression_level: 9,
+            transfer_function: 'SMPTE2084',
+            matrix_coefficients: 'BT2020NC',
+            compression_level: 1,
             rate_control: 'VBR',
             entropy_coding: 'CABAC',
-            video_profile: 'main',
-            pixel_format: 'yuv420p'
+            video_profile: 'main10',
+            pixel_format: 'yuv420p10le'
         }
     };
 
@@ -546,7 +546,7 @@
 
 
     function generateGlobalHeader(channelsCount) {
-        const timestamp = new Date().toISOString().replace(/[:.]/g,'-').slice(0,18) + 'Z';
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 18) + 'Z';
         const totalChannels = typeof window !== 'undefined' && window.app && typeof window.app.getFilteredChannels === 'function' ? window.app.getFilteredChannels().length : channelsCount;
 
         return `#EXTM3U x-tvg-url="" x-tvg-url-epg="" x-tvg-logo="" x-tvg-shift=0 catchup="flussonic" catchup-days="7" catchup-source="{MediaUrl}?utc={utc}&lutc={lutc}" url-tvg="" refresh="3600"
@@ -586,8 +586,8 @@
 
     function resolveLcevcState(cfg) {
         const codecProxy = cfg.codec_primary === 'AV1' ? 'av01' :
-                           cfg.codec_primary === 'HEVC' ? 'hvc1' :
-                           cfg.codec_primary === 'H264' ? 'avc1' : 'hvc1';
+            cfg.codec_primary === 'HEVC' ? 'hvc1' :
+                cfg.codec_primary === 'H264' ? 'avc1' : 'hvc1';
         return detectLcevcState(codecProxy);
     }
 
@@ -606,10 +606,10 @@
     const LCEVC_LAYER_CONFIG = {
         P0: { // 8K — AV1 ACTIVE: máxima precisión, bloques grandes
             scale_factor: '4x',
-            l1_block: '8X8',     l1_precision: '12bit', l1_deblock: 1, l1_temporal: 1,
-            l2_block: '4X4',     l2_precision: '12bit', l2_temporal: 1, l2_upscale: 'LANCZOS4',
-            base_ratio: '0.45',  enh_ratio: '0.55',
-            threads: 16,         parallel_blocks: 2,
+            l1_block: '8X8', l1_precision: '12bit', l1_deblock: 1, l1_temporal: 1,
+            l2_block: '4X4', l2_precision: '12bit', l2_temporal: 1, l2_upscale: 'LANCZOS4',
+            base_ratio: '0.45', enh_ratio: '0.55',
+            threads: 16, parallel_blocks: 2,
             transport: 'SUPPLEMENTAL_DATA', fb1: 'SEI_NAL', fb2: 'MPEG_TS_PID',
             sei_nal: '5', pid: '0x1FFE', webm: '3',
             hw_accel: 'REQUIRED', decode_order: 'L1_THEN_L2',
@@ -617,10 +617,10 @@
         },
         P1: { // 4K 60fps — AV1/HEVC: alta precisión, bloques medios
             scale_factor: '2x',
-            l1_block: '4X4',     l1_precision: '10bit', l1_deblock: 1, l1_temporal: 1,
-            l2_block: '4X4',     l2_precision: '10bit', l2_temporal: 1, l2_upscale: 'LANCZOS3',
-            base_ratio: '0.50',  enh_ratio: '0.50',
-            threads: 12,         parallel_blocks: 2,
+            l1_block: '4X4', l1_precision: '10bit', l1_deblock: 1, l1_temporal: 1,
+            l2_block: '4X4', l2_precision: '10bit', l2_temporal: 1, l2_upscale: 'LANCZOS3',
+            base_ratio: '0.50', enh_ratio: '0.50',
+            threads: 12, parallel_blocks: 2,
             transport: 'SEI_NAL', fb1: 'SUPPLEMENTAL_DATA', fb2: 'MPEG_TS_PID',
             sei_nal: '4', pid: '0x1FFE', webm: '3',
             hw_accel: 'REQUIRED', decode_order: 'L1_THEN_L2',
@@ -628,46 +628,46 @@
         },
         P2: { // 4K 30fps — HEVC: equilibrio calidad/CPU
             scale_factor: '2x',
-            l1_block: '4X4',     l1_precision: '10bit', l1_deblock: 1, l1_temporal: 1,
-            l2_block: '2X2',     l2_precision: '10bit', l2_temporal: 1, l2_upscale: 'LANCZOS3',
-            base_ratio: '0.55',  enh_ratio: '0.45',
-            threads: 10,         parallel_blocks: 1,
+            l1_block: '4X4', l1_precision: '10bit', l1_deblock: 1, l1_temporal: 1,
+            l2_block: '2X2', l2_precision: '10bit', l2_temporal: 1, l2_upscale: 'LANCZOS3',
+            base_ratio: '0.55', enh_ratio: '0.45',
+            threads: 10, parallel_blocks: 1,
             transport: 'SEI_NAL', fb1: 'WEBM_METADATA', fb2: 'MPEG_TS_PID',
             sei_nal: '4', pid: '0x1FFE', webm: '3',
             hw_accel: 'PREFERRED', decode_order: 'L1_THEN_L2',
             mode: 'SEI_METADATA', profile: 'MAIN_4_2_0'
         },
-        P3: { // FHD 60fps — HEVC: calidad alta, CPU moderada
+        P3: { // FHD 60fps — AVC/HEVC: 4K HDR OVERRIDE
             scale_factor: '2x',
-            l1_block: '4X4',     l1_precision: '10bit', l1_deblock: 1, l1_temporal: 1,
-            l2_block: '2X2',     l2_precision: '8bit',  l2_temporal: 1, l2_upscale: 'BICUBIC',
-            base_ratio: '0.60',  enh_ratio: '0.40',
-            threads: 8,          parallel_blocks: 1,
+            l1_block: '4X4', l1_precision: '10bit', l1_deblock: 0, l1_temporal: 1,
+            l2_block: '2X2', l2_precision: '10bit', l2_temporal: 1, l2_upscale: 'LANCZOS4',
+            base_ratio: '0.40', enh_ratio: '0.60',
+            threads: 12, parallel_blocks: 2,
             transport: 'SEI_NAL', fb1: 'WEBM_METADATA', fb2: 'MPEG_TS_PID',
             sei_nal: '4', pid: '0x1FFE', webm: '3',
-            hw_accel: 'PREFERRED', decode_order: 'L1_THEN_L2',
+            hw_accel: 'REQUIRED', decode_order: 'L1_THEN_L2',
             mode: 'SEI_METADATA', profile: 'MAIN_4_2_0'
         },
-        P4: { // HD 30fps — HEVC: eficiente, bajo CPU
-            scale_factor: '1.5x',
-            l1_block: '2X2',     l1_precision: '8bit',  l1_deblock: 1, l1_temporal: 1,
-            l2_block: '2X2',     l2_precision: '8bit',  l2_temporal: 1, l2_upscale: 'BICUBIC',
-            base_ratio: '0.65',  enh_ratio: '0.35',
-            threads: 6,          parallel_blocks: 1,
+        P4: { // HD 30fps — AVC/HEVC: EXTREME 4K HDR OVERRIDE
+            scale_factor: '3x',
+            l1_block: '4X4', l1_precision: '10bit', l1_deblock: 0, l1_temporal: 1,
+            l2_block: '2X2', l2_precision: '10bit', l2_temporal: 1, l2_upscale: 'LANCZOS4',
+            base_ratio: '0.40', enh_ratio: '0.60',
+            threads: 8, parallel_blocks: 1,
             transport: 'SEI_NAL', fb1: 'WEBM_METADATA', fb2: 'MPEG_TS_PID',
             sei_nal: '4', pid: '0x1FFE', webm: '3',
-            hw_accel: 'PREFERRED', decode_order: 'L1_THEN_L2',
+            hw_accel: 'REQUIRED', decode_order: 'L1_THEN_L2',
             mode: 'SEI_METADATA', profile: 'MAIN_4_2_0'
         },
-        P5: { // SD — HEVC: mínimo overhead, máxima compatibilidad
-            scale_factor: '1x',
-            l1_block: '2X2',     l1_precision: '8bit',  l1_deblock: 0, l1_temporal: 1,
-            l2_block: '2X2',     l2_precision: '8bit',  l2_temporal: 0, l2_upscale: 'BILINEAR',
-            base_ratio: '0.70',  enh_ratio: '0.30',
-            threads: 4,          parallel_blocks: 1,
+        P5: { // SD — AVC/HEVC: NUCLEAR 4K HDR OVERRIDE
+            scale_factor: '4.5x',
+            l1_block: '4X4', l1_precision: '8bit', l1_deblock: 1, l1_temporal: 1,
+            l2_block: '2X2', l2_precision: '10bit', l2_temporal: 1, l2_upscale: 'LANCZOS2',
+            base_ratio: '0.30', enh_ratio: '0.70',
+            threads: 8, parallel_blocks: 1,
             transport: 'SEI_NAL', fb1: 'MPEG_TS_PID', fb2: 'WEBM_METADATA',
             sei_nal: '4', pid: '0x1FFE', webm: '3',
-            hw_accel: 'IF_AVAILABLE', decode_order: 'L1_THEN_L2',
+            hw_accel: 'REQUIRED', decode_order: 'L1_THEN_L2',
             mode: 'SEI_METADATA', profile: 'MAIN_4_2_0'
         }
     };
@@ -715,9 +715,11 @@
             `#EXTVLCOPT:avcodec-fast=0`,
             `#EXTVLCOPT:avcodec-threads=0`,
             `#EXTVLCOPT:swscale-mode=9`,
+            `#EXTVLCOPT:hw-dec-accelerator=mediacodec,vaapi,nvdec`,
             `#EXTVLCOPT:deinterlace=0`,
-            `#EXTVLCOPT:video-filter=deinterlace`,
-            `#EXTVLCOPT:deinterlace-mode=yadif2x`,
+            `#EXTVLCOPT:video-filter=hqdn3d`,
+            `#EXTVLCOPT:postproc-q=6`,
+            `#EXTVLCOPT:deinterlace-mode=bwdif;yadif2x;yadif`,
             `#EXTVLCOPT:video-title-show=0`,
             `#EXTVLCOPT:fullscreen=1`,
             `#EXTVLCOPT:no-video-title-show`,
@@ -752,9 +754,9 @@
     function build_exthttp(cfg, profile, index, sessionId, reqId) {
         const timestamp = Math.floor(Date.now() / 1000);
         const nowDate = new Date(Date.now() - 86400000).toUTCString();
-        const vpsDomain = (typeof window !== 'undefined' && window.app && window.app.state && window.app.state.currentServer && window.app.state.currentServer.baseUrl) 
-             ? window.app.state.currentServer.baseUrl.replace(/\/player_api\.php$/, '').replace(/\/$/, '') 
-             : 'https://iptv-ape.duckdns.org';
+        const vpsDomain = (typeof window !== 'undefined' && window.app && window.app.state && window.app.state.currentServer && window.app.state.currentServer.baseUrl)
+            ? window.app.state.currentServer.baseUrl.replace(/\/player_api\.php$/, '').replace(/\/$/, '')
+            : 'https://iptv-ape.duckdns.org';
 
         const lcevcState = resolveLcevcState(cfg); // LCEVC Dinámico: nunca DISABLED
         const fps = cfg.fps || 30;
@@ -826,7 +828,7 @@
             "X-Client-Timestamp": String(timestamp),
             "X-Request-Id": reqId,
             "X-Stream-Type": "hls,dash",
-            "X-Quality-Preference": `codec-av1,profile-main-12,main-10,main,tier-high;codec-hevc,${(cfg.hevc_profile||'MAIN-10-HDR').toLowerCase()}`,
+            "X-Quality-Preference": `codec-av1,profile-main-12,main-10,main,tier-high;codec-hevc,${(cfg.hevc_profile || 'MAIN-10-HDR').toLowerCase()}`,
             "X-Playback-Rate": "1.0,1.25,1.5",
             "X-Segment-Duration": "1,2,4",
             "X-Min-Buffer-Time": "2,4,6",
@@ -1005,7 +1007,19 @@
             "X-LCEVC-Transport": (LCEVC_LAYER_CONFIG[profile] || LCEVC_LAYER_CONFIG['P3']).transport,
             "X-LCEVC-SEI-NAL-Type": (LCEVC_LAYER_CONFIG[profile] || LCEVC_LAYER_CONFIG['P3']).sei_nal,
             "X-LCEVC-MPEG-TS-PID": (LCEVC_LAYER_CONFIG[profile] || LCEVC_LAYER_CONFIG['P3']).pid,
-            "X-LCEVC-WebM-Track": (LCEVC_LAYER_CONFIG[profile] || LCEVC_LAYER_CONFIG['P3']).webm
+            "X-LCEVC-WebM-Track": (LCEVC_LAYER_CONFIG[profile] || LCEVC_LAYER_CONFIG['P3']).webm,
+
+            // ── PHASE 4 EDGE COMPUTE & GOD-TIER INJECTORS (KODIPROP) ──
+            "X-VMAF-Target": "95.0",
+            "X-Film-Grain-Preservation": "STRICT",
+            "X-Low-Downswitch": "AGGRESSIVE_HOLD",
+            "X-Chroma-Subsampling": "4:4:4",
+            "X-Color-Depth": "10bit",
+            "X-Force-AI-SR": "true",
+            "X-HEVC-Level": "6.1,5.1,5.0,4.1,4.0,3.1",
+            "X-LCEVC-Phase4-Mode": "Edge-Compute-Only",
+            "X-AI-Compute-Target": "Local-GPU-Targeted",
+            "X-LCEVC-Target-Res": "3840x2160"
         };
 
         for (const [k, v] of Object.entries(isp)) {
@@ -1014,22 +1028,40 @@
 
         // ── FIX 1,5,6,11: Per-profile ISP overrides (reference v5.4) ──
         const _ispOv = {
-            P0: { 'X-ISP-Segment-Pipeline':'64', 'X-ISP-Throttle-Level':'1-NUCLEAR',    'X-ISP-TCP-Window':'16777216', 'X-ISP-Burst-Duration':'60s' },
-            P1: { 'X-ISP-Segment-Pipeline':'4',  'X-ISP-Throttle-Level':'1-EXTREME',    'X-ISP-TCP-Window':'4194304',  'X-ISP-Burst-Duration':'30s' },
-            P2: { 'X-ISP-Segment-Pipeline':'16', 'X-ISP-Throttle-Level':'1-AGGRESSIVE', 'X-ISP-TCP-Window':'2097152',  'X-ISP-Burst-Duration':'20s' },
-            P3: { 'X-ISP-Segment-Pipeline':'8',  'X-ISP-Throttle-Level':'2-HIGH',       'X-ISP-TCP-Window':'1048576',  'X-ISP-Burst-Duration':'15s' },
-            P4: { 'X-ISP-Segment-Pipeline':'4',  'X-ISP-Throttle-Level':'3-MEDIUM',     'X-ISP-TCP-Window':'524288',   'X-ISP-Burst-Duration':'10s' },
-            P5: { 'X-ISP-Segment-Pipeline':'4',  'X-ISP-Throttle-Level':'4-LOW',        'X-ISP-TCP-Window':'262144',   'X-ISP-Burst-Duration':'5s'  }
+            P0: { 'X-ISP-Segment-Pipeline': '64', 'X-ISP-Throttle-Level': '1-NUCLEAR', 'X-ISP-TCP-Window': '16777216', 'X-ISP-Burst-Duration': '60s' },
+            P1: { 'X-ISP-Segment-Pipeline': '4', 'X-ISP-Throttle-Level': '1-EXTREME', 'X-ISP-TCP-Window': '4194304', 'X-ISP-Burst-Duration': '30s' },
+            P2: { 'X-ISP-Segment-Pipeline': '16', 'X-ISP-Throttle-Level': '1-AGGRESSIVE', 'X-ISP-TCP-Window': '2097152', 'X-ISP-Burst-Duration': '20s' },
+            P3: { 'X-ISP-Segment-Pipeline': '8', 'X-ISP-Throttle-Level': '2-HIGH', 'X-ISP-TCP-Window': '1048576', 'X-ISP-Burst-Duration': '15s' },
+            P4: { 'X-ISP-Segment-Pipeline': '4', 'X-ISP-Throttle-Level': '3-MEDIUM', 'X-ISP-TCP-Window': '524288', 'X-ISP-Burst-Duration': '10s' },
+            P5: { 'X-ISP-Segment-Pipeline': '4', 'X-ISP-Throttle-Level': '4-LOW', 'X-ISP-TCP-Window': '262144', 'X-ISP-Burst-Duration': '5s' }
         };
         Object.assign(headers, _ispOv[profile] || _ispOv['P3']);
         return `#EXTHTTP:${JSON.stringify(headers)}`;
     }
 
     function build_ape_block(cfg, profile, index) {
-        const buildTs = new Date().toISOString().replace(/[:.]/g,'-').slice(0,18) + 'Z';
+        const buildTs = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 18) + 'Z';
         const codecStr = window._APE_PRIO_QUALITY !== false ? (profile === 'P0' ? 'hvc1.1.6.L183.B0,mp4a.40.2' : 'hvc1.1.6.L150.B0,mp4a.40.2') : `hvc1.1.6.L150.B0,mp4a.40.2`;
         const lcevcState = resolveLcevcState(cfg);
         const lc = resolveLcevcConfig(profile, cfg);
+
+
+        // ✅ FIX v16.4.1: lcevcBaseCodec derivado del codec REAL del STREAM-INF
+        // (no de un valor hardcodeado). La coherencia es total.
+        const _realCodecForLCEVC = (() => {
+            // Si el toggle de máxima calidad está activo, la lógica es simple:
+            // P0 (8K) es AV1, el resto (4K, FHD, etc.) es HEVC.
+            if (typeof window !== 'undefined' && window._APE_PRIO_QUALITY !== false) {
+                return profile === 'P0' ? 'AV1' : 'HEVC';
+            }
+            // Si el toggle está apagado, se lee la configuración del perfil (cfg).
+            const p = (cfg.codec_primary || 'HEVC').toUpperCase();
+            if (p === 'AV1') return 'AV1';
+            if (p === 'HEVC' || p === 'H265') return 'HEVC';
+            return 'H264'; // Fallback a H264 si no es ninguno de los anteriores
+        })();
+        const lcevcBaseCodec = _realCodecForLCEVC;  // ✅ SIEMPRE coherente
+
 
         return [
             // ── SECTION 1 — Identity (8 tags) ──────────────────────────────
@@ -1046,9 +1078,9 @@
             `#EXT-X-APE-HDR-PROFILE:${(cfg.hdr_support || []).join(',') || 'none'}`,
             `#EXT-X-APE-LCEVC-ENABLED:true`,
             `#EXT-X-APE-LCEVC-STATE:${lcevcState}`,
-            `#EXT-X-APE-LCEVC-BASE-CODEC:${resolveLcevcBaseCodec(lcevcState, cfg)}`,
+            `#EXT-X-APE-LCEVC-BASE-CODEC:${lcevcBaseCodec}`,
             `#EXT-X-APE-LCEVC-ENHANCEMENT:mpeg5-part2`,
-            `#EXT-X-APE-LCEVC-SCALE-FACTOR:${cfg.lcevc_scale_factor || '2x'}`,
+            `#EXT-X-APE-LCEVC-SCALE-FACTOR:${(LCEVC_LAYER_CONFIG[profile] || LCEVC_LAYER_CONFIG['P3']).scale_factor}`,
 
             // ── SECTION 3 — QoS/QoE (6 tags) ──────────────────────────────
             `#EXT-X-APE-AI-SR-ENABLED:true`,
@@ -1148,6 +1180,41 @@
             `#EXT-X-APE-LCEVC-L1-TRANSFORM-BLOCK:${lc.l1_block}`,
             `#EXT-X-APE-LCEVC-L1-DEBLOCK-FILTER:${lc.l1_deblock}`,
             `#EXT-X-APE-LCEVC-L1-RESIDUAL-PRECISION:${lc.l1_precision}`,
+            // ── SECTION 15 — LCEVC PHASE 4 SEMANTIC ENGINE (EDGE-COMPUTE DIRECT) ──
+            `#EXT-X-APE-LCEVC-PHASE-4-ENABLED:true`,
+            `#EXT-X-APE-TUNNELING-ENABLED:off`,
+            `#EXT-X-APE-NETWORK-PATH:ORIGIN_DIRECT`,
+
+            // 1. Semantic Segmentation & Local AI (Phase 4 Base)
+            `#EXT-X-APE-LCEVC-SEMANTIC-SEGMENTATION:ACTIVE`,
+            `#EXT-X-APE-LCEVC-ROI-PROCESSING:DYNAMIC`,
+            `#EXT-X-APE-LCEVC-ROI-TARGETS:FACES,TEXT,SKIN,SPORTS_BALL`,
+            `#EXT-X-APE-LCEVC-BG-DEGRADATION:AGGRESSIVE`,
+            `#EXT-X-APE-LCEVC-FRAME-GENERATION:${profile.match(/P[0-1]/) ? 'LOCAL-AFMF' : 'DISABLED'}`,
+            `#EXT-X-APE-LCEVC-COLOR-HALLUCINATION:${profile.match(/P[4-5]/) ? 'ACTIVE' : 'MILD'}`,
+            `#EXT-X-APE-LCEVC-COMPUTE-PRECISION:${profile.match(/P[0-2]/) ? 'FP16' : 'INT8'}`,
+
+            // 2. Quantum Pixel Overdrive v5 (Scale & Color)
+            `#EXT-X-APE-QUANTUM-CHROMA-SUBSAMPLING:4:4:4`,
+            `#EXT-X-APE-QUANTUM-COLOR-DEPTH:10bit`,
+            `#EXT-X-APE-QUANTUM-ITM-SDR-TO-HDR:auto`,
+
+            // 3. HEVC Level Supremacy (La Cascada) & LCEVC Dynamic Base
+            `#EXT-X-APE-HEVC-LEVEL-CASCADE:6.1,5.1,5.0,4.1,4.0,3.1`,
+            `#EXT-X-APE-CODEC-PRIORITY:hevc,av1,h264`,
+            `#EXT-X-APE-LCEVC-BASE-POLICY:${lcevcBaseCodec}`, // Dinámico derivado de config
+            `#EXT-X-APE-LCEVC-TRANSPORT:CMAF_LAYER_OR_SEI_EMBED`,   // Instruye cómo buscar la capa L1+L2
+
+            // 4. Maximum Resolution Escalator (Extensión M3U8 Nativa)
+            `#EXT-X-APE-RESOLUTION-ESCALATOR:4320p>2160p>1080p>720p>480p`,
+
+            // 5. God-Tier Perceptual Quality (Film Grain & Bitrate)
+            `#EXT-X-APE-VMAF-TARGET:95.0`,
+            `#EXT-X-APE-FILM-GRAIN-PRESERVATION:STRICT`,
+
+            // 6. Protección Térmica (Edge-Compute Limiters)
+            `#EXT-X-APE-HEARTBEAT-THERMAL:TRUE`,
+            `#EXT-X-APE-THERMAL-THROTTLING-FB:PHASE-2-SAFE-MODE`,
             `#EXT-X-APE-LCEVC-L1-TEMPORAL-PREDICTION:${lc.l1_temporal}`,
             `#EXT-X-APE-LCEVC-L2-ENABLED:1`,
             `#EXT-X-APE-LCEVC-L2-TRANSFORM-BLOCK:${lc.l2_block}`,
@@ -1233,7 +1300,7 @@
             // PACKAGE C — LCEVC v2 PHASE 3 COMPLETE (15 new tags)
             // (Base 97 already in sections 2 + 14 above)
             // ══════════════════════════════════════════════════════════════
-                        `#EXT-X-APE-LCEVC-PHASE-3-ENABLED:true`,
+            `#EXT-X-APE-LCEVC-PHASE-3-ENABLED:true`,
             `#EXT-X-APE-LCEVC-NEURAL-UPSCALE:ESRGAN-4x`,
             `#EXT-X-APE-LCEVC-GRAIN-SYNTHESIS:true`,
             `#EXT-X-APE-LCEVC-SPATIAL-DITHERING:true`,
@@ -1317,7 +1384,7 @@
             // PACKAGE G — HDR ADVANCED COMPLETE (42 tags)
             // Base 32 + New 10
             // ══════════════════════════════════════════════════════════════
-            `#EXT-X-APE-HDR-CHAIN:${(cfg.hdr_support || ['dolby-vision','hdr10+','hdr10','hlg','sdr']).join(',')}`,
+            `#EXT-X-APE-HDR-CHAIN:${(cfg.hdr_support || ['dolby-vision', 'hdr10+', 'hdr10', 'hlg', 'sdr']).join(',')}`,
             `#EXT-X-APE-HDR-COLOR-SPACE:${cfg.color_space || 'BT.2020,BT.709'}`,
             `#EXT-X-APE-HDR-TRANSFER-FUNCTION:${cfg.transfer_function || 'SMPTE-ST-2084,ARIB-STD-B67,BT.709'}`,
             `#EXT-X-APE-HDR-COLOR-PRIMARIES:${cfg.color_primaries || 'BT.2020'}`,
@@ -1435,7 +1502,7 @@
                 if (url.startsWith('https://')) return url.replace(/^https:\/\//, 'http://');
                 return url;
             }
-        } catch (e) {}
+        } catch (e) { }
         return url;
     }
 
@@ -1494,7 +1561,7 @@
             }
         }
         groupTitle = escapeM3UValue(groupTitle);
-        
+
         return `#EXTINF:-1 tvg-id="${tvgId}" tvg-name="${tvgName}" tvg-logo="${tvgLogo}" group-title="${groupTitle}" ape-profile="${profile}" ape-build="v5.4-MAX-AGGRESSION",${tvgName}`;
     }
 
@@ -1528,7 +1595,7 @@
     function generateChannelEntry(channel, index, forceProfile = null) {
         const profile = forceProfile || determineProfile(channel);
         const cfg = getProfileConfig(profile);
-        
+
         const reqId = `REQ_${generateRandomString(16)}`;
         const sessionId = `SES_${generateRandomString(16)}`;
 
@@ -1536,6 +1603,19 @@
 
         lines.push(generateEXTINF(channel, profile, index));
         lines.push(build_exthttp(cfg, profile, index, sessionId, reqId));
+
+        // ── SKILL: Maximum Resolution Escalator (EXTVLCOPT Injector) ──
+        lines.push('#EXTVLCOPT:preferred-resolution=480');
+        lines.push('#EXTVLCOPT:preferred-resolution=720');
+        lines.push('#EXTVLCOPT:preferred-resolution=1080');
+        lines.push('#EXTVLCOPT:preferred-resolution=2160');
+        lines.push('#EXTVLCOPT:preferred-resolution=4320');
+        lines.push('#EXTVLCOPT:adaptive-logic=highest');
+
+        // ── SKILL: Quantum Pixel Overdrive v5 (HW Decoder) ──
+        lines.push('#EXTVLCOPT:hw-dec-accelerator=any');
+        lines.push('#EXTVLCOPT:video-filter=hqdn3d');
+
         lines.push(...generateEXTVLCOPT(profile));
         lines.push(...build_kodiprop(cfg, profile, index));
         lines.push(...build_ape_block(cfg, profile, index));

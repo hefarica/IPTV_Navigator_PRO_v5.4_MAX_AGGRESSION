@@ -1138,12 +1138,18 @@
                   style="font-size: 0.92rem; text-transform: uppercase; letter-spacing: 0.14em; color: var(--text-muted); font-weight: 500; -webkit-font-smoothing: antialiased;">CLASIFICACIÓN
                   CANALES JERÁRQUICA</span>
               </div>
-              <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; font-size: 0.75rem;">
+              <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; font-size: 0.75rem;">
                 <div>
                   <div
                     style="color: #38bdf8; font-weight: 600; margin-bottom: 6px; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em;">
                     🌎 REGIÓN</div>
                   <div id="classStatRegion" style="display: flex; flex-wrap: wrap; gap: 6px; color: #e5e7eb;"></div>
+                </div>
+                <div>
+                  <div
+                    style="color: #38bdf8; font-weight: 600; margin-bottom: 6px; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em;">
+                    🗣️ IDIOMA</div>
+                  <div id="classStatLanguage" style="display: flex; flex-wrap: wrap; gap: 6px; color: #e5e7eb;"></div>
                 </div>
                 <div>
                   <div
@@ -1284,6 +1290,7 @@
                       <th>ID</th>
                       <th>Nombre</th>
                       <th>Grupo</th>
+                      <th>Idioma</th>
                       <th>Tier</th>
                       <th>Bitrate</th>
                       <th>Score</th>
@@ -3025,7 +3032,7 @@
   <script src="js/ape-v9/ape-profiles-config.js?v=9.2-fix"></script>
   <!-- profile-manager-v9.js loaded later at v9.0.3 (line ~3171) -->
   <script src="js/ape-v9/profile-bridge-v9.js?v=1.1"></script>
-  <script src="js/ape-v9/m3u8-typed-arrays-ultimate.js?v=16.5.4"></script>
+  <script src="js/ape-v9/m3u8-typed-arrays-ultimate.js?v=16.5.6"></script>
   <script src="js/ape-v9/hud-typed-arrays.js?v=1.0"></script>
 
   <!-- App principal - V4.18.6 ENTERPRISE (Restaurado + Fixes) -->
