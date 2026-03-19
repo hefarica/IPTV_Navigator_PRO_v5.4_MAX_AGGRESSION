@@ -2362,7 +2362,8 @@
             lines.push('#EXT-X-CORTEX-LCEVC-L2-DETAIL:UPCONVERT_SHARPENING_EXTREME');
         }
 
-        // ── 🔴 FIX #2: CADENA DE FALLBACK AV1 EXPLÍCITA (Per Canal) ──
+        // ── 🔴 FIX #2: CADENA DE FALLBACK AV1 — DEGRADACIÓN GRACEFUL (Per Canal) ──
+        // Incluye tags APE + rendiciones alternativas estándar para canales AV1
         lines.push('#EXT-X-APE-AV1-FALLBACK-ENABLED:true');
         lines.push('#EXT-X-APE-AV1-FALLBACK-CHAIN:AV1>HEVC>H264>MPEG2');
         lines.push('#EXT-X-APE-AV1-FALLBACK-GRACEFUL:true');
@@ -2373,8 +2374,23 @@
         lines.push('#EXT-X-APE-AV1-FALLBACK-PRESERVE-HDR:true');
         lines.push('#EXT-X-APE-AV1-FALLBACK-PRESERVE-LCEVC:true');
         lines.push('#EXT-X-APE-AV1-FALLBACK-LOG:SILENT');
+        // 🔴 AV1 GRACEFUL DEGRADATION: Rendiciones alternativas estándar HLS
+        // Solo para canales nativos AV1 (P0): inyecta alternativas HEVC y H264
+        const originalProfile = cfg._cortex_original_profile || profile;
+        if (originalProfile === 'P0') {
+            const chName = (channel.name || '').replace(/"/g, '\\"');
+            lines.push(`#EXT-X-MEDIA:TYPE=VIDEO,GROUP-ID="av1-fallback",NAME="HEVC-Fallback",DEFAULT=NO,AUTOSELECT=YES,LANGUAGE="und",CODECS="hev1.1.6.L153.B0",RESOLUTION=${resolution}`);
+            lines.push(`#EXT-X-MEDIA:TYPE=VIDEO,GROUP-ID="av1-fallback",NAME="H264-Fallback",DEFAULT=NO,AUTOSELECT=YES,LANGUAGE="und",CODECS="avc1.640028",RESOLUTION=1920x1080`);
+            lines.push(`#EXT-X-APE-AV1-DEGRADATION-PRIMARY:av01.0.16M.10`);
+            lines.push(`#EXT-X-APE-AV1-DEGRADATION-SECONDARY:hev1.1.6.L153.B0`);
+            lines.push(`#EXT-X-APE-AV1-DEGRADATION-TERTIARY:avc1.640028`);
+            lines.push(`#EXT-X-APE-AV1-DEGRADATION-QUATERNARY:mpeg2video`);
+            lines.push(`#EXT-X-APE-AV1-HW-PROBE-CODECS:av01.0.16M.10,hev1.1.6.L153.B0,avc1.640028`);
+            lines.push(`#EXT-X-APE-AV1-SWITCH-LATENCY:0ms`);
+        }
 
-        // ── 🔴 FIX #3: LCEVC SDK INJECTOR EXPLÍCITO (Per Canal) ──
+        // ── 🔴 FIX #3: LCEVC SDK INJECTOR + V-NOVA NATIVO (Per Canal) ──
+        // Tags APE para auditoría + tag V-Nova estándar #EXT-X-VNOVA-LCEVC-CONFIG-B64
         lines.push('#EXT-X-APE-LCEVC-SDK-ENABLED:true');
         lines.push('#EXT-X-APE-LCEVC-SDK-VERSION:v16.4.1');
         lines.push('#EXT-X-APE-LCEVC-SDK-TARGET:HTML5_NATIVE');
@@ -2385,6 +2401,28 @@
         lines.push('#EXT-X-APE-LCEVC-SDK-RESIDUAL-STORE:GPU_TEXTURE');
         lines.push('#EXT-X-APE-LCEVC-SDK-RENDER-TARGET:CANVAS_2D+WEBGL2');
         lines.push('#EXT-X-APE-LCEVC-SDK-FALLBACK:BASE_PASSTHROUGH');
+        // 🔴 V-NOVA LCEVC NATIVE SDK TAG — Formato exacto del auditor (lcevc_sdk_injector_patch.py)
+        lines.push('#EXT-X-APE-MODULE:LCEVC-HTML5-SDK-INJECTOR-V1');
+        lines.push('#EXT-X-VNOVA-LCEVC-TARGET-SDK:LCEVCdecJS_v1.2.1+');
+        const lcevcEnhancementLayers = {
+            "correction": {
+                "deblocking_filter": "HIGH_ADAPTIVE",
+                "denoise_level": "FILM_GRAIN_PRESERVATION_V2",
+                "dering_strength": 8
+            },
+            "detail": {
+                "sharpening_algorithm": "UNSHARP_MASK_ADAPTIVE",
+                "texture_synthesis": "AI_GENERATED_HIGH_FREQ",
+                "local_contrast_enhancement": "CLAHE_8x8_TILES"
+            },
+            "color": {
+                "hdr_tonemap_mode": "DYNAMIC_METADATA_INJECTION",
+                "gamut_mapping": "BT.2020_TO_P3_ADAPTIVE",
+                "color_grading_lut": "KODAK_2383_D65_APE_TUNED"
+            }
+        };
+        const lcevcConfigB64 = typeof btoa === 'function' ? btoa(JSON.stringify(lcevcEnhancementLayers)) : Buffer.from(JSON.stringify(lcevcEnhancementLayers)).toString('base64');
+        lines.push(`#EXT-X-VNOVA-LCEVC-CONFIG-B64:${lcevcConfigB64}`);
 
         // ── 🔴 FIX #4: IP ROTATION STEALTH EXPLÍCITA (Per Canal) ──
         lines.push('#EXT-X-APE-IP-ROTATION-ENABLED:true');
