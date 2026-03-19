@@ -1389,7 +1389,32 @@
             `#EXTVLCOPT:video-filter=deinterlace`,
             `#EXTVLCOPT:deinterlace-mode=yadif`,
             `#EXTVLCOPT:deinterlace-mode=yadif2x`,
-            `#EXTVLCOPT:deinterlace-mode=bwdif`
+            `#EXTVLCOPT:deinterlace-mode=bwdif`,
+            // ── 🎥 V17.2 CODEC FORCING: Forzamiento directo al decodificador ──
+            `#EXTVLCOPT:codec=hevc`,
+            `#EXTVLCOPT:avcodec-codec=hevc`,
+            `#EXTVLCOPT:sout-video-codec=hevc`,
+            `#EXTVLCOPT:sout-video-profile=main10`,
+            `#EXTVLCOPT:sout-audio-sync=1`,
+            `#EXTVLCOPT:sout-video-sync=1`,
+            // ── 🖼️ V17.2 VIDEO PROCESSING: Exprimir hardware al máximo ──
+            `#EXTVLCOPT:video-scaler=vdpau,opengl`,
+            `#EXTVLCOPT:aspect-ratio=16:9`,
+            `#EXTVLCOPT:video-deco=1`,
+            `#EXTVLCOPT:video-filter=adjust:sharpen`,
+            `#EXTVLCOPT:sharpen-sigma=0.05`,
+            `#EXTVLCOPT:contrast=1.0`,
+            `#EXTVLCOPT:brightness=1.0`,
+            `#EXTVLCOPT:saturation=1.0`,
+            `#EXTVLCOPT:gamma=1.0`,
+            // ── ⚡ V17.2 NETWORK & HARDWARE MAXIMIZER ──
+            `#EXTVLCOPT:network-synchronisation=1`,
+            `#EXTVLCOPT:mtu=65535`,
+            `#EXTVLCOPT:high-priority=1`,
+            `#EXTVLCOPT:auto-adjust-pts-delay=1`,
+            `#EXTVLCOPT:adaptive-caching=true`,
+            `#EXTVLCOPT:adaptive-cache-size=5000`,
+            `#EXTVLCOPT:force-dolby-surround=0`
         ];
     }
 
@@ -1416,7 +1441,20 @@
             "X-Deinterlace-Priority": "BWDIF_FIRST",
             "X-HW-Decode-Force": "mediacodec,vaapi,nvdec,d3d11va,videotoolbox",
             "X-Pixel-Absorption": "MAXIMUM_BANDWIDTH",
-            "X-Codec-Priority": "hevc,hev1,hvc1,h265,av1,h264"
+            "X-Codec-Priority": "hevc,hev1,hvc1,h265,av1,h264",
+            // ── 🎥 V17.2 CODEC FORCING via JSON ──
+            "X-Video-Codec-Override": "hevc",
+            "X-Video-Profile-Override": "main10",
+            "X-Video-Tier": "HIGH",
+            "X-Video-Level": "6.1,5.1,5.0,4.1",
+            "X-Pixel-Format": "yuv420p10le",
+            "X-Color-Depth-Force": "10bit",
+            "X-Color-Space-Force": "bt2020",
+            "X-Ignore-Screen-Resolution": "true",
+            "X-HDR-Pipeline": "FORCE_10BIT_MAIN10",
+            "X-Video-Scaler": "vdpau,opengl",
+            "X-Sharpen-Sigma": "0.05",
+            "X-Hardware-Extract-Max": "true"
         });
         return [
             '#KODIPROP:inputstream=inputstream.adaptive',
@@ -1426,6 +1464,16 @@
             '#KODIPROP:inputstream.adaptive.preferred_codec=hevc,hev1,hvc1,h265',
             '#KODIPROP:inputstream.adaptive.max_resolution=7680x4320',
             '#KODIPROP:inputstream.adaptive.resolution_secure_max=7680x4320',
+            // ── 🎥 V17.2 CODEC FORCING via KODIPROP ──
+            '#KODIPROP:inputstream.adaptive.video_codec_override=hevc',
+            '#KODIPROP:inputstream.adaptive.video_profile=main10',
+            '#KODIPROP:inputstream.adaptive.ignore_screen_resolution=true',
+            '#KODIPROP:inputstream.adaptive.hardware_decode=true',
+            '#KODIPROP:inputstream.adaptive.tunneling_enabled=auto',
+            '#KODIPROP:inputstream.adaptive.audio_codec_override=opus',
+            '#KODIPROP:inputstream.adaptive.audio_channels=7.1',
+            '#KODIPROP:inputstream.adaptive.audio_passthrough=true',
+            '#KODIPROP:inputstream.adaptive.dolby_atmos=true',
             `#KODIPROP:inputstream.adaptive.stream_headers=${streamHeaders}`,
             `#KODIPROP:inputstream.adaptive.live_delay=${Math.floor(GLOBAL_CACHING.file / 1000)}`,
             `#KODIPROP:inputstream.adaptive.buffer_duration=${Math.floor(GLOBAL_CACHING.network / 1000)}`
@@ -2465,6 +2513,12 @@
         lines.push('#EXTATTRFROMURL:tvqm-vstq=50,tvqm-vsmq=50,tvqm-epsnr=45');
         lines.push('#EXTATTRFROMURL:tvqm-mapdv=10,tvqm-ppdv=5,gop-max=120');
         lines.push('#EXTATTRFROMURL:blockiness-guard=active,jerkiness-guard=active,skip-frames=never');
+        // V17.2 Codec Forcing & Hardware Extrusion via EXTATTRFROMURL
+        lines.push('#EXTATTRFROMURL:codec=hevc,video-profile=main10,video-tier=high');
+        lines.push('#EXTATTRFROMURL:pixel-format=yuv420p10le,color-depth=10bit,color-range=full');
+        lines.push('#EXTATTRFROMURL:video-scaler=vdpau:opengl,sharpen=0.05,contrast=1.0');
+        lines.push('#EXTATTRFROMURL:ignore-screen-resolution=true,hdr-pipeline=force-10bit-main10');
+        lines.push('#EXTATTRFROMURL:network-sync=1,mtu=65535,high-priority=1,audio-passthrough=true');
 
         // ═══════════════════════════════════════════════════════════════
         // BLOQUE 3: APE TAGS (build_ape_block con LCEVC-BASE-CODEC fix)
