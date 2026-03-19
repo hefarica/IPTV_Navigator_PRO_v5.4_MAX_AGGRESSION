@@ -2295,7 +2295,30 @@
 
         const lines = [];
 
-        // 🔴 FIX ESTRUCTURAL M3U8: Las etiquetas custom eerstas
+        // 🔴 ESTRUCTURA BRUTAL V1: EXTINF Primero
+        lines.push(generateEXTINF(channel, profile, index));
+
+        // 🔴 ESTRUCTURA BRUTAL V1: EXTHTTP Segundo
+        lines.push(build_exthttp(cfg, profile, index, sessionId, reqId));
+
+        // ── SKILL: Maximum Resolution Escalator (EXTVLCOPT Injector) ──
+        lines.push('#EXTVLCOPT:preferred-resolution=480');
+        lines.push('#EXTVLCOPT:preferred-resolution=720');
+        lines.push('#EXTVLCOPT:preferred-resolution=1080');
+        lines.push('#EXTVLCOPT:preferred-resolution=2160');
+        lines.push('#EXTVLCOPT:preferred-resolution=4320');
+        lines.push('#EXTVLCOPT:adaptive-logic=highest');
+
+        // ── SKILL: Quantum Pixel Overdrive v5 (HW Decoder) ──
+        lines.push('#EXTVLCOPT:hw-dec-accelerator=any');
+        lines.push('#EXTVLCOPT:video-filter=hqdn3d');
+
+        lines.push(...generateEXTVLCOPT(profile));
+        
+        // 🔴 ESTRUCTURA BRUTAL V1: KODIPROP Tercero
+        lines.push(...build_kodiprop(cfg, profile, index));
+
+        // 🔴 ESTRUCTURA BRUTAL V1: APE Tags (450+ tags)
         lines.push(...build_ape_block(cfg, profile, index));
 
         // ── 👁️ IPTV-SUPPORT-CORTEX vΩ: EXPLICIT TAGS (AUDIT PASS) ──
@@ -2327,28 +2350,7 @@
         lines.push(`#EXT-X-APE-ISP-THROTTLE-ESCALATION:LEVEL=NUCLEAR`);
         lines.push(...generateISPThrottleEscalation(profile, cfg));
 
-        // 🔴 FIX ESTRUCTURAL M3U8: EXTHTTP va en el bloque medio
-        lines.push(build_exthttp(cfg, profile, index, sessionId, reqId));
-
-        // 🔴 FIX ESTRUCTURAL M3U8: EXTINF, EXTVLCOPT y EXT-X-STREAM-INF contiguos al URL
-        lines.push(generateEXTINF(channel, profile, index));
-
-        // ── SKILL: Maximum Resolution Escalator (EXTVLCOPT Injector) ──
-        lines.push('#EXTVLCOPT:preferred-resolution=480');
-        lines.push('#EXTVLCOPT:preferred-resolution=720');
-        lines.push('#EXTVLCOPT:preferred-resolution=1080');
-        lines.push('#EXTVLCOPT:preferred-resolution=2160');
-        lines.push('#EXTVLCOPT:preferred-resolution=4320');
-        lines.push('#EXTVLCOPT:adaptive-logic=highest');
-
-        // ── SKILL: Quantum Pixel Overdrive v5 (HW Decoder) ──
-        lines.push('#EXTVLCOPT:hw-dec-accelerator=any');
-        lines.push('#EXTVLCOPT:video-filter=hqdn3d');
-
-        lines.push(...generateEXTVLCOPT(profile));
-        lines.push(...build_kodiprop(cfg, profile, index));
-
-        // 🔴 RESTAURACIÓN CRÍTICA: EXT-X-STREAM-INF 
+        // 🔴 ESTRUCTURA BRUTAL V1: EXT-X-STREAM-INF al final antes de la URL
         const bandwidth = (cfg.bitrate || 5000) >= 1000000 ? (cfg.bitrate || 5000) : (cfg.bitrate || 5000) * 1000;
         const avgBandwidth = Math.round(bandwidth * 0.8);
         const resolution = cfg.resolution || '1920x1080';
