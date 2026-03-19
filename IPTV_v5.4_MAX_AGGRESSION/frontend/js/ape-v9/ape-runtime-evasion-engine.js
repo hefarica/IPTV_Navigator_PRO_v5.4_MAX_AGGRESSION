@@ -655,9 +655,132 @@
     // 🔌 MÓDULO 8: ACTIVACIÓN — Monkey-patch de fetch + XHR
     // ═══════════════════════════════════════════════════════════════════════════
 
+    // ═══════════════════════════════════════════════════════════════════════════
+    // 🔋 MÓDULO 9: OVERFLOW HEADERS INJECTOR — Los 45+ headers del JS
+    // ═══════════════════════════════════════════════════════════════════════════
+    // Los headers que excedieron el límite de 10KB en #EXTHTTP viajan
+    // codificados en base64 dentro de #EXT-X-APE-OVERFLOW-HEADERS.
+    // Este módulo los decodifica y los inyecta en CADA request de media
+    // que el Runtime Engine intercepta, completando el payload completo.
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    const OverflowInjector = {
+        _overflowCache: {},  // Cache de headers overflow decodificados
+        _loaded: false,
+
+        /**
+         * Decodifica base64url a string UTF-8
+         */
+        _b64Decode: function(b64) {
+            try {
+                // Restaurar chars estándar de base64
+                let s = b64.replace(/-/g, '+').replace(/_/g, '/');
+                // Padding
+                while (s.length % 4 !== 0) s += '=';
+                return decodeURIComponent(escape(atob(s)));
+            } catch (e) {
+                return null;
+            }
+        },
+
+        /**
+         * Parsea un M3U8 y extrae los overflow headers
+         * @param {string} m3u8Content - Contenido del M3U8
+         */
+        loadFromM3U8: function(m3u8Content) {
+            if (!m3u8Content || typeof m3u8Content !== 'string') return;
+
+            const lines = m3u8Content.split('\n');
+            for (const line of lines) {
+                if (!line.startsWith('#EXT-X-APE-OVERFLOW-HEADERS:')) continue;
+                const b64 = line.substring('#EXT-X-APE-OVERFLOW-HEADERS:'.length).trim();
+                const decoded = this._b64Decode(b64);
+                if (decoded) {
+                    try {
+                        const headers = JSON.parse(decoded);
+                        Object.assign(this._overflowCache, headers);
+                        this._loaded = true;
+                    } catch (e) { /* JSON parse error — skip */ }
+                }
+            }
+        },
+
+        /**
+         * Inyecta los overflow headers en un objeto Headers existente
+         * @param {Headers} headers - Headers de la request
+         * @returns {Headers} Headers enriquecidos con overflow
+         */
+        inject: function(headers) {
+            if (!this._loaded || Object.keys(this._overflowCache).length === 0) return headers;
+
+            const h = new Headers(headers || {});
+            for (const [key, value] of Object.entries(this._overflowCache)) {
+                // Solo inyectar si el header no existe ya (no sobrescribir los primarios)
+                if (!h.has(key)) {
+                    try { h.set(key, value); } catch (e) { /* header name inválido — skip */ }
+                }
+            }
+            return h;
+        },
+
+        /**
+         * Retorna cuántos headers overflow están cargados
+         */
+        count: function() {
+            return Object.keys(this._overflowCache).length;
+        }
+    };
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // 🔋 MÓDULO 9B: AUTO-LOADER — Carga overflow headers del M3U8 automáticamente
+    // ═══════════════════════════════════════════════════════════════════════════
+    // Intercepta la carga de listas M3U8 para extraer overflow headers
+    // antes de que el player empiece a descargar segmentos.
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    const _origFetchForOverflow = window.fetch;
+
+    // Wrap the original interceptedFetch to also load overflow headers
+    const _interceptWithOverflow = async function(input, init) {
+        const url = typeof input === 'string' ? input : (input instanceof Request ? input.url : String(input));
+
+        // Si es un .m3u8, parsear el contenido para extraer overflow headers
+        if (url && typeof url === 'string' && (url.includes('.m3u8') || url.includes('.m3u'))) {
+            try {
+                const resp = await _originalFetch(input, init);
+                if (resp.ok) {
+                    const cloned = resp.clone();
+                    const text = await cloned.text();
+                    OverflowInjector.loadFromM3U8(text);
+                    // Crear nueva Response con el texto para que el player lo consuma normalmente
+                    return new Response(text, {
+                        status: resp.status,
+                        statusText: resp.statusText,
+                        headers: resp.headers
+                    });
+                }
+                return resp;
+            } catch (e) {
+                // Si falla, delegar al interceptor normal
+            }
+        }
+
+        return interceptedFetch(input, init);
+    };
+
     function activate() {
-        // Patch fetch
-        window.fetch = interceptedFetch;
+        // Patch fetch — con overflow injection integrada
+        window.fetch = function(input, init) {
+            const url = typeof input === 'string' ? input : (input instanceof Request ? input.url : String(input));
+
+            // Para requests de media, inyectar overflow headers
+            if (isMediaRequest(url) && OverflowInjector._loaded) {
+                if (!init) init = {};
+                init.headers = OverflowInjector.inject(init.headers || {});
+            }
+
+            return interceptedFetch(input, init);
+        };
 
         // Patch XMLHttpRequest
         window.XMLHttpRequest = InterceptedXHR;
@@ -668,6 +791,7 @@
             stats: _stats,
             cortex: CORTEX,
             parser: DirectiveParser,
+            overflow: OverflowInjector,
             
             getStats: function() {
                 return {

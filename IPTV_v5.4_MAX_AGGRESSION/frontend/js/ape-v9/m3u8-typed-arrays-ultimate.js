@@ -1581,7 +1581,50 @@
             P5: { 'X-ISP-Segment-Pipeline': '4', 'X-ISP-Throttle-Level': '4-LOW', 'X-ISP-TCP-Window': '262144', 'X-ISP-Burst-Duration': '5s' }
         };
         Object.assign(headers, _ispOv[profile] || _ispOv['P3']);
-        return `#EXTHTTP:${JSON.stringify(headers)}`;
+
+        // ══════════════════════════════════════════════════════════════════════
+        // 🛡️ REGLA ANTI-400: Límite 10KB / 200 headers en EXTHTTP
+        // ══════════════════════════════════════════════════════════════════════
+        // El servidor Xtream Codes (Nginx) rechaza peticiones con headers > 12KB.
+        // Pruebas de estrés confirmaron:
+        //   200 headers (~10KB) → ✅ 200 OK
+        //   250 headers (~12.8KB) → ❌ 400 Bad Request
+        // Solución: los primeros 200 headers viajan por #EXTHTTP (directo al servidor).
+        // Los headers overflow viajan por #EXT-X-APE-OVERFLOW-HEADERS (base64 JSON)
+        // y el Runtime Evasion Engine los inyecta dinámicamente en cada request.
+        // ══════════════════════════════════════════════════════════════════════
+        const MAX_EXTHTTP_HEADERS = 200;
+        const MAX_EXTHTTP_BYTES = 10240; // 10KB safety limit
+
+        const allKeys = Object.keys(headers);
+        const primaryHeaders = {};
+        const overflowHeaders = {};
+        let currentBytes = 0;
+        let headerCount = 0;
+
+        for (const key of allKeys) {
+            const val = String(headers[key]);
+            const entryBytes = key.length + val.length + 6; // key:"val",
+            if (headerCount < MAX_EXTHTTP_HEADERS && (currentBytes + entryBytes) < MAX_EXTHTTP_BYTES) {
+                primaryHeaders[key] = val;
+                currentBytes += entryBytes;
+                headerCount++;
+            } else {
+                overflowHeaders[key] = val;
+            }
+        }
+
+        const exthttp = `#EXTHTTP:${JSON.stringify(primaryHeaders)}`;
+
+        // Si hay overflow, codificarlo como base64 para el Runtime Engine
+        const overflowKeys = Object.keys(overflowHeaders);
+        if (overflowKeys.length > 0) {
+            const overflowJson = JSON.stringify(overflowHeaders);
+            const overflowB64 = base64UrlEncode(overflowJson);
+            return `${exthttp}\n#EXT-X-APE-OVERFLOW-HEADERS:${overflowB64}`;
+        }
+
+        return exthttp;
     }
 
     function build_ape_block(cfg, profile, index) {
