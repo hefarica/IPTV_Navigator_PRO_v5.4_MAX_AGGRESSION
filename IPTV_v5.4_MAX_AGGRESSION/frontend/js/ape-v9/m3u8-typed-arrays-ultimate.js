@@ -2295,10 +2295,34 @@
 
         const lines = [];
 
-        // 🔴 ESTRUCTURA BRUTAL V1: EXTINF Primero
+        // 1. 🔴 ESTRUCTURA PYTHON-AUDITED: EXTINF Primero
         lines.push(generateEXTINF(channel, profile, index));
 
-        // 🔴 ESTRUCTURA BRUTAL V1: EXTHTTP Segundo
+        // 2. 🔴 ESTRUCTURA PYTHON-AUDITED: EXT-X-STREAM-INF Segundo
+        const bandwidth = (cfg.bitrate || 5000) >= 1000000 ? (cfg.bitrate || 5000) : (cfg.bitrate || 5000) * 1000;
+        const avgBandwidth = Math.round(bandwidth * 0.8);
+        const resolution = cfg.resolution || '1920x1080';
+        const fps = cfg.fps || 30;
+        let codecString = 'hev1.2.4.L153.B0,mp4a.40.2';
+        if (cfg.codec_primary === 'HYBRID_AV1_HEVC_AVC' || cfg.codec_primary === 'HYBRID_HEVC_AVC') {
+            codecString = 'avc1.640028,hev1.1.6.L153.B0,av01.0.16M.10,mp4a.40.2'; 
+        } else if (cfg.codec_primary === 'AV1') {
+            codecString = 'av01.0.16M.10,opus';
+        } else {
+            codecString = window._APE_PRIO_QUALITY !== false ? (profile === 'P0' ? 'av01.0.16M.10,opus' : 'hev1.2.4.L153.B0,mp4a.40.2') : 'hev1.2.4.L153.B0,mp4a.40.2';
+        }
+        
+        const streamInf = `#EXT-X-STREAM-INF:BANDWIDTH=${bandwidth},AVERAGE-BANDWIDTH=${avgBandwidth},RESOLUTION=${resolution},CODECS="${codecString}",FRAME-RATE=${fps},HDCP-LEVEL=NONE`;
+        lines.push(streamInf);
+
+        // 3. 🔴 ESTRUCTURA PYTHON-AUDITED: URL Tercero (Base de reproductores genéricos)
+        let jwt = null;
+        if (isModuleEnabled('jwt-generator')) jwt = generateJWT68Fields(channel, profile, index);
+        const urlStr = buildChannelUrl(channel, jwt, profile, index);
+        if (urlStr) lines.push(urlStr);
+
+        // 4. 🔴 ESTRUCTURA PYTHON-AUDITED: Bloque Asíncrono HLS POST-URL (\xCarga Útil Masiva\x)
+        // ── EXTHTTP Segundo ──
         lines.push(build_exthttp(cfg, profile, index, sessionId, reqId));
 
         // ── SKILL: Maximum Resolution Escalator (EXTVLCOPT Injector) ──
@@ -2315,10 +2339,10 @@
 
         lines.push(...generateEXTVLCOPT(profile));
         
-        // 🔴 ESTRUCTURA BRUTAL V1: KODIPROP Tercero
+        // ── KODIPROP Tercero ──
         lines.push(...build_kodiprop(cfg, profile, index));
 
-        // 🔴 ESTRUCTURA BRUTAL V1: APE Tags (450+ tags)
+        // ── APE Tags (450+ tags) ──
         lines.push(...build_ape_block(cfg, profile, index));
 
         // ── 👁️ IPTV-SUPPORT-CORTEX vΩ: EXPLICIT TAGS (AUDIT PASS) ──
@@ -2349,27 +2373,6 @@
         // ── 👻 FUSIÓN FANTASMA v22.1: ISP Throttle Nuclear Escalation ──
         lines.push(`#EXT-X-APE-ISP-THROTTLE-ESCALATION:LEVEL=NUCLEAR`);
         lines.push(...generateISPThrottleEscalation(profile, cfg));
-
-        // 🔴 ESTRUCTURA BRUTAL V1: EXT-X-STREAM-INF al final antes de la URL
-        const bandwidth = (cfg.bitrate || 5000) >= 1000000 ? (cfg.bitrate || 5000) : (cfg.bitrate || 5000) * 1000;
-        const avgBandwidth = Math.round(bandwidth * 0.8);
-        const resolution = cfg.resolution || '1920x1080';
-        const fps = cfg.fps || 30;
-        let codecString = 'hev1.2.4.L153.B0,mp4a.40.2';
-        if (cfg.codec_primary === 'HYBRID_AV1_HEVC_AVC' || cfg.codec_primary === 'HYBRID_HEVC_AVC') {
-            codecString = 'avc1.640028,hev1.1.6.L153.B0,av01.0.16M.10,mp4a.40.2'; 
-        } else if (cfg.codec_primary === 'AV1') {
-            codecString = 'av01.0.16M.10,opus';
-        } else {
-            codecString = window._APE_PRIO_QUALITY !== false ? (profile === 'P0' ? 'av01.0.16M.10,opus' : 'hev1.2.4.L153.B0,mp4a.40.2') : 'hev1.2.4.L153.B0,mp4a.40.2';
-        }
-
-        const streamInf = `#EXT-X-STREAM-INF:BANDWIDTH=${bandwidth},AVERAGE-BANDWIDTH=${avgBandwidth},RESOLUTION=${resolution},CODECS="${codecString}",FRAME-RATE=${fps},HDCP-LEVEL=NONE`;
-        lines.push(streamInf);
-
-        let jwt = null;
-        if (isModuleEnabled('jwt-generator')) jwt = generateJWT68Fields(channel, profile, index);
-        lines.push(buildChannelUrl(channel, jwt, profile, index));
 
         return lines.join('\n');
     }
