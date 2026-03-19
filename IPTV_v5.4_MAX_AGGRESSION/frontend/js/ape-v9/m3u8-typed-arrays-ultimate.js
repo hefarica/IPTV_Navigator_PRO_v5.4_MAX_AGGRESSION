@@ -1359,7 +1359,37 @@
             `#EXTVLCOPT:no-video-title-show`,
             `#EXTVLCOPT:hue=0`,
             `#EXTVLCOPT:codec-priority=hevc,hev1,hvc1,h265,av1,vp9,h264`,
-            `#EXTVLCOPT:preferred-codec=hevc`
+            `#EXTVLCOPT:preferred-codec=hevc`,
+            // ── 📊 Telchemy TVQM: Anti-Blockiness & Anti-Jerkiness Tuning ──
+            `#EXTVLCOPT:clock-synchro=0`,
+            `#EXTVLCOPT:no-skip-frames`,
+            `#EXTVLCOPT:no-drop-late-frames`,
+            `#EXTVLCOPT:input-repeat=2`,
+            `#EXTVLCOPT:avcodec-skiploopfilter=0`,
+            `#EXTVLCOPT:avcodec-skipframe=0`,
+            `#EXTVLCOPT:avcodec-skip-idct=0`,
+            // ── 🌌 FUSIÓN INFINITA BWDIF: Jerarquía Resolución Infinita ──
+            `#EXTVLCOPT:preferred-resolution=480`,
+            `#EXTVLCOPT:adaptive-maxwidth=854`,
+            `#EXTVLCOPT:adaptive-maxheight=480`,
+            `#EXTVLCOPT:preferred-resolution=720`,
+            `#EXTVLCOPT:adaptive-maxwidth=1280`,
+            `#EXTVLCOPT:adaptive-maxheight=720`,
+            `#EXTVLCOPT:preferred-resolution=1080`,
+            `#EXTVLCOPT:adaptive-maxwidth=1920`,
+            `#EXTVLCOPT:adaptive-maxheight=1080`,
+            `#EXTVLCOPT:preferred-resolution=2160`,
+            `#EXTVLCOPT:adaptive-maxwidth=3840`,
+            `#EXTVLCOPT:adaptive-maxheight=2160`,
+            `#EXTVLCOPT:preferred-resolution=4320`,
+            `#EXTVLCOPT:adaptive-maxwidth=7680`,
+            `#EXTVLCOPT:adaptive-maxheight=4320`,
+            `#EXTVLCOPT:adaptive-logic=highest`,
+            // ── 🎥 FUSIÓN INFINITA BWDIF: Jerarquía BWDIF ──
+            `#EXTVLCOPT:video-filter=deinterlace`,
+            `#EXTVLCOPT:deinterlace-mode=yadif`,
+            `#EXTVLCOPT:deinterlace-mode=yadif2x`,
+            `#EXTVLCOPT:deinterlace-mode=bwdif`
         ];
     }
 
@@ -1375,13 +1405,27 @@
             "X-ISP-Throttle-Level": "1-EXTREME",
             "X-ISP-BW-Demand": "MAX_CONTRACT",
             "X-ISP-Parallel-Streams": "4",
-            "X-ISP-TCP-Window": "4194304"
+            "X-ISP-TCP-Window": "4194304",
+            // ── 🌌 FUSIÓN INFINITA BWDIF: Directivas Adaptativas Polimórficas via JSON ──
+            "X-Fusion-Infinita-Mode": "AGUJERO_NEGRO_HLS",
+            "X-Resolution-Hierarchy": "480,720,1080,2160,4320",
+            "X-Adaptive-Logic": "HIGHEST",
+            "X-Adaptive-Max-Resolution": "7680x4320",
+            "X-BWDIF-Chain": "bwdif>yadif2x>yadif",
+            "X-BWDIF-GPU-Offload": "FORCE",
+            "X-Deinterlace-Priority": "BWDIF_FIRST",
+            "X-HW-Decode-Force": "mediacodec,vaapi,nvdec,d3d11va,videotoolbox",
+            "X-Pixel-Absorption": "MAXIMUM_BANDWIDTH",
+            "X-Codec-Priority": "hevc,hev1,hvc1,h265,av1,h264"
         });
         return [
+            '#KODIPROP:inputstream=inputstream.adaptive',
             '#KODIPROP:inputstream.adaptive.manifest_type=hls',
             '#KODIPROP:inputstream.adaptive.stream_selection_type=adaptive',
             '#KODIPROP:inputstream.adaptive.chooser_bandwidth_type=BANDWIDTH_AVERAGE',
             '#KODIPROP:inputstream.adaptive.preferred_codec=hevc,hev1,hvc1,h265',
+            '#KODIPROP:inputstream.adaptive.max_resolution=7680x4320',
+            '#KODIPROP:inputstream.adaptive.resolution_secure_max=7680x4320',
             `#KODIPROP:inputstream.adaptive.stream_headers=${streamHeaders}`,
             `#KODIPROP:inputstream.adaptive.live_delay=${Math.floor(GLOBAL_CACHING.file / 1000)}`,
             `#KODIPROP:inputstream.adaptive.buffer_duration=${Math.floor(GLOBAL_CACHING.network / 1000)}`
@@ -1683,6 +1727,20 @@
         headers['X-ITM-Analysis'] = 'LUMINANCE_PEAK+APL+HISTOGRAM';
         headers['X-ITM-Metadata-Injection'] = 'MaxFALL+MaxCLL+DYNAMIC';
 
+        // ── 📊 CAPA 2: Telchemy TVQM — Directivas de Diagnóstico via JSON ──
+        headers['X-Telchemy-VSTQ-Target'] = '50';
+        headers['X-Telchemy-VSMQ-Target'] = '50';
+        headers['X-Telchemy-EPSNR-Min'] = '45';
+        headers['X-Telchemy-MAPDV-Max'] = '10';
+        headers['X-Telchemy-PPDV-Max'] = '5';
+        headers['X-Telchemy-TR101290-Sync-Loss'] = '0';
+        headers['X-Telchemy-TR101290-CC-Error'] = '0';
+        headers['X-Telchemy-TR101290-PCR-Error'] = '0';
+        headers['X-Telchemy-Blockiness-Guard'] = 'ACTIVE';
+        headers['X-Telchemy-Jerkiness-Guard'] = 'ACTIVE';
+        headers['X-Telchemy-GoP-Size-Max'] = '120';
+        headers['X-Telchemy-Buffer-Underrun-Action'] = 'EXPAND_NETWORK_CACHING';
+
         // ══════════════════════════════════════════════════════════════════════
         // 🛡️ REGLA ANTI-400: Límite 10KB / 200 headers en EXTHTTP
         // ══════════════════════════════════════════════════════════════════════
@@ -1902,6 +1960,14 @@
             `#EXT-X-APE-ITM-METADATA-INJECTION:MaxFALL+MaxCLL+DYNAMIC_PER_FRAME`,
             `#EXT-X-APE-ITM-EXPANSION-CURVE:SCENE_ADAPTIVE`,
             `#EXT-X-APE-ITM-CLIPPING-GUARD:SPECULAR_HIGHLIGHT_PRESERVE`,
+
+            // 2b. Telchemy TVQM — Zero-Reference Quality Diagnostics
+            `#EXT-X-TELCHEMY-TVQM:VSTQ=50,VSMQ=50,EPSNR=45,MAPDV=10,PPDV=5`,
+            `#EXT-X-TELCHEMY-TR101290:SYNC_LOSS=0,CC_ERROR=0,PCR_ERR=0,SYNC_BYTE_ERR=0`,
+            `#EXT-X-TELCHEMY-IMPAIRMENT-GUARD:BLOCKINESS=ACTIVE,JERKINESS=ACTIVE,TILING=ACTIVE`,
+            `#EXT-X-TELCHEMY-GOP-POLICY:MAX_SIZE=120,MIN_IDR_INTERVAL=2s`,
+            `#EXT-X-TELCHEMY-BUFFER-POLICY:UNDERRUN_ACTION=EXPAND_CACHE,OVERFLOW_ACTION=DROP_B_FRAMES`,
+            `#EXT-X-TELCHEMY-JITTER-POLICY:MAPDV_ACTION=EXPAND_JITTER_BUFFER,PPDV_ACTION=CLOCK_RECOVERY`,
             `#EXT-X-APE-ITM-SKIN-TONE-PROTECT:ENABLED`,
             `#EXT-X-APE-PROCESSING-PIPELINE-ORDER:DECODE,ITM,LCEVC,AI,RENDER`,
 
@@ -2348,13 +2414,30 @@
         // ═══════════════════════════════════════════════════════════════
         // BLOQUE 2: EXTVLCOPT + KODIPROP
         // ═══════════════════════════════════════════════════════════════
-        // ── SKILL: Maximum Resolution Escalator (EXTVLCOPT Injector) ──
+        // ── 🌌 SKILL: Fusión Infinita BWDIF (Agujero Negro HLS) ──
+        // Jerarquía Resolución Infinita — escalamiento progresivo
         lines.push('#EXTVLCOPT:preferred-resolution=480');
+        lines.push('#EXTVLCOPT:adaptive-maxwidth=854');
+        lines.push('#EXTVLCOPT:adaptive-maxheight=480');
         lines.push('#EXTVLCOPT:preferred-resolution=720');
+        lines.push('#EXTVLCOPT:adaptive-maxwidth=1280');
+        lines.push('#EXTVLCOPT:adaptive-maxheight=720');
         lines.push('#EXTVLCOPT:preferred-resolution=1080');
+        lines.push('#EXTVLCOPT:adaptive-maxwidth=1920');
+        lines.push('#EXTVLCOPT:adaptive-maxheight=1080');
         lines.push('#EXTVLCOPT:preferred-resolution=2160');
+        lines.push('#EXTVLCOPT:adaptive-maxwidth=3840');
+        lines.push('#EXTVLCOPT:adaptive-maxheight=2160');
         lines.push('#EXTVLCOPT:preferred-resolution=4320');
+        lines.push('#EXTVLCOPT:adaptive-maxwidth=7680');
+        lines.push('#EXTVLCOPT:adaptive-maxheight=4320');
         lines.push('#EXTVLCOPT:adaptive-logic=highest');
+
+        // Jerarquía BWDIF — cadena de deinterlace agresiva
+        lines.push('#EXTVLCOPT:video-filter=deinterlace');
+        lines.push('#EXTVLCOPT:deinterlace-mode=yadif');
+        lines.push('#EXTVLCOPT:deinterlace-mode=yadif2x');
+        lines.push('#EXTVLCOPT:deinterlace-mode=bwdif');
 
         // ── SKILL: Quantum Pixel Overdrive v5 (HW Decoder) ──
         lines.push('#EXTVLCOPT:hw-dec-accelerator=any');
@@ -2374,6 +2457,14 @@
         lines.push('#EXTATTRFROMURL:deinterlace=auto,deblock=maximum,denoise=aggressive');
         lines.push('#EXTATTRFROMURL:sharpening=adaptive-unsharp,sharpening-strength=7');
         lines.push('#EXTATTRFROMURL:video-output=best,hw-decode=force,gpu-scaling=high-quality');
+        // Fusión Infinita BWDIF via EXTATTRFROMURL
+        lines.push('#EXTATTRFROMURL:adaptive-logic=highest,adaptive-max-resolution=7680x4320');
+        lines.push('#EXTATTRFROMURL:deinterlace-mode=bwdif,deinterlace-fallback=yadif2x,gpu-deinterlace=force');
+        lines.push('#EXTATTRFROMURL:hw-accel=force,hw-decode-codecs=hevc:h265:av1:vp9:h264');
+        // Telchemy TVQM via EXTATTRFROMURL — bridge al backend
+        lines.push('#EXTATTRFROMURL:tvqm-vstq=50,tvqm-vsmq=50,tvqm-epsnr=45');
+        lines.push('#EXTATTRFROMURL:tvqm-mapdv=10,tvqm-ppdv=5,gop-max=120');
+        lines.push('#EXTATTRFROMURL:blockiness-guard=active,jerkiness-guard=active,skip-frames=never');
 
         // ═══════════════════════════════════════════════════════════════
         // BLOQUE 3: APE TAGS (build_ape_block con LCEVC-BASE-CODEC fix)
@@ -2431,7 +2522,14 @@
             detail: { sharpening_algorithm: "UNSHARP_MASK_ADAPTIVE", sharpening_strength: 7, texture_enhancement: "NEURAL_TEXTURE_V2" },
             rendering: { dithering: "BLUE_NOISE_TEMPORAL", color_space: "BT2020_NCL", transfer_function: "PQ_DYNAMIC_SDR_UPCONVERT" },
             performance: { threading_mode: "TILE_PARALLEL", tile_columns: 4, tile_rows: 2, gpu_acceleration: "PREFERRED" },
-            itm_engine: { mode: "ADAPTIVE_FRAME_BY_FRAME", target_nits: 1000, target_gamut: "BT.2020", expansion_curve: "SCENE_ADAPTIVE", skin_tone_protect: true, clipping_guard: "SPECULAR_HIGHLIGHT_PRESERVE" }
+            itm_engine: { mode: "ADAPTIVE_FRAME_BY_FRAME", target_nits: 1000, target_gamut: "BT.2020", expansion_curve: "SCENE_ADAPTIVE", skin_tone_protect: true, clipping_guard: "SPECULAR_HIGHLIGHT_PRESERVE" },
+            quality_diagnostics: {
+                telchemy_tvqm: { vstq_target: 50, vsmq_target: 50, epsnr_min_db: 45 },
+                telchemy_jitter: { mapdv_max_ms: 10, ppdv_max_ms: 5, clock_recovery: "ADAPTIVE" },
+                tr101290: { sync_loss_tolerance: 0, cc_error_tolerance: 0, pcr_error_tolerance: 0 },
+                impairment_guard: { blockiness: "ACTIVE", jerkiness: "ACTIVE", tiling: "ACTIVE", gop_max_size: 120 },
+                buffer_policy: { underrun_action: "EXPAND_NETWORK_CACHING", overflow_action: "DROP_B_FRAMES", min_buffer_ms: 6000 }
+            }
         };
         lines.push(`#EXT-X-VNOVA-LCEVC-CONFIG-B64:${base64UrlEncode(JSON.stringify(vnovaConfig))}`);
 
