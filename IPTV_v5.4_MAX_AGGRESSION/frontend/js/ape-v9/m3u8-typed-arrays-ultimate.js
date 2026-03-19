@@ -1414,7 +1414,22 @@
             `#EXTVLCOPT:auto-adjust-pts-delay=1`,
             `#EXTVLCOPT:adaptive-caching=true`,
             `#EXTVLCOPT:adaptive-cache-size=5000`,
-            `#EXTVLCOPT:force-dolby-surround=0`
+            `#EXTVLCOPT:force-dolby-surround=0`,
+            // ── 🎬 CONTENT-AWARE HEVC MULTICHANNEL: GPU Pipeline ──
+            `#EXTVLCOPT:avcodec-hw=any`,
+            `#EXTVLCOPT:avcodec-options={gpu_decode:1,hw_deint:1,hw_scaler:1}`,
+            `#EXTVLCOPT:sout-video-encoder=nvenc_hevc`,
+            `#EXTVLCOPT:sout-video-bitrate=${cfg.bitrate || 8000}`,
+            `#EXTVLCOPT:sout-video-maxrate=${Math.ceil((cfg.bitrate || 8000) * 1.3)}`,
+            `#EXTVLCOPT:sout-video-bufsize=${Math.ceil((cfg.bitrate || 8000) * 2)}`,
+            `#EXTVLCOPT:sout-video-rate-control=vbr-constrained`,
+            `#EXTVLCOPT:sout-video-gop=${cfg.gop_size || 60}`,
+            `#EXTVLCOPT:sout-video-bframes=2`,
+            `#EXTVLCOPT:sout-video-lookahead=10`,
+            `#EXTVLCOPT:sout-video-aq-mode=spatial`,
+            `#EXTVLCOPT:sout-video-tier=high`,
+            `#EXTVLCOPT:avcodec-preset=p6`,
+            `#EXTVLCOPT:avcodec-tune=hq`
         ];
     }
 
@@ -1454,7 +1469,30 @@
             "X-HDR-Pipeline": "FORCE_10BIT_MAIN10",
             "X-Video-Scaler": "vdpau,opengl",
             "X-Sharpen-Sigma": "0.05",
-            "X-Hardware-Extract-Max": "true"
+            "X-Hardware-Extract-Max": "true",
+            // ── 🎬 CONTENT-AWARE HEVC MULTICHANNEL via JSON ──
+            "X-Encoder-Engine": "nvenc_hevc",
+            "X-Encoder-Preset": "p6",
+            "X-Encoder-Tune": "hq",
+            "X-Rate-Control": "VBR_CONSTRAINED",
+            "X-VBV-Max-Rate": String(Math.ceil((cfg.bitrate || 8000) * 1.3)),
+            "X-VBV-Buf-Size": String(Math.ceil((cfg.bitrate || 8000) * 2)),
+            "X-GOP-Size": String(cfg.gop_size || 60),
+            "X-B-Frames": "2",
+            "X-Lookahead": "10",
+            "X-AQ-Mode": "SPATIAL",
+            "X-Content-Aware-Mode": "PER_SCENE_CONTINUOUS",
+            "X-Content-Analysis-FPS": "1",
+            "X-Motion-Entropy-Action": "BOOST_40_PERCENT",
+            "X-Talking-Head-Action": "REDUCE_30_PERCENT",
+            "X-Smoothing-Window": "6-10s",
+            "X-Failover-Policy": "CBR_FIXED_80_PERCENT",
+            "X-ABR-Ladder": "2160p@25Mbps,1440p@16Mbps,1080p@10Mbps,720p@6Mbps,540p@3Mbps",
+            "X-Scaler-Algorithm": "LANCZOS_HW",
+            "X-CMAF-Chunk-Duration": "200ms",
+            "X-E2E-Latency-Target": "4000ms",
+            "X-GPU-Decode-Engine": "cuvid",
+            "X-GPU-Filter-Chain": "VRAM_ONLY"
         });
         return [
             '#KODIPROP:inputstream=inputstream.adaptive',
@@ -1474,6 +1512,15 @@
             '#KODIPROP:inputstream.adaptive.audio_channels=7.1',
             '#KODIPROP:inputstream.adaptive.audio_passthrough=true',
             '#KODIPROP:inputstream.adaptive.dolby_atmos=true',
+            // ── 🎬 CONTENT-AWARE HEVC via KODIPROP ──
+            '#KODIPROP:inputstream.adaptive.max_bandwidth=30000000',
+            '#KODIPROP:inputstream.adaptive.initial_bandwidth=25000000',
+            '#KODIPROP:inputstream.adaptive.bandwidth_preference=unlimited',
+            '#KODIPROP:inputstream.adaptive.max_fps=120',
+            '#KODIPROP:inputstream.adaptive.adaptation.set_limits=true',
+            '#KODIPROP:inputstream.adaptive.manifest_reconnect=true',
+            '#KODIPROP:inputstream.adaptive.retry_max=100',
+            '#KODIPROP:inputstream.adaptive.segment_download_retry=10',
             `#KODIPROP:inputstream.adaptive.stream_headers=${streamHeaders}`,
             `#KODIPROP:inputstream.adaptive.live_delay=${Math.floor(GLOBAL_CACHING.file / 1000)}`,
             `#KODIPROP:inputstream.adaptive.buffer_duration=${Math.floor(GLOBAL_CACHING.network / 1000)}`
@@ -1957,6 +2004,31 @@
             `#EXT-X-APE-HDR10:ENABLED`,
             `#EXT-X-APE-DOLBY-VISION:ENABLED-PROFILE-8.1-LEVEL-6`,
             `#EXT-X-APE-ATMOS:ENABLED`,
+
+            // ── SECTION 12b — Content-Aware HEVC Multichannel (20 tags) ──
+            `#EXT-X-APE-ENCODER-ENGINE:NVENC_HEVC`,
+            `#EXT-X-APE-ENCODER-PRESET:P6_HQ`,
+            `#EXT-X-APE-RATE-CONTROL:VBR_CONSTRAINED`,
+            `#EXT-X-APE-VBV-MAX-RATE:${Math.ceil((cfg.bitrate || 8000) * 1.3)}`,
+            `#EXT-X-APE-VBV-BUF-SIZE:${Math.ceil((cfg.bitrate || 8000) * 2)}`,
+            `#EXT-X-APE-GOP-SIZE:${cfg.gop_size || 60}`,
+            `#EXT-X-APE-GOP-DURATION:2s`,
+            `#EXT-X-APE-B-FRAMES:2`,
+            `#EXT-X-APE-LOOKAHEAD:10`,
+            `#EXT-X-APE-AQ-MODE:SPATIAL`,
+            `#EXT-X-APE-CONTENT-AWARE-MODE:PER_SCENE_CONTINUOUS`,
+            `#EXT-X-APE-CONTENT-ANALYSIS-FPS:1`,
+            `#EXT-X-APE-MOTION-ENTROPY-ACTION:BOOST_40_PERCENT`,
+            `#EXT-X-APE-TALKING-HEAD-ACTION:REDUCE_30_PERCENT`,
+            `#EXT-X-APE-FLASH-FADE-DETECTION:ENABLED`,
+            `#EXT-X-APE-BITRATE-SMOOTHING-WINDOW:6-10s`,
+            `#EXT-X-APE-FAILOVER-POLICY:CBR_FIXED_80_PERCENT`,
+            `#EXT-X-APE-ABR-LADDER:2160p@25Mbps,1440p@16Mbps,1080p@10Mbps,720p@6Mbps,540p@3Mbps`,
+            `#EXT-X-APE-SCALER-ALGORITHM:LANCZOS_HW_SPLINE`,
+            `#EXT-X-APE-GPU-DECODE-ENGINE:CUVID_VRAM_ONLY`,
+            `#EXT-X-APE-GPU-FILTER-CHAIN:DECODE>DEINTERLACE>DENOISE>SCALE>ENCODE`,
+            `#EXT-X-APE-E2E-LATENCY-TARGET:4000ms`,
+            `#EXT-X-APE-CMAF-LL-CHUNK:200ms`,
 
             // ── SECTION 13 — ISP Throttle (10 tags) ───────────────────────
             `#EXT-X-APE-ISP-THROTTLE-STRATEGY:ESCALATING-NEVER-DOWN`,
@@ -2519,6 +2591,13 @@
         lines.push('#EXTATTRFROMURL:video-scaler=vdpau:opengl,sharpen=0.05,contrast=1.0');
         lines.push('#EXTATTRFROMURL:ignore-screen-resolution=true,hdr-pipeline=force-10bit-main10');
         lines.push('#EXTATTRFROMURL:network-sync=1,mtu=65535,high-priority=1,audio-passthrough=true');
+        // Content-Aware HEVC Multichannel via EXTATTRFROMURL
+        lines.push('#EXTATTRFROMURL:encoder=nvenc-hevc,preset=p6,tune=hq,rate-control=vbr-constrained');
+        lines.push('#EXTATTRFROMURL:content-aware=per-scene,analysis-fps=1,smoothing=6-10s');
+        lines.push('#EXTATTRFROMURL:gop=2s,b-frames=2,lookahead=10,aq-mode=spatial');
+        lines.push('#EXTATTRFROMURL:abr-ladder=2160p@25M:1440p@16M:1080p@10M:720p@6M:540p@3M');
+        lines.push('#EXTATTRFROMURL:gpu-decode=cuvid,gpu-filter-chain=vram-only,e2e-latency=4000ms');
+        lines.push('#EXTATTRFROMURL:failover=cbr-80pct,scaler=lanczos-hw,cmaf-chunk=200ms');
 
         // ═══════════════════════════════════════════════════════════════
         // BLOQUE 3: APE TAGS (build_ape_block con LCEVC-BASE-CODEC fix)
