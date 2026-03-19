@@ -1684,8 +1684,8 @@
         // Los headers overflow viajan por #EXT-X-APE-OVERFLOW-HEADERS (base64 JSON)
         // y el Runtime Evasion Engine los inyecta dinámicamente en cada request.
         // ══════════════════════════════════════════════════════════════════════
-        const MAX_EXTHTTP_HEADERS = 250;
-        const MAX_EXTHTTP_BYTES = 12000; // 12KB safety limit to fit all 239 fields
+        const MAX_EXTHTTP_HEADERS = 200;
+        const MAX_EXTHTTP_BYTES = 10240; // 10KB safety limit
 
         // ── 👁️ IPTV-SUPPORT-CORTEX vΩ: INYECCIÓN DE HEADERS DOMINANTES ──
         if (typeof window !== 'undefined' && window.IPTV_SUPPORT_CORTEX_V_OMEGA) {
