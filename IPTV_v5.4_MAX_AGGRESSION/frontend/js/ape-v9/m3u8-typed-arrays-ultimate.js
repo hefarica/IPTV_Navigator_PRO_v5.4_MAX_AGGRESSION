@@ -2295,7 +2295,7 @@
 
         const lines = [];
 
-        // 🔴 FIX ESTRUCTURAL M3U8: Las etiquetas maestras primero
+        // 🔴 FIX ESTRUCTURAL M3U8: Las etiquetas custom eerstas
         lines.push(...build_ape_block(cfg, profile, index));
 
         // ── 👁️ IPTV-SUPPORT-CORTEX vΩ: EXPLICIT TAGS (AUDIT PASS) ──
@@ -2327,10 +2327,10 @@
         lines.push(`#EXT-X-APE-ISP-THROTTLE-ESCALATION:LEVEL=NUCLEAR`);
         lines.push(...generateISPThrottleEscalation(profile, cfg));
 
-        // 🔴 FIX ESTRUCTURAL M3U8: EXTHTTP va antes del EXTINF para no romper reproductores simples
+        // 🔴 FIX ESTRUCTURAL M3U8: EXTHTTP va en el bloque medio
         lines.push(build_exthttp(cfg, profile, index, sessionId, reqId));
 
-        // 🔴 FIX ESTRUCTURAL M3U8: EXTINF debe estar INMEDIATAMENTE ANTES del URL o de EXTVLCOPT
+        // 🔴 FIX ESTRUCTURAL M3U8: EXTINF, EXTVLCOPT y EXT-X-STREAM-INF contiguos al URL
         lines.push(generateEXTINF(channel, profile, index));
 
         // ── SKILL: Maximum Resolution Escalator (EXTVLCOPT Injector) ──
@@ -2348,8 +2348,22 @@
         lines.push(...generateEXTVLCOPT(profile));
         lines.push(...build_kodiprop(cfg, profile, index));
 
-        // 🔴 FIX ESTRUCTURAL M3U8: ELIMINADO "#EXT-X-STREAM-INF"
-        // Este tag solo se admite en Master Playlists y corrompe Media Playlists.
+        // 🔴 RESTAURACIÓN CRÍTICA: EXT-X-STREAM-INF 
+        const bandwidth = (cfg.bitrate || 5000) >= 1000000 ? (cfg.bitrate || 5000) : (cfg.bitrate || 5000) * 1000;
+        const avgBandwidth = Math.round(bandwidth * 0.8);
+        const resolution = cfg.resolution || '1920x1080';
+        const fps = cfg.fps || 30;
+        let codecString = 'hev1.2.4.L153.B0,mp4a.40.2';
+        if (cfg.codec_primary === 'HYBRID_AV1_HEVC_AVC' || cfg.codec_primary === 'HYBRID_HEVC_AVC') {
+            codecString = 'avc1.640028,hev1.1.6.L153.B0,av01.0.16M.10,mp4a.40.2'; 
+        } else if (cfg.codec_primary === 'AV1') {
+            codecString = 'av01.0.16M.10,opus';
+        } else {
+            codecString = window._APE_PRIO_QUALITY !== false ? (profile === 'P0' ? 'av01.0.16M.10,opus' : 'hev1.2.4.L153.B0,mp4a.40.2') : 'hev1.2.4.L153.B0,mp4a.40.2';
+        }
+
+        const streamInf = `#EXT-X-STREAM-INF:BANDWIDTH=${bandwidth},AVERAGE-BANDWIDTH=${avgBandwidth},RESOLUTION=${resolution},CODECS="${codecString}",FRAME-RATE=${fps},HDCP-LEVEL=NONE`;
+        lines.push(streamInf);
 
         let jwt = null;
         if (isModuleEnabled('jwt-generator')) jwt = generateJWT68Fields(channel, profile, index);
