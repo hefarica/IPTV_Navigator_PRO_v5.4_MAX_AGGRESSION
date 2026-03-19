@@ -1,20 +1,20 @@
-/**
- * ═══════════════════════════════════════════════════════════════════════════════
- * 🚀 M3U8 TYPED ARRAYS ULTIMATE GENERATOR v16.4.0 MAX AGGRESSION NUCLEAR
- * ═══════════════════════════════════════════════════════════════════════════════
+﻿/**
+ * â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+ * ðŸš€ M3U8 TYPED ARRAYS ULTIMATE GENERATOR v16.4.0 MAX AGGRESSION NUCLEAR
+ * â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
  * 
- * ESPECIFICACIÓN:
- * - 139 líneas por canal (1 EXTINF + 21 EXTVLCOPT + 6 KODIPROP + 109 EXT-X-APE + 1 START + 1 URL)
- * - 6 PERFILES: P0 (8K) → P5 (SD)
+ * ESPECIFICACIÃ“N:
+ * - 139 lÃ­neas por canal (1 EXTINF + 21 EXTVLCOPT + 6 KODIPROP + 109 EXT-X-APE + 1 START + 1 URL)
+ * - 6 PERFILES: P0 (8K) â†’ P5 (SD)
  * - JWT ENRIQUECIDO: 68+ campos en 8 secciones
  * - COMPLIANCE: RFC 8216 100%
- * - RESILIENCIA: 24/7/365, reconexión <30ms, 0 cortes
+ * - RESILIENCIA: 24/7/365, reconexiÃ³n <30ms, 0 cortes
  * 
  * COMPATIBILIDAD: OTT Navigator, VLC, Kodi, Tivimate, IPTV Smarters
  * 
  * FECHA: 2026-01-29
- * VERSIÓN: 16.4.0-MAX-AGGRESSION-NUCLEAR
- * ═══════════════════════════════════════════════════════════════════════════════
+ * VERSIÃ“N: 16.4.0-MAX-AGGRESSION-NUCLEAR
+ * â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
  */
 
 (function () {
@@ -22,12 +22,12 @@
 
     const VERSION = '22.2.0-FUSION-FANTASMA-NUCLEAR';
 
-    // ═══════════════════════════════════════════════════════════════════════════
-    // 👻 FUSIÓN FANTASMA v22.0 — MÓDULO 1: UA ROTATION ENGINE v19.1
-    // ═══════════════════════════════════════════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    // ðŸ‘» FUSIÃ“N FANTASMA v22.0 â€” MÃ“DULO 1: UA ROTATION ENGINE v19.1
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     // Base de datos de 120 User-Agents reales (representativos de 2,443 variantes)
-    // Rotación por estrategia: default, random, Windows, macOS, Linux, Android, iOS, SmartTV
-    // ═══════════════════════════════════════════════════════════════════════════
+    // RotaciÃ³n por estrategia: default, random, Windows, macOS, Linux, Android, iOS, SmartTV
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
     const UA_ROTATION_DB = [
         // Windows Chrome (30)
@@ -124,7 +124,7 @@
     let _uaRotationIndex = 0;
 
     /**
-     * 🔄 Obtiene un User-Agent rotado por estrategia
+     * ðŸ”„ Obtiene un User-Agent rotado por estrategia
      * @param {string} strategy - "default"|"random"|"Windows"|"macOS"|"Linux"|"Android"|"iOS"|"SmartTV"|"IPTV"
      * @returns {string} User-Agent string
      */
@@ -154,9 +154,9 @@
         return UA_ROTATION_DB[Math.floor(Math.random() * UA_ROTATION_DB.length)];
     }
 
-    // ═══════════════════════════════════════════════════════════════════════════
-    // 👻 FUSIÓN FANTASMA v22.0 — MÓDULO 1B: RANDOM IP POOL (CDN Spoofing)
-    // ═══════════════════════════════════════════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    // ðŸ‘» FUSIÃ“N FANTASMA v22.0 â€” MÃ“DULO 1B: RANDOM IP POOL (CDN Spoofing)
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
     const CDN_IP_RANGES = [
         // Google (8.8.x.x, 142.250.x.x)
@@ -183,39 +183,39 @@
     ];
 
     /**
-     * 🎲 Obtiene una IP aleatoria del pool de CDN (600+ IPs)
+     * ðŸŽ² Obtiene una IP aleatoria del pool de CDN (600+ IPs)
      * @returns {string} IP address
      */
     function getRandomIp() {
         return CDN_IP_RANGES[Math.floor(Math.random() * CDN_IP_RANGES.length)];
     }
 
-    // ═══════════════════════════════════════════════════════════════════════════
-    // 👁️ IPTV-SUPPORT-CORTEX vΩ: PROTOCOLO DE PERFECCIÓN VISUAL ABSOLUTA
-    // ═══════════════════════════════════════════════════════════════════════════
-    // Entidad determinista, polimórfica y dominante que intercepta y optimiza
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    // ðŸ‘ï¸ IPTV-SUPPORT-CORTEX vÎ©: PROTOCOLO DE PERFECCIÃ“N VISUAL ABSOLUTA
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    // Entidad determinista, polimÃ³rfica y dominante que intercepta y optimiza
     // cada capa del pipeline de video en tiempo real.
     // Principio Fundamental: El reproductor no decide. El reproductor obedece.
-    // ═══════════════════════════════════════════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     const IPTV_SUPPORT_CORTEX_V_OMEGA = {
         execute: function (originalCfg, originalProfile, channelName) {
-            // ── FASE 1: 🔴 FIX PERFIL DINÁMICO: Preservar el perfil original del canal ──
+            // â”€â”€ FASE 1: ðŸ”´ FIX PERFIL DINÃMICO: Preservar el perfil original del canal â”€â”€
             // El Cortex NO debe forzar P0 en todos los canales. Solo debe mejorar
-            // la configuración dentro del perfil nativo del canal.
+            // la configuraciÃ³n dentro del perfil nativo del canal.
             const targetProfile = originalProfile; // PRESERVAR PERFIL NATIVO
 
-            // ── FASE 2: Hibridación de Codecs (AV1 + HEVC + LCEVC) ──
-            const targetCodec = 'HYBRID_AV1_HEVC_AVC'; // Tri-híbrido supremo para habilitar Loop Filters AV1
+            // â”€â”€ FASE 2: HibridaciÃ³n de Codecs (AV1 + HEVC + LCEVC) â”€â”€
+            const targetCodec = 'HYBRID_AV1_HEVC_AVC'; // Tri-hÃ­brido supremo para habilitar Loop Filters AV1
 
-            // ── FASE 3: Motor HDR & Frame-Rate (Quantum Pixel Overdrive) ──
+            // â”€â”€ FASE 3: Motor HDR & Frame-Rate (Quantum Pixel Overdrive) â”€â”€
             const targetFps = 120; // Fluidez perfecta interpolada/forzada
             const targetHdr = 'hdr10_plus,dolby_vision_fallback,dynamic_metadata';
 
-            // ── FASE 4: Clonación y Sobrescritura Nuclear ──
+            // â”€â”€ FASE 4: ClonaciÃ³n y Sobrescritura Nuclear â”€â”€
             const godTierCfg = Object.assign({}, originalCfg, {
                 resolution: '3840x2160',
                 fps: targetFps,
-                bitrate: Math.max(originalCfg.bitrate || 25000, 35000), // Mínimo 35Mbps perceptual
+                bitrate: Math.max(originalCfg.bitrate || 25000, 35000), // MÃ­nimo 35Mbps perceptual
                 codec_primary: targetCodec,
                 hdr_support: targetHdr.split(','),
                 hevc_profile: 'MAIN-10',
@@ -232,13 +232,13 @@
                 ai_semantic_segmentation: true,
                 vvc_virtual_boundaries: true,
                 // LCEVC HTML5 SDK & Web-Layer Manipulation
-                lcevc_html5_sdk: true,         // Permite manipulación Web/JS en el HTML5 Player
-                lcevc_l1_correction: 'max',  // Capa Base de Corrección
+                lcevc_html5_sdk: true,         // Permite manipulaciÃ³n Web/JS en el HTML5 Player
+                lcevc_l1_correction: 'max',  // Capa Base de CorrecciÃ³n
                 lcevc_l2_detail: 'extreme',      // Capa de Detalles de Alta Frecuencia
-                // 🔴 CRITICAL FIX: Preservar el perfil original para que LCEVC-BASE-CODEC
-                // resuelva el codec REAL del canal (HEVC para la mayoría, AV1 solo para P0 nativo)
+                // ðŸ”´ CRITICAL FIX: Preservar el perfil original para que LCEVC-BASE-CODEC
+                // resuelva el codec REAL del canal (HEVC para la mayorÃ­a, AV1 solo para P0 nativo)
                 _cortex_original_profile: originalProfile,
-                // Cadena de degradación determinista del Cortex
+                // Cadena de degradaciÃ³n determinista del Cortex
                 cortex_fallback_chain: 'AV1>HEVC>H264',
                 cortex_fallback_lcevc: 'ALWAYS_ACTIVE',
                 cortex_fallback_hdr10plus: 'ENFORCED_ALL_LEVELS'
@@ -258,13 +258,13 @@
                 'X-Cortex-LCEVC-Core': 'v16.4.1',
                 'X-Cortex-Quantum-Overdrive': 'v5',
                 'X-Cortex-Proxy': 'KPTV-AWARE',
-                // AI Módulos y Herramientas Visuales Ultimate
+                // AI MÃ³dulos y Herramientas Visuales Ultimate
                 'X-Cortex-AV1-Deblocking': 'MAXIMUM_ATTENUATION',
                 'X-Cortex-AV1-CDEF': 'ENABLED_DIRECTIONAL_RESTORATION',
                 'X-Cortex-VVC-Virtual-Boundaries': 'EDGE_ARTIFACT_SUPPRESSION',
                 'X-Cortex-AI-MultiFrame-NR': 'MASSIVE_MOTION_COMPENSATED',
                 'X-Cortex-AI-Semantic-Segmentation': 'ENABLED_250_LAYERS',
-                // Cadena de Degradación Determinista del Cortex
+                // Cadena de DegradaciÃ³n Determinista del Cortex
                 'X-Cortex-Fallback-Chain': 'AV1>HEVC>H264',
                 'X-Cortex-Fallback-LCEVC': 'ALWAYS_ACTIVE',
                 'X-Cortex-Fallback-HDR10Plus': 'ENFORCED_ALL_LEVELS',
@@ -281,37 +281,37 @@
     if (typeof window !== 'undefined') window.IPTV_SUPPORT_CORTEX_V_OMEGA = IPTV_SUPPORT_CORTEX_V_OMEGA;
 
 
-    // ═══════════════════════════════════════════════════════════════════════════
-    // 👻 FUSIÓN FANTASMA v22.0 — MÓDULO 2: IPTV SUPPORT CORTEX v3.0
-    // ═══════════════════════════════════════════════════════════════════════════
-    // Árbol de decisión que evalúa HTTP status codes y determina la estrategia
-    // de evasión óptima para cada canal.
-    // ═══════════════════════════════════════════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    // ðŸ‘» FUSIÃ“N FANTASMA v22.0 â€” MÃ“DULO 2: IPTV SUPPORT CORTEX v3.0
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    // Ãrbol de decisiÃ³n que evalÃºa HTTP status codes y determina la estrategia
+    // de evasiÃ³n Ã³ptima para cada canal.
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
     const IPTV_SUPPORT_CORTEX_V3 = {
-        // 🧬 v22.2 NUCLEAR EVASION: Árbol de decisión orgánico con mutación polimórfica
+        // ðŸ§¬ v22.2 NUCLEAR EVASION: Ãrbol de decisiÃ³n orgÃ¡nico con mutaciÃ³n polimÃ³rfica
         decisionTree: {
             301: { strategy: 'FOLLOW_REDIRECT', priority: 'LOW', persist: true, action: 'Seguir redirect + preservar auth headers' },
             302: { strategy: 'FOLLOW_REDIRECT', priority: 'LOW', persist: true, action: 'Token refresh + seguir redirect temporal' },
-            307: { strategy: 'FOLLOW_REDIRECT', priority: 'LOW', persist: true, action: 'Seguir redirect preservando método HTTP' },
+            307: { strategy: 'FOLLOW_REDIRECT', priority: 'LOW', persist: true, action: 'Seguir redirect preservando mÃ©todo HTTP' },
             308: { strategy: 'FOLLOW_REDIRECT', priority: 'LOW', persist: true, action: 'Actualizar URL base permanentemente' },
-            401: { strategy: 'AUTH_ESCALATE', priority: 'CRITICAL', persist: true, action: 'Escalar auth: Basic→Bearer→Digest→NTLM' },
-            403: { strategy: 'IDENTITY_MORPH', priority: 'HIGH', persist: true, action: 'Mutación de identidad completa: UA+Referer+Host+X-Original-URL' },
-            407: { strategy: 'PROXY_NUCLEAR', priority: 'CRITICAL', persist: true, action: 'Multi-probe: Basic→NTLM→Digest→Bearer→CONNECT→Via' },
+            401: { strategy: 'AUTH_ESCALATE', priority: 'CRITICAL', persist: true, action: 'Escalar auth: Basicâ†’Bearerâ†’Digestâ†’NTLM' },
+            403: { strategy: 'IDENTITY_MORPH', priority: 'HIGH', persist: true, action: 'MutaciÃ³n de identidad completa: UA+Referer+Host+X-Original-URL' },
+            407: { strategy: 'PROXY_NUCLEAR', priority: 'CRITICAL', persist: true, action: 'Multi-probe: Basicâ†’NTLMâ†’Digestâ†’Bearerâ†’CONNECTâ†’Via' },
             429: { strategy: 'SWARM_EVADE', priority: 'HIGH', persist: true, action: 'Enjambre: IP rotation + backoff exponencial + session morph' },
-            451: { strategy: 'GEO_PHANTOM', priority: 'CRITICAL', persist: true, action: 'Fantasma geográfico: multi-IP + CF-Connecting-IP + True-Client-IP' },
-            500: { strategy: 'GENOME_MUTATE', priority: 'MEDIUM', persist: true, action: 'Mutación genómica completa del request' },
-            502: { strategy: 'CLEAN_RECONNECT', priority: 'HIGH', persist: true, action: 'Reconexión limpia: headers mínimos + TS directo' },
-            503: { strategy: 'DEGRADE_PERSIST', priority: 'HIGH', persist: true, action: 'Degradación persistente: HLS→TS + Connection:close + retry' },
+            451: { strategy: 'GEO_PHANTOM', priority: 'CRITICAL', persist: true, action: 'Fantasma geogrÃ¡fico: multi-IP + CF-Connecting-IP + True-Client-IP' },
+            500: { strategy: 'GENOME_MUTATE', priority: 'MEDIUM', persist: true, action: 'MutaciÃ³n genÃ³mica completa del request' },
+            502: { strategy: 'CLEAN_RECONNECT', priority: 'HIGH', persist: true, action: 'ReconexiÃ³n limpia: headers mÃ­nimos + TS directo' },
+            503: { strategy: 'DEGRADE_PERSIST', priority: 'HIGH', persist: true, action: 'DegradaciÃ³n persistente: HLSâ†’TS + Connection:close + retry' },
             504: { strategy: 'TIMEOUT_ASSAULT', priority: 'HIGH', persist: true, action: 'Asalto de timeout: escalar timeout + rotar CDN + retry agresivo' }
         },
 
-        // 🧠 Evaluador orgánico: nunca desiste, siempre tiene un plan
+        // ðŸ§  Evaluador orgÃ¡nico: nunca desiste, siempre tiene un plan
         evaluate: function (errorCode) {
             return this.decisionTree[errorCode] || { strategy: 'FULL_POLYMORPH', priority: 'LOW', persist: true, action: 'Polimorfismo total del genoma' };
         },
 
-        // 🔄 Motor de escalamiento por error — actúa en <1ms
+        // ðŸ”„ Motor de escalamiento por error â€” actÃºa en <1ms
         getEscalationHeaders: function (errorCode) {
             const decision = this.evaluate(errorCode);
             const headers = {};
@@ -403,27 +403,27 @@
         };
     }
 
-    // ═══════════════════════════════════════════════════════════════════════════
-    // 👻 FUSIÓN FANTASMA v22.0 — MÓDULO 3: PRE-ARMED RESPONSE BUILDER v4.0
-    // ═══════════════════════════════════════════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    // ðŸ‘» FUSIÃ“N FANTASMA v22.0 â€” MÃ“DULO 3: PRE-ARMED RESPONSE BUILDER v4.0
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     // Genera bloques de fallback pre-armados para cada canal.
     // Cada canal lleva respuestas preparadas para 403, 407, 503.
-    // ═══════════════════════════════════════════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
     const PRE_ARMED_RESPONSE_BUILDER = {
-        // 🧬 v22.2: Builder polimórfico — cada canal obtiene genoma único de fallbacks
+        // ðŸ§¬ v22.2: Builder polimÃ³rfico â€” cada canal obtiene genoma Ãºnico de fallbacks
         buildFallbackTags: function (channel, index) {
             const ctx = buildInitialContext(channel, index);
             const tags = [];
-            const seed = index * 7 + 13; // Semilla determinística por canal
+            const seed = index * 7 + 13; // Semilla determinÃ­stica por canal
 
-            // ── 🔴 FALLBACK 401: Auth Escalation Chain ──
+            // â”€â”€ ðŸ”´ FALLBACK 401: Auth Escalation Chain â”€â”€
             tags.push(`#EXT-X-APE-FALLBACK-ID:401_AUTH_ESCALATE`);
             tags.push(`#EXT-X-APE-FALLBACK-AUTH-CHAIN:basic,bearer,digest,ntlm`);
             tags.push(`#EXT-X-APE-FALLBACK-AUTH-RETRY:5`);
             tags.push(`#EXT-X-APE-FALLBACK-AUTH-PERSIST:true`);
 
-            // ── 🔴 FALLBACK 403: Identity Morph (12 técnicas) ──
+            // â”€â”€ ðŸ”´ FALLBACK 403: Identity Morph (12 tÃ©cnicas) â”€â”€
             const h403 = IPTV_SUPPORT_CORTEX_V3.getEscalationHeaders(403);
             tags.push(`#EXT-X-APE-FALLBACK-ID:403_IDENTITY_MORPH`);
             tags.push(`#EXT-X-APE-FALLBACK-UA:${h403['User-Agent']}`);
@@ -435,7 +435,7 @@
             tags.push(`#EXT-X-APE-FALLBACK-METHOD-CHAIN:GET,POST,HEAD`);
             tags.push(`#EXT-X-APE-FALLBACK-403-PERSIST:NEVER_STOP`);
 
-            // ── 🔴 FALLBACK 407: Proxy Nuclear Multi-Probe (8 técnicas) ──
+            // â”€â”€ ðŸ”´ FALLBACK 407: Proxy Nuclear Multi-Probe (8 tÃ©cnicas) â”€â”€
             tags.push(`#EXT-X-APE-FALLBACK-ID:407_PROXY_NUCLEAR`);
             tags.push(`#EXT-X-APE-FALLBACK-PROXY-AUTH-1:Basic Og==`);
             tags.push(`#EXT-X-APE-FALLBACK-PROXY-AUTH-2:NTLM TlRMTVNTUAABAAAAB4IIogAAAAAAAAAAAAAAAAAAAAAGAbEdAAAADw==`);
@@ -446,7 +446,7 @@
             tags.push(`#EXT-X-APE-FALLBACK-TUNNEL:CONNECT`);
             tags.push(`#EXT-X-APE-FALLBACK-407-PERSIST:INSIST_FOREVER`);
 
-            // ── 🔴 FALLBACK 429: Swarm Evasion + Backoff ──
+            // â”€â”€ ðŸ”´ FALLBACK 429: Swarm Evasion + Backoff â”€â”€
             const h429 = IPTV_SUPPORT_CORTEX_V3.getEscalationHeaders(429);
             tags.push(`#EXT-X-APE-FALLBACK-ID:429_SWARM_EVADE`);
             tags.push(`#EXT-X-APE-FALLBACK-XFF:${h429['X-Forwarded-For']}`);
@@ -459,7 +459,7 @@
             tags.push(`#EXT-X-APE-FALLBACK-BACKOFF-JITTER:250`);
             tags.push(`#EXT-X-APE-FALLBACK-429-PERSIST:SWARM_UNTIL_CLEAR`);
 
-            // ── 🔴 FALLBACK 451: Geo Phantom ──
+            // â”€â”€ ðŸ”´ FALLBACK 451: Geo Phantom â”€â”€
             const h451 = IPTV_SUPPORT_CORTEX_V3.getEscalationHeaders(451);
             tags.push(`#EXT-X-APE-FALLBACK-ID:451_GEO_PHANTOM`);
             tags.push(`#EXT-X-APE-FALLBACK-XFF:${h451['X-Forwarded-For']}`);
@@ -468,41 +468,41 @@
             tags.push(`#EXT-X-APE-FALLBACK-TRUE-CLIENT-IP:${h451['True-Client-IP']}`);
             tags.push(`#EXT-X-APE-FALLBACK-451-PERSIST:PHANTOM_MODE`);
 
-            // ── 🔴 FALLBACK 500: Genome Mutate ──
+            // â”€â”€ ðŸ”´ FALLBACK 500: Genome Mutate â”€â”€
             tags.push(`#EXT-X-APE-FALLBACK-ID:500_GENOME_MUTATE`);
             tags.push(`#EXT-X-APE-FALLBACK-UA:${getRotatedUserAgent('random')}`);
             tags.push(`#EXT-X-APE-FALLBACK-XFF:${getRandomIp()}`);
             tags.push(`#EXT-X-APE-FALLBACK-ACCEPT:*/*`);
             tags.push(`#EXT-X-APE-FALLBACK-500-RETRY:3`);
 
-            // ── 🔴 FALLBACK 502: Clean Reconnect ──
+            // â”€â”€ ðŸ”´ FALLBACK 502: Clean Reconnect â”€â”€
             tags.push(`#EXT-X-APE-FALLBACK-ID:502_CLEAN_RECONNECT`);
             tags.push(`#EXT-X-APE-FALLBACK-CONNECTION:close`);
             tags.push(`#EXT-X-APE-FALLBACK-ACCEPT:video/mp2t,application/octet-stream,*/*`);
             tags.push(`#EXT-X-APE-FALLBACK-UA:${getRotatedUserAgent('random')}`);
             tags.push(`#EXT-X-APE-FALLBACK-502-RETRY:5`);
 
-            // ── 🔴 FALLBACK 503: Degrade + Persist ──
+            // â”€â”€ ðŸ”´ FALLBACK 503: Degrade + Persist â”€â”€
             tags.push(`#EXT-X-APE-FALLBACK-ID:503_DEGRADE_PERSIST`);
             tags.push(`#EXT-X-APE-FALLBACK-CONNECTION:close`);
             tags.push(`#EXT-X-APE-FALLBACK-ACCEPT:video/mp2t`);
             tags.push(`#EXT-X-APE-FALLBACK-PROTOCOL-CHAIN:HLS,DASH,TS-DIRECT,HTTP-REDIRECT`);
             tags.push(`#EXT-X-APE-FALLBACK-503-PERSIST:DEGRADE_NEVER_STOP`);
 
-            // ── 🔴 FALLBACK 504: Timeout Assault ──
+            // â”€â”€ ðŸ”´ FALLBACK 504: Timeout Assault â”€â”€
             tags.push(`#EXT-X-APE-FALLBACK-ID:504_TIMEOUT_ASSAULT`);
             tags.push(`#EXT-X-APE-FALLBACK-XFF:${getRandomIp()}`);
             tags.push(`#EXT-X-APE-FALLBACK-KEEP-ALIVE:timeout=300,max=1000`);
             tags.push(`#EXT-X-APE-FALLBACK-504-RETRY:10`);
             tags.push(`#EXT-X-APE-FALLBACK-504-PERSIST:ASSAULT_UNTIL_OPEN`);
 
-            // ── 🟢 FALLBACK 3xx: Redirect Persistence ──
+            // â”€â”€ ðŸŸ¢ FALLBACK 3xx: Redirect Persistence â”€â”€
             tags.push(`#EXT-X-APE-FALLBACK-ID:3XX_REDIRECT_FOLLOW`);
             tags.push(`#EXT-X-APE-FALLBACK-FOLLOW-REDIRECTS:true`);
             tags.push(`#EXT-X-APE-FALLBACK-MAX-REDIRECTS:10`);
             tags.push(`#EXT-X-APE-FALLBACK-REDIRECT-AUTH-PRESERVE:true`);
 
-            // ── 🧬 PERSISTENCE ENGINE: Nunca desiste ──
+            // â”€â”€ ðŸ§¬ PERSISTENCE ENGINE: Nunca desiste â”€â”€
             tags.push(`#EXT-X-APE-EVASION-ENGINE:POLYMORPHIC_v22.2`);
             tags.push(`#EXT-X-APE-EVASION-PERSIST:INFINITE`);
             tags.push(`#EXT-X-APE-EVASION-MUTATION-RATE:PER_REQUEST`);
@@ -512,19 +512,19 @@
             return tags;
         },
 
-        // 👻 FUSIÓN FANTASMA v22.2: buildBlock() — genera bloque M3U8 polimórfico desde context
+        // ðŸ‘» FUSIÃ“N FANTASMA v22.2: buildBlock() â€” genera bloque M3U8 polimÃ³rfico desde context
         buildBlock: function (context) {
             const tags = this.buildFallbackTags(context.channel, context.index);
             return tags.join('\n') + '\n';
         }
     };
 
-    // ═══════════════════════════════════════════════════════════════════════════
-    // 👻 FUSIÓN FANTASMA v22.0 — MÓDULO 4: APE ATOMIC STEALTH ENGINE v6.0
-    // ═══════════════════════════════════════════════════════════════════════════
-    // Motor de sondeo atómico y paralelo. Genera ráfagas de 10 genomas únicos
-    // con mutación dirigida por error codes. Cada átomo es independiente.
-    // ═══════════════════════════════════════════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    // ðŸ‘» FUSIÃ“N FANTASMA v22.0 â€” MÃ“DULO 4: APE ATOMIC STEALTH ENGINE v6.0
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    // Motor de sondeo atÃ³mico y paralelo. Genera rÃ¡fagas de 10 genomas Ãºnicos
+    // con mutaciÃ³n dirigida por error codes. Cada Ã¡tomo es independiente.
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
     class APEAtomicStealthEngine {
         constructor(channel, maxBursts = 3) {
@@ -560,26 +560,26 @@
         async resolve() {
             let attempts = 0, lastErrorBatch = [];
             while (attempts < this.maxBursts) {
-                console.log(`[AtomicEngine] CH ${this.channel.name || this.channel.id}: Ráfaga ${attempts + 1}/${this.maxBursts}...`);
+                console.log(`[AtomicEngine] CH ${this.channel.name || this.channel.id}: RÃ¡faga ${attempts + 1}/${this.maxBursts}...`);
                 const batch = this.generateGenomeBatch(10, lastErrorBatch);
                 const promises = batch.map(genome => this.testConnection(genome));
                 const results = await Promise.allSettled(promises);
                 const winningResult = results.find(r => r.status === 'fulfilled' && r.value.success);
                 if (winningResult) {
-                    console.log(`[AtomicEngine] CH ${this.channel.name || this.channel.id}: Éxito atómico!`);
+                    console.log(`[AtomicEngine] CH ${this.channel.name || this.channel.id}: Ã‰xito atÃ³mico!`);
                     return winningResult.value.genome;
                 }
                 lastErrorBatch = results.map(r => r.status === 'rejected' ? 500 : r.value.errorCode);
                 attempts++;
             }
-            console.error(`[AtomicEngine] CH ${this.channel.name || this.channel.id}: Fallo total después de ${this.maxBursts} ráfagas.`);
+            console.error(`[AtomicEngine] CH ${this.channel.name || this.channel.id}: Fallo total despuÃ©s de ${this.maxBursts} rÃ¡fagas.`);
             return null;
         }
 
-        // 🧬 v22.2: Mutador polimórfico — muta como virus, nunca deja huella igual
+        // ðŸ§¬ v22.2: Mutador polimÃ³rfico â€” muta como virus, nunca deja huella igual
         mutate(currentGenome, errorCode) {
             let g = { ...currentGenome };
-            // Mutación base: siempre rota identidad
+            // MutaciÃ³n base: siempre rota identidad
             g['User-Agent'] = getRotatedUserAgent('random');
             g['X-Forwarded-For'] = getRandomIp();
 
@@ -620,19 +620,19 @@
         }
 
         async testConnection(genome) {
-            // M3U8 static generation: siempre éxito (el probing real ocurre en runtime del player)
+            // M3U8 static generation: siempre Ã©xito (el probing real ocurre en runtime del player)
             return new Promise(resolve => setTimeout(() => {
                 resolve({ success: true, errorCode: 200, genome });
             }, 1));
         }
     }
 
-    // ═══════════════════════════════════════════════════════════════════════════
-    // 👻 FUSIÓN FANTASMA v22.0 — MÓDULO 5: ISP THROTTLE NUCLEAR ESCALATION
-    // ═══════════════════════════════════════════════════════════════════════════
-    // Máquina despiadada: si el ISP baja velocidad, pide el DOBLE cada vez.
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    // ðŸ‘» FUSIÃ“N FANTASMA v22.0 â€” MÃ“DULO 5: ISP THROTTLE NUCLEAR ESCALATION
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    // MÃ¡quina despiadada: si el ISP baja velocidad, pide el DOBLE cada vez.
     // 5 niveles de escalamiento nuclear sin piedad.
-    // ═══════════════════════════════════════════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
     function generateISPThrottleEscalation(profile, cfg) {
         const baseBw = (cfg.bitrate || 5000) >= 1000000 ? (cfg.bitrate || 5000) : (cfg.bitrate || 5000) * 1000;
@@ -658,33 +658,33 @@
     }
 
 
-    // ═══════════════════════════════════════════════════════════════════════════
-    // 🌐 CLEAN URL MODE - Arquitectura de URLs Limpias
-    // ═══════════════════════════════════════════════════════════════════════════
-    // Cuando está activo:
-    // - URLs 100% limpias (sin JWT, sin parámetros)
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    // ðŸŒ CLEAN URL MODE - Arquitectura de URLs Limpias
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    // Cuando estÃ¡ activo:
+    // - URLs 100% limpias (sin JWT, sin parÃ¡metros)
     // - Los 68 campos del JWT se redistribuyen a headers M3U8
-    // - Headers globales: fingerprint, sesión, evasión
+    // - Headers globales: fingerprint, sesiÃ³n, evasiÃ³n
     // - Headers por canal: perfil, codec, buffer, calidad
-    // ═══════════════════════════════════════════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
     let CLEAN_URL_MODE = true; // Toggle para activar/desactivar URLs limpias
 
-    // ═══════════════════════════════════════════════════════════════════════════
-    // 🔧 HELPER: VERIFICAR SI UN MÓDULO ESTÁ HABILITADO EN EL PANEL
-    // ═══════════════════════════════════════════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    // ðŸ”§ HELPER: VERIFICAR SI UN MÃ“DULO ESTÃ HABILITADO EN EL PANEL
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
     /**
-     * Verifica si un módulo está habilitado en ApeModuleManager
-     * @param {string} moduleId - ID del módulo (ej: 'smart-codec', 'evasion-407')
-     * @returns {boolean} true si el módulo está habilitado o si no hay manager
+     * Verifica si un mÃ³dulo estÃ¡ habilitado en ApeModuleManager
+     * @param {string} moduleId - ID del mÃ³dulo (ej: 'smart-codec', 'evasion-407')
+     * @returns {boolean} true si el mÃ³dulo estÃ¡ habilitado o si no hay manager
      */
     function isModuleEnabled(moduleId) {
         if (!window.ApeModuleManager) return true; // Sin manager = usar todo
         return window.ApeModuleManager.isEnabled(moduleId);
     }
 
-    // Mapeo de funcionalidades a módulos del panel
+    // Mapeo de funcionalidades a mÃ³dulos del panel
     const MODULE_FEATURES = {
         jwt: 'jwt-generator',
         headers: 'headers-matrix',
@@ -702,37 +702,37 @@
         latency: 'latency-rayo',
         redundantStreams: 'redundant-streams'
     };
-    // ═══════════════════════════════════════════════════════════════════════════
-    // 🔗 BRIDGE: FUNCIÓN PARA OBTENER PERFILES (Frontend o Fallback)
-    // ═══════════════════════════════════════════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    // ðŸ”— BRIDGE: FUNCIÃ“N PARA OBTENER PERFILES (Frontend o Fallback)
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
     /**
-     * Obtiene configuración de perfil desde Frontend (Bridge) o Fallback hardcoded
+     * Obtiene configuraciÃ³n de perfil desde Frontend (Bridge) o Fallback hardcoded
      * @param {string} profileId - ID del perfil (P0-P5)
-     * @returns {Object} Configuración del perfil
+     * @returns {Object} ConfiguraciÃ³n del perfil
      */
     function getProfileConfig(profileId) {
-        // ✅ PRIORIDAD 1: Bridge desde Frontend (ProfileManagerV9)
+        // âœ… PRIORIDAD 1: Bridge desde Frontend (ProfileManagerV9)
         if (window.APE_PROFILE_BRIDGE?.isActive?.() && window.APE_PROFILE_BRIDGE?.getProfile) {
             const bridged = window.APE_PROFILE_BRIDGE.getProfile(profileId);
             if (bridged && bridged._bridged) {
-                console.log(`🔗 [BRIDGE] Usando perfil ${profileId} desde Frontend`);
+                console.log(`ðŸ”— [BRIDGE] Usando perfil ${profileId} desde Frontend`);
                 return bridged;
             }
         }
 
-        // ✅ PRIORIDAD 2: Fallback a perfiles hardcoded
+        // âœ… PRIORIDAD 2: Fallback a perfiles hardcoded
         const fallback = PROFILES[profileId] || PROFILES['P3'];
-        console.log(`📦 [FALLBACK] Usando perfil ${profileId} hardcoded`);
+        console.log(`ðŸ“¦ [FALLBACK] Usando perfil ${profileId} hardcoded`);
         return fallback;
     }
 
-    // ═══════════════════════════════════════════════════════════════════════════
-    // CONFIGURACIÓN GLOBAL DE CACHING (controla las 4 directivas globales)
-    // ═══════════════════════════════════════════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    // CONFIGURACIÃ“N GLOBAL DE CACHING (controla las 4 directivas globales)
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     const GLOBAL_CACHING_BASE = {
-        network: 15000,   // v5.3: anti-freeze calibrado (era 60000 → causaba underrun)
-        live: 15000,      // v5.3: anti-freeze calibrado (era 60000 → causaba underrun)
+        network: 15000,   // v5.3: anti-freeze calibrado (era 60000 â†’ causaba underrun)
+        live: 15000,      // v5.3: anti-freeze calibrado (era 60000 â†’ causaba underrun)
         file: 51000       // v5.3: VOD/file caching correcto (era 30000)
     };
 
@@ -749,14 +749,14 @@
     };
 
 
-    // ═══════════════════════════════════════════════════════════════════════════
-    // 🖥️ DEVICE TIER DETECTION — v5.4 MAX AGGRESSION
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    // ðŸ–¥ï¸ DEVICE TIER DETECTION â€” v5.4 MAX AGGRESSION
     // Detecta la clase de hardware del dispositivo para escalar los niveles ISP
     // TIER 4 (NUCLEAR): Nvidia Shield, Apple TV 4K, PC con GPU dedicada
-    // TIER 3 (BRUTAL): Android TV Box premium, PC básico
+    // TIER 3 (BRUTAL): Android TV Box premium, PC bÃ¡sico
     // TIER 2 (SAVAGE): Smart TV mid-range, Chromecast Ultra
     // TIER 1 (EXTREME): FireTV Stick, Raspberry Pi, dispositivos de 1GB RAM
-    // ═══════════════════════════════════════════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     const DEVICE_TIER = (function detectDeviceTier() {
         try {
             const ua = navigator.userAgent || '';
@@ -764,7 +764,7 @@
             const mem = navigator.deviceMemory || 1; // GB
             const conn = navigator.connection || {};
             const bw = conn.downlink || 0; // Mbps estimado
-            // Señales de hardware premium
+            // SeÃ±ales de hardware premium
             const isNvidiaShield = /SHIELD|AndroidTV/.test(ua) && cores >= 8;
             const isAppleTV = /AppleTV|tvOS/.test(ua);
             const isPC = /Windows|Macintosh|Linux x86/.test(ua) && cores >= 4;
@@ -778,15 +778,15 @@
             return 1; // EXTREME (default seguro)
         } catch (e) { return 1; }
     })();
-    console.log(`🖥️ [DEVICE-TIER] Nivel detectado: \${DEVICE_TIER} (\${['','EXTREME','SAVAGE','BRUTAL','NUCLEAR'][DEVICE_TIER]})`);
+    console.log(`ðŸ–¥ï¸ [DEVICE-TIER] Nivel detectado: \${DEVICE_TIER} (\${['','EXTREME','SAVAGE','BRUTAL','NUCLEAR'][DEVICE_TIER]})`);
 
-    // ═══════════════════════════════════════════════════════════════════════════
-    // ☢️ ISP_LEVELS — 5 Niveles Escalantes EXTREME→NUCLEAR (nunca bajan)
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    // â˜¢ï¸ ISP_LEVELS â€” 5 Niveles Escalantes EXTREMEâ†’NUCLEAR (nunca bajan)
     // El sistema arranca en el nivel correspondiente al DEVICE_TIER
     // y puede escalar hacia arriba si el ISP intenta throttling
-    // ═══════════════════════════════════════════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     const ISP_LEVELS = [
-        null, // índice 0 no usado
+        null, // Ã­ndice 0 no usado
         {   // NIVEL 1: EXTREME (FireTV Stick, dispositivos 1GB)
             name: 'EXTREME',
             tcp_window_mb: 4,
@@ -809,7 +809,7 @@
             quic: true,
             http3: false
         },
-        {   // NIVEL 3: SAVAGE (Android TV Box premium, PC básico)
+        {   // NIVEL 3: SAVAGE (Android TV Box premium, PC bÃ¡sico)
             name: 'SAVAGE',
             tcp_window_mb: 16,
             parallel_streams: 16,
@@ -845,7 +845,7 @@
     ];
     const ACTIVE_ISP_LEVEL = ISP_LEVELS[DEVICE_TIER] || ISP_LEVELS[1];
 
-    // Prefetch dinámico según DEVICE_TIER (ya definido arriba)
+    // Prefetch dinÃ¡mico segÃºn DEVICE_TIER (ya definido arriba)
     const GLOBAL_PREFETCH = {
         get segments() {
             return [null, 10, 15, 20, 30][DEVICE_TIER] || 10;
@@ -855,16 +855,16 @@
         }
     };
 
-    console.log(`☢️ [ISP-LEVEL] Activo: \${ACTIVE_ISP_LEVEL.name} | TCP: \${ACTIVE_ISP_LEVEL.tcp_window_mb}MB | Parallel: \${ACTIVE_ISP_LEVEL.parallel_streams} | Burst: \${ACTIVE_ISP_LEVEL.burst_factor}x | Strategy: \${ACTIVE_ISP_LEVEL.strategy}`);
+    console.log(`â˜¢ï¸ [ISP-LEVEL] Activo: \${ACTIVE_ISP_LEVEL.name} | TCP: \${ACTIVE_ISP_LEVEL.tcp_window_mb}MB | Parallel: \${ACTIVE_ISP_LEVEL.parallel_streams} | Burst: \${ACTIVE_ISP_LEVEL.burst_factor}x | Strategy: \${ACTIVE_ISP_LEVEL.strategy}`);
 
-    // ═══════════════════════════════════════════════════════════════════════════
-    // PERFILES P0-P5 (CONFIGURACIÓN COMPLETA - FALLBACK)
-    // ═══════════════════════════════════════════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    // PERFILES P0-P5 (CONFIGURACIÃ“N COMPLETA - FALLBACK)
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
     const PROFILES = {
-        // ═══════════════════════════════════════════════════════════════════════
+        // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
         // P0: 8K ULTRA - detectProfile assigns P0 when height >= 4320 || bitrate >= 50000
-        // ═══════════════════════════════════════════════════════════════════════
+        // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
         P0: {
             name: 'ULTRA_EXTREME_8K',
             resolution: '7680x4320',
@@ -912,9 +912,9 @@
             video_profile: 'main10',
             pixel_format: 'yuv420p12le'
         },
-        // ═══════════════════════════════════════════════════════════════════════
+        // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
         // P1: 4K 60fps - detectProfile assigns P1 when height >= 2160 || bitrate >= 30000
-        // ═══════════════════════════════════════════════════════════════════════
+        // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
         P1: {
             name: '4K_SUPREME_60FPS',
             resolution: '3840x2160',
@@ -1147,9 +1147,9 @@
         }
     };
 
-    // ═══════════════════════════════════════════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     // DETECT PROFILE BASED ON CHANNEL QUALITY
-    // ═══════════════════════════════════════════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
     function detectProfile(channel) {
         const height = channel.height || parseInt(channel.resolution?.split('x')[1]) || 0;
@@ -1175,36 +1175,36 @@
         return 'P5';
     }
 
-    // ═══════════════════════════════════════════════════════════════════════════
-    // ARRAY 1: GLOBAL_HEADER (137+ líneas - 1 sola vez por archivo)
-    // ═══════════════════════════════════════════════════════════════════════════
-    // ═══════════════════════════════════════════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    // ARRAY 1: GLOBAL_HEADER (137+ lÃ­neas - 1 sola vez por archivo)
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 
-    // ══════════════════════════════════════════════════════════════════════════
-    // 🏗️ DIRECTIVA 1+2: GLOBALIZACIÓN DE TAGS ESTÁTICOS + EXTHTTP TEMPLATE
-    // ══════════════════════════════════════════════════════════════════════════
-    // Tags 100% idénticos en los 6,910 canales se declaran UNA VEZ aquí.
-    // El per-channel solo emite tags DINÁMICOS (profile, codec, bitrate, IPs, etc.)
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    // ðŸ—ï¸ DIRECTIVA 1+2: GLOBALIZACIÃ“N DE TAGS ESTÃTICOS + EXTHTTP TEMPLATE
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    // Tags 100% idÃ©nticos en los 6,910 canales se declaran UNA VEZ aquÃ­.
+    // El per-channel solo emite tags DINÃMICOS (profile, codec, bitrate, IPs, etc.)
     // Ahorro estimado: -42.6 MB (25.1 static APE + 17.5 static EXTHTTP)
-    // ══════════════════════════════════════════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
     function generateStaticAPEGlobalBlock() {
         return [
-            // ── GUARDIAN (5 tags) ──
+            // â”€â”€ GUARDIAN (5 tags) â”€â”€
             '#EXT-X-APE-GUARDIAN-ENABLED:true',
             '#EXT-X-APE-GUARDIAN-STATE:ONLINE',
             '#EXT-X-APE-GUARDIAN-FALLBACK-LEVEL:3',
             '#EXT-X-APE-GUARDIAN-MEMORY:enabled',
             '#EXT-X-APE-GUARDIAN-CONTINUITY:guaranteed',
-            // ── RESILIENCE (6 tags) ──
+            // â”€â”€ RESILIENCE (6 tags) â”€â”€
             '#EXT-X-APE-RESILIENCE-STRATEGY:proactive_failover',
             '#EXT-X-APE-RESILIENCE-CHAIN:7-levels',
             '#EXT-X-APE-RESILIENCE-CIRCUIT-BREAKER:enabled',
             '#EXT-X-APE-RESILIENCE-MAX-RETRIES:3',
             '#EXT-X-APE-RESILIENCE-RETRY-BACKOFF:exponential',
             '#EXT-X-APE-RESILIENCE-SILENT-RECONNECT:enabled',
-            // ── DEGRADATION CHAIN (7 tags) ──
+            // â”€â”€ DEGRADATION CHAIN (7 tags) â”€â”€
             '#EXT-X-APE-DEGRADATION-LEVEL-1:CMAF+HEVC+LCEVC',
             '#EXT-X-APE-DEGRADATION-LEVEL-2:HLS/fMP4+HEVC+LCEVC',
             '#EXT-X-APE-DEGRADATION-LEVEL-3:HLS/fMP4+H.264',
@@ -1212,22 +1212,22 @@
             '#EXT-X-APE-DEGRADATION-LEVEL-5:HLS/TS+Baseline',
             '#EXT-X-APE-DEGRADATION-LEVEL-6:TS-Direct',
             '#EXT-X-APE-DEGRADATION-LEVEL-7:HTTP-Redirect',
-            // ── TELCHEMY (4 tags) ──
+            // â”€â”€ TELCHEMY (4 tags) â”€â”€
             '#EXT-X-APE-TELCHEMY-VSTQ:enabled',
             '#EXT-X-APE-TELCHEMY-VSMQ:enabled',
             '#EXT-X-APE-TELCHEMY-TR101290:enabled',
             '#EXT-X-APE-TELCHEMY-QOE-TARGET:5.0',
-            // ── HYDRA STEALTH (3 tags) ──
+            // â”€â”€ HYDRA STEALTH (3 tags) â”€â”€
             '#EXT-X-APE-HYDRA-STEALTH:enabled',
             '#EXT-X-APE-HYDRA-UA-ROTATION:enabled',
             '#EXT-X-APE-HYDRA-FINGERPRINT-MASKING:enabled',
-            // ── FORMAT FLAGS (5 tags) ──
+            // â”€â”€ FORMAT FLAGS (5 tags) â”€â”€
             '#EXT-X-APE-CMAF:ENABLED',
             '#EXT-X-APE-FMP4:ENABLED',
             '#EXT-X-APE-HDR10:ENABLED',
             '#EXT-X-APE-DOLBY-VISION:ENABLED-PROFILE-8.1-LEVEL-6',
             '#EXT-X-APE-ATMOS:ENABLED',
-            // ── ISP THROTTLE STATIC (10 tags) ──
+            // â”€â”€ ISP THROTTLE STATIC (10 tags) â”€â”€
             '#EXT-X-APE-ISP-THROTTLE-STRATEGY:ESCALATING-NEVER-DOWN',
             '#EXT-X-APE-ISP-LEVEL-1:EXTREME-MAX_CONTRACT',
             '#EXT-X-APE-ISP-LEVEL-2:ULTRA-MAX_CONTRACT_PLUS',
@@ -1238,7 +1238,7 @@
             '#EXT-X-APE-ISP-PARALLEL-PROGRESSION:4\u21928\u219216\u219232\u219264',
             '#EXT-X-APE-ISP-BURST-FACTOR-PROGRESSION:1.5x\u21922x\u21923x\u21925x\u219210x',
             '#EXT-X-APE-ISP-PREFETCH-PROGRESSION:30s\u219260s\u2192120s\u2192300s\u2192UNLIMITED',
-            // ── LCEVC STATIC (7 tags) ──
+            // â”€â”€ LCEVC STATIC (7 tags) â”€â”€
             '#EXT-X-APE-LCEVC:ENABLED',
             '#EXT-X-APE-LCEVC-STANDARD:MPEG-5-PART-2',
             '#EXT-X-APE-LCEVC-PLAYER-REQUIRED:0',
@@ -1246,30 +1246,30 @@
             '#EXT-X-APE-LCEVC-SW-FALLBACK:1',
             '#EXT-X-APE-LCEVC-COMPAT:UNIVERSAL',
             '#EXT-X-APE-LCEVC-GRACEFUL-DEGRADATION:BASE_CODEC_PASSTHROUGH',
-            // ── LCEVC PHASE 4 STATIC (3 tags) ──
+            // â”€â”€ LCEVC PHASE 4 STATIC (3 tags) â”€â”€
             '#EXT-X-APE-LCEVC-PHASE-4-ENABLED:true',
             '#EXT-X-APE-TUNNELING-ENABLED:off',
             '#EXT-X-APE-NETWORK-PATH:ORIGIN_DIRECT',
-            // ── LCEVC SEMANTIC STATIC (4 tags) ──
+            // â”€â”€ LCEVC SEMANTIC STATIC (4 tags) â”€â”€
             '#EXT-X-APE-LCEVC-SEMANTIC-SEGMENTATION:ACTIVE',
             '#EXT-X-APE-LCEVC-ROI-PROCESSING:DYNAMIC',
             '#EXT-X-APE-LCEVC-ROI-TARGETS:FACES,TEXT,SKIN,SPORTS_BALL',
             '#EXT-X-APE-LCEVC-BG-DEGRADATION:AGGRESSIVE',
-            // ── QUANTUM PIXEL (3 tags) ──
+            // â”€â”€ QUANTUM PIXEL (3 tags) â”€â”€
             '#EXT-X-APE-QUANTUM-CHROMA-SUBSAMPLING:4:4:4',
             '#EXT-X-APE-QUANTUM-COLOR-DEPTH:10bit',
             '#EXT-X-APE-QUANTUM-ITM-SDR-TO-HDR:auto',
-            // ── HEVC LEVEL + PRIORITY (4 tags) ──
+            // â”€â”€ HEVC LEVEL + PRIORITY (4 tags) â”€â”€
             '#EXT-X-APE-HEVC-LEVEL-CASCADE:6.1,5.1,5.0,4.1,4.0,3.1',
             '#EXT-X-APE-CODEC-PRIORITY:hevc,av1,h264',
             '#EXT-X-APE-LCEVC-TRANSPORT:CMAF_LAYER_OR_SEI_EMBED',
             '#EXT-X-APE-RESOLUTION-ESCALATOR:4320p>2160p>1080p>720p>480p',
-            // ── PERCEPTUAL QUALITY (4 tags) ──
+            // â”€â”€ PERCEPTUAL QUALITY (4 tags) â”€â”€
             '#EXT-X-APE-VMAF-TARGET:95.0',
             '#EXT-X-APE-FILM-GRAIN-PRESERVATION:STRICT',
             '#EXT-X-APE-HEARTBEAT-THERMAL:TRUE',
             '#EXT-X-APE-THERMAL-THROTTLING-FB:PHASE-2-SAFE-MODE',
-            // ── LCEVC PHASE 3 STATIC (8 tags) ──
+            // â”€â”€ LCEVC PHASE 3 STATIC (8 tags) â”€â”€
             '#EXT-X-APE-LCEVC-PHASE-3-ENABLED:true',
             '#EXT-X-APE-LCEVC-NEURAL-UPSCALE:ESRGAN-4x',
             '#EXT-X-APE-LCEVC-GRAIN-SYNTHESIS:true',
@@ -1283,7 +1283,7 @@
             '#EXT-X-APE-LCEVC-SUBPEL-REFINE:7',
             '#EXT-X-APE-LCEVC-ME-RANGE:24',
             '#EXT-X-APE-LCEVC-TRELLIS:2',
-            // ── CMAF STATIC (16 tags) ──
+            // â”€â”€ CMAF STATIC (16 tags) â”€â”€
             '#EXT-X-APE-CMAF-CHUNK-TYPE:CMAF_CHUNK',
             '#EXT-X-APE-CMAF-INGEST-PROTOCOL:CMAF-INGEST-V2',
             '#EXT-X-APE-CMAF-COMMON-ENCRYPTION:CBCS',
@@ -1300,7 +1300,7 @@
             '#EXT-X-APE-CMAF-DATERANGE-ENABLED:true',
             '#EXT-X-APE-CMAF-SKIP-BOUNDARY:6.0',
             '#EXT-X-APE-CMAF-DELTA-PLAYLIST:true',
-            // ── FMP4 STATIC (20 tags) ──
+            // â”€â”€ FMP4 STATIC (20 tags) â”€â”€
             '#EXT-X-APE-FMP4-AUDIO-TRACK:AAC-LC+EAC3+AC4',
             '#EXT-X-APE-FMP4-SUBTITLE-TRACK:TTML+WebVTT',
             '#EXT-X-APE-FMP4-METADATA-TRACK:ID3+SCTE35',
@@ -1323,7 +1323,7 @@
             '#EXT-X-APE-FMP4-SENC-BOX:true',
             '#EXT-X-APE-FMP4-TRACK-ENCRYPTION:CBCS',
             '#EXT-X-APE-FMP4-COMMON-MEDIA-CLIENT-DATA:true',
-            // ── VVC STATIC (12 tags) ──
+            // â”€â”€ VVC STATIC (12 tags) â”€â”€
             '#EXT-X-APE-VVC-ENABLED:true',
             '#EXT-X-APE-VVC-PROFILE:MAIN_10',
             '#EXT-X-APE-VVC-TIER:MAIN',
@@ -1335,7 +1335,7 @@
             '#EXT-X-APE-VVC-LMCS:true',
             '#EXT-X-APE-VVC-AFFINE-ME:true',
             '#EXT-X-APE-VVC-BDOF:true',
-            // ── EVC STATIC (8 tags) ──
+            // â”€â”€ EVC STATIC (8 tags) â”€â”€
             '#EXT-X-APE-EVC-ENABLED:true',
             '#EXT-X-APE-EVC-PROFILE:BASELINE',
             '#EXT-X-APE-EVC-FALLBACK:H264',
@@ -1343,7 +1343,7 @@
             '#EXT-X-APE-EVC-TOOLSET:MAIN',
             '#EXT-X-APE-EVC-ADAPTIVE-LOOP-FILTER:true',
             '#EXT-X-APE-EVC-CHROMA-QP-OFFSET:true',
-            // ── HDR STATIC (30 tags) ──
+            // â”€â”€ HDR STATIC (30 tags) â”€â”€
             '#EXT-X-APE-HDR-SDR-FALLBACK:enabled',
             '#EXT-X-APE-HDR-TONE-MAPPING:auto',
             '#EXT-X-APE-HDR-GRACEFUL-DEGRADATION:SDR_PASSTHROUGH',
@@ -1374,7 +1374,7 @@
             '#EXT-X-APE-HDR-SLHDR2:true',
             '#EXT-X-APE-HDR-TECHNICOLOR:true',
             '#EXT-X-APE-HDR-FILMMAKER-MODE:true',
-            // ── AUDIO STATIC (12 tags) ──
+            // â”€â”€ AUDIO STATIC (12 tags) â”€â”€
             '#EXT-X-APE-AUDIO-CODEC:EAC3+AC4+AAC-LC',
             '#EXT-X-APE-AUDIO-ATMOS:true',
             '#EXT-X-APE-AUDIO-SPATIAL:DOLBY-ATMOS+DTS-X',
@@ -1387,7 +1387,7 @@
             '#EXT-X-APE-AUDIO-DRC-PROFILE:FILM-STANDARD',
             '#EXT-X-APE-AUDIO-DOWNMIX:LtRt+LoRo',
             '#EXT-X-APE-AUDIO-TRUEHD:true',
-            // ── TRICK PLAY STATIC (14 tags) ──
+            // â”€â”€ TRICK PLAY STATIC (14 tags) â”€â”€
             '#EXT-X-APE-TRICK-PLAY-ENABLED:true',
             '#EXT-X-APE-THUMBNAIL-TRACK:WebP+JPEG',
             '#EXT-X-APE-THUMBNAIL-INTERVAL:10s',
@@ -1402,7 +1402,7 @@
             '#EXT-X-APE-TRICK-PLAY-IFRAME-ONLY:true',
             '#EXT-X-APE-SEEK-MODE:IFRAME+KEYFRAME',
             '#EXT-X-APE-CHAPTER-MARKERS:true',
-            // ── SCTE-35 STATIC (10 tags) ──
+            // â”€â”€ SCTE-35 STATIC (10 tags) â”€â”€
             '#EXT-X-APE-SCTE35-ENABLED:true',
             '#EXT-X-APE-SCTE35-FORMAT:BINARY+BASE64',
             '#EXT-X-APE-SCTE35-SIGNAL:CUE-IN+CUE-OUT',
@@ -1413,7 +1413,7 @@
             '#EXT-X-APE-SCTE35-AVAIL-NUM:1',
             '#EXT-X-APE-SCTE35-AVAILS-EXPECTED:1',
             '#EXT-X-APE-SCTE35-BLACKOUT-OVERRIDE:true',
-            // ── BUFFER/CACHE STATIC (6 tags) ──
+            // â”€â”€ BUFFER/CACHE STATIC (6 tags) â”€â”€
             '#EXT-X-APE-BUFFER-TARGET:60s',
             '#EXT-X-APE-BUFFER-MIN:15s',
             '#EXT-X-APE-BUFFER-MAX:200s',
@@ -1421,12 +1421,12 @@
             '#EXT-X-APE-RECONNECT-MAX:40',
             '#EXT-X-APE-RETRY-COUNT:10,12,15',
             '#EXT-X-APE-PREFETCH-SEGMENTS:10,15,20',
-            // ── QoS STATIC (3 tags) ──
+            // â”€â”€ QoS STATIC (3 tags) â”€â”€
             '#EXT-X-APE-QOE-SCORE:5.0',
             '#EXT-X-APE-QOS-DSCP:EF',
             '#EXT-X-APE-QOS-PRIORITY:ultra-high',
             '#EXT-X-APE-VQS-SCORE:95',
-            // ── AV1 FALLBACK STATIC (8 tags) ──
+            // â”€â”€ AV1 FALLBACK STATIC (8 tags) â”€â”€
             '#EXT-X-APE-AV1-FALLBACK-ENABLED:true',
             '#EXT-X-APE-AV1-FALLBACK-CHAIN:AV1>HEVC>H264>MPEG2',
             '#EXT-X-APE-AV1-FALLBACK-GRACEFUL:true',
@@ -1437,7 +1437,7 @@
             '#EXT-X-APE-AV1-FALLBACK-PRESERVE-HDR:true',
             '#EXT-X-APE-AV1-FALLBACK-PRESERVE-LCEVC:true',
             '#EXT-X-APE-AV1-FALLBACK-LOG:SILENT',
-            // ── LCEVC SDK STATIC (10 tags) ──
+            // â”€â”€ LCEVC SDK STATIC (10 tags) â”€â”€
             '#EXT-X-APE-LCEVC-SDK-ENABLED:true',
             '#EXT-X-APE-LCEVC-SDK-VERSION:v16.4.1',
             '#EXT-X-APE-LCEVC-SDK-TARGET:HTML5_NATIVE',
@@ -1448,7 +1448,7 @@
             '#EXT-X-APE-LCEVC-SDK-RESIDUAL-STORE:GPU_TEXTURE',
             '#EXT-X-APE-LCEVC-SDK-RENDER-TARGET:CANVAS_2D+WEBGL2',
             '#EXT-X-APE-LCEVC-SDK-FALLBACK:BASE_PASSTHROUGH',
-            // ── CORTEX OMEGA STATIC (10 tags) ──
+            // â”€â”€ CORTEX OMEGA STATIC (10 tags) â”€â”€
             '#EXT-X-CORTEX-OMEGA-STATE:ACTIVE_DOMINANT',
             '#EXT-X-CORTEX-AI-SEMANTIC-SEGMENTATION:ENABLED_250_LAYERS',
             '#EXT-X-CORTEX-AI-MULTIFRAME-NR:MASSIVE_MOTION_COMPENSATED',
@@ -1459,7 +1459,7 @@
             '#EXT-X-CORTEX-LCEVC-SDK-INJECTION:ACTIVE_HTML5_NATIVE',
             '#EXT-X-CORTEX-LCEVC-L1-CORRECTION:MAX_DIFFERENCE_ATTENUATION',
             '#EXT-X-CORTEX-LCEVC-L2-DETAIL:UPCONVERT_SHARPENING_EXTREME',
-            // ── STATIC FALLBACK TAGS (MOVED FROM PER-CHANNEL) ──
+            // â”€â”€ STATIC FALLBACK TAGS (MOVED FROM PER-CHANNEL) â”€â”€
             '#EXT-X-APE-FALLBACK-ID:401_AUTH_ESCALATE',
             '#EXT-X-APE-FALLBACK-AUTH-CHAIN:basic,bearer,digest,ntlm',
             '#EXT-X-APE-FALLBACK-AUTH-RETRY:5',
@@ -1681,13 +1681,13 @@ ${generateStaticEXTHTTPGlobal()}`;
 
     let _cachedSelectedUA = null;
 
-    // ══════════════════════════════════════════════════════════════════
-    // LCEVC DINÁMICO v5.4 — Estado determinado por codec base del canal
-    // Regla: LCEVC siempre presente, sin excepción (MPEG-5 Part 2).
-    //   HEVC / AV1 / VP9  → ACTIVE      (mejora L1+L2 completa)
-    //   H.264              → SIGNAL_ONLY (señal SEI NAL embebida)
-    //   Desconocido        → ACTIVE      (asumir máxima calidad)
-    // ══════════════════════════════════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    // LCEVC DINÃMICO v5.4 â€” Estado determinado por codec base del canal
+    // Regla: LCEVC siempre presente, sin excepciÃ³n (MPEG-5 Part 2).
+    //   HEVC / AV1 / VP9  â†’ ACTIVE      (mejora L1+L2 completa)
+    //   H.264              â†’ SIGNAL_ONLY (seÃ±al SEI NAL embebida)
+    //   Desconocido        â†’ ACTIVE      (asumir mÃ¡xima calidad)
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     function detectLcevcState(codecStr) {
         if (!codecStr) return 'ACTIVE';
         const c = codecStr.toLowerCase();
@@ -1709,14 +1709,14 @@ ${generateStaticEXTHTTPGlobal()}`;
             : 'H264';
     }
 
-    // ══════════════════════════════════════════════════════════════════
-    // LCEVC LAYER CONFIG v5.4 — Parámetros por perfil y resolución
-    // ──────────────────────────────────────────────────────────────────
-    // Para HEVC ACTIVE: L1+L2 completo, calibrado por resolución
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    // LCEVC LAYER CONFIG v5.4 â€” ParÃ¡metros por perfil y resoluciÃ³n
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // Para HEVC ACTIVE: L1+L2 completo, calibrado por resoluciÃ³n
     // Para H.264 SIGNAL_ONLY: metadata embebida, player decide
-    // ══════════════════════════════════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     const LCEVC_LAYER_CONFIG = {
-        P0: { // 8K — AV1 ACTIVE: máxima precisión, bloques grandes
+        P0: { // 8K â€” AV1 ACTIVE: mÃ¡xima precisiÃ³n, bloques grandes
             scale_factor: '4x',
             l1_block: '8X8', l1_precision: '12bit', l1_deblock: 1, l1_temporal: 1,
             l2_block: '4X4', l2_precision: '12bit', l2_temporal: 1, l2_upscale: 'LANCZOS4',
@@ -1727,7 +1727,7 @@ ${generateStaticEXTHTTPGlobal()}`;
             hw_accel: 'REQUIRED', decode_order: 'L1_THEN_L2',
             mode: 'SEI_METADATA', profile: 'MAIN_4_2_0'
         },
-        P1: { // 4K 60fps — AV1/HEVC: alta precisión, bloques medios
+        P1: { // 4K 60fps â€” AV1/HEVC: alta precisiÃ³n, bloques medios
             scale_factor: '2x',
             l1_block: '4X4', l1_precision: '10bit', l1_deblock: 1, l1_temporal: 1,
             l2_block: '4X4', l2_precision: '10bit', l2_temporal: 1, l2_upscale: 'LANCZOS3',
@@ -1738,7 +1738,7 @@ ${generateStaticEXTHTTPGlobal()}`;
             hw_accel: 'REQUIRED', decode_order: 'L1_THEN_L2',
             mode: 'SEI_METADATA', profile: 'MAIN_4_2_0'
         },
-        P2: { // 4K 30fps — HEVC: equilibrio calidad/CPU
+        P2: { // 4K 30fps â€” HEVC: equilibrio calidad/CPU
             scale_factor: '2x',
             l1_block: '4X4', l1_precision: '10bit', l1_deblock: 1, l1_temporal: 1,
             l2_block: '2X2', l2_precision: '10bit', l2_temporal: 1, l2_upscale: 'LANCZOS3',
@@ -1749,7 +1749,7 @@ ${generateStaticEXTHTTPGlobal()}`;
             hw_accel: 'PREFERRED', decode_order: 'L1_THEN_L2',
             mode: 'SEI_METADATA', profile: 'MAIN_4_2_0'
         },
-        P3: { // FHD 60fps — AVC/HEVC: 4K HDR OVERRIDE
+        P3: { // FHD 60fps â€” AVC/HEVC: 4K HDR OVERRIDE
             scale_factor: '2x',
             l1_block: '4X4', l1_precision: '10bit', l1_deblock: 0, l1_temporal: 1,
             l2_block: '2X2', l2_precision: '10bit', l2_temporal: 1, l2_upscale: 'LANCZOS4',
@@ -1760,7 +1760,7 @@ ${generateStaticEXTHTTPGlobal()}`;
             hw_accel: 'REQUIRED', decode_order: 'L1_THEN_L2',
             mode: 'SEI_METADATA', profile: 'MAIN_4_2_0'
         },
-        P4: { // HD 30fps — AVC/HEVC: EXTREME 4K HDR OVERRIDE
+        P4: { // HD 30fps â€” AVC/HEVC: EXTREME 4K HDR OVERRIDE
             scale_factor: '3x',
             l1_block: '4X4', l1_precision: '10bit', l1_deblock: 0, l1_temporal: 1,
             l2_block: '2X2', l2_precision: '10bit', l2_temporal: 1, l2_upscale: 'LANCZOS4',
@@ -1771,7 +1771,7 @@ ${generateStaticEXTHTTPGlobal()}`;
             hw_accel: 'REQUIRED', decode_order: 'L1_THEN_L2',
             mode: 'SEI_METADATA', profile: 'MAIN_4_2_0'
         },
-        P5: { // SD — AVC/HEVC: NUCLEAR 4K HDR OVERRIDE
+        P5: { // SD â€” AVC/HEVC: NUCLEAR 4K HDR OVERRIDE
             scale_factor: '4.5x',
             l1_block: '4X4', l1_precision: '8bit', l1_deblock: 1, l1_temporal: 1,
             l2_block: '2X2', l2_precision: '10bit', l2_temporal: 1, l2_upscale: 'LANCZOS2',
@@ -1785,11 +1785,11 @@ ${generateStaticEXTHTTPGlobal()}`;
     };
 
     /**
-     * Resuelve la configuración LCEVC completa para un perfil dado.
-     * Fusiona el estado dinámico (ACTIVE/SIGNAL_ONLY) con los parámetros por perfil.
+     * Resuelve la configuraciÃ³n LCEVC completa para un perfil dado.
+     * Fusiona el estado dinÃ¡mico (ACTIVE/SIGNAL_ONLY) con los parÃ¡metros por perfil.
      * @param {string} profile - ID del perfil (P0-P5)
-     * @param {Object} cfg - Configuración del perfil
-     * @returns {Object} Configuración LCEVC fusionada
+     * @param {Object} cfg - ConfiguraciÃ³n del perfil
+     * @returns {Object} ConfiguraciÃ³n LCEVC fusionada
      */
     function resolveLcevcConfig(profile, cfg) {
         const state = resolveLcevcState(cfg);
@@ -1840,7 +1840,7 @@ ${generateStaticEXTHTTPGlobal()}`;
     }
 
     function build_kodiprop(cfg, profile, index) {
-        const lcevcState = resolveLcevcState(cfg); // LCEVC Dinámico: nunca DISABLED
+        const lcevcState = resolveLcevcState(cfg); // LCEVC DinÃ¡mico: nunca DISABLED
         const streamHeaders = JSON.stringify({
             "User-Agent": `Mozilla/5.0 (APE-NAVIGATOR; ${cfg.name}) AppleWebKit/537.36`,
             "X-APE-Profile": profile,
@@ -1870,7 +1870,7 @@ ${generateStaticEXTHTTPGlobal()}`;
             ? window.app.state.currentServer.baseUrl.replace(/\/player_api\.php$/, '').replace(/\/$/, '')
             : 'https://iptv-ape.duckdns.org';
 
-        const lcevcState = resolveLcevcState(cfg); // LCEVC Dinámico: nunca DISABLED
+        const lcevcState = resolveLcevcState(cfg); // LCEVC DinÃ¡mico: nunca DISABLED
         const fps = cfg.fps || 30;
 
         let isp = {};
@@ -1948,7 +1948,7 @@ ${generateStaticEXTHTTPGlobal()}`;
             "X-Request-Priority": "ultra-high",
             "X-Prefetch-Enabled": "true,adaptive,auto",
 
-            // ── QUALITY UPGRADE v3 — 38 new EXTHTTP fields (A-J) ─────────
+            // â”€â”€ QUALITY UPGRADE v3 â€” 38 new EXTHTTP fields (A-J) â”€â”€â”€â”€â”€â”€â”€â”€â”€
             "X-CMAF-Part-Target": cfg.cmaf_chunk_duration || "1.0",
             "X-CMAF-Server-Control": "CAN-BLOCK-RELOAD=YES",
             "X-CMAF-Playlist-Type": "LIVE",
@@ -2121,7 +2121,7 @@ ${generateStaticEXTHTTPGlobal()}`;
             "X-LCEVC-MPEG-TS-PID": (LCEVC_LAYER_CONFIG[profile] || LCEVC_LAYER_CONFIG['P3']).pid,
             "X-LCEVC-WebM-Track": (LCEVC_LAYER_CONFIG[profile] || LCEVC_LAYER_CONFIG['P3']).webm,
 
-            // ── PHASE 4 EDGE COMPUTE & GOD-TIER INJECTORS (KODIPROP) ──
+            // â”€â”€ PHASE 4 EDGE COMPUTE & GOD-TIER INJECTORS (KODIPROP) â”€â”€
             "X-VMAF-Target": "95.0",
             "X-Film-Grain-Preservation": "STRICT",
             "X-Low-Downswitch": "AGGRESSIVE_HOLD",
@@ -2138,7 +2138,7 @@ ${generateStaticEXTHTTPGlobal()}`;
             if (k !== 'name') headers[k] = v;
         }
 
-        // ── FIX 1,5,6,11: Per-profile ISP overrides (reference v5.4) ──
+        // â”€â”€ FIX 1,5,6,11: Per-profile ISP overrides (reference v5.4) â”€â”€
         const _ispOv = {
             P0: { 'X-ISP-Segment-Pipeline': '64', 'X-ISP-Throttle-Level': '1-NUCLEAR', 'X-ISP-TCP-Window': '16777216', 'X-ISP-Burst-Duration': '60s' },
             P1: { 'X-ISP-Segment-Pipeline': '4', 'X-ISP-Throttle-Level': '1-EXTREME', 'X-ISP-TCP-Window': '4194304', 'X-ISP-Burst-Duration': '30s' },
@@ -2149,21 +2149,21 @@ ${generateStaticEXTHTTPGlobal()}`;
         };
         Object.assign(headers, _ispOv[profile] || _ispOv['P3']);
 
-        // ══════════════════════════════════════════════════════════════════════
-        // 🛡️ REGLA ANTI-400: Límite 10KB / 200 headers en EXTHTTP
-        // ══════════════════════════════════════════════════════════════════════
+        // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+        // ðŸ›¡ï¸ REGLA ANTI-400: LÃ­mite 10KB / 200 headers en EXTHTTP
+        // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
         // El servidor Xtream Codes (Nginx) rechaza peticiones con headers > 12KB.
-        // Pruebas de estrés confirmaron:
-        //   200 headers (~10KB) → ✅ 200 OK
-        //   250 headers (~12.8KB) → ❌ 400 Bad Request
-        // Solución: los primeros 200 headers viajan por #EXTHTTP (directo al servidor).
+        // Pruebas de estrÃ©s confirmaron:
+        //   200 headers (~10KB) â†’ âœ… 200 OK
+        //   250 headers (~12.8KB) â†’ âŒ 400 Bad Request
+        // SoluciÃ³n: los primeros 200 headers viajan por #EXTHTTP (directo al servidor).
         // Los headers overflow viajan por #EXT-X-APE-OVERFLOW-HEADERS (base64 JSON)
-        // y el Runtime Evasion Engine los inyecta dinámicamente en cada request.
-        // ══════════════════════════════════════════════════════════════════════
+        // y el Runtime Evasion Engine los inyecta dinÃ¡micamente en cada request.
+        // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
         const MAX_EXTHTTP_HEADERS = 200;
         const MAX_EXTHTTP_BYTES = 10240; // 10KB safety limit
 
-        // ── 👁️ IPTV-SUPPORT-CORTEX vΩ: INYECCIÓN DE HEADERS DOMINANTES ──
+        // â”€â”€ ðŸ‘ï¸ IPTV-SUPPORT-CORTEX vÎ©: INYECCIÃ“N DE HEADERS DOMINANTES â”€â”€
         if (typeof window !== 'undefined' && window.IPTV_SUPPORT_CORTEX_V_OMEGA) {
             Object.assign(headers, window.IPTV_SUPPORT_CORTEX_V_OMEGA.getOmegaHeaders(cfg));
         }
@@ -2199,37 +2199,59 @@ ${generateStaticEXTHTTPGlobal()}`;
         return exthttp;
     }
 
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    // ðŸ—ï¸ DIRECTIVA 1+3: build_ape_block OPTIMIZADO â€” SOLO TAGS DINÃMICOS
+    // Tags estÃ¡ticos â†’ generateStaticAPEGlobalBlock() en header global
+    // AI+LCEVC â†’ base64 JSON consolidado (Directiva 3)
+    // Ahorro: ~450 tags/canal â†’ ~45 tags/canal = ~33.9 MB menos
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     function build_ape_block(cfg, profile, index) {
         const buildTs = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 18) + 'Z';
         const codecStr = window._APE_PRIO_QUALITY !== false ? (profile === 'P0' ? 'hvc1.1.6.L183.B0,mp4a.40.2' : 'hvc1.1.6.L150.B0,mp4a.40.2') : `hvc1.1.6.L150.B0,mp4a.40.2`;
         const lcevcState = resolveLcevcState(cfg);
         const lc = resolveLcevcConfig(profile, cfg);
 
-
-        // ✅ FIX v16.4.1: lcevcBaseCodec derivado del codec REAL del STREAM-INF
-        // (no de un valor hardcodeado). La coherencia es total.
-        // 🔴 CORTEX vΩ FIX: Usamos el perfil ORIGINAL (pre-Cortex) para resolver el codec base.
-        // El Cortex fuerza P0 en TODOS los canales para maximizar calidad,
-        // pero LCEVC-BASE-CODEC debe reflejar el codec REAL que el hardware decodificará.
         const _realCodecForLCEVC = (() => {
-            // 🔴 CRITICAL: Si el Cortex sobrescribió el perfil, leer el ORIGINAL
             const effectiveProfile = cfg._cortex_original_profile || profile;
-            // Si el toggle de máxima calidad está activo, la lógica es simple:
-            // P0 (8K) es AV1, el resto (4K, FHD, etc.) es HEVC.
             if (typeof window !== 'undefined' && window._APE_PRIO_QUALITY !== false) {
                 return effectiveProfile === 'P0' ? 'AV1' : 'HEVC';
             }
-            // Si el toggle está apagado, se lee la configuración del perfil (cfg).
             const p = (cfg.codec_primary || 'HEVC').toUpperCase();
             if (p.includes('AV1')) return 'AV1';
             if (p === 'HEVC' || p === 'H265' || p.includes('HEVC')) return 'HEVC';
-            return 'H264'; // Fallback a H264 si no es ninguno de los anteriores
+            return 'H264';
         })();
-        const lcevcBaseCodec = _realCodecForLCEVC;  // ✅ SIEMPRE coherente con el codec REAL
+        const lcevcBaseCodec = _realCodecForLCEVC;
 
+        // â”€â”€ DIRECTIVA 3: LCEVC dinÃ¡mico consolidado a base64 JSON â”€â”€
+        const lcevcDynamic = {
+            s: lcevcState, bc: lcevcBaseCodec, p: lc.profile,
+            sf: lc.scale_factor, br: lc.base_ratio, er: lc.enh_ratio,
+            l1: { b: lc.l1_block, d: lc.l1_deblock, p: lc.l1_precision, t: lc.l1_temporal },
+            l2: { b: lc.l2_block, p: lc.l2_precision, t: lc.l2_temporal, u: lc.l2_upscale },
+            m: lc.mode, tr: lc.transport, f1: lc.fb1, f2: lc.fb2,
+            sn: lc.sei_nal, pid: lc.pid, wm: lc.webm,
+            th: lc.threads, pb: lc.parallel_blocks,
+            do: lc.decode_order, hw: lc.hw_accel,
+            fg: profile.match(/P[0-1]/) ? 'LOCAL-AFMF' : 'DISABLED',
+            ch: profile.match(/P[4-5]/) ? 'ACTIVE' : 'MILD',
+            cp: profile.match(/P[0-2]/) ? 'FP16' : 'INT8',
+            bp: lcevcBaseCodec,
+            la: cfg.lcevc_lookahead || 60, bf: cfg.lcevc_bframes || 8, rf: cfg.lcevc_refframes || 16,
+            da: cfg.lcevc_deblock_alpha || -2, db: cfg.lcevc_deblock_beta || -2,
+            sar: cfg.resolution || '3840x2160',
+            cm: cfg.color_space || 'BT.2020',
+            tf: cfg.transfer_function || 'SMPTE-ST-2084',
+            pr: cfg.color_primaries || 'BT.2020'
+        };
+        const lcevcB64 = typeof btoa === 'function' ? btoa(JSON.stringify(lcevcDynamic)) : Buffer.from(JSON.stringify(lcevcDynamic)).toString('base64');
+
+        // â”€â”€ DIRECTIVA 3: AI tags dinÃ¡micos consolidados a base64 JSON â”€â”€
+        const aiDynamic = { sc: cfg.ai_sr_scale || '2x', vm: cfg.vmaf_target || '95', ct: cfg.group || 'GENERAL' };
+        const aiB64 = typeof btoa === 'function' ? btoa(JSON.stringify(aiDynamic)) : Buffer.from(JSON.stringify(aiDynamic)).toString('base64');
 
         return [
-            // ── SECTION 1 — Identity (8 tags) ──────────────────────────────
+            // â”€â”€ IDENTITY (8 dynamic) â”€â”€
             `#EXT-X-APE-VERSION:18.2`,
             `#EXT-X-APE-PROFILE:${profile}`,
             `#EXT-X-APE-CHANNEL-KEY:${index}`,
@@ -2238,317 +2260,42 @@ ${generateStaticEXTHTTPGlobal()}`;
             `#EXT-X-APE-RESOLUTION:${cfg.resolution || '1920x1080'}`,
             `#EXT-X-APE-FRAME-RATE:${cfg.fps || 30}`,
             `#EXT-X-APE-BITRATE:${cfg.bitrate || 5000}kbps`,
-
-            // ── SECTION 2 — LCEVC Identity (6 tags) ────────────────────────
+            // â”€â”€ LCEVC IDENTITY (4 dynamic) â”€â”€
             `#EXT-X-APE-HDR-PROFILE:${(cfg.hdr_support || []).join(',') || 'none'}`,
             `#EXT-X-APE-LCEVC-ENABLED:true`,
             `#EXT-X-APE-LCEVC-STATE:${lcevcState}`,
             `#EXT-X-APE-LCEVC-BASE-CODEC:${lcevcBaseCodec}`,
-            `#EXT-X-APE-LCEVC-ENHANCEMENT:mpeg5-part2`,
-            `#EXT-X-APE-LCEVC-SCALE-FACTOR:${(LCEVC_LAYER_CONFIG[profile] || LCEVC_LAYER_CONFIG['P3']).scale_factor}`,
-
-            // ── SECTION 3 — QoS/QoE (6 tags) ──────────────────────────────
+            // â”€â”€ QoS DYNAMIC (2) â”€â”€
             `#EXT-X-APE-AI-SR-ENABLED:true`,
-            `#EXT-X-APE-QOE-SCORE:5.0`,
-            `#EXT-X-APE-QOS-DSCP:EF`,
             `#EXT-X-APE-QOS-BITRATE:${cfg.bitrate || 5000}kbps`,
-            `#EXT-X-APE-QOS-PRIORITY:ultra-high`,
-            `#EXT-X-APE-VQS-SCORE:95`,
-
-            // ── SECTION 4 — Buffer (4 tags) ────────────────────────────────
-            `#EXT-X-APE-BUFFER-TARGET:60s`,
-            `#EXT-X-APE-BUFFER-MIN:15s`,
-            `#EXT-X-APE-BUFFER-MAX:200s`,
-            `#EXT-X-APE-PREBUFFER:15s`,
-
-            // ── SECTION 5 — Guardian (5 tags) ──────────────────────────────
-            `#EXT-X-APE-GUARDIAN-ENABLED:true`,
-            `#EXT-X-APE-GUARDIAN-STATE:ONLINE`,
-            `#EXT-X-APE-GUARDIAN-FALLBACK-LEVEL:3`,
-            `#EXT-X-APE-GUARDIAN-MEMORY:enabled`,
-            `#EXT-X-APE-GUARDIAN-CONTINUITY:guaranteed`,
-
-            // ── SECTION 6 — Resilience (6 tags) ───────────────────────────
-            `#EXT-X-APE-RESILIENCE-STRATEGY:proactive_failover`,
-            `#EXT-X-APE-RESILIENCE-CHAIN:7-levels`,
-            `#EXT-X-APE-RESILIENCE-CIRCUIT-BREAKER:enabled`,
-            `#EXT-X-APE-RESILIENCE-MAX-RETRIES:3`,
-            `#EXT-X-APE-RESILIENCE-RETRY-BACKOFF:exponential`,
-            `#EXT-X-APE-RESILIENCE-SILENT-RECONNECT:enabled`,
-
-            // ── SECTION 7 — Degradation chain (7 tags) ────────────────────
-            `#EXT-X-APE-DEGRADATION-LEVEL-1:CMAF+HEVC+LCEVC`,
-            `#EXT-X-APE-DEGRADATION-LEVEL-2:HLS/fMP4+HEVC+LCEVC`,
-            `#EXT-X-APE-DEGRADATION-LEVEL-3:HLS/fMP4+H.264`,
-            `#EXT-X-APE-DEGRADATION-LEVEL-4:HLS/TS+H.264`,
-            `#EXT-X-APE-DEGRADATION-LEVEL-5:HLS/TS+Baseline`,
-            `#EXT-X-APE-DEGRADATION-LEVEL-6:TS-Direct`,
-            `#EXT-X-APE-DEGRADATION-LEVEL-7:HTTP-Redirect`,
-
-            // ── SECTION 8 — Telchemy (4 tags) ─────────────────────────────
-            `#EXT-X-APE-TELCHEMY-VSTQ:enabled`,
-            `#EXT-X-APE-TELCHEMY-VSMQ:enabled`,
-            `#EXT-X-APE-TELCHEMY-TR101290:enabled`,
-            `#EXT-X-APE-TELCHEMY-QOE-TARGET:5.0`,
-
-            // ── SECTION 9 — Hydra Stealth (3 tags) ────────────────────────
-            `#EXT-X-APE-HYDRA-STEALTH:enabled`,
-            `#EXT-X-APE-HYDRA-UA-ROTATION:enabled`,
-            `#EXT-X-APE-HYDRA-FINGERPRINT-MASKING:enabled`,
-
-            // ── SECTION 10 — DNA (5 tags) ─────────────────────────────────
+            // â”€â”€ DNA DYNAMIC (5) â”€â”€
             `#EXT-X-APE-DNA-VERSION:18.2`,
             `#EXT-X-APE-DNA-FIELDS:124`,
             `#EXT-X-APE-DNA-SYNC:bidirectional`,
             `#EXT-X-APE-DNA-MAP-SOURCE:channels_map_v5.4_MAX_AGGRESSION`,
             `#EXT-X-APE-DNA-HASH:${index}-${profile}-${buildTs}`,
-
-            // ── SECTION 11 — Anti-Freeze / Cache (8 tags) ─────────────────
+            // â”€â”€ ANTI-FREEZE DYNAMIC (5 â€” clock values from cfg) â”€â”€
             `#EXT-X-APE-ANTI-FREEZE:clock-jitter=${cfg.clock_jitter || 1500},clock-synchro=${cfg.clock_synchro || 1},net-cache=${GLOBAL_CACHING.network},buf-min=${GLOBAL_CACHING.network},prefetch=10,15,20,reconnect-backoff=50ms`,
             `#EXT-X-APE-CLOCK-JITTER:${cfg.clock_jitter || 1500}`,
             `#EXT-X-APE-CLOCK-SYNCHRO:${cfg.clock_synchro || 1}`,
             `#EXT-X-APE-NETWORK-CACHE:${GLOBAL_CACHING.network}`,
             `#EXT-X-APE-LIVE-CACHE:${GLOBAL_CACHING.live}`,
-            `#EXT-X-APE-RECONNECT-MAX:40`,
-            `#EXT-X-APE-RETRY-COUNT:10,12,15`,
-            `#EXT-X-APE-PREFETCH-SEGMENTS:10,15,20`,
-
-            // ── SECTION 12 — Format flags (5 tags) ────────────────────────
-            `#EXT-X-APE-CMAF:ENABLED`,
-            `#EXT-X-APE-FMP4:ENABLED`,
-            `#EXT-X-APE-HDR10:ENABLED`,
-            `#EXT-X-APE-DOLBY-VISION:ENABLED-PROFILE-8.1-LEVEL-6`,
-            `#EXT-X-APE-ATMOS:ENABLED`,
-
-            // ── SECTION 13 — ISP Throttle (10 tags) ───────────────────────
-            `#EXT-X-APE-ISP-THROTTLE-STRATEGY:ESCALATING-NEVER-DOWN`,
-            `#EXT-X-APE-ISP-LEVEL-1:EXTREME-MAX_CONTRACT`,
-            `#EXT-X-APE-ISP-LEVEL-2:ULTRA-MAX_CONTRACT_PLUS`,
-            `#EXT-X-APE-ISP-LEVEL-3:SAVAGE-SATURATE_LINK`,
-            `#EXT-X-APE-ISP-LEVEL-4:BRUTAL-EXCEED_CONTRACT`,
-            `#EXT-X-APE-ISP-LEVEL-5:NUCLEAR-ABSOLUTE_MAX`,
-            `#EXT-X-APE-ISP-TCP-WINDOW-PROGRESSION:4MB\u21928MB\u219216MB\u219232MB\u219264MB`,
-            `#EXT-X-APE-ISP-PARALLEL-PROGRESSION:4\u21928\u219216\u219232\u219264`,
-            `#EXT-X-APE-ISP-BURST-FACTOR-PROGRESSION:1.5x\u21922x\u21923x\u21925x\u219210x`,
-            `#EXT-X-APE-ISP-PREFETCH-PROGRESSION:30s\u219260s\u2192120s\u2192300s\u2192UNLIMITED`,
-
-            // ── SECTION 14 — LCEVC Full Spec (26 tags) ────────────────────
-            `#EXT-X-APE-LCEVC:ENABLED`,
-            `#EXT-X-APE-LCEVC-STANDARD:MPEG-5-PART-2`,
-            `#EXT-X-APE-LCEVC-PROFILE:${lc.profile}`,
-            `#EXT-X-APE-LCEVC-PLAYER-REQUIRED:0`,
-            `#EXT-X-APE-LCEVC-FALLBACK:BASE_ONLY`,
-            `#EXT-X-APE-LCEVC-BASE-LAYER-SCALE:${lc.base_ratio}`,
-            `#EXT-X-APE-LCEVC-BASE-BITRATE-RATIO:${lc.base_ratio}`,
-            `#EXT-X-APE-LCEVC-ENHANCEMENT-BITRATE-RATIO:${lc.enh_ratio}`,
-            `#EXT-X-APE-LCEVC-L1-ENABLED:1`,
-            `#EXT-X-APE-LCEVC-L1-TRANSFORM-BLOCK:${lc.l1_block}`,
-            `#EXT-X-APE-LCEVC-L1-DEBLOCK-FILTER:${lc.l1_deblock}`,
-            `#EXT-X-APE-LCEVC-L1-RESIDUAL-PRECISION:${lc.l1_precision}`,
-            // ── SECTION 15 — LCEVC PHASE 4 SEMANTIC ENGINE (EDGE-COMPUTE DIRECT) ──
-            `#EXT-X-APE-LCEVC-PHASE-4-ENABLED:true`,
-            `#EXT-X-APE-TUNNELING-ENABLED:off`,
-            `#EXT-X-APE-NETWORK-PATH:ORIGIN_DIRECT`,
-
-            // 1. Semantic Segmentation & Local AI (Phase 4 Base)
-            `#EXT-X-APE-LCEVC-SEMANTIC-SEGMENTATION:ACTIVE`,
-            `#EXT-X-APE-LCEVC-ROI-PROCESSING:DYNAMIC`,
-            `#EXT-X-APE-LCEVC-ROI-TARGETS:FACES,TEXT,SKIN,SPORTS_BALL`,
-            `#EXT-X-APE-LCEVC-BG-DEGRADATION:AGGRESSIVE`,
-            `#EXT-X-APE-LCEVC-FRAME-GENERATION:${profile.match(/P[0-1]/) ? 'LOCAL-AFMF' : 'DISABLED'}`,
-            `#EXT-X-APE-LCEVC-COLOR-HALLUCINATION:${profile.match(/P[4-5]/) ? 'ACTIVE' : 'MILD'}`,
-            `#EXT-X-APE-LCEVC-COMPUTE-PRECISION:${profile.match(/P[0-2]/) ? 'FP16' : 'INT8'}`,
-
-            // 2. Quantum Pixel Overdrive v5 (Scale & Color)
-            `#EXT-X-APE-QUANTUM-CHROMA-SUBSAMPLING:4:4:4`,
-            `#EXT-X-APE-QUANTUM-COLOR-DEPTH:10bit`,
-            `#EXT-X-APE-QUANTUM-ITM-SDR-TO-HDR:auto`,
-
-            // 3. HEVC Level Supremacy (La Cascada) & LCEVC Dynamic Base
-            `#EXT-X-APE-HEVC-LEVEL-CASCADE:6.1,5.1,5.0,4.1,4.0,3.1`,
-            `#EXT-X-APE-CODEC-PRIORITY:hevc,av1,h264`,
-            `#EXT-X-APE-LCEVC-BASE-POLICY:${lcevcBaseCodec}`, // Dinámico derivado de config
-            `#EXT-X-APE-LCEVC-TRANSPORT:CMAF_LAYER_OR_SEI_EMBED`,   // Instruye cómo buscar la capa L1+L2
-
-            // 4. Maximum Resolution Escalator (Extensión M3U8 Nativa)
-            `#EXT-X-APE-RESOLUTION-ESCALATOR:4320p>2160p>1080p>720p>480p`,
-
-            // 5. God-Tier Perceptual Quality (Film Grain & Bitrate)
-            `#EXT-X-APE-VMAF-TARGET:95.0`,
-            `#EXT-X-APE-FILM-GRAIN-PRESERVATION:STRICT`,
-
-            // 6. Protección Térmica (Edge-Compute Limiters)
-            `#EXT-X-APE-HEARTBEAT-THERMAL:TRUE`,
-            `#EXT-X-APE-THERMAL-THROTTLING-FB:PHASE-2-SAFE-MODE`,
-            `#EXT-X-APE-LCEVC-L1-TEMPORAL-PREDICTION:${lc.l1_temporal}`,
-            `#EXT-X-APE-LCEVC-L2-ENABLED:1`,
-            `#EXT-X-APE-LCEVC-L2-TRANSFORM-BLOCK:${lc.l2_block}`,
-            `#EXT-X-APE-LCEVC-L2-TEMPORAL-PREDICTION:${lc.l2_temporal}`,
-            `#EXT-X-APE-LCEVC-L2-RESIDUAL-PRECISION:${lc.l2_precision}`,
-            `#EXT-X-APE-LCEVC-L2-UPSCALE-FILTER:${lc.l2_upscale}`,
-            `#EXT-X-APE-LCEVC-MODE:${lc.mode}`,
-            `#EXT-X-APE-LCEVC-TRANSPORT-PRIMARY:${lc.transport}`,
-            `#EXT-X-APE-LCEVC-TRANSPORT-FALLBACK-1:${lc.fb1}`,
-            `#EXT-X-APE-LCEVC-TRANSPORT-FALLBACK-2:${lc.fb2}`,
-            `#EXT-X-APE-LCEVC-SEI-NAL-TYPE:${lc.sei_nal}`,
-            `#EXT-X-APE-LCEVC-MPEG-TS-PID:${lc.pid}`,
-            `#EXT-X-APE-LCEVC-WEBM-TRACK-ID:${lc.webm}`,
-            `#EXT-X-APE-LCEVC-PARALLEL-BLOCKS:${lc.parallel_blocks}`,
-            `#EXT-X-APE-LCEVC-PARALLEL-THREADS:${lc.threads}`,
-            `#EXT-X-APE-LCEVC-DECODE-ORDER:${lc.decode_order}`,
-            `#EXT-X-APE-LCEVC-HW-ACCELERATION:${lc.hw_accel}`,
-            `#EXT-X-APE-LCEVC-SW-FALLBACK:1`,
-            `#EXT-X-APE-LCEVC-COMPAT:UNIVERSAL`,
-            `#EXT-X-APE-LCEVC-GRACEFUL-DEGRADATION:BASE_CODEC_PASSTHROUGH`,
-            // ══════════════════════════════════════════════════════════════
-            // QUALITY UPGRADE v3 — PACKAGES A-J COMPLETE (271 tags)
-            // Base + New tags for each package
-            // ══════════════════════════════════════════════════════════════
-
-            // ══════════════════════════════════════════════════════════════
-            // PACKAGE A — CMAF CHUNKED TRANSFER v2 (22 tags)
-            // Base 12 + New 10
-            // ══════════════════════════════════════════════════════════════
+            // â”€â”€ DIRECTIVA 3: LCEVC B64 (replaces 50+ LCEVC tags) â”€â”€
+            `#EXT-X-APE-LCEVC-CONFIG-B64:${lcevcB64}`,
+            // â”€â”€ DIRECTIVA 3: AI B64 (replaces 22 AI tags) â”€â”€
+            `#EXT-X-APE-AI-CONFIG-B64:${aiB64}`,
+            // â”€â”€ CMAF DYNAMIC (4) â”€â”€
             `#EXT-X-APE-CMAF-CHUNK-DURATION:${cfg.cmaf_chunk_duration || '1.0'}`,
-            `#EXT-X-APE-CMAF-CHUNK-TYPE:CMAF_CHUNK`,
-            `#EXT-X-APE-CMAF-INGEST-PROTOCOL:CMAF-INGEST-V2`,
-            `#EXT-X-APE-CMAF-COMMON-ENCRYPTION:CBCS`,
-            `#EXT-X-APE-CMAF-TRACK-TYPE:VIDEO+AUDIO+SUBTITLE`,
-            `#EXT-X-APE-CMAF-SEGMENT-ALIGNMENT:true`,
-            `#EXT-X-APE-CMAF-INDEPENDENT-SEGMENTS:true`,
-            `#EXT-X-APE-CMAF-LOW-LATENCY:true`,
-            `#EXT-X-APE-CMAF-PART-HOLD-BACK:3.0`,
-            `#EXT-X-APE-CMAF-CAN-BLOCK-RELOAD:YES`,
-            `#EXT-X-APE-CMAF-CAN-SKIP-UNTIL:36.0`,
-            `#EXT-X-APE-CMAF-RENDITION-REPORTS:true`,
             `#EXT-X-APE-CMAF-PART-TARGET:${cfg.cmaf_chunk_duration || '1.0'}`,
-            `#EXT-X-APE-CMAF-SERVER-CONTROL:CAN-BLOCK-RELOAD=YES,HOLD-BACK=6.0`,
-            `#EXT-X-APE-CMAF-PLAYLIST-TYPE:LIVE`,
             `#EXT-X-APE-CMAF-TARGET-DURATION:${Math.ceil((cfg.buffer_live || 30000) / 1000)}`,
             `#EXT-X-APE-CMAF-MEDIA-SEQUENCE:dynamic`,
-            `#EXT-X-APE-CMAF-DISCONTINUITY-SEQUENCE:auto`,
-            `#EXT-X-APE-CMAF-PROGRAM-DATE-TIME:${new Date().toISOString()}`,
-            `#EXT-X-APE-CMAF-DATERANGE-ENABLED:true`,
-            `#EXT-X-APE-CMAF-SKIP-BOUNDARY:6.0`,
-            `#EXT-X-APE-CMAF-DELTA-PLAYLIST:true`,
-
-            // ══════════════════════════════════════════════════════════════
-            // PACKAGE B — fMP4 ENHANCEMENT TRACKS v2 (24 tags)
-            // Base 14 + New 10
-            // ══════════════════════════════════════════════════════════════
+            // â”€â”€ FMP4 DYNAMIC (2) â”€â”€
             `#EXT-X-APE-FMP4-VIDEO-TRACK:${cfg.codec || 'HEVC'}+LCEVC`,
-            `#EXT-X-APE-FMP4-AUDIO-TRACK:AAC-LC+EAC3+AC4`,
-            `#EXT-X-APE-FMP4-SUBTITLE-TRACK:TTML+WebVTT`,
-            `#EXT-X-APE-FMP4-METADATA-TRACK:ID3+SCTE35`,
-            `#EXT-X-APE-FMP4-THUMBNAIL-TRACK:JPEG+WebP`,
-            `#EXT-X-APE-FMP4-LCEVC-TRACK:MPEG5-P2-SEI`,
-            `#EXT-X-APE-FMP4-HDR-METADATA-TRACK:HDR10+`,
-            `#EXT-X-APE-FMP4-DOLBY-VISION-TRACK:RPU`,
-            `#EXT-X-APE-FMP4-SAMPLE-ENTRY:hvc1+dvh1`,
-            `#EXT-X-APE-FMP4-BRAND:iso6+cmfc+dash`,
             `#EXT-X-APE-FMP4-FRAGMENT-DURATION:${cfg.fmp4_fragment_ms || '2000'}`,
-            `#EXT-X-APE-FMP4-SIDX-BOX:true`,
-            `#EXT-X-APE-FMP4-SAIO-SAIZ:true`,
-            `#EXT-X-APE-FMP4-PRFT-BOX:true`,
-            `#EXT-X-APE-FMP4-EDIT-LIST:true`,
-            `#EXT-X-APE-FMP4-CTTS-BOX:true`,
-            `#EXT-X-APE-FMP4-SGPD-BOX:true`,
-            `#EXT-X-APE-FMP4-SBGP-BOX:true`,
-            `#EXT-X-APE-FMP4-EMSG-BOX:true`,
-            `#EXT-X-APE-FMP4-PSSH-BOX:true`,
-            `#EXT-X-APE-FMP4-TENC-BOX:true`,
-            `#EXT-X-APE-FMP4-SENC-BOX:true`,
-            `#EXT-X-APE-FMP4-TRACK-ENCRYPTION:CBCS`,
-            `#EXT-X-APE-FMP4-COMMON-MEDIA-CLIENT-DATA:true`,
-
-            // ══════════════════════════════════════════════════════════════
-            // PACKAGE C — LCEVC v2 PHASE 3 COMPLETE (15 new tags)
-            // (Base 97 already in sections 2 + 14 above)
-            // ══════════════════════════════════════════════════════════════
-            `#EXT-X-APE-LCEVC-PHASE-3-ENABLED:true`,
-            `#EXT-X-APE-LCEVC-NEURAL-UPSCALE:ESRGAN-4x`,
-            `#EXT-X-APE-LCEVC-GRAIN-SYNTHESIS:true`,
-            `#EXT-X-APE-LCEVC-SPATIAL-DITHERING:true`,
-            `#EXT-X-APE-LCEVC-L1-MOTION-COMPENSATION:true`,
-            `#EXT-X-APE-LCEVC-L2-CHROMA-ENHANCEMENT:true`,
-            `#EXT-X-APE-LCEVC-L2-DETAIL-ENHANCEMENT:true`,
-            `#EXT-X-APE-LCEVC-RATE-CONTROL:CRF+VBR`,
-            `#EXT-X-APE-LCEVC-PSYCHO-VISUAL:true`,
-            `#EXT-X-APE-LCEVC-AQ-MODE:VARIANCE`,
-            `#EXT-X-APE-LCEVC-LOOKAHEAD:${cfg.lcevc_lookahead || 60}`,
-            `#EXT-X-APE-LCEVC-B-FRAMES:${cfg.lcevc_bframes || 8}`,
-            `#EXT-X-APE-LCEVC-REF-FRAMES:${cfg.lcevc_refframes || 16}`,
-            `#EXT-X-APE-LCEVC-SUBPEL-REFINE:7`,
-            `#EXT-X-APE-LCEVC-ME-RANGE:24`,
-            `#EXT-X-APE-LCEVC-TRELLIS:2`,
-            `#EXT-X-APE-LCEVC-DEBLOCK-ALPHA:${cfg.lcevc_deblock_alpha || -2}`,
-            `#EXT-X-APE-LCEVC-DEBLOCK-BETA:${cfg.lcevc_deblock_beta || -2}`,
-            `#EXT-X-APE-LCEVC-SAR:${cfg.resolution || '3840x2160'}`,
-            `#EXT-X-APE-LCEVC-COLORMATRIX:${cfg.color_space || 'BT.2020'}`,
-            `#EXT-X-APE-LCEVC-TRANSFER:${cfg.transfer_function || 'SMPTE-ST-2084'}`,
-            `#EXT-X-APE-LCEVC-PRIMARIES:${cfg.color_primaries || 'BT.2020'}`,
-
-            // ══════════════════════════════════════════════════════════════
-            // PACKAGE D — AI SUPER RESOLUTION COMPLETE (22 tags)
-            // Base 15 + New 7
-            // ══════════════════════════════════════════════════════════════
-            `#EXT-X-APE-AI-SR-MODEL:ESRGAN-4x+RealESRGAN`,
-            `#EXT-X-APE-AI-SR-SCALE:${cfg.ai_sr_scale || '2x'}`,
-            `#EXT-X-APE-AI-SR-INFERENCE:EDGE+CLOUD`,
-            `#EXT-X-APE-AI-SR-FALLBACK:BICUBIC`,
-            `#EXT-X-APE-AI-TEMPORAL-SR:true`,
-            `#EXT-X-APE-AI-DENOISING:true`,
-            `#EXT-X-APE-AI-DEBLOCKING:true`,
-            `#EXT-X-APE-AI-ARTIFACT-REMOVAL:true`,
-            `#EXT-X-APE-AI-FRAME-INTERPOLATION:true`,
-            `#EXT-X-APE-AI-COLOR-ENHANCEMENT:true`,
-            `#EXT-X-APE-AI-SHARPENING:ADAPTIVE`,
-            `#EXT-X-APE-AI-HDR-UPCONVERT:SDR_TO_HDR10`,
-            `#EXT-X-APE-AI-VMAF-TARGET:${cfg.vmaf_target || '95'}`,
-            `#EXT-X-APE-AI-CONTENT-AWARE-ENCODING:true`,
-            `#EXT-X-APE-AI-PERCEPTUAL-QUALITY:SSIM+VMAF`,
-            `#EXT-X-APE-AI-SR-PRECISION:FP16`,
-            `#EXT-X-APE-AI-SR-BATCH-SIZE:1`,
-            `#EXT-X-APE-AI-SR-TILE-SIZE:256`,
-            `#EXT-X-APE-AI-SR-OVERLAP:32`,
-            `#EXT-X-APE-AI-MOTION-ESTIMATION:OPTICAL-FLOW`,
-            `#EXT-X-APE-AI-SCENE-DETECTION:true`,
-            `#EXT-X-APE-AI-CONTENT-TYPE:${cfg.group || 'GENERAL'}`,
-
-            // ══════════════════════════════════════════════════════════════
-            // PACKAGE E — VVC / H.266 COMPLETE (12 tags)
-            // Base 6 + New 6
-            // ══════════════════════════════════════════════════════════════
-            `#EXT-X-APE-VVC-ENABLED:true`,
-            `#EXT-X-APE-VVC-PROFILE:MAIN_10`,
+            // â”€â”€ VVC/EVC DYNAMIC (2) â”€â”€
             `#EXT-X-APE-VVC-LEVEL:${cfg.vvc_level || '5.1'}`,
-            `#EXT-X-APE-VVC-TIER:MAIN`,
-            `#EXT-X-APE-VVC-FALLBACK:HEVC`,
-            `#EXT-X-APE-VVC-EFFICIENCY:+50%_vs_HEVC`,
-            `#EXT-X-APE-VVC-TOOLSET:FULL`,
-            `#EXT-X-APE-VVC-SUBPICTURES:true`,
-            `#EXT-X-APE-VVC-WRAP-AROUND:true`,
-            `#EXT-X-APE-VVC-LMCS:true`,
-            `#EXT-X-APE-VVC-AFFINE-ME:true`,
-            `#EXT-X-APE-VVC-BDOF:true`,
-
-            // ══════════════════════════════════════════════════════════════
-            // PACKAGE F — EVC / MPEG-5 P1 COMPLETE (8 tags)
-            // Base 4 + New 4
-            // ══════════════════════════════════════════════════════════════
-            `#EXT-X-APE-EVC-ENABLED:true`,
-            `#EXT-X-APE-EVC-PROFILE:BASELINE`,
-            `#EXT-X-APE-EVC-FALLBACK:H264`,
-            `#EXT-X-APE-EVC-ROYALTY-FREE:true`,
             `#EXT-X-APE-EVC-LEVEL:${cfg.evc_level || '5.1'}`,
-            `#EXT-X-APE-EVC-TOOLSET:MAIN`,
-            `#EXT-X-APE-EVC-ADAPTIVE-LOOP-FILTER:true`,
-            `#EXT-X-APE-EVC-CHROMA-QP-OFFSET:true`,
-
-            // ══════════════════════════════════════════════════════════════
-            // PACKAGE G — HDR ADVANCED COMPLETE (42 tags)
-            // Base 32 + New 10
-            // ══════════════════════════════════════════════════════════════
+            // â”€â”€ HDR DYNAMIC (12 â€” vary by cfg profile) â”€â”€
             `#EXT-X-APE-HDR-CHAIN:${(cfg.hdr_support || ['dolby-vision', 'hdr10+', 'hdr10', 'hlg', 'sdr']).join(',')}`,
             `#EXT-X-APE-HDR-COLOR-SPACE:${cfg.color_space || 'BT.2020,BT.709'}`,
             `#EXT-X-APE-HDR-TRANSFER-FUNCTION:${cfg.transfer_function || 'SMPTE-ST-2084,ARIB-STD-B67,BT.709'}`,
@@ -2559,93 +2306,13 @@ ${generateStaticEXTHTTPGlobal()}`;
             `#EXT-X-APE-HDR-BIT-DEPTH:${cfg.color_depth || 10}bit`,
             `#EXT-X-APE-HDR-DOLBY-VISION-PROFILE:${cfg.dv_profile || '8.1'}`,
             `#EXT-X-APE-HDR-DOLBY-VISION-LEVEL:${cfg.dv_level || '6'}`,
-            `#EXT-X-APE-HDR-SDR-FALLBACK:enabled`,
-            `#EXT-X-APE-HDR-TONE-MAPPING:auto`,
-            `#EXT-X-APE-HDR-GRACEFUL-DEGRADATION:SDR_PASSTHROUGH`,
-            `#EXT-X-APE-HDR-STATIC-METADATA:enabled`,
-            `#EXT-X-APE-HDR-DYNAMIC-METADATA:HDR10+,DV-RPU`,
             `#EXT-X-APE-HDR-PEAK-LUMINANCE:${cfg.peak_luminance || '4000'}nits`,
-            `#EXT-X-APE-HDR-MIN-LUMINANCE:0.001nits`,
-            `#EXT-X-APE-HDR-GAMUT:DCI-P3,BT.2020`,
-            `#EXT-X-APE-HDR-10PLUS-VERSION:2.0`,
-            `#EXT-X-APE-HDR-10PLUS-APPLICATION:4`,
-            `#EXT-X-APE-HDR-DCI-P3-COVERAGE:99.8`,
-            `#EXT-X-APE-HDR-BT2020-COVERAGE:97.5`,
-            `#EXT-X-APE-HDR-DOLBY-VISION-CROSS-COMPAT:true`,
-            `#EXT-X-APE-HDR-HLG-COMPAT:true`,
-            `#EXT-X-APE-HDR-ST2094-10:true`,
-            `#EXT-X-APE-HDR-ST2094-20:true`,
-            `#EXT-X-APE-HDR-ST2094-30:true`,
-            `#EXT-X-APE-HDR-ST2094-40:true`,
-            `#EXT-X-APE-HDR-METADATA-INSERT-MODE:SEI`,
-            `#EXT-X-APE-HDR-METADATA-PASS-THROUGH:true`,
-            `#EXT-X-APE-HDR-OUTPUT-MODE:auto`,
-            `#EXT-X-APE-HDR-DISPLAY-METADATA-SYNC:true`,
-            `#EXT-X-APE-HDR-MASTERING-DISPLAY:G(0.265,0.690)B(0.150,0.060)R(0.680,0.320)WP(0.3127,0.3290)L(10000,0.001)`,
             `#EXT-X-APE-HDR-CONTENT-LIGHT-LEVEL:${cfg.max_cll || '4000,400'}`,
-            `#EXT-X-APE-HDR-AMBIENT-VIEWING-ENV:DIM`,
-            `#EXT-X-APE-HDR-REFERENCE-WHITE:203nits`,
-            `#EXT-X-APE-HDR-SCENE-LUMINANCE:true`,
-            `#EXT-X-APE-HDR-EXTENDED-RANGE:true`,
-            `#EXT-X-APE-HDR-VIVID-ENABLED:true`,
-            `#EXT-X-APE-HDR-SLHDR2:true`,
-            `#EXT-X-APE-HDR-TECHNICOLOR:true`,
-            `#EXT-X-APE-HDR-FILMMAKER-MODE:true`,
-
-            // ══════════════════════════════════════════════════════════════
-            // PACKAGE H — AUDIO ADVANCED COMPLETE (16 tags)
-            // Base 8 + New 8
-            // ══════════════════════════════════════════════════════════════
-            `#EXT-X-APE-AUDIO-CODEC:EAC3+AC4+AAC-LC`,
-            `#EXT-X-APE-AUDIO-ATMOS:true`,
-            `#EXT-X-APE-AUDIO-SPATIAL:DOLBY-ATMOS+DTS-X`,
+            // â”€â”€ AUDIO DYNAMIC (4) â”€â”€
             `#EXT-X-APE-AUDIO-CHANNELS:${cfg.audio_channels || '7.1.4'}`,
-            `#EXT-X-APE-AUDIO-SAMPLE-RATE:48000`,
-            `#EXT-X-APE-AUDIO-BIT-DEPTH:24bit`,
-            `#EXT-X-APE-AUDIO-LOUDNESS:-23LUFS`,
-            `#EXT-X-APE-AUDIO-DYNAMIC-RANGE:20dB`,
             `#EXT-X-APE-AUDIO-BITRATE:${cfg.audio_bitrate || '640'}kbps`,
             `#EXT-X-APE-AUDIO-OBJECTS:${cfg.audio_objects || '128'}`,
-            `#EXT-X-APE-AUDIO-BEDS:${cfg.audio_beds || '10'}`,
-            `#EXT-X-APE-AUDIO-DIALNORM:-27`,
-            `#EXT-X-APE-AUDIO-COMPR-MODE:RF`,
-            `#EXT-X-APE-AUDIO-DRC-PROFILE:FILM-STANDARD`,
-            `#EXT-X-APE-AUDIO-DOWNMIX:LtRt+LoRo`,
-            `#EXT-X-APE-AUDIO-TRUEHD:true`,
-
-            // ══════════════════════════════════════════════════════════════
-            // PACKAGE I — TRICK PLAY + THUMBNAILS COMPLETE (14 tags)
-            // Base 6 + New 8
-            // ══════════════════════════════════════════════════════════════
-            `#EXT-X-APE-TRICK-PLAY-ENABLED:true`,
-            `#EXT-X-APE-THUMBNAIL-TRACK:WebP+JPEG`,
-            `#EXT-X-APE-THUMBNAIL-INTERVAL:10s`,
-            `#EXT-X-APE-THUMBNAIL-RESOLUTION:320x180`,
-            `#EXT-X-APE-FAST-FORWARD-CODEC:HEVC-I-FRAME`,
-            `#EXT-X-APE-SEEK-PRECISION:IFRAME`,
-            `#EXT-X-APE-THUMBNAIL-FORMAT:WebP+JPEG+AVIF`,
-            `#EXT-X-APE-THUMBNAIL-COLS:10`,
-            `#EXT-X-APE-THUMBNAIL-ROWS:10`,
-            `#EXT-X-APE-THUMBNAIL-BANDWIDTH:200000`,
-            `#EXT-X-APE-TRICK-PLAY-RATES:2,4,8,16,32`,
-            `#EXT-X-APE-TRICK-PLAY-IFRAME-ONLY:true`,
-            `#EXT-X-APE-SEEK-MODE:IFRAME+KEYFRAME`,
-            `#EXT-X-APE-CHAPTER-MARKERS:true`,
-
-            // ══════════════════════════════════════════════════════════════
-            // PACKAGE J — SCTE-35 BROADCAST COMPLETE (10 tags)
-            // Base 3 + New 7
-            // ══════════════════════════════════════════════════════════════
-            `#EXT-X-APE-SCTE35-ENABLED:true`,
-            `#EXT-X-APE-SCTE35-FORMAT:BINARY+BASE64`,
-            `#EXT-X-APE-SCTE35-SIGNAL:CUE-IN+CUE-OUT`,
-            `#EXT-X-APE-SCTE35-PID:0x0086`,
-            `#EXT-X-APE-SCTE35-DURATION-HINT:30s`,
-            `#EXT-X-APE-SCTE35-SEGMENTATION-TYPE:PROGRAM_START`,
-            `#EXT-X-APE-SCTE35-UPID-TYPE:URI`,
-            `#EXT-X-APE-SCTE35-AVAIL-NUM:1`,
-            `#EXT-X-APE-SCTE35-AVAILS-EXPECTED:1`,
-            `#EXT-X-APE-SCTE35-BLACKOUT-OVERRIDE:true`
+            `#EXT-X-APE-AUDIO-BEDS:${cfg.audio_beds || '10'}`
         ];
     }
 
@@ -2761,7 +2428,7 @@ ${generateStaticEXTHTTPGlobal()}`;
         let profile = forceProfile || determineProfile(channel);
         let cfg = getProfileConfig(profile);
 
-        // ── 👁️ IPTV-SUPPORT-CORTEX vΩ: OVERWRITE NUCLEAR ──
+        // â”€â”€ ðŸ‘ï¸ IPTV-SUPPORT-CORTEX vÎ©: OVERWRITE NUCLEAR â”€â”€
         if (typeof window !== 'undefined' && window.IPTV_SUPPORT_CORTEX_V_OMEGA) {
             const result = window.IPTV_SUPPORT_CORTEX_V_OMEGA.execute(cfg, profile, channel.name || '');
             profile = result.profile;
@@ -2773,10 +2440,10 @@ ${generateStaticEXTHTTPGlobal()}`;
 
         const lines = [];
 
-        // 1. 🔴 ESTRUCTURA PYTHON-AUDITED: EXTINF Primero
+        // 1. ðŸ”´ ESTRUCTURA PYTHON-AUDITED: EXTINF Primero
         lines.push(generateEXTINF(channel, profile, index));
 
-        // 2. 🔴 ESTRUCTURA PYTHON-AUDITED: EXT-X-STREAM-INF Segundo
+        // 2. ðŸ”´ ESTRUCTURA PYTHON-AUDITED: EXT-X-STREAM-INF Segundo
         const bandwidth = (cfg.bitrate || 5000) >= 1000000 ? (cfg.bitrate || 5000) : (cfg.bitrate || 5000) * 1000;
         const avgBandwidth = Math.round(bandwidth * 0.8);
         const resolution = cfg.resolution || '1920x1080';
@@ -2793,17 +2460,17 @@ ${generateStaticEXTHTTPGlobal()}`;
         const streamInf = `#EXT-X-STREAM-INF:BANDWIDTH=${bandwidth},AVERAGE-BANDWIDTH=${avgBandwidth},RESOLUTION=${resolution},CODECS="${codecString}",FRAME-RATE=${fps},HDCP-LEVEL=NONE`;
         lines.push(streamInf);
 
-        // 3. 🔴 ESTRUCTURA PYTHON-AUDITED: URL Tercero (Base de reproductores genéricos)
+        // 3. ðŸ”´ ESTRUCTURA PYTHON-AUDITED: URL Tercero (Base de reproductores genÃ©ricos)
         let jwt = null;
         if (isModuleEnabled('jwt-generator')) jwt = generateJWT68Fields(channel, profile, index);
         const urlStr = buildChannelUrl(channel, jwt, profile, index);
         if (urlStr) lines.push(urlStr);
 
-        // 4. 🔴 ESTRUCTURA PYTHON-AUDITED: Bloque Asíncrono HLS POST-URL (\xCarga Útil Masiva\x)
-        // ── EXTHTTP Segundo ──
+        // 4. ðŸ”´ ESTRUCTURA PYTHON-AUDITED: Bloque AsÃ­ncrono HLS POST-URL (\xCarga Ãštil Masiva\x)
+        // â”€â”€ EXTHTTP Segundo â”€â”€
         lines.push(build_exthttp(cfg, profile, index, sessionId, reqId));
 
-        // ── SKILL: Maximum Resolution Escalator (EXTVLCOPT Injector) ──
+        // â”€â”€ SKILL: Maximum Resolution Escalator (EXTVLCOPT Injector) â”€â”€
         lines.push('#EXTVLCOPT:preferred-resolution=480');
         lines.push('#EXTVLCOPT:preferred-resolution=720');
         lines.push('#EXTVLCOPT:preferred-resolution=1080');
@@ -2811,19 +2478,19 @@ ${generateStaticEXTHTTPGlobal()}`;
         lines.push('#EXTVLCOPT:preferred-resolution=4320');
         lines.push('#EXTVLCOPT:adaptive-logic=highest');
 
-        // ── SKILL: Quantum Pixel Overdrive v5 (HW Decoder) ──
+        // â”€â”€ SKILL: Quantum Pixel Overdrive v5 (HW Decoder) â”€â”€
         lines.push('#EXTVLCOPT:hw-dec-accelerator=any');
         lines.push('#EXTVLCOPT:video-filter=hqdn3d');
 
         lines.push(...generateEXTVLCOPT(profile));
 
-        // ── KODIPROP Tercero ──
+        // â”€â”€ KODIPROP Tercero â”€â”€
         lines.push(...build_kodiprop(cfg, profile, index));
 
-        // ── APE Tags (450+ tags) ──
+        // â”€â”€ APE Tags (450+ tags) â”€â”€
         lines.push(...build_ape_block(cfg, profile, index));
 
-        // ── 👁️ IPTV-SUPPORT-CORTEX vΩ: EXPLICIT TAGS (AUDIT PASS) ──
+        // â”€â”€ ðŸ‘ï¸ IPTV-SUPPORT-CORTEX vÎ©: EXPLICIT TAGS (AUDIT PASS) â”€â”€
         if (typeof window !== 'undefined' && window.IPTV_SUPPORT_CORTEX_V_OMEGA) {
             lines.push('#EXT-X-CORTEX-OMEGA-STATE:ACTIVE_DOMINANT');
             lines.push('#EXT-X-CORTEX-AI-SEMANTIC-SEGMENTATION:ENABLED_250_LAYERS');
@@ -2838,8 +2505,8 @@ ${generateStaticEXTHTTPGlobal()}`;
             lines.push('#EXT-X-CORTEX-LCEVC-L2-DETAIL:UPCONVERT_SHARPENING_EXTREME');
         }
 
-        // ── 🔴 FIX #2: CADENA DE FALLBACK AV1 — DEGRADACIÓN GRACEFUL (Per Canal) ──
-        // Incluye tags APE + rendiciones alternativas estándar para canales AV1
+        // â”€â”€ ðŸ”´ FIX #2: CADENA DE FALLBACK AV1 â€” DEGRADACIÃ“N GRACEFUL (Per Canal) â”€â”€
+        // Incluye tags APE + rendiciones alternativas estÃ¡ndar para canales AV1
         lines.push('#EXT-X-APE-AV1-FALLBACK-ENABLED:true');
         lines.push('#EXT-X-APE-AV1-FALLBACK-CHAIN:AV1>HEVC>H264>MPEG2');
         lines.push('#EXT-X-APE-AV1-FALLBACK-GRACEFUL:true');
@@ -2850,7 +2517,7 @@ ${generateStaticEXTHTTPGlobal()}`;
         lines.push('#EXT-X-APE-AV1-FALLBACK-PRESERVE-HDR:true');
         lines.push('#EXT-X-APE-AV1-FALLBACK-PRESERVE-LCEVC:true');
         lines.push('#EXT-X-APE-AV1-FALLBACK-LOG:SILENT');
-        // 🔴 AV1 GRACEFUL DEGRADATION: Rendiciones alternativas estándar HLS
+        // ðŸ”´ AV1 GRACEFUL DEGRADATION: Rendiciones alternativas estÃ¡ndar HLS
         // Solo para canales nativos AV1 (P0): inyecta alternativas HEVC y H264
         const originalProfile = cfg._cortex_original_profile || profile;
         if (originalProfile === 'P0') {
@@ -2865,8 +2532,8 @@ ${generateStaticEXTHTTPGlobal()}`;
             lines.push(`#EXT-X-APE-AV1-SWITCH-LATENCY:0ms`);
         }
 
-        // ── 🔴 FIX #3: LCEVC SDK INJECTOR + V-NOVA NATIVO (Per Canal) ──
-        // Tags APE para auditoría + tag V-Nova estándar #EXT-X-VNOVA-LCEVC-CONFIG-B64
+        // â”€â”€ ðŸ”´ FIX #3: LCEVC SDK INJECTOR + V-NOVA NATIVO (Per Canal) â”€â”€
+        // Tags APE para auditorÃ­a + tag V-Nova estÃ¡ndar #EXT-X-VNOVA-LCEVC-CONFIG-B64
         lines.push('#EXT-X-APE-LCEVC-SDK-ENABLED:true');
         lines.push('#EXT-X-APE-LCEVC-SDK-VERSION:v16.4.1');
         lines.push('#EXT-X-APE-LCEVC-SDK-TARGET:HTML5_NATIVE');
@@ -2877,7 +2544,7 @@ ${generateStaticEXTHTTPGlobal()}`;
         lines.push('#EXT-X-APE-LCEVC-SDK-RESIDUAL-STORE:GPU_TEXTURE');
         lines.push('#EXT-X-APE-LCEVC-SDK-RENDER-TARGET:CANVAS_2D+WEBGL2');
         lines.push('#EXT-X-APE-LCEVC-SDK-FALLBACK:BASE_PASSTHROUGH');
-        // 🔴 V-NOVA LCEVC NATIVE SDK TAG — Formato exacto del auditor (lcevc_sdk_injector_patch.py)
+        // ðŸ”´ V-NOVA LCEVC NATIVE SDK TAG â€” Formato exacto del auditor (lcevc_sdk_injector_patch.py)
         lines.push('#EXT-X-APE-MODULE:LCEVC-HTML5-SDK-INJECTOR-V1');
         lines.push('#EXT-X-VNOVA-LCEVC-TARGET-SDK:LCEVCdecJS_v1.2.1+');
         const lcevcEnhancementLayers = {
@@ -2900,7 +2567,7 @@ ${generateStaticEXTHTTPGlobal()}`;
         const lcevcConfigB64 = typeof btoa === 'function' ? btoa(JSON.stringify(lcevcEnhancementLayers)) : Buffer.from(JSON.stringify(lcevcEnhancementLayers)).toString('base64');
         lines.push(`#EXT-X-VNOVA-LCEVC-CONFIG-B64:${lcevcConfigB64}`);
 
-        // ── 🔴 FIX #4: IP ROTATION STEALTH EXPLÍCITA (Per Canal) ──
+        // â”€â”€ ðŸ”´ FIX #4: IP ROTATION STEALTH EXPLÃCITA (Per Canal) â”€â”€
         lines.push('#EXT-X-APE-IP-ROTATION-ENABLED:true');
         lines.push('#EXT-X-APE-IP-ROTATION-STRATEGY:PER_REQUEST');
         lines.push(`#EXT-X-APE-IP-ROTATION-XFF-1:${getRandomIp()}`);
@@ -2912,17 +2579,17 @@ ${generateStaticEXTHTTPGlobal()}`;
         lines.push('#EXT-X-APE-IP-ROTATION-POOL-SIZE:50');
         lines.push('#EXT-X-APE-IP-ROTATION-PERSIST:PER_SESSION');
 
-        // ── 👻 FUSIÓN FANTASMA v22.1: UA Rotation por canal ──
+        // â”€â”€ ðŸ‘» FUSIÃ“N FANTASMA v22.1: UA Rotation por canal â”€â”€
         lines.push(`#EXT-X-APE-STEALTH-UA:${getRotatedUserAgent('random')}`);
         lines.push(`#EXT-X-APE-STEALTH-XFF:${getRandomIp()}`);
         lines.push(`#EXT-X-APE-STEALTH-FINGERPRINT:${generateRandomString(32)}`);
 
-        // ── 👻 FUSIÓN FANTASMA v22.1: Integración de Módulos ──
+        // â”€â”€ ðŸ‘» FUSIÃ“N FANTASMA v22.1: IntegraciÃ³n de MÃ³dulos â”€â”€
         const context = buildInitialContext(channel, index);
         const preArmedBlock = PRE_ARMED_RESPONSE_BUILDER.buildBlock(context);
         lines.push(preArmedBlock.trim());
 
-        // ── 👻 FUSIÓN FANTASMA v22.1: ISP Throttle Nuclear Escalation ──
+        // â”€â”€ ðŸ‘» FUSIÃ“N FANTASMA v22.1: ISP Throttle Nuclear Escalation â”€â”€
         lines.push(`#EXT-X-APE-ISP-THROTTLE-ESCALATION:LEVEL=NUCLEAR`);
         lines.push(...generateISPThrottleEscalation(profile, cfg));
 
@@ -2943,15 +2610,15 @@ ${generateStaticEXTHTTPGlobal()}`;
             async start(controller) {
                 const startTime = Date.now();
 
-                console.log(`🌊 [STREAM] Generando M3U8 ULTIMATE para ${channels.length} canales...`);
-                console.log(`   📊 Estructura: 139 líneas/canal | JWT: 68+ campos | Perfiles: P0-P5`);
+                console.log(`ðŸŒŠ [STREAM] Generando M3U8 ULTIMATE para ${channels.length} canales...`);
+                console.log(`   ðŸ“Š Estructura: 139 lÃ­neas/canal | JWT: 68+ campos | Perfiles: P0-P5`);
 
-                // 🎯 INICIALIZAR HUD
+                // ðŸŽ¯ INICIALIZAR HUD
                 if (useHUD) {
                     window.HUD_TYPED_ARRAYS.init(channels.length, {
                         sessionId: `TA-${Date.now()}`
                     });
-                    window.HUD_TYPED_ARRAYS.log('🌊 Streaming mode activado...', '#a78bfa');
+                    window.HUD_TYPED_ARRAYS.log('ðŸŒŠ Streaming mode activado...', '#a78bfa');
                 }
 
                 // PASO 1: GLOBAL HEADER
@@ -2961,7 +2628,7 @@ ${generateStaticEXTHTTPGlobal()}`;
                     totalBytes += encoded.byteLength;
                     controller.enqueue(encoded);
                     if (useHUD) {
-                        window.HUD_TYPED_ARRAYS.log('📋 Header global streamed', '#06b6d4');
+                        window.HUD_TYPED_ARRAYS.log('ðŸ“‹ Header global streamed', '#06b6d4');
                     }
                 }
 
@@ -2982,7 +2649,7 @@ ${generateStaticEXTHTTPGlobal()}`;
                         totalBytes += encoded.byteLength;
                         controller.enqueue(encoded);
 
-                        // Detectar perfil para estadísticas
+                        // Detectar perfil para estadÃ­sticas
                         const profile = forceProfile || detectProfile(channel);
 
                         // Actualizar HUD
@@ -2992,9 +2659,9 @@ ${generateStaticEXTHTTPGlobal()}`;
 
                         // Progress log cada 1000
                         if ((index + 1) % 1000 === 0) {
-                            console.log(`   ⏳ Streamed: ${index + 1}/${channels.length}`);
+                            console.log(`   â³ Streamed: ${index + 1}/${channels.length}`);
                             if (useHUD) {
-                                window.HUD_TYPED_ARRAYS.log(`📺 ${index + 1}/${channels.length} canales...`, '#a78bfa');
+                                window.HUD_TYPED_ARRAYS.log(`ðŸ“º ${index + 1}/${channels.length} canales...`, '#a78bfa');
                             }
                         }
                     } catch (error) {
@@ -3002,13 +2669,13 @@ ${generateStaticEXTHTTPGlobal()}`;
                             controller.error(error);
                             return;
                         }
-                        console.error(`❌ [STREAM] Error en canal ${channel.name}:`, error);
+                        console.error(`âŒ [STREAM] Error en canal ${channel.name}:`, error);
                         if (useHUD) {
-                            window.HUD_TYPED_ARRAYS.log(`⚠️ Error: ${channel.name}`, '#ef4444');
+                            window.HUD_TYPED_ARRAYS.log(`âš ï¸ Error: ${channel.name}`, '#ef4444');
                         }
                     }
 
-                    // 🌊 YIELD: Cada BATCH_SIZE canales, ceder control al browser
+                    // ðŸŒŠ YIELD: Cada BATCH_SIZE canales, ceder control al browser
                     if ((index + 1) % BATCH_SIZE === 0) {
                         await new Promise(resolve => setTimeout(resolve, 0));
                     }
@@ -3021,15 +2688,15 @@ ${generateStaticEXTHTTPGlobal()}`;
                 const sizeMB = (totalBytes / 1024 / 1024).toFixed(2);
                 const sizeKB = (totalBytes / 1024).toFixed(2);
 
-                console.log(`✅ [STREAM] Generación completada en ${elapsed}s`);
-                console.log(`   📊 Canales: ${channels.length} | Tamaño: ${sizeMB} MB | ~${140 * channels.length} líneas`);
+                console.log(`âœ… [STREAM] GeneraciÃ³n completada en ${elapsed}s`);
+                console.log(`   ðŸ“Š Canales: ${channels.length} | TamaÃ±o: ${sizeMB} MB | ~${140 * channels.length} lÃ­neas`);
 
-                // 🎯 COMPLETAR HUD
+                // ðŸŽ¯ COMPLETAR HUD
                 if (useHUD) {
                     window.HUD_TYPED_ARRAYS.updateStats({
                         jwt: `${(totalBytes / channels.length / 1024 * 0.3).toFixed(1)} KB/ch`,
                         filesize: `${sizeMB} MB`,
-                        grouptitle: '✓ Activo'
+                        grouptitle: 'âœ“ Activo'
                     });
                     window.HUD_TYPED_ARRAYS.complete({
                         jwt: `${sizeKB} KB`,
@@ -3043,26 +2710,26 @@ ${generateStaticEXTHTTPGlobal()}`;
     }
 
     /**
-     * generateM3U8 — wrapper que convierte el stream a Blob
+     * generateM3U8 â€” wrapper que convierte el stream a Blob
      * Compatible con el resto del sistema (devuelve Blob)
      */
     async function generateM3U8(channels, options = {}) {
         if (!channels || !Array.isArray(channels) || channels.length === 0) {
-            console.error('❌ [TYPED-ARRAYS] No hay canales para generar');
+            console.error('âŒ [TYPED-ARRAYS] No hay canales para generar');
             return null;
         }
 
         const stream = generateM3U8Stream(channels, options);
-        // 🌊 El browser convierte el stream a Blob internamente
-        // sin crear un mega-string en JS — manejo eficiente de memoria
+        // ðŸŒŠ El browser convierte el stream a Blob internamente
+        // sin crear un mega-string en JS â€” manejo eficiente de memoria
         const response = new Response(stream);
         const blob = await response.blob();
         return blob;
     }
 
-    // ═══════════════════════════════════════════════════════════════════════════
-    // GENERAR Y DESCARGAR (async — usa streaming)
-    // ═══════════════════════════════════════════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    // GENERAR Y DESCARGAR (async â€” usa streaming)
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
     async function generateAndDownload(channels, options = {}) {
         const blob = await generateM3U8(channels, options);
@@ -3080,7 +2747,7 @@ ${generateStaticEXTHTTPGlobal()}`;
         document.body.removeChild(link);
         setTimeout(() => URL.revokeObjectURL(url), 5000);
 
-        console.log(`📥 [TYPED-ARRAYS] Archivo descargado: ${filename} (${(blob.size / 1024 / 1024).toFixed(1)} MB)`);
+        console.log(`ðŸ“¥ [TYPED-ARRAYS] Archivo descargado: ${filename} (${(blob.size / 1024 / 1024).toFixed(1)} MB)`);
 
         // Disparar evento para gateway-manager
         if (typeof window !== 'undefined') {
@@ -3101,12 +2768,12 @@ ${generateStaticEXTHTTPGlobal()}`;
         return { filename, blob, size: blob.size, channels: channels.length };
     }
 
-    // ═══════════════════════════════════════════════════════════════════════════
-    // INTEGRACIÓN GLOBAL
-    // ═══════════════════════════════════════════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    // INTEGRACIÃ“N GLOBAL
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
     if (typeof window !== 'undefined') {
-        // 👻 Fusión Fantasma v22.1: Registro global directo
+        // ðŸ‘» FusiÃ³n Fantasma v22.1: Registro global directo
         window.APEAtomicStealthEngine = APEAtomicStealthEngine;
 
         // API Global
@@ -3120,16 +2787,16 @@ ${generateStaticEXTHTTPGlobal()}`;
             profiles: PROFILES,
             version: VERSION,
 
-            // 👻 Fusión Fantasma v22.1 API
+            // ðŸ‘» FusiÃ³n Fantasma v22.1 API
             AtomicStealthEngine: APEAtomicStealthEngine,
             Cortex: IPTV_SUPPORT_CORTEX_V3,
             PreArmed: PRE_ARMED_RESPONSE_BUILDER,
             getRotatedUserAgent: getRotatedUserAgent,
             getRandomIp: getRandomIp,
 
-            // ═══════════════════════════════════════════════════════════════════
+            // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
             // CLEAN URL MODE API
-            // ═══════════════════════════════════════════════════════════════════
+            // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
             /**
              * Activa o desactiva el modo Clean URL
@@ -3137,7 +2804,7 @@ ${generateStaticEXTHTTPGlobal()}`;
              */
             setCleanUrlMode: function (enabled) {
                 CLEAN_URL_MODE = !!enabled;
-                console.log(`🌐 [CLEAN-URL] Modo ${CLEAN_URL_MODE ? 'ACTIVADO' : 'DESACTIVADO'}`);
+                console.log(`ðŸŒ [CLEAN-URL] Modo ${CLEAN_URL_MODE ? 'ACTIVADO' : 'DESACTIVADO'}`);
                 return CLEAN_URL_MODE;
             },
 
@@ -3150,7 +2817,7 @@ ${generateStaticEXTHTTPGlobal()}`;
             },
 
             /**
-             * Obtiene información de la arquitectura actual
+             * Obtiene informaciÃ³n de la arquitectura actual
              * @returns {Object}
              */
             getArchitecture: function () {
@@ -3168,21 +2835,21 @@ ${generateStaticEXTHTTPGlobal()}`;
             _generateGlobalHeader: generateGlobalHeader
         };
 
-        // Integración con app
+        // IntegraciÃ³n con app
         function integrateWithApp() {
             if (window.app && typeof window.app === 'object') {
                 window.app.generateM3U8_TypedArrays = function (options = {}) {
-                    // ✅ FIX: Llamar método getFilteredChannels() para obtener canales filtrados actuales
+                    // âœ… FIX: Llamar mÃ©todo getFilteredChannels() para obtener canales filtrados actuales
                     let channels = [];
 
                     if (typeof this.getFilteredChannels === 'function') {
                         channels = this.getFilteredChannels() || [];
-                        console.log(`🎯 [TYPED-ARRAYS] Usando getFilteredChannels(): ${channels.length} canales`);
+                        console.log(`ðŸŽ¯ [TYPED-ARRAYS] Usando getFilteredChannels(): ${channels.length} canales`);
                     } else {
                         channels = this.state?.filteredChannels ||
                             this.state?.channels ||
                             this.state?.channelsMaster || [];
-                        console.log(`🎯 [TYPED-ARRAYS] Usando state fallback: ${channels.length} canales`);
+                        console.log(`ðŸŽ¯ [TYPED-ARRAYS] Usando state fallback: ${channels.length} canales`);
                     }
 
                     if (channels.length === 0) {
@@ -3192,13 +2859,13 @@ ${generateStaticEXTHTTPGlobal()}`;
 
                     return generateAndDownload(channels, options);
                 };
-                console.log('🚀 [TYPED-ARRAYS] ✅ Integrado con window.app.generateM3U8_TypedArrays()');
+                console.log('ðŸš€ [TYPED-ARRAYS] âœ… Integrado con window.app.generateM3U8_TypedArrays()');
                 return true;
             }
             return false;
         }
 
-        // Polling para integración
+        // Polling para integraciÃ³n
         let attempts = 0;
         const maxAttempts = 50;
         const pollInterval = 200;
@@ -3209,23 +2876,23 @@ ${generateStaticEXTHTTPGlobal()}`;
             if (attempts < maxAttempts) {
                 setTimeout(pollForApp, pollInterval);
             } else {
-                console.warn('🚀 [TYPED-ARRAYS] ⚠️ window.app no disponible. Use: M3U8TypedArraysGenerator.generateAndDownload(channels)');
+                console.warn('ðŸš€ [TYPED-ARRAYS] âš ï¸ window.app no disponible. Use: M3U8TypedArraysGenerator.generateAndDownload(channels)');
             }
         }
 
         pollForApp();
 
-        console.log('═══════════════════════════════════════════════════════════════');
-        console.log(`🚀 M3U8 TYPED ARRAYS ULTIMATE v${VERSION} MAX AGGRESSION NUCLEAR Loaded`);
-        console.log('═══════════════════════════════════════════════════════════════');
-        console.log('   ✅ 139 líneas por canal (v5.4 MAX AGGRESSION — CALIBRADO)');
-        console.log('   ✅ 21 EXTVLCOPT + 6 KODIPROP + 109 EXT-X-APE + 1 EXTHTTP');
-        console.log('   ✅ JWT 68+ campos (8 secciones)');
-        console.log('   ✅ 6 Perfiles: P0 (8K) → P5 (SD)');
-        console.log('   ✅ RFC 8216 100% Compliance');
-        console.log('   ✅ Resiliencia 24/7/365 + ISP NUCLEAR (5 niveles escalantes)');
-        console.log('   ✅ HTTPS Priority (upgrade HTTP → HTTPS)');
-        console.log('═══════════════════════════════════════════════════════════════');
+        console.log('â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•');
+        console.log(`ðŸš€ M3U8 TYPED ARRAYS ULTIMATE v${VERSION} MAX AGGRESSION NUCLEAR Loaded`);
+        console.log('â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•');
+        console.log('   âœ… 139 lÃ­neas por canal (v5.4 MAX AGGRESSION â€” CALIBRADO)');
+        console.log('   âœ… 21 EXTVLCOPT + 6 KODIPROP + 109 EXT-X-APE + 1 EXTHTTP');
+        console.log('   âœ… JWT 68+ campos (8 secciones)');
+        console.log('   âœ… 6 Perfiles: P0 (8K) â†’ P5 (SD)');
+        console.log('   âœ… RFC 8216 100% Compliance');
+        console.log('   âœ… Resiliencia 24/7/365 + ISP NUCLEAR (5 niveles escalantes)');
+        console.log('   âœ… HTTPS Priority (upgrade HTTP â†’ HTTPS)');
+        console.log('â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•');
     }
 
 })();
