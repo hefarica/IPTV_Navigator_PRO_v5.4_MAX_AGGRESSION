@@ -224,10 +224,18 @@
                 hw_dec_accelerator: 'any',
                 lcevc: true,
                 lcevc_state: 'ACTIVE_ENFORCED', // LCEVC v16.4.1 compliance
+                lcevc_phase4: true, // Phase 4 Edge Compute forzado
                 // Nuevas banderas AI/AV1/VVC (Virtual Flags)
                 av1_cdef: true,
                 ai_semantic_segmentation: true,
-                vvc_virtual_boundaries: true
+                vvc_virtual_boundaries: true,
+                // 🔴 CRITICAL FIX: Preservar el perfil original para que LCEVC-BASE-CODEC
+                // resuelva el codec REAL del canal (HEVC para la mayoría, AV1 solo para P0 nativo)
+                _cortex_original_profile: originalProfile,
+                // Cadena de degradación determinista del Cortex
+                cortex_fallback_chain: 'AV1>HEVC>H264',
+                cortex_fallback_lcevc: 'ALWAYS_ACTIVE',
+                cortex_fallback_hdr10plus: 'ENFORCED_ALL_LEVELS'
             });
 
             return { profile: targetProfile, cfg: godTierCfg };
@@ -249,7 +257,13 @@
                 'X-Cortex-AV1-CDEF': 'ENABLED_DIRECTIONAL_RESTORATION',
                 'X-Cortex-VVC-Virtual-Boundaries': 'EDGE_ARTIFACT_SUPPRESSION',
                 'X-Cortex-AI-MultiFrame-NR': 'MASSIVE_MOTION_COMPENSATED',
-                'X-Cortex-AI-Semantic-Segmentation': 'ENABLED_250_LAYERS'
+                'X-Cortex-AI-Semantic-Segmentation': 'ENABLED_250_LAYERS',
+                // Cadena de Degradación Determinista del Cortex
+                'X-Cortex-Fallback-Chain': 'AV1>HEVC>H264',
+                'X-Cortex-Fallback-LCEVC': 'ALWAYS_ACTIVE',
+                'X-Cortex-Fallback-HDR10Plus': 'ENFORCED_ALL_LEVELS',
+                'X-Cortex-LCEVC-Phase4': 'EDGE_COMPUTE_ENFORCED',
+                'X-Cortex-LCEVC-State': 'ACTIVE_ALL_CHANNELS'
             };
         }
     };
@@ -1707,19 +1721,24 @@
 
         // ✅ FIX v16.4.1: lcevcBaseCodec derivado del codec REAL del STREAM-INF
         // (no de un valor hardcodeado). La coherencia es total.
+        // 🔴 CORTEX vΩ FIX: Usamos el perfil ORIGINAL (pre-Cortex) para resolver el codec base.
+        // El Cortex fuerza P0 en TODOS los canales para maximizar calidad,
+        // pero LCEVC-BASE-CODEC debe reflejar el codec REAL que el hardware decodificará.
         const _realCodecForLCEVC = (() => {
+            // 🔴 CRITICAL: Si el Cortex sobrescribió el perfil, leer el ORIGINAL
+            const effectiveProfile = cfg._cortex_original_profile || profile;
             // Si el toggle de máxima calidad está activo, la lógica es simple:
             // P0 (8K) es AV1, el resto (4K, FHD, etc.) es HEVC.
             if (typeof window !== 'undefined' && window._APE_PRIO_QUALITY !== false) {
-                return profile === 'P0' ? 'AV1' : 'HEVC';
+                return effectiveProfile === 'P0' ? 'AV1' : 'HEVC';
             }
             // Si el toggle está apagado, se lee la configuración del perfil (cfg).
             const p = (cfg.codec_primary || 'HEVC').toUpperCase();
-            if (p === 'AV1') return 'AV1';
-            if (p === 'HEVC' || p === 'H265') return 'HEVC';
+            if (p.includes('AV1')) return 'AV1';
+            if (p === 'HEVC' || p === 'H265' || p.includes('HEVC')) return 'HEVC';
             return 'H264'; // Fallback a H264 si no es ninguno de los anteriores
         })();
-        const lcevcBaseCodec = _realCodecForLCEVC;  // ✅ SIEMPRE coherente
+        const lcevcBaseCodec = _realCodecForLCEVC;  // ✅ SIEMPRE coherente con el codec REAL
 
 
         return [
