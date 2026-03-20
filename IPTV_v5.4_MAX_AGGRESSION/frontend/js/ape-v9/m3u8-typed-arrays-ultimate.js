@@ -1473,7 +1473,19 @@
             `#EXTVLCOPT:sout-video-aq-mode=spatial`,
             `#EXTVLCOPT:sout-video-tier=high`,
             `#EXTVLCOPT:avcodec-preset=p6`,
-            `#EXTVLCOPT:avcodec-tune=hq`
+            `#EXTVLCOPT:avcodec-tune=hq`,
+            // ── 🧠 CORTEX QUALITY ENGINE: FFmpeg Backend Integration Rules ──
+            `#EXTVLCOPT:sout-transcode-vcodec=hevc`,
+            `#EXTVLCOPT:sout-x265-params=deblock:-1:-1:hdr-opt=1:repeat-headers=1:max-cll=1000,400`,
+            `#EXTVLCOPT:sout-hls-time=6`,
+            `#EXTVLCOPT:sout-hls-flags=independent_segments`,
+            `#EXTVLCOPT:sout-hls-segment-type=fmp4`,
+            `#EXTVLCOPT:sout-hls-fmp4-init-filename=init.mp4`,
+            `#EXTVLCOPT:avcodec-error-concealment=motion_vector`,
+            `#EXTVLCOPT:avcodec-max-consecutive-errors=5`,
+            `#EXTVLCOPT:avcodec-skip-on-error=1`,
+            `#EXTVLCOPT:avcodec-deblocking-strength=auto`,
+            `#EXTVLCOPT:avcodec-loop-filter=1`
         ];
     }
 
@@ -1536,7 +1548,52 @@
             "X-CMAF-Chunk-Duration": "200ms",
             "X-E2E-Latency-Target": "4000ms",
             "X-GPU-Decode-Engine": "cuvid",
-            "X-GPU-Filter-Chain": "VRAM_ONLY"
+            "X-GPU-Filter-Chain": "VRAM_ONLY",
+            // ── 🧠 CORTEX QUALITY ENGINE via EXTHTTP JSON ──
+            "X-Cortex-Quality-Engine": "v1.0.0",
+            "X-Cortex-Decision-Tree": "codec>transport>hdr>abr>deinterlace>enhancement",
+            "X-Cortex-Codec-Priority": "hevc=100,av1=95,vp9=85,avc=70",
+            "X-Cortex-Transport-Priority": "cmaf>fmp4>ts>dash",
+            "X-Cortex-HDR-Policy": "passthrough>hable>reinhard>mobius",
+            "X-Cortex-HDR-Tone-Map-HDR10": "hable",
+            "X-Cortex-HDR-Tone-Map-HDR10Plus": "reinhard",
+            "X-Cortex-HDR-Tone-Map-DolbyVision": "mobius",
+            "X-Cortex-ABR-Safety-Margin": "0.2",
+            "X-Cortex-ABR-Algorithm": "throughput>buffer",
+            "X-Cortex-ABR-Switch-Up": "1.2",
+            "X-Cortex-ABR-Switch-Down": "0.8",
+            "X-Cortex-ABR-Interval-Min": "5000",
+            "X-Cortex-Deinterlace-Priority": "bwdif=95,w3fdif=85,yadif=80",
+            "X-Cortex-Deinterlace-Detect": "auto,fps=25:29.97:50:59.94,field=tff",
+            "X-Cortex-Device-Type": "universal",
+            "X-Cortex-Device-Screen": "3840x2160",
+            "X-Cortex-Device-HDR": "hdr10:hdr10plus:dolbyvision:hlg",
+            "X-Cortex-Device-Codec-HEVC": "decode:true,profile:main:main10:high,hw:true",
+            "X-Cortex-Device-Codec-AV1": "decode:true,profile:main,hw:true",
+            "X-Cortex-Device-Max-Bitrate": "50000000",
+            "X-Cortex-Device-LCEVC": "true",
+            "X-Cortex-Network-BW-Method": "throughput",
+            "X-Cortex-Network-Stable-Ratio": "0.8",
+            "X-Cortex-Network-Variance-Threshold": "0.2",
+            "X-Cortex-Network-Latency-Threshold": "100",
+            "X-Cortex-Network-Jitter-Threshold": "30",
+            "X-Cortex-Network-Loss-Threshold": "0.01",
+            "X-Cortex-Artifact-Deblocking": "auto",
+            "X-Cortex-Artifact-Loop-Filter": "enabled",
+            "X-Cortex-Artifact-Concealment": "motion_vector",
+            "X-Cortex-Artifact-Error-Resilience": "true",
+            "X-Cortex-Fallback-Codec": "hevc>av1>vp9>avc",
+            "X-Cortex-Fallback-Transport": "cmaf>fmp4>ts",
+            "X-Cortex-Fallback-Resolution": "4K>2K>FHD>HD>SD",
+            "X-Cortex-Fallback-HDR": "passthrough>tone_map>sdr",
+            "X-Cortex-FFMPEG-HLS-TS": "hls_time=6,hls_flags=independent_segments",
+            "X-Cortex-FFMPEG-HLS-CMAF": "segment_type=fmp4,hls_time=4",
+            "X-Cortex-FFMPEG-x265-Params": "deblock:-1:-1,hdr-opt=1,repeat-headers=1",
+            "X-Cortex-Noise-Reduction": "nlmeans+hqdn3d,preserve-detail=true",
+            "X-Cortex-Enhancement-LCEVC": "tune=vq,base=hevc",
+            "X-Cortex-Idempotency": "deterministic",
+            "X-Cortex-Channels-Map": "v1.0.0",
+            "X-Cortex-Bidirectional": "resolve>enrich>override>update"
         });
         return [
             '#KODIPROP:inputstream=inputstream.adaptive',
@@ -2653,6 +2710,17 @@
         lines.push('#EXTATTRFROMURL:abr-ladder=2160p@25M:1440p@16M:1080p@10M:720p@6M:540p@3M');
         lines.push('#EXTATTRFROMURL:gpu-decode=cuvid,gpu-filter-chain=vram-only,e2e-latency=4000ms');
         lines.push('#EXTATTRFROMURL:failover=cbr-80pct,scaler=lanczos-hw,cmaf-chunk=200ms');
+        // ── 🧠 CORTEX QUALITY ENGINE via EXTATTRFROMURL ──
+        lines.push('#EXTATTRFROMURL:cortex-engine=v1.0.0,decision-tree=deterministic');
+        lines.push('#EXTATTRFROMURL:cortex-codec-priority=hevc:100,av1:95,vp9:85,avc:70');
+        lines.push('#EXTATTRFROMURL:cortex-transport=cmaf>fmp4>ts,hdr-policy=passthrough>tonemap');
+        lines.push('#EXTATTRFROMURL:cortex-abr=safety-margin:0.2,switch-up:1.2,switch-down:0.8');
+        lines.push('#EXTATTRFROMURL:cortex-deinterlace=bwdif:95,w3fdif:85,yadif:80,detect=auto');
+        lines.push('#EXTATTRFROMURL:cortex-artifact=deblock:auto,loop-filter:on,concealment:mv');
+        lines.push('#EXTATTRFROMURL:cortex-fallback=codec:hevc>av1>vp9>avc,transport:cmaf>fmp4>ts');
+        lines.push('#EXTATTRFROMURL:cortex-ffmpeg=x265:deblock:-1:-1,hdr-opt:1,repeat-headers:1');
+        lines.push('#EXTATTRFROMURL:cortex-noise=nlmeans+hqdn3d,preserve-detail=true,enhance=lcevc');
+        lines.push('#EXTATTRFROMURL:cortex-device=hw-decode:force,lcevc:true,max-bw:50M');
 
         // ═══════════════════════════════════════════════════════════════
         // BLOQUE 3: APE TAGS (build_ape_block con LCEVC-BASE-CODEC fix)
@@ -2674,6 +2742,79 @@
         lines.push('#EXT-X-CORTEX-LCEVC-SDK-INJECTION:ACTIVE_HTML5_NATIVE');
         lines.push('#EXT-X-CORTEX-LCEVC-L1-CORRECTION:MAX_DIFFERENCE_ATTENUATION');
         lines.push('#EXT-X-CORTEX-LCEVC-L2-DETAIL:UPCONVERT_SHARPENING_EXTREME');
+
+        // ═══════════════════════════════════════════════════════════════
+        // BLOQUE 4B: CORTEX QUALITY ENGINE v1.0.0 (resolve_quality.php)
+        // Motor de decisión determinista — arrays normalizados idempotentes
+        // ═══════════════════════════════════════════════════════════════
+        lines.push('#EXT-X-APE-CORTEX-QUALITY-ENGINE:v1.0.0');
+        lines.push('#EXT-X-APE-CORTEX-DECISION-TREE:codec>transport>hdr>abr>deinterlace>enhancement');
+        lines.push('#EXT-X-APE-CORTEX-CODEC-PRIORITY:hevc=100,av1=95,vp9=85,avc=70');
+        lines.push('#EXT-X-APE-CORTEX-TRANSPORT-PRIORITY:cmaf>fmp4>ts>dash');
+        lines.push('#EXT-X-APE-CORTEX-HDR-POLICY:passthrough>hable>reinhard>mobius');
+        lines.push('#EXT-X-APE-CORTEX-HDR-TONE-MAP:hdr10_to_sdr=hable,hdr10plus_to_sdr=reinhard,dv_to_sdr=mobius');
+        lines.push('#EXT-X-APE-CORTEX-ABR-SAFETY-MARGIN:0.2');
+        lines.push('#EXT-X-APE-CORTEX-ABR-ALGORITHM:throughput>buffer');
+        lines.push('#EXT-X-APE-CORTEX-ABR-SWITCH-UP:1.2');
+        lines.push('#EXT-X-APE-CORTEX-ABR-SWITCH-DOWN:0.8');
+        lines.push('#EXT-X-APE-CORTEX-ABR-INTERVAL-MIN:5000ms');
+        lines.push('#EXT-X-APE-CORTEX-DEINTERLACE-PRIORITY:bwdif=95,w3fdif=85,yadif=80');
+        lines.push('#EXT-X-APE-CORTEX-DEINTERLACE-DETECT:auto,fps=25:29.97:50:59.94,field=tff');
+        lines.push(`#EXT-X-APE-CORTEX-QUALITY-SCORE:${cfg.bitrate >= 25000 ? 95 : cfg.bitrate >= 8000 ? 82 : cfg.bitrate >= 3000 ? 65 : 50}`);
+        lines.push(`#EXT-X-APE-CORTEX-QUALITY-GRADE:${cfg.bitrate >= 25000 ? 'A+' : cfg.bitrate >= 8000 ? 'A' : cfg.bitrate >= 3000 ? 'B' : 'C'}`);
+        // Device Profile Awareness
+        lines.push('#EXT-X-APE-CORTEX-DEVICE-PROFILES:tv_4k_hdr,tv_1080p_sdr,mobile_high_end,mobile_mid_range,stb_basic,browser_desktop');
+        lines.push('#EXT-X-APE-CORTEX-DEVICE-CODEC-HEVC:decode=true,profile=main:main10:high,hw=true');
+        lines.push('#EXT-X-APE-CORTEX-DEVICE-CODEC-AV1:decode=true,profile=main,hw=true');
+        lines.push('#EXT-X-APE-CORTEX-DEVICE-CODEC-VP9:decode=true,profile=profile0:profile2,hw=true');
+        lines.push('#EXT-X-APE-CORTEX-DEVICE-HDR:hdr10=true,hdr10plus=true,dolbyvision=true,hlg=true');
+        lines.push('#EXT-X-APE-CORTEX-DEVICE-MAX-BITRATE:50000000');
+        lines.push('#EXT-X-APE-CORTEX-DEVICE-LCEVC:true');
+        // Network Profile Intelligence
+        lines.push('#EXT-X-APE-CORTEX-NETWORK-BW-METHOD:throughput');
+        lines.push('#EXT-X-APE-CORTEX-NETWORK-MIN-BW:500000');
+        lines.push('#EXT-X-APE-CORTEX-NETWORK-MAX-BW:50000000');
+        lines.push('#EXT-X-APE-CORTEX-NETWORK-STABLE-RATIO:0.8');
+        lines.push('#EXT-X-APE-CORTEX-NETWORK-VARIANCE-THRESHOLD:0.2');
+        lines.push('#EXT-X-APE-CORTEX-NETWORK-LATENCY-THRESHOLD:100ms');
+        lines.push('#EXT-X-APE-CORTEX-NETWORK-JITTER-THRESHOLD:30ms');
+        lines.push('#EXT-X-APE-CORTEX-NETWORK-LOSS-THRESHOLD:0.01');
+        // Artifact Mitigation Policy
+        lines.push('#EXT-X-APE-CORTEX-ARTIFACT-DEBLOCKING:auto');
+        lines.push('#EXT-X-APE-CORTEX-ARTIFACT-LOOP-FILTER:enabled');
+        lines.push('#EXT-X-APE-CORTEX-ARTIFACT-CONCEALMENT:motion_vector');
+        lines.push('#EXT-X-APE-CORTEX-ARTIFACT-ERROR-RESILIENCE:true');
+        lines.push('#EXT-X-APE-CORTEX-ARTIFACT-MAX-ERRORS:5');
+        // Fallback Chain Determinista
+        lines.push('#EXT-X-APE-CORTEX-FALLBACK-CODEC-CHAIN:hevc>av1>vp9>avc');
+        lines.push('#EXT-X-APE-CORTEX-FALLBACK-TRANSPORT-CHAIN:cmaf>fmp4>ts');
+        lines.push('#EXT-X-APE-CORTEX-FALLBACK-RESOLUTION-CHAIN:4K>2K>FHD>HD>SD>LOW');
+        lines.push('#EXT-X-APE-CORTEX-FALLBACK-HDR-CHAIN:passthrough>tone_map_hable>sdr');
+        lines.push('#EXT-X-APE-CORTEX-FALLBACK-ON-DEGRADATION:reduce_bitrate');
+        lines.push('#EXT-X-APE-CORTEX-FALLBACK-ON-CODEC-FAIL:use_fallback_codec');
+        lines.push('#EXT-X-APE-CORTEX-FALLBACK-ON-TRANSPORT-FAIL:use_fallback_transport');
+        // FFmpeg Backend Rules
+        lines.push('#EXT-X-APE-CORTEX-FFMPEG-TS:hls_time=6,hls_list_size=0,hls_flags=independent_segments');
+        lines.push('#EXT-X-APE-CORTEX-FFMPEG-CMAF:segment_type=fmp4,init=init.mp4,hls_time=4');
+        lines.push('#EXT-X-APE-CORTEX-FFMPEG-LL-HLS:split_by_time,playlist_type=event');
+        lines.push('#EXT-X-APE-CORTEX-FFMPEG-HEVC:libx265,preset=slow,crf=20,profile=main');
+        lines.push('#EXT-X-APE-CORTEX-FFMPEG-DEBLOCK:x265-params=deblock:-1:-1');
+        lines.push('#EXT-X-APE-CORTEX-FFMPEG-HDR10:hdr-opt=1,repeat-headers=1,max-cll=1000:400');
+        // Noise Reduction & Enhancement Policy
+        lines.push('#EXT-X-APE-CORTEX-NOISE-REDUCTION:enabled,preserve-detail=true');
+        lines.push('#EXT-X-APE-CORTEX-NOISE-METHOD:nlmeans+hqdn3d');
+        lines.push('#EXT-X-APE-CORTEX-ENHANCEMENT-LCEVC:tune=vq,base=hevc');
+        // Player Profiles
+        lines.push('#EXT-X-APE-CORTEX-PLAYERS:vlc,mpv,ffmpeg,hls.js,shaka,dash.js');
+        lines.push('#EXT-X-APE-CORTEX-PLAYER-ABR:throughput,buffer_target=30s,buffer_min=5s');
+        lines.push('#EXT-X-APE-CORTEX-PLAYER-HW-DECODE:true');
+        lines.push('#EXT-X-APE-CORTEX-PLAYER-DEINTERLACE:bwdif,yadif,w3fdif');
+        // Idempotency & Telemetry
+        lines.push(`#EXT-X-APE-CORTEX-IDEMPOTENCY-HASH:${cfg._hash || 'auto'}`);
+        lines.push('#EXT-X-APE-CORTEX-TELEMETRY:playback+network+buffer+quality_switches+errors');
+        lines.push('#EXT-X-APE-CORTEX-TELEMETRY-INTERVAL:60s');
+        lines.push('#EXT-X-APE-CORTEX-CHANNELS-MAP:channels_map_v1.0.0');
+        lines.push('#EXT-X-APE-CORTEX-BIDIRECTIONAL:resolve>enrich>override>update');
 
         // ═══════════════════════════════════════════════════════════════
         // BLOQUE 5: AV1 FALLBACK CHAIN (10 tags)

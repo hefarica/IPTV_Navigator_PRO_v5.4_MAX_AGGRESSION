@@ -1,0 +1,1066 @@
+{
+  "schema_version": "1.0.0",
+  "generated_at": "2026-03-20T12:00:00+00:00",
+  "generator": "IPTV Quality Resolution Engine",
+  "description": "Production-level channel map with normalized quality decision structures",
+  
+  "global_defaults": {
+    "codec_profile": {
+      "preferred_codec": "hevc",
+      "fallback_codec": "avc",
+      "allow_av1": true,
+      "allow_vp9": true,
+      "max_profile": "high",
+      "max_level": 51,
+      "require_hardware_decode": false,
+      "profile_constraints": {
+        "hevc": {
+          "min_profile": "main",
+          "max_profile": "high",
+          "max_level": 5.2,
+          "tier": "main"
+        },
+        "avc": {
+          "min_profile": "main",
+          "max_profile": "high",
+          "max_level": 5.2
+        },
+        "av1": {
+          "min_profile": "main",
+          "max_profile": "professional",
+          "max_level": 6
+        }
+      }
+    },
+    
+    "transport_profile": {
+      "preferred_transport": "cmaf",
+      "fallback_transport": "ts",
+      "allow_fmp4": true,
+      "allow_dash": false,
+      "allow_ts": true,
+      "hls_version_min": 3,
+      "hls_version_preferred": 6,
+      "low_latency_enabled": false,
+      "segment_duration_target": 6,
+      "segment_duration_max": 10
+    },
+    
+    "enhancement_profile": {
+      "lcevc_enabled": false,
+      "lcevc_tune_mode": "vq",
+      "lcevc_base_codec": "avc",
+      "dc_dithering_strength": 0,
+      "m_hf_strength": 0,
+      "note": "LCEVC enhancement requires compatible decoder/player"
+    },
+    
+    "player_targets": {
+      "default_player": "generic",
+      "supported_players": ["generic", "vlc", "mpv", "ffmpeg", "hls.js", "shaka", "dash.js"],
+      "abr_algorithm": "throughput",
+      "buffer_target_seconds": 30,
+      "buffer_min_seconds": 5,
+      "buffer_max_seconds": 60,
+      "live_delay_seconds": 3
+    },
+    
+    "network_policy": {
+      "bandwidth_estimation_method": "throughput",
+      "min_bandwidth_bps": 500000,
+      "max_bandwidth_bps": 50000000,
+      "default_bandwidth_bps": 10000000,
+      "stable_bandwidth_ratio": 0.8,
+      "bandwidth_variance_threshold": 0.2,
+      "latency_threshold_ms": 100,
+      "jitter_threshold_ms": 30,
+      "packet_loss_threshold": 0.01
+    },
+    
+    "abr_policy": {
+      "enabled": true,
+      "algorithm": "throughput",
+      "start_bitrate_policy": "bandwidth_estimate",
+      "start_bitrate_ratio": 0.7,
+      "min_bitrate_bps": 500000,
+      "max_bitrate_bps": 25000000,
+      "switch_up_threshold": 1.2,
+      "switch_down_threshold": 0.8,
+      "switch_interval_min_ms": 5000,
+      "quality_switch_mode": "smooth",
+      "buffer_based_switching": false,
+      "throughput_based_switching": true
+    },
+    
+    "hdr_policy": {
+      "passthrough_enabled": true,
+      "tone_mapping_method": "hable",
+      "target_colorspace": "bt709",
+      "target_transfer": "bt1886",
+      "hdr10_to_sdr_method": "hable",
+      "hdr10plus_to_sdr_method": "reinhard",
+      "dolbyvision_to_sdr_method": "mobius",
+      "hlg_to_sdr_method": "hable",
+      "max_cll_fallback": 1000,
+      "max_fall_fallback": 400
+    },
+    
+    "deinterlace_policy": {
+      "auto_detect": true,
+      "preferred_mode": "bwdif",
+      "fallback_mode": "yadif",
+      "force_deinterlace": false,
+      "detect_from_fps": true,
+      "interlaced_fps_values": [25, 29.97, 50, 59.94],
+      "field_order": "tff",
+      "mode_options": {
+        "bwdif": {"quality": 95, "performance": 80, "mode": "send_frame"},
+        "yadif": {"quality": 80, "performance": 90, "mode": "send_frame"},
+        "w3fdif": {"quality": 85, "performance": 85, "filter": "complex"}
+      }
+    },
+    
+    "noise_reduction_policy": {
+      "enabled": false,
+      "strength": 0,
+      "preserve_detail": true,
+      "method": "none",
+      "temporal_filter": false,
+      "spatial_filter": false,
+      "note": "Noise reduction typically applied at encoder/transcoder, not player"
+    },
+    
+    "artifact_mitigation_policy": {
+      "deblocking_enabled": true,
+      "deblocking_strength": "auto",
+      "loop_filter_enabled": true,
+      "concealment_mode": "motion_vector",
+      "error_resilience": true,
+      "concealment_on_error": true,
+      "skip_frames_on_error": true,
+      "max_consecutive_errors": 5
+    },
+    
+    "fallback_chain": {
+      "codec_fallback_order": ["hevc", "av1", "vp9", "avc"],
+      "transport_fallback_order": ["cmaf", "fmp4", "ts"],
+      "resolution_fallback_order": [
+        {"height": 2160, "label": "4K"},
+        {"height": 1440, "label": "2K"},
+        {"height": 1080, "label": "FHD"},
+        {"height": 720, "label": "HD"},
+        {"height": 480, "label": "SD"},
+        {"height": 360, "label": "LOW"}
+      ],
+      "on_network_degradation": "reduce_bitrate",
+      "on_codec_failure": "use_fallback_codec",
+      "on_transport_failure": "use_fallback_transport"
+    },
+    
+    "telemetry_fields": {
+      "collect_playback_stats": true,
+      "collect_network_stats": true,
+      "collect_buffer_stats": true,
+      "collect_quality_switches": true,
+      "collect_errors": true,
+      "report_interval_seconds": 60,
+      "retention_days": 30
+    }
+  },
+  
+  "device_profiles": {
+    "tv_4k_hdr": {
+      "device_type": "smart_tv",
+      "screen_resolution": {"width": 3840, "height": 2160},
+      "screen_refresh_rate": 60,
+      "screen_hdr_capable": true,
+      "hdr_support": {
+        "hdr10": true,
+        "hdr10plus": true,
+        "dolbyvision": true,
+        "hlg": true
+      },
+      "codec_support": {
+        "hevc": {"decode": true, "encode": false, "profile": ["main", "main10", "high"], "hardware": true},
+        "avc": {"decode": true, "encode": false, "profile": ["baseline", "main", "high"], "hardware": true},
+        "av1": {"decode": true, "encode": false, "profile": ["main"], "hardware": true},
+        "vp9": {"decode": true, "encode": false, "profile": ["profile0", "profile2"], "hardware": true}
+      },
+      "max_bitrate": 50000000,
+      "hardware_decoding": true,
+      "lcevc_support": true,
+      "audio_support": {
+        "aac": true,
+        "eac3": true,
+        "ac3": true,
+        "dolby_atmos": true,
+        "opus": false
+      }
+    },
+    
+    "tv_1080p_sdr": {
+      "device_type": "smart_tv",
+      "screen_resolution": {"width": 1920, "height": 1080},
+      "screen_refresh_rate": 60,
+      "screen_hdr_capable": false,
+      "hdr_support": {
+        "hdr10": false,
+        "hdr10plus": false,
+        "dolbyvision": false,
+        "hlg": false
+      },
+      "codec_support": {
+        "hevc": {"decode": true, "encode": false, "profile": ["main", "high"], "hardware": true},
+        "avc": {"decode": true, "encode": false, "profile": ["baseline", "main", "high"], "hardware": true},
+        "av1": {"decode": false, "encode": false, "profile": [], "hardware": false},
+        "vp9": {"decode": true, "encode": false, "profile": ["profile0"], "hardware": true}
+      },
+      "max_bitrate": 25000000,
+      "hardware_decoding": true,
+      "lcevc_support": false,
+      "audio_support": {
+        "aac": true,
+        "eac3": true,
+        "ac3": true,
+        "dolby_atmos": false,
+        "opus": false
+      }
+    },
+    
+    "mobile_high_end": {
+      "device_type": "mobile",
+      "screen_resolution": {"width": 1440, "height": 3200},
+      "screen_refresh_rate": 120,
+      "screen_hdr_capable": true,
+      "hdr_support": {
+        "hdr10": true,
+        "hdr10plus": false,
+        "dolbyvision": true,
+        "hlg": true
+      },
+      "codec_support": {
+        "hevc": {"decode": true, "encode": true, "profile": ["main", "main10"], "hardware": true},
+        "avc": {"decode": true, "encode": true, "profile": ["baseline", "main", "high"], "hardware": true},
+        "av1": {"decode": true, "encode": false, "profile": ["main"], "hardware": true},
+        "vp9": {"decode": true, "encode": false, "profile": ["profile0", "profile2"], "hardware": true}
+      },
+      "max_bitrate": 30000000,
+      "hardware_decoding": true,
+      "lcevc_support": true,
+      "audio_support": {
+        "aac": true,
+        "eac3": false,
+        "ac3": false,
+        "dolby_atmos": false,
+        "opus": true
+      }
+    },
+    
+    "mobile_mid_range": {
+      "device_type": "mobile",
+      "screen_resolution": {"width": 1080, "height": 2400},
+      "screen_refresh_rate": 90,
+      "screen_hdr_capable": false,
+      "hdr_support": {
+        "hdr10": false,
+        "hdr10plus": false,
+        "dolbyvision": false,
+        "hlg": false
+      },
+      "codec_support": {
+        "hevc": {"decode": true, "encode": false, "profile": ["main"], "hardware": true},
+        "avc": {"decode": true, "encode": true, "profile": ["baseline", "main"], "hardware": true},
+        "av1": {"decode": false, "encode": false, "profile": [], "hardware": false},
+        "vp9": {"decode": true, "encode": false, "profile": ["profile0"], "hardware": true}
+      },
+      "max_bitrate": 15000000,
+      "hardware_decoding": true,
+      "lcevc_support": false,
+      "audio_support": {
+        "aac": true,
+        "eac3": false,
+        "ac3": false,
+        "dolby_atmos": false,
+        "opus": true
+      }
+    },
+    
+    "stb_basic": {
+      "device_type": "set_top_box",
+      "screen_resolution": {"width": 1920, "height": 1080},
+      "screen_refresh_rate": 60,
+      "screen_hdr_capable": false,
+      "hdr_support": {
+        "hdr10": false,
+        "hdr10plus": false,
+        "dolbyvision": false,
+        "hlg": false
+      },
+      "codec_support": {
+        "hevc": {"decode": true, "encode": false, "profile": ["main"], "hardware": true},
+        "avc": {"decode": true, "encode": false, "profile": ["baseline", "main", "high"], "hardware": true},
+        "av1": {"decode": false, "encode": false, "profile": [], "hardware": false},
+        "vp9": {"decode": false, "encode": false, "profile": [], "hardware": false}
+      },
+      "max_bitrate": 20000000,
+      "hardware_decoding": true,
+      "lcevc_support": false,
+      "audio_support": {
+        "aac": true,
+        "eac3": false,
+        "ac3": true,
+        "dolby_atmos": false,
+        "opus": false
+      }
+    },
+    
+    "browser_desktop": {
+      "device_type": "browser",
+      "screen_resolution": {"width": 1920, "height": 1080},
+      "screen_refresh_rate": 60,
+      "screen_hdr_capable": false,
+      "hdr_support": {
+        "hdr10": false,
+        "hdr10plus": false,
+        "dolbyvision": false,
+        "hlg": false
+      },
+      "codec_support": {
+        "hevc": {"decode": true, "encode": false, "profile": ["main", "main10"], "hardware": true},
+        "avc": {"decode": true, "encode": false, "profile": ["baseline", "main", "high"], "hardware": true},
+        "av1": {"decode": true, "encode": false, "profile": ["main"], "hardware": true},
+        "vp9": {"decode": true, "encode": false, "profile": ["profile0", "profile2"], "hardware": true}
+      },
+      "max_bitrate": 25000000,
+      "hardware_decoding": true,
+      "lcevc_support": false,
+      "audio_support": {
+        "aac": true,
+        "eac3": true,
+        "ac3": true,
+        "dolby_atmos": false,
+        "opus": true
+      },
+      "mse_support": true,
+      "eme_support": true
+    }
+  },
+  
+  "network_profiles": {
+    "fiber_high": {
+      "connection_type": "fiber",
+      "estimated_bandwidth_bps": 100000000,
+      "stable_bandwidth_bps": 80000000,
+      "latency_ms": 10,
+      "jitter_ms": 2,
+      "packet_loss_rate": 0.0001,
+      "bandwidth_variance": 0.05,
+      "recommended_max_bitrate": 50000000
+    },
+    
+    "fiber_standard": {
+      "connection_type": "fiber",
+      "estimated_bandwidth_bps": 50000000,
+      "stable_bandwidth_bps": 40000000,
+      "latency_ms": 15,
+      "jitter_ms": 5,
+      "packet_loss_rate": 0.0005,
+      "bandwidth_variance": 0.08,
+      "recommended_max_bitrate": 25000000
+    },
+    
+    "cable_high": {
+      "connection_type": "cable",
+      "estimated_bandwidth_bps": 30000000,
+      "stable_bandwidth_bps": 20000000,
+      "latency_ms": 25,
+      "jitter_ms": 10,
+      "packet_loss_rate": 0.001,
+      "bandwidth_variance": 0.12,
+      "recommended_max_bitrate": 15000000
+    },
+    
+    "dsl_vdsl": {
+      "connection_type": "dsl",
+      "estimated_bandwidth_bps": 15000000,
+      "stable_bandwidth_bps": 10000000,
+      "latency_ms": 35,
+      "jitter_ms": 15,
+      "packet_loss_rate": 0.002,
+      "bandwidth_variance": 0.15,
+      "recommended_max_bitrate": 8000000
+    },
+    
+    "lte_4g": {
+      "connection_type": "cellular",
+      "estimated_bandwidth_bps": 25000000,
+      "stable_bandwidth_bps": 15000000,
+      "latency_ms": 40,
+      "jitter_ms": 20,
+      "packet_loss_rate": 0.005,
+      "bandwidth_variance": 0.25,
+      "recommended_max_bitrate": 10000000
+    },
+    
+    "wifi_5ghz": {
+      "connection_type": "wifi",
+      "estimated_bandwidth_bps": 40000000,
+      "stable_bandwidth_bps": 30000000,
+      "latency_ms": 5,
+      "jitter_ms": 3,
+      "packet_loss_rate": 0.001,
+      "bandwidth_variance": 0.1,
+      "recommended_max_bitrate": 25000000
+    },
+    
+    "wifi_24ghz": {
+      "connection_type": "wifi",
+      "estimated_bandwidth_bps": 15000000,
+      "stable_bandwidth_bps": 10000000,
+      "latency_ms": 10,
+      "jitter_ms": 8,
+      "packet_loss_rate": 0.003,
+      "bandwidth_variance": 0.2,
+      "recommended_max_bitrate": 8000000
+    }
+  },
+  
+  "player_profiles": {
+    "vlc": {
+      "player_type": "vlc",
+      "abr_enabled": true,
+      "abr_algorithm": "throughput",
+      "buffer_target": 30,
+      "buffer_min": 5,
+      "support_hls": true,
+      "support_dash": true,
+      "support_cmaf": true,
+      "support_fmp4": true,
+      "hardware_decoding": true,
+      "deinterlace_support": ["bwdif", "yadif", "w3fdif"],
+      "http_options_support": true
+    },
+    
+    "mpv": {
+      "player_type": "mpv",
+      "abr_enabled": true,
+      "abr_algorithm": "throughput",
+      "buffer_target": 30,
+      "buffer_min": 3,
+      "support_hls": true,
+      "support_dash": true,
+      "support_cmaf": true,
+      "support_fmp4": true,
+      "hardware_decoding": true,
+      "deinterlace_support": ["bwdif", "yadif"],
+      "http_options_support": true
+    },
+    
+    "ffmpeg_direct": {
+      "player_type": "ffmpeg",
+      "abr_enabled": false,
+      "buffer_target": 0,
+      "buffer_min": 0,
+      "support_hls": true,
+      "support_dash": false,
+      "support_cmaf": true,
+      "support_fmp4": true,
+      "hardware_decoding": true,
+      "deinterlace_support": ["bwdif", "yadif", "w3fdif"],
+      "http_options_support": true
+    },
+    
+    "hls_js": {
+      "player_type": "hls.js",
+      "abr_enabled": true,
+      "abr_algorithm": "throughput",
+      "buffer_target": 30,
+      "buffer_min": 5,
+      "support_hls": true,
+      "support_dash": false,
+      "support_cmaf": true,
+      "support_fmp4": true,
+      "hardware_decoding": false,
+      "deinterlace_support": [],
+      "http_options_support": false,
+      "mse_required": true
+    },
+    
+    "shaka_player": {
+      "player_type": "shaka",
+      "abr_enabled": true,
+      "abr_algorithm": "bandwidth",
+      "buffer_target": 30,
+      "buffer_min": 5,
+      "support_hls": true,
+      "support_dash": true,
+      "support_cmaf": true,
+      "support_fmp4": true,
+      "hardware_decoding": false,
+      "deinterlace_support": [],
+      "http_options_support": false,
+      "mse_required": true
+    },
+    
+    "dash_js": {
+      "player_type": "dash.js",
+      "abr_enabled": true,
+      "abr_algorithm": "throughput",
+      "buffer_target": 30,
+      "buffer_min": 5,
+      "support_hls": false,
+      "support_dash": true,
+      "support_cmaf": true,
+      "support_fmp4": true,
+      "hardware_decoding": false,
+      "deinterlace_support": [],
+      "http_options_support": false,
+      "mse_required": true
+    }
+  },
+  
+  "channels": {
+    "example_channel_001": {
+      "channel_id": "example_channel_001",
+      "channel_name": "Example HD Channel",
+      "source_manifest": "https://example.com/live/channel1/master.m3u8",
+      
+      "manifest_facts": {
+        "detected_format": "cmaf",
+        "hls_version": 6,
+        "is_live": true,
+        "segment_type": "fmp4",
+        "has_encryption": false,
+        "target_duration": 6,
+        "low_latency": false,
+        "last_updated": "2026-03-20T10:00:00+00:00"
+      },
+      
+      "transport_profile": {
+        "mode": "cmaf",
+        "segment_duration_target": 6,
+        "hls_version": 6,
+        "init_segment_required": true,
+        "encryption": null
+      },
+      
+      "codec_profile": {
+        "video_codec": "hevc",
+        "video_profile": "main",
+        "video_level": 4.1,
+        "audio_codec": "aac",
+        "audio_profile": "lc",
+        "audio_channels": 2
+      },
+      
+      "enhancement_profile": {
+        "lcevc_enabled": false,
+        "lcevc_available": false,
+        "enhancement_layers": 0
+      },
+      
+      "player_targets": {
+        "preferred_player": "vlc",
+        "abr_algorithm": "throughput",
+        "buffer_target_seconds": 30
+      },
+      
+      "device_profiles_override": null,
+      "network_profiles_override": null,
+      
+      "abr_policy": {
+        "enabled": true,
+        "min_bitrate_bps": 1000000,
+        "max_bitrate_bps": 12000000,
+        "start_bitrate_bps": 4000000,
+        "ladder_rungs": [
+          {"bitrate": 12000000, "resolution": "1920x1080", "fps": 60, "label": "FHD60"},
+          {"bitrate": 8000000, "resolution": "1920x1080", "fps": 30, "label": "FHD30"},
+          {"bitrate": 5000000, "resolution": "1280x720", "fps": 30, "label": "HD"},
+          {"bitrate": 2500000, "resolution": "854x480", "fps": 30, "label": "SD"},
+          {"bitrate": 1000000, "resolution": "640x360", "fps": 30, "label": "LOW"}
+        ]
+      },
+      
+      "hdr_policy": {
+        "content_type": "sdr",
+        "passthrough": false,
+        "tone_mapping": null
+      },
+      
+      "deinterlace_policy": {
+        "required": false,
+        "mode": null,
+        "source_interlaced": false
+      },
+      
+      "noise_reduction_policy": {
+        "enabled": false,
+        "strength": 0
+      },
+      
+      "artifact_mitigation_policy": {
+        "deblocking": "auto",
+        "loop_filter": true
+      },
+      
+      "directive_normalization": {
+        "vlcopt_normalized": [],
+        "kodiprop_normalized": [],
+        "exthttp_normalized": [],
+        "merged_directives": [],
+        "conflicts": []
+      },
+      
+      "quality_decision_tree": {
+        "codec_priority": ["hevc", "avc"],
+        "resolution_priority": ["1080p", "720p", "480p"],
+        "transport_priority": ["cmaf", "ts"],
+        "hdr_handling": "passthrough_if_capable"
+      },
+      
+      "fallback_chain": [
+        {"priority": 1, "bitrate": 12000000, "resolution": "1920x1080", "codec": "hevc"},
+        {"priority": 2, "bitrate": 8000000, "resolution": "1920x1080", "codec": "hevc"},
+        {"priority": 3, "bitrate": 5000000, "resolution": "1280x720", "codec": "hevc"},
+        {"priority": 4, "bitrate": 2500000, "resolution": "854x480", "codec": "hevc"},
+        {"priority": 5, "bitrate": 1000000, "resolution": "640x360", "codec": "hevc"}
+      ],
+      
+      "telemetry_fields": {
+        "last_resolution_time": "2026-03-20T10:00:00+00:00",
+        "resolution_count": 42,
+        "avg_quality_score": 82.5,
+        "error_count": 0,
+        "last_error": null
+      },
+      
+      "last_probe": {
+        "timestamp": "2026-03-20T10:00:00+00:00",
+        "success": true,
+        "variants_detected": 5,
+        "response_time_ms": 125
+      },
+      
+      "idempotency_hash": "a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0",
+      
+      "compliance_flags": {
+        "hls_spec_compliant": true,
+        "codec_valid": true,
+        "transport_consistent": true,
+        "bitrate_ladder_valid": true,
+        "warnings": []
+      },
+      
+      "safety_fallbacks": {
+        "on_transport_failure": "ts",
+        "on_codec_failure": "avc",
+        "on_network_degradation": "lowest_variant"
+      },
+      
+      "runtime_overrides": [],
+      
+      "last_resolved": "2026-03-20T12:00:00+00:00",
+      "resolution_count": 42
+    },
+    
+    "example_channel_002": {
+      "channel_id": "example_channel_002",
+      "channel_name": "Example 4K HDR Channel",
+      "source_manifest": "https://example.com/live/channel2/master.m3u8",
+      
+      "manifest_facts": {
+        "detected_format": "cmaf",
+        "hls_version": 7,
+        "is_live": true,
+        "segment_type": "fmp4",
+        "has_encryption": true,
+        "encryption_method": "AES-128",
+        "target_duration": 4,
+        "low_latency": true,
+        "last_updated": "2026-03-20T10:00:00+00:00"
+      },
+      
+      "transport_profile": {
+        "mode": "cmaf",
+        "segment_duration_target": 4,
+        "hls_version": 7,
+        "init_segment_required": true,
+        "encryption": {
+          "method": "AES-128",
+          "key_uri": "https://example.com/keys/channel2.key"
+        }
+      },
+      
+      "codec_profile": {
+        "video_codec": "hevc",
+        "video_profile": "main10",
+        "video_level": 5.1,
+        "audio_codec": "eac3",
+        "audio_profile": "joc",
+        "audio_channels": 6,
+        "dolby_atmos": true
+      },
+      
+      "enhancement_profile": {
+        "lcevc_enabled": false,
+        "lcevc_available": false,
+        "enhancement_layers": 0
+      },
+      
+      "player_targets": {
+        "preferred_player": "vlc",
+        "abr_algorithm": "throughput",
+        "buffer_target_seconds": 20,
+        "live_delay_seconds": 2
+      },
+      
+      "abr_policy": {
+        "enabled": true,
+        "min_bitrate_bps": 3000000,
+        "max_bitrate_bps": 25000000,
+        "start_bitrate_bps": 10000000,
+        "ladder_rungs": [
+          {"bitrate": 25000000, "resolution": "3840x2160", "fps": 60, "label": "4K60_HDR"},
+          {"bitrate": 18000000, "resolution": "3840x2160", "fps": 30, "label": "4K30_HDR"},
+          {"bitrate": 12000000, "resolution": "1920x1080", "fps": 60, "label": "FHD60_HDR"},
+          {"bitrate": 8000000, "resolution": "1920x1080", "fps": 30, "label": "FHD30_SDR"},
+          {"bitrate": 4000000, "resolution": "1280x720", "fps": 30, "label": "HD_SDR"},
+          {"bitrate": 1500000, "resolution": "854x480", "fps": 30, "label": "SD_SDR"}
+        ]
+      },
+      
+      "hdr_policy": {
+        "content_type": "hdr10",
+        "passthrough": true,
+        "tone_mapping": null,
+        "fallback_to_sdr": true,
+        "tone_mapping_method": "hable"
+      },
+      
+      "deinterlace_policy": {
+        "required": false,
+        "mode": null,
+        "source_interlaced": false
+      },
+      
+      "noise_reduction_policy": {
+        "enabled": false,
+        "strength": 0
+      },
+      
+      "artifact_mitigation_policy": {
+        "deblocking": "auto",
+        "loop_filter": true
+      },
+      
+      "directive_normalization": {
+        "vlcopt_normalized": [],
+        "kodiprop_normalized": [],
+        "exthttp_normalized": [],
+        "merged_directives": [],
+        "conflicts": []
+      },
+      
+      "quality_decision_tree": {
+        "codec_priority": ["hevc", "avc"],
+        "resolution_priority": ["4K", "FHD", "HD", "SD"],
+        "transport_priority": ["cmaf", "ts"],
+        "hdr_handling": "passthrough_with_tone_mapping_fallback"
+      },
+      
+      "fallback_chain": [
+        {"priority": 1, "bitrate": 25000000, "resolution": "3840x2160", "codec": "hevc", "hdr": "hdr10"},
+        {"priority": 2, "bitrate": 18000000, "resolution": "3840x2160", "codec": "hevc", "hdr": "hdr10"},
+        {"priority": 3, "bitrate": 12000000, "resolution": "1920x1080", "codec": "hevc", "hdr": "hdr10"},
+        {"priority": 4, "bitrate": 8000000, "resolution": "1920x1080", "codec": "hevc", "hdr": "sdr"},
+        {"priority": 5, "bitrate": 4000000, "resolution": "1280x720", "codec": "hevc", "hdr": "sdr"},
+        {"priority": 6, "bitrate": 1500000, "resolution": "854x480", "codec": "hevc", "hdr": "sdr"}
+      ],
+      
+      "telemetry_fields": {
+        "last_resolution_time": "2026-03-20T10:00:00+00:00",
+        "resolution_count": 156,
+        "avg_quality_score": 91.2,
+        "error_count": 2,
+        "last_error": "2026-03-15T08:30:00+00:00"
+      },
+      
+      "last_probe": {
+        "timestamp": "2026-03-20T10:00:00+00:00",
+        "success": true,
+        "variants_detected": 6,
+        "response_time_ms": 98
+      },
+      
+      "idempotency_hash": "b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0u1",
+      
+      "compliance_flags": {
+        "hls_spec_compliant": true,
+        "codec_valid": true,
+        "transport_consistent": true,
+        "bitrate_ladder_valid": true,
+        "warnings": []
+      },
+      
+      "safety_fallbacks": {
+        "on_transport_failure": "ts",
+        "on_codec_failure": "avc",
+        "on_network_degradation": "lowest_variant",
+        "on_hdr_failure": "tone_map_to_sdr"
+      },
+      
+      "runtime_overrides": [],
+      
+      "last_resolved": "2026-03-20T12:00:00+00:00",
+      "resolution_count": 156
+    },
+    
+    "example_channel_003": {
+      "channel_id": "example_channel_003",
+      "channel_name": "Example Sports Channel (Interlaced)",
+      "source_manifest": "https://example.com/live/channel3/master.m3u8",
+      
+      "manifest_facts": {
+        "detected_format": "ts",
+        "hls_version": 4,
+        "is_live": true,
+        "segment_type": "ts",
+        "has_encryption": false,
+        "target_duration": 10,
+        "low_latency": false,
+        "last_updated": "2026-03-20T10:00:00+00:00"
+      },
+      
+      "transport_profile": {
+        "mode": "ts",
+        "segment_duration_target": 10,
+        "hls_version": 4,
+        "init_segment_required": false,
+        "encryption": null
+      },
+      
+      "codec_profile": {
+        "video_codec": "avc",
+        "video_profile": "high",
+        "video_level": 4.0,
+        "audio_codec": "aac",
+        "audio_profile": "lc",
+        "audio_channels": 2,
+        "interlaced": true,
+        "field_order": "tff"
+      },
+      
+      "enhancement_profile": {
+        "lcevc_enabled": false,
+        "lcevc_available": false,
+        "enhancement_layers": 0
+      },
+      
+      "player_targets": {
+        "preferred_player": "vlc",
+        "abr_algorithm": "throughput",
+        "buffer_target_seconds": 30
+      },
+      
+      "deinterlace_policy": {
+        "required": true,
+        "mode": "bwdif",
+        "source_interlaced": true,
+        "field_order": "tff",
+        "fps_after_deinterlace": 50
+      },
+      
+      "abr_policy": {
+        "enabled": true,
+        "min_bitrate_bps": 800000,
+        "max_bitrate_bps": 8000000,
+        "start_bitrate_bps": 3000000,
+        "ladder_rungs": [
+          {"bitrate": 8000000, "resolution": "1920x1080", "fps": 50, "interlaced": true, "label": "FHD50i"},
+          {"bitrate": 5000000, "resolution": "1440x1080", "fps": 50, "interlaced": true, "label": "HD50i"},
+          {"bitrate": 3000000, "resolution": "1024x576", "fps": 25, "interlaced": false, "label": "SD25p"},
+          {"bitrate": 1500000, "resolution": "768x432", "fps": 25, "interlaced": false, "label": "LOW25p"},
+          {"bitrate": 800000, "resolution": "512x288", "fps": 25, "interlaced": false, "label": "MIN25p"}
+        ]
+      },
+      
+      "hdr_policy": {
+        "content_type": "sdr",
+        "passthrough": false,
+        "tone_mapping": null
+      },
+      
+      "noise_reduction_policy": {
+        "enabled": false,
+        "strength": 0
+      },
+      
+      "artifact_mitigation_policy": {
+        "deblocking": "auto",
+        "loop_filter": true,
+        "motion_artifact_reduction": true
+      },
+      
+      "directive_normalization": {
+        "vlcopt_normalized": [],
+        "kodiprop_normalized": [],
+        "exthttp_normalized": [],
+        "merged_directives": [],
+        "conflicts": []
+      },
+      
+      "quality_decision_tree": {
+        "codec_priority": ["avc"],
+        "resolution_priority": ["1080i", "1080p", "720p", "576p"],
+        "transport_priority": ["ts"],
+        "deinterlace_handling": "always_bwdif"
+      },
+      
+      "fallback_chain": [
+        {"priority": 1, "bitrate": 8000000, "resolution": "1920x1080", "codec": "avc", "interlaced": true},
+        {"priority": 2, "bitrate": 5000000, "resolution": "1440x1080", "codec": "avc", "interlaced": true},
+        {"priority": 3, "bitrate": 3000000, "resolution": "1024x576", "codec": "avc", "interlaced": false},
+        {"priority": 4, "bitrate": 1500000, "resolution": "768x432", "codec": "avc", "interlaced": false},
+        {"priority": 5, "bitrate": 800000, "resolution": "512x288", "codec": "avc", "interlaced": false}
+      ],
+      
+      "telemetry_fields": {
+        "last_resolution_time": "2026-03-20T10:00:00+00:00",
+        "resolution_count": 89,
+        "avg_quality_score": 75.8,
+        "error_count": 0,
+        "last_error": null
+      },
+      
+      "last_probe": {
+        "timestamp": "2026-03-20T10:00:00+00:00",
+        "success": true,
+        "variants_detected": 5,
+        "response_time_ms": 156
+      },
+      
+      "idempotency_hash": "c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0u1v2",
+      
+      "compliance_flags": {
+        "hls_spec_compliant": true,
+        "codec_valid": true,
+        "transport_consistent": true,
+        "bitrate_ladder_valid": true,
+        "warnings": ["Interlaced content detected - deinterlace recommended"]
+      },
+      
+      "safety_fallbacks": {
+        "on_transport_failure": null,
+        "on_codec_failure": null,
+        "on_network_degradation": "lowest_variant",
+        "deinterlace_fallback": "yadif"
+      },
+      
+      "runtime_overrides": [],
+      
+      "last_resolved": "2026-03-20T12:00:00+00:00",
+      "resolution_count": 89
+    }
+  },
+  
+  "quality_scoring": {
+    "weights": {
+      "resolution": 25,
+      "codec": 20,
+      "bitrate": 20,
+      "hdr": 15,
+      "framerate": 10,
+      "abr": 5,
+      "enhancements": 5
+    },
+    "grade_thresholds": {
+      "A_plus": 90,
+      "A": 80,
+      "B": 70,
+      "C": 60,
+      "D": 50,
+      "F": 0
+    }
+  },
+  
+  "decision_tree_config": {
+    "evaluation_order": [
+      "transport_compatibility",
+      "codec_compatibility",
+      "device_capabilities",
+      "network_constraints",
+      "resolution_selection",
+      "bitrate_selection",
+      "hdr_handling",
+      "deinterlace_handling",
+      "enhancement_layers",
+      "abr_configuration",
+      "fallback_preparation"
+    ],
+    "stop_on_critical_error": true,
+    "log_all_steps": true
+  },
+  
+  "validation_rules": {
+    "manifest_url": {
+      "required": true,
+      "pattern": "^https?://.+\.(m3u8|mpd)$",
+      "max_length": 2048
+    },
+    "channel_id": {
+      "required": false,
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "max_length": 64
+    },
+    "bitrate": {
+      "min": 100000,
+      "max": 100000000
+    },
+    "resolution": {
+      "min_width": 320,
+      "max_width": 7680,
+      "min_height": 180,
+      "max_height": 4320
+    },
+    "framerate": {
+      "allowed_values": [23.976, 24, 25, 29.97, 30, 50, 59.94, 60, 120]
+    }
+  },
+  
+  "compatibility_matrix": {
+    "codec_transport": {
+      "hevc": ["ts", "fmp4", "cmaf"],
+      "avc": ["ts", "fmp4", "cmaf"],
+      "av1": ["fmp4", "cmaf"],
+      "vp9": ["fmp4", "cmaf", "webm"]
+    },
+    "hdr_codec": {
+      "hdr10": ["hevc", "av1"],
+      "hdr10plus": ["hevc", "av1"],
+      "dolbyvision": ["hevc"],
+      "hlg": ["hevc", "avc", "av1"]
+    },
+    "player_transport": {
+      "vlc": ["ts", "fmp4", "cmaf", "dash"],
+      "mpv": ["ts", "fmp4", "cmaf", "dash"],
+      "ffmpeg": ["ts", "fmp4", "cmaf"],
+      "hls.js": ["fmp4", "cmaf"],
+      "shaka": ["fmp4", "cmaf", "dash"],
+      "dash.js": ["dash", "cmaf"]
+    }
+  },
+  
+  "metadata": {
+    "created_by": "IPTV Quality Resolution Engine v1.0.0",
+    "created_at": "2026-03-20T12:00:00+00:00",
+    "last_modified": "2026-03-20T12:00:00+00:00",
+    "version_history": [
+      {
+        "version": "1.0.0",
+        "date": "2026-03-20",
+        "changes": ["Initial schema creation"]
+      }
+    ]
+  }
+}
