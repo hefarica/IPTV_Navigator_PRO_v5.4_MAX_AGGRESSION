@@ -1835,6 +1835,19 @@
             "Accept-CH": "DPR, Viewport-Width, Width, Device-Memory, RTT, Downlink, ECT",
             "X-OTT-Navigator-Version": "1.7.0.0-aggressive-extreme",
             "X-Player-Type": "exoplayer-ultra-extreme,vlc-pro,kodi-pro",
+            // ── 🛡️ PEVCE ACTIVE METADATA ENFORCEMENT ──
+            "X-PEVCE-Network-Caching": "3000",
+            "X-PEVCE-Live-Caching": "3000",
+            "X-PEVCE-TCP-Caching": "3000",
+            "X-PEVCE-HTTP-Reconnect": "true",
+            "X-PEVCE-HTTP-Continuous": "true",
+            "X-PEVCE-HW-Decode": "any",
+            "X-PEVCE-HW-Threads": "0",
+            "X-PEVCE-Skip-Frame": "0",
+            "X-PEVCE-Skip-Idct": "0",
+            "X-PEVCE-Timeshift-RAM": "64MB",
+            "X-PEVCE-Deinterlace": "-1",
+            "X-PEVCE-Force-HDR": "true",
             "X-Hardware-Decode": "true",
             "X-Tunneling-Enabled": "off",
             "X-Audio-Track-Selection": "highest-quality-extreme,dolby-atmos-first",
@@ -2685,11 +2698,24 @@
         const resolution = cfg.resolution || '1920x1080';
         const fps = cfg.fps || 30;
         const codecString = window._APE_PRIO_QUALITY !== false ? (originalProfile === 'P0' ? 'avc1.640028,av01.0.16M.10,mp4a.40.2' : 'avc1.640028,hev1.1.6.L153.B0,mp4a.40.2') : 'avc1.640028,hev1.1.6.L153.B0,mp4a.40.2';
-        lines.push(`#EXT-X-STREAM-INF:BANDWIDTH=${bandwidth},AVERAGE-BANDWIDTH=${avgBandwidth},RESOLUTION=${resolution},CODECS="${codecString}",FRAME-RATE=${fps},HDCP-LEVEL=NONE`);
-
+        
         let jwt = null;
-        if (isModuleEnabled('jwt-generator')) jwt = generateJWT68Fields(channel, profile, index);
-        lines.push(buildChannelUrl(channel, jwt, profile, index));
+        if (typeof isModuleEnabled !== 'undefined' && isModuleEnabled('jwt-generator')) jwt = generateJWT68Fields(channel, profile, index);
+        const primaryUrl = buildChannelUrl(channel, jwt, profile, index);
+        const separator = primaryUrl.includes('?') ? '&' : '?';
+
+        // ── 🛡️ PEVCE ACTIVE METADATA ENFORCEMENT: NATIVE ABR FALLBACK ──
+        // Stream Principal
+        lines.push(`#EXT-X-STREAM-INF:BANDWIDTH=${bandwidth},AVERAGE-BANDWIDTH=${avgBandwidth},RESOLUTION=${resolution},CODECS="${codecString}",FRAME-RATE=${fps},HDCP-LEVEL=NONE`);
+        lines.push(primaryUrl);
+        
+        // Fallback CMAF (Worker Opcional - 90% Bandwidth para salto armónico ABR)
+        lines.push(`#EXT-X-STREAM-INF:BANDWIDTH=${Math.round(bandwidth * 0.9)},AVERAGE-BANDWIDTH=${Math.round(avgBandwidth * 0.9)},RESOLUTION=${resolution},CODECS="${codecString}",FRAME-RATE=${fps},HDCP-LEVEL=NONE`);
+        lines.push(`${primaryUrl}${separator}pevce_fallback=cmaf`);
+        
+        // Fallback TS (Worker Rescate Final - 80% Bandwidth)
+        lines.push(`#EXT-X-STREAM-INF:BANDWIDTH=${Math.round(bandwidth * 0.8)},AVERAGE-BANDWIDTH=${Math.round(avgBandwidth * 0.8)},RESOLUTION=${resolution},CODECS="${codecString}",FRAME-RATE=${fps},HDCP-LEVEL=NONE`);
+        lines.push(`${primaryUrl}${separator}pevce_fallback=ts`);
 
         // EXTHTTP + OVERFLOW (línea 3-4 del bloque)
         lines.push(build_exthttp(cfg, profile, index, sessionId, reqId));
