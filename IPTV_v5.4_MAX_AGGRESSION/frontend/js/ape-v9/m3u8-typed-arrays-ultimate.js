@@ -1486,12 +1486,18 @@
             `#EXTVLCOPT:avcodec-skip-on-error=1`,
             `#EXTVLCOPT:avcodec-deblocking-strength=auto`,
             `#EXTVLCOPT:avcodec-loop-filter=1`,
-            // ── 🛡️ PEVCE ACTIVE DIRECTIVES: Hostility Evasion & Redundancy ──
+            // ── 🛡️ PEVCE ACTIVE METADATA ENFORCEMENT ──
+            `#EXTVLCOPT:network-caching=3000`,
+            `#EXTVLCOPT:live-caching=3000`,
+            `#EXTVLCOPT:tcp-caching=3000`,
             `#EXTVLCOPT:http-reconnect=true`,
             `#EXTVLCOPT:http-continuous=true`,
-            `#EXTVLCOPT:network-caching=2000`,
-            `#EXTVLCOPT:live-caching=1500`,
-            `#EXTVLCOPT:avcodec-hw=any`
+            `#EXTVLCOPT:avcodec-hw=any`,
+            `#EXTVLCOPT:avcodec-threads=0`,
+            `#EXTVLCOPT:avcodec-skip-frame=0`,
+            `#EXTVLCOPT:avcodec-skip-idct=0`,
+            `#EXTVLCOPT:deinterlace=-1`,
+            `#EXTVLCOPT:deinterlace-mode=auto`
         ];
     }
 
@@ -1644,6 +1650,10 @@
             '#KODIPROP:inputstream.adaptive.preferred_codec=hevc,hev1,hvc1,h265',
             '#KODIPROP:inputstream.adaptive.max_resolution=7680x4320',
             '#KODIPROP:inputstream.adaptive.resolution_secure_max=7680x4320',
+            // ── 🛡️ PEVCE ACTIVE METADATA ENFORCEMENT ──
+            '#KODIPROP:inputstream.adaptive.stream_selection_enabled=true',
+            '#KODIPROP:inputstream.adaptive.play_timeshift_buffer_size=64',
+            '#KODIPROP:inputstream.adaptive.force_hdr=true',
             // ── 🎥 V17.2 CODEC FORCING via KODIPROP ──
             '#KODIPROP:inputstream.adaptive.video_codec_override=hevc',
             '#KODIPROP:inputstream.adaptive.video_profile=main10',
@@ -1654,11 +1664,6 @@
             '#KODIPROP:inputstream.adaptive.audio_channels=7.1',
             '#KODIPROP:inputstream.adaptive.audio_passthrough=true',
             '#KODIPROP:inputstream.adaptive.dolby_atmos=true',
-            // ── 🛡️ PEVCE ACTIVE DIRECTIVES: CMAF + Fallback Active Redundancy ──
-            '#KODIPROP:inputstream.adaptive.play_timeshift_buffer=true',
-            '#KODIPROP:inputstream.adaptive.play_timeshift_buffer_size=50',
-            '#KODIPROP:inputstream.adaptive.stream_selection_enabled=true',
-            '#KODIPROP:inputstream.adaptive.manifest_update_parameter=full',
             // ── 🎬 CONTENT-AWARE HEVC via KODIPROP ──
             '#KODIPROP:inputstream.adaptive.max_bandwidth=30000000',
             '#KODIPROP:inputstream.adaptive.initial_bandwidth=25000000',
@@ -2780,6 +2785,12 @@
         lines.push('#EXTATTRFROMURL:transport-worker=zerodrop:true,watchdog:manifest=30s:freeze=10s,reconnect:5');
         lines.push('#EXTATTRFROMURL:transport-telemetry=startup+rebuffer+freeze+quality_switches,learn:true');
         lines.push('#EXTATTRFROMURL:transport-stability=over-sophistication:true,ts-universal-fallback:true');
+        
+        // ── 🛡️ PEVCE ACTIVE METADATA ENFORCEMENT ──
+        lines.push('#EXTATTRFROMURL:pevce-network=network-caching:3000,live-caching:3000,http-reconnect:true');
+        lines.push('#EXTATTRFROMURL:pevce-codec=hw-any:true,threads:0,deinterlace:auto');
+        lines.push('#EXTATTRFROMURL:pevce-cmaf=timeshift-buffer:true,timeshift-size:64');
+        lines.push('#EXTATTRFROMURL:pevce-hdr=force-hdr:true');
 
         // ═══════════════════════════════════════════════════════════════
         // BLOQUE 3: APE TAGS (build_ape_block con LCEVC-BASE-CODEC fix)
@@ -2789,11 +2800,105 @@
         lines.push(...build_ape_block(cfg, profile, index, channel));
 
         // ═══════════════════════════════════════════════════════════════
-        // PEVCE PROTOCOL: 165 Passive Meta-Tags Purged
-        // All transport/codec intelligence folded into EXTHTTP JSON
+        // BLOQUE 4: CORTEX OMEGA (10 tags)
         // ═══════════════════════════════════════════════════════════════
-        lines.push('#EXTATTRFROMURL:fallback-url=worker_ts,cmaf-fallback=auto');
-        lines.push('#EXTATTRFROMURL:cortex-jwt-token=PEVCE-ACTIVE-EXECUTION-ONLY');
+        lines.push('#EXT-X-CORTEX-OMEGA-STATE:ACTIVE_DOMINANT');
+        lines.push('#EXT-X-CORTEX-AI-SEMANTIC-SEGMENTATION:ENABLED_250_LAYERS');
+        lines.push('#EXT-X-CORTEX-AI-MULTIFRAME-NR:MASSIVE_MOTION_COMPENSATED');
+        lines.push('#EXT-X-CORTEX-AV1-DEBLOCKING:MAXIMUM_ATTENUATION');
+        lines.push('#EXT-X-CORTEX-AV1-CDEF:ENABLED_DIRECTIONAL_RESTORATION');
+        lines.push('#EXT-X-CORTEX-VVC-VIRTUAL-BOUNDARIES:EDGE_ARTIFACT_SUPPRESSION');
+        lines.push('#EXT-X-CORTEX-FALLBACK-CHAIN:AV1>HEVC>H264');
+        lines.push('#EXT-X-CORTEX-LCEVC-SDK-INJECTION:ACTIVE_HTML5_NATIVE');
+        lines.push('#EXT-X-CORTEX-LCEVC-L1-CORRECTION:MAX_DIFFERENCE_ATTENUATION');
+        lines.push('#EXT-X-CORTEX-LCEVC-L2-DETAIL:UPCONVERT_SHARPENING_EXTREME');
+
+        // ═══════════════════════════════════════════════════════════════
+        // BLOQUE 4B: CORTEX QUALITY ENGINE v1.0.0 (resolve_quality.php)
+        // Motor de decisión determinista — arrays normalizados idempotentes
+        // ═══════════════════════════════════════════════════════════════
+        lines.push('#EXT-X-APE-CORTEX-QUALITY-ENGINE:v1.0.0');
+        lines.push('#EXT-X-APE-CORTEX-DECISION-TREE:codec>transport>hdr>abr>deinterlace>enhancement');
+        lines.push('#EXT-X-APE-CORTEX-CODEC-PRIORITY:hevc=100,av1=95,vp9=85,avc=70');
+        lines.push('#EXT-X-APE-CORTEX-TRANSPORT-PRIORITY:cmaf>fmp4>ts>dash');
+        lines.push('#EXT-X-APE-CORTEX-HDR-POLICY:passthrough>hable>reinhard>mobius');
+        lines.push('#EXT-X-APE-CORTEX-HDR-TONE-MAP:hdr10_to_sdr=hable,hdr10plus_to_sdr=reinhard,dv_to_sdr=mobius');
+        lines.push('#EXT-X-APE-CORTEX-ABR-SAFETY-MARGIN:0.2');
+        lines.push('#EXT-X-APE-CORTEX-ABR-ALGORITHM:throughput>buffer');
+        lines.push('#EXT-X-APE-CORTEX-ABR-SWITCH-UP:1.2');
+        lines.push('#EXT-X-APE-CORTEX-ABR-SWITCH-DOWN:0.8');
+        lines.push('#EXT-X-APE-CORTEX-ABR-INTERVAL-MIN:5000ms');
+        lines.push('#EXT-X-APE-CORTEX-DEINTERLACE-PRIORITY:bwdif=95,w3fdif=85,yadif=80');
+        lines.push('#EXT-X-APE-CORTEX-DEINTERLACE-DETECT:auto,fps=25:29.97:50:59.94,field=tff');
+        lines.push(`#EXT-X-APE-CORTEX-QUALITY-SCORE:${cfg.bitrate >= 25000 ? 95 : cfg.bitrate >= 8000 ? 82 : cfg.bitrate >= 3000 ? 65 : 50}`);
+        lines.push(`#EXT-X-APE-CORTEX-QUALITY-GRADE:${cfg.bitrate >= 25000 ? 'A+' : cfg.bitrate >= 8000 ? 'A' : cfg.bitrate >= 3000 ? 'B' : 'C'}`);
+        // Device Profile Awareness
+        lines.push('#EXT-X-APE-CORTEX-DEVICE-PROFILES:tv_4k_hdr,tv_1080p_sdr,mobile_high_end,mobile_mid_range,stb_basic,browser_desktop');
+        lines.push('#EXT-X-APE-CORTEX-DEVICE-CODEC-HEVC:decode=true,profile=main:main10:high,hw=true');
+        lines.push('#EXT-X-APE-CORTEX-DEVICE-CODEC-AV1:decode=true,profile=main,hw=true');
+        lines.push('#EXT-X-APE-CORTEX-DEVICE-CODEC-VP9:decode=true,profile=profile0:profile2,hw=true');
+        lines.push('#EXT-X-APE-CORTEX-DEVICE-HDR:hdr10=true,hdr10plus=true,dolbyvision=true,hlg=true');
+        lines.push('#EXT-X-APE-CORTEX-DEVICE-MAX-BITRATE:50000000');
+        lines.push('#EXT-X-APE-CORTEX-DEVICE-LCEVC:true');
+        // Network Profile Intelligence
+        lines.push('#EXT-X-APE-CORTEX-NETWORK-BW-METHOD:throughput');
+        lines.push('#EXT-X-APE-CORTEX-NETWORK-MIN-BW:500000');
+        lines.push('#EXT-X-APE-CORTEX-NETWORK-MAX-BW:50000000');
+        lines.push('#EXT-X-APE-CORTEX-NETWORK-STABLE-RATIO:0.8');
+        lines.push('#EXT-X-APE-CORTEX-NETWORK-VARIANCE-THRESHOLD:0.2');
+        lines.push('#EXT-X-APE-CORTEX-NETWORK-LATENCY-THRESHOLD:100ms');
+        lines.push('#EXT-X-APE-CORTEX-NETWORK-JITTER-THRESHOLD:30ms');
+        lines.push('#EXT-X-APE-CORTEX-NETWORK-LOSS-THRESHOLD:0.01');
+        // Artifact Mitigation Policy
+        lines.push('#EXT-X-APE-CORTEX-ARTIFACT-DEBLOCKING:auto');
+        lines.push('#EXT-X-APE-CORTEX-ARTIFACT-LOOP-FILTER:enabled');
+        lines.push('#EXT-X-APE-CORTEX-ARTIFACT-CONCEALMENT:motion_vector');
+        lines.push('#EXT-X-APE-CORTEX-ARTIFACT-ERROR-RESILIENCE:true');
+        lines.push('#EXT-X-APE-CORTEX-ARTIFACT-MAX-ERRORS:5');
+        // Fallback Chain Determinista
+        lines.push('#EXT-X-APE-CORTEX-FALLBACK-CODEC-CHAIN:hevc>av1>vp9>avc');
+        lines.push('#EXT-X-APE-CORTEX-FALLBACK-TRANSPORT-CHAIN:cmaf>fmp4>ts');
+        lines.push('#EXT-X-APE-CORTEX-FALLBACK-RESOLUTION-CHAIN:4K>2K>FHD>HD>SD>LOW');
+        lines.push('#EXT-X-APE-CORTEX-FALLBACK-HDR-CHAIN:passthrough>tone_map_hable>sdr');
+        lines.push('#EXT-X-APE-CORTEX-FALLBACK-ON-DEGRADATION:reduce_bitrate');
+        lines.push('#EXT-X-APE-CORTEX-FALLBACK-ON-CODEC-FAIL:use_fallback_codec');
+        lines.push('#EXT-X-APE-CORTEX-FALLBACK-ON-TRANSPORT-FAIL:use_fallback_transport');
+        // FFmpeg Backend Rules
+        lines.push('#EXT-X-APE-CORTEX-FFMPEG-TS:hls_time=6,hls_list_size=0,hls_flags=independent_segments');
+        lines.push('#EXT-X-APE-CORTEX-FFMPEG-CMAF:segment_type=fmp4,init=init.mp4,hls_time=4');
+        lines.push('#EXT-X-APE-CORTEX-FFMPEG-LL-HLS:split_by_time,playlist_type=event');
+        lines.push('#EXT-X-APE-CORTEX-FFMPEG-HEVC:libx265,preset=slow,crf=20,profile=main');
+        lines.push('#EXT-X-APE-CORTEX-FFMPEG-DEBLOCK:x265-params=deblock:-1:-1');
+        lines.push('#EXT-X-APE-CORTEX-FFMPEG-HDR10:hdr-opt=1,repeat-headers=1,max-cll=1000:400');
+        // Noise Reduction & Enhancement Policy
+        lines.push('#EXT-X-APE-CORTEX-NOISE-REDUCTION:enabled,preserve-detail=true');
+        lines.push('#EXT-X-APE-CORTEX-NOISE-METHOD:nlmeans+hqdn3d');
+        lines.push('#EXT-X-APE-CORTEX-ENHANCEMENT-LCEVC:tune=vq,base=hevc');
+        // Player Profiles
+        lines.push('#EXT-X-APE-CORTEX-PLAYERS:vlc,mpv,ffmpeg,hls.js,shaka,dash.js');
+        lines.push('#EXT-X-APE-CORTEX-PLAYER-ABR:throughput,buffer_target=30s,buffer_min=5s');
+        lines.push('#EXT-X-APE-CORTEX-PLAYER-HW-DECODE:true');
+        lines.push('#EXT-X-APE-CORTEX-PLAYER-DEINTERLACE:bwdif,yadif,w3fdif');
+        // Idempotency & Telemetry
+        lines.push(`#EXT-X-APE-CORTEX-IDEMPOTENCY-HASH:${cfg._hash || 'auto'}`);
+        lines.push('#EXT-X-APE-CORTEX-TELEMETRY:playback+network+buffer+quality_switches+errors');
+        lines.push('#EXT-X-APE-CORTEX-TELEMETRY-INTERVAL:60s');
+        lines.push('#EXT-X-APE-CORTEX-CHANNELS-MAP:channels_map_v1.0.0');
+        lines.push('#EXT-X-APE-CORTEX-BIDIRECTIONAL:resolve>enrich>override>update');
+
+        // ═══════════════════════════════════════════════════════════════
+        // BLOQUE 5: AV1 FALLBACK CHAIN (10 tags)
+        // ═══════════════════════════════════════════════════════════════
+        lines.push('#EXT-X-APE-AV1-FALLBACK-ENABLED:true');
+        lines.push('#EXT-X-APE-AV1-FALLBACK-CHAIN:AV1>HEVC>H264>MPEG2');
+        lines.push('#EXT-X-APE-AV1-FALLBACK-GRACEFUL:true');
+        lines.push('#EXT-X-APE-AV1-FALLBACK-DETECT:HW_CAPABILITY_PROBE');
+        lines.push('#EXT-X-APE-AV1-FALLBACK-SIGNAL:CODEC_NOT_SUPPORTED');
+        lines.push('#EXT-X-APE-AV1-FALLBACK-TIMEOUT:3000');
+        lines.push('#EXT-X-APE-AV1-FALLBACK-AUTO-SWITCH:true');
+        lines.push('#EXT-X-APE-AV1-FALLBACK-PRESERVE-HDR:true');
+        lines.push('#EXT-X-APE-AV1-FALLBACK-PRESERVE-LCEVC:true');
+        lines.push('#EXT-X-APE-AV1-FALLBACK-LOG:SILENT');
 
         // ═══════════════════════════════════════════════════════════════
         // BLOQUE 6: LCEVC HTML5 SDK INJECTOR (13 tags)
@@ -2827,6 +2932,19 @@
         };
         lines.push(`#EXT-X-VNOVA-LCEVC-CONFIG-B64:${base64UrlEncode(JSON.stringify(vnovaConfig))}`);
 
+        // ═══════════════════════════════════════════════════════════════
+        // BLOQUE 7: IP ROTATION (10 tags)
+        // ═══════════════════════════════════════════════════════════════
+        lines.push('#EXT-X-APE-IP-ROTATION-ENABLED:true');
+        lines.push('#EXT-X-APE-IP-ROTATION-STRATEGY:PER_REQUEST');
+        lines.push(`#EXT-X-APE-IP-ROTATION-XFF-1:${getRandomIp()}`);
+        lines.push(`#EXT-X-APE-IP-ROTATION-XFF-2:${getRandomIp()}`);
+        lines.push(`#EXT-X-APE-IP-ROTATION-XFF-3:${getRandomIp()}`);
+        lines.push(`#EXT-X-APE-IP-ROTATION-REAL-IP:${getRandomIp()}`);
+        lines.push(`#EXT-X-APE-IP-ROTATION-CF-CONNECTING:${getRandomIp()}`);
+        lines.push(`#EXT-X-APE-IP-ROTATION-TRUE-CLIENT:${getRandomIp()}`);
+        lines.push('#EXT-X-APE-IP-ROTATION-POOL-SIZE:50');
+        lines.push('#EXT-X-APE-IP-ROTATION-PERSIST:PER_SESSION');
 
         // ═══════════════════════════════════════════════════════════════
         // BLOQUE 8: STEALTH + PRE-ARMED + ISP THROTTLE
@@ -2845,7 +2963,133 @@
         lines.push(`#EXT-X-APE-ISP-THROTTLE-ESCALATION:LEVEL=NUCLEAR`);
         lines.push(...generateISPThrottleEscalation(profile, cfg));
 
+        // ═══════════════════════════════════════════════════════════════
+        // BLOQUE 9: TRANSPORT DECISION MODULE v2.0 (TS vs CMAF + HDR/SDR)
+        // Motor de decisión de transporte determinista con 10 fases
+        // Fuente: IntegracioN_TOOLKIT.md + generate_transport_doc.js
+        // ═══════════════════════════════════════════════════════════════
 
+        // ── 🧠 ENGINE IDENTITY ──
+        lines.push('#EXT-X-APE-TRANSPORT-ENGINE:v2.0.0');
+        lines.push('#EXT-X-APE-TRANSPORT-DECISION-TREE:origin>player>device>hdr>telemetry>network>scoring>mode>fallback>decision');
+        lines.push('#EXT-X-APE-TRANSPORT-ARCHITECTURE:m3u8_decorated+resolver+worker_cmaf_dash');
+
+        // ── 📊 PLAYER COMPATIBILITY MATRIX (12 players) ──
+        lines.push('#EXT-X-APE-TRANSPORT-PLAYER-COMPAT:vlc_legacy=TS:0.95|CMAF:0.55,fallback=direct_ts>worker_ts');
+        lines.push('#EXT-X-APE-TRANSPORT-PLAYER-COMPAT:vlc_modern=TS:0.90|CMAF:0.80,fallback=direct_cmaf>direct_ts>worker_ts');
+        lines.push('#EXT-X-APE-TRANSPORT-PLAYER-COMPAT:ott_navigator=TS:0.90|CMAF:0.92,fallback=direct_cmaf>worker_hybrid>worker_ts');
+        lines.push('#EXT-X-APE-TRANSPORT-PLAYER-COMPAT:kodi_legacy=TS:0.92|CMAF:0.65,fallback=direct_ts>worker_ts');
+        lines.push('#EXT-X-APE-TRANSPORT-PLAYER-COMPAT:kodi_modern=TS:0.88|CMAF:0.85,fallback=direct_cmaf>direct_ts');
+        lines.push('#EXT-X-APE-TRANSPORT-PLAYER-COMPAT:hlsjs=TS:0.75|CMAF:0.93,fallback=direct_cmaf>worker_hybrid');
+        lines.push('#EXT-X-APE-TRANSPORT-PLAYER-COMPAT:shaka=TS:0.80|CMAF:0.95,fallback=direct_cmaf>worker_hybrid');
+        lines.push('#EXT-X-APE-TRANSPORT-PLAYER-COMPAT:videojs=TS:0.78|CMAF:0.90,fallback=direct_cmaf>worker_hybrid');
+        lines.push('#EXT-X-APE-TRANSPORT-PLAYER-COMPAT:stb_legacy=TS:0.98|CMAF:0.40,fallback=direct_ts>worker_ts');
+        lines.push('#EXT-X-APE-TRANSPORT-PLAYER-COMPAT:smarttv_tizen=TS:0.85|CMAF:0.88,fallback=direct_cmaf>direct_ts');
+        lines.push('#EXT-X-APE-TRANSPORT-PLAYER-COMPAT:smarttv_webos=TS:0.83|CMAF:0.85,fallback=direct_cmaf>direct_ts');
+        lines.push('#EXT-X-APE-TRANSPORT-PLAYER-COMPAT:smarttv_android=TS:0.88|CMAF:0.85,fallback=direct_cmaf>direct_ts');
+
+        // ── 🌈 HDR COMPATIBILITY MATRIX (per player) ──
+        lines.push('#EXT-X-APE-TRANSPORT-HDR-COMPAT:vlc=HDR10:yes|HDR10+:yes|DV:partial|HLG:yes');
+        lines.push('#EXT-X-APE-TRANSPORT-HDR-COMPAT:ott_navigator=HDR10:yes|HDR10+:yes|DV:yes|HLG:yes');
+        lines.push('#EXT-X-APE-TRANSPORT-HDR-COMPAT:kodi=HDR10:yes|HDR10+:yes|DV:partial|HLG:yes');
+        lines.push('#EXT-X-APE-TRANSPORT-HDR-COMPAT:hlsjs=HDR10:yes|HDR10+:no|DV:no|HLG:yes');
+        lines.push('#EXT-X-APE-TRANSPORT-HDR-COMPAT:shaka=HDR10:yes|HDR10+:yes|DV:partial|HLG:yes');
+        lines.push('#EXT-X-APE-TRANSPORT-HDR-COMPAT:videojs=HDR10:yes|HDR10+:no|DV:no|HLG:yes');
+        lines.push('#EXT-X-APE-TRANSPORT-HDR-COMPAT:stb_legacy=HDR10:no|HDR10+:no|DV:no|HLG:no');
+        lines.push('#EXT-X-APE-TRANSPORT-HDR-COMPAT:smarttv_tizen=HDR10:yes|HDR10+:yes|DV:yes|HLG:yes');
+        lines.push('#EXT-X-APE-TRANSPORT-HDR-COMPAT:smarttv_webos=HDR10:yes|HDR10+:yes|DV:yes|HLG:yes');
+
+        // ── ⚖️ TRANSPORT SCORING WEIGHTS ──
+        lines.push('#EXT-X-APE-TRANSPORT-WEIGHT-PLAYER:0.30');
+        lines.push('#EXT-X-APE-TRANSPORT-WEIGHT-DEVICE:0.25');
+        lines.push('#EXT-X-APE-TRANSPORT-WEIGHT-HDR:0.15');
+        lines.push('#EXT-X-APE-TRANSPORT-WEIGHT-TELEMETRY:0.15');
+        lines.push('#EXT-X-APE-TRANSPORT-WEIGHT-NETWORK:0.15');
+
+        // ── ⚠️ PENALIZATION FACTORS (por player family) ──
+        lines.push('#EXT-X-APE-TRANSPORT-PENALTY:vlc_legacy=CMAF:-0.25|TS:0');
+        lines.push('#EXT-X-APE-TRANSPORT-PENALTY:kodi_legacy=CMAF:-0.20|TS:0');
+        lines.push('#EXT-X-APE-TRANSPORT-PENALTY:stb_legacy=CMAF:-0.40|TS:0');
+        lines.push('#EXT-X-APE-TRANSPORT-PENALTY:hlsjs_old=CMAF:-0.15|TS:0');
+        lines.push('#EXT-X-APE-TRANSPORT-PENALTY:smarttv_old=CMAF:-0.20|TS:0');
+        lines.push('#EXT-X-APE-TRANSPORT-PENALTY:android_old=CMAF:-0.15|TS:-0.05');
+
+        // ── 🔄 TRANSPORT MODE SELECTION ──
+        lines.push('#EXT-X-APE-TRANSPORT-MODES:direct_ts,direct_cmaf,worker_ts,worker_cmaf,worker_dash_hls_hybrid');
+        lines.push('#EXT-X-APE-TRANSPORT-CMAF-THRESHOLD:0.15');
+        lines.push('#EXT-X-APE-TRANSPORT-TS-THRESHOLD:0.10');
+        lines.push('#EXT-X-APE-TRANSPORT-DEFAULT-ON-TIE:direct_ts');
+        lines.push('#EXT-X-APE-TRANSPORT-CMAF-PREFER-ON-COMPLIANT:true');
+
+        // ── 🔗 CMAF DIRECT INTEGRATION (100% valid directives) ──
+        lines.push('#EXT-X-APE-CMAF-SEGMENT-TYPE:fmp4');
+        lines.push('#EXT-X-APE-CMAF-INIT-SEGMENT:init.mp4');
+        lines.push('#EXT-X-APE-CMAF-INDEPENDENT-SEGMENTS:true');
+        lines.push('#EXT-X-APE-CMAF-TARGET-DURATION:4');
+        lines.push('#EXT-X-APE-CMAF-PART-TARGET:0.2');
+        lines.push('#EXT-X-APE-CMAF-LOW-LATENCY:true');
+        lines.push('#EXT-X-APE-CMAF-PRELOAD-HINT:true');
+        lines.push('#EXT-X-APE-CMAF-RENDITION-REPORT:true');
+        lines.push('#EXT-X-APE-CMAF-BLOCKING-RELOAD:true');
+        lines.push('#EXT-X-APE-CMAF-HLS-VERSION:7');
+        lines.push('#EXT-X-APE-CMAF-DASH-HYBRID:true');
+        lines.push('#EXT-X-APE-CMAF-WRITE-PRFT:true');
+
+        // ── 🔗 FALLBACK CHAINS (por modo de transporte) ──
+        lines.push('#EXT-X-APE-TRANSPORT-FALLBACK-CMAF:direct_cmaf>worker_ts>direct_ts>worker_dash_hls_hybrid');
+        lines.push('#EXT-X-APE-TRANSPORT-FALLBACK-TS:direct_ts>worker_cmaf>direct_cmaf>worker_dash_hls_hybrid');
+        lines.push('#EXT-X-APE-TRANSPORT-FALLBACK-HYBRID:worker_dash_hls_hybrid>worker_ts>direct_ts');
+        lines.push('#EXT-X-APE-TRANSPORT-FALLBACK-STB:direct_ts>worker_ts');
+        lines.push('#EXT-X-APE-TRANSPORT-FALLBACK-ON-FAILURE:reduce_quality>switch_transport>worker_ts');
+
+        // ── 🏗️ ORIGIN INTEGRITY ──
+        lines.push('#EXT-X-APE-TRANSPORT-ORIGIN-THRESHOLD:0.3');
+        lines.push('#EXT-X-APE-TRANSPORT-ORIGIN-PROBE:stability_score,availability,latency,segment_health');
+        lines.push('#EXT-X-APE-TRANSPORT-ORIGIN-WORKER-TRIGGER:stability<0.3');
+        lines.push('#EXT-X-APE-TRANSPORT-WORKER-MODE:ondemand');
+        lines.push('#EXT-X-APE-TRANSPORT-WORKER-ZERODROP:true');
+        lines.push('#EXT-X-APE-TRANSPORT-WORKER-WATCHDOG:manifest_timeout=30,freeze_timeout=10,health_check=5');
+        lines.push('#EXT-X-APE-TRANSPORT-WORKER-RECONNECT:5');
+        lines.push('#EXT-X-APE-TRANSPORT-WORKER-MAX-STREAMS:100');
+
+        // ── 🌐 NETWORK-AWARE SELECTION ──
+        lines.push('#EXT-X-APE-TRANSPORT-NETWORK-UNSTABLE-BONUS-TS:0.15');
+        lines.push('#EXT-X-APE-TRANSPORT-NETWORK-UNSTABLE-PENALTY-CMAF:0.10');
+        lines.push('#EXT-X-APE-TRANSPORT-NETWORK-STRONG-BONUS-CMAF:0.10');
+        lines.push('#EXT-X-APE-TRANSPORT-NETWORK-LOW-LATENCY-BONUS-CMAF:0.05');
+        lines.push('#EXT-X-APE-TRANSPORT-NETWORK-HIGH-JITTER-PENALTY-CMAF:0.10');
+        lines.push('#EXT-X-APE-TRANSPORT-NETWORK-HIGH-JITTER-BONUS-TS:0.05');
+
+        // ── 🎬 FFMPEG TEMPLATE REFERENCES ──
+        lines.push('#EXT-X-APE-TRANSPORT-FFMPEG-CMAF:seg_duration=4,segment_type=fmp4,hls_playlist=1,target_latency=3,write_prft=1');
+        lines.push('#EXT-X-APE-TRANSPORT-FFMPEG-HYBRID:seg_duration=4,fmp4,hls_playlist=1,ldash=1,streaming=1,hls_flags=independent_segments');
+        lines.push('#EXT-X-APE-TRANSPORT-FFMPEG-TS:mpegts,pcr_period=50,pat_period=0.1,sdt_period=0.2,service_type=digital_tv');
+        lines.push('#EXT-X-APE-TRANSPORT-FFMPEG-TONEMAP:tonemapx=bt2390,peak=100,desat=0,p=bt709,t=bt1886,m=bt709');
+        lines.push('#EXT-X-APE-TRANSPORT-FFMPEG-HDR-PASSTHROUGH:copy,bsf=filter_units=pass_types=1-12');
+
+        // ── 🌈 HDR DECISION CHAIN ──
+        lines.push('#EXT-X-APE-TRANSPORT-HDR-CHAIN:native>tone_mapped>sdr');
+        lines.push('#EXT-X-APE-TRANSPORT-HDR-TONEMAP-METHODS:bt2390|hable|reinhard|mobius');
+        lines.push('#EXT-X-APE-TRANSPORT-HDR-SDR-VARIANT-FALLBACK:true');
+        lines.push('#EXT-X-APE-TRANSPORT-HDR-PASSTHROUGH:true');
+        lines.push('#EXT-X-APE-TRANSPORT-HDR-COLOR-PRIMARIES:bt2020');
+        lines.push('#EXT-X-APE-TRANSPORT-HDR-TRANSFER:smpte2084');
+        lines.push('#EXT-X-APE-TRANSPORT-HDR-MATRIX:bt2020nc');
+
+        // ── 📡 TELEMETRY HOOKS ──
+        lines.push('#EXT-X-APE-TRANSPORT-TELEMETRY:startup_failures+rebuffer+freeze_events+quality_switches+transport_switches');
+        lines.push('#EXT-X-APE-TRANSPORT-TELEMETRY-CONFIDENCE:ts=0.95,cmaf=0.90');
+        lines.push('#EXT-X-APE-TRANSPORT-TELEMETRY-LEARN:true');
+        lines.push('#EXT-X-APE-TRANSPORT-TELEMETRY-HISTORY-WEIGHT:0.20');
+        lines.push('#EXT-X-APE-TRANSPORT-TELEMETRY-STARTUP-PENALTY:cmaf_fail_x3=-0.30,ts_fail_x3=-0.30');
+        lines.push('#EXT-X-APE-TRANSPORT-TELEMETRY-FREEZE-PENALTY:cmaf_2x_ts=-0.20');
+
+        // ── 📋 LIMITATIONS AWARENESS ──
+        lines.push('#EXT-X-APE-TRANSPORT-LIMITATION:cmaf_requires_fmp4_parser');
+        lines.push('#EXT-X-APE-TRANSPORT-LIMITATION:hdr_requires_full_chain');
+        lines.push('#EXT-X-APE-TRANSPORT-LIMITATION:tone_mapping_not_inverse');
+        lines.push('#EXT-X-APE-TRANSPORT-LIMITATION:ts_universal_fallback');
+        lines.push('#EXT-X-APE-TRANSPORT-STABILITY-OVER-SOPHISTICATION:true');
 
         return lines.join('\n');
     }
