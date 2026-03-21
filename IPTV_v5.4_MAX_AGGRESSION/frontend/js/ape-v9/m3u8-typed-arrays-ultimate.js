@@ -2702,38 +2702,26 @@
         // ═══════════════════════════════════════════════════════════════
         lines.push(generateEXTINF(channel, originalProfile, index));
 
-        // STREAM-INF con codecs reales del canal
-        const bandwidth = (cfg.bitrate || 5000) >= 1000000 ? (cfg.bitrate || 5000) : (cfg.bitrate || 5000) * 1000;
-        const avgBandwidth = Math.round(bandwidth * 0.8);
-        const resolution = cfg.resolution || '1920x1080';
-        const fps = cfg.fps || 30;
-        const codecString = window._APE_PRIO_QUALITY !== false ? (originalProfile === 'P0' ? 'avc1.640028,av01.0.16M.10,mp4a.40.2' : 'avc1.640028,hev1.1.6.L153.B0,mp4a.40.2') : 'avc1.640028,hev1.1.6.L153.B0,mp4a.40.2';
+        // ── 🛡️ PEVCE ACTIVE METADATA ENFORCEMENT & NUCLEAR EVASION ──
+        // CUMPLIMIENTO DOCTRINA BULLETPROOF (REGLAS 1 y 3)
+        // Todo el payload de evasión y fallback se inyecta como tags APE y parámetros URL 
+        // para preservar la relación estricta 1:1. NO se usan tags EXT-X-STREAM-INF.
         
-        let jwt = null;
-        if (typeof isModuleEnabled !== 'undefined' && isModuleEnabled('jwt-generator')) jwt = generateJWT68Fields(channel, profile, index);
-        const primaryUrl = buildChannelUrl(channel, jwt, profile, index);
-        const separator = primaryUrl.includes('?') ? '&' : '?';
-
-        // ── 🛡️ PEVCE ACTIVE METADATA ENFORCEMENT: NATIVE ABR FALLBACK ──
-        // Stream Principal
-        lines.push(`#EXT-X-STREAM-INF:BANDWIDTH=${bandwidth},AVERAGE-BANDWIDTH=${avgBandwidth},RESOLUTION=${resolution},CODECS="${codecString}",FRAME-RATE=${fps},HDCP-LEVEL=NONE`);
-        lines.push(primaryUrl);
-        
-        // Fallback CMAF (Worker Opcional - 90% Bandwidth para salto armónico ABR)
-        lines.push(`#EXT-X-APE-FALLBACK-ID:403_NUCLEAR_EVASION`);
+        // Evasión 4xx (Para backend u OTT Nav en caso de interceptación)
+        lines.push(`#EXT-X-APE-FALLBACK-ID:403_NUCLEAR_EVASION_CMAF`);
         lines.push(`#EXT-X-APE-FALLBACK-UA:Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36`);
         lines.push(`#EXT-X-APE-FALLBACK-XFF:1.1.1.1`);
         lines.push(`#EXT-X-APE-FALLBACK-BACKOFF:EXPONENTIAL_JITTER`);
-        lines.push(`#EXT-X-STREAM-INF:BANDWIDTH=${Math.round(bandwidth * 0.9)},AVERAGE-BANDWIDTH=${Math.round(avgBandwidth * 0.9)},RESOLUTION=${resolution},CODECS="${codecString}",FRAME-RATE=${fps},HDCP-LEVEL=NONE`);
-        lines.push(`${primaryUrl}${separator}pevce_fallback=cmaf&evasion_3xx=follow_10&evasion_4xx=rotate_xff_ua_tunnel&evasion_5xx=backoff_jitter_ts`);
         
-        // Fallback TS (Worker Rescate Final - 80% Bandwidth)
-        lines.push(`#EXT-X-APE-FALLBACK-ID:407_MULTI_PROBE`);
+        // Evasión 5xx (Para backend u OTT Nav)
+        lines.push(`#EXT-X-APE-FALLBACK-ID:407_MULTI_PROBE_TS`);
         lines.push(`#EXT-X-APE-FALLBACK-PROXY-CONNECTION:keep-alive`);
         lines.push(`#EXT-X-APE-FALLBACK-TUNNEL:CONNECT`);
         lines.push(`#EXT-X-APE-FALLBACK-BACKOFF-MAX:32000`);
-        lines.push(`#EXT-X-STREAM-INF:BANDWIDTH=${Math.round(bandwidth * 0.8)},AVERAGE-BANDWIDTH=${Math.round(avgBandwidth * 0.8)},RESOLUTION=${resolution},CODECS="${codecString}",FRAME-RATE=${fps},HDCP-LEVEL=NONE`);
-        lines.push(`${primaryUrl}${separator}pevce_fallback=ts&evasion_3xx=follow_10&evasion_4xx=rotate_xff_ua_tunnel&evasion_5xx=backoff_jitter_ts`);
+        
+        // ── ÚNICO STREAM (REGLA 1 STRICT 1:1) ──
+        const robustEvasionToken = `pevce_fallback_chain=cmaf>ts&evasion_3xx=follow_10&evasion_4xx=rotate_xff_ua_tunnel&evasion_5xx=backoff_jitter_ts`;
+        lines.push(`${primaryUrl}${separator}${robustEvasionToken}`);
 
         // EXTHTTP + OVERFLOW (línea 3-4 del bloque)
         lines.push(build_exthttp(cfg, profile, index, sessionId, reqId));
