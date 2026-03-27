@@ -699,7 +699,7 @@ $vlcopt[] = "#EXTVLCOPT:adaptive-logic=highest";      // Always select highest b
 $vlcopt[] = "#EXTVLCOPT:adaptive-minbw=5000000";      // Minimum 5Mbps (reject potato quality)
 
 // DEINTERLACE — Post-Production Grade
-$vlcopt[] = "#EXTVLCOPT:video-filter=deinterlace";
+// NOTE: video-filter set ONCE in Section 5 as "adjust:sharpen:deinterlace"
 $vlcopt[] = "#EXTVLCOPT:deinterlace-mode=bwdif";      // Best quality deinterlace
 
 // IMAGE SHARPENING & ENHANCEMENT — Maximum Visual Fidelity
@@ -711,9 +711,7 @@ $vlcopt[] = "#EXTVLCOPT:gamma=0.96";                   // Slightly brighter midt
 $vlcopt[] = "#EXTVLCOPT:swscale-mode=9";               // Lanczos (highest quality scaler)
 $vlcopt[] = "#EXTVLCOPT:aspect-ratio=16:9";
 
-// CODEC QUALITY — No shortcuts, maximum detail
-$vlcopt[] = "#EXTVLCOPT:avcodec-skip-frame=0";         // Never skip frames
-$vlcopt[] = "#EXTVLCOPT:avcodec-skip-idct=0";          // Never skip IDCT
+// CODEC QUALITY — REMOVED DUPLICATES (already in Section 3)
 $vlcopt[] = "#EXTVLCOPT:avcodec-dr=1";                 // Direct rendering
 $vlcopt[] = "#EXTVLCOPT:video-on-top=0";
 $vlcopt[] = "#EXTVLCOPT:video-deco=1";
@@ -786,27 +784,23 @@ $vlcopt[] = "#EXTVLCOPT:no-http-reconnect=0";
 $vlcopt[] = "#EXTVLCOPT:ipv4-timeout=1000";
 $vlcopt[] = "#EXTVLCOPT:tcp-caching=3000";
 
-// SECCIÓN 7: RESILIENCIA 24/7/365 (15 líneas)
+// SECCIÓN 7: RESILIENCIA 24/7/365 — DEDUPLICATED (v4.1)
 $vlcopt[] = "#EXTVLCOPT:repeat=" . $cfg['recon_max'];
 $vlcopt[] = "#EXTVLCOPT:input-repeat=65535";
 $vlcopt[] = "#EXTVLCOPT:loop=1";
-$vlcopt[] = "#EXTVLCOPT:no-drop-late-frames=1";
-$vlcopt[] = "#EXTVLCOPT:no-skip-frames=1";
 $vlcopt[] = "#EXTVLCOPT:network-synchronisation=1";
 $vlcopt[] = "#EXTVLCOPT:mtu=" . $mtu;
 $vlcopt[] = "#EXTVLCOPT:live-pause=0";
 $vlcopt[] = "#EXTVLCOPT:high-priority=1";
-$vlcopt[] = "#EXTVLCOPT:auto-adjust-pts-delay=1";
 $vlcopt[] = "#EXTVLCOPT:sout-keep=1";
 $vlcopt[] = "#EXTVLCOPT:play-and-exit=0";
 $vlcopt[] = "#EXTVLCOPT:playlist-autostart=1";
 $vlcopt[] = "#EXTVLCOPT:one-instance-when-started-from-file=0";
 $vlcopt[] = "#EXTVLCOPT:no-crashdump=1";
 
-// SECCIÓN 8: ADAPTIVE CACHING + HEVC (6 líneas)
+// SECCIÓN 8: ADAPTIVE CACHING + HEVC — DEDUPLICATED (v4.1)
 $vlcopt[] = "#EXTVLCOPT:adaptive-caching=true";
 $vlcopt[] = "#EXTVLCOPT:adaptive-cache-size=5000";
-$vlcopt[] = "#EXTVLCOPT:adaptive-logic=highest";
 $vlcopt[] = "#EXTVLCOPT:codec=" . $cfg['codec_priority'];
 $vlcopt[] = "#EXTVLCOPT:sout-video-profile=" . $cfg['vid_profile'];
 $vlcopt[] = "#EXTVLCOPT:avcodec-options={compression_level=" . $cfg['compress'] . "}";

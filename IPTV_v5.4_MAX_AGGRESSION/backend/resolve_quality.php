@@ -985,14 +985,13 @@ $vlcopt[] = "#EXTVLCOPT:adaptive-logic=highest";     // Always select highest bi
 $vlcopt[] = "#EXTVLCOPT:adaptive-minbw=5000000";     // Minimum 5Mbps (reject potato quality)
 
 // DEINTERLACE — Post-Production Grade (MOTION OPTIMIZED for Sports)
-$vlcopt[] = "#EXTVLCOPT:video-filter=deinterlace";
+// NOTE: video-filter set ONCE in Section 5 as "adjust:sharpen:deinterlace"
 $vlcopt[] = "#EXTVLCOPT:deinterlace-mode=bwdif";     // Bob-Weave Deinterlace (best quality)
 
-// MOTION COMPENSATION — Fast Action Anti-Blur
+// MOTION COMPENSATION — Fast Action Anti-Blur (CANONICAL — only here, not in Section 7)
 $vlcopt[] = "#EXTVLCOPT:no-drop-late-frames=1";       // NEVER drop frames during fast motion
 $vlcopt[] = "#EXTVLCOPT:no-skip-frames=1";            // NEVER skip frames during rapid action
 $vlcopt[] = "#EXTVLCOPT:auto-adjust-pts-delay=1";     // Auto-correct frame timing
-$vlcopt[] = "#EXTVLCOPT:clock-jitter=0";              // Zero clock jitter for smooth motion
 $vlcopt[] = "#EXTVLCOPT:avcodec-error-resilience=1";  // Recover corrupted motion frames
 
 // IMAGE SHARPENING & ENHANCEMENT — Maximum Visual Fidelity
@@ -1004,12 +1003,8 @@ $vlcopt[] = "#EXTVLCOPT:gamma=0.94";                  // Brighter midtones for f
 $vlcopt[] = "#EXTVLCOPT:swscale-mode=9";              // Lanczos (highest quality scaler)
 $vlcopt[] = "#EXTVLCOPT:aspect-ratio=16:9";
 
-// CODEC QUALITY — No shortcuts
-$vlcopt[] = "#EXTVLCOPT:avcodec-skiploopfilter=0";    // Never skip loop filter (sharpest decode)
-$vlcopt[] = "#EXTVLCOPT:avcodec-skip-frame=0";        // Never skip frames
-$vlcopt[] = "#EXTVLCOPT:avcodec-skip-idct=0";         // Never skip IDCT
-$vlcopt[] = "#EXTVLCOPT:avcodec-fast=0";              // Quality over speed
-$vlcopt[] = "#EXTVLCOPT:avcodec-hurry-up=0";          // Never rush decode
+// CODEC QUALITY — REMOVED DUPLICATES (already in Section 3)
+// avcodec-skiploopfilter, skip-frame, skip-idct, fast, hurry-up → Section 3
 $vlcopt[] = "#EXTVLCOPT:avcodec-dr=1";                // Direct rendering (less copies)
 $vlcopt[] = "#EXTVLCOPT:video-on-top=0";
 $vlcopt[] = "#EXTVLCOPT:video-deco=1";
@@ -1087,27 +1082,25 @@ $vlcopt[] = "#EXTVLCOPT:no-http-reconnect=0";
 $vlcopt[] = "#EXTVLCOPT:ipv4-timeout=1000";
 $vlcopt[] = "#EXTVLCOPT:tcp-caching=3000";
 
-// SECCIÓN 7: RESILIENCIA 24/7/365 (15 líneas)
+// SECCIÓN 7: RESILIENCIA 24/7/365 — DEDUPLICATED (v4.1)
+// ⚠️ REMOVED: no-drop-late-frames, no-skip-frames, auto-adjust-pts-delay (already in Section 4)
 $vlcopt[] = "#EXTVLCOPT:repeat=" . $cfg['recon_max'];
 $vlcopt[] = "#EXTVLCOPT:input-repeat=65535";
 $vlcopt[] = "#EXTVLCOPT:loop=1";
-$vlcopt[] = "#EXTVLCOPT:no-drop-late-frames=1";
-$vlcopt[] = "#EXTVLCOPT:no-skip-frames=1";
 $vlcopt[] = "#EXTVLCOPT:network-synchronisation=1";
 $vlcopt[] = "#EXTVLCOPT:mtu=" . $mtu;
 $vlcopt[] = "#EXTVLCOPT:live-pause=0";
 $vlcopt[] = "#EXTVLCOPT:high-priority=1";
-$vlcopt[] = "#EXTVLCOPT:auto-adjust-pts-delay=1";
 $vlcopt[] = "#EXTVLCOPT:sout-keep=1";
 $vlcopt[] = "#EXTVLCOPT:play-and-exit=0";
 $vlcopt[] = "#EXTVLCOPT:playlist-autostart=1";
 $vlcopt[] = "#EXTVLCOPT:one-instance-when-started-from-file=0";
 $vlcopt[] = "#EXTVLCOPT:no-crashdump=1";
 
-// SECCIÓN 8: ADAPTIVE CACHING + HEVC (6 líneas)
+// SECCIÓN 8: ADAPTIVE CACHING + HEVC — DEDUPLICATED (v4.1)
+// ⚠️ REMOVED: adaptive-logic=highest (already in Section 4)
 $vlcopt[] = "#EXTVLCOPT:adaptive-caching=true";
 $vlcopt[] = "#EXTVLCOPT:adaptive-cache-size=5000";
-$vlcopt[] = "#EXTVLCOPT:adaptive-logic=highest";
 $vlcopt[] = "#EXTVLCOPT:codec=hevc"; // 👑 VIP Strict
 $vlcopt[] = "#EXTVLCOPT:sout-video-profile=" . $cfg['vid_profile'];
 $vlcopt[] = "#EXTVLCOPT:force-dolby-surround=0";
@@ -1154,7 +1147,32 @@ if (class_exists('AISuperResolutionEngine', false)) {
 
 
 // ═══════════════════════════════════════════════════════════════════════
-// 8) OUTPUT M3U FRAGMENT — FULL (63+ EXTVLCOPT + 80+ EXTHTTP always)
+// 7D) EXTVLCOPT DEDUP — CRITICAL: Remove duplicate keys (v4.1 Anti-Cut Fix)
+//     VLC uses the LAST value for duplicate keys, causing unpredictable behavior.
+//     This dedup keeps the LAST occurrence (most authoritative: AI engine > Shim > Base).
+//     Result: ZERO duplicate EXTVLCOPT keys → stable buffer, no stream cuts.
+// ═══════════════════════════════════════════════════════════════════════
+$dedupedVlcopt = [];
+$dedupMap = []; // key => index in $dedupedVlcopt
+foreach ($vlcopt as $line) {
+    // Extract key: "#EXTVLCOPT:some-key=value" → "some-key"
+    if (preg_match('/^#EXTVLCOPT:([^=]+)/', $line, $m)) {
+        $key = $m[1];
+        if (isset($dedupMap[$key])) {
+            // Replace existing entry with newer (more authoritative) value
+            $dedupedVlcopt[$dedupMap[$key]] = $line;
+        } else {
+            $dedupMap[$key] = count($dedupedVlcopt);
+            $dedupedVlcopt[] = $line;
+        }
+    } else {
+        $dedupedVlcopt[] = $line; // Non-EXTVLCOPT lines pass through
+    }
+}
+$vlcopt = $dedupedVlcopt;
+
+// ═══════════════════════════════════════════════════════════════════════
+// 8) OUTPUT M3U FRAGMENT — DEDUPLICATED (ZERO duplicate EXTVLCOPT keys)
 // ═══════════════════════════════════════════════════════════════════════
 $labelFinal = (is_string($labelOverride) && $labelOverride !== '') ? $labelOverride : $cfg['label'];
 
