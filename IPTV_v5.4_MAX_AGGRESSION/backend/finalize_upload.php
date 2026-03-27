@@ -97,6 +97,39 @@ foreach ($parts as $part) {
 }
 rmdir($chunkDir);
 
+// ═══════════════════════════════════════
+// 📦 AUTO-GZIP: Pre-comprimir para gzip_static
+// gzip -9 comprime en streaming (no carga el archivo en RAM)
+// El .gz se sirve directo por Nginx (zero CPU per request)
+// ═══════════════════════════════════════
+$gzipPath = $outputPath . '.gz';
+$gzipSize = 0;
+$gzipRatio = '0';
+$gzipOk = false;
+
+// Comprimir con gzip -9 -k -f (keep original, force overwrite)
+// Ejecuta como proceso externo para NO cargar el archivo en memoria PHP
+$gzipCmd = sprintf('gzip -9 -k -f %s 2>&1', escapeshellarg($outputPath));
+$gzipOutput = shell_exec($gzipCmd);
+
+if (file_exists($gzipPath)) {
+    $gzipSize = filesize($gzipPath);
+    $gzipRatio = round((1 - $gzipSize / $totalSize) * 100, 1);
+    $gzipOk = true;
+    chmod($gzipPath, 0644);
+    
+    // Log
+    error_log(sprintf(
+        '[GZIP-STATIC] %s: %s MB → %s MB (%s%% reducción)',
+        $filename,
+        round($totalSize / 1048576, 1),
+        round($gzipSize / 1048576, 1),
+        $gzipRatio
+    ));
+} else {
+    error_log('[GZIP-STATIC] FAILED for: ' . $filename . ' - Output: ' . ($gzipOutput ?: 'none'));
+}
+
 // Crear versión si es necesario
 $versionUrl = null;
 $domain = 'https://iptv-ape.duckdns.org';
@@ -110,6 +143,11 @@ if ($strategy === 'both' || $strategy === 'version') {
     $versionFilename = $info['filename'] . '_v' . date('Ymd_His') . '.' . ($info['extension'] ?? 'm3u8');
     copy($outputPath, $versionsDir . $versionFilename);
     $versionUrl = $domain . '/versions/' . $versionFilename;
+    
+    // También comprimir la versión
+    if ($gzipOk) {
+        shell_exec(sprintf('gzip -9 -k -f %s', escapeshellarg($versionsDir . $versionFilename)));
+    }
 }
 
 echo json_encode([
@@ -123,6 +161,14 @@ echo json_encode([
     'public_url' => $domain . '/' . $filename,
     'version_url' => $versionUrl,
     'strategy' => $strategy,
-    'assembly_mode' => 'stream_validated'
+    'assembly_mode' => 'stream_validated',
+    // 📦 GZIP metadata
+    'gzip' => [
+        'enabled' => $gzipOk,
+        'compressed_size' => $gzipSize,
+        'compressed_formatted' => round($gzipSize / 1048576, 2) . ' MB',
+        'ratio' => $gzipRatio . '%',
+        'serving_mode' => 'gzip_static_always_with_gunzip_fallback'
+    ]
 ]);
 

@@ -688,10 +688,22 @@
                     const app = window.app;
                     let channels = [];
                     if (app) {
+                        console.log(`🔍 [DIAG] channelsMaster count: ${app.state?.channelsMaster?.length || 'N/A'}`);
+                        console.log(`🔍 [DIAG] channels count: ${app.state?.channels?.length || 'N/A'}`);
+                        console.log(`🔍 [DIAG] filteredChannels count: ${app.state?.filteredChannels?.length || 'N/A'}`);
                         if (typeof app.getFilteredChannels === 'function') {
                             channels = app.getFilteredChannels() || [];
+                            console.log(`🔍 [DIAG] getFilteredChannels() returned: ${channels.length} channels`);
                         } else {
                             channels = app.state?.filteredChannels || app.state?.channels || [];
+                            console.log(`🔍 [DIAG] state fallback returned: ${channels.length} channels`);
+                        }
+                        // Log first 3 channel samples for debugging
+                        if (channels.length > 0) {
+                            console.log(`🔍 [DIAG] Sample channels:`, channels.slice(0, 3).map(c => ({
+                                name: c.name, url: c.url, stream_id: c.stream_id,
+                                serverId: c.serverId || c.server_id || c._source || 'NONE'
+                            })));
                         }
                     }
 
@@ -700,6 +712,17 @@
                         return;
                     }
 
+                    // ✅ v10.0 FIX: Inject server credentials directly into options
+                    // so the generator doesn't depend on window.app.state being accessible from its IIFE
+                    if (app && app.state) {
+                        options._activeServers = app.state.activeServers || [];
+                        options._currentServer = app.state.currentServer || null;
+                        console.log(`🔑 [MODULE-MANAGER] Injecting ${options._activeServers.length} servers into generator options`);
+                        options._activeServers.forEach(s => {
+                            console.log(`   🔑 Server: ${s.name || s.id} | baseUrl: ${s.baseUrl} | user: ${s.username ? 'YES' : 'NO'} | pass: ${s.password ? 'YES' : 'NO'}`);
+                        });
+                    }
+                    console.log(`🚀 [DIAG] Passing ${channels.length} channels to generateAndDownload()`);
                     return window.M3U8TypedArraysGenerator.generateAndDownload(channels, options);
                 }
 

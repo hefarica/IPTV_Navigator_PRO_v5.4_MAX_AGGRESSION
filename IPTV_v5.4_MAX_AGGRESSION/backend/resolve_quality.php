@@ -1,10 +1,79 @@
 <?php
 declare(strict_types=1);
+// ── Memory: channels_map.json is 136MB+ → json_decode needs ~1.5GB ────────────
+ini_set('memory_limit', '1536M');
 // ── CMAF Integration Shim (APE CMAF Engine v2.0) ─────────────────────────────
 if (file_exists(__DIR__ . '/cmaf_engine/cmaf_integration_shim.php')) {
     require_once __DIR__ . '/cmaf_engine/cmaf_integration_shim.php';
 }
+// ── Resilience v6.0 Integration Shim (NeuroBuffer + ModemPriority) ────────────
+if (file_exists(__DIR__ . '/cmaf_engine/resilience_integration_shim.php')) {
+    require_once __DIR__ . '/cmaf_engine/resilience_integration_shim.php';
+}
 // ─────────────────────────────────────────────────────────────────────────────
+
+// ═══════════════════════════════════════════════════════════════════════════
+// BULLETPROOF EMERGENCY FALLBACK — resolve_quality.php NEVER returns an error
+// If ANY error occurs, returns a minimal valid M3U8 with the direct origin URL.
+// Failover back to resolve is automatic: each channel open = new HTTP request.
+// ═══════════════════════════════════════════════════════════════════════════
+function emergencyFallback(string $reason = 'unknown'): void {
+    $srvToken = isset($_GET['srv']) ? trim((string)$_GET['srv']) : '';
+    $ch = isset($_GET['ch']) ? trim((string)$_GET['ch']) : '0';
+    $sid = isset($_GET['sid']) ? trim((string)$_GET['sid']) : $ch;
+
+    // Try to decode srv token for direct URL
+    $url = '';
+    if ($srvToken !== '') {
+        $decoded = base64_decode($srvToken, true);
+        if ($decoded !== false) {
+            $parts = explode('|', $decoded, 3);
+            if (count($parts) === 3 && $parts[0] !== '' && $parts[1] !== '' && $parts[2] !== '') {
+                $url = 'http://' . trim($parts[0]) . '/live/' . rawurlencode(trim($parts[1])) . '/' . rawurlencode(trim($parts[2])) . '/' . rawurlencode($sid) . '.m3u8';
+            }
+        }
+    }
+
+    if ($url === '') {
+        $url = 'http://fallback-unavailable/ch/' . rawurlencode($ch) . '.m3u8';
+    }
+
+    // Log the fallback
+    @file_put_contents('/var/log/iptv-ape/fallback.log',
+        sprintf("[%s] FALLBACK ch=%s reason=%s url=%s\n", date('c'), $ch, $reason, substr($url, 0, 120)),
+        FILE_APPEND | LOCK_EX);
+
+    header('Content-Type: application/x-mpegURL; charset=utf-8');
+    header('Cache-Control: no-store, max-age=0');
+    header('X-APE-Fallback: true');
+    header('X-APE-Fallback-Reason: ' . substr($reason, 0, 80));
+
+    echo "#EXTM3U\n";
+    echo "#EXTINF:-1,Fallback (" . htmlspecialchars($ch) . ")\n";
+    echo "#EXTVLCOPT:network-caching=5000\n";
+    echo "#EXTVLCOPT:live-caching=3000\n";
+    echo "#EXTVLCOPT:http-reconnect=true\n";
+    echo "#EXTVLCOPT:http-continuous=true\n";
+    echo $url . "\n";
+    exit;
+}
+
+// Global error handler — catches fatal errors that try-catch can't
+set_error_handler(function(int $errno, string $errstr, string $errfile, int $errline) {
+    if ($errno === E_ERROR || $errno === E_PARSE || $errno === E_CORE_ERROR || $errno === E_COMPILE_ERROR) {
+        emergencyFallback("php_error:{$errno}:{$errstr}");
+    }
+    return false; // Non-fatal errors: let PHP handle them
+});
+
+register_shutdown_function(function() {
+    $error = error_get_last();
+    if ($error !== null && in_array($error['type'], [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR])) {
+        if (!headers_sent()) {
+            emergencyFallback('fatal:' . ($error['message'] ?? 'unknown'));
+        }
+    }
+});
 
 /**
  * Gold Standard Dual Runtime Resolver (v16.1.0) — VIP QUALITY OVERLAY
@@ -24,23 +93,25 @@ if (file_exists(__DIR__ . '/cmaf_engine/cmaf_integration_shim.php')) {
 $start = microtime(true);
 
 // ═══════════════════════════════════════════════════════════════════════════
-// ORIGINS REGISTRY — Scalable multi-origin credentials
-// Add new origins here as one line each. Key = host(:port).
-// The generator passes &origin=HOST via EXTATTRFROMURL, resolver looks up creds here.
+// CREDENTIAL PASSTHROUGH v1.0 — No hardcoded credentials
+// Credentials arrive from the frontend as &srv=base64(host|user|pass)
+// Mirrors the Xtream Codes API flow: frontend logs in → knows creds → passes them
 // ═══════════════════════════════════════════════════════════════════════════
-const ORIGINS = [
-    // host                              user              pass
-    ['line.tivi-ott.net',               '3JHFTC',         'U56BDP'],
-    ['line.dndnscloud.ru',              'f828e5e261',     'e1372a7053f1'],
-    ['126958958431.4k-26com.com:80',    'ujgd4kiltx',     'p5c00kxjc7'],
-    // Add new origins below:
-    // ['new.host.com:8080',            'newuser',        'newpass'],
-];
-
-// Default origin (first entry in ORIGINS)
-const DEFAULT_ORIGIN = ORIGINS[0][0];
-const DEFAULT_USER   = ORIGINS[0][1];
-const DEFAULT_PASS   = ORIGINS[0][2];
+function decodeSrvToken(string $token): ?array {
+    if ($token === '') return null;
+    $decoded = base64_decode($token, true);
+    if ($decoded === false) return null;
+    $parts = explode('|', $decoded, 3);
+    if (count($parts) !== 3) return null;
+    // Validate: host must be non-empty, user/pass must be non-empty
+    $host = trim($parts[0]);
+    $user = trim($parts[1]);
+    $pass = trim($parts[2]);
+    if ($host === '' || $user === '' || $pass === '') return null;
+    // Security: host must look like a valid hostname:port
+    if (!preg_match('/^[A-Za-z0-9._:-]{3,128}$/', $host)) return null;
+    return ['host' => $host, 'user' => $user, 'pass' => $pass];
+}
 
 const TOKEN_TTL = 120;
 
@@ -336,12 +407,82 @@ $profileCfg = [
     ],
 ];
 
+// ═══════════════════════════════════════════════════════════════════════════
+// SHARED SUBSYSTEMS — Identical for ALL profiles (P0-P5).
+// These were previously sent in &ctx= B64 payload from the frontend.
+// Now baked into the backend for dual-source parity + compact ctx URLs.
+// ═══════════════════════════════════════════════════════════════════════════
+$sharedSubsystems = [
+    // ── Cortex Quality Engine ──
+    'cortex' => [
+        'version' => '1.0.0',
+        'codecs' => 'hevc=100,av1=95,vp9=85,avc=70',
+        'transport' => 'cmaf>fmp4>ts>dash',
+        'hdr_policy' => 'passthrough>hable>reinhard',
+        'deint' => 'bwdif=95,w3fdif=85',
+        'fallback_chain' => 'hevc>av1>avc',
+        'fallback_res' => '4K>2K>FHD>HD>SD',
+    ],
+    // ── Transport Decision Module ──
+    'transport' => [
+        'version' => '2.0.0',
+        'modes' => ['direct_ts','direct_cmaf','worker_ts','worker_cmaf','hybrid'],
+        'cmaf' => ['target_dur' => 4, 'part' => 0.2, 'll' => true],
+        'ts_fallback' => true,
+        'weights' => ['player' => 0.30, 'device' => 0.25, 'hdr' => 0.15, 'telemetry' => 0.15, 'network' => 0.15],
+    ],
+    // ── Deinterlace ──
+    'deinterlace' => [
+        'mode' => 'bwdif',
+        'fallback' => 'yadif2x',
+        'detect' => 'auto',
+        'gpu' => 'force',
+    ],
+    // ── LCEVC / VNOVA ──
+    'lcevc' => [
+        'enabled' => true,
+        'sdk' => 'v16.4.1',
+        'l1' => 'MAX_DIFFERENCE_ATTENUATION',
+        'l2' => 'UPCONVERT_SHARPENING_EXTREME',
+    ],
+    // ── Resilience ──
+    'resilience' => [
+        'buffer_strategy' => 'NUCLEAR_NO_COMPROMISE',
+        'reconnect_max' => 'UNLIMITED',
+        'error_recovery' => 'NUCLEAR',
+        'freeze_prediction' => true,
+        'quality_floor' => '480p',
+    ],
+    // ── Throughput Thresholds ──
+    'throughput_t1' => 17.4,
+    'throughput_t2' => 21.4,
+    // ── HDR Mastering ──
+    'hdr_maxcll' => 4000,
+    'hdr_maxfall' => 400,
+];
+
+// Merge shared subsystems into each profile
+foreach ($profileCfg as $pKey => &$pVal) {
+    $pVal = array_merge($pVal, $sharedSubsystems);
+}
+unset($pVal); // break reference
 $pNorm = normalizeProfile($pReq);
 
 // --- PRECEDENCIA FINAL ---
+// 🏗️ CONCURRENCY v1.0: Skip the 136MB channels_map.json when &srv= is present.
+// The frontend already sends profile, buffer, bandwidth, etc. via URL params.
+// This drops memory from ~1.5GB to ~5MB per request, enabling 20+ concurrent lists.
 $listId = q('list', '');
-$map = loadChannelMap($listId !== '' ? $listId : null);
-$decision = mapDecision($ch, $map);
+$srvTokenPresent = (q('srv', '') !== '');
+$map = [];
+$decision = null;
+
+if (!$srvTokenPresent) {
+    // Legacy mode: no srv token, load channel map for overrides
+    $map = loadChannelMap($listId !== '' ? $listId : null);
+    $decision = mapDecision($ch, $map);
+}
+// When &srv= is present: $map=[], $decision=null → autoProfile() + URL params = everything needed
 
 // ── CMAF Interception Point (APE CMAF Engine v2.0) ───────────────────────────
 if (class_exists('CmafIntegrationShim')) {
@@ -425,6 +566,118 @@ if ($teleBw === '' && $decision !== null && isset($decision['math_telemetry'])) 
     if (isset($mathMap['tbw']))   $cfg['bitrate']      = (int)($mathMap['tbw'] / 1000);
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// 🧬 POLYMORPHIC CONTEXT INHERITANCE — Full M3U8 Anatomy Decoder
+//    Decodes &ctx=base64(JSON) sent by the Typed Arrays generator.
+//    The origin directives are LAW: the VPS reads, interprets, maintains,
+//    and enhances them. The 5 resilience motors can only ADD to this
+//    baseline — they can NEVER degrade resolution, bitrate, codec, or HDR.
+//    Idempotent: same ctx → same output. Polymorphic: adapts to any profile.
+// ═══════════════════════════════════════════════════════════════════════════
+$ctxRaw = q('ctx', '');
+$ctxInherited = null;
+
+if ($ctxRaw !== '') {
+    // URL-safe Base64 → standard Base64
+    $ctxB64 = str_replace(['-', '_'], ['+', '/'], $ctxRaw);
+    $ctxJson = base64_decode($ctxB64, true);
+    if ($ctxJson !== false) {
+        $ctxInherited = json_decode($ctxJson, true);
+    }
+}
+
+if (is_array($ctxInherited) && !empty($ctxInherited)) {
+    // ── RULE: Origin values are the FLOOR, never the ceiling ──
+    // For numeric "more is better" fields: use MAX(origin, local)
+    // For string fields: origin wins (it knows what it declared)
+
+    // Resolution & Frame Rate — origin wins absolutely
+    if (isset($ctxInherited['res']))     $cfg['res']     = (string)$ctxInherited['res'];
+    if (isset($ctxInherited['w']))       $cfg['w']       = max((int)$ctxInherited['w'], $cfg['w']);
+    if (isset($ctxInherited['h']))       $cfg['h']       = max((int)$ctxInherited['h'], $cfg['h']);
+    if (isset($ctxInherited['fps']))     $cfg['fps']     = max((int)$ctxInherited['fps'], $cfg['fps']);
+    if (isset($ctxInherited['name']))    $cfg['name']    = (string)$ctxInherited['name'];
+
+    // Bitrate & Bandwidth — always use the HIGHER value (never downgrade)
+    if (isset($ctxInherited['bitrate']))   $cfg['bitrate']   = max((int)$ctxInherited['bitrate'], $cfg['bitrate']);
+    if (isset($ctxInherited['max_bw']))    $cfg['max_bw']    = max((int)$ctxInherited['max_bw'], $cfg['max_bw']);
+    if (isset($ctxInherited['min_bw']))    $cfg['min_bw']    = max((int)$ctxInherited['min_bw'], $cfg['min_bw']);
+
+    // Buffer Architecture — always use the HIGHER value (more buffer = more stability)
+    if (isset($ctxInherited['buffer_ms']))   $cfg['buffer_ms']   = max((int)$ctxInherited['buffer_ms'], $cfg['buffer_ms']);
+    if (isset($ctxInherited['net_cache']))   $cfg['net_cache']   = max((int)$ctxInherited['net_cache'], $cfg['net_cache']);
+    if (isset($ctxInherited['live_cache']))  $cfg['live_cache']  = max((int)$ctxInherited['live_cache'], $cfg['live_cache']);
+    if (isset($ctxInherited['file_cache']))  $cfg['file_cache']  = max((int)$ctxInherited['file_cache'], $cfg['file_cache']);
+
+    // Prefetch Engine — always use the HIGHER value
+    if (isset($ctxInherited['prefetch_seg']))  $cfg['prefetch_seg']  = max((int)$ctxInherited['prefetch_seg'], $cfg['prefetch_seg']);
+    if (isset($ctxInherited['prefetch_par']))  $cfg['prefetch_par']  = max((int)$ctxInherited['prefetch_par'], $cfg['prefetch_par']);
+    if (isset($ctxInherited['prefetch_buf']))  $cfg['prefetch_buf']  = max((int)$ctxInherited['prefetch_buf'], $cfg['prefetch_buf']);
+    if (isset($ctxInherited['bw_guarantee']))  $cfg['bw_guarantee']  = max((int)$ctxInherited['bw_guarantee'], $cfg['bw_guarantee']);
+
+    // Codec Architecture — origin declares what it supports, VPS respects it
+    if (isset($ctxInherited['codec_primary']))   $cfg['codec_primary']   = (string)$ctxInherited['codec_primary'];
+    if (isset($ctxInherited['codec_fallback']))  $cfg['codec_fallback']  = (string)$ctxInherited['codec_fallback'];
+    if (isset($ctxInherited['codec_priority']))  $cfg['codec_priority']  = (string)$ctxInherited['codec_priority'];
+    if (isset($ctxInherited['codec']))           $cfg['codec']           = (string)$ctxInherited['codec'];
+
+    // Color Science — origin's color pipeline is absolute law
+    if (isset($ctxInherited['color_space']))  $cfg['color_space']  = (string)$ctxInherited['color_space'];
+    if (isset($ctxInherited['color_depth']))  $cfg['color_depth']  = max((int)$ctxInherited['color_depth'], $cfg['color_depth']);
+    if (isset($ctxInherited['chroma']))       $cfg['chroma']       = (string)$ctxInherited['chroma'];
+    if (isset($ctxInherited['transfer']))     $cfg['transfer']     = (string)$ctxInherited['transfer'];
+    if (isset($ctxInherited['matrix']))       $cfg['matrix']       = (string)$ctxInherited['matrix'];
+    if (isset($ctxInherited['pix_fmt']))      $cfg['pix_fmt']      = (string)$ctxInherited['pix_fmt'];
+
+    // HEVC Tier/Level/Profile — origin knows its player capabilities
+    if (isset($ctxInherited['hevc_tier']))    $cfg['hevc_tier']    = (string)$ctxInherited['hevc_tier'];
+    if (isset($ctxInherited['hevc_level']))   $cfg['hevc_level']   = (string)$ctxInherited['hevc_level'];
+    if (isset($ctxInherited['hevc_profile'])) $cfg['hevc_profile'] = (string)$ctxInherited['hevc_profile'];
+    if (isset($ctxInherited['vid_profile']))  $cfg['vid_profile']  = (string)$ctxInherited['vid_profile'];
+
+    // HDR — if origin declares HDR, VPS must preserve it
+    if (isset($ctxInherited['hdr']) && is_array($ctxInherited['hdr']) && !empty($ctxInherited['hdr'])) {
+        $cfg['hdr'] = $ctxInherited['hdr'];
+    }
+
+    // Processing — origin wins
+    if (isset($ctxInherited['sharpen']))    $cfg['sharpen']    = (float)$ctxInherited['sharpen'];
+    if (isset($ctxInherited['compress']))   $cfg['compress']   = (int)$ctxInherited['compress'];
+    if (isset($ctxInherited['rate_ctrl']))  $cfg['rate_ctrl']  = (string)$ctxInherited['rate_ctrl'];
+    if (isset($ctxInherited['entropy']))    $cfg['entropy']    = (string)$ctxInherited['entropy'];
+
+    // Reconnect — always use higher values
+    if (isset($ctxInherited['recon_max']))     $cfg['recon_max']     = max((int)$ctxInherited['recon_max'], $cfg['recon_max']);
+    if (isset($ctxInherited['recon_timeout'])) $cfg['recon_timeout'] = max((int)$ctxInherited['recon_timeout'], $cfg['recon_timeout']);
+
+    // Audio — use higher channel count
+    if (isset($ctxInherited['audio_ch'])) $cfg['audio_ch'] = max((int)$ctxInherited['audio_ch'], $cfg['audio_ch']);
+
+    // Throughput thresholds
+    if (isset($ctxInherited['throughput_t1'])) $cfg['throughput_t1'] = (float)$ctxInherited['throughput_t1'];
+    if (isset($ctxInherited['throughput_t2'])) $cfg['throughput_t2'] = (float)$ctxInherited['throughput_t2'];
+
+    // ── Store sub-objects for resilience motors to consume ──
+    // These are passed through $decision to ResilienceIntegrationShim::enhance()
+    $cfg['_ctx_cortex']      = $ctxInherited['cortex'] ?? null;
+    $cfg['_ctx_transport']   = $ctxInherited['transport'] ?? null;
+    $cfg['_ctx_deinterlace'] = $ctxInherited['deinterlace'] ?? null;
+    $cfg['_ctx_lcevc']       = $ctxInherited['lcevc'] ?? null;
+    $cfg['_ctx_resilience']  = $ctxInherited['resilience'] ?? null;
+    $cfg['_ctx_generator']   = $ctxInherited['_gen'] ?? 'unknown';
+    $cfg['_ctx_version']     = $ctxInherited['_ver'] ?? '0';
+    $cfg['_ctx_timestamp']   = $ctxInherited['_ts'] ?? 0;
+
+    // Log inheritance event (non-blocking)
+    @file_put_contents('/var/log/iptv-ape/ctx_inherit.log',
+        sprintf("[%s] ch=%s profile=%s ctx_profile=%s ctx_gen=%s ctx_res=%s\n",
+            date('c'), $ch, $profile,
+            $ctxInherited['profile'] ?? '?',
+            $ctxInherited['_gen'] ?? '?',
+            $ctxInherited['res'] ?? '?'),
+        FILE_APPEND | LOCK_EX);
+}
+
 $hdrEnabled = !empty($cfg['hdr']);
 // 4) TOKEN
 // -------------------------------
@@ -451,60 +704,47 @@ function checkStreamHealth(string $url): bool {
     return ($status >= 200 && $status < 400); 
 }
 
-function resolveOrigin(string $host): array {
-    foreach (ORIGINS as $entry) {
-        if ($entry[0] === $host) return ['host' => $entry[0], 'user' => $entry[1], 'pass' => $entry[2]];
-    }
-    return ['host' => DEFAULT_ORIGIN, 'user' => DEFAULT_USER, 'pass' => DEFAULT_PASS];
+// ═══════════════════════════════════════════════════════════════════════════
+// 5) URL CONSTRUCTION — Credential Passthrough from Frontend
+//    Decodes &srv=base64(host|user|pass) token sent by the JS generator.
+//    NO hardcoded credentials — mirrors the Xtream Codes API login flow.
+// ═══════════════════════════════════════════════════════════════════════════
+$srvToken = q('srv', '');
+$srvCreds = decodeSrvToken($srvToken);
+
+if ($srvCreds === null) {
+    // No valid srv token → emergency fallback to direct URL
+    emergencyFallback('invalid_srv_token');
 }
 
-$requestedHost = DEFAULT_ORIGIN;
-if ($origin !== '' && preg_match('/^[A-Za-z0-9._:-]{1,128}$/', $origin)) $requestedHost = $origin;
-if ($decision !== null && isset($decision['origin']) && is_string($decision['origin'])) $requestedHost = $decision['origin'];
+$effectiveHost = $srvCreds['host'];
+$effectiveUser = $srvCreds['user'];
+$effectivePass = $srvCreds['pass'];
 
 $streamId = $ch;
-if ($decision !== null && isset($decision['stream_id']) && $decision['stream_id'] !== '') $streamId = (string)$decision['stream_id'];
-
-// 🔄 QUANTUM SHIELD: ACTIVE ORIGIN FAILOVER LOOP
-$effectiveHost = '';
-$effectiveUser = '';
-$effectivePass = '';
-$baseUrl = '';
-
-// Try the requested origin first, if it fails, iterate through ORIGINS as fallbacks
-$candidates = [resolveOrigin($requestedHost)];
-foreach (ORIGINS as $org) {
-    if ($org[0] !== $requestedHost) $candidates[] = ['host' => $org[0], 'user' => $org[1], 'pass' => $org[2]];
-}
-
-foreach ($candidates as $cand) {
-    $testBaseUrl = "http://" . $cand['host'] . "/live/" . rawurlencode((string)$cand['user']) . "/" . rawurlencode((string)$cand['pass']) . "/" . rawurlencode((string)$streamId) . ".m3u8";
-    if (checkStreamHealth($testBaseUrl)) {
-        $effectiveHost = $cand['host'];
-        $effectiveUser = $cand['user'];
-        $effectivePass = $cand['pass'];
-        $baseUrl = $testBaseUrl;
-        break; // found a healthy one!
-    }
-}
-
-// Fallback to primary if everything is dead (the player's internal logic will handle it)
-if ($baseUrl === '') {
-    $effectiveHost = $candidates[0]['host'];
-    $effectiveUser = $candidates[0]['user'];
-    $effectivePass = $candidates[0]['pass'];
-    $baseUrl = "http://" . $effectiveHost . "/live/" . rawurlencode((string)$effectiveUser) . "/" . rawurlencode((string)$effectivePass) . "/" . rawurlencode((string)$streamId) . ".m3u8";
+if ($decision !== null && isset($decision['stream_id']) && $decision['stream_id'] !== '') {
+    $streamId = (string)$decision['stream_id'];
 }
 
 // 🌐 PROTOCOLO SID-MISMATCH PREVENTION (Gold Standard)
 // Si el generador JS envió un stream_id numérico explícito, este es el Rey absoluto.
-// Evita que un slug (como skysportsmainevent.uk) resuelva a una variante de menor calidad.
 $sidParam = q('sid', '');
 if ($sidParam !== '' && preg_match('/^\d+$/', $sidParam)) {
     $streamId = $sidParam;
 }
 
+// 🛡️ QUANTUM SHIELD: Health check the decoded server
 $baseUrl = "http://" . $effectiveHost . "/live/" . rawurlencode((string)$effectiveUser) . "/" . rawurlencode((string)$effectivePass) . "/" . rawurlencode((string)$streamId) . ".m3u8";
+
+// Optional: Verify stream health (skip if latency-sensitive)
+if (!checkStreamHealth($baseUrl)) {
+    // Stream not healthy but we still return the URL — the player handles retries
+    // Log for diagnostics, don't block
+    @file_put_contents('/var/log/iptv-ape/unhealthy.log',
+        sprintf("[%s] UNHEALTHY ch=%s host=%s\n", date('Y-m-d H:i:s'), $ch, $effectiveHost),
+        FILE_APPEND | LOCK_EX);
+}
+
 $finalUrl = ($token !== '') ? ($baseUrl . '?token=' . rawurlencode($token)) : $baseUrl;
 $referer = "http://" . $effectiveHost . "/";
 $originUrl = "http://" . $effectiveHost;
@@ -817,7 +1057,36 @@ $vlcopt[] = "#EXTVLCOPT:sout-video-profile=" . $cfg['vid_profile'];
 $vlcopt[] = "#EXTVLCOPT:force-dolby-surround=0";
 
 // ═══════════════════════════════════════════════════════════════════════
-// 8) OUTPUT M3U FRAGMENT — FULL (63 EXTVLCOPT + 80+ EXTHTTP always)
+// 7B) RESILIENCE v6.0 ENHANCEMENT — Merge buffer escalation + net priority
+//     Non-intrusive: returns empty arrays if modules are missing.
+// ═══════════════════════════════════════════════════════════════════════
+if (class_exists('ResilienceIntegrationShim', false)) {
+    $resilienceDecision = array_merge($decision ?? [], [
+        'quality_profile'       => $profile,
+        'url'                   => $finalUrl,
+        'origin'                => $effectiveHost,
+        'height'                => $cfg['h'],
+        'h'                     => $cfg['h'],
+        'user_agent'            => $_SERVER['HTTP_USER_AGENT'] ?? '', // v2.0 device detection
+        'buffer_pct'            => (float)q('buffer_pct', '72'),
+        'network_type'          => q('net_type', 'ethernet'),
+        'bandwidth_kbps'        => (int)q('bw_kbps', '100000'),
+        'circuit_breaker_state' => 'CLOSED',
+        'resilience_strategy'   => 'direct',
+    ]);
+    $resilience = ResilienceIntegrationShim::enhance($ch, $resilienceDecision);
+    // Merge resilience EXTHTTP headers (buffer escalation, DSCP, priority)
+    if (!empty($resilience['exthttp'])) {
+        $exthttp = array_merge($exthttp, $resilience['exthttp']);
+    }
+    // Merge resilience EXTVLCOPT (network-caching override, adaptive-logic)
+    if (!empty($resilience['extvlcopt'])) {
+        $vlcopt = array_merge($vlcopt, $resilience['extvlcopt']);
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// 8) OUTPUT M3U FRAGMENT — FULL (63+ EXTVLCOPT + 80+ EXTHTTP always)
 // ═══════════════════════════════════════════════════════════════════════
 $labelFinal = (is_string($labelOverride) && $labelOverride !== '') ? $labelOverride : $cfg['label'];
 
@@ -825,7 +1094,10 @@ header('Content-Type: application/x-mpegURL; charset=utf-8');
 header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 // header('Pragma: no-cache');
 
-// NO #EXTM3U header for patch fragments (fixes OTT Navigator 512)
+// #EXTM3U header — REQUIRED for Option B (Universal Player Support)
+// VLC, TiviMate, Kodi, etc. need this to treat the response as an M3U playlist.
+// OTT Navigator also handles it correctly when accessing directly.
+echo "#EXTM3U\n";
 echo '#EXTINF:-1 '
     . 'ape-profile="' . $profile . '-VIP-HW" '
     . 'codec="HEVC" '

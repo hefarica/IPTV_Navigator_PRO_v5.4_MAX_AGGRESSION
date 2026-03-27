@@ -8431,8 +8431,21 @@ El servidor analizará 26,000+ canales en ~10 minutos.
             const tvgName = ch.tvg_name || name;
 
             let streamUrl = '';
-            if (this.state.currentServer && this.state.currentServer.baseUrl && ch.stream_id) {
-                const { baseUrl, username, password } = this.state.currentServer;
+            // ✅ V9.1: Credential Isolation — resolve server PER CHANNEL via serverId
+            const channelServerId = ch._source || ch.serverId || ch.server_id;
+            let server = null;
+            if (channelServerId && this.state.activeServers) {
+                server = this.state.activeServers.find(s => s.id === channelServerId);
+            }
+            if (!server && this.state.currentServer && this.state.currentServer.baseUrl) {
+                server = this.state.currentServer;
+            }
+            if (!server && this.state.activeServers && this.state.activeServers.length > 0) {
+                server = this.state.activeServers[0];
+            }
+
+            if (server && server.baseUrl && ch.stream_id) {
+                const { baseUrl, username, password } = server;
                 const cleanBase = baseUrl.replace(/\/player_api\.php$/, '');
                 let ext = 'ts';
                 let typePath = 'live';
@@ -8446,27 +8459,34 @@ El servidor analizará 26,000+ canales en ~10 minutos.
 
             let tags = `tvg-id="${epgId}" tvg-name="${tvgName}" tvg-logo="${logo}" group-title="${group}"`;
 
-            // Inyección Headers Gestionados
-            Object.keys(this.state.activeHeaders).forEach(k => {
-                const v = this.state.activeHeaders[k];
-                if (v && v.trim()) content += `#EXTVLCOPT:http-${k.toLowerCase()}=${v}\n`;
-            });
-
-            // ✅ HEADER PRO: #EXTHTTP (JSON) para compatibilidad extendida
-            if (Object.keys(this.state.activeHeaders).length > 0) {
-                content += `#EXTHTTP:${JSON.stringify(this.state.activeHeaders)}\n`;
-            }
-
             if (isOttOptimized) {
                 if (ch.archive || ch.tv_archive) {
                     const days = ch.archive_dur ? Math.ceil(ch.archive_dur / 24) : 7;
                     tags += ` catchup="xc" catchup-days="${days}" catchup-source="?utc={utc}&lutc={lutc}"`;
                 }
+            }
+
+            // ✅ A1 FIX: EXTINF PRIMERO (estándar M3U8)
+            content += `#EXTINF:-1 ${tags},${name}\n`;
+
+            // Luego EXTHTTP (JSON) para compatibilidad extendida
+            if (Object.keys(this.state.activeHeaders).length > 0) {
+                content += `#EXTHTTP:${JSON.stringify(this.state.activeHeaders)}\n`;
+            }
+
+            // Luego EXTVLCOPT (headers gestionados)
+            Object.keys(this.state.activeHeaders).forEach(k => {
+                const v = this.state.activeHeaders[k];
+                if (v && v.trim()) content += `#EXTVLCOPT:http-${k.toLowerCase()}=${v}\n`;
+            });
+
+            if (isOttOptimized) {
                 if (!this.state.activeHeaders['User-Agent']) {
                     content += `#EXTVLCOPT:http-user-agent=OTT Navigator/1.6.9.4\n`;
                 }
             }
-            content += `#EXTINF:-1 ${tags},${name}\n`;
+
+            // URL siempre al final
             content += `${streamUrl}\n`;
         });
 
@@ -11352,10 +11372,19 @@ El servidor analizará 26,000+ canales en ~10 minutos.
         if (this.pendingGeneratorType === 'pro') {
             this.generateM3U8Pro();
         } else if (this.pendingGeneratorType === 'ultimate') {
-            this.generateM3U8Ultimate();
+            this.generateM3U8Ultimate().then(() => {
+                // Stats already updated inside generateM3U8Ultimate
+            }).catch(e => console.error('❌ ULTIMATE generation error:', e));
         } else if (this.pendingGeneratorType === 'elite') {
             if (window.apeEliteGenerator) {
                 window.apeEliteGenerator.generateAndDownload();
+                // ✅ HAL-01/02 FIX: Update stats + bars after Elite generation
+                try {
+                    if (typeof this.updateGeneratorStats === 'function') this.updateGeneratorStats();
+                    if (window.telemetryManager && typeof window.telemetryManager.logDecision === 'function') {
+                        window.telemetryManager.logDecision(true, 0, document.getElementById('v41CompatProfile')?.value || 'AUTO', false);
+                    }
+                } catch (_) {}
             } else {
                 this.showNotification("❌ Motor Elite v16 no cargado.", true);
             }
@@ -11420,10 +11449,10 @@ El servidor analizará 26,000+ canales en ~10 minutos.
     async generateM3U8Ultimate() {
         console.log('%c👑 [APE v9.0 ULTIMATE] Iniciando generación World-Class...', 'color: #8b5cf6; font-weight: bold;');
 
-        // 1. Verificar canales disponibles
-        const channels = this.state.channels || this.state.channelsMaster || [];
+        // 1. Verificar canales disponibles — USAR FILTRADOS, no todos
+        const channels = this.getFilteredChannels();
         if (channels.length === 0) {
-            alert('⚠️ No hay canales cargados. Conecta un servidor primero.');
+            alert('⚠️ No hay canales cargados (o filtrados). Conecta un servidor o ajusta los filtros.');
             return;
         }
 
@@ -11435,13 +11464,25 @@ El servidor analizará 26,000+ canales en ~10 minutos.
         }
 
         // 3. Preparar opciones desde el servidor activo
+        // ✅ V9.1: Credential Isolation — este options.server se usa como fallback global,
+        // pero cada canal debería resolver su propio servidor via serverId.
+        // Inyectamos _serverResolver para que el generador pueda hacer lookup per-channel.
         const activeServer = this.state.activeServers?.[0] || this.state.currentServer || {};
         const options = {
             server: activeServer.baseUrl || activeServer.url || 'http://example.com',
             user: activeServer.username || activeServer.user || 'user',
             pass: activeServer.password || activeServer.pass || 'pass',
             includeStart: true,
-            jwtExpiration: 365
+            jwtExpiration: 365,
+            // V9.1: Per-channel credential resolver
+            _resolveServer: (channel) => {
+                const chServerId = channel._source || channel.serverId || channel.server_id;
+                if (chServerId && this.state.activeServers) {
+                    const match = this.state.activeServers.find(s => s.id === chServerId);
+                    if (match) return match;
+                }
+                return this.state.currentServer || activeServer;
+            }
         };
 
         console.log(`📊 Generando M3U8 para ${channels.length} canales...`);
@@ -11466,6 +11507,34 @@ El servidor analizará 26,000+ canales en ~10 minutos.
             console.log(`   📝 Líneas totales: ${result.stats.totalLines}`);
             console.log(`   📦 Tamaño: ${(result.stats.fileSize / 1024 / 1024).toFixed(2)} MB`);
             console.log(`   ⏱️ Tiempo: ${result.stats.duration}`);
+
+            // ✅ HAL-01 FIX: Update stats cards (genStatTotal, genStat4K, genStatGroups)
+            if (typeof this.updateGeneratorStats === 'function') {
+                this.updateGeneratorStats();
+            }
+
+            // ✅ HAL-01 FIX: Fire V41Hooks.onGenerateEnd for Stream Inspector + quick stats
+            try {
+                if (window.V41Hooks && typeof window.V41Hooks.onGenerateEnd === 'function') {
+                    const chs = channels;
+                    window.V41Hooks.onGenerateEnd({
+                        sampleUrl: chs[0]?.url || chs[0]?.URL || '',
+                        totalChannels: result.stats.totalChannels,
+                        filteredChannels: chs.length,
+                        count4k: chs.filter(c => (c.quality || c.Quality || c._quality || '').toString().toUpperCase().includes('4K') || (c.name || c.Name || '').toString().toUpperCase().includes('4K')).length,
+                        groupCount: new Set(chs.map(c => c.group || c.groupTitle || c['group-title'] || c.Group || '')).size
+                    });
+                }
+            } catch (_) {}
+
+            // ✅ HAL-02 FIX: Update distribution bars via telemetryManager
+            try {
+                if (window.telemetryManager && typeof window.telemetryManager.logDecision === 'function') {
+                    const elapsed = result.stats.durationMs || 0;
+                    const profile = document.getElementById('v41CompatProfile')?.value || 'AUTO';
+                    window.telemetryManager.logDecision(true, elapsed, profile, false);
+                }
+            } catch (_) {}
 
             alert(`✅ M3U8 World-Class generado!\n\n` +
                 `📺 Canales: ${result.stats.totalChannels}\n` +

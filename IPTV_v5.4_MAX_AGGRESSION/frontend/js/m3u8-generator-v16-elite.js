@@ -262,16 +262,31 @@
         if (channel.stream_url) {
             return channel.stream_url;
         }
-        // Construir URL Xtream Codes si hay datos del servidor
-        if (channel.serverUrl && channel.username && channel.password && channel.stream_id) {
-            const ext = (profile.settings?.codec === 'H265' || profile.settings?.codec === 'HEVC') ? 'm3u8' : 'ts';
-            return `${channel.serverUrl}/live/${channel.username}/${channel.password}/${channel.stream_id}.${ext}`;
+        if (channel.url && channel.url.startsWith('http')) {
+            return channel.url;
         }
-        // Si el canal tiene baseUrl del servidor
-        if (channel.baseUrl && channel.username && channel.password && channel.stream_id) {
-            const ext = (profile.settings?.codec === 'H265' || profile.settings?.codec === 'HEVC') ? 'm3u8' : 'ts';
-            return `${channel.baseUrl}/live/${channel.username}/${channel.password}/${channel.stream_id}.${ext}`;
+
+        // ✅ V9.1: Credential Isolation — resolve server PER CHANNEL via serverId
+        let server = null;
+        const channelServerId = channel._source || channel.serverId || channel.server_id;
+
+        if (channelServerId && window.app?.state?.activeServers) {
+            server = window.app.state.activeServers.find(s => s.id === channelServerId);
         }
+        if (!server && window.app?.state?.currentServer) {
+            server = window.app.state.currentServer;
+        }
+        if (!server && window.app?.state?.activeServers?.length > 0) {
+            server = window.app.state.activeServers[0];
+        }
+
+        // Construir URL Xtream Codes con credenciales del servidor correcto
+        if (server && server.baseUrl && server.username && server.password && channel.stream_id) {
+            const cleanBase = server.baseUrl.replace(/\/player_api\.php$/, '').replace(/\/$/, '');
+            const ext = (profile.settings?.codec === 'H265' || profile.settings?.codec === 'HEVC') ? 'm3u8' : 'ts';
+            return `${cleanBase}/live/${server.username}/${server.password}/${channel.stream_id}.${ext}`;
+        }
+
         // Fallback: URL relativa
         return `stream_${channel.stream_id || channel.num || 0}_${profile.id}.m3u8`;
     }
@@ -432,15 +447,21 @@
     function generateAndDownload() {
         console.log('🏆 [ELITE] Solicitando generación de Manifiesto ELITE...');
 
-        // ── Obtener canales desde el estado de la app ──
-        const channels = window.app?.state?.channelsMaster
-            || window.app?.state?.channels
-            || window.app?.state?.filteredChannels
-            || [];
+        // ── Obtener canales FILTRADOS desde el estado de la app ──
+        let channels = [];
+        if (window.app && typeof window.app.getFilteredChannels === 'function') {
+            channels = window.app.getFilteredChannels();
+            console.log(`🏆 [ELITE] Usando getFilteredChannels(): ${channels.length} canales filtrados`);
+        } else {
+            channels = window.app?.state?.channelsMaster
+                || window.app?.state?.channels
+                || [];
+            console.warn('🏆 [ELITE] ⚠️ getFilteredChannels no disponible, usando channelsMaster');
+        }
 
         if (channels.length === 0) {
             alert('❌ No hay canales para generar.\n\nPor favor, conecta al menos un servidor y carga canales antes de generar el manifiesto ELITE.');
-            console.error('[ELITE] No hay canales disponibles en app.state.channelsMaster ni app.state.channels');
+            console.error('[ELITE] No hay canales disponibles');
             return;
         }
 

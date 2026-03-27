@@ -26,8 +26,8 @@
         api_url: 'https://iptv-ape.duckdns.org/api',
         endpoints: {
             upload: '/upload.php',
-            verify: '/api/upload/verify',
-            health: '/api/health'
+            verify: '/upload/verify',
+            health: '/health'
         }
     };
 

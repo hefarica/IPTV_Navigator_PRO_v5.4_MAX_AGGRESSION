@@ -1222,8 +1222,30 @@
 
                 const chId = channel.epg_channel_id || channel.tvg_id || channel.stream_id || channel.id || index;
                 const listId = (typeof VERSION !== 'undefined' ? VERSION : '16.0.0').replace(/[^a-zA-Z0-9.-]/g, '');
-                // 🌐 SINCRONIZACIÓN UNIVERSAL: Recopilamos matemática viva del frontend
-                entry += `#EXTATTRFROMURL:${resolverBase}${resolveScript}?ch=${encodeURIComponent(chId)}&p=${profile}&mode=adaptive&list=${listId}&bw=${profileConfig.max_bandwidth || 100000000}&buf=${profileConfig.buffer || 8000}&th1=${profileConfig.throughput_t1 || 17.4}&th2=${profileConfig.throughput_t2 || 21.4}&pfseg=${90}&pfpar=${40}&tbw=${Math.round((profileConfig.bitrate_mbps || 8) * 1000)}\n`;
+
+                // 🧠 RESILIENCE v6.0: origin + sid para multi-server failover atómico
+                // origin = host del servidor de streaming (Quantum Shield credential resolution)
+                // sid = stream_id numérico (SID-mismatch prevention — Gold Standard)
+                const originHost = channel._originHost || channel.server_url || '';
+                const originParam = originHost ? `&origin=${encodeURIComponent(originHost.replace(/^https?:\/\//, '').split('/')[0])}` : '';
+                const sidParam = channel.stream_id ? `&sid=${channel.stream_id}` : '';
+
+                // 🔐 CREDENTIAL PASSTHROUGH v1.0: Encode server credentials from Xtream Codes login
+                // Mirrors _buildChannelUrl() — uses the SAME server object from state.activeServers
+                // Token = base64(host|user|pass) — decoded by resolve_quality.php, NO hardcoded ORIGINS
+                let srvParam = '';
+                if (window.app && window.app.state) {
+                    const channelServerId = channel._source || channel.serverId || channel.server_id;
+                    const server = window.app.state.activeServers?.find(s => s.id === channelServerId) || window.app.state.currentServer;
+                    if (server && server.baseUrl && server.username && server.password) {
+                        const cleanHost = server.baseUrl.replace(/\/player_api\.php$/, '').replace(/\/$/, '').replace(/^https?:\/\//, '');
+                        const srvToken = btoa(`${cleanHost}|${server.username}|${server.password}`);
+                        srvParam = `&srv=${encodeURIComponent(srvToken)}`;
+                    }
+                }
+
+                // 🌐 SINCRONIZACIÓN UNIVERSAL: Recopilamos matemática viva del frontend + resilience params + srv credentials
+                entry += `#EXTATTRFROMURL:${resolverBase}${resolveScript}?ch=${encodeURIComponent(chId)}&p=${profile}&mode=adaptive&list=${listId}&bw=${profileConfig.max_bandwidth || 100000000}&buf=${profileConfig.buffer || 8000}&th1=${profileConfig.throughput_t1 || 17.4}&th2=${profileConfig.throughput_t2 || 21.4}&pfseg=${90}&pfpar=${40}&tbw=${Math.round((profileConfig.bitrate_mbps || 8) * 1000)}${originParam}${sidParam}${srvParam}\n`;
             }
 
             // Línea URL con JWT

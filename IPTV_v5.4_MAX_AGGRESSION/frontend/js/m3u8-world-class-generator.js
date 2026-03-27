@@ -351,9 +351,14 @@
     function generateEXTVLCOPT(profile) {
         const values = PROFILE_VALUES[profile] || PROFILE_VALUES['P2'];
 
+        // ✅ A3 FIX: Single User-Agent (use rotation if available, else Chrome)
+        const ua = (window.userAgentRotation && typeof window.userAgentRotation.selectRandomUserAgent === 'function')
+            ? window.userAgentRotation.selectRandomUserAgent()
+            : 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36';
+
         const extvlcopt = [
-            // GRUPO 1: User-Agent y Caché principal (3 líneas)
-            `#EXTVLCOPT:http-user-agent=OTT Navigator/1.6.9.4`,
+            // GRUPO 1: User-Agent (1 único — deduplicado) + Caché principal
+            `#EXTVLCOPT:http-user-agent=${ua}`,
             `#EXTVLCOPT:network-caching=${values.networkCaching}`,
             `#EXTVLCOPT:clock-jitter=0`,
 
@@ -364,60 +369,33 @@
             // GRUPO 3: Caché de archivo (1 línea)
             `#EXTVLCOPT:file-caching=${values.fileCaching}`,
 
-            // GRUPO 4: User-Agent Mozilla completo (1 línea)
-            `#EXTVLCOPT:http-user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36`,
-
-            // GRUPO 5: Reconexión HTTP (2 líneas)
+            // GRUPO 4: Reconexión HTTP (2 líneas)
             `#EXTVLCOPT:http-reconnect=true`,
             `#EXTVLCOPT:http-continuous=true`,
 
-            // GRUPO 6: Decodificación hardware (6 líneas)
-            `#EXTVLCOPT:vout=glwin32`,
-            `#EXTVLCOPT:vout=glx`,
-            `#EXTVLCOPT:vout=gl`,
+            // GRUPO 5: Decodificación hardware (4 líneas)
             `#EXTVLCOPT:avcodec-hw=any`,
             `#EXTVLCOPT:avcodec-threads=${values.threads}`,
             `#EXTVLCOPT:avcodec-skip-frame=0`,
+            `#EXTVLCOPT:avcodec-skiploopfilter=0`,
 
-            // GRUPO 7: Decodificadores FFmpeg (3 líneas)
-            `#EXTVLCOPT:ffmpeg-hw-decoder=hevc_nvdec`,
-            `#EXTVLCOPT:ffmpeg-hw-decoder=h264_nvdec`,
-            `#EXTVLCOPT:ffmpeg-hw-decoder=vp9_nvdec`,
-
-            // GRUPO 8: Filtros de mejora visual (2 líneas)
+            // GRUPO 6: Filtros de mejora visual (2 líneas)
             `#EXTVLCOPT:video-filter=deinterlace{mode=${values.deinterlace}}`,
-            `#EXTVLCOPT:video-filter=sharpen{sigma=${values.sharpen}}`,
+            `#EXTVLCOPT:postproc-quality=6`,
 
-            // GRUPO 9: Post-procesamiento (3 líneas)
-            `#EXTVLCOPT:video-filter=adjust{brightness=1.0,contrast=1.0,saturation=1.1}`,
-            `#EXTVLCOPT:video-filter=normalize{type=independent}`,
-            `#EXTVLCOPT:video-filter=hqdn3d{luma_spatial=4.0,chroma_spatial=3.0}`,
-
-            // GRUPO 10: Resolución y aspect ratio (3 líneas)
+            // GRUPO 7: Resolución y aspect ratio (3 líneas)
             `#EXTVLCOPT:aspect-ratio=16:9`,
             `#EXTVLCOPT:autoscale=1`,
             `#EXTVLCOPT:scale=1`,
 
-            // GRUPO 11: Sincronización A/V (3 líneas)
-            `#EXTVLCOPT:audio-sync=true`,
+            // GRUPO 8: Sincronización A/V (2 líneas)
             `#EXTVLCOPT:audio-desync=0`,
             `#EXTVLCOPT:ts-caching=true`,
 
-            // GRUPO 12: Conexión estable (3 líneas)
+            // GRUPO 9: Conexión estable (3 líneas)
             `#EXTVLCOPT:http-timeout=30000`,
             `#EXTVLCOPT:http-forward-cookies=true`,
             `#EXTVLCOPT:http-referrer=https://player.example.com`,
-
-            // GRUPO 13: User-Agents adicionales anti-bloqueo (9 líneas)
-            `#EXTVLCOPT:http-user-agent=Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36`,
-            `#EXTVLCOPT:http-user-agent=Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15`,
-            `#EXTVLCOPT:http-user-agent=Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15`,
-            `#EXTVLCOPT:http-user-agent=Mozilla/5.0 (Android 14; Mobile; rv:120.0) Gecko/120.0 Firefox/120.0`,
-            `#EXTVLCOPT:http-user-agent=VLC/3.0.20 LibVLC/3.0.20`,
-            `#EXTVLCOPT:http-user-agent=Kodi/21.0 (Windows NT 10.0; Win64; x64)`,
-            `#EXTVLCOPT:http-user-agent=Tivimate/5.0.0 (Android 14; TV)`,
-            `#EXTVLCOPT:http-user-agent=Perfect Player/2.5 (Android 14)`,
-            `#EXTVLCOPT:http-user-agent=IPTV Smarters Pro/3.0 (Android 14)`,
 
             // GRUPO 14: Buffering y Prefetch (10 líneas)
             `#EXTVLCOPT:prefetch=true`,
@@ -719,14 +697,42 @@
     // ═══════════════════════════════════════════════════════════════════════
 
     function generateURL(channel, jwt, options = {}) {
-        const server = options.server || channel.serverUrl || '';
-        const user = options.user || channel.username || '';
-        const pass = options.pass || channel.password || '';
         const id = channel.id || channel.stream_id || '0';
         const format = options.streamFormat || channel.streamFormat || 'm3u8';
 
-        if (server && user && pass) {
-            return preferHttps(`${server}/live/${user}/${pass}/${id}.${format}?ape_jwt=${jwt}`);
+        // ✅ A2 FIX: Per-channel credential isolation via serverId lookup
+        let server = null;
+        let serverUrl = '';
+        let user = '';
+        let pass = '';
+
+        // 1. Try _resolveServer (injected by ULTIMATE generator)
+        if (options._resolveServer && typeof options._resolveServer === 'function') {
+            server = options._resolveServer(channel);
+        }
+
+        // 2. Try direct lookup via channel.serverId
+        if (!server && typeof window !== 'undefined' && window.app?.state?.activeServers) {
+            const chServerId = channel._source || channel.serverId || channel.server_id;
+            if (chServerId) {
+                server = window.app.state.activeServers.find(s => s.id === chServerId);
+            }
+        }
+
+        // 3. Use resolved server credentials
+        if (server) {
+            serverUrl = (server.baseUrl || server.url || '').replace(/\/player_api\.php$/, '').replace(/\/$/, '');
+            user = server.username || server.user || '';
+            pass = server.password || server.pass || '';
+        }
+
+        // 4. Fallback to options (global credentials)
+        if (!serverUrl) serverUrl = options.server || channel.serverUrl || '';
+        if (!user) user = options.user || channel.username || '';
+        if (!pass) pass = options.pass || channel.password || '';
+
+        if (serverUrl && user && pass) {
+            return preferHttps(`${serverUrl}/live/${user}/${pass}/${id}.${format}?ape_jwt=${jwt}`);
         }
 
         // Fallback: usar URL existente del canal
@@ -736,7 +742,7 @@
             return preferHttps(`${url}${separator}ape_jwt=${jwt}`);
         }
 
-        return `http://localhost/live/user/pass/${id}.${format}?ape_jwt=${jwt}`; // localhost → no upgrade
+        return `http://localhost/live/user/pass/${id}.${format}?ape_jwt=${jwt}`;
     }
 
     // ═══════════════════════════════════════════════════════════════════════

@@ -294,7 +294,7 @@
         },
 
         async executePipeline(obfuscate) {
-            const dataToStream = window.app?.state?.filteredChannels || window.app?.state?.channels || [];
+            let dataToStream = window.app?.state?.filteredChannels || window.app?.state?.channels || [];
             const config = window.GenTabController ? window.GenTabController.getConfig() : {};
             const format = this.getSelectedFormat();
             const filename = `APE_v822_Ghost_${new Date().toISOString().slice(0, 10)}.m3u8`;
@@ -302,6 +302,58 @@
             this.setUIState(true);
             this.resetStats();
             this.UImaster.push("Fase 1: Accediendo a dataset depurado de ANÁLISIS...", "success");
+
+            // ✅ v10.1: Stamp Xtream Codes URLs onto channels BEFORE posting to worker
+            // The web worker has NO access to window.app.state, so we must resolve
+            // credentials here on the main thread.
+            const servers = window.app?.state?.activeServers || [];
+            const currentServer = window.app?.state?.currentServer || null;
+            if (servers.length > 0 || currentServer) {
+                const credMap = {};
+                servers.forEach(s => {
+                    const base = (s.baseUrl || s.url || '').replace(/\/player_api\.php$/, '').replace(/\/$/, '');
+                    const entry = { baseUrl: base, username: s.username || s.user || '', password: s.password || s.pass || '' };
+                    if (s.id) credMap[s.id] = entry;
+                    const host = base.replace(/^https?:\/\//, '').replace(/\/.*$/, '').replace(/:\d+$/, '').toLowerCase();
+                    if (host) credMap['host:' + host] = entry;
+                });
+                if (currentServer) {
+                    const csBase = (currentServer.baseUrl || currentServer.url || '').replace(/\/player_api\.php$/, '').replace(/\/$/, '');
+                    credMap['__current__'] = { baseUrl: csBase, username: currentServer.username || currentServer.user || '', password: currentServer.password || currentServer.pass || '' };
+                }
+                
+                let stamped = 0;
+                dataToStream = dataToStream.map(ch => {
+                    // Skip if already has a valid /live/ URL
+                    if (ch.url && ch.url.includes('/live/')) return ch;
+                    
+                    const streamId = ch.stream_id || ch.raw?.stream_id || '';
+                    if (!streamId) return ch;
+                    
+                    // STRICT matching: serverId first, then hostname. NO lazy fallbacks.
+                    const sid = ch.serverId || ch._source || ch.server_id || '';
+                    let creds = sid ? credMap[sid] : null;
+                    if (!creds) {
+                        const rawHost = (ch.raw?.server_url || ch.server_url || ch.url || '')
+                            .replace(/^https?:\/\//, '').replace(/\/.*$/, '').replace(/:\d+$/, '').toLowerCase();
+                        if (rawHost) creds = credMap['host:' + rawHost];
+                    }
+                    // Only use __current__ if channel has NO serverId (truly unknown origin)
+                    if (!creds && !sid) creds = credMap['__current__'];
+                    
+                    if (creds && creds.baseUrl && creds.username && creds.password) {
+                        stamped++;
+                        return { ...ch, url: `${creds.baseUrl}/live/${creds.username}/${creds.password}/${streamId}.m3u8` };
+                    }
+                    return ch;
+                });
+                
+                this.UImaster.push(`🔑 [v10.1] Stamped ${stamped}/${dataToStream.length} URLs from ${servers.length} servers`, 'success');
+                console.log(`🔑 [GenerationController] Stamped ${stamped} Xtream URLs before worker`);
+            } else {
+                this.UImaster.push('⚠️ [v10.1] No active servers found — URLs will be raw', 'warn');
+            }
+
             this.UImaster.push(`Fase 2: Orquestando ${dataToStream.length} canales con Entropía Fibonacci v8.2.2...`, "warn");
 
             const startTime = performance.now();
