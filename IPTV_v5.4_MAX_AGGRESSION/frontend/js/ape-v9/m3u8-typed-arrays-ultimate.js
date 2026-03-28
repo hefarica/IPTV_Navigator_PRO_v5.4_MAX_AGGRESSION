@@ -4152,7 +4152,7 @@
             const resolverBase = (typeof localStorage !== 'undefined' && localStorage.getItem('vps_base_url'))
                 || 'https://iptv-ape.duckdns.org';
 
-            const resolveScript = '/api/resolve_quality';
+            const resolveScript = '/resolve_quality.php';
 
             const chId = channel.epg_channel_id || channel.tvg_id || channel.stream_id || channel.id || index;
             const listId = (typeof VERSION !== 'undefined' ? VERSION : '16.0.0').replace(/[^a-zA-Z0-9.-]/g, '');

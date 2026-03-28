@@ -1,92 +1,83 @@
 ---
-name: Resilience Architecture v6.4 — 9-Layer Anti-Cut Shield + 5-Motor Pipeline
-description: Complete resilience pipeline with 9-layer anti-cut shield (Predictive Jump + Redundancy Hydra), polymorphic AI orchestrator for 20 devices, bandwidth floor enforcement, and DSCP aggression cascade.
+name: Resilience Architecture v6.3 — Complete Pipeline (5 Motors)
+description: Documents the complete 5-motor resilience pipeline with latency metrics, escalation cascade, and deployment reference. Covers NeuroBuffer, BW Floor, ModemPriority, AISuperRes, and all supporting subsystems.
 ---
 
-# Resilience Architecture v6.4 — Complete Pipeline
+# Resilience Architecture v6.3 — Complete Pipeline
 
-## The 5-Motor Pipeline (~5ms total)
+## The 5-Motor Pipeline
+
+Every channel request passes through 5 motors in series, in ~5ms total:
 
 ```
 Request → resolve_quality.php
   ↓
-  Motor 1: NeuroBufferController (9-Layer Anti-Cut Shield)
+  Motor 1: NeuroBufferController (Adaptive Telemetry v3.0)
     → Polymorphic Freeze Detector: dual-signal min()
-    → 9 caching/resilience layers (see below)
     → Sprint Start: first request = NUCLEAR
     → Freeze Memory: troubled channels get -10 penalty
+    → Output: buffer_pct → NORMAL/ESCALATING/BURST/NUCLEAR
   ↓
-  Motor 2: BandwidthFloorEnforcement
+  Motor 2: BandwidthFloorEnforcement (Floor × NeuroBuffer)
     → P0=50M, P1=40M, P2=20M, P3=5M, P4=2M, P5=0.5M
-    → NUCLEAR: floor × 2.0
+    → NUCLEAR: floor × 2.0, BURST: × 1.5, ESCALATING: × 1.25
+    → adaptive-logic=highest, adaptive-bw-min enforced
   ↓
-  Motor 3: ModemPriorityManager (DSCP)
-    → NORMAL: AF31, BURST: AF41, NUCLEAR: EF
+  Motor 3: ModemPriorityManager (DSCP on ALL levels)
+    → NORMAL: 3 TCP + AF31, ESCALATING: 4 + AF31
+    → BURST: 6 + AF41, NUCLEAR: 8 + EF
   ↓
-  Motor 4: AISuperResolutionEngine v4.0
-    → 20 devices, combo detection, HDR/SDR 4000-5000 nits
+  Motor 4: AISuperResolutionEngine v4.0 (Visual Orchestrator)
+    → 20 devices: 9 TVs + 6 players + 5 software
+    → Combo detection: player + TV = merged MAX capabilities
+    → BW boost for AI processing
+    → HW acceleration forcing
+    → Always-active HDR/SDR 4000-5000 nits
   ↓
-  Motor 5: Shim Logging (~5ms avg total)
+  Motor 5: Shim Logging (3.78ms avg total)
+    → JSON structured log per request
+    → Telemetry persistence
 ```
 
-## 9-Layer Anti-Cut Shield
+## Latency Profile
 
-| # | Capa | Directivas | NORMAL | NUCLEAR |
-|:---:|:---|:---|:---:|:---:|
-| 1 | Network Cache (RAM) | `network-caching` | 45s | 180s (3 min) |
-| 2 | Live Cache (stream) | `live-caching` (solo live) | 30s | 120s |
-| 3 | File Cache (prefetch) | `file-caching` (3x para VOD) | 45s | 360s (6 min) |
-| 4 | Disc Cache (disco) | `disc-caching` | 60s | 300s (5 min) |
-| 5 | Connection Resilience | `http-reconnect`, `http-continuous`, `sout-keep`, `sout-mux-caching`, `http-forward-cookies`, `ipv4-timeout` | 6 activas | 30s timeout |
-| 6 | Clock Tolerance | `clock-jitter=0`, `clock-synchro=0`, `cr-average`, `avcodec-hurry-up`, `skip-frames` | Tolerante | Ultra tolerante |
-| 7 | Player-Specific | ExoPlayer buffer, Kodi ISA, OTT Navigator, `adaptive-maxwidth=3840` | Todas | Todas |
-| 8 | **Predictive Jump** | `X-Live-Edge-Policy: JUMP_ON_UNDERRUN` — salta al live edge en vez de freezear | 3.0s min | 1.5s min |
-| 9 | **Redundancy Hydra** | `X-Backup-Stream-Url` + `X-Failover-Policy: SEAMLESS_30MS` | Activa si hay fallback | Exponential backoff |
-
-### Stream Type Awareness
-- **Live**: live-caching + Predictive Jump activo
-- **VOD/Series**: file-caching 3x + deep prefetch (sin jump)
-
-### Mobile Adjustment
-- En 4G/5G: network-cache capped a 15s para arranque rápido
-- disc-cache y live-cache se encargan del sostenimiento
+| Motor | Time | Notes |
+|:---|:---:|:---|
+| NeuroBuffer | ~1.5ms | Telemetry + freeze detector |
+| BW Floor | ~0.5ms | Floor lookup + multiplier |
+| ModemPriority | ~0.5ms | Network detection + DSCP |
+| AISuperRes | ~0.8ms | Device detect + combo + headers |
+| Logging | ~0.5ms | Non-blocking file_put_contents |
+| **Total** | **~3.8ms** | **26x faster than human perception** |
 
 ## Files on VPS
 
 ```
 /var/www/html/
-├── resolve_quality.php                              (56KB)
+├── resolve_quality.php                              (56KB, profiles P0-P5)
 ├── cmaf_engine/
-│   ├── resilience_integration_shim.php             (32KB)
+│   ├── resilience_integration_shim.php             (32KB, pipeline + telemetry)
 │   └── modules/
-│       ├── neuro_buffer_controller.php             (28KB, 9-Layer Shield)
-│       ├── modem_priority_manager.php              (DSCP)
-│       └── ai_super_resolution_engine.php          (36KB, v4.0)
+│       ├── neuro_buffer_controller.php             (18KB, escalation cascade)
+│       ├── modem_priority_manager.php              (network + DSCP)
+│       └── ai_super_resolution_engine.php          (36KB, v4.0 orchestrator)
 ```
 
-## Logs & State
+## Logs
 
 ```
 /var/log/iptv-ape/
-├── shim_operations.log    ← JSON per request
-├── neuro_telemetry.log    ← Buffer decisions
-├── bw_floor.log           ← Bandwidth floor
-└── fallback.log           ← Server fallback
-
-/tmp/
-├── neuro_telemetry_state.json   ← Channel state
-└── ape_device_memory.json       ← Device combo
+├── neuro_telemetry.log     ← gapSig, retryCeil, mem, FINAL%
+├── bw_floor.log            ← floor Mbps, multiplier, enforced
+├── shim_operations.log     ← JSON: modules, ms, ai, buf, net
+├── ctx_inherit.log         ← context inheritance
+└── fallback.log            ← server fallback events
 ```
 
-## Monitoring
+## State Files
 
-```bash
-# Live pipeline
-tail -f /var/log/iptv-ape/shim_operations.log
-
-# Device combos
-cat /tmp/ape_device_memory.json
-
-# Channel health
-cat /tmp/neuro_telemetry_state.json | python3 -m json.tool
+```
+/tmp/
+├── neuro_telemetry_state.json    ← channel timestamps, total_hits
+└── ape_device_memory.json        ← known devices for combo detection
 ```

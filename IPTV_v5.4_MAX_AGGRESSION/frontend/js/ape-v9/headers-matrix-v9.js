@@ -149,7 +149,7 @@
 
             // Device Info
             "X-Device-Type": "smart-tv",
-            "X-Screen-Resolution": "1920x1080",
+            "X-Screen-Resolution": "3840x2160",
 
             // Network Hints
             "X-Network-Type": "wifi"

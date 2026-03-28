@@ -26,6 +26,27 @@ Select-String -Path "IPTV_v5.4_MAX_AGGRESSION\frontend\js\ape-v9\m3u8-typed-arra
 ```
 MAX 12 flat fields. NO nested objects.
 
+4. **🛑 ANTI-509 GATE (MANDATORY — BLOCKS DEPLOY IF FAILED)**:
+```powershell
+# LOCAL: Verify resolve_quality.php has ZERO origin-touching HTTP calls
+Select-String -Path "IPTV_v5.4_MAX_AGGRESSION\backend\resolve_quality.php" -Pattern "curl_init|curl_exec|file_get_contents.*http|get_headers|fsockopen"
+```
+**Expected**: NO matches. If ANY match exists that hits a provider URL → **DO NOT DEPLOY. Fix first.**
+
+```bash
+# VPS: Verify crontab has NO provider-hitting jobs
+ssh root@178.156.147.234 "crontab -l 2>/dev/null | grep -iE 'tivi-ott|dndnscloud|candycl|/live/|stream_health|monitor'"
+```
+**Expected**: NO output. If any match → remove from crontab before proceeding.
+
+```bash
+# VPS: Verify no active connections to providers
+ssh root@178.156.147.234 "ss -tpn state established | grep -v '127.0.0\|::1' | grep -v sshd"
+```
+**Expected**: Only SSH/internal connections. NO connections to provider IPs.
+
+> ⚠️ **If the Anti-509 Gate fails, DO NOT proceed. Run `/anti-509-audit` workflow first.**
+
 ## Deploy
 4. **Upload PHP to VPS** (SCP):
 ```powershell

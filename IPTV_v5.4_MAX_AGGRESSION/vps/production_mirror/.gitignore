@@ -1,8 +1,0 @@
-# Operational data — NOT part of the toolkit
-*.json
-channels_map*
-APE_TYPED*
-*.m3u8
-*.m3u
-*.log
-*.tar.gz

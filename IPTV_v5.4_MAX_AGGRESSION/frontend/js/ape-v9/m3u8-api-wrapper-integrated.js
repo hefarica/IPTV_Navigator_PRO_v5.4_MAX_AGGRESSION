@@ -1218,7 +1218,7 @@
 
                 // --- INYECCIÓN QUIRÚRGICA: VIP QUALITY OVERLAY (VARIANT PICKER) ---
                 const useQualityOverlay = window.ApeModuleManager?.isEnabled('quality-overlay-vip') || false;
-                const resolveScript = useQualityOverlay ? '/api/resolve_quality' : '/resolve.php';
+                const resolveScript = useQualityOverlay ? '/resolve_quality.php' : '/resolve.php';
 
                 const chId = channel.epg_channel_id || channel.tvg_id || channel.stream_id || channel.id || index;
                 const listId = (typeof VERSION !== 'undefined' ? VERSION : '16.0.0').replace(/[^a-zA-Z0-9.-]/g, '');
