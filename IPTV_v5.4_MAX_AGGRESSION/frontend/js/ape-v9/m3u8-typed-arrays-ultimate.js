@@ -3359,6 +3359,46 @@
             Object.assign(headers, window.IPTV_SUPPORT_CORTEX_V_OMEGA.getOmegaHeaders(cfg));
         }
 
+        // ══════════════════════════════════════════════════════════════════════
+        // 📋 DYNAMIC PM HEADER INJECTION v1.0
+        // Reads ALL 19 categories × 140+ headers from Profile Manager v9.0
+        // and injects any missing headers into EXTHTTP.
+        // Rule: PM values fill gaps ONLY — existing hardcoded values preserved.
+        // ══════════════════════════════════════════════════════════════════════
+        try {
+            if (typeof window !== 'undefined' && window.APE_PROFILES_CONFIG &&
+                typeof window.APE_PROFILES_CONFIG.getCategories === 'function' &&
+                typeof window.APE_PROFILES_CONFIG.getHeaderValue === 'function') {
+
+                const pmCats = window.APE_PROFILES_CONFIG.getCategories();
+                const pmProfileId = profile || (window.ProfileManagerV9 && window.ProfileManagerV9.activeProfileId) || 'P3';
+                const pmProfile = window.APE_PROFILES_CONFIG.getProfile(pmProfileId);
+                const enabledCats = pmProfile?.enabledCategories || Object.keys(pmCats);
+                let pmInjected = 0;
+
+                for (const catId of enabledCats) {
+                    const cat = pmCats[catId];
+                    if (!cat || !cat.headers) continue;
+                    for (const headerName of cat.headers) {
+                        if (headers[headerName] !== undefined) continue; // Don't overwrite existing
+                        const val = window.APE_PROFILES_CONFIG.getHeaderValue(pmProfileId, headerName);
+                        if (val !== undefined && val !== null && val !== '') {
+                            headers[headerName] = String(val);
+                            pmInjected++;
+                        }
+                    }
+                }
+
+                if (pmInjected > 0 && typeof console !== 'undefined') {
+                    console.log(`📋 [PM-INJECT] ${pmInjected} headers from Profile Manager added to EXTHTTP (${enabledCats.length} categories)`);
+                }
+            }
+        } catch (e) {
+            if (typeof console !== 'undefined') {
+                console.warn('⚠️ [PM-INJECT] Error reading Profile Manager headers:', e.message);
+            }
+        }
+
         const allKeys = Object.keys(headers);
         const primaryHeaders = {};
         const overflowHeaders = {};
