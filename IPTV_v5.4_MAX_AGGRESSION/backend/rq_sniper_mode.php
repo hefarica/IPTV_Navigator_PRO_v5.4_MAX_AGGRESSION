@@ -1185,29 +1185,86 @@ function rq_sniper_image_enhancement($sniper_status) {
 function rq_sniper_kodiprop_directives($sniper_status, $ua = '') {
     $output = [];
 
-    // Detectar Kodi/XBMC/Matrix via User-Agent
-    $is_kodi = preg_match('/kodi|xbmc|matrix/i', $ua);
+    // Detectar Kodi/XBMC/Matrix/Nexus via User-Agent
+    $is_kodi = preg_match('/kodi|xbmc|matrix|nexus|omega/i', $ua);
 
     if (!$is_kodi || $sniper_status['status'] === 'IDLE') {
         return $output; // CERO impacto si no es Kodi o canal está inactivo
     }
 
     $is_active = $sniper_status['sniper'];
+    $is_recent = ($sniper_status['status'] === 'RECENT');
 
-    // Buffer sizes: SNIPER activo = 120MB, estándar = 60MB
-    $buffer = $is_active ? 120000000 : 60000000;
-    $max_bw = $is_active ? 300000000 : 80000000;
+    // === REGLA ISP x2: Valores base ya son el DOBLE ===
+    // SNIPER activo = máxima agresión | RECENT = 60% | IDLE = 0
+    $buffer_bytes = $is_active ? 240000000 : ($is_recent ? 120000000 : 60000000);  // 240MB / 120MB / 60MB
+    $max_bw = $is_active ? 300000000 : ($is_recent ? 150000000 : 80000000);
+    $live_buf_s = $is_active ? 240 : ($is_recent ? 120 : 60);  // Segundos de buffer live
+    $ghost_buf = $is_active ? 120 : ($is_recent ? 60 : 30);
 
-    // InputStream.Adaptive: HLS manifest + buffer + bandwidth
+    // =========================================================================
+    // BLOQUE 1: INPUTSTREAM CLASS (obligatorio para que Kodi use InputStream)
+    // =========================================================================
+    $output[] = 'inputstreamclass=inputstream.adaptive';
+
+    // =========================================================================
+    // BLOQUE 2: MANIFEST Y PROTOCOLO
+    // =========================================================================
     $output[] = 'inputstream.adaptive.manifest_type=hls';
-    $output[] = 'inputstream.adaptive.stream_buffer_size=' . $buffer;
-    $output[] = 'inputstream.adaptive.max_buffer_bytes=' . ($buffer * 2);
-    $output[] = 'inputstream.adaptive.live_buffer=' . ($is_active ? 120 : 60);
+    $output[] = 'inputstream.adaptive.stream_headers=User-Agent=Mozilla/5.0 (Linux; Android 14; SHIELD Android TV) Chrome/124.0';
+    $output[] = 'inputstream.adaptive.manifest_update_parameter=full';
+
+    // =========================================================================
+    // BLOQUE 3: BUFFER — Máxima agresión (ISP x2 aplicado)
+    // =========================================================================
+    $output[] = 'inputstream.adaptive.stream_buffer_size=' . $buffer_bytes;
+    $output[] = 'inputstream.adaptive.max_buffer_bytes=' . ($buffer_bytes * 2);
+    $output[] = 'inputstream.adaptive.live_buffer=' . $live_buf_s;
+    $output[] = 'inputstream.adaptive.ghost_buffer=' . $ghost_buf;
+    $output[] = 'inputstream.adaptive.buffer_behaviour=aggressive';
+    // Kodi 21+ (Omega): initial_buffer controla cuánto llena antes de arrancar
+    $output[] = 'inputstream.adaptive.initial_buffer=' . ($is_active ? 8 : 4);
+    // Pre-buffer: segmentos a precargar antes de iniciar reproducción
+    $output[] = 'inputstream.adaptive.pre_buffer_bytes=' . intval($buffer_bytes / 2);
+
+    // =========================================================================
+    // BLOQUE 4: BANDWIDTH — Forzar máximo, NUNCA degradar
+    // =========================================================================
     $output[] = 'inputstream.adaptive.bandwidth_max=' . $max_bw;
     $output[] = 'inputstream.adaptive.max_bandwidth=' . $max_bw;
-    $output[] = 'inputstream.adaptive.ghost_buffer=' . ($is_active ? 60 : 30);
+    $output[] = 'inputstream.adaptive.min_bandwidth=' . ($is_active ? 80000000 : 25000000);
+    // Selección de calidad: SIEMPRE la mejor disponible
+    $output[] = 'inputstream.adaptive.stream_selection_type=adaptive';
+    $output[] = 'inputstream.adaptive.chooser_bandwidth_max=' . $max_bw;
+    $output[] = 'inputstream.adaptive.chooser_resolution_max=' . ($is_active ? '7680x4320' : '3840x2160');
+    $output[] = 'inputstream.adaptive.chooser_resolution_secure_max=' . ($is_active ? '7680x4320' : '3840x2160');
+
+    // =========================================================================
+    // BLOQUE 5: CALIDAD — Lock máximo, sin downswitch
+    // =========================================================================
     $output[] = 'inputstream.adaptive.quality_select=best';
-    $output[] = 'inputstream.adaptive.buffer_behaviour=aggressive';
+    // Reproducción: desactivar downgrade automático
+    $output[] = 'inputstream.adaptive.play_timeshift_buffer=true';
+    $output[] = 'inputstream.adaptive.live_delay=0';
+
+    // =========================================================================
+    // BLOQUE 6: VIDEO — HDR, 4K, 10-bit, decodificación HW
+    // =========================================================================
+    $output[] = 'inputstream.adaptive.max_resolution=' . ($is_active ? '7680x4320' : '3840x2160');
+    // Forzar HW decode para rendimiento máximo
+    $output[] = 'inputstream.adaptive.media_renewal_url=';
+    $output[] = 'inputstream.adaptive.media_renewal_time=0';
+
+    // =========================================================================
+    // BLOQUE 7: AUDIO — eARC, Atmos passthrough
+    // =========================================================================
+    // Preferir audio de mayor calidad (Dolby Atmos > E-AC3 > AC3 > AAC)
+    $output[] = 'inputstream.adaptive.original_audio_language=*';
+
+    // =========================================================================
+    // BLOQUE 8: NETWORK — TCP agresivo, keep-alive, timeout largo
+    // =========================================================================
+    $output[] = 'inputstream.adaptive.manifest_config={"Timeout":"30","ConnectionTimeout":"15"}';
 
     return $output;
 }

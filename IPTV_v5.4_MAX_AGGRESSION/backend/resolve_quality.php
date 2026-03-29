@@ -3459,6 +3459,92 @@ function rq_enrich_channel_output(string $output, string $playerUA, string $host
     // === ANTI-CUT ENGINE: Generate profile-aware directives ===
     $anti_cut = rq_anti_cut_isp_strangler($effective_profile, $ch_id, $host, $sessionId);
     $p = $anti_cut['profile_data'];
+
+    // === EXTRACT CHANNEL NAME ===
+    $ch_name = 'Unknown';
+    // Priority 1: URL param 'name'
+    if (!empty($_GET['name'])) {
+        $ch_name = urldecode($_GET['name']);
+    }
+    // Priority 2: tvg-name attribute in EXTINF
+    elseif (preg_match('/tvg-name="([^"]+)"/', $output, $m_tvg)) {
+        $ch_name = trim($m_tvg[1]);
+    }
+    // Priority 3: Channel name after comma in EXTINF (skip if generic "Channel {id}")
+    elseif (preg_match('/#EXTINF:[^,]*,(.+)$/m', $output, $m_comma)) {
+        $candidate = trim($m_comma[1]);
+        if (!preg_match('/^Channel\s+\d+$/i', $candidate)) {
+            $ch_name = $candidate;
+        }
+    }
+    // Priority 4: Lookup from cached list file
+    else {
+        $listCache = '/tmp/ape_sniper/channel_names.json';
+        if (file_exists($listCache) && filemtime($listCache) > time() - 3600) {
+            $names = @json_decode(file_get_contents($listCache), true);
+            if (isset($names[(string)$ch_id])) {
+                $ch_name = $names[(string)$ch_id];
+            }
+        } else {
+            // Build cache from list files: map ch= param to tvg-name
+            $names = [];
+            foreach (array_merge(glob('/var/www/html/*.m3u8'), glob('/var/www/html/lists/*.m3u8'), glob('/var/www/html/iptv-ape/lists/*.m3u8')) as $listFile) {
+                $listLines = @file($listFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+                if (!$listLines) continue;
+                $currentName = '';
+                foreach ($listLines as $ll) {
+                    // Extract tvg-name from EXTINF
+                    if (preg_match('/tvg-name="([^"]+)"/', $ll, $nm)) {
+                        $currentName = $nm[1];
+                    }
+                    // Extract ch= from resolver URL and map to name
+                    if ($currentName && preg_match('/resolve_quality\.php\?ch=(\d+)/', $ll, $cm)) {
+                        $names[$cm[1]] = $currentName;
+                        $currentName = '';
+                    }
+                }
+            }
+            if (!empty($names)) {
+                @file_put_contents($listCache, json_encode($names, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), LOCK_EX);
+                if (isset($names[(string)$ch_id])) {
+                    $ch_name = $names[(string)$ch_id];
+                }
+            }
+        }
+    }
+
+    // === HDR TELEMETRY LOG ===
+    $hdr_nits_map = [
+        'MAIN-10-HDR' => ['transfer' => 'PQ/HLG', 'peak_nits' => 4000, 'avg_nits' => 1000, 'color_volume' => 'BT2020'],
+        'MAIN-10'     => ['transfer' => 'SDR/HLG', 'peak_nits' => 1000, 'avg_nits' => 400,  'color_volume' => 'BT709+'],
+        'MAIN'        => ['transfer' => 'SDR',     'peak_nits' => 100,  'avg_nits' => 100,  'color_volume' => 'BT709'],
+    ];
+    $hdr_info = $hdr_nits_map[$p['hevc_profile']] ?? $hdr_nits_map['MAIN'];
+    rq_pipeline_trace([
+        'event'              => 'HDR_TELEMETRY',
+        'ch_id'              => $ch_id,
+        'channel_name'       => $ch_name,
+        'profile'            => $effective_profile,
+        'sniper_status'      => $sniper['sniper']['status'],
+        'sniper_label'       => $sniper['sniper']['label'],
+        'hevc_profile'       => $p['hevc_profile'],
+        'color_space'        => $p['color_space'],
+        'hdr_transfer_func'  => $p['hdr_transfer'] ?: 'SDR',
+        'peak_nits'          => $hdr_info['peak_nits'],
+        'avg_nits'           => $hdr_info['avg_nits'],
+        'color_volume'       => $hdr_info['color_volume'],
+        'max_bitrate_mbps'   => round($p['max_bitrate'] / 1000000),
+        'min_bitrate_mbps'   => round($p['min_bitrate'] / 1000000),
+        'resolution'         => $p['max_resolution'],
+        'quality_lock'       => $p['quality_lock'],
+        'cooldown_s'         => $p['cooldown_period'],
+        'dscp'               => $p['dscp'],
+        'prefetch'           => $p['prefetch_segments'],
+        'aggression'         => $p['aggression_multiplier'] . 'x',
+        'escalation'         => $p['escalation_level'],
+        'rate_control'       => $p['rate_control'],
+        'timestamp'          => gmdate('Y-m-d\TH:i:s\Z'),
+    ]);
     $shieldUA = 'Mozilla/5.0 (Linux; Android 14; SHIELD Android TV Build/UP1A.231005.007) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.6367.179 Safari/537.36';
 
     // === Send HTTP Response Headers (ACRP + Anti-Cache + CORS) ===
@@ -3469,6 +3555,19 @@ function rq_enrich_channel_output(string $output, string $playerUA, string $host
     foreach ($sniper['http_headers'] as $hdr) {
         @header($hdr);
     }
+
+    // === v3.0 ATOMIC ZAPPING: Merge zapping directives ===
+    if (!empty($sniper['zapping']['ext_http'])) {
+        foreach ($sniper['zapping']['ext_http'] as $zap_line) {
+            $enriched[] = '#EXTHTTP:' . $zap_line;
+        }
+    }
+    if (!empty($sniper['zapping']['ext_vlcopt'])) {
+        foreach ($sniper['zapping']['ext_vlcopt'] as $zap_opt) {
+            $enriched[] = '#EXTVLCOPT:' . $zap_opt;
+        }
+    }
+
 
     // === PLAYER DETECTION ===
     $isKodi = (stripos($playerUA, 'Kodi') !== false);
@@ -3522,8 +3621,8 @@ function rq_enrich_channel_output(string $output, string $playerUA, string $host
                 $exthttp['X-Buffer-Max']              = (string)intval(intval($exthttp['X-Buffer-Max']) * $mult_b);
                 $exthttp['X-Buffer-Target']           = (string)intval(intval($exthttp['X-Buffer-Target']) * $mult_b);
                 $exthttp['X-Buffer-Target-Override']  = (string)intval(intval($exthttp['X-Buffer-Target-Override']) * $mult_b);
-                $exthttp['X-Network-Caching']         = (string)min(intval(intval($exthttp['X-Network-Caching']) * $mult_b), 600000);
-                $exthttp['X-Live-Caching']            = (string)min(intval(intval($exthttp['X-Live-Caching']) * $mult_b), 600000);
+                $exthttp['X-Network-Caching']         = (string)min(intval(intval($exthttp['X-Network-Caching']) * $mult_b), 1200000);
+                $exthttp['X-Live-Caching']            = (string)min(intval(intval($exthttp['X-Live-Caching']) * $mult_b), 1200000);
                 $exthttp['X-Max-Bitrate']             = '300000000';
                 $exthttp['X-APE-Cut-Detection']       = 'SNIPER-ACTIVE';
                 // Mark SNIPER status in EXTHTTP
@@ -3534,13 +3633,38 @@ function rq_enrich_channel_output(string $output, string $playerUA, string $host
 
             $enriched[] = '#EXTHTTP:' . json_encode($exthttp, JSON_UNESCAPED_SLASHES);
 
-            // === KODI: KODIPROP ===
+            // === KODI: KODIPROP — InputStream.Adaptive COMPLETO (v3.1) ===
+            // Kodi es el ÚNICO player que lee KODIPROP. Aquí va TODO.
             if ($isKodi) {
+                // Clase y protocolo
                 $enriched[] = '#KODIPROP:inputstreamclass=inputstream.adaptive';
                 $enriched[] = '#KODIPROP:inputstream.adaptive.manifest_type=hls';
+                $enriched[] = '#KODIPROP:inputstream.adaptive.manifest_update_parameter=full';
+                // Selección de calidad: SIEMPRE la mejor
                 $enriched[] = '#KODIPROP:inputstream.adaptive.stream_selection_type=adaptive';
                 $enriched[] = '#KODIPROP:inputstream.adaptive.chooser_bandwidth_max=' . $p['max_bitrate'];
                 $enriched[] = '#KODIPROP:inputstream.adaptive.chooser_resolution_max=' . $p['max_resolution'];
+                $enriched[] = '#KODIPROP:inputstream.adaptive.chooser_resolution_secure_max=' . $p['max_resolution'];
+                $enriched[] = '#KODIPROP:inputstream.adaptive.quality_select=best';
+                $enriched[] = '#KODIPROP:inputstream.adaptive.min_bandwidth=' . $p['min_bitrate'];
+                $enriched[] = '#KODIPROP:inputstream.adaptive.max_bandwidth=' . $p['max_bitrate'];
+                // Buffer agresivo (ISP x2)
+                $enriched[] = '#KODIPROP:inputstream.adaptive.stream_buffer_size=240000000';
+                $enriched[] = '#KODIPROP:inputstream.adaptive.max_buffer_bytes=480000000';
+                $enriched[] = '#KODIPROP:inputstream.adaptive.live_buffer=240';
+                $enriched[] = '#KODIPROP:inputstream.adaptive.ghost_buffer=120';
+                $enriched[] = '#KODIPROP:inputstream.adaptive.buffer_behaviour=aggressive';
+                $enriched[] = '#KODIPROP:inputstream.adaptive.initial_buffer=8';
+                $enriched[] = '#KODIPROP:inputstream.adaptive.pre_buffer_bytes=120000000';
+                // Resolución máxima forzada
+                $enriched[] = '#KODIPROP:inputstream.adaptive.max_resolution=' . $p['max_resolution'];
+                // Live: cero delay, timeshift habilitado
+                $enriched[] = '#KODIPROP:inputstream.adaptive.play_timeshift_buffer=true';
+                $enriched[] = '#KODIPROP:inputstream.adaptive.live_delay=0';
+                // Audio: passthrough para eARC/Atmos
+                $enriched[] = '#KODIPROP:inputstream.adaptive.original_audio_language=*';
+                // Headers stealth
+                $enriched[] = '#KODIPROP:inputstream.adaptive.stream_headers=User-Agent=Mozilla/5.0 (Linux; Android 14; SHIELD Android TV) Chrome/124.0';
             }
 
             continue;
@@ -3559,19 +3683,19 @@ function rq_enrich_channel_output(string $output, string $playerUA, string $host
                 foreach ($vlcopts as $i => $opt) {
                     if (strpos($opt, 'network-caching=') === 0) {
                         $val = intval(str_replace('network-caching=', '', $opt));
-                        $vlcopts[$i] = 'network-caching=' . min(intval($val * $mult_b), 600000);
+                        $vlcopts[$i] = 'network-caching=' . min(intval($val * $mult_b), 1200000);
                     }
                     if (strpos($opt, 'live-caching=') === 0) {
                         $val = intval(str_replace('live-caching=', '', $opt));
-                        $vlcopts[$i] = 'live-caching=' . min(intval($val * $mult_b), 600000);
+                        $vlcopts[$i] = 'live-caching=' . min(intval($val * $mult_b), 1200000);
                     }
                     if (strpos($opt, 'disc-caching=') === 0) {
                         $val = intval(str_replace('disc-caching=', '', $opt));
-                        $vlcopts[$i] = 'disc-caching=' . min(intval($val * $mult_b), 600000);
+                        $vlcopts[$i] = 'disc-caching=' . min(intval($val * $mult_b), 1200000);
                     }
                     if (strpos($opt, 'file-caching=') === 0) {
                         $val = intval(str_replace('file-caching=', '', $opt));
-                        $vlcopts[$i] = 'file-caching=' . min(intval($val * $mult_b), 600000);
+                        $vlcopts[$i] = 'file-caching=' . min(intval($val * $mult_b), 1200000);
                     }
                     if ($sniper['sniper']['status'] === 'STREAMING' && strpos($opt, 'adaptive-maxbw=') === 0) {
                         $vlcopts[$i] = 'adaptive-maxbw=300000000';
