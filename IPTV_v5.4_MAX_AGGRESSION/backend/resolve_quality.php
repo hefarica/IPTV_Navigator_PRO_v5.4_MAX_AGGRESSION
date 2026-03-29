@@ -3467,7 +3467,7 @@ function rq_create_pipeline(): ResolveQualityPipeline
  * @param string $host IPTV server host
  * @return string Enriched M3U output with 119+ directives
  */
-function rq_enrich_channel_output(string $output, string $playerUA, string $host): string
+function rq_enrich_channel_output(string $output, string $playerUA, string $host, array $ctxData = [], array $qosRef = []): string
 {
     $lines = explode("\n", $output);
     $enriched = [];
@@ -3483,6 +3483,48 @@ function rq_enrich_channel_output(string $output, string $playerUA, string $host
         $anti_cut = rq_anti_cut_isp_strangler($effective_profile, $ch_id, $host, $sessionId);
     }
     $p = $anti_cut['profile_data'];
+
+    // ══════════════════════════════════════════════════════════════════
+    // 📊 CTX OVERLAY: Override anti-cut profile with REAL M3U8 list values
+    // Rule: ctx payload values from the generator take priority.
+    // This ensures KODIPROP/VLCOPT/EXTHTTP all use the same source.
+    // ══════════════════════════════════════════════════════════════════
+    if (!empty($ctxData)) {
+        if (!empty($ctxData['rs'])) {
+            $p['max_resolution'] = $ctxData['rs'];
+            $resParts = explode('x', $ctxData['rs']);
+            if (count($resParts) === 2) {
+                $p['max_width'] = (int)$resParts[0];
+                $p['max_height'] = (int)$resParts[1];
+            }
+        }
+        if (!empty($ctxData['br'])) {
+            $p['max_bitrate'] = (int)$ctxData['br'] * 1000; // kbps→bps
+            $p['min_bitrate'] = (int)($ctxData['br'] * 500); // floor at 50%
+        }
+        if (!empty($ctxData['bf'])) {
+            $p['buffer_ms'] = (int)$ctxData['bf'];
+        }
+        if (!empty($ctxData['nc'])) {
+            $p['network_cache'] = (int)$ctxData['nc'];
+        }
+        if (!empty($ctxData['cp'])) {
+            $p['codec_primary'] = $ctxData['cp'];
+        }
+        if (!empty($ctxData['cs'])) {
+            $p['color_space'] = $ctxData['cs'];
+        }
+        if (isset($ctxData['hd']) && $ctxData['hd']) {
+            $p['hdr_enabled'] = true;
+        }
+    }
+    // Also overlay qosRef values if present
+    if (!empty($qosRef['buffer_total'])) {
+        $p['buffer_total_c1c2c3'] = $qosRef['buffer_total'];
+    }
+    if (!empty($qosRef['stall_target'])) {
+        $p['stall_target'] = $qosRef['stall_target'];
+    }
 
     // === EXTRACT CHANNEL NAME ===
     $ch_name = 'Unknown';
@@ -3652,6 +3694,36 @@ function rq_enrich_channel_output(string $output, string $playerUA, string $host
                 $exthttp['X-APE-SNIPER-Profile']      = $effective_profile;
                 $exthttp['X-APE-SNIPER-Label']        = $sniper['sniper']['label'];
             }
+
+            // ══════════════════════════════════════════════════════════════════
+            // 📋 PM HEADER INJECTION INTO RESOLVER EXTHTTP
+            // Inject all QoS reference values from the M3U8 list ctx payload
+            // so the EXTHTTP output matches what the generator emitted.
+            // ══════════════════════════════════════════════════════════════════
+            if (!empty($qosRef)) {
+                if ($qosRef['bw_min_target'] !== '') $exthttp['X-APE-ISP-BW-Min-Target'] = $qosRef['bw_min_target'];
+                if ($qosRef['bw_opt_target'] !== '') $exthttp['X-APE-ISP-BW-Opt-Target'] = $qosRef['bw_opt_target'];
+                if ($qosRef['health'] !== '')        $exthttp['X-APE-Streaming-Health'] = $qosRef['health'];
+                if ($qosRef['risk_score'] !== '')    $exthttp['X-APE-Risk-Score'] = $qosRef['risk_score'];
+                if ($qosRef['headroom'] !== '')      $exthttp['X-APE-Headroom'] = $qosRef['headroom'];
+                if ($qosRef['stall_target'] !== '')  $exthttp['X-APE-Stall-Rate-Target'] = $qosRef['stall_target'];
+                if ($qosRef['buffer_total'] !== '')  $exthttp['X-APE-Buffer-Total-C1C2C3'] = $qosRef['buffer_total'];
+                if ($qosRef['jitter_max'] !== '')    $exthttp['X-APE-Jitter-Max-Supported'] = $qosRef['jitter_max'];
+                if ($qosRef['prefetch_seg'] !== '')  $exthttp['X-APE-Prefetch-Segments'] = $qosRef['prefetch_seg'];
+                if ($qosRef['prefetch_par'] !== '')  $exthttp['X-APE-Prefetch-Parallel'] = $qosRef['prefetch_par'];
+                if ($qosRef['ram_estimate'] !== '')  $exthttp['X-APE-RAM-Estimate'] = $qosRef['ram_estimate'];
+                if ($qosRef['overhead'] !== '')      $exthttp['X-APE-Overhead-Security'] = $qosRef['overhead'];
+            }
+            // Sync ctx payload values into EXTHTTP
+            if (!empty($ctxData)) {
+                if (!empty($ctxData['rs'])) $exthttp['X-Max-Resolution'] = $ctxData['rs'];
+                if (!empty($ctxData['br'])) $exthttp['X-Max-Bitrate'] = (string)((int)$ctxData['br'] * 1000);
+                if (!empty($ctxData['cp'])) $exthttp['X-Video-Codecs'] = strtolower($ctxData['cp']);
+                if (!empty($ctxData['cs'])) $exthttp['X-Color-Space'] = $ctxData['cs'];
+                if (isset($ctxData['hd']) && $ctxData['hd']) $exthttp['X-HDR-Support'] = 'hdr10,hdr10+,dolby-vision,hlg';
+            }
+            $exthttp['X-RQ-Enforcement'] = 'NUCLEAR';
+            $exthttp['X-RQ-Directive-Sync'] = 'VLCOPT+KODIPROP+EXTHTTP';
 
             $enriched[] = '#EXTHTTP:' . json_encode($exthttp, JSON_UNESCAPED_SLASHES);
 
@@ -4107,7 +4179,7 @@ function rq_handle_request(): void
 
         // Enrich with player-specific directives if not already enriched
         $playerUA = $_SERVER['HTTP_USER_AGENT'] ?? '';
-        $output = rq_enrich_channel_output($output, $playerUA, $host);
+        $output = rq_enrich_channel_output($output, $playerUA, $host, $ctxData ?? [], $qosRef ?? []);
 
         echo $output;
         return;
