@@ -3848,6 +3848,25 @@ function rq_handle_request(): void
                 ];
                 $v3_latency->recordMeasurement(streamFingerprint: $fingerprint, metrics: $metrics);
                 echo json_encode(['status' => 'recorded']);
+            } elseif ($action === 'sessions') {
+                // Query active QoS-monitored sessions (max 10 concurrent)
+                $sessionDir = RQ_BASE_DIR . '/sessions';
+                $sessionFile = $sessionDir . '/active_sessions.json';
+                $sessions = [];
+                if (file_exists($sessionFile)) {
+                    $raw_s = @file_get_contents($sessionFile);
+                    $decoded_s = json_decode($raw_s, true);
+                    if (is_array($decoded_s)) {
+                        // Evict stale sessions (>5 min)
+                        $now = time();
+                        $sessions = array_filter($decoded_s, fn($s) => ($now - ($s['ts'] ?? 0)) < 300);
+                    }
+                }
+                echo json_encode([
+                    'active_sessions' => count($sessions),
+                    'max_sessions'    => 10,
+                    'sessions'        => array_values($sessions),
+                ], JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
             } else {
                 http_response_code(400);
                 echo json_encode(['error' => 'unknown action']);
@@ -3900,6 +3919,150 @@ function rq_handle_request(): void
         [$host, $user, $pass] = $parts;
         $profile = $_GET['p'] ?? 'P3';
 
+        // ══════════════════════════════════════════════════════════════════
+        // 📊 QoS DYNAMIC MONITORING v1.0
+        // Reads ALL values from inbound ctx payload + X-APE-* headers.
+        // NO hardcoded values — everything from the M3U8 list at runtime.
+        // Supports up to 10 concurrent channel reproductions.
+        // ══════════════════════════════════════════════════════════════════
+
+        // 1. Parse ctx B64 payload from URL (profile/resolution/bitrate/etc.)
+        $ctxData = [];
+        if (isset($_GET['ctx']) && $_GET['ctx'] !== '') {
+            $ctxB64 = str_replace(['-', '_'], ['+', '/'], $_GET['ctx']);
+            $ctxB64 = match (strlen($ctxB64) % 4) {
+                2 => $ctxB64 . '==',
+                3 => $ctxB64 . '=',
+                default => $ctxB64,
+            };
+            $ctxJson = base64_decode($ctxB64, true);
+            if ($ctxJson !== false) {
+                $decoded = json_decode($ctxJson, true);
+                if (is_array($decoded)) {
+                    $ctxData = $decoded;
+                }
+            }
+        }
+
+        // 2. Read inbound X-APE-* QoS headers from the player request
+        $qosHeaders = [];
+        $qosKeys = [
+            'X-APE-ISP-BW-Min-Target', 'X-APE-ISP-BW-Opt-Target',
+            'X-APE-Buffer-Total-C1C2C3', 'X-APE-Jitter-Max-Supported',
+            'X-APE-Streaming-Health', 'X-APE-Risk-Score', 'X-APE-Headroom',
+            'X-APE-Stall-Rate-Target', 'X-APE-Prefetch-Segments',
+            'X-APE-Prefetch-Parallel', 'X-APE-RAM-Estimate',
+            'X-APE-Overhead-Security',
+        ];
+        foreach ($qosKeys as $qosKey) {
+            $val = rq_header($qosKey, $serverHeaders);
+            if ($val !== null && $val !== '') {
+                $qosHeaders[$qosKey] = $val;
+            }
+        }
+
+        // 3. Build unified QoS reference (ctx payload + headers, no hardcode)
+        $qosRef = [
+            'profile'       => $profile,
+            'ch'            => $channelId,
+            'resolution'    => $ctxData['rs'] ?? ($qosHeaders['X-APE-ISP-BW-Min-Target'] ? null : null),
+            'bitrate_kbps'  => (int)($ctxData['br'] ?? 0),
+            'buffer_ms'     => (int)($ctxData['bf'] ?? 0),
+            'net_cache_ms'  => (int)($ctxData['nc'] ?? 0),
+            'hdr'           => (bool)($ctxData['hd'] ?? false),
+            'color_space'   => $ctxData['cs'] ?? '',
+            'codec'         => $ctxData['cp'] ?? '',
+            'bw_min_target' => $qosHeaders['X-APE-ISP-BW-Min-Target'] ?? '',
+            'bw_opt_target' => $qosHeaders['X-APE-ISP-BW-Opt-Target'] ?? '',
+            'buffer_total'  => $qosHeaders['X-APE-Buffer-Total-C1C2C3'] ?? '',
+            'jitter_max'    => $qosHeaders['X-APE-Jitter-Max-Supported'] ?? '',
+            'health'        => $qosHeaders['X-APE-Streaming-Health'] ?? '',
+            'risk_score'    => $qosHeaders['X-APE-Risk-Score'] ?? '',
+            'headroom'      => $qosHeaders['X-APE-Headroom'] ?? '',
+            'stall_target'  => $qosHeaders['X-APE-Stall-Rate-Target'] ?? '',
+            'prefetch_seg'  => $qosHeaders['X-APE-Prefetch-Segments'] ?? '',
+            'prefetch_par'  => $qosHeaders['X-APE-Prefetch-Parallel'] ?? '',
+            'ram_estimate'  => $qosHeaders['X-APE-RAM-Estimate'] ?? '',
+            'overhead'      => $qosHeaders['X-APE-Overhead-Security'] ?? '',
+            'ts'            => time(),
+            'ip'            => $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0',
+        ];
+
+        // 4. Active Session Registry (max 10 concurrent, file-based, auto-evict oldest)
+        $sessionDir = RQ_BASE_DIR . '/sessions';
+        if (!is_dir($sessionDir)) {
+            @mkdir($sessionDir, 0755, true);
+        }
+        $sessionFile = $sessionDir . '/active_sessions.json';
+        $sessions = [];
+        if (file_exists($sessionFile)) {
+            $raw_sessions = @file_get_contents($sessionFile);
+            $decoded_sessions = json_decode($raw_sessions, true);
+            if (is_array($decoded_sessions)) {
+                $sessions = $decoded_sessions;
+            }
+        }
+
+        // Evict sessions older than 5 minutes (stale)
+        $now = time();
+        $sessions = array_filter($sessions, fn($s) => ($now - ($s['ts'] ?? 0)) < 300);
+
+        // Update or add current channel session
+        $sessionKey = $qosRef['ip'] . ':' . $channelId;
+        $sessions[$sessionKey] = $qosRef;
+
+        // Enforce max 10 concurrent — evict oldest if exceeded
+        if (count($sessions) > 10) {
+            uasort($sessions, fn($a, $b) => ($a['ts'] ?? 0) <=> ($b['ts'] ?? 0));
+            $sessions = array_slice($sessions, -10, 10, true);
+        }
+
+        @file_put_contents($sessionFile, json_encode($sessions, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT), LOCK_EX);
+
+        // 5. Emit QoS reference response headers (player/monitor reads these)
+        header('X-RQ-QoS-Profile: ' . $profile);
+        if ($qosRef['bitrate_kbps'] > 0) {
+            header('X-RQ-QoS-Bitrate-Kbps: ' . $qosRef['bitrate_kbps']);
+        }
+        if ($qosRef['buffer_ms'] > 0) {
+            header('X-RQ-QoS-Buffer-Ms: ' . $qosRef['buffer_ms']);
+        }
+        if ($qosRef['bw_min_target'] !== '') {
+            header('X-RQ-QoS-BW-Min: ' . $qosRef['bw_min_target']);
+        }
+        if ($qosRef['bw_opt_target'] !== '') {
+            header('X-RQ-QoS-BW-Opt: ' . $qosRef['bw_opt_target']);
+        }
+        if ($qosRef['health'] !== '') {
+            header('X-RQ-QoS-Health: ' . $qosRef['health']);
+        }
+        if ($qosRef['risk_score'] !== '') {
+            header('X-RQ-QoS-Risk: ' . $qosRef['risk_score']);
+        }
+        if ($qosRef['headroom'] !== '') {
+            header('X-RQ-QoS-Headroom: ' . $qosRef['headroom']);
+        }
+        if ($qosRef['codec'] !== '') {
+            header('X-RQ-QoS-Codec: ' . $qosRef['codec']);
+        }
+        if ($qosRef['hdr']) {
+            header('X-RQ-QoS-HDR: 1');
+        }
+        header('X-RQ-QoS-Active-Sessions: ' . count($sessions));
+        header('X-RQ-QoS-Max-Sessions: 10');
+
+        // Log QoS monitoring data
+        rq_pipeline_trace([
+            'mode' => 'qos_monitor',
+            'ch' => $channelId,
+            'profile' => $profile,
+            'ctx_fields' => count($ctxData),
+            'qos_headers' => count($qosHeaders),
+            'active_sessions' => count($sessions),
+            'health' => $qosRef['health'],
+            'risk' => $qosRef['risk_score'],
+        ]);
+
         // Construir M3U fragment para el canal
         // Ensure protocol prefix
         if (!str_starts_with($host, 'http://') && !str_starts_with($host, 'https://')) {
@@ -3914,6 +4077,8 @@ function rq_handle_request(): void
             'server_headers' => $serverHeaders,
             'get_params'     => $getParams,
             'cache_ttl'      => RQ_CACHE_TTL_CHANNEL,
+            'qos_ref'        => $qosRef,
+            'ctx_data'       => $ctxData,
         ]);
 
         // === FALLBACK: nunca devolver vacío en modo canal ===
