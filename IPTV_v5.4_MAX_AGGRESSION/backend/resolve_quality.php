@@ -3663,6 +3663,11 @@ function rq_enrich_channel_output(string $output, string $playerUA, string $host
                 $enriched[] = '#KODIPROP:inputstream.adaptive.live_delay=0';
                 // Audio: passthrough para eARC/Atmos
                 $enriched[] = '#KODIPROP:inputstream.adaptive.original_audio_language=*';
+                // HDR 5000 nits — Maximum quantum brightness
+                $enriched[] = '#KODIPROP:inputstream.adaptive.stream_headers=X-HDR-MaxCLL=5000&X-HDR-MaxFALL=1500&X-HDR-Peak=5000';
+                $enriched[] = '#KODIPROP:inputstream.adaptive.preferred_color_space=bt2020';
+                $enriched[] = '#KODIPROP:inputstream.adaptive.preferred_hdr_types=hdr10,hdr10plus,dolby_vision,hlg';
+                $enriched[] = '#KODIPROP:inputstream.adaptive.ignore_display_resolution=true';
                 // Headers stealth
                 $enriched[] = '#KODIPROP:inputstream.adaptive.stream_headers=User-Agent=Mozilla/5.0 (Linux; Android 14; SHIELD Android TV) Chrome/124.0';
             }
