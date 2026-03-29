@@ -1,7 +1,11 @@
 <?php
 declare(strict_types=1);
 require_once __DIR__ . "/rq_sniper_mode.php";
-require_once __DIR__ . "/rq_anti_cut_engine.php";
+if (file_exists(__DIR__ . "/ape_anti_noise_engine.php")) {
+    require_once __DIR__ . "/ape_anti_noise_engine.php";
+}
+
+
 
 /**
  * RESOLVE QUALITY v3.0 — Autonomous Playback Intelligence System
@@ -3005,13 +3009,11 @@ function rq_check_rate_limit(string $endpoint): bool
     $windowStart = $now - RQ_RATE_WINDOW;
 
     $data = ['hits' => []];
-    if (file_exists($filePath)) {
         $content = @file_get_contents($filePath);
         if ($content !== false) {
             $decoded = json_decode($content, true);
             if (is_array($decoded)) {
                 $data = $decoded;
-            }
         }
     }
 
@@ -3102,9 +3104,6 @@ $v3_files = [
 
 foreach ($v3_files as $v3_file) {
     $v3_path = $v3_modules_dir . '/' . $v3_file;
-    if (file_exists($v3_path)) {
-        require_once $v3_path;
-    }
 }
 
 // Instanciar módulos v3.0 si todas las clases están disponibles
@@ -3480,11 +3479,9 @@ function rq_enrich_channel_output(string $output, string $playerUA, string $host
     // Priority 4: Lookup from cached list file
     else {
         $listCache = '/tmp/ape_sniper/channel_names.json';
-        if (file_exists($listCache) && filemtime($listCache) > time() - 3600) {
             $names = @json_decode(file_get_contents($listCache), true);
             if (isset($names[(string)$ch_id])) {
                 $ch_name = $names[(string)$ch_id];
-            }
         } else {
             // Build cache from list files: map ch= param to tvg-name
             $names = [];
