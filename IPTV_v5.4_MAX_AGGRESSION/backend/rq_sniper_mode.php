@@ -155,6 +155,11 @@ if (file_exists($_ape_stream_validator_path)) {
 }
 
 // --- Module 15: Anti-Noise Engine (backward-compatible) ---
+$__ape_hdr_engine_path = __DIR__ . '/ape_hdr_peak_nit_engine.php';
+if (file_exists($__ape_hdr_engine_path)) {
+    require_once $__ape_hdr_engine_path;
+}
+
 $__ape_noise_engine_path = __DIR__ . '/ape_anti_noise_engine.php';
 if (file_exists($__ape_noise_engine_path)) {
     require_once $__ape_noise_engine_path;
@@ -1592,6 +1597,13 @@ function rq_sniper_integrate($ch_id, $profile, $origin = '', $session = '') {
         $noise_engine = ape_noise_engine_integrate($sniper, $acrp_state, $effective_profile);
     }
 
+    // === MÓDULO 16: HDR PEAK NIT ENGINE (v1.0) ===
+    // Genera metadata HDR 5000 nits: ST.2086, HDR10+, DV RPU, HLG, GPU tone mapping
+    $hdr_engine = ['ext_vlcopt' => [], 'ext_http' => [], 'kodiprop' => [], 'metadata' => ['active' => false]];
+    if (function_exists('ape_hdr_peak_nit_integrate')) {
+        $hdr_engine = ape_hdr_peak_nit_integrate($sniper, $acrp_state, $effective_profile);
+    }
+
     // === MÓDULO 10: KODIPROP Engine ===
     $kodiprop = rq_sniper_kodiprop_directives($sniper, $ua);
 
@@ -1638,6 +1650,7 @@ function rq_sniper_integrate($ch_id, $profile, $origin = '', $session = '') {
         $gpu['ext_http'] ?? [],
         $race['ext_http'] ?? [],
         $noise_engine['ext_http'] ?? [],
+        $hdr_engine['ext_http'] ?? [],
         $resources['ext_http'] ?? [],
         $guard_ext_http,
         $stream_guard_result['ext_http'] ?? []
@@ -1648,6 +1661,7 @@ function rq_sniper_integrate($ch_id, $profile, $origin = '', $session = '') {
         $ffmpeg_pipeline['ext_vlcopt'] ?? [],
         $gpu['ext_vlcopt'] ?? [],
         $noise_engine['ext_vlcopt'] ?? [],
+        $hdr_engine['ext_vlcopt'] ?? [],
         $resources['ext_vlcopt'] ?? []
     );
 
@@ -1739,6 +1753,12 @@ function rq_sniper_integrate($ch_id, $profile, $origin = '', $session = '') {
         $http_headers[] = "X-APE-AntiNoise-Pipeline: " . ($noise_engine['metadata']['pipeline'] ?? 'A');
         $http_headers[] = "X-APE-AntiNoise-Score: " . ($noise_engine['metadata']['noise_score'] ?? 0);
         $http_headers[] = "X-APE-AntiNoise-Class: " . ($noise_engine['metadata']['classification'] ?? 'UNKNOWN');
+    }
+    // HDR Peak Nit Engine HTTP headers
+    if (!empty($hdr_engine['metadata']['active']) && $hdr_engine['metadata']['active']) {
+        $http_headers[] = "X-APE-HDR-Peak: " . ($hdr_engine['metadata']['peak_nits'] ?? 5000);
+        $http_headers[] = "X-APE-HDR-Format: " . ($hdr_engine['metadata']['formats'] ?? 'hdr10,hdr10+,dv,hlg');
+        $http_headers[] = "X-APE-HDR-Transfer: smpte2084";
     }
 
     if ($sniper['sniper']) {

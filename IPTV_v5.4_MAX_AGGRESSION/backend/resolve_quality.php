@@ -4,6 +4,9 @@ require_once __DIR__ . "/rq_sniper_mode.php";
 if (file_exists(__DIR__ . "/ape_anti_noise_engine.php")) {
     require_once __DIR__ . "/ape_anti_noise_engine.php";
 }
+if (file_exists(__DIR__ . "/ape_hdr_peak_nit_engine.php")) {
+    require_once __DIR__ . "/ape_hdr_peak_nit_engine.php";
+}
 
 
 
