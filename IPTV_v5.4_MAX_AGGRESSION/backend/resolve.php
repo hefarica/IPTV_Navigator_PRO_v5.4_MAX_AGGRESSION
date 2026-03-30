@@ -95,10 +95,11 @@ function autoProfile(string $ch): string {
     if (str_contains($c, '8K') || str_contains($c, '4320')) return 'P1';
     if (str_contains($c, 'UHD') || str_contains($c, '4K') || str_contains($c, '2160')) return 'P2';
     if (str_contains($c, 'FHD') || str_contains($c, '1080')) return 'P3';
-    if (str_contains($c, 'HD') || str_contains($c, '720')) return 'P4';
+    // ✅ V4.29: Solo '720' EXPLÍCITO va a P4. 'HD' genérico → P3 (mayoría son 1080p real)
+    if (str_contains($c, '720')) return 'P4';
     if (str_contains($c, 'SD') || str_contains($c, '480')) return 'P5';
     
-    // Default fallback to FHD to avoid unnecessary downgrades if unknown
+    // 'HD' genérico sin número → FHD (Default conservador)
     return 'P3';
 }
 
@@ -343,7 +344,7 @@ $map = loadChannelMap($listId !== '' ? $listId : null);
 $decision = mapDecision($ch, $map);
 
 // ── CMAF Interception Point (APE CMAF Engine v2.0) ───────────────────────────
-if (class_exists(\'CmafIntegrationShim\')) {
+if (class_exists('CmafIntegrationShim')) {
     $cmafResult = CmafIntegrationShim::intercept($ch, $decision ?? []);
     if ($cmafResult !== null) { echo $cmafResult; exit; }
 }
@@ -417,6 +418,27 @@ if ($teleBw === '' && $decision !== null && isset($decision['math_telemetry'])) 
     if (isset($mathMap['pfpar'])) $cfg['prefetch_par'] = (int)$mathMap['pfpar'];
     if (isset($mathMap['tbw']))   $cfg['bitrate']      = (int)($mathMap['tbw'] / 1000);
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ⚡ CAPACITY OVERDRIVE ENGINE v1.0 — ANTI-STARVATION MULTIPLIER x2.5
+// Multiplica valores de capacidad x2.5 DESPUÉS de la clasificación y overrides.
+// Garantiza que incluso una mala clasificación (ej: 1080p clasificado como P4)
+// tenga suficiente buffer/bitrate/BW para no congelarse.
+// ISP y ancho de banda NO son restricción → MÁXIMA AGRESIÓN.
+// ═══════════════════════════════════════════════════════════════════════════
+$CAPACITY_MULTIPLIER = 2.5;
+$cfg['buffer_ms']    = (int)round($cfg['buffer_ms'] * $CAPACITY_MULTIPLIER);
+$cfg['net_cache']    = (int)round($cfg['net_cache'] * $CAPACITY_MULTIPLIER);
+$cfg['live_cache']   = (int)round($cfg['live_cache'] * $CAPACITY_MULTIPLIER);
+$cfg['file_cache']   = (int)round($cfg['file_cache'] * $CAPACITY_MULTIPLIER);
+$cfg['bitrate']      = (int)round($cfg['bitrate'] * $CAPACITY_MULTIPLIER);
+$cfg['max_bw']       = (int)round($cfg['max_bw'] * $CAPACITY_MULTIPLIER);
+$cfg['min_bw']       = (int)round(($cfg['min_bw'] ?? 0) * $CAPACITY_MULTIPLIER);
+$cfg['prefetch_seg'] = (int)round($cfg['prefetch_seg'] * $CAPACITY_MULTIPLIER);
+$cfg['prefetch_par'] = (int)round($cfg['prefetch_par'] * $CAPACITY_MULTIPLIER);
+$cfg['prefetch_buf'] = (int)round($cfg['prefetch_buf'] * $CAPACITY_MULTIPLIER);
+$cfg['bw_guarantee'] = (int)round($cfg['bw_guarantee'] * $CAPACITY_MULTIPLIER);
+if (isset($cfg['recon_max'])) $cfg['recon_max'] = (int)round($cfg['recon_max'] * $CAPACITY_MULTIPLIER);
 
 $hdrEnabled = !empty($cfg['hdr']);
 // 4) TOKEN

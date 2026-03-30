@@ -71,8 +71,8 @@
             return window.app.getFilteredActiveChannels();
         }
 
-        // Fallback: get from state.channelsFiltered or apply filters
-        var channels = window.app.state.channelsFiltered || window.app.state.channelsMaster || [];
+        // V4.28: SIEMPRE guardar channelsMaster (TODOS los canales), no channelsFiltered
+        var channels = window.app.state.channelsMaster || [];
 
         // Map to essential data only (reduce storage size)
         return channels.map(function (ch) {
@@ -327,15 +327,29 @@
      */
     function applyRestoredChannels(channels) {
         if (window.app && window.app.state) {
-            window.app.state.channelsMaster = channels;
-            window.app.state.channelsFiltered = channels.slice();
+            // ✅ V4.28: Filtrar huérfanos de servidores eliminados
+            var activeIds = new Set((window.app.state.activeServers || []).map(function(s) { return s.id; }));
+            var filtered = channels;
+            if (activeIds.size > 0) {
+                filtered = channels.filter(function(ch) {
+                    var sId = ch.serverId || ch._serverId;
+                    if (!sId) return true; // Keep legacy without serverId
+                    return activeIds.has(sId);
+                });
+                if (filtered.length < channels.length) {
+                    console.warn('🧹 [AnalysisState] Filtrados ' + (channels.length - filtered.length) + ' canales huérfanos de servidores eliminados');
+                }
+            }
+
+            window.app.state.channelsMaster = filtered;
+            window.app.state.channelsFiltered = filtered.slice();
 
             // Trigger re-render
             if (window.app.applyFilters) {
                 setTimeout(function () { window.app.applyFilters(); }, 200);
             }
 
-            console.log('📥 Restaurados', channels.length, 'canales');
+            console.log('📥 Restaurados', filtered.length, 'canales (de', channels.length, 'guardados)');
         }
     }
 

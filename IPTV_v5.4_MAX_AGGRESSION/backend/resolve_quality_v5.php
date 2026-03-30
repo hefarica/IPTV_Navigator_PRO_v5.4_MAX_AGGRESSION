@@ -506,9 +506,11 @@ function autoProfile(string $ch): string {
     if (str_contains($c, '8K') || str_contains($c, '4320') || str_contains($c, 'UHD8K')) return 'P0';
     if (str_contains($c, 'UHD') || str_contains($c, '4K') || str_contains($c, '2160')) return 'P1';
     if (str_contains($c, 'FHD') || str_contains($c, '1080')) return 'P3';
-    if (str_contains($c, 'HD') || str_contains($c, '720')) return 'P4';
+    // ✅ V4.29: Solo '720' EXPLÍCITO va a P4. 'HD' genérico → P3 (mayoría son 1080p real)
+    if (str_contains($c, '720')) return 'P4';
     if (str_contains($c, 'SD') || str_contains($c, '480')) return 'P5';
-    return 'P3'; // Default conservador: FHD
+    // 'HD' genérico sin número → FHD (la mayoría de canales HD transmiten en 1080p)
+    return 'P3';
 }
 
 function loadChannelMap(?string $listId = null): array {
@@ -675,6 +677,29 @@ $cfg['codec']          = 'hard,system';
 // Override de resolución desde Frontend (teleportación matemática)
 if ($teleRes !== '') $cfg['res'] = $teleRes;
 if ($teleBw  !== '') $cfg['bitrate'] = (int)$teleBw;
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ⚡ CAPACITY OVERDRIVE ENGINE v1.0 — ANTI-STARVATION MULTIPLIER x2.5
+// Multiplica valores de capacidad x2.5 DESPUÉS de la clasificación.
+// Garantiza que incluso una mala clasificación (ej: 1080p clasificado como P4)
+// tenga suficiente buffer/bitrate/BW para no congelarse.
+// ISP y ancho de banda NO son restricción → MÁXIMA AGRESIÓN.
+// ═══════════════════════════════════════════════════════════════════════════
+$CAPACITY_MULTIPLIER = 2.5;
+$cfg['buffer_ms']    = (int)round($cfg['buffer_ms'] * $CAPACITY_MULTIPLIER);
+$cfg['net_cache']    = (int)round($cfg['net_cache'] * $CAPACITY_MULTIPLIER);
+$cfg['live_cache']   = (int)round($cfg['live_cache'] * $CAPACITY_MULTIPLIER);
+$cfg['file_cache']   = (int)round($cfg['file_cache'] * $CAPACITY_MULTIPLIER);
+$cfg['bitrate']      = (int)round($cfg['bitrate'] * $CAPACITY_MULTIPLIER);
+$cfg['max_bw']       = (int)round($cfg['max_bw'] * $CAPACITY_MULTIPLIER);
+$cfg['min_bw']       = (int)round($cfg['min_bw'] * $CAPACITY_MULTIPLIER);
+$cfg['prefetch_seg'] = (int)round($cfg['prefetch_seg'] * $CAPACITY_MULTIPLIER);
+$cfg['prefetch_par'] = (int)round($cfg['prefetch_par'] * $CAPACITY_MULTIPLIER);
+$cfg['prefetch_buf'] = (int)round($cfg['prefetch_buf'] * $CAPACITY_MULTIPLIER);
+$cfg['bw_guarantee'] = (int)round($cfg['bw_guarantee'] * $CAPACITY_MULTIPLIER);
+$cfg['buffer_target_s'] = round($cfg['buffer_target_s'] * $CAPACITY_MULTIPLIER, 1);
+$cfg['buffer_max_s']    = round($cfg['buffer_max_s'] * $CAPACITY_MULTIPLIER, 1);
+$cfg['prebuffer_s']     = round($cfg['prebuffer_s'] * $CAPACITY_MULTIPLIER, 1);
 
 // ═══════════════════════════════════════════════════════════════════════════
 // RESOLUCIÓN DE ORIGEN Y CONSTRUCCIÓN DE URL

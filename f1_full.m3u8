@@ -1,0 +1,4 @@
+#EXTM3U
+#EXTINF: -1  codec="HEVC" video-track="" bl-video-track="",Channel 1312007
+#EXTHTTP:{"X-RQ-Enforcement":"NUCLEAR","X-RQ-Directive-Sync":"VLCOPT+KODIPROP+EXTHTTP"}
+http://line.tivi-ott.net/live/3JHFTC/U56BDP/1312007.m3u8

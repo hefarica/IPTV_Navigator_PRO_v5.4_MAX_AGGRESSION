@@ -680,14 +680,13 @@ class IPTVNavigatorPro {
         // que necesita this.worker ya inicializado para mostrar el panel de clasificación
         this.initWorkerEngine();
 
-        // ✅ V4.24: Auto-check Probe Server con reconexión automática
+        // ✅ V4.28: Deferred ProbeServer monitor — not needed for initial render
         this._probeServerAvailable = false;
         this._probeServerCheckInterval = null;
-        if (document.readyState === 'complete') {
+        // Delay 5s — let critical UI load first
+        setTimeout(() => {
             this._startProbeServerMonitor();
-        } else {
-            window.addEventListener('load', () => this._startProbeServerMonitor());
-        }
+        }, 5000);
 
         if (window.dbManager) {
             this.db = window.dbManager;
@@ -722,11 +721,6 @@ class IPTVNavigatorPro {
             }, 500);
         }
 
-        // Cargar fuentes guardadas
-        this.loadSavedSources().then(() => {
-            this.renderSourcesList();
-        });
-
         // ✅ V4.6.2: Initialize Stream Quality Probe
         if (typeof StreamQualityProbe !== 'undefined') {
             this.streamProbe = new StreamQualityProbe();
@@ -741,12 +735,29 @@ class IPTVNavigatorPro {
         // ✅ V4.9: Load saved servers library from localStorage
         this.renderSavedServersTable();
 
-        // ✅ V4.16: Migración automática de servidores sin snapshot
-        this.migrateServersWithoutSnapshot().then(() => {
-            console.log('✅ Migración de snapshots completada');
-            // 🧪 V4.18.4: Ejecutar tests de integridad al iniciar
-            setTimeout(() => this.runIntegrityTests(), 100);
-        });
+        // ✅ V4.28: Defer non-critical tasks (migration, integrity tests, sources)
+        // Use requestIdleCallback or setTimeout to avoid blocking main thread
+        const deferNonCritical = (fn, fallbackMs = 3000) => {
+            if (window.requestIdleCallback) {
+                requestIdleCallback(fn, { timeout: fallbackMs });
+            } else {
+                setTimeout(fn, fallbackMs);
+            }
+        };
+
+        // Cargar fuentes guardadas (non-blocking)
+        deferNonCritical(() => {
+            this.loadSavedSources().then(() => this.renderSourcesList());
+        }, 1000);
+
+        // ✅ V4.16: Migración automática de servidores sin snapshot (deferred)
+        deferNonCritical(() => {
+            this.migrateServersWithoutSnapshot().then(() => {
+                console.log('✅ Migración de snapshots completada');
+                // 🧪 V4.18.4: Ejecutar tests de integridad al iniciar
+                setTimeout(() => this.runIntegrityTests(), 500);
+            });
+        }, 3000);
 
         // ✅ V4.12.2: Log de tiempo de inicialización
         const initTime = performance.now() - startTime;
@@ -1735,7 +1746,7 @@ class IPTVNavigatorPro {
             const data = await this.db.getAppState('filterState');
             if (data) {
                 this.state.activeFilter = data.activeFilter || { mode: 'STANDARD', groups: [] };
-                this.state.searchQuery = data.searchQuery || '';
+                this.state.searchQuery = ''; // V4.28: Never restore search — always start clean
 
                 // NORMALIZAR SIEMPRE A 'ALL'
                 this.state.filterTier = (data.filterTier || 'ALL').toString().toUpperCase();
@@ -1743,7 +1754,7 @@ class IPTVNavigatorPro {
                 this.state.filterLanguage = (data.filterLanguage || 'ALL').toString().toUpperCase();
 
                 const $ = (id) => document.getElementById(id);
-                if ($('searchQuery')) $('searchQuery').value = this.state.searchQuery;
+                if ($('searchQuery')) $('searchQuery').value = '';
                 if ($('filterTier')) $('filterTier').value = this.state.filterTier;
                 if ($('filterCodec')) $('filterCodec').value = this.state.filterCodec;
                 if ($('filterLanguage')) $('filterLanguage').value = this.state.filterLanguage;
@@ -3085,28 +3096,36 @@ class IPTVNavigatorPro {
     /**
      * Start automatic monitoring of the probe server
      * Calls watchdog to wake server, then monitors
+     * V4.28: Optimized — 60s interval, throttled checks, silent when stable
      */
     _startProbeServerMonitor() {
+        // Guard: never start multiple monitors
+        if (this._probeMonitorStarted) return;
+        this._probeMonitorStarted = true;
+        this._lastProbeCheck = 0; // timestamp of last check
+
         // V4.24: First try to wake the server via watchdog
         this._wakeServerViaWatchdog();
 
         // Initial check after brief delay
-        setTimeout(() => this._checkProbeServerStatus(), 1500);
+        setTimeout(() => this._checkProbeServerStatus(), 2000);
 
-        // Set up periodic check every 10 seconds
+        // Set up periodic check every 60 seconds (was 10s — caused console flood)
         this._probeServerCheckInterval = setInterval(() => {
             this._checkProbeServerStatus();
-        }, 10000);
+        }, 60000);
 
-        // Also check when tab becomes visible (user switches back to app)
+        // Also check when tab becomes visible (throttled)
         document.addEventListener('visibilitychange', () => {
             if (document.visibilityState === 'visible') {
-                this._wakeServerViaWatchdog();
-                setTimeout(() => this._checkProbeServerStatus(), 1000);
+                // Only check if >30s since last check
+                if (Date.now() - this._lastProbeCheck > 30000) {
+                    this._checkProbeServerStatus();
+                }
             }
         });
 
-        console.log('🔍 Probe Server Monitor iniciado (wake + check cada 10s)');
+        console.log('🔍 Probe Server Monitor iniciado (check cada 60s)');
     }
 
     /**
@@ -3114,14 +3133,12 @@ class IPTVNavigatorPro {
      * Called on page load and tab focus
      */
     async _wakeServerViaWatchdog() {
-        console.log('🔔 [ProbeServer] _wakeServerViaWatchdog() iniciado');
+        // Throttle: skip if checked recently
+        if (Date.now() - this._lastProbeCheck < 30000) return this._probeServerAvailable;
 
         // Update UI to show checking
         const dot = document.getElementById('probeServerDot');
         const text = document.getElementById('probeServerText');
-        const badge = document.getElementById('probeServerBadge');
-
-        console.log('🔔 [ProbeServer] Elementos UI:', { dot: !!dot, text: !!text, badge: !!badge });
 
         if (dot) dot.style.background = '#fbbf24'; // Yellow - checking
         if (text) text.textContent = 'Verificando...';
@@ -3129,10 +3146,8 @@ class IPTVNavigatorPro {
         // Check if server is available
         const available = await this._checkProbeServerStatus();
 
-        console.log('🔔 [ProbeServer] Resultado check:', available);
-
         if (!available) {
-            console.log('ℹ️ Probe Server no disponible - se iniciará con Windows o manualmente');
+            console.log('ℹ️ Probe Server no disponible');
         }
 
         return available;
@@ -3143,6 +3158,11 @@ class IPTVNavigatorPro {
      * Updates UI badge indicator and enables/disables probe buttons
      */
     async _checkProbeServerStatus() {
+        // V4.28: Throttle — max 1 check per 30 seconds
+        const now = Date.now();
+        if (now - this._lastProbeCheck < 30000) return this._probeServerAvailable;
+        this._lastProbeCheck = now;
+
         // V4.25.0: Probe Server en VPS Hetzner
         const PROBE_SERVER = window.PROBE_SERVER_URL || 'http://178.156.147.234:8765';
         const badge = document.getElementById('probeServerBadge');
@@ -3151,77 +3171,48 @@ class IPTVNavigatorPro {
         const btnProbe = document.getElementById('btnProbeQuality');
         const wasAvailable = this._probeServerAvailable;
 
-        console.log('🔍 [ProbeServer] _checkProbeServerStatus() - Verificando servidor en', PROBE_SERVER);
-        console.log('🔍 [ProbeServer] Elementos encontrados:', {
-            badge: !!badge,
-            dot: !!dot,
-            text: !!text,
-            btnProbe: !!btnProbe,
-            wasAvailable
-        });
-
         try {
-            const response = await fetch(`${PROBE_SERVER}/health`, {
+            // Use _originalFetch to bypass the evasion engine interceptor
+            const fetchFn = window._APE_ORIGINAL_FETCH || fetch;
+            const response = await fetchFn(`${PROBE_SERVER}/health`, {
                 method: 'GET',
-                signal: AbortSignal.timeout(8000) // 8 second timeout (server puede tardar en cold start)
+                signal: AbortSignal.timeout(8000)
             });
-
-            console.log('🔍 [ProbeServer] Response status:', response.status, response.ok);
 
             if (response.ok) {
                 const data = await response.json();
-                console.log('✅ [ProbeServer] Datos recibidos:', data);
 
-                // Only log and notify if state changed (server just came online)
+                // Only log on state CHANGE (avoids console flood)
                 if (!wasAvailable) {
-                    console.log('✅ Probe Server CONECTADO:', data);
+                    console.log('✅ [ProbeServer] CONECTADO:', data);
                     this._showProbeServerNotification('connected', data);
                 }
 
-                // Update badge UI
-                console.log('🎨 [ProbeServer] Actualizando UI a VERDE');
-                if (dot) {
-                    dot.style.background = '#4ade80'; // Green
-                    console.log('🎨 [ProbeServer] dot.style.background =', dot.style.background);
-                }
-                if (text) {
-                    text.textContent = 'Probe Server';
-                    console.log('🎨 [ProbeServer] text.textContent =', text.textContent);
-                }
+                // Update badge UI silently
+                if (dot) dot.style.background = '#4ade80';
+                if (text) text.textContent = 'Probe Server';
                 if (badge) {
                     badge.title = `✅ Probe Server v${data.version} | ${data.max_concurrent} streams | FFprobe: ${data.ffprobe_available ? 'OK' : 'NO'}`;
                     badge.style.cursor = 'default';
                     badge.onclick = null;
                 }
-
-                // Enable probe button
                 if (btnProbe) {
                     btnProbe.disabled = false;
                     btnProbe.title = 'Analiza calidad real de TODOS los streams';
                 }
 
                 this._probeServerAvailable = true;
-                console.log('✅ [ProbeServer] Estado final: DISPONIBLE');
                 return true;
             }
         } catch (e) {
-            console.log('❌ [ProbeServer] Error de conexión:', e.message);
-
-            // Only log and notify if state changed (server just went offline)
+            // Only log on state CHANGE
             if (wasAvailable) {
-                console.log('⚠️ Probe Server DESCONECTADO:', e.message);
+                console.log('⚠️ [ProbeServer] DESCONECTADO:', e.message);
                 this._showProbeServerNotification('disconnected');
             }
 
-            // Update badge UI
-            console.log('🎨 [ProbeServer] Actualizando UI a ROJO');
-            if (dot) {
-                dot.style.background = '#f87171'; // Red
-                console.log('🎨 [ProbeServer] dot.style.background =', dot.style.background);
-            }
-            if (text) {
-                text.textContent = 'Probe Server';
-            }
+            if (dot) dot.style.background = '#f87171';
+            if (text) text.textContent = 'Probe Server';
             if (badge) {
                 badge.title = '❌ Servidor no disponible - Click para instrucciones';
                 badge.style.cursor = 'pointer';
@@ -3229,7 +3220,6 @@ class IPTVNavigatorPro {
             }
 
             this._probeServerAvailable = false;
-            console.log('❌ [ProbeServer] Estado final: NO DISPONIBLE');
         }
 
         return false;
@@ -4808,6 +4798,20 @@ El servidor analizará 26,000+ canales en ~10 minutos.
             // Usamos connectXuiApi que ya tenías definido abajo, aprovechando su lógica paralela
             const rawChannels = await this.connectXuiApi(baseHost, user, pass);
 
+            // ═══════════════════════════════════════════════════════════════
+            // 🔒 CREDENTIAL LOCK — CONGELAR CREDENCIALES VALIDADAS
+            // Si connectXuiApi devolvió datos, las credenciales SON CORRECTAS.
+            // Se marcan como validadas e inmutables. Ningún proceso posterior
+            // debe modificar username/password de este servidor.
+            // ═══════════════════════════════════════════════════════════════
+            if (rawChannels && rawChannels.length > 0) {
+                this.state.currentServer._credentialsValidated = true;
+                this.state.currentServer._validatedAt = Date.now();
+                this.state.currentServer._lockedUsername = user;
+                this.state.currentServer._lockedPassword = pass;
+                console.log(`🔒 [CREDENTIAL LOCK] Credenciales CONGELADAS para "${this.state.currentServer.name}" — user:${user.substring(0,3)}*** pass:${pass.substring(0,3)}*** — INMUTABLES`);
+            }
+
             // ✅ V4.10: Progreso - Canales descargados
             this.updateMiniProgress({
                 pct: 50,
@@ -4842,6 +4846,15 @@ El servidor analizará 26,000+ canales en ~10 minutos.
             } else {
                 // New server or explicit append: use normal processing
                 await this.processChannels(rawChannels, this.state.currentServer, append);
+            }
+
+            // ✅ V4.28: Propagar _expDate de currentServer → activeServers (después de processChannels/upsert)
+            if (this.state.currentServer?._expDate) {
+                const activeSrv = this.state.activeServers?.find(s => s.id === this.state.currentServer.id);
+                if (activeSrv && !activeSrv._expDate) {
+                    activeSrv._expDate = this.state.currentServer._expDate;
+                    console.log(`📅 [V4.28] _expDate propagado a activeServer: ${activeSrv.name}`);
+                }
             }
 
             // 🔗 V4.20.3: Actualizar chip de conexión tras procesamiento inicial exitoso
@@ -4966,6 +4979,20 @@ El servidor analizará 26,000+ canales en ~10 minutos.
             // Guardar en state para uso posterior
             this.state.allowedOutputFormats = allowedFormats;
             this.state.serverInfo = serverInfo;
+            this.state.userInfo = userInfo; // ✅ V4.28: Guardar userInfo (contiene exp_date)
+
+            // ✅ V4.28: Guardar exp_date POR SERVIDOR en activeServers
+            if (userInfo.exp_date) {
+                const currentSrv = this.state.activeServers?.find(s => s.id === this.state.currentServer?.id);
+                if (currentSrv) {
+                    currentSrv._expDate = userInfo.exp_date; // Unix timestamp
+                    console.log(`📅 Expiración de ${currentSrv.name}: ${new Date(userInfo.exp_date * 1000).toLocaleDateString('es-ES')}`);
+                }
+                // También guardar en el objeto currentServer
+                if (this.state.currentServer) {
+                    this.state.currentServer._expDate = userInfo.exp_date;
+                }
+            }
 
             // 2️⃣ Obtener categorías para mapear ID → Nombre
             console.log('📂 Descargando categorías...');
@@ -5193,7 +5220,8 @@ El servidor analizará 26,000+ canales en ~10 minutos.
             baseUrl: serverObj.baseUrl,
             username: serverObj.username,
             password: serverObj.password,  // ✅ V4.27.5: Guardar password para biblioteca
-            active: true
+            active: true,
+            _expDate: serverObj._expDate || this.state.currentServer?._expDate || undefined  // ✅ V4.28.2: Preservar expDate
         };
 
         if (append) {
@@ -5624,11 +5652,34 @@ El servidor analizará 26,000+ canales en ~10 minutos.
             tr.appendChild(createFilterCell(stats.resHD, 'HD'));
             tr.appendChild(createFilterCell(stats.resSD, 'SD'));
 
-            // Vence (Simulado o real si existiera en raw)
+            // ✅ V4.28: Fecha de expiración REAL desde user_info.exp_date (por servidor)
             const tdExp = document.createElement('td');
-            tdExp.textContent = 'N/A'; // Xtream public API doesn't usually send expiry in get_live_streams
             tdExp.style.fontSize = '0.8rem';
-            tdExp.style.color = 'var(--text-muted)';
+            const srvExpDate = srv._expDate;
+            if (srvExpDate) {
+                const expDate = new Date(srvExpDate * 1000);
+                const now = new Date();
+                const daysLeft = Math.ceil((expDate - now) / (1000 * 60 * 60 * 24));
+                tdExp.textContent = expDate.toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' });
+                // Colorear según urgencia
+                if (daysLeft <= 0) {
+                    tdExp.style.color = '#ef4444'; // Rojo - expirado
+                    tdExp.title = '⛔ EXPIRADO';
+                } else if (daysLeft <= 7) {
+                    tdExp.style.color = '#f97316'; // Naranja - por vencer
+                    tdExp.title = `⚠️ Vence en ${daysLeft} día(s)`;
+                } else if (daysLeft <= 30) {
+                    tdExp.style.color = '#eab308'; // Amarillo - pronto
+                    tdExp.title = `📅 Vence en ${daysLeft} días`;
+                } else {
+                    tdExp.style.color = '#4ade80'; // Verde - ok
+                    tdExp.title = `✅ Vence en ${daysLeft} días`;
+                }
+            } else {
+                tdExp.textContent = '—';
+                tdExp.style.color = 'var(--text-muted)';
+                tdExp.title = 'Conectar al servidor para obtener fecha';
+            }
             tr.appendChild(tdExp);
 
             // Acción (Probe + Eliminar)
@@ -5894,11 +5945,15 @@ El servidor analizará 26,000+ canales en ~10 minutos.
         // Usar snapshot para los datos del library entry
         const snap = srv.snapshot;
 
-        // Get expiration from serverInfo if available and matches this server
+        // ✅ V4.28: Obtener expiración POR SERVIDOR (user_info.exp_date guardado en srv._expDate)
         let expDate = 'N/A';
-        if (this.state.serverInfo?.exp_date && this.state.currentServer?.id === serverId) {
-            const exp = new Date(this.state.serverInfo.exp_date * 1000);
-            expDate = exp.toLocaleDateString('es-ES');
+        if (srv._expDate) {
+            const exp = new Date(srv._expDate * 1000);
+            expDate = exp.toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' });
+        } else if (this.state.userInfo?.exp_date && this.state.currentServer?.id === serverId) {
+            // Fallback: si no tiene _expDate pero userInfo sí (servidor actual)
+            const exp = new Date(this.state.userInfo.exp_date * 1000);
+            expDate = exp.toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' });
         }
 
         // Build library entry from snapshot
@@ -5906,8 +5961,8 @@ El servidor analizará 26,000+ canales en ~10 minutos.
             id: serverId,
             name: srv.name,
             baseUrl: srv.baseUrl?.replace('/player_api.php', '') || srv.url || '',
-            username: srv.username || '',
-            password: srv.password || '',
+            username: srv._lockedUsername || srv.username || '',
+            password: srv._lockedPassword || srv.password || '',  // 🔒 Credential Lock: prioriza credenciales validadas
             apiType: 'auto',
             totalChannels: snap.channelsCount,
             totalGroups: snap.groupsCount,
@@ -5929,6 +5984,11 @@ El servidor analizará 26,000+ canales en ~10 minutos.
         // Check if already exists
         const existingIdx = library.findIndex(s => s.id === serverId || s.baseUrl === libraryEntry.baseUrl);
         if (existingIdx >= 0) {
+            // ✅ V4.28.2: Preservar expDate correcta si la nueva es N/A
+            const oldEntry = library[existingIdx];
+            if (libraryEntry.expDate === 'N/A' && oldEntry.expDate && oldEntry.expDate !== 'N/A') {
+                libraryEntry.expDate = oldEntry.expDate;
+            }
             library[existingIdx] = libraryEntry; // Update
             console.log('📝 Servidor actualizado en biblioteca:', libraryEntry.name);
         } else {
@@ -6009,7 +6069,7 @@ El servidor analizará 26,000+ canales en ~10 minutos.
         }
 
         tbody.innerHTML = library.map((srv, idx) => `
-            <tr style="border-bottom:1px solid rgba(255,255,255,0.05); ${idx % 2 === 0 ? 'background:rgba(30,41,59,0.3);' : ''}">
+            <tr data-server-id="${srv.id}" style="border-bottom:1px solid rgba(255,255,255,0.05); ${idx % 2 === 0 ? 'background:rgba(30,41,59,0.3);' : ''}">
                 <td style="padding:8px; color:#e2e8f0; font-size:0.75rem;">
                     <div style="font-weight:500;">${this.escapeHtml(srv.name)}</div>
                     <div style="font-size:0.65rem; color:#94a3b8; max-width:140px; overflow:hidden; text-overflow:ellipsis;">${this.escapeHtml(srv.baseUrl)}</div>
@@ -6021,7 +6081,18 @@ El servidor analizará 26,000+ canales en ~10 minutos.
                 <td style="padding:8px; text-align:center; color:#e2e8f0; font-size:0.75rem;">${srv.qualityFHD || 0}</td>
                 <td style="padding:8px; text-align:center; color:#e2e8f0; font-size:0.75rem;">${srv.qualityHD || 0}</td>
                 <td style="padding:8px; text-align:center; color:#e2e8f0; font-size:0.75rem;">${srv.qualitySD || 0}</td>
-                <td style="padding:8px; text-align:center; color:#e2e8f0; font-size:0.7rem;">${srv.expDate || 'N/A'}</td>
+                <td data-vence-server="${srv.id}" style="padding:8px; text-align:center; font-size:0.7rem; color:${(() => {
+                    if (!srv.expDate || srv.expDate === 'N/A') return '#64748b';
+                    try {
+                        const expMs = new Date(srv.expDate).getTime() || Date.parse(srv.expDate);
+                        if (isNaN(expMs)) return '#64748b';
+                        const days = Math.ceil((expMs - Date.now()) / 86400000);
+                        if (days <= 0) return '#ef4444';
+                        if (days <= 7) return '#f97316';
+                        if (days <= 30) return '#eab308';
+                        return '#4ade80';
+                    } catch(e) { return '#64748b'; }
+                })()}">${srv.expDate || '—'}</td>
                 <td style="padding:8px; text-align:center; display:flex; gap:6px; justify-content:center;">
                     <button onclick="(app.connectFromLibraryFixed || app.connectFromLibrary).call(app, '${srv.id}')" 
                             class="server-action-btn server-action-connect"
@@ -6035,6 +6106,105 @@ El servidor analizará 26,000+ canales en ~10 minutos.
                 </td>
             </tr>
         `).join('');
+
+        // ✅ V4.28: Auto-refresh expiration dates from API
+        this.refreshLibraryExpDates();
+    }
+
+    /**
+     * ✅ V4.28.2: Refresca fechas de vencimiento en la tabla de biblioteca.
+     * ESTRATEGIA DUAL:
+     *   1. Primero: Usa _expDate de activeServers en memoria (sin red, sin CORS)
+     *   2. Fallback: Consulta player_api.php solo si no hay dato en memoria
+     * Parchea celdas por data-vence-server="serverId" (NUNCA por índice de fila)
+     */
+    async refreshLibraryExpDates() {
+        const token = Date.now();
+        this._refreshExpToken = token;
+
+        let library = [];
+        try {
+            library = JSON.parse(localStorage.getItem('iptv_server_library') || '[]');
+        } catch (e) { return; }
+
+        if (library.length === 0) return;
+
+        console.log(`📅 [V4.28.2] Refrescando fechas de vencimiento para ${library.length} servidores...`);
+        let updated = 0;
+
+        // ═══════════════════════════════════════════════════════════════
+        // PASO 1: Buscar _expDate en activeServers (MEMORIA — sin red)
+        // ═══════════════════════════════════════════════════════════════
+        for (const srv of library) {
+            const serverId = srv.id;
+            const activeSrv = this.state.activeServers?.find(s => s.id === serverId);
+            if (activeSrv?._expDate) {
+                const expDate = new Date(activeSrv._expDate * 1000);
+                const expDateStr = expDate.toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' });
+                srv.expDate = expDateStr;
+                srv._expTimestamp = activeSrv._expDate;
+                updated++;
+                console.log(`  ✅ [MEM] ${srv.name} [${serverId}]: vence ${expDateStr}`);
+                this._patchVenceCell(serverId, expDateStr, expDate);
+            }
+        }
+
+        // ═══════════════════════════════════════════════════════════════
+        // PASO 2: Para servidores sin _expDate en memoria, consultar API
+        // ═══════════════════════════════════════════════════════════════
+        const needsApi = library.filter(srv => {
+            if (!srv.baseUrl || !srv.username || !srv.password) return false;
+            // Si ya se actualizó en PASO 1, no consultar
+            const activeSrv = this.state.activeServers?.find(s => s.id === srv.id);
+            return !activeSrv?._expDate;
+        });
+
+        if (needsApi.length > 0) {
+            console.log(`  🌐 ${needsApi.length} servidores requieren consulta API...`);
+            const promises = needsApi.map(async (srv) => {
+                const serverId = srv.id;
+                const serverName = srv.name;
+                try {
+                    const cleanBase = srv.baseUrl.replace(/\/player_api\.php.*$/, '').replace(/\/$/, '');
+                    const apiUrl = `${cleanBase}/player_api.php?username=${encodeURIComponent(srv.username)}&password=${encodeURIComponent(srv.password)}`;
+
+                    const response = await axios.get(apiUrl, { timeout: 8000 });
+
+                    if (this._refreshExpToken !== token) return;
+
+                    const expTimestamp = response.data?.user_info?.exp_date;
+                    if (expTimestamp) {
+                        const expDate = new Date(expTimestamp * 1000);
+                        const expDateStr = expDate.toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' });
+                        srv.expDate = expDateStr;
+                        srv._expTimestamp = expTimestamp;
+                        updated++;
+                        console.log(`  ✅ [API] ${serverName} [${serverId}]: vence ${expDateStr}`);
+                        this._patchVenceCell(serverId, expDateStr, expDate);
+                    }
+                } catch (e) {
+                    console.warn(`  ⚠️ ${serverName}: API falló (${e.message})`);
+                }
+            });
+            await Promise.allSettled(promises);
+        }
+
+        if (this._refreshExpToken === token && updated > 0) {
+            localStorage.setItem('iptv_server_library', JSON.stringify(library));
+            console.log(`📅 [V4.28.2] ${updated} fechas actualizadas y guardadas en localStorage`);
+        }
+    }
+
+    /** Parchea una celda VENCE por data-vence-server (nunca por índice) */
+    _patchVenceCell(serverId, dateStr, dateObj) {
+        const cell = document.querySelector(`td[data-vence-server="${serverId}"]`);
+        if (!cell) return;
+        cell.textContent = dateStr;
+        const daysLeft = Math.ceil((dateObj - new Date()) / 86400000);
+        if (daysLeft <= 0) cell.style.color = '#ef4444';
+        else if (daysLeft <= 7) cell.style.color = '#f97316';
+        else if (daysLeft <= 30) cell.style.color = '#eab308';
+        else cell.style.color = '#4ade80';
     }
 
     // ⚠️ V4.16: connectFromLibrary MOVIDO AL FINAL DEL ARCHIVO
@@ -10752,10 +10922,10 @@ El servidor analizará 26,000+ canales en ~10 minutos.
 
         console.log('📚 Servidor encontrado en biblioteca:', server.name);
 
-        // 🔒 PRE-CHECK 1: Credenciales
+        // 🔒 PRE-CHECK 1: Credenciales (priorizando Credential Lock)
         const baseHost = server.baseUrl?.replace('/player_api.php', '') || server.url;
-        const user = server.username;
-        const pass = server.password;
+        const user = server._lockedUsername || server.username;
+        const pass = server._lockedPassword || server.password;
 
         if (!baseHost || !user || !pass) {
             this.showNotification(`⚠️ ${server.name} no tiene credenciales completas`, true);
@@ -10944,10 +11114,10 @@ El servidor analizará 26,000+ canales en ~10 minutos.
             return;
         }
 
-        // ✅ Validar credenciales
+        // 🔒 Validar credenciales (priorizando Credential Lock)
         const baseHost = server.baseUrl?.replace('/player_api.php', '') || server.url;
-        const user = server.username;
-        const pass = server.password;
+        const user = server._lockedUsername || server.username;
+        const pass = server._lockedPassword || server.password;
 
         if (!baseHost || !user || !pass) {
             this.showNotification(`⚠️ ${server.name} no tiene credenciales completas`, true);

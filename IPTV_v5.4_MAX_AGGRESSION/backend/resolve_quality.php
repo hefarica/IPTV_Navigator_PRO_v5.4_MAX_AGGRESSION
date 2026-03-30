@@ -1,20 +1,38 @@
 <?php
+
 declare(strict_types=1);
+
+// === APCu STUBS — Eliminates IDE "Undefined function" errors ===
+// These stubs are ONLY defined when the APCu extension is NOT loaded (local dev).
+// On the VPS, the real APCu extension provides these functions.
+if (!extension_loaded('apcu')) {
+    /** @return bool */ function apcu_enabled(): bool { return false; }
+    /** @return mixed */ function apcu_fetch(string $key, ?bool &$success = null): mixed { $success = false; return false; }
+    /** @return bool */ function apcu_store(string $key, mixed $var, int $ttl = 0): bool { return false; }
+    /** @return array|false */ function apcu_cache_info(bool $limited = false): array|false { return []; }
+    /** @return bool */ function apcu_delete(string $key): bool { return false; }
+}
 
 // === APE MODULE LOADER — BULLETPROOF ===
 // All external modules loaded with file_exists + function_exists guards
 // This prevents Fatal Errors when a module is missing from the VPS
-function ape_safe_call($func_name, ...$args) {
+function ape_safe_call($func_name, ...$args)
+{
     if (function_exists($func_name)) {
         return call_user_func_array($func_name, $args);
     }
     // Log missing function for debugging
-    @file_put_contents(__DIR__ . '/logs/missing_functions.log',
-        date('Y-m-d H:i:s') . " MISSING: {$func_name}()\n", FILE_APPEND);
+    @file_put_contents(
+        __DIR__ . '/logs/missing_functions.log',
+        date('Y-m-d H:i:s') . " MISSING: {$func_name}()\n",
+        FILE_APPEND
+    );
     return null;
 }
 
-require_once __DIR__ . "/rq_sniper_mode.php";
+if (file_exists(__DIR__ . "/rq_sniper_mode.php")) {
+    require_once __DIR__ . "/rq_sniper_mode.php";
+}
 if (file_exists(__DIR__ . "/ape_stream_validator_proxy.php")) {
     require_once __DIR__ . "/ape_stream_validator_proxy.php";
 }
@@ -26,6 +44,9 @@ if (file_exists(__DIR__ . "/ape_anti_noise_engine.php")) {
 }
 if (file_exists(__DIR__ . "/ape_hdr_peak_nit_engine.php")) {
     require_once __DIR__ . "/ape_hdr_peak_nit_engine.php";
+}
+if (file_exists(__DIR__ . "/rq_dynamic_channel_map.php")) {
+    require_once __DIR__ . "/rq_dynamic_channel_map.php";
 }
 
 
@@ -575,7 +596,11 @@ class ManifestAnatomyParser
         $attributes = [];
 
         // Patrón para atributos con comillas: key="value" o key='value'
-        if (preg_match_all('/([a-zA-Z0-9_\-]+)\s*=\s*"([^"]*)"/', $beforeComma, $matches, PREG_SET_ORDER
+        if (preg_match_all(
+            '/([a-zA-Z0-9_\-]+)\s*=\s*"([^"]*)"/',
+            $beforeComma,
+            $matches,
+            PREG_SET_ORDER
         )) {
             foreach ($matches as $match) {
                 $attributes[$match[1]] = $match[2];
@@ -583,7 +608,11 @@ class ManifestAnatomyParser
         }
 
         // También buscar atributos sin comillas: key=value (solo si no fue capturado con comillas)
-        if (preg_match_all('/([a-zA-Z0-9_\-]+)\s*=\s*([^\s"]+)/', $beforeComma, $matches, PREG_SET_ORDER
+        if (preg_match_all(
+            '/([a-zA-Z0-9_\-]+)\s*=\s*([^\s"]+)/',
+            $beforeComma,
+            $matches,
+            PREG_SET_ORDER
         )) {
             foreach ($matches as $match) {
                 if (!isset($attributes[$match[1]])) {
@@ -593,7 +622,11 @@ class ManifestAnatomyParser
         }
 
         // Intentar extraer atributos del título también (algunas listas los ponen ahí)
-        if (preg_match_all('/([a-zA-Z0-9_\-]+)\s*=\s*"([^"]*)"/', $afterComma, $matches, PREG_SET_ORDER
+        if (preg_match_all(
+            '/([a-zA-Z0-9_\-]+)\s*=\s*"([^"]*)"/',
+            $afterComma,
+            $matches,
+            PREG_SET_ORDER
         )) {
             foreach ($matches as $match) {
                 $attributes[$match[1]] = $match[2];
@@ -1020,7 +1053,9 @@ class IdempotentNormalizationEngine
      */
     private function resolveBufferConflicts(array $values): ?int
     {
-        $valid = array_filter($values, static fn($v): bool => is_numeric($v) && $v > 0
+        $valid = array_filter(
+            $values,
+            static fn($v): bool => is_numeric($v) && $v > 0
         );
 
         if (empty($valid)) {
@@ -1212,16 +1247,16 @@ class CapabilityNegotiationLayer
             str_contains($uaLower, 'vlc')          => PlayerType::VLC->value,
             str_contains($uaLower, 'kodi')         => PlayerType::KODI->value,
             str_contains($uaLower, 'ott') ||
-            str_contains($uaLower, 'navigator')    => PlayerType::OTT->value,
+                str_contains($uaLower, 'navigator')    => PlayerType::OTT->value,
             str_contains($uaLower, 'exoplayer') ||
-            str_contains($uaLower, 'smarters')     => PlayerType::EXO->value,
+                str_contains($uaLower, 'smarters')     => PlayerType::EXO->value,
             str_contains($uaLower, 'tivimate')     => PlayerType::TIVIMATE->value,
             str_contains($uaLower, 'tv') ||
-            str_contains($uaLower, 'aftt') ||
-            str_contains($uaLower, 'aftm') ||
-            str_contains($uaLower, 'web0s') ||
-            str_contains($uaLower, 'tizen') ||
-            str_contains($uaLower, 'netcast')      => PlayerType::SMART_TV->value,
+                str_contains($uaLower, 'aftt') ||
+                str_contains($uaLower, 'aftm') ||
+                str_contains($uaLower, 'web0s') ||
+                str_contains($uaLower, 'tizen') ||
+                str_contains($uaLower, 'netcast')      => PlayerType::SMART_TV->value,
             default                                                  => PlayerType::GENERIC->value,
         };
 
@@ -1370,14 +1405,16 @@ class CapabilityNegotiationLayer
         // Leer cabeceras de display (sin prefijo HTTP_ ya que rq_header lo maneja)
         $hdr = rq_header(name: 'X-Display-HDR', serverHeaders: $serverHeaders);
         if ($hdr !== null) {
-            $tv['hdr_support'] = array_map('trim', explode(',', strtolower($hdr))
+            $tv['hdr_support'] = array_map(
+                'trim',
+                explode(',', strtolower($hdr))
             );
             // Determinar tipo de TV según HDR
             $tv['type'] = match (true) {
                 in_array('dolby_vision', $tv['hdr_support'], true) ||
-                in_array('dolby-vision', $tv['hdr_support'], true) => 'dolby_vision',
+                    in_array('dolby-vision', $tv['hdr_support'], true) => 'dolby_vision',
                 in_array('hdr10_plus', $tv['hdr_support'], true) ||
-                in_array('hdr10-plus', $tv['hdr_support'], true) => 'hdr10_plus',
+                    in_array('hdr10-plus', $tv['hdr_support'], true) => 'hdr10_plus',
                 in_array('hdr10', $tv['hdr_support'], true) => 'hdr10',
                 in_array('hlg', $tv['hdr_support'], true) => 'hlg',
                 default => 'hdr',
@@ -1531,7 +1568,7 @@ class ContentHeuristicEngine
 
         return [
             'type'                => $matchedType,
-            'confidence'          => round($bestConfidence, decimals: 2),
+            'confidence'          => round($bestConfidence, 2),
             'buffer_modifier'     => $profile['buffer_modifier'],
             'latency_sensitivity' => $profile['latency_sensitivity'],
             'preferred_codec'     => $profile['preferred_codec'],
@@ -2438,7 +2475,11 @@ class GuardianPolicyEngine
 
         // Si la TV no soporta HDR, eliminar directivas HDR
         if (empty($allowedHdr)) {
-            $filtered = array_filter($beforeStream, static fn(string $d): bool => !str_contains(strtolower($d), 'hdr'
+            $filtered = array_filter(
+                $beforeStream,
+                static fn(string $d): bool => !str_contains(
+                    strtolower($d),
+                    'hdr'
                 )
             );
             $directives['before_stream'] = array_values($filtered);
@@ -2458,7 +2499,9 @@ class GuardianPolicyEngine
 
         // Si la TV es 1080p o menos, eliminar directivas 4K/8K
         if ($maxPixels < 8294400) {
-            $filtered = array_filter($beforeStream, static fn(string $d): bool => !(
+            $filtered = array_filter(
+                $beforeStream,
+                static fn(string $d): bool => !(
                     str_contains(strtolower($d), '4k') ||
                     str_contains(strtolower($d), '2160') ||
                     str_contains(strtolower($d), '3840') ||
@@ -2490,7 +2533,9 @@ class GuardianPolicyEngine
         // Garantizar que no se generen directivas de prefetch o paralelismo
         $beforeStream = $state['injected_directives']['before_stream'] ?? [];
 
-        $filtered = array_filter($beforeStream, static fn(string $d): bool => !(
+        $filtered = array_filter(
+            $beforeStream,
+            static fn(string $d): bool => !(
                 str_contains(strtolower($d), 'prefetch') ||
                 str_contains(strtolower($d), 'parallel') ||
                 str_contains(strtolower($d), 'concurrent')
@@ -2513,14 +2558,20 @@ class GuardianPolicyEngine
 
         // Si el ADN no declara HDR, no añadir directivas HDR
         if (!$dna['has_hdr']) {
-            $beforeStream = array_values(array_filter($beforeStream, static fn(string $d): bool => !str_contains(strtolower($d), 'hdr'
+            $beforeStream = array_values(array_filter(
+                $beforeStream,
+                static fn(string $d): bool => !str_contains(
+                    strtolower($d),
+                    'hdr'
                 )
             ));
         }
 
         // Si el ADN no declara 4K, no añadir directivas 4K
         if (!$dna['has_4k']) {
-            $beforeStream = array_values(array_filter($beforeStream, static fn(string $d): bool => !(
+            $beforeStream = array_values(array_filter(
+                $beforeStream,
+                static fn(string $d): bool => !(
                     str_contains(strtolower($d), '4k') ||
                     str_contains(strtolower($d), '2160')
                 )
@@ -2597,7 +2648,7 @@ class StreamSignatureCache
     {
         $this->cacheDir = $cacheDir;
         $this->cachePrefix = 'rq_';
-        $this->apcuAvailable = extension_loaded('apcu') && apcu_enabled();
+        $this->apcuAvailable = extension_loaded('apcu') && function_exists('apcu_enabled') && @apcu_enabled();
 
         // Crear directorio si no existe
         if (!is_dir($this->cacheDir)) {
@@ -2614,7 +2665,7 @@ class StreamSignatureCache
     public function getSignature(array $params): string
     {
         // Incluir todos los parámetros relevantes en la firma
-        ksort(array: $params);
+        ksort($params);
         return md5($this->cachePrefix . json_encode($params, JSON_UNESCAPED_UNICODE));
     }
 
@@ -2628,7 +2679,7 @@ class StreamSignatureCache
     {
         if ($this->apcuAvailable) {
             $success = false;
-            $data = apcu_fetch($signature, $success);
+            $data = function_exists('apcu_fetch') ? apcu_fetch($signature, $success) : false;
             return $success ? $data : null;
         }
 
@@ -2674,13 +2725,16 @@ class StreamSignatureCache
         ];
 
         if ($this->apcuAvailable) {
-            apcu_store($signature, $cacheEntry, $ttlSeconds);
+            if (function_exists('apcu_store')) { apcu_store($signature, $cacheEntry, $ttlSeconds); }
             return;
         }
 
         // Caché basada en archivo
         $file = $this->cacheDir . '/' . $signature . '.cache';
-        @file_put_contents($file, json_encode($cacheEntry, JSON_UNESCAPED_UNICODE), LOCK_EX
+        @file_put_contents(
+            $file,
+            json_encode($cacheEntry, JSON_UNESCAPED_UNICODE),
+            LOCK_EX
         );
     }
 
@@ -2693,12 +2747,12 @@ class StreamSignatureCache
     {
         if ($this->apcuAvailable) {
             // APCu: buscar y eliminar claves que contengan el patrón
-            $info = apcu_cache_info(user_cache: true);
+            $info = function_exists('apcu_cache_info') ? apcu_cache_info(true) : [];
             if (isset($info['cache_list'])) {
                 foreach ($info['cache_list'] as $entry) {
                     $key = is_array($entry) ? ($entry['info'] ?? '') : (string) $entry;
                     if (str_contains($key, $pattern)) {
-                        apcu_delete($key);
+                        if (function_exists('apcu_delete')) { apcu_delete($key); }
                     }
                 }
             }
@@ -2706,7 +2760,7 @@ class StreamSignatureCache
         }
 
         // Archivo: eliminar archivos que coincidan
-        $files = glob(pattern: $this->cacheDir . '/*' . $pattern . '*.cache');
+        $files = glob($this->cacheDir . '/*' . $pattern . '*.cache');
         if (is_array($files)) {
             foreach ($files as $file) {
                 @unlink($file);
@@ -2945,7 +2999,9 @@ class OutputBuilder
             return [];
         }
 
-        return array_values(array_filter($directives, static function (string $d) use ($supported): bool {
+        return array_values(array_filter(
+            $directives,
+            static function (string $d) use ($supported): bool {
                 foreach ($supported as $prefix) {
                     if (str_starts_with($d, '#' . $prefix . ':')) {
                         return true;
@@ -3032,11 +3088,11 @@ function rq_check_rate_limit(string $endpoint): bool
     $windowStart = $now - RQ_RATE_WINDOW;
 
     $data = ['hits' => []];
-        $content = @file_get_contents($filePath);
-        if ($content !== false) {
-            $decoded = json_decode($content, true);
-            if (is_array($decoded)) {
-                $data = $decoded;
+    $content = @file_get_contents($filePath);
+    if ($content !== false) {
+        $decoded = json_decode($content, true);
+        if (is_array($decoded)) {
+            $data = $decoded;
         }
     }
 
@@ -3127,12 +3183,17 @@ $v3_files = [
 
 foreach ($v3_files as $v3_file) {
     $v3_path = $v3_modules_dir . '/' . $v3_file;
+    if (file_exists($v3_path)) {
+        require_once $v3_path;
+    }
 }
 
 // Instanciar módulos v3.0 si todas las clases están disponibles
-if (class_exists('RuntimeFeedbackCollector') && class_exists('AdaptiveProfileMutator')
+if (
+    class_exists('RuntimeFeedbackCollector') && class_exists('AdaptiveProfileMutator')
     && class_exists('MultiVariantSelector') && class_exists('LatencyAwareRouter')
-    && class_exists('PredictivePreloader')) {
+    && class_exists('PredictivePreloader')
+) {
     $v3_modules_available = true;
 
     // Directorios persistentes para datos v3.0 (NO /tmp/ — ese se limpia en reboot)
@@ -3237,56 +3298,61 @@ class ResolveQualityPipeline
                 // --- V3.1: Mutación Adaptativa de Perfil ---
                 // Si hay telemetría del player, ajustar nivel y resiliencia
                 $channelId = $context['channel_id'] ?? $context['url'] ?? 'unknown';
-                $state = $v3_mutator->mutate(state: $state, channelId: $channelId);
-                
+                $state = $v3_mutator ? $v3_mutator->mutate(state: $state, channelId: $channelId) : $state;
+
                 // --- V3.2: Selección Multi-Variante ---
                 // Si el manifiesto tiene múltiples variantes, seleccionar la mejor
-                $variantDirectives = $v3_variant->selectBestVariant(
+                $v3_tel = $v3_feedback ? $v3_feedback->getChannelTelemetry(channelId: $channelId) : [];
+                $variantDirectives = $v3_variant ? $v3_variant->selectBestVariant(
                     variants: $state['manifest_dna'],
                     capabilities: $state['capability_matrix'],
-                    telemetry: $v3_feedback->getChannelTelemetry(channelId: $channelId),
-                );
+                    telemetry: $v3_tel,
+                ) : [];
                 if (!empty($variantDirectives)) {
                     $state['output_overrides'] = array_merge($state['output_overrides'], $variantDirectives);
                 }
-                
+
                 // --- V3.3: Routing Basado en Latencia ---
                 // Ajustar timeouts y buffers según latencia medida de la red
                 $streamFp = md5((string)($context['url'] ?? ''));
-                $latencyProfile = $v3_latency->getLatencyProfile(streamFingerprint: $streamFp);
+                $latencyProfile = $v3_latency ? $v3_latency->getLatencyProfile(streamFingerprint: $streamFp) : ['samples' => 0];
                 if (($latencyProfile['samples'] ?? 0) >= 3) {
-                    $latencyAdjustments = $v3_latency->generateTimeoutAdjustments(
-                        profile: $latencyProfile,
-                        baseResilience: $state['resilience_config'],
-                    );
-                    $state['resilience_config'] = $latencyAdjustments;
-                    
-                    $jitterDirectives = $v3_latency->generateJitterDirectives(
+                    if ($v3_latency) {
+                        $latencyAdjustments = $v3_latency->generateTimeoutAdjustments(
+                            profile: $latencyProfile,
+                            baseResilience: $state['resilience_config'],
+                        );
+                        $state['resilience_config'] = $latencyAdjustments;
+                    }
+
+                    $jitterDirectives = $v3_latency ? $v3_latency->generateJitterDirectives(
                         profile: $latencyProfile,
                         playerType: $state['capability_matrix']['player']['type'] ?? 'generic',
-                    );
+                    ) : [];
                     if (!empty($jitterDirectives)) {
                         $state['output_overrides'] = array_merge($state['output_overrides'], $jitterDirectives);
                     }
                 }
-                
+
                 // --- V3.4: Predicción de Preloading ---
                 // Registrar vista y generar hints de preload para el player
                 $sessionId = $context['session_id'] ?? '';
                 if ($sessionId !== '' && $channelId !== 'unknown') {
-                    $v3_preloader->recordChannelView(
-                        sessionId: $sessionId,
-                        channelId: $channelId,
-                        groupTitle: $state['manifest_dna']['group_title_map'] ? array_key_first($state['manifest_dna']['group_title_map']) : '',
-                    );
-                    $prediction = $v3_preloader->predictNextChannel(sessionId: $sessionId, channelId: $channelId);
-                    if (($prediction['confidence'] ?? 0) >= 0.5) {
-                        $preloadDirectives = $v3_preloader->generatePreloadDirectives(
-                            prediction: $prediction,
-                            playerType: $state['capability_matrix']['player']['type'] ?? 'generic',
+                    if ($v3_preloader) {
+                        $v3_preloader->recordChannelView(
+                            sessionId: $sessionId,
+                            channelId: $channelId,
+                            groupTitle: !empty($state['manifest_dna']['group_title_map']) ? array_key_first($state['manifest_dna']['group_title_map']) : '',
                         );
-                        if (!empty($preloadDirectives)) {
-                            $state['output_overrides'] = array_merge($state['output_overrides'], $preloadDirectives);
+                        $prediction = $v3_preloader->predictNextChannel(sessionId: $sessionId, channelId: $channelId);
+                        if (($prediction['confidence'] ?? 0) >= 0.5) {
+                            $preloadDirectives = $v3_preloader->generatePreloadDirectives(
+                                prediction: $prediction,
+                                playerType: $state['capability_matrix']['player']['type'] ?? 'generic',
+                            );
+                            if (!empty($preloadDirectives)) {
+                                $state['output_overrides'] = array_merge($state['output_overrides'], $preloadDirectives);
+                            }
                         }
                     }
                 }
@@ -3298,12 +3364,12 @@ class ResolveQualityPipeline
             // Almacenar en caché
             $state['processing_time_ms'] = (int) ((microtime(true) - $startTime) * 1000);
             $this->cache->setCached(
-                signature: $signature, data: ['output' => $output, 'state' => $state],
+                signature: $signature,
+                data: ['output' => $output, 'state' => $state],
                 ttlSeconds: $ttl
             );
 
             return $output;
-
         } catch (\Throwable $e) {
             // NUNCA devolver error al reproductor — devolver entrada original
             rq_log("Error en pipeline: {$e->getMessage()} en {$e->getFile()}:{$e->getLine()}");
@@ -3427,16 +3493,16 @@ function rq_create_pipeline(): ResolveQualityPipeline
     $cacheDir = RQ_BASE_DIR . '/cache';
 
     $pipeline = new ResolveQualityPipeline(
-        parser:          new ManifestAnatomyParser(),
-        normalizer:      new IdempotentNormalizationEngine(),
+        parser: new ManifestAnatomyParser(),
+        normalizer: new IdempotentNormalizationEngine(),
         capabilityLayer: new CapabilityNegotiationLayer(),
-        contentEngine:   new ContentHeuristicEngine(),
-        escalator:       new VisualPotentialEscalator(),
-        resilience:      new ResilienceBrain(),
-        injector:        new PremiumDirectiveInjector(),
-        guardian:        new GuardianPolicyEngine(),
-        cache:           new StreamSignatureCache(cacheDir: $cacheDir),
-        builder:         new OutputBuilder(),
+        contentEngine: new ContentHeuristicEngine(),
+        escalator: new VisualPotentialEscalator(),
+        resilience: new ResilienceBrain(),
+        injector: new PremiumDirectiveInjector(),
+        guardian: new GuardianPolicyEngine(),
+        cache: new StreamSignatureCache(cacheDir: $cacheDir),
+        builder: new OutputBuilder(),
     );
 
     return $pipeline;
@@ -3475,14 +3541,58 @@ function rq_enrich_channel_output(string $output, string $playerUA, string $host
 
     // === SNIPER MODE: Detect active channel ===
     $ch_id = intval($_GET['ch'] ?? $_GET['channel'] ?? $_GET['id'] ?? $_GET['c'] ?? 0);
-    $sniper = rq_sniper_integrate($ch_id, 'P1', $host, $sessionId);
-    $effective_profile = $sniper['effective_profile'];  // P1 if STREAMING, P2 if RECENT, tier if IDLE
+    $sniper = function_exists('rq_sniper_integrate')
+        ? rq_sniper_integrate($ch_id, 'P1', $host, $sessionId)
+        : [
+            'effective_profile' => $_GET['p'] ?? 'P3',
+            'sniper' => ['status' => 'IDLE', 'label' => 'N/A', 'sniper' => false, 'prefetch_mult' => 1, 'buffer_mult' => 1],
+            'http_headers' => [],
+            'zapping' => ['ext_http' => [], 'ext_vlcopt' => []],
+            'json_command' => '',
+        ];
+    $effective_profile = $sniper['effective_profile'] ?? ($_GET['p'] ?? 'P3');
 
     // === ANTI-CUT ENGINE: Generate profile-aware directives ===
+    $anti_cut = null;
     if (function_exists('rq_anti_cut_isp_strangler')) {
         $anti_cut = rq_anti_cut_isp_strangler($effective_profile, $ch_id, $host, $sessionId);
     }
-    $p = $anti_cut['profile_data'];
+    // Ensure $anti_cut has all required sub-arrays (prevents null access)
+    $anti_cut = array_merge([
+        'profile_data'  => [],
+        'exthttp'       => [],
+        'extvlcopt'     => [],
+        'http_headers'  => [],
+        'hls_ext'       => [],
+        'json_commands' => [],
+    ], $anti_cut ?? []);
+    $p = !empty($anti_cut['profile_data']) ? $anti_cut['profile_data'] : [];
+
+    // === SAFE DEFAULTS for $p profile (BUG 3 fix) ===
+    // Ensures all fields exist even when rq_anti_cut_engine.php is missing
+    $p = array_merge([
+        'max_bitrate'          => 50000000,
+        'min_bitrate'          => 5000000,
+        'max_resolution'       => '1920x1080',
+        'max_width'            => 1920,
+        'max_height'           => 1080,
+        'buffer_ms'            => 8000,
+        'network_cache'        => 12000,
+        'hevc_profile'         => 'MAIN-10',
+        'color_space'          => 'bt709',
+        'hdr_transfer'         => '',
+        'hdr_enabled'          => false,
+        'codec_primary'        => 'hevc',
+        'video_track'          => '',
+        'bl_video_track'       => '',
+        'quality_lock'         => 'OFF',
+        'cooldown_period'      => 0,
+        'dscp'                 => 'AF31',
+        'prefetch_segments'    => 6,
+        'aggression_multiplier'=> 2,
+        'escalation_level'     => 'STRONG',
+        'rate_control'         => 'CBR',
+    ], $p);
 
     // ══════════════════════════════════════════════════════════════════
     // 📊 CTX OVERLAY: Override anti-cut profile with REAL M3U8 list values
@@ -3526,6 +3636,49 @@ function rq_enrich_channel_output(string $output, string $playerUA, string $host
         $p['stall_target'] = $qosRef['stall_target'];
     }
 
+    // ═══════════════════════════════════════════════════════════════
+    // 🆕 CTX v25 OVERLAY: Apply 22 new cross-lane fields
+    // These fields were in EXTHTTP but resolver never consumed them.
+    // Now the profile uses real device/HDR/buffer/audio capabilities.
+    // ═══════════════════════════════════════════════════════════════
+    if (!empty($ctxData['mx'])) {
+        $p['hdr_maxcll'] = (int)$ctxData['mx'];
+    }
+    if (!empty($ctxData['mf'])) {
+        $p['hdr_maxfall'] = (int)$ctxData['mf'];
+    }
+    if (!empty($ctxData['dv'])) {
+        $p['dolby_vision_profile'] = (int)$ctxData['dv'];
+        $p['hdr_enabled'] = true; // DV implies HDR
+    }
+    if (!empty($ctxData['bx'])) {
+        $p['buffer_max_ms'] = (int)$ctxData['bx'];
+    }
+    if (!empty($ctxData['b2'])) {
+        $p['buffer_target_ms'] = (int)$ctxData['b2'];
+    }
+    if (!empty($ctxData['sr'])) {
+        $p['screen_resolution'] = $ctxData['sr'];
+    }
+    if (!empty($ctxData['dt'])) {
+        $p['device_type'] = $ctxData['dt'];
+    }
+    if (!empty($ctxData['ib'])) {
+        $p['initial_bitrate'] = (int)$ctxData['ib'];
+    }
+    if (!empty($ctxData['ab'])) {
+        $p['audio_bitrate'] = (int)$ctxData['ab'];
+    }
+    if (!empty($ctxData['ac'])) {
+        $p['audio_codecs'] = $ctxData['ac'];
+    }
+    if (!empty($ctxData['vc'])) {
+        $p['video_codecs'] = $ctxData['vc'];
+    }
+    if (!empty($ctxData['nc2'])) {
+        $p['vlc_network_cache'] = (int)$ctxData['nc2'];
+    }
+
     // === EXTRACT CHANNEL NAME ===
     $ch_name = 'Unknown';
     // Priority 1: URL param 'name'
@@ -3546,9 +3699,9 @@ function rq_enrich_channel_output(string $output, string $playerUA, string $host
     // Priority 4: Lookup from cached list file
     else {
         $listCache = '/tmp/ape_sniper/channel_names.json';
-            $names = @json_decode(file_get_contents($listCache), true);
-            if (isset($names[(string)$ch_id])) {
-                $ch_name = $names[(string)$ch_id];
+        $names = @json_decode(file_get_contents($listCache), true);
+        if (isset($names[(string)$ch_id])) {
+            $ch_name = $names[(string)$ch_id];
         } else {
             // Build cache from list files: map ch= param to tvg-name
             $names = [];
@@ -3589,8 +3742,8 @@ function rq_enrich_channel_output(string $output, string $playerUA, string $host
         'ch_id'              => $ch_id,
         'channel_name'       => $ch_name,
         'profile'            => $effective_profile,
-        'sniper_status'      => $sniper['sniper']['status'],
-        'sniper_label'       => $sniper['sniper']['label'],
+        'sniper_status'      => $sniper['sniper']['status'] ?? 'IDLE',
+        'sniper_label'       => $sniper['sniper']['label'] ?? 'N/A',
         'hevc_profile'       => $p['hevc_profile'],
         'color_space'        => $p['color_space'],
         'hdr_transfer_func'  => $p['hdr_transfer'] ?: 'SDR',
@@ -3612,12 +3765,14 @@ function rq_enrich_channel_output(string $output, string $playerUA, string $host
     $shieldUA = 'Mozilla/5.0 (Linux; Android 14; SHIELD Android TV Build/UP1A.231005.007) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.6367.179 Safari/537.36';
 
     // === Send HTTP Response Headers (ACRP + Anti-Cache + CORS) ===
-    foreach ($anti_cut['http_headers'] as $hdr) {
+    foreach ($anti_cut['http_headers'] ?? [] as $hdr) {
         @header($hdr);
     }
     // Send SNIPER HTTP headers
-    foreach ($sniper['http_headers'] as $hdr) {
-        @header($hdr);
+    if (!empty($sniper['http_headers'])) {
+        foreach ($sniper['http_headers'] as $hdr) {
+            @header($hdr);
+        }
     }
 
     // === v3.0 ATOMIC ZAPPING: Merge zapping directives ===
@@ -3643,15 +3798,17 @@ function rq_enrich_channel_output(string $output, string $playerUA, string $host
 
             // After #EXTM3U: inject HLS EXT-X directives (CDP layer)
             if ($trimmed === '#EXTM3U') {
-                foreach ($anti_cut['hls_ext'] as $ext) {
+                foreach ($anti_cut['hls_ext'] ?? [] as $ext) {
                     $enriched[] = $ext;
                 }
                 // Inject JSON commands (JCS layer)
-                foreach ($anti_cut['json_commands'] as $cmd) {
+                foreach ($anti_cut['json_commands'] ?? [] as $cmd) {
                     $enriched[] = $cmd;
                 }
-                // Inject SNIPER JSON command
-                $enriched[] = $sniper['json_command'];
+                // Inject SNIPER JSON command (if available)
+                if (!empty($sniper['json_command'])) {
+                    $enriched[] = $sniper['json_command'];
+                }
             }
             continue;
         }
@@ -3666,33 +3823,33 @@ function rq_enrich_channel_output(string $output, string $playerUA, string $host
             // Inject profile-appropriate video-track
             $extinf = preg_replace(
                 '/,([\s\S]*)$/',
-                ' codec="HEVC" video-track="' . $p['video_track'] . '" bl-video-track="' . $p['bl_video_track'] . '",$1',
+                ' codec="HEVC" video-track="' . ($p['video_track'] ?? '') . '" bl-video-track="' . ($p['bl_video_track'] ?? '') . '",$1',
                 $extinf
             );
             $enriched[] = $extinf;
 
             // === EXTHTTP: Build from Anti-Cut Engine ===
             // Get base EXTHTTP from anti-cut engine
-            $exthttp = $anti_cut['exthttp'];
+            $exthttp = $anti_cut['exthttp'] ?? [];
 
             // === SNIPER SCALE: Multiply prefetch/buffer for active channels ===
-            if ($sniper['sniper']['sniper']) {
-                $mult_p = $sniper['sniper']['prefetch_mult'];
-                $mult_b = $sniper['sniper']['buffer_mult'];
-                $exthttp['X-Prefetch-Segments']      = (string)intval($exthttp['X-Prefetch-Segments'] * $mult_p);
-                $exthttp['X-Prefetch-Parallel']       = (string)intval($exthttp['X-Prefetch-Parallel'] * $mult_p);
-                $exthttp['X-Prefetch-Buffer-Target']  = (string)intval(intval($exthttp['X-Prefetch-Buffer-Target']) * $mult_b);
-                $exthttp['X-Buffer-Max']              = (string)intval(intval($exthttp['X-Buffer-Max']) * $mult_b);
-                $exthttp['X-Buffer-Target']           = (string)intval(intval($exthttp['X-Buffer-Target']) * $mult_b);
-                $exthttp['X-Buffer-Target-Override']  = (string)intval(intval($exthttp['X-Buffer-Target-Override']) * $mult_b);
-                $exthttp['X-Network-Caching']         = (string)min(intval(intval($exthttp['X-Network-Caching']) * $mult_b), 1200000);
-                $exthttp['X-Live-Caching']            = (string)min(intval(intval($exthttp['X-Live-Caching']) * $mult_b), 1200000);
+            if (!empty($sniper['sniper']['sniper'])) {
+                $mult_p = $sniper['sniper']['prefetch_mult'] ?? 1;
+                $mult_b = $sniper['sniper']['buffer_mult'] ?? 1;
+                $exthttp['X-Prefetch-Segments']      = (string)intval(($exthttp['X-Prefetch-Segments'] ?? 0) * $mult_p);
+                $exthttp['X-Prefetch-Parallel']       = (string)intval(($exthttp['X-Prefetch-Parallel'] ?? 0) * $mult_p);
+                $exthttp['X-Prefetch-Buffer-Target']  = (string)intval(intval($exthttp['X-Prefetch-Buffer-Target'] ?? 0) * $mult_b);
+                $exthttp['X-Buffer-Max']              = (string)intval(intval($exthttp['X-Buffer-Max'] ?? 0) * $mult_b);
+                $exthttp['X-Buffer-Target']           = (string)intval(intval($exthttp['X-Buffer-Target'] ?? 0) * $mult_b);
+                $exthttp['X-Buffer-Target-Override']  = (string)intval(intval($exthttp['X-Buffer-Target-Override'] ?? 0) * $mult_b);
+                $exthttp['X-Network-Caching']         = (string)min(intval(intval($exthttp['X-Network-Caching'] ?? 0) * $mult_b), 1200000);
+                $exthttp['X-Live-Caching']            = (string)min(intval(intval($exthttp['X-Live-Caching'] ?? 0) * $mult_b), 1200000);
                 $exthttp['X-Max-Bitrate']             = '300000000';
                 $exthttp['X-APE-Cut-Detection']       = 'SNIPER-ACTIVE';
                 // Mark SNIPER status in EXTHTTP
                 $exthttp['X-APE-SNIPER-Mode']         = 'ACTIVE';
                 $exthttp['X-APE-SNIPER-Profile']      = $effective_profile;
-                $exthttp['X-APE-SNIPER-Label']        = $sniper['sniper']['label'];
+                $exthttp['X-APE-SNIPER-Label']        = $sniper['sniper']['label'] ?? 'UNKNOWN';
             }
 
             // ══════════════════════════════════════════════════════════════════
@@ -3722,6 +3879,32 @@ function rq_enrich_channel_output(string $output, string $playerUA, string $host
                 if (!empty($ctxData['cs'])) $exthttp['X-Color-Space'] = $ctxData['cs'];
                 if (isset($ctxData['hd']) && $ctxData['hd']) $exthttp['X-HDR-Support'] = 'hdr10,hdr10+,dolby-vision,hlg';
             }
+
+            // ══════════════════════════════════════════════════════════════════
+            // 🌎 CLASSIFICATION v3.0 → EXTHTTP (per-channel identity in headers)
+            // ══════════════════════════════════════════════════════════════════
+            if (!empty($qosRef)) {
+                if (!empty($qosRef['region']))     $exthttp['X-APE-CL-Region'] = $qosRef['region'];
+                if (!empty($qosRef['language']))   $exthttp['X-APE-CL-Language'] = $qosRef['language'];
+                if (!empty($qosRef['category']))   $exthttp['X-APE-CL-Category'] = $qosRef['category'];
+                if (!empty($qosRef['country']))    $exthttp['X-APE-CL-Country'] = $qosRef['country'];
+                if ($qosRef['classify_confidence'] > 0) $exthttp['X-APE-CL-Confidence'] = (string)$qosRef['classify_confidence'];
+            }
+
+            // ══════════════════════════════════════════════════════════════════
+            // 🔬 ENRICHMENT → EXTHTTP (per-channel technical capabilities)
+            // ══════════════════════════════════════════════════════════════════
+            if (!empty($qosRef)) {
+                if ($qosRef['fps'] > 0 && $qosRef['fps'] != 30) $exthttp['X-APE-Enrich-FPS'] = (string)$qosRef['fps'];
+                if (!empty($qosRef['transport']) && $qosRef['transport'] !== 'HLS') $exthttp['X-APE-Enrich-Transport'] = $qosRef['transport'];
+                if ($qosRef['dolby_atmos'])    $exthttp['X-APE-Enrich-DolbyAtmos'] = '1';
+                if ($qosRef['catchup'])        $exthttp['X-APE-Enrich-Catchup'] = '1';
+                if ($qosRef['low_latency'])    $exthttp['X-APE-Enrich-LowLatency'] = '1';
+                if (!empty($qosRef['bitrate_tier']))      $exthttp['X-APE-Enrich-BitrateTier'] = $qosRef['bitrate_tier'];
+                if (!empty($qosRef['sport_subcategory'])) $exthttp['X-APE-Enrich-SportSub'] = $qosRef['sport_subcategory'];
+                if (!empty($qosRef['codec_family']))      $exthttp['X-APE-Enrich-CodecFamily'] = $qosRef['codec_family'];
+            }
+
             $exthttp['X-RQ-Enforcement'] = 'NUCLEAR';
             $exthttp['X-RQ-Directive-Sync'] = 'VLCOPT+KODIPROP+EXTHTTP';
 
@@ -3769,16 +3952,16 @@ function rq_enrich_channel_output(string $output, string $playerUA, string $host
             continue;
         }
 
-        // === URL line: Inject EXTVLCOPT after the URL ===
-        if (str_starts_with($trimmed, 'http://') || str_starts_with($trimmed, 'https://')) {
-            $enriched[] = $trimmed;
+        // === URL line: Inject EXTVLCOPT BEFORE the URL (RFC 8216 order) ===
+        // Correct order: #EXTINF → #EXTHTTP → #KODIPROP → #EXTVLCOPT → URL
+        if (str_starts_with($trimmed, 'http://') || str_starts_with($trimmed, 'https://') || str_starts_with($trimmed, 'rtmp://')) {
 
             // Get base EXTVLCOPT from Anti-Cut Engine
-            $vlcopts = $anti_cut['extvlcopt'];
+            $vlcopts = $anti_cut['extvlcopt'] ?? [];
 
             // SNIPER SCALE: Multiply caching for active channels
-            if ($sniper['sniper']['sniper']) {
-                $mult_b = $sniper['sniper']['buffer_mult'];
+            if (!empty($sniper['sniper']['sniper'])) {
+                $mult_b = $sniper['sniper']['buffer_mult'] ?? 1;
                 foreach ($vlcopts as $i => $opt) {
                     if (strpos($opt, 'network-caching=') === 0) {
                         $val = intval(str_replace('network-caching=', '', $opt));
@@ -3796,16 +3979,19 @@ function rq_enrich_channel_output(string $output, string $playerUA, string $host
                         $val = intval(str_replace('file-caching=', '', $opt));
                         $vlcopts[$i] = 'file-caching=' . min(intval($val * $mult_b), 1200000);
                     }
-                    if ($sniper['sniper']['status'] === 'STREAMING' && strpos($opt, 'adaptive-maxbw=') === 0) {
+                    if (($sniper['sniper']['status'] ?? '') === 'STREAMING' && strpos($opt, 'adaptive-maxbw=') === 0) {
                         $vlcopts[$i] = 'adaptive-maxbw=300000000';
                     }
                 }
             }
 
-            // Emit all EXTVLCOPT
+            // Emit all EXTVLCOPT BEFORE the URL (correct RFC 8216 order)
             foreach ($vlcopts as $opt) {
                 $enriched[] = '#EXTVLCOPT:' . $opt;
             }
+
+            // URL goes LAST — always the final line per channel block
+            $enriched[] = $trimmed;
 
             continue;
         }
@@ -3877,74 +4063,207 @@ function rq_handle_request(): void
         header('Cache-Control: no-store');
 
         if ($action === 'feedback') {
-                // El player envía métricas de reproducción
-                $channelId = q('ch', 'unknown');
-                $sessionId = q('sid', session_id());
-                $metrics = [
-                    'startup_time_ms'   => (float)(q('startup', '0')),
-                    'buffering_ratio'   => (float)(q('buffering', '0')),
-                    'dropped_frames'    => (int)(q('drops', '0')),
-                    'bitrate_real_kbps' => (float)(q('bitrate', '0')),
-                    'stall_count'       => (int)(q('stalls', '0')),
-                    'resolution_real'   => q('resolution', ''),
-                    'fps_real'          => (float)(q('fps', '0')),
-                    'error_code'        => (int)(q('error', '0')),
-                    'session_id'        => $sessionId,
-                    'timestamp'         => time(),
-                ];
-                $result = $v3_feedback->recordTelemetry(channelId: $channelId, metrics: $metrics);
-                echo json_encode($result, JSON_UNESCAPED_UNICODE);
-            } elseif ($action === 'health') {
-                // Consultar salud de un canal específico
-                $channelId = q('ch', 'unknown');
-                $telemetry = $v3_feedback->getChannelTelemetry(channelId: $channelId);
-                echo json_encode($telemetry, JSON_UNESCAPED_UNICODE);
-            } elseif ($action === 'predict') {
-                // Pedir predicción de siguiente canal
-                $sessionId = q('sid', '');
-                $currentCh = q('ch', '');
-                if ($sessionId !== '' && $currentCh !== '') {
-                    $prediction = $v3_preloader->predictNextChannel(sessionId: $sessionId, channelId: $currentCh);
-                    echo json_encode($prediction, JSON_UNESCAPED_UNICODE);
-                } else {
-                    echo json_encode(['error' => 'missing sid or ch']);
-                }
-            } elseif ($action === 'latency') {
-                // Registrar medición de latencia (desde el middleware, no desde el player)
-                $fingerprint = q('fp', '');
-                $metrics = [
-                    'rtt_ms'         => (float)(q('rtt', '0')),
-                    'ttfb_ms'        => (float)(q('ttfb', '0')),
-                    'throughput_kbps' => (float)(q('throughput', '0')),
-                    'timestamp'      => time(),
-                ];
+            // El player envía métricas de reproducción
+            $channelId = q('ch', 'unknown');
+            $sessionId = q('sid', session_id());
+            $metrics = [
+                'startup_time_ms'   => (float)(q('startup', '0')),
+                'buffering_ratio'   => (float)(q('buffering', '0')),
+                'dropped_frames'    => (int)(q('drops', '0')),
+                'bitrate_real_kbps' => (float)(q('bitrate', '0')),
+                'stall_count'       => (int)(q('stalls', '0')),
+                'resolution_real'   => q('resolution', ''),
+                'fps_real'          => (float)(q('fps', '0')),
+                'error_code'        => (int)(q('error', '0')),
+                'session_id'        => $sessionId,
+                'timestamp'         => time(),
+            ];
+            $result = $v3_feedback ? $v3_feedback->recordTelemetry(channelId: $channelId, metrics: $metrics) : ['status' => 'modules_unavailable'];
+            echo json_encode($result, JSON_UNESCAPED_UNICODE);
+        } elseif ($action === 'health') {
+            // Consultar salud de un canal específico
+            $channelId = q('ch', 'unknown');
+            $telemetry = $v3_feedback ? $v3_feedback->getChannelTelemetry(channelId: $channelId) : [];
+            echo json_encode($telemetry, JSON_UNESCAPED_UNICODE);
+        } elseif ($action === 'predict') {
+            // Pedir predicción de siguiente canal
+            $sessionId = q('sid', '');
+            $currentCh = q('ch', '');
+            if ($sessionId !== '' && $currentCh !== '') {
+                $prediction = $v3_preloader ? $v3_preloader->predictNextChannel(sessionId: $sessionId, channelId: $currentCh) : ['confidence' => 0];
+                echo json_encode($prediction, JSON_UNESCAPED_UNICODE);
+            } else {
+                echo json_encode(['error' => 'missing sid or ch']);
+            }
+        } elseif ($action === 'latency') {
+            // Registrar medición de latencia (desde el middleware, no desde el player)
+            $fingerprint = q('fp', '');
+            $metrics = [
+                'rtt_ms'         => (float)(q('rtt', '0')),
+                'ttfb_ms'        => (float)(q('ttfb', '0')),
+                'throughput_kbps' => (float)(q('throughput', '0')),
+                'timestamp'      => time(),
+            ];
+            if ($v3_latency) {
                 $v3_latency->recordMeasurement(streamFingerprint: $fingerprint, metrics: $metrics);
-                echo json_encode(['status' => 'recorded']);
-            } elseif ($action === 'sessions') {
-                // Query active QoS-monitored sessions (max 10 concurrent)
-                $sessionDir = RQ_BASE_DIR . '/sessions';
-                $sessionFile = $sessionDir . '/active_sessions.json';
-                $sessions = [];
-                if (file_exists($sessionFile)) {
-                    $raw_s = @file_get_contents($sessionFile);
-                    $decoded_s = json_decode($raw_s, true);
-                    if (is_array($decoded_s)) {
-                        // Evict stale sessions (>5 min)
-                        $now = time();
-                        $sessions = array_filter($decoded_s, fn($s) => ($now - ($s['ts'] ?? 0)) < 300);
+            }
+            echo json_encode(['status' => 'recorded']);
+        } elseif ($action === 'sessions') {
+            // Query active QoS-monitored sessions (max 10 concurrent)
+            $sessionDir = RQ_BASE_DIR . '/sessions';
+            $sessionFile = $sessionDir . '/active_sessions.json';
+            $sessions = [];
+            if (file_exists($sessionFile)) {
+                $raw_s = @file_get_contents($sessionFile);
+                $decoded_s = json_decode($raw_s, true);
+                if (is_array($decoded_s)) {
+                    // Evict stale sessions (>5 min)
+                    $now = time();
+                    $sessions = array_filter($decoded_s, fn($s) => ($now - ($s['ts'] ?? 0)) < 300);
+                }
+            }
+            echo json_encode([
+                'active_sessions' => count($sessions),
+                'max_sessions'    => 10,
+                'sessions'        => array_values($sessions),
+            ], JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
+        } elseif ($action === 'providers') {
+            // V3.1: PROVEEDORES ACTIVOS (qué listas consume el resolve)
+            $sessionDir = RQ_BASE_DIR . '/sessions';
+            $sessionFile = $sessionDir . '/active_sessions.json';
+            $sessions = [];
+            if (file_exists($sessionFile)) {
+                $raw_s = @file_get_contents($sessionFile);
+                $decoded_s = json_decode($raw_s, true);
+                if (is_array($decoded_s)) {
+                    $now = time();
+                    $sessions = array_filter($decoded_s, fn($s) => ($now - ($s['ts'] ?? 0)) < 300);
+                }
+            }
+            $providers = [];
+            foreach ($sessions as $s) {
+                $srvHost = $s['server_host'] ?? 'UNKNOWN';
+                if (!isset($providers[$srvHost])) {
+                    $providers[$srvHost] = [
+                        'host' => $srvHost,
+                        'user' => $s['server_user'] ?? '',
+                        'channels' => [],
+                        'total_channels' => 0,
+                        'profiles_used' => [],
+                        'first_seen' => $s['ts'] ?? 0,
+                        'last_seen' => $s['ts'] ?? 0,
+                        'ips' => [],
+                        'request_urls' => [],
+                    ];
+                }
+                $providers[$srvHost]['channels'][] = $s['ch'] ?? '?';
+                $providers[$srvHost]['total_channels']++;
+                $prof = $s['profile'] ?? 'P3';
+                if (!in_array($prof, $providers[$srvHost]['profiles_used'])) {
+                    $providers[$srvHost]['profiles_used'][] = $prof;
+                }
+                $ip = $s['ip'] ?? '';
+                if ($ip !== '' && !in_array($ip, $providers[$srvHost]['ips'])) {
+                    $providers[$srvHost]['ips'][] = $ip;
+                }
+                // Capturar URL completa del request
+                $reqUrl = $s['request_url'] ?? '';
+                if ($reqUrl !== '' && !in_array($reqUrl, $providers[$srvHost]['request_urls'])) {
+                    $providers[$srvHost]['request_urls'][] = $reqUrl;
+                }
+                $ts = $s['ts'] ?? 0;
+                if ($ts < $providers[$srvHost]['first_seen']) $providers[$srvHost]['first_seen'] = $ts;
+                if ($ts > $providers[$srvHost]['last_seen']) $providers[$srvHost]['last_seen'] = $ts;
+            }
+
+            // Canales activos individuales (lo que está siendo resuelto AHORA)
+            $activeChannels = [];
+            $now = time();
+            foreach ($sessions as $key => $s) {
+                if (($now - ($s['ts'] ?? 0)) >= 60) continue; // 60s TTL: solo canales recientes
+                $activeChannels[] = [
+                    'ch'              => $s['ch'] ?? '?',
+                    'channel_name'    => $s['channel_name'] ?? 'CH ' . ($s['ch'] ?? '?'),
+                    'profile'         => $s['profile'] ?? 'P3',
+                    'host'            => $s['server_host'] ?? 'UNKNOWN',
+                    'user'            => $s['server_user'] ?? '',
+                    'upstream_status' => $s['upstream_status'] ?? 0,
+                    'ts'              => $s['ts'] ?? 0,
+                    'ip'              => $s['ip'] ?? '',
+                    'url'             => $s['request_url'] ?? '',
+                ];
+            }
+            // Más recientes primero
+            usort($activeChannels, fn($a, $b) => $b['ts'] - $a['ts']);
+
+            // Fuentes únicas (servidor + usuario = identifica la lista/suscripción)
+            $sources = [];
+            foreach ($activeChannels as $ac) {
+                $key = $ac['host'] . '|' . $ac['user'];
+                if (!isset($sources[$key])) {
+                    $sources[$key] = [
+                        'host' => $ac['host'],
+                        'user' => $ac['user'],
+                        'count' => 0,
+                    ];
+                }
+                $sources[$key]['count']++;
+            }
+
+            // ═══ LISTA REAL: buscar qué archivo M3U8 contiene el srv= activo ═══
+            $sourceListName = null;
+            $docRoot = $_SERVER['DOCUMENT_ROOT'] ?? '/var/www/html';
+            $cacheFile = '/tmp/ape_srv_list_cache.json';
+            $cacheData = [];
+            if (file_exists($cacheFile) && (time() - filemtime($cacheFile)) < 60) {
+                $cacheData = json_decode(file_get_contents($cacheFile), true) ?: [];
+            }
+
+            if (!empty($activeChannels)) {
+                // Extraer srv= de la URL del primer canal activo
+                $firstUrl = $activeChannels[0]['url'] ?? '';
+                $srvParam = '';
+                if (preg_match('/srv=([^&\s]+)/', $firstUrl, $srvMatch)) {
+                    $srvParam = $srvMatch[1];
+                }
+
+                if ($srvParam) {
+                    // Check cache first
+                    if (!empty($cacheData[$srvParam])) {
+                        $sourceListName = $cacheData[$srvParam];
+                    } else {
+                        // grep -l: solo nombres de archivo, -m1: para en primer match
+                        $srvSnippet = substr($srvParam, 0, 30);
+                        $cmd = 'grep -l -m1 ' . escapeshellarg($srvSnippet) . ' ' . escapeshellarg($docRoot) . '/*.m3u8 2>/dev/null | head -1';
+                        $result = trim(shell_exec($cmd) ?? '');
+                        if ($result && file_exists($result)) {
+                            $sourceListName = basename($result);
+                            // Cache it
+                            $cacheData[$srvParam] = $sourceListName;
+                            @file_put_contents($cacheFile, json_encode($cacheData));
+                        }
                     }
                 }
-                echo json_encode([
-                    'active_sessions' => count($sessions),
-                    'max_sessions'    => 10,
-                    'sessions'        => array_values($sessions),
-                ], JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
-            } else {
-                http_response_code(400);
-                echo json_encode(['error' => 'unknown action']);
             }
+
+            echo json_encode([
+                'active_list'      => $sourceListName,
+                'active_channels'  => $activeChannels,
+                'sources'          => array_values($sources),
+                'total_providers'  => count($providers),
+                'total_sessions'   => count($sessions),
+                'total_channels'   => count($activeChannels),
+                'providers'        => array_values($providers),
+                'timestamp'        => time(),
+            ], JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
+        } else {
+            http_response_code(400);
+            echo json_encode(['error' => 'unknown action']);
+        }
         return;
     }
+
+
 
     // ─── MODO 1: Procesar lista remota (?url=...) ───
     if (isset($_GET['url']) && $_GET['url'] !== '') {
@@ -3974,6 +4293,22 @@ function rq_handle_request(): void
     // ─── MODO 2: Resolución de canal Xtream (?ch=XX&srv=BASE64) ───
     if (isset($_GET['ch']) && isset($_GET['srv'])) {
         $channelId = htmlspecialchars($_GET['ch'], ENT_QUOTES);
+
+        // ═══ ZAPPING REQUEST LOG — Registro atómico de cada request ═══
+        @file_put_contents(
+            RQ_BASE_DIR . '/sessions/zapping_log.jsonl',
+            json_encode([
+                'ts'   => time(),
+                'ms'   => round(microtime(true) * 1000),
+                'ip'   => $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0',
+                'ch'   => $channelId,
+                'p'    => $_GET['p'] ?? '?',
+                'list' => $_GET['list'] ?? '?',
+                'ua'   => substr($_SERVER['HTTP_USER_AGENT'] ?? '', 0, 80),
+            ], JSON_UNESCAPED_UNICODE) . "\n",
+            FILE_APPEND | LOCK_EX
+        );
+
         $srvData = base64_decode($_GET['srv'], true);
 
         if ($srvData === false) {
@@ -3981,14 +4316,23 @@ function rq_handle_request(): void
             return;
         }
 
-        // Decodificar datos: host|user|pass
+        // Decodificar datos: host|user|pass (o simplemente host/alias para SSOT)
         $parts = explode('|', $srvData);
-        if (count($parts) !== 3) {
-            echo rq_error_m3u(errorMessage: 'Formato de servidor inválido');
-            return;
+        $host = $parts[0] ?? 'CRED_MISSING';
+        $user = $parts[1] ?? 'CRED_MISSING';
+        $pass = $parts[2] ?? 'CRED_MISSING';
+
+        // Integrar APE CREDENTIALS (SSOT)
+        if (file_exists(__DIR__ . '/ape_credentials.php')) {
+            require_once __DIR__ . '/ape_credentials.php';
+            if (class_exists('ApeCredentials')) {
+                $resolvedCreds = ApeCredentials::resolve($host, $user, $pass);
+                $host = $resolvedCreds['host'];
+                $user = $resolvedCreds['user'];
+                $pass = $resolvedCreds['pass'];
+            }
         }
 
-        [$host, $user, $pass] = $parts;
         $profile = $_GET['p'] ?? 'P3';
 
         // ══════════════════════════════════════════════════════════════════
@@ -4019,11 +4363,17 @@ function rq_handle_request(): void
         // 2. Read inbound X-APE-* QoS headers from the player request
         $qosHeaders = [];
         $qosKeys = [
-            'X-APE-ISP-BW-Min-Target', 'X-APE-ISP-BW-Opt-Target',
-            'X-APE-Buffer-Total-C1C2C3', 'X-APE-Jitter-Max-Supported',
-            'X-APE-Streaming-Health', 'X-APE-Risk-Score', 'X-APE-Headroom',
-            'X-APE-Stall-Rate-Target', 'X-APE-Prefetch-Segments',
-            'X-APE-Prefetch-Parallel', 'X-APE-RAM-Estimate',
+            'X-APE-ISP-BW-Min-Target',
+            'X-APE-ISP-BW-Opt-Target',
+            'X-APE-Buffer-Total-C1C2C3',
+            'X-APE-Jitter-Max-Supported',
+            'X-APE-Streaming-Health',
+            'X-APE-Risk-Score',
+            'X-APE-Headroom',
+            'X-APE-Stall-Rate-Target',
+            'X-APE-Prefetch-Segments',
+            'X-APE-Prefetch-Parallel',
+            'X-APE-RAM-Estimate',
             'X-APE-Overhead-Security',
         ];
         foreach ($qosKeys as $qosKey) {
@@ -4034,7 +4384,12 @@ function rq_handle_request(): void
         }
 
         // 3. Build unified QoS reference (ctx payload + headers, no hardcode)
+        // v25: UNIFIED INTELLIGENCE — 44 CTX fields closing all cross-lane gaps.
+        // Now includes: v24 original (profile, classification, enrichment)
+        //             + v25 new (HDR detail, buffer real, device, screen, audio,
+        //               Dolby Vision, CDN, failover, player type, DRM, resilience)
         $qosRef = [
+            // ── PERFIL & CAPACIDAD TÉCNICA (legacy v24) ──
             'profile'       => $profile,
             'ch'            => $channelId,
             'resolution'    => $ctxData['rs'] ?? ($qosHeaders['X-APE-ISP-BW-Min-Target'] ? null : null),
@@ -4044,6 +4399,57 @@ function rq_handle_request(): void
             'hdr'           => (bool)($ctxData['hd'] ?? false),
             'color_space'   => $ctxData['cs'] ?? '',
             'codec'         => $ctxData['cp'] ?? '',
+            // ── 🌎 CLASIFICACIÓN v3.0 PER-CHANNEL ──
+            'region'            => $ctxData['rg'] ?? '',
+            'language'          => $ctxData['lg'] ?? '',
+            'category'          => $ctxData['ct'] ?? '',
+            'country'           => $ctxData['cn'] ?? '',
+            'classify_confidence' => (int)($ctxData['cf'] ?? 0),
+            // ── 🔬 ENRICHMENT PER-CHANNEL ──
+            'fps'               => (int)($ctxData['fp'] ?? 30),
+            'transport'         => $ctxData['tr'] ?? 'HLS',
+            'dolby_atmos'       => (bool)($ctxData['at'] ?? false),
+            'catchup'           => (bool)($ctxData['cu'] ?? false),
+            'low_latency'       => (bool)($ctxData['ll'] ?? false),
+            'bitrate_tier'      => $ctxData['bt'] ?? '',
+            'sport_subcategory' => $ctxData['sc'] ?? '',
+            'codec_family'      => $ctxData['cf2'] ?? '',
+            // ═══════════════════════════════════════════════════════════
+            // 🆕 CTX v25: 22 NEW FIELDS — closing cross-lane data gaps
+            // These were in EXTHTTP (sent to provider) but resolver never saw them.
+            // Now the resolver can make HDR-aware, device-aware, buffer-aware decisions.
+            // ═══════════════════════════════════════════════════════════
+            // ── 🎨 HDR DETALLADO (antes solo hd=0/1) ──
+            'hdr_maxcll'        => (int)($ctxData['mx'] ?? 0),          // MaxCLL nits (5000=HDR10+)
+            'hdr_maxfall'       => (int)($ctxData['mf'] ?? 0),          // MaxFALL nits
+            'dolby_vision_profile' => (int)($ctxData['dv'] ?? 0),       // DV profile (5,7,8)
+            // ── 📡 BUFFER REAL DEL PLAYER ──
+            'buffer_max_ms'     => (int)($ctxData['bx'] ?? 0),          // Buffer-Max real del player
+            'buffer_target_ms'  => (int)($ctxData['b2'] ?? 0),          // Buffer-Target real
+            // ── 📺 DISPOSITIVO & PANTALLA ──
+            'device_type'       => $ctxData['dt'] ?? '',                // TV/MOB/DSK
+            'screen_resolution' => $ctxData['sr'] ?? '',                // 3840x2160, 1920x1080...
+            'hw_decode'         => (bool)($ctxData['hw'] ?? false),     // GPU decode disponible
+            // ── 💰 BITRATE & CDN ──
+            'initial_bitrate'   => (int)($ctxData['ib'] ?? 0),          // Initial-Bitrate bps
+            'bw_preference'     => $ctxData['bp'] ?? '',                // UL=unlimited
+            'cdn_provider'      => $ctxData['cd'] ?? '',                // auto/cloudflare/akamai
+            'seamless_failover' => (bool)($ctxData['sf'] ?? false),     // failover sin corte
+            // ── 🔊 AUDIO ──
+            'audio_bitrate_kbps' => (int)($ctxData['ab'] ?? 0),        // Audio bitrate
+            'audio_codecs'      => $ctxData['ac'] ?? '',                // aac,eac3,opus
+            // ── 🎛️ PLAYER CONFIG ──
+            'player_type'       => $ctxData['pt'] ?? '',                // VLC/Kodi/OTT/Tivi
+            'network_type'      => $ctxData['nt'] ?? '',                // wifi/ethernet/5g/4g
+            'retry_count'       => (int)($ctxData['rc'] ?? 0),          // max retries
+            'conn_timeout_ms'   => (int)($ctxData['ct2'] ?? 0),         // connection timeout
+            // ── 🔬 CODEC AVANZADO ──
+            'video_codecs'      => $ctxData['vc'] ?? '',                // av1,hevc,vp9,h264
+            'drm_support'       => $ctxData['dr'] ?? '',                // widevine,playready
+            // ── 🛡️ RESILENCIA REAL (VLCOPT) ──
+            'vlc_net_cache_ms'  => (int)($ctxData['nc2'] ?? 0),         // network-caching real de VLCOPT
+            'vlc_clock_jitter'  => (int)($ctxData['cj'] ?? 0),          // clock-jitter real de VLCOPT
+            // ── QoS HEADERS (player → resolver) ──
             'bw_min_target' => $qosHeaders['X-APE-ISP-BW-Min-Target'] ?? '',
             'bw_opt_target' => $qosHeaders['X-APE-ISP-BW-Opt-Target'] ?? '',
             'buffer_total'  => $qosHeaders['X-APE-Buffer-Total-C1C2C3'] ?? '',
@@ -4056,9 +4462,104 @@ function rq_handle_request(): void
             'prefetch_par'  => $qosHeaders['X-APE-Prefetch-Parallel'] ?? '',
             'ram_estimate'  => $qosHeaders['X-APE-RAM-Estimate'] ?? '',
             'overhead'      => $qosHeaders['X-APE-Overhead-Security'] ?? '',
+            'server_host'   => $host ?? '',
+            'server_user'   => $user ?? '',
+            'request_url'   => (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http') . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost') . ($_SERVER['REQUEST_URI'] ?? ''),
             'ts'            => time(),
             'ip'            => $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0',
         ];
+
+        // ═══ CHANNEL NAME LOOKUP — 3-tier strategy ═══
+        // TIER 1: X-APE-Channel-Name header (inyectado por EXTHTTP del frontend)
+        // TIER 2: Xtream Codes API cache (get_live_streams, TTL 30 min)
+        // TIER 3: Fallback "CH {id}"
+        $channelName = null;
+
+        // ── TIER 1: Header directo del player (cero costo) ──
+        $headerName = $_SERVER['HTTP_X_APE_CHANNEL_NAME'] ?? null;
+        if ($headerName && strlen($headerName) > 1) {
+            $channelName = $headerName;
+        }
+
+        // ── TIER 2: Xtream Codes API cache ──
+        if (!$channelName) {
+            $apiCacheKey = md5($host . $user);
+            $apiCacheFile = '/tmp/ape_api_chmap_' . $apiCacheKey . '.json';
+            $chMap = [];
+
+            if (file_exists($apiCacheFile) && (time() - filemtime($apiCacheFile)) < 1800) {
+                $chMap = json_decode(file_get_contents($apiCacheFile), true) ?: [];
+            }
+
+            if (!empty($chMap[$channelId])) {
+                $channelName = $chMap[$channelId];
+            } else {
+                // Race-condition guard: only ONE process at a time rebuilds the cache
+                $lockFile = '/tmp/ape_api_chmap_lock_' . $apiCacheKey;
+                $canFetch = true;
+                if (file_exists($lockFile) && (time() - filemtime($lockFile)) < 60) {
+                    $canFetch = false; // Another process is already fetching
+                }
+
+                if ($canFetch) {
+                    @touch($lockFile); // Acquire lock
+
+                    $apiHost = $host;
+                    if (!str_starts_with($apiHost, 'http://') && !str_starts_with($apiHost, 'https://')) {
+                        $apiHost = 'http://' . $apiHost;
+                    }
+                    $apiUrl = rtrim($apiHost, '/') . '/player_api.php?username=' . urlencode($user)
+                            . '&password=' . urlencode($pass) . '&action=get_live_streams';
+
+                    $apiCh = @curl_init($apiUrl);
+                    if ($apiCh) {
+                        curl_setopt_array($apiCh, [
+                            CURLOPT_RETURNTRANSFER => true,
+                            CURLOPT_TIMEOUT        => 8,
+                            CURLOPT_CONNECTTIMEOUT => 4,
+                            CURLOPT_FOLLOWLOCATION => true,
+                            CURLOPT_MAXREDIRS      => 2,
+                            CURLOPT_USERAGENT      => 'APE-Middleware/3.0',
+                        ]);
+                        $apiResponse = @curl_exec($apiCh);
+                        $apiHttpCode = (int) curl_getinfo($apiCh, CURLINFO_HTTP_CODE);
+                        curl_close($apiCh);
+
+                        if ($apiHttpCode === 200 && $apiResponse) {
+                            $streams = json_decode($apiResponse, true);
+                            if (is_array($streams) && count($streams) > 0) {
+                                $newMap = [];
+                                foreach ($streams as $s) {
+                                    $sid = (string)($s['stream_id'] ?? '');
+                                    $sname = $s['name'] ?? '';
+                                    if ($sid !== '' && $sname !== '') {
+                                        $newMap[$sid] = $sname;
+                                    }
+                                }
+                                if (count($newMap) > 0) {
+                                    $chMap = $newMap;
+                                    @file_put_contents($apiCacheFile, json_encode($chMap, JSON_UNESCAPED_UNICODE), LOCK_EX);
+                                }
+                            }
+                        }
+                    }
+
+                    @unlink($lockFile); // Release lock
+                } // end if ($canFetch)
+
+                if (!empty($chMap[$channelId])) {
+                    $channelName = $chMap[$channelId];
+                }
+            }
+        }
+
+        $qosRef['channel_name'] = $channelName ?? 'CH ' . $channelId;
+
+        // ═══ UPSTREAM STATUS — Anti-509 Safe (NO curl to provider) ═══
+        // RULE 8: The resolver ONLY emits metadata. It NEVER fetches from the IPTV provider.
+        // Previous code did curl HEAD to provider on every zapping — REMOVED.
+        // Stream health is inferred from player telemetry (v3_feedback), not probing.
+        $qosRef['upstream_status'] = 0; // 0 = not probed (anti-509 compliant)
 
         // 4. Active Session Registry (max 10 concurrent, file-based, auto-evict oldest)
         $sessionDir = RQ_BASE_DIR . '/sessions';
@@ -4079,8 +4580,16 @@ function rq_handle_request(): void
         $now = time();
         $sessions = array_filter($sessions, fn($s) => ($now - ($s['ts'] ?? 0)) < 300);
 
-        // Update or add current channel session
+        // Update or add current channel session with HIT COUNT tracking
         $sessionKey = $qosRef['ip'] . ':' . $channelId;
+        $existingHits = 0;
+        $existingFirstTs = $now;
+        if (isset($sessions[$sessionKey])) {
+            $existingHits = $sessions[$sessionKey]['hit_count'] ?? 0;
+            $existingFirstTs = $sessions[$sessionKey]['first_ts'] ?? $now;
+        }
+        $qosRef['hit_count'] = $existingHits + 1;
+        $qosRef['first_ts'] = $existingFirstTs;
         $sessions[$sessionKey] = $qosRef;
 
         // Enforce max 10 concurrent — evict oldest if exceeded
@@ -4123,6 +4632,49 @@ function rq_handle_request(): void
         header('X-RQ-QoS-Active-Sessions: ' . count($sessions));
         header('X-RQ-QoS-Max-Sessions: 10');
 
+        // 5b. Emit CLASSIFICATION v3.0 response headers (per-channel identity)
+        if (!empty($qosRef['region'])) {
+            header('X-RQ-CL-Region: ' . $qosRef['region']);
+        }
+        if (!empty($qosRef['language'])) {
+            header('X-RQ-CL-Language: ' . $qosRef['language']);
+        }
+        if (!empty($qosRef['category'])) {
+            header('X-RQ-CL-Category: ' . $qosRef['category']);
+        }
+        if (!empty($qosRef['country'])) {
+            header('X-RQ-CL-Country: ' . $qosRef['country']);
+        }
+        if ($qosRef['classify_confidence'] > 0) {
+            header('X-RQ-CL-Confidence: ' . $qosRef['classify_confidence']);
+        }
+
+        // 5c. Emit ENRICHMENT response headers (per-channel technical capabilities)
+        if ($qosRef['fps'] > 0 && $qosRef['fps'] != 30) {
+            header('X-RQ-Enrich-FPS: ' . $qosRef['fps']);
+        }
+        if (!empty($qosRef['transport']) && $qosRef['transport'] !== 'HLS') {
+            header('X-RQ-Enrich-Transport: ' . $qosRef['transport']);
+        }
+        if ($qosRef['dolby_atmos']) {
+            header('X-RQ-Enrich-DolbyAtmos: 1');
+        }
+        if ($qosRef['catchup']) {
+            header('X-RQ-Enrich-Catchup: 1');
+        }
+        if ($qosRef['low_latency']) {
+            header('X-RQ-Enrich-LowLatency: 1');
+        }
+        if (!empty($qosRef['bitrate_tier'])) {
+            header('X-RQ-Enrich-BitrateTier: ' . $qosRef['bitrate_tier']);
+        }
+        if (!empty($qosRef['sport_subcategory'])) {
+            header('X-RQ-Enrich-SportSub: ' . $qosRef['sport_subcategory']);
+        }
+        if (!empty($qosRef['codec_family'])) {
+            header('X-RQ-Enrich-CodecFamily: ' . $qosRef['codec_family']);
+        }
+
         // Log QoS monitoring data
         rq_pipeline_trace([
             'mode' => 'qos_monitor',
@@ -4134,6 +4686,21 @@ function rq_handle_request(): void
             'health' => $qosRef['health'],
             'risk' => $qosRef['risk_score'],
         ]);
+
+        // ══════════════════════════════════════════════════════════════════
+        // 🗺️ DYNAMIC CHANNEL MAP v1.0 — Idempotent & Polymorphic
+        // Resolves EPG slugs (e.g., "espn4.nl") to numeric stream_ids
+        // (e.g., 392200) using the provider's Xtream Codes API.
+        // If already numeric → passthrough (idempotent).
+        // If slug → lookup + quality ranking → best numeric id.
+        // ══════════════════════════════════════════════════════════════════
+        $originalChannelId = $channelId;
+        if (class_exists('DynamicChannelMap')) {
+            $channelId = DynamicChannelMap::resolve($channelId, $host, $user, $pass);
+            if ($channelId !== $originalChannelId) {
+                header('X-RQ-DynMap-Resolved: ' . $originalChannelId . ' -> ' . $channelId);
+            }
+        }
 
         // Construir M3U fragment para el canal
         // Ensure protocol prefix
@@ -4159,21 +4726,26 @@ function rq_handle_request(): void
         $hasVlcopt = strpos($output, '#EXTVLCOPT:') !== false;
         $hasKodi = strpos($output, '#KODIPROP:') !== false;
         $hasUrl = preg_match('#https?://#', $output);
-        
+
         if (!isValidM3UOutput($output)) {
             rq_pipeline_trace([
-                'mode' => 'channel', 'ch' => $channelId ?? '?',
-                'output_len' => strlen($output), 'fallback' => true,
+                'mode' => 'channel',
+                'ch' => $channelId ?? '?',
+                'output_len' => strlen($output),
+                'fallback' => true,
                 'raw_len' => strlen($raw),
             ]);
             $output = $raw;
         } else {
             rq_pipeline_trace([
-                'mode' => 'channel', 'ch' => $channelId ?? '?',
+                'mode' => 'channel',
+                'ch' => $channelId ?? '?',
                 'output_len' => strlen($output),
                 'enriched' => $hasExthttp || $hasVlcopt || $hasKodi,
-                'exthttp' => $hasExthttp, 'vlcopt' => $hasVlcopt,
-                'has_url' => (bool)$hasUrl, 'fallback' => false,
+                'exthttp' => $hasExthttp,
+                'vlcopt' => $hasVlcopt,
+                'has_url' => (bool)$hasUrl,
+                'fallback' => false,
             ]);
         }
 

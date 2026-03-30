@@ -28,7 +28,9 @@
     const CONFIG = {
         GUARDIAN_URL: 'https://iptv-ape.duckdns.org/guardian',
         POLL_ENDPOINT: 'https://iptv-ape.duckdns.org/guardian/telemetry/sessions',
+        PROVIDERS_ENDPOINT: 'https://iptv-ape.duckdns.org/resolve_quality.php?action=providers',
         POLL_INTERVAL: 2000,
+        PROVIDERS_POLL_INTERVAL: 2000,
         MAX_LOG_ENTRIES: 100,
         STORAGE_KEY: 'ape16_telemetry_enabled'
     };
@@ -53,8 +55,10 @@
             this.containerId = containerId;
             this.container = null;
             this.pollTimer = null;
+            this.providersPollTimer = null;
             this.isConnected = false;
             this.sessions = new Map();
+            this.providers = [];
             this.logEntries = [];
             this.lastLatency = 0;
             this.aggregatedMetrics = {
@@ -88,7 +92,13 @@
                 this._startPolling();
             }
 
-            console.log('%c📊 APE v16 Exchange Dashboard Initialized', 'color: #8b5cf6; font-weight: bold;');
+            // SIEMPRE arrancar providers (snapshot en tiempo real, independiente del toggle)
+            this._pollProviders(); // primera llamada inmediata
+            this.providersPollTimer = setInterval(() => {
+                this._pollProviders();
+            }, CONFIG.PROVIDERS_POLL_INTERVAL);
+
+            console.log('%c📊 APE v16 Exchange Dashboard Initialized — Providers en tiempo real activos', 'color: #8b5cf6; font-weight: bold;');
             return true;
         }
 
@@ -277,6 +287,35 @@
                         </div>
                     </div>
 
+                    <!-- 📡 PROVIDERS ACTIVOS (Listas consumidas por Resolve) -->
+                    <div style="
+                        background: rgba(15, 23, 42, 0.6);
+                        border: 1px solid rgba(59, 130, 246, 0.3);
+                        border-radius: 10px;
+                        padding: 14px;
+                        margin-bottom: 16px;
+                    ">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <span style="font-size: 1.1rem;">📡</span>
+                                <span style="font-size: 0.8rem; color: #93c5fd; font-weight: 600;">Listas / Proveedores Activos</span>
+                            </div>
+                            <div id="ape16-providers-count" style="
+                                padding: 3px 10px;
+                                border-radius: 999px;
+                                background: rgba(59, 130, 246, 0.2);
+                                border: 1px solid rgba(59, 130, 246, 0.4);
+                                font-size: 0.7rem;
+                                color: #93c5fd;
+                            ">0 proveedores</div>
+                        </div>
+                        <div id="ape16-providers-container">
+                            <div style="text-align: center; padding: 12px; color: #64748b; font-size: 0.78rem;">
+                                Esperando datos del resolver...
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- Sessions Container -->
                     <div id="ape16-sessions-container" style="margin-bottom: 16px;">
                         <div style="text-align: center; padding: 20px; color: #64748b; font-size: 0.85rem;">
@@ -359,10 +398,15 @@
             
             this._logEvent('Iniciando telemetría (polling)', 'info');
             this._poll(); // First poll immediately
+            this._pollProviders(); // First providers poll
             
             this.pollTimer = setInterval(() => {
                 this._poll();
             }, CONFIG.POLL_INTERVAL);
+
+            this.providersPollTimer = setInterval(() => {
+                this._pollProviders();
+            }, CONFIG.PROVIDERS_POLL_INTERVAL);
             
             this.isConnected = true;
             this._updateStatusBadge(true);
@@ -387,6 +431,18 @@
                 console.error('APE v16 Exchange: Poll error', error);
                 this._logEvent(`Error: ${error.message}`, 'error');
                 this._updateStatusBadge(false);
+            }
+        }
+
+        async _pollProviders() {
+            try {
+                const response = await fetch(CONFIG.PROVIDERS_ENDPOINT);
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                const data = await response.json();
+                this.providers = data.providers || [];
+                this._renderProviders(data);
+            } catch (error) {
+                console.warn('APE v16: Providers poll error', error);
             }
         }
 
@@ -443,6 +499,162 @@
                 const panel = this._createSessionPanel(session);
                 container.appendChild(panel);
             });
+        }
+
+        _renderProviders(data) {
+            const container = document.getElementById('ape16-providers-container');
+            const countBadge = document.getElementById('ape16-providers-count');
+            if (!container) return;
+
+            const channels = data.active_channels || [];
+            const sources = data.sources || [];
+            const totalCh = data.total_channels || 0;
+
+            if (countBadge) {
+                countBadge.textContent = `${sources.length} fuente${sources.length !== 1 ? 's' : ''} · ${totalCh} canal${totalCh !== 1 ? 'es' : ''} activo${totalCh !== 1 ? 's' : ''}`;
+            }
+
+            // ═══ LISTA ACTIVA HEADER (nombre real del archivo M3U8) ═══
+            const activeList = data.active_list;
+            const listHeader = activeList ? `
+                <div style="
+                    background: linear-gradient(135deg, rgba(234, 179, 8, 0.12), rgba(251, 191, 36, 0.06));
+                    border: 1px solid rgba(234, 179, 8, 0.4);
+                    border-radius: 8px;
+                    padding: 10px 14px;
+                    margin-bottom: 10px;
+                ">
+                    <div style="display:flex;align-items:center;gap:10px;">
+                        <span style="font-size:1.3rem;">📋</span>
+                        <div style="flex:1;min-width:0;">
+                            <div style="color:#fbbf24;font-size:0.58rem;text-transform:uppercase;letter-spacing:0.08em;font-weight:700;">Lista Activa</div>
+                            <div style="color:#fef3c7;font-size:0.85rem;font-weight:800;font-family:'Consolas','Monaco',monospace;word-break:break-all;line-height:1.3;">${activeList}</div>
+                        </div>
+                    </div>
+                </div>
+            ` : '';
+
+            // Sources header (servidor + user = identifica la suscripción)
+            const sourceHeader = sources.length > 0 ? sources.map(s => {
+                const hostShort = (s.host || 'UNKNOWN').replace(/:80$/, '').replace(/:443$/, '');
+                const userMask = s.user ? s.user.substring(0, 4) + '***' : '—';
+                return `
+                    <div style="
+                        background: linear-gradient(135deg, rgba(99, 102, 241, 0.15), rgba(59, 130, 246, 0.08));
+                        border: 1px solid rgba(99, 102, 241, 0.35);
+                        border-radius: 8px;
+                        padding: 10px 14px;
+                        margin-bottom: 8px;
+                    ">
+                        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+                            <div style="display:flex;align-items:center;gap:8px;">
+                                <span style="font-size:1.1rem;">🛰️</span>
+                                <div>
+                                    <div style="color:#c7d2fe;font-size:0.6rem;text-transform:uppercase;letter-spacing:0.05em;font-weight:600;">Fuente Activa</div>
+                                    <div style="color:#e2e8f0;font-size:0.82rem;font-weight:700;font-family:'Consolas',monospace;">${hostShort}</div>
+                                </div>
+                            </div>
+                            <div style="display:flex;gap:6px;flex-shrink:0;">
+                                <span style="padding:2px 8px;border-radius:4px;background:rgba(99,102,241,0.2);border:1px solid rgba(99,102,241,0.4);color:#a5b4fc;font-size:0.62rem;font-weight:600;">👤 ${userMask}</span>
+                                <span style="padding:2px 8px;border-radius:4px;background:rgba(52,211,153,0.15);border:1px solid rgba(52,211,153,0.3);color:#6ee7b7;font-size:0.62rem;font-weight:600;">📺 ${s.count} CH</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('') : '';
+
+            if (channels.length === 0) {
+                container.innerHTML = `
+                    <div style="text-align: center; padding: 16px; color: #64748b; font-size: 0.78rem;">
+                        ⏳ Sin canales activos — haz zapping para ver telemetría en vivo
+                    </div>
+                `;
+                return;
+            }
+
+            // Channel Table — FOCO: nombre del canal, status HTTP, tiempo desde zapping
+            const profileColors = { P0: '#f472b6', P1: '#a78bfa', P2: '#60a5fa', P3: '#4ade80', P4: '#fbbf24', P5: '#f87171' };
+            const now = Math.floor(Date.now() / 1000);
+
+            const channelRows = channels.map(c => {
+                const ago = now - (c.ts || 0);
+                const agoText = ago < 60 ? `${ago}s` : `${Math.floor(ago / 60)}m ${ago % 60}s`;
+                const agoColor = ago < 10 ? '#4ade80' : ago < 60 ? '#60a5fa' : ago < 180 ? '#fbbf24' : '#f87171';
+                const pColor = profileColors[c.profile] || '#94a3b8';
+                const liveDot = ago < 15
+                    ? '<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#4ade80;box-shadow:0 0 8px #4ade80;margin-right:5px;"></span>'
+                    : ago < 60
+                    ? '<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#fbbf24;margin-right:5px;"></span>'
+                    : '<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#475569;margin-right:5px;"></span>';
+
+                // HTTP Status semáforo
+                const status = c.upstream_status || 0;
+                const statusColor = status >= 200 && status < 300 ? '#4ade80'
+                    : status >= 300 && status < 400 ? '#60a5fa'
+                    : status >= 400 && status < 500 ? '#fbbf24'
+                    : status >= 500 ? '#f87171'
+                    : '#475569';
+                const statusText = status > 0 ? status : '—';
+                const statusBg = status >= 200 && status < 300 ? 'rgba(74,222,128,0.15)'
+                    : status >= 400 && status < 500 ? 'rgba(251,191,36,0.15)'
+                    : status >= 500 ? 'rgba(248,113,113,0.15)'
+                    : 'rgba(71,85,105,0.15)';
+
+                const chName = c.channel_name || `CH ${c.ch}`;
+
+                return `
+                    <tr style="border-bottom:1px solid rgba(100,116,139,0.12);">
+                        <td style="padding:6px 8px;max-width:180px;">
+                            <div style="display:flex;align-items:center;">
+                                ${liveDot}
+                                <div style="min-width:0;">
+                                    <div style="color:#e2e8f0;font-size:0.76rem;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${chName}</div>
+                                    <div style="color:#64748b;font-size:0.58rem;font-family:'Consolas',monospace;">ID: ${c.ch}</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td style="padding:6px 8px;text-align:center;">
+                            <span style="padding:2px 8px;border-radius:4px;font-size:0.65rem;font-weight:800;font-family:'Consolas',monospace;background:${statusBg};color:${statusColor};border:1px solid ${statusColor}44;">${statusText}</span>
+                        </td>
+                        <td style="padding:6px 8px;text-align:center;">
+                            <span style="padding:1px 6px;border-radius:3px;font-size:0.6rem;font-weight:700;background:${pColor}22;color:${pColor};border:1px solid ${pColor}44;">${c.profile}</span>
+                        </td>
+                        <td style="padding:6px 8px;font-size:0.68rem;color:${agoColor};font-weight:600;white-space:nowrap;">${agoText}</td>
+                    </tr>
+                `;
+            }).join('');
+
+            const channelTable = `
+                <div style="
+                    background: rgba(15, 23, 42, 0.5);
+                    border: 1px solid rgba(59, 130, 246, 0.2);
+                    border-radius: 8px;
+                    overflow: hidden;
+                " class="ape16-fade-in">
+                    <div style="padding:8px 12px;background:rgba(30,41,59,0.6);border-bottom:1px solid rgba(59,130,246,0.15);">
+                        <div style="display:flex;align-items:center;gap:6px;">
+                            <span style="font-size:0.9rem;">📺</span>
+                            <span style="color:#93c5fd;font-size:0.75rem;font-weight:600;">Canales Resolviendo en Tiempo Real</span>
+                            <span style="margin-left:auto;color:#4ade80;font-size:0.62rem;font-weight:600;">● LIVE</span>
+                        </div>
+                    </div>
+                    <div style="overflow-x:auto;">
+                        <table style="width:100%;border-collapse:collapse;">
+                            <thead>
+                                <tr style="border-bottom:1px solid rgba(100,116,139,0.25);">
+                                    <th style="padding:5px 8px;text-align:left;color:#475569;font-size:0.56rem;text-transform:uppercase;font-weight:600;">Canal</th>
+                                    <th style="padding:5px 8px;text-align:center;color:#475569;font-size:0.56rem;text-transform:uppercase;font-weight:600;">HTTP</th>
+                                    <th style="padding:5px 8px;text-align:center;color:#475569;font-size:0.56rem;text-transform:uppercase;font-weight:600;">Perfil</th>
+                                    <th style="padding:5px 8px;text-align:left;color:#475569;font-size:0.56rem;text-transform:uppercase;font-weight:600;">Hace</th>
+                                </tr>
+                            </thead>
+                            <tbody>${channelRows}</tbody>
+                        </table>
+                    </div>
+                </div>
+            `;
+
+            container.innerHTML = listHeader + sourceHeader + channelTable;
         }
 
         _createSessionPanel(session) {
@@ -574,6 +786,10 @@
             if (this.pollTimer) {
                 clearInterval(this.pollTimer);
                 this.pollTimer = null;
+            }
+            if (this.providersPollTimer) {
+                clearInterval(this.providersPollTimer);
+                this.providersPollTimer = null;
             }
             this._updateStatusBadge(false);
             this._logEvent('Telemetría desconectada', 'info');

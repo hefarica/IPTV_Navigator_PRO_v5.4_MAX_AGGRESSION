@@ -97,9 +97,13 @@ class ServerLibraryMultiSave {
                 srv.snapshot = snap;
 
                 let expDate = 'N/A';
-                if (this.state.serverInfo?.exp_date && this.state.currentServer?.id === srv.id) {
-                    const exp = new Date(this.state.serverInfo.exp_date * 1000);
-                    expDate = exp.toLocaleDateString('es-ES');
+                // ✅ V4.28.2: Usar _expDate por servidor (guardado desde user_info.exp_date)
+                if (srv._expDate) {
+                    const exp = new Date(srv._expDate * 1000);
+                    expDate = exp.toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' });
+                } else if (this.state.userInfo?.exp_date && this.state.currentServer?.id === srv.id) {
+                    const exp = new Date(this.state.userInfo.exp_date * 1000);
+                    expDate = exp.toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' });
                 }
 
                 const libraryEntry = {
@@ -107,7 +111,7 @@ class ServerLibraryMultiSave {
                     name: srv.name || 'Servidor sin nombre',
                     baseUrl: srv.baseUrl?.replace('/player_api.php', '') || srv.url || '',
                     username: srv.username || '',
-                    password: srv.password || '',
+                    password: srv._lockedPassword || srv.password || '',
                     apiType: srv.apiType || 'auto',
                     totalChannels: snap.channelsCount,
                     totalGroups: snap.groupsCount || 0,
@@ -135,6 +139,10 @@ class ServerLibraryMultiSave {
 
                 if (existingIdx >= 0) {
                     const oldEntry = library[existingIdx];
+                    // ✅ V4.28.2: Si no tenemos _expDate, PRESERVAR la fecha existente de la biblioteca
+                    if (libraryEntry.expDate === 'N/A' && oldEntry.expDate && oldEntry.expDate !== 'N/A') {
+                        libraryEntry.expDate = oldEntry.expDate;
+                    }
                     library[existingIdx] = libraryEntry;
                     updatedCount++;
                     console.log(`📝 Actualizado: ${libraryEntry.name} (${oldEntry.totalChannels} → ${libraryEntry.totalChannels})`);

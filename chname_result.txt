@@ -1,0 +1,9 @@
+CMD1: fgrep -h -m1 'tvg-id="893918"' /var/www/html/*.m3u8 2>/dev/null | head -1
+RESULT1: #EXTINF:-1 tvg-id="893918" tvg-name="┃DE┃ SKY SPORT 4K UHD" tvg-logo="http://picon.tivi-ott.net:25461/picon/GERMANY/4K UHD KANÄLE/SKY SPORT 4K UHD.png" group-title="[P0] 3008" ape-profile="P0" ca
+CHANNEL_NAME: ┃DE┃ SKY SPORT 4K UHD
+
+=== TEST OTHER IDs ===
+  CH=1312008 => ┃UK┃ SKY SPORTS MAIN EVENTS 4K
+  CH=1174213 => ┃UK┃ TNT SPORTS ULTIMATE 4K
+  CH=1282747 => NOT FOUND
+  CH=242247 => ┃AR┃ BEIN SPORTS 9 HD S1

@@ -3,68 +3,98 @@ description: How to deploy the APE Resolve Quality v3.0 resolver with Sniper Mod
 ---
 // turbo-all
 
-# Deploy APE Resolve Quality v3.0
+# Deploy Resolve v3.0 Workflow
 
-## Prerequisites
-- SSH access to VPS: `root@178.156.147.234`
-- Local files in: `IPTV_v5.4_MAX_AGGRESSION\backend\`
-- PHP 8.3-fpm running on VPS
+> Before starting, read the Skill: `.agent/skills/resolve-architecture/SKILL.md`
 
-## Step 1: Upload Core Resolver
+## Pre-Deploy Safety Gates
+
+### Gate 1: Module Guard Audit
+Verify ALL `require_once` statements have `file_exists()` guards:
+```powershell
+Select-String -Path "IPTV_v5.4_MAX_AGGRESSION\backend\resolve_quality.php" -Pattern "require_once" -SimpleMatch | ForEach-Object { $_.LineNumber.ToString() + ': ' + $_.Line.Trim() }
+```
+**Every** `require_once __DIR__` line MUST be inside an `if (file_exists(...))` block.
+If ANY bare `require_once` is found → **FIX BEFORE DEPLOYING**.
+
+### Gate 2: External Function Guard Audit
+Check that all calls to functions from optional modules have `function_exists()` guards:
+```powershell
+Select-String -Path "IPTV_v5.4_MAX_AGGRESSION\backend\resolve_quality.php" -Pattern "rq_sniper_integrate|rq_anti_cut_isp_strangler|ApeCredentials" -SimpleMatch | ForEach-Object { $_.LineNumber.ToString() + ': ' + $_.Line.Trim() }
+```
+Each call MUST be wrapped in `function_exists('name')` or `class_exists('Name')`.
+
+### Gate 3: Anti-509 (MANDATORY — BLOCKS DEPLOY IF FAILED)
+```powershell
+Select-String -Path "IPTV_v5.4_MAX_AGGRESSION\backend\resolve_quality.php" -Pattern "curl_init|curl_exec|file_get_contents.*http|get_headers|fsockopen" -SimpleMatch
+```
+**Expected**: NO matches that hit a provider URL. If ANY match → **DO NOT DEPLOY**.
+
+### Gate 4: Null-Safety on $anti_cut and $sniper
+```powershell
+Select-String -Path "IPTV_v5.4_MAX_AGGRESSION\backend\resolve_quality.php" -Pattern "anti_cut\['" -SimpleMatch | ForEach-Object { $_.LineNumber.ToString() + ': ' + $_.Line.Trim() }
+```
+Every `$anti_cut['key']` MUST use `?? default`. Every `$sniper['sniper']['key']` MUST use `!empty()` guard.
+
+## Deploy
+
+### Step 1: Backup current resolver
 ```bash
-scp "IPTV_v5.4_MAX_AGGRESSION\backend\resolve_quality.php" root@178.156.147.234:/var/www/html/iptv-ape/resolve_quality.php
+ssh root@178.156.147.234 "cp /var/www/html/resolve_quality.php /tmp/resolve_quality.php.bak && echo 'BACKUP OK'"
 ```
 
-## Step 2: Upload Sniper Mode Module
-```bash
-scp "IPTV_v5.4_MAX_AGGRESSION\backend\rq_sniper_mode.php" root@178.156.147.234:/var/www/html/iptv-ape/rq_sniper_mode.php
+### Step 2: Upload
+```powershell
+scp "IPTV_v5.4_MAX_AGGRESSION\backend\resolve_quality.php" root@178.156.147.234:/var/www/html/resolve_quality.php
 ```
 
-## Step 3: Upload Anti-Cut Engine Module
+### Step 3: PHP Syntax Check
 ```bash
-scp "IPTV_v5.4_MAX_AGGRESSION\backend\rq_anti_cut_engine.php" root@178.156.147.234:/var/www/html/iptv-ape/rq_anti_cut_engine.php
+ssh root@178.156.147.234 "php -l /var/www/html/resolve_quality.php"
+```
+**Expected**: `No syntax errors detected`
+
+### Step 4: Restart PHP-FPM (if previous errors crashed workers)
+```bash
+ssh root@178.156.147.234 "systemctl restart php8.3-fpm && sleep 2 && systemctl status php8.3-fpm --no-pager | head -5"
 ```
 
-## Step 4: Set Permissions and Create State Directory
-```bash
-ssh root@178.156.147.234 "chmod 644 /var/www/html/iptv-ape/resolve_quality.php /var/www/html/iptv-ape/rq_sniper_mode.php /var/www/html/iptv-ape/rq_anti_cut_engine.php && chown -R www-data:www-data /var/www/html/iptv-ape/ && mkdir -p /tmp/ape_sniper && chmod 777 /tmp/ape_sniper"
-```
+## Post-Deploy Verification
 
-## Step 5: PHP Syntax Check (ALL 3 files)
+### Step 5: Health Check
 ```bash
-ssh root@178.156.147.234 "php -l /var/www/html/iptv-ape/resolve_quality.php && php -l /var/www/html/iptv-ape/rq_sniper_mode.php && php -l /var/www/html/iptv-ape/rq_anti_cut_engine.php"
+ssh root@178.156.147.234 "curl -s 'https://iptv-ape.duckdns.org/api/health'"
 ```
-Expected: `No syntax errors detected` for all 3.
+**Expected**: `{"status":"ok"}`
 
-## Step 6: Restart PHP-FPM
+### Step 6: End-to-End Resolve Test
 ```bash
-ssh root@178.156.147.234 "systemctl restart php8.3-fpm"
+ssh root@178.156.147.234 "curl -sI 'https://iptv-ape.duckdns.org/api/resolve_quality?ch=1&p=P3&srv=dGVzdC5ob3N0OjgwfHVzZXJ8cGFzcw==' 2>/dev/null | grep -E 'HTTP|X-RQ|X-Resolver'"
 ```
+**Expected**:
+- `HTTP/1.1 200 OK`
+- `X-Resolver-Version: 3.0.0-AUTONOMOUS`
+- `X-RQ-QoS-Profile: P3`
 
-## Step 7: Verify Live Output
+### Step 7: Body Check (mini-M3U8 output)
 ```bash
-ssh root@178.156.147.234 "curl -sk 'https://localhost/iptv-ape/resolve_quality.php?ch=12&srv=bGluZS50aXZpLW90dC5uZXR8M0pIRlRDfFU1NkJEUA==' -H 'User-Agent: OTT Navigator/1.6.7.3' | wc -l"
+ssh root@178.156.147.234 "curl -s 'https://iptv-ape.duckdns.org/api/resolve_quality?ch=1&p=P3&srv=dGVzdC5ob3N0OjgwfHVzZXJ8cGFzcw==' 2>/dev/null | head -5"
 ```
-Expected: 100+ lines (was 62 before Anti-Cut, ~113 with full deployment)
+**Expected**: First line = `#EXTM3U`
 
-## Step 8: Verify Sniper Mode
+### Step 8: Error Log Clean Check
 ```bash
-ssh root@178.156.147.234 "ls -la /tmp/ape_sniper/"
+ssh root@178.156.147.234 "tail -5 /var/log/php8.3-fpm.log 2>/dev/null | grep -c 'Fatal\|thrown in' || echo '0 errors'"
 ```
-Expected: `ch_12.state` file created
+**Expected**: `0 errors`
 
-## Step 9: Verify HTTP Response Headers
+### Step 9: .bak Pollution Check
 ```bash
-ssh root@178.156.147.234 "curl -sk -D- -o /dev/null 'https://localhost/iptv-ape/resolve_quality.php?ch=12&srv=bGluZS50aXZpLW90dC5uZXR8M0pIRlRDfFU1NkJEUA==' -H 'User-Agent: OTT Navigator/1.6.7.3' | grep 'X-APE'"
+ssh root@178.156.147.234 "ls /etc/nginx/sites-enabled/*.bak 2>/dev/null && echo 'DANGER' || echo 'CLEAN'"
 ```
-Expected headers:
-- `X-APE-Cut-Status: monitoring`
-- `X-APE-Engine: APE-ANTI-CUT-v1.0`
-- `X-APE-Profile: P1-NUCLEAR`
-- `X-APE-SNIPER-Mode: ACTIVE`
-- `X-APE-SNIPER-Status: STREAMING`
+**Expected**: `CLEAN`
 
 ## Rollback
 ```bash
-ssh root@178.156.147.234 "cp /var/www/html/iptv-ape/resolve_quality.php.bak_integrated /var/www/html/iptv-ape/resolve_quality.php && systemctl restart php8.3-fpm"
+ssh root@178.156.147.234 "cp /tmp/resolve_quality.php.bak /var/www/html/resolve_quality.php && systemctl restart php8.3-fpm && echo 'ROLLBACK OK'"
 ```

@@ -1,0 +1,12 @@
+TOTAL_SESSIONS: 10
+========================================================================================================================
+KEY=181.234.152.197:242247              CH=242247     name=CH 242247                        184s_ago  profile=P4   HTTP=0    url=https://iptv-ape.duckdns.org/resolve_quality.php?ch=242247&p=P4&mode=adaptive&list=22.2.0-FUSION-FAN
+KEY=181.234.152.197:221675              CH=221675     name=CH 221675                        181s_ago  profile=P4   HTTP=0    url=https://iptv-ape.duckdns.org/resolve_quality.php?ch=221675&p=P4&mode=adaptive&list=22.2.0-FUSION-FAN
+KEY=181.234.152.197:220451              CH=220451     name=CH 220451                        179s_ago  profile=P4   HTTP=0    url=https://iptv-ape.duckdns.org/resolve_quality.php?ch=220451&p=P4&mode=adaptive&list=22.2.0-FUSION-FAN
+KEY=181.234.152.197:1282747             CH=1282747    name=CH 1282747                       177s_ago  profile=P1   HTTP=502  url=https://iptv-ape.duckdns.org/resolve_quality.php?ch=1282747&p=P1&mode=adaptive&list=22.2.0-FUSION-FA
+KEY=181.234.152.197:1312006             CH=1312006    name=CH 1312006                       175s_ago  profile=P1   HTTP=0    url=https://iptv-ape.duckdns.org/resolve_quality.php?ch=1312006&p=P1&mode=adaptive&list=22.2.0-FUSION-FA
+KEY=181.234.152.197:1312007             CH=1312007    name=CH 1312007                       173s_ago  profile=P1   HTTP=0    url=https://iptv-ape.duckdns.org/resolve_quality.php?ch=1312007&p=P1&mode=adaptive&list=22.2.0-FUSION-FA
+KEY=181.234.152.197:1312005             CH=1312005    name=CH 1312005                       171s_ago  profile=P1   HTTP=0    url=https://iptv-ape.duckdns.org/resolve_quality.php?ch=1312005&p=P1&mode=adaptive&list=22.2.0-FUSION-FA
+KEY=181.234.152.197:1312008             CH=1312008    name=CH 1312008                       169s_ago  profile=P1   HTTP=0    url=https://iptv-ape.duckdns.org/resolve_quality.php?ch=1312008&p=P1&mode=adaptive&list=22.2.0-FUSION-FA
+KEY=181.234.152.197:1174213             CH=1174213    name=CH 1174213                       168s_ago  profile=P1   HTTP=0    url=https://iptv-ape.duckdns.org/resolve_quality.php?ch=1174213&p=P1&mode=adaptive&list=22.2.0-FUSION-FA
+KEY=181.234.152.197:893918              CH=893918     name=CH 893918                        166s_ago  profile=P2   HTTP=0    url=https://iptv-ape.duckdns.org/resolve_quality.php?ch=893918&p=P2&mode=adaptive&list=22.2.0-FUSION-FAN

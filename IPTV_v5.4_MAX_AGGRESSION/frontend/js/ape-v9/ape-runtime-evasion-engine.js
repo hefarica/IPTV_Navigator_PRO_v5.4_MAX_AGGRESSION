@@ -48,9 +48,48 @@
 (function() {
     'use strict';
 
-    const ENGINE_VERSION = '1.0.0-POLYMORPHIC';
-    const MAX_RETRIES = 30;
+    const ENGINE_VERSION = '1.1.0-POLYMORPHIC';
+    const MAX_RETRIES = 5;
     const STEALTH_MODE = true; // No console.log en producción
+
+    // V1.1: Circuit breaker — stop retrying hosts that are fundamentally broken
+    const _circuitBreaker = {
+        _hosts: {},  // { hostname: { failures: N, blockedUntil: timestamp } }
+        THRESHOLD: 3,
+        COOLDOWN_MS: 5 * 60 * 1000, // 5 minutes
+
+        _getHost(url) {
+            try { return new URL(url).hostname; } catch { return url; }
+        },
+
+        isBlocked(url) {
+            const host = this._getHost(url);
+            const entry = this._hosts[host];
+            if (!entry) return false;
+            if (Date.now() > entry.blockedUntil) {
+                delete this._hosts[host]; // Cooldown expired
+                return false;
+            }
+            return entry.failures >= this.THRESHOLD;
+        },
+
+        recordFailure(url) {
+            const host = this._getHost(url);
+            if (!this._hosts[host]) this._hosts[host] = { failures: 0, blockedUntil: 0 };
+            this._hosts[host].failures++;
+            if (this._hosts[host].failures >= this.THRESHOLD) {
+                this._hosts[host].blockedUntil = Date.now() + this.COOLDOWN_MS;
+                if (!STEALTH_MODE) {
+                    console.warn(`[APE-RUNTIME] Circuit breaker OPEN for ${host} (${this.THRESHOLD} failures, cooldown ${this.COOLDOWN_MS/1000}s)`);
+                }
+            }
+        },
+
+        recordSuccess(url) {
+            const host = this._getHost(url);
+            delete this._hosts[host];
+        }
+    };
 
     // ═══════════════════════════════════════════════════════════════════════════
     // 🧬 MÓDULO 1: USER-AGENT & IP POOLS (inline para autonomía total)
@@ -411,6 +450,8 @@
     // ═══════════════════════════════════════════════════════════════════════════
 
     const _originalFetch = window.fetch;
+    // Expose original fetch for internal use (e.g., ProbeServer health checks)
+    window._APE_ORIGINAL_FETCH = _originalFetch;
     const _stats = { intercepted: 0, retried: 0, recovered: 0, errors: {} };
 
     /**
@@ -436,6 +477,11 @@
             return _originalFetch(input, init);
         }
 
+        // V1.1: Circuit breaker — skip if host is blocked
+        if (_circuitBreaker.isBlocked(url)) {
+            return _originalFetch(input, init);
+        }
+
         _stats.intercepted++;
 
         // Obtener la cadena de estrategias del Cortex
@@ -447,11 +493,17 @@
         try {
             const response = await _originalFetch(input, init);
             if (response.ok || (response.status >= 200 && response.status < 300)) {
+                _circuitBreaker.recordSuccess(url);
                 return response;
             }
             lastError = response.status;
         } catch (networkError) {
             lastError = 0; // Network error (sin conexión, CORS, etc.)
+            // CORS/network errors are unrecoverable from the browser — limit retries severely
+            _circuitBreaker.recordFailure(url);
+            if (_circuitBreaker.isBlocked(url)) {
+                return _originalFetch(input, init);
+            }
         }
 
         // FASE 2: Activar el Cortex — escalamiento orgánico
@@ -501,6 +553,7 @@
                     // ¡ÉXITO!
                     if (response.ok || (response.status >= 200 && response.status < 300)) {
                         _stats.recovered++;
+                        _circuitBreaker.recordSuccess(url);
                         const elapsed = Math.round(performance.now() - startTime);
                         if (!STEALTH_MODE) {
                             console.log(`%c🧬 [APE-RUNTIME] Recovered! ${lastError}→200 | Strategy: ${strategy.action} | Attempts: ${totalAttempts} | ${elapsed}ms`, 'color: #10b981; font-weight: bold;');
@@ -530,7 +583,12 @@
                     }
 
                 } catch (fetchError) {
-                    // Error de red (timeout, DNS, CORS) — seguir intentando
+                    // Error de red (timeout, DNS, CORS) — record and maybe stop
+                    _circuitBreaker.recordFailure(url);
+                    if (_circuitBreaker.isBlocked(url)) {
+                        // Host is fundamentally broken, stop retrying
+                        return _originalFetch(input, init);
+                    }
                     if (!STEALTH_MODE) {
                         console.warn(`[APE-RUNTIME] Network error on attempt ${totalAttempts}: ${fetchError.message}`);
                     }
@@ -538,9 +596,10 @@
             }
         }
 
-        // FASE 3: LAST RESORT — Mutación total infinita
-        // Si todas las cadenas de estrategias fallaron, entrar en modo supervivencia
-        for (let survivalAttempt = 0; survivalAttempt < 10; survivalAttempt++) {
+        // FASE 3: LAST RESORT — Mutación total (limitada)
+        // V1.1: Reduced from 10 to 3 survival attempts
+        for (let survivalAttempt = 0; survivalAttempt < 3; survivalAttempt++) {
+            if (_circuitBreaker.isBlocked(url)) break;
             await sleep(calculateBackoff(survivalAttempt, 1000, 30000));
             
             const survivalHeaders = mutateHeaders({}, 'MUTATE_FULL', {});

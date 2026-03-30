@@ -73,6 +73,8 @@ class ConstructorStyleEnricher {
         if (this._has(text, /\b4K\b|UHD/i)) tags.add('4K');
         if (this._has(text, /\bFHD\b|\b1080P\b|\b1080I\b/)) tags.add('FHD');
         if (this._has(text, /\b720P\b|\b720I\b/)) tags.add('HD');
+        // ✅ V4.29: 'HD' genérico (sin 720P/720I) → FHD (mayoría de canales HD son 1080p real)
+        else if (this._has(text, /\bHD\b/) && !tags.has('4K') && !tags.has('8K') && !tags.has('FHD')) tags.add('FHD');
         if (this._has(text, /\b480P\b|\bSD\b|\bDEF\b/)) tags.add('SD');
 
         // --- CODECS VIDEO ---
@@ -160,9 +162,14 @@ class ConstructorStyleEnricher {
             if (ch.qualityTags.includes('8K')) return '8K';
             if (ch.qualityTags.includes('4K')) return '4K';
             if (ch.qualityTags.includes('FHD')) return '1080p';
-            if (ch.qualityTags.includes('HD')) return '720p';
+            // ✅ V5.0: 'HD' tag sin 'FHD' → 1080p (NO 720p). Alineado con Quantum Classifier.
+            if (ch.qualityTags.includes('HD')) return '1080p';
             if (ch.qualityTags.includes('SD')) return '480p';
         }
+
+        // ✅ V4.29: Último fallback: 'HD' genérico en nombre → 1080p (mayoría son 1080p real)
+        const rawText = this._buildText(ch);
+        if (/\bHD\b/i.test(rawText) && !/\b720P\b/i.test(rawText)) return '1080p';
 
         return 'UNKNOWN';
     }

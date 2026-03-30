@@ -309,6 +309,33 @@ function rq_get_anti_cut_profile(string $profile): array {
 
 function rq_anti_cut_isp_strangler(string $profile, int $ch_id, string $origin, string $session): array {
     $p = rq_get_anti_cut_profile($profile);
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // ⚡ CAPACITY OVERDRIVE ENGINE v1.0 — ANTI-STARVATION MULTIPLIER x2.5
+    // Multiplica valores de capacidad x2.5 DESPUÉS de cargar el perfil.
+    // Garantiza que incluso una mala clasificación (ej: 1080p como P4)
+    // tenga suficiente buffer/bitrate/BW para no congelarse.
+    // ISP y ancho de banda NO son restricción → MÁXIMA AGRESIÓN.
+    // ═══════════════════════════════════════════════════════════════════════════
+    $COE = 2.5;
+    $p['max_bitrate']          = (int)round($p['max_bitrate'] * $COE);
+    $p['min_bitrate']          = (int)round($p['min_bitrate'] * $COE);
+    $p['target_bitrate']       = (int)round($p['target_bitrate'] * $COE);
+    $p['buffer_ms']            = (int)round($p['buffer_ms'] * $COE);
+    $p['buffer_target']        = (int)round($p['buffer_target'] * $COE);
+    $p['buffer_max']           = (int)round($p['buffer_max'] * $COE);
+    $p['network_caching']      = (int)round($p['network_caching'] * $COE);
+    $p['live_caching']         = (int)round($p['live_caching'] * $COE);
+    $p['file_caching']         = (int)round($p['file_caching'] * $COE);
+    $p['prefetch_segments']    = (int)round($p['prefetch_segments'] * $COE);
+    $p['prefetch_parallel']    = (int)round($p['prefetch_parallel'] * $COE);
+    $p['bandwidth_floor']      = (int)round($p['bandwidth_floor'] * $COE);
+    $p['adaptive_maxbw']       = (int)round($p['adaptive_maxbw'] * $COE);
+    $p['vlc_network_caching']  = (int)round($p['vlc_network_caching'] * $COE);
+    $p['vlc_live_caching']     = (int)round($p['vlc_live_caching'] * $COE);
+    $p['vlc_disc_caching']     = (int)round($p['vlc_disc_caching'] * $COE);
+    $p['vlc_file_caching']     = (int)round($p['vlc_file_caching'] * $COE);
+
     $now = gmdate('Y-m-d\TH:i:s\Z');
     $shieldUA = 'Mozilla/5.0 (Linux; Android 14; SHIELD Android TV Build/UP1A.231005.007) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.6367.179 Safari/537.36';
 
@@ -465,15 +492,15 @@ function rq_anti_cut_isp_strangler(string $profile, int $ch_id, string $origin, 
         'X-TCP-Window-Scale'     => 'true',
         'X-TCP-MTU-Probing'      => 'true',
 
-        // Audio Premium
-        'X-Audio-Codecs'         => 'opus,eac3,ac3,dolby,mp3,aac',
-        'X-Audio-Track-Selection'=> 'highest-quality-extreme,dolby-atmos-first',
-        'X-Dolby-Atmos'          => 'true',
-        'X-Audio-Channels'       => '7.1,5.1,2.0',
-        'X-Audio-Sample-Rate'    => '48000,96000',
-        'X-Audio-Bit-Depth'      => '32bit,24bit',
-        'X-Spatial-Audio'        => 'true',
-        'X-Audio-Passthrough'    => 'true',
+        // Audio Premium (Safe for OTT Navigator / ExoPlayer)
+        'X-Audio-Codecs'         => 'eac3,ac3,aac,mp3',
+        'X-Audio-Track-Selection'=> 'default',
+        'X-Dolby-Atmos'          => 'false',
+        'X-Audio-Channels'       => '5.1,2.0',
+        'X-Audio-Sample-Rate'    => '48000',
+        'X-Audio-Bit-Depth'      => '16bit,24bit',
+        'X-Spatial-Audio'        => 'false',
+        'X-Audio-Passthrough'    => 'false',
 
         // Reconnection
         'X-Reconnect-Timeout-Ms' => (string)$p['reconnect_timeout_ms'],

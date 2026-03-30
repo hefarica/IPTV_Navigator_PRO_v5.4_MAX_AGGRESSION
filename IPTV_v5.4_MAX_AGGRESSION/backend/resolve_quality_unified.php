@@ -4340,11 +4340,106 @@ function rq_handle_request(): void
 
         } elseif ($action === 'meta-cluster' && class_exists('MetadataEngine')) {
             if (!rq_check_rate_limit('meta-cluster')) { echo json_encode(['error' => 'rate_limited']); return; }
-            echo json_encode([
-                'status' => 'cluster_requires_batch',
-                'hint' => 'POST an array of channel IDs as JSON body to use clustering',
-                'max_channels' => 200,
-            ], JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
+            $input = json_decode(file_get_contents('php://input'), true);
+            if (!is_array($input) || empty($input)) {
+                echo json_encode([
+                    'status' => 'cluster_requires_batch',
+                    'hint' => 'POST an array of channel objects e.g. [{"channel_id":"123"}]',
+                    'max_channels' => 50,
+                ], JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
+                return;
+            }
+
+            $input = array_slice($input, 0, 50); // Strict MAX 50 channels per cluster request to avoid server choke
+            
+            $apeCredsFile = __DIR__ . '/ape_credentials.php';
+            $mHost = 'http://line.tivi-ott.net'; $mUser = '3JHFTC'; $mPass = 'U56BDP';
+            if (file_exists($apeCredsFile)) { require_once $apeCredsFile; if (class_exists('ApeCredentials')) { $rc = ApeCredentials::resolve('line.tivi-ott.net', $mUser, $mPass); $mHost = 'http://' . $rc['host']; $mUser = $rc['user']; $mPass = $rc['pass']; } }
+            
+            $mh = curl_multi_init();
+            $chArr = [];
+            $metaEngine = new MetadataEngine();
+            $ua = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 APE-Metadata-Cluster/1.0';
+
+            foreach ($input as $idx => $req) {
+                $cid = $req['channel_id'] ?? '';
+                if (!$cid) continue;
+                $url = rtrim($mHost, '/') . "/live/{$mUser}/{$mPass}/{$cid}.m3u8";
+                if (!empty($req['server_url']) && !empty($req['username']) && !empty($req['password'])) {
+                    $url = rtrim($req['server_url'], '/') . "/live/{$req['username']}/{$req['password']}/{$cid}.m3u8";
+                }
+                $ch = curl_init();
+                curl_setopt($ch, CURLOPT_URL, $url);
+                curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+                curl_setopt($ch, CURLOPT_RANGE, "0-65535"); // Max 64KB
+                curl_setopt($ch, CURLOPT_TIMEOUT_MS, 4000); // 4 seconds timeout max
+                curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+                curl_setopt($ch, CURLOPT_MAXREDIRS, 3);
+                curl_setopt($ch, CURLOPT_USERAGENT, $ua);
+                curl_multi_add_handle($mh, $ch);
+                $chArr[$idx] = ['ch' => $ch, 'cid' => $cid];
+            }
+            
+            $active = null;
+            do {
+                $mrc = curl_multi_exec($mh, $active);
+                // Kill pending requests IMMEDIATELY if user closes browser to prevent 509 lingering
+                if (connection_aborted()) {
+                    break;
+                }
+            } while ($mrc == CURLM_CALL_MULTI_PERFORM);
+
+            while ($active && $mrc == CURLM_OK) {
+                if (connection_aborted()) { break; }
+                if (curl_multi_select($mh) != -1) {
+                    do {
+                        $mrc = curl_multi_exec($mh, $active);
+                    } while ($mrc == CURLM_CALL_MULTI_PERFORM);
+                }
+            }
+
+            $results = [];
+            foreach ($chArr as $idx => $info) {
+                $ch = $info['ch'];
+                $cid = $info['cid'];
+                $body = curl_multi_getcontent($ch);
+                $status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+                curl_multi_remove_handle($mh, $ch);
+                curl_close($ch);
+                
+                $isValid = ($status >= 200 && $status < 300) && is_string($body) && str_contains($body, '#EXTM3U');
+                if (!$isValid) {
+                    $results[$cid] = ['channel_id' => $cid, 'error' => 'manifest_unavailable', 'status' => $status];
+                    continue;
+                }
+                
+                $parsed = $metaEngine->parseMasterPlaylist($body);
+                $attrs = $metaEngine->extractStreamInfAttributes($parsed);
+                $merged = array_merge($parsed, $attrs);
+                if ($parsed['playlist_type'] === 'media') { 
+                    $merged = array_merge($merged, $metaEngine->parseMediaPlaylist($body)); 
+                }
+                $score = $metaEngine->calculateMetadataScore($merged);
+                $merged['channel_name'] = $req['channel_name'] ?? ('CH ' . $cid);
+                $classification = $metaEngine->classifyContentType($merged);
+                $streamType = $metaEngine->detectLiveVsVOD($merged);
+                $audio = $metaEngine->detectAudioQuality($merged);
+                $hdr = $metaEngine->detectHDR($merged);
+                
+                $results[$cid] = [
+                    'channel_id' => $cid,
+                    'verified' => true,
+                    'classification' => $classification,
+                    'score' => $score,
+                    'stream_type' => $streamType,
+                    'audio' => $audio,
+                    'hdr' => $hdr,
+                    'quality_grade' => $score['grade'] ?? 'F'
+                ];
+            }
+            curl_multi_close($mh);
+            
+            echo json_encode(['status' => 'success', 'timestamp' => time(), 'results' => $results], JSON_UNESCAPED_UNICODE);
 
         } elseif ($action === 'meta-stability' && class_exists('MetadataEngine')) {
             if (!rq_check_rate_limit('meta-stability')) { echo json_encode(['error' => 'rate_limited']); return; }
@@ -4838,39 +4933,13 @@ function rq_handle_request(): void
                 if ($cachedMeta) {
                     $metaResult = $cachedMeta;
                     $metaVerified = true;
+                    // Enrich QoS reference with verified metadata (feeds Steps 4, 13)
+                    $qosRef = $metaEngine->enrichQosRef($qosRef, $metaResult);
                 } else {
-                    $manifest = $metaEngine->fetchManifest($channelUrl);
-                    if ($manifest['is_valid']) {
-                        $parsed = $metaEngine->parseMasterPlaylist($manifest['body']);
-                        $attrs = $metaEngine->extractStreamInfAttributes($parsed);
-                        $merged = array_merge($parsed, $attrs);
-                        if ($parsed['playlist_type'] === 'media') {
-                            $merged = array_merge($merged, $metaEngine->parseMediaPlaylist($manifest['body']));
-                        }
-                        $score = $metaEngine->calculateMetadataScore($merged);
-                        $classification = $metaEngine->classifyContentType(array_merge($merged, [
-                            'channel_name' => $qosRef['channel_name'] ?? "Channel {$channelId}",
-                            'group' => $qosRef['category'] ?? '',
-                        ]));
-                        $hdr = $metaEngine->detectHDR($merged);
-                        $audio = $metaEngine->detectAudioQuality($merged);
-                        $stability = $metaEngine->estimateStability($merged);
-                        $streamType = $metaEngine->detectLiveVsVOD($merged);
-                        $fingerprint = $metaEngine->generateStreamFingerprint(array_merge($merged, ['origin_server' => $host]));
-
-                        $metaResult = [
-                            'parsed' => $merged, 'score' => $score,
-                            'classification' => $classification, 'hdr' => $hdr,
-                            'audio' => $audio, 'stability' => $stability,
-                            'stream_type' => $streamType, 'fingerprint' => $fingerprint,
-                            'verified_at' => time(),
-                        ];
-                        $metaEngine->cacheMetadata($urlHash, $metaResult);
-                        $metaVerified = true;
-
-                        // Enrich QoS reference with verified metadata (feeds Steps 4, 13)
-                        $qosRef = $metaEngine->enrichQosRef($qosRef, $metaResult);
-                    }
+                    // 🛡️ ANTI-509 GUARDIAN: ZERO ZAPPING PROBES
+                    // Do NOT fetch the manifest on the fly to avoid Xtream connection bans (Error 509).
+                    // Metadata is ONLY gathered securely via the frontend 'meta-cluster' batch scanner.
+                    $metaVerified = false;
                 }
             } catch (\Throwable $e) {
                 // Blindaje Total: never let metadata failure crash the pipeline

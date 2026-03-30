@@ -3,7 +3,6 @@
 
 <head>
   <meta charset="UTF-8" />
-  <script src="xlsx.full.min.js"></script>
   <title>IPTV Navigator PRO v12.0 ELITE</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <!-- Ranking Score Styles v1.0 -->
@@ -1252,9 +1251,11 @@
 
             <div class="table-wrapper">
               <div class="table-controls">
+                <form autocomplete="off" onsubmit="return false" style="display:inline; margin:0; padding:0;">
                 <input type="search" id="searchQuery" class="input" placeholder="Buscar canal / categoría…"
-                  aria-label="Buscar canal o categoría" autocomplete="nope" data-lpignore="true" data-form-type="other"
-                  data-1p-ignore="true" />
+                  aria-label="Buscar canal o categoría" autocomplete="off" role="searchbox"
+                  data-lpignore="true" data-form-type="other" data-1p-ignore="true" />
+                </form>
                 <div class="dropdown" id="colSelectorDropdown" style="position:relative; display:inline-block;"><button
                     class="btn secondary sm" id="btnToggleCols" onclick="app.toggleColumnSelector()"
                     style="height:38px; display:flex; align-items:center;">👁️ Columnas</button>
@@ -2140,6 +2141,12 @@
                     onclick="app.generateWithQoSCheck('ultimate')">
                     <span class="icon">👑</span><span>APE v9.0 ULTIMATE</span>
                   </button>
+                  <!-- 🧠 V25 CTX METADATA INTELLIGENCE SCAN -->
+                  <button id="btnScanMetadataCluster" class="btn secondary"
+                    style="background: linear-gradient(135deg, rgba(56,189,248,0.1), rgba(14,165,233,0.1)); border: 1px solid #38bdf8; color: #38bdf8;"
+                    onclick="if(typeof apeScanMetadataCluster === 'function') { apeScanMetadataCluster(); } else { alert('El script de Metadata Engine no está cargado'); }">
+                    <span class="icon">🧠</span><span>Escanear Metadata</span>
+                  </button>
                 </div>
 
                 <!-- 🏆 M3U8 GENERATOR v16 ELITE — Manifiesto HLS Inteligente (RFC 8216 Avanzado) -->
@@ -2715,7 +2722,8 @@
     </div>
   </div>
 
-  <!-- Librerías externas -->
+  <!-- Librerías externas (xlsx deferred to end for faster initial render) -->
+  <script src="xlsx.full.min.js" defer></script>
   <script src="qrcode.min.js"></script>
   <!-- ⚠️ VPS_CONFIG PRIMERO - Centraliza IP/dominio ANTES de que otros módulos carguen -->
   <script src="js/vps-config.js"></script>
@@ -3136,7 +3144,7 @@
   <script src="js/ape-v9/ape-coordinator-v9.js"></script>
 
   <!-- Configuration and Logic -->
-  <script src="js/ape-v9/ape-profiles-config.js"></script>
+  <!-- ⚠️ ape-profiles-config.js already loaded at line 3032, SKIP DUPLICATE -->
   <!-- ⚠️ V4.30: profile-manager-v9.js loaded later at v9.0.3 (line ~3171) -->
   <script src="js/ape-v9/auto-classifier-v13.js"></script>
 
@@ -3181,7 +3189,7 @@
   <script src="js/ape-v15/ape-backend-connector-v15.js?v=15.0"></script>
 
   <!-- APE v15: Monitor Panel UI Component -->
-  <script src="js/ape-v15/ape-monitor-panel-v15.js?v=15.0"></script>
+  <script src="js/ape-v15/ape-monitor-panel-v15.js?v=16.1"></script>
 
   <!-- APE v15: Auto-initialize panel when DOM is ready -->
   <script>
@@ -3198,10 +3206,7 @@
 
   <!-- ═══════════════════════════════════════════════════════════ -->
 
-  <script src="js/group-title-builder.js"></script>
-  <script src="js/group-title-config-manager.js"></script>
-  <script src="js/group-title-config-ui.js"></script>
-  <script src="js/ape-channel-classifier.js"></script>
+  <!-- ⚡ V4.28: group-title-*.js and ape-channel-classifier.js already loaded at lines 2730-2735, SKIP DUPLICATES -->
 
   <script src="js/generator-v41-logic.js?v=4.1"></script>
 
@@ -3236,11 +3241,7 @@
   <script src="js/ape-v9/prefetch-presets.js"></script>
   <script src="js/ape-v9/ape-profiles-config-v5.js"></script>
   <!-- Smart Codec Prioritizer v1.0 (AV1 > H265 > VP9 > H264 > MPEG2) -->
-  <script src="js/ape-v9/smart-codec-prioritizer.js"></script>
-  <!-- Buffer Adaptativo Supremo v1.0 (41 metadatos por canal) -->
-  <script src="js/ape-v9/buffer-adaptativo-supremo.js"></script>
-  <!-- Evasion 407 Supremo v1.0 (51 metadatos por canal) -->
-  <script src="js/ape-v9/evasion-407-supremo.js"></script>
+  <!-- ⚡ V4.28: smart-codec-prioritizer, buffer-adaptativo-supremo, evasion-407-supremo already loaded at lines 3159-3161, SKIP DUPLICATES -->
   <!-- VPN Integration Supremo v1.0 (68 metadatos por canal) -->
   <script src="js/ape-v9/vpn-integration-supremo.js"></script>
   <!-- Latency Rayo Supremo v1.0 (23 metadatos por canal) -->
@@ -3254,8 +3255,7 @@
   <!-- ═══════════════════════════════════════════════════════════ -->
   <!-- APE v15.0 ULTIMATE Backend Connector                       -->
   <!-- ═══════════════════════════════════════════════════════════ -->
-  <script src="js/ape-v15/ape-backend-connector-v15.js"></script>
-  <script src="js/ape-v15/ape-monitor-panel-v15.js"></script>
+  <!-- ⚡ V4.28: ape-v15 connector/monitor already loaded at lines 3181-3184, SKIP DUPLICATES -->
 
   <!-- 🔐 APE TOKEN MANAGER (Core Security) -->
   <script src="js/ape-token-manager.js"></script>
@@ -3265,9 +3265,22 @@
   <!-- Script de tabs -->
   <script>
     document.addEventListener('DOMContentLoaded', function () {
-      // Limpiar campo de búsqueda para evitar autocompletado
+      // V4.28: Nuclear anti-autofill — clear search field MULTIPLE times
+      // Browser autofill runs AFTER DOMContentLoaded, so we clear repeatedly
       const searchInput = document.getElementById('searchQuery');
-      if (searchInput) { searchInput.value = ''; }
+      if (searchInput) {
+        searchInput.value = '';
+        // Clear again after browser autofill (100ms, 500ms, 1.5s)
+        [100, 500, 1500].forEach(ms => setTimeout(() => {
+          if (searchInput.value && searchInput.value !== searchInput.dataset.userTyped) {
+            searchInput.value = '';
+          }
+        }, ms));
+        // Track user-typed values so we don't erase what the user actually types
+        searchInput.addEventListener('input', () => {
+          searchInput.dataset.userTyped = searchInput.value;
+        });
+      }
 
       const buttons = Array.from(document.querySelectorAll('.tab-button'));
       const contents = {
@@ -3363,10 +3376,8 @@
   <!-- 📐 M3U8 Generator ARQUITECTURA 1 v4.0 (25+ líneas/canal, 3 capas, JWT enriquecido) -->
   <script src="js/ape-v9/m3u8-generator-architecture1.js"></script>
 
-  <!-- 🖥️ HUD TYPED ARRAYS -->
-  <script src="js/ape-v9/hud-typed-arrays.js"></script>
-  <!-- 🚀 M3U8 TYPED ARRAYS ULTIMATE v16.0 (RESTORED) -->
-  <script src="js/ape-v9/m3u8-typed-arrays-ultimate.js"></script>
+  <!-- ⚡ V4.28: hud-typed-arrays.js already loaded at line 3037, SKIP DUPLICATE -->
+  <!-- ⚡ V4.28: m3u8-typed-arrays-ultimate.js already loaded at line 3035, SKIP DUPLICATE -->
 
   <!-- 🔓 XTREAM EXPLOIT ENGINE v9.0 (8 vulns, 8 techs, server profiling) -->
   <script src="js/ape-v9/xtream-exploit-engine-v9.js?v=9.0"></script>
@@ -3436,9 +3447,9 @@
   <!-- ═══════════════════════════════════════════════════════════════════════ -->
   <!-- 🧪 TESTS - Proxy Auth & User Agent (Dev Mode Only)                     -->
   <!-- ═══════════════════════════════════════════════════════════════════════ -->
-  <script src="tests/proxy-auth.test.js"></script>
-  <script src="tests/integration.test.js"></script>
-  <script src="tests/performance.test.js"></script>
+  <script src="tests/proxy-auth.test.js" defer></script>
+  <script src="tests/integration.test.js" defer></script>
+  <script src="tests/performance.test.js" defer></script>
 
 </body>
 
