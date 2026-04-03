@@ -4288,8 +4288,22 @@
     }
 
     function generateEXTINF(channel, profile, index) {
-        let serverId = channel.serverId || channel._source || channel.server_id || '';
-        let serverSuffix = serverId ? ` [S${serverId}]` : '';
+        let sid = channel.serverId || channel._source || channel.server_id || '';
+        let sName = channel.serverName || '';
+
+        // Si el objeto del canal no tiene serverName (caché antiguo), buscar en activeServers usando sid
+        if (!sName && sid) {
+            try {
+                const servers = window.app?.state?.activeServers;
+                if (servers && servers.length > 0) {
+                    const srv = servers.find(s => s.id === sid);
+                    if (srv && srv.name) sName = srv.name;
+                }
+            } catch (e) {}
+        }
+
+        let finalServerIdent = sName || sid;
+        let serverSuffix = finalServerIdent ? ` [${finalServerIdent}]` : '';
         
         const tvgId = escapeM3UValue(channel.stream_id || channel.id || index);
         // Agregamos el sufijo del servidor al nombre visual para diferenciarlos radicalmente
