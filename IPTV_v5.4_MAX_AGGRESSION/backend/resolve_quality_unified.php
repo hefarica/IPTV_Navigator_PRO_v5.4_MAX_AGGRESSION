@@ -5078,6 +5078,14 @@ function rq_handle_request(): void
             }
         }
         
+        $extension = strtolower(pathinfo(parse_url($best_quality_url, PHP_URL_PATH) ?? '', PATHINFO_EXTENSION));
+        if ($extension !== 'm3u8') {
+            // No podemos envolver un binario crudo (.ts, .mp4, etc.) en un playlist HLS sin proxying de ancho de banda.
+            // Hacemos redirect 302 directo para Streams Nativos para prevenir que el player se quede colgado cargando.
+            header("Location: " . $best_quality_url, true, 302);
+            exit;
+        }
+        
         header('Content-Type: application/vnd.apple.mpegurl');
         header('Cache-Control: no-cache, no-store, must-revalidate');
         header('Pragma: no-cache');
