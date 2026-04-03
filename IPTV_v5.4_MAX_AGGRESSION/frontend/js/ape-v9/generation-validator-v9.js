@@ -185,7 +185,9 @@
             const n = (name || '').toUpperCase();
             const res = (channel.resolution || channel.heuristics?.resolution || '').toUpperCase();
             if (n.includes('8K') || res.includes('8K') || res.includes('4320')) return 'P0';
-            if (n.includes('4K') || n.includes('UHD') || res.includes('4K') || res.includes('2160')) return 'P1';
+            if ((n.includes('4K') || n.includes('UHD') || res.includes('4K') || res.includes('2160')) && (n.includes('60FPS') || n.includes('SUPREME'))) return 'P1';
+            // P2 es el 4K estándar (fps 30, no LCEVC)
+            if (n.includes('4K') || n.includes('UHD') || res.includes('4K') || res.includes('2160')) return 'P2';
             if (n.includes('FHD') || n.includes('1080') || res.includes('1080')) return 'P3';
             if (n.includes('HD') || n.includes('720') || res.includes('720')) return 'P4';
             if (n.includes('SD') || n.includes('480') || res.includes('480')) return 'P5';

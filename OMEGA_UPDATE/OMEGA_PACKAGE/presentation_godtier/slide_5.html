@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        .slide-container { 
+            width: 1280px; 
+            min-height: 720px; 
+            background-color: #0A192F; 
+            color: #FAFAFA;
+            font-family: 'Inter', sans-serif;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .header-area {
+            padding-top: 60px;
+            padding-left: 80px;
+            padding-right: 80px;
+            margin-bottom: 30px;
+        }
+
+        h1 {
+            font-family: 'Playfair Display', serif;
+            font-size: 32px;
+            font-weight: 700;
+            color: #FAFAFA;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            font-size: 20px;
+            font-weight: 300;
+            color: #8D99AE;
+        }
+
+        .header-rule {
+            width: 100%;
+            height: 1px;
+            background-color: #8D99AE;
+            margin-top: 20px;
+            opacity: 0.5;
+        }
+
+        .content-grid {
+            display: grid;
+            grid-template-columns: 600px 1fr;
+            gap: 40px;
+            padding-left: 80px;
+            padding-right: 80px;
+        }
+
+        .text-column {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .concept-text {
+            font-size: 16px;
+            line-height: 1.5;
+            color: #FAFAFA;
+            font-weight: 300;
+            padding-left: 15px;
+            border-left: 2px solid #D90429;
+        }
+
+        .domains-container {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .domain-block {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .domain-title {
+            font-family: 'Playfair Display', serif;
+            font-size: 18px;
+            font-weight: 700;
+            color: #D90429;
+        }
+
+        .domain-items {
+            font-size: 14px;
+            line-height: 1.4;
+            color: #FAFAFA;
+            font-weight: 300;
+        }
+
+        .domain-rule {
+            width: 100%;
+            height: 1px;
+            background-color: rgba(141, 153, 174, 0.2);
+            margin-top: 5px;
+        }
+
+        .image-column {
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+        }
+
+        .content-image {
+            width: 480px;
+            height: 500px;
+            object-fit: contain;
+            border: 1px solid rgba(141, 153, 174, 0.3);
+            background-color: rgba(0, 0, 0, 0.2);
+            padding: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="slide-container">
+        <div class="header-area">
+            <h1>Las 28 Doctrinas Tecnológicas</h1>
+            <div class="subtitle">"El Universo Completo"</div>
+            <div class="header-rule"></div>
+        </div>
+        
+        <div class="content-grid">
+            <div class="text-column">
+                <div class="concept-text">
+                    631 directivas organizadas en 28 doctrinas cubren absolutamente todos los aspectos del streaming: desde la física de la red hasta el renderizado en GPU.
+                </div>
+                
+                <div class="domains-container">
+                    <div class="domain-block">
+                        <div class="domain-title">Dominio Red &amp; Evasión</div>
+                        <div class="domain-items">IDENTITY &middot; EVASION (Hydra Stealth) &middot; ISP_THROTTLE (10 Niveles Nuclear) &middot; NETWORK</div>
+                        <div class="domain-rule"></div>
+                    </div>
+                    
+                    <div class="domain-block">
+                        <div class="domain-title">Dominio Códec &amp; Calidad</div>
+                        <div class="domain-items">LCEVC Phase 4 &middot; VVC (H.266) &middot; EVC (MPEG-5 Part 1) &middot; CODEC &middot; HDR + Quantum ITM &middot; AI_SR</div>
+                        <div class="domain-rule"></div>
+                    </div>
+                    
+                    <div class="domain-block">
+                        <div class="domain-title">Dominio Resiliencia</div>
+                        <div class="domain-items">RESILIENCE (7 niveles Graceful) &middot; TELCHEMY TVQM &middot; SCTE-35 &middot; CMAF LL &middot; FMP4</div>
+                        <div class="domain-rule"></div>
+                    </div>
+                    
+                    <div class="domain-block">
+                        <div class="domain-title">Dominio Control de Reproductor</div>
+                        <div class="domain-items">PLAYER_CONTROL &middot; ABR_DISABLED &middot; BUFFER &middot; TRICK_PLAY &middot; AUDIO &middot; ENCODER</div>
+                        <div class="domain-rule"></div>
+                    </div>
+                    
+                    <div class="domain-block">
+                        <div class="domain-title">Dominio Orquestación</div>
+                        <div class="domain-items">CORTEX OMEGA &middot; QOS_QOE &middot; PROCESSING_PIPELINE &middot; GPU &middot; PROFILES_v9 &middot; JSON_ORCHESTRATION &middot; FALLBACK</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="image-column">
+                <img src="/home/ubuntu/comparativo_artifact_killer.png" alt="Comparativo Artifact Killer" class="content-image">
+            </div>
+        </div>
+    </div>
+</body>
+</html>

@@ -241,9 +241,9 @@ class ChannelAutoClassifier {
      * Fallback: Lógica estática antigua (solo si falla el config)
      */
     _determineProfileStatic(resolution, fps, codec, qualityScore, pixels) {
-        if (resolution.includes('8K')) return 'P1';
-        if ((resolution.includes('4K') || resolution.includes('UHD')) && fps >= 50 && qualityScore >= 85) return 'P0';
-        if (resolution.includes('4K') || resolution.includes('UHD') || qualityScore >= 90) return 'P2';
+        if (resolution.includes('8K')) return 'P0';
+        if ((resolution.includes('4K') || resolution.includes('UHD')) && fps >= 50 && qualityScore >= 85) return 'P1';
+        if (resolution.includes('4K') || resolution.includes('UHD') || qualityScore >= 80) return 'P2';
         if (resolution.includes('FHD') || resolution.includes('1080') || qualityScore >= 60) return 'P3';
         if (resolution.includes('HD') || resolution.includes('720') || qualityScore >= 40) return 'P4';
         return 'P5';
@@ -339,9 +339,9 @@ class ChannelAutoClassifier {
     _generateReason(profile, resolution, fps, codec, score, hasBonus) {
         const bonusTag = hasBonus ? ' [ATOMIC BONUS]' : '';
         const reasons = {
-            'P1': `8K Supreme - Resolución 8K${codec === 'AV1' ? ' + codec AV1' : ''}${bonusTag}`,
-            'P0': `Ultra Extreme - ${resolution} @ ${fps}fps con score ${score}%${bonusTag}`,
-            'P2': `4K Extreme - ${resolution} calidad premium${bonusTag}`,
+            'P0': `Ultra Extreme (8K) - Resolución 8K/UHD8K${codec === 'AV1' ? ' + codec AV1' : ''}${bonusTag}`,
+            'P1': `4K Supreme (60fps) - ${resolution} @ ${fps}fps con score ${score}%${bonusTag}`,
+            'P2': `4K Extreme (30fps) - ${resolution} calidad premium${bonusTag}`,
             'P3': `FHD Advanced - ${resolution} calidad sólida (score ${score}%)${bonusTag}`,
             'P4': `HD Stable - ${resolution} calidad estándar${bonusTag}`,
             'P5': `SD Failsafe - Conexión lenta o baja resolución`

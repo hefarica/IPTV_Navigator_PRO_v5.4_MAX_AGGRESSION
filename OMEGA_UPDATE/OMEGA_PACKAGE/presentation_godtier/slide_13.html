@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        .slide-container { 
+            width: 1280px; 
+            min-height: 720px; 
+            background-color: #0A192F; 
+            color: #FAFAFA;
+            font-family: 'Inter', sans-serif;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .header-area {
+            padding-top: 60px;
+            padding-left: 80px;
+            padding-right: 80px;
+            margin-bottom: 30px;
+        }
+
+        h1 {
+            font-family: 'Playfair Display', serif;
+            font-size: 32px;
+            font-weight: 700;
+            color: #FAFAFA;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            font-size: 20px;
+            font-weight: 300;
+            color: #8D99AE;
+        }
+
+        .header-rule {
+            width: 100%;
+            height: 1px;
+            background-color: #8D99AE;
+            margin-top: 20px;
+            opacity: 0.5;
+        }
+
+        .content-area {
+            padding-left: 80px;
+            padding-right: 80px;
+            display: flex;
+            flex-direction: column;
+            gap: 30px;
+        }
+
+        .concept-text {
+            font-size: 18px;
+            line-height: 1.6;
+            color: #FAFAFA;
+            font-weight: 300;
+            padding-left: 20px;
+            border-left: 3px solid #D90429;
+            max-width: 1000px;
+        }
+
+        .table-container {
+            width: 100%;
+            margin-top: 10px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+        }
+
+        th {
+            font-family: 'Playfair Display', serif;
+            font-size: 16px;
+            font-weight: 700;
+            color: #8D99AE;
+            padding: 15px 20px;
+            border-bottom: 2px solid #8D99AE;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        td {
+            font-size: 16px;
+            font-weight: 300;
+            padding: 15px 20px;
+            border-bottom: 1px solid rgba(141, 153, 174, 0.2);
+        }
+
+        tr:nth-child(even) {
+            background-color: rgba(141, 153, 174, 0.05);
+        }
+
+        .profile-name {
+            font-family: monospace;
+            font-weight: 600;
+            color: #FAFAFA;
+        }
+
+        .level-ultra .profile-name {
+            color: #D90429;
+        }
+
+        .level-ultra td {
+            background-color: rgba(217, 4, 41, 0.05);
+            border-bottom: 1px solid rgba(217, 4, 41, 0.3);
+        }
+    </style>
+</head>
+<body>
+    <div class="slide-container">
+        <div class="header-area">
+            <h1>Los 6 Perfiles de Calidad v9.0</h1>
+            <div class="subtitle">"Un Perfil para Cada Pantalla"</div>
+            <div class="header-rule"></div>
+        </div>
+        
+        <div class="content-area">
+            <div class="concept-text">
+                Heredados de la arquitectura v9.0, los 6 perfiles garantizan que cada canal reciba exactamente el nivel de calidad que su contenido y audiencia merecen.
+            </div>
+            
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Perfil</th>
+                            <th>Resolución</th>
+                            <th>Buffer</th>
+                            <th>Estrategia</th>
+                            <th>Uso</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr class="level-ultra">
+                            <td class="profile-name">P0_ULTRA_SPORTS_8K</td>
+                            <td>7680&times;4320</td>
+                            <td>8000ms</td>
+                            <td>Ultra Low Latency</td>
+                            <td>Deportes en vivo 8K</td>
+                        </tr>
+                        <tr>
+                            <td class="profile-name">P1_4K_SPORTS_60FPS</td>
+                            <td>3840&times;2160</td>
+                            <td>6000ms</td>
+                            <td>Ultra Low Latency</td>
+                            <td>Deportes 4K 60fps</td>
+                        </tr>
+                        <tr>
+                            <td class="profile-name">P2_4K_EXTREME</td>
+                            <td>3840&times;2160</td>
+                            <td>5000ms</td>
+                            <td>Ultra Low Latency</td>
+                            <td>Cine y documentales 4K</td>
+                        </tr>
+                        <tr>
+                            <td class="profile-name">P3_FHD_ADVANCED</td>
+                            <td>1920&times;1080</td>
+                            <td>3000ms</td>
+                            <td>Adaptive</td>
+                            <td>Noticias y música FHD</td>
+                        </tr>
+                        <tr>
+                            <td class="profile-name">P4_HD_STANDARD</td>
+                            <td>1280&times;720</td>
+                            <td>2000ms</td>
+                            <td>Adaptive</td>
+                            <td>Canales HD estándar</td>
+                        </tr>
+                        <tr>
+                            <td class="profile-name">P5_SD_FALLBACK</td>
+                            <td>854&times;480</td>
+                            <td>1000ms</td>
+                            <td>Low Latency</td>
+                            <td>Fallback universal SD</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

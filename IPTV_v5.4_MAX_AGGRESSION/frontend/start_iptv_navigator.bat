@@ -23,7 +23,8 @@ echo ========================================
 echo.
 
 :: Use robust PowerShell starter for stream probe
-powershell -ExecutionPolicy Bypass -File "tools\stream_probe_server\start_server_robust.ps1" -Silent
+:: DESACTIVADO TEMPORALMENTE para evitar bloqueo de Windows:
+:: powershell -ExecutionPolicy Bypass -File "tools\stream_probe_server\start_server_robust.ps1" -Silent
 
 :: Kill any existing process on HTTP_PORT (except Live Server if running)
 echo Verificando puerto %HTTP_PORT%...
@@ -40,7 +41,7 @@ timeout /t 2 /nobreak >NUL
 :skip_server
 
 :: Navigate to correct path (same as Live Server)
-:: Live Server path: http://127.0.0.1:5500/iptv_nav/files/index-v4.html
+:: Live Server path: http://127.0.0.1:5500/IPTV_v5.4_MAX_AGGRESSION/frontend/index-v4.html
 :: We need to serve from 2 levels up
 
 cd /d "%~dp0..\.."
@@ -58,13 +59,13 @@ timeout /t 2 /nobreak >NUL
 
 :open_browser
 :: Open the app via HTTP with EXACT same path as Live Server
-echo Abriendo aplicacion en http://%HTTP_HOST%:%HTTP_PORT%/iptv_nav/files/index-v4.html
-start "" "http://%HTTP_HOST%:%HTTP_PORT%/iptv_nav/files/index-v4.html"
+echo Abriendo aplicacion en http://%HTTP_HOST%:%HTTP_PORT%/IPTV_v5.4_MAX_AGGRESSION/frontend/index-v4.html
+start "" "http://%HTTP_HOST%:%HTTP_PORT%/IPTV_v5.4_MAX_AGGRESSION/frontend/index-v4.html"
 
 echo.
 echo ========================================
 echo   IPTV Navigator PRO esta corriendo!
-echo   URL: http://%HTTP_HOST%:%HTTP_PORT%/iptv_nav/files/index-v4.html
+echo   URL: http://%HTTP_HOST%:%HTTP_PORT%/IPTV_v5.4_MAX_AGGRESSION/frontend/index-v4.html
 echo ========================================
 echo.
 echo IMPORTANTE: Tus datos de Live Server se mantienen!

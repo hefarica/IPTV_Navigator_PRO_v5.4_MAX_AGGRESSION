@@ -470,7 +470,7 @@
             defaultEnabled: true,
             category: 'quality',
             onEnable: function () {
-                console.log('👑 [QUALITY-OVERLAY] Variant Picker ACTIVADO (Ruta /api/resolve_quality)');
+                console.log('👑 [QUALITY-OVERLAY] Variant Picker ACTIVADO (Ruta /resolve_quality_unified.php)');
             },
             onDisable: function () {
                 console.log('⚪ [QUALITY-OVERLAY] Variant Picker DESACTIVADO');

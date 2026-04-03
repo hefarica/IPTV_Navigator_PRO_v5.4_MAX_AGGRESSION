@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        .slide-container { 
+            width: 1280px; 
+            min-height: 720px; 
+            background-color: #0A192F; 
+            color: #FAFAFA;
+            font-family: 'Inter', sans-serif;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .header-area {
+            padding-top: 60px;
+            padding-left: 80px;
+            padding-right: 80px;
+            margin-bottom: 30px;
+        }
+
+        h1 {
+            font-family: 'Playfair Display', serif;
+            font-size: 32px;
+            font-weight: 700;
+            color: #FAFAFA;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            font-size: 20px;
+            font-weight: 300;
+            color: #8D99AE;
+        }
+
+        .header-rule {
+            width: 100%;
+            height: 1px;
+            background-color: #8D99AE;
+            margin-top: 20px;
+            opacity: 0.5;
+        }
+
+        .content-area {
+            padding-left: 80px;
+            padding-right: 80px;
+            display: flex;
+            flex-direction: column;
+            gap: 30px;
+        }
+
+        .concept-box {
+            padding-left: 20px;
+            border-left: 3px solid #D90429;
+            margin-bottom: 10px;
+        }
+
+        .concept-text {
+            font-size: 18px;
+            line-height: 1.5;
+            color: #FAFAFA;
+            font-weight: 300;
+        }
+
+        .stack-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px 60px;
+        }
+
+        .stack-item {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            padding-top: 15px;
+            border-top: 1px solid rgba(141, 153, 174, 0.2);
+        }
+
+        .stack-title {
+            font-family: 'Playfair Display', serif;
+            font-size: 20px;
+            font-weight: 700;
+            color: #D90429;
+        }
+
+        .stack-desc {
+            font-size: 16px;
+            line-height: 1.5;
+            color: #FAFAFA;
+            font-weight: 300;
+        }
+
+        .highlight {
+            color: #8D99AE;
+            font-weight: 600;
+        }
+
+        .result-box {
+            margin-top: 20px;
+            padding: 20px;
+            background-color: rgba(217, 4, 41, 0.05);
+            border: 1px solid rgba(217, 4, 41, 0.2);
+            text-align: center;
+        }
+
+        .result-text {
+            font-family: 'Playfair Display', serif;
+            font-size: 22px;
+            color: #FAFAFA;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+    <div class="slide-container">
+        <div class="header-area">
+            <h1>DOCTRINA HDR + Quantum ITM</h1>
+            <div class="subtitle">"5000 Nits de Verdad"</div>
+            <div class="header-rule"></div>
+        </div>
+        
+        <div class="content-area">
+            <div class="concept-box">
+                <div class="concept-text">
+                    El motor Quantum ITM v3 Neural convierte contenido SDR en HDR real, protegiendo los tonos de piel y expandiendo el volumen de color sin quemar los blancos.
+                </div>
+            </div>
+            
+            <div class="stack-grid">
+                <div class="stack-item">
+                    <div class="stack-title">Formatos soportados</div>
+                    <div class="stack-desc">Dolby Vision Profile 8.1 Level 6 &middot; HDR10+ v2.0 &middot; HDR10 &middot; HLG &middot; SDR</div>
+                </div>
+                
+                <div class="stack-item">
+                    <div class="stack-title">Pico de luminancia</div>
+                    <div class="stack-desc"><span class="highlight">5,000 nits</span> (vs 4,000 nits en listas anteriores)</div>
+                </div>
+                
+                <div class="stack-item">
+                    <div class="stack-title">Nivel de negro</div>
+                    <div class="stack-desc">0.0001 nits (negro absoluto OLED)</div>
+                </div>
+                
+                <div class="stack-item">
+                    <div class="stack-title">Espacio de color</div>
+                    <div class="stack-desc">BT.2020 &middot; Gamut P3-D65 &middot; Expansión máxima</div>
+                </div>
+                
+                <div class="stack-item">
+                    <div class="stack-title">Metadatos</div>
+                    <div class="stack-desc">Dinámicos escena-por-escena <span class="highlight">Y</span> frame-por-frame simultáneamente</div>
+                </div>
+                
+                <div class="stack-item">
+                    <div class="stack-title">Quantum ITM</div>
+                    <div class="stack-desc">Protección de piel activada &middot; Recuperación de luces y sombras &middot; Rolloff suave</div>
+                </div>
+            </div>
+            
+            <div class="result-box">
+                <div class="result-text">
+                    Resultado visual: Una pantalla OLED recibe instrucciones precisas de brillo para cada fotograma individual.
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

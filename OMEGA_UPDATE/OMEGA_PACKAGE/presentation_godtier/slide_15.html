@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        .slide-container { 
+            width: 1280px; 
+            min-height: 720px; 
+            background-color: #0A192F; 
+            color: #FAFAFA;
+            font-family: 'Inter', sans-serif;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .header-area {
+            padding-top: 60px;
+            padding-left: 80px;
+            padding-right: 80px;
+            margin-bottom: 5px; /* reduced from 30px to lift content up */
+        }
+
+        h1 {
+            font-family: 'Playfair Display', serif;
+            font-size: 32px;
+            font-weight: 700;
+            color: #FAFAFA;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            font-size: 20px;
+            font-weight: 300;
+            color: #8D99AE;
+        }
+
+        .header-rule {
+            width: 100%;
+            height: 1px;
+            background-color: #8D99AE;
+            margin-top: 20px;
+            opacity: 0.5;
+        }
+
+        .content-area {
+            padding-left: 80px;
+            padding-right: 80px;
+            display: flex;
+            flex-direction: column;
+            gap: 18px; /* reduced from 25px */
+        }
+
+        .concept-text {
+            font-size: 18px;
+            line-height: 1.5;
+            color: #FAFAFA;
+            font-weight: 300;
+            padding-left: 20px;
+            border-left: 3px solid #D90429;
+            max-width: 1000px;
+        }
+
+        .steps-container {
+            display: flex;
+            flex-direction: column;
+            gap: 12px; /* reduced from 20px */
+        }
+
+        .step-block {
+            display: flex;
+            flex-direction: column;
+            gap: 8px; /* reduced from 10px */
+        }
+
+        .step-header {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .step-number {
+            font-family: 'Playfair Display', serif;
+            font-size: 20px;
+            font-weight: 700;
+            color: #D90429;
+            background-color: rgba(217, 4, 41, 0.1);
+            padding: 4px 12px;
+            border: 1px solid rgba(217, 4, 41, 0.3);
+        }
+
+        .step-title {
+            font-family: 'Playfair Display', serif;
+            font-size: 20px;
+            font-weight: 700;
+            color: #FAFAFA;
+        }
+
+        .code-block {
+            font-family: monospace;
+            font-size: 15px;
+            color: #8D99AE;
+            background-color: rgba(141, 153, 174, 0.05);
+            padding: 12px 16px; /* slightly reduced from 15px 20px */
+            border: 1px solid rgba(141, 153, 174, 0.2);
+            line-height: 1.5;
+            white-space: pre-wrap;
+        }
+
+        .code-highlight {
+            color: #FAFAFA;
+        }
+
+        .step-desc {
+            font-size: 16px;
+            line-height: 1.5;
+            color: #FAFAFA;
+            font-weight: 300;
+            padding-left: 60px;
+        }
+
+        .requirements-box {
+            margin-top: 10px;
+            padding-top: 12px; /* reduced from 20px */
+            border-top: 1px solid rgba(141, 153, 174, 0.3);
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .req-label {
+            font-family: 'Playfair Display', serif;
+            font-size: 16px;
+            font-weight: 700;
+            color: #8D99AE;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .req-list {
+            font-size: 16px;
+            color: #FAFAFA;
+            font-weight: 300;
+        }
+    </style>
+</head>
+<body>
+    <div class="slide-container">
+        <div class="header-area">
+            <h1>Uso en Producción</h1>
+            <div class="subtitle">"De JSON a Lista en 3 Pasos"</div>
+            <div class="header-rule"></div>
+        </div>
+        
+        <div class="content-area">
+            <div class="concept-text">
+                El generador está diseñado para integrarse en cualquier pipeline de producción IPTV existente. No requiere dependencias externas.
+            </div>
+            
+            <div class="steps-container">
+                <div class="step-block">
+                    <div class="step-header">
+                        <div class="step-number">Paso 1</div>
+                        <div class="step-title">Preparar el JSON de canales</div>
+                    </div>
+                    <div class="code-block" style="margin-left: 60px;">[{"id":"espn_4k","name":"ESPN 4K HDR","group":"DEPORTES",
+  "url":"http://servidor/stream.m3u8","token":"jwt..."}]</div>
+                </div>
+                
+                <div class="step-block">
+                    <div class="step-header">
+                        <div class="step-number">Paso 2</div>
+                        <div class="step-title">Ejecutar el generador</div>
+                    </div>
+                    <div class="code-block" style="margin-left: 60px;"><span class="code-highlight">python3 ape_godtier_generator.py</span> \
+  --channels mis_canales.json \
+  --resolve-url http://mi-vps.com/resolve.php \
+  -o APE_GODTIER_SUPREME.m3u8</div>
+                </div>
+                
+                <div class="step-block">
+                    <div class="step-header">
+                        <div class="step-number">Paso 3</div>
+                        <div class="step-title">Distribuir la lista</div>
+                    </div>
+                    <div class="step-desc">
+                        La lista resultante se sirve a los clientes. El proxy <span style="font-family: monospace; color: #D90429;">resolve_quality_unified.php</span> intercepta cada petición y reconstruye el Player Enslavement completo en memoria.
+                    </div>
+                </div>
+            </div>
+            
+            <div class="requirements-box">
+                <div class="req-label">Requisitos:</div>
+                <div class="req-list">Python 3.11+ &middot; Sin dependencias externas &middot; Compatible con Linux/Windows/macOS</div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

@@ -1218,7 +1218,7 @@
 
                 // --- INYECCIÓN QUIRÚRGICA: VIP QUALITY OVERLAY (VARIANT PICKER) ---
                 const useQualityOverlay = window.ApeModuleManager?.isEnabled('quality-overlay-vip') || false;
-                const resolveScript = useQualityOverlay ? '/resolve_quality.php' : '/resolve.php';
+                const resolveScript = useQualityOverlay ? '/resolve_quality_unified.php' : '/resolve.php';
 
                 const chId = channel.epg_channel_id || channel.tvg_id || channel.stream_id || channel.id || index;
                 const listId = (typeof VERSION !== 'undefined' ? VERSION : '16.0.0').replace(/[^a-zA-Z0-9.-]/g, '');
@@ -1497,7 +1497,7 @@
                     // --- INYECCIÓN QUIRÚRGICA: VIP QUALITY OVERLAY ---
                     const useQualityOverlay = window.ApeModuleManager?.isEnabled('quality-overlay-vip') || false;
                     if (useQualityOverlay && cleanBase.includes('iptv-ape.duckdns.org')) {
-                        baseUrl = `https://iptv-ape.duckdns.org/api/resolve_quality?ch=${channel.stream_id}&p=${profile}`;
+                        baseUrl = `https://iptv-ape.duckdns.org/resolve_quality_unified.php?ch=${channel.stream_id}&p=${profile}`;
                     } else {
                         baseUrl = `${cleanBase}/live/${server.username}/${server.password}/${channel.stream_id}.${ext}`;
                     }

@@ -1,0 +1,24 @@
+﻿Auditing file: C:\Users\HFRC\Downloads\APE_TYPED_ARRAYS_ULTIMATE_20260331.m3u8 (318.98 MB)
+
+--- METRICS ---
+size_bytes: 334476582
+total_lines: 3061724
+extinf: 4143
+extvlcopt: 393585
+kodiprop: 223722
+ext_x_ape: 2133690
+exthttp: 4144
+fallback_direct: 4143
+extattrfromurl: 219579
+resolve_quality: 8286
+ctx: 8286
+srv: 8286
+
+--- URL ANALYSIS ---
+Max URL Length: 1009 chars (< 800 is required)
+Max ctx= Payload Length: 755 chars (< 200 is required)
+
+--- FIRST URL SAMPLE ---
+#EXTATTRFROMURL:https://iptv-ape.duckdns.org/resolve_quality_unified.php?ch=1&p=P3&mode=adaptive&list=22.2.0-FUSION-FANTASMA-NUCLEAR&bw=50500000&buf=37500&origin=nov202gg.xyz&sid=1&srv=bm92MjAyZ2cueHl6OjgwfDJibHR6bGw0cDJ8MHF0dWprcmphbA%3D%3D&ctx=eyJwIjoiUDMiLCJycyI6IjE5MjB4MTA4MCIsImJ3Ijo1MDUwMDAwMCwiYnIiOjI1MjUwLCJiZiI6Mzc1MDAsIm5jIjo0MDAwMCwiaGQiOjAsImNzIjoiQlQyMDIwIiwiY3AiOiJIWUJSSURfQVYxX0hFVkNfQVZDIiwidiI6IjI1IiwicmciOiJSRVNUTyBERUwgTVVORE8iLCJsZyI6InVuZCIsImN0IjoiREVQT1JURVMiLCJjbiI6IlJFU1RPIERFTCBNVU5ETyIsImNmIjozMywiZnAiOjEyMCwidHIiOiJITFMiLCJhdCI6MCwiY3UiOjAsImxsIjowLCJidCI6IiIsInNjIjoiZ2VuZXJhbCIsImNmMiI6IiIsIm14Ijo1MDAwLCJtZiI6ODAwLCJkdiI6OCwiYngiOjIwMDAwMCwiYjIiOjYwMDAwLCJkdCI6IlRWIiwic3IiOiIxOTIweDEwODAiLCJodyI6MSwiaWIiOjI1MjUwMDAwLCJicCI6IlVMIiwiY2QiOiJhdXRvIiwic2YiOjEsImFiIjo2NDAsImFjIjoiYWFjLGVhYzMiLCJwdCI6IlZMQyIsIm50Ijoid2lmaSIsInJjIjoxMCwiY3QyIjoyNTAwLCJ2YyI6ImF2MSxoZXZjLHZwOSxoMjY0IiwiZHIiOiJ3aWRldmluZSxwbGF5cmVhZHkiLCJuYzIiOjEyMDAwMCwiY2oiOjE1MDB9
+WARNING: %3D%3D detected in URL (encodeURIComponent used, MUST NOT BE THERE)
+WARNING: Path should be /api/resolve_quality_... instead of bare /resolve.php

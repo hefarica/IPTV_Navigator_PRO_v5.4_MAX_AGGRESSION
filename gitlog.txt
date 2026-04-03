@@ -1,0 +1,89 @@
+commit ddc690732af467c32a820538742938cfbbd2ccb8
+Author: HFRC <hfrc@iptv-navigator.dev>
+Date:   Mon Mar 30 19:09:07 2026 -0500
+
+    feat: Sentinel Buffer v20 integrado al Resolver Unificado. Override Maestro activado.
+
+commit 2b3192eeaf26ae4a58656b29b37eee901227600e
+Author: HFRC <hfrc@iptv-navigator.dev>
+Date:   Mon Mar 30 18:42:11 2026 -0500
+
+    feat: Motor Quantum Pixel Overdrive & Estabilizador de Zapping (5000 Nits, Lanczos, HQDN3D) y 8 Skills
+
+commit 2beda0a96ee6ad6a492de3b5051032ca900d5d65
+Author: HFRC <hfrc@iptv-navigator.dev>
+Date:   Mon Mar 30 09:57:10 2026 -0500
+
+    docs: Add SKILL and Workflow for Metadata Engine Anti-509 Guardian
+
+commit 0d9c921ae009fbc72f5c2635db17df6b572f2204
+Author: HFRC <hfrc@iptv-navigator.dev>
+Date:   Mon Mar 30 09:55:59 2026 -0500
+
+    feat(FASE 5): Implement Metadata Intelligence Engine with Anti-509 Guardian. Fix 509 Zapping Error & meta-cluster connections
+
+commit ec05e01dd1c36addd7889a11bbf4270717eb788f
+Author: HFRC <hfrc@iptv-navigator.dev>
+Date:   Mon Mar 30 05:53:08 2026 -0500
+
+    feat(MetadataEngine): implement auto-delta scanning before list generation and IndexedDB persistence
+
+commit 2cea58b7afee08193f6b24b7fc9f3838032a2544
+Author: HFRC <hfrc@iptv-navigator.dev>
+Date:   Mon Mar 30 04:42:13 2026 -0500
+
+    feat: core metadata intelligence engine implementation
+
+commit c4a16503b058adf2d9206928f2d0fe196ab92633
+Author: HFRC <hfrc@iptv-navigator.dev>
+Date:   Mon Mar 30 04:42:03 2026 -0500
+
+    test: align thresholds with production metadata classification
+
+commit a56cd33d55c021a7488cb99dd90e5a938bd22c65
+Author: HFRC <hfrc@iptv-navigator.dev>
+Date:   Mon Mar 30 04:41:53 2026 -0500
+
+    feat: unified resolver integration with metadata engine
+
+commit 11e7141a6cea158cc44882cf91bf938274db9cdb
+Author: HFRC <hfrc@iptv-navigator.dev>
+Date:   Sun Mar 29 01:29:34 2026 -0500
+
+    skill: resolver_stateless_arch  Stateless per-channel architecture, session registry, multi-list handling
+
+commit 5661dcfa4af81ced04ca3e59e1d9e91c5d2e9962
+Author: HFRC <hfrc@iptv-navigator.dev>
+Date:   Sun Mar 29 01:21:06 2026 -0500
+
+    skill: directive_sync_flow  Master 5-rule synchronization protocol for all layers
+
+commit bba3382b6c9865287007d02fe001cb856bb9076f
+Author: HFRC <hfrc@iptv-navigator.dev>
+Date:   Sun Mar 29 01:17:47 2026 -0500
+
+    feat(resolver): 3-layer directive sync - ctx overlay + PM header injection + nuclear enforcement
+
+commit d594cd0fd953aec6d91510cf41445d8cc6f3d844
+Author: HFRC <hfrc@iptv-navigator.dev>
+Date:   Sun Mar 29 01:06:40 2026 -0500
+
+    feat(resolver): QoS Dynamic Monitoring v1.0 - ctx parser, session registry (max 10), X-APE-* reader, response headers
+
+commit 5b69f6dfccdaa025c1ac3e5f2cf1ad799bfdfb5b
+Author: HFRC <hfrc@iptv-navigator.dev>
+Date:   Sun Mar 29 01:00:02 2026 -0500
+
+    rules: M3U8 Generation Master Rules (8 inviolable rules) + workflow
+
+commit 12b44ba8cd862c366ba399ca55c2aaa8f4bccaf3
+Author: HFRC <hfrc@iptv-navigator.dev>
+Date:   Sun Mar 29 00:50:49 2026 -0500
+
+    feat(exthttp): Dynamic PM Header Injection - auto-read all 19 categories x 140+ headers from Profile Manager
+
+commit 4ec23a3971418bb92c1a1feb88e1009527b5e6ba
+Author: HFRC <hfrc@iptv-navigator.dev>
+Date:   Sun Mar 29 00:44:44 2026 -0500
+
+    skill: Create profile_sync_rule - mandatory Profile Manager sync during M3U8 generation

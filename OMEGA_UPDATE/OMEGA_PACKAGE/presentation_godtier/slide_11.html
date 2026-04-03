@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        .slide-container { 
+            width: 1280px; 
+            min-height: 720px; 
+            background-color: #0A192F; 
+            color: #FAFAFA;
+            font-family: 'Inter', sans-serif;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .header-area {
+            padding-top: 60px;
+            padding-left: 80px;
+            padding-right: 80px;
+            margin-bottom: 30px;
+        }
+
+        h1 {
+            font-family: 'Playfair Display', serif;
+            font-size: 32px;
+            font-weight: 700;
+            color: #FAFAFA;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            font-size: 20px;
+            font-weight: 300;
+            color: #8D99AE;
+        }
+
+        .header-rule {
+            width: 100%;
+            height: 1px;
+            background-color: #8D99AE;
+            margin-top: 20px;
+            opacity: 0.5;
+        }
+
+        .content-grid {
+            display: grid;
+            grid-template-columns: 650px 1fr;
+            gap: 40px;
+            padding-left: 80px;
+            padding-right: 80px;
+        }
+
+        .text-column {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .concept-text {
+            font-size: 16px;
+            line-height: 1.5;
+            color: #FAFAFA;
+            font-weight: 300;
+            padding-left: 15px;
+            border-left: 2px solid #D90429;
+        }
+
+        .levels-container {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .level-item {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid rgba(141, 153, 174, 0.2);
+        }
+
+        .level-number {
+            font-family: 'Playfair Display', serif;
+            font-size: 18px;
+            font-weight: 700;
+            color: #D90429;
+            width: 20px;
+        }
+
+        .level-name {
+            font-size: 15px;
+            font-weight: 600;
+            color: #FAFAFA;
+            width: 250px;
+        }
+
+        .level-desc {
+            font-size: 14px;
+            color: #8D99AE;
+            font-weight: 300;
+        }
+
+        .error-management {
+            margin-top: 10px;
+            background-color: rgba(141, 153, 174, 0.05);
+            padding: 15px;
+            border: 1px solid rgba(141, 153, 174, 0.2);
+        }
+
+        .error-title {
+            font-family: 'Playfair Display', serif;
+            font-size: 16px;
+            font-weight: 700;
+            color: #D90429;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .error-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .error-item {
+            font-size: 14px;
+            color: #FAFAFA;
+            font-weight: 300;
+        }
+
+        .error-code {
+            font-family: monospace;
+            color: #8D99AE;
+            background-color: rgba(141, 153, 174, 0.1);
+            padding: 2px 4px;
+            margin-right: 5px;
+        }
+
+        .image-column {
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+        }
+
+        .content-image {
+            width: 450px;
+            height: 500px;
+            object-fit: contain;
+            border: 1px solid rgba(141, 153, 174, 0.3);
+            background-color: rgba(0, 0, 0, 0.2);
+            padding: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="slide-container">
+        <div class="header-area">
+            <h1>DOCTRINA RESILIENCE</h1>
+            <div class="subtitle">"7 Niveles: Jamás Pantalla Negra"</div>
+            <div class="header-rule"></div>
+        </div>
+        
+        <div class="content-grid">
+            <div class="text-column">
+                <div class="concept-text">
+                    La Cadena de Degradación Graceful garantiza que el reproductor siempre tenga algo que mostrar, incluso si el servidor principal, la red y el ISP fallan simultáneamente.
+                </div>
+                
+                <div class="levels-container">
+                    <div class="level-item">
+                        <div class="level-number">1</div>
+                        <div class="level-name">CMAF + HEVC + LCEVC</div>
+                        <div class="level-desc">&rarr; Máxima calidad, baja latencia</div>
+                    </div>
+                    <div class="level-item">
+                        <div class="level-number">2</div>
+                        <div class="level-name">HLS/fMP4 + HEVC + LCEVC</div>
+                        <div class="level-desc">&rarr; Alta calidad, compatible</div>
+                    </div>
+                    <div class="level-item">
+                        <div class="level-number">3</div>
+                        <div class="level-name">HLS/fMP4 + H.264</div>
+                        <div class="level-desc">&rarr; Calidad media, amplia compatibilidad</div>
+                    </div>
+                    <div class="level-item">
+                        <div class="level-number">4</div>
+                        <div class="level-name">HLS/TS + H.264</div>
+                        <div class="level-desc">&rarr; Modo clásico, universal</div>
+                    </div>
+                    <div class="level-item">
+                        <div class="level-number">5</div>
+                        <div class="level-name">HLS/TS + H.264 Baseline</div>
+                        <div class="level-desc">&rarr; Dispositivos legacy</div>
+                    </div>
+                    <div class="level-item">
+                        <div class="level-number">6</div>
+                        <div class="level-name">TS Direct</div>
+                        <div class="level-desc">&rarr; Transmisión cruda sin contenedor</div>
+                    </div>
+                    <div class="level-item">
+                        <div class="level-number">7</div>
+                        <div class="level-name">HTTP Redirect al Origen</div>
+                        <div class="level-desc">&rarr; Conexión directa sin proxy</div>
+                    </div>
+                </div>
+                
+                <div class="error-management">
+                    <div class="error-title">Gestión de Errores HTTP</div>
+                    <div class="error-grid">
+                        <div class="error-item"><span class="error-code">401</span> Escala credenciales</div>
+                        <div class="error-item"><span class="error-code">403</span> Morph de identidad</div>
+                        <div class="error-item"><span class="error-code">429</span> Swarm Evasion</div>
+                        <div class="error-item"><span class="error-code">451</span> Phantom Geográfico</div>
+                        <div class="error-item"><span class="error-code">5xx</span> Reconexión limpia silenciosa</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="image-column">
+                <img src="/home/ubuntu/diagrama_paso3_degradacion.png" alt="Cadena de Degradación" class="content-image">
+            </div>
+        </div>
+    </div>
+</body>
+</html>

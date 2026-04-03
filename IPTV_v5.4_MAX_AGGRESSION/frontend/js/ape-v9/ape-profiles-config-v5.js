@@ -710,9 +710,9 @@
         // P0: 8K/UHD8K
         if (height >= 4320 || bitrate >= 50000 || name.includes('8K') || name.includes('UHD8K')) return 'P0';
         // P1: 4K 60fps o bitrate alto
-        if ((height >= 2160 && bitrate >= 20000) || name.includes('4K') || name.includes('UHD')) return 'P1';
+        if ((height >= 2160 && bitrate >= 20000) || (height >= 2160 && name.includes('60FPS')) || name.includes('UHD60') || (name.includes('4K') && name.includes('60FPS')) || name.includes('SUPREME')) return 'P1';
         // P2: 4K estándar
-        if (height >= 2160) return 'P2';
+        if (height >= 2160 || name.includes('4K') || name.includes('UHD')) return 'P2';
         // P3: FHD
         if (height >= 1080 || name.includes('FHD') || name.includes('1080')) return 'P3';
         // P4: HD

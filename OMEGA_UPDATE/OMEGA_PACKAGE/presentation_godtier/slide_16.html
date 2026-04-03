@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        .slide-container { 
+            width: 1280px; 
+            min-height: 720px; 
+            background-color: #0A192F; 
+            color: #FAFAFA;
+            font-family: 'Inter', sans-serif;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .header-area {
+            padding-top: 80px; /* keep title top padding as required */
+            width: 100%;
+            text-align: center;
+            margin-bottom: 8px; /* reduced to bring content up */
+        }
+
+        h1 {
+            font-family: 'Playfair Display', serif;
+            font-size: 42px;
+            font-weight: 700;
+            color: #FAFAFA;
+            margin-bottom: 15px;
+            letter-spacing: -0.5px;
+        }
+
+        .subtitle {
+            font-size: 24px;
+            font-weight: 300;
+            color: #D90429;
+            font-style: italic;
+        }
+
+        .header-rule {
+            width: 800px;
+            height: 1px;
+            background-color: #8D99AE;
+            margin: 12px auto 0; /* slightly reduced */
+            opacity: 0.5;
+        }
+
+        .content-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 36px; /* reduced from 60 to tighten spacing */
+            width: 1000px;
+            margin-bottom: 8px; /* reduced to pull next block up */
+        }
+
+        .summary-column {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .column-title {
+            font-family: 'Playfair Display', serif;
+            font-size: 24px;
+            font-weight: 700;
+            color: #8D99AE;
+            border-bottom: 1px solid rgba(141, 153, 174, 0.3);
+            padding-bottom: 6px; /* slightly reduced */
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .summary-list {
+            display: flex;
+            flex-direction: column;
+            gap: 6px; /* reduced from 15 */
+        }
+
+        .summary-item {
+            font-size: 18px;
+            line-height: 1.5;
+            color: #FAFAFA;
+            font-weight: 300;
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+        }
+
+        .bullet {
+            color: #D90429;
+            font-weight: 700;
+        }
+
+        .highlight {
+            color: #D90429;
+            font-weight: 600;
+        }
+
+        .arch-item {
+            display: flex;
+            flex-direction: column;
+            gap: 4px; /* tightened */
+            margin-bottom: 6px; /* reduced from 15 */
+        }
+
+        .arch-title {
+            font-family: 'Playfair Display', serif;
+            font-size: 20px;
+            font-weight: 700;
+            color: #FAFAFA;
+        }
+
+        .arch-desc {
+            font-size: 16px;
+            color: #8D99AE;
+            font-weight: 300;
+            line-height: 1.4;
+        }
+
+        .next-step-box {
+            width: 1000px;
+            background-color: rgba(217, 4, 41, 0.05);
+            border: 1px solid rgba(217, 4, 41, 0.3);
+            padding: 18px; /* reduced from 30 */
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .next-step-label {
+            font-family: 'Playfair Display', serif;
+            font-size: 18px;
+            font-weight: 700;
+            color: #D90429;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .next-step-text {
+            font-size: 20px;
+            color: #FAFAFA;
+            font-weight: 300;
+            line-height: 1.5;
+        }
+
+        .code-inline {
+            font-family: monospace;
+            color: #8D99AE;
+            background-color: rgba(141, 153, 174, 0.1);
+            padding: 2px 6px;
+        }
+    </style>
+</head>
+<body>
+    <div class="slide-container">
+        <div class="header-area">
+            <h1>APE GOD-TIER SUPREME</h1>
+            <div class="subtitle">La Obra Viva del Streaming Personalizado</div>
+            <div class="header-rule"></div>
+        </div>
+        
+        <div class="content-grid">
+            <div class="summary-column">
+                <div class="column-title">Resumen de Capacidades</div>
+                <div class="summary-list">
+                    <div class="summary-item">
+                        <span class="bullet">&gt;</span>
+                        <div><span class="highlight">631 directivas</span> fusionadas de 3 listas maestras</div>
+                    </div>
+                    <div class="summary-item">
+                        <span class="bullet">&gt;</span>
+                        <div><span class="highlight">28 doctrinas</span> que cubren red, códec, IA, HDR, resiliencia y control</div>
+                    </div>
+                    <div class="summary-item">
+                        <span class="bullet">&gt;</span>
+                        <div><span class="highlight">7 perfiles</span> de calidad adaptativos por tipo de contenido</div>
+                    </div>
+                    <div class="summary-item">
+                        <span class="bullet">&gt;</span>
+                        <div><span class="highlight">10 niveles</span> de anti-throttle ISP con escalada nuclear</div>
+                    </div>
+                    <div class="summary-item">
+                        <span class="bullet">&gt;</span>
+                        <div><span class="highlight">7 niveles</span> de degradación graceful (jamás pantalla negra)</div>
+                    </div>
+                    <div class="summary-item">
+                        <span class="bullet">&gt;</span>
+                        <div><span class="highlight">0 cortes &middot; 0 artefactos &middot; 0 bloqueos &middot; Control total</span></div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="summary-column">
+                <div class="column-title">La Arquitectura Es</div>
+                <div class="arch-item">
+                    <div class="arch-title">Idempotente</div>
+                    <div class="arch-desc">Genera el mismo resultado siempre, sin importar cuántas veces se ejecute.</div>
+                </div>
+                <div class="arch-item">
+                    <div class="arch-title">Polimórfica</div>
+                    <div class="arch-desc">Adapta cada canal a su tipo de contenido automáticamente.</div>
+                </div>
+                <div class="arch-item">
+                    <div class="arch-title">Viva</div>
+                    <div class="arch-desc">El proxy reconstruye las directivas en tiempo real con los datos más frescos.</div>
+                </div>
+                <div class="arch-item">
+                    <div class="arch-title">Indestructible</div>
+                    <div class="arch-desc">7 niveles de fallback garantizan reproducción bajo cualquier condición.</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="next-step-box">
+            <div class="next-step-label">Próximo Paso</div>
+            <div class="next-step-text">
+                Actualizar <span class="code-inline">resolve_quality_unified.php</span> v4.0 para leer el Payload JSON y completar el pipeline híbrido.
+            </div>
+        </div>
+    </div>
+</body>
+</html>

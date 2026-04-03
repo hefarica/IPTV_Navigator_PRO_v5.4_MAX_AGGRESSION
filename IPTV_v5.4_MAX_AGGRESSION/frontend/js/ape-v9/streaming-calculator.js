@@ -213,7 +213,7 @@
          * ═══════════════════════════════════════════════════════════════════
          */
         static calculateBitrate(resolution, codec, fps, compressionMult = 0.22) {
-            const [width, height] = resolution.toLowerCase().split('x').map(Number);
+            const [width, height] = (resolution || '1920x1080').toString().toLowerCase().split('x').map(Number);
             const pixels = (width || 1920) * (height || 1080);
 
             let resLabel = 'FHD';
@@ -223,7 +223,7 @@
             else if (pixels >= 900000) resLabel = 'HD';
             else resLabel = 'SD';
 
-            const bppKey = `${codec.toUpperCase()}_${resLabel}`;
+            const bppKey = `${(codec || 'HEVC').toString().toUpperCase()}_${resLabel}`;
             const bpp = CONSTANTS.BITS_PER_PIXEL[bppKey] || 0.15;
             const bitrateBase = (pixels * fps * bpp) / 1000000;
 

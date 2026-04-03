@@ -1,0 +1,204 @@
+{
+  "project_info": {
+    "title": "Portada",
+    "created": 1775020531.5167727,
+    "last_updated": 1775020823.102086,
+    "total_slides": 16
+  },
+  "slides": [
+    {
+      "id": "slide_1",
+      "state": "edited",
+      "pageNum": 1
+    },
+    {
+      "id": "slide_2",
+      "state": "edited",
+      "pageNum": 2
+    },
+    {
+      "id": "slide_3",
+      "state": "edited",
+      "pageNum": 3
+    },
+    {
+      "id": "slide_4",
+      "state": "edited",
+      "pageNum": 4
+    },
+    {
+      "id": "slide_5",
+      "state": "edited",
+      "pageNum": 5
+    },
+    {
+      "id": "slide_6",
+      "state": "edited",
+      "pageNum": 6
+    },
+    {
+      "id": "slide_7",
+      "state": "edited",
+      "pageNum": 7
+    },
+    {
+      "id": "slide_8",
+      "state": "edited",
+      "pageNum": 8
+    },
+    {
+      "id": "slide_9",
+      "state": "edited",
+      "pageNum": 9
+    },
+    {
+      "id": "slide_10",
+      "state": "edited",
+      "pageNum": 10
+    },
+    {
+      "id": "slide_11",
+      "state": "edited",
+      "pageNum": 11
+    },
+    {
+      "id": "slide_12",
+      "state": "edited",
+      "pageNum": 12
+    },
+    {
+      "id": "slide_13",
+      "state": "edited",
+      "pageNum": 13
+    },
+    {
+      "id": "slide_14",
+      "state": "edited",
+      "pageNum": 14
+    },
+    {
+      "id": "slide_15",
+      "state": "edited",
+      "pageNum": 15
+    },
+    {
+      "id": "slide_16",
+      "state": "edited",
+      "pageNum": 16
+    }
+  ],
+  "outline": [
+    {
+      "id": "slide_1",
+      "title": "Portada",
+      "summary": "Presentación Técnica — Estado del Arte en IPTV Personalizado",
+      "image_plan": "",
+      "slide_template_key": ""
+    },
+    {
+      "id": "slide_2",
+      "title": "El Problema que Resuelve",
+      "summary": "316 MB vs 15 MB, mismo poder",
+      "image_plan": "/home/ubuntu/diagrama_paso1_generador.png - This image visually represents the core problem and solution of file size reduction, directly comparing 'TYPED ARRAYS ULTIMATE' (316 MB) with 'HIBRIDO NUCLEAR' (~15 MB) and showing the transformation process.",
+      "slide_template_key": ""
+    },
+    {
+      "id": "slide_3",
+      "title": "Arquitectura de 6 Módulos",
+      "summary": "Una máquina de precisión suiza",
+      "image_plan": "/home/ubuntu/diagrama_flujo_4pasos_completo.png - This image provides a high-level overview of the 'Arquitectura Hibrida GOD-TIER' with its multiple steps and modules, which aligns with the slide's concept of a modular system.",
+      "slide_template_key": ""
+    },
+    {
+      "id": "slide_4",
+      "title": "ChannelProfiler",
+      "summary": "El Cerebro Clasificador Polimórfico",
+      "image_plan": "",
+      "slide_template_key": ""
+    },
+    {
+      "id": "slide_5",
+      "title": "Las 28 Doctrinas Tecnológicas",
+      "summary": "El Universo Completo",
+      "image_plan": "/home/ubuntu/comparativo_artifact_killer.png - This image is a detailed table comparing 'Antes' and 'Después' values for various parameters, which directly relates to the 28 doctrines and their specific configurations.",
+      "slide_template_key": ""
+    },
+    {
+      "id": "slide_6",
+      "title": "DOCTRINA EVASION",
+      "summary": "Hydra Stealth: Invisible e Indestructible",
+      "image_plan": "",
+      "slide_template_key": ""
+    },
+    {
+      "id": "slide_7",
+      "title": "DOCTRINA ISP THROTTLE",
+      "summary": "10 Niveles de Escalada Nuclear",
+      "image_plan": "",
+      "slide_template_key": ""
+    },
+    {
+      "id": "slide_8",
+      "title": "DOCTRINA LCEVC Phase 4",
+      "summary": "MPEG-5 Part 2: La Capa de Mejora",
+      "image_plan": "",
+      "slide_template_key": ""
+    },
+    {
+      "id": "slide_9",
+      "title": "DOCTRINA HDR + Quantum ITM",
+      "summary": "5000 Nits de Verdad",
+      "image_plan": "",
+      "slide_template_key": ""
+    },
+    {
+      "id": "slide_10",
+      "title": "DOCTRINA AI SUPER RESOLUTION",
+      "summary": "La GPU Como Post-Productor",
+      "image_plan": "/home/ubuntu/diagrama_paso4_gpu.png - This image visually depicts the 'Pipeline GPU Visual God-Tier' with its 7 stages, which directly illustrates the AI Super Resolution process.",
+      "slide_template_key": ""
+    },
+    {
+      "id": "slide_11",
+      "title": "DOCTRINA RESILIENCE",
+      "summary": "7 Niveles: Jamás Pantalla Negra",
+      "image_plan": "/home/ubuntu/diagrama_paso3_degradacion.png - This image clearly illustrates the 'Player Enslavement + Cadena de Degradación (7 niveles)' with its different fallback levels, directly matching the slide's content.",
+      "slide_template_key": ""
+    },
+    {
+      "id": "slide_12",
+      "title": "DOCTRINA JSON ORCHESTRATION",
+      "summary": "El Payload que lo Controla Todo",
+      "image_plan": "",
+      "slide_template_key": ""
+    },
+    {
+      "id": "slide_13",
+      "title": "Los 6 Perfiles de Calidad v9.0",
+      "summary": "Un Perfil para Cada Pantalla",
+      "image_plan": "",
+      "slide_template_key": ""
+    },
+    {
+      "id": "slide_14",
+      "title": "Resultados de Rendimiento",
+      "summary": "Los Números No Mienten",
+      "image_plan": "",
+      "slide_template_key": ""
+    },
+    {
+      "id": "slide_15",
+      "title": "Uso en Producción",
+      "summary": "De JSON a Lista en 3 Pasos",
+      "image_plan": "",
+      "slide_template_key": ""
+    },
+    {
+      "id": "slide_16",
+      "title": "Cierre",
+      "summary": "El Estado del Arte. Vivo. Indestructible.",
+      "image_plan": "",
+      "slide_template_key": ""
+    }
+  ]
+}

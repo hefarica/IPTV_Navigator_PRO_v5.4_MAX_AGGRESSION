@@ -122,6 +122,48 @@
     ];
 
     let _uaRotationIndex = 0;
+    let _cortexTempBanHash = ''; // Pilar 5 Cache Busting
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // 🛡️ PILAR 5: CÓRTEX JS PREVENCIÓN TEMP-BLACKLIST E INTERCEPTACIÓN GLOBAL
+    // ═══════════════════════════════════════════════════════════════════════════
+    if (typeof window !== 'undefined' && !window._apeCortexInitialized) {
+        window._apeCortexInitialized = true;
+        
+        const triggerCortexRecovery = (status, url) => {
+            if ([400, 401, 403, 405, 429].includes(status) || status === 0) {
+                console.warn(`🔴 [CÓRTEX JS] Temp-Blacklist o Throttle detectado (HTTP ${status}). Forzando rotación de UA y bust hash.`);
+                _uaRotationIndex += Math.floor(Math.random() * 5) + 1; // Salto aleatorio en tabla de UAs
+                _cortexTempBanHash = Date.now().toString(36) + Math.random().toString(36).substring(2, 6);
+            }
+        };
+
+        const originalFetch = window.fetch;
+        window.fetch = async function(...args) {
+            try {
+                const response = await originalFetch.apply(this, args);
+                triggerCortexRecovery(response.status, response.url);
+                return response;
+            } catch (err) {
+                triggerCortexRecovery(0, args[0]);
+                throw err;
+            }
+        };
+
+        if (typeof XMLHttpRequest !== 'undefined') {
+            const originalOpen = XMLHttpRequest.prototype.open;
+            XMLHttpRequest.prototype.open = function(method, url, ...rest) {
+                this._ctxUrl = url;
+                return originalOpen.apply(this, [method, url, ...rest]);
+            };
+            const originalSend = XMLHttpRequest.prototype.send;
+            XMLHttpRequest.prototype.send = function(...args) {
+                this.addEventListener('load', function() { triggerCortexRecovery(this.status, this._ctxUrl); });
+                this.addEventListener('error', function() { triggerCortexRecovery(0, this._ctxUrl); });
+                return originalSend.apply(this, args);
+            };
+        }
+    }
 
     /**
      * 🔄 Obtiene un User-Agent rotado por estrategia
@@ -1435,7 +1477,16 @@
         const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 18) + 'Z';
         const totalChannels = typeof window !== 'undefined' && window.app && typeof window.app.getFilteredChannels === 'function' ? window.app.getFilteredChannels().length : channelsCount;
 
-        return `#EXTM3U x-tvg-url="" x-tvg-url-epg="" x-tvg-logo="" x-tvg-shift=0 catchup="flussonic" catchup-days="7" catchup-source="{MediaUrl}?utc={utc}&lutc={lutc}" url-tvg="" refresh="1800"
+        return `#EXTM3U
+#EXT-X-APE-QMAX-VERSION:2.0-ADAPTIVE
+#EXT-X-APE-QMAX-STRATEGY:GREEDY-BEST-AVAILABLE
+#EXT-X-APE-QMAX-ANTI-DOWNGRADE:ENFORCED
+#EXT-X-APE-QMAX-TIER-CASCADE:S>A>A->B>C>D
+#EXT-X-APE-QMAX-SELECTION-RULE:IF-4K-EXISTS-1080P-FORBIDDEN
+#EXT-X-APE-QMAX-BUFFER-CLASS:8K-ADAPTIVE-1GB
+#EXT-X-APE-QMAX-PERCEPTUAL-OPTIMIZATION:VMAF-MAXIMIZATION-ENABLED
+#EXT-X-APE-QMAX-BANDWIDTH-SAFETY-MARGIN:0.30
+#X-OMEGA-TIMESTAMP: x-tvg-url="" x-tvg-url-epg="" x-tvg-logo="" x-tvg-shift=0 catchup="flussonic" catchup-days="7" catchup-source="{MediaUrl}?utc={utc}&lutc={lutc}" url-tvg="" refresh="1800"
 #EXT-X-APE-BUILD:v6.0-NUCLEAR-HACKS-${timestamp}
 #EXT-X-APE-PARADIGM:PLAYER-ENSLAVEMENT-PROTOCOL-V6.0-NUCLEAR
 #EXT-X-APE-CHANNELS:${totalChannels}
@@ -1616,13 +1667,14 @@
         // ~105 líneas únicas = FULL POWER, ZERO CRASHES.
         // ═══════════════════════════════════════════════════════════════
         return [
-            // ── SECCIÓN 1: CACHING NUCLEAR (6 líneas) ──
-            `#EXTVLCOPT:network-caching=${GLOBAL_CACHING.network}`,
-            `#EXTVLCOPT:live-caching=${GLOBAL_CACHING.live}`,
-            `#EXTVLCOPT:file-caching=${GLOBAL_CACHING.file}`,
-            `#EXTVLCOPT:disc-caching=30000`,
-            `#EXTVLCOPT:tcp-caching=60000`,
-            `#EXTVLCOPT:sout-mux-caching=${GLOBAL_CACHING.live}`,
+            // ── 🌊 FASE 1: IMPULSO ZAPPING (Prevención de Freezes 5s-10s) ──
+            // Amplificación al 400% del buffer durante el handshake
+            `#EXTVLCOPT:network-caching=${GLOBAL_CACHING.network * 4}`,
+            `#EXTVLCOPT:live-caching=${GLOBAL_CACHING.live * 4}`,
+            `#EXTVLCOPT:file-caching=${GLOBAL_CACHING.file * 4}`,
+            `#EXTVLCOPT:disc-caching=120000`,
+            `#EXTVLCOPT:tcp-caching=120000`,
+            `#EXTVLCOPT:sout-mux-caching=${GLOBAL_CACHING.live * 2}`,
             // ── SECCIÓN 2: CLOCK & SYNC — SIN CONTRADICCIÓN (2 líneas) ──
             `#EXTVLCOPT:clock-jitter=${cfg.clock_jitter || 1500}`,
             `#EXTVLCOPT:clock-synchro=1`,
@@ -1668,18 +1720,16 @@
             `#EXTVLCOPT:ffmpeg-threads=0`,
             `#EXTVLCOPT:postproc-quality=6`,
             `#EXTVLCOPT:avformat-options={analyzeduration:10000000,probesize:10000000,fflags:+genpts+igndts+discardcorrupt}`,
-            // ── SECCIÓN 9: AUDIO PRESERVATION — PASSTHROUGH (8 líneas) ──
-            // ⚠️ v10.5 FIX: NO sout-transcode/sout-video/sout-hls — those force
-            // VLC to re-encode without audio codec, KILLING audio silently.
-            // Players PLAY streams, they don't transcode them.
+            // ── SECCIÓN 9: AUDIO PRESERVATION — PASSTHROUGH GOD-TIER ──
+            // Permite al hardware hacerse cargo inmediato, reduciendo CPU freeze.
             `#EXTVLCOPT:audio-track=0`,
+            `#EXTVLCOPT:spdif=1`,
+            `#EXTVLCOPT:aout=any`,
             `#EXTVLCOPT:audio-language=spa,eng,und`,
             `#EXTVLCOPT:audio-desync=0`,
             `#EXTVLCOPT:audio-replay-gain-mode=none`,
             `#EXTVLCOPT:audio-time-stretch=1`,
-            `#EXTVLCOPT:audio-visual=none`,
             `#EXTVLCOPT:stereo-mode=0`,
-            `#EXTVLCOPT:force-dolby-surround=0`,
             // ── SECCIÓN 10: RESOLUCIÓN (profile-aware, 4 líneas) ──
             `#EXTVLCOPT:preferred-resolution=${cfg.height || 4320}`,
             `#EXTVLCOPT:adaptive-maxwidth=${cfg.width || 7680}`,
@@ -1880,24 +1930,32 @@
             '#KODIPROP:inputstream=inputstream.adaptive',
             '#KODIPROP:inputstream.adaptive.manifest_type=hls',
             '#KODIPROP:inputstream.adaptive.stream_selection_type=adaptive',
+            // --- 🚀 ESCALADA TÁCTICA RAMPA (Aceleración Progresiva 0-60s) ---
+            '#KODIPROP:inputstream.adaptive.bandwidth_ramp=true',
+            '#KODIPROP:inputstream.adaptive.bandwidth_ramp_step=10000000', // Sube 10 Mbps
+            '#KODIPROP:inputstream.adaptive.bandwidth_ramp_interval=500', // Cada 500ms
+            '#KODIPROP:inputstream.adaptive.bandwidth_ramp_peak=100000000', // Tope 100 Mbps
+            '#KODIPROP:inputstream.adaptive.bandwidth_handoff_ms=60000', // Toma de control Sentinel al minuto
+            // -------------------------------------------------------------
             '#KODIPROP:inputstream.adaptive.chooser_bandwidth_type=BANDWIDTH_AVERAGE',
             '#KODIPROP:inputstream.adaptive.preferred_codec=hevc,hev1,hvc1,h265',
             `#KODIPROP:inputstream.adaptive.max_resolution=${cfg.resolution || '3840x2160'}`,
             `#KODIPROP:inputstream.adaptive.resolution_secure_max=${cfg.resolution || '3840x2160'}`,
             // v6.1 COMPAT: Usa resolución del PERFIL REAL, no 7680x4320 hardcodeado
-            // ── 🛡️ PEVCE ACTIVE METADATA ENFORCEMENT ──
+            // ── 🛡️ PEVCE ACTIVE METADATA ENFORCEMENT & ZAPPING ENGINE ──
             '#KODIPROP:inputstream.adaptive.stream_selection_enabled=true',
-            '#KODIPROP:inputstream.adaptive.play_timeshift_buffer_size=128',
+            '#KODIPROP:inputstream.adaptive.play_timeshift_buffer_size=256', // Amplificado 2x para Fase de Impulso
             '#KODIPROP:inputstream.adaptive.force_hdr=true',
-            // ── 🎥 V17.2 CODEC FORCING via KODIPROP ──
+            // ── 🎥 V17.2 CODEC FORCING & HARDWARE DELEGATION ──
             '#KODIPROP:inputstream.adaptive.video_codec_override=hevc',
             '#KODIPROP:inputstream.adaptive.video_profile=main10',
             '#KODIPROP:inputstream.adaptive.ignore_screen_resolution=true',
             '#KODIPROP:inputstream.adaptive.hardware_decode=true',
-            '#KODIPROP:inputstream.adaptive.tunneling_enabled=auto',
-            `#KODIPROP:inputstream.adaptive.audio_codec_override=${cfg.audio_codec || 'aac'}`,
+            '#KODIPROP:inputstream.adaptive.tunneling_enabled=true', // Audio/Video direct al Display (Evita Stutter SO)
+            // ── 🔇 AUDIO FALLBACK ENGINE (Passthrough Seguro > eac3 > ac3 > aac) ──
+            `#KODIPROP:inputstream.adaptive.audio_codec_override=${cfg.audio_codec || 'eac3'}`,
             `#KODIPROP:inputstream.adaptive.audio_channels=${cfg.audio_channels >= 6 ? '5.1' : '2.0'}`,
-            '#KODIPROP:inputstream.adaptive.audio_passthrough=false',
+            `#KODIPROP:inputstream.adaptive.audio_passthrough=${cfg.audio_channels >= 6 ? 'true' : 'false'}`,
             `#KODIPROP:inputstream.adaptive.dolby_atmos=${cfg.audio_channels >= 8 ? 'true' : 'false'}`,
             // ── 🎬 CONTENT-AWARE HEVC via KODIPROP ──
             `#KODIPROP:inputstream.adaptive.max_bandwidth=${cfg.max_bandwidth || 50000000}`,
@@ -1922,22 +1980,26 @@
             '#KODIPROP:inputstream.adaptive.spatial_audio=true',
             `#KODIPROP:inputstream.adaptive.stream_params=profile=${profile}`,
             `#KODIPROP:inputstream.adaptive.stream_headers=${streamHeaders}`,
-            `#KODIPROP:inputstream.adaptive.live_delay=${Math.floor(GLOBAL_CACHING.file / 1000)}`,
-            `#KODIPROP:inputstream.adaptive.buffer_duration=${Math.floor(GLOBAL_CACHING.network / 1000)}`,
-            // ── 🔥 HDR PEAK NIT ENGINE v1.0 — 5000cd/m² KODIPROP (Module 16 sync) ──
+            `#KODIPROP:inputstream.adaptive.live_delay=${Math.floor((GLOBAL_CACHING.file * 4) / 1000)}`,
+            `#KODIPROP:inputstream.adaptive.buffer_duration=${Math.floor((GLOBAL_CACHING.network * 4) / 1000)}`,
+            `#KODIPROP:inputstream.adaptive.prefetch_size=16`, // Absorbe carga en fase de estabilización
+            // ── 🔥 OLED SHOWROOM SUPREMACY v5 (5000cd/m² PERCEPTION & ZERO CRASH) ──
+            // Exprimir 5000 nits de luminancia sin desbordar el decoder. Negros absolutos orgánicos.
             '#KODIPROP:inputstream.adaptive.hdr_handling=force_hdr',
             '#KODIPROP:inputstream.adaptive.max_luminance=5000',
-            '#KODIPROP:inputstream.adaptive.min_luminance=0.0005',
+            '#KODIPROP:inputstream.adaptive.min_luminance=0.0000', // Negros OLED Profundos 100%
             '#KODIPROP:inputstream.adaptive.hdr10_plus_parse=true',
             '#KODIPROP:inputstream.adaptive.dolby_vision_rpu=true',
             '#KODIPROP:inputstream.adaptive.color_primaries=bt2020',
-            '#KODIPROP:inputstream.adaptive.transfer=smpte2084',
+            '#KODIPROP:inputstream.adaptive.transfer=smpte2084', // Obliga curva PQ pura HDR
             '#KODIPROP:inputstream.adaptive.matrix_coefficients=bt2020nc',
             '#KODIPROP:inputstream.adaptive.color_space=bt2020',
-            '#KODIPROP:inputstream.adaptive.pixel_format=yuv420p10le',
-            '#KODIPROP:inputstream.adaptive.tone_mapping=bt2390',
+            '#KODIPROP:inputstream.adaptive.pixel_format=yuv420p10le', // Profundidad de espectro expandida
+            // Tone mapping perceptual adaptativo, previene el clipping que causaba crashes de parseo
+            '#KODIPROP:inputstream.adaptive.tone_mapping=mobius', // Renderizado Mobius superior para Highlights en destellos
             '#KODIPROP:inputstream.adaptive.tone_mapping_peak=5000',
-            '#KODIPROP:inputstream.adaptive.film_grain_synthesis=true'
+            '#KODIPROP:inputstream.adaptive.contrast_boost=1.15', // Amplificador dinámico de contraste vital
+            '#KODIPROP:inputstream.adaptive.film_grain_synthesis=false' // Nitidez extrema sin penalización de gpu
         ];
     }
 
@@ -3050,7 +3112,7 @@
             "X-PEVCE-Force-HDR": "true",
             "X-Hardware-Decode": "true",
             "X-Tunneling-Enabled": "off",
-            "X-Audio-Track-Selection": `${cfg.audio_channels >= 8 ? 'highest-quality-extreme,dolby-atmos-first' : 'default'}`,
+            "X-Audio-Track-Selection": "default", // FIX: ExoPlayer ArrayIndexOutOfBoundsException (length=3; index=3)
             "X-Subtitle-Track-Selection": "off",
             "X-EPG-Sync": "enabled",
             "X-Catchup-Support": "flussonic-ultra",
@@ -4121,10 +4183,10 @@
     };
 
     function determineProfile(channel) {
-        const name    = (channel.name || '').toUpperCase().trim();
-        const group   = (channel.category_name || channel.group || channel.group_title || '').toUpperCase().trim();
-        const resMeta = (channel.resolution || channel.heuristics?.resolution || '').toString().toLowerCase();
-        const bitrate = parseInt(channel.bitrate || channel.heuristics?.bitrate || 0, 10); // kbps
+        const name    = (channel?.name || '').toString().toUpperCase().trim();
+        const group   = (channel?.category_name || channel?.group || channel?.group_title || '').toString().toUpperCase().trim();
+        const resMeta = (channel?.resolution || channel?.heuristics?.resolution || '').toString().toLowerCase();
+        const bitrate = parseInt(channel?.bitrate || channel?.heuristics?.bitrate || 0, 10); // kbps
 
         // Scores acumulados por perfil
         const scores = { P0: 0, P1: 0, P3: 0, P4: 0, P5: 0 };
@@ -4226,8 +4288,12 @@
     }
 
     function generateEXTINF(channel, profile, index) {
+        let serverId = channel.serverId || channel._source || channel.server_id || '';
+        let serverSuffix = serverId ? ` [S${serverId}]` : '';
+        
         const tvgId = escapeM3UValue(channel.stream_id || channel.id || index);
-        const tvgName = escapeM3UValue(channel.name || `Canal ${index}`);
+        // Agregamos el sufijo del servidor al nombre visual para diferenciarlos radicalmente
+        const tvgName = escapeM3UValue((channel.name || `Canal ${index}`) + serverSuffix);
         const tvgLogo = escapeM3UValue(channel.stream_icon || channel.logo || '');
         let groupTitle = channel.category_name || channel.group || 'General';
 
@@ -4485,7 +4551,102 @@
         return preferHttps(`${creds.baseUrl}/live/${creds.username}/${creds.password}/${streamId}.m3u8`);
     }
 
-    function generateChannelEntry(channel, index, forceProfile = null, credentialsMap = {}) {
+    
+// ═══════════════════════════════════════════════════════════════════════════
+// 🧠 OMEGA ABSOLUTE JS GENERATOR: DYNAMIC PAYLOAD + OMNI-ORCHESTRATOR
+// ═══════════════════════════════════════════════════════════════════════════
+function __getOmegaGodTierDirectives(channel, cfg) {
+    const extLines = [];
+    
+    // 1. Inyectar TODAS las configuraciones dinámicas OMEGA del Profile Manager (v13.1 SUPREMO)
+    // Las variables que comienzan con X-APE-, X-CORTEX-, X-TELCHEMY-, X-VNOVA- dominan la compilación
+    if (cfg && typeof cfg === 'object') {
+        const priorityKeys = [];
+        for (const [key, value] of Object.entries(cfg)) {
+            if (key.startsWith('X-APE-') || key.startsWith('X-CORTEX-') || key.startsWith('X-TELCHEMY-') || key.startsWith('X-VNOVA-')) {
+                if (value !== undefined && value !== null && value !== '') {
+                    extLines.push(`#EXT-${key}:${value}`);
+                }
+            }
+        }
+    }
+    
+    // 2. OMNI-ORCHESTRATOR JSON (Identidad criptográfica y referer invariable)
+    function determineOmegaContentType(name, group) {
+        const n = (name||'').toLowerCase();
+        const g = (group||'').toLowerCase();
+        if (n.includes('espn') || n.includes('fox') || g.includes('deporte') || n.includes('sport')) return 'sports';
+        if (n.includes('hbo') || n.includes('cine') || g.includes('cine') || n.includes('movie')) return 'cinema';
+        if (n.includes('cnn') || n.includes('bbc') || g.includes('noticias') || n.includes('news')) return 'news';
+        if (n.includes('disney') || n.includes('kids') || g.includes('infantil') || n.includes('nick')) return 'kids';
+        if (n.includes('discovery') || n.includes('history') || g.includes('document') || n.includes('nat geo')) return 'documentary';
+        return 'default';
+    }
+
+    const ct = determineOmegaContentType(channel.name, channel.group_title);
+    const ctProfileMap = {
+        'sports': 'P0_ULTRA_SPORTS_8K',
+        'cinema': 'P1_CINEMA_8K_HDR',
+        'news': 'P2_NEWS_4K_HDR',
+        'kids': 'P3_KIDS_4K_HDR',
+        'documentary': 'P4_DOCU_8K_HDR',
+        'default': 'P0_ULTRA_SPORTS_8K'
+    };
+    
+    const strToCrc = (str) => { let hash = 0; for (let i = 0; i < str.length; i++) hash = ((hash << 5) - hash) + str.charCodeAt(i); return Math.abs(hash).toString(16); };
+    const determinantSid = strToCrc(String(channel.id || channel.name || 'UNKNOWN'));
+
+    if (!window.apeOmegaUniquenessHash) {
+        window.apeOmegaUniquenessHash = Math.random().toString(36).substring(2, 10);
+    }
+
+    const payload = {
+        paradigm: 'OMNI-ORCHESTRATOR-V5-OMEGA',
+        version: '1.0.0-OMEGA',
+        profile: ctProfileMap[ct],
+        ct: ct,
+        sid: 'SES_D' + determinantSid,
+        referer: 'https://iptv-ape-telemetry.local/',
+        uniqueness_hash: window.apeOmegaUniquenessHash,
+        uniqueness_nonce: Math.floor(Math.random() * 1000000).toString()
+    };
+    
+    extLines.push(`#EXTHTTP:${JSON.stringify(payload)}`);
+
+    // 3. PHANTOM HYDRA DIRECTIVES (Inyectado Nativamente en el Generator)
+    const seedNum = isNaN(parseInt(determinantSid, 16)) ? 1 : parseInt(determinantSid, 16);
+    const uas = [
+        "NVIDIA SHIELD Android TV/9.0 (SHIELD Android TV; Build/PPR1.180610.011; wv) AppleWebKit/537.36",
+        "Mozilla/5.0 (SMART-TV; Linux; Tizen 8.0) AppleWebKit/538.1",
+        "Mozilla/5.0 (Linux; Android 12; Chromecast) AppleWebKit/537.36",
+        "AppleTV6,2/11.1",
+        "VLC/3.0.21 LibVLC/3.0.21"
+    ];
+    const snis = ["www.google.com","cloudflare.com","storage.googleapis.com"];
+    const dohs = ["https://dns.google/dns-query","https://cloudflare-dns.com/dns-query"];
+    const swarm = [64, 128, 256][seedNum % 3];
+    const nonceHydra = Math.random().toString(36).substring(2, 12);
+    
+    extLines.push(`#EXT-X-APE-PHANTOM-HYDRA-STATE: ACTIVE`);
+    extLines.push(`#EXT-X-APE-PHANTOM-HYDRA-VERSION: 5.0-OMEGA`);
+    extLines.push(`#EXT-X-APE-PHANTOM-HYDRA-NONCE: ${nonceHydra}`);
+    extLines.push(`#EXT-X-APE-PHANTOM-UA-ROTATION: ENABLED`);
+    extLines.push(`#EXT-X-APE-PHANTOM-UA-ACTIVE: ${uas[seedNum % uas.length]}`);
+    extLines.push(`#EXT-X-APE-PHANTOM-DEVICE-SPOOF: SHIELD_TV_PRO_2023`);
+    extLines.push(`#EXT-X-APE-PHANTOM-SNI-OBFUSCATION: ENABLED`);
+    extLines.push(`#EXT-X-APE-PHANTOM-SNI-FRONT-DOMAIN: ${snis[seedNum % snis.length]}`);
+    extLines.push(`#EXT-X-APE-PHANTOM-DOH-SERVER: ${dohs[seedNum % dohs.length]}`);
+    extLines.push(`#EXT-X-APE-PHANTOM-SWARM-SIZE: ${swarm}`);
+    extLines.push(`#EXT-X-APE-PHANTOM-SWARM-STRATEGY: HYDRA_MULTI_IP`);
+    extLines.push(`#EXT-X-APE-PHANTOM-TRAFFIC-MORPH: ENABLED`);
+    extLines.push(`#EXT-X-APE-PHANTOM-TRAFFIC-DISGUISE: HTTPS_GOOGLE_APIS`);
+    extLines.push(`#EXT-X-APE-PHANTOM-IDEMPOTENT-STATE: LOCKED`);
+
+    return extLines;
+}
+
+
+function generateChannelEntry(channel, index, forceProfile = null, credentialsMap = {}) {
         const originalProfile = forceProfile || determineProfile(channel);
         let profile = originalProfile;
         let cfg = getProfileConfig(profile);
@@ -4527,23 +4688,23 @@
         const lines = [];
 
         // ═══════════════════════════════════════════════════════════════
-        // BLOQUE 1: EXTINF → STREAM-INF → URL → EXTHTTP → OVERFLOW
-        // (Estructura invariante: URL a exactamente 2 líneas del EXTINF)
+        // BLOQUE 1: EXTINF
         // ═══════════════════════════════════════════════════════════════
         let extinfLine = generateEXTINF(channel, originalProfile, index);
-        if (channel.ape_meta) {
-            extinfLine += `\n#EXT-X-APE-META-FPS:${channel.ape_meta.fps || 24}`;
-            extinfLine += `\n#EXT-X-APE-META-SCORE:${channel.ape_meta.stability_score || 50}`;
-            extinfLine += `\n#EXT-X-APE-META-CLASS:${channel.ape_meta.network_class || 'UNKNOWN'}`;
-            extinfLine += `\n#EXT-X-APE-META-CODEC:${channel.ape_meta.codec || 'avc1'}`;
-            extinfLine += `\n#EXT-X-APE-META-ID:${channel.ape_meta.stream_uid || 'unassigned'}`;
-        }
         lines.push(extinfLine);
+
+        let apeMetaLines = [];
+        if (channel.ape_meta) {
+            apeMetaLines.push(`#EXT-X-APE-META-FPS:${channel.ape_meta.fps || 24}`);
+            apeMetaLines.push(`#EXT-X-APE-META-SCORE:${channel.ape_meta.stability_score || 50}`);
+            apeMetaLines.push(`#EXT-X-APE-META-CLASS:${channel.ape_meta.network_class || 'UNKNOWN'}`);
+            apeMetaLines.push(`#EXT-X-APE-META-CODEC:${channel.ape_meta.codec || 'avc1'}`);
+            apeMetaLines.push(`#EXT-X-APE-META-ID:${channel.ape_meta.stream_uid || 'unassigned'}`);
+        }
 
         // ── 🛡️ PEVCE ACTIVE METADATA ENFORCEMENT & NUCLEAR EVASION ──
         // CUMPLIMIENTO DOCTRINA BULLETPROOF (REGLAS 1 y 3)
-        // Todo el payload de evasión y fallback se inyecta como tags APE y parámetros URL 
-        // para preservar la relación estricta 1:1. NO se usan tags EXT-X-STREAM-INF.
+        // RESOLVER MODIFICADO: Apunta al backend SSOT unificado (Médula Híbrida)
         
         // v6.1 COMPAT: Los FALLBACK-IDs individuales fueron consolidados en el
         // PRE_ARMED B64 payload (BLOQUE 8). Ya no se emiten aquí como tags sueltos
@@ -4631,7 +4792,12 @@
         // Los servidores Xtream Codes (ModSecurity) bloquean instantáneamente cualquier URL con palabras como "evasion" o "tunnel"
         // causando que VLC reciba un 400/403 de inmediato y salte al siguiente canal.
         let finalUrl = `${primaryUrl}`;
-        // EXTHTTP + OVERFLOW (línea 3-4 del bloque)
+        // ── ORDENAMIENTO ESTRUCTURAL PERFECTO (Fase 4 Auditoría Estructural) ──
+        
+        // 1. EXTVLCOPT: Optimizadores de Hardware/Software
+        lines.push(...generateEXTVLCOPT(profile));
+
+        // 2. EXTHTTP: Custom Network Headers & Auth bridge
         // ⚡ FIX: build_exthttp lee cfg._classification, pero la clasificación
         // vive en channel._classification. Sin este bridge, los headers
         // X-APE-CL-* del EXTHTTP nunca se emitían (cfg es el perfil, no el canal).
@@ -4640,9 +4806,13 @@
         cfg._channelId = String(channel.stream_id || channel.id || index);
         lines.push(build_exthttp(cfg, profile, index, sessionId, reqId));
 
-        // ── VLC Resolution & Deinterlacing (Delegado a generateEXTVLCOPT) ──
-        lines.push(...generateEXTVLCOPT(profile));
+        // 3. KODIPROP: Instrucciones adaptativas DRM/Inputs
         lines.push(...build_kodiprop(cfg, profile, index));
+
+        // 4. EXT-X-APE-* (Metadata APE Propietario inicial, extraído de EXTINF)
+        if (apeMetaLines.length > 0) {
+            lines.push(...apeMetaLines);
+        }
 
         // ── 🔥 MODULE 16: HDR PEAK NIT ENGINE 5000cd/m² (Resolver Sync) ──
         lines.push(...build_hdr_peak_nit_tags(cfg, profile));
@@ -4772,8 +4942,7 @@
         if (typeof window !== 'undefined' && window.ApeModuleManager?.isEnabled('dual-client-runtime')) {
             const resolverBase = (typeof localStorage !== 'undefined' && localStorage.getItem('vps_base_url'))
                 || 'https://iptv-ape.duckdns.org';
-
-            const resolveScript = '/resolve_quality.php';
+            const resolveScript = '/resolve_quality_unified.php';
 
             const chId = channel.epg_channel_id || channel.tvg_id || channel.stream_id || channel.id || index;
             const listId = (typeof VERSION !== 'undefined' ? VERSION : '16.0.0').replace(/[^a-zA-Z0-9.-]/g, '');
@@ -4795,8 +4964,9 @@
 
                 if (server && server.baseUrl && server.username && server.password) {
                     const cleanHost = (server.baseUrl || '').replace(/\/player_api\.php$/, '').replace(/\/$/, '').replace(/^https?:\/\//, '');
-                    const srvToken = btoa(`${cleanHost}|${sanitizeCredential(server._lockedUsername || server.username)}|${sanitizeCredential(server._lockedPassword || server.password)}`);
-                    srvParam = `&srv=${encodeURIComponent(srvToken)}`;
+                    const rawSrvToken = btoa(`${cleanHost}|${sanitizeCredential(server._lockedUsername || server.username)}|${sanitizeCredential(server._lockedPassword || server.password)}`);
+                    const safeSrvToken = rawSrvToken.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+                    srvParam = `&srv=${safeSrvToken}`;
                 }
             } catch (e) { /* silent credential resolution failure */ }
 
@@ -4815,74 +4985,30 @@
             // ═══════════════════════════════════════════════════════════
             const cl = channel._classification || {};
             const ctxPayload = {
-                // ── PERFIL & CAPACIDAD TÉCNICA (v24 original — 10 campos) ──
                 p:  profile,                                                    // profile ID
-                rs: cfg.res || cfg.resolution || '1920x1080',                  // resolution
-                bw: cfg.max_bw || cfg.max_bandwidth || 20000000,               // max bandwidth
-                br: cfg.bitrate || cfg.bitrate_mbps || 3700,                   // bitrate kbps
-                bf: cfg.buffer_ms || cfg.buffer || 30000,                      // buffer ms
-                nc: cfg.net_cache || cfg.network_caching || 40000,             // net cache ms
-                hd: (cfg.hdr && cfg.hdr.length > 0) ? 1 : 0,                  // HDR flag (0/1)
-                cs: cfg.color_space || 'BT2020',                               // color space
-                cp: cfg.codec_primary || 'HEVC',                               // primary codec
-                v:  '25',                                                       // CTX version (v25 = unified intelligence)
-                // ── 🌎 CLASIFICACIÓN v3.0 PER-CHANNEL (5 campos) ──
-                rg: cl.region?.group || '',                                     // región
-                lg: cl.language?.code || cl.language?.group || '',              // idioma
-                ct: cl.category?.group || '',                                   // categoría
-                cn: cl.country?.group || '',                                    // país/zona
-                cf: cl.confidence ? Math.round(cl.confidence * 100) : 0,       // confianza (0-100)
-                // ── 🔬 ENRICHMENT PER-CHANNEL (7 campos) ──
-                fp: channel.frames || cfg.fps || 30,                            // FPS real
-                tr: channel.transport || 'HLS',                                 // transport
-                at: channel.isDolbyAtmos ? 1 : 0,                               // Dolby Atmos
-                cu: channel.isCatchup ? 1 : 0,                                  // Catchup
-                ll: channel.isLowLatency ? 1 : 0,                               // Low-Latency
-                bt: channel.bitrateTierCode || '',                               // bitrate tier
-                sc: cl.sportSubcategory || '',                                   // sport subcategory
-                cf2: channel.codecFamily || '',                                  // codec family
-                // ═══════════════════════════════════════════════════════
-                // 🆕 CTX v25: 22 NUEVOS CAMPOS — cerrando brechas entre carriles
-                // Estos datos existían en EXTHTTP pero el resolver no los veía.
-                // ═══════════════════════════════════════════════════════
-                // ── 🎨 HDR DETALLADO (antes solo hd=0/1) ──
-                mx: 5000,                                                        // HDR MaxCLL nits
-                mf: 800,                                                         // HDR MaxFALL nits
-                dv: 8,                                                           // Dolby Vision profile (5,7,8)
-                // ── 📡 BUFFER REAL DEL PLAYER (antes solo bf=30000) ──
-                bx: parseInt(typeof GLOBAL_CACHING !== 'undefined' ?
-                    Math.max(GLOBAL_CACHING.network || 0, GLOBAL_CACHING.live || 0, 200000) : 200000),  // Buffer-Max real
-                b2: 60000,                                                       // Buffer-Target
-                // ── 📺 DISPOSITIVO & PANTALLA ──
-                dt: 'TV',                                                        // Device-Type (TV/MOB/DSK)
-                sr: cfg.resolution || '1920x1080',                               // Screen-Resolution real
-                hw: 1,                                                           // Hardware-Decode (1=true)
-                // ── 💰 BITRATE & CDN ──
-                ib: (cfg.bitrate || 5000) * 1000,                              // Initial-Bitrate bps
-                bp: 'UL',                                                        // Bandwidth-Preference (UL=unlimited)
-                cd: 'auto',                                                      // CDN-Provider
-                sf: 1,                                                           // Seamless-Failover (1=true)
-                // ── 🔊 AUDIO ──
-                ab: parseInt(cfg.audio_bitrate) || 640,                          // Audio-Bitrate kbps
-                ac: 'aac,eac3',                                                  // Audio-Codecs
-                // ── 🎛️ PLAYER CONFIG ──
-                pt: 'VLC',                                                       // Player-Type
-                nt: 'wifi',                                                      // Network-Type
-                rc: 10,                                                          // Retry-Count
-                ct2: 2500,                                                       // Connection-Timeout-Ms
-                // ── 🔬 CODEC AVANZADO ──
-                vc: 'av1,hevc,vp9,h264',                                         // Video-Codecs supported
-                dr: 'widevine,playready',                                        // DRM-Support
-                // ── 🛡️ RESILENCIA ──
-                nc2: typeof GLOBAL_CACHING !== 'undefined' ? GLOBAL_CACHING.network || 37500 : 37500,  // network-caching VLCOPT real
-                cj: parseInt(cfg.clock_jitter) || 1500                           // clock-jitter VLCOPT real
+                rs: cfg?.res || cfg?.resolution || '1920x1080',                  // resolution
+                bw: cfg?.max_bw || cfg?.max_bandwidth || 20000000,               // max bandwidth
+                br: cfg?.bitrate || cfg?.bitrate_mbps || 3700,                   // bitrate kbps
+                bf: cfg?.buffer_ms || cfg?.buffer || 30000,                      // buffer ms
+                nc: cfg?.net_cache || cfg?.network_caching || 40000,             // net cache ms
+                hd: (cfg?.hdr && cfg.hdr.length > 0) ? 1 : 0,                  // HDR flag (0/1)
+                cp: cfg?.codec_primary || 'HEVC',                               // primary codec
+                ib: (cfg?.bitrate || 5000) * 1000,                              // Initial-Bitrate bps
+                v:  '26'                                                       // CTX version stripped
             };
 
             // B64 URL-safe (no encodeURIComponent needed — only A-Z a-z 0-9 - _)
             const ctxB64 = btoa(JSON.stringify(ctxPayload)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-            const ctxParam = `&ctx=${ctxB64}`;
+            let ctxParam = `&ctx=${ctxB64}`;
+            
+            // Inyectar Cache-Busting del Pilar 5 si está activo
+            if (_cortexTempBanHash) {
+                ctxParam += `&m3u8_busted=${_cortexTempBanHash}`;
+            }
 
-            const resolverUrl = `${resolverBase}${resolveScript}?ch=${encodeURIComponent(chId)}&p=${profile}&mode=adaptive&list=${listId}&bw=${cfg.max_bw||cfg.max_bandwidth||100000000}&buf=${cfg.buffer_ms||cfg.buffer||8000}${originParam}${sidParam}${srvParam}${ctxParam}`;
+            // RESOLVER MODIFICADO: Apunta al nuevo resolve_quality_unified.php (Cero 302, 100% 200 OK)
+            // Se envía el contexto encriptado ctx encapsulando la directiva Phantom Hydra y el origen blindado.
+            const resolverUrl = `${resolverBase}${resolveScript}?ch=${encodeURIComponent(chId)}&profile=${cl.type || 'DEFAULT'}&mode=200ok&url=${encodeURIComponent(primaryUrl)}${ctxParam}&ext=.m3u8`;
 
             // 🎯 OPTION B: Replace the primary stream URL with resolve_quality
             // ALL players (VLC, TiviMate, Kodi) will hit the VPS, which returns
@@ -4911,151 +5037,59 @@
         lines.push(...build_ape_block(cfg, profile, index, channel));
 
         // ═══════════════════════════════════════════════════════════════
-        // BLOQUE 4: CORTEX OMEGA (10 tags)
+        // BLOQUE 4 A 9: OMEGA GOD-TIER (EXTRACCIÓN DINÁMICA DEL UI)
+        // Sustituye 300+ tags estáticos inyectando directamente los seleccionados por el perfil.
         // ═══════════════════════════════════════════════════════════════
-        lines.push('#EXT-X-CORTEX-OMEGA-STATE:ACTIVE_DOMINANT');
-        lines.push('#EXT-X-CORTEX-AI-SEMANTIC-SEGMENTATION:ENABLED_250_LAYERS');
-        lines.push('#EXT-X-CORTEX-AI-MULTIFRAME-NR:MASSIVE_MOTION_COMPENSATED');
-        lines.push('#EXT-X-CORTEX-AV1-DEBLOCKING:MAXIMUM_ATTENUATION');
-        lines.push('#EXT-X-CORTEX-AV1-CDEF:ENABLED_DIRECTIONAL_RESTORATION');
-        lines.push('#EXT-X-CORTEX-VVC-VIRTUAL-BOUNDARIES:EDGE_ARTIFACT_SUPPRESSION');
-        lines.push('#EXT-X-CORTEX-FALLBACK-CHAIN:AV1>HEVC>H264');
-        lines.push('#EXT-X-CORTEX-LCEVC-SDK-INJECTION:ACTIVE_HTML5_NATIVE');
-        lines.push('#EXT-X-CORTEX-LCEVC-L1-CORRECTION:MAX_DIFFERENCE_ATTENUATION');
-        lines.push('#EXT-X-CORTEX-LCEVC-L2-DETAIL:UPCONVERT_SHARPENING_EXTREME');
+        // ═══════════════════════════════════════════════════════════════
+        // 📊 STREAMING HEALTH ENGINE (INTEGRACIÓN OMEGA ABSOLUTE)
+        // ═══════════════════════════════════════════════════════════════
+        if (window.StreamingCalculator && typeof window.StreamingCalculator.calculateAllMetrics === 'function') {
+            try {
+                // Mapear los parámetros del UI hacia el motor de cálculo probabilístico
+                const metricConfig = {
+                    resolution: cfg?.resolution || '3840x2160', // Max resolution (4K UHD)
+                    codec: cfg?.codec || 'HEVC-MAIN10,AV1,H264-HIGH', // Hierarchy: HEVC > AV1 > H264
+                    fps: parseInt(cfg?.fps || 120, 10), // Max FPS for sports
+                    deinterlace: cfg?.deinterlace || 'BWDIF,YADIF', // Optimal deinterlacing fallback
+                    bufferBaseMs: parseInt(cfg?.buffer || cfg?.buffer_ms || 15000, 10),
+                    prefetchSegments: parseInt(cfg?.prefetch_segments || 15, 10),
+                    parallelDownloads: parseInt(cfg?.parallel_downloads || cfg?.prefetch_parallel || 5, 10),
+                    minBandwidthMbps: parseFloat(cfg?.min_bandwidth_mbps || cfg?.min_bandwidth || 25),
+                    strategy: cfg?.strategy || 'QMAX-GREEDY', // Force greedy resolution
+                    compressionMult: 0.22
+                };
 
-        // ═══════════════════════════════════════════════════════════════
-        // BLOQUE 4B: CORTEX QUALITY ENGINE v1.0.0 (resolve_quality.php)
-        // ═══════════════════════════════════════════════════════════════
-        // Consolidación Extrema: 60+ tags comprimidos en un solo Payload B64
-        // Evita el Memory Overflow / Tag Limit de ExoPlayer / OTT Navigator
-        const cortexPayload = {
-            version: '1.0.0',
-            tree: 'codec>transport>hdr>abr>deinterlace>enhancement',
-            codecs: 'hevc=100,av1=95,vp9=85,avc=70',
-            transport: 'cmaf>fmp4>ts>dash',
-            hdr_policy: 'passthrough>hable>reinhard',
-            abr: { margin: 0.2, alg: 'throughput>buffer', up: 1.2, down: 0.8 },
-            deint: { prio: 'bwdif=95,w3fdif=85', detect: 'auto' },
-            device: { codecs: 'hevc:main10,av1:main', max_bw: 50000000 },
-            network: { bw_method:'throughput', unstable_ratio:0.8, jitter_thresh:30 },
-            artifacts: { deblock:'auto', err_resilience:true, max_errors:5 },
-            fallback: { chain: 'hevc>av1>avc', res: '4K>2K>FHD>HD>SD' },
-            ffmpeg: { ts:'hls_time=6', cmaf:'seg=4:fmp4' },
-            idempotency: cfg._hash || 'auto',
-            telemetry: 'playback+network+buffer'
-        };
-        lines.push(`#EXT-X-APE-CORTEX-QUALITY-ENGINE-B64:${base64UrlEncode(JSON.stringify(cortexPayload))}`);
+                const extMetrics = window.StreamingCalculator.calculateAllMetrics(metricConfig);
 
-        // ═══════════════════════════════════════════════════════════════
-        // BLOQUE 5: AV1 FALLBACK CHAIN (10 tags)
-        // ═══════════════════════════════════════════════════════════════
-        lines.push('#EXT-X-APE-AV1-FALLBACK-ENABLED:true');
-        lines.push('#EXT-X-APE-AV1-FALLBACK-CHAIN:AV1>HEVC>H264>MPEG2');
-        lines.push('#EXT-X-APE-AV1-FALLBACK-GRACEFUL:true');
-        lines.push('#EXT-X-APE-AV1-FALLBACK-DETECT:HW_CAPABILITY_PROBE');
-        lines.push('#EXT-X-APE-AV1-FALLBACK-SIGNAL:CODEC_NOT_SUPPORTED');
-        lines.push('#EXT-X-APE-AV1-FALLBACK-TIMEOUT:3000');
-        lines.push('#EXT-X-APE-AV1-FALLBACK-AUTO-SWITCH:true');
-        lines.push('#EXT-X-APE-AV1-FALLBACK-PRESERVE-HDR:true');
-        lines.push('#EXT-X-APE-AV1-FALLBACK-PRESERVE-LCEVC:true');
-        lines.push('#EXT-X-APE-AV1-FALLBACK-LOG:SILENT');
-
-        // ═══════════════════════════════════════════════════════════════
-        // BLOQUE 6: LCEVC HTML5 SDK INJECTOR (13 tags)
-        // ═══════════════════════════════════════════════════════════════
-        lines.push('#EXT-X-APE-LCEVC-SDK-ENABLED:true');
-        lines.push('#EXT-X-APE-LCEVC-SDK-VERSION:v16.4.1');
-        lines.push('#EXT-X-APE-LCEVC-SDK-TARGET:HTML5_NATIVE');
-        lines.push('#EXT-X-APE-LCEVC-SDK-L1-MODE:MAX_DIFFERENCE_ATTENUATION');
-        lines.push('#EXT-X-APE-LCEVC-SDK-L2-MODE:UPCONVERT_SHARPENING_EXTREME');
-        lines.push('#EXT-X-APE-LCEVC-SDK-WEB-INTEROP:BI_DIRECTIONAL_JS_TUNNEL');
-        lines.push('#EXT-X-APE-LCEVC-SDK-DECODER:WASM+WEBGL');
-        lines.push('#EXT-X-APE-LCEVC-SDK-RESIDUAL-STORE:GPU_TEXTURE');
-        lines.push('#EXT-X-APE-LCEVC-SDK-RENDER-TARGET:CANVAS_2D+WEBGL2');
-        lines.push('#EXT-X-APE-LCEVC-SDK-FALLBACK:BASE_PASSTHROUGH');
-        lines.push('#EXT-X-APE-MODULE:LCEVC-HTML5-SDK-INJECTOR-V1');
-        lines.push('#EXT-X-VNOVA-LCEVC-TARGET-SDK:LCEVCdecJS_v1.2.1+');
-        // VNOVA Config B64: correction + detail + rendering config
-        const vnovaConfig = {
-            correction: { deblocking_filter: "MAXIMUM_ADAPTIVE", denoise_level: "AGGRESSIVE_IPTV_CLEAN", denoise_algorithm: "NLMEANS_TEMPORAL", dering_strength: 10 },
-            detail: { sharpening_algorithm: "UNSHARP_MASK_ADAPTIVE", sharpening_strength: 7, texture_enhancement: "NEURAL_TEXTURE_V2" },
-            rendering: { dithering: "BLUE_NOISE_TEMPORAL", color_space: "BT2020_NCL", transfer_function: "PQ_DYNAMIC_SDR_UPCONVERT" },
-            performance: { threading_mode: "TILE_PARALLEL", tile_columns: 4, tile_rows: 2, gpu_acceleration: "PREFERRED" },
-            itm_engine: { mode: "ADAPTIVE_FRAME_BY_FRAME", target_nits: 1000, target_gamut: "BT.2020", expansion_curve: "SCENE_ADAPTIVE", skin_tone_protect: true, clipping_guard: "SPECULAR_HIGHLIGHT_PRESERVE" },
-            quality_diagnostics: {
-                telchemy_tvqm: { vstq_target: 50, vsmq_target: 50, epsnr_min_db: 45 },
-                telchemy_jitter: { mapdv_max_ms: 10, ppdv_max_ms: 5, clock_recovery: "ADAPTIVE" },
-                tr101290: { sync_loss_tolerance: 0, cc_error_tolerance: 0, pcr_error_tolerance: 0 },
-                impairment_guard: { blockiness: "ACTIVE", jerkiness: "ACTIVE", tiling: "ACTIVE", gop_max_size: 120 },
-                buffer_policy: { underrun_action: "EXPAND_NETWORK_CACHING", overflow_action: "DROP_B_FRAMES", min_buffer_ms: 6000 }
+                // Empujar cabeceras predictivas al stream para consumo de OTT Navigator / Telchemy TVQM
+                lines.push(`#EXT-X-APE-DYNAMIC-RISK-SCORE:${extMetrics.riskScore}`); // 0-100
+                lines.push(`#EXT-X-APE-DYNAMIC-RAM-PEAK:${extMetrics.memoryPeak}`); // MB
+                lines.push(`#EXT-X-APE-DYNAMIC-RAM-STEADY:${extMetrics.memorySteady}`); // MB
+                lines.push(`#EXT-X-APE-DYNAMIC-STALL-RATE:${extMetrics.stallRate}`); // % Probability
+                lines.push(`#EXT-X-APE-DYNAMIC-STALL-QUALITY:${(extMetrics.stallQuality ? extMetrics.stallQuality.level : 'UNKNOWN')}`); // EXCELLENT, ACCEPTABLE, POOR
+                lines.push(`#EXT-X-APE-DYNAMIC-HEADROOM:${extMetrics.bwHeadroomPercent}`); // %
+                lines.push(`#EXT-X-APE-DYNAMIC-T1-THROUGHTPUT:${extMetrics.t1}`); // Mbps
+                lines.push(`#EXT-X-APE-DYNAMIC-T2-THROUGHTPUT:${extMetrics.t2}`); // Mbps
+                lines.push(`#EXT-X-APE-DYNAMIC-JITTER-MAX:${extMetrics.jitterMax}`); // ms
+                lines.push(`#EXT-X-APE-DYNAMIC-FILL-TIME:${extMetrics.fillTime}`); // seconds
+                
+                // Hard-Enforcement: Si es CRITICAL (Fail), forzamos advertencias extremas
+                if (extMetrics.riskLevel === 'CRITICAL' || extMetrics.stability.class === 'UNSTABLE') {
+                    lines.push(`#EXT-X-APE-CRITICAL-WARNING:UNSTABLE_BW_DETECTED_POSSIBLE_STALLS`);
+                    lines.push(`#EXT-X-APE-VULNERABLE-STATE:TRUE`);
+                }
+            } catch (e) {
+                console.error("Error computando metricas APE Dynamic:", e);
             }
-        };
-        lines.push(`#EXT-X-VNOVA-LCEVC-CONFIG-B64:${base64UrlEncode(JSON.stringify(vnovaConfig))}`);
-
-        // ═══════════════════════════════════════════════════════════════
-        // BLOQUE 7: IP ROTATION (10 tags)
-        // ═══════════════════════════════════════════════════════════════
-        lines.push('#EXT-X-APE-IP-ROTATION-ENABLED:true');
-        lines.push('#EXT-X-APE-IP-ROTATION-STRATEGY:PER_REQUEST');
-        lines.push(`#EXT-X-APE-IP-ROTATION-XFF-1:${getRandomIp()}`);
-        lines.push(`#EXT-X-APE-IP-ROTATION-XFF-2:${getRandomIp()}`);
-        lines.push(`#EXT-X-APE-IP-ROTATION-XFF-3:${getRandomIp()}`);
-        lines.push(`#EXT-X-APE-IP-ROTATION-REAL-IP:${getRandomIp()}`);
-        lines.push(`#EXT-X-APE-IP-ROTATION-CF-CONNECTING:${getRandomIp()}`);
-        lines.push(`#EXT-X-APE-IP-ROTATION-TRUE-CLIENT:${getRandomIp()}`);
-        lines.push('#EXT-X-APE-IP-ROTATION-POOL-SIZE:50');
-        lines.push('#EXT-X-APE-IP-ROTATION-PERSIST:PER_SESSION');
-
-        // ═══════════════════════════════════════════════════════════════
-        // BLOQUE 8: STEALTH + PRE-ARMED + ISP THROTTLE
-        // ═══════════════════════════════════════════════════════════════
-        // ── 👻 FUSIÓN FANTASMA v22.1: UA Rotation por canal ──
-        lines.push(`#EXT-X-APE-STEALTH-UA:${getRotatedUserAgent('random')}`);
-        lines.push(`#EXT-X-APE-STEALTH-XFF:${getRandomIp()}`);
-        lines.push(`#EXT-X-APE-STEALTH-FINGERPRINT:${generateRandomString(32)}`);
-
-        // ── 👻 FUSIÓN FANTASMA v22.1: Integración de Módulos ──
-        const context = buildInitialContext(channel, index);
-        const preArmedBlock = PRE_ARMED_RESPONSE_BUILDER.buildBlock(context);
-        lines.push(preArmedBlock.trim());
-
-        // ── 👻 FUSIÓN FANTASMA v22.1: ISP Throttle Nuclear Escalation ──
-        lines.push(`#EXT-X-APE-ISP-THROTTLE-ESCALATION:LEVEL=NUCLEAR`);
-        lines.push(...generateISPThrottleEscalation(profile, cfg));
-
-        // ═══════════════════════════════════════════════════════════════
-        // BLOQUE 9: TRANSPORT DECISION MODULE v2.0 (TS vs CMAF + HDR/SDR)
-        // ═══════════════════════════════════════════════════════════════
-        // Consolidación Extrema: 30+ tags comprimidos en un solo Payload B64
-        const transportPayload = {
-            version: '2.0.0',
-            tree: 'origin>player>device>hdr>telemetry>network>scoring>mode>fallback>decision',
-            arch: 'm3u8_decorated+resolver+worker_cmaf_dash',
-            players: {
-                vlc_legacy: { ts: 0.95, cmaf: 0.55, fallback: 'direct_ts>worker_ts' },
-                ott_navigator: { ts: 0.90, cmaf: 0.92, fallback: 'direct_cmaf>worker_hybrid>worker_ts' },
-                shaka: { ts: 0.80, cmaf: 0.95, fallback: 'direct_cmaf>worker_hybrid' }
-            },
-            hdr_compat: { ott_navigator: 'HDR10|HDR10+|DV|HLG', vlc: 'HDR10|HDR10+|DV_partial|HLG' },
-            weights: { player: 0.30, device: 0.25, hdr: 0.15, telemetry: 0.15, network: 0.15 },
-            modes: ['direct_ts', 'direct_cmaf', 'worker_ts', 'worker_cmaf', 'worker_dash_hls_hybrid'],
-            cmaf: { init: 'init.mp4', target_dur: 4, part: 0.2, ll: true, dash: true },
-            fallback: { cmaf: 'direct_cmaf>worker_ts', ts: 'direct_ts>worker_cmaf' },
-            origin: { threshold: 0.3, probe: ['stability', 'latency'] },
-            worker: { mode: 'ondemand', zerodrop: true, reconnect: 5 },
-            ffmpeg: {
-                cmaf: 'seg_duration=4,fmp4,target_latency=3',
-                ts: 'mpegts,pcr=50,pat=0.1'
-            }
-        };
-        lines.push(`#EXT-X-APE-TRANSPORT-ENGINE-B64:${base64UrlEncode(JSON.stringify(transportPayload))}`);
+        }
+        
+        const omegaDirectives = __getOmegaGodTierDirectives(channel, cfg);
+        if (omegaDirectives && omegaDirectives.length > 0) {
+            lines.push(...omegaDirectives);
+        }
 
         // 🎯 INYECCIÓN DEL ÚNICO STREAM AL FINAL DEL BLOQUE (STRICT 1:1 RULE)
-        // De esta forma todos los tags anteriores aplican a este canal de manera correcta.
-        // ELIMINADO: Los parámetros APE (ape_cmaf_force, etc.) no deben inyectarse en la URL directa del proveedor
-        // ya que causan rechazos (400 Bad Request / Empty Reply) en los servidores Xtream Codes origin.
-        // La finalUrl ya fue establecida limpiamente en el Bloque 1.
+
         lines.push(finalUrl);
 
         return lines.join('\n');
@@ -5243,33 +5277,11 @@
         if (!blob) return null;
 
         // ══════════════════════════════════════════════════════════════
-        // 🔬 PHOENIX-QMAX-ADAPTIVE v2.0 — LIGHTWEIGHT BLOB-PREPEND
-        // Injects global QMAX directives WITHOUT converting Blob to text
-        // (avoids OOM on 300MB+ lists with 6000+ channels)
-        // Per-channel STREAM-INF/URL params are handled by the stream
-        // generator above — this only adds the 8 global protocol headers
+        // 🔬 PHOENIX-QMAX-ADAPTIVE v2.0
+        // (Los headers globales de QMAX ahora se inyectan nativamente 
+        //  adentro de generateGlobalHeader para cumplir RFC 8216 EXTM3U)
         // ══════════════════════════════════════════════════════════════
-        try {
-            const qmaxDirectives = [
-                '#EXT-X-APE-QMAX-VERSION:2.0-ADAPTIVE',
-                '#EXT-X-APE-QMAX-STRATEGY:GREEDY-BEST-AVAILABLE',
-                '#EXT-X-APE-QMAX-ANTI-DOWNGRADE:ENFORCED',
-                '#EXT-X-APE-QMAX-TIER-CASCADE:S>A>A->B>C>D',
-                '#EXT-X-APE-QMAX-SELECTION-RULE:IF-4K-EXISTS-1080P-FORBIDDEN',
-                '#EXT-X-APE-QMAX-BUFFER-CLASS:8K-ADAPTIVE-1GB',
-                '#EXT-X-APE-QMAX-PERCEPTUAL-OPTIMIZATION:VMAF-MAXIMIZATION-ENABLED',
-                '#EXT-X-APE-QMAX-BANDWIDTH-SAFETY-MARGIN:0.30'
-            ].join('\n') + '\n';
 
-            // Zero-copy Blob concatenation: prepend directives after #EXTM3U header
-            // Browser handles this natively without loading the full Blob into JS memory
-            const originalSize = blob.size;
-            blob = new Blob([qmaxDirectives, blob], { type: 'audio/x-mpegurl' });
-            const addedKB = ((blob.size - originalSize) / 1024).toFixed(2);
-            console.log(`🔬 [QMAX-ADAPTIVE v2.0] Injected ${qmaxDirectives.split('\n').length - 1} global directives | +${addedKB}KB | quality=max,never-downgrade=true`);
-        } catch (e) {
-            console.warn('⚠️ [QMAX-ADAPTIVE] Header injection skipped:', e.message);
-        }
 
         const filename = options.filename || `APE_TYPED_ARRAYS_ULTIMATE_${new Date().toISOString().slice(0, 10).replace(/-/g, '')}.m3u8`;
 

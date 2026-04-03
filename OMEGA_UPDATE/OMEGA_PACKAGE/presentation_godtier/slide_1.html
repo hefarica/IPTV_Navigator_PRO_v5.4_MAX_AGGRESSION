@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        .slide-container { 
+            width: 1280px; 
+            min-height: 720px; 
+            background-color: #0A192F; 
+            color: #FAFAFA;
+            font-family: 'Inter', sans-serif;
+            position: relative;
+            display: flex;
+            align-items: center;
+            overflow: hidden;
+        }
+        
+        /* Decorative background elements */
+        .bg-element-1 {
+            position: absolute;
+            top: -100px;
+            right: -100px;
+            width: 600px;
+            height: 600px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(141, 153, 174, 0.1) 0%, rgba(10, 25, 47, 0) 70%);
+            z-index: 1;
+        }
+        
+        .bg-element-2 {
+            position: absolute;
+            bottom: -200px;
+            left: 200px;
+            width: 800px;
+            height: 800px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(217, 4, 41, 0.05) 0%, rgba(10, 25, 47, 0) 70%);
+            z-index: 1;
+        }
+
+        .content-wrapper {
+            position: relative;
+            z-index: 10;
+            width: 100%;
+            padding-left: 120px;
+            padding-right: 120px;
+            display: flex;
+            flex-direction: column;
+            gap: 40px;
+        }
+
+        .accent-bar {
+            position: absolute;
+            left: 80px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 4px;
+            height: 60%;
+            background-color: #D90429;
+        }
+
+        h1 {
+            font-family: 'Playfair Display', serif;
+            font-size: 64px;
+            font-weight: 700;
+            line-height: 1.1;
+            letter-spacing: -0.5px;
+            max-width: 900px;
+            color: #FAFAFA;
+        }
+
+        .separator {
+            width: 100px;
+            height: 1px;
+            background-color: #8D99AE;
+            margin: 10px 0;
+        }
+
+        h2 {
+            font-family: 'Inter', sans-serif;
+            font-size: 32px;
+            font-weight: 300;
+            color: #8D99AE;
+            max-width: 800px;
+            line-height: 1.4;
+        }
+
+        .description {
+            font-family: 'Inter', sans-serif;
+            font-size: 20px;
+            font-weight: 300;
+            color: #FAFAFA;
+            max-width: 700px;
+            line-height: 1.6;
+            margin-top: 20px;
+            padding-left: 20px;
+            border-left: 1px solid #8D99AE;
+        }
+        
+        .code-accent {
+            position: absolute;
+            right: 120px;
+            bottom: 80px;
+            font-family: monospace;
+            font-size: 14px;
+            color: rgba(141, 153, 174, 0.3);
+            text-align: right;
+            line-height: 1.8;
+            z-index: 5;
+        }
+    </style>
+</head>
+<body>
+    <div class="slide-container">
+        <div class="bg-element-1"></div>
+        <div class="bg-element-2"></div>
+        
+        <div class="accent-bar"></div>
+        
+        <div class="content-wrapper">
+            <h1>APE GOD-TIER SUPREME GENERATOR v1.0</h1>
+            
+            <div class="separator"></div>
+            
+            <h2>El Generador de Listas M3U8 más avanzado del mundo</h2>
+            
+            <div class="description">
+                Fusión total de 3 listas maestras &middot; 631 directivas &middot; 28 doctrinas tecnológicas &middot; Omni-Orchestrator v4
+            </div>
+        </div>
+        
+        <div class="code-accent">
+            #EXT-X-APE-VERSION:10.0.0-GOD-TIER<br>
+            #EXT-X-APE-PARADIGM:OMNI-ORCHESTRATOR-V4<br>
+            #EXT-X-APE-BUILD:20260331
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        .slide-container { 
+            width: 1280px; 
+            min-height: 720px; 
+            background-color: #0A192F; 
+            color: #FAFAFA;
+            font-family: 'Inter', sans-serif;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .header-area {
+            padding-top: 60px;
+            padding-left: 80px;
+            padding-right: 80px;
+            margin-bottom: 40px;
+        }
+
+        h1 {
+            font-family: 'Playfair Display', serif;
+            font-size: 32px;
+            font-weight: 700;
+            color: #FAFAFA;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            font-size: 20px;
+            font-weight: 300;
+            color: #8D99AE;
+        }
+
+        .header-rule {
+            width: 100%;
+            height: 1px;
+            background-color: #8D99AE;
+            margin-top: 20px;
+            opacity: 0.5;
+        }
+
+        .content-grid {
+            display: grid;
+            grid-template-columns: 550px 1fr;
+            gap: 60px;
+            padding-left: 80px;
+            padding-right: 80px;
+        }
+
+        .text-column {
+            display: flex;
+            flex-direction: column;
+            gap: 30px;
+        }
+
+        .concept-text {
+            font-size: 16px;
+            line-height: 1.6;
+            color: #FAFAFA;
+            font-weight: 300;
+        }
+
+        .data-list {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .data-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 15px;
+            font-size: 16px;
+            line-height: 1.5;
+        }
+
+        .data-bullet {
+            color: #D90429;
+            font-weight: 600;
+            font-size: 18px;
+        }
+
+        .highlight {
+            color: #D90429;
+            font-weight: 600;
+        }
+
+        .insight-box {
+            margin-top: 20px;
+            padding-left: 20px;
+            border-left: 2px solid #D90429;
+        }
+
+        .insight-label {
+            font-size: 14px;
+            color: #8D99AE;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+
+        .insight-text {
+            font-family: 'Playfair Display', serif;
+            font-size: 20px;
+            color: #FAFAFA;
+            line-height: 1.4;
+            font-style: italic;
+        }
+
+        .image-column {
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            padding-top: 10px;
+        }
+
+        .content-image {
+            width: 500px;
+            height: 450px;
+            object-fit: contain;
+            border: 1px solid rgba(141, 153, 174, 0.3);
+            background-color: rgba(0, 0, 0, 0.2);
+        }
+        
+        .data-rule {
+            width: 100%;
+            height: 1px;
+            background-color: rgba(141, 153, 174, 0.2);
+            margin-top: 15px;
+        }
+    </style>
+</head>
+<body>
+    <div class="slide-container">
+        <div class="header-area">
+            <h1>El Problema que Resuelve</h1>
+            <div class="subtitle">"316 MB vs 15 MB, mismo poder"</div>
+            <div class="header-rule"></div>
+        </div>
+        
+        <div class="content-grid">
+            <div class="text-column">
+                <div class="concept-text">
+                    Las listas IPTV tradicionales inyectan cientos de directivas por canal directamente en el archivo de texto, creando archivos monstruosos que colapsan dispositivos de baja RAM.
+                </div>
+                
+                <ul class="data-list">
+                    <li class="data-item">
+                        <span class="data-bullet">&gt;</span>
+                        <div>
+                            Lista TYPED ARRAYS original: <span class="highlight">316 MB</span> &middot; 4,143 canales &middot; <span class="highlight">746 líneas/canal</span>
+                        </div>
+                    </li>
+                    <div class="data-rule"></div>
+                    <li class="data-item">
+                        <span class="data-bullet">&gt;</span>
+                        <div>
+                            Lista GOD-TIER generada: <span class="highlight">~15 MB</span> &middot; mismos canales &middot; <span class="highlight">5 líneas/canal en disco</span>
+                        </div>
+                    </li>
+                    <div class="data-rule"></div>
+                    <li class="data-item">
+                        <span class="data-bullet">&gt;</span>
+                        <div>
+                            Reducción de peso: <span class="highlight">95.3%</span> sin perder ni una sola directiva. El reproductor recibe las 631 directivas completas en tiempo real vía proxy.
+                        </div>
+                    </li>
+                </ul>
+                
+                <div class="insight-box">
+                    <div class="insight-label">Insight Arquitectónico</div>
+                    <div class="insight-text">
+                        El generador separa el almacenamiento del poder. El archivo es ligero; el proxy es el músculo.
+                    </div>
+                </div>
+            </div>
+            
+            <div class="image-column">
+                <img src="/home/ubuntu/diagrama_paso1_generador.png" alt="Diagrama Paso 1 Generador" class="content-image">
+            </div>
+        </div>
+    </div>
+</body>
+</html>

@@ -188,6 +188,83 @@
                 "X-BW-Smooth-Factor", "X-Packet-Loss-Monitor", "X-RTT-Monitoring",
                 "X-Congestion-Detect"
             ]
+        },
+
+        // ═══════════════════════════════════════════════════════════════════
+        // CATEGORÍAS OMEGA GOD-TIER (7 categorías - 85 headers)
+        // ═══════════════════════════════════════════════════════════════════
+        omega_ai_cortex: {
+            name: "Cortex AI (L4)",
+            description: "IA Super Resolution, Frame Interpolation y Denoising",
+            headers: [
+                "X-CORTEX-OMEGA-STATE", "X-APE-AI-SR-ENABLED", "X-APE-AI-SR-MODEL",
+                "X-APE-AI-SR-SCALE", "X-APE-AI-FRAME-INTERPOLATION", "X-APE-AI-DENOISING",
+                "X-APE-AI-DEBLOCKING", "X-APE-AI-SHARPENING", "X-APE-AI-ARTIFACT-REMOVAL",
+                "X-APE-AI-COLOR-ENHANCEMENT", "X-APE-AI-HDR-UPCONVERT", "X-APE-AI-SCENE-DETECTION",
+                "X-APE-AI-MOTION-ESTIMATION", "X-APE-AI-CONTENT-AWARE-ENCODING", "X-APE-AI-PERCEPTUAL-QUALITY"
+            ]
+        },
+        omega_lcevc: {
+            name: "LCEVC Payload",
+            description: "Fase 4 LCEVC y Native SDK WebView Tunneling",
+            headers: [
+                "X-APE-LCEVC-ENABLED", "X-APE-LCEVC-PHASE", "X-APE-LCEVC-COMPUTE-PRECISION",
+                "X-APE-LCEVC-UPSCALE-ALGORITHM", "X-APE-LCEVC-ROI-DYNAMIC", "X-APE-LCEVC-TRANSPORT",
+                "X-APE-LCEVC-SDK-ENABLED", "X-APE-LCEVC-SDK-TARGET", "X-APE-LCEVC-SDK-WEB-INTEROP",
+                "X-APE-LCEVC-SDK-DECODER"
+            ]
+        },
+        omega_hardware: {
+            name: "💻 OMEGA: Enclavamiento Hardware",
+            description: "Directivas estrictas de secuestro de GPU y decodificador VVC/EVC",
+            headers: [
+                "X-APE-GPU-DECODE", "X-APE-GPU-RENDER", "X-APE-GPU-PIPELINE",
+                "X-APE-GPU-PRECISION", "X-APE-GPU-MEMORY-POOL", "X-APE-GPU-ZERO-COPY",
+                "X-APE-VVC-ENABLED", "X-APE-EVC-ENABLED", "X-APE-PLAYER-ENSLAVEMENT-PROTOCOL",
+                "X-APE-PLAYER-ENSLAVEMENT-OVERRIDE-CODEC"
+            ]
+        },
+        omega_resilience: {
+            name: "🛡️ OMEGA: Resiliencia & Fallbacks",
+            description: "Cadenas de supervivencia degradables Anti-Crash",
+            headers: [
+                "X-APE-RESILIENCE-L1-FORMAT", "X-APE-RESILIENCE-L2-FORMAT", "X-APE-RESILIENCE-L3-FORMAT",
+                "X-APE-RESILIENCE-HTTP-ERROR-403", "X-APE-RESILIENCE-HTTP-ERROR-404", "X-APE-RESILIENCE-HTTP-ERROR-429",
+                "X-APE-RESILIENCE-HTTP-ERROR-500", "X-APE-AV1-FALLBACK-ENABLED", "X-APE-AV1-FALLBACK-CHAIN",
+                "X-APE-ISP-THROTTLE-ESCALATION-POLICY", "X-APE-ANTI-CUT-ENGINE", "X-APE-ANTI-CUT-DETECTION",
+                "X-APE-ANTI-CUT-ISP-STRANGLE", "X-APE-RECONNECT-MAX", "X-APE-RECONNECT-SEAMLESS"
+            ]
+        },
+        omega_stealth: {
+            name: "👻 OMEGA: Evasión & Stealth",
+            description: "Esquiva CDN, rotación IP, y DPI Bypass",
+            headers: [
+                "X-APE-IDENTITY-MORPH", "X-APE-IDENTITY-ROTATION-INTERVAL", "X-APE-EVASION-MODE",
+                "X-APE-EVASION-DNS-OVER-HTTPS", "X-APE-EVASION-SNI-OBFUSCATION", "X-APE-EVASION-TLS-FINGERPRINT-RANDOMIZE",
+                "X-APE-EVASION-GEO-PHANTOM", "X-APE-EVASION-DEEP-PACKET-INSPECTION-BYPASS", "X-APE-IP-ROTATION-ENABLED",
+                "X-APE-IP-ROTATION-STRATEGY", "X-APE-STEALTH-UA", "X-APE-STEALTH-XFF",
+                "X-APE-STEALTH-FINGERPRINT", "X-APE-SWARM-ENABLED", "X-APE-SWARM-PEERS"
+            ]
+        },
+        omega_transport: {
+            name: "🏎️ OMEGA: Transporte L7 CMAF",
+            description: "Protocolos Ultra Low Latency CMAF y buffers predictivos",
+            headers: [
+                "X-APE-TRANSPORT-PROTOCOL", "X-APE-TRANSPORT-CHUNK-SIZE", "X-APE-TRANSPORT-FALLBACK-1",
+                "X-APE-CACHE-STRATEGY", "X-APE-CACHE-SIZE", "X-APE-CACHE-PREFETCH",
+                "X-APE-BUFFER-STRATEGY", "X-APE-BUFFER-PRELOAD-SEGMENTS", "X-APE-BUFFER-DYNAMIC-ADJUSTMENT",
+                "X-APE-BUFFER-NEURAL-PREDICTION"
+            ]
+        },
+        omega_qos: {
+            name: "🎯 OMEGA: Telchemy QoS / QoE",
+            description: "Diagnóstico perceptual TVQM en tiempo real",
+            headers: [
+                "X-APE-QOS-ENABLED", "X-APE-QOS-DSCP", "X-APE-QOS-PRIORITY",
+                "X-APE-POLYMORPHIC-ENABLED", "X-APE-POLYMORPHIC-IDEMPOTENT", "X-TELCHEMY-TVQM",
+                "X-TELCHEMY-TR101290", "X-TELCHEMY-IMPAIRMENT-GUARD", "X-TELCHEMY-BUFFER-POLICY",
+                "X-TELCHEMY-GOP-POLICY"
+            ]
         }
     };
 
@@ -733,7 +810,109 @@
         "X-BW-Smooth-Factor": "0.15",
         "X-Packet-Loss-Monitor": "enabled",
         "X-RTT-Monitoring": "enabled",
-        "X-Congestion-Detect": "enabled"
+        "X-Congestion-Detect": "enabled",
+
+        // ═══════════════════════════════════════════════════════════════════
+        // OMEGA GOD-TIER DEFAULTS (85 HEADERS)
+        // ═══════════════════════════════════════════════════════════════════
+        // CORTEX AI
+        "X-CORTEX-OMEGA-STATE": "ACTIVE_DOMINANT",
+        "X-APE-AI-SR-ENABLED": "TRUE",
+        "X-APE-AI-SR-MODEL": "REALESRGAN_X4PLUS",
+        "X-APE-AI-SR-SCALE": "4",
+        "X-APE-AI-FRAME-INTERPOLATION": "RIFE_V4",
+        "X-APE-AI-DENOISING": "NLMEANS_HQDN3D_TEMPORAL",
+        "X-APE-AI-DEBLOCKING": "ADAPTIVE_MAX",
+        "X-APE-AI-SHARPENING": "UNSHARP_MASK_ADAPTIVE",
+        "X-APE-AI-ARTIFACT-REMOVAL": "ENABLED",
+        "X-APE-AI-COLOR-ENHANCEMENT": "ENABLED",
+        "X-APE-AI-HDR-UPCONVERT": "ENABLED",
+        "X-APE-AI-SCENE-DETECTION": "ENABLED",
+        "X-APE-AI-MOTION-ESTIMATION": "OPTICAL_FLOW",
+        "X-APE-AI-CONTENT-AWARE-ENCODING": "ENABLED",
+        "X-APE-AI-PERCEPTUAL-QUALITY": "VMAF_98",
+        
+        // LCEVC & SDK
+        "X-APE-LCEVC-ENABLED": "TRUE",
+        "X-APE-LCEVC-PHASE": "4",
+        "X-APE-LCEVC-COMPUTE-PRECISION": "FP32",
+        "X-APE-LCEVC-UPSCALE-ALGORITHM": "LANCZOS4",
+        "X-APE-LCEVC-ROI-DYNAMIC": "ENABLED",
+        "X-APE-LCEVC-TRANSPORT": "CMAF_LAYER",
+        "X-APE-LCEVC-SDK-ENABLED": "TRUE",
+        "X-APE-LCEVC-SDK-TARGET": "HTML5_NATIVE",
+        "X-APE-LCEVC-SDK-WEB-INTEROP": "BI_DIRECTIONAL_JS_TUNNEL",
+        "X-APE-LCEVC-SDK-DECODER": "WASM+WEBGL",
+        
+        // HARDWARE
+        "X-APE-GPU-DECODE": "ENABLED",
+        "X-APE-GPU-RENDER": "ENABLED",
+        "X-APE-GPU-PIPELINE": "DECODE_ITM_LCEVC_AI_SR_DENOISE_TONEMAP_RENDER",
+        "X-APE-GPU-PRECISION": "FP32",
+        "X-APE-GPU-MEMORY-POOL": "VRAM_ONLY",
+        "X-APE-GPU-ZERO-COPY": "ENABLED",
+        "X-APE-VVC-ENABLED": "TRUE",
+        "X-APE-EVC-ENABLED": "TRUE",
+        "X-APE-PLAYER-ENSLAVEMENT-PROTOCOL": "OMEGA_ABSOLUTE",
+        "X-APE-PLAYER-ENSLAVEMENT-OVERRIDE-CODEC": "TRUE",
+        
+        // RESILIENCE
+        "X-APE-RESILIENCE-L1-FORMAT": "CMAF",
+        "X-APE-RESILIENCE-L2-FORMAT": "HLS_FMP4",
+        "X-APE-RESILIENCE-L3-FORMAT": "HLS_FMP4",
+        "X-APE-RESILIENCE-HTTP-ERROR-403": "MORPH_IDENTITY",
+        "X-APE-RESILIENCE-HTTP-ERROR-404": "FALLBACK_ORIGIN",
+        "X-APE-RESILIENCE-HTTP-ERROR-429": "SWARM_EVASION",
+        "X-APE-RESILIENCE-HTTP-ERROR-500": "RECONNECT_SILENT",
+        "X-APE-AV1-FALLBACK-ENABLED": "TRUE",
+        "X-APE-AV1-FALLBACK-CHAIN": "AV1>HEVC>H264>MPEG2",
+        "X-APE-ISP-THROTTLE-ESCALATION-POLICY": "NUCLEAR_ESCALATION_NEVER_DOWN",
+        "X-APE-ANTI-CUT-ENGINE": "ENABLED",
+        "X-APE-ANTI-CUT-DETECTION": "REAL_TIME",
+        "X-APE-ANTI-CUT-ISP-STRANGLE": "NUCLEAR_10_LEVELS",
+        "X-APE-RECONNECT-MAX": "UNLIMITED",
+        "X-APE-RECONNECT-SEAMLESS": "TRUE",
+        
+        // STEALTH
+        "X-APE-IDENTITY-MORPH": "ENABLED",
+        "X-APE-IDENTITY-ROTATION-INTERVAL": "30",
+        "X-APE-EVASION-MODE": "SWARM_PHANTOM_HYDRA_STEALTH",
+        "X-APE-EVASION-DNS-OVER-HTTPS": "ENABLED",
+        "X-APE-EVASION-SNI-OBFUSCATION": "ENABLED",
+        "X-APE-EVASION-TLS-FINGERPRINT-RANDOMIZE": "TRUE",
+        "X-APE-EVASION-GEO-PHANTOM": "ENABLED",
+        "X-APE-EVASION-DEEP-PACKET-INSPECTION-BYPASS": "ENABLED",
+        "X-APE-IP-ROTATION-ENABLED": "TRUE",
+        "X-APE-IP-ROTATION-STRATEGY": "PER_REQUEST",
+        "X-APE-STEALTH-UA": "RANDOMIZED",
+        "X-APE-STEALTH-XFF": "DYNAMIC",
+        "X-APE-STEALTH-FINGERPRINT": "MUTATING",
+        "X-APE-SWARM-ENABLED": "TRUE",
+        "X-APE-SWARM-PEERS": "20",
+        
+        // TRANSPORT
+        "X-APE-TRANSPORT-PROTOCOL": "CMAF_UNIVERSAL",
+        "X-APE-TRANSPORT-CHUNK-SIZE": "200MS",
+        "X-APE-TRANSPORT-FALLBACK-1": "HLS_FMP4",
+        "X-APE-CACHE-STRATEGY": "PREDICTIVE_NEURAL",
+        "X-APE-CACHE-SIZE": "1GB",
+        "X-APE-CACHE-PREFETCH": "ENABLED",
+        "X-APE-BUFFER-STRATEGY": "ADAPTIVE_PREDICTIVE_NEURAL",
+        "X-APE-BUFFER-PRELOAD-SEGMENTS": "10",
+        "X-APE-BUFFER-DYNAMIC-ADJUSTMENT": "ENABLED",
+        "X-APE-BUFFER-NEURAL-PREDICTION": "ENABLED",
+        
+        // QOS / TELCHEMY
+        "X-APE-QOS-ENABLED": "TRUE",
+        "X-APE-QOS-DSCP": "EF",
+        "X-APE-QOS-PRIORITY": "7",
+        "X-APE-POLYMORPHIC-ENABLED": "TRUE",
+        "X-APE-POLYMORPHIC-IDEMPOTENT": "TRUE",
+        "X-TELCHEMY-TVQM": "ENABLED,INTERVAL=1000,METRICS=VMAF:PSNR:SSIM",
+        "X-TELCHEMY-TR101290": "ENABLED,PRIORITY_1=ALERT",
+        "X-TELCHEMY-IMPAIRMENT-GUARD": "ENABLED,BLOCKINESS=DETECT,BLUR=DETECT",
+        "X-TELCHEMY-BUFFER-POLICY": "ADAPTIVE,MIN=30000",
+        "X-TELCHEMY-GOP-POLICY": "DETECT,IDEAL=2000,TOLERANCE=500"
     };
 
     const DEFAULT_MANIFEST = {

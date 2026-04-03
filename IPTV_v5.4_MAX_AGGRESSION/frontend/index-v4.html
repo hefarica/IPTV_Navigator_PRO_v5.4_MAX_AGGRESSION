@@ -2500,9 +2500,146 @@
               exportación
               realizada todavía.</p>
 
-            <!-- ✅ APE v15 CONTROL PANEL CONTAINER -->
-            <div id="ape15-panel-container">
-              <!-- APE v15 Monitor Panel will be mounted here by ape-monitor-panel-v15.js -->
+            <!-- 🛡️ APE GUARDIAN ENGINE v16 - TELEMETRÍA EXCHANGE -->
+            <div class="ape-v16-exchange-panel" style="
+                background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(139, 92, 246, 0.05));
+                border: 1px solid rgba(139, 92, 246, 0.3);
+                border-radius: 16px;
+                padding: 20px;
+                margin-top: 16px;
+                margin-bottom: 16px;
+            ">
+                <!-- Header -->
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <span style="font-size: 1.5rem;">🛡️</span>
+                        <div>
+                            <h3 style="margin: 0; font-size: 1rem; color: #e2e8f0;">APE Guardian Engine v16 - Telemetría Exchange</h3>
+                            <p style="margin: 4px 0 0 0; font-size: 0.72rem; color: #94a3b8;">
+                                Endpoint: <span id="ape16-backend-url" style="color: #a5b4fc;">https://iptv-ape.duckdns.org/guardian</span>
+                                <span id="ape16-latency-badge" style="margin-left: 8px; color: #fbbf24;">--ms</span>
+                            </p>
+                        </div>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <!-- Live Toggle -->
+                        <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                            <input type="checkbox" id="ape16-toggle" checked style="width: 18px; height: 18px; accent-color: #8b5cf6;">
+                            <span style="font-size: 0.72rem; color: #94a3b8;">Live</span>
+                        </label>
+                        <!-- Status Badge -->
+                        <div id="ape16-status-badge" style="
+                            display: flex; align-items: center; gap: 8px;
+                            padding: 6px 12px;
+                            border-radius: 999px;
+                            background: rgba(100, 116, 139, 0.3);
+                            border: 1px solid rgba(100, 116, 139, 0.5);
+                            font-size: 0.75rem;
+                            color: #94a3b8;
+                        ">
+                            <span id="ape16-status-dot" style="
+                                width: 8px; height: 8px;
+                                border-radius: 50%;
+                                background: #64748b;
+                            "></span>
+                            <span id="ape16-status-text">Disconnected</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Aggregated Metrics Grid -->
+                <div style="
+                    display: grid;
+                    grid-template-columns: repeat(4, 1fr);
+                    gap: 12px;
+                    margin-bottom: 16px;
+                ">
+                    <div style="
+                        background: rgba(30, 41, 59, 0.5);
+                        border: 1px solid rgba(100, 116, 139, 0.3);
+                        border-radius: 10px;
+                        padding: 12px;
+                    ">
+                        <div style="font-size: 0.7rem; color: #94a3b8; margin-bottom: 4px;">Sesiones Activas</div>
+                        <div id="ape16-total-sessions" style="font-size: 1.5rem; color: #e2e8f0; font-weight: 600;">0</div>
+                    </div>
+                    <div style="
+                        background: rgba(30, 41, 59, 0.5);
+                        border: 1px solid rgba(100, 116, 139, 0.3);
+                        border-radius: 10px;
+                        padding: 12px;
+                    ">
+                        <div style="font-size: 0.7rem; color: #94a3b8; margin-bottom: 4px;">Bandwidth Promedio</div>
+                        <div id="ape16-avg-bandwidth" style="font-size: 1.5rem; color: #4ade80; font-weight: 600;">-- Mbps</div>
+                    </div>
+                    <div style="
+                        background: rgba(30, 41, 59, 0.5);
+                        border: 1px solid rgba(100, 116, 139, 0.3);
+                        border-radius: 10px;
+                        padding: 12px;
+                    ">
+                        <div style="font-size: 0.7rem; color: #94a3b8; margin-bottom: 4px;">Latency Promedio</div>
+                        <div id="ape16-avg-latency" style="font-size: 1.5rem; color: #fbbf24; font-weight: 600;">-- ms</div>
+                    </div>
+                    <div style="
+                        background: rgba(30, 41, 59, 0.5);
+                        border: 1px solid rgba(100, 116, 139, 0.3);
+                        border-radius: 10px;
+                        padding: 12px;
+                    ">
+                        <div style="font-size: 0.7rem; color: #94a3b8; margin-bottom: 4px;">Errores Totales</div>
+                        <div id="ape16-total-errors" style="font-size: 1.5rem; color: #f87171; font-weight: 600;">0</div>
+                    </div>
+                </div>
+
+                <!-- 📡 PROVIDERS ACTIVOS -->
+                <div style="
+                    background: rgba(15, 23, 42, 0.6);
+                    border: 1px solid rgba(59, 130, 246, 0.3);
+                    border-radius: 10px;
+                    padding: 14px;
+                    margin-bottom: 16px;
+                ">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span style="font-size: 1.1rem;">📡</span>
+                            <span style="font-size: 0.8rem; color: #93c5fd; font-weight: 600;">Listas / Proveedores Activos</span>
+                        </div>
+                        <div id="ape16-providers-count" style="
+                            padding: 3px 10px;
+                            border-radius: 999px;
+                            background: rgba(59, 130, 246, 0.2);
+                            border: 1px solid rgba(59, 130, 246, 0.4);
+                            font-size: 0.7rem;
+                            color: #93c5fd;
+                        ">0 fuentes · 0 canales activos</div>
+                    </div>
+                    <div id="ape16-providers-container">
+                        <div style="text-align: center; padding: 16px; color: #64748b; font-size: 0.78rem;">
+                            ⏳ Sin canales activos — haz zapping para ver telemetría en vivo
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Event Log -->
+                <div style="
+                    background: rgba(15, 23, 42, 0.6);
+                    border: 1px solid rgba(100, 116, 139, 0.3);
+                    border-radius: 10px;
+                    padding: 12px;
+                    margin-bottom: 12px;
+                ">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                        <span style="font-size: 0.75rem; color: #94a3b8; font-weight: 600;">📝 Event Log</span>
+                    </div>
+                    <div id="ape16-event-log" style="
+                        max-height: 150px;
+                        overflow-y: auto;
+                        font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+                        font-size: 0.7rem;
+                        line-height: 1.6;
+                    "></div>
+                </div>
             </div>
 
             <!-- ✅ V4.9: PRO STREAMING OPTIONS -->
@@ -3443,6 +3580,9 @@
 
   <!-- 🔗 UNIFIED GENERATOR v1.0: Fusiona Architecture1 + M3U8APIWrapper + APE_ENGINE_V9 -->
   <script src="js/ape-v9/unified-generator-integration.js"></script>
+
+  <!-- 🛡️ APE GUARDIAN ENGINE v16: Telemetría Frontend -->
+  <script src="js/ape-v9/guardian-exchange-v16.js"></script>
 
   <!-- ═══════════════════════════════════════════════════════════════════════ -->
   <!-- 🧪 TESTS - Proxy Auth & User Agent (Dev Mode Only)                     -->

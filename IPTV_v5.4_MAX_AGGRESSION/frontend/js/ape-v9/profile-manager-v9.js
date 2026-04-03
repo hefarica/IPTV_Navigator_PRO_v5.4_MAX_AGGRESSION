@@ -177,9 +177,9 @@
                 'ultra-low-latency': { pref: 'unlimited', win: '2', conf: '0.99', smooth: '0.02', p_loss: 'enabled,aggressive', rtt: 'enabled,aggressive', cong: 'enabled,aggressive-extreme' }
             },
             ott_navigator: {
-                '8K': { player: 'exoplayer-ultra-extreme,vlc-pro,kodi-pro', audio: 'highest-quality-extreme,dolby-atmos-first', buf: 'ultra-aggressive', req_prio: 'ultra-high-critical' },
-                '4K': { player: 'exoplayer-ultra-extreme,vlc-pro,kodi-pro', audio: 'highest-quality-extreme,dolby-atmos-first', buf: 'ultra-aggressive', req_prio: 'ultra-high' },
-                'FHD': { player: 'exoplayer-ultra,vlc-pro', audio: 'highest-quality,dolby-atmos-first', buf: 'aggressive', req_prio: 'high' },
+                '8K': { player: 'exoplayer-ultra-extreme,vlc-pro,kodi-pro', audio: 'default', buf: 'ultra-aggressive', req_prio: 'ultra-high-critical' },
+                '4K': { player: 'exoplayer-ultra-extreme,vlc-pro,kodi-pro', audio: 'default', buf: 'ultra-aggressive', req_prio: 'ultra-high' },
+                'FHD': { player: 'exoplayer-ultra,vlc-pro', audio: 'default', buf: 'aggressive', req_prio: 'high' },
                 'HD': { player: 'exoplayer,vlc', audio: 'highest-quality', buf: 'adaptive', req_prio: 'medium' },
                 'SD': { player: 'exoplayer', audio: 'default', buf: 'adaptive', req_prio: 'low' }
             }
