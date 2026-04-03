@@ -5037,11 +5037,14 @@ function rq_handle_request(): void
             die("#EXTM3U\n#EXTINF:-1, [⚠️ APE ERROR] PAYLOAD BASE64 INVÁLIDO\nhttp://localhost/error.ts\n");
         }
         $payload = json_decode($json_payload, true);
-        if (!is_array($payload) || empty($payload['url'])) {
-            die("#EXTM3U\n#EXTINF:-1, [⚠️ APE ERROR] ADN DE CANAL CORRUPTO\nhttp://localhost/error.ts\n");
+        if (!is_array($payload)) {
+            $payload = [];
         }
         
-        $origin_url = $payload['url'];
+        $origin_url = $_GET['url'] ?? '';
+        if (empty($origin_url)) {
+            die("#EXTM3U\n#EXTINF:-1, [⚠️ APE ERROR] ADN DE CANAL CORRUPTO (SIN URL)\nhttp://localhost/error.ts\n");
+        }
         $best_quality_url = $origin_url;
         $cache_key = 'probe_' . md5($origin_url . $profile);
         $cached_url = function_exists('apcu_fetch') && apcu_enabled() ? apcu_fetch($cache_key) : false;
