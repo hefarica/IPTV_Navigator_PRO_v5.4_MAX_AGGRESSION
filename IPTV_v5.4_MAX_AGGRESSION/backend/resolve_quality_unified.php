@@ -4496,7 +4496,6 @@ class OmegaAbsoluteReconstructor
             '#EXTVLCOPT:file-caching=' . RQ_BUFFER_BASE,
             '#EXTVLCOPT:cr-average=' . RQ_BUFFER_BASE,
             '#EXTVLCOPT:clock-jitter=0',
-            '#EXTVLCOPT:clock-synchro=0',
             '#EXTVLCOPT:mtu=9000',
             '#EXTVLCOPT:tcp-caching=' . RQ_BUFFER_BASE,
             '#EXTVLCOPT:udp-caching=' . RQ_BUFFER_BASE,
@@ -4525,7 +4524,6 @@ class OmegaAbsoluteReconstructor
             '#EXTVLCOPT:avcodec-lowres=0',
 
             // ── Filtros de Video (Máxima Calidad) ─────────────────────────────
-            '#EXTVLCOPT:video-filter=deinterlace',
             '#EXTVLCOPT:deinterlace-mode=yadif2x',
             '#EXTVLCOPT:deinterlace=auto',
             '#EXTVLCOPT:deblock=-4',
@@ -4542,15 +4540,11 @@ class OmegaAbsoluteReconstructor
             '#EXTVLCOPT:tone-mapping-warn=1',
 
             // ── ABR Adaptativo (Forzar Máxima Calidad) ────────────────────────
-            '#EXTVLCOPT:adaptive-logic=highest',
-            '#EXTVLCOPT:adaptive-maxwidth=7680',
-            '#EXTVLCOPT:adaptive-maxheight=4320',
             '#EXTVLCOPT:adaptive-bw=' . RQ_MAX_BW,
 
             // ── Audio ─────────────────────────────────────────────────────────
             '#EXTVLCOPT:audio-desync=0',
             '#EXTVLCOPT:audio-replay-gain-mode=track',
-            '#EXTVLCOPT:audio-time-stretch=1',
             '#EXTVLCOPT:audio-channels=8',
 
             // ── Sincronización ────────────────────────────────────────────────

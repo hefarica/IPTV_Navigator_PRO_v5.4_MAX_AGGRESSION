@@ -1728,18 +1728,11 @@
             `#EXTVLCOPT:audio-language=spa,eng,und`,
             `#EXTVLCOPT:audio-desync=0`,
             `#EXTVLCOPT:audio-replay-gain-mode=none`,
-            `#EXTVLCOPT:audio-time-stretch=1`,
-            `#EXTVLCOPT:stereo-mode=0`,
             // ── SECCIÓN 10: RESOLUCIÓN (profile-aware, 4 líneas) ──
             `#EXTVLCOPT:preferred-resolution=${cfg.height || 4320}`,
-            `#EXTVLCOPT:adaptive-maxwidth=${cfg.width || 7680}`,
-            `#EXTVLCOPT:adaptive-maxheight=${cfg.height || 4320}`,
-            `#EXTVLCOPT:adaptive-logic=highest`,
             // ── SECCIÓN 11: VIDEO PROCESSING — HARDWARE MAXIMIZER (11 líneas) ──
-            `#EXTVLCOPT:video-filter=deinterlace:hqdn3d:adjust:sharpen`,
             `#EXTVLCOPT:video-scaler=vdpau,opengl`,
             `#EXTVLCOPT:aspect-ratio=16:9`,
-            `#EXTVLCOPT:video-deco=1`,
             `#EXTVLCOPT:sharpen-sigma=0.05`,
             `#EXTVLCOPT:contrast=1.0`,
             `#EXTVLCOPT:brightness=1.0`,
@@ -1748,14 +1741,12 @@
             `#EXTVLCOPT:video-title-show=0`,
             `#EXTVLCOPT:no-video-title-show`,
             // ── SECCIÓN 12: NETWORK & BANDWIDTH MAXIMIZER (6 líneas) ──
-            `#EXTVLCOPT:network-synchronisation=1`,
             `#EXTVLCOPT:auto-adjust-pts-delay=1`,
             `#EXTVLCOPT:adaptive-caching=true`,
             `#EXTVLCOPT:adaptive-cache-size=5000`,
-            `#EXTVLCOPT:swscale-mode=9`,
             `#EXTVLCOPT:swscale-fast=0`,
             // ── SECCIÓN 13: ERROR RESILIENCE (5 líneas) ──
-            `#EXTVLCOPT:avcodec-options={gpu_decode:1,hw_deint:1,hw_scaler:1,threads:0,refcounted_frames:1}`,
+            // Se eliminó avcodec-options por seguridad
             `#EXTVLCOPT:avcodec-error-concealment=motion_vector`,
             `#EXTVLCOPT:avcodec-max-consecutive-errors=5`,
             `#EXTVLCOPT:avcodec-skip-on-error=1`,
@@ -1764,23 +1755,16 @@
             `#EXTVLCOPT:repeat=100`,
             `#EXTVLCOPT:input-repeat=65535`,
             `#EXTVLCOPT:loop=1`,
-            `#EXTVLCOPT:play-and-exit=0`,
-            `#EXTVLCOPT:playlist-autostart=1`,
             `#EXTVLCOPT:live-pause=0`,
             // ── SECCIÓN 15: SYNC & DISPLAY (3 líneas) ──
-            `#EXTVLCOPT:clock-synchro=1`,
             `#EXTVLCOPT:avcodec-preset=p6`,
             `#EXTVLCOPT:fullscreen=1`,
             // ── SECCIÓN 16: RESOLVER-SYNC — Directives from rq_sniper_mode.php ──
             `#EXTVLCOPT:adaptive-maxbw=300000000`,
             `#EXTVLCOPT:tls-session-resumption=true`,
-            `#EXTVLCOPT:vout=opengl`,
             `#EXTVLCOPT:http-user-timeout=15000`,
             `#EXTVLCOPT:postproc-q=6`,
             `#EXTVLCOPT:network-caching-dscp=56`,
-            `#EXTVLCOPT:network-caching-dscp-qos=56`,
-            `#EXTVLCOPT:server-port=443`,
-            `#EXTVLCOPT:video-on-top=0`,
             `#EXTVLCOPT:no-http-reconnect=0`
         ];
     }
@@ -4562,8 +4546,21 @@
             return '';
         }
         
-        return preferHttps(`${creds.baseUrl}/live/${creds.username}/${creds.password}/${streamId}.m3u8`);
-    }
+        let ext = typeof window !== 'undefined' && window.app?.state?.streamFormat ? window.app.state.streamFormat : 'ts';
+        let typePath = 'live';
+        
+        if (channel.type === "movie" || channel.stream_type === "movie") { 
+            typePath = "movie"; 
+            ext = channel.container_extension || "mp4"; 
+        } else if (channel.type === "series" || channel.stream_type === "series") { 
+            typePath = "series"; 
+            ext = channel.container_extension || "mp4"; 
+        } else {
+            if (channel.customFormat) ext = channel.customFormat;
+            if (channel.container_extension && channel.container_extension !== 'mp4') ext = channel.container_extension;
+        }
+        
+        return preferHttps(`${creds.baseUrl}/${typePath}/${creds.username}/${creds.password}/${streamId}.${ext}`);
 
     
 // ═══════════════════════════════════════════════════════════════════════════
