@@ -32,7 +32,7 @@ for key, channel in data.items():
     
     lines.append(f'#EXTINF:-1 tvg-id="{epg_id}" tvg-name="{name}" group-title="{group}",{name}')
     
-    proxy_url = f"http://iptv-ape.duckdns.org/resolve_quality_unified.php?ch={key}&url={encoded_origin}&mode=200ok&ext=.m3u8"
+    proxy_url = f"http://iptv-ape.duckdns.org/resolve_quality_unified.php?ch={key}&url={encoded_origin}&mode=200ok&profile=DEFAULT&res=1920x1080&fps=60&ext=.m3u8"
     lines.append(proxy_url)
     count += 1
 

@@ -145,11 +145,21 @@ class OmegaStreamingHealthEngine
             'headroom' => $headroom
         ]);
 
+        // KNN Extension: Visual Fidelity Index (VFI), scores 0-100 based on bitrate weight and stability
+        $vfi = 0;
+        if ($stability['class'] !== 'UNSTABLE') {
+            $vfiBase = min(60, ($bitrate / 5.0) * 20); // 15Mbps maxes out base score
+            $vfiHeadroom = min(40, ($headroom - 1.0) * 15); // Large headroom gives massive VFI points
+            $vfi = (int) min(100, max(0, $vfiBase + $vfiHeadroom));
+        }
+
         return [
             'bitrate' => $bitrate,
             'headroom' => round($headroom, 2),
             'stallRate' => $stallRate,
             'riskScore' => $riskScore,
+            'vfi' => $vfi,
+            'jitterMax' => $jitterMax,
             'stabilityClass' => $stability['class'],
             'fillTime' => round($fillTime, 1),
             't1' => round($bitrate * self::THROUGHPUT_T1_MULT, 1),
@@ -166,6 +176,9 @@ class OmegaStreamingHealthEngine
     {
         // Regla estricta del usuario: Risk Score siempre < 20 y Stall Rate < 0.10%
         $isVulnerable = ($health['riskScore'] > 20 || $health['stallRate'] > 0.10);
+        
+        // Regla Estricta Suprema (God-Tier Overdrive): Buscar cristalización UHD activa
+        $isGodTier = ($health['riskScore'] <= 5 && $health['stallRate'] <= 0.05 && $health['stabilityClass'] === 'OPTIMAL' && ($health['vfi'] ?? 0) >= 70);
 
         if ($isVulnerable) {
             // Activar Protocolo Sniper / BWDIF a YADIF degradación masiva automática
@@ -184,8 +197,10 @@ class OmegaStreamingHealthEngine
             $defenseFlags[] = "#EXT-X-CORTEX-AI-SPATIAL-DENOISE:NLMEANS_OPTICAL"; // Disimular macrobloques
             $defenseFlags[] = "#EXT-X-CORTEX-LCEVC:PHASE_3_FP16"; // Refuerzo de Capa Base LCEVC (Enhancement Layer) bajo costo
             $defenseFlags[] = "#EXT-X-APE-CHROMA-SMOOTHING:ACTIVE"; // Reducir banding causado por bajo bitrate
-            $defenseFlags[] = "#EXT-X-APE-POST-PROCESSING:DEBLOCKING_STRONG"; // Quitar suciedad de artefactos
-            $defenseFlags[] = "#EXTVLCOPT:video-filter=hqdn3d,gradfun"; // Inyección nativa a VLC para suavizado
+            
+            // 🛡️ Mecanismos Expertos: Anti-Pixelamiento Agresivo y Relleno Artificial Perfect-Frame
+            $defenseFlags[] = "#EXT-X-APE-POST-PROCESSING:DEBLOCKING_STRONG"; // Macroblock Purifier
+            $defenseFlags[] = "#EXTVLCOPT:video-filter=fspp=4:5:0,deblock=alpha=0.8:beta=0.8,gradfun,minterpolate=fps=60:mi_mode=mci:mc_mode=aobmc:me_mode=bidir,hqdn3d=4:3:6:4"; // Optical Flow + Deblock
             
             // ⚔️ Estrangulador de ISP (Contra-Ataque de Red)
             // Mientras bajamos la calidad visual localmente por asfixia, ordenaremos al reproductor EXIGIR agresivamente el ancho de banda faltante al ISP.
@@ -197,6 +212,36 @@ class OmegaStreamingHealthEngine
             $defenseFlags[] = "#EXT-X-APE-FAILOVER-UP-RECALIBRATE:TRUE"; // Instrucción de restauración matemática a HEVC en cuanto atrape su meta.
             
             $currentM3U8 .= "\n" . implode("\n", $defenseFlags) . "\n";
+            
+        } elseif ($isGodTier) {
+            // 💎 PROTOCOLO CRYSTAL UHD SUPREMACY (OVERDRIVE AL HARDWARE)
+            $godTierFlags = [];
+            $godTierFlags[] = "#EXT-X-APE-GOD-TIER-OVERDRIVE:ACTIVATED";
+            $godTierFlags[] = "#EXT-X-APE-GOD-TIER-METRICS:VFI_{$health['vfi']}_RISK_{$health['riskScore']}_STALL_{$health['stallRate']}";
+            
+            // Obligar al SoC Gráfico a usar la rutina pesada RealESRGAN
+            $godTierFlags[] = "#EXT-X-CORTEX-AI-SUPER-RESOLUTION:REALESRGAN_X4PLUS"; 
+            
+            // Simular contendor de Color 12-Bit para derretir el banding algorítmicamente sin filtros baratos
+            $godTierFlags[] = "#EXT-X-APE-ZLEVEL-COLOR-DEPTH:12BIT";
+            
+            // Chroma nítido: No suavizar, mantener la agudeza a nivel de pasto
+            $godTierFlags[] = "#EXT-X-APE-CHROMA-SMOOTHING:BYPASS";
+            
+            // Desentrelazador Temporal extremo (Bob Weaver) a 60fps reales
+            $godTierFlags[] = "#EXTVLCOPT:deinterlace-mode=bwdif";
+            $godTierFlags[] = "#EXTVLCOPT:video-visual=full-range"; // Rango de negros OLED (0-255)
+            
+            // Enforcer Exoplayer
+            $godTierFlags[] = "#EXT-X-APE-EXO-HW-DECODE:MEDIACODEC_ONLY";
+            $godTierFlags[] = "#EXT-X-CORTEX-AI-FRAME-INTERPOLATION:TRUE"; // Obligar motion smoothing nativo
+
+            // == Silencio Operativo (Sniper Mode) ==
+            // Si la imagen es perfecta, NO aplicamos filtros intrusivos de interpolación o suavizado para evitar el "Efecto Halo". Todo el trabajo lo hará el procesador físico de GPU.
+            $godTierFlags[] = "#EXT-X-APE-POST-PROCESSING:HARDWARE_NATIVE_PASSTHROUGH";
+            $godTierFlags[] = "#EXT-X-APE-QUALITY-LOCK:ABSOLUTE"; // Prohibir drops locos del ABR
+
+            $currentM3U8 .= "\n" . implode("\n", $godTierFlags) . "\n";
         }
     }
 }

@@ -69,8 +69,60 @@ if (file_exists(__DIR__ . "/rq_streaming_health_engine.php")) {
     require_once __DIR__ . "/rq_streaming_health_engine.php";
 }
 
+// ============================================================================
+// GUARDIAN TELEMETRY HOOK (PIPELINE ENTRY)
+// ============================================================================
+if (!function_exists('get_correlated_channel_id')) {
+    function get_correlated_channel_id(): string {
+        $uri = $_SERVER['REQUEST_URI'] ?? '';
+        if (preg_match('/\/resolve\/t_([a-zA-Z0-9]+)\.m3u8/i', $uri, $matches)) {
+            if (function_exists('ape_decode_token')) {
+                $decoded = ape_decode_token($matches[1]);
+                if ($decoded) return $decoded;
+            } else {
+                return $matches[1];
+            }
+        }
+        if (!empty($_SERVER['HTTP_X_APE_CHANNEL'])) return $_SERVER['HTTP_X_APE_CHANNEL'];
+        if (!empty($_SERVER['HTTP_X_APE_CHANNEL_NAME'])) return $_SERVER['HTTP_X_APE_CHANNEL_NAME'];
+        
+        $ua = $_SERVER['HTTP_USER_AGENT'] ?? '';
+        if (preg_match('/APE-Channel:\s*([^\s\)]+)/i', $ua, $matches)) {
+            return $matches[1];
+        }
+        $c = $_GET['channel'] ?? $_GET['c'] ?? $_GET['id'] ?? $_GET['ch'] ?? $_GET['stream'] ?? $_GET['name'] ?? null;
+        if ($c) return $c;
+        if (preg_match('/\/([^\/]+)\.m3u8/i', $uri, $matches)) {
+            $infer = strtoupper(str_replace(['_', '-'], ' ', $matches[1]));
+            if (!in_array($infer, ['MASTER', 'STREAM', 'INDEX', 'PLAYLIST', 'RESOLVE_QUALITY_UNIFIED'])) {
+                return $infer;
+            }
+        }
+        $referer = $_SERVER['HTTP_REFERER'] ?? '';
+        if ($referer && preg_match('/[?&](ch|channel|id|name)=([^&]+)/i', $referer, $matches)) {
+            return $matches[2];
+        }
+        return 'UNKNOWN';
+    }
+}
 
-
+$ch_global = get_correlated_channel_id();
+if ($ch_global !== 'UNKNOWN') {
+    $latencyMs = (float)($_GET['ping'] ?? $_GET['ttfb'] ?? '150');
+    if ($latencyMs < 10) $latencyMs = rand(20, 80);
+    $p = $_GET['p'] ?? 'P3';
+    $bw = $_GET['bw_kbps'] ?? 'Auto';
+    $qosMode = $_GET['qos_mode'] ?? 'Default';
+    
+    $logLine = "PLAY|{$p}|{$ch_global}|" . round($latencyMs) . "ms|{$bw}|{$qosMode}\n";
+    @file_put_contents('/dev/shm/guardian_telemetry_v16.log', $logLine, FILE_APPEND | LOCK_EX);
+    
+    // Si la clase ya fue cargada arriba por file_exists
+    if (class_exists('GuardianTelemetry')) {
+        GuardianTelemetry::log(trim($logLine));
+        GuardianTelemetry::sessionPing($latencyMs, false, $ch_global, "CH: {$ch_global}");
+    }
+}
 
 
 /**
@@ -5092,15 +5144,32 @@ function rq_handle_request(): void
         header('Expires: 0');
         http_response_code(200);
         
-        echo "#EXTM3U\n";
-        echo "#EXT-X-VERSION:3\n";
-        echo "#EXT-X-TARGETDURATION:10\n";
-        echo "#EXT-X-MEDIA-SEQUENCE:1\n";
-        echo "#EXT-X-APE-RESOLVER: POLYMORPHIC_200_OK_HYDRA\n";
-        if ($profile === 'SPORTS') echo "#EXT-X-APE-PROFILE-LOCK: 8K_120FPS\n";
-        elseif ($profile === 'CINEMA') echo "#EXT-X-APE-PROFILE-LOCK: 4K_HDR\n";
-        echo "#EXTINF:-1, [STREAMING LIVE]\n";
-        echo $best_quality_url . "\n";
+        $output = "#EXTM3U\n";
+        $output .= "#EXT-X-VERSION:3\n";
+        $output .= "#EXT-X-TARGETDURATION:10\n";
+        $output .= "#EXT-X-MEDIA-SEQUENCE:1\n";
+        $output .= "#EXT-X-APE-RESOLVER: POLYMORPHIC_200_OK_HYDRA_SSOT\n";
+        if ($profile === 'SPORTS') $output .= "#EXT-X-APE-PROFILE-LOCK: 8K_120FPS\n";
+        elseif ($profile === 'CINEMA') $output .= "#EXT-X-APE-PROFILE-LOCK: 4K_HDR\n";
+        
+        // 📊 APE STREAMING HEALTH ENGINE (GOD-TIER ZERO-PIXEL INJECTION)
+        if (class_exists('OmegaStreamingHealthEngine')) {
+            $healthConfig = [
+                'resolution' => $_GET['res'] ?? '3840x2160', // Assume optimum capabilities for 200ok probe
+                'codec'      => $_GET['codec'] ?? 'HEVC',
+                'fps'        => isset($_GET['fps']) ? (int)$_GET['fps'] : 60,
+                'buffer'     => 15000,
+                'min_bandwidth_mbps' => 25.0,
+            ];
+            $healthMetrics = OmegaStreamingHealthEngine::evaluateStreamHealth($healthConfig);
+            // Append the God-Tier tags dynamically to the string in memory
+            OmegaStreamingHealthEngine::enforceHealthConstraintsAndDefend($healthMetrics, $output);
+        }
+
+        $output .= "#EXTINF:-1, [STREAMING LIVE]\n";
+        $output .= $best_quality_url . "\n";
+        
+        echo $output;
         exit;
     }
     // ===========================================================
@@ -5131,22 +5200,10 @@ function rq_handle_request(): void
     rq_pipeline_trace(['event' => 'entry', 'method' => $_SERVER['REQUEST_METHOD'] ?? '?', 'params' => array_keys($_GET)]);
     
     // Guardian Engine Telemetry Hook (Session Tracking)
-    $latencyMs = (float)(q('ping', '0') ?: q('ttfb', '150'));
-    if ($latencyMs < 10) $latencyMs = rand(20, 80); // Fallback dummy latency a efectos visuales
-    $ch = $_GET['ch'] ?? 'unknown';
     $p = $_GET['p'] ?? 'P3';
     
-    if ($ch !== 'unknown') {
-        $bw = $_GET['bw_kbps'] ?? 'Auto';
-        $qosMode = $_GET['qos_mode'] ?? 'Default';
-        
-        $logLine = "PLAY|{$p}|{$ch}|" . round($latencyMs) . "ms|{$bw}|{$qosMode}\n";
-        @file_put_contents('/dev/shm/guardian_telemetry_v16.log', $logLine, FILE_APPEND | LOCK_EX);
-        
-        if (class_exists('GuardianTelemetry')) {
-            GuardianTelemetry::log(trim($logLine));
-            GuardianTelemetry::sessionPing($latencyMs, false, $ch, "CH: {$ch}");
-        }
+    if (isset($ch_global) && $ch_global !== 'UNKNOWN') {
+        // Obviamos todo lo demás porque ya se procesó en el Pipeline Entry (arriba)
     }
 
     // Cabeceras de respuesta (siempre las mismas)

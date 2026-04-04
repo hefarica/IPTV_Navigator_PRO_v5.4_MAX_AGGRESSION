@@ -1736,7 +1736,8 @@
             `#EXTVLCOPT:adaptive-maxheight=${cfg.height || 4320}`,
             `#EXTVLCOPT:adaptive-logic=highest`,
             // ── SECCIÓN 11: VIDEO PROCESSING — HARDWARE MAXIMIZER (11 líneas) ──
-            `#EXTVLCOPT:video-filter=deinterlace:hqdn3d:adjust:sharpen`,
+            // 🛡️ Mecanismos Expertos: Anti-Pixelamiento Agresivo y Relleno Artificial Perfect-Frame (Plan B / Local Fallback)
+            `#EXTVLCOPT:video-filter=fspp=4:5:0,deblock=alpha=0.8:beta=0.8,gradfun,minterpolate=fps=60:mi_mode=mci:mc_mode=aobmc:me_mode=bidir,hqdn3d=4:3:6:4`,
             `#EXTVLCOPT:video-scaler=vdpau,opengl`,
             `#EXTVLCOPT:aspect-ratio=16:9`,
             `#EXTVLCOPT:video-deco=1`,
@@ -4942,10 +4943,14 @@ function generateChannelEntry(channel, index, forceProfile = null, credentialsMa
         lines.push('#EXTATTRFROMURL:cortex-transport=cmaf>fmp4>ts,hdr-policy=passthrough>tonemap');
         lines.push('#EXTATTRFROMURL:cortex-abr=safety-margin:0.2,switch-up:1.2,switch-down:0.8');
         lines.push('#EXTATTRFROMURL:cortex-deinterlace=bwdif:95,w3fdif:85,yadif:80,detect=auto');
-        lines.push('#EXTATTRFROMURL:cortex-artifact=deblock:auto,loop-filter:on,concealment:mv');
+        lines.push('#EXTATTRFROMURL:cortex-artifact=deblock:ultimate,loop-filter:on,concealment:mv');
         lines.push('#EXTATTRFROMURL:cortex-fallback=codec:hevc>av1>vp9>avc,transport:cmaf>fmp4>ts');
         lines.push('#EXTATTRFROMURL:cortex-ffmpeg=x265:deblock:-1:-1,hdr-opt:1,repeat-headers:1');
         lines.push('#EXTATTRFROMURL:cortex-noise=nlmeans+hqdn3d,preserve-detail=true,enhance=lcevc');
+        
+        // 🛡️ Mecanismos Expertos (Plan B / Local Fallback)
+        lines.push('#EXT-X-APE-POST-PROCESSING:DEBLOCKING_STRONG');
+        
         lines.push('#EXTATTRFROMURL:cortex-device=hw-decode:force,lcevc:true,max-bw:50M');
         // ── 🚀 TRANSPORT DECISION MODULE v2.0 via EXTATTRFROMURL ──
         lines.push('#EXTATTRFROMURL:transport-engine=v2.0.0,decision-tree=deterministic');
