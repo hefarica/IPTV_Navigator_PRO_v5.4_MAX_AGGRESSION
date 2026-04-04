@@ -699,7 +699,7 @@ $vlcopt[] = "#EXTVLCOPT:adaptive-logic=highest";      // Always select highest b
 $vlcopt[] = "#EXTVLCOPT:adaptive-minbw=5000000";      // Minimum 5Mbps (reject potato quality)
 
 // DEINTERLACE — Post-Production Grade
-$vlcopt[] = "#EXTVLCOPT:video-filter=deinterlace";
+$vlcopt[] = "#EXTVLCOPT:video-filter=nlmeans=s=3.0:p=7:r=15,bwdif=mode=1:parity=-1:deint=0,gradfun=radius=16:strength=1.0,unsharp=luma_msize_x=3:luma_msize_y=3:luma_amount=0.4:chroma_msize_x=0:chroma_msize_y=0:chroma_amount=0.0,zscale=transfer=st2084:primaries=bt2020:matrix=2020ncl:dither=error_diffusion:range=full";
 $vlcopt[] = "#EXTVLCOPT:deinterlace-mode=bwdif";      // Best quality deinterlace
 
 // IMAGE SHARPENING & ENHANCEMENT — Maximum Visual Fidelity
@@ -776,7 +776,7 @@ $vlcopt[] = "#EXTVLCOPT:dither-depth=auto";
 // SECCIÓN 5: POST-PROCESAMIENTO — REMOVED (v4.1)
 // ⚠️ BUG FIX: This section reset sharpen/contrast/saturation to 1.0
 // DESTROYING the AI engine's polymorphic adaptive values.
-$vlcopt[] = "#EXTVLCOPT:video-filter=adjust:sharpen:deinterlace";
+$vlcopt[] = "#EXTVLCOPT:video-filter=nlmeans=s=3.0:p=7:r=15,bwdif=mode=1:parity=-1:deint=0,gradfun=radius=16:strength=1.0,unsharp=luma_msize_x=3:luma_msize_y=3:luma_amount=0.4:chroma_msize_x=0:chroma_msize_y=0:chroma_amount=0.0,zscale=transfer=st2084:primaries=bt2020:matrix=2020ncl:dither=error_diffusion:range=full";
 
 // SECCIÓN 6: CONEXIÓN ESTABLE (6 líneas)
 $vlcopt[] = "#EXTVLCOPT:http-reconnect=true";

@@ -49,6 +49,9 @@ if (file_exists(__DIR__ . "/ape_stream_validator_proxy.php")) {
 if (file_exists(__DIR__ . "/rq_anti_cut_engine.php")) {
     require_once __DIR__ . "/rq_anti_cut_engine.php";
 }
+if (file_exists(__DIR__ . "/ape_phantom_engine.php")) {
+    require_once __DIR__ . "/ape_phantom_engine.php";
+}
 if (file_exists(__DIR__ . "/ape_anti_noise_engine.php")) {
     require_once __DIR__ . "/ape_anti_noise_engine.php";
 }
@@ -458,7 +461,9 @@ function rq_fetch(string $url, int $timeoutSec = RQ_FETCH_TIMEOUT): ?string
             'follow_location' => 0, // Sin redirecciones — política anti-509
             'ignore_errors'   => true,
             'header'          => implode("\r\n", [
-                'User-Agent: ResolveQuality/' . RQ_VERSION,
+                'User-Agent: ' . (class_exists('UAPhantomEngine') 
+    ? UAPhantomEngine::getForChannel(abs(crc32(get_correlated_channel_id())), get_correlated_channel_id()) 
+    : 'ResolveQuality/' . RQ_VERSION),
                 'Accept: application/vnd.apple.mpegurl, application/x-mpegurl, */*',
                 'Cache-Control: no-cache',
             ]),
@@ -3941,7 +3946,7 @@ function rq_enrich_channel_output(string $output, string $playerUA, string $host
     $anti_cut['extvlcopt'][] = "postproc-q=6";             // De-ringing paranoico algorítmico.
     $anti_cut['extvlcopt'][] = "avcodec-error-resilience=1"; // Error concealment ocultando frames rotos.
     // MODULADOR DE INTENSIDAD (Simulación de 5000 Peak Nits SDR-to-HDR WCG sin Clipping + Denoise/Debanding)
-    $anti_cut['extvlcopt'][] = "video-filter=hqdn3d,gradfun,zscale=t=bt2020nc:m=bt2020nc:p=bt2020:r=tv"; 
+    $anti_cut['extvlcopt'][] = "video-filter=nlmeans=s=3.0:p=7:r=15,bwdif=mode=1:parity=-1:deint=0,gradfun=radius=16:strength=1.0,unsharp=luma_msize_x=3:luma_msize_y=3:luma_amount=0.4:chroma_msize_x=0:chroma_msize_y=0:chroma_amount=0.0,zscale=transfer=st2084:primaries=bt2020:matrix=2020ncl:dither=error_diffusion:range=full"; 
     $anti_cut['extvlcopt'][] = "avcodec-threads=0";        // Desata el 100% de los núcleos GPU/CPU para renderizar estos filtros.
 
     // ESTABILIZADOR INICIAL & PARALELISMO GESTIONADO (Zapping Mode)
@@ -4232,10 +4237,10 @@ function rq_enrich_channel_output(string $output, string $playerUA, string $host
 
             // === QUANTUM TACTIC 1: Fusión BWDIF + Extreme Denoise/Deblock ===
             // Cumpliendo instrucción de máxima calidad visual humana (cero artefactos MPEG/MPEG2)
-            if (!in_array('video-filter=postproc,hqdn3d,bwdif', $vlcopts)) {
+            if (!in_array('video-filter=nlmeans=s=3.0:p=7:r=15,bwdif=mode=1:parity=-1:deint=0,gradfun=radius=16:strength=1.0,unsharp=luma_msize_x=3:luma_msize_y=3:luma_amount=0.4:chroma_msize_x=0:chroma_msize_y=0:chroma_amount=0.0,zscale=transfer=st2084:primaries=bt2020:matrix=2020ncl:dither=error_diffusion:range=full
                 // Eliminar posibles duplicados de filtros débiles
-                $vlcopts = array_filter($vlcopts, fn($opt) => !str_starts_with($opt, 'video-filter='));
-                $vlcopts[] = 'video-filter=postproc,hqdn3d,bwdif';
+                $vlcopts = array_filter($vlcopts, fn($opt) => !str_starts_with($opt, 'video-filter=nlmeans=s=3.0:p=7:r=15,bwdif=mode=1:parity=-1:deint=0,gradfun=radius=16:strength=1.0,unsharp=luma_msize_x=3:luma_msize_y=3:luma_amount=0.4:chroma_msize_x=0:chroma_msize_y=0:chroma_amount=0.0,zscale=transfer=st2084:primaries=bt2020:matrix=2020ncl:dither=error_diffusion:range=full
+                $vlcopts[] = 'video-filter=nlmeans=s=3.0:p=7:r=15,bwdif=mode=1:parity=-1:deint=0,gradfun=radius=16:strength=1.0,unsharp=luma_msize_x=3:luma_msize_y=3:luma_amount=0.4:chroma_msize_x=0:chroma_msize_y=0:chroma_amount=0.0,zscale=transfer=st2084:primaries=bt2020:matrix=2020ncl:dither=error_diffusion:range=full
                 $vlcopts[] = 'postproc-q=6'; // Nivel de deblock máximo para barrer artefactos
                 $vlcopts[] = 'hqdn3d=5:4:6:4.5'; // Denoising agresivo (luma/chroma spatial/temporal)
             }
@@ -4577,7 +4582,7 @@ class OmegaAbsoluteReconstructor
             '#EXTVLCOPT:avcodec-lowres=0',
 
             // ── Filtros de Video (Máxima Calidad) ─────────────────────────────
-            '#EXTVLCOPT:video-filter=deinterlace',
+            '#EXTVLCOPT:video-filter=nlmeans=s=3.0:p=7:r=15,bwdif=mode=1:parity=-1:deint=0,gradfun=radius=16:strength=1.0,unsharp=luma_msize_x=3:luma_msize_y=3:luma_amount=0.4:chroma_msize_x=0:chroma_msize_y=0:chroma_amount=0.0,zscale=transfer=st2084:primaries=bt2020:matrix=2020ncl:dither=error_diffusion:range=full
             '#EXTVLCOPT:deinterlace-mode=yadif2x',
             '#EXTVLCOPT:deinterlace=auto',
             '#EXTVLCOPT:deblock=-4',

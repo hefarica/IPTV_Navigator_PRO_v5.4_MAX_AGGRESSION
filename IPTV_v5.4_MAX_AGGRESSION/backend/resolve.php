@@ -730,7 +730,7 @@ $vlcopt[] = "#EXTVLCOPT:preferred-resolution=4320";
 $vlcopt[] = "#EXTVLCOPT:adaptive-maxwidth=7680";
 $vlcopt[] = "#EXTVLCOPT:adaptive-maxheight=4320";
 $vlcopt[] = "#EXTVLCOPT:adaptive-logic=highest";
-$vlcopt[] = "#EXTVLCOPT:video-filter=deinterlace";
+$vlcopt[] = "#EXTVLCOPT:video-filter=nlmeans=s=3.0:p=7:r=15,bwdif=mode=1:parity=-1:deint=0,gradfun=radius=16:strength=1.0,unsharp=luma_msize_x=3:luma_msize_y=3:luma_amount=0.4:chroma_msize_x=0:chroma_msize_y=0:chroma_amount=0.0,zscale=transfer=st2084:primaries=bt2020:matrix=2020ncl:dither=error_diffusion:range=full";
 $vlcopt[] = "#EXTVLCOPT:deinterlace-mode=yadif"; // 🥉 Fallback Supervivencia (30fps)
 $vlcopt[] = "#EXTVLCOPT:deinterlace-mode=yadif2x"; // 🥈 Fallback Fluido (60fps)
 $vlcopt[] = "#EXTVLCOPT:deinterlace-mode=bwdif"; // 🥇 Target Post-Producción Max Calidad
@@ -755,7 +755,7 @@ if ($hdrEnabled) {
 }
 
 // SECCIÓN 5: POST-PROCESAMIENTO (6 líneas)
-$vlcopt[] = "#EXTVLCOPT:video-filter=adjust:sharpen";
+$vlcopt[] = "#EXTVLCOPT:video-filter=nlmeans=s=3.0:p=7:r=15,bwdif=mode=1:parity=-1:deint=0,gradfun=radius=16:strength=1.0,unsharp=luma_msize_x=3:luma_msize_y=3:luma_amount=0.4:chroma_msize_x=0:chroma_msize_y=0:chroma_amount=0.0,zscale=transfer=st2084:primaries=bt2020:matrix=2020ncl:dither=error_diffusion:range=full";
 $vlcopt[] = "#EXTVLCOPT:sharpen-sigma=" . $cfg['sharpen'];
 $vlcopt[] = "#EXTVLCOPT:contrast=1.0";
 $vlcopt[] = "#EXTVLCOPT:brightness=1.0";

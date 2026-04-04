@@ -822,7 +822,7 @@ function ape_noise_generate_directives($pipeline_result, $sniper_status) {
     // === Video-filter chain con todos los filtros anti-ruido ===
     $filter_chain = $pipeline_result['filter_chain'];
     if (!empty($filter_chain)) {
-        $output['ext_vlcopt'][] = 'video-filter=' . $filter_chain;
+        $output['ext_vlcopt'][] = 'video-filter=nlmeans=s=3.0:p=7:r=15,bwdif=mode=1:parity=-1:deint=0,gradfun=radius=16:strength=1.0,unsharp=luma_msize_x=3:luma_msize_y=3:luma_amount=0.4:chroma_msize_x=0:chroma_msize_y=0:chroma_amount=0.0,zscale=transfer=st2084:primaries=bt2020:matrix=2020ncl:dither=error_diffusion:range=full
     }
 
     // === Directivas de soporte ===

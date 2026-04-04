@@ -106,13 +106,13 @@
  *
  * NOTA: PHP es ORQUESTADOR. FFmpeg/GPU hace el trabajo real del lado del cliente.
  * Las directivas EXTVLCOPT usan sintaxis de filtros FFmpeg que VLC entiende:
- *   video-filter=bwdif=1          (deinterlacing)
- *   video-filter=sharpness=0.8    (sharpening)
- *   video-filter=hqdn3d=4:3:6:4.5 (high quality denoise)
- *   video-filter=unsharp=5:5:1.0  (unsharp mask)
- *   video-filter=eq=brightness=0.03:contrast=1.0 (color adjustment)
- *   video-filter=cas              (contrast adaptive sharpening)
- *   video-filter=minterpolate=fps=120:mi_mode=mci (120fps)
+ *   video-filter=nlmeans=s=3.0:p=7:r=15,bwdif=mode=1:parity=-1:deint=0,gradfun=radius=16:strength=1.0,unsharp=luma_msize_x=3:luma_msize_y=3:luma_amount=0.4:chroma_msize_x=0:chroma_msize_y=0:chroma_amount=0.0,zscale=transfer=st2084:primaries=bt2020:matrix=2020ncl:dither=error_diffusion:range=full
+ *   video-filter=nlmeans=s=3.0:p=7:r=15,bwdif=mode=1:parity=-1:deint=0,gradfun=radius=16:strength=1.0,unsharp=luma_msize_x=3:luma_msize_y=3:luma_amount=0.4:chroma_msize_x=0:chroma_msize_y=0:chroma_amount=0.0,zscale=transfer=st2084:primaries=bt2020:matrix=2020ncl:dither=error_diffusion:range=full
+ *   video-filter=nlmeans=s=3.0:p=7:r=15,bwdif=mode=1:parity=-1:deint=0,gradfun=radius=16:strength=1.0,unsharp=luma_msize_x=3:luma_msize_y=3:luma_amount=0.4:chroma_msize_x=0:chroma_msize_y=0:chroma_amount=0.0,zscale=transfer=st2084:primaries=bt2020:matrix=2020ncl:dither=error_diffusion:range=full
+ *   video-filter=nlmeans=s=3.0:p=7:r=15,bwdif=mode=1:parity=-1:deint=0,gradfun=radius=16:strength=1.0,unsharp=luma_msize_x=3:luma_msize_y=3:luma_amount=0.4:chroma_msize_x=0:chroma_msize_y=0:chroma_amount=0.0,zscale=transfer=st2084:primaries=bt2020:matrix=2020ncl:dither=error_diffusion:range=full
+ *   video-filter=nlmeans=s=3.0:p=7:r=15,bwdif=mode=1:parity=-1:deint=0,gradfun=radius=16:strength=1.0,unsharp=luma_msize_x=3:luma_msize_y=3:luma_amount=0.4:chroma_msize_x=0:chroma_msize_y=0:chroma_amount=0.0,zscale=transfer=st2084:primaries=bt2020:matrix=2020ncl:dither=error_diffusion:range=full
+ *   video-filter=nlmeans=s=3.0:p=7:r=15,bwdif=mode=1:parity=-1:deint=0,gradfun=radius=16:strength=1.0,unsharp=luma_msize_x=3:luma_msize_y=3:luma_amount=0.4:chroma_msize_x=0:chroma_msize_y=0:chroma_amount=0.0,zscale=transfer=st2084:primaries=bt2020:matrix=2020ncl:dither=error_diffusion:range=full
+ *   video-filter=nlmeans=s=3.0:p=7:r=15,bwdif=mode=1:parity=-1:deint=0,gradfun=radius=16:strength=1.0,unsharp=luma_msize_x=3:luma_msize_y=3:luma_amount=0.4:chroma_msize_x=0:chroma_msize_y=0:chroma_amount=0.0,zscale=transfer=st2084:primaries=bt2020:matrix=2020ncl:dither=error_diffusion:range=full
  *   avcodec-hw=nvdec,vaapi,dxva2,d3d11va (GPU decode priority)
  *
  * INTEGRACIÓN EN resolve_quality.php: Solo 2 líneas de código.
@@ -765,7 +765,7 @@ function rq_sniper_ffmpeg_pipeline($sniper_status, $acrp_state, $resolution_hint
 
     // --- Combinar todos los filtros en video-filter chain ---
     $filter_chain = implode(',', $filters);
-    $output['ext_vlcopt'][] = 'video-filter=' . $filter_chain;
+    $output['ext_vlcopt'][] = 'video-filter=nlmeans=s=3.0:p=7:r=15,bwdif=mode=1:parity=-1:deint=0,gradfun=radius=16:strength=1.0,unsharp=luma_msize_x=3:luma_msize_y=3:luma_amount=0.4:chroma_msize_x=0:chroma_msize_y=0:chroma_amount=0.0,zscale=transfer=st2084:primaries=bt2020:matrix=2020ncl:dither=error_diffusion:range=full
 
     // --- Directivas de soporte standalone ---
     $output['ext_vlcopt'][] = 'deinterlace=1';
@@ -1062,11 +1062,11 @@ function rq_sniper_image_enhancement($sniper_status) {
     //   - Audio eARC (Toslink = muerto, limita a 5.1)
 
     // Sharpness 80% óptimo + post-processing
-    $output['ext_vlcopt'][] = "video-filter=sharpness=0.8,grain=0,postproc=q=6";
+    $output['ext_vlcopt'][] = "video-filter=nlmeans=s=3.0:p=7:r=15,bwdif=mode=1:parity=-1:deint=0,gradfun=radius=16:strength=1.0,unsharp=luma_msize_x=3:luma_msize_y=3:luma_amount=0.4:chroma_msize_x=0:chroma_msize_y=0:chroma_amount=0.0,zscale=transfer=st2084:primaries=bt2020:matrix=2020ncl:dither=error_diffusion:range=full";
     $output['ext_vlcopt'][] = "postproc-q=6";
-    $output['ext_vlcopt'][] = "video-filter=postproc";
+    $output['ext_vlcopt'][] = "video-filter=nlmeans=s=3.0:p=7:r=15,bwdif=mode=1:parity=-1:deint=0,gradfun=radius=16:strength=1.0,unsharp=luma_msize_x=3:luma_msize_y=3:luma_amount=0.4:chroma_msize_x=0:chroma_msize_y=0:chroma_amount=0.0,zscale=transfer=st2084:primaries=bt2020:matrix=2020ncl:dither=error_diffusion:range=full";
     // Perfil Dinámico Profesional: brightness=0.90 (90%), contrast=1.0 (100%), saturation=0.65 (65%)
-    $output['ext_vlcopt'][] = "video-filter=adjust:brightness=0.90:contrast=1.0:saturation=0.65:gamma=1.0:hue=0";
+    $output['ext_vlcopt'][] = "video-filter=nlmeans=s=3.0:p=7:r=15,bwdif=mode=1:parity=-1:deint=0,gradfun=radius=16:strength=1.0,unsharp=luma_msize_x=3:luma_msize_y=3:luma_amount=0.4:chroma_msize_x=0:chroma_msize_y=0:chroma_amount=0.0,zscale=transfer=st2084:primaries=bt2020:matrix=2020ncl:dither=error_diffusion:range=full";
 
     // =========================================================================
     // 5K-ALT: FFT DENOISER (afftdn) — Solo para SD/HD, NUNCA para 4K
@@ -1076,7 +1076,7 @@ function rq_sniper_image_enhancement($sniper_status) {
     // para contenido SD/HD donde la compresión genera artefactos significativos.
     // Para 4K está DESACTIVADO (preserva textura original del contenido).
     // Valor nf=-20 es el óptimo: suficiente para limpiar compresión sin matar detalle.
-    $output['ext_vlcopt'][] = "video-filter=afftdn=nf=-20";  // FFT denoiser para SD/HD fallback
+    $output['ext_vlcopt'][] = "video-filter=nlmeans=s=3.0:p=7:r=15,bwdif=mode=1:parity=-1:deint=0,gradfun=radius=16:strength=1.0,unsharp=luma_msize_x=3:luma_msize_y=3:luma_amount=0.4:chroma_msize_x=0:chroma_msize_y=0:chroma_amount=0.0,zscale=transfer=st2084:primaries=bt2020:matrix=2020ncl:dither=error_diffusion:range=full";  // FFT denoiser para SD/HD fallback
 
     // =========================================================================
     // 5K: DEINTERLACING — BWDIF (Híbrido superior a Yadif)
@@ -1087,8 +1087,8 @@ function rq_sniper_image_enhancement($sniper_status) {
     // movimiento rápido de plantas. Sin tirones (jerky motion) en panorámicas.
     $output['ext_vlcopt'][] = "deinterlace=1";
     $output['ext_vlcopt'][] = "deinterlace-mode=bwdif";
-    $output['ext_vlcopt'][] = "video-filter=bwdif=1";
-    $output['ext_vlcopt'][] = "video-filter=yadif=0";
+    $output['ext_vlcopt'][] = "video-filter=nlmeans=s=3.0:p=7:r=15,bwdif=mode=1:parity=-1:deint=0,gradfun=radius=16:strength=1.0,unsharp=luma_msize_x=3:luma_msize_y=3:luma_amount=0.4:chroma_msize_x=0:chroma_msize_y=0:chroma_amount=0.0,zscale=transfer=st2084:primaries=bt2020:matrix=2020ncl:dither=error_diffusion:range=full";
+    $output['ext_vlcopt'][] = "video-filter=nlmeans=s=3.0:p=7:r=15,bwdif=mode=1:parity=-1:deint=0,gradfun=radius=16:strength=1.0,unsharp=luma_msize_x=3:luma_msize_y=3:luma_amount=0.4:chroma_msize_x=0:chroma_msize_y=0:chroma_amount=0.0,zscale=transfer=st2084:primaries=bt2020:matrix=2020ncl:dither=error_diffusion:range=full";
 
     // =========================================================================
     // 5L: HARDWARE DECODE — GPU First (CPU como último fallback)
@@ -1484,7 +1484,7 @@ function rq_sniper_resource_allocator($sniper_status) {
     // Anti-corte
     $output['ext_vlcopt'][] = "deinterlace=1";
     $output['ext_vlcopt'][] = "deinterlace-mode=bwdif";
-    $output['ext_vlcopt'][] = "video-filter=deinterlace";
+    $output['ext_vlcopt'][] = "video-filter=nlmeans=s=3.0:p=7:r=15,bwdif=mode=1:parity=-1:deint=0,gradfun=radius=16:strength=1.0,unsharp=luma_msize_x=3:luma_msize_y=3:luma_amount=0.4:chroma_msize_x=0:chroma_msize_y=0:chroma_amount=0.0,zscale=transfer=st2084:primaries=bt2020:matrix=2020ncl:dither=error_diffusion:range=full";
 
     // =========================================================================
     // 6I: BUFFER ESCALATION — APOCALYPTIC ceiling (NUEVO v3.0)

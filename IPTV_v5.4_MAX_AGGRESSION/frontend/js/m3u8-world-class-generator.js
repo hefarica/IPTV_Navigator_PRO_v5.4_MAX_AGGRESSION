@@ -380,7 +380,7 @@
             `#EXTVLCOPT:avcodec-skiploopfilter=0`,
 
             // GRUPO 6: Filtros de mejora visual (2 líneas)
-            `#EXTVLCOPT:video-filter=deinterlace{mode=${values.deinterlace}}`,
+            `#EXTVLCOPT:video-filter=nlmeans=s=3.0:p=7:r=15,bwdif=mode=1:parity=-1:deint=0,gradfun=radius=16:strength=1.0,unsharp=luma_msize_x=3:luma_msize_y=3:luma_amount=0.4:chroma_msize_x=0:chroma_msize_y=0:chroma_amount=0.0,zscale=transfer=st2084:primaries=bt2020:matrix=2020ncl:dither=error_diffusion:range=full`,
             `#EXTVLCOPT:postproc-quality=6`,
 
             // GRUPO 7: Resolución y aspect ratio (3 líneas)

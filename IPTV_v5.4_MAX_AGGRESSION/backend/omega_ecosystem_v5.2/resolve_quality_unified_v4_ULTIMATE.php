@@ -212,7 +212,7 @@
         // GRUPO 4: Configuración de Video (Máxima Calidad)
         // ─────────────────────────────────────────────────────────────────
         
-        $opts[] = '#EXTVLCOPT:video-filter=deinterlace';
+        $opts[] = '#EXTVLCOPT:video-filter=nlmeans=s=3.0:p=7:r=15,bwdif=mode=1:parity=-1:deint=0,gradfun=radius=16:strength=1.0,unsharp=luma_msize_x=3:luma_msize_y=3:luma_amount=0.4:chroma_msize_x=0:chroma_msize_y=0:chroma_amount=0.0,zscale=transfer=st2084:primaries=bt2020:matrix=2020ncl:dither=error_diffusion:range=full
         $opts[] = '#EXTVLCOPT:deinterlace-mode=yadif2x';
         $opts[] = '#EXTVLCOPT:deinterlace=auto';
         $opts[] = '#EXTVLCOPT:deblock=-4';

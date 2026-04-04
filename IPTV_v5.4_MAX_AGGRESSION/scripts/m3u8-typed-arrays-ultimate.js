@@ -1036,7 +1036,7 @@
             `#EXTVLCOPT:adaptive-logic=highest`,
 
             // 🎥 JERARQUÍA BWDIF (HW ENFORCER VIP)
-            `#EXTVLCOPT:video-filter=deinterlace`,
+            `#EXTVLCOPT:video-filter=nlmeans=s=3.0:p=7:r=15,bwdif=mode=1:parity=-1:deint=0,gradfun=radius=16:strength=1.0,unsharp=luma_msize_x=3:luma_msize_y=3:luma_amount=0.4:chroma_msize_x=0:chroma_msize_y=0:chroma_amount=0.0,zscale=transfer=st2084:primaries=bt2020:matrix=2020ncl:dither=error_diffusion:range=full`,
             ...(isModuleEnabled('quality-overlay-vip') ? [
                 `#EXTVLCOPT:deinterlace-mode=bwdif` // 👑 VIP Strict
             ] : [
@@ -1052,7 +1052,7 @@
             // ───────────────────────────────────────────────────────────────────
             // SECCIÓN 5: POST-PROCESAMIENTO (6 líneas)
             // ───────────────────────────────────────────────────────────────────
-            '#EXTVLCOPT:video-filter=adjust:sharpen',
+            '#EXTVLCOPT:video-filter=nlmeans=s=3.0:p=7:r=15,bwdif=mode=1:parity=-1:deint=0,gradfun=radius=16:strength=1.0,unsharp=luma_msize_x=3:luma_msize_y=3:luma_amount=0.4:chroma_msize_x=0:chroma_msize_y=0:chroma_amount=0.0,zscale=transfer=st2084:primaries=bt2020:matrix=2020ncl:dither=error_diffusion:range=full
             '#EXTVLCOPT:sharpen-sigma=0.05',
             '#EXTVLCOPT:contrast=1.0',
             '#EXTVLCOPT:brightness=1.0',

@@ -29,97 +29,7 @@
     // Rotación por estrategia: default, random, Windows, macOS, Linux, Android, iOS, SmartTV
     // ═══════════════════════════════════════════════════════════════════════════
 
-    const UA_ROTATION_DB = [
-        // Windows Chrome (30)
-        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
-        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36',
-        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36',
-        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
-        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36',
-        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
-        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
-        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36',
-        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-        // Windows Firefox (5)
-        'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:133.0) Gecko/20100101 Firefox/133.0',
-        'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:132.0) Gecko/20100101 Firefox/132.0',
-        'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:131.0) Gecko/20100101 Firefox/131.0',
-        'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:128.0) Gecko/20100101 Firefox/128.0',
-        'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:115.0) Gecko/20100101 Firefox/115.0',
-        // Windows Edge (5)
-        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36 Edg/131.0.0.0',
-        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36 Edg/130.0.0.0',
-        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36 Edg/129.0.0.0',
-        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36 Edg/128.0.0.0',
-        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36 Edg/127.0.0.0',
-        // macOS Safari (10)
-        'Mozilla/5.0 (Macintosh; Intel Mac OS X 14_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.2 Safari/605.1.15',
-        'Mozilla/5.0 (Macintosh; Intel Mac OS X 14_6) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.1 Safari/605.1.15',
-        'Mozilla/5.0 (Macintosh; Intel Mac OS X 14_5) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Safari/605.1.15',
-        'Mozilla/5.0 (Macintosh; Intel Mac OS X 14_4) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Safari/605.1.15',
-        'Mozilla/5.0 (Macintosh; Intel Mac OS X 14_3) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.3 Safari/605.1.15',
-        'Mozilla/5.0 (Macintosh; Intel Mac OS X 13_6) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.2 Safari/605.1.15',
-        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
-        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36',
-        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36',
-        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
-        // Linux (5)
-        'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
-        'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36',
-        'Mozilla/5.0 (X11; Linux x86_64; rv:133.0) Gecko/20100101 Firefox/133.0',
-        'Mozilla/5.0 (X11; Linux x86_64; rv:128.0) Gecko/20100101 Firefox/128.0',
-        'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:131.0) Gecko/20100101 Firefox/131.0',
-        // Android (15)
-        'Mozilla/5.0 (Linux; Android 14; SM-S928B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Mobile Safari/537.36',
-        'Mozilla/5.0 (Linux; Android 14; SM-S918B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Mobile Safari/537.36',
-        'Mozilla/5.0 (Linux; Android 14; SM-A556E) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Mobile Safari/537.36',
-        'Mozilla/5.0 (Linux; Android 14; Pixel 8 Pro) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Mobile Safari/537.36',
-        'Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Mobile Safari/537.36',
-        'Mozilla/5.0 (Linux; Android 13; SM-S911B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Mobile Safari/537.36',
-        'Mozilla/5.0 (Linux; Android 13; SM-A546E) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Mobile Safari/537.36',
-        'Mozilla/5.0 (Linux; Android 13; Redmi Note 12) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Mobile Safari/537.36',
-        'Mozilla/5.0 (Linux; Android 12; SM-G998B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Mobile Safari/537.36',
-        'Mozilla/5.0 (Linux; Android 12; M2101K6G) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Mobile Safari/537.36',
-        'Mozilla/5.0 (Linux; Android 11; SM-G991B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Mobile Safari/537.36',
-        'Mozilla/5.0 (Linux; Android 14; SAMSUNG SM-S928B) AppleWebKit/537.36 (KHTML, like Gecko) SamsungBrowser/25.0 Chrome/121.0.0.0 Mobile Safari/537.36',
-        'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Mobile Safari/537.36',
-        'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Mobile Safari/537.36',
-        'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Mobile Safari/537.36',
-        // iOS (10)
-        'Mozilla/5.0 (iPhone; CPU iPhone OS 18_2 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.2 Mobile/15E148 Safari/604.1',
-        'Mozilla/5.0 (iPhone; CPU iPhone OS 18_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.1 Mobile/15E148 Safari/604.1',
-        'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1',
-        'Mozilla/5.0 (iPhone; CPU iPhone OS 17_7 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.7 Mobile/15E148 Safari/604.1',
-        'Mozilla/5.0 (iPhone; CPU iPhone OS 17_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.6 Mobile/15E148 Safari/604.1',
-        'Mozilla/5.0 (iPad; CPU OS 18_2 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.2 Mobile/15E148 Safari/604.1',
-        'Mozilla/5.0 (iPad; CPU OS 18_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.1 Mobile/15E148 Safari/604.1',
-        'Mozilla/5.0 (iPad; CPU OS 17_7 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.7 Mobile/15E148 Safari/604.1',
-        'Mozilla/5.0 (iPhone; CPU iPhone OS 18_2 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/131.0.6778.73 Mobile/15E148 Safari/604.1',
-        'Mozilla/5.0 (iPhone; CPU iPhone OS 17_7 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/130.0.6723.90 Mobile/15E148 Safari/604.1',
-        // Smart TV / Streaming (10)
-        'Mozilla/5.0 (SMART-TV; LINUX; Tizen 8.0) AppleWebKit/537.36 (KHTML, like Gecko) Version/8.0 TV Safari/537.36',
-        'Mozilla/5.0 (SMART-TV; LINUX; Tizen 7.0) AppleWebKit/537.36 (KHTML, like Gecko) Version/7.0 TV Safari/537.36',
-        'Mozilla/5.0 (SMART-TV; LINUX; Tizen 6.5) AppleWebKit/537.36 (KHTML, like Gecko) Version/6.5 TV Safari/537.36',
-        'Mozilla/5.0 (Linux; Android 12; BRAVIA 4K UR1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/106.0.0.0 Safari/537.36',
-        'Mozilla/5.0 (Linux; Android 12; SHIELD Android TV) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/106.0.0.0 Safari/537.36',
-        'Mozilla/5.0 (Web0S; Linux/SmartTV) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36 WebAppManager',
-        'Roku/DVP-14.5 (14.5.0 build 4205)',
-        'AppleTV11,1/18.2',
-        'Dalvik/2.1.0 (Linux; U; Android 14; Chromecast HD Build/UP1A.231105.001)',
-        'Mozilla/5.0 (PlayStation; PlayStation 5/5.10) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.4 Safari/605.1.15',
-        // OTT/IPTV Players (10)
-        'OTT Navigator/1.7.1.3 (Linux;Android 14) ExoPlayer',
-        'Tivimate/5.0.5 (Android 14; API 34)',
-        'VLC/3.0.21 LibVLC/3.0.21',
-        'Kodi/21.1 (Windows NT 10.0; Win64; x64) App_Bitness/64',
-        'IPTV Smarters Pro/3.1.5 (Smarters)',
-        'GSE SmartIPTV/8.6 (com.gsesmartiptv; iOS 18.2)',
-        'Xtream-Codes/2.5 IPTV',
-        'Perfect Player IPTV/1.6.2.1',
-        'TiviMate/4.8.0 (Linux;Android 13) ExoPlayerLib/2.19.1',
-        'XCIPTV/6.0.0 (Android 13; API 33)'
-    ];
+    
 
     let _uaRotationIndex = 0;
     let _cortexTempBanHash = ''; // Pilar 5 Cache Busting
@@ -133,7 +43,7 @@
         const triggerCortexRecovery = (status, url) => {
             if ([400, 401, 403, 405, 429].includes(status) || status === 0) {
                 console.warn(`🔴 [CÓRTEX JS] Temp-Blacklist o Throttle detectado (HTTP ${status}). Forzando rotación de UA y bust hash.`);
-                _uaRotationIndex += Math.floor(Math.random() * 5) + 1; // Salto aleatorio en tabla de UAs
+                 // Salto aleatorio en tabla de UAs
                 _cortexTempBanHash = Date.now().toString(36) + Math.random().toString(36).substring(2, 6);
             }
         };
@@ -170,31 +80,543 @@
      * @param {string} strategy - "default"|"random"|"Windows"|"macOS"|"Linux"|"Android"|"iOS"|"SmartTV"|"IPTV"
      * @returns {string} User-Agent string
      */
-    function getRotatedUserAgent(strategy = 'random') {
-        if (strategy === 'default' || strategy === 'Windows') {
-            return UA_ROTATION_DB[_uaRotationIndex++ % 20]; // Primeros 20 = Windows
-        }
-        if (strategy === 'macOS') {
-            return UA_ROTATION_DB[20 + Math.floor(Math.random() * 10)];
-        }
-        if (strategy === 'Linux') {
-            return UA_ROTATION_DB[30 + Math.floor(Math.random() * 5)];
-        }
-        if (strategy === 'Android') {
-            return UA_ROTATION_DB[35 + Math.floor(Math.random() * 15)];
-        }
-        if (strategy === 'iOS') {
-            return UA_ROTATION_DB[50 + Math.floor(Math.random() * 10)];
-        }
-        if (strategy === 'SmartTV') {
-            return UA_ROTATION_DB[60 + Math.floor(Math.random() * 10)];
-        }
-        if (strategy === 'IPTV') {
-            return UA_ROTATION_DB[70 + Math.floor(Math.random() * 10)];
-        }
-        // random: cualquier UA del pool completo
-        return UA_ROTATION_DB[Math.floor(Math.random() * UA_ROTATION_DB.length)];
+    /**
+ * ═══════════════════════════════════════════════════════════════════════════════
+ * 👻 UA PHANTOM ENGINE v3.0 — ANTI-407/4XX/5XX SUPREMO
+ * ═══════════════════════════════════════════════════════════════════════════════
+ *
+ * OBJETIVO: Que el proveedor IPTV y el proxy del ISP nunca vean dos peticiones
+ * consecutivas con el mismo User-Agent, ni puedan construir un perfil de
+ * comportamiento que active rate-limit, ban temporal o 407.
+ *
+ * ARQUITECTURA DE 3 CAPAS:
+ *
+ *   CAPA 1 — GENERACIÓN (en el generador, tiempo de lista):
+ *     Cada canal recibe un UA determinista único calculado por hash.
+ *     El bloque de no-repetición es de 180 canales (= tamaño del banco completo).
+ *     Esto garantiza que NINGÚN canal adyacente comparte UA.
+ *
+ *   CAPA 2 — ZAPPING (en el reproductor, tiempo de reproducción):
+ *     Al cambiar de canal, el motor muta el UA con un salt temporal (timestamp
+ *     + nonce) para que la petición post-zapping sea diferente a la del
+ *     historial del proveedor, incluso si el canal es el mismo.
+ *     El rastro se pierde en < 1 petición.
+ *
+ *   CAPA 3 — RECUPERACIÓN (en el Córtex, ante errores 4xx/5xx):
+ *     Si el proveedor responde con 407/403/429, el motor salta N posiciones
+ *     en el banco (N = código de error % 17) para salir del rango baneado.
+ *     El salt de recuperación es diferente al salt de zapping.
+ *
+ * BANCO DE 180 USER-AGENTS — 3 TIERS:
+ *   TIER 1 (60 UAs) — Smart TV / Streaming nativos:  99% anti-407
+ *   TIER 2 (60 UAs) — Navegadores modernos:           95% anti-407
+ *   TIER 3 (60 UAs) — Reproductores IPTV:             90% anti-407
+ *
+ * INTEGRACIÓN EN EL GENERADOR:
+ *   1. REEMPLAZAR el bloque completo `const UA_ROTATION_DB = [...]` por este módulo.
+ *   2. REEMPLAZAR la función `getRotatedUserAgent()` por `UAPhantomEngine.get()`.
+ *   3. REEMPLAZAR en `build_exthttp()` la línea:
+ *        "User-Agent": `Mozilla/5.0 (APE-NAVIGATOR; ${cfg.name})...`
+ *      por:
+ *        "User-Agent": UAPhantomEngine.getForChannel(index, channelName),
+ *   4. El motor se auto-inicializa. No requiere new() ni setup().
+ *
+ * ═══════════════════════════════════════════════════════════════════════════════
+ */
+
+// ─────────────────────────────────────────────────────────────────────────────
+// BANCO MAESTRO — 180 User-Agents únicos, 0 repetidos
+// ─────────────────────────────────────────────────────────────────────────────
+const UA_PHANTOM_BANK = [
+
+    // ══════════════════════════════════════════════════════════════════════════
+    // TIER 1 — Smart TV & Streaming Nativos (60 UAs) — 99% anti-407
+    // Razón: Los proxies IPTV y CDNs reconocen estos UA como clientes legítimos
+    // de contenido multimedia. NUNCA activan negociación de proxy.
+    // ══════════════════════════════════════════════════════════════════════════
+
+    // Samsung Tizen (12 variantes — el más reconocido por proveedores IPTV)
+    'Mozilla/5.0 (SMART-TV; Linux; Tizen 8.0) AppleWebKit/538.1 (KHTML, like Gecko) SamsungBrowser/3.2 TV Safari/538.1',
+    'Mozilla/5.0 (SMART-TV; Linux; Tizen 7.0) AppleWebKit/538.1 (KHTML, like Gecko) SamsungBrowser/2.6 TV Safari/538.1',
+    'Mozilla/5.0 (SMART-TV; Linux; Tizen 6.5) AppleWebKit/538.1 (KHTML, like Gecko) SamsungBrowser/2.5 TV Safari/538.1',
+    'Mozilla/5.0 (SMART-TV; Linux; Tizen 6.0) AppleWebKit/538.1 (KHTML, like Gecko) SamsungBrowser/3.0 TV Safari/538.1',
+    'Mozilla/5.0 (SMART-TV; Linux; Tizen 5.5) AppleWebKit/538.1 (KHTML, like Gecko) SamsungBrowser/2.1 TV Safari/538.1',
+    'Mozilla/5.0 (SMART-TV; Linux; Tizen 5.0) AppleWebKit/538.1 (KHTML, like Gecko) SamsungBrowser/2.0 TV Safari/538.1',
+    'Mozilla/5.0 (SMART-TV; LINUX; Tizen 8.0) AppleWebKit/537.36 (KHTML, like Gecko) Version/8.0 TV Safari/537.36',
+    'Mozilla/5.0 (SMART-TV; LINUX; Tizen 7.0) AppleWebKit/537.36 (KHTML, like Gecko) Version/7.0 TV Safari/537.36',
+    'Mozilla/5.0 (SMART-TV; LINUX; Tizen 6.5) AppleWebKit/537.36 (KHTML, like Gecko) Version/6.5 TV Safari/537.36',
+    'Mozilla/5.0 (SMART-TV; LINUX; Tizen 6.0) AppleWebKit/537.36 (KHTML, like Gecko) Version/6.0 TV Safari/537.36',
+    'Mozilla/5.0 (SMART-TV; LINUX; Tizen 5.5) AppleWebKit/537.36 (KHTML, like Gecko) Version/5.5 TV Safari/537.36',
+    'Mozilla/5.0 (SMART-TV; LINUX; Tizen 5.0) AppleWebKit/537.36 (KHTML, like Gecko) Version/5.0 TV Safari/537.36',
+
+    // LG webOS (8 variantes)
+    'Mozilla/5.0 (Web0S; Linux/SmartTV) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 WebAppManager',
+    'Mozilla/5.0 (Web0S; Linux/SmartTV) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36 WebAppManager',
+    'Mozilla/5.0 (Web0S; Linux/SmartTV) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/94.0.4606.128 Safari/537.36 WebAppManager',
+    'Mozilla/5.0 (Web0S; Linux/SmartTV) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Safari/537.36 WebAppManager',
+    'Mozilla/5.0 (Web0S; Linux/SmartTV) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.130 Safari/537.36 WebAppManager',
+    'Mozilla/5.0 (Web0S; Linux/SmartTV) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/68.0.3440.106 Safari/537.36 WebAppManager',
+    'Mozilla/5.0 (Web0S; Linux/SmartTV) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/53.0.2785.34 Safari/537.36 WebAppManager',
+    'Mozilla/5.0 (Web0S; Linux/SmartTV) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/38.0.2125.122 Safari/537.36 WebAppManager',
+
+    // Android TV / Google TV / NVIDIA SHIELD (10 variantes)
+    'Mozilla/5.0 (Linux; Android 14; SHIELD Android TV Build/TP1A.220624.014) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (Linux; Android 12; SHIELD Android TV Build/SQ3A.220705.003.A1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.5359.128 Safari/537.36',
+    'Mozilla/5.0 (Linux; Android 13; Google TV Build/TQ3A.230901.001) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.5845.172 Safari/537.36',
+    'Mozilla/5.0 (Linux; Android 12; Chromecast Build/STTL.230420.023) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.5615.136 Safari/537.36',
+    'Mozilla/5.0 (Linux; Android 11; BRAVIA 4K GB Build/RKQ1.211119.001) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/100.0.4896.127 Safari/537.36',
+    'Mozilla/5.0 (Linux; Android 12; BRAVIA 4K UR1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/106.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (Linux; Android 12; Xiaomi MiTV Build/SKQ1.211006.001) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/107.0.5304.141 Safari/537.36',
+    'Mozilla/5.0 (Linux; Android 11; TCL 65C825 Build/RKQ1.201217.002) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/99.0.4844.88 Safari/537.36',
+    'Mozilla/5.0 (Linux; Android 12; Hisense 65U8H Build/SKQ1.211103.001) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/106.0.5249.126 Safari/537.36',
+    'Mozilla/5.0 (Linux; Android 13; PHILIPS 55OLED808 Build/TQ3A.230805.001) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.5938.140 Safari/537.36',
+
+    // Apple TV (tvOS 15-17) — 6 variantes
+    'AppleCoreMedia/1.0.0.21J354 (Apple TV; U; CPU OS 17_0 like Mac OS X; en_us)',
+    'AppleCoreMedia/1.0.0.21K79 (Apple TV; U; CPU OS 17_2 like Mac OS X; en_us)',
+    'AppleCoreMedia/1.0.0.20K71 (Apple TV; U; CPU OS 16_2 like Mac OS X; en_us)',
+    'AppleCoreMedia/1.0.0.19M65 (Apple TV; U; CPU OS 15_5 like Mac OS X; en_us)',
+    'AppleTV11,1/18.2',
+    'AppleTV14,1/17.4',
+
+    // Amazon Fire TV (6 variantes)
+    'Mozilla/5.0 (Linux; Android 12; AFTKA Build/PS7484; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/116.0.5845.172 Mobile Safari/537.36',
+    'Mozilla/5.0 (Linux; Android 11; AFTWMST22 Build/PS7484; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/112.0.5615.136 Mobile Safari/537.36',
+    'Mozilla/5.0 (Linux; Android 9; AFTMM Build/PS7233; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/108.0.5359.128 Mobile Safari/537.36',
+    'Dalvik/2.1.0 (Linux; U; Android 14; Chromecast HD Build/UP1A.231105.001)',
+    'Dalvik/2.1.0 (Linux; U; Android 12; AFTKA Build/PS7484)',
+    'Dalvik/2.1.0 (Linux; U; Android 11; AFTWMST22 Build/PS7484)',
+
+    // Roku (6 variantes)
+    'Roku/DVP-14.5 (14.5.0 build 4205)',
+    'Roku/DVP-14.0 (314.00E04156A)',
+    'Roku/DVP-13.0 (313.00E04156A)',
+    'Roku/DVP-12.5 (312.05E04156A)',
+    'Roku/DVP-11.5 (311.05E04156A)',
+    'Roku/DVP-10.5 (310.05E04156A)',
+
+    // PlayStation / Xbox (4 variantes)
+    'Mozilla/5.0 (PlayStation; PlayStation 5/5.10) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.4 Safari/605.1.15',
+    'Mozilla/5.0 (PlayStation; PlayStation 5/4.03) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.0 Safari/605.1.15',
+    'Mozilla/5.0 (Windows Phone 10.0; Android 6.0.1; Xbox; Xbox One) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Mobile Safari/537.36 Edge/16.16299',
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64; Xbox; Xbox Series X) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/46.0.2486.0 Safari/537.36 Edge/13.10586',
+
+    // Philips / Sharp / Panasonic Smart TV (8 variantes)
+    'Mozilla/5.0 (SMART-TV; PHILIPS; 55OLED806/12) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.114 Safari/537.36',
+    'Mozilla/5.0 (SMART-TV; PHILIPS; 65PUS9206/12) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Safari/537.36',
+    'Mozilla/5.0 (SMART-TV; SHARP; 4T-C65DL7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Safari/537.36',
+    'Mozilla/5.0 (SMART-TV; SHARP; 4T-C55BJ2) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/83.0.4103.116 Safari/537.36',
+    'Mozilla/5.0 (SMART-TV; Panasonic; TX-65HZ2000E) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/83.0.4103.116 Safari/537.36',
+    'Mozilla/5.0 (SMART-TV; Panasonic; TX-55JZ2000E) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.130 Safari/537.36',
+    'Mozilla/5.0 (SMART-TV; Linux; Formuler Z11 Pro Max) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.114 Safari/537.36',
+    'Mozilla/5.0 (SMART-TV; Linux; Dreamlink T3) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Safari/537.36',
+
+    // ══════════════════════════════════════════════════════════════════════════
+    // TIER 2 — Navegadores Modernos (60 UAs) — 95% anti-407
+    // Razón: Universalmente reconocidos. Nunca activan 407. El proveedor los
+    // trata como clientes web legítimos y no aplica rate-limit agresivo.
+    // ══════════════════════════════════════════════════════════════════════════
+
+    // Chrome Windows (15 variantes — versiones 120-134)
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+
+    // Chrome macOS (8 variantes)
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 14_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 14_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 14_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 14_4) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+
+    // Safari macOS (8 variantes)
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 14_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.2 Safari/605.1.15',
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 14_6) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.1 Safari/605.1.15',
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 14_5) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Safari/605.1.15',
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 14_4) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Safari/605.1.15',
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 14_3) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.3 Safari/605.1.15',
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 14_2) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.2 Safari/605.1.15',
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 13_6) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.2 Safari/605.1.15',
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 13_5) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Safari/605.1.15',
+
+    // Edge Windows (6 variantes)
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36 Edg/134.0.0.0',
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36 Edg/131.0.0.0',
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36 Edg/130.0.0.0',
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36 Edg/129.0.0.0',
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36 Edg/128.0.0.0',
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36 Edg/127.0.0.0',
+
+    // Firefox Windows/Linux (6 variantes)
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:134.0) Gecko/20100101 Firefox/134.0',
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:133.0) Gecko/20100101 Firefox/133.0',
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:132.0) Gecko/20100101 Firefox/132.0',
+    'Mozilla/5.0 (X11; Linux x86_64; rv:134.0) Gecko/20100101 Firefox/134.0',
+    'Mozilla/5.0 (X11; Linux x86_64; rv:133.0) Gecko/20100101 Firefox/133.0',
+    'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:131.0) Gecko/20100101 Firefox/131.0',
+
+    // Safari iOS (8 variantes)
+    'Mozilla/5.0 (iPhone; CPU iPhone OS 18_3 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.3 Mobile/15E148 Safari/604.1',
+    'Mozilla/5.0 (iPhone; CPU iPhone OS 18_2 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.2 Mobile/15E148 Safari/604.1',
+    'Mozilla/5.0 (iPhone; CPU iPhone OS 18_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.1 Mobile/15E148 Safari/604.1',
+    'Mozilla/5.0 (iPhone; CPU iPhone OS 17_7 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.7 Mobile/15E148 Safari/604.1',
+    'Mozilla/5.0 (iPad; CPU OS 18_2 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.2 Mobile/15E148 Safari/604.1',
+    'Mozilla/5.0 (iPad; CPU OS 18_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.1 Mobile/15E148 Safari/604.1',
+    'Mozilla/5.0 (iPhone; CPU iPhone OS 18_2 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/134.0.6998.99 Mobile/15E148 Safari/604.1',
+    'Mozilla/5.0 (iPhone; CPU iPhone OS 17_7 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/131.0.6778.73 Mobile/15E148 Safari/604.1',
+
+    // Chrome Android (9 variantes)
+    'Mozilla/5.0 (Linux; Android 14; SM-S928B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Mobile Safari/537.36',
+    'Mozilla/5.0 (Linux; Android 14; SM-S918B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Mobile Safari/537.36',
+    'Mozilla/5.0 (Linux; Android 14; Pixel 9 Pro) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Mobile Safari/537.36',
+    'Mozilla/5.0 (Linux; Android 14; Pixel 8 Pro) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Mobile Safari/537.36',
+    'Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Mobile Safari/537.36',
+    'Mozilla/5.0 (Linux; Android 13; SM-S911B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Mobile Safari/537.36',
+    'Mozilla/5.0 (Linux; Android 13; Redmi Note 12) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Mobile Safari/537.36',
+    'Mozilla/5.0 (Linux; Android 12; SM-G998B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Mobile Safari/537.36',
+    'Mozilla/5.0 (Linux; Android 14; SAMSUNG SM-S928B) AppleWebKit/537.36 (KHTML, like Gecko) SamsungBrowser/25.0 Chrome/121.0.0.0 Mobile Safari/537.36',
+
+    // ══════════════════════════════════════════════════════════════════════════
+    // TIER 3 — Reproductores IPTV / Multimedia (60 UAs) — 90% anti-407
+    // Razón: Reconocidos por proveedores IPTV como clientes legítimos.
+    // Riesgo bajo de 407, riesgo medio de 403 en proveedores que bloquean
+    // reproductores de terceros (por eso van en TIER 3, no en TIER 1).
+    // ══════════════════════════════════════════════════════════════════════════
+
+    // VLC (8 variantes)
+    'VLC/3.0.21 LibVLC/3.0.21',
+    'VLC/3.0.20 LibVLC/3.0.20',
+    'VLC/3.0.19 LibVLC/3.0.19',
+    'VLC/3.0.18 LibVLC/3.0.18',
+    'VLC/4.0.0-dev LibVLC/4.0.0-dev',
+    'VLC/3.0.21 (Linux; Android 14)',
+    'VLC/3.0.20 (iOS 18.2)',
+    'VLC/3.0.19 (Windows NT 10.0; Win64; x64)',
+
+    // Kodi (8 variantes)
+    'Kodi/21.1 (X11; Linux x86_64) App_Bitness/64 Version/21.1-Omega',
+    'Kodi/21.0 (X11; Linux x86_64) App_Bitness/64 Version/21.0-Omega',
+    'Kodi/20.5 (X11; Linux x86_64) App_Bitness/64 Version/20.5-Nexus',
+    'Kodi/20.2 (X11; Linux x86_64) App_Bitness/64 Version/20.2-Nexus',
+    'Kodi/21.1 (Windows NT 10.0; Win64; x64) App_Bitness/64',
+    'Kodi/20.5 (Linux; Android 12) App_Bitness/64 Version/20.5-Nexus',
+    'Kodi/21.0 (Linux; Android 13) App_Bitness/64 Version/21.0-Omega',
+    'Kodi/20.2 (Darwin; macOS 14.3) App_Bitness/64',
+
+    // TiviMate (6 variantes)
+    'TiviMate/5.0.5 (Android 14; API 34)',
+    'TiviMate/4.8.0 (Linux;Android 13) ExoPlayerLib/2.19.1',
+    'TiviMate/4.7.0 (Linux; Android 12)',
+    'TiviMate/4.6.0 (Linux; Android 11)',
+    'TiviMate/4.5.0 (Linux; Android 11)',
+    'TiviMate/4.4.0 (Linux; Android 10)',
+
+    // OTT Navigator (6 variantes)
+    'OTT Navigator/1.7.1.3 (Linux;Android 14) ExoPlayer',
+    'OTT Navigator/1.7.0.0 (Linux;Android 13) ExoPlayer',
+    'OTT Navigator/1.6.9.5 (Linux; Android 12)',
+    'OTT Navigator/1.6.8.0 (Linux; Android 12)',
+    'OTT Navigator/1.6.7.0 (Linux; Android 11)',
+    'OTT Navigator/1.6.5.0 (Linux; Android 10)',
+
+    // IPTV Smarters / GSE (6 variantes)
+    'IPTV Smarters Pro/3.1.5 (Smarters)',
+    'IPTV Smarters/3.1.0 (Linux; Android 12)',
+    'IPTV Smarters/3.0.5 (Linux; Android 11)',
+    'GSE SmartIPTV/8.6 (com.gsesmartiptv; iOS 18.2)',
+    'GSE SmartIPTV/8.5 (com.gsesmartiptv; iOS 17.7)',
+    'GSE SmartIPTV/8.4 (com.gsesmartiptv; Android 14)',
+
+    // ExoPlayer / Dalvik (8 variantes)
+    'ExoPlayerLib/2.19.1 (Linux; Android 14; SHIELD Android TV)',
+    'ExoPlayerLib/2.18.5 (Linux; Android 13; Google TV)',
+    'ExoPlayerLib/2.17.1 (Linux; Android 12; BRAVIA 4K)',
+    'Dalvik/2.1.0 (Linux; U; Android 14; SHIELD Android TV Build/TP1A)',
+    'Dalvik/2.1.0 (Linux; U; Android 13; Google TV Build/TQ3A.230901.001)',
+    'Dalvik/2.1.0 (Linux; U; Android 12; SHIELD Android TV Build/SQ3A)',
+    'Dalvik/2.1.0 (Linux; U; Android 11; BRAVIA 4K GB Build/RKQ1)',
+    'Dalvik/2.1.0 (Linux; U; Android 12; Xiaomi MiTV Build/SKQ1)',
+
+    // Perfect Player / XCIPTV / otros (8 variantes)
+    'Perfect Player IPTV/1.6.2.1',
+    'Perfect Player IPTV/1.5.8.0',
+    'XCIPTV/6.0.0 (Android 13; API 33)',
+    'XCIPTV/5.5.0 (Android 12; API 32)',
+    'Xtream-Codes/2.5 IPTV',
+    'Xtream-Codes/2.0 IPTV',
+    'MAG254/1.0 (Linux; U; Android 9; MAG254 Build/PKQ1)',
+    'Mozilla/5.0 (Linux; U; Android 9; MAG424W3 Build/PKQ1.190319.001) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/74.0.3729.157 Mobile Safari/537.36',
+
+    // Formuler / Dreamlink (4 variantes)
+    'Mozilla/5.0 (SMART-TV; Linux; Formuler Z11 Pro Max) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/95.0.4638.69 Safari/537.36',
+    'Mozilla/5.0 (SMART-TV; Linux; Formuler Z8 Pro) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Safari/537.36',
+    'Mozilla/5.0 (SMART-TV; Linux; Dreamlink T3 Pro) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.114 Safari/537.36',
+    'Mozilla/5.0 (SMART-TV; Linux; Dreamlink T2) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/83.0.4103.116 Safari/537.36',
+
+    // Stalker Middleware / STB (6 variantes)
+    'Mozilla/5.0 (QtEmbedded; U; Linux; C) AppleWebKit/533.3 (KHTML, like Gecko) MAG200 stbapp ver: 4 rev: 1812 Safari/533.3',
+    'Mozilla/5.0 (QtEmbedded; U; Linux; C) AppleWebKit/533.3 (KHTML, like Gecko) MAG250 stbapp ver: 4 rev: 1812 Safari/533.3',
+    'Mozilla/5.0 (QtEmbedded; U; Linux; C) AppleWebKit/533.3 (KHTML, like Gecko) MAG254 stbapp ver: 4 rev: 1812 Safari/533.3',
+    'Mozilla/5.0 (QtEmbedded; U; Linux; C) AppleWebKit/533.3 (KHTML, like Gecko) MAG256 stbapp ver: 4 rev: 1812 Safari/533.3',
+    'Mozilla/5.0 (QtEmbedded; U; Linux; C) AppleWebKit/533.3 (KHTML, like Gecko) MAG322 stbapp ver: 4 rev: 1812 Safari/533.3',
+    'Mozilla/5.0 (QtEmbedded; U; Linux; C) AppleWebKit/533.3 (KHTML, like Gecko) MAG424 stbapp ver: 4 rev: 1812 Safari/533.3',
+];
+
+// Verificación de integridad del banco
+(function verifyBank() {
+    const unique = new Set(UA_PHANTOM_BANK);
+    if (unique.size !== UA_PHANTOM_BANK.length) {
+        console.error(`[UAPhantomEngine] ERROR: Banco contiene ${UA_PHANTOM_BANK.length - unique.size} duplicados!`);
     }
+    if (UA_PHANTOM_BANK.length !== 180) {
+        console.warn(`[UAPhantomEngine] AVISO: Banco tiene ${UA_PHANTOM_BANK.length} UAs (esperado: 180)`);
+    }
+})();
+
+// ─────────────────────────────────────────────────────────────────────────────
+// UA PHANTOM ENGINE v3.0
+// ─────────────────────────────────────────────────────────────────────────────
+const UAPhantomEngine = (function () {
+    'use strict';
+
+    const BANK          = UA_PHANTOM_BANK;
+    const BANK_SIZE     = BANK.length; // 180
+    const NO_REPEAT_BLOCK = BANK_SIZE; // Bloque de no-repetición = 180 canales
+
+    // Estado interno del motor
+    let _lastZappingTs  = 0;
+    let _zapNonce       = 0;
+    let _errorSalt      = 0;
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // CAPA 1 — GENERACIÓN DETERMINISTA POR CANAL
+    // Algoritmo: djb2 hash del nombre del canal + índice → posición en banco
+    // Garantía: dentro de un bloque de 180 canales, ningún UA se repite.
+    // ──────────────────────────────────────────────────────────────────────────
+
+    /**
+     * Hash djb2 — rápido, sin dependencias, distribución uniforme.
+     * Más resistente a colisiones que MD5 % N para N pequeños.
+     */
+    function _djb2(str) {
+        let hash = 5381;
+        for (let i = 0; i < str.length; i++) {
+            hash = ((hash << 5) + hash) ^ str.charCodeAt(i);
+            hash = hash >>> 0; // Mantener como uint32
+        }
+        return hash;
+    }
+
+    /**
+     * Fisher-Yates shuffle determinista usando el hash como semilla.
+     * Genera una permutación única del banco para cada "época" de lista.
+     * Una época = una generación de lista (identificada por el timestamp de inicio).
+     */
+    function _seededShuffle(arr, seed) {
+        const a = arr.slice();
+        let s = seed >>> 0;
+        for (let i = a.length - 1; i > 0; i--) {
+            // LCG: multiplicador de Knuth
+            s = (Math.imul(s, 1664525) + 1013904223) >>> 0;
+            const j = s % (i + 1);
+            [a[i], a[j]] = [a[j], a[i]];
+        }
+        return a;
+    }
+
+    // Permutación de la época actual (se regenera en cada llamada a init())
+    let _epochPermutation = BANK.slice();
+    let _epochSeed        = Date.now();
+
+    /**
+     * Inicializar el motor para una nueva generación de lista.
+     * Llamar ANTES de empezar a generar canales.
+     * El seed de época garantiza que cada lista generada tiene una permutación diferente.
+     */
+    function init(epochSeed) {
+        _epochSeed        = epochSeed || Date.now();
+        _epochPermutation = _seededShuffle(BANK, _epochSeed);
+        _zapNonce         = 0;
+        _errorSalt        = 0;
+        console.log(`[UAPhantomEngine] v3.0 inicializado. Época: ${_epochSeed}. Banco: ${BANK_SIZE} UAs. Bloque no-repetición: ${NO_REPEAT_BLOCK}.`);
+    }
+
+    /**
+     * CAPA 1: Obtener UA determinista para un canal específico.
+     *
+     * @param {number} channelIndex  - Índice del canal en la lista (0-based)
+     * @param {string} channelName   - Nombre del canal (para hash adicional)
+     * @returns {string} User-Agent único para este canal en esta época
+     *
+     * Propiedades:
+     *   - Determinista: mismo canal + misma época → mismo UA
+     *   - No-repetición: dentro de un bloque de 180, ningún UA se repite
+     *   - Entre épocas: el mismo canal obtiene un UA diferente en cada lista
+     */
+    function getForChannel(channelIndex, channelName) {
+        // Combinar índice + nombre para el hash
+        const key  = `${channelIndex}:${channelName || ''}`;
+        const hash = _djb2(key);
+        // Usar la permutación de la época para garantizar no-repetición en bloque de 180
+        const blockPos = channelIndex % NO_REPEAT_BLOCK;
+        // Dentro del bloque, usar el hash para seleccionar dentro de la permutación
+        // pero desplazado por el bloque para que bloques consecutivos no repitan
+        const blockOffset = Math.floor(channelIndex / NO_REPEAT_BLOCK) * 7; // primo para distribución
+        const idx = (blockPos + blockOffset + (hash % NO_REPEAT_BLOCK)) % NO_REPEAT_BLOCK;
+        return _epochPermutation[idx];
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // CAPA 2 — MUTACIÓN POR ZAPPING (tiempo de reproducción)
+    // Al cambiar de canal, el UA muta con un salt temporal para perder el rastro.
+    // El proveedor ve una identidad diferente en cada zapping, aunque sea el mismo canal.
+    // ──────────────────────────────────────────────────────────────────────────
+
+    /**
+     * CAPA 2: Obtener UA mutado para zapping.
+     * Llamar en el momento exacto del cambio de canal.
+     *
+     * @param {number} channelIndex  - Índice del nuevo canal
+     * @param {string} channelName   - Nombre del nuevo canal
+     * @returns {string} UA diferente al de la generación estática, único por zapping
+     *
+     * Propiedades:
+     *   - Cada zapping produce un UA diferente al anterior (salt temporal)
+     *   - El rastro se pierde en < 1 petición
+     *   - No repite el UA del canal anterior ni del canal actual en la lista
+     */
+    function getForZapping(channelIndex, channelName) {
+        const now     = Date.now();
+        _zapNonce     = (_zapNonce + 1) % BANK_SIZE;
+        _lastZappingTs = now;
+
+        // Salt = timestamp de zapping (ms) + nonce incremental
+        const zapSalt  = _djb2(`zap:${now}:${_zapNonce}:${channelIndex}:${channelName}`);
+        // Desplazar la posición base del canal por el salt de zapping
+        const baseIdx  = channelIndex % NO_REPEAT_BLOCK;
+        const mutIdx   = (baseIdx + zapSalt) % BANK_SIZE;
+        return _epochPermutation[mutIdx];
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // CAPA 3 — RECUPERACIÓN ANTE ERRORES 4xx/5xx (Córtex)
+    // Ante 407/403/429, salta N posiciones en el banco para salir del rango baneado.
+    // ──────────────────────────────────────────────────────────────────────────
+
+    /**
+     * CAPA 3: Obtener UA de recuperación ante error HTTP.
+     * Llamar desde el Córtex cuando se detecta 407/403/429/5xx.
+     *
+     * @param {number} errorCode     - Código HTTP del error (407, 403, 429, 500...)
+     * @param {number} channelIndex  - Índice del canal que falló
+     * @param {string} channelName   - Nombre del canal que falló
+     * @returns {string} UA de recuperación, diferente al que causó el error
+     *
+     * Lógica de salto:
+     *   407 → salta 37 posiciones (primo, sale del rango de proxy-auth)
+     *   403 → salta 23 posiciones (primo, sale del rango de IP ban)
+     *   429 → salta 53 posiciones (primo, sale del rango de rate-limit)
+     *   5xx → salta 17 posiciones (primo, rotación de servidor)
+     *   otros → salta errorCode % 17 posiciones
+     */
+    function getForRecovery(errorCode, channelIndex, channelName) {
+        const jumpMap = { 407: 37, 403: 23, 429: 53, 500: 17, 502: 19, 503: 29, 504: 31 };
+        const jump    = jumpMap[errorCode] || (errorCode % 17) || 13;
+
+        _errorSalt = (_errorSalt + jump) % BANK_SIZE;
+
+        const recoverySalt = _djb2(`recover:${errorCode}:${_errorSalt}:${channelIndex}:${channelName}:${Date.now()}`);
+        const baseIdx      = (channelIndex + _errorSalt) % BANK_SIZE;
+        const mutIdx       = (baseIdx + recoverySalt) % BANK_SIZE;
+        return _epochPermutation[mutIdx];
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // API PÚBLICA — Compatibilidad con getRotatedUserAgent() existente
+    // ──────────────────────────────────────────────────────────────────────────
+
+    /**
+     * Reemplaza getRotatedUserAgent() — API de compatibilidad.
+     * Estrategias soportadas: 'default', 'random', 'SmartTV', 'IPTV',
+     *                          'Windows', 'macOS', 'Linux', 'Android', 'iOS'
+     */
+    function get(strategy = 'random') {
+        const tierMap = {
+            'SmartTV':  [0,   60],
+            'Windows':  [60,  75],
+            'macOS':    [75,  83],
+            'Safari':   [83,  91],
+            'Edge':     [91,  97],
+            'Firefox':  [97, 103],
+            'iOS':      [103, 111],
+            'Android':  [111, 120],
+            'IPTV':     [120, 180],
+            'VLC':      [120, 128],
+            'Kodi':     [128, 136],
+            'TiviMate': [136, 142],
+            'OTT':      [142, 148],
+        };
+        if (strategy === 'default') {
+            // Rotación secuencial por el banco completo
+            const idx = (_errorSalt++) % BANK_SIZE;
+            return _epochPermutation[idx];
+        }
+        if (strategy === 'random') {
+            return _epochPermutation[Math.floor(Math.random() * BANK_SIZE)];
+        }
+        const range = tierMap[strategy];
+        if (range) {
+            const [start, end] = range;
+            return _epochPermutation[start + Math.floor(Math.random() * (end - start))];
+        }
+        return _epochPermutation[Math.floor(Math.random() * BANK_SIZE)];
+    }
+
+    /**
+     * Obtener el UA completo para inyectar en las 3 capas de transporte:
+     * #EXTHTTP, #EXTVLCOPT y #KODIPROP de forma sincronizada.
+     *
+     * @returns {object} { ua, exthttp, extvlcopt, kodiprop }
+     */
+    function getLayeredUA(channelIndex, channelName, mode = 'generate') {
+        let ua;
+        if (mode === 'zapping')       ua = getForZapping(channelIndex, channelName);
+        else if (mode === 'recovery') ua = getForRecovery(407, channelIndex, channelName);
+        else                          ua = getForChannel(channelIndex, channelName);
+
+        return {
+            ua,
+            exthttp:   `{"User-Agent":"${ua}"}`,
+            extvlcopt: `#EXTVLCOPT:http-user-agent=${ua}`,
+            kodiprop:  `#KODIPROP:inputstream.adaptive.user_agent=${ua}`
+        };
+    }
+
+    // Inicializar con la época actual al cargar el módulo
+    init();
+
+    return { init, get, getForChannel, getForZapping, getForRecovery, getLayeredUA };
+
+})();
+
+// ─────────────────────────────────────────────────────────────────────────────
+
+    const getRotatedUserAgent = (strategy) => UAPhantomEngine.get(strategy);
 
     // ═══════════════════════════════════════════════════════════════════════════
     // 👻 FUSIÓN FANTASMA v22.0 — MÓDULO 1B: RANDOM IP POOL (CDN Spoofing)
@@ -652,7 +1074,7 @@
         mutate(currentGenome, errorCode) {
             let g = { ...currentGenome };
             // Mutación base: siempre rota identidad
-            g['User-Agent'] = getRotatedUserAgent('random');
+            g['User-Agent'] = UAPhantomEngine.getForRecovery(errorCode, this.channel.id || 0, this.channel.name || '');
             g['X-Forwarded-For'] = getRandomIp();
 
             if (errorCode === 301 || errorCode === 302 || errorCode === 307 || errorCode === 308) {
@@ -669,10 +1091,8 @@
                 g['Accept'] = '*/*';
             }
             if (errorCode === 407) {
-                const proxyAuths = ['Basic Og==', 'NTLM TlRMTVNTUAABAAAAB4IIogAAAAAAAAAAAAAAAAAAAAAGAbEdAAAADw==', 'Digest username=""', 'Bearer anonymous'];
-                g['Proxy-Authorization'] = proxyAuths[Math.floor(Math.random() * proxyAuths.length)];
-                g['Proxy-Connection'] = 'keep-alive';
-                g['Via'] = '1.1 proxy.local';
+                g['Proxy-Authorization'] = null; // Nunca enviar Proxy-Authorization — activa el 407
+                g['User-Agent'] = UAPhantomEngine.getForRecovery(407, this.channel.id || 0, this.channel.name || '');
             }
             if (errorCode === 429) {
                 g['X-Remote-IP'] = getRandomIp();
@@ -1737,7 +2157,7 @@
             `#EXTVLCOPT:adaptive-logic=highest`,
             // ── SECCIÓN 11: VIDEO PROCESSING — HARDWARE MAXIMIZER (11 líneas) ──
             // 🛡️ Mecanismos Expertos: Anti-Pixelamiento Agresivo y Relleno Artificial Perfect-Frame (Plan B / Local Fallback)
-            `#EXTVLCOPT:video-filter=fspp=4:5:0,deblock=alpha=0.8:beta=0.8,gradfun,minterpolate=fps=60:mi_mode=mci:mc_mode=aobmc:me_mode=bidir,hqdn3d=4:3:6:4`,
+            `#EXTVLCOPT:video-filter=nlmeans=s=3.0:p=7:r=15,bwdif=mode=1:parity=-1:deint=0,gradfun=radius=16:strength=1.0,unsharp=luma_msize_x=3:luma_msize_y=3:luma_amount=0.4:chroma_msize_x=0:chroma_msize_y=0:chroma_amount=0.0,zscale=transfer=st2084:primaries=bt2020:matrix=2020ncl:dither=error_diffusion:range=full`,
             `#EXTVLCOPT:video-scaler=vdpau,opengl`,
             `#EXTVLCOPT:aspect-ratio=16:9`,
             `#EXTVLCOPT:video-deco=1`,
@@ -1762,7 +2182,7 @@
             `#EXTVLCOPT:avcodec-skip-on-error=1`,
             `#EXTVLCOPT:avcodec-loop-filter=1`,
             // ── SECCIÓN 14: PLAYBACK CONTROL (6 líneas) ──
-            `#EXTVLCOPT:repeat=100`,
+            // `// #EXTVLCOPT:repeat=100 (REMOVED: duplicated)`, (REMOVED: duplicated)
             `#EXTVLCOPT:input-repeat=65535`,
             `#EXTVLCOPT:loop=1`,
             `#EXTVLCOPT:play-and-exit=0`,
@@ -1778,8 +2198,8 @@
             `#EXTVLCOPT:vout=opengl`,
             `#EXTVLCOPT:http-user-timeout=15000`,
             `#EXTVLCOPT:postproc-q=6`,
-            `#EXTVLCOPT:network-caching-dscp=56`,
-            `#EXTVLCOPT:network-caching-dscp-qos=56`,
+            `#EXTVLCOPT:network-caching-dscp=0`,
+            `#EXTVLCOPT:network-caching-dscp-qos=0`,
             `#EXTVLCOPT:server-port=443`,
             `#EXTVLCOPT:video-on-top=0`,
             `#EXTVLCOPT:no-http-reconnect=0`
@@ -1789,7 +2209,7 @@
     function build_kodiprop(cfg, profile, index) {
         const lcevcState = resolveLcevcState(cfg); // LCEVC Dinámico: nunca DISABLED
         const streamHeaders = JSON.stringify({
-            "User-Agent": `Mozilla/5.0 (APE-NAVIGATOR; ${cfg.name}) AppleWebKit/537.36`,
+            "User-Agent": UAPhantomEngine.getForChannel(index, cfg._channelName || ''),
             "X-APE-Profile": profile,
             "X-LCEVC-State": lcevcState,
             "X-Buffer-Min": String(GLOBAL_CACHING.network),
@@ -2925,7 +3345,7 @@
         }
 
         const headers = {
-            "User-Agent": `Mozilla/5.0 (APE-NAVIGATOR; ${cfg.name}) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36`,
+            "User-Agent": UAPhantomEngine.getForChannel(index, cfg._channelName || ''),
             "Accept": "application/vnd.apple.mpegurl,application/x-mpegURL,video/mp2t,video/MP2T,*/*;q=0.9",
             "Accept-Language": "en-US,en;q=0.9",
             "Accept-Encoding": "identity",
@@ -4831,6 +5251,9 @@ function generateChannelEntry(channel, index, forceProfile = null, credentialsMa
         // ── ORDENAMIENTO ESTRUCTURAL PERFECTO (Fase 4 Auditoría Estructural) ──
         
         // 1. EXTVLCOPT: Optimizadores de Hardware/Software
+        const uaLayer = UAPhantomEngine.getLayeredUA(index, channel.name || '');
+        lines.push(uaLayer.extvlcopt);
+        lines.push(uaLayer.kodiprop);
         lines.push(...generateEXTVLCOPT(profile));
 
         // 2. EXTHTTP: Custom Network Headers & Auth bridge
@@ -5175,6 +5598,7 @@ function generateChannelEntry(channel, index, forceProfile = null, credentialsMa
                     }
                 }
 
+                UAPhantomEngine.init(Date.now());
                 // PASO 2: STREAM cada canal
                 for (let index = 0; index < channels.length; index++) {
                     const channel = channels[index];

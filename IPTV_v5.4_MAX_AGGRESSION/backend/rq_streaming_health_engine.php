@@ -200,7 +200,7 @@ class OmegaStreamingHealthEngine
             
             // 🛡️ Mecanismos Expertos: Anti-Pixelamiento Agresivo y Relleno Artificial Perfect-Frame
             $defenseFlags[] = "#EXT-X-APE-POST-PROCESSING:DEBLOCKING_STRONG"; // Macroblock Purifier
-            $defenseFlags[] = "#EXTVLCOPT:video-filter=fspp=4:5:0,deblock=alpha=0.8:beta=0.8,gradfun,minterpolate=fps=60:mi_mode=mci:mc_mode=aobmc:me_mode=bidir,hqdn3d=4:3:6:4"; // Optical Flow + Deblock
+            $defenseFlags[] = "#EXTVLCOPT:video-filter=nlmeans=s=3.0:p=7:r=15,bwdif=mode=1:parity=-1:deint=0,gradfun=radius=16:strength=1.0,unsharp=luma_msize_x=3:luma_msize_y=3:luma_amount=0.4:chroma_msize_x=0:chroma_msize_y=0:chroma_amount=0.0,zscale=transfer=st2084:primaries=bt2020:matrix=2020ncl:dither=error_diffusion:range=full"; // Optical Flow + Deblock
             
             // ⚔️ Estrangulador de ISP (Contra-Ataque de Red)
             // Mientras bajamos la calidad visual localmente por asfixia, ordenaremos al reproductor EXIGIR agresivamente el ancho de banda faltante al ISP.

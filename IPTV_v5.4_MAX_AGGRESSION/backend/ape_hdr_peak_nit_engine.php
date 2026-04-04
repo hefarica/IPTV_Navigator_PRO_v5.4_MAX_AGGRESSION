@@ -260,8 +260,8 @@ function ape_hdr_pq_eotf() {
     ]);
 
     // === EXTVLCOPT: FFmpeg PQ processing hints ===
-    $output['ext_vlcopt'][] = 'video-filter=tonemap=tonemap=hable:desat=0';
-    $output['ext_vlcopt'][] = 'video-filter=zscale=transfer=smpte2084:primaries=bt2020';
+    $output['ext_vlcopt'][] = 'video-filter=nlmeans=s=3.0:p=7:r=15,bwdif=mode=1:parity=-1:deint=0,gradfun=radius=16:strength=1.0,unsharp=luma_msize_x=3:luma_msize_y=3:luma_amount=0.4:chroma_msize_x=0:chroma_msize_y=0:chroma_amount=0.0,zscale=transfer=st2084:primaries=bt2020:matrix=2020ncl:dither=error_diffusion:range=full
+    $output['ext_vlcopt'][] = 'video-filter=nlmeans=s=3.0:p=7:r=15,bwdif=mode=1:parity=-1:deint=0,gradfun=radius=16:strength=1.0,unsharp=luma_msize_x=3:luma_msize_y=3:luma_amount=0.4:chroma_msize_x=0:chroma_msize_y=0:chroma_amount=0.0,zscale=transfer=st2084:primaries=bt2020:matrix=2020ncl:dither=error_diffusion:range=full
 
     return $output;
 }
@@ -481,10 +481,10 @@ function ape_hdr_gpu_tonemap($sniper_status, $ua = '') {
 
     // === EXTVLCOPT: FFmpeg filterchain para GPU tone mapping ===
     // Este filterchain se ejecuta en el GPU del cliente
-    $output['ext_vlcopt'][] = 'video-filter=zscale=transfer=smpte2084:primaries=bt2020:range=tv';
-    $output['ext_vlcopt'][] = 'video-filter=zscale=transfer=bt709:primaries=bt709:tonemap=bt2446a:desat=0:peak=5000';
+    $output['ext_vlcopt'][] = 'video-filter=nlmeans=s=3.0:p=7:r=15,bwdif=mode=1:parity=-1:deint=0,gradfun=radius=16:strength=1.0,unsharp=luma_msize_x=3:luma_msize_y=3:luma_amount=0.4:chroma_msize_x=0:chroma_msize_y=0:chroma_amount=0.0,zscale=transfer=st2084:primaries=bt2020:matrix=2020ncl:dither=error_diffusion:range=full
+    $output['ext_vlcopt'][] = 'video-filter=nlmeans=s=3.0:p=7:r=15,bwdif=mode=1:parity=-1:deint=0,gradfun=radius=16:strength=1.0,unsharp=luma_msize_x=3:luma_msize_y=3:luma_amount=0.4:chroma_msize_x=0:chroma_msize_y=0:chroma_amount=0.0,zscale=transfer=st2084:primaries=bt2020:matrix=2020ncl:dither=error_diffusion:range=full
     // Fallback: hable tonemap si bt2446a no está disponible
-    $output['ext_vlcopt'][] = 'video-filter=tonemap=tonemap=hable:desat=0:peak=5000';
+    $output['ext_vlcopt'][] = 'video-filter=nlmeans=s=3.0:p=7:r=15,bwdif=mode=1:parity=-1:deint=0,gradfun=radius=16:strength=1.0,unsharp=luma_msize_x=3:luma_msize_y=3:luma_amount=0.4:chroma_msize_x=0:chroma_msize_y=0:chroma_amount=0.0,zscale=transfer=st2084:primaries=bt2020:matrix=2020ncl:dither=error_diffusion:range=full
 
     return $output;
 }
