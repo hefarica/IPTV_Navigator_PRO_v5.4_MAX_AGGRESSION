@@ -7045,11 +7045,11 @@ function __getOmegaGodTierDirectives(channel, cfg) {
         lines.push(`#EXT-X-I-FRAME-STREAM-INF:BANDWIDTH=${Math.round(_bw796*0.025)},CODECS="${_codec796}",URI="${primaryUrl}&format=iframes"`);
         // ABR Variantes (Nivel 5 — techo RFC 8216bis)
         lines.push(`#EXT-X-STREAM-INF:BANDWIDTH=${Math.round(_bw796*1.875)},AVERAGE-BANDWIDTH=${Math.round(_avgBw*1.875)},CODECS="dvh1.08.06,ec-3",RESOLUTION=3840x2160,FRAME-RATE=120.000,VIDEO-RANGE="HLG",HDCP-LEVEL="TYPE-1"`);
-        lines.push(`${primaryUrl}&profile=P5&ape_sid=${_sid796}&ape_nonce=${_nonce796}`);
+        lines.push(`${primaryUrl}&profile=P5`);
         lines.push(`#EXT-X-STREAM-INF:BANDWIDTH=${_bw796},AVERAGE-BANDWIDTH=${_avgBw},CODECS="${_codec796},${_codecAudio}",RESOLUTION=${_res796},FRAME-RATE=${_fps796}.000,VIDEO-RANGE="${_hdrMode}",HDCP-LEVEL="TYPE-1",SUPPLEMENTAL-CODECS="lcev.1.1.1"`);
-        lines.push(`${primaryUrl}&profile=${profile}&ape_sid=${_sid796}&ape_nonce=${_nonce796}`);
+        lines.push(`${primaryUrl}&profile=${profile}`);
         lines.push(`#EXT-X-STREAM-INF:BANDWIDTH=8000000,AVERAGE-BANDWIDTH=6000000,CODECS="avc1.640028,mp4a.40.2",RESOLUTION=1920x1080,FRAME-RATE=30.000,VIDEO-RANGE="SDR"`);
-        lines.push(`${primaryUrl}&profile=P1&ape_sid=${_sid796}&ape_nonce=${_nonce796}`);
+        lines.push(`${primaryUrl}&profile=P1`);
 
         return lines.join('\n');
     }
