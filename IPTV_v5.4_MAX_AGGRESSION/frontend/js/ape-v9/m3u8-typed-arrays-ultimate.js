@@ -1915,8 +1915,8 @@ const UAPhantomEngine = (function () {
 #EXT-X-KEY:METHOD=NONE
 #EXT-X-SESSION-KEY:METHOD=NONE
 #EXT-X-I-FRAME-STREAM-INF:BANDWIDTH=450000,AVERAGE-BANDWIDTH=400000,CODECS="hvc1.1.6.L153.B0",RESOLUTION=1920x1080,URI="iframe_primary.m3u8"
-#EXT-X-DATERANGE:ID="omega-live-${timestamp}",START-DATE="${new Date(timestamp*1000).toISOString()}",DURATION=86400,X-OMEGA-TYPE="LIVE-CATCHUP",X-OMEGA-SCOPE="CHANNEL-SESSION",X-OMEGA-BUILD="v5.4-MAX-AGGRESSION"
-#EXT-X-DATERANGE:ID="omega-hdr-window",START-DATE="${new Date(timestamp*1000).toISOString()}",PLANNED-DURATION=86400,X-HDR-TYPE="HDR10+DV-P81-P10",X-HDR-MAX-CLL=5000,X-HDR-MAX-FALL=800
+#EXT-X-DATERANGE:ID="omega-live-${timestamp}",START-DATE="${new Date().toISOString()}",DURATION=86400,X-OMEGA-TYPE="LIVE-CATCHUP",X-OMEGA-SCOPE="CHANNEL-SESSION",X-OMEGA-BUILD="v5.4-MAX-AGGRESSION"
+#EXT-X-DATERANGE:ID="omega-hdr-window",START-DATE="${new Date().toISOString()}",PLANNED-DURATION=86400,X-HDR-TYPE="HDR10+DV-P81-P10",X-HDR-MAX-CLL=5000,X-HDR-MAX-FALL=800
 #KODIPROP:inputstream.adaptive.manifest_type=hls
 #KODIPROP:inputstream.adaptive.stream_selection_type=auto
 #KODIPROP:inputstream.adaptive.chooser_bandwidth_mode=AUTO
@@ -7105,14 +7105,13 @@ function __getOmegaGodTierDirectives(channel, cfg) {
                     }
 
                     try {
-                        const entry = generateChannelEntry(channel, index, forceProfile, credentialsMap);
+                        // Detectar perfil
+                        const profile = forceProfile || detectProfile(channel) || 'P3';
+                        const entry = generateChannelEntry(channel, profile, index, credentialsMap);
                         const chunk = entry + '\n\n';
                         const encoded = encoder.encode(chunk);
                         totalBytes += encoded.byteLength;
                         controller.enqueue(encoded);
-
-                        // Detectar perfil para estadísticas
-                        const profile = forceProfile || detectProfile(channel);
 
                         // Actualizar HUD
                         if (useHUD && (index % 50 === 0 || index === channels.length - 1)) {
