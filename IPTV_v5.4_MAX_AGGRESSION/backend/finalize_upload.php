@@ -10,7 +10,17 @@
 set_time_limit(600);
 ini_set('memory_limit', '512M');
 
+// CORS headers
+header('Access-Control-Allow-Origin: *');
+header('Access-Control-Allow-Methods: GET, POST, HEAD, OPTIONS');
+header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With');
 header('Content-Type: application/json; charset=utf-8');
+
+// Handle CORS preflight
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(204);
+    exit;
+}
 
 $input = json_decode(file_get_contents('php://input'), true);
 
@@ -112,9 +122,9 @@ $gzipSize = 0;
 $gzipRatio = '0';
 $gzipOk = false;
 
-// Comprimir con gzip -9 -k -f (keep original, force overwrite)
+// Comprimir con gzip -1 -k -f (keep original, force overwrite)
 // Ejecuta como proceso externo para NO cargar el archivo en memoria PHP
-$gzipCmd = sprintf('gzip -9 -k -f %s 2>&1', escapeshellarg($outputPath));
+$gzipCmd = sprintf('gzip -1 -k -f %s 2>&1', escapeshellarg($outputPath));
 $gzipOutput = shell_exec($gzipCmd);
 
 if (file_exists($gzipPath)) {
@@ -155,7 +165,7 @@ if ($strategy === 'both' || $strategy === 'version') {
     
     // También comprimir la versión
     if ($gzipOk) {
-        shell_exec(sprintf('gzip -9 -k -f %s', escapeshellarg($versionsDir . $versionFilename)));
+        shell_exec(sprintf('gzip -1 -k -f %s', escapeshellarg($versionsDir . $versionFilename)));
     }
 }
 

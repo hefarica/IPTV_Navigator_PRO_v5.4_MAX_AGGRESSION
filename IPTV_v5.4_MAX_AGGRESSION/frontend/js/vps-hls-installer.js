@@ -29,8 +29,8 @@
 
         // Configuración
         config: {
-            checkOnStartup: true,
-            showPrompt: true,
+            checkOnStartup: false,
+            showPrompt: false,
             installScriptPath: 'vps/backup-hls-max/install-hls-max.sh',
 
             // ✅ MODIFICADO: Usar API remota en el VPS en lugar de localhost

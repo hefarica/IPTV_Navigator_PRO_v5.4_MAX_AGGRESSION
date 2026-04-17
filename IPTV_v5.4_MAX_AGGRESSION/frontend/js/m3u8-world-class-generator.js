@@ -212,13 +212,11 @@
         return p[key];
     }
 
-    // 🔒 HTTPS PRIORITY: Upgrade HTTP → HTTPS (excepto localhost)
+    // ⚠️ preferHttps() NEUTRALIZADA — PASSTHROUGH SEGURO
+    // ANTES: Cambiaba http→https, causando HttpDataSourceException.
+    // REGLA: El protocolo del servidor es SAGRADO. NUNCA se modifica.
     function preferHttps(url) {
-        if (!url || typeof url !== 'string') return url;
-        if (url.startsWith('https://')) return url;
-        if (url.startsWith('http://localhost') || url.startsWith('http://127.0.0.1') || url.startsWith('http://0.0.0.0')) return url;
-        if (url.startsWith('http://')) return url.replace(/^http:\/\//, 'https://');
-        return url;
+        return url; // PASSTHROUGH — no tocar el protocolo JAMÁS
     }
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -315,7 +313,105 @@
             ''
         ];
 
+        // 🧪 LAB NIVEL_1 — inyectar directivas master del LAB (si hay config importada)
+        const labCfg = _getLABConfig();
+        if (labCfg) {
+            const n1Lines = _generateNivel1Lines(labCfg);
+            if (n1Lines.length > 0) {
+                header.push(...n1Lines);
+                console.log(`[LAB] Emitidas ${labCfg.nivel1Directives.length} directivas NIVEL_1 en header global`);
+            }
+        }
+
         return header.join('\n');
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🧪 LAB INTEGRATION HELPERS — consumir config calibrada del APE_M3U8_LAB
+    // ═══════════════════════════════════════════════════════════════════════
+
+    function _getLABConfig() {
+        const cfg = window.APE_PROFILES_CONFIG;
+        if (!cfg) return null;
+        return {
+            nivel1Directives: cfg.nivel1Directives || [],
+            nivel3PerLayer: cfg.nivel3PerLayer || {},
+            profiles: cfg.profiles || {},
+            labExportedAt: cfg.labExportedAt || null
+        };
+    }
+
+    function _generateNivel1Lines(labCfg) {
+        if (!labCfg || !labCfg.nivel1Directives || labCfg.nivel1Directives.length === 0) return [];
+        const lines = ['', '# ========== 🧪 NIVEL_1 LAB CALIBRATED HEADERS =========='];
+        for (const dir of labCfg.nivel1Directives) {
+            if (!dir || !dir.tag) continue;
+            const tag = String(dir.tag);
+            const val = dir.value != null && dir.value !== '' ? String(dir.value) : '';
+            lines.push(val ? `${tag}:${val}` : tag);
+        }
+        lines.push('');
+        return lines;
+    }
+
+    function _generateNivel3Lines(labCfg, profileId) {
+        if (!labCfg || !labCfg.nivel3PerLayer) return [];
+        const lines = [];
+        const CAP_EXTHTTP = 8192;
+
+        const layers = labCfg.nivel3PerLayer;
+
+        // EXTVLCOPT extras (capa VLC)
+        if (layers.VLC && layers.VLC.length > 0) {
+            for (const item of layers.VLC) {
+                if (item?.key && item?.value !== undefined) {
+                    lines.push(`#EXTVLCOPT:${item.key}=${item.value}`);
+                }
+            }
+        }
+
+        // KODIPROP extras (capa KOD)
+        if (layers.KOD && layers.KOD.length > 0) {
+            for (const item of layers.KOD) {
+                if (item?.key && item?.value !== undefined) {
+                    lines.push(`#KODIPROP:${item.key}=${item.value}`);
+                }
+            }
+        }
+
+        // EXTHTTP consolidado desde HTT layer + profile.headerOverrides
+        const profile = labCfg.profiles[profileId] || {};
+        const headerOverrides = profile.headerOverrides || {};
+        const httLayer = layers.HTT || [];
+
+        const extHttpObj = Object.assign({}, headerOverrides);
+        for (const item of httLayer) {
+            if (item?.key) extHttpObj[item.key] = item.value;
+        }
+
+        if (Object.keys(extHttpObj).length > 0) {
+            let extHttpStr = JSON.stringify(extHttpObj);
+            if (extHttpStr.length > CAP_EXTHTTP) {
+                // Truncar keys menos importantes hasta caber en 8KB
+                const keys = Object.keys(extHttpObj);
+                const truncObj = {};
+                let size = 2; // {}
+                for (const k of keys) {
+                    const addition = `"${k}":"${String(extHttpObj[k]).replace(/"/g,'\\"')}",`.length;
+                    if (size + addition > CAP_EXTHTTP - 50) break;
+                    truncObj[k] = extHttpObj[k];
+                    size += addition;
+                }
+                extHttpStr = JSON.stringify(truncObj);
+                console.warn(`[LAB] EXTHTTP truncado a ${extHttpStr.length}B (cap ${CAP_EXTHTTP})`);
+            }
+            lines.push(`#EXTHTTP:${extHttpStr}`);
+        }
+
+        // EI extras (EXTINF overrides — raramente usado pero soportado)
+        // SYS extras se emiten ya en NIVEL_1
+
+        return lines;
     }
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -768,6 +864,16 @@
         const extxape = generateEXTXAPE(profile);
         lines.push(...extxape);
 
+        // 🧪 PASO 4.5: LAB NIVEL_3 + profile.headerOverrides (calibrados por BRAIN OMEGA)
+        const labCfg = _getLABConfig();
+        if (labCfg) {
+            const labLines = _generateNivel3Lines(labCfg, profile);
+            if (labLines.length > 0) {
+                lines.push('# 🧪 LAB CALIBRATED NIVEL_3 + headerOverrides');
+                lines.push(...labLines);
+            }
+        }
+
         // PASO 5: #EXT-X-START (1 línea - opcional)
         const includeStart = options.includeStart !== false;
         const extxstart = generateEXTXSTART(includeStart);
@@ -800,6 +906,11 @@
 
         // PASO 2: Generar cada canal (133 líneas c/u)
         for (let i = 0; i < channels.length; i++) {
+            // ── ABORT CHECK: si el usuario canceló desde el HUD, detener ──
+            if (window.__APE_GENERATION_ABORTED__) {
+                console.warn(`⛔ [World-Class Generator] CANCELADO por usuario en canal ${i + 1}/${channels.length}`);
+                break;
+            }
             const channel = channels[i];
             m3u8Content += generateChannel(channel, options);
 

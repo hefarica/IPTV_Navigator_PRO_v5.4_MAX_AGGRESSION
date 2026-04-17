@@ -53,10 +53,13 @@
     const STEALTH_MODE = true; // No console.log en producción
 
     // V1.1: Circuit breaker — stop retrying hosts that are fundamentally broken
+    // PhD-AUDIT FIX F2 (2026-04-11): Raised threshold 3→10 to prevent legitimate
+    // IPTV providers returning 401 during initial auth from being banned for 5 min.
+    // Cooldown reduced to 60s. Values overridable via window globals.
     const _circuitBreaker = {
         _hosts: {},  // { hostname: { failures: N, blockedUntil: timestamp } }
-        THRESHOLD: 3,
-        COOLDOWN_MS: 5 * 60 * 1000, // 5 minutes
+        THRESHOLD: (typeof window !== 'undefined' && window.APE_CB_THRESHOLD) || 10,
+        COOLDOWN_MS: (typeof window !== 'undefined' && window.APE_CB_COOLDOWN_MS) || (60 * 1000),
 
         _getHost(url) {
             try { return new URL(url).hostname; } catch { return url; }
@@ -125,18 +128,21 @@
         'https://www.bing.com/'
     ];
 
+    // PhD-AUDIT FIX 2026-04-11: Removed 'Basic Og==' (empty user:pass pattern).
+    // It detonates Squid 407 loops because some proxies parse "u:p" as malformed.
+    // Replaced with non-empty synthetic credentials that pass header validation
+    // without triggering auth loops. Real cached creds override these.
     const PROXY_AUTH_CHAIN = [
-        'Basic Og==',
-        'NTLM TlRMTVNTUAABAAAAB4IIogAAAAAAAAAAAAAAAAAAAAAGAbEdAAAADw==',
-        'Digest username=""',
-        'Bearer anonymous'
+        'Basic YW5vbjphbm9u',  // base64("anon:anon") — safe stub, not empty
+        'Bearer anonymous',
+        'Digest username="anon",realm="",nonce="",uri="",response=""',
+        // NTLM intentionally omitted — not viable in browser fetch; triggers CDN_FAILOVER
     ];
 
     const AUTH_CHAIN = [
-        'Basic Og==',
+        'Basic YW5vbjphbm9u',
         'Bearer anonymous',
-        'Digest username=""',
-        'NTLM TlRMTVNTUAABAAAAB4IIogAAAAAAAAAAAAAAAAAAAAAGAbEdAAAADw=='
+        'Digest username="anon",realm="",nonce="",uri="",response=""',
     ];
 
     // ═══════════════════════════════════════════════════════════════════════════
@@ -224,6 +230,26 @@
                 { action: 'TIMEOUT_EXTEND',  maxRetries: 5 },
                 { action: 'XFF_ROTATE',      maxRetries: 5 },
                 { action: 'MUTATE_FULL',     maxRetries: 5 }
+            ],
+            // ── 400 BAD REQUEST: Request syntax/payload recovery ──
+            // Causa típica en IPTV: EXTHTTP con demasiados headers (>8KB) o headers
+            // malformados que el NGINX/WAF del provider rechaza. Estrategia: reducir
+            // progresivamente el payload hasta los headers mínimos.
+            400: [
+                { action: 'STRIP_HEADERS',   maxRetries: 3 },
+                { action: 'UA_ROTATE',       maxRetries: 3 },
+                { action: 'METHOD_SWITCH',   maxRetries: 2 },
+                { action: 'CLEAN_RECONNECT', maxRetries: 3 },
+                { action: 'MUTATE_FULL',     maxRetries: 5 }
+            ],
+            // ── 405 METHOD NOT ALLOWED: Method rotation ──
+            // Algunos CDNs/proxies bloquean HEAD o POST. Rotar entre métodos HTTP.
+            405: [
+                { action: 'METHOD_SWITCH',   maxRetries: 5 },
+                { action: 'UA_ROTATE',       maxRetries: 3 },
+                { action: 'XFF_ROTATE',      maxRetries: 3 },
+                { action: 'CLEAN_RECONNECT', maxRetries: 3 },
+                { action: 'MUTATE_FULL',     maxRetries: 5 }
             ]
         },
 
@@ -245,11 +271,15 @@
                 break;
 
             case 'AUTH':
-                if (strategy.method === 'basic')  h.set('Authorization', 'Basic Og==');
+                // PhD-AUDIT FIX: non-empty stubs (empty Basic Og== causes Squid 407 loops)
+                if (strategy.method === 'basic')  h.set('Authorization', 'Basic YW5vbjphbm9u');
                 if (strategy.method === 'bearer') h.set('Authorization', 'Bearer anonymous');
-                if (strategy.method === 'digest') h.set('Authorization', 'Digest username=""');
-                if (strategy.method === 'ntlm')   h.set('Authorization', AUTH_CHAIN[3]);
+                if (strategy.method === 'digest') h.set('Authorization', 'Digest username="anon",realm="",nonce="",uri="",response=""');
+                // NTLM no browser-viable → skip & escalate to CDN_FAILOVER via next chain step
                 h.set('User-Agent', rnd(UA_POOL));
+                // Prevention headers anti-407
+                h.set('Proxy-Connection', 'keep-alive');
+                if (!h.has('Via')) h.set('Via', '1.1 ape-gateway');
                 break;
 
             case 'UA_ROTATE':
@@ -353,6 +383,51 @@
                 h.set('User-Agent', rnd(UA_POOL));
                 break;
 
+            case 'STRIP_HEADERS':
+                // 400 Bad Request recovery: reducir a headers ESENCIALES.
+                // Muchos 400 se causan por headers malformados, oversized, o con
+                // caracteres ilegales. Reducir progresivamente hasta lo mínimo.
+                // Eliminamos TODO y dejamos solo lo que cualquier HTTP server acepta.
+                h.delete('X-Forwarded-For');
+                h.delete('X-Real-IP');
+                h.delete('X-Client-IP');
+                h.delete('X-Forwarded-Host');
+                h.delete('X-Forwarded-Proto');
+                h.delete('X-Forwarded-Port');
+                h.delete('Authorization');
+                h.delete('Proxy-Authorization');
+                h.delete('X-Original-URL');
+                h.delete('X-Rewrite-URL');
+                h.delete('Via');
+                h.set('User-Agent', rnd(UA_POOL));
+                h.set('Accept', '*/*');
+                h.set('Accept-Encoding', 'identity');
+                h.set('Connection', 'keep-alive');
+                console.log('[CORTEX] STRIP_HEADERS: reducido a headers esenciales para recovery 400');
+                break;
+
+            case 'CDN_FAILOVER':
+                // PhD-Master-Integrator FIX (2026-04-11): explicit CDN_FAILOVER action.
+                // Signal to downstream resolver to try next CDN host in the chain
+                // (state.activeServers has per-channel serverId with fallback order).
+                h.set('X-CDN-Failover', 'true');
+                h.set('X-CDN-Failover-Reason', strategy.reason || 'upstream-failed');
+                h.set('X-CDN-Failover-Attempt', String(strategy.attempt || 1));
+                h.set('User-Agent', rnd(UA_POOL));
+                h.set('Referer', rnd(REFERER_POOL));
+                h.set('Cache-Control', 'no-cache');
+                h.set('Connection', 'close');  // force new TCP to next CDN
+                // Emit event so the resolver can rotate to next server
+                if (typeof window !== 'undefined' && window.dispatchEvent) {
+                    try {
+                        window.dispatchEvent(new CustomEvent('ape-cdn-failover', {
+                            detail: { url: strategy.url || '', reason: strategy.reason }
+                        }));
+                    } catch (_) {}
+                }
+                console.log('[CORTEX] CDN_FAILOVER: rotating to next upstream');
+                break;
+
             case 'MUTATE_FULL':
             default:
                 // Mutación polimórfica total — virus mode
@@ -450,19 +525,36 @@
     // ═══════════════════════════════════════════════════════════════════════════
 
     const _originalFetch = window.fetch;
-    // Expose original fetch for internal use (e.g., ProbeServer health checks)
-    window._APE_ORIGINAL_FETCH = _originalFetch;
+    // E2E-AUDIT FIX (2026-04-16): Prefer _NATIVE_FETCH (saved before Cortex patching)
+    // over window.fetch (which is already Cortex-wrapped at this point).
+    // This ensures bypass calls in app.js use the REAL browser fetch with zero interceptors.
+    window._APE_ORIGINAL_FETCH = window._NATIVE_FETCH || _originalFetch;
     const _stats = { intercepted: 0, retried: 0, recovered: 0, errors: {} };
 
     /**
      * Detecta si una URL es un stream de media (M3U8, TS, etc.)
+     * CRITICAL FIX v1.2: EXCLUDE Xtream management API calls (/player_api.php, /get.php)
+     * from interception. These are JSON API endpoints, not media streams.
+     * Intercepting them injects custom headers (X-Request-ID, X-Forwarded-For, etc.)
+     * that trigger CORS preflight (OPTIONS) which Xtream XUI panels cannot handle,
+     * causing ERR_FAILED / Network Error on connection.
      */
     function isMediaRequest(url) {
         if (!url || typeof url !== 'string') return false;
         const u = url.toLowerCase();
+
+        // ═══════════════════════════════════════════════════════════════
+        // 🛡️ EXCLUSIÓN ABSOLUTA: API calls de gestión Xtream Codes
+        // Estas URLs devuelven JSON, NO son streams de media.
+        // Interceptarlas rompe CORS porque el motor inyecta headers custom.
+        // ═══════════════════════════════════════════════════════════════
+        if (u.includes('/player_api.php') || u.includes('/get.php') ||
+            u.includes('/panel_api.php') || u.includes('/xmltv.php')) {
+            return false;
+        }
+
         return u.includes('.m3u8') || u.includes('.ts') || u.includes('.m3u') ||
                u.includes('/live/') || u.includes('/stream/') || u.includes('.mpd') ||
-               u.includes('xtream') || u.includes('/get.php') || u.includes('/player_api.php') ||
                u.includes('.mp4') || u.includes('/hls/') || u.includes('/dash/');
     }
 
@@ -478,7 +570,10 @@
         }
 
         // V1.1: Circuit breaker — skip if host is blocked
-        if (_circuitBreaker.isBlocked(url)) {
+        // PhD-AUDIT FIX F1 (2026-04-11): Bypass circuit breaker when user explicitly
+        // initiated the connection (connectServer/addServer). Prevents our own CB
+        // from blocking legitimate provider integration attempts.
+        if (!(typeof window !== 'undefined' && window.APE_USER_INITIATED) && _circuitBreaker.isBlocked(url)) {
             return _originalFetch(input, init);
         }
 
@@ -634,6 +729,8 @@
     // ═══════════════════════════════════════════════════════════════════════════
 
     const _OriginalXHR = window.XMLHttpRequest;
+    // E2E-AUDIT FIX (2026-04-16): Prefer _NATIVE_XHR (saved before Cortex patching)
+    window._APE_ORIGINAL_XHR = window._NATIVE_XHR || _OriginalXHR;
 
     class InterceptedXHR extends _OriginalXHR {
         constructor() {

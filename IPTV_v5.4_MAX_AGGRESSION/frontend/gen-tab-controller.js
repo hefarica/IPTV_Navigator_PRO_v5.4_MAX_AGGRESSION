@@ -331,15 +331,28 @@
     // =====================================================
 
     getConfig() {
+      // Leer valores de Dictator Mode de la UI dinámicamente si existen
+      const dictatorModeEl = document.getElementById('dictatorMode');
+      const dictatorMode = dictatorModeEl ? dictatorModeEl.checked : true;
+      
+      let dictatorTier = '4K';
+      const tier8KEl = document.querySelector('input[name="dictatorTier"][value="8K"]');
+      const tier4KEl = document.querySelector('input[name="dictatorTier"][value="4K"]');
+      if (tier8KEl && tier8KEl.checked) dictatorTier = '8K';
+      else if (tier4KEl && tier4KEl.checked) dictatorTier = '4K';
+
       return {
         apeMode: this.formState.apeMode,
         apeLevel: this.formState.apeMode === 'manual' ? this.formState.manualLevel : null,
         compressionProfile: this.formState.compatProfile,
         enableClientHints: this.formState.enableClientHints,
         removeObsolete: this.formState.removeObsolete,
-        autoResolveConflicts: this.formState.autoResolveConflicts
+        autoResolveConflicts: this.formState.autoResolveConflicts,
+        dictatorMode: dictatorMode,
+        dictatorTier: dictatorTier
       };
     },
+
 
     setTelemetry(stats) {
       this.updateTelemetry(stats);

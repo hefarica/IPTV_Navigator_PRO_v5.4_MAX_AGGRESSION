@@ -74,7 +74,7 @@ description: "Documento oficial del Balanced Scorecard para el APE OMEGA, garant
 │  L7  (53)  #EXTATTRFROMURL × 53           ← Puente L2↔L7           │
 │  L8  (470) #EXT-X-APE-* × 470            ← Núcleo Crystal (23sec) │
 │  L9  (13)  #EXT-X-PHANTOM-HYDRA × 13     ← Evasión ISP            │
-│  L10 (2)   #EXT-X-MAP + URL              ← Resolución final ✅    │
+│  L10 (5)   #EXT-X-MEDIA + I-FRAME + STREAM-INF + URL ← 1 URL  │
 │  ─── TOTAL: 796 líneas ──────────────────────────────────────────── │
 └──────────────────────────────────────────────────────────────────────┘
 ```

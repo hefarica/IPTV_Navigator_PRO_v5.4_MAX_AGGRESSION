@@ -326,24 +326,24 @@
                         <div class="pm9-settings-grid">
                             <div class="pm9-setting">
                                 <label>Bitrate (Mbps)</label>
-                                <input type="number" id="pm9_bitrate" value="${activeProfile.settings.bitrate}" readonly style="opacity: 0.8; cursor: not-allowed;">
+                                <input type="number" id="pm9_bitrate" value="${Number(String(activeProfile.settings.bitrate || 0).replace(',','.')) || 0}" readonly style="opacity: 0.8; cursor: not-allowed;">
                             </div>
                             <div class="pm9-setting">
                                 <label>Throughput T1</label>
-                                <input type="number" step="0.1" id="pm9_t1" value="${activeProfile.settings.t1}" readonly style="opacity: 0.8; cursor: not-allowed;">
+                                <input type="number" step="0.1" id="pm9_t1" value="${Number(String(activeProfile.settings.t1 || 0).replace(',','.')) || 0}" readonly style="opacity: 0.8; cursor: not-allowed;">
                             </div>
                             <div class="pm9-setting">
                                 <label>Throughput T2</label>
-                                <input type="number" step="0.1" id="pm9_t2" value="${activeProfile.settings.t2}" readonly style="opacity: 0.8; cursor: not-allowed;">
+                                <input type="number" step="0.1" id="pm9_t2" value="${Number(String(activeProfile.settings.t2 || 0).replace(',','.')) || 0}" readonly style="opacity: 0.8; cursor: not-allowed;">
                             </div>
                             <div class="pm9-setting">
                                 <label>Buffer Total (C1+C2+C3)</label>
-                                <input type="number" id="pm9_buffer" value="${activeProfile.settings.buffer + activeProfile.settings.buffer + (activeProfile.settings.playerBuffer || 0)}" 
+                                <input type="number" id="pm9_buffer" value="${Number(activeProfile.settings.buffer || 0) * 2 + Number(activeProfile.settings.playerBuffer || 0)}"
                                        readonly style="opacity: 0.8; cursor: not-allowed; border-color: #00ff41;">
                             </div>
                             <div class="pm9-setting">
                                 <label>Player Buffer (ms)</label>
-                                <input type="number" id="pm9_playerBuffer" value="${activeProfile.settings.playerBuffer}" readonly style="opacity: 0.8; cursor: not-allowed; border-color: #00ff41;">
+                                <input type="number" id="pm9_playerBuffer" value="${Number(String(activeProfile.settings.playerBuffer || 0).replace(',','.')) || 0}" readonly style="opacity: 0.8; cursor: not-allowed; border-color: #00ff41;">
                             </div>
                             <div class="pm9-setting">
                                 <label>Headers Count</label>
@@ -352,7 +352,7 @@
                             </div>
                             <div class="pm9-setting">
                                 <label>Clock Jitter (ms) <span style="font-size:9px;color:#10b981;">AUTO 10%</span></label>
-                                <input type="number" id="pm9_clockJitter" value="${activeProfile.vlcopt?.['clock-jitter'] || Math.round(activeProfile.settings.buffer * 0.10)}" 
+                                <input type="number" id="pm9_clockJitter" value="${activeProfile.vlcopt?.['clock-jitter'] || Math.round(Number(activeProfile.settings.buffer || 0) * 0.10)}"
                                        readonly style="opacity: 0.8; cursor: not-allowed; border-color: #00ff41;">
                             </div>
                             <div class="pm9-setting">
@@ -385,19 +385,19 @@
                             </div>
                             <div class="pm9-perf-item">
                                 <label>Jitter Max Soportado</label>
-                                <span id="pm9_jitter_max">${Math.floor((activeProfile.settings.playerBuffer || 0) * 0.8)} ms</span>
+                                <span id="pm9_jitter_max">${Math.floor(Number(activeProfile.settings.playerBuffer || 0) * 0.8)} ms</span>
                             </div>
                             <div class="pm9-perf-item">
                                 <label>Buffer Total (C1+C2+C3)</label>
-                                <span id="pm9_buffer_total">${(activeProfile.settings.buffer * 2) + (activeProfile.settings.playerBuffer || 0)} ms</span>
+                                <span id="pm9_buffer_total">${Number(activeProfile.settings.buffer || 0) * 2 + Number(activeProfile.settings.playerBuffer || 0)} ms</span>
                             </div>
                             <div class="pm9-perf-item pm9-perf-ram">
                                 <label>RAM Est. (Teórica vs Real)</label>
                                 <div class="pm9-ram-display">
-                                    <span id="pm9_ram_real" class="pm9-ram-real">${(((activeProfile.settings.buffer * 2 + (activeProfile.settings.playerBuffer || 0)) / 1000) * (activeProfile.settings.bitrate || 0) / 8).toFixed(1)} MB (Real)</span>
-                                    <span id="pm9_ram_theoretical" class="pm9-ram-theo">${(((activeProfile.settings.buffer * 2 + (activeProfile.settings.buffer / 5)) / 1000) * (activeProfile.settings.bitrate || 0) / 8).toFixed(1)} MB (Puro)</span>
+                                    <span id="pm9_ram_real" class="pm9-ram-real">${(((Number(activeProfile.settings.buffer || 0) * 2 + Number(activeProfile.settings.playerBuffer || 0)) / 1000) * Number(activeProfile.settings.bitrate || 0) / 8).toFixed(1)} MB (Real)</span>
+                                    <span id="pm9_ram_theoretical" class="pm9-ram-theo">${(((Number(activeProfile.settings.buffer || 0) * 2 + Number(activeProfile.settings.buffer || 0) / 5) / 1000) * Number(activeProfile.settings.bitrate || 0) / 8).toFixed(1)} MB (Puro)</span>
                                 </div>
-                                <div class="pm9-ram-note">Overhead v13.1: +${activeProfile.settings.playerBuffer - (activeProfile.settings.buffer / 5)}ms seguridad</div>
+                                <div class="pm9-ram-note">Overhead v13.1: +${Number(activeProfile.settings.playerBuffer || 0) - Number(activeProfile.settings.buffer || 0) / 5}ms seguridad</div>
                             </div>
                             <div class="pm9-perf-item pm9-streaming-health">
                                 <label>📊 Streaming Health</label>
@@ -537,6 +537,10 @@
                         
                         <button class="pm9-btn pm9-btn-export" onclick="window.ProfileManagerV9.toggleExportMenu()" title="Opciones de Exportación/Importación">
                             📥 Exportar
+                        </button>
+
+                        <button class="pm9-btn pm9-btn-upload" style="background:linear-gradient(135deg,#dc2626,#991b1b);" onclick="window.ProfileManagerV9.importFromLAB()" title="Importar config calibrada desde APE_M3U8_LAB Excel (LAB_CALIBRATED_*.json)">
+                            🧪 Import LAB
                         </button>
 
                         <button class="pm9-btn pm9-btn-secondary" onclick="window.ProfileManagerV9.duplicateProfile()">
@@ -2671,18 +2675,37 @@
                     const text = await file.text();
                     const data = JSON.parse(text);
 
-                    if (data._meta && data._meta.type === 'all_profiles' && data.profiles) {
-                        this.config.profiles = data.profiles;
-                        this.config.save();
-                        this.render();
-                        console.log(`✅ Todos los perfiles restaurados correctamente.`);
-                        alert(`✅ Todos los perfiles han sido reemplazados y restaurados exitosamente.`);
-                    } else {
-                        throw new Error("El archivo no tiene el formato correcto de 'Todos los Perfiles' (APE_ALL_PROFILES).");
+                    // Aceptar 3 formatos:
+                    // 1. { _meta: {type:'all_profiles'}, profiles: {P0..P5} } — formato oficial v9
+                    // 2. { _meta: {version:'APE_v9.0'}, profiles: {P0..P5} } — formato con version
+                    // 3. { P0:{...}, P1:{...} } — directo sin envelope
+                    let profilesData = null;
+                    if (data && data.profiles && typeof data.profiles === 'object') {
+                        profilesData = data.profiles;
+                    } else if (data && /^P[0-5]$/.test(Object.keys(data)[0] || '')) {
+                        profilesData = data;
                     }
+
+                    if (!profilesData) throw new Error('El archivo no contiene perfiles válidos (P0-P5).');
+
+                    const pids = Object.keys(profilesData).filter(k => /^P[0-5]$/.test(k));
+                    if (pids.length === 0) throw new Error('No se encontraron perfiles P0-P5 en el JSON.');
+
+                    // Usar importProfiles de la clase (hace deep merge con DEFAULT_PROFILES)
+                    if (typeof this.config.importProfiles === 'function') {
+                        const ok = this.config.importProfiles({ profiles: profilesData, manifest: data.manifest, strategicHeaders: data.strategicHeaders });
+                        if (!ok) throw new Error('La función importProfiles reportó fallo.');
+                    } else {
+                        // Fallback directo
+                        this.config.profiles = profilesData;
+                        this.config.save();
+                    }
+                    this.render();
+                    console.log(`✅ ${pids.length} perfiles importados: ${pids.join(', ')}`);
+                    alert(`✅ ${pids.length} perfiles restaurados: ${pids.join(', ')}`);
                 } catch (err) {
                     console.error('❌ Error al importar todos los perfiles:', err);
-                    alert(`❌ Error al leer la plantilla:\n${err.message}\n\nAsegúrate de que sea un JSON válido exportado con la opción 'Todos los Perfiles'.`);
+                    alert(`❌ Error al leer la plantilla:\n${err.message}\n\nAsegúrate de que sea un JSON con perfiles P0-P5 válidos.`);
                 } finally {
                     input.remove();
                 }
@@ -2722,6 +2745,142 @@
          */
         getActiveHeaders() {
             return this.config.getEnabledHeaders(this.activeProfileId);
+        }
+
+        /**
+         * 🧪 IMPORT FROM LAB — consume LAB_CALIBRATED_*.json del APE_M3U8_LAB Excel
+         * Schema esperado: omega_v1
+         * Hace dry-run mostrando diff antes de aplicar
+         */
+        importFromLAB() {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.json';
+            input.style.display = 'none';
+            document.body.appendChild(input);
+
+            input.addEventListener('change', async (e) => {
+                const file = e.target.files[0];
+                if (!file) {
+                    document.body.removeChild(input);
+                    return;
+                }
+
+                try {
+                    const text = await file.text();
+                    const data = JSON.parse(text);
+
+                    // Validar schema
+                    if (data.lab_version !== 'omega_v1') {
+                        alert(`⚠️ Schema no soportado: ${data.lab_version}\nEsperado: omega_v1`);
+                        return;
+                    }
+                    if (data.playlist_format !== 'm3u8') {
+                        alert(`⚠️ playlist_format inesperado: ${data.playlist_format}\nEsperado: m3u8`);
+                        return;
+                    }
+
+                    // === DRY-RUN: calcular diff ===
+                    const diff = this._computeLABDiff(data);
+
+                    const summary =
+                        `🧪 IMPORT FROM LAB — DRY RUN\n\n` +
+                        `Archivo: ${file.name}\n` +
+                        `Exportado: ${data.exported_at}\n` +
+                        `Tamaño: ${(file.size/1024).toFixed(1)} KB\n\n` +
+                        `===== CAMBIOS A APLICAR =====\n\n` +
+                        `📦 PERFILES P0-P5:\n` +
+                        `  ${diff.profiles.updated} actualizados\n` +
+                        `  ${diff.profiles.headerOverrides_added} headerOverrides nuevos\n` +
+                        `  ${diff.profiles.vlcopt_added} vlcopt nuevos\n` +
+                        `  ${diff.profiles.kodiprop_added} kodiprop nuevos\n\n` +
+                        `📋 NIVEL_1 (master playlist headers):\n` +
+                        `  ${diff.nivel1.count} directivas (NUEVO en frontend)\n\n` +
+                        `🎬 NIVEL_3 (per-channel directives):\n` +
+                        `  VLC: ${diff.nivel3.VLC || 0}\n` +
+                        `  KOD: ${diff.nivel3.KOD || 0}\n` +
+                        `  HTT: ${diff.nivel3.HTT || 0}\n` +
+                        `  EI:  ${diff.nivel3.EI || 0}\n` +
+                        `  SYS: ${diff.nivel3.SYS || 0}\n\n` +
+                        `🌐 SERVIDORES: ${diff.servers}\n` +
+                        `🎭 EVASION POOL: ${diff.evasion_uas} UAs, ${diff.evasion_refs} refs\n` +
+                        `⚙️  CONFIG GLOBAL: ${diff.config_keys} parámetros\n\n` +
+                        `📊 SCORING METADATA:\n` +
+                        `  Directivas totales: ${data.scoring_metadata?.total_directives || '?'}\n` +
+                        `  Refined ≥95: ${data.scoring_metadata?.refined_ge95 || '?'}\n\n` +
+                        `===== ¿APLICAR CAMBIOS? =====\n\n` +
+                        `OK = aplicar todo (irreversible)\n` +
+                        `Cancelar = no hacer nada`;
+
+                    if (!confirm(summary)) {
+                        console.log('[LAB] Import cancelado por usuario');
+                        return;
+                    }
+
+                    // === APPLY ===
+                    const result = await this.config.importFromLABData(data);
+
+                    // Re-render
+                    if (typeof this.render === 'function') {
+                        this.render();
+                    }
+
+                    alert(`✅ LAB CALIBRATED IMPORTADO\n\n` +
+                          `Perfiles actualizados: ${result.profilesUpdated}\n` +
+                          `headerOverrides aplicados: ${result.headersAdded}\n` +
+                          `NIVEL_1 directivas: ${result.nivel1Count}\n` +
+                          `NIVEL_3 entries: ${result.nivel3Total}\n` +
+                          `Servers: ${result.serversCount}\n\n` +
+                          `Próximo paso: generar lista .m3u8 desde APE generator.\n` +
+                          `El generator inyectará todo lo del LAB.`);
+
+                    console.log('[LAB] Import OK', result);
+                } catch (err) {
+                    console.error('[LAB] Import falló:', err);
+                    alert(`❌ Error: ${err?.message || err}`);
+                } finally {
+                    if (input.parentNode) document.body.removeChild(input);
+                }
+            });
+
+            input.click();
+        }
+
+        /**
+         * Calcula diff entre estado actual y data del LAB
+         */
+        _computeLABDiff(data) {
+            const diff = {
+                profiles: { updated: 0, headerOverrides_added: 0, vlcopt_added: 0, kodiprop_added: 0 },
+                nivel1: { count: 0 },
+                nivel3: {},
+                servers: 0,
+                evasion_uas: 0,
+                evasion_refs: 0,
+                config_keys: 0
+            };
+
+            const labProfiles = data.profiles_calibrated || {};
+            for (const pid of ['P0','P1','P2','P3','P4','P5']) {
+                const lp = labProfiles[pid];
+                if (!lp) continue;
+                diff.profiles.updated++;
+                const cur = this.config?.profiles?.[pid] || {};
+                diff.profiles.headerOverrides_added += Object.keys(lp.headerOverrides || {}).length;
+                diff.profiles.vlcopt_added += Object.keys(lp.vlcopt || {}).length;
+                diff.profiles.kodiprop_added += Object.keys(lp.kodiprop || {}).length;
+            }
+
+            diff.nivel1.count = (data.nivel1_directives || []).length;
+            for (const layer in (data.nivel3_per_layer || {})) {
+                diff.nivel3[layer] = (data.nivel3_per_layer[layer] || []).length;
+            }
+            diff.servers = (data.servers || []).length;
+            diff.evasion_uas = (data.evasion_pool?.user_agents || []).length;
+            diff.evasion_refs = (data.evasion_pool?.referers || []).length;
+            diff.config_keys = Object.keys(data.config_global || {}).length;
+
+            return diff;
         }
     }
 

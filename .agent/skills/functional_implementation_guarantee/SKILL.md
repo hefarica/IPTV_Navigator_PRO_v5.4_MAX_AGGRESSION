@@ -63,7 +63,7 @@ Si no se pueden responder las 3 → es INFORMATIVO, no EJECUTABLE
 | `#KODIPROP:key=val` | Kodi/InputStream | Configura inputstream.adaptive | Log Kodi: addon debug |
 | `#EXTHTTP:{json}` | OTT Navigator | Envía headers HTTP al origen | Captura de red: verificar headers |
 | `#EXT-X-STREAM-INF` | Todos los players | Selección de variante ABR | Monitorear bitrate seleccionado |
-| `#EXT-X-MAP` | Players fMP4 | Init segment para CMAF | Player carga init.mp4 o falla |
+| `#EXT-X-MAP` | ~~Players fMP4~~ | ~~Init segment para CMAF~~ | **ELIMINADO del catálogo 2026-04-17**: causaba 404 (init.mp4 no existe en M3U8 de canales). Solo válido en HLS manifests reales del proveedor. |
 | `#EXT-X-KEY` | Players con DRM | Descifrado de segmentos | Stream descifra o falla |
 | `#EXTINF:duration` | Todos | Duración del segmento | Duración de reproducción correcta |
 

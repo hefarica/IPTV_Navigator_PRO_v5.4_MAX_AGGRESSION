@@ -39,7 +39,7 @@ L6  (10 líneas)   #EXT-X-APE-TELCHEMY × 10            ← Telemetría QoS/QoE
 L7  (53 líneas)   #EXTATTRFROMURL × 53                ← Puente L2↔L7
 L8  (470 líneas)  #EXT-X-APE-* × 470 (23 secciones)  ← Núcleo Crystal
 L9  (13 líneas)   #EXT-X-PHANTOM-HYDRA × 13           ← Evasión ISP
-L10 (2 líneas)    #EXT-X-MAP + URL final              ← Resolución
+L10 (5 líneas)    #EXT-X-MEDIA + I-FRAME + STREAM-INF + URL  ← 1 URL única (SIN URI= en MEDIA/I-FRAME)
 ─── TOTAL: 796 líneas ─────────────────────────────────
 ```
 
@@ -59,7 +59,7 @@ L10 (2 líneas)    #EXT-X-MAP + URL final              ← Resolución
 | L7 | EXTATTRFROMURL | 53 | 7 subsecciones: identidad, codec, evasión, DRM, transporte, caché, ABR |
 | L8 | EXT-X-APE-* | 470 | 23 secciones × ~20 líneas (Buffer Nuclear, BBR, QoS, Phantom, Codec...) |
 | L9 | EXT-X-PHANTOM-HYDRA | 13 | 5 UAs, 3 DNS, SNI front, HTTPS mimicry, Sandvine bypass |
-| L10 | EXT-X-MAP + URL | 2 | `init.mp4` + URL con `ape_sid` y `ape_nonce` |
+| L10 | EXT-X-MEDIA + I-FRAME + STREAM-INF + URL | 5 | Audio metadata (SIN URI=), I-Frame (SIN URI=), 1 STREAM-INF + 1 URL. FIX 2026-04-17. |
 
 ---
 

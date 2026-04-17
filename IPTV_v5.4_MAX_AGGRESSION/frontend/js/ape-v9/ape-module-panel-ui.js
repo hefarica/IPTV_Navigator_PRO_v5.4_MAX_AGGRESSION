@@ -42,7 +42,12 @@
         grid.innerHTML = '';
 
         // Obtener módulos
-        const modules = window.ApeModuleManager.getStatus();
+        // NOTA: window.APEv15.getStatus() fue eliminado del fallback porque su API es incompatible:
+        // devuelve Promise<backend remoto:8085>, mientras aquí se espera objeto síncrono local.
+        // Consumidor correcto de APEv15: Monitor Panel (ape-monitor-panel-v15.js).
+        const modules = (typeof window.ApeModuleManager?.getStatus === 'function')
+            ? window.ApeModuleManager.getStatus()
+            : { modules: [], active: 0 };
         let activeCount = 0;
 
         Object.values(modules).forEach(module => {
@@ -120,7 +125,11 @@
 
         // Click handler
         wrapper.addEventListener('click', () => {
-            window.ApeModuleManager.toggle(module.id);
+            if (typeof window.ApeModuleManager?.toggle === 'function') {
+                window.ApeModuleManager.toggle(module.id);
+            } else if (typeof window.APEv15?.toggle === 'function') {
+                window.APEv15.toggle(module.id);
+            }
             refreshUI();
         });
 
@@ -137,7 +146,10 @@
         const grid = document.getElementById('modules-toggle-grid');
         if (!grid) return;
 
-        const modules = window.ApeModuleManager.getStatus();
+        // Fallback APEv15 eliminado por API incompatible (ver nota en populateGrid).
+        const modules = (typeof window.ApeModuleManager?.getStatus === 'function')
+            ? window.ApeModuleManager.getStatus()
+            : { modules: [], active: 0 };
         let activeCount = 0;
 
         Object.values(modules).forEach(module => {

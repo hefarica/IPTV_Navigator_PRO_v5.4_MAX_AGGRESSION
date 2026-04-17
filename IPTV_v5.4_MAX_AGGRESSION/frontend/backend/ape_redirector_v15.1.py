@@ -260,7 +260,7 @@ def upload_m3u():
     else:
         # Raw body stream (application/octet-stream)
         file_stream = request.stream
-        filename = 'upload.m3u'
+        filename = 'upload.m3u8'
         logger.info(f"📄 [UPLOAD] Raw stream upload")
     
     # ═══════════════════════════════════════════════════════════════════════

@@ -31,7 +31,7 @@ Las 796 líneas se dividen en **10 capas de inyección (L0-L10)**:
 | L7 | `#EXTATTRFROMURL:` | 53 | Puente matemático L2↔L7 (identidad, codec, evasión, DRM, transporte, caché, ABR) |
 | L8 | `#EXT-X-APE-*` | 470 | Núcleo Crystal: 23 secciones (Buffer, BBR, QoS, Phantom, Codec, Resilience, Spoof, DRM, AI, Audio, Scorecard, VRR, Polimorfismo, Quality Override, Luma, Bitrate, Quantum Pixel, Buffer God-Tier, Space Validator, VNOVA LCEVC, Cortex Telemetry, Diagnosis, Player Enslavement) |
 | L9 | `#EXT-X-PHANTOM-HYDRA` | 13 | Evasión ISP: 5 UAs, 3 DNS DoH, SNI front, HTTPS mimicry, Sandvine bypass |
-| L10 | `#EXT-X-MAP` + URL | 2 | `init.mp4` + URL final con `ape_sid` (idempotente) + `ape_nonce` (polimórfico) |
+| L10 | `#EXT-X-MEDIA` + `#EXT-X-I-FRAME` + `#EXT-X-STREAM-INF` + URL | 5 | Audio metadata (SIN URI=), I-Frame (SIN URI=), 1 STREAM-INF + 1 URL. FIX 2026-04-17: URI= causaba 509. |
 | **TOTAL** | | **796** | |
 
 ---
@@ -104,7 +104,7 @@ Buffer Nuclear, BBR Hijacking, DSCP QoS, Phantom Hydra Core, Codec Priority, Res
 
 ### Capa L10: Resolución Final (2 líneas)
 
-1. `#EXT-X-MAP:URI="init.mp4"` — señalización CMAF/fMP4
+1. `#EXT-X-MEDIA:TYPE=AUDIO,...` — metadata audio (SIN URI= para no abrir conexiones extra)
 2. URL final construida por `buildChannelUrl()` con `ape_sid` (cache key estable) y `ape_nonce` (DPI evasion)
 
 ---

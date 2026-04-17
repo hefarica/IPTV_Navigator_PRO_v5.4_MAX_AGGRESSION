@@ -18,10 +18,15 @@
 set_time_limit(600);
 error_reporting(E_ALL);
 
+// CORS headers
+header('Access-Control-Allow-Origin: *');
+header('Content-Type: text/plain; charset=utf-8');
+
 // Config
 $chunkBaseDir = __DIR__ . '/chunks';
-$maxAge = 24 * 3600; // 24 hours in seconds
-$dryRun = in_array('--dry-run', $argv ?? []);
+// Support ?max_age=0 to force delete ALL chunks (disk recovery)
+$maxAge = isset($_GET['max_age']) ? max(0, intval($_GET['max_age'])) : 24 * 3600;
+$dryRun = in_array('--dry-run', $argv ?? []) || isset($_GET['dry_run']);
 
 // Logging
 function logMessage($msg)

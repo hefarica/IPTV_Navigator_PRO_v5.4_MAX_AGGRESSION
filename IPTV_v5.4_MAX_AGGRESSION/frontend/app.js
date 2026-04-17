@@ -1037,111 +1037,6 @@ class IPTVNavigatorPro {
         console.log('✔ Preservados:', PRESERVE_KEYS);
     }
 
-    /**
-     * SSOT Whitelist: Modal dinámico para guardar credenciales de servidor
-     */
-    promptWhitelistServer(serverInfo, force = false) {
-        if (!this.state.whitelistPrompted) this.state.whitelistPrompted = new Set();
-        const serverHash = serverInfo.baseUrl || serverInfo.name || serverInfo.id;
-        if (!force && this.state.whitelistPrompted.has(serverHash)) return;
-        this.state.whitelistPrompted.add(serverHash);
-
-        if (document.getElementById('whitelistModalOverlay')) return;
-
-        const overlay = document.createElement('div');
-        overlay.id = 'whitelistModalOverlay';
-        overlay.style.cssText = `
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(8px);
-            z-index: 9999; display: flex; align-items: center; justify-content: center;
-            opacity: 0; transition: opacity 0.3s ease;
-        `;
-
-        const modal = document.createElement('div');
-        modal.style.cssText = `
-            background: linear-gradient(145deg, #1e293b 0%, #0f172a 100%);
-            border: 1px solid rgba(56, 189, 248, 0.4);
-            border-radius: 16px; width: 90%; max-width: 420px;
-            padding: 24px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
-            transform: scale(0.95) translateY(20px); transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            text-align: center; color: #f8fafc; font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-        `;
-
-        let niceUrl = serverInfo.baseUrl || 'Servidor';
-        try { if(serverInfo.baseUrl) niceUrl = new URL(serverInfo.baseUrl).hostname; } catch(e){}
-
-        modal.innerHTML = `
-            <div style="font-size: 3rem; margin-bottom: 12px; text-shadow: 0 0 15px rgba(56,189,248,0.5);">🛡️</div>
-            <h3 style="margin: 0 0 12px 0; font-size: 1.25rem; font-weight: 600; color: #38bdf8;">¿Blindar en Lista Blanca?</h3>
-            <p style="font-size: 0.9rem; color: #94a3b8; margin-bottom: 20px; line-height: 1.5;">
-                Nuevo servidor detectado:<br>
-                <strong style="color: #e2e8f0; font-size: 1.05rem;">${serverInfo.name || niceUrl}</strong>
-            </p>
-            <p style="text-align:left; font-size: 0.8rem; color: #cbd5e1; margin-bottom: 24px; background: rgba(56,189,248,0.1); padding: 12px; border-radius: 8px; border-left: 3px solid #38bdf8;">
-                ¿Deseas agregarlo al SSOT Backend (Lista Blanca) para que el Resolver unificado extraiga sus credenciales automáticamente y garantice siempre resolución HTTP 200?
-            </p>
-            <div style="display: flex; gap: 12px; justify-content: center;">
-                <button id="btnWhitelistCancel" style="flex: 1; padding: 12px; border: 1px solid rgba(239, 68, 68, 0.5); background: rgba(239, 68, 68, 0.1); color: #fca5a5; border-radius: 8px; cursor: pointer; font-weight: 600; transition: all 0.2s;">
-                    NO, IGNORAR
-                </button>
-                <button id="btnWhitelistConfirm" style="flex: 1; padding: 12px; border: none; background: #38bdf8; color: #0f172a; border-radius: 8px; cursor: pointer; font-weight: 600; transition: all 0.2s; box-shadow: 0 4px 6px -1px rgba(56, 189, 248, 0.3);">
-                    SÍ, BLINDAR
-                </button>
-            </div>
-        `;
-
-        overlay.appendChild(modal);
-        document.body.appendChild(overlay);
-
-        requestAnimationFrame(() => {
-            overlay.style.opacity = '1';
-            modal.style.transform = 'scale(1) translateY(0)';
-        });
-
-        const close = () => {
-            overlay.style.opacity = '0';
-            modal.style.transform = 'scale(0.95) translateY(20px)';
-            setTimeout(() => overlay.remove(), 300);
-        };
-
-        const btnCancel = document.getElementById('btnWhitelistCancel');
-        const btnConfirm = document.getElementById('btnWhitelistConfirm');
-
-        btnCancel.addEventListener('mouseenter', () => btnCancel.style.background = 'rgba(239, 68, 68, 0.2)');
-        btnCancel.addEventListener('mouseleave', () => btnCancel.style.background = 'rgba(239, 68, 68, 0.1)');
-        btnCancel.onclick = close;
-        
-        btnConfirm.addEventListener('mouseenter', () => btnConfirm.style.background = '#0ea5e9');
-        btnConfirm.addEventListener('mouseleave', () => btnConfirm.style.background = '#38bdf8');
-        btnConfirm.onclick = async () => {
-            btnConfirm.textContent = 'Guardando...';
-            btnConfirm.style.opacity = '0.7';
-            btnConfirm.disabled = true;
-            try {
-                const srvUser = serverInfo._lockedUsername || serverInfo.username || '';
-                const srvPass = serverInfo._lockedPassword || serverInfo.password || '';
-                const apiUrl = window.location.href.includes('frontend') ? '../backend/api_whitelist.php' : '/backend/api_whitelist.php';
-                
-                const response = await fetch(apiUrl, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        host: serverInfo.baseUrl,
-                        user: srvUser,
-                        pass: srvPass
-                    })
-                });
-                
-                if (!response.ok) throw new Error('Error HTTP ' + response.status);
-                
-                alert('🛡️ ¡ÉXITO! Servidor blindado en la Lista Blanca (SSOT). El Resolver ahora posee acceso sin restricciones.');
-            } catch (err) {
-                console.error('Error Whitelist SSOT:', err);
-                alert('❌ Fallo de inserción en SSOT: ' + err.message);
-            }
-            close();
-        };
-    }
 
 
     /**
@@ -1180,10 +1075,6 @@ class IPTVNavigatorPro {
             this.state.activeServers.push(server);
             console.log(`➕ [upsertServer] Nuevo: ${server.name} (${server.id})`);
             
-            // ✅ SSOT Whitelist Trigger
-            if (typeof this.promptWhitelistServer === 'function') {
-                this.promptWhitelistServer(server);
-            }
         } else {
             // 🔄 UPDATE servidor existente (merge seguro)
             this.state.activeServers[idx] = {
@@ -2762,7 +2653,119 @@ class IPTVNavigatorPro {
      * V4.23.1: Auto-loads cache from R2 at the end for verification
      * V4.24: Usa canales FILTRADOS (los visibles en tabla) en lugar de todos
      */
+    // ═══════════════════════════════════════════════════════════════════════
+    // ATOMIC PROBE — browser-side REAL resolution detector (2026-04-12)
+    // Analiza canales FILTRADOS (los visibles en la tabla). Una request por
+    // canal (Range 128KB). Detecta: perfil real, codec, bit-depth, fps, HDR,
+    // tier (ORO/PLATA/BRONCE/FAKE). Enriquece channel.ape_profile para que
+    // el generador emita el perfil correcto.
+    // ═══════════════════════════════════════════════════════════════════════
+    async _probeAtomic() {
+        if (!window.ApeXtreamAtomicProbe) {
+            alert('⚠️ ApeXtreamAtomicProbe no cargado. Recarga con Ctrl+Shift+R');
+            return;
+        }
+
+        const statusEl = document.getElementById('probeStatus');
+        const btn      = document.getElementById('btnProbeQuality');
+        const btnCache = document.getElementById('btnLoadProbeResults');
+
+        // Canales FILTRADOS (tabla visible). Fallback: master.
+        const channels = (this.state.channels && this.state.channels.length)
+            ? this.state.channels
+            : this.state.channelsMaster;
+        if (!channels || !channels.length) {
+            if (statusEl) statusEl.textContent = '⚠️ No hay canales cargados';
+            return;
+        }
+
+        const isFiltered = channels.length < (this.state.channelsMaster?.length || 0);
+        const total = channels.length;
+        const t0 = performance.now();
+
+        console.log(`%c⚛️ ATOMIC PROBE — ${total.toLocaleString()} canales ${isFiltered ? 'FILTRADOS' : '(todos)'}`,
+                    'color:#0ff;font-weight:bold;font-size:14px');
+
+        this._probeInProgress = true;
+        if (btn)      btn.disabled = true;
+        if (btnCache) btnCache.disabled = true;
+        if (statusEl) statusEl.textContent = `⚛️ Atomic Probe iniciando ${total.toLocaleString()} canales...`;
+        this.showHeuristicProgress?.(true, { label: '⚛️ Atomic Probe...', current: 0, total, percent: 0 });
+
+        let oro = 0, oroMinor = 0, plata = 0, bronce = 0, fake = 0, unknown = 0, errors = 0;
+
+        try {
+            await window.ApeXtreamAtomicProbe.enrichChannels(channels, {
+                concurrency: Math.min(32, Math.max(8, Math.floor(total / 40))),
+                onProgress: (done, t, r) => {
+                    switch (r?.tier) {
+                        case 'ORO':       oro++; break;
+                        case 'ORO-MINOR': oroMinor++; break;
+                        case 'PLATA':     plata++; break;
+                        case 'BRONCE':    bronce++; break;
+                        case 'FAKE':      fake++; break;
+                        default:          unknown++;
+                    }
+                    if (r?.error) errors++;
+                    if (done % 25 === 0 || done === t) {
+                        const pct = Math.round((done / t) * 100);
+                        if (statusEl) statusEl.textContent =
+                            `⚛️ ${done}/${t} (${pct}%) — 🏆${oro+oroMinor} 🥈${plata} 🥉${bronce} 🚨${fake} ❔${unknown}`;
+                        this.showHeuristicProgress?.(true, { label: `⚛️ ${done}/${t}`, current: done, total: t, percent: pct });
+                    }
+                },
+            });
+
+            const dt = ((performance.now() - t0) / 1000).toFixed(1);
+            const stats = { ORO: oro, 'ORO-MINOR': oroMinor, PLATA: plata, BRONCE: bronce, FAKE: fake, UNKNOWN: unknown, ERRORS: errors };
+            console.log(`%c✅ ATOMIC PROBE completado en ${dt}s`, 'color:#0f0;font-weight:bold');
+            console.table(stats);
+
+            // Persist enrichment results in state
+            if (this.state.channels === channels) {
+                // Already references — nothing to do; fields are live on objects
+            }
+            try { await this.saveAnalysisState?.(); } catch (e) { /* opcional */ }
+
+            if (statusEl) statusEl.textContent =
+                `✅ ${total.toLocaleString()} en ${dt}s — 🏆 ORO:${oro+oroMinor}  🥈 PLATA:${plata}  🥉 BRONCE:${bronce}  🚨 FAKE:${fake}  ❔ UNK:${unknown}`;
+
+            // Refresh table if renderer available
+            try { this.renderCurrentPage?.(); } catch (e) {}
+            try { this.refreshStats?.(); } catch (e) {}
+
+            // Alert con resumen
+            const msg = `⚛️ ATOMIC PROBE — ${total.toLocaleString()} canales analizados en ${dt}s\n\n`
+                      + `🏆 ORO (joyas ocultas): ${oro}\n`
+                      + `🏆 ORO-MINOR: ${oroMinor}\n`
+                      + `🥈 PLATA (honestos): ${plata}\n`
+                      + `🥉 BRONCE (ligero downgrade): ${bronce}\n`
+                      + `🚨 FAKE (mentirosos): ${fake}\n`
+                      + `❔ UNKNOWN: ${unknown}\n`
+                      + `⚠️ Errores red: ${errors}`;
+            console.log(msg);
+        } catch (e) {
+            console.error('[AtomicProbe] Error:', e);
+            if (statusEl) statusEl.textContent = `❌ Error: ${e.message}`;
+        } finally {
+            this._probeInProgress = false;
+            if (btn)      btn.disabled = false;
+            if (btnCache) btnCache.disabled = false;
+            this.showHeuristicProgress?.(false);
+        }
+    }
+
     async probeAllChannelsBackend() {
+        // ═══════════════════════════════════════════════════════════════════
+        // ATOMIC PROBE v1.0 (2026-04-12) — default path: browser-side real
+        // resolution detection via HLS master parse + MPEG-TS SPS decode.
+        // One request per channel (Range 128KB), no backend needed.
+        // To force the Rust backend instead, set window.APE_FORCE_RUST_PROBE=true
+        // ═══════════════════════════════════════════════════════════════════
+        if (window.ApeXtreamAtomicProbe && !window.APE_FORCE_RUST_PROBE) {
+            return this._probeAtomic();
+        }
+
         // V4.25.0: Probe Server en VPS Hetzner (o localhost como fallback)
         const PROBE_SERVER = window.PROBE_SERVER_URL || 'http://178.156.147.234:8765';
         const WS_URL = window.PROBE_WS_URL || 'ws://178.156.147.234:8765/ws/progress';
@@ -4802,6 +4805,14 @@ El servidor analizará 26,000+ canales en ~10 minutos.
             u = 'http://' + u;
         }
 
+        // PhD-AUDIT FIX F5 (2026-04-11): If URL is clearly a Stalker/MAG portal,
+        // do NOT apply Xtream-specific normalization. Return as-is (trimmed).
+        // Prevents "portal.php"/"stalker_portal/c/" URLs from being mangled into
+        // "portal/player_api.php" → 404 → false "invalid server" error.
+        if (/\/(stalker_portal|portal\.php|\/c\/)/i.test(u)) {
+            return u.replace(/\/+$/, '');
+        }
+
         // Quitar barras extra al final
         u = u.replace(/\/+$/, '');
 
@@ -4816,6 +4827,15 @@ El servidor analizará 26,000+ canales en ~10 minutos.
             this.showNotification('⚠️ Conexión en progreso, espera...', true);
             return;
         }
+
+        // PhD-AUDIT FIX F1+F3 (2026-04-11): Flag user-initiated connect
+        // to bypass Cortex/CircuitBreaker/Whitelist self-blocks during provider
+        // integration. Prevents our own anti-detection from rejecting legitimate servers.
+        // E2E-AUDIT FIX (2026-04-16): Extended from 10s to 180s because large
+        // catalogs (26K+ channels) take 30-120s to download. The 10s timer expired
+        // mid-download, reactivating Cortex/CB interference during get_live_streams.
+        window.APE_USER_INITIATED = true;
+        setTimeout(() => { window.APE_USER_INITIATED = false; }, 180000);
 
         // V4.24: Wake probe server when connecting
         this._wakeProbeServer();
@@ -4877,6 +4897,16 @@ El servidor analizará 26,000+ canales en ~10 minutos.
             username: user,
             password: pass
         };
+
+        // PhD-AUDIT FIX F3: Register provider host globally so Cortex
+        // permanently whitelists it (not just 10s user-initiated window).
+        try {
+            if (!Array.isArray(window.APE_USER_PROVIDER_HOSTS)) window.APE_USER_PROVIDER_HOSTS = [];
+            const hostOnly = baseHost.replace(/^https?:\/\//, '').replace(/\/.*$/, '');
+            if (hostOnly && !window.APE_USER_PROVIDER_HOSTS.includes(hostOnly)) {
+                window.APE_USER_PROVIDER_HOSTS.push(hostOnly);
+            }
+        } catch (_) { /* noop */ }
 
         // Persistir config inmediata
         await this.saveActiveServers();
@@ -5073,13 +5103,86 @@ El servidor analizará 26,000+ canales en ~10 minutos.
     }
 
     // ✅ FUNCIÓN RESTAURADA Y BLINDADA (Solo Live para evitar crash)
+    // ═══════════════════════════════════════════════════════════════
+    // ANTI-CORS FIX v2.0: fetchWithFallback uses raw XMLHttpRequest
+    // as a last resort when axios/intercepted XHR fails due to CORS.
+    // Many Xtream XUI panels (ky-tv.cc etc.) return CORS headers for
+    // small responses (auth, categories) but NOT for large ones
+    // (get_live_streams). Raw XHR with no custom headers avoids
+    // triggering preflight and works around partial CORS support.
+    // ═══════════════════════════════════════════════════════════════
     async connectXuiApi(baseUrl, u, p) {
+        let currentBaseUrl = baseUrl;
+
+        /**
+         * Raw XHR fetch that completely bypasses ALL interceptors.
+         * Uses the ORIGINAL XMLHttpRequest constructor (saved before monkey-patching).
+         * This avoids any header injection that could trigger CORS preflight.
+         */
+        const rawXHRFetch = (fullUrl) => {
+            return new Promise((resolve, reject) => {
+                // Use the original XHR constructor, not the intercepted one
+                const XHRConstructor = window._APE_ORIGINAL_XHR || window._OriginalXHR || XMLHttpRequest;
+                const xhr = new XHRConstructor();
+                xhr.open('GET', fullUrl, true);
+                xhr.timeout = 120000; // 2 minutes for large responses
+                xhr.onload = function() {
+                    if (xhr.status >= 200 && xhr.status < 300) {
+                        try {
+                            resolve({ data: JSON.parse(xhr.responseText) });
+                        } catch(e) {
+                            reject(new Error('Invalid JSON response'));
+                        }
+                    } else {
+                        reject(new Error(`HTTP ${xhr.status}`));
+                    }
+                };
+                xhr.onerror = function() { reject(new Error('Network Error (raw XHR)')); };
+                xhr.ontimeout = function() { reject(new Error('Timeout (raw XHR)')); };
+                xhr.send();
+            });
+        };
+
+        const fetchWithFallback = async (endpoint, options = {}) => {
+            const fullUrl = `${currentBaseUrl}${endpoint}`;
+            // Build query string from params
+            const params = options.params || {};
+            const qs = Object.entries(params).map(([k,v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`).join('&');
+            const urlWithParams = qs ? `${fullUrl}?${qs}` : fullUrl;
+
+            try {
+                // Attempt 1: axios (may fail if interceptors add headers that trigger CORS)
+                return await axios.get(fullUrl, options);
+            } catch (err) {
+                console.warn(`⚠️ [CORS-BYPASS] axios failed: ${err.message}. Trying raw XHR...`);
+                try {
+                    // Attempt 2: Raw XHR — bypasses ALL interceptors
+                    return await rawXHRFetch(urlWithParams);
+                } catch (rawErr) {
+                    // Attempt 3: HTTPS fallback (only if HTTP)
+                    if (currentBaseUrl.startsWith('http://')) {
+                        const httpsBase = currentBaseUrl.replace(/^http:\/\//, 'https://').replace(/:80(\/|$)/, '$1');
+                        console.log(`🔄 [HTTPS-FALLBACK] Trying: ${httpsBase}`);
+                        const httpsUrl = qs ? `${httpsBase}${endpoint}?${qs}` : `${httpsBase}${endpoint}`;
+                        try {
+                            return await rawXHRFetch(httpsUrl);
+                        } catch(httpsErr) {
+                            // All attempts failed
+                        }
+                    }
+                    throw err; // Re-throw original error
+                }
+            }
+        };
+
         try {
             // 1️⃣ Primero obtener info del usuario (incluye allowed_output_formats)
-            const authResponse = await axios.get(`${baseUrl}/player_api.php`, {
+            const authResponse = await fetchWithFallback('/player_api.php', {
                 params: { username: u, password: p },
-                timeout: 15000,
-                withCredentials: true
+                timeout: 15000
+                // NOTE: withCredentials REMOVED — Xtream uses query params for auth,
+                // not cookies. withCredentials forces strict CORS (no wildcard origin)
+                // which most XUI panels (openresty) cannot handle → Network Error.
             });
 
             const userInfo = authResponse.data?.user_info || {};
@@ -5106,13 +5209,64 @@ El servidor analizará 26,000+ canales en ~10 minutos.
                 }
             }
 
+            // ═══════════════════════════════════════════════════════════════
+            // 🛡️ FRONTCDN REDIRECT PROBE v1.0
+            // Detecta si el servidor usa redirect 302 a un dominio CDN diferente.
+            // Si lo hace, ExoPlayer no puede resolver segmentos HLS relativos
+            // → se marca _forceTS=true para que el generador use .ts directo.
+            // ═══════════════════════════════════════════════════════════════
+            try {
+                const probeUrl = `${baseUrl}/live/${u}/${p}/1.m3u8`;
+                console.log('🛡️ [FrontCDN Probe] Verificando redirect chain...');
+                // ANTI-CORS FIX: Use original fetch to bypass evasion engine
+                // The evasion engine intercepts /live/ URLs and injects custom headers
+                // that trigger CORS preflight failures. Use raw fetch instead.
+                const _rawFetch = window._APE_ORIGINAL_FETCH || fetch;
+                const probeResp = await _rawFetch(probeUrl, {
+                    method: 'GET',
+                    redirect: 'manual',
+                    mode: 'no-cors',
+                    signal: AbortSignal.timeout(3000)
+                });
+                
+                const isRedirect = probeResp.status >= 300 && probeResp.status < 400;
+                const redirectLocation = probeResp.headers.get('Location') || '';
+                const originalHost = new URL(baseUrl).hostname.toLowerCase();
+                let redirectHost = '';
+                let isCrossDomain = false;
+                
+                if (isRedirect && redirectLocation) {
+                    try {
+                        redirectHost = new URL(redirectLocation).hostname.toLowerCase();
+                        isCrossDomain = redirectHost !== originalHost && 
+                                       !redirectHost.match(/^\d+\.\d+\.\d+\.\d+$/);
+                    } catch(e) {}
+                }
+                
+                if (isCrossDomain) {
+                    console.warn(`🛡️ [FrontCDN DETECTADO] ${originalHost} → ${redirectHost}`);
+                    console.warn(`   ⚠️ Redirect cross-domain a CDN detectado. Forzando .ts`);
+                    this.state.currentServer._forceTS = true;
+                    this.state.currentServer._frontCDNHost = redirectHost;
+                    const activeSrv = this.state.activeServers?.find(s => s.id === this.state.currentServer?.id);
+                    if (activeSrv) {
+                        activeSrv._forceTS = true;
+                        activeSrv._frontCDNHost = redirectHost;
+                    }
+                } else {
+                    console.log(`🛡️ [FrontCDN Probe] Sin redirect cross-domain → .m3u8 seguro ✅`);
+                    this.state.currentServer._forceTS = false;
+                }
+            } catch (probeErr) {
+                console.warn('🛡️ [FrontCDN Probe] Error en probe (no crítico):', probeErr.message);
+            }
+
             // 2️⃣ Obtener categorías para mapear ID → Nombre
             console.log('📂 Descargando categorías...');
             try {
-                const catResponse = await axios.get(`${baseUrl}/player_api.php`, {
+                const catResponse = await fetchWithFallback('/player_api.php', {
                     params: { username: u, password: p, action: 'get_live_categories' },
-                    timeout: 30000,
-                    withCredentials: true
+                    timeout: 30000
                 });
 
                 if (Array.isArray(catResponse.data)) {
@@ -5140,30 +5294,106 @@ El servidor analizará 26,000+ canales en ~10 minutos.
             console.log('═══════════════════════════════════════════════════════════');
 
             const startTime = Date.now();
-            const response = await axios.get(`${baseUrl}/player_api.php`, {
-                params: {
-                    username: u,
-                    password: p,
-                    action: 'get_live_streams'
-                },
-                // ✅ FIX: Aumentar timeout para listas grandes (26k+ canales)
-                timeout: 120000,  // 120 segundos (2 minutos)
-                // ✅ FIX: Eliminar límites de tamaño de respuesta
-                maxContentLength: Infinity,
-                maxBodyLength: Infinity,
-                // ✅ V4.27.6: Cookies de sesión Xtream Codes
-                withCredentials: true,
-                // ✅ Progress callback para visibilidad
-                onDownloadProgress: (progressEvent) => {
-                    const mbLoaded = (progressEvent.loaded / (1024 * 1024)).toFixed(2);
-                    if (progressEvent.total) {
-                        const pct = Math.round((progressEvent.loaded / progressEvent.total) * 100);
-                        console.log(`📥 Descargando: ${pct}% (${mbLoaded} MB)`);
-                    } else {
-                        console.log(`📥 Descargando: ${mbLoaded} MB...`);
+            let response = null;
+
+            // ═══════════════════════════════════════════════════════════════
+            // ANTI-CORS CHAIN v3.0 — 3 intentos para descargar el catálogo:
+            // 1) player_api.php via axios (JSON, fastest)
+            // 2) get.php via fetch (M3U text, CORS: * guaranteed)
+            // 3) player_api.php via rawXHR (bypass interceptors)
+            // ═══════════════════════════════════════════════════════════════
+
+            // Intento 1: player_api.php (JSON) via axios
+            try {
+                response = await fetchWithFallback('/player_api.php', {
+                    params: {
+                        username: u,
+                        password: p,
+                        action: 'get_live_streams'
+                    },
+                    timeout: 120000,
+                    maxContentLength: Infinity,
+                    maxBodyLength: Infinity,
+                    onDownloadProgress: (progressEvent) => {
+                        const mbLoaded = (progressEvent.loaded / (1024 * 1024)).toFixed(2);
+                        if (progressEvent.total) {
+                            const pct = Math.round((progressEvent.loaded / progressEvent.total) * 100);
+                            console.log(`📥 [API] Descargando: ${pct}% (${mbLoaded} MB)`);
+                        } else {
+                            console.log(`📥 [API] Descargando: ${mbLoaded} MB...`);
+                        }
                     }
+                });
+                console.log('✅ Catálogo descargado vía player_api.php (JSON)');
+            } catch (apiErr) {
+                console.warn(`⚠️ player_api.php falló (${apiErr.message}). Intentando get.php (M3U)...`);
+
+                // Intento 2: get.php (M3U) — tiene Access-Control-Allow-Origin: *
+                try {
+                    const m3uUrl = `${currentBaseUrl}/get.php?username=${encodeURIComponent(u)}&password=${encodeURIComponent(p)}&type=m3u_plus&output=ts`;
+                    console.log('📡 [M3U-FALLBACK] Descargando vía get.php (CORS: * garantizado)...');
+                    // Use ORIGINAL fetch to bypass ALL interceptors (evasion engine headers cause CORS)
+                    const _cleanFetch = window._APE_ORIGINAL_FETCH || fetch;
+                    const m3uResp = await _cleanFetch(m3uUrl, {
+                        signal: AbortSignal.timeout(180000) // 3 min for large lists
+                    });
+                    if (!m3uResp.ok) throw new Error(`HTTP ${m3uResp.status}`);
+                    const m3uText = await m3uResp.text();
+                    if (!m3uText.startsWith('#EXTM3U')) throw new Error('Not a valid M3U');
+
+                    // Parse M3U into channel objects matching player_api.php JSON format
+                    const lines = m3uText.split(/\r?\n/);
+                    const channels = [];
+                    let current = null;
+                    let streamId = 1;
+                    for (const line of lines) {
+                        if (line.startsWith('#EXTINF')) {
+                            const nameMatch = line.match(/,(.+)$/);
+                            const name = nameMatch ? nameMatch[1].trim() : 'Unknown';
+                            const logo = (line.match(/tvg-logo="([^"]*)"/) || [])[1] || '';
+                            const id = (line.match(/tvg-id="([^"]*)"/) || [])[1] || '';
+                            const group = (line.match(/group-title="([^"]*)"/) || [])[1] || 'Uncategorized';
+                            const chno = (line.match(/tvg-chno="([^"]*)"/) || [])[1] || '';
+                            current = {
+                                num: streamId,
+                                name: name,
+                                stream_type: 'live',
+                                stream_id: streamId,
+                                stream_icon: logo,
+                                epg_channel_id: id,
+                                category_name: group,
+                                category_id: '',
+                                tvg_chno: chno,
+                                added: '',
+                                is_adult: '0',
+                                custom_sid: '',
+                                direct_source: ''
+                            };
+                            streamId++;
+                        } else if (line && !line.startsWith('#') && current) {
+                            current.direct_source = line.trim();
+                            // Extract stream_id from URL if possible: /live/user/pass/STREAM_ID.ext
+                            const urlIdMatch = line.match(/\/(\d+)\.\w+$/);
+                            if (urlIdMatch) {
+                                current.stream_id = parseInt(urlIdMatch[1], 10);
+                            }
+                            // Map category_name to category_id from categoryMap
+                            if (this.state.categoryMap) {
+                                const catId = Object.entries(this.state.categoryMap)
+                                    .find(([id, name]) => name === current.category_name);
+                                if (catId) current.category_id = catId[0];
+                            }
+                            channels.push(current);
+                            current = null;
+                        }
+                    }
+                    response = { data: channels };
+                    console.log(`✅ [M3U-FALLBACK] ${channels.length.toLocaleString()} canales parseados desde get.php`);
+                } catch (m3uErr) {
+                    console.error(`❌ get.php también falló: ${m3uErr.message}`);
+                    throw apiErr; // Re-throw original error
                 }
-            });
+            }
 
             const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
             console.log('═══════════════════════════════════════════════════════════');
@@ -5333,7 +5563,9 @@ El servidor analizará 26,000+ canales en ~10 minutos.
             username: serverObj.username,
             password: serverObj.password,  // ✅ V4.27.5: Guardar password para biblioteca
             active: true,
-            _expDate: serverObj._expDate || this.state.currentServer?._expDate || undefined  // ✅ V4.28.2: Preservar expDate
+            _expDate: serverObj._expDate || this.state.currentServer?._expDate || undefined,  // ✅ V4.28.2: Preservar expDate
+            _forceTS: this.state.currentServer?._forceTS || false,  // 🛡️ FrontCDN Shield: formato forzado
+            _frontCDNHost: this.state.currentServer?._frontCDNHost || undefined  // 🛡️ CDN detectado
         };
 
         if (append) {
@@ -6117,10 +6349,6 @@ El servidor analizará 26,000+ canales en ~10 minutos.
         // ✅ CORRECCIÓN: Usar srv.name (servidor clickeado)
         alert(`✅ Servidor "${srv.name}" guardado en biblioteca`);
         
-        // ✅ SSOT Whitelist Trigger (Force prompt after manual save)
-        if (typeof this.promptWhitelistServer === 'function') {
-            this.promptWhitelistServer(srv, true);
-        }
     }
 
     /**
@@ -8929,7 +9157,7 @@ El servidor analizará 26,000+ canales en ~10 minutos.
 
     downloadM3U8() {
         if (!this.state.generatedM3U8) return;
-        const b = new Blob([this.state.generatedM3U8], { type: 'text/plain' });
+        const b = new Blob([this.state.generatedM3U8], { type: 'application/vnd.apple.mpegurl' });
         const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = 'list.m3u8'; a.click();
     }
 
@@ -8956,6 +9184,183 @@ El servidor analizará 26,000+ canales en ~10 minutos.
         let csv = 'ID,Name,URL\n' + d.map(c => `${c.stream_id},"${c.name}",${c.url}`).join('\n');
         const b = new Blob([csv], { type: 'text/csv' });
         const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = 'export.csv'; a.click();
+    }
+
+    // ==================== 🧪 EXPORT A LAB EXCEL (Bridge v1.1 MULTI-SERVER) ====================
+    // Exporta canales filtrados + perfiles + TODOS los servers referenciados.
+    // Cada canal construye su URL con SU server (sin server "primario" global).
+    // Contrato: lab_bridge_version=1.1
+    async exportToLAB() {
+        try {
+            const channels = this.getFilteredChannels();
+            if (!channels || channels.length === 0) {
+                alert('⚠️ No hay canales filtrados para exportar. Aplica filtros o carga una lista primero.');
+                return;
+            }
+
+            const self = this;
+            const libServers = this.state?.activeServers || [];
+
+            // Helpers: derivar baseUrl limpio VERBATIM — preserva puerto exactamente como
+            // el user lo guardó. new URL().host omite :80 por ser default HTTP, así que
+            // usamos regex manual que solo corta el path, sin tocar host:port.
+            const deriveBase = (raw) => {
+                if (!raw) return '';
+                // Match: protocol + host (+ optional :port) sin path
+                const m = raw.match(/^(https?:\/\/[^\/\s]+)/i);
+                if (m) return m[1];
+                return raw.replace(/\/player_api\.php.*$/i, '').replace(/\/+$/, '');
+            };
+
+            // Construye URL xtream para UN canal usando SU server (no uno global)
+            const buildUrlFor = (ch, srv) => {
+                if (ch.url && /^https?:\/\//i.test(ch.url)) return ch.url;
+                const base = deriveBase(srv?.baseUrl || srv?.url || '');
+                if (!base || !srv?.username || !srv?.password || ch.stream_id == null) {
+                    return ch.url || '';
+                }
+                const type = ch.stream_type === 'movie' ? 'movie'
+                          : ch.stream_type === 'series' ? 'series' : 'live';
+                const ext  = ch.stream_type === 'movie' ? (ch.container_extension || 'mp4')
+                          : ch.stream_type === 'series' ? 'mp4'
+                          : (self.state?.streamFormat || 'ts');
+                return `${base}/${type}/${encodeURIComponent(srv.username)}/${encodeURIComponent(srv.password)}/${ch.stream_id}.${ext}`;
+            };
+
+            // Conteo de canales por server_id (en los filtrados)
+            const serverCounts = {};
+            for (const ch of channels) {
+                const sid = ch.serverId || 'unknown';
+                serverCounts[sid] = (serverCounts[sid] || 0) + 1;
+            }
+
+            // Lista de servers referenciados por los canales (sin jerarquía, todos iguales)
+            const referencedIds = Object.keys(serverCounts).filter(id => id !== 'unknown');
+            const serversArr = referencedIds.map(id => {
+                const s = libServers.find(x => x.id === id);
+                if (!s) {
+                    return {
+                        id, name: 'UNKNOWN', base_url: null, base_url_raw: null,
+                        url: null, username: null, password: null, channel_count: serverCounts[id]
+                    };
+                }
+                const raw = s.baseUrl || s.url || '';
+                return {
+                    id: s.id,
+                    name: s.name || null,
+                    base_url: deriveBase(raw) || null,
+                    base_url_raw: raw || null,
+                    url: s.url || null,
+                    username: s.username || null,
+                    password: s.password || null,
+                    channel_count: serverCounts[id]
+                };
+            });
+
+            // Indexar servers por id para lookup O(1) al construir URLs
+            const srvById = {};
+            for (const s of serversArr) srvById[s.id] = s;
+            const srvLibById = {};
+            for (const s of libServers) srvLibById[s.id] = s;
+
+            let profilesSnapshot = {};
+            try {
+                const cfg = window.APE_PROFILES_CONFIG;
+                if (cfg?.getAllProfiles) {
+                    profilesSnapshot = JSON.parse(JSON.stringify(cfg.getAllProfiles()));
+                } else if (cfg?.profiles) {
+                    profilesSnapshot = JSON.parse(JSON.stringify(cfg.profiles));
+                } else if (window.ProfileManagerV9?.config?.profiles) {
+                    profilesSnapshot = JSON.parse(JSON.stringify(window.ProfileManagerV9.config.profiles));
+                }
+            } catch (e) {
+                console.warn('[LAB] No se pudieron leer perfiles desde APE_PROFILES_CONFIG:', e);
+            }
+
+            const profilesJson = JSON.stringify(profilesSnapshot);
+            let profilesHash = 'sha256:unavailable';
+            try {
+                if (crypto?.subtle) {
+                    const buf = new TextEncoder().encode(profilesJson);
+                    const digest = await crypto.subtle.digest('SHA-256', buf);
+                    profilesHash = 'sha256:' + Array.from(new Uint8Array(digest))
+                        .map(b => b.toString(16).padStart(2, '0')).join('');
+                }
+            } catch (e) {
+                console.warn('[LAB] Hash falló, continúo sin hash:', e);
+            }
+
+            const payload = {
+                lab_bridge_version: '1.1',
+                exported_at: new Date().toISOString(),
+                source: 'frontend',
+                servers: serversArr,
+                servers_summary: {
+                    total: serversArr.length,
+                    by_id: serverCounts
+                },
+                filters_applied: {
+                    search: this.state?.filterSearch || '',
+                    tier: this.state?.filterTier || null,
+                    codec: this.state?.filterCodec || null,
+                    language: this.state?.filterLanguage || null,
+                    group: this.state?.filterGroup || null
+                },
+                active_profile_id: window.ProfileManagerV9?.getCurrentProfile?.()
+                    || window.ProfileManagerV9?.activeProfileId
+                    || this.state?.selectedProfile
+                    || 'P3',
+                profiles_hash: profilesHash,
+                profiles_snapshot: profilesSnapshot,
+                channels: channels.map(ch => {
+                    const sid = ch.serverId || null;
+                    const srvForCh = sid ? (srvLibById[sid] || srvById[sid] || null) : null;
+                    return {
+                        stream_id: ch.stream_id ?? null,
+                        name: ch.name || '',
+                        group: ch.group || '',
+                        country: ch.country || 'INT',
+                        language: ch.language || 'MIX',
+                        tvg_id: ch.tvg_id || '',
+                        logo: ch.logo || '',
+                        resolution: ch.resolution || '',
+                        codec: ch.codec || '',
+                        bitrate: ch.bitrate ?? null,
+                        width: ch.width ?? null,
+                        height: ch.height ?? null,
+                        fps: ch.fps ?? null,
+                        quality_tier: ch.bitrateTierCode || ch.qualityTier || '',
+                        quality_tags: Array.isArray(ch.qualityTags) ? ch.qualityTags : [],
+                        quality_score: ch.qualityScore ?? null,
+                        is_uhd: !!ch.isUHD, is_hd: !!ch.isHD, is_sd: !!ch.isSD,
+                        is_sports: !!ch.isSports, is_movie: !!ch.isMovie, is_series: !!ch.isSeries,
+                        server_id: sid,
+                        url: buildUrlFor(ch, srvForCh)
+                    };
+                }),
+                channel_count: channels.length
+            };
+
+            const now = new Date();
+            const pad = n => String(n).padStart(2, '0');
+            const fname = `LAB_SNAPSHOT_${now.getFullYear()}${pad(now.getMonth()+1)}${pad(now.getDate())}`
+                        + `_${pad(now.getHours())}${pad(now.getMinutes())}.json`;
+
+            const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = fname;
+            a.click();
+            setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+
+            console.log(`[LAB] Exportado: ${channels.length} canales, ${Object.keys(profilesSnapshot).length} perfiles → ${fname}`);
+            if (typeof this.showToast === 'function') {
+                this.showToast(`🧪 LAB snapshot generado: ${channels.length} canales`, 'success');
+            }
+        } catch (err) {
+            console.error('[LAB] exportToLAB falló:', err);
+            alert('❌ Error exportando a LAB: ' + (err?.message || err));
+        }
     }
 
     // ==================== 🏭 INDUSTRIAL WORKER INTERFACE (v3.0) ====================
@@ -11666,7 +12071,18 @@ El servidor analizará 26,000+ canales en ~10 minutos.
         this.executePendingGenerator();
     }
 
-    executePendingGenerator() {
+    async executePendingGenerator() {
+        // 🪦 OMEGA SLOT REAPER (2026-04-09): Liberar conexiones vigentes ANTES de generar.
+        // Causa raíz documentada: el provider Xtream Codes tiene max_connections=1 (trial),
+        // y cuando active_cons > max el server devuelve 406/403. El reaper espera
+        // hasta que active_cons == 0 (timeout 60s) y muestra status al usuario.
+        // Si el usuario cancela o el timeout vence, ofrece generar de todos modos.
+        try {
+            await this.preflightReapConnectionSlots();
+        } catch (e) {
+            console.warn('⚠️ [SlotReaper] Pre-flight reap falló (no bloqueante):', e);
+        }
+
         if (this.pendingGeneratorType === 'pro') {
             this.generateM3U8Pro();
         } else if (this.pendingGeneratorType === 'ultimate') {
@@ -11690,6 +12106,72 @@ El servidor analizará 26,000+ canales en ~10 minutos.
             console.error("Tipo de generador desconocido:", this.pendingGeneratorType);
         }
         this.pendingGeneratorType = null;
+    }
+
+    /**
+     * 🪦 OMEGA SLOT REAPER hook — invoca window.OmegaSlotReaper para liberar
+     * los slots de conexión Xtream Codes (max_connections) antes de generar.
+     * Multi-server: itera sobre TODOS los activeServers respetando la doctrina
+     * "Each channel uses ITS OWN server".
+     */
+    async preflightReapConnectionSlots() {
+        if (!window.OmegaSlotReaper) {
+            console.log('🪦 [SlotReaper] Módulo no cargado, skip pre-flight reap');
+            return;
+        }
+
+        const servers = this.state.activeServers || [];
+        if (servers.length === 0) {
+            console.log('🪦 [SlotReaper] Sin servers activos, skip');
+            return;
+        }
+
+        console.log(`🪦 [SlotReaper] Iniciando pre-flight reap para ${servers.length} server(s)...`);
+        if (typeof this.showNotification === 'function') {
+            this.showNotification(`🪦 Liberando conexiones de ${servers.length} server(s)...`, false);
+        }
+
+        for (const srv of servers) {
+            const srvName = srv.name || srv.baseUrl || srv.url || 'unknown';
+            console.log(`🪦 [SlotReaper] Reaping ${srvName}...`);
+
+            const result = await window.OmegaSlotReaper.reap(srv, {
+                maxWaitMs:      60000,
+                pollIntervalMs: 3000,
+                burstReap:      true,
+                burstSize:      3,
+                onProgress: (p) => {
+                    if (p.stage === 'check') {
+                        console.log(`   📊 ${srvName}: ${p.active}/${p.max} conexiones activas`);
+                    } else if (p.stage === 'reap_burst') {
+                        console.log(`   💥 ${srvName}: burst reap (${p.count} requests)`);
+                    } else if (p.stage === 'poll') {
+                        console.log(`   ⏳ ${srvName}: ${p.active}/${p.max} (${p.elapsedSec}s)`);
+                        if (typeof this.showNotification === 'function' && p.elapsedSec % 9 === 0) {
+                            this.showNotification(`⏳ ${srvName}: ${p.active}/${p.max} conexiones (${p.elapsedSec}s)`, false);
+                        }
+                    } else if (p.stage === 'error') {
+                        console.warn(`   ⚠️ ${srvName}: ${p.error}`);
+                    }
+                }
+            });
+
+            if (result.ok) {
+                console.log(`✅ [SlotReaper] ${srvName}: ${result.reason} (slots libres)`);
+            } else {
+                console.warn(`⚠️ [SlotReaper] ${srvName}: ${result.reason} — ${result.active}/${result.max}`);
+                const proceed = confirm(
+                    `⚠️ Servidor ${srvName} todavía tiene ${result.active}/${result.max} conexiones activas tras 60s.\n\n` +
+                    `Cierra la lista en otros dispositivos antes de continuar.\n\n` +
+                    `¿Generar de todos modos? (puede fallar con 403)`
+                );
+                if (!proceed) {
+                    throw new Error('Pre-flight reap cancelado por el usuario');
+                }
+            }
+        }
+
+        console.log('✅ [SlotReaper] Pre-flight reap completado, procediendo a generar...');
     }
 
     saveNetworkProfile() {
@@ -11747,12 +12229,20 @@ El servidor analizará 26,000+ canales en ~10 minutos.
     async generateM3U8Ultimate() {
         console.log('%c👑 [APE v9.0 ULTIMATE] Iniciando generación World-Class...', 'color: #8b5cf6; font-weight: bold;');
 
-        // 1. Verificar canales disponibles — USAR FILTRADOS, no todos
-        const channels = this.getFilteredChannels();
+        // 🎯 FILTER-FIRST DOCTRINE: respetar Constructor de Filtros.
+        // Si hay filtros activos, usar getFilteredChannels(). Si no, caer al master.
+        const filtered = (typeof this.getFilteredChannels === 'function') ? this.getFilteredChannels() : null;
+        const channels = (filtered && filtered.length > 0)
+            ? filtered
+            : (this.state.channelsMaster && this.state.channelsMaster.length > 0)
+                ? this.state.channelsMaster
+                : (this.state.channels || []);
         if (channels.length === 0) {
-            alert('⚠️ No hay canales cargados (o filtrados). Conecta un servidor o ajusta los filtros.');
+            alert('⚠️ No hay canales cargados. Conecta un servidor primero.');
             return;
         }
+        const sourceLabel = (filtered && filtered.length > 0) ? 'FILTRADOS' : 'MASTER (sin filtro activo)';
+        console.log(`%c🎯 [FILTER-FIRST] Usando ${channels.length} canales ${sourceLabel}`, 'color:#0ea5e9;font-weight:bold;');
 
         // 2. Verificar que el generador está disponible
         if (typeof window.WorldClassM3U8Generator === 'undefined') {
@@ -11850,3 +12340,127 @@ El servidor analizará 26,000+ canales en ~10 minutos.
 }
 
 document.addEventListener('DOMContentLoaded', () => { window.app = new IPTVNavigatorPro(); });
+
+// ============================================================================
+// ⭐ OMEGA 5 — BOTÓN ÚNICO CONSOLIDADO (LAB + Nivel 1/2/3 + headerOverrides)
+// Pipeline aislado que consume TODO el desarrollo OMEGA sin depender de
+// rutas legacy (Unified/Ultimate/TypedArrays). Logs ruidosos, errores visibles.
+// ============================================================================
+window.generateOmega5 = async function () {
+    const TAG = '%c⭐ [OMEGA 5]';
+    const CSS = 'color:#fbbf24;font-weight:bold;font-size:14px;background:#1a1a1a;padding:3px 8px;border-radius:4px;';
+    console.log(TAG + ' ════════════════════════════════════════════════', CSS);
+    console.log(TAG + ' INICIANDO PIPELINE OMEGA 5', CSS);
+    console.log(TAG + ' ════════════════════════════════════════════════', CSS);
+
+    try {
+        // 1. Verificar app + canales
+        if (!window.app || !window.app.state) {
+            alert('❌ OMEGA 5: app.state no disponible. Recarga la página.');
+            return;
+        }
+        // 🎯 FILTER-FIRST DOCTRINE: respetar Constructor de Filtros.
+        const filtered = (typeof window.app.getFilteredChannels === 'function') ? window.app.getFilteredChannels() : null;
+        const channels = (filtered && filtered.length > 0)
+            ? filtered
+            : (window.app.state.channelsMaster || window.app.state.channels || []);
+        const sourceLabel = (filtered && filtered.length > 0) ? 'FILTRADOS' : 'MASTER';
+        console.log(TAG + ` Canales a generar: ${channels.length} (${sourceLabel})`, CSS);
+        if (channels.length === 0) {
+            alert('❌ OMEGA 5: No hay canales cargados. Conecta un servidor primero.');
+            return;
+        }
+
+        // 2. Verificar generator World-Class (el que modificamos para consumir LAB)
+        if (typeof window.WorldClassM3U8Generator === 'undefined' ||
+            typeof window.WorldClassM3U8Generator.generateWorldClassM3U8 !== 'function') {
+            alert('❌ OMEGA 5: WorldClassM3U8Generator no disponible. Recarga con Ctrl+Shift+R.');
+            return;
+        }
+        console.log(TAG + ' WorldClassM3U8Generator OK', CSS);
+
+        // 3. Snapshot LAB (para log)
+        const labCfg = window.APE_PROFILES_CONFIG || {};
+        const n1 = (labCfg.nivel1Directives || []).length;
+        const n3 = labCfg.nivel3PerLayer || {};
+        const n3keys = Object.keys(n3);
+        const n3total = n3keys.reduce((s, k) => s + (n3[k] || []).length, 0);
+        console.log(TAG + ` LAB nivel1: ${n1} directivas | nivel3: ${n3total} en ${n3keys.length} capas [${n3keys.join(',')}]`, CSS);
+        if (n1 === 0 && n3total === 0) {
+            if (!confirm('⚠️ OMEGA 5: El LAB no está cargado (nivel1/nivel3 vacíos).\n\n¿Generar igualmente con perfiles base?')) return;
+        }
+
+        // 4. Perfil activo
+        const activeProfile = (window.ProfileManagerV9 && window.ProfileManagerV9.activeProfileId) || 'P3';
+        console.log(TAG + ` Perfil activo: ${activeProfile}`, CSS);
+
+        // 5. Generar
+        console.log(TAG + ' Generando .m3u8...', CSS);
+        const t0 = performance.now();
+        const options = {
+            profileId: activeProfile,
+            includeAll: true,
+            labBridge: true
+        };
+        const content = await window.WorldClassM3U8Generator.generateWorldClassM3U8(channels, options);
+        const ms = (performance.now() - t0).toFixed(0);
+
+        if (!content || typeof content !== 'string' || content.length < 100) {
+            console.error(TAG + ' Contenido vacío o inválido', CSS, content);
+            alert(`❌ OMEGA 5: El generador devolvió contenido vacío (${content?.length || 0} bytes).\n\nRevisa consola.`);
+            return;
+        }
+
+        // 6. Stats del output
+        const lines = content.split('\n').length;
+        const extinf = (content.match(/^#EXTINF/gm) || []).length;
+        const exthttp = (content.match(/^#EXTHTTP/gm) || []).length;
+        const extvlc = (content.match(/^#EXTVLCOPT/gm) || []).length;
+        const kodiprop = (content.match(/^#KODIPROP/gm) || []).length;
+        const nivel1Mark = (content.match(/NIVEL_1 LAB/g) || []).length;
+        const nivel3Mark = (content.match(/NIVEL_3 LAB/g) || []).length;
+        const sizeKB = (content.length / 1024).toFixed(1);
+        const sizeMB = (content.length / 1024 / 1024).toFixed(2);
+
+        console.log(TAG + ` ✅ Generado en ${ms}ms`, CSS);
+        console.log(TAG + ` Tamaño: ${sizeKB} KB (${sizeMB} MB)`, CSS);
+        console.log(TAG + ` Líneas totales: ${lines}`, CSS);
+        console.log(TAG + ` #EXTINF: ${extinf} | #EXTHTTP: ${exthttp} | #EXTVLCOPT: ${extvlc} | #KODIPROP: ${kodiprop}`, CSS);
+        console.log(TAG + ` LAB NIVEL_1 marcadores: ${nivel1Mark} | NIVEL_3 marcadores: ${nivel3Mark}`, CSS);
+
+        // 7. Descargar .m3u8
+        const blob = new Blob([content], { type: 'application/vnd.apple.mpegurl;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+        a.href = url;
+        a.download = `omega5_${extinf}ch_${ts}.m3u8`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+
+        console.log(TAG + ` 💾 Descargado: ${a.download}`, CSS);
+        console.log(TAG + ' ════════════════════════════════════════════════', CSS);
+
+        alert(
+            `⭐ OMEGA 5 — LISTA GENERADA\n\n` +
+            `📁 Archivo: ${a.download}\n` +
+            `📊 Tamaño: ${sizeMB} MB (${sizeKB} KB)\n` +
+            `📺 Canales: ${extinf}\n` +
+            `📝 Líneas totales: ${lines.toLocaleString()}\n\n` +
+            `🧪 LAB inyectado:\n` +
+            `   • NIVEL_1 marcadores: ${nivel1Mark}\n` +
+            `   • NIVEL_3 marcadores: ${nivel3Mark}\n` +
+            `   • #EXTHTTP: ${exthttp}\n` +
+            `   • #EXTVLCOPT: ${extvlc}\n` +
+            `   • #KODIPROP: ${kodiprop}\n\n` +
+            `⏱️ Tiempo: ${ms}ms`
+        );
+    } catch (err) {
+        console.error('❌ [OMEGA 5] ERROR:', err);
+        alert(`❌ OMEGA 5 ERROR:\n\n${err.message}\n\nRevisa consola (F12) para el stack trace.`);
+    }
+};
+
+console.log('%c⭐ OMEGA 5 disponible: window.generateOmega5() o botón dorado-rojo "OMEGA 5"', 'color:#fbbf24;font-weight:bold;background:#1a1a1a;padding:4px 10px;border-radius:4px;');

@@ -101,30 +101,22 @@ class ApeCredentials
         }
 
         if (isset($master)) {
-            
-            // Auto-Corregir credenciales si están vacías, son 'CRED_MISSING' o tienen typos sospechosos 
-            // como 'U56@DP'
+
+            // REGLA ABSOLUTA: Las credenciales guardadas por el usuario son sagradas.
+            // Solo completar campos vacíos o CRED_MISSING. NUNCA sobrescribir valores reales.
             if (empty($providedUser) || $providedUser === 'CRED_MISSING') {
                 $providedUser = $master['user'];
             }
-            if (empty($providedPass) || $providedPass === 'CRED_MISSING' || $providedPass === 'U56@DP') {
-                $providedPass = $master['pass'];
-            }
-            
-            // Si el frontend envía '3JHFTC', GARANTIZAR que use 'U56BDP' (SSOT)
-            if ($providedUser === $master['user']) {
+            if (empty($providedPass) || $providedPass === 'CRED_MISSING') {
                 $providedPass = $master['pass'];
             }
 
-            // AUTO-RECONSTRUCCIÓN SSOT ABSOLUTA
-            // Si el diccionario maestro NO tiene 'host' declarado explícitamente, pero 
-            // su identificador ($matchedKey) trae un puerto por defecto ('dominio:puerto'), 
-            // forzamos matemáticamente esa URL para blindar CUALQUIER proveedor futuro.
+            // Host: usar el del maestro si está declarado, sino construir desde la key
             $fallbackHost = 'http://' . ltrim($matchedKey, '/');
             $finalHost = $master['host'] ?? $fallbackHost;
 
             return [
-                'host' => $finalHost, // Host blindado del maestro o autoconstruido
+                'host' => $finalHost,
                 'user' => $providedUser,
                 'pass' => $providedPass
             ];

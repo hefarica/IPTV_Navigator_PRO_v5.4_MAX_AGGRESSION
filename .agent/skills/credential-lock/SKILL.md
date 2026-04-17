@@ -193,3 +193,86 @@ this.state.searchQuery = data.searchQuery || '';
 | `index-v4.html` L1254 | `<form>` wrapper + atributos anti-autofill |
 | `index-v4.html` L3260 | Multi-timer anti-autofill (DOMContentLoaded) |
 | `app.js` loadFilterState() | `searchQuery = ''` siempre |
+
+---
+
+# 🔴 REGLA ABSOLUTA: URL Builder — NUNCA Usar channel.url Directo
+
+## Contexto del Bug (2026-04-17)
+
+El API de Xtream Codes devuelve por cada canal una URL pre-tokenizada con el formato:
+```
+http://IP:PORT/live/play/BASE64_TOKEN_UNICO_POR_CANAL/stream_id
+```
+
+Esta URL **NO es la URL real de playback**. Es un token interno del panel del proveedor.
+Si el generador usa esta URL directamente, **TODOS los canales fallan con "clave incorrecta"**.
+
+## Formato REAL de URL Xtream (el que SÍ funciona)
+
+```
+http://{host}:{port}/live/{USERNAME}/{PASSWORD}/{stream_id}.{ext}
+```
+
+Donde `USERNAME` y `PASSWORD` son las credenciales REALES del servidor guardadas en:
+- `window.app.state.activeServers[i].username / password`
+- `window.app.state.activeServers[i]._lockedUsername / _lockedPassword`
+- `localStorage → iptv_server_library`
+
+## Regla de Construcción de URL
+
+```
+SIEMPRE:  credentialsMap[serverId] → { baseUrl, username, password }
+          → http://{baseUrl}/live/{username}/{password}/{stream_id}.m3u8
+
+NUNCA:    channel.url → http://IP/live/play/TOKEN/stream_id  ← PROHIBIDO como shortcut
+```
+
+## Implementación en buildChannelUrl()
+
+```javascript
+// 🔴 PROHIBIDO — causó el bug de "clave incorrecta" (2026-04-17)
+if (existingUrl && existingUrl.includes('/live/')) {
+    return existingUrl;  // ← ESTO DEVUELVE LA URL TOKENIZADA
+}
+
+// ✅ CORRECTO — SIEMPRE reconstruir desde credentialsMap
+// existingUrl se guarda SOLO como último fallback si credentialsMap está vacío
+```
+
+## Flujo Correcto de Prioridades
+
+```
+1. buildUniversalUrl(channel, credentialsMap[sid], fingerprint)
+   → Reconstruye con username/password REALES
+   
+2. buildChannelUrl(channel, jwt, profile, index, credentialsMap)
+   → Busca en credentialsMap por: serverId → hostname → activeServers → __current__
+   → Reconstruye con username/password REALES
+   
+3. ÚLTIMO RECURSO: channel.url (solo si CERO credenciales disponibles)
+```
+
+## Anti-Patrones (PROHIBIDOS)
+
+```javascript
+// ❌ PROHIBIDO: Retornar channel.url sin verificar credentialsMap
+if (channel.url.includes('/live/')) return channel.url;
+
+// ❌ PROHIBIDO: Usar tokens del API como password
+const pass = urlParts[2]; // "WXpONFNtWmpOWEk..." ← TOKEN, NO PASSWORD
+
+// ❌ PROHIBIDO: Generar un token diferente por canal como password
+password = btoa(channel.stream_id + secret); // ← CADA CANAL CON PASSWORD DIFERENTE = MAL
+
+// ✅ CORRECTO: TODOS los canales del MISMO servidor usan LAS MISMAS credenciales
+const url = `${creds.baseUrl}/live/${creds.username}/${creds.password}/${streamId}.m3u8`;
+```
+
+## Archivos Afectados
+
+| Archivo | Línea | Cambio |
+| ------- | ----- | ------ |
+| `m3u8-typed-arrays-ultimate.js` | `buildChannelUrl()` | Eliminado shortcut con `channel.url` |
+| `m3u8-typed-arrays-ultimate.js` | `buildUniversalUrl()` | Usa `creds.username`/`creds.password` |
+| `m3u8-typed-arrays-ultimate.js` | `buildCredentialsMap()` | Prioriza `_lockedUsername`/`_lockedPassword` |

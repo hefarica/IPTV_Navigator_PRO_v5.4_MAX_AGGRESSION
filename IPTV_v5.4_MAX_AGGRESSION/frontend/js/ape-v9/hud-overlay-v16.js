@@ -34,6 +34,7 @@
         init(totalChannels, config = {}) {
             this.startTime = Date.now();
             this.aborted = false;
+            window.__APE_GENERATION_ABORTED__ = false;
 
             // Remover HUD anterior si existe
             const existing = document.getElementById('ape-hud-v16');
@@ -189,11 +190,14 @@
                 statTime: document.getElementById('stat-time')
             };
 
-            // Cancel button handler
+            // Cancel button handler — detiene generación real via flag global
             document.getElementById('ape-cancel').addEventListener('click', () => {
                 this.aborted = true;
-                this.log('⚠️ ABORTANDO PROCESO...', '#ff1744');
-                setTimeout(() => this.close(), 1500);
+                window.__APE_GENERATION_ABORTED__ = true;
+                this.log('⛔ CANCELANDO GENERACIÓN — procesando canales restantes se detendrá...', '#ff1744');
+                document.getElementById('ape-cancel').textContent = '⏳ Cancelando...';
+                document.getElementById('ape-cancel').disabled = true;
+                setTimeout(() => this.close(), 2000);
             });
 
             this.log('🚀 HUD v16.0 Inicializado', '#00ff41');

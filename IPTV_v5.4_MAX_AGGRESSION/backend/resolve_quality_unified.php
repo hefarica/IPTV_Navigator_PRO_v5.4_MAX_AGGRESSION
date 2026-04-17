@@ -773,11 +773,14 @@ function rq_fetch(string $url, int $timeoutSec = RQ_FETCH_TIMEOUT): ?string
         ? UAPhantomEngine::getForChannel(abs(crc32(get_correlated_channel_id())), get_correlated_channel_id())
         : 'VLC/3.0.20 LibVLC/3.0.20';
 
+    // PhD-AUDIT FIX F7 (2026-04-11): Permissive TLS for IPTV context.
+    // Many small IPTV providers use self-signed or expired certs that cause
+    // silent failures. SSL verification must be OFF for IPTV aggregation.
     $ctx = stream_context_create([
         'http' => [
             'method'          => 'GET',
             'timeout'         => $timeoutSec,
-            'follow_location' => 0,
+            'follow_location' => 1,
             'ignore_errors'   => true,
             'header'          => implode("\r\n", [
                 "User-Agent: {$ua}",
@@ -785,6 +788,11 @@ function rq_fetch(string $url, int $timeoutSec = RQ_FETCH_TIMEOUT): ?string
                 'Cache-Control: no-cache',
                 'Connection: keep-alive',
             ]),
+        ],
+        'ssl' => [
+            'verify_peer'       => false,
+            'verify_peer_name'  => false,
+            'allow_self_signed' => true,
         ],
     ]);
 
@@ -845,6 +853,61 @@ function rq_error_m3u(string $errorMessage): string
 function q(string $key, mixed $default = ''): mixed
 {
     return $_GET[$key] ?? $default;
+}
+
+/**
+ * Resuelve credenciales del servidor desde el parámetro srv del request.
+ * srv puede venir como: host|user|pass, o como alias (tivi_01).
+ * Las credenciales del request son la verdad absoluta — ApeCredentials solo
+ * completa campos vacíos/CRED_MISSING, nunca sobrescribe valores reales.
+ * Fallback a tivi-ott solo si srv viene completamente vacío (backward compat).
+ */
+function rq_resolve_server_credentials(): array
+{
+    static $cached = null;
+    if ($cached !== null) return $cached;
+
+    $srvParam = q('srv', '');
+    $mHost = '';
+    $mUser = 'CRED_MISSING';
+    $mPass = 'CRED_MISSING';
+
+    if ($srvParam !== '') {
+        // srv puede ser base64 o pipe-separated
+        $decoded = base64_decode($srvParam, true);
+        $raw = ($decoded !== false && str_contains($decoded, '|')) ? $decoded : $srvParam;
+        $parts = explode('|', $raw);
+        $mHost = $parts[0] ?? '';
+        $mUser = $parts[1] ?? 'CRED_MISSING';
+        $mPass = $parts[2] ?? 'CRED_MISSING';
+    }
+
+    // Si srv viene vacío, es un bug del frontend. NO adivinar credenciales.
+    if (empty($mHost)) {
+        error_log('[RESOLVER] srv param vacío — no se puede resolver sin credenciales del servidor');
+        $cached = ['host' => '', 'user' => 'CRED_MISSING', 'pass' => 'CRED_MISSING'];
+        return $cached;
+    }
+
+    // ApeCredentials solo completa campos CRED_MISSING/vacíos, no sobrescribe
+    $apeCredsFile = __DIR__ . '/ape_credentials.php';
+    if (file_exists($apeCredsFile)) {
+        require_once $apeCredsFile;
+        if (class_exists('ApeCredentials')) {
+            $rc = ApeCredentials::resolve($mHost, $mUser, $mPass);
+            $mHost = $rc['host'];
+            $mUser = $rc['user'];
+            $mPass = $rc['pass'];
+        }
+    }
+
+    // Asegurar que host tenga protocolo
+    if ($mHost && !str_starts_with($mHost, 'http')) {
+        $mHost = 'http://' . $mHost;
+    }
+
+    $cached = ['host' => $mHost, 'user' => $mUser, 'pass' => $mPass];
+    return $cached;
 }
 
 /**
@@ -5866,19 +5929,10 @@ function rq_handle_request(): void
             $channelId = q('ch', '0');
             $metaEngine = new MetadataEngine();
             // Build stream URL from default credentials
-            $apeCredsFile = __DIR__ . '/ape_credentials.php';
-            $mHost = 'http://line.tivi-ott.net';
-            $mUser = '3JHFTC';
-            $mPass = 'U56BDP';
-            if (file_exists($apeCredsFile)) {
-                require_once $apeCredsFile;
-                if (class_exists('ApeCredentials')) {
-                    $rc = ApeCredentials::resolve('line.tivi-ott.net', $mUser, $mPass);
-                    $mHost = 'http://' . $rc['host'];
-                    $mUser = $rc['user'];
-                    $mPass = $rc['pass'];
-                }
-            }
+            $srvCreds = rq_resolve_server_credentials();
+            $mHost = $srvCreds['host'];
+            $mUser = $srvCreds['user'];
+            $mPass = $srvCreds['pass'];
             $streamUrl = rtrim($mHost, '/') . "/live/{$mUser}/{$mPass}/{$channelId}.m3u8";
             $manifest = $metaEngine->fetchManifest($streamUrl);
             if (!$manifest['is_valid']) {
@@ -5920,19 +5974,10 @@ function rq_handle_request(): void
             }
             $channelId = q('ch', '0');
             $metaEngine = new MetadataEngine();
-            $apeCredsFile = __DIR__ . '/ape_credentials.php';
-            $mHost = 'http://line.tivi-ott.net';
-            $mUser = '3JHFTC';
-            $mPass = 'U56BDP';
-            if (file_exists($apeCredsFile)) {
-                require_once $apeCredsFile;
-                if (class_exists('ApeCredentials')) {
-                    $rc = ApeCredentials::resolve('line.tivi-ott.net', $mUser, $mPass);
-                    $mHost = 'http://' . $rc['host'];
-                    $mUser = $rc['user'];
-                    $mPass = $rc['pass'];
-                }
-            }
+            $srvCreds = rq_resolve_server_credentials();
+            $mHost = $srvCreds['host'];
+            $mUser = $srvCreds['user'];
+            $mPass = $srvCreds['pass'];
             $streamUrl = rtrim($mHost, '/') . "/live/{$mUser}/{$mPass}/{$channelId}.m3u8";
             $manifest = $metaEngine->fetchManifest($streamUrl);
             if (!$manifest['is_valid']) {
@@ -5958,19 +6003,10 @@ function rq_handle_request(): void
             }
             $channelId = q('ch', '0');
             $metaEngine = new MetadataEngine();
-            $apeCredsFile = __DIR__ . '/ape_credentials.php';
-            $mHost = 'http://line.tivi-ott.net';
-            $mUser = '3JHFTC';
-            $mPass = 'U56BDP';
-            if (file_exists($apeCredsFile)) {
-                require_once $apeCredsFile;
-                if (class_exists('ApeCredentials')) {
-                    $rc = ApeCredentials::resolve('line.tivi-ott.net', $mUser, $mPass);
-                    $mHost = 'http://' . $rc['host'];
-                    $mUser = $rc['user'];
-                    $mPass = $rc['pass'];
-                }
-            }
+            $srvCreds = rq_resolve_server_credentials();
+            $mHost = $srvCreds['host'];
+            $mUser = $srvCreds['user'];
+            $mPass = $srvCreds['pass'];
             $streamUrl = rtrim($mHost, '/') . "/live/{$mUser}/{$mPass}/{$channelId}.m3u8";
             $manifest = $metaEngine->fetchManifest($streamUrl);
             if (!$manifest['is_valid']) {
@@ -6005,19 +6041,10 @@ function rq_handle_request(): void
 
             $input = array_slice($input, 0, 50); // Strict MAX 50 channels per cluster request to avoid server choke
 
-            $apeCredsFile = __DIR__ . '/ape_credentials.php';
-            $mHost = 'http://line.tivi-ott.net';
-            $mUser = '3JHFTC';
-            $mPass = 'U56BDP';
-            if (file_exists($apeCredsFile)) {
-                require_once $apeCredsFile;
-                if (class_exists('ApeCredentials')) {
-                    $rc = ApeCredentials::resolve('line.tivi-ott.net', $mUser, $mPass);
-                    $mHost = 'http://' . $rc['host'];
-                    $mUser = $rc['user'];
-                    $mPass = $rc['pass'];
-                }
-            }
+            $srvCreds = rq_resolve_server_credentials();
+            $mHost = $srvCreds['host'];
+            $mUser = $srvCreds['user'];
+            $mPass = $srvCreds['pass'];
 
             $mh = curl_multi_init();
             $chArr = [];
@@ -6113,19 +6140,10 @@ function rq_handle_request(): void
             }
             $channelId = q('ch', '0');
             $metaEngine = new MetadataEngine();
-            $apeCredsFile = __DIR__ . '/ape_credentials.php';
-            $mHost = 'http://line.tivi-ott.net';
-            $mUser = '3JHFTC';
-            $mPass = 'U56BDP';
-            if (file_exists($apeCredsFile)) {
-                require_once $apeCredsFile;
-                if (class_exists('ApeCredentials')) {
-                    $rc = ApeCredentials::resolve('line.tivi-ott.net', $mUser, $mPass);
-                    $mHost = 'http://' . $rc['host'];
-                    $mUser = $rc['user'];
-                    $mPass = $rc['pass'];
-                }
-            }
+            $srvCreds = rq_resolve_server_credentials();
+            $mHost = $srvCreds['host'];
+            $mUser = $srvCreds['user'];
+            $mPass = $srvCreds['pass'];
             $streamUrl = rtrim($mHost, '/') . "/live/{$mUser}/{$mPass}/{$channelId}.m3u8";
             $manifest = $metaEngine->fetchManifest($streamUrl);
             if (!$manifest['is_valid']) {
@@ -6151,11 +6169,63 @@ function rq_handle_request(): void
 
 
 
+    // ─── MODO 0: PROBE XTREAM AMBIGUOUS (Chief Architect 2026-04-11) ───
+    // Server-side HEAD + content-sniffing for URLs the browser can't probe (CORS).
+    // Used by MultiServerFusionEngine.probeContentType() when direct probe fails.
+    // GET params: action=probe_xtream_ambiguous & url=<target>
+    // Returns: JSON { kind: 'HLS'|'TS'|'DASH'|'UNKNOWN', contentType, finalUrl, status }
+    if (isset($_GET['action']) && $_GET['action'] === 'probe_xtream_ambiguous') {
+        header('Content-Type: application/json; charset=utf-8');
+        header('Access-Control-Allow-Origin: *');
+        header('Access-Control-Expose-Headers: Content-Type');
+        $probeUrl = $_GET['url'] ?? '';
+        if (!preg_match('~^(https?|rtmp|rtsp)://~i', $probeUrl)) {
+            echo json_encode(['kind' => 'UNKNOWN', 'error' => 'invalid_url']);
+            return;
+        }
+        $ch = curl_init($probeUrl);
+        curl_setopt_array($ch, [
+            CURLOPT_NOBODY         => true,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_FOLLOWLOCATION => true,
+            CURLOPT_MAXREDIRS      => 5,
+            CURLOPT_TIMEOUT        => 6,
+            CURLOPT_CONNECTTIMEOUT => 3,
+            CURLOPT_SSL_VERIFYPEER => false,
+            CURLOPT_SSL_VERIFYHOST => false,
+            CURLOPT_USERAGENT      => 'VLC/3.0.20 LibVLC/3.0.20',
+            CURLOPT_HTTPHEADER     => ['Accept: */*'],
+        ]);
+        curl_exec($ch);
+        $status = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $ct     = (string)curl_getinfo($ch, CURLINFO_CONTENT_TYPE);
+        $final  = (string)curl_getinfo($ch, CURLINFO_EFFECTIVE_URL);
+        curl_close($ch);
+        $kind = 'UNKNOWN';
+        if (preg_match('~(application/vnd\.apple\.mpegurl|application/x-mpegurl)~i', $ct)) $kind = 'HLS';
+        elseif (preg_match('~(video/mp2t|application/octet-stream)~i', $ct) && preg_match('~\.(ts|m4s)(\?|$)~i', $final)) $kind = 'TS';
+        elseif (preg_match('~(application/dash\+xml)~i', $ct)) $kind = 'DASH';
+        elseif (preg_match('~\.m3u8(\?|$)~i', $final)) $kind = 'HLS';
+        elseif (preg_match('~\.ts(\?|$)~i', $final)) $kind = 'TS';
+        elseif (preg_match('~\.mpd(\?|$)~i', $final)) $kind = 'DASH';
+        echo json_encode([
+            'kind'        => $kind,
+            'contentType' => $ct,
+            'finalUrl'    => $final,
+            'status'      => $status,
+        ]);
+        return;
+    }
+
     // ─── MODO 1: Procesar lista remota (?url=...) ───
     if (isset($_GET['url']) && $_GET['url'] !== '') {
-        $url = filter_var($_GET['url'], FILTER_VALIDATE_URL);
-        if ($url === false) {
-            echo rq_error_m3u(errorMessage: 'URL inválida');
+        // PhD-AUDIT FIX F6 (2026-04-11): FILTER_VALIDATE_URL rejects IPv4:port
+        // paths with underscores in hostnames (valid in IPTV), non-ASCII chars,
+        // weird paths — common with small providers. Replaced with permissive
+        // regex that accepts http/https/rtmp/rtsp/srt/udp/mms schemes.
+        $url = $_GET['url'] ?? '';
+        if (!preg_match('~^(https?|rtmp|rtsp|srt|udp|mms)://~i', $url)) {
+            echo rq_error_m3u(errorMessage: 'URL inválida (esquema no soportado)');
             return;
         }
 
@@ -6833,7 +6903,7 @@ function rq_handle_request(): void
         $healthMetrics = OmegaStreamingHealthEngine::evaluateStreamHealth($healthConfig);
         OmegaStreamingHealthEngine::enforceHealthConstraintsAndDefend($healthMetrics, $output);
 
-        // Integración de CortexOrchestrator (Políticas de Hara Kiri y Reacción a Fallos)
+        // Integración de CortexOrchestrator (Políticas de Fallback y Reacción a Fallos)
         if (file_exists(__DIR__ . '/cortex_orchestrator.php')) {
             require_once __DIR__ . '/cortex_orchestrator.php';
             $httpStatus = http_response_code() ?: 200;

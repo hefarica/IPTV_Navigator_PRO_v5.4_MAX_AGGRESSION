@@ -593,7 +593,7 @@
                             chunks.push(data);
                         },
                         close: async () => {
-                            const blob = new Blob(chunks, { type: 'audio/x-mpegurl' });
+                            const blob = new Blob(chunks, { type: 'application/vnd.apple.mpegurl' });
                             const url = URL.createObjectURL(blob);
                             const a = document.createElement('a');
                             a.href = url;

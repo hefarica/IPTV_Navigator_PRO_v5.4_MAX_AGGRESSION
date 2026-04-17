@@ -97,24 +97,29 @@
         },
         hdr_color: {
             name: "🎨 10. HDR/Color",
-            description: "12-bit Rec.2020 Depth (HDR-Support, Chroma, HEVC-Profiles)",
+            description: "12-bit Rec.2020 Depth + HDR10+/Dolby Vision (25 headers)",
             headers: [
                 "X-HDR-Support", "X-Color-Depth", "X-Color-Space",
                 "X-Dynamic-Range", "X-HDR-Transfer-Function", "X-Color-Primaries",
                 "X-Matrix-Coefficients", "X-Chroma-Subsampling",
                 "X-HEVC-Tier", "X-HEVC-Level", "X-HEVC-Profile",
                 "X-Video-Profile", "X-Rate-Control", "X-Entropy-Coding",
-                "X-Compression-Level", "X-Pixel-Format", "X-Sharpen-Sigma"
+                "X-Compression-Level", "X-Pixel-Format", "X-Sharpen-Sigma",
+                "X-HDR-Mode", "X-HDR-Peak-Nits", "X-Color-Transfer",
+                "X-Bit-Depth", "X-Tone-Mapping-Peak", "X-Tone-Mapping-Reference",
+                "X-BT2020", "X-Full-Range"
             ]
         },
         resolution: {
             name: "📺 11. Resolution",
             description: "8K to Failover (Max-Resolution, FPS, Bitrate, Throughput)",
             headers: [
-                "X-Max-Resolution", "X-APE-RESOLUTION", "X-APE-FPS", 
-                "X-APE-BITRATE", "X-APE-TARGET-BITRATE", "X-APE-THROUGHPUT-T1", 
-                "X-APE-THROUGHPUT-T2", "X-Frame-Rates", "X-Aspect-Ratio", 
-                "X-Pixel-Aspect-Ratio"
+                "X-Max-Resolution", "X-APE-RESOLUTION", "X-APE-FPS",
+                "X-APE-BITRATE", "X-APE-TARGET-BITRATE", "X-APE-THROUGHPUT-T1",
+                "X-APE-THROUGHPUT-T2", "X-Frame-Rates", "X-Aspect-Ratio",
+                "X-Pixel-Aspect-Ratio",
+                "X-Stream-Resolution", "X-Stream-FPS", "X-Stream-Bitrate",
+                "X-Stream-Codecs", "X-Segment-Duration-S"
             ]
         },
         audio: {
@@ -153,9 +158,32 @@
         },
         codecs: {
             name: "🎥 16. Codecs",
-            description: "VVC/AV1 Dominance (Video-Codecs, Audio-Codecs, DRM, Support)",
+            description: "VVC/AV1/Dolby Vision Dominance (Full codec chain + priority)",
             headers: [
-                "X-Video-Codecs", "X-Audio-Codecs", "X-DRM-Support", "X-Codec-Support"
+                "X-Video-Codecs", "X-Audio-Codecs", "X-DRM-Support", "X-Codec-Support",
+                "X-Codec-Full", "X-Codec-Priority", "X-Audio-Codec-Preferred"
+            ]
+        },
+        hlsjs_engine: {
+            name: "🚀 16b. HLS.js Engine",
+            description: "HLS.js v1.6 Official Calibration + CMCD CTA-5004 (31 params, 73 events)",
+            headers: [
+                "X-HLSjs-Config", "X-HLSjs-Version", "X-HLSjs-API-Version",
+                "X-HLSjs-Events-Listener", "X-HLSjs-ErrorDetails-Handled",
+                "X-HLSjs-Telemetry-Mode", "X-HLSjs-Recovery-Matrix",
+                "X-HLSjs-Error-Penalty-Expire-Ms", "X-HLSjs-State-Transitions",
+                "X-Shaka-Config", "X-Shaka-Version",
+                "X-ExoPlayer-Config", "X-ExoPlayer-Version",
+                "X-ABR-Algorithm", "X-ABR-Fast-Window-S", "X-ABR-Slow-Window-S",
+                "X-ABR-BW-Factor", "X-ABR-Switch-Interval-S",
+                "X-Low-Latency-Mode", "X-Live-Sync-Duration-Count",
+                "X-Live-Max-Latency-Count", "X-Stall-Detection-Ms",
+                "X-Fragment-Retry-Max", "X-Fragment-TTFB-Max-Ms",
+                "X-Bitrate-Ladder", "X-Bitrate-Ladder-Source",
+                "CMCD-Object", "CMCD-Request", "CMCD-Session", "CMCD-Status",
+                "X-QoE-Startup-Target-Ms", "X-QoE-Rebuffer-Ratio-Target",
+                "X-QoE-TTFB-Target-Ms", "X-QoE-Bitrate-Target-Mbps",
+                "X-QoE-Monitor", "X-QoE-Player"
             ]
         },
         extra: {
@@ -286,6 +314,7 @@
                 "anti_freeze",
                 "abr_control",
                 "codecs",
+                "hlsjs_engine",
                 "extra",
                 "ott_navigator",
                 "streaming_control",
@@ -890,6 +919,7 @@
                 "ape_core",
                 "playback",
                 "codecs",
+                "hlsjs_engine",
                 "cdn",
                 "metadata",
                 "hdr_color",
@@ -1501,6 +1531,7 @@
                 "ape_core",
                 "playback",
                 "codecs",
+                "hlsjs_engine",
                 "cdn",
                 "hdr_color",
                 "resolution_advanced",
@@ -1974,6 +2005,7 @@
                 "ape_core",
                 "playback",
                 "codecs",
+                "hlsjs_engine",
                 "hdr_color",
                 "audio_premium",
                 "abr_control",
@@ -2595,6 +2627,7 @@
                 "metadata",
                 "cdn",
                 "codecs",
+                "hlsjs_engine",
                 "playback",
                 "security",
                 "audio_premium",
@@ -3199,6 +3232,7 @@
                 "ape_core",
                 "playback",
                 "codecs",
+                "hlsjs_engine",
                 "extra",
                 "ott_navigator",
                 "streaming_control",
@@ -3792,8 +3826,8 @@
         "If-Modified-Since": "[HTTP_DATE]",
 
         // Origin & Referer
-        "Origin": "http://line.tivi-ott.net",
-        "Referer": "http://line.tivi-ott.net/",
+        "Origin": "[DYNAMIC_ORIGIN]",
+        "Referer": "[DYNAMIC_REFERER]",
         "X-Requested-With": "XMLHttpRequest",
 
         // APE Core
@@ -4066,6 +4100,99 @@
         }
     };
 
+    // ═══════════════════════════════════════════════════════════════════════
+    // AUTO-SEED: Ensure EVERY header listed in HEADER_CATEGORIES has an entry
+    // in STRATEGIC_HEADERS_CONFIG so the UI can render it
+    // ═══════════════════════════════════════════════════════════════════════
+    (function _autoSeedStrategicHeaders() {
+        // Valores default razonables por header name pattern
+        const defaultValueByHeader = {
+            // HDR/Color
+            'X-HDR-Mode': 'DYNAMIC',
+            'X-HDR-Peak-Nits': '10000',
+            'X-Color-Transfer': 'SMPTE ST 2084 (PQ)',
+            'X-Bit-Depth': '10',
+            'X-Tone-Mapping-Peak': '10000',
+            'X-Tone-Mapping-Reference': '203',
+            'X-BT2020': 'true',
+            'X-Full-Range': 'false',
+            // Resolution/Stream
+            'X-Stream-Resolution': '[AUTO_FROM_PROFILE]',
+            'X-Stream-FPS': '[AUTO_FROM_PROFILE]',
+            'X-Stream-Bitrate': '[AUTO_FROM_PROFILE]',
+            'X-Stream-Codecs': '[AUTO_FROM_PROFILE]',
+            'X-Segment-Duration-S': '6',
+            // Codecs
+            'X-Codec-Full': '[AUTO_FROM_PROFILE]',
+            'X-Codec-Priority': 'dvh1,hvc1,av01,vp09,avc1',
+            'X-Audio-Codec-Preferred': 'ec-3',
+            // HLS.js Engine
+            'X-HLSjs-Config': '[AUTO_FROM_PROFILE]',
+            'X-HLSjs-Version': '1.6.15',
+            'X-HLSjs-API-Version': 'v1.6',
+            'X-HLSjs-Events-Listener': 'FRAG_LOAD_EMERGENCY_ABORTED,FPS_DROP_LEVEL_CAPPING,BACK_BUFFER_REACHED,STALL_RESOLVED,ERROR',
+            'X-HLSjs-ErrorDetails-Handled': '[AUTO_FROM_PROFILE]',
+            'X-HLSjs-Telemetry-Mode': 'client-local',
+            'X-HLSjs-Recovery-Matrix': '[AUTO_FROM_PROFILE]',
+            'X-HLSjs-Error-Penalty-Expire-Ms': '30000',
+            'X-HLSjs-State-Transitions': 'IDLE->LOADING->PARSING->BUFFERED->PLAYING',
+            'X-Shaka-Config': '[AUTO_FROM_PROFILE]',
+            'X-Shaka-Version': '4.x',
+            'X-ExoPlayer-Config': '[AUTO_FROM_PROFILE]',
+            'X-ExoPlayer-Version': 'Media3-1.3',
+            'X-ABR-Algorithm': 'EWMA-HLSjs,BOLA-Shaka,Bandwidth-ExoPlayer',
+            'X-ABR-Fast-Window-S': '3',
+            'X-ABR-Slow-Window-S': '9',
+            'X-ABR-BW-Factor': '0.95',
+            'X-ABR-Switch-Interval-S': '0',
+            'X-Low-Latency-Mode': 'true',
+            'X-Live-Sync-Duration-Count': '3',
+            'X-Live-Max-Latency-Count': '10',
+            'X-Stall-Detection-Ms': '1250',
+            'X-Fragment-Retry-Max': '6',
+            'X-Fragment-TTFB-Max-Ms': '10000',
+            'X-Bitrate-Ladder': '[AUTO_FROM_PROFILE]',
+            'X-Bitrate-Ladder-Source': 'bitmovin-stream-lab-2025',
+            // CMCD (CTA-5004)
+            'CMCD-Object': '[AUTO_FROM_PROFILE]',
+            'CMCD-Request': '[AUTO_FROM_PROFILE]',
+            'CMCD-Session': '[AUTO_FROM_PROFILE]',
+            'CMCD-Status': '[AUTO_FROM_PROFILE]',
+            // QoE (Mux Data)
+            'X-QoE-Startup-Target-Ms': '2000',
+            'X-QoE-Rebuffer-Ratio-Target': '0.005',
+            'X-QoE-TTFB-Target-Ms': '200',
+            'X-QoE-Bitrate-Target-Mbps': '[AUTO_FROM_PROFILE]',
+            'X-QoE-Monitor': 'hlsanalyzer,qosifire,mux-data,akamai-media-analytics',
+            'X-QoE-Player': 'hlsjs-1.6,bitmovin-player,shaka-4.x,exoplayer-media3',
+        };
+
+        // Recolectar todos los headers únicos de HEADER_CATEGORIES
+        const allDeclared = new Set();
+        for (const cat of Object.values(HEADER_CATEGORIES)) {
+            if (cat.headers && Array.isArray(cat.headers)) {
+                cat.headers.forEach(h => allDeclared.add(h));
+            }
+        }
+
+        let added = 0;
+        for (const header of allDeclared) {
+            if (!STRATEGIC_HEADERS_CONFIG[header]) {
+                const dv = defaultValueByHeader[header] || '[AUTO]';
+                STRATEGIC_HEADERS_CONFIG[header] = {
+                    mode: 'DYNAMIC',
+                    dynamicValue: dv,
+                    manualValue: '',
+                    description: `Auto-seeded header: ${header}`,
+                };
+                added++;
+            }
+        }
+        if (added > 0) {
+            console.log(`[APE-Profiles] Auto-seed: ${added} headers añadidos a STRATEGIC_HEADERS_CONFIG`);
+        }
+    })();
+
     const STRATEGIC_HEADERS_STORAGE_KEY = 'ape_strategic_headers_v9';
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -4089,6 +4216,15 @@
             }
 
             this.strategicHeaders = this._loadStrategicHeaders() || JSON.parse(JSON.stringify(STRATEGIC_HEADERS_CONFIG));
+
+            // 🧪 LAB integration — rehidratar datos optimizados desde LAB Excel si existen
+            this.nivel1Directives = [];
+            this.nivel3PerLayer = {};
+            this.evasionPool = { user_agents: [], referers: [] };
+            this.labServers = [];
+            this.labMetadata = {};
+            this.labExportedAt = null;
+            try { this.loadLABFromStorage && this.loadLABFromStorage(); } catch (e) {}
         }
 
         /**
@@ -4131,13 +4267,283 @@
         }
 
         /**
-         * Guarda perfiles, manifiesto y headers estratégicos en storage
+         * Guarda perfiles, manifiesto y headers estratégicos en storage.
+         * Debounced: múltiples llamadas en <300ms se colapsan en una sola escritura.
          */
         save() {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(this.profiles));
-            localStorage.setItem(MANIFEST_STORAGE_KEY, JSON.stringify(this.manifest));
-            localStorage.setItem(STRATEGIC_HEADERS_STORAGE_KEY, JSON.stringify(this.strategicHeaders));
-            console.log('💾 Perfiles APE v9.0, Manifiesto y Headers Estratégicos guardados');
+            if (this._saveTimer) clearTimeout(this._saveTimer);
+            this._saveTimer = setTimeout(() => {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(this.profiles));
+                localStorage.setItem(MANIFEST_STORAGE_KEY, JSON.stringify(this.manifest));
+                localStorage.setItem(STRATEGIC_HEADERS_STORAGE_KEY, JSON.stringify(this.strategicHeaders));
+                console.log('[APE-Profiles] Perfiles v9.0 + Manifiesto + Headers guardados');
+                this._saveTimer = null;
+            }, 300);
+        }
+
+        /**
+         * Exporta perfiles + manifiesto + headers a un objeto JSON descargable.
+         * @returns {Object} { _meta, profiles, manifest, strategicHeaders }
+         */
+        exportProfiles() {
+            return {
+                _meta: {
+                    version: 'APE_v9.0',
+                    exported: new Date().toISOString(),
+                    source: 'ApeProfileManager.exportProfiles',
+                    total_profiles: Object.keys(this.profiles).length,
+                },
+                profiles: JSON.parse(JSON.stringify(this.profiles)),
+                manifest: JSON.parse(JSON.stringify(this.manifest)),
+                strategicHeaders: JSON.parse(JSON.stringify(this.strategicHeaders)),
+            };
+        }
+
+        /**
+         * Importa perfiles desde un objeto JSON. Reemplaza los activos y persiste.
+         * @param {Object|string} data - objeto o string JSON con { profiles, ... }
+         * @returns {boolean} true si importó correctamente
+         */
+        importProfiles(data) {
+            try {
+                const obj = typeof data === 'string' ? JSON.parse(data) : data;
+                if (!obj || typeof obj !== 'object') throw new Error('Invalid data');
+                const imported = obj.profiles || obj;
+                if (!imported || typeof imported !== 'object') throw new Error('No profiles key found');
+                // Validar que tenga P0-P5 al menos
+                const pids = Object.keys(imported).filter(k => /^P[0-5]$/.test(k));
+                if (pids.length === 0) throw new Error('No P0-P5 profiles found in JSON');
+                // Merge con DEFAULT_PROFILES para garantizar estructura completa
+                const merged = JSON.parse(JSON.stringify(DEFAULT_PROFILES));
+                for (const pid of pids) {
+                    if (merged[pid]) {
+                        // Deep merge preservando estructura
+                        merged[pid] = this._deepMerge(merged[pid], imported[pid]);
+                    } else {
+                        merged[pid] = imported[pid];
+                    }
+                }
+                this.profiles = merged;
+                if (obj.manifest) this.manifest = obj.manifest;
+                if (obj.strategicHeaders) this.strategicHeaders = obj.strategicHeaders;
+                // Persistir inmediato (skip debounce para import manual)
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(this.profiles));
+                localStorage.setItem(MANIFEST_STORAGE_KEY, JSON.stringify(this.manifest));
+                localStorage.setItem(STRATEGIC_HEADERS_STORAGE_KEY, JSON.stringify(this.strategicHeaders));
+                console.log(`[APE-Profiles] IMPORTADOS ${pids.length} perfiles: ${pids.join(', ')}`);
+                return true;
+            } catch (e) {
+                console.error('[APE-Profiles] Error importando perfiles:', e.message);
+                return false;
+            }
+        }
+
+        /**
+         * 🧪 IMPORT FROM LAB — consume LAB_CALIBRATED_*.json (schema omega_v1)
+         * - Profiles: deep-merge respetando headerOverrides completo
+         * - nivel1_directives: persiste en this.nivel1Directives + localStorage
+         * - nivel3_per_layer: persiste en this.nivel3PerLayer + localStorage
+         * - servers: emite event para que app.state los absorba
+         * - evasion_pool: persiste en this.evasionPool
+         * - config_global: aplica selectivamente a strategicHeaders existentes
+         */
+        async importFromLABData(data) {
+            const result = {
+                profilesUpdated: 0,
+                headersAdded: 0,
+                nivel1Count: 0,
+                nivel3Total: 0,
+                serversCount: 0
+            };
+            try {
+                if (!data || data.lab_version !== 'omega_v1') {
+                    throw new Error('Schema invalido (esperado omega_v1)');
+                }
+                if (data.playlist_format !== 'm3u8') {
+                    throw new Error('playlist_format debe ser m3u8');
+                }
+
+                // === 1. PROFILES ===
+                // Helper: convierte campos numéricos de strings a Number (LAB exporta como string)
+                // FIX v4.20.4: maneja coma decimal española "2,6" → 2.6
+                const NUMERIC_SETTINGS = ['buffer','playerBuffer','bitrate','bufferSeconds','t1','t2','fps','headersCount','level'];
+                const toNum = (v) => {
+                    if (v === null || v === undefined || v === '') return 0;
+                    if (typeof v === 'number') return v;
+                    let s = String(v).trim();
+                    // Si hay coma pero NO punto, es decimal español "2,6" → "2.6"
+                    if (s.indexOf(',') >= 0 && s.indexOf('.') < 0) s = s.replace(',', '.');
+                    // Si hay coma Y punto, la coma es separador de miles: quitarla
+                    else if (s.indexOf(',') >= 0 && s.indexOf('.') >= 0) s = s.replace(/,/g, '');
+                    const n = Number(s);
+                    return isNaN(n) ? 0 : n;
+                };
+                const coerceSettings = (settings) => {
+                    if (!settings || typeof settings !== 'object') return settings;
+                    const out = Object.assign({}, settings);
+                    for (const k of NUMERIC_SETTINGS) {
+                        if (out[k] !== undefined && out[k] !== null && out[k] !== '') {
+                            out[k] = toNum(out[k]);
+                        }
+                    }
+                    return out;
+                };
+
+                const labProfiles = data.profiles_calibrated || {};
+                for (const pid of ['P0','P1','P2','P3','P4','P5']) {
+                    const lp = labProfiles[pid];
+                    if (!lp) continue;
+
+                    // 🔧 FIX: coerce settings strings → Number antes de merge
+                    const lpFixed = Object.assign({}, lp);
+                    if (lpFixed.settings) lpFixed.settings = coerceSettings(lpFixed.settings);
+
+                    if (this.profiles[pid]) {
+                        // headerOverrides MERGE (no reemplazo total — preserva los existentes y añade los del LAB)
+                        const existingHO = this.profiles[pid].headerOverrides || {};
+                        const labHO = lpFixed.headerOverrides || {};
+                        const mergedHO = Object.assign({}, existingHO, labHO);
+                        result.headersAdded += Object.keys(labHO).length;
+
+                        // Deep merge para el resto
+                        this.profiles[pid] = this._deepMerge(this.profiles[pid], lpFixed);
+                        // headerOverrides override con el merge calculado
+                        this.profiles[pid].headerOverrides = mergedHO;
+                    } else {
+                        // Profile nuevo (no debería pasar pero safe-guard)
+                        this.profiles[pid] = JSON.parse(JSON.stringify(lpFixed));
+                        result.headersAdded += Object.keys(lpFixed.headerOverrides || {}).length;
+                    }
+                    result.profilesUpdated++;
+                }
+
+                // === 2. NIVEL_1 DIRECTIVES (master playlist headers) ===
+                this.nivel1Directives = Array.isArray(data.nivel1_directives) ? data.nivel1_directives : [];
+                result.nivel1Count = this.nivel1Directives.length;
+
+                // === 3. NIVEL_3 PER LAYER (per-channel directives) ===
+                this.nivel3PerLayer = data.nivel3_per_layer || {};
+                for (const layer in this.nivel3PerLayer) {
+                    result.nivel3Total += (this.nivel3PerLayer[layer] || []).length;
+                }
+
+                // === 4. EVASION POOL ===
+                this.evasionPool = data.evasion_pool || { user_agents: [], referers: [] };
+
+                // === 5. SERVERS — solo guardar, app.state los absorbe via event ===
+                this.labServers = data.servers || [];
+                result.serversCount = this.labServers.length;
+
+                // === 6. SCORING METADATA ===
+                this.labMetadata = data.scoring_metadata || {};
+                this.labExportedAt = data.exported_at || null;
+
+                // === 7. PERSISTENCIA ===
+                // Profiles via mecanismo existente
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(this.profiles));
+                if (this.manifest) localStorage.setItem(MANIFEST_STORAGE_KEY, JSON.stringify(this.manifest));
+                if (this.strategicHeaders) localStorage.setItem(STRATEGIC_HEADERS_STORAGE_KEY, JSON.stringify(this.strategicHeaders));
+
+                // Datos LAB en keys nuevas
+                localStorage.setItem('ape_lab_nivel1', JSON.stringify(this.nivel1Directives));
+                localStorage.setItem('ape_lab_nivel3', JSON.stringify(this.nivel3PerLayer));
+                localStorage.setItem('ape_lab_evasion', JSON.stringify(this.evasionPool));
+                localStorage.setItem('ape_lab_servers', JSON.stringify(this.labServers));
+                localStorage.setItem('ape_lab_metadata', JSON.stringify({
+                    metadata: this.labMetadata,
+                    exported_at: this.labExportedAt,
+                    imported_at: new Date().toISOString()
+                }));
+
+                // Persistir a IndexedDB también si está disponible
+                if (window.app?.db?.saveAppState) {
+                    try {
+                        await window.app.db.saveAppState('ape_lab_nivel1', this.nivel1Directives);
+                        await window.app.db.saveAppState('ape_lab_nivel3', this.nivel3PerLayer);
+                        await window.app.db.saveAppState('ape_lab_evasion', this.evasionPool);
+                    } catch (e) { console.warn('[LAB] IDB save warning:', e); }
+                }
+
+                // Disparar event para que el resto del frontend reaccione
+                try {
+                    window.dispatchEvent(new CustomEvent('lab-imported', { detail: result }));
+                } catch (_) {}
+
+                console.log('[LAB] Imported successfully:', result);
+                return result;
+            } catch (e) {
+                console.error('[LAB] importFromLABData error:', e);
+                throw e;
+            }
+        }
+
+        /**
+         * Carga datos LAB desde localStorage al inicio (rehidratar).
+         */
+        loadLABFromStorage() {
+            try {
+                const n1 = localStorage.getItem('ape_lab_nivel1');
+                if (n1) this.nivel1Directives = JSON.parse(n1);
+                const n3 = localStorage.getItem('ape_lab_nivel3');
+                if (n3) this.nivel3PerLayer = JSON.parse(n3);
+                const ev = localStorage.getItem('ape_lab_evasion');
+                if (ev) this.evasionPool = JSON.parse(ev);
+                const sv = localStorage.getItem('ape_lab_servers');
+                if (sv) this.labServers = JSON.parse(sv);
+                const md = localStorage.getItem('ape_lab_metadata');
+                if (md) {
+                    const o = JSON.parse(md);
+                    this.labMetadata = o.metadata;
+                    this.labExportedAt = o.exported_at;
+                }
+            } catch (e) { console.warn('[LAB] loadLABFromStorage:', e); }
+        }
+
+        /**
+         * Deep merge sin modificar originales.
+         */
+        _deepMerge(target, source) {
+            if (source === null || typeof source !== 'object') return source;
+            if (Array.isArray(source)) return source.slice();
+            const out = Object.assign({}, target);
+            for (const k of Object.keys(source)) {
+                if (source[k] && typeof source[k] === 'object' && !Array.isArray(source[k]) && target[k] && typeof target[k] === 'object') {
+                    out[k] = this._deepMerge(target[k], source[k]);
+                } else {
+                    out[k] = source[k];
+                }
+            }
+            return out;
+        }
+
+        /**
+         * Carga perfiles desde un File object (input type=file). Lee JSON y llama importProfiles.
+         * @param {File} file
+         * @returns {Promise<boolean>}
+         */
+        async importProfilesFromFile(file) {
+            return new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.onload = (e) => resolve(this.importProfiles(e.target.result));
+                reader.onerror = () => resolve(false);
+                reader.readAsText(file);
+            });
+        }
+
+        /**
+         * Descarga los perfiles actuales como archivo JSON.
+         * @param {string} [filename] - nombre custom, default con timestamp
+         */
+        downloadProfilesJSON(filename) {
+            const data = this.exportProfiles();
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename || `APE_ALL_PROFILES_${new Date().toISOString().replace(/[:.]/g, '-')}.json`;
+            document.body.appendChild(a);
+            a.click();
+            setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 100);
         }
 
         /**

@@ -11,7 +11,17 @@
 set_time_limit(300);
 error_reporting(E_ALL);
 
+// CORS headers (mismos que upload.php para compatibilidad con frontend en localhost)
+header('Access-Control-Allow-Origin: *');
+header('Access-Control-Allow-Methods: GET, POST, HEAD, OPTIONS');
+header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With, X-Upload-Id, X-Chunk-Index, X-Total-Chunks, X-Chunk-SHA256, X-Chunk-MD5, X-Compressed');
 header('Content-Type: application/json; charset=utf-8');
+
+// Handle CORS preflight
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(204);
+    exit;
+}
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     http_response_code(405);
@@ -40,8 +50,15 @@ if (!is_dir($baseDir)) {
     mkdir($baseDir, 0755, true);
 }
 
-// Recibir chunk
-$chunkData = file_get_contents('php://input');
+// Recibir chunk — soporta AMBOS métodos:
+// 1. Raw body (php://input) — para fetch con Content-Type: application/octet-stream
+// 2. FormData con campo 'file' — para XHR con FormData (compatible CORS)
+$chunkData = null;
+if (!empty($_FILES['file']['tmp_name']) && is_uploaded_file($_FILES['file']['tmp_name'])) {
+    $chunkData = file_get_contents($_FILES['file']['tmp_name']);
+} else {
+    $chunkData = file_get_contents('php://input');
+}
 
 if (empty($chunkData)) {
     http_response_code(400);
@@ -49,7 +66,19 @@ if (empty($chunkData)) {
     exit;
 }
 
-// 🛡️ Verificar Integridad SHA-256 (Prioridad)
+// 🗜️ Decompress gzip chunks from client-side compression
+$isCompressed = $_SERVER['HTTP_X_COMPRESSED'] ?? $_POST['compressed'] ?? null;
+if ($isCompressed === 'gzip') {
+    $decompressed = @gzdecode($chunkData);
+    if ($decompressed === false) {
+        http_response_code(400);
+        echo json_encode(['error' => 'Gzip decompression failed']);
+        exit;
+    }
+    $chunkData = $decompressed;
+}
+
+// 🛡️ Verificar Integridad SHA-256 (sobre data descomprimida)
 if ($expectedSha256) {
     $actualSha256 = hash('sha256', $chunkData);
     if ($actualSha256 !== $expectedSha256) {

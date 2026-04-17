@@ -1243,6 +1243,11 @@
                 title="Clasifica canales automáticamente en perfiles P0-P5">
                 <span class="icon">🎯</span><span class="stat-mini-label">AUTO-CLASIFICAR</span>
               </button>
+              <button id="btnExportToLAB" class="stat-card-mini btn-probe-mini" onclick="app.exportToLAB()"
+                style="background: linear-gradient(135deg, #0ea5e9, #0369a1); border-color: #38bdf8;"
+                title="Exporta canales filtrados + perfiles al LAB Excel (APE_M3U8_LAB.xlsm)">
+                <span class="icon">🧪</span><span class="stat-mini-label">EXPORT A LAB</span>
+              </button>
               <div class="stat-card-mini">
                 <span class="stat-mini-label">TOTAL CANALES</span>
                 <span id="statTotal" class="stat-mini-value">0</span>
@@ -1584,7 +1589,7 @@
                     <span id="file-selector-icon" style="font-size: 1.2rem;">📂</span>
                     <div style="flex: 1;">
                       <div id="file-selector-text" style="font-size: 0.78rem; color: #7dd3fc;">Click aquí para
-                        seleccionar archivo .m3u8, .m3u o .m3u8.gz</div>
+                        seleccionar archivo .m3u8 (preferido), .m3u8.gz o .m3u (legacy)</div>
                       <div id="file-selector-info"
                         style="font-size: 0.68rem; color: var(--text-muted); margin-top: 2px; display: none;"></div>
                     </div>
@@ -1665,6 +1670,14 @@
                     <span class="icon">⚙️</span><span>Configurar</span>
                   </button>
                 </div>
+                <!-- 🚀 TURBO UPLOAD — chunks paralelos, sin tocar el original -->
+                <div style="display: flex; gap: 8px; margin-bottom: 8px;">
+                  <button id="gateway-turbo-btn" class="btn" onclick="turboUpload()"
+                    style="flex: 1; background: linear-gradient(135deg, #f59e0b, #ea580c); font-weight: bold;">
+                    <span class="icon">🚀</span><span>Subida Turbo</span>
+                  </button>
+                </div>
+                <div id="turbo-upload-info" style="font-size: 0.7rem; color: #94a3b8; margin-bottom: 8px; text-align: center;"></div>
 
                 <!-- Progreso -->
                 <div id="gateway-upload-progress" style="display: none; margin-bottom: 12px;">
@@ -1867,6 +1880,30 @@
                   <div class="field">
                     <label for="genTimeShift">Shift (horas)</label>
                     <input id="genTimeShift" class="input" type="number" value="0" min="-12" max="12" />
+                  </div>
+                </div>
+
+                <!-- MODO DICTADOR (PLAYER-SIDE ZERO LAG) -->
+                <div style="padding: 14px; background: linear-gradient(135deg, rgba(220, 38, 38, 0.15), rgba(153, 27, 27, 0.15)); border-radius: 12px; border: 1px solid rgba(220, 38, 38, 0.4); margin-bottom: 12px;">
+                  <div class="panel-title" style="font-size: 0.85rem; margin-bottom: 10px; color: #f87171;">👑 Modo Dictador (Player-Side Zero Lag)</div>
+                  <div style="display: flex; flex-direction: column; gap: 10px;">
+                    <label style="display: flex; align-items: flex-start; gap: 10px; cursor: pointer; font-size: 0.82rem;">
+                      <input type="checkbox" id="dictatorMode" checked style="width: 18px; height: 18px; margin-top: 2px; accent-color: #ef4444;">
+                      <div>
+                        <strong style="color: #fca5a5;">Forzar Directo (Zero VPS)</strong>
+                        <div style="color: var(--text-muted); font-size: 0.75rem; margin-top: 2px;">
+                          Obliga al player al Tier máximo sin proxy. Cancela ABR democrático e inyecta LL-HLS.
+                        </div>
+                      </div>
+                    </label>
+                    <div id="dictatorTierOptions" style="display: flex; gap: 12px; margin-left: 28px;">
+                      <label style="font-size: 0.8rem; color: #e2e8f0; cursor: pointer;">
+                        <input type="radio" name="dictatorTier" value="8K" style="accent-color: #ef4444;" checked> 8K HEVC (P0)
+                      </label>
+                      <label style="font-size: 0.8rem; color: #e2e8f0; cursor: pointer;">
+                        <input type="radio" name="dictatorTier" value="4K" style="accent-color: #ef4444;"> 4K HEVC (P1)
+                      </label>
+                    </div>
                   </div>
                 </div>
 
@@ -2541,13 +2578,29 @@
                 class="btn" onclick="app.generateM3U8Pro()"
                 style="background: linear-gradient(135deg, #10b981, #059669); box-shadow: 0 10px 25px rgba(16,185,129,0.3);"><span
                   class="icon">📺</span><span>Generar M3U8 PRO</span></button><button id="btnGenerateAPEv9" class="btn"
-                onclick="app.generateM3U8Unified ? app.generateM3U8Unified() : app.generateM3U8Ultimate()"
+                onclick="app.generateM3U8Ultimate()"
                 style="background: linear-gradient(135deg, #ff6b6b, #ee5a24); box-shadow: 0 10px 25px rgba(255,107,107,0.3); margin-left: 10px;"><span
                   class="icon">🔥</span><span>Generar UNIFIED (68+ JWT)</span></button><button
                 id="btnGenerateTypedArrays" class="btn"
                 onclick="if(window.ApeModuleManager && window.ApeModuleManager.exportEngine) { window.ApeModuleManager.exportEngine('typed-arrays'); } else if(window.app && typeof window.app.generateM3U8_TypedArrays === 'function') { window.app.generateM3U8_TypedArrays(); } else { alert('El Sincronizador Maestro HLS (Typed Arrays) aún está armando los buffers. Espera un segundo.'); }"
                 style="background: linear-gradient(135deg, #8b5cf6, #6366f1); box-shadow: 0 10px 25px rgba(139,92,246,0.3); margin-left: 10px;"><span
-                  class="icon">🚀</span><span>TYPED ARRAYS ULTIMATE</span></button></div>
+                  class="icon">🚀</span><span>TYPED ARRAYS ULTIMATE</span></button><button id="btnOmega5"
+                class="btn" onclick="window.generateOmega5 ? window.generateOmega5() : alert('⏳ Omega5 aún cargando. Recarga con Ctrl+Shift+R.')"
+                style="background: linear-gradient(135deg, #fbbf24, #f59e0b, #dc2626); box-shadow: 0 10px 25px rgba(245,158,11,0.5); margin-left: 10px; font-weight: bold; font-size: 1rem; padding: 14px 22px; border: 2px solid #fff;"><span
+                  class="icon">⭐</span><span>OMEGA 5 — GENERAR .m3u8 COMPLETA</span></button><button
+                id="btnGenerateAudited" class="btn" data-ape-generate-audited data-ape-prepublish
+                onclick="if(window.APEGenerationController && typeof window.APEGenerationController.prepublishAndGenerate === 'function') { window.APEGenerationController.prepublishAndGenerate().catch(e=>console.error('[APE-PREPUBLISH]',e)); } else if(window.APEGenerationController && typeof window.APEGenerationController.generateListWithGate === 'function') { window.APEGenerationController.generateListWithGate().catch(e=>console.error('[APE-AUDIT]',e)); } else { alert('APEGenerationController aún cargando. Espera un segundo.'); }"
+                style="background: linear-gradient(135deg, #0ea5e9, #0284c7); box-shadow: 0 10px 25px rgba(14,165,233,0.4); margin-left: 10px; font-weight: bold; font-size: 1rem; padding: 14px 22px; border: 2px solid rgba(255,255,255,0.5);"><span
+                  class="icon">🩺</span><span>GENERAR + PREPUBLISH + AUDITAR</span></button>
+                <label for="publicationMode" style="margin-left:14px; color:var(--text-muted); font-size:0.85rem; font-weight:bold;">Modo:</label>
+                <select id="publicationMode"
+                  onchange="window.APE_PUBLICATION_MODE=this.value; console.log('%c[PUB-MODE] '+this.value,'color:#0ea5e9;font-weight:bold;');"
+                  style="margin-left:6px; padding:8px 10px; border-radius:8px; background:#0f172a; color:#e2e8f0; border:1px solid #334155; font-weight:bold; font-size:0.85rem;">
+                  <option value="strict_terminal">Strict Terminal (&gt;99% 200)</option>
+                  <option value="balanced_95" selected>Balanced 95 (&gt;95% playback)</option>
+                  <option value="diagnostic">Diagnostic (auditoría)</option>
+                </select></div>
+            <script>window.APE_PUBLICATION_MODE = window.APE_PUBLICATION_MODE || 'balanced_95';</script>
             <p id="exportStatus" style="font-size:0.78rem; color:var(--text-muted); margin-top:8px;">Ninguna
               exportación
               realizada todavía.</p>
@@ -3426,12 +3479,48 @@
   <script src="js/ape-v9/ape-profiles-config.js?v=10.0-omega-sync-20260408"></script>
   <!-- profile-manager-v9.js loaded later at v9.0.3 (line ~3171) -->
   <script src="js/ape-v9/profile-bridge-v9.js?v=1.1"></script>
-  <script src="js/ape-v9/m3u8-typed-arrays-ultimate.js?v=22.3.0-vps-failfast-nivel5"></script>
+  <script src="js/ape-v9/ape-xtream-atomic-probe.js?v=1.3.0-xtream-url-builder-20260412c"></script>
+  <!-- 🎭 APE MIME POLICY + 🧩 FORMAT POLICY — Etapa 1 del plan "Integración sin /resolve/" -->
+  <script src="js/ape-v9/mime-policy.js?v=1.0-20260417"></script>
+  <script src="js/ape-v9/format-policy.js?v=1.0-20260417"></script>
+  <!-- 🩺 APE HEALTH ADMISSION RUNTIME (fail-closed v2.0) — debe cargar ANTES del generator -->
+  <script src="js/ape-v9/health-runtime.js?v=3.0-plan-supremo-tier-enrichment-20260417"></script>
+  <script src="js/ape-v9/m3u8-typed-arrays-ultimate.js?v=26.0-plan-supremo-buckets-ABC-20260417"></script>
+  <!-- 🪦 OMEGA SLOT REAPER — Pre-flight liberation of Xtream max_connections slots -->
+  <script src="js/ape-v9/slot-reaper.js?v=1.0.0-omega-20260409"></script>
   <script src="js/ape-v9/m3u8-quality-upgrader-v2.js?v=2.0"></script>
-  <script src="js/ape-v9/hud-typed-arrays.js?v=1.0"></script>
+  <script src="js/ape-v9/hud-typed-arrays.js?v=16.1-tickprofile-20260417"></script>
+  <!-- 🩺 APE GENERATION CONTROLLER — engancha botón health-check + generateHealthyList -->
+  <script src="js/ape-v9/generation-controller.js?v=2.2-vps-probe-no-local-server-20260417"></script>
+  <!-- 🩺 APE HEALTH RUNTIME CONFIG — modo permisivo: emite TODOS los canales, admitidos usan URL optimizada -->
+  <script>
+    window.addEventListener('load', () => {
+      if (window.APEHealthRuntime && typeof window.APEHealthRuntime.setConfig === 'function') {
+        window.APEHealthRuntime.setConfig({
+          // FIX 2026-04-17: admitted.json copiado a frontend/ para servirse vía Live Server.
+          // Elimina dependencia de gate_server.py (puerto 8766). 3,558 entradas Tier A con URLs
+          // terminales IP (/live/play/<TOKEN>/<id>) — resuelve bucket inversion y credenciales.
+          admissionUrl: './admitted.json',
+          resolverBaseUrl: 'https://iptv-ape.duckdns.org',
+          // profileTransport='clean' (2026-04-17): el resolver VPS en duckdns.org NO expone
+          // /resolve/{id}.m3u8 (NGINX solo tiene /resolve.php y /api/resolve_quality).
+          // Auditoría E2E externa reveló 13,608 URLs con HTTP 404. Con 'clean' las URLs
+          // emitidas apuntan directo al upstream del panel (tivi-ott / ky-tv), que el
+          // health_checker validó 200 + HLS real. Recuperamos reproducibilidad al instante.
+          // Cuando se despliegue resolve_admitted.py al VPS, revertir a 'resolver'.
+          profileTransport: 'clean',
+          requireAdmission: false,
+          preferHostOrder: ['line.tivi-ott.net', 'ky-tv.cc'],
+          cacheTtlMs: 5 * 60 * 1000,
+          debug: false
+        });
+        console.log('🩺 [APE-HEALTH] Runtime config aplicado (modo permisivo: todos los canales emitidos, admitidos con URL optimizada)');
+      }
+    });
+  </script>
 
   <!-- App principal - V4.18.6 ENTERPRISE (Restaurado + Fixes) -->
-  <script src="app.js?v=4.18.8"></script>
+  <script src="app.js?v=4.23.0-filter-first-20260417"></script>
   <script src="js/ape-headers-preview-fix.js?v=1.0"></script>
 
   <!-- 🚀 GENERATOR SUPREMACY V5.1 - Tab Hibernation + APE Worker -->
@@ -3559,7 +3648,7 @@
   <!-- 🧬 APE RUNTIME EVASION ENGINE v1.0 — El Cerebro del Deco (Polymorphic Interceptor) -->
   <script src="js/ape-v9/ape-runtime-evasion-engine.js?v=1.0.0"></script>
 
-  <script src="js/ape-v9/ape-module-panel-ui.js?v=2.1"></script>
+  <script src="js/ape-v9/ape-module-panel-ui.js?v=2.3-no-apev15-both-fns-20260417"></script>
 
   <!-- Panel UI para controlar módulos (inline en Gateway) -->
   <!-- ⚠️ V4.30: ape-module-panel-ui.js already loaded above (line ~3087) -->
@@ -3755,6 +3844,8 @@
 
   <!-- Gateway M3U8 Manager (depende de hardened-verification) -->
   <script src="js/gateway-m3u8-integrated.js?v=4.28.1"></script>
+  <!-- 🚀 Gateway Turbo Upload — chunks paralelos (no reemplaza el original) -->
+  <script src="js/gateway-turbo-upload.js?v=2.0.0"></script>
 
   <!-- M3U8 Generator v14.0 SUPREMO (estructura original + 8 mejoras) -->
   <script src="js/ape-v9/m3u8-generator-v14-supremo.js"></script>

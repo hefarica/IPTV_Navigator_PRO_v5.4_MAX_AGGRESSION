@@ -49,6 +49,7 @@
         init(totalChannels, config = {}) {
             this.startTime = Date.now();
             this.aborted = false;
+            window.__APE_GENERATION_ABORTED__ = false;
             this.totalChannels = totalChannels;
             this.currentChannel = 0;
             this.stats = { p0: 0, p1: 0, p2: 0, p3: 0, p4: 0, p5: 0, extvlcopt: 0, kodiprop: 0, extxape: 0, jwt: 0, linesTotal: 0 };
@@ -251,7 +252,63 @@
 
             document.body.appendChild(hud);
 
+            // ────────────────────────────────────────────────────────────────
+            // FLOATING CONTROLS — always visible, never scrolled off screen
+            // ────────────────────────────────────────────────────────────────
+            const floatingCtrl = document.createElement('div');
+            floatingCtrl.id = 'ta-floating-controls';
+            floatingCtrl.style.cssText = `
+                position: fixed;
+                top: 12px;
+                right: 12px;
+                z-index: 2147483647;
+                display: flex;
+                gap: 8px;
+                font-family: 'Courier New', monospace;
+            `;
+            floatingCtrl.innerHTML = `
+                <button id="ta-float-minimize" title="Minimizar HUD" style="
+                    background: #0f172a; border: 2px solid #38bdf8; color: #38bdf8;
+                    padding: 8px 14px; font-size: 16px; font-weight: bold;
+                    cursor: pointer; border-radius: 6px; line-height: 1;
+                ">—</button>
+                <button id="ta-float-cancel" title="CANCELAR GENERACIÓN" style="
+                    background: #7f1d1d; border: 2px solid #ef4444; color: #fecaca;
+                    padding: 8px 14px; font-size: 13px; font-weight: bold;
+                    cursor: pointer; border-radius: 6px; text-transform: uppercase;
+                    letter-spacing: 1px; box-shadow: 0 4px 12px rgba(239,68,68,0.4);
+                ">⛔ CANCELAR</button>
+            `;
+            document.body.appendChild(floatingCtrl);
+
+            // Floating cancel handler (same as internal button)
+            document.getElementById('ta-float-cancel').addEventListener('click', () => {
+                this.aborted = true;
+                window.__APE_GENERATION_ABORTED__ = true;
+                this.log('⛔ CANCELANDO GENERACIÓN (from floating)...', '#ef4444');
+                document.getElementById('ta-float-cancel').textContent = '⏳ Cancelando...';
+                document.getElementById('ta-float-cancel').disabled = true;
+                setTimeout(() => this.close(), 2000);
+            });
+
+            // Minimize: hide main HUD, keep floating controls so user can re-open or cancel
+            document.getElementById('ta-float-minimize').addEventListener('click', () => {
+                const isMin = hud.dataset.minimized === '1';
+                if (isMin) {
+                    hud.style.display = 'flex';
+                    hud.dataset.minimized = '0';
+                    document.getElementById('ta-float-minimize').textContent = '—';
+                    document.getElementById('ta-float-minimize').title = 'Minimizar HUD';
+                } else {
+                    hud.style.display = 'none';
+                    hud.dataset.minimized = '1';
+                    document.getElementById('ta-float-minimize').textContent = '▢';
+                    document.getElementById('ta-float-minimize').title = 'Restaurar HUD';
+                }
+            });
+
             this.overlay = hud;
+            this.floatingCtrl = floatingCtrl;
             this.elements = {
                 log: document.getElementById('ta-log'),
                 bar: document.getElementById('ta-progress'),
@@ -274,11 +331,14 @@
                 time: document.getElementById('ta-time')
             };
 
-            // Cancel button handler
+            // Cancel button handler — detiene generación real via flag global
             document.getElementById('ta-cancel').addEventListener('click', () => {
                 this.aborted = true;
-                this.log('⚠️ CANCELANDO GENERACIÓN...', '#ef4444');
-                setTimeout(() => this.close(), 1500);
+                window.__APE_GENERATION_ABORTED__ = true;
+                this.log('⛔ CANCELANDO GENERACIÓN — deteniendo procesamiento...', '#ef4444');
+                document.getElementById('ta-cancel').textContent = '⏳ Cancelando...';
+                document.getElementById('ta-cancel').disabled = true;
+                setTimeout(() => this.close(), 2000);
             });
 
             this.log('🚀 TYPED ARRAYS HUD v16.0 Inicializado', '#8b5cf6');
@@ -301,7 +361,23 @@
         },
 
         /**
-         * Actualiza canal actual
+         * Incrementa el contador de un perfil (1 por canal emitido).
+         * Se llama SIN throttle — O(1), safe para loop 4,536× por generación.
+         * Toca solo el DOM de esa tarjeta de perfil, no la barra ni contadores pesados.
+         */
+        tickProfile(profile) {
+            const profileLower = String(profile || 'p3').toLowerCase();
+            if (this.stats[profileLower] !== undefined) {
+                this.stats[profileLower]++;
+                const el = this.elements[profileLower];
+                if (el) el.textContent = this.stats[profileLower].toLocaleString();
+            }
+        },
+
+        /**
+         * Actualiza canal actual (DOM pesado: barra + counter + líneas + speed).
+         * Se llama THROTTLED cada 50 canales desde el generador.
+         * NOTA: ya NO gestiona el contador de perfil — eso lo hace tickProfile() sin throttle.
          */
         updateChannel(current, channelName = '', profile = 'P3') {
             this.currentChannel = current;
@@ -314,14 +390,6 @@
             // Counter
             if (this.elements.counter) {
                 this.elements.counter.innerHTML = `<span style="color: #e879f9;">${current.toLocaleString()}</span> / ${this.totalChannels.toLocaleString()}`;
-            }
-
-            // Profile counter
-            const profileLower = profile.toLowerCase();
-            if (this.stats[profileLower] !== undefined) {
-                this.stats[profileLower]++;
-                const el = this.elements[profileLower];
-                if (el) el.textContent = this.stats[profileLower].toLocaleString();
             }
 
             // Lines
@@ -386,6 +454,10 @@
                     if (this.overlay) {
                         this.overlay.remove();
                         this.overlay = null;
+                    }
+                    if (this.floatingCtrl) {
+                        this.floatingCtrl.remove();
+                        this.floatingCtrl = null;
                     }
                 }, 300);
             }

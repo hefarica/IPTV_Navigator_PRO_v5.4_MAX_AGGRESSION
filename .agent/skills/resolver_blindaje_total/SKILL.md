@@ -156,13 +156,13 @@ python3 /tmp/blindaje_total.py
 | 2026-03-28 21:00 | Parse error L3583 | `sed` corrupto dejó `[" zapping]` | Borrar 5 líneas corruptas |
 | 2026-03-28 23:30 | Fatal: undefined function | `rq_anti_cut_engine.php` no tenía `require_once` | Agregar `require_once` con `file_exists` |
 | 2026-03-28 23:35 | Todos los canales caídos | El body del M3U era HTML de error PHP | Blindaje total: `function_exists` en todas las llamadas |
-| 2026-04-05 05:00 | Error 403 False Positive | SSRF Whitelist estático (Hara Kiri) bloqueó `nov202gg.xyz` | Reemplazado whitelist por bloqueo de red interna RFC 1918 |
+| 2026-04-05 05:00 | Error 403 False Positive | SSRF Whitelist estático bloqueó `nov202gg.xyz` | Eliminado Hara Kiri completamente (2026-04-11) |
 | 2026-04-05 05:05 | Error 500 DivisionByZero | `UAPhantomEngine` tenía array vacío | Poblado con fallbacks y redefinido protección Zero-State |
 
 ---
 
-## Regla #7: Anti-SSRF Dinámico (Prohibido Whitelists Estáticos)
-Usar listas de dominios fijos rompe las listas. Siempre verifica la resolución IP contra rangos internos (`10.x.x.x`, `192.168.x.x`, `127.0.0.1`, `169.254.x.x`). **Ver skill: `skill_ssrf_dynamic_ip_blocking`**.
+## Regla #7: Anti-SSRF Dinámico
+Usar listas de dominios fijos rompe las listas. Siempre verifica la resolución IP contra rangos internos (`10.x.x.x`, `192.168.x.x`, `127.0.0.1`, `169.254.x.x`). Hara Kiri fue eliminado completamente el 2026-04-11.
 
 ## Regla #8: Zero-State Resilience (Data Pools)
 Todo array usado en rotaciones modulares matematicas ($hash % count($array)) **DEBE OBLIGATORIAMENTE** tener valores por defecto y garantías de división distinta de cero `max(1, count($array))`. **Ver skill: `skill_php_zero_state_resilience`**.
