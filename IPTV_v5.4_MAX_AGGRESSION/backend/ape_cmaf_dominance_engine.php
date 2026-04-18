@@ -5,22 +5,24 @@
  * Integrado con Sentinel v2 — Zero-Transcode, Client-Side Aware
  */
 
-enum CmafPlayerType: string
-{
-    case KODI = 'KODI';
-    case VLC = 'VLC';
-    case EXO = 'EXO';
-    case APPLE = 'APPLE';
-    case GENERIC = 'GENERIC';
-
-    public static function detect(string $ua): self
+if (!enum_exists('CmafPlayerType')) {
+    enum CmafPlayerType: string
     {
-        $uaLower = strtolower($ua);
-        if (str_contains($uaLower, 'kodi')) return self::KODI;
-        if (str_contains($uaLower, 'vlc')) return self::VLC;
-        if (str_contains($uaLower, 'exoplayer') || str_contains($uaLower, 'ott navigator') || str_contains($uaLower, 'tivimate')) return self::EXO;
-        if (str_contains($uaLower, 'apple') || str_contains($uaLower, 'ios') || str_contains($uaLower, 'mac')) return self::APPLE;
-        return self::GENERIC;
+        case KODI = 'KODI';
+        case VLC = 'VLC';
+        case EXO = 'EXO';
+        case APPLE = 'APPLE';
+        case GENERIC = 'GENERIC';
+
+        public static function detect(string $ua): self
+        {
+            $uaLower = strtolower($ua);
+            if (str_contains($uaLower, 'kodi')) return self::KODI;
+            if (str_contains($uaLower, 'vlc')) return self::VLC;
+            if (str_contains($uaLower, 'exoplayer') || str_contains($uaLower, 'ott navigator') || str_contains($uaLower, 'tivimate')) return self::EXO;
+            if (str_contains($uaLower, 'apple') || str_contains($uaLower, 'ios') || str_contains($uaLower, 'mac')) return self::APPLE;
+            return self::GENERIC;
+        }
     }
 }
 

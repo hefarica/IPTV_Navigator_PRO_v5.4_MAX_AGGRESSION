@@ -5666,45 +5666,212 @@ ${options.dictatorMode ? `#` + Array.from({length: 64}).map(() => Math.random().
         return map;
     }
 
-    // ✅ v10.0: Simple Xtream Codes URL builder — O(1) lookup per channel
-    function buildChannelUrl(channel, jwt, profile = null, index = 0, credentialsMap = {}) {
-        // 1. [SECURE-TOKENIZATION] Se descarta channel.url directo porque contiene TOKEN API o
-        // vulnerabilidades de Parameter Pollution (e.g. 1920x1080 hardcodeado o .m3u8 en claro).
-        // Obliga a reconstruir SIEMPRE desde credentialsMap (Verdad Absoluta SSOT).
-        let existingUrl = null; // FORCE RECONSTRUCT
+    // ============================================================================
+    // ✅ v12.0: PERFECT UNIVERSAL URL CONSTRUCTOR (STRICT MATH PARSER)
+    // ============================================================================
+    
+    function _URLEncoder(value) { return encodeURIComponent(value); }
+    function _notEmpty(v) { return v != null && String(v).trim() !== ''; }
+
+    function validateBuiltUrl(url) {
+        let u = String(url);
+        if (u.indexOf('http:// ') === 0 || u.indexOf('https:// ') === 0) throw new Error('Space after protocol');
+        if (u.indexOf(' ') !== -1) throw new Error('Space in URL');
+        if (u.indexOf('??') !== -1) throw new Error('Double question mark');
+        if (u.indexOf('&&') !== -1) throw new Error('Double ampersand');
+        const afterProto = u.replace(/^https?:\/\//i, '');
+        if (afterProto.indexOf('///') !== -1) throw new Error('Triple slash detected inside path');
+        const lower = u.toLowerCase();
+        if (!lower.includes('.m3u8') && !lower.includes('extension=m3u8') && !lower.includes('.ts') && !lower.includes('.mpd') && !lower.includes('.mp4') && !lower.includes('.mkv')) {
+            console.warn('[validateBuiltUrl] URL missing known media extension: ' + url);
+        }
+        return u;
+    }
+
+    function composeUrl(scheme, host, port, path, query) {
+        let url = scheme + '://' + host;
+        if (port != null && port !== '') url += ':' + String(port);
+        if (path !== '') url += path; else url += '/';
+        if (query != null && query !== '') url += '?' + query;
+        return url;
+    }
+
+    function buildOrderedQueryString(params) {
+        const orderedKeys = Object.keys(params).sort();
+        const pairs = [];
+        for (const key of orderedKeys) {
+            pairs.push(_URLEncoder(key) + '=' + _URLEncoder(params[key]));
+        }
+        return pairs.join('&');
+    }
+
+    function normalizePath(path) {
+        if (path == null) return '';
+        let p = String(path).trim();
+        p = p.replace(/\/+/g, '/');
+        if (p === '/' || p === '') return '';
+        if (!p.startsWith('/')) p = '/' + p;
+        if (p.length > 1 && p.endsWith('/')) p = p.slice(0, -1);
+        return p;
+    }
+
+    function joinPath(...segments) {
+        const items = [];
+        for (const segment of segments) {
+            if (segment == null) continue;
+            let s = String(segment).trim();
+            if (s === '') continue;
+            s = s.replace(/^\/+|\/+$/g, '');
+            if (s !== '') items.push(s);
+        }
+        if (items.length === 0) return '';
+        return '/' + items.join('/');
+    }
+
+    function ensurePathEndsWithExtension(path, ext) {
+        if (path.toLowerCase().endsWith('.' + ext.toLowerCase())) return path;
+        if (path.endsWith('/')) throw new Error('Direct HLS path cannot end with slash');
+        return path + '.' + ext;
+    }
+
+    function detectServerType(input) {
+        if (_notEmpty(input.directPath)) return 'direct_hls';
+        if (_notEmpty(input.endpointPath)) return 'query_hls';
+        if (_notEmpty(input.username) && _notEmpty(input.password) && _notEmpty(input.streamId)) return 'xtream';
+        if (input.baseUrl && input.baseUrl.includes('/live/')) return 'xtream';
+        if (input.baseUrl && input.baseUrl.includes('.m3u8')) return 'direct_hls';
+        return 'query_hls';
+    }
+
+    function normalizeExtension(ext) {
+        if (ext == null || String(ext).trim() === '') return 'm3u8';
+        let out = String(ext).trim().toLowerCase();
+        if (out.startsWith('.')) out = out.substring(1);
+        return out;
+    }
+
+    function normalizeBaseUrl(baseUrl, forceHttps, preservePort) {
+        let raw = String(baseUrl).trim();
+        raw = raw.replace(/\\/g, '/');
+        if (!raw.startsWith('http://') && !raw.startsWith('https://')) raw = 'http://' + raw;
         
-        if (existingUrl && (existingUrl.includes('/live/') || /\.(ts|m3u8|mpd|mp4|mkv|flv)$/i.test(existingUrl))) {
-            return preferHttps(existingUrl);
+        let parseFailed = false;
+        let pScheme = 'http', pHost = '', pPort = null, pPath = '';
+        try {
+            const urlObj = new URL(raw);
+            pScheme = urlObj.protocol.replace(':', '').toLowerCase();
+            pHost = urlObj.hostname.toLowerCase().trim();
+            pPort = urlObj.port ? parseInt(urlObj.port) : null;
+            pPath = urlObj.pathname;
+        } catch(e) {
+            parseFailed = true;
+            const match = raw.match(/^(https?):\/\/([^\/:]+)(?::(\d+))?(\/.*)?$/i);
+            if (match) {
+                pScheme = match[1].toLowerCase();
+                pHost = match[2].toLowerCase();
+                pPort = match[3] ? parseInt(match[3]) : null;
+                pPath = match[4] || '';
+            } else {
+                throw new Error('Invalid BaseURL format: ' + raw);
+            }
         }
         
-        // 2. Build Xtream Codes URL: http://server/live/user/pass/stream_id.m3u8
+        if (forceHttps === true) pScheme = 'https';
+        if (pHost === '') throw new Error('Host is empty');
+        
+        if (preservePort !== true) {
+            if ((pPort === 80 && pScheme === 'http') || (pPort === 443 && pScheme === 'https')) pPort = null;
+        }
+        let basePath = normalizePath(pPath);
+        return { scheme: pScheme, host: pHost, port: pPort, basePath };
+    }
+
+    function _buildPerfectUrl(input) {
+        if (!input.baseUrl || input.baseUrl === '') throw new Error('baseUrl is required');
+        
+        const normalized = normalizeBaseUrl(input.baseUrl, input.forceHttps, input.preservePort);
+        const scheme = normalized.scheme;
+        const host = normalized.host;
+        const port = normalized.port;
+        const basePath = normalized.basePath;
+        
+        const ext = normalizeExtension(input.extension);
+        const detectedType = (input.serverType === 'auto' || !input.serverType) ? detectServerType(input) : input.serverType;
+        
+        if (detectedType === 'xtream') {
+            if (!_notEmpty(input.username) || !_notEmpty(input.password) || !_notEmpty(input.streamId)) {
+                throw new Error('Xtream requires username, password, and streamId');
+            }
+            const user = _URLEncoder(String(input.username).trim());
+            const pass = _URLEncoder(String(input.password).trim());
+            const sid = _URLEncoder(String(input.streamId).trim());
+            
+            const typeP = input.typePath || 'live';
+            const finalPath = joinPath(basePath, typeP, user, pass, sid + '.' + ext);
+            const finalUrl = composeUrl(scheme, host, port, finalPath, null);
+            return validateBuiltUrl(finalUrl);
+        }
+        
+        if (detectedType === 'direct_hls') {
+            if (!_notEmpty(input.directPath)) throw new Error('Direct HLS requires directPath');
+            let cleanPath = input.directPath.trim().split('?')[0].split('#')[0];
+            cleanPath = normalizePath(cleanPath);
+            if (cleanPath === '') throw new Error('normalized direct path is empty');
+
+            cleanPath = ensurePathEndsWithExtension(cleanPath, ext);
+            const finalPath = joinPath(basePath, cleanPath);
+            let dQuery = null;
+            if (input.directPath.includes('?')) dQuery = input.directPath.split('?')[1];
+            
+            const finalUrl = composeUrl(scheme, host, port, finalPath, dQuery);
+            return validateBuiltUrl(finalUrl);
+        }
+        
+        if (detectedType === 'query_hls') {
+            if (!_notEmpty(input.endpointPath)) throw new Error('Query HLS requires endpointPath');
+            
+            let endpoint = input.endpointPath.trim().split('?')[0].split('#')[0];
+            endpoint = normalizePath(endpoint);
+            if (endpoint === '') throw new Error('normalized endpoint path is empty');
+
+            const params = {};
+            if (_notEmpty(input.username)) params['username'] = String(input.username).trim();
+            if (_notEmpty(input.password)) params['password'] = String(input.password).trim();
+            if (_notEmpty(input.streamId)) params['stream'] = String(input.streamId).trim();
+            
+            params['extension'] = ext;
+            const reserved = new Set(['username', 'password', 'stream', 'extension']);
+            
+            if (input.extraParams) {
+                for (const [k, v] of Object.entries(input.extraParams)) {
+                    if (_notEmpty(k) && v != null && !reserved.has(k)) {
+                        params[k] = String(v);
+                    }
+                }
+            }
+            const query = buildOrderedQueryString(params);
+            const finalPath = joinPath(basePath, endpoint);
+            const finalUrl = composeUrl(scheme, host, port, finalPath, query);
+            return validateBuiltUrl(finalUrl);
+        }
+        
+        throw new Error('Unsupported serverType');
+    }
+
+    // El Orquestador Raíz (Adapter al Math Parser)
+    function buildChannelUrl(channel, jwt, profile = null, index = 0, credentialsMap = {}) {
         let streamId = channel.stream_id;
         if (streamId == null) streamId = channel.raw?.stream_id;
         if (streamId == null) streamId = channel.id;
         if (streamId == null || streamId === '') return '';
-        
-        // ═══════════════════════════════════════════════════════════
-        // CREDENTIAL RESOLUTION v10.4 — STRICT SERVER MATCHING
-        // Each channel MUST use ITS OWN server. NO "first server" fallback.
-        // ═══════════════════════════════════════════════════════════
+
         const sid = channel.serverId || channel._source || channel.server_id || '';
         let creds = null;
-        
-        // STEP 1: Exact serverId match in credentialsMap
-        if (sid && credentialsMap[sid]) {
-            creds = credentialsMap[sid];
-        }
-        
-        // STEP 2: Hostname match in credentialsMap (for channels without serverId)
+        if (sid && credentialsMap[sid]) creds = credentialsMap[sid];
         if (!creds) {
-            const rawHost = (channel.raw?.server_url || channel.server_url || channel.url || '')
-                .replace(/^https?:\/\//, '').replace(/\/.*$/, '').replace(/:\d+$/, '').toLowerCase();
-            if (rawHost && credentialsMap[`host:${rawHost}`]) {
-                creds = credentialsMap[`host:${rawHost}`];
-            }
+            const rawHost = String(channel.raw?.server_url || channel.server_url || channel.url || '').replace(/^https?:\/\//, '').replace(/\/.*$/, '').replace(/:\d+$/, '').toLowerCase();
+            if (rawHost && credentialsMap[`host:${rawHost}`]) creds = credentialsMap[`host:${rawHost}`];
         }
-        
-        // STEP 3: Direct lookup in window.app.state.activeServers by serverId
         if (!creds && sid) {
             try {
                 const servers = window.app?.state?.activeServers;
@@ -5714,65 +5881,77 @@ ${options.dictatorMode ? `#` + Array.from({length: 64}).map(() => Math.random().
                         const base = (srv.baseUrl || srv.url || '').replace(/\/player_api\.php.*$/, '').replace(/\/$/, '');
                         const user = sanitizeCredential(srv._lockedUsername || srv.username || srv.user || '');
                         const pass = sanitizeCredential(srv._lockedPassword || srv.password || srv.pass || '');
-                        if (base && user && pass) {
-                            creds = { baseUrl: base.startsWith('http') ? base : `http://${base}`, username: user, password: pass };
-                        }
+                        if (base && user && pass) creds = { baseUrl: base, username: user, password: pass };
                     }
                 }
             } catch (e) {}
         }
-        
-        // STEP 4: Direct lookup by hostname in activeServers
-        if (!creds) {
-            try {
-                const chHost = (channel.raw?.server_url || channel.server_url || '')
-                    .replace(/^https?:\/\//, '').replace(/:\d+$/, '').toLowerCase();
-                if (chHost) {
-                    const servers = window.app?.state?.activeServers;
-                    if (servers) {
-                        const srv = servers.find(s => (s.baseUrl || '').toLowerCase().includes(chHost));
-                        if (srv) {
-                            const base = (srv.baseUrl || srv.url || '').replace(/\/player_api\.php.*$/, '').replace(/\/$/, '');
-                            const user = sanitizeCredential(srv._lockedUsername || srv.username || srv.user || '');
-                            const pass = sanitizeCredential(srv._lockedPassword || srv.password || srv.pass || '');
-                            if (base && user && pass) {
-                                creds = { baseUrl: base.startsWith('http') ? base : `http://${base}`, username: user, password: pass };
-                            }
-                        }
-                    }
-                }
-            } catch (e) {}
+        if (!creds) creds = credentialsMap['__current__'];
+
+        let originalUrl = String(channel.url || channel.src || channel.raw?.server_url || '');
+        let baseUrl = creds ? creds.baseUrl : '';
+        if (!baseUrl) {
+            const hostMatch = originalUrl.match(/^https?:\/\/[^\/]+/i);
+            baseUrl = hostMatch ? hostMatch[0] : '';
         }
+        if (!baseUrl) return preferHttps(originalUrl); 
+
+        const username = creds ? creds.username : '';
+        const password = creds ? creds.password : '';
         
-        // STEP 5: LAST RESORT — use __current__ ONLY if channel has NO serverId (unknown origin)
-        if (!creds && !sid) {
-            creds = credentialsMap['__current__'];
-        }
-        
-        if (!creds || !creds.baseUrl || !creds.username || !creds.password) {
-            if (index < 5) console.warn(`❌ [buildChannelUrl] No server found for ${channel.name} (sid=${sid}, stream_id=${streamId})`);
-            return '';
-        }
-        let ext = 'ts';
+        let ext = 'm3u8';
         if (typeof window !== 'undefined' && window.app?.state?.activeServers) {
-            const srv = window.app.state.activeServers.find(s => (s.baseUrl || '').includes(creds.baseUrl));
+            const srv = window.app.state.activeServers.find(s => (s.baseUrl || '').includes(baseUrl));
             if (srv && srv.streamFormat) ext = srv.streamFormat;
             else if (window.app.state.streamFormat) ext = window.app.state.streamFormat;
         }
         
         let typePath = 'live';
-        if (channel.type === "movie" || channel.stream_type === "movie") { 
-            typePath = "movie"; 
-            ext = channel.container_extension || "mp4"; 
-        } else if (channel.type === "series" || channel.stream_type === "series") { 
-            typePath = "series"; 
-            ext = channel.container_extension || "mp4"; 
-        } else {
+        if (channel.type === "movie" || channel.stream_type === "movie") { typePath = "movie"; ext = channel.container_extension || "mp4"; } 
+        else if (channel.type === "series" || channel.stream_type === "series") { typePath = "series"; ext = channel.container_extension || "mp4"; }
+        else {
             if (channel.customFormat) ext = channel.customFormat;
             if (channel.container_extension && channel.container_extension !== 'mp4') ext = channel.container_extension;
         }
+
+        let srvType = 'auto';
+        let dPath = null;
+        let ePath = null;
+        let extra = {};
         
-        return preferHttps(`${creds.baseUrl}/${typePath}/${creds.username}/${creds.password}/${streamId}.${ext}`);
+        try {
+            const cleanOriginal = originalUrl.replace(/\s+/g, '').replace(/([^:]\/)\/+/g, "$1");
+            if (cleanOriginal.includes('?') && (cleanOriginal.includes('username=') || cleanOriginal.includes('user='))) {
+                srvType = 'query_hls';
+                const urlObj = new URL(cleanOriginal);
+                ePath = urlObj.pathname;
+                urlObj.searchParams.forEach((val, key) => { extra[key] = val; });
+            } else if (cleanOriginal && !cleanOriginal.includes('/live/') && !cleanOriginal.includes('/movie/') && !cleanOriginal.includes('/series/')) {
+                if (cleanOriginal.match(/\.(m3u8|mpd|ts|mp4|mkv)$/i) && !creds) {
+                    srvType = 'direct_hls';
+                    dPath = new URL(cleanOriginal).pathname;
+                }
+            }
+        } catch(e) {}
+
+        if (srvType === 'auto') srvType = 'xtream';
+        if (!ePath) ePath = '/playlist';
+        if (!dPath) dPath = `/hls/${streamId}.${ext}`;
+
+        const input = {
+            serverType: srvType, baseUrl: baseUrl, username: username, password: password,
+            streamId: streamId, directPath: dPath, endpointPath: ePath, extension: ext,
+            typePath: typePath, extraParams: extra, forceHttps: false, preservePort: true
+        };
+        
+        try {
+            const pUrl = _buildPerfectUrl(input);
+            return preferHttps(pUrl);
+        } catch (err) {
+            console.warn('[Mathematical URL Constructor Error] Fallback triggered:', err.message);
+            let fbUrl = `${baseUrl}/${typePath}/${username}/${password}/${streamId}.${ext}`;
+            return preferHttps(fbUrl.replace(/\s+/g, '').replace(/([^:]\/)\/+/g, "$1"));
+        }
     }
 
     
@@ -5910,14 +6089,14 @@ function __getOmegaGodTierDirectives(channel, cfg) {
 
         // ── PERFIL DESDE ARRAY DE ORIGEN ─────────────────────────────────────
         const cfg           = getProfileConfig(profile);
-        const _bw796        = cfg.bandwidth       || 80000000;
-        const _avgBw        = cfg.avgBandwidth    || Math.round(_bw796 * 0.85);
+        const _bw796        = cfg.bitrate ? Math.round(cfg.bitrate * 1000) : 80000000;
+        const _avgBw        = Math.round(_bw796 * 0.85);
         const _res796       = cfg.resolution      || '3840x2160';
-        const _fps796       = cfg.framerate       || 60;
-        const _codec796     = cfg.codec           || 'hvc1.2.4.L153.B0';
-        const _codecAudio   = cfg.audioCodec      || 'ec-3';
-        const _hdrMode      = cfg.hdrMode         || 'PQ';
-        const _hdrNits      = cfg.hdrNits         || 5000;
+        const _fps796       = cfg.fps             || 60;
+        const _codec796     = (() => { switch(cfg.codec_primary) { case 'VVC': return 'vvc1.1.L63.00.0.0'; case 'AV1': return 'av01.0.08M.08'; case 'AVC': return 'avc1.640028'; default: return 'hvc1.1.6.L153.B0'; } })();
+        const _codecAudio   = cfg.audio_codec     || 'ec-3';
+        const _hdrMode      = cfg.hdr_support     ? 'PQ'  : 'SDR';
+        const _hdrNits      = cfg.hdr_support     ? 5000  : 300;
         const _vmaf         = cfg.vmaf_target     || 95;
         const _buf796       = (typeof CAPACITY_OVERDRIVE !== 'undefined')
                               ? CAPACITY_OVERDRIVE.buffer_ms || 60000
@@ -7188,7 +7367,7 @@ function __getOmegaGodTierDirectives(channel, cfg) {
 
                     try {
                         // Detectar perfil
-                        const profile = forceProfile || detectProfile(channel) || 'P3';
+                        const profile = forceProfile || determineProfile(channel) || 'P3';
                         const entry = generateChannelEntry(channel, profile, index, credentialsMap, options);
                         const chunk = entry + '\n\n';
                         const encoded = encoder.encode(chunk);
@@ -7306,6 +7485,92 @@ function __getOmegaGodTierDirectives(channel, cfg) {
             }
         } catch (e) {
             console.warn('⚠️ [SCHEMA GATE] Validator error, proceeding with original channels:', e.message);
+        }
+
+        // ═══════════════════════════════════════════════════════════════
+        // PRE-PUBLICATION HEALTH CHECK (Async Validation of 503)
+        // ═══════════════════════════════════════════════════════════════
+        if (options.healthValidationEnabled !== false) {
+            try {
+                if (window.HUD_TYPED_ARRAYS) window.HUD_TYPED_ARRAYS.log(`🔍 Escaneando Salud de Rutas (Pre-Publicación)...`, '#f59e0b');
+                
+                const PROXY_URL = 'https://iptv-ape.duckdns.org/backend/atomic_probe.php';
+                const MAX_BATCH_SIZE = 64; 
+                
+                // Extraemos credenciales para construir las URL de forma perfecta (COMPATIBILIDAD ABSOLUTA)
+                const credentialsMap = (typeof buildCredentialsMap === 'function') 
+                    ? buildCredentialsMap(safeChannels) 
+                    : (window.app?.state?.credentialsMap || window.gatewayManager?.credentialsMap || {});
+
+                const channelsToVerify = [];
+                const channelsToSkip = [];
+
+                for (let i = 0; i < safeChannels.length; i++) {
+                    const c = safeChannels[i];
+                    // Construcción Universal "1 URL per Channel" respetando todas las reglas del Proxy
+                    const url = (typeof buildChannelUrl === 'function') 
+                        ? buildChannelUrl(c, null, options.profile || 'P3', i, credentialsMap) 
+                        : (c.url || c.src || '');
+                        
+                    if (url.includes('line.tivi-ott.net') || options.verifyAllHosts) {
+                        channelsToVerify.push({ idx: i, url, channel: c });
+                    } else {
+                        channelsToSkip.push(c);
+                    }
+                }
+
+                if (channelsToVerify.length > 0) {
+                    console.log(`🔍 [PRE-FLIGHT] Verificando ${channelsToVerify.length} rutas (vía atomic_probe.php)...`);
+                    const functionalChannels = [];
+                    const degradedChannels = [];
+
+                    for (let i = 0; i < channelsToVerify.length; i += MAX_BATCH_SIZE) {
+                        const batch = channelsToVerify.slice(i, i + MAX_BATCH_SIZE);
+                        const batchUrls = batch.map(b => b.url);
+                        
+                        if (window.HUD_TYPED_ARRAYS) {
+                            const pct = Math.round((i / channelsToVerify.length) * 100);
+                            window.HUD_TYPED_ARRAYS.log(`📡 Validando lote ${Math.floor(i/MAX_BATCH_SIZE) + 1} (${pct}%)`, '#03a9f4');
+                        }
+
+                        try {
+                            const res = await fetch(PROXY_URL, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ urls: batchUrls })
+                            });
+                            
+                            if (res.ok) {
+                                const data = await res.json();
+                                data.forEach((probeResult, idx) => {
+                                    const originalBatchItem = batch[idx];
+                                    // 200 o 206 (Partial Content) se aceptan
+                                    if (probeResult && (probeResult.status === 200 || probeResult.status === 206 || probeResult.status === 302)) {
+                                        functionalChannels.push(originalBatchItem.channel);
+                                    } else {
+                                        degradedChannels.push(originalBatchItem.channel);
+                                        console.warn(`❌ [PRE-FLIGHT 503] Eliminando inventario degradado: ${originalBatchItem.url} (status: ${probeResult?.status})`);
+                                    }
+                                });
+                            } else {
+                                functionalChannels.push(...batch.map(b => b.channel));
+                            }
+                        } catch (e) {
+                            console.warn(`⚠️ [PRE-FLIGHT] Error de red en batch, fallback pasivo:`, e);
+                            functionalChannels.push(...batch.map(b => b.channel));
+                        }
+                    }
+
+                    console.log(`✅ [PRE-FLIGHT] Verificación completa: ${functionalChannels.length} Funcionales, ${degradedChannels.length} Degradados (503).`);
+                    if (window.HUD_TYPED_ARRAYS) {
+                        window.HUD_TYPED_ARRAYS.log(`✅ Funcionales: ${functionalChannels.length} canales admitidos`, '#4ade80');
+                    }
+                    
+                    safeChannels = [...channelsToSkip, ...functionalChannels];
+                }
+            } catch (err) {
+                console.error(`❌ [PRE-FLIGHT] Error inesperado en Health Check:`, err);
+            }
         }
 
         const stream = generateM3U8Stream(safeChannels, options);
