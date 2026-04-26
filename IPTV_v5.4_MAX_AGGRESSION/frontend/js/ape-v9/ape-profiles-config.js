@@ -4226,6 +4226,7 @@
             this.labMetadata = {};
             this.configGlobal = {};
             this.labExportedAt = null;
+            this.omegaGapPlan = null;
             try { this.loadLABFromStorage && this.loadLABFromStorage(); } catch (e) {}
         }
 
@@ -4355,7 +4356,12 @@
                 headersAdded: 0,
                 nivel1Count: 0,
                 nivel3Total: 0,
-                serversCount: 0
+                serversCount: 0,
+                placeholdersCount: 0,
+                gapPlanItems: 0,
+                gapPlanReplicar: 0,
+                gapPlanImplementar: 0,
+                gapPlanQuitar: 0
             };
             try {
                 const supportedSchemas = ['omega_v1'];
@@ -4470,9 +4476,31 @@
                 this.labServers = data.servers || [];
                 result.serversCount = this.labServers.length;
 
+                // === 5b. OMEGA_GAP_PLAN — policy de injection cocinada por el LAB Excel ===
+                // 50 items con canonical_template_by_level por nivel (NIVEL_1/NIVEL_2/NIVEL_3/PLAYER_CONFIG)
+                // + action (REPLICAR|IMPLEMENTAR|QUITAR) + injection_order + already_present_in_lab.
+                // Sin esto el toolkit no sabe qué directivas inyectar para llegar al 100% del scorecard.
+                this.omegaGapPlan = data.omega_gap_plan || null;
+                if (this.omegaGapPlan) {
+                    const items = Array.isArray(this.omegaGapPlan.items) ? this.omegaGapPlan.items : [];
+                    const counts = items.reduce((acc, it) => {
+                        const a = (it.action || '').toUpperCase();
+                        acc[a] = (acc[a] || 0) + 1;
+                        return acc;
+                    }, {});
+                    console.log('[LAB-CONSUMER] 📜 omega_gap_plan absorbido:', items.length, 'items', counts);
+                    result.gapPlanItems = items.length;
+                    result.gapPlanReplicar = counts.REPLICAR || 0;
+                    result.gapPlanImplementar = counts.IMPLEMENTAR || 0;
+                    result.gapPlanQuitar = counts.QUITAR || 0;
+                }
+
                 // === 6. SCORING METADATA ===
                 this.labMetadata = data.scoring_metadata || {};
                 this.labExportedAt = data.exported_at || null;
+                // Anotar scorecard del gap_plan en result para la UI
+                result.gapPlanScorecard = this.omegaGapPlan?.scorecard_total || null;
+                result.gapPlanGrade = this.omegaGapPlan?.scorecard_grade || null;
 
                 // === 7. PERSISTENCIA ===
                 // Profiles via mecanismo existente
@@ -4487,6 +4515,7 @@
                 localStorage.setItem('ape_lab_evasion', JSON.stringify(this.evasionPool));
                 localStorage.setItem('ape_lab_config_global', JSON.stringify(this.configGlobal));
                 localStorage.setItem('ape_lab_servers', JSON.stringify(this.labServers));
+                localStorage.setItem('ape_lab_omega_gap_plan', JSON.stringify(this.omegaGapPlan || null));
                 localStorage.setItem('ape_lab_metadata', JSON.stringify({
                     metadata: this.labMetadata,
                     exported_at: this.labExportedAt,
@@ -4517,12 +4546,22 @@
                         await window.app.db.saveAppState('ape_lab_nivel1', this.nivel1Directives);
                         await window.app.db.saveAppState('ape_lab_nivel3', this.nivel3PerLayer);
                         await window.app.db.saveAppState('ape_lab_evasion', this.evasionPool);
+                        if (this.omegaGapPlan) {
+                            await window.app.db.saveAppState('ape_lab_omega_gap_plan', this.omegaGapPlan);
+                        }
                     } catch (e) { console.warn('[LAB] IDB save warning:', e); }
                 }
 
-                // Disparar event para que el resto del frontend reaccione
+                // Disparar event con payload completo para que app.state absorba servers
+                // y otros consumers reaccionen al gap_plan.
                 try {
-                    window.dispatchEvent(new CustomEvent('lab-imported', { detail: result }));
+                    window.dispatchEvent(new CustomEvent('lab-imported', {
+                        detail: {
+                            ...result,
+                            labServers: this.labServers,
+                            omegaGapPlan: this.omegaGapPlan
+                        }
+                    }));
                 } catch (_) {}
 
                 console.log('[LAB] Imported successfully:', result);
@@ -4563,6 +4602,8 @@
                     this.labBulletproof = o.bulletproof;
                     this.labMetaPerProfile = o.meta_per_profile;
                 }
+                const gp = localStorage.getItem('ape_lab_omega_gap_plan');
+                if (gp) this.omegaGapPlan = JSON.parse(gp);
             } catch (e) {
                 console.warn('[LAB] loadLABFromStorage:', e);
             }
