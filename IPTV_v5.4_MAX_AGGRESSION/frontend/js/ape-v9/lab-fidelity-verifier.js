@@ -121,6 +121,70 @@
                 }
             }
 
+            // Profile-level hlsjs (JSON blob)
+            if (profileData.hlsjs && Object.keys(profileData.hlsjs).length > 0) {
+                checks.push({
+                    key: `${profileId}.hlsjs.blob`,
+                    expected: '#EXT-X-APE-HLSJS:',
+                    test: m3u8Text.includes('#EXT-X-APE-HLSJS:')
+                });
+                // Sample first key to verify content roundtrip
+                const hk = Object.keys(profileData.hlsjs)[0];
+                if (hk) {
+                    checks.push({
+                        key: `${profileId}.hlsjs.${hk}.in_blob`,
+                        expected: hk,
+                        test: m3u8Text.includes(`"${hk}"`)
+                    });
+                }
+            }
+
+            // Profile-level prefetch_config
+            if (profileData.prefetch_config && Object.keys(profileData.prefetch_config).length > 0) {
+                checks.push({
+                    key: `${profileId}.prefetch_config.blob`,
+                    expected: '#EXT-X-APE-PREFETCH:',
+                    test: m3u8Text.includes('#EXT-X-APE-PREFETCH:')
+                });
+            }
+
+            // Profile-level bounds
+            if (profileData.bounds && Object.keys(profileData.bounds).length > 0) {
+                checks.push({
+                    key: `${profileId}.bounds.blob`,
+                    expected: '#EXT-X-APE-BOUNDS:',
+                    test: m3u8Text.includes('#EXT-X-APE-BOUNDS:')
+                });
+            }
+
+            // Profile-level optimized_knobs
+            if (profileData.optimized_knobs && Object.keys(profileData.optimized_knobs).length > 0) {
+                checks.push({
+                    key: `${profileId}.optimized_knobs.blob`,
+                    expected: '#EXT-X-APE-KNOBS:',
+                    test: m3u8Text.includes('#EXT-X-APE-KNOBS:')
+                });
+            }
+
+            // Profile-level settings (JSON blob + scorecard aliases)
+            if (profileData.settings && Object.keys(profileData.settings).length > 0) {
+                checks.push({
+                    key: `${profileId}.settings.blob`,
+                    expected: '#EXT-X-APE-SETTINGS:',
+                    test: m3u8Text.includes('#EXT-X-APE-SETTINGS:')
+                });
+                // Scorecard alias coverage
+                for (const a of ['fragLoadMaxRetry', 'liveSyncDurationCount', 'bufferTargetSec', 'maxResolution']) {
+                    if (profileData.settings[a] !== undefined && profileData.settings[a] !== null) {
+                        checks.push({
+                            key: `${profileId}.settings.${a}.alias`,
+                            expected: `#EXT-X-APE-ALIAS:${a}=${profileData.settings[a]}`,
+                            test: m3u8Text.includes(`#EXT-X-APE-ALIAS:${a}=${profileData.settings[a]}`)
+                        });
+                    }
+                }
+            }
+
             // level_1 master playlist directives
             if (pe && pe.level_1_master_playlist && Array.isArray(pe.level_1_master_playlist)) {
                 for (const dir of pe.level_1_master_playlist) {

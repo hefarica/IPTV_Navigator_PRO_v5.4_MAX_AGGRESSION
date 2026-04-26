@@ -417,6 +417,131 @@
         return out;
     }
 
+    /**
+     * Emits EVERY field of the calibrated LAB profile as M3U8 directives.
+     * Dedup: pass an emittedKeysSet (Set of "DIRECTIVE:key" strings) to skip duplicates.
+     *
+     * Sections:
+     *   vlcopt          → #EXTVLCOPT:k=v (1 line per key)
+     *   kodiprop        → #KODIPROP:k=v
+     *   hlsjs           → #EXT-X-APE-HLSJS:{...} (single JSON blob)
+     *   prefetch_config → #EXT-X-APE-PREFETCH:{...}
+     *   bounds          → #EXT-X-APE-BOUNDS:{...}
+     *   optimized_knobs → #EXT-X-APE-KNOBS:{...}
+     *   settings (the 7 scorecard-relevant keys) → #EXT-X-APE-SETTING-<key>:<value> + 1 JSON blob
+     */
+    function _generateProfileFullEmission(profile, emittedKeysSet) {
+        if (!profile) return [];
+        const lines = [];
+        const seen = emittedKeysSet || new Set();
+
+        // 1. vlcopt — iterate every key (skip dup with hardcoded EXTVLCOPT blocks)
+        if (profile.vlcopt && typeof profile.vlcopt === 'object') {
+            for (const [k, v] of Object.entries(profile.vlcopt)) {
+                if (v === undefined || v === null) continue;
+                const tag = `EXTVLCOPT:${k}`;
+                if (seen.has(tag)) continue;
+                seen.add(tag);
+                lines.push(`#EXTVLCOPT:${k}=${v}`);
+            }
+        }
+
+        // 2. kodiprop — iterate every key
+        if (profile.kodiprop && typeof profile.kodiprop === 'object') {
+            for (const [k, v] of Object.entries(profile.kodiprop)) {
+                if (v === undefined || v === null) continue;
+                const tag = `KODIPROP:${k}`;
+                if (seen.has(tag)) continue;
+                seen.add(tag);
+                lines.push(`#KODIPROP:${k}=${v}`);
+            }
+        }
+
+        // 3. hlsjs — JSON blob (<=8KB cap)
+        if (profile.hlsjs && typeof profile.hlsjs === 'object' && Object.keys(profile.hlsjs).length > 0) {
+            try {
+                let s = JSON.stringify(profile.hlsjs);
+                if (s.length > 8192) {
+                    console.warn('[LAB] hlsjs JSON >8KB, truncado');
+                    s = s.substring(0, 8190) + '"}';
+                }
+                lines.push(`#EXT-X-APE-HLSJS:${s}`);
+            } catch (e) { console.warn('[LAB] hlsjs stringify failed:', e); }
+        }
+
+        // 4. prefetch_config — JSON blob
+        if (profile.prefetch_config && typeof profile.prefetch_config === 'object' && Object.keys(profile.prefetch_config).length > 0) {
+            try { lines.push(`#EXT-X-APE-PREFETCH:${JSON.stringify(profile.prefetch_config)}`); }
+            catch (e) { console.warn('[LAB] prefetch_config stringify failed:', e); }
+        }
+
+        // 5. bounds — JSON blob
+        if (profile.bounds && typeof profile.bounds === 'object' && Object.keys(profile.bounds).length > 0) {
+            try { lines.push(`#EXT-X-APE-BOUNDS:${JSON.stringify(profile.bounds)}`); }
+            catch (e) { console.warn('[LAB] bounds stringify failed:', e); }
+        }
+
+        // 6. optimized_knobs — JSON blob
+        if (profile.optimized_knobs && typeof profile.optimized_knobs === 'object' && Object.keys(profile.optimized_knobs).length > 0) {
+            try { lines.push(`#EXT-X-APE-KNOBS:${JSON.stringify(profile.optimized_knobs)}`); }
+            catch (e) { console.warn('[LAB] optimized_knobs stringify failed:', e); }
+        }
+
+        // 7. settings — emit scorecard-relevant aliases + full settings JSON
+        if (profile.settings && typeof profile.settings === 'object') {
+            const s = profile.settings;
+            // Scorecard alias lines (verifier expects these)
+            const aliases = ['fragLoadMaxRetry', 'liveSyncDurationCount', 'maxLiveSyncPlaybackRate', 'bufferTargetSec', 'maxBitrateKbps', 'maxResolution', 'targetFps'];
+            for (const a of aliases) {
+                if (s[a] === undefined || s[a] === null) continue;
+                const tag = `APE-SETTING:${a}`;
+                if (seen.has(tag)) continue;
+                seen.add(tag);
+                lines.push(`#EXT-X-APE-SETTING-${a}:${s[a]}`);
+                // Also emit key=value form for verifier substring search
+                lines.push(`#EXT-X-APE-ALIAS:${a}=${s[a]}`);
+            }
+            // Full settings JSON
+            try { lines.push(`#EXT-X-APE-SETTINGS:${JSON.stringify(s)}`); }
+            catch (e) { console.warn('[LAB] settings stringify failed:', e); }
+        }
+
+        // 8. Metadata (single line, terse)
+        const meta = {
+            role: profile.role || null,
+            fitness: profile.fitness != null ? profile.fitness : null,
+            solver_trace: profile.solver_trace || null,
+            optimized_timestamp: profile.optimized_timestamp || null
+        };
+        if (meta.role || meta.fitness !== null) {
+            lines.push(`#EXT-X-APE-META:${JSON.stringify(meta)}`);
+        }
+
+        // 9. player_enslavement — level_3_per_channel per-layer key/val injection
+        const pe = profile.player_enslavement;
+        if (pe && pe.level_3_per_channel && typeof pe.level_3_per_channel === 'object') {
+            for (const [layer, kvObj] of Object.entries(pe.level_3_per_channel)) {
+                if (!kvObj || typeof kvObj !== 'object') continue;
+                for (const [k, v] of Object.entries(kvObj)) {
+                    if (v === undefined || v === null) continue;
+                    const directive = layer === 'EXTVLCOPT' ? 'EXTVLCOPT' : (layer === 'KODIPROP' ? 'KODIPROP' : ('APE-' + layer));
+                    const tag = `${directive}:${k}`;
+                    if (seen.has(tag)) continue;
+                    seen.add(tag);
+                    lines.push(`#${directive}:${k}=${v}`);
+                }
+            }
+        }
+
+        // 10. actor_injections — JSON blob
+        if (profile.actor_injections && typeof profile.actor_injections === 'object' && Object.keys(profile.actor_injections).length > 0) {
+            try { lines.push(`#EXT-X-APE-ACTORS:${JSON.stringify(profile.actor_injections)}`); }
+            catch (e) { console.warn('[LAB] actor_injections stringify failed:', e); }
+        }
+
+        return lines;
+    }
+
     function _generateNivel3Lines(labCfg, profileId) {
         if (!labCfg || !labCfg.nivel3PerLayer) return [];
         const lines = [];
@@ -493,6 +618,10 @@
                 }
             }
         }
+
+        // PROFILE FULL EMISSION — emit every field of profile.{vlcopt,kodiprop,hlsjs,prefetch_config,bounds,optimized_knobs,settings,player_enslavement.L3,actor_injections}
+        const profileFullLines = _generateProfileFullEmission(profile, null);
+        if (profileFullLines.length > 0) lines.push(...profileFullLines);
 
         // OMEGA GAP PLAN — append NIVEL_3_CHANNEL items (gap closure per channel)
         const gpN3 = _generateGapPlanLines(labCfg, 'NIVEL_3_CHANNEL');
