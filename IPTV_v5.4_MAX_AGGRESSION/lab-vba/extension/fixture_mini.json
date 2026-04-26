@@ -1,0 +1,363 @@
+﻿{
+    "lab_bridge_version":  "1.1",
+    "exported_at":  "2026-04-26T00:00:00Z",
+    "source":  "fixture",
+    "servers":  [
+                    {
+                        "id":  "srv_T",
+                        "username":  "u",
+                        "base_url_raw":  "http://t.test/p.php",
+                        "url":  null,
+                        "name":  "TEST",
+                        "channel_count":  2,
+                        "base_url":  "http://t.test",
+                        "password":  "p"
+                    }
+                ],
+    "servers_summary":  {
+                            "total":  1,
+                            "by_id":  {
+                                          "srv_T":  2
+                                      }
+                        },
+    "filters_applied":  {
+                            "codec":  "ALL",
+                            "group":  null,
+                            "search":  "",
+                            "language":  "ALL",
+                            "tier":  "ALL"
+                        },
+    "active_profile_id":  "P3",
+    "profiles_hash":  "sha256:fixture_20260426131626",
+    "profiles_snapshot":  {
+                              "P0":  {
+                                         "id":  "P0",
+                                         "name":  "P0",
+                                         "level":  0,
+                                         "quality":  "Q",
+                                         "description":  "",
+                                         "color":  "#000",
+                                         "settings":  {
+                                                          "resolution":  "RES_P0",
+                                                          "fps":  24,
+                                                          "bufferSeconds":  10,
+                                                          "bitrate":  100,
+                                                          "codec":  "C_P0",
+                                                          "networkCachingMs":  5000,
+                                                          "bufferTargetSec":  15,
+                                                          "maxBitrateKbps":  150000,
+                                                          "maxResolution":  "MAXRES_P0",
+                                                          "targetFps":  60
+                                                      },
+                                         "vlcopt":  {
+                                                        "network-caching":  "VAL_P0",
+                                                        "live-caching":  "LIVE_P0",
+                                                        "video-fps":  "30,30,30,30"
+                                                    },
+                                         "kodiprop":  {
+                                                          "inputstream.adaptive.manifest_type":  "hls"
+                                                      },
+                                         "headerOverrides":  {
+                                                                 "X-Buffer-Target":  "HDR_P0",
+                                                                 "X-Comma-Test":  "a,b,c,d"
+                                                             },
+                                         "headers":  {
+                                                         "User-Agent":  "UA_P0"
+                                                     },
+                                         "hlsjs":  {
+                                                       "maxBufferLength":  30,
+                                                       "backBufferLength":  20
+                                                   },
+                                         "prefetch_config":  {
+                                                                 "parallel_downloads":  2
+                                                             },
+                                         "quality_levels":  {
+                                                                "ladder_count":  8
+                                                            }
+                                     },
+                              "P1":  {
+                                         "id":  "P1",
+                                         "name":  "P1",
+                                         "level":  0,
+                                         "quality":  "Q",
+                                         "description":  "",
+                                         "color":  "#000",
+                                         "settings":  {
+                                                          "resolution":  "RES_P1",
+                                                          "fps":  24,
+                                                          "bufferSeconds":  10,
+                                                          "bitrate":  100,
+                                                          "codec":  "C_P1",
+                                                          "networkCachingMs":  5000,
+                                                          "bufferTargetSec":  15,
+                                                          "maxBitrateKbps":  150000,
+                                                          "maxResolution":  "MAXRES_P1",
+                                                          "targetFps":  60
+                                                      },
+                                         "vlcopt":  {
+                                                        "network-caching":  "VAL_P1",
+                                                        "live-caching":  "LIVE_P1",
+                                                        "video-fps":  "30,30,30,30"
+                                                    },
+                                         "kodiprop":  {
+                                                          "inputstream.adaptive.manifest_type":  "hls"
+                                                      },
+                                         "headerOverrides":  {
+                                                                 "X-Buffer-Target":  "HDR_P1",
+                                                                 "X-Comma-Test":  "a,b,c,d"
+                                                             },
+                                         "headers":  {
+                                                         "User-Agent":  "UA_P1"
+                                                     },
+                                         "hlsjs":  {
+                                                       "maxBufferLength":  30,
+                                                       "backBufferLength":  20
+                                                   },
+                                         "prefetch_config":  {
+                                                                 "parallel_downloads":  2
+                                                             },
+                                         "quality_levels":  {
+                                                                "ladder_count":  8
+                                                            }
+                                     },
+                              "P2":  {
+                                         "id":  "P2",
+                                         "name":  "P2",
+                                         "level":  0,
+                                         "quality":  "Q",
+                                         "description":  "",
+                                         "color":  "#000",
+                                         "settings":  {
+                                                          "resolution":  "RES_P2",
+                                                          "fps":  24,
+                                                          "bufferSeconds":  10,
+                                                          "bitrate":  100,
+                                                          "codec":  "C_P2",
+                                                          "networkCachingMs":  5000,
+                                                          "bufferTargetSec":  15,
+                                                          "maxBitrateKbps":  150000,
+                                                          "maxResolution":  "MAXRES_P2",
+                                                          "targetFps":  60
+                                                      },
+                                         "vlcopt":  {
+                                                        "network-caching":  null,
+                                                        "live-caching":  "LIVE_P2",
+                                                        "video-fps":  "30,30,30,30"
+                                                    },
+                                         "kodiprop":  {
+                                                          "inputstream.adaptive.manifest_type":  "hls"
+                                                      },
+                                         "headerOverrides":  {
+                                                                 "X-Buffer-Target":  "",
+                                                                 "X-Comma-Test":  "a,b,c,d"
+                                                             },
+                                         "headers":  {
+                                                         "User-Agent":  "UA_P2"
+                                                     },
+                                         "hlsjs":  {
+                                                       "maxBufferLength":  30,
+                                                       "backBufferLength":  20
+                                                   },
+                                         "prefetch_config":  {
+                                                                 "parallel_downloads":  2
+                                                             },
+                                         "quality_levels":  {
+                                                                "ladder_count":  8
+                                                            }
+                                     },
+                              "P3":  {
+                                         "id":  "P3",
+                                         "name":  "P3",
+                                         "level":  0,
+                                         "quality":  "Q",
+                                         "description":  "",
+                                         "color":  "#000",
+                                         "settings":  {
+                                                          "resolution":  "RES_P3",
+                                                          "fps":  24,
+                                                          "bufferSeconds":  10,
+                                                          "bitrate":  100,
+                                                          "codec":  "C_P3",
+                                                          "networkCachingMs":  5000,
+                                                          "bufferTargetSec":  15,
+                                                          "maxBitrateKbps":  150000,
+                                                          "maxResolution":  "MAXRES_P3",
+                                                          "targetFps":  60
+                                                      },
+                                         "vlcopt":  {
+                                                        "network-caching":  "VAL_P3",
+                                                        "live-caching":  "LIVE_P3",
+                                                        "video-fps":  "30,30,30,30"
+                                                    },
+                                         "kodiprop":  {
+                                                          "inputstream.adaptive.manifest_type":  "hls"
+                                                      },
+                                         "headerOverrides":  {
+                                                                 "X-Buffer-Target":  "HDR_P3",
+                                                                 "X-Comma-Test":  "a,b,c,d"
+                                                             },
+                                         "headers":  {
+                                                         "User-Agent":  "UA_P3"
+                                                     },
+                                         "hlsjs":  {
+                                                       "maxBufferLength":  30,
+                                                       "backBufferLength":  20
+                                                   },
+                                         "prefetch_config":  {
+                                                                 "parallel_downloads":  2
+                                                             },
+                                         "quality_levels":  {
+                                                                "ladder_count":  8
+                                                            }
+                                     },
+                              "P4":  {
+                                         "id":  "P4",
+                                         "name":  "P4",
+                                         "level":  0,
+                                         "quality":  "Q",
+                                         "description":  "",
+                                         "color":  "#000",
+                                         "settings":  {
+                                                          "resolution":  "RES_P4",
+                                                          "fps":  24,
+                                                          "bufferSeconds":  10,
+                                                          "bitrate":  100,
+                                                          "codec":  "C_P4",
+                                                          "networkCachingMs":  5000,
+                                                          "bufferTargetSec":  15,
+                                                          "maxBitrateKbps":  150000,
+                                                          "maxResolution":  "MAXRES_P4",
+                                                          "targetFps":  60
+                                                      },
+                                         "vlcopt":  {
+                                                        "network-caching":  "VAL_P4",
+                                                        "live-caching":  "LIVE_P4",
+                                                        "video-fps":  "30,30,30,30"
+                                                    },
+                                         "kodiprop":  {
+                                                          "inputstream.adaptive.manifest_type":  "hls"
+                                                      },
+                                         "headerOverrides":  {
+                                                                 "X-Buffer-Target":  "HDR_P4",
+                                                                 "X-Comma-Test":  "a,b,c,d"
+                                                             },
+                                         "headers":  {
+                                                         "User-Agent":  "UA_P4"
+                                                     },
+                                         "hlsjs":  {
+                                                       "maxBufferLength":  30,
+                                                       "backBufferLength":  20
+                                                   },
+                                         "prefetch_config":  {
+                                                                 "parallel_downloads":  2
+                                                             },
+                                         "quality_levels":  {
+                                                                "ladder_count":  8
+                                                            }
+                                     },
+                              "P5":  {
+                                         "id":  "P5",
+                                         "name":  "P5",
+                                         "level":  0,
+                                         "quality":  "Q",
+                                         "description":  "",
+                                         "color":  "#000",
+                                         "settings":  {
+                                                          "resolution":  "RES_P5",
+                                                          "fps":  24,
+                                                          "bufferSeconds":  10,
+                                                          "bitrate":  100,
+                                                          "codec":  "C_P5",
+                                                          "networkCachingMs":  5000,
+                                                          "bufferTargetSec":  15,
+                                                          "maxBitrateKbps":  150000,
+                                                          "maxResolution":  "MAXRES_P5",
+                                                          "targetFps":  60
+                                                      },
+                                         "vlcopt":  {
+                                                        "network-caching":  "VAL_P5",
+                                                        "live-caching":  "LIVE_P5",
+                                                        "video-fps":  "30,30,30,30"
+                                                    },
+                                         "kodiprop":  {
+                                                          "inputstream.adaptive.manifest_type":  "hls"
+                                                      },
+                                         "headerOverrides":  {
+                                                                 "X-Buffer-Target":  "HDR_P5",
+                                                                 "X-Comma-Test":  "a,b,c,d"
+                                                             },
+                                         "headers":  {
+                                                         "User-Agent":  "UA_P5"
+                                                     },
+                                         "hlsjs":  {
+                                                       "maxBufferLength":  30,
+                                                       "backBufferLength":  20
+                                                   },
+                                         "prefetch_config":  {
+                                                                 "parallel_downloads":  2
+                                                             },
+                                         "quality_levels":  {
+                                                                "ladder_count":  8
+                                                            }
+                                     }
+                          },
+    "channels":  [
+                     {
+                         "height":  null,
+                         "country":  "ES",
+                         "bitrate":  null,
+                         "quality_tags":  [
+
+                                          ],
+                         "name":  "C1",
+                         "fps":  null,
+                         "is_sd":  false,
+                         "logo":  "",
+                         "resolution":  "",
+                         "codec":  "",
+                         "quality_score":  null,
+                         "stream_id":  1,
+                         "quality_tier":  "",
+                         "is_hd":  true,
+                         "is_series":  false,
+                         "is_uhd":  false,
+                         "group":  "G",
+                         "url":  "http://t.test/live/u/p/1.ts",
+                         "tvg_id":  "c1",
+                         "is_movie":  false,
+                         "server_id":  "srv_T",
+                         "language":  "es",
+                         "width":  null,
+                         "is_sports":  false
+                     },
+                     {
+                         "height":  null,
+                         "country":  "ES",
+                         "bitrate":  null,
+                         "quality_tags":  [
+
+                                          ],
+                         "name":  "C2",
+                         "fps":  null,
+                         "is_sd":  false,
+                         "logo":  "",
+                         "resolution":  "",
+                         "codec":  "",
+                         "quality_score":  null,
+                         "stream_id":  2,
+                         "quality_tier":  "",
+                         "is_hd":  true,
+                         "is_series":  false,
+                         "is_uhd":  false,
+                         "group":  "G",
+                         "url":  "http://t.test/live/u/p/2.ts",
+                         "tvg_id":  "c2",
+                         "is_movie":  false,
+                         "server_id":  "srv_T",
+                         "language":  "es",
+                         "width":  null,
+                         "is_sports":  false
+                     }
+                 ],
+    "channel_count":  2
+}
