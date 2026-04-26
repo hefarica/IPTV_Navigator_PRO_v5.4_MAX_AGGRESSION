@@ -666,6 +666,44 @@ class IPTVNavigatorPro {
         this.enrichmentDelta = window.EnrichmentDelta ? new window.EnrichmentDelta(this) : null;
         window.app = this; // Expose global
 
+        // ── LAB BRIDGE — cuando importFromLAB termina, los servers del LAB
+        // se mergean a state.activeServers con bandera labProvenance para distinguirlos.
+        // Doctrina T5: SSOT entre frontend y LAB Excel cierra el círculo del bridge v1.1.
+        window.addEventListener('lab-imported', (ev) => {
+            try {
+                const detail = ev.detail || {};
+                const labServers = Array.isArray(detail.labServers) ? detail.labServers : [];
+                if (labServers.length === 0) return;
+                if (!Array.isArray(this.state.activeServers)) this.state.activeServers = [];
+                let added = 0;
+                for (const ls of labServers) {
+                    const baseUrl = ls.base_url || ls.baseUrl || '';
+                    const username = ls.username || '';
+                    if (!baseUrl || !username) continue;
+                    const exists = this.state.activeServers.some(s =>
+                        (s.baseUrl || s.url || '') === baseUrl &&
+                        (s.username || '') === username
+                    );
+                    if (!exists) {
+                        this.state.activeServers.push({
+                            id: 'srv_lab_' + username,
+                            name: ls.note || 'LAB Server',
+                            baseUrl: baseUrl,
+                            url: baseUrl,
+                            username: username,
+                            password: ls.password || '',
+                            labProvenance: true,
+                            importedAt: new Date().toISOString()
+                        });
+                        added++;
+                    }
+                }
+                if (added > 0) {
+                    console.log(`[lab-imported] ${added} servers añadidos a state.activeServers (total: ${this.state.activeServers.length})`);
+                }
+            } catch (e) { console.warn('[lab-imported] handler error:', e); }
+        });
+
         if (this.rankingEngine) {
             this.state.rankingConfig = this.rankingEngine.getDefaultConfig();
         }
@@ -6748,6 +6786,8 @@ El servidor analizará 26,000+ canales en ~10 minutos.
             { id: "qualityScore", label: "Score Calidad" },
             { id: "scoreLive", label: "Score Live" },
             { id: "qualityTier", label: "Tier" },
+            { id: "goldRating", label: "🏆 Gold Rating" },
+            { id: "goldTier", label: "🥇 Gold Tier" },
             { id: "matchScore", label: "Score Match" },
 
             { id: "raw.audiocodec", label: "Codec Audio" },
@@ -7682,6 +7722,8 @@ El servidor analizará 26,000+ canales en ~10 minutos.
         addField('qualityScore', 'Score', 'Meta');
         addField('scoreLive', 'Score Live', 'Meta');
         addField('qualityTier', 'Tier', 'Meta');
+        addField('goldRating', '🏆 Gold Rating', 'Meta');
+        addField('goldTier', '🥇 Gold Tier', 'Meta');
 
         // New V5.0 Fields
         addField('website', 'Website', 'Meta');
@@ -12387,7 +12429,12 @@ window.generateOmega5 = async function () {
         const n3total = n3keys.reduce((s, k) => s + (n3[k] || []).length, 0);
         console.log(TAG + ` LAB nivel1: ${n1} directivas | nivel3: ${n3total} en ${n3keys.length} capas [${n3keys.join(',')}]`, CSS);
         if (n1 === 0 && n3total === 0) {
-            if (!confirm('⚠️ OMEGA 5: El LAB no está cargado (nivel1/nivel3 vacíos).\n\n¿Generar igualmente con perfiles base?')) return;
+            // L1 — LAB MANDATORIO: bloquear generacion sin LAB calibrado
+            if (!labCfg.labVersion || labCfg.labVersion !== 'omega_v1' || !labCfg.bulletproof) {
+                alert('LAB_CALIBRATED no cargado. Importa el JSON LAB antes de generar (Profile Manager > Import LAB).');
+                console.error(TAG + ' BLOQUEADO: LAB_MANDATORY_MISSING - labVersion=' + (labCfg.labVersion || 'null') + ' bulletproof=' + (labCfg.bulletproof || 'null'), CSS);
+                return;
+            }
         }
 
         // 4. Perfil activo
@@ -12464,3 +12511,79 @@ window.generateOmega5 = async function () {
 };
 
 console.log('%c⭐ OMEGA 5 disponible: window.generateOmega5() o botón dorado-rojo "OMEGA 5"', 'color:#fbbf24;font-weight:bold;background:#1a1a1a;padding:4px 10px;border-radius:4px;');
+
+// ============================================================
+// QR Code Share tab — wire up btnGenerateQR + btnDownloadQR
+// Librería: davidshimjs/qrcodejs (API: new QRCode(el, opts))
+// Añadido 2026-04-20: activa los handlers del tab COMPARTIR.
+// Flujo: PC genera QR → móvil escanea → URL en móvil → app IPTV
+// en TV (TiviMate Companion / OTT Navigator Remote / ADB push).
+// ============================================================
+(function wireQrShareTab() {
+    function init() {
+        const txt    = document.getElementById('qrText');
+        const btnGen = document.getElementById('btnGenerateQR');
+        const btnDl  = document.getElementById('btnDownloadQR');
+        const box    = document.getElementById('qrContainer');
+        if (!txt || !btnGen || !btnDl || !box) return;
+        if (btnGen.dataset.qrWired === '1') return;
+        btnGen.dataset.qrWired = '1';
+
+        function feedback(msg, isErr) {
+            if (window.app && typeof window.app.showToast === 'function') {
+                window.app.showToast(msg, !!isErr);
+            } else {
+                console[isErr ? 'error' : 'log']('[QR]', msg);
+            }
+        }
+
+        btnGen.addEventListener('click', () => {
+            const url = (txt.value || '').trim();
+            if (!url) { feedback('Pega una URL en el campo primero', true); return; }
+            box.innerHTML = '';
+            box.style.display = 'flex';
+            box.style.justifyContent = 'center';
+            box.style.alignItems = 'center';
+            box.style.padding = '16px';
+            try {
+                new QRCode(box, {
+                    text: url,
+                    width: 256,
+                    height: 256,
+                    colorDark: '#000000',
+                    colorLight: '#ffffff',
+                    correctLevel: (typeof QRCode !== 'undefined' && QRCode.CorrectLevel) ? QRCode.CorrectLevel.H : 2
+                });
+                box.dataset.url = url;
+                feedback('QR generado — escanéalo con el móvil');
+            } catch (err) {
+                box.textContent = 'Error QR: ' + (err && err.message ? err.message : err);
+                feedback('Error generando QR', true);
+            }
+        });
+
+        btnDl.addEventListener('click', () => {
+            const canvas = box.querySelector('canvas');
+            const img    = box.querySelector('img');
+            const src    = canvas ? canvas.toDataURL('image/png')
+                         : img    ? img.src
+                         : null;
+            if (!src) { feedback('Genera el QR primero', true); return; }
+            const a = document.createElement('a');
+            a.href = src;
+            a.download = 'iptv_qr_' + Date.now() + '.png';
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            feedback('PNG descargado');
+        });
+
+        console.log('%c[QR] Share tab wired (btnGenerateQR + btnDownloadQR)', 'color:#06b6d4;font-weight:bold;');
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+    } else {
+        init();
+    }
+})();

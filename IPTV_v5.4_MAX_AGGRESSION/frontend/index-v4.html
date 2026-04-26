@@ -1407,6 +1407,7 @@
                       <option value="quality">💎 Calidad Ultra (4K/8K)</option>
                       <option value="stability">🛡️ Estabilidad</option>
                       <option value="sports">⚽ Deportes</option>
+                      <option value="oropuro">🏆 Oro Puro (real &gt; promised)</option>
                       <option value="custom">⚙️ Personalizado</option>
                     </select></div>
                   <div class="field"><label for="rankingMode">Modo de Selección</label><select id="rankingMode"
@@ -1660,6 +1661,26 @@
                   </div>
                 </div>
 
+                <!-- 🛡️ SHIELDED Toggle — compacto, discreto, proporcional al panel.
+                     Cuando ON, el upload renombra el filename a _SHIELDED.m3u8 antes de
+                     subir y el VPS sirve directo vía proxy (anti-403/slot overlap). -->
+                <div id="shielded-toggle-row"
+                  style="display:flex; align-items:center; justify-content:space-between; padding:7px 12px; background:rgba(168,85,247,0.06); border:1px solid rgba(168,85,247,0.25); border-radius:8px; margin-bottom:10px; transition:all 0.2s;">
+                  <label
+                    style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:0.74rem; margin:0; user-select:none;">
+                    <input type="checkbox" id="shieldedMode" checked
+                      style="width:14px; height:14px; accent-color:#a855f7; cursor:pointer;"
+                      onchange="if(typeof updateShieldedPill==='function')updateShieldedPill()">
+                    <span>
+                      <strong style="color:#c4b5fd;">🛡️ Salida SHIELDED</strong>
+                      <span
+                        style="color:var(--text-muted); font-weight:normal;">— Link vía proxy VPS (anti-403, anti-ban)</span>
+                    </span>
+                  </label>
+                  <span id="shielded-status-pill"
+                    style="font-size:0.62rem; padding:2px 9px; border-radius:10px; background:rgba(168,85,247,0.18); border:1px solid rgba(168,85,247,0.45); color:#c4b5fd; font-weight:700; letter-spacing:0.06em;">ON</span>
+                </div>
+
                 <!-- Botones -->
                 <div style="display: flex; gap: 8px; margin-bottom: 12px;">
                   <button id="gateway-upload-btn" class="btn" onclick="uploadToGateway()"
@@ -1726,6 +1747,35 @@
 
             <!-- Toggle Script for Gateway Panel -->
             <script>
+              // 🛡️ SHIELDED pill updater: refleja el estado del checkbox en el badge ON/OFF
+              // y persiste la preferencia del usuario en localStorage.
+              window.updateShieldedPill = function () {
+                const cb = document.getElementById('shieldedMode');
+                const pill = document.getElementById('shielded-status-pill');
+                const row = document.getElementById('shielded-toggle-row');
+                if (!cb || !pill) return;
+                const on = cb.checked;
+                pill.textContent = on ? 'ON' : 'OFF';
+                pill.style.background = on ? 'rgba(168,85,247,0.18)' : 'rgba(148,163,184,0.12)';
+                pill.style.borderColor = on ? 'rgba(168,85,247,0.45)' : 'rgba(148,163,184,0.3)';
+                pill.style.color = on ? '#c4b5fd' : '#94a3b8';
+                if (row) {
+                  row.style.background = on ? 'rgba(168,85,247,0.06)' : 'rgba(148,163,184,0.04)';
+                  row.style.borderColor = on ? 'rgba(168,85,247,0.25)' : 'rgba(148,163,184,0.18)';
+                }
+                try { localStorage.setItem('shieldedMode', on ? '1' : '0'); } catch (_) {}
+              };
+              // Restaurar preferencia al cargar (default: ON)
+              document.addEventListener('DOMContentLoaded', function () {
+                const cb = document.getElementById('shieldedMode');
+                if (!cb) return;
+                try {
+                  const saved = localStorage.getItem('shieldedMode');
+                  if (saved !== null) cb.checked = (saved === '1');
+                } catch (_) {}
+                window.updateShieldedPill();
+              });
+
               function toggleGatewayPanel() {
                 const body = document.getElementById('gateway-panel-body');
                 const icon = document.getElementById('gateway-toggle-icon');
@@ -2589,7 +2639,7 @@
                 style="background: linear-gradient(135deg, #fbbf24, #f59e0b, #dc2626); box-shadow: 0 10px 25px rgba(245,158,11,0.5); margin-left: 10px; font-weight: bold; font-size: 1rem; padding: 14px 22px; border: 2px solid #fff;"><span
                   class="icon">⭐</span><span>OMEGA 5 — GENERAR .m3u8 COMPLETA</span></button><button
                 id="btnGenerateAudited" class="btn" data-ape-generate-audited data-ape-prepublish
-                onclick="if(window.APEGenerationController && typeof window.APEGenerationController.prepublishAndGenerate === 'function') { window.APEGenerationController.prepublishAndGenerate().catch(e=>console.error('[APE-PREPUBLISH]',e)); } else if(window.APEGenerationController && typeof window.APEGenerationController.generateListWithGate === 'function') { window.APEGenerationController.generateListWithGate().catch(e=>console.error('[APE-AUDIT]',e)); } else { alert('APEGenerationController aún cargando. Espera un segundo.'); }"
+                onclick="if(window.GenerationHUD)window.GenerationHUD.show(); if(window.APEGenerationController && typeof window.APEGenerationController.prepublishAndGenerate === 'function') { window.APEGenerationController.prepublishAndGenerate().catch(e=>console.error('[APE-PREPUBLISH]',e)); } else if(window.APEGenerationController && typeof window.APEGenerationController.generateListWithGate === 'function') { window.APEGenerationController.generateListWithGate().catch(e=>console.error('[APE-AUDIT]',e)); } else { if(window.GenerationHUD)window.GenerationHUD.hide(); alert('APEGenerationController aún cargando. Espera un segundo.'); }"
                 style="background: linear-gradient(135deg, #0ea5e9, #0284c7); box-shadow: 0 10px 25px rgba(14,165,233,0.4); margin-left: 10px; font-weight: bold; font-size: 1rem; padding: 14px 22px; border: 2px solid rgba(255,255,255,0.5);"><span
                   class="icon">🩺</span><span>GENERAR + PREPUBLISH + AUDITAR</span></button>
                 <label for="publicationMode" style="margin-left:14px; color:var(--text-muted); font-size:0.85rem; font-weight:bold;">Modo:</label>
@@ -2747,6 +2797,20 @@
                 </div>
             </div>
 
+            <!-- 🛡️ NET SHIELD SENTINEL - Autonomous Infrastructure Agent -->
+            <div id="netshield-sentinel-widget" style="
+                background: linear-gradient(180deg, rgba(30,41,59,.8), rgba(15,23,42,.8));
+                border: 1px solid rgba(251,191,36,.35);
+                border-radius: 12px;
+                padding: 14px;
+                margin: 14px 0;
+                box-shadow: 0 2px 8px rgba(0,0,0,.35);
+            ">
+                <div style="text-align:center;padding:16px;color:#64748b;font-size:0.78rem">
+                    ⏳ Cargando NET SHIELD Sentinel…
+                </div>
+            </div>
+
             <!-- ✅ V4.9: PRO STREAMING OPTIONS -->
             <div class="panel-header" style="margin: 14px 0 6px 0;">
               <div class="panel-title" style="font-size:0.85rem;">⚡ Opciones M3U8 PRO</div>
@@ -2838,6 +2902,8 @@
                 <input type="checkbox" id="vpsAutoUpload" style="width:16px; height:16px; accent-color:#38bdf8;">
                 <span><strong>Sincronización Automática</strong> - Subir al VPS tras generar</span>
               </label>
+              <!-- shieldedMode movido al panel del Gateway (línea ~1663) para que esté
+                   junto al botón de subida. Mantenemos comentario aquí para trazabilidad. -->
             </div>
 
             <!-- ✅ APE GATEWAY MANAGER UI (Manual Control) -->
@@ -3072,6 +3138,147 @@
             
             document.addEventListener('DOMContentLoaded', () => { setTimeout(startGuardianTelemetry, 800); });
             </script>
+
+            <!-- ========================================================== -->
+            <!-- NET SHIELD — VPS unbound DNS + IPTV origin monitor          -->
+            <!-- Hermanado con Guardian Engine v16 (mismo estilo visual)     -->
+            <!-- Endpoint: https://iptv-ape.duckdns.org/api/net-shield-status.php -->
+            <!-- ========================================================== -->
+            <div class="ape-v16-exchange-panel" style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.10), rgba(59, 130, 246, 0.05)); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 16px; padding: 20px; margin-top: 16px; margin-bottom: 16px;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                  <span style="font-size: 1.5rem;">🌐</span>
+                  <div>
+                    <h3 style="margin: 0; font-size: 1rem; color: #e2e8f0;">NET SHIELD — VPS DNS Resolver</h3>
+                    <span style="font-size: 0.75rem; color: #6ee7b7;">Hetzner unbound · anti ISP-DNS-slow · whitelist home IP</span>
+                  </div>
+                </div>
+                <div style="display: flex; gap: 8px; align-items: center;">
+                  <span id="ns-dot" style="width: 10px; height: 10px; background: #fbbf24; border-radius: 50%; display: inline-block; box-shadow: 0 0 8px #fbbf24; margin-top: 4px;"></span>
+                  <span id="ns-text" style="font-size: 0.8rem; color: #fbbf24; font-weight: bold;">Conectando…</span>
+                </div>
+              </div>
+
+              <!-- Grid principal: 4 métricas -->
+              <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 16px;">
+                <div style="background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(148, 163, 184, 0.2); border-radius: 10px; padding: 12px;">
+                  <div style="font-size: 0.7rem; color: #94a3b8; text-transform: uppercase; margin-bottom: 4px;">Estado resolver</div>
+                  <div id="ns-status" style="font-size: 1.25rem; font-weight: bold; color: #e2e8f0;">—</div>
+                  <div id="ns-status-hint" style="font-size: 0.7rem; color: #64748b; margin-top: 2px;">cargando…</div>
+                </div>
+                <div style="background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(148, 163, 184, 0.2); border-radius: 10px; padding: 12px;">
+                  <div style="font-size: 0.7rem; color: #94a3b8; text-transform: uppercase; margin-bottom: 4px;">Cache hit rate</div>
+                  <div style="display: flex; align-items: baseline; gap: 4px;">
+                    <div id="ns-hitrate" style="font-size: 1.4rem; font-weight: bold; color: #34d399;">—</div>
+                    <span style="font-size: 0.75rem; color: #64748b;">%</span>
+                  </div>
+                  <div id="ns-hitrate-hint" style="font-size: 0.7rem; color: #64748b; margin-top: 2px;">hits / queries</div>
+                </div>
+                <div style="background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(148, 163, 184, 0.2); border-radius: 10px; padding: 12px;">
+                  <div style="font-size: 0.7rem; color: #94a3b8; text-transform: uppercase; margin-bottom: 4px;">Queries totales</div>
+                  <div id="ns-queries" style="font-size: 1.4rem; font-weight: bold; color: #60a5fa;">—</div>
+                  <div id="ns-prefetch-hint" style="font-size: 0.7rem; color: #64748b; margin-top: 2px;">prefetch: 0</div>
+                </div>
+                <div style="background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(148, 163, 184, 0.2); border-radius: 10px; padding: 12px;">
+                  <div style="font-size: 0.7rem; color: #94a3b8; text-transform: uppercase; margin-bottom: 4px;">Uptime</div>
+                  <div id="ns-uptime" style="font-size: 1.25rem; font-weight: bold; color: #a78bfa;">—</div>
+                  <div id="ns-whitelist" style="font-size: 0.7rem; color: #64748b; margin-top: 2px; font-family: monospace; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">—</div>
+                </div>
+              </div>
+
+              <!-- Grid secundario: upstreams + IPTV origins -->
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                <div>
+                  <div style="font-size: 0.75rem; color: #6ee7b7; text-transform: uppercase; margin-bottom: 8px; font-weight: bold;">📡 Upstreams DNS (VPS→padres)</div>
+                  <div style="background: rgba(0, 0, 0, 0.4); border: 1px solid rgba(16, 185, 129, 0.2); border-radius: 8px; padding: 10px;">
+                    <div style="display:flex; justify-content:space-between; font-size: 0.78rem; padding: 4px 0; border-bottom: 1px solid rgba(148, 163, 184, 0.1);">
+                      <span style="color:#94a3b8;">Cloudflare 1.1.1.1</span>
+                      <span id="ns-up-cf" style="font-family:monospace; font-weight:bold; color:#34d399;">—</span>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; font-size: 0.78rem; padding: 4px 0;">
+                      <span style="color:#94a3b8;">Google 8.8.8.8</span>
+                      <span id="ns-up-gg" style="font-family:monospace; font-weight:bold; color:#34d399;">—</span>
+                    </div>
+                  </div>
+                </div>
+                <div>
+                  <div style="font-size: 0.75rem; color: #a5b4fc; text-transform: uppercase; margin-bottom: 8px; font-weight: bold;">📺 IPTV Origins Health</div>
+                  <div style="background: rgba(0, 0, 0, 0.4); border: 1px solid rgba(139, 92, 246, 0.2); border-radius: 8px; padding: 10px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; font-size: 0.78rem; padding: 4px 0; border-bottom: 1px solid rgba(148, 163, 184, 0.1);">
+                      <span><span id="ns-dot-ky" style="display:inline-block;width:8px;height:8px;background:#fbbf24;border-radius:50%;margin-right:6px;"></span><span style="color:#cbd5e1;">ky-tv.cc</span></span>
+                      <span id="ns-ky" style="font-family:monospace; font-size:0.72rem; color:#94a3b8;">—</span>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; align-items:center; font-size: 0.78rem; padding: 4px 0; border-bottom: 1px solid rgba(148, 163, 184, 0.1);">
+                      <span><span id="ns-dot-x1" style="display:inline-block;width:8px;height:8px;background:#fbbf24;border-radius:50%;margin-right:6px;"></span><span style="color:#cbd5e1;">x1megaott.online</span></span>
+                      <span id="ns-x1" style="font-family:monospace; font-size:0.72rem; color:#94a3b8;">—</span>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; align-items:center; font-size: 0.78rem; padding: 4px 0;">
+                      <span><span id="ns-dot-line" style="display:inline-block;width:8px;height:8px;background:#fbbf24;border-radius:50%;margin-right:6px;"></span><span style="color:#cbd5e1;">line.tivi-ott.net</span></span>
+                      <span id="ns-line" style="font-family:monospace; font-size:0.72rem; color:#94a3b8;">—</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Banner comparativa -->
+              <div style="margin-top: 12px; padding: 10px 14px; background: rgba(16, 185, 129, 0.08); border-left: 3px solid #10b981; border-radius: 6px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+                <div style="font-size:0.78rem; color:#6ee7b7;">
+                  <strong style="color:#e2e8f0;">Baseline ETB</strong> 1094 ms → <strong style="color:#34d399;">cache hit 28 ms</strong> · <strong style="color:#fbbf24;">39× speedup</strong>
+                </div>
+                <div style="font-size:0.7rem; color:#64748b;">last update: <span id="ns-ts">—</span></div>
+              </div>
+            </div>
+
+            <script>
+            (function(){
+              const NS_ENDPOINT = 'https://iptv-ape.duckdns.org/api/net-shield-status.php';
+              const NS_POLL_MS = 10000;
+              function fmtUp(s){s=Math.floor(s||0);const d=Math.floor(s/86400),h=Math.floor((s%86400)/3600),m=Math.floor((s%3600)/60);if(d)return d+'d '+h+'h';if(h)return h+'h '+m+'m';return m+'m '+(s%60)+'s';}
+              function qual(ms, warn, bad){if(ms==null||ms==='null')return 'bad';ms=parseFloat(ms);if(isNaN(ms))return 'bad';if(ms>=bad)return 'bad';if(ms>=warn)return 'warn';return 'ok';}
+              function colorOf(q){return q==='ok'?'#34d399':q==='warn'?'#fbbf24':'#f87171';}
+              async function tick(){
+                try {
+                  const r = await fetch(NS_ENDPOINT + '?t=' + Date.now(), { cache:'no-store', mode:'cors' });
+                  if (!r.ok) throw new Error('HTTP '+r.status);
+                  const d = await r.json();
+                  const dot = document.getElementById('ns-dot'), txt = document.getElementById('ns-text');
+                  const active = d.unbound && d.unbound.status === 'active';
+                  if (active) { dot.style.background='#4ade80'; dot.style.boxShadow='0 0 8px #4ade80'; txt.textContent='Online / Shield UP'; txt.style.color='#4ade80'; }
+                  else { dot.style.background='#f87171'; dot.style.boxShadow='0 0 8px #f87171'; txt.textContent='DOWN'; txt.style.color='#f87171'; }
+                  document.getElementById('ns-status').textContent = active ? 'ACTIVE' : 'DOWN';
+                  document.getElementById('ns-status').style.color = active ? '#34d399' : '#f87171';
+                  document.getElementById('ns-status-hint').textContent = d.stale ? '⚠ stale ('+d.age_seconds+'s)' : 'fresh ('+d.age_seconds+'s)';
+                  const hr = d.unbound.hit_rate_pct;
+                  document.getElementById('ns-hitrate').textContent = hr;
+                  document.getElementById('ns-hitrate').style.color = hr>=70?'#34d399':hr>=40?'#fbbf24':'#f87171';
+                  document.getElementById('ns-hitrate-hint').textContent = d.unbound.cache_hits+' hits / '+d.unbound.total_queries+' queries';
+                  document.getElementById('ns-queries').textContent = (d.unbound.total_queries||0).toLocaleString();
+                  document.getElementById('ns-prefetch-hint').textContent = 'prefetch: '+(d.unbound.prefetch||0);
+                  document.getElementById('ns-uptime').textContent = fmtUp(d.unbound.uptime_s);
+                  document.getElementById('ns-whitelist').textContent = d.whitelist || '(vacio)';
+                  const setUp = (id, ms) => { const el=document.getElementById(id); if(ms==null){el.textContent='—';el.style.color='#f87171';return;} el.textContent=ms+' ms'; el.style.color=colorOf(qual(ms,50,200)); };
+                  setUp('ns-up-cf', d.upstreams.cloudflare_ms);
+                  setUp('ns-up-gg', d.upstreams.google_ms);
+                  const setOrig = (prefix, o) => {
+                    const el = document.getElementById('ns-'+prefix), dotEl = document.getElementById('ns-dot-'+prefix);
+                    if (!o) { el.textContent='DOWN'; el.style.color='#f87171'; dotEl.style.background='#f87171'; return; }
+                    const ping = parseFloat(o.ping_avg_ms), res = o.resolve_ms;
+                    const q = qual(ping, 150, 300), c = colorOf(q);
+                    el.innerHTML = 'ping <strong style="color:'+c+'">'+(isNaN(ping)?'?':ping.toFixed(0))+'</strong>ms · dns <strong style="color:'+c+'">'+(res==null?'?':res)+'</strong>ms';
+                    dotEl.style.background = c;
+                  };
+                  setOrig('ky', d.iptv_origins.ky_tv_cc);
+                  setOrig('x1', d.iptv_origins.x1megaott);
+                  setOrig('line', d.iptv_origins.line_tivi);
+                  document.getElementById('ns-ts').textContent = (d.ts||'').replace('T',' ').replace('Z',' UTC');
+                } catch(e) {
+                  const dot = document.getElementById('ns-dot'), txt = document.getElementById('ns-text');
+                  dot.style.background='#f87171'; dot.style.boxShadow='0 0 8px #f87171'; txt.textContent='Endpoint error'; txt.style.color='#f87171';
+                }
+              }
+              document.addEventListener('DOMContentLoaded', () => { setTimeout(tick, 1200); setInterval(tick, NS_POLL_MS); });
+            })();
+            </script>
           </div>
 
           <!-- TAB: COMPARTIR -->
@@ -3182,7 +3389,7 @@
   <script src="js/group-title-config-ui.js"></script>
 
   <script src="js/resumable-uploader-v2.js?v=2.0"></script>
-  <script src="js/gateway-manager.js"></script>
+  <script src="js/gateway-manager.js?v=20260426-shielded-rename-pre-upload"></script>
   <script src="js/vps-hls-installer.js"></script>
   <script src="axios.min.js"></script>
 
@@ -3436,7 +3643,7 @@
   <script src="advanced-data-renderer.js?v=4.10"></script>
 
   <!-- Ranking Score Modules v1.0 - MUST load BEFORE app.js -->
-  <script src="js/ranking-score-config.js"></script>
+  <script src="js/ranking-score-config.js?v=20260420-oropuro-fallback-2"></script>
   <script src="js/ranking-score-ui.js"></script>
 
   <!-- ✅ AUTO RANKING ENGINE v1.0 - Universal automatic ranking -->
@@ -3476,22 +3683,25 @@
 
 
   <!-- 🎚️ APE v9 PROFILE SYSTEM - MUST load BEFORE app.js -->
-  <script src="js/ape-v9/ape-profiles-config.js?v=10.0-omega-sync-20260408"></script>
+  <script src="js/ape-v9/ape-profiles-config.js?v=10.1-bulletproof-shallow-merge-20260426"></script>
   <!-- profile-manager-v9.js loaded later at v9.0.3 (line ~3171) -->
   <script src="js/ape-v9/profile-bridge-v9.js?v=1.1"></script>
-  <script src="js/ape-v9/ape-xtream-atomic-probe.js?v=1.3.0-xtream-url-builder-20260412c"></script>
+  <script src="js/ape-v9/ape-xtream-atomic-probe.js?v=20260420-oropuro-rust"></script>
   <!-- 🎭 APE MIME POLICY + 🧩 FORMAT POLICY — Etapa 1 del plan "Integración sin /resolve/" -->
   <script src="js/ape-v9/mime-policy.js?v=1.0-20260417"></script>
   <script src="js/ape-v9/format-policy.js?v=1.0-20260417"></script>
   <!-- 🩺 APE HEALTH ADMISSION RUNTIME (fail-closed v2.0) — debe cargar ANTES del generator -->
   <script src="js/ape-v9/health-runtime.js?v=3.0-plan-supremo-tier-enrichment-20260417"></script>
-  <script src="js/ape-v9/m3u8-typed-arrays-ultimate.js?v=26.0-plan-supremo-buckets-ABC-20260417"></script>
+  <script src="js/ape-v9/m3u8-typed-arrays-ultimate.js?v=20260426-hdrsupport-origin-fix-4"></script>
   <!-- 🪦 OMEGA SLOT REAPER — Pre-flight liberation of Xtream max_connections slots -->
   <script src="js/ape-v9/slot-reaper.js?v=1.0.0-omega-20260409"></script>
   <script src="js/ape-v9/m3u8-quality-upgrader-v2.js?v=2.0"></script>
   <script src="js/ape-v9/hud-typed-arrays.js?v=16.1-tickprofile-20260417"></script>
   <!-- 🩺 APE GENERATION CONTROLLER — engancha botón health-check + generateHealthyList -->
   <script src="js/ape-v9/generation-controller.js?v=2.2-vps-probe-no-local-server-20260417"></script>
+  <!-- 🩺 GENERATION HUD OVERLAY — panel discreto top-right que muestra fases del pipeline.
+       Solo observa console.log (no toca el flow). window.GenerationHUD.show()/hide() -->
+  <script src="js/ape-v9/generation-hud-overlay.js?v=1.2-auto-close-inactivity"></script>
   <!-- 🩺 APE HEALTH RUNTIME CONFIG — modo permisivo: emite TODOS los canales, admitidos usan URL optimizada -->
   <script>
     window.addEventListener('load', () => {
@@ -3520,7 +3730,7 @@
   </script>
 
   <!-- App principal - V4.18.6 ENTERPRISE (Restaurado + Fixes) -->
-  <script src="app.js?v=4.23.0-filter-first-20260417"></script>
+  <script src="app.js?v=20260420-oropuro-gold"></script>
   <script src="js/ape-headers-preview-fix.js?v=1.0"></script>
 
   <!-- 🚀 GENERATOR SUPREMACY V5.1 - Tab Hibernation + APE Worker -->
@@ -3697,7 +3907,7 @@
   <script src="field-source-selector-handler.js?v=4.8"></script>
 
   <!-- Ranking Config Manager - Enhanced ranking personalization v1.0 -->
-  <script src="js/ranking-config-manager.js"></script>
+  <script src="js/ranking-config-manager.js?v=20260420-oropuro"></script>
 
   <!-- Analysis State Manager - saves/restores analysis tab configuration V4.8 -->
   <script src="analysis-state-manager.js?v=4.8"></script>
@@ -3722,7 +3932,7 @@
   <script src="js/ape-v9/vpn-integration-supremo.js"></script>
   <!-- Latency Rayo Supremo v1.0 (23 metadatos por canal) -->
   <script src="js/ape-v9/latency-rayo-supremo.js"></script>
-  <script src="js/ape-v9/profile-manager-v9.js?v=9.0.9"></script>
+  <script src="js/ape-v9/profile-manager-v9.js?v=9.0.12-multi-profile-default-all"></script>
   <!-- Profile Manager - Custom Headers Extension -->
   <script src="js/profile-manager-custom-headers.js"></script>
   <script src="js/m3u8-custom-headers-integration.js"></script>
@@ -3845,7 +4055,7 @@
   <!-- Gateway M3U8 Manager (depende de hardened-verification) -->
   <script src="js/gateway-m3u8-integrated.js?v=4.28.1"></script>
   <!-- 🚀 Gateway Turbo Upload — chunks paralelos (no reemplaza el original) -->
-  <script src="js/gateway-turbo-upload.js?v=2.0.0"></script>
+  <script src="js/gateway-turbo-upload.js?v=2.1.0-shielded"></script>
 
   <!-- M3U8 Generator v14.0 SUPREMO (estructura original + 8 mejoras) -->
   <script src="js/ape-v9/m3u8-generator-v14-supremo.js"></script>
@@ -3926,6 +4136,9 @@
 
   <!-- 🛡️ APE GUARDIAN ENGINE v16: Telemetría Frontend -->
   <script src="js/ape-v9/guardian-exchange-v16.js"></script>
+
+  <!-- 🛡️ NET SHIELD SENTINEL: Autonomous infrastructure agent widget -->
+  <script src="js/netshield-sentinel-widget.js" defer></script>
 
   <!-- ═══════════════════════════════════════════════════════════════════════ -->
   <!-- 🧪 TESTS - Proxy Auth & User Agent (Dev Mode Only)                     -->
