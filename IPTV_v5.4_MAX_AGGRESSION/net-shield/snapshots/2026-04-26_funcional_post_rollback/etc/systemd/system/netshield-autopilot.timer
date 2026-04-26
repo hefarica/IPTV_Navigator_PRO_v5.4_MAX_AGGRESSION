@@ -1,0 +1,10 @@
+[Unit]
+Description=Run NET SHIELD Autopilot every 5 minutes
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=5min
+Unit=netshield-autopilot.service
+
+[Install]
+WantedBy=timers.target

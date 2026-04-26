@@ -1,0 +1,59 @@
+{
+  "checkpoint": "T0_baseline",
+  "captured_at_utc": "2026-04-25T13:02:54Z",
+  "deploy_marker": {
+    "stealth_cb_deployed_at_utc": "2026-04-25T08:45:00Z",
+    "limit_conn_added_at_utc": "2026-04-25T08:56:03Z",
+    "files": {
+      "/etc/nginx/conf.d/iptv-stealth-rate.conf": "2026-04-25 08:56:03 UTC",
+      "/etc/nginx/snippets/shield-location.conf": "2026-04-25 08:56:03 UTC"
+    },
+    "config": "rate=3r/s burst=15 delay=10, limit_conn=4 per upstream"
+  },
+  "sentinel_lifetime_counts": {
+    "unknown": 8025,
+    "nginx_upstream_prem_closed": 975,
+    "nginx_connect_refused": 195,
+    "iptv_slow_response": 53,
+    "nginx_upstream_timeout": 20,
+    "iptv_5xx": 4,
+    "oom_kill": 2,
+    "iptv_403": 0,
+    "iptv_429": 0
+  },
+  "sentinel_last_cycle": {
+    "classified_at": "2026-04-25T12:45:56.193789+00:00",
+    "events_last_cycle": 100,
+    "signatures_last_cycle": 1,
+    "lifetime_events_total": 9274
+  },
+  "my_rate_trips": {
+    "limit_req_stealth_upstream_req": 0,
+    "limit_conn_stealth_upstream_conn": 0,
+    "limit_conn_xtream_slot_preexisting": 0
+  },
+  "wg_transfer": {
+    "onn_4k_5idLPkMF": {"rx_bytes": 1164605672, "tx_bytes": 69768202688},
+    "second_peer_Ga1ykV7T": {"rx_bytes": 470838492, "tx_bytes": 29832636880}
+  },
+  "nginx_state": {
+    "workers": 3,
+    "master_etime": "17:31",
+    "load_avg_1m": 0.08,
+    "load_avg_5m": 0.16,
+    "load_avg_15m": 0.17
+  },
+  "criteria_adjustment": {
+    "note": "iptv_403=0 en lifetime → criterio original no aplica. Pivotamos a las firmas que SÍ están activas:",
+    "primary_metric": "nginx_upstream_prem_closed (975 baseline) — proxy del provider cerrando conexión, probable throttle",
+    "secondary_metric": "nginx_connect_refused (195) — TCP refused, también señal anti-bot",
+    "tertiary_metric": "iptv_slow_response (53) — rt>5s del upstream",
+    "regression_check": "iptv_5xx (4) y nginx_upstream_timeout (20) deben NO subir"
+  },
+  "decision_criteria_v2": {
+    "GREEN_phase2_go": "↓ ≥30% en (nginx_upstream_prem_closed + nginx_connect_refused) AND 0 regresiones AND <5/h trips de mi rate",
+    "YELLOW_tune": "↓ <30% AND 0 regresiones",
+    "RED_rollback": "+50% en cualquier firma OR >20/h trips de mi rate OR TTFB perceptible degradado"
+  },
+  "known_log_filter_bug": "awk timestamp filter para shield_access.log devolvió 0 hits aunque hay tráfico (corregir en checkpoint script con epoch comparison)"
+}

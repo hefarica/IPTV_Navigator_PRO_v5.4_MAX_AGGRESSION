@@ -1,0 +1,100 @@
+════════════════════════════════════════════════════════════════════════════
+NET SHIELD Fase 3 — SNAPSHOT RUNTIME
+Lectura: 2026-04-21  |  VPS: 178.156.147.234 (Hetzner CX22, ubuntu-2gb-ash-1)
+Kernel: Linux 6.8.0-101-generic Ubuntu SMP 2026-02-09 x86_64
+════════════════════════════════════════════════════════════════════════════
+
+─── wg show all dump (formato máquina) ────────────────────────────────────
+# interface  privkey(hidden)  pubkey                                         port  fwmark
+wg0          [HIDDEN]         9W984X9W/RWDLdGYM/GIE4EcZ/Iqm+ZG0VbaKEfdACE=  51820 off
+
+# interface  pubkey                                         psk(hidden)  endpoint             allowedips      last-hs     rx-bytes    tx-bytes      keepalive
+wg0          5idLPkMF3/53qLQk04u6wyngXKgEC8XxcMnPV8NDEjM=  [HIDDEN]     181.63.176.21:8319   10.200.0.2/32   1776829970  923225212   56415522592   off
+
+# Handshake epoch 1776829970 → hace ~60s al momento de captura.
+# Transfer: 0.86 GB rx, 52.55 GB tx.  Túnel LIVE y ACTIVO.
+
+─── ip -br addr ────────────────────────────────────────────────────────────
+lo               UNKNOWN        127.0.0.1/8 ::1/128
+eth0             UP             178.156.147.234/32 metric 100 2a01:4ff:f0:f587::1/64
+docker0          DOWN           172.17.0.1/16
+br-eb3aa7a75067  UP             172.18.0.1/16
+vetheb87cea@if2  UP             fe80::4cc6:90ff:fe46:ab2f/64
+wg0              UNKNOWN        10.200.0.1/24
+
+─── ip route ───────────────────────────────────────────────────────────────
+default via 172.31.1.1 dev eth0 metric 100 initcwnd 100 initrwnd 100
+10.200.0.0/24 dev wg0 scope link src 10.200.0.1 advmss 1340 initcwnd 100 initrwnd 100
+# Rutas estáticas hacia origins IPTV (aunque por ser public ruteo normal, son explícitas con initcwnd elevado):
+91.208.115.0/24  via 172.31.1.1 dev eth0 initcwnd 100 rto_min lock 40ms initrwnd 100   # line.tivi-ott
+149.18.45.0/24   via 172.31.1.1 dev eth0 initcwnd 100 rto_min lock 40ms initrwnd 100   # x1megaott
+172.110.220.0/24 via 172.31.1.1 dev eth0 initcwnd 100 rto_min lock 40ms initrwnd 100   # ky-tv.cc
+172.17.0.0/16 dev docker0 linkdown
+172.18.0.0/16 dev br-eb3aa7a75067
+
+─── iptables mangle (QoS / DSCP / MSS) ─────────────────────────────────────
+*mangle
+-A PREROUTING  -i wg0 -j DSCP --set-dscp 0x2e                                           # 0x2e = 46 decimal = EF
+-A FORWARD     -o wg0 -p tcp --tcp-flags SYN,RST SYN -j TCPMSS --clamp-mss-to-pmtu
+-A FORWARD     -i wg0 -p tcp --tcp-flags SYN,RST SYN -j TCPMSS --clamp-mss-to-pmtu
+-A OUTPUT      -o wg0 -p tcp --tcp-flags SYN,RST SYN -j TCPMSS --clamp-mss-to-pmtu
+-A OUTPUT      -d 149.18.45.78/32  -j DSCP --set-dscp 0x2e    # x1megaott origins EF
+-A OUTPUT      -d 149.18.45.119/32 -j DSCP --set-dscp 0x2e
+-A OUTPUT      -d 149.18.45.189/32 -j DSCP --set-dscp 0x2e
+-A OUTPUT      -d 91.208.115.23/32 -j DSCP --set-dscp 0x2e    # line.tivi-ott EF
+-A OUTPUT      -d 172.110.220.61/32 -j DSCP --set-dscp 0x2e   # ky-tv.cc EF
+-A POSTROUTING -o wg0 -j DSCP --set-dscp 0x2e
+
+─── iptables filter (INPUT drop por defecto + wg0 ACCEPT) ─────────────────
+-A INPUT -i wg0 -j ACCEPT                      # tráfico entrante del túnel al host
+-A FORWARD -d 10.200.0.0/24 -j ACCEPT
+-A FORWARD -s 10.200.0.0/24 -j ACCEPT
+-A FORWARD -o wg0 -j ACCEPT
+-A FORWARD -i wg0 -j ACCEPT
+-A FORWARD -i wg0 -j ACCEPT                    # duplicada (PostUp insertó dos veces: -I y -A)
+-A FORWARD -o wg0 -j ACCEPT                    # ídem
+
+─── iptables nat ───────────────────────────────────────────────────────────
+-A POSTROUTING -o eth0 -j MASQUERADE           # NAT masivo para todo lo que sale por eth0 (incluye 10.200.0.0/24)
+
+─── UFW rules (numbered) ──────────────────────────────────────────────────
+[ 1] 22/tcp    ALLOW IN  Anywhere              # SSH
+[ 2] 80/tcp    ALLOW IN  Anywhere
+[ 3] 443/tcp   ALLOW IN  Anywhere
+[ 4] 8765/tcp  ALLOW IN  Anywhere              # Probe Server
+[ 5] 8888/tcp  ALLOW IN  Anywhere
+[ 6] 3100/tcp  ALLOW IN  Anywhere              # COA Navigator PRO
+[ 7] 53/udp    ALLOW IN  181.63.176.21         # HFRC home DNS (Fase 1 unbound)
+[ 8] 53/tcp    ALLOW IN  181.63.176.21
+[ 9] 51820/udp ALLOW IN  Anywhere              # WireGuard ONN 4K
+[10] 53/udp    ALLOW IN  10.200.0.0/24         # DNS vía túnel WG
+[11] 53/tcp    ALLOW IN  10.200.0.0/24
+# (12-18 son las duplicadas IPv6 de las mismas reglas TCP)
+
+─── sysctl ────────────────────────────────────────────────────────────────
+net.ipv4.ip_forward             = 1
+net.ipv6.conf.all.forwarding    = 0            # IPv6 forwarding APAGADO
+
+─── systemd ───────────────────────────────────────────────────────────────
+wg-quick@wg0.service            active (exited) since Mon 2026-04-20 01:52:54 UTC (enabled)
+unbound.service                 active running (pid 433593)
+
+─── unbound integración con túnel (/etc/unbound/unbound.conf.d/iptv-ape.conf) ─
+interface: 178.156.147.234
+interface: 127.0.0.1
+interface: 10.200.0.1                          # ← escucha DNS también en la IP del túnel WG
+access-control: 127.0.0.1/32     allow
+access-control: 10.200.0.0/24    allow         # peers WG pueden resolver
+access-control: 181.63.176.21/32 allow         # HFRC directo desde ETB (Fase 1)
+access-control: 0.0.0.0/0        refuse        # el resto del mundo: refuse
+
+─── Listado /etc/wireguard/ ───────────────────────────────────────────────
+-rw------- onn.conf                   328 B   2026-04-20 04:16
+-rw------- onn_preshared.key           45 B   2026-04-20 01:51
+-rw------- onn_private.key             45 B   2026-04-20 01:51
+-rw------- onn_public.key              45 B   2026-04-20 01:51
+-rw------- server_private.key          45 B   2026-04-20 01:51
+-rw------- server_public.key           45 B   2026-04-20 01:51
+-rw------- wg0.conf                  1824 B   2026-04-20 04:20
+-rw------- wg0.conf.bak_1776653125    559 B   2026-04-20 02:45   (backup pre-tuning)
+-rw------- wg0.conf.bak2             1243 B   2026-04-20 02:58   (backup intermedio)

@@ -1,0 +1,16 @@
+[Unit]
+Description=NET SHIELD Autopilot v2 Analyzer
+After=nginx.service
+
+[Service]
+Type=oneshot
+Environment=NS_AUTOPILOT_MODE=observe
+Environment=NS_LOG_GLOB=/var/log/nginx/shield_access.log*
+Environment=NS_ERROR_LOG=/var/log/nginx/shield_error.log
+Environment=NS_WINDOW_MINUTES=15
+Environment=NS_MIN_RATE=10
+Environment=NS_MAX_RATE=100
+Environment=NS_STABILITY_WINDOWS=288
+ExecStart=/opt/netshield/autopilot/netshield_autopilot_v2.py
+StandardOutput=journal
+StandardError=journal

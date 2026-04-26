@@ -1,0 +1,23 @@
+# ============================================================================
+# NET SHIELD Fase 3 — cliente HFRC (Windows)
+# Sustituir __CLIENT_PRIVATE_KEY__ y __SERVER_PUBLIC_KEY__ antes de importar.
+# Importar con:  wireguard.exe /installtunnelservice hfrc.conf
+# ============================================================================
+[Interface]
+PrivateKey = __CLIENT_PRIVATE_KEY__
+Address    = 10.66.0.2/32
+DNS        = 178.156.147.234
+MTU        = 1420
+
+[Peer]
+PublicKey  = __SERVER_PUBLIC_KEY__
+Endpoint   = 178.156.147.234:51820
+PersistentKeepalive = 25
+
+# Split-tunnel SELECTIVO:
+#   - ky-tv.cc              172.110.220.61
+#   - x1megaott             149.18.45.0/24
+#   - line.tivi-ott         91.208.115.23
+#   - VPS (unbound DNS)     178.156.147.234
+# Todo lo demás sale por ISP directo (Netflix, YT, web, etc).
+AllowedIPs = 172.110.220.61/32, 149.18.45.0/24, 91.208.115.23/32, 178.156.147.234/32

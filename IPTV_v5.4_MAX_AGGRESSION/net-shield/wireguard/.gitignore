@@ -1,0 +1,4 @@
+# Claves y configs generadas nunca entran a git
+client/_generated/
+*.key
+*.conf.generated

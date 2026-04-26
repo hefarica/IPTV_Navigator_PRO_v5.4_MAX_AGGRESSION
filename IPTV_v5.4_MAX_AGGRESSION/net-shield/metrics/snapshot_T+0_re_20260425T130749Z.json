@@ -1,0 +1,68 @@
+{
+  "captured_at_utc": "2026-04-25T13:07:53Z",
+  "sentinel_snapshot": {
+  "schema_version": 1,
+  "generated_at": "2026-04-25T12:45:56.337801+00:00",
+  "mode": "advisory_plus_auto_confidence_ge_0.9_and_risk_low",
+  "last_cycle_at": "2026-04-25T12:45:56.193789+00:00",
+  "stats": {
+    "events_last_cycle": 100,
+    "signatures_last_cycle": 1,
+    "signatures_unique_lifetime": 7,
+    "kb_size": 2,
+    "kb_unique_signatures": 1,
+    "proposals_pending": 0,
+    "proposals_auto_applied_all_time": 0,
+    "proposals_auto_failed": 0,
+    "lifetime_events_total": 9274
+  },
+  "pending_approvals": [],
+  "recent_auto_applied": [],
+  "top_signatures_lifetime": [
+    {
+      "id": "unknown",
+      "count": 8025
+    },
+    {
+      "id": "nginx_upstream_prem_closed",
+      "count": 975
+    },
+    {
+      "id": "nginx_connect_refused",
+      "count": 195
+    },
+    {
+      "id": "iptv_slow_response",
+      "count": 53
+    },
+    {
+      "id": "nginx_upstream_timeout",
+      "count": 20
+    },
+    {
+      "id": "iptv_5xx",
+      "count": 4
+    },
+    {
+      "id": "oom_kill",
+      "count": 2
+    }
+  ]
+},
+  "lifetime_counts": {"nginx_upstream_prem_closed": 975, "nginx_upstream_timeout": 20, "iptv_slow_response": 53, "unknown": 8025, "nginx_connect_refused": 195, "iptv_5xx": 4, "oom_kill": 2},
+  "my_trips_since_deploy": {
+    "limit_req_stealth_upstream_req": 0,
+    "limit_conn_stealth_upstream_conn": 0
+  },
+  "shield_access_since_deploy": {
+    "total_requests": 12166,
+    "status_distribution": {"429":8016,"302":2170,"200":1714,"403":192,"407":74},
+    "rt_stats_2xx": {"rt_avg":1.7385,"rt_max":3.1450,"samples":1714},
+    "top_errors_by_upstream": [{"upstream":"tivigo.cc","status":429,"count":4467},{"upstream":"nfqdeuxu.x1megaott.online","status":429,"count":2064},{"upstream":"line.tivi-ott.net","status":429,"count":1485},{"upstream":"nfqdeuxu.x1megaott.online","status":403,"count":192}]
+  },
+  "wg_transfer": [{"peer":"5idLPkMF3/53qLQk04u6wyngXKgEC8XxcMnPV8NDEjM=","rx":1164624804,"tx":69768216420},{"peer":"Ga1ykV7TSLriEIlydQznycUBz9hjxzr9jzk2kBdgomw=","rx":476571904,"tx":30340457984}],
+  "nginx_health": {
+    "workers": 3,
+    "load_avg": "0.18, 0.13, 0.15"
+  }
+}
