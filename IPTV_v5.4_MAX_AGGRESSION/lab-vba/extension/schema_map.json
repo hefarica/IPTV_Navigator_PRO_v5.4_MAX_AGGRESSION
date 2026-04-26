@@ -1,0 +1,214 @@
+﻿{
+    "rows":  {
+                 "-- KODIPROP --":  {
+                                        "section":  "vlcopt",
+                                        "row":  115
+                                    },
+                 "description":  {
+                                     "section":  "unknown",
+                                     "row":  11
+                                 },
+                 "buffer_aggression_policy":  {
+                                                  "section":  "headers",
+                                                  "row":  16
+                                              },
+                 "-- OPTIMIZER RESULTS (populated by Brain_OmegaOptimizer_PerProfile) --":  {
+                                                                                                "section":  "bounds",
+                                                                                                "row":  606
+                                                                                            },
+                 "master_audit_unified":  {
+                                              "section":  "headers",
+                                              "row":  20
+                                          },
+                 "opt.fragLoad_maxNumRetry":  {
+                                                  "section":  "bounds",
+                                                  "row":  610
+                                              },
+                 "opt.reconnect_attempts":  {
+                                                "section":  "bounds",
+                                                "row":  609
+                                            },
+                 "opt.nudgeMaxRetry":  {
+                                           "section":  "bounds",
+                                           "row":  611
+                                       },
+                 "opt.solver_trace":  {
+                                          "section":  "bounds",
+                                          "row":  616
+                                      },
+                 "-- HEADEROVERRIDES --":  {
+                                               "section":  "kodiprop",
+                                               "row":  123
+                                           },
+                 "opt.abrBandWidthFactor":  {
+                                                "section":  "bounds",
+                                                "row":  612
+                                            },
+                 "calibration_version":  {
+                                             "section":  "headers",
+                                             "row":  22
+                                         },
+                 "multi_provider_integration":  {
+                                                    "section":  "headers",
+                                                    "row":  19
+                                                },
+                 "error_decision_tree":  {
+                                             "section":  "headers",
+                                             "row":  17
+                                         },
+                 "name":  {
+                              "section":  "unknown",
+                              "row":  8
+                          },
+                 "resolution":  {
+                                    "section":  "headers",
+                                    "row":  21
+                                },
+                 "Atributo":  {
+                                  "section":  "unknown",
+                                  "row":  5
+                              },
+                 "opt.timestamp":  {
+                                       "section":  "bounds",
+                                       "row":  615
+                                   },
+                 "-- HLSJS --":  {
+                                     "section":  "prefetch",
+                                     "row":  548
+                                 },
+                 "NIVEL 2: PERFILES P0-P5 EMBEBIDOS (importados desde tu JSON CALIBRATED)":  {
+                                                                                                 "section":  "unknown",
+                                                                                                 "row":  3
+                                                                                             },
+                 "guarantees_10":  {
+                                       "section":  "headers",
+                                       "row":  23
+                                   },
+                 "id":  {
+                            "section":  "unknown",
+                            "row":  7
+                        },
+                 "-- VLCOPT --":  {
+                                      "section":  "settings",
+                                      "row":  66
+                                  },
+                 "opt.buffer_seconds":  {
+                                            "section":  "bounds",
+                                            "row":  607
+                                        },
+                 "-- META --":  {
+                                    "section":  "unknown",
+                                    "row":  6
+                                },
+                 "-- OPTIMIZER BOUNDS (Nivel C Per-Profile, bump +15% escalonado) --":  {
+                                                                                            "section":  "hlsjs",
+                                                                                            "row":  590
+                                                                                        },
+                 "enabledCategories":  {
+                                           "section":  "unknown",
+                                           "row":  13
+                                       },
+                 "opt.fitness":  {
+                                     "section":  "bounds",
+                                     "row":  614
+                                 },
+                 "-- PREFETCH_CONFIG --":  {
+                                               "section":  "headeroverrides",
+                                               "row":  533
+                                           },
+                 "opt.maxLiveSyncPlaybackRate":  {
+                                                     "section":  "bounds",
+                                                     "row":  613
+                                                 },
+                 "opt.live_delay_seconds":  {
+                                                "section":  "bounds",
+                                                "row":  608
+                                            },
+                 "-- SETTINGS --":  {
+                                        "section":  "headers",
+                                        "row":  24
+                                    },
+                 "level":  {
+                               "section":  "unknown",
+                               "row":  9
+                           },
+                 "color":  {
+                               "section":  "unknown",
+                               "row":  12
+                           },
+                 "quality":  {
+                                 "section":  "unknown",
+                                 "row":  10
+                             },
+                 "error_407_specialized_tree":  {
+                                                    "section":  "headers",
+                                                    "row":  18
+                                                },
+                 "🤖 AUTO-LLENAR PERFILES":  {
+                                                 "section":  "unknown",
+                                                 "row":  1
+                                             },
+                 "🧠 OPTIMIZAR PERFILES POR RESOLUCION":  {
+                                                              "section":  "unknown",
+                                                              "row":  2
+                                                          }
+             },
+    "sections":  {
+                     "unknown":  [
+                                     "🤖 AUTO-LLENAR PERFILES",
+                                     "🧠 OPTIMIZAR PERFILES POR RESOLUCION",
+                                     "NIVEL 2: PERFILES P0-P5 EMBEBIDOS (importados desde tu JSON CALIBRATED)",
+                                     "Atributo",
+                                     "-- META --",
+                                     "id",
+                                     "name",
+                                     "level",
+                                     "quality",
+                                     "description",
+                                     "color",
+                                     "enabledCategories"
+                                 ],
+                     "prefetch":  [
+                                      "-- HLSJS --"
+                                  ],
+                     "hlsjs":  [
+                                   "-- OPTIMIZER BOUNDS (Nivel C Per-Profile, bump +15% escalonado) --"
+                               ],
+                     "headeroverrides":  [
+                                             "-- PREFETCH_CONFIG --"
+                                         ],
+                     "vlcopt":  [
+                                    "-- KODIPROP --"
+                                ],
+                     "headers":  [
+                                     "buffer_aggression_policy",
+                                     "error_decision_tree",
+                                     "error_407_specialized_tree",
+                                     "multi_provider_integration",
+                                     "master_audit_unified",
+                                     "resolution",
+                                     "calibration_version",
+                                     "guarantees_10",
+                                     "-- SETTINGS --"
+                                 ],
+                     "bounds":  [
+                                    "-- OPTIMIZER RESULTS (populated by Brain_OmegaOptimizer_PerProfile) --",
+                                    "opt.buffer_seconds",
+                                    "opt.live_delay_seconds",
+                                    "opt.reconnect_attempts",
+                                    "opt.fragLoad_maxNumRetry",
+                                    "opt.nudgeMaxRetry",
+                                    "opt.abrBandWidthFactor",
+                                    "opt.maxLiveSyncPlaybackRate",
+                                    "opt.fitness",
+                                    "opt.timestamp",
+                                    "opt.solver_trace"
+                                ],
+                     "kodiprop":  [
+                                      "-- HEADEROVERRIDES --"
+                                  ],
+                     "settings":  [
+                                      "-- VLCOPT --"
+                                  ]
+                 }
+}
