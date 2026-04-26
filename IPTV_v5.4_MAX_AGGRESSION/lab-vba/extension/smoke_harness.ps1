@@ -86,14 +86,99 @@ $col2 = $colMap['P2']
 $p2Res = Get-Cell 'settings.resolution' $col2
 $infos += "[P2 outlier] settings.resolution='$p2Res' (null/empty expected -- outlier protection)"
 
+# === T3 assertions: exact dotted-key writes for 6 non-blob sections ===
+
+# Load JSON once for expected values
+$jsonObj = Get-Content $JsonPath -Raw | ConvertFrom-Json
+$map = $mapRaw   # alias for clarity in Assert-DottedKey
+
+function Assert-DottedKey($profId, $section, $subkey, $col, $expected, $coerceNum = $false) {
+    $labKey = "$section.$subkey"
+    if (-not $map.rows.$labKey) {
+        $script:infos += "[$profId.$labKey] no row in LAB -- skip"
+        return
+    }
+    $row = $map.rows.$labKey.row
+    $actual = [string]$ws.Cells($row, $col).Value2
+    if ($coerceNum) {
+        $expDouble = 0.0
+        $actDouble = 0.0
+        $expIsNum = [double]::TryParse([string]$expected, [ref]$expDouble)
+        if ($expIsNum) {
+            # Both expected and actual must parse as double and be equal
+            if ([double]::TryParse($actual, [ref]$actDouble)) {
+                if ($actDouble -ne $expDouble) {
+                    $script:failures += "[$profId.$labKey] r=$row c=$col expected=$expected got='$actual'"
+                } else {
+                    $script:infos += "[$profId.$labKey OK numeric] $actual"
+                }
+            } else {
+                $script:failures += "[$profId.$labKey] r=$row c=$col expected numeric=$expected got='$actual' (not parseable as double)"
+            }
+        } else {
+            # Numeric section but non-numeric value (e.g. settings.resolution="RES_P0") -- compare as text
+            $expStr = [string]$expected
+            if ($actual -ne $expStr) {
+                $script:failures += "[$profId.$labKey] r=$row c=$col expected='$expStr' got='$actual'"
+            } else {
+                $script:infos += "[$profId.$labKey OK text-in-num-sec] $actual"
+            }
+        }
+    } else {
+        $expStr = [string]$expected
+        if ($actual -ne $expStr) {
+            $script:failures += "[$profId.$labKey] r=$row c=$col expected='$expStr' got='$actual'"
+        } else {
+            $script:infos += "[$profId.$labKey OK text] $actual"
+        }
+    }
+}
+
+foreach ($profId in 'P0','P1','P2','P3','P4','P5') {
+    $col = @{P0=2;P1=3;P2=4;P3=5;P4=6;P5=7}[$profId]
+    $prof = $jsonObj.profiles_snapshot.$profId
+    foreach ($sec in 'settings','hlsjs','prefetch_config','vlcopt','kodiprop','headerOverrides') {
+        $obj = $prof.$sec
+        if (-not $obj) { continue }
+        $isNum = ($sec -in 'settings','hlsjs','prefetch_config')
+        foreach ($k in $obj.PSObject.Properties.Name) {
+            $val = $obj.$k
+            if ($null -eq $val) { continue }                          # P2 outlier null -- sentinel in VBA, skip
+            if ($val -is [string] -and $val -eq '') { continue }      # explicit empty -- skip
+            Assert-DottedKey $profId $sec $k $col $val $isNum
+        }
+    }
+}
+
+# Special: vlcopt.video-fps must be verbatim "30,30,30,30" (commas preserved)
+foreach ($profId in 'P0','P1','P2','P3','P4','P5') {
+    $col = @{P0=2;P1=3;P2=4;P3=5;P4=6;P5=7}[$profId]
+    Assert-DottedKey $profId 'vlcopt' 'video-fps' $col '30,30,30,30' $false
+}
+
+# Special: headerOverrides.X-Comma-Test must be verbatim "a,b,c,d"
+# (X-Comma-Test is NOT in schema_map -- will log as "no row in LAB" info, not failure)
+foreach ($profId in 'P0','P1','P2','P3','P4','P5') {
+    $col = @{P0=2;P1=3;P2=4;P3=5;P4=6;P5=7}[$profId]
+    Assert-DottedKey $profId 'headerOverrides' 'X-Comma-Test' $col 'a,b,c,d' $false
+}
+
+# Report
+Write-Host ""
+Write-Host "=== T3 assertion summary ==="
+$assertTotal = $script:failures.Count + ($script:infos | Where-Object { $_ -match ' OK ' }).Count
+Write-Host "INFO entries: $($script:infos.Count)"
+
 if ($failures.Count -gt 0) {
     Write-Host "FAIL ($($failures.Count) assertion(s) failed):" -ForegroundColor Red
     $failures | ForEach-Object { Write-Host "  $_" -ForegroundColor Red }
     Write-Host ""
-    Write-Host "INFO (passing):"
+    Write-Host "INFO (all):"
     $infos | ForEach-Object { Write-Host "  $_" }
     exit 1
 }
 
-Write-Host "PASS: baseline 5-key sync verified" -ForegroundColor Green
-$infos | ForEach-Object { Write-Host "  $_" }
+Write-Host "PASS: all assertions passed" -ForegroundColor Green
+$infos | Where-Object { $_ -match ' OK ' } | Select-Object -First 30 | ForEach-Object { Write-Host "  $_" }
+$skipCount = ($infos | Where-Object { $_ -match 'no row in LAB' }).Count
+Write-Host "  (+ $skipCount keys skipped -- no row in LAB, expected for synthetic fixture keys)"
