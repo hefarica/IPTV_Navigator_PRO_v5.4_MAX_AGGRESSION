@@ -4421,14 +4421,19 @@
 
                     if (this.profiles[pid]) {
                         if (isBulletproof) {
-                            // 🛡 BULLETPROOF: SOBREPONER (REPLACE total, no merge).
-                            // Doctrina del usuario: el LAB Excel es la verdad absoluta. Lo que
-                            // calibró el solver (LHS→GA→SA→NM) reemplaza completamente lo que
-                            // tenía el frontend. Sin contaminación de perfiles previos.
-                            // Cubre los 8 campos extra del bulletproof (role, bounds,
-                            // optimized_knobs, fitness, solver_trace, optimized_timestamp,
-                            // player_enslavement, actor_injections) sin merge con valores viejos.
-                            this.profiles[pid] = JSON.parse(JSON.stringify(lpFixed));
+                            // 🛡 BULLETPROOF: SHALLOW MERGE — el LAB sobreescribe sus secciones
+                            // calibradas (settings/vlcopt/kodiprop/headerOverrides/hlsjs/prefetch_config/
+                            // role/fitness/bounds/optimized_knobs/player_enslavement/actor_injections/
+                            // solver_trace/optimized_timestamp) en bloque, PERO preserva campos del
+                            // frontend que el LAB no produce (enabledCategories, color, level, quality,
+                            // description, customHeaders, expandedCategories). Sin esto, REPLACE total
+                            // rompe el render() del PM9 que necesita enabledCategories.
+                            // Doctrina: LAB es SSOT para datos calibrados, frontend conserva su meta UI.
+                            this.profiles[pid] = Object.assign(
+                                {},
+                                this.profiles[pid],
+                                JSON.parse(JSON.stringify(lpFixed))
+                            );
                             result.headersAdded += Object.keys(lpFixed.headerOverrides || {}).length;
                         } else {
                             // Modo legacy (no-bulletproof): deep merge preserva headers viejos

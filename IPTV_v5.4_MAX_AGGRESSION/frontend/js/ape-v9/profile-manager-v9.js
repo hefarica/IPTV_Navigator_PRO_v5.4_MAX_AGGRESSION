@@ -209,6 +209,9 @@
 
             this.config = window.APE_PROFILES_CONFIG;
 
+            // T6b: cargar user overrides para badges 🛡 LAB / 🔧 Manual
+            this._loadUserOverrides();
+
             // Load saved active profile
             const saved = localStorage.getItem('ape_active_profile');
             if (saved && this.config.getProfile(saved)) {
@@ -217,6 +220,125 @@
 
             console.log('%c🎚️ Profile Manager v9.0 Inicializado', 'color: #10b981; font-weight: bold;');
             console.log(`   Perfil activo: ${this.activeProfileId}`);
+        }
+
+        // ── HELPERS SSOT desde LAB (T6b) ──────────────────────────────────
+        // Doctrina: el LAB Excel es la fuente única de verdad. El UI solo muestra
+        // lo que existe en this.config.profiles[Pn]. Si el LAB no tiene un campo,
+        // el UI muestra '' (vacío) — NO 0, NO 60, NO defaults forzados.
+        /**
+         * Devuelve el valor LAB tal cual o vacío sin forzar default.
+         * @param {*} v - valor del LAB (undefined/null/string/number)
+         * @returns {string|number} - valor para inyectar en input
+         */
+        _labVal(v) {
+            if (v === undefined || v === null) return '';
+            if (v === 'null' || v === 'undefined') return '';
+            return v;
+        }
+        /**
+         * Coerce a number sin caer a default. NaN devuelve null
+         * (que el setter ignora en lugar de sobreescribir LAB con basura).
+         */
+        _labNum(s) {
+            if (s === undefined || s === null || s === '') return null;
+            const n = Number(String(s).replace(',', '.'));
+            return isNaN(n) ? null : n;
+        }
+        /**
+         * True si el field aún no fue overrided manualmente por el usuario tras Import LAB.
+         * Marca el provenance para los badges 🛡 LAB / 🔧 Manual.
+         */
+        _isLabSourced(field) {
+            if (!this.config.labBulletproof) return false;
+            const overrides = this._userOverrides || {};
+            const profileOverrides = overrides[this.activeProfileId] || {};
+            return !profileOverrides[field];
+        }
+        _markUserOverride(field) {
+            this._userOverrides = this._userOverrides || {};
+            this._userOverrides[this.activeProfileId] = this._userOverrides[this.activeProfileId] || {};
+            this._userOverrides[this.activeProfileId][field] = Date.now();
+            try { localStorage.setItem('pm9_user_overrides', JSON.stringify(this._userOverrides)); } catch (_) {}
+        }
+        _loadUserOverrides() {
+            try {
+                const raw = localStorage.getItem('pm9_user_overrides');
+                if (raw) this._userOverrides = JSON.parse(raw) || {};
+            } catch (_) { this._userOverrides = {}; }
+        }
+
+        /**
+         * Renderiza el panel 🛡 LAB Bulletproof Details para el perfil activo (T6b)
+         * Despliega TODAS las secciones del NIVEL_2_PROFILES del LAB Excel:
+         * settings (~41 keys), vlcopt (~48), kodiprop (~7), hlsjs (~41),
+         * prefetch_config (~14), headerOverrides (~233), bounds, optimized_knobs,
+         * actor_injections, role, fitness, solver_trace.
+         * Doctrina: read-only — los valores los calibra el solver del LAB.
+         */
+        _renderLabBulletproofPanel(p) {
+            if (!p) return '';
+            const _esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({
+                '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+            }[c]));
+            const _kv = (obj) => {
+                if (!obj || typeof obj !== 'object') return '<em style="opacity:0.5">— vacío</em>';
+                const entries = Object.entries(obj);
+                if (entries.length === 0) return '<em style="opacity:0.5">— vacío</em>';
+                return `<table class="pm9-lab-kv-table">${
+                    entries.map(([k,v]) => {
+                        const dispVal = (v && typeof v === 'object') ? JSON.stringify(v) : String(v == null ? '' : v);
+                        const truncated = dispVal.length > 200 ? dispVal.substring(0,197) + '…' : dispVal;
+                        return `<tr><td class="pm9-lab-key">${_esc(k)}</td><td class="pm9-lab-val">${_esc(truncated)}</td></tr>`;
+                    }).join('')
+                }</table>`;
+            };
+            const sections = [
+                { id: 'settings',         icon: '⚙️',  title: 'Settings (NIVEL_2_PROFILES)', data: p.settings,         desc: 'Atributos de calibración del perfil — fila por fila de la hoja 6_NIVEL_2_PROFILES' },
+                { id: 'vlcopt',           icon: '📺',  title: 'EXTVLCOPT directives',         data: p.vlcopt,           desc: 'Headers VLC que se emiten en cada canal' },
+                { id: 'kodiprop',         icon: '🎬',  title: 'KODIPROP directives',          data: p.kodiprop,         desc: 'Inputstream.adaptive props para Kodi' },
+                { id: 'hlsjs',            icon: '🎯',  title: 'HLS.js config',                data: p.hlsjs,            desc: 'Player config para hls.js (browser)' },
+                { id: 'prefetch_config',  icon: '🚀',  title: 'Prefetch config',              data: p.prefetch_config,  desc: 'Estrategia de prefetch + caching' },
+                { id: 'optimized_knobs',  icon: '🎚️', title: 'Optimized knobs (solver out)', data: p.optimized_knobs,  desc: 'Output del solver LHS→GA→SA→NM' },
+                { id: 'bounds',           icon: '📐',  title: 'Solver bounds',                data: p.bounds,           desc: 'Rango [lo, hi] que el solver exploró' },
+                { id: 'headerOverrides',  icon: '🌐',  title: 'HTTP Header Overrides',        data: p.headerOverrides,  desc: 'Headers HTTP X-APE-* + Sec-Fetch-* + Beautiful Madness 4-layer' }
+            ];
+            const actorInjections = p.actor_injections || {};
+            const actorSections = Object.keys(actorInjections).map(k => ({
+                id: 'actor_' + k,
+                icon: '🎭',
+                title: `actor_injections.${k}`,
+                data: actorInjections[k],
+                desc: `Per-actor calibration block (${k})`
+            }));
+            const allSections = [...sections, ...actorSections];
+            const totalKeys = allSections.reduce((sum, s) => sum + (s.data && typeof s.data === 'object' ? Object.keys(s.data).length : 0), 0);
+            const meta = [
+                p.role ? `Role: <strong>${_esc(p.role)}</strong>` : null,
+                p.fitness != null ? `Fitness: <strong>${_esc(p.fitness)}</strong>` : null,
+                p.solver_trace ? `Solver: <strong>${_esc(p.solver_trace)}</strong>` : null,
+                p.optimized_timestamp ? `Timestamp: <strong>${_esc(p.optimized_timestamp)}</strong>` : null
+            ].filter(Boolean).join(' · ');
+            return `
+                <details class="pm9-lab-bp-panel" style="margin-top: 14px; border-radius: 8px; background: rgba(16,185,129,0.06); border: 1px solid rgba(16,185,129,0.3);">
+                    <summary style="cursor: pointer; padding: 10px 14px; font-size: 0.9rem; font-weight: 600; color: #10b981;">
+                        🛡 LAB Bulletproof Details — ${p.id} (${totalKeys} fields, read-only desde LAB Excel)
+                    </summary>
+                    <div style="padding: 12px 16px;">
+                        ${meta ? `<div style="font-size: 0.8rem; opacity: 0.85; margin-bottom: 10px;">${meta}</div>` : ''}
+                        ${allSections.map(s => `
+                            <details class="pm9-lab-section" style="margin-top: 8px;">
+                                <summary style="cursor: pointer; font-size: 0.82rem; font-weight: 600; padding: 6px 0;">
+                                    ${s.icon} ${s.title}
+                                    <span style="opacity: 0.6; font-weight: normal;"> — ${s.data && typeof s.data === 'object' ? Object.keys(s.data).length : 0} keys</span>
+                                </summary>
+                                <div style="padding: 6px 12px; font-size: 0.74rem; opacity: 0.75; font-style: italic;">${s.desc}</div>
+                                <div style="padding: 6px 12px;">${_kv(s.data)}</div>
+                            </details>
+                        `).join('')}
+                    </div>
+                </details>
+            `;
         }
 
         /**
@@ -245,6 +367,7 @@
                         <div class="pm9-title">
                             <span class="pm9-icon">🎚️</span>
                             <span>Gestor de Perfiles APE v9.0</span>
+                            ${this.config.labBulletproof ? '<span id="pm9-lab-bulletproof-badge" style="font-size: 10px; background: linear-gradient(135deg, #10b981, #059669); padding: 2px 6px; border-radius: 4px; margin-left: 8px; font-weight: bold; color: #fff;">🛡 BULLETPROOF v2</span>' : ''}
                         </div>
                         <div style="display: flex; align-items: center; gap: 12px;">
                             <span class="pm9-active-count">${this.config.countActiveHeaders(this.activeProfileId)} headers activos</span>
@@ -275,6 +398,7 @@
                         <div class="pm9-info-header">
                             <h3 class="pm9-profile-name">${activeProfile.id} - ${activeProfile.name}</h3>
                             <span class="pm9-level-badge">Level ${activeProfile.level}</span>
+                            ${this.config.labBulletproof && this.config.labMetaPerProfile && this.config.labMetaPerProfile[activeProfile.id] ? `<span title="Role: ${this.config.labMetaPerProfile[activeProfile.id].role}&#10;Fitness: ${this.config.labMetaPerProfile[activeProfile.id].fitness_score}%" style="margin-left: 10px; font-size: 11px; background: rgba(16, 185, 129, 0.2); border: 1px solid #10b981; color: #10b981; padding: 2px 6px; border-radius: 4px; cursor: help;">🛡 ${this.config.labMetaPerProfile[activeProfile.id].role} (${this.config.labMetaPerProfile[activeProfile.id].fitness_score}%)</span>` : ''}
                         </div>
                         <p class="pm9-profile-desc">${activeProfile.description}</p>
                         
@@ -301,14 +425,16 @@
                                 </select>
                             </div>
                             <div class="pm9-setting">
-                                <label>FPS</label>
-                                <input type="number" id="pm9_fps" value="${activeProfile.settings.fps || 60}" 
-                                       oninput="window.ProfileManagerV9.updateSetting('fps', parseInt(this.value) || 60)">
+                                <label>FPS${this._isLabSourced('fps') ? ' <span class="pm9-badge-lab" title="Calibrado por LAB Excel">🛡</span>' : ' <span class="pm9-badge-manual" title="Editado por usuario">🔧</span>'}</label>
+                                <input type="number" id="pm9_fps" value="${this._labVal(activeProfile.settings.fps)}"
+                                       data-lab-sourced="${this._isLabSourced('fps')}"
+                                       oninput="window.ProfileManagerV9.updateSetting('fps', window.ProfileManagerV9._labNum(this.value))">
                             </div>
                             <div class="pm9-setting">
-                                <label>Buffer Base (s)</label>
-                                <input type="number" id="pm9_buffer_sec" value="${activeProfile.settings.buffer / 1000}" 
-                                       oninput="window.ProfileManagerV9.updateSetting('bufferSeconds', parseFloat(this.value) || 6)">
+                                <label>Buffer Base (s)${this._isLabSourced('buffer') ? ' <span class="pm9-badge-lab" title="Calibrado por LAB Excel">🛡</span>' : ' <span class="pm9-badge-manual">🔧</span>'}</label>
+                                <input type="number" id="pm9_buffer_sec" value="${activeProfile.settings.buffer != null ? activeProfile.settings.buffer / 1000 : ''}"
+                                       data-lab-sourced="${this._isLabSourced('buffer')}"
+                                       oninput="window.ProfileManagerV9.updateSetting('bufferSeconds', window.ProfileManagerV9._labNum(this.value))">
                             </div>
                             <div class="pm9-setting">
                                 <label>Estrategia</label>
@@ -325,25 +451,33 @@
                         <!-- ⚙️ SETTINGS AUXILIARES Y MÉTRICAS CALCULADAS -->
                         <div class="pm9-settings-grid">
                             <div class="pm9-setting">
-                                <label>Bitrate (Mbps)</label>
-                                <input type="number" id="pm9_bitrate" value="${Number(String(activeProfile.settings.bitrate || 0).replace(',','.')) || 0}" readonly style="opacity: 0.8; cursor: not-allowed;">
+                                <label>Bitrate (Mbps)${this._isLabSourced('bitrate') ? ' <span class="pm9-badge-lab" title="Calibrado por solver. Edit en LAB Excel">🛡</span>' : ''}</label>
+                                <input type="number" id="pm9_bitrate" value="${this._labVal(activeProfile.settings.bitrate)}" readonly
+                                       data-lab-sourced="${this._isLabSourced('bitrate')}"
+                                       style="opacity: 0.8; cursor: not-allowed;" title="Calibrado por solver. Edit en LAB Excel">
                             </div>
                             <div class="pm9-setting">
-                                <label>Throughput T1</label>
-                                <input type="number" step="0.1" id="pm9_t1" value="${Number(String(activeProfile.settings.t1 || 0).replace(',','.')) || 0}" readonly style="opacity: 0.8; cursor: not-allowed;">
+                                <label>Throughput T1${this._isLabSourced('t1') ? ' <span class="pm9-badge-lab">🛡</span>' : ''}</label>
+                                <input type="number" step="0.1" id="pm9_t1" value="${this._labVal(activeProfile.settings.t1)}" readonly
+                                       data-lab-sourced="${this._isLabSourced('t1')}"
+                                       style="opacity: 0.8; cursor: not-allowed;" title="Calibrado por solver. Edit en LAB Excel">
                             </div>
                             <div class="pm9-setting">
-                                <label>Throughput T2</label>
-                                <input type="number" step="0.1" id="pm9_t2" value="${Number(String(activeProfile.settings.t2 || 0).replace(',','.')) || 0}" readonly style="opacity: 0.8; cursor: not-allowed;">
+                                <label>Throughput T2${this._isLabSourced('t2') ? ' <span class="pm9-badge-lab">🛡</span>' : ''}</label>
+                                <input type="number" step="0.1" id="pm9_t2" value="${this._labVal(activeProfile.settings.t2)}" readonly
+                                       data-lab-sourced="${this._isLabSourced('t2')}"
+                                       style="opacity: 0.8; cursor: not-allowed;" title="Calibrado por solver. Edit en LAB Excel">
                             </div>
                             <div class="pm9-setting">
                                 <label>Buffer Total (C1+C2+C3)</label>
-                                <input type="number" id="pm9_buffer" value="${Number(activeProfile.settings.buffer || 0) * 2 + Number(activeProfile.settings.playerBuffer || 0)}"
+                                <input type="number" id="pm9_buffer" value="${activeProfile.settings.buffer != null && activeProfile.settings.playerBuffer != null ? (Number(activeProfile.settings.buffer) * 2 + Number(activeProfile.settings.playerBuffer)) : ''}"
                                        readonly style="opacity: 0.8; cursor: not-allowed; border-color: #00ff41;">
                             </div>
                             <div class="pm9-setting">
-                                <label>Player Buffer (ms)</label>
-                                <input type="number" id="pm9_playerBuffer" value="${Number(String(activeProfile.settings.playerBuffer || 0).replace(',','.')) || 0}" readonly style="opacity: 0.8; cursor: not-allowed; border-color: #00ff41;">
+                                <label>Player Buffer (ms)${this._isLabSourced('playerBuffer') ? ' <span class="pm9-badge-lab">🛡</span>' : ''}</label>
+                                <input type="number" id="pm9_playerBuffer" value="${this._labVal(activeProfile.settings.playerBuffer)}" readonly
+                                       data-lab-sourced="${this._isLabSourced('playerBuffer')}"
+                                       style="opacity: 0.8; cursor: not-allowed; border-color: #00ff41;" title="Calibrado por solver. Edit en LAB Excel">
                             </div>
                             <div class="pm9-setting">
                                 <label>Headers Count</label>
@@ -446,6 +580,12 @@
                     <!-- ⚡ PREFETCH INTELIGENTE (Smart Prefetch Manager) -->
                     ${this._renderPrefetchSection(activeProfile)}
 
+                    <!-- 🛡 LAB BULLETPROOF DETAILS — render TODOS los campos del LAB para este perfil (T6b)
+                         Doctrina: cada línea de NIVEL_2_PROFILES debe llegar al UI como fuente única.
+                         Read-only por diseño: los valores son calibrados por el solver del LAB Excel,
+                         no se editan aquí. Para cambiar, ir al LAB Excel y reexportar el JSON. -->
+                    ${this.config.labBulletproof ? this._renderLabBulletproofPanel(activeProfile) : ''}
+
                     <!-- Configuración Global del Manifiesto SUPREMO -->
                     <div class="pm9-manifest-config">
                         <div class="pm9-manifest-header" onclick="window.ProfileManagerV9.toggleManifestDropdown()">
@@ -487,7 +627,35 @@
 
                     <!-- Acordeón de Headers -->
                     <div class="pm9-headers-container">
-                        ${Object.entries(categories).map(([catId, cat]) => {
+                        ${(() => {
+                // T6b doctrina: TODAS las categorías habilitadas por default para TODOS los
+                // perfiles P0-P5 (ALL_CATEGORIES como en ape-profiles-config-v5.js base profiles).
+                // Esto cubre el caso donde un Import LAB borró enabledCategories en algunos
+                // perfiles y no en otros — todos quedan sincronizados con TODAS las categorías
+                // habilitadas. El usuario puede deshabilitar manualmente después (toggle persiste).
+                // Persistimos para que sobreviva reload + para que los tabs P0-P5 sumen correctamente.
+                const allCatIds = Object.keys(categories);
+                let changed = false;
+                if (this.config && this.config.profiles) {
+                    for (const pid of Object.keys(this.config.profiles)) {
+                        const p = this.config.profiles[pid];
+                        if (!p) continue;
+                        const cur = Array.isArray(p.enabledCategories) ? p.enabledCategories : null;
+                        if (!cur || cur.length < allCatIds.length) {
+                            p.enabledCategories = [...allCatIds];
+                            changed = true;
+                        }
+                    }
+                    if (changed) {
+                        try { localStorage.setItem('ape_profiles_v9', JSON.stringify(this.config.profiles)); } catch (_) {}
+                    }
+                }
+                // Asegurar referencia local también actualizada
+                if (!Array.isArray(activeProfile.enabledCategories) || activeProfile.enabledCategories.length < allCatIds.length) {
+                    activeProfile.enabledCategories = [...allCatIds];
+                }
+                return '';
+            })()}${Object.entries(categories).map(([catId, cat]) => {
                 const isExpanded = this.expandedCategories.has(catId);
                 const isEnabled = activeProfile.enabledCategories.includes(catId);
                 const headerCount = cat.headers.length;
@@ -1017,6 +1185,59 @@
                     color: #64748b;
                     text-transform: uppercase;
                     font-weight: 500;
+                }
+
+                /* T6b — LAB SSOT badges + bulletproof details panel */
+                .pm9-badge-lab {
+                    display: inline-block;
+                    font-size: 9px;
+                    color: #10b981;
+                    margin-left: 4px;
+                    cursor: help;
+                }
+                .pm9-badge-manual {
+                    display: inline-block;
+                    font-size: 9px;
+                    color: #f59e0b;
+                    margin-left: 4px;
+                    cursor: help;
+                }
+                input[data-lab-sourced="true"] {
+                    border-left: 2px solid rgba(16, 185, 129, 0.5);
+                }
+                input[data-lab-sourced="false"] {
+                    border-left: 2px solid rgba(245, 158, 11, 0.5);
+                }
+                .pm9-lab-bp-panel summary:hover {
+                    background: rgba(16,185,129,0.12);
+                }
+                .pm9-lab-section summary:hover {
+                    color: #10b981;
+                }
+                .pm9-lab-kv-table {
+                    width: 100%;
+                    border-collapse: collapse;
+                    font-size: 0.72rem;
+                    font-family: 'Consolas', 'Monaco', monospace;
+                }
+                .pm9-lab-kv-table tr {
+                    border-bottom: 1px solid rgba(100,116,139,0.15);
+                }
+                .pm9-lab-kv-table tr:hover {
+                    background: rgba(16,185,129,0.04);
+                }
+                .pm9-lab-kv-table td {
+                    padding: 4px 8px;
+                    vertical-align: top;
+                }
+                .pm9-lab-kv-table .pm9-lab-key {
+                    color: #94a3b8;
+                    width: 38%;
+                    word-break: break-all;
+                }
+                .pm9-lab-kv-table .pm9-lab-val {
+                    color: #e2e8f0;
+                    word-break: break-all;
                 }
 
                 .pm9-setting input,
@@ -1914,6 +2135,21 @@
             const profile = this.config.getProfile(this.activeProfileId);
             if (!profile) return;
 
+            // T6b SSOT guard: si el usuario borra el input (NaN/null), NO escribimos
+            // un default — preservamos el valor LAB. El input volverá a mostrar el
+            // LAB value en el próximo render(). Doctrine: el LAB es la fuente única.
+            if (value === null || value === undefined ||
+                (typeof value === 'number' && isNaN(value))) {
+                console.log(`[pm9] updateSetting(${key}): valor inválido, preservando LAB`);
+                return;
+            }
+
+            // T6b: marcar override del usuario solo si el valor difiere del LAB
+            const labValue = profile.settings ? profile.settings[key] : undefined;
+            if (this.config.labBulletproof && String(value) !== String(labValue)) {
+                this._markUserOverride(key);
+            }
+
             // USER REQUEST: Handle Buffer Total conversion (Total = Base * 2.25)
             // if (key === 'bufferTotal') { ... } // Reverted
 
@@ -2771,10 +3007,13 @@
                     const data = JSON.parse(text);
 
                     // Validar schema
-                    if (data.lab_version !== 'omega_v1') {
-                        alert(`⚠️ Schema no soportado: ${data.lab_version}\nEsperado: omega_v1`);
+                    const supportedSchemas = ['omega_v1'];
+                    const isBulletproof = data.lab_schema_variant === 'omega_v2_bulletproof_perprofile' || data.bulletproof === true;
+                    if (!supportedSchemas.includes(data.lab_version)) {
+                        alert(`⚠️ Schema no soportado: ${data.lab_version}\nSoportados: ${supportedSchemas.join(', ')}`);
                         return;
                     }
+                    if (isBulletproof) console.log('[LAB-CONSUMER] 🛡 Bulletproof JSON detectado — consumiendo 100% de los campos.');
                     if (data.playlist_format !== 'm3u8') {
                         alert(`⚠️ playlist_format inesperado: ${data.playlist_format}\nEsperado: m3u8`);
                         return;
@@ -2808,6 +3047,12 @@
                         `📊 SCORING METADATA:\n` +
                         `  Directivas totales: ${data.scoring_metadata?.total_directives || '?'}\n` +
                         `  Refined ≥95: ${data.scoring_metadata?.refined_ge95 || '?'}\n\n` +
+                        (diff.gap_plan ? (
+                            `🎯 OMEGA GAP PLAN (omega_v2.2):\n` +
+                            `  Score actual: ${diff.gap_plan.scorecard} (Grade ${diff.gap_plan.grade})\n` +
+                            `  Items totales: ${diff.gap_plan.items}\n` +
+                            `  REPLICAR: ${diff.gap_plan.replicar}  IMPLEMENTAR: ${diff.gap_plan.implementar}  QUITAR: ${diff.gap_plan.quitar}\n\n`
+                        ) : '') +
                         `===== ¿APLICAR CAMBIOS? =====\n\n` +
                         `OK = aplicar todo (irreversible)\n` +
                         `Cancelar = no hacer nada`;
@@ -2825,14 +3070,15 @@
                         this.render();
                     }
 
-                    alert(`✅ LAB CALIBRATED IMPORTADO\n\n` +
+                    alert(`${isBulletproof ? '🛡 BULLETPROOF v2 IMPORTADO' : '✅ LAB CALIBRATED IMPORTADO'}\n\n` +
                           `Perfiles actualizados: ${result.profilesUpdated}\n` +
                           `headerOverrides aplicados: ${result.headersAdded}\n` +
                           `NIVEL_1 directivas: ${result.nivel1Count}\n` +
                           `NIVEL_3 entries: ${result.nivel3Total}\n` +
+                          `Placeholders mapeados: ${result.placeholdersCount || 0}\n` +
                           `Servers: ${result.serversCount}\n\n` +
                           `Próximo paso: generar lista .m3u8 desde APE generator.\n` +
-                          `El generator inyectará todo lo del LAB.`);
+                          `${isBulletproof ? '⚙️ ENGINE: Consumo Bulletproof 100% activo.' : 'El generator inyectará todo lo del LAB.'}`);
 
                     console.log('[LAB] Import OK', result);
                 } catch (err) {
@@ -2857,7 +3103,8 @@
                 servers: 0,
                 evasion_uas: 0,
                 evasion_refs: 0,
-                config_keys: 0
+                config_keys: 0,
+                gap_plan: null
             };
 
             const labProfiles = data.profiles_calibrated || {};
@@ -2879,6 +3126,20 @@
             diff.evasion_uas = (data.evasion_pool?.user_agents || []).length;
             diff.evasion_refs = (data.evasion_pool?.referers || []).length;
             diff.config_keys = Object.keys(data.config_global || {}).length;
+
+            // Gap plan summary (omega_v2.2)
+            const gp = data.omega_gap_plan;
+            if (gp) {
+                const items = Array.isArray(gp.items) ? gp.items : [];
+                diff.gap_plan = {
+                    items: items.length,
+                    replicar: gp.summary?.replicar || 0,
+                    implementar: gp.summary?.implementar || 0,
+                    quitar: gp.summary?.quitar || 0,
+                    scorecard: gp.scorecard_total || '',
+                    grade: gp.scorecard_grade || ''
+                };
+            }
 
             return diff;
         }

@@ -118,6 +118,8 @@
             bulletproof_config_global: labCfg?.configGlobal || {},
             bulletproof_evasion_pool:  labCfg?.evasionPool || null,
             bulletproof_placeholders:  labCfg?.placeholdersMap || {},
+            bulletproof_gap_plan:      labCfg?.omegaGapPlan || null,
+            bulletproof_servers:       labCfg?.labServers || [],
             bulletproof_loaded:   labLoaded,
             is_bulletproof:       isBulletproof,
             bulletproof_meta: {
@@ -659,6 +661,10 @@
             throw new Error(msg);
         }
 
+        // T1-T5 fix: pasar TODA la calibración del LAB al generador (no solo profiles+nivel1+nivel3).
+        // Sin esto, el generador no resuelve {config.X}/{evasion.X}/{server.X} ni inyecta gap_plan.
+        // Match exacto con el payload de generateListWithGate para SSOT consistency.
+        const isBulletproof = labCfg?.labBulletproof === true;
         const merged = {
             ...options,
             useAdmission: true,
@@ -666,7 +672,24 @@
             bulletproof_profiles: labCfg.profiles,
             bulletproof_nivel1:   labCfg.nivel1Directives || [],
             bulletproof_nivel3:   labCfg.nivel3PerLayer || {},
-            bulletproof_loaded:   true
+            bulletproof_config_global: labCfg.configGlobal || {},
+            bulletproof_evasion_pool:  labCfg.evasionPool || null,
+            bulletproof_placeholders:  labCfg.placeholdersMap || {},
+            bulletproof_gap_plan:      labCfg.omegaGapPlan || null,
+            bulletproof_servers:       labCfg.labServers || [],
+            bulletproof_loaded:   true,
+            is_bulletproof:       isBulletproof,
+            bulletproof_meta: {
+                schema_variant:   labCfg.labSchemaVariant || null,
+                meta_per_profile: labCfg.labMetaPerProfile || null
+            },
+            lab_metadata: {
+                lab_version:        labCfg.labVersion || null,
+                lab_schema_variant: labCfg.labSchemaVariant || null,
+                exported_at:        labCfg.labExportedAt || null,
+                bulletproof:        isBulletproof,
+                labFileName:        labCfg.labFileName || 'LAB_CALIBRATED'
+            }
         };
 
         let downloadResult = null;
