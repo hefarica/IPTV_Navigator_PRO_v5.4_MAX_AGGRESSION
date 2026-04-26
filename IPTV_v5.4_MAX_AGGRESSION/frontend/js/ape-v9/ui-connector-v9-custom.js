@@ -328,12 +328,19 @@
             channels.forEach((ch, idx) => {
                 const res = results.results[idx];
                 if (res) {
-                    ch._suggestedProfile = res.suggestedProfile;
+                    ch.profile = res.suggestedProfile;           // canonical - WorldClassM3U8Generator reads this
+                    ch._suggestedProfile = res.suggestedProfile; // compat - UI badge, export-module, api-wrapper
                     ch._qualityScore = res.qualityScore;
                 }
             });
 
-            console.log('✅ Clasificación completada exitosamente.');
+            // 2b. Log distribucion de perfiles post-classify
+            const dist = channels.reduce((a, c) => { a[c.profile] = (a[c.profile] || 0) + 1; return a; }, {});
+            console.log('%c[CLASSIFY] Distribucion:', 'color: #8b5cf6; font-weight: bold;', dist);
+            const maxPct = Math.max(...Object.values(dist)) / channels.length;
+            if (maxPct > 0.95) console.warn('[CLASSIFY] >95% en un solo perfil — classifier sospechoso');
+
+            console.log('Clasificacion completada exitosamente.');
 
             // 3. Re-renderizar tabla para mostrar badges
             this.renderTable();

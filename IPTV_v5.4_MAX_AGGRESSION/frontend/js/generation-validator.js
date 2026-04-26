@@ -115,6 +115,9 @@
                 extHttpCount: 0,
                 extVlcOptCount: 0,
                 kodiPropCount: 0,
+                sessionDataCount: 0,
+                cortexVnovaCount: 0,
+                overflowCount: 0,
                 emptyLines: 0,
                 commentLines: 0
             };
@@ -134,6 +137,12 @@
                     stats.extVlcOptCount++;
                 } else if (trimmed.startsWith('#KODIPROP:')) {
                     stats.kodiPropCount++;
+                } else if (trimmed.startsWith('#EXT-X-SESSION-DATA:')) {
+                    stats.sessionDataCount++;
+                } else if (trimmed.startsWith('#EXT-X-CORTEX') || trimmed.startsWith('#EXT-X-VNOVA')) {
+                    stats.cortexVnovaCount++;
+                } else if (trimmed.startsWith('#EXT-X-APE-OVERFLOW-HEADERS:')) {
+                    stats.overflowCount++;
                 } else if (trimmed.startsWith('#')) {
                     stats.commentLines++;
                 }
@@ -257,6 +266,9 @@
                 }
             });
 
+            // Verificar si tenemos variables de Player Enslavement v2 y HDR Panels
+            const hasBulletproofTags = content.includes('inputstream.hlsjs') || content.includes('ape.hdr.panel') || content.includes('vnova') || content.includes('cortex');
+            result.stats.bulletproof = hasBulletproofTags;
             result.stats.levelDistribution = levelEstimates;
 
             return result;
@@ -287,7 +299,16 @@
             report += `   • URLs: ${validation.stats.urlCount}\n`;
             report += `   • Headers EXTHTTP: ${validation.stats.extHttpCount}\n`;
             report += `   • Tags EXTVLCOPT: ${validation.stats.extVlcOptCount}\n`;
-            report += `   • Tags KODIPROP: ${validation.stats.kodiPropCount}\n\n`;
+            report += `   • Tags KODIPROP: ${validation.stats.kodiPropCount}\n`;
+            
+            if (validation.stats.apeHeaders && validation.stats.apeHeaders.bulletproof) {
+                report += `   • Tags SESSION-DATA (HDR): ${validation.stats.sessionDataCount}\n`;
+                report += `   • Tags CORTEX/VNOVA: ${validation.stats.cortexVnovaCount}\n`;
+                report += `   • Tags OVERFLOW: ${validation.stats.overflowCount}\n`;
+                report += `\n🌟 BULLETPROOF v2 ACTIVATED: Se detectó inyección dinámica avanzada (Player Enslavement/Hardware HDR).\n\n`;
+            } else {
+                report += `\n`;
+            }
 
             if (validation.stats.apeHeaders) {
                 const ld = validation.stats.apeHeaders.levelDistribution;
