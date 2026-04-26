@@ -23,6 +23,8 @@ class RankingConfigManager {
     getAvailableFields() {
         const predefined = [
             { id: 'qualityScore', label: '⭐ Quality Score' },
+            { id: 'goldRating', label: '🏆 Gold Rating (Oro Puro)' },
+            { id: 'goldTier', label: '🥇 Gold Tier' },
             { id: 'bitrate', label: '📊 Bitrate (kbps)' },
             { id: 'resolution', label: '🖥️ Resolution' },
             { id: 'matchScore', label: '🎯 Match Score' },
@@ -321,6 +323,13 @@ class RankingConfigManager {
                     { field: 'fps', weight: 80 },
                     { field: 'bitrate', weight: 60 },
                     { field: 'qualityScore', weight: 40 }
+                ]
+            },
+            oropuro: {
+                criteria: [
+                    { field: 'goldRating', weight: 100 },
+                    { field: 'bitrate',    weight: 40  },
+                    { field: 'matchScore', weight: 20  }
                 ]
             },
             custom: null

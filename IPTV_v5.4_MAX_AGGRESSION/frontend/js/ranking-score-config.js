@@ -356,12 +356,77 @@ class RankingScoreConfig {
 
     breakdown.tierEmoji = tierEmoji;
 
+    // ─── GOLD PURO EXTENSION ─────────────────────────────────────
+    // Delta real-vs-promised: detecta canales que entregan más de
+    // lo que anuncian (ORO PURO) o menos (FAKE).
+    const promisedH = this._inferPromisedHeight(channel);
+    const realH     = Number(channel.real_height || channel.height || 0);
+    const delta     = (realH && promisedH) ? (realH - promisedH) : 0;
+    const stdBps    = resConfig.standardBitrate || 2500;
+    const bitrateMargin = stdBps > 0 ? bitrate / stdBps : 0;
+
+    let goldRating = qualityScore;
+    if (delta > 0  && bitrateMargin >= 1.0)                   goldRating += 15;
+    if (delta < 0)                                            goldRating -= 30;
+    if (codec === 'HEVC' && (channel.color_depth || 8) >= 10) goldRating += 5;
+    if (channel.hdr_format && channel.hdr_format !== 'none')  goldRating += 5;
+    goldRating = Math.min(100, Math.max(0, goldRating));
+
+    // Tier fallback cuando no hay probe real: derivar desde qualityScore nominal.
+    // Evita que el 99% de canales caigan a UNK si el probe server falla/timeouts.
+    const hasRealProbe = realH > 0;
+    let goldTier;
+    if (hasRealProbe) {
+      goldTier = (delta > 0 && goldRating >= 75) ? 'ORO_PURO'
+               : (goldRating >= 75)              ? 'ORO'
+               : (goldRating >= 55)              ? 'PLATA'
+               : (goldRating >= 35)              ? 'BRONCE'
+               : (delta < 0)                     ? 'FAKE'
+               :                                   'SIN_DATOS';
+    } else {
+      // Fallback nominal: basado en qualityScore del nombre/metadata.
+      // Sin probe no podemos confirmar ORO_PURO ni FAKE, pero sí tier base.
+      goldTier = (goldRating >= 80) ? 'ORO'
+               : (goldRating >= 60) ? 'PLATA'
+               : (goldRating >= 40) ? 'BRONCE'
+               : (goldRating > 0)   ? 'FAKE'
+               :                      'SIN_DATOS';
+    }
+
+    // Inyectar en el channel para que el ranking genérico (knnScorer)
+    // pueda leer channel[field] directamente al ordenar.
+    channel.goldRating = goldRating;
+    channel.goldTier   = goldTier;
+    breakdown.gold = { delta, bitrateMargin, promisedH, realH, goldRating, goldTier };
+
     return {
       qualityScore,
       qualityTier,
+      goldRating,
+      goldTier,
       breakdown,
       standard: resConfig
     };
+  }
+
+  /**
+   * Infiere la altura "prometida" del canal (del nombre/tag/metadata).
+   * Mismas reglas heurísticas que auto-classifier-v13._getPixels (L287-298),
+   * pero retornando HEIGHT en vez de pixels para el cálculo de delta.
+   */
+  _inferPromisedHeight(channel) {
+    if (!channel) return 0;
+    const explicit = parseInt(channel.promised_height) || 0;
+    if (explicit) return explicit;
+    const name = (channel.name || '').toUpperCase();
+    if (name.includes('8K'))                           return 4320;
+    if (name.includes('4K') || name.includes('UHD'))   return 2160;
+    if (name.includes('FHD') || name.includes('1080')) return 1080;
+    if (name.includes('HD')  || name.includes('720'))  return 720;
+    if (name.includes('SD')  || name.includes('480'))  return 480;
+    const m = (channel.resolution || '').match(/(\d+)x(\d+)/);
+    if (m) return parseInt(m[2]) || 0;
+    return 0;
   }
 
   /**
