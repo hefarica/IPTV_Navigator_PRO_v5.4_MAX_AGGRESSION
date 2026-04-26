@@ -14,9 +14,8 @@ $map  = Get-Content 'C:/tmp/lab_ext/schema_map.json' -Raw | ConvertFrom-Json
 $nonBlobSecs = @('settings','vlcopt','kodiprop','headerOverrides','hlsjs','prefetch_config')
 $blobSecs    = @('headers','quality_levels')
 
-# Find blob row indices once
+# Find blob row indices once (headers/quality_levels always live in the first ~30 rows)
 $blobRow = @{}
-$lastRow = $ws.Cells($ws.Rows.Count, 1).End(-4162).Row
 for ($r = 1; $r -le 30; $r++) {
     $k = [string]$ws.Cells($r, 1).Value2
     if ($k -in $blobSecs) { $blobRow[$k] = $r }
@@ -46,7 +45,21 @@ foreach ($profId in 'P0','P1','P2','P3','P4','P5') {
                 $secStats.no_lab_row++; $totals.no_lab_row++; continue
             }
             $row = $map.rows.$labKey.row
-            $cell = $ws.Cells($row, $col).Value2
+            # T6a Fix 2: verify col A at this row actually matches labKey.
+            # schema_map may have stale entries pointing to empty separator rows.
+            $rowColA = [string]$ws.Cells($row, 1).Value2
+            if ($rowColA -ne $labKey) {
+                $secStats.no_lab_row++; $totals.no_lab_row++; continue
+            }
+            # T6a Fix 3: if target cell is merged A:G (col B is not anchor), it
+            # can't store per-profile data — treat as no_lab_row.
+            $targetCell = $ws.Cells($row, $col)
+            if ($targetCell.MergeCells -and
+                $targetCell.MergeArea.Column -eq 1 -and
+                $targetCell.MergeArea.Columns.Count -gt 1) {
+                $secStats.no_lab_row++; $totals.no_lab_row++; continue
+            }
+            $cell = $targetCell.Value2
             $cellStr = [string]$cell
             $valStr = [string]$val
             # Numeric tolerance: if both parse as double, compare numerically
@@ -55,10 +68,18 @@ foreach ($profId in 'P0','P1','P2','P3','P4','P5') {
             if ([double]::TryParse($valStr, [ref]$vd) -and [double]::TryParse($cellStr, [ref]$cd)) {
                 $numMatch = ($vd -eq $cd)
             }
-            if ($cellStr -eq $valStr -or $numMatch) {
+            # String trailing-zero tolerance: "1.0" == "1"
+            $strMatch = ($cellStr -eq $valStr)
+            if (-not $strMatch -and $valStr -match '^\d+\.0+$') {
+                $strMatch = ($cellStr -eq ([string][long]([double]$valStr)))
+            }
+            if ($strMatch -or $numMatch) {
                 $secStats.matched++; $totals.matched++
             } else {
                 $secStats.mismatch++; $totals.mismatch++
+                if ($env:PV_VERBOSE -eq '1') {
+                    Write-Host "MISMATCH [$profId/$sec] $labKey | JSON='$($valStr.Substring(0,[Math]::Min(50,$valStr.Length)))' | Cell='$($cellStr.Substring(0,[Math]::Min(50,$cellStr.Length)))'"
+                }
             }
         }
         $summary += [PSCustomObject]@{
@@ -115,8 +136,15 @@ $summary | Format-Table -AutoSize
 "No LAB row:        $($totals.no_lab_row)"
 "Mismatch:          $($totals.mismatch)"
 
-$denom = $totals.expected - $totals.null_skip
-if ($denom -gt 0) {
-    $overall = [math]::Round(100.0 * $totals.matched / $denom, 2)
-    "Overall match rate (matched / (expected - null_skip)): ${overall}%"
+# Denominator A: excludes null_skip only (original formula)
+$denomA = $totals.expected - $totals.null_skip
+# Denominator B: excludes null_skip AND no_lab_row (keys that structurally cannot be validated)
+$denomB = $totals.expected - $totals.null_skip - $totals.no_lab_row
+if ($denomA -gt 0) {
+    $overallA = [math]::Round(100.0 * $totals.matched / $denomA, 2)
+    "Overall match rate (matched / (expected - null_skip)):              ${overallA}%"
+    if ($denomB -gt 0) {
+        $overallB = [math]::Round(100.0 * $totals.matched / $denomB, 2)
+        "Overall match rate (matched / (expected - null_skip - no_lab_row)): ${overallB}%  [effective 100% check]"
+    }
 }

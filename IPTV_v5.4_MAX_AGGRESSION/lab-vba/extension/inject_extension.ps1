@@ -231,16 +231,32 @@ End Sub
 
 Private Sub FE_WriteProfileCellByKey(ws As Worksheet, labKey As String, col As Long, raw As String, doCoerce As Boolean)
     ' Exact (case-insensitive) match on col A. First hit wins. Skip if no row.
+    ' Fix 1 (T6a): NumberFormat set BEFORE write to prevent Excel auto-coercion:
+    '   - "4:2:0" -> time (0.168...) without "@"
+    '   - "1.0"   -> 1 (integer) without "@"
+    '   - "200000000,100000000,..." -> 2E+33 without "@"
+    ' Fix 3 (T6a): Skip merged cells where top-left anchor is not in target col.
+    '   Row structure: col A = key label. If row is fully merged A:G, col B is NOT
+    '   the anchor -> write silently dropped. Skip such rows (report as no_lab_row).
     Dim r As Long, lR As Long
     lR = ws.Cells(ws.Rows.count, 1).End(xlUp).row
     For r = 3 To lR
         If StrComp(CStr(ws.Cells(r, 1).Value), labKey, vbTextCompare) = 0 Then
-            If doCoerce And IsNumeric(raw) Then
-                ws.Cells(r, col).Value = CDbl(raw)
-            Else
-                ws.Cells(r, col).Value = raw
+            Dim tgt As Range: Set tgt = ws.Cells(r, col)
+            ' Skip if target cell is merged with col A (anchor = col 1, not target col)
+            If tgt.MergeCells Then
+                If tgt.MergeArea.Column = 1 And tgt.MergeArea.Columns.Count > 1 Then
+                    Exit Sub   ' merged A:G -- cannot write per-profile data, skip
+                End If
             End If
-            ws.Cells(r, col).Interior.Color = RGB(226, 239, 218)
+            If doCoerce And IsNumeric(raw) Then
+                tgt.NumberFormat = "General"
+                tgt.Value = CDbl(raw)
+            Else
+                tgt.NumberFormat = "@"   ' force text: preserves "4:2:0", "1.0", "a,b,c,d"
+                tgt.Value = raw
+            End If
+            tgt.Interior.Color = RGB(226, 239, 218)
             Exit Sub
         End If
     Next r
