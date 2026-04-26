@@ -247,6 +247,80 @@ Private Sub FE_WriteProfileCellByKey(ws As Worksheet, labKey As String, col As L
 End Sub
 '@)
 
+# ── 4b) [T4] Blob section dispatcher (headers, quality_levels) ───────────────
+Remove-Proc 'FE_SyncBlobSections'
+
+$brain.AddFromString(@'
+
+' ===== T4: BLOB SECTIONS (headers, quality_levels) =====
+' These sections live in single cells per profile, storing JSON-stringified
+' objects. Distinct from dotted-prefix sections (settings.X, vlcopt.X, etc.)
+' which span hundreds of rows. JSON source = profiles_snapshot[pid].{section},
+' destination = single LAB row whose col A is exactly the section name.
+
+Private Sub FE_SyncBlobSections(ws As Worksheet, pid As String, col As Long)
+    Dim blobs As Variant: blobs = Array("headers", "quality_levels")
+    Dim s As Long
+    For s = 0 To UBound(blobs)
+        Dim sec As String: sec = CStr(blobs(s))
+        Dim raw As String
+        raw = CStr(FE_sc.eval("profSectionAsJson('" & pid & "','" & sec & "')"))
+        If raw = Chr(0) Then GoTo nextBlob   ' JSON missing this section -> skip
+        If Len(raw) > 32000 Then
+            ' Excel cell limit is 32,767. Defensive: log + skip oversize blob.
+            Application.StatusBar = "WARN: blob " & sec & " for " & pid & " exceeds 32k chars (" & Len(raw) & ") -- skipped"
+            GoTo nextBlob
+        End If
+        FE_WriteProfileCellByKey ws, sec, col, raw, False   ' always text
+nextBlob:
+    Next s
+End Sub
+'@)
+
+# ── 4c) [T4] Update FE_InitJScriptHelpers to expose profSectionAsJson ────────
+Remove-Proc 'FE_InitJScriptHelpers'
+
+$brain.AddFromString(@'
+
+Public Sub FE_InitJScriptHelpers()
+    On Error Resume Next
+    FE_sc.execScript _
+        "function profSectionKeys(pid,sec){var p=__data.profiles_snapshot[pid];if(!p||!p[sec])return '';var k=Object.keys(p[sec]);return k.join('\t');}" & _
+        "function profSectionVal(pid,sec,k){var p=__data.profiles_snapshot[pid];if(!p||!p[sec])return '\x00';var v=p[sec][k];if(v===undefined||v===null)return '\x00';if(typeof v==='object')return JSON.stringify(v);return String(v);}" & _
+        "function profSectionAsJson(pid,sec){var p=__data.profiles_snapshot[pid];if(!p||!p[sec])return '\x00';return JSON.stringify(p[sec]);}", _
+        "JScript"
+End Sub
+'@)
+
+# ── 4d) [T4] Extend FE_SyncProfilesJS to call blob dispatcher ────────────────
+Remove-Proc 'FE_SyncProfilesJS'
+
+$brain.AddFromString(@'
+
+Private Sub FE_SyncProfilesJS()
+    ' T3+T4 dispatcher: 6 perfiles x 6 non-blob sections + 2 blob sections.
+    ' Non-blob: settings/hlsjs/prefetch_config (numeric), vlcopt/kodiprop/headerOverrides (text).
+    ' Blob: headers, quality_levels (JSON-stringified into single cell per perfil).
+    Dim ws As Worksheet: Set ws = ThisWorkbook.Sheets(SHEET_PROFILES)
+    Dim pids As Variant: pids = Array("P0", "P1", "P2", "P3", "P4", "P5")
+    Dim cols As Variant: cols = Array(2, 3, 4, 5, 6, 7)
+    Dim secs As Variant: secs = Array("settings", "hlsjs", "prefetch_config", "vlcopt", "kodiprop", "headerOverrides")
+
+    Dim i As Long, s As Long
+    For i = 0 To UBound(pids)
+        Dim pid As String: pid = CStr(pids(i))
+        Dim col As Long: col = CLng(cols(i))
+        For s = 0 To UBound(secs)
+            Dim sec As String: sec = CStr(secs(s))
+            Dim isNum As Boolean
+            isNum = (sec = "settings" Or sec = "hlsjs" Or sec = "prefetch_config")
+            FE_SyncSection ws, pid, col, sec, isNum
+        Next s
+        FE_SyncBlobSections ws, pid, col
+    Next i
+End Sub
+'@)
+
 # ── 5) Patch FE_TestRunImport to call FE_InitJScriptHelpers after __data init ──
 # Remove the T2 version and re-add with the extra call inserted.
 Remove-Proc 'FE_TestRunImport'
@@ -336,12 +410,13 @@ End Sub
 # ── 6) Save + backup ─────────────────────────────────────────────────────────
 $wb.Save()
 $ts = Get-Date -Format 'yyyyMMdd_HHmmss'
-$backupPath = "C:/Users/HFRC/Downloads/APE_M3U8_LAB_v8_FIXED.BACKUP_${ts}_PRE_T3.xlsm"
+$backupPath = "C:/Users/HFRC/Downloads/APE_M3U8_LAB_v8_FIXED.BACKUP_${ts}_PRE_T4.xlsm"
 Copy-Item $wb.FullName $backupPath -Force -ErrorAction SilentlyContinue
-Write-Host "T3 dispatcher injected. Backup: APE_M3U8_LAB_v8_FIXED.BACKUP_${ts}_PRE_T3.xlsm"
-Write-Host "  + FE_InitJScriptHelpers (Public Sub, adds profSectionKeys/profSectionVal to JScript)"
-Write-Host "  + FE_SyncProfilesJS     (Private Sub, replaced -- 6 sections x 6 perfiles dispatcher)"
+Write-Host "T3+T4 dispatcher injected. Backup: APE_M3U8_LAB_v8_FIXED.BACKUP_${ts}_PRE_T4.xlsm"
+Write-Host "  + FE_InitJScriptHelpers (Public Sub, updated -- adds profSectionAsJson to JScript)"
+Write-Host "  + FE_SyncProfilesJS     (Private Sub, replaced -- 6 sections x 6 perfiles + blob dispatcher)"
 Write-Host "  + FE_SyncSection        (Private Sub, per-section exact dotted-key writer)"
+Write-Host "  + FE_SyncBlobSections   (Private Sub, NEW T4 -- headers+quality_levels JSON blob writer)"
 Write-Host "  + FE_WriteProfileCellByKey (Private Sub, exact col-A match + numeric coercion)"
 Write-Host "  + FE_EscapeJSV2         (Private Function, escapes subkey for JScript eval)"
 Write-Host "  + FE_TestRunImport      (Public Sub, patched -- calls FE_InitJScriptHelpers after __data init)"

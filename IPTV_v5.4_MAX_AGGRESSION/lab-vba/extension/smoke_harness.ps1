@@ -163,9 +163,53 @@ foreach ($profId in 'P0','P1','P2','P3','P4','P5') {
     Assert-DottedKey $profId 'headerOverrides' 'X-Comma-Test' $col 'a,b,c,d' $false
 }
 
+# === T4 assertions: blob sections ===
+foreach ($profId4 in 'P0','P1','P2','P3','P4','P5') {
+    $col = @{P0=2;P1=3;P2=4;P3=5;P4=6;P5=7}[$profId4]
+    $prof = $jsonObj.profiles_snapshot.$profId4
+    foreach ($sec in 'headers','quality_levels') {
+        $obj = $prof.$sec
+        if (-not $obj) {
+            $script:infos += "[$profId4.$sec] no JSON object -- skip"
+            continue
+        }
+        # Find the LAB row whose col A is exactly the section name
+        $rowIdx = $null
+        for ($r = 1; $r -le 30; $r++) {
+            $k = [string]$ws.Cells($r, 1).Value2
+            if ($k -eq $sec) { $rowIdx = $r; break }
+        }
+        if (-not $rowIdx) {
+            $script:failures += "[$profId4.$sec] LAB has no row with col A='$sec' (looked rows 1-30)"
+            continue
+        }
+        $cell = [string]$ws.Cells($rowIdx, $col).Value2
+        if (-not $cell.StartsWith('{')) {
+            $script:failures += "[$profId4.$sec] r=$rowIdx c=$col cell does not look like JSON (got: $($cell.Substring(0, [Math]::Min(50, $cell.Length))))"
+            continue
+        }
+        # Parse cell content as JSON and verify the JSON's keys match obj's keys
+        try {
+            $parsed = $cell | ConvertFrom-Json
+        } catch {
+            $script:failures += "[$profId4.$sec] r=$rowIdx c=$col cell content is not valid JSON: $($_.Exception.Message)"
+            continue
+        }
+        $jsonKeys = $obj.PSObject.Properties.Name | Sort-Object
+        $cellKeys = $parsed.PSObject.Properties.Name | Sort-Object
+        $diff_only_in_json = $jsonKeys | Where-Object { $_ -notin $cellKeys }
+        $diff_only_in_cell = $cellKeys | Where-Object { $_ -notin $jsonKeys }
+        if ($diff_only_in_json.Count -gt 0 -or $diff_only_in_cell.Count -gt 0) {
+            $script:failures += "[$profId4.$sec] key mismatch -- only_in_json=$($diff_only_in_json -join ',') only_in_cell=$($diff_only_in_cell -join ',')"
+        } else {
+            $script:infos += "[$profId4.$sec OK blob] $($jsonKeys.Count) keys synced"
+        }
+    }
+}
+
 # Report
 Write-Host ""
-Write-Host "=== T3 assertion summary ==="
+Write-Host "=== T3+T4 assertion summary ==="
 $assertTotal = $script:failures.Count + ($script:infos | Where-Object { $_ -match ' OK ' }).Count
 Write-Host "INFO entries: $($script:infos.Count)"
 
