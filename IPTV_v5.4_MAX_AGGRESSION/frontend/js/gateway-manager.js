@@ -725,14 +725,49 @@
                 }
 
                 // ✅ Usar Siempre ResumableChunkUploader (Rust Server Integration)
-                const finalFilename = this._sanitizeFilename(this.config.custom_filename || this.state.lastMetadata?.filename);
+                let finalFilename = this._sanitizeFilename(this.config.custom_filename || this.state.lastMetadata?.filename);
+
+                // 🛡️ SHIELDED MODE: si el toggle está activo, renombrar a _SHIELDED.m3u8
+                // ANTES del upload. El VPS shield procesa archivos con sufijo _SHIELDED para
+                // routear vía proxy (anti-403/slot overlap). Sin este sufijo, el cron remoto
+                // tarda ~60s en generar la versión shielded — con el sufijo es inmediato.
+                // Doctrina: el toggle marca la lista, el filename lleva la marca al upload,
+                // el VPS detecta por nombre y construye el link shielded directo.
+                const shieldedEnabled = !!document.getElementById('shieldedMode')?.checked;
+                if (shieldedEnabled && finalFilename && !/_SHIELDED\.m3u8$/i.test(finalFilename)) {
+                    const renamed = finalFilename.replace(/\.m3u8$/i, '_SHIELDED.m3u8');
+                    console.log(`%c🛡️ [SHIELDED] Renombrando upload: ${finalFilename} → ${renamed}`, 'color: #a855f7; font-weight: bold;');
+                    finalFilename = renamed;
+                    // Persistir para que _showSuccessMessage muestre el link consistente
+                    if (this.state.lastMetadata) {
+                        this.state.lastMetadata = { ...this.state.lastMetadata, filename: finalFilename, shielded: true };
+                    } else {
+                        this.state.lastMetadata = { filename: finalFilename, shielded: true };
+                    }
+                }
+
                 const fileBlob = new Blob([finalContent], { type: 'application/x-mpegurl' });
-                
+
                 // Rust Upload Server REQUIRES Chunked Uploads for all file sizes.
                 console.log('%c📦 [VPS-API] Using ResumableChunkUploader (Rust API)', 'color: #3b82f6;');
-                this._updateProgress(10, 'Iniciando subida al servidor Rust...');
+                this._updateProgress(10, shieldedEnabled ? '🛡️ Subiendo SHIELDED al servidor Rust...' : 'Iniciando subida al servidor Rust...');
 
-                const uploadFile = this.state.manualFile || new File([fileBlob], finalFilename, { type: 'application/x-mpegurl' });
+                // 🛡️ SHIELDED + manualFile: si el usuario eligió un archivo manual y shielded
+                // está activo, renombrarlo también (el File es inmutable, hay que crear uno nuevo).
+                let uploadFile;
+                if (this.state.manualFile) {
+                    if (shieldedEnabled && !/_SHIELDED\.m3u8$/i.test(this.state.manualFile.name)) {
+                        const renamedManual = this._sanitizeFilename(this.state.manualFile.name)
+                            .replace(/\.m3u8$/i, '_SHIELDED.m3u8');
+                        console.log(`%c🛡️ [SHIELDED] Renombrando manual file: ${this.state.manualFile.name} → ${renamedManual}`, 'color: #a855f7; font-weight: bold;');
+                        uploadFile = new File([this.state.manualFile], renamedManual,
+                            { type: this.state.manualFile.type || 'application/x-mpegurl' });
+                    } else {
+                        uploadFile = this.state.manualFile;
+                    }
+                } else {
+                    uploadFile = new File([fileBlob], finalFilename, { type: 'application/x-mpegurl' });
+                }
 
                 // Hook into uploader events for UI updates
                 const onProgress = (e) => this._updateProgress(e.detail, `📤 Subiendo Chunks... (${e.detail}%)`);
@@ -895,7 +930,28 @@
         _showSuccessMessage(result) {
             const verifiedLabel = result.recovered ? '✅ RECOVERED (Auto-Verified)' : '✅ PRO-VERIFIED';
             const sizeInfo = result.size ? `\n📦 Tamaño: ${this._formatBytes(parseInt(result.size))}` : '';
-            alert(`${verifiedLabel}\n\nSubida completada con éxito.\nVerificado físicamente en servidor Hetzner.\n\n🔗 URL:\n${result.public_url || this._getFixedUrl()}${sizeInfo}`);
+            const baseUrl = result.public_url || this._getFixedUrl();
+            const shieldedEnabled = !!document.getElementById('shieldedMode')?.checked;
+            // 🛡️ SHIELDED: el filename ya viene con _SHIELDED.m3u8 desde el upload
+            // (renombrado pre-upload en gateway-manager.js) → el VPS detecta inmediato y
+            // sirve directo desde la ruta shielded sin esperar al cron. Este bloque
+            // garantiza idempotencia: si el baseUrl ya termina en _SHIELDED.m3u8, NO
+            // duplica el sufijo. Si por alguna razón el upload no se renombró (legacy
+            // path), se aplica la transformación retroactiva como fallback.
+            let finalUrl = baseUrl;
+            if (shieldedEnabled && baseUrl) {
+                const alreadyShielded = /_SHIELDED\.m3u8(\?|$)/i.test(baseUrl);
+                if (!alreadyShielded) {
+                    finalUrl = baseUrl.replace(/(APE_LISTA_[^/]+?)\.m3u8(\?|$)/i, '$1_SHIELDED.m3u8$2');
+                }
+            }
+            const isImmediate = shieldedEnabled && /_SHIELDED\.m3u8(\?|$)/i.test(finalUrl);
+            const shieldNote = shieldedEnabled
+                ? (isImmediate
+                    ? '\n\n🛡️ SHIELDED: link inmediato vía proxy VPS (renombrado pre-upload).\n✅ El archivo subió con sufijo _SHIELDED — ruta shield activa al instante.'
+                    : '\n\n🛡️ SHIELDED: link vía proxy VPS (elimina 403 por slot overlap).\n⏱️ Si acabas de subir: espera ~60s a que el cron genere la versión shielded.')
+                : '';
+            alert(`${verifiedLabel}\n\nSubida completada con éxito.\nVerificado físicamente en servidor Hetzner.\n\n🔗 URL:\n${finalUrl}${sizeInfo}${shieldNote}`);
         }
 
         _showToast(message) {
