@@ -5,9 +5,17 @@ description: "SOP ABSOLUTO del VPS NET SHIELD AUTOPISTA — reglas inmutables de
 
 # SOP: NET SHIELD AUTOPISTA — VPS Proxy IPTV de Transmisión
 
-> **Versión:** 1.0 — 2026-04-26
+> **Versión:** 2.0 — 2026-04-26
 > **Backup certificado:** `/root/backups/autopista_20260426.tar.gz`
-> **Estado:** PRODUCCIÓN ACTIVA
+> **Estado:** PRODUCCIÓN ACTIVA — INMUTABLE
+> **Clasificación:** HARDENING NO NEGOCIABLE
+
+> [!CAUTION]
+> Este documento es **LEY**. Cualquier modificación al VPS que contradiga estas reglas
+> es una **amenaza directa a la reproducción** y está **PROHIBIDA** sin consentimiento
+> explícito del usuario. La reproducción sin freeze es la prioridad absoluta #1.
+
+---
 
 ## 1. Propósito
 
@@ -108,6 +116,18 @@ Player (OTT Navigator / TiVistation)
 | IPs de SurfShark endpoints | 0x2e (EF) | Expedited Forwarding — prioridad máxima |
 | Chain `SURFSHARK_MARK` | Marca todo tráfico saliente por wg0 | Priorización de video |
 
+### 3.6 WireGuard Health Monitor (Auto-Recovery)
+
+| Componente | Valor | Propósito |
+|---|---|---|
+| Timer | `netshield-wg-health.timer` cada 30s | Detección rápida de caída |
+| Script | `/opt/netshield/scripts/wg-health-monitor.sh` | Verificación + auto-restart |
+| wg0 check | Handshake < 5min + interface UP | Túnel players vivo |
+| wg-surfshark check | Handshake + ping 1.1.1.1 + curl proveedor | VPN Miami funcional |
+| wg-surfshark-br check | Handshake freshness | VPN Brasil failover |
+| Cooldown | 2 min entre restarts | Anti-loop de restart |
+| State | `/opt/netshield/state/wg_health_state.json` | Observabilidad |
+
 ---
 
 ## 4. Proveedores y Upstreams
@@ -131,9 +151,11 @@ Player (OTT Navigator / TiVistation)
 ### 4.3 Cache use_stale en CDN intercepts
 
 Ambos CDN intercepts DEBEN tener:
+
 ```nginx
 proxy_cache_use_stale error timeout updating http_500 http_502 http_503 http_504 http_403;
 ```
+
 El `http_403` es **obligatorio** — los tokens del CDN expiran cada ~5-10s y el background update recibe 403. Sin `http_403` en stale, el player recibe el error.
 
 ---
@@ -176,6 +198,14 @@ El `http_403` es **obligatorio** — los tokens del CDN expiran cada ~5-10s y el
 /etc/unbound/
 └── local.d/
     └── iptv-ape.conf               # DNS hijack: zivovrix.cc, rynivorn.cc → 127.0.0.1
+
+/opt/netshield/
+├── scripts/
+│   ├── wg-health-monitor.sh        # WireGuard auto-recovery (cada 30s)
+│   ├── healthcheck.sh              # Health check general (cada 5min)
+│   └── backup_configs.sh           # Backup diario rotación 30 días
+└── state/
+    └── wg_health_state.json        # Estado actual de WireGuard (JSON)
 ```
 
 ---
@@ -183,7 +213,8 @@ El `http_403` es **obligatorio** — los tokens del CDN expiran cada ~5-10s y el
 ## 7. Prohibiciones Absolutas
 
 > [!CAUTION]
-> Las siguientes acciones están **PROHIBIDAS** porque causan freezes, 503s, o cortes de señal:
+> Las siguientes acciones están **PROHIBIDAS** porque causan freezes, 503s, o cortes de señal.
+> Violarlas es una **regresión crítica** que destruye la estabilidad de reproducción.
 
 1. **NUNCA activar un circuit breaker que bloquee por host** — un error en 1 canal NO debe afectar a otros canales del mismo proveedor
 2. **NUNCA poner `limit_conn xtream_slot 1`** — causa 429 por overlap natural de manifest polls
@@ -197,7 +228,29 @@ El `http_403` es **obligatorio** — los tokens del CDN expiran cada ~5-10s y el
 
 ---
 
-## 8. Rollback
+## 8. Pre-Flight Checklist (Antes de CUALQUIER cambio)
+
+> [!IMPORTANT]
+> Antes de modificar CUALQUIER archivo del VPS, ejecutar este checklist mental:
+
+```
+□ ¿Este cambio puede causar que un request del player NO llegue al upstream?
+    → SI = PROHIBIDO
+□ ¿Este cambio introduce un nuevo bloqueo, rate limit, o cooldown?
+    → SI = PROHIBIDO (salvo anti-DOS > 100r/s)
+□ ¿Este cambio reduce un buffer, timeout o ventana?
+    → REVISAR contra valores §3.2 — no bajar de los mínimos
+□ ¿Este cambio toca upstream_gate.lua o upstream_response.lua?
+    → SOLO telemetría/logging — NUNCA return ngx.exit(503)
+□ ¿Este cambio toca proxy_cache_valid para 302/301?
+    → El valor DEBE ser 0
+□ ¿Este cambio toca proxy_cache_use_stale en CDN intercepts?
+    → http_403 DEBE estar incluido
+```
+
+---
+
+## 9. Rollback
 
 Si algo falla después de un cambio:
 
@@ -210,23 +263,30 @@ nginx -t && systemctl reload nginx
 
 ---
 
-## 9. Monitoreo
+## 10. Monitoreo
 
 ### Logs activos
+
 | Log | Propósito |
 |---|---|
 | `/var/log/nginx/shield_access.log` | Requests al shield (formato iptv_intercept) |
 | `/var/log/nginx/shield_error.log` | Errores del shield (warn level) |
 | `/var/log/nginx/iptv_intercept.log` | Requests a CDN intercepts |
 | `/var/log/nginx/error.log` | Errores globales nginx |
+| `/var/log/netshield-wg-health.log` | WireGuard health events |
+| `/var/log/netshield-health.log` | Health check general |
 
 ### Verificación rápida de salud
+
 ```bash
 # ¿Hay 503 propios? (ut=- indica generado por nginx, no upstream)
 grep ' 503 ' /var/log/nginx/shield_access.log | grep 'ut=-' | tail -5
 
-# ¿Circuit breaker bloqueando? (debe decir PASSTHROUGH)
+# ¿Lua bloqueando? (debe decir PASSTHROUGH)
 curl -s -o /dev/null -D - "http://localhost/shield/test/tivigo.cc/health" 2>/dev/null | grep X-APE
+
+# ¿WireGuard health?
+cat /opt/netshield/state/wg_health_state.json
 
 # ¿Requests llegando al upstream?
 tail -5 /var/log/nginx/shield_access.log
@@ -236,4 +296,7 @@ grep ' 403 ' /var/log/nginx/iptv_intercept.log | tail -5
 
 # ¿Stale salvando al player?
 grep 'STALE' /var/log/nginx/iptv_intercept.log | tail -5
+
+# ¿WireGuard alertas?
+tail -10 /var/log/netshield-wg-health.log
 ```
