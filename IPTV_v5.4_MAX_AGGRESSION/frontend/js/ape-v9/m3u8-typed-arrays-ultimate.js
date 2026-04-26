@@ -35,31 +35,122 @@
     let _cortexTempBanHash = ''; // Pilar 5 Cache Busting
 
     // ═══════════════════════════════════════════════════════════════════════════
-    // 🛡️ PILAR 5: CÓRTEX JS PREVENCIÓN TEMP-BLACKLIST E INTERCEPTACIÓN GLOBAL
+    // 🛡️ PILAR 5: CÓRTEX JS STEALTH-AWARE — DUAL MODE (DICTATOR + STEALTH)
+    // ───────────────────────────────────────────────────────────────────────────
+    // Flujo OK  → DICTATOR (cero delay extra, máxima agresividad)
+    // Flujo ERR → STEALTH (backoff exponencial 1→2→4→8s + cooldown 5–15min)
+    // Granularidad: por upstream host. Estado in-memory (window._apeStealthState).
+    // M3U8 emitido NO se modifica — params reconnect_delay=0/attempts=999999/
+    // timeout=1 quedan intactos (OMEGA NO-DELETE).
+    // Limpieza manual desde DevTools: window._apeStealthState.clear()
     // ═══════════════════════════════════════════════════════════════════════════
     if (typeof window !== 'undefined' && !window._apeCortexInitialized) {
         window._apeCortexInitialized = true;
-        
-        const triggerCortexRecovery = (status, url) => {
-            if ([400, 401, 403, 405, 429].includes(status) || status === 0) {
-                console.warn(`🔴 [CÓRTEX JS] Temp-Blacklist o Throttle detectado (HTTP ${status}). Forzando rotación de UA y bust hash.`);
-                 // Salto aleatorio en tabla de UAs
-                _cortexTempBanHash = Date.now().toString(36) + Math.random().toString(36).substring(2, 6);
+
+        // ── State store ────────────────────────────────────────────────────────
+        // Map<host, { retryAttempt: number, cooldownUntil: number, lastError: number }>
+        window._apeStealthState = window._apeStealthState || new Map();
+
+        // ── Helpers ────────────────────────────────────────────────────────────
+        const _stealthSleep   = (ms) => new Promise(r => setTimeout(r, ms));
+        const _jitter         = (min, max) => Math.random() * (max - min) + min;
+        const _randInt        = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
+        const _stealthHostKey = (url) => {
+            try { return new URL(url, window.location.href).host; }
+            catch { return null; }
+        };
+        // Micro-random human pattern: rompe detectabilidad estadística
+        const _humanPause = () => {
+            const patterns = [
+                () => _randInt(200, 800),    // micro hesitation
+                () => _randInt(800, 2000),   // thinking delay
+                () => _randInt(50, 150),     // fast reaction
+            ];
+            return patterns[Math.floor(Math.random() * patterns.length)]();
+        };
+
+        // ── Pre-fetch gate ─────────────────────────────────────────────────────
+        // Si el host está en cooldown activo, espera antes de dejar pasar la request.
+        // En flujo OK (host sin entry o cooldownUntil expirado) retorna inmediato.
+        const _stealthGate = async (host) => {
+            if (!host) return;
+            const state = window._apeStealthState.get(host);
+            if (state && state.cooldownUntil > Date.now()) {
+                await _stealthSleep(state.cooldownUntil - Date.now());
             }
         };
 
+        // ── Post-response handler ──────────────────────────────────────────────
+        const triggerCortexRecovery = (status, url) => {
+            const host = _stealthHostKey(url);
+            if (!host) return;
+
+            // 2xx → reset, vuelve modo DICTATOR para este host
+            if (status >= 200 && status < 300) {
+                const s = window._apeStealthState.get(host);
+                if (s) { s.retryAttempt = 0; s.cooldownUntil = 0; }
+                return;
+            }
+
+            // Triggers de error: 400/401/403/405/429 + status 0 (timeout/RST)
+            const isError = (status === 0) || [400, 401, 403, 405, 429].includes(status);
+            if (!isError) return;
+
+            let state = window._apeStealthState.get(host);
+            if (!state) {
+                state = { retryAttempt: 0, cooldownUntil: 0, lastError: 0 };
+                window._apeStealthState.set(host, state);
+            }
+
+            state.retryAttempt += 1;
+            state.lastError    = status;
+            const now          = Date.now();
+            let appliedDelay;
+
+            if (state.retryAttempt <= 4) {
+                // Backoff exponencial: 1s, 2s, 4s, 8s + jitter aditivo
+                appliedDelay = (Math.pow(2, state.retryAttempt - 1) * 1000) + _jitter(80, 400);
+                state.cooldownUntil = now + appliedDelay;
+            } else {
+                // Curva exhausta → cooldown humano largo, reset contador
+                appliedDelay = _randInt(5 * 60_000, 15 * 60_000);
+                state.cooldownUntil = now + appliedDelay;
+                state.retryAttempt  = 0;
+            }
+
+            // Rotación UA + bust hash (comportamiento existente conservado)
+            _cortexTempBanHash = Date.now().toString(36) + Math.random().toString(36).substring(2, 6);
+
+            console.warn(
+                `🔴 [CÓRTEX STEALTH] host=${host} status=${status} retry=${state.retryAttempt} delay=${Math.round(appliedDelay)}ms`
+            );
+        };
+
+        // ── fetch wrapper: pre-gate + human pause + post-handler ───────────────
         const originalFetch = window.fetch;
         window.fetch = async function(...args) {
+            const url  = (typeof args[0] === 'string') ? args[0] : (args[0] && args[0].url);
+            const host = _stealthHostKey(url);
+
+            // Pre-gate: respeta cooldownUntil acumulado por errores previos
+            await _stealthGate(host);
+
+            // Micro-random human pattern: 25% de las requests añaden pausa humana
+            if (Math.random() < 0.25) {
+                await _stealthSleep(_humanPause());
+            }
+
             try {
                 const response = await originalFetch.apply(this, args);
-                triggerCortexRecovery(response.status, response.url);
+                triggerCortexRecovery(response.status, response.url || url);
                 return response;
             } catch (err) {
-                triggerCortexRecovery(0, args[0]);
+                triggerCortexRecovery(0, url);
                 throw err;
             }
         };
 
+        // ── XHR wrapper: post-handler only (no pre-gate, evita romper sync XHR) ─
         if (typeof XMLHttpRequest !== 'undefined') {
             const originalOpen = XMLHttpRequest.prototype.open;
             XMLHttpRequest.prototype.open = function(method, url, ...rest) {
@@ -68,7 +159,7 @@
             };
             const originalSend = XMLHttpRequest.prototype.send;
             XMLHttpRequest.prototype.send = function(...args) {
-                this.addEventListener('load', function() { triggerCortexRecovery(this.status, this._ctxUrl); });
+                this.addEventListener('load',  function() { triggerCortexRecovery(this.status, this._ctxUrl); });
                 this.addEventListener('error', function() { triggerCortexRecovery(0, this._ctxUrl); });
                 return originalSend.apply(this, args);
             };
@@ -1250,71 +1341,104 @@ const UAPhantomEngine = (function () {
                     const pf = (typeof window.APE_PROFILES_CONFIG.getPrefetchConfig === 'function')
                         ? window.APE_PROFILES_CONFIG.getPrefetchConfig(profileId) : null;
 
-                    // Map PM fields → Generator fields, using hardcoded as fallback per-field
-                    const bridged = {
-                        // ── Identity ──
-                        name:                   pmProfile.name || hardcoded.name,
-                        resolution:             s.resolution || hardcoded.resolution,
-                        width:                  parseInt((s.resolution || hardcoded.resolution).split('x')[0]) || hardcoded.width,
-                        height:                 parseInt((s.resolution || hardcoded.resolution).split('x')[1]) || hardcoded.height,
-                        fps:                    s.fps || hardcoded.fps,
-                        // ── Bitrate (PM stores Mbps as float like 26.9, generator uses kbps int) ──
-                        bitrate:                s.bitrate ? Math.round(s.bitrate * 1000) : hardcoded.bitrate,
-                        // ── Buffers (PM stores ms) ──
-                        buffer_ms:              s.buffer || hardcoded.buffer_ms,
-                        network_cache_ms:       s.buffer || hardcoded.network_cache_ms,
-                        live_cache_ms:          s.buffer || hardcoded.live_cache_ms,
-                        file_cache_ms:          s.playerBuffer || hardcoded.file_cache_ms,
-                        player_buffer_ms:       s.playerBuffer || hardcoded.player_buffer_ms,
-                        // ── Bandwidth (PM bitrate Mbps → max_bandwidth bps) ──
-                        max_bandwidth:          s.bitrate ? Math.round(s.bitrate * 1000000 * 2) : hardcoded.max_bandwidth,
-                        min_bandwidth:          s.bitrate ? Math.round(s.bitrate * 1000000 * 0.75) : hardcoded.min_bandwidth,
-                        // ── Throughput ──
-                        throughput_t1:          s.t1 || hardcoded.throughput_t1,
-                        throughput_t2:          s.t2 || hardcoded.throughput_t2,
-                        // ── Prefetch (from PM's prefetch config or hardcoded) ──
-                        prefetch_segments:      pf?.segments || hardcoded.prefetch_segments,
-                        prefetch_parallel:      pf?.parallelDownloads || hardcoded.prefetch_parallel,
-                        prefetch_buffer_target: pf?.bufferTarget ? pf.bufferTarget * 1000 : hardcoded.prefetch_buffer_target,
-                        prefetch_min_bandwidth: pf?.minBandwidth ? pf.minBandwidth * 1000000 : hardcoded.prefetch_min_bandwidth,
-                        // ── Codec ──
-                        codec_primary:          _mapCodecPM(s.codec) || hardcoded.codec_primary,
-                        codec_fallback:         hardcoded.codec_fallback,
-                        codec_priority:         hardcoded.codec_priority,
-                        // ── HDR / Color ──
-                        hdr_support:            hardcoded.hdr_support,
-                        color_depth:            hardcoded.color_depth,
-                        audio_channels:         hardcoded.audio_channels,
-                        audio_codec:            hardcoded.audio_codec,
-                        device_class:           hardcoded.device_class,
-                        // ── Reconnection ──
-                        reconnect_timeout_ms:   hardcoded.reconnect_timeout_ms,
-                        reconnect_max_attempts: hardcoded.reconnect_max_attempts,
-                        reconnect_delay_ms:     hardcoded.reconnect_delay_ms,
-                        availability_target:    hardcoded.availability_target,
-                        // ── HEVC / encoding ──
-                        hevc_tier:              hardcoded.hevc_tier,
-                        hevc_level:             hardcoded.hevc_level,
-                        hevc_profile:           hardcoded.hevc_profile,
-                        color_space:            hardcoded.color_space,
-                        chroma_subsampling:     hardcoded.chroma_subsampling,
-                        transfer_function:      hardcoded.transfer_function,
-                        matrix_coefficients:    hardcoded.matrix_coefficients,
-                        compression_level:      hardcoded.compression_level,
-                        rate_control:           hardcoded.rate_control,
-                        entropy_coding:         hardcoded.entropy_coding,
-                        video_profile:          hardcoded.video_profile,
-                        pixel_format:           hardcoded.pixel_format,
-                        // ── Segment / BW guarantee ──
-                        segment_duration:       hardcoded.segment_duration,
-                        bandwidth_guarantee:    hardcoded.bandwidth_guarantee,
-                        // ── Bridge metadata ──
-                        _bridged: true,
-                        _source: 'ProfileManagerV9'
-                    };
+                    // SSOT BRIDGE v3.0 — TODOS los campos del LAB se propagan al generador.
+                    // Patrón: hardcoded como base de rescate → spread del LAB sobreescribe
+                    // claves con nombre idéntico → transforms explícitos para keys con
+                    // unidades diferentes (Mbps→kbps) o nombres diferentes (codec→codec_primary).
+                    // Doctrina: cero "valores ciegos" — si el LAB lo calibró, el generador lo usa.
+                    const _firstDef = (...vals) => vals.find(v => v !== undefined && v !== null && v !== '');
+                    const _toBool = (v) => (v === true || v === 'true' || v === 1 || v === '1');
 
+                    const bridged = Object.assign({},
+                        hardcoded,                  // Base de rescate (todos los nombres canónicos)
+                        s,                          // LAB settings sobreescribe nombres coincidentes
+                        {
+                            // ── Identity (transforms de nombre/unidad) ──────────────────────
+                            name:                   pmProfile.name || hardcoded.name,
+                            resolution:             s.resolution || hardcoded.resolution,
+                            width:                  parseInt((s.resolution || hardcoded.resolution).split('x')[0]) || hardcoded.width,
+                            height:                 parseInt((s.resolution || hardcoded.resolution).split('x')[1]) || hardcoded.height,
+                            fps:                    s.fps || hardcoded.fps,
+                            // ── Bitrate (LAB Mbps float → kbps int) ────────────────────────
+                            bitrate:                s.bitrate ? Math.round(s.bitrate * 1000) : hardcoded.bitrate,
+                            // ── Buffers (LAB ms; mantenemos legacy alias) ──────────────────
+                            buffer_ms:              s.buffer || hardcoded.buffer_ms,
+                            network_cache_ms:       s.buffer || hardcoded.network_cache_ms,
+                            live_cache_ms:          s.buffer || hardcoded.live_cache_ms,
+                            file_cache_ms:          s.playerBuffer || hardcoded.file_cache_ms,
+                            player_buffer_ms:       s.playerBuffer || hardcoded.player_buffer_ms,
+                            // ── Bandwidth (LAB Mbps → bps) ─────────────────────────────────
+                            max_bandwidth:          s.bitrate ? Math.round(s.bitrate * 1000000 * 2) : hardcoded.max_bandwidth,
+                            min_bandwidth:          s.bitrate ? Math.round(s.bitrate * 1000000 * 0.75) : hardcoded.min_bandwidth,
+                            // ── Throughput ─────────────────────────────────────────────────
+                            throughput_t1:          s.t1 || hardcoded.throughput_t1,
+                            throughput_t2:          s.t2 || hardcoded.throughput_t2,
+                            // ── Prefetch (from PM's prefetch config or hardcoded) ──────────
+                            prefetch_segments:      pf?.segments || hardcoded.prefetch_segments,
+                            prefetch_parallel:      pf?.parallelDownloads || hardcoded.prefetch_parallel,
+                            prefetch_buffer_target: pf?.bufferTarget ? pf.bufferTarget * 1000 : hardcoded.prefetch_buffer_target,
+                            prefetch_min_bandwidth: pf?.minBandwidth ? pf.minBandwidth * 1000000 : hardcoded.prefetch_min_bandwidth,
+                            // ── Codec (LAB names diferentes → generator names) ─────────────
+                            codec_primary:          _mapCodecPM(s.codec) || hardcoded.codec_primary,
+                            codec_fallback:         _firstDef(s.codec_fallback, hardcoded.codec_fallback),
+                            codec_priority:         _firstDef(s.codec_priority, hardcoded.codec_priority),
+                            codec_full:             _firstDef(s.codec_full, hardcoded.codec_full),
+                            // ── HDR / Color (claves LAB con nombres bit_depth/peak_luminance_nits) ──
+                            hdr_support:            s.hdr_mode ? (String(s.hdr_mode).toUpperCase() !== 'SDR') : hardcoded.hdr_support,
+                            hdr_mode:               _firstDef(s.hdr_mode, hardcoded.hdr_mode),
+                            color_depth:            _firstDef(s.bit_depth, s.bitDepth, hardcoded.color_depth),
+                            color_space:            _firstDef(s.color_space, hardcoded.color_space),
+                            color_primaries:        _firstDef(s.color_primaries, hardcoded.color_primaries),
+                            color_transfer:         _firstDef(s.color_transfer, s.transfer_function, hardcoded.transfer_function),
+                            transfer_function:      _firstDef(s.color_transfer, s.transfer_function, hardcoded.transfer_function),
+                            chroma_subsampling:     _firstDef(s.chroma_subsampling, hardcoded.chroma_subsampling),
+                            peak_luminance_nits:    _firstDef(s.peak_luminance_nits, s.peakLuminanceNits, hardcoded.peak_luminance_nits),
+                            // ── Audio ──────────────────────────────────────────────────────
+                            audio_codec:            _firstDef(s.audio_codec, hardcoded.audio_codec),
+                            audio_channels:         _firstDef(s.audio_channels, hardcoded.audio_channels),
+                            audio_passthrough:      _firstDef(s.audio_passthrough, hardcoded.audio_passthrough),
+                            // ── Encoding params (LAB-aware) ────────────────────────────────
+                            gop_size:               _firstDef(s.gop_size, hardcoded.gop_size),
+                            clock_jitter:           _firstDef(s.clock_jitter, hardcoded.clock_jitter),
+                            clock_synchro:          _firstDef(s.clock_synchro, hardcoded.clock_synchro),
+                            vmaf_target:            _firstDef(s.vmaf_target, hardcoded.vmaf_target),
+                            // ── Identidad / Estrategia ────────────────────────────────────
+                            strategy:               _firstDef(s.strategy, hardcoded.strategy),
+                            focus:                  _firstDef(s.focus, hardcoded.focus),
+                            device_class:           hardcoded.device_class,
+                            // ── Reconnection (no LAB-source, hardcoded preservado) ─────────
+                            reconnect_timeout_ms:   hardcoded.reconnect_timeout_ms,
+                            reconnect_max_attempts: hardcoded.reconnect_max_attempts,
+                            reconnect_delay_ms:     hardcoded.reconnect_delay_ms,
+                            availability_target:    hardcoded.availability_target,
+                            // ── HEVC / encoding extras (algunos LAB-aware) ──────────────────
+                            hevc_tier:              _firstDef(s.hevc_tier, hardcoded.hevc_tier),
+                            hevc_level:             _firstDef(s.hevc_level, hardcoded.hevc_level),
+                            hevc_profile:           _firstDef(s.hevc_profile, hardcoded.hevc_profile),
+                            matrix_coefficients:    _firstDef(s.matrix_coefficients, hardcoded.matrix_coefficients),
+                            compression_level:      _firstDef(s.compression_level, hardcoded.compression_level),
+                            rate_control:           _firstDef(s.rate_control, hardcoded.rate_control),
+                            entropy_coding:         _firstDef(s.entropy_coding, hardcoded.entropy_coding),
+                            video_profile:          _firstDef(s.video_profile, hardcoded.video_profile),
+                            pixel_format:           _firstDef(s.pixel_format, hardcoded.pixel_format),
+                            // ── Segment / BW guarantee ─────────────────────────────────────
+                            segment_duration:       _firstDef(s.segment_duration_s, s.segment_duration, hardcoded.segment_duration),
+                            bandwidth_guarantee:    _firstDef(s.bandwidth_guarantee, hardcoded.bandwidth_guarantee),
+                            // ── Acceso al perfil completo del LAB para emisores avanzados ──
+                            // (actor_injections, player_enslavement, optimized_knobs, fitness, etc.)
+                            _labProfile:            pmProfile,
+                            // ── Bridge metadata ────────────────────────────────────────────
+                            _bridged:               true,
+                            _source:                'ProfileManagerV9_SSOT'
+                        }
+                    );
+
+                    // Throttle: log solo 1 de cada 500 canales para no inundar consola.
                     if (typeof console !== 'undefined') {
-                        console.log(`🔗 [BRIDGE v2.0] ${profileId}: PM→Gen sync OK | ${s.codec}/${bridged.width}x${bridged.height}@${s.fps}fps | ${s.bitrate}Mbps | buf=${s.buffer}/${s.playerBuffer}ms | T1=${s.t1}/T2=${s.t2}`);
+                        window.__bridgeLogCount = (window.__bridgeLogCount || 0) + 1;
+                        if (window.__bridgeLogCount % 500 === 1) {
+                            console.log(`🔗 [BRIDGE v2.0 #${window.__bridgeLogCount}] ${profileId}: PM→Gen sync OK | ${s.codec}/${bridged.width}x${bridged.height}@${s.fps}fps | ${s.bitrate}Mbps | buf=${s.buffer}/${s.playerBuffer}ms | T1=${s.t1}/T2=${s.t2}`);
+                        }
                     }
                     return bridged;
                 }
@@ -1889,6 +2013,152 @@ const UAPhantomEngine = (function () {
         const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 18) + 'Z';
         const totalChannels = typeof window !== 'undefined' && window.app && typeof window.app.getFilteredChannels === 'function' ? window.app.getFilteredChannels().length : channelsCount;
 
+        if (options.bulletproof_loaded && options.bulletproof_profiles) {
+            const coreHeader = [
+                `#EXTM3U x-tvg-url="" x-tvg-url-epg="" x-tvg-logo="" x-tvg-shift=0 catchup="flussonic" catchup-days="7" catchup-source="{MediaUrl}?utc={utc}&lutc={lutc}" url-tvg="" refresh="1800"`,
+                `#EXT-X-VERSION:7`,
+                `#EXT-X-INDEPENDENT-SEGMENTS`,
+                `#EXT-X-APE-CHANNELS:${totalChannels}`
+            ];
+
+            // ── LAB TRAZABILITY — metadata global del LAB Excel ─────────────────
+            // Doctrina SSOT: cualquier valor calibrado por el LAB queda auditable
+            // directo en la lista. Cero "valores ciegos".
+            const lm = options.lab_metadata || {};
+            if (lm.lab_version)        coreHeader.push(`#EXT-X-APE-LAB-VERSION:${lm.lab_version}`);
+            if (lm.lab_schema_variant) coreHeader.push(`#EXT-X-APE-LAB-SCHEMA-VARIANT:${lm.lab_schema_variant}`);
+            if (lm.exported_at)        coreHeader.push(`#EXT-X-APE-LAB-EXPORTED-AT:${lm.exported_at}`);
+            coreHeader.push(`#EXT-X-APE-LAB-BULLETPROOF:${lm.bulletproof === true ? 'true' : 'false'}`);
+            if (lm.labFileName)        coreHeader.push(`#EXT-X-APE-LAB-FILENAME:${lm.labFileName}`);
+
+            // ── PER-PROFILE SOLVER PROVENANCE ────────────────────────────────────
+            // 5 campos del bulletproof por perfil que antes eran "valores ciegos":
+            // role, fitness, solver_trace, optimized_timestamp, name.
+            // Emitidos como atributos del tag por perfil para auditoría directa.
+            const _esc = (v) => String(v ?? '').replace(/"/g, '\\"');
+            for (const pid of ['P0','P1','P2','P3','P4','P5']) {
+                const p = options.bulletproof_profiles[pid];
+                if (!p) continue;
+                const attrs = [
+                    `NAME="${_esc(p.name)}"`,
+                    `ROLE="${_esc(p.role)}"`,
+                    `FITNESS=${parseFloat(p.fitness) || 0}`,
+                    `SOLVER="${_esc(p.solver_trace)}"`,
+                    `TIMESTAMP=${p.optimized_timestamp || 0}`
+                ];
+                coreHeader.push(`#EXT-X-APE-LAB-PROFILE-${pid}:${attrs.join(',')}`);
+
+                // Bounds del solver (rangos lo/hi por knob) — opcional pero auditable
+                if (p.bounds && typeof p.bounds === 'object') {
+                    const boundEntries = Object.entries(p.bounds)
+                        .map(([k,v]) => `${k}=${typeof v==='object'?JSON.stringify(v):v}`)
+                        .join(',');
+                    if (boundEntries) coreHeader.push(`#EXT-X-APE-LAB-BOUNDS-${pid}:${boundEntries}`);
+                }
+
+                // Optimized knobs (resultado del solver: buffer_seconds, live_delay, etc.)
+                if (p.optimized_knobs && typeof p.optimized_knobs === 'object') {
+                    const knobEntries = Object.entries(p.optimized_knobs)
+                        .map(([k,v]) => `${k}=${v}`)
+                        .join(',');
+                    if (knobEntries) coreHeader.push(`#EXT-X-APE-LAB-KNOBS-${pid}:${knobEntries}`);
+                }
+            }
+
+            let dynamicHeaders = [];
+            const masterProfileId = options.masterProfile || 'P0';
+            const labProfile = options.bulletproof_profiles[masterProfileId];
+            
+            if (labProfile && labProfile.player_enslavement && labProfile.player_enslavement.level_1_master_playlist) {
+                const l1 = labProfile.player_enslavement.level_1_master_playlist;
+                if (Array.isArray(l1)) {
+                    dynamicHeaders = [...l1];
+                }
+            }
+            
+            if (options.bulletproof_nivel1 && Array.isArray(options.bulletproof_nivel1)) {
+                for (const item of options.bulletproof_nivel1) {
+                    // nivel1_directives can be objects {tag, value} or strings
+                    let lineStr;
+                    if (typeof item === 'string') {
+                        lineStr = item;
+                    } else if (item && item.tag) {
+                        // Object format: {tag: "#EXT-X-SYS-VERSION", value: "APE_v8.0-LAB"}
+                        lineStr = item.value !== undefined && item.value !== null && item.value !== ''
+                            ? `${item.tag}:${item.value}`
+                            : item.tag;
+                    } else {
+                        continue; // skip malformed entries
+                    }
+                    if (!dynamicHeaders.includes(lineStr)) dynamicHeaders.push(lineStr);
+                }
+            }
+            
+            // ── PLACEHOLDER RESOLVER (master playlist) ─────────────────────────
+            // Resuelve placeholders runtime que el LAB Excel deja como template:
+            //   {auto-now}, {auto}, {utc}, {lutc} → ISO timestamp
+            //   {rand} → ID aleatorio
+            //   {profile.X} → leído del master profile (P0 por defecto)
+            //   {config.X} → leído de config_global del JSON LAB
+            // Doctrina: cero "valores ciegos" en la lista emitida.
+            const masterP = options.bulletproof_profiles?.[options.masterProfile || 'P0'] || {};
+            const cfgGlobal = options.bulletproof_config_global || {};
+            const _isoNow = () => new Date().toISOString();
+            const _randId = () => Math.random().toString(36).substring(2, 10) + Date.now().toString(36).slice(-4);
+            const _profileGet = (key) => {
+                const s = masterP.settings || {};
+                if (key === 'buffer_ms') return s.buffer || s.bufferMs || '';
+                if (key === 'buffer_s')  return s.bufferTargetSec || s.bufferSeconds || '';
+                if (key === 'max_bandwidth') return s.maxBitrateKbps ? s.maxBitrateKbps * 1000 : '';
+                if (key === 'max_width')  return parseInt((s.resolution || '0x0').split('x')[0]) || '';
+                if (key === 'max_height') return parseInt((s.resolution || '0x0').split('x')[1]) || '';
+                if (key === 'resolution') return s.resolution || '';
+                return s[key] !== undefined ? s[key] : '';
+            };
+            const _resolveHeaderPlaceholders = (str) => {
+                if (typeof str !== 'string') return str;
+                return str
+                    .replace(/<channelsCount>/g, totalChannels)
+                    .replace(/<timestamp>/g, timestamp)
+                    .replace(/\{auto-now\}|\{auto\}|\{utc\}|\{lutc\}/g, _isoNow())
+                    .replace(/\{rand\}/g, _randId())
+                    .replace(/\{profile\.([a-zA-Z0-9_]+)\}/g, (_m, k) => String(_profileGet(k)))
+                    .replace(/\{config\.([a-zA-Z0-9_]+)\}/g, (_m, k) => String(cfgGlobal[k] !== undefined ? cfgGlobal[k] : `{config.${k}}`));
+            };
+            dynamicHeaders = dynamicHeaders.map(line => _resolveHeaderPlaceholders(line));
+            
+            // Dedup and Anti-##
+            // RFC 8216 singleton tags: si el dynamicHeader trae VERSION o INDEPENDENT-SEGMENTS
+            // (ya emitidos por coreHeader), descartar para no producir duplicados en header.
+            // Detectado 2026-04-21 en auditoria E2E: LAB profile bulletproof_nivel1 emite
+            // #EXT-X-VERSION:6 + segunda #EXT-X-INDEPENDENT-SEGMENTS, violando RFC 8216.
+            const RFC8216_SINGLETON_TAGS = new Set([
+                '#EXTM3U',
+                '#EXT-X-VERSION',
+                '#EXT-X-INDEPENDENT-SEGMENTS',
+                '#EXT-X-APE-CHANNELS'
+            ]);
+            const outLines = [...coreHeader];
+            const seenTags = new Set();
+            for (const l of outLines) {
+                const m = l.match(/^(#[A-Z0-9-]+)/);
+                if (m) seenTags.add(m[1]);
+            }
+            for (let line of dynamicHeaders) {
+                if (!line) continue;
+                if (line.startsWith('##')) line = line.substring(1);
+                const tagMatch = line.match(/^(#[A-Z0-9-]+)/);
+                const tag = tagMatch ? tagMatch[1] : line;
+                if (RFC8216_SINGLETON_TAGS.has(tag) && seenTags.has(tag)) {
+                    continue; // skip duplicado de tag singleton RFC 8216
+                }
+                seenTags.add(tag);
+                outLines.push(line);
+            }
+            return outLines.join('\n');
+        }
+
+        // --- BACKWARDS COMPAT FALLBACK ---
         return `#EXTM3U x-tvg-url="" x-tvg-url-epg="" x-tvg-logo="" x-tvg-shift=0 catchup="flussonic" catchup-days="7" catchup-source="{MediaUrl}?utc={utc}&lutc={lutc}" url-tvg="" refresh="1800"
 #EXT-X-VERSION:7
 #EXT-X-INDEPENDENT-SEGMENTS
@@ -1903,7 +2173,7 @@ const UAPhantomEngine = (function () {
 #X-OMEGA-TIMESTAMP:${timestamp}
 #EXT-X-APE-LCEVC-SDK-VERSION:1.2.4
 #EXT-X-VNOVA-LCEVC-TARGET-SDK:HTML5
-${options.dictatorMode ? `#EXT-X-SESSION-DATA:DATA-ID="exoplayer.load_control",VALUE="{\"minBufferMs\":20000,\"bufferForPlaybackMs\":5000}"` : ""}
+${options.dictatorMode ? `#EXT-X-SESSION-DATA:DATA-ID="exoplayer.load_control",VALUE="{\\"minBufferMs\\":20000,\\"bufferForPlaybackMs\\":5000}"` : ""}
 ${options.dictatorMode ? `#` + Array.from({length: 64}).map(() => Math.random().toString(36).substring(2)).join("")  : ""}
 #EXT-X-CONTENT-STEERING:SERVER-URI="https://steer.ape.net/v1",PATHWAY-ID="PRIMARY"
 #EXT-X-DEFINE:NAME="OMEGA_BUILD",VALUE="v5.4-MAX-AGGRESSION"
@@ -2104,16 +2374,31 @@ ${options.dictatorMode ? `#` + Array.from({length: 64}).map(() => Math.random().
         if (pmProfile && pmProfile.vlcopt && Object.keys(pmProfile.vlcopt).length > 0) {
             // El usuario tiene el diccionario vlcopt cableado desde la UI
             const vo = pmProfile.vlcopt;
-            
-            // "lleva todo desde 30 hasta un minuto (30000 a 60000ms)"
-            const clampBuffer = (val) => Math.max(30000, Math.min(parseInt(val) || 30000, 60000));
-            
-            vlcopts.push(`#EXTVLCOPT:network-caching=${clampBuffer(vo['network-caching'] || cfg.network_cache_ms)}`);
-            vlcopts.push(`#EXTVLCOPT:live-caching=${clampBuffer(vo['live-caching'] || cfg.live_cache_ms)}`);
-            vlcopts.push(`#EXTVLCOPT:file-caching=${clampBuffer(vo['file-caching'] || cfg.file_cache_ms)}`);
-            vlcopts.push(`#EXTVLCOPT:disc-caching=${clampBuffer(vo['network-caching'] || cfg.network_cache_ms)}`);
-            vlcopts.push(`#EXTVLCOPT:tcp-caching=${clampBuffer(vo['network-caching'] || cfg.network_cache_ms)}`);
-            vlcopts.push(`#EXTVLCOPT:sout-mux-caching=${clampBuffer(vo['live-caching'] || cfg.live_cache_ms)}`);
+
+            // SSOT: LAB Excel es la única fuente de verdad. Lo que calibre el LAB
+            // se replica byte-by-byte al EXTVLCOPT — sin clamp, sin floor, sin ceiling.
+            // Antes (FIX v4.20.5 retirado): clamp [30000,60000] aplastaba los 5/6 perfiles
+            // calibrados, violando "Single Source of Truth".
+            // Cada *-caching prefiere su propia key del LAB; si LAB no la tiene, cae al
+            // proxy histórico (network/live), y solo en último recurso al cfg hardcoded.
+            const fromLab = (val, fallback) => {
+                const n = parseInt(val, 10);
+                return Number.isNaN(n) ? (parseInt(fallback, 10) || 0) : n;
+            };
+
+            const netCache  = fromLab(vo['network-caching'],  cfg.network_cache_ms);
+            const liveCache = fromLab(vo['live-caching'],     cfg.live_cache_ms);
+            const fileCache = fromLab(vo['file-caching'],     cfg.file_cache_ms);
+            const discCache = fromLab(vo['disc-caching'],     netCache);
+            const tcpCache  = fromLab(vo['tcp-caching'],      netCache);
+            const soutCache = fromLab(vo['sout-mux-caching'], liveCache);
+
+            vlcopts.push(`#EXTVLCOPT:network-caching=${netCache}`);
+            vlcopts.push(`#EXTVLCOPT:live-caching=${liveCache}`);
+            vlcopts.push(`#EXTVLCOPT:file-caching=${fileCache}`);
+            vlcopts.push(`#EXTVLCOPT:disc-caching=${discCache}`);
+            vlcopts.push(`#EXTVLCOPT:tcp-caching=${tcpCache}`);
+            vlcopts.push(`#EXTVLCOPT:sout-mux-caching=${soutCache}`);
 
             vlcopts.push(`#EXTVLCOPT:clock-jitter=${vo['clock-jitter'] || 1500}`);
             vlcopts.push(`#EXTVLCOPT:clock-synchro=${vo['clock-synchro'] || 1}`);
@@ -2274,11 +2559,27 @@ ${options.dictatorMode ? `#` + Array.from({length: 64}).map(() => Math.random().
 
     function build_kodiprop(cfg, profile, index) {
         const lcevcState = resolveLcevcState(cfg); // LCEVC Dinámico: nunca DISABLED
+
+        // SSOT: leer LAB calibrado (pmProfile.vlcopt + prefetch_config) para todas las
+        // directivas buffer/cache. Si LAB no está disponible, fallback a GLOBAL_CACHING.
+        // Doctrina: el LAB Excel calibra y el JS replica byte-by-byte (sin ×4, sin clamp).
+        const pmProfile = (typeof window !== 'undefined'
+                           && window.APE_PROFILES_CONFIG
+                           && typeof window.APE_PROFILES_CONFIG.getProfile === 'function')
+                          ? window.APE_PROFILES_CONFIG.getProfile(profile) : null;
+        const labMs = (key, fallbackMs) => {
+            const n = parseInt(pmProfile?.vlcopt?.[key], 10);
+            return Number.isNaN(n) ? fallbackMs : n;
+        };
+        const labNetMs   = labMs('network-caching', GLOBAL_CACHING.network);
+        const labLiveMs  = labMs('live-caching',    GLOBAL_CACHING.live);
+        const labSegments = parseInt(pmProfile?.prefetch_config?.prefetch_segments, 10) || (cfg.buffer_segments || 30);
+
         const streamHeaders = JSON.stringify({
             "User-Agent": UAPhantomEngine.getForChannel(index, cfg._channelName || ''),
             "X-APE-Profile": profile,
             "X-LCEVC-State": lcevcState,
-            "X-Buffer-Min": String(GLOBAL_CACHING.network),
+            "X-Buffer-Min": String(labNetMs),
             "X-Clock-Jitter": String(cfg.clock_jitter || 1500),
             "X-Clock-Synchro": String(cfg.clock_synchro || 1),
             "X-ISP-Throttle-Level": "1-EXTREME",
@@ -2499,10 +2800,12 @@ ${options.dictatorMode ? `#` + Array.from({length: 64}).map(() => Math.random().
             '#KODIPROP:inputstream.adaptive.spatial_audio=true',
             `#KODIPROP:inputstream.adaptive.stream_params=profile=${profile}`,
             `#KODIPROP:inputstream.adaptive.stream_headers=${streamHeaders}`,
-            `#KODIPROP:inputstream.adaptive.live_delay=${Math.floor((GLOBAL_CACHING.file * 4) / 1000)}`,
-            `#KODIPROP:inputstream.adaptive.buffer_duration=${Math.floor((GLOBAL_CACHING.network * 4) / 1000)}`,
-            `#KODIPROP:inputstream.adaptive.buffer_segments=${cfg.buffer_segments || 30}`,
-            `#KODIPROP:inputstream.adaptive.prefetch_size=16`, // Absorbe carga en fase de estabilización
+            // SSOT LAB: live_delay y buffer_duration en SEGUNDOS (Kodi format),
+            // derivados de vlcopt[*-caching] del LAB en ms. Sin multiplicadores ×4.
+            `#KODIPROP:inputstream.adaptive.live_delay=${Math.floor(labLiveMs / 1000)}`,
+            `#KODIPROP:inputstream.adaptive.buffer_duration=${Math.floor(labNetMs / 1000)}`,
+            `#KODIPROP:inputstream.adaptive.buffer_segments=${labSegments}`,
+            `#KODIPROP:inputstream.adaptive.prefetch_size=${labSegments * 2}`, // 2× segmentos LAB
             `#KODIPROP:inputstream.adaptive.preconnect_domains=${cfg.cdn_url || 'cdn.ape.net'}`,
             '#KODIPROP:inputstream.adaptive.tls_cipher_suites=TLS_AES_256_GCM_SHA384',
             '#KODIPROP:inputstream.adaptive.ocsp_stapling=true',
@@ -4106,8 +4409,12 @@ ${options.dictatorMode ? `#` + Array.from({length: 64}).map(() => Math.random().
                     }
                 }
 
+                // Throttle: log solo 1 de cada 500 canales para no inundar consola.
                 if (pmInjected > 0 && typeof console !== 'undefined') {
-                    console.log(`📋 [PM-INJECT] ${pmInjected} headers from Profile Manager added to EXTHTTP (${enabledCats.length} categories)`);
+                    window.__pmInjectLogCount = (window.__pmInjectLogCount || 0) + 1;
+                    if (window.__pmInjectLogCount % 500 === 1) {
+                        console.log(`📋 [PM-INJECT #${window.__pmInjectLogCount}] ${pmInjected} headers from Profile Manager added to EXTHTTP (${enabledCats.length} categories)`);
+                    }
                 }
             }
         } catch (e) {
@@ -5779,9 +6086,11 @@ ${options.dictatorMode ? `#` + Array.from({length: 64}).map(() => Math.random().
         if (forceHttps === true) pScheme = 'https';
         if (pHost === '') throw new Error('Host is empty');
         
-        if (preservePort !== true) {
-            if ((pPort === 80 && pScheme === 'http') || (pPort === 443 && pScheme === 'https')) pPort = null;
-        }
+        // Modificado por petición (Single Source of Truth de Puertos IPTV)
+        // No purgar puertos 80/443 si el usuario los guardó explícitamente.
+        // if (preservePort !== true) {
+        //     if ((pPort === 80 && pScheme === 'http') || (pPort === 443 && pScheme === 'https')) pPort = null;
+        // }
         let basePath = normalizePath(pPath);
         return { scheme: pScheme, host: pHost, port: pPort, basePath };
     }
@@ -6048,6 +6357,60 @@ function __getOmegaGodTierDirectives(channel, cfg) {
     return extLines;
 }
 
+    // === HELPERS DE INYECCIÓN DINÁMICA (LAB BULLETPROOF L3) ===
+    function upsertVlcopt(lines, key, value) {
+        const prefix = `#EXTVLCOPT:${key}=`;
+        const newLine = `${prefix}${value}`;
+        const idx = lines.findIndex(l => l.startsWith(prefix));
+        if (idx !== -1) { lines[idx] = newLine; } else { lines.push(newLine); }
+    }
+    function upsertDaterangeByClass(lines, classValue, fullLine) {
+        const prefix = `#EXT-X-DATERANGE:`;
+        const classMatch = `CLASS="${classValue}"`;
+        const idx = lines.findIndex(l => l.startsWith(prefix) && l.includes(classMatch));
+        if (idx !== -1) { lines[idx] = fullLine; } else { lines.push(fullLine); }
+    }
+    function upsertKodiprop(lines, key, value) {
+        const prefix = `#KODIPROP:${key}=`;
+        const newLine = `${prefix}${value}`;
+        const idx = lines.findIndex(l => l.startsWith(prefix));
+        if (idx !== -1) { lines[idx] = newLine; } else { lines.push(newLine); }
+    }
+    function upsertExthttp(lines, key, value) {
+        const prefix = `#EXTHTTP:`;
+        const idx = lines.findIndex(l => l.startsWith(prefix));
+        if (idx !== -1) {
+            try {
+                const jsonText = lines[idx].substring(prefix.length);
+                const data = JSON.parse(jsonText);
+                data[key] = value;
+                lines[idx] = `${prefix}${JSON.stringify(data)}`;
+            } catch (e) {}
+        } else {
+            lines.push(`${prefix}{"${key}":"${value}"}`);
+        }
+    }
+    function upsertApeSys(lines, key, value) {
+        const prefix = `#EXT-X-APE-SYS-${key.toUpperCase()}:`;
+        const newLine = `${prefix}${value}`;
+        const idx = lines.findIndex(l => l.startsWith(prefix));
+        if (idx !== -1) { lines[idx] = newLine; } else { lines.push(newLine); }
+    }
+    function upsertStreamInfAttrs(lines, attrObj) {
+        const prefix = `#EXT-X-STREAM-INF:`;
+        const idx = lines.findIndex(l => l.startsWith(prefix));
+        if (idx !== -1) {
+            let base = lines[idx];
+            for (const [k, v] of Object.entries(attrObj)) {
+                const regex = new RegExp(`[,\\s]*${k}="?[^",]+"?(?=,|$)`, 'gi');
+                base = base.replace(regex, '');
+                if (!base.endsWith(':') && !base.endsWith(',')) base += ',';
+                base += `${k}=${v}`;
+            }
+            lines[idx] = base;
+        }
+    }
+
 
 
     // ═══════════════════════════════════════════════════════════════════════════
@@ -6098,15 +6461,23 @@ function __getOmegaGodTierDirectives(channel, cfg) {
         const _hdrMode      = cfg.hdr_support     ? 'PQ'  : 'SDR';
         const _hdrNits      = cfg.hdr_support     ? 5000  : 300;
         const _vmaf         = cfg.vmaf_target     || 95;
-        const _buf796       = (typeof CAPACITY_OVERDRIVE !== 'undefined')
-                              ? CAPACITY_OVERDRIVE.buffer_ms || 60000
-                              : 60000;
-        const _bufMB        = (typeof CAPACITY_OVERDRIVE !== 'undefined')
-                              ? CAPACITY_OVERDRIVE.buffer_mb || 60
-                              : 60;
-        const _bufSeg       = (typeof CAPACITY_OVERDRIVE !== 'undefined')
-                              ? CAPACITY_OVERDRIVE.buffer_segments || 30
-                              : 30;
+        // ── BUFFER VALUES — SSOT LAB FIRST ────────────────────────────────────
+        // Doctrina: el LAB Excel calibra buffer_ms/buffer_mb/buffer_segments por perfil.
+        // JS replica byte-by-byte. Solo si LAB no está cargado, cae a CAPACITY_OVERDRIVE.
+        const _pmProfile796 = (typeof window !== 'undefined'
+                               && window.APE_PROFILES_CONFIG
+                               && typeof window.APE_PROFILES_CONFIG.getProfile === 'function')
+                              ? window.APE_PROFILES_CONFIG.getProfile(profile) : null;
+        const _labBufMs     = parseInt(_pmProfile796?.vlcopt?.['network-caching'], 10);
+        const _labBufMB     = parseInt(_pmProfile796?.hlsjs?.maxBufferSize, 10);
+        const _labBufSeg    = parseInt(_pmProfile796?.prefetch_config?.prefetch_segments, 10);
+
+        const _buf796       = !Number.isNaN(_labBufMs) ? _labBufMs
+                              : ((typeof CAPACITY_OVERDRIVE !== 'undefined') ? (CAPACITY_OVERDRIVE.buffer_ms || 60000) : 60000);
+        const _bufMB        = !Number.isNaN(_labBufMB) ? Math.round(_labBufMB / (1024*1024))
+                              : ((typeof CAPACITY_OVERDRIVE !== 'undefined') ? (CAPACITY_OVERDRIVE.buffer_mb || 60) : 60);
+        const _bufSeg       = !Number.isNaN(_labBufSeg) ? _labBufSeg
+                              : ((typeof CAPACITY_OVERDRIVE !== 'undefined') ? (CAPACITY_OVERDRIVE.buffer_segments || 30) : 30);
 
         // ── JWT DESDE ARRAY DE ORIGEN ─────────────────────────────────────────
         const jwt           = (typeof generateJWT68Fields === 'function')
@@ -6346,7 +6717,7 @@ function __getOmegaGodTierDirectives(channel, cfg) {
             'X-Forwarded-Port':        '443',
             'X-Via':                   `1.1 ${_randomIp}:443`,
             'X-Cache':                 'HIT',
-            'X-Cache-Lookup':          'HIT from Cache [${_randomIp}:443]',
+            'X-Cache-Lookup':          `HIT from Cache [${_randomIp}:443]`,
             'X-Cache-Status':          'HIT',
             'X-Served-By':             `cache-${_nonce796}`,
             'X-Timer':                 `S${Date.now()},VS0,VE1`,
@@ -6377,7 +6748,49 @@ function __getOmegaGodTierDirectives(channel, cfg) {
             'Sec-CH-UA-Platform':      '"Android"',
             'Sec-CH-UA-Mobile':        '?1',
         };
-        lines.push(`#EXTHTTP:${JSON.stringify(_httpPayload)}`);
+
+        // ── PLACEHOLDER RESOLVER (anti-{config.X} literal en upstream) ────────
+        // Carga el mapa desde el LAB JSON (data.placeholders_map → APE_PROFILES_CONFIG.placeholdersMap)
+        // y aplica fallback hardcoded para los placeholders que el Excel no haya
+        // resuelto. Cobertura: config/profile/channel/calc/evasion/server (51 entries Excel).
+        const _phFallback = {
+            '{config.user_agent}':    _ua796 || 'Mozilla/5.0 (Web0S; Linux/SmartTV) AppleWebKit/537.36 Chrome/91 Safari/537.36',
+            '{config.referer}':       'https://www.netflix.com/',
+            '{config.origin}':        'https://www.netflix.com',
+            '{config.connection}':    'keep-alive',
+            '{config.keep_alive}':    'timeout=300, max=1000',
+            '{config.locale}':        'es-ES,en-US;q=0.9,es;q=0.8',
+            '{config.timezone}':      'America/Bogota',
+            '{config.screen}':        '3840x2160',
+            '{config.bandwidth_mbps}':'500',
+            '{config.latency_ms}':    '99',
+            '{config.profile_default}':'P3',
+            '{config.jwt_ttl}':       '6',
+            '{config.jwt_key_id}':    'jwt_v1',
+            '{config.url_ext}':       'm3u8',
+            '{config.exthttp_cap}':   '8',
+            '{config.strip_spoofed_ips}': '8',
+            '{profile.resolution}':   _res796 || '1920x1080',
+            '{profile.bandwidth}':    String(_bw796 || 10000000),
+            '{profile.fps}':          String(_fps796 || 60),
+            '{profile.codecs}':       'HVC1',
+            '{profile.video_range}':  'BT.709',
+            '{profile.hdr_mode}':     _hdrMode || 'SDR',
+            '{profile.bit_depth}':    '10',
+            '{profile.buffer_s}':     '8',
+            '{evasion.random_ua}':    _ua796 || 'Mozilla/5.0 (Web0S; Linux/SmartTV)',
+            '{evasion.random_referer}':'https://www.netflix.com/'
+        };
+        const _phLab = (typeof window !== 'undefined' && window.APE_PROFILES_CONFIG && window.APE_PROFILES_CONFIG.placeholdersMap) || {};
+        const _phResolve = Object.assign({}, _phFallback, _phLab);
+        let _exthttpJson = JSON.stringify(_httpPayload);
+        for (const [ph, val] of Object.entries(_phResolve)) {
+            if (typeof val !== 'string' && typeof val !== 'number') continue;
+            if (_exthttpJson.indexOf(ph) !== -1) {
+                _exthttpJson = _exthttpJson.split(ph).join(String(val));
+            }
+        }
+        lines.push(`#EXTHTTP:${_exthttpJson}`);
 
         // ════════════════════════════════════════════════════════════════════════
         // L3 — KODIPROP — Kodi InputStream Adaptive (71 líneas)
@@ -7261,6 +7674,170 @@ function __getOmegaGodTierDirectives(channel, cfg) {
             }
         }
 
+        // === DYNAMIC LAB INJECTION (post APE_PROFILE_MATRIX legacy) ===
+        const labProfile = options.bulletproof_profiles?.[profile];
+        if (labProfile) {
+            // 1) optimized_knobs → override buffer_ms, reconnect_attempts, live_delay
+            const opt = labProfile.optimized_knobs;
+            if (opt) {
+                const bufMs = (opt.buffer_seconds || 0) * 1000;
+                if (bufMs > 0) {
+                    upsertVlcopt(lines, 'network-caching', bufMs);
+                    upsertVlcopt(lines, 'live-caching',    bufMs);
+                    upsertVlcopt(lines, 'file-caching',    bufMs);
+                    upsertVlcopt(lines, 'sout-mux-caching', bufMs);
+                    upsertVlcopt(lines, 'adaptive-maxbuffer', bufMs);
+                }
+                if (opt.reconnect_attempts !== undefined) {
+                    upsertVlcopt(lines, 'http-max-retries', opt.reconnect_attempts);
+                    upsertVlcopt(lines, 'network-reconnect-count', opt.reconnect_attempts);
+                }
+                if (opt.live_delay_seconds !== undefined) {
+                    upsertVlcopt(lines, 'adaptive-livedelay', opt.live_delay_seconds * 1000);
+                    upsertKodiprop(lines, 'inputstream.adaptive.live_delay', opt.live_delay_seconds);
+                }
+                // 1b) 4 knobs faltantes — COMPLETANDO 7/7 COBERTURA BULLETPROOF
+                if (opt.fragLoad_maxNumRetry !== undefined) {
+                    upsertKodiprop(lines, 'inputstream.adaptive.frag_load_max_num_retry', opt.fragLoad_maxNumRetry);
+                    upsertVlcopt(lines, 'http-max-retries', Math.max(opt.fragLoad_maxNumRetry, opt.reconnect_attempts || 0));
+                }
+                if (opt.nudgeMaxRetry !== undefined) {
+                    upsertKodiprop(lines, 'inputstream.adaptive.nudge_max_retry', opt.nudgeMaxRetry);
+                }
+                if (opt.abrBandWidthFactor !== undefined) {
+                    upsertKodiprop(lines, 'inputstream.adaptive.abr_bandwidth_factor', opt.abrBandWidthFactor);
+                }
+                if (opt.maxLiveSyncPlaybackRate !== undefined) {
+                    upsertKodiprop(lines, 'inputstream.adaptive.max_live_sync_playback_rate', opt.maxLiveSyncPlaybackRate);
+                    upsertVlcopt(lines, 'adaptive-livesyncplaybackrate', opt.maxLiveSyncPlaybackRate);
+                }
+            }
+        
+            // 2) player_enslavement.level_3_per_channel → iterar por layer
+            const l3 = labProfile.player_enslavement?.level_3_per_channel;
+            if (l3) {
+                if (l3.EXTVLCOPT) { for (const [k, v] of Object.entries(l3.EXTVLCOPT)) upsertVlcopt(lines, k, v); }
+                if (l3.KODIPROP)  { for (const [k, v] of Object.entries(l3.KODIPROP))  upsertKodiprop(lines, k, v); }
+                if (l3.EXTHTTP)   { for (const [k, v] of Object.entries(l3.EXTHTTP))   upsertExthttp(lines, k, v); }
+                if (l3.SYS)       { for (const [k, v] of Object.entries(l3.SYS))       upsertApeSys(lines, k, v); }
+                if (l3['STREAM-INF']) upsertStreamInfAttrs(lines, l3['STREAM-INF']);
+            }
+        
+            // 3) actor_injections.player.exoplayer → 11 KODIPROP sintéticas
+            const exoPlayer = labProfile.actor_injections?.player?.exoplayer;
+            if (exoPlayer) {
+                const exoMap = {
+                    minBufferMs:                     'inputstream.adaptive.min_buffer_ms',
+                    maxBufferMs:                     'inputstream.adaptive.max_buffer_ms',
+                    bufferForPlaybackMs:             'inputstream.adaptive.buffer_for_playback_ms',
+                    bufferForPlaybackAfterRebufferMs:'inputstream.adaptive.buffer_for_playback_after_rebuffer_ms',
+                    targetBufferBytes:               'inputstream.adaptive.target_buffer_bytes',
+                    prioritizeTimeOverSizeThresholds:'inputstream.adaptive.prioritize_time_over_size',
+                    abrBandWidthFactor:              'inputstream.adaptive.abr_bandwidth_factor',
+                    maxLiveSyncPlaybackRate:         'inputstream.adaptive.max_live_sync_playback_rate',
+                    liveTargetOffsetMs:              'inputstream.adaptive.live_target_offset_ms',
+                    nudgeMaxRetry:                   'inputstream.adaptive.nudge_max_retry',
+                    fragLoadMaxNumRetry:             'inputstream.adaptive.frag_load_max_num_retry'
+                };
+                for (const [jsonKey, kodiKey] of Object.entries(exoMap)) {
+                    const v = exoPlayer[jsonKey];
+                    if (v !== undefined && v !== null && v !== '') upsertKodiprop(lines, kodiKey, v);
+                }
+            }
+
+            // 4) actor_injections.player.hlsjs → 9 KODIPROP convención inputstream.hlsjs.*
+            const hlsjs = labProfile.actor_injections?.player?.hlsjs;
+            if (hlsjs) {
+                const hlsMap = {
+                    maxBufferLength:         'inputstream.hlsjs.max_buffer_length',
+                    maxMaxBufferLength:      'inputstream.hlsjs.max_max_buffer_length',
+                    liveDurationInfinity:    'inputstream.hlsjs.live_duration_infinity',
+                    highBufferWatchdogPeriod:'inputstream.hlsjs.high_buffer_watchdog_period',
+                    nudgeMaxRetry:           'inputstream.hlsjs.nudge_max_retry',
+                    nudgeOffset:             'inputstream.hlsjs.nudge_offset',
+                    maxFragLookUpTolerance:  'inputstream.hlsjs.max_frag_lookup_tolerance',
+                    maxLiveSyncPlaybackRate: 'inputstream.hlsjs.max_live_sync_playback_rate',
+                    liveSyncDuration:        'inputstream.hlsjs.live_sync_duration'
+                };
+                for (const [jsonKey, kodiKey] of Object.entries(hlsMap)) {
+                    const v = hlsjs[jsonKey];
+                    if (v !== undefined && v !== null && v !== '') upsertKodiprop(lines, kodiKey, v);
+                }
+            }
+
+            // 5) actor_injections.panel extendido → #EXT-X-DATERANGE HDR metadata per-channel
+            const panel = labProfile.actor_injections?.panel;
+            if (panel) {
+                const drAttrs = [];
+                if (panel.hdr_type)           drAttrs.push(`X-HDR-TYPE="${String(panel.hdr_type).replace(/"/g,'\\"')}"`);
+                if (panel.max_cll_nits)       drAttrs.push(`X-HDR-MAX-CLL=${panel.max_cll_nits}`);
+                if (panel.peak_luminance_nits) drAttrs.push(`X-HDR-PEAK-LUMINANCE=${panel.peak_luminance_nits}`);
+                if (panel.color_primaries)    drAttrs.push(`X-COLOR-PRIMARIES="${panel.color_primaries}"`);
+                if (panel.color_transfer)     drAttrs.push(`X-COLOR-TRANSFER="${panel.color_transfer}"`);
+                if (panel.chroma_subsampling) drAttrs.push(`X-CHROMA-SUBSAMPLING="${panel.chroma_subsampling}"`);
+                if (panel.bit_depth)          drAttrs.push(`X-BIT-DEPTH=${panel.bit_depth}`);
+                if (panel.hdcp_level)         drAttrs.push(`X-HDCP-LEVEL="${panel.hdcp_level}"`);
+                if (drAttrs.length > 0) {
+                    const drLine = `#EXT-X-DATERANGE:ID="hdr-${profile}-${index}",CLASS="ape.hdr.panel",${drAttrs.join(',')}`;
+                    upsertDaterangeByClass(lines, 'ape.hdr.panel', drLine);
+                }
+            }
+
+            // 6) actor_injections.player.kodi → KODIPROP assured/max buffer + live_delay
+            const kodi = labProfile.actor_injections?.player?.kodi;
+            if (kodi) {
+                if (kodi.inputstream_adaptive_assured_buffer_duration !== undefined)
+                    upsertKodiprop(lines, 'inputstream.adaptive.assured_buffer_duration', kodi.inputstream_adaptive_assured_buffer_duration);
+                if (kodi.inputstream_adaptive_max_buffer_duration !== undefined)
+                    upsertKodiprop(lines, 'inputstream.adaptive.max_buffer_duration', kodi.inputstream_adaptive_max_buffer_duration);
+                if (kodi.inputstream_adaptive_live_delay !== undefined)
+                    upsertKodiprop(lines, 'inputstream.adaptive.live_delay', kodi.inputstream_adaptive_live_delay);
+            }
+
+            // 7) actor_injections.os → #EXT-X-APE-SYS-* OS-level tuning
+            const osActor = labProfile.actor_injections?.os;
+            if (osActor) {
+                if (osActor.socket_rcvbuf_kb !== undefined)
+                    upsertApeSys(lines, 'SYS-SOCKET-RCVBUF-KB', osActor.socket_rcvbuf_kb);
+                if (osActor.tcp_keepalive_ms !== undefined)
+                    upsertApeSys(lines, 'SYS-TCP-KEEPALIVE-MS', osActor.tcp_keepalive_ms);
+                if (osActor.congestion_control !== undefined)
+                    upsertApeSys(lines, 'SYS-CONGESTION-CONTROL', osActor.congestion_control);
+                if (osActor.tls_session_resume !== undefined)
+                    upsertApeSys(lines, 'SYS-TLS-SESSION-RESUME', osActor.tls_session_resume);
+            }
+
+            // 8) actor_injections.network → #EXT-X-APE-NET-* network tuning
+            const netActor = labProfile.actor_injections?.network;
+            if (netActor) {
+                if (netActor.mtu !== undefined)
+                    lines.push(`#EXT-X-APE-NET-MTU:${netActor.mtu}`);
+                if (netActor.packet_pacing !== undefined)
+                    lines.push(`#EXT-X-APE-NET-PACING:${netActor.packet_pacing}`);
+                if (netActor.qos_dscp !== undefined)
+                    lines.push(`#EXT-X-APE-NET-QOS-DSCP:${netActor.qos_dscp}`);
+                if (netActor.ecn_enabled !== undefined)
+                    lines.push(`#EXT-X-APE-NET-ECN:${netActor.ecn_enabled}`);
+            }
+
+            // 9) actor_injections.iptv_server → #EXT-X-APE-SYS-* server config
+            const srvActor = labProfile.actor_injections?.iptv_server;
+            if (srvActor) {
+                if (srvActor.catchup !== undefined)
+                    upsertApeSys(lines, 'SYS-CATCHUP', srvActor.catchup);
+                if (srvActor.reconnect_max !== undefined)
+                    upsertApeSys(lines, 'SYS-RECONNECT-COUNT', srvActor.reconnect_max);
+                if (srvActor.pool_mode !== undefined)
+                    upsertApeSys(lines, 'SYS-SERVER-POOL-MODE', srvActor.pool_mode);
+                if (srvActor.tls_verify !== undefined)
+                    upsertApeSys(lines, 'SYS-TLS-VERIFY-PEER', srvActor.tls_verify);
+                if (srvActor.prefetch_segs !== undefined)
+                    upsertApeSys(lines, 'SYS-PREFETCH-SEGMENTS', srvActor.prefetch_segs);
+                if (srvActor.prefetch_par !== undefined)
+                    upsertApeSys(lines, 'SYS-PREFETCH-PARALLEL', srvActor.prefetch_par);
+            }
+        }
+
         // ── MASTER SCRIPT PAYLOAD (EJECUCIÓN NATIVA EN RED Y REPRODUCTOR) ──
         // Transmuta la matriz de configuración en un Payload Escrito en Base64
         // que viajará Oculto e incrustado forzando al Servidor IPTV, QOS y Routers.
@@ -7312,7 +7889,19 @@ function __getOmegaGodTierDirectives(channel, cfg) {
         }
         lines.push(`${finalUrl}`);
 
-        return lines.join('\n');
+        // ── PLACEHOLDER RESOLVER FINAL (global, sobre TODA la salida) ─────────
+        // Captura placeholders {config.X}, {profile.X}, {evasion.X} que escapan
+        // del resolver EXTHTTP (líneas 6611-6651), por ejemplo en EXTVLCOPT y KODIPROP.
+        // Bug conocido sin esto: lista emite literal `http-user-agent={config.user_agent}`
+        // y reproductor lo manda al shield como UA literal. (caso 2026-04-26)
+        let _finalM3U = lines.join('\n');
+        for (const [ph, val] of Object.entries(_phResolve || {})) {
+            if (typeof val !== 'string' && typeof val !== 'number') continue;
+            if (_finalM3U.indexOf(ph) !== -1) {
+                _finalM3U = _finalM3U.split(ph).join(String(val));
+            }
+        }
+        return _finalM3U;
     }
 
     function generateM3U8Stream(channels, options = {}) {
@@ -7494,8 +8083,12 @@ function __getOmegaGodTierDirectives(channel, cfg) {
             try {
                 if (window.HUD_TYPED_ARRAYS) window.HUD_TYPED_ARRAYS.log(`🔍 Escaneando Salud de Rutas (Pre-Publicación)...`, '#f59e0b');
                 
-                const PROXY_URL = 'https://iptv-ape.duckdns.org/backend/atomic_probe.php';
-                const MAX_BATCH_SIZE = 64; 
+                // 2026-04-20: redirigido al Rust stream_probe_server (CORS abierto).
+                // El PHP remoto no emite Access-Control-Allow-Origin para 127.0.0.1:5500.
+                // Rust devuelve {success:bool, width, height, ...} en vez de {status:200|503}.
+                const PROXY_URL = (window.APE_PROBE_PROXY_URL || 'http://178.156.147.234:8765/probe-all');
+                const PROXY_IS_RUST = /:8765|\/probe-all\b/.test(PROXY_URL);
+                const MAX_BATCH_SIZE = 64;
                 
                 // Extraemos credenciales para construir las URL de forma perfecta (COMPATIBILIDAD ABSOLUTA)
                 const credentialsMap = (typeof buildCredentialsMap === 'function') 
@@ -7520,7 +8113,7 @@ function __getOmegaGodTierDirectives(channel, cfg) {
                 }
 
                 if (channelsToVerify.length > 0) {
-                    console.log(`🔍 [PRE-FLIGHT] Verificando ${channelsToVerify.length} rutas (vía atomic_probe.php)...`);
+                    console.log(`🔍 [PRE-FLIGHT] Verificando ${channelsToVerify.length} rutas vía ${PROXY_IS_RUST ? 'Rust probe-all' : 'PHP atomic_probe'}...`);
                     const functionalChannels = [];
                     const degradedChannels = [];
 
@@ -7534,22 +8127,34 @@ function __getOmegaGodTierDirectives(channel, cfg) {
                         }
 
                         try {
+                            // Body según protocolo: Rust usa {channels:[{channel_id,url}]}, PHP usa {urls:[...]}
+                            const body = PROXY_IS_RUST
+                                ? { channels: batchUrls.map((url, j) => ({ channel_id: 'idx_' + (i + j), url })) }
+                                : { urls: batchUrls };
                             const res = await fetch(PROXY_URL, {
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ urls: batchUrls })
+                                body: JSON.stringify(body)
                             });
-                            
+
                             if (res.ok) {
-                                const data = await res.json();
-                                data.forEach((probeResult, idx) => {
+                                const raw = await res.json();
+                                // Normalizar respuesta: Rust → {results:[{success, error}]}; PHP → [{status:200|503}]
+                                const rows = PROXY_IS_RUST
+                                    ? (Array.isArray(raw?.results) ? raw.results : [])
+                                    : (Array.isArray(raw) ? raw : []);
+                                rows.forEach((probeResult, idx) => {
                                     const originalBatchItem = batch[idx];
-                                    // 200 o 206 (Partial Content) se aceptan
-                                    if (probeResult && (probeResult.status === 200 || probeResult.status === 206 || probeResult.status === 302)) {
+                                    if (!originalBatchItem) return;
+                                    const isOk = PROXY_IS_RUST
+                                        ? !!probeResult?.success
+                                        : (probeResult && (probeResult.status === 200 || probeResult.status === 206 || probeResult.status === 302));
+                                    if (isOk) {
                                         functionalChannels.push(originalBatchItem.channel);
                                     } else {
                                         degradedChannels.push(originalBatchItem.channel);
-                                        console.warn(`❌ [PRE-FLIGHT 503] Eliminando inventario degradado: ${originalBatchItem.url} (status: ${probeResult?.status})`);
+                                        const reason = PROXY_IS_RUST ? (probeResult?.error || 'no-data') : `status: ${probeResult?.status}`;
+                                        console.warn(`❌ [PRE-FLIGHT 503] Eliminando inventario degradado: ${originalBatchItem.url} (${reason})`);
                                     }
                                 });
                             } else {
@@ -7632,6 +8237,153 @@ function __getOmegaGodTierDirectives(channel, cfg) {
     }
 
     // ═══════════════════════════════════════════════════════════════════════════
+    // STREAMING DIRECTO A DISCO (Zero-Copy) — Fix para archivos >500MB
+    // Bug: Blob monolítico de 805MB consume ~2.4GB RAM → Chrome OOM → 0 bytes
+    // Fix: File System Access API (showSaveFilePicker) escribe directo a disco
+    //      con fallback chunked-Blob para navegadores sin soporte FSAA
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    async function generateAndDownloadStreaming(channels, options = {}) {
+        // ── PRE-PROCESAMIENTO: Validación + Schema Gate + Health Check ──
+        // Reutilizamos generateM3U8 pero solo para pre-procesamiento,
+        // SIN materializar el blob final
+        if (!channels || !Array.isArray(channels) || channels.length === 0) {
+            console.error('❌ [STREAM-DISK] No hay canales para generar');
+            return null;
+        }
+
+        // AUTO-DELTA METADATA SCAN
+        if (window.apeScanMetadataCluster && options.skipMetaScan !== true) {
+            console.log("🧠 [APE-META] Auto-escaneando metadata delta antes de generar...");
+            if (window.HUD_TYPED_ARRAYS) window.HUD_TYPED_ARRAYS.log('🧠 Iniciando Inteligencia Metadata (Delta)...', '#8b5cf6');
+            await window.apeScanMetadataCluster(true);
+        }
+
+        // Schema Gate
+        let safeChannels = channels;
+        try {
+            const validator = window.GENERATION_VALIDATOR_V9 || window.ApeValidator;
+            if (validator && typeof validator.validateAndTranslate === 'function') {
+                const result = validator.validateAndTranslate(channels);
+                if (result.valid) {
+                    safeChannels = result.cleanChannels;
+                    console.log(
+                        `%c🛡️ [SCHEMA GATE] ${channels.length} → ${safeChannels.length} channels ` +
+                        `(repaired: ${result.stats.repaired}, deduped: ${result.stats.duplicates}, ` +
+                        `sanitized: ${result.stats.sanitized})`,
+                        'color: #2196f3; font-weight: bold;'
+                    );
+                } else {
+                    console.warn('⚠️ [SCHEMA GATE] Proceeding with unvalidated channels (fallback)');
+                }
+            }
+        } catch (e) {
+            console.warn('⚠️ [SCHEMA GATE] Validator error, proceeding:', e.message);
+        }
+
+        const filename = options.filename || `APE_LISTA_${Date.now()}.m3u8`;
+        const totalChannels = safeChannels.length;
+
+        // ═══ RUTA 1: File System Access API (Chrome 86+, Edge 86+) ═══
+        // Zero-copy: stream.pipeTo(writable) → datos van directo al disco
+        // RAM constante ~50MB sin importar tamaño del archivo
+        if (typeof window.showSaveFilePicker === 'function') {
+            try {
+                console.log(`📁 [STREAM-DISK] Usando File System Access API (zero-copy)`);
+                const fileHandle = await window.showSaveFilePicker({
+                    suggestedName: filename,
+                    types: [{
+                        description: 'M3U8 Playlist OMEGA',
+                        accept: { 'application/x-mpegURL': ['.m3u8'] }
+                    }]
+                });
+
+                const writable = await fileHandle.createWritable();
+                const stream = generateM3U8Stream(safeChannels, options);
+
+                // pipeTo() transfiere chunk por chunk sin acumular en RAM
+                await stream.pipeTo(writable);
+
+                console.log(`✅ [STREAM-DISK] Archivo escrito directo a disco: ${filename}`);
+                console.log(`   📊 ${totalChannels} canales | Streaming completado sin Blob en RAM`);
+
+                // Disparar evento para gateway-manager
+                if (typeof window !== 'undefined') {
+                    window.dispatchEvent(new CustomEvent('m3u8-generated', {
+                        detail: {
+                            filename: filename,
+                            channelCount: totalChannels,
+                            generator: 'TYPED_ARRAYS_ULTIMATE',
+                            version: VERSION,
+                            mode: 'STREAM_TO_DISK'
+                        }
+                    }));
+                }
+
+                return { filename, size: 'streamed-to-disk', channels: totalChannels, mode: 'FSAA' };
+            } catch (e) {
+                if (e.name === 'AbortError') {
+                    console.log('📁 [STREAM-DISK] Usuario canceló el diálogo de guardado');
+                    return null;
+                }
+                console.warn('[STREAM-DISK] showSaveFilePicker failed, falling back to chunked-blob:', e.message);
+            }
+        }
+
+        // ═══ RUTA 2: Chunked-Blob Fallback (Firefox, Safari, etc.) ═══
+        // Acumula Uint8Array chunks y los pasa a new Blob([...chunks])
+        // Esto es más eficiente que Response.blob() porque:
+        // - No crea un Response intermedio
+        // - Blob([chunks]) puede usar referencia sin copiar (browser-dependent)
+        console.log(`📦 [STREAM-DISK] Fallback: Chunked-Blob (sin FSAA)`);
+        const stream = generateM3U8Stream(safeChannels, options);
+        const reader = stream.getReader();
+        const chunks = [];
+        let totalSize = 0;
+
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            chunks.push(value);
+            totalSize += value.byteLength;
+        }
+
+        const blob = new Blob(chunks, { type: 'application/x-mpegURL' });
+        // Liberar referencias de chunks — solo queda el blob
+        chunks.length = 0;
+
+        console.log(`📦 [STREAM-DISK] Blob ensamblado: ${(totalSize / 1048576).toFixed(2)} MB`);
+
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        setTimeout(() => URL.revokeObjectURL(url), 10000);
+
+        console.log(`📥 [STREAM-DISK] Archivo descargado: ${filename} (${(blob.size / 1048576).toFixed(1)} MB)`);
+
+        // Disparar evento
+        if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('m3u8-generated', {
+                detail: {
+                    content: blob,
+                    filename: filename,
+                    channelCount: totalChannels,
+                    generator: 'TYPED_ARRAYS_ULTIMATE',
+                    version: VERSION,
+                    size: blob.size,
+                    mode: 'CHUNKED_BLOB'
+                }
+            }));
+        }
+
+        return { filename, blob, size: blob.size, channels: totalChannels, mode: 'CHUNKED_BLOB' };
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
     // INTEGRACIÓN GLOBAL
     // ═══════════════════════════════════════════════════════════════════════════
 
@@ -7654,6 +8406,7 @@ function __getOmegaGodTierDirectives(channel, cfg) {
             generate: generateM3U8,
             generateStream: generateM3U8Stream,
             generateAndDownload: generateAndDownload,
+            generateAndDownloadStreaming: generateAndDownloadStreaming,
             generateChannelEntry: generateChannelEntry,
             generateJWT: generateJWT68Fields,
             determineProfile: determineProfile,
@@ -7742,8 +8495,6 @@ function __getOmegaGodTierDirectives(channel, cfg) {
                         console.log(`🔑 [TYPED-ARRAYS] Injecting ${options._activeServers.length} servers into generator`);
                     }
                     
-                    options._autoDownload = false; // Elude el bloqueo de Transient Activation de 11s
-
                     // 👉 INYECCIÓN VISUAL V6 OMEGA: Mostrar feedback al milisegundo de clickear
                     const overlay = document.createElement("div");
                     overlay.innerHTML = `
@@ -7751,44 +8502,67 @@ function __getOmegaGodTierDirectives(channel, cfg) {
                             <div style="font-size:35px; font-weight:bold; margin-bottom:15px; text-shadow: 0 0 15px #10b981;">🚀 ORQUESTADOR OMEGA V6 ACTIVO</div>
                             <div id="ape-meta-hud-status" style="font-size:20px; color:#fff; margin-bottom:10px;">Procesando Invariante de 900 Líneas por Canal...</div>
                             <div style="font-size:18px; color:#f59e0b;">Canales en Pool: ${channels.length}</div>
-                            <div style="font-size:14px; margin-top:30px; color:#6b7280;">Compilando Metadatos HLS, TLS Córtex y JWT (Extremos L0-L13)...<br/>El navegador puede congelarse unos segundos. Conserva la calma.</div>
+                            <div style="font-size:14px; margin-top:30px; color:#6b7280;">Streaming directo a disco (Zero-Copy RAM)...<br/>El diálogo de guardado aparece primero. Selecciona ubicación.</div>
                             <div id="ape-meta-hud-action" style="margin-top: 40px; display: none;"></div>
                         </div>
                     `;
                     document.body.appendChild(overlay);
 
-                    // Defer heavy execution by 100ms so the browser paints the HUD overlay
+                    // ═══════════════════════════════════════════════════════════════
+                    // STREAM-TO-DISK FIX: Evita materializar 805MB en RAM como Blob
+                    // Usa showSaveFilePicker → stream.pipeTo(writable) → zero copy
+                    // Fallback: Chunked-Blob (más eficiente que Response.blob())
+                    // ═══════════════════════════════════════════════════════════════
                     setTimeout(() => {
-                        generateAndDownload(channels, options).then(result => {
+                        generateAndDownloadStreaming(channels, options).then(result => {
                             if (!result) {
-                                document.body.removeChild(overlay);
+                                if (document.body.contains(overlay)) document.body.removeChild(overlay);
                                 return;
                             }
                             
-                            // Mostrar estado de éxito en el HUD
+                            // Si fue FSAA (stream-to-disk), el archivo ya está en disco
+                            if (result.mode === 'FSAA') {
+                                document.getElementById('ape-meta-hud-status').innerHTML = 
+                                    `✅ ARCHIVO ESCRITO DIRECTO A DISCO (${result.channels} canales)`;
+                                document.getElementById('ape-meta-hud-status').style.color = "#10b981";
+                                
+                                const actionDiv = document.getElementById('ape-meta-hud-action');
+                                actionDiv.style.display = "block";
+                                actionDiv.innerHTML = `
+                                    <div style="font-size:20px; color:#4ade80; margin-bottom:15px;">📁 Zero-Copy completado — 0 bytes en RAM</div>
+                                    <button id="ape-meta-btn-close" style="padding: 14px 30px; font-size: 18px; background: #065f46; color: #10b981; border: 1px solid #10b981; border-radius: 8px; cursor: pointer;">Volver a la interfaz</button>
+                                `;
+                                document.getElementById('ape-meta-btn-close').addEventListener('click', () => {
+                                    if (document.body.contains(overlay)) document.body.removeChild(overlay);
+                                });
+                                return;
+                            }
+                            
+                            // Si fue CHUNKED_BLOB, mostrar botón de descarga
                             document.getElementById('ape-meta-hud-status').innerHTML = "✅ INVARIANTE COMPILADA CON ÉXITO";
                             document.getElementById('ape-meta-hud-status').style.color = "#10b981";
                             
-                            // Mostrar botón de descarga requerida por el browser (Nueva Activación Transitoria)
                             const actionDiv = document.getElementById('ape-meta-hud-action');
                             actionDiv.style.display = "block";
+                            const sizeMB = typeof result.size === 'number' ? (result.size / 1048576).toFixed(1) : '?';
                             actionDiv.innerHTML = `
                                 <button id="ape-meta-btn-download" style="padding: 18px 40px; font-size: 24px; font-weight: bold; background: #10b981; color: #000; border: 2px solid #065f46; border-radius: 8px; cursor: pointer; box-shadow: 0 0 25px rgba(16, 185, 129, 0.6); text-transform: uppercase;">
-                                    📥 DESCARGAR M3U8 (${(result.size / 1024 / 1024).toFixed(1)} MB)
+                                    📥 DESCARGAR M3U8 (${sizeMB} MB)
                                 </button>
                                 <div style="margin-top: 25px;">
                                     <a href="#" id="ape-meta-btn-close" style="color: #9ca3af; text-decoration: underline; font-size: 16px;">Volver a la interfaz</a>
                                 </div>
                             `;
                             
-                            // Listener de Descarga
+                            // Listener de Descarga (solo para CHUNKED_BLOB mode)
                             document.getElementById('ape-meta-btn-download').addEventListener('click', () => {
+                                if (!result.blob) return;
                                 const url = URL.createObjectURL(result.blob);
                                 const link = document.createElement('a');
                                 link.href = url;
                                 link.download = result.filename;
                                 document.body.appendChild(link);
-                                link.click(); // Funciona 100% porque está bajo un nuevo CLICK_EVENT
+                                link.click();
                                 document.body.removeChild(link);
                                 
                                 console.log(`📥 [TYPED-ARRAYS] Archivo descargado manualmente: ${result.filename}`);

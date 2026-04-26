@@ -4220,9 +4220,11 @@
             // 🧪 LAB integration — rehidratar datos optimizados desde LAB Excel si existen
             this.nivel1Directives = [];
             this.nivel3PerLayer = {};
+            this.placeholdersMap = {};
             this.evasionPool = { user_agents: [], referers: [] };
             this.labServers = [];
             this.labMetadata = {};
+            this.configGlobal = {};
             this.labExportedAt = null;
             try { this.loadLABFromStorage && this.loadLABFromStorage(); } catch (e) {}
         }
@@ -4356,17 +4358,26 @@
                 serversCount: 0
             };
             try {
-                if (!data || data.lab_version !== 'omega_v1') {
-                    throw new Error('Schema invalido (esperado omega_v1)');
+                const supportedSchemas = ['omega_v1'];
+                const isBulletproof = data.lab_schema_variant === 'omega_v2_bulletproof_perprofile' || data.bulletproof === true;
+                if (!data || !supportedSchemas.includes(data.lab_version)) {
+                    throw new Error(`Schema invalido (esperado: ${supportedSchemas.join(', ')})`);
                 }
+                if (isBulletproof) console.log('[LAB-CONSUMER] 🛡 Bulletproof JSON detectado — consumiendo 100% de los campos.');
                 if (data.playlist_format !== 'm3u8') {
                     throw new Error('playlist_format debe ser m3u8');
                 }
 
                 // === 1. PROFILES ===
-                // Helper: convierte campos numéricos de strings a Number (LAB exporta como string)
+                // Helper: convierte campos numéricos de strings a Number (LAB Excel exporta TODO como string)
                 // FIX v4.20.4: maneja coma decimal española "2,6" → 2.6
-                const NUMERIC_SETTINGS = ['buffer','playerBuffer','bitrate','bufferSeconds','t1','t2','fps','headersCount','level'];
+                // FIX v4.20.5 (2026-04-26): auto-detect TODOS los strings numéricos.
+                //   Antes: allowlist de 9 keys cubría solo ~6% de los valores numéricos del LAB.
+                //   Ahora: cualquier string que matchee /^-?\d+([.,]\d+)?$/ se coerce.
+                //   Aplicado a settings + hlsjs + prefetch_config (las 3 secciones JS-consumidas).
+                //   NO aplicado a vlcopt/kodiprop/headerOverrides (se emiten como texto plano,
+                //   tipo no afecta wire format HTTP).
+                const NUMERIC_RE = /^-?\d+([.,]\d+)?$/;
                 const toNum = (v) => {
                     if (v === null || v === undefined || v === '') return 0;
                     if (typeof v === 'number') return v;
@@ -4378,12 +4389,13 @@
                     const n = Number(s);
                     return isNaN(n) ? 0 : n;
                 };
-                const coerceSettings = (settings) => {
-                    if (!settings || typeof settings !== 'object') return settings;
-                    const out = Object.assign({}, settings);
-                    for (const k of NUMERIC_SETTINGS) {
-                        if (out[k] !== undefined && out[k] !== null && out[k] !== '') {
-                            out[k] = toNum(out[k]);
+                const coerceNumericStrings = (obj) => {
+                    if (!obj || typeof obj !== 'object') return obj;
+                    const out = Object.assign({}, obj);
+                    for (const k of Object.keys(out)) {
+                        const v = out[k];
+                        if (typeof v === 'string' && NUMERIC_RE.test(v.trim())) {
+                            out[k] = toNum(v);
                         }
                     }
                     return out;
@@ -4394,21 +4406,34 @@
                     const lp = labProfiles[pid];
                     if (!lp) continue;
 
-                    // 🔧 FIX: coerce settings strings → Number antes de merge
+                    // 🔧 FIX: coerce strings numéricos → Number antes de merge
+                    // Cubre las 3 secciones que JS consume como números (settings + hlsjs + prefetch_config).
                     const lpFixed = Object.assign({}, lp);
-                    if (lpFixed.settings) lpFixed.settings = coerceSettings(lpFixed.settings);
+                    if (lpFixed.settings) lpFixed.settings = coerceNumericStrings(lpFixed.settings);
+                    if (lpFixed.hlsjs) lpFixed.hlsjs = coerceNumericStrings(lpFixed.hlsjs);
+                    if (lpFixed.prefetch_config) lpFixed.prefetch_config = coerceNumericStrings(lpFixed.prefetch_config);
 
                     if (this.profiles[pid]) {
-                        // headerOverrides MERGE (no reemplazo total — preserva los existentes y añade los del LAB)
-                        const existingHO = this.profiles[pid].headerOverrides || {};
-                        const labHO = lpFixed.headerOverrides || {};
-                        const mergedHO = Object.assign({}, existingHO, labHO);
-                        result.headersAdded += Object.keys(labHO).length;
-
-                        // Deep merge para el resto
-                        this.profiles[pid] = this._deepMerge(this.profiles[pid], lpFixed);
-                        // headerOverrides override con el merge calculado
-                        this.profiles[pid].headerOverrides = mergedHO;
+                        if (isBulletproof) {
+                            // 🛡 BULLETPROOF: SOBREPONER (REPLACE total, no merge).
+                            // Doctrina del usuario: el LAB Excel es la verdad absoluta. Lo que
+                            // calibró el solver (LHS→GA→SA→NM) reemplaza completamente lo que
+                            // tenía el frontend. Sin contaminación de perfiles previos.
+                            // Cubre los 8 campos extra del bulletproof (role, bounds,
+                            // optimized_knobs, fitness, solver_trace, optimized_timestamp,
+                            // player_enslavement, actor_injections) sin merge con valores viejos.
+                            this.profiles[pid] = JSON.parse(JSON.stringify(lpFixed));
+                            result.headersAdded += Object.keys(lpFixed.headerOverrides || {}).length;
+                        } else {
+                            // Modo legacy (no-bulletproof): deep merge preserva headers viejos
+                            // que LAB no envía. headerOverrides MERGE explícito (LAB gana en colisión).
+                            const existingHO = this.profiles[pid].headerOverrides || {};
+                            const labHO = lpFixed.headerOverrides || {};
+                            const mergedHO = Object.assign({}, existingHO, labHO);
+                            result.headersAdded += Object.keys(labHO).length;
+                            this.profiles[pid] = this._deepMerge(this.profiles[pid], lpFixed);
+                            this.profiles[pid].headerOverrides = mergedHO;
+                        }
                     } else {
                         // Profile nuevo (no debería pasar pero safe-guard)
                         this.profiles[pid] = JSON.parse(JSON.stringify(lpFixed));
@@ -4427,8 +4452,19 @@
                     result.nivel3Total += (this.nivel3PerLayer[layer] || []).length;
                 }
 
+                // === 3b. PLACEHOLDERS MAP (Excel 32_PLACEHOLDERS_MAP) ===
+                // Single source de placeholders {namespace.key} → valor real.
+                // Consumido por placeholder resolver en m3u8-typed-arrays-ultimate.js (anti-{config.X} literal upstream).
+                this.placeholdersMap = data.placeholders_map || {};
+                result.placeholdersCount = Object.keys(this.placeholdersMap).length;
+
                 // === 4. EVASION POOL ===
                 this.evasionPool = data.evasion_pool || { user_agents: [], referers: [] };
+                // === 4b. CONFIG_GLOBAL (LAB Excel hoja 18_CONFIG) ===
+                // 48 parámetros globales calibrados (UA_Default, Referer_Default, JWT_*,
+                // Client_*, etc.). Consumido por placeholder resolver {config.X} en el
+                // generador (PATH A) y por validador.
+                this.configGlobal = data.config_global || {};
 
                 // === 5. SERVERS — solo guardar, app.state los absorbe via event ===
                 this.labServers = data.servers || [];
@@ -4447,11 +4483,31 @@
                 // Datos LAB en keys nuevas
                 localStorage.setItem('ape_lab_nivel1', JSON.stringify(this.nivel1Directives));
                 localStorage.setItem('ape_lab_nivel3', JSON.stringify(this.nivel3PerLayer));
+                localStorage.setItem('ape_lab_placeholders', JSON.stringify(this.placeholdersMap));
                 localStorage.setItem('ape_lab_evasion', JSON.stringify(this.evasionPool));
+                localStorage.setItem('ape_lab_config_global', JSON.stringify(this.configGlobal));
                 localStorage.setItem('ape_lab_servers', JSON.stringify(this.labServers));
                 localStorage.setItem('ape_lab_metadata', JSON.stringify({
                     metadata: this.labMetadata,
                     exported_at: this.labExportedAt,
+                    imported_at: new Date().toISOString()
+                }));
+
+                // === 8. LAB METADATA BULLETPROOF (added 2026-04-18) ===
+                this.labSchemaVariant = data.lab_schema_variant || null;
+                this.labBulletproof = data.bulletproof === true;
+                this.labMetaPerProfile = data.meta_per_profile || null;
+                // Fix B bridge: expose labVersion and bulletproof for enforceLABPresence() + _getLABConfig()
+                this.labVersion = data.lab_version || null;
+                this.bulletproof = data.bulletproof === true;
+                this.labFileName = data.labFileName || data.meta_per_profile?.source_file || 'LAB_CALIBRATED';
+                this.bulletproofVersion = data.lab_schema_variant || '';
+                localStorage.setItem('ape_lab_bulletproof_meta', JSON.stringify({
+                    lab_schema_variant: this.labSchemaVariant,
+                    bulletproof: this.labBulletproof,
+                    labVersion: this.labVersion,
+                    labFileName: this.labFileName,
+                    meta_per_profile: this.labMetaPerProfile,
                     imported_at: new Date().toISOString()
                 }));
 
@@ -4486,8 +4542,12 @@
                 if (n1) this.nivel1Directives = JSON.parse(n1);
                 const n3 = localStorage.getItem('ape_lab_nivel3');
                 if (n3) this.nivel3PerLayer = JSON.parse(n3);
+                const ph = localStorage.getItem('ape_lab_placeholders');
+                if (ph) this.placeholdersMap = JSON.parse(ph);
                 const ev = localStorage.getItem('ape_lab_evasion');
                 if (ev) this.evasionPool = JSON.parse(ev);
+                const cg = localStorage.getItem('ape_lab_config_global');
+                if (cg) this.configGlobal = JSON.parse(cg);
                 const sv = localStorage.getItem('ape_lab_servers');
                 if (sv) this.labServers = JSON.parse(sv);
                 const md = localStorage.getItem('ape_lab_metadata');
@@ -4496,7 +4556,16 @@
                     this.labMetadata = o.metadata;
                     this.labExportedAt = o.exported_at;
                 }
-            } catch (e) { console.warn('[LAB] loadLABFromStorage:', e); }
+                const bpm = localStorage.getItem('ape_lab_bulletproof_meta');
+                if (bpm) {
+                    const o = JSON.parse(bpm);
+                    this.labSchemaVariant = o.lab_schema_variant;
+                    this.labBulletproof = o.bulletproof;
+                    this.labMetaPerProfile = o.meta_per_profile;
+                }
+            } catch (e) {
+                console.warn('[LAB] loadLABFromStorage:', e);
+            }
         }
 
         /**

@@ -1,0 +1,163 @@
+{
+  "#1": {
+    "verified": true,
+    "macro": "Brain_EnforceMatrixScope",
+    "snippet": []
+  },
+  "#2": {
+    "total_names": 25,
+    "malformed_count": 0,
+    "samples": []
+  },
+  "#3": {
+    "total_dvs": 6,
+    "issues_count": 0,
+    "issues": []
+  },
+  "#4": {
+    "pm_row": 23,
+    "cfg_row": 21
+  },
+  "#5": {
+    "count": 2,
+    "samples": [
+      [
+        "B33",
+        "='18_CONFIG'!C4"
+      ],
+      [
+        "B35",
+        "='18_CONFIG'!C5"
+      ]
+    ]
+  },
+  "#6": {
+    "count": 33,
+    "samples": [
+      [
+        "G10",
+        "2.000000001e+33"
+      ],
+      [
+        "H10",
+        "1.000000005e+31"
+      ],
+      [
+        "I10",
+        "5.00000002e+29"
+      ],
+      [
+        "G13",
+        "2.000000001e+33"
+      ],
+      [
+        "H13",
+        "1.000000005e+31"
+      ],
+      [
+        "I13",
+        "5.00000002e+29"
+      ],
+      [
+        "G21",
+        "2.000000001e+33"
+      ],
+      [
+        "H21",
+        "1.000000005e+31"
+      ]
+    ]
+  },
+  "#7": {
+    "count": 0,
+    "locations": []
+  },
+  "#8": {
+    "count": 40,
+    "samples": [
+      [
+        "APE_LAB_BRAIN.bas",
+        90,
+        "' Delega la lectura + parseo + escritura a PowerShell externo"
+      ],
+      [
+        "APE_LAB_BRAIN.bas",
+        107,
+        "psScript = \"C:\\tmp\\import_frontend_ultrafast.ps1\""
+      ],
+      [
+        "APE_LAB_BRAIN.bas",
+        115,
+        "Set sh = CreateObject(\"WScript.Shell\")"
+      ],
+      [
+        "APE_LAB_BRAIN.bas",
+        117,
+        "cmd = \"powershell.exe -NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File \"\"\" & p"
+      ],
+      [
+        "APE_LAB_BRAIN.bas",
+        3759,
+        "If dir(Environ(\"SystemRoot\") & \"\\System32\\curl.exe\") = \"\" Then MsgBox \"curl.exe no encontr"
+      ],
+      [
+        "APE_LAB_BRAIN.bas",
+        3762,
+        "cmd = \"cmd /c curl.exe -s -o NUL --max-time 10 -A \"\"\" & ResolvePlaceholder(\"{config.user_a"
+      ],
+      [
+        "APE_LAB_BRAIN.bas",
+        3768,
+        "If dir(tmpFile) = \"\" Then MsgBox \"curl sin output\", vbExclamation: Exit Sub"
+      ],
+      [
+        "APE_WIRING.bas",
+        1331,
+        "' Lanza el audit PowerShell externo (3 capas, scan ~3min)."
+      ],
+      [
+        "APE_WIRING.bas",
+        1335,
+        "Dim sh As Object: Set sh = CreateObject(\"WScript.Shell\")"
+      ],
+      [
+        "APE_WIRING.bas",
+        1343,
+        "cmd = \"powershell.exe -NoProfile -ExecutionPolicy Bypass -File \"\"C:\\tmp\\scorecard_v2_full."
+      ],
+      [
+        "APE_WIRING.bas",
+        1349,
+        "\"Se ejecuta en ventana de PowerShell visible.\" & vbCrLf & vbCrLf & _"
+      ],
+      [
+        "APE_WIRING.bas",
+        1356,
+        "Application.StatusBar = \"Lanzando audit en PowerShell...\""
+      ],
+      [
+        "APE_WIRING.bas",
+        1933,
+        "' Sustituye la pantalla negra PowerShell por UserForm modeless"
+      ],
+      [
+        "APE_WIRING.bas",
+        1940,
+        "' Sustituye la pantalla negra PowerShell por UserForm modeless"
+      ],
+      [
+        "APE_WIRING.bas",
+        1992,
+        "Const PROGRESS_FILE As String = \"C:\\tmp\\scorecard_progress.txt\""
+      ]
+    ]
+  },
+  "#9": {
+    "rows": 18217,
+    "headers_count": 1,
+    "has_last_status": false
+  },
+  "#10": {
+    "score_findings": []
+  }
+}
