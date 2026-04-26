@@ -1384,7 +1384,21 @@ const UAPhantomEngine = (function () {
                             codec_priority:         _firstDef(s.codec_priority, hardcoded.codec_priority),
                             codec_full:             _firstDef(s.codec_full, hardcoded.codec_full),
                             // ── HDR / Color (claves LAB con nombres bit_depth/peak_luminance_nits) ──
-                            hdr_support:            s.hdr_mode ? (String(s.hdr_mode).toUpperCase() !== 'SDR') : hardcoded.hdr_support,
+                            // FIX 2026-04-26 (origen del bug `.join is not a function`):
+                            //   Antes: si s.hdr_mode existía, devolvía boolean (true/false), rompiendo
+                            //   los consumidores que esperan array (`(cfg.hdr_support || []).join(',')`).
+                            //   Ahora: deriva un array de modos HDR desde s.hdr_mode (DOLBY_VISION,
+                            //   HDR10PLUS, HDR10, HLG, SDR), con fallback al hardcoded.hdr_support (array).
+                            //   Match exacto con la lógica de selección de modo HDR per-profile del LAB.
+                            hdr_support:            (() => {
+                                const m = s.hdr_mode ? String(s.hdr_mode).toUpperCase() : '';
+                                if (m === 'DOLBY_VISION') return ['dolby-vision', 'hdr10+', 'hdr10', 'hlg', 'sdr'];
+                                if (m === 'HDR10PLUS' || m === 'HDR10+') return ['hdr10+', 'hdr10', 'hlg', 'sdr'];
+                                if (m === 'HDR10') return ['hdr10', 'hlg', 'sdr'];
+                                if (m === 'HLG') return ['hlg', 'sdr'];
+                                if (m === 'SDR') return ['sdr'];
+                                return Array.isArray(hardcoded.hdr_support) ? hardcoded.hdr_support : ['sdr'];
+                            })(),
                             hdr_mode:               _firstDef(s.hdr_mode, hardcoded.hdr_mode),
                             color_depth:            _firstDef(s.bit_depth, s.bitDepth, hardcoded.color_depth),
                             color_space:            _firstDef(s.color_space, hardcoded.color_space),
@@ -2009,6 +2023,37 @@ const UAPhantomEngine = (function () {
     // ═══════════════════════════════════════════════════════════════════════════
 
 
+    // ── GAP PLAN APPLIER (omega_v2.2) ──────────────────────────────────
+    // Consume options.bulletproof_gap_plan e inyecta canonical_template_by_level
+    // para items con action='IMPLEMENTAR' (los REPLICAR ya están en lista; QUITAR
+    // = omit, no aplica). Skip cualquier item con already_present_in_lab[level]=true.
+    // Respeta injection_order para emitir determinístico.
+    // Retorna array de líneas (sin tag prefix dedup — el caller hace dedup).
+    function applyGapPlanForLevel(gapPlan, level, profileId) {
+        if (!gapPlan || !Array.isArray(gapPlan.items)) return [];
+        const out = [];
+        const sorted = gapPlan.items
+            .filter(it => (it.action || '').toUpperCase() === 'IMPLEMENTAR')
+            .filter(it => {
+                const tpl = it.canonical_template_by_level && it.canonical_template_by_level[level];
+                if (!Array.isArray(tpl) || tpl.length === 0) return false;
+                if (it.already_present_in_lab && it.already_present_in_lab[level] === true) return false;
+                return true;
+            })
+            .sort((a, b) => (a.injection_order ?? 999) - (b.injection_order ?? 999));
+        for (const it of sorted) {
+            // Para NIVEL_2_PROFILES con resolves_to_all_profiles=false y profileId presente,
+            // skip items que no aplican a este perfil específico.
+            if (level === 'NIVEL_2_PROFILES' && profileId && it.resolves_to_all_profiles === false) continue;
+            for (const line of it.canonical_template_by_level[level]) {
+                if (line) out.push(line);
+            }
+        }
+        return out;
+    }
+    // Expose for debug
+    if (typeof window !== 'undefined') window._applyGapPlanForLevel = applyGapPlanForLevel;
+
     function generateGlobalHeader(channelsCount, options = {}) {
         const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 18) + 'Z';
         const totalChannels = typeof window !== 'undefined' && window.app && typeof window.app.getFilteredChannels === 'function' ? window.app.getFilteredChannels().length : channelsCount;
@@ -2093,7 +2138,18 @@ const UAPhantomEngine = (function () {
                     if (!dynamicHeaders.includes(lineStr)) dynamicHeaders.push(lineStr);
                 }
             }
-            
+
+            // ── OMEGA GAP PLAN — IMPLEMENTAR items para NIVEL_1_HEADER ─────────
+            // Cierra los gaps del scorecard (CMCD CTA-5004, OMEGA_BUILD lock,
+            // LAB-SOURCE anchor) cuyo canonical_template_by_level cocinó el LAB Excel.
+            // Skip si already_present_in_lab[NIVEL_1_HEADER]=true (no duplicar).
+            if (options.bulletproof_gap_plan) {
+                const gpL1 = applyGapPlanForLevel(options.bulletproof_gap_plan, 'NIVEL_1_HEADER');
+                for (const line of gpL1) {
+                    if (!dynamicHeaders.includes(line)) dynamicHeaders.push(line);
+                }
+            }
+
             // ── PLACEHOLDER RESOLVER (master playlist) ─────────────────────────
             // Resuelve placeholders runtime que el LAB Excel deja como template:
             //   {auto-now}, {auto}, {utc}, {lutc} → ISO timestamp
@@ -4024,7 +4080,10 @@ ${options.dictatorMode ? `#` + Array.from({length: 64}).map(() => Math.random().
             "X-Reconnect-Delay-Ms": "50,100,200",
             "X-Seamless-Failover": "true-ultra",
             "X-Country-Code": (cfg._classification?.country?.code || cfg._classification?.country?.group || 'US').substring(0, 2).toUpperCase(),
-            "X-HDR-Support": (cfg.hdr_support || []).join(',') || 'none',
+            // FIX 2026-04-26: cfg.hdr_support puede venir del LAB como string CSV
+            // (e.g. "hdr10plus,dolby-vision,hlg") o como array. Tolerar ambos para no
+            // crashear en .join() cuando es string. Default 'none' si vacío/missing.
+            "X-HDR-Support": (Array.isArray(cfg.hdr_support) ? cfg.hdr_support.join(',') : (typeof cfg.hdr_support === 'string' ? cfg.hdr_support : '')) || 'none',
             "X-Color-Depth": `${cfg.color_depth || 8}bit`,
             "X-Color-Space": "bt2020",
             "X-Dynamic-Range": "hdr",
@@ -4887,7 +4946,7 @@ ${options.dictatorMode ? `#` + Array.from({length: 64}).map(() => Math.random().
             `#EXT-X-APE-BITRATE:${cfg.bitrate || 5000}kbps`,
 
             // ── SECTION 2 — LCEVC Identity (6 tags) ────────────────────────
-            `#EXT-X-APE-HDR-PROFILE:${(cfg.hdr_support || []).join(',') || 'none'}`,
+            `#EXT-X-APE-HDR-PROFILE:${(Array.isArray(cfg.hdr_support) ? cfg.hdr_support.join(',') : (typeof cfg.hdr_support === 'string' ? cfg.hdr_support : '')) || 'none'}`,
             `#EXT-X-APE-LCEVC-ENABLED:true`,
             `#EXT-X-APE-LCEVC-STATE:${lcevcState}`,
             `#EXT-X-APE-LCEVC-BASE-CODEC:${lcevcBaseCodec}`,
@@ -5241,7 +5300,7 @@ ${options.dictatorMode ? `#` + Array.from({length: 64}).map(() => Math.random().
             // PACKAGE G — HDR ADVANCED COMPLETE (42 tags)
             // Base 32 + New 10
             // ══════════════════════════════════════════════════════════════
-            `#EXT-X-APE-HDR-CHAIN:${(cfg.hdr_support || ['dolby-vision', 'hdr10+', 'hdr10', 'hlg', 'sdr']).join(',')}`,
+            `#EXT-X-APE-HDR-CHAIN:${Array.isArray(cfg.hdr_support) ? cfg.hdr_support.join(',') : (typeof cfg.hdr_support === 'string' && cfg.hdr_support ? cfg.hdr_support : 'dolby-vision,hdr10+,hdr10,hlg,sdr')}`,
             `#EXT-X-APE-HDR-COLOR-SPACE:${cfg.color_space || 'BT.2020,BT.709'}`,
             `#EXT-X-APE-HDR-TRANSFER-FUNCTION:${cfg.transfer_function || 'SMPTE-ST-2084,ARIB-STD-B67,BT.709'}`,
             `#EXT-X-APE-HDR-COLOR-PRIMARIES:${cfg.color_primaries || 'BT.2020'}`,
@@ -6458,8 +6517,18 @@ function __getOmegaGodTierDirectives(channel, cfg) {
         const _fps796       = cfg.fps             || 60;
         const _codec796     = (() => { switch(cfg.codec_primary) { case 'VVC': return 'vvc1.1.L63.00.0.0'; case 'AV1': return 'av01.0.08M.08'; case 'AVC': return 'avc1.640028'; default: return 'hvc1.1.6.L153.B0'; } })();
         const _codecAudio   = cfg.audio_codec     || 'ec-3';
-        const _hdrMode      = cfg.hdr_support     ? 'PQ'  : 'SDR';
-        const _hdrNits      = cfg.hdr_support     ? 5000  : 300;
+        // FIX 2026-04-26: cfg.hdr_support ahora es array siempre (LAB-driven).
+        // Detectar HDR vs SDR mirando cfg.hdr_mode (string LAB: DOLBY_VISION/HDR10PLUS/HDR10/HLG/SDR)
+        // o como fallback si el array contiene algo distinto a solo 'sdr'.
+        const _isHDR = (() => {
+            if (cfg.hdr_mode) return String(cfg.hdr_mode).toUpperCase() !== 'SDR';
+            if (Array.isArray(cfg.hdr_support)) {
+                return cfg.hdr_support.some(m => String(m).toLowerCase() !== 'sdr');
+            }
+            return !!cfg.hdr_support;
+        })();
+        const _hdrMode      = _isHDR ? 'PQ'  : 'SDR';
+        const _hdrNits      = _isHDR ? 5000  : 300;
         const _vmaf         = cfg.vmaf_target     || 95;
         // ── BUFFER VALUES — SSOT LAB FIRST ────────────────────────────────────
         // Doctrina: el LAB Excel calibra buffer_ms/buffer_mb/buffer_segments por perfil.
@@ -6519,9 +6588,9 @@ function __getOmegaGodTierDirectives(channel, cfg) {
         // ════════════════════════════════════════════════════════════════════════
         lines.push(_extinf);
         lines.push(`#EXT-X-VERSION:7`);
-        lines.push(`#EXT-X-TARGETDURATION:2`);
-        lines.push(`#EXT-X-MEDIA-SEQUENCE:0`);
-        lines.push(`#EXT-X-PLAYLIST-TYPE:EVENT`);
+        // RFC 8216 §4.3.3: TARGETDURATION/MEDIA-SEQUENCE/PLAYLIST-TYPE pertenecen
+        // únicamente a Media Playlist; emitirlos en Master rompe parsers estrictos
+        // (hls.js strict, ExoPlayer 2.18+). Removido por audit 2026-04-26.
 
         // ════════════════════════════════════════════════════════════════════════
         // L1 — EXTVLCOPT — VLC/ExoPlayer Enslavement (129 líneas)
@@ -6770,6 +6839,17 @@ function __getOmegaGodTierDirectives(channel, cfg) {
             '{config.url_ext}':       'm3u8',
             '{config.exthttp_cap}':   '8',
             '{config.strip_spoofed_ips}': '8',
+            // Bug audit 2026-04-26: Excel hoja 32_PLACEHOLDERS_MAP no exporta esta clave.
+            // Sin fallback, Kodi recibe `inputstream.adaptive.stream_headers={config.kodi_headers_urlencoded}` literal y descarta headers custom.
+            '{config.kodi_headers_urlencoded}': [
+                `User-Agent=${encodeURIComponent(_ua796 || 'Mozilla/5.0 (Web0S; Linux/SmartTV) AppleWebKit/537.36 Chrome/91 Safari/537.36')}`,
+                `Referer=${encodeURIComponent('https://www.netflix.com/')}`,
+                `Origin=${encodeURIComponent('https://www.netflix.com')}`,
+                `Connection=keep-alive`,
+                `Accept=*/*`,
+                `Accept-Language=${encodeURIComponent('es-ES,en-US;q=0.9,es;q=0.8')}`,
+                `Accept-Encoding=identity`
+            ].join('&'),
             '{profile.resolution}':   _res796 || '1920x1080',
             '{profile.bandwidth}':    String(_bw796 || 10000000),
             '{profile.fps}':          String(_fps796 || 60),
@@ -7712,7 +7792,27 @@ function __getOmegaGodTierDirectives(channel, cfg) {
                     upsertVlcopt(lines, 'adaptive-livesyncplaybackrate', opt.maxLiveSyncPlaybackRate);
                 }
             }
-        
+
+            // 1c) nivel3_per_layer (GLOBAL defaults templates) — VLC/KOD/HTT/SYS (T4)
+            // Estos son DEFAULTS que el LAB Excel emite como templates con placeholders
+            // ({config.X}, {profile.X}). Aplicados ANTES de level_3_per_channel y
+            // actor_injections para que ellos puedan overridear con valores per-profile.
+            // EI/SI/URL son atributos de EXTINF/STREAM-INF/url builder — manejados aparte.
+            const n3layers = options.bulletproof_nivel3 || {};
+            const _entries = (layer) => Array.isArray(n3layers[layer]) ? n3layers[layer] : [];
+            for (const e of _entries('VLC')) {
+                if (e && e.key && e.value !== undefined) upsertVlcopt(lines, e.key, e.value);
+            }
+            for (const e of _entries('KOD')) {
+                if (e && e.key && e.value !== undefined) upsertKodiprop(lines, e.key, e.value);
+            }
+            for (const e of _entries('HTT')) {
+                if (e && e.key && e.value !== undefined) upsertExthttp(lines, e.key, e.value);
+            }
+            for (const e of _entries('SYS')) {
+                if (e && e.key && e.value !== undefined) upsertApeSys(lines, e.key, e.value);
+            }
+
             // 2) player_enslavement.level_3_per_channel → iterar por layer
             const l3 = labProfile.player_enslavement?.level_3_per_channel;
             if (l3) {
@@ -7835,6 +7935,32 @@ function __getOmegaGodTierDirectives(channel, cfg) {
                     upsertApeSys(lines, 'SYS-PREFETCH-SEGMENTS', srvActor.prefetch_segs);
                 if (srvActor.prefetch_par !== undefined)
                     upsertApeSys(lines, 'SYS-PREFETCH-PARALLEL', srvActor.prefetch_par);
+            }
+
+            // 10) actor_injections.player.vlc → EXTVLCOPT extra del actor (T4)
+            // Cubre el gap menor donde actor.player.vlc se almacenaba pero no se emitía.
+            const vlcActor = labProfile.actor_injections?.player?.vlc;
+            if (vlcActor && typeof vlcActor === 'object') {
+                if (vlcActor.network_caching_ms != null)
+                    upsertVlcopt(lines, 'network-caching', vlcActor.network_caching_ms);
+                if (vlcActor.live_caching_ms != null)
+                    upsertVlcopt(lines, 'live-caching', vlcActor.live_caching_ms);
+                if (vlcActor.sout_mux_caching_ms != null)
+                    upsertVlcopt(lines, 'sout-mux-caching', vlcActor.sout_mux_caching_ms);
+                if (vlcActor.reconnect_count != null)
+                    upsertVlcopt(lines, 'network-reconnect-count', vlcActor.reconnect_count);
+                if (vlcActor.clock_synchro != null)
+                    upsertVlcopt(lines, 'clock-synchro', vlcActor.clock_synchro);
+            }
+
+            // 11) OMEGA GAP PLAN — IMPLEMENTAR items para NIVEL_3_CHANNEL (T3)
+            // Inyecta directivas per-channel del gap_plan que el LAB cocinó como
+            // canonical_template_by_level. Skip already_present_in_lab[NIVEL_3_CHANNEL].
+            if (options.bulletproof_gap_plan) {
+                const gpL3 = applyGapPlanForLevel(options.bulletproof_gap_plan, 'NIVEL_3_CHANNEL');
+                for (const line of gpL3) {
+                    if (!lines.includes(line)) lines.push(line);
+                }
             }
         }
 
