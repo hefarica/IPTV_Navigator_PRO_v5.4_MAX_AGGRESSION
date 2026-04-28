@@ -1,0 +1,16 @@
+[Unit]
+Description=APE PRISMA ADB Payload Sync Daemon
+Documentation=https://github.com/hefarica/IPTV_Navigator_PRO_v5.4_MAX_AGGRESSION
+After=network-online.target wg-quick@wg0.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/opt/prisma-adb/prisma_adb_daemon.sh
+Restart=always
+RestartSec=10
+StandardOutput=null
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

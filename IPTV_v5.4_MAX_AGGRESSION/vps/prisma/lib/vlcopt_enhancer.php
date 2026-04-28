@@ -89,10 +89,20 @@ class VlcoptEnhancer
         ],
 
         'cmaf' => [
-            // Buffer sizing for low-latency CMAF
-            'adaptive-cache-size'      => '8000',
-            'network-caching'          => '8000',
-            'live-caching'             => '3000',
+            // BUFFER ULTRABOOST — 4K@120fps@80Mbps = 10 MB/s
+            // 30s buffer = 300 MB, minimum 60% = 180 MB = 18s insurance
+            // WiFi minimum sustained: 13 MB/s = 104 Mbps
+            'network-caching'          => '300000',   // 300s = 300,000ms — massive read-ahead
+            'live-caching'             => '9000',     // 9s live buffer
+            'file-caching'             => '300000',   // 300s file cache
+            'disc-caching'             => '300000',   // 300s disc cache
+            'adaptive-cache-size'      => '300000',   // 300s adaptive cache
+            // Clock compensation for 120fps
+            'clock-jitter'             => '0',        // zero jitter tolerance
+            'clock-synchro'            => '0',        // auto sync
+            // Prefetch: always read ahead aggressively
+            'prefetch-buffer-size'     => '314572800', // 300 MB in bytes
+            'prefetch-read-size'       => '134217728', // 128 MB pre-read
         ],
     ];
 

@@ -1,5 +1,5 @@
 /**
- * APE PRISMA v1.2 — Control Widget (Frontend)
+ * APE PRISMA v1.3 — Control Widget (Frontend)
  * Renders into #prisma-control-widget mount point in the Telemetry tab.
  * Polls /prisma/api/prisma-health.php every 30s.
  * Pattern mirrors netshield-sentinel-widget.js (IIFE, polling, DOM render).
@@ -10,6 +10,7 @@
   const BASE_URL = 'https://iptv-ape.duckdns.org';
   const HEALTH_ENDPOINT  = `${BASE_URL}/prisma/api/prisma-health.php`;
   const CONTROL_ENDPOINT = `${BASE_URL}/prisma/api/prisma-control.php`;
+  const ADB_ENDPOINT     = `${BASE_URL}/prisma/api/prisma-adb-telemetry.php`;
   const POLL_MS = 30_000;
   const PANIC_THRESHOLD = 3; // consecutive unhealthy polls before auto-panic
 
@@ -260,6 +261,70 @@
             color:#c4b5fd;font-weight:700">${enrichCount} directives</span>
           ${vlcActive ? '<span style="font-size:0.62rem;padding:2px 8px;border-radius:4px;background:rgba(16,185,129,0.2);color:#34d399;font-weight:600">✓ Injecting</span>'
             : '<span style="font-size:0.62rem;padding:2px 8px;border-radius:4px;background:rgba(100,116,139,0.2);color:#64748b;font-weight:600">— Inactive</span>'}
+        </div>
+      </div>`;
+    }
+
+    // ── v1.3 Device Possession Panel ──
+    if (window._prismaAdbData) {
+      const adb = window._prismaAdbData;
+      const adbOn = adb.adb_connected;
+      const daemonOn = adb.daemon_running;
+      const dev = adb.device || {};
+      const disp = adb.display || {};
+      const plr = adb.player || {};
+      const sync = adb.sync || {};
+      const pwr = adb.power || {};
+
+      const adbBg = adbOn ? 'rgba(139,92,246,0.08)' : 'rgba(239,68,68,0.08)';
+      const adbBorder = adbOn ? 'rgba(139,92,246,0.3)' : 'rgba(239,68,68,0.3)';
+      const adbDot = adbOn ? '#a855f7' : '#f87171';
+      const adbGlow = adbOn ? '0 0 6px #a855f7' : '0 0 6px #f87171';
+
+      html += `
+      <div style="background:${adbBg};border:1px solid ${adbBorder};border-radius:10px;padding:12px;margin-bottom:12px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="font-size:1.1rem">📱</span>
+            <div>
+              <div style="font-size:0.78rem;font-weight:700;color:#e2e8f0">Device Possession <span style="font-size:0.6rem;padding:1px 6px;background:rgba(139,92,246,0.3);border-radius:999px;color:#c4b5fd;margin-left:4px">v1.3</span></div>
+              <div style="font-size:0.6rem;color:#94a3b8">ADB Payload · ${dev.model || '?'} · ${dev.chip || '?'} · Fire OS ${dev.fire_os || '?'}</div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:6px">
+            <span style="width:8px;height:8px;border-radius:50%;background:${adbDot};box-shadow:${adbGlow};display:inline-block"></span>
+            <span style="font-size:0.68rem;color:${adbDot};font-weight:600">${adbOn ? '✓ Possessed' : '✗ Offline'}</span>
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:8px">
+          <div style="background:rgba(2,6,23,0.5);border-radius:6px;padding:6px;text-align:center">
+            <div style="font-size:0.5rem;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Display</div>
+            <div style="font-size:0.78rem;font-weight:700;color:#a78bfa">${disp.resolution || '?'}</div>
+          </div>
+          <div style="background:rgba(2,6,23,0.5);border-radius:6px;padding:6px;text-align:center">
+            <div style="font-size:0.5rem;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">HDR</div>
+            <div style="font-size:0.78rem;font-weight:700;color:${disp.hdr_mode==='always'?'#fbbf24':'#64748b'}">${disp.hdr_mode==='always'?'✓ ALWAYS':'OFF'}</div>
+          </div>
+          <div style="background:rgba(2,6,23,0.5);border-radius:6px;padding:6px;text-align:center">
+            <div style="font-size:0.5rem;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Player</div>
+            <div style="font-size:0.78rem;font-weight:700;color:${plr.running?'#10b981':'#f87171'}">${plr.running?'OTT '+plr.version:'STOPPED'}</div>
+          </div>
+          <div style="background:rgba(2,6,23,0.5);border-radius:6px;padding:6px;text-align:center">
+            <div style="font-size:0.5rem;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Sync</div>
+            <div style="font-size:0.78rem;font-weight:700;color:${sync.drift_detected?'#f59e0b':'#10b981'}">${sync.drift_detected?'⚠ Drift':'OK'}</div>
+          </div>
+        </div>
+
+        <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+          ${(disp.hdr_types||[]).map(t => '<span style="font-size:0.55rem;padding:1px 6px;border-radius:3px;background:rgba(251,191,36,0.15);color:#fbbf24;border:1px solid rgba(251,191,36,0.3)">' + t + '</span>').join('')}
+          ${disp.animations_disabled ? '<span style="font-size:0.55rem;padding:1px 6px;border-radius:3px;background:rgba(16,185,129,0.15);color:#34d399;border:1px solid rgba(16,185,129,0.3)">✓ 0-Anim</span>' : ''}
+          ${disp.match_framerate ? '<span style="font-size:0.55rem;padding:1px 6px;border-radius:3px;background:rgba(99,102,241,0.15);color:#818cf8;border:1px solid rgba(99,102,241,0.3)">✓ Match FPS</span>' : ''}
+          ${pwr.stay_on ? '<span style="font-size:0.55rem;padding:1px 6px;border-radius:3px;background:rgba(139,92,246,0.15);color:#c4b5fd;border:1px solid rgba(139,92,246,0.3)">✓ Always On</span>' : ''}
+          ${pwr.screensaver_disabled ? '<span style="font-size:0.55rem;padding:1px 6px;border-radius:3px;background:rgba(139,92,246,0.15);color:#c4b5fd;border:1px solid rgba(139,92,246,0.3)">✓ No Screensaver</span>' : ''}
+          <span style="font-size:0.55rem;padding:1px 6px;border-radius:3px;background:rgba(168,85,247,0.15);color:#c4b5fd;border:1px solid rgba(168,85,247,0.3)">${sync.total_settings || 0} settings</span>
+          ${daemonOn ? '<span style="font-size:0.55rem;padding:1px 6px;border-radius:3px;background:rgba(16,185,129,0.15);color:#34d399;border:1px solid rgba(16,185,129,0.3)">✓ Daemon</span>'
+            : '<span style="font-size:0.55rem;padding:1px 6px;border-radius:3px;background:rgba(239,68,68,0.15);color:#f87171;border:1px solid rgba(239,68,68,0.3)">✗ Daemon</span>'}
         </div>
       </div>`;
     }
@@ -703,6 +768,13 @@
 
     try {
       const health = await apiGet(HEALTH_ENDPOINT);
+
+      // v1.3: Fetch ADB telemetry (non-fatal)
+      try {
+        window._prismaAdbData = await apiGet(ADB_ENDPOINT);
+      } catch (_) {
+        window._prismaAdbData = null;
+      }
 
       // Detect state transitions for logging
       if (lastState) {
