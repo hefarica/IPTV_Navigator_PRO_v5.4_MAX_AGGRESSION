@@ -2,7 +2,7 @@
 declare(strict_types=1);
 
 /**
- * APE PRISMA v1.0 — Post-Processor
+ * APE PRISMA v1.2 — Post-Processor
  *
  * Receives resolve.php output as a string (via ob_start callback),
  * applies CMAF / LCEVC / HDR10+ / AI-SR / Quantum Pixel / Fake 4K lanes,
@@ -17,6 +17,9 @@ declare(strict_types=1);
  */
 
 require_once __DIR__ . '/prisma_state.php';
+require_once __DIR__ . '/lib/vlcopt_enhancer.php';
+require_once __DIR__ . '/lib/kodiprop_enhancer.php';
+require_once __DIR__ . '/lib/codecs_reorder.php';
 
 class PrismaProcessor
 {
@@ -78,6 +81,29 @@ class PrismaProcessor
             }
         }
 
+        // ── v1.2 Enhancers (post-lane, pre-Ring3) ────────────────────────
+        // EXTVLCOPT: inject real player directives based on active lanes
+        try {
+            $output = VlcoptEnhancer::apply($output, self::$appliedLanes);
+        } catch (\Throwable $e) {
+            PrismaState::recordError('vlcopt_enhancer', $e->getMessage());
+            // Non-fatal: output keeps lane injections even if VLCOPT fails
+        }
+
+        // KODIPROP: inject Kodi inputstream.adaptive directives
+        try {
+            $output = KodiPropEnhancer::apply($output, self::$appliedLanes);
+        } catch (\Throwable $e) {
+            PrismaState::recordError('kodiprop_enhancer', $e->getMessage());
+        }
+
+        // CODECS reorder: prioritize HEVC/AV1 over AVC in variant lists
+        try {
+            $output = CodecsReorder::apply($output);
+        } catch (\Throwable $e) {
+            PrismaState::recordError('codecs_reorder', $e->getMessage());
+        }
+
         // Ring 3: Validate output integrity
         if (!self::validateOutput($output)) {
             PrismaState::recordError('processor', 'Ring3: output validation failed, reverting');
@@ -88,9 +114,9 @@ class PrismaProcessor
         // Add PRISMA response header for audit trail
         if (!empty(self::$appliedLanes)) {
             $lanesStr = implode(',', self::$appliedLanes);
-            header("X-APE-PRISMA: v1.0;lanes={$lanesStr}");
+            header("X-APE-PRISMA: v1.2;lanes={$lanesStr}");
         } else {
-            header('X-APE-PRISMA: v1.0;passthrough');
+            header('X-APE-PRISMA: v1.2;passthrough');
         }
 
         // Periodic health check (1 in 50 requests)

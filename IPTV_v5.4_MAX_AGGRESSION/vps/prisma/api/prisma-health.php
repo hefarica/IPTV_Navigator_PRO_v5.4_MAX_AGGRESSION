@@ -2,7 +2,7 @@
 declare(strict_types=1);
 
 /**
- * APE PRISMA v1.0 — Health Probe API
+ * APE PRISMA v1.2 — Health Probe API
  *
  * Probes: engine files exist, ramdisk writable + free space, error_rate per lane.
  * 10s TTL cache in /dev/shm/prisma_health_cache.json
@@ -18,6 +18,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'OPTIONS') {
 }
 
 require_once __DIR__ . '/../prisma_state.php';
+require_once __DIR__ . '/../lib/vlcopt_enhancer.php';
 
 // ── Cache (10s TTL) ─────────────────────────────────────────────────────
 $cacheFile = '/dev/shm/prisma_health_cache.json';
@@ -434,10 +435,19 @@ $result = [
     'player_telemetry'   => $playerTelemetry,
     'ram_disk'           => $ramDisk,
     'bootstrap'          => $bootstrapStatus,
-    'version'            => $state['version'] ?? '1.0.0',
+    'version'            => $state['version'] ?? '1.1.0',
     'updated_ts'         => $state['updated_ts'] ?? 0,
     'updated_by'         => $state['updated_by'] ?? 'unknown',
     'last_panic_off_ts'  => $state['last_panic_off_ts'] ?? 0,
+    'vlcopt_enrichment'  => [
+        'active'     => ($state['master_enabled'] ?? false) && ($state['lanes_any_active'] ?? false),
+        'directives' => VlcoptEnhancer::diagnose(
+            array_keys(array_filter($lanesStatus, fn($ls) => ($ls['status'] ?? '') === 'active'))
+        ),
+        'count'      => count(VlcoptEnhancer::diagnose(
+            array_keys(array_filter($lanesStatus, fn($ls) => ($ls['status'] ?? '') === 'active'))
+        )),
+    ],
     'ts'                 => date('c'),
     '_cache_ts'          => time(),
 ];

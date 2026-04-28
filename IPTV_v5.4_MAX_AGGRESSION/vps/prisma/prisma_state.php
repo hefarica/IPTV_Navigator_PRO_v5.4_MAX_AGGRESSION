@@ -47,6 +47,14 @@ class PrismaState
                 'bitrate_multiplier'   => 1.5,
                 'zap_burst_multiplier' => 1.5,
                 'zap_grace_seconds'    => 30,
+                'profile_multipliers'  => [
+                    'P0' => 2.0,  // 8K UHD — double bitrate floor
+                    'P1' => 2.0,  // 4K HDR10+
+                    'P2' => 2.0,  // 4K SDR
+                    'P3' => 1.5,  // FHD
+                    'P4' => 1.5,  // HD
+                    'P5' => 1.2,  // SD — modest boost
+                ],
             ],
             'last_panic_off_ts' => 0,
             'updated_ts'        => 0,

@@ -1,5 +1,5 @@
 /**
- * APE PRISMA v1.0 — Control Widget (Frontend)
+ * APE PRISMA v1.2 — Control Widget (Frontend)
  * Renders into #prisma-control-widget mount point in the Telemetry tab.
  * Polls /prisma/api/prisma-health.php every 30s.
  * Pattern mirrors netshield-sentinel-widget.js (IIFE, polling, DOM render).
@@ -173,8 +173,8 @@
         <div style="display:flex;align-items:center;gap:10px">
           <span style="font-size:1.4rem">🔮</span>
           <div>
-            <div style="font-size:0.9rem;color:#e2e8f0;font-weight:700">APE PRISMA <span style="font-size:0.65rem;padding:2px 6px;background:rgba(168,85,247,0.3);border-radius:999px;color:#c4b5fd;margin-left:4px">v1.0</span></div>
-            <div style="font-size:0.68rem;color:#94a3b8">Quality Uplift Post-Processor · ${health.version || '1.0.0'}</div>
+            <div style="font-size:0.9rem;color:#e2e8f0;font-weight:700">APE PRISMA <span style="font-size:0.65rem;padding:2px 6px;background:rgba(168,85,247,0.3);border-radius:999px;color:#c4b5fd;margin-left:4px">v1.2</span></div>
+            <div style="font-size:0.68rem;color:#94a3b8">Quality Uplift Post-Processor · ${health.version || '1.1.0'}</div>
           </div>
         </div>
         <div style="display:flex;align-items:center;gap:8px">
@@ -236,6 +236,33 @@
         </div>`;
     }
     html += `</div>`;
+
+    // ── v1.2 Enrichment Status ──
+    const vlcE = health.vlcopt_enrichment || {};
+    const vlcActive = vlcE.active && vlcE.count > 0;
+    if (masterOn) {
+      const enrichCount = vlcE.count || 0;
+      const enrichBg = vlcActive ? 'rgba(16,185,129,0.12)' : 'rgba(100,116,139,0.1)';
+      const enrichBorder = vlcActive ? 'rgba(16,185,129,0.3)' : 'rgba(100,116,139,0.2)';
+      const enrichColor = vlcActive ? '#34d399' : '#64748b';
+      html += `
+      <div style="background:${enrichBg};border:1px solid ${enrichBorder};border-radius:8px;padding:8px 12px;margin-bottom:12px;
+        display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px">
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="font-size:0.9rem">⚡</span>
+          <div>
+            <div style="font-size:0.72rem;font-weight:700;color:${enrichColor}">v1.2 Player Enrichment</div>
+            <div style="font-size:0.6rem;color:#94a3b8">EXTVLCOPT · KODIPROP · CODECS Reorder</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:6px;align-items:center">
+          <span style="font-size:0.62rem;padding:2px 8px;border-radius:4px;background:rgba(168,85,247,0.2);
+            color:#c4b5fd;font-weight:700">${enrichCount} directives</span>
+          ${vlcActive ? '<span style="font-size:0.62rem;padding:2px 8px;border-radius:4px;background:rgba(16,185,129,0.2);color:#34d399;font-weight:600">✓ Injecting</span>'
+            : '<span style="font-size:0.62rem;padding:2px 8px;border-radius:4px;background:rgba(100,116,139,0.2);color:#64748b;font-weight:600">— Inactive</span>'}
+        </div>
+      </div>`;
+    }
 
     // ── Fake 4K Detector & Stream Intelligence (separate section) ──
     const metrics = health.lane_metrics || {};
