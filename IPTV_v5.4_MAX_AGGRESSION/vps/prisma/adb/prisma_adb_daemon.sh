@@ -101,7 +101,6 @@ declare -A DESIRED_GLOBAL=(
     ["device_provisioned"]="1"
     # ── AUDIO ──
     ["hdmi_system_audio_control"]="1"
-    ["encoded_surround_output"]="2"
 )
 declare -A DESIRED_SYSTEM=(
     ["screen_off_timeout"]="2147483647"
