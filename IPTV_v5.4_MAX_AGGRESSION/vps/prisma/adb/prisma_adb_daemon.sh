@@ -63,42 +63,52 @@ ensure_connected() {
     echo "$status"
 }
 
-# ── Desired State (24 ADB settings) ──────────────────────────────────
+# ── Desired State (35 ADB settings) ──────────────────────────────────
 declare -A DESIRED_GLOBAL=(
-    # Display
+    # ── DISPLAY & IMAGE ──
     ["always_hdr"]="1"
     ["match_content_frame_rate"]="1"
-    # Performance
+    ["hdr_conversion_mode"]="1"
+    ["user_preferred_resolution_height"]="2160"
+    ["user_preferred_resolution_width"]="3840"
+    ["user_preferred_refresh_rate"]="60.0"
+    # ── PERFORMANCE (zero animations) ──
     ["window_animation_scale"]="0.0"
     ["transition_animation_scale"]="0.0"
     ["animator_duration_scale"]="0.0"
-    # Power
+    ["forced_app_standby_enabled"]="1"
+    ["app_standby_enabled"]="1"
+    ["adaptive_battery_management_enabled"]="0"
+    # ── POWER ──
     ["stay_on_while_plugged_in"]="3"
     ["low_power"]="0"
-    # Network: Buffer Ultraboost
+    # ── NETWORK: WiFi Aggressive ──
     ["captive_portal_detection_enabled"]="0"
     ["wifi_sleep_policy"]="2"
     ["wifi_scan_always_enabled"]="0"
     ["wifi_networks_available_notification_on"]="0"
     ["network_scoring_ui_enabled"]="0"
+    ["wifi_watchdog_poor_network_test_enabled"]="0"
+    ["wifi_suspend_optimizations_enabled"]="0"
+    # ── NETWORK: TCP/Bandwidth ──
     ["tcp_default_init_rwnd"]="60"
     ["private_dns_mode"]="hostname"
     ["private_dns_specifier"]="dns.google"
-    # Bandwidth Enforcement
     ["background_data_enabled"]="0"
-    ["wifi_watchdog_poor_network_test_enabled"]="0"
-    ["wifi_suspend_optimizations_enabled"]="0"
-    ["package_verifier_enable"]="0"
     ["data_roaming"]="0"
+    # ── SYSTEM UPDATES KILL ──
+    ["package_verifier_enable"]="0"
     ["device_provisioned"]="1"
-    # Audio
+    # ── AUDIO ──
     ["hdmi_system_audio_control"]="1"
+    ["encoded_surround_output"]="2"
 )
 declare -A DESIRED_SYSTEM=(
     ["screen_off_timeout"]="2147483647"
 )
 declare -A DESIRED_SECURE=(
     ["screensaver_enabled"]="0"
+    ["display_color_mode"]="3"
 )
 
 apply_and_verify() {
