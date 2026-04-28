@@ -24,8 +24,10 @@ class KodiPropEnhancer
     // Base directives applied whenever master is ON
     private const BASE_DIRECTIVES = [
         'inputstream.adaptive.manifest_type'              => 'hls',
-        'inputstream.adaptive.stream_selection_type'      => 'adaptive',
+        'inputstream.adaptive.stream_selection_type'      => 'fixed',     // CBR: always highest, no ABR downgrade
         'inputstream.adaptive.max_bandwidth'              => '999999999',
+        'inputstream.adaptive.min_bandwidth'              => '13000000',  // 13 Mbps floor (provider minimum)
+        'inputstream.adaptive.initial_bandwidth'          => '80000000',  // Start at 80 Mbps (assume best)
         'inputstream.adaptive.preferred_video_resolution'  => '2160',
         'inputstream.adaptive.preferred_audio_language'   => 'es,en',
         'inputstream.adaptive.live_delay'                 => '0',
