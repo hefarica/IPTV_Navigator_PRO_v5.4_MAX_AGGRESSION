@@ -4156,6 +4156,76 @@
   <script src="js/prisma-control-widget.js?v=1.3.0" defer></script>
 
   <!-- ═══════════════════════════════════════════════════════════════════════ -->
+  <!-- 🧬 APE ANLE v1.0 — Adaptive Nomenclature Learning Engine               -->
+  <!-- ZERO edits to existing files. Separate IndexedDB. Non-invasive overlay. -->
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+  <script src="js/ape-anle/anle-canonicalize.js?v=1.0.0-anle"></script>
+  <script src="js/ape-anle/anle-dictionary.js?v=1.0.0-anle"></script>
+  <script src="js/ape-anle/anle-seed-syncer.js?v=1.0.0-anle"></script>
+  <script src="js/ape-anle/anle-booster.js?v=1.0.0-anle"></script>
+  <script src="js/ape-anle/anle-fingerprint.js?v=1.0.0-anle"></script>
+  <script src="js/ape-anle/anle-learner.js?v=1.0.0-anle"></script>
+  <script src="js/ape-anle/anle-6stage-detection.js?v=1.0.0-anle"></script>
+  <script src="js/ape-anle/ape-anle-core.js?v=1.0.0-anle"></script>
+  <script src="js/ape-anle/anle-tests.js?v=1.0.0-anle" defer></script>
+
+  <!-- 🧬 ANLE Toggle Panel — fixed bottom-right -->
+  <div id="anle-panel" style="position:fixed;bottom:8px;right:8px;background:rgba(13,33,55,0.95);color:#e2e8f0;padding:12px 14px;border:1px solid #10b981;border-radius:8px;font:11px/1.5 'Consolas','Monaco',monospace;z-index:9999;max-width:300px;backdrop-filter:blur(8px);box-shadow:0 4px 20px rgba(0,0,0,0.4)">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+      <span style="font-weight:700;color:#10b981;font-size:12px">🧬 ANLE v1.0</span>
+      <label style="cursor:pointer;display:flex;align-items:center;gap:4px;font-size:10px;color:#94a3b8">
+        <input type="checkbox" id="anle-toggle" checked style="accent-color:#10b981"> ON
+      </label>
+    </div>
+    <div id="anle-stats" style="color:#94a3b8;font-size:10px">loading...</div>
+    <div style="display:flex;gap:6px;margin-top:8px">
+      <button id="anle-resync" style="flex:1;padding:4px 8px;background:rgba(16,185,129,0.15);color:#10b981;border:1px solid rgba(16,185,129,0.3);border-radius:4px;font-size:10px;cursor:pointer">🔄 Resync</button>
+      <button id="anle-clear" style="flex:1;padding:4px 8px;background:rgba(239,68,68,0.1);color:#ef4444;border:1px solid rgba(239,68,68,0.2);border-radius:4px;font-size:10px;cursor:pointer">🗑 Clear learned</button>
+    </div>
+  </div>
+  <script>
+    (function() {
+      var t = document.getElementById('anle-toggle');
+      var s = document.getElementById('anle-stats');
+      var r = document.getElementById('anle-resync');
+      var c = document.getElementById('anle-clear');
+      if (!t || !s) return;
+
+      function waitForANLE(cb, ms) {
+        if (window.ANLE && window.ANLE.core) { cb(); return; }
+        if (ms > 30000) { s.textContent = 'ANLE not loaded'; return; }
+        setTimeout(function() { waitForANLE(cb, ms + 200); }, 200);
+      }
+
+      waitForANLE(function() {
+        t.checked = (localStorage.getItem('anle.enabled') !== 'false');
+        t.onchange = function() { ANLE.core.setEnabled(t.checked); };
+
+        r.onclick = function() {
+          s.textContent = 'syncing...';
+          ANLE.seedSyncer.syncFromRemote().then(refresh);
+        };
+
+        c.onclick = function() {
+          if (!confirm('Clear all learned aliases? Seed entries will remain.')) return;
+          ANLE.dictionary.clearLearned().then(function(n) {
+            s.textContent = 'Cleared ' + n + ' learned';
+            setTimeout(refresh, 1000);
+          });
+        };
+
+        function refresh() {
+          ANLE.core.getStats().then(function(x) {
+            s.textContent = x.aliases + ' aliases | ' + x.fingerprints + ' fp | ' + x.totalBoosts + ' boosts';
+          });
+        }
+        setInterval(refresh, 5000);
+        refresh();
+      }, 0);
+    })();
+  </script>
+
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
   <!-- 🧪 TESTS - Proxy Auth & User Agent (Dev Mode Only)                     -->
   <!-- ═══════════════════════════════════════════════════════════════════════ -->
   <script src="tests/proxy-auth.test.js" defer></script>
