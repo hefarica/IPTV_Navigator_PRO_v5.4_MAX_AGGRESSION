@@ -7135,8 +7135,34 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
             'Referer': 'https://www.google.com/',
             'Origin': 'https://www.google.com',
             // Calidad y codecs
-            'X-Device-Capabilities': `hdr10=true,dolbyvision=true,hevc=true,av1=true,lcevc=true,4k=true,8k=false,fps120=true,atmos=true,dts=true,truehd=true`,
-            'X-Video-Range': _hdrMode,
+            // C5 (2026-04-30) — X-Device-Capabilities derivado del perfil real
+            // (era hardcoded universal: 4k=true en P3 FHD, dolby-vision en P4 SDR…)
+            'X-Device-Capabilities': (function() {
+                const caps = [];
+                const hdrCan = (typeof window !== 'undefined' && window.APE_PROFILES_CONFIG?.getProfile)
+                    ? (window.APE_PROFILES_CONFIG.getProfile(profile)?.settings?.hdr_canonical || 'sdr').toLowerCase()
+                    : 'sdr';
+                if (hdrCan === 'hdr10' || hdrCan === 'hdr10+') caps.push('hdr10=true');
+                if (hdrCan === 'hdr10+') caps.push('hdr10plus=true');
+                if (hdrCan === 'dolby-vision') caps.push('dolbyvision=true');
+                if (hdrCan === 'hlg') caps.push('hlg=true');
+                const resH = parseInt((_res796 || '0x0').split('x')[1], 10) || 0;
+                if (resH >= 4320) caps.push('8k=true');
+                else if (resH >= 2160) caps.push('4k=true');
+                else if (resH >= 1080) caps.push('fhd=true');
+                else if (resH >= 720) caps.push('hd=true');
+                else caps.push('sd=true');
+                const codecLow = (_codec796 || '').toLowerCase();
+                if (codecLow.includes('hev1') || codecLow.includes('hvc1') || codecLow.includes('h265')) caps.push('hevc=true');
+                if (codecLow.includes('av01') || codecLow.includes('av1')) caps.push('av1=true');
+                if (codecLow.includes('avc1') || codecLow.includes('h264')) caps.push('h264=true');
+                const audCodec = (_codecAudio || '').toLowerCase();
+                if (audCodec.includes('ec-3')) caps.push('atmos=true');
+                if (audCodec.includes('ac-3')) caps.push('ac3=true');
+                if (parseInt(_fps796, 10) >= 60) caps.push('fps60=true');
+                return caps.join(',');
+            })(),
+            'X-Video-Range': _hdrModeM3U,
             'X-HDR-Nits': String(_hdrNits),
             'X-Codec-Primary': _codec796,
             'X-Codec-Audio': _codecAudio,
@@ -7203,8 +7229,22 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
             'Sec-Fetch-Dest': 'video',
             'Sec-Fetch-Mode': 'no-cors',
             'Sec-Fetch-Site': 'cross-site',
-            'Sec-CH-UA-Platform': '"Android"',
-            'Sec-CH-UA-Mobile': '?1',
+            // C6 (2026-04-30) — Sec-CH-UA-Platform/Mobile derivados del UA real
+            // (era hardcoded "Android"/?1 mientras UA era SmartTV → mismatch trivial)
+            'Sec-CH-UA-Platform': (function() {
+                const ua = String(_ua796 || '');
+                if (/Web0S|Tizen|SMART-TV|SmartHub|Maple2012/i.test(ua)) return '"Linux"';
+                if (/Android/i.test(ua)) return '"Android"';
+                if (/Macintosh|Mac OS X/i.test(ua)) return '"macOS"';
+                if (/Windows/i.test(ua)) return '"Windows"';
+                if (/X11|Linux/i.test(ua)) return '"Linux"';
+                return '"Unknown"';
+            })(),
+            'Sec-CH-UA-Mobile': (function() {
+                const ua = String(_ua796 || '');
+                if (/Mobile|Phone|Pixel/i.test(ua) && /Android/i.test(ua)) return '?1';
+                return '?0';
+            })(),
         };
 
         // ── PLACEHOLDER RESOLVER (anti-{config.X} literal en upstream) ────────
