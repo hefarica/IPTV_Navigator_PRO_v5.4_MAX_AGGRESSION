@@ -7108,15 +7108,21 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
         const _httpPayload = {
             // Identidad y sesión
             'User-Agent': _ua796,
-            'X-User-Agent-Android': _uaAndroid,
-            'X-User-Agent-iOS': _uaIOS,
-            'X-User-Agent-Chrome': _uaChrome,
-            'X-User-Agent-TiviMate': _uaTiviMate,
-            'X-User-Agent-OTT': _uaOTT,
-            'X-User-Agent-Kodi': _uaKodi,
-            'X-User-Agent-ExoPlayer': _uaExo,
-            'X-User-Agent-VLC': _uaVLC,
-            'X-User-Agent-Safari': _uaSafari,
+            // C1 (2026-04-30) — 10 X-User-Agent-{Android,iOS,Chrome,TiviMate,OTT,
+            // Kodi,ExoPlayer,VLC,Safari} REMOVED. Llevaban UAs cruzados de label
+            // (Android con UA Windows, iOS con UA MAG322, etc.) → fingerprint anti-bot
+            // trivial. Audit baseline: 37,128 canales con 10 X-User-Agent-* contradictorios.
+            // Solo emitir el User-Agent canónico (1 sola fuente de verdad). El upstream
+            // Xtream lee SOLO el header User-Agent estándar.
+            // 'X-User-Agent-Android': _uaAndroid,
+            // 'X-User-Agent-iOS': _uaIOS,
+            // 'X-User-Agent-Chrome': _uaChrome,
+            // 'X-User-Agent-TiviMate': _uaTiviMate,
+            // 'X-User-Agent-OTT': _uaOTT,
+            // 'X-User-Agent-Kodi': _uaKodi,
+            // 'X-User-Agent-ExoPlayer': _uaExo,
+            // 'X-User-Agent-VLC': _uaVLC,
+            // 'X-User-Agent-Safari': _uaSafari,
             // C2 (2026-04-30) 🚨 SECURITY LEAK REMOVED — estos 3 headers en EXTHTTP
             // exponían al provider la IP real del VPS Hetzner Ashburn (159.69.20.202)
             // y/o IPs spoofed Akamai. El shield NGINX no los descarta — viajan
@@ -7206,7 +7212,7 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
         // y aplica fallback hardcoded para los placeholders que el Excel no haya
         // resuelto. Cobertura: config/profile/channel/calc/evasion/server (51 entries Excel).
         const _phFallback = {
-            '{config.user_agent}': _ua796 || 'Mozilla/5.0 (Web0S; Linux/SmartTV) AppleWebKit/537.36 Chrome/91 Safari/537.36',
+            '{config.user_agent}': _ua796 || 'Mozilla/5.0 (Web0S; Linux/SmartTV) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.6045.213 Safari/537.36 WebAppManager',
             '{config.referer}': 'https://www.netflix.com/',
             '{config.origin}': 'https://www.netflix.com',
             '{config.connection}': 'keep-alive',
@@ -7225,7 +7231,7 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
             // Bug audit 2026-04-26: Excel hoja 32_PLACEHOLDERS_MAP no exporta esta clave.
             // Sin fallback, Kodi recibe `inputstream.adaptive.stream_headers={config.kodi_headers_urlencoded}` literal y descarta headers custom.
             '{config.kodi_headers_urlencoded}': [
-                `User-Agent=${encodeURIComponent(_ua796 || 'Mozilla/5.0 (Web0S; Linux/SmartTV) AppleWebKit/537.36 Chrome/91 Safari/537.36')}`,
+                `User-Agent=${encodeURIComponent(_ua796 || 'Mozilla/5.0 (Web0S; Linux/SmartTV) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.6045.213 Safari/537.36 WebAppManager')}`,
                 `Referer=${encodeURIComponent('https://www.netflix.com/')}`,
                 `Origin=${encodeURIComponent('https://www.netflix.com')}`,
                 `Connection=keep-alive`,

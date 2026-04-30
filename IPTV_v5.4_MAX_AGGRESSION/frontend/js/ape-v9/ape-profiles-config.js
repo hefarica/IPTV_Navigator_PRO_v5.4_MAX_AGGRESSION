@@ -5660,6 +5660,25 @@
     instance.getPm9HeaderSet = getPm9HeaderSet;
     window.APE_PROFILES_CONFIG = instance;
 
+    // C1+A4 (2026-04-30) — UA pool 2026-fresh para fallback cuando PhantomHydra no
+    // está disponible. 12 UAs verificados: Chrome 119+ (Web0S), Tizen 7, Android TV
+    // SHIELD/Pixel/AFTKA, macOS 14.4, Win10 Chrome 138, Firefox 134, Kodi 21,
+    // OTT Navigator 1.7, TiviMate 4.7. Selección determinista por hash sid.
+    window.APE_UA_POOL_2026 = [
+        'Mozilla/5.0 (Web0S; Linux/SmartTV) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.6045.213 Safari/537.36 WebAppManager',
+        'Mozilla/5.0 (SMART-TV; Linux; Tizen 7.0) AppleWebKit/538.1 (KHTML, like Gecko) Version/5.0 NativeCross/1.0 SamsungBrowser/2.6 Chrome/63.0.3239.84 TV Safari/538.1',
+        'Mozilla/5.0 (Linux; Android 14; SHIELD Android TV Build/UP1A.231005.007) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36',
+        'Mozilla/5.0 (Linux; Tizen 6.5; SmartHub; SMART-TV; SmartTV; U; Maple2012) AppleWebKit/537.36 (KHTML, like Gecko) Version/6.5 TV Safari/537.36',
+        'Mozilla/5.0 (Linux; Android 12; AFTKA Build/STT1.231215.001) AppleWebKit/537.36 (KHTML, like Gecko) Silk/138.5.7 like Chrome/138.0.0.0 Safari/537.36',
+        'Mozilla/5.0 (Linux; Android 14; Pixel 8 Pro Build/UQ1A.240105.002) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Mobile Safari/537.36',
+        'Mozilla/5.0 (Macintosh; Intel Mac OS X 14_4) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Safari/605.1.15',
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36',
+        'Mozilla/5.0 (X11; Linux x86_64; rv:134.0) Gecko/20100101 Firefox/134.0',
+        'Kodi/21.0 (Windows 10) Version/21.0-Omega',
+        'OTT Navigator/1.7.0.0 (Linux;Android 13) ExoPlayer/2.19.1',
+        'TiviMate/4.7.0 (Linux;Android 13) ExoPlayer/2.19.1'
+    ];
+
     console.log('%c🎚️ APE Profiles Config v9.0 EXTENDED Cargado', 'color: #10b981; font-weight: bold;');
     console.log(`   Perfiles: ${Object.keys(instance.profiles).length}`);
     console.log(`   Categorías: ${Object.keys(instance.categories).length}`);
