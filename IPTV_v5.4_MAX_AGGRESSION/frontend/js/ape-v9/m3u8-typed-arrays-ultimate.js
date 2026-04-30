@@ -23,13 +23,113 @@
     const VERSION = '22.2.0-FUSION-FANTASMA-NUCLEAR';
 
     // ═══════════════════════════════════════════════════════════════════════════
+    // 🛡️ ANTI-DRIFT GENERATOR-SIDE AUDIT (M1 + M2 + M5) — added 2026-04-29
+    //
+    //   M1 — Self-validating emission helpers:
+    //     emitOnce()        — anti-duplicate by construction (Set-backed)
+    //     enforceJsonValid() — JSON round-trip guard antes de emitir tag con JSON
+    //     enforceCap()      — cap genérico count + bytes (vlc/kodi/http)
+    //
+    //   M2 — Audit accumulator + scorecard inline:
+    //     _apeAuditAcc      — state per-generation (reset al inicio del stream)
+    //     buildAuditScorecard() — produce tag #EXT-X-APE-AUDIT-SCORECARD:{json}
+    //
+    //   M5 — RFC 8216 order guard:
+    //     assertPlaylistOrder() — verifica EXTM3U/VERSION/MEDIA-SEQUENCE order
+    //
+    // Doctrina: backwards-compat. Output IDÉNTICO al actual EXCEPTO por UN tag
+    // adicional al cierre del stream. Players IPTV (TiviMate/Kodi/OTT Navigator)
+    // ignoran tags propietarios desconocidos por convención HLS.
+    // ═══════════════════════════════════════════════════════════════════════════
+    let _apeAuditAcc = null;
+    function _resetAuditAcc() {
+        _apeAuditAcc = {
+            v: '1',
+            generatedAt: new Date().toISOString(),
+            generatorVersion: VERSION,
+            channelsProcessed: 0,
+            extras: { vlcopt: 0, kodiprop: 0, headerOverrides: 0 },
+            duplicatesBlocked: 0,
+            jsonGuardFailures: 0,
+            capTruncations: { vlcopt: 0, kodiprop: 0, exthttp: 0 },
+            rfcViolations: []
+        };
+    }
+    function emitOnce(arr, prefixSet, prefix, line) {
+        if (prefixSet && prefixSet.has(prefix)) {
+            if (_apeAuditAcc) _apeAuditAcc.duplicatesBlocked++;
+            return false;
+        }
+        if (prefixSet) prefixSet.add(prefix);
+        arr.push(line);
+        return true;
+    }
+    function enforceJsonValid(obj, label) {
+        try {
+            const s = JSON.stringify(obj);
+            JSON.parse(s);
+            return s;
+        } catch (e) {
+            if (_apeAuditAcc) _apeAuditAcc.jsonGuardFailures++;
+            try { console.warn(`[GENERATOR] enforceJsonValid skip ${label || ''}: ${e.message}`); } catch (_) {}
+            return null;
+        }
+    }
+    function enforceCap(arr, maxCount, maxBytes, kind) {
+        if (!Array.isArray(arr)) return arr;
+        let count = 0;
+        let bytes = 0;
+        const out = [];
+        let truncated = 0;
+        for (const line of arr) {
+            const lb = (typeof line === 'string' ? line.length : 0) + 1;
+            if (count >= maxCount || bytes + lb > maxBytes) {
+                truncated++;
+                continue;
+            }
+            out.push(line);
+            count++;
+            bytes += lb;
+        }
+        if (truncated > 0 && _apeAuditAcc && kind) {
+            _apeAuditAcc.capTruncations[kind] = (_apeAuditAcc.capTruncations[kind] || 0) + truncated;
+        }
+        return out;
+    }
+    function assertPlaylistOrder(lines) {
+        const violations = [];
+        if (!Array.isArray(lines) || lines.length === 0) return violations;
+        // EXTM3U debe estar como primera línea no vacía/no comentario
+        const firstNonEmpty = lines.find(l => typeof l === 'string' && l.trim().length > 0);
+        if (!firstNonEmpty || !firstNonEmpty.startsWith('#EXTM3U')) {
+            violations.push('EXTM3U_NOT_FIRST_LINE');
+        }
+        const versionIdx = lines.findIndex(l => typeof l === 'string' && l.startsWith('#EXT-X-VERSION'));
+        const seqIdx = lines.findIndex(l => typeof l === 'string' && l.startsWith('#EXT-X-MEDIA-SEQUENCE'));
+        const tdIdx = lines.findIndex(l => typeof l === 'string' && l.startsWith('#EXT-X-TARGETDURATION'));
+        if (versionIdx > 0 && seqIdx >= 0 && versionIdx > seqIdx) violations.push('VERSION_AFTER_MEDIA_SEQUENCE');
+        if (versionIdx > 0 && tdIdx >= 0 && versionIdx > tdIdx) violations.push('VERSION_AFTER_TARGETDURATION');
+        return violations;
+    }
+    function buildAuditScorecard() {
+        if (!_apeAuditAcc) return '';
+        const safe = enforceJsonValid(_apeAuditAcc, 'AUDIT-SCORECARD');
+        if (!safe) return '';
+        return `#EXT-X-APE-AUDIT-SCORECARD:${safe}`;
+    }
+    // Expose for verifier consumption + DevTools introspection
+    if (typeof window !== 'undefined') {
+        window._apeGetAuditAcc = () => _apeAuditAcc;
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
     // 👻 FUSIÓN FANTASMA v22.0 — MÓDULO 1: UA ROTATION ENGINE v19.1
     // ═══════════════════════════════════════════════════════════════════════════
     // Base de datos de 120 User-Agents reales (representativos de 2,443 variantes)
     // Rotación por estrategia: default, random, Windows, macOS, Linux, Android, iOS, SmartTV
     // ═══════════════════════════════════════════════════════════════════════════
 
-    
+
 
     let _uaRotationIndex = 0;
     let _cortexTempBanHash = ''; // Pilar 5 Cache Busting
@@ -52,9 +152,9 @@
         window._apeStealthState = window._apeStealthState || new Map();
 
         // ── Helpers ────────────────────────────────────────────────────────────
-        const _stealthSleep   = (ms) => new Promise(r => setTimeout(r, ms));
-        const _jitter         = (min, max) => Math.random() * (max - min) + min;
-        const _randInt        = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
+        const _stealthSleep = (ms) => new Promise(r => setTimeout(r, ms));
+        const _jitter = (min, max) => Math.random() * (max - min) + min;
+        const _randInt = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
         const _stealthHostKey = (url) => {
             try { return new URL(url, window.location.href).host; }
             catch { return null; }
@@ -103,8 +203,8 @@
             }
 
             state.retryAttempt += 1;
-            state.lastError    = status;
-            const now          = Date.now();
+            state.lastError = status;
+            const now = Date.now();
             let appliedDelay;
 
             if (state.retryAttempt <= 4) {
@@ -115,7 +215,7 @@
                 // Curva exhausta → cooldown humano largo, reset contador
                 appliedDelay = _randInt(5 * 60_000, 15 * 60_000);
                 state.cooldownUntil = now + appliedDelay;
-                state.retryAttempt  = 0;
+                state.retryAttempt = 0;
             }
 
             // Rotación UA + bust hash (comportamiento existente conservado)
@@ -128,8 +228,8 @@
 
         // ── fetch wrapper: pre-gate + human pause + post-handler ───────────────
         const originalFetch = window.fetch;
-        window.fetch = async function(...args) {
-            const url  = (typeof args[0] === 'string') ? args[0] : (args[0] && args[0].url);
+        window.fetch = async function (...args) {
+            const url = (typeof args[0] === 'string') ? args[0] : (args[0] && args[0].url);
             const host = _stealthHostKey(url);
 
             // Pre-gate: respeta cooldownUntil acumulado por errores previos
@@ -153,14 +253,14 @@
         // ── XHR wrapper: post-handler only (no pre-gate, evita romper sync XHR) ─
         if (typeof XMLHttpRequest !== 'undefined') {
             const originalOpen = XMLHttpRequest.prototype.open;
-            XMLHttpRequest.prototype.open = function(method, url, ...rest) {
+            XMLHttpRequest.prototype.open = function (method, url, ...rest) {
                 this._ctxUrl = url;
                 return originalOpen.apply(this, [method, url, ...rest]);
             };
             const originalSend = XMLHttpRequest.prototype.send;
-            XMLHttpRequest.prototype.send = function(...args) {
-                this.addEventListener('load',  function() { triggerCortexRecovery(this.status, this._ctxUrl); });
-                this.addEventListener('error', function() { triggerCortexRecovery(0, this._ctxUrl); });
+            XMLHttpRequest.prototype.send = function (...args) {
+                this.addEventListener('load', function () { triggerCortexRecovery(this.status, this._ctxUrl); });
+                this.addEventListener('error', function () { triggerCortexRecovery(0, this._ctxUrl); });
                 return originalSend.apply(this, args);
             };
         }
@@ -215,497 +315,497 @@
  * ═══════════════════════════════════════════════════════════════════════════════
  */
 
-// ─────────────────────────────────────────────────────────────────────────────
-// BANCO MAESTRO — 180 User-Agents únicos, 0 repetidos
-// ─────────────────────────────────────────────────────────────────────────────
-const UA_PHANTOM_BANK = [
+    // ─────────────────────────────────────────────────────────────────────────────
+    // BANCO MAESTRO — 180 User-Agents únicos, 0 repetidos
+    // ─────────────────────────────────────────────────────────────────────────────
+    const UA_PHANTOM_BANK = [
 
-    // ══════════════════════════════════════════════════════════════════════════
-    // TIER 1 — Smart TV & Streaming Nativos (60 UAs) — 99% anti-407
-    // Razón: Los proxies IPTV y CDNs reconocen estos UA como clientes legítimos
-    // de contenido multimedia. NUNCA activan negociación de proxy.
-    // ══════════════════════════════════════════════════════════════════════════
+        // ══════════════════════════════════════════════════════════════════════════
+        // TIER 1 — Smart TV & Streaming Nativos (60 UAs) — 99% anti-407
+        // Razón: Los proxies IPTV y CDNs reconocen estos UA como clientes legítimos
+        // de contenido multimedia. NUNCA activan negociación de proxy.
+        // ══════════════════════════════════════════════════════════════════════════
 
-    // Samsung Tizen (12 variantes — el más reconocido por proveedores IPTV)
-    'Mozilla/5.0 (SMART-TV; Linux; Tizen 8.0) AppleWebKit/538.1 (KHTML, like Gecko) SamsungBrowser/3.2 TV Safari/538.1',
-    'Mozilla/5.0 (SMART-TV; Linux; Tizen 7.0) AppleWebKit/538.1 (KHTML, like Gecko) SamsungBrowser/2.6 TV Safari/538.1',
-    'Mozilla/5.0 (SMART-TV; Linux; Tizen 6.5) AppleWebKit/538.1 (KHTML, like Gecko) SamsungBrowser/2.5 TV Safari/538.1',
-    'Mozilla/5.0 (SMART-TV; Linux; Tizen 6.0) AppleWebKit/538.1 (KHTML, like Gecko) SamsungBrowser/3.0 TV Safari/538.1',
-    'Mozilla/5.0 (SMART-TV; Linux; Tizen 5.5) AppleWebKit/538.1 (KHTML, like Gecko) SamsungBrowser/2.1 TV Safari/538.1',
-    'Mozilla/5.0 (SMART-TV; Linux; Tizen 5.0) AppleWebKit/538.1 (KHTML, like Gecko) SamsungBrowser/2.0 TV Safari/538.1',
-    'Mozilla/5.0 (SMART-TV; LINUX; Tizen 8.0) AppleWebKit/537.36 (KHTML, like Gecko) Version/8.0 TV Safari/537.36',
-    'Mozilla/5.0 (SMART-TV; LINUX; Tizen 7.0) AppleWebKit/537.36 (KHTML, like Gecko) Version/7.0 TV Safari/537.36',
-    'Mozilla/5.0 (SMART-TV; LINUX; Tizen 6.5) AppleWebKit/537.36 (KHTML, like Gecko) Version/6.5 TV Safari/537.36',
-    'Mozilla/5.0 (SMART-TV; LINUX; Tizen 6.0) AppleWebKit/537.36 (KHTML, like Gecko) Version/6.0 TV Safari/537.36',
-    'Mozilla/5.0 (SMART-TV; LINUX; Tizen 5.5) AppleWebKit/537.36 (KHTML, like Gecko) Version/5.5 TV Safari/537.36',
-    'Mozilla/5.0 (SMART-TV; LINUX; Tizen 5.0) AppleWebKit/537.36 (KHTML, like Gecko) Version/5.0 TV Safari/537.36',
+        // Samsung Tizen (12 variantes — el más reconocido por proveedores IPTV)
+        'Mozilla/5.0 (SMART-TV; Linux; Tizen 8.0) AppleWebKit/538.1 (KHTML, like Gecko) SamsungBrowser/3.2 TV Safari/538.1',
+        'Mozilla/5.0 (SMART-TV; Linux; Tizen 7.0) AppleWebKit/538.1 (KHTML, like Gecko) SamsungBrowser/2.6 TV Safari/538.1',
+        'Mozilla/5.0 (SMART-TV; Linux; Tizen 6.5) AppleWebKit/538.1 (KHTML, like Gecko) SamsungBrowser/2.5 TV Safari/538.1',
+        'Mozilla/5.0 (SMART-TV; Linux; Tizen 6.0) AppleWebKit/538.1 (KHTML, like Gecko) SamsungBrowser/3.0 TV Safari/538.1',
+        'Mozilla/5.0 (SMART-TV; Linux; Tizen 5.5) AppleWebKit/538.1 (KHTML, like Gecko) SamsungBrowser/2.1 TV Safari/538.1',
+        'Mozilla/5.0 (SMART-TV; Linux; Tizen 5.0) AppleWebKit/538.1 (KHTML, like Gecko) SamsungBrowser/2.0 TV Safari/538.1',
+        'Mozilla/5.0 (SMART-TV; LINUX; Tizen 8.0) AppleWebKit/537.36 (KHTML, like Gecko) Version/8.0 TV Safari/537.36',
+        'Mozilla/5.0 (SMART-TV; LINUX; Tizen 7.0) AppleWebKit/537.36 (KHTML, like Gecko) Version/7.0 TV Safari/537.36',
+        'Mozilla/5.0 (SMART-TV; LINUX; Tizen 6.5) AppleWebKit/537.36 (KHTML, like Gecko) Version/6.5 TV Safari/537.36',
+        'Mozilla/5.0 (SMART-TV; LINUX; Tizen 6.0) AppleWebKit/537.36 (KHTML, like Gecko) Version/6.0 TV Safari/537.36',
+        'Mozilla/5.0 (SMART-TV; LINUX; Tizen 5.5) AppleWebKit/537.36 (KHTML, like Gecko) Version/5.5 TV Safari/537.36',
+        'Mozilla/5.0 (SMART-TV; LINUX; Tizen 5.0) AppleWebKit/537.36 (KHTML, like Gecko) Version/5.0 TV Safari/537.36',
 
-    // LG webOS (8 variantes)
-    'Mozilla/5.0 (Web0S; Linux/SmartTV) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 WebAppManager',
-    'Mozilla/5.0 (Web0S; Linux/SmartTV) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36 WebAppManager',
-    'Mozilla/5.0 (Web0S; Linux/SmartTV) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/94.0.4606.128 Safari/537.36 WebAppManager',
-    'Mozilla/5.0 (Web0S; Linux/SmartTV) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Safari/537.36 WebAppManager',
-    'Mozilla/5.0 (Web0S; Linux/SmartTV) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.130 Safari/537.36 WebAppManager',
-    'Mozilla/5.0 (Web0S; Linux/SmartTV) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/68.0.3440.106 Safari/537.36 WebAppManager',
-    'Mozilla/5.0 (Web0S; Linux/SmartTV) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/53.0.2785.34 Safari/537.36 WebAppManager',
-    'Mozilla/5.0 (Web0S; Linux/SmartTV) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/38.0.2125.122 Safari/537.36 WebAppManager',
+        // LG webOS (8 variantes)
+        'Mozilla/5.0 (Web0S; Linux/SmartTV) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 WebAppManager',
+        'Mozilla/5.0 (Web0S; Linux/SmartTV) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36 WebAppManager',
+        'Mozilla/5.0 (Web0S; Linux/SmartTV) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/94.0.4606.128 Safari/537.36 WebAppManager',
+        'Mozilla/5.0 (Web0S; Linux/SmartTV) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Safari/537.36 WebAppManager',
+        'Mozilla/5.0 (Web0S; Linux/SmartTV) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.130 Safari/537.36 WebAppManager',
+        'Mozilla/5.0 (Web0S; Linux/SmartTV) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/68.0.3440.106 Safari/537.36 WebAppManager',
+        'Mozilla/5.0 (Web0S; Linux/SmartTV) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/53.0.2785.34 Safari/537.36 WebAppManager',
+        'Mozilla/5.0 (Web0S; Linux/SmartTV) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/38.0.2125.122 Safari/537.36 WebAppManager',
 
-    // Android TV / Google TV / NVIDIA SHIELD (10 variantes)
-    'Mozilla/5.0 (Linux; Android 14; SHIELD Android TV Build/TP1A.220624.014) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-    'Mozilla/5.0 (Linux; Android 12; SHIELD Android TV Build/SQ3A.220705.003.A1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.5359.128 Safari/537.36',
-    'Mozilla/5.0 (Linux; Android 13; Google TV Build/TQ3A.230901.001) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.5845.172 Safari/537.36',
-    'Mozilla/5.0 (Linux; Android 12; Chromecast Build/STTL.230420.023) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.5615.136 Safari/537.36',
-    'Mozilla/5.0 (Linux; Android 11; BRAVIA 4K GB Build/RKQ1.211119.001) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/100.0.4896.127 Safari/537.36',
-    'Mozilla/5.0 (Linux; Android 12; BRAVIA 4K UR1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/106.0.0.0 Safari/537.36',
-    'Mozilla/5.0 (Linux; Android 12; Xiaomi MiTV Build/SKQ1.211006.001) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/107.0.5304.141 Safari/537.36',
-    'Mozilla/5.0 (Linux; Android 11; TCL 65C825 Build/RKQ1.201217.002) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/99.0.4844.88 Safari/537.36',
-    'Mozilla/5.0 (Linux; Android 12; Hisense 65U8H Build/SKQ1.211103.001) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/106.0.5249.126 Safari/537.36',
-    'Mozilla/5.0 (Linux; Android 13; PHILIPS 55OLED808 Build/TQ3A.230805.001) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.5938.140 Safari/537.36',
+        // Android TV / Google TV / NVIDIA SHIELD (10 variantes)
+        'Mozilla/5.0 (Linux; Android 14; SHIELD Android TV Build/TP1A.220624.014) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+        'Mozilla/5.0 (Linux; Android 12; SHIELD Android TV Build/SQ3A.220705.003.A1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.5359.128 Safari/537.36',
+        'Mozilla/5.0 (Linux; Android 13; Google TV Build/TQ3A.230901.001) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.5845.172 Safari/537.36',
+        'Mozilla/5.0 (Linux; Android 12; Chromecast Build/STTL.230420.023) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.5615.136 Safari/537.36',
+        'Mozilla/5.0 (Linux; Android 11; BRAVIA 4K GB Build/RKQ1.211119.001) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/100.0.4896.127 Safari/537.36',
+        'Mozilla/5.0 (Linux; Android 12; BRAVIA 4K UR1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/106.0.0.0 Safari/537.36',
+        'Mozilla/5.0 (Linux; Android 12; Xiaomi MiTV Build/SKQ1.211006.001) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/107.0.5304.141 Safari/537.36',
+        'Mozilla/5.0 (Linux; Android 11; TCL 65C825 Build/RKQ1.201217.002) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/99.0.4844.88 Safari/537.36',
+        'Mozilla/5.0 (Linux; Android 12; Hisense 65U8H Build/SKQ1.211103.001) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/106.0.5249.126 Safari/537.36',
+        'Mozilla/5.0 (Linux; Android 13; PHILIPS 55OLED808 Build/TQ3A.230805.001) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.5938.140 Safari/537.36',
 
-    // Apple TV (tvOS 15-17) — 6 variantes
-    'AppleCoreMedia/1.0.0.21J354 (Apple TV; U; CPU OS 17_0 like Mac OS X; en_us)',
-    'AppleCoreMedia/1.0.0.21K79 (Apple TV; U; CPU OS 17_2 like Mac OS X; en_us)',
-    'AppleCoreMedia/1.0.0.20K71 (Apple TV; U; CPU OS 16_2 like Mac OS X; en_us)',
-    'AppleCoreMedia/1.0.0.19M65 (Apple TV; U; CPU OS 15_5 like Mac OS X; en_us)',
-    'AppleTV11,1/18.2',
-    'AppleTV14,1/17.4',
+        // Apple TV (tvOS 15-17) — 6 variantes
+        'AppleCoreMedia/1.0.0.21J354 (Apple TV; U; CPU OS 17_0 like Mac OS X; en_us)',
+        'AppleCoreMedia/1.0.0.21K79 (Apple TV; U; CPU OS 17_2 like Mac OS X; en_us)',
+        'AppleCoreMedia/1.0.0.20K71 (Apple TV; U; CPU OS 16_2 like Mac OS X; en_us)',
+        'AppleCoreMedia/1.0.0.19M65 (Apple TV; U; CPU OS 15_5 like Mac OS X; en_us)',
+        'AppleTV11,1/18.2',
+        'AppleTV14,1/17.4',
 
-    // Amazon Fire TV (6 variantes)
-    'Mozilla/5.0 (Linux; Android 12; AFTKA Build/PS7484; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/116.0.5845.172 Mobile Safari/537.36',
-    'Mozilla/5.0 (Linux; Android 11; AFTWMST22 Build/PS7484; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/112.0.5615.136 Mobile Safari/537.36',
-    'Mozilla/5.0 (Linux; Android 9; AFTMM Build/PS7233; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/108.0.5359.128 Mobile Safari/537.36',
-    'Dalvik/2.1.0 (Linux; U; Android 14; Chromecast HD Build/UP1A.231105.001)',
-    'Dalvik/2.1.0 (Linux; U; Android 12; AFTKA Build/PS7484)',
-    'Dalvik/2.1.0 (Linux; U; Android 11; AFTWMST22 Build/PS7484)',
+        // Amazon Fire TV (6 variantes)
+        'Mozilla/5.0 (Linux; Android 12; AFTKA Build/PS7484; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/116.0.5845.172 Mobile Safari/537.36',
+        'Mozilla/5.0 (Linux; Android 11; AFTWMST22 Build/PS7484; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/112.0.5615.136 Mobile Safari/537.36',
+        'Mozilla/5.0 (Linux; Android 9; AFTMM Build/PS7233; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/108.0.5359.128 Mobile Safari/537.36',
+        'Dalvik/2.1.0 (Linux; U; Android 14; Chromecast HD Build/UP1A.231105.001)',
+        'Dalvik/2.1.0 (Linux; U; Android 12; AFTKA Build/PS7484)',
+        'Dalvik/2.1.0 (Linux; U; Android 11; AFTWMST22 Build/PS7484)',
 
-    // Roku (6 variantes)
-    'Roku/DVP-14.5 (14.5.0 build 4205)',
-    'Roku/DVP-14.0 (314.00E04156A)',
-    'Roku/DVP-13.0 (313.00E04156A)',
-    'Roku/DVP-12.5 (312.05E04156A)',
-    'Roku/DVP-11.5 (311.05E04156A)',
-    'Roku/DVP-10.5 (310.05E04156A)',
+        // Roku (6 variantes)
+        'Roku/DVP-14.5 (14.5.0 build 4205)',
+        'Roku/DVP-14.0 (314.00E04156A)',
+        'Roku/DVP-13.0 (313.00E04156A)',
+        'Roku/DVP-12.5 (312.05E04156A)',
+        'Roku/DVP-11.5 (311.05E04156A)',
+        'Roku/DVP-10.5 (310.05E04156A)',
 
-    // PlayStation / Xbox (4 variantes)
-    'Mozilla/5.0 (PlayStation; PlayStation 5/5.10) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.4 Safari/605.1.15',
-    'Mozilla/5.0 (PlayStation; PlayStation 5/4.03) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.0 Safari/605.1.15',
-    'Mozilla/5.0 (Windows Phone 10.0; Android 6.0.1; Xbox; Xbox One) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Mobile Safari/537.36 Edge/16.16299',
-    'Mozilla/5.0 (Windows NT 10.0; Win64; x64; Xbox; Xbox Series X) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/46.0.2486.0 Safari/537.36 Edge/13.10586',
+        // PlayStation / Xbox (4 variantes)
+        'Mozilla/5.0 (PlayStation; PlayStation 5/5.10) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.4 Safari/605.1.15',
+        'Mozilla/5.0 (PlayStation; PlayStation 5/4.03) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.0 Safari/605.1.15',
+        'Mozilla/5.0 (Windows Phone 10.0; Android 6.0.1; Xbox; Xbox One) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Mobile Safari/537.36 Edge/16.16299',
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64; Xbox; Xbox Series X) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/46.0.2486.0 Safari/537.36 Edge/13.10586',
 
-    // Philips / Sharp / Panasonic Smart TV (8 variantes)
-    'Mozilla/5.0 (SMART-TV; PHILIPS; 55OLED806/12) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.114 Safari/537.36',
-    'Mozilla/5.0 (SMART-TV; PHILIPS; 65PUS9206/12) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Safari/537.36',
-    'Mozilla/5.0 (SMART-TV; SHARP; 4T-C65DL7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Safari/537.36',
-    'Mozilla/5.0 (SMART-TV; SHARP; 4T-C55BJ2) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/83.0.4103.116 Safari/537.36',
-    'Mozilla/5.0 (SMART-TV; Panasonic; TX-65HZ2000E) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/83.0.4103.116 Safari/537.36',
-    'Mozilla/5.0 (SMART-TV; Panasonic; TX-55JZ2000E) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.130 Safari/537.36',
-    'Mozilla/5.0 (SMART-TV; Linux; Formuler Z11 Pro Max) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.114 Safari/537.36',
-    'Mozilla/5.0 (SMART-TV; Linux; Dreamlink T3) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Safari/537.36',
+        // Philips / Sharp / Panasonic Smart TV (8 variantes)
+        'Mozilla/5.0 (SMART-TV; PHILIPS; 55OLED806/12) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.114 Safari/537.36',
+        'Mozilla/5.0 (SMART-TV; PHILIPS; 65PUS9206/12) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Safari/537.36',
+        'Mozilla/5.0 (SMART-TV; SHARP; 4T-C65DL7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Safari/537.36',
+        'Mozilla/5.0 (SMART-TV; SHARP; 4T-C55BJ2) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/83.0.4103.116 Safari/537.36',
+        'Mozilla/5.0 (SMART-TV; Panasonic; TX-65HZ2000E) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/83.0.4103.116 Safari/537.36',
+        'Mozilla/5.0 (SMART-TV; Panasonic; TX-55JZ2000E) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.130 Safari/537.36',
+        'Mozilla/5.0 (SMART-TV; Linux; Formuler Z11 Pro Max) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.114 Safari/537.36',
+        'Mozilla/5.0 (SMART-TV; Linux; Dreamlink T3) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Safari/537.36',
 
-    // ══════════════════════════════════════════════════════════════════════════
-    // TIER 2 — Navegadores Modernos (60 UAs) — 95% anti-407
-    // Razón: Universalmente reconocidos. Nunca activan 407. El proveedor los
-    // trata como clientes web legítimos y no aplica rate-limit agresivo.
-    // ══════════════════════════════════════════════════════════════════════════
+        // ══════════════════════════════════════════════════════════════════════════
+        // TIER 2 — Navegadores Modernos (60 UAs) — 95% anti-407
+        // Razón: Universalmente reconocidos. Nunca activan 407. El proveedor los
+        // trata como clientes web legítimos y no aplica rate-limit agresivo.
+        // ══════════════════════════════════════════════════════════════════════════
 
-    // Chrome Windows (15 variantes — versiones 120-134)
-    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36',
-    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36',
-    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36',
-    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
-    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36',
-    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36',
-    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
-    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36',
-    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
-    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
-    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36',
-    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
-    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        // Chrome Windows (15 variantes — versiones 120-134)
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36',
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36',
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36',
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36',
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36',
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36',
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36',
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
 
-    // Chrome macOS (8 variantes)
-    'Mozilla/5.0 (Macintosh; Intel Mac OS X 14_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36',
-    'Mozilla/5.0 (Macintosh; Intel Mac OS X 14_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36',
-    'Mozilla/5.0 (Macintosh; Intel Mac OS X 14_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36',
-    'Mozilla/5.0 (Macintosh; Intel Mac OS X 14_4) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
-    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36',
-    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
-    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
-    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+        // Chrome macOS (8 variantes)
+        'Mozilla/5.0 (Macintosh; Intel Mac OS X 14_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36',
+        'Mozilla/5.0 (Macintosh; Intel Mac OS X 14_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36',
+        'Mozilla/5.0 (Macintosh; Intel Mac OS X 14_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36',
+        'Mozilla/5.0 (Macintosh; Intel Mac OS X 14_4) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36',
+        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
+        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
 
-    // Safari macOS (8 variantes)
-    'Mozilla/5.0 (Macintosh; Intel Mac OS X 14_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.2 Safari/605.1.15',
-    'Mozilla/5.0 (Macintosh; Intel Mac OS X 14_6) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.1 Safari/605.1.15',
-    'Mozilla/5.0 (Macintosh; Intel Mac OS X 14_5) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Safari/605.1.15',
-    'Mozilla/5.0 (Macintosh; Intel Mac OS X 14_4) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Safari/605.1.15',
-    'Mozilla/5.0 (Macintosh; Intel Mac OS X 14_3) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.3 Safari/605.1.15',
-    'Mozilla/5.0 (Macintosh; Intel Mac OS X 14_2) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.2 Safari/605.1.15',
-    'Mozilla/5.0 (Macintosh; Intel Mac OS X 13_6) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.2 Safari/605.1.15',
-    'Mozilla/5.0 (Macintosh; Intel Mac OS X 13_5) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Safari/605.1.15',
+        // Safari macOS (8 variantes)
+        'Mozilla/5.0 (Macintosh; Intel Mac OS X 14_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.2 Safari/605.1.15',
+        'Mozilla/5.0 (Macintosh; Intel Mac OS X 14_6) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.1 Safari/605.1.15',
+        'Mozilla/5.0 (Macintosh; Intel Mac OS X 14_5) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Safari/605.1.15',
+        'Mozilla/5.0 (Macintosh; Intel Mac OS X 14_4) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Safari/605.1.15',
+        'Mozilla/5.0 (Macintosh; Intel Mac OS X 14_3) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.3 Safari/605.1.15',
+        'Mozilla/5.0 (Macintosh; Intel Mac OS X 14_2) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.2 Safari/605.1.15',
+        'Mozilla/5.0 (Macintosh; Intel Mac OS X 13_6) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.2 Safari/605.1.15',
+        'Mozilla/5.0 (Macintosh; Intel Mac OS X 13_5) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Safari/605.1.15',
 
-    // Edge Windows (6 variantes)
-    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36 Edg/134.0.0.0',
-    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36 Edg/131.0.0.0',
-    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36 Edg/130.0.0.0',
-    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36 Edg/129.0.0.0',
-    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36 Edg/128.0.0.0',
-    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36 Edg/127.0.0.0',
+        // Edge Windows (6 variantes)
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36 Edg/134.0.0.0',
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36 Edg/131.0.0.0',
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36 Edg/130.0.0.0',
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36 Edg/129.0.0.0',
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36 Edg/128.0.0.0',
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36 Edg/127.0.0.0',
 
-    // Firefox Windows/Linux (6 variantes)
-    'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:134.0) Gecko/20100101 Firefox/134.0',
-    'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:133.0) Gecko/20100101 Firefox/133.0',
-    'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:132.0) Gecko/20100101 Firefox/132.0',
-    'Mozilla/5.0 (X11; Linux x86_64; rv:134.0) Gecko/20100101 Firefox/134.0',
-    'Mozilla/5.0 (X11; Linux x86_64; rv:133.0) Gecko/20100101 Firefox/133.0',
-    'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:131.0) Gecko/20100101 Firefox/131.0',
+        // Firefox Windows/Linux (6 variantes)
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:134.0) Gecko/20100101 Firefox/134.0',
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:133.0) Gecko/20100101 Firefox/133.0',
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:132.0) Gecko/20100101 Firefox/132.0',
+        'Mozilla/5.0 (X11; Linux x86_64; rv:134.0) Gecko/20100101 Firefox/134.0',
+        'Mozilla/5.0 (X11; Linux x86_64; rv:133.0) Gecko/20100101 Firefox/133.0',
+        'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:131.0) Gecko/20100101 Firefox/131.0',
 
-    // Safari iOS (8 variantes)
-    'Mozilla/5.0 (iPhone; CPU iPhone OS 18_3 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.3 Mobile/15E148 Safari/604.1',
-    'Mozilla/5.0 (iPhone; CPU iPhone OS 18_2 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.2 Mobile/15E148 Safari/604.1',
-    'Mozilla/5.0 (iPhone; CPU iPhone OS 18_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.1 Mobile/15E148 Safari/604.1',
-    'Mozilla/5.0 (iPhone; CPU iPhone OS 17_7 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.7 Mobile/15E148 Safari/604.1',
-    'Mozilla/5.0 (iPad; CPU OS 18_2 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.2 Mobile/15E148 Safari/604.1',
-    'Mozilla/5.0 (iPad; CPU OS 18_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.1 Mobile/15E148 Safari/604.1',
-    'Mozilla/5.0 (iPhone; CPU iPhone OS 18_2 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/134.0.6998.99 Mobile/15E148 Safari/604.1',
-    'Mozilla/5.0 (iPhone; CPU iPhone OS 17_7 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/131.0.6778.73 Mobile/15E148 Safari/604.1',
+        // Safari iOS (8 variantes)
+        'Mozilla/5.0 (iPhone; CPU iPhone OS 18_3 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.3 Mobile/15E148 Safari/604.1',
+        'Mozilla/5.0 (iPhone; CPU iPhone OS 18_2 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.2 Mobile/15E148 Safari/604.1',
+        'Mozilla/5.0 (iPhone; CPU iPhone OS 18_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.1 Mobile/15E148 Safari/604.1',
+        'Mozilla/5.0 (iPhone; CPU iPhone OS 17_7 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.7 Mobile/15E148 Safari/604.1',
+        'Mozilla/5.0 (iPad; CPU OS 18_2 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.2 Mobile/15E148 Safari/604.1',
+        'Mozilla/5.0 (iPad; CPU OS 18_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.1 Mobile/15E148 Safari/604.1',
+        'Mozilla/5.0 (iPhone; CPU iPhone OS 18_2 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/134.0.6998.99 Mobile/15E148 Safari/604.1',
+        'Mozilla/5.0 (iPhone; CPU iPhone OS 17_7 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/131.0.6778.73 Mobile/15E148 Safari/604.1',
 
-    // Chrome Android (9 variantes)
-    'Mozilla/5.0 (Linux; Android 14; SM-S928B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Mobile Safari/537.36',
-    'Mozilla/5.0 (Linux; Android 14; SM-S918B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Mobile Safari/537.36',
-    'Mozilla/5.0 (Linux; Android 14; Pixel 9 Pro) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Mobile Safari/537.36',
-    'Mozilla/5.0 (Linux; Android 14; Pixel 8 Pro) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Mobile Safari/537.36',
-    'Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Mobile Safari/537.36',
-    'Mozilla/5.0 (Linux; Android 13; SM-S911B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Mobile Safari/537.36',
-    'Mozilla/5.0 (Linux; Android 13; Redmi Note 12) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Mobile Safari/537.36',
-    'Mozilla/5.0 (Linux; Android 12; SM-G998B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Mobile Safari/537.36',
-    'Mozilla/5.0 (Linux; Android 14; SAMSUNG SM-S928B) AppleWebKit/537.36 (KHTML, like Gecko) SamsungBrowser/25.0 Chrome/121.0.0.0 Mobile Safari/537.36',
+        // Chrome Android (9 variantes)
+        'Mozilla/5.0 (Linux; Android 14; SM-S928B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Mobile Safari/537.36',
+        'Mozilla/5.0 (Linux; Android 14; SM-S918B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Mobile Safari/537.36',
+        'Mozilla/5.0 (Linux; Android 14; Pixel 9 Pro) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Mobile Safari/537.36',
+        'Mozilla/5.0 (Linux; Android 14; Pixel 8 Pro) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Mobile Safari/537.36',
+        'Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Mobile Safari/537.36',
+        'Mozilla/5.0 (Linux; Android 13; SM-S911B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Mobile Safari/537.36',
+        'Mozilla/5.0 (Linux; Android 13; Redmi Note 12) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Mobile Safari/537.36',
+        'Mozilla/5.0 (Linux; Android 12; SM-G998B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Mobile Safari/537.36',
+        'Mozilla/5.0 (Linux; Android 14; SAMSUNG SM-S928B) AppleWebKit/537.36 (KHTML, like Gecko) SamsungBrowser/25.0 Chrome/121.0.0.0 Mobile Safari/537.36',
 
-    // ══════════════════════════════════════════════════════════════════════════
-    // TIER 3 — Reproductores IPTV / Multimedia (60 UAs) — 90% anti-407
-    // Razón: Reconocidos por proveedores IPTV como clientes legítimos.
-    // Riesgo bajo de 407, riesgo medio de 403 en proveedores que bloquean
-    // reproductores de terceros (por eso van en TIER 3, no en TIER 1).
-    // ══════════════════════════════════════════════════════════════════════════
+        // ══════════════════════════════════════════════════════════════════════════
+        // TIER 3 — Reproductores IPTV / Multimedia (60 UAs) — 90% anti-407
+        // Razón: Reconocidos por proveedores IPTV como clientes legítimos.
+        // Riesgo bajo de 407, riesgo medio de 403 en proveedores que bloquean
+        // reproductores de terceros (por eso van en TIER 3, no en TIER 1).
+        // ══════════════════════════════════════════════════════════════════════════
 
-    // VLC (8 variantes)
-    'VLC/3.0.21 LibVLC/3.0.21',
-    'VLC/3.0.20 LibVLC/3.0.20',
-    'VLC/3.0.19 LibVLC/3.0.19',
-    'VLC/3.0.18 LibVLC/3.0.18',
-    'VLC/4.0.0-dev LibVLC/4.0.0-dev',
-    'VLC/3.0.21 (Linux; Android 14)',
-    'VLC/3.0.20 (iOS 18.2)',
-    'VLC/3.0.19 (Windows NT 10.0; Win64; x64)',
+        // VLC (8 variantes)
+        'VLC/3.0.21 LibVLC/3.0.21',
+        'VLC/3.0.20 LibVLC/3.0.20',
+        'VLC/3.0.19 LibVLC/3.0.19',
+        'VLC/3.0.18 LibVLC/3.0.18',
+        'VLC/4.0.0-dev LibVLC/4.0.0-dev',
+        'VLC/3.0.21 (Linux; Android 14)',
+        'VLC/3.0.20 (iOS 18.2)',
+        'VLC/3.0.19 (Windows NT 10.0; Win64; x64)',
 
-    // Kodi (8 variantes)
-    'Kodi/21.1 (X11; Linux x86_64) App_Bitness/64 Version/21.1-Omega',
-    'Kodi/21.0 (X11; Linux x86_64) App_Bitness/64 Version/21.0-Omega',
-    'Kodi/20.5 (X11; Linux x86_64) App_Bitness/64 Version/20.5-Nexus',
-    'Kodi/20.2 (X11; Linux x86_64) App_Bitness/64 Version/20.2-Nexus',
-    'Kodi/21.1 (Windows NT 10.0; Win64; x64) App_Bitness/64',
-    'Kodi/20.5 (Linux; Android 12) App_Bitness/64 Version/20.5-Nexus',
-    'Kodi/21.0 (Linux; Android 13) App_Bitness/64 Version/21.0-Omega',
-    'Kodi/20.2 (Darwin; macOS 14.3) App_Bitness/64',
+        // Kodi (8 variantes)
+        'Kodi/21.1 (X11; Linux x86_64) App_Bitness/64 Version/21.1-Omega',
+        'Kodi/21.0 (X11; Linux x86_64) App_Bitness/64 Version/21.0-Omega',
+        'Kodi/20.5 (X11; Linux x86_64) App_Bitness/64 Version/20.5-Nexus',
+        'Kodi/20.2 (X11; Linux x86_64) App_Bitness/64 Version/20.2-Nexus',
+        'Kodi/21.1 (Windows NT 10.0; Win64; x64) App_Bitness/64',
+        'Kodi/20.5 (Linux; Android 12) App_Bitness/64 Version/20.5-Nexus',
+        'Kodi/21.0 (Linux; Android 13) App_Bitness/64 Version/21.0-Omega',
+        'Kodi/20.2 (Darwin; macOS 14.3) App_Bitness/64',
 
-    // TiviMate (6 variantes)
-    'TiviMate/5.0.5 (Android 14; API 34)',
-    'TiviMate/4.8.0 (Linux;Android 13) ExoPlayerLib/2.19.1',
-    'TiviMate/4.7.0 (Linux; Android 12)',
-    'TiviMate/4.6.0 (Linux; Android 11)',
-    'TiviMate/4.5.0 (Linux; Android 11)',
-    'TiviMate/4.4.0 (Linux; Android 10)',
+        // TiviMate (6 variantes)
+        'TiviMate/5.0.5 (Android 14; API 34)',
+        'TiviMate/4.8.0 (Linux;Android 13) ExoPlayerLib/2.19.1',
+        'TiviMate/4.7.0 (Linux; Android 12)',
+        'TiviMate/4.6.0 (Linux; Android 11)',
+        'TiviMate/4.5.0 (Linux; Android 11)',
+        'TiviMate/4.4.0 (Linux; Android 10)',
 
-    // OTT Navigator (6 variantes)
-    'OTT Navigator/1.7.1.3 (Linux;Android 14) ExoPlayer',
-    'OTT Navigator/1.7.0.0 (Linux;Android 13) ExoPlayer',
-    'OTT Navigator/1.6.9.5 (Linux; Android 12)',
-    'OTT Navigator/1.6.8.0 (Linux; Android 12)',
-    'OTT Navigator/1.6.7.0 (Linux; Android 11)',
-    'OTT Navigator/1.6.5.0 (Linux; Android 10)',
+        // OTT Navigator (6 variantes)
+        'OTT Navigator/1.7.1.3 (Linux;Android 14) ExoPlayer',
+        'OTT Navigator/1.7.0.0 (Linux;Android 13) ExoPlayer',
+        'OTT Navigator/1.6.9.5 (Linux; Android 12)',
+        'OTT Navigator/1.6.8.0 (Linux; Android 12)',
+        'OTT Navigator/1.6.7.0 (Linux; Android 11)',
+        'OTT Navigator/1.6.5.0 (Linux; Android 10)',
 
-    // IPTV Smarters / GSE (6 variantes)
-    'IPTV Smarters Pro/3.1.5 (Smarters)',
-    'IPTV Smarters/3.1.0 (Linux; Android 12)',
-    'IPTV Smarters/3.0.5 (Linux; Android 11)',
-    'GSE SmartIPTV/8.6 (com.gsesmartiptv; iOS 18.2)',
-    'GSE SmartIPTV/8.5 (com.gsesmartiptv; iOS 17.7)',
-    'GSE SmartIPTV/8.4 (com.gsesmartiptv; Android 14)',
+        // IPTV Smarters / GSE (6 variantes)
+        'IPTV Smarters Pro/3.1.5 (Smarters)',
+        'IPTV Smarters/3.1.0 (Linux; Android 12)',
+        'IPTV Smarters/3.0.5 (Linux; Android 11)',
+        'GSE SmartIPTV/8.6 (com.gsesmartiptv; iOS 18.2)',
+        'GSE SmartIPTV/8.5 (com.gsesmartiptv; iOS 17.7)',
+        'GSE SmartIPTV/8.4 (com.gsesmartiptv; Android 14)',
 
-    // ExoPlayer / Dalvik (8 variantes)
-    'ExoPlayerLib/2.19.1 (Linux; Android 14; SHIELD Android TV)',
-    'ExoPlayerLib/2.18.5 (Linux; Android 13; Google TV)',
-    'ExoPlayerLib/2.17.1 (Linux; Android 12; BRAVIA 4K)',
-    'Dalvik/2.1.0 (Linux; U; Android 14; SHIELD Android TV Build/TP1A)',
-    'Dalvik/2.1.0 (Linux; U; Android 13; Google TV Build/TQ3A.230901.001)',
-    'Dalvik/2.1.0 (Linux; U; Android 12; SHIELD Android TV Build/SQ3A)',
-    'Dalvik/2.1.0 (Linux; U; Android 11; BRAVIA 4K GB Build/RKQ1)',
-    'Dalvik/2.1.0 (Linux; U; Android 12; Xiaomi MiTV Build/SKQ1)',
+        // ExoPlayer / Dalvik (8 variantes)
+        'ExoPlayerLib/2.19.1 (Linux; Android 14; SHIELD Android TV)',
+        'ExoPlayerLib/2.18.5 (Linux; Android 13; Google TV)',
+        'ExoPlayerLib/2.17.1 (Linux; Android 12; BRAVIA 4K)',
+        'Dalvik/2.1.0 (Linux; U; Android 14; SHIELD Android TV Build/TP1A)',
+        'Dalvik/2.1.0 (Linux; U; Android 13; Google TV Build/TQ3A.230901.001)',
+        'Dalvik/2.1.0 (Linux; U; Android 12; SHIELD Android TV Build/SQ3A)',
+        'Dalvik/2.1.0 (Linux; U; Android 11; BRAVIA 4K GB Build/RKQ1)',
+        'Dalvik/2.1.0 (Linux; U; Android 12; Xiaomi MiTV Build/SKQ1)',
 
-    // Perfect Player / XCIPTV / otros (8 variantes)
-    'Perfect Player IPTV/1.6.2.1',
-    'Perfect Player IPTV/1.5.8.0',
-    'XCIPTV/6.0.0 (Android 13; API 33)',
-    'XCIPTV/5.5.0 (Android 12; API 32)',
-    'Xtream-Codes/2.5 IPTV',
-    'Xtream-Codes/2.0 IPTV',
-    'MAG254/1.0 (Linux; U; Android 9; MAG254 Build/PKQ1)',
-    'Mozilla/5.0 (Linux; U; Android 9; MAG424W3 Build/PKQ1.190319.001) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/74.0.3729.157 Mobile Safari/537.36',
+        // Perfect Player / XCIPTV / otros (8 variantes)
+        'Perfect Player IPTV/1.6.2.1',
+        'Perfect Player IPTV/1.5.8.0',
+        'XCIPTV/6.0.0 (Android 13; API 33)',
+        'XCIPTV/5.5.0 (Android 12; API 32)',
+        'Xtream-Codes/2.5 IPTV',
+        'Xtream-Codes/2.0 IPTV',
+        'MAG254/1.0 (Linux; U; Android 9; MAG254 Build/PKQ1)',
+        'Mozilla/5.0 (Linux; U; Android 9; MAG424W3 Build/PKQ1.190319.001) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/74.0.3729.157 Mobile Safari/537.36',
 
-    // Formuler / Dreamlink (4 variantes)
-    'Mozilla/5.0 (SMART-TV; Linux; Formuler Z11 Pro Max) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/95.0.4638.69 Safari/537.36',
-    'Mozilla/5.0 (SMART-TV; Linux; Formuler Z8 Pro) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Safari/537.36',
-    'Mozilla/5.0 (SMART-TV; Linux; Dreamlink T3 Pro) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.114 Safari/537.36',
-    'Mozilla/5.0 (SMART-TV; Linux; Dreamlink T2) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/83.0.4103.116 Safari/537.36',
+        // Formuler / Dreamlink (4 variantes)
+        'Mozilla/5.0 (SMART-TV; Linux; Formuler Z11 Pro Max) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/95.0.4638.69 Safari/537.36',
+        'Mozilla/5.0 (SMART-TV; Linux; Formuler Z8 Pro) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Safari/537.36',
+        'Mozilla/5.0 (SMART-TV; Linux; Dreamlink T3 Pro) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.114 Safari/537.36',
+        'Mozilla/5.0 (SMART-TV; Linux; Dreamlink T2) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/83.0.4103.116 Safari/537.36',
 
-    // Stalker Middleware / STB (6 variantes)
-    'Mozilla/5.0 (QtEmbedded; U; Linux; C) AppleWebKit/533.3 (KHTML, like Gecko) MAG200 stbapp ver: 4 rev: 1812 Safari/533.3',
-    'Mozilla/5.0 (QtEmbedded; U; Linux; C) AppleWebKit/533.3 (KHTML, like Gecko) MAG250 stbapp ver: 4 rev: 1812 Safari/533.3',
-    'Mozilla/5.0 (QtEmbedded; U; Linux; C) AppleWebKit/533.3 (KHTML, like Gecko) MAG254 stbapp ver: 4 rev: 1812 Safari/533.3',
-    'Mozilla/5.0 (QtEmbedded; U; Linux; C) AppleWebKit/533.3 (KHTML, like Gecko) MAG256 stbapp ver: 4 rev: 1812 Safari/533.3',
-    'Mozilla/5.0 (QtEmbedded; U; Linux; C) AppleWebKit/533.3 (KHTML, like Gecko) MAG322 stbapp ver: 4 rev: 1812 Safari/533.3',
-    'Mozilla/5.0 (QtEmbedded; U; Linux; C) AppleWebKit/533.3 (KHTML, like Gecko) MAG424 stbapp ver: 4 rev: 1812 Safari/533.3',
-];
+        // Stalker Middleware / STB (6 variantes)
+        'Mozilla/5.0 (QtEmbedded; U; Linux; C) AppleWebKit/533.3 (KHTML, like Gecko) MAG200 stbapp ver: 4 rev: 1812 Safari/533.3',
+        'Mozilla/5.0 (QtEmbedded; U; Linux; C) AppleWebKit/533.3 (KHTML, like Gecko) MAG250 stbapp ver: 4 rev: 1812 Safari/533.3',
+        'Mozilla/5.0 (QtEmbedded; U; Linux; C) AppleWebKit/533.3 (KHTML, like Gecko) MAG254 stbapp ver: 4 rev: 1812 Safari/533.3',
+        'Mozilla/5.0 (QtEmbedded; U; Linux; C) AppleWebKit/533.3 (KHTML, like Gecko) MAG256 stbapp ver: 4 rev: 1812 Safari/533.3',
+        'Mozilla/5.0 (QtEmbedded; U; Linux; C) AppleWebKit/533.3 (KHTML, like Gecko) MAG322 stbapp ver: 4 rev: 1812 Safari/533.3',
+        'Mozilla/5.0 (QtEmbedded; U; Linux; C) AppleWebKit/533.3 (KHTML, like Gecko) MAG424 stbapp ver: 4 rev: 1812 Safari/533.3',
+    ];
 
-// Verificación de integridad del banco
-(function verifyBank() {
-    const unique = new Set(UA_PHANTOM_BANK);
-    if (unique.size !== UA_PHANTOM_BANK.length) {
-        console.error(`[UAPhantomEngine] ERROR: Banco contiene ${UA_PHANTOM_BANK.length - unique.size} duplicados!`);
-    }
-    if (UA_PHANTOM_BANK.length !== 180) {
-        console.warn(`[UAPhantomEngine] AVISO: Banco tiene ${UA_PHANTOM_BANK.length} UAs (esperado: 180)`);
-    }
-})();
-
-// ─────────────────────────────────────────────────────────────────────────────
-// UA PHANTOM ENGINE v3.0
-// ─────────────────────────────────────────────────────────────────────────────
-const UAPhantomEngine = (function () {
-    'use strict';
-
-    const BANK          = UA_PHANTOM_BANK;
-    const BANK_SIZE     = BANK.length; // 180
-    const NO_REPEAT_BLOCK = BANK_SIZE; // Bloque de no-repetición = 180 canales
-
-    // Estado interno del motor
-    let _lastZappingTs  = 0;
-    let _zapNonce       = 0;
-    let _errorSalt      = 0;
-
-    // ──────────────────────────────────────────────────────────────────────────
-    // CAPA 1 — GENERACIÓN DETERMINISTA POR CANAL
-    // Algoritmo: djb2 hash del nombre del canal + índice → posición en banco
-    // Garantía: dentro de un bloque de 180 canales, ningún UA se repite.
-    // ──────────────────────────────────────────────────────────────────────────
-
-    /**
-     * Hash djb2 — rápido, sin dependencias, distribución uniforme.
-     * Más resistente a colisiones que MD5 % N para N pequeños.
-     */
-    function _djb2(str) {
-        let hash = 5381;
-        for (let i = 0; i < str.length; i++) {
-            hash = ((hash << 5) + hash) ^ str.charCodeAt(i);
-            hash = hash >>> 0; // Mantener como uint32
+    // Verificación de integridad del banco
+    (function verifyBank() {
+        const unique = new Set(UA_PHANTOM_BANK);
+        if (unique.size !== UA_PHANTOM_BANK.length) {
+            console.error(`[UAPhantomEngine] ERROR: Banco contiene ${UA_PHANTOM_BANK.length - unique.size} duplicados!`);
         }
-        return hash;
-    }
-
-    /**
-     * Fisher-Yates shuffle determinista usando el hash como semilla.
-     * Genera una permutación única del banco para cada "época" de lista.
-     * Una época = una generación de lista (identificada por el timestamp de inicio).
-     */
-    function _seededShuffle(arr, seed) {
-        const a = arr.slice();
-        let s = seed >>> 0;
-        for (let i = a.length - 1; i > 0; i--) {
-            // LCG: multiplicador de Knuth
-            s = (Math.imul(s, 1664525) + 1013904223) >>> 0;
-            const j = s % (i + 1);
-            [a[i], a[j]] = [a[j], a[i]];
+        if (UA_PHANTOM_BANK.length !== 180) {
+            console.warn(`[UAPhantomEngine] AVISO: Banco tiene ${UA_PHANTOM_BANK.length} UAs (esperado: 180)`);
         }
-        return a;
-    }
+    })();
 
-    // Permutación de la época actual (se regenera en cada llamada a init())
-    let _epochPermutation = BANK.slice();
-    let _epochSeed        = Date.now();
+    // ─────────────────────────────────────────────────────────────────────────────
+    // UA PHANTOM ENGINE v3.0
+    // ─────────────────────────────────────────────────────────────────────────────
+    const UAPhantomEngine = (function () {
+        'use strict';
 
-    /**
-     * Inicializar el motor para una nueva generación de lista.
-     * Llamar ANTES de empezar a generar canales.
-     * El seed de época garantiza que cada lista generada tiene una permutación diferente.
-     */
-    function init(epochSeed) {
-        _epochSeed        = epochSeed || Date.now();
-        _epochPermutation = _seededShuffle(BANK, _epochSeed);
-        _zapNonce         = 0;
-        _errorSalt        = 0;
-        console.log(`[UAPhantomEngine] v3.0 inicializado. Época: ${_epochSeed}. Banco: ${BANK_SIZE} UAs. Bloque no-repetición: ${NO_REPEAT_BLOCK}.`);
-    }
+        const BANK = UA_PHANTOM_BANK;
+        const BANK_SIZE = BANK.length; // 180
+        const NO_REPEAT_BLOCK = BANK_SIZE; // Bloque de no-repetición = 180 canales
 
-    /**
-     * CAPA 1: Obtener UA determinista para un canal específico.
-     *
-     * @param {number} channelIndex  - Índice del canal en la lista (0-based)
-     * @param {string} channelName   - Nombre del canal (para hash adicional)
-     * @returns {string} User-Agent único para este canal en esta época
-     *
-     * Propiedades:
-     *   - Determinista: mismo canal + misma época → mismo UA
-     *   - No-repetición: dentro de un bloque de 180, ningún UA se repite
-     *   - Entre épocas: el mismo canal obtiene un UA diferente en cada lista
-     */
-    function getForChannel(channelIndex, channelName) {
-        // Combinar índice + nombre para el hash
-        const key  = `${channelIndex}:${channelName || ''}`;
-        const hash = _djb2(key);
-        // Usar la permutación de la época para garantizar no-repetición en bloque de 180
-        const blockPos = channelIndex % NO_REPEAT_BLOCK;
-        // Dentro del bloque, usar el hash para seleccionar dentro de la permutación
-        // pero desplazado por el bloque para que bloques consecutivos no repitan
-        const blockOffset = Math.floor(channelIndex / NO_REPEAT_BLOCK) * 7; // primo para distribución
-        const idx = (blockPos + blockOffset + (hash % NO_REPEAT_BLOCK)) % NO_REPEAT_BLOCK;
-        return _epochPermutation[idx];
-    }
+        // Estado interno del motor
+        let _lastZappingTs = 0;
+        let _zapNonce = 0;
+        let _errorSalt = 0;
 
-    // ──────────────────────────────────────────────────────────────────────────
-    // CAPA 2 — MUTACIÓN POR ZAPPING (tiempo de reproducción)
-    // Al cambiar de canal, el UA muta con un salt temporal para perder el rastro.
-    // El proveedor ve una identidad diferente en cada zapping, aunque sea el mismo canal.
-    // ──────────────────────────────────────────────────────────────────────────
+        // ──────────────────────────────────────────────────────────────────────────
+        // CAPA 1 — GENERACIÓN DETERMINISTA POR CANAL
+        // Algoritmo: djb2 hash del nombre del canal + índice → posición en banco
+        // Garantía: dentro de un bloque de 180 canales, ningún UA se repite.
+        // ──────────────────────────────────────────────────────────────────────────
 
-    /**
-     * CAPA 2: Obtener UA mutado para zapping.
-     * Llamar en el momento exacto del cambio de canal.
-     *
-     * @param {number} channelIndex  - Índice del nuevo canal
-     * @param {string} channelName   - Nombre del nuevo canal
-     * @returns {string} UA diferente al de la generación estática, único por zapping
-     *
-     * Propiedades:
-     *   - Cada zapping produce un UA diferente al anterior (salt temporal)
-     *   - El rastro se pierde en < 1 petición
-     *   - No repite el UA del canal anterior ni del canal actual en la lista
-     */
-    function getForZapping(channelIndex, channelName) {
-        const now     = Date.now();
-        _zapNonce     = (_zapNonce + 1) % BANK_SIZE;
-        _lastZappingTs = now;
+        /**
+         * Hash djb2 — rápido, sin dependencias, distribución uniforme.
+         * Más resistente a colisiones que MD5 % N para N pequeños.
+         */
+        function _djb2(str) {
+            let hash = 5381;
+            for (let i = 0; i < str.length; i++) {
+                hash = ((hash << 5) + hash) ^ str.charCodeAt(i);
+                hash = hash >>> 0; // Mantener como uint32
+            }
+            return hash;
+        }
 
-        // Salt = timestamp de zapping (ms) + nonce incremental
-        const zapSalt  = _djb2(`zap:${now}:${_zapNonce}:${channelIndex}:${channelName}`);
-        // Desplazar la posición base del canal por el salt de zapping
-        const baseIdx  = channelIndex % NO_REPEAT_BLOCK;
-        const mutIdx   = (baseIdx + zapSalt) % BANK_SIZE;
-        return _epochPermutation[mutIdx];
-    }
+        /**
+         * Fisher-Yates shuffle determinista usando el hash como semilla.
+         * Genera una permutación única del banco para cada "época" de lista.
+         * Una época = una generación de lista (identificada por el timestamp de inicio).
+         */
+        function _seededShuffle(arr, seed) {
+            const a = arr.slice();
+            let s = seed >>> 0;
+            for (let i = a.length - 1; i > 0; i--) {
+                // LCG: multiplicador de Knuth
+                s = (Math.imul(s, 1664525) + 1013904223) >>> 0;
+                const j = s % (i + 1);
+                [a[i], a[j]] = [a[j], a[i]];
+            }
+            return a;
+        }
 
-    // ──────────────────────────────────────────────────────────────────────────
-    // CAPA 3 — RECUPERACIÓN ANTE ERRORES 4xx/5xx (Córtex)
-    // Ante 407/403/429, salta N posiciones en el banco para salir del rango baneado.
-    // ──────────────────────────────────────────────────────────────────────────
+        // Permutación de la época actual (se regenera en cada llamada a init())
+        let _epochPermutation = BANK.slice();
+        let _epochSeed = Date.now();
 
-    /**
-     * CAPA 3: Obtener UA de recuperación ante error HTTP.
-     * Llamar desde el Córtex cuando se detecta 407/403/429/5xx.
-     *
-     * @param {number} errorCode     - Código HTTP del error (407, 403, 429, 500...)
-     * @param {number} channelIndex  - Índice del canal que falló
-     * @param {string} channelName   - Nombre del canal que falló
-     * @returns {string} UA de recuperación, diferente al que causó el error
-     *
-     * Lógica de salto:
-     *   407 → salta 37 posiciones (primo, sale del rango de proxy-auth)
-     *   403 → salta 23 posiciones (primo, sale del rango de IP ban)
-     *   429 → salta 53 posiciones (primo, sale del rango de rate-limit)
-     *   5xx → salta 17 posiciones (primo, rotación de servidor)
-     *   otros → salta errorCode % 17 posiciones
-     */
-    function getForRecovery(errorCode, channelIndex, channelName) {
-        const jumpMap = { 407: 37, 403: 23, 429: 53, 500: 17, 502: 19, 503: 29, 504: 31 };
-        const jump    = jumpMap[errorCode] || (errorCode % 17) || 13;
+        /**
+         * Inicializar el motor para una nueva generación de lista.
+         * Llamar ANTES de empezar a generar canales.
+         * El seed de época garantiza que cada lista generada tiene una permutación diferente.
+         */
+        function init(epochSeed) {
+            _epochSeed = epochSeed || Date.now();
+            _epochPermutation = _seededShuffle(BANK, _epochSeed);
+            _zapNonce = 0;
+            _errorSalt = 0;
+            console.log(`[UAPhantomEngine] v3.0 inicializado. Época: ${_epochSeed}. Banco: ${BANK_SIZE} UAs. Bloque no-repetición: ${NO_REPEAT_BLOCK}.`);
+        }
 
-        _errorSalt = (_errorSalt + jump) % BANK_SIZE;
-
-        const recoverySalt = _djb2(`recover:${errorCode}:${_errorSalt}:${channelIndex}:${channelName}:${Date.now()}`);
-        const baseIdx      = (channelIndex + _errorSalt) % BANK_SIZE;
-        const mutIdx       = (baseIdx + recoverySalt) % BANK_SIZE;
-        return _epochPermutation[mutIdx];
-    }
-
-    // ──────────────────────────────────────────────────────────────────────────
-    // API PÚBLICA — Compatibilidad con getRotatedUserAgent() existente
-    // ──────────────────────────────────────────────────────────────────────────
-
-    /**
-     * Reemplaza getRotatedUserAgent() — API de compatibilidad.
-     * Estrategias soportadas: 'default', 'random', 'SmartTV', 'IPTV',
-     *                          'Windows', 'macOS', 'Linux', 'Android', 'iOS'
-     */
-    function get(strategy = 'random') {
-        const tierMap = {
-            'SmartTV':  [0,   60],
-            'Windows':  [60,  75],
-            'macOS':    [75,  83],
-            'Safari':   [83,  91],
-            'Edge':     [91,  97],
-            'Firefox':  [97, 103],
-            'iOS':      [103, 111],
-            'Android':  [111, 120],
-            'IPTV':     [120, 180],
-            'VLC':      [120, 128],
-            'Kodi':     [128, 136],
-            'TiviMate': [136, 142],
-            'OTT':      [142, 148],
-        };
-        if (strategy === 'default') {
-            // Rotación secuencial por el banco completo
-            const idx = (_errorSalt++) % BANK_SIZE;
+        /**
+         * CAPA 1: Obtener UA determinista para un canal específico.
+         *
+         * @param {number} channelIndex  - Índice del canal en la lista (0-based)
+         * @param {string} channelName   - Nombre del canal (para hash adicional)
+         * @returns {string} User-Agent único para este canal en esta época
+         *
+         * Propiedades:
+         *   - Determinista: mismo canal + misma época → mismo UA
+         *   - No-repetición: dentro de un bloque de 180, ningún UA se repite
+         *   - Entre épocas: el mismo canal obtiene un UA diferente en cada lista
+         */
+        function getForChannel(channelIndex, channelName) {
+            // Combinar índice + nombre para el hash
+            const key = `${channelIndex}:${channelName || ''}`;
+            const hash = _djb2(key);
+            // Usar la permutación de la época para garantizar no-repetición en bloque de 180
+            const blockPos = channelIndex % NO_REPEAT_BLOCK;
+            // Dentro del bloque, usar el hash para seleccionar dentro de la permutación
+            // pero desplazado por el bloque para que bloques consecutivos no repitan
+            const blockOffset = Math.floor(channelIndex / NO_REPEAT_BLOCK) * 7; // primo para distribución
+            const idx = (blockPos + blockOffset + (hash % NO_REPEAT_BLOCK)) % NO_REPEAT_BLOCK;
             return _epochPermutation[idx];
         }
-        if (strategy === 'random') {
+
+        // ──────────────────────────────────────────────────────────────────────────
+        // CAPA 2 — MUTACIÓN POR ZAPPING (tiempo de reproducción)
+        // Al cambiar de canal, el UA muta con un salt temporal para perder el rastro.
+        // El proveedor ve una identidad diferente en cada zapping, aunque sea el mismo canal.
+        // ──────────────────────────────────────────────────────────────────────────
+
+        /**
+         * CAPA 2: Obtener UA mutado para zapping.
+         * Llamar en el momento exacto del cambio de canal.
+         *
+         * @param {number} channelIndex  - Índice del nuevo canal
+         * @param {string} channelName   - Nombre del nuevo canal
+         * @returns {string} UA diferente al de la generación estática, único por zapping
+         *
+         * Propiedades:
+         *   - Cada zapping produce un UA diferente al anterior (salt temporal)
+         *   - El rastro se pierde en < 1 petición
+         *   - No repite el UA del canal anterior ni del canal actual en la lista
+         */
+        function getForZapping(channelIndex, channelName) {
+            const now = Date.now();
+            _zapNonce = (_zapNonce + 1) % BANK_SIZE;
+            _lastZappingTs = now;
+
+            // Salt = timestamp de zapping (ms) + nonce incremental
+            const zapSalt = _djb2(`zap:${now}:${_zapNonce}:${channelIndex}:${channelName}`);
+            // Desplazar la posición base del canal por el salt de zapping
+            const baseIdx = channelIndex % NO_REPEAT_BLOCK;
+            const mutIdx = (baseIdx + zapSalt) % BANK_SIZE;
+            return _epochPermutation[mutIdx];
+        }
+
+        // ──────────────────────────────────────────────────────────────────────────
+        // CAPA 3 — RECUPERACIÓN ANTE ERRORES 4xx/5xx (Córtex)
+        // Ante 407/403/429, salta N posiciones en el banco para salir del rango baneado.
+        // ──────────────────────────────────────────────────────────────────────────
+
+        /**
+         * CAPA 3: Obtener UA de recuperación ante error HTTP.
+         * Llamar desde el Córtex cuando se detecta 407/403/429/5xx.
+         *
+         * @param {number} errorCode     - Código HTTP del error (407, 403, 429, 500...)
+         * @param {number} channelIndex  - Índice del canal que falló
+         * @param {string} channelName   - Nombre del canal que falló
+         * @returns {string} UA de recuperación, diferente al que causó el error
+         *
+         * Lógica de salto:
+         *   407 → salta 37 posiciones (primo, sale del rango de proxy-auth)
+         *   403 → salta 23 posiciones (primo, sale del rango de IP ban)
+         *   429 → salta 53 posiciones (primo, sale del rango de rate-limit)
+         *   5xx → salta 17 posiciones (primo, rotación de servidor)
+         *   otros → salta errorCode % 17 posiciones
+         */
+        function getForRecovery(errorCode, channelIndex, channelName) {
+            const jumpMap = { 407: 37, 403: 23, 429: 53, 500: 17, 502: 19, 503: 29, 504: 31 };
+            const jump = jumpMap[errorCode] || (errorCode % 17) || 13;
+
+            _errorSalt = (_errorSalt + jump) % BANK_SIZE;
+
+            const recoverySalt = _djb2(`recover:${errorCode}:${_errorSalt}:${channelIndex}:${channelName}:${Date.now()}`);
+            const baseIdx = (channelIndex + _errorSalt) % BANK_SIZE;
+            const mutIdx = (baseIdx + recoverySalt) % BANK_SIZE;
+            return _epochPermutation[mutIdx];
+        }
+
+        // ──────────────────────────────────────────────────────────────────────────
+        // API PÚBLICA — Compatibilidad con getRotatedUserAgent() existente
+        // ──────────────────────────────────────────────────────────────────────────
+
+        /**
+         * Reemplaza getRotatedUserAgent() — API de compatibilidad.
+         * Estrategias soportadas: 'default', 'random', 'SmartTV', 'IPTV',
+         *                          'Windows', 'macOS', 'Linux', 'Android', 'iOS'
+         */
+        function get(strategy = 'random') {
+            const tierMap = {
+                'SmartTV': [0, 60],
+                'Windows': [60, 75],
+                'macOS': [75, 83],
+                'Safari': [83, 91],
+                'Edge': [91, 97],
+                'Firefox': [97, 103],
+                'iOS': [103, 111],
+                'Android': [111, 120],
+                'IPTV': [120, 180],
+                'VLC': [120, 128],
+                'Kodi': [128, 136],
+                'TiviMate': [136, 142],
+                'OTT': [142, 148],
+            };
+            if (strategy === 'default') {
+                // Rotación secuencial por el banco completo
+                const idx = (_errorSalt++) % BANK_SIZE;
+                return _epochPermutation[idx];
+            }
+            if (strategy === 'random') {
+                return _epochPermutation[Math.floor(Math.random() * BANK_SIZE)];
+            }
+            const range = tierMap[strategy];
+            if (range) {
+                const [start, end] = range;
+                return _epochPermutation[start + Math.floor(Math.random() * (end - start))];
+            }
             return _epochPermutation[Math.floor(Math.random() * BANK_SIZE)];
         }
-        const range = tierMap[strategy];
-        if (range) {
-            const [start, end] = range;
-            return _epochPermutation[start + Math.floor(Math.random() * (end - start))];
+
+        /**
+         * Obtener el UA completo para inyectar en las 3 capas de transporte:
+         * #EXTHTTP, #EXTVLCOPT y #KODIPROP de forma sincronizada.
+         *
+         * @returns {object} { ua, exthttp, extvlcopt, kodiprop }
+         */
+        function getLayeredUA(channelIndex, channelName, mode = 'generate') {
+            let ua;
+            if (mode === 'zapping') ua = getForZapping(channelIndex, channelName);
+            else if (mode === 'recovery') ua = getForRecovery(407, channelIndex, channelName);
+            else ua = getForChannel(channelIndex, channelName);
+
+            return {
+                ua,
+                exthttp: `{"User-Agent":"${ua}"}`,
+                extvlcopt: `#EXTVLCOPT:http-user-agent=${ua}`,
+                kodiprop: `#KODIPROP:inputstream.adaptive.user_agent=${ua}`
+            };
         }
-        return _epochPermutation[Math.floor(Math.random() * BANK_SIZE)];
-    }
 
-    /**
-     * Obtener el UA completo para inyectar en las 3 capas de transporte:
-     * #EXTHTTP, #EXTVLCOPT y #KODIPROP de forma sincronizada.
-     *
-     * @returns {object} { ua, exthttp, extvlcopt, kodiprop }
-     */
-    function getLayeredUA(channelIndex, channelName, mode = 'generate') {
-        let ua;
-        if (mode === 'zapping')       ua = getForZapping(channelIndex, channelName);
-        else if (mode === 'recovery') ua = getForRecovery(407, channelIndex, channelName);
-        else                          ua = getForChannel(channelIndex, channelName);
+        // Inicializar con la época actual al cargar el módulo
+        init();
 
-        return {
-            ua,
-            exthttp:   `{"User-Agent":"${ua}"}`,
-            extvlcopt: `#EXTVLCOPT:http-user-agent=${ua}`,
-            kodiprop:  `#KODIPROP:inputstream.adaptive.user_agent=${ua}`
-        };
-    }
+        return { init, get, getForChannel, getForZapping, getForRecovery, getLayeredUA };
 
-    // Inicializar con la época actual al cargar el módulo
-    init();
+    })();
 
-    return { init, get, getForChannel, getForZapping, getForRecovery, getLayeredUA };
-
-})();
-
-// ─────────────────────────────────────────────────────────────────────────────
+    // ─────────────────────────────────────────────────────────────────────────────
 
     const getRotatedUserAgent = (strategy) => UAPhantomEngine.get(strategy);
 
@@ -1354,35 +1454,64 @@ const UAPhantomEngine = (function () {
                         s,                          // LAB settings sobreescribe nombres coincidentes
                         {
                             // ── Identity (transforms de nombre/unidad) ──────────────────────
-                            name:                   pmProfile.name || hardcoded.name,
-                            resolution:             s.resolution || hardcoded.resolution,
-                            width:                  parseInt((s.resolution || hardcoded.resolution).split('x')[0]) || hardcoded.width,
-                            height:                 parseInt((s.resolution || hardcoded.resolution).split('x')[1]) || hardcoded.height,
-                            fps:                    s.fps || hardcoded.fps,
+                            name: pmProfile.name || hardcoded.name,
+                            resolution: s.resolution || hardcoded.resolution,
+                            width: parseInt((s.resolution || hardcoded.resolution).split('x')[0]) || hardcoded.width,
+                            height: parseInt((s.resolution || hardcoded.resolution).split('x')[1]) || hardcoded.height,
+                            fps: s.fps || hardcoded.fps,
                             // ── Bitrate (LAB Mbps float → kbps int) ────────────────────────
-                            bitrate:                s.bitrate ? Math.round(s.bitrate * 1000) : hardcoded.bitrate,
+                            bitrate: s.bitrate ? Math.round(s.bitrate * 1000) : hardcoded.bitrate,
                             // ── Buffers (LAB ms; mantenemos legacy alias) ──────────────────
-                            buffer_ms:              s.buffer || hardcoded.buffer_ms,
-                            network_cache_ms:       s.buffer || hardcoded.network_cache_ms,
-                            live_cache_ms:          s.buffer || hardcoded.live_cache_ms,
-                            file_cache_ms:          s.playerBuffer || hardcoded.file_cache_ms,
-                            player_buffer_ms:       s.playerBuffer || hardcoded.player_buffer_ms,
+                            buffer_ms: s.buffer || hardcoded.buffer_ms,
+                            network_cache_ms: s.buffer || hardcoded.network_cache_ms,
+                            live_cache_ms: s.buffer || hardcoded.live_cache_ms,
+                            file_cache_ms: s.playerBuffer || hardcoded.file_cache_ms,
+                            player_buffer_ms: s.playerBuffer || hardcoded.player_buffer_ms,
                             // ── Bandwidth (LAB Mbps → bps) ─────────────────────────────────
-                            max_bandwidth:          s.bitrate ? Math.round(s.bitrate * 1000000 * 2) : hardcoded.max_bandwidth,
-                            min_bandwidth:          s.bitrate ? Math.round(s.bitrate * 1000000 * 0.75) : hardcoded.min_bandwidth,
+                            // 🔮 PRISMA Stage 1.5: si LAB-SYNC v2.0 está cargado, usa floor/target PRISMA por perfil
+                            //   getPrismaFloorBpsForProfile(P0) = 15000000 (15 Mbps · 4K UHD)
+                            //   getPrismaFloorBpsForProfile(P3) = 8000000  (8 Mbps · FHD)
+                            //   getPrismaFloorBpsForProfile(P5) = 4000000  (4 Mbps · SD)
+                            // Fallback: 75% bitrate calculation (legacy v1.3-)
+                            max_bandwidth: (function () {
+                                const cfg = (typeof window !== 'undefined' && window.APE_PROFILES_CONFIG) ? window.APE_PROFILES_CONFIG : null;
+                                if (cfg && typeof cfg.isPrismaLoaded === 'function' && cfg.isPrismaLoaded()) {
+                                    const tgt = cfg.getPrismaTargetBpsForProfile(profileId);
+                                    if (typeof tgt === 'number' && tgt > 0) return tgt;
+                                }
+                                return s.bitrate ? Math.round(s.bitrate * 1000000 * 2) : hardcoded.max_bandwidth;
+                            })(),
+                            min_bandwidth: (function () {
+                                const cfg = (typeof window !== 'undefined' && window.APE_PROFILES_CONFIG) ? window.APE_PROFILES_CONFIG : null;
+                                if (cfg && typeof cfg.isPrismaLoaded === 'function' && cfg.isPrismaLoaded()) {
+                                    const floor = cfg.getPrismaFloorBpsForProfile(profileId);
+                                    if (typeof floor === 'number' && floor > 0) return floor;
+                                }
+                                return s.bitrate ? Math.round(s.bitrate * 1000000 * 0.75) : hardcoded.min_bandwidth;
+                            })(),
+                            // ── Bitrate Floor (LAB-driven absolute minimum, Mbps) ──────────
+                            // 🔮 PRISMA: si LAB-SYNC v2.0 cargado, usa floor PRISMA (Mbps) por perfil
+                            bitrate_floor_mbps: (function () {
+                                const cfg = (typeof window !== 'undefined' && window.APE_PROFILES_CONFIG) ? window.APE_PROFILES_CONFIG : null;
+                                if (cfg && typeof cfg.isPrismaLoaded === 'function' && cfg.isPrismaLoaded()) {
+                                    const floor = cfg.getPrismaFloorBpsForProfile(profileId);
+                                    if (typeof floor === 'number' && floor > 0) return floor / 1000000;
+                                }
+                                return _firstDef(s.bitrate_floor_mbps, hardcoded.bitrate_floor_mbps);
+                            })(),
                             // ── Throughput ─────────────────────────────────────────────────
-                            throughput_t1:          s.t1 || hardcoded.throughput_t1,
-                            throughput_t2:          s.t2 || hardcoded.throughput_t2,
+                            throughput_t1: s.t1 || hardcoded.throughput_t1,
+                            throughput_t2: s.t2 || hardcoded.throughput_t2,
                             // ── Prefetch (from PM's prefetch config or hardcoded) ──────────
-                            prefetch_segments:      pf?.segments || hardcoded.prefetch_segments,
-                            prefetch_parallel:      pf?.parallelDownloads || hardcoded.prefetch_parallel,
+                            prefetch_segments: pf?.segments || hardcoded.prefetch_segments,
+                            prefetch_parallel: pf?.parallelDownloads || hardcoded.prefetch_parallel,
                             prefetch_buffer_target: pf?.bufferTarget ? pf.bufferTarget * 1000 : hardcoded.prefetch_buffer_target,
                             prefetch_min_bandwidth: pf?.minBandwidth ? pf.minBandwidth * 1000000 : hardcoded.prefetch_min_bandwidth,
                             // ── Codec (LAB names diferentes → generator names) ─────────────
-                            codec_primary:          _mapCodecPM(s.codec) || hardcoded.codec_primary,
-                            codec_fallback:         _firstDef(s.codec_fallback, hardcoded.codec_fallback),
-                            codec_priority:         _firstDef(s.codec_priority, hardcoded.codec_priority),
-                            codec_full:             _firstDef(s.codec_full, hardcoded.codec_full),
+                            codec_primary: _mapCodecPM(s.codec) || hardcoded.codec_primary,
+                            codec_fallback: _firstDef(s.codec_fallback, hardcoded.codec_fallback),
+                            codec_priority: _firstDef(s.codec_priority, hardcoded.codec_priority),
+                            codec_full: _firstDef(s.codec_full, hardcoded.codec_full),
                             // ── HDR / Color (claves LAB con nombres bit_depth/peak_luminance_nits) ──
                             // FIX 2026-04-26 (origen del bug `.join is not a function`):
                             //   Antes: si s.hdr_mode existía, devolvía boolean (true/false), rompiendo
@@ -1390,7 +1519,7 @@ const UAPhantomEngine = (function () {
                             //   Ahora: deriva un array de modos HDR desde s.hdr_mode (DOLBY_VISION,
                             //   HDR10PLUS, HDR10, HLG, SDR), con fallback al hardcoded.hdr_support (array).
                             //   Match exacto con la lógica de selección de modo HDR per-profile del LAB.
-                            hdr_support:            (() => {
+                            hdr_support: (() => {
                                 const m = s.hdr_mode ? String(s.hdr_mode).toUpperCase() : '';
                                 if (m === 'DOLBY_VISION') return ['dolby-vision', 'hdr10+', 'hdr10', 'hlg', 'sdr'];
                                 if (m === 'HDR10PLUS' || m === 'HDR10+') return ['hdr10+', 'hdr10', 'hlg', 'sdr'];
@@ -1399,51 +1528,51 @@ const UAPhantomEngine = (function () {
                                 if (m === 'SDR') return ['sdr'];
                                 return Array.isArray(hardcoded.hdr_support) ? hardcoded.hdr_support : ['sdr'];
                             })(),
-                            hdr_mode:               _firstDef(s.hdr_mode, hardcoded.hdr_mode),
-                            color_depth:            _firstDef(s.bit_depth, s.bitDepth, hardcoded.color_depth),
-                            color_space:            _firstDef(s.color_space, hardcoded.color_space),
-                            color_primaries:        _firstDef(s.color_primaries, hardcoded.color_primaries),
-                            color_transfer:         _firstDef(s.color_transfer, s.transfer_function, hardcoded.transfer_function),
-                            transfer_function:      _firstDef(s.color_transfer, s.transfer_function, hardcoded.transfer_function),
-                            chroma_subsampling:     _firstDef(s.chroma_subsampling, hardcoded.chroma_subsampling),
-                            peak_luminance_nits:    _firstDef(s.peak_luminance_nits, s.peakLuminanceNits, hardcoded.peak_luminance_nits),
+                            hdr_mode: _firstDef(s.hdr_mode, hardcoded.hdr_mode),
+                            color_depth: _firstDef(s.bit_depth, s.bitDepth, hardcoded.color_depth),
+                            color_space: _firstDef(s.color_space, hardcoded.color_space),
+                            color_primaries: _firstDef(s.color_primaries, hardcoded.color_primaries),
+                            color_transfer: _firstDef(s.color_transfer, s.transfer_function, hardcoded.transfer_function),
+                            transfer_function: _firstDef(s.color_transfer, s.transfer_function, hardcoded.transfer_function),
+                            chroma_subsampling: _firstDef(s.chroma_subsampling, hardcoded.chroma_subsampling),
+                            peak_luminance_nits: _firstDef(s.peak_luminance_nits, s.peakLuminanceNits, hardcoded.peak_luminance_nits),
                             // ── Audio ──────────────────────────────────────────────────────
-                            audio_codec:            _firstDef(s.audio_codec, hardcoded.audio_codec),
-                            audio_channels:         _firstDef(s.audio_channels, hardcoded.audio_channels),
-                            audio_passthrough:      _firstDef(s.audio_passthrough, hardcoded.audio_passthrough),
+                            audio_codec: _firstDef(s.audio_codec, hardcoded.audio_codec),
+                            audio_channels: _firstDef(s.audio_channels, hardcoded.audio_channels),
+                            audio_passthrough: _firstDef(s.audio_passthrough, hardcoded.audio_passthrough),
                             // ── Encoding params (LAB-aware) ────────────────────────────────
-                            gop_size:               _firstDef(s.gop_size, hardcoded.gop_size),
-                            clock_jitter:           _firstDef(s.clock_jitter, hardcoded.clock_jitter),
-                            clock_synchro:          _firstDef(s.clock_synchro, hardcoded.clock_synchro),
-                            vmaf_target:            _firstDef(s.vmaf_target, hardcoded.vmaf_target),
+                            gop_size: _firstDef(s.gop_size, hardcoded.gop_size),
+                            clock_jitter: _firstDef(s.clock_jitter, hardcoded.clock_jitter),
+                            clock_synchro: _firstDef(s.clock_synchro, hardcoded.clock_synchro),
+                            vmaf_target: _firstDef(s.vmaf_target, hardcoded.vmaf_target),
                             // ── Identidad / Estrategia ────────────────────────────────────
-                            strategy:               _firstDef(s.strategy, hardcoded.strategy),
-                            focus:                  _firstDef(s.focus, hardcoded.focus),
-                            device_class:           hardcoded.device_class,
+                            strategy: _firstDef(s.strategy, hardcoded.strategy),
+                            focus: _firstDef(s.focus, hardcoded.focus),
+                            device_class: hardcoded.device_class,
                             // ── Reconnection (no LAB-source, hardcoded preservado) ─────────
-                            reconnect_timeout_ms:   hardcoded.reconnect_timeout_ms,
+                            reconnect_timeout_ms: hardcoded.reconnect_timeout_ms,
                             reconnect_max_attempts: hardcoded.reconnect_max_attempts,
-                            reconnect_delay_ms:     hardcoded.reconnect_delay_ms,
-                            availability_target:    hardcoded.availability_target,
+                            reconnect_delay_ms: hardcoded.reconnect_delay_ms,
+                            availability_target: hardcoded.availability_target,
                             // ── HEVC / encoding extras (algunos LAB-aware) ──────────────────
-                            hevc_tier:              _firstDef(s.hevc_tier, hardcoded.hevc_tier),
-                            hevc_level:             _firstDef(s.hevc_level, hardcoded.hevc_level),
-                            hevc_profile:           _firstDef(s.hevc_profile, hardcoded.hevc_profile),
-                            matrix_coefficients:    _firstDef(s.matrix_coefficients, hardcoded.matrix_coefficients),
-                            compression_level:      _firstDef(s.compression_level, hardcoded.compression_level),
-                            rate_control:           _firstDef(s.rate_control, hardcoded.rate_control),
-                            entropy_coding:         _firstDef(s.entropy_coding, hardcoded.entropy_coding),
-                            video_profile:          _firstDef(s.video_profile, hardcoded.video_profile),
-                            pixel_format:           _firstDef(s.pixel_format, hardcoded.pixel_format),
+                            hevc_tier: _firstDef(s.hevc_tier, hardcoded.hevc_tier),
+                            hevc_level: _firstDef(s.hevc_level, hardcoded.hevc_level),
+                            hevc_profile: _firstDef(s.hevc_profile, hardcoded.hevc_profile),
+                            matrix_coefficients: _firstDef(s.matrix_coefficients, hardcoded.matrix_coefficients),
+                            compression_level: _firstDef(s.compression_level, hardcoded.compression_level),
+                            rate_control: _firstDef(s.rate_control, hardcoded.rate_control),
+                            entropy_coding: _firstDef(s.entropy_coding, hardcoded.entropy_coding),
+                            video_profile: _firstDef(s.video_profile, hardcoded.video_profile),
+                            pixel_format: _firstDef(s.pixel_format, hardcoded.pixel_format),
                             // ── Segment / BW guarantee ─────────────────────────────────────
-                            segment_duration:       _firstDef(s.segment_duration_s, s.segment_duration, hardcoded.segment_duration),
-                            bandwidth_guarantee:    _firstDef(s.bandwidth_guarantee, hardcoded.bandwidth_guarantee),
+                            segment_duration: _firstDef(s.segment_duration_s, s.segment_duration, hardcoded.segment_duration),
+                            bandwidth_guarantee: _firstDef(s.bandwidth_guarantee, hardcoded.bandwidth_guarantee),
                             // ── Acceso al perfil completo del LAB para emisores avanzados ──
                             // (actor_injections, player_enslavement, optimized_knobs, fitness, etc.)
-                            _labProfile:            pmProfile,
+                            _labProfile: pmProfile,
                             // ── Bridge metadata ────────────────────────────────────────────
-                            _bridged:               true,
-                            _source:                'ProfileManagerV9_SSOT'
+                            _bridged: true,
+                            _source: 'ProfileManagerV9_SSOT'
                         }
                     );
 
@@ -2070,18 +2199,18 @@ const UAPhantomEngine = (function () {
             // Doctrina SSOT: cualquier valor calibrado por el LAB queda auditable
             // directo en la lista. Cero "valores ciegos".
             const lm = options.lab_metadata || {};
-            if (lm.lab_version)        coreHeader.push(`#EXT-X-APE-LAB-VERSION:${lm.lab_version}`);
+            if (lm.lab_version) coreHeader.push(`#EXT-X-APE-LAB-VERSION:${lm.lab_version}`);
             if (lm.lab_schema_variant) coreHeader.push(`#EXT-X-APE-LAB-SCHEMA-VARIANT:${lm.lab_schema_variant}`);
-            if (lm.exported_at)        coreHeader.push(`#EXT-X-APE-LAB-EXPORTED-AT:${lm.exported_at}`);
+            if (lm.exported_at) coreHeader.push(`#EXT-X-APE-LAB-EXPORTED-AT:${lm.exported_at}`);
             coreHeader.push(`#EXT-X-APE-LAB-BULLETPROOF:${lm.bulletproof === true ? 'true' : 'false'}`);
-            if (lm.labFileName)        coreHeader.push(`#EXT-X-APE-LAB-FILENAME:${lm.labFileName}`);
+            if (lm.labFileName) coreHeader.push(`#EXT-X-APE-LAB-FILENAME:${lm.labFileName}`);
 
             // ── PER-PROFILE SOLVER PROVENANCE ────────────────────────────────────
             // 5 campos del bulletproof por perfil que antes eran "valores ciegos":
             // role, fitness, solver_trace, optimized_timestamp, name.
             // Emitidos como atributos del tag por perfil para auditoría directa.
             const _esc = (v) => String(v ?? '').replace(/"/g, '\\"');
-            for (const pid of ['P0','P1','P2','P3','P4','P5']) {
+            for (const pid of ['P0', 'P1', 'P2', 'P3', 'P4', 'P5']) {
                 const p = options.bulletproof_profiles[pid];
                 if (!p) continue;
                 const attrs = [
@@ -2096,7 +2225,7 @@ const UAPhantomEngine = (function () {
                 // Bounds del solver (rangos lo/hi por knob) — opcional pero auditable
                 if (p.bounds && typeof p.bounds === 'object') {
                     const boundEntries = Object.entries(p.bounds)
-                        .map(([k,v]) => `${k}=${typeof v==='object'?JSON.stringify(v):v}`)
+                        .map(([k, v]) => `${k}=${typeof v === 'object' ? JSON.stringify(v) : v}`)
                         .join(',');
                     if (boundEntries) coreHeader.push(`#EXT-X-APE-LAB-BOUNDS-${pid}:${boundEntries}`);
                 }
@@ -2104,7 +2233,7 @@ const UAPhantomEngine = (function () {
                 // Optimized knobs (resultado del solver: buffer_seconds, live_delay, etc.)
                 if (p.optimized_knobs && typeof p.optimized_knobs === 'object') {
                     const knobEntries = Object.entries(p.optimized_knobs)
-                        .map(([k,v]) => `${k}=${v}`)
+                        .map(([k, v]) => `${k}=${v}`)
                         .join(',');
                     if (knobEntries) coreHeader.push(`#EXT-X-APE-LAB-KNOBS-${pid}:${knobEntries}`);
                 }
@@ -2113,14 +2242,14 @@ const UAPhantomEngine = (function () {
             let dynamicHeaders = [];
             const masterProfileId = options.masterProfile || 'P0';
             const labProfile = options.bulletproof_profiles[masterProfileId];
-            
+
             if (labProfile && labProfile.player_enslavement && labProfile.player_enslavement.level_1_master_playlist) {
                 const l1 = labProfile.player_enslavement.level_1_master_playlist;
                 if (Array.isArray(l1)) {
                     dynamicHeaders = [...l1];
                 }
             }
-            
+
             if (options.bulletproof_nivel1 && Array.isArray(options.bulletproof_nivel1)) {
                 for (const item of options.bulletproof_nivel1) {
                     // nivel1_directives can be objects {tag, value} or strings
@@ -2164,9 +2293,9 @@ const UAPhantomEngine = (function () {
             const _profileGet = (key) => {
                 const s = masterP.settings || {};
                 if (key === 'buffer_ms') return s.buffer || s.bufferMs || '';
-                if (key === 'buffer_s')  return s.bufferTargetSec || s.bufferSeconds || '';
+                if (key === 'buffer_s') return s.bufferTargetSec || s.bufferSeconds || '';
                 if (key === 'max_bandwidth') return s.maxBitrateKbps ? s.maxBitrateKbps * 1000 : '';
-                if (key === 'max_width')  return parseInt((s.resolution || '0x0').split('x')[0]) || '';
+                if (key === 'max_width') return parseInt((s.resolution || '0x0').split('x')[0]) || '';
                 if (key === 'max_height') return parseInt((s.resolution || '0x0').split('x')[1]) || '';
                 if (key === 'resolution') return s.resolution || '';
                 return s[key] !== undefined ? s[key] : '';
@@ -2182,7 +2311,58 @@ const UAPhantomEngine = (function () {
                     .replace(/\{config\.([a-zA-Z0-9_]+)\}/g, (_m, k) => String(cfgGlobal[k] !== undefined ? cfgGlobal[k] : `{config.${k}}`));
             };
             dynamicHeaders = dynamicHeaders.map(line => _resolveHeaderPlaceholders(line));
-            
+
+            // ── MASTER HEADER DRIFT SANITIZER (audit 2026-04-29) ─────────────────
+            // GR-2: corrige `#EXT-X-SERVER-N:<host>` cuando el LAB trae un host
+            // staticfijo que no coincide con `app.state.activeServers[]` reales.
+            // GR-3: normaliza `X-HDR-MAX-CLL` cuando excede 10000 (límite físico
+            // HDR10/HDR10+ ST 2086) y unifica formato de `X-HDR-TYPE` con espacios
+            // raros (`"DOLBY_VISION + HDR10+"` → `"HDR10+DV-P81-P10"`).
+            // Doctrina: NO altera valores LAB-SSOT calibrados; solo corrige drift
+            // detectable entre header del LAB y realidad técnica.
+            try {
+                const _activeServers = (typeof window !== 'undefined' && window.app?.state?.activeServers) || [];
+                const _realHosts = _activeServers
+                    .map(s => (s && (s.url || s.host || s.baseUrl)) || '')
+                    .filter(u => u && /^https?:/.test(u))
+                    .map(u => {
+                        try { const x = new URL(u); return x.protocol + '//' + x.host; } catch { return ''; }
+                    })
+                    .filter(Boolean);
+                const _seenServerHost = new Set();
+                dynamicHeaders = dynamicHeaders.map(line => {
+                    if (typeof line !== 'string') return line;
+                    let out = line;
+                    // GR-2: reemplazar EXT-X-SERVER-N por hosts reales (si hay activeServers)
+                    if (_realHosts.length > 0 && /^#EXT-X-SERVER-\d+:/.test(out)) {
+                        const idxMatch = out.match(/^#EXT-X-SERVER-(\d+):/);
+                        const idx = idxMatch ? parseInt(idxMatch[1], 10) - 1 : 0;
+                        const realHost = _realHosts[idx] || _realHosts[0];
+                        out = `#EXT-X-SERVER-${idx + 1}:${realHost}`;
+                    }
+                    // GR-3a: cap MAX-CLL a 10000 (límite ST 2086)
+                    out = out.replace(/X-HDR-MAX-CLL=(\d+)/g, (_m, n) => {
+                        const v = parseInt(n, 10);
+                        return `X-HDR-MAX-CLL=${v > 10000 ? 10000 : v}`;
+                    });
+                    // GR-3b: normalizar formato X-HDR-TYPE con espacios raros
+                    out = out.replace(/X-HDR-TYPE="DOLBY_VISION\s*\+\s*HDR10\+"/g, 'X-HDR-TYPE="HDR10+DV-P81-P10"');
+                    return out;
+                });
+                // GR-2 backstop: dedup hosts repetidos en EXT-X-SERVER-N (LAB puede
+                // emitir N entradas con mismo host).
+                dynamicHeaders = dynamicHeaders.filter(line => {
+                    const m = typeof line === 'string' && line.match(/^#EXT-X-SERVER-\d+:(.+)$/);
+                    if (!m) return true;
+                    const host = m[1];
+                    if (_seenServerHost.has(host)) return false;
+                    _seenServerHost.add(host);
+                    return true;
+                });
+            } catch (e) {
+                console.warn('[GENERATOR] Master header drift sanitizer failed:', e?.message || e);
+            }
+
             // Dedup and Anti-##
             // RFC 8216 singleton tags: si el dynamicHeader trae VERSION o INDEPENDENT-SEGMENTS
             // (ya emitidos por coreHeader), descartar para no producir duplicados en header.
@@ -2230,7 +2410,7 @@ const UAPhantomEngine = (function () {
 #EXT-X-APE-LCEVC-SDK-VERSION:1.2.4
 #EXT-X-VNOVA-LCEVC-TARGET-SDK:HTML5
 ${options.dictatorMode ? `#EXT-X-SESSION-DATA:DATA-ID="exoplayer.load_control",VALUE="{\\"minBufferMs\\":20000,\\"bufferForPlaybackMs\\":5000}"` : ""}
-${options.dictatorMode ? `#` + Array.from({length: 64}).map(() => Math.random().toString(36).substring(2)).join("")  : ""}
+${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random().toString(36).substring(2)).join("") : ""}
 #EXT-X-CONTENT-STEERING:SERVER-URI="https://steer.ape.net/v1",PATHWAY-ID="PRIMARY"
 #EXT-X-DEFINE:NAME="OMEGA_BUILD",VALUE="v5.4-MAX-AGGRESSION"
 #EXT-X-DEFINE:NAME="OMEGA_EPOCH",VALUE="${timestamp}"
@@ -2442,11 +2622,11 @@ ${options.dictatorMode ? `#` + Array.from({length: 64}).map(() => Math.random().
                 return Number.isNaN(n) ? (parseInt(fallback, 10) || 0) : n;
             };
 
-            const netCache  = fromLab(vo['network-caching'],  cfg.network_cache_ms);
-            const liveCache = fromLab(vo['live-caching'],     cfg.live_cache_ms);
-            const fileCache = fromLab(vo['file-caching'],     cfg.file_cache_ms);
-            const discCache = fromLab(vo['disc-caching'],     netCache);
-            const tcpCache  = fromLab(vo['tcp-caching'],      netCache);
+            const netCache = fromLab(vo['network-caching'], cfg.network_cache_ms);
+            const liveCache = fromLab(vo['live-caching'], cfg.live_cache_ms);
+            const fileCache = fromLab(vo['file-caching'], cfg.file_cache_ms);
+            const discCache = fromLab(vo['disc-caching'], netCache);
+            const tcpCache = fromLab(vo['tcp-caching'], netCache);
             const soutCache = fromLab(vo['sout-mux-caching'], liveCache);
 
             vlcopts.push(`#EXTVLCOPT:network-caching=${netCache}`);
@@ -2473,13 +2653,13 @@ ${options.dictatorMode ? `#` + Array.from({length: 64}).map(() => Math.random().
             if (vo['video-color-range']) vlcopts.push(`#EXTVLCOPT:video-color-range=${vo['video-color-range']}`);
             if (vo['tone-mapping']) vlcopts.push(`#EXTVLCOPT:tone-mapping=${vo['tone-mapping']}`);
             if (vo['hdr-output-mode']) vlcopts.push(`#EXTVLCOPT:hdr-output-mode=${vo['hdr-output-mode']}`);
-            
+
             if (vo['sharpen-sigma']) vlcopts.push(`#EXTVLCOPT:sharpen-sigma=${vo['sharpen-sigma']}`);
             if (vo['contrast']) vlcopts.push(`#EXTVLCOPT:contrast=${vo['contrast']}`);
             if (vo['brightness']) vlcopts.push(`#EXTVLCOPT:brightness=${vo['brightness']}`);
             if (vo['saturation']) vlcopts.push(`#EXTVLCOPT:saturation=${vo['saturation']}`);
             if (vo['gamma']) vlcopts.push(`#EXTVLCOPT:gamma=${vo['gamma']}`);
-            
+
             // Hardcoded hardware decodes to guarantee limits
             vlcopts.push(`#EXTVLCOPT:ipv4-timeout=${pmProfile?.hardware?.network_timeout || 5000}`);
             vlcopts.push(`#EXTVLCOPT:avcodec-hw=${pmProfile?.hardware?.avcodec_hw || 'any'}`);
@@ -2491,9 +2671,56 @@ ${options.dictatorMode ? `#` + Array.from({length: 64}).map(() => Math.random().
             vlcopts.push(`#EXTVLCOPT:video-visual=${pmProfile?.visuals?.video_visual_mode || 'full-range'}`);
 
             // Codecs
-            vlcopts.push(`#EXTVLCOPT:codec=${pmProfile?.settings?.codec_priority ? pmProfile.settings.codec_priority.split(',').slice(0,2).join(',') : 'h265,h264'}`);
+            vlcopts.push(`#EXTVLCOPT:codec=${pmProfile?.settings?.codec_priority ? pmProfile.settings.codec_priority.split(',').slice(0, 2).join(',') : 'h265,h264'}`);
             vlcopts.push(`#EXTVLCOPT:preferred-codec=${(pmProfile?.settings?.codec) ? pmProfile.settings.codec.toLowerCase() : 'hevc'}`);
             vlcopts.push(`#EXTVLCOPT:codec-priority=${pmProfile?.settings?.codec_priority || 'hevc,hev1,hvc1,h265,av1,vp9,h264'}`);
+
+            // ── V6.3 PLAYER-CONSUMED INTENT (CMAF/APE → EXTVLCOPT translation) ──
+            // Mapea la intención de #EXT-X-CMAF-AUDIO-FALLBACK / -ATMOS / -DOLBY-VISION /
+            // -CONTAINER a directivas que VLC sí interpreta nativamente. Las 3 keys
+            // adaptive-{maxwidth,maxheight,logic} se emiten hardcoded en L7008-7011
+            // con valores per-canal derivados de _res796 — no las dupliquemos aquí.
+            if (vo['audio-codec-priority']) vlcopts.push(`#EXTVLCOPT:audio-codec-priority=${vo['audio-codec-priority']}`);
+            if (vo['audio-spatializer']) vlcopts.push(`#EXTVLCOPT:audio-spatializer=${vo['audio-spatializer']}`);
+            if (vo['demux']) vlcopts.push(`#EXTVLCOPT:demux=${vo['demux']}`);
+
+            // ═══════════════════════════════════════════════════════════
+            // 🛡️ ANTI-DRIFT EXTRAS GATE — emite keys vlcopt no-conocidos
+            // SOLO si el usuario opta-in en Import LAB (per-profile flag).
+            // Sin opt-in, los keys "extras" del LAB quedan silenciados.
+            // M1: emitOnce previene duplicación con keys ya emitidos.
+            // ═══════════════════════════════════════════════════════════
+            if (pmProfile.includeLabExtras === true) {
+                const KNOWN_VLCOPT_KEYS = new Set([
+                    'network-caching','live-caching','file-caching','disc-caching','tcp-caching','sout-mux-caching',
+                    'clock-jitter','clock-synchro',
+                    'http-user-agent','http-forward-cookies','http-reconnect','http-continuous-stream','http-continuous',
+                    'video-filter','video-color-space','video-transfer-function','video-color-primaries','video-color-range',
+                    'tone-mapping','hdr-output-mode','sharpen-sigma','contrast','brightness','saturation','gamma',
+                    'audio-codec-priority','audio-spatializer','adaptive-logic','adaptive-maxwidth','adaptive-maxheight','demux'
+                ]);
+                // Build emitted-prefix set from current vlcopts (selective path output)
+                const emittedVlcPrefixes = new Set();
+                for (const line of vlcopts) {
+                    const m = line.match(/^#EXTVLCOPT:([^=]+)/);
+                    if (m) emittedVlcPrefixes.add(m[1]);
+                }
+                let extraCount = 0;
+                for (const k of Object.keys(vo)) {
+                    if (KNOWN_VLCOPT_KEYS.has(k)) continue;
+                    const v = vo[k];
+                    if (v === null || v === undefined || v === '') continue;
+                    if (emitOnce(vlcopts, emittedVlcPrefixes, k, `#EXTVLCOPT:${k}=${v}`)) {
+                        extraCount++;
+                    }
+                }
+                if (extraCount > 0) {
+                    if (_apeAuditAcc) _apeAuditAcc.extras.vlcopt += extraCount;
+                    if (typeof console !== 'undefined') {
+                        console.debug(`[GENERATOR] ${profile} +${extraCount} extras vlcopt emitted (LAB opt-in)`);
+                    }
+                }
+            }
 
         } else {
             // Fallback Genérico si no hay vlcopt dict en el JSON
@@ -2517,7 +2744,7 @@ ${options.dictatorMode ? `#` + Array.from({length: 64}).map(() => Math.random().
             vlcopts.push(`#EXTVLCOPT:avcodec-threads=${pmProfile?.hardware?.avcodec_threads !== undefined ? pmProfile.hardware.avcodec_threads : 0}`);
             vlcopts.push(`#EXTVLCOPT:ffmpeg-hw`);
             vlcopts.push(`#EXTVLCOPT:video-visual=${pmProfile?.visuals?.video_visual_mode || 'full-range'}`);
-            vlcopts.push(`#EXTVLCOPT:codec=${pmProfile?.settings?.codec_priority ? pmProfile.settings.codec_priority.split(',').slice(0,2).join(',') : 'h265,h264'}`);
+            vlcopts.push(`#EXTVLCOPT:codec=${pmProfile?.settings?.codec_priority ? pmProfile.settings.codec_priority.split(',').slice(0, 2).join(',') : 'h265,h264'}`);
             vlcopts.push(`#EXTVLCOPT:preferred-codec=${(pmProfile?.settings?.codec) ? pmProfile.settings.codec.toLowerCase() : 'hevc'}`);
             vlcopts.push(`#EXTVLCOPT:codec-priority=${pmProfile?.settings?.codec_priority || 'hevc,hev1,hvc1,h265,av1,vp9,h264'}`);
         }
@@ -2556,9 +2783,10 @@ ${options.dictatorMode ? `#` + Array.from({length: 64}).map(() => Math.random().
             `#EXTVLCOPT:audio-time-stretch=1`,
             `#EXTVLCOPT:stereo-mode=0`,
             // ── SECCIÓN 10: RESOLUCIÓN (profile-aware, 4 líneas) ──
-            `#EXTVLCOPT:preferred-resolution=${cfg.height || 4320}`,
-            `#EXTVLCOPT:adaptive-maxwidth=${cfg.width || 7680}`,
-            `#EXTVLCOPT:adaptive-maxheight=${cfg.height || 4320}`,
+            // B3 sanity guard: cap a 7680/4320 (8K) si LAB devuelve >7680 (lista emitía 60000).
+            `#EXTVLCOPT:preferred-resolution=${(cfg.height > 0 && cfg.height <= 4320) ? cfg.height : 4320}`,
+            `#EXTVLCOPT:adaptive-maxwidth=${(cfg.width > 0 && cfg.width <= 7680) ? cfg.width : 7680}`,
+            `#EXTVLCOPT:adaptive-maxheight=${(cfg.height > 0 && cfg.height <= 4320) ? cfg.height : 4320}`,
             `#EXTVLCOPT:adaptive-logic=highest`,
             // ── SECCIÓN 11: VIDEO PROCESSING — HARDWARE MAXIMIZER (11 líneas) ──
             // 🛡️ Mecanismos Expertos: Anti-Pixelamiento Agresivo y Relleno Artificial Perfect-Frame (Plan B / Local Fallback)
@@ -2620,15 +2848,15 @@ ${options.dictatorMode ? `#` + Array.from({length: 64}).map(() => Math.random().
         // directivas buffer/cache. Si LAB no está disponible, fallback a GLOBAL_CACHING.
         // Doctrina: el LAB Excel calibra y el JS replica byte-by-byte (sin ×4, sin clamp).
         const pmProfile = (typeof window !== 'undefined'
-                           && window.APE_PROFILES_CONFIG
-                           && typeof window.APE_PROFILES_CONFIG.getProfile === 'function')
-                          ? window.APE_PROFILES_CONFIG.getProfile(profile) : null;
+            && window.APE_PROFILES_CONFIG
+            && typeof window.APE_PROFILES_CONFIG.getProfile === 'function')
+            ? window.APE_PROFILES_CONFIG.getProfile(profile) : null;
         const labMs = (key, fallbackMs) => {
             const n = parseInt(pmProfile?.vlcopt?.[key], 10);
             return Number.isNaN(n) ? fallbackMs : n;
         };
-        const labNetMs   = labMs('network-caching', GLOBAL_CACHING.network);
-        const labLiveMs  = labMs('live-caching',    GLOBAL_CACHING.live);
+        const labNetMs = labMs('network-caching', GLOBAL_CACHING.network);
+        const labLiveMs = labMs('live-caching', GLOBAL_CACHING.live);
         const labSegments = parseInt(pmProfile?.prefetch_config?.prefetch_segments, 10) || (cfg.buffer_segments || 30);
 
         const streamHeaders = JSON.stringify({
@@ -2783,7 +3011,7 @@ ${options.dictatorMode ? `#` + Array.from({length: 64}).map(() => Math.random().
         const isSupreme = (profile === 'P0' || profile === 'P1');
         const isHigh = (profile === 'P2' || profile === 'P3');
         const isMid = (profile === 'P4');
-        
+
         const selectionProps = isSupreme ? [
             '#KODIPROP:inputstream.adaptive.stream_selection_type=adaptive',
             '#KODIPROP:inputstream.adaptive.chooser_bandwidth_max=2147483647',
@@ -2804,7 +3032,7 @@ ${options.dictatorMode ? `#` + Array.from({length: 64}).map(() => Math.random().
             '#KODIPROP:inputstream.adaptive.chooser_resolution_secure_max=480p'
         ];
 
-        return [
+        const _baseKodiProps = [
             '#KODIPROP:inputstream=inputstream.adaptive',
             '#KODIPROP:inputstream.adaptive.manifest_type=hls',
             ...selectionProps,
@@ -2885,6 +3113,36 @@ ${options.dictatorMode ? `#` + Array.from({length: 64}).map(() => Math.random().
             '#KODIPROP:inputstream.adaptive.contrast_boost=1.15', // Amplificador dinámico de contraste vital
             '#KODIPROP:inputstream.adaptive.film_grain_synthesis=false' // Nitidez extrema sin penalización de gpu
         ];
+
+        // ═══════════════════════════════════════════════════════════════════
+        // 🛡️ ANTI-DRIFT EXTRAS GATE — emite keys kodiprop no-conocidos del LAB
+        // SOLO si el usuario opta-in (per-profile flag persistido en Import LAB).
+        // M1: emitOnce dedupes contra keys ya emitidos en _baseKodiProps.
+        // ═══════════════════════════════════════════════════════════════════
+        const _extraKodiProps = [];
+        if (pmProfile?.includeLabExtras === true && pmProfile.kodiprop) {
+            // Set de prefixes ya emitidos por _baseKodiProps.
+            const emittedPrefixes = new Set();
+            for (const line of _baseKodiProps) {
+                const m = line.match(/^#KODIPROP:([^=]+)=/);
+                if (m) emittedPrefixes.add(m[1]);
+            }
+            let extraCount = 0;
+            for (const [k, v] of Object.entries(pmProfile.kodiprop)) {
+                if (v === null || v === undefined || v === '') continue;
+                if (emitOnce(_extraKodiProps, emittedPrefixes, k, `#KODIPROP:${k}=${v}`)) {
+                    extraCount++;
+                }
+            }
+            if (extraCount > 0) {
+                if (_apeAuditAcc) _apeAuditAcc.extras.kodiprop += extraCount;
+                if (typeof console !== 'undefined') {
+                    console.debug(`[GENERATOR] ${profile} +${extraCount} extras kodiprop emitted (LAB opt-in)`);
+                }
+            }
+        }
+
+        return [..._baseKodiProps, ..._extraKodiProps];
     }
 
     // ═══════════════════════════════════════════════════════════════════
@@ -2895,56 +3153,56 @@ ${options.dictatorMode ? `#` + Array.from({length: 64}).map(() => Math.random().
 
     // ── Regex-based region patterns (stays in code: needs compiled regex for channel matchers) ──
     const REGION_PATTERNS = {
-      'UK': { codes: ['UK','GB','BRITISH'], patterns: [/[\|┃]UK[\|┃]/i,/\bUK\s+(SKY|BBC|ITV|CHANNEL)/i,/BBC\s*[0-9]/i,/ITV\s*[0-9]/i,/SKY\s+(SPORTS|CINEMA|NEWS|ONE|TWO)/i], channels: ['BBC','ITV','SKY UK','CHANNEL 4','CHANNEL 5','BT SPORT'], language: 'en-GB', region: 'EUROPA', country: 'Reino Unido' },
-      'ES': { codes: ['ES','ESP','SPAIN'], patterns: [/[\|┃]ES[\|┃]/i,/\bES:/i,/MOVISTAR/i,/TELECINCO/i,/ANTENA\s*3/i,/LA\s*SEXTA/i,/CUATRO/i], channels: ['MOVISTAR','TELECINCO','ANTENA 3','LA SEXTA','CUATRO','LA 1','LA 2','DAZN ES'], language: 'es-ES', region: 'EUROPA', country: 'España' },
-      'DE': { codes: ['DE','GER','GERMANY'], patterns: [/[\|┃]DE[\|┃]/i,/\bDE:/i,/DAS\s*ERSTE/i,/ZDF/i,/RTL\s*(II|2)?/i,/SAT\.?1/i,/PROSIEBEN/i,/SKY\s*DE/i], channels: ['DAS ERSTE','ZDF','RTL','SAT.1','PROSIEBEN','SKY DEUTSCHLAND'], language: 'de-DE', region: 'EUROPA', country: 'Alemania' },
-      'FR': { codes: ['FR','FRA','FRANCE'], patterns: [/[\|┃]FR[\|┃]/i,/\bFR:/i,/FRANCE\s*[0-9]/i,/TF1/i,/M6/i,/CANAL\s*\+/i], channels: ['TF1','M6','FRANCE 2','CANAL+','BEIN SPORTS FR'], language: 'fr-FR', region: 'EUROPA', country: 'Francia' },
-      'IT': { codes: ['IT','ITA','ITALY'], patterns: [/[\|┃]IT[\|┃]/i,/\bIT:/i,/RAI\s*[0-9]/i,/MEDIASET/i,/SKY\s*IT/i,/CANALE\s*[0-9]/i], channels: ['RAI 1','RAI 2','RAI 3','CANALE 5','SKY ITALIA','DAZN IT'], language: 'it-IT', region: 'EUROPA', country: 'Italia' },
-      'PT': { codes: ['PT','PRT','PORTUGAL'], patterns: [/[\|┃]PT[\|┃]/i,/RTP\s*[0-9]/i,/SIC/i,/TVI/i,/SPORT\s*TV/i], channels: ['RTP 1','SIC','TVI','SPORT TV','BENFICA TV'], language: 'pt-PT', region: 'EUROPA', country: 'Portugal' },
-      'NL': { codes: ['NL','NLD','NETHERLANDS'], patterns: [/[\|┃]NL[\|┃]/i,/NPO\s*[0-9]/i,/RTL\s*(NL|4|5|7|8)/i,/ZIGGO/i], channels: ['NPO 1','NPO 2','RTL 4','ZIGGO SPORT','ESPN NL'], language: 'nl-NL', region: 'EUROPA', country: 'Holanda' },
-      'PL': { codes: ['PL','POL','POLAND'], patterns: [/[\|┃]PL[\|┃]/i,/POLSAT/i,/TVN/i,/TVP\s*[0-9]/i], channels: ['POLSAT','TVN','TVP 1','ELEVEN SPORTS PL'], language: 'pl-PL', region: 'EUROPA', country: 'Polonia' },
-      'TR': { codes: ['TR','TUR','TURKEY'], patterns: [/[\|┃]TR[\|┃]/i,/TRT/i,/SHOW\s*TV/i,/KANAL\s*D/i,/BEIN\s*SPORTS?\s*[0-9]\s*(TR|TURKEY)/i], channels: ['TRT 1','SHOW TV','KANAL D','BEIN SPORTS TR'], language: 'tr-TR', region: 'ASIA ARABIA', country: 'Turquía' },
-      'GR': { codes: ['GR','GRC','GREECE'], patterns: [/[\|┃]GR[\|┃]/i,/ERT\s*[0-9]/i,/NOVA\s*(SPORTS?|CINEMA)/i,/MEGA/i], channels: ['ERT 1','NOVA','MEGA CHANNEL','ALPHA TV'], language: 'el-GR', region: 'EUROPA', country: 'Grecia' },
-      'BE': { codes: ['BE','BEL','BELGIUM'], patterns: [/[\|┃]BE[\|┃]/i,/RTBF/i,/VTM/i,/RTL\s*TVI/i], channels: ['RTBF','VTM','RTL TVI'], language: 'nl-BE,fr-BE', region: 'EUROPA', country: 'Bélgica' },
-      'SE': { codes: ['SE','SWE','SWEDEN'], patterns: [/[\|┃]SE[\|┃]/i,/SVT\s*[0-9]/i,/TV[34]/i,/VIASAT/i], channels: ['SVT 1','SVT 2','TV3','TV4','VIASAT'], language: 'sv-SE', region: 'EUROPA', country: 'Suecia' },
-      'DK': { codes: ['DK','DNK','DENMARK'], patterns: [/[\|┃]DK[\|┃]/i,/DR\s*[0-9]/i,/TV2\s*(DK|$)/i], channels: ['DR 1','TV2'], language: 'da-DK', region: 'EUROPA', country: 'Dinamarca' },
-      'NO': { codes: ['NO','NOR','NORWAY'], patterns: [/[\|┃]NO[\|┃]/i,/NRK\s*[0-9]/i,/TV2\s*(NORGE|NORWAY)/i], channels: ['NRK 1','TV2 NORGE'], language: 'nb-NO', region: 'EUROPA', country: 'Noruega' },
-      'FI': { codes: ['FI','FIN','FINLAND'], patterns: [/[\|┃]FI[\|┃]/i,/YLE\s*(TV)?[0-9]/i,/NELONEN/i], channels: ['YLE TV1','MTV3','NELONEN'], language: 'fi-FI', region: 'EUROPA', country: 'Finlandia' },
-      'HR': { codes: ['HR','HRV','CROATIA'], patterns: [/[\|┃]HR[\|┃]/i,/HRT\s*[0-9]/i,/SPORTKLUB/i], channels: ['HRT 1','SPORT KLUB HR'], language: 'hr-HR', region: 'EUROPA', country: 'Croacia' },
-      'RS': { codes: ['RS','SRB','SERBIA'], patterns: [/[\|┃]RS[\|┃]/i,/RTS\s*[0-9]/i,/B92/i], channels: ['RTS 1','SPORT KLUB','B92'], language: 'sr-RS', region: 'EUROPA', country: 'Serbia' },
-      'AL': { codes: ['AL','ALB','ALBANIA'], patterns: [/[\|┃]AL[\|┃]/i,/RTSH/i,/KLAN/i,/TOP\s*CHANNEL/i,/FILM\s*(AKSION|HITS|KOMEDI|DRAME)/i], channels: ['RTSH','KLAN','TOP CHANNEL','FILM AKSION'], language: 'sq-AL', region: 'EUROPA', country: 'Albania' },
-      'RO': { codes: ['RO','ROU','ROMANIA'], patterns: [/[\|┃]RO[\|┃]/i,/PRO\s*TV/i,/DIGI\s*(SPORT|FILM)/i], channels: ['PRO TV','ANTENA 1','DIGI SPORT'], language: 'ro-RO', region: 'EUROPA', country: 'Rumanía' },
-      'CZ': { codes: ['CZ','CZE','CZECH'], patterns: [/[\|┃]CZ[\|┃]/i,/CT\s*[0-9]/i,/PRIMA/i], channels: ['CT 1','NOVA','PRIMA'], language: 'cs-CZ', region: 'EUROPA', country: 'República Checa' },
-      'SK': { codes: ['SK','SVK','SLOVAKIA'], patterns: [/[\|┃]SK[\|┃]/i,/MARKIZA/i,/JOJ/i], channels: ['MARKIZA','JOJ'], language: 'sk-SK', region: 'EUROPA', country: 'Eslovaquia' },
-      'HU': { codes: ['HU','HUN','HUNGARY'], patterns: [/[\|┃]HU[\|┃]/i,/RTL\s*(KLUB|HU)/i,/TV2\s*(HU|$)/i], channels: ['RTL KLUB','TV2 HU','DUNA'], language: 'hu-HU', region: 'EUROPA', country: 'Hungría' },
-      'BG': { codes: ['BG','BGR','BULGARIA'], patterns: [/[\|┃]BG[\|┃]/i,/BNT\s*[0-9]/i,/BTV/i], channels: ['BNT 1','NOVA BG','BTV'], language: 'bg-BG', region: 'EUROPA', country: 'Bulgaria' },
-      'UA': { codes: ['UA','UKR','UKRAINE'], patterns: [/[\|┃]UA[\|┃]/i,/1\+1/i,/INTER\s*(UA|$)/i], channels: ['1+1','INTER','STB'], language: 'uk-UA', region: 'EUROPA', country: 'Ucrania' },
-      'RU': { codes: ['RU','RUS','RUSSIA'], patterns: [/[\|┃]RU[\|┃]/i,/ROSSIYA\s*[0-9]/i,/NTV\s*(RU|$)/i,/MATCH\s*TV/i], channels: ['CHANNEL ONE','ROSSIYA 1','NTV','MATCH TV'], language: 'ru-RU', region: 'EUROPA', country: 'Rusia' },
-      'US': { codes: ['US','USA','UNITED STATES'], patterns: [/[\|┃]USA?[\|┃]/i,/\bABC\s*(US|$)/i,/\bCBS/i,/\bNBC/i,/\bFOX\s*(NEWS|SPORTS|US|$)/i,/\bESPN\s*(US|$)/i,/\bCNN\s*(US|$)/i,/\bHBO/i], channels: ['ABC','CBS','NBC','FOX','ESPN','CNN','HBO','SHOWTIME','PARAMOUNT+'], language: 'en-US', region: 'NORTEAMÉRICA', country: 'Estados Unidos' },
-      'CA': { codes: ['CA','CAN','CANADA'], patterns: [/[\|┃]CA[\|┃]/i,/CBC/i,/CTV/i,/TSN/i,/SPORTSNET/i], channels: ['CBC','CTV','TSN','SPORTSNET'], language: 'en-CA,fr-CA', region: 'NORTEAMÉRICA', country: 'Canadá' },
-      'MX': { codes: ['MX','MEX','MEXICO'], patterns: [/[\|┃]MX[\|┃]/i,/AZTECA/i,/TELEVISA/i,/TUDN/i], channels: ['AZTECA','TELEVISA','TUDN'], language: 'es-MX', region: 'AMÉRICA LATINA', country: 'México' },
-      'BR': { codes: ['BR','BRA','BRAZIL'], patterns: [/[\|┃]BR[\|┃]/i,/GLOBO/i,/SBT/i,/RECORD/i,/SPORTV/i], channels: ['GLOBO','SBT','RECORD TV','SPORTV'], language: 'pt-BR', region: 'AMÉRICA LATINA', country: 'Brasil' },
-      'AR': { codes: ['AR','ARG','ARGENTINA'], patterns: [/[\|┃]AR[\|┃]/i,/TELEFE/i,/TYC\s*SPORTS/i,/ESPN\s*(SUR|ARGENTINA)/i], channels: ['EL TRECE','TELEFE','TYC SPORTS'], language: 'es-AR', region: 'AMÉRICA LATINA', country: 'Argentina' },
-      'CO': { codes: ['CO','COL','COLOMBIA'], patterns: [/[\|┃]CO[\|┃]/i,/CARACOL/i,/RCN/i], channels: ['CARACOL','RCN TV'], language: 'es-CO', region: 'AMÉRICA LATINA', country: 'Colombia' },
-      'CL': { codes: ['CL','CHL','CHILE'], patterns: [/[\|┃]CL[\|┃]/i,/CHILEVISION/i,/CDF/i], channels: ['TVN','MEGA','CANAL 13','CDF'], language: 'es-CL', region: 'AMÉRICA LATINA', country: 'Chile' },
-      'PE': { codes: ['PE','PER','PERU'], patterns: [/[\|┃]PE[\|┃]/i,/PANAMERICANA/i,/WILLAX/i], channels: ['AMÉRICA TV','ATV','LATINA'], language: 'es-PE', region: 'AMÉRICA LATINA', country: 'Perú' },
-      'VE': { codes: ['VE','VEN','VENEZUELA'], patterns: [/[\|┃]VE[\|┃]/i,/VENEVISION/i,/TELEVEN/i], channels: ['VENEVISION','TELEVEN','GLOBOVISION'], language: 'es-VE', region: 'AMÉRICA LATINA', country: 'Venezuela' },
-      'AE': { codes: ['AE','ARE','UAE','EMIRATES'], patterns: [/[\|┃]AE[\|┃]/i,/DUBAI\s*(TV|SPORTS?)/i,/ABU\s*DHABI/i], channels: ['DUBAI TV','ABU DHABI SPORTS'], language: 'ar-AE', region: 'ASIA ARABIA', country: 'Emiratos Árabes' },
-      'SA': { codes: ['SA','SAU','SAUDI'], patterns: [/[\|┃]SA[\|┃]/i,/SAUDI/i,/ROTANA/i,/MBC\s*(SA|$)/i], channels: ['SAUDI TV','ROTANA','MBC'], language: 'ar-SA', region: 'ASIA ARABIA', country: 'Arabia Saudita' },
-      'EG': { codes: ['EG','EGY','EGYPT'], patterns: [/[\|┃]EG[\|┃]/i,/NILE\s*(TV|SPORTS?)/i], channels: ['NILE TV','NILE SPORTS','CBC'], language: 'ar-EG', region: 'ASIA ARABIA', country: 'Egipto' },
-      'IN': { codes: ['IN','IND','INDIA'], patterns: [/[\|┃]IN[\|┃]/i,/STAR\s*(SPORTS|PLUS)/i,/SONY\s*(TV|SPORTS)/i,/ZEE/i,/COLORS/i], channels: ['STAR SPORTS','SONY TV','ZEE TV','COLORS'], language: 'hi-IN,en-IN', region: 'ASIA ARABIA', country: 'India' },
-      'PK': { codes: ['PK','PAK','PAKISTAN'], patterns: [/[\|┃]PK[\|┃]/i,/GEO\s*(TV|SPORTS)/i,/ARY/i,/HUM\s*TV/i], channels: ['PTV','GEO TV','ARY NEWS','HUM TV'], language: 'ur-PK', region: 'ASIA ARABIA', country: 'Pakistán' },
-      'CN': { codes: ['CN','CHN','CHINA'], patterns: [/[\|┃]CN[\|┃]/i,/CCTV\s*[0-9]/i,/CGTN/i], channels: ['CCTV','CGTN'], language: 'zh-CN', region: 'ASIA ARABIA', country: 'China' },
-      'JP': { codes: ['JP','JPN','JAPAN'], patterns: [/[\|┃]JP[\|┃]/i,/NHK/i,/FUJI\s*TV/i,/TV\s*ASAHI/i,/WOWOW/i,/DAZN\s*(JP|JAPAN)/i], channels: ['NHK','FUJI TV','WOWOW','DAZN JP'], language: 'ja-JP', region: 'ASIA ARABIA', country: 'Japón' },
-      'KR': { codes: ['KR','KOR','KOREA'], patterns: [/[\|┃]KR[\|┃]/i,/KBS\s*[0-9]/i,/JTBC/i], channels: ['KBS','MBC','SBS','JTBC'], language: 'ko-KR', region: 'ASIA ARABIA', country: 'Corea del Sur' },
-      'ZA': { codes: ['ZA','ZAF','SOUTH AFRICA'], patterns: [/[\|┃]ZA[\|┃]/i,/SABC/i,/DSTV/i,/SUPERSPORT/i], channels: ['SABC','DSTV','SUPERSPORT'], language: 'en-ZA', region: 'RESTO DEL MUNDO', country: 'Sudáfrica' },
-      'AU': { codes: ['AU','AUS','AUSTRALIA'], patterns: [/[\|┃]AU[\|┃]/i,/SEVEN\s*(NETWORK|AU)/i,/NINE\s*(NETWORK|AU)/i,/FOX\s*SPORTS?\s*(AU|AUSTRALIA)/i,/KAYO/i], channels: ['ABC AU','SEVEN','NINE','FOX SPORTS AU','KAYO'], language: 'en-AU', region: 'RESTO DEL MUNDO', country: 'Australia' },
-      'NZ': { codes: ['NZ','NZL','NEW ZEALAND'], patterns: [/[\|┃]NZ[\|┃]/i,/TVNZ/i,/SKY\s*(NZ|NEW ZEALAND)/i], channels: ['TVNZ 1','SKY NZ'], language: 'en-NZ', region: 'RESTO DEL MUNDO', country: 'Nueva Zelanda' },
-      'TH': { codes: ['TH','THA','THAILAND'], patterns: [/[\|┃]TH[\|┃]/i,/THAI\s*PBS/i], channels: ['THAI PBS','CHANNEL 3'], language: 'th-TH', region: 'ASIA ARABIA', country: 'Tailandia' },
-      'VN': { codes: ['VN','VNM','VIETNAM'], patterns: [/[\|┃]VN[\|┃]/i,/VTV/i,/HTV/i], channels: ['VTV','HTV'], language: 'vi-VN', region: 'ASIA ARABIA', country: 'Vietnam' },
-      'ID': { codes: ['ID','IDN','INDONESIA'], patterns: [/[\|┃]ID[\|┃]/i,/TVRI/i,/TRANS\s*TV/i,/SCTV/i], channels: ['TVRI','TRANS TV','SCTV'], language: 'id-ID', region: 'ASIA ARABIA', country: 'Indonesia' },
-      'MY': { codes: ['MY','MYS','MALAYSIA'], patterns: [/[\|┃]MY[\|┃]/i,/RTM/i,/ASTRO/i], channels: ['RTM','TV3','ASTRO'], language: 'ms-MY', region: 'ASIA ARABIA', country: 'Malasia' },
-      'PH': { codes: ['PH','PHL','PHILIPPINES'], patterns: [/[\|┃]PH[\|┃]/i,/ABS-CBN/i,/GMA/i], channels: ['ABS-CBN','GMA'], language: 'tl-PH', region: 'ASIA ARABIA', country: 'Filipinas' }
+        'UK': { codes: ['UK', 'GB', 'BRITISH'], patterns: [/[\|┃]UK[\|┃]/i, /\bUK\s+(SKY|BBC|ITV|CHANNEL)/i, /BBC\s*[0-9]/i, /ITV\s*[0-9]/i, /SKY\s+(SPORTS|CINEMA|NEWS|ONE|TWO)/i], channels: ['BBC', 'ITV', 'SKY UK', 'CHANNEL 4', 'CHANNEL 5', 'BT SPORT'], language: 'en-GB', region: 'EUROPA', country: 'Reino Unido' },
+        'ES': { codes: ['ES', 'ESP', 'SPAIN'], patterns: [/[\|┃]ES[\|┃]/i, /\bES:/i, /MOVISTAR/i, /TELECINCO/i, /ANTENA\s*3/i, /LA\s*SEXTA/i, /CUATRO/i], channels: ['MOVISTAR', 'TELECINCO', 'ANTENA 3', 'LA SEXTA', 'CUATRO', 'LA 1', 'LA 2', 'DAZN ES'], language: 'es-ES', region: 'EUROPA', country: 'España' },
+        'DE': { codes: ['DE', 'GER', 'GERMANY'], patterns: [/[\|┃]DE[\|┃]/i, /\bDE:/i, /DAS\s*ERSTE/i, /ZDF/i, /RTL\s*(II|2)?/i, /SAT\.?1/i, /PROSIEBEN/i, /SKY\s*DE/i], channels: ['DAS ERSTE', 'ZDF', 'RTL', 'SAT.1', 'PROSIEBEN', 'SKY DEUTSCHLAND'], language: 'de-DE', region: 'EUROPA', country: 'Alemania' },
+        'FR': { codes: ['FR', 'FRA', 'FRANCE'], patterns: [/[\|┃]FR[\|┃]/i, /\bFR:/i, /FRANCE\s*[0-9]/i, /TF1/i, /M6/i, /CANAL\s*\+/i], channels: ['TF1', 'M6', 'FRANCE 2', 'CANAL+', 'BEIN SPORTS FR'], language: 'fr-FR', region: 'EUROPA', country: 'Francia' },
+        'IT': { codes: ['IT', 'ITA', 'ITALY'], patterns: [/[\|┃]IT[\|┃]/i, /\bIT:/i, /RAI\s*[0-9]/i, /MEDIASET/i, /SKY\s*IT/i, /CANALE\s*[0-9]/i], channels: ['RAI 1', 'RAI 2', 'RAI 3', 'CANALE 5', 'SKY ITALIA', 'DAZN IT'], language: 'it-IT', region: 'EUROPA', country: 'Italia' },
+        'PT': { codes: ['PT', 'PRT', 'PORTUGAL'], patterns: [/[\|┃]PT[\|┃]/i, /RTP\s*[0-9]/i, /SIC/i, /TVI/i, /SPORT\s*TV/i], channels: ['RTP 1', 'SIC', 'TVI', 'SPORT TV', 'BENFICA TV'], language: 'pt-PT', region: 'EUROPA', country: 'Portugal' },
+        'NL': { codes: ['NL', 'NLD', 'NETHERLANDS'], patterns: [/[\|┃]NL[\|┃]/i, /NPO\s*[0-9]/i, /RTL\s*(NL|4|5|7|8)/i, /ZIGGO/i], channels: ['NPO 1', 'NPO 2', 'RTL 4', 'ZIGGO SPORT', 'ESPN NL'], language: 'nl-NL', region: 'EUROPA', country: 'Holanda' },
+        'PL': { codes: ['PL', 'POL', 'POLAND'], patterns: [/[\|┃]PL[\|┃]/i, /POLSAT/i, /TVN/i, /TVP\s*[0-9]/i], channels: ['POLSAT', 'TVN', 'TVP 1', 'ELEVEN SPORTS PL'], language: 'pl-PL', region: 'EUROPA', country: 'Polonia' },
+        'TR': { codes: ['TR', 'TUR', 'TURKEY'], patterns: [/[\|┃]TR[\|┃]/i, /TRT/i, /SHOW\s*TV/i, /KANAL\s*D/i, /BEIN\s*SPORTS?\s*[0-9]\s*(TR|TURKEY)/i], channels: ['TRT 1', 'SHOW TV', 'KANAL D', 'BEIN SPORTS TR'], language: 'tr-TR', region: 'ASIA ARABIA', country: 'Turquía' },
+        'GR': { codes: ['GR', 'GRC', 'GREECE'], patterns: [/[\|┃]GR[\|┃]/i, /ERT\s*[0-9]/i, /NOVA\s*(SPORTS?|CINEMA)/i, /MEGA/i], channels: ['ERT 1', 'NOVA', 'MEGA CHANNEL', 'ALPHA TV'], language: 'el-GR', region: 'EUROPA', country: 'Grecia' },
+        'BE': { codes: ['BE', 'BEL', 'BELGIUM'], patterns: [/[\|┃]BE[\|┃]/i, /RTBF/i, /VTM/i, /RTL\s*TVI/i], channels: ['RTBF', 'VTM', 'RTL TVI'], language: 'nl-BE,fr-BE', region: 'EUROPA', country: 'Bélgica' },
+        'SE': { codes: ['SE', 'SWE', 'SWEDEN'], patterns: [/[\|┃]SE[\|┃]/i, /SVT\s*[0-9]/i, /TV[34]/i, /VIASAT/i], channels: ['SVT 1', 'SVT 2', 'TV3', 'TV4', 'VIASAT'], language: 'sv-SE', region: 'EUROPA', country: 'Suecia' },
+        'DK': { codes: ['DK', 'DNK', 'DENMARK'], patterns: [/[\|┃]DK[\|┃]/i, /DR\s*[0-9]/i, /TV2\s*(DK|$)/i], channels: ['DR 1', 'TV2'], language: 'da-DK', region: 'EUROPA', country: 'Dinamarca' },
+        'NO': { codes: ['NO', 'NOR', 'NORWAY'], patterns: [/[\|┃]NO[\|┃]/i, /NRK\s*[0-9]/i, /TV2\s*(NORGE|NORWAY)/i], channels: ['NRK 1', 'TV2 NORGE'], language: 'nb-NO', region: 'EUROPA', country: 'Noruega' },
+        'FI': { codes: ['FI', 'FIN', 'FINLAND'], patterns: [/[\|┃]FI[\|┃]/i, /YLE\s*(TV)?[0-9]/i, /NELONEN/i], channels: ['YLE TV1', 'MTV3', 'NELONEN'], language: 'fi-FI', region: 'EUROPA', country: 'Finlandia' },
+        'HR': { codes: ['HR', 'HRV', 'CROATIA'], patterns: [/[\|┃]HR[\|┃]/i, /HRT\s*[0-9]/i, /SPORTKLUB/i], channels: ['HRT 1', 'SPORT KLUB HR'], language: 'hr-HR', region: 'EUROPA', country: 'Croacia' },
+        'RS': { codes: ['RS', 'SRB', 'SERBIA'], patterns: [/[\|┃]RS[\|┃]/i, /RTS\s*[0-9]/i, /B92/i], channels: ['RTS 1', 'SPORT KLUB', 'B92'], language: 'sr-RS', region: 'EUROPA', country: 'Serbia' },
+        'AL': { codes: ['AL', 'ALB', 'ALBANIA'], patterns: [/[\|┃]AL[\|┃]/i, /RTSH/i, /KLAN/i, /TOP\s*CHANNEL/i, /FILM\s*(AKSION|HITS|KOMEDI|DRAME)/i], channels: ['RTSH', 'KLAN', 'TOP CHANNEL', 'FILM AKSION'], language: 'sq-AL', region: 'EUROPA', country: 'Albania' },
+        'RO': { codes: ['RO', 'ROU', 'ROMANIA'], patterns: [/[\|┃]RO[\|┃]/i, /PRO\s*TV/i, /DIGI\s*(SPORT|FILM)/i], channels: ['PRO TV', 'ANTENA 1', 'DIGI SPORT'], language: 'ro-RO', region: 'EUROPA', country: 'Rumanía' },
+        'CZ': { codes: ['CZ', 'CZE', 'CZECH'], patterns: [/[\|┃]CZ[\|┃]/i, /CT\s*[0-9]/i, /PRIMA/i], channels: ['CT 1', 'NOVA', 'PRIMA'], language: 'cs-CZ', region: 'EUROPA', country: 'República Checa' },
+        'SK': { codes: ['SK', 'SVK', 'SLOVAKIA'], patterns: [/[\|┃]SK[\|┃]/i, /MARKIZA/i, /JOJ/i], channels: ['MARKIZA', 'JOJ'], language: 'sk-SK', region: 'EUROPA', country: 'Eslovaquia' },
+        'HU': { codes: ['HU', 'HUN', 'HUNGARY'], patterns: [/[\|┃]HU[\|┃]/i, /RTL\s*(KLUB|HU)/i, /TV2\s*(HU|$)/i], channels: ['RTL KLUB', 'TV2 HU', 'DUNA'], language: 'hu-HU', region: 'EUROPA', country: 'Hungría' },
+        'BG': { codes: ['BG', 'BGR', 'BULGARIA'], patterns: [/[\|┃]BG[\|┃]/i, /BNT\s*[0-9]/i, /BTV/i], channels: ['BNT 1', 'NOVA BG', 'BTV'], language: 'bg-BG', region: 'EUROPA', country: 'Bulgaria' },
+        'UA': { codes: ['UA', 'UKR', 'UKRAINE'], patterns: [/[\|┃]UA[\|┃]/i, /1\+1/i, /INTER\s*(UA|$)/i], channels: ['1+1', 'INTER', 'STB'], language: 'uk-UA', region: 'EUROPA', country: 'Ucrania' },
+        'RU': { codes: ['RU', 'RUS', 'RUSSIA'], patterns: [/[\|┃]RU[\|┃]/i, /ROSSIYA\s*[0-9]/i, /NTV\s*(RU|$)/i, /MATCH\s*TV/i], channels: ['CHANNEL ONE', 'ROSSIYA 1', 'NTV', 'MATCH TV'], language: 'ru-RU', region: 'EUROPA', country: 'Rusia' },
+        'US': { codes: ['US', 'USA', 'UNITED STATES'], patterns: [/[\|┃]USA?[\|┃]/i, /\bABC\s*(US|$)/i, /\bCBS/i, /\bNBC/i, /\bFOX\s*(NEWS|SPORTS|US|$)/i, /\bESPN\s*(US|$)/i, /\bCNN\s*(US|$)/i, /\bHBO/i], channels: ['ABC', 'CBS', 'NBC', 'FOX', 'ESPN', 'CNN', 'HBO', 'SHOWTIME', 'PARAMOUNT+'], language: 'en-US', region: 'NORTEAMÉRICA', country: 'Estados Unidos' },
+        'CA': { codes: ['CA', 'CAN', 'CANADA'], patterns: [/[\|┃]CA[\|┃]/i, /CBC/i, /CTV/i, /TSN/i, /SPORTSNET/i], channels: ['CBC', 'CTV', 'TSN', 'SPORTSNET'], language: 'en-CA,fr-CA', region: 'NORTEAMÉRICA', country: 'Canadá' },
+        'MX': { codes: ['MX', 'MEX', 'MEXICO'], patterns: [/[\|┃]MX[\|┃]/i, /AZTECA/i, /TELEVISA/i, /TUDN/i], channels: ['AZTECA', 'TELEVISA', 'TUDN'], language: 'es-MX', region: 'AMÉRICA LATINA', country: 'México' },
+        'BR': { codes: ['BR', 'BRA', 'BRAZIL'], patterns: [/[\|┃]BR[\|┃]/i, /GLOBO/i, /SBT/i, /RECORD/i, /SPORTV/i], channels: ['GLOBO', 'SBT', 'RECORD TV', 'SPORTV'], language: 'pt-BR', region: 'AMÉRICA LATINA', country: 'Brasil' },
+        'AR': { codes: ['AR', 'ARG', 'ARGENTINA'], patterns: [/[\|┃]AR[\|┃]/i, /TELEFE/i, /TYC\s*SPORTS/i, /ESPN\s*(SUR|ARGENTINA)/i], channels: ['EL TRECE', 'TELEFE', 'TYC SPORTS'], language: 'es-AR', region: 'AMÉRICA LATINA', country: 'Argentina' },
+        'CO': { codes: ['CO', 'COL', 'COLOMBIA'], patterns: [/[\|┃]CO[\|┃]/i, /CARACOL/i, /RCN/i], channels: ['CARACOL', 'RCN TV'], language: 'es-CO', region: 'AMÉRICA LATINA', country: 'Colombia' },
+        'CL': { codes: ['CL', 'CHL', 'CHILE'], patterns: [/[\|┃]CL[\|┃]/i, /CHILEVISION/i, /CDF/i], channels: ['TVN', 'MEGA', 'CANAL 13', 'CDF'], language: 'es-CL', region: 'AMÉRICA LATINA', country: 'Chile' },
+        'PE': { codes: ['PE', 'PER', 'PERU'], patterns: [/[\|┃]PE[\|┃]/i, /PANAMERICANA/i, /WILLAX/i], channels: ['AMÉRICA TV', 'ATV', 'LATINA'], language: 'es-PE', region: 'AMÉRICA LATINA', country: 'Perú' },
+        'VE': { codes: ['VE', 'VEN', 'VENEZUELA'], patterns: [/[\|┃]VE[\|┃]/i, /VENEVISION/i, /TELEVEN/i], channels: ['VENEVISION', 'TELEVEN', 'GLOBOVISION'], language: 'es-VE', region: 'AMÉRICA LATINA', country: 'Venezuela' },
+        'AE': { codes: ['AE', 'ARE', 'UAE', 'EMIRATES'], patterns: [/[\|┃]AE[\|┃]/i, /DUBAI\s*(TV|SPORTS?)/i, /ABU\s*DHABI/i], channels: ['DUBAI TV', 'ABU DHABI SPORTS'], language: 'ar-AE', region: 'ASIA ARABIA', country: 'Emiratos Árabes' },
+        'SA': { codes: ['SA', 'SAU', 'SAUDI'], patterns: [/[\|┃]SA[\|┃]/i, /SAUDI/i, /ROTANA/i, /MBC\s*(SA|$)/i], channels: ['SAUDI TV', 'ROTANA', 'MBC'], language: 'ar-SA', region: 'ASIA ARABIA', country: 'Arabia Saudita' },
+        'EG': { codes: ['EG', 'EGY', 'EGYPT'], patterns: [/[\|┃]EG[\|┃]/i, /NILE\s*(TV|SPORTS?)/i], channels: ['NILE TV', 'NILE SPORTS', 'CBC'], language: 'ar-EG', region: 'ASIA ARABIA', country: 'Egipto' },
+        'IN': { codes: ['IN', 'IND', 'INDIA'], patterns: [/[\|┃]IN[\|┃]/i, /STAR\s*(SPORTS|PLUS)/i, /SONY\s*(TV|SPORTS)/i, /ZEE/i, /COLORS/i], channels: ['STAR SPORTS', 'SONY TV', 'ZEE TV', 'COLORS'], language: 'hi-IN,en-IN', region: 'ASIA ARABIA', country: 'India' },
+        'PK': { codes: ['PK', 'PAK', 'PAKISTAN'], patterns: [/[\|┃]PK[\|┃]/i, /GEO\s*(TV|SPORTS)/i, /ARY/i, /HUM\s*TV/i], channels: ['PTV', 'GEO TV', 'ARY NEWS', 'HUM TV'], language: 'ur-PK', region: 'ASIA ARABIA', country: 'Pakistán' },
+        'CN': { codes: ['CN', 'CHN', 'CHINA'], patterns: [/[\|┃]CN[\|┃]/i, /CCTV\s*[0-9]/i, /CGTN/i], channels: ['CCTV', 'CGTN'], language: 'zh-CN', region: 'ASIA ARABIA', country: 'China' },
+        'JP': { codes: ['JP', 'JPN', 'JAPAN'], patterns: [/[\|┃]JP[\|┃]/i, /NHK/i, /FUJI\s*TV/i, /TV\s*ASAHI/i, /WOWOW/i, /DAZN\s*(JP|JAPAN)/i], channels: ['NHK', 'FUJI TV', 'WOWOW', 'DAZN JP'], language: 'ja-JP', region: 'ASIA ARABIA', country: 'Japón' },
+        'KR': { codes: ['KR', 'KOR', 'KOREA'], patterns: [/[\|┃]KR[\|┃]/i, /KBS\s*[0-9]/i, /JTBC/i], channels: ['KBS', 'MBC', 'SBS', 'JTBC'], language: 'ko-KR', region: 'ASIA ARABIA', country: 'Corea del Sur' },
+        'ZA': { codes: ['ZA', 'ZAF', 'SOUTH AFRICA'], patterns: [/[\|┃]ZA[\|┃]/i, /SABC/i, /DSTV/i, /SUPERSPORT/i], channels: ['SABC', 'DSTV', 'SUPERSPORT'], language: 'en-ZA', region: 'RESTO DEL MUNDO', country: 'Sudáfrica' },
+        'AU': { codes: ['AU', 'AUS', 'AUSTRALIA'], patterns: [/[\|┃]AU[\|┃]/i, /SEVEN\s*(NETWORK|AU)/i, /NINE\s*(NETWORK|AU)/i, /FOX\s*SPORTS?\s*(AU|AUSTRALIA)/i, /KAYO/i], channels: ['ABC AU', 'SEVEN', 'NINE', 'FOX SPORTS AU', 'KAYO'], language: 'en-AU', region: 'RESTO DEL MUNDO', country: 'Australia' },
+        'NZ': { codes: ['NZ', 'NZL', 'NEW ZEALAND'], patterns: [/[\|┃]NZ[\|┃]/i, /TVNZ/i, /SKY\s*(NZ|NEW ZEALAND)/i], channels: ['TVNZ 1', 'SKY NZ'], language: 'en-NZ', region: 'RESTO DEL MUNDO', country: 'Nueva Zelanda' },
+        'TH': { codes: ['TH', 'THA', 'THAILAND'], patterns: [/[\|┃]TH[\|┃]/i, /THAI\s*PBS/i], channels: ['THAI PBS', 'CHANNEL 3'], language: 'th-TH', region: 'ASIA ARABIA', country: 'Tailandia' },
+        'VN': { codes: ['VN', 'VNM', 'VIETNAM'], patterns: [/[\|┃]VN[\|┃]/i, /VTV/i, /HTV/i], channels: ['VTV', 'HTV'], language: 'vi-VN', region: 'ASIA ARABIA', country: 'Vietnam' },
+        'ID': { codes: ['ID', 'IDN', 'INDONESIA'], patterns: [/[\|┃]ID[\|┃]/i, /TVRI/i, /TRANS\s*TV/i, /SCTV/i], channels: ['TVRI', 'TRANS TV', 'SCTV'], language: 'id-ID', region: 'ASIA ARABIA', country: 'Indonesia' },
+        'MY': { codes: ['MY', 'MYS', 'MALAYSIA'], patterns: [/[\|┃]MY[\|┃]/i, /RTM/i, /ASTRO/i], channels: ['RTM', 'TV3', 'ASTRO'], language: 'ms-MY', region: 'ASIA ARABIA', country: 'Malasia' },
+        'PH': { codes: ['PH', 'PHL', 'PHILIPPINES'], patterns: [/[\|┃]PH[\|┃]/i, /ABS-CBN/i, /GMA/i], channels: ['ABS-CBN', 'GMA'], language: 'tl-PH', region: 'ASIA ARABIA', country: 'Filipinas' }
     };
 
     // ── Load classification data from JSON (dynamic) or fallback to window.APE_CLASSIFIER_DATA ──
@@ -2954,61 +3212,61 @@ ${options.dictatorMode ? `#` + Array.from({length: 64}).map(() => Math.random().
     const _compiledContentTypes = {};
     const _rawContentTypes = _CLASSIFIER_DATA.contentTypes || {};
     for (const [type, info] of Object.entries(_rawContentTypes)) {
-      _compiledContentTypes[type] = {
-        priority: info.priority || 1,
-        flag: info.flag || null,
-        _compiled: (info.keywords || []).map(kw => {
-          const escaped = kw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\s+/g, '\\s*');
-          return new RegExp(`\\b${escaped}\\b`, 'i');
-        })
-      };
+        _compiledContentTypes[type] = {
+            priority: info.priority || 1,
+            flag: info.flag || null,
+            _compiled: (info.keywords || []).map(kw => {
+                const escaped = kw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\s+/g, '\\s*');
+                return new RegExp(`\\b${escaped}\\b`, 'i');
+            })
+        };
     }
 
     const _compiledSportsSubcats = {};
     const _rawSportsSubcats = _CLASSIFIER_DATA.sportsSubcats || {};
     for (const [sport, keywords] of Object.entries(_rawSportsSubcats)) {
-      _compiledSportsSubcats[sport] = (keywords || []).map(kw => {
-        const escaped = kw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\s+/g, '\\s*');
-        return new RegExp(`\\b${escaped}\\b`, 'i');
-      });
+        _compiledSportsSubcats[sport] = (keywords || []).map(kw => {
+            const escaped = kw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\s+/g, '\\s*');
+            return new RegExp(`\\b${escaped}\\b`, 'i');
+        });
     }
 
-    const LANG_NAMES = _CLASSIFIER_DATA.languages || { 'ar':'Árabe','zh':'Chino','ja':'Japonés','ko':'Coreano','hi':'Hindi','ru':'Ruso','en':'Inglés','es':'Español','pt':'Portugués','fr':'Francés','de':'Alemán','it':'Italiano','nl':'Holandés','pl':'Polaco','tr':'Turco','el':'Griego','hr':'Croata','sr':'Serbio','sq':'Albanés','ro':'Rumano','cs':'Checo','sk':'Eslovaco','hu':'Húngaro','bg':'Búlgaro','uk':'Ucraniano','sv':'Sueco','da':'Danés','no':'Noruego','nb':'Noruego','fi':'Finlandés','he':'Hebreo','th':'Tailandés','ur':'Urdu','vi':'Vietnamita','id':'Indonesio','ms':'Malayo','tl':'Filipino','km':'Jemer','lo':'Lao','my':'Birmano' };
+    const LANG_NAMES = _CLASSIFIER_DATA.languages || { 'ar': 'Árabe', 'zh': 'Chino', 'ja': 'Japonés', 'ko': 'Coreano', 'hi': 'Hindi', 'ru': 'Ruso', 'en': 'Inglés', 'es': 'Español', 'pt': 'Portugués', 'fr': 'Francés', 'de': 'Alemán', 'it': 'Italiano', 'nl': 'Holandés', 'pl': 'Polaco', 'tr': 'Turco', 'el': 'Griego', 'hr': 'Croata', 'sr': 'Serbio', 'sq': 'Albanés', 'ro': 'Rumano', 'cs': 'Checo', 'sk': 'Eslovaco', 'hu': 'Húngaro', 'bg': 'Búlgaro', 'uk': 'Ucraniano', 'sv': 'Sueco', 'da': 'Danés', 'no': 'Noruego', 'nb': 'Noruego', 'fi': 'Finlandés', 'he': 'Hebreo', 'th': 'Tailandés', 'ur': 'Urdu', 'vi': 'Vietnamita', 'id': 'Indonesio', 'ms': 'Malayo', 'tl': 'Filipino', 'km': 'Jemer', 'lo': 'Lao', 'my': 'Birmano' };
 
     // ── Unicode script detectors (must stay as native regex — cannot stringify Unicode ranges) ──
     const LANG_SCRIPTS = {
-      'arabic':      { p: /[\u0600-\u06FF]/, l: 'ar', w: 10 },
-      'hebrew':      { p: /[\u0590-\u05FF]/, l: 'he', w: 10 },
-      'greek':       { p: /[\u0370-\u03FF]/, l: 'el', w: 10 },
-      'cyrillic':    { p: /[\u0400-\u04FF]/, l: 'ru,uk,bg,sr', w: 8 },
-      'cjk_zh':      { p: /[\u4E00-\u9FFF]/, l: 'zh', w: 10 },
-      'cjk_ja':      { p: /[\u3040-\u30FF]/, l: 'ja', w: 10 },
-      'cjk_ko':      { p: /[\uAC00-\uD7AF]/, l: 'ko', w: 10 },
-      'devanagari':  { p: /[\u0900-\u097F]/, l: 'hi', w: 10 },
-      'thai':        { p: /[\u0E00-\u0E7F]/, l: 'th', w: 10 },
-      'vietnamese':  { p: /[\u00C0-\u01B0\u1EA0-\u1EF9]/, l: 'vi', w: 7 },
-      'myanmar':     { p: /[\u1000-\u109F]/, l: 'my', w: 10 },
-      'lao':         { p: /[\u0E80-\u0EFF]/, l: 'lo', w: 10 },
-      'khmer':       { p: /[\u1780-\u17FF]/, l: 'km', w: 10 }
+        'arabic': { p: /[\u0600-\u06FF]/, l: 'ar', w: 10 },
+        'hebrew': { p: /[\u0590-\u05FF]/, l: 'he', w: 10 },
+        'greek': { p: /[\u0370-\u03FF]/, l: 'el', w: 10 },
+        'cyrillic': { p: /[\u0400-\u04FF]/, l: 'ru,uk,bg,sr', w: 8 },
+        'cjk_zh': { p: /[\u4E00-\u9FFF]/, l: 'zh', w: 10 },
+        'cjk_ja': { p: /[\u3040-\u30FF]/, l: 'ja', w: 10 },
+        'cjk_ko': { p: /[\uAC00-\uD7AF]/, l: 'ko', w: 10 },
+        'devanagari': { p: /[\u0900-\u097F]/, l: 'hi', w: 10 },
+        'thai': { p: /[\u0E00-\u0E7F]/, l: 'th', w: 10 },
+        'vietnamese': { p: /[\u00C0-\u01B0\u1EA0-\u1EF9]/, l: 'vi', w: 7 },
+        'myanmar': { p: /[\u1000-\u109F]/, l: 'my', w: 10 },
+        'lao': { p: /[\u0E80-\u0EFF]/, l: 'lo', w: 10 },
+        'khmer': { p: /[\u1780-\u17FF]/, l: 'km', w: 10 }
     };
 
     // ── Text-based language detection (common words) ──
     const LANG_TEXT = {
-      'es': [/\b(EL|LA|LOS|LAS|DE|DEL|EN|NOTICIAS|DEPORTES|CANAL|CINE|TELEVISIÓN)\b/i],
-      'en': [/\b(THE|AND|FOR|NEWS|SPORTS|MOVIES|CHANNEL|FILM|ENTERTAINMENT)\b/i],
-      'de': [/\b(DER|DIE|DAS|UND|NACHRICHTEN|SPORT|FERNSEHEN|KANAL)\b/i],
-      'fr': [/\b(LE|LA|LES|DU|DES|CINÉMA|SPORT|CHAÎNE|ACTUALITÉS)\b/i],
-      'it': [/\b(IL|LO|LA|GLI|CANALE|CINEMA|SPORT|NOTIZIE|TELEVISIONE)\b/i],
-      'pt': [/\b(O|A|OS|AS|CANAL|ESPORTE|NOTÍCIAS|TELEVISÃO)\b/i],
-      'tr': [/\b(HABER|SPOR|KANAL|TELEVIZYON)\b/i],
-      'ar': [/\b(الجزيرة|العربية|أخبار|رياضة|قناة)\b/i],
-      'nl': [/\b(HET|EEN|NIEUWS|SPORT|KANAAL)\b/i],
-      'pl': [/\b(WIADOMOŚCI|POLSAT|TVN|SPORT)\b/i],
-      'ru': [/\b(НОВОСТИ|СПОРТ|КАНАЛ|МАТЧ)\b/i],
-      'id': [/\b(BERITA|OLAHRAGA|SIARAN|TELEVISI)\b/i],
-      'ms': [/\b(BERITA|SUKAN|SALURAN)\b/i],
-      'tl': [/\b(BALITA|PALAKASAN|KANAL)\b/i],
-      'vi': [/\b(TIN|THỂ THAO|KÊNH|TRUYỀN HÌNH)\b/i]
+        'es': [/\b(EL|LA|LOS|LAS|DE|DEL|EN|NOTICIAS|DEPORTES|CANAL|CINE|TELEVISIÓN)\b/i],
+        'en': [/\b(THE|AND|FOR|NEWS|SPORTS|MOVIES|CHANNEL|FILM|ENTERTAINMENT)\b/i],
+        'de': [/\b(DER|DIE|DAS|UND|NACHRICHTEN|SPORT|FERNSEHEN|KANAL)\b/i],
+        'fr': [/\b(LE|LA|LES|DU|DES|CINÉMA|SPORT|CHAÎNE|ACTUALITÉS)\b/i],
+        'it': [/\b(IL|LO|LA|GLI|CANALE|CINEMA|SPORT|NOTIZIE|TELEVISIONE)\b/i],
+        'pt': [/\b(O|A|OS|AS|CANAL|ESPORTE|NOTÍCIAS|TELEVISÃO)\b/i],
+        'tr': [/\b(HABER|SPOR|KANAL|TELEVIZYON)\b/i],
+        'ar': [/\b(الجزيرة|العربية|أخبار|رياضة|قناة)\b/i],
+        'nl': [/\b(HET|EEN|NIEUWS|SPORT|KANAAL)\b/i],
+        'pl': [/\b(WIADOMOŚCI|POLSAT|TVN|SPORT)\b/i],
+        'ru': [/\b(НОВОСТИ|СПОРТ|КАНАЛ|МАТЧ)\b/i],
+        'id': [/\b(BERITA|OLAHRAGA|SIARAN|TELEVISI)\b/i],
+        'ms': [/\b(BERITA|SUKAN|SALURAN)\b/i],
+        'tl': [/\b(BALITA|PALAKASAN|KANAL)\b/i],
+        'vi': [/\b(TIN|THỂ THAO|KÊNH|TRUYỀN HÌNH)\b/i]
     };
 
     // ═══════════════════════════════════════════════════════════════════
@@ -3021,170 +3279,170 @@ ${options.dictatorMode ? `#` + Array.from({length: 64}).map(() => Math.random().
     // ═══════════════════════════════════════════════════════════════════
 
     class ChannelClassifier {
-      constructor() { this.confThreshold = 0.7; }
+        constructor() { this.confThreshold = 0.7; }
 
-      classify(channel) {
-        const name = channel.tvgName || channel.name || '';
-        const gt = channel.groupTitle || channel.category_name || '';
+        classify(channel) {
+            const name = channel.tvgName || channel.name || '';
+            const gt = channel.groupTitle || channel.category_name || '';
 
-        // ═══════════════════════════════════════════════════════════════════
-        // ⚡ BRIDGE v3.0: Delegar al APEChannelClassifier v3.0 externo
-        // El v3.0 es la ÚNICA fuente de verdad. Este clasificador interno
-        // actúa como BRIDGE/ADAPTER que mapea el output v3.0 al contrato
-        // GroupTitleBuilder (.region.group, .category.group, etc).
-        // La lista M3U8 bake estos datos → resolver y channel maps los
-        // heredan en CASCADA sin consultar el clasificador directamente.
-        // ═══════════════════════════════════════════════════════════════════
-        if (typeof window !== 'undefined' && window.APEChannelClassifier && typeof window.APEChannelClassifier.classify === 'function') {
-          const v3 = window.APEChannelClassifier.classify(channel);
+            // ═══════════════════════════════════════════════════════════════════
+            // ⚡ BRIDGE v3.0: Delegar al APEChannelClassifier v3.0 externo
+            // El v3.0 es la ÚNICA fuente de verdad. Este clasificador interno
+            // actúa como BRIDGE/ADAPTER que mapea el output v3.0 al contrato
+            // GroupTitleBuilder (.region.group, .category.group, etc).
+            // La lista M3U8 bake estos datos → resolver y channel maps los
+            // heredan en CASCADA sin consultar el clasificador directamente.
+            // ═══════════════════════════════════════════════════════════════════
+            if (typeof window !== 'undefined' && window.APEChannelClassifier && typeof window.APEChannelClassifier.classify === 'function') {
+                const v3 = window.APEChannelClassifier.classify(channel);
 
-          // Mapear v3.0 output → GroupTitleBuilder contract
-          const regionGroup  = v3.region?.group || 'RESTO DEL MUNDO';
-          const langGroup    = v3.language?.language || 'ORIGINAL / MIXTO';
-          const langCode     = v3.language?.code || 'und';
-          const catGroup     = v3.category?.category || 'GENERALISTA';
-          const catEmoji     = v3.category?.emoji || '📡';
-          const qualGroup    = v3.quality?.quality || 'FULL HD';
-          const confidence   = (v3.confidence || 50) / 100; // v3 returns 0-100, internal uses 0-1
-          const confLevel    = confidence >= 0.9 ? 'VERY_HIGH' : confidence >= 0.75 ? 'HIGH' : confidence >= 0.6 ? 'MEDIUM' : confidence >= 0.4 ? 'LOW' : 'VERY_LOW';
+                // Mapear v3.0 output → GroupTitleBuilder contract
+                const regionGroup = v3.region?.group || 'RESTO DEL MUNDO';
+                const langGroup = v3.language?.language || 'ORIGINAL / MIXTO';
+                const langCode = v3.language?.code || 'und';
+                const catGroup = v3.category?.category || 'GENERALISTA';
+                const catEmoji = v3.category?.emoji || '📡';
+                const qualGroup = v3.quality?.quality || 'FULL HD';
+                const confidence = (v3.confidence || 50) / 100; // v3 returns 0-100, internal uses 0-1
+                const confLevel = confidence >= 0.9 ? 'VERY_HIGH' : confidence >= 0.75 ? 'HIGH' : confidence >= 0.6 ? 'MEDIUM' : confidence >= 0.4 ? 'LOW' : 'VERY_LOW';
 
-          // Cross-category y sport subcategory del engine interno (v3.0 no tiene esto)
-          const contentFallback = { _rawType: catGroup, confidence: v3.category?.confidence ? v3.category.confidence / 100 : 0.5, flag: catEmoji, alternatives: [] };
-          const crossCategory = this._crossCategorySports(name, gt, contentFallback);
-          let sportSubcategory = null;
-          if (catGroup === 'DEPORTES' || (crossCategory && crossCategory.action)) {
-            sportSubcategory = this._sportSubcat(name);
-          }
+                // Cross-category y sport subcategory del engine interno (v3.0 no tiene esto)
+                const contentFallback = { _rawType: catGroup, confidence: v3.category?.confidence ? v3.category.confidence / 100 : 0.5, flag: catEmoji, alternatives: [] };
+                const crossCategory = this._crossCategorySports(name, gt, contentFallback);
+                let sportSubcategory = null;
+                if (catGroup === 'DEPORTES' || (crossCategory && crossCategory.action)) {
+                    sportSubcategory = this._sportSubcat(name);
+                }
 
-          // Construir output con contrato GroupTitleBuilder EXACTO
-          return {
-            original: { name, groupTitle: gt },
-            region:   { group: regionGroup, code: langCode, country: regionGroup, language: langGroup, confidence: confidence, alternatives: v3.region?.signals || [] },
-            category: { group: catGroup, category: catGroup, confidence: v3.category?.confidence ? v3.category.confidence / 100 : 0.5, flag: catEmoji, alternatives: [] },
-            quality:  { group: qualGroup, quality: qualGroup },
-            language: { group: langGroup, code: langCode, confidence: v3.language?.confidence ? v3.language.confidence / 100 : 0.5 },
-            country:  { group: regionGroup, code: langCode },
-            confidence,
-            confidenceLevel: confLevel,
-            crossCategory,
-            sportSubcategory,
-            contentType: { type: catGroup, confidence: v3.category?.confidence ? v3.category.confidence / 100 : 0.5, flag: catEmoji, alternatives: [] },
-            _v3Source: true // Marker: data proviene del v3.0 Netflix-grade
-          };
+                // Construir output con contrato GroupTitleBuilder EXACTO
+                return {
+                    original: { name, groupTitle: gt },
+                    region: { group: regionGroup, code: langCode, country: regionGroup, language: langGroup, confidence: confidence, alternatives: v3.region?.signals || [] },
+                    category: { group: catGroup, category: catGroup, confidence: v3.category?.confidence ? v3.category.confidence / 100 : 0.5, flag: catEmoji, alternatives: [] },
+                    quality: { group: qualGroup, quality: qualGroup },
+                    language: { group: langGroup, code: langCode, confidence: v3.language?.confidence ? v3.language.confidence / 100 : 0.5 },
+                    country: { group: regionGroup, code: langCode },
+                    confidence,
+                    confidenceLevel: confLevel,
+                    crossCategory,
+                    sportSubcategory,
+                    contentType: { type: catGroup, confidence: v3.category?.confidence ? v3.category.confidence / 100 : 0.5, flag: catEmoji, alternatives: [] },
+                    _v3Source: true // Marker: data proviene del v3.0 Netflix-grade
+                };
+            }
+
+            // ═══════════════════════════════════════════════════════════════════
+            // FALLBACK: Si v3.0 externo NO está cargado, usar engine interno
+            // ═══════════════════════════════════════════════════════════════════
+            const regionResult = this._region(name, gt);
+            const contentResult = this._content(name, gt);
+            const langResult = this._lang(name, gt);
+            const qualityResult = this._quality(name);
+
+            const confidence = regionResult.confidence * 0.4 + contentResult.confidence * 0.4 + langResult.confidence * 0.2;
+            const confidenceLevel = confidence >= 0.9 ? 'VERY_HIGH' : confidence >= 0.75 ? 'HIGH' : confidence >= 0.6 ? 'MEDIUM' : confidence >= 0.4 ? 'LOW' : 'VERY_LOW';
+
+            const crossCategory = this._crossCategorySports(name, gt, contentResult);
+            let sportSubcategory = null;
+            if (contentResult._rawType === 'DEPORTES' || (crossCategory && crossCategory.action)) {
+                sportSubcategory = this._sportSubcat(name);
+            }
+
+            return {
+                original: { name, groupTitle: gt },
+                region: { group: regionResult.region, code: regionResult.code, country: regionResult.country, language: regionResult.language, confidence: regionResult.confidence, alternatives: regionResult.alternatives },
+                category: { group: contentResult._rawType, category: contentResult._rawType, confidence: contentResult.confidence, flag: contentResult.flag, alternatives: contentResult.alternatives },
+                quality: { group: qualityResult, quality: qualityResult },
+                language: { group: langResult.name, code: langResult.code, confidence: langResult.confidence },
+                country: { group: regionResult.country, code: regionResult.code },
+                confidence,
+                confidenceLevel,
+                crossCategory,
+                sportSubcategory,
+                contentType: { type: contentResult._rawType, confidence: contentResult.confidence, flag: contentResult.flag, alternatives: contentResult.alternatives },
+                _v3Source: false // Marker: data proviene del fallback interno
+            };
         }
 
-        // ═══════════════════════════════════════════════════════════════════
-        // FALLBACK: Si v3.0 externo NO está cargado, usar engine interno
-        // ═══════════════════════════════════════════════════════════════════
-        const regionResult = this._region(name, gt);
-        const contentResult = this._content(name, gt);
-        const langResult = this._lang(name, gt);
-        const qualityResult = this._quality(name);
-
-        const confidence = regionResult.confidence * 0.4 + contentResult.confidence * 0.4 + langResult.confidence * 0.2;
-        const confidenceLevel = confidence >= 0.9 ? 'VERY_HIGH' : confidence >= 0.75 ? 'HIGH' : confidence >= 0.6 ? 'MEDIUM' : confidence >= 0.4 ? 'LOW' : 'VERY_LOW';
-
-        const crossCategory = this._crossCategorySports(name, gt, contentResult);
-        let sportSubcategory = null;
-        if (contentResult._rawType === 'DEPORTES' || (crossCategory && crossCategory.action)) {
-          sportSubcategory = this._sportSubcat(name);
+        _quality(name) {
+            const n = name.toUpperCase();
+            if (n.includes('4K') || n.includes('UHD')) return 'ULTRA HD';
+            if (n.includes('FHD') || n.includes('FULL HD')) return 'FULL HD';
+            if (n.includes('HD')) return 'HD';
+            if (n.includes('SD')) return 'SD';
+            return 'HD'; // sensible default
         }
 
-        return {
-          original: { name, groupTitle: gt },
-          region: { group: regionResult.region, code: regionResult.code, country: regionResult.country, language: regionResult.language, confidence: regionResult.confidence, alternatives: regionResult.alternatives },
-          category: { group: contentResult._rawType, category: contentResult._rawType, confidence: contentResult.confidence, flag: contentResult.flag, alternatives: contentResult.alternatives },
-          quality: { group: qualityResult, quality: qualityResult },
-          language: { group: langResult.name, code: langResult.code, confidence: langResult.confidence },
-          country: { group: regionResult.country, code: regionResult.code },
-          confidence,
-          confidenceLevel,
-          crossCategory,
-          sportSubcategory,
-          contentType: { type: contentResult._rawType, confidence: contentResult.confidence, flag: contentResult.flag, alternatives: contentResult.alternatives },
-          _v3Source: false // Marker: data proviene del fallback interno
-        };
-      }
-
-      _quality(name) {
-        const n = name.toUpperCase();
-        if (n.includes('4K') || n.includes('UHD')) return 'ULTRA HD';
-        if (n.includes('FHD') || n.includes('FULL HD')) return 'FULL HD';
-        if (n.includes('HD')) return 'HD';
-        if (n.includes('SD')) return 'SD';
-        return 'HD'; // sensible default
-      }
-
-      _region(name, gt) {
-        const scores = {};
-        for (const [code, d] of Object.entries(REGION_PATTERNS)) {
-          let s = 0;
-          for (const c of d.codes) { if (new RegExp(`[\\|┃]${c}[\\|┃]`, 'i').test(name) || new RegExp(`[\\|┃]${c}[\\|┃]`, 'i').test(gt)) s += 15; }
-          for (const p of d.patterns) { if (p.test(name)) s += 10; if (p.test(gt)) s += 5; }
-          const nu = name.toUpperCase();
-          for (const ch of d.channels) { if (nu.includes(ch.toUpperCase())) s += 8; }
-          if (gt.toUpperCase().includes(d.region.toUpperCase())) s += 5;
-          if (gt.toUpperCase().includes(d.country.toUpperCase())) s += 5;
-          if (/^\|[A-Z]{2}\|/.test(name)) s += 5;
-          if (s > 0) scores[code] = s;
+        _region(name, gt) {
+            const scores = {};
+            for (const [code, d] of Object.entries(REGION_PATTERNS)) {
+                let s = 0;
+                for (const c of d.codes) { if (new RegExp(`[\\|┃]${c}[\\|┃]`, 'i').test(name) || new RegExp(`[\\|┃]${c}[\\|┃]`, 'i').test(gt)) s += 15; }
+                for (const p of d.patterns) { if (p.test(name)) s += 10; if (p.test(gt)) s += 5; }
+                const nu = name.toUpperCase();
+                for (const ch of d.channels) { if (nu.includes(ch.toUpperCase())) s += 8; }
+                if (gt.toUpperCase().includes(d.region.toUpperCase())) s += 5;
+                if (gt.toUpperCase().includes(d.country.toUpperCase())) s += 5;
+                if (/^\|[A-Z]{2}\|/.test(name)) s += 5;
+                if (s > 0) scores[code] = s;
+            }
+            const sorted = Object.entries(scores).sort((a, b) => b[1] - a[1]);
+            if (!sorted.length) return { code: 'XX', country: 'Desconocido', region: 'RESTO DEL MUNDO', language: 'unknown', confidence: 0, alternatives: [] };
+            const [bc, bs] = sorted[0]; const bd = REGION_PATTERNS[bc];
+            return { code: bc, country: bd.country, region: bd.region, language: bd.language, confidence: Math.min(bs / 50, 1), alternatives: sorted.slice(1, 3).map(([c, s]) => ({ code: c, country: REGION_PATTERNS[c].country, score: s })) };
         }
-        const sorted = Object.entries(scores).sort((a, b) => b[1] - a[1]);
-        if (!sorted.length) return { code: 'XX', country: 'Desconocido', region: 'RESTO DEL MUNDO', language: 'unknown', confidence: 0, alternatives: [] };
-        const [bc, bs] = sorted[0]; const bd = REGION_PATTERNS[bc];
-        return { code: bc, country: bd.country, region: bd.region, language: bd.language, confidence: Math.min(bs / 50, 1), alternatives: sorted.slice(1, 3).map(([c, s]) => ({ code: c, country: REGION_PATTERNS[c].country, score: s })) };
-      }
 
-      _content(name, gt) {
-        const useCompiled = Object.keys(_compiledContentTypes).length > 0;
-        const scores = {};
-        if (useCompiled) {
-          // Dynamic: use JSON-compiled patterns
-          for (const [type, d] of Object.entries(_compiledContentTypes)) {
-            let s = 0;
-            for (const p of d._compiled) { if (p.test(name)) s += 10 * (d.priority / 10); if (p.test(gt)) s += 5 * (d.priority / 10); }
-            if (s > 0) scores[type] = { score: s, flag: d.flag };
-          }
+        _content(name, gt) {
+            const useCompiled = Object.keys(_compiledContentTypes).length > 0;
+            const scores = {};
+            if (useCompiled) {
+                // Dynamic: use JSON-compiled patterns
+                for (const [type, d] of Object.entries(_compiledContentTypes)) {
+                    let s = 0;
+                    for (const p of d._compiled) { if (p.test(name)) s += 10 * (d.priority / 10); if (p.test(gt)) s += 5 * (d.priority / 10); }
+                    if (s > 0) scores[type] = { score: s, flag: d.flag };
+                }
+            }
+            const sorted = Object.entries(scores).sort((a, b) => b[1].score - a[1].score);
+            if (!sorted.length) return { _rawType: 'GENERALISTA', confidence: 0.3, flag: null, alternatives: [] };
+            const [bt, bd] = sorted[0];
+            return { _rawType: bt, confidence: Math.min(bd.score / 100, 1), flag: bd.flag, alternatives: sorted.slice(1, 3).map(([t, d]) => ({ type: t, score: d.score })) };
         }
-        const sorted = Object.entries(scores).sort((a, b) => b[1].score - a[1].score);
-        if (!sorted.length) return { _rawType: 'GENERALISTA', confidence: 0.3, flag: null, alternatives: [] };
-        const [bt, bd] = sorted[0];
-        return { _rawType: bt, confidence: Math.min(bd.score / 100, 1), flag: bd.flag, alternatives: sorted.slice(1, 3).map(([t, d]) => ({ type: t, score: d.score })) };
-      }
 
-      _crossCategorySports(name, gt, content) {
-        if (content._rawType === 'DEPORTES') return null;
-        const nl = name.toLowerCase();
-        let score = 0;
-        // Use sports keywords from JSON data if available
-        const sportsData = _rawContentTypes['DEPORTES'];
-        if (sportsData && sportsData.keywords) {
-          for (const kw of sportsData.keywords) { if (nl.includes(kw.toLowerCase())) score += 10; }
+        _crossCategorySports(name, gt, content) {
+            if (content._rawType === 'DEPORTES') return null;
+            const nl = name.toLowerCase();
+            let score = 0;
+            // Use sports keywords from JSON data if available
+            const sportsData = _rawContentTypes['DEPORTES'];
+            if (sportsData && sportsData.keywords) {
+                for (const kw of sportsData.keywords) { if (nl.includes(kw.toLowerCase())) score += 10; }
+            }
+            score = Math.min(score, 100);
+            if (score >= 70) return { detected: 'DEPORTES', score, level: 'DEFINITELY', action: 'RECLASSIFY_IMMEDIATE' };
+            if (score >= 50) return { detected: 'DEPORTES', score, level: 'PROBABLY', action: 'RECLASSIFY_AFTER_REVIEW' };
+            if (score >= 30) return { detected: 'DEPORTES', score, level: 'POSSIBLY', action: 'FLAG_FOR_REVIEW' };
+            return null;
         }
-        score = Math.min(score, 100);
-        if (score >= 70) return { detected: 'DEPORTES', score, level: 'DEFINITELY', action: 'RECLASSIFY_IMMEDIATE' };
-        if (score >= 50) return { detected: 'DEPORTES', score, level: 'PROBABLY', action: 'RECLASSIFY_AFTER_REVIEW' };
-        if (score >= 30) return { detected: 'DEPORTES', score, level: 'POSSIBLY', action: 'FLAG_FOR_REVIEW' };
-        return null;
-      }
 
-      _sportSubcat(name) {
-        for (const [sport, patterns] of Object.entries(_compiledSportsSubcats)) {
-          for (const p of patterns) { if (p.test(name)) return sport; }
+        _sportSubcat(name) {
+            for (const [sport, patterns] of Object.entries(_compiledSportsSubcats)) {
+                for (const p of patterns) { if (p.test(name)) return sport; }
+            }
+            return 'general';
         }
-        return 'general';
-      }
 
-      _lang(name, gt) {
-        const scores = {};
-        for (const [, d] of Object.entries(LANG_SCRIPTS)) { if (d.p.test(name)) { for (const l of d.l.split(',')) scores[l] = (scores[l] || 0) + d.w; } }
-        for (const [lang, pats] of Object.entries(LANG_TEXT)) { for (const p of pats) { if (p.test(name)) scores[lang] = (scores[lang] || 0) + 3; } }
-        const rr = this._region(name, gt);
-        if (rr.language && rr.language !== 'unknown') { for (const l of rr.language.split(',')) scores[l] = (scores[l] || 0) + 5; }
-        const sorted = Object.entries(scores).sort((a, b) => b[1] - a[1]);
-        if (!sorted.length) return { code: 'unknown', name: 'Desconocido', confidence: 0 };
-        const [bl, bs] = sorted[0];
-        return { code: bl, name: LANG_NAMES[bl] || bl, confidence: Math.min(bs / 15, 1) };
-      }
+        _lang(name, gt) {
+            const scores = {};
+            for (const [, d] of Object.entries(LANG_SCRIPTS)) { if (d.p.test(name)) { for (const l of d.l.split(',')) scores[l] = (scores[l] || 0) + d.w; } }
+            for (const [lang, pats] of Object.entries(LANG_TEXT)) { for (const p of pats) { if (p.test(name)) scores[lang] = (scores[lang] || 0) + 3; } }
+            const rr = this._region(name, gt);
+            if (rr.language && rr.language !== 'unknown') { for (const l of rr.language.split(',')) scores[l] = (scores[l] || 0) + 5; }
+            const sorted = Object.entries(scores).sort((a, b) => b[1] - a[1]);
+            if (!sorted.length) return { code: 'unknown', name: 'Desconocido', confidence: 0 };
+            const [bl, bs] = sorted[0];
+            return { code: bl, name: LANG_NAMES[bl] || bl, confidence: Math.min(bs / 15, 1) };
+        }
     }
 
     const _channelClassifier = new ChannelClassifier();
@@ -3197,12 +3455,12 @@ ${options.dictatorMode ? `#` + Array.from({length: 64}).map(() => Math.random().
     // Namespace: X-EL-* (NO conflictúa con X-APE-*)
     // ═══════════════════════════════════════════════════════════════════
     const EL_TARGETS = {
-        P0: { res: '7680x4320', w: 7680, h: 4320, bitrate: 200000000, hdr: 'dv-hdr10plus',  upscale: 'ai-8k',       vmaf: 96 },
-        P1: { res: '3840x2160', w: 3840, h: 2160, bitrate: 80000000,  hdr: 'hdr10plus',     upscale: 'ai-4k-plus',  vmaf: 95 },
-        P2: { res: '3840x2160', w: 3840, h: 2160, bitrate: 60000000,  hdr: 'hdr10',         upscale: 'ai-4k',       vmaf: 95 },
-        P3: { res: '3840x2160', w: 3840, h: 2160, bitrate: 40000000,  hdr: 'sdr-to-hdr',    upscale: 'ai-upscale',  vmaf: 93 },
-        P4: { res: '1920x1080', w: 1920, h: 1080, bitrate: 25000000,  hdr: 'sdr',           upscale: 'lanczos',     vmaf: 93 },
-        P5: { res: '1280x720',  w: 1280, h: 720,  bitrate: 15000000,  hdr: 'sdr',           upscale: 'bicubic',     vmaf: 90 }
+        P0: { res: '7680x4320', w: 7680, h: 4320, bitrate: 200000000, hdr: 'dv-hdr10plus', upscale: 'ai-8k', vmaf: 96 },
+        P1: { res: '3840x2160', w: 3840, h: 2160, bitrate: 80000000, hdr: 'hdr10plus', upscale: 'ai-4k-plus', vmaf: 95 },
+        P2: { res: '3840x2160', w: 3840, h: 2160, bitrate: 60000000, hdr: 'hdr10', upscale: 'ai-4k', vmaf: 95 },
+        P3: { res: '3840x2160', w: 3840, h: 2160, bitrate: 40000000, hdr: 'sdr-to-hdr', upscale: 'ai-upscale', vmaf: 93 },
+        P4: { res: '1920x1080', w: 1920, h: 1080, bitrate: 25000000, hdr: 'sdr', upscale: 'lanczos', vmaf: 93 },
+        P5: { res: '1280x720', w: 1280, h: 720, bitrate: 15000000, hdr: 'sdr', upscale: 'bicubic', vmaf: 90 }
     };
 
     function build_enhancement_layer(cfg, profile) {
@@ -3720,9 +3978,9 @@ ${options.dictatorMode ? `#` + Array.from({length: 64}).map(() => Math.random().
     function build_anti_cut_tags(cfg, profile) {
         // Map profile to anti-cut profile (from resolver's rq_get_anti_cut_profile)
         const profileMap = {
-            P0: 'P1-SUPREME',  P1: 'P1-SUPREME',
-            P2: 'P2-EXTREME',  P3: 'P3-STANDARD',
-            P4: 'P4-STABLE',   P5: 'P5-SAFE'
+            P0: 'P1-SUPREME', P1: 'P1-SUPREME',
+            P2: 'P2-EXTREME', P3: 'P3-STANDARD',
+            P4: 'P4-STABLE', P5: 'P5-SAFE'
         };
         const acProfile = profileMap[profile] || 'P3-STANDARD';
         const baseBw = cfg.max_bandwidth || cfg.bitrate * 1000 || 8000000;
@@ -4383,7 +4641,7 @@ ${options.dictatorMode ? `#` + Array.from({length: 64}).map(() => Math.random().
             } else {
                 Object.assign(headers, build_http_anabolic_demo_headers(cfg, cfg._channel || {}));
             }
-        } catch(e) { /* fail-safe */ }
+        } catch (e) { /* fail-safe */ }
 
         // ── 🚀 ENHANCEMENT LAYER ENGINE v1.0: Merge X-EL-* headers ──
         Object.assign(headers, build_enhancement_layer(cfg, profile));
@@ -4468,6 +4726,39 @@ ${options.dictatorMode ? `#` + Array.from({length: 64}).map(() => Math.random().
                     }
                 }
 
+                // ═══════════════════════════════════════════════════════════
+                // 🛡️ ANTI-DRIFT EXTRAS GATE — emite headerOverrides del LAB
+                // que NO están en ninguna PM9 category. SOLO si user opta-in.
+                // M1: dedupe vía map `headers` (keys únicos por construcción).
+                // ═══════════════════════════════════════════════════════════
+                if (pmProfile?.includeLabExtras === true && pmProfile.headerOverrides) {
+                    const pm9Set = (typeof window.APE_PROFILES_CONFIG.getPm9HeaderSet === 'function')
+                        ? window.APE_PROFILES_CONFIG.getPm9HeaderSet()
+                        : new Set();
+                    let extraHdrCount = 0;
+                    let dupBlocked = 0;
+                    for (const [k, v] of Object.entries(pmProfile.headerOverrides)) {
+                        if (pm9Set.has(k)) continue;          // ya cubierto por PM9 loop
+                        if (headers[k] !== undefined) {        // ya seteado por hardcoded path
+                            dupBlocked++;
+                            continue;
+                        }
+                        if (v === null || v === undefined || v === '') continue;
+                        headers[k] = String(v);
+                        extraHdrCount++;
+                    }
+                    if (extraHdrCount > 0) {
+                        if (_apeAuditAcc) _apeAuditAcc.extras.headerOverrides += extraHdrCount;
+                    }
+                    if (dupBlocked > 0 && _apeAuditAcc) _apeAuditAcc.duplicatesBlocked += dupBlocked;
+                    if (extraHdrCount > 0 && typeof console !== 'undefined') {
+                        window.__pmExtrasLogCount = (window.__pmExtrasLogCount || 0) + 1;
+                        if (window.__pmExtrasLogCount % 500 === 1) {
+                            console.log(`🛡️ [EXTRAS-INJECT #${window.__pmExtrasLogCount}] ${extraHdrCount} LAB extras (no-PM9) added to EXTHTTP for ${pmProfileId}`);
+                        }
+                    }
+                }
+
                 // Throttle: log solo 1 de cada 500 canales para no inundar consola.
                 if (pmInjected > 0 && typeof console !== 'undefined') {
                     window.__pmInjectLogCount = (window.__pmInjectLogCount || 0) + 1;
@@ -4507,12 +4798,15 @@ ${options.dictatorMode ? `#` + Array.from({length: 64}).map(() => Math.random().
             }
         }
 
-        const exthttp = `#EXTHTTP:${JSON.stringify(primaryHeaders)}`;
+        // M1: enforceJsonValid round-trip antes de emitir tag JSON.
+        // Si falla, primaryJson queda null y el counter sube — evita emitir JSON corrupto.
+        const primaryJson = enforceJsonValid(primaryHeaders, 'EXTHTTP-primary') || JSON.stringify(primaryHeaders);
+        const exthttp = `#EXTHTTP:${primaryJson}`;
 
         // Si hay overflow, codificarlo como base64 para el Runtime Engine
         const overflowKeys = Object.keys(overflowHeaders);
         if (overflowKeys.length > 0) {
-            const overflowJson = JSON.stringify(overflowHeaders);
+            const overflowJson = enforceJsonValid(overflowHeaders, 'EXTHTTP-overflow') || JSON.stringify(overflowHeaders);
             const overflowB64 = base64UrlEncode(overflowJson);
             return `${exthttp}\n#EXT-X-APE-OVERFLOW-HEADERS:${overflowB64}`;
         }
@@ -4542,16 +4836,16 @@ ${options.dictatorMode ? `#` + Array.from({length: 64}).map(() => Math.random().
         const h = {};
 
         // Helpers defensivos
-        const codecPrimary  = String(cfg.codec_primary || 'HEVC').toLowerCase();
-        const resolution    = cfg.resolution || cfg.res || '3840x2160';
-        const [resW, resH]  = (resolution.match(/\d+/g) || [3840, 2160]).map(Number);
-        const fps           = (cfg.target_framerate === '120FPS') ? 120
-                            : (cfg.target_framerate === '60FPS') ? 60
-                            : (cfg.fps || 60);
-        const peakNits      = Number(cfg.hdr_peak_luminance || cfg.peak_luminance || 5000);
-        const bitDepth      = Number(cfg.color_depth || 10);
+        const codecPrimary = String(cfg.codec_primary || 'HEVC').toLowerCase();
+        const resolution = cfg.resolution || cfg.res || '3840x2160';
+        const [resW, resH] = (resolution.match(/\d+/g) || [3840, 2160]).map(Number);
+        const fps = (cfg.target_framerate === '120FPS') ? 120
+            : (cfg.target_framerate === '60FPS') ? 60
+                : (cfg.fps || 60);
+        const peakNits = Number(cfg.hdr_peak_luminance || cfg.peak_luminance || 5000);
+        const bitDepth = Number(cfg.color_depth || 10);
         const audioChannels = Number(cfg.audio_channels || 8);
-        const sessionId     = cfg._sessionId || channel._sid || 'OMEGA-' + Date.now().toString(36);
+        const sessionId = cfg._sessionId || channel._sid || 'OMEGA-' + Date.now().toString(36);
 
         // ─── A. Negociación codec (12) ───
         h['Accept'] = 'application/vnd.apple.mpegurl, video/mp4;codecs="hvc1,hev1,av01,vvc1,dvhe,dav1", video/hevc;q=0.95, video/av1;q=0.9, video/vvc;q=0.85, video/avc;q=0.75, */*;q=0.1';
@@ -4775,14 +5069,14 @@ ${options.dictatorMode ? `#` + Array.from({length: 64}).map(() => Math.random().
         let _h = 0;
         for (let i = 0; i < chId.length; i++) _h = ((_h << 5) - _h + chId.charCodeAt(i)) & 0x7fffffff;
         const _hex = _h.toString(16).padStart(8, '0');
-        const sessionId = `${_hex.slice(0,8)}-${_hex.slice(0,4)}-4${_hex.slice(1,4)}-${['8','9','a','b'][_h%4]}${_hex.slice(1,4)}-${(_h*31).toString(16).padStart(12,'0').slice(0,12)}`;
+        const sessionId = `${_hex.slice(0, 8)}-${_hex.slice(0, 4)}-4${_hex.slice(1, 4)}-${['8', '9', 'a', 'b'][_h % 4]}${_hex.slice(1, 4)}-${(_h * 31).toString(16).padStart(12, '0').slice(0, 12)}`;
         const reqId = `omega-${chId}-${Date.now().toString(36).slice(-8)}`;
 
         // IP polimórfica determinista por canal
         const _ipSeed = Math.abs(_h);
-        const clientIP = `${(_ipSeed%200)+10}.${(_ipSeed>>8)%256}.${(_ipSeed>>16)%256}.${(_ipSeed>>24)%200+10}`;
-        const cdnEdge = `cdn-edge-${(_ipSeed%999)+100}`;
-        const cfId = _hex.padEnd(22,'=').slice(0,22) + '==';
+        const clientIP = `${(_ipSeed % 200) + 10}.${(_ipSeed >> 8) % 256}.${(_ipSeed >> 16) % 256}.${(_ipSeed >> 24) % 200 + 10}`;
+        const cdnEdge = `cdn-edge-${(_ipSeed % 999) + 100}`;
+        const cfId = _hex.padEnd(22, '=').slice(0, 22) + '==';
 
         const h = {};
 
@@ -4802,7 +5096,7 @@ ${options.dictatorMode ? `#` + Array.from({length: 64}).map(() => Math.random().
                 ? btoa(unescape(encodeURIComponent(_tokenRaw)))
                 : (typeof Buffer !== 'undefined' ? Buffer.from(_tokenRaw, 'utf8').toString('base64') : _tokenRaw);
             h['X-Session-Token'] = `omega_${_tokenSafe}`;
-        } catch(eTok) {
+        } catch (eTok) {
             h['X-Session-Token'] = `omega_${String(chId).replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 32)}`;
         }
 
@@ -5518,47 +5812,47 @@ ${options.dictatorMode ? `#` + Array.from({length: 64}).map(() => Math.random().
     // Capa 0: Base de datos de marcas IPTV conocidas → resolución real verificada
     const KNOWN_BRANDS = {
         P0: [],
-        P1: ['4K','UHD','ULTRA HD','2160'],
+        P1: ['4K', 'UHD', 'ULTRA HD', '2160'],
         P3: [
             // Deportes internacionales (siempre 1080p)
-            'ESPN','FOX SPORTS','BEIN SPORTS','BEINSPORT','DIRECTV SPORTS','DSports',
-            'SKY SPORTS','BT SPORT','DAZN','EUROSPORT','SPORT TV','SPORTV',
-            'GOLF CHANNEL','NBA TV','NFL NETWORK','MLB NETWORK','NHL NETWORK',
+            'ESPN', 'FOX SPORTS', 'BEIN SPORTS', 'BEINSPORT', 'DIRECTV SPORTS', 'DSports',
+            'SKY SPORTS', 'BT SPORT', 'DAZN', 'EUROSPORT', 'SPORT TV', 'SPORTV',
+            'GOLF CHANNEL', 'NBA TV', 'NFL NETWORK', 'MLB NETWORK', 'NHL NETWORK',
             // Noticias (siempre 1080p)
-            'CNN','BBC','BBC ONE','BBC TWO','AL JAZEERA','DW NEWS','FRANCE 24',
-            'EURONEWS','BLOOMBERG','CNBC','FOX NEWS','MSNBC','SKY NEWS',
+            'CNN', 'BBC', 'BBC ONE', 'BBC TWO', 'AL JAZEERA', 'DW NEWS', 'FRANCE 24',
+            'EURONEWS', 'BLOOMBERG', 'CNBC', 'FOX NEWS', 'MSNBC', 'SKY NEWS',
             // Entretenimiento premium (1080p)
-            'HBO','SHOWTIME','STARZ','AMC','FX','TNT','TBS','USA NETWORK',
-            'DISCOVERY','NATIONAL GEOGRAPHIC','NATGEO','HISTORY','ANIMAL PLANET',
-            'TRAVEL CHANNEL','FOOD NETWORK','HGTV','BRAVO','LIFETIME',
+            'HBO', 'SHOWTIME', 'STARZ', 'AMC', 'FX', 'TNT', 'TBS', 'USA NETWORK',
+            'DISCOVERY', 'NATIONAL GEOGRAPHIC', 'NATGEO', 'HISTORY', 'ANIMAL PLANET',
+            'TRAVEL CHANNEL', 'FOOD NETWORK', 'HGTV', 'BRAVO', 'LIFETIME',
             // Films premium (1080p)
-            'CINEMAX','TCM','SUNDANCE','IFC','CRITERION',
+            'CINEMAX', 'TCM', 'SUNDANCE', 'IFC', 'CRITERION',
             // Latinoamérica HD (1080p)
-            'CANAL SUR','TELECINCO','ANTENA 3','LA1','LA2','CUATRO',
-            'CARACOL','RCN','TELEAMAZONAS','ECUAVISA','TC TELEVISION',
-            'CANAL 13','MEGA','CHILEVISION','TVN','T13',
-            'TV AZTECA','TELEVISA','CANAL DE LAS ESTRELLAS',
-            'GLOBO','SBT','RECORD','REDE BAND',
-            'TLN','CNN EN ESPANOL','NTN24','TELEMUNDO','UNIVISION',
+            'CANAL SUR', 'TELECINCO', 'ANTENA 3', 'LA1', 'LA2', 'CUATRO',
+            'CARACOL', 'RCN', 'TELEAMAZONAS', 'ECUAVISA', 'TC TELEVISION',
+            'CANAL 13', 'MEGA', 'CHILEVISION', 'TVN', 'T13',
+            'TV AZTECA', 'TELEVISA', 'CANAL DE LAS ESTRELLAS',
+            'GLOBO', 'SBT', 'RECORD', 'REDE BAND',
+            'TLN', 'CNN EN ESPANOL', 'NTN24', 'TELEMUNDO', 'UNIVISION',
         ],
         P4: [
             // Canales infantiles (generalmente 720p)
-            'CARTOON NETWORK','NICKELODEON','NICK JR','DISNEY JR','BOOMERANG',
-            'DISNEY CHANNEL','DISNEY XD','BABY TV','BABY FIRST',
+            'CARTOON NETWORK', 'NICKELODEON', 'NICK JR', 'DISNEY JR', 'BOOMERANG',
+            'DISNEY CHANNEL', 'DISNEY XD', 'BABY TV', 'BABY FIRST',
             // Canales básicos de cable (720p)
-            'COMEDY CENTRAL','MTV','VH1','BET','SYFY','E!','OXYGEN',
+            'COMEDY CENTRAL', 'MTV', 'VH1', 'BET', 'SYFY', 'E!', 'OXYGEN',
             // Deportes básicos (720p en muchos proveedores)
-            'ESPN2','ESPN3','FOX SPORTS 2','FOX SPORTS 3',
+            'ESPN2', 'ESPN3', 'FOX SPORTS 2', 'FOX SPORTS 3',
         ],
         P5: [
             // Canales locales sin calidad garantizada (SD)
-            'TELESUR','TELE 1','LOCAL TV','CANAL LOCAL',
+            'TELESUR', 'TELE 1', 'LOCAL TV', 'CANAL LOCAL',
         ]
     };
 
     function determineProfile(channel) {
-        const name    = (channel?.name || '').toString().toUpperCase().trim();
-        const group   = (channel?.category_name || channel?.group || channel?.group_title || '').toString().toUpperCase().trim();
+        const name = (channel?.name || '').toString().toUpperCase().trim();
+        const group = (channel?.category_name || channel?.group || channel?.group_title || '').toString().toUpperCase().trim();
         const resMeta = (channel?.resolution || channel?.heuristics?.resolution || '').toString().toLowerCase();
         const bitrate = parseInt(channel?.bitrate || channel?.heuristics?.bitrate || 0, 10); // kbps
 
@@ -5570,48 +5864,48 @@ ${options.dictatorMode ? `#` + Array.from({length: 64}).map(() => Math.random().
         // CAPA 1: RESOLUCIÓN METADATA DEL API (peso 40) — más confiable
         // ─────────────────────────────────────────────────────────────────
         if (resMeta) {
-            if (resMeta.includes('7680') || resMeta.includes('8k'))           { scores.P0 += 40; signals.push('RES:8K→P0'); }
+            if (resMeta.includes('7680') || resMeta.includes('8k')) { scores.P0 += 40; signals.push('RES:8K→P0'); }
             else if (resMeta.includes('3840') || resMeta.includes('2160') || resMeta.includes('4k')) { scores.P1 += 40; signals.push('RES:4K→P1'); }
-            else if (resMeta.includes('1920') || resMeta.includes('1080'))    { scores.P3 += 40; signals.push('RES:1080p→P3'); }
-            else if (resMeta.includes('1280') || resMeta.includes('720'))     { scores.P4 += 40; signals.push('RES:720p→P4'); }
-            else if (resMeta.includes('854')  || resMeta.includes('480'))     { scores.P5 += 40; signals.push('RES:480p→P5'); }
-            else if (resMeta.includes('640')  || resMeta.includes('360'))     { scores.P5 += 40; signals.push('RES:360p→P5'); }
+            else if (resMeta.includes('1920') || resMeta.includes('1080')) { scores.P3 += 40; signals.push('RES:1080p→P3'); }
+            else if (resMeta.includes('1280') || resMeta.includes('720')) { scores.P4 += 40; signals.push('RES:720p→P4'); }
+            else if (resMeta.includes('854') || resMeta.includes('480')) { scores.P5 += 40; signals.push('RES:480p→P5'); }
+            else if (resMeta.includes('640') || resMeta.includes('360')) { scores.P5 += 40; signals.push('RES:360p→P5'); }
         }
 
         // ─────────────────────────────────────────────────────────────────
         // CAPA 2: BITRATE DEL API (peso 30) — evidencia directa de calidad
         // ─────────────────────────────────────────────────────────────────
         if (bitrate > 0) {
-            if      (bitrate >= 30000) { scores.P0 += 30; signals.push(`BIT:${bitrate}k→P0`); }
+            if (bitrate >= 30000) { scores.P0 += 30; signals.push(`BIT:${bitrate}k→P0`); }
             else if (bitrate >= 15000) { scores.P1 += 30; signals.push(`BIT:${bitrate}k→P1`); }
-            else if (bitrate >= 6000)  { scores.P3 += 30; signals.push(`BIT:${bitrate}k→P3`); }
-            else if (bitrate >= 2500)  { scores.P4 += 30; signals.push(`BIT:${bitrate}k→P4`); }
-            else                       { scores.P5 += 30; signals.push(`BIT:${bitrate}k→P5`); }
+            else if (bitrate >= 6000) { scores.P3 += 30; signals.push(`BIT:${bitrate}k→P3`); }
+            else if (bitrate >= 2500) { scores.P4 += 30; signals.push(`BIT:${bitrate}k→P4`); }
+            else { scores.P5 += 30; signals.push(`BIT:${bitrate}k→P5`); }
         }
 
         // ─────────────────────────────────────────────────────────────────
         // CAPA 3: NOMBRE DEL CANAL — keywords explícitos (peso 20)
         // ─────────────────────────────────────────────────────────────────
-        if (name.includes('8K'))                                  { scores.P0 += 20; signals.push('NAME:8K→P0'); }
-        if (name.includes('4K') || name.includes('UHD'))         { scores.P1 += 20; signals.push('NAME:4K/UHD→P1'); }
-        if (name.includes('FHD') || name.includes('1080'))        { scores.P3 += 20; signals.push('NAME:FHD/1080→P3'); }
+        if (name.includes('8K')) { scores.P0 += 20; signals.push('NAME:8K→P0'); }
+        if (name.includes('4K') || name.includes('UHD')) { scores.P1 += 20; signals.push('NAME:4K/UHD→P1'); }
+        if (name.includes('FHD') || name.includes('1080')) { scores.P3 += 20; signals.push('NAME:FHD/1080→P3'); }
         // HD genérico → P3 (1080p), NO P4
         if (name.includes('HD') && !name.includes('720') && !name.includes('480') && !name.includes('SD')) {
             scores.P3 += 15; signals.push('NAME:HD(generic)→P3');
         }
-        if (name.includes('720'))                                 { scores.P4 += 20; signals.push('NAME:720→P4'); }
+        if (name.includes('720')) { scores.P4 += 20; signals.push('NAME:720→P4'); }
         if (name.includes('SD') || name.includes('480') || name.includes('360')) { scores.P5 += 20; signals.push('NAME:SD/480→P5'); }
 
         // ─────────────────────────────────────────────────────────────────
         // CAPA 4: GROUP-TITLE (peso 15) — señal de categoría
         // ─────────────────────────────────────────────────────────────────
-        if (group.includes('8K'))                                 { scores.P0 += 15; signals.push('GRP:8K→P0'); }
-        if (group.includes('4K') || group.includes('UHD'))        { scores.P1 += 15; signals.push('GRP:4K→P1'); }
+        if (group.includes('8K')) { scores.P0 += 15; signals.push('GRP:8K→P0'); }
+        if (group.includes('4K') || group.includes('UHD')) { scores.P1 += 15; signals.push('GRP:4K→P1'); }
         if (group.includes('FHD') || group.includes('FULL HD') || group.includes('1080')) { scores.P3 += 15; signals.push('GRP:FHD→P3'); }
         if (group.includes('HD') && !group.includes('720') && !group.includes('FHD') && !group.includes('FULL')) {
             scores.P3 += 10; signals.push('GRP:HD(generic)→P3');
         }
-        if (group.includes('720'))                                { scores.P4 += 15; signals.push('GRP:720→P4'); }
+        if (group.includes('720')) { scores.P4 += 15; signals.push('GRP:720→P4'); }
         if (group.includes(' SD') || group.includes('SD ') || group.startsWith('SD')) { scores.P5 += 15; signals.push('GRP:SD→P5'); }
 
         // ─────────────────────────────────────────────────────────────────
@@ -5631,12 +5925,12 @@ ${options.dictatorMode ? `#` + Array.from({length: 64}).map(() => Math.random().
         // DECISIÓN FINAL: Perfil con mayor score acumulado
         // ─────────────────────────────────────────────────────────────────
         let bestProfile = 'P3'; // Default conservador: FHD 1080p
-        let bestScore   = 0;
-        let totalScore  = Object.values(scores).reduce((a, b) => a + b, 0);
+        let bestScore = 0;
+        let totalScore = Object.values(scores).reduce((a, b) => a + b, 0);
 
         for (const [profile, score] of Object.entries(scores)) {
             if (score > bestScore) {
-                bestScore   = score;
+                bestScore = score;
                 bestProfile = profile;
             }
         }
@@ -5651,11 +5945,11 @@ ${options.dictatorMode ? `#` + Array.from({length: 64}).map(() => Math.random().
 
         // Guardar debug en el canal para telemetría / EPG headers
         channel._profileDebug = {
-            profile:    bestProfile,
+            profile: bestProfile,
             confidence: confidence,
-            scores:     scores,
-            signals:    signals,
-            sources:    { name, group, resMeta, bitrate }
+            scores: scores,
+            signals: signals,
+            sources: { name, group, resMeta, bitrate }
         };
 
         return bestProfile;
@@ -5721,11 +6015,11 @@ ${options.dictatorMode ? `#` + Array.from({length: 64}).map(() => Math.random().
         arr.push('#EXT-X-APE-AV1-FALLBACK-TIMEOUT:500ms');
         arr.push('#EXT-X-APE-AV1-FALLBACK-SIGNAL:SEAMLESS');
         arr.push('#EXT-X-APE-AV1-FALLBACK-LOG:SILENT');
-        
+
         // Cortex Control Avanzado para Hardware
         arr.push('#EXT-X-CORTEX-AV1-CDEF:ENABLED_DIRECTIONAL_RESTORATION');
         arr.push('#EXT-X-CORTEX-AV1-DEBLOCKING:MAXIMUM_ATTENUATION');
-        
+
         return arr;
     }
 
@@ -5745,7 +6039,7 @@ ${options.dictatorMode ? `#` + Array.from({length: 64}).map(() => Math.random().
     // ── 🔥 BALANCE SCORECARD PERFECT 10/10 RESTORE (14 GAPS CRYSTAL UHD) 🔥 ──
     function build_omega_crystal_uhd_14gaps(cfg) {
         const arr = [];
-        
+
         // D11: AI DLSS & Post-Processing (Capa Suprema CORTEX-AI)
         arr.push('#EXT-X-CORTEX-AI-SUPER-RESOLUTION:REALESRGAN_X4PLUS_LITE');
         arr.push('#EXT-X-CORTEX-AI-SPATIAL-DENOISE:NLMEANS_OPTICAL');
@@ -5779,7 +6073,7 @@ ${options.dictatorMode ? `#` + Array.from({length: 64}).map(() => Math.random().
         arr.push('#EXT-X-APE-SPOOF-DEVICE-MODEL:SHIELD-TV-PRO');
         arr.push('#EXT-X-APE-DRM-WIDEVINE:ENFORCE');
         arr.push('#EXT-X-APE-DRM-FAIRPLAY:SUPPORTED');
-        
+
         // Network Buffer God Tier
         arr.push('#EXT-X-APE-BUFFER-STRATEGY:ADAPTIVE_PREDICTIVE_NEURAL');
         arr.push('#EXT-X-APE-BUFFER-PRELOAD-SEGMENTS:30');
@@ -5799,7 +6093,7 @@ ${options.dictatorMode ? `#` + Array.from({length: 64}).map(() => Math.random().
         arr.push('#EXT-X-APE-BITRATE-ANARCHY:ADAPTIVE_FREEZE_ON_DROP');
         arr.push('#EXT-X-APE-NETWORK-BUFFER-GOD-TIER:JITTER_ADAPTIVE_EXPANSION');
         arr.push('#EXT-X-PRELOAD-HINT:TYPE=PART');
-        
+
         arr.push('#EXT-X-APE-CODEC-ENFORCER:DYNAMIC_TRACK_SELECTION');
         arr.push('#EXT-X-APE-AV1-FALLBACK-DETECT:HARDWARE_DECODE_ONLY');
         arr.push('#EXT-X-APE-AV1-FALLBACK-AUTO-SWITCH:true');
@@ -5815,7 +6109,7 @@ ${options.dictatorMode ? `#` + Array.from({length: 64}).map(() => Math.random().
         arr.push('#EXT-X-APE-PHANTOM-HYDRA-VERSION: 5.0-OMEGA');
         arr.push(`#EXT-X-APE-PHANTOM-HYDRA-NONCE: ${generateNonce()}`);
         arr.push('#EXT-X-APE-PHANTOM-UA-ROTATION: ENABLED');
-        
+
         if (profile === 'P4' || profile === 'P5') {
             // Perfiles seguros no inyectan capas agresivas de Phantom
         } else {
@@ -5832,7 +6126,7 @@ ${options.dictatorMode ? `#` + Array.from({length: 64}).map(() => Math.random().
             arr.push('#EXT-X-APE-PHANTOM-TRAFFIC-MORPH: ENABLED');
             arr.push('#EXT-X-APE-PHANTOM-TRAFFIC-DISGUISE: HTTPS_GOOGLE_APIS');
         }
-        
+
         arr.push('#EXT-X-APE-PHANTOM-IDEMPOTENT-STATE: LOCKED');
         arr.push('#EXTVLCOPT:tone-mapping=mobius');
         return arr;
@@ -5850,22 +6144,24 @@ ${options.dictatorMode ? `#` + Array.from({length: 64}).map(() => Math.random().
                     const srv = servers.find(s => s.id === sid);
                     if (srv && srv.name) sName = srv.name;
                 }
-            } catch (e) {}
+            } catch (e) { }
         }
 
         let finalServerIdent = sName || sid;
         let serverSuffix = finalServerIdent ? ` [${finalServerIdent}]` : '';
-        
+
         const tvgId = escapeM3UValue(channel.stream_id || channel.id || index);
         // Agregamos el sufijo del servidor al nombre visual para diferenciarlos radicalmente
         const tvgName = escapeM3UValue((channel.name || `Canal ${index}`) + serverSuffix);
         const tvgLogo = escapeM3UValue(channel.stream_icon || channel.logo || '');
         let groupTitle = channel.category_name || channel.group || 'General';
 
-        if (window.GroupTitleBuilder && document.getElementById('gt-enabled')?.checked !== false) {
-            const gtConfig = window.GroupTitleBuilder.getConfig();
-            if (gtConfig?.selectedFields?.length > 0) {
-                groupTitle = window.GroupTitleBuilder.buildExport(channel, gtConfig);
+        // v22.3 FIX: Read enabled state from PERSISTED config (localStorage), NOT from DOM checkbox.
+        // DOM check fails when panel isn't mounted (null?.checked → undefined !== false → true → BUG).
+        const _gtCfg = window.GroupTitleConfigManager?.load?.() || window.GroupTitleBuilder?.getConfig?.();
+        if (window.GroupTitleBuilder && _gtCfg?.enabled !== false) {
+            if (_gtCfg?.selectedFields?.length > 0) {
+                groupTitle = window.GroupTitleBuilder.buildExport(channel, _gtCfg);
             }
         }
 
@@ -6035,7 +6331,7 @@ ${options.dictatorMode ? `#` + Array.from({length: 64}).map(() => Math.random().
     // ============================================================================
     // ✅ v12.0: PERFECT UNIVERSAL URL CONSTRUCTOR (STRICT MATH PARSER)
     // ============================================================================
-    
+
     function _URLEncoder(value) { return encodeURIComponent(value); }
     function _notEmpty(v) { return v != null && String(v).trim() !== ''; }
 
@@ -6120,7 +6416,7 @@ ${options.dictatorMode ? `#` + Array.from({length: 64}).map(() => Math.random().
         let raw = String(baseUrl).trim();
         raw = raw.replace(/\\/g, '/');
         if (!raw.startsWith('http://') && !raw.startsWith('https://')) raw = 'http://' + raw;
-        
+
         let parseFailed = false;
         let pScheme = 'http', pHost = '', pPort = null, pPath = '';
         try {
@@ -6129,7 +6425,7 @@ ${options.dictatorMode ? `#` + Array.from({length: 64}).map(() => Math.random().
             pHost = urlObj.hostname.toLowerCase().trim();
             pPort = urlObj.port ? parseInt(urlObj.port) : null;
             pPath = urlObj.pathname;
-        } catch(e) {
+        } catch (e) {
             parseFailed = true;
             const match = raw.match(/^(https?):\/\/([^\/:]+)(?::(\d+))?(\/.*)?$/i);
             if (match) {
@@ -6141,10 +6437,10 @@ ${options.dictatorMode ? `#` + Array.from({length: 64}).map(() => Math.random().
                 throw new Error('Invalid BaseURL format: ' + raw);
             }
         }
-        
+
         if (forceHttps === true) pScheme = 'https';
         if (pHost === '') throw new Error('Host is empty');
-        
+
         // Modificado por petición (Single Source of Truth de Puertos IPTV)
         // No purgar puertos 80/443 si el usuario los guardó explícitamente.
         // if (preservePort !== true) {
@@ -6156,16 +6452,16 @@ ${options.dictatorMode ? `#` + Array.from({length: 64}).map(() => Math.random().
 
     function _buildPerfectUrl(input) {
         if (!input.baseUrl || input.baseUrl === '') throw new Error('baseUrl is required');
-        
+
         const normalized = normalizeBaseUrl(input.baseUrl, input.forceHttps, input.preservePort);
         const scheme = normalized.scheme;
         const host = normalized.host;
         const port = normalized.port;
         const basePath = normalized.basePath;
-        
+
         const ext = normalizeExtension(input.extension);
         const detectedType = (input.serverType === 'auto' || !input.serverType) ? detectServerType(input) : input.serverType;
-        
+
         if (detectedType === 'xtream') {
             if (!_notEmpty(input.username) || !_notEmpty(input.password) || !_notEmpty(input.streamId)) {
                 throw new Error('Xtream requires username, password, and streamId');
@@ -6173,13 +6469,13 @@ ${options.dictatorMode ? `#` + Array.from({length: 64}).map(() => Math.random().
             const user = _URLEncoder(String(input.username).trim());
             const pass = _URLEncoder(String(input.password).trim());
             const sid = _URLEncoder(String(input.streamId).trim());
-            
+
             const typeP = input.typePath || 'live';
             const finalPath = joinPath(basePath, typeP, user, pass, sid + '.' + ext);
             const finalUrl = composeUrl(scheme, host, port, finalPath, null);
             return validateBuiltUrl(finalUrl);
         }
-        
+
         if (detectedType === 'direct_hls') {
             if (!_notEmpty(input.directPath)) throw new Error('Direct HLS requires directPath');
             let cleanPath = input.directPath.trim().split('?')[0].split('#')[0];
@@ -6190,14 +6486,14 @@ ${options.dictatorMode ? `#` + Array.from({length: 64}).map(() => Math.random().
             const finalPath = joinPath(basePath, cleanPath);
             let dQuery = null;
             if (input.directPath.includes('?')) dQuery = input.directPath.split('?')[1];
-            
+
             const finalUrl = composeUrl(scheme, host, port, finalPath, dQuery);
             return validateBuiltUrl(finalUrl);
         }
-        
+
         if (detectedType === 'query_hls') {
             if (!_notEmpty(input.endpointPath)) throw new Error('Query HLS requires endpointPath');
-            
+
             let endpoint = input.endpointPath.trim().split('?')[0].split('#')[0];
             endpoint = normalizePath(endpoint);
             if (endpoint === '') throw new Error('normalized endpoint path is empty');
@@ -6206,10 +6502,10 @@ ${options.dictatorMode ? `#` + Array.from({length: 64}).map(() => Math.random().
             if (_notEmpty(input.username)) params['username'] = String(input.username).trim();
             if (_notEmpty(input.password)) params['password'] = String(input.password).trim();
             if (_notEmpty(input.streamId)) params['stream'] = String(input.streamId).trim();
-            
+
             params['extension'] = ext;
             const reserved = new Set(['username', 'password', 'stream', 'extension']);
-            
+
             if (input.extraParams) {
                 for (const [k, v] of Object.entries(input.extraParams)) {
                     if (_notEmpty(k) && v != null && !reserved.has(k)) {
@@ -6222,7 +6518,7 @@ ${options.dictatorMode ? `#` + Array.from({length: 64}).map(() => Math.random().
             const finalUrl = composeUrl(scheme, host, port, finalPath, query);
             return validateBuiltUrl(finalUrl);
         }
-        
+
         throw new Error('Unsupported serverType');
     }
 
@@ -6252,7 +6548,7 @@ ${options.dictatorMode ? `#` + Array.from({length: 64}).map(() => Math.random().
                         if (base && user && pass) creds = { baseUrl: base, username: user, password: pass };
                     }
                 }
-            } catch (e) {}
+            } catch (e) { }
         }
         if (!creds) creds = credentialsMap['__current__'];
 
@@ -6262,20 +6558,20 @@ ${options.dictatorMode ? `#` + Array.from({length: 64}).map(() => Math.random().
             const hostMatch = originalUrl.match(/^https?:\/\/[^\/]+/i);
             baseUrl = hostMatch ? hostMatch[0] : '';
         }
-        if (!baseUrl) return preferHttps(originalUrl); 
+        if (!baseUrl) return preferHttps(originalUrl);
 
         const username = creds ? creds.username : '';
         const password = creds ? creds.password : '';
-        
+
         let ext = 'm3u8';
         if (typeof window !== 'undefined' && window.app?.state?.activeServers) {
             const srv = window.app.state.activeServers.find(s => (s.baseUrl || '').includes(baseUrl));
             if (srv && srv.streamFormat) ext = srv.streamFormat;
             else if (window.app.state.streamFormat) ext = window.app.state.streamFormat;
         }
-        
+
         let typePath = 'live';
-        if (channel.type === "movie" || channel.stream_type === "movie") { typePath = "movie"; ext = channel.container_extension || "mp4"; } 
+        if (channel.type === "movie" || channel.stream_type === "movie") { typePath = "movie"; ext = channel.container_extension || "mp4"; }
         else if (channel.type === "series" || channel.stream_type === "series") { typePath = "series"; ext = channel.container_extension || "mp4"; }
         else {
             if (channel.customFormat) ext = channel.customFormat;
@@ -6286,7 +6582,7 @@ ${options.dictatorMode ? `#` + Array.from({length: 64}).map(() => Math.random().
         let dPath = null;
         let ePath = null;
         let extra = {};
-        
+
         try {
             const cleanOriginal = originalUrl.replace(/\s+/g, '').replace(/([^:]\/)\/+/g, "$1");
             if (cleanOriginal.includes('?') && (cleanOriginal.includes('username=') || cleanOriginal.includes('user='))) {
@@ -6300,7 +6596,7 @@ ${options.dictatorMode ? `#` + Array.from({length: 64}).map(() => Math.random().
                     dPath = new URL(cleanOriginal).pathname;
                 }
             }
-        } catch(e) {}
+        } catch (e) { }
 
         if (srvType === 'auto') srvType = 'xtream';
         if (!ePath) ePath = '/playlist';
@@ -6311,7 +6607,7 @@ ${options.dictatorMode ? `#` + Array.from({length: 64}).map(() => Math.random().
             streamId: streamId, directPath: dPath, endpointPath: ePath, extension: ext,
             typePath: typePath, extraParams: extra, forceHttps: false, preservePort: true
         };
-        
+
         try {
             const pUrl = _buildPerfectUrl(input);
             return preferHttps(pUrl);
@@ -6322,99 +6618,99 @@ ${options.dictatorMode ? `#` + Array.from({length: 64}).map(() => Math.random().
         }
     }
 
-    
-// ═══════════════════════════════════════════════════════════════════════════
-// 🧠 OMEGA ABSOLUTE JS GENERATOR: DYNAMIC PAYLOAD + OMNI-ORCHESTRATOR
-// ═══════════════════════════════════════════════════════════════════════════
-function __getOmegaGodTierDirectives(channel, cfg) {
-    const extLines = [];
-    
-    // 1. Inyectar TODAS las configuraciones dinámicas OMEGA del Profile Manager (v13.1 SUPREMO)
-    // Las variables que comienzan con X-APE-, X-CORTEX-, X-TELCHEMY-, X-VNOVA- dominan la compilación
-    if (cfg && typeof cfg === 'object') {
-        const priorityKeys = [];
-        for (const [key, value] of Object.entries(cfg)) {
-            if (key.startsWith('X-APE-') || key.startsWith('X-CORTEX-') || key.startsWith('X-TELCHEMY-') || key.startsWith('X-VNOVA-')) {
-                if (value !== undefined && value !== null && value !== '') {
-                    extLines.push(`#EXT-${key}:${value}`);
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // 🧠 OMEGA ABSOLUTE JS GENERATOR: DYNAMIC PAYLOAD + OMNI-ORCHESTRATOR
+    // ═══════════════════════════════════════════════════════════════════════════
+    function __getOmegaGodTierDirectives(channel, cfg) {
+        const extLines = [];
+
+        // 1. Inyectar TODAS las configuraciones dinámicas OMEGA del Profile Manager (v13.1 SUPREMO)
+        // Las variables que comienzan con X-APE-, X-CORTEX-, X-TELCHEMY-, X-VNOVA- dominan la compilación
+        if (cfg && typeof cfg === 'object') {
+            const priorityKeys = [];
+            for (const [key, value] of Object.entries(cfg)) {
+                if (key.startsWith('X-APE-') || key.startsWith('X-CORTEX-') || key.startsWith('X-TELCHEMY-') || key.startsWith('X-VNOVA-')) {
+                    if (value !== undefined && value !== null && value !== '') {
+                        extLines.push(`#EXT-${key}:${value}`);
+                    }
                 }
             }
         }
+
+        // 2. OMNI-ORCHESTRATOR JSON (Identidad criptográfica y referer invariable)
+        function determineOmegaContentType(name, group) {
+            const n = (name || '').toLowerCase();
+            const g = (group || '').toLowerCase();
+            if (n.includes('espn') || n.includes('fox') || g.includes('deporte') || n.includes('sport')) return 'sports';
+            if (n.includes('hbo') || n.includes('cine') || g.includes('cine') || n.includes('movie')) return 'cinema';
+            if (n.includes('cnn') || n.includes('bbc') || g.includes('noticias') || n.includes('news')) return 'news';
+            if (n.includes('disney') || n.includes('kids') || g.includes('infantil') || n.includes('nick')) return 'kids';
+            if (n.includes('discovery') || n.includes('history') || g.includes('document') || n.includes('nat geo')) return 'documentary';
+            return 'default';
+        }
+
+        const ct = determineOmegaContentType(channel.name, channel.group_title);
+        const ctProfileMap = {
+            'sports': 'P0_ULTRA_SPORTS_8K',
+            'cinema': 'P1_CINEMA_8K_HDR',
+            'news': 'P2_NEWS_4K_HDR',
+            'kids': 'P3_KIDS_4K_HDR',
+            'documentary': 'P4_DOCU_8K_HDR',
+            'default': 'P0_ULTRA_SPORTS_8K'
+        };
+
+        const strToCrc = (str) => { let hash = 0; for (let i = 0; i < str.length; i++) hash = ((hash << 5) - hash) + str.charCodeAt(i); return Math.abs(hash).toString(16); };
+        const determinantSid = strToCrc(String(channel.id || channel.name || 'UNKNOWN'));
+
+        if (!window.apeOmegaUniquenessHash) {
+            window.apeOmegaUniquenessHash = Math.random().toString(36).substring(2, 10);
+        }
+
+        const payload = {
+            paradigm: 'OMNI-ORCHESTRATOR-V5-OMEGA',
+            version: '1.0.0-OMEGA',
+            profile: ctProfileMap[ct],
+            ct: ct,
+            sid: 'SES_D' + determinantSid,
+            referer: 'https://iptv-ape-telemetry.local/',
+            uniqueness_hash: window.apeOmegaUniquenessHash,
+            uniqueness_nonce: Math.floor(Math.random() * 1000000).toString()
+        };
+
+        extLines.push(`#EXTHTTP:${JSON.stringify(payload)}`);
+
+        // 3. PHANTOM HYDRA DIRECTIVES (Inyectado Nativamente en el Generator)
+        const seedNum = isNaN(parseInt(determinantSid, 16)) ? 1 : parseInt(determinantSid, 16);
+        const uas = [
+            "NVIDIA SHIELD Android TV/9.0 (SHIELD Android TV; Build/PPR1.180610.011; wv) AppleWebKit/537.36",
+            "Mozilla/5.0 (SMART-TV; Linux; Tizen 8.0) AppleWebKit/538.1",
+            "Mozilla/5.0 (Linux; Android 12; Chromecast) AppleWebKit/537.36",
+            "AppleTV6,2/11.1",
+            "VLC/3.0.21 LibVLC/3.0.21"
+        ];
+        const snis = ["www.google.com", "cloudflare.com", "storage.googleapis.com"];
+        const dohs = ["https://dns.google/dns-query", "https://cloudflare-dns.com/dns-query"];
+        const swarm = [64, 128, 256][seedNum % 3];
+        const nonceHydra = Math.random().toString(36).substring(2, 12);
+
+        extLines.push(`#EXT-X-APE-PHANTOM-HYDRA-STATE: ACTIVE`);
+        extLines.push(`#EXT-X-APE-PHANTOM-HYDRA-VERSION: 5.0-OMEGA`);
+        extLines.push(`#EXT-X-APE-PHANTOM-HYDRA-NONCE: ${nonceHydra}`);
+        extLines.push(`#EXT-X-APE-PHANTOM-UA-ROTATION: ENABLED`);
+        extLines.push(`#EXT-X-APE-PHANTOM-UA-ACTIVE: ${uas[seedNum % uas.length]}`);
+        extLines.push(`#EXT-X-APE-PHANTOM-DEVICE-SPOOF: SHIELD_TV_PRO_2023`);
+        extLines.push(`#EXT-X-APE-PHANTOM-SNI-OBFUSCATION: ENABLED`);
+        extLines.push(`#EXT-X-APE-PHANTOM-SNI-FRONT-DOMAIN: ${snis[seedNum % snis.length]}`);
+        extLines.push(`#EXT-X-APE-PHANTOM-DOH-SERVER: ${dohs[seedNum % dohs.length]}`);
+        extLines.push(`#EXT-X-APE-PHANTOM-SWARM-SIZE: ${swarm}`);
+        extLines.push(`#EXT-X-APE-PHANTOM-SWARM-STRATEGY: HYDRA_MULTI_IP`);
+        extLines.push(`#EXT-X-APE-PHANTOM-TRAFFIC-MORPH: ENABLED`);
+        extLines.push(`#EXT-X-APE-PHANTOM-TRAFFIC-DISGUISE: HTTPS_GOOGLE_APIS`);
+        extLines.push(`#EXT-X-APE-PHANTOM-IDEMPOTENT-STATE: LOCKED`);
+
+        return extLines;
     }
-    
-    // 2. OMNI-ORCHESTRATOR JSON (Identidad criptográfica y referer invariable)
-    function determineOmegaContentType(name, group) {
-        const n = (name||'').toLowerCase();
-        const g = (group||'').toLowerCase();
-        if (n.includes('espn') || n.includes('fox') || g.includes('deporte') || n.includes('sport')) return 'sports';
-        if (n.includes('hbo') || n.includes('cine') || g.includes('cine') || n.includes('movie')) return 'cinema';
-        if (n.includes('cnn') || n.includes('bbc') || g.includes('noticias') || n.includes('news')) return 'news';
-        if (n.includes('disney') || n.includes('kids') || g.includes('infantil') || n.includes('nick')) return 'kids';
-        if (n.includes('discovery') || n.includes('history') || g.includes('document') || n.includes('nat geo')) return 'documentary';
-        return 'default';
-    }
-
-    const ct = determineOmegaContentType(channel.name, channel.group_title);
-    const ctProfileMap = {
-        'sports': 'P0_ULTRA_SPORTS_8K',
-        'cinema': 'P1_CINEMA_8K_HDR',
-        'news': 'P2_NEWS_4K_HDR',
-        'kids': 'P3_KIDS_4K_HDR',
-        'documentary': 'P4_DOCU_8K_HDR',
-        'default': 'P0_ULTRA_SPORTS_8K'
-    };
-    
-    const strToCrc = (str) => { let hash = 0; for (let i = 0; i < str.length; i++) hash = ((hash << 5) - hash) + str.charCodeAt(i); return Math.abs(hash).toString(16); };
-    const determinantSid = strToCrc(String(channel.id || channel.name || 'UNKNOWN'));
-
-    if (!window.apeOmegaUniquenessHash) {
-        window.apeOmegaUniquenessHash = Math.random().toString(36).substring(2, 10);
-    }
-
-    const payload = {
-        paradigm: 'OMNI-ORCHESTRATOR-V5-OMEGA',
-        version: '1.0.0-OMEGA',
-        profile: ctProfileMap[ct],
-        ct: ct,
-        sid: 'SES_D' + determinantSid,
-        referer: 'https://iptv-ape-telemetry.local/',
-        uniqueness_hash: window.apeOmegaUniquenessHash,
-        uniqueness_nonce: Math.floor(Math.random() * 1000000).toString()
-    };
-    
-    extLines.push(`#EXTHTTP:${JSON.stringify(payload)}`);
-
-    // 3. PHANTOM HYDRA DIRECTIVES (Inyectado Nativamente en el Generator)
-    const seedNum = isNaN(parseInt(determinantSid, 16)) ? 1 : parseInt(determinantSid, 16);
-    const uas = [
-        "NVIDIA SHIELD Android TV/9.0 (SHIELD Android TV; Build/PPR1.180610.011; wv) AppleWebKit/537.36",
-        "Mozilla/5.0 (SMART-TV; Linux; Tizen 8.0) AppleWebKit/538.1",
-        "Mozilla/5.0 (Linux; Android 12; Chromecast) AppleWebKit/537.36",
-        "AppleTV6,2/11.1",
-        "VLC/3.0.21 LibVLC/3.0.21"
-    ];
-    const snis = ["www.google.com","cloudflare.com","storage.googleapis.com"];
-    const dohs = ["https://dns.google/dns-query","https://cloudflare-dns.com/dns-query"];
-    const swarm = [64, 128, 256][seedNum % 3];
-    const nonceHydra = Math.random().toString(36).substring(2, 12);
-    
-    extLines.push(`#EXT-X-APE-PHANTOM-HYDRA-STATE: ACTIVE`);
-    extLines.push(`#EXT-X-APE-PHANTOM-HYDRA-VERSION: 5.0-OMEGA`);
-    extLines.push(`#EXT-X-APE-PHANTOM-HYDRA-NONCE: ${nonceHydra}`);
-    extLines.push(`#EXT-X-APE-PHANTOM-UA-ROTATION: ENABLED`);
-    extLines.push(`#EXT-X-APE-PHANTOM-UA-ACTIVE: ${uas[seedNum % uas.length]}`);
-    extLines.push(`#EXT-X-APE-PHANTOM-DEVICE-SPOOF: SHIELD_TV_PRO_2023`);
-    extLines.push(`#EXT-X-APE-PHANTOM-SNI-OBFUSCATION: ENABLED`);
-    extLines.push(`#EXT-X-APE-PHANTOM-SNI-FRONT-DOMAIN: ${snis[seedNum % snis.length]}`);
-    extLines.push(`#EXT-X-APE-PHANTOM-DOH-SERVER: ${dohs[seedNum % dohs.length]}`);
-    extLines.push(`#EXT-X-APE-PHANTOM-SWARM-SIZE: ${swarm}`);
-    extLines.push(`#EXT-X-APE-PHANTOM-SWARM-STRATEGY: HYDRA_MULTI_IP`);
-    extLines.push(`#EXT-X-APE-PHANTOM-TRAFFIC-MORPH: ENABLED`);
-    extLines.push(`#EXT-X-APE-PHANTOM-TRAFFIC-DISGUISE: HTTPS_GOOGLE_APIS`);
-    extLines.push(`#EXT-X-APE-PHANTOM-IDEMPOTENT-STATE: LOCKED`);
-
-    return extLines;
-}
 
     // === HELPERS DE INYECCIÓN DINÁMICA (LAB BULLETPROOF L3) ===
     function upsertVlcopt(lines, key, value) {
@@ -6444,7 +6740,7 @@ function __getOmegaGodTierDirectives(channel, cfg) {
                 const data = JSON.parse(jsonText);
                 data[key] = value;
                 lines[idx] = `${prefix}${JSON.stringify(data)}`;
-            } catch (e) {}
+            } catch (e) { }
         } else {
             lines.push(`${prefix}{"${key}":"${value}"}`);
         }
@@ -6481,42 +6777,56 @@ function __getOmegaGodTierDirectives(channel, cfg) {
         const lines = [];
 
         // ── SEMILLAS CRIPTOGRÁFICAS (Polimorfismo + Idempotencia) ─────────────
-        const _STATIC_SEED  = 'OMEGA_STATIC_SEED_V5';
-        const _nonce796     = (() => {
-            const r = Math.random().toString(36).substring(2,10);
+        const _STATIC_SEED = 'OMEGA_STATIC_SEED_V5';
+        const _nonce796 = (() => {
+            const r = Math.random().toString(36).substring(2, 10);
             return r + Date.now().toString(16).slice(-4);
         })();
-        const _sid796       = (() => {
+        const _sid796 = (() => {
             // SID ESTABLE: md5-like con FNV-1a sobre id+STATIC_SEED
             const s = String(channel.id || channel.name || index) + _STATIC_SEED;
             let h = 0x811c9dc5;
-            for (let i=0; i<s.length; i++) { h ^= s.charCodeAt(i); h = (h * 0x01000193) >>> 0; }
-            return h.toString(16).padStart(8,'0') + ((h*0x9e3779b9)>>>0).toString(16).padStart(8,'0');
+            for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = (h * 0x01000193) >>> 0; }
+            return h.toString(16).padStart(8, '0') + ((h * 0x9e3779b9) >>> 0).toString(16).padStart(8, '0');
         })();
-        const _listHash     = (typeof LIST_HASH !== 'undefined') ? LIST_HASH : _nonce796.slice(0,8);
-        const _ts           = new Date().toISOString();
+        const _listHash = (typeof LIST_HASH !== 'undefined') ? LIST_HASH : _nonce796.slice(0, 8);
+        const _ts = new Date().toISOString();
 
         // ── ARRAYS DE ORIGEN — cableados desde el scope del generador ─────────
-        const _ua796        = UAPhantomEngine.get('IPTV');
-        const _uaAndroid    = (typeof UAPhantomEngine !== 'undefined' && UAPhantomEngine && UAPhantomEngine.getUA) ? UAPhantomEngine.getUA('ANDROID') : (UAPhantomEngine && UAPhantomEngine.get ? UAPhantomEngine.get('ANDROID') : 'ExoPlayer/2.18.1 (Linux;Android 13) ExoPlayerLib/2.18.1');
-        const _uaIOS        = (typeof UAPhantomEngine !== 'undefined' && UAPhantomEngine && UAPhantomEngine.getUA) ? UAPhantomEngine.getUA('IOS') : (UAPhantomEngine && UAPhantomEngine.get ? UAPhantomEngine.get('IOS') : 'AppleCoreMedia/1.0.0.20G75 (Apple TV; U; CPU OS 16_6 like Mac OS X; en_us)');
-        const _uaChrome     = UAPhantomEngine.get('CHROME');
-        const _uaTiviMate   = UAPhantomEngine.get('TIVIMATE');
-        const _uaOTT        = UAPhantomEngine.get('OTT');
-        const _uaKodi       = UAPhantomEngine.get('KODI');
-        const _uaExo        = UAPhantomEngine.get('EXOPLAYER');
-        const _uaVLC        = UAPhantomEngine.get('VLC');
-        const _uaSafari     = UAPhantomEngine.get('SAFARI');
-        const _randomIp     = getRandomIp();
+        const _ua796 = UAPhantomEngine.get('IPTV');
+        const _uaAndroid = (typeof UAPhantomEngine !== 'undefined' && UAPhantomEngine && UAPhantomEngine.getUA) ? UAPhantomEngine.getUA('ANDROID') : (UAPhantomEngine && UAPhantomEngine.get ? UAPhantomEngine.get('ANDROID') : 'ExoPlayer/2.18.1 (Linux;Android 13) ExoPlayerLib/2.18.1');
+        const _uaIOS = (typeof UAPhantomEngine !== 'undefined' && UAPhantomEngine && UAPhantomEngine.getUA) ? UAPhantomEngine.getUA('IOS') : (UAPhantomEngine && UAPhantomEngine.get ? UAPhantomEngine.get('IOS') : 'AppleCoreMedia/1.0.0.20G75 (Apple TV; U; CPU OS 16_6 like Mac OS X; en_us)');
+        const _uaChrome = UAPhantomEngine.get('CHROME');
+        const _uaTiviMate = UAPhantomEngine.get('TIVIMATE');
+        const _uaOTT = UAPhantomEngine.get('OTT');
+        const _uaKodi = UAPhantomEngine.get('KODI');
+        const _uaExo = UAPhantomEngine.get('EXOPLAYER');
+        const _uaVLC = UAPhantomEngine.get('VLC');
+        const _uaSafari = UAPhantomEngine.get('SAFARI');
+        const _randomIp = getRandomIp();
 
         // ── PERFIL DESDE ARRAY DE ORIGEN ─────────────────────────────────────
-        const cfg           = getProfileConfig(profile);
-        const _bw796        = cfg.bitrate ? Math.round(cfg.bitrate * 1000) : 80000000;
-        const _avgBw        = Math.round(_bw796 * 0.85);
-        const _res796       = cfg.resolution      || '3840x2160';
-        const _fps796       = cfg.fps             || 60;
-        const _codec796     = (() => { switch(cfg.codec_primary) { case 'VVC': return 'vvc1.1.L63.00.0.0'; case 'AV1': return 'av01.0.08M.08'; case 'AVC': return 'avc1.640028'; default: return 'hvc1.1.6.L153.B0'; } })();
-        const _codecAudio   = cfg.audio_codec     || 'ec-3';
+        const cfg = getProfileConfig(profile);
+        const _bw796_raw = cfg.bitrate ? Math.round(cfg.bitrate * 1000) : 80000000;
+        // ═══ BITRATE FLOOR — LAB SSOT (2026-04-26) ═══
+        // Origen del piso (orden de prioridad):
+        //   1) cfg.bitrate_floor_mbps (LAB-driven via Profile Manager Reactive Rule 1.1)
+        //   2) Tabla hardcodeada por resolución (fallback de seguridad — defensa en profundidad)
+        // Pisos calibrados:
+        //   4K (3840x2160) → 14 Mbps    1080p → 5 Mbps    720p/inferior → 2 Mbps
+        const _resW796 = parseInt((cfg.resolution || '3840x2160').split('x')[0], 10) || 3840;
+        const _labFloor = (cfg.bitrate_floor_mbps != null && !isNaN(cfg.bitrate_floor_mbps))
+            ? Math.round(Number(cfg.bitrate_floor_mbps) * 1000000)
+            : 0;
+        const _fallbackFloor = _resW796 >= 3840 ? 14000000 : (_resW796 >= 1920 ? 5000000 : 2000000);
+        const _bitrateFloor = _labFloor || _fallbackFloor;
+        const _bw796 = Math.max(_bw796_raw, _bitrateFloor);
+        const _avgBw = Math.round(_bw796 * 0.85);
+        const _minBw796 = _bitrateFloor; // Floor exportado para VLC (adaptive-minbitrate) / KODI (min_bandwidth)
+        const _res796 = cfg.resolution || '3840x2160';
+        const _fps796 = cfg.fps || 60;
+        const _codec796 = (() => { switch (cfg.codec_primary) { case 'VVC': return 'vvc1.1.L63.00.0.0'; case 'AV1': return 'av01.0.08M.08'; case 'AVC': return 'avc1.640028'; default: return 'hvc1.1.6.L153.B0'; } })();
+        const _codecAudio = cfg.audio_codec || 'ec-3';
         // FIX 2026-04-26: cfg.hdr_support ahora es array siempre (LAB-driven).
         // Detectar HDR vs SDR mirando cfg.hdr_mode (string LAB: DOLBY_VISION/HDR10PLUS/HDR10/HLG/SDR)
         // o como fallback si el array contiene algo distinto a solo 'sdr'.
@@ -6527,50 +6837,50 @@ function __getOmegaGodTierDirectives(channel, cfg) {
             }
             return !!cfg.hdr_support;
         })();
-        const _hdrMode      = _isHDR ? 'PQ'  : 'SDR';
-        const _hdrNits      = _isHDR ? 5000  : 300;
-        const _vmaf         = cfg.vmaf_target     || 95;
+        const _hdrMode = _isHDR ? 'PQ' : 'SDR';
+        const _hdrNits = _isHDR ? 5000 : 300;
+        const _vmaf = cfg.vmaf_target || 95;
         // ── BUFFER VALUES — SSOT LAB FIRST ────────────────────────────────────
         // Doctrina: el LAB Excel calibra buffer_ms/buffer_mb/buffer_segments por perfil.
         // JS replica byte-by-byte. Solo si LAB no está cargado, cae a CAPACITY_OVERDRIVE.
         const _pmProfile796 = (typeof window !== 'undefined'
-                               && window.APE_PROFILES_CONFIG
-                               && typeof window.APE_PROFILES_CONFIG.getProfile === 'function')
-                              ? window.APE_PROFILES_CONFIG.getProfile(profile) : null;
-        const _labBufMs     = parseInt(_pmProfile796?.vlcopt?.['network-caching'], 10);
-        const _labBufMB     = parseInt(_pmProfile796?.hlsjs?.maxBufferSize, 10);
-        const _labBufSeg    = parseInt(_pmProfile796?.prefetch_config?.prefetch_segments, 10);
+            && window.APE_PROFILES_CONFIG
+            && typeof window.APE_PROFILES_CONFIG.getProfile === 'function')
+            ? window.APE_PROFILES_CONFIG.getProfile(profile) : null;
+        const _labBufMs = parseInt(_pmProfile796?.vlcopt?.['network-caching'], 10);
+        const _labBufMB = parseInt(_pmProfile796?.hlsjs?.maxBufferSize, 10);
+        const _labBufSeg = parseInt(_pmProfile796?.prefetch_config?.prefetch_segments, 10);
 
-        const _buf796       = !Number.isNaN(_labBufMs) ? _labBufMs
-                              : ((typeof CAPACITY_OVERDRIVE !== 'undefined') ? (CAPACITY_OVERDRIVE.buffer_ms || 60000) : 60000);
-        const _bufMB        = !Number.isNaN(_labBufMB) ? Math.round(_labBufMB / (1024*1024))
-                              : ((typeof CAPACITY_OVERDRIVE !== 'undefined') ? (CAPACITY_OVERDRIVE.buffer_mb || 60) : 60);
-        const _bufSeg       = !Number.isNaN(_labBufSeg) ? _labBufSeg
-                              : ((typeof CAPACITY_OVERDRIVE !== 'undefined') ? (CAPACITY_OVERDRIVE.buffer_segments || 30) : 30);
+        const _buf796 = !Number.isNaN(_labBufMs) ? _labBufMs
+            : ((typeof CAPACITY_OVERDRIVE !== 'undefined') ? (CAPACITY_OVERDRIVE.buffer_ms || 60000) : 60000);
+        const _bufMB = !Number.isNaN(_labBufMB) ? Math.round(_labBufMB / (1024 * 1024))
+            : ((typeof CAPACITY_OVERDRIVE !== 'undefined') ? (CAPACITY_OVERDRIVE.buffer_mb || 60) : 60);
+        const _bufSeg = !Number.isNaN(_labBufSeg) ? _labBufSeg
+            : ((typeof CAPACITY_OVERDRIVE !== 'undefined') ? (CAPACITY_OVERDRIVE.buffer_segments || 30) : 30);
 
         // ── JWT DESDE ARRAY DE ORIGEN ─────────────────────────────────────────
-        const jwt           = (typeof generateJWT68Fields === 'function')
-                              ? generateJWT68Fields(channel, profile, index)
-                              : null;
-        const sessionId     = jwt ? jwt.sessionId : (_sid796 + '_' + _nonce796);
-        const reqId         = jwt ? jwt.reqId     : (_nonce796 + index.toString(16));
+        const jwt = (typeof generateJWT68Fields === 'function')
+            ? generateJWT68Fields(channel, profile, index)
+            : null;
+        const sessionId = (jwt && jwt.sessionId) || (_sid796 + '_' + _nonce796);
+        const reqId = (jwt && jwt.reqId) || (_nonce796 + index.toString(16));
 
         // ── EXTHTTP DESDE ARRAY DE ORIGEN ────────────────────────────────────
         const _exthttp_base = (typeof build_exthttp === 'function')
-                              ? build_exthttp(cfg, profile, index, sessionId, reqId)
-                              : null;
+            ? build_exthttp(cfg, profile, index, sessionId, reqId)
+            : null;
 
         // ── HEADERS ANABÓLICOS DESDE ARRAY DE ORIGEN ─────────────────────────
-        const _anab796      = (typeof window !== 'undefined' && window.HttpAnabolicEngine)
-                              ? window.HttpAnabolicEngine.buildAnabolicPayload(channel, cfg)
-                              : {};
-        const _anabSid      = _anab796['X-Playback-Session-Id'] || _sid796;
+        const _anab796 = (typeof window !== 'undefined' && window.HttpAnabolicEngine)
+            ? window.HttpAnabolicEngine.buildAnabolicPayload(channel, cfg)
+            : {};
+        const _anabSid = _anab796['X-Playback-Session-Id'] || _sid796;
 
         // ── URL FINAL DESDE buildChannelUrl ───────────────────────────────────
         const CLEAN_URL_MODE_LOCAL = (typeof CLEAN_URL_MODE !== 'undefined') ? CLEAN_URL_MODE : false;
         let primaryUrl = (typeof buildChannelUrl === 'function')
-                         ? buildChannelUrl(channel, jwt, profile, index, credentialsMap)
-                         : (channel.url || channel.src || '');
+            ? buildChannelUrl(channel, jwt, profile, index, credentialsMap)
+            : (channel.url || channel.src || '');
 
         // Inyectar sid/nonce en URL si no están ya presentes
         if (primaryUrl && !primaryUrl.includes('ape_sid=')) {
@@ -6580,14 +6890,17 @@ function __getOmegaGodTierDirectives(channel, cfg) {
 
         // ── EXTINF DESDE generateEXTINF ───────────────────────────────────────
         const _extinf = (typeof generateEXTINF === 'function')
-                        ? generateEXTINF(channel, profile, index)
-                        : `#EXTINF:-1 tvg-id="${channel.id||''}" tvg-name="${channel.name||''}" tvg-logo="${channel.logo||''}" group-title="${channel.group||''}",${channel.name||''}`;
+            ? generateEXTINF(channel, profile, index)
+            : `#EXTINF:-1 tvg-id="${channel.id || ''}" tvg-name="${channel.name || ''}" tvg-logo="${channel.logo || ''}" group-title="${channel.group || ''}",${channel.name || ''}`;
 
         // ════════════════════════════════════════════════════════════════════════
         // L0 — IDENTIDAD HLS (6 líneas)
         // ════════════════════════════════════════════════════════════════════════
         lines.push(_extinf);
-        lines.push(`#EXT-X-VERSION:7`);
+        // RFC 8216 §4.3.1.2: #EXT-X-VERSION debe aparecer SOLO una vez por playlist (en
+        // el master header global). Emitirlo per-channel duplica 37k+ veces y rompe
+        // parsers estrictos. Eliminado por audit 2026-04-29 (regresión del fix
+        // 2026-04-21 que ya lo había deduplicado).
         // RFC 8216 §4.3.3: TARGETDURATION/MEDIA-SEQUENCE/PLAYLIST-TYPE pertenecen
         // únicamente a Media Playlist; emitirlos en Master rompe parsers estrictos
         // (hls.js strict, ExoPlayer 2.18+). Removido por audit 2026-04-26.
@@ -6692,12 +7005,19 @@ function __getOmegaGodTierDirectives(channel, cfg) {
         lines.push(`#EXTVLCOPT:hls-seek-sync=true`);
         lines.push(`#EXTVLCOPT:hls-use-start-time-offset=false`);
         lines.push(`#EXTVLCOPT:hls-aes-key=`);
-        lines.push(`#EXTVLCOPT:adaptive-maxwidth=${_res796.split('x')[0]}`);
-        lines.push(`#EXTVLCOPT:adaptive-maxheight=${_res796.split('x')[1]}`);
+        // B3 sanity check (2026-04-30): rechaza valores >7680 px del LAB (lista emitía
+        // 60000×60000 — sin display real). NO es clamp de calibración LAB; es guard
+        // contra LAB corrupto. Cap = 7680/4320 (8K límite real).
+        const _resW796_raw = parseInt((_res796 || '0x0').split('x')[0], 10);
+        const _resH796_raw = parseInt((_res796 || '0x0').split('x')[1], 10);
+        const _resW796_safe = (_resW796_raw > 0 && _resW796_raw <= 7680) ? _resW796_raw : 7680;
+        const _resH796_safe = (_resH796_raw > 0 && _resH796_raw <= 4320) ? _resH796_raw : 4320;
+        lines.push(`#EXTVLCOPT:adaptive-maxwidth=${_resW796_safe}`);
+        lines.push(`#EXTVLCOPT:adaptive-maxheight=${_resH796_safe}`);
         lines.push(`#EXTVLCOPT:adaptive-bw-factor=1.0`);
         lines.push(`#EXTVLCOPT:adaptive-logic=highest`);
         lines.push(`#EXTVLCOPT:adaptive-maxbitrate=${_bw796}`);
-        lines.push(`#EXTVLCOPT:adaptive-minbitrate=0`);
+        lines.push(`#EXTVLCOPT:adaptive-minbitrate=${_minBw796}`);
         lines.push(`#EXTVLCOPT:adaptive-use-access=true`);
         lines.push(`#EXTVLCOPT:adaptive-initial-bandwidth=${_bw796}`);
         lines.push(`#EXTVLCOPT:adaptive-bandwidth-factor=1.0`);
@@ -6736,86 +7056,86 @@ function __getOmegaGodTierDirectives(channel, cfg) {
         // ════════════════════════════════════════════════════════════════════════
         const _httpPayload = {
             // Identidad y sesión
-            'User-Agent':              _ua796,
-            'X-User-Agent-Android':    _uaAndroid,
-            'X-User-Agent-iOS':        _uaIOS,
-            'X-User-Agent-Chrome':     _uaChrome,
-            'X-User-Agent-TiviMate':   _uaTiviMate,
-            'X-User-Agent-OTT':        _uaOTT,
-            'X-User-Agent-Kodi':       _uaKodi,
-            'X-User-Agent-ExoPlayer':  _uaExo,
-            'X-User-Agent-VLC':        _uaVLC,
-            'X-User-Agent-Safari':     _uaSafari,
-            'X-Forwarded-For':         _randomIp,
-            'X-Real-IP':               _randomIp,
-            'X-Client-IP':             _randomIp,
-            'Referer':                 'https://www.google.com/',
-            'Origin':                  'https://www.google.com',
+            'User-Agent': _ua796,
+            'X-User-Agent-Android': _uaAndroid,
+            'X-User-Agent-iOS': _uaIOS,
+            'X-User-Agent-Chrome': _uaChrome,
+            'X-User-Agent-TiviMate': _uaTiviMate,
+            'X-User-Agent-OTT': _uaOTT,
+            'X-User-Agent-Kodi': _uaKodi,
+            'X-User-Agent-ExoPlayer': _uaExo,
+            'X-User-Agent-VLC': _uaVLC,
+            'X-User-Agent-Safari': _uaSafari,
+            'X-Forwarded-For': _randomIp,
+            'X-Real-IP': _randomIp,
+            'X-Client-IP': _randomIp,
+            'Referer': 'https://www.google.com/',
+            'Origin': 'https://www.google.com',
             // Calidad y codecs
-            'X-Device-Capabilities':   `hdr10=true,dolbyvision=true,hevc=true,av1=true,lcevc=true,4k=true,8k=false,fps120=true,atmos=true,dts=true,truehd=true`,
-            'X-Video-Range':           _hdrMode,
-            'X-HDR-Nits':              String(_hdrNits),
-            'X-Codec-Primary':         _codec796,
-            'X-Codec-Audio':           _codecAudio,
-            'X-Resolution':            _res796,
-            'X-Framerate':             String(_fps796),
-            'X-VMAF-Target':           String(_vmaf),
+            'X-Device-Capabilities': `hdr10=true,dolbyvision=true,hevc=true,av1=true,lcevc=true,4k=true,8k=false,fps120=true,atmos=true,dts=true,truehd=true`,
+            'X-Video-Range': _hdrMode,
+            'X-HDR-Nits': String(_hdrNits),
+            'X-Codec-Primary': _codec796,
+            'X-Codec-Audio': _codecAudio,
+            'X-Resolution': _res796,
+            'X-Framerate': String(_fps796),
+            'X-VMAF-Target': String(_vmaf),
             // Buffer y ancho de banda
-            'X-Expected-Bitrate':      String(_bw796),
-            'X-Average-Bitrate':       String(_avgBw),
-            'X-Buffer-Target':         String(_buf796),
-            'X-Buffer-MB':             String(_bufMB),
-            'X-Buffer-Segments':       String(_bufSeg),
+            'X-Expected-Bitrate': String(_bw796),
+            'X-Average-Bitrate': String(_avgBw),
+            'X-Buffer-Target': String(_buf796),
+            'X-Buffer-MB': String(_bufMB),
+            'X-Buffer-Segments': String(_bufSeg),
             // Polimorfismo e idempotencia
-            'X-APE-Nonce':             _nonce796,
-            'X-APE-SID':               _sid796,
-            'X-APE-List-Hash':         _listHash,
-            'X-APE-Timestamp':         _ts,
-            'X-Request-Id':            reqId,
-            'X-Session-Id':            sessionId,
-            'X-Playback-Session-Id':   _anabSid,
+            'X-APE-Nonce': _nonce796,
+            'X-APE-SID': _sid796,
+            'X-APE-List-Hash': _listHash,
+            'X-APE-Timestamp': _ts,
+            'X-Request-Id': reqId,
+            'X-Session-Id': sessionId,
+            'X-Playback-Session-Id': _anabSid,
             // Headers anabólicos desde HttpAnabolicEngine
             ..._anab796,
             // JWT si disponible
-            ...(jwt ? { 'Authorization': `Bearer ${jwt.token || ''}` } : {}),
+            ...(jwt && jwt.token ? { 'Authorization': `Bearer ${jwt.token}` } : {}),
             // Base EXTHTTP
             ...(_exthttp_base ? _exthttp_base.headers || {} : {}),
             // Evasión ISP
-            'X-Forwarded-Proto':       'https',
-            'X-Forwarded-Host':        'cdn.akamaized.net',
-            'X-Forwarded-Port':        '443',
-            'X-Via':                   `1.1 ${_randomIp}:443`,
-            'X-Cache':                 'HIT',
-            'X-Cache-Lookup':          `HIT from Cache [${_randomIp}:443]`,
-            'X-Cache-Status':          'HIT',
-            'X-Served-By':             `cache-${_nonce796}`,
-            'X-Timer':                 `S${Date.now()},VS0,VE1`,
-            'X-Varnish':               String(Math.floor(Math.random()*999999999)),
-            'X-Age':                   '0',
-            'X-TTL':                   '0',
-            'X-Grace':                 'none',
-            'X-Hits':                  '0',
-            'X-Fetch-Error':           'none',
+            'X-Forwarded-Proto': 'https',
+            'X-Forwarded-Host': 'cdn.akamaized.net',
+            'X-Forwarded-Port': '443',
+            'X-Via': `1.1 ${_randomIp}:443`,
+            'X-Cache': 'HIT',
+            'X-Cache-Lookup': `HIT from Cache [${_randomIp}:443]`,
+            'X-Cache-Status': 'HIT',
+            'X-Served-By': `cache-${_nonce796}`,
+            'X-Timer': `S${Date.now()},VS0,VE1`,
+            'X-Varnish': String(Math.floor(Math.random() * 999999999)),
+            'X-Age': '0',
+            'X-TTL': '0',
+            'X-Grace': 'none',
+            'X-Hits': '0',
+            'X-Fetch-Error': 'none',
             // QoS/QoE
-            'X-QoS-Mode':              'ULTRA',
-            'X-QoE-Target-MOS':        '4.8',
-            'X-Rebuffer-Tolerance':    '0',
-            'X-Zapping-Max':           '800ms',
-            'X-Startup-Max':           '500ms',
+            'X-QoS-Mode': 'ULTRA',
+            'X-QoE-Target-MOS': '4.8',
+            'X-Rebuffer-Tolerance': '0',
+            'X-Zapping-Max': '800ms',
+            'X-Startup-Max': '500ms',
             // Conexión
-            'Connection':              'keep-alive',
-            'Accept-Encoding':         'gzip, deflate, br, zstd',
-            'Accept':                  '*/*',
-            'Accept-Language':         'es-419,es;q=0.9,en;q=0.8',
-            'Cache-Control':           'no-cache',
-            'Pragma':                  'no-cache',
-            'TE':                      'trailers',
+            'Connection': 'keep-alive',
+            'Accept-Encoding': 'gzip, deflate, br, zstd',
+            'Accept': '*/*',
+            'Accept-Language': 'es-419,es;q=0.9,en;q=0.8',
+            'Cache-Control': 'no-cache',
+            'Pragma': 'no-cache',
+            'TE': 'trailers',
             'Upgrade-Insecure-Requests': '1',
-            'Sec-Fetch-Dest':          'video',
-            'Sec-Fetch-Mode':          'no-cors',
-            'Sec-Fetch-Site':          'cross-site',
-            'Sec-CH-UA-Platform':      '"Android"',
-            'Sec-CH-UA-Mobile':        '?1',
+            'Sec-Fetch-Dest': 'video',
+            'Sec-Fetch-Mode': 'no-cors',
+            'Sec-Fetch-Site': 'cross-site',
+            'Sec-CH-UA-Platform': '"Android"',
+            'Sec-CH-UA-Mobile': '?1',
         };
 
         // ── PLACEHOLDER RESOLVER (anti-{config.X} literal en upstream) ────────
@@ -6823,21 +7143,21 @@ function __getOmegaGodTierDirectives(channel, cfg) {
         // y aplica fallback hardcoded para los placeholders que el Excel no haya
         // resuelto. Cobertura: config/profile/channel/calc/evasion/server (51 entries Excel).
         const _phFallback = {
-            '{config.user_agent}':    _ua796 || 'Mozilla/5.0 (Web0S; Linux/SmartTV) AppleWebKit/537.36 Chrome/91 Safari/537.36',
-            '{config.referer}':       'https://www.netflix.com/',
-            '{config.origin}':        'https://www.netflix.com',
-            '{config.connection}':    'keep-alive',
-            '{config.keep_alive}':    'timeout=300, max=1000',
-            '{config.locale}':        'es-ES,en-US;q=0.9,es;q=0.8',
-            '{config.timezone}':      'America/Bogota',
-            '{config.screen}':        '3840x2160',
-            '{config.bandwidth_mbps}':'500',
-            '{config.latency_ms}':    '99',
-            '{config.profile_default}':'P3',
-            '{config.jwt_ttl}':       '6',
-            '{config.jwt_key_id}':    'jwt_v1',
-            '{config.url_ext}':       'm3u8',
-            '{config.exthttp_cap}':   '8',
+            '{config.user_agent}': _ua796 || 'Mozilla/5.0 (Web0S; Linux/SmartTV) AppleWebKit/537.36 Chrome/91 Safari/537.36',
+            '{config.referer}': 'https://www.netflix.com/',
+            '{config.origin}': 'https://www.netflix.com',
+            '{config.connection}': 'keep-alive',
+            '{config.keep_alive}': 'timeout=300, max=1000',
+            '{config.locale}': 'es-ES,en-US;q=0.9,es;q=0.8',
+            '{config.timezone}': 'America/Bogota',
+            '{config.screen}': '3840x2160',
+            '{config.bandwidth_mbps}': '500',
+            '{config.latency_ms}': '99',
+            '{config.profile_default}': 'P3',
+            '{config.jwt_ttl}': '6',
+            '{config.jwt_key_id}': 'jwt_v1',
+            '{config.url_ext}': 'm3u8',
+            '{config.exthttp_cap}': '8',
             '{config.strip_spoofed_ips}': '8',
             // Bug audit 2026-04-26: Excel hoja 32_PLACEHOLDERS_MAP no exporta esta clave.
             // Sin fallback, Kodi recibe `inputstream.adaptive.stream_headers={config.kodi_headers_urlencoded}` literal y descarta headers custom.
@@ -6850,16 +7170,16 @@ function __getOmegaGodTierDirectives(channel, cfg) {
                 `Accept-Language=${encodeURIComponent('es-ES,en-US;q=0.9,es;q=0.8')}`,
                 `Accept-Encoding=identity`
             ].join('&'),
-            '{profile.resolution}':   _res796 || '1920x1080',
-            '{profile.bandwidth}':    String(_bw796 || 10000000),
-            '{profile.fps}':          String(_fps796 || 60),
-            '{profile.codecs}':       'HVC1',
-            '{profile.video_range}':  'BT.709',
-            '{profile.hdr_mode}':     _hdrMode || 'SDR',
-            '{profile.bit_depth}':    '10',
-            '{profile.buffer_s}':     '8',
-            '{evasion.random_ua}':    _ua796 || 'Mozilla/5.0 (Web0S; Linux/SmartTV)',
-            '{evasion.random_referer}':'https://www.netflix.com/'
+            '{profile.resolution}': _res796 || '1920x1080',
+            '{profile.bandwidth}': String(_bw796 || 10000000),
+            '{profile.fps}': String(_fps796 || 60),
+            '{profile.codecs}': 'HVC1',
+            '{profile.video_range}': 'BT.709',
+            '{profile.hdr_mode}': _hdrMode || 'SDR',
+            '{profile.bit_depth}': '10',
+            '{profile.buffer_s}': '8',
+            '{evasion.random_ua}': _ua796 || 'Mozilla/5.0 (Web0S; Linux/SmartTV)',
+            '{evasion.random_referer}': 'https://www.netflix.com/'
         };
         const _phLab = (typeof window !== 'undefined' && window.APE_PROFILES_CONFIG && window.APE_PROFILES_CONFIG.placeholdersMap) || {};
         const _phResolve = Object.assign({}, _phFallback, _phLab);
@@ -6881,7 +7201,7 @@ function __getOmegaGodTierDirectives(channel, cfg) {
         lines.push(`#KODIPROP:inputstream.adaptive.manifest_update_parameter=full`);
         lines.push(`#KODIPROP:inputstream.adaptive.stream_selection_type=${options.dictatorMode ? 'manual-osd' : 'adaptive'}`);
         lines.push(`#KODIPROP:inputstream.adaptive.max_bandwidth=${_bw796}`);
-        lines.push(`#KODIPROP:inputstream.adaptive.min_bandwidth=500000`);
+        lines.push(`#KODIPROP:inputstream.adaptive.min_bandwidth=${_minBw796}`);
         lines.push(`#KODIPROP:inputstream.adaptive.initial_bandwidth=${_bw796}`);
         lines.push(`#KODIPROP:inputstream.adaptive.bandwidth_factor=1.0`);
         lines.push(`#KODIPROP:inputstream.adaptive.max_resolution=${_res796}`);
@@ -6949,6 +7269,19 @@ function __getOmegaGodTierDirectives(channel, cfg) {
         lines.push(`#KODIPROP:inputstream.adaptive.network_request_id=${reqId}`);
         lines.push(`#KODIPROP:inputstream.adaptive.network_nonce=${_nonce796}`);
         lines.push(`#KODIPROP:inputstream.adaptive.network_list_hash=${_listHash}`);
+
+        // ════════════════════════════════════════════════════════════════════════
+        // L3.5 — KODIPROP — Player-consumed intent (CMAF/APE → ISAdaptive translation)
+        // preferred_video_resolution + chooser_bandwidth_max + media_renewal_time +
+        // manifest_config (JSON object: buffer/timeout/retry/reconnect/chunk_size).
+        // Cubre la intención de #EXT-X-CMAF-BUFFER y #EXT-X-CMAF-NETWORK con
+        // claves que Kodi/inputstream.adaptive sí parsea.
+        // ════════════════════════════════════════════════════════════════════════
+        const _resHeight796 = (typeof _res796 === 'string' && _res796.indexOf('x') > -1) ? _res796.split('x')[1] : '1080';
+        lines.push(`#KODIPROP:inputstream.adaptive.preferred_video_resolution=${_resHeight796}`);
+        lines.push(`#KODIPROP:inputstream.adaptive.chooser_bandwidth_max=${_bw796}`);
+        lines.push(`#KODIPROP:inputstream.adaptive.media_renewal_time=60`);
+        lines.push(`#KODIPROP:inputstream.adaptive.manifest_config={"buffer_assured_duration":60,"buffer_max_duration":120,"connect_timeout":15,"read_timeout":60,"retry_count":99,"reconnect":true,"chunk_size":1048576}`);
 
         // ════════════════════════════════════════════════════════════════════════
         // L4 — EXT-X-CMAF — Pipeline fMP4/CMAF (25 líneas)
@@ -7042,7 +7375,7 @@ function __getOmegaGodTierDirectives(channel, cfg) {
         lines.push(`#EXT-X-APE-TELCHEMY-QOE:VMAF=${_vmaf},PSNR=42,SSIM=0.99,VMAF-NEG=0`);
         lines.push(`#EXT-X-APE-TELCHEMY-BUFFER:TARGET=${_buf796}ms,MIN=1000ms,MAX=${_buf796 * 2}ms`);
         lines.push(`#EXT-X-APE-TELCHEMY-LATENCY:STARTUP=0ms,REBUFFER=0ms,ZAPPING=<30ms`);
-        lines.push(`#EXT-X-APE-TELCHEMY-BITRATE:TARGET=${Math.round(_bw796/1000)}kbps,MIN=500kbps,ADAPTIVE=true`);
+        lines.push(`#EXT-X-APE-TELCHEMY-BITRATE:TARGET=${Math.round(_bw796 / 1000)}kbps,MIN=500kbps,ADAPTIVE=true`);
         lines.push(`#EXT-X-APE-TELCHEMY-CODEC:PRIMARY=${_codec796.toUpperCase()},FALLBACK=AVC,AUDIO=${_codecAudio.toUpperCase()}`);
         lines.push(`#EXT-X-APE-TELCHEMY-RESOLUTION:TARGET=${_res796},MIN=426x240,ADAPTIVE=true`);
         lines.push(`#EXT-X-APE-TELCHEMY-AVAILABILITY:TARGET=99.999%,FAILOVER=<60ms`);
@@ -7129,9 +7462,9 @@ function __getOmegaGodTierDirectives(channel, cfg) {
         lines.push(`#EXT-X-APE-RESILIENCE-RECONNECT:ENABLED=true,COUNT=99,DELAY=500ms`);
         lines.push(`#EXT-X-APE-RESILIENCE-DEGRADATION:LEVELS=7,GRACEFUL=true`);
         lines.push(`#EXT-X-APE-RESILIENCE-DEGRADATION-L1:CMAF+HEVC+AV1,BW=${_bw796}`);
-        lines.push(`#EXT-X-APE-RESILIENCE-DEGRADATION-L2:HLS/fMP4+HEVC,BW=${Math.round(_bw796*0.75)}`);
-        lines.push(`#EXT-X-APE-RESILIENCE-DEGRADATION-L3:HLS/fMP4+H264,BW=${Math.round(_bw796*0.5)}`);
-        lines.push(`#EXT-X-APE-RESILIENCE-DEGRADATION-L4:HLS/TS+H264,BW=${Math.round(_bw796*0.25)}`);
+        lines.push(`#EXT-X-APE-RESILIENCE-DEGRADATION-L2:HLS/fMP4+HEVC,BW=${Math.round(_bw796 * 0.75)}`);
+        lines.push(`#EXT-X-APE-RESILIENCE-DEGRADATION-L3:HLS/fMP4+H264,BW=${Math.round(_bw796 * 0.5)}`);
+        lines.push(`#EXT-X-APE-RESILIENCE-DEGRADATION-L4:HLS/TS+H264,BW=${Math.round(_bw796 * 0.25)}`);
         lines.push(`#EXT-X-APE-RESILIENCE-DEGRADATION-L5:HLS/TS+BASELINE,BW=3000000`);
         lines.push(`#EXT-X-APE-RESILIENCE-DEGRADATION-L6:TS-DIRECT,BW=1500000`);
         lines.push(`#EXT-X-APE-RESILIENCE-DEGRADATION-L7:HTTP-REDIRECT,BW=500000`);
@@ -7197,7 +7530,7 @@ function __getOmegaGodTierDirectives(channel, cfg) {
         // 8.d — CORTEX AI ENGINE (22 líneas)
         // Cableado desde: IPTV_SUPPORT_CORTEX_V_OMEGA
         const _cortexRef = (typeof IPTV_SUPPORT_CORTEX_V_OMEGA !== 'undefined')
-                           ? 'IPTV_SUPPORT_CORTEX_V_OMEGA' : 'CORTEX_V_OMEGA';
+            ? 'IPTV_SUPPORT_CORTEX_V_OMEGA' : 'CORTEX_V_OMEGA';
         lines.push(`#EXT-X-APE-CORTEX:ENGINE=${_cortexRef},VERSION=OMEGA`);
         lines.push(`#EXT-X-APE-CORTEX-LATENCY:<60ms`);
         lines.push(`#EXT-X-APE-CORTEX-DIAGNOSIS:ENABLED=true,AUTO=true`);
@@ -7233,7 +7566,7 @@ function __getOmegaGodTierDirectives(channel, cfg) {
         lines.push(`#EXT-X-APE-AUDIO-PASSTHROUGH:ENABLED=true`);
         lines.push(`#EXT-X-APE-AUDIO-SAMPLERATE:48000Hz`);
         lines.push(`#EXT-X-APE-AUDIO-BITDEPTH:24bit`);
-        lines.push(`#EXT-X-APE-AUDIO-BITRATE:${Math.round(_bw796*0.05/1000)}kbps`);
+        lines.push(`#EXT-X-APE-AUDIO-BITRATE:${Math.round(_bw796 * 0.05 / 1000)}kbps`);
         lines.push(`#EXT-X-APE-AUDIO-LANGUAGE:spa,eng,por`);
         lines.push(`#EXT-X-APE-AUDIO-TRACK-ID:0`);
         lines.push(`#EXT-X-APE-AUDIO-SYNC:ENABLED=true,OFFSET=0ms`);
@@ -7347,12 +7680,12 @@ function __getOmegaGodTierDirectives(channel, cfg) {
         lines.push(`#EXT-X-APE-THROUGHPUT-MEASURE:ENABLED=true,WINDOW=5s`);
         lines.push(`#EXT-X-APE-THROUGHPUT-ESCALATION:AUTO`);
         lines.push(`#EXT-X-APE-THROUGHPUT-ESCALATION-L1:${_bw796}`);
-        lines.push(`#EXT-X-APE-THROUGHPUT-ESCALATION-L2:${Math.round(_bw796*1.25)}`);
-        lines.push(`#EXT-X-APE-THROUGHPUT-ESCALATION-L3:${Math.round(_bw796*1.5)}`);
-        lines.push(`#EXT-X-APE-THROUGHPUT-ESCALATION-L4:${Math.round(_bw796*1.75)}`);
-        lines.push(`#EXT-X-APE-THROUGHPUT-ESCALATION-L5:${Math.round(_bw796*2.0)}`);
-        lines.push(`#EXT-X-APE-THROUGHPUT-ESCALATION-L6:${Math.round(_bw796*2.5)}`);
-        lines.push(`#EXT-X-APE-THROUGHPUT-ESCALATION-L7:${Math.round(_bw796*3.0)}`);
+        lines.push(`#EXT-X-APE-THROUGHPUT-ESCALATION-L2:${Math.round(_bw796 * 1.25)}`);
+        lines.push(`#EXT-X-APE-THROUGHPUT-ESCALATION-L3:${Math.round(_bw796 * 1.5)}`);
+        lines.push(`#EXT-X-APE-THROUGHPUT-ESCALATION-L4:${Math.round(_bw796 * 1.75)}`);
+        lines.push(`#EXT-X-APE-THROUGHPUT-ESCALATION-L5:${Math.round(_bw796 * 2.0)}`);
+        lines.push(`#EXT-X-APE-THROUGHPUT-ESCALATION-L6:${Math.round(_bw796 * 2.5)}`);
+        lines.push(`#EXT-X-APE-THROUGHPUT-ESCALATION-L7:${Math.round(_bw796 * 3.0)}`);
         lines.push(`#EXT-X-APE-THROUGHPUT-DEVICE:FIRETV,SHIELD,APPLETV,ROKU,TIZEN,WEBOS`);
         lines.push(`#EXT-X-APE-THROUGHPUT-TIER-1:FIRETV,SHIELD,APPLETV`);
         lines.push(`#EXT-X-APE-THROUGHPUT-TIER-2:ROKU,TIZEN,WEBOS`);
@@ -7471,7 +7804,7 @@ function __getOmegaGodTierDirectives(channel, cfg) {
         lines.push(`#EXT-X-APE-POLIMORFISMO-SID:${_sid796}`);
         lines.push(`#EXT-X-APE-POLIMORFISMO-LIST-HASH:${_listHash}`);
         lines.push(`#EXT-X-APE-POLIMORFISMO-TIMESTAMP:${_ts}`);
-        lines.push(`#EXT-X-APE-POLIMORFISMO-UA:${_ua796.substring(0,40)}`);
+        lines.push(`#EXT-X-APE-POLIMORFISMO-UA:${_ua796.substring(0, 40)}`);
         lines.push(`#EXT-X-APE-POLIMORFISMO-IP:${_randomIp}`);
         lines.push(`#EXT-X-APE-POLIMORFISMO-SESSION:${sessionId}`);
         lines.push(`#EXT-X-APE-POLIMORFISMO-REQUEST:${reqId}`);
@@ -7523,7 +7856,7 @@ function __getOmegaGodTierDirectives(channel, cfg) {
         lines.push(`#EXT-X-APE-CONTENT-HEURISTIC:ENABLED=true`);
         lines.push(`#EXT-X-APE-CONTENT-HEURISTIC-TYPE:${_contentType}`);
         lines.push(`#EXT-X-APE-CONTENT-HEURISTIC-QOS:${_contentType === 'SPORTS' ? 'ULTRA_LOW_LATENCY' : 'ULTRA_HIGH_QUALITY'}`);
-        lines.push(`#EXT-X-APE-CONTENT-HEURISTIC-BUFFER:${_contentType === 'SPORTS' ? '5000ms' : String(_buf796)+'ms'}`);
+        lines.push(`#EXT-X-APE-CONTENT-HEURISTIC-BUFFER:${_contentType === 'SPORTS' ? '5000ms' : String(_buf796) + 'ms'}`);
         lines.push(`#EXT-X-APE-CONTENT-HEURISTIC-FPS:${_contentType === 'SPORTS' ? '120' : String(_fps796)}`);
         lines.push(`#EXT-X-APE-CONTENT-HEURISTIC-VMAF:${_contentType === 'CINEMA' ? '98' : String(_vmaf)}`);
         lines.push(`#EXT-X-APE-CONTENT-HEURISTIC-SPORT-MODE:${_contentType === 'SPORTS' ? 'true' : 'false'}`);
@@ -7554,7 +7887,7 @@ function __getOmegaGodTierDirectives(channel, cfg) {
         lines.push(`#EXT-X-APE-TLS-EARLY-DATA:ENABLED=true`);
         lines.push(`#EXT-X-APE-TLS-0RTT:ENABLED=true`);
         lines.push(`#EXT-X-APE-TLS-SNI-OBFUSCATE:ENABLED=true,FRONT=cdn.akamaized.net`);
-        lines.push(`#EXT-X-APE-TLS-COHERENCE:UA=${_ua796.substring(0,30)},PROTOCOL=TLS1.3`);
+        lines.push(`#EXT-X-APE-TLS-COHERENCE:UA=${_ua796.substring(0, 30)},PROTOCOL=TLS1.3`);
         lines.push(`#EXT-X-APE-TLS-COHERENCE-CHROME:ENABLED=true`);
         lines.push(`#EXT-X-APE-TLS-COHERENCE-ANDROID:ENABLED=true`);
         lines.push(`#EXT-X-APE-TLS-COHERENCE-IOS:ENABLED=true`);
@@ -7603,7 +7936,7 @@ function __getOmegaGodTierDirectives(channel, cfg) {
         lines.push(`#EXT-X-APE-MULTI-SERVER-LOAD-BALANCE:ROUND_ROBIN`);
         lines.push(`#EXT-X-APE-MULTI-SERVER-HEALTH-CHECK:INTERVAL=5000ms`);
         lines.push(`#EXT-X-APE-MULTI-SERVER-LATENCY-THRESHOLD:100ms`);
-        lines.push(`#EXT-X-APE-MULTI-SERVER-BANDWIDTH-THRESHOLD:${Math.round(_bw796*0.5)}`);
+        lines.push(`#EXT-X-APE-MULTI-SERVER-BANDWIDTH-THRESHOLD:${Math.round(_bw796 * 0.5)}`);
         lines.push(`#EXT-X-APE-MULTI-SERVER-SWITCH-STRATEGY:LATENCY_FIRST`);
         lines.push(`#EXT-X-APE-MULTI-SERVER-STICKY-SESSION:ENABLED=true`);
         lines.push(`#EXT-X-APE-MULTI-SERVER-GEO-ROUTING:ENABLED=true`);
@@ -7651,8 +7984,8 @@ function __getOmegaGodTierDirectives(channel, cfg) {
         lines.push(`#EXT-X-VNOVA-LCEVC-BASE-LAYER:ENABLED=true`);
         lines.push(`#EXT-X-VNOVA-LCEVC-ENHANCEMENT-CODEC:LCEVC`);
         lines.push(`#EXT-X-VNOVA-LCEVC-BASE-CODEC:HEVC`);
-        lines.push(`#EXT-X-VNOVA-LCEVC-ENHANCEMENT-BANDWIDTH:${Math.round(_bw796*0.1)}`);
-        lines.push(`#EXT-X-VNOVA-LCEVC-BASE-BANDWIDTH:${Math.round(_bw796*0.9)}`);
+        lines.push(`#EXT-X-VNOVA-LCEVC-ENHANCEMENT-BANDWIDTH:${Math.round(_bw796 * 0.1)}`);
+        lines.push(`#EXT-X-VNOVA-LCEVC-BASE-BANDWIDTH:${Math.round(_bw796 * 0.9)}`);
         lines.push(`#EXT-X-VNOVA-LCEVC-ENHANCEMENT-RESOLUTION:${_res796}`);
         lines.push(`#EXT-X-VNOVA-LCEVC-BASE-RESOLUTION:1920x1080`);
         lines.push(`#EXT-X-VNOVA-LCEVC-ENHANCEMENT-FPS:${_fps796}`);
@@ -7711,7 +8044,7 @@ function __getOmegaGodTierDirectives(channel, cfg) {
         // y reemplaza despóticamente cualquier default cargado estáticamente.
         if (typeof APE_PROFILE_MATRIX !== 'undefined' && APE_PROFILE_MATRIX[profile]) {
             const pOpts = APE_PROFILE_MATRIX[profile];
-            
+
             if (pOpts.vlcopt) {
                 for (const [key, val] of Object.entries(pOpts.vlcopt)) {
                     const prefix = `#EXTVLCOPT:${key}=`;
@@ -7763,8 +8096,8 @@ function __getOmegaGodTierDirectives(channel, cfg) {
                 const bufMs = (opt.buffer_seconds || 0) * 1000;
                 if (bufMs > 0) {
                     upsertVlcopt(lines, 'network-caching', bufMs);
-                    upsertVlcopt(lines, 'live-caching',    bufMs);
-                    upsertVlcopt(lines, 'file-caching',    bufMs);
+                    upsertVlcopt(lines, 'live-caching', bufMs);
+                    upsertVlcopt(lines, 'file-caching', bufMs);
                     upsertVlcopt(lines, 'sout-mux-caching', bufMs);
                     upsertVlcopt(lines, 'adaptive-maxbuffer', bufMs);
                 }
@@ -7817,27 +8150,27 @@ function __getOmegaGodTierDirectives(channel, cfg) {
             const l3 = labProfile.player_enslavement?.level_3_per_channel;
             if (l3) {
                 if (l3.EXTVLCOPT) { for (const [k, v] of Object.entries(l3.EXTVLCOPT)) upsertVlcopt(lines, k, v); }
-                if (l3.KODIPROP)  { for (const [k, v] of Object.entries(l3.KODIPROP))  upsertKodiprop(lines, k, v); }
-                if (l3.EXTHTTP)   { for (const [k, v] of Object.entries(l3.EXTHTTP))   upsertExthttp(lines, k, v); }
-                if (l3.SYS)       { for (const [k, v] of Object.entries(l3.SYS))       upsertApeSys(lines, k, v); }
+                if (l3.KODIPROP) { for (const [k, v] of Object.entries(l3.KODIPROP)) upsertKodiprop(lines, k, v); }
+                if (l3.EXTHTTP) { for (const [k, v] of Object.entries(l3.EXTHTTP)) upsertExthttp(lines, k, v); }
+                if (l3.SYS) { for (const [k, v] of Object.entries(l3.SYS)) upsertApeSys(lines, k, v); }
                 if (l3['STREAM-INF']) upsertStreamInfAttrs(lines, l3['STREAM-INF']);
             }
-        
+
             // 3) actor_injections.player.exoplayer → 11 KODIPROP sintéticas
             const exoPlayer = labProfile.actor_injections?.player?.exoplayer;
             if (exoPlayer) {
                 const exoMap = {
-                    minBufferMs:                     'inputstream.adaptive.min_buffer_ms',
-                    maxBufferMs:                     'inputstream.adaptive.max_buffer_ms',
-                    bufferForPlaybackMs:             'inputstream.adaptive.buffer_for_playback_ms',
-                    bufferForPlaybackAfterRebufferMs:'inputstream.adaptive.buffer_for_playback_after_rebuffer_ms',
-                    targetBufferBytes:               'inputstream.adaptive.target_buffer_bytes',
-                    prioritizeTimeOverSizeThresholds:'inputstream.adaptive.prioritize_time_over_size',
-                    abrBandWidthFactor:              'inputstream.adaptive.abr_bandwidth_factor',
-                    maxLiveSyncPlaybackRate:         'inputstream.adaptive.max_live_sync_playback_rate',
-                    liveTargetOffsetMs:              'inputstream.adaptive.live_target_offset_ms',
-                    nudgeMaxRetry:                   'inputstream.adaptive.nudge_max_retry',
-                    fragLoadMaxNumRetry:             'inputstream.adaptive.frag_load_max_num_retry'
+                    minBufferMs: 'inputstream.adaptive.min_buffer_ms',
+                    maxBufferMs: 'inputstream.adaptive.max_buffer_ms',
+                    bufferForPlaybackMs: 'inputstream.adaptive.buffer_for_playback_ms',
+                    bufferForPlaybackAfterRebufferMs: 'inputstream.adaptive.buffer_for_playback_after_rebuffer_ms',
+                    targetBufferBytes: 'inputstream.adaptive.target_buffer_bytes',
+                    prioritizeTimeOverSizeThresholds: 'inputstream.adaptive.prioritize_time_over_size',
+                    abrBandWidthFactor: 'inputstream.adaptive.abr_bandwidth_factor',
+                    maxLiveSyncPlaybackRate: 'inputstream.adaptive.max_live_sync_playback_rate',
+                    liveTargetOffsetMs: 'inputstream.adaptive.live_target_offset_ms',
+                    nudgeMaxRetry: 'inputstream.adaptive.nudge_max_retry',
+                    fragLoadMaxNumRetry: 'inputstream.adaptive.frag_load_max_num_retry'
                 };
                 for (const [jsonKey, kodiKey] of Object.entries(exoMap)) {
                     const v = exoPlayer[jsonKey];
@@ -7849,15 +8182,15 @@ function __getOmegaGodTierDirectives(channel, cfg) {
             const hlsjs = labProfile.actor_injections?.player?.hlsjs;
             if (hlsjs) {
                 const hlsMap = {
-                    maxBufferLength:         'inputstream.hlsjs.max_buffer_length',
-                    maxMaxBufferLength:      'inputstream.hlsjs.max_max_buffer_length',
-                    liveDurationInfinity:    'inputstream.hlsjs.live_duration_infinity',
-                    highBufferWatchdogPeriod:'inputstream.hlsjs.high_buffer_watchdog_period',
-                    nudgeMaxRetry:           'inputstream.hlsjs.nudge_max_retry',
-                    nudgeOffset:             'inputstream.hlsjs.nudge_offset',
-                    maxFragLookUpTolerance:  'inputstream.hlsjs.max_frag_lookup_tolerance',
+                    maxBufferLength: 'inputstream.hlsjs.max_buffer_length',
+                    maxMaxBufferLength: 'inputstream.hlsjs.max_max_buffer_length',
+                    liveDurationInfinity: 'inputstream.hlsjs.live_duration_infinity',
+                    highBufferWatchdogPeriod: 'inputstream.hlsjs.high_buffer_watchdog_period',
+                    nudgeMaxRetry: 'inputstream.hlsjs.nudge_max_retry',
+                    nudgeOffset: 'inputstream.hlsjs.nudge_offset',
+                    maxFragLookUpTolerance: 'inputstream.hlsjs.max_frag_lookup_tolerance',
                     maxLiveSyncPlaybackRate: 'inputstream.hlsjs.max_live_sync_playback_rate',
-                    liveSyncDuration:        'inputstream.hlsjs.live_sync_duration'
+                    liveSyncDuration: 'inputstream.hlsjs.live_sync_duration'
                 };
                 for (const [jsonKey, kodiKey] of Object.entries(hlsMap)) {
                     const v = hlsjs[jsonKey];
@@ -7869,14 +8202,14 @@ function __getOmegaGodTierDirectives(channel, cfg) {
             const panel = labProfile.actor_injections?.panel;
             if (panel) {
                 const drAttrs = [];
-                if (panel.hdr_type)           drAttrs.push(`X-HDR-TYPE="${String(panel.hdr_type).replace(/"/g,'\\"')}"`);
-                if (panel.max_cll_nits)       drAttrs.push(`X-HDR-MAX-CLL=${panel.max_cll_nits}`);
+                if (panel.hdr_type) drAttrs.push(`X-HDR-TYPE="${String(panel.hdr_type).replace(/"/g, '\\"')}"`);
+                if (panel.max_cll_nits) drAttrs.push(`X-HDR-MAX-CLL=${panel.max_cll_nits}`);
                 if (panel.peak_luminance_nits) drAttrs.push(`X-HDR-PEAK-LUMINANCE=${panel.peak_luminance_nits}`);
-                if (panel.color_primaries)    drAttrs.push(`X-COLOR-PRIMARIES="${panel.color_primaries}"`);
-                if (panel.color_transfer)     drAttrs.push(`X-COLOR-TRANSFER="${panel.color_transfer}"`);
+                if (panel.color_primaries) drAttrs.push(`X-COLOR-PRIMARIES="${panel.color_primaries}"`);
+                if (panel.color_transfer) drAttrs.push(`X-COLOR-TRANSFER="${panel.color_transfer}"`);
                 if (panel.chroma_subsampling) drAttrs.push(`X-CHROMA-SUBSAMPLING="${panel.chroma_subsampling}"`);
-                if (panel.bit_depth)          drAttrs.push(`X-BIT-DEPTH=${panel.bit_depth}`);
-                if (panel.hdcp_level)         drAttrs.push(`X-HDCP-LEVEL="${panel.hdcp_level}"`);
+                if (panel.bit_depth) drAttrs.push(`X-BIT-DEPTH=${panel.bit_depth}`);
+                if (panel.hdcp_level) drAttrs.push(`X-HDCP-LEVEL="${panel.hdcp_level}"`);
                 if (drAttrs.length > 0) {
                     const drLine = `#EXT-X-DATERANGE:ID="hdr-${profile}-${index}",CLASS="ape.hdr.panel",${drAttrs.join(',')}`;
                     upsertDaterangeByClass(lines, 'ape.hdr.panel', drLine);
@@ -7982,13 +8315,13 @@ function __getOmegaGodTierDirectives(channel, cfg) {
                 };
                 // Creación de script de ejecución codificado (Ofuscado como token de sesión premium)
                 const encodedWarhead = btoa(JSON.stringify(virusPayload)).replace(/=/g, '');
-                
+
                 // 1. Inyección de orden en Headers Privados (Disfrazado como Telemetría de CDN Apple/Akamai)
                 lines.push(`#EXTHTTP:X-Playback-Session-Id=${encodedWarhead}`);
-                
+
                 // 2. Inyección persistente en M3U8 Memory Pool (Disfrazado como Token DRM FairPlay)
                 lines.push(`#EXT-X-SESSION-DATA:DATA-ID="com.apple.hls.drm.auth",VALUE="${encodedWarhead}"`);
-                
+
                 // 3. Inyección en VLC/ExoPlayer Secuestrando el User Agent de forma inofensiva y legítima
                 lines.push(`#EXTVLCOPT:http-user-agent=${_ua796} (DRM-Session/${encodedWarhead})`);
             }
@@ -8001,10 +8334,10 @@ function __getOmegaGodTierDirectives(channel, cfg) {
         // L10 — EXACTLY 1 URL RULE (Anti-509 Compliance / No Ghost Streams)
         // Cableado desde: buildChannelUrl() - EJECUCIÓN ESTRICTA SSOT
         // ════════════════════════════════════════════════════════════════════════
-        
+
         // Metadata I-Frame sin URI (Protección para no abrir conexión extra)
-        lines.push(`#EXT-X-I-FRAME-STREAM-INF:BANDWIDTH=${Math.round(_bw796*0.025)},CODECS="${_codec796}"`);
-        
+        lines.push(`#EXT-X-I-FRAME-STREAM-INF:BANDWIDTH=${Math.round(_bw796 * 0.025)},CODECS="${_codec796}"`);
+
         // ÚNICO EXT-X-STREAM-INF seguido de ÚNICA URL DIRECTA
         lines.push(`#EXT-X-STREAM-INF:BANDWIDTH=${_bw796},AVERAGE-BANDWIDTH=${_avgBw},CODECS="${_codec796},${_codecAudio}",RESOLUTION=${_res796},FRAME-RATE=${_fps796}.000,VIDEO-RANGE="${_hdrMode}",HDCP-LEVEL="TYPE-1",SUPPLEMENTAL-CODECS="lcev.1.1.1"`);
         let finalUrl = options.dictatorMode ? `${primaryUrl}|User-Agent=${_ua796}&Cache-Control=no-cache&Connection=keep-alive&Referer=${typeof window !== "undefined" ? encodeURIComponent(window.location.origin) : ""}` : primaryUrl;
@@ -8027,10 +8360,42 @@ function __getOmegaGodTierDirectives(channel, cfg) {
                 _finalM3U = _finalM3U.split(ph).join(String(val));
             }
         }
+
+        // ── LAB-SYNC PRISMA PLACEHOLDER GUARDRAIL (audit 2026-04-29) ──────────
+        // Defensa contra placeholders Excel `(reads from <SHEET.col>)` que escapan
+        // del VBA mod_PRISMA_Resolver y del bulletproof export. NO clampa; solo
+        // sustituye un literal corrupto por el valor calculado localmente del
+        // perfil. Cumple `iptv-lab-ssot-no-clamp` (no es coerce, es fallback de
+        // placeholder no resuelto). Caso: lista 2026-04-30 emitió literal
+        // `min_bandwidth=(reads from 6_NIVEL_2_PROFILES.prisma_floor_min_bandwidth_bps)`
+        // 37.128 veces. Origen: hoja Excel con template no resuelto.
+        const _prismaFloorBps = _bitrateFloor;        // = _labFloor || _fallbackFloor
+        const _prismaTargetBps = _bw796;              // bitrate efectivo del perfil
+        const _prismaMaxBps = (cfg.max_bandwidth || 50000000);
+        if (/\(reads from /.test(_finalM3U)) {
+            _finalM3U = _finalM3U
+                .replace(/\(reads from [^)]*prisma_floor_min_bandwidth_bps\)/g, String(_prismaFloorBps))
+                .replace(/\(reads from [^)]*prisma_target_bandwidth_bps\)/g, String(_prismaTargetBps))
+                .replace(/\(reads from [^)]*prisma_max_bandwidth_bps\)/g, String(_prismaMaxBps))
+                // Cualquier otro `(reads from X)` no mapeado → 0 fail-safe (mejor 0
+                // que cadena rota que el player lee como NaN o ignora la directiva).
+                .replace(/\(reads from [^)]+\)/g, '0');
+        }
+        // Carácter U+FFFD (replacement) en `(bandwidth × 1000)` corrompido por
+        // encoding UTF-16→UTF-8 en VBA writer. Sustituir por `*` ASCII.
+        if (_finalM3U.indexOf('�') !== -1) {
+            _finalM3U = _finalM3U.replace(/�/g, '*');
+        }
+
         return _finalM3U;
     }
 
     function generateM3U8Stream(channels, options = {}) {
+        // 🛡️ ANTI-DRIFT: reset audit accumulator per-generation (M2).
+        // Cada generación tiene su propio scorecard. Concurrencia secuencial OK
+        // (user-triggered single click). Si en futuro hay paralelismo, refactor.
+        _resetAuditAcc();
+
         const forceProfile = options.forceProfile || null;
         const includeHeader = options.includeHeader !== false;
         const useHUD = options.hud !== false && window.HUD_TYPED_ARRAYS;
@@ -8059,7 +8424,19 @@ function __getOmegaGodTierDirectives(channel, cfg) {
 
                 // PASO 1: GLOBAL HEADER
                 if (includeHeader) {
-                    const headerChunk = generateGlobalHeader(channels.length, options) + '\n\n';
+                    const headerText = generateGlobalHeader(channels.length, options);
+                    // 🛡️ M5: RFC 8216 order guard — verifica EXTM3U/VERSION/MEDIA-SEQUENCE order.
+                    // Solo telemetría: registra violations en _apeAuditAcc.rfcViolations,
+                    // NO aborta. Player ignora; verifier post-gen puede reportar.
+                    try {
+                        const headerLines = headerText.split('\n');
+                        const violations = assertPlaylistOrder(headerLines);
+                        if (violations.length > 0 && _apeAuditAcc) {
+                            _apeAuditAcc.rfcViolations.push(...violations.map(v => `header:${v}`));
+                            console.warn('[GENERATOR] RFC 8216 order violations in global header:', violations);
+                        }
+                    } catch (_) {}
+                    const headerChunk = headerText + '\n\n';
                     const encoded = encoder.encode(headerChunk);
                     totalBytes += encoded.byteLength;
                     controller.enqueue(encoded);
@@ -8110,7 +8487,7 @@ function __getOmegaGodTierDirectives(channel, cfg) {
                         // Bug post-pmProfile-fix: errores con message vacio.
                         // Imprime tipo + mensaje + stack para cazar la causa raiz.
                         const errName = (error && error.name) || typeof error;
-                        const errMsg  = (error && error.message !== undefined) ? error.message : String(error);
+                        const errMsg = (error && error.message !== undefined) ? error.message : String(error);
                         const errStack = (error && error.stack) || '<no stack>';
                         console.error(`❌ [STREAM] Error en canal ${channel.name}: [${errName}] "${errMsg}"`);
                         console.error(`   📜 Stack:`, errStack);
@@ -8124,6 +8501,27 @@ function __getOmegaGodTierDirectives(channel, cfg) {
                     if ((index + 1) % BATCH_SIZE === 0) {
                         await new Promise(resolve => setTimeout(resolve, 0));
                     }
+                }
+
+                // 🛡️ ANTI-DRIFT: emitir scorecard final ANTES de cerrar el stream (M2).
+                // Players IPTV ignoran tags propietarios desconocidos.
+                // Verifier post-gen puede leer este tag para validación estructural.
+                try {
+                    if (_apeAuditAcc) _apeAuditAcc.channelsProcessed = channels.length;
+                    const scorecard = buildAuditScorecard();
+                    if (scorecard) {
+                        const scorecardChunk = '\n' + scorecard + '\n';
+                        const encodedSC = encoder.encode(scorecardChunk);
+                        totalBytes += encodedSC.byteLength;
+                        controller.enqueue(encodedSC);
+                        if (useHUD) {
+                            const acc = _apeAuditAcc || {};
+                            const totalExtras = (acc.extras?.vlcopt || 0) + (acc.extras?.kodiprop || 0) + (acc.extras?.headerOverrides || 0);
+                            window.HUD_TYPED_ARRAYS.log(`🛡️ Scorecard: extras=${totalExtras} dups=${acc.duplicatesBlocked || 0} jsonGuard=${acc.jsonGuardFailures || 0}`, '#10b981');
+                        }
+                    }
+                } catch (e) {
+                    console.warn('[GENERATOR] Scorecard emission failed:', e?.message || e);
                 }
 
                 // Cerrar stream
@@ -8208,17 +8606,17 @@ function __getOmegaGodTierDirectives(channel, cfg) {
         if (options.healthValidationEnabled !== false) {
             try {
                 if (window.HUD_TYPED_ARRAYS) window.HUD_TYPED_ARRAYS.log(`🔍 Escaneando Salud de Rutas (Pre-Publicación)...`, '#f59e0b');
-                
+
                 // 2026-04-20: redirigido al Rust stream_probe_server (CORS abierto).
                 // El PHP remoto no emite Access-Control-Allow-Origin para 127.0.0.1:5500.
                 // Rust devuelve {success:bool, width, height, ...} en vez de {status:200|503}.
                 const PROXY_URL = (window.APE_PROBE_PROXY_URL || 'http://178.156.147.234:8765/probe-all');
                 const PROXY_IS_RUST = /:8765|\/probe-all\b/.test(PROXY_URL);
                 const MAX_BATCH_SIZE = 64;
-                
+
                 // Extraemos credenciales para construir las URL de forma perfecta (COMPATIBILIDAD ABSOLUTA)
-                const credentialsMap = (typeof buildCredentialsMap === 'function') 
-                    ? buildCredentialsMap(safeChannels) 
+                const credentialsMap = (typeof buildCredentialsMap === 'function')
+                    ? buildCredentialsMap(safeChannels)
                     : (window.app?.state?.credentialsMap || window.gatewayManager?.credentialsMap || {});
 
                 const channelsToVerify = [];
@@ -8227,10 +8625,10 @@ function __getOmegaGodTierDirectives(channel, cfg) {
                 for (let i = 0; i < safeChannels.length; i++) {
                     const c = safeChannels[i];
                     // Construcción Universal "1 URL per Channel" respetando todas las reglas del Proxy
-                    const url = (typeof buildChannelUrl === 'function') 
-                        ? buildChannelUrl(c, null, options.profile || 'P3', i, credentialsMap) 
+                    const url = (typeof buildChannelUrl === 'function')
+                        ? buildChannelUrl(c, null, options.profile || 'P3', i, credentialsMap)
                         : (c.url || c.src || '');
-                        
+
                     if (url.includes('line.tivi-ott.net') || options.verifyAllHosts) {
                         channelsToVerify.push({ idx: i, url, channel: c });
                     } else {
@@ -8246,10 +8644,10 @@ function __getOmegaGodTierDirectives(channel, cfg) {
                     for (let i = 0; i < channelsToVerify.length; i += MAX_BATCH_SIZE) {
                         const batch = channelsToVerify.slice(i, i + MAX_BATCH_SIZE);
                         const batchUrls = batch.map(b => b.url);
-                        
+
                         if (window.HUD_TYPED_ARRAYS) {
                             const pct = Math.round((i / channelsToVerify.length) * 100);
-                            window.HUD_TYPED_ARRAYS.log(`📡 Validando lote ${Math.floor(i/MAX_BATCH_SIZE) + 1} (${pct}%)`, '#03a9f4');
+                            window.HUD_TYPED_ARRAYS.log(`📡 Validando lote ${Math.floor(i / MAX_BATCH_SIZE) + 1} (${pct}%)`, '#03a9f4');
                         }
 
                         try {
@@ -8296,7 +8694,7 @@ function __getOmegaGodTierDirectives(channel, cfg) {
                     if (window.HUD_TYPED_ARRAYS) {
                         window.HUD_TYPED_ARRAYS.log(`✅ Funcionales: ${functionalChannels.length} canales admitidos`, '#4ade80');
                     }
-                    
+
                     safeChannels = [...channelsToSkip, ...functionalChannels];
                 }
             } catch (err) {
@@ -8620,7 +9018,7 @@ function __getOmegaGodTierDirectives(channel, cfg) {
                         options._currentServer = this.state.currentServer || null;
                         console.log(`🔑 [TYPED-ARRAYS] Injecting ${options._activeServers.length} servers into generator`);
                     }
-                    
+
                     // 👉 INYECCIÓN VISUAL V6 OMEGA: Mostrar feedback al milisegundo de clickear
                     const overlay = document.createElement("div");
                     overlay.innerHTML = `
@@ -8645,13 +9043,13 @@ function __getOmegaGodTierDirectives(channel, cfg) {
                                 if (document.body.contains(overlay)) document.body.removeChild(overlay);
                                 return;
                             }
-                            
+
                             // Si fue FSAA (stream-to-disk), el archivo ya está en disco
                             if (result.mode === 'FSAA') {
-                                document.getElementById('ape-meta-hud-status').innerHTML = 
+                                document.getElementById('ape-meta-hud-status').innerHTML =
                                     `✅ ARCHIVO ESCRITO DIRECTO A DISCO (${result.channels} canales)`;
                                 document.getElementById('ape-meta-hud-status').style.color = "#10b981";
-                                
+
                                 const actionDiv = document.getElementById('ape-meta-hud-action');
                                 actionDiv.style.display = "block";
                                 actionDiv.innerHTML = `
@@ -8663,11 +9061,11 @@ function __getOmegaGodTierDirectives(channel, cfg) {
                                 });
                                 return;
                             }
-                            
+
                             // Si fue CHUNKED_BLOB, mostrar botón de descarga
                             document.getElementById('ape-meta-hud-status').innerHTML = "✅ INVARIANTE COMPILADA CON ÉXITO";
                             document.getElementById('ape-meta-hud-status').style.color = "#10b981";
-                            
+
                             const actionDiv = document.getElementById('ape-meta-hud-action');
                             actionDiv.style.display = "block";
                             const sizeMB = typeof result.size === 'number' ? (result.size / 1048576).toFixed(1) : '?';
@@ -8679,7 +9077,7 @@ function __getOmegaGodTierDirectives(channel, cfg) {
                                     <a href="#" id="ape-meta-btn-close" style="color: #9ca3af; text-decoration: underline; font-size: 16px;">Volver a la interfaz</a>
                                 </div>
                             `;
-                            
+
                             // Listener de Descarga (solo para CHUNKED_BLOB mode)
                             document.getElementById('ape-meta-btn-download').addEventListener('click', () => {
                                 if (!result.blob) return;
@@ -8690,22 +9088,22 @@ function __getOmegaGodTierDirectives(channel, cfg) {
                                 document.body.appendChild(link);
                                 link.click();
                                 document.body.removeChild(link);
-                                
+
                                 console.log(`📥 [TYPED-ARRAYS] Archivo descargado manualmente: ${result.filename}`);
                                 document.getElementById('ape-meta-btn-download').innerText = "📥 VERIFICANDO...";
-                                
+
                                 setTimeout(() => {
                                     if (document.body.contains(overlay)) document.body.removeChild(overlay);
                                     URL.revokeObjectURL(url);
                                 }, 1500);
                             });
-                            
+
                             // Listener de Cerrar
                             document.getElementById('ape-meta-btn-close').addEventListener('click', (e) => {
                                 e.preventDefault();
                                 if (document.body.contains(overlay)) document.body.removeChild(overlay);
                             });
-                            
+
                         }).catch(e => {
                             console.error('[TYPED-ARRAYS] Gen Error:', e);
                             const st = document.getElementById('ape-meta-hud-status');
@@ -8760,7 +9158,7 @@ function __getOmegaGodTierDirectives(channel, cfg) {
     // ─────────────────────────────────────────────────────────────────
     // 🧠 APE METADATA INTELLIGENCE BATCH SCANNER
     // ─────────────────────────────────────────────────────────────────
-    window.apeScanMetadataCluster = async function(deltaOnly = false) {
+    window.apeScanMetadataCluster = async function (deltaOnly = false) {
         if (!window.app) { if (!deltaOnly) alert('App no cargada'); return; }
         let channels = [];
         if (typeof window.app.getFilteredChannels === 'function') {
@@ -8777,10 +9175,10 @@ function __getOmegaGodTierDirectives(channel, cfg) {
         const btn = document.getElementById('btnScanMetadataCluster');
         const oText = btn ? btn.innerHTML : 'Escanear Metadata';
         if (btn) btn.innerHTML = '<span class="icon">⏳</span><span>Escaneando (0%)</span>';
-        
+
         // Determinar credenciales base
         const credentialsMap = {}; // O podrías usar app.state.activeServers pero `channels` ya suele tener `url`
-        
+
         let targetUrls = [];
         channels.forEach(ch => {
             if (deltaOnly && ch.ape_meta) return; // Delta Scan: skip already scanned
@@ -8836,7 +9234,7 @@ function __getOmegaGodTierDirectives(channel, cfg) {
             }
 
             const chunk = targetUrls.slice(i, i + CHUNK_SIZE);
-            if (btn) btn.innerHTML = `<span class="icon">🧠</span><span>Batch ${Math.round((i/targetUrls.length)*100)}%</span>`;
+            if (btn) btn.innerHTML = `<span class="icon">🧠</span><span>Batch ${Math.round((i / targetUrls.length) * 100)}%</span>`;
 
             const _ctrl = (typeof AbortController !== 'undefined') ? new AbortController() : null;
             const _timeoutId = _ctrl ? setTimeout(() => _ctrl.abort(), _VPS_FETCH_TIMEOUT_MS) : null;
@@ -8878,16 +9276,16 @@ function __getOmegaGodTierDirectives(channel, cfg) {
                 console.warn(`[APE-META] Batch fallo (${_vpsFailCount}/${_VPS_ABORT_THRESHOLD}): ${errType}`);
             }
         }
-        
+
         if (btn) btn.innerHTML = `<span class="icon">✅</span><span>Escaneo Finalizado (${processedCount})</span>`;
         if (window.app.renderChannelsList) window.app.renderChannelsList();
-        
+
         // Persistir el estado en IndexedDB y channels_map.json equivalente interno
         if (window.app && typeof window.app.saveGeneratorSnapshot === 'function') {
             window.app.saveGeneratorSnapshot();
             console.log("💾 [APE-META] Snapshot guardado en IndexedDB. El ADN Metadata persistirá tras recargar.");
         }
-        
+
         console.log(`🧠 [APE-META] Completado. ${processedCount} canales enriquecidos con ADN Metadata.`);
         if (window.app && typeof window.app.showToast === 'function') {
             window.app.showToast(`✅ Metadata Escaneada: ${processedCount} canales actualizados`, 'success');
