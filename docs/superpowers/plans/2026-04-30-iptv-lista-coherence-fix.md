@@ -643,7 +643,31 @@ git commit -m "fix(generator): C7 remove Connection/Keep-Alive from EXTHTTP (hop
 
 ---
 
-## Task 11: Fix A1-A2-A3 — Header global per-profile + dedupe EXT-X-DEFINE
+## Task 11: Fix A1-A2-A3 — DEFERRED to Stage 2 (LAB Excel cleanup)
+
+**Hallazgo durante implementación:**
+
+`grep -rln "P0_PERPROFILE_BULLETPROOF" IPTV_v5.4_MAX_AGGRESSION/` devuelve solo:
+- `audit_bulletproof_output.m3u8` (template histórico, NO emisor)
+- `audit_lista_emitted.py` (mi auditor)
+- `2026-04-30-iptv-lista-coherence-fix.md` (este plan)
+
+El generador JS `m3u8-typed-arrays-ultimate.js` emite (L2415-2421):
+- `#EXT-X-DEFINE:NAME="OMEGA_BUILD",VALUE="v5.4-MAX-AGGRESSION"` (correcto)
+- `#EXT-X-DATERANGE:ID="omega-live-${timestamp}"` (dinámico, correcto)
+
+**Conclusión:** los strings `omega-live-P0` y `P0_PERPROFILE_BULLETPROOF` provienen del **LAB Excel JSON** (`LAB_CALIBRATED.json` schema bulletproof) que se prepende al manifest cuando `bulletproof === true`. El A4 (Chrome/91) ya fue cubierto en Task 8.
+
+A1-A3 son una **incoherencia del LAB Excel**, no del JS generator. Stage 2 separado:
+- Hoja header_global del Excel: cambiar `omega-live-P0` → `omega-live-{profile}` o `omega-live-MULTI`
+- Cambiar `P0_PERPROFILE_BULLETPROOF` → `{profile}_PERPROFILE_BULLETPROOF_v5.4`
+- Eliminar `EXT-X-DEFINE:NAME="OMEGA_BUILD"` huérfano (sin VALUE)
+
+Task 11 marcado como DEFERRED. Avanza a Task 12.
+
+---
+
+## Task 11b (DEFERRED): Header global per-profile + dedupe EXT-X-DEFINE
 
 **Files:**
 - Modify: `IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/m3u8-typed-arrays-ultimate.js`
