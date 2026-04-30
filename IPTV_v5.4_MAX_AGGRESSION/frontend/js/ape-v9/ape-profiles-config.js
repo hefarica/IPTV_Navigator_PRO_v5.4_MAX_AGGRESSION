@@ -218,31 +218,74 @@
                 "X-APE-LCEVC-SDK-DECODER", "X-APE-GPU-DECODE", "X-APE-GPU-RENDER", "X-APE-GPU-PIPELINE",
                 "X-APE-GPU-PRECISION", "X-APE-GPU-MEMORY-POOL", "X-APE-GPU-ZERO-COPY",
                 "X-APE-VVC-ENABLED", "X-APE-EVC-ENABLED", "X-APE-PLAYER-ENSLAVEMENT-PROTOCOL",
-                "X-APE-PLAYER-ENSLAVEMENT-OVERRIDE-CODEC", "X-APE-RESILIENCE-L1-FORMAT", 
-                "X-APE-RESILIENCE-L2-FORMAT", "X-APE-RESILIENCE-L3-FORMAT", 
-                "X-APE-RESILIENCE-HTTP-ERROR-403", "X-APE-RESILIENCE-HTTP-ERROR-404", 
-                "X-APE-RESILIENCE-HTTP-ERROR-429", "X-APE-RESILIENCE-HTTP-ERROR-500", 
-                "X-APE-AV1-FALLBACK-ENABLED", "X-APE-AV1-FALLBACK-CHAIN", 
-                "X-APE-ISP-THROTTLE-ESCALATION-POLICY", "X-APE-ANTI-CUT-ENGINE", 
-                "X-APE-ANTI-CUT-DETECTION", "X-APE-ANTI-CUT-ISP-STRANGLE", 
-                "X-APE-RECONNECT-MAX", "X-APE-RECONNECT-SEAMLESS", "X-APE-IDENTITY-MORPH", 
-                "X-APE-IDENTITY-ROTATION-INTERVAL", "X-APE-EVASION-MODE", 
-                "X-APE-EVASION-DNS-OVER-HTTPS", "X-APE-EVASION-SNI-OBFUSCATION", 
-                "X-APE-EVASION-TLS-FINGERPRINT-RANDOMIZE", "X-APE-EVASION-GEO-PHANTOM", 
-                "X-APE-EVASION-DEEP-PACKET-INSPECTION-BYPASS", "X-APE-IP-ROTATION-ENABLED", 
-                "X-APE-IP-ROTATION-STRATEGY", "X-APE-STEALTH-UA", "X-APE-STEALTH-XFF", 
-                "X-APE-STEALTH-FINGERPRINT", "X-APE-SWARM-ENABLED", "X-APE-SWARM-PEERS", 
-                "X-APE-TRANSPORT-PROTOCOL", "X-APE-TRANSPORT-CHUNK-SIZE", 
-                "X-APE-TRANSPORT-FALLBACK-1", "X-APE-CACHE-STRATEGY", "X-APE-CACHE-SIZE", 
-                "X-APE-CACHE-PREFETCH", "X-APE-BUFFER-STRATEGY", "X-APE-BUFFER-PRELOAD-SEGMENTS", 
-                "X-APE-BUFFER-DYNAMIC-ADJUSTMENT", "X-APE-BUFFER-NEURAL-PREDICTION", 
-                "X-APE-QOS-ENABLED", "X-APE-QOS-DSCP", "X-APE-QOS-PRIORITY", 
-                "X-APE-POLYMORPHIC-ENABLED", "X-APE-POLYMORPHIC-IDEMPOTENT", "X-TELCHEMY-TVQM", 
-                "X-TELCHEMY-TR101290", "X-TELCHEMY-IMPAIRMENT-GUARD", "X-TELCHEMY-BUFFER-POLICY", 
+                "X-APE-PLAYER-ENSLAVEMENT-OVERRIDE-CODEC", "X-APE-RESILIENCE-L1-FORMAT",
+                "X-APE-RESILIENCE-L2-FORMAT", "X-APE-RESILIENCE-L3-FORMAT",
+                "X-APE-RESILIENCE-HTTP-ERROR-403", "X-APE-RESILIENCE-HTTP-ERROR-404",
+                "X-APE-RESILIENCE-HTTP-ERROR-429", "X-APE-RESILIENCE-HTTP-ERROR-500",
+                "X-APE-AV1-FALLBACK-ENABLED", "X-APE-AV1-FALLBACK-CHAIN",
+                "X-APE-ISP-THROTTLE-ESCALATION-POLICY", "X-APE-ANTI-CUT-ENGINE",
+                "X-APE-ANTI-CUT-DETECTION", "X-APE-ANTI-CUT-ISP-STRANGLE",
+                "X-APE-RECONNECT-MAX", "X-APE-RECONNECT-SEAMLESS", "X-APE-IDENTITY-MORPH",
+                "X-APE-IDENTITY-ROTATION-INTERVAL", "X-APE-EVASION-MODE",
+                "X-APE-EVASION-DNS-OVER-HTTPS", "X-APE-EVASION-SNI-OBFUSCATION",
+                "X-APE-EVASION-TLS-FINGERPRINT-RANDOMIZE", "X-APE-EVASION-GEO-PHANTOM",
+                "X-APE-EVASION-DEEP-PACKET-INSPECTION-BYPASS", "X-APE-IP-ROTATION-ENABLED",
+                "X-APE-IP-ROTATION-STRATEGY", "X-APE-STEALTH-UA", "X-APE-STEALTH-XFF",
+                "X-APE-STEALTH-FINGERPRINT", "X-APE-SWARM-ENABLED", "X-APE-SWARM-PEERS",
+                "X-APE-TRANSPORT-PROTOCOL", "X-APE-TRANSPORT-CHUNK-SIZE",
+                "X-APE-TRANSPORT-FALLBACK-1", "X-APE-CACHE-STRATEGY", "X-APE-CACHE-SIZE",
+                "X-APE-CACHE-PREFETCH", "X-APE-BUFFER-STRATEGY", "X-APE-BUFFER-PRELOAD-SEGMENTS",
+                "X-APE-BUFFER-DYNAMIC-ADJUSTMENT", "X-APE-BUFFER-NEURAL-PREDICTION",
+                "X-APE-QOS-ENABLED", "X-APE-QOS-DSCP", "X-APE-QOS-PRIORITY",
+                "X-APE-POLYMORPHIC-ENABLED", "X-APE-POLYMORPHIC-IDEMPOTENT", "X-TELCHEMY-TVQM",
+                "X-TELCHEMY-TR101290", "X-TELCHEMY-IMPAIRMENT-GUARD", "X-TELCHEMY-BUFFER-POLICY",
                 "X-TELCHEMY-GOP-POLICY", "X-Tone-Mapping", "X-HDR-Output-Mode"
             ]
         }
     };
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🛡️ ANTI-DRIFT — PM9 canonical header lookup
+    // Used by importFromLABData to resolve LAB→PM9 rename collisions.
+    // PM9 HEADER_CATEGORIES is the canonical source; LAB headers with case
+    // or separator drift can be mapped back to the frontend-standard name.
+    // ═══════════════════════════════════════════════════════════════════════
+    const _PM9_FLAT_HEADERS = (function () {
+        const arr = [];
+        for (const cat of Object.values(HEADER_CATEGORIES)) {
+            if (cat && Array.isArray(cat.headers)) arr.push(...cat.headers);
+        }
+        return arr;
+    })();
+
+    // Normalize key for collision detection: lowercase + strip dashes/underscores
+    const _normalizeHeaderKey = (k) => String(k || '').toLowerCase().replace(/[_\-\s]/g, '');
+
+    const _PM9_NORMALIZED_MAP = (function () {
+        const m = new Map();
+        for (const h of _PM9_FLAT_HEADERS) m.set(_normalizeHeaderKey(h), h);
+        return m;
+    })();
+
+    const _PM9_EXACT_SET = new Set(_PM9_FLAT_HEADERS);
+
+    /**
+     * Returns the PM9 canonical name for a LAB key, or null if no match.
+     * - Exact match → returns the same key (no rename needed).
+     * - Case/separator drift match → returns canonical PM9 name.
+     * - No match → null (caller treats as "extra").
+     */
+    function findPm9CanonicalName(labKey) {
+        if (!labKey) return null;
+        if (_PM9_EXACT_SET.has(labKey)) return labKey;
+        const norm = _normalizeHeaderKey(labKey);
+        return _PM9_NORMALIZED_MAP.get(norm) || null;
+    }
+
+    /** Returns Set of all 267 PM9 canonical header names (for diff). */
+    function getPm9HeaderSet() {
+        return _PM9_EXACT_SET;
+    }
 
 
     const DEFAULT_PROFILES = {
@@ -265,7 +308,9 @@
                 "codec": "AV1",
                 "headersCount": 233,
                 "bufferSeconds": 25,
-                "focus": "MAXIMA_CALIDAD_8K_HDR_CARGA_ULTRARAPIDA_SIN_CORTES"
+                "focus": "MAXIMA_CALIDAD_8K_HDR_CARGA_ULTRARAPIDA_SIN_CORTES",
+                "hdr_canonical": "dolby-vision",
+                "nits_target": 4000
             },
             "vlcopt": {
                 "network-caching": "25000",
@@ -291,11 +336,23 @@
                 "brightness": "1.0",
                 "saturation": "1.06",
                 "gamma": "1.0",
-                "video-filter": "nlmeans=s=3.0:p=7:r=15,bwdif=mode=1:parity=-1:deint=0,gradfun=radius=16:strength=1.0,unsharp=luma_msize_x=3:luma_msize_y=3:luma_amount=0.4:chroma_msize_x=0:chroma_msize_y=0:chroma_amount=0.0,zscale=transfer=st2084:primaries=bt2020:matrix=2020ncl:dither=error_diffusion:range=full"
+                "video-filter": "nlmeans=s=3.0:p=7:r=15,bwdif=mode=1:parity=-1:deint=0,gradfun=radius=16:strength=1.0,unsharp=luma_msize_x=3:luma_msize_y=3:luma_amount=0.4:chroma_msize_x=0:chroma_msize_y=0:chroma_amount=0.0,zscale=transfer=st2084:primaries=bt2020:matrix=2020ncl:dither=error_diffusion:range=full",
+                "audio-codec-priority": "eac3,ac3,aac",
+                "audio-spatializer": "passthrough",
+                "adaptive-logic": "highest",
+                "adaptive-maxwidth": "7680",
+                "adaptive-maxheight": "4320",
+                "demux": "hls"
             },
             "kodiprop": {
                 "inputstream.adaptive.manifest_type": "hls",
-                "inputstream.adaptive.stream_headers": "[ENCODED_HEADERS]"
+                "inputstream.adaptive.stream_headers": "[ENCODED_HEADERS]",
+                "inputstream.adaptive.min_bandwidth": "60000000",
+                "inputstream.adaptive.max_bandwidth": "120000000",
+                "inputstream.adaptive.preferred_video_resolution": "4320",
+                "inputstream.adaptive.chooser_bandwidth_max": "120000000",
+                "inputstream.adaptive.media_renewal_time": "60",
+                "inputstream.adaptive.manifest_config": "{\"buffer_assured_duration\":60,\"buffer_max_duration\":120,\"connect_timeout\":15,\"read_timeout\":60,\"retry_count\":99,\"reconnect\":true,\"chunk_size\":1048576}"
             },
             "enabledCategories": [
                 "identity",
@@ -879,7 +936,9 @@
                 "codec": "AV1",
                 "headersCount": 233,
                 "bufferSeconds": 20,
-                "focus": "MAXIMA_CALIDAD_4K_HDR10PLUS_SIN_CORTES"
+                "focus": "MAXIMA_CALIDAD_4K_HDR10PLUS_SIN_CORTES",
+                "hdr_canonical": "hdr10+",
+                "nits_target": 1500
             },
             "vlcopt": {
                 "network-caching": "20000",
@@ -905,11 +964,23 @@
                 "brightness": "1.0",
                 "saturation": "1.05",
                 "gamma": "1.0",
-                "video-filter": "nlmeans=s=3.0:p=7:r=15,bwdif=mode=1:parity=-1:deint=0,gradfun=radius=16:strength=1.0,unsharp=luma_msize_x=3:luma_msize_y=3:luma_amount=0.4:chroma_msize_x=0:chroma_msize_y=0:chroma_amount=0.0,zscale=transfer=st2084:primaries=bt2020:matrix=2020ncl:dither=error_diffusion:range=full"
+                "video-filter": "nlmeans=s=3.0:p=7:r=15,bwdif=mode=1:parity=-1:deint=0,gradfun=radius=16:strength=1.0,unsharp=luma_msize_x=3:luma_msize_y=3:luma_amount=0.4:chroma_msize_x=0:chroma_msize_y=0:chroma_amount=0.0,zscale=transfer=st2084:primaries=bt2020:matrix=2020ncl:dither=error_diffusion:range=full",
+                "audio-codec-priority": "eac3,ac3,aac",
+                "audio-spatializer": "passthrough",
+                "adaptive-logic": "highest",
+                "adaptive-maxwidth": "3840",
+                "adaptive-maxheight": "2160",
+                "demux": "hls"
             },
             "kodiprop": {
                 "inputstream.adaptive.manifest_type": "hls",
-                "inputstream.adaptive.stream_headers": "[ENCODED_HEADERS]"
+                "inputstream.adaptive.stream_headers": "[ENCODED_HEADERS]",
+                "inputstream.adaptive.min_bandwidth": "18000000",
+                "inputstream.adaptive.max_bandwidth": "26900000",
+                "inputstream.adaptive.preferred_video_resolution": "2160",
+                "inputstream.adaptive.chooser_bandwidth_max": "26900000",
+                "inputstream.adaptive.media_renewal_time": "60",
+                "inputstream.adaptive.manifest_config": "{\"buffer_assured_duration\":60,\"buffer_max_duration\":120,\"connect_timeout\":15,\"read_timeout\":60,\"retry_count\":99,\"reconnect\":true,\"chunk_size\":1048576}"
             },
             "enabledCategories": [
                 "identity",
@@ -1492,7 +1563,9 @@
                 "codec": "HEVC",
                 "headersCount": 233,
                 "bufferSeconds": 15,
-                "focus": "MAXIMA_CALIDAD_8K_HDR_CARGA_ULTRARAPIDA_SIN_CORTES"
+                "focus": "MAXIMA_CALIDAD_8K_HDR_CARGA_ULTRARAPIDA_SIN_CORTES",
+                "hdr_canonical": "hdr10",
+                "nits_target": 1000
             },
             "vlcopt": {
                 "network-caching": "15000",
@@ -1517,11 +1590,23 @@
                 "contrast": "1.02",
                 "brightness": "1.0",
                 "saturation": "1.04",
-                "gamma": "1.0"
+                "gamma": "1.0",
+                "audio-codec-priority": "eac3,ac3,aac",
+                "audio-spatializer": "passthrough",
+                "adaptive-logic": "highest",
+                "adaptive-maxwidth": "3840",
+                "adaptive-maxheight": "2160",
+                "demux": "hls"
             },
             "kodiprop": {
                 "inputstream.adaptive.manifest_type": "hls",
-                "inputstream.adaptive.stream_headers": "[ENCODED_HEADERS]"
+                "inputstream.adaptive.stream_headers": "[ENCODED_HEADERS]",
+                "inputstream.adaptive.min_bandwidth": "13000000",
+                "inputstream.adaptive.max_bandwidth": "18000000",
+                "inputstream.adaptive.preferred_video_resolution": "2160",
+                "inputstream.adaptive.chooser_bandwidth_max": "18000000",
+                "inputstream.adaptive.media_renewal_time": "60",
+                "inputstream.adaptive.manifest_config": "{\"buffer_assured_duration\":60,\"buffer_max_duration\":120,\"connect_timeout\":15,\"read_timeout\":60,\"retry_count\":99,\"reconnect\":true,\"chunk_size\":1048576}"
             },
             "enabledCategories": [
                 "identity",
@@ -1965,7 +2050,9 @@
                 "codec": "HEVC",
                 "headersCount": 233,
                 "bufferSeconds": 12,
-                "focus": "ULTRA_1080P_HDR10_CARGA_RAPIDA_SIN_CORTES"
+                "focus": "ULTRA_1080P_HDR10_CARGA_RAPIDA_SIN_CORTES",
+                "hdr_canonical": "hlg",
+                "nits_target": 400
             },
             "vlcopt": {
                 "network-caching": "12000",
@@ -1991,11 +2078,22 @@
                 "brightness": "1.0",
                 "saturation": "1.03",
                 "gamma": "1.0",
-                "video-filter": "nlmeans=s=2.5:p=5:r=11,bwdif=mode=1:parity=-1:deint=0,gradfun=radius=12:strength=0.8,unsharp=luma_msize_x=3:luma_msize_y=3:luma_amount=0.3:chroma_msize_x=0:chroma_msize_y=0:chroma_amount=0.0,zscale=transfer=bt709:primaries=bt709:matrix=bt709:dither=error_diffusion:range=full"
+                "video-filter": "nlmeans=s=2.5:p=5:r=11,bwdif=mode=1:parity=-1:deint=0,gradfun=radius=12:strength=0.8,unsharp=luma_msize_x=3:luma_msize_y=3:luma_amount=0.3:chroma_msize_x=0:chroma_msize_y=0:chroma_amount=0.0,zscale=transfer=bt709:primaries=bt709:matrix=bt709:dither=error_diffusion:range=full",
+                "audio-codec-priority": "eac3,aac",
+                "adaptive-logic": "highest",
+                "adaptive-maxwidth": "1920",
+                "adaptive-maxheight": "1080",
+                "demux": "hls"
             },
             "kodiprop": {
                 "inputstream.adaptive.manifest_type": "hls",
-                "inputstream.adaptive.stream_headers": "[ENCODED_HEADERS]"
+                "inputstream.adaptive.stream_headers": "[ENCODED_HEADERS]",
+                "inputstream.adaptive.min_bandwidth": "5000000",
+                "inputstream.adaptive.max_bandwidth": "8000000",
+                "inputstream.adaptive.preferred_video_resolution": "1080",
+                "inputstream.adaptive.chooser_bandwidth_max": "8000000",
+                "inputstream.adaptive.media_renewal_time": "60",
+                "inputstream.adaptive.manifest_config": "{\"buffer_assured_duration\":60,\"buffer_max_duration\":120,\"connect_timeout\":15,\"read_timeout\":60,\"retry_count\":99,\"reconnect\":true,\"chunk_size\":1048576}"
             },
             "enabledCategories": [
                 "identity",
@@ -2579,7 +2677,9 @@
                 "codec": "H264",
                 "headersCount": 233,
                 "bufferSeconds": 10,
-                "focus": "HIGH_720P_BALANCEADO_SIN_CORTES"
+                "focus": "HIGH_720P_BALANCEADO_SIN_CORTES",
+                "hdr_canonical": "sdr",
+                "nits_target": 100
             },
             "vlcopt": {
                 "network-caching": "10000",
@@ -2605,10 +2705,21 @@
                 "brightness": "1.0",
                 "saturation": "1.02",
                 "gamma": "1.0",
-                "video-filter": "hqdn3d=luma_spatial=2.0:chroma_spatial=1.5:luma_tmp=3.0:chroma_tmp=2.5,yadif=mode=1:parity=-1:deint=0,unsharp=luma_msize_x=3:luma_msize_y=3:luma_amount=0.25:chroma_msize_x=0:chroma_msize_y=0:chroma_amount=0.0"
+                "video-filter": "hqdn3d=luma_spatial=2.0:chroma_spatial=1.5:luma_tmp=3.0:chroma_tmp=2.5,yadif=mode=1:parity=-1:deint=0,unsharp=luma_msize_x=3:luma_msize_y=3:luma_amount=0.25:chroma_msize_x=0:chroma_msize_y=0:chroma_amount=0.0",
+                "audio-codec-priority": "aac",
+                "adaptive-logic": "highest",
+                "adaptive-maxwidth": "1280",
+                "adaptive-maxheight": "720",
+                "demux": "hls"
             },
             "kodiprop": {
-                "inputstream.adaptive.manifest_type": "hls"
+                "inputstream.adaptive.manifest_type": "hls",
+                "inputstream.adaptive.min_bandwidth": "2500000",
+                "inputstream.adaptive.max_bandwidth": "4000000",
+                "inputstream.adaptive.preferred_video_resolution": "720",
+                "inputstream.adaptive.chooser_bandwidth_max": "4000000",
+                "inputstream.adaptive.media_renewal_time": "60",
+                "inputstream.adaptive.manifest_config": "{\"buffer_assured_duration\":60,\"buffer_max_duration\":120,\"connect_timeout\":15,\"read_timeout\":60,\"retry_count\":99,\"reconnect\":true,\"chunk_size\":1048576}"
             },
             "enabledCategories": [
                 "identity",
@@ -3193,7 +3304,9 @@
                 "codec": "H264",
                 "headersCount": 233,
                 "bufferSeconds": 8,
-                "focus": "MAXIMA_CALIDAD_8K_HDR_CARGA_ULTRARAPIDA_SIN_CORTES"
+                "focus": "MAXIMA_CALIDAD_8K_HDR_CARGA_ULTRARAPIDA_SIN_CORTES",
+                "hdr_canonical": "sdr",
+                "nits_target": 100
             },
             "vlcopt": {
                 "network-caching": "8000",
@@ -3219,9 +3332,22 @@
                 "brightness": "1.0",
                 "saturation": "1.00",
                 "gamma": "1.0",
-                "video-filter": ""
+                "video-filter": "",
+                "audio-codec-priority": "aac",
+                "adaptive-logic": "highest",
+                "adaptive-maxwidth": "854",
+                "adaptive-maxheight": "480",
+                "demux": "hls"
             },
-            "kodiprop": {},
+            "kodiprop": {
+                "inputstream.adaptive.manifest_type": "hls",
+                "inputstream.adaptive.min_bandwidth": "800000",
+                "inputstream.adaptive.max_bandwidth": "1500000",
+                "inputstream.adaptive.preferred_video_resolution": "480",
+                "inputstream.adaptive.chooser_bandwidth_max": "1500000",
+                "inputstream.adaptive.media_renewal_time": "60",
+                "inputstream.adaptive.manifest_config": "{\"buffer_assured_duration\":60,\"buffer_max_duration\":120,\"connect_timeout\":15,\"read_timeout\":60,\"retry_count\":99,\"reconnect\":true,\"chunk_size\":1048576}"
+            },
             "enabledCategories": [
                 "identity",
                 "connection",
@@ -4350,7 +4476,19 @@
          * - evasion_pool: persiste en this.evasionPool
          * - config_global: aplica selectivamente a strategicHeaders existentes
          */
-        async importFromLABData(data) {
+        async importFromLABData(data, options = {}) {
+            // 🛡️ ANTI-DRIFT options (added 2026-04-29):
+            //   - options.includeExtrasByProfile: { P0: true|false, ... } — gate
+            //     que el generator usa para decidir si emite vlcopt/kodiprop/headers
+            //     no homologables a PM9. Persistido en this.profiles[pid].includeLabExtras.
+            //   - options.collisionResolutions: { 'P0:labKey': 'rename'|'omit', ... } —
+            //     resolución por colisión de rename (LAB drift case/separator vs PM9).
+            //   - options.renameCollisions: array completo de colisiones detectadas
+            //     (usado para iterar y aplicar la decisión).
+            const includeExtrasByProfile = options.includeExtrasByProfile || {};
+            const collisionResolutions = options.collisionResolutions || {};
+            const renameCollisions = Array.isArray(options.renameCollisions) ? options.renameCollisions : [];
+
             const result = {
                 profilesUpdated: 0,
                 headersAdded: 0,
@@ -4361,7 +4499,10 @@
                 gapPlanItems: 0,
                 gapPlanReplicar: 0,
                 gapPlanImplementar: 0,
-                gapPlanQuitar: 0
+                gapPlanQuitar: 0,
+                renameApplied: 0,
+                renameOmitted: 0,
+                profilesWithExtras: 0
             };
             try {
                 const supportedSchemas = ['omega_v1'];
@@ -4419,6 +4560,29 @@
                     if (lpFixed.hlsjs) lpFixed.hlsjs = coerceNumericStrings(lpFixed.hlsjs);
                     if (lpFixed.prefetch_config) lpFixed.prefetch_config = coerceNumericStrings(lpFixed.prefetch_config);
 
+                    // 🛡️ ANTI-DRIFT: aplicar collision resolutions a headerOverrides
+                    // antes del merge. 'rename' → mover valor a key canónica PM9.
+                    // 'omit' → eliminar el header del payload importado.
+                    if (lpFixed.headerOverrides && renameCollisions.length > 0) {
+                        const ho = Object.assign({}, lpFixed.headerOverrides);
+                        for (const c of renameCollisions) {
+                            if (c.profile !== pid) continue;
+                            const action = collisionResolutions[`${pid}:${c.labKey}`];
+                            if (action === 'rename') {
+                                const value = ho[c.labKey];
+                                delete ho[c.labKey];
+                                if (value !== undefined && c.pm9Key) {
+                                    ho[c.pm9Key] = value;
+                                    result.renameApplied++;
+                                }
+                            } else if (action === 'omit') {
+                                delete ho[c.labKey];
+                                result.renameOmitted++;
+                            }
+                        }
+                        lpFixed.headerOverrides = ho;
+                    }
+
                     if (this.profiles[pid]) {
                         if (isBulletproof) {
                             // 🛡 BULLETPROOF: SHALLOW MERGE — el LAB sobreescribe sus secciones
@@ -4450,6 +4614,18 @@
                         this.profiles[pid] = JSON.parse(JSON.stringify(lpFixed));
                         result.headersAdded += Object.keys(lpFixed.headerOverrides || {}).length;
                     }
+
+                    // 🛡️ ANTI-DRIFT: persistir flag per-profile que el GENERATOR consulta
+                    // para decidir si emite extras (vlcopt/kodiprop/headers no-PM9).
+                    // Default = false (modo "campos habituales del frontend").
+                    if (Object.prototype.hasOwnProperty.call(includeExtrasByProfile, pid)) {
+                        this.profiles[pid].includeLabExtras = includeExtrasByProfile[pid] === true;
+                        if (this.profiles[pid].includeLabExtras) result.profilesWithExtras++;
+                    } else {
+                        // Sin extras detectados para este perfil: default false (no-op).
+                        this.profiles[pid].includeLabExtras = false;
+                    }
+
                     result.profilesUpdated++;
                 }
 
@@ -4545,6 +4721,60 @@
                     imported_at: new Date().toISOString()
                 }));
 
+                // === 8.5 PRISMA LAB-SYNC v2.0 CONSUMPTION (Stage 1 + 1.5) ===
+                // Sección emitida por mod_PRISMA_BulletproofEnrich.Brain_PrismaEnrichBulletproof
+                // Contiene: profile_attributes (boost/floor/target/zap), channel_dna_defaults,
+                // n3_directives_added, placeholders_added, vba_modules, hook_injection,
+                // feature_sheets (FLOOR_LOCK + SENTINEL + TELESCOPE + ADB 35 settings),
+                // config_jsons_consumed_by_vps (6 JSONs inline).
+                // El generator usa este state para inyectar piso/boost por perfil + DNA per canal.
+                if (data.prisma_lab_sync_v20) {
+                    this.prismaLabSync = data.prisma_lab_sync_v20;
+                    const psync = data.prisma_lab_sync_v20;
+
+                    // Per-profile PRISMA attrs accesibles vía getPrismaProfileAttrs(P0..P5)
+                    this.prismaProfileAttrs = psync.profile_attributes || {};
+
+                    // DNA defaults per-channel (las cols 56-63 de 33_CHANNELS_FROM_FRONTEND)
+                    this.prismaChannelDnaDefaults = psync.channel_dna_defaults || {};
+
+                    // Feature sheet contents (15 FLOOR_LOCK, 16 SENTINEL, 17 TELESCOPE, 19 ADB)
+                    this.prismaFeatureSheets = psync.feature_sheets || {};
+
+                    // Floor lock config inline (el más crítico para el generator)
+                    const cfgJsons = psync.config_jsons_consumed_by_vps || {};
+                    this.prismaFloorLockConfig = cfgJsons.floor_lock_config_json || null;
+                    this.prismaProfileBoostMultipliers = cfgJsons.profile_boost_multipliers_json || null;
+                    this.prismaTelescopeThresholds = cfgJsons.telescope_thresholds_json || null;
+                    this.prismaSentinelProvidersMap = cfgJsons.sentinel_providers_map_json || null;
+                    this.prismaEnterpriseDoctrineManifest = cfgJsons.enterprise_doctrine_manifest_json || null;
+
+                    // Persistir
+                    localStorage.setItem('ape_lab_prisma_sync', JSON.stringify(psync));
+                    localStorage.setItem('ape_lab_prisma_floor_lock', JSON.stringify(this.prismaFloorLockConfig));
+                    localStorage.setItem('ape_lab_prisma_profile_boost', JSON.stringify(this.prismaProfileBoostMultipliers));
+
+                    // Result counters
+                    result.prismaStage = psync._metadata?.stage || 'unknown';
+                    result.prismaComplianceScore = psync._metadata?.compliance_score_current || 0;
+                    result.prismaProfileAttrsCount = Object.keys(this.prismaProfileAttrs).length;
+                    result.prismaN3DirectivesCount = (psync.n3_directives_added || []).length;
+                    result.prismaPlaceholdersCount = (psync.placeholders_added || []).length;
+                    result.prismaVbaModulesCount = Object.keys(psync.vba_modules || {}).length;
+                    result.prismaConfigJsonsCount = Object.keys(cfgJsons).filter(k => k !== '_dir').length;
+
+                    console.log('[LAB-CONSUMER] 🔮 PRISMA LAB-SYNC v2.0 detectado y consumido:', {
+                        stage: result.prismaStage,
+                        compliance: result.prismaComplianceScore,
+                        profiles: result.prismaProfileAttrsCount,
+                        n3_directives: result.prismaN3DirectivesCount,
+                        placeholders: result.prismaPlaceholdersCount,
+                        config_jsons: result.prismaConfigJsonsCount
+                    });
+                } else {
+                    console.log('[LAB-CONSUMER] ⚠ Sección prisma_lab_sync_v20 ausente — generator usará defaults v1.3');
+                }
+
                 // Persistir a IndexedDB también si está disponible
                 if (window.app?.db?.saveAppState) {
                     try {
@@ -4553,6 +4783,10 @@
                         await window.app.db.saveAppState('ape_lab_evasion', this.evasionPool);
                         if (this.omegaGapPlan) {
                             await window.app.db.saveAppState('ape_lab_omega_gap_plan', this.omegaGapPlan);
+                        }
+                        // PRISMA LAB-SYNC v2.0 persistence
+                        if (this.prismaLabSync) {
+                            await window.app.db.saveAppState('ape_lab_prisma_sync', this.prismaLabSync);
                         }
                     } catch (e) { console.warn('[LAB] IDB save warning:', e); }
                 }
@@ -4609,9 +4843,72 @@
                 }
                 const gp = localStorage.getItem('ape_lab_omega_gap_plan');
                 if (gp) this.omegaGapPlan = JSON.parse(gp);
+
+                // PRISMA LAB-SYNC v2.0 rehydration
+                const psync = localStorage.getItem('ape_lab_prisma_sync');
+                if (psync) {
+                    this.prismaLabSync = JSON.parse(psync);
+                    this.prismaProfileAttrs = this.prismaLabSync.profile_attributes || {};
+                    this.prismaChannelDnaDefaults = this.prismaLabSync.channel_dna_defaults || {};
+                    this.prismaFeatureSheets = this.prismaLabSync.feature_sheets || {};
+                    const cfgJsons = this.prismaLabSync.config_jsons_consumed_by_vps || {};
+                    this.prismaFloorLockConfig = cfgJsons.floor_lock_config_json || null;
+                    this.prismaProfileBoostMultipliers = cfgJsons.profile_boost_multipliers_json || null;
+                    this.prismaTelescopeThresholds = cfgJsons.telescope_thresholds_json || null;
+                    this.prismaSentinelProvidersMap = cfgJsons.sentinel_providers_map_json || null;
+                    this.prismaEnterpriseDoctrineManifest = cfgJsons.enterprise_doctrine_manifest_json || null;
+                    console.log('[LAB] PRISMA LAB-SYNC v2.0 rehydrated from storage:', {
+                        stage: this.prismaLabSync._metadata?.stage,
+                        compliance: this.prismaLabSync._metadata?.compliance_score_current
+                    });
+                }
             } catch (e) {
                 console.warn('[LAB] loadLABFromStorage:', e);
             }
+        }
+
+        /**
+         * 🔮 PRISMA LAB-SYNC v2.0 runtime accessors
+         * Generator y otros consumers usan estos para inyectar piso/boost por perfil + DNA per canal
+         */
+        getPrismaProfileAttrs(profileId) {
+            if (!this.prismaProfileAttrs) return null;
+            return this.prismaProfileAttrs[profileId] || null;
+        }
+        getPrismaFloorBpsForProfile(profileId) {
+            const attrs = this.getPrismaProfileAttrs(profileId);
+            if (attrs && typeof attrs.prisma_floor_min_bandwidth_bps === 'number') {
+                return attrs.prisma_floor_min_bandwidth_bps;
+            }
+            // Fallback to floor_lock_config
+            const fl = this.prismaFloorLockConfig;
+            if (fl) {
+                const key = `floor_lock_min_bandwidth_${profileId.toLowerCase()}`;
+                if (typeof fl[key] === 'number') return fl[key];
+                if (typeof fl.floor_lock_min_bandwidth_default === 'number') return fl.floor_lock_min_bandwidth_default;
+            }
+            return 8000000; // hardcoded fallback 8 Mbps
+        }
+        getPrismaTargetBpsForProfile(profileId) {
+            const attrs = this.getPrismaProfileAttrs(profileId);
+            if (attrs && typeof attrs.prisma_target_bandwidth_bps === 'number') {
+                return attrs.prisma_target_bandwidth_bps;
+            }
+            return 12000000;
+        }
+        getPrismaBoostMultiplierForProfile(profileId) {
+            const attrs = this.getPrismaProfileAttrs(profileId);
+            if (attrs && typeof attrs.prisma_boost_multiplier === 'number') {
+                return attrs.prisma_boost_multiplier;
+            }
+            return 1.5;
+        }
+        getPrismaChannelDnaDefault(key) {
+            if (!this.prismaChannelDnaDefaults) return null;
+            return this.prismaChannelDnaDefaults[key];
+        }
+        isPrismaLoaded() {
+            return !!this.prismaLabSync;
         }
 
         /**
@@ -5357,6 +5654,10 @@
     // EXPOSICIÓN GLOBAL
     // ═══════════════════════════════════════════════════════════════════════
     const instance = new APEProfilesConfig();
+    // Anti-drift helpers (PM9 canonical lookup + flat header set) — usados
+    // por _computeLABDiff y por importFromLABData para resolver renames.
+    instance.findPm9CanonicalName = findPm9CanonicalName;
+    instance.getPm9HeaderSet = getPm9HeaderSet;
     window.APE_PROFILES_CONFIG = instance;
 
     console.log('%c🎚️ APE Profiles Config v9.0 EXTENDED Cargado', 'color: #10b981; font-weight: bold;');

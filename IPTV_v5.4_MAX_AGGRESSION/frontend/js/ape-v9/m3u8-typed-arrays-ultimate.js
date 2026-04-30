@@ -6949,14 +6949,43 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
         lines.push(`#EXTVLCOPT:avcodec-corrupted=1`);
         lines.push(`#EXTVLCOPT:avcodec-hurry-up=0`);
         lines.push(`#EXTVLCOPT:avcodec-error-resilience=1`);
-        lines.push(`#EXTVLCOPT:video-filter=zscale=transfer=st2084:chromal=topleft:matrix=2020_ncl:primaries=2020:range=limited`);
-        lines.push(`#EXTVLCOPT:video-hdr=true`);
-        lines.push(`#EXTVLCOPT:video-hdr-nits=${_hdrNits}`);
-        lines.push(`#EXTVLCOPT:video-hdr-mode=${_hdrMode}`);
-        lines.push(`#EXTVLCOPT:video-tone-mapping=hable`);
-        lines.push(`#EXTVLCOPT:video-tone-mapping-peak=${_hdrNits}`);
-        lines.push(`#EXTVLCOPT:video-tone-mapping-reference=203`);
-        lines.push(`#EXTVLCOPT:video-bt2020=true`);
+        // ── B1-B2 (2026-04-30) — HDR/SDR canonical mode coherente por perfil ──
+        // Lista emitía 92.6% canales con video-filter=zscale st2084 (PQ HDR transfer)
+        // + video-hdr-mode=SDR — contradictorio. Ahora cada perfil declara su tier
+        // (P0=dolby-vision, P1=hdr10+, P2=hdr10, P3=hlg, P4/P5=sdr) y el bloque
+        // emite zscale + transfer + primaries + tone-mapping coherentes.
+        const _pmHdrCanonical = (typeof window !== 'undefined' && window.APE_PROFILES_CONFIG?.getProfile)
+            ? (window.APE_PROFILES_CONFIG.getProfile(profile)?.settings?.hdr_canonical || 'sdr').toLowerCase()
+            : 'sdr';
+        const _pmNitsTarget = (typeof window !== 'undefined' && window.APE_PROFILES_CONFIG?.getProfile)
+            ? parseInt(window.APE_PROFILES_CONFIG.getProfile(profile)?.settings?.nits_target || (_pmHdrCanonical === 'sdr' ? 100 : 1000), 10)
+            : 100;
+        const _isPqHdr = (_pmHdrCanonical === 'hdr10' || _pmHdrCanonical === 'hdr10+' || _pmHdrCanonical === 'dolby-vision');
+        const _isHlgHdr = (_pmHdrCanonical === 'hlg');
+        const _isAnyHdr = _isPqHdr || _isHlgHdr;
+        const _hdrModeM3U = ({
+            'dolby-vision': 'DOLBY_VISION',
+            'hdr10+': 'HDR10_PLUS',
+            'hdr10': 'HDR10',
+            'hlg': 'HLG',
+            'sdr': 'SDR'
+        })[_pmHdrCanonical] || 'SDR';
+        if (_isPqHdr) {
+            lines.push(`#EXTVLCOPT:video-filter=zscale=transfer=st2084:chromal=topleft:matrix=2020_ncl:primaries=2020:range=limited`);
+        } else if (_isHlgHdr) {
+            lines.push(`#EXTVLCOPT:video-filter=zscale=transfer=arib-std-b67:chromal=topleft:matrix=2020_ncl:primaries=2020:range=limited`);
+        } else {
+            lines.push(`#EXTVLCOPT:video-filter=zscale=transfer=bt1886:matrix=bt709:primaries=bt709:range=limited`);
+        }
+        lines.push(`#EXTVLCOPT:video-hdr=${_isAnyHdr ? 'true' : 'false'}`);
+        lines.push(`#EXTVLCOPT:video-hdr-nits=${_pmNitsTarget}`);
+        lines.push(`#EXTVLCOPT:video-hdr-mode=${_hdrModeM3U}`);
+        lines.push(`#EXTVLCOPT:video-tone-mapping=${_isAnyHdr ? 'hable' : 'off'}`);
+        if (_isAnyHdr) {
+            lines.push(`#EXTVLCOPT:video-tone-mapping-peak=${_pmNitsTarget}`);
+            lines.push(`#EXTVLCOPT:video-tone-mapping-reference=203`);
+        }
+        lines.push(`#EXTVLCOPT:video-bt2020=${_isAnyHdr ? 'true' : 'false'}`);
         lines.push(`#EXTVLCOPT:video-fullrange=false`);
         lines.push(`#EXTVLCOPT:video-chroma-loc=topleft`);
         lines.push(`#EXTVLCOPT:video-deinterlace=0`);
