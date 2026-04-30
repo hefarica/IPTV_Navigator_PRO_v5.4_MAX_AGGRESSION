@@ -6184,7 +6184,16 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
         const countryName = classification.country?.group || '';
         const fps = channel.frames || 30;
         const transport = channel.transport || 'HLS';
-        const codecFam = channel.codecFamily || '';
+        // B6 (2026-04-30) — derive codec family del perfil cuando channel.codecFamily vacío.
+        // Lista emitía ape-codec-family="" en 37,128 canales. Profile.settings.codec
+        // tiene los valores canónicos (AV1/HEVC/H264) — los mapeamos a familia.
+        const codecFamRaw = (channel.codecFamily || (typeof PROFILES !== 'undefined' && PROFILES[profile]?.codec) || 'H264').toString().toUpperCase();
+        const codecFam = ({
+            'AV1': 'av1',
+            'HEVC': 'hevc', 'H.265': 'hevc', 'H265': 'hevc',
+            'H.264': 'h264', 'H264': 'h264', 'AVC': 'h264',
+            'VP9': 'vp9'
+        })[codecFamRaw] || codecFamRaw.toLowerCase();
         const tvgChno = escapeM3UValue(channel.num || channel.stream_id || (index + 1));
         const catchup = channel.tv_archive ? ` catchup="append" catchup-days="${channel.tv_archive_duration || 7}" catchup-source="?utc={utc}&lutc={lutc}"` : '';
         const tvgShift = ` tvg-shift="${channel.tv_shift || 0}"`;
