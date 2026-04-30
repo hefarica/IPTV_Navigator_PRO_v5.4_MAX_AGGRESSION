@@ -5130,14 +5130,18 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
         h['X-Chunk-Transfer-Encoding'] = 'chunked';
 
         // ── G4: ISP Evasion & CDN Emulation (12) ──
-        h['X-Forwarded-For'] = clientIP;
-        h['X-Real-IP'] = clientIP;
-        h['X-Originating-IP'] = clientIP;
-        h['X-Remote-IP'] = clientIP;
-        h['X-Client-IP'] = clientIP;
-        h['Via'] = `1.1 ${cdnEdge}.cloudfront.net (CloudFront)`;
-        h['X-Amz-Cf-Id'] = cfId;
-        h['X-Cache'] = 'Miss from cloudfront';
+        // C2 (2026-04-30) 🚨 SECURITY LEAK REMOVED — los 5 headers IP exponían
+        // VPS Hetzner al provider. NO RE-INTRODUCIR.
+        // h['X-Forwarded-For'] = clientIP;
+        // h['X-Real-IP'] = clientIP;
+        // h['X-Originating-IP'] = clientIP;
+        // h['X-Remote-IP'] = clientIP;
+        // h['X-Client-IP'] = clientIP;
+        // C3 — CloudFront fakes también removidos (Varnish/Akamai/CDN forensic
+        // markers detectados como fingerprint). Provider no usa CloudFront real.
+        // h['Via'] = `1.1 ${cdnEdge}.cloudfront.net (CloudFront)`;
+        // h['X-Amz-Cf-Id'] = cfId;
+        // h['X-Cache'] = 'Miss from cloudfront';
         h['X-ISP-Bypass'] = 'true';
         h['X-DPI-Evasion'] = 'OMEGA_PHANTOM_HYDRA_V5';
         h['DNT'] = '1';
@@ -7113,9 +7117,15 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
             'X-User-Agent-ExoPlayer': _uaExo,
             'X-User-Agent-VLC': _uaVLC,
             'X-User-Agent-Safari': _uaSafari,
-            'X-Forwarded-For': _randomIp,
-            'X-Real-IP': _randomIp,
-            'X-Client-IP': _randomIp,
+            // C2 (2026-04-30) 🚨 SECURITY LEAK REMOVED — estos 3 headers en EXTHTTP
+            // exponían al provider la IP real del VPS Hetzner Ashburn (159.69.20.202)
+            // y/o IPs spoofed Akamai. El shield NGINX no los descarta — viajan
+            // upstream y dejan fingerprint trivial. Audit baseline: 3,061 canales
+            // con IP Hetzner expuesta + 37,128 con triple X-Forwarded-For/X-Real-IP/
+            // X-Client-IP. NO RE-INTRODUCIR sin doctrina de stealth + verificación.
+            // 'X-Forwarded-For': _randomIp,
+            // 'X-Real-IP': _randomIp,
+            // 'X-Client-IP': _randomIp,
             'Referer': 'https://www.google.com/',
             'Origin': 'https://www.google.com',
             // Calidad y codecs
