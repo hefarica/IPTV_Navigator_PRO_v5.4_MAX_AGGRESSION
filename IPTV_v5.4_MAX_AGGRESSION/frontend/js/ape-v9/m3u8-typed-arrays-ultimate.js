@@ -7398,6 +7398,45 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
         lines.push(`#KODIPROP:inputstream.adaptive.manifest_config={"buffer_assured_duration":60,"buffer_max_duration":120,"connect_timeout":15,"read_timeout":60,"retry_count":99,"reconnect":true,"chunk_size":1048576}`);
 
         // ════════════════════════════════════════════════════════════════════════
+        // L3.6 — KODIPROP — manifest_headers + stream_headers (Kodi sintaxis estricta)
+        // ════════════════════════════════════════════════════════════════════════
+        // Kodi inputstream.adaptive separa headers para manifest (.m3u8 - 1 petición)
+        // vs segments (.ts/.m4s - decenas/min). Sintaxis crítica:
+        //   - Separador `&` (NO comas, NO punto y coma)
+        //   - NO espacios alrededor del `=` ni del `&`
+        //   - MISMO User-Agent en ambos (Flussonic session affinity — si cambia,
+        //     corte a 2-6s)
+        //   - manifest: Accept=application/vnd.apple.mpegurl,*/*
+        //   - stream: Accept=video/mp2t,*/* + Accept-Encoding=identity (gzip
+        //     corrompe segmentos .ts decodificación)
+        const _refererCanonical796 = (function() {
+            try {
+                const u = new URL(primaryUrl);
+                return `${u.protocol}//${u.hostname}/`;
+            } catch { return ''; }
+        })();
+        const _originCanonical796 = _refererCanonical796 ? _refererCanonical796.replace(/\/$/, '') : '';
+        const _kodiManifestHdrs = [
+            `User-Agent=${_ua796}`,
+            _refererCanonical796 ? `Referer=${_refererCanonical796}` : '',
+            _originCanonical796 ? `Origin=${_originCanonical796}` : '',
+            `Accept=application/vnd.apple.mpegurl,*/*`,
+            `Accept-Language=es-ES,en;q=0.9`,
+            `Connection=keep-alive`
+        ].filter(Boolean).join('&');
+        const _kodiStreamHdrs = [
+            `User-Agent=${_ua796}`,
+            _refererCanonical796 ? `Referer=${_refererCanonical796}` : '',
+            _originCanonical796 ? `Origin=${_originCanonical796}` : '',
+            `Accept=video/mp2t,video/MP2T,*/*`,
+            `Accept-Encoding=identity`,
+            `Accept-Language=es-ES,en;q=0.9`,
+            `Connection=keep-alive`
+        ].filter(Boolean).join('&');
+        lines.push(`#KODIPROP:inputstream.adaptive.manifest_headers=${_kodiManifestHdrs}`);
+        lines.push(`#KODIPROP:inputstream.adaptive.stream_headers=${_kodiStreamHdrs}`);
+
+        // ════════════════════════════════════════════════════════════════════════
         // L4 — EXT-X-CMAF — Pipeline fMP4/CMAF (25 líneas)
         // Cableado desde: cfg (PROFILES), _sid796, _nonce796
         // ════════════════════════════════════════════════════════════════════════
