@@ -3697,7 +3697,7 @@
 
 
   <!-- 🎚️ APE v9 PROFILE SYSTEM - MUST load BEFORE app.js -->
-  <script src="js/ape-v9/ape-profiles-config.js?v=10.1-bulletproof-shallow-merge-20260426"></script>
+  <script src="js/ape-v9/ape-profiles-config.js?v=20260430-coherence-fix-hdr-canonical-uapool"></script>
   <!-- profile-manager-v9.js loaded later at v9.0.3 (line ~3171) -->
   <script src="js/ape-v9/profile-bridge-v9.js?v=1.1"></script>
   <script src="js/ape-v9/ape-xtream-atomic-probe.js?v=20260420-oropuro-rust"></script>
@@ -3706,7 +3706,7 @@
   <script src="js/ape-v9/format-policy.js?v=1.0-20260417"></script>
   <!-- 🩺 APE HEALTH ADMISSION RUNTIME (fail-closed v2.0) — debe cargar ANTES del generator -->
   <script src="js/ape-v9/health-runtime.js?v=3.0-plan-supremo-tier-enrichment-20260417"></script>
-  <script src="js/ape-v9/m3u8-typed-arrays-ultimate.js?v=20260426-hdrsupport-origin-fix-4"></script>
+  <script src="js/ape-v9/m3u8-typed-arrays-ultimate.js?v=20260430-coherence-fix-emit-cleanup"></script>
   <!-- 🪦 OMEGA SLOT REAPER — Pre-flight liberation of Xtream max_connections slots -->
   <script src="js/ape-v9/slot-reaper.js?v=1.0.0-omega-20260409"></script>
   <script src="js/ape-v9/m3u8-quality-upgrader-v2.js?v=2.0"></script>
@@ -3773,6 +3773,9 @@
     };
   </script>
   <script src="js/secure-stream-handler.js?v=1.0"></script>
+
+  <!-- 🎛️ VPS OPS PANEL — Remote diagnostic & maintenance from frontend -->
+  <script src="js/vps-ops-panel.js?v=1.0"></script>
 
   <!-- 🌐 M3U8 GLOBAL HEADERS v3.0 — ALL headers × 4 protocols (EXTVLCOPT / KODIPROP / EXT-X-APE / EXT-X-HEADER) -->
   <script src="js/m3u8-global-headers.js?v=3.0"></script>
@@ -4169,26 +4172,26 @@
   <script src="js/ape-anle/ape-anle-core.js?v=1.0.0-anle"></script>
   <script src="js/ape-anle/anle-tests.js?v=1.0.0-anle" defer></script>
 
-  <!-- 🧬 ANLE Toggle Panel — fixed bottom-right -->
-  <div id="anle-panel" style="position:fixed;bottom:8px;right:8px;background:rgba(13,33,55,0.95);color:#e2e8f0;padding:12px 14px;border:1px solid #10b981;border-radius:8px;font:11px/1.5 'Consolas','Monaco',monospace;z-index:9999;max-width:300px;backdrop-filter:blur(8px);box-shadow:0 4px 20px rgba(0,0,0,0.4)">
+  <!-- 🧬 ANLE Toggle Panel — fixed bottom-right (v1.1: no delete button, richer stats) -->
+  <div id="anle-panel" style="position:fixed;bottom:8px;right:8px;background:rgba(13,33,55,0.95);color:#e2e8f0;padding:12px 14px;border:1px solid #10b981;border-radius:8px;font:11px/1.5 'Consolas','Monaco',monospace;z-index:9999;max-width:320px;backdrop-filter:blur(8px);box-shadow:0 4px 20px rgba(0,0,0,0.4)">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
       <span style="font-weight:700;color:#10b981;font-size:12px">🧬 ANLE v1.0</span>
       <label style="cursor:pointer;display:flex;align-items:center;gap:4px;font-size:10px;color:#94a3b8">
         <input type="checkbox" id="anle-toggle" checked style="accent-color:#10b981"> ON
       </label>
     </div>
-    <div id="anle-stats" style="color:#94a3b8;font-size:10px">loading...</div>
-    <div style="display:flex;gap:6px;margin-top:8px">
-      <button id="anle-resync" style="flex:1;padding:4px 8px;background:rgba(16,185,129,0.15);color:#10b981;border:1px solid rgba(16,185,129,0.3);border-radius:4px;font-size:10px;cursor:pointer">🔄 Resync</button>
-      <button id="anle-clear" style="flex:1;padding:4px 8px;background:rgba(239,68,68,0.1);color:#ef4444;border:1px solid rgba(239,68,68,0.2);border-radius:4px;font-size:10px;cursor:pointer">🗑 Clear learned</button>
+    <div id="anle-stats" style="color:#94a3b8;font-size:10px;line-height:1.6">loading...</div>
+    <div style="margin-top:6px">
+      <button id="anle-resync" style="width:100%;padding:4px 8px;background:rgba(16,185,129,0.1);color:#10b981;border:1px solid rgba(16,185,129,0.2);border-radius:4px;font-size:10px;cursor:pointer">🔄 Resync Seed (iptv-org)</button>
     </div>
+    <div id="anle-activity" style="margin-top:6px;font-size:9px;color:#475569;border-top:1px solid rgba(148,163,184,0.15);padding-top:5px">—</div>
   </div>
   <script>
     (function() {
       var t = document.getElementById('anle-toggle');
       var s = document.getElementById('anle-stats');
       var r = document.getElementById('anle-resync');
-      var c = document.getElementById('anle-clear');
+      var act = document.getElementById('anle-activity');
       if (!t || !s) return;
 
       function waitForANLE(cb, ms) {
@@ -4206,17 +4209,39 @@
           ANLE.seedSyncer.syncFromRemote().then(refresh);
         };
 
-        c.onclick = function() {
-          if (!confirm('Clear all learned aliases? Seed entries will remain.')) return;
-          ANLE.dictionary.clearLearned().then(function(n) {
-            s.textContent = 'Cleared ' + n + ' learned';
-            setTimeout(refresh, 1000);
-          });
-        };
+        var prevBoosts = 0;
+        var prevAliases = 0;
 
         function refresh() {
           ANLE.core.getStats().then(function(x) {
-            s.textContent = x.aliases + ' aliases | ' + x.fingerprints + ' fp | ' + x.totalBoosts + ' boosts';
+            // Count learned vs seed
+            var learnedCount = x.totalLearned || 0;
+            var seedCount = Math.max(0, x.aliases - learnedCount);
+
+            // Build multi-line stats
+            var lines = [];
+            lines.push('📦 ' + x.aliases + ' aliases (seed: ~' + seedCount + ' + learned: ' + learnedCount + ')');
+            lines.push('🖥️ ' + x.fingerprints + ' servers fingerprinted');
+            lines.push('⚡ ' + x.totalBoosts.toLocaleString() + ' channels boosted');
+
+            s.innerHTML = lines.join('<br>');
+
+            // Activity indicator
+            var boostDelta = x.totalBoosts - prevBoosts;
+            var aliasDelta = x.aliases - prevAliases;
+            if (boostDelta > 0 || aliasDelta > 0) {
+              var parts = [];
+              if (boostDelta > 0) parts.push('+' + boostDelta + ' boosts');
+              if (aliasDelta > 0) parts.push('+' + aliasDelta + ' aliases learned');
+              act.innerHTML = '🟢 ' + parts.join(' · ') + ' <span style="color:#334155">(last 5s)</span>';
+              act.style.color = '#10b981';
+            } else {
+              act.innerHTML = '⏸️ idle <span style="color:#334155">· delete: console ANLE.dictionary.clearLearned()</span>';
+              act.style.color = '#475569';
+            }
+
+            prevBoosts = x.totalBoosts;
+            prevAliases = x.aliases;
           });
         }
         setInterval(refresh, 5000);
