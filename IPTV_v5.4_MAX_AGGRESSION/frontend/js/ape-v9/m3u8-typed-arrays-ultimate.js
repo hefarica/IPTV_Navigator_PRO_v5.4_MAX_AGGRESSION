@@ -7162,17 +7162,23 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
             'X-Forwarded-Host': 'cdn.akamaized.net',
             'X-Forwarded-Port': '443',
             'X-Via': `1.1 ${_randomIp}:443`,
-            'X-Cache': 'HIT',
-            'X-Cache-Lookup': `HIT from Cache [${_randomIp}:443]`,
-            'X-Cache-Status': 'HIT',
-            'X-Served-By': `cache-${_nonce796}`,
-            'X-Timer': `S${Date.now()},VS0,VE1`,
-            'X-Varnish': String(Math.floor(Math.random() * 999999999)),
-            'X-Age': '0',
-            'X-TTL': '0',
-            'X-Grace': 'none',
-            'X-Hits': '0',
-            'X-Fetch-Error': 'none',
+            // C3 (2026-04-30) — Akamai/Varnish forensic markers REMOVED.
+            // Estos 11 headers emulaban output de Varnish/Akamai en cache HIT.
+            // El provider Xtream NO usa Varnish ni Akamai → emularlo es fingerprint
+            // anti-bot trivial. Detección: cualquier upstream que ve X-Varnish con
+            // X-Forwarded-For 23.x (Akamai CIDR) sabe que es fake.
+            // Audit baseline: 408,408 líneas (11 keys × 37,128 canales).
+            // 'X-Cache': 'HIT',
+            // 'X-Cache-Lookup': `HIT from Cache [${_randomIp}:443]`,
+            // 'X-Cache-Status': 'HIT',
+            // 'X-Served-By': `cache-${_nonce796}`,
+            // 'X-Timer': `S${Date.now()},VS0,VE1`,
+            // 'X-Varnish': String(Math.floor(Math.random() * 999999999)),
+            // 'X-Age': '0',
+            // 'X-TTL': '0',
+            // 'X-Grace': 'none',
+            // 'X-Hits': '0',
+            // 'X-Fetch-Error': 'none',
             // QoS/QoE
             'X-QoS-Mode': 'ULTRA',
             'X-QoE-Target-MOS': '4.8',
