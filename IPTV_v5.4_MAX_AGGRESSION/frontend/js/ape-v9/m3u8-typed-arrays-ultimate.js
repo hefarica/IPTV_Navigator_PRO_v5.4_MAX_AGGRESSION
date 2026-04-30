@@ -6921,9 +6921,13 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
         lines.push(`#EXTVLCOPT:http-referrer=https://www.google.com/`);
         lines.push(`#EXTVLCOPT:http-forward-cookies=true`);
         lines.push(`#EXTVLCOPT:http-reconnect=true`);
-        lines.push(`#EXTVLCOPT:http-iface=`);
-        lines.push(`#EXTVLCOPT:http-proxy=`);
-        lines.push(`#EXTVLCOPT:http-proxy-pwd=`);
+        // B4 (2026-04-30) — omit empty EXTVLCOPT keys: http-iface/proxy/proxy-pwd
+        // emiten valor vacío 100% del tiempo (37,128 canales × 3 = 111k líneas ruido).
+        // Algunos parsers VLC fallan ante "key=" sin valor. Si LAB algún día calibra
+        // valores reales, re-introducir vía pmProfile.vlcopt['http-iface'] etc.
+        // lines.push(`#EXTVLCOPT:http-iface=`);
+        // lines.push(`#EXTVLCOPT:http-proxy=`);
+        // lines.push(`#EXTVLCOPT:http-proxy-pwd=`);
         lines.push(`#EXTVLCOPT:sout-keep=true`);
         lines.push(`#EXTVLCOPT:sout-mux-caching=${_buf796}`);
         lines.push(`#EXTVLCOPT:codec=any`);
@@ -6957,7 +6961,8 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
         lines.push(`#EXTVLCOPT:video-dar=16:9`);
         lines.push(`#EXTVLCOPT:video-black-bars=false`);
         lines.push(`#EXTVLCOPT:video-zoom=1.0`);
-        lines.push(`#EXTVLCOPT:video-crop=`);
+        // B5 — omit empty video-crop (37,128 canales × 1 = 37k líneas ruido)
+        // lines.push(`#EXTVLCOPT:video-crop=`);
         lines.push(`#EXTVLCOPT:video-snap-format=png`);
         lines.push(`#EXTVLCOPT:audio-language=spa,eng,por`);
         lines.push(`#EXTVLCOPT:audio-track-id=0`);
@@ -6967,12 +6972,14 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
         lines.push(`#EXTVLCOPT:audio-time-stretch=false`);
         lines.push(`#EXTVLCOPT:audio-desync=0`);
         lines.push(`#EXTVLCOPT:audio-volume=256`);
-        lines.push(`#EXTVLCOPT:audio-filter=`);
-        lines.push(`#EXTVLCOPT:audio-visual=`);
+        // B5 — omit empty audio-filter, audio-visual (74k líneas ruido)
+        // lines.push(`#EXTVLCOPT:audio-filter=`);
+        // lines.push(`#EXTVLCOPT:audio-visual=`);
         lines.push(`#EXTVLCOPT:sub-language=none`);
         lines.push(`#EXTVLCOPT:sub-track-id=-1`);
         lines.push(`#EXTVLCOPT:sub-auto=false`);
-        lines.push(`#EXTVLCOPT:sub-file=`);
+        // B5 — omit empty sub-file (37k líneas ruido)
+        // lines.push(`#EXTVLCOPT:sub-file=`);
         lines.push(`#EXTVLCOPT:sub-margin=0`);
         lines.push(`#EXTVLCOPT:sub-fps=0`);
         lines.push(`#EXTVLCOPT:sub-delay=0`);
@@ -6980,7 +6987,8 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
         lines.push(`#EXTVLCOPT:ts-caching=${_buf796}`);
         lines.push(`#EXTVLCOPT:ts-seek-percent=false`);
         lines.push(`#EXTVLCOPT:ts-silent=true`);
-        lines.push(`#EXTVLCOPT:ts-extra-pmt=`);
+        // B5 — omit empty ts-extra-pmt (37k líneas ruido)
+        // lines.push(`#EXTVLCOPT:ts-extra-pmt=`);
         lines.push(`#EXTVLCOPT:ts-pid-video=0`);
         lines.push(`#EXTVLCOPT:ts-pid-audio=0`);
         lines.push(`#EXTVLCOPT:ts-pid-subpic=0`);
@@ -7004,7 +7012,8 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
         lines.push(`#EXTVLCOPT:hls-max-buffer-duration=${_buf796}`);
         lines.push(`#EXTVLCOPT:hls-seek-sync=true`);
         lines.push(`#EXTVLCOPT:hls-use-start-time-offset=false`);
-        lines.push(`#EXTVLCOPT:hls-aes-key=`);
+        // B5 — omit empty hls-aes-key (37k líneas ruido; canales sin DRM no necesitan)
+        // lines.push(`#EXTVLCOPT:hls-aes-key=`);
         // B3 sanity check (2026-04-30): rechaza valores >7680 px del LAB (lista emitía
         // 60000×60000 — sin display real). NO es clamp de calibración LAB; es guard
         // contra LAB corrupto. Cap = 7680/4320 (8K límite real).
