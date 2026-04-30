@@ -4131,8 +4131,9 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
             "Sec-Fetch-Mode": "no-cors",
             "Sec-Fetch-Site": "same-origin",
             "Sec-Fetch-User": "?0",
-            "Connection": "keep-alive",
-            "Keep-Alive": `timeout=${isp['X-ISP-Keepalive-Timeout'] || '120'}, max=${isp['X-ISP-Keepalive-Max'] || '200'}`,
+            // C7 (2026-04-30) — Connection/Keep-Alive hop-by-hop, removed.
+            // "Connection": "keep-alive",
+            // "Keep-Alive": `timeout=${isp['X-ISP-Keepalive-Timeout'] || '120'}, max=${isp['X-ISP-Keepalive-Max'] || '200'}`,
             "DNT": "0",
             "Sec-GPC": "0",
             "Upgrade-Insecure-Requests": "0",
@@ -7218,7 +7219,11 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
             'X-Zapping-Max': '800ms',
             'X-Startup-Max': '500ms',
             // Conexión
-            'Connection': 'keep-alive',
+            // C7 (2026-04-30) — Connection/Keep-Alive son hop-by-hop (RFC 7230 §6.1).
+            // El shield NGINX los descarta antes del upstream → ruido en EXTHTTP.
+            // El cliente HTTP (TiviMate ExoPlayer/Kodi libcurl/VLC) los gestiona en
+            // su propia capa de transport — no es responsabilidad del manifest.
+            // 'Connection': 'keep-alive',
             'Accept-Encoding': 'gzip, deflate, br, zstd',
             'Accept': '*/*',
             'Accept-Language': 'es-419,es;q=0.9,en;q=0.8',
