@@ -2671,9 +2671,13 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
             vlcopts.push(`#EXTVLCOPT:video-visual=${pmProfile?.visuals?.video_visual_mode || 'full-range'}`);
 
             // Codecs
-            vlcopts.push(`#EXTVLCOPT:codec=${pmProfile?.settings?.codec_priority ? pmProfile.settings.codec_priority.split(',').slice(0, 2).join(',') : 'h265,h264'}`);
-            vlcopts.push(`#EXTVLCOPT:preferred-codec=${(pmProfile?.settings?.codec) ? pmProfile.settings.codec.toLowerCase() : 'hevc'}`);
-            vlcopts.push(`#EXTVLCOPT:codec-priority=${pmProfile?.settings?.codec_priority || 'hevc,hev1,hvc1,h265,av1,vp9,h264'}`);
+            // [HEVC-FIRST CODEC LADDER] Lee codec_chain_player_pref (LAB SSOT) → fallback codec_priority legacy.
+            // VLC consume codec-priority y avcodec-codec en orden de preferencia (libVLC core lookup).
+            vlcopts.push(`#EXTVLCOPT:codec=${(pmProfile?.settings?.codec_chain_player_pref) ? pmProfile.settings.codec_chain_player_pref.split(',').slice(0, 2).join(',') : (pmProfile?.settings?.codec_priority ? pmProfile.settings.codec_priority.split(',').slice(0, 2).join(',') : 'hvc1,hev1')}`);
+            vlcopts.push(`#EXTVLCOPT:preferred-codec=${(pmProfile?.settings?.codec_chain_player_pref) ? pmProfile.settings.codec_chain_player_pref.split(',')[0] : ((pmProfile?.settings?.codec) ? pmProfile.settings.codec.toLowerCase() : 'hvc1')}`);
+            vlcopts.push(`#EXTVLCOPT:codec-priority=${pmProfile?.settings?.codec_chain_player_pref || pmProfile?.settings?.codec_priority || 'hvc1,hev1,h265,avc1,h264'}`);
+            vlcopts.push(`#EXTVLCOPT:avcodec-codec=${pmProfile?.settings?.codec_chain_player_pref || 'hvc1,hev1,h265,avc1,h264'}`);
+            vlcopts.push(`#EXTVLCOPT:audio-codec-priority=${pmProfile?.settings?.codec_chain_audio || 'ec-3,ac-3,mp4a.40.2,mp4a.40.5'}`);
 
             // ── V6.3 PLAYER-CONSUMED INTENT (CMAF/APE → EXTVLCOPT translation) ──
             // Mapea la intención de #EXT-X-CMAF-AUDIO-FALLBACK / -ATMOS / -DOLBY-VISION /
@@ -2744,9 +2748,13 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
             vlcopts.push(`#EXTVLCOPT:avcodec-threads=${pmProfile?.hardware?.avcodec_threads !== undefined ? pmProfile.hardware.avcodec_threads : 0}`);
             vlcopts.push(`#EXTVLCOPT:ffmpeg-hw`);
             vlcopts.push(`#EXTVLCOPT:video-visual=${pmProfile?.visuals?.video_visual_mode || 'full-range'}`);
-            vlcopts.push(`#EXTVLCOPT:codec=${pmProfile?.settings?.codec_priority ? pmProfile.settings.codec_priority.split(',').slice(0, 2).join(',') : 'h265,h264'}`);
-            vlcopts.push(`#EXTVLCOPT:preferred-codec=${(pmProfile?.settings?.codec) ? pmProfile.settings.codec.toLowerCase() : 'hevc'}`);
-            vlcopts.push(`#EXTVLCOPT:codec-priority=${pmProfile?.settings?.codec_priority || 'hevc,hev1,hvc1,h265,av1,vp9,h264'}`);
+            // [HEVC-FIRST CODEC LADDER] Lee codec_chain_player_pref (LAB SSOT) → fallback codec_priority legacy.
+            // VLC consume codec-priority y avcodec-codec en orden de preferencia (libVLC core lookup).
+            vlcopts.push(`#EXTVLCOPT:codec=${(pmProfile?.settings?.codec_chain_player_pref) ? pmProfile.settings.codec_chain_player_pref.split(',').slice(0, 2).join(',') : (pmProfile?.settings?.codec_priority ? pmProfile.settings.codec_priority.split(',').slice(0, 2).join(',') : 'hvc1,hev1')}`);
+            vlcopts.push(`#EXTVLCOPT:preferred-codec=${(pmProfile?.settings?.codec_chain_player_pref) ? pmProfile.settings.codec_chain_player_pref.split(',')[0] : ((pmProfile?.settings?.codec) ? pmProfile.settings.codec.toLowerCase() : 'hvc1')}`);
+            vlcopts.push(`#EXTVLCOPT:codec-priority=${pmProfile?.settings?.codec_chain_player_pref || pmProfile?.settings?.codec_priority || 'hvc1,hev1,h265,avc1,h264'}`);
+            vlcopts.push(`#EXTVLCOPT:avcodec-codec=${pmProfile?.settings?.codec_chain_player_pref || 'hvc1,hev1,h265,avc1,h264'}`);
+            vlcopts.push(`#EXTVLCOPT:audio-codec-priority=${pmProfile?.settings?.codec_chain_audio || 'ec-3,ac-3,mp4a.40.2,mp4a.40.5'}`);
         }
 
         const standard = [
@@ -3043,7 +3051,9 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
             '#KODIPROP:inputstream.adaptive.bandwidth_ramp_peak=100000000', // Tope 100 Mbps
             '#KODIPROP:inputstream.adaptive.bandwidth_handoff_ms=60000', // Toma de control Sentinel al minuto
             // -------------------------------------------------------------
-            '#KODIPROP:inputstream.adaptive.preferred_codec=hevc,hev1,hvc1,h265',
+            // [HEVC-FIRST] preferred_codec lee codec_chain_player_pref del LAB (per-profile chain) — fallback hardcoded HEVC-first
+            `#KODIPROP:inputstream.adaptive.preferred_codec=${cfg.codec_chain_player_pref || 'hvc1,hev1,h265,avc1,h264'}`,
+            `#KODIPROP:inputstream.adaptive.audio_codec_priority=${cfg.codec_chain_audio || 'ec-3,ac-3,mp4a.40.2,mp4a.40.5'}`,
             `#KODIPROP:inputstream.adaptive.max_resolution=${cfg.resolution || '3840x2160'}`,
             `#KODIPROP:inputstream.adaptive.resolution_secure_max=${cfg.resolution || '3840x2160'}`,
             // v6.1 COMPAT: Usa resolución del PERFIL REAL, no 7680x4320 hardcodeado
@@ -3052,7 +3062,8 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
             '#KODIPROP:inputstream.adaptive.play_timeshift_buffer_size=256', // Amplificado 2x para Fase de Impulso
             '#KODIPROP:inputstream.adaptive.force_hdr=true',
             // ── 🎥 V17.2 CODEC FORCING & HARDWARE DELEGATION ──
-            '#KODIPROP:inputstream.adaptive.video_codec_override=hevc',
+            // [HEVC-FIRST] override hard al codec primary del chain (Kodi 21 Omega+). LAB-driven per-profile.
+            `#KODIPROP:inputstream.adaptive.video_codec_override=${(cfg.codec_chain_player_pref && cfg.codec_chain_player_pref.split(',')[0]) || 'hvc1'}`,
             '#KODIPROP:inputstream.adaptive.video_profile=main10',
             '#KODIPROP:inputstream.adaptive.hardware_decode=true',
             '#KODIPROP:inputstream.adaptive.tunneling_enabled=true', // Audio/Video direct al Display (Evita Stutter SO)
@@ -4116,21 +4127,32 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
             };
         }
 
+        // CA3-ext (2026-05-01) — Gate Sec-Fetch-* + Sec-CH-UA-* by browser UA.
+        // build_exthttp() resultado se mergea a _httpPayload final via spread
+        // `..._exthttp_base.headers` (l. ~7256). Si UA del canal es VLC/Kodi/okhttp,
+        // emitir Sec-Fetch-* + Sec-CH-UA con valores Chromium 120 hardcoded es
+        // mismatch trivial → 407 desde providers JA3-aware. Skill coherence_matrix.md
+        // documenta que VLC/TiviMate/Kodi NO emiten estas familias.
+        const _bexUA = String(UAPhantomEngine.getForChannel(index, cfg._channelName || '') || '');
+        const _bexIsBrowser = /Chrome|Edge|Firefox|Safari/i.test(_bexUA) &&
+                              !/VLC|Kodi|okhttp|TiviMate|Lavf|Dalvik|ExoPlayer/i.test(_bexUA);
         const headers = {
-            "User-Agent": UAPhantomEngine.getForChannel(index, cfg._channelName || ''),
+            "User-Agent": _bexUA,
             "Accept": "application/vnd.apple.mpegurl,application/x-mpegURL,video/mp2t,video/MP2T,*/*;q=0.9",
             "Accept-Language": "en-US,en;q=0.9",
             "Accept-Encoding": "identity",
-            "Sec-CH-UA": '"Chromium";v="120","Not-A.Brand";v="24"',
-            "Sec-CH-UA-Mobile": "?0",
-            "Sec-CH-UA-Platform": '"Windows"',
-            "Sec-CH-UA-Arch": "x86",
-            "Sec-CH-UA-Bitness": "64",
-            "Sec-CH-UA-Model": '""',
-            "Sec-Fetch-Dest": "media",
-            "Sec-Fetch-Mode": "no-cors",
-            "Sec-Fetch-Site": "same-origin",
-            "Sec-Fetch-User": "?0",
+            ...(_bexIsBrowser ? {
+                "Sec-CH-UA": '"Chromium";v="120","Not-A.Brand";v="24"',
+                "Sec-CH-UA-Mobile": "?0",
+                "Sec-CH-UA-Platform": '"Windows"',
+                "Sec-CH-UA-Arch": "x86",
+                "Sec-CH-UA-Bitness": "64",
+                "Sec-CH-UA-Model": '""',
+                "Sec-Fetch-Dest": "media",
+                "Sec-Fetch-Mode": "no-cors",
+                "Sec-Fetch-Site": "same-origin",
+                "Sec-Fetch-User": "?0",
+            } : {}),
             // C7 (2026-04-30) — Connection/Keep-Alive hop-by-hop, removed.
             // "Connection": "keep-alive",
             // "Keep-Alive": `timeout=${isp['X-ISP-Keepalive-Timeout'] || '120'}, max=${isp['X-ISP-Keepalive-Max'] || '200'}`,
@@ -6009,9 +6031,16 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
 
     function build_av1_cortex_fallback_tags(cfg) {
         const arr = [];
+        // [HEVC-FIRST CODEC LADDER] per-profile chain values from cfg (LAB SSOT settings).
+        // Fallbacks defensivos HEVC-first si cfg no propagó (NO-CLAMP texto).
+        const _chainFamily = cfg.codec_chain_video_family || 'HEVC-MAIN10>HEVC-MAIN>H264-HIGH>H264-MAIN';
+        const _chainVideo  = cfg.codec_chain_video       || 'hvc1.2.4.L153.B0,hev1.2.4.L153.B0,avc1.640033,avc1.640028';
+        const _chainAudio  = cfg.codec_chain_audio       || 'ec-3,ac-3,mp4a.40.2,mp4a.40.5';
+        const _chainHdr    = cfg.codec_chain_hdr         || 'hdr10,hlg,sdr';
+        const _chainPref   = cfg.codec_chain_player_pref || 'hvc1,hev1,h265,avc1,h264';
         // Lógica estructural obligatoria de fallback
         arr.push('#EXT-X-APE-AV1-FALLBACK-ENABLED:true');
-        arr.push('#EXT-X-APE-AV1-FALLBACK-CHAIN:HEVC>H264>BASELINE');
+        arr.push('#EXT-X-APE-AV1-FALLBACK-CHAIN:' + _chainFamily);
         arr.push('#EXT-X-APE-AV1-FALLBACK-DETECT:HARDWARE_DECODE_ONLY');
         arr.push('#EXT-X-APE-AV1-FALLBACK-GRACEFUL:true');
         arr.push('#EXT-X-APE-AV1-FALLBACK-AUTO-SWITCH:true');
@@ -6020,6 +6049,14 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
         arr.push('#EXT-X-APE-AV1-FALLBACK-TIMEOUT:500ms');
         arr.push('#EXT-X-APE-AV1-FALLBACK-SIGNAL:SEAMLESS');
         arr.push('#EXT-X-APE-AV1-FALLBACK-LOG:SILENT');
+
+        // [CODEC PRIORITY EXPLICIT — HEVC-FIRST]
+        // Cortex hint tags Cortex/ANLE-aware. Players nativos (TiviMate/ExoPlayer) leen
+        // CODECS= del STREAM-INF; estos tags son guía explícita additive RFC 8216 safe.
+        arr.push('#EXT-X-APE-CODEC-PRIORITY-VIDEO:' + _chainVideo);
+        arr.push('#EXT-X-APE-CODEC-PRIORITY-AUDIO:' + _chainAudio);
+        arr.push('#EXT-X-APE-CODEC-PRIORITY-HDR:' + _chainHdr);
+        arr.push('#EXT-X-APE-CODEC-PRIORITY-PLAYER-PREF:' + _chainPref);
 
         // Cortex Control Avanzado para Hardware
         arr.push('#EXT-X-CORTEX-AV1-CDEF:ENABLED_DIRECTIONAL_RESTORATION');
@@ -6085,8 +6122,9 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
         arr.push('#EXT-X-APE-BUFFER-DYNAMIC-ADJUSTMENT:ENABLED');
         arr.push('#EXT-X-APE-OMEGA-ENGINE-BANDWIDTH-MONITOR:ACTIVE');
         arr.push('#EXT-X-APE-AV1-FALLBACK-ENABLED:true');
-        arr.push('#EXT-X-APE-AV1-FALLBACK-CHAIN:HEVC>H264>BASELINE');
-        arr.push('#EXT-X-APE-CODEC-PRIORITY:HEVC>VVC>AV1>H264');
+        // [HEVC-FIRST] per-profile family chain from cfg.codec_chain_video_family (LAB SSOT)
+        arr.push('#EXT-X-APE-AV1-FALLBACK-CHAIN:' + (cfg.codec_chain_video_family || 'HEVC-MAIN10>HEVC-MAIN>H264-HIGH>H264-MAIN'));
+        arr.push('#EXT-X-APE-CODEC-PRIORITY:' + (cfg.codec_chain_player_pref || 'hvc1,hev1,h265,avc1,h264'));
         arr.push('#EXT-X-APE-TELCHEMY-TVQM:ACTIVATED');
         arr.push('#EXT-X-APE-TELCHEMY-TR101290:ACTIVATED');
 
@@ -6839,8 +6877,13 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
         const _minBw796 = _bitrateFloor; // Floor exportado para VLC (adaptive-minbitrate) / KODI (min_bandwidth)
         const _res796 = cfg.resolution || '3840x2160';
         const _fps796 = cfg.fps || 60;
-        const _codec796 = (() => { switch (cfg.codec_primary) { case 'VVC': return 'vvc1.1.L63.00.0.0'; case 'AV1': return 'av01.0.08M.08'; case 'AVC': return 'avc1.640028'; default: return 'hvc1.1.6.L153.B0'; } })();
-        const _codecAudio = cfg.audio_codec || 'ec-3';
+        // [HEVC-FIRST CODEC LADDER] LAB SSOT primary del chain → fallback legacy switch.
+        // codec_chain_video[0] = codec real declarado en STREAM-INF (RFC 8216 byte-identical to bytestream).
+        // codec_chain_audio[0] = codec real audio (ec-3 P0/P1/P2, mp4a.40.2 P3/P4, mp4a.40.5 P5).
+        // NO-CLAMP: split(',')[0] sobre texto, sin coerce.
+        const _codec796 = (cfg.codec_chain_video && String(cfg.codec_chain_video).split(',')[0])
+            || (() => { switch (cfg.codec_primary) { case 'VVC': return 'vvc1.1.L63.00.0.0'; case 'AV1': return 'av01.0.08M.08'; case 'AVC': return 'avc1.640028'; default: return 'hvc1.1.6.L153.B0'; } })();
+        const _codecAudio = (cfg.codec_chain_audio && String(cfg.codec_chain_audio).split(',')[0]) || cfg.audio_codec || 'ec-3';
         // FIX 2026-04-26: cfg.hdr_support ahora es array siempre (LAB-driven).
         // Detectar HDR vs SDR mirando cfg.hdr_mode (string LAB: DOLBY_VISION/HDR10PLUS/HDR10/HLG/SDR)
         // o como fallback si el array contiene algo distinto a solo 'sdr'.
@@ -7203,10 +7246,17 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
             'X-Buffer-MB': String(_bufMB),
             'X-Buffer-Segments': String(_bufSeg),
             // Polimorfismo e idempotencia
-            'X-APE-Nonce': _nonce796,
-            'X-APE-SID': _sid796,
-            'X-APE-List-Hash': _listHash,
-            'X-APE-Timestamp': _ts,
+            // CA1 (2026-05-01) — X-APE-* family REMOVED de EXTHTTP outbound.
+            // Skill banned_patterns.md cataloga `X-APE-* (entire family)` como
+            // Internal tags client-facing M3U8 only — must NOT leak upstream. Si el
+            // player envía EXTHTTP raw al provider, X-APE-Nonce/SID/List-Hash/Timestamp
+            // son fingerprint del engine APE → bloqueo automático.
+            // Identidad sigue disponible vía X-Request-Id, X-Session-Id, X-Playback-Session-Id
+            // (no banned, semánticamente neutros para upstream).
+            // 'X-APE-Nonce': _nonce796,
+            // 'X-APE-SID': _sid796,
+            // 'X-APE-List-Hash': _listHash,
+            // 'X-APE-Timestamp': _ts,
             'X-Request-Id': reqId,
             'X-Session-Id': sessionId,
             'X-Playback-Session-Id': _anabSid,
@@ -7217,10 +7267,16 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
             // Base EXTHTTP
             ...(_exthttp_base ? _exthttp_base.headers || {} : {}),
             // Evasión ISP
-            'X-Forwarded-Proto': 'https',
-            'X-Forwarded-Host': 'cdn.akamaized.net',
-            'X-Forwarded-Port': '443',
-            'X-Via': `1.1 ${_randomIp}:443`,
+            // CA2 (2026-05-01) — Forwarded family + X-Via REMOVED. Continúa la
+            // doctrina C2: X-Forwarded-Proto/Host/Port + X-Via están en la tabla
+            // banned_patterns.md "Banned outbound headers". X-Forwarded-Host falso
+            // ('cdn.akamaized.net') es fingerprint Akamai-fake en providers Xtream
+            // que NO usan Akamai (terovixa.cc, line.tivi-ott.net, MegaOTT). X-Via
+            // RFC 7230 declara explícitamente "proxy hop" → bloqueo automático.
+            // 'X-Forwarded-Proto': 'https',
+            // 'X-Forwarded-Host': 'cdn.akamaized.net',
+            // 'X-Forwarded-Port': '443',
+            // 'X-Via': `1.1 ${_randomIp}:443`,
             // C3 (2026-04-30) — Akamai/Varnish forensic markers REMOVED.
             // Estos 11 headers emulaban output de Varnish/Akamai en cache HIT.
             // El provider Xtream NO usa Varnish ni Akamai → emularlo es fingerprint
@@ -7257,9 +7313,20 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
             'Pragma': 'no-cache',
             'TE': 'trailers',
             'Upgrade-Insecure-Requests': '1',
-            'Sec-Fetch-Dest': 'video',
-            'Sec-Fetch-Mode': 'no-cors',
-            'Sec-Fetch-Site': 'cross-site',
+            // CA3 (2026-05-01) — Sec-Fetch-* gated by browser-UA. coherence_matrix.md
+            // documenta que VLC, TiviMate (okhttp), Kodi NO emiten Sec-Fetch-*.
+            // Emitirlos en EXTHTTP cuando UA = VLC/3.0.18 / okhttp/4.12 / Kodi/21
+            // es mismatch trivial → providers JA3-aware fingerprint y bloquean (407).
+            // Solo se emiten si UA contiene Chrome|Edge|Firefox|Safari (web browser real)
+            // y NO contiene marker non-browser (VLC|Kodi|okhttp|TiviMate|Lavf|Dalvik).
+            ...((/Chrome|Edge|Firefox|Safari/i.test(String(_ua796 || '')) &&
+                 !/VLC|Kodi|okhttp|TiviMate|Lavf|Dalvik|ExoPlayer/i.test(String(_ua796 || '')))
+                ? {
+                    'Sec-Fetch-Dest': 'video',
+                    'Sec-Fetch-Mode': 'no-cors',
+                    'Sec-Fetch-Site': 'cross-site',
+                  }
+                : {}),
             // C6 (2026-04-30) — Sec-CH-UA-Platform/Mobile derivados del UA real
             // (era hardcoded "Android"/?1 mientras UA era SmartTV → mismatch trivial)
             'Sec-CH-UA-Platform': (function() {
@@ -8552,10 +8619,23 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
         const _prismaTargetBps = _bw796;              // bitrate efectivo del perfil
         const _prismaMaxBps = (cfg.max_bandwidth || 50000000);
         if (/\(reads from /.test(_finalM3U)) {
+            // [HEVC-FIRST CODEC LADDER GUARDRAIL] Si Excel template no resuelve codec_chain_*,
+            // sustituye al valor de cfg (LAB SSOT) o al fallback hardcoded HEVC-first.
+            // Cumple NO-CLAMP: codec strings son texto, no se coercionan.
+            const _cgVideo  = cfg.codec_chain_video        || 'hvc1.2.4.L153.B0,hev1.2.4.L153.B0,avc1.640033,avc1.640028';
+            const _cgAudio  = cfg.codec_chain_audio        || 'ec-3,ac-3,mp4a.40.2,mp4a.40.5';
+            const _cgHdr    = cfg.codec_chain_hdr          || 'hdr10,hlg,sdr';
+            const _cgPref   = cfg.codec_chain_player_pref  || 'hvc1,hev1,h265,avc1,h264';
+            const _cgFamily = cfg.codec_chain_video_family || 'HEVC-MAIN10>HEVC-MAIN>H264-HIGH>H264-MAIN';
             _finalM3U = _finalM3U
                 .replace(/\(reads from [^)]*prisma_floor_min_bandwidth_bps\)/g, String(_prismaFloorBps))
                 .replace(/\(reads from [^)]*prisma_target_bandwidth_bps\)/g, String(_prismaTargetBps))
                 .replace(/\(reads from [^)]*prisma_max_bandwidth_bps\)/g, String(_prismaMaxBps))
+                .replace(/\(reads from [^)]*codec_chain_video_family[^)]*\)/g, _cgFamily)
+                .replace(/\(reads from [^)]*codec_chain_player_pref[^)]*\)/g, _cgPref)
+                .replace(/\(reads from [^)]*codec_chain_video[^)]*\)/g, _cgVideo)
+                .replace(/\(reads from [^)]*codec_chain_audio[^)]*\)/g, _cgAudio)
+                .replace(/\(reads from [^)]*codec_chain_hdr[^)]*\)/g, _cgHdr)
                 // Cualquier otro `(reads from X)` no mapeado → 0 fail-safe (mejor 0
                 // que cadena rota que el player lee como NaN o ignora la directiva).
                 .replace(/\(reads from [^)]+\)/g, '0');
