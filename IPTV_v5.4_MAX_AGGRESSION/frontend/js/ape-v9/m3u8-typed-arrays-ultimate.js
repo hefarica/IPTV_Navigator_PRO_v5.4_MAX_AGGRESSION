@@ -1048,7 +1048,7 @@
             headers: {
                 'User-Agent': getRotatedUserAgent('default'),
                 'Accept': 'application/vnd.apple.mpegurl, application/x-mpegURL, */*',
-                'Accept-Encoding': 'gzip, deflate, br',
+                'Accept-Encoding': 'gzip, deflate',
                 'Connection': 'keep-alive',
                 'X-Forwarded-For': getRandomIp()
             }
@@ -1215,7 +1215,7 @@
                 'X-Forwarded-For': getRandomIp(),
                 'Proxy-Authorization': null,
                 'Referer': null,
-                'Accept-Encoding': 'gzip, deflate, br',
+                'Accept-Encoding': 'gzip, deflate',
                 'Connection': 'keep-alive'
             };
         }
@@ -2239,6 +2239,46 @@
                 }
             }
 
+            // ── #EXT-X-SESSION-DATA — RFC 8216 §4.3.4.4 (CA9 2026-05-01) ──────
+            // Canal RFC estándar para metadata de sesión consumible vía:
+            //   - ExoPlayer: HlsManifest.sessionData
+            //   - hls.js: hls.session.data + custom event listeners
+            //   - Shaka Player: shaka manifest parsing API
+            // RFC §3.2: players que NO la procesan la ignoran silenciosamente.
+            // Doctrina PRISMA metadata injection — canal RFC complementa tags
+            // propietarios X-APE-LAB-* (mantenidos por OMEGA-NO-DELETE) y abre
+            // telemetría/analytics estándar sin requerir parser custom APE-aware.
+            // DATA-ID en formato reverse-DNS (RFC 8216 §4.3.4.4 recomendado).
+            const _sessionDataAdd = (id, val) => {
+                if (val === null || val === undefined || val === '') return;
+                const escaped = String(val).replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+                coreHeader.push(`#EXT-X-SESSION-DATA:DATA-ID="${id}",VALUE="${escaped}"`);
+            };
+            // Lab provenance (replica X-APE-LAB-* en canal RFC consumible)
+            _sessionDataAdd('com.ape.lab.version', lm.lab_version);
+            _sessionDataAdd('com.ape.lab.schema', lm.lab_schema_variant);
+            _sessionDataAdd('com.ape.lab.exported_at', lm.exported_at);
+            _sessionDataAdd('com.ape.lab.bulletproof', lm.bulletproof === true ? 'true' : 'false');
+            _sessionDataAdd('com.ape.lab.filename', lm.labFileName);
+            // Master profile + codec ladder (LAB SSOT)
+            const _ca9MasterId = options.masterProfile || 'P0';
+            _sessionDataAdd('com.ape.profile.master', _ca9MasterId);
+            const _ca9MasterP = options.bulletproof_profiles && options.bulletproof_profiles[_ca9MasterId];
+            if (_ca9MasterP) {
+                _sessionDataAdd('com.ape.profile.master_name', _ca9MasterP.name);
+                _sessionDataAdd('com.ape.profile.master_role', _ca9MasterP.role);
+                const _s = _ca9MasterP.settings || {};
+                _sessionDataAdd('com.ape.codec.chain.player_pref', _s.codec_chain_player_pref);
+                _sessionDataAdd('com.ape.codec.chain.audio', _s.codec_chain_audio);
+                _sessionDataAdd('com.ape.codec.chain.hdr', _s.codec_chain_hdr);
+                _sessionDataAdd('com.ape.codec.chain.video_family', _s.codec_chain_video_family);
+            }
+            // QoS/QoE policy (autopista doctrine — TTFB <200ms manifest)
+            _sessionDataAdd('com.ape.qos.target_mos', '4.8');
+            _sessionDataAdd('com.ape.zapping.max_ms', '800');
+            _sessionDataAdd('com.ape.startup.max_ms', '500');
+            _sessionDataAdd('com.ape.rebuffer.tolerance', '0');
+
             let dynamicHeaders = [];
             const masterProfileId = options.masterProfile || 'P0';
             const labProfile = options.bulletproof_profiles[masterProfileId];
@@ -2376,9 +2416,17 @@
             ]);
             const outLines = [...coreHeader];
             const seenTags = new Set();
+            // CA9 (2026-05-01) — Dedup #EXT-X-SESSION-DATA por DATA-ID per RFC 8216
+            // §4.3.4.4 ("Each DATA-ID/LANGUAGE pair MUST appear at most once").
+            // SESSION-DATA es multi-instance (NO singleton) pero cada DATA-ID es único.
+            const seenSessionDataIds = new Set();
             for (const l of outLines) {
                 const m = l.match(/^(#[A-Z0-9-]+)/);
                 if (m) seenTags.add(m[1]);
+                if (l.startsWith('#EXT-X-SESSION-DATA:')) {
+                    const idM = l.match(/DATA-ID="([^"]+)"/);
+                    if (idM) seenSessionDataIds.add(idM[1]);
+                }
             }
             for (let line of dynamicHeaders) {
                 if (!line) continue;
@@ -2387,6 +2435,12 @@
                 const tag = tagMatch ? tagMatch[1] : line;
                 if (RFC8216_SINGLETON_TAGS.has(tag) && seenTags.has(tag)) {
                     continue; // skip duplicado de tag singleton RFC 8216
+                }
+                // CA9 SESSION-DATA dedup por DATA-ID
+                if (line.startsWith('#EXT-X-SESSION-DATA:')) {
+                    const idM = line.match(/DATA-ID="([^"]+)"/);
+                    if (idM && seenSessionDataIds.has(idM[1])) continue;
+                    if (idM) seenSessionDataIds.add(idM[1]);
                 }
                 seenTags.add(tag);
                 outLines.push(line);
@@ -5065,7 +5119,7 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
         h['X-Request-Id'] = sessionId;
 
         // ─── P. Accept-Encoding premium ───
-        h['Accept-Encoding'] = 'gzip, br, zstd, deflate';
+        h['Accept-Encoding'] = 'gzip, deflate';
         h['Accept-Language'] = 'es-ES,es;q=0.9,en-US;q=0.8,en;q=0.7';
         h['Accept-Charset'] = 'utf-8';
 
@@ -5125,7 +5179,7 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
 
         // ── G2: Content Negotiation & Capabilities (14) ──
         h['Accept'] = 'application/vnd.apple.mpegurl, application/dash+xml, video/mp4, video/mp2t, */*;q=0.8';
-        h['Accept-Encoding'] = 'gzip, deflate, br';
+        h['Accept-Encoding'] = 'gzip, deflate';
         h['Accept-Language'] = 'es-419,es;q=0.9,en-US;q=0.8,en;q=0.7';
         h['X-Device-Capabilities'] = 'hdr10=true, hdr10plus=true, dolbyvision=true, hevc=true, av1=true, lcevc=true, 4k=true';
         h['X-Client-HDR-Support'] = 'HDR10, HDR10Plus, DolbyVisionProfile8, DolbyVisionProfile10, HLG';
@@ -7353,7 +7407,7 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
             // El cliente HTTP (TiviMate ExoPlayer/Kodi libcurl/VLC) los gestiona en
             // su propia capa de transport — no es responsabilidad del manifest.
             // 'Connection': 'keep-alive',
-            'Accept-Encoding': 'gzip, deflate, br, zstd',
+            'Accept-Encoding': 'gzip, deflate',
             'Accept': '*/*',
             'Accept-Language': 'es-419,es;q=0.9,en;q=0.8',
             'Cache-Control': 'no-cache',
