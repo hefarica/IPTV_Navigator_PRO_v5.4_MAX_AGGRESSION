@@ -2431,6 +2431,25 @@
             for (let line of dynamicHeaders) {
                 if (!line) continue;
                 if (line.startsWith('##')) line = line.substring(1);
+
+                // CA10 (2026-05-01) — Migrate orphan #EXT-X-DEFINE:NAME="OMEGA_BUILD"
+                // del LAB nivel1 → #EXT-X-SESSION-DATA:DATA-ID="com.ape.build".
+                // Audit 2026-05-01: el DEFINE OMEGA_BUILD no era referenciado vía
+                // {$OMEGA_BUILD} en ninguna parte del manifest. SESSION-DATA expone
+                // el mismo valor vía API estándar de player (ExoPlayer.HlsManifest.
+                // sessionData) sin requerir variable substitution — que violaría la
+                // doctrina VERBATIM URL (`feedback_never_strip_port_from_baseUrl.md`
+                // + `feedback_universal_url_constructor_7_rules.md`).
+                const _ca10BuildM = line.match(/^#EXT-X-DEFINE:NAME="OMEGA_BUILD",VALUE="([^"]+)"$/);
+                if (_ca10BuildM) {
+                    const _ca10Val = _ca10BuildM[1].replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+                    if (!seenSessionDataIds.has('com.ape.build')) {
+                        outLines.push(`#EXT-X-SESSION-DATA:DATA-ID="com.ape.build",VALUE="${_ca10Val}"`);
+                        seenSessionDataIds.add('com.ape.build');
+                    }
+                    continue; // drop el DEFINE huérfano
+                }
+
                 const tagMatch = line.match(/^(#[A-Z0-9-]+)/);
                 const tag = tagMatch ? tagMatch[1] : line;
                 if (RFC8216_SINGLETON_TAGS.has(tag) && seenTags.has(tag)) {
@@ -2466,7 +2485,7 @@
 ${options.dictatorMode ? `#EXT-X-SESSION-DATA:DATA-ID="exoplayer.load_control",VALUE="{\\"minBufferMs\\":20000,\\"bufferForPlaybackMs\\":5000}"` : ""}
 ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random().toString(36).substring(2)).join("") : ""}
 #EXT-X-CONTENT-STEERING:SERVER-URI="https://steer.ape.net/v1",PATHWAY-ID="PRIMARY"
-#EXT-X-DEFINE:NAME="OMEGA_BUILD",VALUE="v5.4-MAX-AGGRESSION"
+#EXT-X-SESSION-DATA:DATA-ID="com.ape.build",VALUE="v5.4-MAX-AGGRESSION"
 #EXT-X-DEFINE:NAME="OMEGA_EPOCH",VALUE="${timestamp}"
 #EXT-X-DEFINE:NAME="OMEGA_COMPLIANCE",VALUE="HLS-RFC8216BIS+CMAF-LL+HDR10+DV-P81-P10+LCEVC-P4"
 #EXT-X-KEY:METHOD=NONE
