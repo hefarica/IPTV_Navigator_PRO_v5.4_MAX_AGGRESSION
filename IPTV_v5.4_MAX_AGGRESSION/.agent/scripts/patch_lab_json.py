@@ -60,6 +60,24 @@ def patch_lab_json(input_path: Path, output_path: Path) -> dict:
     stats['adaptive_maxheight_60000_replaced'] = n
     text = new_text
 
+    # Fix 4: remove Connection + Keep-Alive entries (hop-by-hop, RFC 7230)
+    # Match the entire object {"key": "Connection", "value": "..."},  WITH optional trailing comma+whitespace
+    pattern_connection = re.compile(
+        r',?\s*\{\s*"key"\s*:\s*"Connection"\s*,\s*"value"\s*:\s*"[^"]*"\s*\}',
+        re.MULTILINE
+    )
+    new_text, n = pattern_connection.subn('', text)
+    stats['connection_removed'] = n
+    text = new_text
+
+    pattern_keepalive = re.compile(
+        r',?\s*\{\s*"key"\s*:\s*"Keep-Alive"\s*,\s*"value"\s*:\s*"[^"]*"\s*\}',
+        re.MULTILINE
+    )
+    new_text, n = pattern_keepalive.subn('', text)
+    stats['keepalive_removed'] = n
+    text = new_text
+
     stats['output_size'] = len(text)
     output_path.write_text(text, encoding='utf-8')
     return stats
@@ -80,6 +98,8 @@ def main(argv):
     print(f'     UA Chrome/91 -> Chrome/119: {stats["ua_chrome91_replaced"]}')
     print(f'     adaptive-maxwidth=60000 -> 7680: {stats["adaptive_maxwidth_60000_replaced"]}')
     print(f'     adaptive-maxheight=60000 -> 4320: {stats["adaptive_maxheight_60000_replaced"]}')
+    print(f'     Connection (hop-by-hop) removed: {stats["connection_removed"]}')
+    print(f'     Keep-Alive (hop-by-hop) removed: {stats["keepalive_removed"]}')
     print(f'   Tamaño: {stats["input_size"]:,} -> {stats["output_size"]:,} bytes')
     print(f'   Output: {out}')
 
