@@ -5205,8 +5205,22 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
         h['X-Film-Grain-Synthesis'] = 'true';
 
         // ── G7: Connection / Auth / DRM (14) ──
-        h['Connection'] = 'keep-alive';
-        h['Keep-Alive'] = 'timeout=300, max=1000';
+        // CA6 (2026-05-01) — Connection/Keep-Alive/Sec-Fetch-*/X-No-Proxy REMOVED.
+        // Anabolic engine inyectaba 6 headers banned via Object.assign al headers
+        // de build_exthttp (l. ~4665), neutralizando defensas C7 (hop-by-hop) y
+        // CA3 (Sec-Fetch-* gating por UA browser) ya en su sitio.
+        //   - Connection/Keep-Alive: hop-by-hop RFC 7230 §6.1 — ruido en EXTHTTP
+        //     (shield NGINX descarta antes del upstream; OkHttp/libcurl/libVLC
+        //     gestionan keep-alive en transport layer propio).
+        //   - Sec-Fetch-*: browser-only — UA VLC/Kodi/TiviMate no los emite
+        //     (mismatch JA3 trivial → 407 desde providers JA3-aware).
+        //   - X-No-Proxy: explicitamente banned en HEADERS_BLACKLIST de
+        //     ape_anti407_module.php:42 ("paradójicamente activa proxies en
+        //     algunos ISPs"). Su remoción ALINEA con la defensa, no la rompe.
+        // Sec-Fetch-* quedan bajo control exclusivo del gate CA3 (build_exthttp
+        // l. ~4127 + _httpPayload l. ~7314) que decide por UA del canal.
+        // h['Connection'] = 'keep-alive';
+        // h['Keep-Alive'] = 'timeout=300, max=1000';
         h['X-Auth-Type'] = 'OMEGA_TOKEN_V5';
         h['X-Token-Expiry'] = String(Date.now() + 86400000);
         h['X-Subscription-Tier'] = 'ULTRA_PREMIUM_4K_HDR';
@@ -5215,10 +5229,10 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
         h['X-License-Server'] = 'https://widevine.omega-crystal.internal/license';
         h['Origin'] = 'https://www.netflix.com';
         h['Referer'] = 'https://www.netflix.com/';
-        h['Sec-Fetch-Dest'] = 'video';
-        h['Sec-Fetch-Mode'] = 'cors';
-        h['Sec-Fetch-Site'] = 'cross-site';
-        h['X-No-Proxy'] = 'true';
+        // h['Sec-Fetch-Dest'] = 'video';
+        // h['Sec-Fetch-Mode'] = 'cors';
+        // h['Sec-Fetch-Site'] = 'cross-site';
+        // h['X-No-Proxy'] = 'true';
 
         // ── G8: QoS / QoE Telemetry (10) ──
         h['X-QoS-Mode'] = 'ULTRA';
@@ -6783,7 +6797,40 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
         const idx = lines.findIndex(l => l.startsWith(prefix));
         if (idx !== -1) { lines[idx] = newLine; } else { lines.push(newLine); }
     }
+    // CA8 (2026-05-01) — Upsert-level banned-headers gate. THE TRUE SPINAL CORD.
+    // upsertExthttp parsea el JSON existente del #EXTHTTP, le añade la key, y re-serializa.
+    // Esto es invocado por LAB JSON paths: player_enslavement.level_3_per_channel.EXTHTTP
+    // (l. ~8471) y _entries('HTT') level_1 (l. ~8460). Cuando el LAB tiene Connection:
+    // keep-alive / Keep-Alive: timeout=300, max=1000 / Sec-Fetch-* / X-No-Proxy / X-APE-*
+    // / X-Forwarded-* / X-Via en player_enslavement, esta función los inyecta DESPUÉS
+    // de que CA7 strip los haya removido de _httpPayload, neutralizando todas las defensas
+    // C2/C7/CA1-CA7 upstream.
+    //
+    // Doctrina: hop-by-hop (RFC 7230 §6.1), forwarded family (banned_patterns.md),
+    // X-APE-* internal (skill outbound rule), X-No-Proxy (HEADERS_BLACKLIST de
+    // ape_anti407_module.php:42), browser-only (Sec-Fetch-* / Sec-CH-UA-* solo si UA
+    // browser real — el gate de CA3 en _httpPayload los emite condicionalmente; este
+    // upsert NUNCA debe sobrescribirlos con valores hardcoded del LAB).
+    const UPSERT_EXTHTTP_BANNED_OUTBOUND = new Set([
+        'Connection', 'Keep-Alive', 'Proxy-Connection',
+        'X-Forwarded-For', 'X-Real-IP', 'X-Client-IP',
+        'X-Forwarded-Proto', 'X-Forwarded-Host', 'X-Forwarded-Port',
+        'X-Via', 'Via', 'Forwarded',
+        'X-APE-Nonce', 'X-APE-SID', 'X-APE-List-Hash', 'X-APE-Timestamp',
+        'X-No-Proxy', 'X-Powered-By', 'Server',
+        'X-AspNet-Version', 'X-AspNetMvc-Version',
+        // Browser-only — CA3 en _httpPayload los gestiona condicionalmente.
+        // upsertExthttp NUNCA debe inyectarlos (overwrite con valor hardcoded LAB).
+        'Sec-Fetch-Dest', 'Sec-Fetch-Mode', 'Sec-Fetch-Site', 'Sec-Fetch-User',
+        'Sec-CH-UA', 'Sec-CH-UA-Mobile', 'Sec-CH-UA-Platform',
+        'Sec-CH-UA-Arch', 'Sec-CH-UA-Bitness', 'Sec-CH-UA-Model',
+        'Sec-CH-UA-Full-Version-List'
+    ]);
+
     function upsertExthttp(lines, key, value) {
+        // CA8 spinal-cord gate — skip silently si el key está banned outbound.
+        if (UPSERT_EXTHTTP_BANNED_OUTBOUND.has(key)) return;
+
         const prefix = `#EXTHTTP:`;
         const idx = lines.findIndex(l => l.startsWith(prefix));
         if (idx !== -1) {
@@ -7390,6 +7437,48 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
         };
         const _phLab = (typeof window !== 'undefined' && window.APE_PROFILES_CONFIG && window.APE_PROFILES_CONFIG.placeholdersMap) || {};
         const _phResolve = Object.assign({}, _phFallback, _phLab);
+
+        // ── CA7 (2026-05-01) — SPINAL CORD DEFENSE: banned-headers final gate ──
+        // Última línea de defensa antes de JSON.stringify → #EXTHTTP outbound.
+        // Múltiples paths upstream (PM Header Injection L4729, build_exthttp Object.assign
+        // L4665, _anab796 spread L7278, _exthttp_base.headers spread L7282, headerOverrides
+        // L4763) pueden reintroducir banned outbound headers, neutralizando defensas
+        // C2/C7/CA1/CA2/CA3/CA6 en sitios upstream específicos.
+        //
+        // Strategy: este gate FILTRA el _httpPayload final independientemente del origen
+        // del header — hop-by-hop (RFC 7230 §6.1), forwarded family, X-APE-* internal,
+        // X-No-Proxy (HEADERS_BLACKLIST de ape_anti407_module.php:42).
+        // Browser-only headers (Sec-Fetch-*, Sec-CH-UA-*) se mantienen SOLO si UA es
+        // browser real (Chrome/Edge/Firefox/Safari sin VLC/Kodi/okhttp/TiviMate marker).
+        //
+        // Esto preserva CA3 gating efectivo y completa C7 doctrina centralmente.
+        const _ca7BannedAbsolute = [
+            'Connection', 'Keep-Alive', 'Proxy-Connection',
+            'X-Forwarded-For', 'X-Real-IP', 'X-Client-IP',
+            'X-Forwarded-Proto', 'X-Forwarded-Host', 'X-Forwarded-Port',
+            'X-Via', 'Via', 'Forwarded',
+            'X-APE-Nonce', 'X-APE-SID', 'X-APE-List-Hash', 'X-APE-Timestamp',
+            'X-No-Proxy', 'X-Powered-By', 'Server',
+            'X-AspNet-Version', 'X-AspNetMvc-Version'
+        ];
+        const _ca7BrowserOnly = [
+            'Sec-Fetch-Dest', 'Sec-Fetch-Mode', 'Sec-Fetch-Site', 'Sec-Fetch-User',
+            'Sec-CH-UA', 'Sec-CH-UA-Mobile', 'Sec-CH-UA-Platform',
+            'Sec-CH-UA-Arch', 'Sec-CH-UA-Bitness', 'Sec-CH-UA-Model',
+            'Sec-CH-UA-Full-Version-List', 'Upgrade-Insecure-Requests'
+        ];
+        const _ca7UA = String(_ua796 || '');
+        const _ca7IsBrowser = /Chrome|Edge|Firefox|Safari/i.test(_ca7UA) &&
+                              !/VLC|Kodi|okhttp|TiviMate|Lavf|Dalvik|ExoPlayer/i.test(_ca7UA);
+        for (const k of _ca7BannedAbsolute) {
+            if (k in _httpPayload) delete _httpPayload[k];
+        }
+        if (!_ca7IsBrowser) {
+            for (const k of _ca7BrowserOnly) {
+                if (k in _httpPayload) delete _httpPayload[k];
+            }
+        }
+
         let _exthttpJson = JSON.stringify(_httpPayload);
         for (const [ph, val] of Object.entries(_phResolve)) {
             if (typeof val !== 'string' && typeof val !== 'number') continue;
