@@ -60,23 +60,41 @@ def patch_lab_json(input_path: Path, output_path: Path) -> dict:
     stats['adaptive_maxheight_60000_replaced'] = n
     text = new_text
 
-    # Fix 4: remove Connection + Keep-Alive entries (hop-by-hop, RFC 7230)
-    # Match the entire object {"key": "Connection", "value": "..."},  WITH optional trailing comma+whitespace
-    pattern_connection = re.compile(
+    # Fix 4a: remove array-style {"key": "Connection", "value": "..."}
+    pattern_connection_arr = re.compile(
         r',?\s*\{\s*"key"\s*:\s*"Connection"\s*,\s*"value"\s*:\s*"[^"]*"\s*\}',
         re.MULTILINE
     )
-    new_text, n = pattern_connection.subn('', text)
-    stats['connection_removed'] = n
+    new_text, n_arr_c = pattern_connection_arr.subn('', text)
     text = new_text
 
-    pattern_keepalive = re.compile(
+    pattern_keepalive_arr = re.compile(
         r',?\s*\{\s*"key"\s*:\s*"Keep-Alive"\s*,\s*"value"\s*:\s*"[^"]*"\s*\}',
         re.MULTILINE
     )
-    new_text, n = pattern_keepalive.subn('', text)
-    stats['keepalive_removed'] = n
+    new_text, n_arr_ka = pattern_keepalive_arr.subn('', text)
     text = new_text
+
+    # Fix 4b: remove dict-style "Connection": "value" line (with surrounding commas/whitespace)
+    # Pattern handles both: ",Connection..." (middle/last) and "Connection..." (first key)
+    # Remove the entry plus its trailing comma+newline if not last; or preceding comma if last.
+    # Strategy: match `,?\s*"KEY"\s*:\s*"[^"]*"\s*,?` - remove. Then clean trailing `,}` if produced.
+    pattern_connection_dict = re.compile(
+        r',\s*"Connection"\s*:\s*"[^"]*"|"Connection"\s*:\s*"[^"]*"\s*,',
+        re.MULTILINE
+    )
+    new_text, n_dict_c = pattern_connection_dict.subn('', text)
+    text = new_text
+
+    pattern_keepalive_dict = re.compile(
+        r',\s*"Keep-Alive"\s*:\s*"[^"]*"|"Keep-Alive"\s*:\s*"[^"]*"\s*,',
+        re.MULTILINE
+    )
+    new_text, n_dict_ka = pattern_keepalive_dict.subn('', text)
+    text = new_text
+
+    stats['connection_removed'] = n_arr_c + n_dict_c
+    stats['keepalive_removed'] = n_arr_ka + n_dict_ka
 
     stats['output_size'] = len(text)
     output_path.write_text(text, encoding='utf-8')
