@@ -6852,7 +6852,17 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
             return !!cfg.hdr_support;
         })();
         const _hdrMode = _isHDR ? 'PQ' : 'SDR';
-        const _hdrNits = _isHDR ? 5000 : 300;
+        // Stage 4 (2026-05-01) — _hdrNits canónico desde perfil (resuelve C5 regresión)
+        // Antes: hardcoded 5000 si HDR / 300 si SDR → contradicción con X-Video-Range=SDR
+        // Ahora: lee nits_target del perfil (P0=4000/P1=1500/P2=1000/P3=400/P4=100/P5=100)
+        // Si LAB no provee, fallback realista 1000/100 (no 5000/300).
+        const _hdrNits = (() => {
+            const pmNits = (typeof window !== 'undefined' && window.APE_PROFILES_CONFIG?.getProfile)
+                ? parseInt(window.APE_PROFILES_CONFIG.getProfile(profile)?.settings?.nits_target, 10)
+                : NaN;
+            if (Number.isFinite(pmNits) && pmNits > 0) return pmNits;
+            return _isHDR ? 1000 : 100;
+        })();
         const _vmaf = cfg.vmaf_target || 95;
         // ── BUFFER VALUES — SSOT LAB FIRST ────────────────────────────────────
         // Doctrina: el LAB Excel calibra buffer_ms/buffer_mb/buffer_segments por perfil.
@@ -6944,7 +6954,17 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
         // lines.push(`#EXTVLCOPT:http-proxy-pwd=`);
         lines.push(`#EXTVLCOPT:sout-keep=true`);
         lines.push(`#EXTVLCOPT:sout-mux-caching=${_buf796}`);
-        lines.push(`#EXTVLCOPT:codec=any`);
+        // Stage 4 P5 (2026-05-01): codec priority por perfil (HEVC > AV1 > H264 según tier)
+        //   P0/P1 (8K/4K HDR): hevc,av1,h264   - tier alto, AV1 fallback moderno
+        //   P2/P3 (4K/FHD):    hevc,h264       - tier medio, HEVC + AVC
+        //   P4/P5 (HD/SD):     h264            - tier bajo, AVC universal
+        const _codecPriority = (() => {
+            const p = String(profile || 'P3').toUpperCase();
+            if (p === 'P0' || p === 'P1') return 'hevc,av1,h264';
+            if (p === 'P2' || p === 'P3') return 'hevc,h264';
+            return 'h264';
+        })();
+        lines.push(`#EXTVLCOPT:codec=${_codecPriority}`);
         lines.push(`#EXTVLCOPT:avcodec-hw=any`);
         lines.push(`#EXTVLCOPT:avcodec-threads=0`);
         lines.push(`#EXTVLCOPT:avcodec-fast=true`);
@@ -6975,12 +6995,15 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
             'hlg': 'HLG',
             'sdr': 'SDR'
         })[_pmHdrCanonical] || 'SDR';
+        // Stage 4 P2 (2026-05-01): video-filter chain con sharpen + deband por tier
+        //   HDR (PQ/HLG): zscale + gradfun (deband, evita banding HDR) + unsharp sutil
+        //   SDR: zscale + unsharp (sharpen +0.4) + hqdn3d (NR temporal sin blur)
         if (_isPqHdr) {
-            lines.push(`#EXTVLCOPT:video-filter=zscale=transfer=st2084:chromal=topleft:matrix=2020_ncl:primaries=2020:range=limited`);
+            lines.push(`#EXTVLCOPT:video-filter=zscale=transfer=st2084:chromal=topleft:matrix=2020_ncl:primaries=2020:range=limited,gradfun=radius=12:strength=0.6,unsharp=lx=3:ly=3:la=0.3`);
         } else if (_isHlgHdr) {
-            lines.push(`#EXTVLCOPT:video-filter=zscale=transfer=arib-std-b67:chromal=topleft:matrix=2020_ncl:primaries=2020:range=limited`);
+            lines.push(`#EXTVLCOPT:video-filter=zscale=transfer=arib-std-b67:chromal=topleft:matrix=2020_ncl:primaries=2020:range=limited,gradfun=radius=10:strength=0.5,unsharp=lx=3:ly=3:la=0.3`);
         } else {
-            lines.push(`#EXTVLCOPT:video-filter=zscale=transfer=bt1886:matrix=bt709:primaries=bt709:range=limited`);
+            lines.push(`#EXTVLCOPT:video-filter=zscale=transfer=bt1886:matrix=bt709:primaries=bt709:range=limited,unsharp=lx=3:ly=3:la=0.4,hqdn3d=0:0:3:3`);
         }
         lines.push(`#EXTVLCOPT:video-hdr=${_isAnyHdr ? 'true' : 'false'}`);
         lines.push(`#EXTVLCOPT:video-hdr-nits=${_pmNitsTarget}`);
@@ -6993,7 +7016,10 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
         lines.push(`#EXTVLCOPT:video-bt2020=${_isAnyHdr ? 'true' : 'false'}`);
         lines.push(`#EXTVLCOPT:video-fullrange=false`);
         lines.push(`#EXTVLCOPT:video-chroma-loc=topleft`);
-        lines.push(`#EXTVLCOPT:video-deinterlace=0`);
+        // Stage 4 P6 (2026-05-01): deinterlace auto (era 0 universal). Algunos canales
+        // latam llegan 1080i — apagado deja jaggies horizontales. Auto detecta y aplica
+        // yadif2x si es interlaced; pasa-through si ya es progresivo (cero overhead).
+        lines.push(`#EXTVLCOPT:video-deinterlace=1`);
         lines.push(`#EXTVLCOPT:video-deinterlace-mode=yadif2x`);
         lines.push(`#EXTVLCOPT:video-fps=${_fps796}`);
         lines.push(`#EXTVLCOPT:video-display-fps=${_fps796}`);
