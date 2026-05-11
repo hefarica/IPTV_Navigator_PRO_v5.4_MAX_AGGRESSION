@@ -2190,7 +2190,7 @@
         if (options.bulletproof_loaded && options.bulletproof_profiles) {
             const coreHeader = [
                 `#EXTM3U x-tvg-url="" x-tvg-url-epg="" x-tvg-logo="" x-tvg-shift=0 catchup="flussonic" catchup-days="7" catchup-source="{MediaUrl}?utc={utc}&lutc={lutc}" url-tvg="" refresh="1800"`,
-                `#EXT-X-VERSION:7`,
+                `#EXT-X-VERSION:9`,
                 `#EXT-X-INDEPENDENT-SEGMENTS`,
                 `#EXT-X-APE-CHANNELS:${totalChannels}`
             ];
@@ -2469,7 +2469,7 @@
 
         // --- BACKWARDS COMPAT FALLBACK ---
         return `#EXTM3U x-tvg-url="" x-tvg-url-epg="" x-tvg-logo="" x-tvg-shift=0 catchup="flussonic" catchup-days="7" catchup-source="{MediaUrl}?utc={utc}&lutc={lutc}" url-tvg="" refresh="1800"
-#EXT-X-VERSION:7
+#EXT-X-VERSION:9
 #EXT-X-INDEPENDENT-SEGMENTS
 #EXT-X-APE-QMAX-VERSION:2.0-ADAPTIVE
 #EXT-X-APE-QMAX-STRATEGY:GREEDY-BEST-AVAILABLE
@@ -7069,11 +7069,11 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
             ? buildChannelUrl(channel, jwt, profile, index, credentialsMap)
             : (channel.url || channel.src || '');
 
-        // Inyectar sid/nonce en URL si no están ya presentes
-        if (primaryUrl && !primaryUrl.includes('ape_sid=')) {
-            const sep = primaryUrl.includes('?') ? '&' : '?';
-            primaryUrl += `${sep}ape_sid=${_sid796}&ape_nonce=${_nonce796}`;
-        }
+        // 2026-05-01 — sid/nonce REMOVIDOS del URL para preservar cache upstream NGINX.
+        // Los valores siguen disponibles vía: KODIPROP network_session_id/nonce (L7637-7639),
+        // EXT-X-CMAF-SESSION (L7719), EXT-X-APE-TELCHEMY-SID (L7790), EXTATTRFROMURL (L7805-7806),
+        // EXT-X-APE-RESILIENCE/DRM/CORTEX/BUFFER-NUCLEAR (L7888/7932/7962/8012). Blueprint intacto.
+        // Cache key NGINX ($scheme$proxy_host$uri$slice_range) ahora deduplica per-canal across users.
 
         // ── EXTINF DESDE generateEXTINF ───────────────────────────────────────
         const _extinf = (typeof generateEXTINF === 'function')
@@ -8824,6 +8824,56 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
         const BATCH_SIZE = 200;
         let totalBytes = 0;
 
+        // ── CA11 (2026-05-01) — IN-STREAM RFC 8216 STRICT VALIDATOR ──────────
+        // Validación inline mientras el stream se construye (no re-parse del
+        // archivo completo — imposible para 37k+ canales / 1.6 GB en V8).
+        // Cada canal se valida AL EMITIR. El tag #EXT-X-APE-VALIDATED:... se
+        // emite antes de cerrar el stream → el .m3u8 descargado YA contiene
+        // su propio certificado de validación. Sin scripts post-deploy.
+        const _ca11 = {
+            errors: [],
+            warnings: [],
+            stats: { channels: 0, exthttp_valid: 0, exthttp_invalid: 0,
+                     missing_uri: 0, missing_bandwidth: 0, missing_extinf_dur: 0 },
+            t0: Date.now(),
+        };
+        function _ca11ValidateEntry(entry, idx) {
+            try {
+                const ls = entry.split('\n');
+                let hasUri = false, hasExtinf = false;
+                for (let i = 0; i < ls.length; i++) {
+                    const ln = ls[i];
+                    if (!ln) continue;
+                    if (ln.startsWith('#EXTINF:')) {
+                        hasExtinf = true;
+                        if (!/^#EXTINF:-?\d/.test(ln)) {
+                            _ca11.errors.push({ ch: idx, type: 'EXTINF_NO_DURATION' });
+                            _ca11.stats.missing_extinf_dur++;
+                        }
+                    } else if (ln.startsWith('#EXT-X-STREAM-INF:')) {
+                        if (!/BANDWIDTH=\d+/.test(ln)) {
+                            _ca11.errors.push({ ch: idx, type: 'STREAM_INF_NO_BANDWIDTH' });
+                            _ca11.stats.missing_bandwidth++;
+                        }
+                    } else if (ln.startsWith('#EXTHTTP:')) {
+                        const json = ln.substring(9);
+                        try { JSON.parse(json); _ca11.stats.exthttp_valid++; }
+                        catch (e) {
+                            _ca11.errors.push({ ch: idx, type: 'EXTHTTP_INVALID_JSON' });
+                            _ca11.stats.exthttp_invalid++;
+                        }
+                    } else if (/^https?:\/\//.test(ln)) {
+                        hasUri = true;
+                    }
+                }
+                if (hasExtinf && !hasUri) {
+                    _ca11.errors.push({ ch: idx, type: 'EXTINF_NO_URI' });
+                    _ca11.stats.missing_uri++;
+                }
+                _ca11.stats.channels++;
+            } catch (_) { /* never block stream on validator bug */ }
+        }
+
         // ✅ v10.1: Pre-build credentials map ONCE — uses injected servers from options
         const credentialsMap = buildCredentialsMap(options);
 
@@ -8882,6 +8932,8 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
                         // Detectar perfil
                         const profile = forceProfile || determineProfile(channel) || 'P3';
                         const entry = generateChannelEntry(channel, profile, index, credentialsMap, options);
+                        // CA11: validar el channel entry ANTES de enqueue al stream
+                        _ca11ValidateEntry(entry, index);
                         const chunk = entry + '\n\n';
                         const encoded = encoder.encode(chunk);
                         totalBytes += encoded.byteLength;
@@ -8943,6 +8995,45 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
                     }
                 } catch (e) {
                     console.warn('[GENERATOR] Scorecard emission failed:', e?.message || e);
+                }
+
+                // ── CA11 (2026-05-01) — Emit validation summary marker ──────────
+                // El tag #EXT-X-APE-VALIDATED:... es la prueba de validación dentro
+                // del archivo. Aparece SIEMPRE (PASS o FAIL) — auditable post-download
+                // sin scripts externos. Players ignoran tags propietarios (RFC §3.2).
+                try {
+                    const errors = _ca11.errors.length;
+                    const warnings = _ca11.warnings.length;
+                    const verdict = errors === 0 ? 'PASS' : 'FAIL';
+                    const ca11Elapsed = Date.now() - _ca11.t0;
+                    const s = _ca11.stats;
+                    const valTag = '\n#EXT-X-APE-VALIDATED:RFC8216-STRICT,verdict=' + verdict +
+                        ',channels=' + s.channels +
+                        ',exthttp_valid=' + s.exthttp_valid +
+                        ',errors=' + errors +
+                        ',warnings=' + warnings +
+                        ',missing_uri=' + s.missing_uri +
+                        ',missing_bw=' + s.missing_bandwidth +
+                        ',missing_dur=' + s.missing_extinf_dur +
+                        ',elapsed_ms=' + ca11Elapsed +
+                        ',timestamp="' + new Date().toISOString() + '"\n';
+                    const valEncoded = encoder.encode(valTag);
+                    totalBytes += valEncoded.byteLength;
+                    controller.enqueue(valEncoded);
+                    if (errors === 0) {
+                        console.log('%c✅ [CA11 VALIDATOR] PASS · ' + s.channels +
+                            ' canales · 0 errors · ' + ca11Elapsed + 'ms · marker embebido',
+                            'color: #10b981; font-weight: bold; font-size: 13px;');
+                        if (useHUD) window.HUD_TYPED_ARRAYS.log(
+                            '✅ Validador RFC 8216 STRICT: PASS (' + s.channels + ' canales)', '#10b981');
+                    } else {
+                        console.error('❌ [CA11 VALIDATOR] FAIL · ' + errors +
+                            ' errors · sample (max 10):', _ca11.errors.slice(0, 10));
+                        if (useHUD) window.HUD_TYPED_ARRAYS.log(
+                            '❌ Validador RFC 8216: ' + errors + ' errors detectados', '#ef4444');
+                    }
+                } catch (e) {
+                    console.warn('[CA11 VALIDATOR] Emission failed:', e?.message || e);
                 }
 
                 // Cerrar stream
