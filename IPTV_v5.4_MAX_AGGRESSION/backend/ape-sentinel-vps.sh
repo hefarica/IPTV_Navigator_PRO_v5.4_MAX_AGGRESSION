@@ -152,6 +152,30 @@ fix_qos() {
     [ "$(sysctl -n net.core.somaxconn 2>/dev/null)" -lt 65535 ] 2>/dev/null && sysctl -w net.core.somaxconn=65535 >/dev/null 2>&1
 }
 
+# ─── L9: ONN 4K GUARDIAN WATCHDOG ────────────────────────────────────────
+ONN_IP="192.168.10.28:5555"
+fix_onn_guardian() {
+    # Check if ADB is reachable
+    local adb_ok=$(timeout 5 adb -s "$ONN_IP" shell "cat /data/local/tmp/ape-ram-guardian.lock 2>/dev/null" 2>/dev/null)
+    if [ -z "$adb_ok" ]; then
+        # ADB unreachable — try to reconnect
+        timeout 5 adb connect "$ONN_IP" >/dev/null 2>&1
+        sleep 2
+        adb_ok=$(timeout 5 adb -s "$ONN_IP" shell "cat /data/local/tmp/ape-ram-guardian.lock 2>/dev/null" 2>/dev/null)
+        [ -z "$adb_ok" ] && { log "L9_WARN: ONN 4K ADB unreachable"; return; }
+    fi
+
+    # Check if guardian PID is alive
+    local alive=$(timeout 5 adb -s "$ONN_IP" shell "kill -0 $adb_ok 2>/dev/null && echo YES || echo NO" 2>/dev/null)
+    if [ "$alive" != "YES" ]; then
+        log "L9_ATK: ONN Guardian DEAD (was PID $adb_ok) → restarting"
+        timeout 10 adb -s "$ONN_IP" shell "rm -f /data/local/tmp/ape-ram-guardian.lock; chmod 755 /data/local/tmp/ape-ram-guardian.sh; nohup /data/local/tmp/ape-ram-guardian.sh daemon > /dev/null 2>&1 &" 2>/dev/null
+        sleep 5
+        local newpid=$(timeout 5 adb -s "$ONN_IP" shell "cat /data/local/tmp/ape-ram-guardian.lock 2>/dev/null" 2>/dev/null)
+        [ -n "$newpid" ] && log "L9_OK: ONN Guardian RESTORED (PID $newpid)" || log "L9_FAIL: ONN Guardian won't start"
+    fi
+}
+
 # ─── L8: PRIME TIME ─────────────────────────────────────────────────────
 is_prime() {
     local h=$(date -u '+%H' | sed 's/^0//')
@@ -202,8 +226,9 @@ main() {
         # Every 3 cycles (30s): providers
         [ $((cycle % 3)) -eq 0 ] && fix_providers
 
-        # Every 6 cycles (60s): QoS enforcement
+        # Every 6 cycles (60s): QoS enforcement + ONN Guardian watchdog
         [ $((cycle % 6)) -eq 0 ] && fix_qos
+        [ $((cycle % 6)) -eq 0 ] && fix_onn_guardian
 
         # Every 30 cycles (5min): full status report
         [ $((cycle % 30)) -eq 0 ] && emit_status

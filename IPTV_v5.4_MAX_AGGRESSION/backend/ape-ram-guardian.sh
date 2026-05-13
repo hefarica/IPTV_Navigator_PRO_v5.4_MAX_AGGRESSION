@@ -198,7 +198,7 @@ enforce_quality_manifest() {
     local fps=$(settings get global user_preferred_refresh_rate 2>/dev/null)
     [ "$fps" != "60.0" ] && { settings put global user_preferred_refresh_rate 60.0 2>/dev/null; fixed=$((fixed+1)); }
 
-    # ── HDR: Passthrough (NEVER convert) ──
+    # ── HDR: Passthrough (Android rejects FORCE on this TV) ──
     local hdr=$(settings get global hdr_conversion_mode 2>/dev/null)
     [ "$hdr" != "0" ] && { settings put global hdr_conversion_mode 0 2>/dev/null; fixed=$((fixed+1)); }
     local hdr_out=$(settings get global hdr_output_type 2>/dev/null)
@@ -214,7 +214,19 @@ enforce_quality_manifest() {
     local sdr_hdr=$(settings get global sdr_brightness_in_hdr 2>/dev/null)
     [ "$sdr_hdr" != "100" ] && { settings put global sdr_brightness_in_hdr 100 2>/dev/null; fixed=$((fixed+1)); }
     local peak=$(settings get global peak_luminance 2>/dev/null)
-    [ "$peak" != "1000" ] && { settings put global peak_luminance 1000 2>/dev/null; fixed=$((fixed+1)); }
+    # Try 8000 but accept 1000 if Android clamps it (EDID limit)
+    if [ "$peak" != "8000" ] && [ "$peak" != "1000" ]; then
+        settings put global peak_luminance 8000 2>/dev/null; fixed=$((fixed+1))
+    elif [ "$peak" = "1000" ]; then
+        settings put global peak_luminance 8000 2>/dev/null
+        sleep 1
+        local recheck=$(settings get global peak_luminance 2>/dev/null)
+        if [ "$recheck" = "1000" ]; then
+            : # Android clamped it — accept 1000, don't count as drift
+        else
+            fixed=$((fixed+1))
+        fi
+    fi
 
     # ── COLOR: HDR mode, max depth ──
     local cm=$(settings get global display_color_mode 2>/dev/null)
