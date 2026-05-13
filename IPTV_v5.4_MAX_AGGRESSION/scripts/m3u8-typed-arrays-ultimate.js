@@ -958,22 +958,25 @@
             // ───────────────────────────────────────────────────────────────────
             '#EXTVLCOPT:http-header:Connection=keep-alive',
             '#EXTVLCOPT:http-header:Keep-Alive=timeout=300, max=1000',
-            '#EXTVLCOPT:http-header:Range=bytes=0-',
-            '#EXTVLCOPT:http-header:If-None-Match=*',
+            // C8 (2026-05-11) — eliminados 6 headers tóxicos. Mismo bug que EXTHTTP:
+            // If-None-Match:* → 304+0B → okhttp "unexpected end of stream".
+            // Ver memoria feedback_exthttp_traps.md trampa #9.
+            // '#EXTVLCOPT:http-header:Range=bytes=0-',
+            // '#EXTVLCOPT:http-header:If-None-Match=*',
             '#EXTVLCOPT:http-header:Sec-Fetch-Dest=media',
             '#EXTVLCOPT:http-header:Sec-Fetch-Mode=no-cors',
             '#EXTVLCOPT:http-header:Sec-Fetch-Site=same-origin',
             '#EXTVLCOPT:http-header:Sec-Fetch-User=?0',
             '#EXTVLCOPT:http-header:DNT=0',
             '#EXTVLCOPT:http-header:Sec-GPC=0',
-            '#EXTVLCOPT:http-header:Upgrade-Insecure-Requests=0',
-            '#EXTVLCOPT:http-header:TE=trailers, gzip, deflate',
+            // '#EXTVLCOPT:http-header:Upgrade-Insecure-Requests=0',
+            // '#EXTVLCOPT:http-header:TE=trailers, gzip, deflate',
             '#EXTVLCOPT:http-header:Accept-Charset=utf-8, iso-8859-1;q=0.5',
             '#EXTVLCOPT:http-header:Origin=http://line.tivi-ott.net',
             '#EXTVLCOPT:http-header:Referer=http://line.tivi-ott.net/',
             '#EXTVLCOPT:http-header:X-Requested-With=XMLHttpRequest',
-            `#EXTVLCOPT:http-header:If-Modified-Since=${new Date(Date.now() - 86400000).toUTCString()}`,
-            '#EXTVLCOPT:http-header:Priority=u=1, i',
+            // `#EXTVLCOPT:http-header:If-Modified-Since=${new Date(Date.now() - 86400000).toUTCString()}`,
+            // '#EXTVLCOPT:http-header:Priority=u=1, i',
 
             // ───────────────────────────────────────────────────────────────────
             // SECCIÓN 2: CACHÉ Y SINCRONIZACIÓN (9 líneas)

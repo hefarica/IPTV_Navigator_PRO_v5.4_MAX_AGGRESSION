@@ -1,0 +1,38 @@
+# ============================================================================
+# APE v15 ULTIMATE - Ansible Inventory
+# ============================================================================
+# Define your target servers here
+# ============================================================================
+
+---
+all:
+  children:
+    ape_servers:
+      hosts:
+        # Example: Production server
+        # ape-prod-01:
+        #   ansible_host: 192.168.1.100
+        #   ansible_user: ubuntu
+        #   ansible_ssh_private_key_file: ~/.ssh/ape_prod.pem
+        
+        # Example: Staging server
+        # ape-staging-01:
+        #   ansible_host: 192.168.1.101
+        #   ansible_user: ubuntu
+        
+        # Local testing (localhost via Docker)
+        localhost:
+          ansible_connection: local
+          ansible_python_interpreter: "{{ ansible_playbook_python }}"
+
+  vars:
+    # Global variables for all hosts
+    ape_version: "15.0.1"
+    ape_port: 8080
+    redis_port: 6379
+    
+    # Docker settings
+    docker_compose_version: "2.23.0"
+    
+    # Ansible settings
+    ansible_become: yes

@@ -1,0 +1,63 @@
+# ═══════════════════════════════════════════════════════════════
+# 🐳 APE v15 + Redis - Docker Compose
+# IPTV Navigator PRO - Backend Stack
+# ═══════════════════════════════════════════════════════════════
+# 
+# USO:
+#   docker-compose up -d        → Levantar servicios
+#   docker-compose down         → Detener servicios
+#   docker-compose logs -f      → Ver logs en tiempo real
+#   docker-compose ps           → Ver estado de contenedores
+#
+# ═══════════════════════════════════════════════════════════════
+
+version: '3.8'
+
+services:
+  # ─────────────────────────────────────────────────────────────
+  # Redis Server - Almacenamiento de sesiones y métricas APE
+  # ─────────────────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: ape-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ─────────────────────────────────────────────────────────────
+  # Redis Commander - UI Web para Redis (opcional, desarrollo)
+  # Acceso: http://localhost:8081
+  # ─────────────────────────────────────────────────────────────
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: ape-redis-ui
+    restart: unless-stopped
+    environment:
+      - REDIS_HOSTS=local:redis:6379
+    ports:
+      - "8081:8081"
+    depends_on:
+      - redis
+
+volumes:
+  redis_data:
+    driver: local
+
+# ═══════════════════════════════════════════════════════════════
+# NOTAS:
+# 
+# 1. Redis corre en puerto 6379 (estándar)
+# 2. Redis Commander en 8081 (UI visual para ver keys)
+# 3. Los datos persisten en volumen redis_data
+# 4. Máximo 256MB RAM con política LRU
+# 5. APE server corre local (Python) y conecta a localhost:6379
+#
+# ═══════════════════════════════════════════════════════════════

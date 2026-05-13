@@ -1,0 +1,3596 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8" />
+  <title>IPTV Navigator PRO v12.0 ELITE</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <!-- Ranking Score Styles v1.0 -->
+  <link rel="stylesheet" href="ranking-score-styles.css">
+  <!-- Ultra Headers Modal Styles v1.0 -->
+  <link rel="stylesheet" href="headers-modal-styles.css">
+  <link rel="stylesheet" href="css/prefetch-optimizer.css">
+  <style>
+    :root {
+      --bg: #050816;
+      --card: rgba(20, 24, 40, 0.92);
+      --card-soft: rgba(20, 24, 40, 0.7);
+      --accent: #38bdf8;
+      --accent-soft: rgba(56, 189, 248, 0.2);
+      --accent-strong: #0ea5e9;
+      --danger: #f97373;
+      --ok: #4ade80;
+      --text-main: #e5e7eb;
+      --text-muted: #9ca3af;
+      --border-soft: rgba(148, 163, 184, 0.25);
+      --radius-xl: 18px;
+      --radius-full: 999px;
+      --shadow-soft: 0 22px 60px rgba(15, 23, 42, 0.85);
+      --shadow-inner: inset 0 0 0 1px rgba(148, 163, 184, 0.25);
+      --transition-fast: 0.18s ease-out;
+      --transition-slow: 0.28s ease-out;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text", "Roboto", sans-serif;
+      background: radial-gradient(circle at top, #0f172a 0, #020617 45%, #000 100%);
+      color: var(--text-main);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-start;
+      align-items: center;
+      padding: 24px 12px 32px;
+    }
+
+    .app-shell {
+      width: 100%;
+      max-width: 1680px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+      background: radial-gradient(circle at top left, rgba(56, 189, 248, 0.12), transparent 55%),
+        radial-gradient(circle at bottom right, rgba(56, 189, 248, 0.08), transparent 55%),
+        linear-gradient(135deg, rgba(15, 23, 42, 0.96), rgba(3, 7, 18, 0.98));
+      border-radius: 24px;
+      padding: 32px;
+      box-shadow: var(--shadow-soft);
+      border: 1px solid rgba(148, 163, 184, 0.25);
+      -webkit-backdrop-filter: blur(24px);
+      backdrop-filter: blur(24px);
+      flex-grow: 1;
+    }
+
+    main {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      margin-top: 14px;
+      width: 100%;
+      flex-grow: 1;
+    }
+
+    .panel {
+      background: var(--card);
+      border-radius: 20px;
+      border: 1px solid var(--border-soft);
+      box-shadow: var(--shadow-soft);
+      padding: 32px;
+      position: relative;
+      overflow: hidden;
+      min-height: 60vh;
+    }
+
+    header.app-header {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 14px;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .title-block h1 {
+      margin: 0;
+      font-size: 1.4rem;
+      letter-spacing: 0.04em;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: #c0c7d0;
+    }
+
+    .title-pill {
+      font-size: 0.7rem;
+      font-weight: 600;
+      padding: 4px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(56, 189, 248, 0.35);
+      background: radial-gradient(circle at top, rgba(56, 189, 248, 0.22), transparent 65%);
+      text-transform: uppercase;
+      letter-spacing: 0.16em;
+      color: var(--accent);
+    }
+
+    .title-sub {
+      margin-top: 4px;
+      color: var(--text-muted);
+      font-size: 0.86rem;
+      max-width: 540px;
+    }
+
+    .badge-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      font-size: 0.7rem;
+      justify-content: flex-end;
+    }
+
+    .badge {
+      padding: 4px 9px;
+      border-radius: 999px;
+      border: 1px solid rgba(148, 163, 184, 0.35);
+      background: linear-gradient(135deg, rgba(15, 23, 42, 0.92), rgba(15, 23, 42, 0.6));
+      color: var(--text-muted);
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .badge-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 999px;
+      background: var(--ok);
+      box-shadow: 0 0 0 4px rgba(74, 222, 128, 0.26);
+    }
+
+    .badge-dot.warn {
+      background: var(--accent);
+      box-shadow: 0 0 0 4px rgba(56, 189, 248, 0.22);
+    }
+
+    .tabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      background: radial-gradient(circle at top, rgba(15, 23, 42, 0.98), rgba(15, 23, 42, 0.85));
+      border-radius: var(--radius-full);
+      padding: 6px 12px;
+      border: 1px solid rgba(148, 163, 184, 0.45);
+      box-shadow: 0 18px 30px rgba(15, 23, 42, 0.75);
+      width: 100%;
+    }
+
+    .tabs::-webkit-scrollbar {
+      display: none;
+    }
+
+    .tab-button {
+      flex: 1 0 auto;
+      min-width: max-content;
+      border-radius: 999px;
+      border: none;
+      padding: 8px 16px;
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.11em;
+      color: var(--text-muted);
+      background: transparent;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      position: relative;
+      overflow: hidden;
+      transition: all 0.2s ease;
+    }
+
+    .tab-button::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at top, rgba(56, 189, 248, 0.24), transparent 65%);
+      opacity: 0;
+      transition: opacity var(--transition-slow);
+    }
+
+    .tab-button span {
+      position: relative;
+      z-index: 1;
+    }
+
+    .tab-button:hover {
+      color: var(--accent);
+      transform: translateY(-1px);
+    }
+
+    .tab-button:hover::before {
+      opacity: 0.7;
+    }
+
+    .tab-button.active {
+      background: radial-gradient(circle at top, rgba(56, 189, 248, 0.22), transparent 65%);
+      color: var(--accent);
+      border: 1px solid rgba(56, 189, 248, 0.35);
+      box-shadow: 0 0 20px rgba(56, 189, 248, 0.45), inset 0 0 12px rgba(56, 189, 248, 0.15);
+    }
+
+    .tab-button.active::before {
+      opacity: 0;
+    }
+
+    .panel::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at top left, rgba(56, 189, 248, 0.14), transparent 60%);
+      opacity: 0.7;
+      pointer-events: none;
+    }
+
+    .panel-inner {
+      position: relative;
+      z-index: 1;
+    }
+
+    .panel-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+      gap: 10px;
+    }
+
+    .panel-title {
+      font-size: 0.92rem;
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+      color: var(--text-muted);
+    }
+
+    .pill {
+      border-radius: 999px;
+      border: 1px solid rgba(148, 163, 184, 0.45);
+      padding: 3px 8px;
+      font-size: 0.7rem;
+      color: var(--text-muted);
+    }
+
+    .field-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    .field label {
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+      color: var(--text-muted);
+    }
+
+    .input,
+    select {
+      border-radius: 12px;
+      border: 1px solid rgba(148, 163, 184, 0.5);
+      background: #0f172a;
+      /* Azul oscuro sólido para evitar transparencias molestas */
+      color: var(--text-main);
+      padding: 8px 9px;
+      font-size: 0.82rem;
+      outline: none;
+      transition: border var(--transition-fast), box-shadow var(--transition-fast), background var(--transition-fast);
+      appearance: none;
+      /* Reset nativo */
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%239ca3af'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 10px center;
+      background-size: 14px;
+      padding-right: 32px;
+    }
+
+    /* 🛡️ V4.20.5: Fix para visibilidad de listas desplegables */
+    select option {
+      background-color: #1e293b;
+      /* Fondo azulado oscuro temático */
+      color: #f8fafc;
+      /* Texto casi blanco */
+      padding: 10px;
+    }
+
+    .input:focus,
+    select:focus {
+      border-color: var(--accent-strong);
+      box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.6);
+      background-color: #1e293b;
+    }
+
+    .button-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 4px;
+    }
+
+    .btn {
+      border-radius: 999px;
+      border: none;
+      padding: 7px 15px;
+      font-size: 0.8rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      background: linear-gradient(135deg, var(--accent), var(--accent-strong));
+      color: #020617;
+      box-shadow: 0 12px 30px rgba(56, 189, 248, 0.7);
+      transition: transform 0.13s ease-out, box-shadow 0.13s ease-out, opacity var(--transition-fast);
+    }
+
+    .btn span.icon {
+      font-size: 1rem;
+    }
+
+    .btn.secondary {
+      background: transparent;
+      color: var(--text-muted);
+      border: 1px solid rgba(148, 163, 184, 0.65);
+      box-shadow: 0 8px 22px rgba(15, 23, 42, 0.9);
+    }
+
+    .btn-primary {
+      border-radius: 999px;
+      border: none;
+      padding: 7px 15px;
+      font-size: 0.8rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      background: linear-gradient(135deg, var(--accent), var(--accent-strong));
+      color: #020617;
+      box-shadow: 0 12px 30px rgba(56, 189, 248, 0.7);
+      transition: transform 0.13s ease-out, box-shadow 0.13s ease-out, opacity var(--transition-fast);
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 16px 32px rgba(56, 189, 248, 0.8);
+    }
+
+    .btn-secondary {
+      border-radius: 999px;
+      border: 1px solid rgba(148, 163, 184, 0.65);
+      padding: 7px 15px;
+      font-size: 0.8rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      background: transparent;
+      color: var(--text-muted);
+      box-shadow: 0 8px 22px rgba(15, 23, 42, 0.9);
+      transition: transform 0.13s ease-out, box-shadow 0.13s ease-out, opacity var(--transition-fast);
+    }
+
+    .btn-secondary:hover {
+      color: var(--accent);
+      border-color: var(--accent);
+      box-shadow: 0 12px 28px rgba(15, 23, 42, 1);
+      transform: translateY(-1px);
+    }
+
+    .btn-danger {
+      border-radius: 999px;
+      border: none;
+      padding: 7px 15px;
+      font-size: 0.8rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      background: linear-gradient(135deg, #ef4444, #b91c1c);
+      box-shadow: 0 10px 25px rgba(239, 68, 68, 0.4);
+      color: #fee2e2;
+      transition: all 0.2s ease;
+    }
+
+    .btn-danger:hover {
+      box-shadow: 0 14px 30px rgba(239, 68, 68, 0.6);
+      transform: translateY(-1px);
+    }
+
+    .control-group {
+      margin-top: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.75);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+      -webkit-backdrop-filter: blur(4px);
+      backdrop-filter: blur(4px);
+    }
+
+    .modal-content {
+      max-width: 800px;
+      max-height: 90vh;
+      overflow-y: auto;
+      background: var(--card);
+      border-radius: 16px;
+      padding: 16px;
+      border: 1px solid rgba(148, 163, 184, 0.4);
+      box-shadow: var(--shadow-soft);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 16px 32px rgba(56, 189, 248, 0.8);
+    }
+
+    .btn.secondary:hover {
+      color: var(--accent);
+      border-color: var(--accent);
+      box-shadow: 0 12px 28px rgba(15, 23, 42, 1);
+    }
+
+    .btn:disabled {
+      opacity: 0.55;
+      cursor: default;
+      box-shadow: none;
+      transform: none;
+    }
+
+    .status-line {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    .status-chip {
+      border-radius: 999px;
+      padding: 2px 8px;
+      font-size: 0.7rem;
+      border: 1px solid rgba(148, 163, 184, 0.45);
+      background: linear-gradient(135deg, rgba(15, 23, 42, 0.9), rgba(15, 23, 42, 0.6));
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .status-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 999px;
+      background: var(--accent);
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+
+    .stat-card {
+      border-radius: 15px;
+      background: var(--card-soft);
+      border: 1px solid rgba(148, 163, 184, 0.35);
+      padding: 7px 8px;
+      font-size: 0.75rem;
+      box-shadow: var(--shadow-inner);
+    }
+
+    .stat-label {
+      text-transform: uppercase;
+      letter-spacing: 0.16em;
+      color: var(--text-muted);
+      font-size: 0.62rem;
+      margin-bottom: 4px;
+    }
+
+    .stat-value {
+      font-size: 1.0rem;
+      font-weight: 600;
+    }
+
+    .table-wrapper {
+      border-radius: 12px;
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      background: linear-gradient(135deg, rgba(56, 189, 248, 0.12), rgba(56, 189, 248, 0.05));
+      overflow: hidden;
+      max-height: 480px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .table-controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      padding: 7px 10px;
+      align-items: center;
+      border-bottom: 1px solid rgba(56, 189, 248, 0.25);
+      background: linear-gradient(135deg, rgba(56, 189, 248, 0.08), transparent);
+    }
+
+    .table-controls .input {
+      padding: 5px 9px;
+      font-size: 0.78rem;
+    }
+
+    .table-controls select {
+      padding: 5px 9px;
+      font-size: 0.78rem;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.75rem;
+    }
+
+    thead {
+      background: radial-gradient(circle at top, rgba(15, 23, 42, 0.85), rgba(15, 23, 42, 0.92));
+      position: sticky;
+      top: 0;
+      z-index: 2;
+    }
+
+    th,
+    td {
+      padding: 5px 8px;
+      text-align: left;
+      white-space: nowrap;
+    }
+
+    th {
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+      color: var(--text-muted);
+      border-bottom: 1px solid rgba(148, 163, 184, 0.35);
+    }
+
+    tbody tr:nth-child(even) {
+      background: rgba(15, 23, 42, 0.85);
+    }
+
+    tbody tr:nth-child(odd) {
+      background: rgba(15, 23, 42, 0.95);
+    }
+
+    tbody tr:hover {
+      background: rgba(30, 64, 175, 0.55);
+    }
+
+    /* ═══════════════════════════════════════════════════════════════
+       V4.22: DISEÑO REFINADO PARA channelsTable
+       Sistema de diseño completo - Azul Cian
+       ═══════════════════════════════════════════════════════════════ */
+
+    #channelsTable {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text", "Roboto", sans-serif;
+      font-size: 14px;
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      color: var(--text-main);
+    }
+
+    #channelsTable thead {
+      background: linear-gradient(135deg, rgba(56, 189, 248, 0.12), rgba(56, 189, 248, 0.05));
+    }
+
+    #channelsTable thead th {
+      font-size: 12px;
+      font-weight: 550;
+      letter-spacing: -0.01em;
+      color: rgba(56, 189, 248, 0.9);
+      padding: 10px 12px;
+      border-bottom: 1px solid rgba(56, 189, 248, 0.3);
+      text-transform: uppercase;
+    }
+
+    #channelsTable tbody td {
+      font-size: 12px;
+      font-weight: 550;
+      letter-spacing: -0.01em;
+      line-height: 1.5;
+      color: rgba(255, 255, 255, 0.95);
+      padding: 8px 12px;
+      border-bottom: 1px solid rgba(148, 163, 184, 0.15);
+    }
+
+    #channelsTable tbody tr:nth-child(even) {
+      background: rgba(15, 23, 42, 0.85);
+    }
+
+    #channelsTable tbody tr:nth-child(odd) {
+      background: rgba(15, 23, 42, 0.95);
+    }
+
+    #channelsTable tbody tr:hover {
+      background: rgba(30, 64, 175, 0.55);
+    }
+
+    /* Íconos y badges en celdas */
+    #channelsTable tbody td img {
+      vertical-align: middle;
+      filter: drop-shadow(0 0 2px rgba(56, 189, 248, 0.3));
+    }
+
+    /* ═══════════════════════════════════════════════════════════════
+       Scrollbars personalizadas para la tabla
+       ═══════════════════════════════════════════════════════════════ */
+
+    .scroll-y::-webkit-scrollbar,
+    .table-wrapper::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+
+    .scroll-y::-webkit-scrollbar-track,
+    .table-wrapper::-webkit-scrollbar-track {
+      background: rgba(56, 189, 248, 0.08);
+      border-radius: 4px;
+    }
+
+    .scroll-y::-webkit-scrollbar-thumb,
+    .table-wrapper::-webkit-scrollbar-thumb {
+      background: rgba(56, 189, 248, 0.35);
+      border-radius: 4px;
+      border: 2px solid transparent;
+      background-clip: content-box;
+    }
+
+    .scroll-y::-webkit-scrollbar-thumb:hover,
+    .table-wrapper::-webkit-scrollbar-thumb:hover {
+      background: rgba(56, 189, 248, 0.55);
+      background-clip: content-box;
+    }
+
+    .scroll-y::-webkit-scrollbar-corner,
+    .table-wrapper::-webkit-scrollbar-corner {
+      background: rgba(56, 189, 248, 0.05);
+    }
+
+    /* Firefox scrollbar */
+    .scroll-y,
+    .table-wrapper {
+      scrollbar-width: thin;
+      scrollbar-color: rgba(56, 189, 248, 0.35) rgba(56, 189, 248, 0.08);
+    }
+
+    .scroll-y {
+      overflow-y: auto;
+      flex: 1;
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 160px;
+      border-radius: 14px;
+      border: 1px solid rgba(148, 163, 184, 0.45);
+      background: radial-gradient(circle at top, rgba(15, 23, 42, 0.9), rgba(15, 23, 42, 0.95));
+      color: var(--text-main);
+      padding: 8px 9px;
+      font-size: 0.78rem;
+      resize: vertical;
+      outline: none;
+    }
+
+    textarea:focus {
+      border-color: var(--accent-strong);
+      box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.65);
+    }
+
+    .option-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      font-size: 0.76rem;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+      align-items: center;
+    }
+
+    .option-row label {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+    }
+
+    .option-row input[type="checkbox"] {
+      accent-color: var(--accent-strong);
+    }
+
+    .qr-box {
+      border-radius: 16px;
+      border: 1px dashed rgba(148, 163, 184, 0.5);
+      background: radial-gradient(circle at top, rgba(15, 23, 42, 0.85), rgba(15, 23, 42, 0.96));
+      padding: 10px;
+      min-height: 150px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-muted);
+      font-size: 0.8rem;
+    }
+
+    .tab-content {
+      display: none;
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+
+    @media (max-width: 960px) {
+      body {
+        padding: 14px 10px 20px;
+      }
+
+      .app-shell {
+        padding: 16px 14px 14px;
+      }
+
+      .stats-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 640px) {
+      .tabs {
+        border-radius: 18px;
+      }
+
+      .tab-button {
+        font-size: 0.7rem;
+        padding-inline: 6px;
+      }
+    }
+
+    .enrich-mini {
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid rgba(56, 189, 248, 0.2);
+      border-radius: 12px;
+      padding: 16px;
+      margin-top: 15px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+    }
+
+    .enrich-mini-top {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+
+    .enrich-mini-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #555;
+      transition: all 0.3s ease;
+    }
+
+    .enrich-mini-dot.active {
+      background: #4ade80;
+      box-shadow: 0 0 8px #4ade80;
+      animation: pulse 1s infinite;
+    }
+
+    .enrich-mini-dot.pause {
+      background: #fbbf24;
+    }
+
+    .enrich-mini-dot.error {
+      background: #f87171;
+    }
+
+    .enrich-mini-text {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--text-main);
+    }
+
+    .enrich-mini-bar {
+      height: 8px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 4px;
+      overflow: hidden;
+      margin-bottom: 12px;
+    }
+
+    .enrich-mini-fill {
+      height: 100%;
+      width: 0%;
+      background: var(--accent);
+      transition: width 0.3s ease-out;
+    }
+
+    .enrich-mini-fill.active {
+      background: linear-gradient(90deg, var(--accent), #3b82f6);
+    }
+
+    .enrich-mini-stats {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-bottom: 12px;
+      font-family: monospace;
+    }
+
+    .enrich-mini-log {
+      font-family: monospace;
+      font-size: 0.7rem;
+      color: #64748b;
+      max-height: 50px;
+      overflow: hidden;
+      border-top: 1px solid rgba(255, 255, 255, 0.05);
+      padding-top: 8px;
+    }
+
+    @keyframes pulse {
+      0% {
+        opacity: 1;
+      }
+
+      50% {
+        opacity: 0.5;
+      }
+
+      100% {
+        opacity: 1;
+      }
+    }
+
+    #columnList.column-list-always-top {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 99999 !important;
+      background: linear-gradient(135deg, rgba(15, 23, 42, 0.95), rgba(30, 41, 59, 0.95));
+      border: 2px solid rgba(56, 189, 248, 0.4);
+      border-radius: 12px;
+      padding: 16px;
+      max-height: 80vh;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8);
+      -webkit-backdrop-filter: blur(6px);
+      backdrop-filter: blur(6px);
+      animation: slideDownColumn 0.3s ease-out;
+    }
+
+    @keyframes slideDownColumn {
+      from {
+        opacity: 0;
+        transform: translate(-50%, -52%);
+      }
+
+      to {
+        opacity: 1;
+        transform: translate(-50%, -50%);
+      }
+    }
+
+    #columnList {
+      z-index: 99999 !important;
+    }
+
+    #processingModalOverlay {
+      z-index: 9999;
+    }
+
+    .btn-save-tab {
+      background: rgba(30, 41, 59, 0.4);
+      border: 1px solid rgba(148, 163, 184, 0.25);
+      color: var(--text-muted);
+      font-family: inherit;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      padding: 5px 12px;
+      border-radius: 999px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+      margin-left: auto;
+      -webkit-backdrop-filter: blur(4px);
+      backdrop-filter: blur(4px);
+      font-weight: 500;
+    }
+
+    .btn-save-tab:hover {
+      background: rgba(56, 189, 248, 0.08);
+      border-color: rgba(56, 189, 248, 0.5);
+      color: var(--accent);
+      box-shadow: 0 0 15px rgba(56, 189, 248, 0.15);
+      transform: translateY(-1px);
+    }
+
+    .btn-save-tab:active {
+      transform: translateY(0);
+      opacity: 0.8;
+    }
+
+    .toast-notification {
+      position: fixed;
+      bottom: 30px;
+      right: 30px;
+      background: radial-gradient(circle at top left, rgba(15, 23, 42, 0.95), rgba(30, 41, 59, 0.98));
+      border: 1px solid rgba(56, 189, 248, 0.4);
+      color: #fff;
+      padding: 12px 20px;
+      border-radius: 8px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+      z-index: 999999;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      transform: translateY(100px);
+      opacity: 0;
+      transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    .toast-notification.show {
+      transform: translateY(0);
+      opacity: 1;
+    }
+
+    /* ✅ V4.9.2: Filter Lock Styles */
+    .filter-locked select,
+    .filter-locked input {
+      opacity: 0.6 !important;
+      cursor: not-allowed !important;
+      background: #1e293b !important;
+      pointer-events: none !important;
+    }
+
+    .filter-locked .btn-delete-rule,
+    .filter-locked .btn-add-rule {
+      display: none !important;
+    }
+
+    .filter-group.locked {
+      border: 1px solid rgba(148, 163, 184, 0.3);
+      background: rgba(0, 0, 0, 0.15);
+    }
+
+    .filter-group.locked select,
+    .filter-group.locked input {
+      opacity: 0.6 !important;
+      cursor: not-allowed !important;
+      background: #1e293b !important;
+      pointer-events: none !important;
+    }
+
+    #filterBuilderContainer.locked select,
+    #filterBuilderContainer.locked input {
+      opacity: 0.6 !important;
+      cursor: not-allowed !important;
+      background: #1e293b !important;
+      pointer-events: none !important;
+    }
+
+    #filterBuilderContainer.locked button:not(.btn-apply-filters) {
+      display: none !important;
+    }
+  </style>
+  <link rel="stylesheet" href="css/generator-v41.css">
+</head>
+
+<body>
+  <div class="app-shell">
+    <header class="app-header">
+      <div class="title-block">
+        <h1>IPTV Navigator PRO<span class="title-pill">v3.0.1 · 2025</span></h1>
+        <p class="title-sub">Toolkit local avanzado para generación de listas M3U8 optimizadas, headers PRO y análisis
+          de calidad (4K / 8K / HDR / AV1 / LL-HLS). 100% offline en tu navegador.</p>
+      </div>
+      <div class="badge-row">
+        <div class="badge"><span class="badge-dot"></span><span>Listo para producción OTT</span></div>
+        <div class="badge"><span class="badge-dot warn"></span><span>Standard / XUI · LL-HLS · AV1</span></div>
+        <div id="probeServerBadge" class="badge" title="Verificando Probe Server...">
+          <span id="probeServerDot" class="badge-dot" style="background: #f87171;"></span>
+          <span id="probeServerText">Probe Server</span>
+        </div>
+      </div>
+    </header>
+
+    <nav class="tabs">
+      <button class="tab-button active" data-tab="connection"><span>Conexión</span></button>
+      <button class="tab-button" data-tab="analysis"><span>Análisis</span></button>
+      <button class="tab-button" data-tab="filters"><span>Filtros+</span></button>
+      <button class="tab-button" data-tab="ranking"><span>Ranking</span></button>
+      <button class="tab-button" data-tab="sources"><span>Fuentes</span></button>
+      <button class="tab-button" data-tab="servers"><span>Servidores</span></button>
+      <button class="tab-button" data-tab="generator"><span>Generador</span></button>
+      <button class="tab-button" data-tab="export"><span>Exportar</span></button>
+      <button class="tab-button" data-tab="share"><span>Compartir</span></button>
+    </nav>
+
+    <main>
+      <section class="panel">
+        <div class="panel-inner">
+
+          <!-- TAB: CONEXIÓN -->
+          <div id="tab-connection" class="tab-content active">
+            <div class="panel-header">
+              <div class="panel-title">Entrada · Xtream Codes</div>
+              <div class="pill">Standard / XUI · Autodetección</div>
+              <button class="btn-save-tab" onclick="app.saveTabState('connection')">💾 Guardar</button>
+            </div>
+
+            <form id="connectionForm" onsubmit="event.preventDefault(); app.connectServer();">
+              <div class="field-grid">
+                <div class="field"><label for="serverName">Alias del servidor</label><input id="serverName"
+                    name="serverName" class="input" placeholder="Mi proveedor 4K" type="text" autocomplete="on" /></div>
+                <div class="field"><label for="baseUrl">URL base</label><input id="baseUrl" name="baseUrl" class="input"
+                    placeholder="https://demo.example.com" type="url" autocomplete="url" /></div>
+                <div class="field"><label for="username">Usuario</label><input id="username" name="username"
+                    class="input" placeholder="usuario" type="text" autocomplete="username" /></div>
+                <div class="field"><label for="password">Password</label><input id="password" name="password"
+                    class="input" placeholder="pass" type="password" autocomplete="current-password" /></div>
+              </div>
+            </form>
+
+            <div class="field-grid">
+              <div class="field"><label for="apiType">Tipo de API</label><select id="apiType">
+                  <option value="auto">Auto (recomendado)</option>
+                  <option value="standard">Standard (get.php)</option>
+                  <option value="xui">XUI / player_api.php</option>
+                </select></div>
+            </div>
+
+            <div class="button-row">
+              <button type="submit" form="connectionForm" id="btnConnect" class="btn"><span
+                  class="icon">🔌</span><span>Conectar servidor</span></button>
+              <button id="btnAddServer" class="btn secondary" onclick="app.connectServer(true)"><span
+                  class="icon">➕</span><span>Agregar</span></button>
+              <button id="btnClear" class="btn secondary"><span>Limpiar</span></button>
+            </div>
+
+            <!-- Panel de Servidores Conectados (Grid 4x2) -->
+            <div id="activeServersList" style="
+              margin-top:12px;
+              display:grid;
+              grid-template-columns: repeat(4, 1fr);
+              gap:8px;
+              max-width:100%;
+            "></div>
+
+            <div class="status-line">
+              <div id="connectionStatus" class="status-chip"><span class="status-dot"></span><span>Esperando
+                  conexión…</span></div>
+              <div class="status-chip" id="apiDetectedChip"><span>API: <strong
+                    id="apiDetectedLabel">Auto</strong></span></div>
+            </div>
+
+            <!-- ✅ V4.10: Progress Modal - Solo visible en pestaña Conexión -->
+            <div id="enrichmentProgressContainer" class="enrich-mini" style="display:none; margin-top: 12px;">
+              <div class="enrich-mini-top"><span id="enrichStatusDot" class="enrich-mini-dot"></span><span
+                  id="enrichStatusText" class="enrich-mini-text">Enriquecimiento inactivo</span><button
+                  id="btnCancelEnrich" class="btn secondary sm"
+                  style="margin-left:auto; background:rgba(239,68,68,0.2); color:#fca5a5; border:1px solid rgba(239,68,68,0.5); font-size:0.75rem; padding:4px 10px;"
+                  onclick="app.cancelEnrichment()">🛑 CANCELAR</button></div>
+              <div class="enrich-mini-bar">
+                <div id="enrichBar" class="enrich-mini-fill"></div>
+              </div>
+              <div class="enrich-mini-stats"><span>% <span id="enrichPct">0</span></span><span>✔ <span
+                    id="enrichCount">0</span></span><span>⚡ <span id="enrichSpeed">0</span> c/s</span><span>⏱ <span
+                    id="enrichETA">0</span>s</span></div>
+              <div id="enrichLog" class="enrich-mini-log">
+                <div class="enrich-log-line">Esperando para iniciar...</div>
+              </div>
+            </div>
+
+            <!-- 🏷️ V4.22: Panel de Estadísticas de Clasificación Jerárquica -->
+            <div id="classificationStatsContainer" class="enrich-mini"
+              style="display:none; margin-top: 12px; padding: 16px; background: linear-gradient(135deg, rgba(56, 189, 248, 0.12), rgba(56, 189, 248, 0.05)); border-radius: 12px; border: 1px solid rgba(56, 189, 248, 0.3); font-family: system-ui, -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Roboto', sans-serif;">
+              <div class="enrich-mini-top"
+                style="border-bottom: 1px solid rgba(148, 163, 184, 0.25); padding-bottom: 8px; margin-bottom: 12px; display: flex; align-items: center; gap: 10px;">
+                <img
+                  src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64' width='24' height='24'%3E%3Crect x='8' y='12' width='48' height='32' rx='3' fill='none' stroke='%239ca3af' stroke-width='2'/%3E%3Cpath d='M16 20c2-2 6-2 8 0s6 2 8 0' stroke='%2338bdf8' stroke-width='2' fill='none' stroke-linecap='round'/%3E%3Cpath d='M16 26c2-2 6-2 8 0s6 2 8 0' stroke='%2338bdf8' stroke-width='2' fill='none' stroke-linecap='round'/%3E%3Ctext x='40' y='32' font-size='12' font-weight='bold' fill='%2338bdf8'%3ETV%3C/text%3E%3Crect x='28' y='44' width='8' height='6' fill='%239ca3af'/%3E%3Crect x='22' y='50' width='20' height='3' rx='1' fill='%239ca3af'/%3E%3C/svg%3E"
+                  alt="TV" style="opacity: 0.7;">
+                <span class="enrich-mini-text"
+                  style="font-size: 0.92rem; text-transform: uppercase; letter-spacing: 0.14em; color: var(--text-muted); font-weight: 500; -webkit-font-smoothing: antialiased;">CLASIFICACIÓN
+                  CANALES JERÁRQUICA</span>
+              </div>
+              <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; font-size: 0.75rem;">
+                <div>
+                  <div
+                    style="color: #38bdf8; font-weight: 600; margin-bottom: 6px; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em;">
+                    🌎 REGIÓN</div>
+                  <div id="classStatRegion" style="display: flex; flex-wrap: wrap; gap: 6px; color: #e5e7eb;"></div>
+                </div>
+                <div>
+                  <div
+                    style="color: #38bdf8; font-weight: 600; margin-bottom: 6px; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em;">
+                    🗣️ IDIOMA</div>
+                  <div id="classStatLanguage" style="display: flex; flex-wrap: wrap; gap: 6px; color: #e5e7eb;"></div>
+                </div>
+                <div>
+                  <div
+                    style="color: #38bdf8; font-weight: 600; margin-bottom: 6px; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em;">
+                    📂 CATEGORÍA</div>
+                  <div id="classStatCategory" style="display: flex; flex-wrap: wrap; gap: 6px; color: #e5e7eb;"></div>
+                </div>
+                <div>
+                  <div
+                    style="color: #38bdf8; font-weight: 600; margin-bottom: 6px; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em;">
+                    📺 CALIDAD</div>
+                  <div id="classStatQuality" style="display: flex; flex-wrap: wrap; gap: 6px; color: #e5e7eb;"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- TAB: ANÁLISIS -->
+          <div id="tab-analysis" class="tab-content">
+            <div class="panel-header" style="margin-bottom: 6px;">
+              <div class="panel-title">Análisis en tiempo real</div>
+              <div class="pill">Heurística 4K / HDR / AV1</div><button class="btn-save-tab"
+                onclick="app.saveTabState('analysis')">💾 Guardar</button>
+            </div>
+            <!-- Stats + Pagination Row (compacto) -->
+            <div id="analysis-top-row"
+              style="display:flex; gap:6px; align-items:center; margin-bottom:6px; flex-wrap:wrap;">
+              <button id="btnProbeQuality" class="stat-card-mini btn-probe-mini" onclick="app.probeAllChannelsBackend()"
+                title="Analiza calidad real de TODOS los streams usando servidor local Rust">
+                <span class="icon">🔬</span><span class="stat-mini-label">ANALIZAR CALIDAD</span>
+              </button>
+              <button id="btnLoadProbeResults" class="stat-card-mini btn-probe-mini"
+                onclick="app.loadProbeResultsFromR2()"
+                style="background: linear-gradient(135deg, #0ea5e9, #0284c7); border-color: #38bdf8;"
+                title="Carga resultados de análisis previos desde Cloudflare R2">
+                <span class="icon">📊</span><span class="stat-mini-label">CARGAR CACHE</span>
+              </button>
+              <button id="btnAutoClassify" class="stat-card-mini btn-probe-mini" onclick="app.autoClassifyAllChannels()"
+                style="background: linear-gradient(135deg, #8b5cf6, #6d28d9); border-color: #a78bfa;"
+                title="Clasifica canales automáticamente en perfiles P0-P5">
+                <span class="icon">🎯</span><span class="stat-mini-label">AUTO-CLASIFICAR</span>
+              </button>
+              <div class="stat-card-mini">
+                <span class="stat-mini-label">TOTAL CANALES</span>
+                <span id="statTotal" class="stat-mini-value">0</span>
+              </div>
+              <div class="stat-card-mini">
+                <span class="stat-mini-label">ACTIVOS</span>
+                <span id="statActive" class="stat-mini-value">0</span>
+              </div>
+              <div class="stat-card-mini">
+                <span class="stat-mini-label">PREMIUM</span>
+                <span id="statPremium" class="stat-mini-value">0</span>
+              </div>
+              <div class="stat-card-mini">
+                <span class="stat-mini-label">4K/8K/HDR</span>
+                <span id="statUHD" class="stat-mini-value">0</span>
+              </div>
+              <!-- Paginación se inserta aquí dinámicamente -->
+              <div id="paginationPlaceholder" style="flex:1; display:flex; justify-content:flex-end;"></div>
+            </div>
+
+            <!-- ✅ V4.6.2: HEURISTIC PROGRESS & PROBE UI -->
+            <div id="heuristicProgress" class="enrich-mini" style="display:none;">
+              <div class="enrich-mini-top">
+                <div class="enrich-mini-dot" id="heuristicDot"></div>
+                <div class="enrich-mini-text" id="heuristicLabel">Aplicando heurísticas...</div>
+              </div>
+              <div class="enrich-mini-bar">
+                <div class="enrich-mini-fill" id="heuristicFill"></div>
+              </div>
+              <div class="enrich-mini-stats">
+                <span id="heuristicCount">0 / 0 canales</span>
+                <span id="heuristicTime">~0s restante</span>
+              </div>
+            </div>
+
+            <!-- PROBE STATUS (botón movido a analysis-top-row) -->
+            <span id="probeStatus" style="font-size: 0.8rem; color: #bae6fd; margin-left: 8px;"></span>
+
+            <!-- 🔬 V4.23: Panel de Estadísticas de Verificación de Probe -->
+            <div id="probeStatsContainer" class="enrich-mini"
+              style="display:none; margin-top: 8px; margin-bottom: 8px; background: linear-gradient(135deg, rgba(56, 189, 248, 0.12), rgba(56, 189, 248, 0.05)); border-radius: 12px; border: 1px solid rgba(56, 189, 248, 0.3);">
+              <div class="enrich-mini-top"
+                style="border-bottom: 1px solid rgba(56, 189, 248, 0.2); padding-bottom: 6px; margin-bottom: 8px;">
+                <span class="enrich-mini-dot" style="background: #38bdf8;"></span>
+                <span class="enrich-mini-text"
+                  style="color: #bae6fd; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em;">🔬
+                  Verificación de Calidad Real</span>
+              </div>
+              <div
+                style="display: flex; flex-wrap: wrap; gap: 8px; font-size: var(--font-size-base); font-family: system-ui, -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Roboto', sans-serif; color: var(--text-main);">
+                <div id="probeStatVerification" style="display: flex; flex-wrap: wrap; gap: 6px; color: #e2e8f0;">
+                  <span
+                    style="background:rgba(148,163,184,0.15); padding:2px 6px; border-radius:6px; font-size:0.7rem;">⏳
+                    Sin datos de probe</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="table-wrapper">
+              <div class="table-controls">
+                <form autocomplete="off" onsubmit="return false" style="display:inline; margin:0; padding:0;">
+                <input type="search" id="searchQuery" class="input" placeholder="Buscar canal / categoría…"
+                  aria-label="Buscar canal o categoría" autocomplete="off" role="searchbox"
+                  data-lpignore="true" data-form-type="other" data-1p-ignore="true" />
+                </form>
+                <div class="dropdown" id="colSelectorDropdown" style="position:relative; display:inline-block;"><button
+                    class="btn secondary sm" id="btnToggleCols" onclick="app.toggleColumnSelector()"
+                    style="height:38px; display:flex; align-items:center;">👁️ Columnas</button>
+                  <div id="columnList" class="dropdown-content column-list-always-top"
+                    style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); background:rgb(30, 41, 59); border:2px solid rgba(56, 189, 248, 0.4); padding:16px; z-index:99999; max-height:80vh; overflow-y:auto; min-width:280px; border-radius:12px; box-shadow:0 20px 50px rgba(0, 0, 0, 0.8); backdrop-filter:blur(4px);">
+                  </div>
+                </div>
+                <select id="filterTier" name="filterTier" aria-label="Filtrar por tier de calidad">
+                  <option value="ALL">Tier: Todos</option>
+                  <option value="PLATINUM">Platinum</option>
+                  <option value="GOLD">Gold</option>
+                  <option value="SILVER">Silver</option>
+                  <option value="BRONZE">Bronze</option>
+                </select>
+                <select id="filterCodec" name="filterCodec" aria-label="Filtrar por codec">
+                  <option value="ALL">Codec: Todos</option>
+                  <option value="AV1">AV1</option>
+                  <option value="HEVC">HEVC / H.265</option>
+                  <option value="H264">H.264</option>
+                </select>
+                <select id="filterLanguage" name="filterLanguage" aria-label="Filtrar por idioma">
+                  <option value="ALL">Idioma: Todos</option>
+                  <option value="es">ES / LAT</option>
+                  <option value="en">EN</option>
+                  <option value="pt">PT / BR</option>
+                  <option value="fr">FR</option>
+                </select>
+              </div>
+              <div class="scroll-y">
+                <table id="channelsTable">
+                  <thead>
+                    <tr>
+                      <th>ID</th>
+                      <th>Nombre</th>
+                      <th>Grupo</th>
+                      <th>Idioma</th>
+                      <th>Tier</th>
+                      <th>Bitrate</th>
+                      <th>Score</th>
+                    </tr>
+                  </thead>
+                  <tbody id="channelsTableBody"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <!-- TAB: FILTROS AVANZADOS -->
+          <div id="tab-filters" class="tab-content">
+            <div class="panel-header">
+              <div class="panel-title">Constructor de Filtros</div>
+              <div class="pill">Lógica AND/OR · Expresiones Regulares</div><button class="btn-save-tab"
+                onclick="app.saveTabState('filters')">💾 Guardar</button>
+            </div>
+            <div id="filterBuilderContainer" class="filter-builder-grid">
+              <p style="color:var(--text-muted); font-size:0.8rem; text-align:center; padding:20px;">Cargando canales
+                para descubrir campos disponibles...</p>
+            </div>
+            <div class="button-row"><button id="btnApplyFilters" class="btn"><span class="icon">🔍</span> Aplicar
+                Filtros</button><button id="btnAddFilterGroup" class="btn secondary"><span class="icon">➕</span> Nuevo
+                Grupo</button><button id="btnClearFilters" class="btn secondary"
+                style="color:var(--danger); border-color:var(--danger);"><span class="icon">🗑️</span>
+                Limpiar</button><button id="btnEditFilters" class="btn secondary"><span class="icon">✏️</span>
+                Editar</button>
+            </div>
+            <div id="activeFiltersSummary" style="margin-top:10px; font-size:0.75rem; color:var(--text-muted);">Filtros
+              activos: 0</div>
+          </div>
+
+          <!-- TAB: RANKING -->
+          <div id="tab-ranking" class="tab-content">
+            <!-- PANEL COLAPSABLE: RANKING DINÁMICO -->
+            <div id="ranking-dinamico-panel" class="ranking-dinamico-container">
+              <div class="panel-header ranking-panel-toggle" id="ranking-panel-header" style="cursor:pointer;">
+                <div class="panel-header-left">
+                  <div class="panel-title">Ranking Dinámico</div>
+                  <div class="pill">Scoring Personalizable</div>
+                </div>
+                <div class="panel-header-right">
+                  <button class="btn-save-tab" onclick="event.stopPropagation(); app.saveTabState('ranking')">💾
+                    Guardar</button>
+                  <button type="button" class="ranking-toggle-btn" id="ranking-toggle-btn" title="Expandir/Colapsar">
+                    <span class="ranking-toggle-icon">▼</span>
+                  </button>
+                </div>
+              </div>
+              <div class="ranking-panel-body" id="ranking-panel-body">
+                <div class="field-grid">
+                  <div class="field"><label for="rankingPreset">Preset de Ranking</label><select id="rankingPreset"
+                      name="rankingPreset">
+                      <option value="balanced">⚖️ Balanceado (Default)</option>
+                      <option value="quality">💎 Calidad Ultra (4K/8K)</option>
+                      <option value="stability">🛡️ Estabilidad</option>
+                      <option value="sports">⚽ Deportes</option>
+                      <option value="custom">⚙️ Personalizado</option>
+                    </select></div>
+                  <div class="field"><label for="rankingMode">Modo de Selección</label><select id="rankingMode"
+                      name="rankingMode">
+                      <option value="score">Ordenar por Score</option>
+                      <option value="best_stream">Mejor Stream Único por Canal</option>
+                    </select></div>
+                </div>
+                <div id="rankingWeightsContainer" style="margin:10px 0; max-height:250px; overflow-y:auto;">
+                  <p style="text-align:center; color:var(--text-muted); padding:20px;">Cargando motor de ranking...</p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Panel de Configuración de Score Configurable v1.0 -->
+            <div id="ranking-score-config-panel" class="ranking-score-config-container">
+              <!-- Se renderiza dinámicamente por JavaScript -->
+            </div>
+          </div>
+
+          <!-- TAB: SERVIDORES -->
+          <div id="tab-servers" class="tab-content styled-servers-tab" style="
+            font-size: var(--font-size-base);
+            line-height: var(--line-height-normal);
+            -webkit-font-smoothing: antialiased;
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Roboto', sans-serif;
+            color: var(--text-main);
+            box-sizing: border-box;
+          ">
+            <div class="panel-header" style="margin-bottom:6px; flex-wrap:wrap;">
+              <div class="panel-title">📡 Biblioteca de Servidores</div>
+              <div class="pill">Persistente · Multi-servidor</div>
+              <!-- Stats integrados en header -->
+              <div style="display:flex; gap:10px; align-items:center; margin-left:8px;">
+                <span style="font-size:0.7rem; color:#60a5fa;"><strong id="statsTotalServers">0</strong>
+                  servidores</span>
+                <span style="font-size:0.7rem; color:#4ade80;"><strong id="statsTotalChannels">0</strong> canales</span>
+              </div>
+              <button class="btn-save-tab" onclick="app.saveTabState('servers')">💾 Guardar</button>
+            </div>
+
+            <p style="font-size:0.75rem; color:var(--text-muted); margin:0 0 8px 0;">
+              Servidores guardados con persistencia. Usa el botón 💾 en el chip del servidor activo para agregar aquí.
+            </p>
+
+            <!-- Servers Table -->
+            <div
+              style="overflow-x:auto; border-radius:10px; border:1px solid rgba(148,163,184,0.3); background:rgba(15,23,42,0.6);">
+              <table id="savedServersTable"
+                style="width:100%; font-size:0.78rem; border-collapse:collapse; min-width:800px;">
+                <thead>
+                  <tr style="background:rgba(30,41,59,0.8); border-bottom:1px solid rgba(148,163,184,0.2);">
+                    <th
+                      style="padding:10px 8px; text-align:left; color:#e2e8f0; font-weight:400; font-size:0.7rem; text-transform:uppercase; letter-spacing:0.05em;">
+                      Servidor</th>
+                    <th
+                      style="padding:10px 6px; text-align:center; color:#e2e8f0; font-weight:400; font-size:0.7rem; text-transform:uppercase; letter-spacing:0.05em;">
+                      Canales</th>
+                    <th
+                      style="padding:10px 6px; text-align:center; color:#e2e8f0; font-weight:400; font-size:0.7rem; text-transform:uppercase; letter-spacing:0.05em;">
+                      Grupos</th>
+                    <th
+                      style="padding:10px 6px; text-align:center; color:#e2e8f0; font-weight:400; font-size:0.7rem; text-transform:uppercase; letter-spacing:0.05em;">
+                      8K</th>
+                    <th
+                      style="padding:10px 6px; text-align:center; color:#e2e8f0; font-weight:400; font-size:0.7rem; text-transform:uppercase; letter-spacing:0.05em;">
+                      4K</th>
+                    <th
+                      style="padding:10px 6px; text-align:center; color:#e2e8f0; font-weight:400; font-size:0.7rem; text-transform:uppercase; letter-spacing:0.05em;">
+                      FHD</th>
+                    <th
+                      style="padding:10px 6px; text-align:center; color:#e2e8f0; font-weight:400; font-size:0.7rem; text-transform:uppercase; letter-spacing:0.05em;">
+                      HD</th>
+                    <th
+                      style="padding:10px 6px; text-align:center; color:#e2e8f0; font-weight:400; font-size:0.7rem; text-transform:uppercase; letter-spacing:0.05em;">
+                      SD</th>
+                    <th
+                      style="padding:10px 6px; text-align:center; color:#e2e8f0; font-weight:400; font-size:0.7rem; text-transform:uppercase; letter-spacing:0.05em;">
+                      Vence</th>
+                    <th
+                      style="padding:10px 6px; text-align:center; color:#e2e8f0; font-weight:400; font-size:0.7rem; text-transform:uppercase; letter-spacing:0.05em;">
+                      Acciones</th>
+                  </tr>
+                </thead>
+                <tbody id="savedServersTableBody">
+                  <tr>
+                    <td colspan="10" style="padding:30px; text-align:center; color:#64748b;">
+                      <div style="font-size:2rem; margin-bottom:8px;">📭</div>
+                      No hay servidores guardados. Conecta un servidor y presiona 💾 para guardarlo aquí.
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <!-- 🌐 GATEWAY MULTI-BACKEND (COLLAPSIBLE) -->
+            <div id="gateway-manager-section"
+              style="margin-top: 24px; padding: 16px; background: linear-gradient(135deg, rgba(56, 189, 248, 0.12), rgba(56, 189, 248, 0.05)); border-radius: 12px; border: 1px solid rgba(56, 189, 248, 0.3);">
+
+              <!-- Header con Toggle -->
+              <div class="panel-header gateway-panel-toggle" id="gateway-panel-header"
+                style="margin-bottom: 10px; cursor: pointer;" onclick="toggleGatewayPanel()">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <div class="panel-title" style="font-size: 0.9rem;">🌐 Gateway Multi-Backend</div>
+                  <span id="gateway-status-badge"
+                    style="font-size: 0.8em; color: var(--text-muted); font-weight: 600;">No configurado</span>
+                </div>
+                <button type="button" class="gateway-toggle-btn" id="gateway-toggle-btn" title="Expandir/Colapsar"
+                  style="background: transparent; border: 1px solid rgba(56,189,248,0.3); border-radius: 6px; padding: 4px 8px; cursor: pointer; transition: all 0.2s;"
+                  onclick="event.stopPropagation(); toggleGatewayPanel()">
+                  <span class="gateway-toggle-icon" id="gateway-toggle-icon"
+                    style="color: #38bdf8; font-size: 0.8rem;">▼</span>
+                </button>
+              </div>
+
+              <!-- Collapsible Body -->
+              <div class="gateway-panel-body" id="gateway-panel-body"
+                style="overflow: hidden; transition: max-height 0.3s ease-out; max-height: 2000px;">
+
+                <p style="font-size: 0.75rem; color: var(--text-muted); margin: 0 0 12px 0;">
+                  URL directa de VPS Hetzner para TiviMate, VLC, OTT Navigator, Kodi, Smart TVs y cualquier reproductor
+                  M3U8.
+                </p>
+
+                <!-- Estado -->
+                <div
+                  style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px; padding: 8px 10px; background: rgba(0,0,0,0.15); border-radius: 8px; border: 1px solid rgba(148,163,184,0.2);">
+                  <span id="gateway-status-dot" class="status-dot"
+                    style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background-color: #ef4444;"></span>
+                  <span id="gateway-status-text" style="font-size: 0.78rem; color: var(--text-muted); flex: 1;">⚠️
+                    Selecciona un archivo M3U8</span>
+                </div>
+
+                <!-- Quick Strategy Selector -->
+                <div style="display: flex; gap: 6px; margin-bottom: 12px; flex-wrap: wrap;">
+                  <label class="btn-strategy active"
+                    style="padding: 6px 10px; font-size: 11px; background: rgba(56,189,248,0.15); border: 1px solid rgba(56,189,248,0.4); color: #7dd3fc; border-radius: 6px; cursor: pointer; display: flex; align-items: center; gap: 4px;">
+                    <input type="radio" name="gateway-strategy" value="replace" checked
+                      style="cursor: pointer; accent-color: var(--accent);">
+                    <span>🔄 Reemplazar</span>
+                  </label>
+                  <label class="btn-strategy"
+                    style="padding: 6px 10px; font-size: 11px; background: rgba(139,92,246,0.15); border: 1px solid rgba(139,92,246,0.4); color: #c4b5fd; border-radius: 6px; cursor: pointer; display: flex; align-items: center; gap: 4px;">
+                    <input type="radio" name="gateway-strategy" value="version"
+                      style="cursor: pointer; accent-color: #8b5cf6;">
+                    <span>📦 Versionar</span>
+                  </label>
+                  <label class="btn-strategy"
+                    style="padding: 6px 10px; font-size: 11px; background: rgba(16,185,129,0.15); border: 1px solid rgba(16,185,129,0.4); color: #86efac; border-radius: 6px; cursor: pointer; display: flex; align-items: center; gap: 4px;">
+                    <input type="radio" name="gateway-strategy" value="both"
+                      style="cursor: pointer; accent-color: #10b981;">
+                    <span>⚡ Ambas</span>
+                  </label>
+                </div>
+
+                <!-- ORIGEN DEL ARCHIVO -->
+                <div id="gateway-file-origin-section" style="margin: 14px 0;">
+                  <div
+                    style="font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.12em; color: var(--text-muted); margin-bottom: 8px;">
+                    📁 Origen del Archivo
+                  </div>
+
+                  <!-- Toggle Manual/Auto (pills inline) -->
+                  <div style="display: flex; gap: 8px; margin-bottom: 10px;">
+                    <label id="origin-manual-label" onclick="gatewayManager.setFileOrigin('manual')"
+                      style="flex: 1; padding: 8px 12px; font-size: 0.75rem; background: rgba(16, 185, 129, 0.2); border: 1px solid rgba(16, 185, 129, 0.5); color: #86efac; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; transition: all 0.2s;">
+                      <span>📁</span><span>Seleccionar Archivo</span>
+                    </label>
+                    <label id="origin-auto-label" onclick="gatewayManager.setFileOrigin('auto')"
+                      style="flex: 1; padding: 8px 12px; font-size: 0.75rem; background: rgba(56, 189, 248, 0.1); border: 1px solid rgba(56, 189, 248, 0.3); color: #7dd3fc; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; transition: all 0.2s;">
+                      <span>🔄</span><span>Auto (al generar M3U8)</span>
+                    </label>
+                  </div>
+
+                  <!-- File Selector Row (clickeable) - Visible en modo Manual -->
+                  <div id="file-selector-row" onclick="document.getElementById('gateway-file-input').click()"
+                    style="padding: 12px 14px; background: rgba(0,0,0,0.15); border: 1px dashed rgba(56, 189, 248, 0.4); border-radius: 8px; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 10px;"
+                    onmouseover="this.style.background='rgba(56, 189, 248, 0.1)'; this.style.borderColor='rgba(56, 189, 248, 0.6)';"
+                    onmouseout="this.style.background='rgba(0,0,0,0.15)'; this.style.borderColor='rgba(56, 189, 248, 0.4)';">
+                    <span id="file-selector-icon" style="font-size: 1.2rem;">📂</span>
+                    <div style="flex: 1;">
+                      <div id="file-selector-text" style="font-size: 0.78rem; color: #7dd3fc;">Click aquí para
+                        seleccionar archivo .m3u8, .m3u o .m3u8.gz</div>
+                      <div id="file-selector-info"
+                        style="font-size: 0.68rem; color: var(--text-muted); margin-top: 2px; display: none;"></div>
+                    </div>
+                    <span id="file-selector-action"
+                      style="font-size: 0.7rem; color: var(--text-muted); padding: 4px 8px; background: rgba(56, 189, 248, 0.15); border-radius: 4px;">Examinar</span>
+                  </div>
+
+                  <!-- Auto Mode Info (oculto por defecto) -->
+                  <div id="auto-mode-info"
+                    style="display: none; padding: 10px 14px; background: rgba(56, 189, 248, 0.08); border: 1px solid rgba(56, 189, 248, 0.2); border-radius: 8px;">
+                    <div style="font-size: 0.75rem; color: #7dd3fc; display: flex; align-items: center; gap: 8px;">
+                      <span>ℹ️</span>
+                      <span>La playlist se subirá automáticamente cuando generes un M3U8 desde la pestaña
+                        Exportar</span>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- NOMBRE DE ARCHIVO PERSONALIZADO -->
+                <div id="gateway-custom-filename-section" style="margin: 14px 0;">
+                  <div
+                    style="font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.12em; color: var(--text-muted); margin-bottom: 8px;">
+                    📝 Nombre del Archivo en VPS
+                  </div>
+                  <div style="display: flex; gap: 8px; align-items: center;">
+                    <input type="text" id="gateway-custom-filename" placeholder="APE_ULTIMATE_v9.m3u8" value=""
+                      oninput="gatewayManager.setCustomFilename(this.value)"
+                      style="flex: 1; padding: 10px 12px; font-size: 0.78rem; font-family: monospace; background: rgba(0,0,0,0.2); border: 1px solid rgba(56, 189, 248, 0.3); border-radius: 8px; color: #e2e8f0;">
+                    <button onclick="gatewayManager.resetFilename()" class="btn secondary"
+                      style="padding: 8px 12px; font-size: 0.72rem;" title="Usar nombre por defecto">
+                      🔄
+                    </button>
+                  </div>
+                  <div style="font-size: 0.65rem; color: var(--text-muted); margin-top: 6px; display: flex; gap: 12px;">
+                    <span>💡 Vacío = usa nombre del archivo seleccionado</span>
+                    <span>🔗 URL fija = mismo nombre siempre</span>
+                  </div>
+                </div>
+
+                <!-- URL Fija -->
+                <div style="margin-bottom: 12px;">
+                  <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+                    <label
+                      style="font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.14em; color: var(--text-muted);">URL
+                      Fija (pegar en reproductor)</label>
+                    <select id="gateway-url-format" onchange="gatewayManager.changeUrlFormat(this.value)"
+                      style="padding: 3px 8px; font-size: 0.7rem; background: rgba(0,0,0,0.3); border: 1px solid rgba(56,189,248,0.4); border-radius: 5px; color: #7dd3fc; cursor: pointer;">
+                      <option value="stealth" selected>🥷 Stealth (VPS)</option>
+                      <option value="short">⚡ Corto (VPS)</option>
+                      <option value="legacy">📂 Legacy (VPS)</option>
+                      <option value="public">🌐 Public (VPS)</option>
+                      <option value="download">📥 Download (VPS)</option>
+                    </select>
+                  </div>
+                  <div style="display: flex; gap: 4px; align-items: center;">
+                    <select id="gateway-fixed-url" class="input" onchange="gatewayManager.onVpsFileSelected(this.value)"
+                      style="flex: 1; font-family: monospace; font-size: 0.76rem; padding: 7px 8px; background: rgba(0,0,0,0.3); border: 1px solid rgba(56,189,248,0.3); border-radius: 6px; color: #e2e8f0; cursor: pointer; appearance: auto;">
+                      <option value="">📂 Selecciona archivo del VPS...</option>
+                    </select>
+                    <button onclick="gatewayManager.refreshVpsFiles()" class="btn secondary"
+                      title="Actualizar lista de archivos del VPS"
+                      style="padding: 6px 8px; font-size: 0.78rem; min-width: 34px;">🔄</button>
+                    <button onclick="copyFixedUrl()" class="btn secondary" title="Copiar URL del archivo seleccionado"
+                      style="padding: 6px 8px; font-size: 0.78rem; min-width: 34px;">📋</button>
+                    <button onclick="gatewayManager.deleteVpsFile()" class="btn secondary"
+                      title="Eliminar archivo seleccionado del VPS"
+                      style="padding: 6px 8px; font-size: 0.78rem; min-width: 34px; color: #f87171;">🗑️</button>
+                  </div>
+                </div>
+
+                <!-- Botones -->
+                <div style="display: flex; gap: 8px; margin-bottom: 12px;">
+                  <button id="gateway-upload-btn" class="btn" onclick="uploadToGateway()"
+                    style="flex: 1; background: linear-gradient(135deg, #38bdf8, #0891b2);">
+                    <span class="icon">📤</span><span>Subir al Gateway</span>
+                  </button>
+                  <button onclick="configureGateway()" class="btn secondary" style="padding: 7px 12px;">
+                    <span class="icon">⚙️</span><span>Configurar</span>
+                  </button>
+                </div>
+
+                <!-- Progreso -->
+                <div id="gateway-upload-progress" style="display: none; margin-bottom: 12px;">
+                  <div
+                    style="width: 100%; height: 6px; background: rgba(0,0,0,0.2); border-radius: 3px; overflow: hidden; margin-bottom: 4px;">
+                    <div id="gateway-progress-bar"
+                      style="width: 0%; height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent-strong)); transition: width 0.3s;">
+                    </div>
+                  </div>
+                  <div style="display: flex; justify-content: space-between; font-size: 0.7rem;">
+                    <span id="gateway-progress-detail" style="color: var(--text-muted);"></span>
+                    <span id="gateway-progress-text" style="color: var(--accent); font-weight: 600;">0%</span>
+                  </div>
+                </div>
+
+                <!-- Stats Grid -->
+                <div id="gateway-stats-panel" class="stats-grid"
+                  style="display: none; grid-template-columns: repeat(4, 1fr); margin-top: 12px;">
+                  <div class="stat-card">
+                    <div class="stat-label">Última Subida</div>
+                    <div id="gateway-stat-upload" class="stat-value" style="font-size: 0.8rem; color: var(--accent);">-
+                    </div>
+                  </div>
+                  <div class="stat-card">
+                    <div class="stat-label">Tamaño</div>
+                    <div id="gateway-stat-size" class="stat-value" style="font-size: 0.8rem; color: #8b5cf6;">-</div>
+                  </div>
+                  <div class="stat-card">
+                    <div class="stat-label">Canales</div>
+                    <div id="gateway-stat-channels" class="stat-value" style="font-size: 0.8rem; color: #10b981;">-
+                    </div>
+                  </div>
+                  <div class="stat-card">
+                    <div class="stat-label">URLs Proxy</div>
+                    <div id="gateway-stat-mappings" class="stat-value" style="font-size: 0.8rem; color: #f97316;">-
+                    </div>
+                  </div>
+                </div>
+
+                <p style="font-size: 0.65rem; color: var(--text-muted); margin: 10px 0 0 0; opacity: 0.7;">
+                  🔄 Reemplazar = Sobrescribe playlist | 📦 Versionar = Guarda historial | ⚡ Ambas = Ambas +
+                  auto-cleanup
+                </p>
+              </div>
+            </div>
+
+            <!-- Toggle Script for Gateway Panel -->
+            <script>
+              function toggleGatewayPanel() {
+                const body = document.getElementById('gateway-panel-body');
+                const icon = document.getElementById('gateway-toggle-icon');
+                const isCollapsed = body.style.maxHeight === '0px';
+
+                if (isCollapsed) {
+                  body.style.maxHeight = '2000px';
+                  icon.textContent = '▼';
+                  icon.style.transform = 'rotate(0deg)';
+                } else {
+                  body.style.maxHeight = '0px';
+                  icon.textContent = '▶';
+                  icon.style.transform = 'rotate(0deg)';
+                }
+
+                // Save state to localStorage
+                localStorage.setItem('gateway-panel-collapsed', !isCollapsed);
+              }
+
+              // Restore state on load
+              document.addEventListener('DOMContentLoaded', function () {
+                const isCollapsed = localStorage.getItem('gateway-panel-collapsed') === 'true';
+                if (isCollapsed) {
+                  const body = document.getElementById('gateway-panel-body');
+                  const icon = document.getElementById('gateway-toggle-icon');
+                  if (body && icon) {
+                    body.style.maxHeight = '0px';
+                    icon.textContent = '▶';
+                  }
+                }
+              });
+            </script>
+          </div>
+
+          <!-- TAB: FUENTES EXTERNAS -->
+          <div id="tab-sources" class="tab-content">
+            <div class="panel-header">
+              <div class="panel-title">🌐 Fuentes de Enriquecimiento</div>
+              <div class="pill">Delta Updates · Github / JSON</div><button class="btn-save-tab"
+                onclick="app.saveTabState('sources')">💾 Guardar</button>
+            </div>
+            <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom:15px;">Añade dominios para que el sistema
+              detecte automáticamente <b>tvg-id</b>, <b>tvg-name</b>, <b>logo</b>, <b>EPG</b> y más. Todo se procesa en
+              <b>segundo plano</b> sin bloquear la UI.
+            </p>
+            <div
+              style="background:rgba(30,35,55,0.7); padding:15px; border-radius:12px; margin-bottom:15px; border:1px solid rgba(148,163,184,0.25);">
+              <div style="font-weight:bold; margin-bottom:10px; font-size:0.85rem; color:var(--text-main);">➕ Agregar
+                Nueva Fuente</div>
+              <div style="display:flex; flex-wrap:wrap; gap:10px; margin-bottom:10px;"><input id="sourceLabelInput"
+                  class="input" placeholder="Etiqueta (ej: IPTV-org, MiCDN)" style="flex:1; min-width:180px;" /><input
+                  id="sourceBaseInput" class="input" placeholder="Base URL (ej: https://iptv-org.github.io)"
+                  style="flex:1; min-width:250px;" /></div><button id="btnDiscoverAndAddSource" class="btn"
+                style="width:100%; background:linear-gradient(90deg,#008BFF,#0099FF); color:white;">🔍 Detectar
+                Endpoints + Agregar Fuente</button>
+            </div>
+            <h4 style="margin-bottom:10px; font-size:0.9rem; color:var(--text-main);">📁 Fuentes configuradas</h4>
+            <div id="sourcesList"
+              style="background:rgba(20,24,40,0.4); border-radius:12px; border:1px solid rgba(148,163,184,0.3); padding:15px; max-height:300px; overflow-y:auto; min-height:100px;">
+              <p style="color:var(--text-muted); font-size:0.78rem; text-align:center;">No hay fuentes configuradas aún.
+                Agrega una arriba.</p>
+            </div>
+            <div id="discoveredEndpointsPanel"
+              style="display:none; background:rgba(20,20,35,0.6); padding:15px; border-radius:12px; margin-top:15px; border:1px solid rgba(148,163,184,0.25);">
+              <h4 style="margin-bottom:10px; font-size:0.9rem; color:var(--text-main);">🔎 Endpoints detectados</h4>
+              <div style="overflow-x:auto;">
+                <table style="width:100%; font-size:0.75rem; border-collapse:collapse;">
+                  <thead>
+                    <tr style="text-align:left; border-bottom:1px solid rgba(255,255,255,0.1);">
+                      <th style="padding:8px; color:var(--accent);">Tipo</th>
+                      <th style="padding:8px; color:var(--accent);">URL</th>
+                      <th style="padding:8px; color:var(--accent); text-align:center;">Estado</th>
+                    </tr>
+                  </thead>
+                  <tbody id="discoveredEndpointsTable"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <!-- TAB: GENERADOR M3U8 PRO -->
+          <div id="tab-generator" class="tab-content">
+            <div class="panel-header" style="margin-bottom: 20px;">
+              <div class="panel-title">Generador de Lista M3U8 (Engine v16 / v9.0)</div>
+              <span class="badge warning" style="margin-left:auto;">Advanced</span>
+              <button class="btn-save-tab" onclick="app.saveTabState('generator')">💾 Guardar</button>
+            </div>
+
+
+            <!-- ✅ V4.26: SNAPSHOT INDICATOR & CONTROLS -->
+            <div id="snapshotIndicator" class="snapshot-empty" style="
+              align-items: center;
+              justify-content: space-between;
+              padding: 10px 16px;
+              margin-bottom: 16px;
+              background: linear-gradient(135deg, rgba(30,41,59,0.8), rgba(30,41,59,0.6));
+              border-radius: 10px;
+              border: 1px solid rgba(148,163,184,0.2);
+            ">
+              <div style="display: flex; align-items: center; gap: 12px;">
+                <span style="font-size: 1.2rem;">📸</span>
+                <div>
+                  <div style="font-size: 0.8rem; font-weight: 500; color: #e2e8f0;">Snapshot de Canales</div>
+                  <div id="snapshotStatus" style="font-size: 0.7rem; color: #94a3b8;">Sin snapshot</div>
+                </div>
+              </div>
+              <div style="display: flex; gap: 8px;">
+                <button onclick="app.saveGeneratorSnapshot()" class="btn secondary"
+                  style="padding: 6px 12px; font-size: 0.7rem;" title="Guardar canales actuales como snapshot">
+                  📸 Guardar
+                </button>
+                <button onclick="app.loadGeneratorSnapshot(true)" class="btn secondary"
+                  style="padding: 6px 12px; font-size: 0.7rem;" title="Restaurar último snapshot guardado">
+                  🔄 Restaurar
+                </button>
+                <button onclick="app.clearGeneratorSnapshot()" class="btn secondary"
+                  style="padding: 6px 12px; font-size: 0.7rem; color: #f87171;" title="Eliminar snapshot guardado">
+                  🗑️
+                </button>
+              </div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; align-items: start;">
+
+              <!-- LEFT COLUMN: Generation Options -->
+              <div style="display: flex; flex-direction: column; gap: 16px;">
+                <div class="panel-header" style="margin-bottom: 4px;">
+                  <div class="panel-title" style="font-size: 0.9rem;">⚙️ Opciones de Generación</div>
+                </div>
+
+                <!-- Format & EPG -->
+                <div class="field-grid" style="gap: 12px;">
+                  <div class="field">
+                    <label for="genExportFormat">Formato de Salida</label>
+                    <select id="genExportFormat" class="input">
+                      <option value="m3u8">M3U8 (Estándar)</option>
+                      <option value="m3u_plus">M3U Plus (Extendido)</option>
+                      <option value="json">JSON (Metadatos)</option>
+                    </select>
+                  </div>
+                  <div class="field">
+                    <label for="genEpgUrl">EPG URL (opcional)</label>
+                    <input id="genEpgUrl" class="input" placeholder="http://example.com/epg.xml.gz" type="url" />
+                  </div>
+                  <div class="field">
+                    <label for="genStreamFormat">Formato Stream</label>
+                    <select id="genStreamFormat" class="input">
+                      <option value="m3u8">HLS (.m3u8)</option>
+                      <option value="ts">TS (.ts)</option>
+                    </select>
+                  </div>
+                  <div class="field">
+                    <label for="genTimeShift">Shift (horas)</label>
+                    <input id="genTimeShift" class="input" type="number" value="0" min="-12" max="12" />
+                  </div>
+                </div>
+
+                <!-- PRO STREAMING OPTIONS -->
+                <div
+                  style="padding: 14px; background: linear-gradient(135deg, rgba(59,130,246,0.15), rgba(16,185,129,0.15)); border-radius: 12px; border: 1px solid rgba(59,130,246,0.3);">
+                  <div class="panel-title" style="font-size: 0.85rem; margin-bottom: 10px;">🚀 Optimización de
+                    Streaming</div>
+                  <div style="display: flex; flex-direction: column; gap: 10px;">
+                    <label
+                      style="display: flex; align-items: flex-start; gap: 10px; cursor: pointer; font-size: 0.82rem;">
+                      <input type="checkbox" id="proStreamingOptimized"
+                        style="width: 18px; height: 18px; margin-top: 2px; accent-color: #3b82f6;">
+                      <div>
+                        <strong style="color: #38bdf8;">Pro Streaming</strong>
+                        <div style="color: var(--text-muted); font-size: 0.75rem; margin-top: 2px;">
+                          Buffer agresivo 3s, VLC caching, HTTP reconnect automático, Kodi adaptive, baja latencia
+                        </div>
+                      </div>
+                    </label>
+                    <label
+                      style="display: flex; align-items: flex-start; gap: 10px; cursor: pointer; font-size: 0.82rem;">
+                      <input type="checkbox" id="ottNavOptimizedGen"
+                        style="width: 18px; height: 18px; margin-top: 2px; accent-color: #10b981;">
+                      <div>
+                        <strong style="color: #4ade80;">OTT Navigator</strong>
+                        <div style="color: var(--text-muted); font-size: 0.75rem; margin-top: 2px;">
+                          User-Agent OTT 1.6.9.4, catchup="xc", headers VLC compatibles
+                        </div>
+                      </div>
+                    </label>
+                    <label
+                      style="display: flex; align-items: flex-start; gap: 10px; cursor: pointer; font-size: 0.82rem;">
+                      <input type="checkbox" id="includeHttpHeaders" checked
+                        style="width: 18px; height: 18px; margin-top: 2px; accent-color: #f97316;">
+                      <div>
+                        <strong style="color: #fb923c;">Incluir HTTP Headers</strong>
+                        <div style="color: var(--text-muted); font-size: 0.75rem; margin-top: 2px;">
+                          Agrega #EXTHTTP y #EXTVLCOPT con headers seleccionados
+                        </div>
+                      </div>
+                    </label>
+                  </div>
+                </div>
+
+
+                <!-- ✅ V4.1: Sistema Unificado - REDISEÑADO ESTILO APE v9.0 -->
+                <div id="v41-config-panel"
+                  style="margin-top: 14px; padding: 16px; background: linear-gradient(135deg, rgba(249,115,22,0.12), rgba(249,115,22,0.05)); border-radius: 12px; border: 1px solid rgba(249,115,22,0.3);">
+
+                  <!-- Header -->
+                  <div class="panel-header" style="margin-bottom: 10px;">
+                    <div class="panel-title" style="font-size: 0.9rem;">⚙️ Motor APE V4.1 - Configuración</div>
+                    <span id="v41StatusBadge" style="font-size: 0.8em; color: #fb923c; font-weight: 600;">🤖 Auto
+                      ON</span>
+                  </div>
+
+                  <p style="font-size: 0.75rem; color: var(--text-muted); margin: 0 0 14px 0;">
+                    Sistema inteligente de detección de nivel, Anti-Freeze y sanitización por player target.
+                  </p>
+
+                  <!-- Grid de Controles 2x2 -->
+                  <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 14px;">
+
+                    <!-- Control 1: Auto-Detect + Nivel de Evasión -->
+                    <div
+                      style="background: rgba(0,0,0,0.15); padding: 12px; border-radius: 8px; border: 1px solid rgba(249,115,22,0.2);">
+                      <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 10px;">
+                        <input type="checkbox" id="v41AutoDetectLevel" checked
+                          style="width:16px; height:16px; accent-color:#f97316; cursor: pointer;"
+                          onchange="document.getElementById('manualEvasionContainer').style.display = this.checked ? 'none' : 'block'; document.getElementById('v41StatusBadge').textContent = this.checked ? '🤖 Auto ON' : '✋ Manual';">
+                        <strong style="color:#fb923c; font-size: 0.82rem;">🤖 Auto-Detect Nivel</strong>
+                      </div>
+
+                      <!-- Selector Manual de Nivel de Evasión (oculto por defecto) -->
+                      <div id="manualEvasionContainer"
+                        style="display: none; margin-bottom: 10px; padding: 8px; background: rgba(139,92,246,0.1); border-radius: 6px; border: 1px solid rgba(139,92,246,0.2);">
+                        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
+                          <span style="font-size: 0.78rem;">🎭</span>
+                          <strong style="color:#a78bfa; font-size: 0.75rem;">Nivel de Evasión (Headers HTTP)</strong>
+                        </div>
+                        <select id="manualEvasionLevel" class="input sm"
+                          style="width: 100%; font-size: 0.78rem; margin-bottom: 6px;"
+                          onchange="app.state.manualEvasionLevel = parseInt(this.value); document.getElementById('evasionLevelHint').textContent = this.options[this.selectedIndex].dataset.hint;">
+                          <option value="1"
+                            data-hint="28 headers · User-Agent, Accept, Cache básico. Para redes sin restricciones.">L1
+                            - SAFE (Básico)</option>
+                          <option value="2"
+                            data-hint="58 headers · Client Hints, DNT, Session IDs. Para Smart TVs estándar.">L2 -
+                            STABLE (Smart TV)</option>
+                          <option value="3" selected
+                            data-hint="92 headers · WAF Bypass, HTTP/2 Priority, Codecs, DRM. Recomendado general.">L3 -
+                            ADVANCED (WAF Bypass) ⭐</option>
+                          <option value="4"
+                            data-hint="128 headers · Network API, Geo Hints, CDN Tokens. Para restricciones moderadas.">
+                            L4 - EXTREME (Spoofing)</option>
+                          <option value="5"
+                            data-hint="154 headers · 8K HDR, Multi-CDN Failover, Bot Evasion. Para redes muy restrictivas.">
+                            L5 - ULTRA (Guerra Total)</option>
+                        </select>
+                        <div id="evasionLevelHint" style="font-size: 0.68rem; color: #94a3b8; line-height: 1.3;">
+                          92 headers · WAF Bypass, HTTP/2 Priority, Codecs, DRM. Recomendado general.
+                        </div>
+                      </div>
+
+                      <!-- Anti-Freeze Level (SEPARADO - es sobre buffer/playback) -->
+                      <div
+                        style="padding: 8px; background: rgba(34,197,94,0.08); border-radius: 6px; border: 1px solid rgba(34,197,94,0.15);">
+                        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
+                          <span style="font-size: 0.78rem;">❄️</span>
+                          <strong style="color:#4ade80; font-size: 0.75rem;">Anti-Freeze (Buffer/Reconexión)</strong>
+                        </div>
+                        <select id="antiFreezeLevel" class="input sm" style="width: 100%; font-size: 0.78rem;"
+                          onchange="app.state.antiFreezeLevel = parseInt(this.value); console.log('❄️ Anti-Freeze Level:', this.value);">
+                          <option value="1" title="Buffer mínimo, sin reconexión automática">L1 - Mínimo</option>
+                          <option value="2" title="Buffer moderado, reconexión básica">L2 - Normal</option>
+                          <option value="3" selected title="Buffer balanceado, reconexión automática">L3 - Balanceado ⭐
+                          </option>
+                          <option value="4" title="Buffer agresivo, reconexión rápida">L4 - Agresivo</option>
+                          <option value="5" title="Buffer máximo, live-edge, failover automático">L5 - Live-Edge
+                          </option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <!-- Control 2: Player Target -->
+                    <div
+                      style="background: rgba(0,0,0,0.15); padding: 12px; border-radius: 8px; border: 1px solid rgba(249,115,22,0.2);">
+                      <div style="margin-bottom: 8px;">
+                        <strong style="color:#fb923c; font-size: 0.82rem;">🎯 Player Target</strong>
+                      </div>
+                      <select id="v41TargetPlayer" class="input sm" style="width: 100%; font-size: 0.78rem;">
+                        <option value="generic" selected>Genérico (balance)</option>
+                        <option value="vlc">VLC</option>
+                        <option value="kodi">Kodi</option>
+                        <option value="ott">OTT Navigator</option>
+                        <option value="tivimate">TiviMate</option>
+                        <option value="smarters">Smarters</option>
+                        <option value="perfect-player">Perfect Player</option>
+                      </select>
+                    </div>
+
+                    <!-- Control 3: Compresión -->
+                    <div
+                      style="background: rgba(0,0,0,0.15); padding: 12px; border-radius: 8px; border: 1px solid rgba(249,115,22,0.2);">
+                      <div style="margin-bottom: 8px;">
+                        <strong style="color:#fb923c; font-size: 0.82rem;">🗜️ Perfil Compresión</strong>
+                      </div>
+                      <select id="v41CompatProfile" class="input sm" style="width: 100%; font-size: 0.78rem;"
+                        onchange="if(typeof app !== 'undefined' && app.updateCompressionHints) app.updateCompressionHints(this.value)">
+                        <option value="AUTO" selected>🤖 AUTO</option>
+                        <option value="MODERN">⚡ MODERN</option>
+                        <option value="LEGACY">📺 LEGACY</option>
+                      </select>
+                    </div>
+
+                    <!-- Control 4: Serverless V5 -->
+                    <div
+                      style="background: rgba(0,0,0,0.15); padding: 12px; border-radius: 8px; border: 1px solid rgba(34,197,94,0.2);">
+                      <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                        <input type="checkbox" id="v5UseServerless"
+                          style="width:16px; height:16px; accent-color:#22c55e; cursor: pointer;">
+                        <strong style="color:#22c55e; font-size: 0.82rem;">☁️ V5.0 Serverless</strong>
+                      </div>
+                      <input id="v5WorkerUrl" class="input sm" placeholder="Worker URL..."
+                        style="width: 100%; font-size: 0.72rem; display: none;">
+                    </div>
+
+                  </div>
+
+                  <!-- Hint Dinámico -->
+                  <div id="compressionHint"
+                    style="padding: 8px 12px; background: rgba(59,130,246,0.08); border: 1px solid rgba(59,130,246,0.15); border-radius: 6px; font-size: 0.72rem; line-height: 1.4; color: #94a3b8;">
+                    <span style="color: #3b82f6; font-weight: 600;">ℹ️ AUTO:</span>
+                    Detecta CDN/WAF y ajusta compresión automáticamente según player target.
+                  </div>
+
+                  <!-- Status Footer -->
+                  <div id="v41DecisionSummary"
+                    style="margin-top: 10px; font-size: 0.72rem; color: var(--text-muted); text-align: center;">
+                    ✅ V4.1 Ready: Auto-detect + Anti-Freeze L3 + Sanitización activa
+                  </div>
+                </div>
+
+                <!-- ═══════════════════════════════════════════════════════════
+                     🧩 V5.1 FEATURE: GROUP-TITLE HIERARCHICO
+                     Panel de configuración de jerarquía de categorías
+                     ═══════════════════════════════════════════════════════════ -->
+                <div id="group-title-config-container"></div>
+
+                <!-- ═══════════════════════════════════════════════════════════
+     🆕 V4.1 FEATURE 2: TELEMETRÍA RÁPIDA
+     Mini panel con 4 métricas + barras de distribución
+     ═══════════════════════════════════════════════════════════ -->
+                <div class="telemetry-mini-panel"
+                  style="margin-top: 20px; padding: 16px; background: linear-gradient(135deg, rgba(139,92,246,0.1) 0%, rgba(109,40,217,0.05) 100%); border: 1px solid rgba(139,92,246,0.2); border-radius: 12px;">
+                  <!-- Header con toggle -->
+                  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                    <h4
+                      style="margin: 0; display: flex; align-items: center; gap: 8px; color: #e2e8f0; font-size: 15px; font-weight: 600;">
+                      <span style="font-size: 1.2rem;">📡</span>
+                      <span>Telemetría en Vivo</span>
+                    </h4>
+
+                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; user-select: none;">
+                      <input type="checkbox" id="telemetryEnabled" checked
+                        style="width: 18px; height: 18px; cursor: pointer; accent-color: #3b82f6;" />
+                      <span style="font-size: 12px; color: #94a3b8; font-weight: 500;">Live Updates</span>
+                    </label>
+                  </div>
+
+                  <!-- 4 Mini Cards Grid -->
+                  <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 16px;">
+
+                    <!-- Card 1: Decisiones -->
+                    <div class="telemetry-mini-card"
+                      style="background: rgba(15,23,42,0.6); border: 1px solid rgba(59,130,246,0.3); border-radius: 8px; padding: 12px; text-align: center; transition: all 0.3s ease;">
+                      <div style="font-size: 1.1rem; margin-bottom: 6px;">🎯</div>
+                      <div id="telemetryApeCalls"
+                        style="font-size: 1.4rem; font-weight: 800; color: #3b82f6; line-height: 1; margin-bottom: 4px;">
+                        0</div>
+                      <div style="font-size: 10px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px;">
+                        Decisiones</div>
+                    </div>
+
+                    <!-- Card 2: Success -->
+                    <div class="telemetry-mini-card"
+                      style="background: rgba(15,23,42,0.6); border: 1px solid rgba(34,197,94,0.3); border-radius: 8px; padding: 12px; text-align: center; transition: all 0.3s ease;">
+                      <div style="font-size: 1.1rem; margin-bottom: 6px;">✅</div>
+                      <div id="telemetrySuccess"
+                        style="font-size: 1.4rem; font-weight: 800; color: #10b981; line-height: 1; margin-bottom: 4px;">
+                        0%</div>
+                      <div style="font-size: 10px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px;">
+                        Success</div>
+                    </div>
+
+                    <!-- Card 3: Avg Time -->
+                    <div class="telemetry-mini-card"
+                      style="background: rgba(15,23,42,0.6); border: 1px solid rgba(251,146,60,0.3); border-radius: 8px; padding: 12px; text-align: center; transition: all 0.3s ease;">
+                      <div style="font-size: 1.1rem; margin-bottom: 6px;">⚡</div>
+                      <div id="telemetryAvgTime"
+                        style="font-size: 1.4rem; font-weight: 800; color: #fb923c; line-height: 1; margin-bottom: 4px;">
+                        0ms</div>
+                      <div style="font-size: 10px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px;">
+                        Avg Time</div>
+                    </div>
+
+                    <!-- Card 4: Overrides -->
+                    <div class="telemetry-mini-card"
+                      style="background: rgba(15,23,42,0.6); border: 1px solid rgba(139,92,246,0.3); border-radius: 8px; padding: 12px; text-align: center; transition: all 0.3s ease;">
+                      <div style="font-size: 1.1rem; margin-bottom: 6px;">🔄</div>
+                      <div id="telemetryOverrides"
+                        style="font-size: 1.4rem; font-weight: 800; color: #8b5cf6; line-height: 1; margin-bottom: 4px;">
+                        0</div>
+                      <div style="font-size: 10px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px;">
+                        Overrides</div>
+                    </div>
+
+                  </div>
+
+                  <!-- Distribution Bars -->
+                  <div style="padding-top: 12px; border-top: 1px solid rgba(100,116,139,0.2);">
+
+                    <!-- MODERN Bar -->
+                    <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
+                      <span style="min-width: 85px; font-size: 12px; font-weight: 600; color: #3b82f6;">⚡ MODERN</span>
+                      <div
+                        style="flex: 1; height: 18px; background: rgba(15,23,42,0.8); border-radius: 999px; overflow: hidden; box-shadow: inset 0 2px 4px rgba(0,0,0,0.3);">
+                        <div id="modernBar"
+                          style="height: 100%; width: 0%; background: linear-gradient(90deg, #3b82f6 0%, #2563eb 100%); transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);">
+                        </div>
+                      </div>
+                      <span id="modernPercent"
+                        style="min-width: 42px; text-align: right; font-size: 13px; font-weight: 700; font-family: monospace; color: #3b82f6;">0%</span>
+                    </div>
+
+                    <!-- LEGACY Bar -->
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                      <span style="min-width: 85px; font-size: 12px; font-weight: 600; color: #fb923c;">📺 LEGACY</span>
+                      <div
+                        style="flex: 1; height: 18px; background: rgba(15,23,42,0.8); border-radius: 999px; overflow: hidden; box-shadow: inset 0 2px 4px rgba(0,0,0,0.3);">
+                        <div id="legacyBar"
+                          style="height: 100%; width: 0%; background: linear-gradient(90deg, #fb923c 0%, #f97316 100%); transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);">
+                        </div>
+                      </div>
+                      <span id="legacyPercent"
+                        style="min-width: 42px; text-align: right; font-size: 13px; font-weight: 700; font-family: monospace; color: #fb923c;">0%</span>
+                    </div>
+
+                  </div>
+                </div>
+                <!-- ═══════════════════════════════════════════════════════════ -->
+
+
+                <script>
+                  (function () {
+                    const cb = document.getElementById('v5UseServerless');
+                    const url = document.getElementById('v5WorkerUrl');
+                    const key = document.getElementById('v5ApiKey');
+                    if (!cb || !url || !key) return;
+                    const sync = () => {
+                      const on = !!cb.checked;
+                      url.style.display = on ? 'inline-block' : 'none';
+                      key.style.display = on ? 'inline-block' : 'none';
+                    };
+                    cb.addEventListener('change', sync);
+                    sync();
+                  })();
+                </script>
+
+                <!-- Generation Buttons -->
+                <div class="button-row" style="margin-top: 8px;">
+                  <button id="btnGenerateM3U8Pro" class="btn"
+                    style="background: linear-gradient(135deg, #10b981, #059669); box-shadow: 0 10px 25px rgba(16,185,129,0.4);"
+                    onclick="app.generateWithQoSCheck('pro')">
+                    <span class="icon">📺</span><span>Generar M3U8 PRO</span>
+                  </button>
+                  <button id="btnDownloadM3U8Pro" class="btn secondary" onclick="app.downloadM3U8()">
+                    <span class="icon">💾</span><span>Descargar .m3u8</span>
+                  </button>
+                  <!-- ⚡ APE v9.0 ULTIMATE Button -->
+                  <button id="btnGenerateAPEv9Main" class="btn"
+                    style="background: linear-gradient(135deg, #8b5cf6, #6d28d9); box-shadow: 0 10px 25px rgba(139,92,246,0.4);"
+                    onclick="app.generateWithQoSCheck('ultimate')">
+                    <span class="icon">👑</span><span>APE v9.0 ULTIMATE</span>
+                  </button>
+                  <!-- 🧠 V25 CTX METADATA INTELLIGENCE SCAN -->
+                  <button id="btnScanMetadataCluster" class="btn secondary"
+                    style="background: linear-gradient(135deg, rgba(56,189,248,0.1), rgba(14,165,233,0.1)); border: 1px solid #38bdf8; color: #38bdf8;"
+                    onclick="if(typeof apeScanMetadataCluster === 'function') { apeScanMetadataCluster(); } else { alert('El script de Metadata Engine no está cargado'); }">
+                    <span class="icon">🧠</span><span>Escanear Metadata</span>
+                  </button>
+                </div>
+
+                <!-- 🏆 M3U8 GENERATOR v16 ELITE — Manifiesto HLS Inteligente (RFC 8216 Avanzado) -->
+                <div class="button-row" style="margin-top: 6px;">
+                  <button id="btnGenerateEliteV16" class="btn"
+                    style="background: linear-gradient(135deg, #f59e0b, #dc2626); box-shadow: 0 10px 25px rgba(245,158,11,0.4);"
+                    onclick="if(window.app){app.generateWithQoSCheck('elite')}">
+                    <span class="icon">👑</span><span>Generar ELITE v16 (HLS Inteligente)</span>
+                  </button>
+                </div>
+
+                <!-- Preview Area -->
+                <div>
+                  <label style="font-size: 0.82rem; font-weight: 500;">Vista Previa</label>
+                  <textarea id="m3u8PreviewGen" class="input" readonly
+                    placeholder="# La playlist generada aparecerá aquí..."
+                    style="height: 180px; font-family: monospace; font-size: 0.72rem; resize: vertical;"></textarea>
+                </div>
+              </div>
+
+              <!-- RIGHT COLUMN: Headers Manager + Smart Settings -->
+              <div style="display: flex; flex-direction: column; gap: 16px;">
+
+                <!-- APE v9.0 Profile Manager Container -->
+                <div id="profile-manager-container"
+                  style="padding: 16px; background: linear-gradient(135deg, rgba(16,185,129,0.12), rgba(16,185,129,0.05)); border-radius: 12px; border: 1px solid rgba(16,185,129,0.3);">
+                  <div class="panel-header" style="margin-bottom: 10px;">
+                    <div class="panel-title" style="font-size: 0.9rem;">🎚️ Gestor de Perfiles APE v9.0</div>
+                    <span id="activeHeadersCountGen" style="font-size: 0.8em; color: #10b981; font-weight: 600;">0
+                      activos</span>
+                  </div>
+                  <p style="font-size: 0.75rem; color: var(--text-muted); margin: 0 0 12px 0;">
+                    Sistema de perfiles P0-P5 con 154 headers HTTP organizados en 10 categorías para máxima
+                    compatibilidad.
+                  </p>
+
+                  <!-- Quick Profile Selector -->
+                  <div style="display: flex; gap: 6px; margin-bottom: 12px; flex-wrap: wrap;">
+                    <button class="btn-profile" data-profile="P0"
+                      onclick="if(window.ProfileManagerV9) { window.ProfileManagerV9.selectProfile('P0'); window.ProfileManagerV9.render(); }"
+                      style="padding: 6px 10px; font-size: 11px; background: rgba(220,38,38,0.15); border: 1px solid rgba(220,38,38,0.4); color: #fca5a5; border-radius: 6px; cursor: pointer;">P0
+                      ULTRA</button>
+                    <button class="btn-profile" data-profile="P1"
+                      onclick="if(window.ProfileManagerV9) { window.ProfileManagerV9.selectProfile('P1'); window.ProfileManagerV9.render(); }"
+                      style="padding: 6px 10px; font-size: 11px; background: rgba(234,88,12,0.15); border: 1px solid rgba(234,88,12,0.4); color: #fdba74; border-radius: 6px; cursor: pointer;">P1
+                      8K</button>
+                    <button class="btn-profile active" data-profile="P2"
+                      onclick="if(window.ProfileManagerV9) { window.ProfileManagerV9.selectProfile('P2'); window.ProfileManagerV9.render(); }"
+                      style="padding: 6px 10px; font-size: 11px; background: rgba(202,138,4,0.15); border: 1px solid rgba(202,138,4,0.4); color: #fde047; border-radius: 6px; cursor: pointer;">P2
+                      4K</button>
+                    <button class="btn-profile" data-profile="P3"
+                      onclick="if(window.ProfileManagerV9) { window.ProfileManagerV9.selectProfile('P3'); window.ProfileManagerV9.render(); }"
+                      style="padding: 6px 10px; font-size: 11px; background: rgba(22,163,74,0.25); border: 1px solid rgba(22,163,74,0.5); color: #86efac; border-radius: 6px; cursor: pointer;">P3
+                      FHD</button>
+                    <button class="btn-profile" data-profile="P4"
+                      onclick="if(window.ProfileManagerV9) { window.ProfileManagerV9.selectProfile('P4'); window.ProfileManagerV9.render(); }"
+                      style="padding: 6px 10px; font-size: 11px; background: rgba(8,145,178,0.15); border: 1px solid rgba(8,145,178,0.4); color: #67e8f9; border-radius: 6px; cursor: pointer;">P4
+                      HD</button>
+                    <button class="btn-profile" data-profile="P5"
+                      onclick="if(window.ProfileManagerV9) { window.ProfileManagerV9.selectProfile('P5'); window.ProfileManagerV9.render(); }"
+                      style="padding: 6px 10px; font-size: 11px; background: rgba(99,102,241,0.15); border: 1px solid rgba(99,102,241,0.4); color: #a5b4fc; border-radius: 6px; cursor: pointer;">P5
+                      SD</button>
+                  </div>
+
+                  <button class="btn" style="width: 100%; background: linear-gradient(135deg, #10b981, #059669);"
+                    onclick="if(window.ProfileManagerV9) window.ProfileManagerV9.render()">
+                    <span class="icon">⚙️</span><span>Gestionar Perfiles (154 Headers)</span>
+                  </button>
+                </div>
+
+                <!-- ═══════════════════════════════════════════════════════════
+     🆕 V4.1 FEATURE 4: DASHBOARD TELEMETRÍA COMPLETO
+     Panel expandido con 4 KPIs principales
+     ═══════════════════════════════════════════════════════════ -->
+                <div class="telemetry-dashboard-section"
+                  style="margin-top: 20px; padding: 16px; background: linear-gradient(135deg, rgba(59,130,246,0.08) 0%, rgba(37,99,235,0.05) 100%); border: 1px solid rgba(59,130,246,0.2); border-radius: 12px;">
+                  <!-- Header -->
+                  <div
+                    style="margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid rgba(100,116,139,0.2);">
+                    <h3
+                      style="margin: 0; display: flex; align-items: center; gap: 8px; color: #e2e8f0; font-size: 16px; font-weight: 600;">
+                      <span style="font-size: 1.3rem;">📊</span>
+                      <span>Telemetría en Tiempo Real</span>
+                    </h3>
+                    <p style="margin: 4px 0 0 32px; font-size: 12px; color: #94a3b8; line-height: 1.4;">
+                      Monitoreo continuo de decisiones APE y performance del motor
+                    </p>
+                  </div>
+
+                  <!-- 4 Large Cards Grid (2x2) -->
+                  <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px;">
+
+                    <!-- Card 1: APE Decisions -->
+                    <div
+                      style="background: linear-gradient(135deg, rgba(59,130,246,0.15) 0%, rgba(37,99,235,0.08) 100%); border: 1px solid rgba(59,130,246,0.3); border-left: 3px solid #3b82f6; border-radius: 10px; padding: 18px; display: flex; flex-direction: column; align-items: center; text-align: center; transition: all 0.3s ease;">
+                      <div
+                        style="font-size: 2rem; margin-bottom: 10px; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));">🎯
+                      </div>
+                      <div id="telem__ape-calls"
+                        style="font-size: 2rem; font-weight: 800; color: #3b82f6; line-height: 1; margin-bottom: 6px; text-shadow: 0 2px 4px rgba(0,0,0,0.3);">
+                        0</div>
+                      <div
+                        style="font-size: 11px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.8px; font-weight: 600;">
+                        Decisiones APE</div>
+                    </div>
+
+                    <!-- Card 2: Success Rate -->
+                    <div
+                      style="background: linear-gradient(135deg, rgba(34,197,94,0.15) 0%, rgba(22,163,74,0.08) 100%); border: 1px solid rgba(34,197,94,0.3); border-left: 3px solid #10b981; border-radius: 10px; padding: 18px; display: flex; flex-direction: column; align-items: center; text-align: center; transition: all 0.3s ease;">
+                      <div
+                        style="font-size: 2rem; margin-bottom: 10px; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));">✅
+                      </div>
+                      <div id="telem__success-rate"
+                        style="font-size: 2rem; font-weight: 800; color: #10b981; line-height: 1; margin-bottom: 6px; text-shadow: 0 2px 4px rgba(0,0,0,0.3);">
+                        0%</div>
+                      <div
+                        style="font-size: 11px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.8px; font-weight: 600;">
+                        Tasa de Éxito</div>
+                    </div>
+
+                    <!-- Card 3: Avg Time -->
+                    <div
+                      style="background: linear-gradient(135deg, rgba(251,146,60,0.15) 0%, rgba(249,115,22,0.08) 100%); border: 1px solid rgba(251,146,60,0.3); border-left: 3px solid #fb923c; border-radius: 10px; padding: 18px; display: flex; flex-direction: column; align-items: center; text-align: center; transition: all 0.3s ease;">
+                      <div
+                        style="font-size: 2rem; margin-bottom: 10px; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));">⚡
+                      </div>
+                      <div id="telem__avg-time"
+                        style="font-size: 2rem; font-weight: 800; color: #fb923c; line-height: 1; margin-bottom: 6px; text-shadow: 0 2px 4px rgba(0,0,0,0.3);">
+                        0ms</div>
+                      <div
+                        style="font-size: 11px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.8px; font-weight: 600;">
+                        Latencia Promedio</div>
+                    </div>
+
+                    <!-- Card 4: Overrides -->
+                    <div
+                      style="background: linear-gradient(135deg, rgba(139,92,246,0.15) 0%, rgba(124,58,237,0.08) 100%); border: 1px solid rgba(139,92,246,0.3); border-left: 3px solid #8b5cf6; border-radius: 10px; padding: 18px; display: flex; flex-direction: column; align-items: center; text-align: center; transition: all 0.3s ease;">
+                      <div
+                        style="font-size: 2rem; margin-bottom: 10px; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));">🔄
+                      </div>
+                      <div id="telem__overrides"
+                        style="font-size: 2rem; font-weight: 800; color: #8b5cf6; line-height: 1; margin-bottom: 6px; text-shadow: 0 2px 4px rgba(0,0,0,0.3);">
+                        0</div>
+                      <div
+                        style="font-size: 11px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.8px; font-weight: 600;">
+                        User Overrides</div>
+                    </div>
+
+                  </div>
+                </div>
+                <!-- ═══════════════════════════════════════════════════════════ -->
+
+
+                <!-- ═══════════════════════════════════════════════════════════
+     🆕 V4.1 FEATURE 5: STREAM INSPECTOR
+     Análisis automático de Provider/CDN/Protocolo
+     ═══════════════════════════════════════════════════════════ -->
+                <div class="stream-inspector-section"
+                  style="margin-top: 16px; padding: 16px; background: linear-gradient(135deg, rgba(251,146,60,0.08) 0%, rgba(249,115,22,0.05) 100%); border: 1px solid rgba(251,146,60,0.2); border-radius: 12px;">
+                  <!-- Header -->
+                  <div style="margin-bottom: 14px;">
+                    <h3
+                      style="margin: 0 0 4px 0; display: flex; align-items: center; gap: 8px; color: #e2e8f0; font-size: 15px; font-weight: 600;">
+                      <span style="font-size: 1.2rem;">🔍</span>
+                      <span>Stream Inspector</span>
+                    </h3>
+                    <p style="margin: 0; font-size: 11px; color: #94a3b8; line-height: 1.3;">
+                      Análisis de topología en tiempo real
+                    </p>
+                  </div>
+
+                  <!-- 3 Inspector Items Grid -->
+                  <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 14px;">
+
+                    <!-- Provider -->
+                    <div
+                      style="background: rgba(15,23,42,0.6); border: 1px solid rgba(251,146,60,0.2); border-radius: 8px; padding: 12px; display: flex; flex-direction: column; align-items: center; text-align: center;">
+                      <div style="font-size: 1.4rem; margin-bottom: 6px;">🌐</div>
+                      <div
+                        style="font-size: 10px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;">
+                        Provider</div>
+                      <div id="inspectorProvider"
+                        style="font-size: 12px; font-weight: 600; color: #fb923c; font-family: monospace; padding: 3px 8px; background: rgba(251,146,60,0.1); border-radius: 4px;">
+                        —</div>
+                    </div>
+
+                    <!-- CDN/WAF -->
+                    <div
+                      style="background: rgba(15,23,42,0.6); border: 1px solid rgba(251,146,60,0.2); border-radius: 8px; padding: 12px; display: flex; flex-direction: column; align-items: center; text-align: center;">
+                      <div style="font-size: 1.4rem; margin-bottom: 6px;">🛡️</div>
+                      <div
+                        style="font-size: 10px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;">
+                        CDN / WAF</div>
+                      <div id="inspectorCdn"
+                        style="font-size: 12px; font-weight: 600; color: #fb923c; font-family: monospace; padding: 3px 8px; background: rgba(251,146,60,0.1); border-radius: 4px;">
+                        —</div>
+                    </div>
+
+                    <!-- Protocol -->
+                    <div
+                      style="background: rgba(15,23,42,0.6); border: 1px solid rgba(251,146,60,0.2); border-radius: 8px; padding: 12px; display: flex; flex-direction: column; align-items: center; text-align: center;">
+                      <div style="font-size: 1.4rem; margin-bottom: 6px;">🔒</div>
+                      <div
+                        style="font-size: 10px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;">
+                        Protocolo</div>
+                      <div id="inspectorProtocol"
+                        style="font-size: 12px; font-weight: 600; color: #fb923c; font-family: monospace; padding: 3px 8px; background: rgba(251,146,60,0.1); border-radius: 4px;">
+                        —</div>
+                    </div>
+
+                  </div>
+
+                  <!-- Distribution Stats (Footer) -->
+                  <div style="padding-top: 12px; border-top: 1px solid rgba(100,116,139,0.2);">
+                    <div
+                      style="display: flex; align-items: center; gap: 8px; padding: 6px 0; font-size: 12px; color: #94a3b8;">
+                      <span style="font-size: 1rem;">⚡</span>
+                      <span>
+                        <strong id="modernChannels" style="color: #3b82f6; font-weight: 700;">0</strong> canales MODERN
+                        (<span id="modernPct" style="color: #3b82f6; font-weight: 600;">0%</span>)
+                      </span>
+                    </div>
+
+                    <div
+                      style="display: flex; align-items: center; gap: 8px; padding: 6px 0; font-size: 12px; color: #94a3b8;">
+                      <span style="font-size: 1rem;">📺</span>
+                      <span>
+                        <strong id="legacyChannels" style="color: #fb923c; font-weight: 700;">0</strong> canales LEGACY
+                        (<span id="legacyPct" style="color: #fb923c; font-weight: 600;">0%</span>)
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                <!-- ═══════════════════════════════════════════════════════════ -->
+
+
+                <!-- Smart Streaming Settings (Future) -> Configuración Inteligente QoS -->
+                <div
+                  style="padding: 16px; background: var(--color-bg-6, rgba(249,115,22,0.08)); border-radius: 12px; border: 1px solid rgba(var(--color-orange-500-rgb, 168,75,47), 0.3);">
+                  <div class="panel-header" style="margin-bottom: 8px;">
+                    <div class="panel-title"
+                      style="font-size: 0.9rem; color: var(--color-orange-400, rgba(230, 129, 97, 1));">🧠 Configuración
+                      Inteligente QoS (Latencia Rayo)</div>
+                    <div id="qosStatusBadge" class="badge"
+                      style="background:#4b5563; color:var(--color-white, white); font-size: 0.65rem;">Status: Offline
+                    </div>
+                  </div>
+                  <p style="font-size: 0.75rem; color: var(--text-muted); margin: 0 0 10px 0;">
+                    El motor mapea la topología de red del router destino. Ajusta matemáticamente el Prefetch, Bitrate
+                    absoluto y forza la directiva IP de Tráfico Prioritario (DSCP) en el backend (VPS) evadiendo los
+                    estrangulamientos ISP.
+                  </p>
+
+                  <div
+                    style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; align-items: center; margin-bottom: 12px;">
+                    <div>
+                      <label for="qosDownloadMbps"
+                        style="font-size: 0.75rem; display: block; margin-bottom: 4px; color: var(--text-secondary);">Download
+                        Disp. (Mbps)</label>
+                      <input type="number" id="qosDownloadMbps" class="input" placeholder="Ej: 396" value="100" min="1"
+                        max="10000"
+                        style="width: 100%; border: 1px solid var(--color-orange-400, rgba(230, 129, 97, 1)); border-radius: var(--radius-sm);">
+                    </div>
+                    <div>
+                      <label for="qosPingMs"
+                        style="font-size: 0.75rem; display: block; margin-bottom: 4px; color: var(--text-secondary);">Latencia
+                        (Ping ms)</label>
+                      <input type="number" id="qosPingMs" class="input" placeholder="Ej: 21" value="20" min="1"
+                        style="width: 100%; border: 1px solid var(--color-slate-500, rgba(98, 108, 113, 1)); border-radius: var(--radius-sm);">
+                    </div>
+                  </div>
+
+                  <div style="margin-bottom: 12px;">
+                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                      <input type="checkbox" id="qosForcePromptCheckbox"
+                        style="width: 16px; height: 16px; accent-color: var(--color-orange-500, rgba(168, 75, 47, 1));" />
+                      <span style="font-size: 0.75rem; color: var(--text-main);">Forzar escaneo aduana (Interrumpe
+                        pre-generación)</span>
+                    </label>
+                  </div>
+
+                  <div
+                    style="display:flex; justify-content:space-between; align-items: center; padding: 10px; background: rgba(0,0,0,0.2); border-radius: 8px;">
+                    <small id="qosValidationMsg"
+                      style="color:var(--color-error, rgba(192, 21, 47, 1)); font-weight:bold; display:none;">⚠️
+                      Capacidad Excedida</small>
+                    <div style="margin-left: auto; display: flex; gap: 8px;">
+                      <button id="btnAutoProfileNetwork" class="btn secondary sm"
+                        style="border: 1px solid var(--color-orange-400, rgba(230, 129, 97, 1)); color: var(--color-orange-400, rgba(230, 129, 97, 1)); background: transparent;"
+                        onclick="window.app && window.app.profileNetwork()">📡 Auto-Detectar</button>
+                      <button id="btnSaveNetworkProfile" class="btn primary sm"
+                        style="background:var(--color-orange-500, rgba(168, 75, 47, 1)); color:var(--color-white, white); border: none;"
+                        onclick="window.app && window.app.saveNetworkProfile()">💾 Fijar QoS Snapshot</button>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Quick Stats -->
+                <div
+                  style="padding: 14px; background: rgba(20,24,40,0.5); border-radius: 12px; border: 1px solid rgba(148,163,184,0.2);">
+                  <div style="font-size: 0.82rem; font-weight: 600; margin-bottom: 10px; color: var(--text-main);">📊
+                    Resumen de Canales</div>
+                  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 0.75rem;">
+                    <div
+                      style="padding: 8px; background: rgba(56,189,248,0.1); border-radius: 6px; text-align: center;">
+                      <div style="color: var(--text-muted);">Total</div>
+                      <div id="genStatTotal" style="color: #38bdf8; font-weight: 700; font-size: 1.1rem;">0</div>
+                    </div>
+                    <div
+                      style="padding: 8px; background: rgba(74,222,128,0.1); border-radius: 6px; text-align: center;">
+                      <div style="color: var(--text-muted);">Filtrados</div>
+                      <div id="genStatFiltered" style="color: #4ade80; font-weight: 700; font-size: 1.1rem;">0</div>
+                    </div>
+                    <div
+                      style="padding: 8px; background: rgba(251,146,60,0.1); border-radius: 6px; text-align: center;">
+                      <div style="color: var(--text-muted);">4K/UHD</div>
+                      <div id="genStat4K" style="color: #fb923c; font-weight: 700; font-size: 1.1rem;">0</div>
+                    </div>
+                    <div
+                      style="padding: 8px; background: rgba(168,85,247,0.1); border-radius: 6px; text-align: center;">
+                      <div style="color: var(--text-muted);">Grupos</div>
+                      <div id="genStatGroups" style="color: #a855f7; font-weight: 700; font-size: 1.1rem;">0</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- TAB: EXPORTAR -->
+          <div id="tab-export" class="tab-content">
+            <div class="panel-header" style="margin-bottom:10px;">
+              <div class="panel-title">Salida · Exportar Datos</div>
+            </div>
+            <p style="font-size:0.8rem; color:var(--text-muted); margin-top:0;">Exporta la vista actual de canales a
+              Excel, CSV o JSON.</p>
+            <div class="button-row"><button id="btnExportExcel" class="btn"><span class="icon">📊</span><span>Exportar
+                  Excel</span></button><button id="btnExportCSV" class="btn secondary"><span>CSV</span></button><button
+                id="btnCopyJSON" class="btn secondary"><span>Copiar JSON</span></button><button id="btnGenerateM3U8_alt"
+                class="btn" onclick="app.generateM3U8Pro()"
+                style="background: linear-gradient(135deg, #10b981, #059669); box-shadow: 0 10px 25px rgba(16,185,129,0.3);"><span
+                  class="icon">📺</span><span>Generar M3U8 PRO</span></button><button id="btnGenerateAPEv9" class="btn"
+                onclick="app.generateM3U8Unified ? app.generateM3U8Unified() : app.generateM3U8Ultimate()"
+                style="background: linear-gradient(135deg, #ff6b6b, #ee5a24); box-shadow: 0 10px 25px rgba(255,107,107,0.3); margin-left: 10px;"><span
+                  class="icon">🔥</span><span>Generar UNIFIED (68+ JWT)</span></button><button
+                id="btnGenerateTypedArrays" class="btn"
+                onclick="if(window.ApeModuleManager && window.ApeModuleManager.exportEngine) { window.ApeModuleManager.exportEngine('typed-arrays'); } else if(window.app && typeof window.app.generateM3U8_TypedArrays === 'function') { window.app.generateM3U8_TypedArrays(); } else { alert('El Sincronizador Maestro HLS (Typed Arrays) aún está armando los buffers. Espera un segundo.'); }"
+                style="background: linear-gradient(135deg, #8b5cf6, #6366f1); box-shadow: 0 10px 25px rgba(139,92,246,0.3); margin-left: 10px;"><span
+                  class="icon">🚀</span><span>TYPED ARRAYS ULTIMATE</span></button></div>
+            <p id="exportStatus" style="font-size:0.78rem; color:var(--text-muted); margin-top:8px;">Ninguna
+              exportación
+              realizada todavía.</p>
+
+            <!-- 🛡️ APE GUARDIAN ENGINE v16 - TELEMETRÍA EXCHANGE -->
+            <div class="ape-v16-exchange-panel" style="
+                background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(139, 92, 246, 0.05));
+                border: 1px solid rgba(139, 92, 246, 0.3);
+                border-radius: 16px;
+                padding: 20px;
+                margin-top: 16px;
+                margin-bottom: 16px;
+            ">
+                <!-- Header -->
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <span style="font-size: 1.5rem;">🛡️</span>
+                        <div>
+                            <h3 style="margin: 0; font-size: 1rem; color: #e2e8f0;">APE Guardian Engine v16 - Telemetría Exchange</h3>
+                            <p style="margin: 4px 0 0 0; font-size: 0.72rem; color: #94a3b8;">
+                                Endpoint: <span id="ape16-backend-url" style="color: #a5b4fc;">https://iptv-ape.duckdns.org/guardian</span>
+                                <span id="ape16-latency-badge" style="margin-left: 8px; color: #fbbf24;">--ms</span>
+                            </p>
+                        </div>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <!-- Live Toggle -->
+                        <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                            <input type="checkbox" id="ape16-toggle" checked style="width: 18px; height: 18px; accent-color: #8b5cf6;">
+                            <span style="font-size: 0.72rem; color: #94a3b8;">Live</span>
+                        </label>
+                        <!-- Status Badge -->
+                        <div id="ape16-status-badge" style="
+                            display: flex; align-items: center; gap: 8px;
+                            padding: 6px 12px;
+                            border-radius: 999px;
+                            background: rgba(100, 116, 139, 0.3);
+                            border: 1px solid rgba(100, 116, 139, 0.5);
+                            font-size: 0.75rem;
+                            color: #94a3b8;
+                        ">
+                            <span id="ape16-status-dot" style="
+                                width: 8px; height: 8px;
+                                border-radius: 50%;
+                                background: #64748b;
+                            "></span>
+                            <span id="ape16-status-text">Disconnected</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Aggregated Metrics Grid -->
+                <div style="
+                    display: grid;
+                    grid-template-columns: repeat(4, 1fr);
+                    gap: 12px;
+                    margin-bottom: 16px;
+                ">
+                    <div style="
+                        background: rgba(30, 41, 59, 0.5);
+                        border: 1px solid rgba(100, 116, 139, 0.3);
+                        border-radius: 10px;
+                        padding: 12px;
+                    ">
+                        <div style="font-size: 0.7rem; color: #94a3b8; margin-bottom: 4px;">Sesiones Activas</div>
+                        <div id="ape16-total-sessions" style="font-size: 1.5rem; color: #e2e8f0; font-weight: 600;">0</div>
+                    </div>
+                    <div style="
+                        background: rgba(30, 41, 59, 0.5);
+                        border: 1px solid rgba(100, 116, 139, 0.3);
+                        border-radius: 10px;
+                        padding: 12px;
+                    ">
+                        <div style="font-size: 0.7rem; color: #94a3b8; margin-bottom: 4px;">Bandwidth Promedio</div>
+                        <div id="ape16-avg-bandwidth" style="font-size: 1.5rem; color: #4ade80; font-weight: 600;">-- Mbps</div>
+                    </div>
+                    <div style="
+                        background: rgba(30, 41, 59, 0.5);
+                        border: 1px solid rgba(100, 116, 139, 0.3);
+                        border-radius: 10px;
+                        padding: 12px;
+                    ">
+                        <div style="font-size: 0.7rem; color: #94a3b8; margin-bottom: 4px;">Latency Promedio</div>
+                        <div id="ape16-avg-latency" style="font-size: 1.5rem; color: #fbbf24; font-weight: 600;">-- ms</div>
+                    </div>
+                    <div style="
+                        background: rgba(30, 41, 59, 0.5);
+                        border: 1px solid rgba(100, 116, 139, 0.3);
+                        border-radius: 10px;
+                        padding: 12px;
+                    ">
+                        <div style="font-size: 0.7rem; color: #94a3b8; margin-bottom: 4px;">Errores Totales</div>
+                        <div id="ape16-total-errors" style="font-size: 1.5rem; color: #f87171; font-weight: 600;">0</div>
+                    </div>
+                </div>
+
+                <!-- 📡 PROVIDERS ACTIVOS -->
+                <div style="
+                    background: rgba(15, 23, 42, 0.6);
+                    border: 1px solid rgba(59, 130, 246, 0.3);
+                    border-radius: 10px;
+                    padding: 14px;
+                    margin-bottom: 16px;
+                ">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span style="font-size: 1.1rem;">📡</span>
+                            <span style="font-size: 0.8rem; color: #93c5fd; font-weight: 600;">Listas / Proveedores Activos</span>
+                        </div>
+                        <div id="ape16-providers-count" style="
+                            padding: 3px 10px;
+                            border-radius: 999px;
+                            background: rgba(59, 130, 246, 0.2);
+                            border: 1px solid rgba(59, 130, 246, 0.4);
+                            font-size: 0.7rem;
+                            color: #93c5fd;
+                        ">0 fuentes · 0 canales activos</div>
+                    </div>
+                    <div id="ape16-providers-container">
+                        <div style="text-align: center; padding: 16px; color: #64748b; font-size: 0.78rem;">
+                            ⏳ Sin canales activos — haz zapping para ver telemetría en vivo
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Event Log -->
+                <div style="
+                    background: rgba(15, 23, 42, 0.6);
+                    border: 1px solid rgba(100, 116, 139, 0.3);
+                    border-radius: 10px;
+                    padding: 12px;
+                    margin-bottom: 12px;
+                ">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                        <span style="font-size: 0.75rem; color: #94a3b8; font-weight: 600;">📝 Event Log</span>
+                    </div>
+                    <div id="ape16-event-log" style="
+                        max-height: 150px;
+                        overflow-y: auto;
+                        font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+                        font-size: 0.7rem;
+                        line-height: 1.6;
+                    "></div>
+                </div>
+            </div>
+
+            <!-- ✅ V4.9: PRO STREAMING OPTIONS -->
+            <div class="panel-header" style="margin: 14px 0 6px 0;">
+              <div class="panel-title" style="font-size:0.85rem;">⚡ Opciones M3U8 PRO</div>
+            </div>
+            <div
+              style="display:flex; flex-direction:column; gap:8px; padding:10px; background:rgba(59,130,246,0.1); border-radius:8px; border:1px solid rgba(59,130,246,0.3);">
+              <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:0.82rem;">
+                <input type="checkbox" id="proStreamingExport" style="width:16px; height:16px; accent-color:#3b82f6;">
+                <span><strong>🚀 Pro Streaming</strong> - Buffer agresivo, reconnect automático, baja latencia</span>
+              </label>
+              <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:0.82rem;">
+                <input type="checkbox" id="ottNavOptimized" style="width:16px; height:16px; accent-color:#10b981;">
+                <span><strong>📱 OTT Navigator</strong> - User-Agent, catchup/DVR, headers optimizados</span>
+              </label>
+              <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:0.82rem;">
+                <input type="checkbox" id="gzipCompressionEnabled"
+                  style="width:16px; height:16px; accent-color:#8b5cf6;">
+                <span><strong>📦 GZIP Compression</strong> - Comprime lista M3U8 (~70% reducción, universal)</span>
+              </label>
+              <p style="font-size:0.72rem; color:var(--text-muted); margin:4px 0 0 24px;">
+                Pro Streaming: 3s buffer, VLC caching, Kodi adaptive, HTTP reconnect.<br>
+                GZIP: Compatible con OTT Navigator, TiviMate, VLC, Kodi, Perfect Player.
+              </p>
+            </div>
+
+            <!-- 🧩 APE MODULES PANEL (Static HTML) -->
+            <div id="ape-modules-inline-panel"
+              style="margin-top: 14px; padding: 16px; background: linear-gradient(135deg, rgba(139,92,246,0.12), rgba(139,92,246,0.05)); border-radius: 12px; border: 1px solid rgba(139,92,246,0.3);">
+
+              <!-- Header -->
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <span style="font-size: 1.1rem;">🧩</span>
+                  <span style="font-size: 0.9rem; font-weight: 600; color: #e2e8f0;">Módulos APE</span>
+                  <span
+                    style="font-size: 0.65rem; padding: 2px 8px; background: rgba(139,92,246,0.3); border-radius: 999px; color: #c4b5fd;">v9.0</span>
+                </div>
+                <span id="modulesActiveCount" style="font-size: 0.8em; color: #a78bfa; font-weight: 600;">14
+                  activos</span>
+              </div>
+
+              <p style="font-size: 0.72rem; color: #94a3b8; margin: 0 0 12px 0;">
+                Activa/desactiva módulos opcionales para la generación M3U8:
+              </p>
+
+              <!-- Grid de Toggles (poblado por JS) -->
+              <div id="modules-toggle-grid"
+                style="display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 8px; max-height: 400px; overflow-y: auto; padding-right: 4px;">
+                <!-- Se llena dinámicamente por ape-module-panel-ui.js -->
+                <p style="color: #64748b; font-size: 0.72rem; text-align: center; grid-column: 1/-1;">
+                  Cargando módulos...
+                </p>
+              </div>
+
+              <!-- Footer -->
+              <div
+                style="margin-top: 12px; padding-top: 10px; border-top: 1px solid rgba(139,92,246,0.2); display: flex; justify-content: space-between; align-items: center;">
+                <span style="font-size: 0.68rem; color: #64748b;">Los cambios se aplican inmediatamente</span>
+                <button id="btnResetModules"
+                  onclick="if(window.ApeModuleManager){ApeModuleManager.resetToDefaults();location.reload();}"
+                  style="padding: 4px 12px; font-size: 0.7rem; background: rgba(251,146,60,0.15); border: 1px solid rgba(251,146,60,0.3); border-radius: 6px; color: #fb923c; cursor: pointer;">
+                  🔄 Reset
+                </button>
+              </div>
+            </div>
+
+            <!-- ✅ V4.28: VPS GATEWAY AUTO-SYNC -->
+            <div class="panel-header" style="margin: 14px 0 6px 0;">
+              <div class="panel-title" style="font-size:0.85rem; color:#38bdf8;">🌐 VPS Gateway Auto-Sync</div>
+              <span class="pill"
+                style="font-size: 0.65rem; background:rgba(56,189,248,0.2); color:#38bdf8; border-color:#38bdf8;">RECOMENDADO</span>
+            </div>
+            <div
+              style="display:flex; flex-direction:column; gap:10px; padding:12px; background:rgba(243,171,60,0.05); border-radius:12px; border:1px solid rgba(243,171,60,0.2);">
+              <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+                <div class="field" style="margin:0;">
+                  <label style="font-size:0.75rem; color:var(--text-muted);">🌐 VPS Base URL</label>
+                  <input type="text" id="vpsBaseUrl" class="input sm" value="https://iptv-ape.duckdns.org"
+                    placeholder="https://your-vps-ip.com" style="font-size:0.75rem;">
+                </div>
+                <div class="field" style="margin:0;">
+                  <label style="font-size:0.75rem; color:var(--text-muted);">🔑 Auth Key (Opcional)</label>
+                  <input type="password" id="vpsAuthKey" class="input sm" placeholder="Clave de autorización (opcional)"
+                    style="font-size:0.75rem;">
+                </div>
+              </div>
+              <label
+                style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:0.82rem; margin-top:4px;">
+                <input type="checkbox" id="vpsAutoUpload" style="width:16px; height:16px; accent-color:#38bdf8;">
+                <span><strong>Sincronización Automática</strong> - Subir al VPS tras generar</span>
+              </label>
+            </div>
+
+            <!-- ✅ APE GATEWAY MANAGER UI (Manual Control) -->
+            <div id="gateway-manager-section" style="margin-top: 16px;">
+              <div class="panel-header" style="margin-bottom: 6px;">
+                <div class="panel-title" style="font-size:0.85rem; color:#38bdf8;">🛰️ Control de Gateway APE</div>
+              </div>
+              <div
+                style="padding:12px; background:rgba(56,189,248,0.05); border-radius:12px; border:1px solid rgba(56,189,248,0.2);">
+                <div id="gateway-stats-panel"
+                  style="margin-bottom: 12px; font-size: 0.75rem; color: var(--text-muted);">
+                  <!-- Stats injected by JS -->
+                </div>
+
+                <div class="button-row" style="margin-top: 10px;">
+                  <button id="gateway-upload-btn" class="btn primary" onclick="window.uploadToGateway()"
+                    style="background: linear-gradient(135deg, #38bdf8, #2563eb); width: 100%;">
+                    <span class="icon">📤</span><span>Subir al Gateway (Manual)</span>
+                  </button>
+                </div>
+
+                <p style="font-size:0.65rem; color:var(--text-muted); margin: 8px 0 0 0; text-align: center;">
+                  Soporta MPU (Multipart Upload) para archivos >100MB y ofuscación de URLs.
+                </p>
+              </div>
+            </div>
+
+
+            <hr style="border:none; border-top:1px solid rgba(148,163,184,0.35); margin:14px 0;" />
+            <div class="panel-header" style="margin-bottom: 6px;">
+              <div class="panel-title" style="color:var(--danger);">Zona de Peligro</div>
+            </div>
+            <p style="font-size:0.78rem; color:var(--text-muted); margin-bottom:8px;">¿Problemas con la caché o
+              configuración? Reinicia la aplicación a su estado de fábrica.</p>
+            <button id="btnFactoryReset" class="btn"
+              style="background: linear-gradient(135deg, #ef4444, #b91c1c); box-shadow: 0 10px 25px rgba(239,68,68,0.4);"><span
+                class="icon">☢️</span><span>Factory Reset</span></button>
+          </div>
+
+          <!-- TAB: COMPARTIR -->
+          <div id="tab-share" class="tab-content">
+            <div class="panel-header" style="margin-bottom:10px;">
+              <div class="panel-title">Compartir · Código QR</div>
+            </div>
+            <p style="font-size:0.8rem; color:var(--text-muted); margin-top:0;">Genera un código QR con la URL del
+              playlist o del servidor para compartir rápidamente con OTT Navigator, TiviMate o apps móviles.</p>
+            <div class="field"><label for="qrText">Contenido QR</label><input id="qrText" class="input"
+                placeholder="URL M3U8 / Xtream API / nota rápida…" /></div>
+            <div class="button-row" style="margin-top:8px;"><button id="btnGenerateQR" class="btn"><span
+                  class="icon">🔗</span><span>Generar QR</span></button><button id="btnDownloadQR"
+                class="btn secondary"><span>Descargar PNG</span></button></div>
+            <div id="qrContainer" class="qr-box">QR pendiente de generar…</div>
+          </div>
+
+          <div id="toast" class="toast-notification"><span style="font-size:1.2rem;">💾</span><span
+              id="toastMsg">Configuración guardada correctamente</span></div>
+
+        </div>
+      </section>
+    </main>
+
+    <!-- GLOBAL MODAL: Header Manager (accessible from any tab) -->
+    <div id="headerModal" class="modal-overlay" style="display: none;">
+      <div class="modal-content" style="max-width: 800px; max-height: 90vh; overflow-y: auto;">
+        <div class="modal-header">
+          <h3>Gestor de Headers Avanzado</h3>
+          <button class="btn-secondary sm" onclick="app.closeHeaderManager()">Cerrar</button>
+        </div>
+        <div class="modal-body">
+          <div class="toolbar" style="margin-bottom: 15px; display: flex; gap: 10px;">
+            <button class="btn-secondary sm" onclick="app.toggleAllHeaders(true)">Seleccionar Todos</button>
+            <button class="btn-secondary sm" onclick="app.toggleAllHeaders(false)">Limpiar Todos</button>
+            <input type="text" id="headerSearch" placeholder="Buscar header..." class="input sm" style="width: 200px;"
+              aria-label="Buscar header" onkeyup="app.filterHeadersList()">
+          </div>
+          <div id="headersListContainer"
+            style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; max-height: 50vh; overflow-y: auto; padding: 10px; border: 1px solid rgba(255,255,255,0.1);">
+          </div>
+          <div style="margin-top: 15px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 10px;">
+            <h4>Custom Headers</h4>
+            <div style="display: flex; gap: 5px;">
+              <input type="text" id="customHeaderKey" name="customHeaderKey" placeholder="Header-Key" class="input"
+                aria-label="Nombre del header personalizado">
+              <input type="text" id="customHeaderVal" name="customHeaderVal" placeholder="Value" class="input"
+                aria-label="Valor del header personalizado">
+              <button class="btn-secondary" onclick="app.addCustomHeader()">+</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <footer
+      style="margin-top:6px; font-size:0.7rem; color:var(--text-muted); display:flex; justify-content:space-between; flex-wrap:wrap; gap:6px;">
+      <span>IPTV Navigator PRO v3.0.1 · Toolkit local · Compatible con OTT Navigator, TiviMate, IPTV
+        Smarters.</span><span>Funciona 100% en tu navegador · Sin backend · Ideal para pruebas y tuning de
+        listas.</span>
+    </footer>
+  </div>
+
+  <!-- MODAL: QoS Pre-Flight Check -->
+  <div id="qosPromptModal" class="modal-overlay" style="display: none; z-index: 10000; backdrop-filter: blur(5px);">
+    <div class="modal-content" style="max-width: 500px; text-align: center; border: 2px solid #8b5cf6;">
+      <div style="font-size: 3rem; margin-bottom: 10px;">📡</div>
+      <h3 style="color: #e2e8f0; margin-top: 0;">Chequeo de Red (Latencia Rayo QoS)</h3>
+      <p style="font-size: 0.85rem; color: #94a3b8; margin-bottom: 20px;">
+        La resiliencia industrial se logra perfilando tu capacidad actual. Aún no tienes un perfil guardado para esta
+        sesión o has ordenado forzarlo activamente.
+      </p>
+      <div style="display: flex; gap: 15px; justify-content: center; margin-bottom: 20px;">
+        <button id="btnQosModalMeasure" class="btn primary" style="background: #8b5cf6;"
+          onclick="window.app && window.app.executeQosModalMeasure()">
+          📏 Medir y Continuar
+        </button>
+        <button id="btnQosModalSkip" class="btn secondary" style="border: 1px solid #64748b;"
+          onclick="window.app && window.app.executeQosModalSkip()">
+          Skip (Graceful Fallback)
+        </button>
+      </div>
+      <div style="font-size: 0.7rem; color: #64748b;">
+        * Omitir usará heurísticas estandar conservadoras que podrían causar buffering en anchos de banda muy altos que
+        no se aprovecharán.
+      </div>
+    </div>
+  </div>
+
+  <!-- Librerías externas (xlsx deferred to end for faster initial render) -->
+  <script src="xlsx.full.min.js" defer></script>
+  <script src="qrcode.min.js"></script>
+  <!-- ⚠️ VPS_CONFIG PRIMERO - Centraliza IP/dominio ANTES de que otros módulos carguen -->
+  <script src="js/vps-config.js"></script>
+  <!-- 🚀 VPS Adapter v1.0.0 - Reemplaza Cloudflare con VPS propio (Hetzner) -->
+  <script src="js/vps-adapter.js"></script>
+  <!-- Legacy: Cloudflare Adapter (deshabilitado, usar VPS) -->
+  <!-- <script src="js/app-cloudflare-adapter-m3u8-fixed.js"></script> -->
+  <!-- ✅ M3U8 Transformer Fixed - Proper Base64 encoding with validation -->
+  <script src="js/m3u8-transformer-fixed.js"></script>
+
+  <!-- 🧠 APE Channel Classifier v1.0 - Sistema de Clasificación Jerárquica -->
+  <script src="js/ape-channel-classifier.js"></script>
+
+  <!-- 🧩 Group-Title Hierarchical Builder - Construcción de group-title jerárquico -->
+  <script src="js/group-title-builder.js"></script>
+  <script src="js/group-title-config-manager.js"></script>
+  <script src="js/group-title-config-ui.js"></script>
+
+  <script src="js/resumable-uploader-v2.js?v=2.0"></script>
+  <script src="js/gateway-manager.js"></script>
+  <script src="js/vps-hls-installer.js"></script>
+  <script src="axios.min.js"></script>
+
+  <!-- Core Modules -->
+  <script src="core/db-manager.js"></script>
+  <script src="core/field-discovery.js"></script>
+
+  <!-- Enriquecimiento incremental / Fuentes (DELTA System) -->
+  <script src="js/source-manager.js"></script>
+  <script src="js/enrichment-delta.js"></script>
+
+  <!-- Motores Avanzados (V4.5) -->
+  <script src="js/enrichment-constructor.js"></script>
+
+  <!-- Source Discovery Module -->
+  <script src="js/source-discovery.js"></script>
+
+  <!-- Industrial Logic Modules -->
+  <script src="quality-inference.js"></script>
+  <script src="knn-scorer.js"></script>
+
+  <!-- Módulos complementarios -->
+  <script src="connection-module-v2-adaptado.js"></script>
+  <script src="enrichment-module.js"></script>
+  <script src="export-module.js"></script>
+
+  <!-- ═══════════════════════════════════════════════════════════════════
+       🎛️ MODAL: GESTOR DE HEADERS AVANZADO
+       ═══════════════════════════════════════════════════════════════════ -->
+
+  <div id="headersManagerModal" class="headers-modal-overlay" style="display: none;">
+    <div class="headers-modal-container ultra-headers-modal">
+      <!-- HEADER DEL MODAL -->
+      <div class="headers-modal-header">
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <span style="font-size: 1.5rem;">🎛️</span>
+          <div>
+            <h2 style="margin: 0; font-size: 1.1rem; color: #e2e8f0;">
+              Gestor de Headers Avanzado
+            </h2>
+            <p style="margin: 4px 0 0 0; font-size: 0.75rem; color: #94a3b8;">
+              33 headers configurables · 5 niveles de agresividad · Sistema extensible
+            </p>
+          </div>
+        </div>
+        <button onclick="closeHeadersManager()" class="headers-modal-close-btn">×</button>
+      </div>
+
+      <!-- TOOLBAR -->
+      <div class="headers-toolbar">
+        <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
+          <!-- Búsqueda -->
+          <div style="position: relative; flex: 1; min-width: 250px;">
+            <input type="text" id="headerSearchInput" placeholder="Buscar header..." aria-label="Buscar header"
+              style="width: 100%; padding: 8px 36px 8px 12px; background: rgba(30,41,59,0.6); border: 1px solid rgba(148,163,184,0.3); border-radius: 8px; color: #e2e8f0; font-size: 0.85rem;"
+              oninput="filterHeaders(this.value)">
+          </div>
+
+          <!-- Filtro por categoría -->
+          <select id="categoryFilter" onchange="filterByCategory(this.value)" aria-label="Filtrar por categoría"
+            style="padding: 8px 12px; background: rgba(30,41,59,0.6); border: 1px solid rgba(148,163,184,0.3); border-radius: 8px; color: #e2e8f0; font-size: 0.85rem;">
+            <option value="all">📋 Todas</option>
+            <option value="Identity">🆔 Identity</option>
+            <option value="Auth">🔐 Auth</option>
+            <option value="CORS">🌐 CORS</option>
+            <option value="Caching">💾 Caching</option>
+            <option value="Connection">🔗 Connection</option>
+            <option value="Compression">📦 Compression</option>
+            <option value="Security">🛡️ Security</option>
+            <option value="Proxy">🌍 Proxy</option>
+            <option value="Streaming">📺 Streaming</option>
+            <option value="Custom">⚙️ Custom</option>
+          </select>
+
+          <!-- Selector de nivel activo -->
+          <select id="activeLevelSelector" onchange="switchActiveLevel(this.value)"
+            aria-label="Seleccionar nivel de headers"
+            style="padding: 8px 12px; background: linear-gradient(135deg, #3b82f6, #8b5cf6); border: none; border-radius: 8px; color: #fff; font-weight: 600; font-size: 0.85rem;">
+            <option value="1">Nivel 1: NORMAL ⭐</option>
+            <option value="2">Nivel 2: PRO ⭐⭐</option>
+            <option value="3" selected>Nivel 3: ADVANCED ⭐⭐⭐</option>
+            <option value="4">Nivel 4: EXTREME ⭐⭐⭐⭐</option>
+            <option value="5">Nivel 5: ULTRA 🔥</option>
+          </select>
+
+          <button onclick="selectAllHeaders()" class="headers-toolbar-btn">☑️ Todos</button>
+          <button onclick="deselectAllHeaders()" class="headers-toolbar-btn">⬜ Limpiar</button>
+          <button onclick="openAddHeaderModal()" class="headers-toolbar-btn btn-primary">➕ Agregar</button>
+        </div>
+      </div>
+
+      <!-- LISTA DE HEADERS -->
+      <div class="headers-list-container">
+        <div id="headersList" class="headers-list">
+          <!-- Los headers se generan dinámicamente -->
+        </div>
+      </div>
+
+      <!-- FOOTER -->
+      <div class="headers-modal-footer">
+        <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+          <div style="font-size: 0.75rem; color: #94a3b8;">
+            <span id="selectedHeadersCount">0</span> seleccionados ·
+            <span id="totalHeadersCount">33</span> totales
+          </div>
+          <div style="display: flex; gap: 10px;">
+            <button onclick="exportHeadersConfig()" class="headers-footer-btn">📥 Exportar</button>
+            <button onclick="importHeadersConfig()" class="headers-footer-btn">📤 Importar</button>
+            <button onclick="resetToDefaults()" class="headers-footer-btn btn-warning">🔄 Reset</button>
+            <button onclick="saveHeadersConfig()" class="headers-footer-btn btn-primary">💾 Guardar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 🆕 MODAL: AGREGAR HEADER PERSONALIZADO -->
+  <div id="addHeaderModal" class="headers-modal-overlay" style="display: none;">
+    <div class="headers-modal-container" style="max-width: 700px;">
+      <div class="headers-modal-header">
+        <h2 style="margin: 0; font-size: 1rem;">➕ Agregar Header Personalizado</h2>
+        <button onclick="closeAddHeaderModal()" class="headers-modal-close-btn">×</button>
+      </div>
+
+      <div style="padding: 20px;">
+        <form id="addHeaderForm" onsubmit="addNewHeader(event)">
+          <div class="headers-form-group">
+            <label for="newHeaderName">Nombre del Header *</label>
+            <input type="text" id="newHeaderName" placeholder="Ej: X-Custom-Token" required
+              style="width: 100%; padding: 10px; background: rgba(30,41,59,0.6); border: 1px solid rgba(148,163,184,0.3); border-radius: 8px; color: #e2e8f0;">
+          </div>
+
+          <div class="headers-form-group">
+            <label for="newHeaderDescription">Descripción</label>
+            <textarea id="newHeaderDescription" placeholder="Describe el propósito..." rows="2"
+              style="width: 100%; padding: 10px; background: rgba(30,41,59,0.6); border: 1px solid rgba(148,163,184,0.3); border-radius: 8px; color: #e2e8f0; resize: vertical;"></textarea>
+          </div>
+
+          <div class="headers-form-group">
+            <label for="newHeaderCategory">Categoría</label>
+            <select id="newHeaderCategory"
+              style="width: 100%; padding: 10px; background: rgba(30,41,59,0.6); border: 1px solid rgba(148,163,184,0.3); border-radius: 8px; color: #e2e8f0;">
+              <option value="Custom">Custom</option>
+              <option value="Identity">Identity</option>
+              <option value="Auth">Auth</option>
+              <option value="Streaming">Streaming</option>
+              <option value="Security">Security</option>
+            </select>
+          </div>
+
+          <div class="headers-form-group">
+            <label for="newHeaderPriority">Prioridad (1-10)</label>
+            <input type="number" id="newHeaderPriority" min="1" max="10" value="5"
+              style="width: 100%; padding: 10px; background: rgba(30,41,59,0.6); border: 1px solid rgba(148,163,184,0.3); border-radius: 8px; color: #e2e8f0;">
+          </div>
+
+          <div class="headers-form-group">
+            <label id="valuesLabel">Valores por Nivel</label>
+            <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 10px;">
+              <div class="level-input-group">
+                <span class="level-badge" style="background: #22c55e; color: white;">1</span>
+                <input type="text" id="newHeaderLevel1" placeholder="NORMAL ⭐" class="level-input"
+                  aria-label="Valor para nivel 1 Normal">
+              </div>
+              <div class="level-input-group">
+                <span class="level-badge" style="background: #3b82f6; color: white;">2</span>
+                <input type="text" id="newHeaderLevel2" placeholder="PRO ⭐⭐" class="level-input"
+                  aria-label="Valor para nivel 2 Pro">
+              </div>
+              <div class="level-input-group">
+                <span class="level-badge" style="background: #8b5cf6; color: white;">3</span>
+                <input type="text" id="newHeaderLevel3" placeholder="ADVANCED ⭐⭐⭐" class="level-input"
+                  aria-label="Valor para nivel 3 Advanced">
+              </div>
+              <div class="level-input-group">
+                <span class="level-badge" style="background: #f97316; color: white;">4</span>
+                <input type="text" id="newHeaderLevel4" placeholder="EXTREME ⭐⭐⭐⭐" class="level-input"
+                  aria-label="Valor para nivel 4 Extreme">
+              </div>
+              <div class="level-input-group">
+                <span class="level-badge" style="background: #ef4444; color: white;">5</span>
+                <input type="text" id="newHeaderLevel5" placeholder="ULTRA" class="level-input"
+                  aria-label="Valor para nivel 5 Ultra">
+              </div>
+            </div>
+          </div>
+
+          <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;">
+            <button type="button" onclick="closeAddHeaderModal()" class="headers-footer-btn">Cancelar</button>
+            <button type="submit" class="headers-footer-btn btn-primary">➕ Agregar</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- ✏️ MODAL: EDITAR HEADER -->
+  <div id="editHeaderModal" class="headers-modal-overlay" style="display: none;">
+    <div class="headers-modal-container" style="max-width: 800px;">
+      <div class="headers-modal-header">
+        <h2 id="editHeaderTitle" style="margin: 0; font-size: 1rem;">✏️ Editar Header</h2>
+        <button onclick="closeEditHeaderModal()" class="headers-modal-close-btn">×</button>
+      </div>
+
+      <div style="padding: 20px;">
+        <div
+          style="background: rgba(59,130,246,0.1); border-left: 3px solid #3b82f6; padding: 12px; border-radius: 8px; margin-bottom: 20px;">
+          <div style="font-size: 0.85rem; color: #60a5fa; font-weight: 600;"><span id="editHeaderName"></span></div>
+          <div style="font-size: 0.75rem; color: #cbd5e1;"><span id="editHeaderDescription"></span></div>
+          <div style="font-size: 0.7rem; color: #94a3b8; margin-top: 6px;">
+            Categoría: <strong id="editHeaderCategory"></strong> ·
+            Prioridad: <strong id="editHeaderPriority"></strong> ·
+            Validado: <strong id="editHeaderValidated"></strong>
+          </div>
+        </div>
+
+        <div style="overflow-x: auto;">
+          <table class="edit-header-table">
+            <thead>
+              <tr>
+                <th style="width: 80px;">Nivel</th>
+                <th style="width: 120px;">Config</th>
+                <th>Valor</th>
+                <th style="width: 200px;">Descripción</th>
+                <th style="width: 80px;">Test</th>
+              </tr>
+            </thead>
+            <tbody id="editHeaderLevelsBody"></tbody>
+          </table>
+        </div>
+
+        <div
+          style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; padding-top: 20px; border-top: 1px solid rgba(148,163,184,0.2);">
+          <button onclick="closeEditHeaderModal()" class="headers-footer-btn">Cancelar</button>
+          <button onclick="saveHeaderEdits()" class="headers-footer-btn btn-primary">💾 Guardar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Field Source Policy for dynamic source priority V4.8 -->
+  <script src="field-source-policy.js?v=4.8"></script>
+
+  <!-- 🌊 Field Source Cascade Manager - Automatic waterfall data source system V1.0 -->
+  <script src="field-source-cascade-manager.js?v=1.0"></script>
+
+  <!-- Batch Processor for optimized large dataset handling V4.8 -->
+  <script src="batch-processor.js?v=4.8"></script>
+
+  <!-- Advanced Data Renderer for Field Source Selector V4.8 -->
+  <script src="advanced-data-renderer.js?v=4.10"></script>
+
+  <!-- Ranking Score Modules v1.0 - MUST load BEFORE app.js -->
+  <script src="js/ranking-score-config.js"></script>
+  <script src="js/ranking-score-ui.js"></script>
+
+  <!-- ✅ AUTO RANKING ENGINE v1.0 - Universal automatic ranking -->
+  <script src="auto-ranking-engine.js?v=1.1"></script>
+
+  <!-- 🔧 RANKING SCORE FIX v1.1 - Fixes Tier=UNKNOWN and scoreLive=0 -->
+  <script src="ranking-score-fix.js?v=1.1"></script>
+
+  <!-- 📦 SERVER LIBRARY MULTI-SAVE v1.0 - Multi-server incremental save -->
+  <script src="server-library-multi-save.js?v=1.0"></script>
+
+  <!-- 🎛️ ULTRA HEADERS SYSTEM v1.0 -->
+  <!-- 🧠 APE HEURISTICS ENGINE v1.0 - Motor heurístico para niveles automáticos -->
+  <script src="js/ape-heuristics-engine.js?v=1.0"></script>
+  <script src="js/ultra-headers-matrix.js?v=1.0"></script>
+  <script src="js/ultra-headers-matrix-extended.js?v=1.0"></script>
+  <!-- ✅ V4.1 Modules -->
+  <script src="js/v41/headers-intelligent-v3-adapter-v41.js?v=4.1"></script>
+  <script src="js/v41/conflict-detector-v41.js?v=4.1"></script>
+  <script src="js/v41/telemetry-feedback-v41.js?v=4.1"></script>
+
+  <script src="js/m3u8-ultra-generator.js?v=1.0"></script>
+  <script src="js/headers-manager-ui.js?v=1.0"></script>
+  <script src="js/ultra-headers-test-suite.js?v=1.0"></script>
+
+  <!-- 🔧 PATCH FIX V4.12.3 - Context & Worker Fixes (MUST be before app.js) -->
+  <script src="PATCH_FIX_V4_12_3.js?v=1.0"></script>
+
+  <!-- 🔧 PATCH MEJORADO V2.0 - Eliminación Completa de Servidores -->
+  <script src="PATCH_MEJORADO_V2.js?v=2.0"></script>
+
+  <!-- 🚀 FIRST LOAD OPTIMIZER - Splash completo solo primera apertura -->
+  <script src="js/first-load-optimizer.js"></script>
+
+  <!-- 🚀 STARTUP OPTIMIZER - Splash simple para refresh -->
+  <script src="js/startup-optimizer.js"></script>
+
+
+  <!-- 🎚️ APE v9 PROFILE SYSTEM - MUST load BEFORE app.js -->
+  <script src="js/ape-v9/ape-profiles-config.js?v=9.2-fix"></script>
+  <!-- profile-manager-v9.js loaded later at v9.0.3 (line ~3171) -->
+  <script src="js/ape-v9/profile-bridge-v9.js?v=1.1"></script>
+  <script src="js/ape-v9/m3u8-typed-arrays-ultimate.js?v=22.2.1"></script>
+  <script src="js/ape-v9/m3u8-quality-upgrader-v2.js?v=2.0"></script>
+  <script src="js/ape-v9/hud-typed-arrays.js?v=1.0"></script>
+
+  <!-- App principal - V4.18.6 ENTERPRISE (Restaurado + Fixes) -->
+  <script src="app.js?v=4.18.8"></script>
+  <script src="js/ape-headers-preview-fix.js?v=1.0"></script>
+
+  <!-- 🚀 GENERATOR SUPREMACY V5.1 - Tab Hibernation + APE Worker -->
+  <script src="js/tab-lifecycle.js?v=5.1"></script>
+  <script src="js/generator-bridge.js?v=1.0"></script>
+
+  <!-- 🌊 FOCUS FLOW V5.2 - Advanced Flow Management -->
+  <script src="js/focus-flow.js?v=5.2"></script>
+  <script src="js/performance-profiler.js?v=1.0"></script>
+  <script src="js/generation-validator.js?v=1.0"></script>
+
+  <!-- 🚑 EMERGENCY FIX + FALLBACK - Auto-repair & Plan B -->
+  <script src="js/emergency-fix.js?v=1.0"></script>
+  <script src="js/generator-simple.js?v=1.0"></script>
+
+  <!-- 📊 LOGGER DIAGNÓSTICO - Professional debugging for M3U8 generation -->
+  <script src="js/logger-diagnostico-iptv.js?v=1.0"></script>
+
+  <!-- 🔐 SECURE STREAM HANDLER v1.0 - 407 Error Handling + JWT Security -->
+  <script>
+    // Configurar antes de cargar el handler
+    window.APE_STREAM_CONFIG = {
+      apiBase: 'https://ape-redirect-api-m3u8-native.beticosa1.workers.dev',
+      healthCheckInterval: 30000,
+      showStatusIndicator: true
+    };
+  </script>
+  <script src="js/secure-stream-handler.js?v=1.0"></script>
+
+  <!-- 🌐 M3U8 GLOBAL HEADERS v3.0 — ALL headers × 4 protocols (EXTVLCOPT / KODIPROP / EXT-X-APE / EXT-X-HEADER) -->
+  <script src="js/m3u8-global-headers.js?v=3.0"></script>
+
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <!-- APE ENGINE v9.0 ULTIMATE - SUITE COMPLETA                   -->
+  <!-- Integración: Solo pestaña "Generar" + canales filtrados    -->
+  <!-- Fecha: 2024-12-29 | Versión: 9.0.0-ULTIMATE                 -->
+  <!-- ═══════════════════════════════════════════════════════════ -->
+
+  <!-- 1. Headers Matrix (Base de conocimiento) -->
+  <script src="js/ape-v9/headers-matrix-v9.js"></script>
+
+  <!-- 2. Session Warmup (CDN pre-calentamiento) -->
+  <script src="js/ape-v9/session-warmup-v9.js"></script>
+
+  <!-- 3. Generation Validator (Protocol-Enforcer + Hard-Fail) -->
+  <script src="js/ape-v9/generation-validator-v9.js"></script>
+  <script src="js/ape-v9/m3u8-post-processor.js"></script>
+
+  <!-- 4. APE Engine Core (Motor central fusionado) -->
+  <script src="js/ape-v9/ape-engine-v9.js"></script>
+
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <!-- APE v9.0 ADVANCED MODULES (7 módulos completos)            -->
+  <!-- Fecha: 2024-12-30 | Implementación 100%                     -->
+  <!-- ═══════════════════════════════════════════════════════════ -->
+
+  <!-- 5. Fibonacci Entropy Engine (DNA único por canal) -->
+  <script src="js/ape-v9/fibonacci-entropy-engine-v9.js"></script>
+
+  <!-- 6. TLS Coherence Engine (JA3/JA4 fingerprints) -->
+  <script src="js/ape-v9/tls-coherence-engine-v9.js"></script>
+
+  <!-- 7. Multi-Server Fusion Engine (400K canales) -->
+  <script src="js/ape-v9/multi-server-fusion-v9.js"></script>
+
+  <!-- 8. Geoblocking Detector (auto-bypass geo) -->
+  <script src="js/ape-v9/geoblocking-detector-v9.js"></script>
+
+  <!-- 9. Profile Persistence Engine (IndexedDB + localStorage) -->
+  <script src="js/ape-v9/profile-persistence-v9.js"></script>
+
+  <!-- 10. CDN Cookie Cache (cf_clearance 48h) -->
+  <script src="js/ape-v9/cdn-cookie-cache-v9.js"></script>
+
+  <!-- 11. Realtime Throughput Analyzer (monitoreo bitrate) -->
+  <script src="js/ape-v9/realtime-throughput-v9.js"></script>
+
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <!-- APE v9.0 MASTER PROTOTYPE FEATURES                          -->
+  <!-- Fecha: 2024-12-30 | JWT+HMAC + Dynamic QoS                  -->
+  <!-- ═══════════════════════════════════════════════════════════ -->
+
+  <!-- 12. JWT Token Generator (cryptographic tokens) -->
+  <script src="js/ape-v9/jwt-token-generator-v9.js"></script>
+
+  <!-- 12b. JWT Compact + URL Validator + Fallback Mode [NUEVO] -->
+  <script src="js/ape-v9/jwt-token-generator-v9-compact.js"></script>
+  <script src="js/ape-v9/url-length-validator.js"></script>
+  <script src="js/ape-v9/fallback-mode-handler.js"></script>
+
+  <!-- 13. Dynamic QoS Buffer (2-30s intelligent buffer) -->
+  <script src="js/ape-v9/dynamic-qos-buffer-v9.js"></script>
+
+  <!-- 14. Manifest Generator (9 quality tiers, SD→IMAX 8K) -->
+  <script src="js/ape-v9/manifest-generator-v9.js"></script>
+  <script src="js/ape-v9/ape-coordinator-v9.js"></script>
+
+  <!-- Configuration and Logic -->
+  <!-- ⚠️ ape-profiles-config.js already loaded at line 3032, SKIP DUPLICATE -->
+  <!-- ⚠️ V4.30: profile-manager-v9.js loaded later at v9.0.3 (line ~3171) -->
+  <script src="js/ape-v9/auto-classifier-v13.js"></script>
+
+  <!-- UI Connector with Custom Adapter (Loads Last to Bridge everything) -->
+  <script src="js/ape-v9/ui-connector-v9-custom.js?v=9.0.9"></script>
+
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <!-- 🧩 APE MODULE MANAGER v1.0 - Sistema Modular con Toggles    -->
+  <!-- ═══════════════════════════════════════════════════════════ -->
+
+  <!-- Module Manager (debe cargar primero) -->
+  <script src="js/ape-v9/ape-module-manager.js?v=2.3"></script>
+
+  <!-- 🧩 USER AGENT ROTATION (2500+ UAs) -->
+  <script src="js/ape-v9/user-agents-database.js?v=16.0"></script>
+  <script src="js/ape-v9/user-agent-rotation-module.js?v=3.0"></script>
+
+  <!-- 🧩 APE ADVANCED PLUGINS (Faithfully Restored) -->
+  <script src="js/ape-v9/ape-ultra-parser-optimized.js?v=3.1"></script>
+  <script src="js/ape-v9/buffer-adaptativo-supremo.js?v=1.0"></script>
+  <script src="js/ape-v9/smart-codec-prioritizer.js?v=1.0"></script>
+  <script src="js/ape-v9/evasion-407-supremo.js?v=1.0"></script>
+  <script src="js/ape-v9/proxy-auth-module.js?v=1.0"></script>
+
+  <!-- 🧬 APE RUNTIME EVASION ENGINE v1.0 — El Cerebro del Deco (Polymorphic Interceptor) -->
+  <script src="js/ape-v9/ape-runtime-evasion-engine.js?v=1.0.0"></script>
+
+  <script src="js/ape-v9/ape-module-panel-ui.js?v=2.1"></script>
+
+  <!-- Panel UI para controlar módulos (inline en Gateway) -->
+  <!-- ⚠️ V4.30: ape-module-panel-ui.js already loaded above (line ~3087) -->
+
+
+  <!-- ═══════════════════════════════════════════════════════════ -->
+
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <!-- APE v15.0 BACKEND INTEGRATION                                -->
+  <!-- Fecha: 2026-01-03 | Full Stack with Flask+Redis             -->
+  <!-- ═══════════════════════════════════════════════════════════ -->
+
+  <!-- APE v15: Backend Connector (HTTP API Bridge) -->
+  <script src="js/ape-v15/ape-backend-connector-v15.js?v=15.0"></script>
+
+  <!-- APE v15: Monitor Panel UI Component -->
+  <script src="js/ape-v15/ape-monitor-panel-v15.js?v=16.1"></script>
+
+  <!-- APE v15: Auto-initialize panel when DOM is ready -->
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      // Initialize APE v15 Monitor Panel in export tab
+      if (window.APEv15MonitorPanel) {
+        const panel = new APEv15MonitorPanel('ape15-panel-container');
+        setTimeout(() => panel.init(), 100);
+        window.APEv15Panel = panel;
+        console.log('%c🚀 APE v15 Control Panel Mounted', 'color: #8b5cf6; font-weight: bold;');
+      }
+    });
+  </script>
+
+  <!-- ═══════════════════════════════════════════════════════════ -->
+
+  <!-- ⚡ V4.28: group-title-*.js and ape-channel-classifier.js already loaded at lines 2730-2735, SKIP DUPLICATES -->
+
+  <script src="js/generator-v41-logic.js?v=4.1"></script>
+
+  <!-- 🚀 VPS Integration Modules (FASE 2) - vps-config.js ya cargado arriba -->
+  <script src="js/upload-manager-v1.js?v=1.0"></script>
+  <script src="js/vps-monitor-v1.js?v=1.0"></script>
+
+  <!-- 🔍 DIAGNÓSTICO URGENTE - Herramientas de debugging -->
+  <script src="DIAGNOSTICO_URGENTE.js?v=1.0"></script>
+
+  <!-- Field Source Selector Handler - activates A/S/H/P/E buttons V4.8 -->
+  <script src="field-source-selector-handler.js?v=4.8"></script>
+
+  <!-- Ranking Config Manager - Enhanced ranking personalization v1.0 -->
+  <script src="js/ranking-config-manager.js"></script>
+
+  <!-- Analysis State Manager - saves/restores analysis tab configuration V4.8 -->
+  <script src="analysis-state-manager.js?v=4.8"></script>
+
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <!-- APE v9.0 Profile Manager                                    -->
+  <!-- ═══════════════════════════════════════════════════════════ -->
+
+  <!-- Streaming Architecture v3.0 (3-Layer: Resolver → Calculator → Policy) -->
+  <script src="js/ape-v9/streaming/streaming-input-resolver.js"></script>
+  <script src="js/ape-v9/streaming/streaming-calculator-v3.js"></script>
+  <script src="js/ape-v9/streaming/streaming-policy.js"></script>
+  <script src="js/ape-v9/streaming/streaming-engine.js"></script>
+
+  <!-- Streaming Calculator v2.0 (Legacy compatibility) -->
+  <script src="js/ape-v9/streaming-calculator.js"></script>
+  <script src="js/ape-v9/prefetch-presets.js"></script>
+  <script src="js/ape-v9/ape-profiles-config-v5.js"></script>
+  <!-- Smart Codec Prioritizer v1.0 (AV1 > H265 > VP9 > H264 > MPEG2) -->
+  <!-- ⚡ V4.28: smart-codec-prioritizer, buffer-adaptativo-supremo, evasion-407-supremo already loaded at lines 3159-3161, SKIP DUPLICATES -->
+  <!-- VPN Integration Supremo v1.0 (68 metadatos por canal) -->
+  <script src="js/ape-v9/vpn-integration-supremo.js"></script>
+  <!-- Latency Rayo Supremo v1.0 (23 metadatos por canal) -->
+  <script src="js/ape-v9/latency-rayo-supremo.js"></script>
+  <script src="js/ape-v9/profile-manager-v9.js?v=9.0.3"></script>
+  <!-- Profile Manager - Custom Headers Extension -->
+  <script src="js/profile-manager-custom-headers.js"></script>
+  <script src="js/m3u8-custom-headers-integration.js"></script>
+
+
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <!-- APE v15.0 ULTIMATE Backend Connector                       -->
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <!-- ⚡ V4.28: ape-v15 connector/monitor already loaded at lines 3181-3184, SKIP DUPLICATES -->
+
+  <!-- 🔐 APE TOKEN MANAGER (Core Security) -->
+  <script src="js/ape-token-manager.js"></script>
+
+  <!-- 🌐 GATEWAY MANAGER (ya cargado arriba en línea 2561) -->
+
+  <!-- Script de tabs -->
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      // V4.28: Nuclear anti-autofill — clear search field MULTIPLE times
+      // Browser autofill runs AFTER DOMContentLoaded, so we clear repeatedly
+      const searchInput = document.getElementById('searchQuery');
+      if (searchInput) {
+        searchInput.value = '';
+        // Clear again after browser autofill (100ms, 500ms, 1.5s)
+        [100, 500, 1500].forEach(ms => setTimeout(() => {
+          if (searchInput.value && searchInput.value !== searchInput.dataset.userTyped) {
+            searchInput.value = '';
+          }
+        }, ms));
+        // Track user-typed values so we don't erase what the user actually types
+        searchInput.addEventListener('input', () => {
+          searchInput.dataset.userTyped = searchInput.value;
+        });
+      }
+
+      const buttons = Array.from(document.querySelectorAll('.tab-button'));
+      const contents = {
+        connection: document.getElementById('tab-connection'),
+        analysis: document.getElementById('tab-analysis'),
+        filters: document.getElementById('tab-filters'),
+        ranking: document.getElementById('tab-ranking'),
+        sources: document.getElementById('tab-sources'),
+        servers: document.getElementById('tab-servers'),
+        generator: document.getElementById('tab-generator'),
+        export: document.getElementById('tab-export'),
+        share: document.getElementById('tab-share')
+      };
+
+      // Mapeo de nombres de tab a IDs de sección para TabLifecycleManager
+      const tabToSectionMap = {
+        'connection': 'tab-connection',
+        'analysis': 'tab-analysis',
+        'filters': 'tab-filters',
+        'ranking': 'tab-ranking',
+        'sources': 'tab-sources',
+        'servers': 'tab-servers',
+        'generator': 'tab-generator',
+        'export': 'tab-export',
+        'share': 'tab-share'
+      };
+
+      function showTab(name) {
+        // Toggle button active states
+        buttons.forEach(btn => { btn.classList.toggle('active', btn.dataset.tab === name); });
+        // Toggle content visibility
+        Object.entries(contents).forEach(([key, el]) => {
+          if (el) {
+            el.classList.remove('active');
+            if (key === name) {
+              el.classList.add('active');
+            }
+          }
+        });
+
+        // 🚀 GENERATOR SUPREMACY: Integración con TabLifecycleManager
+        // Cuando cambiamos de pestaña, notificamos al manager para liberar RAM
+        if (window.tabLifecycle && typeof window.tabLifecycle.switchTab === 'function') {
+          const sectionId = tabToSectionMap[name] || name;
+          const result = window.tabLifecycle.switchTab(sectionId);
+
+          // Si la pestaña estaba hibernada y es 'analysis', re-renderizar datos
+          if (name === 'analysis' && window.app) { // Only proceed if it's the analysis tab and app is defined
+            // Re-render si es necesario
+            const renderCheck = window.app.analysisStateManager?.shouldRerender() || { needsRerender: true };
+            if (renderCheck.needsRerender) {
+              const channels = window.app.state.channelsMaster || [];
+              if (channels.length > 0 && typeof window.app.renderTable === 'function') {
+                window.app.renderTable();
+                console.log('[TabIntegration] Re-renderizado análisis vía renderTable');
+              }
+            }
+          }
+        }
+      }
+
+      // Expose globally for app.js compatibility
+      window.htmlShowTab = showTab;
+
+      buttons.forEach(btn => {
+        btn.addEventListener('click', () => {
+          const tabName = btn.dataset.tab;
+          // Use app.showTab if available (more robust), otherwise local
+          if (window.app && typeof window.app.showTab === 'function') {
+            window.app.showTab(tabName);
+          } else {
+            showTab(tabName);
+          }
+        });
+      });
+
+      showTab('connection');
+    });
+  </script>
+
+  <!-- Hardened Verification Engine (DEBE ser primero) -->
+  <script src="js/hardened-verification.js"></script>
+
+  <!-- Gateway M3U8 Manager (depende de hardened-verification) -->
+  <script src="js/gateway-m3u8-integrated.js?v=4.28.1"></script>
+
+  <!-- M3U8 Generator v14.0 SUPREMO (estructura original + 8 mejoras) -->
+  <script src="js/ape-v9/m3u8-generator-v14-supremo.js"></script>
+
+  <!-- 📺 M3U8 Generator v15.0 RAÍZ FINAL (RFC 8216 compatible - 3 capas) -->
+  <script src="js/ape-v9/m3u8-generator-v15-raiz-final.js"></script>
+
+  <!-- 📐 M3U8 Generator ARQUITECTURA 1 v4.0 (25+ líneas/canal, 3 capas, JWT enriquecido) -->
+  <script src="js/ape-v9/m3u8-generator-architecture1.js"></script>
+
+  <!-- ⚡ V4.28: hud-typed-arrays.js already loaded at line 3037, SKIP DUPLICATE -->
+  <!-- ⚡ V4.28: m3u8-typed-arrays-ultimate.js already loaded at line 3035, SKIP DUPLICATE -->
+
+  <!-- 🔓 XTREAM EXPLOIT ENGINE v9.0 (8 vulns, 8 techs, server profiling) -->
+  <script src="js/ape-v9/xtream-exploit-engine-v9.js?v=9.0"></script>
+
+  <!-- 👑 APE v13.1 ULTIMATE WORLD-CLASS GENERATOR -->
+  <script src="js/m3u8-world-class-generator.js"></script>
+
+  <!-- 🏆 M3U8 GENERATOR v16 ELITE — Manifiesto HLS Inteligente con RFC 8216 Avanzado -->
+  <script src="js/m3u8-generator-v16-elite.js?v=16.1"></script>
+
+  <!-- 🎬 VideoFormatPrioritizationModule v1.0 SUPREMO UNLIMITED -->
+  <script src="js/ape-v9/video-format-prioritization.js"></script>
+
+  <!-- 🔐 Device Fingerprint Collector v1.0 - Real device/browser fingerprinting -->
+  <script src="js/ape-v9/device-fingerprint-collector.js"></script>
+
+  <!-- 🔄 User-Agent Rotation Engine v1.0 - 105+ UAs, weighted selection, micro-variation -->
+  <script src="js/ape-v9/user-agent-rotator.js"></script>
+
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+  <!-- 🔐 PROXY AUTH & USER AGENT ROTATION v16.0 (FASE 3 Integration)          -->
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+
+  <!-- 🔌 Proxy Auth Integration - FetchStream with Proxy Auth & UA Rotation -->
+  <script src="js/ape-v9/proxy-auth-integration.js"></script>
+
+  <!-- 🛡️ V4.30: proxy-407-evasion-engine.js removed (404 - file does not exist, functionality covered by evasion-407-supremo.js) -->
+
+  <!-- 📦 M3U8 GZIP Compression Module - Universal Device Compatibility -->
+  <script src="js/ape-v9/m3u8-gzip-module.js"></script>
+
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+  <!-- 🚀 NO-PROXY ARCHITECTURE v1.0 - Direct URLs with Embedded Simulators   -->
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+
+  <!-- 🔒 JWT with Embedded Simulators (Proxy + UA simulators in JWT) -->
+  <script src="js/ape-v9/no-proxy/jwt-with-embedded-simulators.js"></script>
+
+  <!-- 📺 M3U8 Generator No-Proxy (Direct URLs, Maximum Performance) -->
+  <script src="js/ape-v9/no-proxy/m3u8-generator-no-proxy.js"></script>
+
+  <!-- ✅ Direct URL Validator (100% Proxy-Free Architecture Check) -->
+  <script src="js/ape-v9/no-proxy/direct-url-validator.js"></script>
+
+  <!-- 📦 M3U8APIWrapper v2.0 INTEGRATED SUPREMO (250+ headers, priorización formatos) -->
+  <script src="js/ape-v9/m3u8-api-wrapper-integrated.js"></script>
+
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+  <!-- 🔧 INTEGRACIÓN MODULAR v16.0 + v14 + v1.0 (Frontend Adapters)           -->
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+
+  <!-- Adaptador v14: Lee configuración UI (perfiles, EPG, streaming) -->
+  <script src="js/ape-v9/adapter-v14-config.js"></script>
+
+  <!-- Adaptador v1: Estrategia de headers (33 headers × 5 niveles) -->
+  <script src="js/ape-v9/adapter-v1-headers.js"></script>
+
+  <!-- 🖥️ HUD Overlay v16.0: Feedback visual en tiempo real -->
+  <script src="js/ape-v9/hud-overlay-v16.js"></script>
+
+  <!-- Orquestador: Fusiona adaptadores e invoca núcleo v16.0 -->
+  <script src="js/ape-v9/frontend-orchestrator.js"></script>
+
+  <!-- 🔗 UNIFIED GENERATOR v1.0: Fusiona Architecture1 + M3U8APIWrapper + APE_ENGINE_V9 -->
+  <script src="js/ape-v9/unified-generator-integration.js"></script>
+
+  <!-- 🛡️ APE GUARDIAN ENGINE v16: Telemetría Frontend -->
+  <script src="js/ape-v9/guardian-exchange-v16.js"></script>
+
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+  <!-- 🧪 TESTS - Proxy Auth & User Agent (Dev Mode Only)                     -->
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+  <script src="tests/proxy-auth.test.js" defer></script>
+  <script src="tests/integration.test.js" defer></script>
+  <script src="tests/performance.test.js" defer></script>
+
+</body>
+
+</html>

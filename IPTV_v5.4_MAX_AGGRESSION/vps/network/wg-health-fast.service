@@ -1,0 +1,10 @@
+[Unit]
+Description=WG Health Fast (sub-second failover detector)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/opt/netshield/scripts/wg-health-fast.sh
+StandardOutput=null
+StandardError=journal

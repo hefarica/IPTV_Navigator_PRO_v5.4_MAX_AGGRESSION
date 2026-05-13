@@ -253,7 +253,9 @@ def build_exthttp(p, ch_name, ch_id, server_url):
         "DNT": "0",
         "Cache-Control": "no-cache",
         "Pragma": "no-cache",
-        "Range": "bytes=0-",
+        # C8 (2026-05-11) — eliminado Range:bytes=0- (m3u8 no es byte-rangeable).
+        # Ver memoria feedback_exthttp_traps.md trampa #9.
+        # "Range": "bytes=0-",
         "Origin": "https://iptv-ape.duckdns.org",
         "Referer": "https://iptv-ape.duckdns.org/",
         "X-Requested-With": "XMLHttpRequest",

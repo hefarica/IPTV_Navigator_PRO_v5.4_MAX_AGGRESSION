@@ -53,3 +53,68 @@ OMEGA_UPDATE/
 # APE Health Admission — credenciales y runtime generado
 IPTV_v5.4_MAX_AGGRESSION/backend/health/config.json
 IPTV_v5.4_MAX_AGGRESSION/backend/health/runtime/
+
+# Heavy binaries — APKs, VPN tools, sing-box (cause push timeout)
+*.apk
+sing-box-*/
+sing-box-*.tar.gz
+v2rayNG.apk
+
+# Large tar.gz archives
+*.tar.gz
+
+# Screenshots and images (non-source)
+screen_*.png
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Root-level test/temp M3U8 files (NOT generator source)
+/*.m3u8
+/test*.m3u8
+/f1_full.m3u8
+/downloaded_list.m3u8
+/lista_omega_mock.m3u8
+
+# Temp analysis/audit/patch artifacts
+/temp_analysis/
+/tmp_403/
+/tmp_maestro/
+/_audit_snapshot/
+/audit_*/
+/logs_pruebas_antifreeze/
+/test_zip/
+/out2.txt
+/diff.patch
+/diff_utf8.patch
+/diff_files.txt
+/changes.txt
+/debug_*.txt
+/first_channel.txt
+/headers_and_body.txt
+/php_ua_lines.txt
+/urls_found.txt
+/temp_pdf_text.txt
+/tmp_sniper.txt
+/req.json
+/user_agent.txt
+/user_agent_utf8.txt
+
+# Package lock (repo doesn't need it)
+package-lock.json
+
+# BACKUP JS files (pre-surgery snapshots)
+*.BACKUP_*.js
+*.pre-admission.js
+*_BACKUP_PRE_*.js
+
+# Large compressed files in snapshots (exceeds GitHub 100MB limit)
+*.m3u8.gz
+*.gz
+IPTV_v5.4_MAX_AGGRESSION/snapshots/
+
+# Sandbox and temp directories
+IPTV_v5.4_MAX_AGGRESSION/sandbox/
+IPTV_v5.4_MAX_AGGRESSION/tmp/
+Ctmpsc_native_out.txt

@@ -11,14 +11,29 @@
 
 local ok, err = pcall(function()
 
+-- ═══ LAB-SYNC v2.0: Read SSOT config from /var/www/html/prisma/config/ ═══
+-- Fallback defensivo: si lab_config.lua o JSONs no existen, usa hardcoded.
+-- Permite cambiar pisos desde LAB Excel sin tocar este archivo.
+local lab_floor, lab_telescope, lab_boost
+local lab_ok = pcall(function()
+    local lab = require "lab_config"
+    lab_floor     = lab.floor_lock()
+    lab_telescope = lab.telescope_thresholds()
+    lab_boost     = lab.profile_boost()
+end)
+
 -- ═══ CONSTANTS ═══════════════════════════════════════════════════════════
-local FLOOR_4K_BPS    = 13000000   -- 13 Mbps floor (user mandate)
-local FLOOR_1080P_BPS = 8000000    -- 8 Mbps 1080p floor
-local TARGET_4K_BPS   = 80000000   -- 80 Mbps ideal target
+-- LAB-SYNC: leer del JSON, fallback a hardcoded actual si no disponible
+local FLOOR_4K_BPS    = (lab_floor and tonumber(lab_floor.floor_lock_min_bandwidth_p0))    or 15000000  -- 15 Mbps (LAB-SYNC v2.0 piso)
+local FLOOR_1080P_BPS = (lab_floor and tonumber(lab_floor.floor_lock_min_bandwidth_p3))    or 8000000   -- 8 Mbps 1080p floor
+local TARGET_4K_BPS   = (lab_boost and lab_boost.profiles and lab_boost.profiles.P0
+                                    and tonumber(lab_boost.profiles.P0.prisma_target_bandwidth_bps)) or 80000000
 local PREFETCH_SEGMENTS = 4        -- Prefetch 4 segments ahead in playback order
 local SEGMENT_DURATION  = 6        -- Typical HLS segment duration (seconds)
-local EWMA_ALPHA       = 0.3       -- Exponential weighted moving average factor (reactive)
-local L1_RING_SIZE     = 12        -- 12 samples ≈ 1.2s at ~100ms HLS segment cadence
+local EWMA_ALPHA       = (lab_telescope and lab_telescope.level1_rolling_window
+                                       and tonumber(lab_telescope.level1_rolling_window.ewma_alpha)) or 0.3
+local L1_RING_SIZE     = (lab_telescope and lab_telescope.level1_rolling_window
+                                       and tonumber(lab_telescope.level1_rolling_window.samples_count)) or 12
 local JITTER_EWMA_ALPHA = 0.2      -- Smoother alpha for jitter (less noisy)
 
 -- Shared dict for cross-request state (defined in iptv-lua-circuit.conf)
@@ -141,40 +156,34 @@ if now - last_reset > 60 then
     reactor:set("tl_counter_reset_ts", now)
 end
 
--- ── STATE MACHINE: CBR vs VBR ────────────────────────────────────────
-local prev_state = reactor:get("bw_state") or "CBR"
-local new_state  = "CBR"
-local computed_request_bps = TARGET_4K_BPS  -- Default: ask for maximum
+-- ── STATE MACHINE: CBR_SUSTAIN vs DOUBLE ──────────────────────────────
+-- USER DOCTRINE 2026-05-11:
+--   "EL REACTOR NO DEJE DE PEDIR 13 Y NUNCA SE BAJE DE ESE VALOR Y SI SE
+--    BAJA DE 13 PIDA EL DOBLE O SEA 26 Y MIDA ESA VELOCIDAD CADA SEGUNDO
+--    Y SEA CONSTANTE EN PEDIR ESO"
+--
+-- Simplificación: 3 estados (CBR/VBR_OVERDRIVE/VBR_NUCLEAR) → 2 estados.
+-- VBR_OVERDRIVE + VBR_NUCLEAR fusionados en DOUBLE (siempre pide 26M cuando cae bajo 13M).
+local prev_state = reactor:get("bw_state") or "CBR_SUSTAIN"
+local new_state  = "CBR_SUSTAIN"
+local computed_request_bps = FLOOR_4K_BPS    -- 13 Mbps default request (user mandate)
 local prefetch_bytes = 0
 local prefetch_segments = 0
 
 if ewma_bps >= FLOOR_4K_BPS then
-    -- ✅ ABOVE FLOOR: Stay CBR, request maximum constant
-    new_state = "CBR"
-    computed_request_bps = TARGET_4K_BPS
-
-elseif ewma_bps >= FLOOR_1080P_BPS then
-    -- ⚠ BELOW 4K FLOOR: Switch to VBR — but request MUCH MORE, not less
-    -- PHILOSOPHY: Provider delivered less? DEMAND MORE. Push harder.
-    new_state = "VBR_OVERDRIVE"
-
-    -- Formula: request 2x the target (aggressive recovery push)
-    computed_request_bps = TARGET_4K_BPS * 2  -- 160 Mbps request
-
-    -- PREFETCH: Fill 4 segments ahead simultaneously in playback order
-    prefetch_segments = PREFETCH_SEGMENTS
-    prefetch_bytes = math.floor(prefetch_segments * SEGMENT_DURATION * TARGET_4K_BPS / 8)
+    -- ✅ ABOVE FLOOR: pedir 13M constante (no 80M — esa cifra rompía session affinity provider)
+    new_state = "CBR_SUSTAIN"
+    computed_request_bps = FLOOR_4K_BPS    -- 13 Mbps constante
 
 else
-    -- 🔴 CRITICAL: Below 1080p floor — MAXIMUM AGGRESSION
-    new_state = "VBR_NUCLEAR"
+    -- ⚠ BELOW 13M FLOOR: pedir EL DOBLE (26M) — user doctrine
+    -- PHILOSOPHY: Provider delivered less? DEMAND DOUBLE. Push harder pero medido.
+    new_state = "DOUBLE"
+    computed_request_bps = FLOOR_4K_BPS * 2    -- 26 Mbps request
 
-    -- Formula: request 3x target (nuclear push — force provider to burst)
-    computed_request_bps = TARGET_4K_BPS * 3  -- 240 Mbps request
-
-    -- Nuclear prefetch: fill 6 segments ahead
-    prefetch_segments = 6
-    prefetch_bytes = math.floor(prefetch_segments * SEGMENT_DURATION * TARGET_4K_BPS / 8)
+    -- PREFETCH agresivo cuando estamos bajo floor (compensa bitrate gap)
+    prefetch_segments = PREFETCH_SEGMENTS
+    prefetch_bytes = math.floor(prefetch_segments * SEGMENT_DURATION * FLOOR_4K_BPS * 2 / 8)
 end
 
 -- ── PEAK TRACKING ────────────────────────────────────────────────────

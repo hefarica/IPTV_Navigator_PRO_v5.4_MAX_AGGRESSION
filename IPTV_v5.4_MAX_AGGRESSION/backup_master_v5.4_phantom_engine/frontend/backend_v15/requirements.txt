@@ -1,0 +1,24 @@
+# ============================================================================
+# APE v15 ULTIMATE - Python Dependencies
+# ============================================================================
+# Production dependencies for Flask + Redis backend
+# ============================================================================
+
+# Web Framework
+Flask==2.3.3
+flask-cors==4.0.0
+Werkzeug==2.3.7
+
+# Redis Client
+redis==5.0.1
+
+# HTTP Client (for upstream proxying)
+requests==2.31.0
+urllib3==2.1.0
+
+# Production Server
+waitress==2.1.2
+gunicorn==21.2.0
+
+# Utilities
+python-dotenv==1.0.0

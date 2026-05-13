@@ -1,0 +1,39 @@
+{
+  "tivi": {
+    "base_url": "http://line.tivi-ott.net",
+    "username": "3JHFTC",
+    "password": "U56BDP",
+    "player_api_url": "http://line.tivi-ott.net/player_api.php?username=3JHFTC&password=U56BDP&action=get_live_streams"
+  },
+  "kytv": {
+    "base_url": "http://ky-tv.cc:80",
+    "username": "sjUumYrmCj",
+    "password": "KndjvFyunE",
+    "playlist_hls_url": "http://ky-tv.cc:80/playlist/sjUumYrmCj/KndjvFyunE/m3u?output=hls"
+  },
+  "timeouts": {
+    "api": 20,
+    "playlist": 40,
+    "probe": 30
+  },
+  "concurrency": {
+    "global": 20
+  },
+  "headers": {
+    "User-Agent": "Mozilla/5.0 (Web0S; Linux/SmartTV) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 WebAppManager",
+    "Referer": "https://www.netflix.com/",
+    "Connection": "keep-alive",
+    "Accept": "application/vnd.apple.mpegurl, application/x-mpegURL, */*"
+  },
+  "publication": {
+    "prefer_host_order": [
+      "line.tivi-ott.net",
+      "ky-tv.cc"
+    ]
+  },
+  "runtime": {
+    "admission_url": "/backend/health/runtime/admitted.json",
+    "resolver_base_url": "https://iptv-ape.duckdns.org",
+    "profile_transport": "resolver"
+  }
+}

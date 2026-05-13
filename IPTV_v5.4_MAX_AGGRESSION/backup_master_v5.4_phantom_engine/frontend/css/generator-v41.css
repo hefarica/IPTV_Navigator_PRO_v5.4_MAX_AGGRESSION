@@ -1,0 +1,139 @@
+/* ═══════════════════════════════════════════════════════════
+   🎨 ESTILOS ADICIONALES V4.1 - IPTV Navigator PRO
+   Complemento visual para nuevas funcionalidades
+   ═══════════════════════════════════════════════════════════ */
+
+:root {
+  --v41-blue: #3b82f6;
+  --v41-green: #10b981;
+  --v41-orange: #fb923c;
+  --v41-purple: #8b5cf6;
+  --v41-glass-bg: rgba(255,255,255,0.05);
+  --v41-glass-border: rgba(100,116,139,0.2);
+}
+
+/* Hover effects para mini cards */
+.telemetry-mini-card:hover {
+  background: rgba(15,23,42,0.8) !important;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+}
+
+/* Animación shimmer para barras de progreso */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+/* Transiciones suaves globales */
+select#v41CompatProfile:hover,
+select#v41CompatProfile:focus {
+  border-color: var(--v41-blue);
+  box-shadow: 0 0 0 3px rgba(59,130,246,0.1);
+  outline: none;
+}
+
+/* Responsive: Ajuste para pantallas pequeñas */
+@media (max-width: 1024px) {
+  .telemetry-mini-card {
+    font-size: 0.9rem;
+  }
+
+  .telemetry-dashboard-section > div[style*="grid-template-columns"] {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* Animación de actualización para cards de telemetría */
+@keyframes pulseUpdate {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.8; transform: scale(1.05); }
+}
+
+.telemetry-card-updating {
+  animation: pulseUpdate 0.6s ease;
+}
+
+/* Estilos de estado para inspector values */
+#inspectorProtocol[data-protocol="HTTPS"] {
+  color: var(--v41-green) !important;
+  background: rgba(16,185,129,0.15) !important;
+}
+
+#inspectorProtocol[data-protocol="HTTP"] {
+  color: var(--v41-orange) !important;
+  background: rgba(251,146,60,0.15) !important;
+}
+
+/* Tooltip helper (opcional) */
+[data-tooltip] {
+  position: relative;
+  cursor: help;
+}
+
+[data-tooltip]::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 6px 10px;
+  background: rgba(15,23,42,0.95);
+  color: #e2e8f0;
+  font-size: 11px;
+  border-radius: 6px;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+  z-index: 1000;
+}
+
+[data-tooltip]:hover::after {
+  opacity: 1;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   ✅ V4.26: SNAPSHOT INDICATOR STYLES
+   Estilos para el indicador de estado del snapshot
+   ═══════════════════════════════════════════════════════════ */
+
+#snapshotIndicator {
+  transition: all 0.3s ease;
+}
+
+#snapshotIndicator.snapshot-active {
+  background: linear-gradient(135deg, rgba(16,185,129,0.2), rgba(16,185,129,0.1)) !important;
+  border-color: rgba(16,185,129,0.4) !important;
+}
+
+#snapshotIndicator.snapshot-empty {
+  background: linear-gradient(135deg, rgba(30,41,59,0.8), rgba(30,41,59,0.6));
+  border-color: rgba(148,163,184,0.2);
+}
+
+#snapshotIndicator.snapshot-active::before {
+  content: '';
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 8px;
+  height: 8px;
+  background: #10b981;
+  border-radius: 50%;
+  animation: snapshotPulse 2s infinite;
+}
+
+@keyframes snapshotPulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(1.2); }
+}
+
+#snapshotIndicator button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+}
+
+#snapshotStatus {
+  transition: color 0.3s ease;
+}

@@ -284,7 +284,7 @@ Endpoints adicionales del VPS:
 
 #### E.1 — Lua: bandwidth_reactor.lua (+ _api.lua)
 - **Qué hace:** Reactor adaptativo. CBR fixed → VBR OVERDRIVE 2x → VBR NUCLEAR 3x cuando provider cae bajo 13 Mbps. Lee TTFB, jitter, ring buffer L1 (12 samples). Actualiza state en SHM y devuelve recomendación al request.
-- **Cómo lo hace:** `log_by_lua` post-response (latencia <30ms). Variables: `X-Max-Bitrate` header upstream, `KODIPROP min_bandwidth=13M`, `initcwnd=64`.
+- **Cómo lo hace:** `log_by_lua` post-response (latencia <30ms). Variables: `X-Max-Bitrate` header upstream, `KODIPROP min_bandwidth=13M`, `initcwnd=400 + rto_min lock 40ms per IPTV subnet` (doctrine raised 2026-05-11; was 64).
 - **Archivos:**
   - `/etc/nginx/lua/bandwidth_reactor.lua` (production)
   - `/etc/nginx/lua/bandwidth_reactor_api.lua` (endpoint API)
@@ -689,7 +689,45 @@ Para arquitectura completa de PRISMA + diagrama de flujo + código de los 6 hook
 
 ---
 
-## 9. Documentos hermanos (triangulación cross-agent)
+## 9. Flujo de generación SHIELDED — 8 momentos (frontend → VPS) con líneas de código
+
+> **Origen:** Forense de la sesión Cascade 2026-04-28 (`Verifying Shielded M3U8 Integrity.md`). Mapea cada paso del proceso de generación de listas a líneas exactas en `gateway-manager.js` para que sea trivial auditar el flujo end-to-end sin perder tiempo navegando por el archivo.
+
+### Tabla de los 8 momentos
+
+| Momento | Qué pasa | Archivo / Línea | URLs internas | Filename |
+|---|---|---|---|---|
+| **M1** | Generador produce M3U8 con URLs **directas** al proveedor | `m3u8-typed-arrays-ultimate.js` (PATH A, ~800 líneas/canal) — emite `#EXTINF` + URL `http://nfqdeuxu.x1megaott.online/live/USER/PASS/123.m3u8` | Directas ✅ | `APE_LISTA_xxx.m3u8` |
+| **M2** | Gateway captura el contenido completo en RAM al recibir evento DOM `m3u8-generated` | `gateway-manager.js` ~L442-460 (`_onM3U8Generated`) — `this.state.lastM3U8Content = detail.content` (L450) | Directas ✅ | `APE_LISTA_xxx.m3u8` |
+| **M3** | Upload triggered — toma el M3U8 tal cual de RAM | `gateway-manager.js` ~L694-698 (`upload()`) — `let contentToUpload = this.state.lastM3U8Content` (L698) | Directas ✅ | `APE_LISTA_xxx.m3u8` |
+| **M4** | **Detección SHIELDED + RENAME del filename** (único punto de transformación) | `gateway-manager.js` ~L736-747 — `shieldedEnabled = !!document.getElementById('shieldedMode')?.checked` (L736) → `finalFilename.replace(/\.m3u8$/i, '_SHIELDED.m3u8')` (L738) | Directas ✅ (intactas) | **`APE_LISTA_xxx_SHIELDED.m3u8`** |
+| **M5** | File creado para upload con el nombre renombrado, contenido inalterado | `gateway-manager.js` ~L749-770 — `new Blob([finalContent])` (L749) → `new File([fileBlob], finalFilename, ...)` (L769) | Directas ✅ | `_SHIELDED.m3u8` |
+| **M6** | Chunked upload al VPS (10 MB chunks + SHA256 + gzip post-finalize) | `gateway-manager.js` L777 (`this.uploader.upload(uploadFile)`) → `gateway-turbo-upload.js` → Rust server → `finalize_upload.php` → `auto_gzip.sh` (gzip -9) | Directas ✅ | `_SHIELDED.m3u8` + `_SHIELDED.m3u8.gz` |
+| **M7** | URL pública disponible. NGINX con `gzip_static on` sirve el `.gz` transparente | `https://iptv-ape.duckdns.org/lists/APE_LISTA_xxx_SHIELDED.m3u8` — VPS sirve desde `/var/www/iptv-ape/lists/` y `/var/www/html/lists/` | Directas ✅ | `_SHIELDED.m3u8` |
+| **M8** | Player consume la URL pública, lee URLs internas, WG tunnel captura el tráfico → DNS hijack → NGINX intercept → SurfShark → Proveedor | Cadena de red (no código JS) — ver §1 Pipeline + Capas A-L | Directas ✅ → **Red hace el shielding** | — |
+
+### Invariante operacional confirmado
+
+- Las URLs internas **NUNCA se tocan** en ninguno de los 8 momentos.
+- Solo el **filename** cambia, en el momento M4, en la línea 738 de `gateway-manager.js`.
+- El contenido del archivo (`contentToUpload`) atraviesa M1 → M7 sin un solo byte modificado.
+- El shielding real ocurre exclusivamente a nivel de red (M8), no a nivel de URL.
+
+### Resultado verificado en producción
+
+```bash
+# Auditoría de la lista en VPS
+ssh root@178.156.147.234 "
+LIST=/var/www/iptv-ape/lists/APE_LISTA_1777243113563_SHIELDED.m3u8.gz
+echo 'URLs http:// directas:' \$(zcat \$LIST | grep -c '^http://')
+echo 'URLs con /shield/:'    \$(zcat \$LIST | grep -c '/shield/')
+"
+# Esperado: 15.444 directas, 0 wrap
+```
+
+---
+
+## 10. Documentos hermanos (triangulación cross-agent)
 
 **4 documentos doctrinales (skills + memoria):**
 - [`SKILL.md`](./SKILL.md) → doctrina + invariantes (qué y por qué). Audiencia: Claude Code skill.

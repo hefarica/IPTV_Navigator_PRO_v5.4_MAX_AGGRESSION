@@ -1,0 +1,172 @@
+Archivo: C:\Users\HFRC\Downloads\APE_LISTA_1776438933335.m3u8
+Tamano: 155.117.404 bytes
+
+[PRE] Port map cargado (7 hosts):
+  line.dndnscloud.ru -> :80  [row=8 legacy]
+  cf.business-cloud-8k.ru -> (sin puerto)  [row=15 FE]
+  pro.123sat.net -> :2082  [row=6 legacy]
+  126958958431.4k-26com.com -> :80  [row=7 legacy]
+  line.tivi-ott.net -> (sin puerto)  [row=14 FE]
+  ky-tv.cc -> :80  [row=4 FE]
+  candycloud8k.biz -> :80  [row=9 legacy]
+
+[1] Streaming scan (una pasada, todos los checks)...
+    lineas: 3.125.888  | tiempo: 209,9 s
+
+=== CAPA A (doctrinal) ===  8 / 10
+  [OK   ] G1 0 FREEZES
+  [OK   ] G2 0 CORTES
+  [OK   ] G3 0 REBUFFER
+  [OK   ] G4 0 LAG
+  [FALTA] G5 BUGS CMCD  purity=OK  cmcd504=FALTA [obj:False req:False sid:False sta:False]
+  [OK   ] G6 MAX ABR
+  [OK   ] G7 HDR
+  [OK   ] G8 HTTP ERR TREE
+  [OK   ] G9 MULTI PROVIDER
+  [FALTA] G10 MASTER INTEG
+
+=== CAPA B (estructural) ===  16 / 20
+  [OK   ] B1    Canales (#EXTINF count)                  = 3540
+  [OK   ] B2    URL port = stored port (passthrough)     = 100% match (3540/3540)  mismatch=0  unknown=0
+  [OK   ] B3    URLs sin ?? && espacios                  = 100%
+  [OK   ] B4    URLs con extension valida                = 100%
+  [OK   ] B5    STREAM-INF con BANDWIDTH                 = 100% (3540/3540)
+  [OK   ] B6    STREAM-INF con CODECS                    = 100%
+  [OK   ] B7    STREAM-INF con RESOLUTION                = 100%
+  [OK   ] B8    network-caching max >= 60000             = 60000
+  [OK   ] B9    sout-mux-caching max >= 60000            = 60000
+  [FALTA] B10   fragLoadMaxRetry max >= 10               = 0
+  [OK   ] B11   User-Agent sin APE-NAVIGATOR             = 0 de 7080
+  [OK   ] B12   Referer sin duckdns/iptv-ape             = 0 de 3540
+  [OK   ] B13   Connection: no close                     = close:0 keepalive:0
+  [OK   ] B14   clock-synchro=0 presente                 = True
+  [FALTA] B15   maxLiveSyncPlaybackRate 1.0-1.5          = 0
+  [FALTA] B16   bufferTargetSec max >= 30                = 0
+  [OK   ] B17   STREAM-INF variants >= 3                 = 3540
+  [FALTA] B18   Server diversity (hosts unicos)          = 1 hosts
+  [OK   ] B19   HDR (DV/HEVC HDR10) presente             = True
+  [OK   ] B20   Codec moderno (AV1 o DV)                 = av01:False DV/HEVC-HDR:True
+
+[2] Capa C (QoS red real)...
+    Server candidato: http://ky-tv.cc:80
+
+=== CAPA C (QoS red) ===  5 / 7
+  [OK   ] Q1    DNS resolution < 200ms         = 176ms
+  [OK   ] Q2    TCP handshake < 500ms          = 303ms
+  [OK   ] Q3    HTTP status 2xx/3xx            = 200
+  [FALTA] Q4    TTFB < 500ms                   = 577ms
+  [OK   ] Q5    Content-Type valido            = text/html
+  [FALTA] Q6    Hosts unicos >= 2              = 1
+  [OK   ] Q7    Base URL con :PORT explicito   = http://ky-tv.cc:80
+
+============================================================
+  SCORE FINAL PONDERADO
+============================================================
+  Capa A doctrinal  :  80,0 pct  (peso 20 pct)
+  Capa B estructura :  80,0 pct  (peso 60 pct)
+  Capa C QoS red    :  71,4 pct  (peso 20 pct)
+  -----------------------------------------------------
+  TOTAL             :  78,3 / 100   Grado: C+
+
+[3] Escribiendo hoja 00_OMEGA_SCORECARD...
+No se puede obtener la propiedad Clear de la clase Range.
+En C:\tmp\scorecard_v2_full.ps1: 489 Car cter: 10
++ } else { $sc.Cells.Clear() }
++          ~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : OperationStopped: (:) [], COMException
+    + FullyQualifiedErrorId : System.Runtime.InteropServices.COMException
+ 
+No se puede asignar la propiedad Bold de la clase Font.
+En C:\tmp\scorecard_v2_full.ps1: 498 Car cter: 1
++ $sc.Range('A1').Font.Bold = $true
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : OperationStopped: (:) [], COMException
+    + FullyQualifiedErrorId : System.Runtime.InteropServices.COMException
+ 
+No se puede asignar la propiedad Size de la clase Font.
+En C:\tmp\scorecard_v2_full.ps1: 499 Car cter: 1
++ $sc.Range('A1').Font.Size = 16
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : OperationStopped: (:) [], COMException
+    + FullyQualifiedErrorId : System.Runtime.InteropServices.COMException
+ 
+No se puede asignar la propiedad Bold de la clase Font.
+En C:\tmp\scorecard_v2_full.ps1: 504 Car cter: 1
++ $sc.Range('A4').Font.Bold = $true
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : OperationStopped: (:) [], COMException
+    + FullyQualifiedErrorId : System.Runtime.InteropServices.COMException
+ 
+No se puede asignar la propiedad Size de la clase Font.
+En C:\tmp\scorecard_v2_full.ps1: 505 Car cter: 1
++ $sc.Range('A4').Font.Size = 14
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : OperationStopped: (:) [], COMException
+    + FullyQualifiedErrorId : System.Runtime.InteropServices.COMException
+ 
+No se puede asignar la propiedad Bold de la clase Font.
+En C:\tmp\scorecard_v2_full.ps1: 507 Car cter: 1
++ $sc.Range('B4').Font.Bold = $true
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : OperationStopped: (:) [], COMException
+    + FullyQualifiedErrorId : System.Runtime.InteropServices.COMException
+ 
+No se puede asignar la propiedad Size de la clase Font.
+En C:\tmp\scorecard_v2_full.ps1: 508 Car cter: 1
++ $sc.Range('B4').Font.Size = 14
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : OperationStopped: (:) [], COMException
+    + FullyQualifiedErrorId : System.Runtime.InteropServices.COMException
+ 
+No se puede asignar la propiedad Bold de la clase Font.
+En C:\tmp\scorecard_v2_full.ps1: 510 Car cter: 1
++ $sc.Range('C4').Font.Bold = $true
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : OperationStopped: (:) [], COMException
+    + FullyQualifiedErrorId : System.Runtime.InteropServices.COMException
+ 
+No se puede asignar la propiedad Size de la clase Font.
+En C:\tmp\scorecard_v2_full.ps1: 511 Car cter: 1
++ $sc.Range('C4').Font.Size = 14
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : OperationStopped: (:) [], COMException
+    + FullyQualifiedErrorId : System.Runtime.InteropServices.COMException
+ 
+No se puede asignar la propiedad Bold de la clase Font.
+En C:\tmp\scorecard_v2_full.ps1: 521 Car cter: 1
++ $sc.Range("A${rowIdx}:D${rowIdx}").Font.Bold = $true
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : OperationStopped: (:) [], COMException
+    + FullyQualifiedErrorId : System.Runtime.InteropServices.COMException
+ 
+No se puede asignar la propiedad Bold de la clase Font.
+En C:\tmp\scorecard_v2_full.ps1: 529 Car cter: 1
++ $sc.Range("A${rowIdx}:D${rowIdx}").Font.Bold = $true
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : OperationStopped: (:) [], COMException
+    + FullyQualifiedErrorId : System.Runtime.InteropServices.COMException
+ 
+No se puede asignar la propiedad Bold de la clase Font.
+En C:\tmp\scorecard_v2_full.ps1: 558 Car cter: 1
++ $sc.Range("A${rowIdx}:D${rowIdx}").Font.Bold = $true
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : OperationStopped: (:) [], COMException
+    + FullyQualifiedErrorId : System.Runtime.InteropServices.COMException
+ 
+No se puede asignar la propiedad Bold de la clase Font.
+En C:\tmp\scorecard_v2_full.ps1: 574 Car cter: 5
++     $sc.Range("A${rowIdx}:D${rowIdx}").Font.Bold = $true
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : OperationStopped: (:) [], COMException
+    + FullyQualifiedErrorId : System.Runtime.InteropServices.COMException
+ 
+No se puede obtener la propiedad AutoFit de la clase Range.
+En C:\tmp\scorecard_v2_full.ps1: 587 Car cter: 1
++ $sc.Columns('A:D').AutoFit()
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : OperationStopped: (:) [], COMException
+    + FullyQualifiedErrorId : System.Runtime.InteropServices.COMException
+ 
+  Hoja escrita. Score Global: 78.3 / 100 (C+)
+Backup: C:\Users\HFRC\Downloads\APE_M3U8_LAB_v8_FIXED.BACKUP_20260418_110430_SCORECARD_V2.xlsm
+DONE

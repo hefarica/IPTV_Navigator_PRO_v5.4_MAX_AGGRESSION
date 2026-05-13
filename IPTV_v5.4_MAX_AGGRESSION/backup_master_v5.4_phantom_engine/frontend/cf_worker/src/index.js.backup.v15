@@ -1,0 +1,1744 @@
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * 🌐 IPTV GATEWAY WORKER v1.0.0
+ * ═══════════════════════════════════════════════════════════════════════════
+ * 
+ * Cloudflare Worker para proxy de M3U8 con URL rewriting.
+ * 
+ * ENDPOINTS:
+ *   GET  /                    - Página de inicio
+ *   GET  /api/health          - Estado de salud
+ *   POST /api/upload          - Subir M3U8 (requiere auth)
+ *   GET  /playlist.m3u8       - Obtener playlist (URL fija)
+ *   GET  /stream/:hash        - Stream proxy
+ *   GET  /versions            - Listar versiones
+ * 
+ * AUTENTICACIÓN:
+ *   Header: Authorization: Bearer <GATEWAY_SECRET>
+ * ═══════════════════════════════════════════════════════════════════════════
+ */
+
+export default {
+    async fetch(request, env, ctx) {
+        const url = new URL(request.url);
+        const path = url.pathname;
+
+        // CORS Headers - Updated for PUT and GZIP session uploads with sharding
+        const corsHeaders = {
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'GET, POST, PUT, OPTIONS',
+            'Access-Control-Allow-Headers': 'Content-Type, Content-Encoding, Authorization, X-Action, X-Upload-Id, X-Key, X-Part-Number, X-Original-Size, X-Session-Count, X-Shard, X-Chunk-Id',
+        };
+
+        // Handle CORS preflight
+        if (request.method === 'OPTIONS') {
+            return new Response(null, { headers: corsHeaders });
+        }
+
+        try {
+            // ════════════════════════════════════════════════════════════════
+            // RUTAS
+            // ════════════════════════════════════════════════════════════════
+
+            // GET / - Página de inicio
+            if (path === '/' && request.method === 'GET') {
+                return new Response(this.getHomePage(), {
+                    headers: { ...corsHeaders, 'Content-Type': 'text/html; charset=utf-8' }
+                });
+            }
+
+            // GET /api/health - Estado de salud
+            if (path === '/api/health' && request.method === 'GET') {
+                // Get KV stats if available
+                let kvMetrics = null;
+                try {
+                    if (env.KV_STATS) {
+                        kvMetrics = await env.KV_STATS.get('metrics', 'json') || { kv_hits: 0, r2_fallbacks: 0, warmup_count: 0 };
+                    }
+                } catch (e) {
+                    console.log('[HEALTH] Could not read KV stats:', e.message);
+                }
+
+                return Response.json({
+                    status: 'ok',
+                    version: '1.1.0-kv-hybrid',
+                    timestamp: new Date().toISOString(),
+                    bindings: {
+                        kv_url_mappings: !!env.URL_MAPPINGS,
+                        kv_playlists: !!env.PLAYLISTS_KV,
+                        kv_versions: !!env.VERSIONS_KV,
+                        kv_sessions: !!env.KV_APE_SESSIONS,
+                        kv_stats: !!env.KV_STATS,
+                        r2_bucket: !!env.R2_BUCKET
+                    },
+                    kv_metrics: kvMetrics
+                }, { headers: corsHeaders });
+            }
+
+            // ════════════════════════════════════════════════════════════════
+            // GET /health - Standard Health Check
+            // ════════════════════════════════════════════════════════════════
+            if (path === '/health' && request.method === 'GET') {
+                return new Response(JSON.stringify({
+                    status: 'ok',
+                    version: '15.1.0-REDIRECT-CF',
+                    timestamp: new Date().toISOString(),
+                    endpoints: {
+                        stream: '/stream?channel_id=X&original_url=BASE64',
+                        health: '/health'
+                    }
+                }), {
+                    status: 200,
+                    headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+                });
+            }
+
+            // ════════════════════════════════════════════════════════════════
+            // GET /stream - APE v15.1 REDIRECT MODE (Pure HTTP 302 Redirect)
+            // ════════════════════════════════════════════════════════════════
+            if (path === '/stream' && request.method === 'GET') {
+                try {
+                    const channelId = url.searchParams.get('channel_id') || 'unknown';
+                    const originalUrlEncoded = url.searchParams.get('original_url');
+
+                    if (!originalUrlEncoded) {
+                        return new Response('Missing required parameter: original_url', {
+                            status: 400,
+                            headers: corsHeaders
+                        });
+                    }
+
+                    // Decodificar Base64 URL (M3U8 Transformer Fixed v1.0 standard)
+                    let originalUrl;
+                    try {
+                        // Step 1: URL decode (quitar %XX encoding si existe)
+                        const base64Decoded = decodeURIComponent(originalUrlEncoded);
+                        // Step 2: Base64 decode
+                        originalUrl = atob(base64Decoded);
+                        // Step 3: Validar URL
+                        new URL(originalUrl);
+                    } catch (error) {
+                        return new Response(`Invalid URL format or encoding: ${error.message}`, {
+                            status: 400,
+                            headers: corsHeaders
+                        });
+                    }
+
+                    // CDN Whitelist Validation
+                    const ALLOWED_CDN_DOMAINS = [
+                        'cdn.tivi.com',
+                        'tivi.com',
+                        'line.tivi.com',
+                        'stream.tivi.com',
+                        'media.tivi.com',
+                        'tv.tivi.com',
+                        'tivi-ott.net',      // ✅ Added for v15.1
+                        'line.tivi-ott.net'  // ✅ Added for v15.1
+                    ];
+
+                    const urlDomain = new URL(originalUrl).hostname;
+                    const isAllowed = ALLOWED_CDN_DOMAINS.some(domain =>
+                        urlDomain.includes(domain) || domain.includes(urlDomain)
+                    );
+
+                    if (!isAllowed) {
+                        console.log(`[REDIRECT] Blocked: ${urlDomain} not in whitelist`);
+                        return new Response(`Forbidden: CDN domain not whitelisted (${urlDomain})`, {
+                            status: 403,
+                            headers: corsHeaders
+                        });
+                    }
+
+                    console.log(`[REDIRECT] ${channelId} → ${originalUrl.substring(0, 80)}...`);
+
+                    // Store metrics in KV (async)
+                    if (env.KV_STATS) {
+                        ctx.waitUntil((async () => {
+                            try {
+                                const metrics = await env.KV_STATS.get('metrics', 'json') || { redirect_count: 0 };
+                                metrics.redirect_count = (metrics.redirect_count || 0) + 1;
+                                await env.KV_STATS.put('metrics', JSON.stringify(metrics));
+                            } catch (e) { console.error('[REDIRECT] Metrics error:', e.message); }
+                        })());
+                    }
+
+                    // HTTP 302 Redirect
+                    return new Response(null, {
+                        status: 302,
+                        headers: {
+                            ...corsHeaders,
+                            'Location': originalUrl,
+                            'Cache-Control': 'public, max-age=60',
+                            'X-APE-Mode': 'pure_redirect',
+                            'X-APE-Version': '15.1.0-REDIRECT-CF',
+                            'X-Channel-ID': channelId
+                        }
+                    });
+
+                } catch (error) {
+                    console.error('❌ Stream endpoint error:', error.message);
+                    return new Response(`Internal error: ${error.message}`, {
+                        status: 500,
+                        headers: corsHeaders
+                    });
+                }
+            }
+
+            // ENDPOINT: OPTIONS /stream - CORS Preflight
+            if (path === '/stream' && request.method === 'OPTIONS') {
+                return new Response(null, {
+                    status: 204,
+                    headers: {
+                        ...corsHeaders,
+                        'Access-Control-Allow-Methods': 'GET, OPTIONS',
+                        'Access-Control-Allow-Headers': 'Content-Type, Range',
+                        'Access-Control-Max-Age': '86400'
+                    }
+                });
+            }
+
+            // POST /api/upload - Subir M3U8
+            if (path === '/api/upload' && request.method === 'POST') {
+                // Verificar autenticación
+                const authHeader = request.headers.get('Authorization');
+                if (!authHeader || !authHeader.startsWith('Bearer ')) {
+                    return Response.json({ error: 'Missing authorization' }, {
+                        status: 401, headers: corsHeaders
+                    });
+                }
+
+                const token = authHeader.substring(7);
+                if (token !== env.GATEWAY_SECRET) {
+                    return Response.json({ error: 'Invalid token' }, {
+                        status: 403, headers: corsHeaders
+                    });
+                }
+
+                // Procesar payload
+                const payload = await request.json();
+                const { playlist_content, filename, strategy, metadata } = payload;
+
+                if (!playlist_content) {
+                    return Response.json({ error: 'Missing playlist_content' }, {
+                        status: 400, headers: corsHeaders
+                    });
+                }
+
+                // Reescribir URLs
+                const { rewrittenContent, mappingsCreated } = await this.rewriteUrls(
+                    playlist_content, env
+                );
+
+                const publicUrl = `${url.origin}/playlist.m3u8`;
+                let versionUrl = null;
+
+                // Estrategia REPLACE o BOTH
+                if (strategy === 'replace' || strategy === 'both') {
+                    await env.R2_BUCKET.put('latest.m3u8', rewrittenContent, {
+                        httpMetadata: { contentType: 'application/x-mpegURL' }
+                    });
+                    await env.PLAYLISTS_KV.put('latest', rewrittenContent);
+                }
+
+                // Estrategia VERSION o BOTH
+                if (strategy === 'version' || strategy === 'both') {
+                    const versionName = `${Date.now()}_${filename || 'playlist.m3u8'}`;
+                    await env.R2_BUCKET.put(`versions/${versionName}`, rewrittenContent, {
+                        httpMetadata: { contentType: 'application/x-mpegURL' }
+                    });
+                    await env.VERSIONS_KV.put(versionName, JSON.stringify({
+                        created: new Date().toISOString(),
+                        size: rewrittenContent.length,
+                        channels: metadata?.channels_count || 0
+                    }));
+                    versionUrl = `${url.origin}/versions/${versionName}`;
+
+                    // Limpiar versiones antiguas (mantener máximo 10)
+                    if (strategy === 'both') {
+                        await this.cleanupOldVersions(env);
+                    }
+                }
+
+                // Guardar metadata
+                await env.PLAYLISTS_KV.put('metadata', JSON.stringify({
+                    last_upload: new Date().toISOString(),
+                    channels: metadata?.channels_count || 0,
+                    size: rewrittenContent.length,
+                    source: metadata?.source || 'unknown',
+                    prefetch: this.extractPrefetchConfig(playlist_content)
+                }));
+
+                return Response.json({
+                    success: true,
+                    public_url: publicUrl,
+                    version_url: versionUrl,
+                    mappings_created: mappingsCreated,
+                    strategy: strategy
+                }, { headers: corsHeaders });
+            }
+
+            // ════════════════════════════════════════════════════════════════
+            // POST /api/kv-bulk - Subir sesiones en bulk a KV
+            // ════════════════════════════════════════════════════════════════
+            if (path === '/api/kv-bulk' && request.method === 'POST') {
+                // Verificar Auth
+                const authHeader = request.headers.get('Authorization');
+                if (!authHeader || !authHeader.startsWith('Bearer ') || authHeader.substring(7) !== env.GATEWAY_SECRET) {
+                    return Response.json({ error: 'Unauthorized' }, { status: 401, headers: corsHeaders });
+                }
+
+                try {
+                    const { entries } = await request.json();
+
+                    if (!entries || !Array.isArray(entries)) {
+                        return Response.json({ error: 'Missing entries array' }, {
+                            status: 400, headers: corsHeaders
+                        });
+                    }
+
+                    let successCount = 0;
+                    let errorCount = 0;
+
+                    // Procesar en lotes de 100 para evitar timeouts
+                    const BATCH_SIZE = 100;
+                    for (let i = 0; i < entries.length; i += BATCH_SIZE) {
+                        const batch = entries.slice(i, i + BATCH_SIZE);
+
+                        // Promesas paralelas para este lote
+                        const promises = batch.map(async (entry) => {
+                            try {
+                                const { key, value, expiration_ttl } = entry;
+                                await env.PLAYLISTS_KV.put(key, value, {
+                                    expirationTtl: expiration_ttl || 21600 // 6 horas default
+                                });
+                                return true;
+                            } catch (e) {
+                                console.error(`Error writing key ${entry.key}:`, e);
+                                return false;
+                            }
+                        });
+
+                        const results = await Promise.all(promises);
+                        successCount += results.filter(r => r).length;
+                        errorCount += results.filter(r => !r).length;
+                    }
+
+                    console.log(`[KV-BULK] Uploaded ${successCount} sessions, ${errorCount} errors`);
+
+                    return Response.json({
+                        success: true,
+                        uploaded: successCount,
+                        errors: errorCount,
+                        total: entries.length
+                    }, { headers: corsHeaders });
+
+                } catch (e) {
+                    console.error('[KV-BULK] Error:', e);
+                    return Response.json({ error: e.message }, {
+                        status: 500, headers: corsHeaders
+                    });
+                }
+            }
+
+            // ════════════════════════════════════════════════════════════════
+            // PUT /api/sessions - Subir sesiones comprimidas (GZIP) a R2
+            // Evita el límite de 1000 writes/día de KV
+            // ════════════════════════════════════════════════════════════════
+            if (path === '/api/sessions' && request.method === 'PUT') {
+                // Verificar Auth
+                const authHeader = request.headers.get('Authorization');
+                if (!authHeader || !authHeader.startsWith('Bearer ') || authHeader.substring(7) !== env.GATEWAY_SECRET) {
+                    return Response.json({ error: 'Unauthorized' }, { status: 401, headers: corsHeaders });
+                }
+
+                try {
+                    const contentType = request.headers.get('Content-Type') || '';
+                    const sessionCount = parseInt(request.headers.get('X-Session-Count') || '0');
+                    const originalSize = parseInt(request.headers.get('X-Original-Size') || '0');
+
+                    // Obtener el body como ArrayBuffer para guardar directamente
+                    const compressedData = await request.arrayBuffer();
+                    const compressedSize = compressedData.byteLength;
+
+                    console.log(`[SESSIONS] Received ${sessionCount} sessions, ${compressedSize} bytes (GZIP)`);
+
+                    // Guardar archivo comprimido en R2
+                    await env.R2_BUCKET.put('sessions.json.gz', compressedData, {
+                        httpMetadata: {
+                            contentType: 'application/gzip',
+                            contentEncoding: 'gzip'
+                        },
+                        customMetadata: {
+                            sessionCount: sessionCount.toString(),
+                            originalSize: originalSize.toString(),
+                            uploadedAt: new Date().toISOString()
+                        }
+                    });
+
+                    console.log(`[SESSIONS] Stored ${sessionCount} sessions as GZIP in R2`);
+
+                    return Response.json({
+                        success: true,
+                        sessions_stored: sessionCount,
+                        compressed_size: compressedSize,
+                        original_size: originalSize,
+                        compression_ratio: originalSize > 0 ? ((1 - compressedSize / originalSize) * 100).toFixed(1) + '%' : 'N/A',
+                        storage: 'R2',
+                        file: 'sessions.json.gz'
+                    }, { headers: corsHeaders });
+
+                } catch (e) {
+                    console.error('[SESSIONS] Error:', e);
+                    return Response.json({ error: e.message }, {
+                        status: 500, headers: corsHeaders
+                    });
+                }
+            }
+
+            // ════════════════════════════════════════════════════════════════
+            // PUT /api/sessions/:shard - Subir sesiones particionadas (SHARDING)
+            // Cada shard contiene sesiones cuyo ID empieza con el dígito hex correspondiente
+            // Evita OOM al dividir 151MB en 16 archivos de ~9-10MB cada uno
+            // ════════════════════════════════════════════════════════════════
+            const shardMatch = path.match(/^\/api\/sessions\/([0-9a-f])$/i);
+            if (shardMatch && request.method === 'PUT') {
+                const shardId = shardMatch[1].toLowerCase();
+
+                // Verificar Auth
+                const authHeader = request.headers.get('Authorization');
+                if (!authHeader || !authHeader.startsWith('Bearer ') || authHeader.substring(7) !== env.GATEWAY_SECRET) {
+                    return Response.json({ error: 'Unauthorized' }, { status: 401, headers: corsHeaders });
+                }
+
+                try {
+                    const sessionCount = parseInt(request.headers.get('X-Session-Count') || '0');
+                    const originalSize = parseInt(request.headers.get('X-Original-Size') || '0');
+
+                    // Obtener el body como ArrayBuffer
+                    const compressedData = await request.arrayBuffer();
+                    const compressedSize = compressedData.byteLength;
+
+                    console.log(`[SHARD-${shardId.toUpperCase()}] Received ${sessionCount} sessions, ${compressedSize} bytes`);
+
+                    // Guardar shard en R2 como sessions/shard_X.json.gz
+                    await env.R2_BUCKET.put(`sessions/shard_${shardId}.json.gz`, compressedData, {
+                        httpMetadata: {
+                            contentType: 'application/gzip',
+                            contentEncoding: 'gzip'
+                        },
+                        customMetadata: {
+                            shardId: shardId,
+                            sessionCount: sessionCount.toString(),
+                            originalSize: originalSize.toString(),
+                            uploadedAt: new Date().toISOString()
+                        }
+                    });
+
+                    console.log(`[SHARD-${shardId.toUpperCase()}] Stored ${sessionCount} sessions in R2`);
+
+                    return Response.json({
+                        success: true,
+                        shard: shardId,
+                        sessions_stored: sessionCount,
+                        compressed_size: compressedSize,
+                        original_size: originalSize,
+                        file: `sessions/shard_${shardId}.json.gz`
+                    }, { headers: corsHeaders });
+
+                } catch (e) {
+                    console.error(`[SHARD-${shardId}] Error:`, e);
+                    return Response.json({ error: e.message }, {
+                        status: 500, headers: corsHeaders
+                    });
+                }
+            }
+
+            // ════════════════════════════════════════════════════════════════
+            // PUT /api/sessions/index - Subir índice de sesiones (sessionId → chunkId)
+            // Archivo compacto (~50KB) para O(1) lookup
+            // ════════════════════════════════════════════════════════════════
+            if (path === '/api/sessions/index' && request.method === 'PUT') {
+                const authHeader = request.headers.get('Authorization');
+                if (!authHeader || !authHeader.startsWith('Bearer ') || authHeader.substring(7) !== env.GATEWAY_SECRET) {
+                    return Response.json({ error: 'Unauthorized' }, { status: 401, headers: corsHeaders });
+                }
+
+                try {
+                    const sessionCount = parseInt(request.headers.get('X-Session-Count') || '0');
+                    const compressedData = await request.arrayBuffer();
+
+                    console.log(`[INDEX] Received session index for ${sessionCount} sessions, ${compressedData.byteLength} bytes`);
+
+                    await env.R2_BUCKET.put('sessions/index.json.gz', compressedData, {
+                        httpMetadata: {
+                            contentType: 'application/gzip',
+                            contentEncoding: 'gzip'
+                        },
+                        customMetadata: {
+                            sessionCount: sessionCount.toString(),
+                            uploadedAt: new Date().toISOString()
+                        }
+                    });
+
+                    console.log(`[INDEX] Stored session index in R2`);
+
+                    return Response.json({
+                        success: true,
+                        sessions_indexed: sessionCount,
+                        file: 'sessions/index.json.gz',
+                        compressed_size: compressedData.byteLength
+                    }, { headers: corsHeaders });
+
+                } catch (e) {
+                    console.error('[INDEX] Error:', e);
+                    return Response.json({ error: e.message }, { status: 500, headers: corsHeaders });
+                }
+            }
+
+            // ════════════════════════════════════════════════════════════════
+            // PUT /api/sessions/chunk/:chunkId - Subir chunk de sesiones
+            // Cada chunk contiene ~500 sesiones (~5MB max)
+            // ════════════════════════════════════════════════════════════════
+            const chunkMatch = path.match(/^\/api\/sessions\/chunk\/(\d+)$/);
+            if (chunkMatch && request.method === 'PUT') {
+                const chunkId = parseInt(chunkMatch[1]);
+
+                const authHeader = request.headers.get('Authorization');
+                if (!authHeader || !authHeader.startsWith('Bearer ') || authHeader.substring(7) !== env.GATEWAY_SECRET) {
+                    return Response.json({ error: 'Unauthorized' }, { status: 401, headers: corsHeaders });
+                }
+
+                try {
+                    const sessionCount = parseInt(request.headers.get('X-Session-Count') || '0');
+                    const compressedData = await request.arrayBuffer();
+
+                    console.log(`[CHUNK-${chunkId}] Received ${sessionCount} sessions, ${compressedData.byteLength} bytes`);
+
+                    await env.R2_BUCKET.put(`sessions/chunk_${chunkId}.json.gz`, compressedData, {
+                        httpMetadata: {
+                            contentType: 'application/gzip',
+                            contentEncoding: 'gzip'
+                        },
+                        customMetadata: {
+                            chunkId: chunkId.toString(),
+                            sessionCount: sessionCount.toString(),
+                            uploadedAt: new Date().toISOString()
+                        }
+                    });
+
+                    console.log(`[CHUNK-${chunkId}] Stored in R2`);
+
+                    return Response.json({
+                        success: true,
+                        chunk_id: chunkId,
+                        sessions_stored: sessionCount,
+                        file: `sessions/chunk_${chunkId}.json.gz`,
+                        compressed_size: compressedData.byteLength
+                    }, { headers: corsHeaders });
+
+                } catch (e) {
+                    console.error(`[CHUNK-${chunkId}] Error:`, e);
+                    return Response.json({ error: e.message }, { status: 500, headers: corsHeaders });
+                }
+            }
+
+            // POST /api/upload-large - Subida Multipart (Chunked)
+            if (path === '/api/upload-large' && request.method === 'POST') {
+                // Verificar Auth
+                const authHeader = request.headers.get('Authorization');
+                if (!authHeader || !authHeader.startsWith('Bearer ') || authHeader.substring(7) !== env.GATEWAY_SECRET) {
+                    return Response.json({ error: 'Unauthorized' }, { status: 401, headers: corsHeaders });
+                }
+
+                const action = request.headers.get('X-Action'); // init, part, complete
+
+                // 1. INIT: Iniciar multipart upload
+                if (action === 'init') {
+                    const filename = request.headers.get('X-Filename') || 'upload.m3u8';
+                    const key = `staging/${Date.now()}_${filename}`;
+
+                    // R2 Multipart Create
+                    const multipartUpload = await env.R2_BUCKET.createMultipartUpload(key);
+
+                    return Response.json({
+                        uploadId: multipartUpload.uploadId,
+                        key: key
+                    }, { headers: corsHeaders });
+                }
+
+                // 2. PART: Subir chunk
+                if (action === 'part') {
+                    const uploadId = request.headers.get('X-Upload-Id');
+                    const key = request.headers.get('X-Key');
+                    const partNumber = parseInt(request.headers.get('X-Part-Number'));
+
+                    if (!uploadId || !key || !partNumber) {
+                        return Response.json({ error: 'Missing headers' }, { status: 400, headers: corsHeaders });
+                    }
+
+                    const part = await env.R2_BUCKET.resumeMultipartUpload(key, uploadId);
+                    const uploadedPart = await part.uploadPart(partNumber, request.body);
+
+                    return Response.json({
+                        etag: uploadedPart.etag,
+                        partNumber: partNumber
+                    }, { headers: corsHeaders });
+                }
+
+                // 3. COMPLETE: Finalizar y mover
+                if (action === 'complete') {
+                    let uploadId = request.headers.get('X-Upload-Id');
+                    let key = request.headers.get('X-Key');
+
+                    const body = await request.json(); // Leer body una sola vez
+
+                    // Fallback a body si no hay headers
+                    if (!uploadId) uploadId = body.uploadId;
+                    if (!key) key = body.key;
+
+                    // Extraer parts correctamente
+                    let parts = body.parts;
+
+                    if (!uploadId || !key || !parts || !Array.isArray(parts)) {
+                        return Response.json({
+                            error: 'Missing completion data',
+                            received: { uploadId: !!uploadId, key: !!key, parts: Array.isArray(parts) }
+                        }, { status: 400, headers: corsHeaders });
+                    }
+
+                    // Fix: R2 espera { partNumber, etag }, a veces vienen como PartNumber/ETag
+                    const r2Parts = parts.map(p => ({
+                        partNumber: p.partNumber || p.PartNumber,
+                        etag: p.etag || p.ETag
+                    }));
+
+                    console.log(`[COMPLETE] Resuming upload: ${key}, ${uploadId}, parts: ${r2Parts.length}`);
+
+                    const multipartUpload = await env.R2_BUCKET.resumeMultipartUpload(key, uploadId);
+
+                    // CRITICAL: Check if resumeMultipartUpload returned a valid handle
+                    if (!multipartUpload) {
+                        return Response.json({
+                            error: 'Upload session expired or not found',
+                            message: 'The multipart upload may have timed out. Please retry the upload.',
+                            uploadId: uploadId,
+                            key: key
+                        }, { status: 410, headers: corsHeaders }); // 410 Gone
+                    }
+
+                    // Now safe to call complete
+                    await multipartUpload.complete(r2Parts);
+
+                    // Guardar referencia del archivo en R2 (evita límite de KV)
+                    await env.R2_BUCKET.put('latest_r2_key.txt', key, {
+                        httpMetadata: { contentType: 'text/plain' }
+                    });
+
+                    // Actualizar metadata general en R2
+                    const metadata = body.metadata || {};
+                    await env.R2_BUCKET.put('metadata.json', JSON.stringify({
+                        last_upload: new Date().toISOString(),
+                        channels: metadata.channels_count || 0,
+                        size: metadata.size_bytes || 0,
+                        source: 'multipart',
+                        type: 'large_file'
+                    }), {
+                        httpMetadata: { contentType: 'application/json' }
+                    });
+
+                    return Response.json({
+                        success: true,
+                        key: key,
+                        public_url: `${url.origin}/playlist.m3u8`
+                    }, { headers: corsHeaders });
+                }
+
+                return Response.json({ error: 'Invalid action' }, { status: 400, headers: corsHeaders });
+            }
+
+            // ════════════════════════════════════════════════════════════════
+            // R2 MULTIPART STREAMING UPLOAD (Chunked - Memory Efficient)
+            // ════════════════════════════════════════════════════════════════
+            // For large M3U files (500MB+) without browser freeze
+            // RAM usage: <20MB constant vs 500MB+ traditional
+
+            // POST /api/r2/initiate-multipart - Start chunked upload
+            if (path === '/api/r2/initiate-multipart' && request.method === 'POST') {
+                // Verify Auth
+                const authHeader = request.headers.get('Authorization');
+                if (!authHeader || !authHeader.startsWith('Bearer ') || authHeader.substring(7) !== env.GATEWAY_SECRET) {
+                    return Response.json({ error: 'Unauthorized' }, { status: 401, headers: corsHeaders });
+                }
+
+                try {
+                    const { filename, size } = await request.json();
+                    const timestamp = Date.now();
+
+                    // ✅ CRITICAL: Sanitize filename to match frontend sanitization
+                    // Must match gateway-manager.js lines 870-877
+                    const sanitizedFilename = filename
+                        .replace(/\s+/g, '_')           // Spaces → underscores
+                        .replace(/[()]/g, '')           // Remove parentheses
+                        .replace(/[^a-zA-Z0-9._-]/g, '_'); // Other special chars → underscore
+
+                    const key = `playlists/${timestamp}_${sanitizedFilename}`;
+
+                    // Create R2 multipart upload
+                    const multipartUpload = await env.R2_BUCKET.createMultipartUpload(key);
+
+                    console.log(`[R2-MULTIPART] Initiated upload: ${key}, size: ${size} bytes, uploadId: ${multipartUpload.uploadId}`);
+
+                    return Response.json({
+                        uploadId: multipartUpload.uploadId,
+                        key: key,
+                        chunkSize: 5 * 1024 * 1024 // Recommend 5MB chunks
+                    }, { headers: corsHeaders });
+
+                } catch (e) {
+                    console.error('[R2-MULTIPART] Init error:', e);
+                    return Response.json({ error: e.message }, { status: 500, headers: corsHeaders });
+                }
+            }
+
+            // POST /api/r2/upload-part - Upload single chunk
+            if (path === '/api/r2/upload-part' && request.method === 'POST') {
+                // Verify Auth
+                const authHeader = request.headers.get('Authorization');
+                if (!authHeader || !authHeader.startsWith('Bearer ') || authHeader.substring(7) !== env.GATEWAY_SECRET) {
+                    return Response.json({ error: 'Unauthorized' }, { status: 401, headers: corsHeaders });
+                }
+
+                try {
+                    const { uploadId, key, partNumber, data } = await request.json();
+
+                    if (!uploadId || !key || !partNumber || !data) {
+                        return Response.json({
+                            error: 'Missing required fields',
+                            required: ['uploadId', 'key', 'partNumber', 'data']
+                        }, { status: 400, headers: corsHeaders });
+                    }
+
+                    // Decode base64 data to binary
+                    const binaryString = atob(data);
+                    const bytes = new Uint8Array(binaryString.length);
+                    for (let i = 0; i < binaryString.length; i++) {
+                        bytes[i] = binaryString.charCodeAt(i);
+                    }
+
+                    // Resume multipart upload and upload this part
+                    const multipartUpload = await env.R2_BUCKET.resumeMultipartUpload(key, uploadId);
+                    const uploadedPart = await multipartUpload.uploadPart(partNumber, bytes);
+
+                    console.log(`[R2-MULTIPART] Uploaded part ${partNumber}, size: ${bytes.length} bytes, ETag: ${uploadedPart.etag}`);
+
+                    return Response.json({
+                        success: true,
+                        partNumber: partNumber,
+                        etag: uploadedPart.etag,
+                        size: bytes.length
+                    }, { headers: corsHeaders });
+
+                } catch (e) {
+                    console.error('[R2-MULTIPART] Part upload error:', e);
+                    return Response.json({ error: e.message }, { status: 500, headers: corsHeaders });
+                }
+            }
+
+            // POST /api/r2/complete-multipart - Finalize upload
+            if (path === '/api/r2/complete-multipart' && request.method === 'POST') {
+                // Verify Auth
+                const authHeader = request.headers.get('Authorization');
+                if (!authHeader || !authHeader.startsWith('Bearer ') || authHeader.substring(7) !== env.GATEWAY_SECRET) {
+                    return Response.json({ error: 'Unauthorized' }, { status: 401, headers: corsHeaders });
+                }
+
+                try {
+                    const { uploadId, key, parts } = await request.json();
+
+                    if (!uploadId || !key || !Array.isArray(parts)) {
+                        return Response.json({
+                            error: 'Missing required fields',
+                            required: ['uploadId', 'key', 'parts (array)']
+                        }, { status: 400, headers: corsHeaders });
+                    }
+
+                    // Format parts for R2 (ensure correct case)
+                    const r2Parts = parts.map(p => ({
+                        partNumber: p.partNumber || p.PartNumber,
+                        etag: p.etag || p.ETag || p.etag
+                    }));
+
+                    // Resume and complete multipart upload
+                    const multipartUpload = await env.R2_BUCKET.resumeMultipartUpload(key, uploadId);
+                    await multipartUpload.complete(r2Parts);
+
+                    // Update reference for /playlist.m3u8 endpoint
+                    await env.R2_BUCKET.put('latest_r2_key.txt', key, {
+                        httpMetadata: { contentType: 'text/plain' }
+                    });
+
+                    console.log(`[R2-MULTIPART] Completed upload: ${key}, parts: ${r2Parts.length}`);
+
+                    // Generate public URL
+                    const publicUrl = `${url.origin}/playlist.m3u8`;
+
+                    return Response.json({
+                        success: true,
+                        key: key,
+                        public_url: publicUrl,
+                        version_url: `${url.origin}/v1/feed`,
+                        parts_uploaded: r2Parts.length
+                    }, { headers: corsHeaders });
+
+                } catch (e) {
+                    console.error('[R2-MULTIPART] Complete error:', e);
+                    return Response.json({ error: e.message }, { status: 500, headers: corsHeaders });
+                }
+            }
+
+            // POST /api/r2/abort-multipart - Cleanup failed upload
+            if (path === '/api/r2/abort-multipart' && request.method === 'POST') {
+                // Verify Auth
+                const authHeader = request.headers.get('Authorization');
+                if (!authHeader || !authHeader.startsWith('Bearer ') || authHeader.substring(7) !== env.GATEWAY_SECRET) {
+                    return Response.json({ error: 'Unauthorized' }, { status: 401, headers: corsHeaders });
+                }
+
+                try {
+                    const { uploadId, key } = await request.json();
+
+                    if (!uploadId || !key) {
+                        return Response.json({
+                            error: 'Missing required fields',
+                            required: ['uploadId', 'key']
+                        }, { status: 400, headers: corsHeaders });
+                    }
+
+                    // Resume and abort
+                    const multipartUpload = await env.R2_BUCKET.resumeMultipartUpload(key, uploadId);
+                    await multipartUpload.abort();
+
+                    console.log(`[R2-MULTIPART] Aborted upload: ${key}`);
+
+                    return Response.json({
+                        success: true,
+                        status: 'aborted',
+                        uploadId: uploadId
+                    }, { headers: corsHeaders });
+
+                } catch (e) {
+                    console.error('[R2-MULTIPART] Abort error:', e);
+                    return Response.json({ error: e.message }, { status: 500, headers: corsHeaders });
+                }
+            }
+
+            // GET /playlist.m3u8 OR /v1/feed - Obtener playlist (STEALTH)
+            if ((path === '/playlist.m3u8' || path === '/v1/feed' || path === '/feed') && request.method === 'GET') {
+
+                // 1. Check if we have a dynamic key reference (for large files) - read from R2
+                let r2Key = 'latest.m3u8';
+                try {
+                    const keyFile = await env.R2_BUCKET.get('latest_r2_key.txt');
+                    if (keyFile) {
+                        const dynamicKey = await keyFile.text();
+                        if (dynamicKey && dynamicKey.trim()) r2Key = dynamicKey.trim();
+                    }
+                } catch (e) {
+                    console.log('[playlist.m3u8] No dynamic key found, using default');
+                }
+
+                // Intentar obtener de R2
+                const r2Object = await env.R2_BUCKET.get(r2Key);
+                if (r2Object) {
+                    return new Response(r2Object.body, {
+                        headers: {
+                            ...corsHeaders,
+                            'Content-Type': 'application/x-mpegURL',
+                            'Cache-Control': 'no-cache, no-store, must-revalidate'
+                        }
+                    });
+                }
+
+
+                // Fallback a KV
+                const kvContent = await env.PLAYLISTS_KV.get('latest');
+                if (kvContent) {
+                    return new Response(kvContent, {
+                        headers: {
+                            ...corsHeaders,
+                            'Content-Type': 'application/x-mpegURL',
+                            'Cache-Control': 'no-cache, no-store, must-revalidate'
+                        }
+                    });
+                }
+
+                return new Response('#EXTM3U\n#EXT-X-VERSION:3\n# No playlist uploaded yet', {
+                    headers: { ...corsHeaders, 'Content-Type': 'application/x-mpegURL' }
+                });
+            }
+
+            // ════════════════════════════════════════════════════════════════
+            // GET /live/:id/stream.m3u8?t=SESSION_ID - PROXY CON SESIONES
+            // Formato compatible con OTT Navigator/TiviMate
+            // ════════════════════════════════════════════════════════════════
+            // 🚀 KV HYBRID: Fast path (5-20ms) + R2 fallback (500-2000ms)
+            // ════════════════════════════════════════════════════════════════
+            if (path.startsWith('/live/') && path.includes('/stream.m3u8') && request.method === 'GET') {
+                const pathMatch = path.match(/\/live\/([^\/]+)\/stream\.m3u8/);
+                if (!pathMatch) {
+                    return new Response('Invalid path', { status: 400, headers: corsHeaders });
+                }
+
+                const channelId = pathMatch[1];
+                const sessionId = url.searchParams.get('t');
+
+                if (!sessionId) {
+                    return new Response('Missing session ID', { status: 400, headers: corsHeaders });
+                }
+
+                const kvKey = `session:${sessionId}`;
+                const startTime = Date.now();
+
+                // ═══════════════════════════════════════════════════════════════
+                // PASO 0: KV FAST PATH (5-20ms) - For OTT Navigator compatibility
+                // ═══════════════════════════════════════════════════════════════
+                if (env.KV_APE_SESSIONS) {
+                    try {
+                        const kvData = await env.KV_APE_SESSIONS.get(kvKey, 'json');
+                        if (kvData) {
+                            const kvLatency = Date.now() - startTime;
+                            console.log(`[LIVE] ✅ KV HIT (${kvLatency}ms) - Channel ${channelId}`);
+
+                            // Increment KV hit counter (async, non-blocking)
+                            ctx.waitUntil(this.incrementKVHits(env));
+
+                            // 301 Redirect for fastest response
+                            const originalUrl = kvData.url || kvData.original_url;
+                            return Response.redirect(originalUrl, 301);
+                        }
+                        console.log(`[LIVE] ❌ KV MISS - Falling back to R2`);
+                    } catch (e) {
+                        console.log(`[LIVE] KV error, falling back to R2:`, e.message);
+                    }
+                }
+
+                // ═══════════════════════════════════════════════════════════════
+                // BUSCAR SESIÓN USANDO ÍNDICE + CHUNKS (R2 FALLBACK)
+                // Paso 1: Cargar índice compacto (~50KB) con sessionId → chunkId
+                // Paso 2: Cargar solo el chunk necesario (~5MB max)
+                // ═══════════════════════════════════════════════════════════════
+                let sessionData = null;
+                let chunkId = null;
+                try {
+                    console.log(`[LIVE] Looking up session ${sessionId}...`);
+
+                    // ─────────────────────────────────────────────────────────────
+                    // PASO 1: Cargar índice compacto (sessionId → chunkId)
+                    // ─────────────────────────────────────────────────────────────
+                    const indexFile = await env.R2_BUCKET.get('sessions/index.json.gz');
+
+                    if (!indexFile) {
+                        // Fallback: Intentar cargar archivo monolítico legacy
+                        console.log(`[LIVE] No index found, trying legacy sessions.json.gz`);
+                        const legacyFile = await env.R2_BUCKET.get('sessions.json.gz');
+                        if (legacyFile) {
+                            const decompressedStream = legacyFile.body.pipeThrough(new DecompressionStream('gzip'));
+                            const decompressedText = await new Response(decompressedStream).text();
+                            const allSessions = JSON.parse(decompressedText);
+                            sessionData = allSessions[sessionId];
+                            if (!sessionData) {
+                                console.log(`[LIVE] Session not found in legacy file: ${sessionId}`);
+                                return new Response('Session expired or not found', { status: 410, headers: corsHeaders });
+                            }
+                        } else {
+                            console.error(`[LIVE] No session files found in R2`);
+                            return new Response('No sessions available', { status: 410, headers: corsHeaders });
+                        }
+                    } else {
+                        // Descomprimir índice
+                        const indexStream = indexFile.body.pipeThrough(new DecompressionStream('gzip'));
+                        const indexText = await new Response(indexStream).text();
+                        const index = JSON.parse(indexText);
+
+                        console.log(`[LIVE] Index loaded: ${Object.keys(index.lookup || index).length} sessions indexed`);
+
+                        // Buscar chunkId en el índice
+                        const lookup = index.lookup || index;
+                        chunkId = lookup[sessionId];
+
+                        if (chunkId === undefined) {
+                            console.log(`[LIVE] Session not in index: ${sessionId}`);
+                            return new Response('Session expired or not found', { status: 410, headers: corsHeaders });
+                        }
+
+                        console.log(`[LIVE] Session ${sessionId} mapped to chunk ${chunkId}`);
+
+                        // ─────────────────────────────────────────────────────────────
+                        // PASO 2: Cargar solo el chunk necesario (~5MB max)
+                        // ─────────────────────────────────────────────────────────────
+                        const chunkPath = `sessions/chunk_${chunkId}.json.gz`;
+                        const chunkFile = await env.R2_BUCKET.get(chunkPath);
+
+                        if (!chunkFile) {
+                            console.error(`[LIVE] Chunk not found: ${chunkPath}`);
+                            return new Response('Session chunk unavailable', { status: 503, headers: corsHeaders });
+                        }
+
+                        // Descomprimir chunk
+                        const chunkStream = chunkFile.body.pipeThrough(new DecompressionStream('gzip'));
+                        const chunkText = await new Response(chunkStream).text();
+                        const chunkSessions = JSON.parse(chunkText);
+
+                        console.log(`[LIVE] Chunk ${chunkId} loaded: ${Object.keys(chunkSessions).length} sessions`);
+
+                        sessionData = chunkSessions[sessionId];
+
+                        if (!sessionData) {
+                            console.log(`[LIVE] Session not in chunk: ${sessionId}`);
+                            return new Response('Session data missing', { status: 410, headers: corsHeaders });
+                        }
+                    }
+                } catch (e) {
+                    console.error(`[LIVE] Error reading session from R2:`, e.message, e.stack);
+                    return new Response(JSON.stringify({ error: 'Session lookup failed', details: e.message }), {
+                        status: 500,
+                        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+                    });
+                }
+
+                // ═══════════════════════════════════════════════════════════════
+                // PASO 3: WARMUP KV (Async) - Save to KV for next requests
+                // ═══════════════════════════════════════════════════════════════
+                if (env.KV_APE_SESSIONS && sessionData) {
+                    const r2Latency = Date.now() - startTime;
+                    console.log(`[LIVE] ✅ R2 FALLBACK (${r2Latency}ms) - Warming up KV for next request`);
+                    ctx.waitUntil(this.warmupKV(env, kvKey, sessionData));
+                }
+
+                const originalUrl = sessionData.original_url;
+                if (!originalUrl) {
+                    return new Response('Missing original URL in session', { status: 500, headers: corsHeaders });
+                }
+
+                // ═══════════════════════════════════════════════════════════════
+                // PASO 4: 301 REDIRECT (ULTRA FAST - OTT NAVIGATOR COMPATIBLE)
+                // ═══════════════════════════════════════════════════════════════
+                // Instead of proxying (slow, depends on origin), redirect client
+                // This makes response instant and works even if origin is slow
+                const r2Latency = Date.now() - startTime;
+                console.log(`[LIVE] ✅ R2 FALLBACK (${r2Latency}ms) - Redirecting to origin`);
+
+                return Response.redirect(originalUrl, 301);
+            }
+
+            // GET /stream/:hash - Proxy de stream con 407 HANDLING + ANTI-DETECCIÓN
+            if (path.startsWith('/stream/') && request.method === 'GET') {
+                const hash = path.substring(8); // Remove '/stream/'
+                let originalUrl = await env.URL_MAPPINGS.get(hash);
+
+                if (!originalUrl) {
+                    return new Response('Stream not found', { status: 404, headers: corsHeaders });
+                }
+
+                // ═══════════════════════════════════════════════════════════════
+                // 1. EXTRAER JWT DE URL Y MOVER A HEADER
+                // ═══════════════════════════════════════════════════════════════
+                let jwtToken = null;
+                const urlObj = new URL(originalUrl);
+                if (urlObj.searchParams.has('ape_jwt')) {
+                    jwtToken = urlObj.searchParams.get('ape_jwt');
+                    urlObj.searchParams.delete('ape_jwt');
+                    originalUrl = urlObj.toString();
+                }
+
+                // ═══════════════════════════════════════════════════════════════
+                // 2. GENERAR HEADERS ANTI-DETECCIÓN (VARÍAN CADA REQUEST)
+                // ═══════════════════════════════════════════════════════════════
+                const userAgents = [
+                    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                    'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                    'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:121.0) Gecko/20100101 Firefox/121.0',
+                    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15'
+                ];
+
+                const languages = ['es-ES,es;q=0.9', 'en-US,en;q=0.9', 'fr-FR,fr;q=0.9', 'de-DE,de;q=0.9', 'pt-BR,pt;q=0.9'];
+
+                const getRandomHeaders = (attempt) => {
+                    const ua = userAgents[(attempt + Math.floor(Math.random() * userAgents.length)) % userAgents.length];
+                    const lang = languages[Math.floor(Math.random() * languages.length)];
+
+                    const headers = {
+                        'User-Agent': ua,
+                        'Accept': '*/*',
+                        'Accept-Language': lang,
+                        'Accept-Encoding': 'gzip, deflate, br',
+                        'Connection': 'keep-alive',
+                        'Sec-Fetch-Dest': 'video',
+                        'Sec-Fetch-Mode': 'cors',
+                        'Sec-Fetch-Site': 'cross-site'
+                    };
+
+                    // Añadir JWT si existe
+                    if (jwtToken) {
+                        headers['Authorization'] = `Bearer ${jwtToken}`;
+                    }
+
+                    // NUNCA incluir: Referer, Origin, X-Requested-With
+                    return headers;
+                };
+
+                // ═══════════════════════════════════════════════════════════════
+                // 3. FETCH CON RETRY AUTOMÁTICO EN 407
+                // ═══════════════════════════════════════════════════════════════
+                const MAX_RETRIES = 3;
+                let lastResponse = null;
+                let lastError = null;
+
+                for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+                    try {
+                        const requestHeaders = getRandomHeaders(attempt);
+
+                        const streamResponse = await fetch(originalUrl, {
+                            headers: requestHeaders
+                        });
+
+                        // ═══════════════════════════════════════════════════════
+                        // 4. DETECTAR 407 Y REINTENTAR CON DIFERENTE UA
+                        // ═══════════════════════════════════════════════════════
+                        if (streamResponse.status === 407) {
+                            // Log error 407 para analytics
+                            const logKey = `407_error:${Date.now()}`;
+                            await env.PLAYLISTS_KV.put(logKey, JSON.stringify({
+                                timestamp: new Date().toISOString(),
+                                attempt: attempt + 1,
+                                url: originalUrl.substring(0, 50) + '...',
+                                ua: requestHeaders['User-Agent'].substring(0, 30)
+                            }), { expirationTtl: 86400 }); // TTL: 24h
+
+                            console.log(`[407 RETRY] Attempt ${attempt + 1}/${MAX_RETRIES} failed, rotating UA...`);
+                            lastResponse = streamResponse;
+                            continue; // Reintentar con diferente UA
+                        }
+
+                        // Éxito - Pasar respuesta con headers de streaming
+                        return new Response(streamResponse.body, {
+                            status: streamResponse.status,
+                            headers: {
+                                ...corsHeaders,
+                                'Content-Type': streamResponse.headers.get('Content-Type') || 'application/x-mpegURL',
+                                'Cache-Control': 'no-cache'
+                            }
+                        });
+
+                    } catch (fetchError) {
+                        console.error(`[STREAM ERROR] Attempt ${attempt + 1}:`, fetchError.message);
+                        lastError = fetchError;
+                    }
+                }
+
+                // ═══════════════════════════════════════════════════════════════
+                // 5. TODOS LOS REINTENTOS FALLARON
+                // ═══════════════════════════════════════════════════════════════
+                console.error(`[407 EXHAUSTED] All ${MAX_RETRIES} retries failed for stream ${hash}`);
+
+                // Retornar error genérico (NO exponer 407 al cliente)
+                return new Response('Service temporarily unavailable', {
+                    status: 503,
+                    headers: {
+                        ...corsHeaders,
+                        'Retry-After': '5'
+                    }
+                });
+            }
+
+            // ════════════════════════════════════════════════════════════════
+            // GET /ch/:id?sid=xxx - SESSION-BASED PROXY (PRESERVA 65 HEADERS)
+            // ════════════════════════════════════════════════════════════════
+            if (path.startsWith('/ch/') && request.method === 'GET') {
+                const channelId = path.split('/ch/')[1]?.split('?')[0];
+                const sessionId = url.searchParams.get('sid');
+
+                if (!sessionId) {
+                    return new Response('Session ID required', { status: 400, headers: corsHeaders });
+                }
+
+                // 1. RECUPERAR SESIÓN DE KV
+                let sessionData;
+                try {
+                    const sessionRaw = await env.PLAYLISTS_KV.get(`session:${sessionId}`);
+                    if (!sessionRaw) {
+                        // Fallback: buscar en URL_MAPPINGS
+                        const fallbackRaw = await env.URL_MAPPINGS.get(sessionId);
+                        if (fallbackRaw) {
+                            sessionData = JSON.parse(fallbackRaw);
+                        } else {
+                            return new Response('Session expired or invalid', { status: 401, headers: corsHeaders });
+                        }
+                    } else {
+                        sessionData = JSON.parse(sessionRaw);
+                    }
+                } catch (e) {
+                    console.error('[SESSION ERROR]', e.message);
+                    return new Response('Invalid session data', { status: 500, headers: corsHeaders });
+                }
+
+                // 2. RECONSTRUIR URL ORIGINAL
+                let originalUrl;
+                if (sessionData.original_url) {
+                    originalUrl = sessionData.original_url;
+                } else if (sessionData.original_host && sessionData.username && sessionData.password) {
+                    originalUrl = `http://${sessionData.original_host}/live/${sessionData.username}/${sessionData.password}/${channelId}.m3u8`;
+                } else {
+                    return new Response('Incomplete session data', { status: 400, headers: corsHeaders });
+                }
+
+                // 3. CONSTRUIR HEADERS - REENVIAR TODOS LOS ~94 HEADERS SUPREMO
+                const proxyHeaders = new Headers();
+                let headersForwarded = 0;
+
+                // 3.1 Headers de sesión (estructura nueva con categorías)
+                if (sessionData.headers && typeof sessionData.headers === 'object') {
+
+                    // KODIPROP headers
+                    if (sessionData.headers.kodiprop) {
+                        for (const [key, value] of Object.entries(sessionData.headers.kodiprop)) {
+                            if (value) {
+                                // Convertir KODIPROP a headers HTTP
+                                if (key.includes('stream_headers')) {
+                                    // Parsear stream_headers=Header1=val1&Header2=val2
+                                    const headerPairs = value.split('&');
+                                    for (const pair of headerPairs) {
+                                        const [hKey, hVal] = pair.split('=');
+                                        if (hKey && hVal) {
+                                            proxyHeaders.set(hKey.trim(), hVal.trim());
+                                            headersForwarded++;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // EXTVLCOPT headers
+                    if (sessionData.headers.extvlcopt) {
+                        for (const [key, value] of Object.entries(sessionData.headers.extvlcopt)) {
+                            if (value) {
+                                // http-user-agent → User-Agent
+                                if (key === 'http-user-agent') {
+                                    proxyHeaders.set('User-Agent', value);
+                                } else if (key === 'http-referrer') {
+                                    proxyHeaders.set('Referer', value);
+                                } else if (key.startsWith('http-')) {
+                                    const headerName = key.replace('http-', '').split('-')
+                                        .map(w => w.charAt(0).toUpperCase() + w.slice(1)).join('-');
+                                    proxyHeaders.set(headerName, value);
+                                }
+                                headersForwarded++;
+                            }
+                        }
+                    }
+
+                    // EXTHTTP headers (JSON format)
+                    if (sessionData.headers.exthttp && typeof sessionData.headers.exthttp === 'object') {
+                        for (const [key, value] of Object.entries(sessionData.headers.exthttp)) {
+                            if (value) {
+                                proxyHeaders.set(key, value);
+                                headersForwarded++;
+                            }
+                        }
+                    }
+
+                    // APE Engine headers
+                    if (sessionData.headers.ape_headers) {
+                        for (const [key, value] of Object.entries(sessionData.headers.ape_headers)) {
+                            if (value) {
+                                proxyHeaders.set(`X-APE-${key}`, value);
+                                headersForwarded++;
+                            }
+                        }
+                    }
+
+                    // Legacy: headers planos (compatibilidad con formato anterior)
+                    for (const [key, value] of Object.entries(sessionData.headers)) {
+                        if (value && typeof value === 'string' &&
+                            !['kodiprop', 'extvlcopt', 'exthttp', 'ape_headers', 'raw_lines'].includes(key)) {
+                            proxyHeaders.set(key, value);
+                            headersForwarded++;
+                        }
+                    }
+                }
+
+                // 3.2 JWT en Authorization header (NO en URL)
+                if (sessionData.jwt) {
+                    proxyHeaders.set('Authorization', `Bearer ${sessionData.jwt}`);
+                    proxyHeaders.set('X-APE-JWT', sessionData.jwt);
+                    headersForwarded += 2;
+                }
+
+                // 3.3 Headers estándar de conexión
+                proxyHeaders.set('Host', sessionData.original_host || new URL(originalUrl).host);
+                proxyHeaders.set('Connection', 'keep-alive');
+                if (!proxyHeaders.has('Accept')) proxyHeaders.set('Accept', '*/*');
+                if (!proxyHeaders.has('Accept-Encoding')) proxyHeaders.set('Accept-Encoding', 'gzip, deflate, br');
+
+                // 3.4 Headers de V4.1 Motor APE si están configurados
+                if (sessionData.v41_config) {
+                    proxyHeaders.set('X-APE-AntiFreeze', sessionData.v41_config.anti_freeze_level?.toString() || '3');
+                    proxyHeaders.set('X-APE-Player', sessionData.v41_config.player_target || 'generic');
+                }
+
+                // 3.5 Headers de Manifest Config
+                if (sessionData.manifest_config) {
+                    proxyHeaders.set('X-APE-Version', sessionData.manifest_config.version || '13.1.0-SUPREMO');
+                }
+
+                console.log(`[HEADERS] Forwarding ${headersForwarded} headers for session ${sessionId}`);
+
+                // 4. FETCH CON MANEJO DE ERRORES (401/407/403)
+                const MAX_RETRIES = 3;
+                let lastError = null;
+
+                for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+                    try {
+                        const response = await fetch(originalUrl, {
+                            method: 'GET',
+                            headers: proxyHeaders,
+                            cf: { cacheTtl: 30, cacheEverything: true }
+                        });
+
+                        // ═══════════════════════════════════════════════════════
+                        // MANEJO ESPECÍFICO DE ERRORES
+                        // ═══════════════════════════════════════════════════════
+
+                        // 401 Unauthorized: JWT expirado → renovar
+                        if (response.status === 401) {
+                            console.log(`[401] JWT expired for session ${sessionId}, attempt ${attempt + 1}`);
+
+                            // Log para analytics
+                            await env.PLAYLISTS_KV.put(`error:401:${Date.now()}`, JSON.stringify({
+                                session: sessionId,
+                                attempt: attempt + 1,
+                                timestamp: new Date().toISOString()
+                            }), { expirationTtl: 86400 });
+
+                            // TODO: Implementar renovación automática de JWT
+                            // Por ahora, continuar con retry
+                            await this.sleep(200 * (attempt + 1));
+                            continue;
+                        }
+
+                        // 407 Proxy Authentication Required
+                        if (response.status === 407) {
+                            console.log(`[407] Proxy auth required, attempt ${attempt + 1}`);
+
+                            await env.PLAYLISTS_KV.put(`error:407:${Date.now()}`, JSON.stringify({
+                                session: sessionId,
+                                attempt: attempt + 1,
+                                timestamp: new Date().toISOString()
+                            }), { expirationTtl: 86400 });
+
+                            await this.sleep(500 * (attempt + 1));
+                            continue;
+                        }
+
+                        // 403 Forbidden: cambiar User-Agent
+                        if (response.status === 403) {
+                            console.log(`[403] Forbidden, rotating UA, attempt ${attempt + 1}`);
+
+                            const newUA = this.getRandomUserAgent(attempt);
+                            proxyHeaders.set('User-Agent', newUA);
+
+                            await this.sleep(300 * (attempt + 1));
+                            continue;
+                        }
+
+                        // ÉXITO: retornar respuesta
+                        return new Response(response.body, {
+                            status: response.status,
+                            headers: {
+                                ...corsHeaders,
+                                'Content-Type': response.headers.get('Content-Type') || 'application/x-mpegURL',
+                                'Cache-Control': 'public, max-age=30',
+                                'X-APE-Session': sessionId,
+                                'X-APE-Headers-Forwarded': Object.keys(sessionData.headers || {}).length.toString()
+                            }
+                        });
+
+                    } catch (fetchError) {
+                        console.error(`[FETCH ERROR] Attempt ${attempt + 1}:`, fetchError.message);
+                        lastError = fetchError;
+                        await this.sleep(1000 * (attempt + 1));
+                    }
+                }
+
+                // TODOS LOS REINTENTOS FALLARON
+                console.error(`[EXHAUSTED] All ${MAX_RETRIES} retries failed for channel ${channelId}`);
+                return new Response('Stream temporarily unavailable', {
+                    status: 502,
+                    headers: { ...corsHeaders, 'Retry-After': '10' }
+                });
+            }
+
+            // GET /versions - Listar versiones
+            if (path === '/versions' && request.method === 'GET') {
+                const list = await env.VERSIONS_KV.list();
+                const versions = [];
+
+                for (const key of list.keys) {
+                    const meta = await env.VERSIONS_KV.get(key.name);
+                    versions.push({
+                        name: key.name,
+                        url: `${url.origin}/versions/${key.name}`,
+                        ...JSON.parse(meta || '{}')
+                    });
+                }
+
+                return Response.json({ versions }, { headers: corsHeaders });
+            }
+
+            // GET /versions/:name - Obtener versión específica
+            if (path.startsWith('/versions/') && request.method === 'GET') {
+                const versionName = path.substring(10);
+                const r2Object = await env.R2_BUCKET.get(`versions/${versionName}`);
+
+                if (!r2Object) {
+                    return new Response('Version not found', { status: 404, headers: corsHeaders });
+                }
+
+                return new Response(r2Object.body, {
+                    headers: {
+                        ...corsHeaders,
+                        'Content-Type': 'application/x-mpegURL',
+                        'Cache-Control': 'public, max-age=31536000'
+                    }
+                });
+            }
+
+            // 404 para rutas no encontradas
+            return new Response('Not Found', { status: 404, headers: corsHeaders });
+
+        } catch (error) {
+            console.error('Worker error:', error);
+            return Response.json({
+                error: 'Internal server error',
+                message: error.message
+            }, { status: 500, headers: corsHeaders });
+        }
+    },
+
+    // ════════════════════════════════════════════════════════════════════════
+    // 🔄 REESCRIBIR URLS
+    // ════════════════════════════════════════════════════════════════════════
+
+    async rewriteUrls(content, env) {
+        const lines = content.split('\n');
+        const rewrittenLines = [];
+        let mappingsCreated = 0;
+
+        for (const line of lines) {
+            const trimmedLine = line.trim();
+
+            // Si es una URL de stream (no es comentario ni directiva)
+            if (trimmedLine && !trimmedLine.startsWith('#') &&
+                (trimmedLine.startsWith('http://') || trimmedLine.startsWith('https://'))) {
+
+                // Generar hash corto (8 caracteres)
+                const hash = await this.generateHash(trimmedLine);
+
+                // Guardar mapping en KV
+                await env.URL_MAPPINGS.put(hash, trimmedLine, {
+                    expirationTtl: 60 * 60 * 24 * 30 // 30 días
+                });
+
+                // Reemplazar con URL proxy
+                rewrittenLines.push(`/stream/${hash}`);
+                mappingsCreated++;
+            } else {
+                rewrittenLines.push(line);
+            }
+        }
+
+        return {
+            rewrittenContent: rewrittenLines.join('\n'),
+            mappingsCreated
+        };
+    },
+
+    // ════════════════════════════════════════════════════════════════════════
+    // 🧠 EXTRAER CONFIG PREFETCH
+    // ════════════════════════════════════════════════════════════════════════
+
+    extractPrefetchConfig(content) {
+        const config = {
+            strategy: 'UNKNOWN',
+            segments: 0,
+            parallel: 0,
+            buffer: 0,
+            bandwidth: 0,
+            adaptive: false,
+            ai_enabled: false
+        };
+
+        const lines = content.split('\n');
+        for (const line of lines) {
+            if (line.startsWith('#EXT-X-APE-PREFETCH-STRATEGY:')) {
+                config.strategy = line.split(':')[1].trim();
+            } else if (line.startsWith('#EXT-X-APE-PREFETCH-SEGMENTS:')) {
+                config.segments = parseInt(line.split(':')[1].trim(), 10);
+                // 🛡️ DYNAMIC ADJUSTMENT: Safety Cap
+                if (config.segments > 100) config.segments = 100;
+            } else if (line.startsWith('#EXT-X-APE-PREFETCH-PARALLEL:')) {
+                config.parallel = parseInt(line.split(':')[1].trim(), 10);
+            } else if (line.startsWith('#EXT-X-APE-PREFETCH-BUFFER-TARGET:')) {
+                config.buffer = parseInt(line.split(':')[1].trim(), 10);
+            } else if (line.startsWith('#EXT-X-APE-PREFETCH-MIN-BANDWIDTH:')) {
+                config.bandwidth = parseInt(line.split(':')[1].trim(), 10);
+            } else if (line.startsWith('#EXT-X-APE-PREFETCH-ADAPTIVE:')) {
+                config.adaptive = line.split(':')[1].trim() === 'YES';
+            } else if (line.startsWith('#EXT-X-APE-PREFETCH-AI-ENABLED:')) {
+                config.ai_enabled = line.split(':')[1].trim() === 'YES';
+            }
+        }
+        return config;
+    },
+
+    // ════════════════════════════════════════════════════════════════════════
+    // 🔐 GENERAR HASH
+    // ════════════════════════════════════════════════════════════════════════
+
+    async generateHash(url) {
+        const encoder = new TextEncoder();
+        const data = encoder.encode(url);
+        const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+        const hashArray = Array.from(new Uint8Array(hashBuffer));
+        const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+        return hashHex.substring(0, 8); // 8 caracteres
+    },
+
+    // ════════════════════════════════════════════════════════════════════════
+    // 🧹 LIMPIAR VERSIONES ANTIGUAS
+    // ════════════════════════════════════════════════════════════════════════
+
+    async cleanupOldVersions(env) {
+        const list = await env.VERSIONS_KV.list();
+        const versions = list.keys.map(k => k.name).sort().reverse();
+
+        // Mantener solo las últimas 10
+        const toDelete = versions.slice(10);
+
+        for (const versionName of toDelete) {
+            await env.VERSIONS_KV.delete(versionName);
+            await env.R2_BUCKET.delete(`versions/${versionName}`);
+        }
+    },
+
+    // ════════════════════════════════════════════════════════════════════════
+    // 🏠 PÁGINA DE INICIO
+    // ════════════════════════════════════════════════════════════════════════
+
+    // ════════════════════════════════════════════════════════════════
+    // HELPER METHODS
+    // ════════════════════════════════════════════════════════════════
+
+    /**
+     * Sleep helper for retry delays
+     */
+    sleep(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
+    },
+
+    /**
+     * Get random User-Agent based on attempt number
+     */
+    getRandomUserAgent(attempt) {
+        const userAgents = [
+            // Chrome
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            // Firefox
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:121.0) Gecko/20100101 Firefox/121.0',
+            'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:121.0) Gecko/20100101 Firefox/121.0',
+            // Safari
+            'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.1 Safari/605.1.15',
+            // Edge
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 Edg/120.0.0.0'
+        ];
+
+        // Use attempt to get different UA each retry
+        const index = (attempt || 0) % userAgents.length;
+        return userAgents[index];
+    },
+
+    getHomePage() {
+        return `<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🌐 IPTV Gateway</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 40px 20px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: linear-gradient(135deg, #0f172a, #020617);
+      color: #e5e7eb;
+      min-height: 100vh;
+    }
+    .container {
+      max-width: 600px;
+      margin: 0 auto;
+      text-align: center;
+    }
+    h1 {
+      font-size: 2.5rem;
+      color: #38bdf8;
+      margin-bottom: 8px;
+    }
+    .subtitle {
+      color: #9ca3af;
+      font-size: 1rem;
+      margin-bottom: 32px;
+    }
+    .card {
+      background: rgba(30, 41, 59, 0.8);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      border-radius: 12px;
+      padding: 24px;
+      margin-bottom: 16px;
+      text-align: left;
+    }
+    .card h3 {
+      color: #38bdf8;
+      margin: 0 0 12px 0;
+    }
+    .endpoint {
+      font-family: monospace;
+      background: rgba(0,0,0,0.3);
+      padding: 8px 12px;
+      border-radius: 6px;
+      margin: 8px 0;
+      font-size: 0.9rem;
+    }
+    .method {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      margin-right: 8px;
+    }
+    .get { background: #10b981; color: white; }
+    .post { background: #f59e0b; color: white; }
+    .status {
+      display: inline-block;
+      padding: 4px 12px;
+      background: #4ade80;
+      color: #020617;
+      border-radius: 999px;
+      font-weight: 600;
+      font-size: 0.85rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🌐 IPTV Gateway</h1>
+    <p class="subtitle">Proxy transparente para M3U8 con URL rewriting</p>
+    
+    <p><span class="status">✅ Online</span></p>
+    
+    <div class="card">
+      <h3>📡 Endpoints</h3>
+      <div class="endpoint">
+        <span class="method get">GET</span>/playlist.m3u8
+      </div>
+      <div class="endpoint">
+        <span class="method post">POST</span>/api/upload
+      </div>
+      <div class="endpoint">
+        <span class="method get">GET</span>/api/health
+      </div>
+      <div class="endpoint">
+        <span class="method get">GET</span>/versions
+      </div>
+    </div>
+    
+    <div class="card">
+      <h3>📋 URL Fija para TiviMate</h3>
+      <div class="endpoint" style="color: #38bdf8;">
+        ${new URL(globalThis?.location?.href || 'https://example.workers.dev').origin}/playlist.m3u8
+      </div>
+    </div>
+  </div>
+</body>
+</html>`;
+    },
+
+    // ════════════════════════════════════════════════════════════════════════════
+    // 🚀 KV HELPER FUNCTIONS (For OTT Navigator Fast Path)
+    // ════════════════════════════════════════════════════════════════════════════
+
+    /**
+     * Warm up KV cache with session data from R2 (async, non-blocking)
+     */
+    async warmupKV(env, kvKey, sessionData) {
+        try {
+            // Compact data structure for KV (minimze storage)
+            const compactData = {
+                url: sessionData.original_url,
+                headers: {
+                    ua: sessionData.headers?.extvlcopt?.['http-user-agent'] || 'VLC/3.0',
+                    ref: sessionData.headers?.extvlcopt?.['http-referrer'] || '',
+                    auth: sessionData.jwt || null
+                },
+                channel_id: sessionData.channel_id || 'unknown',
+                warmed_at: Date.now()
+            };
+
+            // Save to KV with 24 hour TTL
+            await env.KV_APE_SESSIONS.put(kvKey, JSON.stringify(compactData), {
+                expirationTtl: 86400 // 24 hours
+            });
+
+            console.log(`[WARMUP] ✅ Saved ${kvKey} to KV`);
+
+            // Update warmup stats
+            await this.incrementWarmupCount(env);
+
+        } catch (error) {
+            console.error('[WARMUP] Error:', error.message);
+        }
+    },
+
+    /**
+     * Increment KV hit counter (async, non-blocking)
+     */
+    async incrementKVHits(env) {
+        if (!env.KV_STATS) return;
+        try {
+            const stats = await env.KV_STATS.get('metrics', 'json') || { kv_hits: 0, r2_fallbacks: 0, warmup_count: 0 };
+            stats.kv_hits = (stats.kv_hits || 0) + 1;
+            await env.KV_STATS.put('metrics', JSON.stringify(stats));
+        } catch (error) {
+            console.error('[STATS] Error incrementing KV hits:', error.message);
+        }
+    },
+
+    /**
+     * Increment warmup/R2 fallback counter (async, non-blocking)
+     */
+    async incrementWarmupCount(env) {
+        if (!env.KV_STATS) return;
+        try {
+            const stats = await env.KV_STATS.get('metrics', 'json') || { kv_hits: 0, r2_fallbacks: 0, warmup_count: 0 };
+            stats.warmup_count = (stats.warmup_count || 0) + 1;
+            stats.r2_fallbacks = (stats.r2_fallbacks || 0) + 1;
+            await env.KV_STATS.put('metrics', JSON.stringify(stats));
+        } catch (error) {
+            console.error('[STATS] Error incrementing warmup count:', error.message);
+        }
+    }
+};

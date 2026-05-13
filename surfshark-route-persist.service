@@ -1,0 +1,13 @@
+[Unit]
+Description=NET SHIELD — SurfShark Route Persistence (tabla 100 → Miami)
+After=network-online.target wg-quick@wg-surfshark.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/opt/netshield/surfshark-route-persist.sh
+RemainAfterExit=yes
+Restart=no
+
+[Install]
+WantedBy=multi-user.target

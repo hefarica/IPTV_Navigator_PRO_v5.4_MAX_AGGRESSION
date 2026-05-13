@@ -1,16 +1,19 @@
 /**
- * APE PRISMA v1.3 — Control Widget (Frontend)
+ * APE PRISMA v2.0 — Control Widget (Frontend)
  * Renders into #prisma-control-widget mount point in the Telemetry tab.
- * Polls /prisma/api/prisma-health.php every 30s.
+ * Polls /prisma/api/prisma-health.php + sentinel-status + telemetry-full every 30s.
+ * Includes: Lanes, Quantum Pixel, Fake 4K, FLOOR-LOCK, SENTINEL-401, TELESCOPE.
  * Pattern mirrors netshield-sentinel-widget.js (IIFE, polling, DOM render).
  */
 (function () {
   'use strict';
 
   const BASE_URL = 'https://iptv-ape.duckdns.org';
-  const HEALTH_ENDPOINT  = `${BASE_URL}/prisma/api/prisma-health.php`;
-  const CONTROL_ENDPOINT = `${BASE_URL}/prisma/api/prisma-control.php`;
-  const ADB_ENDPOINT     = `${BASE_URL}/prisma/api/prisma-adb-telemetry.php`;
+  const HEALTH_ENDPOINT    = `${BASE_URL}/prisma/api/prisma-health.php`;
+  const CONTROL_ENDPOINT   = `${BASE_URL}/prisma/api/prisma-control.php`;
+  const ADB_ENDPOINT       = `${BASE_URL}/prisma/api/prisma-adb-telemetry.php`;
+  const SENTINEL_ENDPOINT  = `${BASE_URL}/prisma/api/sentinel-status`;
+  const TELESCOPE_ENDPOINT = `${BASE_URL}/prisma/api/telemetry-full`;
   const POLL_MS = 30_000;
   const PANIC_THRESHOLD = 3; // consecutive unhealthy polls before auto-panic
 
@@ -594,6 +597,209 @@
       </div>`;
     }
 
+    // ── Panel: FLOOR-LOCK (Variant Filtering) ──
+    const flData = window._prismaSentinelData?.floor_lock;
+    if (flData && flData.total_manifests_processed > 0) {
+      const flActive = flData.last_removed_count > 0;
+      const flBg = flActive ? 'rgba(245,158,11,0.08)' : 'rgba(16,185,129,0.05)';
+      const flBorder = flActive ? 'rgba(245,158,11,0.3)' : 'rgba(16,185,129,0.2)';
+      const flColor = flActive ? '#fbbf24' : '#34d399';
+      html += `
+      <div style="background:${flBg};border:1px solid ${flBorder};border-radius:10px;padding:12px;margin-bottom:12px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="font-size:1rem">🔒</span>
+            <div>
+              <div style="font-size:0.78rem;font-weight:700;color:#e2e8f0">FLOOR-LOCK <span style="font-size:0.6rem;padding:1px 6px;background:rgba(245,158,11,0.3);border-radius:999px;color:#fbbf24;margin-left:4px">Stage 2</span></div>
+              <div style="font-size:0.6rem;color:#94a3b8">HLS Variant Filter · Profile-aware bitrate floor enforcement</div>
+            </div>
+          </div>
+          <span style="background:${flActive ? 'rgba(245,158,11,0.9)' : 'rgba(16,185,129,0.9)'};color:#fff;padding:2px 10px;border-radius:4px;font-size:0.62rem;font-weight:700">
+            ${flActive ? '⚡ FILTERING' : '✓ PASSTHROUGH'}</span>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:8px">
+          <div style="background:rgba(2,6,23,0.5);border-radius:6px;padding:6px;text-align:center">
+            <div style="font-size:0.5rem;color:#64748b;text-transform:uppercase">Profile</div>
+            <div style="font-size:0.85rem;font-weight:700;color:#a78bfa">${flData.active_profile || '—'}</div>
+          </div>
+          <div style="background:rgba(2,6,23,0.5);border-radius:6px;padding:6px;text-align:center">
+            <div style="font-size:0.5rem;color:#64748b;text-transform:uppercase">Floor</div>
+            <div style="font-size:0.85rem;font-weight:700;color:#fbbf24">${(flData.floor_mbps || 0).toFixed(0)} Mbps</div>
+          </div>
+          <div style="background:rgba(2,6,23,0.5);border-radius:6px;padding:6px;text-align:center">
+            <div style="font-size:0.5rem;color:#64748b;text-transform:uppercase">Removed</div>
+            <div style="font-size:0.85rem;font-weight:700;color:${flActive ? '#f87171' : '#10b981'}">${flData.last_removed_count || 0} vars</div>
+          </div>
+          <div style="background:rgba(2,6,23,0.5);border-radius:6px;padding:6px;text-align:center">
+            <div style="font-size:0.5rem;color:#64748b;text-transform:uppercase">Highest</div>
+            <div style="font-size:0.85rem;font-weight:700;color:#10b981">${(flData.highest_variant_mbps || 0).toFixed(0)} Mbps</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          <span style="font-size:0.52rem;padding:2px 6px;border-radius:3px;background:rgba(99,102,241,0.15);color:#818cf8;border:1px solid rgba(99,102,241,0.2)">
+            Total filtered: ${flData.total_variants_filtered || 0}</span>
+          <span style="font-size:0.52rem;padding:2px 6px;border-radius:3px;background:rgba(16,185,129,0.15);color:#34d399;border:1px solid rgba(16,185,129,0.2)">
+            Manifests processed: ${flData.total_manifests_processed || 0}</span>
+          <span style="font-size:0.52rem;padding:2px 6px;border-radius:3px;background:rgba(168,85,247,0.15);color:#c4b5fd;border:1px solid rgba(168,85,247,0.2)">
+            Kept: ${flData.last_kept_count || 0} variants</span>
+        </div>
+      </div>`;
+    }
+
+    // ── Panel: SENTINEL-401 (Auth Defense) ──
+    const senData = window._prismaSentinelData?.global;
+    if (senData && senData.total_requests_5min > 0) {
+      const hotProv = senData.hot_provider !== 'none' ? senData.hot_provider : null;
+      const senBg = hotProv ? 'rgba(239,68,68,0.08)' : 'rgba(16,185,129,0.05)';
+      const senBorder = hotProv ? 'rgba(239,68,68,0.3)' : 'rgba(16,185,129,0.2)';
+      html += `
+      <div style="background:${senBg};border:1px solid ${senBorder};border-radius:10px;padding:12px;margin-bottom:12px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="font-size:1rem">🛡️</span>
+            <div>
+              <div style="font-size:0.78rem;font-weight:700;color:#e2e8f0">SENTINEL-401 <span style="font-size:0.6rem;padding:1px 6px;background:rgba(239,68,68,0.3);border-radius:999px;color:#f87171;margin-left:4px">Stage 3</span></div>
+              <div style="font-size:0.6rem;color:#94a3b8">Provider Auth Defense · UA Rotation · Hot Provider Detection</div>
+            </div>
+          </div>
+          <span style="background:${hotProv ? 'rgba(239,68,68,0.9)' : 'rgba(16,185,129,0.9)'};color:#fff;padding:2px 10px;border-radius:4px;font-size:0.62rem;font-weight:700">
+            ${hotProv ? '🔥 HOT: ' + hotProv : '✓ ALL CLEAR'}</span>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:8px">
+          <div style="background:rgba(2,6,23,0.5);border-radius:6px;padding:6px;text-align:center">
+            <div style="font-size:0.5rem;color:#64748b;text-transform:uppercase">Auth Success</div>
+            <div style="font-size:0.85rem;font-weight:700;color:${senData.auth_success_pct >= 95 ? '#10b981' : senData.auth_success_pct >= 80 ? '#fbbf24' : '#f87171'}">${senData.auth_success_pct}%</div>
+          </div>
+          <div style="background:rgba(2,6,23,0.5);border-radius:6px;padding:6px;text-align:center">
+            <div style="font-size:0.5rem;color:#64748b;text-transform:uppercase">Requests (5m)</div>
+            <div style="font-size:0.85rem;font-weight:700;color:#e2e8f0">${senData.total_requests_5min}</div>
+          </div>
+          <div style="background:rgba(2,6,23,0.5);border-radius:6px;padding:6px;text-align:center">
+            <div style="font-size:0.5rem;color:#64748b;text-transform:uppercase">Auth Fails (5m)</div>
+            <div style="font-size:0.85rem;font-weight:700;color:${senData.total_auth_fail_5min > 0 ? '#f87171' : '#10b981'}">${senData.total_auth_fail_5min}</div>
+          </div>
+        </div>
+        ${(() => {
+          const provs = window._prismaSentinelData?.providers || {};
+          const provKeys = Object.keys(provs);
+          if (provKeys.length === 0) return '';
+          return `<div style="margin-top:6px"><div style="font-size:0.6rem;color:#94a3b8;margin-bottom:4px">Per-Provider:</div>
+            <div style="display:flex;gap:4px;flex-wrap:wrap">${provKeys.map(p => {
+              const pd = provs[p];
+              const isHot = pd.is_hot;
+              const bg = isHot ? 'rgba(239,68,68,0.2)' : 'rgba(16,185,129,0.1)';
+              const border = isHot ? 'rgba(239,68,68,0.3)' : 'rgba(16,185,129,0.2)';
+              const color = isHot ? '#f87171' : '#34d399';
+              return `<span style="font-size:0.52rem;padding:2px 8px;border-radius:4px;background:${bg};color:${color};border:1px solid ${border};font-weight:600">
+                ${isHot ? '🔥 ' : ''}${p}: ${pd.success_rate_pct}% (err:${pd.errors_60s} ok:${pd.ok_60s})</span>`;
+            }).join('')}</div></div>`;
+        })()}
+      </div>`;
+    }
+
+    // ── Panel: TELESCOPE (Predictive Telemetry) ──
+    const tlData = window._prismaTelescopeData;
+    if (tlData && tlData.network) {
+      const net = tlData.network.level1_100ms || {};
+      const trends = tlData.network.level2_trends || {};
+      const reactor = tlData.reactor || {};
+      const scores = tlData.scores || {};
+      const pred = tlData.prediction || {};
+      const qoeScore = scores.qoe_score || 0;
+      const mos = scores.mos_estimated || 0;
+      const trendDir = trends.trend || 'unknown';
+      const breachIn = pred.will_breach_floor_in_s || -1;
+
+      const trendColor = trendDir === 'improving' ? '#10b981' : trendDir === 'degrading' ? '#f87171' : '#64748b';
+      const trendIcon = trendDir === 'improving' ? '📈' : trendDir === 'degrading' ? '📉' : '➡️';
+      const qoeColor = qoeScore >= 80 ? '#10b981' : qoeScore >= 60 ? '#fbbf24' : '#f87171';
+      const mosColor = mos >= 4.0 ? '#10b981' : mos >= 3.0 ? '#fbbf24' : '#f87171';
+
+      html += `
+      <div style="background:linear-gradient(135deg,rgba(6,78,59,0.15),rgba(15,23,42,0.85));border:1px solid rgba(16,185,129,0.3);
+        border-radius:10px;padding:12px;margin-bottom:12px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="font-size:1rem">🔭</span>
+            <div>
+              <div style="font-size:0.78rem;font-weight:700;color:#e2e8f0">TELESCOPE <span style="font-size:0.6rem;padding:1px 6px;background:rgba(16,185,129,0.3);border-radius:999px;color:#34d399;margin-left:4px">v2.1</span></div>
+              <div style="font-size:0.6rem;color:#94a3b8">Predictive QoE · Network Intelligence · Floor Breach Prediction</div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:6px">
+            <span style="font-size:0.68rem;color:${trendColor};font-weight:600">${trendIcon} ${trendDir.toUpperCase()}</span>
+            ${breachIn > 0 ? `<span style="background:rgba(239,68,68,0.9);color:#fff;padding:2px 8px;border-radius:4px;font-size:0.62rem;font-weight:700;animation:pulse 1s infinite">
+              ⚠ BREACH IN ${breachIn.toFixed(1)}s</span>` : ''}
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:5px;margin-bottom:8px">
+          <div style="background:rgba(2,6,23,0.6);border-radius:6px;padding:6px;text-align:center">
+            <div style="font-size:0.48rem;color:#64748b;text-transform:uppercase">QoE</div>
+            <div style="font-size:0.85rem;font-weight:800;color:${qoeColor}">${qoeScore}/100</div>
+          </div>
+          <div style="background:rgba(2,6,23,0.6);border-radius:6px;padding:6px;text-align:center">
+            <div style="font-size:0.48rem;color:#64748b;text-transform:uppercase">MOS</div>
+            <div style="font-size:0.85rem;font-weight:800;color:${mosColor}">${mos.toFixed(1)}</div>
+          </div>
+          <div style="background:rgba(2,6,23,0.6);border-radius:6px;padding:6px;text-align:center">
+            <div style="font-size:0.48rem;color:#64748b;text-transform:uppercase">EWMA</div>
+            <div style="font-size:0.85rem;font-weight:700;color:#fbbf24">${(net.throughput_mbps || 0).toFixed(1)} Mbps</div>
+          </div>
+          <div style="background:rgba(2,6,23,0.6);border-radius:6px;padding:6px;text-align:center">
+            <div style="font-size:0.48rem;color:#64748b;text-transform:uppercase">TTFB</div>
+            <div style="font-size:0.85rem;font-weight:700;color:${(net.ttfb_ewma_ms||0) > 500 ? '#f87171' : '#10b981'}">${net.ttfb_ewma_ms || 0}ms</div>
+          </div>
+          <div style="background:rgba(2,6,23,0.6);border-radius:6px;padding:6px;text-align:center">
+            <div style="font-size:0.48rem;color:#64748b;text-transform:uppercase">Jitter</div>
+            <div style="font-size:0.85rem;font-weight:700;color:${(net.jitter_ewma_ms||0) > 50 ? '#f59e0b' : '#10b981'}">${net.jitter_ewma_ms || 0}ms</div>
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:5px;margin-bottom:8px">
+          <div style="background:rgba(2,6,23,0.5);border-radius:6px;padding:6px;text-align:center">
+            <div style="font-size:0.48rem;color:#64748b;text-transform:uppercase">Reactor</div>
+            <div style="font-size:0.65rem;font-weight:700;color:${reactor.state === 'CBR' ? '#10b981' : reactor.state === 'VBR_NUCLEAR' ? '#f87171' : '#fbbf24'}">${reactor.state || '?'}</div>
+          </div>
+          <div style="background:rgba(2,6,23,0.5);border-radius:6px;padding:6px;text-align:center">
+            <div style="font-size:0.48rem;color:#64748b;text-transform:uppercase">Request</div>
+            <div style="font-size:0.65rem;font-weight:700;color:#e2e8f0">${(reactor.computed_request_mbps || 0).toFixed(0)} Mbps</div>
+          </div>
+          <div style="background:rgba(2,6,23,0.5);border-radius:6px;padding:6px;text-align:center">
+            <div style="font-size:0.48rem;color:#64748b;text-transform:uppercase">Prefetch</div>
+            <div style="font-size:0.65rem;font-weight:700;color:#a78bfa">${reactor.prefetch_segments || 0} seg</div>
+          </div>
+          <div style="background:rgba(2,6,23,0.5);border-radius:6px;padding:6px;text-align:center">
+            <div style="font-size:0.48rem;color:#64748b;text-transform:uppercase">Loss</div>
+            <div style="font-size:0.65rem;font-weight:700;color:${(net.packet_loss_pct||0) > 2 ? '#f87171' : '#10b981'}">${(net.packet_loss_pct || 0).toFixed(1)}%</div>
+          </div>
+        </div>
+
+        ${(() => {
+          // L1 sparkline (12 samples)
+          const samples = net.samples || [];
+          if (samples.length < 2) return '';
+          const maxTp = Math.max(...samples.map(s => s.tp_mbps || 0), 1);
+          const sparkW = 100 / samples.length;
+          const bars = samples.map((s, i) => {
+            const h = Math.max(2, ((s.tp_mbps || 0) / maxTp) * 100);
+            const c = s.tp_mbps >= 13 ? '#10b981' : s.tp_mbps >= 8 ? '#fbbf24' : '#f87171';
+            return `<div style="flex:1;height:${h}%;background:${c};border-radius:2px 2px 0 0;transition:height .3s" title="${(s.tp_mbps||0).toFixed(1)} Mbps / TTFB ${s.ttfb_ms||0}ms"></div>`;
+          }).join('');
+          return `<div style="margin-top:4px"><div style="font-size:0.5rem;color:#475569;margin-bottom:2px">L1 Throughput (${samples.length} samples)</div>
+            <div style="display:flex;gap:1px;align-items:flex-end;height:32px;background:rgba(2,6,23,0.3);border-radius:4px;padding:2px">${bars}</div></div>`;
+        })()}
+
+        ${pred.action_recommended && pred.action_recommended !== 'NONE' ? `
+        <div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap">
+          <span style="font-size:0.52rem;padding:2px 8px;border-radius:4px;background:rgba(245,158,11,0.2);color:#fbbf24;border:1px solid rgba(245,158,11,0.3);font-weight:700">
+            ⚡ ${pred.action_recommended}</span>
+          <span style="font-size:0.52rem;padding:2px 6px;border-radius:3px;background:rgba(99,102,241,0.1);color:#818cf8;border:1px solid rgba(99,102,241,0.2)">
+            Confidence: ${pred.confidence_pct || 0}%</span>
+        </div>` : ''}
+      </div>`;
+    }
+
     // ── Infrastructure footer ──
     const bs = health.bootstrap || {};
     const rd = health.ram_disk || {};
@@ -774,6 +980,20 @@
         window._prismaAdbData = await apiGet(ADB_ENDPOINT);
       } catch (_) {
         window._prismaAdbData = null;
+      }
+
+      // v2.0: Fetch Sentinel + Floor-Lock status (non-fatal)
+      try {
+        window._prismaSentinelData = await apiGet(SENTINEL_ENDPOINT);
+      } catch (_) {
+        window._prismaSentinelData = null;
+      }
+
+      // v2.0: Fetch Telescope telemetry (non-fatal)
+      try {
+        window._prismaTelescopeData = await apiGet(TELESCOPE_ENDPOINT);
+      } catch (_) {
+        window._prismaTelescopeData = null;
       }
 
       // Detect state transitions for logging

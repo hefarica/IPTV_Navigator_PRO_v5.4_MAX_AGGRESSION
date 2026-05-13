@@ -19,7 +19,11 @@
     // ══════════════════════════════════════════════════════════════════════
 
     const CONFIG = {
-        maxRetries: 3,
+        // [BUILD-SEQ STEP 6] Reduced 3→1 to coordinate with backend ApeAnti407 retries.
+        // Total stack budget: 1 (frontend) + 3 (PHP fetch escalating strategy) + 1 (Lua reactive)
+        // = 5 max hits per channel. Original 3 here cascaded with backend 3 → up to 9 hits,
+        // training providers to flag the IP. Sandbox-validated 2026-05-01 (V07a/V07b zero-error).
+        maxRetries: 1,
         retryDelay: 1000,
         timeout: 30000,
         supportedAuthMethods: ['basic', 'ntlm', 'digest', 'custom'],

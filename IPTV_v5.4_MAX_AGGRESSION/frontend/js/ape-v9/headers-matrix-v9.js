@@ -93,8 +93,10 @@
             "Cache-Control": "no-cache",
             "Pragma": "no-cache",
 
-            // Range Support
-            "Range": "bytes=0-",
+            // C8 (2026-05-11) — Range Support eliminado.
+            // Range en m3u8 manifest no es byte-rangeable; panel cierra socket → okhttp EOF.
+            // Ver feedback_exthttp_traps.md trampa #9.
+            // "Range": "bytes=0-",
 
             // CORS
             "Origin": "[DYNAMIC_ORIGIN]",
@@ -105,11 +107,13 @@
 
             // Streaming Core
             "X-Requested-With": "XMLHttpRequest",
-            "X-App-Version": "APE_9.0_ULTIMATE",
+            "X-App-Version": "APE_9.0_ULTIMATE"
 
-            // Connection Management
-            "TE": "trailers",
-            "Upgrade-Insecure-Requests": "1"
+            // C8 (2026-05-11) — Connection Management eliminado.
+            // TE:trailers no soportado por com.android.okhttp legacy → EOF.
+            // Upgrade-Insecure-Requests detona redirect inválido en HTTP-only providers.
+            // "TE": "trailers",
+            // "Upgrade-Insecure-Requests": "1"
         },
 
         // ───────────────────────────────────────────────────────────────────
@@ -165,8 +169,9 @@
             "Sec-CH-UA-Bitness": "64",
             "Sec-CH-UA-Model": '""',
 
-            // HTTP/2 Priority
-            "Priority": "u=1, i",
+            // C8 (2026-05-11) — HTTP/2 Priority eliminado.
+            // RFC 9218 HTTP/3 priority hint sobre HTTP/1.1 confunde parsers Xtream.
+            // "Priority": "u=1, i",
 
             // Advanced Streaming
             "X-Playback-Rate": "1.0",
@@ -193,9 +198,12 @@
             "X-Client-Timestamp": "[TIMESTAMP]",
             "X-Request-Id": "[GENERATE_UUID]",
 
-            // Advanced Cache
-            "If-None-Match": "*",
-            "If-Modified-Since": "[HTTP_DATE]",
+            // C8 (2026-05-11) — Advanced Cache eliminado (ASESINO empíricamente confirmado).
+            // If-None-Match:* → CDN responde HTTP 304+0B → okhttp legacy lanza
+            // "unexpected end of stream on com.android.okhttp.Address". TEST-B/D/E vs G
+            // contra tivigo.cc → linovrex.cc el 2026-05-11. Ver feedback_exthttp_traps.md #9.
+            // "If-None-Match": "*",
+            // "If-Modified-Since": "[HTTP_DATE]",
 
             // Compression
             "Accept-CH": "DPR, Viewport-Width, Width, Device-Memory, RTT, Downlink, ECT"

@@ -1,0 +1,84 @@
+{
+  "_metadata": {
+    "schema_version": "1.0.0",
+    "generated_by": "LAB-SYNC v2.0 seed",
+    "generated_ts": "2026-04-28T02:00:00Z",
+    "source": "seed (override via LAB Excel hoja 16_SENTINEL_PROVIDERS · exportPrismaConfig macro)",
+    "ttl_cache_seconds": 300,
+    "doctrine": "Mapa por upstream host con UA pool, headers Referer/Origin esperados, backoff thresholds. Consumido por sentinel.lua + sentinel_mitigate.lua cuando se implemente Sentinel-401."
+  },
+  "providers": {
+    "line.tivi-ott.net": {
+      "ua_pool": [
+        "Mozilla/5.0 (Web0S; Linux/SmartTV) AppleWebKit/537.36",
+        "Mozilla/5.0 (Linux; Tizen 6.0; SMART-TV) AppleWebKit/537.36",
+        "Roku/DVP-9.30 (519.30E04111A)",
+        "OTT Navigator/1.7.1.5",
+        "VLC/3.0.18 LibVLC/3.0.18"
+      ],
+      "ua_index": 0,
+      "referer": "",
+      "origin": "https://netflix.com",
+      "max_connections": 1,
+      "backoff_base_seconds": 30,
+      "backoff_max_seconds": 240,
+      "creds_validation_endpoint": "/player_api.php",
+      "session_affinity_required": true,
+      "_notes": "Provider principal Sky Sports · session bleed bug confirmado · max_connections=1 estricto"
+    },
+    "line.dndnscloud.ru": {
+      "ua_pool": [
+        "OTT Navigator/1.7.1.5",
+        "ExoPlayer/2.18.1 (Linux;Android 11)",
+        "VLC/3.0.18 LibVLC/3.0.18"
+      ],
+      "ua_index": 0,
+      "referer": "https://line.dndnscloud.ru/",
+      "origin": "",
+      "max_connections": 2,
+      "backoff_base_seconds": 30,
+      "backoff_max_seconds": 240,
+      "creds_validation_endpoint": "/player_api.php",
+      "session_affinity_required": false
+    },
+    "126958958431.4k-26com.com": {
+      "ua_pool": [
+        "ExoPlayer/2.18.1 (Linux;Android 11)",
+        "VLC/3.0.18 LibVLC/3.0.18",
+        "Mozilla/5.0 (Web0S; Linux/SmartTV)"
+      ],
+      "ua_index": 0,
+      "referer": "",
+      "origin": "",
+      "max_connections": 1,
+      "backoff_base_seconds": 30,
+      "backoff_max_seconds": 240,
+      "creds_validation_endpoint": "/player_api.php",
+      "session_affinity_required": true,
+      "_notes": "Provider 4K premium · max_connections=1 + session affinity"
+    },
+    "_default": {
+      "ua_pool": [
+        "VLC/3.0.18 LibVLC/3.0.18",
+        "ExoPlayer/2.18.1 (Linux;Android 11)"
+      ],
+      "ua_index": 0,
+      "referer": "",
+      "origin": "",
+      "max_connections": 1,
+      "backoff_base_seconds": 30,
+      "backoff_max_seconds": 240,
+      "creds_validation_endpoint": "/player_api.php",
+      "session_affinity_required": false
+    }
+  },
+  "global_thresholds": {
+    "burst_limiter_rate_per_second": 4,
+    "burst_limiter_burst": 8,
+    "auto_disable_lane_error_rate_pct": 20,
+    "auto_disable_window_seconds": 60,
+    "slot_reaper_orphan_seconds": 30,
+    "wireguard_auto_restart_on_geo_block": true,
+    "wireguard_interfaces_to_check": ["wg0", "wg-surfshark-miami", "wg-surfshark-br"]
+  }
+}

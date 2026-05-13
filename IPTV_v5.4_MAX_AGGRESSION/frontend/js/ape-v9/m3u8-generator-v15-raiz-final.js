@@ -119,15 +119,20 @@
             'Sec-Fetch-User': '?1',
             'DNT': '1',
             'Sec-GPC': '1',
-            'Upgrade-Insecure-Requests': '1',
-            'TE': 'trailers',
+            // C8 (2026-05-11) — eliminados Upgrade-Insecure-Requests + TE.
+            // okhttp legacy no soporta TE trailers; Upgrade-Insecure-Requests detona redirect.
+            // 'Upgrade-Insecure-Requests': '1',
+            // 'TE': 'trailers',
 
-            // Capa 3: Control de Cache y Rangos (5 headers)
+            // Capa 3: Control de Cache (2 headers — eran 5)
             'Cache-Control': 'no-cache',
             'Pragma': 'no-cache',
-            'Range': 'bytes=0-',
-            'If-None-Match': '*',
-            'If-Modified-Since': 'Mon, 01 Jan 2024 00:00:00 GMT',
+            // C8 (2026-05-11) — Range/If-None-Match/If-Modified-Since eliminados.
+            // If-None-Match:* → 304+0B → okhttp "unexpected end of stream".
+            // Range en m3u8 manifest no es byte-rangeable. Ver feedback_exthttp_traps.md trampa #9.
+            // 'Range': 'bytes=0-',
+            // 'If-None-Match': '*',
+            // 'If-Modified-Since': 'Mon, 01 Jan 2024 00:00:00 GMT',
 
             // Capa 4: CORS y XHR (3 headers)
             'Origin': 'http://localhost',
@@ -143,8 +148,9 @@
             'X-CDN-Bypass': 'false',
             'X-Edge-Location': 'AUTO',
 
-            // Capa 6: Prioridad, Buffers y Prefetch (7 headers)
-            'Priority': 'u=1, i',
+            // Capa 6: Buffers y Prefetch (6 headers — era 7)
+            // C8 (2026-05-11) — Priority eliminado (RFC 9218 HTTP/3 over /1.1 confunde parsers).
+            // 'Priority': 'u=1, i',
             'X-Playback-Rate': '1.0',
             'X-Segment-Duration': '2000',
             'X-Min-Buffer-Time': '4000',

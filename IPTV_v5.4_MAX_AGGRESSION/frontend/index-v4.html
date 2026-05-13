@@ -3697,7 +3697,7 @@
 
 
   <!-- 🎚️ APE v9 PROFILE SYSTEM - MUST load BEFORE app.js -->
-  <script src="js/ape-v9/ape-profiles-config.js?v=1777612800000-FORCE-RELOAD"></script>
+  <script src="js/ape-v9/ape-profiles-config.js?v=1777670000000-secchua-singlevalue"></script>
   <!-- profile-manager-v9.js loaded later at v9.0.3 (line ~3171) -->
   <script src="js/ape-v9/profile-bridge-v9.js?v=1.1"></script>
   <script src="js/ape-v9/ape-xtream-atomic-probe.js?v=20260420-oropuro-rust"></script>
@@ -3706,7 +3706,60 @@
   <script src="js/ape-v9/format-policy.js?v=1.0-20260417"></script>
   <!-- 🩺 APE HEALTH ADMISSION RUNTIME (fail-closed v2.0) — debe cargar ANTES del generator -->
   <script src="js/ape-v9/health-runtime.js?v=3.0-plan-supremo-tier-enrichment-20260417"></script>
-  <script src="js/ape-v9/m3u8-typed-arrays-ultimate.js?v=1777650000000-stage4-image-quality"></script>
+  <!-- 🔬 @videojs/m3u8-parser v7.2.0 — HLS manifest parser (vendor bundle ~25KB) -->
+  <script src="js/vendor/m3u8-parser.vendor.js"></script>
+  <!-- 🧬 mux.js v7.0.3 — MPEG-TS demuxer for binary codec extraction (~115KB) -->
+  <script src="js/vendor/mux.vendor.js"></script>
+  <!-- 📦 codem-isoboxer v0.3.9 — fMP4/CMAF atom parser for codec boxes (~24KB) -->
+  <script src="js/vendor/isoboxer.vendor.js"></script>
+  <!-- 📥 APE M3U8 INGESTION PARSER v1.0 — Lee CUALQUIER lista M3U8 externa -->
+  <script src="js/ape-v9/ape-m3u8-ingestion-parser.js?v=1.0"></script>
+  <!-- 🧬 APE SEGMENT ANALYZER v1.0 — Binary ground truth codec extraction (TS + fMP4) -->
+  <script src="js/ape-v9/ape-segment-analyzer.js?v=1.0"></script>
+  <!-- ⚡ hls.js v1.5.17 light — Headless LL-HLS manifest analysis (~296KB) -->
+  <script src="js/vendor/hls.light.vendor.js"></script>
+  <!-- ⚡ APE LL-HLS ANALYZER v1.0 — Low-Latency HLS detection via hls.js headless -->
+  <script src="js/ape-v9/ape-llhls-analyzer.js?v=1.0"></script>
+  <!-- 🔬 APE QUALITY PROBER v1.0 — Per-profile HLS manifest + binary probing (anti-509) -->
+  <script src="js/ape-v9/ape-quality-prober.js?v=1.0"></script>
+  <!-- 📐 M3U8 PARSER STRICT ULTIMATE — RFC 8216 READ-only companion to the generator -->
+  <script src="js/ape-v9/m3u8-parser-strict-ultimate.js?v=1.0-20260501"></script>
+  <!-- ═══════════════════════════════════════════════════════════════════════════
+       APE UNIVERSAL PARSER STACK v1.0 — 26 módulos. MAX IMAGE FIRST · ZERO TOXIC HEADERS
+       Doctrina CA7/C8 · OMEGA-NO-DELETE · NO OKHTTP EOF · 2026-05-12
+       Order: sanitizer → foundation → content → protocol → utility → integration → orchestrator
+       ═══════════════════════════════════════════════════════════════════════════ -->
+  <script src="js/ape-v9/parsers/ape-http-header-sanitizer.js?v=1.0"></script>
+  <script src="js/ape-v9/parsers/ape-hls-attribute-parser.js?v=1.0"></script>
+  <script src="js/ape-v9/parsers/ape-m3u-lexer.js?v=1.0"></script>
+  <script src="js/ape-v9/parsers/ape-codec-parser.js?v=1.0"></script>
+  <script src="js/ape-v9/parsers/ape-hevc-parser.js?v=1.0"></script>
+  <script src="js/ape-v9/parsers/ape-dolby-hdr-parser.js?v=1.0"></script>
+  <script src="js/ape-v9/parsers/ape-audio-parser.js?v=1.0"></script>
+  <script src="js/ape-v9/parsers/ape-subtitle-parser.js?v=1.0"></script>
+  <script src="js/ape-v9/parsers/ape-drm-parser.js?v=1.0"></script>
+  <script src="js/ape-v9/parsers/ape-llhls-parser.js?v=1.0"></script>
+  <script src="js/ape-v9/parsers/ape-daterange-scte35-parser.js?v=1.0"></script>
+  <script src="js/ape-v9/parsers/ape-iptv-flat-parser.js?v=1.0"></script>
+  <script src="js/ape-v9/parsers/ape-hls-master-parser.js?v=1.0"></script>
+  <script src="js/ape-v9/parsers/ape-hls-media-parser.js?v=1.0"></script>
+  <script src="js/ape-v9/parsers/ape-ext-http-parser.js?v=1.0"></script>
+  <script src="js/ape-v9/parsers/ape-vlcopt-parser.js?v=1.0"></script>
+  <script src="js/ape-v9/parsers/ape-kodiprop-parser.js?v=1.0"></script>
+  <script src="js/ape-v9/parsers/ape-xtream-parser.js?v=1.0"></script>
+  <script src="js/ape-v9/parsers/ape-xmltv-parser.js?v=1.0"></script>
+  <script src="js/ape-v9/parsers/ape-url-resolver.js?v=1.0"></script>
+  <script src="js/ape-v9/parsers/ape-reachability-parser.js?v=1.0"></script>
+  <script src="js/ape-v9/parsers/ape-custom-tags-parser.js?v=1.0"></script>
+  <script src="js/ape-v9/parsers/ape-parser-normalizer.js?v=1.0"></script>
+  <script src="js/ape-v9/parsers/ape-parser-validator.js?v=1.0"></script>
+  <script src="js/ape-v9/parsers/ape-player-profile-emitter.js?v=1.0"></script>
+  <script src="js/ape-v9/parsers/ape-universal-parser-stack.js?v=1.0"></script>
+  <!-- 🔌 APE PARSER GENERATION BRIDGE — connects 26-parser evidence to generation pipeline -->
+  <script src="js/ape-v9/parsers/ape-parser-generation-bridge.js?v=1.0"></script>
+  <!-- 🛡️ APE MAX QUALITY FALLBACK RESOLVER — MAX IMAGE FIRST · COVERAGE ALWAYS · NO CHANNEL LOSS -->
+  <script src="js/ape-v9/ape-fallback-resolver.js?v=1.0"></script>
+  <script src="js/ape-v9/m3u8-typed-arrays-ultimate.js?v=1777660000000-version9-rfc8216"></script>
   <!-- 🪦 OMEGA SLOT REAPER — Pre-flight liberation of Xtream max_connections slots -->
   <script src="js/ape-v9/slot-reaper.js?v=1.0.0-omega-20260409"></script>
   <script src="js/ape-v9/m3u8-quality-upgrader-v2.js?v=2.0"></script>

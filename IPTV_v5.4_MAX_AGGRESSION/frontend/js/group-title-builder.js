@@ -255,8 +255,10 @@
                 if (stored) {
                     const config = JSON.parse(stored);
                     if (config.selectedFields && config.selectedFields.length > 0) {
-                        // v2: forzar separador "/" para OTT Navigator
-                        return { ...DEFAULT_CONFIG, ...config, separator: '/' };
+                        // v2.1: Respect user's persisted separator.
+                        // Note: OTT Navigator interprets "/" as folder navigation.
+                        // The config-ui shows a disclaimer about this.
+                        return { ...DEFAULT_CONFIG, ...config };
                     }
                 }
             } catch (e) {

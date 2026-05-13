@@ -4834,7 +4834,9 @@ class OmegaAbsoluteReconstructor
             'Accept-Encoding'       => 'gzip, deflate, br',
             'Accept-Language'       => 'en-US,en;q=0.9',
             'Connection'            => 'keep-alive',
-            'Upgrade-Insecure-Requests' => '1',
+            // C8 (2026-05-11) — removed 'Upgrade-Insecure-Requests' => '1': forces HTTPS
+            // redirect on HTTP-only providers (e.g. tivigo.cc:80) → some panels return Vary +
+            // 30x to non-existent HTTPS endpoint → connection closed → upstream EOF.
             'Referer'               => $streamUrl,
             'Origin'                => 'https://' . $host,
             'X-Forwarded-For'       => '8.8.8.8',
@@ -4929,7 +4931,10 @@ class OmegaAbsoluteReconstructor
             '#KODIPROP:inputstream.adaptive.bandwidth_safety_factor=1.0',
 
             // Codec y Hardware
-            '#KODIPROP:inputstream.adaptive.codec_priority=VVC,EVC,HEVC,AV1,H264',
+            // [HEVC-FIRST CODEC LADDER] Lee $profile['codec_ladder']['player_pref'] (LAB SSOT) → fallback HEVC-first
+            '#KODIPROP:inputstream.adaptive.codec_priority=' . ($profile['codec_ladder']['player_pref'] ?? 'hvc1,hev1,h265,avc1,h264'),
+            '#KODIPROP:inputstream.adaptive.audio_codec_priority=' . ($profile['codec_ladder']['audio'] ?? 'ec-3,ac-3,mp4a.40.2,mp4a.40.5'),
+            '#KODIPROP:inputstream.adaptive.preferred_codec=' . ($profile['codec_ladder']['player_pref'] ?? 'hvc1,hev1,h265,avc1,h264'),
             '#KODIPROP:inputstream.adaptive.hw_decode=force',
             '#KODIPROP:inputstream.adaptive.gpu_decode=force',
 
@@ -5237,7 +5242,12 @@ class OmegaAbsoluteReconstructor
         $d[] = '#EXT-X-APE-VVC-LEVEL: 5.1';
         $d[] = '#EXT-X-APE-EVC-ENABLED: TRUE';
         $d[] = '#EXT-X-APE-EVC-PROFILE: MAIN';
-        $d[] = '#EXT-X-APE-CODEC-PRIORITY: VVC,EVC,HEVC,AV1,H264';
+        // [HEVC-FIRST] Lee $profile['codec_ladder']['player_pref'] (LAB SSOT) → fallback HEVC-first
+        $d[] = '#EXT-X-APE-CODEC-PRIORITY: ' . ($profile['codec_ladder']['player_pref'] ?? 'hvc1,hev1,h265,avc1,h264');
+        $d[] = '#EXT-X-APE-CODEC-PRIORITY-VIDEO: ' . ($profile['codec_ladder']['video'] ?? 'hvc1.2.4.L153.B0,hev1.2.4.L153.B0,avc1.640033,avc1.640028');
+        $d[] = '#EXT-X-APE-CODEC-PRIORITY-AUDIO: ' . ($profile['codec_ladder']['audio'] ?? 'ec-3,ac-3,mp4a.40.2,mp4a.40.5');
+        $d[] = '#EXT-X-APE-CODEC-PRIORITY-HDR: ' . ($profile['codec_ladder']['hdr'] ?? 'hdr10,hlg,sdr');
+        $d[] = '#EXT-X-APE-AV1-FALLBACK-CHAIN: ' . ($profile['codec_ladder']['video_family'] ?? 'HEVC-MAIN10>HEVC-MAIN>H264-HIGH>H264-MAIN>H264-BASELINE');
 
         // ── DOCTRINA 11: GPU ──────────────────────────────────────────────────
         $d[] = '#EXT-X-APE-GPU-DECODE: ENABLED';

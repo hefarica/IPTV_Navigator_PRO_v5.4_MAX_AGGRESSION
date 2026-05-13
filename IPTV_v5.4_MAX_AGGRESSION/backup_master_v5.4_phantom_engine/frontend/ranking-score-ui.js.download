@@ -1,0 +1,858 @@
+/**
+ * RANKING SCORE UI MODULE v1.0
+ * Interfaz de Usuario para Configuración de Score
+ * 
+ * ✅ CARACTERÍSTICAS:
+ * - 5 Pestañas especializadas
+ * - Renderización dinámica
+ * - Almacenamiento automático
+ * - Vista previa en vivo
+ * - Import/Export de perfiles
+ * - Compatible con design system IPTV Navigator
+ */
+
+class RankingScoreUIHandler {
+  constructor(app, scoreConfig) {
+    this.app = app;
+    this.scoreConfig = scoreConfig;
+    this.panelId = 'ranking-score-config-panel';
+    this.activeTab = 'resolutions';
+    this.currentPreviewChannel = null;
+  }
+
+  /**
+   * Renderizar panel completo de configuración
+   */
+  renderConfigPanel() {
+    const container = document.getElementById(this.panelId);
+    if (!container) {
+      console.warn('Contenedor de panel no encontrado:', this.panelId);
+      return;
+    }
+
+    // Check if panel is collapsed from localStorage
+    const isCollapsed = localStorage.getItem('rsp_panel_collapsed') === 'true';
+
+    const profile = this.scoreConfig.getProfile();
+
+    const html = `
+      <div class="ranking-score-panel ${isCollapsed ? 'rsp-collapsed' : ''}">
+        <!-- HEADER (clickable to toggle) -->
+        <div class="rsp-header rsp-toggle-header" id="rsp-toggle-header">
+          <div class="rsp-header-left">
+            <div class="rsp-header-top">
+              <h3 class="rsp-main-title">CONFIGURACIÓN DE SCORE DE CALIDAD</h3>
+              <span class="rsp-badge">Scoring Personalizable</span>
+            </div>
+            <p class="rsp-subtitle">AJUSTA ESTÁNDARES DE RESOLUCIÓN, BITRATE, CODEC Y FPS PARA CÁLCULO AUTOMÁTICO</p>
+          </div>
+          <button type="button" class="rsp-toggle-btn" id="rsp-toggle-btn" title="Expandir/Colapsar">
+            <span class="rsp-toggle-icon">${isCollapsed ? '▶' : '▼'}</span>
+          </button>
+        </div>
+
+        <!-- COLLAPSIBLE BODY -->
+        <div class="rsp-body" id="rsp-body" style="${isCollapsed ? 'display:none;' : ''}">
+          <!-- TABS -->
+          <div class="rsp-tabs">
+            <button class="rsp-tab-btn active" data-tab="resolutions">📊 Resoluciones</button>
+            <button class="rsp-tab-btn" data-tab="bitrate">📈 Bitrate</button>
+            <button class="rsp-tab-btn" data-tab="codec">🎬 Codec</button>
+            <button class="rsp-tab-btn" data-tab="fps">⚡ FPS</button>
+            <button class="rsp-tab-btn" data-tab="preview">👁️ Preview</button>
+          </div>
+
+          <!-- CONTENIDO DE TABS -->
+          <div class="rsp-content">
+            ${this._renderResolutionsTab(profile)}
+            ${this._renderBitrateTab(profile)}
+            ${this._renderCodecTab(profile)}
+            ${this._renderFPSTab(profile)}
+            ${this._renderPreviewTab(profile)}
+          </div>
+
+          <!-- ACCIONES -->
+          <div class="rsp-actions">
+            <button class="rsp-btn rsp-btn-primary" id="rsp-btn-save">💾 Guardar Cambios</button>
+            <button class="rsp-btn rsp-btn-secondary" id="rsp-btn-reset">🔄 Restaurar Defecto</button>
+            <button class="rsp-btn rsp-btn-secondary" id="rsp-btn-export">📥 Exportar Perfil</button>
+            <button class="rsp-btn rsp-btn-secondary" id="rsp-btn-import">📤 Importar Perfil</button>
+          </div>
+
+          <!-- INPUT HIDDEN PARA IMPORT -->
+          <input type="file" id="rsp-import-file" accept=".json" style="display:none">
+        </div>
+      </div>
+    `;
+
+    container.innerHTML = html;
+    this._attachEventListeners();
+    this._setupTabSwitching();
+    this._setupPanelToggle();
+  }
+
+  /**
+   * Setup panel toggle (collapse/expand)
+   */
+  _setupPanelToggle() {
+    const toggleBtn = document.getElementById('rsp-toggle-btn');
+    const toggleHeader = document.getElementById('rsp-toggle-header');
+    const body = document.getElementById('rsp-body');
+    const panel = document.querySelector('.ranking-score-panel');
+
+    const toggle = () => {
+      const isCurrentlyCollapsed = panel.classList.contains('rsp-collapsed');
+
+      if (isCurrentlyCollapsed) {
+        // Expand
+        panel.classList.remove('rsp-collapsed');
+        body.style.display = '';
+        toggleBtn.querySelector('.rsp-toggle-icon').textContent = '▼';
+        localStorage.setItem('rsp_panel_collapsed', 'false');
+      } else {
+        // Collapse - save current config first
+        this._autoSaveConfig();
+        panel.classList.add('rsp-collapsed');
+        body.style.display = 'none';
+        toggleBtn.querySelector('.rsp-toggle-icon').textContent = '▶';
+        localStorage.setItem('rsp_panel_collapsed', 'true');
+      }
+    };
+
+    if (toggleBtn) toggleBtn.addEventListener('click', toggle);
+    if (toggleHeader) toggleHeader.addEventListener('click', (e) => {
+      // Only toggle if clicking on header, not on buttons
+      if (e.target === toggleHeader || e.target.closest('.rsp-header-left')) {
+        toggle();
+      }
+    });
+  }
+
+  /**
+   * Auto-save configuration silently
+   */
+  _autoSaveConfig() {
+    try {
+      const profile = this._collectFormData();
+      this.scoreConfig.saveProfile(profile);
+      console.log('[RankingScoreUI] Config auto-saved on collapse');
+    } catch (err) {
+      console.warn('[RankingScoreUI] Auto-save failed:', err);
+    }
+  }
+
+  /**
+   * Renderizar pestaña RESOLUCIONES
+   */
+  _renderResolutionsTab(profile) {
+    const resolutions = profile.resolutions;
+
+    let html = '<div class="rsp-tab-content" data-tab="resolutions">';
+
+    Object.entries(resolutions).forEach(([key, config]) => {
+      html += `
+        <div class="rsp-resolution-card">
+          <h4>${config.label}</h4>
+          
+          <div class="rsp-field-group">
+            <div class="rsp-field">
+              <label>Bitrate Estándar (kbps)</label>
+              <input type="number" class="rsp-res-bitrate" data-res="${key}" value="${config.standardBitrate}" min="1000" step="1000">
+            </div>
+            <div class="rsp-field">
+              <label>Codec Estándar</label>
+              <select class="rsp-res-codec" data-res="${key}">
+                <option value="AV1" ${config.standardCodec === 'AV1' ? 'selected' : ''}>AV1</option>
+                <option value="HEVC" ${config.standardCodec === 'HEVC' ? 'selected' : ''}>HEVC</option>
+                <option value="VP9" ${config.standardCodec === 'VP9' ? 'selected' : ''}>VP9</option>
+                <option value="H.264" ${config.standardCodec === 'H.264' ? 'selected' : ''}>H.264</option>
+              </select>
+            </div>
+            <div class="rsp-field">
+              <label>FPS Estándar</label>
+              <input type="number" class="rsp-res-fps" data-res="${key}" value="${config.standardFPS}" min="1" step="5">
+            </div>
+          </div>
+
+          <div class="rsp-field-group">
+            <div class="rsp-field">
+              <label>Puntos Base Resolución</label>
+              <input type="number" class="rsp-res-points" data-res="${key}" value="${config.basePoints}" min="0" max="50" step="1">
+            </div>
+          </div>
+
+          <div class="rsp-thresholds">
+            <h5>Umbrales de Tier para ${key}</h5>
+            <div class="rsp-threshold-row">
+              <label>✨ Ultra Premium</label>
+              <input type="number" class="rsp-threshold" data-res="${key}" data-tier="ultraPremium" value="${config.tierThresholds.ultraPremium}" min="0" max="100">
+            </div>
+            <div class="rsp-threshold-row">
+              <label>🥇 Premium</label>
+              <input type="number" class="rsp-threshold" data-res="${key}" data-tier="premium" value="${config.tierThresholds.premium}" min="0" max="100">
+            </div>
+            <div class="rsp-threshold-row">
+              <label>📊 Standard</label>
+              <input type="number" class="rsp-threshold" data-res="${key}" data-tier="standard" value="${config.tierThresholds.standard}" min="0" max="100">
+            </div>
+            <div class="rsp-threshold-row">
+              <label>🟡 Medio</label>
+              <input type="number" class="rsp-threshold" data-res="${key}" data-tier="medium" value="${config.tierThresholds.medium}" min="0" max="100">
+            </div>
+            <div class="rsp-threshold-row">
+              <label>🔴 Bajo</label>
+              <input type="number" class="rsp-threshold" data-res="${key}" data-tier="low" value="${config.tierThresholds.low}" min="0" max="100">
+            </div>
+          </div>
+        </div>
+      `;
+    });
+
+    html += '</div>';
+    return html;
+  }
+
+  /**
+   * Renderizar pestaña BITRATE
+   */
+  _renderBitrateTab(profile) {
+    const bitrate = profile.bitrate;
+
+    let html = `
+      <div class="rsp-tab-content" data-tab="bitrate">
+        <div class="rsp-setting">
+          <label class="rsp-checkbox">
+            <input type="checkbox" id="rsp-bitrate-enabled" ${bitrate.enabled ? 'checked' : ''}>
+            <span>Habilitar evaluación de Bitrate</span>
+          </label>
+        </div>
+
+        <div class="rsp-field">
+          <label>Peso en Cálculo Final (0-50)</label>
+          <input type="range" id="rsp-bitrate-weight" class="rsp-slider" min="0" max="50" value="${bitrate.weight}" step="5">
+          <span id="rsp-bitrate-weight-value">${bitrate.weight}</span>
+        </div>
+
+        <h4>Variancia de Bitrate</h4>
+        <div class="rsp-variance-grid">
+    `;
+
+    Object.entries(bitrate.variance).forEach(([label, config]) => {
+      html += `
+        <div class="rsp-variance-item">
+          <label>${label}</label>
+          <div class="rsp-variance-control">
+            <input type="range" class="rsp-bitrate-variance" data-variance="${label}" min="0" max="50" value="${config.points}" step="1">
+            <span class="rsp-variance-value">${config.points}</span>
+          </div>
+        </div>
+      `;
+    });
+
+    html += `
+        </div>
+      </div>
+    `;
+
+    return html;
+  }
+
+  /**
+   * Renderizar pestaña CODEC
+   */
+  _renderCodecTab(profile) {
+    const codec = profile.codec;
+
+    let html = `
+      <div class="rsp-tab-content" data-tab="codec">
+        <div class="rsp-setting">
+          <label class="rsp-checkbox">
+            <input type="checkbox" id="rsp-codec-enabled" ${codec.enabled ? 'checked' : ''}>
+            <span>Habilitar evaluación de Codec</span>
+          </label>
+        </div>
+
+        <div class="rsp-field">
+          <label>Peso en Cálculo Final (0-30)</label>
+          <input type="range" id="rsp-codec-weight" class="rsp-slider" min="0" max="30" value="${codec.weight}" step="5">
+          <span id="rsp-codec-weight-value">${codec.weight}</span>
+        </div>
+
+        <h4>Jerarquía de Codecs</h4>
+        <div class="rsp-hierarchy">
+    `;
+
+    codec.hierarchy.forEach((item) => {
+      html += `
+        <div class="rsp-hierarchy-item">
+          <span class="rsp-rank">${item.rank}º</span>
+          <span class="rsp-codec-name">${item.codec}</span>
+          <span class="rsp-codec-desc">${item.description}</span>
+          <div class="rsp-points-input">
+            <label>Pts:</label>
+            <input type="number" class="rsp-codec-points" data-codec="${item.codec}" value="${item.points}" min="0" max="30" step="1">
+          </div>
+        </div>
+      `;
+    });
+
+    html += `
+        </div>
+      </div>
+    `;
+
+    return html;
+  }
+
+  /**
+   * Renderizar pestaña FPS
+   */
+  _renderFPSTab(profile) {
+    const fps = profile.fps;
+
+    let html = `
+      <div class="rsp-tab-content" data-tab="fps">
+        <div class="rsp-setting">
+          <label class="rsp-checkbox">
+            <input type="checkbox" id="rsp-fps-enabled" ${fps.enabled ? 'checked' : ''}>
+            <span>Habilitar evaluación de FPS</span>
+          </label>
+        </div>
+
+        <div class="rsp-field">
+          <label>Peso en Cálculo Final (0-20)</label>
+          <input type="range" id="rsp-fps-weight" class="rsp-slider" min="0" max="20" value="${fps.weight}" step="1">
+          <span id="rsp-fps-weight-value">${fps.weight}</span>
+        </div>
+
+        <h4>Variancia de FPS</h4>
+        <div class="rsp-variance-grid">
+    `;
+
+    Object.entries(fps.variance).forEach(([label, config]) => {
+      html += `
+        <div class="rsp-variance-item">
+          <label>${label}</label>
+          <div class="rsp-variance-control">
+            <input type="range" class="rsp-fps-variance" data-variance="${label}" min="0" max="20" value="${config.points}" step="1">
+            <span class="rsp-variance-value">${config.points}</span>
+          </div>
+        </div>
+      `;
+    });
+
+    html += `
+        </div>
+      </div>
+    `;
+
+    return html;
+  }
+
+  /**
+   * Renderizar pestaña PREVIEW
+   */
+  _renderPreviewTab(profile) {
+    let html = `
+      <div class="rsp-tab-content" data-tab="preview">
+        <h4>Calculador de Score en Vivo</h4>
+        
+        <!-- SECCIÓN COMPACTA: SELECTOR + INPUTS -->
+        <div class="rsp-preview-compact" style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px;">
+          
+          <!-- Columna 1: Selector de Canal -->
+          <div style="background:rgba(15,23,42,0.6); border-radius:8px; border:1px solid rgba(56,189,248,0.2); padding:8px;">
+            <label style="display:block; font-size:0.65rem; text-transform:uppercase; letter-spacing:0.08em; color:#94a3b8; margin-bottom:6px;">📺 Canal de Prueba</label>
+            <div style="display:flex; gap:4px; margin-bottom:6px;">
+              <button type="button" id="rsp-btn-random-channel" class="rsp-btn rsp-btn-secondary" style="flex:1; padding:4px 6px; font-size:0.68rem;">🎲 Aleatorio</button>
+              <button type="button" id="rsp-btn-load-channel" class="rsp-btn rsp-btn-secondary" style="flex:1; padding:4px 6px; font-size:0.68rem;">✓ Cargar</button>
+            </div>
+            <select id="rsp-channel-select" class="rsp-input" style="width:100%; padding:5px; background:rgba(15,23,42,0.9); border:1px solid rgba(148,163,184,0.3); border-radius:4px; color:#e2e8f0; font-size:0.72rem;">
+              <option value="">-- Selecciona canal --</option>
+            </select>
+            <div id="rsp-selected-channel-info" style="margin-top:6px; padding:6px; background:rgba(15,23,42,0.8); border:1px solid rgba(56,189,248,0.15); border-radius:6px; font-size:0.68rem; color:#94a3b8; display:none;"></div>
+          </div>
+          
+          <!-- Columna 2: Inputs Manuales -->
+          <div style="background:rgba(15,23,42,0.6); border-radius:8px; border:1px solid rgba(148,163,184,0.15); padding:8px;">
+            <label style="display:block; font-size:0.65rem; text-transform:uppercase; letter-spacing:0.08em; color:#94a3b8; margin-bottom:6px;">⚙️ Valores Manuales</label>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px;">
+              <div class="rsp-field" style="margin:0;">
+                <label style="font-size:0.6rem; margin-bottom:2px;">Resolución</label>
+                <select id="rsp-preview-resolution" style="padding:4px; font-size:0.72rem;">
+                  <option value="8K">8K</option>
+                  <option value="4K">4K</option>
+                  <option value="1080p" selected>1080p</option>
+                  <option value="720p">720p</option>
+                  <option value="480p">480p</option>
+                </select>
+              </div>
+              <div class="rsp-field" style="margin:0;">
+                <label style="font-size:0.6rem; margin-bottom:2px;">Bitrate</label>
+                <input type="number" id="rsp-preview-bitrate" value="8000" min="100" step="100" style="padding:4px; font-size:0.72rem;">
+              </div>
+              <div class="rsp-field" style="margin:0;">
+                <label style="font-size:0.6rem; margin-bottom:2px;">Codec</label>
+                <select id="rsp-preview-codec" style="padding:4px; font-size:0.72rem;">
+                  <option value="AV1">AV1</option>
+                  <option value="HEVC">HEVC</option>
+                  <option value="VP9">VP9</option>
+                  <option value="H.264" selected>H.264</option>
+                </select>
+              </div>
+              <div class="rsp-field" style="margin:0;">
+                <label style="font-size:0.6rem; margin-bottom:2px;">FPS</label>
+                <input type="number" id="rsp-preview-fps" value="30" min="1" step="5" style="padding:4px; font-size:0.72rem;">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <button class="rsp-btn rsp-btn-primary" id="rsp-btn-calculate" style="width:100%; margin-bottom:10px; padding:8px;">
+          🔍 CALCULAR SCORE
+        </button>
+
+        <div id="rsp-preview-result" class="rsp-preview-result" style="display:none;">
+          <div class="rsp-score-display">
+            <div id="rsp-score-badge" class="rsp-score-badge">0</div>
+            <div id="rsp-score-tier" class="rsp-score-tier">--</div>
+          </div>
+          <div id="rsp-score-breakdown" class="rsp-score-breakdown"></div>
+        </div>
+      </div>
+    `;
+
+
+    return html;
+  }
+
+  /**
+   * Configurar cambios de pestaña
+   */
+  _setupTabSwitching() {
+    const tabs = document.querySelectorAll('.rsp-tab-btn');
+    const contents = document.querySelectorAll('.rsp-tab-content');
+
+    tabs.forEach(tab => {
+      tab.addEventListener('click', () => {
+        const targetTab = tab.dataset.tab;
+
+        // Desactivar todas
+        tabs.forEach(t => t.classList.remove('active'));
+        contents.forEach(c => c.style.display = 'none');
+
+        // Activar seleccionada
+        tab.classList.add('active');
+        const content = document.querySelector(`.rsp-tab-content[data-tab="${targetTab}"]`);
+        if (content) content.style.display = 'block';
+
+        this.activeTab = targetTab;
+      });
+    });
+  }
+
+  /**
+   * Adjuntar listeners de eventos
+   */
+  _attachEventListeners() {
+    // Botones principales
+    const btnSave = document.getElementById('rsp-btn-save');
+    const btnReset = document.getElementById('rsp-btn-reset');
+    const btnExport = document.getElementById('rsp-btn-export');
+    const btnImport = document.getElementById('rsp-btn-import');
+
+    if (btnSave) btnSave.addEventListener('click', () => this._saveChanges());
+    if (btnReset) btnReset.addEventListener('click', () => this._resetToDefault());
+    if (btnExport) btnExport.addEventListener('click', () => this.scoreConfig.exportProfile());
+    if (btnImport) btnImport.addEventListener('click', () => this._openImportDialog());
+
+    // Preview - Calculate button
+    const btnCalculate = document.getElementById('rsp-btn-calculate');
+    if (btnCalculate) btnCalculate.addEventListener('click', () => this._calculatePreview());
+
+    // Channel Selector - Random button
+    const btnRandomChannel = document.getElementById('rsp-btn-random-channel');
+    if (btnRandomChannel) {
+      btnRandomChannel.addEventListener('click', () => this._selectRandomChannel());
+    }
+
+    // Channel Selector - Load from select button
+    const btnLoadChannel = document.getElementById('rsp-btn-load-channel');
+    if (btnLoadChannel) {
+      btnLoadChannel.addEventListener('click', () => this._loadSelectedChannel());
+    }
+
+    // Populate channel dropdown when preview tab is opened
+    this._populateChannelDropdown();
+
+    // Sliders
+    const weightSliders = document.querySelectorAll('.rsp-slider');
+    weightSliders.forEach(slider => {
+      slider.addEventListener('input', (e) => {
+        const valueSpan = document.getElementById(e.target.id + '-value');
+        if (valueSpan) valueSpan.textContent = e.target.value;
+      });
+    });
+
+    const varianceSliders = document.querySelectorAll('[class*="variance"]');
+    varianceSliders.forEach(slider => {
+      slider.addEventListener('input', (e) => {
+        const valueSpan = e.target.nextElementSibling;
+        if (valueSpan) valueSpan.textContent = e.target.value;
+      });
+    });
+  }
+
+  /**
+   * Populate channel dropdown with loaded channels
+   */
+  _populateChannelDropdown() {
+    const select = document.getElementById('rsp-channel-select');
+    if (!select) return;
+
+    const channels = this.app?.state?.channels || this.app?.state?.channelsMaster || [];
+
+    if (channels.length === 0) {
+      select.innerHTML = '<option value="">-- Sin canales cargados --</option>';
+      return;
+    }
+
+    select.innerHTML = '<option value="">-- Selecciona un canal (' + channels.length + ' disponibles) --</option>';
+
+    channels.forEach((ch, idx) => {
+      const resolution = ch.resolution || ch.final?.resolution || 'AUTO';
+      const name = ch.name || ch.base?.name || `Canal ${idx + 1}`;
+      const opt = document.createElement('option');
+      opt.value = idx;
+      opt.textContent = `${name} (${resolution})`;
+      select.appendChild(opt);
+    });
+
+    console.log(`[RankingScoreUI] ${channels.length} canales cargados en dropdown`);
+  }
+
+  /**
+   * Select a random channel from loaded channels
+   */
+  _selectRandomChannel() {
+    const channels = this.app?.state?.channels || this.app?.state?.channelsMaster || [];
+
+    if (channels.length === 0) {
+      alert('❌ No hay canales cargados. Conecta a un servidor primero.');
+      return;
+    }
+
+    const randomIdx = Math.floor(Math.random() * channels.length);
+    const channel = channels[randomIdx];
+
+    // Update dropdown to show selected
+    const select = document.getElementById('rsp-channel-select');
+    if (select) select.value = randomIdx;
+
+    // Load values into form and show info
+    this._loadChannelIntoPreview(channel);
+    console.log(`[RankingScoreUI] Canal aleatorio seleccionado: ${channel.name || channel.base?.name}`);
+  }
+
+  /**
+   * Load channel selected from dropdown
+   */
+  _loadSelectedChannel() {
+    const select = document.getElementById('rsp-channel-select');
+    if (!select || !select.value) {
+      alert('❌ Selecciona un canal primero');
+      return;
+    }
+
+    const idx = parseInt(select.value);
+    const channels = this.app?.state?.channels || this.app?.state?.channelsMaster || [];
+    const channel = channels[idx];
+
+    if (!channel) {
+      alert('❌ Canal no encontrado');
+      return;
+    }
+
+    this._loadChannelIntoPreview(channel);
+    console.log(`[RankingScoreUI] Canal cargado: ${channel.name || channel.base?.name}`);
+  }
+
+  /**
+   * Load channel data into preview form and display info
+   */
+  _loadChannelIntoPreview(channel) {
+    if (!channel) return;
+
+    // Extract values with fallbacks (check final, tech, base layers)
+    const resolution = channel.resolution || channel.final?.resolution || channel.tech?.resolutionLabel || channel.base?.resolution || '1080p';
+    const bitrate = channel.bitrate || channel.final?.bitrate || channel.tech?.bitrateKbps || channel.base?.bitrate || 8000;
+    const codec = channel.codec || channel.final?.codec || channel.tech?.codec || channel.base?.codec || 'H.264';
+    const fps = channel.fps || channel.final?.fps || channel.tech?.fps || 30;
+    const name = channel.name || channel.base?.name || 'Canal';
+    const group = channel.group || channel.base?.group || 'N/A';
+
+    // Update form inputs
+    const resSelect = document.getElementById('rsp-preview-resolution');
+    const bitrateInput = document.getElementById('rsp-preview-bitrate');
+    const codecSelect = document.getElementById('rsp-preview-codec');
+    const fpsInput = document.getElementById('rsp-preview-fps');
+
+    if (resSelect) {
+      // Find matching option or select closest
+      const resNorm = String(resolution).toLowerCase().replace(/\s/g, '');
+      const options = Array.from(resSelect.options);
+      const match = options.find(o => o.value.toLowerCase() === resNorm || resNorm.includes(o.value.toLowerCase()));
+      resSelect.value = match ? match.value : '1080p';
+    }
+    if (bitrateInput) bitrateInput.value = parseInt(bitrate) || 8000;
+    if (codecSelect) {
+      const codecNorm = String(codec).toUpperCase();
+      const options = Array.from(codecSelect.options);
+      const match = options.find(o => codecNorm.includes(o.value));
+      codecSelect.value = match ? match.value : 'H.264';
+    }
+    if (fpsInput) fpsInput.value = parseInt(fps) || 30;
+
+    // Show channel info
+    const infoDiv = document.getElementById('rsp-selected-channel-info');
+    if (infoDiv) {
+      infoDiv.style.display = 'block';
+      infoDiv.innerHTML = `
+        <div style="font-weight:600; color:#38bdf8; margin-bottom:6px;">📺 ${name}</div>
+        <table style="width:100%; font-size:0.72rem;">
+          <tr><td style="padding:2px 0; color:#64748b;">Grupo:</td><td style="color:#e2e8f0;">${group}</td></tr>
+          <tr><td style="padding:2px 0; color:#64748b;">Resolución:</td><td style="color:#4ade80;">${resolution}</td></tr>
+          <tr><td style="padding:2px 0; color:#64748b;">Bitrate:</td><td style="color:#4ade80;">${bitrate} kbps</td></tr>
+          <tr><td style="padding:2px 0; color:#64748b;">Codec:</td><td style="color:#e2e8f0;">${codec}</td></tr>
+          <tr><td style="padding:2px 0; color:#64748b;">FPS:</td><td style="color:#e2e8f0;">${fps}</td></tr>
+        </table>
+      `;
+    }
+
+    // Store current channel for reference
+    this.currentPreviewChannel = channel;
+  }
+
+  /**
+   * Guardar cambios de configuración
+   */
+  _saveChanges() {
+    const profile = this._collectFormData();
+
+    if (this.scoreConfig.saveProfile(profile)) {
+      alert('✓ Configuración de scoring guardada correctamente');
+      this._showNotification('Cambios aplicados a todos los canales', false);
+
+      // Recargar tabla en app.js
+      if (this.app && this.app.applyFilters) {
+        this.app.applyFilters();
+      }
+    } else {
+      alert('✗ Error al guardar la configuración');
+    }
+  }
+
+  /**
+   * Recopilar datos del formulario
+   */
+  _collectFormData() {
+    const profile = this.scoreConfig.getProfile();
+
+    // Actualizar resoluciones
+    document.querySelectorAll('.rsp-resolution-card').forEach(card => {
+      // Recolectar datos
+    });
+
+    // Bitrate
+    profile.bitrate.enabled = document.getElementById('rsp-bitrate-enabled')?.checked || false;
+    profile.bitrate.weight = Number(document.getElementById('rsp-bitrate-weight')?.value || 30);
+
+    // Codec
+    profile.codec.enabled = document.getElementById('rsp-codec-enabled')?.checked || false;
+    profile.codec.weight = Number(document.getElementById('rsp-codec-weight')?.value || 20);
+
+    // FPS
+    profile.fps.enabled = document.getElementById('rsp-fps-enabled')?.checked || false;
+    profile.fps.weight = Number(document.getElementById('rsp-fps-weight')?.value || 20);
+
+    return profile;
+  }
+
+  /**
+   * Restablecer a defecto con confirmación
+   */
+  _resetToDefault() {
+    if (confirm('¿Restaurar perfil por defecto? Se perderán todos los cambios.')) {
+      this.scoreConfig.resetToDefault();
+      this.renderConfigPanel();
+      this._showNotification('Perfil restablecido al defecto', false);
+    }
+  }
+
+  /**
+   * Abrir diálogo de importación
+   */
+  _openImportDialog() {
+    const fileInput = document.getElementById('rsp-import-file');
+    fileInput?.click();
+
+    if (fileInput) {
+      fileInput.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (file) {
+          const reader = new FileReader();
+          reader.onload = (event) => {
+            try {
+              const json = event.target.result;
+              if (this.scoreConfig.importProfile(json)) {
+                this.renderConfigPanel();
+                this._showNotification('Perfil importado correctamente', false);
+              } else {
+                this._showNotification('Error: Perfil inválido', true);
+              }
+            } catch (err) {
+              this._showNotification('Error al importar: ' + err.message, true);
+            }
+          };
+          reader.readAsText(file);
+        }
+      });
+    }
+  }
+
+  /**
+   * Calcular preview en vivo
+   */
+  _calculatePreview() {
+    try {
+      const resolution = document.getElementById('rsp-preview-resolution')?.value || '1080p';
+      const bitrate = Number(document.getElementById('rsp-preview-bitrate')?.value || 8000);
+      const codec = document.getElementById('rsp-preview-codec')?.value || 'H.264';
+      const fps = Number(document.getElementById('rsp-preview-fps')?.value || 30);
+
+      // ✅ Validación de valores
+      if (!resolution || bitrate < 0 || !codec || fps < 0) {
+        console.warn('Invalid preview values');
+        return;
+      }
+
+      const channel = { resolution, bitrate, codec, fps };
+      const result = this.scoreConfig.calculateScore(channel);
+
+      // ✅ Validar resultado antes de mostrar
+      if (!result || typeof result.qualityScore === 'undefined') {
+        console.warn('Invalid score result');
+        return;
+      }
+
+      this._displayPreviewResult(result);
+    } catch (err) {
+      console.error('Error in preview calculation:', err);
+    }
+  }
+
+  /**
+   * Mostrar resultado del preview
+   */
+  _displayPreviewResult(result) {
+    const resultDiv = document.getElementById('rsp-preview-result');
+    if (!resultDiv) return;
+
+    // ✅ VALIDACIÓN DEFENSIVA
+    if (!result || typeof result !== 'object') {
+      console.warn('Invalid result object:', result);
+      resultDiv.style.display = 'none';
+      return;
+    }
+
+    const scoreBadge = document.getElementById('rsp-score-badge');
+    const scoreTier = document.getElementById('rsp-score-tier');
+    const breakdown = document.getElementById('rsp-score-breakdown');
+
+    // ✅ Acceso seguro con defaults
+    const score = result.qualityScore ?? 0;
+    const tier = result.qualityTier ?? 'UNKNOWN';
+    const b = result.breakdown || {};
+
+    if (scoreBadge) {
+      scoreBadge.textContent = Math.round(score);
+      scoreBadge.style.backgroundColor = this._getScoreColor(score);
+    }
+
+    if (scoreTier) {
+      const tierEmoji = b.tierEmoji || '❓';
+      scoreTier.innerHTML = `${tierEmoji} ${tier}`;
+    }
+
+    if (breakdown && b.resolution !== undefined) {
+      const points = b.points || {};
+      const standard = b.standard || {};
+
+      breakdown.innerHTML = `
+        <div class="rsp-breakdown-item">
+          <label>Resolución</label>
+          <span>${b.resolution || 'N/A'} → ${points.resolution ?? 0} pts</span>
+        </div>
+        <div class="rsp-breakdown-item">
+          <label>Bitrate</label>
+          <span>${b.bitrate ?? 0} kbps (vs ${standard.bitrate ?? 0} est.) → ${points.bitrate ?? 0} pts</span>
+        </div>
+        <div class="rsp-breakdown-item">
+          <label>Codec</label>
+          <span>${b.codec || 'N/A'} (vs ${standard.codec || 'N/A'} est.) → ${points.codec ?? 0} pts</span>
+        </div>
+        <div class="rsp-breakdown-item">
+          <label>FPS</label>
+          <span>${b.fps ?? 0} fps (vs ${standard.fps ?? 0} est.) → ${points.fps ?? 0} pts</span>
+        </div>
+      `;
+    } else if (breakdown) {
+      breakdown.innerHTML = '<p style="color:#94a3b8;">Carga datos para ver desglose</p>';
+    }
+
+    resultDiv.style.display = 'block';
+  }
+
+  /**
+   * Obtener color de score
+   */
+  _getScoreColor(score) {
+    if (score >= 90) return '#00d4ff'; // Azul
+    if (score >= 75) return '#2ecc71'; // Verde
+    if (score >= 55) return '#ffa500'; // Naranja
+    if (score >= 30) return '#ff6b35'; // Rojo oscuro
+    return '#ff0000'; // Rojo
+  }
+
+  /**
+   * Mostrar notificación
+   */
+  _showNotification(message, isError = false) {
+    const notif = document.createElement('div');
+    notif.textContent = message;
+    notif.style.cssText = `
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      padding: 12px 20px;
+      border-radius: 8px;
+      z-index: 999999;
+      font-weight: bold;
+      background: ${isError ? '#ef4444' : '#10b981'};
+      color: white;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    `;
+    document.body.appendChild(notif);
+
+    setTimeout(() => {
+      notif.style.transition = 'opacity 0.3s';
+      notif.style.opacity = '0';
+      setTimeout(() => notif.remove(), 300);
+    }, 2000);
+  }
+}
+
+// Exportar para uso global
+if (typeof window !== 'undefined') {
+  window.RankingScoreUIHandler = RankingScoreUIHandler;
+}

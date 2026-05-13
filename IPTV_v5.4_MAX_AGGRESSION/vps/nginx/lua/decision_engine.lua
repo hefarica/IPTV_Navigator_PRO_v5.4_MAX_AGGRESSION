@@ -98,12 +98,19 @@ end
 -- These headers travel to the upstream and back, but critically they
 -- influence our own NGINX proxy behavior and are logged for telemetry.
 
-if action ~= "NONE" then
-    ngx.req.set_header("X-Max-Bitrate", tostring(max_bitrate_bps))
-    ngx.req.set_header("X-Telescope-Action", action)
-    if prefetch_hint > 0 then
-        ngx.req.set_header("X-Prefetch-Segments", tostring(prefetch_hint))
-    end
+-- USER DOCTRINE OVERRIDE 2026-05-11:
+-- Override max_bitrate_bps con valor SIEMPRE FRESCO del reactor_tick.lua (1Hz).
+-- Garantiza emisión constante de X-Max-Bitrate (13M o 26M) y X-Min-Bitrate=13M
+-- per orden "SEA CONSTANTE EN PEDIR ESO".
+local doctrine_request_bps = tonumber(reactor:get("bw_computed_request_bps")) or 13000000
+max_bitrate_bps = doctrine_request_bps  -- override las 6 RULES anteriores
+
+-- Emisión CONSTANTE (no condicional) — siempre en cada request
+ngx.req.set_header("X-Max-Bitrate", tostring(max_bitrate_bps))
+ngx.req.set_header("X-Min-Bitrate", "13000000")  -- floor absoluto upstream
+ngx.req.set_header("X-Telescope-Action", action)
+if prefetch_hint > 0 then
+    ngx.req.set_header("X-Prefetch-Segments", tostring(prefetch_hint))
 end
 
 -- Always set telescope state header for telemetry (lightweight)

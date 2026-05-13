@@ -1,0 +1,28 @@
+28: // Base de datos de 120 User-Agents reales (representativos de 2,443 variantes)
+136: _uaRotationIndex += Math.floor(Math.random() * 5) + 1; // Salto aleatorio en tabla de UAs
+169: * 🔄 Obtiene un User-Agent rotado por estrategia
+171: * @returns {string} User-Agent string
+173: function getRotatedUserAgent(strategy = 'random') {
+367: headers['User-Agent'] = getRotatedUserAgent('random');
+374: headers['User-Agent'] = getRotatedUserAgent('Windows');
+379: headers['User-Agent'] = getRotatedUserAgent('random');
+388: headers['User-Agent'] = getRotatedUserAgent('Windows');
+396: headers['User-Agent'] = getRotatedUserAgent('random');
+406: headers['User-Agent'] = getRotatedUserAgent('random');
+414: headers['User-Agent'] = getRotatedUserAgent('random');
+420: headers['User-Agent'] = getRotatedUserAgent('random');
+424: headers['User-Agent'] = getRotatedUserAgent('random');
+429: headers['User-Agent'] = getRotatedUserAgent('random');
+444: 'User-Agent': getRotatedUserAgent('default'),
+476: tags.push(`#EXT-X-APE-FALLBACK-UA:${h403['User-Agent']}`);
+520: tags.push(`#EXT-X-APE-FALLBACK-UA:${getRotatedUserAgent('random')}`);
+529: tags.push(`#EXT-X-APE-FALLBACK-UA:${getRotatedUserAgent('random')}`);
+609: 'User-Agent': getRotatedUserAgent('default'),
+625: nextGenome['User-Agent'] = getRotatedUserAgent('random');
+655: g['User-Agent'] = getRotatedUserAgent('random');
+731: tags.push(`#EXT-X-APE-ISP-THROTTLE-UA-ROTATE:${getRotatedUserAgent('random')}`);
+1792: "User-Agent": `Mozilla/5.0 (APE-NAVIGATOR; ${cfg.name}) AppleWebKit/537.36`,
+2886: function build_exthttp(cfg, profile, index, sessionId, reqId) {
+2928: "User-Agent": `Mozilla/5.0 (APE-NAVIGATOR; ${cfg.name}) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36`,
+4685: function generateChannelEntry(channel, index, forceProfile = null, credentialsMap = {}) {
+5382: getRotatedUserAgent: getRotatedUserAgent,

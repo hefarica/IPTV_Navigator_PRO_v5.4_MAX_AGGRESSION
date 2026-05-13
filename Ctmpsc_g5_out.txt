@@ -1,0 +1,66 @@
+Archivo: C:\Users\HFRC\Downloads\APE_LISTA_1776438933335.m3u8
+Tamano: 155.117.404 bytes
+
+[PRE] Port map cargado (0 hosts):
+
+[1] Streaming scan (una pasada, todos los checks)...
+    lineas: 3.125.888  | tiempo: 148,7 s
+
+=== CAPA A (doctrinal) ===  8 / 10
+  [OK   ] G1 0 FREEZES
+  [OK   ] G2 0 CORTES
+  [OK   ] G3 0 REBUFFER
+  [OK   ] G4 0 LAG
+  [FALTA] G5 BUGS CMCD  purity=OK  cmcd504=FALTA [obj:False req:False sid:False sta:False]
+  [OK   ] G6 MAX ABR
+  [OK   ] G7 HDR
+  [OK   ] G8 HTTP ERR TREE
+  [OK   ] G9 MULTI PROVIDER
+  [FALTA] G10 MASTER INTEG
+
+=== CAPA B (estructural) ===  15 / 20
+  [OK   ] B1    Canales (#EXTINF count)                  = 3540
+  [FALTA] B2    URL port = stored port (passthrough)     = no hay hosts conocidos en portMap (3540 URLs con hosts desconocidos)
+  [OK   ] B3    URLs sin ?? && espacios                  = 100%
+  [OK   ] B4    URLs con extension valida                = 100%
+  [OK   ] B5    STREAM-INF con BANDWIDTH                 = 100% (3540/3540)
+  [OK   ] B6    STREAM-INF con CODECS                    = 100%
+  [OK   ] B7    STREAM-INF con RESOLUTION                = 100%
+  [OK   ] B8    network-caching max >= 60000             = 60000
+  [OK   ] B9    sout-mux-caching max >= 60000            = 60000
+  [FALTA] B10   fragLoadMaxRetry max >= 10               = 0
+  [OK   ] B11   User-Agent sin APE-NAVIGATOR             = 0 de 7080
+  [OK   ] B12   Referer sin duckdns/iptv-ape             = 0 de 3540
+  [OK   ] B13   Connection: no close                     = close:0 keepalive:0
+  [OK   ] B14   clock-synchro=0 presente                 = True
+  [FALTA] B15   maxLiveSyncPlaybackRate 1.0-1.5          = 0
+  [FALTA] B16   bufferTargetSec max >= 30                = 0
+  [OK   ] B17   STREAM-INF variants >= 3                 = 3540
+  [FALTA] B18   Server diversity (hosts unicos)          = 1 hosts
+  [OK   ] B19   HDR (DV/HEVC HDR10) presente             = True
+  [OK   ] B20   Codec moderno (AV1 o DV)                 = av01:False DV/HEVC-HDR:True
+
+[2] Capa C (QoS red real)...
+    Server candidato: http://line.tivi-ott.net/
+
+=== CAPA C (QoS red) ===  2 / 7
+  [OK   ] Q1    DNS resolution < 200ms         = 176ms
+  [OK   ] Q2    TCP handshake < 500ms          = 231ms
+  [FALTA] Q3    HTTP status 2xx/3xx            = err: Excepci¢n al llamar a "GetResponse" con 
+  [FALTA] Q4    TTFB < 500ms                   = N/A
+  [FALTA] Q5    Content-Type valido            = N/A
+  [FALTA] Q6    Hosts unicos >= 2              = 1
+  [FALTA] Q7    Base URL con :PORT explicito   = http://line.tivi-ott.net/
+
+============================================================
+  SCORE FINAL PONDERADO
+============================================================
+  Capa A doctrinal  :  80,0 pct  (peso 20 pct)
+  Capa B estructura :  75,0 pct  (peso 60 pct)
+  Capa C QoS red    :  28,6 pct  (peso 20 pct)
+  -----------------------------------------------------
+  TOTAL             :  66,7 / 100   Grado: C
+
+[3] Escribiendo hoja 00_OMEGA_SCORECARD...
+Libro no abierto
+DONE

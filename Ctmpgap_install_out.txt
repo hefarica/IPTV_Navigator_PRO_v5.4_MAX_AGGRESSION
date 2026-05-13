@@ -1,0 +1,13 @@
+============================================================
+ GAP PLAN - Instalar macros + botones
+============================================================
+  Inyectadas: Brain_RunOmegaScorecardV2 + Brain_ExportGapPlan + EscJson
+  Creados 3 shapes: separator + boton AUDITAR + boton EXPORTAR
+Backup: C:\Users\HFRC\Downloads\APE_M3U8_LAB_v8_FIXED.BACKUP_20260418_112206_GAP_PLAN.xlsm
+
+DONE. Para probar:
+  1. Ve a hoja 36_BRAIN_SELECTOR, veras 2 botones nuevos abajo (turquesa + ambar)
+  2. Click AUDITAR M3U8 (tarda ~3 min, se abre ventana PowerShell)
+  3. Al terminar, ve a hoja 00_OMEGA_SCORECARD, columna D ahora tiene dropdowns
+  4. Selecciona REPLICAR/IMPLEMENTAR/QUITAR por fila segun quieras
+  5. Click EXPORTAR GAP PLAN -> genera JSON en Downloads

@@ -1,0 +1,15 @@
+[Unit]
+Description=Brazil Phantom Route Persistence (Fase F L1)
+Documentation=plan:https-iptv-ape-duckdns-org-lists-ape-lis-squishy-zebra.md
+After=network-online.target wg-quick@wg-surfshark-br.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/opt/netshield/scripts/brazil-route-persist.sh
+RemainAfterExit=yes
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

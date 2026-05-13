@@ -641,14 +641,17 @@ $vlcopt[] = "#EXTVLCOPT:http-connection=keep-alive";
 $vlcopt[] = "#EXTVLCOPT:http-cache-control=no-cache";
 $vlcopt[] = "#EXTVLCOPT:http-pragma=no-cache";
 
-// SECCIÓN 1B: HEADERS HTTP COMPLETOS (7 líneas)
+// SECCIÓN 1B: HEADERS HTTP COMPLETOS
+// C8 (2026-05-11) — http-header:Range / If-None-Match / Priority eliminados.
+// If-None-Match:* → CDN responde 304+0B → okhttp "unexpected end of stream".
+// Ver memoria feedback_exthttp_traps.md trampa #9.
 $vlcopt[] = "#EXTVLCOPT:http-header:Connection=keep-alive";
 $vlcopt[] = "#EXTVLCOPT:http-header:Keep-Alive=timeout=300, max=1000";
-$vlcopt[] = "#EXTVLCOPT:http-header:Range=bytes=0-";
-$vlcopt[] = "#EXTVLCOPT:http-header:If-None-Match=*";
+// $vlcopt[] = "#EXTVLCOPT:http-header:Range=bytes=0-";        // C8 removed
+// $vlcopt[] = "#EXTVLCOPT:http-header:If-None-Match=*";       // C8 removed (ASESINO)
 $vlcopt[] = "#EXTVLCOPT:http-header:Origin=" . $originUrl;
 $vlcopt[] = "#EXTVLCOPT:http-header:Referer=" . $referer;
-$vlcopt[] = "#EXTVLCOPT:http-header:Priority=u=1, i";
+// $vlcopt[] = "#EXTVLCOPT:http-header:Priority=u=1, i";       // C8 removed
 $vlcopt[] = "#EXTVLCOPT:network-caching-dscp=46"; // 🚀 Latencia Rayo QoS: Instar al ISP a considerar estos paquetes como Expedited Forwarding
 
 // SECCIÓN 2: CACHÉ Y SINCRONIZACIÓN (9 líneas)

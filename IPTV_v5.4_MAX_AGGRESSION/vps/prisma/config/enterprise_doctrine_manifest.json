@@ -1,0 +1,155 @@
+{
+  "_metadata": {
+    "schema_version": "1.0.0",
+    "generated_by": "LAB-SYNC v2.0 seed",
+    "generated_ts": "2026-04-28T02:00:00Z",
+    "next_audit_due": "2026-05-05T00:00:00Z",
+    "doctrine_url": "C:/Users/HFRC/.claude/plans/php-merry-flute.md",
+    "doctrine_section": "APE ENTERPRISE-GRADE Doctrine v1.0 — ADN embebido"
+  },
+  "version": "v1.0",
+  "compliance_score_target": 95,
+  "compliance_score_current": 41,
+  "lab_excel": {
+    "path": "C:/Users/HFRC/Desktop/IPTV_Navigator_PRO_v5.4_MAX_AGGRESSION/.../LAB.xlsm",
+    "sha256": "PENDING_FIRST_HASH",
+    "last_validated_ts": null,
+    "macros": {
+      "validateLabCoherence": "pending",
+      "exportPrismaConfig": "pending",
+      "btnGenerateAudited_v2": "pending"
+    },
+    "sheets": {
+      "00_NETFLIX_PARITY_AUDIT": "pending",
+      "01_CANALES": "needs +8 PRISMA-aware DNA columns",
+      "04_PERFILES_APE": "needs +3 columns (boost_multiplier, zap_grace, floor_min_bw)",
+      "12_VLCOPT_DIRECTIVES": "needs +11 directives",
+      "13_KODIPROP_DIRECTIVES": "needs +7 directives",
+      "15_FLOOR_LOCK_CONFIG": "pending NEW",
+      "16_SENTINEL_PROVIDERS": "pending NEW",
+      "17_TELESCOPE_THRESHOLDS": "pending NEW",
+      "18_ADB_PAYLOAD_INJECTOR": "pending NEW",
+      "32_PLACEHOLDERS_MAP": "needs +6 PRISMA placeholders",
+      "99_AUDIT_REPORT": "pending NEW"
+    }
+  },
+  "components_deployed": {
+    "prisma_v1.1": {
+      "deployed": true,
+      "deployed_ts": "2026-04-28T00:00:00Z",
+      "files": ["prisma_bootstrap.php", "prisma_state.php", "prisma_processor.php", "prisma_telemetry_writer.sh", "prisma-control.php", "prisma-health.php"],
+      "lab_aware": false,
+      "frontend_aware": true,
+      "compliance_pct": 80
+    },
+    "prisma_v1.2": {
+      "deployed": true,
+      "commit": "7243cfe",
+      "deployed_ts": "2026-04-28T01:00:00Z",
+      "files": ["lib/vlcopt_enhancer.php", "lib/kodiprop_enhancer.php", "lib/codecs_reorder.php"],
+      "lab_aware": false,
+      "frontend_aware": true,
+      "compliance_pct": 75
+    },
+    "prisma_v1.3": {
+      "deployed": true,
+      "commit": "8abb9e3",
+      "deployed_ts": "2026-04-28T01:15:00Z",
+      "files": ["adb/prisma_adb_daemon.sh", "adb/prisma-adb-daemon.service", "adb/ott_buffer_ultraboost.sh", "api/prisma-adb-telemetry.php"],
+      "lab_aware": false,
+      "frontend_aware": true,
+      "compliance_pct": 50
+    },
+    "prisma_v1.3.2": {
+      "deployed": true,
+      "commit": "f2ba3c7+",
+      "deployed_ts": "2026-04-28T01:25:00Z",
+      "files": ["nginx/lua/bandwidth_reactor.lua (extended)", "nginx/lua/bandwidth_reactor_api.lua"],
+      "tcp_tuning": {"initcwnd": 400, "initrwnd": 400, "tcp_notsent_lowat": 131072, "tcp_slow_start_after_idle": 0, "rto_min_lock_ms": 40, "_doctrine_history": "64->100->400 (raised 2026-05-11)"},
+      "lab_aware": false,
+      "frontend_aware": false,
+      "compliance_pct": 50
+    },
+    "telescope_v2.1_sprint1": {
+      "deployed": true,
+      "commit": "7f6b923",
+      "deployed_ts": "2026-04-28T01:35:00Z",
+      "files": ["nginx/lua/decision_engine.lua", "nginx/lua/prisma_telemetry_full.lua", "metrics/prisma_device_metrics.sh", "metrics/prisma_history_writer.sh"],
+      "lab_aware": false,
+      "frontend_aware": false,
+      "compliance_pct": 33,
+      "endpoints": ["/prisma/api/telemetry-full", "/prisma/api/bandwidth-reactor"]
+    }
+  },
+  "components_pending": {
+    "lab_sync_v2.0": {
+      "stage": 1,
+      "priority": "MAXIMA",
+      "estimated_days": 1,
+      "blocks": ["floor_lock", "sentinel_401", "telescope_sprints_2_5", "netflix_parity_audit"]
+    },
+    "floor_lock": {
+      "stage": 2,
+      "priority": "URGENTE",
+      "estimated_hours": 2,
+      "depends_on": ["lab_sync_v2.0"],
+      "files_planned": ["nginx/lua/floor_lock_filter.lua"]
+    },
+    "sentinel_401": {
+      "stage": 3,
+      "priority": "ALTA",
+      "estimated_days": 3,
+      "depends_on": ["lab_sync_v2.0"],
+      "layers": 13
+    },
+    "telescope_sprints_2_5": {
+      "stage": 4,
+      "priority": "ALTA",
+      "estimated_weeks": 4,
+      "depends_on": ["lab_sync_v2.0", "telescope_v2.1_sprint1"]
+    },
+    "netflix_parity_audit": {
+      "stage": 5,
+      "priority": "MEDIA",
+      "estimated_days": 1,
+      "depends_on": ["all_above"]
+    },
+    "v5_transcode_ultraboost": {
+      "stage": 6,
+      "priority": "BLOCKED",
+      "blocked_by": "VPS upgrade CPX21 -> CCX23 ($26/mes adicional)",
+      "estimated_weeks": 2
+    }
+  },
+  "config_jsons_managed": {
+    "floor_lock_config.json": {"sha256": "PENDING", "last_export_ts": "2026-04-28T02:00:00Z", "consumer_components": ["floor_lock_filter.lua (pending)", "bandwidth_reactor.lua"]},
+    "profile_boost_multipliers.json": {"sha256": "PENDING", "last_export_ts": "2026-04-28T02:00:00Z", "consumer_components": ["bandwidth_reactor.lua", "guardian/main.py"]},
+    "channels_prisma_dna.json": {"sha256": "PENDING", "last_export_ts": "2026-04-28T02:00:00Z", "consumer_components": ["prisma_state.php", "prisma_processor.php"]},
+    "sentinel_providers_map.json": {"sha256": "PENDING", "last_export_ts": "2026-04-28T02:00:00Z", "consumer_components": ["sentinel.lua (pending)"]},
+    "telescope_thresholds.json": {"sha256": "PENDING", "last_export_ts": "2026-04-28T02:00:00Z", "consumer_components": ["bandwidth_reactor.lua", "decision_engine.lua", "prisma_telemetry_full.lua"]}
+  },
+  "frontend_widget_levels": {
+    "level_1_lanes_grid": {"deployed": true, "feature": "6 Lane Cards toggleables"},
+    "level_2_stream_intelligence": {"deployed": true, "feature": "Codec/Res/Bitrate/Drops/Buffer"},
+    "level_3_quantum_pixel": {"deployed": true, "feature": "12-bit 4:4:4 10000nits DV cascade"},
+    "level_4_fake_4k_upscaler": {"deployed": true, "feature": "120fps MEMC VRR tonemap"},
+    "level_5_ultraboost": {"deployed": false, "feature": "Pressure/transcodes/degradation", "blocks": "V5_transcode"},
+    "level_6_sentinel_401": {"deployed": false, "feature": "401/403 stats + slot reaps + WG status"},
+    "level_7_telescope": {"deployed": false, "feature": "HW + Net L1/L2 + QoE + MOS + prediction"},
+    "level_8_floor_lock": {"deployed": false, "feature": "Variants filtered + compliance per channel"},
+    "level_9_lab_sync_status": {"deployed": false, "feature": "Last export + drift detection + SHA-256"},
+    "level_10_netflix_parity": {"deployed": false, "feature": "Compliance ratio aggregated live"}
+  },
+  "netflix_parity_features": {
+    "qoe_objective_metric": {"netflix": "VMAF", "ape": "MOS estimated + QoE Score 0-100", "compliance_pct": 95, "status": "deployed"},
+    "predictive_abr": {"netflix": "Mariner", "ape": "Decision Engine 6 rules", "compliance_pct": 80, "status": "deployed"},
+    "real_time_observability": {"netflix": "Atlas", "ape": "TELESCOPE telemetry-full endpoint", "compliance_pct": 60, "status": "sprint1_deployed"},
+    "edge_buffer_optimization": {"netflix": "CDN edge tuning", "ape": "300MB/300s + initcwnd=400 + rto_min lock 40ms per IPTV subnet", "compliance_pct": 100, "status": "deployed"},
+    "hdr_dolby_vision": {"netflix": "encoding-side", "ape": "Quantum Pixel + EXTVLCOPT directives", "compliance_pct": 90, "status": "deployed"},
+    "ml_for_abr": {"netflix": "Halibut", "ape": "Sprint 3 pending", "compliance_pct": 0, "status": "pending"},
+    "multi_cdn_failover": {"netflix": "Open Connect", "ape": "Sentinel-401 pending", "compliance_pct": 30, "status": "wg_nested_deployed"},
+    "per_title_encoding": {"netflix": "yes_full_catalog", "ape": "V5 BLOCKED CCX23", "compliance_pct": 0, "status": "blocked"},
+    "variant_floor_lock": {"netflix": "no_cbr_encoding_only", "ape": "FLOOR-LOCK pending", "compliance_pct": 0, "status": "pending_unique_to_ape"},
+    "_120fps_memc": {"netflix": "no_only_24_30_60", "ape": "Fake 4K Upscaler", "compliance_pct": 100, "status": "deployed_unique_to_ape"}
+  }
+}

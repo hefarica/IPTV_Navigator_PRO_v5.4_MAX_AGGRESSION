@@ -1,0 +1,11 @@
+#!/bin/bash
+# WG MTU tuning persistence (aplicado 2026-05-11 per orden HFRC)
+# Doctrine: tunnel anidado TV→wg0→VPS→wg-surfshark→Provider
+# Math: 1340 + 60 (wg0) + 60 (wg-surfshark) + 20 (IP) = 1480 ≤ 1500 ✓
+[[ "$IFACE" == "eth0" ]] || exit 0
+sleep 5  # wait for WG interfaces to come up after eth0
+ip link set wg0 mtu 1340 2>/dev/null
+ip link set wg-surfshark mtu 1420 2>/dev/null
+ip link set wg-surfshark-br mtu 1420 2>/dev/null
+echo "$(date -u +%FT%TZ) wg-mtu-tuning applied (wg0=1340, surfshark=1420)" >> /var/log/iptv-tcp-tuning.log
+exit 0

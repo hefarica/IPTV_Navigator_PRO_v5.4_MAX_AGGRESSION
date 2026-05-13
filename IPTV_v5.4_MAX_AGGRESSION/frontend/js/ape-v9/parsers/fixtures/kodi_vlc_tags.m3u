@@ -1,0 +1,8 @@
+#EXTM3U
+#EXTINF:-1 tvg-id="kodi1",Kodi/VLC Mixed Channel
+#KODIPROP:inputstream=inputstream.adaptive
+#KODIPROP:inputstream.adaptive.manifest_type=hls
+#KODIPROP:inputstream.adaptive.stream_headers=User-Agent=Mozilla%2F5.0&Range=bytes%3D0-&If-None-Match=*
+#EXTVLCOPT:http-reconnect=true
+#EXTVLCOPT:network-caching=30000
+http://provider.example.com/live/user/pass/4001.m3u8

@@ -1,0 +1,83 @@
+{
+  "audit_findings": [
+    {
+      "module": "APE_LAB_BRAIN",
+      "line": 239,
+      "code": "ws.Range(ws.Cells(4, 1), ws.Cells(lastRowPrev, 55)).ClearContents",
+      "kind": "literal 55"
+    },
+    {
+      "module": "APE_LAB_BRAIN",
+      "line": 1249,
+      "code": "arr = wsMx.Range(wsMx.Cells(4, 1), wsMx.Cells(lrMx, 55)).value",
+      "kind": "literal 55"
+    },
+    {
+      "module": "APE_LAB_BRAIN",
+      "line": 1542,
+      "code": "arrMx = wsMx.Range(wsMx.Cells(4, 8), wsMx.Cells(lrMx, 55)).value",
+      "kind": "literal 55"
+    },
+    {
+      "module": "APE_LAB_BRAIN",
+      "line": 2046,
+      "code": "arrMx = wsMx.Range(wsMx.Cells(4, 1), wsMx.Cells(lrMx, 55)).value",
+      "kind": "literal 55"
+    },
+    {
+      "module": "APE_LAB_BRAIN",
+      "line": 2283,
+      "code": "arr = wsMx.Range(wsMx.Cells(4, 1), wsMx.Cells(lrMx, 55)).value",
+      "kind": "literal 55"
+    },
+    {
+      "module": "APE_LAB_BRAIN",
+      "line": 2338,
+      "code": "arr = wsMx.Range(wsMx.Cells(4, 1), wsMx.Cells(lrMx, 55)).value",
+      "kind": "literal 55"
+    },
+    {
+      "module": "APE_LAB_BRAIN",
+      "line": 2478,
+      "code": "wsMx.Range(wsMx.Cells(4, 8), wsMx.Cells(3 + nRows, 55)).value = arr",
+      "kind": "literal 55"
+    },
+    {
+      "module": "APE_LAB_BRAIN",
+      "line": 2594,
+      "code": "arr = wsMx.Range(wsMx.Cells(4, 1), wsMx.Cells(lrMx, 55)).value",
+      "kind": "literal 55"
+    },
+    {
+      "module": "APE_LAB_BRAIN",
+      "line": 2745,
+      "code": "If col < 8 Or col > 55 Or row < 4 Then GoTo NextC",
+      "kind": "literal 55"
+    },
+    {
+      "module": "APE_LAB_BRAIN",
+      "line": 2882,
+      "code": "Set dataRng = ws.Range(ws.Cells(4, 8), ws.Cells(lr, 55))",
+      "kind": "literal 55"
+    },
+    {
+      "module": "APE_LAB_BRAIN",
+      "line": 2895,
+      "code": "Dim rng3 As Range: Set rng3 = ws.Range(ws.Cells(4, 40), ws.Cells(lr, 55))   ' AN:BC NIVEL_3",
+      "kind": "literal 55"
+    },
+    {
+      "module": "APE_WIRING",
+      "line": 2230,
+      "code": "panel.Cells(67, 20).value = logBuffer   ' col T = 20",
+      "kind": "Cells(67,...)"
+    },
+    {
+      "module": "APE_WIRING",
+      "line": 2252,
+      "code": "panel.Cells(67, 20).value = \"\"",
+      "kind": "Cells(67,...)"
+    }
+  ],
+  "getsteprow_fixed_at": "2026-04-26 10:10:01"
+}

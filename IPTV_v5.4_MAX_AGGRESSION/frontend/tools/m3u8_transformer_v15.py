@@ -72,17 +72,19 @@ class APEM3U8TransformerV15Supremo:
         },
         'connection': {
             'name': '🔗 Conexión & Seguridad',
+            # C8 (2026-05-11) — Upgrade-Insecure-Requests + Priority eliminados (toxic).
             'headers': [
-                'Connection', 'Keep-Alive', 'Upgrade-Insecure-Requests',
+                'Connection', 'Keep-Alive',
                 'Sec-Fetch-Dest', 'Sec-Fetch-Mode', 'Sec-Fetch-Site',
-                'Sec-Fetch-User', 'DNT', 'X-Requested-With', 'Priority'
+                'Sec-Fetch-User', 'DNT', 'X-Requested-With'
             ]
         },
         'cache': {
-            'name': '💾 Cache & Range',
+            'name': '💾 Cache',
+            # C8 (2026-05-11) — If-None-Match, If-Modified-Since, Range eliminados (toxic).
+            # If-None-Match:* → 304+0B → okhttp "unexpected end of stream".
             'headers': [
-                'Cache-Control', 'Pragma', 'If-None-Match', 
-                'If-Modified-Since', 'Range'
+                'Cache-Control', 'Pragma'
             ]
         },
         'cors': {

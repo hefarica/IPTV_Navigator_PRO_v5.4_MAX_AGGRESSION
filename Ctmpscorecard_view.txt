@@ -1,0 +1,11 @@
+Hoja '00_OMEGA_SCORECARD' NO existe en el libro.
+
+Se crea al ejecutar 'Brain_OmegaScorecard' o 'PASO 2' del Dashboard.
+
+Antes de ejecutarla necesitas:
+  1. Que exista un archivo .m3u8 en disco
+  2. Que su ruta este en 18_CONFIG!C30 (Output_M3U8_Path)
+
+Valor actual de 18_CONFIG!C30 (Output_M3U8_Path):
+  C:\Users\HFRC\Downloads\APE_LAB_OUTPUT.m3u8
+  -> archivo NO existe en disco (o path vacio)

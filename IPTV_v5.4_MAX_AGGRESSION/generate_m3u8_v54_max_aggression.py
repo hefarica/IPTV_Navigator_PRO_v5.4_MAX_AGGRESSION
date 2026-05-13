@@ -402,14 +402,20 @@ def build_exthttp(cfg, ch_num, isp_level=1):
         "Keep-Alive": f"timeout={isp['X-ISP-Keepalive-Timeout']}, max={isp['X-ISP-Keepalive-Max']}",
         "DNT": "0",
         "Sec-GPC": "0",
-        "Upgrade-Insecure-Requests": "0",
-        "TE": "trailers",
+        # C8 (2026-05-11) — eliminados 6 headers toxicos confirmados via 8 tests A/B
+        # vs tivigo.cc/linovrex.cc el 2026-05-11. If-None-Match:* es el ASESINO confirmado
+        # (CDN devuelve 304+0B → okhttp "unexpected end of stream"). Range/TE/Priority/
+        # Upgrade-Insecure-Requests/If-Modified-Since son inertes vs ese CDN pero
+        # contaminan semantica HTTP y pueden detonar el bug vs otros providers.
+        # Ver memoria feedback_exthttp_traps.md trampa #9.
+        # "Upgrade-Insecure-Requests": "0",
+        # "TE": "trailers",
         "Cache-Control": "no-cache",
         "Pragma": "no-cache",
-        "Range": "bytes=0-",
-        "If-None-Match": "*",
-        "If-Modified-Since": "[HTTP_DATE]",
-        "Priority": "u=0, i",
+        # "Range": "bytes=0-",
+        # "If-None-Match": "*",
+        # "If-Modified-Since": "[HTTP_DATE]",
+        # "Priority": "u=0, i",
         "Origin": VPS_DOMAIN,
         "Referer": f"{VPS_DOMAIN}/",
         "X-Requested-With": "XMLHttpRequest",

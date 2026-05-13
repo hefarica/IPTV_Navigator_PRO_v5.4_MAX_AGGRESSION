@@ -1,0 +1,32 @@
+[Unit]
+Description=PRISMA ↔ Guardian Bridge — persist Guardian probe data to /dev/shm/guardian_player_state.json
+Documentation=file:///opt/prisma-guardian-bridge/README.md
+After=network.target ape-realtime-guardian.service
+Wants=ape-realtime-guardian.service
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 /opt/prisma-guardian-bridge/prisma_guardian_bridge.py \
+  --audit-log /var/log/ape-guardian/audit.jsonl \
+  --output /dev/shm/guardian_player_state.json \
+  --interval 1.0 \
+  --stale-after 30.0
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+# Hardening
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/dev/shm /var/log/ape-guardian
+ReadOnlyPaths=/opt/prisma-guardian-bridge
+
+# Resource limits — bridge is dirt cheap
+CPUQuota=5%
+MemoryMax=64M
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <!-- Background gradient -->
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1e293b"/>
+      <stop offset="100%" style="stop-color:#0f172a"/>
+    </linearGradient>
+    <linearGradient id="apeGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#38bdf8"/>
+      <stop offset="100%" style="stop-color:#0ea5e9"/>
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="256" height="256" rx="48" fill="url(#bgGrad)"/>
+  
+  <!-- Border glow -->
+  <rect x="4" y="4" width="248" height="248" rx="44" fill="none" stroke="#38bdf8" stroke-width="2" opacity="0.5"/>
+  
+  <!-- APE Gorilla Face - Stylized -->
+  <g transform="translate(128, 120)" filter="url(#glow)">
+    <!-- Head outline -->
+    <ellipse cx="0" cy="0" rx="65" ry="55" fill="#334155"/>
+    
+    <!-- Face -->
+    <ellipse cx="0" cy="5" rx="50" ry="42" fill="#475569"/>
+    
+    <!-- Eyes -->
+    <ellipse cx="-22" cy="-10" rx="14" ry="12" fill="#1e293b"/>
+    <ellipse cx="22" cy="-10" rx="14" ry="12" fill="#1e293b"/>
+    
+    <!-- Eye glow (cyan) -->
+    <ellipse cx="-22" cy="-10" rx="8" ry="7" fill="url(#apeGrad)"/>
+    <ellipse cx="22" cy="-10" rx="8" ry="7" fill="url(#apeGrad)"/>
+    
+    <!-- Eye highlights -->
+    <circle cx="-19" cy="-12" r="3" fill="white" opacity="0.8"/>
+    <circle cx="25" cy="-12" r="3" fill="white" opacity="0.8"/>
+    
+    <!-- Nose/Mouth area -->
+    <ellipse cx="0" cy="18" rx="22" ry="18" fill="#1e293b"/>
+    
+    <!-- Nostrils -->
+    <ellipse cx="-8" cy="14" rx="5" ry="4" fill="#0f172a"/>
+    <ellipse cx="8" cy="14" rx="5" ry="4" fill="#0f172a"/>
+    
+    <!-- Mouth line -->
+    <path d="M -12 28 Q 0 34 12 28" stroke="#64748b" stroke-width="2" fill="none"/>
+  </g>
+  
+  <!-- PRO badge -->
+  <g transform="translate(180, 200)">
+    <rect x="0" y="0" width="50" height="22" rx="6" fill="#38bdf8"/>
+    <text x="25" y="16" font-family="Arial, sans-serif" font-size="12" font-weight="bold" fill="#0f172a" text-anchor="middle">PRO</text>
+  </g>
+  
+  <!-- Signal waves (streaming indicator) -->
+  <g transform="translate(40, 180)" stroke="#38bdf8" stroke-width="2" fill="none" opacity="0.7">
+    <path d="M 0 20 Q 10 10 20 20"/>
+    <path d="M -5 28 Q 10 12 25 28"/>
+    <path d="M -10 36 Q 10 14 30 36"/>
+  </g>
+</svg>

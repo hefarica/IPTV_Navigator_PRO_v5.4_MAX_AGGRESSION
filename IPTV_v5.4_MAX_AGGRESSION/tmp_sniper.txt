@@ -1,0 +1,477 @@
+APE SNIPER MODE v2.0
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Guía de Integración
+Image Enhancement + 120fps + ISP Optimization
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Basado en la Guía Maestra: De Video Antiguo a Imagen Moderna
+APE IPTV Resolver
+Servidor 178.156.147.234
+TABLA DE CONTENIDOS
+1. Concepto SNIPER MODE
+3
+2. Los 6 Módulos
+4
+3. Correcciones de la Guía de Modernización de Video
+5
+4. Image Enhancement Engine — Detalle de Directivas
+7
+4.1 Frame Rate 120fps
+7
+4.2 Upscaling AI-SR Nivel Bajo + PSF
+8
+4.3 Sharpness 80% Óptimo
+8
+4.4 Contraste y HDR — Perfil Dinámico
+9
+4.5 Color — BT.2020 + Temperatura Cálida
+9
+4.6 Denoise — OFF en 4K
+10
+4.7 Directivas para el Televisor (HDMI/Display)
+10
+4.8 Deinterlacing BWDIF
+11
+4.9 Hardware Decode GPU-First
+11
+5. ISP Optimization (Módulo 6)
+12
+6. Integración en resolve_quality.php
+13
+7. Comportamiento por Estado
+14
+8. Seguridad Anti-509
+15
+Nota: Esta Tabla de Contenidos se genera mediante códigos de campo. Para asegurar la precisión de los números de página después de editar, haga clic derecho en la tabla y seleccione «Actualizar campo».
+1. Concepto SNIPER MODE
+De todos los canales que el resolver sirve, SOLO UNO está reproduciéndose en pantalla. SNIPER MODE detecta cuál es ese canal y le asigna el 100% de los recursos disponibles de procesamiento de imagen y red. Los demás canales reciben su perfil estándar de calidad sin ningún cambio drástico al resolver existente.
+Este enfoque de precisión elimina el desperdicio de recursos que ocurre cuando se aplican filtros de máxima calidad a todos los canales por igual, incluyendo los que nadie está viendo. El resultado es una imagen radicalmente superior en el canal que realmente importa, sin afectar la estabilidad del resto del sistema.
+La detección del canal activo se realiza mediante 
+filemtime(
+)
+ en complejidad 
+O(
+1), sin necesidad de bases de datos adicionales ni consultas costosas. El sistema opera de forma completamente atómica y transaccional.
+2. Los 6 Módulos
+SNIPER MODE v2.0 se compone de seis módulos especializados, cada uno con una función específica dentro de la cadena de optimización de imagen y red:
+Módulo
+Función
+Directivas Clave
+1. Fast Start Engine
+Primer segmento <200ms
+LL-HLS partials, DNS pre-resolve, TLS resume
+2. Active Channel Detector
+Detecta canal activo
+filemtime(
+) 
+O(
+1), sin DB
+3. Universal Error Handler
+Recovery 400-510
+Retry atómico sin degradar
+4. Atomic Recovery Engine
+Playlist M3U8 recovery
+LL-HLS + SNIPER metadata
+5. Image Enhancement Engine
+120fps + AI-SR + HDR + BT.2020
+~80 EXTHTTP + ~30 EXTVLCOPT
+6. Exclusive Resource Allocator
+ISP optimization brutal
+TCP 12x, DSCP 63, BBR, prefetch
+Tabla 1 — Los 6 módulos de SNIPER MODE v2.0
+3. Correcciones de la Guía de Modernización de Video
+A 
+continuación
+ se presentan todas las correcciones críticas aplicadas sobre la configuración original v2.0, basadas en la Guía Maestra de Modernización de Video. Cada cambio fue verificado contra pruebas empíricas y documentación técnica de fabricantes de GPU y televisores.
+Parámetro
+ANTES (v2.0 original)
+DESPUÉS (v2.0 corregido)
+Razón
+Sharpness
+150%
+80%
+Arriba de 80% la IA crea grumos y texturas falsas
+AI-SR Level
+aggressive, ai-aware, neural
+level-low, psf-aware
+Nivel bajo = óptimo. Medio crea piel arrugada. Alto = grumos
+Deinterlacing
+yadif=1
+bwdif
+Bwdif = híbrido Yadif + BBC w3fdif. Superior en textos, sonrisas
+Denoise (4K)
+enabled, light, temporal-spatial
+disabled
+OFF en 4K para preservar textura original
+Saturación
+105%
+65%
+Perfil vívido profesional (no sobresaturación)
+Contraste
+110%
+100%
+Neutro profesional (no boost artificial)
+Brillo
+N/A
+90
+Iguala impacto visual del contenido HDR
+Temperatura Color
+D65 (6500K neutro)
+WARM (Cálida)
+Tonos fríos «apagan» la colorimetría real
+TV Picture Mode
+FILMMAKER, CALIBRATED
+DYNAMIC
+Dinámico como base profesional para IPTV live
+ALLM
+true
+false
+Auto Low Latency MATA procesamiento de imagen
+Game Mode
+false (pero sin énfasis)
+false, FORCE-FULL-PROCESSING
+Game Mode desactiva local dimming, tone mapping, upscaling
+Upscaling
+ai-aware, neural
+tv-native-processor-first
+TV XR/Cognitive ~9/10 > upscaler externo ~7.75
+Audio Connection
+eARC true
+eARC MANDATORY, NO-TOSLINK
+Toslink = muerto, limita a 5.1, sin Atmos lossless
+HW Decode
+any, dxva2, d3d11va, nvdec
+nvdec, vaapi, dxva2, d3d11va
+Prioridad GPU: NVDEC > VAAPI > DXVA2 > D3D11VA
+Control Flow
+N/A
+statistics, 750ms-interval
+Stats cada 750ms ahorra 2 órdenes magnitud en compute
+Tabla 2 — Correcciones críticas aplicadas a la v2.0 original
+4. Image Enhancement Engine — Detalle de Directivas
+El Image Enhancement Engine es el corazón de SNIPER MODE v2.0. A continuación se detalla cada sub-sistema con sus directivas específicas y la justificación técnica de cada configuración.
+4.1 
+Frame
+ Rate 120fps
+La interpolación de movimiento a 120fps utiliza un sistema BFI-hybrid (Black 
+Frame
+ Insertion) que duplica los cuadros intermedios generados por algoritmo sin sacrificar la nitidez. Es CRÍTICO desactivar ALLM (Auto Low Latency Mode) y mantener Game Mode en FALSE, ya que ambos modos desactivan el procesamiento de imagen necesario para la interpolación de cuadros.
+El sistema de Control Flow genera estadísticas cada 750ms (intervalo óptimo validado), lo cual ahorra hasta 2 órdenes de magnitud en carga de computación comparado con intervalos más agresivos.
+Directivas clave:
+EXTVLCOPT:interpolation
+=
+blend:motion
+-interpolation=on:mi-mode=mci
+EXTVLCOPT:fps
+=
+120:deinterlace
+=
+bwdif:fps
+-denominator=1001
+EXTHTTP:{
+"X-Control-Flow":"statistics,750ms-interval"}
+EXTHTTP:{
+"X-Motion-Mode":"bfi-
+hybrid,no
+-
+allm,no
+-game-mode"}
+4.2 Upscaling AI-SR Nivel Bajo + PSF
+La función PSF (Point Spread Function) invierte el desenfoque característico de las fuentes originales, restaurando bordes que se perdieron en la compresión o transmisión. El nivel de AI-SR se establece en LOW (bajo) porque es el punto óptimo verificado: el nivel MEDIO genera arrugas artificiales en piel, y el nivel ALTO produce grumos visibles.
+La estrategia principal es delegar el upscaling al procesador nativo del televisor (Sony XR Processor calificado ~9/10), ya que los upscalers externos basados en software obtienen puntuaciones significativamente menores (~7.75).
+Directivas clave:
+EXTVLCOPT:ai-sr=level-
+low:psf
+-aware=
+true:edge
+-aware=true
+EXTVLCOPT:upscaling
+=tv-native-processor-first
+EXTHTTP:{
+"X-Upscaling-Policy":"delegate-
+tv,ai
+-sr-
+low,psf
+-on"}
+4.3 Sharpness 80% Óptimo
+El valor de 80% es el techo absoluto antes de que la inteligencia artificial comience a generar artefactos visuales. Por encima de este umbral, el algoritmo de sharpening crea texturas falsas («grumos»), halos en bordes de alto contraste, y amplifica el ruido de compresión existente en la señal.
+El sistema utiliza detección de bordes (edge-aware) para aplicar sharpness selectivamente, supresión de halos (halo suppression) para evitar anillos luminosos alrededor de objetos, y una puerta de ruido (noise gate) que desactiva el sharpening en áreas de bajo detalle.
+Directivas clave:
+EXTVLCOPT:sharpen
+=0.
+80:edge
+-aware=
+true:halo
+-suppress=
+true:noise
+-gate=on
+EXTHTTP:{
+"X-Sharpness":"
+80,edge
+-
+aware,halo
+-
+suppression,noise
+-gate"}
+4.4 Contraste y HDR — Perfil Dinámico
+El perfil Dinámico se configura con Brillo 90 (para igualar el impacto visual del contenido HDR), Contraste 100 (neutro profesional sin boost artificial) y Saturación 65 (perfil vívido profesional sin sobresaturación). Este equilibrio produce una imagen potente pero natural, ideal para contenido IPTV en vivo.
+El sistema soporta HDR10+, Dolby Vision y HLG con un pico de brillo de 10,000 nits, adaptándose automáticamente al tipo de metadatos HDR detectado en la fuente.
+Directivas clave:
+EXTVLCOPT:brightness
+=0.
+90:contrast
+=1.
+00:saturation
+=0.65
+EXTVLCOPT:hdr
+-mode=
+auto:hdr
+10plus=
+true:dolby
+-vision=
+true:hlg
+=true
+EXTHTTP:{
+"X-HDR":"peak-10000
+nits,hdr
+10
+plus,dv
+,
+hlg,dynamic
+-profile"}
+4.5 Color — BT.2020 + Temperatura Cálida
+El espacio de color BT.2020 con profundidad de 10-bit y transferencia PQ/HLG proporciona la mayor gamut de color disponible para contenido de consumo. A diferencia de D65 (6500K neutro), la temperatura de color WARM (cálida) evita que los tonos fríos «apaguen» la colorimetría real del contenido, produciendo una imagen más envolvente y natural.
+La saturación al 65% complementa este perfil, manteniendo colores ricos sin llegar a la sobresaturación artificial que caracteriza configuraciones «vivid» genéricas.
+Directivas clave:
+EXTVLCOPT:color
+-space=bt
+2020:bit
+-depth=
+10:transfer
+=pq/hlg
+EXTVLCOPT:color
+-temp=
+warm:saturation
+=0.65
+EXTHTTP:{
+"X-Color-Profile":"bt2020,10
+bit,warm
+,65-sat"}
+4.6 Denoise — OFF en 4K
+El filtro de reducción de ruido se desactiva completamente para contenido 4K con el fin de preservar la textura original que ya es nativamente detallada. Cualquier nivel de denoise en 4K elimina micro-detalles imperceptibles a simple vista pero que contribuyen a la percepción de calidad y profundidad de imagen.
+Sin embargo, se mantiene un fallback LIGHT para contenido SD y HD, donde el ruido de compresión es significativamente mayor. La eliminación de artefactos (artifact removal) permanece SIEMPRE activa independientemente de la resolución.
+Directivas clave:
+EXTVLCOPT:denoise
+=
+disabled:denoise
+-sd-hd=
+light:artifact
+-removal=always-on
+EXTHTTP:{
+"X-Denoise":"off-4
+k,light
+-
+sdhd,artifact
+-removal-always"}
+4.7 Directivas para el Televisor (HDMI/Display)
+Configuración obligatoria del televisor receptor para aprovechar al máximo SNIPER MODE:
+• Modo de imagen: DYNAMIC (base profesional para IPTV en vivo)
+• Game Mode: DESACTIVADO (desactiva local dimming, tone mapping, upscaling)
+• ALLM: DESACTIVADO (mata el procesamiento de imagen)
+• Upscaling: PROCESADOR NATIVO DEL TV (Sony XR/Cognitive ~9/10)
+• Conexión de audio: eARC OBLIGATORIO — NO usar TOSLINK
+• TOSLINK está muerto: limita a 5.1, sin Dolby Atmos lossless
+• Deep Color: 12-bit obligatorio por HDMI
+• HDMI 2.1 a 48Gbps (banda ancha completa para 4K@120 + HDR)
+4.8 Deinterlacing BWDIF
+BWDIF (Bob Weaver Deinterlacing Filter) es un filtro híbrido que combina las fortalezas de Yadif (detección de bordes) con el algoritmo w3fdif de la BBC (interpolación adaptativa de campos). Esta combinación produce resultados superiores en escenarios críticos como texto en movimiento (tickers de noticias), sonrisas (detalles faciales finos) y vegetación (patrones complejos de hojas).
+A diferencia de Yadif puro que puede dejar artefactos de peine en bordes diagonales de alto movimiento, BWDIF adapta su algoritmo de interpolación campo a campo, eligiendo la estrategia óptima según la complejidad detectada en cada región de la imagen.
+Directivas clave:
+EXTVLCOPT:deinterlace
+=
+bwdif:deinterlace
+-mode=bob-weaver-hybrid
+EXTHTTP:{
+"X-Deinterlace":"
+bwdif,yadif
++w3fdif-hybrid"}
+4.9 Hardware Decode GPU-First
+La GPU funciona como una «línea de ensamblaje» dedicada al decodificado de video, mientras que la CPU actúa como el «CEO» que dirige las operaciones generales del sistema. Esta analogía refleja por qué la descodificación por hardware de GPU es fundamental: libera a la CPU para gestionar la lógica de SNIPER MODE (detección de canales, asignación de recursos, etc.).
+El orden de prioridad de códecs por hardware es: NVDEC (NVIDIA, máximo rendimiento) > VAAPI (Linux/AMD/Intel) > DXVA2 (Windows legacy) > D3D11VA (Windows moderno). El sistema también incluye soporte para decodificación AV1 en hardware cuando está disponible.
+Directivas clave:
+EXTVLCOPT:hw
+-decode=
+nvdec,vaapi
+,dxva
+2,d
+3d11va
+EXTVLCOPT:av
+1-hw=
+true:codec
+-priority=gpu-first
+EXTHTTP:{
+"X-HW-Decode":"nvdec>vaapi>dxva2>d3d11
+va,av
+1-enabled"}
+5. ISP Optimization (Módulo 6)
+El Módulo 6 (Exclusive Resource Allocator) implementa una optimización brutal de los recursos de red del ISP. La siguiente tabla muestra cómo se asignan los parámetros según el estado de cada canal:
+Parámetro
+Canal Activo (STREAMING)
+Canal Reciente (RECENT)
+Canal Inactivo (IDLE)
+TCP Paralelo
+6, 8, 12 conexiones
+4, 6
+Normal
+Prefetch
+1500 segmentos
+750 segmentos
+Normal
+Buffer Max
+600000ms (10 min)
+360000ms (6 min)
+Normal
+DSCP
+63 (Expedited Forwarding)
+56 (Premium)
+Normal
+Congestion Control
+BBR
+BBR
+Cubic
+Max Retry
+999
+100
+Standard
+User-Agent
+NVIDIA Shield TV Pro
+NVIDIA Shield TV Pro
+NVIDIA Shield TV Pro
+Tabla 3 — Parámetros de ISP Optimization por estado del canal
+6. Integración en resolve_quality.php
+A 
+continuación
+ se detallan los pasos para integrar SNIPER MODE v2.0 en el archivo resolve_quality.php existente:
+Paso 1: Subir el archivo complementario
+Subir el archivo rq_sniper_mode_v2.php al directorio del resolver junto a resolve_quality.php.
+Paso 2: Añadir require_once
+Agregar las siguientes dos líneas al inicio de resolve_quality.php, después de los requires existentes:
+require_once __DIR_
+_ .
+ '/rq_sniper_mode_v2.php';
+use APE\SniperMode\v2\SniperIntegrator;
+Paso 3: Invocar la integración dentro de rq_enrich_channel_
+output(
+)
+Dentro de la función rq_enrich_channel_
+output(
+), añadir la llamada:
+$sniperResult = rq_sniper_
+integrate(
+$channelData, $qualityTier);
+Paso 4: Fusionar los arrays ext_http y ext_vlcopt
+Combinar las directivas SNIPER con las existentes:
+$
+extHttp  =
+ array_
+merge(
+$extHttp, $sniperResult['ext_http']);
+$extVlcOpt = array_
+merge(
+$extVlcOpt, $sniperResult['ext_vlcopt']);
+Paso 5: Añadir comandos JSON y cabeceras HTTP
+Agregar el comando SNIPER al JSON de salida y las cabeceras HTTP de control:
+$output["sniper_mode"] = $sniperResult["profile"];
+header(
+"X-Sniper-Profile: 
+" .
+ $sniperResult["profile"]);
+header(
+"X-Sniper-State: 
+" .
+ $sniperResult["state"]);
+Ejemplo de código de integración completo:
+// En resolve_quality.php — dentro de rq_enrich_channel_
+output(
+)
+$sniperResult = rq_sniper_
+integrate(
+$channelData, $qualityTier);
+if ($sniperResult['active']) {
+    $
+extHttp  =
+ array_
+merge(
+$
+extHttp,  $
+sniperResult["ext_http"]);
+    $extVlcOpt = array_
+merge(
+$extVlcOpt, $sniperResult["ext_vlcopt"]);
+    $output["sniper_mode"] = $sniperResult["profile"];
+    
+header(
+"X-Sniper-Profile: 
+" .
+ $sniperResult["profile"]);
+    
+header(
+"X-Sniper-State: STREAMING");
+}
+return $output;
+7. Comportamiento por Estado
+SNIPER MODE define tres estados de canal con perfiles de recursos e imagen claramente diferenciados:
+Estado
+Perfil
+Image Enhancement
+Prefetch
+Buffer
+TCP
+DSCP
+STREAMING
+P0-SNIPER-NUCLEAR
+✅ FULL (80% sharp, HDR, BT.2020)
+x3.0
+x2.0
+12 conexiones
+63
+RECENT
+Tier original + P2
+⚡ 60%
+x1.5
+x1.2
+6
+56
+IDLE
+Tier original
+❌ Ninguno
+x1.0
+x1.0
+Normal
+Normal
+Tabla 4 — Comportamiento de recursos e imagen por estado del canal
+8. Seguridad Anti-509
+SNIPER MODE v2.0 incorpora múltiples capas de seguridad diseñadas para evitar detección y bloqueos por parte del ISP (código de error HTTP 509 — Bandwidth Limit Exceeded):
+Sin curl_
+init(
+): 
+No se realiza ninguna conexión HTTP saliente desde el servidor. Todas las detecciones se basan en archivos locales.
+Sin probing activo: 
+No se envían paquetes de prueba ni solicitudes de verificación al ISP. El sistema es completamente pasivo.
+Solo 
+filemtime(
+): 
+La detección del canal activo utiliza únicamente 
+filemtime(
+) con complejidad 
+O(
+1). Cero consultas a base de datos, cero DNS lookups, cero overhead de red.
+Escrituras atómicas de archivos: 
+Todas las escrituras de estado utilizan file_put_
+contents(
+) con flag LOCK_EX y operaciones de 
+rename(
+) atómicas para evitar archivos corruptos por condiciones de carrera.
+Limpieza probabilística: 
+El cleanup de archivos temporales utiliza un algoritmo probabilístico que dispersa las operaciones de limpieza en el tiempo, evitando patrones predecibles que el ISP pueda identificar como tráfico anómalo.
+User-Agent consistente: 
+Todas las conexiones utilizan el User-Agent «NVIDIA Shield TV Pro» para emular tráfico legítimo de streaming, sin variaciones que puedan activar firmas de detección.

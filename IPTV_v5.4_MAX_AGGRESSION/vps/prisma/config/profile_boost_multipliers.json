@@ -1,0 +1,42 @@
+{
+  "_metadata": {"generated_by": "LAB exportPrismaConfig", "generated_ts": "2026-04-28T10:54:15Z", "source_sheet": "6_NIVEL_2_PROFILES"},
+  "global_boost_when_master_enabled": true,
+  "profiles": {
+    "P0": {
+      "prisma_boost_multiplier": 2,
+      "prisma_zap_grace_seconds": 30,
+      "prisma_floor_min_bandwidth_bps": 15000000,
+      "prisma_target_bandwidth_bps": 20000000
+    },
+    "P1": {
+      "prisma_boost_multiplier": 2,
+      "prisma_zap_grace_seconds": 30,
+      "prisma_floor_min_bandwidth_bps": 15000000,
+      "prisma_target_bandwidth_bps": 20000000
+    },
+    "P2": {
+      "prisma_boost_multiplier": 2,
+      "prisma_zap_grace_seconds": 30,
+      "prisma_floor_min_bandwidth_bps": 15000000,
+      "prisma_target_bandwidth_bps": 20000000
+    },
+    "P3": {
+      "prisma_boost_multiplier": 1.5,
+      "prisma_zap_grace_seconds": 30,
+      "prisma_floor_min_bandwidth_bps": 8000000,
+      "prisma_target_bandwidth_bps": 12000000
+    },
+    "P4": {
+      "prisma_boost_multiplier": 1.5,
+      "prisma_zap_grace_seconds": 30,
+      "prisma_floor_min_bandwidth_bps": 8000000,
+      "prisma_target_bandwidth_bps": 12000000
+    },
+    "P5": {
+      "prisma_boost_multiplier": 1.2,
+      "prisma_zap_grace_seconds": 30,
+      "prisma_floor_min_bandwidth_bps": 4000000,
+      "prisma_target_bandwidth_bps": 6000000
+    }
+  }
+}

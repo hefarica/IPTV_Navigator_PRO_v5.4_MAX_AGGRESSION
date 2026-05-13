@@ -1,0 +1,17 @@
+FIX BUTTONS - corrigiendo texto/color de los 12 shapes OMEGA
+  Eliminados 12 shapes previos sin texto
+  [ 1] * PANEL OMEGA v2 : MOTORES CUANTICOS (nu -> (header)
+  [ 2] MOTOR CUANTICO OMEGA   (LHS + GA + SA +  -> Brain_OmegaOptimizer
+  [ 3] SOLVER EVOLUTIVO UNIVERSAL   (GA  -  HTT -> Brain_FindUniversalCompat
+  [ 4] CEREBRO CONVERGENTE  AUTO   (itera knobs -> Brain_ConvergeSimple
+  [ 5] CEREBRO  INTERACTIVO (step-by-step)   Ms -> Brain_ConvergeStepByStep
+  [ 6] CONVERGER  +  EXPORTAR JSON   (auto + Br -> Brain_ConvergeAndExport
+  [ 7] AUDITORIA  10 GARANTIAS OMEGA   (god-tie -> Brain_OmegaScorecard
+  [ 8] EJECUTAR  TODAS LAS MACROS SAFE   (orque -> APE_RunAllSafe
+  [ 9] - SECUENCIA POST-CARGA (SNAPSHOT + PERFI -> (header)
+  [10] PASO 1  >>>  Converge + exporta JSON cal -> Brain_ConvergeAndExport
+  [11] PASO 2  >>>  Valida 10 Garantias OMEGA   -> Brain_OmegaScorecard
+  [12] PASO 3  >>>  Optimiza matematico Cuantic -> Brain_OmegaOptimizer
+
+Creados 12 botones con texto y color. Archivo guardado.
+Backup: C:\Users\HFRC\Downloads\APE_M3U8_LAB_v8_FIXED.BACKUP_20260417_234010_BUTTONS_OK.xlsm (3314139 bytes)

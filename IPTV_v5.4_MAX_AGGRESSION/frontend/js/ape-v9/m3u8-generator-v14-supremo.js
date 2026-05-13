@@ -586,9 +586,12 @@
             'Keep-Alive': 'timeout=30, max=100',
             'Cache-Control': 'no-cache',
             'Pragma': 'no-cache',
-            'Range': 'bytes=0-',
-            'If-None-Match': '*',
-            'If-Modified-Since': httpDate,
+            // C8 (2026-05-11) — eliminados Range/If-None-Match/If-Modified-Since/Priority.
+            // If-None-Match:* → 304+0B → okhttp "unexpected end of stream".
+            // Ver memoria feedback_exthttp_traps.md trampa #9.
+            // 'Range': 'bytes=0-',
+            // 'If-None-Match': '*',
+            // 'If-Modified-Since': httpDate,
             'Origin': origin,
             'Referer': referer,
             'X-Requested-With': 'XMLHttpRequest',
@@ -597,7 +600,7 @@
             'X-Quality-Preference': 'auto',
             'X-CDN-Bypass': 'false',
             'X-Edge-Location': 'auto',
-            'Priority': 'u=1, i',
+            // 'Priority': 'u=1, i',
             'X-Playback-Rate': '1.0',
             'X-Segment-Duration': '6',
             'X-Min-Buffer-Time': '20',

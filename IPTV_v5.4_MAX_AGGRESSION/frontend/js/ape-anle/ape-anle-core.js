@@ -104,6 +104,7 @@
 
         /**
          * Listen for custom events that signal channel loading.
+         * v1.1: Keeps polling alive to catch new servers, re-imports, and list changes.
          */
         _listenForChannelEvents() {
             // Listen for the app's custom events
@@ -115,24 +116,33 @@
                 }
             });
 
-            // Fallback: poll channelsMaster if app ref available
+            // Continuous poll: detect channelsMaster changes (new server, re-import, etc.)
             if (!this._pollingActive) {
                 this._pollingActive = true;
                 let lastCount = 0;
+                let lastProcessedHash = '';
+                let processingInFlight = false;
 
-                const pollInterval = setInterval(() => {
-                    if (!toggleEnabled || !_appRef) return;
-                    const master = _appRef.state?.channelsMaster;
-                    if (master && master.length > 0 && master.length !== lastCount) {
-                        lastCount = master.length;
-                        console.log(`🧬 [ANLE-Core] Detected ${master.length} channels in channelsMaster`);
-                        this.processChannelBatch(master);
-                        clearInterval(pollInterval); // Run once
-                    }
+                setInterval(() => {
+                    if (!toggleEnabled || processingInFlight) return;
+                    // Try app ref first, then window.app
+                    const app = _appRef || window.app;
+                    const master = app?.state?.channelsMaster;
+                    if (!master || master.length === 0) return;
+
+                    // Detect changes: new channels loaded, different count, or new server connected
+                    const currentHash = master.length + ':' + (master[0]?.name || '') + ':' + (master[master.length - 1]?.name || '');
+                    if (currentHash === lastProcessedHash) return;
+
+                    lastProcessedHash = currentHash;
+                    lastCount = master.length;
+                    processingInFlight = true;
+
+                    console.log(`🧬 [ANLE-Core] Detected ${master.length} channels — processing ALL`);
+                    this.processChannelBatch(master).finally(() => {
+                        processingInFlight = false;
+                    });
                 }, 5000);
-
-                // Stop polling after 2 minutes
-                setTimeout(() => clearInterval(pollInterval), 120000);
             }
         },
 
@@ -162,21 +172,35 @@
                 }
             }
 
-            // 2. Augment channels (sample for performance on very large lists)
-            const sampleSize = Math.min(channels.length, 10000);
-            const step = Math.max(1, Math.floor(channels.length / sampleSize));
+            // 2. Augment ALL channels — non-blocking microbatches of 500
+            //    Yields to event loop every batch to keep UI responsive
+            const BATCH_SIZE = 500;
+            let augmented = 0;
+            let skipped = 0;
 
-            for (let i = 0; i < channels.length; i += step) {
-                await this.augment(channels[i]);
+            for (let i = 0; i < channels.length; i += BATCH_SIZE) {
+                const slice = channels.slice(i, i + BATCH_SIZE);
+                for (const ch of slice) {
+                    // Skip already-augmented channels (deduplication)
+                    if (ch._anleProcessed) { skipped++; continue; }
+                    await this.augment(ch);
+                    ch._anleProcessed = true;
+                    augmented++;
+                }
+                // Yield to event loop every 500 channels
+                if (i + BATCH_SIZE < channels.length) {
+                    await new Promise(r => setTimeout(r, 0));
+                }
             }
 
-            // 3. Run learner
+            // 3. Run learner on ALL channels
             const learned = await ANLE.learner.observeBatch(channels);
             totalLearned += learned;
 
             const elapsed = (performance.now() - startTime).toFixed(1);
-            console.log(`🧬 [ANLE-Core] Batch processed: ${channels.length} channels, ` +
-                `${serverGroups.size} servers, ${learned} learned, ${elapsed}ms`);
+            console.log(`🧬 [ANLE-Core] Batch: ${channels.length} total, ${augmented} augmented, ` +
+                `${skipped} skipped (already done), ${serverGroups.size} servers, ` +
+                `${learned} learned, ${elapsed}ms`);
         },
 
         /**

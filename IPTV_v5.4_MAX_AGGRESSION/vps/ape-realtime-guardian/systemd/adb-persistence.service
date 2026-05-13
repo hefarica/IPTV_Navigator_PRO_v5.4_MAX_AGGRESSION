@@ -1,0 +1,33 @@
+[Unit]
+Description=ADB Persistence Daemon — Eternal device connections for APE Guardian
+Documentation=https://github.com/hefarica/IPTV_Navigator_PRO_v5.4_MAX_AGGRESSION
+After=network-online.target wireguard@wg0.service
+Wants=network-online.target
+Before=ape-realtime-guardian.service
+
+[Service]
+Type=simple
+User=root
+Group=root
+ExecStart=/opt/ape-realtime-guardian/.venv/bin/python /opt/ape-realtime-guardian/ape_realtime_guardian/adb_persistence.py
+Restart=always
+RestartSec=5
+StartLimitIntervalSec=300
+StartLimitBurst=20
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=adb-persistence
+
+# Security
+NoNewPrivileges=yes
+ProtectHome=yes
+PrivateTmp=yes
+
+# Resource limits — lightweight daemon
+MemoryMax=64M
+CPUQuota=5%
+
+[Install]
+WantedBy=multi-user.target

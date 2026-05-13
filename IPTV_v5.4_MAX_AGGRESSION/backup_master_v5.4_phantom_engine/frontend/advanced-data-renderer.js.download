@@ -1,0 +1,1443 @@
+/**
+ * advanced-data-renderer.js
+ * 
+ * ✅ Renderizador avanzado de datos para IPTV Navigator PRO v4.5.1
+ * 
+ * CARACTERÍSTICAS:
+ * - Renderiza TODA la data disponible en tabla HTML existente
+ * - Homologa y relaciona sinónimos automáticamente
+ * - NO modifica HTML ni CSS
+ * - Funciona con arrays dinámicos de campos
+ * - Selección personalizada de columnas
+ * - Scoring fundamental integrado (Calidad, Transmisión, Estabilidad)
+ */
+
+class AdvancedDataRenderer {
+  constructor(appInstance) {
+    this.app = appInstance;
+    this.allFields = this.buildAllFields();
+    this.selectedFields = this.getDefaultFields();
+    this.qualityWeights = {
+      resolution: 0.35,
+      bitrate: 0.25,
+      codec: 0.20,
+      frames: 0.10,
+      stability: 0.10
+    };
+
+    // ═══════════════════════════════════════════════════════════════════
+    // ✅ V4.8: ADVANCED FIELD SOURCE POLICY
+    // Supports two modes:
+    //   - "fixed": uses ONLY one specific source
+    //   - "priority": uses a fallback chain of sources
+    // ═══════════════════════════════════════════════════════════════════
+
+    this.fieldSourcePolicy = this.loadFieldSourcePolicy();
+
+    // Default policy (used when user hasn't customized)
+    this.DEFAULT_FIELD_SOURCE_POLICY = {
+      // Identity - always from server
+      id: { mode: "fixed", source: "base" },
+      name: { mode: "fixed", source: "base" },
+      group: { mode: "fixed", source: "base" },
+      logo: { mode: "priority", order: ["base", "external"] },
+
+      // Quality - tech (probe) has priority, then inference
+      resolution: { mode: "priority", order: ["tech", "heuristics", "base"] },
+      bitrate: { mode: "priority", order: ["tech", "heuristics", "base"] },
+      codec: { mode: "priority", order: ["tech", "heuristics", "base"] },
+      codecFamily: { mode: "fixed", source: "heuristics" },
+      fps: { mode: "fixed", source: "tech" },
+      frames: { mode: "fixed", source: "tech" },
+
+      // Geographic - external has best data
+      country: { mode: "priority", order: ["external", "heuristics", "base"] },
+      language: { mode: "priority", order: ["external", "heuristics", "base"] },
+      timezone: { mode: "fixed", source: "base" },
+
+      // Scoring - always from heuristics
+      qualityScore: { mode: "fixed", source: "heuristics" },
+      qualityTier: { mode: "fixed", source: "heuristics" },
+
+      // Infrastructure - always from server
+      serverUrl: { mode: "fixed", source: "base" },
+      url: { mode: "fixed", source: "base" },
+      port: { mode: "fixed", source: "base" },
+      portHttps: { mode: "fixed", source: "base" },
+      portRtmp: { mode: "fixed", source: "base" },
+      protocol: { mode: "fixed", source: "base" },
+      serverName: { mode: "fixed", source: "base" },
+
+      // Metadata
+      rawNum: { mode: "fixed", source: "base" },
+      'raw.num': { mode: "fixed", source: "base" },
+      structure: { mode: "fixed", source: "base" },
+
+      // External enrichment - IPTV-org, TDT, etc.
+      website: { mode: "fixed", source: "external" },
+      year: { mode: "fixed", source: "external" },
+      year_launched: { mode: "fixed", source: "external" },
+      network: { mode: "fixed", source: "external" },
+      owner: { mode: "fixed", source: "external" },
+      categories: { mode: "fixed", source: "external" },
+      tvArchive: { mode: "priority", order: ["base", "external"] },
+      epgChannelId: { mode: "priority", order: ["external", "base"] },
+      is_nsfw: { mode: "priority", order: ["external", "heuristics", "base"] }
+    };
+  }
+
+  // ═══════════════════════════════════════════════════════════════════
+  // V4.8: LOAD / SAVE POLICY
+  // ═══════════════════════════════════════════════════════════════════
+
+  loadFieldSourcePolicy() {
+    try {
+      const saved = localStorage.getItem('iptv_fieldSourcePolicy');
+      return saved ? JSON.parse(saved) : {};
+    } catch (e) {
+      console.warn('⚠️ Error loading fieldSourcePolicy:', e);
+      return {};
+    }
+  }
+
+  saveFieldSourcePolicy() {
+    try {
+      localStorage.setItem('iptv_fieldSourcePolicy', JSON.stringify(this.fieldSourcePolicy));
+    } catch (e) {
+      console.warn('⚠️ Error saving fieldSourcePolicy:', e);
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════════════
+  // V4.8: SET / GET POLICY FOR A FIELD
+  // ═══════════════════════════════════════════════════════════════════
+
+  /**
+   * Set source policy for a field
+   * @param {string} fieldKey - Field name
+   * @param {string} source - 'auto', 'base', 'server', 'heuristics', 'tech', 'probe', 'external'
+   */
+  setFieldSource(fieldKey, source) {
+    // Normalize source aliases
+    const sourceMap = {
+      'server': 'base',
+      'probe': 'tech'
+    };
+    const normalizedSource = sourceMap[source] || source;
+
+    if (source === 'auto') {
+      // Remove custom override, revert to default
+      delete this.fieldSourcePolicy[fieldKey];
+    } else {
+      // Set fixed mode with specific source
+      this.fieldSourcePolicy[fieldKey] = { mode: "fixed", source: normalizedSource };
+    }
+
+    this.saveFieldSourcePolicy();
+    console.log(`🔧 Field "${fieldKey}" source set to: ${normalizedSource}`);
+
+    // Sync with global FieldSourcePolicy if available
+    if (window.FieldSourcePolicy && typeof window.FieldSourcePolicy.setPolicy === 'function') {
+      const policyUpdate = {};
+      policyUpdate[fieldKey] = [normalizedSource];
+      window.FieldSourcePolicy.setPolicy(policyUpdate);
+    }
+
+    // Trigger table refresh if app is available
+    if (this.app && typeof this.app.applyFilters === 'function') {
+      this.app.applyFilters();
+    }
+  }
+
+  /**
+   * Get current source for a field
+   * @param {string} fieldKey - Field name
+   * @returns {string} Current source or 'auto'
+   */
+  getFieldSource(fieldKey) {
+    const custom = this.fieldSourcePolicy[fieldKey];
+    if (custom && custom.mode === 'fixed') {
+      return custom.source;
+    }
+    return 'auto';
+  }
+
+  /**
+   * Get the effective policy for a field (custom or default)
+   * @param {string} fieldKey - Field name
+   * @returns {Object|null} Policy object or null
+   */
+  getEffectivePolicy(fieldKey) {
+    return this.fieldSourcePolicy[fieldKey] || this.DEFAULT_FIELD_SOURCE_POLICY[fieldKey] || null;
+  }
+
+  // ═══════════════════════════════════════════════════════════════════
+  // V4.8: RESOLVE FIELD VALUE USING POLICY
+  // ═══════════════════════════════════════════════════════════════════
+
+  /**
+   * Get a value from a specific source layer
+   * Supports nested paths like 'external.probe-rosa' or 'external.iptv-org'
+   * @param {Object} channel - Channel object with base, heuristics, tech, external layers
+   * @param {string} key - Field key to retrieve
+   * @param {string} source - Source layer name or path (e.g., 'base', 'external.probe-rosa')
+   * @returns {*} Value or null
+   */
+  getValueFromSource(channel, key, source) {
+    if (!channel) return null;
+
+    // Handle nested paths like 'external.probe-rosa'
+    if (source.includes('.')) {
+      const parts = source.split('.');
+      let data = channel;
+      for (const part of parts) {
+        data = data?.[part];
+        if (data === undefined || data === null) return null;
+      }
+      return data?.[key] ?? null;
+    }
+
+    // Standard source resolution
+    switch (source) {
+      case 'base':
+      case 'server':
+        return channel.base?.[key] ?? channel.raw?.[key] ?? channel[key] ?? null;
+
+      case 'heuristics':
+        return channel.heuristics?.[key] ?? null;
+
+      case 'tech':
+      case 'probe':
+        // Special mappings for tech layer
+        if (key === 'resolution') {
+          const tech = channel.tech || {};
+          return tech.resolutionLabel || (tech.width && tech.height ? `${tech.width}x${tech.height}` : null);
+        }
+        if (key === 'bitrate') return channel.tech?.bitrateKbps ?? channel.tech?.bitrate ?? null;
+        if (key === 'fps' || key === 'frames') return channel.tech?.fps ?? channel.tech?.frameRate ?? null;
+        return channel.tech?.[key] ?? null;
+
+      case 'external':
+        return channel.external?.[key] ?? null;
+
+      case 'raw':
+        return channel.raw?.[key] ?? null;
+
+      case 'quality':
+        // For probe-rosa results stored in channel.quality
+        return channel.quality?.[key] ?? null;
+
+      default:
+        return null;
+    }
+  }
+
+  /**
+   * Resolve a field value using the policy system
+   * Supports modes: fixed, priority, best, fallback
+   * @param {Object} channel - Channel object
+   * @param {string} key - Field key
+   * @returns {*} Resolved value
+   */
+  resolveField(channel, key) {
+    const policy = this.getEffectivePolicy(key);
+
+    if (!policy) {
+      // No policy - use default hierarchy: tech > base > heuristics > external
+      const defaultOrder = ['tech', 'base', 'heuristics', 'external'];
+      for (const source of defaultOrder) {
+        const value = this.getValueFromSource(channel, key, source);
+        if (value !== undefined && value !== null && value !== '') {
+          return value;
+        }
+      }
+      return null;
+    }
+
+    // Get sources from policy
+    const sources = policy.order || (policy.source ? [policy.source] : []);
+
+    // --- FIXED MODE ---
+    if (policy.mode === 'fixed' && policy.source) {
+      return this.getValueFromSource(channel, key, policy.source);
+    }
+
+    // --- PRIORITY MODE (first valid value) ---
+    if (policy.mode === 'priority' && Array.isArray(policy.order)) {
+      for (const source of policy.order) {
+        const value = this.getValueFromSource(channel, key, source);
+        if (value !== undefined && value !== null && value !== '') {
+          return value;
+        }
+      }
+      return null;
+    }
+
+    // --- FALLBACK MODE (same as priority - first non-empty value) ---
+    if (policy.mode === 'fallback' && Array.isArray(policy.order)) {
+      for (const source of policy.order) {
+        const value = this.getValueFromSource(channel, key, source);
+        if (value !== undefined && value !== null && value !== '') {
+          return value;
+        }
+      }
+      return null;
+    }
+
+    // --- BEST MODE (selects highest numeric value) ---
+    if (policy.mode === 'best' && Array.isArray(policy.order)) {
+      const values = [];
+      for (const source of policy.order) {
+        const value = this.getValueFromSource(channel, key, source);
+        if (value !== undefined && value !== null && value !== '') {
+          const numValue = typeof value === 'number' ? value : parseFloat(value);
+          if (!isNaN(numValue)) {
+            values.push({ source, value: numValue, original: value });
+          }
+        }
+      }
+      if (values.length > 0) {
+        // Return the highest numeric value
+        values.sort((a, b) => b.value - a.value);
+        return values[0].original;
+      }
+      return null;
+    }
+
+    return null;
+  }
+
+  // ✅ V4.7: Resolve value from a specific source layer
+  // COMPREHENSIVE mapping for ALL 49+ fields across 4 sources
+  resolveFromSource(channel, fieldKey, source) {
+    if (!channel) return null;
+
+    const base = channel.base || {};
+    const heuristics = channel.heuristics || {};
+    const tech = channel.tech || {};
+    const external = channel.external || {};
+    const raw = base.raw || channel.raw || {};
+    const meta = channel.meta || {};
+
+    // ═══════════════════════════════════════════════════════════════════
+    // SOURCE-SPECIFIC EXTRACTION LOGIC
+    // ═══════════════════════════════════════════════════════════════════
+
+    // SERVER (base layer) - Datos directos del servidor API Xtream
+    if (source === 'server') {
+      const serverMappings = {
+        // Identidad Nuclear
+        'id': raw.stream_id || base.id || channel.id,
+        'name': base.name || raw.name || channel.name,
+        'tvgId': raw.tvg_id || raw.epg_channel_id,
+        'tvgName': raw.tvg_name || raw.tvg_name,
+        'raw.num': raw.num,
+
+        // Calidad Multimedia
+        'resolution': (() => {
+          const w = raw.video_width || channel.video_width;
+          const h = raw.video_height || channel.video_height;
+          if (w && h && Number(w) > 0 && Number(h) > 0) return `${w}x${h}`;
+          return base.resolution || null;
+        })(),
+        'bitrate': raw.bitrate || base.bitrate,
+        'averageBitrate': raw.averageBitrate || base.averageBitrate,
+        'bitrateTierCode': base.bitrateTierCode,
+        'codec': raw.video_codec || base.codec,
+        'frames': raw.fps || raw.frame_rate || base.fps,
+        'raw.video_width': raw.video_width,
+        'raw.video_height': raw.video_height,
+        'raw.aspect_ratio': raw.aspect_ratio,
+        'raw.audio_codec': raw.audio_codec,
+        'raw.audio_channels': raw.audio_channels,
+
+        // Categorización
+        'group': base.group || raw.category_name || raw.group_title,
+        'type': raw.stream_type || base.type,
+        'is_adult': raw.is_adult,
+        'rating': raw.rating,
+        'raw.plot': raw.plot,
+        'raw.cast': raw.cast,
+        'raw.director': raw.director,
+
+        // Infraestructura
+        'serverName': channel.serverName,
+        'url': base.url || raw.direct_source,
+        'raw.container_extension': raw.container_extension,
+        'raw.direct_source': raw.direct_source,
+        'provider': channel.serverName,
+        'raw.host': raw.host || channel.host,
+        'raw.updated_at': raw.updated_at,
+        'added': raw.added || raw.created_at,
+        'raw.user_agent': raw.user_agent,
+
+        // Geográfico
+        'country': base.country,
+        'language': base.language,
+        'logo': raw.stream_icon || raw.cover || base.logo,
+        'website': raw.website,
+        'year_launched': raw.year_launched,
+        'is_nsfw': raw.is_nsfw,
+
+        // Legacy/Extras
+        'tvarchive': raw.tv_archive || raw.catchup,
+        'epg_url': raw.epg_url,
+        'raw.tv_archive_duration': raw.tv_archive_duration
+      };
+      return serverMappings[fieldKey] !== undefined ? serverMappings[fieldKey] : null;
+    }
+
+    // HEURISTICS layer - Datos inferidos por reglas y patrones
+    if (source === 'heuristics') {
+      const heuristicMappings = {
+        // Identidad
+        'id': null, // No se infiere
+        'name': heuristics.name,
+        'tvgId': heuristics.tvgId,
+        'tvgName': heuristics.tvgName,
+        'raw.num': null,
+
+        // Calidad - Inferida del nombre/grupo
+        'resolution': heuristics.resolution,
+        'bitrate': heuristics.bitrate,
+        'averageBitrate': heuristics.averageBitrate,
+        'bitrateTierCode': heuristics.bitrateTierCode,
+        'codec': heuristics.codec,
+        'frames': heuristics.fps || heuristics.frames,
+        'raw.video_width': heuristics.width,
+        'raw.video_height': heuristics.height,
+        'raw.aspect_ratio': null,
+        'raw.audio_codec': null,
+        'raw.audio_channels': null,
+
+        // Categorización
+        'group': heuristics.group,
+        'type': heuristics.type || heuristics.streamType,
+        'is_adult': heuristics.is_adult || heuristics.isAdult,
+        'rating': null,
+        'raw.plot': null,
+        'raw.cast': null,
+        'raw.director': null,
+
+        // Infraestructura - No se infiere
+        'serverName': null,
+        'url': null,
+        'raw.container_extension': heuristics.format,
+        'raw.direct_source': null,
+        'provider': null,
+        'raw.host': null,
+        'raw.updated_at': null,
+        'added': null,
+        'raw.user_agent': null,
+
+        // Geográfico - Principal fortaleza de heurísticas
+        'country': heuristics.country,
+        'language': heuristics.language,
+        'logo': null,
+        'website': null,
+        'year_launched': null,
+        'is_nsfw': heuristics.is_nsfw || heuristics.isNSFW,
+
+        // Clasificación inferida
+        'isSports': heuristics.isSports,
+        'isNews': heuristics.isNews,
+        'isMovieChannel': heuristics.isMovieChannel,
+        'isMusicChannel': heuristics.isMusicChannel,
+        'isKidsChannel': heuristics.isKidsChannel,
+
+        // ✅ V4.10: Score Live y Tier desde heurísticas
+        'scoreLive': heuristics.scoreLive,
+        'qualityTier': heuristics.qualityTier,
+        'qualityScore': heuristics.qualityScore,
+
+        // Legacy
+        'tvarchive': null,
+        'epg_url': null,
+        'raw.tv_archive_duration': null
+      };
+      return heuristicMappings[fieldKey] !== undefined ? heuristicMappings[fieldKey] : null;
+    }
+
+    // PROBE (tech layer) - Datos obtenidos de análisis técnico del stream
+    if (source === 'probe') {
+      const probeMappings = {
+        // Identidad - No viene del probe
+        'id': null,
+        'name': null,
+        'tvgId': null,
+        'tvgName': null,
+        'raw.num': null,
+
+        // Calidad - Principal fortaleza del probe
+        'resolution': tech.resolutionLabel || (tech.width && tech.height ? `${tech.width}x${tech.height}` : null),
+        'bitrate': tech.bitrateKbps || tech.bitrate,
+        'averageBitrate': tech.averageBitrate,
+        'bitrateTierCode': tech.bitrateTier,
+        'codec': tech.codec || tech.videoCodec,
+        'frames': tech.fps || tech.frameRate,
+        'raw.video_width': tech.width,
+        'raw.video_height': tech.height,
+        'raw.aspect_ratio': tech.aspectRatio,
+        'raw.audio_codec': tech.audioCodec,
+        'raw.audio_channels': tech.audioChannels,
+
+        // Categorización - No viene del probe
+        'group': null,
+        'type': null,
+        'is_adult': null,
+        'rating': null,
+        'raw.plot': null,
+        'raw.cast': null,
+        'raw.director': null,
+
+        // Infraestructura - Del probe
+        'serverName': null,
+        'url': tech.url || tech.analyzedUrl,
+        'raw.container_extension': tech.format || tech.container,
+        'raw.direct_source': null,
+        'provider': null,
+        'raw.host': null,
+        'raw.updated_at': null,
+        'added': null,
+        'raw.user_agent': null,
+
+        // Geográfico - No viene del probe
+        'country': null,
+        'language': null,
+        'logo': null,
+        'website': null,
+        'year_launched': null,
+        'is_nsfw': null,
+
+        // Métricas técnicas exclusivas del probe
+        'latency': tech.latency,
+        'streamHealth': tech.health,
+        'probeTimestamp': tech.timestamp,
+        'probed': meta.probed ? 'Sí' : 'No',
+
+        // Legacy
+        'tvarchive': null,
+        'epg_url': null,
+        'raw.tv_archive_duration': null
+      };
+      return probeMappings[fieldKey] !== undefined ? probeMappings[fieldKey] : null;
+    }
+
+    // EXTERNAL layer - Datos de IPTV-org o bases de datos externas
+    if (source === 'external') {
+      const externalMappings = {
+        // Identidad
+        'id': external.id || external.tvg_id,
+        'name': external.name,
+        'tvgId': external.tvg_id || external.id,
+        'tvgName': external.name,
+        'raw.num': null,
+
+        // Calidad - Típicamente no está en fuentes externas
+        'resolution': external.resolution,
+        'bitrate': null,
+        'averageBitrate': null,
+        'bitrateTierCode': null,
+        'codec': null,
+        'frames': null,
+        'raw.video_width': null,
+        'raw.video_height': null,
+        'raw.aspect_ratio': null,
+        'raw.audio_codec': null,
+        'raw.audio_channels': null,
+
+        // Categorización
+        'group': external.categories ? external.categories.join(', ') : external.group,
+        'type': external.broadcast_type,
+        'is_adult': external.is_nsfw,
+        'rating': null,
+        'raw.plot': null,
+        'raw.cast': null,
+        'raw.director': null,
+
+        // Infraestructura
+        'serverName': null,
+        'url': external.url,
+        'raw.container_extension': null,
+        'raw.direct_source': null,
+        'provider': external.network || external.owner,
+        'raw.host': null,
+        'raw.updated_at': null,
+        'added': null,
+        'raw.user_agent': null,
+
+        // Geográfico - Principal fortaleza de datos externos
+        'country': external.country,
+        'language': external.language || (external.languages && external.languages[0]),
+        'logo': external.logo,
+        'website': external.website,
+        'year_launched': external.launched,
+        'is_nsfw': external.is_nsfw,
+
+        // Legacy
+        'tvarchive': null,
+        'epg_url': null,
+        'raw.tv_archive_duration': null
+      };
+      return externalMappings[fieldKey] !== undefined ? externalMappings[fieldKey] : null;
+    }
+
+    // AUTO or unknown source - return null to fall back to default hierarchy
+    return null;
+  }
+
+  /**
+   * Construye el mapeo COMPLETO de todos los campos disponibles
+   * Homologa sinónimos y relaciona campos equivalentes
+   */
+  buildAllFields() {
+    return {
+      // IDENTIDAD NUCLEAR
+      'id': {
+        category: 'Identidad Nuclear',
+        label: 'ID Único',
+        synonyms: ['stream_id', 'streamid', 'epg_channel_id', 'channel_id', 'hash', 'raw.stream_id', 'raw.custom_sid'],
+        type: 'string',
+        importance: 'critical',
+        group: 1
+      },
+      'name': {
+        category: 'Identidad Nuclear',
+        label: 'Nombre del Canal',
+        synonyms: ['title', 'stream_name', 'channel_name'],
+        type: 'string',
+        importance: 'critical',
+        group: 1
+      },
+      'tvgId': {
+        category: 'Identidad Nuclear',
+        label: 'TVG ID (EPG)',
+        synonyms: ['tvg-id', 'tvg_id', 'epg_id', 'xmltv_id', 'channel_id_epg'],
+        type: 'string',
+        importance: 'high',
+        group: 1
+      },
+      'tvgName': {
+        category: 'Identidad Nuclear',
+        label: 'TVG Nombre',
+        synonyms: ['tvg-name', 'tvg_name', 'epg_name', 'xmltv_name'],
+        type: 'string',
+        importance: 'high',
+        group: 1
+      },
+      'raw.num': {
+        category: 'Identidad Nuclear',
+        label: 'Número/Posición',
+        synonyms: ['num', 'number', 'position', 'order'],
+        type: 'number',
+        importance: 'medium',
+        group: 1
+      },
+
+      // CALIDAD DE IMAGEN Y SONIDO
+      'resolution': {
+        category: 'Calidad Multimedia',
+        label: 'Resolución',
+        synonyms: ['res', 'quality', 'video_quality', 'definition', 'video_res', 'display_height', 'raw.video_height'],
+        type: 'select',
+        options: ['8K', '4K', '1440p', '1080p', '720p', '480p', 'SD'],
+        importance: 'critical',
+        group: 2,
+        qualityScore: true
+      },
+      'bitrate': {
+        category: 'Calidad Multimedia',
+        label: 'Bitrate (kbps)',
+        synonyms: ['br', 'bps', 'bitrate_kbps', 'bit_rate', 'bitrate_kb', 'kbps'],
+        type: 'number',
+        importance: 'critical',
+        group: 2,
+        qualityScore: true
+      },
+      'averageBitrate': {
+        category: 'Calidad Multimedia',
+        label: 'Bitrate Promedio',
+        synonyms: ['avgBitrate', 'avg_bitrate', 'average_bitrate', 'mean_bitrate'],
+        type: 'number',
+        importance: 'high',
+        group: 2
+      },
+      'bitrateTierCode': {
+        category: 'Calidad Multimedia',
+        label: 'Tier Bitrate',
+        synonyms: ['tier', 'quality_tier'],
+        type: 'select',
+        options: ['ULTRA', 'HIGH', 'MEDIUM', 'LOW'],
+        importance: 'high',
+        group: 2
+      },
+      'codec': {
+        category: 'Calidad Multimedia',
+        label: 'Codec Vídeo',
+        synonyms: ['video_codec', 'stream_codec', 'vcodec'],
+        type: 'select',
+        options: ['HEVC', 'H264', 'AV1', 'VP9'],
+        importance: 'critical',
+        group: 2,
+        qualityScore: true
+      },
+      'frames': {
+        category: 'Calidad Multimedia',
+        label: 'FPS',
+        synonyms: ['frame_rate', 'framerate', 'fps', 'video_fps', 'vfr'],
+        type: 'number',
+        importance: 'high',
+        group: 2,
+        qualityScore: true
+      },
+      'raw.video_width': {
+        category: 'Calidad Multimedia',
+        label: 'Ancho Vídeo',
+        synonyms: ['video_width', 'width', 'w'],
+        type: 'number',
+        importance: 'medium',
+        group: 2
+      },
+      'raw.aspect_ratio': {
+        category: 'Calidad Multimedia',
+        label: 'Relación Aspecto',
+        synonyms: ['aspect_ratio', 'aspect'],
+        type: 'string',
+        importance: 'medium',
+        group: 2
+      },
+      'raw.audio_codec': {
+        category: 'Calidad Multimedia',
+        label: 'Codec Audio',
+        synonyms: ['audio_codec', 'acodec'],
+        type: 'string',
+        importance: 'medium',
+        group: 2
+      },
+      'raw.audio_channels': {
+        category: 'Calidad Multimedia',
+        label: 'Canales Audio',
+        synonyms: ['audio_channels', 'channels'],
+        type: 'number',
+        importance: 'medium',
+        group: 2
+      },
+
+      // CATEGORIZACIÓN Y CONTENIDO
+      'group': {
+        category: 'Categorización',
+        label: 'Grupo/Categoría',
+        synonyms: ['category', 'category_id', 'category_name', 'cat_name', 'group-title'],
+        type: 'string',
+        importance: 'critical',
+        group: 3
+      },
+      'type': {
+        category: 'Categorización',
+        label: 'Tipo Contenido',
+        synonyms: ['stream_type', 'content_type', 'streamtype', 'category_type', 'vod_type', 'live_type'],
+        type: 'select',
+        options: ['live', 'movie', 'series'],
+        importance: 'high',
+        group: 3
+      },
+      'is_adult': {
+        category: 'Categorización',
+        label: 'Contenido Adulto',
+        synonyms: ['adult', 'adult_only', 'xxx', 'nsfw', 'isAdult', 'category_adult', 'adult_flag'],
+        type: 'boolean',
+        importance: 'medium',
+        group: 3
+      },
+      'rating': {
+        category: 'Categorización',
+        label: 'Rating',
+        synonyms: ['rank', 'score'],
+        type: 'string',
+        importance: 'medium',
+        group: 3
+      },
+      'raw.plot': {
+        category: 'Categorización',
+        label: 'Trama/Descripción',
+        synonyms: ['plot', 'description', 'synopsis'],
+        type: 'text',
+        importance: 'low',
+        group: 3
+      },
+      'raw.cast': {
+        category: 'Categorización',
+        label: 'Elenco',
+        synonyms: ['cast', 'actors'],
+        type: 'text',
+        importance: 'low',
+        group: 3
+      },
+      'raw.director': {
+        category: 'Categorización',
+        label: 'Director',
+        synonyms: ['director'],
+        type: 'string',
+        importance: 'low',
+        group: 3
+      },
+
+      // INFRAESTRUCTURA Y ORIGEN
+      'serverName': {
+        category: 'Infraestructura',
+        label: 'Servidor',
+        synonyms: ['serverName'],
+        type: 'string',
+        importance: 'high',
+        group: 4
+      },
+      'url': {
+        category: 'Infraestructura',
+        label: 'URL Stream',
+        synonyms: ['stream_url', 'play_url', 'link', 'stream_link'],
+        type: 'url',
+        importance: 'critical',
+        group: 4
+      },
+      'raw.container_extension': {
+        category: 'Infraestructura',
+        label: 'Formato',
+        synonyms: ['container_extension', 'extension', 'ext'],
+        type: 'string',
+        importance: 'medium',
+        group: 4
+      },
+      'raw.direct_source': {
+        category: 'Infraestructura',
+        label: 'Fuente Directa',
+        synonyms: ['direct_source', 'source', 'origin_url'],
+        type: 'url',
+        importance: 'medium',
+        group: 4
+      },
+      'provider': {
+        category: 'Infraestructura',
+        label: 'Proveedor',
+        synonyms: ['provider', 'origin', 'source_name', 'origin_name', 'server_name', 'portal_name'],
+        type: 'string',
+        importance: 'high',
+        group: 4
+      },
+      'raw.host': {
+        category: 'Infraestructura',
+        label: 'Host',
+        synonyms: ['host', 'hostname', 'domain'],
+        type: 'string',
+        importance: 'medium',
+        group: 4
+      },
+      'raw.updated_at': {
+        category: 'Infraestructura',
+        label: 'Actualizado',
+        synonyms: ['updated_at', 'updated', 'last_updated'],
+        type: 'date',
+        importance: 'medium',
+        group: 4
+      },
+      'added': {
+        category: 'Infraestructura',
+        label: 'Agregado',
+        synonyms: ['added', 'created_at', 'timestamp', 'date_added'],
+        type: 'date',
+        importance: 'medium',
+        group: 4
+      },
+      'raw.user_agent': {
+        category: 'Infraestructura',
+        label: 'User-Agent',
+        synonyms: ['user_agent', 'user-agent', 'ua'],
+        type: 'string',
+        importance: 'low',
+        group: 4
+      },
+
+      // GEOGRÁFICO Y CULTURAL
+      'country': {
+        category: 'Geográfico/Cultural',
+        label: 'País',
+        synonyms: ['country', 'cc', 'iso_code', 'country_code', 'tvg-country', 'tvg_country', 'nation'],
+        type: 'string',
+        importance: 'medium',
+        group: 5
+      },
+      'language': {
+        category: 'Geográfico/Cultural',
+        label: 'Idioma',
+        synonyms: ['language', 'lang', 'languages', 'audio_lang', 'tvg-language', 'tvg_language', 'audioLanguage'],
+        type: 'string',
+        importance: 'medium',
+        group: 5
+      },
+      'logo': {
+        category: 'Geográfico/Cultural',
+        label: 'Logo',
+        synonyms: ['stream_icon', 'tvg_logo', 'tvg-logo', 'logo', 'icon', 'cover', 'poster', 'image', 'channel_logo'],
+        type: 'image',
+        importance: 'medium',
+        group: 5
+      },
+      'website': {
+        category: 'Geográfico/Cultural',
+        label: 'Sitio Web',
+        synonyms: ['website', 'site', 'url_web'],
+        type: 'url',
+        importance: 'low',
+        group: 5
+      },
+      'year_launched': {
+        category: 'Geográfico/Cultural',
+        label: 'Año Lanzamiento',
+        synonyms: ['year_launched', 'founded', 'launched'],
+        type: 'number',
+        importance: 'low',
+        group: 5
+      },
+      'is_nsfw': {
+        category: 'Geográfico/Cultural',
+        label: 'NSFW',
+        synonyms: ['is_nsfw', 'porn'],
+        type: 'boolean',
+        importance: 'low',
+        group: 5
+      },
+
+      // LEGACY
+      'tvarchive': {
+        category: 'Legacy/Extras',
+        label: 'Archivo TV',
+        synonyms: ['tvarchive', 'tv_archive', 'archive', 'has_archive', 'catchup'],
+        type: 'boolean',
+        importance: 'medium',
+        group: 6
+      },
+      'epg_url': {
+        category: 'Legacy/Extras',
+        label: 'URL EPG',
+        synonyms: ['epg_url', 'tvg-url', 'x-tvg-url'],
+        type: 'url',
+        importance: 'medium',
+        group: 6
+      },
+      'raw.tv_archive_duration': {
+        category: 'Legacy/Extras',
+        label: 'Duración Archivo',
+        synonyms: ['tv_archive_duration', 'catchup_hours', 'catchup_duration', 'archive_duration', 'catchupDays'],
+        type: 'number',
+        importance: 'low',
+        group: 6
+      },
+
+      // ENRIQUECIMIENTO DERIVADO (SCORING FUNDAMENTAL)
+      'qualityScore': {
+        category: 'Scoring Fundamental',
+        label: 'Puntuación Calidad (0-100)',
+        synonyms: [],
+        type: 'number',
+        importance: 'critical',
+        group: 7,
+        derived: true,
+        isScoringMetric: true
+      },
+      'qualityTier': {
+        category: 'Scoring Fundamental',
+        label: 'Tier',
+        synonyms: ['tier', 'quality_tier'],
+        type: 'select',
+        options: ['ULTRA_PREMIUM', 'PREMIUM', 'STANDARD', 'MEDIUM', 'LOW'],
+        importance: 'critical',
+        group: 7,
+        derived: true,
+        isScoringMetric: true
+      },
+      'scoreLive': {
+        category: 'Scoring Fundamental',
+        label: 'Score Live',
+        synonyms: ['score_live', 'live_score', 'ranking_score'],
+        type: 'number',
+        importance: 'critical',
+        group: 7,
+        derived: true,
+        isScoringMetric: true
+      },
+      'isUHD': {
+        category: 'Scoring Fundamental',
+        label: 'Ultra HD (4K/8K)',
+        synonyms: [],
+        type: 'boolean',
+        importance: 'high',
+        group: 7,
+        derived: true
+      },
+      'isHD': {
+        category: 'Scoring Fundamental',
+        label: 'Alta Definición',
+        synonyms: [],
+        type: 'boolean',
+        importance: 'high',
+        group: 7,
+        derived: true
+      },
+      'isSD': {
+        category: 'Scoring Fundamental',
+        label: 'Definición Estándar',
+        synonyms: [],
+        type: 'boolean',
+        importance: 'medium',
+        group: 7,
+        derived: true
+      },
+      'isSports': {
+        category: 'Scoring Fundamental',
+        label: 'Es Deportivo',
+        synonyms: [],
+        type: 'boolean',
+        importance: 'high',
+        group: 7,
+        derived: true
+      },
+      'isMovie': {
+        category: 'Scoring Fundamental',
+        label: 'Es Película',
+        synonyms: [],
+        type: 'boolean',
+        importance: 'high',
+        group: 7,
+        derived: true
+      },
+      'isSeries': {
+        category: 'Scoring Fundamental',
+        label: 'Es Serie',
+        synonyms: [],
+        type: 'boolean',
+        importance: 'high',
+        group: 7,
+        derived: true
+      },
+      'qualityTags': {
+        category: 'Scoring Fundamental',
+        label: 'Tags de Calidad',
+        synonyms: [],
+        type: 'tags',
+        importance: 'high',
+        group: 7,
+        derived: true
+      }
+    };
+  }
+
+  /**
+   * Obtiene campos por defecto (balanceado para mostrar más información)
+   */
+  getDefaultFields() {
+    return [
+      'id',
+      'name',
+      'group',
+      'resolution',
+      'bitrate',
+      'codec',
+      'frames',
+      'qualityScore',
+      'scoreLive',
+      'qualityTier',
+      'qualityTags',
+      'isSports',
+      'isMovie',
+      'type',
+      'logo',
+      'country',
+      'language'
+    ];
+  }
+
+  /**
+   * Obtiene valor de campo, buscando en sinónimos automáticamente
+   * ✅ V4.6: Usa modelo de 4 capas (tech > base > heuristics > legacy)
+   * ✅ V4.7: Respeta fieldSourcePolicy para overrides por campo
+   */
+  getFieldValue(channel, fieldKey) {
+    if (!channel) return null;
+
+    const fieldDef = this.allFields[fieldKey];
+    if (!fieldDef) return null;
+
+    // ✅ V4.7: Check if field has a specific source override
+    const sourceOverride = this.getFieldSource(fieldKey);
+    if (sourceOverride && sourceOverride !== 'auto') {
+      const overrideValue = this.resolveFromSource(channel, fieldKey, sourceOverride);
+      if (overrideValue !== null) {
+        return overrideValue;
+      }
+      // If override source has no value, fall through to auto
+    }
+
+    // ✅ V4.6: Extract layers (fallback hierarchy)
+    const tech = channel.tech || {};
+    const base = channel.base || {};
+    const heuristics = channel.heuristics || {};
+    const raw = base.raw || channel.raw || {};
+
+    // ✅ V4.6: Special handling for derived fields from heuristics
+    if (fieldKey === 'qualityScore') {
+      return tech.qualityScore ?? heuristics.qualityScore ?? channel.qualityScore ?? 0;
+    }
+    if (fieldKey === 'qualityTier') {
+      return tech.qualityTier ?? heuristics.qualityTier ?? channel.qualityTier ?? 'LOW';
+    }
+    if (fieldKey === 'qualityTags') {
+      return heuristics.qualityTags ?? channel.qualityTags ?? [];
+    }
+    if (fieldKey === 'isUHD' || fieldKey === 'isHD' || fieldKey === 'isSD' ||
+      fieldKey === 'isSports' || fieldKey === 'isMovie' || fieldKey === 'isSeries') {
+      return heuristics[fieldKey] ?? channel[fieldKey] ?? false;
+    }
+
+    // ✅ V4.6: Resolution - priority: tech > base > heuristics > inferred
+    if (fieldKey === 'resolution') {
+      if (tech.resolutionLabel) return tech.resolutionLabel;
+      if (tech.width && tech.height) return `${tech.width}x${tech.height}`;
+      if (base.resolution) return base.resolution;
+      if (heuristics.resolution) return heuristics.resolution;
+
+      const w = raw.video_width || channel.video_width;
+      const h = raw.video_height || channel.video_height;
+      if (w && h && Number(w) > 0 && Number(h) > 0) return `${w}x${h}`;
+      if (h && Number(h) > 0) return `${h}p`;
+      if (channel.resolution) return channel.resolution;
+      return null;
+    }
+
+    // ✅ V4.6: Core quality fields - priority: tech > base > heuristics > legacy
+    if (fieldKey === 'codec') {
+      return tech.codec ?? base.codec ?? heuristics.codec ?? channel.codec ?? null;
+    }
+    if (fieldKey === 'bitrate') {
+      return tech.bitrateKbps ?? base.bitrate ?? heuristics.bitrate ?? channel.bitrate ?? 0;
+    }
+    if (fieldKey === 'frames') {
+      return tech.fps ?? base.fps ?? heuristics.fps ?? channel.frames ?? null;
+    }
+
+    // ✅ V4.6: Geographic fields
+    if (fieldKey === 'country') {
+      return tech.country ?? base.country ?? heuristics.country ?? channel.country ?? 'INT';
+    }
+    if (fieldKey === 'language') {
+      return tech.language ?? base.language ?? heuristics.language ?? channel.language ?? 'MIX';
+    }
+
+    // ✅ V4.6: Identity fields - priority: base > legacy
+    if (fieldKey === 'name') return base.name ?? channel.name ?? '';
+    if (fieldKey === 'group') return base.group ?? channel.group ?? '';
+    if (fieldKey === 'logo') return base.logo ?? channel.logo ?? channel.stream_icon ?? '';
+    if (fieldKey === 'url') return base.url ?? channel.url ?? '';
+    if (fieldKey === 'type') return base.type ?? channel.type ?? 'live';
+
+    // Intentar campo directo
+    if (channel[fieldKey] !== undefined && channel[fieldKey] !== null && channel[fieldKey] !== '') {
+      return channel[fieldKey];
+    }
+
+    // Buscar en sinónimos con prioridad de capas
+    for (const synonym of (fieldDef.synonyms || [])) {
+      const parts = synonym.split('.');
+
+      if (parts.length === 1) {
+        if (tech[synonym] !== undefined) return tech[synonym];
+        if (base[synonym] !== undefined) return base[synonym];
+        if (heuristics[synonym] !== undefined) return heuristics[synonym];
+        if (channel[synonym] !== undefined && channel[synonym] !== null && channel[synonym] !== '') {
+          return channel[synonym];
+        }
+      } else if (parts.length === 2 && parts[0] === 'raw') {
+        if (raw[parts[1]] !== undefined && raw[parts[1]] !== null && raw[parts[1]] !== '') {
+          return raw[parts[1]];
+        }
+      }
+    }
+
+    return null;
+  }
+
+  /**
+   * Renderiza fila de tabla con todos los datos disponibles
+   */
+  renderTableRow(channel, container, selectedFields = null) {
+    const fieldsToShow = selectedFields || this.selectedFields;
+    const row = document.createElement('tr');
+
+    fieldsToShow.forEach(fieldKey => {
+      const fieldDef = this.allFields[fieldKey];
+      if (!fieldDef) return;
+
+      const cell = document.createElement('td');
+      const value = this.getFieldValue(channel, fieldKey);
+
+      // Formatear según tipo
+      let displayValue = '';
+
+      if (value === null || value === undefined || value === '') {
+        displayValue = '—';
+        cell.style.opacity = '0.5';
+      } else {
+        displayValue = this.formatValue(value, fieldDef.type, fieldDef.options);
+      }
+
+      cell.innerHTML = displayValue;
+      cell.title = `${fieldDef.label}: ${fieldDef.category}`;
+
+      // Colores para scoring
+      if (fieldDef.isScoringMetric) {
+        cell.style.fontWeight = 'bold';
+
+        if (fieldKey === 'qualityScore') {
+          const score = parseInt(value);
+          if (score >= 90) cell.style.color = '#00FF00';
+          else if (score >= 75) cell.style.color = '#00DD00';
+          else if (score >= 55) cell.style.color = '#FF9900';
+          else cell.style.color = '#FF6600';
+        } else if (fieldKey === 'qualityTier') {
+          if (value === 'ULTRA') cell.style.color = '#FFD700';
+          else if (value === 'HIGH') cell.style.color = '#00FF00';
+          else if (value === 'MEDIUM') cell.style.color = '#FF9900';
+          else cell.style.color = '#FF6600';
+        }
+      }
+
+      row.appendChild(cell);
+    });
+
+    container.appendChild(row);
+  }
+
+  /**
+   * Formatea valor según tipo de campo
+   */
+  formatValue(value, type, options) {
+    if (value === null || value === undefined) return '—';
+
+    switch (type) {
+      case 'boolean':
+        return value ? '✓' : '✗';
+
+      case 'number':
+        return typeof value === 'number' ? value.toLocaleString() : value;
+
+      case 'image':
+        if (value) {
+          return `<img src="${value}" style="max-width:60px; max-height:30px; border-radius:2px;" alt="logo" onerror="this.style.display='none'">`;
+        }
+        return '—';
+
+      case 'url':
+        const urlStr = String(value);
+        if (urlStr.startsWith('http')) {
+          return `<a href="${urlStr}" target="_blank" style="color:#0099FF; text-decoration:underline;">🔗</a>`;
+        }
+        return urlStr.substring(0, 30) + (urlStr.length > 30 ? '...' : '');
+
+      case 'tags':
+        if (Array.isArray(value)) {
+          return value.map(tag => `<span style="background:#333; color:#0FF; padding:2px 6px; border-radius:3px; margin-right:3px; font-size:11px;">${tag}</span>`).join('');
+        }
+        return value;
+
+      case 'text':
+        const text = String(value);
+        return text.substring(0, 50) + (text.length > 50 ? '...' : '');
+
+      case 'date':
+        if (typeof value === 'number') {
+          return new Date(value).toLocaleDateString();
+        }
+        return String(value);
+
+      case 'select':
+        return `<strong>${value}</strong>`;
+
+      default:
+        return String(value).substring(0, 50);
+    }
+  }
+
+  /**
+   * Obtiene todos los campos disponibles agrupados por categoría
+   */
+  getAllFieldsGrouped() {
+    const grouped = {};
+
+    Object.entries(this.allFields).forEach(([key, def]) => {
+      if (!grouped[def.category]) {
+        grouped[def.category] = [];
+      }
+      grouped[def.category].push({
+        key,
+        label: def.label,
+        importance: def.importance,
+        type: def.type,
+        synonymCount: def.synonyms.length
+      });
+    });
+
+    return grouped;
+  }
+
+  /**
+   * Genera selector de columnas para UI
+   * ✅ V4.7: Incluye selector de fuente por campo
+   */
+  generateColumnSelector() {
+    const grouped = this.getAllFieldsGrouped();
+    const html = [];
+
+    html.push('<div style="background:#1a1a1a; border:1px solid #333; border-radius:6px; padding:12px; max-height:500px; overflow-y:auto;">');
+
+    // Header with legend
+    html.push(`
+      <div style="margin-bottom:10px; padding-bottom:8px; border-bottom:1px solid #333;">
+        <span style="color:#888; font-size:10px;">
+          Fuentes: 🔵Auto | 🔌Srv | 🔄Heur | 📡Prb | 🌐Ext
+        </span>
+      </div>
+    `);
+
+    Object.entries(grouped).forEach(([category, fields]) => {
+      html.push(`<div style="margin-bottom:12px;">`);
+      html.push(`<strong style="display:block; color:#0FF; margin-bottom:6px; font-size:12px;">📁 ${category}</strong>`);
+
+      fields.forEach(field => {
+        const isSelected = this.selectedFields.includes(field.key);
+        const importance = field.importance === 'critical' ? '🔴' : field.importance === 'high' ? '🟠' : '🟡';
+        const currentSource = this.getFieldSource(field.key);
+
+        // Check if field supports multiple sources (quality/geo fields do)
+        const supportsSourceSelector = ['resolution', 'bitrate', 'codec', 'frames', 'country', 'language', 'logo', 'name', 'group'].includes(field.key);
+
+        html.push(`
+          <div style="display:flex; align-items:center; padding:4px 0; gap:6px; flex-wrap:wrap;">
+            <label style="flex:0 0 auto; cursor:pointer; font-size:11px; min-width:180px;">
+              <input type="checkbox" 
+                data-field="${field.key}" 
+                ${isSelected ? 'checked' : ''} 
+                onchange="window.app.advancedDataRenderer.toggleField('${field.key}')"
+                style="cursor:pointer; margin-right:4px;">
+              ${importance} ${field.label}
+            </label>
+            ${supportsSourceSelector ? `
+              <span style="display:flex; gap:2px; font-size:9px;">
+                <label style="cursor:pointer; padding:2px 4px; border-radius:3px; background:${currentSource === 'auto' ? '#38bdf8' : '#333'}; color:${currentSource === 'auto' ? '#000' : '#888'};">
+                  <input type="radio" name="src_${field.key}" value="auto" ${currentSource === 'auto' ? 'checked' : ''} 
+                    onchange="window.app.advancedDataRenderer.setFieldSource('${field.key}', 'auto')" style="display:none;">A
+                </label>
+                <label style="cursor:pointer; padding:2px 4px; border-radius:3px; background:${currentSource === 'server' ? '#4ade80' : '#333'}; color:${currentSource === 'server' ? '#000' : '#888'};">
+                  <input type="radio" name="src_${field.key}" value="server" ${currentSource === 'server' ? 'checked' : ''} 
+                    onchange="window.app.advancedDataRenderer.setFieldSource('${field.key}', 'server')" style="display:none;">S
+                </label>
+                <label style="cursor:pointer; padding:2px 4px; border-radius:3px; background:${currentSource === 'heuristics' ? '#fbbf24' : '#333'}; color:${currentSource === 'heuristics' ? '#000' : '#888'};">
+                  <input type="radio" name="src_${field.key}" value="heuristics" ${currentSource === 'heuristics' ? 'checked' : ''} 
+                    onchange="window.app.advancedDataRenderer.setFieldSource('${field.key}', 'heuristics')" style="display:none;">H
+                </label>
+                <label style="cursor:pointer; padding:2px 4px; border-radius:3px; background:${currentSource === 'probe' ? '#f472b6' : '#333'}; color:${currentSource === 'probe' ? '#000' : '#888'};">
+                  <input type="radio" name="src_${field.key}" value="probe" ${currentSource === 'probe' ? 'checked' : ''} 
+                    onchange="window.app.advancedDataRenderer.setFieldSource('${field.key}', 'probe')" style="display:none;">P
+                </label>
+                <label style="cursor:pointer; padding:2px 4px; border-radius:3px; background:${currentSource === 'external' ? '#a78bfa' : '#333'}; color:${currentSource === 'external' ? '#000' : '#888'};">
+                  <input type="radio" name="src_${field.key}" value="external" ${currentSource === 'external' ? 'checked' : ''} 
+                    onchange="window.app.advancedDataRenderer.setFieldSource('${field.key}', 'external')" style="display:none;">E
+                </label>
+              </span>
+            ` : ''}
+          </div>
+        `);
+      });
+
+      html.push('</div>');
+    });
+
+    html.push('</div>');
+
+    return html.join('');
+  }
+
+  /**
+   * ✅ V4.7: Set source and refresh table
+   */
+  setFieldSource(fieldKey, source) {
+    if (source === 'auto') {
+      delete this.fieldSourcePolicy[fieldKey];
+    } else {
+      this.fieldSourcePolicy[fieldKey] = source;
+    }
+    this.saveFieldSourcePolicy();
+
+    // Refresh table
+    if (this.app && this.app.renderTable) {
+      this.app.renderTable();
+    }
+  }
+
+  /**
+   * Toggle selección de campo
+   */
+  toggleField(fieldKey) {
+    const idx = this.selectedFields.indexOf(fieldKey);
+    if (idx > -1) {
+      this.selectedFields.splice(idx, 1);
+    } else {
+      this.selectedFields.push(fieldKey);
+    }
+
+    // Re-renderizar tabla
+    if (this.app && this.app.renderTable) {
+      this.app.renderTable();
+    }
+  }
+
+  /**
+   * Obtiene estadísticas de cobertura
+   */
+  getCoverageStats(channels) {
+    if (!Array.isArray(channels) || channels.length === 0) {
+      return { totalFields: Object.keys(this.allFields).length, coverage: {} };
+    }
+
+    const coverage = {};
+    let fieldsCovered = 0;
+
+    Object.keys(this.allFields).forEach(fieldKey => {
+      let fieldPresent = 0;
+
+      channels.forEach(ch => {
+        const value = this.getFieldValue(ch, fieldKey);
+        if (value !== null && value !== undefined && value !== '') {
+          fieldPresent++;
+        }
+      });
+
+      const percentage = (fieldPresent / channels.length) * 100;
+      coverage[fieldKey] = {
+        present: fieldPresent,
+        percentage: percentage.toFixed(1),
+        label: this.allFields[fieldKey].label
+      };
+
+      if (percentage > 0) fieldsCovered++;
+    });
+
+    return {
+      totalFields: Object.keys(this.allFields).length,
+      fieldsCovered,
+      coverage
+    };
+  }
+}
+
+// Inicializar globalmente
+if (typeof window !== 'undefined') {
+  window.AdvancedDataRenderer = AdvancedDataRenderer;
+}

@@ -211,6 +211,22 @@
                                 `).join('')}
                             </div>
 
+                            <!-- OTT Navigator Disclaimer -->
+                            <div id="gt-ott-disclaimer" style="
+                                margin-bottom: var(--space-8, 8px);
+                                padding: var(--space-8, 8px) var(--space-10, 10px);
+                                background: rgba(245,158,11,0.08);
+                                border: 1px solid rgba(245,158,11,0.25);
+                                border-radius: var(--radius-sm, 6px);
+                                font-size: 10px;
+                                color: rgba(251,191,36,0.9);
+                                line-height: 1.4;
+                                display: ${config.separator === '/' ? 'none' : 'block'};
+                            ">
+                                ⚠️ <strong>OTT Navigator</strong> usa <code style="background:rgba(245,158,11,0.15);padding:1px 3px;border-radius:2px">/</code> como navegación de carpetas.
+                                Otros separadores se mostrarán como texto literal en ese player.
+                            </div>
+
                             <!-- Custom Separator Input -->
                             <div style="margin-bottom: var(--space-16, 16px);">
                                 <label style="
@@ -514,6 +530,12 @@
                 btn.style.color = isActive ? 'var(--bg, #050816)' : 'var(--text-main, #e5e7eb)';
                 btn.style.borderColor = isActive ? 'var(--accent, #38bdf8)' : 'var(--border-soft, rgba(148,163,184,0.25))';
             });
+
+            // Show/hide OTT Navigator disclaimer when separator is not '/'
+            const disclaimer = document.getElementById('gt-ott-disclaimer');
+            if (disclaimer) {
+                disclaimer.style.display = (currentSep === '/') ? 'none' : 'block';
+            }
         }
 
         /**

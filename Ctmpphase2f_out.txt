@@ -1,0 +1,341 @@
+FASE 2f - Integracion de 10 Garantias OMEGA en motores matematicos
+
+1. Inyectado: Module5 (289 lineas)
+2. Parcheada linea 3053:
+   ANTES:     Brain_CalcStreamingHealth = 25 * bufStab + 20 * bwHead + 10 * codecSup + 15 * abrMat + 20 * errTree + 10 * netLat
+   DESPUES:     Brain_CalcStreamingHealth = (25 * bufStab + 20 * bwHead + 10 * codecSup + 15 * abrMat + 20 * errTree + 10 * netLat) * (0.5 + 0.5 * Brain_GetOmegaCompliance())
+
+3. Output_M3U8_Path = C:\Users\HFRC\Downloads\APE_LAB_OUTPUT.m3u8
+   No existe, pero hay otro M3U8 reciente: APE_LISTA_1776438933335.m3u8. Actualizando Output_M3U8_Path temporalmente.
+
+4. Ejecutando Brain_OmegaScorecard...
+   ERROR: Error en la llamada a procedimiento remoto. (Excepci¢n de HRESULT: 0x800706BE)
+
+5. Recalc con nuevo multiplicador Omega...
+No se puede llamar a un m‚todo en una expresi¢n con valor NULL.
+En C:\tmp\phase2f_omega_integration.ps1: 82 Car cter: 1
++ $excel.Application.Run('Brain_RecalcAllSilent') | Out-Null
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) [], RuntimeException
+    + FullyQualifiedErrorId : InvokeMethodOnNull
+ 
+El servidor RPC no est  disponible. (Excepci¢n de HRESULT: 0x800706BA)
+En C:\tmp\phase2f_omega_integration.ps1: 84 Car cter: 1
++ $dash = $wb.Sheets('9_BRAIN_DASHBOARD')
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : OperationStopped: (:) [], COMException
+    + FullyQualifiedErrorId : System.Runtime.InteropServices.COMException
+ 
+No se puede llamar a un m‚todo en una expresi¢n con valor NULL.
+En C:\tmp\phase2f_omega_integration.ps1: 85 Car cter: 1
++ $h = $dash.Range('B5').Value2
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) [], RuntimeException
+    + FullyQualifiedErrorId : InvokeMethodOnNull
+ 
+No se puede llamar a un m‚todo en una expresi¢n con valor NULL.
+En C:\tmp\phase2f_omega_integration.ps1: 86 Car cter: 1
++ $r = $dash.Range('B6').Value2
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) [], RuntimeException
+    + FullyQualifiedErrorId : InvokeMethodOnNull
+ 
+No se puede llamar a un m‚todo en una expresi¢n con valor NULL.
+En C:\tmp\phase2f_omega_integration.ps1: 87 Car cter: 1
++ $hd = $dash.Range('B7').Value2
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) [], RuntimeException
+    + FullyQualifiedErrorId : InvokeMethodOnNull
+ 
+No se puede llamar a un m‚todo en una expresi¢n con valor NULL.
+En C:\tmp\phase2f_omega_integration.ps1: 88 Car cter: 1
++ $s = $dash.Range('B8').Value2
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) [], RuntimeException
+    + FullyQualifiedErrorId : InvokeMethodOnNull
+ 
+   Health=  Risk=  Headroom=  Stall=
+El servidor RPC no est  disponible. (Excepci¢n de HRESULT: 0x800706BA)
+En C:\tmp\phase2f_omega_integration.ps1: 92 Car cter: 1
++ $cfg = $wb.Sheets('18_CONFIG')
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : OperationStopped: (:) [], COMException
+    + FullyQualifiedErrorId : System.Runtime.InteropServices.COMException
+ 
+No se puede llamar a un m‚todo en una expresi¢n con valor NULL.
+En C:\tmp\phase2f_omega_integration.ps1: 95 Car cter: 12
++     if ("$($cfg.Cells($rr,2).Value2)" -eq 'Omega_Compliance_Score') { ...
++            ~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) [], RuntimeException
+    + FullyQualifiedErrorId : InvokeMethodOnNull
+ 
+No se puede llamar a un m‚todo en una expresi¢n con valor NULL.
+En C:\tmp\phase2f_omega_integration.ps1: 95 Car cter: 12
++     if ("$($cfg.Cells($rr,2).Value2)" -eq 'Omega_Compliance_Score') { ...
++            ~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) [], RuntimeException
+    + FullyQualifiedErrorId : InvokeMethodOnNull
+ 
+No se puede llamar a un m‚todo en una expresi¢n con valor NULL.
+En C:\tmp\phase2f_omega_integration.ps1: 95 Car cter: 12
++     if ("$($cfg.Cells($rr,2).Value2)" -eq 'Omega_Compliance_Score') { ...
++            ~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) [], RuntimeException
+    + FullyQualifiedErrorId : InvokeMethodOnNull
+ 
+No se puede llamar a un m‚todo en una expresi¢n con valor NULL.
+En C:\tmp\phase2f_omega_integration.ps1: 95 Car cter: 12
++     if ("$($cfg.Cells($rr,2).Value2)" -eq 'Omega_Compliance_Score') { ...
++            ~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) [], RuntimeException
+    + FullyQualifiedErrorId : InvokeMethodOnNull
+ 
+No se puede llamar a un m‚todo en una expresi¢n con valor NULL.
+En C:\tmp\phase2f_omega_integration.ps1: 95 Car cter: 12
++     if ("$($cfg.Cells($rr,2).Value2)" -eq 'Omega_Compliance_Score') { ...
++            ~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) [], RuntimeException
+    + FullyQualifiedErrorId : InvokeMethodOnNull
+ 
+No se puede llamar a un m‚todo en una expresi¢n con valor NULL.
+En C:\tmp\phase2f_omega_integration.ps1: 95 Car cter: 12
++     if ("$($cfg.Cells($rr,2).Value2)" -eq 'Omega_Compliance_Score') { ...
++            ~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) [], RuntimeException
+    + FullyQualifiedErrorId : InvokeMethodOnNull
+ 
+No se puede llamar a un m‚todo en una expresi¢n con valor NULL.
+En C:\tmp\phase2f_omega_integration.ps1: 95 Car cter: 12
++     if ("$($cfg.Cells($rr,2).Value2)" -eq 'Omega_Compliance_Score') { ...
++            ~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) [], RuntimeException
+    + FullyQualifiedErrorId : InvokeMethodOnNull
+ 
+No se puede llamar a un m‚todo en una expresi¢n con valor NULL.
+En C:\tmp\phase2f_omega_integration.ps1: 95 Car cter: 12
++     if ("$($cfg.Cells($rr,2).Value2)" -eq 'Omega_Compliance_Score') { ...
++            ~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) [], RuntimeException
+    + FullyQualifiedErrorId : InvokeMethodOnNull
+ 
+No se puede llamar a un m‚todo en una expresi¢n con valor NULL.
+En C:\tmp\phase2f_omega_integration.ps1: 95 Car cter: 12
++     if ("$($cfg.Cells($rr,2).Value2)" -eq 'Omega_Compliance_Score') { ...
++            ~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) [], RuntimeException
+    + FullyQualifiedErrorId : InvokeMethodOnNull
+ 
+No se puede llamar a un m‚todo en una expresi¢n con valor NULL.
+En C:\tmp\phase2f_omega_integration.ps1: 95 Car cter: 12
++     if ("$($cfg.Cells($rr,2).Value2)" -eq 'Omega_Compliance_Score') { ...
++            ~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) [], RuntimeException
+    + FullyQualifiedErrorId : InvokeMethodOnNull
+ 
+No se puede llamar a un m‚todo en una expresi¢n con valor NULL.
+En C:\tmp\phase2f_omega_integration.ps1: 95 Car cter: 12
++     if ("$($cfg.Cells($rr,2).Value2)" -eq 'Omega_Compliance_Score') { ...
++            ~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) [], RuntimeException
+    + FullyQualifiedErrorId : InvokeMethodOnNull
+ 
+No se puede llamar a un m‚todo en una expresi¢n con valor NULL.
+En C:\tmp\phase2f_omega_integration.ps1: 95 Car cter: 12
++     if ("$($cfg.Cells($rr,2).Value2)" -eq 'Omega_Compliance_Score') { ...
++            ~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) [], RuntimeException
+    + FullyQualifiedErrorId : InvokeMethodOnNull
+ 
+No se puede llamar a un m‚todo en una expresi¢n con valor NULL.
+En C:\tmp\phase2f_omega_integration.ps1: 95 Car cter: 12
++     if ("$($cfg.Cells($rr,2).Value2)" -eq 'Omega_Compliance_Score') { ...
++            ~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) [], RuntimeException
+    + FullyQualifiedErrorId : InvokeMethodOnNull
+ 
+No se puede llamar a un m‚todo en una expresi¢n con valor NULL.
+En C:\tmp\phase2f_omega_integration.ps1: 95 Car cter: 12
++     if ("$($cfg.Cells($rr,2).Value2)" -eq 'Omega_Compliance_Score') { ...
++            ~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) [], RuntimeException
+    + FullyQualifiedErrorId : InvokeMethodOnNull
+ 
+No se puede llamar a un m‚todo en una expresi¢n con valor NULL.
+En C:\tmp\phase2f_omega_integration.ps1: 95 Car cter: 12
++     if ("$($cfg.Cells($rr,2).Value2)" -eq 'Omega_Compliance_Score') { ...
++            ~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) [], RuntimeException
+    + FullyQualifiedErrorId : InvokeMethodOnNull
+ 
+No se puede llamar a un m‚todo en una expresi¢n con valor NULL.
+En C:\tmp\phase2f_omega_integration.ps1: 95 Car cter: 12
++     if ("$($cfg.Cells($rr,2).Value2)" -eq 'Omega_Compliance_Score') { ...
++            ~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) [], RuntimeException
+    + FullyQualifiedErrorId : InvokeMethodOnNull
+ 
+No se puede llamar a un m‚todo en una expresi¢n con valor NULL.
+En C:\tmp\phase2f_omega_integration.ps1: 95 Car cter: 12
++     if ("$($cfg.Cells($rr,2).Value2)" -eq 'Omega_Compliance_Score') { ...
++            ~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) [], RuntimeException
+    + FullyQualifiedErrorId : InvokeMethodOnNull
+ 
+No se puede llamar a un m‚todo en una expresi¢n con valor NULL.
+En C:\tmp\phase2f_omega_integration.ps1: 95 Car cter: 12
++     if ("$($cfg.Cells($rr,2).Value2)" -eq 'Omega_Compliance_Score') { ...
++            ~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) [], RuntimeException
+    + FullyQualifiedErrorId : InvokeMethodOnNull
+ 
+No se puede llamar a un m‚todo en una expresi¢n con valor NULL.
+En C:\tmp\phase2f_omega_integration.ps1: 95 Car cter: 12
++     if ("$($cfg.Cells($rr,2).Value2)" -eq 'Omega_Compliance_Score') { ...
++            ~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) [], RuntimeException
+    + FullyQualifiedErrorId : InvokeMethodOnNull
+ 
+No se puede llamar a un m‚todo en una expresi¢n con valor NULL.
+En C:\tmp\phase2f_omega_integration.ps1: 95 Car cter: 12
++     if ("$($cfg.Cells($rr,2).Value2)" -eq 'Omega_Compliance_Score') { ...
++            ~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) [], RuntimeException
+    + FullyQualifiedErrorId : InvokeMethodOnNull
+ 
+No se puede llamar a un m‚todo en una expresi¢n con valor NULL.
+En C:\tmp\phase2f_omega_integration.ps1: 95 Car cter: 12
++     if ("$($cfg.Cells($rr,2).Value2)" -eq 'Omega_Compliance_Score') { ...
++            ~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) [], RuntimeException
+    + FullyQualifiedErrorId : InvokeMethodOnNull
+ 
+No se puede llamar a un m‚todo en una expresi¢n con valor NULL.
+En C:\tmp\phase2f_omega_integration.ps1: 95 Car cter: 12
++     if ("$($cfg.Cells($rr,2).Value2)" -eq 'Omega_Compliance_Score') { ...
++            ~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) [], RuntimeException
+    + FullyQualifiedErrorId : InvokeMethodOnNull
+ 
+No se puede llamar a un m‚todo en una expresi¢n con valor NULL.
+En C:\tmp\phase2f_omega_integration.ps1: 95 Car cter: 12
++     if ("$($cfg.Cells($rr,2).Value2)" -eq 'Omega_Compliance_Score') { ...
++            ~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) [], RuntimeException
+    + FullyQualifiedErrorId : InvokeMethodOnNull
+ 
+No se puede llamar a un m‚todo en una expresi¢n con valor NULL.
+En C:\tmp\phase2f_omega_integration.ps1: 95 Car cter: 12
++     if ("$($cfg.Cells($rr,2).Value2)" -eq 'Omega_Compliance_Score') { ...
++            ~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) [], RuntimeException
+    + FullyQualifiedErrorId : InvokeMethodOnNull
+ 
+No se puede llamar a un m‚todo en una expresi¢n con valor NULL.
+En C:\tmp\phase2f_omega_integration.ps1: 95 Car cter: 12
++     if ("$($cfg.Cells($rr,2).Value2)" -eq 'Omega_Compliance_Score') { ...
++            ~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) [], RuntimeException
+    + FullyQualifiedErrorId : InvokeMethodOnNull
+ 
+No se puede llamar a un m‚todo en una expresi¢n con valor NULL.
+En C:\tmp\phase2f_omega_integration.ps1: 95 Car cter: 12
++     if ("$($cfg.Cells($rr,2).Value2)" -eq 'Omega_Compliance_Score') { ...
++            ~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) [], RuntimeException
+    + FullyQualifiedErrorId : InvokeMethodOnNull
+ 
+No se puede llamar a un m‚todo en una expresi¢n con valor NULL.
+En C:\tmp\phase2f_omega_integration.ps1: 95 Car cter: 12
++     if ("$($cfg.Cells($rr,2).Value2)" -eq 'Omega_Compliance_Score') { ...
++            ~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) [], RuntimeException
+    + FullyQualifiedErrorId : InvokeMethodOnNull
+ 
+No se puede llamar a un m‚todo en una expresi¢n con valor NULL.
+En C:\tmp\phase2f_omega_integration.ps1: 95 Car cter: 12
++     if ("$($cfg.Cells($rr,2).Value2)" -eq 'Omega_Compliance_Score') { ...
++            ~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) [], RuntimeException
+    + FullyQualifiedErrorId : InvokeMethodOnNull
+ 
+No se puede llamar a un m‚todo en una expresi¢n con valor NULL.
+En C:\tmp\phase2f_omega_integration.ps1: 95 Car cter: 12
++     if ("$($cfg.Cells($rr,2).Value2)" -eq 'Omega_Compliance_Score') { ...
++            ~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) [], RuntimeException
+    + FullyQualifiedErrorId : InvokeMethodOnNull
+ 
+No se puede llamar a un m‚todo en una expresi¢n con valor NULL.
+En C:\tmp\phase2f_omega_integration.ps1: 95 Car cter: 12
++     if ("$($cfg.Cells($rr,2).Value2)" -eq 'Omega_Compliance_Score') { ...
++            ~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) [], RuntimeException
+    + FullyQualifiedErrorId : InvokeMethodOnNull
+ 
+No se puede llamar a un m‚todo en una expresi¢n con valor NULL.
+En C:\tmp\phase2f_omega_integration.ps1: 95 Car cter: 12
++     if ("$($cfg.Cells($rr,2).Value2)" -eq 'Omega_Compliance_Score') { ...
++            ~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) [], RuntimeException
+    + FullyQualifiedErrorId : InvokeMethodOnNull
+ 
+No se puede llamar a un m‚todo en una expresi¢n con valor NULL.
+En C:\tmp\phase2f_omega_integration.ps1: 95 Car cter: 12
++     if ("$($cfg.Cells($rr,2).Value2)" -eq 'Omega_Compliance_Score') { ...
++            ~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) [], RuntimeException
+    + FullyQualifiedErrorId : InvokeMethodOnNull
+ 
+No se puede llamar a un m‚todo en una expresi¢n con valor NULL.
+En C:\tmp\phase2f_omega_integration.ps1: 95 Car cter: 12
++     if ("$($cfg.Cells($rr,2).Value2)" -eq 'Omega_Compliance_Score') { ...
++            ~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) [], RuntimeException
+    + FullyQualifiedErrorId : InvokeMethodOnNull
+ 
+No se puede llamar a un m‚todo en una expresi¢n con valor NULL.
+En C:\tmp\phase2f_omega_integration.ps1: 95 Car cter: 12
++     if ("$($cfg.Cells($rr,2).Value2)" -eq 'Omega_Compliance_Score') { ...
++            ~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) [], RuntimeException
+    + FullyQualifiedErrorId : InvokeMethodOnNull
+ 
+No se puede llamar a un m‚todo en una expresi¢n con valor NULL.
+En C:\tmp\phase2f_omega_integration.ps1: 95 Car cter: 12
++     if ("$($cfg.Cells($rr,2).Value2)" -eq 'Omega_Compliance_Score') { ...
++            ~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) [], RuntimeException
+    + FullyQualifiedErrorId : InvokeMethodOnNull
+ 
+No se puede llamar a un m‚todo en una expresi¢n con valor NULL.
+En C:\tmp\phase2f_omega_integration.ps1: 95 Car cter: 12
++     if ("$($cfg.Cells($rr,2).Value2)" -eq 'Omega_Compliance_Score') { ...
++            ~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) [], RuntimeException
+    + FullyQualifiedErrorId : InvokeMethodOnNull
+ 
+No se puede llamar a un m‚todo en una expresi¢n con valor NULL.
+En C:\tmp\phase2f_omega_integration.ps1: 95 Car cter: 12
++     if ("$($cfg.Cells($rr,2).Value2)" -eq 'Omega_Compliance_Score') { ...
++            ~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) [], RuntimeException
+    + FullyQualifiedErrorId : InvokeMethodOnNull
+ 
+No se puede llamar a un m‚todo en una expresi¢n con valor NULL.
+En C:\tmp\phase2f_omega_integration.ps1: 95 Car cter: 12
++     if ("$($cfg.Cells($rr,2).Value2)" -eq 'Omega_Compliance_Score') { ...
++            ~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) [], RuntimeException
+    + FullyQualifiedErrorId : InvokeMethodOnNull
+ 
+   Omega_Compliance_Score = (not found) / 10  (en 18_CONFIG!C0)
+El servidor RPC no est  disponible. (Excepci¢n de HRESULT: 0x800706BA)
+En C:\tmp\phase2f_omega_integration.ps1: 100 Car cter: 1
++ $wb.Save()
++ ~~~~~~~~~~
+    + CategoryInfo          : OperationStopped: (:) [], COMException
+    + FullyQualifiedErrorId : System.Runtime.InteropServices.COMException
+ 
+
+=== 00_OMEGA_SCORECARD ===
+Scorecard no disponible: El servidor RPC no est  disponible. (Excepci¢n de HRESULT: 0x800706BA)

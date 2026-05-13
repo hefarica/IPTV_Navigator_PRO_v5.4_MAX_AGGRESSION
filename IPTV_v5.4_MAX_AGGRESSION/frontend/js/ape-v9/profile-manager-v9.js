@@ -146,6 +146,14 @@
         static THROUGHPUT_T2_MULTIPLIER = 1.6;
         static SEGMENT_DURATION = 6; // segundos
 
+        // BITRATE FLOOR — piso mínimo absoluto por quality (Mbps).
+        // Distinto de bitrate_range_mbps.min (rango óptimo): el floor es el guardarail
+        // inferior bajo el cual variantes HLS son inaceptables (player no debe elegirlas).
+        // Origen SSOT: Profile Manager Reactive Rule 1.1 → Bridge → Generator.
+        static BITRATE_FLOOR_TABLE = Object.freeze({
+            'ULTRA': 25, '8K': 20, '4K': 14, 'FHD': 5, 'HD': 2, 'SD': 1
+        });
+
         // Mapas de calidad para auto-sincronización Netflix 4K HDR / HBO Max Dolby Vision
         static QUALITY_MAPS = {
             hdr_color: {
@@ -212,6 +220,20 @@
             // T6b: cargar user overrides para badges 🛡 LAB / 🔧 Manual
             this._loadUserOverrides();
 
+            // Backfill bitrate_floor_mbps en perfiles persistidos sin el campo (cross-session safe).
+            // Garantiza que el bridge encuentre el valor antes del primer Reactive Rule trigger.
+            try {
+                const all = (typeof this.config.getAllProfiles === 'function')
+                    ? this.config.getAllProfiles() : (this.config.profiles || {});
+                Object.values(all).forEach(p => {
+                    if (p && p.settings && p.settings.bitrate_floor_mbps == null) {
+                        p.settings.bitrate_floor_mbps = this._computeBitrateFloor(p);
+                    }
+                });
+            } catch (e) {
+                console.warn('⚠️ Backfill bitrate_floor_mbps falló (no bloqueante):', e?.message);
+            }
+
             // Load saved active profile
             const saved = localStorage.getItem('ape_active_profile');
             if (saved && this.config.getProfile(saved)) {
@@ -244,6 +266,19 @@
             if (s === undefined || s === null || s === '') return null;
             const n = Number(String(s).replace(',', '.'));
             return isNaN(n) ? null : n;
+        }
+        /**
+         * Devuelve el bitrate floor (Mbps) del perfil.
+         * Prioridad: settings.bitrate_floor_mbps (LAB) → BITRATE_FLOOR_TABLE por quality → 5.
+         * No persiste; solo computa. La persistencia ocurre en Reactive Rule 1.1.
+         */
+        _computeBitrateFloor(profile) {
+            const s = profile?.settings || {};
+            if (s.bitrate_floor_mbps != null && !isNaN(s.bitrate_floor_mbps)) {
+                return Number(s.bitrate_floor_mbps);
+            }
+            const q = String(profile?.quality || 'FHD').toUpperCase();
+            return ProfileManagerV9.BITRATE_FLOOR_TABLE[q] || 5;
         }
         /**
          * True si el field aún no fue overrided manualmente por el usuario tras Import LAB.
@@ -455,6 +490,11 @@
                                 <input type="number" id="pm9_bitrate" value="${this._labVal(activeProfile.settings.bitrate)}" readonly
                                        data-lab-sourced="${this._isLabSourced('bitrate')}"
                                        style="opacity: 0.8; cursor: not-allowed;" title="Calibrado por solver. Edit en LAB Excel">
+                            </div>
+                            <div class="pm9-setting">
+                                <label>Bitrate Floor (Mbps) <span class="pm9-badge-lab" title="Piso absoluto: variantes inferiores son inaceptables">AUTO</span></label>
+                                <input type="number" id="pm9_bitrate_floor" value="${this._computeBitrateFloor(activeProfile)}" readonly
+                                       style="opacity: 0.8; cursor: not-allowed;" title="Piso mínimo absoluto. Auto-calculado por Quality.">
                             </div>
                             <div class="pm9-setting">
                                 <label>Throughput T1${this._isLabSourced('t1') ? ' <span class="pm9-badge-lab">🛡</span>' : ''}</label>
@@ -2235,6 +2275,23 @@
             }
 
             // ═══════════════════════════════════════════════════════════════════════
+            // REGLA 1.1: RESOLUTION/QUALITY/BITRATE → BITRATE FLOOR (Piso Mínimo Absoluto)
+            // ═══════════════════════════════════════════════════════════════════════
+            // Floor = guardarail bajo el cual variantes HLS son inaceptables.
+            // Distinto de bitrate_range_mbps.min (calidad óptima del rango).
+            // SSOT: Profile Manager → Bridge → Generator (m3u8-typed-arrays-ultimate.js).
+            if (key === 'resolution' || key === 'bitrate' || key === 'quality') {
+                const floorMbps = this._computeBitrateFloor(profile);
+                s.bitrate_floor_mbps = floorMbps;
+
+                // Inyectar en headers para visibilidad/telemetría (single-value, OkHttp-compatible)
+                this.config.setHeaderOverride(profile.id, 'X-APE-BITRATE-FLOOR', String(floorMbps));
+                this.config.setHeaderOverride(profile.id, 'X-Min-Bitrate', String(Math.round(floorMbps * 1000000)));
+
+                console.log(`🧠 Reactive [v13.1]: Bitrate Floor → ${floorMbps} Mbps (${profile.quality || 'FHD'})`);
+            }
+
+            // ═══════════════════════════════════════════════════════════════════════
             // REGLA 2: BUFFER BASE → RELACIÓN 4:4:1 (Network:Live:Player)
             // ═══════════════════════════════════════════════════════════════════════
             if (key === 'buffer') {
@@ -3053,6 +3110,15 @@
                             `  Items totales: ${diff.gap_plan.items}\n` +
                             `  REPLICAR: ${diff.gap_plan.replicar}  IMPLEMENTAR: ${diff.gap_plan.implementar}  QUITAR: ${diff.gap_plan.quitar}\n\n`
                         ) : '') +
+                        (diff.prisma_lab_sync ? (
+                            `🔮 PRISMA LAB-SYNC v2.0 (Stage ${diff.prisma_lab_sync.stage}):\n` +
+                            `  Compliance: ${diff.prisma_lab_sync.compliance}% (target 95%)\n` +
+                            `  Profile attrs (boost/floor/target/zap): ${diff.prisma_lab_sync.profile_attrs} perfiles\n` +
+                            `  N3 directives PRISMA: ${diff.prisma_lab_sync.n3_directives}\n` +
+                            `  Placeholders {prisma.*}: ${diff.prisma_lab_sync.placeholders}\n` +
+                            `  Feature sheets: ${diff.prisma_lab_sync.feature_sheets} · ADB settings: ${diff.prisma_lab_sync.adb_settings}\n` +
+                            `  VBA modules: ${diff.prisma_lab_sync.vba_modules}  ·  Config JSONs embedded: ${diff.prisma_lab_sync.config_jsons}\n\n`
+                        ) : '') +
                         `===== ¿APLICAR CAMBIOS? =====\n\n` +
                         `OK = aplicar todo (irreversible)\n` +
                         `Cancelar = no hacer nada`;
@@ -3062,13 +3128,89 @@
                         return;
                     }
 
+                    // ═══════════════════════════════════════════════════════════
+                    // 🛡️ ANTI-DRIFT — Paso 2: Extras toggle (per-profile)
+                    // Cada perfil con extras pregunta si el generator debe emitirlos.
+                    // ═══════════════════════════════════════════════════════════
+                    const includeExtrasByProfile = {};
+                    if (diff.labExtras.totalAcrossProfiles > 0) {
+                        const profileIds = Object.keys(diff.labExtras.byProfile);
+                        const extrasMsg =
+                            `🛡️ EXTRAS DEL LAB DETECTADOS\n\n` +
+                            `El LAB Bulletproof trae ${diff.labExtras.totalAcrossProfiles} campos ` +
+                            `extra (vlcopt/kodiprop/headers no estándar) que NO están en las 19 ` +
+                            `categorías del Profile Manager v9.\n\n` +
+                            `Distribución por perfil:\n` +
+                            profileIds.map(p => {
+                                const e = diff.labExtras.byProfile[p];
+                                return `  ${p}: ${e.total} extras (HO:${e.headerOverrides.length} VLC:${e.vlcopt.length} KOD:${e.kodiprop.length})`;
+                            }).join('\n') +
+                            `\n\n¿Procesarlos para que el GENERADOR los incluya en la lista .m3u8?\n\n` +
+                            `OK = SÍ — listas excepcionales con TODA la data del LAB\n` +
+                            `Cancelar = NO — solo campos habituales del frontend (267 PM9)`;
+                        const includeAll = confirm(extrasMsg);
+                        for (const pid of profileIds) includeExtrasByProfile[pid] = includeAll;
+                        console.log(`[LAB] includeLabExtras decision: ${includeAll ? 'YES' : 'NO'} aplicado a ${profileIds.length} perfiles`);
+                    }
+
+                    // ═══════════════════════════════════════════════════════════
+                    // 🛡️ ANTI-DRIFT — Paso 3: Rename collision resolver
+                    // Para cada header LAB con drift case/separator vs PM9, decisión
+                    // global: renombrar al canónico PM9, o omitir.
+                    // ═══════════════════════════════════════════════════════════
+                    const collisionResolutions = {}; // key: `${profile}:${labKey}` → 'rename'|'omit'
+                    if (diff.labRenameCollisions.length > 0) {
+                        const sample = diff.labRenameCollisions.slice(0, 8)
+                            .map(c => `  ${c.profile}: "${c.labKey}" ≈ "${c.pm9Key}"`)
+                            .join('\n');
+                        const more = diff.labRenameCollisions.length > 8
+                            ? `\n  ... y ${diff.labRenameCollisions.length - 8} más`
+                            : '';
+                        const collMsg =
+                            `🛡️ COLISIONES DE NOMBRE DETECTADAS\n\n` +
+                            `${diff.labRenameCollisions.length} headers del LAB tienen nombre ` +
+                            `similar (case/separator drift) a headers existentes en PM9:\n\n` +
+                            sample + more + `\n\n` +
+                            `¿Renombrar al estándar del frontend (PM9 canónico)?\n\n` +
+                            `OK = RENOMBRAR todos al estándar PM9\n` +
+                            `Cancelar = OMITIR todos los headers en colisión`;
+                        const renameAll = confirm(collMsg);
+                        const action = renameAll ? 'rename' : 'omit';
+                        for (const c of diff.labRenameCollisions) {
+                            collisionResolutions[`${c.profile}:${c.labKey}`] = action;
+                        }
+                        console.log(`[LAB] collision resolution: ${action} aplicado a ${diff.labRenameCollisions.length} colisiones`);
+                    }
+
                     // === APPLY ===
-                    const result = await this.config.importFromLABData(data);
+                    const result = await this.config.importFromLABData(data, {
+                        includeExtrasByProfile,
+                        collisionResolutions,
+                        renameCollisions: diff.labRenameCollisions
+                    });
 
                     // Re-render
                     if (typeof this.render === 'function') {
                         this.render();
                     }
+
+                    const prismaSummary = result.prismaStage
+                        ? `\n\n🔮 PRISMA LAB-SYNC v2.0 (Stage ${result.prismaStage}) consumido:\n` +
+                          `  • Compliance: ${result.prismaComplianceScore}% target 95%\n` +
+                          `  • Profile attrs: ${result.prismaProfileAttrsCount}/6 perfiles\n` +
+                          `  • N3 directives: ${result.prismaN3DirectivesCount}\n` +
+                          `  • Placeholders {prisma.*}: ${result.prismaPlaceholdersCount}\n` +
+                          `  • VBA modules: ${result.prismaVbaModulesCount}\n` +
+                          `  • Config JSONs embedded: ${result.prismaConfigJsonsCount}`
+                        : '';
+
+                    const antiDriftSummary =
+                        (result.profilesWithExtras > 0 || result.renameApplied > 0 || result.renameOmitted > 0)
+                            ? `\n\n🛡️ ANTI-DRIFT:\n` +
+                              `  • Perfiles con extras habilitados: ${result.profilesWithExtras || 0}\n` +
+                              `  • Headers renombrados a PM9-standard: ${result.renameApplied || 0}\n` +
+                              `  • Headers en colisión omitidos: ${result.renameOmitted || 0}`
+                            : '';
 
                     alert(`${isBulletproof ? '🛡 BULLETPROOF v2 IMPORTADO' : '✅ LAB CALIBRATED IMPORTADO'}\n\n` +
                           `Perfiles actualizados: ${result.profilesUpdated}\n` +
@@ -3076,9 +3218,12 @@
                           `NIVEL_1 directivas: ${result.nivel1Count}\n` +
                           `NIVEL_3 entries: ${result.nivel3Total}\n` +
                           `Placeholders mapeados: ${result.placeholdersCount || 0}\n` +
-                          `Servers: ${result.serversCount}\n\n` +
+                          `Servers: ${result.serversCount}` +
+                          prismaSummary + antiDriftSummary + `\n\n` +
                           `Próximo paso: generar lista .m3u8 desde APE generator.\n` +
-                          `${isBulletproof ? '⚙️ ENGINE: Consumo Bulletproof 100% activo.' : 'El generator inyectará todo lo del LAB.'}`);
+                          `${isBulletproof ? '⚙️ ENGINE: Consumo Bulletproof 100% activo.' : 'El generator inyectará todo lo del LAB.'}` +
+                          `${result.prismaStage ? '\n🔮 PRISMA: piso/boost/DNA aplicados por perfil.' : ''}` +
+                          `${result.profilesWithExtras > 0 ? '\n🛡️ EXTRAS: generator emitirá campos no-PM9 en perfiles habilitados.' : ''}`);
 
                     console.log('[LAB] Import OK', result);
                 } catch (err) {
@@ -3094,6 +3239,12 @@
 
         /**
          * Calcula diff entre estado actual y data del LAB
+         *
+         * 🛡️ ANTI-DRIFT (2026-04-29):
+         *   - labExtras: campos LAB que NO están en PM9 HEADER_CATEGORIES (267 canónicos).
+         *     El generator los emitirá SOLO si el usuario opta-in en el dialog de import.
+         *   - labRenameCollisions: keys del LAB que matchean PM9 case/separator-insensitive
+         *     pero no exacto. El usuario decide por colisión: rename a PM9-standard o omitir.
          */
         _computeLABDiff(data) {
             const diff = {
@@ -3104,18 +3255,67 @@
                 evasion_uas: 0,
                 evasion_refs: 0,
                 config_keys: 0,
-                gap_plan: null
+                gap_plan: null,
+                labExtras: { byProfile: {}, totalAcrossProfiles: 0 },
+                labRenameCollisions: []
             };
+
+            // PM9 canonical set (267 headers) para detección de extras + colisiones
+            const pm9Set = (this.config?.getPm9HeaderSet && this.config.getPm9HeaderSet()) || new Set();
+            const findCanonical = this.config?.findPm9CanonicalName || (() => null);
+            // Generator-known vlcopt keys (emitidos por generateEXTVLCOPT). Cualquier
+            // key vlcopt fuera de este set queda silenciada hoy → es "extra" potencial.
+            const KNOWN_VLCOPT = new Set([
+                'network-caching','live-caching','file-caching','disc-caching','tcp-caching','sout-mux-caching',
+                'clock-jitter','clock-synchro',
+                'http-user-agent','http-forward-cookies','http-reconnect','http-continuous-stream','http-continuous',
+                'video-filter','video-color-space','video-transfer-function','video-color-primaries','video-color-range',
+                'tone-mapping','hdr-output-mode','sharpen-sigma','contrast','brightness','saturation','gamma'
+            ]);
+            // Generator-known kodiprop keys (emitidos por build_kodiprop streamHeaders).
+            // El kodiprop dict del LAB se ITERA completo en otros puntos (línea ~7768),
+            // pero cualquier key no estándar puede ser un extra para flag al usuario.
+            const KNOWN_KODIPROP = new Set([
+                'inputstream.adaptive.manifest_type','inputstream.adaptive.stream_selection_type',
+                'inputstream.adaptive.chooser_bandwidth_mode','inputstream.adaptive.chooser_resolution_max',
+                'inputstream.adaptive.user_agent','inputstream.adaptive.stream_headers',
+                'inputstream.adaptive.license_type','inputstream.adaptive.license_key',
+                'inputstream.adaptive.manifest_update_parameter'
+            ]);
 
             const labProfiles = data.profiles_calibrated || {};
             for (const pid of ['P0','P1','P2','P3','P4','P5']) {
                 const lp = labProfiles[pid];
                 if (!lp) continue;
                 diff.profiles.updated++;
-                const cur = this.config?.profiles?.[pid] || {};
                 diff.profiles.headerOverrides_added += Object.keys(lp.headerOverrides || {}).length;
                 diff.profiles.vlcopt_added += Object.keys(lp.vlcopt || {}).length;
                 diff.profiles.kodiprop_added += Object.keys(lp.kodiprop || {}).length;
+
+                // Detección extras + colisiones por perfil
+                const extras = { headerOverrides: [], vlcopt: [], kodiprop: [] };
+                for (const k of Object.keys(lp.headerOverrides || {})) {
+                    if (pm9Set.has(k)) continue; // exact match → no es extra ni colisión
+                    const canonical = findCanonical(k);
+                    if (canonical) {
+                        // Drift detectada (case/separator) — colisión, no extra
+                        diff.labRenameCollisions.push({ profile: pid, labKey: k, pm9Key: canonical });
+                    } else {
+                        extras.headerOverrides.push(k);
+                    }
+                }
+                for (const k of Object.keys(lp.vlcopt || {})) {
+                    if (!KNOWN_VLCOPT.has(k)) extras.vlcopt.push(k);
+                }
+                for (const k of Object.keys(lp.kodiprop || {})) {
+                    if (!KNOWN_KODIPROP.has(k)) extras.kodiprop.push(k);
+                }
+                const subtotal = extras.headerOverrides.length + extras.vlcopt.length + extras.kodiprop.length;
+                if (subtotal > 0) {
+                    extras.total = subtotal;
+                    diff.labExtras.byProfile[pid] = extras;
+                    diff.labExtras.totalAcrossProfiles += subtotal;
+                }
             }
 
             diff.nivel1.count = (data.nivel1_directives || []).length;
@@ -3138,6 +3338,22 @@
                     quitar: gp.summary?.quitar || 0,
                     scorecard: gp.scorecard_total || '',
                     grade: gp.scorecard_grade || ''
+                };
+            }
+
+            // 🔮 PRISMA LAB-SYNC v2.0 stats
+            const ps = data.prisma_lab_sync_v20;
+            if (ps) {
+                diff.prisma_lab_sync = {
+                    stage: ps._metadata?.stage || '?',
+                    compliance: ps._metadata?.compliance_score_current || 0,
+                    profile_attrs: Object.keys(ps.profile_attributes || {}).length,
+                    n3_directives: (ps.n3_directives_added || []).length,
+                    placeholders: (ps.placeholders_added || []).length,
+                    vba_modules: Object.keys(ps.vba_modules || {}).length,
+                    feature_sheets: Object.keys(ps.feature_sheets || {}).length,
+                    config_jsons: Object.keys(ps.config_jsons_consumed_by_vps || {}).filter(k => k !== '_dir').length,
+                    adb_settings: Array.isArray(ps.feature_sheets?.['19_ADB_PAYLOAD_INJECTOR']) ? ps.feature_sheets['19_ADB_PAYLOAD_INJECTOR'].length : 0
                 };
             }
 

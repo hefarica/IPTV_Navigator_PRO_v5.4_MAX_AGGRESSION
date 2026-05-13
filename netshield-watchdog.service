@@ -1,0 +1,17 @@
+[Unit]
+Description=NET SHIELD Watchdog — Daemon Inmortal IPTV Infrastructure
+After=network-online.target wg-quick@wg-surfshark.service nginx.service xray.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/opt/netshield/netshield-watchdog.sh
+Restart=always
+RestartSec=5
+WatchdogSec=120
+StartLimitIntervalSec=0
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

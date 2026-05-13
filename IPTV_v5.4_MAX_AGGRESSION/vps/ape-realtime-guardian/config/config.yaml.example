@@ -1,0 +1,72 @@
+# ═══════════════════════════════════════════════════════════════════════════════
+# APE Real-Time Bitrate Guardian — Configuration
+# ═══════════════════════════════════════════════════════════════════════════════
+# Copy to /etc/ape-realtime-guardian/config.yaml and edit as needed.
+# SIGHUP reloads this file without restarting the daemon.
+# ═══════════════════════════════════════════════════════════════════════════════
+
+service:
+  # ┌─────────────────────────────────────────────────────────────────────────┐
+  # │ Day-1 default: dry_run=true → observe only, write nothing to system    │
+  # └─────────────────────────────────────────────────────────────────────────┘
+  dry_run: true
+  interval_seconds: 1.0          # 1Hz cadence
+  max_safe_demand_mbps: 80.0     # Hard ceiling (½ of RQ_MAX_BW=160)
+  min_demand_mbps: 5.0           # Floor — never request less
+  target_bitrate_mbps: 25.0      # Default target for active streams
+  deficit_accumulation_max_factor: 3.0  # Max accumulated deficit = 3× target
+  predictive_window_seconds: 10  # Rolling deque window for slope/jitter/TTFB
+  state_persistence_path: /var/lib/ape-realtime-guardian/state.json
+  log_dir: /var/log/ape-realtime-guardian
+  audit_log_file: audit.jsonl
+  prometheus_enabled: true
+  prometheus_port: 8767
+
+probes:
+  server_side_enabled: true
+  adb_enabled: true
+  adb_connect_timeout_s: 5.0
+  adb_command_timeout_s: 3.0
+  adb_reconnect_backoff_max_s: 60.0
+  devices:
+    - name: firestick_cali
+      adb_address: "10.200.0.3:5555"
+      player: ott_navigator       # ott_navigator | tivimate
+      poll_every_n_cycles: 2      # Query ADB every 2 cycles (~2s) to avoid lag
+    - name: onn4k_buga
+      adb_address: "10.200.0.4:5555"
+      player: tivimate
+      poll_every_n_cycles: 2
+  exoplayer_patterns:
+    buffered_duration_us: 'bufferedDurationUs=(\d+)'
+    current_position_us: 'currentPositionUs=(\d+)'
+    dropped_frames: 'droppedFrames.*?count=(\d+)'
+    current_bitrate_kbps: '(\d+)\s*Kbps'
+    audio_underruns: 'audioUnderruns=(\d+)'
+
+buffer_thresholds:
+  # Piecewise buffer state analyzer (percent of target buffer)
+  stable_min: 80.0         # >= 80% → STABLE (no action)
+  preventive_min: 65.0     # >= 65% → PREVENTIVE (gentle boost)
+  recovery_min: 50.0       # >= 50% → RECOVERY (moderate boost)
+  aggressive_min: 30.0     # >= 30% → AGGRESSIVE (strong boost)
+  critical_min: 10.0       # >= 10% → CRITICAL (maximum boost)
+  # below 10% → PROTECTION (emergency clamp to safe minimum)
+
+vps_limits:
+  # VPS protection engine — reduce demand when VPS is stressed
+  max_cpu_percent: 75.0    # Hetzner CPX21: 3 vCPU AMD
+  max_ram_percent: 85.0    # 4GB RAM
+  max_net_mbps: 120.0      # ~200Mbps available, leave headroom
+  max_load_1m: 2.5         # 3 vCPU → safe at 2.5
+  max_disk_io_percent: 80.0
+
+adapter:
+  # ┌─────────────────────────────────────────────────────────────────────────┐
+  # │ Modes: simulated → shm_write → quantum_signal → nginx_lua             │
+  # │ Day-1: simulated (log only, no system writes)                          │
+  # └─────────────────────────────────────────────────────────────────────────┘
+  mode: simulated
+  shm_output_path: /dev/shm/ape_bitrate_demand.json
+  quantum_directives_path: /dev/shm/quantum_directives.json
+  nginx_lua_endpoint: "http://127.0.0.1/internal/ape-demand"

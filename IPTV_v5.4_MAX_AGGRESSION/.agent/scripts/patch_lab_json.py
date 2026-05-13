@@ -96,6 +96,26 @@ def patch_lab_json(input_path: Path, output_path: Path) -> dict:
     stats['connection_removed'] = n_arr_c + n_dict_c
     stats['keepalive_removed'] = n_arr_ka + n_dict_ka
 
+    # Fix 5: strip br/zstd/identity from Accept-Encoding values → only "gzip, deflate"
+    # Brotli en algunos providers Xtream rompe la decodificación del manifest
+    # (TLS handshake JA3 vs body encoding mismatch → 4xx silenciosos).
+    # Aplica a dict-style ("Accept-Encoding": "...") y array-style ({"key":"Accept-Encoding","value":"..."}).
+    pattern_ae_dict = re.compile(
+        r'("Accept-Encoding"\s*:\s*)"[^"]*"',
+        re.MULTILINE
+    )
+    new_text, n_ae_dict = pattern_ae_dict.subn(r'\1"gzip, deflate"', text)
+    text = new_text
+
+    pattern_ae_arr = re.compile(
+        r'(\{\s*"key"\s*:\s*"Accept-Encoding"\s*,\s*"value"\s*:\s*)"[^"]*"',
+        re.MULTILINE
+    )
+    new_text, n_ae_arr = pattern_ae_arr.subn(r'\1"gzip, deflate"', text)
+    text = new_text
+
+    stats['accept_encoding_normalized'] = n_ae_dict + n_ae_arr
+
     stats['output_size'] = len(text)
     output_path.write_text(text, encoding='utf-8')
     return stats
@@ -118,6 +138,7 @@ def main(argv):
     print(f'     adaptive-maxheight=60000 -> 4320: {stats["adaptive_maxheight_60000_replaced"]}')
     print(f'     Connection (hop-by-hop) removed: {stats["connection_removed"]}')
     print(f'     Keep-Alive (hop-by-hop) removed: {stats["keepalive_removed"]}')
+    print(f'     Accept-Encoding normalized -> "gzip, deflate": {stats["accept_encoding_normalized"]}')
     print(f'   Tamaño: {stats["input_size"]:,} -> {stats["output_size"]:,} bytes')
     print(f'   Output: {out}')
 

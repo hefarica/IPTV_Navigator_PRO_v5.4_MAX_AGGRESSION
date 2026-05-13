@@ -123,10 +123,8 @@
 
                 localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
 
-                // Dispatch event para sincronización
-                window.dispatchEvent(new CustomEvent('groupTitleConfigChanged', {
-                    detail: toSave
-                }));
+                // v1.1 FIX: Removed dead CustomEvent 'groupTitleConfigChanged' (zero listeners in production).
+                // The next M3U8 generation reads fresh from localStorage — no event bus needed.
 
                 console.log('%c[GroupTitleConfig] ✅ Configuración guardada', 'color: #10b981;', toSave);
                 return true;

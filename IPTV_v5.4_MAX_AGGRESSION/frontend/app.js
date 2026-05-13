@@ -8666,14 +8666,19 @@ El servidor analizará 26,000+ canales en ~10 minutos.
 
     // ==================== HEADER MANAGER (THE 33) ====================
     initHeaderManager() {
+        // C8 (2026-05-11) — eliminados del catálogo:
+        // If-Modified-Since, If-None-Match, Range, TE, Priority, Upgrade-Insecure-Requests.
+        // Ver memoria feedback_exthttp_traps.md trampa #9 (okhttp 304+0B EOF empirical proof).
+        // Filtro final en m3u8-typed-arrays-ultimate.js (_ca7BannedAbsolute) los strip de todas
+        // formas, pero retirarlos del catálogo evita confusión en el Header Manager UI.
         this.STANDARD_HEADERS = [
             'User-Agent', 'Referer', 'Origin', 'Cookie', 'Accept',
             'Accept-Encoding', 'Accept-Language', 'Authorization', 'Cache-Control',
-            'Connection', 'Content-Type', 'Host', 'If-Modified-Since', 'Pragma',
-            'Range', 'TE', 'Upgrade', 'X-Requested-With', 'X-Forwarded-For',
+            'Connection', 'Content-Type', 'Host', 'Pragma',
+            'Upgrade', 'X-Requested-With', 'X-Forwarded-For',
             'X-Real-IP', 'Sec-WebSocket-Key', 'Sec-WebSocket-Version', 'DNT',
             'Sec-Fetch-Dest', 'Sec-Fetch-Mode', 'Sec-Fetch-Site', 'Sec-Fetch-User',
-            'Upgrade-Insecure-Requests', 'Client-IP', 'Icy-MetaData',
+            'Client-IP', 'Icy-MetaData',
             'X-Playback-Session-Id', 'X-Player-Session-Id', 'X-Forwarded-Proto'
         ];
         this.state.activeHeaders = {}; // {'User-Agent': 'Mozilla...' }

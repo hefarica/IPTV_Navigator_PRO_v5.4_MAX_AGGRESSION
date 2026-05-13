@@ -1,0 +1,35 @@
+[Unit]
+Description=APE Real-Time Bitrate Guardian — 1Hz demand controller
+Documentation=https://github.com/hefarica/IPTV_Navigator_PRO_v5.4_MAX_AGGRESSION
+After=network-online.target wireguard@wg0.service nginx.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+Group=root
+WorkingDirectory=/opt/ape-realtime-guardian
+ExecStart=/opt/ape-realtime-guardian/.venv/bin/python -m ape_realtime_guardian.main --config /etc/ape-realtime-guardian/config.yaml
+Restart=always
+RestartSec=3
+StartLimitIntervalSec=300
+StartLimitBurst=10
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=ape-realtime-guardian
+
+# Security hardening
+NoNewPrivileges=yes
+ProtectSystem=strict
+ReadWritePaths=/dev/shm /var/log/ape-realtime-guardian /var/lib/ape-realtime-guardian
+ProtectHome=yes
+PrivateTmp=yes
+
+# Resource limits
+MemoryMax=256M
+CPUQuota=25%
+
+[Install]
+WantedBy=multi-user.target

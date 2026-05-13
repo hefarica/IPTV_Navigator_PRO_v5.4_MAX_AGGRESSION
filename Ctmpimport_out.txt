@@ -1,0 +1,58 @@
+=== ImportJSON (linea 3535, 1 lineas) ===
+Public Sub ImportJSON(): MsgBox "Usa ImportFromFrontend", vbInformation: End Sub
+
+=== ImportFromFrontend (linea 3561, 116 lineas) ===
+
+' ============================================================================
+' SESSION B+C - FRONTEND BRIDGE v1.1 MULTI-SERVER
+' ============================================================================
+Public Sub ImportFromFrontend()
+    On Error GoTo ErrHandler
+    Application.ScreenUpdating = False
+    Application.EnableEvents = False
+    Application.Calculation = xlCalculationManual
+
+    Dim filePath As String: filePath = FE_BrowseForJSON()
+    If filePath = "" Then GoTo cleanup
+    Dim jsonText As String: jsonText = FE_ReadFileUTF8(filePath)
+    If Len(jsonText) = 0 Then MsgBox "Archivo vacio.", vbExclamation: GoTo cleanup
+
+
+=== ImportChannelsJSON (linea 3549, 1 lineas) ===
+Public Sub ImportChannelsJSON(): End Sub
+
+=== BrowseJSON (linea 3530, 5 lineas) ===
+
+' ============================================================================
+' JSON LEGACY STUBS
+' ============================================================================
+Public Sub BrowseJSON(): MsgBox "Usa ImportFromFrontend", vbInformation: End Sub
+
+=== PreviewJSON (linea 3537, 1 lineas) ===
+Public Sub PreviewJSON(): End Sub
+
+=== ClearImport (linea 3538, 1 lineas) ===
+Public Sub ClearImport(): End Sub
+
+=== Hoja 24_JSON_IMPORT layout ===
+r1: JSON_IMPORT: cargar tu JSON CALIBRATED u o... |                                               |                                               |                                              
+r2:                                               |                                               |                                               |                                              
+r3: Path JSON                                     | C:\Users\HFRC\Downloads\APE_ALL_PROFILES_C... |                                               |                                              
+r4:                                               |                                               |                                               |                                              
+r5: Acciones                                      | Macro VBA                                     | Estado                                        |                                              
+r6: Examinar...                                   | BrowseJSON                                    | -                                             |                                              
+r7: ?? IMPORTAR                                   | ImportJSON                                    | ? Cargado: 6 perfiles, 1761 directivas        |                                              
+r8: PROFILES CARGADOS (auto-llenado)              |                                               |                                               |                                              
+r9:                                               |                                               |                                               |                                              
+r10:                                               |                                               |                                               |                                              
+r11: Profile ID                                    | Name                                          | Headers count                                 |                                              
+r12: P0                                            | 8K Master                                     | 409                                           |                                              
+r13: P1                                            | 4K UHD                                        | 408                                           |                                              
+r14: P2                                            | 2K QHD                                        | 322                                           |                                              
+r15: P3                                            | FHD 1080p                                     | 407                                           |                                              
+r16: P4                                            | HD 720p                                       | 407                                           |                                              
+r17: P5                                            | SD 480p                                       | 407                                           |                                              
+r18:                                               |                                               |                                               |                                              
+r19:                                               |                                               |                                               |                                              
+r20: ?? EXAMINAR ARCHIVO                           | ?? IMPORTAR                                   | ?? PREVIEW                                    | ?? LIMPIAR                                   
+r21:  BrowseJSONFile()                            |  ImportJSON()                                |  PreviewJSON()                               |  ClearImport()                              

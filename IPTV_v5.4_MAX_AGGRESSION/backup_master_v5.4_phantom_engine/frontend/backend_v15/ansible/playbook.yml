@@ -1,0 +1,216 @@
+# ============================================================================
+# APE v15 ULTIMATE - Ansible Deployment Playbook
+# ============================================================================
+# Automated deployment for APE v15 backend with Docker and Redis
+# Version: 15.0.1-ULTIMATE
+# 
+# Usage:
+#   ansible-playbook -i inventory.yml playbook.yml
+#   ansible-playbook -i inventory.yml playbook.yml --tags "docker,deploy"
+# ============================================================================
+
+---
+- name: Deploy APE v15 ULTIMATE Backend
+  hosts: ape_servers
+  become: yes
+  vars:
+    ape_version: "15.0.1"
+    ape_home: "/opt/ape_v15_ultimate"
+    ape_user: "ape"
+    ape_port: 8080
+    redis_port: 6379
+
+  tasks:
+    # ========================================================================
+    # System Preparation
+    # ========================================================================
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+      tags: [system]
+
+    - name: Install system dependencies
+      apt:
+        name:
+          - curl
+          - git
+          - python3
+          - python3-pip
+          - apt-transport-https
+          - ca-certificates
+          - gnupg
+          - lsb-release
+        state: present
+      tags: [system]
+
+    # ========================================================================
+    # Docker Installation
+    # ========================================================================
+    - name: Add Docker GPG key
+      apt_key:
+        url: https://download.docker.com/linux/ubuntu/gpg
+        state: present
+      tags: [docker]
+
+    - name: Add Docker repository
+      apt_repository:
+        repo: "deb [arch=amd64] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable"
+        state: present
+      tags: [docker]
+
+    - name: Install Docker CE
+      apt:
+        name:
+          - docker-ce
+          - docker-ce-cli
+          - containerd.io
+          - docker-compose-plugin
+        state: present
+      tags: [docker]
+
+    - name: Start and enable Docker service
+      systemd:
+        name: docker
+        state: started
+        enabled: yes
+      tags: [docker]
+
+    # ========================================================================
+    # APE User and Directories
+    # ========================================================================
+    - name: Create APE user
+      user:
+        name: "{{ ape_user }}"
+        groups: docker
+        append: yes
+        shell: /bin/bash
+        state: present
+      tags: [setup]
+
+    - name: Create APE home directory
+      file:
+        path: "{{ ape_home }}"
+        state: directory
+        owner: "{{ ape_user }}"
+        group: "{{ ape_user }}"
+        mode: '0755'
+      tags: [setup]
+
+    - name: Create subdirectories
+      file:
+        path: "{{ ape_home }}/{{ item }}"
+        state: directory
+        owner: "{{ ape_user }}"
+        group: "{{ ape_user }}"
+        mode: '0755'
+      loop:
+        - logs
+        - config
+        - monitoring
+      tags: [setup]
+
+    # ========================================================================
+    # Deploy APE Application
+    # ========================================================================
+    - name: Copy APE v15 application files
+      copy:
+        src: "{{ playbook_dir }}/../"
+        dest: "{{ ape_home }}/"
+        owner: "{{ ape_user }}"
+        group: "{{ ape_user }}"
+        mode: preserve
+      tags: [deploy]
+
+    - name: Create .env from template if not exists
+      copy:
+        src: "{{ ape_home }}/.env.example"
+        dest: "{{ ape_home }}/.env"
+        owner: "{{ ape_user }}"
+        group: "{{ ape_user }}"
+        mode: '0600'
+        remote_src: yes
+        force: no
+      tags: [deploy]
+
+    # ========================================================================
+    # Start Services with Docker Compose
+    # ========================================================================
+    - name: Build and start APE services
+      community.docker.docker_compose:
+        project_src: "{{ ape_home }}"
+        state: present
+        build: yes
+        pull: yes
+      register: compose_output
+      tags: [deploy, start]
+
+    - name: Display Docker Compose output
+      debug:
+        var: compose_output
+      tags: [deploy, start]
+
+    # ========================================================================
+    # Health Check
+    # ========================================================================
+    - name: Wait for APE backend to be healthy
+      uri:
+        url: "http://localhost:{{ ape_port }}/health"
+        method: GET
+        status_code: 200
+      register: health_check
+      until: health_check.status == 200
+      retries: 30
+      delay: 5
+      tags: [verify]
+
+    - name: Display health check result
+      debug:
+        msg: "APE v{{ ape_version }} is healthy: {{ health_check.json }}"
+      tags: [verify]
+
+    # ========================================================================
+    # Systemd Service (Optional - for non-Docker deployments)
+    # ========================================================================
+    - name: Create systemd service file
+      template:
+        src: ape_v15.service.j2
+        dest: /etc/systemd/system/ape_v15_docker.service
+        mode: '0644'
+      notify: Reload systemd
+      tags: [systemd]
+
+  handlers:
+    - name: Reload systemd
+      systemd:
+        daemon_reload: yes
+
+# ============================================================================
+# Post-deployment verification
+# ============================================================================
+- name: Verify APE v15 Deployment
+  hosts: ape_servers
+  tasks:
+    - name: Check Docker containers status
+      command: docker compose ps
+      args:
+        chdir: /opt/ape_v15_ultimate
+      register: containers_status
+      changed_when: false
+      tags: [verify]
+
+    - name: Display container status
+      debug:
+        msg: "{{ containers_status.stdout_lines }}"
+      tags: [verify]
+
+    - name: Verify Redis connectivity
+      command: docker exec ape_v15_redis redis-cli ping
+      register: redis_ping
+      changed_when: false
+      tags: [verify]
+
+    - name: Display Redis status
+      debug:
+        msg: "Redis status: {{ redis_ping.stdout }}"
+      tags: [verify]

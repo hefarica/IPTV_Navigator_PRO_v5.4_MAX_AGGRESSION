@@ -1,0 +1,205 @@
+graph TB
+    subgraph PROVIDERS["🌐 PROVEEDORES IPTV PRESELECCIONADOS"]
+        P1["Provider 1<br/>domain1.com<br/>user:pass"]
+        P2["Provider 2<br/>domain2.net<br/>user:pass"]
+        P3["Provider N<br/>domainN.biz<br/>user:pass"]
+    end
+    
+    subgraph SELECTION["🔍 SELECCIÓN DINÁMICA"]
+        SEL["Seleccionar Provider<br/>según disponibilidad"]
+    end
+    
+    subgraph TOKEN["🔐 TOKEN JWT APE ULTIMATE"]
+        subgraph HEADER["📋 HEADER"]
+            H1["alg: HS256"]
+            H2["typ: JWT"]
+            H3["ver: 16.0.0"]
+        end
+        
+        subgraph PAYLOAD["📦 PAYLOAD - 68+ CAMPOS"]
+            subgraph CAPA1["CAPA 1: AUTENTICACIÓN"]
+                L1["iss, iat, exp, nbf"]
+            end
+            
+            subgraph CAPA2["CAPA 2: SEGURIDAD"]
+                L2["jti, nonce, aud, sub"]
+            end
+            
+            subgraph CAPA3["CAPA 3: CANAL"]
+                L3["chn, chn_id, chn_logo"]
+            end
+            
+            subgraph CAPA4["CAPA 4: DISPOSITIVO"]
+                L4["device_profile, resolution"]
+            end
+            
+            subgraph CAPA5["CAPA 5: BUFFER"]
+                L5["buffer_ms, cache_ms"]
+            end
+            
+            subgraph CAPA6["CAPA 6: CODIFICACIÓN"]
+                L6["codec, hdr_support"]
+            end
+            
+            subgraph CAPA7["CAPA 7: PROXY AUTH"]
+                L7A["proxy_enabled: true"]
+                L7B["proxy_host: DINÁMICO"]
+                L7C["proxy_port: DINÁMICO"]
+                L7D["proxy_user: CIFRADO"]
+                L7E["proxy_pass: CIFRADO"]
+                L7F["proxy_auth_type: BASIC/NTLM"]
+                L7G["proxy_retry_407: true"]
+                L7H["proxy_max_retries: 3"]
+            end
+        end
+        
+        subgraph SIGNATURE["🔑 SIGNATURE"]
+            SIG["HS256 Hash"]
+        end
+    end
+    
+    subgraph PROXY_AUTH["🔐 AUTENTICACIÓN DE PROXY"]
+        subgraph DETECTION["Detección de Error 407"]
+            D1["HTTP 407 Recibido"]
+            D2["Proxy requiere autenticación"]
+        end
+        
+        subgraph AUTH_PROCESS["Proceso de Autenticación"]
+            A1["1. Extraer credenciales del token"]
+            A2["2. Desencriptar usuario y contraseña"]
+            A3["3. Construir header Authorization"]
+            A4["4. Enviar con Proxy-Authorization"]
+            A5["5. Reintentar solicitud"]
+        end
+        
+        subgraph AUTH_METHODS["Métodos Soportados"]
+            AM1["Basic Auth<br/>user:pass en Base64"]
+            AM2["NTLM<br/>Autenticación Windows"]
+            AM3["Digest<br/>Hash MD5"]
+            AM4["Custom<br/>Headers personalizados"]
+        end
+        
+        subgraph RETRY["Estrategia de Reintentos"]
+            R1["Intento 1: Sin auth"]
+            R2["Intento 2: Basic Auth"]
+            R3["Intento 3: NTLM/Digest"]
+            R4["Fallback: Proxy alternativo"]
+        end
+    end
+    
+    subgraph DYNAMIC_DOMAINS["🔄 DOMINIOS DINÁMICOS"]
+        DD1["Dominio del Provider 1<br/>Seleccionado dinámicamente"]
+        DD2["Dominio del Provider 2<br/>Alternativa si falla"]
+        DD3["Dominio del Provider N<br/>Último recurso"]
+    end
+    
+    subgraph ENCRYPTION["🔒 CIFRADO DE CREDENCIALES"]
+        ENC1["Algoritmo: AES-256-GCM"]
+        ENC2["Clave: Derivada de JWT"]
+        ENC3["IV: Único por token"]
+        ENC4["Stored: En payload cifrado"]
+    end
+    
+    subgraph FLUJO["🔄 FLUJO COMPLETO"]
+        F1["1. Cliente solicita stream"]
+        F2["2. Selecciona provider IPTV"]
+        F3["3. Obtiene dominio dinámico"]
+        F4["4. Genera token con proxy auth"]
+        F5["5. Envía solicitud HTTP"]
+        F6["6. Recibe 407 Proxy Auth Required"]
+        F7["7. Extrae credenciales del token"]
+        F8["8. Reintenta con autenticación"]
+        F9["9. Éxito: Reproduce stream"]
+        F10["10. Fallo: Intenta siguiente provider"]
+    end
+    
+    subgraph HEADERS["📨 HEADERS HTTP"]
+        HDR1["Proxy-Connection: keep-alive"]
+        HDR2["Proxy-Authorization: Basic/NTLM"]
+        HDR3["X-Proxy-Auth-Type: type"]
+        HDR4["X-Proxy-Retry-Count: n"]
+    end
+    
+    %% Conexiones principales
+    P1 --> SEL
+    P2 --> SEL
+    P3 --> SEL
+    
+    SEL --> TOKEN
+    TOKEN --> PROXY_AUTH
+    PROXY_AUTH --> DYNAMIC_DOMAINS
+    DYNAMIC_DOMAINS --> ENCRYPTION
+    ENCRYPTION --> FLUJO
+    FLUJO --> HEADERS
+    
+    %% Conexiones internas de proxy auth
+    D1 --> AUTH_PROCESS
+    AUTH_PROCESS --> AUTH_METHODS
+    AUTH_METHODS --> RETRY
+    RETRY --> F8
+    
+    %% Conexiones de flujo
+    F1 --> F2
+    F2 --> F3
+    F3 --> F4
+    F4 --> F5
+    F5 --> F6
+    F6 --> F7
+    F7 --> F8
+    F8 --> F9
+    F9 --> F10
+    
+    %% Conexiones de capa 7
+    CAPA7 --> AUTH_PROCESS
+    ENCRYPTION --> CAPA7
+    
+    %% Estilos
+    style PROVIDERS fill:#1a1a2e,stroke:#0f3460,stroke-width:2px,color:#eee
+    style SELECTION fill:#0f3460,stroke:#16213e,stroke-width:2px,color:#eee
+    style TOKEN fill:#1a1a2e,stroke:#0f3460,stroke-width:3px,color:#eee
+    style HEADER fill:#0f3460,stroke:#16213e,stroke-width:2px,color:#eee
+    style PAYLOAD fill:#16213e,stroke:#0f3460,stroke-width:2px,color:#eee
+    style SIGNATURE fill:#e94560,stroke:#c41e3a,stroke-width:2px,color:#fff
+    
+    style CAPA1 fill:#ff6b6b,stroke:#ee5a6f,stroke-width:2px,color:#fff
+    style CAPA2 fill:#ff8c42,stroke:#f77f00,stroke-width:2px,color:#fff
+    style CAPA3 fill:#ffd60a,stroke:#ffc300,stroke-width:2px,color:#000
+    style CAPA4 fill:#06ffa5,stroke:#00d084,stroke-width:2px,color:#000
+    style CAPA5 fill:#118ab2,stroke:#073b4c,stroke-width:2px,color:#fff
+    style CAPA6 fill:#073b4c,stroke:#051f2a,stroke-width:2px,color:#fff
+    style CAPA7 fill:#c1121f,stroke:#800000,stroke-width:2px,color:#fff
+    
+    style PROXY_AUTH fill:#2a2a4e,stroke:#1a1a3e,stroke-width:2px,color:#eee
+    style DETECTION fill:#ff6b6b,stroke:#ee5a6f,stroke-width:2px,color:#fff
+    style AUTH_PROCESS fill:#ff8c42,stroke:#f77f00,stroke-width:2px,color:#fff
+    style AUTH_METHODS fill:#ffd60a,stroke:#ffc300,stroke-width:2px,color:#000
+    style RETRY fill:#118ab2,stroke:#073b4c,stroke-width:2px,color:#fff
+    
+    style DYNAMIC_DOMAINS fill:#2a2a4e,stroke:#1a1a3e,stroke-width:2px,color:#eee
+    style DD1 fill:#06ffa5,stroke:#00d084,stroke-width:2px,color:#000
+    style DD2 fill:#06ffa5,stroke:#00d084,stroke-width:2px,color:#000
+    style DD3 fill:#06ffa5,stroke:#00d084,stroke-width:2px,color:#000
+    
+    style ENCRYPTION fill:#2a2a4e,stroke:#1a1a3e,stroke-width:2px,color:#eee
+    style ENC1 fill:#c1121f,stroke:#800000,stroke-width:1px,color:#fff
+    style ENC2 fill:#c1121f,stroke:#800000,stroke-width:1px,color:#fff
+    style ENC3 fill:#c1121f,stroke:#800000,stroke-width:1px,color:#fff
+    style ENC4 fill:#c1121f,stroke:#800000,stroke-width:1px,color:#fff
+    
+    style FLUJO fill:#2a2a4e,stroke:#1a1a3e,stroke-width:2px,color:#eee
+    style F1 fill:#06ffa5,stroke:#00d084,stroke-width:1px,color:#000
+    style F2 fill:#06ffa5,stroke:#00d084,stroke-width:1px,color:#000
+    style F3 fill:#118ab2,stroke:#073b4c,stroke-width:1px,color:#fff
+    style F4 fill:#118ab2,stroke:#073b4c,stroke-width:1px,color:#fff
+    style F5 fill:#ff8c42,stroke:#f77f00,stroke-width:1px,color:#fff
+    style F6 fill:#ff6b6b,stroke:#ee5a6f,stroke-width:1px,color:#fff
+    style F7 fill:#c1121f,stroke:#800000,stroke-width:1px,color:#fff
+    style F8 fill:#ffd60a,stroke:#ffc300,stroke-width:1px,color:#000
+    style F9 fill:#06ffa5,stroke:#00d084,stroke-width:1px,color:#000
+    style F10 fill:#06ffa5,stroke:#00d084,stroke-width:1px,color:#000
+    
+    style HEADERS fill:#2a2a4e,stroke:#1a1a3e,stroke-width:2px,color:#eee
+    style HDR1 fill:#118ab2,stroke:#073b4c,stroke-width:1px,color:#fff
+    style HDR2 fill:#c1121f,stroke:#800000,stroke-width:1px,color:#fff
+    style HDR3 fill:#ff8c42,stroke:#f77f00,stroke-width:1px,color:#fff
+    style HDR4 fill:#ffd60a,stroke:#ffc300,stroke-width:1px,color:#000

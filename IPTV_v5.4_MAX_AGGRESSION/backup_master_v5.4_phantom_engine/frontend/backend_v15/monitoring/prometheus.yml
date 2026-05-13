@@ -1,0 +1,48 @@
+# ============================================================================
+# APE v15 ULTIMATE - Prometheus Configuration
+# ============================================================================
+# Scrape configuration for APE backend metrics
+# ============================================================================
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    monitor: 'ape-v15-monitor'
+
+# Alertmanager configuration (optional)
+# alerting:
+#   alertmanagers:
+#     - static_configs:
+#         - targets:
+#           - alertmanager:9093
+
+# Rule files (optional)
+# rule_files:
+#   - "alert_rules.yml"
+
+# Scrape configurations
+scrape_configs:
+  # APE v15 Backend metrics
+  - job_name: 'ape_v15_backend'
+    static_configs:
+      - targets: ['ape-backend:8080']
+        labels:
+          app: 'ape-v15'
+          env: 'production'
+    metrics_path: '/metrics/prometheus'
+    scrape_interval: 10s
+    scrape_timeout: 5s
+
+  # Redis metrics (requires redis_exporter)
+  # Uncomment if you have redis_exporter running
+  # - job_name: 'redis'
+  #   static_configs:
+  #     - targets: ['redis-exporter:9121']
+  #       labels:
+  #         app: 'ape-v15-redis'
+
+  # Prometheus self-monitoring
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']

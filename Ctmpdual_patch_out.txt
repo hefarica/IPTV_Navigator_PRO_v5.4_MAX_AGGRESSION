@@ -1,0 +1,48 @@
+============================================================
+ PARCHE DUAL JSON - ImportFromFrontend
+============================================================
+
+Backup pre-parche: C:\Users\HFRC\Downloads\APE_M3U8_LAB_v8_FIXED.BACKUP_20260418_004900_pre_dual_import.xlsm
+
+[1] Verificando estado actual de ImportFromFrontend...
+    Sin parche - procedo
+
+[2] Buscando linea de execScript __data...
+    Linea execScript encontrada: 3598
+    Bloque dual JSON insertado en linea 3599
+
+[3] Anadiendo Sub FE_SyncProfilesFromTopLevel...
+    Inyectado FE_SyncProfilesFromTopLevel
+
+[4] Verificando parche en ImportFromFrontend...
+    ImportFromFrontend ahora tiene 134 lineas
+    Lineas 14-30 del Sub:
+    L3612:     If Len(jsonText) = 0 Then MsgBox "Archivo vacio.", vbExclamation: GoTo cleanup
+    L3613: 
+    L3614:     ' Init htmlfile JScript (compatible 64-bit)
+    L3615:     Dim htmlDoc As Object
+    L3616:     Set htmlDoc = CreateObject("htmlfile")
+    L3617:     htmlDoc.write "<meta http-equiv=""X-UA-Compatible"" content=""IE=9"">"
+    L3618:     Set FE_sc = htmlDoc.parentWindow
+    L3619: 
+    L3620:     ' JScript helpers v1.1 - multi-server
+    L3621:     FE_sc.execScript _
+    L3622:         "var __data=null;" & _
+    L3623:         "function initData(s){__data=JSON.parse(s);return 1;}" & _
+    L3624:         "function getMeta(k){return (__data&&__data[k]!==undefined&&__data[k]!==null)?String(__data[k]):'';}" & _
+    L3625:         "function chCount(){return (__data&&__data.channels)?__data.channels.length:0;}" & _
+    L3626:         "function chStr(i,k){var c=__data.channels[i];return (c&&c[k]!==undefined&&c[k]!==null)?String(c[k]):'';}" & _
+    L3627:         "function chBool(i,k){var c=__data.channels[i];return (c&&c[k])?1:0;}" & _
+    L3628:         "function chTags(i){var c=__data.channels[i];return (c&&c.quality_tags&&c.quality_tags.join)?c.quality_tags.join(','):'';}" & _
+
+[5] Backup post-parche...
+    C:\Users\HFRC\Downloads\APE_M3U8_LAB_v8_FIXED.BACKUP_20260418_004902_DUAL_IMPORT.xlsm  (3239883 bytes)
+
+============================================================
+ DONE. Parche dual JSON instalado. Excel guardado y respaldado.
+============================================================
+
+PRUEBA RECOMENDADA:
+  Alt+F8 -> ImportFromFrontend -> selecciona:
+  C:\Users\HFRC\Desktop\IPTV_Navigator_SSOT_v1.0\IPTV_v5.4_MAX_AGGRESSION\frontend\js\ape-v9\APE_ALL_PROFILES_OPTIMIZED.json
+  Debe mostrar 'PROFILES-ONLY OK' sin tocar canales.

@@ -1,0 +1,408 @@
+============================================================
+ RESURRECTION - APE M3U8 LAB v8 FIXED
+============================================================
+Conectado: APE_M3U8_LAB_v8_FIXED.xlsm
+
+[0] Backup pre-resurrection...
+    [save OK]
+    backup: C:\Users\HFRC\Downloads\APE_M3U8_LAB_v8_FIXED.BACKUP_20260417_233721_pre_resurrection.xlsm
+
+[1] Restaurando 18_CONFIG!C25:C27...
+    C25=True C26=3600 C27=HS256
+
+[2] Slots buffer/live/reconnect en 18_CONFIG!31:33...
+    slots ya existen, skip
+    [save OK]
+
+[3] Fix pointers 31_SOLVER_SETUP...
+    7 objetivos + 7 variables cableadas correctamente
+
+[4] P1 bufferTargetSec = 60...
+    C57: 60 -> 60
+
+[5] Anadir ABR_Maturity_Factor y Error_Tree_Coverage a 18_CONFIG...
+    ABR_Maturity_Factor=1.0 (r36), Error_Tree_Coverage=1.0 (r37)
+    [save OK]
+
+[6] Inyectando modulos VBA...
+    + APE_WIRING.bas -> Module6 (378 lineas)
+    + APE_OMEGA_MATH.bas -> Module7 (657 lineas)
+    + APE_CONVERGE_SIMPLE.bas -> Module8 (277 lineas)
+    + APE_OMEGA_GUARANTEES.bas -> Module9 (289 lineas)
+    [save OK]
+
+[7] Parcheando APE_LAB_BRAIN...
+    7a: abrMat ya parcheada o no encontrada
+    7b: linea Brain_CalcStreamingHealth no encontrada
+    7c: 0 MsgBox parcheadas con flag WIRING_SILENT
+    [save OK]
+
+[8] Worksheet_Change hooks...
+    18_CONFIG (Hoja18): hook instalado
+    9_BRAIN_DASHBOARD (Hoja9): hook instalado
+    [save OK]
+
+[9] Botones OMEGA en 36_BRAIN_SELECTOR...
+    fila inicio: 51
+La propiedad 'Text' no se encuentra en este objeto. Compruebe que la propiedad existe y se puede establecer.
+En C:\tmp\resurrection.ps1: 321 Car cter: 5
++     $shape.TextFrame.Characters.Text = $btn.L
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) [], RuntimeException
+    + FullyQualifiedErrorId : PropertyAssignmentException
+ 
+La propiedad 'Bold' no se encuentra en este objeto. Compruebe que la propiedad existe y se puede establecer.
+En C:\tmp\resurrection.ps1: 324 Car cter: 5
++     $shape.TextFrame.Characters.Font.Bold = $true
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) [], RuntimeException
+    + FullyQualifiedErrorId : PropertyNotFound
+ 
+La propiedad 'Size' no se encuentra en este objeto. Compruebe que la propiedad existe y se puede establecer.
+En C:\tmp\resurrection.ps1: 325 Car cter: 5
++     $shape.TextFrame.Characters.Font.Size = 10
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) [], RuntimeException
+    + FullyQualifiedErrorId : PropertyNotFound
+ 
+La propiedad 'Color' no se encuentra en este objeto. Compruebe que la propiedad existe y se puede establecer.
+En C:\tmp\resurrection.ps1: 326 Car cter: 5
++     $shape.TextFrame.Characters.Font.Color = 0xFFFFFF
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) [], RuntimeException
+    + FullyQualifiedErrorId : PropertyNotFound
+ 
+La propiedad 'Text' no se encuentra en este objeto. Compruebe que la propiedad existe y se puede establecer.
+En C:\tmp\resurrection.ps1: 321 Car cter: 5
++     $shape.TextFrame.Characters.Text = $btn.L
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) [], RuntimeException
+    + FullyQualifiedErrorId : PropertyAssignmentException
+ 
+La propiedad 'Bold' no se encuentra en este objeto. Compruebe que la propiedad existe y se puede establecer.
+En C:\tmp\resurrection.ps1: 324 Car cter: 5
++     $shape.TextFrame.Characters.Font.Bold = $true
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) [], RuntimeException
+    + FullyQualifiedErrorId : PropertyNotFound
+ 
+La propiedad 'Size' no se encuentra en este objeto. Compruebe que la propiedad existe y se puede establecer.
+En C:\tmp\resurrection.ps1: 325 Car cter: 5
++     $shape.TextFrame.Characters.Font.Size = 10
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) [], RuntimeException
+    + FullyQualifiedErrorId : PropertyNotFound
+ 
+La propiedad 'Color' no se encuentra en este objeto. Compruebe que la propiedad existe y se puede establecer.
+En C:\tmp\resurrection.ps1: 326 Car cter: 5
++     $shape.TextFrame.Characters.Font.Color = 0xFFFFFF
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) [], RuntimeException
+    + FullyQualifiedErrorId : PropertyNotFound
+ 
+La propiedad 'Text' no se encuentra en este objeto. Compruebe que la propiedad existe y se puede establecer.
+En C:\tmp\resurrection.ps1: 321 Car cter: 5
++     $shape.TextFrame.Characters.Text = $btn.L
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) [], RuntimeException
+    + FullyQualifiedErrorId : PropertyAssignmentException
+ 
+La propiedad 'Bold' no se encuentra en este objeto. Compruebe que la propiedad existe y se puede establecer.
+En C:\tmp\resurrection.ps1: 324 Car cter: 5
++     $shape.TextFrame.Characters.Font.Bold = $true
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) [], RuntimeException
+    + FullyQualifiedErrorId : PropertyNotFound
+ 
+La propiedad 'Size' no se encuentra en este objeto. Compruebe que la propiedad existe y se puede establecer.
+En C:\tmp\resurrection.ps1: 325 Car cter: 5
++     $shape.TextFrame.Characters.Font.Size = 10
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) [], RuntimeException
+    + FullyQualifiedErrorId : PropertyNotFound
+ 
+La propiedad 'Color' no se encuentra en este objeto. Compruebe que la propiedad existe y se puede establecer.
+En C:\tmp\resurrection.ps1: 326 Car cter: 5
++     $shape.TextFrame.Characters.Font.Color = 0xFFFFFF
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) [], RuntimeException
+    + FullyQualifiedErrorId : PropertyNotFound
+ 
+La propiedad 'Text' no se encuentra en este objeto. Compruebe que la propiedad existe y se puede establecer.
+En C:\tmp\resurrection.ps1: 321 Car cter: 5
++     $shape.TextFrame.Characters.Text = $btn.L
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) [], RuntimeException
+    + FullyQualifiedErrorId : PropertyAssignmentException
+ 
+La propiedad 'Bold' no se encuentra en este objeto. Compruebe que la propiedad existe y se puede establecer.
+En C:\tmp\resurrection.ps1: 324 Car cter: 5
++     $shape.TextFrame.Characters.Font.Bold = $true
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) [], RuntimeException
+    + FullyQualifiedErrorId : PropertyNotFound
+ 
+La propiedad 'Size' no se encuentra en este objeto. Compruebe que la propiedad existe y se puede establecer.
+En C:\tmp\resurrection.ps1: 325 Car cter: 5
++     $shape.TextFrame.Characters.Font.Size = 10
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) [], RuntimeException
+    + FullyQualifiedErrorId : PropertyNotFound
+ 
+La propiedad 'Color' no se encuentra en este objeto. Compruebe que la propiedad existe y se puede establecer.
+En C:\tmp\resurrection.ps1: 326 Car cter: 5
++     $shape.TextFrame.Characters.Font.Color = 0xFFFFFF
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) [], RuntimeException
+    + FullyQualifiedErrorId : PropertyNotFound
+ 
+La propiedad 'Text' no se encuentra en este objeto. Compruebe que la propiedad existe y se puede establecer.
+En C:\tmp\resurrection.ps1: 321 Car cter: 5
++     $shape.TextFrame.Characters.Text = $btn.L
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) [], RuntimeException
+    + FullyQualifiedErrorId : PropertyAssignmentException
+ 
+La propiedad 'Bold' no se encuentra en este objeto. Compruebe que la propiedad existe y se puede establecer.
+En C:\tmp\resurrection.ps1: 324 Car cter: 5
++     $shape.TextFrame.Characters.Font.Bold = $true
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) [], RuntimeException
+    + FullyQualifiedErrorId : PropertyNotFound
+ 
+La propiedad 'Size' no se encuentra en este objeto. Compruebe que la propiedad existe y se puede establecer.
+En C:\tmp\resurrection.ps1: 325 Car cter: 5
++     $shape.TextFrame.Characters.Font.Size = 10
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) [], RuntimeException
+    + FullyQualifiedErrorId : PropertyNotFound
+ 
+La propiedad 'Color' no se encuentra en este objeto. Compruebe que la propiedad existe y se puede establecer.
+En C:\tmp\resurrection.ps1: 326 Car cter: 5
++     $shape.TextFrame.Characters.Font.Color = 0xFFFFFF
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) [], RuntimeException
+    + FullyQualifiedErrorId : PropertyNotFound
+ 
+La propiedad 'Text' no se encuentra en este objeto. Compruebe que la propiedad existe y se puede establecer.
+En C:\tmp\resurrection.ps1: 321 Car cter: 5
++     $shape.TextFrame.Characters.Text = $btn.L
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) [], RuntimeException
+    + FullyQualifiedErrorId : PropertyAssignmentException
+ 
+La propiedad 'Bold' no se encuentra en este objeto. Compruebe que la propiedad existe y se puede establecer.
+En C:\tmp\resurrection.ps1: 324 Car cter: 5
++     $shape.TextFrame.Characters.Font.Bold = $true
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) [], RuntimeException
+    + FullyQualifiedErrorId : PropertyNotFound
+ 
+La propiedad 'Size' no se encuentra en este objeto. Compruebe que la propiedad existe y se puede establecer.
+En C:\tmp\resurrection.ps1: 325 Car cter: 5
++     $shape.TextFrame.Characters.Font.Size = 10
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) [], RuntimeException
+    + FullyQualifiedErrorId : PropertyNotFound
+ 
+La propiedad 'Color' no se encuentra en este objeto. Compruebe que la propiedad existe y se puede establecer.
+En C:\tmp\resurrection.ps1: 326 Car cter: 5
++     $shape.TextFrame.Characters.Font.Color = 0xFFFFFF
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) [], RuntimeException
+    + FullyQualifiedErrorId : PropertyNotFound
+ 
+La propiedad 'Text' no se encuentra en este objeto. Compruebe que la propiedad existe y se puede establecer.
+En C:\tmp\resurrection.ps1: 321 Car cter: 5
++     $shape.TextFrame.Characters.Text = $btn.L
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) [], RuntimeException
+    + FullyQualifiedErrorId : PropertyAssignmentException
+ 
+La propiedad 'Bold' no se encuentra en este objeto. Compruebe que la propiedad existe y se puede establecer.
+En C:\tmp\resurrection.ps1: 324 Car cter: 5
++     $shape.TextFrame.Characters.Font.Bold = $true
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) [], RuntimeException
+    + FullyQualifiedErrorId : PropertyNotFound
+ 
+La propiedad 'Size' no se encuentra en este objeto. Compruebe que la propiedad existe y se puede establecer.
+En C:\tmp\resurrection.ps1: 325 Car cter: 5
++     $shape.TextFrame.Characters.Font.Size = 10
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) [], RuntimeException
+    + FullyQualifiedErrorId : PropertyNotFound
+ 
+La propiedad 'Color' no se encuentra en este objeto. Compruebe que la propiedad existe y se puede establecer.
+En C:\tmp\resurrection.ps1: 326 Car cter: 5
++     $shape.TextFrame.Characters.Font.Color = 0xFFFFFF
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) [], RuntimeException
+    + FullyQualifiedErrorId : PropertyNotFound
+ 
+La propiedad 'Text' no se encuentra en este objeto. Compruebe que la propiedad existe y se puede establecer.
+En C:\tmp\resurrection.ps1: 321 Car cter: 5
++     $shape.TextFrame.Characters.Text = $btn.L
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) [], RuntimeException
+    + FullyQualifiedErrorId : PropertyAssignmentException
+ 
+La propiedad 'Bold' no se encuentra en este objeto. Compruebe que la propiedad existe y se puede establecer.
+En C:\tmp\resurrection.ps1: 324 Car cter: 5
++     $shape.TextFrame.Characters.Font.Bold = $true
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) [], RuntimeException
+    + FullyQualifiedErrorId : PropertyNotFound
+ 
+La propiedad 'Size' no se encuentra en este objeto. Compruebe que la propiedad existe y se puede establecer.
+En C:\tmp\resurrection.ps1: 325 Car cter: 5
++     $shape.TextFrame.Characters.Font.Size = 10
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) [], RuntimeException
+    + FullyQualifiedErrorId : PropertyNotFound
+ 
+La propiedad 'Color' no se encuentra en este objeto. Compruebe que la propiedad existe y se puede establecer.
+En C:\tmp\resurrection.ps1: 326 Car cter: 5
++     $shape.TextFrame.Characters.Font.Color = 0xFFFFFF
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) [], RuntimeException
+    + FullyQualifiedErrorId : PropertyNotFound
+ 
+La propiedad 'Text' no se encuentra en este objeto. Compruebe que la propiedad existe y se puede establecer.
+En C:\tmp\resurrection.ps1: 321 Car cter: 5
++     $shape.TextFrame.Characters.Text = $btn.L
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) [], RuntimeException
+    + FullyQualifiedErrorId : PropertyAssignmentException
+ 
+La propiedad 'Bold' no se encuentra en este objeto. Compruebe que la propiedad existe y se puede establecer.
+En C:\tmp\resurrection.ps1: 324 Car cter: 5
++     $shape.TextFrame.Characters.Font.Bold = $true
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) [], RuntimeException
+    + FullyQualifiedErrorId : PropertyNotFound
+ 
+La propiedad 'Size' no se encuentra en este objeto. Compruebe que la propiedad existe y se puede establecer.
+En C:\tmp\resurrection.ps1: 325 Car cter: 5
++     $shape.TextFrame.Characters.Font.Size = 10
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) [], RuntimeException
+    + FullyQualifiedErrorId : PropertyNotFound
+ 
+La propiedad 'Color' no se encuentra en este objeto. Compruebe que la propiedad existe y se puede establecer.
+En C:\tmp\resurrection.ps1: 326 Car cter: 5
++     $shape.TextFrame.Characters.Font.Color = 0xFFFFFF
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) [], RuntimeException
+    + FullyQualifiedErrorId : PropertyNotFound
+ 
+La propiedad 'Text' no se encuentra en este objeto. Compruebe que la propiedad existe y se puede establecer.
+En C:\tmp\resurrection.ps1: 321 Car cter: 5
++     $shape.TextFrame.Characters.Text = $btn.L
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) [], RuntimeException
+    + FullyQualifiedErrorId : PropertyAssignmentException
+ 
+La propiedad 'Bold' no se encuentra en este objeto. Compruebe que la propiedad existe y se puede establecer.
+En C:\tmp\resurrection.ps1: 324 Car cter: 5
++     $shape.TextFrame.Characters.Font.Bold = $true
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) [], RuntimeException
+    + FullyQualifiedErrorId : PropertyNotFound
+ 
+La propiedad 'Size' no se encuentra en este objeto. Compruebe que la propiedad existe y se puede establecer.
+En C:\tmp\resurrection.ps1: 325 Car cter: 5
++     $shape.TextFrame.Characters.Font.Size = 10
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) [], RuntimeException
+    + FullyQualifiedErrorId : PropertyNotFound
+ 
+La propiedad 'Color' no se encuentra en este objeto. Compruebe que la propiedad existe y se puede establecer.
+En C:\tmp\resurrection.ps1: 326 Car cter: 5
++     $shape.TextFrame.Characters.Font.Color = 0xFFFFFF
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) [], RuntimeException
+    + FullyQualifiedErrorId : PropertyNotFound
+ 
+La propiedad 'Text' no se encuentra en este objeto. Compruebe que la propiedad existe y se puede establecer.
+En C:\tmp\resurrection.ps1: 321 Car cter: 5
++     $shape.TextFrame.Characters.Text = $btn.L
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) [], RuntimeException
+    + FullyQualifiedErrorId : PropertyAssignmentException
+ 
+La propiedad 'Bold' no se encuentra en este objeto. Compruebe que la propiedad existe y se puede establecer.
+En C:\tmp\resurrection.ps1: 324 Car cter: 5
++     $shape.TextFrame.Characters.Font.Bold = $true
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) [], RuntimeException
+    + FullyQualifiedErrorId : PropertyNotFound
+ 
+La propiedad 'Size' no se encuentra en este objeto. Compruebe que la propiedad existe y se puede establecer.
+En C:\tmp\resurrection.ps1: 325 Car cter: 5
++     $shape.TextFrame.Characters.Font.Size = 10
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) [], RuntimeException
+    + FullyQualifiedErrorId : PropertyNotFound
+ 
+La propiedad 'Color' no se encuentra en este objeto. Compruebe que la propiedad existe y se puede establecer.
+En C:\tmp\resurrection.ps1: 326 Car cter: 5
++     $shape.TextFrame.Characters.Font.Color = 0xFFFFFF
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) [], RuntimeException
+    + FullyQualifiedErrorId : PropertyNotFound
+ 
+La propiedad 'Text' no se encuentra en este objeto. Compruebe que la propiedad existe y se puede establecer.
+En C:\tmp\resurrection.ps1: 321 Car cter: 5
++     $shape.TextFrame.Characters.Text = $btn.L
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) [], RuntimeException
+    + FullyQualifiedErrorId : PropertyAssignmentException
+ 
+La propiedad 'Bold' no se encuentra en este objeto. Compruebe que la propiedad existe y se puede establecer.
+En C:\tmp\resurrection.ps1: 324 Car cter: 5
++     $shape.TextFrame.Characters.Font.Bold = $true
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) [], RuntimeException
+    + FullyQualifiedErrorId : PropertyNotFound
+ 
+La propiedad 'Size' no se encuentra en este objeto. Compruebe que la propiedad existe y se puede establecer.
+En C:\tmp\resurrection.ps1: 325 Car cter: 5
++     $shape.TextFrame.Characters.Font.Size = 10
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) [], RuntimeException
+    + FullyQualifiedErrorId : PropertyNotFound
+ 
+La propiedad 'Color' no se encuentra en este objeto. Compruebe que la propiedad existe y se puede establecer.
+En C:\tmp\resurrection.ps1: 326 Car cter: 5
++     $shape.TextFrame.Characters.Font.Color = 0xFFFFFF
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) [], RuntimeException
+    + FullyQualifiedErrorId : PropertyNotFound
+ 
+    creados 12 shapes (botones + headers)
+    [save OK]
+
+[10] Backup post-resurrection...
+    [save OK]
+    C:\Users\HFRC\Downloads\APE_M3U8_LAB_v8_FIXED.BACKUP_20260417_233728_FULL_INTEGRATED.xlsm  (3311589 bytes)
+
+============================================================
+ RESURRECTION COMPLETA
+============================================================
+
+Modulos VBA inyectados:
+  - APE_WIRING.bas -> Module6
+  - APE_OMEGA_GUARANTEES.bas -> Module9
+  - APE_OMEGA_MATH.bas -> Module7
+  - APE_CONVERGE_SIMPLE.bas -> Module8
+
+Backups: pre y post
+  pre : C:\Users\HFRC\Downloads\APE_M3U8_LAB_v8_FIXED.BACKUP_20260417_233721_pre_resurrection.xlsm
+  post: C:\Users\HFRC\Downloads\APE_M3U8_LAB_v8_FIXED.BACKUP_20260417_233728_FULL_INTEGRATED.xlsm
+
+Recalc para medir Health/Risk con la nueva config...
+  recalc fallo: Excepci¢n de HRESULT: 0x800A9C68
+    [save OK]
+
+DONE. Excel guardado y respaldado.

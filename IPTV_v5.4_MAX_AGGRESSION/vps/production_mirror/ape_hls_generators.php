@@ -67,9 +67,12 @@ function generate_http_headers_json(array $channel, string $ua, string $profile_
     'Connection'                => 'keep-alive',
     'Keep-Alive'                => 'timeout=120, max=100',
     'Cache-Control'             => 'no-cache',
-    'Range'                     => 'bytes=0-',
-    'If-None-Match'             => '*',
-    'If-Modified-Since'         => $ts,
+    // C8 (2026-05-11) — eliminados Range / If-None-Match / If-Modified-Since.
+    // If-None-Match:* → CDN devuelve 304+0B → okhttp "unexpected end of stream".
+    // Ver memoria feedback_exthttp_traps.md trampa #9.
+    // 'Range'                     => 'bytes=0-',
+    // 'If-None-Match'             => '*',
+    // 'If-Modified-Since'         => $ts,
     'Origin'                    => 'https://iptv-ape.duckdns.org',
     'Referer'                   => 'https://iptv-ape.duckdns.org/',
     'X-Reconnect-On-Error'      => 'true,immediate,adaptive',

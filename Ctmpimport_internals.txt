@@ -1,0 +1,269 @@
+=== FE_WriteRowJS (line 3837, 68 lines) ===
+
+Private Sub FE_WriteRowJS(ws As Worksheet, r As Long, i As Long, _
+                          batchId As String, importedAt As String)
+    Dim idx As String: idx = CStr(i)
+    ws.Cells(r, FE_COL_ACTIVO).value = "X"
+    ws.Cells(r, FE_COL_NUM).value = r - 3
+    ws.Cells(r, FE_COL_STREAMID).value = CStr(FE_sc.eval("chStr(" & idx & ",'stream_id')"))
+    ws.Cells(r, FE_COL_NAME).value = CStr(FE_sc.eval("chStr(" & idx & ",'name')"))
+    ws.Cells(r, FE_COL_TVGID).value = CStr(FE_sc.eval("chStr(" & idx & ",'tvg_id')"))
+    ws.Cells(r, FE_COL_LOGO).value = CStr(FE_sc.eval("chStr(" & idx & ",'logo')"))
+    Dim grp As String: grp = CStr(FE_sc.eval("chStr(" & idx & ",'group')"))
+    ws.Cells(r, FE_COL_GROUP).value = grp
+    Dim cty As String: cty = CStr(FE_sc.eval("chStr(" & idx & ",'country')"))
+    ws.Cells(r, FE_COL_COUNTRY).value = cty
+    ws.Cells(r, FE_COL_LANG).value = CStr(FE_sc.eval("chStr(" & idx & ",'language')"))
+    ws.Cells(r, FE_COL_TZ).value = FE_CountryToTZ(cty)
+    ws.Cells(r, FE_COL_SPORTS).value = IIf(CLng(FE_sc.eval("chBool(" & idx & ",'is_sports')")) = 1, "X", "-")
+    ws.Cells(r, FE_COL_MOVIE).value = IIf(CLng(FE_sc.eval("chBool(" & idx & ",'is_movie')")) = 1, "X", "-")
+    ws.Cells(r, FE_COL_SERIES).value = IIf(CLng(FE_sc.eval("chBool(" & idx & ",'is_series')")) = 1, "X", "-")
+    Dim isUHD As Boolean: isUHD = (CLng(FE_sc.eval("chBool(" & idx & ",'is_uhd')")) = 1)
+    Dim isHD As Boolean: isHD = (CLng(FE_sc.eval("chBool(" & idx & ",'is_hd')")) = 1)
+    ws.Cells(r, FE_COL_UHD).value = IIf(isUHD, "X", "-")
+    ws.Cells(r, FE_COL_HD).value = IIf(isHD, "X", "-")
+    ws.Cells(r, FE_COL_SD).value = IIf(CLng(FE_sc.eval("chBool(" & idx & ",'is_sd')")) = 1, "X", "-")
+    ws.Cells(r, FE_COL_RESOLUTION).value = CStr(FE_sc.eval("chStr(" & idx & ",'resolution')"))
+    ws.Cells(r, FE_COL_WIDTH).value = CStr(FE_sc.eval("chStr(" & idx & ",'width')"))
+    ws.Cells(r, FE_COL_HEIGHT).value = CStr(FE_sc.eval("chStr(" & idx & ",'height')"))
+    ws.Cells(r, FE_COL_CODEC).value = CStr(FE_sc.eval("chStr(" & idx & ",'codec')"))
+    Dim br As String: br = CStr(FE_sc.eval("chStr(" & idx & ",'bitrate')"))
+    ws.Cells(r, FE_COL_BITRATE).value = br
+    ws.Cells(r, FE_COL_FPS).value = CStr(FE_sc.eval("chStr(" & idx & ",'fps')"))
+    Dim tier As String: tier = CStr(FE_sc.eval("chStr(" & idx & ",'quality_tier')"))
+    ws.Cells(r, FE_COL_QTIER).value = tier
+    ws.Cells(r, FE_COL_QTAGS).value = CStr(FE_sc.eval("chTags(" & idx & ")"))
+    ws.Cells(r, FE_COL_QSCORE).value = CStr(FE_sc.eval("chStr(" & idx & ",'quality_score')"))
+
+    ' Auto-suggest profile
+    Dim brN As Double: brN = val(br)
+    Dim sugg As String
+    If InStr(UCase(tier), "8K") > 0 Or brN >= 50000 Then
+        sugg = "P0"
+    ElseIf isUHD Or InStr(UCase(tier), "4K") > 0 Or InStr(UCase(tier), "UHD") > 0 Or brN >= 20000 Then
+        sugg = "P1"
+    ElseIf InStr(UCase(tier), "2K") > 0 Or InStr(UCase(tier), "QHD") > 0 Or brN >= 10000 Then
+        sugg = "P2"
+    ElseIf isHD Or InStr(UCase(tier), "FHD") > 0 Or InStr(UCase(tier), "1080") > 0 Or brN >= 4000 Then
+        sugg = "P3"
+    ElseIf InStr(UCase(tier), "HD") > 0 Or InStr(UCase(tier), "720") > 0 Or brN >= 2000 Then
+        sugg = "P4"
+    Else
+        sugg = "P5"
+    End If
+    ws.Cells(r, FE_COL_PROFILE_AUTO).value = sugg
+    ws.Cells(r, FE_COL_CLASS_ORIG).value = grp
+
+    ' v1.1 - Lookup por server_id del canal
+    Dim chSid As String: chSid = CStr(FE_sc.eval("chStr(" & idx & ",'server_id')"))
+    ws.Cells(r, FE_COL_SRV_ID).value = chSid
+    ws.Cells(r, FE_COL_SRV_NAME).value = CStr(FE_sc.eval("srvStrById('" & FE_EscapeJS(chSid) & "','name')"))
+    ws.Cells(r, FE_COL_SRV_BASE).value = CStr(FE_sc.eval("srvStrById('" & FE_EscapeJS(chSid) & "','base_url')"))
+
+    Dim urlVal As String: urlVal = CStr(FE_sc.eval("chStr(" & idx & ",'url')"))
+    ws.Cells(r, FE_COL_URL).value = urlVal
+    ws.Cells(r, FE_COL_URL_LEN).value = Len(urlVal)
+    ws.Cells(r, FE_COL_VEREDICTO).value = "PENDING"
+    ws.Cells(r, FE_COL_BATCH_ID).value = batchId
+    ws.Cells(r, FE_COL_IMPORTED_AT).value = importedAt
+End Sub
+
+=== FE_EnsureSheet (line 3754, 37 lines) ===
+
+Private Function FE_EnsureSheet() As Worksheet
+    Dim ws As Worksheet
+    On Error Resume Next
+    Set ws = ThisWorkbook.Sheets(SHEET_FRONTEND)
+    On Error GoTo 0
+    If ws Is Nothing Then
+        Set ws = ThisWorkbook.Sheets.Add(After:=ThisWorkbook.Sheets(ThisWorkbook.Sheets.Count))
+        ws.name = SHEET_FRONTEND
+    End If
+    ws.Cells(1, 1).value = "33_CHANNELS_FROM_FRONTEND"
+    ws.Cells(1, 1).Font.Bold = True
+    Dim headers As Variant
+    headers = Array("Activo", "#", "stream_id", "name", "tvg_id", "logo", "group", _
+        "country", "language", "timezone", _
+        "is_sports", "is_movie", "is_series", "is_uhd", "is_hd", "is_sd", _
+        "resolution", "width", "height", "codec", "bitrate_kbps", "fps", "quality_tier", "quality_tags", _
+        "quality_score_fe", "profile_auto", "profile_override", "class_original", "class_override", _
+        "server_id", "server_name", "server_base_url", "url_playback", "url_length", _
+        "last_status", "status_text", "ttfb_ms", "content_type", "content_length", "server_hdr", "verified_at", "veredicto", _
+        "brain_health", "brain_risk", "brain_headroom_%", "brain_stall_%", _
+        "rec_buffer_s", "rec_ua", "rec_referer", "rec_conn", "fallback_srv", "anti_403_profile", _
+        "batch_id", "imported_at", "notes")
+    Dim c As Long
+    For c = 1 To UBound(headers) + 1
+        With ws.Cells(3, c)
+            .value = headers(c - 1)
+            .Font.Bold = True
+            .Interior.Color = RGB(31, 78, 120)
+            .Font.Color = RGB(255, 255, 255)
+            .HorizontalAlignment = xlCenter
+        End With
+    Next c
+    ws.rows(3).RowHeight = 30
+    ws.Range("A3:BC3").WrapText = True
+    Set FE_EnsureSheet = ws
+End Function
+
+=== FE_FormatSheetSimple (line 3798, 20 lines) ===
+
+Private Sub FE_FormatSheetSimple(ws As Worksheet, chCount As Long)
+    ws.Activate
+    ActiveWindow.FreezePanes = False
+    ws.Cells(4, 4).Select
+    ActiveWindow.FreezePanes = True
+    ws.Columns("D:D").ColumnWidth = 35
+    ws.Columns("F:F").ColumnWidth = 25
+    ws.Columns("AG:AG").ColumnWidth = 50
+    If chCount <= 0 Then Exit Sub
+    Dim rng As Range
+    Set rng = ws.Range(ws.Cells(4, FE_COL_VEREDICTO), ws.Cells(3 + chCount, FE_COL_VEREDICTO))
+    rng.FormatConditions.Delete
+    With rng.FormatConditions.Add(Type:=xlTextString, String:="OK", TextOperator:=xlContains)
+        .Interior.Color = RGB(198, 239, 206)
+    End With
+    With rng.FormatConditions.Add(Type:=xlTextString, String:="FAIL", TextOperator:=xlContains)
+        .Interior.Color = RGB(255, 199, 206)
+    End With
+End Sub
+
+=== FE_SyncServerJS (line 3943, 27 lines) ===
+
+Private Sub FE_SyncServerJS(nm As String, u As String, usr As String, pw As String)
+    Dim ws As Worksheet: Set ws = ThisWorkbook.Sheets(SHEET_SERVERS)
+    If u = "" Then Exit Sub
+    Dim r As Long, lr As Long, found As Boolean
+    lr = ws.Cells(ws.rows.Count, 3).End(xlUp).row
+    For r = 4 To lr
+        If CStr(ws.Cells(r, 3).value) = u Then
+            ws.Cells(r, 1).value = "X"
+            ws.Cells(r, 4).value = usr
+            ws.Cells(r, 5).value = pw
+            If nm <> "" Then ws.Cells(r, 9).value = nm & " (from frontend)"
+            found = True: Exit For
+        End If
+    Next r
+    If Not found Then
+        r = lr + 1
+        ws.Cells(r, 1).value = "X"
+        ws.Cells(r, 2).value = r - 3
+        ws.Cells(r, 3).value = u
+        ws.Cells(r, 4).value = usr
+        ws.Cells(r, 5).value = pw
+        ws.Cells(r, 6).value = 1
+        ws.Cells(r, 8).value = "Active"
+        ws.Cells(r, 9).value = nm & " (from frontend)"
+    End If
+End Sub
+
+=== FE_ClearDataSimple (line 3791, 7 lines) ===
+
+Private Sub FE_ClearDataSimple(ws As Worksheet)
+    Dim lastRow As Long
+    lastRow = ws.Cells(ws.rows.Count, FE_COL_STREAMID).End(xlUp).row
+    If lastRow >= 4 Then ws.Range("A4:BC" & lastRow).Clear
+    ws.Range("A2:BC2").Clear
+End Sub
+
+=== FE_SyncProfilesJS (line 3905, 15 lines) ===
+
+Private Sub FE_SyncProfilesJS()
+    Dim ws As Worksheet: Set ws = ThisWorkbook.Sheets(SHEET_PROFILES)
+    Dim pids As Variant: pids = Array("P0", "P1", "P2", "P3", "P4", "P5")
+    Dim i As Long
+    For i = 0 To UBound(pids)
+        Dim pid As String: pid = CStr(pids(i))
+        FE_UpdateProfileCell ws, pid, "maxResolution", CStr(FE_sc.eval("profStr('" & pid & "','resolution')"))
+        FE_UpdateProfileCell ws, pid, "targetFps", CStr(FE_sc.eval("profStr('" & pid & "','fps')"))
+        FE_UpdateProfileCell ws, pid, "bufferTargetSec", CStr(FE_sc.eval("profStr('" & pid & "','bufferSeconds')"))
+        Dim brS As String: brS = CStr(FE_sc.eval("profStr('" & pid & "','bitrate')"))
+        If IsNumeric(brS) Then FE_UpdateProfileCell ws, pid, "maxBitrateKbps", CStr(val(brS) * 1000)
+        FE_UpdateProfileCell ws, pid, "codecs", CStr(FE_sc.eval("profStr('" & pid & "','codec')"))
+    Next i
+End Sub
+
+=== FE_UpdateProfileCell (line 3920, 23 lines) ===
+
+Private Sub FE_UpdateProfileCell(ws As Worksheet, pid As String, attr As String, newVal As String)
+    If newVal = "" Then Exit Sub
+    Dim col As Integer
+    Select Case UCase(pid)
+        Case "P0": col = 2
+        Case "P1": col = 3
+        Case "P2": col = 4
+        Case "P3": col = 5
+        Case "P4": col = 6
+        Case "P5": col = 7
+        Case Else: Exit Sub
+    End Select
+    Dim r As Long, lr As Long
+    lr = ws.Cells(ws.rows.Count, 1).End(xlUp).row
+    For r = 3 To lr
+        If InStr(LCase(CStr(ws.Cells(r, 1).value)), LCase(attr)) > 0 Then
+            ws.Cells(r, col).value = newVal
+            ws.Cells(r, col).Interior.Color = RGB(226, 239, 218)
+            Exit Sub
+        End If
+    Next r
+End Sub
+
+
+=== Constantes FE_COL_* ===
+  line 30 : ' ========== CONSTANTES DE COLUMNAS HOJA 33 ==========
+  line 31 : Private Const FE_COL_ACTIVO As Long = 1
+  line 32 : Private Const FE_COL_NUM As Long = 2
+  line 33 : Private Const FE_COL_STREAMID As Long = 3
+  line 34 : Private Const FE_COL_NAME As Long = 4
+  line 35 : Private Const FE_COL_TVGID As Long = 5
+  line 36 : Private Const FE_COL_LOGO As Long = 6
+  line 37 : Private Const FE_COL_GROUP As Long = 7
+  line 38 : Private Const FE_COL_COUNTRY As Long = 8
+  line 39 : Private Const FE_COL_LANG As Long = 9
+  line 40 : Private Const FE_COL_TZ As Long = 10
+  line 41 : Private Const FE_COL_SPORTS As Long = 11
+  line 42 : Private Const FE_COL_MOVIE As Long = 12
+  line 43 : Private Const FE_COL_SERIES As Long = 13
+  line 44 : Private Const FE_COL_UHD As Long = 14
+  line 45 : Private Const FE_COL_HD As Long = 15
+  line 46 : Private Const FE_COL_SD As Long = 16
+  line 47 : Private Const FE_COL_RESOLUTION As Long = 17
+  line 48 : Private Const FE_COL_WIDTH As Long = 18
+  line 49 : Private Const FE_COL_HEIGHT As Long = 19
+  line 50 : Private Const FE_COL_CODEC As Long = 20
+  line 51 : Private Const FE_COL_BITRATE As Long = 21
+  line 52 : Private Const FE_COL_FPS As Long = 22
+  line 53 : Private Const FE_COL_QTIER As Long = 23
+  line 54 : Private Const FE_COL_QTAGS As Long = 24
+  line 55 : Private Const FE_COL_QSCORE As Long = 25
+  line 56 : Private Const FE_COL_PROFILE_AUTO As Long = 26
+  line 57 : Private Const FE_COL_PROFILE_OVERRIDE As Long = 27
+  line 58 : Private Const FE_COL_CLASS_ORIG As Long = 28
+  line 59 : Private Const FE_COL_CLASS_OVERRIDE As Long = 29
+  line 60 : Private Const FE_COL_SRV_ID As Long = 30
+  line 61 : Private Const FE_COL_SRV_NAME As Long = 31
+  line 62 : Private Const FE_COL_SRV_BASE As Long = 32
+  line 63 : Private Const FE_COL_URL As Long = 33
+  line 64 : Private Const FE_COL_URL_LEN As Long = 34
+  line 65 : Private Const FE_COL_STATUS As Long = 35
+  line 66 : Private Const FE_COL_STATUS_TXT As Long = 36
+  line 67 : Private Const FE_COL_TTFB As Long = 37
+  line 68 : Private Const FE_COL_CTYPE As Long = 38
+  line 69 : Private Const FE_COL_CLENGTH As Long = 39
+  line 70 : Private Const FE_COL_SRVHDR As Long = 40
+  line 71 : Private Const FE_COL_VERIFIED_AT As Long = 41
+  line 72 : Private Const FE_COL_VEREDICTO As Long = 42
+  line 73 : Private Const FE_COL_B_HEALTH As Long = 43
+  line 74 : Private Const FE_COL_B_RISK As Long = 44
+  line 75 : Private Const FE_COL_B_HEADROOM As Long = 45
+  line 76 : Private Const FE_COL_B_STALL As Long = 46
+  line 77 : Private Const FE_COL_REC_BUFFER As Long = 47
+  line 78 : Private Const FE_COL_REC_UA As Long = 48
+  line 79 : Private Const FE_COL_REC_REFERER As Long = 49
+  line 80 : Private Const FE_COL_REC_CONN As Long = 50
+  line 81 : Private Const FE_COL_FALLBACK_SRV As Long = 51
+  line 82 : Private Const FE_COL_ANTI403 As Long = 52
+  line 83 : Private Const FE_COL_BATCH_ID As Long = 53
+  line 84 : Private Const FE_COL_IMPORTED_AT As Long = 54
+  line 85 : Private Const FE_COL_NOTES As Long = 55

@@ -1,0 +1,28 @@
+============================================================
+ DASHBOARD OMEGA 2026 - Instalacion
+============================================================
+
+[1] Limpiando shapes OMEGA previos...
+    eliminados 12 shapes
+
+[2] Geometria:
+    left=20  width=1800  startTop=884.4
+
+[3] Dibujando Dashboard 2026...
+    Dashboard creado y guardado.
+
+[4] Parcheando Brain_ExportToFrontend para incluir omega_guarantees...
+    Brain_ExportToFrontend: lineas 490-735
+    Insertando hook para omega_guarantees (via wrapper)
+    Inyectados: Brain_ExportToFrontendPlus + Brain_FastRecalc en APE_WIRING
+
+[5] Knobs MATRIX 8 y niveles 2/3 - via append en APE_CONVERGE_SIMPLE
+    Brain_ConvergeMatrix inyectado en APE_CONVERGE_SIMPLE
+
+[6] Backup final...
+    C:\Users\HFRC\Downloads\APE_M3U8_LAB_v8_FIXED.BACKUP_20260418_000323_DASHBOARD_2026.xlsm
+    size: 3322750 bytes
+
+============================================================
+ DONE. Dashboard 2026 + wrapper JSON + Matrix knobs + FastRecalc
+============================================================

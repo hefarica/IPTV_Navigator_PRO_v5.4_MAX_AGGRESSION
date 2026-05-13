@@ -1,0 +1,178 @@
+ImportFromFrontend: linea 3599, 134 lineas
+
+=== CODIGO COMPLETO ===
+L3599: 
+L3600: ' ============================================================================
+L3601: ' SESSION B+C - FRONTEND BRIDGE v1.1 MULTI-SERVER
+L3602: ' ============================================================================
+L3603: Public Sub ImportFromFrontend()
+L3604:     On Error GoTo ErrHandler
+L3605:     Application.ScreenUpdating = False
+L3606:     Application.EnableEvents = False
+L3607:     Application.Calculation = xlCalculationManual
+L3608: 
+L3609:     Dim filePath As String: filePath = FE_BrowseForJSON()
+L3610:     If filePath = "" Then GoTo cleanup
+L3611:     Dim jsonText As String: jsonText = FE_ReadFileUTF8(filePath)
+L3612:     If Len(jsonText) = 0 Then MsgBox "Archivo vacio.", vbExclamation: GoTo cleanup
+L3613: 
+L3614:     ' Init htmlfile JScript (compatible 64-bit)
+L3615:     Dim htmlDoc As Object
+L3616:     Set htmlDoc = CreateObject("htmlfile")
+L3617:     htmlDoc.write "<meta http-equiv=""X-UA-Compatible"" content=""IE=9"">"
+L3618:     Set FE_sc = htmlDoc.parentWindow
+L3619: 
+L3620:     ' JScript helpers v1.1 - multi-server
+L3621:     FE_sc.execScript _
+L3622:         "var __data=null;" & _
+L3623:         "function initData(s){__data=JSON.parse(s);return 1;}" & _
+L3624:         "function getMeta(k){return (__data&&__data[k]!==undefined&&__data[k]!==null)?String(__data[k]):'';}" & _
+L3625:         "function chCount(){return (__data&&__data.channels)?__data.channels.length:0;}" & _
+L3626:         "function chStr(i,k){var c=__data.channels[i];return (c&&c[k]!==undefined&&c[k]!==null)?String(c[k]):'';}" & _
+L3627:         "function chBool(i,k){var c=__data.channels[i];return (c&&c[k])?1:0;}" & _
+L3628:         "function chTags(i){var c=__data.channels[i];return (c&&c.quality_tags&&c.quality_tags.join)?c.quality_tags.join(','):'';}" & _
+L3629:         "function srvCount(){return (__data&&__data.servers)?__data.servers.length:0;}" & _
+L3630:         "function srvStrByIdx(i,k){var s=__data.servers[i];return (s&&s[k]!==undefined&&s[k]!==null)?String(s[k]):'';}" & _
+L3631:         "function srvStrById(id,k){if(!__data||!__data.servers)return '';for(var i=0;i<__data.servers.length;i++){var s=__data.servers[i];if(s&&s.id===id)return (s[k]!==undefined&&s[k]!==null)?String(s[k]):'';}return '';}" & _
+L3632:         "function hasProfiles(){return (__data&&__data.profiles_snapshot)?1:0;}" & _
+L3633:         "function profStr(pid,k){var p=__data.profiles_snapshot[pid];if(!p)return '';var s=p.settings;return (s&&s[k]!==undefined&&s[k]!==null)?String(s[k]):'';}", _
+L3634:         "JScript"
+L3635: 
+L3636:     FE_sc.execScript "__data = " & jsonText & ";", "JScript"
+L3637: 
+L3638:     ' ========= PARCHE DUAL JSON - auto-deteccion tipo de archivo =========
+L3639:     FE_sc.execScript "function fe_chCount(){return (__data&&__data.channels)?__data.channels.length:0;}", "JScript"
+L3640:     FE_sc.execScript "function fe_hasProfilesTopLevel(){return (__data&&__data.profiles&&typeof __data.profiles==='object'&&!__data.channels)?1:0;}", "JScript"
+L3641:     Dim fe_chC As Long: fe_chC = CLng(FE_sc.eval("fe_chCount()"))
+L3642:     Dim fe_hasProfTL As Long: fe_hasProfTL = CLng(FE_sc.eval("fe_hasProfilesTopLevel()"))
+L3643:     If fe_chC = 0 And fe_hasProfTL = 1 Then
+L3644:         ' === TIPO PROFILES-ONLY ===
+L3645:         Call FE_SyncProfilesFromTopLevel
+L3646:         Application.StatusBar = False
+L3647:         If Not WIRING_SILENT Then MsgBox "PROFILES-ONLY OK" & vbCrLf & "Sincronizados P0-P5 desde " & filePath, vbInformation, "IMPORT PERFILES"
+L3648:         GoTo cleanup
+L3649:     ElseIf fe_chC = 0 And fe_hasProfTL = 0 Then
+L3650:         If Not WIRING_SILENT Then MsgBox "JSON no reconocido. Esperaba 'channels' (snapshot) o 'profiles' (perfiles).", vbCritical, "IMPORT"
+L3651:         GoTo cleanup
+L3652:     End If
+L3653:     ' ========= FIN PARCHE DUAL JSON =========
+L3654: 
+L3655: 
+L3656:     Dim ver As String: ver = CStr(FE_sc.eval("getMeta('lab_bridge_version')"))
+L3657:     If ver <> "1.1" And ver <> "1.0" Then
+L3658:         If MsgBox("Version " & ver & " (esperada 1.1). Continuar?", vbYesNo + vbQuestion) = vbNo Then GoTo cleanup
+L3659:     End If
+L3660: 
+L3661:     Dim chCount As Long: chCount = CLng(FE_sc.eval("chCount()"))
+L3662:     If chCount = 0 Then MsgBox "JSON sin 'channels'.", vbCritical: GoTo cleanup
+L3663: 
+L3664:     Dim srvCount As Long: srvCount = CLng(FE_sc.eval("srvCount()"))
+L3665: 
+L3666:     Dim ws As Worksheet: Set ws = FE_EnsureSheet()
+L3667:     FE_ClearDataSimple ws
+L3668: 
+L3669:     ws.Cells(2, 1).value = "Import: " & Format(Now, "yyyy-mm-dd hh:nn:ss") & _
+L3670:         " | Ver: " & ver & " | Canales: " & chCount & " | Servers: " & srvCount & _
+L3671:         " | ActiveProfile: " & CStr(FE_sc.eval("getMeta('active_profile_id')")) & _
+L3672:         " | File: " & filePath
+L3673:     ws.Cells(2, 1).Font.Italic = True
+L3674:     ws.Cells(2, 1).Font.Color = RGB(100, 100, 100)
+L3675: 
+L3676:     Dim batchId As String: batchId = "BATCH_" & Format(Now, "yyyymmdd_hhmmss")
+L3677:     Dim importedAt As String: importedAt = Format(Now, "yyyy-mm-dd hh:nn:ss")
+L3678: 
+L3679:     ' Sincronizar TODOS los servers del array a 17_SERVERS_POOL (v1.1)
+L3680:     Dim si As Long
+L3681:     For si = 0 To srvCount - 1
+L3682:         FE_SyncServerJS _
+L3683:             CStr(FE_sc.eval("srvStrByIdx(" & si & ",'name')")), _
+L3684:             CStr(FE_sc.eval("srvStrByIdx(" & si & ",'base_url')")), _
+L3685:             CStr(FE_sc.eval("srvStrByIdx(" & si & ",'username')")), _
+L3686:             CStr(FE_sc.eval("srvStrByIdx(" & si & ",'password')"))
+L3687:     Next si
+L3688: 
+L3689:     Dim r As Long: r = 4
+L3690:     Dim i As Long
+L3691:     For i = 0 To chCount - 1
+L3692:         FE_WriteRowJS ws, r, i, batchId, importedAt
+L3693:         r = r + 1
+L3694:         If (i Mod 100) = 0 Then Application.StatusBar = "Importando " & (i + 1) & "/" & chCount
+L3695:     Next i
+L3696: 
+L3697:     Dim newHash As String: newHash = CStr(FE_sc.eval("getMeta('profiles_hash')"))
+L3698:     Dim oldHash As String: oldHash = ConfigVal("Frontend_Profiles_Hash")
+L3699:     Dim synced As Boolean: synced = False
+L3700:     If newHash <> "" And newHash <> oldHash And CLng(FE_sc.eval("hasProfiles()")) = 1 Then
+L3701:         If MsgBox("Perfiles cambiaron. Sincronizar P0-P5?", vbYesNo + vbQuestion) = vbYes Then
+L3702:             FE_SyncProfilesJS
+L3703:             SetConfigVal "Frontend_Profiles_Hash", newHash
+L3704:             synced = True
+L3705:         End If
+L3706:     End If
+L3707: 
+L3708:     FE_FormatSheetSimple ws, chCount
+L3709:     ws.Activate
+L3710:     ws.Cells(4, 1).Select
+L3711:     Brain_RecalcAllSilent
+L3712: 
+L3713:     Application.StatusBar = False
+L3714:     If Not WIRING_SILENT Then MsgBox "IMPORT OK v1.1" & vbCrLf & _
+L3715:            "Canales: " & chCount & vbCrLf & _
+L3716:            "Servers: " & srvCount & vbCrLf & _
+L3717:            "Perfiles sync: " & IIf(synced, "SI", "NO") & vbCrLf & _
+L3718:            "Batch: " & batchId, vbInformation, "IMPORT FRONTEND"
+L3719: 
+L3720: cleanup:
+L3721:     Application.Calculation = xlCalculationAutomatic
+L3722:     Application.EnableEvents = True
+L3723:     Application.ScreenUpdating = True
+L3724:     Application.StatusBar = False
+L3725:     Exit Sub
+L3726: ErrHandler:
+L3727:     Application.Calculation = xlCalculationAutomatic
+L3728:     Application.EnableEvents = True
+L3729:     Application.ScreenUpdating = True
+L3730:     Application.StatusBar = False
+L3731:     If Not WIRING_SILENT Then MsgBox "ERROR " & Err.Number & ": " & Err.description, vbCritical
+L3732: End Sub
+
+=== FE_SyncProfilesFromTopLevel ===
+Encontrada: linea 86, 38 lineas
+L  86: 
+L  87: '============================================================
+L  88: ' FE_SyncProfilesFromTopLevel  (parche dual JSON)
+L  89: ' Sincroniza P0-P5 desde un JSON tipo APE_ALL_PROFILES (sin canales).
+L  90: ' Itera atributos en col A de 6_NIVEL_2_PROFILES y escribe valor
+L  91: ' del JSON en columnas B-G (P0-P5) cuando existe.
+L  92: '============================================================
+L  93: Public Sub FE_SyncProfilesFromTopLevel()
+L  94:     On Error GoTo EH
+L  95:     Dim ws As Worksheet: Set ws = ThisWorkbook.Sheets("6_NIVEL_2_PROFILES")
+L  96:     Dim profIds As Variant: profIds = Array("P0", "P1", "P2", "P3", "P4", "P5")
+L  97:     Dim cols As Variant: cols = Array(2, 3, 4, 5, 6, 7)
+L  98:     Dim lastR As Long: lastR = ws.Cells(ws.rows.Count, 1).End(xlUp).row
+L  99:     Dim r As Long, p As Long
+L 100:     Dim updates As Long: updates = 0
+L 101: 
+L 102:     For r = 7 To lastR
+L 103:         Dim attr As String: attr = CStr(ws.Cells(r, 1).value)
+L 104:         If attr = "" Then GoTo nextR
+L 105:         Dim plainAttr As String: plainAttr = attr
+L 106:         If InStr(plainAttr, ".") > 0 Then plainAttr = Mid(plainAttr, InStrRev(plainAttr, ".") + 1)
+L 107:         For p = 0 To 5
+L 108:             Dim val As String
+L 109:             val = CStr(FE_sc.eval("(__data.profiles['" & profIds(p) & "']&&__data.profiles['" & profIds(p) & "'].settings&&__data.profiles['" & profIds(p) & "'].settings['" & plainAttr & "'])||''"))
+L 110:             If val <> "" Then
+L 111:                 ws.Cells(r, cols(p)).value = val
+L 112:                 updates = updates + 1
+L 113:             End If
+L 114:         Next p
+L 115: nextR:
+L 116:     Next r
+L 117: 
+L 118:     Application.StatusBar = "Profiles sync: " & updates & " celdas actualizadas"
+L 119:     Exit Sub
+L 120: EH:
+L 121:     On Error Resume Next
+L 122:     Call WB_LogMsg("FE_SyncProfilesFromTopLevel ERROR: " & Err.Number & " - " & Err.description)
+L 123: End Sub

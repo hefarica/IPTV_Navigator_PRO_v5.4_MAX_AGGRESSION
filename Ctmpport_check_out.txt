@@ -1,0 +1,284 @@
+===================================================
+ VERIFICACION CONSISTENCIA PORT (base vs canales)
+===================================================
+
+[1] 17_SERVERS_POOL (primeras 10 filas):
+r1: SERVERS_POOL: multi-servidor con... |                                     |                                     |                                     |                                     |                                     |                                     |                                     |                                    
+r2:                                     |                                     |                                     |                                     |                                     |                                     |                                     |                                     |                                    
+r3: Activar                             | #                                   | Server URL (CON :PORT!)             | Username                            | Password                            | Max-Conn                            | Active-Conn                         | Status                              | Notas                              
+r4: X                                   | 1                                   | http://ky-tv.cc:80                  | sjUumYrmCj                          | KndjvFyunE                          | 1                                   | 0                                   | Active                              | KEMOTV1 (from frontend)            
+r5: X                                   | 2                                   | http://line.tivi-ott.net:80         | 3JHFTC                              | U56BDP                              | 3                                   | 0                                   | Active                              | TIVISION 3 conn                    
+r6: X                                   | 3                                   | http://pro.123sat.net:2082          | 17649659                            | nvu9b57544                          | 5                                   | 0                                   | Active                              | 123SAT 5 conn                      
+r7: -                                   | 4                                   | http://126958958431.4k-26com.com:80 | ujgd4kiltx                          | p5c00kxjc7                          | 1                                   | 0                                   | Inactive                            | 4K-26 (off)                        
+r8: -                                   | 5                                   | http://line.dndnscloud.ru:80        | f828e5e261                          | e1372a7053f1                        | 1                                   | 0                                   | Inactive                            | DNDNS (off)                        
+r9: -                                   | 6                                   | http://candycloud8k.biz:80          |                                     |                                     | 1                                   | 0                                   | No creds                            | CandyCloud (no creds)              
+r10:                                     |                                     |                                     |                                     |                                     |                                     |                                     |                                     |                                    
+r11:                                     |                                     |                                     |                                     |                                     |                                     |                                     |                                     |                                    
+r12: ? AGREGAR SERVIDOR                  | ? QUITAR SERVIDOR                   | ?? TEST TODOS                       | ?? REFRESCAR ACTIVE_CONS            | ?? VER STATUS DETALLADO             |                                     |                                     |                                     |                                    
+
+[2] Base URLs guardadas (buscando columnas con http):
+if : El t‚rmino 'if' no se reconoce como nombre de un cmdlet, funci¢n, archivo de script o programa ejecutable. 
+Compruebe si escribi¢ correctamente el nombre o, si incluy¢ una ruta de acceso, compruebe que dicha ruta es correcta e 
+int‚ntelo de nuevo.
+En C:\tmp\check_port_consistency.ps1: 36 Car cter: 64
++ ...         Write-Host ("  r${r}c${c}: {0}   port={1}" -f $v, (if ($hasPo ...
++                                                                ~~
+    + CategoryInfo          : ObjectNotFound: (if:String) [], CommandNotFoundException
+    + FullyQualifiedErrorId : CommandNotFoundException
+ 
+if : El t‚rmino 'if' no se reconoce como nombre de un cmdlet, funci¢n, archivo de script o programa ejecutable. 
+Compruebe si escribi¢ correctamente el nombre o, si incluy¢ una ruta de acceso, compruebe que dicha ruta es correcta e 
+int‚ntelo de nuevo.
+En C:\tmp\check_port_consistency.ps1: 36 Car cter: 64
++ ...         Write-Host ("  r${r}c${c}: {0}   port={1}" -f $v, (if ($hasPo ...
++                                                                ~~
+    + CategoryInfo          : ObjectNotFound: (if:String) [], CommandNotFoundException
+    + FullyQualifiedErrorId : CommandNotFoundException
+ 
+if : El t‚rmino 'if' no se reconoce como nombre de un cmdlet, funci¢n, archivo de script o programa ejecutable. 
+Compruebe si escribi¢ correctamente el nombre o, si incluy¢ una ruta de acceso, compruebe que dicha ruta es correcta e 
+int‚ntelo de nuevo.
+En C:\tmp\check_port_consistency.ps1: 36 Car cter: 64
++ ...         Write-Host ("  r${r}c${c}: {0}   port={1}" -f $v, (if ($hasPo ...
++                                                                ~~
+    + CategoryInfo          : ObjectNotFound: (if:String) [], CommandNotFoundException
+    + FullyQualifiedErrorId : CommandNotFoundException
+ 
+if : El t‚rmino 'if' no se reconoce como nombre de un cmdlet, funci¢n, archivo de script o programa ejecutable. 
+Compruebe si escribi¢ correctamente el nombre o, si incluy¢ una ruta de acceso, compruebe que dicha ruta es correcta e 
+int‚ntelo de nuevo.
+En C:\tmp\check_port_consistency.ps1: 36 Car cter: 64
++ ...         Write-Host ("  r${r}c${c}: {0}   port={1}" -f $v, (if ($hasPo ...
++                                                                ~~
+    + CategoryInfo          : ObjectNotFound: (if:String) [], CommandNotFoundException
+    + FullyQualifiedErrorId : CommandNotFoundException
+ 
+if : El t‚rmino 'if' no se reconoce como nombre de un cmdlet, funci¢n, archivo de script o programa ejecutable. 
+Compruebe si escribi¢ correctamente el nombre o, si incluy¢ una ruta de acceso, compruebe que dicha ruta es correcta e 
+int‚ntelo de nuevo.
+En C:\tmp\check_port_consistency.ps1: 36 Car cter: 64
++ ...         Write-Host ("  r${r}c${c}: {0}   port={1}" -f $v, (if ($hasPo ...
++                                                                ~~
+    + CategoryInfo          : ObjectNotFound: (if:String) [], CommandNotFoundException
+    + FullyQualifiedErrorId : CommandNotFoundException
+ 
+if : El t‚rmino 'if' no se reconoce como nombre de un cmdlet, funci¢n, archivo de script o programa ejecutable. 
+Compruebe si escribi¢ correctamente el nombre o, si incluy¢ una ruta de acceso, compruebe que dicha ruta es correcta e 
+int‚ntelo de nuevo.
+En C:\tmp\check_port_consistency.ps1: 36 Car cter: 64
++ ...         Write-Host ("  r${r}c${c}: {0}   port={1}" -f $v, (if ($hasPo ...
++                                                                ~~
+    + CategoryInfo          : ObjectNotFound: (if:String) [], CommandNotFoundException
+    + FullyQualifiedErrorId : CommandNotFoundException
+ 
+if : El t‚rmino 'if' no se reconoce como nombre de un cmdlet, funci¢n, archivo de script o programa ejecutable. 
+Compruebe si escribi¢ correctamente el nombre o, si incluy¢ una ruta de acceso, compruebe que dicha ruta es correcta e 
+int‚ntelo de nuevo.
+En C:\tmp\check_port_consistency.ps1: 36 Car cter: 64
++ ...         Write-Host ("  r${r}c${c}: {0}   port={1}" -f $v, (if ($hasPo ...
++                                                                ~~
+    + CategoryInfo          : ObjectNotFound: (if:String) [], CommandNotFoundException
+    + FullyQualifiedErrorId : CommandNotFoundException
+ 
+if : El t‚rmino 'if' no se reconoce como nombre de un cmdlet, funci¢n, archivo de script o programa ejecutable. 
+Compruebe si escribi¢ correctamente el nombre o, si incluy¢ una ruta de acceso, compruebe que dicha ruta es correcta e 
+int‚ntelo de nuevo.
+En C:\tmp\check_port_consistency.ps1: 36 Car cter: 64
++ ...         Write-Host ("  r${r}c${c}: {0}   port={1}" -f $v, (if ($hasPo ...
++                                                                ~~
+    + CategoryInfo          : ObjectNotFound: (if:String) [], CommandNotFoundException
+    + FullyQualifiedErrorId : CommandNotFoundException
+ 
+
+[3] Muestra de 20 URLs de canales del M3U8:
+if : El t‚rmino 'if' no se reconoce como nombre de un cmdlet, funci¢n, archivo de script o programa ejecutable. 
+Compruebe si escribi¢ correctamente el nombre o, si incluy¢ una ruta de acceso, compruebe que dicha ruta es correcta e 
+int‚ntelo de nuevo.
+En C:\tmp\check_port_consistency.ps1: 63 Car cter: 39
++     Write-Host ("  port={0}  {1}" -f (if ($hasPort) { 'SI' } else { ' ...
++                                       ~~
+    + CategoryInfo          : ObjectNotFound: (if:String) [], CommandNotFoundException
+    + FullyQualifiedErrorId : CommandNotFoundException
+ 
+if : El t‚rmino 'if' no se reconoce como nombre de un cmdlet, funci¢n, archivo de script o programa ejecutable. 
+Compruebe si escribi¢ correctamente el nombre o, si incluy¢ una ruta de acceso, compruebe que dicha ruta es correcta e 
+int‚ntelo de nuevo.
+En C:\tmp\check_port_consistency.ps1: 63 Car cter: 39
++     Write-Host ("  port={0}  {1}" -f (if ($hasPort) { 'SI' } else { ' ...
++                                       ~~
+    + CategoryInfo          : ObjectNotFound: (if:String) [], CommandNotFoundException
+    + FullyQualifiedErrorId : CommandNotFoundException
+ 
+if : El t‚rmino 'if' no se reconoce como nombre de un cmdlet, funci¢n, archivo de script o programa ejecutable. 
+Compruebe si escribi¢ correctamente el nombre o, si incluy¢ una ruta de acceso, compruebe que dicha ruta es correcta e 
+int‚ntelo de nuevo.
+En C:\tmp\check_port_consistency.ps1: 63 Car cter: 39
++     Write-Host ("  port={0}  {1}" -f (if ($hasPort) { 'SI' } else { ' ...
++                                       ~~
+    + CategoryInfo          : ObjectNotFound: (if:String) [], CommandNotFoundException
+    + FullyQualifiedErrorId : CommandNotFoundException
+ 
+if : El t‚rmino 'if' no se reconoce como nombre de un cmdlet, funci¢n, archivo de script o programa ejecutable. 
+Compruebe si escribi¢ correctamente el nombre o, si incluy¢ una ruta de acceso, compruebe que dicha ruta es correcta e 
+int‚ntelo de nuevo.
+En C:\tmp\check_port_consistency.ps1: 63 Car cter: 39
++     Write-Host ("  port={0}  {1}" -f (if ($hasPort) { 'SI' } else { ' ...
++                                       ~~
+    + CategoryInfo          : ObjectNotFound: (if:String) [], CommandNotFoundException
+    + FullyQualifiedErrorId : CommandNotFoundException
+ 
+if : El t‚rmino 'if' no se reconoce como nombre de un cmdlet, funci¢n, archivo de script o programa ejecutable. 
+Compruebe si escribi¢ correctamente el nombre o, si incluy¢ una ruta de acceso, compruebe que dicha ruta es correcta e 
+int‚ntelo de nuevo.
+En C:\tmp\check_port_consistency.ps1: 63 Car cter: 39
++     Write-Host ("  port={0}  {1}" -f (if ($hasPort) { 'SI' } else { ' ...
++                                       ~~
+    + CategoryInfo          : ObjectNotFound: (if:String) [], CommandNotFoundException
+    + FullyQualifiedErrorId : CommandNotFoundException
+ 
+if : El t‚rmino 'if' no se reconoce como nombre de un cmdlet, funci¢n, archivo de script o programa ejecutable. 
+Compruebe si escribi¢ correctamente el nombre o, si incluy¢ una ruta de acceso, compruebe que dicha ruta es correcta e 
+int‚ntelo de nuevo.
+En C:\tmp\check_port_consistency.ps1: 63 Car cter: 39
++     Write-Host ("  port={0}  {1}" -f (if ($hasPort) { 'SI' } else { ' ...
++                                       ~~
+    + CategoryInfo          : ObjectNotFound: (if:String) [], CommandNotFoundException
+    + FullyQualifiedErrorId : CommandNotFoundException
+ 
+if : El t‚rmino 'if' no se reconoce como nombre de un cmdlet, funci¢n, archivo de script o programa ejecutable. 
+Compruebe si escribi¢ correctamente el nombre o, si incluy¢ una ruta de acceso, compruebe que dicha ruta es correcta e 
+int‚ntelo de nuevo.
+En C:\tmp\check_port_consistency.ps1: 63 Car cter: 39
++     Write-Host ("  port={0}  {1}" -f (if ($hasPort) { 'SI' } else { ' ...
++                                       ~~
+    + CategoryInfo          : ObjectNotFound: (if:String) [], CommandNotFoundException
+    + FullyQualifiedErrorId : CommandNotFoundException
+ 
+if : El t‚rmino 'if' no se reconoce como nombre de un cmdlet, funci¢n, archivo de script o programa ejecutable. 
+Compruebe si escribi¢ correctamente el nombre o, si incluy¢ una ruta de acceso, compruebe que dicha ruta es correcta e 
+int‚ntelo de nuevo.
+En C:\tmp\check_port_consistency.ps1: 63 Car cter: 39
++     Write-Host ("  port={0}  {1}" -f (if ($hasPort) { 'SI' } else { ' ...
++                                       ~~
+    + CategoryInfo          : ObjectNotFound: (if:String) [], CommandNotFoundException
+    + FullyQualifiedErrorId : CommandNotFoundException
+ 
+if : El t‚rmino 'if' no se reconoce como nombre de un cmdlet, funci¢n, archivo de script o programa ejecutable. 
+Compruebe si escribi¢ correctamente el nombre o, si incluy¢ una ruta de acceso, compruebe que dicha ruta es correcta e 
+int‚ntelo de nuevo.
+En C:\tmp\check_port_consistency.ps1: 63 Car cter: 39
++     Write-Host ("  port={0}  {1}" -f (if ($hasPort) { 'SI' } else { ' ...
++                                       ~~
+    + CategoryInfo          : ObjectNotFound: (if:String) [], CommandNotFoundException
+    + FullyQualifiedErrorId : CommandNotFoundException
+ 
+if : El t‚rmino 'if' no se reconoce como nombre de un cmdlet, funci¢n, archivo de script o programa ejecutable. 
+Compruebe si escribi¢ correctamente el nombre o, si incluy¢ una ruta de acceso, compruebe que dicha ruta es correcta e 
+int‚ntelo de nuevo.
+En C:\tmp\check_port_consistency.ps1: 63 Car cter: 39
++     Write-Host ("  port={0}  {1}" -f (if ($hasPort) { 'SI' } else { ' ...
++                                       ~~
+    + CategoryInfo          : ObjectNotFound: (if:String) [], CommandNotFoundException
+    + FullyQualifiedErrorId : CommandNotFoundException
+ 
+if : El t‚rmino 'if' no se reconoce como nombre de un cmdlet, funci¢n, archivo de script o programa ejecutable. 
+Compruebe si escribi¢ correctamente el nombre o, si incluy¢ una ruta de acceso, compruebe que dicha ruta es correcta e 
+int‚ntelo de nuevo.
+En C:\tmp\check_port_consistency.ps1: 63 Car cter: 39
++     Write-Host ("  port={0}  {1}" -f (if ($hasPort) { 'SI' } else { ' ...
++                                       ~~
+    + CategoryInfo          : ObjectNotFound: (if:String) [], CommandNotFoundException
+    + FullyQualifiedErrorId : CommandNotFoundException
+ 
+if : El t‚rmino 'if' no se reconoce como nombre de un cmdlet, funci¢n, archivo de script o programa ejecutable. 
+Compruebe si escribi¢ correctamente el nombre o, si incluy¢ una ruta de acceso, compruebe que dicha ruta es correcta e 
+int‚ntelo de nuevo.
+En C:\tmp\check_port_consistency.ps1: 63 Car cter: 39
++     Write-Host ("  port={0}  {1}" -f (if ($hasPort) { 'SI' } else { ' ...
++                                       ~~
+    + CategoryInfo          : ObjectNotFound: (if:String) [], CommandNotFoundException
+    + FullyQualifiedErrorId : CommandNotFoundException
+ 
+if : El t‚rmino 'if' no se reconoce como nombre de un cmdlet, funci¢n, archivo de script o programa ejecutable. 
+Compruebe si escribi¢ correctamente el nombre o, si incluy¢ una ruta de acceso, compruebe que dicha ruta es correcta e 
+int‚ntelo de nuevo.
+En C:\tmp\check_port_consistency.ps1: 63 Car cter: 39
++     Write-Host ("  port={0}  {1}" -f (if ($hasPort) { 'SI' } else { ' ...
++                                       ~~
+    + CategoryInfo          : ObjectNotFound: (if:String) [], CommandNotFoundException
+    + FullyQualifiedErrorId : CommandNotFoundException
+ 
+if : El t‚rmino 'if' no se reconoce como nombre de un cmdlet, funci¢n, archivo de script o programa ejecutable. 
+Compruebe si escribi¢ correctamente el nombre o, si incluy¢ una ruta de acceso, compruebe que dicha ruta es correcta e 
+int‚ntelo de nuevo.
+En C:\tmp\check_port_consistency.ps1: 63 Car cter: 39
++     Write-Host ("  port={0}  {1}" -f (if ($hasPort) { 'SI' } else { ' ...
++                                       ~~
+    + CategoryInfo          : ObjectNotFound: (if:String) [], CommandNotFoundException
+    + FullyQualifiedErrorId : CommandNotFoundException
+ 
+if : El t‚rmino 'if' no se reconoce como nombre de un cmdlet, funci¢n, archivo de script o programa ejecutable. 
+Compruebe si escribi¢ correctamente el nombre o, si incluy¢ una ruta de acceso, compruebe que dicha ruta es correcta e 
+int‚ntelo de nuevo.
+En C:\tmp\check_port_consistency.ps1: 63 Car cter: 39
++     Write-Host ("  port={0}  {1}" -f (if ($hasPort) { 'SI' } else { ' ...
++                                       ~~
+    + CategoryInfo          : ObjectNotFound: (if:String) [], CommandNotFoundException
+    + FullyQualifiedErrorId : CommandNotFoundException
+ 
+if : El t‚rmino 'if' no se reconoce como nombre de un cmdlet, funci¢n, archivo de script o programa ejecutable. 
+Compruebe si escribi¢ correctamente el nombre o, si incluy¢ una ruta de acceso, compruebe que dicha ruta es correcta e 
+int‚ntelo de nuevo.
+En C:\tmp\check_port_consistency.ps1: 63 Car cter: 39
++     Write-Host ("  port={0}  {1}" -f (if ($hasPort) { 'SI' } else { ' ...
++                                       ~~
+    + CategoryInfo          : ObjectNotFound: (if:String) [], CommandNotFoundException
+    + FullyQualifiedErrorId : CommandNotFoundException
+ 
+if : El t‚rmino 'if' no se reconoce como nombre de un cmdlet, funci¢n, archivo de script o programa ejecutable. 
+Compruebe si escribi¢ correctamente el nombre o, si incluy¢ una ruta de acceso, compruebe que dicha ruta es correcta e 
+int‚ntelo de nuevo.
+En C:\tmp\check_port_consistency.ps1: 63 Car cter: 39
++     Write-Host ("  port={0}  {1}" -f (if ($hasPort) { 'SI' } else { ' ...
++                                       ~~
+    + CategoryInfo          : ObjectNotFound: (if:String) [], CommandNotFoundException
+    + FullyQualifiedErrorId : CommandNotFoundException
+ 
+if : El t‚rmino 'if' no se reconoce como nombre de un cmdlet, funci¢n, archivo de script o programa ejecutable. 
+Compruebe si escribi¢ correctamente el nombre o, si incluy¢ una ruta de acceso, compruebe que dicha ruta es correcta e 
+int‚ntelo de nuevo.
+En C:\tmp\check_port_consistency.ps1: 63 Car cter: 39
++     Write-Host ("  port={0}  {1}" -f (if ($hasPort) { 'SI' } else { ' ...
++                                       ~~
+    + CategoryInfo          : ObjectNotFound: (if:String) [], CommandNotFoundException
+    + FullyQualifiedErrorId : CommandNotFoundException
+ 
+if : El t‚rmino 'if' no se reconoce como nombre de un cmdlet, funci¢n, archivo de script o programa ejecutable. 
+Compruebe si escribi¢ correctamente el nombre o, si incluy¢ una ruta de acceso, compruebe que dicha ruta es correcta e 
+int‚ntelo de nuevo.
+En C:\tmp\check_port_consistency.ps1: 63 Car cter: 39
++     Write-Host ("  port={0}  {1}" -f (if ($hasPort) { 'SI' } else { ' ...
++                                       ~~
+    + CategoryInfo          : ObjectNotFound: (if:String) [], CommandNotFoundException
+    + FullyQualifiedErrorId : CommandNotFoundException
+ 
+if : El t‚rmino 'if' no se reconoce como nombre de un cmdlet, funci¢n, archivo de script o programa ejecutable. 
+Compruebe si escribi¢ correctamente el nombre o, si incluy¢ una ruta de acceso, compruebe que dicha ruta es correcta e 
+int‚ntelo de nuevo.
+En C:\tmp\check_port_consistency.ps1: 63 Car cter: 39
++     Write-Host ("  port={0}  {1}" -f (if ($hasPort) { 'SI' } else { ' ...
++                                       ~~
+    + CategoryInfo          : ObjectNotFound: (if:String) [], CommandNotFoundException
+    + FullyQualifiedErrorId : CommandNotFoundException
+ 
+
+[4] VEREDICTO:
+  Muestra: 20 URLs
+  Con PORT:   0
+  Sin PORT:   20
+
+  Bases guardadas CON port: 6
+  Bases guardadas SIN port: 2
+
+  VEREDICTO: Base tiene port (:80) PERO el generador lo STRIPPEO en canales
+  -> VIOLA la regla: las credenciales tenian port y se perdio en las URLs

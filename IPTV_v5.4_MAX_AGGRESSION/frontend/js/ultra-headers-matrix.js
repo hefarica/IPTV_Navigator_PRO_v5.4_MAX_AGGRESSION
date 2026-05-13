@@ -2,7 +2,7 @@
  * ═══════════════════════════════════════════════════════════════════
  * 🎛️ ULTRA HEADERS MATRIX v1.0 - 33 Headers × 5 Niveles
  * ═══════════════════════════════════════════════════════════════════
- * 
+ *
  * Sistema completo de headers HTTP para streaming IPTV optimizado.
  * Cada header tiene 5 niveles de agresividad:
  *   1. Normal    - Configuración básica, máxima compatibilidad
@@ -10,6 +10,22 @@
  *   3. Pro       - Optimización avanzada (recomendado)
  *   4. Extreme   - Máximo rendimiento, puede causar bloqueos
  *   5. ULTRA     - Configuración más agresiva posible
+ *
+ * ⚠️ C8 (2026-05-11) — HEADERS DEPRECATED por trampa #9 EXTHTTP (okhttp legacy EOF):
+ *   - "If-None-Match"     (línea ~216)  ← ASESINO empírico (304+0B → okhttp EOF)
+ *   - "If-Modified-Since" (en family)   ← misma trampa cache-revalidate
+ *   - "Range"             (línea ~371)  ← m3u8 no es byte-rangeable
+ *   - "TE"                (en extended) ← com.android.okhttp no soporta trailers
+ *   - "Priority"          (en extended) ← RFC 9218 HTTP/3 sobre HTTP/1.1
+ *   - "Upgrade-Insecure-Requests" (línea ~725) ← detona HTTPS redirect en HTTP-only
+ *
+ * Las entradas permanecen como catálogo histórico, pero el SPINAL CORD GATE
+ * (_ca7BannedAbsolute en m3u8-typed-arrays-ultimate.js:7537) las filtra del
+ * _httpPayload final antes de #EXTHTTP. UPSERT_EXTHTTP_BANNED_OUTBOUND (línea 6889)
+ * también las bloquea cuando llegan vía LAB headerOverrides.
+ *
+ * Ver memoria feedback_exthttp_traps.md trampa #9 para evidencia empírica
+ * (8 tests A/B vs tivigo.cc → linovrex.cc el 2026-05-11).
  */
 
 const ULTRA_HEADERS_MATRIX = {

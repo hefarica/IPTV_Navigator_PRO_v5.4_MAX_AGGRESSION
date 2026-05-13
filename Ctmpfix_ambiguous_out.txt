@@ -1,0 +1,273 @@
+============================================================
+ FIX AMBIGUOUS - deduplicar modulos VBA
+============================================================
+
+[1] Modulos actuales:
+  ThisWorkbook               type=100  lines=23
+  Hoja1                      type=100  lines=0
+  Hoja2                      type=100  lines=0
+  Hoja3                      type=100  lines=0
+  Hoja4                      type=100  lines=0
+  Hoja5                      type=100  lines=0
+  Hoja6                      type=100  lines=0
+  Hoja7                      type=100  lines=0
+  Hoja8                      type=100  lines=0
+  Hoja9                      type=100  lines=19
+  Hoja10                     type=100  lines=0
+  Hoja11                     type=100  lines=0
+  Hoja12                     type=100  lines=0
+  Hoja13                     type=100  lines=0
+  Hoja14                     type=100  lines=0
+  Hoja15                     type=100  lines=0
+  Hoja16                     type=100  lines=0
+  Hoja17                     type=100  lines=0
+  Hoja18                     type=100  lines=19
+  Hoja19                     type=100  lines=0
+  Hoja20                     type=100  lines=0
+  Hoja21                     type=100  lines=0
+  Hoja22                     type=100  lines=0
+  Hoja23                     type=100  lines=0
+  Hoja24                     type=100  lines=0
+  Hoja25                     type=100  lines=0
+  Hoja26                     type=100  lines=0
+  Hoja27                     type=100  lines=0
+  Hoja28                     type=100  lines=0
+  Hoja29                     type=100  lines=0
+  Hoja30                     type=100  lines=0
+  Hoja31                     type=100  lines=0
+  Hoja32                     type=100  lines=0
+  Hoja33                     type=100  lines=0
+  APE_LAB_BRAIN              type=1  lines=4070
+  Hoja34                     type=100  lines=0
+  Hoja35                     type=100  lines=0
+  Hoja36                     type=100  lines=0
+  Hoja37                     type=100  lines=0
+  Hoja38                     type=100  lines=0
+  Module1                    type=1  lines=378
+  Module2                    type=1  lines=657
+  Hoja39                     type=100  lines=0
+  Hoja40                     type=100  lines=0
+  Hoja41                     type=100  lines=0
+  Hoja42                     type=100  lines=0
+  Module3                    type=1  lines=594
+  Module4                    type=1  lines=277
+  Module5                    type=1  lines=289
+  Module6                    type=1  lines=480
+  Module7                    type=1  lines=657
+  Module8                    type=1  lines=398
+  Module9                    type=1  lines=289
+
+[2] Buscando Subs/Functions duplicados...
+  DUPLICADO: G8_HttpErrorTree  en modulos: Module5, Module9
+  DUPLICADO: LogSafe  en modulos: Module2, Module7
+  DUPLICADO: WB_WriteRef  en modulos: Module1, Module6
+  DUPLICADO: OmegaTournament  en modulos: Module2, Module7
+  DUPLICADO: WB_Msg  en modulos: Module1, Module6
+  DUPLICADO: CSimpleLog  en modulos: Module4, Module8
+  DUPLICADO: G2_MultiSource  en modulos: Module5, Module9
+  DUPLICADO: G6_MaxAbrGreedy  en modulos: Module5, Module9
+  DUPLICADO: WB_Contract  en modulos: Module1, Module6
+  DUPLICADO: WriteConfigOmegaScore  en modulos: Module5, Module9
+  DUPLICADO: Brain_GetOmegaCompliance  en modulos: Module5, Module9
+  DUPLICADO: WB_ReadRef  en modulos: Module1, Module6
+  DUPLICADO: Desire_Min  en modulos: Module2, Module7
+  DUPLICADO: Brain_ConvergeAndExport  en modulos: Module4, Module8
+  DUPLICADO: PlayerHealth  en modulos: Module2, Module7
+  DUPLICADO: OmegaGA  en modulos: Module2, Module7
+  DUPLICADO: OmegaBLXAlpha  en modulos: Module2, Module7
+  DUPLICADO: WB_WouldCycle  en modulos: Module1, Module6
+  DUPLICADO: OmegaLog  en modulos: Module2, Module7
+  DUPLICADO: Brain_OmegaScorecard  en modulos: Module5, Module9
+  DUPLICADO: G5_UrlPurity  en modulos: Module5, Module9
+  DUPLICADO: APE_RunAllSafe  en modulos: Module1, Module6
+  DUPLICADO: OmegaSA  en modulos: Module2, Module7
+  DUPLICADO: WriteScorecard  en modulos: Module5, Module9
+  DUPLICADO: OmegaApplyConfig  en modulos: Module2, Module7
+  DUPLICADO: OmegaSnapshotToDiary  en modulos: Module2, Module7
+  DUPLICADO: OmegaDiarySetup  en modulos: Module2, Module7
+  DUPLICADO: Bell  en modulos: Module2, Module7
+  DUPLICADO: ReadFileAll  en modulos: Module5, Module9
+  DUPLICADO: WB_Propagate  en modulos: Module1, Module6
+  DUPLICADO: Brain_OmegaOptimizer  en modulos: Module2, Module7
+  DUPLICADO: PlayerRisk  en modulos: Module2, Module7
+  DUPLICADO: OmegaLHS  en modulos: Module2, Module7
+  DUPLICADO: Brain_ConvergeSimple  en modulos: Module4, Module8
+  DUPLICADO: APE_SnapshotSolver  en modulos: Module1, Module6
+  DUPLICADO: PlayerStall  en modulos: Module2, Module7
+  DUPLICADO: OmegaSortDesc  en modulos: Module2, Module7
+  DUPLICADO: OmegaMutate  en modulos: Module2, Module7
+  DUPLICADO: G9_MultiProvider  en modulos: Module5, Module9
+  DUPLICADO: CSimpleDiary  en modulos: Module4, Module8
+  DUPLICADO: ConvSimpleCore  en modulos: Module4, Module8
+  DUPLICADO: Clamp01  en modulos: Module2, Module7
+  DUPLICADO: G3_BufferStrategyNuclear  en modulos: Module5, Module9
+  DUPLICADO: G4_LiveCatchUpSync  en modulos: Module5, Module9
+  DUPLICADO: WriteCell  en modulos: Module2, Module7
+  DUPLICADO: APE_DiagUnmet  en modulos: Module1, Module6
+  DUPLICADO: OmegaNelderMead  en modulos: Module2, Module7
+  DUPLICADO: CSBonusHeadroom  en modulos: Module4, Module8
+  DUPLICADO: NMSimplexSort  en modulos: Module2, Module7
+  DUPLICADO: G10_MasterIntegrator  en modulos: Module5, Module9
+  DUPLICADO: APE_RunSolverVerbose  en modulos: Module1, Module6
+  DUPLICADO: OmegaClampBound  en modulos: Module2, Module7
+  DUPLICADO: OmegaFitnessVec  en modulos: Module2, Module7
+  DUPLICADO: Brain_AuditTenGuarantees  en modulos: Module5, Module9
+  DUPLICADO: G1_AntiFreezeNuclear  en modulos: Module5, Module9
+  DUPLICADO: WB_LogMsg  en modulos: Module1, Module6
+  DUPLICADO: G7_MaxImagenHdr  en modulos: Module5, Module9
+  DUPLICADO: OmegaFitness  en modulos: Module2, Module7
+  DUPLICADO: Brain_ConvergeStepByStep  en modulos: Module4, Module8
+  DUPLICADO: Desire_Max  en modulos: Module2, Module7
+  DUPLICADO: ReadCell  en modulos: Module2, Module7
+  DUPLICADO: CSRead  en modulos: Module4, Module8
+
+[3] Eliminando modulos custom previos...
+    removido: Module1
+    removido: Module2
+    removido: Module3
+    removido: Module4
+    removido: Module5
+    removido: Module6
+    removido: Module7
+    removido: Module8
+    removido: Module9
+
+[4] Re-importando modulos desde .bas...
+    + C:\tmp\APE_WIRING.bas -> renombrado a APE_WIRING (378 lineas)
+    + C:\tmp\APE_OMEGA_MATH.bas -> renombrado a APE_OMEGA_MATH (657 lineas)
+    + C:\tmp\APE_CONVERGE_SIMPLE.bas -> renombrado a APE_CONVERGE_SIMPLE (277 lineas)
+    + C:\tmp\APE_OMEGA_GUARANTEES.bas -> renombrado a APE_OMEGA_GUARANTEES (289 lineas)
+
+[5] Re-inyectando Brain_ExportToFrontendPlus + Brain_FastRecalc...
+    OK - Brain_ExportToFrontendPlus + Brain_FastRecalc
+
+[6] Re-inyectando Brain_ConvergeMatrix...
+    OK - Brain_ConvergeMatrix
+
+[7] Verificacion final - Subs PUBLIC en modulos custom:
+
+  [APE_LAB_BRAIN] (4070 lineas):
+      Sub Brain_FindUniversalCompat
+      Sub Brain_ExportToFrontend
+      Sub Brain_BuildUnifiedValues
+      Sub Brain_DashboardOmegaRefresh
+      Sub Brain_RefineToMax
+      Sub Brain_RunOmega_Ultimate
+      Sub Brain_RunAll5
+      Sub Brain_RunAll51
+      Sub Brain_RunOmega
+      Sub Brain_OnPanelToggleChange
+      Sub Brain_RestoreMatrixDefaults
+      Sub Brain_SyncMatrixToPanel
+      Sub Brain_PreviewPlan
+      Function Brain_IsAllowedInPanel
+      Sub Brain_EnforceMatrixScope
+      Sub Brain_ResetSelector
+      Sub Brain_SaveSelectorPreset
+      Sub Brain_ColorMatrix_Omega
+      Sub Brain_BuildMatrix_Omega_Silent
+      Sub Brain_BuildMatrix_Omega_Core
+      Sub Brain_BuildMatrix_Omega
+      Function ConfigVal
+      Function ProfileVal
+      Function ResolvePlaceholder
+      Function RotateUA
+      Function RotateReferer
+      Function Brain_CalcStreamingHealth
+      Function Brain_CalcRiskScore
+      Function Brain_CalcHeadroom
+      Function Brain_PredictStallRate
+      Sub Brain_RecalcAll
+      Sub Brain_RecalcAllSilent
+      Sub Brain_DetectContradictions
+      Sub Brain_ValidateValues
+      Sub Brain_SuggestOptimal
+      Sub Brain_OptimizerLoop
+      Sub Brain_AutoFillNivel3
+      Sub Brain_AutoFillNivel1
+      Sub Brain_AutoFillPerfect
+      Sub Brain_FindOrphans
+      Sub Brain_ShowUsage
+      Sub Brain_PropagateChange
+      Sub Brain_DetectBottleneck
+      Sub BuildSampleURL
+      Sub TestURL
+      Sub CopyURL
+      Sub OpenInVLC
+      Sub MeasureWaterfall
+      Function BuildJWT_HS256_Simple
+      Function Base64Encode
+      Function Base64Decode
+      Sub DecodeJWT
+      Sub TestBatch
+      Sub AddServer
+      Sub AddUserAgent
+      Sub AddReferer
+      Sub AddKeyring
+      Sub RemoveKeyring
+      Sub AddHeaderNivel1
+      Sub AddRowExpansion
+      Sub BrowseJSON
+      Sub ImportJSON
+      Sub ExportJSON
+      Sub PreviewJSON
+      Sub ClearImport
+      Sub DiffJSON
+      Sub SaveAsPreset
+      Sub DiscardChanges
+      Sub ExportAndUploadToToolkit
+      Sub ExportFullJSON
+      Sub ExportSampleM3U8
+      Sub ExportFullM3U8
+      Sub ExportAndUpload
+      Function ParseJSON
+      Function StringifyJSON
+      Sub ImportChannelsJSON
+      Sub AddCompatTest
+      Sub RemoveCompatTest
+      Sub RerunAllCompat
+      Sub MarkWinnerCompat
+      Sub ExportCompatReport
+      Sub ClearHistory
+      Sub ExportHistoryCSV
+      Sub PlotEvolution
+      Sub FilterByPeriod
+      Sub ShowCredits
+      Sub DumpConfig
+      Sub ImportFromFrontend
+      Function FE_ParseJSON
+      Sub VerifyChannelSelected
+      Sub VerifyChannelsBatch
+
+  [APE_WIRING] (469 lineas):
+      Sub Brain_ExportToFrontendPlus
+      Sub Brain_FastRecalc
+      Sub WB_Msg
+      Sub WB_LogMsg
+      Function WB_Contract
+      Sub WB_Propagate
+      Function WB_WouldCycle
+      Function WB_ReadRef
+      Sub WB_WriteRef
+      Sub APE_RunAllSafe
+      Sub APE_RunSolverVerbose
+      Function APE_DiagUnmet
+
+  [APE_OMEGA_MATH] (657 lineas):
+      Sub Brain_OmegaOptimizer
+
+  [APE_CONVERGE_SIMPLE] (388 lineas):
+      Sub Brain_ConvergeMatrix
+      Sub Brain_ConvergeSimple
+      Sub Brain_ConvergeStepByStep
+      Sub Brain_ConvergeAndExport
+
+  [APE_OMEGA_GUARANTEES] (289 lineas):
+      Function Brain_AuditTenGuarantees
+      Sub Brain_OmegaScorecard
+      Function Brain_GetOmegaCompliance
+      Function ReadFileAll
+
+Backup: C:\Users\HFRC\Downloads\APE_M3U8_LAB_v8_FIXED.BACKUP_20260418_001533_DEDUPED.xlsm
+
+DONE - modulos limpios, duplicados eliminados

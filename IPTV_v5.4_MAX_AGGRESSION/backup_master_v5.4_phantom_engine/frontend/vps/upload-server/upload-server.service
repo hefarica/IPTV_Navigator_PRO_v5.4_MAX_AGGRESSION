@@ -1,0 +1,25 @@
+[Unit]
+Description=IPTV Navigator PRO - Upload Server (Rust)
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/upload-server
+ExecStart=/opt/upload-server/upload-server
+Restart=always
+RestartSec=5
+LimitNOFILE=1048576
+
+# Environment
+Environment=RUST_LOG=info
+Environment=JWT_SECRET=IPTV_UPLOAD_SECRET_KEY_2026
+
+# Security
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/upload-server/uploads /var/www/m3u8
+
+[Install]
+WantedBy=multi-user.target

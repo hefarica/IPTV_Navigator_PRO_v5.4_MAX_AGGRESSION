@@ -1,0 +1,356 @@
+<!-- ═══════════════════════════════════════════════════════════════
+     🎨 CUSTOM HEADERS SECTION - Profile Manager Extension
+     ═══════════════════════════════════════════════════════════════
+     
+     Sección HTML para gestión de headers HTTP personalizados.
+     Debe insertarse DESPUÉS de la sección "Configuración Global del Manifiesto"
+     y ANTES del accordion de headers.
+     
+     ═══════════════════════════════════════════════════════════════
+-->
+
+<div class="pm9-custom-headers-section">
+    <div class="pm9-custom-headers-header" onclick="window.ProfileManagerV9.toggleCustomHeadersDropdown()">
+        <div class="pm9-custom-headers-title-row">
+            <span class="pm9-custom-headers-title">📝 Headers Personalizados</span>
+            <span class="pm9-custom-headers-count" id="pm9_custom_headers_count">0/0</span>
+        </div>
+        <span id="pm9_custom_headers_toggle" class="pm9-dropdown-arrow">▶</span>
+    </div>
+
+    <div id="pm9_custom_headers_content" class="pm9-custom-headers-content" style="display: none;">
+
+        <!-- Descripción -->
+        <p class="pm9-custom-headers-desc">
+            Agrega headers HTTP adicionales que se incluirán en todas las peticiones de streaming para este perfil.
+            Útil para autenticación personalizada, tokens, o headers específicos del servidor.
+        </p>
+
+        <!-- Formulario de Agregar Header -->
+        <div class="pm9-add-header-form">
+            <div class="pm9-add-header-inputs">
+                <input type="text" id="pm9_new_header_name" class="pm9-add-header-input pm9-header-name-input"
+                    placeholder="Nombre del header (ej: X-Auth-Token)"
+                    onkeypress="if(event.key === 'Enter') window.ProfileManagerV9.showAddHeaderForm()">
+                <input type="text" id="pm9_new_header_value" class="pm9-add-header-input pm9-header-value-input"
+                    placeholder="Valor del header (ej: abc123xyz)"
+                    onkeypress="if(event.key === 'Enter') window.ProfileManagerV9.showAddHeaderForm()">
+                <button class="pm9-add-header-btn" onclick="window.ProfileManagerV9.showAddHeaderForm()"
+                    title="Agregar header personalizado">
+                    ➕ Agregar
+                </button>
+            </div>
+
+            <!-- Ejemplos comunes -->
+            <div class="pm9-header-examples">
+                <span class="pm9-examples-label">Ejemplos comunes:</span>
+                <button class="pm9-example-btn"
+                    onclick="document.getElementById('pm9_new_header_name').value='X-Auth-Token'; document.getElementById('pm9_new_header_value').focus();">
+                    X-Auth-Token
+                </button>
+                <button class="pm9-example-btn"
+                    onclick="document.getElementById('pm9_new_header_name').value='Authorization'; document.getElementById('pm9_new_header_value').focus();">
+                    Authorization
+                </button>
+                <button class="pm9-example-btn"
+                    onclick="document.getElementById('pm9_new_header_name').value='X-API-Key'; document.getElementById('pm9_new_header_value').focus();">
+                    X-API-Key
+                </button>
+                <button class="pm9-example-btn"
+                    onclick="document.getElementById('pm9_new_header_name').value='Cookie'; document.getElementById('pm9_new_header_value').focus();">
+                    Cookie
+                </button>
+            </div>
+        </div>
+
+        <!-- Lista de Headers Personalizados -->
+        <div id="pm9_custom_headers_list" class="pm9-custom-headers-list">
+            <!-- Se llena dinámicamente con JavaScript -->
+            <div class="pm9-empty-state">
+                <span class="pm9-empty-icon">📝</span>
+                <p>No hay headers personalizados.</p>
+                <p class="pm9-empty-hint">Agrega headers HTTP adicionales para este perfil</p>
+            </div>
+        </div>
+
+        <!-- Info Box -->
+        <div class="pm9-custom-headers-info">
+            <div class="pm9-info-icon">ℹ️</div>
+            <div class="pm9-info-content">
+                <strong>Nota:</strong> Los headers personalizados se agregan DESPUÉS de los headers base del perfil.
+                Puedes usarlos para sobrescribir headers existentes o agregar nuevos completamente.
+                <br><br>
+                <strong>Formatos soportados:</strong> #EXTVLCOPT, #KODIPROP, pipe headers (|)
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     ESTILOS CSS
+     ═══════════════════════════════════════════════════════════════
+-->
+<style>
+    /* Sección Principal */
+    .pm9-custom-headers-section {
+        background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(59, 130, 246, 0.05));
+        border: 1px solid rgba(59, 130, 246, 0.3);
+        border-radius: 12px;
+        margin: 16px 0;
+        overflow: hidden;
+    }
+
+    .pm9-custom-headers-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 16px 20px;
+        cursor: pointer;
+        user-select: none;
+        transition: background 0.2s ease;
+    }
+
+    .pm9-custom-headers-header:hover {
+        background: rgba(59, 130, 246, 0.1);
+    }
+
+    .pm9-custom-headers-title-row {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .pm9-custom-headers-title {
+        font-size: 16px;
+        font-weight: 600;
+        color: #e2e8f0;
+    }
+
+    .pm9-custom-headers-count {
+        background: rgba(59, 130, 246, 0.2);
+        color: #60a5fa;
+        padding: 4px 12px;
+        border-radius: 12px;
+        font-size: 12px;
+        font-weight: 600;
+    }
+
+    .pm9-dropdown-arrow {
+        color: #94a3b8;
+        font-size: 14px;
+        transition: transform 0.3s ease;
+    }
+
+    .pm9-custom-headers-content {
+        padding: 0 20px 20px;
+    }
+
+    .pm9-custom-headers-desc {
+        color: #94a3b8;
+        font-size: 13px;
+        line-height: 1.6;
+        margin-bottom: 16px;
+    }
+
+    /* Formulario de Agregar */
+    .pm9-add-header-form {
+        background: rgba(0, 0, 0, 0.3);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 10px;
+        padding: 16px;
+        margin-bottom: 20px;
+    }
+
+    .pm9-add-header-inputs {
+        display: grid;
+        grid-template-columns: 1fr 2fr auto;
+        gap: 12px;
+        margin-bottom: 12px;
+    }
+
+    .pm9-add-header-input {
+        background: rgba(0, 0, 0, 0.4);
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        color: #e2e8f0;
+        padding: 10px 14px;
+        border-radius: 8px;
+        font-size: 14px;
+        transition: all 0.2s ease;
+    }
+
+    .pm9-add-header-input:focus {
+        outline: none;
+        border-color: #3b82f6;
+        background: rgba(0, 0, 0, 0.5);
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    }
+
+    .pm9-add-header-input::placeholder {
+        color: #64748b;
+    }
+
+    .pm9-add-header-btn {
+        background: linear-gradient(135deg, #3b82f6, #2563eb);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        padding: 10px 20px;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        white-space: nowrap;
+    }
+
+    .pm9-add-header-btn:hover {
+        background: linear-gradient(135deg, #2563eb, #1d4ed8);
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+    }
+
+    .pm9-add-header-btn:active {
+        transform: translateY(0);
+    }
+
+    /* Ejemplos */
+    .pm9-header-examples {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+
+    .pm9-examples-label {
+        color: #94a3b8;
+        font-size: 12px;
+        margin-right: 4px;
+    }
+
+    .pm9-example-btn {
+        background: rgba(59, 130, 246, 0.1);
+        border: 1px solid rgba(59, 130, 246, 0.3);
+        color: #60a5fa;
+        padding: 4px 10px;
+        border-radius: 6px;
+        font-size: 11px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .pm9-example-btn:hover {
+        background: rgba(59, 130, 246, 0.2);
+        border-color: #3b82f6;
+    }
+
+    /* Lista de Headers */
+    .pm9-custom-headers-list {
+        max-height: 400px;
+        overflow-y: auto;
+        margin-bottom: 16px;
+        padding-right: 8px;
+    }
+
+    /* Scrollbar personalizado */
+    .pm9-custom-headers-list::-webkit-scrollbar {
+        width: 8px;
+    }
+
+    .pm9-custom-headers-list::-webkit-scrollbar-track {
+        background: rgba(0, 0, 0, 0.2);
+        border-radius: 4px;
+    }
+
+    .pm9-custom-headers-list::-webkit-scrollbar-thumb {
+        background: rgba(59, 130, 246, 0.3);
+        border-radius: 4px;
+    }
+
+    .pm9-custom-headers-list::-webkit-scrollbar-thumb:hover {
+        background: rgba(59, 130, 246, 0.5);
+    }
+
+    /* Info Box */
+    .pm9-custom-headers-info {
+        display: flex;
+        gap: 12px;
+        background: rgba(59, 130, 246, 0.08);
+        border: 1px solid rgba(59, 130, 246, 0.2);
+        border-radius: 8px;
+        padding: 12px 16px;
+        fontSize: 12px;
+        line-height: 1.6;
+    }
+
+    .pm9-info-icon {
+        font-size: 18px;
+        flex-shrink: 0;
+    }
+
+    .pm9-info-content {
+        color: #94a3b8;
+    }
+
+    .pm9-info-content strong {
+        color: #e2e8f0;
+        font-weight: 600;
+    }
+
+    /* Animación del dropdown */
+    .pm9-custom-headers-content {
+        overflow: hidden;
+        transition: max-height 0.3s ease;
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+        .pm9-add-header-inputs {
+            grid-template-columns: 1fr;
+        }
+
+        .pm9-example-btn {
+            font-size: 10px;
+            padding: 3px 8px;
+        }
+    }
+</style>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     FUNCIONES DE CONTROL DEL DROPDOWN
+     ═══════════════════════════════════════════════════════════════
+-->
+<script>
+    (function () {
+        'use strict';
+
+        if (!window.ProfileManagerV9) {
+            window.ProfileManagerV9 = {};
+        }
+
+        const PM = window.ProfileManagerV9;
+
+        // Toggle del dropdown de custom headers
+        PM.toggleCustomHeadersDropdown = function () {
+            const content = document.getElementById('pm9_custom_headers_content');
+            const arrow = document.getElementById('pm9_custom_headers_toggle');
+
+            if (!content || !arrow) return;
+
+            const isOpen = content.style.display !== 'none';
+
+            if (isOpen) {
+                content.style.display = 'none';
+                arrow.textContent = '▶';
+            } else {
+                content.style.display = 'block';
+                arrow.textContent = '▼';
+
+                // Renderizar headers al abrir
+                if (typeof PM.renderCustomHeaders === 'function') {
+                    PM.renderCustomHeaders();
+                }
+            }
+        };
+
+    })();
+</script>

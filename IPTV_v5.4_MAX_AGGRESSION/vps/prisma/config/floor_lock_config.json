@@ -1,0 +1,25 @@
+{
+  "_metadata": {
+    "schema_version": "1.0.0",
+    "generated_by": "LAB exportPrismaConfig macro",
+    "generated_ts": "2026-04-28T10:54:15Z",
+    "source": "LAB Excel hoja 15_FLOOR_LOCK_CONFIG"
+  },
+  "floor_lock_enabled": true,
+  "floor_lock_min_bandwidth_p0": 15000000,
+  "floor_lock_min_bandwidth_p1": 15000000,
+  "floor_lock_min_bandwidth_p2": 15000000,
+  "floor_lock_min_bandwidth_p3": 8000000,
+  "floor_lock_min_bandwidth_p4": 8000000,
+  "floor_lock_min_bandwidth_p5": 4000000,
+  "floor_lock_min_bandwidth_default": 8000000,
+  "floor_lock_passthrough_when_unreachable": true,
+  "floor_lock_log_unreachable_to_widget": true,
+  "x_max_bitrate_upstream_header": 20000000,
+  "x_min_bitrate_upstream_header": 15000000,
+  "tcp_initcwnd_target": 400,
+  "tcp_initrwnd_target": 400,
+  "tcp_notsent_lowat": 131072,
+  "tcp_rto_min_lock_ms": 40,
+  "_tcp_doctrine_history": "64 (initial) -> 100 (deployed 2026-04-xx) -> 400 (doctrine raised 2026-05-11 per user order)"
+}

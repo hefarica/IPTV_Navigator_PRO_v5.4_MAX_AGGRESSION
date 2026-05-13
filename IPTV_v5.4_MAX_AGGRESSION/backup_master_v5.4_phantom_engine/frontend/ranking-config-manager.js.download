@@ -1,0 +1,472 @@
+/**
+ * RANKING CONFIG MANAGER v1.0
+ * Sistema de Configuración de Ranking Personalizable
+ * 
+ * ✅ Características:
+ * - Selección dinámica de campos
+ * - Sliders para pesos
+ * - Agregar/eliminar criterios
+ * - Persistencia en localStorage
+ * - Import/Export JSON
+ */
+
+class RankingConfigManager {
+    constructor(app) {
+        this.app = app;
+        this.containerId = 'rankingWeightsContainer';
+        this.storageKey = 'iptv_ranking_config';
+    }
+
+    /**
+     * Campos disponibles para ranking
+     */
+    getAvailableFields() {
+        const predefined = [
+            { id: 'qualityScore', label: '⭐ Quality Score' },
+            { id: 'bitrate', label: '📊 Bitrate (kbps)' },
+            { id: 'resolution', label: '🖥️ Resolution' },
+            { id: 'matchScore', label: '🎯 Match Score' },
+            { id: 'fps', label: '🎬 FPS' },
+            { id: 'year', label: '📅 Año' },
+            { id: 'codec', label: '🔧 Codec' },
+            { id: 'group', label: '📁 Grupo' },
+            { id: 'country', label: '🌍 País' },
+            { id: 'language', label: '🗣️ Idioma' },
+            { id: 'width', label: '📐 Width' },
+            { id: 'height', label: '📏 Height' }
+        ];
+
+        // Agregar campos descubiertos dinámicamente
+        if (this.app.state.discoveredFields) {
+            this.app.state.discoveredFields.forEach(field => {
+                if (!predefined.find(p => p.id === field)) {
+                    predefined.push({ id: field, label: `📌 ${field}` });
+                }
+            });
+        }
+
+        return predefined;
+    }
+
+    /**
+     * Obtener configuración actual
+     */
+    getConfig() {
+        if (!this.app.state.rankingConfig) {
+            this.loadConfig();
+        }
+        return this.app.state.rankingConfig;
+    }
+
+    /**
+     * Cargar configuración desde localStorage
+     */
+    loadConfig() {
+        try {
+            const saved = localStorage.getItem(this.storageKey);
+            if (saved) {
+                const config = JSON.parse(saved);
+                if (config.criteria && Array.isArray(config.criteria)) {
+                    this.app.state.rankingConfig = { criteria: config.criteria };
+
+                    // Restaurar selectores
+                    if (config.mode) {
+                        const modeSelect = document.getElementById('rankingMode');
+                        if (modeSelect) modeSelect.value = config.mode;
+                    }
+                    if (config.preset) {
+                        const presetSelect = document.getElementById('rankingPreset');
+                        if (presetSelect) presetSelect.value = config.preset;
+                    }
+
+                    console.log('✅ Ranking config cargada:', config.criteria.length, 'criterios');
+                    return true;
+                }
+            }
+        } catch (e) {
+            console.warn('Error cargando ranking config:', e);
+        }
+
+        // Config por defecto
+        this.app.state.rankingConfig = {
+            criteria: [
+                { field: 'qualityScore', weight: 100 },
+                { field: 'bitrate', weight: 50 },
+                { field: 'matchScore', weight: 20 }
+            ]
+        };
+        return false;
+    }
+
+    /**
+     * Guardar configuración en localStorage
+     */
+    saveConfig() {
+        const config = {
+            version: '1.0',
+            mode: document.getElementById('rankingMode')?.value || 'score',
+            preset: document.getElementById('rankingPreset')?.value || 'custom',
+            criteria: this.app.state.rankingConfig?.criteria || [],
+            timestamp: Date.now()
+        };
+
+        try {
+            localStorage.setItem(this.storageKey, JSON.stringify(config));
+
+            const status = document.getElementById('rankingConfigStatus');
+            if (status) {
+                status.innerHTML = '<span style="color:#4ade80;">✅ Configuración guardada correctamente</span>';
+                setTimeout(() => status.innerHTML = '', 3000);
+            }
+
+            console.log('✅ Ranking config guardada:', config);
+            return true;
+        } catch (e) {
+            console.error('Error guardando ranking config:', e);
+            return false;
+        }
+    }
+
+    /**
+     * Restaurar a valores por defecto
+     */
+    resetToDefault() {
+        if (confirm('¿Restaurar configuración de ranking a valores por defecto?')) {
+            localStorage.removeItem(this.storageKey);
+
+            this.app.state.rankingConfig = {
+                criteria: [
+                    { field: 'qualityScore', weight: 100 },
+                    { field: 'matchScore', weight: 20 },
+                    { field: 'year', weight: 10 }
+                ]
+            };
+
+            const modeSelect = document.getElementById('rankingMode');
+            if (modeSelect) modeSelect.value = 'score';
+            const presetSelect = document.getElementById('rankingPreset');
+            if (presetSelect) presetSelect.value = 'balanced';
+
+            this.render();
+            if (this.app.recalculateRanking) this.app.recalculateRanking();
+        }
+    }
+
+    /**
+     * Exportar configuración a JSON
+     */
+    exportConfig() {
+        const config = {
+            version: '1.0',
+            mode: document.getElementById('rankingMode')?.value || 'score',
+            preset: document.getElementById('rankingPreset')?.value || 'custom',
+            criteria: this.app.state.rankingConfig?.criteria || [],
+            exportedAt: new Date().toISOString()
+        };
+
+        const json = JSON.stringify(config, null, 2);
+        const blob = new Blob([json], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `ranking-config-${new Date().toISOString().split('T')[0]}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+    }
+
+    /**
+     * Importar configuración desde JSON
+     */
+    importConfig() {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = '.json';
+
+        input.onchange = (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                try {
+                    const config = JSON.parse(event.target.result);
+
+                    if (config.criteria && Array.isArray(config.criteria)) {
+                        this.app.state.rankingConfig = { criteria: config.criteria };
+
+                        if (config.mode) {
+                            const modeSelect = document.getElementById('rankingMode');
+                            if (modeSelect) modeSelect.value = config.mode;
+                        }
+                        if (config.preset) {
+                            const presetSelect = document.getElementById('rankingPreset');
+                            if (presetSelect) presetSelect.value = config.preset;
+                        }
+
+                        this.saveConfig();
+                        this.render();
+                        if (this.app.recalculateRanking) this.app.recalculateRanking();
+                    } else {
+                        throw new Error('Formato de configuración inválido');
+                    }
+                } catch (err) {
+                    console.error('Error importando config:', err);
+                    alert('❌ Error al importar: ' + err.message);
+                }
+            };
+            reader.readAsText(file);
+        };
+
+        input.click();
+    }
+
+    /**
+     * Agregar nuevo criterio
+     */
+    addCriteria() {
+        if (!this.app.state.rankingConfig) {
+            this.app.state.rankingConfig = { criteria: [] };
+        }
+
+        const usedFields = this.app.state.rankingConfig.criteria.map(c => c.field);
+        const available = this.getAvailableFields().find(f => !usedFields.includes(f.id));
+
+        this.app.state.rankingConfig.criteria.push({
+            field: available ? available.id : 'qualityScore',
+            weight: 50
+        });
+
+        this.render();
+        this._autoSave(); // Auto-guardar
+    }
+
+    /**
+     * Eliminar criterio
+     */
+    removeCriteria(idx) {
+        if (this.app.state.rankingConfig && this.app.state.rankingConfig.criteria.length > 1) {
+            this.app.state.rankingConfig.criteria.splice(idx, 1);
+            this.render();
+            this._autoSave(); // Auto-guardar
+            if (this.app.recalculateRanking) this.app.recalculateRanking();
+        }
+    }
+
+    /**
+     * Actualizar campo de un criterio
+     */
+    updateField(idx, field) {
+        if (this.app.state.rankingConfig && this.app.state.rankingConfig.criteria[idx]) {
+            this.app.state.rankingConfig.criteria[idx].field = field;
+            this._autoSave(); // Auto-guardar
+            if (this.app.recalculateRanking) this.app.recalculateRanking();
+        }
+    }
+
+    /**
+     * Actualizar peso de un criterio
+     */
+    updateWeight(idx, weight) {
+        if (this.app.state.rankingConfig && this.app.state.rankingConfig.criteria[idx]) {
+            this.app.state.rankingConfig.criteria[idx].weight = Number(weight);
+            this._autoSave(); // Auto-guardar
+        }
+    }
+
+    /**
+     * Auto-guardado silencioso (sin notificación visual)
+     */
+    _autoSave() {
+        const config = {
+            version: '1.0',
+            mode: document.getElementById('rankingMode')?.value || 'score',
+            preset: 'custom',
+            criteria: this.app.state.rankingConfig?.criteria || [],
+            timestamp: Date.now()
+        };
+        try {
+            localStorage.setItem(this.storageKey, JSON.stringify(config));
+        } catch (e) {
+            console.warn('Auto-save error:', e);
+        }
+    }
+
+    /**
+     * Aplicar preset predefinido
+     */
+    applyPreset(presetName) {
+        const presets = {
+            balanced: {
+                criteria: [
+                    { field: 'qualityScore', weight: 50 },
+                    { field: 'matchScore', weight: 30 },
+                    { field: 'bitrate', weight: 20 }
+                ]
+            },
+            quality: {
+                criteria: [
+                    { field: 'qualityScore', weight: 80 },
+                    { field: 'bitrate', weight: 60 },
+                    { field: 'resolution', weight: 40 }
+                ]
+            },
+            stability: {
+                criteria: [
+                    { field: 'matchScore', weight: 70 },
+                    { field: 'qualityScore', weight: 30 }
+                ]
+            },
+            sports: {
+                criteria: [
+                    { field: 'fps', weight: 80 },
+                    { field: 'bitrate', weight: 60 },
+                    { field: 'qualityScore', weight: 40 }
+                ]
+            },
+            custom: null
+        };
+
+        if (presetName !== 'custom' && presets[presetName]) {
+            this.app.state.rankingConfig = { ...presets[presetName] };
+            this.render();
+            if (this.app.recalculateRanking) this.app.recalculateRanking();
+        }
+    }
+
+    /**
+     * Renderizar UI completa
+     */
+    render() {
+        const c = document.getElementById(this.containerId);
+        if (!c) return;
+
+        // Asegurar que existe configuración
+        if (!this.app.state.rankingConfig) {
+            this.loadConfig();
+        }
+
+        const config = this.app.state.rankingConfig;
+        if (!config || !config.criteria) return;
+
+        const availableFields = this.getAvailableFields();
+
+        // Estilos del tema oscuro glassmorphism - COMPACTO 2 COLUMNAS
+        const styles = {
+            panel: 'margin-bottom:12px; padding:12px 14px; background:linear-gradient(135deg, rgba(15,23,42,0.95), rgba(30,41,59,0.9)); border-radius:12px; border:1px solid rgba(56,189,248,0.25); backdrop-filter:blur(10px); box-shadow:0 4px 16px rgba(0,0,0,0.25);',
+            header: 'display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; padding-bottom:8px; border-bottom:1px solid rgba(56,189,248,0.12);',
+            title: 'font-size:0.82rem; font-weight:600; color:#38bdf8; text-transform:uppercase; letter-spacing:0.06em;',
+            subtitle: 'font-size:0.68rem; color:#94a3b8; margin-top:2px;',
+            criteriaGrid: 'display:grid; grid-template-columns:1fr 1fr; gap:6px 12px;',
+            criteriaRow: 'display:flex; align-items:center; gap:8px; padding:5px 8px; background:rgba(15,23,42,0.6); border-radius:6px; border:1px solid rgba(148,163,184,0.12);',
+            fieldLabel: 'font-size:0.62rem; color:#64748b; text-transform:uppercase; letter-spacing:0.03em; white-space:nowrap;',
+            select: 'width:110px; padding:4px 6px; font-size:0.72rem; background:rgba(15,23,42,0.9); border:1px solid rgba(148,163,184,0.25); border-radius:5px; color:#f1f5f9; outline:none;',
+            sliderContainer: 'display:flex; align-items:center; gap:5px; flex:1; min-width:0;',
+            slider: 'flex:1; accent-color:#38bdf8; height:4px; min-width:60px;',
+            weightLabel: 'min-width:28px; text-align:center; font-weight:700; color:#38bdf8; font-size:0.72rem; background:rgba(56,189,248,0.12); padding:2px 5px; border-radius:4px;',
+            btnAdd: 'padding:4px 10px; font-size:0.68rem; background:rgba(56,189,248,0.15); border:1px solid rgba(56,189,248,0.35); color:#38bdf8; border-radius:6px; cursor:pointer; font-weight:500;',
+            btnDelete: 'padding:3px 6px; font-size:0.6rem; background:rgba(239,68,68,0.12); border:1px solid rgba(239,68,68,0.3); color:#f87171; border-radius:5px; cursor:pointer;',
+            btnPrimary: 'padding:5px 10px; font-size:0.68rem; background:linear-gradient(135deg, #38bdf8, #0ea5e9); border:none; color:#020617; border-radius:5px; cursor:pointer; font-weight:600; box-shadow:0 2px 6px rgba(56,189,248,0.3);',
+            btnSecondary: 'padding:5px 10px; font-size:0.68rem; background:transparent; border:1px solid rgba(148,163,184,0.3); color:#cbd5e1; border-radius:5px; cursor:pointer; font-weight:500;',
+            status: 'margin-top:6px; font-size:0.68rem; color:#94a3b8;'
+        };
+
+        let html = `
+            <div style="${styles.panel}">
+                <div style="${styles.header}">
+                    <div>
+                        <div style="${styles.title}">📊 Criterios de Ranking Personalizados</div>
+                        <div style="${styles.subtitle}">Configura campos y pesos para el cálculo de score</div>
+                    </div>
+                    <div style="display:flex; align-items:center; gap:5px;">
+                        <button style="${styles.btnPrimary}" onclick="window.rankingConfigManager.saveConfig()">
+                            💾 Guardar
+                        </button>
+                        <button style="${styles.btnSecondary}" onclick="window.rankingConfigManager.resetToDefault()">
+                            🔄 Restaurar
+                        </button>
+                        <button style="${styles.btnSecondary}" onclick="window.rankingConfigManager.exportConfig()">
+                            📥 Exportar
+                        </button>
+                        <button style="${styles.btnSecondary}" onclick="window.rankingConfigManager.importConfig()">
+                            📤 Importar
+                        </button>
+                        <button style="${styles.btnAdd}" onclick="window.rankingConfigManager.addCriteria()">
+                            ➕ Agregar
+                        </button>
+                    </div>
+                </div>
+                
+                <div id="rankingCriteriaList" style="${styles.criteriaGrid}">
+        `;
+
+        config.criteria.forEach((crit, idx) => {
+            const fieldOptions = availableFields.map(f =>
+                `<option value="${f.id}" ${f.id === crit.field ? 'selected' : ''} style="background:#0f172a; color:#f1f5f9;">${f.label}</option>`
+            ).join('');
+
+            html += `
+                <div style="${styles.criteriaRow}">
+                    <span style="${styles.fieldLabel}">Campo</span>
+                    <select style="${styles.select}" 
+                            onchange="window.rankingConfigManager.updateField(${idx}, this.value)">
+                        ${fieldOptions}
+                    </select>
+                    
+                    <span style="${styles.fieldLabel}">Peso</span>
+                    <div style="${styles.sliderContainer}">
+                        <input type="range" min="0" max="100" value="${crit.weight}" 
+                               style="${styles.slider}"
+                               oninput="window.rankingConfigManager.updateWeight(${idx}, this.value); this.nextElementSibling.textContent = this.value;">
+                        <span style="${styles.weightLabel}">${crit.weight}</span>
+                    </div>
+                    
+                    <button style="${styles.btnDelete}" 
+                            onclick="window.rankingConfigManager.removeCriteria(${idx})" 
+                            ${config.criteria.length <= 1 ? 'disabled style="opacity:0.35; cursor:not-allowed;"' : ''}>
+                        🗑️
+                    </button>
+                </div>
+            `;
+        });
+
+        html += `
+                </div>
+                <div id="rankingConfigStatus" style="${styles.status}"></div>
+            </div>
+        `;
+
+        c.innerHTML = html;
+    }
+}
+
+// Inicializar cuando app esté disponible
+document.addEventListener('DOMContentLoaded', () => {
+    setTimeout(() => {
+        if (window.app) {
+            window.rankingConfigManager = new RankingConfigManager(window.app);
+
+            // Reemplazar renderRankingUI original
+            const originalRenderRankingUI = window.app.renderRankingUI;
+            window.app.renderRankingUI = function () {
+                window.rankingConfigManager.render();
+            };
+
+            // Reemplazar changeRankingPreset original
+            const originalChangeRankingPreset = window.app.changeRankingPreset;
+            window.app.changeRankingPreset = function (preset) {
+                window.rankingConfigManager.applyPreset(preset);
+            };
+
+            // Cargar configuración y renderizar
+            window.rankingConfigManager.loadConfig();
+            window.rankingConfigManager.render();
+
+            console.log('✅ RankingConfigManager inicializado');
+        }
+    }, 500);
+});
+
+// Exportar globalmente
+if (typeof window !== 'undefined') {
+    window.RankingConfigManager = RankingConfigManager;
+}

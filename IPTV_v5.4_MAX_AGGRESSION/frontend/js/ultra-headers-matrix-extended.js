@@ -9,6 +9,14 @@
  * Valores estáticos se cablean desde el UI.
  *
  * FECHA: 2026-02-07
+ *
+ * ⚠️ C8 (2026-05-11) — HEADERS DEPRECATED:
+ *   - "TE"                (línea ~118)  ← okhttp legacy no soporta RFC 7230 trailers
+ *   - "If-Modified-Since" (línea ~137)  ← 304+0B → okhttp EOF (igual que If-None-Match)
+ *   - "Priority"          (línea ~220)  ← RFC 9218 HTTP/3 sobre HTTP/1.1
+ *
+ * Filtrado downstream por _ca7BannedAbsolute (m3u8-typed-arrays-ultimate.js:7537)
+ * y UPSERT_EXTHTTP_BANNED_OUTBOUND (línea 6889). Ver feedback_exthttp_traps.md #9.
  * ═══════════════════════════════════════════════════════════════════════════
  */
 

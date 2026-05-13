@@ -1,0 +1,87 @@
+{
+  "_metadata": {
+    "schema_version": "1.0.0",
+    "generated_by": "LAB-SYNC v2.0 seed (TEMPLATE)",
+    "generated_ts": "2026-04-28T02:00:00Z",
+    "source": "seed template — el LAB Excel hoja 01_CANALES debe poblar este archivo via exportPrismaConfig macro",
+    "ttl_cache_seconds": 300,
+    "doctrine": "DNA per-canal de las 8 columnas PRISMA-aware. Si un canal NO está en este archivo, PRISMA usa channel_defaults_by_profile como fallback."
+  },
+  "channel_defaults_by_profile": {
+    "P0": {
+      "prisma_lcevc_enabled": false,
+      "prisma_hdr10plus_enabled": true,
+      "prisma_ai_sr_enabled": false,
+      "prisma_quantum_pixel_enabled": true,
+      "prisma_fake_4k_upscaler_enabled": false,
+      "prisma_cmaf_enabled": true,
+      "prisma_floor_lock_strict": true,
+      "prisma_transcode_enabled": false
+    },
+    "P1": {
+      "prisma_lcevc_enabled": true,
+      "prisma_hdr10plus_enabled": true,
+      "prisma_ai_sr_enabled": false,
+      "prisma_quantum_pixel_enabled": true,
+      "prisma_fake_4k_upscaler_enabled": false,
+      "prisma_cmaf_enabled": true,
+      "prisma_floor_lock_strict": true,
+      "prisma_transcode_enabled": false
+    },
+    "P2": {
+      "prisma_lcevc_enabled": true,
+      "prisma_hdr10plus_enabled": true,
+      "prisma_ai_sr_enabled": true,
+      "prisma_quantum_pixel_enabled": true,
+      "prisma_fake_4k_upscaler_enabled": true,
+      "prisma_cmaf_enabled": true,
+      "prisma_floor_lock_strict": true,
+      "prisma_transcode_enabled": false
+    },
+    "P3": {
+      "prisma_lcevc_enabled": true,
+      "prisma_hdr10plus_enabled": false,
+      "prisma_ai_sr_enabled": true,
+      "prisma_quantum_pixel_enabled": false,
+      "prisma_fake_4k_upscaler_enabled": false,
+      "prisma_cmaf_enabled": true,
+      "prisma_floor_lock_strict": false,
+      "prisma_transcode_enabled": false
+    },
+    "P4": {
+      "prisma_lcevc_enabled": true,
+      "prisma_hdr10plus_enabled": false,
+      "prisma_ai_sr_enabled": true,
+      "prisma_quantum_pixel_enabled": false,
+      "prisma_fake_4k_upscaler_enabled": false,
+      "prisma_cmaf_enabled": true,
+      "prisma_floor_lock_strict": false,
+      "prisma_transcode_enabled": false
+    },
+    "P5": {
+      "prisma_lcevc_enabled": false,
+      "prisma_hdr10plus_enabled": false,
+      "prisma_ai_sr_enabled": true,
+      "prisma_quantum_pixel_enabled": false,
+      "prisma_fake_4k_upscaler_enabled": false,
+      "prisma_cmaf_enabled": true,
+      "prisma_floor_lock_strict": false,
+      "prisma_transcode_enabled": false
+    }
+  },
+  "channels": {
+    "_example_bein_sports_1_uhd_fr_14": {
+      "_comment": "Ejemplo template — reemplazar con channels reales desde LAB Excel hoja 01_CANALES",
+      "channel_id": "bein_sports_1_uhd_fr_14",
+      "profile": "P0",
+      "prisma_lcevc_enabled": false,
+      "prisma_hdr10plus_enabled": true,
+      "prisma_ai_sr_enabled": false,
+      "prisma_quantum_pixel_enabled": true,
+      "prisma_fake_4k_upscaler_enabled": false,
+      "prisma_cmaf_enabled": true,
+      "prisma_floor_lock_strict": true,
+      "prisma_transcode_enabled": false
+    }
+  }
+}

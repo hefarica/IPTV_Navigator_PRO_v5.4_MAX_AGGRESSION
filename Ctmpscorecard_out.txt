@@ -1,0 +1,358 @@
+Excepci¢n al llamar a "GetActiveObject" con los argumentos "1": "Error en la llamada a procedimiento remoto. 
+(Excepci¢n de HRESULT: 0x800706BE)"
+En C:\tmp\check_scorecard.ps1: 1 Car cter: 1
++ $excel = [Runtime.InteropServices.Marshal]::GetActiveObject('Excel.Ap ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : COMException
+ 
+00_OMEGA_SCORECARD existe: False
+No se puede llamar a un m‚todo en una expresi¢n con valor NULL.
+En C:\tmp\check_scorecard.ps1: 28 Car cter: 1
++ $cfg = $wb.Sheets('18_CONFIG')
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) [], RuntimeException
+    + FullyQualifiedErrorId : InvokeMethodOnNull
+ 
+No se puede llamar a un m‚todo en una expresi¢n con valor NULL.
+En C:\tmp\check_scorecard.ps1: 30 Car cter: 5
++     $lb = $cfg.Cells($r, 2).Value2
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) [], RuntimeException
+    + FullyQualifiedErrorId : InvokeMethodOnNull
+ 
+No se puede llamar a un m‚todo en una expresi¢n con valor NULL.
+En C:\tmp\check_scorecard.ps1: 30 Car cter: 5
++     $lb = $cfg.Cells($r, 2).Value2
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) [], RuntimeException
+    + FullyQualifiedErrorId : InvokeMethodOnNull
+ 
+No se puede llamar a un m‚todo en una expresi¢n con valor NULL.
+En C:\tmp\check_scorecard.ps1: 30 Car cter: 5
++     $lb = $cfg.Cells($r, 2).Value2
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) [], RuntimeException
+    + FullyQualifiedErrorId : InvokeMethodOnNull
+ 
+No se puede llamar a un m‚todo en una expresi¢n con valor NULL.
+En C:\tmp\check_scorecard.ps1: 30 Car cter: 5
++     $lb = $cfg.Cells($r, 2).Value2
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) [], RuntimeException
+    + FullyQualifiedErrorId : InvokeMethodOnNull
+ 
+No se puede llamar a un m‚todo en una expresi¢n con valor NULL.
+En C:\tmp\check_scorecard.ps1: 30 Car cter: 5
++     $lb = $cfg.Cells($r, 2).Value2
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) [], RuntimeException
+    + FullyQualifiedErrorId : InvokeMethodOnNull
+ 
+No se puede llamar a un m‚todo en una expresi¢n con valor NULL.
+En C:\tmp\check_scorecard.ps1: 30 Car cter: 5
++     $lb = $cfg.Cells($r, 2).Value2
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) [], RuntimeException
+    + FullyQualifiedErrorId : InvokeMethodOnNull
+ 
+No se puede llamar a un m‚todo en una expresi¢n con valor NULL.
+En C:\tmp\check_scorecard.ps1: 30 Car cter: 5
++     $lb = $cfg.Cells($r, 2).Value2
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) [], RuntimeException
+    + FullyQualifiedErrorId : InvokeMethodOnNull
+ 
+No se puede llamar a un m‚todo en una expresi¢n con valor NULL.
+En C:\tmp\check_scorecard.ps1: 30 Car cter: 5
++     $lb = $cfg.Cells($r, 2).Value2
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) [], RuntimeException
+    + FullyQualifiedErrorId : InvokeMethodOnNull
+ 
+No se puede llamar a un m‚todo en una expresi¢n con valor NULL.
+En C:\tmp\check_scorecard.ps1: 30 Car cter: 5
++     $lb = $cfg.Cells($r, 2).Value2
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) [], RuntimeException
+    + FullyQualifiedErrorId : InvokeMethodOnNull
+ 
+No se puede llamar a un m‚todo en una expresi¢n con valor NULL.
+En C:\tmp\check_scorecard.ps1: 30 Car cter: 5
++     $lb = $cfg.Cells($r, 2).Value2
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) [], RuntimeException
+    + FullyQualifiedErrorId : InvokeMethodOnNull
+ 
+No se puede llamar a un m‚todo en una expresi¢n con valor NULL.
+En C:\tmp\check_scorecard.ps1: 30 Car cter: 5
++     $lb = $cfg.Cells($r, 2).Value2
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) [], RuntimeException
+    + FullyQualifiedErrorId : InvokeMethodOnNull
+ 
+No se puede llamar a un m‚todo en una expresi¢n con valor NULL.
+En C:\tmp\check_scorecard.ps1: 30 Car cter: 5
++     $lb = $cfg.Cells($r, 2).Value2
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) [], RuntimeException
+    + FullyQualifiedErrorId : InvokeMethodOnNull
+ 
+No se puede llamar a un m‚todo en una expresi¢n con valor NULL.
+En C:\tmp\check_scorecard.ps1: 30 Car cter: 5
++     $lb = $cfg.Cells($r, 2).Value2
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) [], RuntimeException
+    + FullyQualifiedErrorId : InvokeMethodOnNull
+ 
+No se puede llamar a un m‚todo en una expresi¢n con valor NULL.
+En C:\tmp\check_scorecard.ps1: 30 Car cter: 5
++     $lb = $cfg.Cells($r, 2).Value2
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) [], RuntimeException
+    + FullyQualifiedErrorId : InvokeMethodOnNull
+ 
+No se puede llamar a un m‚todo en una expresi¢n con valor NULL.
+En C:\tmp\check_scorecard.ps1: 30 Car cter: 5
++     $lb = $cfg.Cells($r, 2).Value2
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) [], RuntimeException
+    + FullyQualifiedErrorId : InvokeMethodOnNull
+ 
+No se puede llamar a un m‚todo en una expresi¢n con valor NULL.
+En C:\tmp\check_scorecard.ps1: 30 Car cter: 5
++     $lb = $cfg.Cells($r, 2).Value2
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) [], RuntimeException
+    + FullyQualifiedErrorId : InvokeMethodOnNull
+ 
+No se puede llamar a un m‚todo en una expresi¢n con valor NULL.
+En C:\tmp\check_scorecard.ps1: 30 Car cter: 5
++     $lb = $cfg.Cells($r, 2).Value2
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) [], RuntimeException
+    + FullyQualifiedErrorId : InvokeMethodOnNull
+ 
+No se puede llamar a un m‚todo en una expresi¢n con valor NULL.
+En C:\tmp\check_scorecard.ps1: 30 Car cter: 5
++     $lb = $cfg.Cells($r, 2).Value2
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) [], RuntimeException
+    + FullyQualifiedErrorId : InvokeMethodOnNull
+ 
+No se puede llamar a un m‚todo en una expresi¢n con valor NULL.
+En C:\tmp\check_scorecard.ps1: 30 Car cter: 5
++     $lb = $cfg.Cells($r, 2).Value2
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) [], RuntimeException
+    + FullyQualifiedErrorId : InvokeMethodOnNull
+ 
+No se puede llamar a un m‚todo en una expresi¢n con valor NULL.
+En C:\tmp\check_scorecard.ps1: 30 Car cter: 5
++     $lb = $cfg.Cells($r, 2).Value2
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) [], RuntimeException
+    + FullyQualifiedErrorId : InvokeMethodOnNull
+ 
+No se puede llamar a un m‚todo en una expresi¢n con valor NULL.
+En C:\tmp\check_scorecard.ps1: 30 Car cter: 5
++     $lb = $cfg.Cells($r, 2).Value2
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) [], RuntimeException
+    + FullyQualifiedErrorId : InvokeMethodOnNull
+ 
+No se puede llamar a un m‚todo en una expresi¢n con valor NULL.
+En C:\tmp\check_scorecard.ps1: 30 Car cter: 5
++     $lb = $cfg.Cells($r, 2).Value2
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) [], RuntimeException
+    + FullyQualifiedErrorId : InvokeMethodOnNull
+ 
+No se puede llamar a un m‚todo en una expresi¢n con valor NULL.
+En C:\tmp\check_scorecard.ps1: 30 Car cter: 5
++     $lb = $cfg.Cells($r, 2).Value2
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) [], RuntimeException
+    + FullyQualifiedErrorId : InvokeMethodOnNull
+ 
+No se puede llamar a un m‚todo en una expresi¢n con valor NULL.
+En C:\tmp\check_scorecard.ps1: 30 Car cter: 5
++     $lb = $cfg.Cells($r, 2).Value2
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) [], RuntimeException
+    + FullyQualifiedErrorId : InvokeMethodOnNull
+ 
+No se puede llamar a un m‚todo en una expresi¢n con valor NULL.
+En C:\tmp\check_scorecard.ps1: 30 Car cter: 5
++     $lb = $cfg.Cells($r, 2).Value2
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) [], RuntimeException
+    + FullyQualifiedErrorId : InvokeMethodOnNull
+ 
+No se puede llamar a un m‚todo en una expresi¢n con valor NULL.
+En C:\tmp\check_scorecard.ps1: 30 Car cter: 5
++     $lb = $cfg.Cells($r, 2).Value2
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) [], RuntimeException
+    + FullyQualifiedErrorId : InvokeMethodOnNull
+ 
+No se puede llamar a un m‚todo en una expresi¢n con valor NULL.
+En C:\tmp\check_scorecard.ps1: 30 Car cter: 5
++     $lb = $cfg.Cells($r, 2).Value2
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) [], RuntimeException
+    + FullyQualifiedErrorId : InvokeMethodOnNull
+ 
+No se puede llamar a un m‚todo en una expresi¢n con valor NULL.
+En C:\tmp\check_scorecard.ps1: 30 Car cter: 5
++     $lb = $cfg.Cells($r, 2).Value2
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) [], RuntimeException
+    + FullyQualifiedErrorId : InvokeMethodOnNull
+ 
+No se puede llamar a un m‚todo en una expresi¢n con valor NULL.
+En C:\tmp\check_scorecard.ps1: 30 Car cter: 5
++     $lb = $cfg.Cells($r, 2).Value2
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) [], RuntimeException
+    + FullyQualifiedErrorId : InvokeMethodOnNull
+ 
+No se puede llamar a un m‚todo en una expresi¢n con valor NULL.
+En C:\tmp\check_scorecard.ps1: 30 Car cter: 5
++     $lb = $cfg.Cells($r, 2).Value2
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) [], RuntimeException
+    + FullyQualifiedErrorId : InvokeMethodOnNull
+ 
+No se puede llamar a un m‚todo en una expresi¢n con valor NULL.
+En C:\tmp\check_scorecard.ps1: 30 Car cter: 5
++     $lb = $cfg.Cells($r, 2).Value2
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) [], RuntimeException
+    + FullyQualifiedErrorId : InvokeMethodOnNull
+ 
+No se puede llamar a un m‚todo en una expresi¢n con valor NULL.
+En C:\tmp\check_scorecard.ps1: 30 Car cter: 5
++     $lb = $cfg.Cells($r, 2).Value2
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) [], RuntimeException
+    + FullyQualifiedErrorId : InvokeMethodOnNull
+ 
+No se puede llamar a un m‚todo en una expresi¢n con valor NULL.
+En C:\tmp\check_scorecard.ps1: 30 Car cter: 5
++     $lb = $cfg.Cells($r, 2).Value2
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) [], RuntimeException
+    + FullyQualifiedErrorId : InvokeMethodOnNull
+ 
+No se puede llamar a un m‚todo en una expresi¢n con valor NULL.
+En C:\tmp\check_scorecard.ps1: 30 Car cter: 5
++     $lb = $cfg.Cells($r, 2).Value2
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) [], RuntimeException
+    + FullyQualifiedErrorId : InvokeMethodOnNull
+ 
+No se puede llamar a un m‚todo en una expresi¢n con valor NULL.
+En C:\tmp\check_scorecard.ps1: 30 Car cter: 5
++     $lb = $cfg.Cells($r, 2).Value2
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) [], RuntimeException
+    + FullyQualifiedErrorId : InvokeMethodOnNull
+ 
+No se puede llamar a un m‚todo en una expresi¢n con valor NULL.
+En C:\tmp\check_scorecard.ps1: 30 Car cter: 5
++     $lb = $cfg.Cells($r, 2).Value2
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) [], RuntimeException
+    + FullyQualifiedErrorId : InvokeMethodOnNull
+ 
+No se puede llamar a un m‚todo en una expresi¢n con valor NULL.
+En C:\tmp\check_scorecard.ps1: 30 Car cter: 5
++     $lb = $cfg.Cells($r, 2).Value2
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) [], RuntimeException
+    + FullyQualifiedErrorId : InvokeMethodOnNull
+ 
+No se puede llamar a un m‚todo en una expresi¢n con valor NULL.
+En C:\tmp\check_scorecard.ps1: 30 Car cter: 5
++     $lb = $cfg.Cells($r, 2).Value2
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) [], RuntimeException
+    + FullyQualifiedErrorId : InvokeMethodOnNull
+ 
+No se puede llamar a un m‚todo en una expresi¢n con valor NULL.
+En C:\tmp\check_scorecard.ps1: 30 Car cter: 5
++     $lb = $cfg.Cells($r, 2).Value2
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) [], RuntimeException
+    + FullyQualifiedErrorId : InvokeMethodOnNull
+ 
+No se puede llamar a un m‚todo en una expresi¢n con valor NULL.
+En C:\tmp\check_scorecard.ps1: 30 Car cter: 5
++     $lb = $cfg.Cells($r, 2).Value2
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) [], RuntimeException
+    + FullyQualifiedErrorId : InvokeMethodOnNull
+ 
+No se puede llamar a un m‚todo en una expresi¢n con valor NULL.
+En C:\tmp\check_scorecard.ps1: 30 Car cter: 5
++     $lb = $cfg.Cells($r, 2).Value2
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) [], RuntimeException
+    + FullyQualifiedErrorId : InvokeMethodOnNull
+ 
+No se puede llamar a un m‚todo en una expresi¢n con valor NULL.
+En C:\tmp\check_scorecard.ps1: 30 Car cter: 5
++     $lb = $cfg.Cells($r, 2).Value2
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) [], RuntimeException
+    + FullyQualifiedErrorId : InvokeMethodOnNull
+ 
+No se puede llamar a un m‚todo en una expresi¢n con valor NULL.
+En C:\tmp\check_scorecard.ps1: 30 Car cter: 5
++     $lb = $cfg.Cells($r, 2).Value2
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) [], RuntimeException
+    + FullyQualifiedErrorId : InvokeMethodOnNull
+ 
+No se puede llamar a un m‚todo en una expresi¢n con valor NULL.
+En C:\tmp\check_scorecard.ps1: 39 Car cter: 1
++ $d = $wb.Sheets('9_BRAIN_DASHBOARD')
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) [], RuntimeException
+    + FullyQualifiedErrorId : InvokeMethodOnNull
+ 
+
+Dashboard:
+No se puede llamar a un m‚todo en una expresi¢n con valor NULL.
+En C:\tmp\check_scorecard.ps1: 42 Car cter: 28
++ Write-Host "  Health   = $($d.Range('B5').Value2)"
++                            ~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) [], RuntimeException
+    + FullyQualifiedErrorId : InvokeMethodOnNull
+ 
+  Health   = 
+No se puede llamar a un m‚todo en una expresi¢n con valor NULL.
+En C:\tmp\check_scorecard.ps1: 43 Car cter: 28
++ Write-Host "  Risk     = $($d.Range('B6').Value2)"
++                            ~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) [], RuntimeException
+    + FullyQualifiedErrorId : InvokeMethodOnNull
+ 
+  Risk     = 
+No se puede llamar a un m‚todo en una expresi¢n con valor NULL.
+En C:\tmp\check_scorecard.ps1: 44 Car cter: 28
++ Write-Host "  Headroom = $($d.Range('B7').Value2)"
++                            ~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) [], RuntimeException
+    + FullyQualifiedErrorId : InvokeMethodOnNull
+ 
+  Headroom = 
+No se puede llamar a un m‚todo en una expresi¢n con valor NULL.
+En C:\tmp\check_scorecard.ps1: 45 Car cter: 28
++ Write-Host "  Stall    = $($d.Range('B8').Value2)"
++                            ~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) [], RuntimeException
+    + FullyQualifiedErrorId : InvokeMethodOnNull
+ 
+  Stall    = 

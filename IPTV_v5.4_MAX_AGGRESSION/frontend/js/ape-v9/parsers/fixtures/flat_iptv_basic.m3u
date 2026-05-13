@@ -1,0 +1,7 @@
+#EXTM3U
+#EXTINF:-1 tvg-id="cnn.us" tvg-name="CNN" tvg-logo="https://example.com/cnn.png" group-title="News",CNN HD
+http://provider.example.com/live/user1/pass1/1001.m3u8
+#EXTINF:-1 tvg-id="espn.us" tvg-name="ESPN" group-title="Sports",ESPN HD
+http://provider.example.com/live/user1/pass1/1002.m3u8
+#EXTINF:-1 tvg-id="nat.geo" tvg-name="Nat Geo" group-title="Documentary",Nat Geo, World HD
+http://provider.example.com/live/user1/pass1/1003.m3u8

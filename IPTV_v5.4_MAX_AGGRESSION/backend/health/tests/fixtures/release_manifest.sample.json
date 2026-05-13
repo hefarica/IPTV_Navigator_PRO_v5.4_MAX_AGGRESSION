@@ -1,0 +1,59 @@
+{
+  "build_id": "APE_2026-04-17T22-45-00Z",
+  "generated_at": "2026-04-17T22:45:00Z",
+  "architecture": "direct_publish_without_resolve",
+  "plan_version": "1.0.0",
+  "policy_bundle": {
+    "mime_policy": "frontend/js/ape-v9/mime-policy.js@v1.0-20260417",
+    "format_policy": "frontend/js/ape-v9/format-policy.js@v1.0-20260417",
+    "ranking_policy": "prepublish_checker.py@DEFAULT_PRIORITY_CHAIN",
+    "gate_policy": "publication_gate.py@v4-criteria-20260417"
+  },
+  "catalog_snapshot_id": "TIVIVISION+KEMOTV1@2026-04-17",
+  "filter_config": {
+    "groups": [
+      { "rule": "Resolución CONTAINS 4k" },
+      { "rule": "Resolución CONTAINS 8k" },
+      { "rule": "Resolución CONTAINS 1080" }
+    ],
+    "logic": "AND_within_OR_between",
+    "channels_filtered": 4536
+  },
+  "prepublish_run": {
+    "run_id": "prepub_2026-04-17T22-43-00Z",
+    "candidates_total": 4536,
+    "admitted_count": 3558,
+    "rejected_count": 978,
+    "elapsed_ms": 45000
+  },
+  "gate_run": {
+    "gate_run_id": "gate_2026-04-17T22-44-30Z",
+    "sample_size": 300,
+    "decision": "publish",
+    "decision_reasons": ["all_thresholds_met"],
+    "metrics": {
+      "ok200_ratio": 0.9967,
+      "bad407_ratio": 0.0033,
+      "bad405_count": 0,
+      "hls_ratio": 0.9234,
+      "mime_match_ratio": 1.0,
+      "hls_predominance_ratio": 0.9234,
+      "canonical_ratio": 1.0
+    },
+    "thresholds": {
+      "min_ok200": 0.99,
+      "max_405": 0,
+      "max_407_ratio": 0.01,
+      "min_hls": 0.90,
+      "min_mime_match": 1.0,
+      "min_hls_predominance": 0.90,
+      "min_canonical": 1.0
+    }
+  },
+  "output_artifact": {
+    "path": "C:/Users/HFRC/Downloads/APE_PREPUBLISH_1776400000000.m3u8",
+    "sha256": "<computed_at_build_time>",
+    "size_bytes": 389012345,
+    "channels_final": 3558
+  }
+}

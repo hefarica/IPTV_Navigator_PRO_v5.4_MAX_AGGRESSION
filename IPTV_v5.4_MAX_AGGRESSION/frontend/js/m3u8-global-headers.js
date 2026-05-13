@@ -57,7 +57,11 @@
             'Sec-CH-UA-Full-Version-List', 'Sec-CH-UA-Arch', 'Sec-CH-UA-Bitness', 'Sec-CH-UA-Model',
             'Sec-Fetch-Dest', 'Sec-Fetch-Mode', 'Sec-Fetch-Site', 'Sec-Fetch-User',
             'Sec-GPC', 'Upgrade-Insecure-Requests', 'TE',
-            'X-Requested-With', 'Accept-Charset', 'Accept-CH', 'DNT', 'Pragma'
+            'X-Requested-With', 'Accept-Charset', 'Accept-CH', 'DNT', 'Pragma',
+            // C8 (2026-05-11) — okhttp legacy "unexpected end of stream" traps.
+            // Sincronizado con _ca7BannedAbsolute de m3u8-typed-arrays-ultimate.js.
+            // If-None-Match:* → CDN 304+0B → okhttp EOF. Ver feedback_exthttp_traps.md trap #9.
+            'If-None-Match', 'If-Modified-Since', 'Range', 'Priority'
         ]);
         const BANNED_PREFIXES = ['Sec-CH-', 'Sec-Fetch-', 'X-Proxy-', 'Tunnel-', 'Upstream-Proxy-'];
 

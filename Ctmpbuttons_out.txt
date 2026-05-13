@@ -1,0 +1,15 @@
+Excepci¢n al llamar a "GetActiveObject" con los argumentos "1": "Error en la llamada a procedimiento remoto. 
+(Excepci¢n de HRESULT: 0x800706BE)"
+En C:\tmp\add_omega_buttons.ps1: 2 Car cter: 1
++ $excel = [Runtime.InteropServices.Marshal]::GetActiveObject('Excel.Ap ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : COMException
+ 
+Libro no abierto
+En C:\tmp\add_omega_buttons.ps1: 5 Car cter: 22
++ if ($null -eq $wb) { throw 'Libro no abierto' }
++                      ~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : OperationStopped: (Libro no abierto:String) [], RuntimeException
+    + FullyQualifiedErrorId : Libro no abierto
+ 

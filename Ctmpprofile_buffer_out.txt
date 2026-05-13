@@ -1,0 +1,77 @@
+=== ConfigVal ===
+
+
+' ============================================================================
+' UTILIDADES: LECTURA CONFIG Y PROFILES
+' ============================================================================
+Public Function ConfigVal(paramName As String) As String
+    Dim ws As Worksheet, r As Long, lastRow As Long
+    Set ws = ThisWorkbook.Sheets(SHEET_CONFIG)
+    lastRow = ws.Cells(ws.Rows.Count, 2).End(xlUp).row
+    For r = 3 To lastRow
+        If LCase(CStr(ws.Cells(r, 2).value)) = LCase(paramName) Then
+            ConfigVal = CStr(ws.Cells(r, 3).value): Exit Function
+        End If
+    Next r
+    ConfigVal = ""
+End Function
+=== ProfileVal ===
+
+Public Function ProfileVal(profileId As String, attrName As String) As String
+    Dim ws As Worksheet, r As Long, lastRow As Long, colIdx As Integer
+    Set ws = ThisWorkbook.Sheets(SHEET_PROFILES)
+    Select Case UCase(profileId)
+        Case "P0": colIdx = 2
+        Case "P1": colIdx = 3
+        Case "P2": colIdx = 4
+        Case "P3": colIdx = 5
+        Case "P4": colIdx = 6
+        Case "P5": colIdx = 7
+        Case Else: colIdx = 2
+    End Select
+    lastRow = ws.Cells(ws.Rows.Count, 1).End(xlUp).row
+    For r = 3 To lastRow
+        If LCase(CStr(ws.Cells(r, 1).value)) = LCase(attrName) Or _
+           InStr(LCase(CStr(ws.Cells(r, 1).value)), LCase(attrName)) > 0 Then
+            ProfileVal = CStr(ws.Cells(r, colIdx).value): Exit Function
+        End If
+    Next r
+    ProfileVal = ""
+End Function
+
+=== 6_NIVEL_2_PROFILES - buscar bufferTargetSec ===
+Total filas: 589
+
+--- Layout (primeras 15 filas, 8 cols) ---
+r1: ?? AUTO-LLENAR PE...|                    |                    | Brain_AutoFillP...|                    |                    |                    |                    
+r2: ?? OPTIMIZAR PERF...|                    |                    | Brain_OptimizeP...|                    |                    |                    |                    
+r3: NIVEL 2: PERFILES...|                    |                    |                    |                    |                    |                    |                    
+r4:                     |                    |                    |                    |                    |                    |                    |                    
+r5: Atributo            |P0                  |P1                  |P2                  |P3                  |P4                  |P5                  |                    
+r6: -- META --          |                    |                    |                    |                    |                    |                    |                    
+r7: id                  |P0                  |P1                  |P2                  |P3                  |P4                  |P5                  |                    
+r8: name                |8K Master           |4K UHD              |2K QHD              |FHD 1080p           |HD 720p             |SD 480p             |                    
+r9: level               |6                   |4                   |4                   |3                   |2                   |1                   |                    
+r10: quality             |ULTRA               |4K                  |4K                  |FHD                 |HD                  |SD                  |                    
+r11: description         |GOD TIER 8K OMEGA...|SUPREME 4K HDR - ...|ELITE 4K - Equili...|ULTRA FHD - Full ...|HIGH HD - 720p co...|SD FAILSAFE - Res...|                    
+r12: color               |#dc2626             |#ea580c             |#ca8a04             |#16a34a             |#0891b2             |#6366f1             |                    
+r13: enabledCategories   |["identity", "con...|["identity", "con...|["identity", "con...|["identity", "con...|["identity", "con...|["identity", "con...|                    
+r14: quality_levels      |{"L1": {"label": ...|{"L1": {"label": ...|{"primary": {"res...|{"L1": {"label": ...|{"L1": {"label": ...|{"L1": {"label": ...|                    
+r15: headers             |{"User-Agent": "M...|{"User-Agent": "M...|{"User-Agent": "M...|{"User-Agent": "M...|{"User-Agent": "M...|{"User-Agent": "M...|                    
+
+--- Occurrencias de 'bufferTargetSec' ---
+  A57  left2='settings.bufferTargetSec'  left1='settings.bufferTargetSec'  key='bufferTargetSec'  [+1]=15 [+2]=12 [+3]=10 [+4]=8
+
+--- Occurrencias de 'maxBitrateKbps' (primeras 10) ---
+Excepci¢n de HRESULT: 0x800A03EC
+En C:\tmp\find_profile_buffer.ps1: 85 Car cter: 9
++         $left = $nv2.Cells($rr, $cc - 1).Value2
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : OperationStopped: (:) [], COMException
+    + FullyQualifiedErrorId : System.Runtime.InteropServices.COMException
+ 
+  A49  left='settings.bufferTargetSec'  right='200000'
+
+--- Occurrencias de 'P1' (anchor) ---
+  C5  valor='P1'
+  C7  valor='P1'

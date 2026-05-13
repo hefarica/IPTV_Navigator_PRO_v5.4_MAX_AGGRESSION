@@ -1,0 +1,49 @@
+param : El t‚rmino 'param' no se reconoce como nombre de un cmdlet, funci¢n, archivo de script o programa ejecutable. 
+Compruebe si escribi¢ correctamente el nombre o, si incluy¢ una ruta de acceso, compruebe que dicha ruta es correcta e 
+int‚ntelo de nuevo.
+En C:\tmp\scorecard_ps_native.ps1: 10 Car cter: 1
++ param(
++ ~~~~~
+    + CategoryInfo          : ObjectNotFound: (param:String) [], CommandNotFoundException
+    + FullyQualifiedErrorId : CommandNotFoundException
+ 
+Archivo: C:\Users\HFRC\Downloads\APE_LISTA_1776438933335.m3u8
+Tamano: 155.117.404 bytes (147,9 MB)
+
+[1] Escaneando con streaming (sub-segundo)...
+    lineas procesadas: 3.125.888
+    tiempo: 187,86 s
+
+=== RESULTADOS ===
+  G1  0 FREEZES     : OK  (nuclear:True continuous:True)
+  G2  0 CORTES      : OK  (multi-source:True reconnect99:True)
+  G3  0 REBUFFER    : OK  (nuclear:True netcache:True soutmux:True)
+  G4  0 LAG         : OK  (flussonic:True clocksynchro:True livecatchup:True)
+  G5  URL PURITY    : OK  (?? && /?: False)
+  G6  MAX ABR       : OK  (qmax:True greedy:True)
+  G7  MAX IMAGEN HDR: OK  (cll5000:True avcodec:True)
+  G8  HTTP ERR TREE : OK  (ott:True 405rewrite:True fwdcookies:True)
+  G9  MULTI PROVID  : OK  (steering:True)
+  G10 MASTER INTEG  : FALTA  (OMEGA_BUILD:True hardening-lock:False)
+
+  SCORE TOTAL: 9 / 10 (90 % compliance)
+
+[2] Conectando a Excel...
+  Conectado: APE_M3U8_LAB_v8_FIXED.xlsm
+
+[3] Escribiendo hoja 00_OMEGA_SCORECARD...
+  hoja creada
+True
+No se puede convertir un objeto de tipo 'System.Int32' al tipo 'System.String'.
+En C:\tmp\scorecard_ps_native.ps1: 213 Car cter: 1
++ $cfg.Cells($found, 3).Value2 = $score
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : OperationStopped: (:) [], InvalidCastException
+    + FullyQualifiedErrorId : System.InvalidCastException
+ 
+  18_CONFIG!Omega_Compliance_Score = 9 (fila 39)
+
+Hoja escrita + workbook guardado.
+Backup: C:\Users\HFRC\Downloads\APE_M3U8_LAB_v8_FIXED.BACKUP_20260418_074215_SCORECARD.xlsm
+
+DONE

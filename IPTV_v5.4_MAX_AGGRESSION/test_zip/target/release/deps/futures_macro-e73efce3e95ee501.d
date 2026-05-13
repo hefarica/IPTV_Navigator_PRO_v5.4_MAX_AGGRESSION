@@ -1,0 +1,9 @@
+C:\Users\HFRC\Desktop\IPTV_Navigator_PRO_v5.4_MAX_AGGRESSION\IPTV_v5.4_MAX_AGGRESSION\backend\upload-server\target\release\deps\futures_macro-e73efce3e95ee501.d: C:\Users\HFRC\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\futures-macro-0.3.32\src\lib.rs C:\Users\HFRC\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\futures-macro-0.3.32\src\executor.rs C:\Users\HFRC\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\futures-macro-0.3.32\src\join.rs C:\Users\HFRC\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\futures-macro-0.3.32\src\select.rs C:\Users\HFRC\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\futures-macro-0.3.32\src\stream_select.rs
+
+C:\Users\HFRC\Desktop\IPTV_Navigator_PRO_v5.4_MAX_AGGRESSION\IPTV_v5.4_MAX_AGGRESSION\backend\upload-server\target\release\deps\futures_macro-e73efce3e95ee501.dll: C:\Users\HFRC\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\futures-macro-0.3.32\src\lib.rs C:\Users\HFRC\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\futures-macro-0.3.32\src\executor.rs C:\Users\HFRC\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\futures-macro-0.3.32\src\join.rs C:\Users\HFRC\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\futures-macro-0.3.32\src\select.rs C:\Users\HFRC\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\futures-macro-0.3.32\src\stream_select.rs
+
+C:\Users\HFRC\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\futures-macro-0.3.32\src\lib.rs:
+C:\Users\HFRC\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\futures-macro-0.3.32\src\executor.rs:
+C:\Users\HFRC\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\futures-macro-0.3.32\src\join.rs:
+C:\Users\HFRC\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\futures-macro-0.3.32\src\select.rs:
+C:\Users\HFRC\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\futures-macro-0.3.32\src\stream_select.rs:

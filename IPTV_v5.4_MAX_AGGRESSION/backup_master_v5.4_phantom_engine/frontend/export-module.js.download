@@ -1,0 +1,247 @@
+/**
+ * export-module.js
+ * ExportModule - Extensor de exportación para IPTV Navigator PRO
+ *
+ * ⚠️ NO reemplaza generateM3U8() de app.js
+ * ✅ Se llama DESDE generateM3U8() si this.exportModule existe
+ * ✅ Respeta y reutiliza la lógica original de app.js para M3U8
+ */
+
+class ExportModule {
+    /**
+     * @param {IPTVNavigatorPro} appInstance
+     */
+    constructor(appInstance) {
+        this.app = appInstance || null;
+    }
+
+    /**
+     * Generador M3U8 PRO
+     *
+     * @param {Array<Object>} channels  Lista de canales (normalmente app.getFilteredChannels())
+     * @param {Object} options
+     *   - epgUrl: string (no obligatorio, reservado por si se quiere usar en el futuro)
+     *   - selectedProfile: string (ej: 'LL-AGGRESSIVE-MAX')
+     *   - customHeaders: objeto con headers activos
+     *   - includeHeaders: boolean
+     *
+     * Devuelve el contenido M3U8 (string) y además:
+     *   - Actualiza this.app.state.generatedM3U8
+     *   - Actualiza área de preview + botón de descarga (como app.generateM3U8 original)
+     */
+    generateM3U8(channels, options = {}) {
+        const app = this.app;
+        if (!app) {
+            console.warn("ExportModule: app instance missing.");
+            return "";
+        }
+
+        // 1) Fuente de canales
+        const chs = Array.isArray(channels) && channels.length
+            ? channels
+            : (typeof app.getFilteredChannels === "function"
+                ? app.getFilteredChannels()
+                : (app.state?.channels || []));
+
+        if (!chs.length) {
+            alert("0 canales para generar.");
+            return "";
+        }
+
+        // 2) Flags y opciones
+        const isOttOptimized =
+            (typeof document !== "undefined" &&
+                document.getElementById("ottNavOptimized")?.checked) || false;
+
+        if (!app.state.activeHeaders) {
+            // Respetar inicialización original de header manager
+            if (typeof app.initHeaderManager === "function") {
+                app.initHeaderManager();
+            } else {
+                app.state.activeHeaders = {};
+            }
+        }
+
+        const activeHeaders = options.customHeaders && Object.keys(options.customHeaders).length
+            ? options.customHeaders
+            : (app.state.activeHeaders || {});
+
+        // 3) Cabecera base
+        let content = "#EXTM3U\n";
+
+        if (isOttOptimized) {
+            content += "#EXTENC: UTF-8\n";
+            content += "#PLAYLIST: OTT Navigator Optimized\n";
+        }
+
+        // 4) Construcción de cada entrada de canal (basado en generateM3U8 original)
+        chs.forEach((ch) => {
+            // ✅ V4.6: Use final view for 4-layer model compliance
+            const final = this._getFinalView(ch);
+
+            const name = final.name || "Sin Nombre";
+            const logo = final.logo || "";
+            const group = final.group || "General";
+            const epgId = ch.tvg_id || ch.base?.tvg_id || ch.epg_channel_id || "";
+            const tvgName = ch.tvg_name || ch.base?.tvg_name || name;
+
+            const streamUrl = this._buildStreamUrl(ch);
+
+            let tags = `tvg-id="${epgId}" tvg-name="${tvgName}" tvg-logo="${logo}" group-title="${group}"`;
+
+            // ✅ V4.9: PRO Streaming optimization - check for proStreaming flag
+            const isProStreaming =
+                (typeof document !== "undefined" &&
+                    document.getElementById("proStreamingOptimized")?.checked) || options.proStreaming || false;
+
+            // Inyección de Headers gestionados (igual que app.js)
+            if (options.includeHeaders !== false) {
+                Object.keys(activeHeaders).forEach((k) => {
+                    const v = activeHeaders[k];
+                    if (v && v.toString().trim()) {
+                        content += `#EXTVLCOPT:http-${k.toLowerCase()}=${v}\n`;
+                    }
+                });
+
+                // HEADER PRO #EXTHTTP (JSON)
+                if (Object.keys(activeHeaders).length > 0) {
+                    content += `#EXTHTTP:${JSON.stringify(activeHeaders)}\n`;
+                }
+            }
+
+            // ✅ V4.9: PRO STREAMING HEADERS - Ultra-stable playback
+            if (isProStreaming) {
+                // === VLC OPTIMIZATION (Buffer & Reconnect) ===
+                content += `#EXTVLCOPT:network-caching=3000\n`;      // 3s network buffer
+                content += `#EXTVLCOPT:live-caching=3000\n`;         // 3s live buffer
+                content += `#EXTVLCOPT:file-caching=3000\n`;         // 3s file buffer
+                content += `#EXTVLCOPT:disc-caching=3000\n`;         // 3s disc buffer
+                content += `#EXTVLCOPT:sout-mux-caching=3000\n`;     // 3s mux buffer
+                content += `#EXTVLCOPT:clock-jitter=0\n`;            // No clock jitter
+                content += `#EXTVLCOPT:clock-synchro=0\n`;           // Disable sync (faster)
+                content += `#EXTVLCOPT:http-reconnect=true\n`;       // Auto-reconnect on drop
+                content += `#EXTVLCOPT:http-continuous=true\n`;      // Continuous streaming
+                content += `#EXTVLCOPT:adaptive-logic=highest\n`;    // Best quality
+                content += `#EXTVLCOPT:prefetch-buffer-size=524288\n`; // 512KB prefetch
+                content += `#EXTVLCOPT:prefetch-read-size=65536\n`;  // 64KB read chunks
+
+                // === KODI/INPUTSTREAM ADAPTIVE ===
+                content += `#KODIPROP:inputstream=inputstream.adaptive\n`;
+                content += `#KODIPROP:inputstream.adaptive.manifest_type=hls\n`;
+                content += `#KODIPROP:inputstream.adaptive.stream_selection_type=adaptive\n`;
+                content += `#KODIPROP:inputstream.adaptive.chooser_resolution_max=4320p\n`;
+                content += `#KODIPROP:inputstream.adaptive.chooser_bandwidth_max=50000000\n`; // 50Mbps max
+
+                // === EXTRA LOW-LATENCY OPTIONS ===
+                content += `#EXT-X-START:TIME-OFFSET=-3.0,PRECISE=YES\n`; // Start 3s behind live
+            }
+
+            // OTT Navigator catchup / user-agent por defecto
+            if (isOttOptimized) {
+                if (ch.archive || ch.tv_archive || ch.base?.raw?.tv_archive) {
+                    const days = ch.archive_dur || ch.base?.raw?.tv_archive_duration || 7;
+                    tags += ` catchup="xc" catchup-days="${Math.ceil(days / 24)}" catchup-source="?utc={utc}&lutc={lutc}"`;
+                }
+                if (!activeHeaders["User-Agent"]) {
+                    content += `#EXTVLCOPT:http-user-agent=OTT Navigator/1.6.9.4\n`;
+                }
+            }
+
+            content += `#EXTINF:-1 ${tags},${name}\n`;
+            content += `${streamUrl}\n`;
+        });
+
+        // 5) Guardar en estado + actualizar UI (igual que app.js)
+        app.state.generatedM3U8 = content;
+
+        if (typeof document !== "undefined") {
+            const area =
+                document.getElementById("m3u8Preview") ||
+                document.getElementById("m3u8PreviewContent");
+            if (area) {
+                area.value = content.slice(0, 1000) + ". \n(Lista completa en memoria)";
+            }
+            const btnDown = document.getElementById("btnDownloadM3U8");
+            if (btnDown) btnDown.disabled = false;
+        }
+
+        // 6) Notificación al usuario (puedes adaptar el mensaje si quieres)
+        try {
+            alert(
+                `✅ Lista Generada (PRO): ${chs.length} canales.\n` +
+                `Modo OTT: ${isOttOptimized ? "ON" : "OFF"}\n` +
+                `Headers Activos: ${Object.keys(activeHeaders).length}`
+            );
+        } catch (e) {
+            // En entornos sin alert (tests) simplemente ignorar
+        }
+
+        return content;
+    }
+
+    /**
+     * Construye la URL de stream respetando la lógica Xtream original
+     * (live / movie / series + extensión)
+     *
+     * @param {Object} ch
+     * @returns {string}
+     */
+    _buildStreamUrl(ch) {
+        const app = this.app;
+        if (
+            app &&
+            app.state &&
+            app.state.currentServer &&
+            app.state.currentServer.baseUrl &&
+            ch.stream_id
+        ) {
+            const { baseUrl, username, password } = app.state.currentServer;
+            const cleanBase = baseUrl.replace(/\/player_api\.php$/, "");
+
+            let ext = "ts";
+            let typePath = "live";
+
+            if (ch.type === "movie" || ch.stream_type === "movie") {
+                typePath = "movie";
+                ext = ch.container_extension || "mp4";
+            } else if (ch.type === "series" || ch.stream_type === "series") {
+                typePath = "series";
+                ext = "mp4";
+            } else {
+                ext = app.state.streamFormat || "ts";
+            }
+
+            return `${cleanBase}/${typePath}/${username}/${password}/${ch.stream_id}.${ext}`;
+        }
+
+        // Fallback: usar url directa si existe
+        return ch.url || ch.base?.url || "#";
+    }
+
+    /**
+     * ✅ V4.6: Get final view from 4-layer channel
+     * Priority: tech > base > heuristics > direct props (legacy)
+     */
+    _getFinalView(ch) {
+        const tech = ch.tech || {};
+        const base = ch.base || {};
+        const heuristics = ch.heuristics || {};
+
+        return {
+            name: base.name ?? ch.name ?? '',
+            group: base.group ?? ch.group ?? '',
+            logo: base.logo ?? ch.logo ?? ch.stream_icon ?? '',
+            url: base.url ?? ch.url ?? '',
+            resolution: tech.resolutionLabel ?? base.resolution ?? heuristics.resolution ?? ch.resolution ?? '',
+            bitrate: tech.bitrateKbps ?? base.bitrate ?? heuristics.bitrate ?? ch.bitrate ?? 0,
+            codec: tech.codec ?? base.codec ?? heuristics.codec ?? ch.codec ?? '',
+            country: tech.country ?? base.country ?? heuristics.country ?? ch.country ?? 'INT',
+            language: tech.language ?? base.language ?? heuristics.language ?? ch.language ?? 'MIX'
+        };
+    }
+}
+
+// Exponer globalmente
+if (typeof window !== "undefined") {
+    window.ExportModule = ExportModule;
+}

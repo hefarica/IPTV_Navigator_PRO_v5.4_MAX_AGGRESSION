@@ -4231,14 +4231,16 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
             // "Keep-Alive": `timeout=${isp['X-ISP-Keepalive-Timeout'] || '120'}, max=${isp['X-ISP-Keepalive-Max'] || '200'}`,
             "DNT": "0",
             "Sec-GPC": "0",
-            "Upgrade-Insecure-Requests": "0",
-            "TE": "trailers",
+            // C8 (2026-05-11) — 6 headers tóxicos eliminados tras pruebas empíricas.
+            // If-None-Match: * → causa HTTP 304 Not Modified (0 bytes) en CDN linovrex.cc
+            //   → OkHttp lanza "unexpected end of stream" (confirmado TEST-B/D/E vs TEST-G)
+            // Range: bytes=0- → ruido (CDN lo ignora, pero contamina semántica)
+            // TE: trailers → no soportado por Xtream
+            // Priority: u=0, i → HTTP/2 only, ruido en HTTP/1.1
+            // Upgrade-Insecure-Requests → innecesario, riesgo de redirect
+            // If-Modified-Since → riesgo de 304 en otros CDN
             "Cache-Control": "no-cache",
             "Pragma": "no-cache",
-            "Range": "bytes=0-",
-            "If-None-Match": "*",
-            "If-Modified-Since": nowDate,
-            "Priority": "u=0, i",
             "Origin": vpsDomain,
             "Referer": `${vpsDomain}/`,
             "X-Requested-With": "XMLHttpRequest",
@@ -5212,8 +5214,14 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
         h['X-HDCP-Version'] = '2.3';
         h['X-Widevine-Level'] = 'L1';
 
-        // ── G3: Streaming & Buffer (11) ──
-        h['Range'] = 'bytes=0-';
+        // ── G3: Streaming & Buffer (10 — era 11, removido Range) ──
+        // C8 (2026-05-11) eliminado: h['Range'] = 'bytes=0-';
+        //   Range en m3u8 manifest no es byte-rangeable. Provider Xtream/Stalker puede
+        //   cerrar socket tras 206 con Content-Range mal calculado -> okhttp "unexpected
+        //   end of stream". Verificado 37,128 hits en .m3u8 generado 2026-05-11 20:13.
+        //   Esta linea estaba SIN comentar y bypaseaba el _ca7BannedAbsolute spinal cord
+        //   gate (h era pre-_httpPayload). Ver feedback_exthttp_traps.md trampa #9.
+        // h['Range'] = 'bytes=0-';
         h['X-Playback-Buffer-Size'] = '60000';
         h['X-Expected-Bitrate'] = String(bitrate);
         h['X-Min-Bitrate'] = '8000000';
@@ -5247,8 +5255,13 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
         h['Cache-Control'] = 'no-cache, no-store, must-revalidate, max-age=0';
         h['Pragma'] = 'no-cache';
         h['Expires'] = '0';
-        h['If-Modified-Since'] = '0';
-        h['If-None-Match'] = '*';
+        // C8 (2026-05-11) — eliminados de G5: If-Modified-Since='0' + If-None-Match='*'.
+        // Aunque el INTENTO era forzar cache-bypass, vs CDN linovrex.cc (tivigo.cc 302→linovrex)
+        // detonan HTTP 304 Not Modified + 0 bytes → okhttp legacy lanza "unexpected end of
+        // stream on com.android.okhttp.Address". Cache-Control:no-cache + Pragma:no-cache
+        // ya son suficientes para forzar revalidación; los conditional-headers son contraproducentes.
+        // h['If-Modified-Since'] = '0';
+        // h['If-None-Match'] = '*';
         h['X-Cache-Bypass'] = '1';
         h['X-Purge-Cache'] = '1';
         h['X-CDN-Force-Refresh'] = '1';
@@ -6109,11 +6122,14 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
         // sin esperar al primer segmento. Elimina el pantallazo negro del HDMI handshake.
         // PQ = SMPTE ST 2084 (HDR10/HDR10+/DV), SDR = BT.709, HLG = Hybrid Log-Gamma.
 
-        // [MPEG-5 Part 2] SUPPLEMENTAL-CODECS: Señaliza pista LCEVC separada.
-        // ExoPlayer/AVPlayer: si tiene decoder LCEVC → upscale a 4K; si no → ignora y muestra base.
-        const supplemental = (cfg.lcevc_enabled !== false) ? ',SUPPLEMENTAL-CODECS="lcev.1.1.1"' : '';
+        // [MAX IMAGE FIRST · NO PLAYER-BREAKING LIES]
+        // HDCP-LEVEL y SUPPLEMENTAL-CODECS NO se emiten desde aquí.
+        // Solo el wire-in truth-driven (APE Fallback Resolver) los emite cuando
+        // el probe verifica que el upstream realmente tiene esos atributos.
+        // Razón: hardcoded HDCP-LEVEL="TYPE-1" + SUPPLEMENTAL-CODECS="lcev.1.1.1"
+        // mintiendo al player fuerza decoders LCEVC que no existen y rechazos HDCP.
 
-        return `#EXT-X-STREAM-INF:BANDWIDTH=${bandwidth},AVERAGE-BANDWIDTH=${avgBandwidth},RESOLUTION=${res},CODECS="${codecs}",FRAME-RATE=${fps},VIDEO-RANGE=${videoRange},HDCP-LEVEL=${hdcpLevel}${supplemental}`;
+        return `#EXT-X-STREAM-INF:BANDWIDTH=${bandwidth},AVERAGE-BANDWIDTH=${avgBandwidth},RESOLUTION=${res},CODECS="${codecs}",FRAME-RATE=${fps},VIDEO-RANGE=${videoRange}`;
     }
 
     function build_av1_cortex_fallback_tags(cfg) {
@@ -6897,7 +6913,12 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
         'Sec-Fetch-Dest', 'Sec-Fetch-Mode', 'Sec-Fetch-Site', 'Sec-Fetch-User',
         'Sec-CH-UA', 'Sec-CH-UA-Mobile', 'Sec-CH-UA-Platform',
         'Sec-CH-UA-Arch', 'Sec-CH-UA-Bitness', 'Sec-CH-UA-Model',
-        'Sec-CH-UA-Full-Version-List'
+        'Sec-CH-UA-Full-Version-List',
+        // C8 (2026-05-11) — okhttp legacy "unexpected end of stream" traps.
+        // Bloquea inyección desde LAB headerOverrides (player_enslavement.level_3_per_channel.EXTHTTP)
+        // y desde Profile Manager. Ver memoria feedback_exthttp_traps.md trap #9.
+        'If-None-Match', 'If-Modified-Since', 'Range', 'TE', 'Priority',
+        'Upgrade-Insecure-Requests'
     ]);
 
     function upsertExthttp(lines, key, value) {
@@ -6948,6 +6969,30 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
     function generateChannelEntry(channel, profile = 'P3', index = 0, credentialsMap = {}, options = {}) {
         const lines = [];
 
+        // ═══ APE MAX IMAGE FALLBACK RESOLVER WIRE-IN ═══
+        // Doctrina: MAX IMAGE FIRST · COVERAGE ALWAYS · NO CHANNEL LOSS · NO PLAYER-BREAKING LIES
+        // Decide tier F0-F5 según probe + heurística premium. Truth se usa para emisión honesta del STREAM-INF.
+        let _apeTruth = null;
+        try {
+            const R = (typeof window !== 'undefined') ? window.APEFallbackResolver : null;
+            if (R && typeof R.resolveMaxQualityFallback === 'function') {
+                const probeCache = (typeof window !== 'undefined' && window.ape_probeCache) ? window.ape_probeCache : {};
+                let probeHost = channel._host || '';
+                if (!probeHost && channel.url) {
+                    try { probeHost = new URL(channel.url).hostname; } catch (e) { /* noop */ }
+                }
+                const cacheKey = probeHost + '|' + profile;
+                const probeData = probeCache[cacheKey] || null;
+                // ═══ PARSER BRIDGE: enrich probeData with canonical evidence (fills gaps, never overwrites) ═══
+                const _enrichedProbe = (typeof window !== 'undefined' && window.APEParserGenerationBridge
+                    && typeof window.APEParserGenerationBridge.enhanceProbeWithCanonical === 'function')
+                    ? window.APEParserGenerationBridge.enhanceProbeWithCanonical(channel, probeData || {})
+                    : probeData;
+                _apeTruth = R.resolveMaxQualityFallback(channel, profile, _enrichedProbe);
+            }
+        } catch (e) { /* silent — fall through al legacy path */ }
+        // ═══ END WIRE-IN ═══
+
         // ── SEMILLAS CRIPTOGRÁFICAS (Polimorfismo + Idempotencia) ─────────────
         const _STATIC_SEED = 'OMEGA_STATIC_SEED_V5';
         const _nonce796 = (() => {
@@ -6979,7 +7024,29 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
 
         // ── PERFIL DESDE ARRAY DE ORIGEN ─────────────────────────────────────
         const cfg = getProfileConfig(profile);
-        const _bw796_raw = cfg.bitrate ? Math.round(cfg.bitrate * 1000) : 80000000;
+        // ═══ Main10/DV PROMOTION (2026-05-12, OMEGA-NO-DELETE, neverFakeCodec) ═══
+        // Pure reorder by quality priority: DV > Main12 > Main10. When codec_chain_video
+        // contains any of these, the highest-quality match moves to index 0 so it
+        // becomes the primary STREAM-INF codec. Never invents. HLS adaptive fallback
+        // preserves 8-bit playback if decoder rejects.
+        if (cfg && cfg.codec_chain_video) {
+            const _chain = String(cfg.codec_chain_video).split(',').map(function (s) { return s.trim(); }).filter(Boolean);
+            let _idx = _chain.findIndex(function (c) { return /^(dvh1|dvhe)\./i.test(c); });
+            if (_idx < 0) _idx = _chain.findIndex(function (c) { return /^(hvc1|hev1)\.4\./i.test(c); });
+            if (_idx < 0) _idx = _chain.findIndex(function (c) { return /^(hvc1|hev1)\.2\./i.test(c); });
+            if (_idx > 0) {
+                const _promoted = _chain.splice(_idx, 1)[0];
+                _chain.unshift(_promoted);
+                cfg.codec_chain_video = _chain.join(',');
+            }
+        }
+        // ═══ LIVE QUALITY PROBE v1.0 — Datos empíricos del manifest HLS real ═══
+        // Si ApeQualityProber enriqueció este canal, _probeData tiene:
+        // bandwidth, videoCodec, audioCodec, resolution, frameRate, videoRange
+        // Fallback: valores del perfil (comportamiento actual preservado)
+        const _probeData = channel._probeData || null;
+        const _bw796_raw = _probeData?.bandwidth
+            || (cfg.bitrate ? Math.round(cfg.bitrate * 1000) : 80000000);
         // ═══ BITRATE FLOOR — LAB SSOT (2026-04-26) ═══
         // Origen del piso (orden de prioridad):
         //   1) cfg.bitrate_floor_mbps (LAB-driven via Profile Manager Reactive Rule 1.1)
@@ -6995,15 +7062,17 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
         const _bw796 = Math.max(_bw796_raw, _bitrateFloor);
         const _avgBw = Math.round(_bw796 * 0.85);
         const _minBw796 = _bitrateFloor; // Floor exportado para VLC (adaptive-minbitrate) / KODI (min_bandwidth)
-        const _res796 = cfg.resolution || '3840x2160';
-        const _fps796 = cfg.fps || 60;
+        const _res796 = _probeData?.resolution || cfg.resolution || '3840x2160';
+        const _fps796 = _probeData?.frameRate || cfg.fps || 60;
         // [HEVC-FIRST CODEC LADDER] LAB SSOT primary del chain → fallback legacy switch.
         // codec_chain_video[0] = codec real declarado en STREAM-INF (RFC 8216 byte-identical to bytestream).
         // codec_chain_audio[0] = codec real audio (ec-3 P0/P1/P2, mp4a.40.2 P3/P4, mp4a.40.5 P5).
         // NO-CLAMP: split(',')[0] sobre texto, sin coerce.
-        const _codec796 = (cfg.codec_chain_video && String(cfg.codec_chain_video).split(',')[0])
+        const _codec796 = _probeData?.videoCodec
+            || (cfg.codec_chain_video && String(cfg.codec_chain_video).split(',')[0])
             || (() => { switch (cfg.codec_primary) { case 'VVC': return 'vvc1.1.L63.00.0.0'; case 'AV1': return 'av01.0.08M.08'; case 'AVC': return 'avc1.640028'; default: return 'hvc1.1.6.L153.B0'; } })();
-        const _codecAudio = (cfg.codec_chain_audio && String(cfg.codec_chain_audio).split(',')[0]) || cfg.audio_codec || 'ec-3';
+        const _codecAudio = _probeData?.audioCodec
+            || (cfg.codec_chain_audio && String(cfg.codec_chain_audio).split(',')[0]) || cfg.audio_codec || 'ec-3';
         // FIX 2026-04-26: cfg.hdr_support ahora es array siempre (LAB-driven).
         // Detectar HDR vs SDR mirando cfg.hdr_mode (string LAB: DOLBY_VISION/HDR10PLUS/HDR10/HLG/SDR)
         // o como fallback si el array contiene algo distinto a solo 'sdr'.
@@ -7354,8 +7423,11 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
             })(),
             'X-Video-Range': _hdrModeM3U,
             'X-HDR-Nits': String(_hdrNits),
-            'X-Codec-Primary': _codec796,
-            'X-Codec-Audio': _codecAudio,
+            // C12-B (2026-05-12) — Naming homologated to PM9 canonical
+            // (was X-Codec-Primary / X-Codec-Audio, LAB-Excel drift).
+            // PM9 canonical: X-Codec-Full / X-Audio-Codec-Preferred.
+            'X-Codec-Full': _codec796,
+            'X-Audio-Codec-Preferred': _codecAudio,
             'X-Resolution': _res796,
             'X-Framerate': String(_fps796),
             'X-VMAF-Target': String(_vmaf),
@@ -7431,8 +7503,7 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
             'Accept-Language': 'es-419,es;q=0.9,en;q=0.8',
             'Cache-Control': 'no-cache',
             'Pragma': 'no-cache',
-            'TE': 'trailers',
-            'Upgrade-Insecure-Requests': '1',
+            // C8 (2026-05-11) — TE/Upgrade-Insecure-Requests removidos (dead weight)
             // CA3 (2026-05-01) — Sec-Fetch-* gated by browser-UA. coherence_matrix.md
             // documenta que VLC, TiviMate (okhttp), Kodi NO emiten Sec-Fetch-*.
             // Emitirlos en EXTHTTP cuando UA = VLC/3.0.18 / okhttp/4.12 / Kodi/21
@@ -7532,7 +7603,16 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
             'X-Via', 'Via', 'Forwarded',
             'X-APE-Nonce', 'X-APE-SID', 'X-APE-List-Hash', 'X-APE-Timestamp',
             'X-No-Proxy', 'X-Powered-By', 'Server',
-            'X-AspNet-Version', 'X-AspNetMvc-Version'
+            'X-AspNet-Version', 'X-AspNetMvc-Version',
+            // C8 (2026-05-11) — EXTHTTP trap #9 confirmed empirically vs tivigo.cc/linovrex.cc.
+            // If-None-Match: * → CDN responds HTTP 304 Not Modified + 0 bytes → okhttp legacy
+            // throws "unexpected end of stream on com.android.okhttp.Address" (TEST-B/D/E vs G).
+            // If-Modified-Since: any value → same 304-with-empty-body trap on cache-revalidate CDNs.
+            // Range: bytes=0- → m3u8 is not byte-rangeable; some Xtream panels close socket after
+            // 206-with-bad-Content-Range. TE: trailers → com.android.okhttp legacy does not
+            // support RFC 7230 trailer chunks (0\r\n<trailers>\r\n\r\n) → EOF. Priority: u=0,i →
+            // RFC 9218 HTTP/3 priority sent over HTTP/1.1 confuses some panel parsers.
+            'If-None-Match', 'If-Modified-Since', 'Range', 'TE', 'Priority'
         ];
         const _ca7BrowserOnly = [
             'Sec-Fetch-Dest', 'Sec-Fetch-Mode', 'Sec-Fetch-Site', 'Sec-Fetch-User',
@@ -7558,6 +7638,12 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
             if (_exthttpJson.indexOf(ph) !== -1) {
                 _exthttpJson = _exthttpJson.split(ph).join(String(val));
             }
+        }
+        // ═══ CA7/C8 9TH DEFENSE LAYER: Parser Bridge post-emission sanitizer ═══
+        // If any toxic header survived the banned set + placeholder resolution, catch it here.
+        if (typeof window !== 'undefined' && window.APEParserGenerationBridge
+            && typeof window.APEParserGenerationBridge.runPostEmissionSanitizer === 'function') {
+            _exthttpJson = window.APEParserGenerationBridge.runPostEmissionSanitizer(_exthttpJson);
         }
         lines.push(`#EXTHTTP:${_exthttpJson}`);
 
@@ -8746,8 +8832,51 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
         // Metadata I-Frame sin URI (Protección para no abrir conexión extra)
         lines.push(`#EXT-X-I-FRAME-STREAM-INF:BANDWIDTH=${Math.round(_bw796 * 0.025)},CODECS="${_codec796}"`);
 
+        // ═══ QUALITY SOURCE TELEMETRY — indica si los datos son reales o estimados ═══
+        lines.push(`#EXT-X-APE-QUALITY-SOURCE:${_probeData?.source || 'ESTIMATED'}`);
+        if (_probeData?.probedAt) {
+            lines.push(`#EXT-X-APE-PROBED-AT:${_probeData.probedAt}`);
+            lines.push(`#EXT-X-APE-PROBED-VARIANTS:${_probeData.variantCount || 0}`);
+        }
+        // ═══ LL-HLS TELEMETRY — datos reales de Low-Latency HLS del proveedor ═══
+        if (_probeData?.llhls && _probeData.llhlsData) {
+            const ll = _probeData.llhlsData;
+            lines.push(`#EXT-X-APE-LLHLS:DETECTED=true,PART-TARGET=${ll.partTarget || 0},HOLD-BACK=${ll.holdBack || 0},PART-HOLD-BACK=${ll.partHoldBack || 0}`);
+            if (ll.canBlockReload) lines.push(`#EXT-X-APE-LLHLS-BLOCK-RELOAD:true`);
+            if (ll.canSkipUntil > 0) lines.push(`#EXT-X-APE-LLHLS-SKIP-UNTIL:${ll.canSkipUntil}`);
+        }
+        // ═══ BINARY ANALYSIS TELEMETRY — codec ground truth del segmento ═══
+        if (_probeData?._crossValidation) {
+            const cv = _probeData._crossValidation;
+            if (cv.codecMismatch) lines.push(`#EXT-X-APE-CODEC-MISMATCH:MANIFEST="${cv.manifestCodec}",BINARY="${cv.binaryCodec}"`);
+            if (cv.fake4K) lines.push(`#EXT-X-APE-FAKE4K:DETECTED=true`);
+        }
+        if (_probeData?.fragmentInfo) {
+            lines.push(`#EXT-X-APE-FRAG-INFO:AVG=${(_probeData.fragmentInfo.avgDuration || 0).toFixed(2)}s,MIN=${(_probeData.fragmentInfo.minDuration || 0).toFixed(2)}s,MAX=${(_probeData.fragmentInfo.maxDuration || 0).toFixed(2)}s`);
+        }
         // ÚNICO EXT-X-STREAM-INF seguido de ÚNICA URL DIRECTA
-        lines.push(`#EXT-X-STREAM-INF:BANDWIDTH=${_bw796},AVERAGE-BANDWIDTH=${_avgBw},CODECS="${_codec796},${_codecAudio}",RESOLUTION=${_res796},FRAME-RATE=${_fps796}.000,VIDEO-RANGE="${_hdrMode}",HDCP-LEVEL="TYPE-1",SUPPLEMENTAL-CODECS="lcev.1.1.1"`);
+        // ═══ APE TRUTH-DRIVEN EMISSION ═══
+        // Doctrina MAX IMAGE FIRST: si hay truth resolver, emite tags APE + STREAM-INF honesto.
+        // F5 prohíbe STREAM-INF (canal solo con EXTINF + URL original).
+        // Legacy fallback SIN mentiras hardcoded (HDCP-LEVEL/SUPPLEMENTAL-CODECS solo si truth los verifica).
+        let _streamInfLine = null;
+        const _R_emit = (typeof window !== 'undefined') ? window.APEFallbackResolver : null;
+        if (_apeTruth && _R_emit && typeof _R_emit.emitApeFallbackTags === 'function') {
+            const _apeTags = _R_emit.emitApeFallbackTags(_apeTruth);
+            for (const _t of _apeTags) lines.push(_t);
+        }
+        if (_apeTruth && _R_emit && typeof _R_emit.emitStreamInfFromTruth === 'function') {
+            _streamInfLine = _R_emit.emitStreamInfFromTruth(_apeTruth);
+        }
+        if (_streamInfLine) {
+            lines.push(_streamInfLine);
+        } else if (_apeTruth && _apeTruth.tier === 'F5_ORIGINAL_DIRECT_SAFE') {
+            // F5: NO STREAM-INF — solo EXTINF + URL original (ya emitido arriba)
+        } else {
+            // Legacy emit sin truth: emite STREAM-INF SIN HDCP-LEVEL ni SUPPLEMENTAL-CODECS hardcoded.
+            // VIDEO-RANGE legacy se preserva por compat hacia atrás cuando no hay truth.
+            lines.push(`#EXT-X-STREAM-INF:BANDWIDTH=${_bw796},AVERAGE-BANDWIDTH=${_avgBw},CODECS="${_codec796},${_codecAudio}",RESOLUTION=${_res796},FRAME-RATE=${_fps796}.000,VIDEO-RANGE="${_hdrMode}"`);
+        }
         let finalUrl = options.dictatorMode ? `${primaryUrl}|User-Agent=${_ua796}&Cache-Control=no-cache&Connection=keep-alive&Referer=${typeof window !== "undefined" ? encodeURIComponent(window.location.origin) : ""}` : primaryUrl;
         if (options.dictatorMode) {
             const simulated_rtt = Math.floor(Math.random() * 50) + 100; // 100-150ms
@@ -9079,6 +9208,25 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
             console.log("🧠 [APE-META] Auto-escaneando metadata delta antes de generar...");
             if (window.HUD_TYPED_ARRAYS) window.HUD_TYPED_ARRAYS.log(`🧠 Iniciando Inteligencia Metadata (Delta)...`, '#8b5cf6');
             await window.apeScanMetadataCluster(true);
+        }
+
+        // ═══════════════════════════════════════════════════════════════
+        // LIVE QUALITY PROBE v1.0 — Per-Profile HLS Manifest Probing
+        // Sondea 1 canal por (host × profile) combo. Típico: ~12 requests en ~5s.
+        // Enriquece channel._probeData con BANDWIDTH/CODECS/RESOLUTION reales.
+        // Se ejecuta automáticamente al presionar GENERAR + PREPUBLISH + AUDITAR.
+        // ═══════════════════════════════════════════════════════════════
+        if (window.ApeQualityProber && options.skipProbe !== true) {
+            try {
+                if (window.HUD_TYPED_ARRAYS) window.HUD_TYPED_ARRAYS.log('🔬 Live Quality Probe (per-profile)...', '#8b5cf6');
+                console.log('%c🔬 [QUALITY PROBE] Iniciando sondeo de manifests HLS reales...', 'color: #8b5cf6; font-weight: bold;');
+                const probeResult = await window.ApeQualityProber.quickProbe(channels, (done, total, current) => {
+                    if (window.HUD_TYPED_ARRAYS) window.HUD_TYPED_ARRAYS.log(`🔬 Probe ${done}/${total}: ${current}`, '#a78bfa');
+                });
+                console.log(`%c🔬 [QUALITY PROBE] ${probeResult.enriched}/${channels.length} canales con datos reales (${probeResult.timeMs}ms)`, 'color: #10b981; font-weight: bold;');
+            } catch (probeErr) {
+                console.warn('[QUALITY PROBE] Error no-fatal, continuando con datos estimados:', probeErr.message);
+            }
         }
 
         // ═══════════════════════════════════════════════════════════════

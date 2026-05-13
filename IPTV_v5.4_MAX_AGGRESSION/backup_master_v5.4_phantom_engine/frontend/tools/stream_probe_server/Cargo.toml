@@ -1,0 +1,41 @@
+[package]
+name = "stream_probe_server"
+version = "1.0.0"
+edition = "2021"
+authors = ["IPTV Navigator PRO"]
+description = "High-performance stream quality probe server using ffprobe"
+
+[dependencies]
+# Async runtime
+tokio = { version = "1.35", features = ["full"] }
+
+# Web framework
+axum = { version = "0.7", features = ["ws"] }
+
+# WebSocket support
+tokio-tungstenite = "0.21"
+futures-util = "0.3"
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# HTTP client (for stream probing)
+reqwest = { version = "0.11", features = ["json", "stream"] }
+
+# Tower for middleware
+tower = "0.4"
+tower-http = { version = "0.5", features = ["cors", "limit"] }
+
+# Logging
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# Utilities
+uuid = { version = "1.6", features = ["v4"] }
+chrono = { version = "0.4", features = ["serde"] }
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1

@@ -1,0 +1,750 @@
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * APE REDIRECT API - M3U8 NATIVE VERSION WITH R2 STORAGE
+ * ═══════════════════════════════════════════════════════════════════════════
+ * Version: 2.0.0 FINAL
+ * Date: 10 Enero 2026
+ * Storage: Cloudflare R2 (M3U8 PURO - NO JSON)
+ * Optimized for: IPTV Navigator PRO
+ * ═══════════════════════════════════════════════════════════════════════════
+ */
+
+// ═══════════════════════════════════════════════════════════════════════════
+// CONFIGURACIÓN
+// ═══════════════════════════════════════════════════════════════════════════
+
+const CONFIG = {
+  // JWT Configuration
+  JWT_SECRET: 'CAMBIAR_EN_PRODUCCION_32_CHARS_ALEATORIOS_XYZ123',
+  JWT_DEFAULT_EXPIRY: 21600, // 6 horas
+
+  // R2 Configuration
+  R2_MASTER_PLAYLIST: 'playlists/APE_ULTIMATE_v9.0_20260107.m3u8',
+  R2_BACKUP_PLAYLIST: 'playlists/APE_ULTIMATE_v9.0_20260106.m3u8',
+
+  // Cache Configuration
+  CACHE_TTL: 3600, // 1 hora para M3U8 parseado
+  CACHE_KEY: 'ape-m3u8-parsed-v2',
+
+  // Rate Limiting
+  RATE_LIMIT: {
+    enabled: true,
+    maxRequests: 100,
+    windowMs: 60000 // 1 minuto
+  },
+
+  // CORS
+  CORS_ORIGIN: '*',
+
+  // Debug Mode
+  DEBUG: false
+};
+
+// ═══════════════════════════════════════════════════════════════════════════
+// M3U8 PARSER CLASS (NATIVO - SIN DEPENDENCIAS)
+// ═══════════════════════════════════════════════════════════════════════════
+
+class M3U8Parser {
+  constructor(m3u8Content) {
+    this.content = m3u8Content;
+    this.channels = [];
+    this.metadata = {
+      total: 0,
+      groups: [],
+      parsedAt: new Date().toISOString()
+    };
+    this.parse();
+  }
+
+  parse() {
+    const lines = this.content.split('\n');
+    let currentChannel = {};
+    let lineNumber = 0;
+
+    for (let i = 0; i < lines.length; i++) {
+      lineNumber++;
+      const line = lines[i].trim();
+
+      // Detectar línea #EXTINF (metadatos del canal)
+      if (line.startsWith('#EXTINF:')) {
+        try {
+          const extinf = this.parseExtinf(line);
+          currentChannel = {
+            ...currentChannel,
+            ...extinf,
+            lineNumber
+          };
+        } catch (error) {
+          if (CONFIG.DEBUG) {
+            console.error(`Parse error at line ${lineNumber}:`, error.message);
+          }
+        }
+      }
+
+      // Detectar URL del stream (línea después de #EXTINF)
+      else if (line && !line.startsWith('#') && Object.keys(currentChannel).length > 0) {
+        currentChannel.url = line;
+
+        // Generar ID único del canal
+        currentChannel.id = this.generateChannelId(currentChannel);
+
+        // Validar URL
+        if (this.isValidUrl(currentChannel.url)) {
+          this.channels.push({ ...currentChannel });
+        }
+
+        currentChannel = {};
+      }
+    }
+
+    // Generar metadata
+    this.metadata.total = this.channels.length;
+    this.metadata.groups = [...new Set(this.channels.map(ch => ch.group))].filter(g => g);
+  }
+
+  parseExtinf(line) {
+    // Formato: #EXTINF:-1 tvg-id="..." tvg-name="..." tvg-logo="..." group-title="...",Channel Name
+    const result = {
+      tvg_id: '',
+      tvg_name: '',
+      logo: '',
+      group: '',
+      name: '',
+      duration: -1
+    };
+
+    // Extraer duración
+    const durationMatch = line.match(/#EXTINF:([-\d.]+)/);
+    if (durationMatch) {
+      result.duration = parseFloat(durationMatch[1]);
+    }
+
+    // Extraer atributos
+    const tvgIdMatch = line.match(/tvg-id="([^"]*)"/);
+    if (tvgIdMatch) result.tvg_id = tvgIdMatch[1];
+
+    const tvgNameMatch = line.match(/tvg-name="([^"]*)"/);
+    if (tvgNameMatch) result.tvg_name = tvgNameMatch[1];
+
+    const logoMatch = line.match(/tvg-logo="([^"]*)"/);
+    if (logoMatch) result.logo = logoMatch[1];
+
+    const groupMatch = line.match(/group-title="([^"]*)"/);
+    if (groupMatch) result.group = groupMatch[1];
+
+    // Extraer nombre del canal (después de la última coma)
+    const nameMatch = line.match(/,(.*)$/);
+    if (nameMatch) result.name = nameMatch[1].trim();
+
+    return result;
+  }
+
+  generateChannelId(channel) {
+    // Usar tvg-id si existe y es válido
+    if (channel.tvg_id && channel.tvg_id !== '' && channel.tvg_id !== '0') {
+      return channel.tvg_id.replace(/[^a-zA-Z0-9_-]/g, '_');
+    }
+
+    // Usar tvg-name si existe
+    if (channel.tvg_name && channel.tvg_name !== '') {
+      return channel.tvg_name
+        .replace(/[^a-zA-Z0-9\s]/g, '')
+        .replace(/\s+/g, '_')
+        .toUpperCase()
+        .substring(0, 50);
+    }
+
+    // Fallback: usar nombre del canal
+    return channel.name
+      .replace(/[^a-zA-Z0-9\s]/g, '')
+      .replace(/\s+/g, '_')
+      .toUpperCase()
+      .substring(0, 50);
+  }
+
+  isValidUrl(url) {
+    if (!url || typeof url !== 'string') return false;
+    return url.startsWith('http://') || url.startsWith('https://');
+  }
+
+  getChannels() {
+    return this.channels;
+  }
+
+  getChannelById(id) {
+    return this.channels.find(ch => ch.id === id);
+  }
+
+  getChannelsByGroup(group) {
+    return this.channels.filter(ch => ch.group === group);
+  }
+
+  getGroups() {
+    return this.metadata.groups;
+  }
+
+  getMetadata() {
+    return this.metadata;
+  }
+
+  toM3U8(channels = this.channels, proxyBaseUrl = null) {
+    let m3u8 = '#EXTM3U\n';
+
+    channels.forEach(ch => {
+      m3u8 += `#EXTINF:${ch.duration} tvg-id="${ch.tvg_id || ''}" tvg-name="${ch.tvg_name || ch.name}" tvg-logo="${ch.logo || ''}" group-title="${ch.group || ''}",${ch.name}\n`;
+
+      // Usar URL proxificada si está disponible
+      if (proxyBaseUrl) {
+        m3u8 += `${proxyBaseUrl}/canal/${ch.id}.m3u8\n`;
+      } else {
+        m3u8 += `${ch.url}\n`;
+      }
+    });
+
+    return m3u8;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// JWT HELPER FUNCTIONS
+// ═══════════════════════════════════════════════════════════════════════════
+
+function generateJWT(payload) {
+  const header = { alg: 'HS256', typ: 'JWT' };
+  const now = Math.floor(Date.now() / 1000);
+
+  const token = {
+    ...payload,
+    iat: now,
+    exp: now + (payload.expires_in || CONFIG.JWT_DEFAULT_EXPIRY)
+  };
+
+  const encodedHeader = base64UrlEncode(JSON.stringify(header));
+  const encodedPayload = base64UrlEncode(JSON.stringify(token));
+  const signature = base64UrlEncode(`${encodedHeader}.${encodedPayload}.${CONFIG.JWT_SECRET}`);
+
+  return `${encodedHeader}.${encodedPayload}.${signature}`;
+}
+
+function verifyJWT(token) {
+  try {
+    const parts = token.split('.');
+    if (parts.length !== 3) {
+      return { valid: false, error: 'Invalid token format' };
+    }
+
+    const [header, payload, signature] = parts;
+    const decodedPayload = JSON.parse(base64UrlDecode(payload));
+
+    // Verificar expiración
+    const now = Math.floor(Date.now() / 1000);
+    if (decodedPayload.exp && decodedPayload.exp < now) {
+      return { valid: false, error: 'Token expired' };
+    }
+
+    return { valid: true, payload: decodedPayload };
+  } catch (e) {
+    return { valid: false, error: 'Invalid token: ' + e.message };
+  }
+}
+
+function base64UrlEncode(str) {
+  return btoa(str)
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=/g, '');
+}
+
+function base64UrlDecode(str) {
+  str = str.replace(/-/g, '+').replace(/_/g, '/');
+  while (str.length % 4) {
+    str += '=';
+  }
+  return atob(str);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// CACHE HELPER FUNCTIONS
+// ═══════════════════════════════════════════════════════════════════════════
+
+async function getCachedParser(ctx) {
+  try {
+    const cache = caches.default;
+    const cacheKey = `https://cache.internal/${CONFIG.CACHE_KEY}`;
+    const cached = await cache.match(cacheKey);
+
+    if (cached) {
+      const cachedData = await cached.json();
+      const parser = new M3U8Parser('');
+      parser.channels = cachedData.channels;
+      parser.metadata = cachedData.metadata;
+
+      if (CONFIG.DEBUG) {
+        console.log('Cache HIT:', {
+          channels: parser.channels.length,
+          cachedAt: cachedData.metadata.parsedAt
+        });
+      }
+
+      return parser;
+    }
+
+    return null;
+  } catch (error) {
+    if (CONFIG.DEBUG) {
+      console.error('Cache error:', error.message);
+    }
+    return null;
+  }
+}
+
+async function setCachedParser(parser, ctx) {
+  try {
+    const cache = caches.default;
+    const cacheKey = `https://cache.internal/${CONFIG.CACHE_KEY}`;
+
+    const cacheData = {
+      channels: parser.channels,
+      metadata: parser.metadata
+    };
+
+    const response = new Response(JSON.stringify(cacheData), {
+      headers: {
+        'Content-Type': 'application/json',
+        'Cache-Control': `public, max-age=${CONFIG.CACHE_TTL}`
+      }
+    });
+
+    ctx.waitUntil(cache.put(cacheKey, response));
+
+    if (CONFIG.DEBUG) {
+      console.log('Cache SET:', {
+        channels: parser.channels.length,
+        ttl: CONFIG.CACHE_TTL
+      });
+    }
+  } catch (error) {
+    if (CONFIG.DEBUG) {
+      console.error('Cache set error:', error.message);
+    }
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// R2 HELPER FUNCTIONS
+// ═══════════════════════════════════════════════════════════════════════════
+
+async function loadM3U8FromR2(env, path = CONFIG.R2_MASTER_PLAYLIST) {
+  try {
+    const r2Object = await env.CHANNELS_R2.get(path);
+
+    if (!r2Object) {
+      throw new Error(`M3U8 file not found: ${path}`);
+    }
+
+    const m3u8Content = await r2Object.text();
+
+    if (CONFIG.DEBUG) {
+      console.log('R2 Load:', {
+        path,
+        size: m3u8Content.length,
+        lines: m3u8Content.split('\n').length
+      });
+    }
+
+    return m3u8Content;
+  } catch (error) {
+    if (CONFIG.DEBUG) {
+      console.error('R2 load error:', error.message);
+    }
+    throw error;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// MAIN WORKER HANDLER
+// ═══════════════════════════════════════════════════════════════════════════
+
+export default {
+  async fetch(request, env, ctx) {
+    const url = new URL(request.url);
+    const path = url.pathname;
+
+    // CORS Headers
+    const corsHeaders = {
+      'Access-Control-Allow-Origin': CONFIG.CORS_ORIGIN,
+      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization'
+    };
+
+    // Handle CORS preflight
+    if (request.method === 'OPTIONS') {
+      return new Response(null, { headers: corsHeaders });
+    }
+
+    try {
+      // ═════════════════════════════════════════════════════════════════
+      // ENDPOINT: Health Check
+      // ═════════════════════════════════════════════════════════════════
+      if (path === '/health') {
+        return new Response(JSON.stringify({
+          status: 'OK',
+          version: '2.0.0 FINAL',
+          storage: 'Cloudflare R2',
+          format: 'M3U8 Native (NO JSON)',
+          config: {
+            cache_ttl: CONFIG.CACHE_TTL,
+            jwt_expiry: CONFIG.JWT_DEFAULT_EXPIRY,
+            rate_limit: CONFIG.RATE_LIMIT.enabled
+          },
+          timestamp: new Date().toISOString()
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+
+      // ═════════════════════════════════════════════════════════════════
+      // ENDPOINT: Generate JWT Token
+      // ═════════════════════════════════════════════════════════════════
+      if (path === '/token/generate') {
+        const userId = url.searchParams.get('user_id') || 'user_' + Math.random().toString(36).substring(7);
+        const expiresIn = parseInt(url.searchParams.get('expires_in')) || CONFIG.JWT_DEFAULT_EXPIRY;
+
+        const token = generateJWT({
+          user_id: userId,
+          expires_in: expiresIn,
+          scope: 'playlist:read,canal:access'
+        });
+
+        return new Response(JSON.stringify({
+          token: token,
+          user_id: userId,
+          expires_in: expiresIn,
+          expires_at: new Date(Date.now() + expiresIn * 1000).toISOString(),
+          usage: 'Authorization: Bearer ' + token
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+
+      // ═════════════════════════════════════════════════════════════════
+      // CARGAR M3U8 DESDE R2 Y PARSEAR
+      // ═════════════════════════════════════════════════════════════════
+      let parser = await getCachedParser(ctx);
+
+      if (!parser) {
+        // Cache MISS: cargar desde R2
+        try {
+          const m3u8Content = await loadM3U8FromR2(env, CONFIG.R2_MASTER_PLAYLIST);
+          parser = new M3U8Parser(m3u8Content);
+
+          // Guardar en cache
+          await setCachedParser(parser, ctx);
+        } catch (error) {
+          // Fallback a backup playlist
+          try {
+            const m3u8Content = await loadM3U8FromR2(env, CONFIG.R2_BACKUP_PLAYLIST);
+            parser = new M3U8Parser(m3u8Content);
+          } catch (backupError) {
+            return new Response(JSON.stringify({
+              error: 'Failed to load M3U8 from R2',
+              primary_error: error.message,
+              backup_error: backupError.message
+            }), {
+              status: 500,
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            });
+          }
+        }
+      }
+
+      // ═════════════════════════════════════════════════════════════════
+      // ENDPOINT: List Channels (JSON)
+      // ═════════════════════════════════════════════════════════════════
+      if (path === '/channels') {
+        const page = parseInt(url.searchParams.get('page')) || 1;
+        const limit = Math.min(parseInt(url.searchParams.get('limit')) || 50, 500);
+        const group = url.searchParams.get('group');
+        const search = url.searchParams.get('search');
+
+        let channels = parser.getChannels();
+
+        // Filtrar por grupo
+        if (group) {
+          channels = channels.filter(ch => ch.group === group);
+        }
+
+        // Búsqueda por nombre
+        if (search) {
+          const searchLower = search.toLowerCase();
+          channels = channels.filter(ch =>
+            ch.name.toLowerCase().includes(searchLower) ||
+            (ch.tvg_name && ch.tvg_name.toLowerCase().includes(searchLower)) ||
+            (ch.group && ch.group.toLowerCase().includes(searchLower))
+          );
+        }
+
+        // Paginación
+        const start = (page - 1) * limit;
+        const end = start + limit;
+        const paginatedChannels = channels.slice(start, end);
+
+        return new Response(JSON.stringify({
+          success: true,
+          total: channels.length,
+          page: page,
+          limit: limit,
+          pages: Math.ceil(channels.length / limit),
+          channels: paginatedChannels,
+          metadata: parser.getMetadata()
+        }), {
+          headers: {
+            ...corsHeaders,
+            'Content-Type': 'application/json',
+            'Cache-Control': `public, max-age=${CONFIG.CACHE_TTL}`
+          }
+        });
+      }
+
+      // ═════════════════════════════════════════════════════════════════
+      // ENDPOINT: List Groups
+      // ═════════════════════════════════════════════════════════════════
+      if (path === '/groups') {
+        const groups = parser.getGroups();
+        const groupStats = groups.map(group => ({
+          name: group,
+          channels: parser.getChannelsByGroup(group).length
+        }));
+
+        return new Response(JSON.stringify({
+          success: true,
+          total: groups.length,
+          groups: groupStats,
+          metadata: parser.getMetadata()
+        }), {
+          headers: {
+            ...corsHeaders,
+            'Content-Type': 'application/json',
+            'Cache-Control': `public, max-age=${CONFIG.CACHE_TTL}`
+          }
+        });
+      }
+
+      // ═════════════════════════════════════════════════════════════════
+      // ENDPOINT: Get Playlist M3U8 (NATIVE)
+      // ═════════════════════════════════════════════════════════════════
+      if (path === '/playlist.m3u8') {
+        const authHeader = request.headers.get('Authorization');
+
+        if (!authHeader) {
+          return new Response('Unauthorized: Missing Authorization header', {
+            status: 401,
+            headers: { ...corsHeaders, 'Content-Type': 'text/plain' }
+          });
+        }
+
+        const token = authHeader.replace('Bearer ', '');
+        const jwtResult = verifyJWT(token);
+
+        if (!jwtResult.valid) {
+          return new Response(`Unauthorized: ${jwtResult.error}`, {
+            status: 401,
+            headers: { ...corsHeaders, 'Content-Type': 'text/plain' }
+          });
+        }
+
+        // Obtener canales (con filtro opcional)
+        const group = url.searchParams.get('group');
+        let channels = group ? parser.getChannelsByGroup(group) : parser.getChannels();
+
+        // Generar playlist con URLs proxificadas
+        const proxyBaseUrl = `https://${url.hostname}`;
+        const m3u8 = parser.toM3U8(channels, proxyBaseUrl);
+
+        return new Response(m3u8, {
+          headers: {
+            ...corsHeaders,
+            'Content-Type': 'application/vnd.apple.mpegurl',
+            'Content-Disposition': 'inline; filename="playlist.m3u8"',
+            'Cache-Control': 'private, max-age=300'
+          }
+        });
+      }
+
+      // ═════════════════════════════════════════════════════════════════
+      // ENDPOINT: 302 Redirect to Real Stream
+      // ═════════════════════════════════════════════════════════════════
+      if (path.startsWith('/canal/')) {
+        const channelId = path.split('/')[2].replace('.m3u8', '');
+        const token = url.searchParams.get('token') || request.headers.get('Authorization')?.replace('Bearer ', '');
+
+        if (!token) {
+          return new Response('Unauthorized: Missing token', {
+            status: 401,
+            headers: { ...corsHeaders, 'Content-Type': 'text/plain' }
+          });
+        }
+
+        const jwtResult = verifyJWT(token);
+
+        if (!jwtResult.valid) {
+          return new Response(`Unauthorized: ${jwtResult.error}`, {
+            status: 401,
+            headers: { ...corsHeaders, 'Content-Type': 'text/plain' }
+          });
+        }
+
+        const channel = parser.getChannelById(channelId);
+
+        if (!channel) {
+          return new Response(JSON.stringify({
+            error: 'Channel not found',
+            channel_id: channelId,
+            available_channels: parser.channels.length
+          }), {
+            status: 404,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        }
+
+        // 302 REDIRECT al stream real
+        return Response.redirect(channel.url, 302);
+      }
+
+      // ═════════════════════════════════════════════════════════════════
+      // ENDPOINT: Admin - Reload M3U8 from R2
+      // ═════════════════════════════════════════════════════════════════
+      if (path === '/admin/reload') {
+        const cache = caches.default;
+        const cacheKey = `https://cache.internal/${CONFIG.CACHE_KEY}`;
+        await cache.delete(cacheKey);
+
+        return new Response(JSON.stringify({
+          success: true,
+          message: 'Cache cleared. Next request will reload M3U8 from R2',
+          timestamp: new Date().toISOString()
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+
+      // ═════════════════════════════════════════════════════════════════
+      // ENDPOINT: Stats
+      // ═════════════════════════════════════════════════════════════════
+      if (path === '/stats') {
+        return new Response(JSON.stringify({
+          success: true,
+          storage: 'Cloudflare R2',
+          format: 'M3U8 Native',
+          metadata: parser.getMetadata(),
+          config: {
+            cache_ttl: CONFIG.CACHE_TTL,
+            jwt_expiry: CONFIG.JWT_DEFAULT_EXPIRY,
+            rate_limit: CONFIG.RATE_LIMIT
+          },
+          timestamp: new Date().toISOString()
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+
+      // ═════════════════════════════════════════════════════════════════
+      // ENDPOINT: Upload M3U8 RAW to R2 (NO TRANSFORMATION, NO PROXY)
+      // ═════════════════════════════════════════════════════════════════
+      if (path === '/upload-m3u' && request.method === 'POST') {
+        try {
+          const m3u8Content = await request.text();
+
+          if (!m3u8Content || m3u8Content.length === 0) {
+            return new Response(JSON.stringify({ error: 'Empty body' }), {
+              status: 400,
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            });
+          }
+
+          // Count channels
+          const channelCount = (m3u8Content.match(/#EXTINF:/g) || []).length;
+
+          // Generate timestamped filename
+          const timestamp = new Date().toISOString().replace(/[:.]/g, '-').split('T')[0];
+          const r2Key = `playlists/APE_ULTIMATE_v9.0_${timestamp}.m3u8`;
+
+          // Save RAW M3U8 to R2 (preserves original URLs 100%)
+          await env.CHANNELS_R2.put(r2Key, m3u8Content, {
+            httpMetadata: {
+              contentType: 'application/vnd.apple.mpegurl',
+              cacheControl: 'public, max-age=3600'
+            },
+            customMetadata: {
+              channels: channelCount.toString(),
+              uploaded_at: new Date().toISOString(),
+              source: 'frontend_upload'
+            }
+          });
+
+          // Clear cache (if KV binding exists)
+          if (env.CACHE_KV) {
+            await env.CACHE_KV.delete('m3u8_parser_cache');
+          }
+
+          // Return success
+          return new Response(JSON.stringify({
+            success: true,
+            message: 'M3U8 saved to R2 (RAW - original URLs preserved)',
+            r2_key: r2Key,
+            public_url: `https://${url.hostname}/playlist.m3u8`,
+            channels: channelCount,
+            size_bytes: m3u8Content.length,
+            uploaded_at: new Date().toISOString()
+          }), {
+            headers: {
+              ...corsHeaders,
+              'Content-Type': 'application/json'
+            }
+          });
+
+        } catch (error) {
+          return new Response(JSON.stringify({
+            error: 'Upload failed',
+            message: error.message,
+            stack: CONFIG.DEBUG ? error.stack : undefined
+          }), {
+            status: 500,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        }
+      }
+
+      // ═════════════════════════════════════════════════════════════════
+      // 404 Not Found
+      // ═════════════════════════════════════════════════════════════════
+      return new Response(JSON.stringify({
+        error: 'Not Found',
+        path: path,
+        available_endpoints: [
+          'GET /health',
+          'GET /token/generate?user_id=X&expires_in=21600',
+          'GET /channels?page=1&limit=50&group=Sports&search=ESPN',
+          'GET /groups',
+          'GET /playlist.m3u8 [Authorization: Bearer TOKEN]',
+          'GET /canal/{CHANNEL_ID}.m3u8?token=TOKEN',
+          'GET /admin/reload',
+          'GET /stats'
+        ]
+      }), {
+        status: 404,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+
+    } catch (error) {
+      return new Response(JSON.stringify({
+        error: 'Internal Server Error',
+        message: error.message,
+        stack: CONFIG.DEBUG ? error.stack : undefined
+      }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+  }
+};

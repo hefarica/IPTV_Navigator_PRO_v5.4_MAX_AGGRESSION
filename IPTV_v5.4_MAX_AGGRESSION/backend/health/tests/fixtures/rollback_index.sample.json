@@ -1,0 +1,30 @@
+{
+  "rollback_index_version": "1.0",
+  "generated_at": "2026-04-17T22:45:00Z",
+  "latest_healthy_build": "APE_2026-04-16T20-26-00Z",
+  "builds": [
+    {
+      "build_id": "APE_2026-04-17T22-45-00Z",
+      "decision": "publish",
+      "status": "current",
+      "manifest": "release_manifest.json",
+      "sha256": "<computed>",
+      "rollback_to": "APE_2026-04-16T20-26-00Z"
+    },
+    {
+      "build_id": "APE_2026-04-16T20-26-00Z",
+      "decision": "publish",
+      "status": "healthy_previous",
+      "manifest": "release_manifest_2026-04-16.json",
+      "sha256": "<computed>",
+      "rollback_to": "APE_2026-04-15T18-00-00Z"
+    }
+  ],
+  "rollback_procedure": [
+    "1. Identificar build target en latest_healthy_build",
+    "2. Copiar el artifact .m3u8 de ese build al path de producción",
+    "3. Actualizar current → previous en builds[]",
+    "4. Promover healthy_previous → current",
+    "5. Verificar con gate que aún cumple umbrales"
+  ]
+}

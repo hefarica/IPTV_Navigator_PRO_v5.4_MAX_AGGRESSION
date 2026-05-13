@@ -68,8 +68,10 @@ class UniversalCodecProtocolEngine
      * Select the optimal codec string for a player + channel combination.
      *
      * @param string $playerId    Player ID.
-     * @param array  $channelDna  Channel DNA.
-     * @return array              ['video_codec' => string, 'audio_codec' => string, 'codec_string' => string]
+     * @param array  $channelDna  Channel DNA. May include 'codec_ladder' (LAB SSOT
+     *                            from APE_ALL_PROFILES_v10_REALTIME_ENGINE.json).
+     * @return array              ['video_codec' => string, 'audio_codec' => string,
+     *                            'codec_string' => string, 'codec_ladder' => array|null]
      */
     public static function selectCodec(string $playerId, array $channelDna = []): array
     {
@@ -101,10 +103,14 @@ class UniversalCodecProtocolEngine
 
         $codecString = $videoCodec . ',' . $audioCodec;
 
+        // [HEVC-FIRST CODEC LADDER] Pass-through del codec_ladder LAB SSOT si el caller
+        // lo proveyó vía $dna. Permite que consumers downstream emitan EXT-X-APE-CODEC-PRIORITY-*
+        // tags y EXTVLCOPT/KODIPROP per-profile sin re-resolver. Null si no fue provisto.
         return [
             'video_codec'  => $videoCodec,
             'audio_codec'  => $audioCodec,
             'codec_string' => $codecString,
+            'codec_ladder' => $dna['codec_ladder'] ?? null,
         ];
     }
 

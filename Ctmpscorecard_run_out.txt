@@ -1,0 +1,35 @@
+============================================================
+ EJECUTAR Brain_OmegaScorecard sobre C:\Users\HFRC\Downloads\APE_LISTA_1776438933335.m3u8
+============================================================
+
+[1] 18_CONFIG!C30
+    antes : C:\Users\HFRC\Downloads\APE_LAB_OUTPUT.m3u8
+    ahora : C:\Users\HFRC\Downloads\APE_LISTA_1776438933335.m3u8
+    tamano archivo: 155.117.404 bytes
+
+[2] Parcheando ReadFileAll en APE_OMEGA_GUARANTEES...
+    ReadFileAll viejo eliminado (lineas 271 + 19)
+    ReadFileAll nuevo (ADODB.Stream) inyectado
+
+[3] Ejecutando Brain_OmegaScorecard...
+    terminado en 2196s   error=Error en la llamada a procedimiento remoto. (Excepci¢n de HRESULT: 0x800706BE)
+El servidor RPC no est  disponible. (Excepci¢n de HRESULT: 0x800706BA)
+En C:\tmp\run_scorecard.ps1: 99 Car cter: 1
++ $lastR = $cfg.Cells($cfg.Rows.Count, 2).End(-4162).Row
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : OperationStopped: (:) [], COMException
+    + FullyQualifiedErrorId : System.Runtime.InteropServices.COMException
+ 
+    Omega_Compliance_Score =  / 10
+El servidor RPC no est  disponible. (Excepci¢n de HRESULT: 0x800706BA)
+En C:\tmp\run_scorecard.ps1: 108 Car cter: 1
++ $wb.Save()
++ ~~~~~~~~~~
+    + CategoryInfo          : OperationStopped: (:) [], COMException
+    + FullyQualifiedErrorId : System.Runtime.InteropServices.COMException
+ 
+
+============================================================
+  HOJA 00_OMEGA_SCORECARD
+============================================================
+  ERROR: hoja no se creo. Revisar Brain_OmegaScorecard

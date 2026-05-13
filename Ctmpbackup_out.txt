@@ -1,0 +1,18 @@
+No se pudo guardar via COM: Excepci¢n al llamar a "GetActiveObject" con los argumentos "1": "Error en la llamada a procedimiento remoto. (Excepci¢n de HRESULT: 0x800706BE)"
+Backup creado: C:\Users\HFRC\Downloads\APE_M3U8_LAB_v8_FIXED.BACKUP_20260417_231226.xlsm
+  size: 3350846 bytes  |  modificado: 04/17/2026 23:03:56
+
+Backups existentes:
+
+Name                                                           Length LastWriteTime            
+----                                                           ------ -------------            
+APE_M3U8_LAB_v8_FIXED.BACKUP_20260417_230824.xlsm             3350846 17/04/2026 11:08:25?p.?m.
+APE_M3U8_LAB_v8_FIXED.BACKUP_20260417_232741_fresh.xlsm       3350846 17/04/2026 11:03:56?p.?m.
+APE_M3U8_LAB_v8_FIXED.BACKUP_20260417_233239_post_unlock.xlsm 3350846 17/04/2026 11:03:56?p.?m.
+APE_M3U8_LAB_v8_FIXED.xlsm                                    3350846 17/04/2026 11:03:56?p.?m.
+APE_M3U8_LAB_v8_FIXED.BACKUP_20260417_231226.xlsm             3350846 17/04/2026 11:03:56?p.?m.
+APE_M3U8_LAB_v8_FIXED.BACKUP_20260417_230847.xlsm             3350846 17/04/2026 11:03:56?p.?m.
+APE_M3U8_LAB_v8_FIXED.BACKUP_premigration.xlsm                1161177 15/04/2026 2:39:45?a.?m. 
+APE_M3U8_LAB.xlsm                                              173108 12/04/2026 11:19:59?a.?m.
+
+

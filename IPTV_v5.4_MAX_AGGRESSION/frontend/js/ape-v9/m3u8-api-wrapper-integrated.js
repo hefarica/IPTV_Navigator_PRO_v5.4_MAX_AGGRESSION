@@ -125,11 +125,14 @@
             'DNT': '1',
             'Sec-GPC': '1',
 
-            // Grupo 2: Conexión y Keep-Alive (10 headers)
+            // Grupo 2: Conexión y Keep-Alive (8 — era 10, removidos 2 toxicos)
             'Connection': 'keep-alive',
             'Keep-Alive': 'timeout=30, max=100',
-            'Upgrade-Insecure-Requests': '1',
-            'TE': 'trailers',
+            // C8 (2026-05-11) eliminados — bypaseaban el spinal cord gate y emitian
+            // al .m3u8 (24,808 hits Upgrade-Insecure-Requests + 37,128 hits TE en lista
+            // 1778548125293.m3u8). Ver feedback_exthttp_traps.md trampa #9.
+            // 'Upgrade-Insecure-Requests': '1',
+            // 'TE': 'trailers',
             'X-Connection-Type': 'persistent',
             'X-Keep-Alive-Timeout': '30000',
             'X-Max-Connections': '100',
@@ -145,12 +148,16 @@
             'Origin': 'http://localhost',
             'Referer': 'http://localhost/',
 
-            // Grupo 4: Cache Control (8 headers)
+            // Grupo 4: Cache Control (5 — era 8, removidos 3 toxicos)
             'Cache-Control': 'no-cache',
             'Pragma': 'no-cache',
-            'Range': 'bytes=0-',
-            'If-None-Match': '*',
-            'If-Modified-Since': 'Mon, 01 Jan 2024 00:00:00 GMT',
+            // C8 (2026-05-11) eliminados — Range/If-None-Match/If-Modified-Since detonan
+            // okhttp "unexpected end of stream on com.android.okhttp.Address" via 304+0B
+            // o 206 con Content-Range mal calculado. Verificado 37,128 hits Range en
+            // lista 1778548125293.m3u8. Ver feedback_exthttp_traps.md trampa #9.
+            // 'Range': 'bytes=0-',
+            // 'If-None-Match': '*',
+            // 'If-Modified-Since': 'Mon, 01 Jan 2024 00:00:00 GMT',
             'X-Cache-Control': 'aggressive',
             'X-Cache-TTL': '0',
             'X-Force-Revalidate': 'true',
@@ -217,7 +224,9 @@
             'X-Playback-Rate': '1.0',
             'X-Segment-Duration': '2000',
             'X-Request-Priority': 'HIGH',
-            'Priority': 'u=1, i',
+            // C8 (2026-05-11) eliminado: 'Priority': 'u=1, i'
+            //   RFC 9218 HTTP/3 priority sobre HTTP/1.1 confunde parsers Xtream.
+            // 'Priority': 'u=1, i',
             'X-Latency-Target': '50',
             'X-Latency-Mode': 'rayo',
             'X-Low-Latency': 'true',

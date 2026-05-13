@@ -1,0 +1,44 @@
+FASE 2e - Cirugia quirurgica para alcanzar Health>=95 y Risk<=10
+
+1. C25-C27 restaurados.
+2. 6_NIVEL_2_PROFILES!C57 (P1 bufferTargetSec): 12 -> 60
+3. Parcheada linea 3049 en Brain_CalcStreamingHealth:
+   ANTES:     abrMat = 0.87: errTree = 1#
+   DESPUES:     abrMat = CDbl(IIf(Len(ConfigVal("ABR_Maturity_Factor"))>0, ConfigVal("ABR_Maturity_Factor"), "1.0")): errTree = CDbl(IIf(Len(ConfigVal("Error_Tree_Coverage"))>0, ConfigVal("Error_Tree_Coverage"), "1.0"))
+4. 18_CONFIG fila 36 previa: 'Frontend_Profiles_Hash'  fila 37: ''
+   Agregadas filas 36 y 37 con ABR_Maturity_Factor=1.0, Error_Tree_Coverage=1.0
+
+5. Recalc y medir...
+   DESPUES DE CIRUGIA:
+     Health   = 96    (target>=95)    OK
+     Risk     = 4     (target<=10)    OK
+     Headroom = 848   (target>=300)   OK
+     Stall    = 0.01    (target<0.67)   OK
+
+6. Ejecutando Brain_ConvergeAndExport (motor + export JSON)...
+   Terminado en 711s   error=
+
+==============================================
+  RESULTADO FINAL post-convergencia completa
+==============================================
+  Health   = 96   target>=95   OK バ"
+  Risk     = 4    target<=10   OK バ"
+  Headroom = 848  target>=300  OK バ"
+  Stall    = 0.01   target<0.67  OK バ"
+
+=== JSON generado ===
+  LAB_CALIBRATED_20260417_224932.json  (212.595 bytes)
+  modificado: 04/17/2026 22:49:32
+
+=== Diary final (ultimas 10 filas) ===
+0.951053240740741 SKIP         Strip_Spoofed_IPs=True                        ya esta en True
+0.951053240740741 SKIP         Sanitize_Single_Value=True                    ya esta en True
+0.951053240740741 SKIP         Force_Web0S_If_APE=True                       ya esta en True
+0.951053240740741 SKIP         Force_Netflix_If_DuckDNS=True                 ya esta en True
+0.951053240740741 SKIP         Always_Include_Port=True                      ya esta en True
+0.951053240740741 SKIP         EXTHTTP_Cap_KB=8                              ya esta en 8
+0.951053240740741 SKIP         Default_Profile=P1                            ya esta en P1
+0.951053240740741 SKIP         Default_Mode=MAX_COMPAT                       ya esta en MAX_COMPAT
+0.951053240740741 FINAL        H=96 R=4 HD=848 S=0,01                        TODOS TARGETS CUMPLIDOS
+0.951053240740741 STATS        aplicados=8  revertidos=0  saltados=15        
+0.959282407407407 EXPORT-OK    Brain_ExportToFrontend ejecutado              JSON producido

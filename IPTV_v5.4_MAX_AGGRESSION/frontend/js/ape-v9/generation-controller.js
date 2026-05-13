@@ -105,6 +105,12 @@
             }
         }
         const channels = window.app.getFilteredChannels() || [];
+
+        // ═══ PARSER STACK ENRICHMENT (also for generateListWithGate path) ═══
+        if (window.APEParserGenerationBridge && typeof window.APEParserGenerationBridge.enrichChannelsWithParserStack === 'function') {
+            try { window.APEParserGenerationBridge.enrichChannelsWithParserStack(channels); } catch (_) { /* non-critical */ }
+        }
+
         const labCfg = window.APE_PROFILES_CONFIG;
         const labLoaded = !!(labCfg && labCfg.labExportedAt);
         const isBulletproof = labCfg?.labBulletproof === true;
@@ -604,6 +610,21 @@
         if (channels.length === 0) throw new Error('0 canales filtrados');
 
         if (window.app.showToast) window.app.showToast(`Generando lista con ${channels.length} canales…`, 'info');
+
+        // PASO 1.5 — PARSER STACK ENRICHMENT (26 parsers → evidence per channel)
+        // Decora cada canal con _apeCanonical, _apeXtream, _apeCodecParsed, _apeHevcParsed, _apeHdrParsed, _apeHeadersClean.
+        // NO modifica propiedades existentes del canal — solo agrega underscore-prefixed.
+        // Si el bridge no está cargado, la generación continúa sin enrichment (COVERAGE ALWAYS).
+        if (window.APEParserGenerationBridge && typeof window.APEParserGenerationBridge.enrichChannelsWithParserStack === 'function') {
+            try {
+                const bridgeResult = window.APEParserGenerationBridge.enrichChannelsWithParserStack(channels);
+                if (window.app.showToast && bridgeResult.enriched > 0) {
+                    window.app.showToast(`🔬 Parser Stack: ${bridgeResult.enriched} canales enriquecidos (HEVC: ${bridgeResult.hevcDetected || 0}, Toxic blocked: ${bridgeResult.toxicHeadersBlocked || 0})`, 'success');
+                }
+            } catch (bridgeErr) {
+                console.warn('[APE-PREPUBLISH] Parser bridge enrichment failed (non-critical):', bridgeErr.message);
+            }
+        }
 
         // PASO 2 — cargar admission map (URLs verificadas por health_checker)
         try { await window.APEHealthRuntime.ensureReady(options); } catch (_) { /* graceful, no crítico */ }

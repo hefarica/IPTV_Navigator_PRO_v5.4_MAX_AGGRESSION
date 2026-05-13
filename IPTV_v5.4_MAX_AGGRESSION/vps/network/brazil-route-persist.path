@@ -1,0 +1,7 @@
+[Unit]
+Description=Watch wg-surfshark-br interface state changes
+[Path]
+PathChanged=/etc/wireguard/wg-surfshark-br.conf
+Unit=brazil-route-persist.service
+[Install]
+WantedBy=multi-user.target

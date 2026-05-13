@@ -31,18 +31,24 @@
         },
         connection: {
             name: "🔗 2. Connection",
-            description: "Zero-Latency Persistence (Keep-alive, Sec-Fetch, TE)",
+            description: "Zero-Latency Persistence (Keep-alive, Sec-Fetch)",
             headers: [
                 "Connection", "Keep-Alive", "Sec-Fetch-Dest", "Sec-Fetch-Mode",
-                "Sec-Fetch-Site", "Sec-Fetch-User", "DNT", "Sec-GPC",
-                "Upgrade-Insecure-Requests", "TE"
+                "Sec-Fetch-Site", "Sec-Fetch-User", "DNT", "Sec-GPC"
+                // C8 (2026-05-11) — removed "Upgrade-Insecure-Requests", "TE":
+                // browser-only / unsupported by okhttp legacy. Final gate _ca7BannedAbsolute
+                // strips them anyway, removed from catalog for UX clarity.
             ]
         },
         cache: {
             name: "💾 3. Cache",
-            description: "Neural Predictive Loading (Cache-Control, Pragma, Range)",
+            description: "Neural Predictive Loading (Cache-Control, Pragma)",
             headers: [
-                "Cache-Control", "Pragma", "Range", "If-None-Match", "If-Modified-Since"
+                "Cache-Control", "Pragma"
+                // C8 (2026-05-11) — removed "Range", "If-None-Match", "If-Modified-Since":
+                // If-None-Match: * detonates HTTP 304+0B → okhttp "unexpected end of stream"
+                // (TEST-B/D/E vs G empirical proof, 2026-05-11 vs tivigo.cc → linovrex.cc CDN).
+                // Range on .m3u8 is nonsensical (not byte-rangeable). Final gate strips them.
             ]
         },
         cors: {
@@ -62,11 +68,13 @@
         },
         playback: {
             name: "🎬 6. Playback",
-            description: "Frame Perfection (Priority, Rate, Buffers)",
+            description: "Frame Perfection (Rate, Buffers)",
             headers: [
-                "Priority", "X-Playback-Rate", "X-Segment-Duration",
+                "X-Playback-Rate", "X-Segment-Duration",
                 "X-Min-Buffer-Time", "X-Max-Buffer-Time",
                 "X-Request-Priority", "X-Prefetch-Enabled"
+                // C8 (2026-05-11) — removed "Priority": RFC 9218 HTTP/3 priority over HTTP/1.1
+                // confuses Xtream/Stalker parsers. Final gate _ca7BannedAbsolute strips it.
             ]
         },
         cdn: {
@@ -310,7 +318,12 @@
                 "bufferSeconds": 25,
                 "focus": "MAXIMA_CALIDAD_8K_HDR_CARGA_ULTRARAPIDA_SIN_CORTES",
                 "hdr_canonical": "dolby-vision",
-                "nits_target": 4000
+                "nits_target": 8000,
+                "codec_chain_video": "dvh1.05.06,dvh1.08.06,hvc1.2.4.L183.B0,hvc1.1.6.L183.B0,av01.0.13M.10.0.110.09.16.09.0,avc1.640033,avc1.640028",
+                "codec_chain_audio": "ec-3,ac-3,mp4a.40.2,mp4a.40.5",
+                "codec_chain_hdr": "dolby-vision,hdr10+,hdr10,hlg,sdr",
+                "codec_chain_player_pref": "hvc1,hev1,dvh1,dvhe,h265,av1,avc1,h264",
+                "codec_chain_video_family": "DV>HEVC-MAIN10>HEVC-MAIN>AV1>H264-HIGH>H264-MAIN"
             },
             "vlcopt": {
                 "network-caching": "25000",
@@ -408,7 +421,7 @@
                 "X-Max-Reconnect-Attempts": "UNLIMITED",
                 "X-Reconnect-Delay-Ms": "50,80,120",
                 "X-Buffer-Underrun-Strategy": "aggressive-refill,adaptive-refill,conservative-refill",
-                "Accept-Encoding": "gzip, deflate, br",
+                "Accept-Encoding": "identity",
                 "Accept": "application/vnd.apple.mpegurl, application/x-mpegurl, application/x-m3u8, audio/mpegurl, application/octet-stream, */*",
                 "Sec-Fetch-Dest": "media,video,audio,empty",
                 "Cache-Control": "no-cache,no-store,max-age=0,max-stale=0",
@@ -418,11 +431,11 @@
                 "X-Quality-Preference": "codec-hevc,profile-main-12,main-10,tier-high;codec-h265,profile-main-12,main-10,tier-high;codec-h.265,profile-main-12,main-10,tier-high;codec-vp9,profile2,profile0,n/a",
                 "DNT": "1,0",
                 "Sec-GPC": "1,0",
-                "Upgrade-Insecure-Requests": "1,0",
+                // C8 (2026-05-11) — removed (toxic): "Upgrade-Insecure-Requests": "1,0", → HTTPS redirect risk
                 "Sec-Fetch-User": "?1,?0",
                 "Keep-Alive": "timeout=120, max=1000",
                 "Sec-Fetch-Mode": "no-cors,navigate,cors,same-origin",
-                "TE": "trailers,chunked,compress,deflate",
+                // C8 (2026-05-11) — removed (toxic): "TE": "trailers,chunked,compress,deflate", → okhttp legacy trailer EOF
                 "User-Agent": "Mozilla/5.0 (SMART-TV; Tizen 8.0; Samsung 8K QN900D) AppleWebKit/538.1 (KHTML, like Gecko) SamsungBrowser/2.3 Safari/538.1",
                 "Accept-Language": "es-ES,es;q=0.9,en;q=0.8,pt;q=0.7",
                 "Sec-CH-UA": "\"Google Chrome\";v=\"125\", \"Chromium\";v=\"125\"",
@@ -434,9 +447,9 @@
                 "Sec-CH-UA-Model": "\"\"",
                 "Connection": "keep-alive,close",
                 "Pragma": "no-cache,no-store",
-                "Range": "bytes=0-",
-                "If-None-Match": "*",
-                "If-Modified-Since": "[HTTP_DATE]",
+                // C8 (2026-05-11) — removed (toxic): "Range": "bytes=0-", → m3u8 manifest is not byte-rangeable
+                // C8 (2026-05-11) — removed (toxic): "If-None-Match": "*", → 304+0B okhttp EOF (feedback_exthttp_traps.md #9)
+                // C8 (2026-05-11) — removed (toxic): "If-Modified-Since": "[HTTP_DATE]", → 304+0B okhttp EOF
                 "Origin": "https://iptv-ape.duckdns.org",
                 "Referer": "https://iptv-ape.duckdns.org/",
                 "X-Requested-With": "XMLHttpRequest,fetch,null",
@@ -444,7 +457,7 @@
                 "X-Playback-Session-Id": "[CONFIG_SESSION_ID]",
                 "X-Device-Id": "[GENERATE_UUID]",
                 "X-Stream-Type": "hls,cmaf,dash",
-                "Priority": "u=0, i",
+                // C8 (2026-05-11) — removed (toxic): "Priority": "u=0, i", → RFC 9218 HTTP/3 over HTTP/1.1 confuses Xtream parsers
                 "X-Playback-Rate": "1.0,1.25,1.5",
                 "X-Min-Buffer-Time": "10",
                 "X-Max-Buffer-Time": "54",
@@ -564,7 +577,7 @@
                 "X-APE-RESILIENCE-HTTP-ERROR-429": "SWARM_EVASION,BACKOFF,RETRY",
                 "X-APE-RESILIENCE-HTTP-ERROR-500": "RECONNECT_SILENT,RETRY,FALLBACK",
                 "X-APE-AV1-FALLBACK-ENABLED": "TRUE,ADAPTIVE,FALSE",
-                "X-APE-AV1-FALLBACK-CHAIN": "AV1>HEVC>VP9>H264>H264-BASELINE>MPEG2",
+                "X-APE-AV1-FALLBACK-CHAIN": "HEVC-MAIN10>HEVC-MAIN>H264-HIGH>H264-MAIN>H264-BASELINE",
                 "X-APE-ISP-THROTTLE-ESCALATION-POLICY": "NUCLEAR_ESCALATION_NEVER_DOWN,AGGRESSIVE_ESCALATION,ADAPTIVE_ESCALATION,DEFAULT",
                 "X-APE-ANTI-CUT-ENGINE": "ENABLED,ADAPTIVE,DISABLED",
                 "X-APE-ANTI-CUT-DETECTION": "REAL_TIME,PREDICTIVE,REACTIVE",
@@ -683,12 +696,12 @@
             "headers": {
                 "User-Agent": "Mozilla/5.0 (SMART-TV; Linux; Tizen 8.0) AppleWebKit/538.1 (KHTML, like Gecko) SamsungBrowser/2.3 TV Safari/538.1,Mozilla/5.0 (Linux; Android 14; SHIELD Android TV) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Mobile Safari/537.36,Mozilla/5.0 (Linux; Android 13; BRAVIA 4K GB ATV3) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36,Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36",
                 "Accept": "application/vnd.apple.mpegurl,application/x-mpegurl,application/x-m3u8,video/mp4,audio/aac,audio/mpeg,application/octet-stream,*/*",
-                "Accept-Encoding": "gzip,deflate,br,identity",
+                "Accept-Encoding": "identity",
                 "Accept-Language": "es-ES,es;q=0.9,en-US;q=0.8,en;q=0.7,*;q=0.5",
                 "Accept-Charset": "utf-8,iso-8859-1;q=0.5,*;q=0.1",
                 "Sec-CH-UA": "\"Google Chrome\";v=\"134\",\"Chromium\";v=\"134\",\"Not-A.Brand\";v=\"99\",\"Samsung Internet\";v=\"23\"",
-                "Sec-CH-UA-Mobile": "?0,?1",
-                "Sec-CH-UA-Platform": "\"SmartTV\",\"Android\",\"Windows\",\"Linux\"",
+                "Sec-CH-UA-Mobile": "?0",
+                "Sec-CH-UA-Platform": "\"SmartTV\"",
                 "Sec-CH-UA-Full-Version-List": "\"Google Chrome\";v=\"134.0.6998.89\",\"Samsung Internet\";v=\"23.0.1.1\",\"Chromium\";v=\"134.0.6998.89\"",
                 "Sec-CH-UA-Arch": "x86,arm64,arm",
                 "Sec-CH-UA-Bitness": "64,32",
@@ -702,13 +715,13 @@
                 "Sec-Fetch-User": "?0,?1",
                 "DNT": "0",
                 "Sec-GPC": "0",
-                "Upgrade-Insecure-Requests": "0",
-                "TE": "trailers",
+                // C8 (2026-05-11) — removed (toxic): "Upgrade-Insecure-Requests": "0", → forces HTTPS redirect on HTTP-only providers
+                // C8 (2026-05-11) — removed (toxic): "TE": "trailers", → com.android.okhttp legacy does not support RFC 7230 trailers
                 "Cache-Control": "no-cache,max-age=0,must-revalidate,no-store",
                 "Pragma": "no-cache",
-                "If-None-Match": "*",
-                "If-Modified-Since": "[HTTP_DATE]",
-                "Range": "bytes=0-,bytes=0-2097152,bytes=0-1048576,bytes=0-524288",
+                // C8 (2026-05-11) — removed (toxic): "If-None-Match": "*", → 304+0B okhttp EOF (feedback_exthttp_traps.md #9)
+                // C8 (2026-05-11) — removed (toxic): "If-Modified-Since": "[HTTP_DATE]", → 304+0B okhttp EOF
+                // C8 (2026-05-11) — removed (toxic): "Range": "bytes=0-,bytes=0-2097152,bytes=0-1048576,bytes=0-524288",
                 "Origin": "https://iptv-ape.duckdns.org,https://localhost,null",
                 "Referer": "https://iptv-ape.duckdns.org/,https://localhost/,https://iptv-ape.duckdns.org/player",
                 "X-Requested-With": "XMLHttpRequest,com.android.chrome,tv.ottnavigator",
@@ -719,7 +732,7 @@
                 "X-Request-Id": "[GENERATE_UUID]",
                 "X-Stream-Type": "hls,dash,cmaf,smooth,progressive",
                 "X-Quality-Preference": "codec-av1,profile-main-12,main-10,main,tier-high;codec-hevc,main-12,main-10,high;codec-vp9,profile-2,profile-0",
-                "Priority": "u=0,i,u=1,i,u=2,u=3",
+                // C8 (2026-05-11) — removed (toxic): "Priority": "u=0,i,u=1,i,u=2,u=3", → HTTP/3 priority over /1.1
                 "X-Playback-Rate": "1.0,1.25,0.75,1.5",
                 "X-Segment-Duration": "1,2,4,6",
                 "X-Min-Buffer-Time": "1,2,4,6",
@@ -842,7 +855,7 @@
                 "X-APE-VVC-ENABLED": "AUTO,DISABLED,FALSE,OFF",
                 "X-APE-EVC-ENABLED": "AUTO,DISABLED,FALSE,OFF",
                 "X-APE-AV1-FALLBACK-ENABLED": "TRUE,AUTO,ENABLED,PREFERRED",
-                "X-APE-AV1-FALLBACK-CHAIN": "AV1>HEVC>VP9>H264>H264-BASELINE>MPEG2",
+                "X-APE-AV1-FALLBACK-CHAIN": "HEVC-MAIN10>HEVC-MAIN>H264-HIGH>H264-MAIN>H264-BASELINE",
                 "X-APE-PLAYER-ENSLAVEMENT-PROTOCOL": "STANDARD,COMPATIBILITY,SAFE,AUTO",
                 "X-APE-PLAYER-ENSLAVEMENT-OVERRIDE-CODEC": "AUTO,FALSE,DISABLED,OFF",
                 "X-APE-RESILIENCE-L1-FORMAT": "CMAF,HLS_FMP4,HLS_TS,MPEG_TS",
@@ -938,7 +951,12 @@
                 "bufferSeconds": 20,
                 "focus": "MAXIMA_CALIDAD_4K_HDR10PLUS_SIN_CORTES",
                 "hdr_canonical": "hdr10+",
-                "nits_target": 1500
+                "nits_target": 8000,
+                "codec_chain_video": "hvc1.2.4.L153.B0,hev1.2.4.L153.B0,hvc1.1.6.L150.B0,av01.0.12M.10.0.110.09.16.09.0,avc1.640033,avc1.640028",
+                "codec_chain_audio": "ec-3,ac-3,mp4a.40.2,mp4a.40.5",
+                "codec_chain_hdr": "hdr10+,hdr10,hlg,sdr",
+                "codec_chain_player_pref": "hvc1,hev1,h265,av1,avc1,h264",
+                "codec_chain_video_family": "HEVC-MAIN10>HEVC-MAIN>AV1>H264-HIGH>H264-MAIN"
             },
             "vlcopt": {
                 "network-caching": "20000",
@@ -1018,7 +1036,7 @@
                 "X-Max-Reconnect-Attempts": "UNLIMITED",
                 "X-Reconnect-Delay-Ms": "60,100,150",
                 "X-Buffer-Underrun-Strategy": "aggressive-refill,adaptive-refill,conservative-refill",
-                "Accept-Encoding": "gzip, deflate, br",
+                "Accept-Encoding": "identity",
                 "Accept": "application/vnd.apple.mpegurl, application/x-mpegurl, application/x-m3u8, audio/mpegurl, application/octet-stream, */*",
                 "Sec-Fetch-Dest": "media,video,audio,empty",
                 "Cache-Control": "no-cache,no-store,max-age=0,max-stale=0",
@@ -1063,7 +1081,7 @@
                 "X-Hardware-Decode": "true,adaptive,false",
                 "X-Tunneling-Enabled": "off",
                 "X-Catchup-Support": "flussonic-ultra,timeshift,archive",
-                "Priority": "u=0, i",
+                // C8 (2026-05-11) — removed (toxic): "Priority": "u=0, i", → RFC 9218 HTTP/3 over HTTP/1.1 confuses Xtream parsers
                 "X-Playback-Rate": "1.0,1.25,1.5",
                 "X-Segment-Duration": "1,2,4,6",
                 "X-Min-Buffer-Time": "10",
@@ -1078,8 +1096,8 @@
                 "Sec-Fetch-User": "?1,?0",
                 "DNT": "1,0",
                 "Sec-GPC": "1,0",
-                "Upgrade-Insecure-Requests": "1,0",
-                "TE": "trailers,chunked,compress,deflate",
+                // C8 (2026-05-11) — removed (toxic): "Upgrade-Insecure-Requests": "1,0", → HTTPS redirect risk
+                // C8 (2026-05-11) — removed (toxic): "TE": "trailers,chunked,compress,deflate", → okhttp legacy trailer EOF
                 "User-Agent": "Mozilla/5.0 (SMART-TV; webOS 24; LG OLED C4) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 LGBROWSER/24.0",
                 "X-Audio-Codecs": "opus,aac,eac3,ac3,dolby,dts,mp3",
                 "X-DRM-Support": "widevine,playready,fairplay,clearkey",
@@ -1097,9 +1115,9 @@
                 "Sec-CH-UA-Bitness": "64",
                 "Sec-CH-UA-Model": "\"\"",
                 "Pragma": "no-cache,no-store",
-                "Range": "bytes=0-",
-                "If-None-Match": "*",
-                "If-Modified-Since": "[HTTP_DATE]",
+                // C8 (2026-05-11) — removed (toxic): "Range": "bytes=0-", → m3u8 manifest is not byte-rangeable
+                // C8 (2026-05-11) — removed (toxic): "If-None-Match": "*", → 304+0B okhttp EOF (feedback_exthttp_traps.md #9)
+                // C8 (2026-05-11) — removed (toxic): "If-Modified-Since": "[HTTP_DATE]", → 304+0B okhttp EOF
                 "X-Requested-With": "XMLHttpRequest,fetch,null",
                 "X-App-Version": "APE_10.2_ULTIMATE_HDR",
                 "X-Playback-Session-Id": "[CONFIG_SESSION_ID]",
@@ -1191,7 +1209,7 @@
                 "X-APE-RESILIENCE-HTTP-ERROR-429": "SWARM_EVASION,BACKOFF,RETRY",
                 "X-APE-RESILIENCE-HTTP-ERROR-500": "RECONNECT_SILENT,RETRY,FALLBACK",
                 "X-APE-AV1-FALLBACK-ENABLED": "TRUE,ADAPTIVE,FALSE",
-                "X-APE-AV1-FALLBACK-CHAIN": "AV1>HEVC>VP9>H264>H264-BASELINE>MPEG2",
+                "X-APE-AV1-FALLBACK-CHAIN": "HEVC-MAIN10>HEVC-MAIN>H264-HIGH>H264-MAIN>H264-BASELINE",
                 "X-APE-ISP-THROTTLE-ESCALATION-POLICY": "NUCLEAR_ESCALATION_NEVER_DOWN,AGGRESSIVE_ESCALATION,ADAPTIVE_ESCALATION,DEFAULT",
                 "X-APE-ANTI-CUT-ENGINE": "ENABLED,ADAPTIVE,DISABLED",
                 "X-APE-ANTI-CUT-DETECTION": "REAL_TIME,PREDICTIVE,REACTIVE",
@@ -1310,12 +1328,12 @@
             "headers": {
                 "User-Agent": "Mozilla/5.0 (SMART-TV; Linux; Tizen 8.0) AppleWebKit/538.1 (KHTML, like Gecko) SamsungBrowser/2.3 TV Safari/538.1,Mozilla/5.0 (Linux; Android 14; SHIELD Android TV) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Mobile Safari/537.36,Mozilla/5.0 (Linux; Android 13; BRAVIA 4K GB ATV3) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36,Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36",
                 "Accept": "application/vnd.apple.mpegurl,application/x-mpegurl,application/x-m3u8,video/mp4,audio/aac,audio/mpeg,application/octet-stream,*/*",
-                "Accept-Encoding": "gzip,deflate,br,identity",
+                "Accept-Encoding": "identity",
                 "Accept-Language": "es-ES,es;q=0.9,en-US;q=0.8,en;q=0.7,*;q=0.5",
                 "Accept-Charset": "utf-8,iso-8859-1;q=0.5,*;q=0.1",
                 "Sec-CH-UA": "\"Google Chrome\";v=\"134\",\"Chromium\";v=\"134\",\"Not-A.Brand\";v=\"99\",\"Samsung Internet\";v=\"23\"",
-                "Sec-CH-UA-Mobile": "?0,?1",
-                "Sec-CH-UA-Platform": "\"SmartTV\",\"Android\",\"Windows\",\"Linux\"",
+                "Sec-CH-UA-Mobile": "?0",
+                "Sec-CH-UA-Platform": "\"SmartTV\"",
                 "Sec-CH-UA-Full-Version-List": "\"Google Chrome\";v=\"134.0.6998.89\",\"Samsung Internet\";v=\"23.0.1.1\",\"Chromium\";v=\"134.0.6998.89\"",
                 "Sec-CH-UA-Arch": "x86,arm64,arm",
                 "Sec-CH-UA-Bitness": "64,32",
@@ -1329,13 +1347,13 @@
                 "Sec-Fetch-User": "?0,?1",
                 "DNT": "0",
                 "Sec-GPC": "0",
-                "Upgrade-Insecure-Requests": "0",
-                "TE": "trailers",
+                // C8 (2026-05-11) — removed (toxic): "Upgrade-Insecure-Requests": "0", → forces HTTPS redirect on HTTP-only providers
+                // C8 (2026-05-11) — removed (toxic): "TE": "trailers", → com.android.okhttp legacy does not support RFC 7230 trailers
                 "Cache-Control": "no-cache,max-age=0,must-revalidate,no-store",
                 "Pragma": "no-cache",
-                "If-None-Match": "*",
-                "If-Modified-Since": "[HTTP_DATE]",
-                "Range": "bytes=0-,bytes=0-2097152,bytes=0-1048576,bytes=0-524288",
+                // C8 (2026-05-11) — removed (toxic): "If-None-Match": "*", → 304+0B okhttp EOF (feedback_exthttp_traps.md #9)
+                // C8 (2026-05-11) — removed (toxic): "If-Modified-Since": "[HTTP_DATE]", → 304+0B okhttp EOF
+                // C8 (2026-05-11) — removed (toxic): "Range": "bytes=0-,bytes=0-2097152,bytes=0-1048576,bytes=0-524288",
                 "Origin": "https://iptv-ape.duckdns.org,https://localhost,null",
                 "Referer": "https://iptv-ape.duckdns.org/,https://localhost/,https://iptv-ape.duckdns.org/player",
                 "X-Requested-With": "XMLHttpRequest,com.android.chrome,tv.ottnavigator",
@@ -1346,7 +1364,7 @@
                 "X-Request-Id": "[GENERATE_UUID]",
                 "X-Stream-Type": "hls,dash,cmaf,smooth,progressive",
                 "X-Quality-Preference": "codec-av1,profile-main-10,main,tier-high;codec-hevc,main-10,main,high;codec-vp9,profile-2,profile-0",
-                "Priority": "u=0,i,u=1,i,u=2,u=3",
+                // C8 (2026-05-11) — removed (toxic): "Priority": "u=0,i,u=1,i,u=2,u=3", → HTTP/3 priority over /1.1
                 "X-Playback-Rate": "1.0,1.25,0.75,1.5",
                 "X-Segment-Duration": "1,2,4,6",
                 "X-Min-Buffer-Time": "1,2,4,6",
@@ -1469,7 +1487,7 @@
                 "X-APE-VVC-ENABLED": "AUTO,DISABLED,FALSE,OFF",
                 "X-APE-EVC-ENABLED": "AUTO,DISABLED,FALSE,OFF",
                 "X-APE-AV1-FALLBACK-ENABLED": "TRUE,AUTO,ENABLED,PREFERRED",
-                "X-APE-AV1-FALLBACK-CHAIN": "AV1>HEVC>VP9>H264>H264-BASELINE>MPEG2",
+                "X-APE-AV1-FALLBACK-CHAIN": "HEVC-MAIN10>HEVC-MAIN>H264-HIGH>H264-MAIN>H264-BASELINE",
                 "X-APE-PLAYER-ENSLAVEMENT-PROTOCOL": "STANDARD,COMPATIBILITY,SAFE,AUTO",
                 "X-APE-PLAYER-ENSLAVEMENT-OVERRIDE-CODEC": "AUTO,FALSE,DISABLED,OFF",
                 "X-APE-RESILIENCE-L1-FORMAT": "CMAF,HLS_FMP4,HLS_TS,MPEG_TS",
@@ -1565,7 +1583,12 @@
                 "bufferSeconds": 15,
                 "focus": "MAXIMA_CALIDAD_8K_HDR_CARGA_ULTRARAPIDA_SIN_CORTES",
                 "hdr_canonical": "hdr10",
-                "nits_target": 1000
+                "nits_target": 8000,
+                "codec_chain_video": "hvc1.2.4.L153.B0,hev1.2.4.L153.B0,hvc1.1.6.L150.B0,avc1.640033,avc1.640028",
+                "codec_chain_audio": "ec-3,ac-3,mp4a.40.2,mp4a.40.5",
+                "codec_chain_hdr": "hdr10,hlg,sdr",
+                "codec_chain_player_pref": "hvc1,hev1,h265,avc1,h264",
+                "codec_chain_video_family": "HEVC-MAIN10>HEVC-MAIN>H264-HIGH>H264-MAIN"
             },
             "vlcopt": {
                 "network-caching": "15000",
@@ -1646,7 +1669,7 @@
                 "X-Max-Reconnect-Attempts": "40",
                 "X-Reconnect-Delay-Ms": "50,100,200",
                 "X-Buffer-Underrun-Strategy": "aggressive-refill",
-                "Accept-Encoding": "gzip, deflate",
+                "Accept-Encoding": "identity",
                 "Accept": "application/vnd.apple.mpegurl, application/x-mpegurl, application/x-m3u8, audio/mpegurl, application/octet-stream, */*",
                 "Sec-Fetch-Dest": "media",
                 "Cache-Control": "no-cache",
@@ -1672,12 +1695,12 @@
                 "Sec-Fetch-User": "?0",
                 "DNT": "0",
                 "Sec-GPC": "0",
-                "Upgrade-Insecure-Requests": "0",
-                "TE": "trailers",
+                // C8 (2026-05-11) — removed (toxic): "Upgrade-Insecure-Requests": "0", → forces HTTPS redirect on HTTP-only providers
+                // C8 (2026-05-11) — removed (toxic): "TE": "trailers", → com.android.okhttp legacy does not support RFC 7230 trailers
                 "Pragma": "no-cache",
-                "Range": "bytes=0-",
-                "If-None-Match": "*",
-                "If-Modified-Since": "[HTTP_DATE]",
+                // C8 (2026-05-11) — removed (toxic): "Range": "bytes=0-", → m3u8 manifest is not byte-rangeable
+                // C8 (2026-05-11) — removed (toxic): "If-None-Match": "*", → 304+0B okhttp EOF (feedback_exthttp_traps.md #9)
+                // C8 (2026-05-11) — removed (toxic): "If-Modified-Since": "[HTTP_DATE]", → 304+0B okhttp EOF
                 "Origin": "https://iptv-ape.duckdns.org",
                 "Referer": "https://iptv-ape.duckdns.org/",
                 "X-Requested-With": "XMLHttpRequest",
@@ -1685,7 +1708,7 @@
                 "X-Playback-Session-Id": "[CONFIG_SESSION_ID]",
                 "X-Device-Id": "[GENERATE_UUID]",
                 "X-Stream-Type": "hls,dash",
-                "Priority": "u=0, i",
+                // C8 (2026-05-11) — removed (toxic): "Priority": "u=0, i", → RFC 9218 HTTP/3 over HTTP/1.1 confuses Xtream parsers
                 "X-Playback-Rate": "1.0,1.25,1.5",
                 "X-Segment-Duration": "1,2,4",
                 "X-Min-Buffer-Time": "10",
@@ -1797,12 +1820,12 @@
             "headers": {
                 "User-Agent": "Mozilla/5.0 (SMART-TV; Linux; Tizen 8.0) AppleWebKit/538.1 (KHTML, like Gecko) SamsungBrowser/2.3 TV Safari/538.1,Mozilla/5.0 (Linux; Android 14; SHIELD Android TV) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Mobile Safari/537.36,Mozilla/5.0 (Linux; Android 13; BRAVIA 4K GB ATV3) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36,Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36",
                 "Accept": "application/vnd.apple.mpegurl,application/x-mpegurl,application/x-m3u8,video/mp4,audio/aac,audio/mpeg,application/octet-stream,*/*",
-                "Accept-Encoding": "gzip,deflate,br,identity",
+                "Accept-Encoding": "identity",
                 "Accept-Language": "es-ES,es;q=0.9,en-US;q=0.8,en;q=0.7,*;q=0.5",
                 "Accept-Charset": "utf-8,iso-8859-1;q=0.5,*;q=0.1",
                 "Sec-CH-UA": "\"Google Chrome\";v=\"134\",\"Chromium\";v=\"134\",\"Not-A.Brand\";v=\"99\",\"Samsung Internet\";v=\"23\"",
-                "Sec-CH-UA-Mobile": "?0,?1",
-                "Sec-CH-UA-Platform": "\"SmartTV\",\"Android\",\"Windows\",\"Linux\"",
+                "Sec-CH-UA-Mobile": "?0",
+                "Sec-CH-UA-Platform": "\"SmartTV\"",
                 "Sec-CH-UA-Full-Version-List": "\"Google Chrome\";v=\"134.0.6998.89\",\"Samsung Internet\";v=\"23.0.1.1\",\"Chromium\";v=\"134.0.6998.89\"",
                 "Sec-CH-UA-Arch": "x86,arm64,arm",
                 "Sec-CH-UA-Bitness": "64,32",
@@ -1816,13 +1839,13 @@
                 "Sec-Fetch-User": "?0,?1",
                 "DNT": "0",
                 "Sec-GPC": "0",
-                "Upgrade-Insecure-Requests": "0",
-                "TE": "trailers",
+                // C8 (2026-05-11) — removed (toxic): "Upgrade-Insecure-Requests": "0", → forces HTTPS redirect on HTTP-only providers
+                // C8 (2026-05-11) — removed (toxic): "TE": "trailers", → com.android.okhttp legacy does not support RFC 7230 trailers
                 "Cache-Control": "no-cache,max-age=0,must-revalidate,no-store",
                 "Pragma": "no-cache",
-                "If-None-Match": "*",
-                "If-Modified-Since": "[HTTP_DATE]",
-                "Range": "bytes=0-,bytes=0-2097152,bytes=0-1048576,bytes=0-524288",
+                // C8 (2026-05-11) — removed (toxic): "If-None-Match": "*", → 304+0B okhttp EOF (feedback_exthttp_traps.md #9)
+                // C8 (2026-05-11) — removed (toxic): "If-Modified-Since": "[HTTP_DATE]", → 304+0B okhttp EOF
+                // C8 (2026-05-11) — removed (toxic): "Range": "bytes=0-,bytes=0-2097152,bytes=0-1048576,bytes=0-524288",
                 "Origin": "https://iptv-ape.duckdns.org,https://localhost,null",
                 "Referer": "https://iptv-ape.duckdns.org/,https://localhost/,https://iptv-ape.duckdns.org/player",
                 "X-Requested-With": "XMLHttpRequest,com.android.chrome,tv.ottnavigator",
@@ -1833,7 +1856,7 @@
                 "X-Request-Id": "[GENERATE_UUID]",
                 "X-Stream-Type": "hls,dash,cmaf,smooth,progressive",
                 "X-Quality-Preference": "codec-hevc,profile-main-10,main,tier-high;codec-av1,main-10;codec-vp9,profile-2",
-                "Priority": "u=0,i,u=1,i,u=2,u=3",
+                // C8 (2026-05-11) — removed (toxic): "Priority": "u=0,i,u=1,i,u=2,u=3", → HTTP/3 priority over /1.1
                 "X-Playback-Rate": "1.0,1.25,0.75,1.5",
                 "X-Segment-Duration": "1,2,4,6",
                 "X-Min-Buffer-Time": "1,2,4,6",
@@ -1956,7 +1979,7 @@
                 "X-APE-VVC-ENABLED": "AUTO,DISABLED,FALSE,OFF",
                 "X-APE-EVC-ENABLED": "AUTO,DISABLED,FALSE,OFF",
                 "X-APE-AV1-FALLBACK-ENABLED": "TRUE,AUTO,ENABLED,PREFERRED",
-                "X-APE-AV1-FALLBACK-CHAIN": "AV1>HEVC>VP9>H264>H264-BASELINE>MPEG2",
+                "X-APE-AV1-FALLBACK-CHAIN": "HEVC-MAIN10>HEVC-MAIN>H264-HIGH>H264-MAIN>H264-BASELINE",
                 "X-APE-PLAYER-ENSLAVEMENT-PROTOCOL": "STANDARD,COMPATIBILITY,SAFE,AUTO",
                 "X-APE-PLAYER-ENSLAVEMENT-OVERRIDE-CODEC": "AUTO,FALSE,DISABLED,OFF",
                 "X-APE-RESILIENCE-L1-FORMAT": "CMAF,HLS_FMP4,HLS_TS,MPEG_TS",
@@ -2052,7 +2075,12 @@
                 "bufferSeconds": 12,
                 "focus": "ULTRA_1080P_HDR10_CARGA_RAPIDA_SIN_CORTES",
                 "hdr_canonical": "hlg",
-                "nits_target": 400
+                "nits_target": 8000,
+                "codec_chain_video": "hvc1.1.6.L120.B0,hev1.1.6.L120.B0,hvc1.2.4.L120.B0,avc1.640028,avc1.4D401F",
+                "codec_chain_audio": "mp4a.40.2,mp4a.40.5,mp4a.40.29",
+                "codec_chain_hdr": "hlg,sdr",
+                "codec_chain_player_pref": "hvc1,hev1,h265,avc1,h264",
+                "codec_chain_video_family": "HEVC-MAIN>HEVC-MAIN10>H264-HIGH>H264-MAIN"
             },
             "vlcopt": {
                 "network-caching": "12000",
@@ -2149,7 +2177,7 @@
                 "X-Max-Reconnect-Attempts": "UNLIMITED",
                 "X-Reconnect-Delay-Ms": "80,120,200",
                 "X-Buffer-Underrun-Strategy": "aggressive-refill,adaptive-refill,conservative-refill",
-                "Accept-Encoding": "gzip, deflate, br",
+                "Accept-Encoding": "identity",
                 "Accept": "application/vnd.apple.mpegurl, application/x-mpegurl, application/x-m3u8, audio/mpegurl, application/octet-stream, */*",
                 "Sec-Fetch-Dest": "media,video,audio,empty",
                 "Cache-Control": "no-cache,no-store,max-age=0,max-stale=0",
@@ -2172,12 +2200,12 @@
                 "Sec-Fetch-User": "?1,?0",
                 "DNT": "1,0",
                 "Sec-GPC": "1,0",
-                "Upgrade-Insecure-Requests": "1,0",
-                "TE": "trailers,chunked,compress,deflate",
+                // C8 (2026-05-11) — removed (toxic): "Upgrade-Insecure-Requests": "1,0", → HTTPS redirect risk
+                // C8 (2026-05-11) — removed (toxic): "TE": "trailers,chunked,compress,deflate", → okhttp legacy trailer EOF
                 "Pragma": "no-cache,no-store",
-                "Range": "bytes=0-",
-                "If-None-Match": "*",
-                "If-Modified-Since": "[HTTP_DATE]",
+                // C8 (2026-05-11) — removed (toxic): "Range": "bytes=0-", → m3u8 manifest is not byte-rangeable
+                // C8 (2026-05-11) — removed (toxic): "If-None-Match": "*", → 304+0B okhttp EOF (feedback_exthttp_traps.md #9)
+                // C8 (2026-05-11) — removed (toxic): "If-Modified-Since": "[HTTP_DATE]", → 304+0B okhttp EOF
                 "Origin": "https://iptv-ape.duckdns.org",
                 "Referer": "https://iptv-ape.duckdns.org/",
                 "X-Requested-With": "XMLHttpRequest,fetch,null",
@@ -2185,7 +2213,7 @@
                 "X-Playback-Session-Id": "[CONFIG_SESSION_ID]",
                 "X-Device-Id": "[GENERATE_UUID]",
                 "X-Stream-Type": "hls,cmaf,dash",
-                "Priority": "u=0, i",
+                // C8 (2026-05-11) — removed (toxic): "Priority": "u=0, i", → RFC 9218 HTTP/3 over HTTP/1.1 confuses Xtream parsers
                 "X-Playback-Rate": "1.0,1.25,1.5",
                 "X-Min-Buffer-Time": "10",
                 "X-Max-Buffer-Time": "54",
@@ -2304,7 +2332,7 @@
                 "X-APE-RESILIENCE-HTTP-ERROR-429": "SWARM_EVASION,BACKOFF,RETRY",
                 "X-APE-RESILIENCE-HTTP-ERROR-500": "RECONNECT_SILENT,RETRY,FALLBACK",
                 "X-APE-AV1-FALLBACK-ENABLED": "TRUE,ADAPTIVE,FALSE",
-                "X-APE-AV1-FALLBACK-CHAIN": "AV1>HEVC>VP9>H264>H264-BASELINE>MPEG2",
+                "X-APE-AV1-FALLBACK-CHAIN": "HEVC-MAIN10>HEVC-MAIN>H264-HIGH>H264-MAIN>H264-BASELINE",
                 "X-APE-ISP-THROTTLE-ESCALATION-POLICY": "NUCLEAR_ESCALATION_NEVER_DOWN,AGGRESSIVE_ESCALATION,ADAPTIVE_ESCALATION,DEFAULT",
                 "X-APE-ANTI-CUT-ENGINE": "ENABLED,ADAPTIVE,DISABLED",
                 "X-APE-ANTI-CUT-DETECTION": "REAL_TIME,PREDICTIVE,REACTIVE",
@@ -2424,12 +2452,12 @@
             "headers": {
                 "User-Agent": "Mozilla/5.0 (SMART-TV; Linux; Tizen 8.0) AppleWebKit/538.1 (KHTML, like Gecko) SamsungBrowser/2.3 TV Safari/538.1,Mozilla/5.0 (Linux; Android 14; SHIELD Android TV) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Mobile Safari/537.36,Mozilla/5.0 (Linux; Android 13; BRAVIA 4K GB ATV3) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36,Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36",
                 "Accept": "application/vnd.apple.mpegurl,application/x-mpegurl,application/x-m3u8,video/mp4,audio/aac,audio/mpeg,application/octet-stream,*/*",
-                "Accept-Encoding": "gzip,deflate,br,identity",
+                "Accept-Encoding": "identity",
                 "Accept-Language": "es-ES,es;q=0.9,en-US;q=0.8,en;q=0.7,*;q=0.5",
                 "Accept-Charset": "utf-8,iso-8859-1;q=0.5,*;q=0.1",
                 "Sec-CH-UA": "\"Google Chrome\";v=\"134\",\"Chromium\";v=\"134\",\"Not-A.Brand\";v=\"99\",\"Samsung Internet\";v=\"23\"",
-                "Sec-CH-UA-Mobile": "?0,?1",
-                "Sec-CH-UA-Platform": "\"SmartTV\",\"Android\",\"Windows\",\"Linux\"",
+                "Sec-CH-UA-Mobile": "?0",
+                "Sec-CH-UA-Platform": "\"SmartTV\"",
                 "Sec-CH-UA-Full-Version-List": "\"Google Chrome\";v=\"134.0.6998.89\",\"Samsung Internet\";v=\"23.0.1.1\",\"Chromium\";v=\"134.0.6998.89\"",
                 "Sec-CH-UA-Arch": "x86,arm64,arm",
                 "Sec-CH-UA-Bitness": "64,32",
@@ -2443,13 +2471,13 @@
                 "Sec-Fetch-User": "?0,?1",
                 "DNT": "0",
                 "Sec-GPC": "0",
-                "Upgrade-Insecure-Requests": "0",
-                "TE": "trailers",
+                // C8 (2026-05-11) — removed (toxic): "Upgrade-Insecure-Requests": "0", → forces HTTPS redirect on HTTP-only providers
+                // C8 (2026-05-11) — removed (toxic): "TE": "trailers", → com.android.okhttp legacy does not support RFC 7230 trailers
                 "Cache-Control": "no-cache,max-age=0,must-revalidate,no-store",
                 "Pragma": "no-cache",
-                "If-None-Match": "*",
-                "If-Modified-Since": "[HTTP_DATE]",
-                "Range": "bytes=0-,bytes=0-2097152,bytes=0-1048576,bytes=0-524288",
+                // C8 (2026-05-11) — removed (toxic): "If-None-Match": "*", → 304+0B okhttp EOF (feedback_exthttp_traps.md #9)
+                // C8 (2026-05-11) — removed (toxic): "If-Modified-Since": "[HTTP_DATE]", → 304+0B okhttp EOF
+                // C8 (2026-05-11) — removed (toxic): "Range": "bytes=0-,bytes=0-2097152,bytes=0-1048576,bytes=0-524288",
                 "Origin": "https://iptv-ape.duckdns.org,https://localhost,null",
                 "Referer": "https://iptv-ape.duckdns.org/,https://localhost/,https://iptv-ape.duckdns.org/player",
                 "X-Requested-With": "XMLHttpRequest,com.android.chrome,tv.ottnavigator",
@@ -2460,7 +2488,7 @@
                 "X-Request-Id": "[GENERATE_UUID]",
                 "X-Stream-Type": "hls,dash,cmaf,smooth,progressive",
                 "X-Quality-Preference": "codec-hevc,profile-main-10,main;codec-h264,high,main;codec-av1,main",
-                "Priority": "u=0,i,u=1,i,u=2,u=3",
+                // C8 (2026-05-11) — removed (toxic): "Priority": "u=0,i,u=1,i,u=2,u=3", → HTTP/3 priority over /1.1
                 "X-Playback-Rate": "1.0,1.25,0.75,1.5",
                 "X-Segment-Duration": "2,4,6,8",
                 "X-Min-Buffer-Time": "2,4,6,8",
@@ -2583,7 +2611,7 @@
                 "X-APE-VVC-ENABLED": "AUTO,DISABLED,FALSE,OFF",
                 "X-APE-EVC-ENABLED": "AUTO,DISABLED,FALSE,OFF",
                 "X-APE-AV1-FALLBACK-ENABLED": "TRUE,AUTO,ENABLED,PREFERRED",
-                "X-APE-AV1-FALLBACK-CHAIN": "AV1>HEVC>VP9>H264>H264-BASELINE>MPEG2",
+                "X-APE-AV1-FALLBACK-CHAIN": "HEVC-MAIN10>HEVC-MAIN>H264-HIGH>H264-MAIN>H264-BASELINE",
                 "X-APE-PLAYER-ENSLAVEMENT-PROTOCOL": "STANDARD,COMPATIBILITY,SAFE,AUTO",
                 "X-APE-PLAYER-ENSLAVEMENT-OVERRIDE-CODEC": "AUTO,FALSE,DISABLED,OFF",
                 "X-APE-RESILIENCE-L1-FORMAT": "CMAF,HLS_FMP4,HLS_TS,MPEG_TS",
@@ -2679,7 +2707,12 @@
                 "bufferSeconds": 10,
                 "focus": "HIGH_720P_BALANCEADO_SIN_CORTES",
                 "hdr_canonical": "sdr",
-                "nits_target": 100
+                "nits_target": 8000,
+                "codec_chain_video": "hvc1.1.6.L93.B0,hev1.1.6.L93.B0,avc1.640020,avc1.4D401F,avc1.42E01F",
+                "codec_chain_audio": "mp4a.40.2,mp4a.40.5,mp4a.40.29",
+                "codec_chain_hdr": "sdr",
+                "codec_chain_player_pref": "hvc1,hev1,h265,avc1,h264",
+                "codec_chain_video_family": "HEVC-MAIN-HD>H264-HIGH>H264-MAIN>H264-BASELINE"
             },
             "vlcopt": {
                 "network-caching": "10000",
@@ -2778,7 +2811,7 @@
                 "X-Parallel-Segments": "4,6,8",
                 "X-Reconnect-Delay-Ms": "100,150,250",
                 "X-Buffer-Underrun-Strategy": "aggressive-refill,adaptive-refill,conservative-refill",
-                "Accept-Encoding": "gzip, deflate, br",
+                "Accept-Encoding": "identity",
                 "Accept": "application/vnd.apple.mpegurl, application/x-mpegurl, application/x-m3u8, audio/mpegurl, application/octet-stream, */*",
                 "Sec-Fetch-Dest": "media,video,audio,empty",
                 "Cache-Control": "no-cache,no-store,max-age=0,max-stale=0",
@@ -2802,18 +2835,18 @@
                 "Sec-Fetch-User": "?1,?0",
                 "DNT": "1,0",
                 "Sec-GPC": "1,0",
-                "Upgrade-Insecure-Requests": "1,0",
-                "TE": "trailers,chunked,compress,deflate",
+                // C8 (2026-05-11) — removed (toxic): "Upgrade-Insecure-Requests": "1,0", → HTTPS redirect risk
+                // C8 (2026-05-11) — removed (toxic): "TE": "trailers,chunked,compress,deflate", → okhttp legacy trailer EOF
                 "Pragma": "no-cache,no-store",
-                "Range": "bytes=0-",
-                "If-None-Match": "*",
-                "If-Modified-Since": "[HTTP_DATE]",
+                // C8 (2026-05-11) — removed (toxic): "Range": "bytes=0-", → m3u8 manifest is not byte-rangeable
+                // C8 (2026-05-11) — removed (toxic): "If-None-Match": "*", → 304+0B okhttp EOF (feedback_exthttp_traps.md #9)
+                // C8 (2026-05-11) — removed (toxic): "If-Modified-Since": "[HTTP_DATE]", → 304+0B okhttp EOF
                 "X-Requested-With": "XMLHttpRequest,fetch,null",
                 "X-App-Version": "APE_10.2_ULTIMATE_HDR",
                 "X-Playback-Session-Id": "[CONFIG_SESSION_ID]",
                 "X-Device-Id": "[GENERATE_UUID]",
                 "X-Stream-Type": "hls,cmaf,dash",
-                "Priority": "u=0, i",
+                // C8 (2026-05-11) — removed (toxic): "Priority": "u=0, i", → RFC 9218 HTTP/3 over HTTP/1.1 confuses Xtream parsers
                 "X-Playback-Rate": "1.0,1.25,1.5",
                 "X-Max-Buffer-Time": "54",
                 "X-Request-Priority": "medium",
@@ -2930,7 +2963,7 @@
                 "X-APE-RESILIENCE-HTTP-ERROR-429": "SWARM_EVASION,BACKOFF,RETRY",
                 "X-APE-RESILIENCE-HTTP-ERROR-500": "RECONNECT_SILENT,RETRY,FALLBACK",
                 "X-APE-AV1-FALLBACK-ENABLED": "TRUE,ADAPTIVE,FALSE",
-                "X-APE-AV1-FALLBACK-CHAIN": "AV1>HEVC>VP9>H264>H264-BASELINE>MPEG2",
+                "X-APE-AV1-FALLBACK-CHAIN": "HEVC-MAIN10>HEVC-MAIN>H264-HIGH>H264-MAIN>H264-BASELINE",
                 "X-APE-ISP-THROTTLE-ESCALATION-POLICY": "NUCLEAR_ESCALATION_NEVER_DOWN,AGGRESSIVE_ESCALATION,ADAPTIVE_ESCALATION,DEFAULT",
                 "X-APE-ANTI-CUT-ENGINE": "ENABLED,ADAPTIVE,DISABLED",
                 "X-APE-ANTI-CUT-DETECTION": "REAL_TIME,PREDICTIVE,REACTIVE",
@@ -3051,12 +3084,12 @@
             "headers": {
                 "User-Agent": "Mozilla/5.0 (SMART-TV; Linux; Tizen 8.0) AppleWebKit/538.1 (KHTML, like Gecko) SamsungBrowser/2.3 TV Safari/538.1,Mozilla/5.0 (Linux; Android 14; SHIELD Android TV) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Mobile Safari/537.36,Mozilla/5.0 (Linux; Android 13; BRAVIA 4K GB ATV3) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36,Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36",
                 "Accept": "application/vnd.apple.mpegurl,application/x-mpegurl,application/x-m3u8,video/mp4,audio/aac,audio/mpeg,application/octet-stream,*/*",
-                "Accept-Encoding": "gzip,deflate,br,identity",
+                "Accept-Encoding": "identity",
                 "Accept-Language": "es-ES,es;q=0.9,en-US;q=0.8,en;q=0.7,*;q=0.5",
                 "Accept-Charset": "utf-8,iso-8859-1;q=0.5,*;q=0.1",
                 "Sec-CH-UA": "\"Google Chrome\";v=\"134\",\"Chromium\";v=\"134\",\"Not-A.Brand\";v=\"99\",\"Samsung Internet\";v=\"23\"",
-                "Sec-CH-UA-Mobile": "?0,?1",
-                "Sec-CH-UA-Platform": "\"SmartTV\",\"Android\",\"Windows\",\"Linux\"",
+                "Sec-CH-UA-Mobile": "?0",
+                "Sec-CH-UA-Platform": "\"SmartTV\"",
                 "Sec-CH-UA-Full-Version-List": "\"Google Chrome\";v=\"134.0.6998.89\",\"Samsung Internet\";v=\"23.0.1.1\",\"Chromium\";v=\"134.0.6998.89\"",
                 "Sec-CH-UA-Arch": "x86,arm64,arm",
                 "Sec-CH-UA-Bitness": "64,32",
@@ -3070,13 +3103,13 @@
                 "Sec-Fetch-User": "?0,?1",
                 "DNT": "0",
                 "Sec-GPC": "0",
-                "Upgrade-Insecure-Requests": "0",
-                "TE": "trailers",
+                // C8 (2026-05-11) — removed (toxic): "Upgrade-Insecure-Requests": "0", → forces HTTPS redirect on HTTP-only providers
+                // C8 (2026-05-11) — removed (toxic): "TE": "trailers", → com.android.okhttp legacy does not support RFC 7230 trailers
                 "Cache-Control": "no-cache,max-age=0,must-revalidate,no-store",
                 "Pragma": "no-cache",
-                "If-None-Match": "*",
-                "If-Modified-Since": "[HTTP_DATE]",
-                "Range": "bytes=0-,bytes=0-2097152,bytes=0-1048576,bytes=0-524288",
+                // C8 (2026-05-11) — removed (toxic): "If-None-Match": "*", → 304+0B okhttp EOF (feedback_exthttp_traps.md #9)
+                // C8 (2026-05-11) — removed (toxic): "If-Modified-Since": "[HTTP_DATE]", → 304+0B okhttp EOF
+                // C8 (2026-05-11) — removed (toxic): "Range": "bytes=0-,bytes=0-2097152,bytes=0-1048576,bytes=0-524288",
                 "Origin": "https://iptv-ape.duckdns.org,https://localhost,null",
                 "Referer": "https://iptv-ape.duckdns.org/,https://localhost/,https://iptv-ape.duckdns.org/player",
                 "X-Requested-With": "XMLHttpRequest,com.android.chrome,tv.ottnavigator",
@@ -3087,7 +3120,7 @@
                 "X-Request-Id": "[GENERATE_UUID]",
                 "X-Stream-Type": "hls,dash,cmaf,smooth,progressive",
                 "X-Quality-Preference": "codec-h264,profile-high,main,baseline;codec-hevc,main-10,main",
-                "Priority": "u=0,i,u=1,i,u=2,u=3",
+                // C8 (2026-05-11) — removed (toxic): "Priority": "u=0,i,u=1,i,u=2,u=3", → HTTP/3 priority over /1.1
                 "X-Playback-Rate": "1.0,1.25,0.75,1.5",
                 "X-Segment-Duration": "2,4,6,8",
                 "X-Min-Buffer-Time": "2,4,6,8",
@@ -3210,7 +3243,7 @@
                 "X-APE-VVC-ENABLED": "AUTO,DISABLED,FALSE,OFF",
                 "X-APE-EVC-ENABLED": "AUTO,DISABLED,FALSE,OFF",
                 "X-APE-AV1-FALLBACK-ENABLED": "TRUE,AUTO,ENABLED,PREFERRED",
-                "X-APE-AV1-FALLBACK-CHAIN": "AV1>HEVC>VP9>H264>H264-BASELINE>MPEG2",
+                "X-APE-AV1-FALLBACK-CHAIN": "HEVC-MAIN10>HEVC-MAIN>H264-HIGH>H264-MAIN>H264-BASELINE",
                 "X-APE-PLAYER-ENSLAVEMENT-PROTOCOL": "STANDARD,COMPATIBILITY,SAFE,AUTO",
                 "X-APE-PLAYER-ENSLAVEMENT-OVERRIDE-CODEC": "AUTO,FALSE,DISABLED,OFF",
                 "X-APE-RESILIENCE-L1-FORMAT": "CMAF,HLS_FMP4,HLS_TS,MPEG_TS",
@@ -3306,7 +3339,12 @@
                 "bufferSeconds": 8,
                 "focus": "MAXIMA_CALIDAD_8K_HDR_CARGA_ULTRARAPIDA_SIN_CORTES",
                 "hdr_canonical": "sdr",
-                "nits_target": 100
+                "nits_target": 8000,
+                "codec_chain_video": "avc1.42E01E,avc1.42E00D,mp2v.2",
+                "codec_chain_audio": "mp4a.40.5,mp4a.40.29,mp4a.40.2",
+                "codec_chain_hdr": "sdr",
+                "codec_chain_player_pref": "avc1,h264",
+                "codec_chain_video_family": "H264-MAIN>H264-BASELINE>MPEG2"
             },
             "vlcopt": {
                 "network-caching": "8000",
@@ -3389,7 +3427,7 @@
                 "X-Max-Reconnect-Attempts": "10,12,15",
                 "X-Reconnect-Delay-Ms": "120,200,350",
                 "X-Buffer-Underrun-Strategy": "aggressive-refill,adaptive-refill,conservative-refill",
-                "Accept-Encoding": "gzip, deflate, br",
+                "Accept-Encoding": "identity",
                 "Accept": "application/vnd.apple.mpegurl, application/x-mpegurl, application/x-m3u8, audio/mpegurl, application/octet-stream, */*",
                 "Sec-Fetch-Dest": "media,video,audio,empty",
                 "Cache-Control": "no-cache,no-store,max-age=0,max-stale=0",
@@ -3421,12 +3459,12 @@
                 "Sec-Fetch-User": "?1,?0",
                 "DNT": "1,0",
                 "Sec-GPC": "1,0",
-                "Upgrade-Insecure-Requests": "1,0",
-                "TE": "trailers,chunked,compress,deflate",
+                // C8 (2026-05-11) — removed (toxic): "Upgrade-Insecure-Requests": "1,0", → HTTPS redirect risk
+                // C8 (2026-05-11) — removed (toxic): "TE": "trailers,chunked,compress,deflate", → okhttp legacy trailer EOF
                 "Pragma": "no-cache,no-store",
-                "Range": "bytes=0-",
-                "If-None-Match": "*",
-                "If-Modified-Since": "[HTTP_DATE]",
+                // C8 (2026-05-11) — removed (toxic): "Range": "bytes=0-", → m3u8 manifest is not byte-rangeable
+                // C8 (2026-05-11) — removed (toxic): "If-None-Match": "*", → 304+0B okhttp EOF (feedback_exthttp_traps.md #9)
+                // C8 (2026-05-11) — removed (toxic): "If-Modified-Since": "[HTTP_DATE]", → 304+0B okhttp EOF
                 "Origin": "https://iptv-ape.duckdns.org",
                 "Referer": "https://iptv-ape.duckdns.org/",
                 "X-Requested-With": "XMLHttpRequest,fetch,null",
@@ -3434,7 +3472,7 @@
                 "X-Playback-Session-Id": "[CONFIG_SESSION_ID]",
                 "X-Device-Id": "[GENERATE_UUID]",
                 "X-Stream-Type": "hls,cmaf,dash",
-                "Priority": "u=0, i",
+                // C8 (2026-05-11) — removed (toxic): "Priority": "u=0, i", → RFC 9218 HTTP/3 over HTTP/1.1 confuses Xtream parsers
                 "X-Playback-Rate": "1.0,1.25,1.5",
                 "X-Min-Buffer-Time": "10",
                 "X-Max-Buffer-Time": "54",
@@ -3557,7 +3595,7 @@
                 "X-APE-RESILIENCE-HTTP-ERROR-429": "SWARM_EVASION,BACKOFF,RETRY",
                 "X-APE-RESILIENCE-HTTP-ERROR-500": "RECONNECT_SILENT,RETRY,FALLBACK",
                 "X-APE-AV1-FALLBACK-ENABLED": "TRUE,ADAPTIVE,FALSE",
-                "X-APE-AV1-FALLBACK-CHAIN": "AV1>HEVC>VP9>H264>H264-BASELINE>MPEG2",
+                "X-APE-AV1-FALLBACK-CHAIN": "HEVC-MAIN10>HEVC-MAIN>H264-HIGH>H264-MAIN>H264-BASELINE",
                 "X-APE-ISP-THROTTLE-ESCALATION-POLICY": "NUCLEAR_ESCALATION_NEVER_DOWN,AGGRESSIVE_ESCALATION,ADAPTIVE_ESCALATION,DEFAULT",
                 "X-APE-ANTI-CUT-ENGINE": "ENABLED,ADAPTIVE,DISABLED",
                 "X-APE-ANTI-CUT-DETECTION": "REAL_TIME,PREDICTIVE,REACTIVE",
@@ -3680,12 +3718,12 @@
             "headers": {
                 "User-Agent": "Mozilla/5.0 (SMART-TV; Linux; Tizen 8.0) AppleWebKit/538.1 (KHTML, like Gecko) SamsungBrowser/2.3 TV Safari/538.1,Mozilla/5.0 (Linux; Android 14; SHIELD Android TV) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Mobile Safari/537.36,Mozilla/5.0 (Linux; Android 13; BRAVIA 4K GB ATV3) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36,Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36",
                 "Accept": "application/vnd.apple.mpegurl,application/x-mpegurl,application/x-m3u8,video/mp4,audio/aac,audio/mpeg,application/octet-stream,*/*",
-                "Accept-Encoding": "gzip,deflate,br,identity",
+                "Accept-Encoding": "identity",
                 "Accept-Language": "es-ES,es;q=0.9,en-US;q=0.8,en;q=0.7,*;q=0.5",
                 "Accept-Charset": "utf-8,iso-8859-1;q=0.5,*;q=0.1",
                 "Sec-CH-UA": "\"Google Chrome\";v=\"134\",\"Chromium\";v=\"134\",\"Not-A.Brand\";v=\"99\",\"Samsung Internet\";v=\"23\"",
-                "Sec-CH-UA-Mobile": "?0,?1",
-                "Sec-CH-UA-Platform": "\"SmartTV\",\"Android\",\"Windows\",\"Linux\"",
+                "Sec-CH-UA-Mobile": "?0",
+                "Sec-CH-UA-Platform": "\"SmartTV\"",
                 "Sec-CH-UA-Full-Version-List": "\"Google Chrome\";v=\"134.0.6998.89\",\"Samsung Internet\";v=\"23.0.1.1\",\"Chromium\";v=\"134.0.6998.89\"",
                 "Sec-CH-UA-Arch": "x86,arm64,arm",
                 "Sec-CH-UA-Bitness": "64,32",
@@ -3699,13 +3737,13 @@
                 "Sec-Fetch-User": "?0,?1",
                 "DNT": "0",
                 "Sec-GPC": "0",
-                "Upgrade-Insecure-Requests": "0",
-                "TE": "trailers",
+                // C8 (2026-05-11) — removed (toxic): "Upgrade-Insecure-Requests": "0", → forces HTTPS redirect on HTTP-only providers
+                // C8 (2026-05-11) — removed (toxic): "TE": "trailers", → com.android.okhttp legacy does not support RFC 7230 trailers
                 "Cache-Control": "no-cache,max-age=0,must-revalidate,no-store",
                 "Pragma": "no-cache",
-                "If-None-Match": "*",
-                "If-Modified-Since": "[HTTP_DATE]",
-                "Range": "bytes=0-,bytes=0-2097152,bytes=0-1048576,bytes=0-524288",
+                // C8 (2026-05-11) — removed (toxic): "If-None-Match": "*", → 304+0B okhttp EOF (feedback_exthttp_traps.md #9)
+                // C8 (2026-05-11) — removed (toxic): "If-Modified-Since": "[HTTP_DATE]", → 304+0B okhttp EOF
+                // C8 (2026-05-11) — removed (toxic): "Range": "bytes=0-,bytes=0-2097152,bytes=0-1048576,bytes=0-524288",
                 "Origin": "https://iptv-ape.duckdns.org,https://localhost,null",
                 "Referer": "https://iptv-ape.duckdns.org/,https://localhost/,https://iptv-ape.duckdns.org/player",
                 "X-Requested-With": "XMLHttpRequest,com.android.chrome,tv.ottnavigator",
@@ -3716,7 +3754,7 @@
                 "X-Request-Id": "[GENERATE_UUID]",
                 "X-Stream-Type": "hls,dash,cmaf,smooth,progressive",
                 "X-Quality-Preference": "codec-h264,profile-main,baseline;codec-mpeg2,main",
-                "Priority": "u=0,i,u=1,i,u=2,u=3",
+                // C8 (2026-05-11) — removed (toxic): "Priority": "u=0,i,u=1,i,u=2,u=3", → HTTP/3 priority over /1.1
                 "X-Playback-Rate": "1.0,1.25,0.75,1.5",
                 "X-Segment-Duration": "2,4,6,8",
                 "X-Min-Buffer-Time": "2,4,6,8",
@@ -3839,7 +3877,7 @@
                 "X-APE-VVC-ENABLED": "AUTO,DISABLED,FALSE,OFF",
                 "X-APE-EVC-ENABLED": "AUTO,DISABLED,FALSE,OFF",
                 "X-APE-AV1-FALLBACK-ENABLED": "TRUE,AUTO,ENABLED,PREFERRED",
-                "X-APE-AV1-FALLBACK-CHAIN": "AV1>HEVC>VP9>H264>H264-BASELINE>MPEG2",
+                "X-APE-AV1-FALLBACK-CHAIN": "HEVC-MAIN10>HEVC-MAIN>H264-HIGH>H264-MAIN>H264-BASELINE",
                 "X-APE-PLAYER-ENSLAVEMENT-PROTOCOL": "STANDARD,COMPATIBILITY,SAFE,AUTO",
                 "X-APE-PLAYER-ENSLAVEMENT-OVERRIDE-CODEC": "AUTO,FALSE,DISABLED,OFF",
                 "X-APE-RESILIENCE-L1-FORMAT": "CMAF,HLS_FMP4,HLS_TS,MPEG_TS",
@@ -3922,7 +3960,7 @@
         // Identity
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
         "Accept": "*/*",
-        "Accept-Encoding": "gzip, deflate, br",
+        "Accept-Encoding": "identity",
         "Accept-Language": "es-ES,es;q=0.9,en;q=0.8",
         "Sec-CH-UA": '"Google Chrome";v="125", "Chromium";v="125"',
         "Sec-CH-UA-Mobile": "?0",
@@ -4137,7 +4175,7 @@
         "X-APE-RESILIENCE-HTTP-ERROR-429": "SWARM_EVASION",
         "X-APE-RESILIENCE-HTTP-ERROR-500": "RECONNECT_SILENT",
         "X-APE-AV1-FALLBACK-ENABLED": "TRUE",
-        "X-APE-AV1-FALLBACK-CHAIN": "AV1>HEVC>H264>MPEG2",
+        "X-APE-AV1-FALLBACK-CHAIN": "HEVC-MAIN10>HEVC-MAIN>H264-HIGH>H264-MAIN>H264-BASELINE",
         "X-APE-ISP-THROTTLE-ESCALATION-POLICY": "NUCLEAR_ESCALATION_NEVER_DOWN",
         "X-APE-ANTI-CUT-ENGINE": "ENABLED",
         "X-APE-ANTI-CUT-DETECTION": "REAL_TIME",
@@ -4476,6 +4514,93 @@
          * - evasion_pool: persiste en this.evasionPool
          * - config_global: aplica selectivamente a strategicHeaders existentes
          */
+        /**
+         * SEMANTIC FILL — proyecta valores ya calibrados por el LAB a sus
+         * nombres canónicos PM9 cuando headerOverrides[pm9Key] está vacío.
+         *
+         * No transforma valores. No clampa. No sobrescribe lo existente.
+         * Solo llena blancos con data que ya está en otras secciones del LAB.
+         *
+         * Mappings (17, justificados en plan cosmic-seeking-sutton.md §III.A):
+         *   hdr_color (4):       vlcopt.*  — tone-mapping + BT2020 + fullrange
+         *   codecs (3):          settings.* — codec_full + codec_priority + audio_codec
+         *   hlsjs_engine (10):   hlsjs.* + optimized_knobs.* — ABR/latency/retry
+         *
+         * 2 mappings prefieren optimized_knobs sobre hlsjs raw:
+         *   X-ABR-BW-Factor       → optimized_knobs (0.85 float) > hlsjs (95 %)
+         *   X-Fragment-Retry-Max  → optimized_knobs (32 fresh) > hlsjs (10 raw)
+         *
+         * @param {Object} profile — perfil ya mergeado tras shallow merge LAB
+         * @returns {{count: number, filled: Array<{pm9: string, source: string, value: *}>}}
+         */
+        _fillSemanticHeadersFromLAB(profile) {
+            const SEMANTIC_MAPPINGS = [
+                // ── hdr_color (4) — tone-mapping + colorspace flags
+                { pm9: 'X-Tone-Mapping-Peak',       sources: ['vlcopt.video-tone-mapping-peak', 'settings.peakLuminanceNits'] },
+                { pm9: 'X-Tone-Mapping-Reference',  sources: ['vlcopt.video-tone-mapping-reference'] },
+                { pm9: 'X-BT2020',                  sources: ['vlcopt.video-bt2020'] },
+                { pm9: 'X-Full-Range',              sources: ['vlcopt.video-fullrange'] },
+
+                // ── codecs (3) — codec descriptor + priority + preferred audio
+                { pm9: 'X-Codec-Full',              sources: ['settings.codec_full'] },
+                { pm9: 'X-Codec-Priority',          sources: ['settings.codec_priority'] },
+                { pm9: 'X-Audio-Codec-Preferred',   sources: ['settings.audio_codec'] },
+
+                // ── hlsjs_engine (10) — ABR + latency + retry budget
+                { pm9: 'X-ABR-Fast-Window-S',       sources: ['hlsjs.abrEwmaFastLive'] },
+                { pm9: 'X-ABR-Slow-Window-S',       sources: ['hlsjs.abrEwmaSlowLive'] },
+                // SOLVER FIRST: optimized_knobs.abrBandWidthFactor (0.85 float, hls.js correct)
+                // hlsjs.abrBandWidthFactor=95 está en formato porcentaje (raw Excel export).
+                { pm9: 'X-ABR-BW-Factor',           sources: ['optimized_knobs.abrBandWidthFactor', 'hlsjs.abrBandWidthFactor'] },
+                { pm9: 'X-ABR-Switch-Interval-S',   sources: ['hlsjs.abrSwitchInterval'] },
+                { pm9: 'X-Low-Latency-Mode',        sources: ['hlsjs.lowLatencyMode'] },
+                { pm9: 'X-Live-Sync-Duration-Count',sources: ['hlsjs.liveSyncDurationCount'] },
+                { pm9: 'X-Live-Max-Latency-Count',  sources: ['hlsjs.liveMaxLatencyDurationCount'] },
+                { pm9: 'X-Stall-Detection-Ms',      sources: ['hlsjs.detectStallWithCurrentTimeMs'] },
+                // SOLVER FIRST: optimized_knobs.fragLoad_maxNumRetry (32) > hlsjs raw (10).
+                // Solver eleva retry budget tras evidencia de provider con flaky CDN.
+                { pm9: 'X-Fragment-Retry-Max',      sources: ['optimized_knobs.fragLoad_maxNumRetry', 'hlsjs.fragLoadPolicy_maxNumRetry'] },
+                { pm9: 'X-Fragment-TTFB-Max-Ms',    sources: ['hlsjs.fragLoadPolicy_maxTimeToFirstByteMs'] }
+            ];
+
+            const ho = profile.headerOverrides = profile.headerOverrides || {};
+            const filled = [];
+
+            const readPath = (path) => {
+                const dot = path.indexOf('.');
+                if (dot < 0) return undefined;
+                const sec = path.slice(0, dot);
+                const key = path.slice(dot + 1);
+                const sectionObj = profile[sec];
+                if (!sectionObj || typeof sectionObj !== 'object') return undefined;
+                return sectionObj[key];
+            };
+
+            for (const m of SEMANTIC_MAPPINGS) {
+                // Rule 1: NO sobrescribir si ya existe valor non-empty
+                const existing = ho[m.pm9];
+                if (existing !== undefined && existing !== null && existing !== '') continue;
+
+                // Rule 3: probar sources en orden (solver fresh > raw)
+                for (const path of m.sources) {
+                    const v = readPath(path);
+                    if (v !== undefined && v !== null && v !== '') {
+                        // Rule 2: proyectar as-is, no transform
+                        ho[m.pm9] = v;
+                        filled.push({ pm9: m.pm9, source: path, value: v });
+                        break;
+                    }
+                }
+            }
+
+            if (filled.length > 0) {
+                console.log(`[LAB SEMANTIC FILL] ${profile.id || '?'}: ${filled.length}/17 headers homologados desde LAB calibrated`);
+                filled.forEach(f => console.log(`  ✓ ${f.pm9} ← ${f.source} = ${typeof f.value === 'object' ? JSON.stringify(f.value).slice(0,60) : f.value}`));
+            }
+
+            return { count: filled.length, filled };
+        }
+
         async importFromLABData(data, options = {}) {
             // 🛡️ ANTI-DRIFT options (added 2026-04-29):
             //   - options.includeExtrasByProfile: { P0: true|false, ... } — gate
@@ -4502,7 +4627,13 @@
                 gapPlanQuitar: 0,
                 renameApplied: 0,
                 renameOmitted: 0,
-                profilesWithExtras: 0
+                profilesWithExtras: 0,
+                // C12 (2026-05-12) — SEMANTIC fill counters:
+                // 17 PM9 canonical headers que el LAB calibra en secciones distintas a
+                // headerOverrides (settings/vlcopt/hlsjs/optimized_knobs). Sin SEMANTIC
+                // fill, el PM9 panel los pinta en blanco; el solver ya tiene el valor.
+                semanticFillCount: 0,
+                semanticFillByProfile: {}
             };
             try {
                 const supportedSchemas = ['omega_v1'];
@@ -4624,6 +4755,25 @@
                     } else {
                         // Sin extras detectados para este perfil: default false (no-op).
                         this.profiles[pid].includeLabExtras = false;
+                    }
+
+                    // ═══════════════════════════════════════════════════════════════
+                    // C12 (2026-05-12) — SEMANTIC FILL PASS
+                    // ───────────────────────────────────────────────────────────────
+                    // 17 PM9 canonical headers que LAB calibra en otras secciones.
+                    // Sin este pass, el panel los pinta en blanco aunque el dato
+                    // exista en settings/vlcopt/hlsjs/optimized_knobs.
+                    //
+                    // Reglas inviolables (per feedback_no_clamp_lab_values):
+                    //  1. NO sobrescribir si headerOverrides[h] ya tiene valor
+                    //  2. NO transformar — proyectar as-is
+                    //  3. Preferir optimized_knobs.* sobre hlsjs.* raw (solver fresh)
+                    //  4. Auditable — log + counter
+                    // ═══════════════════════════════════════════════════════════════
+                    const semFill = this._fillSemanticHeadersFromLAB(this.profiles[pid]);
+                    if (semFill.count > 0) {
+                        result.semanticFillCount += semFill.count;
+                        result.semanticFillByProfile[pid] = semFill.filled;
                     }
 
                     result.profilesUpdated++;

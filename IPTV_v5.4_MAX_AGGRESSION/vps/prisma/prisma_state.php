@@ -29,6 +29,36 @@ class PrismaState
 
     public static function defaults(): array
     {
+        // LAB-SYNC v2.0: leer multipliers desde JSON SSOT con fallback defensivo
+        $bitrateMult = 1.5;
+        $zapBurstMult = 1.5;
+        $zapGrace = 30;
+        $profileMults = ['P0'=>2.0,'P1'=>2.0,'P2'=>2.0,'P3'=>1.5,'P4'=>1.5,'P5'=>1.2];
+
+        $loaderPath = __DIR__ . '/lib/lab_config_loader.php';
+        if (is_file($loaderPath)) {
+            try {
+                if (!class_exists('LabConfigLoader', false)) {
+                    require_once $loaderPath;
+                }
+                $boost = LabConfigLoader::profileBoost();
+                if (isset($boost['profiles']) && is_array($boost['profiles'])) {
+                    $profileMults = [];
+                    foreach (['P0','P1','P2','P3','P4','P5'] as $p) {
+                        if (isset($boost['profiles'][$p]['prisma_boost_multiplier'])) {
+                            $profileMults[$p] = (float)$boost['profiles'][$p]['prisma_boost_multiplier'];
+                        }
+                    }
+                    if (isset($boost['profiles']['P3']['prisma_zap_grace_seconds'])) {
+                        $zapGrace = (int)$boost['profiles']['P3']['prisma_zap_grace_seconds'];
+                    }
+                }
+            } catch (\Throwable $e) {
+                // Silent fallback to hardcoded — NO romper si lab_config falla
+                @error_log('[PRISMA state] LabConfigLoader fallback: ' . $e->getMessage());
+            }
+        }
+
         return [
             'version'        => '1.1.0',
             'master_enabled' => false,
@@ -44,21 +74,51 @@ class PrismaState
             'channels'          => (object)[],
             'boost' => [
                 'enabled_when_master'  => true,
-                'bitrate_multiplier'   => 1.5,
-                'zap_burst_multiplier' => 1.5,
-                'zap_grace_seconds'    => 30,
-                'profile_multipliers'  => [
-                    'P0' => 2.0,  // 8K UHD — double bitrate floor
-                    'P1' => 2.0,  // 4K HDR10+
-                    'P2' => 2.0,  // 4K SDR
-                    'P3' => 1.5,  // FHD
-                    'P4' => 1.5,  // HD
-                    'P5' => 1.2,  // SD — modest boost
-                ],
+                'bitrate_multiplier'   => $bitrateMult,
+                'zap_burst_multiplier' => $zapBurstMult,
+                'zap_grace_seconds'    => $zapGrace,
+                'profile_multipliers'  => $profileMults,
+                '_source' => is_file($loaderPath) ? 'lab_config_loader' : 'hardcoded_fallback',
             ],
             'last_panic_off_ts' => 0,
             'updated_ts'        => 0,
             'updated_by'        => 'init',
+        ];
+    }
+
+    /**
+     * LAB-SYNC v2.0: Devuelve los defaults PRISMA-aware DNA per-canal
+     * leídos de channels_prisma_dna.json (LAB Excel hoja 01_CANALES).
+     *
+     * Si el canal específico está en channels_prisma_dna.json, usa ese.
+     * Si no, usa channel_defaults_by_profile[$profile].
+     * Si tampoco, usa hardcoded fallback seguro.
+     */
+    public static function channelDnaDefaults(string $channelId, string $profile = 'P3'): array
+    {
+        $loaderPath = __DIR__ . '/lib/lab_config_loader.php';
+        if (is_file($loaderPath)) {
+            try {
+                if (!class_exists('LabConfigLoader', false)) {
+                    require_once $loaderPath;
+                }
+                return LabConfigLoader::channelDna($channelId, $profile);
+            } catch (\Throwable $e) {
+                @error_log('[PRISMA state] channelDna fallback: ' . $e->getMessage());
+            }
+        }
+        return [
+            'channel_id' => $channelId,
+            'profile' => $profile,
+            'prisma_lcevc_enabled' => false,
+            'prisma_hdr10plus_enabled' => false,
+            'prisma_ai_sr_enabled' => false,
+            'prisma_quantum_pixel_enabled' => false,
+            'prisma_fake_4k_upscaler_enabled' => false,
+            'prisma_cmaf_enabled' => true,
+            'prisma_floor_lock_strict' => false,
+            'prisma_transcode_enabled' => false,
+            '_source' => 'hardcoded_fallback',
         ];
     }
 
