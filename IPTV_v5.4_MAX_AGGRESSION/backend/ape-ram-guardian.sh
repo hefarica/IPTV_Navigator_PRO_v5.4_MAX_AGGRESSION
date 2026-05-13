@@ -180,37 +180,163 @@ check_dns() {
     fi
 }
 
+# ═══════════════════════════════════════════════════════════════════════════
+# QUALITY SUPREMA MANIFEST — The Sacred Settings That Must NEVER Drift
+# ═══════════════════════════════════════════════════════════════════════════
+# Every 15 seconds the guardian checks ALL of these. If ANY value differs
+# from the manifest, it is IMMEDIATELY corrected. No exceptions.
+# ═══════════════════════════════════════════════════════════════════════════
+
+enforce_quality_manifest() {
+    local fixed=0
+
+    # ── DISPLAY: 4K @ 60Hz ──
+    local h=$(settings get global user_preferred_resolution_height 2>/dev/null)
+    [ "$h" != "2160" ] && { settings put global user_preferred_resolution_height 2160 2>/dev/null; fixed=$((fixed+1)); }
+    local w=$(settings get global user_preferred_resolution_width 2>/dev/null)
+    [ "$w" != "3840" ] && { settings put global user_preferred_resolution_width 3840 2>/dev/null; fixed=$((fixed+1)); }
+    local fps=$(settings get global user_preferred_refresh_rate 2>/dev/null)
+    [ "$fps" != "60.0" ] && { settings put global user_preferred_refresh_rate 60.0 2>/dev/null; fixed=$((fixed+1)); }
+
+    # ── HDR: Passthrough (NEVER convert) ──
+    local hdr=$(settings get global hdr_conversion_mode 2>/dev/null)
+    [ "$hdr" != "0" ] && { settings put global hdr_conversion_mode 0 2>/dev/null; fixed=$((fixed+1)); }
+    local hdr_out=$(settings get global hdr_output_type 2>/dev/null)
+    [ "$hdr_out" != "4" ] && { settings put global hdr_output_type 4 2>/dev/null; fixed=$((fixed+1)); }
+    local hdr_force=$(settings get global hdr_force_conversion_type 2>/dev/null)
+    [ "$hdr_force" != "-1" ] && { settings put global hdr_force_conversion_type -1 2>/dev/null; fixed=$((fixed+1)); }
+    local hdr_en=$(settings get global pq_hdr_enable 2>/dev/null)
+    [ "$hdr_en" != "1" ] && { settings put global pq_hdr_enable 1 2>/dev/null; fixed=$((fixed+1)); }
+    local hdr_mode=$(settings get global pq_hdr_mode 2>/dev/null)
+    [ "$hdr_mode" != "1" ] && { settings put global pq_hdr_mode 1 2>/dev/null; fixed=$((fixed+1)); }
+    local hdr_boost=$(settings get global hdr_brightness_boost 2>/dev/null)
+    [ "$hdr_boost" != "100" ] && { settings put global hdr_brightness_boost 100 2>/dev/null; fixed=$((fixed+1)); }
+    local sdr_hdr=$(settings get global sdr_brightness_in_hdr 2>/dev/null)
+    [ "$sdr_hdr" != "100" ] && { settings put global sdr_brightness_in_hdr 100 2>/dev/null; fixed=$((fixed+1)); }
+    local peak=$(settings get global peak_luminance 2>/dev/null)
+    [ "$peak" != "1000" ] && { settings put global peak_luminance 1000 2>/dev/null; fixed=$((fixed+1)); }
+
+    # ── COLOR: HDR mode, max depth ──
+    local cm=$(settings get global display_color_mode 2>/dev/null)
+    [ "$cm" != "3" ] && { settings put global display_color_mode 3 2>/dev/null; fixed=$((fixed+1)); }
+    local cs=$(settings get global hdmi_color_space 2>/dev/null)
+    [ "$cs" != "2" ] && { settings put global hdmi_color_space 2 2>/dev/null; fixed=$((fixed+1)); }
+
+    # ── MATCH CONTENT FRAME RATE: Seamless ──
+    local mf=$(settings get global match_content_frame_rate_pref 2>/dev/null)
+    [ "$mf" != "2" ] && { settings put global match_content_frame_rate_pref 2 2>/dev/null; fixed=$((fixed+1)); }
+    local mf2=$(settings get global match_content_frame_rate 2>/dev/null)
+    [ "$mf2" != "1" ] && { settings put global match_content_frame_rate 1 2>/dev/null; fixed=$((fixed+1)); }
+
+    # ── AUDIO: Surround Passthrough + Atmos ──
+    local sur=$(settings get global encoded_surround_output 2>/dev/null)
+    [ "$sur" != "2" ] && { settings put global encoded_surround_output 2 2>/dev/null; fixed=$((fixed+1)); }
+    local atmos=$(settings get global enable_dolby_atmos 2>/dev/null)
+    [ "$atmos" != "1" ] && { settings put global enable_dolby_atmos 1 2>/dev/null; fixed=$((fixed+1)); }
+    local spdif=$(settings get global db_id_sound_spdif_output_enable 2>/dev/null)
+    [ "$spdif" != "1" ] && { settings put global db_id_sound_spdif_output_enable 1 2>/dev/null; fixed=$((fixed+1)); }
+
+    # ── AI PICTURE QUALITY (Amlogic PQ Engine) ──
+    local aipq=$(settings get system aipq_enable 2>/dev/null)
+    [ "$aipq" != "1" ] && { settings put system aipq_enable 1 2>/dev/null; fixed=$((fixed+1)); }
+    local aisr=$(settings get system aisr_enable 2>/dev/null)
+    [ "$aisr" != "1" ] && { settings put system aisr_enable 1 2>/dev/null; fixed=$((fixed+1)); }
+    local aipqm=$(settings get system ai_pq_mode 2>/dev/null)
+    [ "$aipqm" != "3" ] && { settings put system ai_pq_mode 3 2>/dev/null; fixed=$((fixed+1)); }
+    local aisrm=$(settings get system ai_sr_mode 2>/dev/null)
+    [ "$aisrm" != "3" ] && { settings put system ai_sr_mode 3 2>/dev/null; fixed=$((fixed+1)); }
+    local dnr=$(settings get global pq_ai_dnr_enable 2>/dev/null)
+    [ "$dnr" != "1" ] && { settings put global pq_ai_dnr_enable 1 2>/dev/null; fixed=$((fixed+1)); }
+    local fbc=$(settings get global pq_ai_fbc_enable 2>/dev/null)
+    [ "$fbc" != "1" ] && { settings put global pq_ai_fbc_enable 1 2>/dev/null; fixed=$((fixed+1)); }
+    local aisr2=$(settings get global pq_ai_sr_enable 2>/dev/null)
+    [ "$aisr2" != "1" ] && { settings put global pq_ai_sr_enable 1 2>/dev/null; fixed=$((fixed+1)); }
+    local pqnr=$(settings get global pq_nr_enable 2>/dev/null)
+    [ "$pqnr" != "1" ] && { settings put global pq_nr_enable 1 2>/dev/null; fixed=$((fixed+1)); }
+    local sharp=$(settings get global pq_sharpness_enable 2>/dev/null)
+    [ "$sharp" != "1" ] && { settings put global pq_sharpness_enable 1 2>/dev/null; fixed=$((fixed+1)); }
+    local pqdnr=$(settings get global pq_dnr_enable 2>/dev/null)
+    [ "$pqdnr" != "1" ] && { settings put global pq_dnr_enable 1 2>/dev/null; fixed=$((fixed+1)); }
+    local aipicm=$(settings get global ai_pic_mode 2>/dev/null)
+    [ "$aipicm" != "3" ] && { settings put global ai_pic_mode 3 2>/dev/null; fixed=$((fixed+1)); }
+    local aisrl=$(settings get global ai_sr_level 2>/dev/null)
+    [ "$aisrl" != "3" ] && { settings put global ai_sr_level 3 2>/dev/null; fixed=$((fixed+1)); }
+    local smil=$(settings get global smart_illuminate_enabled 2>/dev/null)
+    [ "$smil" != "1" ] && { settings put global smart_illuminate_enabled 1 2>/dev/null; fixed=$((fixed+1)); }
+
+    # ── COLOR: 12-bit, 4:2:2 chroma ──
+    local cdepth=$(settings get global color_depth 2>/dev/null)
+    [ "$cdepth" != "12" ] && { settings put global color_depth 12 2>/dev/null; fixed=$((fixed+1)); }
+    local c422=$(settings get global color_mode_ycbcr422 2>/dev/null)
+    [ "$c422" != "1" ] && { settings put global color_mode_ycbcr422 1 2>/dev/null; fixed=$((fixed+1)); }
+    local ahdr=$(settings get global always_hdr 2>/dev/null)
+    [ "$ahdr" != "0" ] && { settings put global always_hdr 0 2>/dev/null; fixed=$((fixed+1)); }
+
+    # ── VIDEO BRIGHTNESS ──
+    local vb=$(settings get global video_brightness 2>/dev/null)
+    [ "$vb" != "100" ] && { settings put global video_brightness 100 2>/dev/null; fixed=$((fixed+1)); }
+    local sb=$(settings get system screen_brightness 2>/dev/null)
+    [ "$sb" != "255" ] && { settings put system screen_brightness 255 2>/dev/null; fixed=$((fixed+1)); }
+
+    # ── GPU & HARDWARE RENDERING ──
+    local gpu=$(settings get global force_gpu_rendering 2>/dev/null)
+    [ "$gpu" != "1" ] && { settings put global force_gpu_rendering 1 2>/dev/null; fixed=$((fixed+1)); }
+    local hwui=$(settings get global force_hw_ui 2>/dev/null)
+    [ "$hwui" != "1" ] && { settings put global force_hw_ui 1 2>/dev/null; fixed=$((fixed+1)); }
+    local hwar=$(settings get global hardware_accelerated_rendering_enabled 2>/dev/null)
+    [ "$hwar" != "1" ] && { settings put global hardware_accelerated_rendering_enabled 1 2>/dev/null; fixed=$((fixed+1)); }
+
+    # ── SCREEN & POWER ──
+    local sto=$(settings get system screen_off_timeout 2>/dev/null)
+    [ "$sto" != "2147483647" ] && { settings put system screen_off_timeout 2147483647 2>/dev/null; fixed=$((fixed+1)); }
+    local sow=$(settings get global stay_on_while_plugged_in 2>/dev/null)
+    [ "$sow" != "3" ] && { settings put global stay_on_while_plugged_in 3 2>/dev/null; fixed=$((fixed+1)); }
+
+    # ── ZERO ANIMATIONS ──
+    local wa=$(settings get global window_animation_scale 2>/dev/null)
+    [ "$wa" != "0.0" ] && { settings put global window_animation_scale 0.0 2>/dev/null; fixed=$((fixed+1)); }
+    local ta=$(settings get global transition_animation_scale 2>/dev/null)
+    [ "$ta" != "0.0" ] && { settings put global transition_animation_scale 0.0 2>/dev/null; fixed=$((fixed+1)); }
+    local ad=$(settings get global animator_duration_scale 2>/dev/null)
+    [ "$ad" != "0.0" ] && { settings put global animator_duration_scale 0.0 2>/dev/null; fixed=$((fixed+1)); }
+
+    # ── NETWORK: WiFi hardening ──
+    local ws=$(settings get global wifi_sleep_policy 2>/dev/null)
+    [ "$ws" != "2" ] && { settings put global wifi_sleep_policy 2 2>/dev/null; fixed=$((fixed+1)); }
+    local wsa=$(settings get global wifi_scan_always_enabled 2>/dev/null)
+    [ "$wsa" != "0" ] && { settings put global wifi_scan_always_enabled 0 2>/dev/null; fixed=$((fixed+1)); }
+    local wso=$(settings get global wifi_suspend_optimizations_enabled 2>/dev/null)
+    [ "$wso" != "0" ] && { settings put global wifi_suspend_optimizations_enabled 0 2>/dev/null; fixed=$((fixed+1)); }
+    local wna=$(settings get global wifi_networks_available_notification_on 2>/dev/null)
+    [ "$wna" != "0" ] && { settings put global wifi_networks_available_notification_on 0 2>/dev/null; fixed=$((fixed+1)); }
+    local wpn=$(settings get global wifi_watchdog_poor_network_test_enabled 2>/dev/null)
+    [ "$wpn" != "0" ] && { settings put global wifi_watchdog_poor_network_test_enabled 0 2>/dev/null; fixed=$((fixed+1)); }
+    local nsu=$(settings get global network_scoring_ui_enabled 2>/dev/null)
+    [ "$nsu" != "0" ] && { settings put global network_scoring_ui_enabled 0 2>/dev/null; fixed=$((fixed+1)); }
+
+    # ── NETWORK: TCP tuning ──
+    local rwnd=$(settings get global tcp_default_init_rwnd 2>/dev/null)
+    [ "$rwnd" != "60" ] && { settings put global tcp_default_init_rwnd 60 2>/dev/null; fixed=$((fixed+1)); }
+
+    # ── DNS: Private DNS via Google ──
+    local dns=$(settings get global private_dns_mode 2>/dev/null)
+    [ "$dns" != "hostname" ] && { settings put global private_dns_mode hostname 2>/dev/null; fixed=$((fixed+1)); }
+    local dnss=$(settings get global private_dns_specifier 2>/dev/null)
+    [ "$dnss" != "dns.google" ] && { settings put global private_dns_specifier dns.google 2>/dev/null; fixed=$((fixed+1)); }
+
+    # ── DISABLE BLOAT ──
+    local pve=$(settings get global package_verifier_enable 2>/dev/null)
+    [ "$pve" != "0" ] && { settings put global package_verifier_enable 0 2>/dev/null; fixed=$((fixed+1)); }
+    local ns=$(settings get global netstats_enabled 2>/dev/null)
+    [ "$ns" != "0" ] && { settings put global netstats_enabled 0 2>/dev/null; fixed=$((fixed+1)); }
+
+    [ "$fixed" -gt 0 ] && log "MANIFEST: Restored $fixed settings that drifted"
+}
+
 # ─── TCP/NETWORK OPTIMIZATION (synced with VPS sysctl) ──────────────────
 apply_network_optimization() {
-    # TCP initial receive window — match VPS aggressiveness
-    settings put global tcp_default_init_rwnd 60 2>/dev/null
-
-    # WiFi never sleep — critical for persistent IPTV streaming
-    settings put global wifi_sleep_policy 2 2>/dev/null
-
-    # Disable WiFi scanning during playback — eliminates micro-drops
-    settings put global wifi_scan_always_enabled 0 2>/dev/null
-
-    # Disable captive portal — prevents DNS leaks and redirect loops
-    settings put global captive_portal_detection_enabled 0 2>/dev/null
-
-    # Stay on forever while plugged in
-    settings put global stay_on_while_plugged_in 3 2>/dev/null
-    settings put system screen_off_timeout 2147483647 2>/dev/null
-
-    # Zero animations — save CPU for video decode
-    settings put global window_animation_scale 0.0 2>/dev/null
-    settings put global transition_animation_scale 0.0 2>/dev/null
-    settings put global animator_duration_scale 0.0 2>/dev/null
-
-    # Disable network scoring (prevents WiFi/mobile switching)
-    settings put global network_scoring_ui_enabled 0 2>/dev/null
-    settings put global wifi_watchdog_poor_network_test_enabled 0 2>/dev/null
-    settings put global wifi_suspend_optimizations_enabled 0 2>/dev/null
-    settings put global wifi_networks_available_notification_on 0 2>/dev/null
-
-    # Aggressive background data restriction
-    settings put global background_data_enabled 0 2>/dev/null
+    # Apply the quality manifest first
+    enforce_quality_manifest
 
     # Kernel TCP tuning (best-effort — may need root)
     # Synced with VPS: tcp_slow_start_after_idle=0, tcp_fastopen=3
@@ -344,6 +470,9 @@ daemon_main() {
         # ── VPN CHECK (every cycle) ──
         check_vpn
 
+        # ── QUALITY MANIFEST (every cycle — implacable) ──
+        enforce_quality_manifest
+
         # ── BANDWIDTH THIEVES (every 4 cycles = 1 min) ──
         [ $((cycle % 4)) -eq 0 ] && kill_bandwidth_thieves
 
@@ -356,7 +485,7 @@ daemon_main() {
         # ── RE-APPLY PROTECTIONS (periodic — Android resets them) ──
         [ $((cycle % STATUS_INTERVAL)) -eq 0 ] && apply_protections
 
-        # ── NETWORK OPTIMIZATION (periodic — settings drift) ──
+        # ── KERNEL TCP (periodic — settings drift) ──
         [ $((cycle % NET_INTERVAL)) -eq 0 ] && apply_network_optimization
 
         # ── STATUS REPORT (periodic) ──
