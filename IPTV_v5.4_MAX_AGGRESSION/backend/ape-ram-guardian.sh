@@ -485,7 +485,106 @@ status_report() {
     log "STATUS: RAM=${mem_avail}/${mem_free}MB VPN=$vpn Player=$player WiFi=${rssi}dBm"
 }
 
-# ─── DAEMON MAIN LOOP ───────────────────────────────────────────────────
+# ─── HEARTBEAT: PHONE HOME TO VPS ──────────────────────────────────────
+# Every cycle, POST telemetry to VPS so the widget knows Guardian is alive.
+# This works through the v2rayNG tunnel — no ADB needed from VPS side.
+HEARTBEAT_URL="https://iptv-ape.duckdns.org/prisma/api/prisma-adb-quality.php?action=guardian_heartbeat"
+HEARTBEAT_CYCLE=0
+
+send_heartbeat() {
+    HEARTBEAT_CYCLE=$((HEARTBEAT_CYCLE + 1))
+    # Only send every 2 cycles (30s) to reduce overhead
+    [ $((HEARTBEAT_CYCLE % 2)) -ne 0 ] && return 0
+
+    local mem_avail vpn player rssi mhash up
+    mem_avail=$(get_mem_mb MemAvailable 2>/dev/null || echo 0)
+    vpn="DOWN"
+    ip link show tun0 2>/dev/null | grep -q UP && vpn="UP"
+    player="OFF"
+    pidof studio.scillarium.ottnavigator >/dev/null 2>&1 && player="ON"
+    rssi=$(dumpsys wifi 2>/dev/null | grep -oE 'rssi=-?[0-9]+' | head -1 | cut -d= -f2 || echo "?")
+    mhash=""
+    [ -f "$MANIFEST_HASH" ] && mhash=$(cat "$MANIFEST_HASH" 2>/dev/null)
+    up=$(cat /proc/uptime 2>/dev/null | cut -d. -f1 || echo 0)
+
+    local payload="{\"pid\":$$,\"ram_avail_mb\":${mem_avail},\"vpn_status\":\"${vpn}\",\"player_status\":\"${player}\",\"wifi_rssi\":\"${rssi}\",\"manifest_hash\":\"${mhash}\",\"cycle\":${HEARTBEAT_CYCLE},\"uptime\":${up}}"
+
+    # POST with 3s timeout, fail silently
+    wget -q -T 3 --post-data="$payload" --header="Content-Type: application/json" -O /dev/null "$HEARTBEAT_URL" 2>/dev/null \
+      || curl -sf -m 3 -X POST -H "Content-Type: application/json" -d "$payload" "$HEARTBEAT_URL" >/dev/null 2>&1 \
+      || true
+}
+
+# ─── QUALITY MANIFEST: FETCH FROM VPS & APPLY IN REAL-TIME ─────────────
+# Downloads quality-manifest.json from VPS (saved by frontend) and applies
+# every setting on the ONN. This enables "Guardar y Aplicar" from the UI.
+MANIFEST_URL="https://iptv-ape.duckdns.org/prisma/quality-manifest.json"
+MANIFEST_CACHE="/data/local/tmp/quality-manifest.json"
+MANIFEST_HASH="/data/local/tmp/quality-manifest.hash"
+
+enforce_quality_manifest() {
+    # Download manifest from VPS (timeout 5s, fail silently if offline)
+    local tmp="/data/local/tmp/.qm_download.json"
+    wget -q -T 5 -O "$tmp" "$MANIFEST_URL" 2>/dev/null || curl -sf -m 5 -o "$tmp" "$MANIFEST_URL" 2>/dev/null
+
+    # If download failed or empty, skip
+    [ ! -s "$tmp" ] && return 0
+
+    # Check if manifest changed (hash comparison)
+    local new_hash
+    new_hash=$(md5sum "$tmp" 2>/dev/null | cut -d' ' -f1)
+    local old_hash=""
+    [ -f "$MANIFEST_HASH" ] && old_hash=$(cat "$MANIFEST_HASH" 2>/dev/null)
+
+    if [ "$new_hash" = "$old_hash" ] && [ -n "$old_hash" ]; then
+        # Manifest unchanged — skip
+        rm -f "$tmp"
+        return 0
+    fi
+
+    # New manifest detected — apply all settings
+    log "QM: New manifest detected (hash=$new_hash), applying..."
+
+    # Parse JSON and apply each setting
+    # Format: {"manifest":[{"ns":"global","key":"xxx","value":"yyy",...},...]}
+    local count=0
+    local drifted=0
+
+    # Use grep+sed to extract settings (busybox-compatible, no jq)
+    # Each setting line: "ns":"global","key":"foo","value":"bar"
+    local entries
+    entries=$(cat "$tmp" | tr '{' '\n' | grep '"ns"')
+
+    echo "$entries" | while IFS= read -r line; do
+        [ -z "$line" ] && continue
+        local ns key value
+        ns=$(echo "$line" | sed 's/.*"ns":"\([^"]*\)".*/\1/')
+        key=$(echo "$line" | sed 's/.*"key":"\([^"]*\)".*/\1/')
+        value=$(echo "$line" | sed 's/.*"value":"\([^"]*\)".*/\1/')
+
+        [ -z "$ns" ] || [ -z "$key" ] || [ -z "$value" ] && continue
+
+        # Read current value
+        local current
+        current=$(settings get "$ns" "$key" 2>/dev/null)
+
+        # Apply if different
+        if [ "$current" != "$value" ]; then
+            settings put "$ns" "$key" "$value" 2>/dev/null
+            log "QM: $ns:$key $current → $value"
+            drifted=$((drifted + 1))
+        fi
+        count=$((count + 1))
+    done
+
+    # Save hash to avoid re-applying unchanged manifest
+    echo "$new_hash" > "$MANIFEST_HASH"
+    cp "$tmp" "$MANIFEST_CACHE"
+    rm -f "$tmp"
+
+    [ "$drifted" -gt 0 ] && log "QM: Applied $drifted changes from VPS manifest"
+    return 0
+}
 daemon_main() {
     # Single instance lock
     if [ -f "$LOCKFILE" ]; then
@@ -538,6 +637,9 @@ daemon_main() {
 
         # ── QUALITY MANIFEST (every cycle — implacable) ──
         enforce_quality_manifest
+
+        # ── HEARTBEAT (every cycle) ──
+        send_heartbeat
 
         # ── BANDWIDTH THIEVES (every 4 cycles = 1 min) ──
         [ $((cycle % 4)) -eq 0 ] && kill_bandwidth_thieves

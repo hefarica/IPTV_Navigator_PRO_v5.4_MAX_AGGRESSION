@@ -101,6 +101,82 @@ $MANIFEST = [
 
 // ── Actions ──────────────────────────────────────────────────────────────
 $action = $_GET['action'] ?? $_POST['action'] ?? '';
+$MANIFEST_FILE = '/var/www/html/prisma/quality-manifest.json';
+
+// save_manifest and get_manifest don't need ADB
+if ($action === 'save_manifest') {
+    $body = json_decode(file_get_contents('php://input'), true);
+    if (!$body || !isset($body['manifest'])) {
+        echo json_encode(['ok' => false, 'error' => 'Missing manifest in body']);
+        exit;
+    }
+    $body['saved_at'] = date('c');
+    $body['saved_by'] = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
+    // Backup previous
+    if (file_exists($MANIFEST_FILE)) {
+        copy($MANIFEST_FILE, $MANIFEST_FILE . '.bak');
+    }
+    $written = file_put_contents($MANIFEST_FILE, json_encode($body, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+    chmod($MANIFEST_FILE, 0644);
+    echo json_encode([
+        'ok' => ($written !== false),
+        'bytes' => $written,
+        'path' => $MANIFEST_FILE,
+        'ts' => date('c'),
+        'settings_count' => count($body['manifest']),
+    ]);
+    exit;
+}
+
+if ($action === 'get_manifest') {
+    if (!file_exists($MANIFEST_FILE)) {
+        echo json_encode(['ok' => false, 'error' => 'No manifest saved yet']);
+        exit;
+    }
+    $data = json_decode(file_get_contents($MANIFEST_FILE), true);
+    $data['ok'] = true;
+    echo json_encode($data);
+    exit;
+}
+
+$HEARTBEAT_FILE = '/var/www/html/prisma/guardian-heartbeat.json';
+
+// Guardian heartbeat: POST = store, GET = read
+if ($action === 'guardian_heartbeat') {
+    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+        // Guardian on ONN sends heartbeat every cycle
+        $body = json_decode(file_get_contents('php://input'), true) ?: [];
+        $heartbeat = [
+            'alive' => true,
+            'ts' => date('c'),
+            'epoch' => time(),
+            'pid' => $body['pid'] ?? null,
+            'ram_avail_mb' => $body['ram_avail_mb'] ?? null,
+            'vpn_status' => $body['vpn_status'] ?? null,
+            'player_status' => $body['player_status'] ?? null,
+            'wifi_rssi' => $body['wifi_rssi'] ?? null,
+            'manifest_hash' => $body['manifest_hash'] ?? null,
+            'cycle' => $body['cycle'] ?? null,
+            'uptime' => $body['uptime'] ?? null,
+            'ip' => $_SERVER['REMOTE_ADDR'] ?? 'unknown',
+        ];
+        file_put_contents($HEARTBEAT_FILE, json_encode($heartbeat, JSON_PRETTY_PRINT));
+        echo json_encode(['ok' => true, 'received' => true]);
+    } else {
+        // Widget reads last heartbeat
+        if (!file_exists($HEARTBEAT_FILE)) {
+            echo json_encode(['ok' => true, 'alive' => false, 'reason' => 'No heartbeat received yet']);
+            exit;
+        }
+        $data = json_decode(file_get_contents($HEARTBEAT_FILE), true);
+        $age = time() - ($data['epoch'] ?? 0);
+        $data['age_seconds'] = $age;
+        $data['alive'] = ($age < 60); // alive if heartbeat < 60s old
+        $data['ok'] = true;
+        echo json_encode($data);
+    }
+    exit;
+}
 
 if (!adb_ensure_connected()) {
     echo json_encode(['ok' => false, 'error' => 'ADB unreachable', 'device' => $ONN_IP]);
@@ -231,5 +307,5 @@ case 'restart_guardian':
     break;
 
 default:
-    echo json_encode(['ok' => false, 'error' => 'Unknown action', 'actions' => ['read_all','guardian_status','set','restart_guardian']]);
+    echo json_encode(['ok' => false, 'error' => 'Unknown action', 'actions' => ['read_all','guardian_status','set','restart_guardian','save_manifest','get_manifest']]);
 }

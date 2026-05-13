@@ -20,16 +20,35 @@ function adb(cmd, timeout = 8000) {
   } catch (e) { return null; }
 }
 
+let lastConnectAttempt = 0;
+let isConnected = false;
+
 function adbConnect() {
   try {
-    const check = execSync(`adb -s ${ONN} shell "echo OK"`, { timeout: 3000, encoding: 'utf-8' }).trim();
-    if (check === 'OK') return true;
-  } catch (_) {}
-  try { execSync(`adb connect ${ONN}`, { timeout: 5000, encoding: 'utf-8' }); } catch (_) {}
+    const check = execSync(`adb -s ${ONN} shell "echo OK"`, { timeout: 2000, encoding: 'utf-8' }).trim();
+    if (check === 'OK') {
+      isConnected = true;
+      return true;
+    }
+  } catch (_) { isConnected = false; }
+  
+  const now = Date.now();
+  // If we recently tried and failed, don't block the loop again for 10 seconds
+  if (now - lastConnectAttempt < 10000) return isConnected;
+  lastConnectAttempt = now;
+
+  // Force disconnect first to clear ghost sessions, as requested
+  try { execSync(`adb disconnect ${ONN}`, { timeout: 2000, encoding: 'utf-8', stdio: 'ignore' }); } catch (_) {}
+  try { execSync(`adb connect ${ONN}`, { timeout: 3000, encoding: 'utf-8', stdio: 'ignore' }); } catch (_) {}
+  
   try {
-    const check = execSync(`adb -s ${ONN} shell "echo OK"`, { timeout: 3000, encoding: 'utf-8' }).trim();
-    return check === 'OK';
-  } catch (_) { return false; }
+    const check = execSync(`adb -s ${ONN} shell "echo OK"`, { timeout: 2000, encoding: 'utf-8' }).trim();
+    isConnected = (check === 'OK');
+    return isConnected;
+  } catch (_) { 
+    isConnected = false;
+    return false; 
+  }
 }
 
 // Settings manifest
@@ -168,7 +187,7 @@ function handleRequest(req, res) {
 
     case 'restart_guardian': {
       const pid = adb(`cat ${GUARDIAN_LOCK}`)?.trim();
-      if (pid && /^\d+$/.test(pid)) adb(`kill ${pid}`);
+      if (pid && /^\d+$/.test(pid)) adb(`kill -9 ${pid}`);
       adb(`rm -f ${GUARDIAN_LOCK} && chmod 755 ${GUARDIAN_PATH} && nohup ${GUARDIAN_PATH} daemon > /dev/null 2>&1 &`);
       execSync('ping -n 6 127.0.0.1 > nul', { windowsHide: true, encoding: 'utf-8' });
       const newpid = adb(`cat ${GUARDIAN_LOCK}`)?.trim();
@@ -180,8 +199,16 @@ function handleRequest(req, res) {
       break;
     }
 
+    case 'stop_guardian': {
+      const pid = adb(`cat ${GUARDIAN_LOCK}`)?.trim();
+      if (pid && /^\d+$/.test(pid)) adb(`kill -9 ${pid}`);
+      adb(`rm -f ${GUARDIAN_LOCK}`);
+      res.end(JSON.stringify({ ok: true, alive: false }));
+      break;
+    }
+
     default:
-      res.end(JSON.stringify({ ok: false, error: 'Unknown action', actions: ['read_all','guardian_status','set','restart_guardian'] }));
+      res.end(JSON.stringify({ ok: false, error: 'Unknown action', actions: ['read_all','guardian_status','set','restart_guardian','stop_guardian'] }));
   }
 }
 
