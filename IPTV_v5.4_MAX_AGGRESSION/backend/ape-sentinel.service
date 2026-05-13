@@ -1,0 +1,15 @@
+[Unit]
+Description=APE NET SHIELD Sentinel — IPTV Pipeline Brain
+After=network-online.target nginx.service xray.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/opt/netshield/ape-sentinel-vps.sh daemon
+Restart=always
+RestartSec=10
+StandardOutput=null
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
