@@ -180,6 +180,57 @@ check_dns() {
     fi
 }
 
+# ─── V2RAYNG IMMORTALITY (Always-On VPN + Anti-Kill) ────────────────────
+enforce_v2ray_immortal() {
+    local fixed=0
+
+    # Always-On VPN — Android restarts v2rayNG automatically if it dies
+    local aov=$(settings get secure always_on_vpn_app 2>/dev/null)
+    [ "$aov" != "com.v2ray.ang" ] && {
+        settings put secure always_on_vpn_app com.v2ray.ang 2>/dev/null
+        fixed=$((fixed+1))
+        log "V2RAY: Restored Always-On VPN"
+    }
+
+    # Lockdown — block all traffic if VPN disconnects (forces reconnect)
+    local lock=$(settings get secure always_on_vpn_lockdown 2>/dev/null)
+    [ "$lock" != "1" ] && {
+        settings put secure always_on_vpn_lockdown 1 2>/dev/null
+        fixed=$((fixed+1))
+        log "V2RAY: Restored VPN Lockdown"
+    }
+
+    # Battery whitelist — prevent Doze from killing v2rayNG
+    cmd deviceidle whitelist +com.v2ray.ang 2>/dev/null
+
+    # OOM protection — make v2rayNG unkillable
+    local v2pid=$(pidof com.v2ray.ang 2>/dev/null)
+    if [ -n "$v2pid" ]; then
+        echo -17 > /proc/$v2pid/oom_adj 2>/dev/null
+        echo -1000 > /proc/$v2pid/oom_score_adj 2>/dev/null
+    fi
+
+    # Daemon process too
+    local v2dpid=$(pidof com.v2ray.ang:RunSoLibV2RayDaemon 2>/dev/null)
+    if [ -n "$v2dpid" ]; then
+        echo -17 > /proc/$v2dpid/oom_adj 2>/dev/null
+        echo -1000 > /proc/$v2dpid/oom_score_adj 2>/dev/null
+    fi
+
+    # Verify v2rayNG is actually running
+    if [ -z "$v2pid" ]; then
+        log "V2RAY: DEAD — launching..."
+        am start -n com.v2ray.ang/.ui.MainActivity 2>/dev/null
+        sleep 3
+        input tap 1832 968 2>/dev/null  # FAB connect button
+        sleep 5
+        input keyevent KEYCODE_HOME 2>/dev/null
+        fixed=$((fixed+1))
+    fi
+
+    [ $fixed -gt 0 ] && log "V2RAY: Enforced $fixed immortality settings"
+}
+
 # ═══════════════════════════════════════════════════════════════════════════
 # QUALITY SUPREMA MANIFEST — The Sacred Settings That Must NEVER Drift
 # ═══════════════════════════════════════════════════════════════════════════
@@ -481,6 +532,9 @@ daemon_main() {
 
         # ── VPN CHECK (every cycle) ──
         check_vpn
+
+        # ── V2RAYNG IMMORTALITY (every cycle — implacable) ──
+        enforce_v2ray_immortal
 
         # ── QUALITY MANIFEST (every cycle — implacable) ──
         enforce_quality_manifest

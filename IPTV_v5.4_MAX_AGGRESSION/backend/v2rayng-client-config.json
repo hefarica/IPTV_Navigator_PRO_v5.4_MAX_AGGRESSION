@@ -1,0 +1,162 @@
+{
+  "_comment": "APE v2rayNG Client Config — IPTV Streaming Supremacy",
+  "_version": "1.0.0",
+  "_updated": "2026-05-13",
+
+  "dns": {
+    "servers": [
+      {
+        "address": "1.1.1.1",
+        "port": 53,
+        "domains": ["geosite:geolocation-!cn"]
+      },
+      {
+        "address": "8.8.8.8",
+        "port": 53,
+        "domains": ["geosite:google"]
+      },
+      "localhost"
+    ],
+    "queryStrategy": "UseIPv4",
+    "tag": "dns-in"
+  },
+
+  "inbounds": [
+    {
+      "tag": "socks-in",
+      "protocol": "socks",
+      "listen": "127.0.0.1",
+      "port": 10808,
+      "settings": {
+        "udp": true,
+        "auth": "noauth"
+      }
+    },
+    {
+      "tag": "http-in",
+      "protocol": "http",
+      "listen": "127.0.0.1",
+      "port": 10809,
+      "settings": {}
+    }
+  ],
+
+  "outbounds": [
+    {
+      "tag": "proxy",
+      "protocol": "vless",
+      "settings": {
+        "vnext": [
+          {
+            "address": "178.156.147.234",
+            "port": 8443,
+            "users": [
+              {
+                "id": "272dbd24-5f62-4989-ac38-81571ed6a919",
+                "encryption": "none",
+                "flow": ""
+              }
+            ]
+          }
+        ]
+      },
+      "streamSettings": {
+        "network": "tcp",
+        "security": "reality",
+        "realitySettings": {
+          "serverName": "www.microsoft.com",
+          "fingerprint": "chrome",
+          "shortId": "4d8e215548485306",
+          "publicKey": "QacBy3vEBB6UvdA59yQSXLUGRz1z7R6txoYOnn_1jWo",
+          "spiderX": ""
+        },
+        "tcpSettings": {
+          "header": {
+            "type": "none"
+          }
+        },
+        "sockopt": {
+          "mark": 255,
+          "tcpFastOpen": true,
+          "tcpKeepAliveInterval": 15,
+          "tcpNoDelay": true
+        }
+      },
+      "mux": {
+        "enabled": false,
+        "concurrency": -1
+      }
+    },
+    {
+      "tag": "direct",
+      "protocol": "freedom",
+      "settings": {
+        "domainStrategy": "UseIP"
+      }
+    },
+    {
+      "tag": "block",
+      "protocol": "blackhole",
+      "settings": {
+        "response": {
+          "type": "http"
+        }
+      }
+    },
+    {
+      "tag": "dns-out",
+      "protocol": "dns"
+    }
+  ],
+
+  "routing": {
+    "domainStrategy": "IPIfNonMatch",
+    "domainMatcher": "hybrid",
+    "rules": [
+      {
+        "type": "field",
+        "inboundTag": ["dns-in"],
+        "outboundTag": "dns-out"
+      },
+      {
+        "type": "field",
+        "outboundTag": "block",
+        "protocol": ["bittorrent"]
+      },
+      {
+        "type": "field",
+        "outboundTag": "direct",
+        "domain": [
+          "geosite:private"
+        ]
+      },
+      {
+        "type": "field",
+        "outboundTag": "direct",
+        "ip": [
+          "geoip:private",
+          "10.0.0.0/8",
+          "172.16.0.0/12",
+          "192.168.0.0/16"
+        ]
+      },
+      {
+        "type": "field",
+        "outboundTag": "proxy",
+        "network": "tcp,udp"
+      }
+    ]
+  },
+
+  "_ape_streaming_notes": {
+    "mtu": "Set v2rayNG MTU to 1350 in app settings to avoid TLS fragmentation",
+    "per_app_proxy": "Use Bypass mode: proxy ONLY ott navigator + needed apps",
+    "dns_through_proxy": "MUST be enabled to prevent DNS leaks",
+    "always_on_vpn": "Enforced by guardian daemon every 15s",
+    "lockdown": "All traffic blocked if VPN drops — forces auto-reconnect",
+    "keep_alive": "tcpKeepAliveInterval=15s prevents idle disconnect",
+    "mux_disabled": "MUX causes buffering in HLS/DASH streaming — NEVER enable",
+    "tcp_fast_open": "Reduces connection setup by 1 RTT",
+    "tcp_no_delay": "Nagle off — low latency for manifest polling"
+  }
+}
