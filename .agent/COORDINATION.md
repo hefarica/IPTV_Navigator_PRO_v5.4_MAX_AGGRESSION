@@ -48,8 +48,66 @@ VPS deploy pending: requires `iptv-vps-touch-nothing` checklist before scp.
 |---|---|---|---|
 | **Agent E** (author of this file) | Claude Opus 4.7 (1M context), Claude Code CLI | Excel VBA (macros) + Excel-side import (`LAB_SNAPSHOT.json` consumed by `ImportFromFrontend`) + plan/docs | DONE — backlog cancelled (matrix=status_quo per user) |
 | **Agent F** (handoff doc author, self-labelled "Agent A") | unknown session | Frontend JS (consumers, PM9 SSOT panel, generator wiring, tests, runtime audit) | DONE — pending T7 smoke E2E by user |
+| **Agent G** (this session 2026-05-17) | Claude Opus 4.7 (1M context), Claude Code CLI | Team Agent Supremo install (306 skills + 15 agents + 8 commands) + 21 ARTIFACT_*.md + 5 production fixes (CMAF codec/HDR/UA/Conviva) + Cadena de Manifestación 11 eslabones + cascada HEVC 11-tier definitiva | DONE 2026-05-17 — pending Agent F handoff for FASE 1 destripe de m3u8-typed-arrays-ultimate.js |
 
-If you are a third agent reading this: **STOP and ask the user before claiming any scope**.
+If you are a fourth agent reading this: **STOP and ask the user before claiming any scope**.
+
+### Agent G — Files modified this session (5 production code, 4 committed groups, pushed to origin master)
+
+Commits (post-29182ff):
+- `f443122` fix(cmaf): RFC 6381 codec strings + HDR ffmpeg flags + VIDEO-RANGE emission
+- `0b33fbb` fix(api,player): SmartTV UA defaults + Conviva QoE engine wire
+- `6ea25cc` docs(team-agent): 20 ARTIFACT_*.md + audit reports + GEMINI.md doctrine mirror
+- `2320d9c` feat(commands): refine 7 slash commands + add team-agent-debate
+- (pending commit) `fix(cmaf): tier mapping ES5-003 — resolveHevcTierString aditivo`
+
+Production code touched:
+- `IPTV_v5.4_MAX_AGGRESSION/backend/cmaf_engine/cmaf_integration_shim.php` (codec .90→.B0)
+- `IPTV_v5.4_MAX_AGGRESSION/backend/cmaf_engine/modules/dual_manifest_generator.php` (codec + VIDEO-RANGE + tier mapper)
+- `IPTV_v5.4_MAX_AGGRESSION/backend/cmaf_engine/modules/cmaf_packaging_engine.php` (HDR ffmpeg flags additive)
+- `IPTV_v5.4_MAX_AGGRESSION/frontend/backend_v15/hls_rewriter_v15.py` (SmartTV UA defaults)
+- `IPTV_v5.4_MAX_AGGRESSION/frontend/index-v4.html` (Conviva wire)
+- `IPTV_v5.4_MAX_AGGRESSION/frontend/js/conviva-qoe-engine.js` (untracked → tracked + wired)
+
+Production code NOT touched (preserved per lock policy):
+- `IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/m3u8-typed-arrays-ultimate.js` (Agent F · 73L diff uncommitted)
+- `IPTV_v5.4_MAX_AGGRESSION/frontend/js/quality-manifest-widget.js` (previous session)
+- `IPTV_v5.4_MAX_AGGRESSION/backend/quality-manifest-local-api.js` (previous session)
+- VPS productivo (`iptv-vps-touch-nothing` enforced)
+- LAB.xlsm (`iptv-excel-safe-mode` enforced)
+- `.env` files (credentials policy)
+
+### Agent G — Knowledge artifacts deployed
+
+| Location | Count | Purpose |
+|---|---|---|
+| `.agents/artifacts/ARTIFACT_*.md` | 21 (was 20 + this session +1) | Operational specs for 13 specialists |
+| `.agents/reports/*.md` + `*.log` | 7 | FASE 0 forensic + 6 session summaries + 3 validators logs |
+| `.agents/skills/*/` | 306 + 1 augment | Team Agent Supremo skills enterprise |
+| `.claude/agents/*.md` | 15 | 13 specialists S1-S13 + 2 hook dups |
+| `.claude/commands/*.md` | 8 | Slash commands operativos |
+| `GEMINI.md` + `AGENTS.md` (preexisting) + `CLAUDE.md` extended | 3 | Doctrina raíz triple |
+
+### Agent G — Skills index
+
+- `.agents/skills_index.json` 306 entries · 194 KB JSON valid · `install_skills.sh` idempotent validator PASS
+
+### Agent G — Critical audit findings still OPEN (deferred to future sessions)
+
+| ID | Severity | File | Issue | Why deferred |
+|---|---|---|---|---|
+| ES5-006 sub | INFO | `cmaf_packaging_engine.php` (already partial fix applied) | Refactor for HDR DNA contract extension | Requires probe→DNA pipeline update + smoke test |
+| ES5-005 sub | MEDIUM | `hdr10plus_dynamic_engine.php` | Falta emit trifecta HDR estándar HLS inline en STREAM-INF | Cross-module dependency · design first |
+| (new) | INFO | `cmaf_integration_shim.php:resolveCodecString` | No usa tier mapper como `dual_manifest_generator.php` | Duplicated logic · candidate for shared trait |
+
+### Agent G — Doctrine documents authored (cross-reference)
+
+- `ARTIFACT_HEVC_11TIER_CASCADE_DEFINITIVE.md` — codec ladder canonical (supersedes 8-tier)
+- `ARTIFACT_HDR10_METADATA_TRIFECTA.md` — BT.2020 + PQ + Matrix=9 doctrine
+- `ARTIFACT_CHAIN_OF_MANIFESTATION_11_ESLABONES.md` — bit→photon end-to-end map
+- `ARTIFACT_8_EMBEDDED_BONDADES.md` — mandatory bondades per generation
+- `ARTIFACT_TAG_PARSING_GUARANTEE.md` — RFC 6381 + RFC 8216 §6.3.1 universal safety
+- `ARTIFACT_MATERIAL_VALIDATION_TESTS.md` — Tests A-F validation gates
 
 ## Pipeline direction terms (unified)
 

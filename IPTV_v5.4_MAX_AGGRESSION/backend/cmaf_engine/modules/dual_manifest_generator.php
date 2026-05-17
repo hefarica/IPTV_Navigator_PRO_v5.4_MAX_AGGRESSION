@@ -364,13 +364,96 @@ class DualManifestGenerator
     private function resolveHlsCodecString(array $rendition, array $dna, bool $lcevcEnabled): string
     {
         $codec = $dna['codec_priority'][0] ?? 'h264';
-        // Use class const for HEVC to keep single source of truth (Tier 9 cascada definitiva)
+
+        // Tier mapping per ARTIFACT_HEVC_11TIER_CASCADE_DEFINITIVE.md
+        // Reads optional probe fields: $rendition['bit_depth'], $rendition['fps'], $rendition['height'],
+        // $dna['hdr_type']. When fields absent → falls through to default tier (legacy safe behavior).
+        if (in_array($codec, ['hevc', 'h265'], true)) {
+            $tierString = $this->resolveHevcTierString($rendition, $dna);
+            if ($tierString !== null) {
+                return $tierString . ',mp4a.40.2';
+            }
+            // Fallback: default Tier 9 (Main 8-bit 1080p@30) — safe for unknown content
+            return self::LCEVC_CODEC_HEVC . ',mp4a.40.2';
+        }
+
         $videoCodec = match($codec) {
-            'hevc', 'h265' => self::LCEVC_CODEC_HEVC,  // hvc1.1.6.L120.B0 — RFC 6381 §3.3
-            'av1'          => 'av01.0.08M.08',
-            default        => self::LCEVC_CODEC_H264,  // avc1.640028 — Tier 11 fallback
+            'av1'   => 'av01.0.08M.08',
+            default => self::LCEVC_CODEC_H264,  // avc1.640028 — Tier 11 fallback universal
         };
         return $videoCodec . ',mp4a.40.2';
+    }
+
+    /**
+     * Maps probe data to the appropriate HEVC tier (T1-T10) of the 11-tier cascade.
+     * Per ARTIFACT_HEVC_11TIER_CASCADE_DEFINITIVE.md.
+     *
+     * Returns null when probe data insufficient → caller uses default Tier 9 fallback.
+     * NEVER returns a 10-bit/HDR tier without explicit probe evidence (Reglas Honestas).
+     *
+     * Tier selection rules:
+     *   - Main 10 (HDR · Tiers 1-6): requires bit_depth >= 10 AND hdr_type ∈ {hdr10,hdr10plus,hlg,dolby_vision}
+     *   - Main 8-bit SDR (Tiers 7-10): requires bit_depth signaling, no HDR
+     *   - Resolution + fps determine the specific tier within the Main10 or Main groups
+     */
+    private function resolveHevcTierString(array $rendition, array $dna): ?string
+    {
+        // Read probe fields (optional in current contract — graceful absence handling)
+        $bitDepth = isset($rendition['bit_depth']) ? (int)$rendition['bit_depth'] : null;
+        $fps      = isset($rendition['fps']) ? (float)$rendition['fps'] : null;
+        $height   = isset($rendition['height']) ? (int)$rendition['height'] : null;
+        $hdrType  = isset($dna['hdr_type']) ? strtolower((string)$dna['hdr_type']) : null;
+
+        // Insufficient probe data → caller falls back to default tier
+        if ($height === null) {
+            return null;
+        }
+
+        $isHdr = ($hdrType !== null && in_array($hdrType, ['hdr10', 'hdr10plus', 'hlg', 'dolby_vision'], true));
+        $is10Bit = ($bitDepth !== null && $bitDepth >= 10);
+
+        // 10-bit HDR tiers (T1-T6) — require both 10-bit AND HDR evidence
+        if ($is10Bit && $isHdr) {
+            // 4K (≥2160)
+            if ($height >= 2160) {
+                if ($fps !== null && $fps >= 100) {
+                    return 'hvc1.2.4.L156.B0';  // T3: 4K@120 Main10 HDR (L5.2)
+                }
+                if ($fps !== null && $fps >= 50) {
+                    return 'hvc1.2.4.L153.B0';  // T1: 4K@60 Main10 HDR (L5.1) — CORONA
+                }
+                return 'hvc1.2.4.L150.B0';      // T2: 4K@30 Main10 HDR (L5.0)
+            }
+            // 1080p (1080–2159)
+            if ($height >= 1080) {
+                if ($fps !== null && $fps >= 50) {
+                    return 'hvc1.2.4.L123.B0';  // T4: 1080p@60 Main10 HDR (L4.1)
+                }
+                return 'hvc1.2.4.L120.B0';      // T5: 1080p@30 Main10 HDR (L4.0)
+            }
+            // 720p or lower → T6 último escalón 10-bit
+            return 'hvc1.2.4.L93.B0';           // T6: 720p Main10 HDR (L3.1)
+        }
+
+        // 8-bit SDR tiers (T7-T10) — require bit_depth signal (or assume 8-bit if explicit)
+        if ($bitDepth !== null) {
+            // 4K SDR
+            if ($height >= 2160) {
+                if ($fps !== null && $fps >= 50) {
+                    return 'hvc1.1.6.L153.B0';  // T7: 4K@60 Main 8-bit SDR
+                }
+                return 'hvc1.1.6.L150.B0';      // T8: 4K@30 Main 8-bit SDR
+            }
+            // 1080p SDR
+            if ($height >= 1080) {
+                return 'hvc1.1.6.L120.B0';      // T9: 1080p Main 8-bit SDR
+            }
+            // 720p or lower → T10 último HEVC
+            return 'hvc1.1.6.L93.B0';           // T10: 720p Main 8-bit SDR
+        }
+
+        // bit_depth ausente → caller usa default safe (T9 = LCEVC_CODEC_HEVC)
+        return null;
     }
 
     private function resolveDashCodecString(array $dna, bool $lcevcTrack): string
