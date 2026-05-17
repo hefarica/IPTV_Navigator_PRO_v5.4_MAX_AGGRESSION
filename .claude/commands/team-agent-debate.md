@@ -1,31 +1,31 @@
 ---
-description: Run nginx -t on local conf, then Lua syntax check, then verify autopista doctrine (no circuit breaker, xtream_slot>=2, no cache warmers).
-argument-hint: "<path/to/nginx.conf> [--lua-dir <dir>]"
+description: Spawn the 13-specialist debate on a question. Each subagent contributes from its discipline; output a synthesized decision.
+argument-hint: "<question text>"
 allowed-tools: Read, Glob, Grep, Bash, TodoWrite, Skill, AskUserQuestion, Agent
 ---
 
-# /check-nginx-streaming
+# /team-agent-debate
 
-**Purpose:** Run nginx -t on local conf, then Lua syntax check, then verify autopista doctrine (no circuit breaker, xtream_slot>=2, no cache warmers).
+**Purpose:** Spawn the 13-specialist debate on a question. Each subagent contributes from its discipline; output a synthesized decision.
 
 ## Usage
 ```
-/check-nginx-streaming <path/to/nginx.conf> [--lua-dir <dir>]
+/team-agent-debate <question text>
 ```
 
 ## Inputs (positional / flagged)
-  path/to/nginx.conf * --lua-dir   dir
+  question text
 
 ## Execution flow
 1. **Cortex init** — `iptv-cortex-init-mandatory` 5-layer scan (mandatory).
 2. **Pre-edit audit** — `iptv-pre-edit-audit` for any file the command would touch.
 3. **Validation** — execute syntax / smoke / E2E gates per scope.
 4. **Subagent delegation** — if multi-disciplinary, invoke the 13 specialists in parallel via the Agent tool.
-5. **Report** — generate `.agents/reports/check-nginx-streaming_<timestamp>.md` with findings and recommendations.
+5. **Report** — generate `.agents/reports/team-agent-debate_<timestamp>.md` with findings and recommendations.
 
 ## Outputs
-- Markdown report in `.agents/reports/check-nginx-streaming_<timestamp>.md`
-- JSON twin in `.agents/reports/check-nginx-streaming_<timestamp>.json` if applicable
+- Markdown report in `.agents/reports/team-agent-debate_<timestamp>.md`
+- JSON twin in `.agents/reports/team-agent-debate_<timestamp>.json` if applicable
 - Exit code: 0 PASS, 1 WARN, 2 BLOCK
 
 ## Doctrines enforced
@@ -45,13 +45,13 @@ allowed-tools: Read, Glob, Grep, Bash, TodoWrite, Skill, AskUserQuestion, Agent
 
 ### Example A — basic invocation
 ```
-/check-nginx-streaming
+/team-agent-debate
 ```
 Runs against the most recently modified target in scope.
 
 ### Example B — explicit path
 ```
-/check-nginx-streaming <path/to/target>
+/team-agent-debate <path/to/target>
 ```
 
 ### Example C — with subagent debate
