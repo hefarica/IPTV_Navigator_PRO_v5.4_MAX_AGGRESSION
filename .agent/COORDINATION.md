@@ -4,6 +4,40 @@
 
 Last updated: 2026-04-26 by Agent A (Claude Opus 4.7 / 1M ctx)
 
+## Completed work (Agent Disney-Grade · 2026-05-16)
+
+✅ DONE — disney-ssot-migration · 2026-05-16T~16:00Z · lock released
+
+Migrated 6 Disney-Grade LL-HLS/ABR directives from hardcoded JS/PHP/Python emission to LAB SSOT pipeline.
+
+Touched (all smoke tests pass: node -c, python -m py_compile, JSON valid):
+- CREATE: `IPTV_v5.4_MAX_AGGRESSION/vps/prisma/config/m3u8_directives_config.json` (seed)
+- MOD: `IPTV_v5.4_MAX_AGGRESSION/vps/nginx/lua/lab_config.lua` (added `_M.m3u8_directives()` + `_M.m3u8_directive_lines()`)
+- MOD: `IPTV_v5.4_MAX_AGGRESSION/vps/prisma/lib/lab_config_loader.php` (added `m3u8Directives()` + `m3u8DirectiveLines()` + `defaultsM3u8Directives()`)
+- MOD: `IPTV_v5.4_MAX_AGGRESSION/docs/LAB_VBA_MACROS/prismaBulletproofEnrich.bas` (added `SHEET_DISNEY` const + `DumpDisneyGradeDirectives` + `DisneyDirectivesFallback` + call in `BuildFeatureSheetsBlock`)
+- MOD: `IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/ape-profiles-config.js` (added `DEFAULT_DISNEY_DIRECTIVES` const + extraction in PRISMA block + `getGlobalDisneyDirectives()` + `isDisneyDirectivesFromLab()` getters)
+- MOD: `IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/m3u8-typed-arrays-ultimate.js` (LAB-aware branch reads getter into `coreHeader`; fallback branch reads getter via `_disneyBlockFb` substitution; Windsurf hardcoded lines 2483-2486 + line 2489 modification reverted)
+- MOD: `IPTV_v5.4_MAX_AGGRESSION/frontend/js/m3u8-world-class-generator.js` (LAB-wired insertion in `generateGlobalHeader()`; `#EXT-X-TARGETDURATION:6` removed to let Disney's `:2` win)
+- MOD: `IPTV_v5.4_MAX_AGGRESSION/backend/resolve_quality_unified.php` (replaced 6-line Windsurf hardcode with `LabConfigLoader::m3u8DirectiveLines()` + inline fallback)
+- MOD: `IPTV_v5.4_MAX_AGGRESSION/vps/ape_hls_generators.php` (idem)
+- MOD: `IPTV_v5.4_MAX_AGGRESSION/scripts/generate_m3u8_v53_fusion.py` (added `_ape_disney_directive_lines()` helper reading seed JSON with defaults fallback; fixes broken-escape bug at original line 626)
+- MOD: `IPTV_v5.4_MAX_AGGRESSION/scripts/generate_m3u8_pep_v5.py` (idem)
+
+Manual action pending: user creates Excel sheet `30_DISNEY_GRADE_DIRECTIVES` in `APE_M3U8_LAB_v8_FIXED.xlsm` with rows:
+
+| key | value | category | applies_to | comment |
+|-----|-------|----------|------------|---------|
+| `EXT-X-START` | `TIME-OFFSET=-3.0,PRECISE=YES` | timeline | ALL | Pillar 1 |
+| `EXT-X-SERVER-CONTROL` | `CAN-BLOCK-RELOAD=YES,PART-HOLD-BACK=1.0,CAN-SKIP-UNTIL=12.0` | timeline | ALL | Pillar 1 |
+| `EXT-X-TARGETDURATION` | `2` | fragmentation | ALL | Pillar 2 |
+| `EXT-X-PART-INF` | `PART-TARGET=1.0` | fragmentation | ALL | Pillar 2 |
+| `EXT-X-SESSION-DATA` | `DATA-ID="exoplayer.load_control",VALUE="{\"minBufferMs\":20000,\"bufferForPlaybackMs\":1000}"` | abr | ALL | Pillar 3 |
+| `EXT-X-SESSION-DATA` | `DATA-ID="exoplayer.track_selection",VALUE="{\"maxDurationForQualityDecreaseMs\":2000,\"minDurationForQualityIncreaseMs\":15000,\"bandwidthFraction\":0.65}"` | abr | ALL | Pillar 3 |
+
+Until sheet exists, `DumpDisneyGradeDirectives` falls back to `DisneyDirectivesFallback()` (same 6 directives) so bulletproof JSON export keeps working. Frontend / VPS / backend / Python all have their own defensive defaults — system never emits empty Disney block.
+
+VPS deploy pending: requires `iptv-vps-touch-nothing` checklist before scp.
+
 ---
 
 ## Active agents

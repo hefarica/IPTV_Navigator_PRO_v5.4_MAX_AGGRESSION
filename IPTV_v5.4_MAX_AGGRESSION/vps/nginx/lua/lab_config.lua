@@ -104,6 +104,21 @@ local FALLBACK_SENTINEL = {
     global_thresholds = { burst_limiter_rate_per_second = 4, burst_limiter_burst = 8 },
 }
 
+-- Disney-Grade LL-HLS / ABR directives (mismos valores para todos los perfiles)
+-- Fallback usado si m3u8_directives_config.json falta o está corrupto.
+local FALLBACK_M3U8_DIRECTIVES = {
+    schema_version = "1.0",
+    applies_to_all_profiles = true,
+    directives = {
+        { tag = "EXT-X-START",         value = "TIME-OFFSET=-3.0,PRECISE=YES", category = "timeline" },
+        { tag = "EXT-X-SERVER-CONTROL", value = "CAN-BLOCK-RELOAD=YES,PART-HOLD-BACK=1.0,CAN-SKIP-UNTIL=12.0", category = "timeline" },
+        { tag = "EXT-X-TARGETDURATION", value = "2", category = "fragmentation" },
+        { tag = "EXT-X-PART-INF",       value = "PART-TARGET=1.0", category = "fragmentation" },
+        { tag = "EXT-X-SESSION-DATA",   value = 'DATA-ID="exoplayer.load_control",VALUE="{\\"minBufferMs\\":20000,\\"bufferForPlaybackMs\\":1000}"', category = "abr" },
+        { tag = "EXT-X-SESSION-DATA",   value = 'DATA-ID="exoplayer.track_selection",VALUE="{\\"maxDurationForQualityDecreaseMs\\":2000,\\"minDurationForQualityIncreaseMs\\":15000,\\"bandwidthFraction\\":0.65}"', category = "abr" },
+    },
+}
+
 -- ──────────────────────────────────────────────────────────────────
 -- Public API
 -- ──────────────────────────────────────────────────────────────────
@@ -130,6 +145,27 @@ end
 
 function _M.manifest()
     return read_json("enterprise_doctrine_manifest.json", { version = "fallback", compliance_score_current = 0 })
+end
+
+-- Disney-Grade LL-HLS / ABR directives (global, igual para todos los perfiles).
+-- Telemetry/visibility only en VPS — la emisión de los tags en el .m3u8 ocurre en
+-- el generator frontend; aquí solo exponemos el config para que /prisma/api/telemetry-full
+-- pueda reportar qué directivas globales están activas.
+function _M.m3u8_directives()
+    return read_json("m3u8_directives_config.json", FALLBACK_M3U8_DIRECTIVES)
+end
+
+-- Helper: lista plana de tags formateados (`#EXT-X-START:VALUE`, ...) lista para concatenar
+function _M.m3u8_directive_lines()
+    local cfg = _M.m3u8_directives()
+    local out = {}
+    if not cfg or type(cfg.directives) ~= "table" then return out end
+    for _, d in ipairs(cfg.directives) do
+        if d.tag and d.value then
+            out[#out + 1] = "#" .. d.tag .. ":" .. d.value
+        end
+    end
+    return out
 end
 
 -- Helper: piso bps por perfil
@@ -163,6 +199,7 @@ function _M.health()
         "sentinel_providers_map.json",
         "telescope_thresholds.json",
         "enterprise_doctrine_manifest.json",
+        "m3u8_directives_config.json",
     }
     local out = {}
     local now = os.time()

@@ -2195,6 +2195,20 @@
                 `#EXT-X-APE-CHANNELS:${totalChannels}`
             ];
 
+            // ── 🎬 DISNEY-GRADE LL-HLS / ABR DIRECTIVES (LAB SSOT) ──────────────
+            // Source: LAB Excel sheet 30_DISNEY_GRADE_DIRECTIVES (via bulletproof JSON
+            // → prismaDisneyDirectives). Fallback: DEFAULT_DISNEY_DIRECTIVES constant
+            // (mismos valores para todos los perfiles P0-P5).
+            // El dedup RFC 8216 (lines ~2455-2466) descarta duplicados de tags singleton
+            // si otra capa ya los emitió.
+            const _apeCfg = (typeof window !== 'undefined') ? window.APE_PROFILES_CONFIG : null;
+            if (_apeCfg && typeof _apeCfg.getGlobalDisneyDirectives === 'function') {
+                const _disneyLines = _apeCfg.getGlobalDisneyDirectives();
+                if (Array.isArray(_disneyLines) && _disneyLines.length > 0) {
+                    coreHeader.push(..._disneyLines);
+                }
+            }
+
             // ── LAB TRAZABILITY — metadata global del LAB Excel ─────────────────
             // Doctrina SSOT: cualquier valor calibrado por el LAB queda auditable
             // directo en la lista. Cero "valores ciegos".
@@ -2468,6 +2482,16 @@
         }
 
         // --- BACKWARDS COMPAT FALLBACK ---
+        // 🎬 Disney-Grade LL-HLS / ABR directives via SSOT (LAB Excel sheet
+        // 30_DISNEY_GRADE_DIRECTIVES → window.APE_PROFILES_CONFIG.getGlobalDisneyDirectives()).
+        // Defaults preservados en DEFAULT_DISNEY_DIRECTIVES (mismos valores que la
+        // implementación original Windsurf — siempre presentes por defecto).
+        const _apeCfgFb = (typeof window !== 'undefined') ? window.APE_PROFILES_CONFIG : null;
+        const _disneyLinesFb = (_apeCfgFb && typeof _apeCfgFb.getGlobalDisneyDirectives === 'function')
+            ? _apeCfgFb.getGlobalDisneyDirectives()
+            : [];
+        const _disneyBlockFb = _disneyLinesFb.length > 0 ? _disneyLinesFb.join('\n') + '\n' : '';
+
         return `#EXTM3U x-tvg-url="" x-tvg-url-epg="" x-tvg-logo="" x-tvg-shift=0 catchup="flussonic" catchup-days="7" catchup-source="{MediaUrl}?utc={utc}&lutc={lutc}" url-tvg="" refresh="1800"
 #EXT-X-VERSION:9
 #EXT-X-INDEPENDENT-SEGMENTS
@@ -2480,9 +2504,9 @@
 #EXT-X-APE-QMAX-PERCEPTUAL-OPTIMIZATION:VMAF-MAXIMIZATION-ENABLED
 #EXT-X-APE-QMAX-BANDWIDTH-SAFETY-MARGIN:0.30
 #X-OMEGA-TIMESTAMP:${timestamp}
-#EXT-X-APE-LCEVC-SDK-VERSION:1.2.4
+${_disneyBlockFb}#EXT-X-APE-LCEVC-SDK-VERSION:1.2.4
 #EXT-X-VNOVA-LCEVC-TARGET-SDK:HTML5
-${options.dictatorMode ? `#EXT-X-SESSION-DATA:DATA-ID="exoplayer.load_control",VALUE="{\\"minBufferMs\\":20000,\\"bufferForPlaybackMs\\":5000}"` : ""}
+${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random().toString(36).substring(2)).join("") : ""}
 ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random().toString(36).substring(2)).join("") : ""}
 #EXT-X-CONTENT-STEERING:SERVER-URI="https://steer.ape.net/v1",PATHWAY-ID="PRIMARY"
 #EXT-X-SESSION-DATA:DATA-ID="com.ape.build",VALUE="v5.4-MAX-AGGRESSION"
@@ -6136,8 +6160,8 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
         const arr = [];
         // [HEVC-FIRST CODEC LADDER] per-profile chain values from cfg (LAB SSOT settings).
         // Fallbacks defensivos HEVC-first si cfg no propagó (NO-CLAMP texto).
-        const _chainFamily = cfg.codec_chain_video_family || 'HEVC-MAIN10>HEVC-MAIN>H264-HIGH>H264-MAIN';
-        const _chainVideo  = cfg.codec_chain_video       || 'hvc1.2.4.L153.B0,hev1.2.4.L153.B0,avc1.640033,avc1.640028';
+        const _chainFamily = cfg.codec_chain_video_family || 'HEVC-MAIN10-L5.1>HEVC-MAIN10-L5.0>HEVC-MAIN10-L4.0>HEVC-MAIN-L5.1>HEVC-MAIN-L5.0>HEVC-MAIN-L4.0>HEVC-MAIN-L3.1>H264-HIGH';
+        const _chainVideo  = cfg.codec_chain_video       || 'hvc1.2.4.L153.B0,hvc1.2.4.L150.B0,hvc1.2.4.L120.B0,hvc1.1.6.L153.B0,hvc1.1.6.L150.B0,hvc1.1.6.L120.B0,hvc1.1.6.L93.B0,avc1.640028';
         const _chainAudio  = cfg.codec_chain_audio       || 'ec-3,ac-3,mp4a.40.2,mp4a.40.5';
         const _chainHdr    = cfg.codec_chain_hdr         || 'hdr10,hlg,sdr';
         const _chainPref   = cfg.codec_chain_player_pref || 'hvc1,hev1,h265,avc1,h264';
@@ -6226,7 +6250,7 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
         arr.push('#EXT-X-APE-OMEGA-ENGINE-BANDWIDTH-MONITOR:ACTIVE');
         arr.push('#EXT-X-APE-AV1-FALLBACK-ENABLED:true');
         // [HEVC-FIRST] per-profile family chain from cfg.codec_chain_video_family (LAB SSOT)
-        arr.push('#EXT-X-APE-AV1-FALLBACK-CHAIN:' + (cfg.codec_chain_video_family || 'HEVC-MAIN10>HEVC-MAIN>H264-HIGH>H264-MAIN'));
+        arr.push('#EXT-X-APE-AV1-FALLBACK-CHAIN:' + (cfg.codec_chain_video_family || 'HEVC-MAIN10-L5.1>HEVC-MAIN10-L5.0>HEVC-MAIN10-L4.0>HEVC-MAIN-L5.1>HEVC-MAIN-L5.0>HEVC-MAIN-L4.0>HEVC-MAIN-L3.1>H264-HIGH'));
         arr.push('#EXT-X-APE-CODEC-PRIORITY:' + (cfg.codec_chain_player_pref || 'hvc1,hev1,h265,avc1,h264'));
         arr.push('#EXT-X-APE-TELCHEMY-TVQM:ACTIVATED');
         arr.push('#EXT-X-APE-TELCHEMY-TR101290:ACTIVATED');
@@ -8913,11 +8937,11 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
             // [HEVC-FIRST CODEC LADDER GUARDRAIL] Si Excel template no resuelve codec_chain_*,
             // sustituye al valor de cfg (LAB SSOT) o al fallback hardcoded HEVC-first.
             // Cumple NO-CLAMP: codec strings son texto, no se coercionan.
-            const _cgVideo  = cfg.codec_chain_video        || 'hvc1.2.4.L153.B0,hev1.2.4.L153.B0,avc1.640033,avc1.640028';
+            const _cgVideo  = cfg.codec_chain_video        || 'hvc1.2.4.L153.B0,hvc1.2.4.L150.B0,hvc1.2.4.L120.B0,hvc1.1.6.L153.B0,hvc1.1.6.L150.B0,hvc1.1.6.L120.B0,hvc1.1.6.L93.B0,avc1.640028';
             const _cgAudio  = cfg.codec_chain_audio        || 'ec-3,ac-3,mp4a.40.2,mp4a.40.5';
             const _cgHdr    = cfg.codec_chain_hdr          || 'hdr10,hlg,sdr';
             const _cgPref   = cfg.codec_chain_player_pref  || 'hvc1,hev1,h265,avc1,h264';
-            const _cgFamily = cfg.codec_chain_video_family || 'HEVC-MAIN10>HEVC-MAIN>H264-HIGH>H264-MAIN';
+            const _cgFamily = cfg.codec_chain_video_family || 'HEVC-MAIN10-L5.1>HEVC-MAIN10-L5.0>HEVC-MAIN10-L4.0>HEVC-MAIN-L5.1>HEVC-MAIN-L5.0>HEVC-MAIN-L4.0>HEVC-MAIN-L3.1>H264-HIGH';
             _finalM3U = _finalM3U
                 .replace(/\(reads from [^)]*prisma_floor_min_bandwidth_bps\)/g, String(_prismaFloorBps))
                 .replace(/\(reads from [^)]*prisma_target_bandwidth_bps\)/g, String(_prismaTargetBps))

@@ -5602,6 +5602,24 @@ function rq_handle_request(): void
         $output = "#EXTM3U\n";
         $output .= "#EXT-X-VERSION:6\n";
         $output .= "#EXT-X-INDEPENDENT-SEGMENTS\n"; // Optimize for ExoPlayer
+
+        // 🎬 Disney-Grade LL-HLS / ABR directives (LAB SSOT — global, todos los perfiles)
+        // Source: vps/prisma/config/m3u8_directives_config.json via LabConfigLoader.
+        // Si la clase no está autoloaded (entorno legacy), usa defaults inline.
+        $disney_lines = (class_exists('LabConfigLoader') && method_exists('LabConfigLoader', 'm3u8DirectiveLines'))
+            ? LabConfigLoader::m3u8DirectiveLines()
+            : [
+                '#EXT-X-START:TIME-OFFSET=-3.0,PRECISE=YES',
+                '#EXT-X-SERVER-CONTROL:CAN-BLOCK-RELOAD=YES,PART-HOLD-BACK=1.0,CAN-SKIP-UNTIL=12.0',
+                '#EXT-X-TARGETDURATION:2',
+                '#EXT-X-PART-INF:PART-TARGET=1.0',
+                '#EXT-X-SESSION-DATA:DATA-ID="exoplayer.load_control",VALUE="{\"minBufferMs\":20000,\"bufferForPlaybackMs\":1000}"',
+                '#EXT-X-SESSION-DATA:DATA-ID="exoplayer.track_selection",VALUE="{\"maxDurationForQualityDecreaseMs\":2000,\"minDurationForQualityIncreaseMs\":15000,\"bandwidthFraction\":0.65}"',
+            ];
+        foreach ($disney_lines as $_disney_line) {
+            $output .= $_disney_line . "\n";
+        }
+
         $output .= "#EXT-X-APE-RESOLVER: POLYMORPHIC_200_OK_HYDRA_SSOT\n";
         if ($profile === 'SPORTS') $output .= "#EXT-X-APE-PROFILE-LOCK: 8K_120FPS\n";
         elseif ($profile === 'CINEMA') $output .= "#EXT-X-APE-PROFILE-LOCK: 4K_HDR\n";

@@ -1,0 +1,44 @@
+{
+  "schema_version": "1.0",
+  "generated_by": "seed file — overwritten by LAB Excel exportPrismaConfig macro",
+  "doctrine": "Disney-Grade LL-HLS / ABR directives — global defaults (same for all profiles P0-P5)",
+  "applies_to_all_profiles": true,
+  "directives": [
+    {
+      "tag": "EXT-X-START",
+      "value": "TIME-OFFSET=-3.0,PRECISE=YES",
+      "category": "timeline",
+      "comment": "Pillar 1: Lock playback head to -3.0s from live edge, PRECISE forbids drift"
+    },
+    {
+      "tag": "EXT-X-SERVER-CONTROL",
+      "value": "CAN-BLOCK-RELOAD=YES,PART-HOLD-BACK=1.0,CAN-SKIP-UNTIL=12.0",
+      "category": "timeline",
+      "comment": "Pillar 1: Block reload + delta playlists, kills blind polling"
+    },
+    {
+      "tag": "EXT-X-TARGETDURATION",
+      "value": "2",
+      "category": "fragmentation",
+      "comment": "Pillar 2: Fake low-duration ceiling forces aggressive segment requests"
+    },
+    {
+      "tag": "EXT-X-PART-INF",
+      "value": "PART-TARGET=1.0",
+      "category": "fragmentation",
+      "comment": "Pillar 2: Micro-chunk simulation — ExoPlayer emits HTTP Range Requests"
+    },
+    {
+      "tag": "EXT-X-SESSION-DATA",
+      "value": "DATA-ID=\"exoplayer.load_control\",VALUE=\"{\\\"minBufferMs\\\":20000,\\\"bufferForPlaybackMs\\\":1000}\"",
+      "category": "abr",
+      "comment": "Pillar 3: ExoPlayer load_control — 1s buffer ignition"
+    },
+    {
+      "tag": "EXT-X-SESSION-DATA",
+      "value": "DATA-ID=\"exoplayer.track_selection\",VALUE=\"{\\\"maxDurationForQualityDecreaseMs\\\":2000,\\\"minDurationForQualityIncreaseMs\\\":15000,\\\"bandwidthFraction\\\":0.65}\"",
+      "category": "abr",
+      "comment": "Pillar 3: ABR caída libre — fast drop, slow rise, 65% pessimistic"
+    }
+  ]
+}

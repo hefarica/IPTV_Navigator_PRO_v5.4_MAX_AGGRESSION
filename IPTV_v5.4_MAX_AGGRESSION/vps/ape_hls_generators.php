@@ -176,6 +176,24 @@ function generate_ape_global_header(array $channels_map, string $list_id): strin
   $ts      = time() . '000';
 
   $header  = "#EXTM3U\n";
+
+  // 🎬 Disney-Grade LL-HLS / ABR directives (LAB SSOT — global, todos los perfiles)
+  // Source: vps/prisma/config/m3u8_directives_config.json via LabConfigLoader.
+  // Si la clase no está autoloaded, usa defaults inline (mismo set).
+  $disney_lines = (class_exists('LabConfigLoader') && method_exists('LabConfigLoader', 'm3u8DirectiveLines'))
+      ? LabConfigLoader::m3u8DirectiveLines()
+      : [
+          '#EXT-X-START:TIME-OFFSET=-3.0,PRECISE=YES',
+          '#EXT-X-SERVER-CONTROL:CAN-BLOCK-RELOAD=YES,PART-HOLD-BACK=1.0,CAN-SKIP-UNTIL=12.0',
+          '#EXT-X-TARGETDURATION:2',
+          '#EXT-X-PART-INF:PART-TARGET=1.0',
+          '#EXT-X-SESSION-DATA:DATA-ID="exoplayer.load_control",VALUE="{\"minBufferMs\":20000,\"bufferForPlaybackMs\":1000}"',
+          '#EXT-X-SESSION-DATA:DATA-ID="exoplayer.track_selection",VALUE="{\"maxDurationForQualityDecreaseMs\":2000,\"minDurationForQualityIncreaseMs\":15000,\"bandwidthFraction\":0.65}"',
+      ];
+  foreach ($disney_lines as $_disney_line) {
+      $header .= $_disney_line . "\n";
+  }
+
   $header .= "#EXT-X-APE-GLOBAL-BUFFER-STRATEGY:NETWORK=60000,LIVE=60000,FILE=30000\n";
   $header .= "#EXT-X-APE-NETWORK-CACHING:60000\n";
   $header .= "#EXT-X-APE-LIVE-CACHING:60000\n";

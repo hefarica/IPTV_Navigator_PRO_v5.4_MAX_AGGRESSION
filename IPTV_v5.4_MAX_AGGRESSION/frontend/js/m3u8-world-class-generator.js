@@ -227,10 +227,20 @@
         const timestamp = new Date().toISOString();
         const generationId = generateUUID();
 
+        // 🎬 Disney-Grade LL-HLS / ABR directives (LAB SSOT — global, todos los perfiles).
+        // Si LAB exportó la hoja 30_DISNEY_GRADE_DIRECTIVES, usa esos valores;
+        // si no, usa DEFAULT_DISNEY_DIRECTIVES (defaults embebidos en ape-profiles-config.js).
+        // NOTA: la directiva #EXT-X-TARGETDURATION viene incluida en el set Disney (valor 2),
+        // por eso aquí YA NO emitimos #EXT-X-TARGETDURATION:6 (Disney lo sobreescribe).
+        const _apeCfg = (typeof window !== 'undefined') ? window.APE_PROFILES_CONFIG : null;
+        const _disneyLines = (_apeCfg && typeof _apeCfg.getGlobalDisneyDirectives === 'function')
+            ? _apeCfg.getGlobalDisneyDirectives()
+            : [];
+
         const header = [
             '#EXTM3U',
             '#EXT-X-VERSION:3',
-            '#EXT-X-TARGETDURATION:6',
+            ..._disneyLines,
             '#EXT-X-MEDIA-SEQUENCE:0',
             '',
             '# ═══════════════════════════════════════════════════════════════════════════',

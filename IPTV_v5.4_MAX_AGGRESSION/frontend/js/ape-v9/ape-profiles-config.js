@@ -18,6 +18,20 @@
     const STORAGE_KEY = 'ape_profiles_v9';
     const MANIFEST_STORAGE_KEY = 'ape_manifest_v9';
 
+    // Disney-Grade LL-HLS / ABR directives — defaults globales (mismos valores para todos
+    // los perfiles P0-P5). Estos defaults se aplican cuando el LAB Excel no ha exportado
+    // la hoja 30_DISNEY_GRADE_DIRECTIVES, manteniendo la cabecera m3u8 funcionalmente
+    // idéntica a la generación pre-LAB. Si LAB exporta valores distintos, sobrescriben
+    // estos defaults via prismaDisneyDirectives.
+    const DEFAULT_DISNEY_DIRECTIVES = [
+        { tag: 'EXT-X-START',          value: 'TIME-OFFSET=-3.0,PRECISE=YES',                                                                                                                                            category: 'timeline' },
+        { tag: 'EXT-X-SERVER-CONTROL', value: 'CAN-BLOCK-RELOAD=YES,PART-HOLD-BACK=1.0,CAN-SKIP-UNTIL=12.0',                                                                                                              category: 'timeline' },
+        { tag: 'EXT-X-TARGETDURATION', value: '2',                                                                                                                                                                        category: 'fragmentation' },
+        { tag: 'EXT-X-PART-INF',       value: 'PART-TARGET=1.0',                                                                                                                                                          category: 'fragmentation' },
+        { tag: 'EXT-X-SESSION-DATA',   value: 'DATA-ID="exoplayer.load_control",VALUE="{\\"minBufferMs\\":20000,\\"bufferForPlaybackMs\\":1000}"',                                                                        category: 'abr' },
+        { tag: 'EXT-X-SESSION-DATA',   value: 'DATA-ID="exoplayer.track_selection",VALUE="{\\"maxDurationForQualityDecreaseMs\\":2000,\\"minDurationForQualityIncreaseMs\\":15000,\\"bandwidthFraction\\":0.65}"', category: 'abr' }
+    ];
+
     const HEADER_CATEGORIES = {
         identity: {
             name: "🔐 1. Identity",
@@ -4888,8 +4902,18 @@
                     // DNA defaults per-channel (las cols 56-63 de 33_CHANNELS_FROM_FRONTEND)
                     this.prismaChannelDnaDefaults = psync.channel_dna_defaults || {};
 
-                    // Feature sheet contents (15 FLOOR_LOCK, 16 SENTINEL, 17 TELESCOPE, 19 ADB)
+                    // Feature sheet contents (15 FLOOR_LOCK, 16 SENTINEL, 17 TELESCOPE, 19 ADB, 30 DISNEY)
                     this.prismaFeatureSheets = psync.feature_sheets || {};
+
+                    // Disney-Grade LL-HLS / ABR directives (global, mismas para todos los perfiles)
+                    // Si la hoja no fue exportada por LAB, dejamos null y el getter usa DEFAULT_DISNEY_DIRECTIVES.
+                    const disneySheet = this.prismaFeatureSheets['30_DISNEY_GRADE_DIRECTIVES'];
+                    if (Array.isArray(disneySheet) && disneySheet.length > 0) {
+                        this.prismaDisneyDirectives = disneySheet;
+                        localStorage.setItem('ape_lab_prisma_disney_directives', JSON.stringify(disneySheet));
+                    } else {
+                        this.prismaDisneyDirectives = null;
+                    }
 
                     // Floor lock config inline (el más crítico para el generator)
                     const cfgJsons = psync.config_jsons_consumed_by_vps || {};
@@ -5059,6 +5083,37 @@
         }
         isPrismaLoaded() {
             return !!this.prismaLabSync;
+        }
+
+        /**
+         * 🎬 Disney-Grade LL-HLS / ABR directives — global (mismos valores para todos los perfiles).
+         *
+         * Devuelve la lista plana de líneas `#TAG:VALUE` lista para concatenar en la
+         * cabecera global del .m3u8. Si el LAB Excel exportó la hoja
+         * 30_DISNEY_GRADE_DIRECTIVES, usa esos valores. Si no, devuelve los defaults
+         * DEFAULT_DISNEY_DIRECTIVES (mismas 6 directivas que la implementación original).
+         *
+         * Cualquier generator (m3u8-typed-arrays-ultimate, m3u8-world-class-generator)
+         * debe llamar a este método en lugar de hardcodear las directivas.
+         */
+        getGlobalDisneyDirectives() {
+            const source = (Array.isArray(this.prismaDisneyDirectives) && this.prismaDisneyDirectives.length > 0)
+                ? this.prismaDisneyDirectives
+                : DEFAULT_DISNEY_DIRECTIVES;
+            const out = [];
+            for (const d of source) {
+                if (!d || !d.tag || typeof d.value !== 'string') continue;
+                out.push(`#${d.tag}:${d.value}`);
+            }
+            return out;
+        }
+
+        /**
+         * 🎬 Helper: ¿estamos usando los defaults hardcoded o los del LAB?
+         * Útil para badge UI "LAB-SYNC" vs "DEFAULTS" en el panel.
+         */
+        isDisneyDirectivesFromLab() {
+            return Array.isArray(this.prismaDisneyDirectives) && this.prismaDisneyDirectives.length > 0;
         }
 
         /**

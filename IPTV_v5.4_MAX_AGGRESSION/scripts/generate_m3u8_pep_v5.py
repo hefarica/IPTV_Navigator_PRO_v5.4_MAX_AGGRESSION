@@ -22,6 +22,52 @@ import sys
 import os
 from datetime import datetime, timezone
 
+
+# ─── 🎬 Disney-Grade LL-HLS / ABR directives loader (LAB SSOT) ────────────────
+# Lee vps/prisma/config/m3u8_directives_config.json (relativo al repo).
+# Si no existe, devuelve los defaults hardcoded (mismos valores para todos
+# los perfiles P0-P5). Mismo helper que en generate_m3u8_v53_fusion.py.
+_DISNEY_DEFAULTS = [
+    {"tag": "EXT-X-START",          "value": "TIME-OFFSET=-3.0,PRECISE=YES"},
+    {"tag": "EXT-X-SERVER-CONTROL", "value": "CAN-BLOCK-RELOAD=YES,PART-HOLD-BACK=1.0,CAN-SKIP-UNTIL=12.0"},
+    {"tag": "EXT-X-TARGETDURATION", "value": "2"},
+    {"tag": "EXT-X-PART-INF",       "value": "PART-TARGET=1.0"},
+    {"tag": "EXT-X-SESSION-DATA",   "value": 'DATA-ID="exoplayer.load_control",VALUE="{\\"minBufferMs\\":20000,\\"bufferForPlaybackMs\\":1000}"'},
+    {"tag": "EXT-X-SESSION-DATA",   "value": 'DATA-ID="exoplayer.track_selection",VALUE="{\\"maxDurationForQualityDecreaseMs\\":2000,\\"minDurationForQualityIncreaseMs\\":15000,\\"bandwidthFraction\\":0.65}"'},
+]
+
+
+def _ape_disney_directive_lines():
+    """Return list of m3u8 directive lines `#TAG:VALUE` ready to concatenate.
+
+    Reads vps/prisma/config/m3u8_directives_config.json from the repo if found,
+    else returns hardcoded defaults. Errors degrade silently to defaults.
+    """
+    candidates = [
+        os.path.join(os.path.dirname(__file__), "..", "vps", "prisma", "config", "m3u8_directives_config.json"),
+        os.path.join(os.path.dirname(__file__), "..", "..", "vps", "prisma", "config", "m3u8_directives_config.json"),
+        "/var/www/html/prisma/config/m3u8_directives_config.json",
+    ]
+    directives = _DISNEY_DEFAULTS
+    for path in candidates:
+        try:
+            if os.path.isfile(path):
+                with open(path, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                items = data.get("directives") if isinstance(data, dict) else None
+                if isinstance(items, list) and len(items) > 0:
+                    directives = items
+                    break
+        except (OSError, ValueError):
+            continue
+    out = []
+    for d in directives:
+        tag = d.get("tag") if isinstance(d, dict) else None
+        val = d.get("value") if isinstance(d, dict) else None
+        if tag and isinstance(val, str):
+            out.append("#" + tag + ":" + val)
+    return out
+
 # ═══════════════════════════════════════════════════════════════════════════
 # TABLA MAESTRA DE PERFILES P0-P5
 # ═══════════════════════════════════════════════════════════════════════════
@@ -452,6 +498,8 @@ def parse_and_regenerate(input_path: str, output_path: str):
     out_lines = []
     # Cabecera maestra
     out_lines.append(f'#EXTM3U x-tvg-url="" x-ape-version="18.2" x-ape-build="v5.0-PEP-EDITION"')
+    # 🎬 Disney-Grade LL-HLS / ABR directives (LAB SSOT — global, todos los perfiles)
+    out_lines.extend(_ape_disney_directive_lines())
     out_lines.append('#EXT-X-APE-HEADER:IPTV-Navigator-PRO-v5.0-PEP-EDITION')
     out_lines.append(f'#EXT-X-APE-GENERATED:{now_iso}')
     out_lines.append(f'#EXT-X-APE-TOTAL-CHANNELS:{total_channels}')

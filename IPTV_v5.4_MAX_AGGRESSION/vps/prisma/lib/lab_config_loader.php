@@ -61,6 +61,32 @@ class LabConfigLoader
     }
 
     /**
+     * Lee m3u8_directives_config.json — directivas Disney-Grade LL-HLS/ABR globales.
+     * Mismos valores para todos los perfiles P0-P5 (no per-profile variation).
+     * Devuelve array con schema_version, applies_to_all_profiles, directives[].
+     */
+    public static function m3u8Directives(): array
+    {
+        return self::load('m3u8_directives_config.json', self::defaultsM3u8Directives());
+    }
+
+    /**
+     * Helper: lista plana de líneas HLS (`#EXT-X-START:VALUE`, ...) lista para concatenar
+     * directamente en la cabecera global de una lista .m3u8.
+     */
+    public static function m3u8DirectiveLines(): array
+    {
+        $cfg = self::m3u8Directives();
+        $out = [];
+        if (!isset($cfg['directives']) || !is_array($cfg['directives'])) return $out;
+        foreach ($cfg['directives'] as $d) {
+            if (!isset($d['tag'], $d['value'])) continue;
+            $out[] = '#' . $d['tag'] . ':' . $d['value'];
+        }
+        return $out;
+    }
+
+    /**
      * Helper de alto nivel: dado un channel_id y profile, devuelve el DNA mergeado.
      * Prioridad: channel-specific override → profile default → fallback hardcoded.
      */
@@ -230,5 +256,26 @@ class LabConfigLoader
     private static function defaultsManifest(): array
     {
         return ['version' => 'fallback', 'compliance_score_current' => 0];
+    }
+
+    /**
+     * Defaults Disney-Grade LL-HLS / ABR — usados si m3u8_directives_config.json
+     * falta o está corrupto. Mismos valores que el seed file en repo.
+     * Mismas directivas para todos los perfiles P0-P5.
+     */
+    private static function defaultsM3u8Directives(): array
+    {
+        return [
+            'schema_version' => '1.0',
+            'applies_to_all_profiles' => true,
+            'directives' => [
+                ['tag' => 'EXT-X-START',          'value' => 'TIME-OFFSET=-3.0,PRECISE=YES',                                                                                                                                            'category' => 'timeline'],
+                ['tag' => 'EXT-X-SERVER-CONTROL', 'value' => 'CAN-BLOCK-RELOAD=YES,PART-HOLD-BACK=1.0,CAN-SKIP-UNTIL=12.0',                                                                                                              'category' => 'timeline'],
+                ['tag' => 'EXT-X-TARGETDURATION', 'value' => '2',                                                                                                                                                                        'category' => 'fragmentation'],
+                ['tag' => 'EXT-X-PART-INF',       'value' => 'PART-TARGET=1.0',                                                                                                                                                          'category' => 'fragmentation'],
+                ['tag' => 'EXT-X-SESSION-DATA',   'value' => 'DATA-ID="exoplayer.load_control",VALUE="{\\"minBufferMs\\":20000,\\"bufferForPlaybackMs\\":1000}"',                                                                        'category' => 'abr'],
+                ['tag' => 'EXT-X-SESSION-DATA',   'value' => 'DATA-ID="exoplayer.track_selection",VALUE="{\\"maxDurationForQualityDecreaseMs\\":2000,\\"minDurationForQualityIncreaseMs\\":15000,\\"bandwidthFraction\\":0.65}"', 'category' => 'abr'],
+            ],
+        ];
     }
 }

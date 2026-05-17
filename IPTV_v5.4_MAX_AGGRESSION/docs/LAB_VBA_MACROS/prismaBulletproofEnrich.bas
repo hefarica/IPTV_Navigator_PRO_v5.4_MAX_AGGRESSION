@@ -16,6 +16,7 @@ Private Const SHEET_FLOOR_LOCK As String = "15_FLOOR_LOCK_CONFIG"
 Private Const SHEET_SENTINEL As String = "16_SENTINEL_PROVIDERS"
 Private Const SHEET_TELESCOPE As String = "17_TELESCOPE_THRESHOLDS"
 Private Const SHEET_ADB As String = "19_ADB_PAYLOAD_INJECTOR"
+Private Const SHEET_DISNEY As String = "30_DISNEY_GRADE_DIRECTIVES"
 Private Const SHEET_PROFILES As String = "6_NIVEL_2_PROFILES"
 Private Const SHEET_NIVEL3 As String = "7_NIVEL_3_CHANNEL"
 
@@ -128,9 +129,84 @@ Private Function BuildFeatureSheetsBlock() As String
     s = s & "      """ & SHEET_FLOOR_LOCK & """: " & DumpSheetKV(SHEET_FLOOR_LOCK) & "," & vbCrLf
     s = s & "      """ & SHEET_SENTINEL & """: " & DumpSheetKV(SHEET_SENTINEL) & "," & vbCrLf
     s = s & "      """ & SHEET_TELESCOPE & """: " & DumpSheetKV(SHEET_TELESCOPE) & "," & vbCrLf
-    s = s & "      """ & SHEET_ADB & """: " & DumpAdbSettings() & vbCrLf
+    s = s & "      """ & SHEET_ADB & """: " & DumpAdbSettings() & "," & vbCrLf
+    s = s & "      """ & SHEET_DISNEY & """: " & DumpDisneyGradeDirectives() & vbCrLf
     s = s & "    }"
     BuildFeatureSheetsBlock = s
+End Function
+
+'==============================================================================
+' Disney-Grade LL-HLS / ABR directives dumper.
+' Lee hoja 30_DISNEY_GRADE_DIRECTIVES con esquema:
+'   Row 1: headers (key | value | category | applies_to | comment)
+'   Row 2+: una directiva por fila
+' Devuelve JSON array: [ {tag, value, category, applies_to, comment}, ... ]
+' Si la hoja no existe (no creada aún por el usuario), devuelve los defaults
+' hardcoded como fallback — mismos valores que la sesión Windsurf inyectó
+' originalmente en JS/PHP/Python.
+'==============================================================================
+Private Function DumpDisneyGradeDirectives() As String
+    On Error Resume Next
+    Dim ws As Worksheet
+    Set ws = ThisWorkbook.Worksheets(SHEET_DISNEY)
+    If ws Is Nothing Then
+        DumpDisneyGradeDirectives = DisneyDirectivesFallback()
+        Exit Function
+    End If
+
+    Dim s As String: s = "[" & vbCrLf
+    Dim lastRow As Long
+    lastRow = ws.Cells(ws.Rows.Count, 1).End(xlUp).Row
+    If lastRow < 2 Then
+        DumpDisneyGradeDirectives = DisneyDirectivesFallback()
+        Exit Function
+    End If
+
+    Dim r As Long
+    Dim first As Boolean: first = True
+    For r = 2 To lastRow  ' fila 1 = headers
+        Dim tag As String, val As String, cat As String, appliesTo As String, cmt As String
+        tag = CStr(ws.Cells(r, 1).Value)
+        val = CStr(ws.Cells(r, 2).Value)
+        cat = CStr(ws.Cells(r, 3).Value)
+        appliesTo = CStr(ws.Cells(r, 4).Value)
+        cmt = CStr(ws.Cells(r, 5).Value)
+        If Len(tag) > 0 And Len(val) > 0 Then
+            If Not first Then s = s & "," & vbCrLf
+            s = s & "        {""tag"": """ & EscJsonStr(tag) & _
+                    """, ""value"": """ & EscJsonStr(val) & _
+                    """, ""category"": """ & EscJsonStr(cat) & _
+                    """, ""applies_to"": """ & EscJsonStr(appliesTo) & _
+                    """, ""comment"": """ & EscJsonStr(cmt) & """}"
+            first = False
+        End If
+    Next r
+
+    If first Then
+        ' Hoja vacía → fallback
+        DumpDisneyGradeDirectives = DisneyDirectivesFallback()
+        Exit Function
+    End If
+
+    s = s & vbCrLf & "      ]"
+    DumpDisneyGradeDirectives = s
+    On Error GoTo 0
+End Function
+
+' Fallback con los valores Disney-Grade originales (mismos que sesión Windsurf,
+' mismos que el seed JSON en vps/prisma/config/m3u8_directives_config.json).
+' Se usa si hoja 30_DISNEY_GRADE_DIRECTIVES no existe o está vacía.
+Private Function DisneyDirectivesFallback() As String
+    Dim s As String
+    s = "[" & vbCrLf
+    s = s & "        {""tag"": ""EXT-X-START"", ""value"": ""TIME-OFFSET=-3.0,PRECISE=YES"", ""category"": ""timeline"", ""applies_to"": ""ALL"", ""comment"": ""Pillar 1: Lock playback head to -3.0s from live edge""}," & vbCrLf
+    s = s & "        {""tag"": ""EXT-X-SERVER-CONTROL"", ""value"": ""CAN-BLOCK-RELOAD=YES,PART-HOLD-BACK=1.0,CAN-SKIP-UNTIL=12.0"", ""category"": ""timeline"", ""applies_to"": ""ALL"", ""comment"": ""Pillar 1: Block reload + delta playlists""}," & vbCrLf
+    s = s & "        {""tag"": ""EXT-X-TARGETDURATION"", ""value"": ""2"", ""category"": ""fragmentation"", ""applies_to"": ""ALL"", ""comment"": ""Pillar 2: Fake low-duration ceiling""}," & vbCrLf
+    s = s & "        {""tag"": ""EXT-X-PART-INF"", ""value"": ""PART-TARGET=1.0"", ""category"": ""fragmentation"", ""applies_to"": ""ALL"", ""comment"": ""Pillar 2: Micro-chunk simulation""}," & vbCrLf
+    s = s & "        {""tag"": ""EXT-X-SESSION-DATA"", ""value"": ""DATA-ID=\""exoplayer.load_control\"",VALUE=\""{\\\""minBufferMs\\\"":20000,\\\""bufferForPlaybackMs\\\"":1000}\"""", ""category"": ""abr"", ""applies_to"": ""ALL"", ""comment"": ""Pillar 3: ExoPlayer load_control""}," & vbCrLf
+    s = s & "        {""tag"": ""EXT-X-SESSION-DATA"", ""value"": ""DATA-ID=\""exoplayer.track_selection\"",VALUE=\""{\\\""maxDurationForQualityDecreaseMs\\\"":2000,\\\""minDurationForQualityIncreaseMs\\\"":15000,\\\""bandwidthFraction\\\"":0.65}\"""", ""category"": ""abr"", ""applies_to"": ""ALL"", ""comment"": ""Pillar 3: ABR caida libre""}" & vbCrLf
+    s = s & "      ]"
+    DisneyDirectivesFallback = s
 End Function
 
 Private Function BuildProfileAttrsBlock() As String
