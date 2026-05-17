@@ -9,11 +9,28 @@ import os
 import re
 import hashlib
 
-BASE = '/home/ubuntu/iptv_navigator_pro/IPTV_Navigator_PRO (12)/IPTV_Navigator_PRO'
-VPS  = f'{BASE}/iptv_nav/files/vps'
-JS   = f'{BASE}/iptv_nav/files/js/ape-v9'
-CMAF = f'{VPS}/cmaf_engine'
-SKILLS_DIR = '/home/ubuntu/iptv_navigator_pro/IPTV_Navigator_PRO (12)/.agents/skills'
+# Path resolution (refactored 2026-05-17 per feedback_cableado_y_sandbox_doctrine Gate 3):
+# Original hardcoded paths to /home/ubuntu/... broke local test execution.
+# Now resolved relative to this script's location for portability.
+#
+# Script location: <REPO_ROOT>/IPTV_v5.4_MAX_AGGRESSION/backend/cmaf_engine/tests/test_v4_full_suite.py
+# So:
+#   TEST_DIR  = .../tests/
+#   CMAF      = .../cmaf_engine/   (parent of TEST_DIR)
+#   BACKEND   = .../backend/       (parent of CMAF)
+#   APP_ROOT  = .../IPTV_v5.4_MAX_AGGRESSION/  (parent of BACKEND)
+#   REPO_ROOT = .../              (parent of APP_ROOT, where .agents/.agent live)
+TEST_DIR  = os.path.dirname(os.path.abspath(__file__))
+CMAF      = os.path.dirname(TEST_DIR)
+BACKEND   = os.path.dirname(CMAF)
+APP_ROOT  = os.path.dirname(BACKEND)
+REPO_ROOT = os.path.dirname(APP_ROOT)
+
+# Legacy variable aliases kept for test compatibility
+BASE = APP_ROOT                                          # was BASE for the old layout
+VPS  = BACKEND                                           # cmaf_engine lives under backend/ in this repo
+JS   = os.path.join(APP_ROOT, 'frontend', 'js', 'ape-v9')
+SKILLS_DIR = os.path.join(REPO_ROOT, '.agents', 'skills')  # Team Agent Supremo skills tree
 
 def read_file(path):
     if not os.path.exists(path):
