@@ -1,0 +1,28 @@
+{
+  "skill": "vlc-extvlcopt-builder",
+  "specialist": "S9",
+  "specialist_name": "hls.js/MSE/Android TV Player Engineer",
+  "kind": "satellite",
+  "parent_anchor": "android-tv-ott-tivimate-tuning",
+  "installed_at": "2026-05-17T02:53:09Z",
+  "installed_by": "TEAM AGENT SUPREMO IPTV ENTERPRISE",
+  "version": "1.0.0",
+  "spec_version": "iptv-enterprise-300-skills-v1",
+  "dependencies_required": [],
+  "dependencies_optional": [
+    "node>=18",
+    "python>=3.11",
+    "ffmpeg",
+    "ffprobe",
+    "nginx>=1.24",
+    "openresty>=1.21",
+    "lua>=5.1",
+    "jq",
+    "yamllint",
+    "shellcheck"
+  ],
+  "external_repos_consumed": [],
+  "external_packages_installed": [],
+  "license": "Same as parent repo (private)",
+  "integrity_sha256_self": "not-computed-at-install"
+}
