@@ -122,9 +122,24 @@ class HLSRewriterV15:
             )
             
             new_lines.append(proxy_url)
-        
-        return "\n".join(new_lines)
-    
+
+        result = "\n".join(new_lines)
+
+        # Gate 1 cableado real per feedback_cableado_y_sandbox_doctrine.
+        # Apply player-specific overlays when profile_config declares a target player.
+        # Default behavior preserved when 'player_target' absent → no overlays.
+        player_target = profile_config.get('player_target', '').upper()
+        player_overlay_buffer = profile_config.get('player_overlay_buffer_ms', buffer_target)
+        player_overlay_ua = profile_config.get('player_overlay_user_agent')  # None → uses SmartTV default
+
+        if player_target == 'VLC':
+            result = self.inject_vlc_options(result, buffer_ms=player_overlay_buffer, user_agent=player_overlay_ua)
+        elif player_target == 'KODI' or player_target == 'TIVIMATE':
+            manifest_type = "mpd" if result.lower().endswith('.mpd') else "hls"
+            result = self.inject_kodi_props(result, manifest_type=manifest_type, user_agent=player_overlay_ua)
+
+        return result
+
     def _create_proxy_url(
         self,
         original_url: str,

@@ -4233,6 +4233,72 @@
   <!-- Self-bootstraps window.ConvivaQoE on load. Idempotent.                  -->
   <!-- ═══════════════════════════════════════════════════════════════════════ -->
   <script src="js/conviva-qoe-engine.js?v=1.0.0-disney-grade" defer></script>
+  <script defer>
+    // ═════════════════════════════════════════════════════════════════════
+    // Conviva wire — Gate 1 cableado real per feedback_cableado_y_sandbox_doctrine.
+    // Hooks the 'm3u8-generated' event (dispatched by m3u8-typed-arrays-ultimate.js
+    // lines 9447/9537/9595) and the 'conviva:qoe-update' event from the engine.
+    // Cero side-effects en runtime de playback (telemetría observacional only).
+    // ═════════════════════════════════════════════════════════════════════
+    (function () {
+      'use strict';
+      let conviva_session_id = null;
+
+      function ensureBoot() {
+        if (typeof window.ConvivaQoE !== 'object' || !window.ConvivaQoE.createSession) {
+          return false;
+        }
+        if (!conviva_session_id) {
+          // Boot diagnostic session — confirms engine wired and responding
+          conviva_session_id = window.ConvivaQoE.createSession(
+            'boot-' + Date.now(),
+            'IPTV_Navigator_Frontend_Boot',
+            'P3'
+          );
+          console.log('[Conviva] boot session created:', conviva_session_id);
+        }
+        return true;
+      }
+
+      // Listen to generator completion events (Gate 1 real caller)
+      window.addEventListener('m3u8-generated', function (e) {
+        if (!ensureBoot()) return;
+        const detail = (e && e.detail) || {};
+        const sessId = window.ConvivaQoE.createSession(
+          'list-gen-' + Date.now(),
+          'list_generation_' + (detail.channelCount || 0) + '_channels',
+          detail.profile || 'P3'
+        );
+        // Mark first frame immediately (generation is instantaneous from QoE POV)
+        if (window.ConvivaQoE.reportFirstFrame) {
+          window.ConvivaQoE.reportFirstFrame(sessId);
+        }
+        if (detail.errors && detail.errors.length && window.ConvivaQoE.reportError) {
+          detail.errors.forEach(function (err) {
+            window.ConvivaQoE.reportError(sessId, err.code || 'gen_error', err.message || String(err));
+          });
+        }
+        if (window.ConvivaQoE.endSession) {
+          window.ConvivaQoE.endSession(sessId, 'list_published');
+        }
+      });
+
+      // Surface Conviva auto-decisions to console (Guardian / Cortex can listen)
+      window.addEventListener('conviva:qoe-update', function (e) {
+        const d = (e && e.detail) || {};
+        if (d.decision && d.decision !== 'NO_ACTION') {
+          console.log('[Conviva-Decision]', d.channelName, '·', d.decision, '· QoE=', d.qoeScore);
+        }
+      });
+
+      // Defer boot until engine script loads (script tag is defer)
+      if (document.readyState === 'complete' || document.readyState === 'interactive') {
+        setTimeout(ensureBoot, 100);
+      } else {
+        window.addEventListener('DOMContentLoaded', function () { setTimeout(ensureBoot, 100); });
+      }
+    })();
+  </script>
 
   <!-- ═══════════════════════════════════════════════════════════════════════ -->
   <!-- 🧬 APE ANLE v1.0 — Adaptive Nomenclature Learning Engine               -->
