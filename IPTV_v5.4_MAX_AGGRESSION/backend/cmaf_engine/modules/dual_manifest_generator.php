@@ -22,7 +22,7 @@ class DualManifestGenerator
     const LCEVC_URN_SUPPLEMENTAL = 'urn:mpeg:lcevc:2021';
     const LCEVC_URN_ESSENTIAL    = 'urn:mpeg:lcevc:essential:2021';
     const LCEVC_CODEC_H264       = 'avc1.640028';
-    const LCEVC_CODEC_HEVC       = 'hvc1.1.6.L120.90';
+    const LCEVC_CODEC_HEVC       = 'hvc1.1.6.L120.B0';  // RFC 6381 §3.3 — Tier 9 cascada definitiva (constraint=B0, NOT .90)
 
     const STATE_OFF              = 'OFF';
     const STATE_SIGNAL_ONLY      = 'SIGNAL_ONLY';
@@ -133,20 +133,31 @@ class DualManifestGenerator
         $renditions = $segmentMeta['renditions'] ?? [];
         usort($renditions, fn($a, $b) => $b['bitrate'] - $a['bitrate']);
 
+        // HDR signaling: emit VIDEO-RANGE=PQ|HLG only if probe evidence in DNA
+        // Per CLAUDE.md "Reglas Honestas — NUNCA emitir sin evidencia"
+        // Per ARTIFACT_HDR10_METADATA_TRIFECTA.md — VIDEO-RANGE is the canonical HLS attribute
+        $videoRange = $this->resolveVideoRange($channelDna);
+
         foreach ($renditions as $rendition) {
             $codec      = $this->resolveHlsCodecString($rendition, $channelDna, $lcevcEnabled);
             $bandwidth  = ($rendition['bitrate'] + 128) * 1000;
             $avgBw      = (int)($bandwidth * 0.85);
             $resolution = $rendition['width'] . 'x' . $rendition['height'];
 
-            $lines[] = '#EXT-X-STREAM-INF:'
+            $streamInf = '#EXT-X-STREAM-INF:'
                 . 'BANDWIDTH=' . $bandwidth . ','
                 . 'AVERAGE-BANDWIDTH=' . $avgBw . ','
                 . 'CODECS="' . $codec . '",'
                 . 'RESOLUTION=' . $resolution . ','
-                . 'FRAME-RATE=25.000,'
-                . 'AUDIO="audio",'
-                . 'CLOSED-CAPTIONS=NONE';
+                . 'FRAME-RATE=25.000';
+
+            // Append VIDEO-RANGE only if probe evidence confirmed HDR
+            if ($videoRange !== null) {
+                $streamInf .= ',VIDEO-RANGE=' . $videoRange;
+            }
+
+            $streamInf .= ',AUDIO="audio",CLOSED-CAPTIONS=NONE';
+            $lines[] = $streamInf;
             $lines[] = $baseUrl . '/' . $rendition['label'] . '.m3u8';
         }
 
@@ -303,13 +314,61 @@ class DualManifestGenerator
         return $xml;
     }
 
+    /**
+     * Resolves VIDEO-RANGE attribute for STREAM-INF based on probe evidence in channel DNA.
+     * Per ARTIFACT_HDR10_METADATA_TRIFECTA.md — the canonical HLS attribute for HDR signaling.
+     *
+     * Returns 'PQ' (HDR10/HDR10+), 'HLG', or null (SDR / no evidence).
+     * NEVER returns a value without probe evidence — doctrine "Reglas Honestas".
+     *
+     * Sources checked in $dna (in priority order):
+     *   - 'video_range'         (explicit override: 'PQ' | 'HLG' | 'SDR' | null)
+     *   - 'hdr_type'            ('hdr10' | 'hdr10plus' | 'hlg' | 'dolby_vision' | 'sdr')
+     *   - 'probe.transfer_characteristics'  (CICP enum: 16=PQ, 18=HLG)
+     */
+    private function resolveVideoRange(array $dna): ?string
+    {
+        // 1. Explicit override (set by orchestrator after probe)
+        if (isset($dna['video_range'])) {
+            $vr = strtoupper((string)$dna['video_range']);
+            if ($vr === 'PQ' || $vr === 'HLG') {
+                return $vr;
+            }
+            return null; // 'SDR', empty, or unrecognized → omit
+        }
+
+        // 2. HDR type derived from probe
+        if (isset($dna['hdr_type'])) {
+            $ht = strtolower((string)$dna['hdr_type']);
+            if ($ht === 'hdr10' || $ht === 'hdr10plus' || $ht === 'dolby_vision') {
+                return 'PQ';
+            }
+            if ($ht === 'hlg') {
+                return 'HLG';
+            }
+        }
+
+        // 3. CICP transfer_characteristics enum from probe
+        $tc = $dna['probe']['transfer_characteristics'] ?? null;
+        if ($tc === 16) {
+            return 'PQ';
+        }
+        if ($tc === 18) {
+            return 'HLG';
+        }
+
+        // No evidence — omit (SDR default per Reglas Honestas)
+        return null;
+    }
+
     private function resolveHlsCodecString(array $rendition, array $dna, bool $lcevcEnabled): string
     {
         $codec = $dna['codec_priority'][0] ?? 'h264';
+        // Use class const for HEVC to keep single source of truth (Tier 9 cascada definitiva)
         $videoCodec = match($codec) {
-            'hevc', 'h265' => 'hvc1.1.6.L120.90',
+            'hevc', 'h265' => self::LCEVC_CODEC_HEVC,  // hvc1.1.6.L120.B0 — RFC 6381 §3.3
             'av1'          => 'av01.0.08M.08',
-            default        => 'avc1.640028',
+            default        => self::LCEVC_CODEC_H264,  // avc1.640028 — Tier 11 fallback
         };
         return $videoCodec . ',mp4a.40.2';
     }

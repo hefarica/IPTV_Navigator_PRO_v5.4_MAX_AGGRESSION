@@ -72,6 +72,15 @@ class CmafPackagingEngine
     private string $lcevcBase    = 'h264';
     private array  $packagingLog = [];
 
+    // ─── HDR State (per ARTIFACT_HDR10_METADATA_TRIFECTA.md + Chain of Manifestation eslabón 5) ──
+    // Populated from channelDna in package(). Empty/null when SDR (no FFmpeg HDR flags emitted).
+    // Per "Reglas Honestas" (CLAUDE.md): NEVER emit HDR flags without probe evidence.
+    private ?string $hdrType     = null;  // 'hdr10' | 'hdr10plus' | 'hlg' | 'dolby_vision' | null
+    private bool    $is10Bit     = false; // true → ffmpeg -pix_fmt yuv420p10le
+    private ?int    $maxCll      = null;  // Content Light Level Info — max
+    private ?int    $maxFall     = null;  // Content Light Level Info — max frame-average
+    private ?string $masterDisplay = null; // x265-params master-display string
+
     /**
      * Main entry point. Packages a stream into CMAF segments.
      *
@@ -105,6 +114,22 @@ class CmafPackagingEngine
         $engine->lcevcEnabled = !empty($channelDna['lcevc_enabled']);
         $engine->lcevcMode    = $channelDna['lcevc_mode']       ?? 'separate_track';
         $engine->lcevcBase    = $channelDna['lcevc_base_codec'] ?? $engine->codec;
+
+        // HDR detection from channel DNA (probe evidence required per "Reglas Honestas")
+        // SDR is default — HDR flags only emitted when DNA carries explicit HDR signals.
+        $hdrType = $channelDna['hdr_type'] ?? null;
+        if ($hdrType !== null) {
+            $hdrType = strtolower((string)$hdrType);
+            if (in_array($hdrType, ['hdr10', 'hdr10plus', 'hlg', 'dolby_vision'], true)) {
+                $engine->hdrType = $hdrType;
+                $engine->is10Bit = ($channelDna['bit_depth'] ?? 10) >= 10;
+                $engine->maxCll  = isset($channelDna['max_cll'])  ? (int)$channelDna['max_cll']  : null;
+                $engine->maxFall = isset($channelDna['max_fall']) ? (int)$channelDna['max_fall'] : null;
+                // master-display: optional x265 string from probe (BT.2020 primaries + display luminance)
+                // Format per x265: G(13250,34500)B(7500,3000)R(34000,16000)WP(15635,16450)L(50000000,1)
+                $engine->masterDisplay = $channelDna['master_display'] ?? null;
+            }
+        }
 
         return $engine->runPackagingPipeline();
     }
@@ -239,6 +264,16 @@ class CmafPackagingEngine
                 $cmd[] = "-level:v:$videoIndex {$rendition['level']}";
             }
 
+            // ─── HDR pass-through flags (per Chain of Manifestation eslabón 5) ───
+            // Aditivo · solo se emiten cuando $this->hdrType !== null (probe evidence)
+            // Per ARTIFACT_HDR10_METADATA_TRIFECTA.md: BT.2020 + PQ/HLG + Matrix=9
+            if ($this->hdrType !== null) {
+                $hdrFlags = $this->buildHdrFfmpegFlags($videoIndex);
+                foreach ($hdrFlags as $flag) {
+                    $cmd[] = $flag;
+                }
+            }
+
             $videoIndex++;
         }
 
@@ -306,6 +341,64 @@ class CmafPackagingEngine
             'av1'          => 'libaom-av1',
             default        => 'libx264',
         };
+    }
+
+    /**
+     * Builds FFmpeg flags for HDR pass-through encoding.
+     * Per ARTIFACT_HDR10_METADATA_TRIFECTA.md + Chain of Manifestation eslabón 5.
+     *
+     * Emits CICP values (ITU-T H.273): primaries=9 (BT.2020), trc=16 (PQ) or 18 (HLG), matrix=9 (BT.2020 NC).
+     * For HEVC (libx265), adds -x265-params with hdr-opt/colorprim/transfer/colormatrix/master-display/max-cll.
+     * For H.264 (libx264), only color metadata (less HDR support but signaling preserved).
+     *
+     * @param int $videoIndex Per-rendition video stream index for -flag:v:N suffix
+     * @return array          Array of FFmpeg arg strings to append
+     */
+    private function buildHdrFfmpegFlags(int $videoIndex): array
+    {
+        $flags = [];
+
+        // Color primaries: BT.2020 (CICP 9) for all HDR types
+        $colorPrim = 'bt2020';
+        // Transfer characteristics: PQ (CICP 16) for HDR10/HDR10+/DV, HLG (CICP 18) for HLG
+        $colorTrc  = ($this->hdrType === 'hlg') ? 'arib-std-b67' : 'smpte2084';
+        // Matrix coefficients: BT.2020 non-constant luminance (CICP 9)
+        $colorSpace = 'bt2020nc';
+
+        $flags[] = "-color_primaries:v:$videoIndex $colorPrim";
+        $flags[] = "-color_trc:v:$videoIndex $colorTrc";
+        $flags[] = "-colorspace:v:$videoIndex $colorSpace";
+        $flags[] = "-color_range:v:$videoIndex tv"; // limited range (broadcast)
+
+        // 10-bit pixel format for HDR (required for Main10 / HDR10)
+        if ($this->is10Bit) {
+            $flags[] = "-pix_fmt:v:$videoIndex yuv420p10le";
+        }
+
+        // HEVC-specific: x265 HDR params + mastering display + max-cll
+        // (libx264 does not natively support HDR signaling beyond color flags)
+        if (in_array($this->codec, ['hevc', 'h265'], true)) {
+            $x265Params = [
+                'hdr-opt=1',          // enable HDR optimization
+                'repeat-headers=1',   // emit VPS/SPS/PPS in every IDR (needed for HDR signaling)
+                'colorprim=bt2020',
+                "transfer={$colorTrc}",
+                "colormatrix={$colorSpace}",
+            ];
+
+            if ($this->masterDisplay !== null) {
+                // Format example: "G(13250,34500)B(7500,3000)R(34000,16000)WP(15635,16450)L(50000000,1)"
+                $x265Params[] = 'master-display=' . $this->masterDisplay;
+            }
+
+            if ($this->maxCll !== null && $this->maxFall !== null) {
+                $x265Params[] = "max-cll={$this->maxCll},{$this->maxFall}";
+            }
+
+            $flags[] = "-x265-params:v:$videoIndex \"" . implode(':', $x265Params) . "\"";
+        }
+
+        return $flags;
     }
 
     // ═══════════════════════════════════════════════════════════════════════════

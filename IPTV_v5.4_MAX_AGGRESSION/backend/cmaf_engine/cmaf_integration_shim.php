@@ -267,7 +267,8 @@ class CmafIntegrationShim
                 case 'hevc':
                 case 'h265':
                     if ($playerCaps['supports_hevc']) {
-                        return 'hvc1.1.6.L120.90,mp4a.40.2';
+                        // RFC 6381 §3.3 — Tier 9 cascada definitiva (constraint=B0, NOT .90)
+                        return 'hvc1.1.6.L120.B0,mp4a.40.2';
                     }
                     break;
                 case 'av1':
