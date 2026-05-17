@@ -175,8 +175,10 @@ class HLSRewriterV15:
             Content with VLC options injected
         """
         if not user_agent:
-            user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
-        
+            # SmartTV UA (TIER1 99% per feedback_http_407_proxy_auth_doctrine + m3u8-typed-arrays UA_PHANTOM_BANK)
+            # Browser-like UAs trigger anti-bot/anti-fingerprint 407 in many Xtream providers.
+            user_agent = "Mozilla/5.0 (SMART-TV; LINUX; Tizen 7.0) AppleWebKit/537.36 (KHTML, like Gecko) 94.0.4606.31/7.0 TV Safari/537.36"
+
         vlc_opts = [
             f"#EXTVLCOPT:network-caching={buffer_ms}",
             f"#EXTVLCOPT:http-user-agent={user_agent}",
@@ -208,8 +210,9 @@ class HLSRewriterV15:
             Content with Kodi properties injected
         """
         if not user_agent:
-            user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
-        
+            # SmartTV UA — see inject_vlc_options() rationale.
+            user_agent = "Mozilla/5.0 (SMART-TV; LINUX; Tizen 7.0) AppleWebKit/537.36 (KHTML, like Gecko) 94.0.4606.31/7.0 TV Safari/537.36"
+
         kodi_props = [
             f"#KODIPROP:inputstream.adaptive.manifest_type={manifest_type}",
             f"#KODIPROP:inputstream.adaptive.stream_headers=User-Agent={user_agent}"
