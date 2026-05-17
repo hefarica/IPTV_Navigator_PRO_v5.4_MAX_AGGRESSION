@@ -1,0 +1,22 @@
+{
+  "skill": "claude-code-repo-surgeon",
+  "specialist": "S13",
+  "specialist_name": "Claude Code Repo Surgeon",
+  "kind": "anchor",
+  "parent_anchor": null,
+  "installed_at": "2026-05-17T03:08:00Z",
+  "installed_by": "Team Agent Supremo (manual augment)",
+  "version": "1.0.0",
+  "spec_version": "iptv-enterprise-300-skills-v1",
+  "dependencies_required": [],
+  "dependencies_optional": [
+    "git",
+    "node>=18",
+    "python>=3.11"
+  ],
+  "external_repos_consumed": [],
+  "external_packages_installed": [],
+  "license": "Same as parent repo (private)",
+  "integrity_sha256_self": "not-computed-at-install",
+  "notes": "Augmented after primary Team Agent generation. Provides multi-file refactor, git surgery, and doctrine enforcement. Not included in the 10-specialist matrix (S1-S10) but referenced as S13 for completeness."
+}

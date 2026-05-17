@@ -1,0 +1,11 @@
+2026-05-17T02:46:46Z: bogus stubs archived, real reconstruction begins
+
+REASON: Previous installer was formulaic — created 300 skill-name placeholders via cartesian product (10 domains × 6 categories × 3 suffixes + 120 generic v1..v120). All SKILL.md files were empty stubs. All skills_index.json entries had empty source_repos/allowed_files/required_commands/validation_commands. The SKILLS_INSTALLATION_REPORT.md declared success ("Instaladas y aseguradas") that contradicted the index ("status: pending_install" with empty arrays).
+
+Doctrine violations:
+- "No maquilles errores" (no faking success)
+- "No declarar éxito sin pruebas"
+- "Cada skill debe ser autocontenida, documentada y reutilizable"
+- "Las skills deben aprender de fuentes reales y producir validadores reales"
+
+ACTION TAKEN: Archived to this directory (reversible). Real rebuild proceeds in .agents/skills/ with substantive content per skill (real triggers, real allowed files, real validators, real risks).

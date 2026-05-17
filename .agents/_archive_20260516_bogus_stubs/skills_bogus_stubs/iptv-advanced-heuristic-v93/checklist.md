@@ -1,0 +1,1 @@
+- [ ] Validación E2E

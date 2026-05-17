@@ -1,0 +1,3034 @@
+{
+  "skills": [
+    {
+      "name": "hls-core-parser-engine",
+      "domain": "HLS-CORE",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "hls-core-parser-validator",
+      "domain": "HLS-CORE",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "hls-core-parser-auditor",
+      "domain": "HLS-CORE",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "hls-core-validator-engine",
+      "domain": "HLS-CORE",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "hls-core-validator-validator",
+      "domain": "HLS-CORE",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "hls-core-validator-auditor",
+      "domain": "HLS-CORE",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "hls-core-generator-engine",
+      "domain": "HLS-CORE",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "hls-core-generator-validator",
+      "domain": "HLS-CORE",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "hls-core-generator-auditor",
+      "domain": "HLS-CORE",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "hls-core-optimizer-engine",
+      "domain": "HLS-CORE",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "hls-core-optimizer-validator",
+      "domain": "HLS-CORE",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "hls-core-optimizer-auditor",
+      "domain": "HLS-CORE",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "hls-core-segmenter-engine",
+      "domain": "HLS-CORE",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "hls-core-segmenter-validator",
+      "domain": "HLS-CORE",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "hls-core-segmenter-auditor",
+      "domain": "HLS-CORE",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "hls-core-security-engine",
+      "domain": "HLS-CORE",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "hls-core-security-validator",
+      "domain": "HLS-CORE",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "hls-core-security-auditor",
+      "domain": "HLS-CORE",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "hls-core-cache-engine",
+      "domain": "HLS-CORE",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "hls-core-cache-validator",
+      "domain": "HLS-CORE",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "hls-core-cache-auditor",
+      "domain": "HLS-CORE",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "hls-core-qos-engine",
+      "domain": "HLS-CORE",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "hls-core-qos-validator",
+      "domain": "HLS-CORE",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "hls-core-qos-auditor",
+      "domain": "HLS-CORE",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "cmaf-llhls-chunker-engine",
+      "domain": "CMAF-LLHLS",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "cmaf-llhls-chunker-validator",
+      "domain": "CMAF-LLHLS",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "cmaf-llhls-chunker-auditor",
+      "domain": "CMAF-LLHLS",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "cmaf-llhls-latency-tuner-engine",
+      "domain": "CMAF-LLHLS",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "cmaf-llhls-latency-tuner-validator",
+      "domain": "CMAF-LLHLS",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "cmaf-llhls-latency-tuner-auditor",
+      "domain": "CMAF-LLHLS",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "cmaf-llhls-sync-engine",
+      "domain": "CMAF-LLHLS",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "cmaf-llhls-sync-validator",
+      "domain": "CMAF-LLHLS",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "cmaf-llhls-sync-auditor",
+      "domain": "CMAF-LLHLS",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "cmaf-llhls-abr-math-engine",
+      "domain": "CMAF-LLHLS",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "cmaf-llhls-abr-math-validator",
+      "domain": "CMAF-LLHLS",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "cmaf-llhls-abr-math-auditor",
+      "domain": "CMAF-LLHLS",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "cmaf-llhls-fmp4-inspector-engine",
+      "domain": "CMAF-LLHLS",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "cmaf-llhls-fmp4-inspector-validator",
+      "domain": "CMAF-LLHLS",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "cmaf-llhls-fmp4-inspector-auditor",
+      "domain": "CMAF-LLHLS",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "cmaf-llhls-preload-hint-engine",
+      "domain": "CMAF-LLHLS",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "cmaf-llhls-preload-hint-validator",
+      "domain": "CMAF-LLHLS",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "cmaf-llhls-preload-hint-auditor",
+      "domain": "CMAF-LLHLS",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "codec-hevc-main10-engine",
+      "domain": "CODEC-HEVC",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "codec-hevc-main10-validator",
+      "domain": "CODEC-HEVC",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "codec-hevc-main10-auditor",
+      "domain": "CODEC-HEVC",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "codec-hevc-hdr-pq-engine",
+      "domain": "CODEC-HEVC",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "codec-hevc-hdr-pq-validator",
+      "domain": "CODEC-HEVC",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "codec-hevc-hdr-pq-auditor",
+      "domain": "CODEC-HEVC",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "codec-hevc-hdr-hlg-engine",
+      "domain": "CODEC-HEVC",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "codec-hevc-hdr-hlg-validator",
+      "domain": "CODEC-HEVC",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "codec-hevc-hdr-hlg-auditor",
+      "domain": "CODEC-HEVC",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "codec-hevc-dolby-vision-engine",
+      "domain": "CODEC-HEVC",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "codec-hevc-dolby-vision-validator",
+      "domain": "CODEC-HEVC",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "codec-hevc-dolby-vision-auditor",
+      "domain": "CODEC-HEVC",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "codec-hevc-bitrate-ladder-engine",
+      "domain": "CODEC-HEVC",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "codec-hevc-bitrate-ladder-validator",
+      "domain": "CODEC-HEVC",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "codec-hevc-bitrate-ladder-auditor",
+      "domain": "CODEC-HEVC",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "codec-hevc-fallback-logic-engine",
+      "domain": "CODEC-HEVC",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "codec-hevc-fallback-logic-validator",
+      "domain": "CODEC-HEVC",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "codec-hevc-fallback-logic-auditor",
+      "domain": "CODEC-HEVC",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "codec-avc-high-profile-engine",
+      "domain": "CODEC-AVC",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "codec-avc-high-profile-validator",
+      "domain": "CODEC-AVC",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "codec-avc-high-profile-auditor",
+      "domain": "CODEC-AVC",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "codec-avc-main-profile-engine",
+      "domain": "CODEC-AVC",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "codec-avc-main-profile-validator",
+      "domain": "CODEC-AVC",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "codec-avc-main-profile-auditor",
+      "domain": "CODEC-AVC",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "codec-avc-baseline-fallback-engine",
+      "domain": "CODEC-AVC",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "codec-avc-baseline-fallback-validator",
+      "domain": "CODEC-AVC",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "codec-avc-baseline-fallback-auditor",
+      "domain": "CODEC-AVC",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "codec-avc-deinterlace-engine",
+      "domain": "CODEC-AVC",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "codec-avc-deinterlace-validator",
+      "domain": "CODEC-AVC",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "codec-avc-deinterlace-auditor",
+      "domain": "CODEC-AVC",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "codec-avc-b-frames-engine",
+      "domain": "CODEC-AVC",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "codec-avc-b-frames-validator",
+      "domain": "CODEC-AVC",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "codec-avc-b-frames-auditor",
+      "domain": "CODEC-AVC",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "audio-qoe-aac-he-engine",
+      "domain": "AUDIO-QOE",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "audio-qoe-aac-he-validator",
+      "domain": "AUDIO-QOE",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "audio-qoe-aac-he-auditor",
+      "domain": "AUDIO-QOE",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "audio-qoe-ac3-passthrough-engine",
+      "domain": "AUDIO-QOE",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "audio-qoe-ac3-passthrough-validator",
+      "domain": "AUDIO-QOE",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "audio-qoe-ac3-passthrough-auditor",
+      "domain": "AUDIO-QOE",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "audio-qoe-atmos-sync-engine",
+      "domain": "AUDIO-QOE",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "audio-qoe-atmos-sync-validator",
+      "domain": "AUDIO-QOE",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "audio-qoe-atmos-sync-auditor",
+      "domain": "AUDIO-QOE",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "audio-qoe-loudness-normalize-engine",
+      "domain": "AUDIO-QOE",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "audio-qoe-loudness-normalize-validator",
+      "domain": "AUDIO-QOE",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "audio-qoe-loudness-normalize-auditor",
+      "domain": "AUDIO-QOE",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "audio-qoe-track-selector-engine",
+      "domain": "AUDIO-QOE",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "audio-qoe-track-selector-validator",
+      "domain": "AUDIO-QOE",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "audio-qoe-track-selector-auditor",
+      "domain": "AUDIO-QOE",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "nginx-proxy-bbr-tuning-engine",
+      "domain": "NGINX-PROXY",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "nginx-proxy-bbr-tuning-validator",
+      "domain": "NGINX-PROXY",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "nginx-proxy-bbr-tuning-auditor",
+      "domain": "NGINX-PROXY",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "nginx-proxy-cache-stale-engine",
+      "domain": "NGINX-PROXY",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "nginx-proxy-cache-stale-validator",
+      "domain": "NGINX-PROXY",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "nginx-proxy-cache-stale-auditor",
+      "domain": "NGINX-PROXY",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "nginx-proxy-cors-shield-engine",
+      "domain": "NGINX-PROXY",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "nginx-proxy-cors-shield-validator",
+      "domain": "NGINX-PROXY",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "nginx-proxy-cors-shield-auditor",
+      "domain": "NGINX-PROXY",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "nginx-proxy-rate-limit-engine",
+      "domain": "NGINX-PROXY",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "nginx-proxy-rate-limit-validator",
+      "domain": "NGINX-PROXY",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "nginx-proxy-rate-limit-auditor",
+      "domain": "NGINX-PROXY",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "nginx-proxy-lua-circuit-breaker-engine",
+      "domain": "NGINX-PROXY",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "nginx-proxy-lua-circuit-breaker-validator",
+      "domain": "NGINX-PROXY",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "nginx-proxy-lua-circuit-breaker-auditor",
+      "domain": "NGINX-PROXY",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "nginx-proxy-upstream-failover-engine",
+      "domain": "NGINX-PROXY",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "nginx-proxy-upstream-failover-validator",
+      "domain": "NGINX-PROXY",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "nginx-proxy-upstream-failover-auditor",
+      "domain": "NGINX-PROXY",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "player-compat-exoplayer-engine",
+      "domain": "PLAYER-COMPAT",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "player-compat-exoplayer-validator",
+      "domain": "PLAYER-COMPAT",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "player-compat-exoplayer-auditor",
+      "domain": "PLAYER-COMPAT",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "player-compat-tivimate-engine",
+      "domain": "PLAYER-COMPAT",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "player-compat-tivimate-validator",
+      "domain": "PLAYER-COMPAT",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "player-compat-tivimate-auditor",
+      "domain": "PLAYER-COMPAT",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "player-compat-ott-navigator-engine",
+      "domain": "PLAYER-COMPAT",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "player-compat-ott-navigator-validator",
+      "domain": "PLAYER-COMPAT",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "player-compat-ott-navigator-auditor",
+      "domain": "PLAYER-COMPAT",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "player-compat-hlsjs-engine",
+      "domain": "PLAYER-COMPAT",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "player-compat-hlsjs-validator",
+      "domain": "PLAYER-COMPAT",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "player-compat-hlsjs-auditor",
+      "domain": "PLAYER-COMPAT",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "player-compat-shaka-engine",
+      "domain": "PLAYER-COMPAT",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "player-compat-shaka-validator",
+      "domain": "PLAYER-COMPAT",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "player-compat-shaka-auditor",
+      "domain": "PLAYER-COMPAT",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "player-compat-apple-avplayer-engine",
+      "domain": "PLAYER-COMPAT",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "player-compat-apple-avplayer-validator",
+      "domain": "PLAYER-COMPAT",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "player-compat-apple-avplayer-auditor",
+      "domain": "PLAYER-COMPAT",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "player-compat-vlc-strict-engine",
+      "domain": "PLAYER-COMPAT",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "player-compat-vlc-strict-validator",
+      "domain": "PLAYER-COMPAT",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "player-compat-vlc-strict-auditor",
+      "domain": "PLAYER-COMPAT",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "sre-watchdog-systemd-engine",
+      "domain": "SRE-WATCHDOG",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "sre-watchdog-systemd-validator",
+      "domain": "SRE-WATCHDOG",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "sre-watchdog-systemd-auditor",
+      "domain": "SRE-WATCHDOG",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "sre-watchdog-process-monitor-engine",
+      "domain": "SRE-WATCHDOG",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "sre-watchdog-process-monitor-validator",
+      "domain": "SRE-WATCHDOG",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "sre-watchdog-process-monitor-auditor",
+      "domain": "SRE-WATCHDOG",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "sre-watchdog-health-probe-engine",
+      "domain": "SRE-WATCHDOG",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "sre-watchdog-health-probe-validator",
+      "domain": "SRE-WATCHDOG",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "sre-watchdog-health-probe-auditor",
+      "domain": "SRE-WATCHDOG",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "sre-watchdog-auto-restart-engine",
+      "domain": "SRE-WATCHDOG",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "sre-watchdog-auto-restart-validator",
+      "domain": "SRE-WATCHDOG",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "sre-watchdog-auto-restart-auditor",
+      "domain": "SRE-WATCHDOG",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "sre-watchdog-log-rotate-engine",
+      "domain": "SRE-WATCHDOG",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "sre-watchdog-log-rotate-validator",
+      "domain": "SRE-WATCHDOG",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "sre-watchdog-log-rotate-auditor",
+      "domain": "SRE-WATCHDOG",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "sre-watchdog-alerting-engine",
+      "domain": "SRE-WATCHDOG",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "sre-watchdog-alerting-validator",
+      "domain": "SRE-WATCHDOG",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "sre-watchdog-alerting-auditor",
+      "domain": "SRE-WATCHDOG",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "security-token-hmac-engine",
+      "domain": "SECURITY",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "security-token-hmac-validator",
+      "domain": "SECURITY",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "security-token-hmac-auditor",
+      "domain": "SECURITY",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "security-ssrf-blocker-engine",
+      "domain": "SECURITY",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "security-ssrf-blocker-validator",
+      "domain": "SECURITY",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "security-ssrf-blocker-auditor",
+      "domain": "SECURITY",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "security-header-sanitizer-engine",
+      "domain": "SECURITY",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "security-header-sanitizer-validator",
+      "domain": "SECURITY",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "security-header-sanitizer-auditor",
+      "domain": "SECURITY",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "security-anti-hotlink-engine",
+      "domain": "SECURITY",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "security-anti-hotlink-validator",
+      "domain": "SECURITY",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "security-anti-hotlink-auditor",
+      "domain": "SECURITY",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "security-geo-block-engine",
+      "domain": "SECURITY",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "security-geo-block-validator",
+      "domain": "SECURITY",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "security-geo-block-auditor",
+      "domain": "SECURITY",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "security-ddos-mitigation-engine",
+      "domain": "SECURITY",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "security-ddos-mitigation-validator",
+      "domain": "SECURITY",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "security-ddos-mitigation-auditor",
+      "domain": "SECURITY",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "telemetry-prisma-engine",
+      "domain": "TELEMETRY",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "telemetry-prisma-validator",
+      "domain": "TELEMETRY",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "telemetry-prisma-auditor",
+      "domain": "TELEMETRY",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "telemetry-conviva-clone-engine",
+      "domain": "TELEMETRY",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "telemetry-conviva-clone-validator",
+      "domain": "TELEMETRY",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "telemetry-conviva-clone-auditor",
+      "domain": "TELEMETRY",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "telemetry-rebuffer-tracker-engine",
+      "domain": "TELEMETRY",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "telemetry-rebuffer-tracker-validator",
+      "domain": "TELEMETRY",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "telemetry-rebuffer-tracker-auditor",
+      "domain": "TELEMETRY",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "telemetry-startup-time-engine",
+      "domain": "TELEMETRY",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "telemetry-startup-time-validator",
+      "domain": "TELEMETRY",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "telemetry-startup-time-auditor",
+      "domain": "TELEMETRY",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "telemetry-error-aggregator-engine",
+      "domain": "TELEMETRY",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "telemetry-error-aggregator-validator",
+      "domain": "TELEMETRY",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "telemetry-error-aggregator-auditor",
+      "domain": "TELEMETRY",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "telemetry-grafana-export-engine",
+      "domain": "TELEMETRY",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "telemetry-grafana-export-validator",
+      "domain": "TELEMETRY",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "telemetry-grafana-export-auditor",
+      "domain": "TELEMETRY",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "medium"
+    },
+    {
+      "name": "iptv-advanced-heuristic-v1",
+      "domain": "HEURISTICS",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "low"
+    },
+    {
+      "name": "iptv-advanced-heuristic-v2",
+      "domain": "HEURISTICS",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "low"
+    },
+    {
+      "name": "iptv-advanced-heuristic-v3",
+      "domain": "HEURISTICS",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "low"
+    },
+    {
+      "name": "iptv-advanced-heuristic-v4",
+      "domain": "HEURISTICS",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "low"
+    },
+    {
+      "name": "iptv-advanced-heuristic-v5",
+      "domain": "HEURISTICS",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "low"
+    },
+    {
+      "name": "iptv-advanced-heuristic-v6",
+      "domain": "HEURISTICS",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "low"
+    },
+    {
+      "name": "iptv-advanced-heuristic-v7",
+      "domain": "HEURISTICS",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "low"
+    },
+    {
+      "name": "iptv-advanced-heuristic-v8",
+      "domain": "HEURISTICS",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "low"
+    },
+    {
+      "name": "iptv-advanced-heuristic-v9",
+      "domain": "HEURISTICS",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "low"
+    },
+    {
+      "name": "iptv-advanced-heuristic-v10",
+      "domain": "HEURISTICS",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "low"
+    },
+    {
+      "name": "iptv-advanced-heuristic-v11",
+      "domain": "HEURISTICS",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "low"
+    },
+    {
+      "name": "iptv-advanced-heuristic-v12",
+      "domain": "HEURISTICS",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "low"
+    },
+    {
+      "name": "iptv-advanced-heuristic-v13",
+      "domain": "HEURISTICS",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "low"
+    },
+    {
+      "name": "iptv-advanced-heuristic-v14",
+      "domain": "HEURISTICS",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "low"
+    },
+    {
+      "name": "iptv-advanced-heuristic-v15",
+      "domain": "HEURISTICS",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "low"
+    },
+    {
+      "name": "iptv-advanced-heuristic-v16",
+      "domain": "HEURISTICS",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "low"
+    },
+    {
+      "name": "iptv-advanced-heuristic-v17",
+      "domain": "HEURISTICS",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "low"
+    },
+    {
+      "name": "iptv-advanced-heuristic-v18",
+      "domain": "HEURISTICS",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "low"
+    },
+    {
+      "name": "iptv-advanced-heuristic-v19",
+      "domain": "HEURISTICS",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "low"
+    },
+    {
+      "name": "iptv-advanced-heuristic-v20",
+      "domain": "HEURISTICS",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "low"
+    },
+    {
+      "name": "iptv-advanced-heuristic-v21",
+      "domain": "HEURISTICS",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "low"
+    },
+    {
+      "name": "iptv-advanced-heuristic-v22",
+      "domain": "HEURISTICS",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "low"
+    },
+    {
+      "name": "iptv-advanced-heuristic-v23",
+      "domain": "HEURISTICS",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "low"
+    },
+    {
+      "name": "iptv-advanced-heuristic-v24",
+      "domain": "HEURISTICS",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "low"
+    },
+    {
+      "name": "iptv-advanced-heuristic-v25",
+      "domain": "HEURISTICS",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "low"
+    },
+    {
+      "name": "iptv-advanced-heuristic-v26",
+      "domain": "HEURISTICS",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "low"
+    },
+    {
+      "name": "iptv-advanced-heuristic-v27",
+      "domain": "HEURISTICS",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "low"
+    },
+    {
+      "name": "iptv-advanced-heuristic-v28",
+      "domain": "HEURISTICS",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "low"
+    },
+    {
+      "name": "iptv-advanced-heuristic-v29",
+      "domain": "HEURISTICS",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "low"
+    },
+    {
+      "name": "iptv-advanced-heuristic-v30",
+      "domain": "HEURISTICS",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "low"
+    },
+    {
+      "name": "iptv-advanced-heuristic-v31",
+      "domain": "HEURISTICS",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "low"
+    },
+    {
+      "name": "iptv-advanced-heuristic-v32",
+      "domain": "HEURISTICS",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "low"
+    },
+    {
+      "name": "iptv-advanced-heuristic-v33",
+      "domain": "HEURISTICS",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "low"
+    },
+    {
+      "name": "iptv-advanced-heuristic-v34",
+      "domain": "HEURISTICS",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "low"
+    },
+    {
+      "name": "iptv-advanced-heuristic-v35",
+      "domain": "HEURISTICS",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "low"
+    },
+    {
+      "name": "iptv-advanced-heuristic-v36",
+      "domain": "HEURISTICS",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "low"
+    },
+    {
+      "name": "iptv-advanced-heuristic-v37",
+      "domain": "HEURISTICS",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "low"
+    },
+    {
+      "name": "iptv-advanced-heuristic-v38",
+      "domain": "HEURISTICS",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "low"
+    },
+    {
+      "name": "iptv-advanced-heuristic-v39",
+      "domain": "HEURISTICS",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "low"
+    },
+    {
+      "name": "iptv-advanced-heuristic-v40",
+      "domain": "HEURISTICS",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "low"
+    },
+    {
+      "name": "iptv-advanced-heuristic-v41",
+      "domain": "HEURISTICS",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "low"
+    },
+    {
+      "name": "iptv-advanced-heuristic-v42",
+      "domain": "HEURISTICS",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "low"
+    },
+    {
+      "name": "iptv-advanced-heuristic-v43",
+      "domain": "HEURISTICS",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "low"
+    },
+    {
+      "name": "iptv-advanced-heuristic-v44",
+      "domain": "HEURISTICS",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "low"
+    },
+    {
+      "name": "iptv-advanced-heuristic-v45",
+      "domain": "HEURISTICS",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "low"
+    },
+    {
+      "name": "iptv-advanced-heuristic-v46",
+      "domain": "HEURISTICS",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "low"
+    },
+    {
+      "name": "iptv-advanced-heuristic-v47",
+      "domain": "HEURISTICS",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "low"
+    },
+    {
+      "name": "iptv-advanced-heuristic-v48",
+      "domain": "HEURISTICS",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "low"
+    },
+    {
+      "name": "iptv-advanced-heuristic-v49",
+      "domain": "HEURISTICS",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "low"
+    },
+    {
+      "name": "iptv-advanced-heuristic-v50",
+      "domain": "HEURISTICS",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "low"
+    },
+    {
+      "name": "iptv-advanced-heuristic-v51",
+      "domain": "HEURISTICS",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "low"
+    },
+    {
+      "name": "iptv-advanced-heuristic-v52",
+      "domain": "HEURISTICS",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "low"
+    },
+    {
+      "name": "iptv-advanced-heuristic-v53",
+      "domain": "HEURISTICS",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "low"
+    },
+    {
+      "name": "iptv-advanced-heuristic-v54",
+      "domain": "HEURISTICS",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "low"
+    },
+    {
+      "name": "iptv-advanced-heuristic-v55",
+      "domain": "HEURISTICS",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "low"
+    },
+    {
+      "name": "iptv-advanced-heuristic-v56",
+      "domain": "HEURISTICS",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "low"
+    },
+    {
+      "name": "iptv-advanced-heuristic-v57",
+      "domain": "HEURISTICS",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "low"
+    },
+    {
+      "name": "iptv-advanced-heuristic-v58",
+      "domain": "HEURISTICS",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "low"
+    },
+    {
+      "name": "iptv-advanced-heuristic-v59",
+      "domain": "HEURISTICS",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "low"
+    },
+    {
+      "name": "iptv-advanced-heuristic-v60",
+      "domain": "HEURISTICS",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "low"
+    },
+    {
+      "name": "iptv-advanced-heuristic-v61",
+      "domain": "HEURISTICS",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "low"
+    },
+    {
+      "name": "iptv-advanced-heuristic-v62",
+      "domain": "HEURISTICS",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "low"
+    },
+    {
+      "name": "iptv-advanced-heuristic-v63",
+      "domain": "HEURISTICS",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "low"
+    },
+    {
+      "name": "iptv-advanced-heuristic-v64",
+      "domain": "HEURISTICS",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "low"
+    },
+    {
+      "name": "iptv-advanced-heuristic-v65",
+      "domain": "HEURISTICS",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "low"
+    },
+    {
+      "name": "iptv-advanced-heuristic-v66",
+      "domain": "HEURISTICS",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "low"
+    },
+    {
+      "name": "iptv-advanced-heuristic-v67",
+      "domain": "HEURISTICS",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "low"
+    },
+    {
+      "name": "iptv-advanced-heuristic-v68",
+      "domain": "HEURISTICS",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "low"
+    },
+    {
+      "name": "iptv-advanced-heuristic-v69",
+      "domain": "HEURISTICS",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "low"
+    },
+    {
+      "name": "iptv-advanced-heuristic-v70",
+      "domain": "HEURISTICS",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "low"
+    },
+    {
+      "name": "iptv-advanced-heuristic-v71",
+      "domain": "HEURISTICS",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "low"
+    },
+    {
+      "name": "iptv-advanced-heuristic-v72",
+      "domain": "HEURISTICS",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "low"
+    },
+    {
+      "name": "iptv-advanced-heuristic-v73",
+      "domain": "HEURISTICS",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "low"
+    },
+    {
+      "name": "iptv-advanced-heuristic-v74",
+      "domain": "HEURISTICS",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "low"
+    },
+    {
+      "name": "iptv-advanced-heuristic-v75",
+      "domain": "HEURISTICS",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "low"
+    },
+    {
+      "name": "iptv-advanced-heuristic-v76",
+      "domain": "HEURISTICS",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "low"
+    },
+    {
+      "name": "iptv-advanced-heuristic-v77",
+      "domain": "HEURISTICS",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "low"
+    },
+    {
+      "name": "iptv-advanced-heuristic-v78",
+      "domain": "HEURISTICS",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "low"
+    },
+    {
+      "name": "iptv-advanced-heuristic-v79",
+      "domain": "HEURISTICS",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "low"
+    },
+    {
+      "name": "iptv-advanced-heuristic-v80",
+      "domain": "HEURISTICS",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "low"
+    },
+    {
+      "name": "iptv-advanced-heuristic-v81",
+      "domain": "HEURISTICS",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "low"
+    },
+    {
+      "name": "iptv-advanced-heuristic-v82",
+      "domain": "HEURISTICS",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "low"
+    },
+    {
+      "name": "iptv-advanced-heuristic-v83",
+      "domain": "HEURISTICS",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "low"
+    },
+    {
+      "name": "iptv-advanced-heuristic-v84",
+      "domain": "HEURISTICS",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "low"
+    },
+    {
+      "name": "iptv-advanced-heuristic-v85",
+      "domain": "HEURISTICS",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "low"
+    },
+    {
+      "name": "iptv-advanced-heuristic-v86",
+      "domain": "HEURISTICS",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "low"
+    },
+    {
+      "name": "iptv-advanced-heuristic-v87",
+      "domain": "HEURISTICS",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "low"
+    },
+    {
+      "name": "iptv-advanced-heuristic-v88",
+      "domain": "HEURISTICS",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "low"
+    },
+    {
+      "name": "iptv-advanced-heuristic-v89",
+      "domain": "HEURISTICS",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "low"
+    },
+    {
+      "name": "iptv-advanced-heuristic-v90",
+      "domain": "HEURISTICS",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "low"
+    },
+    {
+      "name": "iptv-advanced-heuristic-v91",
+      "domain": "HEURISTICS",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "low"
+    },
+    {
+      "name": "iptv-advanced-heuristic-v92",
+      "domain": "HEURISTICS",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "low"
+    },
+    {
+      "name": "iptv-advanced-heuristic-v93",
+      "domain": "HEURISTICS",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "low"
+    },
+    {
+      "name": "iptv-advanced-heuristic-v94",
+      "domain": "HEURISTICS",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "low"
+    },
+    {
+      "name": "iptv-advanced-heuristic-v95",
+      "domain": "HEURISTICS",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "low"
+    },
+    {
+      "name": "iptv-advanced-heuristic-v96",
+      "domain": "HEURISTICS",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "low"
+    },
+    {
+      "name": "iptv-advanced-heuristic-v97",
+      "domain": "HEURISTICS",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "low"
+    },
+    {
+      "name": "iptv-advanced-heuristic-v98",
+      "domain": "HEURISTICS",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "low"
+    },
+    {
+      "name": "iptv-advanced-heuristic-v99",
+      "domain": "HEURISTICS",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "low"
+    },
+    {
+      "name": "iptv-advanced-heuristic-v100",
+      "domain": "HEURISTICS",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "low"
+    },
+    {
+      "name": "iptv-advanced-heuristic-v101",
+      "domain": "HEURISTICS",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "low"
+    },
+    {
+      "name": "iptv-advanced-heuristic-v102",
+      "domain": "HEURISTICS",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "low"
+    },
+    {
+      "name": "iptv-advanced-heuristic-v103",
+      "domain": "HEURISTICS",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "low"
+    },
+    {
+      "name": "iptv-advanced-heuristic-v104",
+      "domain": "HEURISTICS",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "low"
+    },
+    {
+      "name": "iptv-advanced-heuristic-v105",
+      "domain": "HEURISTICS",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "low"
+    },
+    {
+      "name": "iptv-advanced-heuristic-v106",
+      "domain": "HEURISTICS",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "low"
+    },
+    {
+      "name": "iptv-advanced-heuristic-v107",
+      "domain": "HEURISTICS",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "low"
+    },
+    {
+      "name": "iptv-advanced-heuristic-v108",
+      "domain": "HEURISTICS",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "low"
+    },
+    {
+      "name": "iptv-advanced-heuristic-v109",
+      "domain": "HEURISTICS",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "low"
+    },
+    {
+      "name": "iptv-advanced-heuristic-v110",
+      "domain": "HEURISTICS",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "low"
+    },
+    {
+      "name": "iptv-advanced-heuristic-v111",
+      "domain": "HEURISTICS",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "low"
+    },
+    {
+      "name": "iptv-advanced-heuristic-v112",
+      "domain": "HEURISTICS",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "low"
+    },
+    {
+      "name": "iptv-advanced-heuristic-v113",
+      "domain": "HEURISTICS",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "low"
+    },
+    {
+      "name": "iptv-advanced-heuristic-v114",
+      "domain": "HEURISTICS",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "low"
+    },
+    {
+      "name": "iptv-advanced-heuristic-v115",
+      "domain": "HEURISTICS",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "low"
+    },
+    {
+      "name": "iptv-advanced-heuristic-v116",
+      "domain": "HEURISTICS",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "low"
+    },
+    {
+      "name": "iptv-advanced-heuristic-v117",
+      "domain": "HEURISTICS",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "low"
+    },
+    {
+      "name": "iptv-advanced-heuristic-v118",
+      "domain": "HEURISTICS",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "low"
+    },
+    {
+      "name": "iptv-advanced-heuristic-v119",
+      "domain": "HEURISTICS",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "low"
+    },
+    {
+      "name": "iptv-advanced-heuristic-v120",
+      "domain": "HEURISTICS",
+      "status": "active",
+      "source_repos": [],
+      "allowed_files": [],
+      "required_commands": [],
+      "validation_commands": [],
+      "risk_level": "low"
+    }
+  ]
+}
