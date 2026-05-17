@@ -366,8 +366,14 @@ class ApeOmniOrchestratorV18
             $streamInfLine .= ',CODECS="' . $codec . '"';
             $streamInfLine .= ',RESOLUTION=' . $resolution;
             $streamInfLine .= ',FRAME-RATE=' . $frameRate;
-            if ($lcevcEnabled && $lcevcState !== 'OFF') {
-                $streamInfLine .= ',VIDEO-RANGE=' . ($hdrProfile !== 'SDR' ? 'PQ' : 'SDR');
+
+            // VIDEO-RANGE emission (independent of LCEVC · per ARTIFACT_HDR10_METADATA_TRIFECTA.md)
+            // - SDR → omit (per RFC 8216bis §4.4.6.2.1 + Reglas Honestas: no emit redundant default)
+            // - HDR10 / HDR10+ / Dolby Vision → PQ (SMPTE ST 2084)
+            // - HLG → HLG (ARIB STD-B67)
+            $videoRange = self::resolveVideoRangeFromHdrProfile($hdrProfile);
+            if ($videoRange !== null) {
+                $streamInfLine .= ',VIDEO-RANGE=' . $videoRange;
             }
             $lines[] = $streamInfLine;
         }
@@ -531,6 +537,36 @@ class ApeOmniOrchestratorV18
     // ═══════════════════════════════════════════════════════════════════════════
     // INTELIGENCIA MULTI-REPRODUCTOR v18 — stealthUA Dispatcher
     // ═══════════════════════════════════════════════════════════════════════════
+
+    /**
+     * Resolves the standard HLS VIDEO-RANGE attribute from the channelConfig hdr_profile string.
+     * Per ARTIFACT_HDR10_METADATA_TRIFECTA.md + RFC 8216bis §4.4.6.2.1.
+     *
+     * Returns:
+     *   - 'PQ'  for HDR10, HDR10+, Dolby Vision (SMPTE ST 2084 transfer)
+     *   - 'HLG' for HLG (ARIB STD-B67 transfer)
+     *   - null  for SDR or unknown (omit attribute · Reglas Honestas)
+     *
+     * Bug fix (commit 2026-05-17): previous code emitted 'PQ' for ANY non-SDR profile,
+     * which corrupted HLG channels to be reported as PQ to players.
+     *
+     * @param string $hdrProfile  channelConfig['hdr_profile'] (e.g. 'HDR10', 'HDR10+', 'HLG', 'DV', 'SDR')
+     * @return string|null        'PQ' | 'HLG' | null
+     */
+    public static function resolveVideoRangeFromHdrProfile(string $hdrProfile): ?string
+    {
+        $p = strtoupper(trim($hdrProfile));
+        // HLG must be checked first because 'HLG' is a distinct family from PQ-based HDR
+        if (str_contains($p, 'HLG')) {
+            return 'HLG';
+        }
+        // PQ-based HDR types
+        if (str_contains($p, 'HDR10') || str_contains($p, 'DV') || str_contains($p, 'DOLBY')) {
+            return 'PQ';
+        }
+        // SDR / unknown → omit per Reglas Honestas
+        return null;
+    }
 
     /**
      * Determina si se debe incluir #EXT-X-STREAM-INF según el player.
