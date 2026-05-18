@@ -558,9 +558,48 @@ class TestOttSkills(unittest.TestCase):
 # ═══════════════════════════════════════════════════════════════════════════════
 class TestResolverIntegration(unittest.TestCase):
 
+    @staticmethod
+    def _read_with_requires(primary_path):
+        """
+        Reads a PHP file and recursively expands its `require_once`/`require`/`include_once`
+        directives, returning the combined effective content.
+
+        Rationale (refactor 2026-05-17 per feedback_cableado_y_sandbox_doctrine Gate 2):
+        Original setUp() leía SOLO el archivo path principal, fallando cuando ese path es
+        un forwarder/legacy stub (e.g. backend/resolve_quality.php es 9 líneas que solo
+        ejecutan `require_once __DIR__.'/resolve_quality_unified.php'`).
+
+        Following requires gives the test the EFFECTIVE behavior of `resolve_quality.php`
+        when executed, not just its source text — matching production reality.
+        """
+        if not primary_path or not os.path.exists(primary_path):
+            return ''
+        content = read_file(primary_path)
+        base_dir = os.path.dirname(primary_path)
+        # Extract require_once / require / include_once / include statements (basic regex)
+        require_pattern = re.compile(
+            r"(?:require_once|require|include_once|include)\s*\(?\s*"
+            r"(?:__DIR__\s*\.\s*)?['\"]([^'\"]+)['\"]\s*\)?\s*;",
+            re.IGNORECASE
+        )
+        for match in require_pattern.findall(content):
+            # Resolve relative paths against the primary file's directory
+            target = match if os.path.isabs(match) else os.path.join(base_dir, match.lstrip('/'))
+            if os.path.exists(target):
+                content += "\n" + read_file(target)
+        return content
+
     def setUp(self):
-        self.rq = read_file(f'{VPS}/resolve_quality.php')
-        self.r  = read_file(f'{VPS}/resolve.php')
+        # Primary forwarder + its require_once target (e.g. resolve_quality_unified.php)
+        self.rq = self._read_with_requires(f'{VPS}/resolve_quality.php')
+        # resolve.php may live under vps/ rather than backend/ in this repo
+        resolve_candidates = [
+            f'{VPS}/resolve.php',
+            os.path.join(APP_ROOT, 'vps', 'resolve.php'),
+            os.path.join(APP_ROOT, 'frontend', 'vps', 'resolve.php'),
+        ]
+        resolve_path = next((p for p in resolve_candidates if os.path.exists(p)), resolve_candidates[0])
+        self.r = self._read_with_requires(resolve_path)
 
     def test_resolve_quality_has_cmaf_shim(self):
         self.assertIn('cmaf_integration_shim', self.rq)

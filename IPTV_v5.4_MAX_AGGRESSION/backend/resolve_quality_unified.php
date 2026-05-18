@@ -184,6 +184,29 @@ if (file_exists(__DIR__ . "/ape_jwt_auth.php")) {
 }
 
 // ============================================================================
+// CMAF INTEGRATION SHIM — cableado per feedback_cableado_y_sandbox_doctrine
+// Loaded 2026-05-17 · Gate 1 partial: library available in global namespace.
+// The shim is NON-INVASIVE — its CmafIntegrationShim::intercept() returns null
+// (fall-through) if the channel has cmaf_enabled=false in its DNA, preserving
+// legacy resolve behavior. Class load alone has zero runtime side effects.
+//
+// LCEVC headers + signaling are also exposed via the shim's internal flow.
+// Full invocation hook (interceptar después de mapDecision/decision) queda
+// como TODO documentado · requires design previo del flow concreto del resolver.
+//
+// Refs:
+//   - cmaf_engine/cmaf_integration_shim.php header (líneas 12-16) documenta el
+//     pattern de invocation exacto recomendado.
+//   - .agents/artifacts/ARTIFACT_CHAIN_OF_MANIFESTATION_11_ESLABONES.md eslabón 5.
+// ============================================================================
+if (file_exists(__DIR__ . "/cmaf_engine/cmaf_integration_shim.php")) {
+    require_once __DIR__ . "/cmaf_engine/cmaf_integration_shim.php";
+    // LCEVC signaling reference (documented for telemetry/audit, no exec impact):
+    //   CmafIntegrationShim::intercept() handles LCEVC state per channel DNA
+    //   via internal LcevcStateEngine + LCEVC-aware playerCapabilityResolver.
+}
+
+// ============================================================================
 // OMEGA v7.0: ZERO-TRUST L7 & JWT VERIFY
 // ============================================================================
 // Preferencia usuario: Soft Verify. No bloquea el proxy. Identifica.
