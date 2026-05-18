@@ -1,35 +1,62 @@
 <?php
 declare(strict_types=1);
 
+require_once __DIR__ . '/conviva_persistence.php';
+
 /**
  * ╔══════════════════════════════════════════════════════════════════════════╗
- * ║  ConvivaQoEServer v1.0 — Phase 1 Stub (in-memory + log only)            ║
+ * ║  ConvivaQoEServer v1.1 — Phase 2 (validation + dispatch + persistence)  ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
  *
  * Server-side equivalent of frontend/js/conviva-qoe-engine.js for receiving
  * playback telemetry via the /prisma/api/conviva-event endpoint.
  *
- * PHASE 1 (this file): minimal stub with validation + dispatch + log only.
- * PHASE 2 (next session): SQLite persistence + circular buffer /dev/shm.
- * PHASE 3 (later):       WebSocket bridge to frontend dashboard.
+ * PHASE 1: validation + dispatch + log only.                    ✅ DONE
+ * PHASE 2 (this version): SQLite persistence + circular buffer. ✅ DONE
+ * PHASE 3 (later):        WebSocket bridge frontend dashboard.
  *
  * GATE 1 CABLEADO:
  *   - ConvivaQoEServer::validateEvent() called by api/conviva-event.php
  *   - ConvivaQoEServer::dispatch() called by api/conviva-event.php
+ *   - ConvivaQoEServer::dispatch() → ConvivaPersistence::persist() (Phase 2)
  *
  * GATE 3 SANDBOX:
- *   - No file writes outside of error_log
- *   - No persistence (in-memory only)
- *   - No external HTTP calls
+ *   - Persistence is silent fail-safe: if SQLite/buffer fail, dispatch still returns
+ *   - All paths configurable via setPersistence() for test injection
  *   - Class load alone has zero side effects
  *
  * @see ARTIFACT_CONVIVA_ADB_PUSH_DESIGN.md §6
  * @see frontend/js/conviva-qoe-engine.js (paridad de comportamiento)
+ * @see vps/prisma/lib/conviva_persistence.php (Phase 2 persistence layer)
  */
 
 class ConvivaQoEServer
 {
-    public const VERSION = '1.0.0-phase1-stub';
+    public const VERSION = '1.1.0-phase2';
+
+    /** Optional persistence injection (for tests + DI) */
+    private static ?ConvivaPersistence $persistence = null;
+
+    /**
+     * Inject a ConvivaPersistence (or null to disable persistence).
+     * Used by tests (with sandbox paths) and by production bootstrap.
+     */
+    public static function setPersistence(?ConvivaPersistence $p): void
+    {
+        self::$persistence = $p;
+    }
+
+    /**
+     * Lazy default persistence (uses /opt/netshield/data/conviva.db + /dev/shm).
+     * In test environments, call setPersistence() with custom paths before dispatch.
+     */
+    private static function getPersistence(): ConvivaPersistence
+    {
+        if (self::$persistence === null) {
+            self::$persistence = new ConvivaPersistence();
+        }
+        return self::$persistence;
+    }
 
     // Threshold constants — paridad con conviva-qoe-engine.js
     public const RBR_SURVIVAL_THRESHOLD   = 0.02;   // 2%
@@ -141,7 +168,7 @@ class ConvivaQoEServer
         // Decision engine (paridad con DecisionEngine de conviva-qoe-engine.js)
         $decision = self::decide($type, $data, $qoeScore);
 
-        // Phase 1: log only (no persistence)
+        // Log line for observability (compact format · also persisted to buffer)
         $logLine = sprintf(
             '[conviva-event] session=%s player=%s channel=%s event=%s qoe=%d decision=%s',
             $sessionId,
@@ -153,12 +180,25 @@ class ConvivaQoEServer
         );
         error_log($logLine);
 
-        return [
+        $result = [
             'session_id' => $sessionId,
             'event_type' => $type,
             'qoe_score'  => $qoeScore,
             'decision'   => $decision,
         ];
+
+        // Phase 2 wire: persist to SQLite + circular buffer (silent fail-safe).
+        // Per Gate 1 CABLEADO: this is the real caller of ConvivaPersistence.
+        // Persistence errors are logged but never abort dispatch (Gate 3 SANDBOX safe).
+        try {
+            $persistResult = self::getPersistence()->persist($event, $result);
+            $result['persisted'] = $persistResult;
+        } catch (Throwable $e) {
+            error_log('[conviva-event] persist failed (non-fatal): ' . $e->getMessage());
+            $result['persisted'] = ['sqlite_ok' => false, 'buffer_ok' => false];
+        }
+
+        return $result;
     }
 
     /**
