@@ -127,6 +127,74 @@ class LabConfigLoader
         return (int)($cfg[$key] ?? $cfg['floor_lock_min_bandwidth_default'] ?? 8000000);
     }
 
+    /**
+     * Resolves player_target enum for a channel/profile combo (Phase D · player overlay routing).
+     *
+     * Per ARTIFACT_CONVIVA_ADB_PUSH_DESIGN.md §4 + feedback_cableado_y_sandbox_doctrine.
+     * Used by hls_rewriter_v15.py rewrite_manifest() (commit b4906f3) to dispatch
+     * player-specific overlay injection (VLC EXTVLCOPT / KODI KODIPROP / TIVIMATE single-value).
+     *
+     * Resolution order (first match wins · Reglas Honestas):
+     *   1. Explicit per-channel override:  channels[$channelId]['player_target']
+     *   2. Per-profile default:            channel_defaults_by_profile[$profile]['player_target']
+     *   3. User-Agent inference (if UA passed): TiviMate UA → TIVIMATE, etc.
+     *   4. Fallback by player_profile:     PREMIUM/HIGH→KODI (broad), STANDARD→TIVIMATE, LEGACY→VLC
+     *   5. Final fallback:                 '' (empty → rewrite_manifest applies no overlay)
+     *
+     * Returns enum: VLC | KODI | TIVIMATE | OTT_NAV | '' (empty for "no overlay")
+     *
+     * @param string $channelId  Channel id (lookup in channels_prisma_dna.json)
+     * @param string $profile    P0..P5
+     * @param ?string $userAgent Optional UA hint for inference
+     * @return string            Player target enum (or empty)
+     */
+    public static function playerTargetForChannel(
+        string $channelId,
+        string $profile = 'P3',
+        ?string $userAgent = null
+    ): string {
+        // 1. Explicit per-channel override (when LAB exports the column · TODO Phase D-2)
+        $cfg = self::channelsDna();
+        if (isset($cfg['channels'][$channelId]['player_target'])) {
+            $v = strtoupper(trim((string)$cfg['channels'][$channelId]['player_target']));
+            if (in_array($v, ['VLC', 'KODI', 'TIVIMATE', 'OTT_NAV'], true)) return $v;
+        }
+
+        // 2. Per-profile default (when LAB exports the column · TODO Phase D-2)
+        if (isset($cfg['channel_defaults_by_profile'][$profile]['player_target'])) {
+            $v = strtoupper(trim((string)$cfg['channel_defaults_by_profile'][$profile]['player_target']));
+            if (in_array($v, ['VLC', 'KODI', 'TIVIMATE', 'OTT_NAV'], true)) return $v;
+        }
+
+        // 3. UA inference (LOW confidence · used only when DNA absent)
+        if ($userAgent !== null && $userAgent !== '') {
+            $ua = strtolower($userAgent);
+            if (str_contains($ua, 'tivimate'))     return 'TIVIMATE';
+            if (str_contains($ua, 'ott navigator') || str_contains($ua, 'ott_navigator')) return 'OTT_NAV';
+            if (str_contains($ua, 'kodi') || str_contains($ua, 'inputstream')) return 'KODI';
+            if (str_contains($ua, 'vlc'))          return 'VLC';
+        }
+
+        // 4. Profile fallback (broad heuristic · not strict)
+        //    PREMIUM/HIGH common with Kodi+inputstream.adaptive (LCEVC capable)
+        //    STANDARD typical TiviMate range
+        //    LEGACY VLC desktop / MAG / older devices
+        $cfgProf = self::channelsDna()['channel_defaults_by_profile'][$profile] ?? [];
+        $playerProfile = (string)($cfgProf['player_profile'] ?? '');
+        switch (strtoupper($playerProfile)) {
+            case 'PREMIUM':
+            case 'HIGH':
+                return 'KODI';
+            case 'STANDARD':
+                return 'TIVIMATE';
+            case 'LEGACY':
+                return 'VLC';
+        }
+
+        // 5. Final fallback · empty → caller applies no overlay
+        return '';
+    }
+
     /** Helper: devuelve el boost_multiplier para un perfil dado */
     public static function boostMultiplierForProfile(string $profile): float
     {
