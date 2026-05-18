@@ -1,0 +1,79 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://iptv-ape.duckdns.org/schemas/conviva-event/v1.0",
+  "title": "Conviva QoE Event v1.0",
+  "description": "Schema for events POSTed to /prisma/api/conviva-event by ADB push from Android TV / Fire TV clients. Validates incoming telemetry before dispatch to ConvivaQoEServer.",
+  "type": "object",
+  "required": ["version", "session_id", "device_id", "player", "channel", "event_type", "timestamp_ms"],
+  "additionalProperties": false,
+  "properties": {
+    "version": {
+      "type": "string",
+      "const": "1.0",
+      "description": "Schema version. Servers reject events with mismatched version."
+    },
+    "session_id": {
+      "type": "string",
+      "minLength": 8,
+      "maxLength": 64,
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Per-channel session UUID or correlation id."
+    },
+    "device_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64,
+      "pattern": "^[a-zA-Z0-9_.-]+$",
+      "description": "Stable device identifier (e.g. 'fire-tv-4k-max-bogota')."
+    },
+    "player": {
+      "type": "string",
+      "enum": ["OTT_Navigator", "TiviMate", "IPTV_Smarters", "VLC", "Kodi", "ExoPlayer", "AVPlayer", "hls_js", "Shaka", "unknown"]
+    },
+    "channel": {
+      "type": "object",
+      "required": ["id", "name"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "name": { "type": "string", "minLength": 1, "maxLength": 256 },
+        "profile": { "type": "string", "enum": ["P0", "P1", "P2", "P3", "P4", "P5"] }
+      }
+    },
+    "event_type": {
+      "type": "string",
+      "enum": [
+        "first_frame",
+        "rebuffer_start",
+        "rebuffer_end",
+        "bitrate_change",
+        "frame_drop",
+        "quality_change",
+        "error",
+        "end_session"
+      ]
+    },
+    "timestamp_ms": {
+      "type": "integer",
+      "minimum": 1700000000000,
+      "description": "Unix epoch milliseconds. Must be after 2023-11-14 (sanity floor)."
+    },
+    "data": {
+      "type": "object",
+      "additionalProperties": true,
+      "description": "Event-specific payload. Schema enforced per event_type by ConvivaQoEServer dispatcher.",
+      "properties": {
+        "bitrate_bps": { "type": "integer", "minimum": 0, "maximum": 200000000 },
+        "resolution": { "type": "string", "pattern": "^[0-9]+x[0-9]+$" },
+        "codec": { "type": "string", "maxLength": 64 },
+        "frame_drops": { "type": "integer", "minimum": 0 },
+        "frame_total": { "type": "integer", "minimum": 0 },
+        "buffer_ahead_ms": { "type": "integer", "minimum": 0 },
+        "rebuffer_duration_ms": { "type": "integer", "minimum": 0 },
+        "error_code": { "type": ["string", "null"], "maxLength": 64 },
+        "error_message": { "type": ["string", "null"], "maxLength": 512 },
+        "reason": { "type": "string", "maxLength": 64 }
+      }
+    }
+  }
+}
