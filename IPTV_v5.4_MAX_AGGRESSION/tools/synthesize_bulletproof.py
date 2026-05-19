@@ -344,10 +344,23 @@ def main():
     out['placeholders_meta'] = out.get('placeholders_meta', {})
     out['placeholders_meta']['{config.player_target}'] = {
         'source':       '7_NIVEL_3_CHANNEL.player_target',
-        'description':  ('Player overlay target enum (VLC/KODI/TIVIMATE/OTT_NAV). '
-                         'Empty = default heuristic via LabConfigLoader::playerTargetForChannel.'),
-        'enum':         ['VLC', 'KODI', 'TIVIMATE', 'OTT_NAV', ''],
+        'description':  (
+            '[2026-05-19 MULTI-SELECT DOCTRINE] '
+            'Player overlay multi-select. DEFAULT (empty / ALL) = todos los '
+            'players reciben sus parches en la misma lista generada (cobertura '
+            'universal). Comma-separated values allowed (VLC,KODI). The M3U8 '
+            'generator emits EXTVLCOPT + KODIPROP + EXTHTTP + X-APE-* universally '
+            'per channel; this field is a HINT for which players receive '
+            'extra-intensified boost when a specific value is set. Empty = no '
+            'extra boost = universal baseline (always full coverage). '
+            'Resolver: lab_config_loader.php::playerTargetsForChannel (PHP, '
+            'returns array) + hls_rewriter_v15.py::_parse_player_target '
+            '(Python). Unknown tokens dropped; all-unknown -> ALL safety fallback.'
+        ),
+        'enum':         ['ALL', 'VLC', 'KODI', 'TIVIMATE', 'OTT_NAV', ''],
+        'allow_comma_separated': True,
         'default':      '',
+        'doctrine':     'cobertura universal por DEFAULT',
         'added_at':     now.strftime('%Y-%m-%dT%H:%M:%S'),
         'doctrine_ref': '.agents/artifacts/ARTIFACT_FASE1_PROFUNDO_DESTRIPE.md',
     }

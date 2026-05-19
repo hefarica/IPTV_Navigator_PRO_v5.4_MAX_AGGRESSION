@@ -130,23 +130,90 @@ class LabConfigLoader
     /**
      * Resolves player_target enum for a channel/profile combo (Phase D · player overlay routing).
      *
-     * Per ARTIFACT_CONVIVA_ADB_PUSH_DESIGN.md §4 + feedback_cableado_y_sandbox_doctrine.
-     * Used by hls_rewriter_v15.py rewrite_manifest() (commit b4906f3) to dispatch
-     * player-specific overlay injection (VLC EXTVLCOPT / KODI KODIPROP / TIVIMATE single-value).
+     * [2026-05-19 · MULTI-SELECT DOCTRINE]
+     * Per user doctrine "ampliar cobertura de reproducción es usar todos los
+     * parches disponibles en la misma lista generada":
      *
-     * Resolution order (first match wins · Reglas Honestas):
+     *   · DEFAULT (empty cell) = ALL players covered universally (no narrowing).
+     *   · 'ALL' alias          = same as empty.
+     *   · 'VLC'                = single (boost for VLC only).
+     *   · 'VLC,KODI'           = comma-separated multi-select.
+     *   · 'VLC,KODI,OTT_NAV'   = free combination.
+     *
+     * Returns ARRAY of player targets — never narrows below ALL when nothing
+     * matches. Callers (hls_rewriter_v15.py via JSON serialization, or PHP
+     * consumers) iterate the returned list and apply each player's overlay.
+     *
+     * Resolution order (first match wins):
      *   1. Explicit per-channel override:  channels[$channelId]['player_target']
      *   2. Per-profile default:            channel_defaults_by_profile[$profile]['player_target']
-     *   3. User-Agent inference (if UA passed): TiviMate UA → TIVIMATE, etc.
-     *   4. Fallback by player_profile:     PREMIUM/HIGH→KODI (broad), STANDARD→TIVIMATE, LEGACY→VLC
-     *   5. Final fallback:                 '' (empty → rewrite_manifest applies no overlay)
+     *   3. User-Agent inference (if UA passed): TiviMate UA → ['TIVIMATE'], etc.
+     *   4. Fallback by player_profile:     PREMIUM/HIGH→['KODI'], STANDARD→['TIVIMATE'], LEGACY→['VLC']
+     *   5. Final fallback:                 ALL players (universal coverage doctrine)
      *
-     * Returns enum: VLC | KODI | TIVIMATE | OTT_NAV | '' (empty for "no overlay")
+     * Sister method `playerTargetForChannelLegacy()` retained for backward-compat
+     * (returns single string; new code should call this new array-returning method).
      *
      * @param string $channelId  Channel id (lookup in channels_prisma_dna.json)
      * @param string $profile    P0..P5
      * @param ?string $userAgent Optional UA hint for inference
-     * @return string            Player target enum (or empty)
+     * @return string[]          Array of player targets (always non-empty under doctrine)
+     */
+    public static function playerTargetsForChannel(
+        string $channelId,
+        string $profile = 'P3',
+        ?string $userAgent = null
+    ): array {
+        $ALL = ['VLC', 'KODI', 'TIVIMATE', 'OTT_NAV'];
+        $parse = function (string $raw) use ($ALL): array {
+            $s = strtoupper(trim($raw));
+            if ($s === '' || $s === 'ALL') return $ALL;
+            $parts = array_map('trim', explode(',', $s));
+            $known = array_values(array_filter($parts,
+                fn($p) => in_array($p, $ALL, true)));
+            return !empty($known) ? $known : $ALL;  // all-unknown -> ALL safety
+        };
+
+        // 1. Explicit per-channel override
+        $cfg = self::channelsDna();
+        if (isset($cfg['channels'][$channelId]['player_target'])) {
+            return $parse((string)$cfg['channels'][$channelId]['player_target']);
+        }
+
+        // 2. Per-profile default
+        if (isset($cfg['channel_defaults_by_profile'][$profile]['player_target'])) {
+            return $parse((string)$cfg['channel_defaults_by_profile'][$profile]['player_target']);
+        }
+
+        // 3. UA inference (returns single-element array)
+        if ($userAgent !== null && $userAgent !== '') {
+            $ua = strtolower($userAgent);
+            if (str_contains($ua, 'tivimate'))     return ['TIVIMATE'];
+            if (str_contains($ua, 'ott navigator') || str_contains($ua, 'ott_navigator')) return ['OTT_NAV'];
+            if (str_contains($ua, 'kodi') || str_contains($ua, 'inputstream')) return ['KODI'];
+            if (str_contains($ua, 'vlc'))          return ['VLC'];
+        }
+
+        // 4. Profile fallback (broad heuristic)
+        $cfgProf = self::channelsDna()['channel_defaults_by_profile'][$profile] ?? [];
+        $playerProfile = (string)($cfgProf['player_profile'] ?? '');
+        switch (strtoupper($playerProfile)) {
+            case 'PREMIUM':
+            case 'HIGH':     return ['KODI'];
+            case 'STANDARD': return ['TIVIMATE'];
+            case 'LEGACY':   return ['VLC'];
+        }
+
+        // 5. Final fallback: ALL (per universal-coverage doctrine 2026-05-19)
+        return $ALL;
+    }
+
+    /**
+     * Legacy single-string variant — preserved for backward compatibility with
+     * older callers. New code should use playerTargetsForChannel() which
+     * returns the full array per multi-select doctrine.
+     *
+     * @return string First element of playerTargetsForChannel() or empty.
      */
     public static function playerTargetForChannel(
         string $channelId,

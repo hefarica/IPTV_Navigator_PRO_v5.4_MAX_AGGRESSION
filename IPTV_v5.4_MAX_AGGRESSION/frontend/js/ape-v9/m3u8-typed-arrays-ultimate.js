@@ -7635,13 +7635,22 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
             '{profile.buffer_s}': '8',
             '{evasion.random_ua}': _ua796 || 'Mozilla/5.0 (Web0S; Linux/SmartTV)',
             '{evasion.random_referer}': 'https://www.netflix.com/',
-            // [B-fix 2026-05-19] {config.player_target} safety net.
-            // BULLETPROOF emits this as flat empty string by default. If the BULLETPROOF
-            // is absent or omits this key, this fallback prevents the literal
-            // "{config.player_target}" from leaking into M3U8 output (e.g. in a NIVEL_3
-            // KODIPROP or EXTVLCOPT directive). Empty = LabConfigLoader heuristic
-            // chain resolves per channel at the VPS PHP layer.
-            // Per ARTIFACT_BULLETPROOF_CONSUMER_AUDIT B-fix.
+            // [2026-05-19 · MULTI-SELECT DOCTRINE] {config.player_target} safety net.
+            // BULLETPROOF emits this as flat empty string by default. Empty value
+            // means "ALL players receive their patches universally" (cobertura
+            // universal por DEFAULT) — the M3U8 generator already emits EXTVLCOPT
+            // + KODIPROP + EXTHTTP + X-APE-* tags for every channel block, so
+            // every player consuming the list can play it.
+            //
+            // The cell may also contain comma-separated values (VLC,KODI) or
+            // the 'ALL' alias when a power user wants to MARK specific channels
+            // for extra-intensified per-player boost. The VPS PHP/Python
+            // resolvers parse the comma-separated list. Empty here = no extra
+            // boost requested = universal baseline (always full coverage).
+            //
+            // This fallback prevents the literal "{config.player_target}" from
+            // leaking into M3U8 output if the placeholder is referenced by any
+            // NIVEL_3 directive but BULLETPROOF is missing/absent on import.
             '{config.player_target}': ''
         };
         const _phLab = (typeof window !== 'undefined' && window.APE_PROFILES_CONFIG && window.APE_PROFILES_CONFIG.placeholdersMap) || {};

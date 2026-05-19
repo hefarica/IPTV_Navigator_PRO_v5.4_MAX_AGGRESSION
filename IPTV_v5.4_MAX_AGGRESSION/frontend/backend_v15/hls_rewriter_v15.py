@@ -125,20 +125,66 @@ class HLSRewriterV15:
 
         result = "\n".join(new_lines)
 
-        # Gate 1 cableado real per feedback_cableado_y_sandbox_doctrine.
-        # Apply player-specific overlays when profile_config declares a target player.
-        # Default behavior preserved when 'player_target' absent → no overlays.
-        player_target = profile_config.get('player_target', '').upper()
+        # [2026-05-19 · MULTI-SELECT DOCTRINE]
+        # Per user doctrine "ampliar cobertura de reproducción es usar todos los
+        # parches disponibles en la misma lista generada": default behavior is
+        # UNIVERSAL COVERAGE — every player's overlay is injected so any player
+        # consuming the list can reproduce it. The cell value is a multi-select
+        # hint (empty / 'ALL' / single name / comma-separated) for which
+        # players additionally receive their overlays in THIS rewrite pass.
+        #
+        #   value semantics:
+        #     '' (empty) | 'ALL'              → all known players receive overlays
+        #     'VLC'                            → VLC only
+        #     'VLC,KODI'                       → VLC + Kodi/TiviMate
+        #     'VLC,KODI,TIVIMATE,OTT_NAV'      → all explicit
+        #
+        # Note: the M3U8 generator (m3u8-typed-arrays-ultimate.js) ALREADY emits
+        # EXTVLCOPT + KODIPROP + EXTHTTP + X-APE-* tags universally per channel
+        # block at generation time. This rewriter is the SECONDARY overlay pass
+        # for post-generation manifest rewrites — defaulting to universal
+        # coverage here means no player ever sees a list missing its directives.
+        player_target_raw = profile_config.get('player_target', '')
         player_overlay_buffer = profile_config.get('player_overlay_buffer_ms', buffer_target)
-        player_overlay_ua = profile_config.get('player_overlay_user_agent')  # None → uses SmartTV default
+        player_overlay_ua = profile_config.get('player_overlay_user_agent')  # None → SmartTV default
 
-        if player_target == 'VLC':
+        targets = self._parse_player_target(player_target_raw)
+
+        if 'VLC' in targets:
             result = self.inject_vlc_options(result, buffer_ms=player_overlay_buffer, user_agent=player_overlay_ua)
-        elif player_target == 'KODI' or player_target == 'TIVIMATE':
+        if 'KODI' in targets or 'TIVIMATE' in targets:
             manifest_type = "mpd" if result.lower().endswith('.mpd') else "hls"
             result = self.inject_kodi_props(result, manifest_type=manifest_type, user_agent=player_overlay_ua)
+        # OTT_NAV / ExoPlayer overlays handled via the EXTHTTP path already
+        # baked at generation time — this rewriter is a no-op for them per
+        # the M3U8 universal-emission contract.
 
         return result
+
+    # ─── multi-select parser ──────────────────────────────────────────────
+    _ALL_TARGETS = ('VLC', 'KODI', 'TIVIMATE', 'OTT_NAV')
+
+    @classmethod
+    def _parse_player_target(cls, raw):
+        """Parse LAB `player_target` cell value to a list of player names.
+
+        Per the multi-select doctrine (2026-05-19):
+          · '' / None / 'ALL' → return all known targets (universal coverage)
+          · 'VLC,KODI'        → ['VLC', 'KODI']
+          · 'VLC'             → ['VLC']
+
+        Unknown tokens are silently dropped — never narrows below 0; if the
+        cell is malformed (e.g. typo), the safety fallback is universal
+        coverage to honor the cardinal doctrine.
+        """
+        if raw is None:
+            return list(cls._ALL_TARGETS)
+        s = str(raw).strip().upper()
+        if not s or s == 'ALL':
+            return list(cls._ALL_TARGETS)
+        parts = [p.strip().upper() for p in s.split(',') if p.strip()]
+        known = [p for p in parts if p in cls._ALL_TARGETS]
+        return known if known else list(cls._ALL_TARGETS)
 
     def _create_proxy_url(
         self,
