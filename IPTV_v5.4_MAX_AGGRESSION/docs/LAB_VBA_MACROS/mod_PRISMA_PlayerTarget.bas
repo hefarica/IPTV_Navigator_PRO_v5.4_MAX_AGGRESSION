@@ -69,8 +69,11 @@ Public Sub DeployPlayerTargetColumn()
 
     ' STEP 1: Pre-flight safety checks
     If Not PreflightChecks() Then
-        MsgBox "Pre-flight failed. ABORTED. Read VBE Immediate Window for details.", _
-               vbCritical, "mod_PRISMA_PlayerTarget"
+        If Application.UserControl Then
+            MsgBox "Pre-flight failed. ABORTED. Read VBE Immediate Window for details.", _
+                   vbCritical, "mod_PRISMA_PlayerTarget"
+        End If
+        Debug.Print "[mod_PRISMA_PlayerTarget] Pre-flight failed. ABORTED."
         Exit Sub
     End If
 
@@ -101,12 +104,15 @@ Public Sub DeployPlayerTargetColumn()
                 Format(Timer - startTime, "0.00") & "s. " & _
                 "Next: run Brain_ExportToFrontend to regenerate bulletproof JSON."
 
-    MsgBox "player_target column deployed successfully." & vbCrLf & _
-           "Next steps:" & vbCrLf & _
-           "  1. Populate column for channels (or leave empty for default heuristic)" & vbCrLf & _
-           "  2. Run Brain_ExportToFrontend to regenerate JSON" & vbCrLf & _
-           "  3. Verify Manifest SHA-256 with mod_PRISMA_Validate", _
-           vbInformation, "mod_PRISMA_PlayerTarget"
+    If Application.UserControl Then
+        MsgBox "player_target column deployed successfully." & vbCrLf & _
+               "Next steps:" & vbCrLf & _
+               "  1. Populate column for channels (or leave empty for default heuristic)" & vbCrLf & _
+               "  2. Run Brain_ExportToFrontend to regenerate JSON" & vbCrLf & _
+               "  3. Verify Manifest SHA-256 with mod_PRISMA_Validate", _
+               vbInformation, "mod_PRISMA_PlayerTarget"
+    End If
+    Debug.Print "[mod_PRISMA_PlayerTarget] DeployPlayerTargetColumn DONE — column wired, named range OK, placeholder registered."
     Exit Sub
 
 SafeAbort:
@@ -114,8 +120,10 @@ SafeAbort:
     Application.Calculation = xlCalculationAutomatic
     Application.ScreenUpdating = True
     Debug.Print "[mod_PRISMA_PlayerTarget] ERROR: " & Err.Description & " (line " & Erl & ")"
-    MsgBox "ERROR: " & Err.Description & vbCrLf & "Excel state restored. Run rollback procedure.", _
-           vbCritical, "mod_PRISMA_PlayerTarget"
+    If Application.UserControl Then
+        MsgBox "ERROR: " & Err.Description & vbCrLf & "Excel state restored. Run rollback procedure.", _
+               vbCritical, "mod_PRISMA_PlayerTarget"
+    End If
 End Sub
 
 
