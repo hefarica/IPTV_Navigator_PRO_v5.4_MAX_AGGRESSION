@@ -1,0 +1,37 @@
+﻿{
+    "started_at":  "2026-05-19T14:27:40.6454894-05:00",
+    "xlsm":  "C:\\Users\\HFRC\\Downloads\\APE_M3U8_LAB_v8_FIXED.xlsm",
+    "mode":  "STRICT-NO-OVERWRITE",
+    "step1_98_VALIDATIONS":  "CREATED",
+    "step2_named_range":  "CREATED",
+    "step3_player_target":  "ADDED col=7 rows 6..91",
+    "step4_placeholder":  "ADDED at row 69",
+    "step5_doctrine":  {
+                           "added_rows":  [
+                                              "hdr_mode at row 626",
+                                              "video_range at row 627",
+                                              "color_primaries at row 628",
+                                              "transfer_characteristics at row 629",
+                                              "matrix_coefficients at row 630",
+                                              "codec_primary at row 631",
+                                              "codec_string at row 632",
+                                              "target_framerate at row 633",
+                                              "nits_target at row 634",
+                                              "vmaf_target at row 635",
+                                              "bandwidth_floor at row 636",
+                                              "bandwidth_target at row 637",
+                                              "bandwidth_max at row 638",
+                                              "avg_bandwidth_ratio at row 639",
+                                              "codec_chain_video at row 640",
+                                              "codec_chain_video_family at row 641",
+                                              "codec_chain_audio at row 642",
+                                              "codec_chain_hdr at row 643",
+                                              "codec_chain_player_pref at row 644"
+                                          ],
+                           "added":  19,
+                           "skipped":  0
+                       },
+    "verification":  "OK Â· 0 violations",
+    "saved":  true,
+    "finished_at":  "2026-05-19T14:28:49.9147188-05:00"
+}
