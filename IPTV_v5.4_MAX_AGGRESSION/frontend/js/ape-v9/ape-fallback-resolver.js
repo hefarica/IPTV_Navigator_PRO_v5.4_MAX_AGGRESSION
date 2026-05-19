@@ -192,19 +192,34 @@
             codecSource: 'PROBE_REAL',
             audioCodec: audioCodec,
             codecsFull: `${probeData.videoCodec},${audioCodec}`,
-            
+
             container: probeData.container || 'unknown',
             containerVerified: !!probeData.container,
-            
+
             hdr: probeData.videoRange === 'PQ' ? 'HDR10_PQ' : (probeData.videoRange === 'HLG' ? 'HLG' : (/dvh1|dvhe/i.test(probeData.videoCodec || probeData.supplementalCodecs || '') ? 'DOLBY_VISION' : 'SDR_OR_UNKNOWN')),
             hdrVerified: !!probeData.videoRange,
             videoRange: probeData.videoRange || null,
             supplementalCodecs: probeData.supplementalCodecs || null,
             supplementalCodecsVerified: !!probeData.supplementalCodecs,
-            
+
+            // [G-1 FIX 2026-05-19] CICP trifecta from probe (RFC 8216bis §4.4.6.2).
+            // ARTIFACT_HDR10_METADATA_TRIFECTA.md: BT.2020(9) / PQ(16) or HLG(18) / BT.2020-NCL(9).
+            // emitStreamInfFromTruth() reads these and emits COLOR-PRIMARIES /
+            // TRANSFER-CHARACTERISTICS / MATRIX-COEFFICIENTS when hdrVerified.
+            colorPrimaries:          probeData.colorPrimaries || null,
+            transferCharacteristics: probeData.transferCharacteristics || null,
+            matrixCoefficients:      probeData.matrixCoefficients || null,
+            cicpVerified:            !!(probeData.colorPrimaries || probeData.transferCharacteristics),
+
+            // [G-2 FIX 2026-05-19] HDCP-LEVEL from probe (gate strict — only emit
+            // when upstream verifiably enforces it). If probe doesn't detect HDCP,
+            // the attribute is omitted from STREAM-INF (honest-rules-strict).
+            hdcpLevel:         probeData.hdcpLevel || null,
+            hdcpLevelVerified: !!probeData.hdcpLevel,
+
             resolution: probeData.resolution,
             resolutionVerified: true,
-            
+
             bandwidth: probeData.bandwidth,
             averageBandwidth: probeData.avgBandwidth || Math.round(probeData.bandwidth * 0.8),
             bandwidthVerified: true,
@@ -231,19 +246,31 @@
             codecSource: probeData.videoCodec ? 'PROBE_PARTIAL' : 'PROFILE_PREMIUM_HINT',
             audioCodec: audioCodec,
             codecsFull: `${codec},${audioCodec}`,
-            
+
             container: 'unknown',
             containerVerified: false,
-            
+
             hdr: probeData.videoRange === 'PQ' ? 'HDR10_PQ' : (probeData.videoRange === 'HLG' ? 'HLG' : 'SDR_OR_UNKNOWN'),
             hdrVerified: !!probeData.videoRange,
             videoRange: probeData.videoRange || null,
             supplementalCodecs: null,
             supplementalCodecsVerified: false,
-            
+
+            // [G-1 FIX 2026-05-19] CICP trifecta from partial probe (when available).
+            // F1 is partial-trust; if probe provided CICP attrs explicitly, propagate;
+            // otherwise emitStreamInfFromTruth() will fall back to defaults (9/16-or-18/9).
+            colorPrimaries:          probeData.colorPrimaries || null,
+            transferCharacteristics: probeData.transferCharacteristics || null,
+            matrixCoefficients:      probeData.matrixCoefficients || null,
+            cicpVerified:            !!(probeData.colorPrimaries || probeData.transferCharacteristics),
+
+            // [G-2 FIX 2026-05-19] HDCP-LEVEL from probe (omitted if probe didn't detect).
+            hdcpLevel:         probeData.hdcpLevel || null,
+            hdcpLevelVerified: !!probeData.hdcpLevel,
+
             resolution: res,
             resolutionVerified: !!probeData.resolution,
-            
+
             bandwidth: bwObj.bandwidth,
             averageBandwidth: bwObj.averageBandwidth || Math.round(bwObj.bandwidth * 0.8),
             bandwidthVerified: !!probeData.bandwidth,
@@ -457,6 +484,18 @@
         // VIDEO-RANGE solo si verificado por probe (no inventar HDR)
         if (truth.hdrVerified && (truth.videoRange === 'PQ' || truth.videoRange === 'HLG')) {
             parts.push(`VIDEO-RANGE=${truth.videoRange}`);
+
+            // [G-1 FIX 2026-05-19] HDR10 metadata trifecta (CICP) — RFC 8216bis §4.4.6.2.
+            // Emitted ONLY when VIDEO-RANGE is verified PQ or HLG. Probe-provided values
+            // take precedence; spec-safe defaults otherwise (BT.2020 / PQ-or-HLG / BT.2020-NCL).
+            // Per ARTIFACT_HDR10_METADATA_TRIFECTA.md + closes G-1 of
+            // ARTIFACT_FASE1_PROFUNDO_B_RESOLVER_AUDIT.md.
+            const cp = truth.colorPrimaries          || 9;                                       // BT.2020
+            const tc = truth.transferCharacteristics || (truth.videoRange === 'HLG' ? 18 : 16);  // HLG=18 / PQ=16
+            const mc = truth.matrixCoefficients      || 9;                                       // BT.2020 non-constant
+            parts.push(`COLOR-PRIMARIES=${cp}`);
+            parts.push(`TRANSFER-CHARACTERISTICS=${tc}`);
+            parts.push(`MATRIX-COEFFICIENTS=${mc}`);
         }
 
         // SUPPLEMENTAL-CODECS solo si verificado (no inventar DV/LCEVC)
@@ -467,6 +506,15 @@
         // HDCP-LEVEL: NUNCA hardcoded. Solo si truth lo trae verificado del probe.
         if (truth.hdcpLevelVerified && truth.hdcpLevel) {
             parts.push(`HDCP-LEVEL=${truth.hdcpLevel}`);
+        }
+
+        // [G-3 FIX 2026-05-19] STABLE-VARIANT-ID — RFC 8216bis §4.4.6.2.
+        // Derived from truth fields already present (resolution + primary codec family).
+        // Players use it to remember user variant choice across reloads. Stable across
+        // probes of the same channel + profile combination.
+        const _codecFamily = String(truth.codec || '').split('.')[0];   // hvc1 / av01 / avc1 / etc.
+        if (truth.resolution && _codecFamily) {
+            parts.push(`STABLE-VARIANT-ID="${truth.resolution}-${_codecFamily}"`);
         }
 
         return `#EXT-X-STREAM-INF:${parts.join(',')}`;

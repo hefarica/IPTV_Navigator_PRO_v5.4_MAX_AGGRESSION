@@ -124,7 +124,12 @@ return `#EXT-X-STREAM-INF:${parts.join(',')}`;
 
 ## 5. Findings — Gaps & Risks
 
-### G-1 (Risk, MEDIUM) — HDR10 trifecta CICP signaling absent from active emitter
+> **STATUS UPDATE 2026-05-19**: G-1, G-2, G-3 all **RESOLVED** in commit
+> following this audit. Resolver now emits the HDR10 trifecta, propagates
+> HDCP-LEVEL when probe detects it, and emits STABLE-VARIANT-ID. See the
+> "Resolution" subsection at the end of each finding below.
+
+### G-1 (Risk, MEDIUM → **RESOLVED**) — HDR10 trifecta CICP signaling absent from active emitter
 
 **Where:** `emitStreamInfFromTruth` L445-473.
 
@@ -154,7 +159,23 @@ be added to `buildF0VerifiedMax`/`buildF1PartialMax` from probe data — typical
 HDR10 streams carry them in master manifest or SEI). When probe doesn't provide,
 fallback to (9, 16, 9) for verified PQ — safe defaults per HDR10 spec.
 
-### G-2 (Information, NOT a violation) — `hdcpLevel` / `hdcpLevelVerified` never populated
+**Resolution (2026-05-19):** ✅ APPLIED.
+- `buildF0VerifiedMax` (L186-219) now reads `probeData.colorPrimaries`,
+  `probeData.transferCharacteristics`, `probeData.matrixCoefficients` and exposes
+  them as truth fields, plus `cicpVerified` derived from probe presence.
+- `buildF1PartialMax` does the same (partial-trust tier).
+- `emitStreamInfFromTruth` (L485-500) emits the trifecta inline AFTER the
+  VIDEO-RANGE block, gated on the same `hdrVerified && (PQ|HLG)` predicate:
+  ```
+  COLOR-PRIMARIES=${truth.colorPrimaries || 9}
+  TRANSFER-CHARACTERISTICS=${truth.transferCharacteristics || (HLG ? 18 : 16)}
+  MATRIX-COEFFICIENTS=${truth.matrixCoefficients || 9}
+  ```
+- The transfer characteristic default correctly branches: 16 (PQ) or 18 (HLG).
+- F2/F3/F4 paths still emit zero CICP because their `hdrVerified=false`
+  short-circuits the entire block — preserves honest-rules.
+
+### G-2 (Information, NOT a violation → **RESOLVED**) — `hdcpLevel` / `hdcpLevelVerified` never populated
 
 **Where:** None of `buildF0..F5` set these fields.
 
@@ -174,7 +195,16 @@ hdcpLevel: probeData.hdcpLevel || null,
 hdcpLevelVerified: !!probeData.hdcpLevel,
 ```
 
-### G-3 (Information) — STABLE-VARIANT-ID not emitted
+**Resolution (2026-05-19):** ✅ APPLIED.
+- `buildF0VerifiedMax` and `buildF1PartialMax` now read `probeData.hdcpLevel`
+  and expose `hdcpLevel` + `hdcpLevelVerified` truth fields.
+- The existing `emitStreamInfFromTruth` HDCP-LEVEL gate at L507-509
+  (`if (truth.hdcpLevelVerified && truth.hdcpLevel)`) now has a path that can
+  actually fire — but only when the probe pipeline detects upstream HDCP.
+- No behavioral change for current probes that don't detect HDCP (gate stays
+  closed, attribute omitted, honest-strict).
+
+### G-3 (Information → **RESOLVED**) — STABLE-VARIANT-ID not emitted
 
 **Where:** `emitStreamInfFromTruth` L445-473.
 
@@ -185,6 +215,16 @@ user's variant preference across reloads. The dead `build_stream_inf` had it
 **Recommendation:** add `parts.push(\`STABLE-VARIANT-ID="${truth.resolution}-${truth.codec}"\`)`
 inside `emitStreamInfFromTruth`. One-line addition. No probe data needed —
 derives from truth fields already present.
+
+**Resolution (2026-05-19):** ✅ APPLIED.
+- `emitStreamInfFromTruth` now emits `STABLE-VARIANT-ID="${resolution}-${codecFamily}"`
+  where codecFamily is the first dot-separated segment of the codec string
+  (`hvc1` / `av01` / `avc1`).
+- Stable across multiple probes of the same channel + profile combination so
+  the player UI can remember user variant choice across reloads.
+- Defensively gated on `truth.resolution && _codecFamily` — emitter early-
+  returns null for F5 (canEmitStreamInf=false) so this guard is belt-and-
+  suspenders.
 
 ### F-1 (Fact, PASS) — F2/F3/F4 cleanly emit PREFERRED, never REAL
 
@@ -297,33 +337,41 @@ verified HDR will show `pq_verified > 0, pq_unverified == 0`.
 
 ---
 
-## 7. Recommendations (no code change this session)
+## 7. Recommendations
 
-| # | Item | Severity | Effort |
-|---|---|---|---|
-| 1 | Add HDR10 CICP trifecta emission in `emitStreamInfFromTruth` (G-1) | MEDIUM | ~10 lines + truth field plumbing in `buildF0..F1` |
-| 2 | Populate `hdcpLevel` / `hdcpLevelVerified` in `buildF0VerifiedMax` if/when probe gains HDCP detection (G-2) | LOW | 2 lines (gated on probe capability) |
-| 3 | Add `STABLE-VARIANT-ID` to `emitStreamInfFromTruth` (G-3) | LOW | 1 line |
-| 4 | Wire the smoke test (`smoke_m3u8_honest_rules.py`) into post-publish CI/checklist | LOW | docs + 1 npm/python script entry |
-| 5 | Run smoke test against a fresh post-fix generation when generator UI is next exercised | NONE | manual |
+| # | Item | Severity | Effort | Status |
+|---|---|---|---|---|
+| 1 | Add HDR10 CICP trifecta emission in `emitStreamInfFromTruth` (G-1) | MEDIUM | ~10 lines + truth field plumbing in `buildF0..F1` | ✅ DONE 2026-05-19 |
+| 2 | Populate `hdcpLevel` / `hdcpLevelVerified` in `buildF0VerifiedMax` (G-2) | LOW | 2 lines (gated on probe capability) | ✅ DONE 2026-05-19 |
+| 3 | Add `STABLE-VARIANT-ID` to `emitStreamInfFromTruth` (G-3) | LOW | 1 line | ✅ DONE 2026-05-19 |
+| 4 | Wire the smoke test (`smoke_m3u8_honest_rules.py`) into post-publish CI/checklist | LOW | docs + 1 npm/python script entry | ⏳ pending user trigger |
+| 5 | Run smoke test against a fresh post-fix generation when generator UI is next exercised | NONE | manual | ⏳ pending user trigger |
+| 6 | Probe pipeline (`ape-quality-prober.js`) to expose `colorPrimaries` / `transferCharacteristics` / `matrixCoefficients` / `hdcpLevel` from manifest parsing | LOW | 4 fields in probe output | ⏳ next sprint (resolver already reads these but probe doesn't yet expose) |
 
 ---
 
 ## 8. Verdict
 
 `ape-fallback-resolver.js` is **honest-rules compliant**: VIDEO-RANGE,
-SUPPLEMENTAL-CODECS, and HDCP-LEVEL gates are correctly enforced. Six-tier
-fallback correctly partitions channels by confidence + contradictions.
-Premium detection + codec ladder match CLAUDE.md doctrine verbatim.
+SUPPLEMENTAL-CODECS, HDCP-LEVEL, and HDR10 CICP trifecta gates are all
+correctly enforced. Six-tier fallback correctly partitions channels by
+confidence + contradictions. Premium detection + codec ladder match
+CLAUDE.md doctrine verbatim.
+
+**As of 2026-05-19**: G-1, G-2, G-3 all resolved. The resolver now emits the
+HDR10 CICP trifecta (COLOR-PRIMARIES / TRANSFER-CHARACTERISTICS /
+MATRIX-COEFFICIENTS) when VIDEO-RANGE is verified PQ or HLG; HDCP-LEVEL when
+probe detects upstream HDCP; and STABLE-VARIANT-ID always for any emitted
+STREAM-INF.
 
 The smoke test correctly distinguishes pre-fix (failed all 3 invariants on
 the 686 MB Apr 26 snapshot) from post-fix (will pass when generator UI is
 next exercised against the patched generator).
 
-**One MEDIUM-severity gap remains: G-1 (HDR10 CICP trifecta not emitted in
-the active STREAM-INF builder).** Recommended for next sprint, single
-conditional block, no probe pipeline change required if defaulting to
-(9, 16, 9) for verified PQ.
+**No remaining gaps in the active emission path.** Probe pipeline upstream
+extension (rec #6) is the only follow-up — and it's additive: the resolver
+already reads those fields with safe defaults, so probe enrichment just
+upgrades the precision of CICP emission without altering correctness.
 
 ---
 

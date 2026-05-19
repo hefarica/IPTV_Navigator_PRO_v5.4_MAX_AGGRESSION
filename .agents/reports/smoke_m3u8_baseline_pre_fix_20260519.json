@@ -74,6 +74,105 @@
         }
       ],
       "rule": "CLAUDE.md \"VIDEO-RANGE solo si probe lo confirma\" (R-1)"
+    },
+    "H4_PQ_HLG_requires_CICP_trifecta": {
+      "pass": false,
+      "hdr_stream_inf_total": 722,
+      "hdr_with_trifecta": 0,
+      "hdr_missing_cicp_count": 722,
+      "sample_missing_cicp": [
+        {
+          "block_index": 16,
+          "missing_attrs": [
+            "COLOR-PRIMARIES=",
+            "TRANSFER-CHARACTERISTICS=",
+            "MATRIX-COEFFICIENTS="
+          ],
+          "stream_inf_excerpt": "#EXT-X-STREAM-INF:BANDWIDTH=40000000,AVERAGE-BANDWIDTH=34000000,CODECS=\"hvc1.1.6.L153.B0,ec-3\",RESOLUTION=3840x2160,FRAME-RATE=120.000,VIDEO-RANGE=\"PQ\",HDCP-LEVEL=\"TYPE-1\",SUPPLEMENTAL-CODECS=\"lcev.1."
+        },
+        {
+          "block_index": 17,
+          "missing_attrs": [
+            "COLOR-PRIMARIES=",
+            "TRANSFER-CHARACTERISTICS=",
+            "MATRIX-COEFFICIENTS="
+          ],
+          "stream_inf_excerpt": "#EXT-X-STREAM-INF:BANDWIDTH=40000000,AVERAGE-BANDWIDTH=34000000,CODECS=\"hvc1.1.6.L153.B0,ec-3\",RESOLUTION=3840x2160,FRAME-RATE=120.000,VIDEO-RANGE=\"PQ\",HDCP-LEVEL=\"TYPE-1\",SUPPLEMENTAL-CODECS=\"lcev.1."
+        },
+        {
+          "block_index": 18,
+          "missing_attrs": [
+            "COLOR-PRIMARIES=",
+            "TRANSFER-CHARACTERISTICS=",
+            "MATRIX-COEFFICIENTS="
+          ],
+          "stream_inf_excerpt": "#EXT-X-STREAM-INF:BANDWIDTH=40000000,AVERAGE-BANDWIDTH=34000000,CODECS=\"hvc1.1.6.L153.B0,ec-3\",RESOLUTION=3840x2160,FRAME-RATE=120.000,VIDEO-RANGE=\"PQ\",HDCP-LEVEL=\"TYPE-1\",SUPPLEMENTAL-CODECS=\"lcev.1."
+        },
+        {
+          "block_index": 19,
+          "missing_attrs": [
+            "COLOR-PRIMARIES=",
+            "TRANSFER-CHARACTERISTICS=",
+            "MATRIX-COEFFICIENTS="
+          ],
+          "stream_inf_excerpt": "#EXT-X-STREAM-INF:BANDWIDTH=40000000,AVERAGE-BANDWIDTH=34000000,CODECS=\"hvc1.1.6.L153.B0,ec-3\",RESOLUTION=3840x2160,FRAME-RATE=120.000,VIDEO-RANGE=\"PQ\",HDCP-LEVEL=\"TYPE-1\",SUPPLEMENTAL-CODECS=\"lcev.1."
+        },
+        {
+          "block_index": 20,
+          "missing_attrs": [
+            "COLOR-PRIMARIES=",
+            "TRANSFER-CHARACTERISTICS=",
+            "MATRIX-COEFFICIENTS="
+          ],
+          "stream_inf_excerpt": "#EXT-X-STREAM-INF:BANDWIDTH=40000000,AVERAGE-BANDWIDTH=34000000,CODECS=\"hvc1.1.6.L153.B0,ec-3\",RESOLUTION=3840x2160,FRAME-RATE=120.000,VIDEO-RANGE=\"PQ\",HDCP-LEVEL=\"TYPE-1\",SUPPLEMENTAL-CODECS=\"lcev.1."
+        },
+        {
+          "block_index": 21,
+          "missing_attrs": [
+            "COLOR-PRIMARIES=",
+            "TRANSFER-CHARACTERISTICS=",
+            "MATRIX-COEFFICIENTS="
+          ],
+          "stream_inf_excerpt": "#EXT-X-STREAM-INF:BANDWIDTH=40000000,AVERAGE-BANDWIDTH=34000000,CODECS=\"hvc1.1.6.L153.B0,ec-3\",RESOLUTION=3840x2160,FRAME-RATE=120.000,VIDEO-RANGE=\"PQ\",HDCP-LEVEL=\"TYPE-1\",SUPPLEMENTAL-CODECS=\"lcev.1."
+        },
+        {
+          "block_index": 22,
+          "missing_attrs": [
+            "COLOR-PRIMARIES=",
+            "TRANSFER-CHARACTERISTICS=",
+            "MATRIX-COEFFICIENTS="
+          ],
+          "stream_inf_excerpt": "#EXT-X-STREAM-INF:BANDWIDTH=40000000,AVERAGE-BANDWIDTH=34000000,CODECS=\"hvc1.1.6.L153.B0,ec-3\",RESOLUTION=3840x2160,FRAME-RATE=120.000,VIDEO-RANGE=\"PQ\",HDCP-LEVEL=\"TYPE-1\",SUPPLEMENTAL-CODECS=\"lcev.1."
+        },
+        {
+          "block_index": 23,
+          "missing_attrs": [
+            "COLOR-PRIMARIES=",
+            "TRANSFER-CHARACTERISTICS=",
+            "MATRIX-COEFFICIENTS="
+          ],
+          "stream_inf_excerpt": "#EXT-X-STREAM-INF:BANDWIDTH=40000000,AVERAGE-BANDWIDTH=34000000,CODECS=\"hvc1.1.6.L153.B0,ec-3\",RESOLUTION=3840x2160,FRAME-RATE=120.000,VIDEO-RANGE=\"PQ\",HDCP-LEVEL=\"TYPE-1\",SUPPLEMENTAL-CODECS=\"lcev.1."
+        },
+        {
+          "block_index": 24,
+          "missing_attrs": [
+            "COLOR-PRIMARIES=",
+            "TRANSFER-CHARACTERISTICS=",
+            "MATRIX-COEFFICIENTS="
+          ],
+          "stream_inf_excerpt": "#EXT-X-STREAM-INF:BANDWIDTH=40000000,AVERAGE-BANDWIDTH=34000000,CODECS=\"hvc1.1.6.L153.B0,ec-3\",RESOLUTION=3840x2160,FRAME-RATE=120.000,VIDEO-RANGE=\"PQ\",HDCP-LEVEL=\"TYPE-1\",SUPPLEMENTAL-CODECS=\"lcev.1."
+        },
+        {
+          "block_index": 25,
+          "missing_attrs": [
+            "COLOR-PRIMARIES=",
+            "TRANSFER-CHARACTERISTICS=",
+            "MATRIX-COEFFICIENTS="
+          ],
+          "stream_inf_excerpt": "#EXT-X-STREAM-INF:BANDWIDTH=40000000,AVERAGE-BANDWIDTH=34000000,CODECS=\"hvc1.1.6.L153.B0,ec-3\",RESOLUTION=3840x2160,FRAME-RATE=120.000,VIDEO-RANGE=\"PQ\",HDCP-LEVEL=\"TYPE-1\",SUPPLEMENTAL-CODECS=\"lcev.1."
+        }
+      ],
+      "rule": "ARTIFACT_HDR10_METADATA_TRIFECTA.md + RFC 8216bis \u00a74.4.6.2 (G-1 fix 2026-05-19)"
     }
   },
   "verdict": "FAIL"

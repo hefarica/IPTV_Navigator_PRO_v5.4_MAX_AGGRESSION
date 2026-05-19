@@ -30,6 +30,15 @@ Three assertions:
 
               Channel block = the lines between two `#EXTINF:` markers.
 
+  H-4 (G-1)  · For EVERY `VIDEO-RANGE="PQ"` or `VIDEO-RANGE="HLG"` STREAM-INF,
+              the same `#EXT-X-STREAM-INF:` line MUST also include all 3 of:
+                · `COLOR-PRIMARIES=` (e.g. 9 = BT.2020)
+                · `TRANSFER-CHARACTERISTICS=` (16 = PQ, 18 = HLG)
+                · `MATRIX-COEFFICIENTS=` (e.g. 9 = BT.2020 non-constant)
+
+              Per ARTIFACT_HDR10_METADATA_TRIFECTA.md + RFC 8216bis §4.4.6.2.
+              Resolver guarantees this since 2026-05-19 (G-1 fix).
+
 Usage:
   python smoke_m3u8_honest_rules.py <path-to.m3u8>
 
@@ -48,8 +57,11 @@ from typing import Dict, List
 
 
 PQ_PATTERN     = re.compile(r'VIDEO-RANGE\s*=\s*"?PQ"?')
+HDR_PATTERN    = re.compile(r'VIDEO-RANGE\s*=\s*"?(PQ|HLG)"?')
 TYPE1_PATTERN  = re.compile(r'TYPE-1')
 SUPCO_PATTERN  = re.compile(r'SUPPLEMENTAL-CODECS')
+STREAM_INF_PREFIX = '#EXT-X-STREAM-INF:'
+CICP_REQUIRED  = ('COLOR-PRIMARIES=', 'TRANSFER-CHARACTERISTICS=', 'MATRIX-COEFFICIENTS=')
 PROBE_EVIDENCE = (
     'EXT-X-APE-CODEC-REAL:',
     'EXT-X-APE-CODEC-VERIFIED:true',
@@ -136,7 +148,30 @@ def run_smoke(path: str) -> Dict:
     h3_unverified = pq_total - pq_verified
     h3_pass = (h3_unverified == 0)
 
-    overall_pass = h1_pass and h2_pass and h3_pass
+    # ─── H-4: PQ/HLG STREAM-INF must carry CICP trifecta (G-1 fix) ─────────
+    hdr_stream_inf_total = 0
+    hdr_with_trifecta = 0
+    hdr_missing_cicp: List[Dict] = []
+    for idx, block in enumerate(channel_blocks):
+        for line in block:
+            if not line.startswith(STREAM_INF_PREFIX):
+                continue
+            if not HDR_PATTERN.search(line):
+                continue
+            hdr_stream_inf_total += 1
+            missing = [attr for attr in CICP_REQUIRED if attr not in line]
+            if not missing:
+                hdr_with_trifecta += 1
+            elif len(hdr_missing_cicp) < 10:
+                hdr_missing_cicp.append({
+                    'block_index': idx + 1,
+                    'missing_attrs': missing,
+                    'stream_inf_excerpt': line[:200],
+                })
+    h4_missing = hdr_stream_inf_total - hdr_with_trifecta
+    h4_pass = (h4_missing == 0)
+
+    overall_pass = h1_pass and h2_pass and h3_pass and h4_pass
 
     return {
         'ok': overall_pass,
@@ -163,6 +198,14 @@ def run_smoke(path: str) -> Dict:
                 'pq_unverified': h3_unverified,
                 'sample_unverified_blocks': pq_unverified_blocks,
                 'rule': 'CLAUDE.md "VIDEO-RANGE solo si probe lo confirma" (R-1)',
+            },
+            'H4_PQ_HLG_requires_CICP_trifecta': {
+                'pass': h4_pass,
+                'hdr_stream_inf_total': hdr_stream_inf_total,
+                'hdr_with_trifecta': hdr_with_trifecta,
+                'hdr_missing_cicp_count': h4_missing,
+                'sample_missing_cicp': hdr_missing_cicp,
+                'rule': 'ARTIFACT_HDR10_METADATA_TRIFECTA.md + RFC 8216bis §4.4.6.2 (G-1 fix 2026-05-19)',
             },
         },
         'verdict': 'PASS' if overall_pass else 'FAIL',
