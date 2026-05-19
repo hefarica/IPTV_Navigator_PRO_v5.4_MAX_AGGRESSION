@@ -7634,7 +7634,15 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
             '{profile.bit_depth}': '10',
             '{profile.buffer_s}': '8',
             '{evasion.random_ua}': _ua796 || 'Mozilla/5.0 (Web0S; Linux/SmartTV)',
-            '{evasion.random_referer}': 'https://www.netflix.com/'
+            '{evasion.random_referer}': 'https://www.netflix.com/',
+            // [B-fix 2026-05-19] {config.player_target} safety net.
+            // BULLETPROOF emits this as flat empty string by default. If the BULLETPROOF
+            // is absent or omits this key, this fallback prevents the literal
+            // "{config.player_target}" from leaking into M3U8 output (e.g. in a NIVEL_3
+            // KODIPROP or EXTVLCOPT directive). Empty = LabConfigLoader heuristic
+            // chain resolves per channel at the VPS PHP layer.
+            // Per ARTIFACT_BULLETPROOF_CONSUMER_AUDIT B-fix.
+            '{config.player_target}': ''
         };
         const _phLab = (typeof window !== 'undefined' && window.APE_PROFILES_CONFIG && window.APE_PROFILES_CONFIG.placeholdersMap) || {};
         const _phResolve = Object.assign({}, _phFallback, _phLab);

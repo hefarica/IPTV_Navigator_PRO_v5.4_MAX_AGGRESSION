@@ -155,9 +155,105 @@ CODEC_CHAINS = {
 }
 
 
+# ─── CICP normalization — RFC 8216 §4.4.6.5 requires unsigned int ──────────
+# RFC 8216bis "MUST" — COLOR-PRIMARIES, TRANSFER-CHARACTERISTICS,
+# MATRIX-COEFFICIENTS are unsigned integer CICP codes (ISO/IEC 23001-8).
+# LAB legacy stored these as human-readable strings ("BT.2020", "PQ", etc.).
+# Normalize to integer BEFORE writing the BULLETPROOF so the generator
+# never has to deal with string CICP values.
+CICP_COLOR_PRIMARIES = {
+    # Common BT codes (CICP table A.4.1)
+    'bt709': 1, 'bt.709': 1, 'rec709': 1, 'rec.709': 1,
+    'bt470m': 4, 'bt.470m': 4,
+    'bt470bg': 5, 'bt.470bg': 5,
+    'bt601': 6, 'bt.601': 6, 'smpte170m': 6,
+    'smpte240m': 7,
+    'film': 8, 'generic': 8,
+    'bt2020': 9, 'bt.2020': 9, 'rec2020': 9, 'rec.2020': 9,
+    'smpte428': 10, 'xyz': 10,
+    'p3-dci': 11, 'smpte431': 11,
+    'p3-d65': 12, 'p3d65': 12, 'smpte432': 12, 'displayp3': 12,
+}
+CICP_TRANSFER = {
+    # Common transfer codes (CICP table A.4.2)
+    'bt709': 1, 'bt.709': 1,
+    'gamma22': 4, 'gamma28': 5,
+    'smpte170m': 6, 'bt601': 6,
+    'smpte240m': 7,
+    'linear': 8,
+    'log100': 9, 'logsqrt': 10,
+    'srgb': 13,
+    'bt2020-10': 14, 'bt.2020-10': 14,
+    'bt2020-12': 15, 'bt.2020-12': 15,
+    'pq': 16, 'smpte2084': 16, 'smpte.st.2084': 16, 'smpte_st_2084': 16, 'smpteST2084': 16,
+    'hlg': 18, 'arib-b67': 18, 'arib_b67': 18, 'ariastdb67': 18,
+}
+CICP_MATRIX = {
+    # Common matrix codes (CICP table A.4.3)
+    'rgb': 0, 'identity': 0,
+    'bt709': 1, 'bt.709': 1,
+    'fcc': 4,
+    'bt470bg': 5, 'bt.470bg': 5,
+    'bt601': 6, 'smpte170m': 6,
+    'smpte240m': 7,
+    'ycgco': 8,
+    'bt2020-ncl': 9, 'bt.2020-ncl': 9, 'bt2020nc': 9, 'bt2020': 9, 'bt.2020': 9,
+    'bt2020-cl': 10, 'bt.2020-cl': 10,
+}
+
+
+def normalize_cicp(value, lut: dict, default_int: int):
+    """Map a CICP value (string or int) to its RFC unsigned-int code.
+    Returns the integer code per CICP tables. Pass-through for ints already
+    in [0..255]. None/empty/unknown → default_int."""
+    if value is None or value == '' or value == 'null':
+        return default_int
+    if isinstance(value, (int, float)):
+        i = int(value)
+        return i if 0 <= i <= 255 else default_int
+    if isinstance(value, str):
+        key = value.strip().lower().replace(' ', '')
+        if key in lut:
+            return lut[key]
+        # Already an integer string? "9" → 9
+        try:
+            i = int(key)
+            return i if 0 <= i <= 255 else default_int
+        except ValueError:
+            return default_int
+    return default_int
+
+
+def normalize_profile_cicp(settings: dict) -> tuple[dict, list]:
+    """Convert any string-typed CICP fields to RFC integer codes.
+    Returns (settings, fields_normalized)."""
+    fields_norm = []
+    if 'color_primaries' in settings:
+        old = settings['color_primaries']
+        new = normalize_cicp(old, CICP_COLOR_PRIMARIES, 9)
+        if old != new:
+            settings['color_primaries'] = new
+            fields_norm.append(f'color_primaries: {old!r} -> {new}')
+    if 'transfer_characteristics' in settings:
+        old = settings['transfer_characteristics']
+        new = normalize_cicp(old, CICP_TRANSFER, 16)
+        if old != new:
+            settings['transfer_characteristics'] = new
+            fields_norm.append(f'transfer_characteristics: {old!r} -> {new}')
+    if 'matrix_coefficients' in settings:
+        old = settings['matrix_coefficients']
+        new = normalize_cicp(old, CICP_MATRIX, 9)
+        if old != new:
+            settings['matrix_coefficients'] = new
+            fields_norm.append(f'matrix_coefficients: {old!r} -> {new}')
+    return settings, fields_norm
+
+
 def enrich_profile_settings(profile_id: str, settings: dict) -> dict:
     """Merge doctrine defaults into a profile's settings WITHOUT clobbering
-    existing LAB values (LAB SSOT wins per iptv-lab-ssot-no-clamp doctrine)."""
+    existing LAB values (LAB SSOT wins per iptv-lab-ssot-no-clamp doctrine).
+    EXCEPT: CICP fields are normalized to RFC unsigned-int codes regardless
+    of how the LAB stored them, per RFC 8216 §4.4.6.5 strict requirement."""
     doctrine = PROFILE_DOCTRINE.get(profile_id, {})
     enriched = dict(settings)
     fields_added = []
@@ -170,6 +266,10 @@ def enrich_profile_settings(profile_id: str, settings: dict) -> dict:
         if k not in enriched or enriched[k] in (None, '', 'null'):
             enriched[k] = v
             fields_added.append(k)
+    # CICP normalization OVERRIDES any LAB string value with the RFC integer.
+    # This is the ONE exception to NO-CLAMP doctrine — strings violate RFC.
+    enriched, cicp_norm = normalize_profile_cicp(enriched)
+    fields_added.extend(['(cicp-norm) ' + s for s in cicp_norm])
     return enriched, fields_added
 
 
@@ -233,14 +333,19 @@ def main():
         }
         print(f'  {pid}: +{len(added)} doctrine fields | +{len(ported_subblocks)} solver subblocks ({", ".join(ported_subblocks) if ported_subblocks else "none"})')
 
-    # Add player_target placeholder
+    # Add player_target placeholder.
+    # B FIX 2026-05-19: store as FLAT STRING (default value) so the frontend
+    # placeholder resolver at m3u8-typed-arrays-ultimate.js:7693 can substitute it.
+    # The resolver explicitly skips non-string/non-number values. Other 57
+    # placeholders in this map are all flat strings — match that schema.
+    # Documentation metadata goes to a sidecar key so it stays auditable.
     pm = out.setdefault('placeholders_map', {})
-    pm['{config.player_target}'] = {
-        'source': '7_NIVEL_3_CHANNEL.player_target',
-        'description': (
-            'Player overlay target enum (VLC/KODI/TIVIMATE/OTT_NAV). '
-            'Empty = default heuristic via LabConfigLoader::playerTargetForChannel.'
-        ),
+    pm['{config.player_target}'] = ''   # default = empty (channel falls back to UA heuristic)
+    out['placeholders_meta'] = out.get('placeholders_meta', {})
+    out['placeholders_meta']['{config.player_target}'] = {
+        'source':       '7_NIVEL_3_CHANNEL.player_target',
+        'description':  ('Player overlay target enum (VLC/KODI/TIVIMATE/OTT_NAV). '
+                         'Empty = default heuristic via LabConfigLoader::playerTargetForChannel.'),
         'enum':         ['VLC', 'KODI', 'TIVIMATE', 'OTT_NAV', ''],
         'default':      '',
         'added_at':     now.strftime('%Y-%m-%dT%H:%M:%S'),
