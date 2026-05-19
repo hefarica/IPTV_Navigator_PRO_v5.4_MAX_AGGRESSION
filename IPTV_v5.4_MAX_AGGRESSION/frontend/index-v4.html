@@ -4233,6 +4233,8 @@
   <!-- Self-bootstraps window.ConvivaQoE on load. Idempotent.                  -->
   <!-- ═══════════════════════════════════════════════════════════════════════ -->
   <script src="js/conviva-qoe-engine.js?v=1.0.0-disney-grade" defer></script>
+  <!-- Phase 3.2 — Conviva SSE Stream Bridge (live server events from /prisma/api/conviva-stream) -->
+  <script src="js/conviva-stream-widget.js?v=1.0.0" defer></script>
   <script defer>
     // ═════════════════════════════════════════════════════════════════════
     // Conviva wire — Gate 1 cableado real per feedback_cableado_y_sandbox_doctrine.
@@ -4296,6 +4298,42 @@
         setTimeout(ensureBoot, 100);
       } else {
         window.addEventListener('DOMContentLoaded', function () { setTimeout(ensureBoot, 100); });
+      }
+    })();
+  </script>
+
+  <!-- ═════════════════════════════════════════════════════════════════════ -->
+  <!-- Phase 3.2 wire — bridge SSE live events from server to browser engine. -->
+  <!-- Connection is opt-in via window.CONVIVA_STREAM_AUTOCONNECT to avoid    -->
+  <!-- holding a long-lived TCP from every dev/preview tab.                   -->
+  <!-- ═════════════════════════════════════════════════════════════════════ -->
+  <script defer>
+    (function () {
+      'use strict';
+      function boot() {
+        if (typeof window.ConvivaStream !== 'object') {
+          console.warn('[ConvivaStream-wire] widget not yet loaded; skip');
+          return;
+        }
+        if (window.CONVIVA_STREAM_AUTOCONNECT !== true) {
+          console.log('[ConvivaStream-wire] inert (set window.CONVIVA_STREAM_AUTOCONNECT=true to enable)');
+          return;
+        }
+        window.ConvivaStream.on('conviva', function (frame) {
+          if (frame && frame.dec && frame.dec !== 'NO_ACTION') {
+            console.log('[ConvivaStream] server-side decision:', frame.dec,
+                        '· qoe=', frame.q, '· session=', frame.s, '· event=', frame.e);
+          }
+          window.dispatchEvent(new CustomEvent('conviva-stream-frame', { detail: frame }));
+        });
+        window.ConvivaStream.on('error',     function (e)  { console.warn('[ConvivaStream] error', e); });
+        window.ConvivaStream.on('reconnect', function (i)  { console.log('[ConvivaStream] server reconnect hint', i); });
+        window.ConvivaStream.connect({ tail: 50 });
+      }
+      if (document.readyState === 'complete' || document.readyState === 'interactive') {
+        setTimeout(boot, 150);
+      } else {
+        window.addEventListener('DOMContentLoaded', function () { setTimeout(boot, 150); });
       }
     })();
   </script>
