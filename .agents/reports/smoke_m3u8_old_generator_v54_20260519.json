@@ -1,0 +1,29 @@
+{
+  "ok": true,
+  "file": "IPTV_v5.4_MAX_AGGRESSION/backend/lista_omega_v5.4.m3u8",
+  "size_bytes": 2533473,
+  "size_mb": 2.42,
+  "global_header_lines": 1,
+  "channel_blocks": 8366,
+  "invariants": {
+    "H1_no_TYPE_1": {
+      "pass": true,
+      "count": 0,
+      "rule": "CLAUDE.md \"HDCP-LEVEL TYPE-1 hardcodeado ELIMINADO\" (D-1)"
+    },
+    "H2_no_SUPPLEMENTAL_CODECS": {
+      "pass": true,
+      "count": 0,
+      "rule": "CLAUDE.md \"SUPPLEMENTAL-CODECS lcev.1.1.1 inventado ELIMINADO\""
+    },
+    "H3_PQ_requires_probe_evidence": {
+      "pass": true,
+      "pq_total": 0,
+      "pq_verified": 0,
+      "pq_unverified": 0,
+      "sample_unverified_blocks": [],
+      "rule": "CLAUDE.md \"VIDEO-RANGE solo si probe lo confirma\" (R-1)"
+    }
+  },
+  "verdict": "PASS"
+}

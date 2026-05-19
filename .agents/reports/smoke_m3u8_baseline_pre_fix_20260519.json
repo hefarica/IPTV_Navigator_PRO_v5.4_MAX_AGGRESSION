@@ -1,0 +1,80 @@
+{
+  "ok": false,
+  "file": "IPTV_v5.4_MAX_AGGRESSION/snapshots/2026-04-26_audit_92_omega_premium/APE_LISTA_1777243113563_SHIELDED.m3u8",
+  "size_bytes": 718342566,
+  "size_mb": 685.06,
+  "global_header_lines": 92,
+  "channel_blocks": 15444,
+  "invariants": {
+    "H1_no_TYPE_1": {
+      "pass": false,
+      "count": 15444,
+      "rule": "CLAUDE.md \"HDCP-LEVEL TYPE-1 hardcodeado ELIMINADO\" (D-1)"
+    },
+    "H2_no_SUPPLEMENTAL_CODECS": {
+      "pass": false,
+      "count": 15444,
+      "rule": "CLAUDE.md \"SUPPLEMENTAL-CODECS lcev.1.1.1 inventado ELIMINADO\""
+    },
+    "H3_PQ_requires_probe_evidence": {
+      "pass": false,
+      "pq_total": 722,
+      "pq_verified": 0,
+      "pq_unverified": 722,
+      "sample_unverified_blocks": [
+        {
+          "block_index": 16,
+          "channel": "\u2726\u25cf\u2726| 4K - BEIN SPORTS 4K |\u2726\u25cf\u2726 [MegaOTT]",
+          "pq_count": 1
+        },
+        {
+          "block_index": 17,
+          "channel": "AR| BEIN SPORTS NEWS 4K [MegaOTT]",
+          "pq_count": 1
+        },
+        {
+          "block_index": 18,
+          "channel": "AR| BEIN SPORTS 4K [MegaOTT]",
+          "pq_count": 1
+        },
+        {
+          "block_index": 19,
+          "channel": "AR| BEIN SPORTS NBA 4K [MegaOTT]",
+          "pq_count": 1
+        },
+        {
+          "block_index": 20,
+          "channel": "AR| BEIN SPORTS 03 4K [MegaOTT]",
+          "pq_count": 1
+        },
+        {
+          "block_index": 21,
+          "channel": "AR| BEIN SPORTS 04 4K [MegaOTT]",
+          "pq_count": 1
+        },
+        {
+          "block_index": 22,
+          "channel": "AR| BEIN SPORTS 05 4K [MegaOTT]",
+          "pq_count": 1
+        },
+        {
+          "block_index": 23,
+          "channel": "AR| BEIN SPORTS 06 4K [MegaOTT]",
+          "pq_count": 1
+        },
+        {
+          "block_index": 24,
+          "channel": "AR| BEIN SPORTS 07 4K [MegaOTT]",
+          "pq_count": 1
+        },
+        {
+          "block_index": 25,
+          "channel": "AR| BEIN SPORTS 08 4K [MegaOTT]",
+          "pq_count": 1
+        }
+      ],
+      "rule": "CLAUDE.md \"VIDEO-RANGE solo si probe lo confirma\" (R-1)"
+    }
+  },
+  "verdict": "FAIL"
+}
