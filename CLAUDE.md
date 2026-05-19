@@ -196,6 +196,48 @@ Componentes:
 - `frontend/js/ape-v9/m3u8-typed-arrays-ultimate.js` (bulk fetch + emit)
 - `frontend/js/ape-v9/ape-fallback-resolver.js` (`emitStreamInfFromTruth` HDCP-aware)
 
+### QoE Server-Side Observer (2026-05-19) — Conviva-equivalent para players nativos
+
+Los players nativos (TiviMate, OTT Navigator, VLC, Kodi, IPTV Smarters,
+ExoPlayer-based) **no ejecutan JS** y por tanto no cargan `conviva-qoe-engine.js`.
+Para no dejarlos invisibles a la telemetría, un observer Lua en nginx reconstruye
+las métricas equivalentes desde patrones de acceso y las wirea al mismo
+HDCP-Adaptive Engine.
+
+```
+Native player → GET .m3u8 + GET .ts/.m4s
+                       ↓
+nginx log_by_lua → qoe_server_side_observer.lua
+                       ↓
+Computes: VST_proxy / rebuffer_proxy / bitrate_proxy / error_rate
+                       ↓
+Writes: ngx.shared.qoe_metrics (sub-µs ops)
+                       ↓
+init_worker_by_lua timer (60s) → qoe_flush_worker.lua → POST 127.0.0.1/qoe-flush.php
+                       ↓
+qoe-flush.php → ConvivaPersistence::recordServerSideQoE() (SQLite table)
+              + ConvivaPersistence::recordHdcpIncident() (reuse single decision tree)
+```
+
+**Métricas derivables server-side**: VST_proxy (manifest→primer-segmento),
+rebuffer (gap entre segmentos > 15s), bitrate (bytes/s), error rate.
+**No derivables**: frame drops, decoder errors (player-side).
+
+**Coverage matrix completo**:
+
+| Player | Telemetría path |
+|---|---|
+| Navigator UI (browser) | conviva-qoe-engine.js JS |
+| TiviMate / OTT / VLC / Kodi / Smarters / ExoPlayer | nginx Lua observer + EXTVLCOPT/KODIPROP config |
+
+Componentes:
+
+- `vps/nginx/lua/qoe_server_side_observer.lua` (log_by_lua, autopista-safe)
+- `vps/nginx/lua/qoe_flush_worker.lua` (init_worker, 60s timer, localhost POST)
+- `vps/nginx/snippets/prisma-qoe-observer.conf` (activation snippet + deploy checklist)
+- `vps/prisma/api/qoe-flush.php` (POST endpoint, localhost-only)
+- `vps/prisma/lib/conviva_persistence.php` (tabla `server_side_qoe_metrics` + 2 métodos)
+
 ---
 
 ## Premium Channel Detection

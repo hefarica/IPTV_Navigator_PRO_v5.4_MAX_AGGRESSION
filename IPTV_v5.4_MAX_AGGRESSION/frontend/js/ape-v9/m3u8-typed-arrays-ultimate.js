@@ -7783,6 +7783,11 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
         lines.push(`#KODIPROP:inputstream.adaptive.min_bandwidth=${_minBw796}`);
         lines.push(`#KODIPROP:inputstream.adaptive.initial_bandwidth=${_bw796}`);
         lines.push(`#KODIPROP:inputstream.adaptive.bandwidth_factor=1.0`);
+        // Kodi InputStream Adaptive Conviva-equivalent buffer policy (2026-05-19) —
+        // mirrors EXT-X-SESSION-DATA com.ape.load_control buffer values for Kodi/IPTV
+        // Simple Client. assured = floor before warning; max = ceiling for prefetch.
+        lines.push(`#KODIPROP:inputstream.adaptive.assured_buffer_duration=15`);
+        lines.push(`#KODIPROP:inputstream.adaptive.max_buffer_duration=60`);
         lines.push(`#KODIPROP:inputstream.adaptive.max_resolution=${_res796}`);
         lines.push(`#KODIPROP:inputstream.adaptive.max_framerate=${_fps796}`);
         lines.push(`#KODIPROP:inputstream.adaptive.hdr_mode=${_hdrMode}`);

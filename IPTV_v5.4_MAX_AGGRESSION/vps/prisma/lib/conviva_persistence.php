@@ -120,6 +120,26 @@ class ConvivaPersistence
                 )
             ");
             $this->pdo->exec("CREATE INDEX IF NOT EXISTS idx_hdcp_updated ON channel_hdcp_profile(updated_at)");
+            // ── Server-Side QoE Observer (added 2026-05-19) ──
+            // Conviva-equivalent metrics derived from nginx access patterns for
+            // native players (TiviMate, VLC, Kodi, ExoPlayer) that cannot run JS.
+            // Populated by qoe_server_side_observer.lua via /prisma/api/qoe-flush.php.
+            $this->pdo->exec("
+                CREATE TABLE IF NOT EXISTS server_side_qoe_metrics (
+                    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+                    channel_id      TEXT    NOT NULL,
+                    bucket_5min     INTEGER NOT NULL,
+                    vst_proxy_avg   INTEGER DEFAULT 0,
+                    vst_proxy_max   INTEGER DEFAULT 0,
+                    rebuffer_count  INTEGER DEFAULT 0,
+                    request_count   INTEGER DEFAULT 0,
+                    error_count     INTEGER DEFAULT 0,
+                    bitrate_avg_bps INTEGER DEFAULT 0,
+                    flushed_at      INTEGER NOT NULL DEFAULT (CAST(strftime('%s','now') AS INTEGER))
+                )
+            ");
+            $this->pdo->exec("CREATE INDEX IF NOT EXISTS idx_ssqoe_channel ON server_side_qoe_metrics(channel_id, bucket_5min)");
+            $this->pdo->exec("CREATE INDEX IF NOT EXISTS idx_ssqoe_flushed ON server_side_qoe_metrics(flushed_at)");
             return true;
         } catch (Throwable $e) {
             error_log('[conviva-persistence] init failed: ' . $e->getMessage());
@@ -428,6 +448,81 @@ class ConvivaPersistence
         } catch (Throwable $e) {
             error_log('[conviva-persistence] getHdcpForChannel failed: ' . $e->getMessage());
             return null;
+        }
+    }
+
+    // ═════════════════════════════════════════════════════════════════════════
+    // Server-Side QoE Observer (2026-05-19)
+    // ═════════════════════════════════════════════════════════════════════════
+
+    /**
+     * Records a flush of server-side QoE metrics for a single channel/bucket.
+     * Called by qoe-flush.php which receives data from qoe_server_side_observer.lua.
+     * Silent fail-safe.
+     */
+    public function recordServerSideQoE(
+        string $channelId,
+        int $bucket5min,
+        int $vstProxyAvgMs,
+        int $vstProxyMaxMs,
+        int $rebufferCount,
+        int $requestCount,
+        int $errorCount,
+        int $bitrateAvgBps
+    ): bool {
+        if ($this->pdo === null && !$this->init()) {
+            return false;
+        }
+        try {
+            $stmt = $this->pdo->prepare("
+                INSERT INTO server_side_qoe_metrics
+                  (channel_id, bucket_5min, vst_proxy_avg, vst_proxy_max,
+                   rebuffer_count, request_count, error_count, bitrate_avg_bps, flushed_at)
+                VALUES
+                  (:cid, :bkt, :vavg, :vmax, :rbf, :req, :err, :bps, :now)
+            ");
+            $stmt->execute([
+                ':cid'  => $channelId,
+                ':bkt'  => $bucket5min,
+                ':vavg' => $vstProxyAvgMs,
+                ':vmax' => $vstProxyMaxMs,
+                ':rbf'  => $rebufferCount,
+                ':req'  => $requestCount,
+                ':err'  => $errorCount,
+                ':bps'  => $bitrateAvgBps,
+                ':now'  => time(),
+            ]);
+            return true;
+        } catch (Throwable $e) {
+            error_log('[conviva-persistence] recordServerSideQoE failed: ' . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Returns latest server-side QoE rows per channel (one row per channel,
+     * the freshest bucket). For dashboard.
+     * @return array<int,array>
+     */
+    public function readServerSideQoESnapshot(): array
+    {
+        if ($this->pdo === null && !$this->init()) {
+            return [];
+        }
+        try {
+            $stmt = $this->pdo->query("
+                SELECT q.* FROM server_side_qoe_metrics q
+                INNER JOIN (
+                    SELECT channel_id, MAX(bucket_5min) AS latest
+                    FROM server_side_qoe_metrics
+                    GROUP BY channel_id
+                ) m ON q.channel_id = m.channel_id AND q.bucket_5min = m.latest
+                ORDER BY q.channel_id
+            ");
+            return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+        } catch (Throwable $e) {
+            error_log('[conviva-persistence] readServerSideQoESnapshot failed: ' . $e->getMessage());
+            return [];
         }
     }
 
