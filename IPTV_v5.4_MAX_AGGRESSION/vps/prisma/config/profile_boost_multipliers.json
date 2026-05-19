@@ -1,5 +1,5 @@
 {
-  "_metadata": {"generated_by": "LAB exportPrismaConfig", "generated_ts": "2026-04-28T10:54:15Z", "source_sheet": "6_NIVEL_2_PROFILES"},
+  "_metadata": {"generated_by": "LAB exportPrismaConfig", "generated_ts": "2026-05-19T10:32:47Z", "source_sheet": "6_NIVEL_2_PROFILES"},
   "global_boost_when_master_enabled": true,
   "profiles": {
     "P0": {

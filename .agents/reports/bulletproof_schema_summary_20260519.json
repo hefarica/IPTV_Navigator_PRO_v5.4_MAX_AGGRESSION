@@ -1,0 +1,87 @@
+{
+  "file": "LAB_CALIBRATED_BULLETPROOF_20260519_122604.json",
+  "size_bytes": 315111,
+  "exported_at": "2026-05-19T12:26:04",
+  "lab_version": "omega_v1_bulletproof_20260519",
+  "lab_schema_variant": "omega_v2_bulletproof_perprofile",
+  "top_level_keys": [
+    "lab_version",
+    "playlist_format",
+    "exported_at",
+    "profiles_calibrated",
+    "nivel1_directives",
+    "nivel3_per_layer",
+    "servers",
+    "evasion_pool",
+    "config_global",
+    "placeholders_map",
+    "scoring_metadata",
+    "lab_schema_variant",
+    "omega_gap_plan",
+    "bulletproof",
+    "meta_per_profile",
+    "prisma_lab_sync_v20",
+    "sprint_2026_05_18_19"
+  ],
+  "placeholders_count": 58,
+  "has_player_target": true,
+  "profiles": {
+    "P0": {
+      "settings_count": 58,
+      "vlcopt_count": 48,
+      "kodiprop_count": 7,
+      "headerOverrides_count": 409,
+      "doctrine_fields_present": 17
+    },
+    "P1": {
+      "settings_count": 58,
+      "vlcopt_count": 48,
+      "kodiprop_count": 7,
+      "headerOverrides_count": 409,
+      "doctrine_fields_present": 17
+    },
+    "P2": {
+      "settings_count": 58,
+      "vlcopt_count": 48,
+      "kodiprop_count": 7,
+      "headerOverrides_count": 409,
+      "doctrine_fields_present": 17
+    },
+    "P3": {
+      "settings_count": 56,
+      "vlcopt_count": 48,
+      "kodiprop_count": 7,
+      "headerOverrides_count": 409,
+      "doctrine_fields_present": 15
+    },
+    "P4": {
+      "settings_count": 56,
+      "vlcopt_count": 48,
+      "kodiprop_count": 7,
+      "headerOverrides_count": 409,
+      "doctrine_fields_present": 15
+    },
+    "P5": {
+      "settings_count": 56,
+      "vlcopt_count": 48,
+      "kodiprop_count": 7,
+      "headerOverrides_count": 409,
+      "doctrine_fields_present": 15
+    }
+  },
+  "sprint_metadata_present": true,
+  "meta_per_profile": {
+    "avg_fitness": 0.6997333333333332,
+    "bulletproof_version": "1.0",
+    "generated_at": "2026-05-11T19:59:00",
+    "best_case_fitness": 1,
+    "omega_guarantees_target": 10,
+    "profiles_calibrated": 6,
+    "cross_profile_monotonic": true,
+    "worst_case_fitness": 0.2175,
+    "anabolic_enriched_at": "2026-05-19T12:26:04",
+    "anabolic_enricher": "synthesize_bulletproof_v2.py",
+    "doctrine_ref": "CLAUDE.md + ARTIFACT_HEVC_11TIER_CASCADE_DEFINITIVE.md",
+    "profiles_total_settings": 342
+  }
+}
