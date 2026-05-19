@@ -171,7 +171,8 @@ Private Function DumpDisneyGradeDirectives() As String
         cat = CStr(ws.Cells(r, 3).Value)
         appliesTo = CStr(ws.Cells(r, 4).Value)
         cmt = CStr(ws.Cells(r, 5).Value)
-        If Len(tag) > 0 And Len(val) > 0 Then
+        ' Permitimos value vacio (tag-only) para EXT-X-INDEPENDENT-SEGMENTS y similares
+        If Len(tag) > 0 Then
             If Not first Then s = s & "," & vbCrLf
             s = s & "        {""tag"": """ & EscJsonStr(tag) & _
                     """, ""value"": """ & EscJsonStr(val) & _
@@ -200,11 +201,18 @@ Private Function DisneyDirectivesFallback() As String
     Dim s As String
     s = "[" & vbCrLf
     s = s & "        {""tag"": ""EXT-X-START"", ""value"": ""TIME-OFFSET=-3.0,PRECISE=YES"", ""category"": ""timeline"", ""applies_to"": ""ALL"", ""comment"": ""Pillar 1: Lock playback head to -3.0s from live edge""}," & vbCrLf
-    s = s & "        {""tag"": ""EXT-X-SERVER-CONTROL"", ""value"": ""CAN-BLOCK-RELOAD=YES,PART-HOLD-BACK=1.0,CAN-SKIP-UNTIL=12.0"", ""category"": ""timeline"", ""applies_to"": ""ALL"", ""comment"": ""Pillar 1: Block reload + delta playlists""}," & vbCrLf
+    s = s & "        {""tag"": ""EXT-X-SERVER-CONTROL"", ""value"": ""CAN-BLOCK-RELOAD=YES,PART-HOLD-BACK=1.0,CAN-SKIP-UNTIL=12.0,HOLD-BACK=3.0"", ""category"": ""timeline"", ""applies_to"": ""ALL"", ""comment"": ""Pillar 1: Block reload + delta + live-edge floor""}," & vbCrLf
     s = s & "        {""tag"": ""EXT-X-TARGETDURATION"", ""value"": ""2"", ""category"": ""fragmentation"", ""applies_to"": ""ALL"", ""comment"": ""Pillar 2: Fake low-duration ceiling""}," & vbCrLf
     s = s & "        {""tag"": ""EXT-X-PART-INF"", ""value"": ""PART-TARGET=1.0"", ""category"": ""fragmentation"", ""applies_to"": ""ALL"", ""comment"": ""Pillar 2: Micro-chunk simulation""}," & vbCrLf
-    s = s & "        {""tag"": ""EXT-X-SESSION-DATA"", ""value"": ""DATA-ID=\""exoplayer.load_control\"",VALUE=\""{\\\""minBufferMs\\\"":20000,\\\""bufferForPlaybackMs\\\"":1000}\"""", ""category"": ""abr"", ""applies_to"": ""ALL"", ""comment"": ""Pillar 3: ExoPlayer load_control""}," & vbCrLf
-    s = s & "        {""tag"": ""EXT-X-SESSION-DATA"", ""value"": ""DATA-ID=\""exoplayer.track_selection\"",VALUE=\""{\\\""maxDurationForQualityDecreaseMs\\\"":2000,\\\""minDurationForQualityIncreaseMs\\\"":15000,\\\""bandwidthFraction\\\"":0.65}\"""", ""category"": ""abr"", ""applies_to"": ""ALL"", ""comment"": ""Pillar 3: ABR caida libre""}" & vbCrLf
+    s = s & "        {""tag"": ""EXT-X-SESSION-DATA"", ""value"": ""DATA-ID=\""exoplayer.load_control\"",VALUE=\""{\\\""minBufferMs\\\"":20000,\\\""bufferForPlaybackMs\\\"":1000,\\\""bufferForPlaybackAfterRebufferMs\\\"":2000,\\\""maxBufferMs\\\"":30000}\"""", ""category"": ""abr"", ""applies_to"": ""ALL"", ""comment"": ""Pillar 3: ExoPlayer load_control""}," & vbCrLf
+    s = s & "        {""tag"": ""EXT-X-SESSION-DATA"", ""value"": ""DATA-ID=\""exoplayer.track_selection\"",VALUE=\""{\\\""maxDurationForQualityDecreaseMs\\\"":2000,\\\""minDurationForQualityIncreaseMs\\\"":15000,\\\""bandwidthFraction\\\"":0.65}\"""", ""category"": ""abr"", ""applies_to"": ""ALL"", ""comment"": ""Pillar 3: ABR caida libre""}," & vbCrLf
+    s = s & "        {""tag"": ""EXT-X-INDEPENDENT-SEGMENTS"", ""value"": """", ""category"": ""quality"", ""applies_to"": ""ALL"", ""comment"": ""IDR-anchored segments - ABR switch sin glitch""}," & vbCrLf
+    s = s & "        {""tag"": ""EXT-X-SESSION-DATA"", ""value"": ""DATA-ID=\""com.ape.live_sync\"",VALUE=\""{\\\""liveSyncDurationCount\\\"":3,\\\""liveMaxLatencyDurationCount\\\"":10,\\\""liveTargetOffsetMs\\\"":3000,\\\""maxLiveOffsetMs\\\"":12000}\"""", ""category"": ""timeline"", ""applies_to"": ""ALL"", ""comment"": ""Player se ancla 3s detras del live edge""}," & vbCrLf
+    s = s & "        {""tag"": ""EXT-X-SESSION-DATA"", ""value"": ""DATA-ID=\""com.ape.recovery_policy\"",VALUE=\""{\\\""resumeFromLastPositionMs\\\"":true,\\\""skipDuplicateSegments\\\"":true,\\\""alignToProgramDateTime\\\"":true,\\\""maxResumeDriftMs\\\"":500,\\\""preserveBitrateOnResume\\\"":true}\"""", ""category"": ""recovery"", ""applies_to"": ""ALL"", ""comment"": ""Resume sin repetir un solo segundo""}," & vbCrLf
+    s = s & "        {""tag"": ""EXT-X-SESSION-DATA"", ""value"": ""DATA-ID=\""com.ape.network_resilience\"",VALUE=\""{\\\""connectionTimeoutMs\\\"":8000,\\\""readTimeoutMs\\\"":15000,\\\""retryCount\\\"":5,\\\""retryBackoffMs\\\"":500,\\\""retryBackoffFactor\\\"":1.5,\\\""maxRetryBackoffMs\\\"":4000,\\\""freezeDetectionMs\\\"":3000,\\\""maxFreezeBeforeRestartMs\\\"":15000,\\\""jumpToLiveOnFreeze\\\"":true}\"""", ""category"": ""recovery"", ""applies_to"": ""ALL"", ""comment"": ""Backoff exponencial + freeze recovery""}," & vbCrLf
+    s = s & "        {""tag"": ""EXT-X-SESSION-DATA"", ""value"": ""DATA-ID=\""com.ape.abr_quality_policy\"",VALUE=\""{\\\""preferHigherBitrate\\\"":true,\\\""minStableTimeBeforeUpgradeMs\\\"":15000,\\\""qualityDropThreshold\\\"":0.65,\\\""qualityRiseThreshold\\\"":0.85,\\\""smoothSwitching\\\"":true,\\\""forbidDowngradeOnTransientStall\\\"":true}\"""", ""category"": ""abr"", ""applies_to"": ""ALL"", ""comment"": ""ABR prefiere alta calidad""}," & vbCrLf
+    s = s & "        {""tag"": ""EXT-X-SESSION-DATA"", ""value"": ""DATA-ID=\""com.ape.universal_parity\"",VALUE=\""{\\\""applyToResolutions\\\"":[\\\""480p\\\"",\\\""720p\\\"",\\\""1080p\\\"",\\\""1440p\\\"",\\\""2160p\\\"",\\\""4320p\\\""],\\\""sameBufferStrategy\\\"":true,\\\""sameRecoveryPolicy\\\"":true,\\\""sameLowLatencyMode\\\"":true,\\\""sameABRPolicy\\\"":true}\"""", ""category"": ""quality"", ""applies_to"": ""ALL"", ""comment"": ""Politica identica 480p->8K""}," & vbCrLf
+    s = s & "        {""tag"": ""EXT-X-SESSION-DATA"", ""value"": ""DATA-ID=\""com.ape.codec_preferences\"",VALUE=\""{\\\""preferredCodecs\\\"":[\\\""dvh1\\\"",\\\""hvc1.2\\\"",\\\""hvc1.1\\\"",\\\""av01\\\"",\\\""avc1\\\""],\\\""hdrModes\\\"":[\\\""PQ\\\"",\\\""HLG\\\"",\\\""DV\\\""],\\\""audioPassthrough\\\"":[\\\""ec-3\\\"",\\\""ac-3\\\"",\\\""mp4a\\\""]}\"""", ""category"": ""quality"", ""applies_to"": ""ALL"", ""comment"": ""HEVC > AV1 > AVC, HDR pipeline, Atmos passthrough""}" & vbCrLf
     s = s & "      ]"
     DisneyDirectivesFallback = s
 End Function

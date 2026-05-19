@@ -24,12 +24,21 @@
     // idéntica a la generación pre-LAB. Si LAB exporta valores distintos, sobrescriben
     // estos defaults via prismaDisneyDirectives.
     const DEFAULT_DISNEY_DIRECTIVES = [
+        // === Original 6 (Windsurf / Disney-Grade Pillars 1-3) ===
         { tag: 'EXT-X-START',          value: 'TIME-OFFSET=-3.0,PRECISE=YES',                                                                                                                                            category: 'timeline' },
-        { tag: 'EXT-X-SERVER-CONTROL', value: 'CAN-BLOCK-RELOAD=YES,PART-HOLD-BACK=1.0,CAN-SKIP-UNTIL=12.0',                                                                                                              category: 'timeline' },
+        { tag: 'EXT-X-SERVER-CONTROL', value: 'CAN-BLOCK-RELOAD=YES,PART-HOLD-BACK=1.0,CAN-SKIP-UNTIL=12.0,HOLD-BACK=3.0',                                                                                                category: 'timeline' },
         { tag: 'EXT-X-TARGETDURATION', value: '2',                                                                                                                                                                        category: 'fragmentation' },
         { tag: 'EXT-X-PART-INF',       value: 'PART-TARGET=1.0',                                                                                                                                                          category: 'fragmentation' },
-        { tag: 'EXT-X-SESSION-DATA',   value: 'DATA-ID="exoplayer.load_control",VALUE="{\\"minBufferMs\\":20000,\\"bufferForPlaybackMs\\":1000}"',                                                                        category: 'abr' },
-        { tag: 'EXT-X-SESSION-DATA',   value: 'DATA-ID="exoplayer.track_selection",VALUE="{\\"maxDurationForQualityDecreaseMs\\":2000,\\"minDurationForQualityIncreaseMs\\":15000,\\"bandwidthFraction\\":0.65}"', category: 'abr' }
+        { tag: 'EXT-X-SESSION-DATA',   value: 'DATA-ID="exoplayer.load_control",VALUE="{\\"minBufferMs\\":20000,\\"bufferForPlaybackMs\\":1000,\\"bufferForPlaybackAfterRebufferMs\\":2000,\\"maxBufferMs\\":30000}"',     category: 'abr' },
+        { tag: 'EXT-X-SESSION-DATA',   value: 'DATA-ID="exoplayer.track_selection",VALUE="{\\"maxDurationForQualityDecreaseMs\\":2000,\\"minDurationForQualityIncreaseMs\\":15000,\\"bandwidthFraction\\":0.65}"',        category: 'abr' },
+        // === Quality + Resume + Resilience (added 2026-05-19) ===
+        { tag: 'EXT-X-INDEPENDENT-SEGMENTS', value: '',                                                                                                                                                                   category: 'quality' },
+        { tag: 'EXT-X-SESSION-DATA',   value: 'DATA-ID="com.ape.live_sync",VALUE="{\\"liveSyncDurationCount\\":3,\\"liveMaxLatencyDurationCount\\":10,\\"liveTargetOffsetMs\\":3000,\\"maxLiveOffsetMs\\":12000}"',        category: 'timeline' },
+        { tag: 'EXT-X-SESSION-DATA',   value: 'DATA-ID="com.ape.recovery_policy",VALUE="{\\"resumeFromLastPositionMs\\":true,\\"skipDuplicateSegments\\":true,\\"alignToProgramDateTime\\":true,\\"maxResumeDriftMs\\":500,\\"preserveBitrateOnResume\\":true}"', category: 'recovery' },
+        { tag: 'EXT-X-SESSION-DATA',   value: 'DATA-ID="com.ape.network_resilience",VALUE="{\\"connectionTimeoutMs\\":8000,\\"readTimeoutMs\\":15000,\\"retryCount\\":5,\\"retryBackoffMs\\":500,\\"retryBackoffFactor\\":1.5,\\"maxRetryBackoffMs\\":4000,\\"freezeDetectionMs\\":3000,\\"maxFreezeBeforeRestartMs\\":15000,\\"jumpToLiveOnFreeze\\":true}"', category: 'recovery' },
+        { tag: 'EXT-X-SESSION-DATA',   value: 'DATA-ID="com.ape.abr_quality_policy",VALUE="{\\"preferHigherBitrate\\":true,\\"minStableTimeBeforeUpgradeMs\\":15000,\\"qualityDropThreshold\\":0.65,\\"qualityRiseThreshold\\":0.85,\\"smoothSwitching\\":true,\\"forbidDowngradeOnTransientStall\\":true}"', category: 'abr' },
+        { tag: 'EXT-X-SESSION-DATA',   value: 'DATA-ID="com.ape.universal_parity",VALUE="{\\"applyToResolutions\\":[\\"480p\\",\\"720p\\",\\"1080p\\",\\"1440p\\",\\"2160p\\",\\"4320p\\"],\\"sameBufferStrategy\\":true,\\"sameRecoveryPolicy\\":true,\\"sameLowLatencyMode\\":true,\\"sameABRPolicy\\":true}"', category: 'quality' },
+        { tag: 'EXT-X-SESSION-DATA',   value: 'DATA-ID="com.ape.codec_preferences",VALUE="{\\"preferredCodecs\\":[\\"dvh1\\",\\"hvc1.2\\",\\"hvc1.1\\",\\"av01\\",\\"avc1\\"],\\"hdrModes\\":[\\"PQ\\",\\"HLG\\",\\"DV\\"],\\"audioPassthrough\\":[\\"ec-3\\",\\"ac-3\\",\\"mp4a\\"]}"', category: 'quality' }
     ];
 
     const HEADER_CATEGORIES = {
@@ -5103,7 +5112,7 @@
             const out = [];
             for (const d of source) {
                 if (!d || !d.tag || typeof d.value !== 'string') continue;
-                out.push(`#${d.tag}:${d.value}`);
+                out.push(d.value.length > 0 ? `#${d.tag}:${d.value}` : `#${d.tag}`);
             }
             return out;
         }
