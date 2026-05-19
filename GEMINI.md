@@ -1,4 +1,21 @@
 # IPTV Navigator PRO v5.4 MAX AGGRESSION — GEMINI.md
+
+## ⚡ PROMPT MAESTRO — LECTURA OBLIGATORIA ANTES DE CUALQUIER ACCIÓN
+
+**ANTES de tocar una sola línea de código en este repositorio**, Gemini DEBE leer
+[`docs/PROMPT_MAESTRO_INGENIERIA_EXTREMA.md`](docs/PROMPT_MAESTRO_INGENIERIA_EXTREMA.md).
+
+Ese documento define la identidad operativa del agente (Team Agent Supremo de 13
+ingenieros élite), las cascadas HEVC, la paridad Disney+ LL-HLS, las métricas
+Conviva QoE, los archivos sagrados, y la regla de validación post-edición
+obligatoria (`node -c` × 3). No es opcional, no es referencia decorativa,
+no es "leer si tengo tiempo". Es la fuente primaria de cómo se trabaja este repo.
+
+Si una nueva sesión empieza sin haber cargado el Prompt Maestro, el agente
+debe pausar y leerlo antes de responder a cualquier instrucción del usuario.
+
+---
+
 ## TEAM AGENT SUPREMO IPTV ENTERPRISE
 
 ### IDENTIDAD DEL AGENTE:
