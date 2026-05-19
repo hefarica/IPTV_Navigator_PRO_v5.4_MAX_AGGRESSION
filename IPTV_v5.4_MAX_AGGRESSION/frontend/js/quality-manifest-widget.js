@@ -474,13 +474,13 @@
           if (r.ok) {
              const d = await r.json();
              if (d.ok) restartBtn.textContent = '✓ Ok';
-             else throw new Error(d.error);
+             else throw new Error(d.error || 'Unknown error');
           } else {
              throw new Error('Local API failed');
           }
         } catch (e) {
-          restartBtn.textContent = '✗ Error';
-          console.error(e);
+          restartBtn.textContent = e.message.includes('ADB') ? '✗ No ADB' : '✗ Error';
+          console.error('[Sentinel Control Error]:', e.message);
         }
         setTimeout(() => { restartBtn.textContent = '🔄 Restart'; restartBtn.disabled = false; refresh(); }, 3000);
       });
@@ -490,7 +490,7 @@
     const toggleBtn = $('#qm-toggle-guardian');
     if (toggleBtn) {
       toggleBtn.addEventListener('click', async () => {
-        const isAlive = guardian.alive;
+        const isAlive = (lastData || data).guardian?.alive;
         toggleBtn.textContent = '⏳...';
         toggleBtn.disabled = true;
         try {
@@ -760,7 +760,7 @@
 
     // Layer 1: Try local bridge (direct ADB to ONN)
     try {
-      const r = await fetch(`${LOCAL_API}?action=read_all&t=${Date.now()}`, { cache: 'no-store', signal: AbortSignal.timeout(3000) });
+      const r = await fetch(`${LOCAL_API}?action=read_all&t=${Date.now()}`, { cache: 'no-store', signal: AbortSignal.timeout(8000) });
       if (r.ok) {
         const data = await r.json();
         if (data.ok && data.settings && data.settings.length > 0) {
@@ -777,7 +777,7 @@
 
     // Layer 2: Try VPS saved manifest (persistent state)
     try {
-      const r = await fetch(`${BASE_URL}/prisma/api/prisma-adb-quality.php?action=get_manifest&t=${Date.now()}`, { cache: 'no-store' });
+      const r = await fetch(`${BASE_URL}/prisma/api/prisma-adb-quality.php?action=get_manifest&t=${Date.now()}`, { cache: 'no-store', signal: AbortSignal.timeout(5000) });
       const vpsData = await r.json();
       if (vpsData.ok && vpsData.manifest && vpsData.manifest.length > 0) {
         // Convert VPS manifest format to render format
@@ -788,11 +788,9 @@
         // Fetch Guardian Heartbeat to know if it's alive on the ONN
         let guardianAlive = false;
         try {
-          const hbRes = await fetch(`${BASE_URL}/prisma/api/prisma-adb-quality.php?action=guardian_heartbeat&t=${Date.now()}`, { cache: 'no-store' });
-          const hbData = await hbRes.json();
-          if (hbData.ok && hbData.alive) {
-            guardianAlive = true;
-          }
+          const s = await fetch(`${VPS_API}?action=guardian_heartbeat`, { signal: AbortSignal.timeout(2000) });
+          const j = await s.json();
+          guardianAlive = !!j.alive;
         } catch (_) {}
 
         const renderData = {
@@ -830,7 +828,7 @@
 
     // Try local bridge first (localhost:7777)
     try {
-      const r = await fetch(`${LOCAL_API}?action=guardian_status&t=${Date.now()}`, { cache: 'no-store', signal: AbortSignal.timeout(2000) });
+      const r = await fetch(`${LOCAL_API}?action=guardian_status&t=${Date.now()}`, { cache: 'no-store', signal: AbortSignal.timeout(5000) });
       if (r.ok) {
         const d = await r.json();
         if (d.ok !== undefined) {

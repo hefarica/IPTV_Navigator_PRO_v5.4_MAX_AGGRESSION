@@ -114,9 +114,32 @@ function handleRequest(req, res) {
     case 'read_all': {
       const results = [];
       const groups = {};
+      
+      // Batch fetch all settings to prevent 100+ seconds of ADB blocking
+      const rawGlobal = adb(`settings list global`) || '';
+      const rawSystem = adb(`settings list system`) || '';
+      
+      const parseSettings = (raw) => {
+        const dict = {};
+        raw.split('\n').forEach(line => {
+          const idx = line.indexOf('=');
+          if (idx !== -1) {
+             const k = line.substring(0, idx).trim();
+             const v = line.substring(idx + 1).trim();
+             dict[k] = v;
+          }
+        });
+        return dict;
+      };
+      
+      const state = {
+         global: parseSettings(rawGlobal),
+         system: parseSettings(rawSystem)
+      };
+
       for (const [ns, key, expected, group, label, type, options] of MANIFEST) {
-        const current = adb(`settings get ${ns} ${key}`);
-        const cv = (current === '' || current === 'null') ? null : current;
+        const current = state[ns] ? state[ns][key] : undefined;
+        const cv = (current === undefined || current === '' || current === 'null') ? null : current;
         const synced = cv === expected;
         results.push({ ns, key, current: cv, expected, synced, group, label, type, options });
         if (!groups[group]) groups[group] = 0;
