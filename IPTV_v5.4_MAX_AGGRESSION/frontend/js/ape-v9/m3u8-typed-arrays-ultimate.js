@@ -6110,6 +6110,20 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
     // PIPELINE 2026: FUNCIONES DE ARRAY MODULAR (REINTEGRACIÓN CRÍTICA)
     // ═══════════════════════════════════════════════════════════════════════════
 
+    /**
+     * @deprecated NOT currently called anywhere in this file.
+     *   Active STREAM-INF emission is at L8905-8920 via the truth-driven path
+     *   (`APEFallbackResolver.emitStreamInfFromTruth(_apeTruth)`) or the legacy
+     *   fallback that strictly omits HDCP-LEVEL/SUPPLEMENTAL-CODECS.
+     *   This function is retained as a reference blueprint for E2E SSOT (Agent F
+     *   2026-05-17 work) but MUST NOT be re-wired without first re-auditing the
+     *   honest-rules compliance:
+     *     · HDCP-LEVEL default switched from "TYPE-1" → "NONE" (D-1 fix 2026-05-18).
+     *       Probe-verified upstream HDCP is the ONLY legitimate source for TYPE-1.
+     *     · VIDEO-RANGE PQ defaults are gated by cfg.video_range — caller must
+     *       confirm probe evidence before populating cfg.video_range='PQ'.
+     *   Refs: ARTIFACT_FASE1_PROFUNDO_DESTRIPE.md §6 D-1
+     */
     function build_stream_inf(cfg, channel) {
         const bandwidth = (cfg.bitrate || 5000) * 1000;
         const avgBandwidth = Math.round(bandwidth * (cfg.avg_bandwidth_ratio || 0.8));
@@ -6130,17 +6144,19 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
             case 'VVC':
                 codecs = cfg.codec_string || ('vvc1.1.L63.00.0.0,' + audioCodec);
                 videoRange = cfg.video_range || 'PQ';
-                hdcpLevel = cfg.hdcp_level || 'TYPE-1';
+                // [D-1 FIX — 2026-05-18] HDCP-LEVEL=TYPE-1 hardcoded fallback removed.
+                // Only emit TYPE-1 when probe-verified upstream HDCP is present (cfg.hdcp_level).
+                hdcpLevel = cfg.hdcp_level || 'NONE';
                 break;
             case 'AV1':
                 codecs = cfg.codec_string || ('av01.0.08M.08,' + audioCodec);
                 videoRange = cfg.video_range || 'PQ';
-                hdcpLevel = cfg.hdcp_level || 'TYPE-1';
+                hdcpLevel = cfg.hdcp_level || 'NONE';
                 break;
             case 'HEVC':
                 codecs = cfg.codec_string || ('hvc1.2.4.L153.B0,' + (cfg.audio_codec || 'ec-3'));
                 videoRange = cfg.video_range || 'PQ';
-                hdcpLevel = cfg.hdcp_level || 'TYPE-1';
+                hdcpLevel = cfg.hdcp_level || 'NONE';
                 break;
             case 'AVC':
                 codecs = cfg.codec_string || ('avc1.640028,' + audioCodec);
@@ -8915,8 +8931,17 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
             // F5: NO STREAM-INF — solo EXTINF + URL original (ya emitido arriba)
         } else {
             // Legacy emit sin truth: emite STREAM-INF SIN HDCP-LEVEL ni SUPPLEMENTAL-CODECS hardcoded.
-            // VIDEO-RANGE legacy se preserva por compat hacia atrás cuando no hay truth.
-            lines.push(`#EXT-X-STREAM-INF:BANDWIDTH=${_bw796},AVERAGE-BANDWIDTH=${_avgBw},CODECS="${_codec796},${_codecAudio}",RESOLUTION=${_res796},FRAME-RATE=${_fps796}.000,VIDEO-RANGE="${_hdrMode}"`);
+            //
+            // [R-1 FIX — 2026-05-18 · NO PLAYER-BREAKING LIES]
+            // VIDEO-RANGE solo se emite cuando hay evidencia REAL del probe
+            // (_probeData?.videoRange) o cuando truth-resolver lo verifica.
+            // cfg.hdr_mode (LAB SSOT) NO califica como evidencia para HDR claim
+            // — un canal SDR con LAB-tag HDR10 mintiendo VIDEO-RANGE=PQ rompe
+            // pre-init del decoder HDR de ExoPlayer (pantallazo negro HDMI).
+            // Per ARTIFACT_FASE1_PROFUNDO_DESTRIPE §6 R-1.
+            const _probedRange = (_probeData && (_probeData.videoRange || _probeData.video_range)) || null;
+            const _videoRangePart = _probedRange ? `,VIDEO-RANGE="${_probedRange}"` : '';
+            lines.push(`#EXT-X-STREAM-INF:BANDWIDTH=${_bw796},AVERAGE-BANDWIDTH=${_avgBw},CODECS="${_codec796},${_codecAudio}",RESOLUTION=${_res796},FRAME-RATE=${_fps796}.000${_videoRangePart}`);
         }
         let finalUrl = options.dictatorMode ? `${primaryUrl}|User-Agent=${_ua796}&Cache-Control=no-cache&Connection=keep-alive&Referer=${typeof window !== "undefined" ? encodeURIComponent(window.location.origin) : ""}` : primaryUrl;
         if (options.dictatorMode) {
