@@ -9,6 +9,14 @@
 *.tmp
 *.log
 
+# Volatile debug dumps (guardian output, ad-hoc scripts, transient state)
+/test_*.json
+/test_*.txt
+/test_*.html
+/test.m3u8
+/downloaded_list.m3u8
+/lista_omega_mock.m3u8
+
 # OS
 Thumbs.db
 .DS_Store

@@ -1,0 +1,32 @@
+[Unit]
+Description=ADB Conviva Push Agent — Fire TV telemetry → /prisma/api/conviva-event
+Documentation=file:///opt/adb-conviva-push/adb_conviva_push_agent.py
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+# Run as a non-root user that has ADB connection.
+# The user MUST have `adb` in PATH and the Fire TV paired
+# via `adb connect <fire-tv-ip>:5555`.
+User=hfrc
+Environment=PATH=/usr/local/bin:/usr/bin:/bin
+Environment=ADB_DEVICE_ID=
+Environment=CONVIVA_ENDPOINT=https://iptv-ape.duckdns.org/prisma/api/conviva-event
+Environment=CONVIVA_PLAYER=ExoPlayer
+# CONVIVA_DEVICE_ID defaults to hostname uppercased if not set.
+ExecStart=/usr/bin/python3 /opt/adb-conviva-push/adb_conviva_push_agent.py --verbose
+Restart=on-failure
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+# Hardening — telemetry agent does not need filesystem write outside /tmp
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=read-only
+PrivateTmp=true
+ReadWritePaths=/tmp /var/log
+
+[Install]
+WantedBy=multi-user.target
