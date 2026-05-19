@@ -6112,56 +6112,73 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
 
     function build_stream_inf(cfg, channel) {
         const bandwidth = (cfg.bitrate || 5000) * 1000;
-        const avgBandwidth = Math.round(bandwidth * 0.8);
+        const avgBandwidth = Math.round(bandwidth * (cfg.avg_bandwidth_ratio || 0.8));
         const res = cfg.res || cfg.resolution || '1920x1080';
         const fps = (cfg.target_framerate === '120FPS') ? 120 : (cfg.target_framerate === '60FPS' ? 60 : 30);
-        let codecs = 'avc1.42E01E,mp4a.40.2';
-        let videoRange = 'SDR';
-        let hdcpLevel = 'NONE';
+
+        // [E2E SSOT — 2026-05-17] Todos los valores críticos se leen primero de cfg.
+        // cfg viene del LAB Excel → UI → pipeline. Los literales son SOLO fallback
+        // defensivo por si cfg no propagó el campo (doctrina NO-CLAMP).
+        // Un cambio en el LAB se propaga end-to-end sin tocar este código.
+        const audioCodec = cfg.audio_codec || 'mp4a.40.2';
+
+        let codecs = cfg.codec_string || 'avc1.42E01E,' + audioCodec;
+        let videoRange = cfg.video_range || 'SDR';
+        let hdcpLevel = cfg.hdcp_level || 'NONE';
 
         switch (cfg.codec_primary) {
             case 'VVC':
-                codecs = 'vvc1.1.L63.00.0.0,mp4a.40.2';
-                videoRange = 'PQ';
-                hdcpLevel = 'TYPE-1';
+                codecs = cfg.codec_string || ('vvc1.1.L63.00.0.0,' + audioCodec);
+                videoRange = cfg.video_range || 'PQ';
+                hdcpLevel = cfg.hdcp_level || 'TYPE-1';
                 break;
             case 'AV1':
-                codecs = 'av01.0.08M.08,mp4a.40.2';
-                videoRange = 'PQ';
-                hdcpLevel = 'TYPE-1';
+                codecs = cfg.codec_string || ('av01.0.08M.08,' + audioCodec);
+                videoRange = cfg.video_range || 'PQ';
+                hdcpLevel = cfg.hdcp_level || 'TYPE-1';
                 break;
             case 'HEVC':
-                codecs = 'hvc1.1.6.L153.B0,mp4a.40.2';
-                videoRange = 'PQ';
-                hdcpLevel = 'TYPE-1';
+                codecs = cfg.codec_string || ('hvc1.2.4.L153.B0,' + (cfg.audio_codec || 'ec-3'));
+                videoRange = cfg.video_range || 'PQ';
+                hdcpLevel = cfg.hdcp_level || 'TYPE-1';
                 break;
             case 'AVC':
-                codecs = 'avc1.640028,mp4a.40.2';
-                videoRange = 'SDR';
-                hdcpLevel = 'NONE';
+                codecs = cfg.codec_string || ('avc1.640028,' + audioCodec);
+                videoRange = cfg.video_range || 'SDR';
+                hdcpLevel = cfg.hdcp_level || 'NONE';
                 break;
         }
 
-        // [RFC 8216bis] VIDEO-RANGE: ExoPlayer usa esto para pre-init el decoder HDR/SDR
-        // sin esperar al primer segmento. Elimina el pantallazo negro del HDMI handshake.
-        // PQ = SMPTE ST 2084 (HDR10/HDR10+/DV), SDR = BT.709, HLG = Hybrid Log-Gamma.
+        // [CADENA DE MANIFESTACIÓN — Eslabón [1] — 2026-05-17]
+        // El Core Generator inyecta las señales que deben atravesar
+        // los 11 eslabones hasta manifestarse como fotones en el panel de la TV.
+        // Cada valor viene de cfg (SSOT) — el generador NUNCA inventa metadata.
 
-        // [MAX IMAGE FIRST · NO PLAYER-BREAKING LIES]
-        // HDCP-LEVEL y SUPPLEMENTAL-CODECS NO se emiten desde aquí.
-        // Solo el wire-in truth-driven (APE Fallback Resolver) los emite cuando
-        // el probe verifica que el upstream realmente tiene esos atributos.
-        // Razón: hardcoded HDCP-LEVEL="TYPE-1" + SUPPLEMENTAL-CODECS="lcev.1.1.1"
-        // mintiendo al player fuerza decoders LCEVC que no existen y rechazos HDCP.
+        const stableId = `${res}-${codecs.split(',')[0]}`;
+        let streamInf = `#EXT-X-STREAM-INF:BANDWIDTH=${bandwidth},AVERAGE-BANDWIDTH=${avgBandwidth},RESOLUTION=${res},CODECS="${codecs}",FRAME-RATE=${fps},VIDEO-RANGE=${videoRange},HDCP-LEVEL=${hdcpLevel},STABLE-VARIANT-ID="${stableId}"`;
 
-        return `#EXT-X-STREAM-INF:BANDWIDTH=${bandwidth},AVERAGE-BANDWIDTH=${avgBandwidth},RESOLUTION=${res},CODECS="${codecs}",FRAME-RATE=${fps},VIDEO-RANGE=${videoRange}`;
+        // [HDR10 TRIFECTA E2E — Bondad 2] Valores de cfg, fallback a BT.2020/PQ/NC.
+        // Solo emitir cuando VIDEO-RANGE=PQ. SDR no lleva metadata de color extendida.
+        if (videoRange === 'PQ') {
+            const cp = cfg.color_primaries || 9;           // BT.2020
+            const tc = cfg.transfer_characteristics || 16; // SMPTE ST.2084 PQ
+            const mc = cfg.matrix_coefficients || 9;       // BT.2020 non-constant
+            streamInf += `,COLOR-PRIMARIES=${cp},TRANSFER-CHARACTERISTICS=${tc},MATRIX-COEFFICIENTS=${mc}`;
+        }
+        return streamInf;
     }
 
     function build_av1_cortex_fallback_tags(cfg) {
         const arr = [];
         // [HEVC-FIRST CODEC LADDER] per-profile chain values from cfg (LAB SSOT settings).
         // Fallbacks defensivos HEVC-first si cfg no propagó (NO-CLAMP texto).
-        const _chainFamily = cfg.codec_chain_video_family || 'HEVC-MAIN10-L5.1>HEVC-MAIN10-L5.0>HEVC-MAIN10-L4.0>HEVC-MAIN-L5.1>HEVC-MAIN-L5.0>HEVC-MAIN-L4.0>HEVC-MAIN-L3.1>H264-HIGH';
-        const _chainVideo  = cfg.codec_chain_video       || 'hvc1.2.4.L153.B0,hvc1.2.4.L150.B0,hvc1.2.4.L120.B0,hvc1.1.6.L153.B0,hvc1.1.6.L150.B0,hvc1.1.6.L120.B0,hvc1.1.6.L93.B0,avc1.640028';
+        // [11-TIER CASCADE — 2026-05-17 — Cadena de Manifestación Bondad 1]
+        // 6 tiers 10-bit (Main10) agotan HDR antes de tocar 8-bit (Main)
+        // Tier 3 = L156 (4K@120fps 10-bit) — para deportes/esports HDR
+        // Tier 4 = L123 (1080@60fps 10-bit) — para TV premium HDR
+        // Tier 6 = L93 (720p@30 10-bit) — ÚLTIMO escalón con color HDR
+        const _chainFamily = cfg.codec_chain_video_family || 'HEVC-MAIN10-L5.1>HEVC-MAIN10-L5.0>HEVC-MAIN10-L5.2>HEVC-MAIN10-L4.1>HEVC-MAIN10-L4.0>HEVC-MAIN10-L3.1>HEVC-MAIN-L5.1>HEVC-MAIN-L5.0>HEVC-MAIN-L4.0>HEVC-MAIN-L3.1>H264-HIGH';
+        const _chainVideo  = cfg.codec_chain_video       || 'hvc1.2.4.L153.B0,hvc1.2.4.L150.B0,hvc1.2.4.L156.B0,hvc1.2.4.L123.B0,hvc1.2.4.L120.B0,hvc1.2.4.L93.B0,hvc1.1.6.L153.B0,hvc1.1.6.L150.B0,hvc1.1.6.L120.B0,hvc1.1.6.L93.B0,avc1.640028';
         const _chainAudio  = cfg.codec_chain_audio       || 'ec-3,ac-3,mp4a.40.2,mp4a.40.5';
         const _chainHdr    = cfg.codec_chain_hdr         || 'hdr10,hlg,sdr';
         const _chainPref   = cfg.codec_chain_player_pref || 'hvc1,hev1,h265,avc1,h264';
