@@ -175,11 +175,30 @@ If a lock has been stale > 30 min, ask the user before stealing it.
 
 _(none — both agents idle on shared files)_
 
+**Agent F's 73-line uncommitted diff on `m3u8-typed-arrays-ultimate.js` was
+committed in 19d6f27 (2026-05-18, by Agent G with user authorization +
+`Co-Authored-By: Agent F`). Diff content: E2E SSOT-ification of `build_stream_inf`
++ 11-tier cascade expansion in `build_av1_cortex_fallback_tags`. Agent F's
+structural work fully preserved; the function `build_stream_inf` was left in
+place (Agent F edited it deliberately as a reference blueprint) but marked
+`@deprecated` with audit instructions before any future re-wire.**
+
+Followed by 3fd36c3 (Agent G, R-1 + D-1 fixes): gate VIDEO-RANGE on probe
+evidence in the active legacy STREAM-INF emission path, and switch the dead
+`build_stream_inf` HDCP fallback from `'TYPE-1'` to `'NONE'` to neutralize the
+regression hazard documented in `ARTIFACT_FASE1_PROFUNDO_DESTRIPE.md` §6 D-1.
+
 ---
 
 ## Completed work (commits on master)
 
 ```
+3fd36c3 (Agent G) fix(generator): R-1 + D-1 honest-rules — gate VIDEO-RANGE on probe, drop hardcoded TYPE-1
+19d6f27 (Agent F + Agent G) feat(generator,ssot): E2E SSOT for build_stream_inf + 11-tier cascade expansion
+96500b3 (Agent G) docs(fase1): PROFUNDO destripe — completes 3 deferred sections of FASE 1
+4324742 (Agent G) feat(conviva,sse): Phase 3.1 LIVE SSE bridge + Phase 3.2 browser widget
+9d48d4c (Agent G) fix(lab,vba): gate MsgBox on Application.UserControl for COM-driven deployment
+8cef80a (Agent G) feat(conviva,lab): Fase 1+2+3 — VBA player_target staged, /prisma/api/conviva-event DEPLOYED, SSE stream stub
 7b2c673 (Agent A) Path B: emit every profile section as M3U8 directive (124 keys/perfil)
 b57c504 (Agent A) Path B: consume omega_gap_plan to close scorecard gaps (50 items)
 01a5ede (Agent A) T6a: 100% real-data match (closes B10/B15/B16/G5/G10/L1-L5 gaps)
