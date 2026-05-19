@@ -28,12 +28,21 @@ from datetime import datetime, timezone
 # Si no existe, devuelve los defaults hardcoded (mismos valores para todos
 # los perfiles P0-P5). Mismo helper que en generate_m3u8_v53_fusion.py.
 _DISNEY_DEFAULTS = [
+    # Pillar 1-3: original Disney-Grade (timeline + fragmentation + ABR)
     {"tag": "EXT-X-START",          "value": "TIME-OFFSET=-3.0,PRECISE=YES"},
-    {"tag": "EXT-X-SERVER-CONTROL", "value": "CAN-BLOCK-RELOAD=YES,PART-HOLD-BACK=1.0,CAN-SKIP-UNTIL=12.0"},
+    {"tag": "EXT-X-SERVER-CONTROL", "value": "CAN-BLOCK-RELOAD=YES,PART-HOLD-BACK=1.0,CAN-SKIP-UNTIL=12.0,HOLD-BACK=3.0"},
     {"tag": "EXT-X-TARGETDURATION", "value": "2"},
     {"tag": "EXT-X-PART-INF",       "value": "PART-TARGET=1.0"},
-    {"tag": "EXT-X-SESSION-DATA",   "value": 'DATA-ID="exoplayer.load_control",VALUE="{\\"minBufferMs\\":20000,\\"bufferForPlaybackMs\\":1000}"'},
+    {"tag": "EXT-X-SESSION-DATA",   "value": 'DATA-ID="exoplayer.load_control",VALUE="{\\"minBufferMs\\":20000,\\"bufferForPlaybackMs\\":1000,\\"bufferForPlaybackAfterRebufferMs\\":2000,\\"maxBufferMs\\":30000}"'},
     {"tag": "EXT-X-SESSION-DATA",   "value": 'DATA-ID="exoplayer.track_selection",VALUE="{\\"maxDurationForQualityDecreaseMs\\":2000,\\"minDurationForQualityIncreaseMs\\":15000,\\"bandwidthFraction\\":0.65}"'},
+    # Quality + Resume + Resilience (added 2026-05-19) — keeps fallback parity with LAB SSOT
+    {"tag": "EXT-X-INDEPENDENT-SEGMENTS", "value": ""},
+    {"tag": "EXT-X-SESSION-DATA",   "value": 'DATA-ID="com.ape.live_sync",VALUE="{\\"liveSyncDurationCount\\":3,\\"liveMaxLatencyDurationCount\\":10,\\"liveTargetOffsetMs\\":3000,\\"maxLiveOffsetMs\\":12000}"'},
+    {"tag": "EXT-X-SESSION-DATA",   "value": 'DATA-ID="com.ape.recovery_policy",VALUE="{\\"resumeFromLastPositionMs\\":true,\\"skipDuplicateSegments\\":true,\\"alignToProgramDateTime\\":true,\\"maxResumeDriftMs\\":500,\\"preserveBitrateOnResume\\":true}"'},
+    {"tag": "EXT-X-SESSION-DATA",   "value": 'DATA-ID="com.ape.network_resilience",VALUE="{\\"connectionTimeoutMs\\":8000,\\"readTimeoutMs\\":15000,\\"retryCount\\":5,\\"retryBackoffMs\\":500,\\"retryBackoffFactor\\":1.5,\\"maxRetryBackoffMs\\":4000,\\"freezeDetectionMs\\":3000,\\"maxFreezeBeforeRestartMs\\":15000,\\"jumpToLiveOnFreeze\\":true}"'},
+    {"tag": "EXT-X-SESSION-DATA",   "value": 'DATA-ID="com.ape.abr_quality_policy",VALUE="{\\"preferHigherBitrate\\":true,\\"minStableTimeBeforeUpgradeMs\\":15000,\\"qualityDropThreshold\\":0.65,\\"qualityRiseThreshold\\":0.85,\\"smoothSwitching\\":true,\\"forbidDowngradeOnTransientStall\\":true}"'},
+    {"tag": "EXT-X-SESSION-DATA",   "value": 'DATA-ID="com.ape.universal_parity",VALUE="{\\"applyToResolutions\\":[\\"480p\\",\\"720p\\",\\"1080p\\",\\"1440p\\",\\"2160p\\",\\"4320p\\"],\\"sameBufferStrategy\\":true,\\"sameRecoveryPolicy\\":true,\\"sameLowLatencyMode\\":true,\\"sameABRPolicy\\":true}"'},
+    {"tag": "EXT-X-SESSION-DATA",   "value": 'DATA-ID="com.ape.codec_preferences",VALUE="{\\"preferredCodecs\\":[\\"dvh1\\",\\"hvc1.2\\",\\"hvc1.1\\",\\"av01\\",\\"avc1\\"],\\"hdrModes\\":[\\"PQ\\",\\"HLG\\",\\"DV\\"],\\"audioPassthrough\\":[\\"ec-3\\",\\"ac-3\\",\\"mp4a\\"]}"'},
 ]
 
 
@@ -65,7 +74,8 @@ def _ape_disney_directive_lines():
         tag = d.get("tag") if isinstance(d, dict) else None
         val = d.get("value") if isinstance(d, dict) else None
         if tag and isinstance(val, str):
-            out.append("#" + tag + ":" + val)
+            # tag-only (e.g. EXT-X-INDEPENDENT-SEGMENTS) emits "#TAG" without colon
+            out.append("#" + tag + (":" + val if val else ""))
     return out
 
 # ═══════════════════════════════════════════════════════════════════════════

@@ -183,12 +183,21 @@ function generate_ape_global_header(array $channels_map, string $list_id): strin
   $disney_lines = (class_exists('LabConfigLoader') && method_exists('LabConfigLoader', 'm3u8DirectiveLines'))
       ? LabConfigLoader::m3u8DirectiveLines()
       : [
+          // Pillar 1-3: original Disney-Grade (timeline + fragmentation + ABR)
           '#EXT-X-START:TIME-OFFSET=-3.0,PRECISE=YES',
-          '#EXT-X-SERVER-CONTROL:CAN-BLOCK-RELOAD=YES,PART-HOLD-BACK=1.0,CAN-SKIP-UNTIL=12.0',
+          '#EXT-X-SERVER-CONTROL:CAN-BLOCK-RELOAD=YES,PART-HOLD-BACK=1.0,CAN-SKIP-UNTIL=12.0,HOLD-BACK=3.0',
           '#EXT-X-TARGETDURATION:2',
           '#EXT-X-PART-INF:PART-TARGET=1.0',
-          '#EXT-X-SESSION-DATA:DATA-ID="exoplayer.load_control",VALUE="{\"minBufferMs\":20000,\"bufferForPlaybackMs\":1000}"',
+          '#EXT-X-SESSION-DATA:DATA-ID="exoplayer.load_control",VALUE="{\"minBufferMs\":20000,\"bufferForPlaybackMs\":1000,\"bufferForPlaybackAfterRebufferMs\":2000,\"maxBufferMs\":30000}"',
           '#EXT-X-SESSION-DATA:DATA-ID="exoplayer.track_selection",VALUE="{\"maxDurationForQualityDecreaseMs\":2000,\"minDurationForQualityIncreaseMs\":15000,\"bandwidthFraction\":0.65}"',
+          // Quality + Resume + Resilience (added 2026-05-19) — fallback parity with LAB SSOT
+          '#EXT-X-INDEPENDENT-SEGMENTS',
+          '#EXT-X-SESSION-DATA:DATA-ID="com.ape.live_sync",VALUE="{\"liveSyncDurationCount\":3,\"liveMaxLatencyDurationCount\":10,\"liveTargetOffsetMs\":3000,\"maxLiveOffsetMs\":12000}"',
+          '#EXT-X-SESSION-DATA:DATA-ID="com.ape.recovery_policy",VALUE="{\"resumeFromLastPositionMs\":true,\"skipDuplicateSegments\":true,\"alignToProgramDateTime\":true,\"maxResumeDriftMs\":500,\"preserveBitrateOnResume\":true}"',
+          '#EXT-X-SESSION-DATA:DATA-ID="com.ape.network_resilience",VALUE="{\"connectionTimeoutMs\":8000,\"readTimeoutMs\":15000,\"retryCount\":5,\"retryBackoffMs\":500,\"retryBackoffFactor\":1.5,\"maxRetryBackoffMs\":4000,\"freezeDetectionMs\":3000,\"maxFreezeBeforeRestartMs\":15000,\"jumpToLiveOnFreeze\":true}"',
+          '#EXT-X-SESSION-DATA:DATA-ID="com.ape.abr_quality_policy",VALUE="{\"preferHigherBitrate\":true,\"minStableTimeBeforeUpgradeMs\":15000,\"qualityDropThreshold\":0.65,\"qualityRiseThreshold\":0.85,\"smoothSwitching\":true,\"forbidDowngradeOnTransientStall\":true}"',
+          '#EXT-X-SESSION-DATA:DATA-ID="com.ape.universal_parity",VALUE="{\"applyToResolutions\":[\"480p\",\"720p\",\"1080p\",\"1440p\",\"2160p\",\"4320p\"],\"sameBufferStrategy\":true,\"sameRecoveryPolicy\":true,\"sameLowLatencyMode\":true,\"sameABRPolicy\":true}"',
+          '#EXT-X-SESSION-DATA:DATA-ID="com.ape.codec_preferences",VALUE="{\"preferredCodecs\":[\"dvh1\",\"hvc1.2\",\"hvc1.1\",\"av01\",\"avc1\"],\"hdrModes\":[\"PQ\",\"HLG\",\"DV\"],\"audioPassthrough\":[\"ec-3\",\"ac-3\",\"mp4a\"]}"',
       ];
   foreach ($disney_lines as $_disney_line) {
       $header .= $_disney_line . "\n";
