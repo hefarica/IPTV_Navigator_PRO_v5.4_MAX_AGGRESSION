@@ -2244,6 +2244,21 @@
                 }
             }
 
+            // ── 🎯 CONVIVA QoE ENGINE — declarative auto-install metadata (2026-05-19) ──
+            // Tells APE-aware players: "this list expects Conviva QoE telemetry; load the
+            // engine from URI". Legacy players (TiviMate/OTT/ExoPlayer) ignore this tag
+            // silently — RFC 8216 §4 allows unknown #EXT-X-* tags. Browser players (the
+            // Navigator UI) already auto-load via index-v4.html script tag; this metadata
+            // is for external consumers + future APE-aware native players.
+            coreHeader.push(
+                '#EXT-X-APE-QOE-ENGINE:' +
+                'URI="https://iptv-ape.duckdns.org/prisma/lib/conviva-qoe-engine.js",' +
+                'VERSION="1.0.0-disney-grade",' +
+                'AUTO_LOAD="true",' +
+                'FALLBACK_URI="js/conviva-qoe-engine.js",' +
+                'TELEMETRY_ENDPOINT="https://iptv-ape.duckdns.org/prisma/api/conviva-event.php"'
+            );
+
             // ── LAB TRAZABILITY — metadata global del LAB Excel ─────────────────
             // Doctrina SSOT: cualquier valor calibrado por el LAB queda auditable
             // directo en la lista. Cero "valores ciegos".

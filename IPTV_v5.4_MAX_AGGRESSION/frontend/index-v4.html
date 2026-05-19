@@ -4231,8 +4231,31 @@
   <!-- Eslabón 9 (Player) de la Cadena de Manifestación · per                  -->
   <!-- ARTIFACT_QOE_DASHBOARD_SPEC.md §9 + .agents/reports/AUDIT_CONVIVA_*.md  -->
   <!-- Self-bootstraps window.ConvivaQoE on load. Idempotent.                  -->
+  <!-- VPS-FIRST AUTO-INSTALL (2026-05-19): tries VPS-hosted version first,    -->
+  <!-- falls back to bundled local copy if VPS unreachable. Ensures every UI   -->
+  <!-- session loads the freshest engine without redeploying the frontend.    -->
   <!-- ═══════════════════════════════════════════════════════════════════════ -->
-  <script src="js/conviva-qoe-engine.js?v=1.0.0-disney-grade" defer></script>
+  <script>
+    (function () {
+      'use strict';
+      var VPS_URL   = 'https://iptv-ape.duckdns.org/prisma/lib/conviva-qoe-engine.js?v=1.0.0-disney-grade';
+      var LOCAL_URL = 'js/conviva-qoe-engine.js?v=1.0.0-disney-grade';
+      var primary = document.createElement('script');
+      primary.defer = true;
+      primary.src = VPS_URL;
+      primary.onerror = function () {
+        console.warn('[Conviva] VPS load failed, falling back to local bundled copy');
+        var fallback = document.createElement('script');
+        fallback.defer = true;
+        fallback.src = LOCAL_URL;
+        document.head.appendChild(fallback);
+      };
+      primary.onload = function () {
+        console.log('[Conviva] Engine loaded from VPS (fresh) — Disney-Grade telemetry active');
+      };
+      document.head.appendChild(primary);
+    })();
+  </script>
   <!-- Phase 3.2 — Conviva SSE Stream Bridge (live server events from /prisma/api/conviva-stream) -->
   <script src="js/conviva-stream-widget.js?v=1.0.0" defer></script>
   <script defer>
