@@ -194,6 +194,20 @@ def main():
             out[k] = old_bp[k]
 
     # ── ANABOLIC ENRICHMENT: complete each profile's settings per doctrine ──
+    # Per-profile sub-blocks produced by the solver (preserved from May 11 BULLETPROOF).
+    # These are the "bulletproof" payload — optimization output that the base export
+    # alone does not include. Without them, the JSON misses the solver's tuning.
+    SOLVER_SUBBLOCKS = (
+        'actor_injections',     # iptv_server / network / os / panel / player tuning
+        'bounds',               # abr_bw_factor / buffer / frag_retry / live_delay / etc.
+        'fitness',              # solver score (numeric)
+        'optimized_knobs',      # abrBandWidthFactor / buffer_seconds / fragLoad_maxNumRetry / etc.
+        'optimized_timestamp',  # when solver ran
+        'player_enslavement',   # level_1_master_playlist + level_3_per_channel overlays
+        'role',                 # profile role label
+        'solver_trace',         # solver run trace
+    )
+
     enrichment_report = {}
     for pid in ('P0', 'P1', 'P2', 'P3', 'P4', 'P5'):
         p = out['profiles_calibrated'].get(pid, {})
@@ -201,12 +215,23 @@ def main():
             p['settings'] = {}
         enriched, added = enrich_profile_settings(pid, p['settings'])
         p['settings'] = enriched
+
+        # Port solver sub-blocks from prior BULLETPROOF (anabolic payload)
+        old_p = old_bp.get('profiles_calibrated', {}).get(pid, {})
+        ported_subblocks = []
+        for sb in SOLVER_SUBBLOCKS:
+            if sb in old_p and sb not in p:
+                p[sb] = old_p[sb]
+                ported_subblocks.append(sb)
+
         enrichment_report[pid] = {
-            'fields_added_count': len(added),
-            'fields_added':       added,
-            'settings_total':     len(enriched),
+            'fields_added_count':       len(added),
+            'fields_added':             added,
+            'settings_total':           len(enriched),
+            'solver_subblocks_ported':  ported_subblocks,
+            'solver_subblocks_count':   len(ported_subblocks),
         }
-        print(f'  {pid}: added {len(added)} doctrine fields (settings now {len(enriched)})')
+        print(f'  {pid}: +{len(added)} doctrine fields | +{len(ported_subblocks)} solver subblocks ({", ".join(ported_subblocks) if ported_subblocks else "none"})')
 
     # Add player_target placeholder
     pm = out.setdefault('placeholders_map', {})
