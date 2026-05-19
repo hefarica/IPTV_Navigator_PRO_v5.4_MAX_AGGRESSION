@@ -23,6 +23,41 @@
     const VERSION = '22.2.0-FUSION-FANTASMA-NUCLEAR';
 
     // ═══════════════════════════════════════════════════════════════════════════
+    // HDCP-Adaptive Engine — pre-fetch per-channel HDCP-LEVEL decisions (added 2026-05-19)
+    // ═══════════════════════════════════════════════════════════════════════════
+    // The generator emits HDCP-LEVEL=TYPE-1 by default (aggressive, forces hardware
+    // decoder path). If Conviva detected VST > 3000ms on a TYPE-1 attempt for any
+    // channel, the VPS records `channel_id → NONE` in SQLite. This helper fetches
+    // the bulk map ONCE per session and caches in window.APE_HDCP_PROFILE.
+    // Generator reads window.APE_HDCP_PROFILE[chId] || 'TYPE-1' at STREAM-INF emit time.
+    // Fire-and-forget — never blocks generation. Empty cache → all channels default TYPE-1.
+    if (typeof window !== 'undefined') {
+        window.APE_HDCP_PROFILE = window.APE_HDCP_PROFILE || {};
+        if (!window.APE_HDCP_PROFILE_FRESH_AT) {
+            window.APE_HDCP_PROFILE_FRESH_AT = 0;
+        }
+        window.refreshApeHdcpProfile = function () {
+            const now = Date.now();
+            if ((now - window.APE_HDCP_PROFILE_FRESH_AT) < 60000) return;  // TTL 60s
+            const url = window.APE_HDCP_BULK_ENDPOINT_ABS || '/prisma/api/channel-hdcp-bulk.php';
+            try {
+                fetch(url, { cache: 'no-store', mode: 'cors' })
+                    .then(function (r) { return r.json(); })
+                    .then(function (d) {
+                        if (d && d.ok && d.channels && typeof d.channels === 'object') {
+                            window.APE_HDCP_PROFILE = d.channels;
+                            window.APE_HDCP_PROFILE_FRESH_AT = Date.now();
+                            console.log('[HDCP-ADAPTIVE] Bulk profile loaded:', Object.keys(d.channels).length, 'channels');
+                        }
+                    })
+                    .catch(function () {});
+            } catch (_) {}
+        };
+        // Auto-trigger on script load
+        window.refreshApeHdcpProfile();
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
     // 🛡️ ANTI-DRIFT GENERATOR-SIDE AUDIT (M1 + M2 + M5) — added 2026-04-29
     //
     //   M1 — Self-validating emission helpers:
@@ -8940,6 +8975,14 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
             for (const _t of _apeTags) lines.push(_t);
         }
         if (_apeTruth && _R_emit && typeof _R_emit.emitStreamInfFromTruth === 'function') {
+            // HDCP-Adaptive: enrich truth with channelId + profile so resolver can lookup
+            // window.APE_HDCP_PROFILE[channelId] and emit STABLE-VARIANT-ID="${chId}_${profile}"
+            if (typeof _apeTruth.channelId === 'undefined') {
+                _apeTruth.channelId = String(channel.stream_id || channel.id || channel.name || 'unknown').toLowerCase().replace(/\s+/g, '_');
+            }
+            if (typeof _apeTruth.profile === 'undefined') {
+                _apeTruth.profile = profile;
+            }
             _streamInfLine = _R_emit.emitStreamInfFromTruth(_apeTruth);
         }
         if (_streamInfLine) {
@@ -8958,7 +9001,15 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
             // Per ARTIFACT_FASE1_PROFUNDO_DESTRIPE §6 R-1.
             const _probedRange = (_probeData && (_probeData.videoRange || _probeData.video_range)) || null;
             const _videoRangePart = _probedRange ? `,VIDEO-RANGE="${_probedRange}"` : '';
-            lines.push(`#EXT-X-STREAM-INF:BANDWIDTH=${_bw796},AVERAGE-BANDWIDTH=${_avgBw},CODECS="${_codec796},${_codecAudio}",RESOLUTION=${_res796},FRAME-RATE=${_fps796}.000${_videoRangePart}`);
+            // ── HDCP-Adaptive (added 2026-05-19) — per-channel HDCP-LEVEL + STABLE-VARIANT-ID ──
+            // Default TYPE-1 (aggressive, forces hardware decoder). Override to NONE only if
+            // Conviva detected VST > 3000ms on prior TYPE-1 attempt (stored in window.APE_HDCP_PROFILE).
+            // STABLE-VARIANT-ID prevents ExoPlayer ABR yoyo across manifest reloads.
+            const _hdcpChId = String(channel.stream_id || channel.id || channel.name || 'unknown').toLowerCase().replace(/\s+/g, '_');
+            const _hdcpMap = (typeof window !== 'undefined' && window.APE_HDCP_PROFILE) ? window.APE_HDCP_PROFILE : {};
+            const _hdcpLevel = _hdcpMap[_hdcpChId] || 'TYPE-1';
+            const _stableVariantId = `${_hdcpChId}_${profile}`;
+            lines.push(`#EXT-X-STREAM-INF:BANDWIDTH=${_bw796},AVERAGE-BANDWIDTH=${_avgBw},CODECS="${_codec796},${_codecAudio}",RESOLUTION=${_res796},FRAME-RATE=${_fps796}.000${_videoRangePart},HDCP-LEVEL=${_hdcpLevel},STABLE-VARIANT-ID="${_stableVariantId}"`);
         }
         let finalUrl = options.dictatorMode ? `${primaryUrl}|User-Agent=${_ua796}&Cache-Control=no-cache&Connection=keep-alive&Referer=${typeof window !== "undefined" ? encodeURIComponent(window.location.origin) : ""}` : primaryUrl;
         if (options.dictatorMode) {

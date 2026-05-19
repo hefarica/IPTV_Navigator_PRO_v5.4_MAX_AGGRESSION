@@ -72,6 +72,17 @@
         QOE_CRITICAL: 30
     };
 
+    // ── HDCP-Adaptive Engine config (added 2026-05-19) ──
+    // Per-channel HDCP-LEVEL decision via Conviva telemetry.
+    // If VST > UMBRAL on a TYPE-1 attempt → POST incident to VPS, next zap
+    // emits HDCP-LEVEL=NONE for that channel. Fire-and-forget, NEVER blocks
+    // playback (autopista doctrine).
+    const HDCP_ADAPTIVE = {
+        UMBRAL_VST_HDCP_FAIL_MS: 3000,
+        INCIDENT_ENDPOINT_REL: '/prisma/api/channel-hdcp-incident.php',
+        INCIDENT_ENDPOINT_ABS: null  // populated by setHdcpEndpoint() if frontend on different origin
+    };
+
     // ═══════════════════════════════════════════════════════════════════════
     // SESSION LIFECYCLE (exactamente como Conviva maneja sessions)
     // ═══════════════════════════════════════════════════════════════════════
@@ -124,6 +135,10 @@
 
             // Decision log
             this.decisions = []; // [{ts, action, reason, data}]
+
+            // HDCP-Adaptive (added 2026-05-19) — populated by createSession() caller
+            this.manifestHDCPLevel = null;  // 'TYPE-1' | 'NONE' | null
+            this.hdcpIncidentReported = false;  // prevents duplicate POSTs per session
         }
 
         // ── Marca primer frame visible ──
@@ -398,21 +413,70 @@
 
         VERSION: ENGINE_VERSION,
 
-        /** Inicia una nueva sesión de monitoreo (equivalente a Conviva.createSession) */
-        createSession(channelId, channelName, profile) {
+        /** Inicia una nueva sesión de monitoreo (equivalente a Conviva.createSession)
+         *  @param {string} channelId
+         *  @param {string} channelName
+         *  @param {string} profile
+         *  @param {string=} manifestHDCPLevel  'TYPE-1' | 'NONE' — HDCP attribute emitted in EXT-X-STREAM-INF
+         */
+        createSession(channelId, channelName, profile, manifestHDCPLevel) {
             const session = new SessionMetrics(channelId, channelName, profile);
+            session.manifestHDCPLevel = manifestHDCPLevel || null;
             _state.sessions.set(session.id, session);
             _state.activeSession = session;
             _state.globalStats.totalSessions++;
-            console.log(`📊 [CONVIVA-QoE] Session created: ${session.id} — CH:${channelId} "${channelName}"`);
+            console.log(`📊 [CONVIVA-QoE] Session created: ${session.id} — CH:${channelId} "${channelName}" HDCP:${session.manifestHDCPLevel || 'none'}`);
             this._startTick();
             return session.id;
         },
 
-        /** Marca que el primer frame es visible */
+        /** Marca que el primer frame es visible.
+         *  Si VST > UMBRAL en intento TYPE-1 → POST incidente HDCP fire-and-forget. */
         reportFirstFrame(sessionId) {
             const s = this._getSession(sessionId);
-            if (s) s.markFirstFrame();
+            if (!s) return;
+            s.markFirstFrame();
+            // HDCP-Adaptive: evaluar fallback decision (autopista — never blocks)
+            if (s.vst !== null
+                && s.vst > HDCP_ADAPTIVE.UMBRAL_VST_HDCP_FAIL_MS
+                && s.manifestHDCPLevel === 'TYPE-1'
+                && !s.hdcpIncidentReported) {
+                s.hdcpIncidentReported = true;
+                this._reportHdcpIncident(s);
+            }
+        },
+
+        /** Configura URL absoluta del endpoint HDCP (cuando frontend y VPS están en orígenes distintos).
+         *  Si no se llama, se usa path relativo /prisma/api/channel-hdcp-incident.php */
+        setHdcpEndpoint(absoluteUrl) {
+            if (typeof absoluteUrl === 'string' && absoluteUrl.length > 0) {
+                HDCP_ADAPTIVE.INCIDENT_ENDPOINT_ABS = absoluteUrl;
+            }
+        },
+
+        /** @internal — POST incidente HDCP al VPS. Fire-and-forget, never throws. */
+        _reportHdcpIncident(session) {
+            const url = HDCP_ADAPTIVE.INCIDENT_ENDPOINT_ABS || HDCP_ADAPTIVE.INCIDENT_ENDPOINT_REL;
+            const payload = {
+                channel_id: String(session.channelId),
+                channel_name: String(session.channelName),
+                hdcp_level_attempted: 'TYPE-1',
+                vst_ms: session.vst,
+                decision: 'fallback_to_NONE',
+                ts: Date.now()
+            };
+            try {
+                fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload),
+                    keepalive: true,  // survives page unload
+                    mode: 'cors'
+                }).catch(() => {});  // swallow network errors (autopista)
+                console.log(`📡 [HDCP-ADAPTIVE] Incident POST CH:${session.channelId} VST=${session.vst}ms → fallback NONE`);
+            } catch (_) {
+                // never throw — autopista compliance
+            }
         },
 
         /** Marca inicio de rebuffering (círculo de carga visible) */

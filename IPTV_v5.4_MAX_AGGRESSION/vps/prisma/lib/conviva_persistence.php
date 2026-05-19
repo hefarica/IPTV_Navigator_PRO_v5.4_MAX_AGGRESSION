@@ -99,6 +99,27 @@ class ConvivaPersistence
             $this->pdo->exec("CREATE INDEX IF NOT EXISTS idx_device  ON conviva_events(device_id, timestamp_ms)");
             $this->pdo->exec("CREATE INDEX IF NOT EXISTS idx_channel ON conviva_events(channel_id, timestamp_ms)");
             $this->pdo->exec("CREATE INDEX IF NOT EXISTS idx_decision ON conviva_events(decision) WHERE decision != 'NO_ACTION'");
+            // ── HDCP-Adaptive Engine (added 2026-05-19) ──
+            // Per-channel HDCP-LEVEL decision store. Default TYPE-1 (aggressive,
+            // forces hardware decoder path). Adaptive fallback to NONE if Conviva
+            // detects VST > 3000ms in TYPE-1 attempt. Lua/PHP NEVER intervenes
+            // mid-stream — only consulted pre-zap by generator.
+            $this->pdo->exec("
+                CREATE TABLE IF NOT EXISTS channel_hdcp_profile (
+                    channel_id            TEXT PRIMARY KEY,
+                    channel_name          TEXT NOT NULL,
+                    hdcp_level            TEXT NOT NULL DEFAULT 'TYPE-1' CHECK(hdcp_level IN ('TYPE-1','NONE')),
+                    vst_avg_ms            INTEGER DEFAULT 0,
+                    vst_p95_ms            INTEGER DEFAULT 0,
+                    incident_count        INTEGER DEFAULT 0,
+                    successful_play_count INTEGER DEFAULT 0,
+                    last_incident_at      INTEGER,
+                    last_success_at       INTEGER,
+                    decision_locked       INTEGER DEFAULT 0,
+                    updated_at            INTEGER NOT NULL DEFAULT (CAST(strftime('%s','now') AS INTEGER))
+                )
+            ");
+            $this->pdo->exec("CREATE INDEX IF NOT EXISTS idx_hdcp_updated ON channel_hdcp_profile(updated_at)");
             return true;
         } catch (Throwable $e) {
             error_log('[conviva-persistence] init failed: ' . $e->getMessage());
@@ -268,6 +289,162 @@ class ConvivaPersistence
             return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
         } catch (Throwable $e) {
             error_log('[conviva-persistence] readRecent failed: ' . $e->getMessage());
+            return [];
+        }
+    }
+
+    // ═════════════════════════════════════════════════════════════════════════
+    // HDCP-Adaptive Engine (2026-05-19)
+    // ═════════════════════════════════════════════════════════════════════════
+
+    /**
+     * Records a HDCP failure incident for a channel and flips its profile to NONE
+     * (idempotent — UPSERT pattern). Called when Conviva detects VST > 3000ms in
+     * a TYPE-1 attempt. Silent fail-safe.
+     *
+     * @param string $channelId      Stable channel identifier (Xtream stream_id or hash)
+     * @param string $channelName    Human-readable channel name (for analytics)
+     * @param int    $vstMs          Measured VST in milliseconds for this incident
+     * @return bool                  true on success, false on any error
+     */
+    public function recordHdcpIncident(string $channelId, string $channelName, int $vstMs): bool
+    {
+        if ($this->pdo === null && !$this->init()) {
+            return false;
+        }
+        try {
+            // UPSERT: insert with hdcp_level='NONE' or update existing row, increment counter
+            $stmt = $this->pdo->prepare("
+                INSERT INTO channel_hdcp_profile
+                  (channel_id, channel_name, hdcp_level, vst_avg_ms, vst_p95_ms,
+                   incident_count, last_incident_at, updated_at)
+                VALUES
+                  (:channel_id, :channel_name, 'NONE', :vst_ms, :vst_ms,
+                   1, :now, :now)
+                ON CONFLICT(channel_id) DO UPDATE SET
+                  hdcp_level       = 'NONE',
+                  channel_name     = excluded.channel_name,
+                  vst_avg_ms       = (channel_hdcp_profile.vst_avg_ms * channel_hdcp_profile.incident_count + :vst_ms)
+                                     / (channel_hdcp_profile.incident_count + 1),
+                  vst_p95_ms       = MAX(channel_hdcp_profile.vst_p95_ms, :vst_ms),
+                  incident_count   = channel_hdcp_profile.incident_count + 1,
+                  last_incident_at = :now,
+                  updated_at       = :now
+                WHERE channel_hdcp_profile.decision_locked = 0
+            ");
+            $now = time();
+            $stmt->execute([
+                ':channel_id'   => $channelId,
+                ':channel_name' => $channelName,
+                ':vst_ms'       => $vstMs,
+                ':now'          => $now,
+            ]);
+            return true;
+        } catch (Throwable $e) {
+            error_log('[conviva-persistence] recordHdcpIncident failed: ' . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Records a successful play (VST ≤ threshold) — increments successful_play_count
+     * but does NOT flip back to TYPE-1 automatically (decision_locked=0 = soft state).
+     * Used for analytics/observability only. Silent fail-safe.
+     *
+     * @param string $channelId
+     * @param int    $vstMs
+     * @return bool
+     */
+    public function recordHdcpSuccess(string $channelId, int $vstMs): bool
+    {
+        if ($this->pdo === null && !$this->init()) {
+            return false;
+        }
+        try {
+            $stmt = $this->pdo->prepare("
+                UPDATE channel_hdcp_profile SET
+                  successful_play_count = successful_play_count + 1,
+                  vst_avg_ms = (vst_avg_ms * successful_play_count + :vst_ms) / (successful_play_count + 1),
+                  last_success_at = :now,
+                  updated_at = :now
+                WHERE channel_id = :channel_id
+            ");
+            $stmt->execute([
+                ':channel_id' => $channelId,
+                ':vst_ms'     => $vstMs,
+                ':now'        => time(),
+            ]);
+            return true;
+        } catch (Throwable $e) {
+            error_log('[conviva-persistence] recordHdcpSuccess failed: ' . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Returns the entire HDCP profile map as a hash {channel_id => hdcp_level}.
+     * Used by generator at list-build time to pre-load HDCP decisions.
+     * Channels NOT in this map use the default TYPE-1 (aggressive).
+     * Silent fail-safe: returns empty array on error.
+     *
+     * @return array<string,string>  e.g. ['1312008' => 'NONE', '999' => 'TYPE-1']
+     */
+    public function getHdcpProfileBulk(): array
+    {
+        if ($this->pdo === null && !$this->init()) {
+            return [];
+        }
+        try {
+            $stmt = $this->pdo->query("SELECT channel_id, hdcp_level FROM channel_hdcp_profile");
+            $rows = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+            $out = [];
+            foreach ($rows as $r) {
+                $out[$r['channel_id']] = $r['hdcp_level'];
+            }
+            return $out;
+        } catch (Throwable $e) {
+            error_log('[conviva-persistence] getHdcpProfileBulk failed: ' . $e->getMessage());
+            return [];
+        }
+    }
+
+    /**
+     * Returns HDCP-LEVEL for a single channel, or null if no decision stored
+     * (caller should use default 'TYPE-1' aggressive in that case).
+     *
+     * @param string $channelId
+     * @return ?string  'TYPE-1' | 'NONE' | null
+     */
+    public function getHdcpForChannel(string $channelId): ?string
+    {
+        if ($this->pdo === null && !$this->init()) {
+            return null;
+        }
+        try {
+            $stmt = $this->pdo->prepare("SELECT hdcp_level FROM channel_hdcp_profile WHERE channel_id = :cid");
+            $stmt->execute([':cid' => $channelId]);
+            $row = $stmt->fetch(PDO::FETCH_ASSOC);
+            return $row ? (string)$row['hdcp_level'] : null;
+        } catch (Throwable $e) {
+            error_log('[conviva-persistence] getHdcpForChannel failed: ' . $e->getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * Returns full HDCP profile rows for dashboard/analytics. Includes stats.
+     * @return array<int,array>
+     */
+    public function readHdcpProfilesAll(): array
+    {
+        if ($this->pdo === null && !$this->init()) {
+            return [];
+        }
+        try {
+            $stmt = $this->pdo->query("SELECT * FROM channel_hdcp_profile ORDER BY updated_at DESC");
+            return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+        } catch (Throwable $e) {
+            error_log('[conviva-persistence] readHdcpProfilesAll failed: ' . $e->getMessage());
             return [];
         }
     }

@@ -140,10 +140,45 @@ codecVerified=false  → #EXT-X-APE-CODEC-PREFERRED:hvc1.2.4.L153.B0
 ### PROHIBIDO (hardcoded eliminado)
 
 ```
-HDCP-LEVEL="TYPE-1"              ← ELIMINADO (rompe players que evalúan HDCP)
-SUPPLEMENTAL-CODECS="lcev.1.1.1" ← ELIMINADO (LCEVC inventado, no real)
-VIDEO-RANGE sin probe             ← ELIMINADO (HDR falso confunde decoders)
+HDCP-LEVEL="TYPE-1" hardcoded universal      ← ELIMINADO (rompe HDMI HDCP 1.4 sin recovery)
+SUPPLEMENTAL-CODECS="lcev.1.1.1"             ← ELIMINADO (LCEVC inventado, no real)
+VIDEO-RANGE sin probe                         ← ELIMINADO (HDR falso confunde decoders)
 ```
+
+### HDCP-Adaptive Engine (2026-05-19) — reemplaza la prohibición universal
+
+`HDCP-LEVEL=TYPE-1` ahora se emite **por defecto agresivo** en cada `EXT-X-STREAM-INF`,
+con override per-canal a `NONE` automático cuando Conviva detecta `VST > 3000ms`
+en un intento `TYPE-1`. Pipeline:
+
+```
+Generator → consulta window.APE_HDCP_PROFILE[channel_id] (pre-fetched bulk)
+  └→ emite HDCP-LEVEL=<cache[chId] || 'TYPE-1'> + STABLE-VARIANT-ID="<chId>_<profile>"
+                                                         ↓
+Player intenta reproducir + Conviva engine mide VST
+  ├→ VST ≤ 3000ms                → no acción (compromiso "no frenar")
+  └→ VST > 3000ms && HDCP=TYPE-1  → POST fire-and-forget /prisma/api/channel-hdcp-incident.php
+                                                         ↓
+VPS SQLite (channel_hdcp_profile) → INSERT/UPDATE hdcp_level='NONE' WHERE channel_id=?
+                                                         ↓
+Próximo zap → bulk fetch refleja NONE → manifest emite HDCP-LEVEL=NONE para ese canal
+```
+
+**Doctrina de no-interferencia:**
+
+- Lua/PHP NUNCA interviene mid-stream — solo recopila telemetría post-zap
+- POST incident es `fetch keepalive` async — si el VPS está down, frontend no se entera
+- Si el bulk fetch falla → cache vacío → todos los canales emiten `TYPE-1` default (agresivo)
+- `STABLE-VARIANT-ID="<chId>_<profile>"` evita ABR yoyo entre recargas de manifest
+
+Componentes:
+
+- `vps/prisma/lib/conviva_persistence.php` (tabla `channel_hdcp_profile` + 4 métodos)
+- `vps/prisma/api/channel-hdcp-incident.php` (POST endpoint)
+- `vps/prisma/api/channel-hdcp-bulk.php` (GET endpoint)
+- `frontend/js/conviva-qoe-engine.js` (hook en `reportFirstFrame`)
+- `frontend/js/ape-v9/m3u8-typed-arrays-ultimate.js` (bulk fetch + emit)
+- `frontend/js/ape-v9/ape-fallback-resolver.js` (`emitStreamInfFromTruth` HDCP-aware)
 
 ---
 

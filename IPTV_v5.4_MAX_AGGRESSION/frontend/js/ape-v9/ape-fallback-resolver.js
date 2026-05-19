@@ -503,17 +503,31 @@
             parts.push(`SUPPLEMENTAL-CODECS="${truth.supplementalCodecs}"`);
         }
 
-        // HDCP-LEVEL: NUNCA hardcoded. Solo si truth lo trae verificado del probe.
+        // HDCP-LEVEL emission strategy (2026-05-19 — HDCP-Adaptive Engine):
+        //   1. If probe verified HDCP upstream → use that (highest priority, honest)
+        //   2. Else if HDCP-Adaptive Engine has a per-channel decision (window.APE_HDCP_PROFILE
+        //      pre-loaded from /prisma/api/channel-hdcp-bulk.php) → use it
+        //   3. Else → default 'TYPE-1' (aggressive, forces hardware decoder path)
+        // Conviva engine (frontend/js/conviva-qoe-engine.js) flips decision to 'NONE'
+        // via POST /prisma/api/channel-hdcp-incident.php if VST > 3000ms on TYPE-1 attempt.
+        let _hdcpLevelEmitted = null;
         if (truth.hdcpLevelVerified && truth.hdcpLevel) {
-            parts.push(`HDCP-LEVEL=${truth.hdcpLevel}`);
+            _hdcpLevelEmitted = truth.hdcpLevel;
+        } else if (truth.channelId) {
+            const _hdcpMap = (typeof window !== 'undefined' && window.APE_HDCP_PROFILE) ? window.APE_HDCP_PROFILE : {};
+            _hdcpLevelEmitted = _hdcpMap[truth.channelId] || 'TYPE-1';
+        }
+        if (_hdcpLevelEmitted) {
+            parts.push(`HDCP-LEVEL=${_hdcpLevelEmitted}`);
         }
 
         // [G-3 FIX 2026-05-19] STABLE-VARIANT-ID — RFC 8216bis §4.4.6.2.
-        // Derived from truth fields already present (resolution + primary codec family).
-        // Players use it to remember user variant choice across reloads. Stable across
-        // probes of the same channel + profile combination.
+        // Prevents ExoPlayer ABR yoyo across manifest reloads. Uses channelId + profile
+        // when available (best uniqueness); falls back to resolution + codec family if not.
         const _codecFamily = String(truth.codec || '').split('.')[0];   // hvc1 / av01 / avc1 / etc.
-        if (truth.resolution && _codecFamily) {
+        if (truth.channelId && truth.profile) {
+            parts.push(`STABLE-VARIANT-ID="${truth.channelId}_${truth.profile}"`);
+        } else if (truth.resolution && _codecFamily) {
             parts.push(`STABLE-VARIANT-ID="${truth.resolution}-${_codecFamily}"`);
         }
 
