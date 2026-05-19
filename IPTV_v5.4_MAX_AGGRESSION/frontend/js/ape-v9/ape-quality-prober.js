@@ -178,7 +178,12 @@
             hasStreamInf: /#EXT-X-STREAM-INF:/i.test(text),
             hasCodecs: /CODECS=/i.test(text),
             hasVideoRange: /VIDEO-RANGE=/i.test(text),
-            hasSupplementalCodecs: /SUPPLEMENTAL-CODECS=/i.test(text)
+            hasSupplementalCodecs: /SUPPLEMENTAL-CODECS=/i.test(text),
+            // [2026-05-19] CICP fields per RFC 8216bis §4.4.6.5 — upstream evidence
+            // gates Per-channel resolver precision (vs synthesizer safe defaults 9/16/9).
+            hasColorPrimaries:          /COLOR-PRIMARIES=/i.test(text),
+            hasTransferCharacteristics: /TRANSFER-CHARACTERISTICS=/i.test(text),
+            hasMatrixCoefficients:      /MATRIX-COEFFICIENTS=/i.test(text)
         };
     }
 
@@ -186,6 +191,35 @@
         // SUPPLEMENTAL-CODECS="dvh1.08.06" - extract value if present
         const match = text.match(/SUPPLEMENTAL-CODECS="([^"]+)"/i);
         return match ? match[1] : null;
+    }
+
+    // [2026-05-19] Extract CICP fields from upstream master manifest.
+    // Per RFC 8216bis §4.4.6.5, COLOR-PRIMARIES / TRANSFER-CHARACTERISTICS /
+    // MATRIX-COEFFICIENTS attributes MUST be unsigned integer CICP codes
+    // (ISO/IEC 23001-8). Some providers emit them as quoted strings — accept
+    // both forms; resolver expects integer downstream.
+    function extractCicpField(text, attrName) {
+        // Try both quoted ("9") and unquoted (=9) forms within any STREAM-INF line.
+        const reUnquoted = new RegExp('\\b' + attrName + '=(\\d+)\\b', 'i');
+        const reQuoted   = new RegExp('\\b' + attrName + '="([^"]+)"', 'i');
+        const mU = text.match(reUnquoted);
+        if (mU) return parseInt(mU[1], 10);
+        const mQ = text.match(reQuoted);
+        if (mQ) {
+            // String form — try parseInt first (handles "9"), then fall back to null
+            // (resolver normalizes via its own probe pipeline if needed).
+            const asInt = parseInt(mQ[1], 10);
+            return Number.isFinite(asInt) ? asInt : null;
+        }
+        return null;
+    }
+
+    function extractCicp(text) {
+        return {
+            colorPrimaries:          extractCicpField(text, 'COLOR-PRIMARIES'),
+            transferCharacteristics: extractCicpField(text, 'TRANSFER-CHARACTERISTICS'),
+            matrixCoefficients:      extractCicpField(text, 'MATRIX-COEFFICIENTS')
+        };
     }
 
     function extractFromMaster(manifest, rawText) {
@@ -225,6 +259,13 @@
         const evidence = extractEvidence(text);
         const supplementalCodecs = extractSupplementalCodecs(text);
 
+        // [2026-05-19] Per-channel CICP from upstream master (RFC 8216bis §4.4.6.5).
+        // Resolver consumes these via probeData.colorPrimaries/transferCharacteristics/
+        // matrixCoefficients (commit 36aa057). Null → resolver falls back to safe
+        // defaults 9/16/9 (or 9/18/9 for HLG). Integer presence → exact CICP from
+        // upstream, no inference. Closes Phase 1.PROFUNDO-B recommendation #6.
+        const cicp = extractCicp(text);
+
         return {
             bandwidth: best.BANDWIDTH || 0,
             avgBandwidth: best['AVERAGE-BANDWIDTH'] || Math.round((best.BANDWIDTH || 0) * 0.85),
@@ -235,6 +276,10 @@
             frameRate: best['FRAME-RATE'] || 0,
             videoRange: best['VIDEO-RANGE'] || '',
             hdcpLevel: best['HDCP-LEVEL'] || '',  // observado, no default
+            // CICP — null when absent from upstream → resolver applies safe defaults.
+            colorPrimaries:          cicp.colorPrimaries,
+            transferCharacteristics: cicp.transferCharacteristics,
+            matrixCoefficients:      cicp.matrixCoefficients,
             supplementalCodecs: supplementalCodecs,  // C8: solo si presente en master real
             container: container,
             evidence: evidence,
@@ -267,6 +312,12 @@
             resolution: '',
             frameRate: 0,
             videoRange: '',
+            hdcpLevel: '',
+            // CICP not present in media playlists — null preserves resolver
+            // honest-rules gate (null+SDR → no false HDR emit).
+            colorPrimaries: null,
+            transferCharacteristics: null,
+            matrixCoefficients: null,
             supplementalCodecs: null,
             container: container,  // C8: definitive from media playlist (segments visible)
             evidence: evidence,
