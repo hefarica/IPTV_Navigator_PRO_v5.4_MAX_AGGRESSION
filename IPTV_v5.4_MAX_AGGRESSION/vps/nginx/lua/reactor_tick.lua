@@ -11,8 +11,15 @@
 -- AUTOPISTA COMPLIANT: zero blocking, pure passthrough computation.
 -- ═══════════════════════════════════════════════════════════════════════
 
-local FLOOR_4K_BPS = 13000000          -- 13 Mbps (user mandate)
-local DOUBLE_REQUEST = FLOOR_4K_BPS * 2 -- 26 Mbps (when below floor)
+-- Cargar lab_config
+local lab_floor
+local lab_ok = pcall(function()
+    local lab = require "lab_config"
+    lab_floor = lab.floor_lock()
+end)
+
+local FLOOR_4K_BPS = (lab_floor and tonumber(lab_floor.floor_lock_min_bandwidth_p0)) or 15000000          -- 15 Mbps (UHDX floor)
+local DOUBLE_REQUEST = FLOOR_4K_BPS * 2 -- 30 Mbps (when below floor)
 
 local function reactor_tick(premature)
     if premature then return end
@@ -45,4 +52,9 @@ if ngx.worker.id() == 0 then
     if not ok then
         ngx.log(ngx.ERR, "reactor_tick: timer.every failed: ", err)
     end
+
+    -- ═══ QoE Flush Worker chain (added 2026-05-19) ═══
+    -- Runs flush timer periodically to offload logs to PHP/SQLite
+    pcall(dofile, "/etc/nginx/lua/qoe_flush_worker.lua")
 end
+

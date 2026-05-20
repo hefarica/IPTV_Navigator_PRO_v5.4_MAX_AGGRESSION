@@ -19,7 +19,7 @@
 local FLUSH_INTERVAL_S = 60
 local FLUSH_URL_PATH = "/prisma/api/qoe-flush.php"
 local FLUSH_HOST = "127.0.0.1"
-local FLUSH_PORT = 80
+local FLUSH_PORT = 8099
 
 -- Only the first worker runs the flush timer (avoid N workers × N flushes)
 if ngx.worker.id() ~= 0 then return end
