@@ -13,8 +13,8 @@ const path = require('path');
 
 const PORT = 7777;
 const ONN = '192.168.10.28:5555';
-const GUARDIAN_PATH = '/data/local/tmp/ape-ram-guardian.sh';
-const GUARDIAN_LOCK = '/data/local/tmp/ape-ram-guardian.lock';
+const GUARDIAN_PATH = '/data/local/tmp/ape-sentinel.sh';
+const GUARDIAN_LOCK = '/data/local/tmp/ape-sentinel.lock';
 const MANIFEST_CACHE = '/data/local/tmp/quality-manifest.json';
 const MANIFEST_HASH = '/data/local/tmp/quality-manifest.hash';
 

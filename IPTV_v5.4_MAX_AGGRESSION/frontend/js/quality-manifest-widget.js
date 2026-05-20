@@ -15,6 +15,9 @@
   const V2RAY_API = `${BASE_URL}/prisma/api/prisma-v2ray-config.php`;
   const POLL_MS = 30_000;
 
+  // Production decoupling: set to false to prevent local DOS command prompt popups
+  const APE_USE_LOCAL_BRIDGE_DEBUG = false;
+
   let API = VPS_API; // Will be overridden if local bridge is detected
   let apiMode = 'vps'; // 'local' or 'vps'
 
@@ -272,10 +275,12 @@
             </div>
             <div style="font-size:0.62rem;color:#94a3b8;display:flex;align-items:center;gap:6px">
               ONN 4K · ${total} Settings · Modo:
+              ${APE_USE_LOCAL_BRIDGE_DEBUG ? `
               <select id="qm-mode-selector" style="background:#0f172a;color:#e2e8f0;border:1px solid rgba(148,163,184,0.3);font-size:0.62rem;padding:1px 4px;border-radius:3px;cursor:pointer">
                 <option value="vps" ${apiMode === 'vps' ? 'selected' : ''}>VPS (Server-side)</option>
                 <option value="local" ${apiMode === 'local' ? 'selected' : ''}>Local Bridge (ADB)</option>
               </select>
+              ` : `<span style="color:#a855f7;font-weight:600">VPS (Server-side)</span>`}
             </div>
           </div>
         </div>
@@ -894,7 +899,10 @@
     if (!host) return;
 
     // Load connection mode from localStorage or default to vps
-    const savedMode = localStorage.getItem('qm-api-mode') || 'vps';
+    let savedMode = localStorage.getItem('qm-api-mode') || 'vps';
+    if (!APE_USE_LOCAL_BRIDGE_DEBUG) {
+      savedMode = 'vps';
+    }
     apiMode = savedMode;
     API = (apiMode === 'local') ? LOCAL_API : VPS_API;
 
@@ -987,13 +995,16 @@
       </div>`;
 
     // Load connection mode from localStorage or default to vps
-    const savedMode = localStorage.getItem('qm-api-mode') || 'vps';
+    let savedMode = localStorage.getItem('qm-api-mode') || 'vps';
+    if (!APE_USE_LOCAL_BRIDGE_DEBUG) {
+      savedMode = 'vps';
+    }
     apiMode = savedMode;
     API = (apiMode === 'local') ? LOCAL_API : VPS_API;
 
     // Do NOT automatically query localhost:7777 to avoid opening DOS window / running local node bridge
-    // unless explicitly saved as 'local'
-    if (apiMode === 'local') {
+    // unless explicitly saved as 'local' and debug is enabled
+    if (APE_USE_LOCAL_BRIDGE_DEBUG && apiMode === 'local') {
       try {
         const r = await fetch(`${LOCAL_API}?action=guardian_status&t=${Date.now()}`, { cache: 'no-store', signal: AbortSignal.timeout(3000) });
         if (r.ok) {

@@ -17,8 +17,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') { http_response_code(204); exit; }
 
 $ONN_IP = '192.168.10.28:5555';
 $ADB = '/usr/bin/adb';
-$GUARDIAN_PATH = '/data/local/tmp/ape-ram-guardian.sh';
-$GUARDIAN_LOCK = '/data/local/tmp/ape-ram-guardian.lock';
+$GUARDIAN_PATH = '/data/local/tmp/ape-sentinel.sh';
+$GUARDIAN_LOCK = '/data/local/tmp/ape-sentinel.lock';
+$ENABLE_VPS_ADB = false; // Decouple VPS ADB in pure Pull Mode
 
 // ── ADB helpers ──────────────────────────────────────────────────────────
 function adb_cmd($cmd, $timeout = 5) {
@@ -29,7 +30,10 @@ function adb_cmd($cmd, $timeout = 5) {
 }
 
 function adb_ensure_connected() {
-    global $ONN_IP, $ADB;
+    global $ONN_IP, $ADB, $ENABLE_VPS_ADB;
+    if (!$ENABLE_VPS_ADB) {
+        return false;
+    }
     $cache_file = '/tmp/adb_connection_status.json';
     $now = time();
     
@@ -147,6 +151,10 @@ if ($action === 'save_manifest') {
     @chmod($pending_file, 0644);
 
     $manifest_hash = file_exists($MANIFEST_FILE) ? md5_file($MANIFEST_FILE) : "";
+    if ($manifest_hash) {
+        file_put_contents('/var/www/html/prisma/quality-manifest.hash', $manifest_hash);
+        chmod('/var/www/html/prisma/quality-manifest.hash', 0644);
+    }
 
     echo json_encode([
         'ok' => ($written !== false),
@@ -155,8 +163,35 @@ if ($action === 'save_manifest') {
         'ts' => date('c'),
         'settings_count' => count($body['manifest']),
         'manifest_hash' => $manifest_hash,
-        'status' => 'queued',
-        'guardian_mode' => 'queued'
+        'queued' => true,
+        'manifest_ready_for_pull' => true,
+        'guardian_mode' => 'sentinel_pull',
+        'source' => 'vps_api'
+    ]);
+    exit;
+}
+
+if ($action === 'manifest_hash') {
+    $pending_file = '/var/www/html/prisma/quality-manifest.pending';
+    $queued = file_exists($pending_file);
+    $manifest_hash = '';
+    
+    // Check if hash file exists, otherwise generate in-place
+    $hash_file = '/var/www/html/prisma/quality-manifest.hash';
+    if (file_exists($hash_file)) {
+        $manifest_hash = trim(file_get_contents($hash_file));
+    } elseif (file_exists($MANIFEST_FILE)) {
+        $manifest_hash = md5_file($MANIFEST_FILE);
+        file_put_contents($hash_file, $manifest_hash);
+        chmod($hash_file, 0644);
+    }
+    
+    echo json_encode([
+        'ok' => true,
+        'manifest_hash' => $manifest_hash,
+        'queued' => $queued,
+        'ts' => date('c'),
+        'guardian_mode' => 'sentinel_pull'
     ]);
     exit;
 }
@@ -238,6 +273,17 @@ if ($action === 'guardian_heartbeat') {
             'ip' => $_SERVER['REMOTE_ADDR'] ?? 'unknown',
         ];
         file_put_contents($HEARTBEAT_FILE, json_encode($heartbeat, JSON_PRETTY_PRINT));
+
+        // Closed-loop control: delete pending trigger file if device confirms it applied the current manifest hash
+        $incoming_hash = $body['manifest_hash'] ?? null;
+        $current_hash = file_exists($MANIFEST_FILE) ? md5_file($MANIFEST_FILE) : '';
+        $pending_file = '/var/www/html/prisma/quality-manifest.pending';
+        if ($incoming_hash && $current_hash && $incoming_hash === $current_hash) {
+            if (file_exists($pending_file)) {
+                @unlink($pending_file);
+            }
+        }
+
         echo json_encode(['ok' => true, 'received' => true]);
     } else {
         // Dynamically verify guardian status via ADB to update heartbeat file
@@ -288,21 +334,58 @@ if ($action === 'guardian_heartbeat') {
     exit;
 }
 
-if (!adb_ensure_connected()) {
-    echo json_encode(['ok' => false, 'error' => 'ADB unreachable', 'device' => $ONN_IP]);
+if ($action === 'sentinel_trigger') {
+    $routine = $_GET['routine'] ?? $_POST['routine'] ?? '';
+    $allowed = ['vps_recovery', 'dns_recover', 'xray_health', 'wg_failover', 'cache_warm', 'qoe_snapshot', 'route_diagnose'];
+    if (!in_array($routine, $allowed, true)) {
+        echo json_encode(['ok' => false, 'error' => 'Invalid routine name']);
+        exit;
+    }
+    
+    $script = "/opt/netshield/scripts/sentinel-{$routine}.sh";
+    if (!is_file($script)) {
+        echo json_encode(['ok' => false, 'error' => "Script not found on VPS: {$script}"]);
+        exit;
+    }
+    
+    // Non-blocking execution using sudo
+    $cmd = "sudo " . escapeshellarg($script) . " > /dev/null 2>&1 &";
+    exec($cmd);
+    
+    echo json_encode([
+        'ok' => true,
+        'routine' => $routine,
+        'executed' => true,
+        'ts' => date('c')
+    ]);
     exit;
 }
 
-switch ($action) {
-
-case 'read_all':
+if ($action === 'read_all') {
     $results = [];
     $groups = [];
+    $has_adb = adb_ensure_connected();
+    
+    $vps_manifest = [];
+    if (!$has_adb && file_exists($MANIFEST_FILE)) {
+        $json = json_decode(@file_get_contents($MANIFEST_FILE), true);
+        if ($json && isset($json['manifest'])) {
+            foreach ($json['manifest'] as $item) {
+                $vps_manifest[$item['ns'] . '.' . $item['key']] = $item['value'];
+            }
+        }
+    }
+
     foreach ($MANIFEST as $entry) {
         [$ns, $key, $expected, $group, $label, $type, $options] = $entry;
-        $current = adb_cmd("settings get {$ns} {$key}");
-        if ($current === '' || $current === 'null') $current = null;
-        $synced = ($current === $expected);
+        if ($has_adb) {
+            $current = adb_cmd("settings get {$ns} {$key}");
+            if ($current === '' || $current === 'null') $current = null;
+            $synced = ($current === $expected);
+        } else {
+            $current = $vps_manifest[$ns . '.' . $key] ?? $expected;
+            $synced = true;
+        }
         $results[] = [
             'ns' => $ns, 'key' => $key, 'current' => $current,
             'expected' => $expected, 'synced' => $synced,
@@ -312,12 +395,26 @@ case 'read_all':
         if (!isset($groups[$group])) $groups[$group] = 0;
         if (!$synced) $groups[$group]++;
     }
-    // Guardian status
-    $pid = adb_cmd("cat {$GUARDIAN_LOCK}");
+    // Guardian status (fast check via heartbeat file first)
+    $pid = null;
     $alive = false;
-    if ($pid && is_numeric(trim($pid))) {
-        $check = adb_cmd("kill -0 " . trim($pid) . " 2>/dev/null && echo YES || echo NO");
-        $alive = (trim($check) === 'YES');
+    $HEARTBEAT_FILE = '/var/www/html/prisma/guardian-heartbeat.json';
+    if (file_exists($HEARTBEAT_FILE)) {
+        $hb = json_decode(@file_get_contents($HEARTBEAT_FILE), true);
+        if ($hb && isset($hb['epoch'])) {
+            $age = time() - $hb['epoch'];
+            if ($age < 60 && ($hb['alive'] ?? false)) {
+                $pid = $hb['pid'] ?? null;
+                $alive = true;
+            }
+        }
+    }
+    if (!$alive && $has_adb) {
+        $pid = adb_cmd("cat {$GUARDIAN_LOCK}");
+        if ($pid && is_numeric(trim($pid))) {
+            $check = adb_cmd("kill -0 " . trim($pid) . " 2>/dev/null && echo YES || echo NO");
+            $alive = (trim($check) === 'YES');
+        }
     }
     $pending_file = '/var/www/html/prisma/quality-manifest.pending';
     $queued = file_exists($pending_file);
@@ -328,16 +425,35 @@ case 'read_all':
         'queued' => $queued,
         'worker_pending' => $queued
     ]);
-    break;
+    exit;
+}
 
-case 'guardian_status':
-    $pid = adb_cmd("cat {$GUARDIAN_LOCK}");
+if ($action === 'guardian_status') {
+    $pid = null;
     $alive = false;
-    if ($pid && is_numeric(trim($pid))) {
-        $check = adb_cmd("kill -0 " . trim($pid) . " 2>/dev/null && echo YES || echo NO");
-        $alive = (trim($check) === 'YES');
+    $HEARTBEAT_FILE = '/var/www/html/prisma/guardian-heartbeat.json';
+    if (file_exists($HEARTBEAT_FILE)) {
+        $hb = json_decode(@file_get_contents($HEARTBEAT_FILE), true);
+        if ($hb && isset($hb['epoch'])) {
+            $age = time() - $hb['epoch'];
+            if ($age < 60 && ($hb['alive'] ?? false)) {
+                $pid = $hb['pid'] ?? null;
+                $alive = true;
+            }
+        }
     }
-    $log = adb_cmd("tail -5 /data/local/tmp/ape-ram-guardian.log");
+    $has_adb = adb_ensure_connected();
+    if (!$alive && $has_adb) {
+        $pid = adb_cmd("cat {$GUARDIAN_LOCK}");
+        if ($pid && is_numeric(trim($pid))) {
+            $check = adb_cmd("kill -0 " . trim($pid) . " 2>/dev/null && echo YES || echo NO");
+            $alive = (trim($check) === 'YES');
+        }
+    }
+    $log = '';
+    if ($has_adb) {
+        $log = adb_cmd("tail -5 /data/local/tmp/ape-sentinel.log");
+    }
     $pending_file = '/var/www/html/prisma/quality-manifest.pending';
     $queued = file_exists($pending_file);
     echo json_encode([
@@ -348,7 +464,15 @@ case 'guardian_status':
         'queued' => $queued,
         'worker_pending' => $queued
     ]);
-    break;
+    exit;
+}
+
+if (!adb_ensure_connected()) {
+    echo json_encode(['ok' => false, 'error' => 'ADB unreachable', 'device' => $ONN_IP]);
+    exit;
+}
+
+switch ($action) {
 
 case 'set':
     $key = $_GET['key'] ?? $_POST['key'] ?? '';
@@ -439,5 +563,5 @@ case 'restart_guardian':
     break;
 
 default:
-    echo json_encode(['ok' => false, 'error' => 'Unknown action', 'actions' => ['read_all','guardian_status','set','restart_guardian','stop_guardian','save_manifest','get_manifest']]);
+    echo json_encode(['ok' => false, 'error' => 'Unknown action', 'actions' => ['read_all','guardian_status','set','restart_guardian','stop_guardian','save_manifest','get_manifest','sentinel_trigger']]);
 }
