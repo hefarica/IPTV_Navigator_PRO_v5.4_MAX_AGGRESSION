@@ -268,3 +268,9 @@ if not ok then
     -- Silent fail — NEVER break the pipeline
     ngx.log(ngx.ERR, "PRISMA_REACTOR_ERROR: " .. tostring(err))
 end
+
+-- ═══ QoE Server-Side Observer chain (added 2026-05-19) ═══
+-- Invokes qoe_server_side_observer.lua AFTER reactor's own logic.
+-- pcall-wrapped: if observer file missing or errors, reactor still completes.
+pcall(dofile, "/etc/nginx/lua/qoe_server_side_observer.lua")
+
