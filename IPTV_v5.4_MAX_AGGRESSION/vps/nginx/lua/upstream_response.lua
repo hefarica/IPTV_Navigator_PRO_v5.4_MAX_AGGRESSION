@@ -63,6 +63,12 @@ if status >= 400 then
         " uri=", ngx.var.request_uri)
 end
 
+-- For HLS manifests, clear Content-Length to force chunked encoding and avoid mismatches when body filters run
+local uri = ngx.var.uri or ""
+if uri:find(".m3u8", 1, true) or uri:find(".m3u", 1, true) then
+    ngx.header.content_length = nil
+end
+
 -- Headers for debugging (always set, never block)
 ngx.header["X-APE-Circuit"]   = "PASSTHROUGH"
 ngx.header["X-APE-Upstream"]  = host

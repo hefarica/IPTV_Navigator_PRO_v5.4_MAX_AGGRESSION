@@ -1,10 +1,25 @@
 {
   "_comment": "APE v2rayNG Client Config — IPTV Streaming Supremacy",
-  "_version": "1.0.0",
-  "_updated": "2026-05-13",
+  "_version": "1.0.1",
+  "_updated": "2026-05-20",
 
   "dns": {
     "servers": [
+      {
+        "address": "178.156.147.234",
+        "port": 53,
+        "domains": [
+          "domain:x1megaott.online",
+          "domain:tivigo.cc",
+          "domain:tivi-ott.net",
+          "domain:ky-tv.cc",
+          "domain:zivovrix.cc",
+          "domain:rynivorn.cc",
+          "domain:linovrex.cc",
+          "domain:w12s.cc",
+          "domain:qiravion.cc"
+        ]
+      },
       {
         "address": "1.1.1.1",
         "port": 53,
@@ -152,13 +167,14 @@
 
   "_ape_streaming_notes": {
     "mtu": "Set v2rayNG MTU to 1350 in app settings to avoid TLS fragmentation",
-    "per_app_proxy": "Configure v2rayNG settings to 'Only proxy selected apps' and select OTT Navigator & TiviMate. Netflix, YouTube, Prime, and Disney+ MUST bypass the VPN at the OS level.",
-    "dns_through_proxy": "MUST be enabled in v2rayNG to prevent DNS leaks",
-    "always_on_vpn": "Enforced dynamically by APE Smart VPN Guardian daemon",
+    "per_app_proxy": "Use Bypass mode: proxy ONLY ott navigator + needed apps",
+    "dns_through_proxy": "MUST be enabled to prevent DNS leaks",
+    "always_on_vpn": "Enforced by guardian daemon every 15s",
     "lockdown": "All traffic blocked if VPN drops — forces auto-reconnect",
     "keep_alive": "tcpKeepAliveInterval=15s prevents idle disconnect",
     "mux_disabled": "MUX causes buffering in HLS/DASH streaming — NEVER enable",
     "tcp_fast_open": "Reduces connection setup by 1 RTT",
-    "tcp_no_delay": "Nagle off — low latency for manifest polling"
+    "tcp_no_delay": "Nagle off — low latency for manifest polling",
+    "socket_buffers": "4MB sndbuf/rcvbuf added to prevent BDP bottlenecks under ISP packet loss"
   }
 }

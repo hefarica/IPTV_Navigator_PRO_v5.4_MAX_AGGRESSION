@@ -16,6 +16,14 @@ if not reactor then
     return  -- No shared dict, proceed with defaults
 end
 
+-- ═══ LAB-SYNC v2.0: Read SSOT config ═══
+local lab_floor, lab_boost
+local lab_ok = pcall(function()
+    local lab = require "lab_config"
+    lab_floor = lab.floor_lock()
+    lab_boost = lab.profile_boost()
+end)
+
 -- ═══ READ TELESCOPE STATE ════════════════════════════════════════════
 local ewma_bps       = tonumber(reactor:get("bw_ewma_bps")) or 0
 local ttfb_ewma_ms   = tonumber(reactor:get("tl_ttfb_ewma_ms")) or 0
@@ -34,8 +42,8 @@ if l1_count < 4 then
 end
 
 -- ═══ CONSTANTS ═══════════════════════════════════════════════════════
-local FLOOR_4K_BPS    = 13000000
-local TARGET_4K_BPS   = 80000000
+local FLOOR_4K_BPS    = (lab_floor and tonumber(lab_floor.floor_lock_min_bandwidth_p0)) or 15000000 -- 15 Mbps (piso 4K UHDX)
+local TARGET_4K_BPS   = (lab_boost and lab_boost.profiles and lab_boost.profiles.P0 and tonumber(lab_boost.profiles.P0.prisma_target_bandwidth_bps)) or 80000000
 local THRESH_TTFB_HIGH = 500      -- ms — TTFB above this = upstream struggling
 local THRESH_JITTER    = 50       -- ms — jitter above this = unstable
 local THRESH_LOSS      = 2.0      -- % — packet loss above this = degraded
@@ -100,14 +108,14 @@ end
 
 -- USER DOCTRINE OVERRIDE 2026-05-11:
 -- Override max_bitrate_bps con valor SIEMPRE FRESCO del reactor_tick.lua (1Hz).
--- Garantiza emisión constante de X-Max-Bitrate (13M o 26M) y X-Min-Bitrate=13M
+-- Garantiza emisión constante de X-Max-Bitrate y X-Min-Bitrate
 -- per orden "SEA CONSTANTE EN PEDIR ESO".
-local doctrine_request_bps = tonumber(reactor:get("bw_computed_request_bps")) or 13000000
+local doctrine_request_bps = tonumber(reactor:get("bw_computed_request_bps")) or FLOOR_4K_BPS
 max_bitrate_bps = doctrine_request_bps  -- override las 6 RULES anteriores
 
 -- Emisión CONSTANTE (no condicional) — siempre en cada request
 ngx.req.set_header("X-Max-Bitrate", tostring(max_bitrate_bps))
-ngx.req.set_header("X-Min-Bitrate", "13000000")  -- floor absoluto upstream
+ngx.req.set_header("X-Min-Bitrate", tostring(FLOOR_4K_BPS))  -- floor absoluto upstream (15 Mbps UHDX)
 ngx.req.set_header("X-Telescope-Action", action)
 if prefetch_hint > 0 then
     ngx.req.set_header("X-Prefetch-Segments", tostring(prefetch_hint))

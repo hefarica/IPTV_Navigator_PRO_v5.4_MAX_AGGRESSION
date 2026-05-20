@@ -1,0 +1,122 @@
+#!/bin/bash
+# ═══════════════════════════════════════════════════════════════════════════
+# surfshark-failover-check — Advanced Failover with Hysteresis & Memory
+# ═══════════════════════════════════════════════════════════════════════════
+
+HEALTH_URL="http://connectivitycheck.gstatic.com/generate_204"
+TIMEOUT=5
+STATE_DIR="/var/lib/netshield"
+STATE_FILE="$STATE_DIR/failover_state"
+MIAMI_FAILS_FILE="$STATE_DIR/miami_fails"
+MIAMI_STABLE_FILE="$STATE_DIR/miami_stable_count"
+LOG_FILE="/var/log/netshield/failover.log"
+LOG_TAG="ssharkfailover"
+
+# Create state dir if not exists
+mkdir -p "$STATE_DIR"
+mkdir -p "$(dirname "$LOG_FILE")"
+
+log() {
+    local ts
+    ts=$(date -u +%FT%TZ)
+    echo "[$ts] $1" >> "$LOG_FILE"
+    logger -t "$LOG_TAG" "$1"
+}
+
+# Initial state load
+current_state=$(cat "$STATE_FILE" 2>/dev/null || echo "miami")
+miami_fails=$(cat "$MIAMI_FAILS_FILE" 2>/dev/null || echo "0")
+miami_stable_count=$(cat "$MIAMI_STABLE_FILE" 2>/dev/null || echo "0")
+
+# Write initial state if missing
+if [ ! -f "$STATE_FILE" ]; then
+    echo "$current_state" > "$STATE_FILE"
+fi
+
+probe() {
+    local iface=$1
+    # Stage 1: Fast ping test to 1.1.1.1
+    if ping -I "$iface" -c 2 -W 2 1.1.1.1 >/dev/null 2>&1; then
+        return 0
+    fi
+    # Stage 2: Fallback HTTP test
+    if curl -sf --interface "$iface" --max-time $TIMEOUT "$HEALTH_URL" >/dev/null 2>&1; then
+        return 0
+    fi
+    return 1
+}
+
+apply_route() {
+    local iface=$1
+    log "Applying route default dev $iface in table 100"
+    ip route replace default dev "$iface" table 100
+    ip route replace 10.200.0.0/24 dev wg0 table 100 2>/dev/null || true
+}
+
+ensure_route() {
+    local iface=$1
+    # Check if the route is already set correctly
+    if ! ip route show table 100 | grep -q "default dev $iface"; then
+        apply_route "$iface"
+    fi
+}
+
+switch_to() {
+    local target=$1
+    local iface=$2
+    apply_route "$iface"
+    log "STATE_CHANGE: $current_state -> $target (via $iface)"
+    echo "$target" > "$STATE_FILE"
+}
+
+# Run probes
+probe wg-surfshark    && miami_ok=1 || miami_ok=0
+probe wg-surfshark-br && br_ok=1    || br_ok=0
+
+if [ "$miami_ok" = "1" ]; then
+    miami_fails=0
+    if [ "$current_state" = "brasil" ]; then
+        miami_stable_count=$((miami_stable_count + 1))
+        log "Miami probe OK (consecutive stable count: $miami_stable_count/5)"
+        if [ "$miami_stable_count" -ge 5 ]; then
+            log "Miami recovered and is stable. Switching back to Miami."
+            switch_to "miami" "wg-surfshark"
+            miami_stable_count=0
+        else
+            ensure_route "wg-surfshark-br"
+        fi
+    else
+        miami_stable_count=0
+        ensure_route "wg-surfshark"
+    fi
+else
+    miami_fails=$((miami_fails + 1))
+    miami_stable_count=0
+    log "Miami probe FAILED (consecutive fails: $miami_fails/3)"
+
+    if [ "$current_state" = "miami" ]; then
+        if [ "$miami_fails" -ge 3 ]; then
+            if [ "$br_ok" = "1" ]; then
+                log "3 consecutive fails on Miami. Brazil is healthy. Switching to Brazil."
+                switch_to "brasil" "wg-surfshark-br"
+            else
+                log "Miami has failed 3 times, but Brazil is also unhealthy. Keeping Miami route."
+                ensure_route "wg-surfshark"
+            fi
+        else
+            ensure_route "wg-surfshark"
+        fi
+    else
+        # Already on Brazil, check if we need to fall back or stay
+        if [ "$br_ok" = "1" ]; then
+            ensure_route "wg-surfshark-br"
+        else
+            log "Both networks are unhealthy. Keeping Brazil as last active route."
+            ensure_route "wg-surfshark-br"
+        fi
+    fi
+fi
+
+# Save states
+echo "$miami_fails" > "$MIAMI_FAILS_FILE"
+echo "$miami_stable_count" > "$MIAMI_STABLE_FILE"

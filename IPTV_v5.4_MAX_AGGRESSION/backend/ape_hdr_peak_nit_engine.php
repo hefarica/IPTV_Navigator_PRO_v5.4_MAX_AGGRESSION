@@ -64,21 +64,21 @@ define('APE_HDR_WP_D65_X',       '0.3127');
 define('APE_HDR_WP_D65_Y',       '0.3290');
 
 // Luminancia targets
-define('APE_HDR_PEAK_LUMINANCE',   5000);   // 5000 cd/m² (Dolby Cinema)
-define('APE_HDR_MIN_LUMINANCE',    0.0005); // 0.0005 cd/m² (OLED negro perfecto)
-define('APE_HDR_MAXCLL',           5000);   // Max Content Light Level
-define('APE_HDR_MAXFALL',          800);    // Max Frame Average Light Level
-define('APE_HDR_TARGET_CONTRAST',  10000000); // 10,000,000:1 (OLED range)
+define('APE_HDR_PEAK_LUMINANCE',   10000);   // 10000 cd/m² (ST 2084 Max Absolute)
+define('APE_HDR_MIN_LUMINANCE',    0.0001); // 0.0001 cd/m² (OLED negro absoluto)
+define('APE_HDR_MAXCLL',           10000);   // Max Content Light Level (10000 cd/m²)
+define('APE_HDR_MAXFALL',          1500);    // Max Frame Average Light Level (1500 cd/m²)
+define('APE_HDR_TARGET_CONTRAST',  100000000); // 100,000,000:1 (Infinite OLED range)
 
 // Dolby Vision profiles
 define('APE_HDR_DV_PROFILE5',  true);   // IPTV streaming profile
 define('APE_HDR_DV_PROFILE8',  true);   // Blu-ray / high quality
 define('APE_HDR_DV_PROFILE7',  true);   // Streaming fallback
 
-// PQ / ST 2084
-define('APE_HDR_PQ_MIN_PQ',    62);     // PQ code for 0.005 nits
-define('APE_HDR_PQ_MAX_PQ',    3079);   // PQ code for ~4000 nits
-define('APE_HDR_PQ_TARGET',    3765);   // PQ code for ~5000 nits
+// PQ / ST 2084 (12-bit Scale 0-4095)
+define('APE_HDR_PQ_MIN_PQ',    30);     // PQ code for 0.0001 nits
+define('APE_HDR_PQ_MAX_PQ',    4095);   // PQ code for 10000 nits (maximum)
+define('APE_HDR_PQ_TARGET',    4095);   // PQ code for 10000 nits (maximum)
 
 
 // ============================================================================
@@ -192,8 +192,8 @@ function ape_hdr_dynamic_metadata($sniper_status) {
     // El TV debe recalibrar su backlight en CADA frame para maximizar contraste
     $output[] = json_encode([
         "X-Frame-Brightness-Adapt" => "true,per-frame,dynamic-backlight",
-        "X-Scene-Brightness-Target"=> "5000",
-        "X-Scene-Peak-Target"      => "5000",
+        "X-Scene-Brightness-Target"=> (string)APE_HDR_PEAK_LUMINANCE,
+        "X-Scene-Peak-Target"      => (string)APE_HDR_PEAK_LUMINANCE,
         "X-Scene-Avg-Target"       => (string)APE_HDR_MAXFALL,
     ]);
 
@@ -209,9 +209,9 @@ function ape_hdr_dynamic_metadata($sniper_status) {
     if ($is_active) {
         $output[] = json_encode([
             "X-HDR10-Plus-Boost"      => "true,aggressive,quantum-peak",
-            "X-Peak-Sustain"           => "true,5000nit,full-panel",
+            "X-Peak-Sustain"           => "true,10000nit,full-panel",
             "X-Highlight-Bloom"        => "true,maximum,gpu-accelerated",
-            "X-Specular-Highlight"     => "true,5000nit,per-pixel",
+            "X-Specular-Highlight"     => "true,10000nit,per-pixel",
             "X-Dynamic-Range-Exploit"  => "maximum,full-PQ-range",
         ]);
     }
@@ -245,9 +245,8 @@ function ape_hdr_pq_eotf() {
     $output['ext_http'][] = json_encode([
         "X-Transfer-Function"       => "SMPTE2084,PQ,ST2084",
         "X-EOTF"                   => "pq,smpte2084,perceptual-quantizer",
-        "X-EOTF-Max-Luminance"     => "5000",
-        "X-EOTF-Min-Luminance"     => "0.0005",
-        "X-PQ-Range"               => "full,0-5000nits",
+        "X-EOTF-Max-Luminance"     => (string)APE_HDR_PEAK_LUMINANCE,
+        "X-PQ-Range"               => "full,0-10000nits",
         "X-PQ-Bit-Depth"           => "10bit,1024-steps-per-stop",
         "X-Color-Depth"            => "10",
         "X-Pixel-Format"           => "yuv420p10le",
@@ -338,8 +337,8 @@ function ape_hdr_dolby_vision($sniper_status) {
     // === Dolby Vision L6: MaxSCL per frame ===
     // MaxSCL = el valor más alto de cada componente R/G/B en nits
     $output[] = json_encode([
-        "X-DV-L6-MaxSCL"          => "true,per-frame,5000,5000,5000",
-        "X-DV-L6-MaxRGB"           => "5000",
+        "X-DV-L6-MaxSCL"          => "true,per-frame,10000,10000,10000",
+        "X-DV-L6-MaxRGB"           => "10000",
     ]);
 
     // === Dolby Vision L8: Reshape + CC ===
@@ -444,8 +443,8 @@ function ape_hdr_gpu_tonemap($sniper_status, $ua = '') {
     $output['ext_http'][] = json_encode([
         "X-GPU-Tonemap"             => "true,libplacebo,vulkan,compute-shaders",
         "X-GPU-Tonemap-Algorithm"  => "reinhard,hable,peak-map,bt2390",
-        "X-GPU-Tonemap-Peak"       => "5000",
-        "X-GPU-Tonemap-Target"     => "5000",
+        "X-GPU-Tonemap-Peak"       => (string)APE_HDR_PEAK_LUMINANCE,
+        "X-GPU-Tonemap-Target"     => (string)APE_HDR_PEAK_LUMINANCE,
         "X-GPU-Tonemap-Contrast"   => "hard,desaturate-adaptive",
         "X-GPU-Tonemap-Desat"      => "0",   // CERO desaturación — mantener color HDR
     ]);
@@ -466,7 +465,7 @@ function ape_hdr_gpu_tonemap($sniper_status, $ua = '') {
             "X-Vulkan-Tonemap"       => "true,compute-shaders",
             "X-Vulkan-Pipeline"      => "hdr-tonemap,color-convert,dither",
             "X-CUDA-Tonemap"         => "true,nvdec-accelerated",
-            "X-CUDA-Peak-Process"    => "true,per-pixel,5000nit-target",
+            "X-CUDA-Peak-Process"    => "true,per-pixel,10000nit-target",
         ]);
     }
 
@@ -515,10 +514,10 @@ function ape_hdr_display_directives($sniper_status) {
 
     // === PEAK LUMINANCE — 5000 nits como target ===
     $output[] = json_encode([
-        "X-Display-Peak-Luminance"    => "5000",
-        "X-Display-Target-Peak"       => "5000",
-        "X-Display-Max-Nits"          => "5000",
-        "X-Display-Brightness-Max"    => "5000",
+        "X-Display-Peak-Luminance"    => (string)APE_HDR_PEAK_LUMINANCE,
+        "X-Display-Target-Peak"       => (string)APE_HDR_PEAK_LUMINANCE,
+        "X-Display-Max-Nits"          => (string)APE_HDR_PEAK_LUMINANCE,
+        "X-Display-Brightness-Max"    => (string)APE_HDR_PEAK_LUMINANCE,
         "X-Display-Backlight"         => "100",
         "X-Display-Backlight-Mode"    => "MAXIMUM,GLOW,BRIGHT",
     ]);
@@ -557,7 +556,7 @@ function ape_hdr_display_directives($sniper_status) {
         "X-Panel-Processing"          => "FULL,ALL-ENHANCEMENTS,MAXIMUM",
         "X-Panel-HDR-Mode"            => "HDR-BRIGHT,HDR-VIVID,HDR-CINEMA",
         "X-Panel-HDR-Intensity"       => "maximum,aggressive,bright",
-        "X-Panel-Peak-Brightness"     => "5000",
+        "X-Panel-Peak-Brightness"     => (string)APE_HDR_PEAK_LUMINANCE,
         "X-Panel-Sustain-Brightness"  => "800",
     ]);
 
@@ -567,13 +566,13 @@ function ape_hdr_display_directives($sniper_status) {
     // "WOW, eso se ve increíble".
     if ($is_active) {
         $output[] = json_encode([
-            "X-Specular-Highlight-Boost"   => "true,quantum,5000nit",
+            "X-Specular-Highlight-Boost"   => "true,quantum,10000nit",
             "X-Specular-Intensity"         => "maximum,aggressive,overdrive",
             "X-Specular-Per-Pixel"         => "true,hdr-engine,per-pixel",
             "X-Bloom-Effect"               => "true,natural,hdr-glow",
             "X-Bloom-Intensity"            => "high,natural,perceptual",
             "X-Glow-Engine"                => "true,active,quantum-glow",
-            "X-HDR-Bloom"                  => "true,specular-adaptive,5000nit",
+            "X-HDR-Bloom"                  => "true,specular-adaptive,10000nit",
             "X-Highlight-Roll-Off"         => "none,hard-clip,full-peak",
         ]);
     }
@@ -683,7 +682,7 @@ function ape_hdr_kodiprop($sniper_status, $ua = '') {
     $output[] = 'inputstream.adaptive.hdr_handling=force_hdr';
     $output[] = 'inputstream.adaptive.hdr_type=hdr10,dolby_vision,hlg';
     $output[] = 'inputstream.adaptive.color_depth=10';
-    $output[] = 'inputstream.adaptive.max_luminance=5000';
+    $output[] = 'inputstream.adaptive.max_luminance=' . APE_HDR_PEAK_LUMINANCE;
     $output[] = 'inputstream.adaptive.min_luminance=0.0005';
     $output[] = 'inputstream.adaptive.color_primaries=bt2020';
     $output[] = 'inputstream.adaptive.transfer_function=smpte2084';

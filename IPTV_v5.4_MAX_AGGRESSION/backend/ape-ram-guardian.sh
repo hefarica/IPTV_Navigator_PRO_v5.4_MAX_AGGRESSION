@@ -40,7 +40,7 @@ VPS_IP="178.156.147.234"
 # IPTV provider hosts to verify DNS pipeline
 IPTV_HOSTS="nfqdeuxu.x1megaott.online tivigo.cc line.tivi-ott.net"
 
-# IPTV player packages (dynamic enslavement target)
+# IPTV player packages (app-aware VPN target)
 IPTV_PLAYERS="studio.scillarium.ottnavigator ar.tvplayer.tv"
 
 # Protected packages — NEVER kill
@@ -115,7 +115,7 @@ hard_cleanup() {
     log "RAM_NUCLEAR: ${before}→${after}MB (+$((after-before))MB)"
 }
 
-# ─── DYNAMIC ENSLAVEMENT FOREGROUND DETECTOR ────────────────────────────
+# ─── APP-AWARE VPN GUARDIAN FOREGROUND DETECTOR ─────────────────────────
 get_foreground_package() {
     dumpsys window 2>/dev/null | grep -E 'mCurrentFocus|mFocusedApp' | grep -oE 'studio.scillarium.ottnavigator|ar.tvplayer.tv' | head -1
 }

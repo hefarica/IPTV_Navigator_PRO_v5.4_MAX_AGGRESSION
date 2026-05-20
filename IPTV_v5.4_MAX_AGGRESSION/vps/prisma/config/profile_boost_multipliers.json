@@ -3,40 +3,46 @@
   "global_boost_when_master_enabled": true,
   "profiles": {
     "P0": {
-      "prisma_boost_multiplier": 2,
+      "prisma_boost_multiplier": 2.0,
       "prisma_zap_grace_seconds": 30,
-      "prisma_floor_min_bandwidth_bps": 15000000,
-      "prisma_target_bandwidth_bps": 20000000
+      "prisma_floor_min_bandwidth_bps": 18000000,
+      "prisma_target_bandwidth_bps": 35000000,
+      "prisma_burst_ceiling_bps": 80000000
     },
     "P1": {
-      "prisma_boost_multiplier": 2,
+      "prisma_boost_multiplier": 2.0,
       "prisma_zap_grace_seconds": 30,
-      "prisma_floor_min_bandwidth_bps": 15000000,
-      "prisma_target_bandwidth_bps": 20000000
+      "prisma_floor_min_bandwidth_bps": 14000000,
+      "prisma_target_bandwidth_bps": 25000000,
+      "prisma_burst_ceiling_bps": 50000000
     },
     "P2": {
-      "prisma_boost_multiplier": 2,
+      "prisma_boost_multiplier": 2.0,
       "prisma_zap_grace_seconds": 30,
-      "prisma_floor_min_bandwidth_bps": 15000000,
-      "prisma_target_bandwidth_bps": 20000000
+      "prisma_floor_min_bandwidth_bps": 8000000,
+      "prisma_target_bandwidth_bps": 16000000,
+      "prisma_burst_ceiling_bps": 30000000
     },
     "P3": {
       "prisma_boost_multiplier": 1.5,
       "prisma_zap_grace_seconds": 30,
       "prisma_floor_min_bandwidth_bps": 8000000,
-      "prisma_target_bandwidth_bps": 12000000
+      "prisma_target_bandwidth_bps": 12000000,
+      "prisma_burst_ceiling_bps": 15000000
     },
     "P4": {
       "prisma_boost_multiplier": 1.5,
       "prisma_zap_grace_seconds": 30,
       "prisma_floor_min_bandwidth_bps": 8000000,
-      "prisma_target_bandwidth_bps": 12000000
+      "prisma_target_bandwidth_bps": 8000000,
+      "prisma_burst_ceiling_bps": 10000000
     },
     "P5": {
       "prisma_boost_multiplier": 1.2,
       "prisma_zap_grace_seconds": 30,
       "prisma_floor_min_bandwidth_bps": 4000000,
-      "prisma_target_bandwidth_bps": 6000000
+      "prisma_target_bandwidth_bps": 6000000,
+      "prisma_burst_ceiling_bps": 8000000
     }
   }
 }

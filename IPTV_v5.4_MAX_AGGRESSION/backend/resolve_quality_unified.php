@@ -1719,10 +1719,10 @@ class CapabilityNegotiationLayer
      * @param  array $getParams     Parámetros GET
      * @return array capability_matrix completo
      */
-    public function negotiate(array $serverHeaders = [], array $getParams = []): array
+    public function negotiate(array $serverHeaders = [], array $getParams = [], array $ctxData = []): array
     {
         $player = $this->detectPlayer(serverHeaders: $serverHeaders);
-        $tv = $this->detectTv(serverHeaders: $serverHeaders, getParams: $getParams);
+        $tv = $this->detectTv(serverHeaders: $serverHeaders, getParams: $getParams, ctxData: $ctxData);
         $network = $this->detectNetwork(serverHeaders: $serverHeaders);
 
         return [
@@ -1895,7 +1895,7 @@ class CapabilityNegotiationLayer
      * @param  array $getParams     Parámetros GET
      * @return array Perfil de TV detectado
      */
-    private function detectTv(array $serverHeaders, array $getParams): array
+    private function detectTv(array $serverHeaders, array $getParams, array $ctxData = []): array
     {
         // Valores por defecto: TV SDR 1080p estándar
         $tv = [
@@ -1906,6 +1906,37 @@ class CapabilityNegotiationLayer
             'color_space'    => 'BT709',
             'hdr_support'    => [],
         ];
+
+        // Parse capabilities from context data (from zapping payload)
+        if (!empty($ctxData)) {
+            $streamIs4k = false;
+            if (!empty($ctxData['rs'])) {
+                $parts = array_map('intval', explode('x', strtolower($ctxData['rs'])));
+                if (count($parts) === 2 && ($parts[0] >= 3840 || $parts[1] >= 2160)) {
+                    $streamIs4k = true;
+                }
+            }
+            if (!empty($ctxData['sr'])) {
+                $parts = array_map('intval', explode('x', strtolower($ctxData['sr'])));
+                if (count($parts) === 2 && $parts[0] > 0 && $parts[1] > 0) {
+                    if ($streamIs4k) {
+                        $tv['max_resolution'] = [3840, 2160];
+                    } else {
+                        $tv['max_resolution'] = [$parts[0], $parts[1]];
+                    }
+                }
+            } elseif ($streamIs4k) {
+                $tv['max_resolution'] = [3840, 2160];
+            }
+            if (isset($ctxData['hd']) && $ctxData['hd']) {
+                $tv['hdr_support'] = ['hdr10', 'hlg', 'hdr10+', 'dolby_vision'];
+                $tv['type'] = 'hdr10';
+            }
+            if (!empty($ctxData['dv'])) {
+                $tv['hdr_support'] = ['hdr10', 'hlg', 'hdr10+', 'dolby_vision'];
+                $tv['type'] = 'dolby_vision';
+            }
+        }
 
         // Leer cabeceras de display (sin prefijo HTTP_ ya que rq_header lo maneja)
         $hdr = rq_header(name: 'X-Display-HDR', serverHeaders: $serverHeaders);
@@ -1954,10 +1985,18 @@ class CapabilityNegotiationLayer
         }
 
         // Permitir override por GET params
-        if (isset($getParams['max_res']) && str_contains($getParams['max_res'], 'x')) {
-            $parts = array_map('intval', explode('x', $getParams['max_res']));
+        $resParam = $getParams['max_res'] ?? $getParams['res'] ?? $getParams['resolution'] ?? null;
+        if ($resParam && str_contains($resParam, 'x')) {
+            $parts = array_map('intval', explode('x', strtolower($resParam)));
             if (count($parts) === 2 && $parts[0] > 0 && $parts[1] > 0) {
                 $tv['max_resolution'] = [$parts[0], $parts[1]];
+            }
+        }
+
+        if (isset($getParams['hdr']) && $getParams['hdr']) {
+            if (empty($tv['hdr_support'])) {
+                $tv['hdr_support'] = ['hdr10', 'hlg', 'hdr10+', 'dolby_vision'];
+                $tv['type'] = 'hdr10';
             }
         }
 
@@ -3062,8 +3101,29 @@ class GuardianPolicyEngine
         $dna = $state['manifest_dna'];
         $beforeStream = $state['injected_directives']['before_stream'] ?? [];
 
-        // Si el ADN no declara HDR, no añadir directivas HDR
-        if (!$dna['has_hdr']) {
+        // Check if zapping / channel resolution mode to bypass false anti-fantasy flags
+        $context = $state['context'] ?? [];
+        $getParams = $context['get_params'] ?? [];
+        $ctxData = $context['ctx_data'] ?? [];
+        $isSingleChannel = isset($getParams['ch']) || isset($getParams['channel']);
+
+        $has4k = $dna['has_4k'] || ($isSingleChannel && (
+            (isset($ctxData['rs']) && preg_match('/4k|2160|3840/i', $ctxData['rs'])) ||
+            (isset($ctxData['sr']) && preg_match('/4k|2160|3840/i', $ctxData['sr'])) ||
+            (isset($getParams['res']) && preg_match('/4k|2160|3840/i', $getParams['res'])) ||
+            (isset($getParams['resolution']) && preg_match('/4k|2160|3840/i', $getParams['resolution']))
+        ));
+
+        $hasHdr = $dna['has_hdr'] || ($isSingleChannel && (
+            !empty($ctxData['hd']) ||
+            !empty($ctxData['mx']) ||
+            !empty($ctxData['mf']) ||
+            !empty($ctxData['dv']) ||
+            (isset($getParams['hdr']) && $getParams['hdr'])
+        ));
+
+        // Si el ADN no declara HDR y no es pedido explícitamente en el canal, eliminar directivas HDR
+        if (!$hasHdr) {
             $beforeStream = array_values(array_filter(
                 $beforeStream,
                 static fn(string $d): bool => !str_contains(
@@ -3073,8 +3133,8 @@ class GuardianPolicyEngine
             ));
         }
 
-        // Si el ADN no declara 4K, no añadir directivas 4K
-        if (!$dna['has_4k']) {
+        // Si el ADN no declara 4K y no es pedido explícitamente en el canal, eliminar directivas 4K
+        if (!$has4k) {
             $beforeStream = array_values(array_filter(
                 $beforeStream,
                 static fn(string $d): bool => !(
@@ -3920,6 +3980,7 @@ class ResolveQualityPipeline
      */
     private function runPipeline(array $state, array $context, string $raw): array
     {
+        $state['context'] = $context;
         $serverHeaders = $context['server_headers'] ?? [];
         $getParams = $context['get_params'] ?? [];
 
@@ -3939,7 +4000,8 @@ class ResolveQualityPipeline
         // === MÓDULO 3: CAPABILITIES ===
         $state['capability_matrix'] = $this->capabilityLayer->negotiate(
             serverHeaders: $serverHeaders,
-            getParams: $getParams
+            getParams: $getParams,
+            ctxData: $context['ctx_data'] ?? []
         );
 
         // === MÓDULO 4: CONTENT ===
@@ -4955,9 +5017,9 @@ class OmegaAbsoluteReconstructor
 
             // Codec y Hardware
             // [HEVC-FIRST CODEC LADDER] Lee $profile['codec_ladder']['player_pref'] (LAB SSOT) → fallback HEVC-first
-            '#KODIPROP:inputstream.adaptive.codec_priority=' . ($profile['codec_ladder']['player_pref'] ?? 'hvc1,hev1,h265,avc1,h264'),
+            '#KODIPROP:inputstream.adaptive.codec_priority=' . ($profile['codec_ladder']['player_pref'] ?? 'hvc1.2.4.L153.B0,hvc1.2.4.L150.B0,hvc1.2.4.L156.B0,hvc1.2.4.L123.B0,hvc1.2.4.L120.B0,hvc1.2.4.L93.B0,hvc1.1.6.L153.B0,hvc1.1.6.L150.B0,hvc1.1.6.L120.B0,hvc1.1.6.L93.B0,avc1.640028'),
             '#KODIPROP:inputstream.adaptive.audio_codec_priority=' . ($profile['codec_ladder']['audio'] ?? 'ec-3,ac-3,mp4a.40.2,mp4a.40.5'),
-            '#KODIPROP:inputstream.adaptive.preferred_codec=' . ($profile['codec_ladder']['player_pref'] ?? 'hvc1,hev1,h265,avc1,h264'),
+            '#KODIPROP:inputstream.adaptive.preferred_codec=' . ($profile['codec_ladder']['player_pref'] ?? 'hvc1.2.4.L153.B0,hvc1.2.4.L150.B0,hvc1.2.4.L156.B0,hvc1.2.4.L123.B0,hvc1.2.4.L120.B0,hvc1.2.4.L93.B0,hvc1.1.6.L153.B0,hvc1.1.6.L150.B0,hvc1.1.6.L120.B0,hvc1.1.6.L93.B0,avc1.640028'),
             '#KODIPROP:inputstream.adaptive.hw_decode=force',
             '#KODIPROP:inputstream.adaptive.gpu_decode=force',
 
@@ -5266,8 +5328,8 @@ class OmegaAbsoluteReconstructor
         $d[] = '#EXT-X-APE-EVC-ENABLED: TRUE';
         $d[] = '#EXT-X-APE-EVC-PROFILE: MAIN';
         // [HEVC-FIRST] Lee $profile['codec_ladder']['player_pref'] (LAB SSOT) → fallback HEVC-first
-        $d[] = '#EXT-X-APE-CODEC-PRIORITY: ' . ($profile['codec_ladder']['player_pref'] ?? 'hvc1,hev1,h265,avc1,h264');
-        $d[] = '#EXT-X-APE-CODEC-PRIORITY-VIDEO: ' . ($profile['codec_ladder']['video'] ?? 'hvc1.2.4.L153.B0,hev1.2.4.L153.B0,avc1.640033,avc1.640028');
+        $d[] = '#EXT-X-APE-CODEC-PRIORITY: ' . ($profile['codec_ladder']['player_pref'] ?? 'hvc1.2.4.L153.B0,hvc1.2.4.L150.B0,hvc1.2.4.L156.B0,hvc1.2.4.L123.B0,hvc1.2.4.L120.B0,hvc1.2.4.L93.B0,hvc1.1.6.L153.B0,hvc1.1.6.L150.B0,hvc1.1.6.L120.B0,hvc1.1.6.L93.B0,avc1.640028');
+        $d[] = '#EXT-X-APE-CODEC-PRIORITY-VIDEO: ' . ($profile['codec_ladder']['video'] ?? 'hvc1.2.4.L153.B0,hvc1.2.4.L150.B0,hvc1.2.4.L156.B0,hvc1.2.4.L123.B0,hvc1.2.4.L120.B0,hvc1.2.4.L93.B0,hvc1.1.6.L153.B0,hvc1.1.6.L150.B0,hvc1.1.6.L120.B0,hvc1.1.6.L93.B0,avc1.640028');
         $d[] = '#EXT-X-APE-CODEC-PRIORITY-AUDIO: ' . ($profile['codec_ladder']['audio'] ?? 'ec-3,ac-3,mp4a.40.2,mp4a.40.5');
         $d[] = '#EXT-X-APE-CODEC-PRIORITY-HDR: ' . ($profile['codec_ladder']['hdr'] ?? 'hdr10,hlg,sdr');
         $d[] = '#EXT-X-APE-AV1-FALLBACK-CHAIN: ' . ($profile['codec_ladder']['video_family'] ?? 'HEVC-MAIN10>HEVC-MAIN>H264-HIGH>H264-MAIN>H264-BASELINE');
@@ -5438,8 +5500,9 @@ class OmegaAbsoluteReconstructor
     {
         $fps = $profile['fps'];
         $bw  = RQ_MAX_BW;
-        return "#EXT-X-STREAM-INF:BANDWIDTH={$bw},AVERAGE-BANDWIDTH={$bw},RESOLUTION=7680x4320,FRAME-RATE={$fps}.000,"
-            . 'CODECS="hvc1.2.4.L183.B0,mp4a.40.2",HDR=PQ,VIDEO-RANGE=PQ,AUDIO="aac_atmos",'
+        // Para máxima compatibilidad con Onn 4K y TVs UHD: declaramos resolución 4K real y el códec Corona UHDX
+        return "#EXT-X-STREAM-INF:BANDWIDTH={$bw},AVERAGE-BANDWIDTH={$bw},RESOLUTION=3840x2160,FRAME-RATE={$fps}.000,"
+            . 'CODECS="hvc1.2.4.L153.B0,mp4a.40.2",HDR=PQ,VIDEO-RANGE=PQ,AUDIO="aac_atmos",'
             . 'CLOSED-CAPTIONS=NONE,SUBTITLES="subs"';
     }
 
@@ -5646,7 +5709,7 @@ function rq_handle_request(): void
                 '#EXT-X-SESSION-DATA:DATA-ID="com.ape.network_resilience",VALUE="{\"connectionTimeoutMs\":8000,\"readTimeoutMs\":15000,\"retryCount\":5,\"retryBackoffMs\":500,\"retryBackoffFactor\":1.5,\"maxRetryBackoffMs\":4000,\"freezeDetectionMs\":3000,\"maxFreezeBeforeRestartMs\":15000,\"jumpToLiveOnFreeze\":true}"',
                 '#EXT-X-SESSION-DATA:DATA-ID="com.ape.abr_quality_policy",VALUE="{\"preferHigherBitrate\":true,\"minStableTimeBeforeUpgradeMs\":15000,\"qualityDropThreshold\":0.65,\"qualityRiseThreshold\":0.85,\"smoothSwitching\":true,\"forbidDowngradeOnTransientStall\":true}"',
                 '#EXT-X-SESSION-DATA:DATA-ID="com.ape.universal_parity",VALUE="{\"applyToResolutions\":[\"480p\",\"720p\",\"1080p\",\"1440p\",\"2160p\",\"4320p\"],\"sameBufferStrategy\":true,\"sameRecoveryPolicy\":true,\"sameLowLatencyMode\":true,\"sameABRPolicy\":true}"',
-                '#EXT-X-SESSION-DATA:DATA-ID="com.ape.codec_preferences",VALUE="{\"preferredCodecs\":[\"dvh1\",\"hvc1.2\",\"hvc1.1\",\"av01\",\"avc1\"],\"hdrModes\":[\"PQ\",\"HLG\",\"DV\"],\"audioPassthrough\":[\"ec-3\",\"ac-3\",\"mp4a\"]}"',
+                '#EXT-X-SESSION-DATA:DATA-ID="com.ape.codec_preferences",VALUE="{\"preferredCodecs\":[\"hvc1.2.4.L153.B0\",\"hvc1.2.4.L150.B0\",\"hvc1.2.4.L156.B0\",\"hvc1.2.4.L123.B0\",\"hvc1.2.4.L120.B0\",\"hvc1.2.4.L93.B0\",\"hvc1.1.6.L153.B0\",\"hvc1.1.6.L150.B0\",\"hvc1.1.6.L120.B0\",\"hvc1.1.6.L93.B0\",\"avc1.640028\"],\"hdrModes\":[\"PQ\",\"HLG\",\"DV\"],\"audioPassthrough\":[\"ec-3\",\"ac-3\",\"mp4a\"]}"',
             ];
         foreach ($disney_lines as $_disney_line) {
             $output .= $_disney_line . "\n";
@@ -5686,7 +5749,68 @@ function rq_handle_request(): void
 
         // 🚀 GOD-TIER 3X BITRATE ENFORCEMENT & STRICT MASTER PLAYLIST FORMAT
         // No #EXTINF allowed here since this is a master playlist wrapper pointing to a sub-playlist.
-        $output .= "#EXT-X-STREAM-INF:BANDWIDTH=5100000,AVERAGE-BANDWIDTH=5100000,RESOLUTION=1920x1080,CODECS=\"hvc1.2.4.L183.B0,mp4a.40.2\"\n";
+        
+        // Determinar dinámicamente resolución y codec UHDX de acuerdo al codec probado y las capacidades del stream
+        $detected_res = '1920x1080';
+        $detected_codec = 'avc1.640028'; // Fallback por defecto (Tier 11)
+
+        // ¿El probe determinó HEVC o el cliente solicitó HEVC?
+        $is_hevc = (strpos($best_quality_url, 'video_codec=hevc') !== false) || 
+                   (isset($payload['vc']) && strpos(strtolower($payload['vc']), 'hevc') !== false);
+
+        if ($is_hevc) {
+            $res_str = '';
+            if (!empty($payload['rs'])) {
+                $res_str = strtolower($payload['rs']);
+            } elseif (!empty($payload['sr'])) {
+                $res_str = strtolower($payload['sr']);
+            } elseif (preg_match('/(4k|uhd|2160p)/i', $best_quality_url)) {
+                $res_str = '3840x2160';
+            }
+
+            if (!empty($res_str)) {
+                $parts = array_map('intval', explode('x', $res_str));
+                if (count($parts) === 2 && $parts[0] > 0 && $parts[1] > 0) {
+                    if ($parts[0] >= 3840 || $parts[1] >= 2160) {
+                        // Tier 1 Corona: 4K HEVC Main 10 L5.1
+                        $detected_res = '3840x2160';
+                        $detected_codec = 'hvc1.2.4.L153.B0'; 
+                    } elseif ($parts[0] >= 1920 || $parts[1] >= 1080) {
+                        // Tier 4: 1080p HEVC Main 10 L4.1
+                        $detected_res = '1920x1080';
+                        $detected_codec = 'hvc1.2.4.L123.B0';
+                    } elseif ($parts[0] >= 1280 || $parts[1] >= 720) {
+                        // Tier 6: 720p HEVC Main 10 L3.1
+                        $detected_res = '1280x720';
+                        $detected_codec = 'hvc1.2.4.L93.B0';
+                    } else {
+                        // Fallback HEVC genérico
+                        $detected_res = $parts[0] . 'x' . $parts[1];
+                        $detected_codec = 'hvc1.2.4.L93.B0';
+                    }
+                } else {
+                    // Fallback HEVC genérico
+                    $detected_res = '1920x1080';
+                    $detected_codec = 'hvc1.2.4.L123.B0';
+                }
+            } else {
+                // Default HEVC 1080p
+                $detected_res = '1920x1080';
+                $detected_codec = 'hvc1.2.4.L123.B0';
+            }
+        } else {
+            // H.264
+            if (!empty($payload['rs'])) {
+                $res_str = strtolower($payload['rs']);
+                $parts = array_map('intval', explode('x', $res_str));
+                if (count($parts) === 2 && $parts[0] > 0 && $parts[1] > 0) {
+                    $detected_res = $parts[0] . 'x' . $parts[1];
+                }
+            }
+            $detected_codec = 'avc1.640028'; // Tier 11
+        }
+
+        $output .= "#EXT-X-STREAM-INF:BANDWIDTH=5100000,AVERAGE-BANDWIDTH=5100000,RESOLUTION={$detected_res},CODECS=\"{$detected_codec},mp4a.40.2\"\n";
         $output .= $best_quality_url . "\n";
 
         // 🔮 APE INVISIBLE AI ENGINE v4.0.0-OMNISCIENT (modo 200ok directo)
@@ -6747,7 +6871,9 @@ function rq_handle_request(): void
         $channelUrl = rtrim($host, '/') .
             "/live/{$user}/{$pass}/{$channelId}.m3u8";
 
-        $raw = "#EXTM3U\n#EXTINF:-1,Channel {$channelId}\n{$channelUrl}\n";
+        $channelTitle = $qosRef['channel_name'] ?? "Channel {$channelId}";
+        $groupTitle = !empty($ctxData['ct']) ? htmlspecialchars($ctxData['ct'], ENT_QUOTES) : 'General';
+        $raw = "#EXTM3U\n#EXTINF:-1 tvg-id=\"{$channelId}\" tvg-name=\"{$channelTitle}\" group-title=\"{$groupTitle}\",{$channelTitle}\n{$channelUrl}\n";
 
         // ══════════════════════════════════════════════════════════════════
         // STEP 2b: METADATA ANALYSIS (FASE 5 — Zero-Playback Intelligence)

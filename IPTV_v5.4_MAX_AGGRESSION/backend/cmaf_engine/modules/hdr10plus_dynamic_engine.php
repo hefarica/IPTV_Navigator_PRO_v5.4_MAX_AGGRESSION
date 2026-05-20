@@ -43,17 +43,17 @@ class Hdr10PlusDynamicEngine
     // Basados en los estándares ITU-R BT.2100 y SMPTE ST 2094-40
     private const BRIGHTNESS_PROFILES = [
         'sports' => [
-            'max_cll'   => 4000,   // Estadios: iluminación artificial intensa
-            'max_fall'  => 800,    // Promedio de frame: más bajo que el pico
-            'min_lum'   => 0.005,  // Negros profundos (césped nocturno)
-            'max_lum'   => 4000,
+            'max_cll'   => 10000,  // Estadios: iluminación artificial intensa a 10000 nits
+            'max_fall'  => 1500,   // Promedio de frame
+            'min_lum'   => 0.0001, // Negros OLED absolutos
+            'max_lum'   => 10000,
             'gamma'     => 'PQ',   // Perceptual Quantizer (SMPTE ST 2084)
         ],
         'cinema' => [
-            'max_cll'   => 5000,   // Cine HDR: picos de luz muy altos
-            'max_fall'  => 1200,
-            'min_lum'   => 0.001,  // Negros de cine: casi absolutos
-            'max_lum'   => 5000,
+            'max_cll'   => 10000,  // Cine HDR a 10000 nits
+            'max_fall'  => 1500,
+            'min_lum'   => 0.0001,
+            'max_lum'   => 10000,
             'gamma'     => 'PQ',
         ],
         'news' => [
@@ -64,10 +64,10 @@ class Hdr10PlusDynamicEngine
             'gamma'     => 'HLG',  // Hybrid Log-Gamma (mejor para broadcast)
         ],
         'default' => [
-            'max_cll'   => 5000,   // Máximo universal
-            'max_fall'  => 1200,
-            'min_lum'   => 0.005,
-            'max_lum'   => 5000,
+            'max_cll'   => 10000,  // Máximo universal
+            'max_fall'  => 1500,
+            'min_lum'   => 0.0001,
+            'max_lum'   => 10000,
             'gamma'     => 'PQ',
         ],
     ];
