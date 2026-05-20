@@ -6243,8 +6243,8 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
         // Tier 3 = L156 (4K@120fps 10-bit) — para deportes/esports HDR
         // Tier 4 = L123 (1080@60fps 10-bit) — para TV premium HDR
         // Tier 6 = L93 (720p@30 10-bit) — ÚLTIMO escalón con color HDR
-        const _chainFamily = cfg.codec_chain_video_family || 'HEVC-MAIN10-L5.1>HEVC-MAIN10-L5.0>HEVC-MAIN10-L5.2>HEVC-MAIN10-L4.1>HEVC-MAIN10-L4.0>HEVC-MAIN10-L3.1>HEVC-MAIN-L5.1>HEVC-MAIN-L5.0>HEVC-MAIN-L4.0>HEVC-MAIN-L3.1>H264-HIGH';
-        const _chainVideo  = cfg.codec_chain_video       || 'hvc1.2.4.L153.B0,hvc1.2.4.L150.B0,hvc1.2.4.L156.B0,hvc1.2.4.L123.B0,hvc1.2.4.L120.B0,hvc1.2.4.L93.B0,hvc1.1.6.L153.B0,hvc1.1.6.L150.B0,hvc1.1.6.L120.B0,hvc1.1.6.L93.B0,avc1.640028';
+        const _chainFamily = cfg.codec_chain_video_family || 'HEVC-MAIN10-L6.1>HEVC-MAIN10-L6.0>HEVC-MAIN10-L5.2>HEVC-MAIN10-L5.1>HEVC-MAIN10-L5.0>HEVC-MAIN10-L4.1>HEVC-MAIN10-L4.0>HEVC-MAIN-L5.1>HEVC-MAIN-L4.0>H264-HIGH';
+        const _chainVideo  = cfg.codec_chain_video       || 'hvc1.2.4.L183.B0,hvc1.2.4.L180.B0,hvc1.2.4.L156.B0,hvc1.2.4.L153.B0,hvc1.2.4.L150.B0,hvc1.2.4.L123.B0,hvc1.2.4.L120.B0,hvc1.1.6.L153.B0,hvc1.1.6.L120.B0,avc1.640028';
         const _chainAudio  = cfg.codec_chain_audio       || 'ec-3,ac-3,mp4a.40.2,mp4a.40.5';
         const _chainHdr    = cfg.codec_chain_hdr         || 'hdr10,hlg,sdr';
         const _chainPref   = cfg.codec_chain_player_pref || 'hvc1,hev1,h265,avc1,h264';
@@ -6333,7 +6333,7 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
         arr.push('#EXT-X-APE-OMEGA-ENGINE-BANDWIDTH-MONITOR:ACTIVE');
         arr.push('#EXT-X-APE-AV1-FALLBACK-ENABLED:true');
         // [HEVC-FIRST] per-profile family chain from cfg.codec_chain_video_family (LAB SSOT)
-        arr.push('#EXT-X-APE-AV1-FALLBACK-CHAIN:' + (cfg.codec_chain_video_family || 'HEVC-MAIN10-L5.1>HEVC-MAIN10-L5.0>HEVC-MAIN10-L4.0>HEVC-MAIN-L5.1>HEVC-MAIN-L5.0>HEVC-MAIN-L4.0>HEVC-MAIN-L3.1>H264-HIGH'));
+        arr.push('#EXT-X-APE-AV1-FALLBACK-CHAIN:' + (cfg.codec_chain_video_family || 'HEVC-MAIN10-L6.1>HEVC-MAIN10-L6.0>HEVC-MAIN10-L5.2>HEVC-MAIN10-L5.1>HEVC-MAIN10-L5.0>HEVC-MAIN10-L4.1>HEVC-MAIN10-L4.0>HEVC-MAIN-L5.1>HEVC-MAIN-L4.0>H264-HIGH'));
         arr.push('#EXT-X-APE-CODEC-PRIORITY:' + (cfg.codec_chain_player_pref || 'hvc1,hev1,h265,avc1,h264'));
         arr.push('#EXT-X-APE-TELCHEMY-TVQM:ACTIVATED');
         arr.push('#EXT-X-APE-TELCHEMY-TR101290:ACTIVATED');
@@ -9067,11 +9067,11 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
             // [HEVC-FIRST CODEC LADDER GUARDRAIL] Si Excel template no resuelve codec_chain_*,
             // sustituye al valor de cfg (LAB SSOT) o al fallback hardcoded HEVC-first.
             // Cumple NO-CLAMP: codec strings son texto, no se coercionan.
-            const _cgVideo  = cfg.codec_chain_video        || 'hvc1.2.4.L153.B0,hvc1.2.4.L150.B0,hvc1.2.4.L120.B0,hvc1.1.6.L153.B0,hvc1.1.6.L150.B0,hvc1.1.6.L120.B0,hvc1.1.6.L93.B0,avc1.640028';
+            const _cgVideo  = cfg.codec_chain_video        || 'hvc1.2.4.L183.B0,hvc1.2.4.L180.B0,hvc1.2.4.L156.B0,hvc1.2.4.L153.B0,hvc1.2.4.L150.B0,hvc1.2.4.L123.B0,hvc1.2.4.L120.B0,hvc1.1.6.L153.B0,hvc1.1.6.L120.B0,avc1.640028';
             const _cgAudio  = cfg.codec_chain_audio        || 'ec-3,ac-3,mp4a.40.2,mp4a.40.5';
             const _cgHdr    = cfg.codec_chain_hdr          || 'hdr10,hlg,sdr';
             const _cgPref   = cfg.codec_chain_player_pref  || 'hvc1,hev1,h265,avc1,h264';
-            const _cgFamily = cfg.codec_chain_video_family || 'HEVC-MAIN10-L5.1>HEVC-MAIN10-L5.0>HEVC-MAIN10-L4.0>HEVC-MAIN-L5.1>HEVC-MAIN-L5.0>HEVC-MAIN-L4.0>HEVC-MAIN-L3.1>H264-HIGH';
+            const _cgFamily = cfg.codec_chain_video_family || 'HEVC-MAIN10-L6.1>HEVC-MAIN10-L6.0>HEVC-MAIN10-L5.2>HEVC-MAIN10-L5.1>HEVC-MAIN10-L5.0>HEVC-MAIN10-L4.1>HEVC-MAIN10-L4.0>HEVC-MAIN-L5.1>HEVC-MAIN-L4.0>H264-HIGH';
             _finalM3U = _finalM3U
                 .replace(/\(reads from [^)]*prisma_floor_min_bandwidth_bps\)/g, String(_prismaFloorBps))
                 .replace(/\(reads from [^)]*prisma_target_bandwidth_bps\)/g, String(_prismaTargetBps))

@@ -137,17 +137,17 @@ PROFILE_DOCTRINE = {
     },
 }
 
-# ─── 11-tier HEVC cascade per ARTIFACT_HEVC_11TIER_CASCADE_DEFINITIVE.md ───
+# ─── 10-tier HEVC cascade (HEVC Main 10 Maximize Doctrine) ───
 CODEC_CHAINS = {
     'codec_chain_video_family': (
-        'HEVC-MAIN10-L5.1>HEVC-MAIN10-L5.0>HEVC-MAIN10-L5.2>HEVC-MAIN10-L4.1>'
-        'HEVC-MAIN10-L4.0>HEVC-MAIN10-L3.1>HEVC-MAIN-L5.1>HEVC-MAIN-L5.0>'
-        'HEVC-MAIN-L4.0>HEVC-MAIN-L3.1>H264-HIGH'
+        'HEVC-MAIN10-L6.1>HEVC-MAIN10-L6.0>HEVC-MAIN10-L5.2>HEVC-MAIN10-L5.1>'
+        'HEVC-MAIN10-L5.0>HEVC-MAIN10-L4.1>HEVC-MAIN10-L4.0>HEVC-MAIN-L5.1>'
+        'HEVC-MAIN-L4.0>H264-HIGH'
     ),
     'codec_chain_video': (
-        'hvc1.2.4.L153.B0,hvc1.2.4.L150.B0,hvc1.2.4.L156.B0,hvc1.2.4.L123.B0,'
-        'hvc1.2.4.L120.B0,hvc1.2.4.L93.B0,hvc1.1.6.L153.B0,hvc1.1.6.L150.B0,'
-        'hvc1.1.6.L120.B0,hvc1.1.6.L93.B0,avc1.640028'
+        'hvc1.2.4.L183.B0,hvc1.2.4.L180.B0,hvc1.2.4.L156.B0,hvc1.2.4.L153.B0,'
+        'hvc1.2.4.L150.B0,hvc1.2.4.L123.B0,hvc1.2.4.L120.B0,hvc1.1.6.L153.B0,'
+        'hvc1.1.6.L120.B0,avc1.640028'
     ),
     'codec_chain_audio':       'ec-3,ac-3,mp4a.40.2,mp4a.40.5',
     'codec_chain_hdr':         'hdr10,hlg,sdr',

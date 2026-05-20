@@ -342,11 +342,11 @@
                 "focus": "MAXIMA_CALIDAD_8K_HDR_CARGA_ULTRARAPIDA_SIN_CORTES",
                 "hdr_canonical": "dolby-vision",
                 "nits_target": 8000,
-                "codec_chain_video": "dvh1.05.06,dvh1.08.06,hvc1.2.4.L183.B0,hvc1.1.6.L183.B0,av01.0.13M.10.0.110.09.16.09.0,avc1.640033,avc1.640028",
+                "codec_chain_video": "dvh1.05.06,dvh1.08.06,hvc1.2.4.L183.B0,hvc1.2.4.L180.B0,hvc1.2.4.L156.B0,hvc1.2.4.L153.B0,hvc1.2.4.L150.B0,hvc1.2.4.L123.B0,hvc1.2.4.L120.B0,hvc1.1.6.L153.B0,hvc1.1.6.L120.B0,av01.0.13M.10.0.110.09.16.09.0,avc1.640033,avc1.640028",
                 "codec_chain_audio": "ec-3,ac-3,mp4a.40.2,mp4a.40.5",
                 "codec_chain_hdr": "dolby-vision,hdr10+,hdr10,hlg,sdr",
                 "codec_chain_player_pref": "hvc1,hev1,dvh1,dvhe,h265,av1,avc1,h264",
-                "codec_chain_video_family": "DV>HEVC-MAIN10>HEVC-MAIN>AV1>H264-HIGH>H264-MAIN"
+                "codec_chain_video_family": "DV>HEVC-MAIN10-L6.1>HEVC-MAIN10-L6.0>HEVC-MAIN10-L5.2>HEVC-MAIN10-L5.1>HEVC-MAIN10-L5.0>HEVC-MAIN10-L4.1>HEVC-MAIN10-L4.0>HEVC-MAIN-L5.1>HEVC-MAIN-L4.0>AV1>H264-HIGH>H264-MAIN"
             },
             "vlcopt": {
                 "network-caching": "25000",
@@ -975,11 +975,11 @@
                 "focus": "MAXIMA_CALIDAD_4K_HDR10PLUS_SIN_CORTES",
                 "hdr_canonical": "hdr10+",
                 "nits_target": 8000,
-                "codec_chain_video": "hvc1.2.4.L153.B0,hev1.2.4.L153.B0,hvc1.1.6.L150.B0,av01.0.12M.10.0.110.09.16.09.0,avc1.640033,avc1.640028",
+                "codec_chain_video": "hvc1.2.4.L183.B0,hvc1.2.4.L180.B0,hvc1.2.4.L156.B0,hvc1.2.4.L153.B0,hvc1.2.4.L150.B0,hvc1.2.4.L123.B0,hvc1.2.4.L120.B0,hvc1.1.6.L153.B0,hvc1.1.6.L120.B0,av01.0.12M.10.0.110.09.16.09.0,avc1.640033,avc1.640028",
                 "codec_chain_audio": "ec-3,ac-3,mp4a.40.2,mp4a.40.5",
                 "codec_chain_hdr": "hdr10+,hdr10,hlg,sdr",
                 "codec_chain_player_pref": "hvc1,hev1,h265,av1,avc1,h264",
-                "codec_chain_video_family": "HEVC-MAIN10>HEVC-MAIN>AV1>H264-HIGH>H264-MAIN"
+                "codec_chain_video_family": "HEVC-MAIN10-L6.1>HEVC-MAIN10-L6.0>HEVC-MAIN10-L5.2>HEVC-MAIN10-L5.1>HEVC-MAIN10-L5.0>HEVC-MAIN10-L4.1>HEVC-MAIN10-L4.0>HEVC-MAIN-L5.1>HEVC-MAIN-L4.0>AV1>H264-HIGH>H264-MAIN"
             },
             "vlcopt": {
                 "network-caching": "20000",
@@ -1607,11 +1607,11 @@
                 "focus": "MAXIMA_CALIDAD_8K_HDR_CARGA_ULTRARAPIDA_SIN_CORTES",
                 "hdr_canonical": "hdr10",
                 "nits_target": 8000,
-                "codec_chain_video": "hvc1.2.4.L153.B0,hev1.2.4.L153.B0,hvc1.1.6.L150.B0,avc1.640033,avc1.640028",
+                "codec_chain_video": "hvc1.2.4.L183.B0,hvc1.2.4.L180.B0,hvc1.2.4.L156.B0,hvc1.2.4.L153.B0,hvc1.2.4.L150.B0,hvc1.2.4.L123.B0,hvc1.2.4.L120.B0,hvc1.1.6.L153.B0,hvc1.1.6.L120.B0,avc1.640028",
                 "codec_chain_audio": "ec-3,ac-3,mp4a.40.2,mp4a.40.5",
                 "codec_chain_hdr": "hdr10,hlg,sdr",
                 "codec_chain_player_pref": "hvc1,hev1,h265,avc1,h264",
-                "codec_chain_video_family": "HEVC-MAIN10>HEVC-MAIN>H264-HIGH>H264-MAIN"
+                "codec_chain_video_family": "HEVC-MAIN10-L6.1>HEVC-MAIN10-L6.0>HEVC-MAIN10-L5.2>HEVC-MAIN10-L5.1>HEVC-MAIN10-L5.0>HEVC-MAIN10-L4.1>HEVC-MAIN10-L4.0>HEVC-MAIN-L5.1>HEVC-MAIN-L4.0>H264-HIGH"
             },
             "vlcopt": {
                 "network-caching": "15000",
@@ -2099,11 +2099,11 @@
                 "focus": "ULTRA_1080P_HDR10_CARGA_RAPIDA_SIN_CORTES",
                 "hdr_canonical": "hlg",
                 "nits_target": 8000,
-                "codec_chain_video": "hvc1.1.6.L120.B0,hev1.1.6.L120.B0,hvc1.2.4.L120.B0,avc1.640028,avc1.4D401F",
+                "codec_chain_video": "hvc1.2.4.L183.B0,hvc1.2.4.L180.B0,hvc1.2.4.L156.B0,hvc1.2.4.L153.B0,hvc1.2.4.L150.B0,hvc1.2.4.L123.B0,hvc1.2.4.L120.B0,hvc1.1.6.L153.B0,hvc1.1.6.L120.B0,avc1.640028",
                 "codec_chain_audio": "mp4a.40.2,mp4a.40.5,mp4a.40.29",
                 "codec_chain_hdr": "hlg,sdr",
                 "codec_chain_player_pref": "hvc1,hev1,h265,avc1,h264",
-                "codec_chain_video_family": "HEVC-MAIN>HEVC-MAIN10>H264-HIGH>H264-MAIN"
+                "codec_chain_video_family": "HEVC-MAIN10-L6.1>HEVC-MAIN10-L6.0>HEVC-MAIN10-L5.2>HEVC-MAIN10-L5.1>HEVC-MAIN10-L5.0>HEVC-MAIN10-L4.1>HEVC-MAIN10-L4.0>HEVC-MAIN-L5.1>HEVC-MAIN-L4.0>H264-HIGH"
             },
             "vlcopt": {
                 "network-caching": "12000",
@@ -2731,11 +2731,11 @@
                 "focus": "HIGH_720P_BALANCEADO_SIN_CORTES",
                 "hdr_canonical": "sdr",
                 "nits_target": 8000,
-                "codec_chain_video": "hvc1.1.6.L93.B0,hev1.1.6.L93.B0,avc1.640020,avc1.4D401F,avc1.42E01F",
+                "codec_chain_video": "hvc1.2.4.L183.B0,hvc1.2.4.L180.B0,hvc1.2.4.L156.B0,hvc1.2.4.L153.B0,hvc1.2.4.L150.B0,hvc1.2.4.L123.B0,hvc1.2.4.L120.B0,hvc1.1.6.L153.B0,hvc1.1.6.L120.B0,avc1.640028",
                 "codec_chain_audio": "mp4a.40.2,mp4a.40.5,mp4a.40.29",
                 "codec_chain_hdr": "sdr",
                 "codec_chain_player_pref": "hvc1,hev1,h265,avc1,h264",
-                "codec_chain_video_family": "HEVC-MAIN-HD>H264-HIGH>H264-MAIN>H264-BASELINE"
+                "codec_chain_video_family": "HEVC-MAIN10-L6.1>HEVC-MAIN10-L6.0>HEVC-MAIN10-L5.2>HEVC-MAIN10-L5.1>HEVC-MAIN10-L5.0>HEVC-MAIN10-L4.1>HEVC-MAIN10-L4.0>HEVC-MAIN-L5.1>HEVC-MAIN-L4.0>H264-HIGH"
             },
             "vlcopt": {
                 "network-caching": "10000",
