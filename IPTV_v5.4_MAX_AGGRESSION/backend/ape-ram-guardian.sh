@@ -443,6 +443,11 @@ HEARTBEAT_URL="https://iptv-ape.duckdns.org/prisma/api/prisma-adb-quality.php?ac
 HEARTBEAT_CYCLE=0
 
 send_heartbeat() {
+    # Check if curl or wget exists in path, otherwise skip to prevent process timeouts
+    if ! command -v curl >/dev/null 2>&1 && ! command -v wget >/dev/null 2>&1; then
+        return 0
+    fi
+
     HEARTBEAT_CYCLE=$((HEARTBEAT_CYCLE + 1))
     # Only send every 2 cycles (30s) to reduce overhead
     [ $((HEARTBEAT_CYCLE % 2)) -ne 0 ] && return 0
@@ -502,105 +507,96 @@ is_timestamp_newer() {
 }
 
 enforce_quality_manifest() {
-    # Download manifest from VPS (timeout 5s, fail silently if offline)
-    local tmp="/data/local/tmp/.qm_download.json"
     local qm_file="$MANIFEST_CACHE"
-    local is_new_manifest=0
-
-    if wget -q -T 5 -O "$tmp" "$MANIFEST_URL" 2>/dev/null || curl -sf -m 5 -o "$tmp" "$MANIFEST_URL" 2>/dev/null; then
-        if [ -s "$tmp" ]; then
-            # Parse saved_at timestamps
-            local local_ts=""
-            [ -f "$qm_file" ] && local_ts=$(grep -o '"saved_at":"[^"]*"' "$qm_file" 2>/dev/null | head -n 1 | cut -d'"' -f4)
-            local new_ts=""
-            new_ts=$(grep -o '"saved_at":"[^"]*"' "$tmp" 2>/dev/null | head -n 1 | cut -d'"' -f4)
-
-            local download_manifest=0
-            if [ -z "$local_ts" ]; then
-                download_manifest=1
-            elif is_timestamp_newer "$new_ts" "$local_ts"; then
-                download_manifest=1
-            fi
-
-            if [ "$download_manifest" -eq 1 ]; then
-                local new_hash
-                new_hash=$(md5sum "$tmp" 2>/dev/null | cut -d' ' -f1)
-                log "QM: New manifest accepted from VPS (ts=$new_ts, hash=$new_hash)"
-                mv -f "$tmp" "$qm_file"
-                echo "$new_hash" > "$MANIFEST_HASH"
-                is_new_manifest=1
-            else
-                # VPS manifest is older or equal (local update won), discard download
-                rm -f "$tmp"
-            fi
-        else
-            rm -f "$tmp"
-        fi
-    fi
-
-    # If local manifest file does not exist, nothing to enforce
+    
+    # If manifest file does not exist, nothing to enforce
     [ ! -f "$qm_file" ] && return 0
 
-    # Read current state in batch to minimize process forks (extremely fast/lightweight)
-    local global_settings
-    global_settings=$(settings list global 2>/dev/null)
-    local system_settings
-    system_settings=$(settings list system 2>/dev/null)
-    local secure_settings
-    secure_settings=$(settings list secure 2>/dev/null)
+    # 1. Dump current settings to temp files to compare in a single pass of awk (saves hundreds of forks)
+    settings list global > /data/local/tmp/.global_settings 2>/dev/null
+    settings list system > /data/local/tmp/.system_settings 2>/dev/null
+    settings list secure > /data/local/tmp/.secure_settings 2>/dev/null
 
-    # Use a file-based counter since the pipe runs in a subshell
-    local count_file="/data/local/tmp/.qm_corrected"
-    echo 0 > "$count_file"
+    # 2. Compare in a single run of awk
+    local drift_list
+    drift_list=$(awk '
+        BEGIN {
+            ns_val = ""
+            key_val = ""
+        }
+        FILENAME == "/data/local/tmp/.global_settings" {
+            idx = index($0, "=")
+            if (idx > 0) {
+                k = substr($0, 1, idx-1)
+                v = substr($0, idx+1)
+                current["global", k] = v
+            }
+            next
+        }
+        FILENAME == "/data/local/tmp/.system_settings" {
+            idx = index($0, "=")
+            if (idx > 0) {
+                k = substr($0, 1, idx-1)
+                v = substr($0, idx+1)
+                current["system", k] = v
+            }
+            next
+        }
+        FILENAME == "/data/local/tmp/.secure_settings" {
+            idx = index($0, "=")
+            if (idx > 0) {
+                k = substr($0, 1, idx-1)
+                v = substr($0, idx+1)
+                current["secure", k] = v
+            }
+            next
+        }
+        {
+            split($0, parts, "\"")
+            if (parts[2] == "ns") {
+                ns_val = parts[4]
+            } else if (parts[2] == "key") {
+                key_val = parts[4]
+            } else if (parts[2] == "value") {
+                val_val = parts[4]
+                if (val_val == "" && parts[3] != "") {
+                    gsub(/[[:space:] :,]/, "", parts[3])
+                    val_val = parts[3]
+                }
+                if (ns_val != "" && key_val != "") {
+                    curr = current[ns_val, key_val]
+                    if (curr != val_val) {
+                        print ns_val " " key_val " " val_val " " (curr != "" ? curr : "NULL")
+                    }
+                    ns_val = ""
+                    key_val = ""
+                }
+            }
+        }
+    ' /data/local/tmp/.global_settings /data/local/tmp/.system_settings /data/local/tmp/.secure_settings "$qm_file" 2>/dev/null)
 
-    local entries
-    entries=$(cat "$qm_file" | tr -d '\n\r' | sed 's/}/}\n/g' | grep '"ns"')
+    # Clean up dump files
+    rm -f /data/local/tmp/.global_settings /data/local/tmp/.system_settings /data/local/tmp/.secure_settings
 
-    echo "$entries" | while IFS= read -r line; do
-        [ -z "$line" ] && continue
-        local ns key value
-        ns=$(echo "$line" | grep -oE '"ns"[[:space:]]*:[[:space:]]*"[^"]+"' | cut -d'"' -f4)
-        key=$(echo "$line" | grep -oE '"key"[[:space:]]*:[[:space:]]*"[^"]+"' | cut -d'"' -f4)
-        value=$(echo "$line" | grep -oE '"value"[[:space:]]*:[[:space:]]*"[^"]+"' | cut -d'"' -f4)
+    # If nothing drifted, return immediately (zero forks!)
+    [ -z "$drift_list" ] && return 0
 
+    # 3. Apply drifted settings
+    local total_corrected=0
+    echo "$drift_list" | while read -r ns key value current; do
         [ -z "$ns" ] || [ -z "$key" ] || [ -z "$value" ] && continue
-
-        # Extract current value from batch variables
-        local current=""
-        if [ "$ns" = "global" ]; then
-            current=$(echo "$global_settings" | grep -E "^${key}=" | head -n 1 | cut -d= -f2-)
-        elif [ "$ns" = "system" ]; then
-            current=$(echo "$system_settings" | grep -E "^${key}=" | head -n 1 | cut -d= -f2-)
-        elif [ "$ns" = "secure" ]; then
-            current=$(echo "$secure_settings" | grep -E "^${key}=" | head -n 1 | cut -d= -f2-)
+        
+        # EDID exception for peak_luminance
+        if [ "$key" = "peak_luminance" ] && [ "$value" = "10000" ] && [ "$current" = "1000" ]; then
+            continue
         fi
 
-        # Apply if value differs (with EDID exception for peak_luminance, bypassed if new from frontend)
-        if [ "$current" != "$value" ]; then
-            if [ "$is_new_manifest" -eq 0 ] && [ "$key" = "peak_luminance" ] && [ "$value" = "10000" ] && [ "$current" = "1000" ]; then
-                # Device EDID hardware clamp, skip restoring to avoid loop
-                continue
-            fi
-
-            settings put "$ns" "$key" "$value" 2>/dev/null
-            if [ "$is_new_manifest" -eq 1 ]; then
-                log "QM: Applied frontend setting [$ns] $key -> '$value'"
-            else
-                log "QM: Restored drifted setting [$ns] $key: '$current' -> '$value'"
-            fi
-            local c; c=$(cat "$count_file" 2>/dev/null || echo 0)
-            echo $((c + 1)) > "$count_file"
-        fi
+        settings put "$ns" "$key" "$value" 2>/dev/null
+        log "QM: Restored drifted setting [$ns] $key: '$current' -> '$value'"
+        total_corrected=$((total_corrected + 1))
     done
 
-    local total_corrected; total_corrected=$(cat "$count_file" 2>/dev/null || echo 0)
-    rm -f "$count_file"
-
-    if [ "$is_new_manifest" -eq 1 ]; then
-        log "QM: Completed frontend manifest update ($total_corrected settings applied). Re-applying baseline and network optimizations..."
-        apply_system_baselines
-        apply_tcp_tuning
-    elif [ "$total_corrected" -gt 0 ]; then
+    if [ "$total_corrected" -gt 0 ]; then
         log "QM: Enforced manifest and corrected $total_corrected drifted settings"
     fi
 
@@ -708,7 +704,7 @@ case "${1:-daemon}" in
             kill -0 "$p" 2>/dev/null && echo "RUNNING (pid=$p)" || echo "DEAD (stale lock)"
         else echo "NOT RUNNING"; fi
         echo "MemAvail: $(get_mem_mb MemAvailable)MB | MemFree: $(get_mem_mb MemFree)MB"
-        echo "VPN tun0: $(ip link show tun0 2>/dev/null | grep -c UP | xargs -I{} sh -c '[ {} -gt 0 ] && echo UP || echo DOWN')"
+        echo "VPN tun0: $(if ip link show tun0 >/dev/null 2>&1; then echo UP; else echo DOWN; fi)"
         tail -15 "$LOGFILE" 2>/dev/null ;;
     stop)
         [ -f "$LOCKFILE" ] && { kill $(cat "$LOCKFILE" 2>/dev/null) 2>/dev/null; rm -f "$LOCKFILE"; echo "STOPPED"; } ;;

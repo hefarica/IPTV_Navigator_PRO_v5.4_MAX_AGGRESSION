@@ -512,7 +512,7 @@
         restartBtn.textContent = '⏳...';
         restartBtn.disabled = true;
         try {
-          const r = await fetch(`${LOCAL_API}?action=restart_guardian`, { method: 'POST', cache: 'no-store' });
+          const r = await fetch(`${API}?action=restart_guardian`, { method: 'POST', cache: 'no-store' });
           if (r.ok) {
              const d = await r.json();
              if (d.ok) restartBtn.textContent = '✓ Ok';
@@ -537,7 +537,7 @@
         toggleBtn.disabled = true;
         try {
           const action = isAlive ? 'stop_guardian' : 'restart_guardian';
-          const r = await fetch(`${LOCAL_API}?action=${action}`, { method: 'POST', cache: 'no-store' });
+          const r = await fetch(`${API}?action=${action}`, { method: 'POST', cache: 'no-store' });
           if (r.ok) {
              const d = await r.json();
              if (d.ok) toggleBtn.textContent = '✓ Ok';
