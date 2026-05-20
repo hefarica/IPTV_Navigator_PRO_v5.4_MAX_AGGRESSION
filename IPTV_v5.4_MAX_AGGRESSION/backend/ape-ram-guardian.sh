@@ -340,13 +340,7 @@ apply_system_baselines() {
 }
 
 # ─── TCP/NETWORK OPTIMIZATION (synced with VPS sysctl) ──────────────────
-apply_network_optimization() {
-    # Apply system baselines
-    apply_system_baselines
-
-    # Apply the quality manifest
-    enforce_quality_manifest
-
+apply_tcp_tuning() {
     # Kernel TCP tuning (best-effort — may need root)
     # Synced with VPS: tcp_slow_start_after_idle=0, tcp_fastopen=3
     echo 0 > /proc/sys/net/ipv4/tcp_slow_start_after_idle 2>/dev/null
@@ -364,6 +358,17 @@ apply_network_optimization() {
     echo 4096 > /proc/sys/net/core/netdev_max_backlog 2>/dev/null
 
     log "NET: TCP/WiFi/kernel optimizations applied (synced with VPS BBR)"
+}
+
+apply_network_optimization() {
+    # Apply system baselines
+    apply_system_baselines
+
+    # Apply the quality manifest
+    enforce_quality_manifest
+
+    # Apply TCP tuning
+    apply_tcp_tuning
 }
 
 # ─── APP PROTECTION ──────────────────────────────────────────────────────
@@ -472,6 +477,7 @@ enforce_quality_manifest() {
     # Download manifest from VPS (timeout 5s, fail silently if offline)
     local tmp="/data/local/tmp/.qm_download.json"
     local qm_file="$MANIFEST_CACHE"
+    local is_new_manifest=0
 
     if wget -q -T 5 -O "$tmp" "$MANIFEST_URL" 2>/dev/null || curl -sf -m 5 -o "$tmp" "$MANIFEST_URL" 2>/dev/null; then
         if [ -s "$tmp" ]; then
@@ -484,6 +490,7 @@ enforce_quality_manifest() {
                 log "QM: New manifest downloaded from VPS (hash=$new_hash)"
                 mv -f "$tmp" "$qm_file"
                 echo "$new_hash" > "$MANIFEST_HASH"
+                is_new_manifest=1
             else
                 rm -f "$tmp"
             fi
@@ -529,15 +536,19 @@ enforce_quality_manifest() {
             current=$(echo "$secure_settings" | grep -E "^${key}=" | head -n 1 | cut -d= -f2-)
         fi
 
-        # Apply if value differs (with EDID exception for peak_luminance)
+        # Apply if value differs (with EDID exception for peak_luminance, bypassed if new from frontend)
         if [ "$current" != "$value" ]; then
-            if [ "$key" = "peak_luminance" ] && [ "$value" = "10000" ] && [ "$current" = "1000" ]; then
+            if [ "$is_new_manifest" -eq 0 ] && [ "$key" = "peak_luminance" ] && [ "$value" = "10000" ] && [ "$current" = "1000" ]; then
                 # Device EDID hardware clamp, skip restoring to avoid loop
                 continue
             fi
 
             settings put "$ns" "$key" "$value" 2>/dev/null
-            log "QM: Restored drifted setting [$ns] $key: '$current' -> '$value'"
+            if [ "$is_new_manifest" -eq 1 ]; then
+                log "QM: Applied frontend setting [$ns] $key -> '$value'"
+            else
+                log "QM: Restored drifted setting [$ns] $key: '$current' -> '$value'"
+            fi
             local c; c=$(cat "$count_file" 2>/dev/null || echo 0)
             echo $((c + 1)) > "$count_file"
         fi
@@ -546,7 +557,11 @@ enforce_quality_manifest() {
     local total_corrected; total_corrected=$(cat "$count_file" 2>/dev/null || echo 0)
     rm -f "$count_file"
 
-    if [ "$total_corrected" -gt 0 ]; then
+    if [ "$is_new_manifest" -eq 1 ]; then
+        log "QM: Completed frontend manifest update ($total_corrected settings applied). Re-applying baseline and network optimizations..."
+        apply_system_baselines
+        apply_tcp_tuning
+    elif [ "$total_corrected" -gt 0 ]; then
         log "QM: Enforced manifest and corrected $total_corrected drifted settings"
     fi
 
