@@ -1,0 +1,23 @@
+{
+  "P0_SHOWROOM_FLASH_4K": {
+    "upscaler": "Anime4K",
+    "hdr_intent": "HDR_FORCE",
+    "virtual_4k": "ACTIVE",
+    "floor_lock": "ACTIVE",
+    "floor_bps": 18000000
+  },
+  "P1_DAILY_EXTREME_4K": {
+    "upscaler": "FSRCNNX",
+    "hdr_intent": "HDR_AUTO",
+    "virtual_4k": "ACTIVE",
+    "floor_lock": "ACTIVE",
+    "floor_bps": 14000000
+  },
+  "P2_SAFE_COMPAT": {
+    "upscaler": "AdaptiveSharpen",
+    "hdr_intent": "HDR_BYPASS",
+    "virtual_4k": "BYPASS",
+    "floor_lock": "BYPASS",
+    "floor_bps": 5000000
+  }
+}

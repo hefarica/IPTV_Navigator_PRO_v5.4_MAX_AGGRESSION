@@ -14,6 +14,14 @@ if (!defined('RQ_MAX_NITS')) {
     define('RQ_FALLBACK_LEVELS', 7);
 }
 
+// ==============================================================================
+// APE UHDX CONSTANTS
+// ==============================================================================
+if (!defined('APE_UHDX_ENABLED')) {
+    define('APE_UHDX_ENABLED', true);
+    define('APE_UHDX_CONFIG_PATH', '/etc/ape-uhdx/visual_profiles.json');
+}
+
 // === APCu STUBS — Eliminates IDE "Undefined function" errors ===
 // These stubs are ONLY defined when the APCu extension is NOT loaded (local dev).
 // On the VPS, the real APCu extension provides these functions.
@@ -4331,6 +4339,7 @@ function rq_enrich_channel_output(string $output, string $playerUA, string $host
     $shieldUA = 'Mozilla/5.0 (Linux; Android 14; SHIELD Android TV Build/UP1A.231005.007) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.6367.179 Safari/537.36';
 
     // === Send HTTP Response Headers (ACRP + Anti-Cache + CORS) ===
+    ape_emit_uhdx_headers($effective_profile);
     foreach ($anti_cut['http_headers'] ?? [] as $hdr) {
         @header($hdr);
     }
@@ -5526,6 +5535,31 @@ class OmegaAbsoluteReconstructor
     }
 }
 
+// ==============================================================================
+// APE UHDX EMISSION ENGINE
+// ==============================================================================
+if (!function_exists('ape_emit_uhdx_headers')) {
+    function ape_emit_uhdx_headers(string $profile) {
+        if (!headers_sent() && defined('APE_UHDX_ENABLED') && APE_UHDX_ENABLED && file_exists(APE_UHDX_CONFIG_PATH)) {
+            $configs = json_decode(file_get_contents(APE_UHDX_CONFIG_PATH), true);
+            $mapped_profile = 'P2_SAFE_COMPAT';
+            if ($profile === 'P0') {
+                $mapped_profile = 'P0_SHOWROOM_FLASH_4K';
+            } elseif ($profile === 'P1') {
+                $mapped_profile = 'P1_DAILY_EXTREME_4K';
+            }
+            
+            $cfg = $configs[$mapped_profile] ?? $configs['P2_SAFE_COMPAT'];
+            
+            header("X-APE-UHDX-Profile: " . $mapped_profile);
+            header("X-APE-UHDX-Upscaler: " . $cfg['upscaler']);
+            header("X-APE-UHDX-HDR-Intent: " . $cfg['hdr_intent']);
+            header("X-APE-UHDX-Virtual-4K: " . $cfg['virtual_4k']);
+            header("X-APE-UHDX-Floor-Lock: " . $cfg['floor_lock']);
+        }
+    }
+}
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // FUNCIÓN PRINCIPAL: rq_enrich_raw_m3u_omega
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -5875,6 +5909,7 @@ function rq_handle_request(): void
 
     // Cabeceras de respuesta (siempre las mismas)
     if (!headers_sent()) {
+        ape_emit_uhdx_headers($p);
         header('Content-Type: application/vnd.apple.mpegurl; charset=utf-8');
         header('Cache-Control: no-store, no-cache, must-revalidate');
         header('X-Resolver-Version: ' . RQ_VERSION);

@@ -12,6 +12,9 @@
 -- AUTOPISTA COMPLIANT: No ngx.exit(), no blocking, PASSTHROUGH on error.
 -- ═══════════════════════════════════════════════════════════════════════
 
+local score_mod = require("ape_uhdx_score")
+local v4k_mod = require("ape_virtual_4k")
+
 -- ═══ STAGE 0: VIDEO BYPASS (BLINDAJE DE MEMORIA) ════════════════════
 local uri = ngx.var.uri or ""
 if not uri:find(".m3u8", 1, true) and not uri:find(".m3u", 1, true) then
@@ -46,7 +49,7 @@ if #body < 20 then
     return
 end
 
--- ═══ STAGE 1: FLOOR-LOCK & ANTI-WASHOUT (Visual Supremacy) ═════════
+-- ═══ STAGE 1: UHDX SCORING, FLOOR-LOCK & VIRTUAL 4K (Visual Supremacy) ═════
 local floor_ok, floor_err = pcall(function()
 
     -- Only for 200 OK responses
@@ -71,32 +74,57 @@ local floor_ok, floor_err = pcall(function()
     ngx.log(ngx.WARN, "[UHDX-DEBUG] has_stream_inf is: ", tostring(has_stream_inf ~= nil))
     if not has_stream_inf then return end
 
-    -- Read floor config
-    local lab_ok, lab = pcall(require, "lab_config")
-    ngx.log(ngx.WARN, "[UHDX-DEBUG] require lab_config status: ", tostring(lab_ok), " error: ", tostring(lab))
-    if not lab_ok then return end
+    -- Read visual profiles config from JSON
+    local function load_visual_profiles()
+        local cache = ngx.shared.lab_config
+        if cache then
+            local cached_json = cache:get("visual_profiles")
+            if cached_json then
+                return require("cjson").decode(cached_json)
+            end
+        end
 
-    local floor_cfg = lab.floor_lock()
-    if not floor_cfg or not floor_cfg.floor_lock_enabled then return end
+        local f = io.open("/etc/ape-uhdx/visual_profiles.json", "r")
+        if not f then return nil end
+        local content = f:read("*a")
+        f:close()
 
-    -- Determine profile (default P3 = 8 Mbps floor)
-    local profile = "P3"
+        if cache then
+            cache:set("visual_profiles", content, 60) -- cache for 60s
+        end
+
+        return require("cjson").decode(content)
+    end
+
+    local configs = load_visual_profiles()
+    if not configs then
+        ngx.log(ngx.WARN, "[UHDX] Failed to load visual profiles from JSON")
+        return
+    end
+
+    -- Determine profile (default P2 = P2_SAFE_COMPAT)
+    local profile = "P2"
     local args = ngx.req.get_uri_args()
     if args and args.profile then
         profile = tostring(args.profile):upper()
+    elseif args and args.p then
+        profile = tostring(args.p):upper()
     end
     local hdr_profile = ngx.req.get_headers()["X-APE-Profile"]
     if hdr_profile then
         profile = tostring(hdr_profile):upper()
     end
-    if not profile:match("^P[0-5]$") then profile = "P3" end
+    if not profile:match("^P[0-5]$") then profile = "P2" end
 
-    local floor_bps = lab.floor_bps_for_profile(profile)
+    -- Map P0-P5 to JSON profile keys
+    local mapped_profile = "P2_SAFE_COMPAT"
+    if profile == "P0" then
+        mapped_profile = "P0_SHOWROOM_FLASH_4K"
+    elseif profile == "P1" then
+        mapped_profile = "P1_DAILY_EXTREME_4K"
+    end
 
-    -- Configuración Anti-Washout
-    local APE_ANTI_WASHOUT = true
-    local APE_BLOCK_LOW_SDR_FALLBACK = true
-    local APE_FORCE_HEVC_FIRST = true
+    local cfg = configs[mapped_profile] or configs["P2_SAFE_COMPAT"]
 
     -- Parse lines
     local lines = {}
@@ -104,7 +132,7 @@ local floor_ok, floor_err = pcall(function()
         lines[#lines + 1] = line
     end
 
-    -- Identificar variantes
+    -- Identify variants
     local variants = {}
     local other_lines = {}
     local has_hdr = false
@@ -116,6 +144,8 @@ local floor_ok, floor_err = pcall(function()
         if line:match("^#EXT%-X%-STREAM%-INF:") then
             local bw = tonumber(line:match("BANDWIDTH=(%d+)")) or 0
             local codecs = line:match('CODECS="([^"]+)"') or ""
+            local resolution = line:match("RESOLUTION=(%d+x%d+)")
+            local fps = tonumber(line:match("FRAME%-RATE=([%d%.]+)")) or 30
             local is_hdr_variant = codecs:find("hvc1.2.4", 1, true) 
                                 or codecs:find("dvh1", 1, true) 
                                 or codecs:find("dvhe", 1, true)
@@ -134,57 +164,48 @@ local floor_ok, floor_err = pcall(function()
                 i = i + 1
             end
 
-            variants[#variants + 1] = {
+            local variant = {
                 tag = line,
                 url = url,
                 bw = bw,
                 codecs = codecs,
+                resolution = resolution,
+                fps = fps,
                 is_hdr = is_hdr_variant,
                 is_hevc = is_hevc_variant
             }
+            variant.score = score_mod.calculate_score(variant)
+            variants[#variants + 1] = variant
         else
             other_lines[#other_lines + 1] = line
             i = i + 1
         end
     end
 
-    -- Filtrado y priorización
+    -- Filter and prioritize
     if #variants > 0 then
         local kept_variants = {}
-        local highest_bw = 0
+        local highest_score = -1
         local highest_idx = 1
 
-        -- Buscar la variante de máximo bitrate absoluta
+        -- Find the highest scoring variant
         for idx, v in ipairs(variants) do
-            if v.bw > highest_bw then
-                highest_bw = v.bw
+            if v.score > highest_score then
+                highest_score = v.score
                 highest_idx = idx
-            end
-        end
-
-        -- Umbral de bloqueo de perfiles SDR degradados si hay HDR/HEVC disponible
-        local cutoff_bps = floor_bps
-        if APE_ANTI_WASHOUT and (has_hdr or has_hevc) then
-            if profile == "P0" then
-                cutoff_bps = 18000000 -- Bloquear variantes SDR por debajo de 18 Mbps
-            elseif profile == "P1" then
-                cutoff_bps = 14000000
-            elseif profile == "P2" then
-                cutoff_bps = 8000000
             end
         end
 
         for idx, v in ipairs(variants) do
             local keep = false
-            -- Siempre mantener la variante de mayor calidad absoluta para evitar playlists vacías
+            -- Always keep the highest scoring variant as fallback
             if idx == highest_idx then
                 keep = true
-            elseif APE_BLOCK_LOW_SDR_FALLBACK and (has_hdr or has_hevc) and not v.is_hdr and not v.is_hevc then
-                -- Si hay variantes Premium (HDR/HEVC), descartar variantes AVC/SDR de baja calidad
-                if v.bw >= cutoff_bps then
+            elseif cfg.floor_lock == "ACTIVE" then
+                if v.bw >= cfg.floor_bps then
                     keep = true
                 end
-            elseif v.bw >= floor_bps then
+            else
                 keep = true
             end
 
@@ -193,37 +214,24 @@ local floor_ok, floor_err = pcall(function()
             end
         end
 
-        -- Reordenar variantes para priorizar HEVC/HDR en la parte superior del manifest (Codec Supremacy)
-        if APE_FORCE_HEVC_FIRST then
-            table.sort(kept_variants, function(a, b)
-                -- 1. Comparar HDR/Dolby Vision
-                if a.is_hdr ~= b.is_hdr then
-                    return a.is_hdr
-                end
-                -- 2. Comparar HEVC
-                if a.is_hevc ~= b.is_hevc then
-                    return a.is_hevc
-                end
-                -- 3. Comparar bandwidth
-                return a.bw > b.bw
-            end)
-        else
-            -- Ordenación estándar por bitrate
-            table.sort(kept_variants, function(a, b)
-                return a.bw > b.bw
-            end)
+        -- Sort variants by score descending
+        table.sort(kept_variants, function(a, b)
+            return a.score > b.score
+        end)
+
+        -- Apply virtual 4K resolution mapping to the top variant if active
+        if cfg.virtual_4k == "ACTIVE" and #kept_variants > 0 then
+            v4k_mod.rewrite_variant_to_4k(kept_variants[1])
         end
 
-        -- Construir manifest final
+        -- Build final manifest
         local new_lines = {}
         for _, l in ipairs(other_lines) do
-            -- Conservar la cabecera EXTM3U en primer lugar
             if l:match("^#EXTM3U") then
                 new_lines[#new_lines + 1] = l
-                -- Inyectar metadatos informativos
                 new_lines[#new_lines + 1] = "#EXT-X-APE-UHDX-MODE:LUA_SUPREMACY"
-                if has_hdr then
-                    new_lines[#new_lines + 1] = "#EXT-X-APE-UHDX-INTENT:HDR_SUPREME_10000_NIT"
+                if cfg.virtual_4k == "ACTIVE" then
+                    v4k_mod.inject_client_metadata(new_lines, cfg.upscaler, cfg.hdr_intent)
                 end
             else
                 new_lines[#new_lines + 1] = l
@@ -239,11 +247,14 @@ local floor_ok, floor_err = pcall(function()
 
         body = table.concat(new_lines, "\n") .. "\n"
 
-        -- Configurar headers de observabilidad y limpiar Content-Length
-        ngx.header["X-APE-Floor-Lock"] = string.format("profile=%s;floor=%d;kept=%d;removed=%d", profile, floor_bps, #kept_variants, #variants - #kept_variants)
+        -- Configure observability response headers
+        ngx.header["X-APE-Floor-Lock"] = string.format("profile=%s;floor=%d;kept=%d;removed=%d", mapped_profile, cfg.floor_bps, #kept_variants, #variants - #kept_variants)
         ngx.header["X-APE-UHDX-Mode"] = "LUA_SUPREMACY"
-        ngx.header["X-APE-UHDX-Anti-Washout"] = APE_ANTI_WASHOUT and "ACTIVE" or "INACTIVE"
-        ngx.header.content_length = nil -- Forzar a Nginx a recalcular la longitud del manifest modificado
+        ngx.header["X-APE-UHDX-Profile"] = mapped_profile
+        ngx.header["X-APE-UHDX-Upscaler"] = cfg.upscaler
+        ngx.header["X-APE-UHDX-HDR-Intent"] = cfg.hdr_intent
+        ngx.header["X-APE-UHDX-Virtual-4K"] = cfg.virtual_4k
+        ngx.header.content_length = nil
     end
 
 end) -- pcall floor_lock
