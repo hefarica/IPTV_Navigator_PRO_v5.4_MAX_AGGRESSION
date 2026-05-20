@@ -57,7 +57,7 @@ class VlcoptEnhancer
             'tone-mapping'             => 'hdr',
             'tone-mapping-algorithm'   => 'reinhard',
             // Peak luminance targets
-            'hdr10-maxcll'             => '8000',
+            'hdr10-maxcll'             => '10000',
             'hdr10-maxfall'            => '800',
             'target-peak'              => '10000',
         ],

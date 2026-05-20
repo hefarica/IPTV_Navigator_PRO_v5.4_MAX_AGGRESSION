@@ -3891,27 +3891,27 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
             'X-SVT-AV1-Film-Grain': '1',
             'X-SVT-AV1-Enable-Tf': 'true',
 
-            // ── HDR10 Separated (SMPTE ST 2086) — 5000 NITS QUANTUM PEAK ──
+            // ── HDR10 Separated (SMPTE ST 2086) — 10000 NITS QUANTUM PEAK ──
             'X-HDR10-Primaries-G': '0.680,0.320',
             'X-HDR10-Primaries-B': '0.150,0.060',
             'X-HDR10-Primaries-R': '0.640,0.330',
             'X-HDR10-White-Point': '0.3127,0.3290',
-            'X-HDR10-Luminance-Max': '5000',
+            'X-HDR10-Luminance-Max': '10000',
             'X-HDR10-Luminance-Min': '0.0005',
-            'X-HDR10-MaxCLL': '5000',
+            'X-HDR10-MaxCLL': '10000',
             'X-HDR10-MaxFALL': '800',
             'X-HDR10-Contrast-Ratio': '10000000:1',
 
-            // ── HDR10+ Scene (SMPTE ST 2094-40) — 5000 NITS ──
+            // ── HDR10+ Scene (SMPTE ST 2094-40) — 10000 NITS ──
             'X-HDR10-Plus-Profile': 'A',
             'X-HDR10-Plus-DMI-Enabled': 'true',
             'X-HDR10-Plus-Bezier-Curve': 'enabled',
             'X-HDR10-Plus-Luminance-Percentile': '99',
-            'X-HDR10-Plus-Scene-Brightness-Max': '5000',
+            'X-HDR10-Plus-Scene-Brightness-Max': '10000',
             'X-HDR10-Plus-Scene-Brightness-Min': '0.0005',
-            'X-HDR10-Plus-Scene-MaxSCL': '5000,5000,5000',
+            'X-HDR10-Plus-Scene-MaxSCL': '10000,10000,10000',
 
-            // ── Dolby Vision 8.1 + RPU (cross-compatible) — 5000 NITS ──
+            // ── Dolby Vision 8.1 + RPU (cross-compatible) — 10000 NITS ──
             'X-Dolby-Vision-Profile-81': '8.1',
             'X-Dolby-Vision-Profiles': '5,8,7',
             'X-Dolby-Vision-HDR10-Plus-Compat': 'true',
@@ -3921,7 +3921,7 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
             'X-Dolby-Vision-L1-MinPQ': '62',
             'X-Dolby-Vision-L1-MaxPQ': '3765',
             'X-Dolby-Vision-L1-AvgPQ': '1200',
-            'X-Dolby-Vision-L6-MaxSCL': '5000,5000,5000',
+            'X-Dolby-Vision-L6-MaxSCL': '10000,10000,10000',
 
             // ── Dolby Vision Profile 10 (UHD BD-style AV1-compatible) — DV10 ──
             'X-Dolby-Vision-Profile-10': '10.0',
@@ -3932,7 +3932,7 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
             'X-Dolby-Vision-Profile-10-BL-Signal': 'AV1-MAIN-10',
             'X-Dolby-Vision-Profile-10-EL-Signal': 'NONE',
             'X-Dolby-Vision-Profile-10-L1-MaxPQ': '3765',
-            'X-Dolby-Vision-Profile-10-L6-MaxCLL': '5000',
+            'X-Dolby-Vision-Profile-10-L6-MaxCLL': '10000',
             'X-Dolby-Vision-Profile-10-L6-MaxFALL': '800',
             'X-Dolby-Vision-Profile-10-UHD-BD-Mode': 'enabled',
 
@@ -3944,7 +3944,7 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
             'X-Samsung-HDR10-Plus-Adaptive-Ambient-Lux-Min': '0',
             'X-Samsung-HDR10-Plus-Adaptive-Ambient-Lux-Max': '50000',
             'X-Samsung-HDR10-Plus-Adaptive-Ambient-Curve': 'BEZIER-DYNAMIC',
-            'X-Samsung-HDR10-Plus-Adaptive-Peak-Nits': '5000',
+            'X-Samsung-HDR10-Plus-Adaptive-Peak-Nits': '10000',
             'X-Samsung-HDR10-Plus-Adaptive-Tone-Map': 'REALTIME',
             'X-Samsung-HDR10-Plus-Adaptive-Color-Volume': 'DCI-P3-BT2020',
             'X-Samsung-HDR10-Plus-Adaptive-QLED-Mode': 'NEO-QUANTUM-HDR-8K-PLUS',

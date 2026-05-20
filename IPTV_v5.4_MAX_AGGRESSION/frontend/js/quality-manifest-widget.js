@@ -29,10 +29,35 @@
     power:      { icon: '🔋', name: 'Power',               color: '#64748b', desc: 'Screen Timeout · Keep Alive' },
   };
 
+  const KNOWN_OPTIONS = {
+    'ai_pq_mode': {'0':'Off','1':'Low','2':'Mid','3':'High'},
+    'ai_sr_mode': {'0':'Off','1':'Low','2':'Mid','3':'High'},
+    'ai_pic_mode': {'0':'Off','1':'Low','2':'Mid','3':'High'},
+    'ai_sr_level': {'0':'Off','1':'Low','2':'Mid','3':'High'},
+    'user_preferred_refresh_rate': {'23.976':'23.976','24.0':'24','29.97':'29.97','30.0':'30','50.0':'50','59.94':'59.94','60.0':'60'},
+    'display_color_mode': {'0':'Native','1':'Boosted','2':'Saturated','3':'HDR'},
+    'match_content_frame_rate_pref': {'0':'Never','1':'Non-Seamless','2':'Seamless'},
+    'hdr_conversion_mode': {'0':'Passthrough','1':'System','2':'SDR','3':'Force'},
+    'hdr_output_type': {'0':'None','1':'HDR10','2':'HLG','3':'DolbyVision','4':'Auto-Best'},
+    'hdr_force_conversion_type': {'-1':'Disabled','1':'HDR10','2':'HLG','3':'DolbyVision'},
+    'hdmi_color_space': {'0':'RGB','1':'YCbCr 4:4:4','2':'YCbCr 4:2:2','3':'YCbCr 4:2:0'},
+    'color_depth': {'8':'8-bit','10':'10-bit','12':'12-bit'},
+    'encoded_surround_output': {'0':'Never','1':'Auto','2':'Always'},
+    'screen_off_timeout': {'60000':'1min','300000':'5min','1800000':'30min','2147483647':'Never'},
+    
+    // Ranges for numeric settings
+    'hdr_brightness_boost': {min:0,max:100},
+    'sdr_brightness_in_hdr': {min:0,max:100},
+    'peak_luminance': {min:100,max:10000},
+    'video_brightness': {min:0,max:100},
+    'screen_brightness': {min:0,max:255}
+  };
+
   let lastData = null;
   let expandedGroups = new Set(['ai', 'hdr', 'color']);
   let pendingChanges = {};
   let dirtyKeys = new Set(); // tracks unsaved changes from panel inputs
+  let applyingKeys = new Set(); // tracks keys currently being sent to local ADB
 
   // Embedded settings manifest — always available even without API
   const MANIFEST = [
@@ -128,33 +153,44 @@
     const id = `qm-${s.ns}-${s.key}`;
     const pendingKey = `${s.ns}:${s.key}`;
     const isPending = pendingChanges[pendingKey] !== undefined;
-    const displayValue = isPending ? pendingChanges[pendingKey] : (s.current ?? s.expected);
+    const isApplying = applyingKeys.has(pendingKey);
+    
+    // Safely unpack displayValue if it's an object {ns, key, value} in pendingChanges
+    let displayValue;
+    if (isPending) {
+      const p = pendingChanges[pendingKey];
+      displayValue = (p && typeof p === 'object' && 'value' in p) ? p.value : p;
+    } else {
+      displayValue = (s.current ?? s.expected);
+    }
 
     switch (s.type) {
       case 'toggle': {
         const checked = String(displayValue) === '1';
         return `<label style="display:flex;align-items:center;gap:4px;cursor:pointer">
           <input type="checkbox" id="${id}" data-ns="${s.ns}" data-key="${s.key}" data-type="toggle"
-            ${checked ? 'checked' : ''} ${isPending ? 'disabled' : ''}
+            ${checked ? 'checked' : ''} ${isApplying ? 'disabled' : ''}
             style="width:14px;height:14px;accent-color:#a855f7;cursor:pointer">
         </label>`;
       }
       case 'select': {
-        if (!s.options) return `<span style="color:#94a3b8;font-size:0.7rem">${displayValue}</span>`;
+        const options = s.options || KNOWN_OPTIONS[s.key];
+        if (!options) return `<span style="color:#94a3b8;font-size:0.7rem">${displayValue}</span>`;
         let opts = '';
-        for (const [val, label] of Object.entries(s.options)) {
+        for (const [val, label] of Object.entries(options)) {
           opts += `<option value="${val}" ${String(displayValue) === String(val) ? 'selected' : ''}>${label}</option>`;
         }
         return `<select id="${id}" data-ns="${s.ns}" data-key="${s.key}" data-type="select"
-          ${isPending ? 'disabled' : ''}
+          ${isApplying ? 'disabled' : ''}
           style="padding:2px 6px;border-radius:4px;background:#0f172a;color:#e2e8f0;border:1px solid rgba(148,163,184,0.3);
           font-size:0.68rem;cursor:pointer;max-width:120px">${opts}</select>`;
       }
       case 'number': {
-        const min = s.options?.min ?? 0;
-        const max = s.options?.max ?? 99999;
+        const options = s.options || KNOWN_OPTIONS[s.key];
+        const min = options?.min ?? 0;
+        const max = options?.max ?? 99999;
         return `<input type="number" id="${id}" data-ns="${s.ns}" data-key="${s.key}" data-type="number"
-          value="${displayValue}" min="${min}" max="${max}" ${isPending ? 'disabled' : ''}
+          value="${displayValue}" min="${min}" max="${max}" ${isApplying ? 'disabled' : ''}
           style="width:72px;padding:2px 6px;border-radius:4px;background:#0f172a;color:#e2e8f0;
           border:1px solid rgba(148,163,184,0.3);font-size:0.68rem;font-family:monospace">`;
       }
@@ -309,26 +345,32 @@
           </div>
         </div>
         ${isOpen ? `<div style="padding:4px 0">
-          ${items.map(s => `
-            <div style="display:flex;justify-content:space-between;align-items:center;padding:5px 12px;
-              border-bottom:1px solid rgba(100,116,139,0.08);transition:background .15s"
-              onmouseenter="this.style.background='rgba(168,85,247,0.04)'"
-              onmouseleave="this.style.background='transparent'">
-              <div style="display:flex;align-items:center;gap:6px;min-width:0;flex:1">
-                ${syncBadge(s)}
-                <span style="font-size:0.68rem;color:#cbd5e1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"
-                  title="${s.ns}:${s.key}">${s.label}</span>
-                <span style="font-size:0.52rem;color:#475569;font-family:monospace">${s.key}</span>
+          ${items.map(s => {
+            const pendingKey = `${s.ns}:${s.key}`;
+            const isDirty = dirtyKeys.has(pendingKey);
+            const rowBg = isDirty ? 'rgba(245,158,11,0.08)' : 'transparent';
+            const rowBorderLeft = isDirty ? '2px solid #f59e0b' : 'none';
+            return `
+              <div style="display:flex;justify-content:space-between;align-items:center;padding:5px 12px;
+                border-bottom:1px solid rgba(100,116,139,0.08);transition:background .15s;background:${rowBg};border-left:${rowBorderLeft}"
+                onmouseenter="this.style.background='rgba(168,85,247,0.04)'"
+                onmouseleave="this.style.background='${rowBg}'">
+                <div style="display:flex;align-items:center;gap:6px;min-width:0;flex:1">
+                  ${syncBadge(s)}
+                  <span style="font-size:0.68rem;color:#cbd5e1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"
+                    title="${s.ns}:${s.key}">${s.label}</span>
+                  <span style="font-size:0.52rem;color:#475569;font-family:monospace">${s.key}</span>
+                </div>
+                <div style="display:flex;align-items:center;gap:6px">
+                  ${s.current !== null && !s.synced ? 
+                    `<span style="font-size:0.52rem;color:#f87171;text-decoration:line-through;font-family:monospace"
+                      title="Current value">${s.current}</span>
+                     <span style="font-size:0.6rem;color:#475569">→</span>` : ''}
+                  ${settingInput(s)}
+                </div>
               </div>
-              <div style="display:flex;align-items:center;gap:6px">
-                ${s.current !== null && !s.synced ? 
-                  `<span style="font-size:0.52rem;color:#f87171;text-decoration:line-through;font-family:monospace"
-                    title="Current value">${s.current}</span>
-                   <span style="font-size:0.6rem;color:#475569">→</span>` : ''}
-                ${settingInput(s)}
-              </div>
-            </div>
-          `).join('')}
+            `;
+          }).join('')}
         </div>` : ''}
       </div>`;
     }
@@ -453,7 +495,7 @@
     });
 
     document.querySelectorAll('[data-type="number"]').forEach(el => {
-      el.addEventListener('input', () => {
+      el.addEventListener('change', () => {
         markDirty(el.dataset.ns, el.dataset.key, el.value, el);
         if (apiMode === 'local') applySetting(el.dataset.ns, el.dataset.key, el.value, el);
       });
@@ -655,10 +697,17 @@
     });
 
     try {
-      // 1. If local mode, ensure all changes are forcefully applied instantly
-      if (apiMode === 'local' && changes.length > 0) {
-        for (const c of changes) {
-           try { await apiSet(c.key, c.value, c.ns); } catch (_) {}
+      // 1. If local mode, ensure local manifest on device is updated and applied instantly
+      if (apiMode === 'local') {
+        try {
+          await fetch(`${LOCAL_API}?action=save_manifest`, {
+            method: 'POST',
+            cache: 'no-store',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ manifest }),
+          });
+        } catch (e) {
+          console.warn('[QM] Failed to save manifest to local API:', e);
         }
       }
 
@@ -707,7 +756,8 @@
   // ── Apply a single setting change ──────────────────────────────────
   async function applySetting(ns, key, value, el) {
     const pendingKey = `${ns}:${key}`;
-    pendingChanges[pendingKey] = value;
+    pendingChanges[pendingKey] = { ns, key, value };
+    applyingKeys.add(pendingKey);
 
     // Visual feedback: show spinner
     const row = el.closest('div[style*="border-bottom"]');
@@ -730,23 +780,23 @@
         badge.style.cssText = 'font-size:0.5rem;padding:1px 5px;border-radius:3px;background:rgba(239,68,68,0.2);color:#f87171;margin-left:4px;font-weight:600';
         badge.textContent = '⚠ HW Limit';
         if (row) row.appendChild(badge);
-        setTimeout(() => { delete pendingChanges[pendingKey]; refresh(); }, 3000);
+        setTimeout(() => { applyingKeys.delete(pendingKey); delete pendingChanges[pendingKey]; refresh(); }, 3000);
       } else if (res.ok) {
         if (row) {
           row.style.background = 'rgba(16,185,129,0.08)';
           row.style.borderLeft = '2px solid #10b981';
         }
-        setTimeout(() => { delete pendingChanges[pendingKey]; refresh(); }, 1500);
+        setTimeout(() => { applyingKeys.delete(pendingKey); delete pendingChanges[pendingKey]; refresh(); }, 1500);
       } else {
         if (row) {
           row.style.background = 'rgba(245,158,11,0.08)';
           row.style.borderLeft = '2px solid #f59e0b';
         }
-        setTimeout(() => { delete pendingChanges[pendingKey]; refresh(); }, 2000);
+        setTimeout(() => { applyingKeys.delete(pendingKey); delete pendingChanges[pendingKey]; refresh(); }, 2000);
       }
     } catch (e) {
       if (row) row.style.background = 'rgba(239,68,68,0.08)';
-      setTimeout(() => { delete pendingChanges[pendingKey]; refresh(); }, 2000);
+      setTimeout(() => { applyingKeys.delete(pendingKey); delete pendingChanges[pendingKey]; refresh(); }, 2000);
     }
   }
 

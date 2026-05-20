@@ -8,16 +8,100 @@
 const http = require('http');
 const { execSync } = require('child_process');
 const url = require('url');
+const fs = require('fs');
+const path = require('path');
 
 const PORT = 7777;
 const ONN = '192.168.10.28:5555';
 const GUARDIAN_PATH = '/data/local/tmp/ape-ram-guardian.sh';
 const GUARDIAN_LOCK = '/data/local/tmp/ape-ram-guardian.lock';
+const MANIFEST_CACHE = '/data/local/tmp/quality-manifest.json';
+const MANIFEST_HASH = '/data/local/tmp/quality-manifest.hash';
 
 function adb(cmd, timeout = 8000) {
   try {
     return execSync(`adb -s ${ONN} shell "${cmd.replace(/"/g, '\\"')}"`, { timeout, encoding: 'utf-8' }).trim();
   } catch (e) { return null; }
+}
+
+function pushJsonToDevice(obj, remotePath) {
+  const localPath = path.join(__dirname, `temp_${Date.now()}.json`);
+  try {
+    fs.writeFileSync(localPath, JSON.stringify(obj, null, 2));
+    execSync(`adb -s ${ONN} push "${localPath}" "${remotePath}"`, { timeout: 5000, stdio: 'ignore' });
+    return true;
+  } catch (e) {
+    console.error(`[Local API] Failed to push JSON to ${remotePath}:`, e.message);
+    return false;
+  } finally {
+    try { if (fs.existsSync(localPath)) fs.unlinkSync(localPath); } catch (_) {}
+  }
+}
+
+function triggerGuardianSignal() {
+  try {
+    const pid = adb(`cat ${GUARDIAN_LOCK}`)?.trim();
+    if (pid && /^\d+$/.test(pid)) {
+      adb(`kill -USR1 ${pid}`);
+      return true;
+    }
+  } catch (_) {}
+  return false;
+}
+
+function updateLocalManifestOnDevice(ns, key, value) {
+  try {
+    let raw = adb(`cat ${MANIFEST_CACHE}`);
+    let manifest = [];
+    let parsedData = null;
+    
+    if (raw && raw.trim().startsWith('{')) {
+      try {
+        parsedData = JSON.parse(raw);
+        if (parsedData && Array.isArray(parsedData.manifest)) {
+          manifest = parsedData.manifest;
+        }
+      } catch (e) {
+        parsedData = null;
+      }
+    }
+    
+    if (!parsedData) {
+      manifest = MANIFEST.map(([mNs, mKey, mExpected, mGroup, mLabel, mType]) => ({
+        ns: mNs, key: mKey, value: mExpected, group: mGroup, label: mLabel, type: mType
+      }));
+    }
+
+    let found = false;
+    for (const item of manifest) {
+      if (item.ns === ns && item.key === key) {
+        item.value = String(value);
+        found = true;
+        break;
+      }
+    }
+    if (!found) {
+      manifest.push({ ns, key, value: String(value) });
+    }
+
+    const payload = {
+      manifest: manifest,
+      saved_at: new Date().toISOString(),
+      saved_by: 'local-api-set'
+    };
+
+    const pushed = pushJsonToDevice(payload, MANIFEST_CACHE);
+    if (!pushed) return false;
+
+    const newHash = adb(`md5sum ${MANIFEST_CACHE} 2>/dev/null | cut -d' ' -f1`);
+    if (newHash && newHash.trim()) {
+      adb(`echo "${newHash.trim()}" > ${MANIFEST_HASH}`);
+    }
+    return true;
+  } catch (e) {
+    console.error('[Local API] failed to update local manifest:', e.message);
+    return false;
+  }
 }
 
 let lastConnectAttempt = 0;
@@ -102,137 +186,192 @@ function handleRequest(req, res) {
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   if (req.method === 'OPTIONS') { res.writeHead(204); res.end(); return; }
 
-  const parsed = url.parse(req.url, true);
-  const action = parsed.query.action || '';
+  let body = '';
+  req.on('data', chunk => { body += chunk; });
+  req.on('end', () => {
+    const parsed = url.parse(req.url, true);
+    const action = parsed.query.action || '';
 
-  if (!adbConnect()) {
-    res.end(JSON.stringify({ ok: false, error: 'ADB unreachable', device: ONN }));
-    return;
-  }
+    if (!adbConnect()) {
+      res.end(JSON.stringify({ ok: false, error: 'ADB unreachable', device: ONN }));
+      return;
+    }
 
-  switch (action) {
-    case 'read_all': {
-      const results = [];
-      const groups = {};
-      
-      // Batch fetch all settings to prevent 100+ seconds of ADB blocking
-      const rawGlobal = adb(`settings list global`) || '';
-      const rawSystem = adb(`settings list system`) || '';
-      
-      const parseSettings = (raw) => {
-        const dict = {};
-        raw.split('\n').forEach(line => {
-          const idx = line.indexOf('=');
-          if (idx !== -1) {
-             const k = line.substring(0, idx).trim();
-             const v = line.substring(idx + 1).trim();
-             dict[k] = v;
+    switch (action) {
+      case 'read_all': {
+        const results = [];
+        const groups = {};
+        
+        // Batch fetch all settings to prevent 100+ seconds of ADB blocking
+        const rawGlobal = adb(`settings list global`) || '';
+        const rawSystem = adb(`settings list system`) || '';
+        
+        const parseSettings = (raw) => {
+          const dict = {};
+          raw.split('\n').forEach(line => {
+            const idx = line.indexOf('=');
+            if (idx !== -1) {
+               const k = line.substring(0, idx).trim();
+               const v = line.substring(idx + 1).trim();
+               dict[k] = v;
+            }
+          });
+          return dict;
+        };
+        
+        const state = {
+           global: parseSettings(rawGlobal),
+           system: parseSettings(rawSystem)
+        };
+
+        for (const [ns, key, expected, group, label, type, options] of MANIFEST) {
+          const current = state[ns] ? state[ns][key] : undefined;
+          const cv = (current === undefined || current === '' || current === 'null') ? null : current;
+          const synced = cv === expected;
+          results.push({ ns, key, current: cv, expected, synced, group, label, type, options });
+          if (!groups[group]) groups[group] = 0;
+          if (!synced) groups[group]++;
+        }
+        const pid = adb(`cat ${GUARDIAN_LOCK}`);
+        let alive = false;
+        if (pid && /^\d+$/.test(pid.trim())) {
+          const check = adb(`kill -0 ${pid.trim()} 2>/dev/null && echo YES || echo NO`);
+          alive = check === 'YES';
+        }
+        res.end(JSON.stringify({
+          ok: true, settings: results, drift_by_group: groups,
+          guardian: { pid: pid || null, alive },
+          total: MANIFEST.length, ts: new Date().toISOString()
+        }));
+        break;
+      }
+
+      case 'guardian_status': {
+        const pid = adb(`cat ${GUARDIAN_LOCK}`);
+        let alive = false;
+        if (pid && /^\d+$/.test(pid.trim())) {
+          const check = adb(`kill -0 ${pid.trim()} 2>/dev/null && echo YES || echo NO`);
+          alive = check === 'YES';
+        }
+        const log = adb('tail -5 /data/local/tmp/ape-ram-guardian.log');
+        res.end(JSON.stringify({ ok: true, pid: pid || null, alive, log }));
+        break;
+      }
+
+      case 'save_manifest': {
+        try {
+          const payload = JSON.parse(body);
+          if (!payload || !Array.isArray(payload.manifest)) {
+            res.end(JSON.stringify({ ok: false, error: 'Invalid manifest payload' }));
+            return;
           }
-        });
-        return dict;
-      };
-      
-      const state = {
-         global: parseSettings(rawGlobal),
-         system: parseSettings(rawSystem)
-      };
+          
+          payload.saved_at = new Date().toISOString();
+          payload.saved_by = 'local-api';
+          
+          const pushed = pushJsonToDevice(payload, MANIFEST_CACHE);
+          if (!pushed) {
+            res.end(JSON.stringify({ ok: false, error: 'Failed to push manifest to device' }));
+            return;
+          }
+          
+          const newHash = adb(`md5sum ${MANIFEST_CACHE} 2>/dev/null | cut -d' ' -f1`) || '';
+          if (newHash && newHash.trim()) {
+            adb(`echo "${newHash.trim()}" > ${MANIFEST_HASH}`);
+          }
+          
+          for (const item of payload.manifest) {
+            if (item.ns && item.key && item.value !== undefined) {
+              adb(`settings put ${item.ns} ${item.key} "${item.value}"`);
+            }
+          }
+          
+          triggerGuardianSignal();
+          
+          res.end(JSON.stringify({ ok: true, hash: newHash.trim() }));
+        } catch (e) {
+          res.end(JSON.stringify({ ok: false, error: 'Failed to save manifest: ' + e.message }));
+        }
+        break;
+      }
 
-      for (const [ns, key, expected, group, label, type, options] of MANIFEST) {
-        const current = state[ns] ? state[ns][key] : undefined;
-        const cv = (current === undefined || current === '' || current === 'null') ? null : current;
-        const synced = cv === expected;
-        results.push({ ns, key, current: cv, expected, synced, group, label, type, options });
-        if (!groups[group]) groups[group] = 0;
-        if (!synced) groups[group]++;
-      }
-      const pid = adb(`cat ${GUARDIAN_LOCK}`);
-      let alive = false;
-      if (pid && /^\d+$/.test(pid.trim())) {
-        const check = adb(`kill -0 ${pid.trim()} 2>/dev/null && echo YES || echo NO`);
-        alive = check === 'YES';
-      }
-      res.end(JSON.stringify({
-        ok: true, settings: results, drift_by_group: groups,
-        guardian: { pid: pid || null, alive },
-        total: MANIFEST.length, ts: new Date().toISOString()
-      }));
-      break;
-    }
+      case 'set': {
+        const key = parsed.query.key || '';
+        const value = parsed.query.value || '';
+        const ns = parsed.query.ns || 'global';
+        if (!key || value === '') {
+          res.end(JSON.stringify({ ok: false, error: 'Missing key or value' }));
+          return;
+        }
+        // 1. Ensure guardian alive
+        const pid = adb(`cat ${GUARDIAN_LOCK}`)?.trim();
+        if (!pid || !/^\d+$/.test(pid)) {
+          adb(`rm -f ${GUARDIAN_LOCK} && chmod 755 ${GUARDIAN_PATH} && nohup ${GUARDIAN_PATH} daemon > /dev/null 2>&1 &`);
+          execSync('timeout /t 3 /nobreak', { encoding: 'utf-8', windowsHide: true }).catch(() => {});
+        }
+        // 2. Apply
+        adb(`settings put ${ns} ${key} ${value}`);
+        
+        // 3. Update the local manifest file on device immediately
+        updateLocalManifestOnDevice(ns, key, value);
+        
+        // 4. Verify
+        const readback = adb(`settings get ${ns} ${key}`);
+        const applied = readback?.trim() === value.trim();
+        
+        // 5. Wait and check for hardware rejection
+        execSync('ping -n 3 127.0.0.1 > nul', { windowsHide: true, encoding: 'utf-8' });
+        const final_ = adb(`settings get ${ns} ${key}`);
+        const hw_rejected = final_?.trim() !== value.trim();
+        
+        // If hardware rejected it, revert in the local manifest file as well!
+        if (hw_rejected) {
+          updateLocalManifestOnDevice(ns, key, final_?.trim() || '');
+        } else {
+          // Signal guardian to refresh/check
+          triggerGuardianSignal();
+        }
 
-    case 'guardian_status': {
-      const pid = adb(`cat ${GUARDIAN_LOCK}`);
-      let alive = false;
-      if (pid && /^\d+$/.test(pid.trim())) {
-        const check = adb(`kill -0 ${pid.trim()} 2>/dev/null && echo YES || echo NO`);
-        alive = check === 'YES';
+        // 6. Guardian still alive
+        const pid2 = adb(`cat ${GUARDIAN_LOCK}`)?.trim();
+        let still_alive = false;
+        if (pid2 && /^\d+$/.test(pid2)) {
+          still_alive = adb(`kill -0 ${pid2} 2>/dev/null && echo YES || echo NO`) === 'YES';
+        }
+        res.end(JSON.stringify({
+          ok: applied, key, value, readback: readback?.trim(),
+          final: final_?.trim(), hw_rejected,
+          guardian_pid: pid2, guardian_alive: still_alive
+        }));
+        break;
       }
-      const log = adb('tail -5 /data/local/tmp/ape-ram-guardian.log');
-      res.end(JSON.stringify({ ok: true, pid: pid || null, alive, log }));
-      break;
-    }
 
-    case 'set': {
-      const key = parsed.query.key || '';
-      const value = parsed.query.value || '';
-      const ns = parsed.query.ns || 'global';
-      if (!key || value === '') {
-        res.end(JSON.stringify({ ok: false, error: 'Missing key or value' }));
-        return;
-      }
-      // 1. Ensure guardian alive
-      const pid = adb(`cat ${GUARDIAN_LOCK}`)?.trim();
-      if (!pid || !/^\d+$/.test(pid)) {
+      case 'restart_guardian': {
+        const pid = adb(`cat ${GUARDIAN_LOCK}`)?.trim();
+        if (pid && /^\d+$/.test(pid)) adb(`kill -9 ${pid}`);
         adb(`rm -f ${GUARDIAN_LOCK} && chmod 755 ${GUARDIAN_PATH} && nohup ${GUARDIAN_PATH} daemon > /dev/null 2>&1 &`);
-        execSync('timeout /t 3 /nobreak', { encoding: 'utf-8', windowsHide: true }).catch(() => {});
+        execSync('ping -n 6 127.0.0.1 > nul', { windowsHide: true, encoding: 'utf-8' });
+        const newpid = adb(`cat ${GUARDIAN_LOCK}`)?.trim();
+        let alive = false;
+        if (newpid && /^\d+$/.test(newpid)) {
+          alive = adb(`kill -0 ${newpid} 2>/dev/null && echo YES || echo NO`) === 'YES';
+        }
+        res.end(JSON.stringify({ ok: alive, pid: newpid, alive }));
+        break;
       }
-      // 2. Apply
-      adb(`settings put ${ns} ${key} ${value}`);
-      // 3. Verify
-      const readback = adb(`settings get ${ns} ${key}`);
-      const applied = readback?.trim() === value.trim();
-      // 4. Wait and check for hardware rejection
-      execSync('ping -n 3 127.0.0.1 > nul', { windowsHide: true, encoding: 'utf-8' });
-      const final_ = adb(`settings get ${ns} ${key}`);
-      const hw_rejected = final_?.trim() !== value.trim();
-      // 5. Guardian still alive
-      const pid2 = adb(`cat ${GUARDIAN_LOCK}`)?.trim();
-      let still_alive = false;
-      if (pid2 && /^\d+$/.test(pid2)) {
-        still_alive = adb(`kill -0 ${pid2} 2>/dev/null && echo YES || echo NO`) === 'YES';
+
+      case 'stop_guardian': {
+        const pid = adb(`cat ${GUARDIAN_LOCK}`)?.trim();
+        if (pid && /^\d+$/.test(pid)) adb(`kill -9 ${pid}`);
+        adb(`rm -f ${GUARDIAN_LOCK}`);
+        res.end(JSON.stringify({ ok: true, alive: false }));
+        break;
       }
-      res.end(JSON.stringify({
-        ok: applied, key, value, readback: readback?.trim(),
-        final: final_?.trim(), hw_rejected,
-        guardian_pid: pid2, guardian_alive: still_alive
-      }));
-      break;
-    }
 
-    case 'restart_guardian': {
-      const pid = adb(`cat ${GUARDIAN_LOCK}`)?.trim();
-      if (pid && /^\d+$/.test(pid)) adb(`kill -9 ${pid}`);
-      adb(`rm -f ${GUARDIAN_LOCK} && chmod 755 ${GUARDIAN_PATH} && nohup ${GUARDIAN_PATH} daemon > /dev/null 2>&1 &`);
-      execSync('ping -n 6 127.0.0.1 > nul', { windowsHide: true, encoding: 'utf-8' });
-      const newpid = adb(`cat ${GUARDIAN_LOCK}`)?.trim();
-      let alive = false;
-      if (newpid && /^\d+$/.test(newpid)) {
-        alive = adb(`kill -0 ${newpid} 2>/dev/null && echo YES || echo NO`) === 'YES';
-      }
-      res.end(JSON.stringify({ ok: alive, pid: newpid, alive }));
-      break;
+      default:
+        res.end(JSON.stringify({ ok: false, error: 'Unknown action', actions: ['read_all','guardian_status','set','save_manifest','restart_guardian','stop_guardian'] }));
     }
-
-    case 'stop_guardian': {
-      const pid = adb(`cat ${GUARDIAN_LOCK}`)?.trim();
-      if (pid && /^\d+$/.test(pid)) adb(`kill -9 ${pid}`);
-      adb(`rm -f ${GUARDIAN_LOCK}`);
-      res.end(JSON.stringify({ ok: true, alive: false }));
-      break;
-    }
-
-    default:
-      res.end(JSON.stringify({ ok: false, error: 'Unknown action', actions: ['read_all','guardian_status','set','restart_guardian','stop_guardian'] }));
-  }
+  });
 }
 
 const server = http.createServer(handleRequest);
@@ -246,6 +385,7 @@ server.listen(PORT, () => {
   console.log(`    GET  ?action=read_all`);
   console.log(`    GET  ?action=guardian_status`);
   console.log(`    POST ?action=set&key=X&value=Y&ns=global`);
+  console.log(`    POST ?action=save_manifest`);
   console.log(`    POST ?action=restart_guardian`);
   console.log(`\n  Ctrl+C to stop\n`);
 });

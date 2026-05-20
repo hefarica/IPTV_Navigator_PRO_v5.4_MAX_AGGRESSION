@@ -746,9 +746,9 @@ $vlcopt[] = "#EXTVLCOPT:tone-mapping-desat=2.0";
 $vlcopt[] = "#EXTVLCOPT:peak-detect=1";
 
 // ── HDR10/HDR10+ Metadata ──
-$vlcopt[] = "#EXTVLCOPT:hdr10-maxcll=5000";
+$vlcopt[] = "#EXTVLCOPT:hdr10-maxcll=10000";
 $vlcopt[] = "#EXTVLCOPT:hdr10-maxfall=1500";
-$vlcopt[] = "#EXTVLCOPT:hdr10-mastering-max-lum=5000";
+$vlcopt[] = "#EXTVLCOPT:hdr10-mastering-max-lum=10000";
 $vlcopt[] = "#EXTVLCOPT:hdr10-mastering-min-lum=1";
 
 // ── Color Matrix and Rendering ──
@@ -756,13 +756,13 @@ $vlcopt[] = "#EXTVLCOPT:video-color-matrix=BT2020_NCL";
 $vlcopt[] = "#EXTVLCOPT:video-chroma-location=left";
 $vlcopt[] = "#EXTVLCOPT:render-intent=perceptual";
 $vlcopt[] = "#EXTVLCOPT:gamut-mapping=perceptual";
-$vlcopt[] = "#EXTVLCOPT:target-peak=5000";
+$vlcopt[] = "#EXTVLCOPT:target-peak=10000";
 
 // ── D3D11/OpenGL HDR Rendering ──
 $vlcopt[] = "#EXTVLCOPT:d3d11-hdr-mode=always";
 $vlcopt[] = "#EXTVLCOPT:opengl-hdr=1";
 $vlcopt[] = "#EXTVLCOPT:gl-tone-mapping=reinhard";
-$vlcopt[] = "#EXTVLCOPT:gl-target-peak=5000";
+$vlcopt[] = "#EXTVLCOPT:gl-target-peak=10000";
 
 // ── Deband Filter ──
 $vlcopt[] = "#EXTVLCOPT:deband=1";

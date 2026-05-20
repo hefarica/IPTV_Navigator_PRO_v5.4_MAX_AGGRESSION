@@ -247,14 +247,8 @@ local floor_ok, floor_err = pcall(function()
 
         body = table.concat(new_lines, "\n") .. "\n"
 
-        -- Configure observability response headers
-        ngx.header["X-APE-Floor-Lock"] = string.format("profile=%s;floor=%d;kept=%d;removed=%d", mapped_profile, cfg.floor_bps, #kept_variants, #variants - #kept_variants)
-        ngx.header["X-APE-UHDX-Mode"] = "LUA_SUPREMACY"
-        ngx.header["X-APE-UHDX-Profile"] = mapped_profile
-        ngx.header["X-APE-UHDX-Upscaler"] = cfg.upscaler
-        ngx.header["X-APE-UHDX-HDR-Intent"] = cfg.hdr_intent
-        ngx.header["X-APE-UHDX-Virtual-4K"] = cfg.virtual_4k
-        ngx.header.content_length = nil
+        -- Observability logging (Headers sent in header filter phase)
+        ngx.log(ngx.INFO, string.format("[UHDX] Floor-Lock: profile=%s;floor=%d;kept=%d;removed=%d", mapped_profile, cfg.floor_bps, #kept_variants, #variants - #kept_variants))
     end
 
 end) -- pcall floor_lock

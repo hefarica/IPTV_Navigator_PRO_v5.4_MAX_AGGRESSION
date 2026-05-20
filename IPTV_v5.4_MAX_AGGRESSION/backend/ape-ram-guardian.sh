@@ -156,7 +156,7 @@ check_vpn() {
     result=$(ping -c 1 -W 3 nfqdeuxu.x1megaott.online 2>&1 | head -2)
     if echo "$result" | grep -q "bytes from"; then
         local ttl
-        ttl=$(echo "$result" | grep -oP 'ttl=\K\d+' || echo 0)
+        ttl=$(echo "$result" | grep -oE 'ttl=[0-9]+' | cut -d= -f2 || echo 0)
         if [ "$ttl" -ge 60 ] 2>/dev/null; then
             return 0  # TTL=64 = goes through VPS = GOOD
         else
@@ -208,9 +208,9 @@ check_dns() {
     result=$(ping -c 1 -W 2 "$host" 2>&1 | head -1)
     if echo "$result" | grep -q "bytes from"; then
         local ttl
-        ttl=$(echo "$result" | grep -oP 'ttl=\K\d+')
+        ttl=$(echo "$result" | grep -oE 'ttl=[0-9]+' | cut -d= -f2)
         local ms
-        ms=$(echo "$result" | grep -oP 'time=\K[\d.]+')
+        ms=$(echo "$result" | grep -oE 'time=[0-9.]+' | cut -d= -f2)
         # TTL=64 and <5ms = going through VPS (correct)
         # TTL<60 and >20ms = going direct (BAD)
         if [ -n "$ttl" ] && [ "$ttl" -lt 60 ] 2>/dev/null; then
@@ -401,7 +401,7 @@ kill_bandwidth_thieves() {
 # ─── WIFI SIGNAL MONITOR ────────────────────────────────────────────────
 check_wifi() {
     local rssi
-    rssi=$(dumpsys wifi 2>/dev/null | grep -oP 'rssi=\K-?\d+' | tail -1)
+    rssi=$(dumpsys wifi 2>/dev/null | grep -oE 'rssi=-?[0-9]+' | tail -1 | cut -d= -f2)
     if [ -n "$rssi" ]; then
         # RSSI: >-50 excellent, -50 to -60 good, -60 to -70 fair, <-70 bad
         if [ "$rssi" -lt -70 ] 2>/dev/null; then
@@ -432,7 +432,7 @@ status_report() {
     local player="OFF"
     pidof studio.scillarium.ottnavigator >/dev/null 2>&1 && player="ON"
     local rssi
-    rssi=$(dumpsys wifi 2>/dev/null | grep -oP 'rssi=\K-?\d+' | tail -1 || echo "?")
+    rssi=$(dumpsys wifi 2>/dev/null | grep -oE 'rssi=-?[0-9]+' | tail -1 | cut -d= -f2 || echo "?")
     log "STATUS: RAM=${mem_avail}/${mem_free}MB VPN=$vpn Player=$player WiFi=${rssi}dBm"
 }
 
@@ -473,6 +473,34 @@ MANIFEST_URL="https://iptv-ape.duckdns.org/prisma/quality-manifest.json"
 MANIFEST_CACHE="/data/local/tmp/quality-manifest.json"
 MANIFEST_HASH="/data/local/tmp/quality-manifest.hash"
 
+is_timestamp_newer() {
+    local new_ts="$1"
+    local local_ts="$2"
+
+    [ -z "$new_ts" ] && return 1
+    [ -z "$local_ts" ] && return 0
+
+    local new_epoch
+    new_epoch=$(date -d "$new_ts" +%s 2>/dev/null)
+    local local_epoch
+    local_epoch=$(date -d "$local_ts" +%s 2>/dev/null)
+
+    if [ -z "$new_epoch" ] || [ -z "$local_epoch" ]; then
+        # String lexicographical comparison fallback
+        if [ "$new_ts" \> "$local_ts" ]; then
+            return 0
+        else
+            return 1
+        fi
+    fi
+
+    if [ "$new_epoch" -gt "$local_epoch" ]; then
+        return 0
+    else
+        return 1
+    fi
+}
+
 enforce_quality_manifest() {
     # Download manifest from VPS (timeout 5s, fail silently if offline)
     local tmp="/data/local/tmp/.qm_download.json"
@@ -481,17 +509,28 @@ enforce_quality_manifest() {
 
     if wget -q -T 5 -O "$tmp" "$MANIFEST_URL" 2>/dev/null || curl -sf -m 5 -o "$tmp" "$MANIFEST_URL" 2>/dev/null; then
         if [ -s "$tmp" ]; then
-            local new_hash
-            new_hash=$(md5sum "$tmp" 2>/dev/null | cut -d' ' -f1)
-            local old_hash=""
-            [ -f "$MANIFEST_HASH" ] && old_hash=$(cat "$MANIFEST_HASH" 2>/dev/null)
+            # Parse saved_at timestamps
+            local local_ts=""
+            [ -f "$qm_file" ] && local_ts=$(grep -o '"saved_at":"[^"]*"' "$qm_file" 2>/dev/null | head -n 1 | cut -d'"' -f4)
+            local new_ts=""
+            new_ts=$(grep -o '"saved_at":"[^"]*"' "$tmp" 2>/dev/null | head -n 1 | cut -d'"' -f4)
 
-            if [ "$new_hash" != "$old_hash" ]; then
-                log "QM: New manifest downloaded from VPS (hash=$new_hash)"
+            local download_manifest=0
+            if [ -z "$local_ts" ]; then
+                download_manifest=1
+            elif is_timestamp_newer "$new_ts" "$local_ts"; then
+                download_manifest=1
+            fi
+
+            if [ "$download_manifest" -eq 1 ]; then
+                local new_hash
+                new_hash=$(md5sum "$tmp" 2>/dev/null | cut -d' ' -f1)
+                log "QM: New manifest accepted from VPS (ts=$new_ts, hash=$new_hash)"
                 mv -f "$tmp" "$qm_file"
                 echo "$new_hash" > "$MANIFEST_HASH"
                 is_new_manifest=1
             else
+                # VPS manifest is older or equal (local update won), discard download
                 rm -f "$tmp"
             fi
         else
@@ -515,14 +554,14 @@ enforce_quality_manifest() {
     echo 0 > "$count_file"
 
     local entries
-    entries=$(cat "$qm_file" | tr '{' '\n' | grep '"ns"')
+    entries=$(cat "$qm_file" | tr -d '\n\r' | sed 's/}/}\n/g' | grep '"ns"')
 
     echo "$entries" | while IFS= read -r line; do
         [ -z "$line" ] && continue
         local ns key value
-        ns=$(echo "$line" | sed 's/.*"ns":"\([^"]*\)".*/\1/')
-        key=$(echo "$line" | sed 's/.*"key":"\([^"]*\)".*/\1/')
-        value=$(echo "$line" | sed 's/.*"value":"\([^"]*\)".*/\1/')
+        ns=$(echo "$line" | grep -oE '"ns"[[:space:]]*:[[:space:]]*"[^"]+"' | cut -d'"' -f4)
+        key=$(echo "$line" | grep -oE '"key"[[:space:]]*:[[:space:]]*"[^"]+"' | cut -d'"' -f4)
+        value=$(echo "$line" | grep -oE '"value"[[:space:]]*:[[:space:]]*"[^"]+"' | cut -d'"' -f4)
 
         [ -z "$ns" ] || [ -z "$key" ] || [ -z "$value" ] && continue
 
@@ -598,8 +637,13 @@ daemon_main() {
     local NET_INTERVAL=120       # Re-apply network opts every 120 cycles (30 min)
     local DNS_INTERVAL=40        # DNS check every 40 cycles (10 min)
 
+    # Traps for real-time triggers from frontend/local API
+    trap 'log "QM: SIGUSR1 trigger received. Waking up daemon loop."; [ -n "$SLEEP_PID" ] && kill "$SLEEP_PID" 2>/dev/null' USR1
+
     while true; do
-        sleep "$POLL_INTERVAL"
+        sleep "$POLL_INTERVAL" &
+        SLEEP_PID=$!
+        wait "$SLEEP_PID" 2>/dev/null
         cycle=$((cycle + 1))
 
         # ── STANDBY CHECK (Netflix-safe routing) ──

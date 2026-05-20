@@ -69,10 +69,57 @@ if uri:find(".m3u8", 1, true) or uri:find(".m3u", 1, true) then
     ngx.header.content_length = nil
 end
 
+-- Determine profile (default P2 = P2_SAFE_COMPAT)
+local profile = "P2"
+local args = ngx.req.get_uri_args()
+if args and args.profile then
+    profile = tostring(args.profile):upper()
+elseif args and args.p then
+    profile = tostring(args.p):upper()
+end
+local hdr_profile = ngx.req.get_headers()["X-APE-Profile"]
+if hdr_profile then
+    profile = tostring(hdr_profile):upper()
+end
+if not profile:match("^P[0-5]$") then profile = "P2" end
+
+local mapped_profile = "P2_SAFE_COMPAT"
+local upscaler = "AdaptiveSharpen"
+local hdr_intent = "HDR_BYPASS"
+local virtual_4k = "BYPASS"
+local floor_lock = "BYPASS"
+local floor_bps = 5000000
+
+if profile == "P0" then
+    mapped_profile = "P0_SHOWROOM_FLASH_4K"
+    upscaler = "Anime4K"
+    hdr_intent = "HDR_FORCE"
+    virtual_4k = "ACTIVE"
+    floor_lock = "ACTIVE"
+    floor_bps = 18000000
+elseif profile == "P1" then
+    mapped_profile = "P1_DAILY_EXTREME_4K"
+    upscaler = "FSRCNNX"
+    hdr_intent = "HDR_AUTO"
+    virtual_4k = "ACTIVE"
+    floor_lock = "ACTIVE"
+    floor_bps = 14000000
+end
+
 -- Headers for debugging (always set, never block)
 ngx.header["X-APE-Circuit"]   = "PASSTHROUGH"
 ngx.header["X-APE-Upstream"]  = host
 ngx.header["X-APE-Status"]    = tostring(status)
+
+local uri = ngx.var.uri or ""
+if uri:find(".m3u8", 1, true) or uri:find(".m3u", 1, true) then
+    ngx.header["X-APE-UHDX-Mode"]       = "LUA_SUPREMACY"
+    ngx.header["X-APE-UHDX-Profile"]    = mapped_profile
+    ngx.header["X-APE-UHDX-Upscaler"]   = upscaler
+    ngx.header["X-APE-UHDX-HDR-Intent"] = hdr_intent
+    ngx.header["X-APE-UHDX-Virtual-4K"] = virtual_4k
+    ngx.header["X-APE-Floor-Lock"]      = string.format("profile=%s;floor=%d", mapped_profile, floor_bps)
+end
 
 -- ═══ PRISMA v2.0: Sentinel Auth Guard (header_filter companion) ═════
 -- Tracks 401/403 from upstream, rotates UA pool, detects "hot" providers.

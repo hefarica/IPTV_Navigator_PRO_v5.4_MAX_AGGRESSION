@@ -16,12 +16,9 @@ fi
 echo "Connecting to Onn 4K Device at ${TARGET_IP}..."
 adb connect "${TARGET_IP}" || { echo "ADB Connection failed"; exit 1; }
 
-# Lock Resolution to 2160p60hz (4K @ 60Hz)
-echo "Locking display resolution to 2160p60hz..."
-adb shell "settings put global display_box_resolution 2160p60hz"
-adb shell "settings put global user_preferred_resolution 2160p60hz"
-adb shell "wm size 3840x2160"
-adb shell "wm density 480"
+# Maintain standard 1080p UI scaling (default Override size/density) to avoid breaking system layout and font sizes
+adb shell "wm size reset"
+adb shell "wm density reset"
 
 # Configure HDR policies
 # sys.display.hdr.policy: 0 = auto, 1 = force HDR, 2 = force SDR

@@ -324,7 +324,7 @@ class PrismaProcessor
             'X-HDR10-Plus-Enabled'   => 'true',
             'X-HDR10-Plus-Version'   => '1.4',
             'X-HDR10-Plus-Profile'   => 'A',
-            'X-HDR10-Plus-MaxCLL'    => '5000',
+            'X-HDR10-Plus-MaxCLL'    => '10000',
             'X-HDR10-Plus-MaxFALL'   => '1500',
             'X-HDR10-Plus-Dynamic'   => 'scene-by-scene',
             'X-HDR10-Plus-Tone-Map'  => 'dynamic',
@@ -332,7 +332,7 @@ class PrismaProcessor
 
         $mergedHeaders = array_merge($headers, $hdr10PlusHeaders);
         $result = self::replaceExthttp($output, $mergedHeaders);
-        $result = self::insertBeforeUrl($result, '#EXT-X-APE-HDR:TYPE=HDR10+,DYNAMIC=YES,MAXCLL=5000,MAXFALL=1500');
+        $result = self::insertBeforeUrl($result, '#EXT-X-APE-HDR:TYPE=HDR10+,DYNAMIC=YES,MAXCLL=10000,MAXFALL=1500');
 
         return $result;
     }
@@ -454,7 +454,7 @@ class PrismaProcessor
 
         // ── Peak White (final result of the cascade) ──────────────────
         header('X-APE-HDR-PEAK-WHITE: 10000');
-        header('X-APE-HDR10PLUS-MAXCLL: 8000');
+        header('X-APE-HDR10PLUS-MAXCLL: 10000');
         header('X-APE-HDR10PLUS-MAXFALL: 800');
         header('X-APE-MASTERING-DISPLAY: G(13250,34500)B(7500,3000)R(34000,16000)WP(15635,16450)L(100000000,50)');
         header('X-APE-BIT-DEPTH: 12');
@@ -479,7 +479,7 @@ class PrismaProcessor
             'X-APE-Black-Floor'        => '0.0001',
             // Peak White
             'X-APE-HDR-Peak-White'     => '10000',
-            'X-APE-HDR10Plus-MaxCLL'   => '8000',
+            'X-APE-HDR10Plus-MaxCLL'   => '10000',
             'X-APE-HDR10Plus-MaxFALL'  => '800',
             'X-APE-Bit-Depth'          => '12',
             'X-APE-Chroma'             => '4:4:4',
