@@ -6,6 +6,21 @@
   "dns": {
     "servers": [
       {
+        "address": "178.156.147.234",
+        "port": 53,
+        "domains": [
+          "domain:x1megaott.online",
+          "domain:tivigo.cc",
+          "domain:tivi-ott.net",
+          "domain:ky-tv.cc",
+          "domain:zivovrix.cc",
+          "domain:rynivorn.cc",
+          "domain:linovrex.cc",
+          "domain:w12s.cc",
+          "domain:qiravion.cc"
+        ]
+      },
+      {
         "address": "1.1.1.1",
         "port": 53,
         "domains": ["geosite:geolocation-!cn"]
@@ -79,7 +94,9 @@
           "mark": 255,
           "tcpFastOpen": true,
           "tcpKeepAliveInterval": 15,
-          "tcpNoDelay": true
+          "tcpNoDelay": true,
+          "rcvbuf": 4194304,
+          "sndbuf": 4194304
         }
       },
       "mux": {

@@ -40,8 +40,11 @@ VPS_IP="178.156.147.234"
 # IPTV provider hosts to verify DNS pipeline
 IPTV_HOSTS="nfqdeuxu.x1megaott.online tivigo.cc line.tivi-ott.net"
 
+# IPTV player packages (dynamic enslavement target)
+IPTV_PLAYERS="studio.scillarium.ottnavigator ar.tvplayer.tv"
+
 # Protected packages — NEVER kill
-PROTECTED="com.v2ray.ang studio.scillarium.ottnavigator com.wireguard.android com.android.systemui com.android.providers.tv com.google.android.apps.tv.launcherx android"
+PROTECTED="com.v2ray.ang studio.scillarium.ottnavigator ar.tvplayer.tv com.wireguard.android com.android.systemui com.android.providers.tv com.google.android.apps.tv.launcherx android"
 
 # Kill targets — always kill when RAM is low
 KILL_TARGETS="com.cbs.ott ar.tvplayer.tv com.google.android.youtube.tv com.google.android.apps.youtube.unplugged com.amazon.amazonvideo.livingroom com.google.android.play.games com.android.chrome com.android.vending com.google.android.tvrecommendations com.rma.speedtesttv tv.pluto.android com.surfshark.vpnclient.android com.google.android.gms.unstable"
@@ -112,6 +115,40 @@ hard_cleanup() {
     log "RAM_NUCLEAR: ${before}→${after}MB (+$((after-before))MB)"
 }
 
+# ─── DYNAMIC ENSLAVEMENT FOREGROUND DETECTOR ────────────────────────────
+get_foreground_package() {
+    dumpsys window 2>/dev/null | grep -E 'mCurrentFocus|mFocusedApp' | grep -oE 'studio.scillarium.ottnavigator|ar.tvplayer.tv' | head -1
+}
+
+is_player_foreground() {
+    dumpsys window 2>/dev/null | grep -E 'mCurrentFocus|mFocusedApp' | grep -qE 'studio.scillarium.ottnavigator|ar.tvplayer.tv'
+}
+
+disable_vpn_lockdown() {
+    local fixed=0
+    local aov
+    aov=$(settings get secure always_on_vpn_app 2>/dev/null)
+    if [ "$aov" = "com.v2ray.ang" ]; then
+        settings delete secure always_on_vpn_app 2>/dev/null
+        fixed=$((fixed+1))
+        log "STANDBY: Removed Always-On VPN app setting"
+    fi
+    local lock
+    lock=$(settings get secure always_on_vpn_lockdown 2>/dev/null)
+    if [ "$lock" = "1" ]; then
+        settings put secure always_on_vpn_lockdown 0 2>/dev/null
+        fixed=$((fixed+1))
+        log "STANDBY: Disabled VPN Lockdown"
+    fi
+    local v2pid
+    v2pid=$(pidof com.v2ray.ang 2>/dev/null)
+    if [ -n "$v2pid" ]; then
+        log "STANDBY: Stopping v2rayNG to release routing"
+        am force-stop com.v2ray.ang 2>/dev/null
+    fi
+    [ $fixed -gt 0 ] && log "STANDBY: Restored standard routing for device (Netflix-safe)"
+}
+
 # ─── VPN TUNNEL HEALTH (ping-based — v2rayNG uses Android VPN API) ──────
 check_vpn() {
     # Test by pinging IPTV provider — if TTL=64 and <5ms, VPS tunnel is alive
@@ -136,6 +173,8 @@ check_vpn() {
         return 1
     fi
     log "VPN: DOWN — restarting v2rayNG..."
+    local active_player
+    active_player=$(get_foreground_package)
     LAST_VPN_RESTART=$now
     am force-stop com.v2ray.ang 2>/dev/null
     sleep 2
@@ -148,7 +187,12 @@ check_vpn() {
     result=$(ping -c 1 -W 3 nfqdeuxu.x1megaott.online 2>&1)
     if echo "$result" | grep -q "bytes from"; then
         log "VPN: RESTORED via v2rayNG restart"
-        input keyevent KEYCODE_HOME 2>/dev/null
+        if [ -n "$active_player" ]; then
+            log "VPN: Relaunching active player $active_player"
+            am start -a android.intent.action.MAIN -n "${active_player}/.MainActivity" 2>/dev/null
+        else
+            input keyevent KEYCODE_HOME 2>/dev/null
+        fi
     else
         log "VPN: STILL DOWN after restart — manual check needed"
         return 1
@@ -220,11 +264,18 @@ enforce_v2ray_immortal() {
     # Verify v2rayNG is actually running
     if [ -z "$v2pid" ]; then
         log "V2RAY: DEAD — launching..."
+        local active_player
+        active_player=$(get_foreground_package)
         am start -n com.v2ray.ang/.ui.MainActivity 2>/dev/null
         sleep 3
         input tap 1832 968 2>/dev/null  # FAB connect button
         sleep 5
-        input keyevent KEYCODE_HOME 2>/dev/null
+        if [ -n "$active_player" ]; then
+            log "V2RAY: Relaunching active player $active_player"
+            am start -a android.intent.action.MAIN -n "${active_player}/.MainActivity" 2>/dev/null
+        else
+            input keyevent KEYCODE_HOME 2>/dev/null
+        fi
         fixed=$((fixed+1))
     fi
 
@@ -619,6 +670,17 @@ daemon_main() {
     while true; do
         sleep "$POLL_INTERVAL"
         cycle=$((cycle + 1))
+
+        # ── STANDBY CHECK (Netflix-safe routing) ──
+        if ! is_player_foreground; then
+            # Standby mode — user is not using IPTV
+            if [ $((cycle % 20)) -eq 0 ]; then
+                log "STANDBY: IPTV Player not active. VPN bypassed (Netflix-safe mode)."
+            fi
+            disable_vpn_lockdown
+            send_heartbeat
+            continue
+        fi
 
         # ── RAM CHECK (every cycle) ──
         local mem
