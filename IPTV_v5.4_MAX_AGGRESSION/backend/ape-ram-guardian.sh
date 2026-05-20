@@ -289,116 +289,8 @@ enforce_v2ray_immortal() {
 # from the manifest, it is IMMEDIATELY corrected. No exceptions.
 # ═══════════════════════════════════════════════════════════════════════════
 
-enforce_quality_manifest() {
+apply_system_baselines() {
     local fixed=0
-
-    # ── DISPLAY: 4K @ 60Hz ──
-    local h=$(settings get global user_preferred_resolution_height 2>/dev/null)
-    [ "$h" != "2160" ] && { settings put global user_preferred_resolution_height 2160 2>/dev/null; fixed=$((fixed+1)); }
-    local w=$(settings get global user_preferred_resolution_width 2>/dev/null)
-    [ "$w" != "3840" ] && { settings put global user_preferred_resolution_width 3840 2>/dev/null; fixed=$((fixed+1)); }
-    local fps=$(settings get global user_preferred_refresh_rate 2>/dev/null)
-    [ "$fps" != "60.0" ] && { settings put global user_preferred_refresh_rate 60.0 2>/dev/null; fixed=$((fixed+1)); }
-
-    # ── HDR: Passthrough (Android rejects FORCE on this TV) ──
-    local hdr=$(settings get global hdr_conversion_mode 2>/dev/null)
-    [ "$hdr" != "0" ] && { settings put global hdr_conversion_mode 0 2>/dev/null; fixed=$((fixed+1)); }
-    local hdr_out=$(settings get global hdr_output_type 2>/dev/null)
-    [ "$hdr_out" != "4" ] && { settings put global hdr_output_type 4 2>/dev/null; fixed=$((fixed+1)); }
-    local hdr_force=$(settings get global hdr_force_conversion_type 2>/dev/null)
-    [ "$hdr_force" != "-1" ] && { settings put global hdr_force_conversion_type -1 2>/dev/null; fixed=$((fixed+1)); }
-    local hdr_en=$(settings get global pq_hdr_enable 2>/dev/null)
-    [ "$hdr_en" != "1" ] && { settings put global pq_hdr_enable 1 2>/dev/null; fixed=$((fixed+1)); }
-    local hdr_mode=$(settings get global pq_hdr_mode 2>/dev/null)
-    [ "$hdr_mode" != "1" ] && { settings put global pq_hdr_mode 1 2>/dev/null; fixed=$((fixed+1)); }
-    local hdr_boost=$(settings get global hdr_brightness_boost 2>/dev/null)
-    [ "$hdr_boost" != "100" ] && { settings put global hdr_brightness_boost 100 2>/dev/null; fixed=$((fixed+1)); }
-    local sdr_hdr=$(settings get global sdr_brightness_in_hdr 2>/dev/null)
-    [ "$sdr_hdr" != "100" ] && { settings put global sdr_brightness_in_hdr 100 2>/dev/null; fixed=$((fixed+1)); }
-    local peak=$(settings get global peak_luminance 2>/dev/null)
-    # Try 10000 but accept 1000 if Android clamps it (EDID limit)
-    if [ "$peak" != "10000" ] && [ "$peak" != "1000" ]; then
-        settings put global peak_luminance 10000 2>/dev/null; fixed=$((fixed+1))
-    elif [ "$peak" = "1000" ]; then
-        settings put global peak_luminance 10000 2>/dev/null
-        sleep 1
-        local recheck=$(settings get global peak_luminance 2>/dev/null)
-        if [ "$recheck" = "1000" ]; then
-            : # Android clamped it — accept 1000, don't count as drift
-        else
-            fixed=$((fixed+1))
-        fi
-    fi
-
-    # ── COLOR: HDR mode, max depth ──
-    local cm=$(settings get global display_color_mode 2>/dev/null)
-    [ "$cm" != "3" ] && { settings put global display_color_mode 3 2>/dev/null; fixed=$((fixed+1)); }
-    local cs=$(settings get global hdmi_color_space 2>/dev/null)
-    [ "$cs" != "2" ] && { settings put global hdmi_color_space 2 2>/dev/null; fixed=$((fixed+1)); }
-
-    # ── MATCH CONTENT FRAME RATE: Seamless ──
-    local mf=$(settings get global match_content_frame_rate_pref 2>/dev/null)
-    [ "$mf" != "2" ] && { settings put global match_content_frame_rate_pref 2 2>/dev/null; fixed=$((fixed+1)); }
-    local mf2=$(settings get global match_content_frame_rate 2>/dev/null)
-    [ "$mf2" != "1" ] && { settings put global match_content_frame_rate 1 2>/dev/null; fixed=$((fixed+1)); }
-
-    # ── AUDIO: Surround Passthrough + Atmos ──
-    local sur=$(settings get global encoded_surround_output 2>/dev/null)
-    [ "$sur" != "2" ] && { settings put global encoded_surround_output 2 2>/dev/null; fixed=$((fixed+1)); }
-    local atmos=$(settings get global enable_dolby_atmos 2>/dev/null)
-    [ "$atmos" != "1" ] && { settings put global enable_dolby_atmos 1 2>/dev/null; fixed=$((fixed+1)); }
-    local spdif=$(settings get global db_id_sound_spdif_output_enable 2>/dev/null)
-    [ "$spdif" != "1" ] && { settings put global db_id_sound_spdif_output_enable 1 2>/dev/null; fixed=$((fixed+1)); }
-
-    # ── AI PICTURE QUALITY (Amlogic PQ Engine) ──
-    local aipq=$(settings get system aipq_enable 2>/dev/null)
-    [ "$aipq" != "1" ] && { settings put system aipq_enable 1 2>/dev/null; fixed=$((fixed+1)); }
-    local aisr=$(settings get system aisr_enable 2>/dev/null)
-    [ "$aisr" != "1" ] && { settings put system aisr_enable 1 2>/dev/null; fixed=$((fixed+1)); }
-    local aipqm=$(settings get system ai_pq_mode 2>/dev/null)
-    [ "$aipqm" != "3" ] && { settings put system ai_pq_mode 3 2>/dev/null; fixed=$((fixed+1)); }
-    local aisrm=$(settings get system ai_sr_mode 2>/dev/null)
-    [ "$aisrm" != "3" ] && { settings put system ai_sr_mode 3 2>/dev/null; fixed=$((fixed+1)); }
-    local dnr=$(settings get global pq_ai_dnr_enable 2>/dev/null)
-    [ "$dnr" != "1" ] && { settings put global pq_ai_dnr_enable 1 2>/dev/null; fixed=$((fixed+1)); }
-    local fbc=$(settings get global pq_ai_fbc_enable 2>/dev/null)
-    [ "$fbc" != "1" ] && { settings put global pq_ai_fbc_enable 1 2>/dev/null; fixed=$((fixed+1)); }
-    local aisr2=$(settings get global pq_ai_sr_enable 2>/dev/null)
-    [ "$aisr2" != "1" ] && { settings put global pq_ai_sr_enable 1 2>/dev/null; fixed=$((fixed+1)); }
-    local pqnr=$(settings get global pq_nr_enable 2>/dev/null)
-    [ "$pqnr" != "1" ] && { settings put global pq_nr_enable 1 2>/dev/null; fixed=$((fixed+1)); }
-    local sharp=$(settings get global pq_sharpness_enable 2>/dev/null)
-    [ "$sharp" != "1" ] && { settings put global pq_sharpness_enable 1 2>/dev/null; fixed=$((fixed+1)); }
-    local pqdnr=$(settings get global pq_dnr_enable 2>/dev/null)
-    [ "$pqdnr" != "1" ] && { settings put global pq_dnr_enable 1 2>/dev/null; fixed=$((fixed+1)); }
-    local aipicm=$(settings get global ai_pic_mode 2>/dev/null)
-    [ "$aipicm" != "3" ] && { settings put global ai_pic_mode 3 2>/dev/null; fixed=$((fixed+1)); }
-    local aisrl=$(settings get global ai_sr_level 2>/dev/null)
-    [ "$aisrl" != "3" ] && { settings put global ai_sr_level 3 2>/dev/null; fixed=$((fixed+1)); }
-    local smil=$(settings get global smart_illuminate_enabled 2>/dev/null)
-    [ "$smil" != "1" ] && { settings put global smart_illuminate_enabled 1 2>/dev/null; fixed=$((fixed+1)); }
-
-    # ── COLOR: 12-bit, 4:2:2 chroma ──
-    local cdepth=$(settings get global color_depth 2>/dev/null)
-    [ "$cdepth" != "12" ] && { settings put global color_depth 12 2>/dev/null; fixed=$((fixed+1)); }
-    local c422=$(settings get global color_mode_ycbcr422 2>/dev/null)
-    [ "$c422" != "1" ] && { settings put global color_mode_ycbcr422 1 2>/dev/null; fixed=$((fixed+1)); }
-    local ahdr=$(settings get global always_hdr 2>/dev/null)
-    [ "$ahdr" != "0" ] && { settings put global always_hdr 0 2>/dev/null; fixed=$((fixed+1)); }
-
-    # ── VIDEO BRIGHTNESS ──
-    local vb=$(settings get global video_brightness 2>/dev/null)
-    [ "$vb" != "100" ] && { settings put global video_brightness 100 2>/dev/null; fixed=$((fixed+1)); }
-    local sb=$(settings get system screen_brightness 2>/dev/null)
-    [ "$sb" != "255" ] && { settings put system screen_brightness 255 2>/dev/null; fixed=$((fixed+1)); }
-
-    # ── GPU & HARDWARE RENDERING ──
-    local gpu=$(settings get global force_gpu_rendering 2>/dev/null)
-    [ "$gpu" != "1" ] && { settings put global force_gpu_rendering 1 2>/dev/null; fixed=$((fixed+1)); }
-    local hwui=$(settings get global force_hw_ui 2>/dev/null)
-    [ "$hwui" != "1" ] && { settings put global force_hw_ui 1 2>/dev/null; fixed=$((fixed+1)); }
-    local hwar=$(settings get global hardware_accelerated_rendering_enabled 2>/dev/null)
-    [ "$hwar" != "1" ] && { settings put global hardware_accelerated_rendering_enabled 1 2>/dev/null; fixed=$((fixed+1)); }
 
     # ── SCREEN & POWER ──
     local sto=$(settings get system screen_off_timeout 2>/dev/null)
@@ -444,12 +336,15 @@ enforce_quality_manifest() {
     local ns=$(settings get global netstats_enabled 2>/dev/null)
     [ "$ns" != "0" ] && { settings put global netstats_enabled 0 2>/dev/null; fixed=$((fixed+1)); }
 
-    [ "$fixed" -gt 0 ] && log "MANIFEST: Restored $fixed settings that drifted"
+    [ "$fixed" -gt 0 ] && log "BASELINES: Restored $fixed system/network baselines that drifted"
 }
 
 # ─── TCP/NETWORK OPTIMIZATION (synced with VPS sysctl) ──────────────────
 apply_network_optimization() {
-    # Apply the quality manifest first
+    # Apply system baselines
+    apply_system_baselines
+
+    # Apply the quality manifest
     enforce_quality_manifest
 
     # Kernel TCP tuning (best-effort — may need root)
@@ -576,35 +471,44 @@ MANIFEST_HASH="/data/local/tmp/quality-manifest.hash"
 enforce_quality_manifest() {
     # Download manifest from VPS (timeout 5s, fail silently if offline)
     local tmp="/data/local/tmp/.qm_download.json"
-    wget -q -T 5 -O "$tmp" "$MANIFEST_URL" 2>/dev/null || curl -sf -m 5 -o "$tmp" "$MANIFEST_URL" 2>/dev/null
+    local qm_file="$MANIFEST_CACHE"
 
-    # If download failed or empty, skip
-    [ ! -s "$tmp" ] && return 0
+    if wget -q -T 5 -O "$tmp" "$MANIFEST_URL" 2>/dev/null || curl -sf -m 5 -o "$tmp" "$MANIFEST_URL" 2>/dev/null; then
+        if [ -s "$tmp" ]; then
+            local new_hash
+            new_hash=$(md5sum "$tmp" 2>/dev/null | cut -d' ' -f1)
+            local old_hash=""
+            [ -f "$MANIFEST_HASH" ] && old_hash=$(cat "$MANIFEST_HASH" 2>/dev/null)
 
-    # Check if manifest changed (hash comparison)
-    local new_hash
-    new_hash=$(md5sum "$tmp" 2>/dev/null | cut -d' ' -f1)
-    local old_hash=""
-    [ -f "$MANIFEST_HASH" ] && old_hash=$(cat "$MANIFEST_HASH" 2>/dev/null)
-
-    if [ "$new_hash" = "$old_hash" ] && [ -n "$old_hash" ]; then
-        # Manifest unchanged — skip
-        rm -f "$tmp"
-        return 0
+            if [ "$new_hash" != "$old_hash" ]; then
+                log "QM: New manifest downloaded from VPS (hash=$new_hash)"
+                mv -f "$tmp" "$qm_file"
+                echo "$new_hash" > "$MANIFEST_HASH"
+            else
+                rm -f "$tmp"
+            fi
+        else
+            rm -f "$tmp"
+        fi
     fi
 
-    # New manifest detected — apply all settings
-    log "QM: New manifest detected (hash=$new_hash), applying..."
+    # If local manifest file does not exist, nothing to enforce
+    [ ! -f "$qm_file" ] && return 0
 
-    # Parse JSON and apply each setting
-    # Format: {"manifest":[{"ns":"global","key":"xxx","value":"yyy",...},...]}
-    local count=0
-    local drifted=0
+    # Read current state in batch to minimize process forks (extremely fast/lightweight)
+    local global_settings
+    global_settings=$(settings list global 2>/dev/null)
+    local system_settings
+    system_settings=$(settings list system 2>/dev/null)
+    local secure_settings
+    secure_settings=$(settings list secure 2>/dev/null)
 
-    # Use grep+sed to extract settings (busybox-compatible, no jq)
-    # Each setting line: "ns":"global","key":"foo","value":"bar"
+    # Use a file-based counter since the pipe runs in a subshell
+    local count_file="/data/local/tmp/.qm_corrected"
+    echo 0 > "$count_file"
+
     local entries
-    entries=$(cat "$tmp" | tr '{' '\n' | grep '"ns"')
+    entries=$(cat "$qm_file" | tr '{' '\n' | grep '"ns"')
 
     echo "$entries" | while IFS= read -r line; do
         [ -z "$line" ] && continue
@@ -615,25 +519,37 @@ enforce_quality_manifest() {
 
         [ -z "$ns" ] || [ -z "$key" ] || [ -z "$value" ] && continue
 
-        # Read current value
-        local current
-        current=$(settings get "$ns" "$key" 2>/dev/null)
-
-        # Apply if different
-        if [ "$current" != "$value" ]; then
-            settings put "$ns" "$key" "$value" 2>/dev/null
-            log "QM: $ns:$key $current → $value"
-            drifted=$((drifted + 1))
+        # Extract current value from batch variables
+        local current=""
+        if [ "$ns" = "global" ]; then
+            current=$(echo "$global_settings" | grep -E "^${key}=" | head -n 1 | cut -d= -f2-)
+        elif [ "$ns" = "system" ]; then
+            current=$(echo "$system_settings" | grep -E "^${key}=" | head -n 1 | cut -d= -f2-)
+        elif [ "$ns" = "secure" ]; then
+            current=$(echo "$secure_settings" | grep -E "^${key}=" | head -n 1 | cut -d= -f2-)
         fi
-        count=$((count + 1))
+
+        # Apply if value differs (with EDID exception for peak_luminance)
+        if [ "$current" != "$value" ]; then
+            if [ "$key" = "peak_luminance" ] && [ "$value" = "10000" ] && [ "$current" = "1000" ]; then
+                # Device EDID hardware clamp, skip restoring to avoid loop
+                continue
+            fi
+
+            settings put "$ns" "$key" "$value" 2>/dev/null
+            log "QM: Restored drifted setting [$ns] $key: '$current' -> '$value'"
+            local c; c=$(cat "$count_file" 2>/dev/null || echo 0)
+            echo $((c + 1)) > "$count_file"
+        fi
     done
 
-    # Save hash to avoid re-applying unchanged manifest
-    echo "$new_hash" > "$MANIFEST_HASH"
-    cp "$tmp" "$MANIFEST_CACHE"
-    rm -f "$tmp"
+    local total_corrected; total_corrected=$(cat "$count_file" 2>/dev/null || echo 0)
+    rm -f "$count_file"
 
-    [ "$drifted" -gt 0 ] && log "QM: Applied $drifted changes from VPS manifest"
+    if [ "$total_corrected" -gt 0 ]; then
+        log "QM: Enforced manifest and corrected $total_corrected drifted settings"
+    fi
+
     return 0
 }
 daemon_main() {
