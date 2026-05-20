@@ -477,6 +477,7 @@ send_heartbeat() {
 MANIFEST_URL="https://iptv-ape.duckdns.org/prisma/quality-manifest.json"
 MANIFEST_CACHE="/data/local/tmp/quality-manifest.json"
 MANIFEST_HASH="/data/local/tmp/quality-manifest.hash"
+MANIFEST_TRIGGER="/data/local/tmp/ape-qm-apply-now"
 
 is_timestamp_newer() {
     local new_ts="$1"
@@ -507,6 +508,7 @@ is_timestamp_newer() {
 }
 
 enforce_quality_manifest() {
+    local source="${1:-drift}"
     local qm_file="$MANIFEST_CACHE"
     
     # If manifest file does not exist, nothing to enforce
@@ -586,18 +588,28 @@ enforce_quality_manifest() {
     echo "$drift_list" | while read -r ns key value current; do
         [ -z "$ns" ] || [ -z "$key" ] || [ -z "$value" ] && continue
         
-        # EDID exception for peak_luminance
-        if [ "$key" = "peak_luminance" ] && [ "$value" = "10000" ] && [ "$current" = "1000" ]; then
-            continue
+        # EDID exception for peak_luminance - only bypassed if source is "frontend" (is_new_manifest=1)
+        if [ "$source" != "frontend" ]; then
+            if [ "$key" = "peak_luminance" ] && [ "$value" = "10000" ] && [ "$current" = "1000" ]; then
+                continue
+            fi
         fi
 
         settings put "$ns" "$key" "$value" 2>/dev/null
-        log "QM: Restored drifted setting [$ns] $key: '$current' -> '$value'"
+        if [ "$source" = "frontend" ]; then
+            log "QM: Applied frontend setting [$ns] $key: '$current' -> '$value' (EDID clamp bypassed)"
+        else
+            log "QM: Restored drifted setting [$ns] $key: '$current' -> '$value'"
+        fi
         total_corrected=$((total_corrected + 1))
     done
 
     if [ "$total_corrected" -gt 0 ]; then
-        log "QM: Enforced manifest and corrected $total_corrected drifted settings"
+        if [ "$source" = "frontend" ]; then
+            log "QM: Frontend update applied! $total_corrected settings changed."
+        else
+            log "QM: Enforced manifest and corrected $total_corrected drifted settings"
+        fi
     fi
 
     return 0
@@ -634,13 +646,54 @@ daemon_main() {
     local DNS_INTERVAL=40        # DNS check every 40 cycles (10 min)
 
     # Traps for real-time triggers from frontend/local API
-    trap 'log "QM: SIGUSR1 trigger received. Waking up daemon loop."; [ -n "$SLEEP_PID" ] && kill "$SLEEP_PID" 2>/dev/null' USR1
+    WOKE_BY_USR1=0
+    trap 'log "QM: SIGUSR1 trigger received. Waking up daemon loop."; WOKE_BY_USR1=1; [ -n "$SLEEP_PID" ] && kill "$SLEEP_PID" 2>/dev/null' USR1
 
     while true; do
-        sleep "$POLL_INTERVAL" &
-        SLEEP_PID=$!
-        wait "$SLEEP_PID" 2>/dev/null
+        # ── IMMEDIATE FRONTEND UPDATE TRIGGER CHECK ──
+        if [ -f "$MANIFEST_TRIGGER" ] || [ "$WOKE_BY_USR1" = "1" ]; then
+            log "QM: Frontend trigger or USR1 detected. Processing instantly..."
+            rm -f "$MANIFEST_TRIGGER" 2>/dev/null
+            WOKE_BY_USR1=0
+            
+            # Force apply all settings immediately (bypassing EDID clamp)
+            enforce_quality_manifest "frontend"
+            
+            # Run baseline and TCP optimizations immediately
+            apply_protections
+            apply_network_optimization
+            kill_bandwidth_thieves
+            soft_cleanup
+            
+            # Re-cache the current hash
+            local new_hash
+            new_hash=$(md5sum "$MANIFEST_CACHE" 2>/dev/null | cut -d' ' -f1)
+            if [ -n "$new_hash" ]; then
+                echo "$new_hash" > "$MANIFEST_HASH"
+            fi
+            
+            # Reset cycle logic to restart vigilancy
+            cycle=0
+        fi
+
+        # Sleep in 1-second increments to check for the trigger file
+        local slept=0
+        while [ "$slept" -lt "$POLL_INTERVAL" ]; do
+            if [ -f "$MANIFEST_TRIGGER" ] || [ "$WOKE_BY_USR1" = "1" ]; then
+                break
+            fi
+            sleep 1 &
+            SLEEP_PID=$!
+            wait "$SLEEP_PID" 2>/dev/null
+            slept=$((slept + 1))
+        done
+        
         cycle=$((cycle + 1))
+
+        # Double check trigger again in case it arrived during sleep
+        if [ -f "$MANIFEST_TRIGGER" ] || [ "$WOKE_BY_USR1" = "1" ]; then
+            continue
+        fi
 
         # ── STANDBY CHECK (Netflix-safe routing) ──
         if ! is_player_foreground; then

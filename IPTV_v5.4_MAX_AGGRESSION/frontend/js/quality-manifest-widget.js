@@ -233,25 +233,32 @@
 
     // Connection mode awareness
     const connMode = data.connectionMode || (data.offline ? 'offline' : 'vps');
+    const isVpsRealtime = connMode === 'vps-realtime';
     const isVpsManifest = connMode === 'vps-manifest';
     const isLocal = connMode === 'local';
     const isOffline = data.offline;
 
-    // Status: Combine connection mode + Guardian heartbeat
-    let allGood, statusColor, statusLabel;
+    const queued = !!data.queued;
+    const workerPending = !!data.worker_pending;
+    const daemonAwake = !!guardian.alive;
+
+    // Status: Combine connection mode + Guardian heartbeat + Pending states
+    let statusColor = '#10b981';
+    let statusLabel = '';
     
     if (isOffline) {
-      allGood = false;
       statusColor = '#f87171';
       statusLabel = '📡 Sin conexión total';
+    } else if (queued || workerPending) {
+      statusColor = '#f59e0b';
+      statusLabel = '⏳ Aplicando cambios (En Cola)';
     } else if (isVpsManifest) {
-      allGood = guardian.alive;
-      statusColor = guardian.alive ? '#60a5fa' : '#f59e0b';
-      statusLabel = guardian.alive ? '☁ VPS Guardado · ONN En línea' : '⚠ VPS Guardado · ONN Offline';
+      statusColor = daemonAwake ? '#60a5fa' : '#f59e0b';
+      statusLabel = daemonAwake ? '☁ VPS Guardado · ONN En línea' : '⚠ VPS Guardado · ONN Offline';
     } else {
-      allGood = guardian.alive && drifted === 0;
-      statusColor = allGood ? '#10b981' : (!guardian.alive ? '#f87171' : '#f59e0b');
-      statusLabel = allGood ? '⚡ Perfecto · Guardian Activo' : (!guardian.alive ? '✗ Guardian Muerto' : `⚠ ${drifted} Drifted`);
+      const allGood = daemonAwake && drifted === 0;
+      statusColor = allGood ? '#10b981' : (!daemonAwake ? '#f87171' : '#f59e0b');
+      statusLabel = allGood ? '⚡ Perfecto · Guardian Activo' : (!daemonAwake ? '✗ Guardian Muerto' : `⚠ ${drifted} Drifted`);
     }
     const statusGlow = `0 0 8px ${statusColor}`;
 
@@ -261,15 +268,21 @@
           <span style="font-size:1.4rem">🛡️</span>
           <div>
             <div style="font-size:0.9rem;color:#e2e8f0;font-weight:700">Quality Manifest Control
-              <span style="font-size:0.6rem;padding:2px 6px;background:rgba(168,85,247,0.3);border-radius:999px;color:#c4b5fd;margin-left:4px">v1.0</span>
+              <span style="font-size:0.6rem;padding:2px 6px;background:rgba(168,85,247,0.3);border-radius:999px;color:#c4b5fd;margin-left:4px">v1.1</span>
             </div>
-            <div style="font-size:0.62rem;color:#94a3b8">ONN 4K · ${total} Settings · ${isLocal ? '<span style="color:#34d399">LOCAL</span> ADB' : isVpsManifest ? '<span style="color:#60a5fa">VPS</span> Guardado' : '<span style="color:#f59e0b">OFFLINE</span> Defaults'}${data.savedAt ? ` · <span style="color:#64748b">${new Date(data.savedAt).toLocaleString()}</span>` : ''}</div>
+            <div style="font-size:0.62rem;color:#94a3b8;display:flex;align-items:center;gap:6px">
+              ONN 4K · ${total} Settings · Modo:
+              <select id="qm-mode-selector" style="background:#0f172a;color:#e2e8f0;border:1px solid rgba(148,163,184,0.3);font-size:0.62rem;padding:1px 4px;border-radius:3px;cursor:pointer">
+                <option value="vps" ${apiMode === 'vps' ? 'selected' : ''}>VPS (Server-side)</option>
+                <option value="local" ${apiMode === 'local' ? 'selected' : ''}>Local Bridge (ADB)</option>
+              </select>
+            </div>
           </div>
         </div>
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
           <span style="width:8px;height:8px;border-radius:50%;background:${statusColor};box-shadow:${statusGlow};display:inline-block"></span>
           <span style="font-size:0.68rem;color:${statusColor};font-weight:600">${statusLabel}</span>
-          ${isLocal ? guardianBadge(guardian) : `<span style="font-size:0.62rem;padding:2px 8px;border-radius:4px;background:rgba(59,130,246,0.15);color:#60a5fa;font-weight:600">${isVpsManifest ? '✓ Persistente' : '○ Editable'}</span>`}
+          ${isLocal ? guardianBadge(guardian) : `<span style="font-size:0.62rem;padding:2px 8px;border-radius:4px;background:rgba(59,130,246,0.15);color:#60a5fa;font-weight:600">${isVpsManifest ? '☁ Manifest' : isVpsRealtime ? '⚡ Realtime' : '○ Offline'}</span>`}
           
           <button id="qm-toggle-guardian" style="font-size:0.6rem;padding:2px 8px;border-radius:4px;
             background:rgba(239,68,68,0.15);color:#f87171;border:1px solid rgba(239,68,68,0.3);cursor:pointer;
@@ -281,6 +294,27 @@
             background:rgba(59,130,246,0.15);color:#60a5fa;border:1px solid rgba(59,130,246,0.3);cursor:pointer;
             transition:all .2s" title="Kill + restart guardian daemon">🔄 Restart</button>
         </div>
+      </div>
+
+      <!-- Pipeline Status Indicators Row -->
+      <div style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap;background:rgba(15,23,42,0.4);padding:6px 10px;border-radius:8px;border:1px solid rgba(100,116,139,0.15);align-items:center">
+        <span style="font-size:0.58rem;color:#64748b;font-weight:700;margin-right:4px">PIPELINE:</span>
+        ${queued ? 
+          `<span style="font-size:0.58rem;padding:2px 8px;border-radius:4px;background:rgba(245,158,11,0.15);color:#fbbf24;border:1px solid rgba(245,158,11,0.25);font-weight:600;animation:pulse 1.5s infinite">🟡 Queued</span>` : 
+          `<span style="font-size:0.58rem;padding:2px 8px;border-radius:4px;background:rgba(16,185,129,0.15);color:#34d399;border:1px solid rgba(16,185,129,0.2)">🟢 Queued</span>`
+        }
+        ${workerPending ? 
+          `<span style="font-size:0.58rem;padding:2px 8px;border-radius:4px;background:rgba(245,158,11,0.15);color:#fbbf24;border:1px solid rgba(245,158,11,0.25);font-weight:600;animation:pulse 1.5s infinite">🟡 Worker Pending</span>` : 
+          `<span style="font-size:0.58rem;padding:2px 8px;border-radius:4px;background:rgba(16,185,129,0.15);color:#34d399;border:1px solid rgba(16,185,129,0.2)">🟢 Worker Idle</span>`
+        }
+        ${(queued || workerPending) ? 
+          `<span style="font-size:0.58rem;padding:2px 8px;border-radius:4px;background:rgba(100,116,139,0.1);color:#64748b;border:1px solid rgba(100,116,139,0.15)">⚪ Waiting</span>` : 
+          `<span style="font-size:0.58rem;padding:2px 8px;border-radius:4px;background:rgba(16,185,129,0.15);color:#34d399;border:1px solid rgba(16,185,129,0.2);font-weight:600">🟢 Applied</span>`
+        }
+        ${daemonAwake ? 
+          `<span style="font-size:0.58rem;padding:2px 8px;border-radius:4px;background:rgba(16,185,129,0.15);color:#34d399;border:1px solid rgba(16,185,129,0.2);font-weight:600">🟢 Daemon Awake</span>` : 
+          `<span style="font-size:0.58rem;padding:2px 8px;border-radius:4px;background:rgba(239,68,68,0.15);color:#f87171;border:1px solid rgba(239,68,68,0.25);font-weight:600;animation:pulse 1.5s infinite">🔴 Daemon Asleep</span>`
+        }
       </div>
 
       <div style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap">
@@ -456,7 +490,17 @@
       });
     });
 
-
+    // Connection Mode selector
+    const modeSelector = $('#qm-mode-selector');
+    if (modeSelector) {
+      modeSelector.addEventListener('change', (e) => {
+        const newMode = e.target.value;
+        localStorage.setItem('qm-api-mode', newMode);
+        apiMode = newMode;
+        API = (newMode === 'local') ? LOCAL_API : VPS_API;
+        refresh();
+      });
+    }
 
     // Refresh
     const refreshBtn = $('#qm-refresh');
@@ -697,49 +741,90 @@
     });
 
     try {
-      // 1. If local mode, ensure local manifest on device is updated and applied instantly
+      let savedLocally = false;
+      let localHash = '';
+
+      // 1. If local mode, ensure local manifest on device is updated and applied instantly (PRIORITIZED)
       if (apiMode === 'local') {
         try {
-          await fetch(`${LOCAL_API}?action=save_manifest`, {
+          const rLocal = await fetch(`${LOCAL_API}?action=save_manifest`, {
             method: 'POST',
             cache: 'no-store',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ manifest }),
           });
+          if (rLocal.ok) {
+            const dLocal = await rLocal.json();
+            if (dLocal.ok) {
+              savedLocally = true;
+              localHash = dLocal.manifest_hash || dLocal.hash;
+              
+              if (statusEl) {
+                statusEl.style.display = 'block';
+                statusEl.style.background = 'rgba(16,185,129,0.15)';
+                statusEl.style.color = '#34d399';
+                statusEl.innerHTML = `✓ <strong>¡Aplicado al TV!</strong> ${changes.length} cambio(s) transferido(s) via ADB local y Sentinel despertado.`;
+              }
+              // Clear dirty state immediately
+              dirtyKeys.clear();
+              pendingChanges = {};
+              saveBtn.textContent = '💾 Guardar y Aplicar';
+              saveBtn.style.background = 'rgba(16,185,129,0.1)';
+              saveBtn.style.color = '#6b7280';
+              saveBtn.style.boxShadow = 'none';
+              
+              // Background sync to VPS
+              fetch(`${BASE_URL}/prisma/api/prisma-adb-quality.php?action=save_manifest`, {
+                method: 'POST',
+                cache: 'no-store',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ manifest, ts: new Date().toISOString(), local_sync: true }),
+              }).catch(e => console.warn('[QM] Background VPS sync failed:', e));
+
+              setTimeout(refresh, 1500);
+            } else {
+              throw new Error(dLocal.error || 'Local API failed during save_manifest');
+            }
+          } else {
+            throw new Error(`Local API status ${rLocal.status}`);
+          }
         } catch (e) {
           console.warn('[QM] Failed to save manifest to local API:', e);
+          // Fall through to VPS if local mode fails
         }
       }
 
-      // 2. POST manifest to VPS for Persistence (Survive Reboots)
-      const r = await fetch(`${BASE_URL}/prisma/api/prisma-adb-quality.php?action=save_manifest`, {
-        method: 'POST',
-        cache: 'no-store',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ manifest, ts: new Date().toISOString() }),
-      });
-      const d = await r.json();
+      if (!savedLocally) {
+        // 2. POST manifest to VPS for Persistence (Survive Reboots)
+        const r = await fetch(`${BASE_URL}/prisma/api/prisma-adb-quality.php?action=save_manifest`, {
+          method: 'POST',
+          cache: 'no-store',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ manifest, ts: new Date().toISOString() }),
+        });
+        const d = await r.json();
 
-      if (d.ok) {
-        // Success
-        if (statusEl) {
-          statusEl.style.display = 'block';
-          statusEl.style.background = 'rgba(16,185,129,0.1)';
-          statusEl.style.color = '#34d399';
-          statusEl.textContent = `✓ Guardado! ${changes.length} cambio(s) enviado(s) al VPS (Persistencia) y al Sentinel.`;
+        if (d.ok) {
+          // Success
+          if (statusEl) {
+            statusEl.style.display = 'block';
+            statusEl.style.background = 'rgba(16,185,129,0.1)';
+            statusEl.style.color = '#34d399';
+            statusEl.textContent = `✓ Guardado! ${changes.length} cambio(s) enviado(s) al VPS (Persistencia) y al Sentinel.`;
+          }
+          // Clear dirty state
+          dirtyKeys.clear();
+          pendingChanges = {};
+          saveBtn.textContent = '💾 Guardar y Aplicar';
+          saveBtn.style.background = 'rgba(16,185,129,0.1)';
+          saveBtn.style.color = '#6b7280';
+          saveBtn.style.boxShadow = 'none';
+          
+          // Refresh after a beat
+          setTimeout(refresh, 2000);
+        } else {
+          throw new Error(d.error || 'Unknown error');
         }
-        // Clear dirty state
-        dirtyKeys.clear();
-        pendingChanges = {};
-        saveBtn.textContent = '💾 Guardar y Aplicar';
-        saveBtn.style.background = 'rgba(16,185,129,0.1)';
-        saveBtn.style.color = '#6b7280';
-        saveBtn.style.boxShadow = 'none';
-        
-        // Refresh after a beat
-        setTimeout(refresh, 2000);
-      } else {
-        throw new Error(d.error || 'Unknown error');
       }
     } catch (e) {
       if (statusEl) {
@@ -801,29 +886,49 @@
   }
 
   // ── Poll cycle — 3-layer resilient connection ──────────────────────
-  // Layer 1: LOCAL bridge (localhost:7777) → real-time ONN values
-  // Layer 2: VPS saved manifest (get_manifest) → last saved state (persistent)
+  // Layer 1: VPS server-side API / Local API (based on mode selection)
+  // Layer 2: VPS saved manifest fallback (get_manifest)
   // Layer 3: Embedded defaults → always available
   async function refresh() {
     const host = $('#quality-manifest-widget');
     if (!host) return;
 
-    // Layer 1: Try local bridge (direct ADB to ONN)
-    try {
-      const r = await fetch(`${LOCAL_API}?action=read_all&t=${Date.now()}`, { cache: 'no-store', signal: AbortSignal.timeout(8000) });
-      if (r.ok) {
-        const data = await r.json();
-        if (data.ok && data.settings && data.settings.length > 0) {
-          API = LOCAL_API;
-          apiMode = 'local';
-          data.offline = false;
-          data.connectionMode = 'local';
-          lastData = data;
-          render(data);
-          return;
+    // Load connection mode from localStorage or default to vps
+    const savedMode = localStorage.getItem('qm-api-mode') || 'vps';
+    apiMode = savedMode;
+    API = (apiMode === 'local') ? LOCAL_API : VPS_API;
+
+    // Layer 1: Mode-specific endpoint querying
+    if (apiMode === 'local') {
+      try {
+        const r = await fetch(`${LOCAL_API}?action=read_all&t=${Date.now()}`, { cache: 'no-store', signal: AbortSignal.timeout(8000) });
+        if (r.ok) {
+          const data = await r.json();
+          if (data.ok && data.settings && data.settings.length > 0) {
+            data.offline = false;
+            data.connectionMode = 'local';
+            lastData = data;
+            render(data);
+            return;
+          }
         }
-      }
-    } catch (_) { /* fall through to Layer 2 */ }
+      } catch (_) { /* fall through to Layer 2 & 3 */ }
+    } else {
+      // VPS Mode: Query real-time device settings via VPS first
+      try {
+        const r = await fetch(`${VPS_API}?action=read_all&t=${Date.now()}`, { cache: 'no-store', signal: AbortSignal.timeout(8000) });
+        if (r.ok) {
+          const data = await r.json();
+          if (data.ok && data.settings && data.settings.length > 0) {
+            data.offline = false;
+            data.connectionMode = 'vps-realtime';
+            lastData = data;
+            render(data);
+            return;
+          }
+        }
+      } catch (_) { /* fall through to VPS Saved Manifest */ }
+    }
 
     // Layer 2: Try VPS saved manifest (persistent state)
     try {
@@ -835,12 +940,16 @@
           ns: m.ns, key: m.key, current: m.value, expected: m.value,
           synced: true, group: m.group, label: m.label, type: m.type, options: null
         }));
-        // Fetch Guardian Heartbeat to know if it's alive on the ONN
+        // Fetch Guardian Status from VPS to check heartbeat, queued and pending status
         let guardianAlive = false;
+        let queued = false;
+        let workerPending = false;
         try {
-          const s = await fetch(`${VPS_API}?action=guardian_heartbeat`, { signal: AbortSignal.timeout(2000) });
+          const s = await fetch(`${VPS_API}?action=guardian_status`, { signal: AbortSignal.timeout(2000) });
           const j = await s.json();
           guardianAlive = !!j.alive;
+          queued = !!j.queued;
+          workerPending = !!j.worker_pending;
         } catch (_) {}
 
         const renderData = {
@@ -849,6 +958,7 @@
           total: settings.length, ts: vpsData.saved_at || vpsData.ts,
           offline: false, connectionMode: 'vps-manifest',
           savedBy: vpsData.saved_by, savedAt: vpsData.saved_at,
+          queued: queued, worker_pending: workerPending
         };
         lastData = renderData;
         render(renderData);
@@ -872,21 +982,34 @@
         <span style="font-size:1.4rem">🛡️</span>
         <div>
           <div style="font-size:0.9rem;color:#e2e8f0;font-weight:700">Quality Manifest Control</div>
-          <div style="font-size:0.72rem;color:#94a3b8">Detecting ADB bridge…</div>
+          <div style="font-size:0.72rem;color:#94a3b8">Initializing widget…</div>
         </div>
       </div>`;
 
-    // Try local bridge first (localhost:7777)
-    try {
-      const r = await fetch(`${LOCAL_API}?action=guardian_status&t=${Date.now()}`, { cache: 'no-store', signal: AbortSignal.timeout(5000) });
-      if (r.ok) {
-        const d = await r.json();
-        if (d.ok !== undefined) {
-          API = LOCAL_API;
-          apiMode = 'local';
+    // Load connection mode from localStorage or default to vps
+    const savedMode = localStorage.getItem('qm-api-mode') || 'vps';
+    apiMode = savedMode;
+    API = (apiMode === 'local') ? LOCAL_API : VPS_API;
+
+    // Do NOT automatically query localhost:7777 to avoid opening DOS window / running local node bridge
+    // unless explicitly saved as 'local'
+    if (apiMode === 'local') {
+      try {
+        const r = await fetch(`${LOCAL_API}?action=guardian_status&t=${Date.now()}`, { cache: 'no-store', signal: AbortSignal.timeout(3000) });
+        if (r.ok) {
+          const d = await r.json();
+          if (d.ok !== undefined) {
+            API = LOCAL_API;
+            apiMode = 'local';
+          }
         }
+      } catch (_) {
+        // Fallback to VPS mode if local mode fails
+        apiMode = 'vps';
+        API = VPS_API;
+        localStorage.setItem('qm-api-mode', 'vps');
       }
-    } catch (_) { /* local not available, use VPS */ }
+    }
 
     refresh();
     setInterval(refresh, POLL_MS);

@@ -56,5 +56,11 @@ if ngx.worker.id() == 0 then
     -- ═══ QoE Flush Worker chain (added 2026-05-19) ═══
     -- Runs flush timer periodically to offload logs to PHP/SQLite
     pcall(dofile, "/etc/nginx/lua/qoe_flush_worker.lua")
+
+    -- ═══ APE Quality Manifest Apply Worker chain ═══
+    pcall(function()
+        package.path = "/etc/nginx/lua/?.lua;" .. package.path
+        require("qm_apply_worker").start()
+    end)
 end
 

@@ -141,19 +141,12 @@ if ($action === 'save_manifest') {
     $written = file_put_contents($MANIFEST_FILE, json_encode($body, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
     chmod($MANIFEST_FILE, 0644);
 
-    // Signal guardian daemon to wake up and enforce new values immediately
-    $signaled = false;
-    if (adb_ensure_connected()) {
-        // Push the manifest directly to the TV Box via ADB since wget/curl are unavailable on stock Android TV
-        global $ONN_IP, $ADB;
-        shell_exec("timeout 5 {$ADB} -s {$ONN_IP} push " . escapeshellarg($MANIFEST_FILE) . " /data/local/tmp/quality-manifest.json 2>/dev/null");
+    // Set pending manifest trigger file
+    $pending_file = '/var/www/html/prisma/quality-manifest.pending';
+    @file_put_contents($pending_file, '1');
+    @chmod($pending_file, 0644);
 
-        $pid = trim(adb_cmd("cat {$GUARDIAN_LOCK}"));
-        if ($pid && is_numeric($pid)) {
-            adb_cmd("kill -USR1 {$pid}");
-            $signaled = true;
-        }
-    }
+    $manifest_hash = file_exists($MANIFEST_FILE) ? md5_file($MANIFEST_FILE) : "";
 
     echo json_encode([
         'ok' => ($written !== false),
@@ -161,7 +154,53 @@ if ($action === 'save_manifest') {
         'path' => $MANIFEST_FILE,
         'ts' => date('c'),
         'settings_count' => count($body['manifest']),
+        'manifest_hash' => $manifest_hash,
+        'status' => 'queued',
+        'guardian_mode' => 'queued'
+    ]);
+    exit;
+}
+
+if ($action === 'server_apply_pending') {
+    $pending_file = '/var/www/html/prisma/quality-manifest.pending';
+    
+    if (!file_exists($pending_file)) {
+        echo json_encode(['ok' => true, 'applied' => false, 'reason' => 'No pending manifest']);
+        exit;
+    }
+
+    if (!adb_ensure_connected()) {
+        echo json_encode(['ok' => false, 'applied' => false, 'error' => 'ADB unreachable', 'device' => $ONN_IP]);
+        exit;
+    }
+
+    global $ONN_IP, $ADB, $GUARDIAN_LOCK;
+    $pushed = shell_exec("timeout 5 {$ADB} -s {$ONN_IP} push " . escapeshellarg($MANIFEST_FILE) . " /data/local/tmp/quality-manifest.json 2>/dev/null");
+    $manifest_pushed = ($pushed !== null);
+
+    // Touch the trigger file for immediate apply bypass clamp
+    adb_cmd("echo 1 > /data/local/tmp/ape-qm-apply-now");
+    $apply_triggered = true;
+
+    $pid = trim(adb_cmd("cat {$GUARDIAN_LOCK}"));
+    $signaled = false;
+    if ($pid && is_numeric($pid)) {
+        adb_cmd("kill -USR1 {$pid}");
+        $signaled = true;
+    }
+
+    @unlink($pending_file);
+
+    $manifest_hash = file_exists($MANIFEST_FILE) ? md5_file($MANIFEST_FILE) : "";
+
+    echo json_encode([
+        'ok' => true,
+        'applied' => true,
         'signaled' => $signaled,
+        'manifest_pushed' => $manifest_pushed,
+        'apply_triggered' => $apply_triggered,
+        'manifest_hash' => $manifest_hash,
+        'guardian_mode' => 'applied'
     ]);
     exit;
 }
@@ -280,10 +319,14 @@ case 'read_all':
         $check = adb_cmd("kill -0 " . trim($pid) . " 2>/dev/null && echo YES || echo NO");
         $alive = (trim($check) === 'YES');
     }
+    $pending_file = '/var/www/html/prisma/quality-manifest.pending';
+    $queued = file_exists($pending_file);
     echo json_encode([
         'ok' => true, 'settings' => $results, 'drift_by_group' => $groups,
         'guardian' => ['pid' => $pid ?: null, 'alive' => $alive],
         'total' => count($MANIFEST), 'ts' => date('c'),
+        'queued' => $queued,
+        'worker_pending' => $queued
     ]);
     break;
 
@@ -295,7 +338,16 @@ case 'guardian_status':
         $alive = (trim($check) === 'YES');
     }
     $log = adb_cmd("tail -5 /data/local/tmp/ape-ram-guardian.log");
-    echo json_encode(['ok' => true, 'pid' => $pid ?: null, 'alive' => $alive, 'log' => $log]);
+    $pending_file = '/var/www/html/prisma/quality-manifest.pending';
+    $queued = file_exists($pending_file);
+    echo json_encode([
+        'ok' => true, 
+        'pid' => $pid ?: null, 
+        'alive' => $alive, 
+        'log' => $log,
+        'queued' => $queued,
+        'worker_pending' => $queued
+    ]);
     break;
 
 case 'set':

@@ -286,9 +286,19 @@ function handleRequest(req, res) {
             }
           }
           
-          triggerGuardianSignal();
+          // Touch trigger file on device for fast-path un-clamped apply
+          adb(`echo 1 > /data/local/tmp/ape-qm-apply-now`);
           
-          res.end(JSON.stringify({ ok: true, hash: newHash.trim() }));
+          const signaled = triggerGuardianSignal();
+          
+          res.end(JSON.stringify({
+            ok: true,
+            manifest_pushed: true,
+            apply_triggered: true,
+            manifest_hash: newHash.trim(),
+            guardian_mode: 'apply_now',
+            signaled
+          }));
         } catch (e) {
           res.end(JSON.stringify({ ok: false, error: 'Failed to save manifest: ' + e.message }));
         }
