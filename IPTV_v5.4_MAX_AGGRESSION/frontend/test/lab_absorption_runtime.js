@@ -26,7 +26,7 @@
 
     const checks = {
         // Metadata
-        labVersion:          cfg.labVersion === 'omega_v1',
+        labVersion:          cfg.labVersion && cfg.labVersion.startsWith('omega_v1'),
         bulletproof:         cfg.bulletproof === true,
         labSchemaVariant:    cfg.labSchemaVariant === 'omega_v2_bulletproof_perprofile',
         labFileName:         typeof cfg.labFileName === 'string' && cfg.labFileName.length > 0,

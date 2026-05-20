@@ -12435,7 +12435,8 @@ window.generateOmega5 = async function () {
         console.log(TAG + ` LAB nivel1: ${n1} directivas | nivel3: ${n3total} en ${n3keys.length} capas [${n3keys.join(',')}]`, CSS);
         if (n1 === 0 && n3total === 0) {
             // L1 — LAB MANDATORIO: bloquear generacion sin LAB calibrado
-            if (!labCfg.labVersion || labCfg.labVersion !== 'omega_v1' || !labCfg.bulletproof) {
+            const isVersionSupported = labCfg.labVersion === 'omega_v1' || (labCfg.labVersion && labCfg.labVersion.startsWith('omega_v1'));
+            if (!labCfg.labVersion || !isVersionSupported || !labCfg.bulletproof) {
                 alert('LAB_CALIBRATED no cargado. Importa el JSON LAB antes de generar (Profile Manager > Import LAB).');
                 console.error(TAG + ' BLOQUEADO: LAB_MANDATORY_MISSING - labVersion=' + (labCfg.labVersion || 'null') + ' bulletproof=' + (labCfg.bulletproof || 'null'), CSS);
                 return;

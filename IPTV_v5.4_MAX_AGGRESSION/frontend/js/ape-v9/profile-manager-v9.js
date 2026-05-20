@@ -3064,9 +3064,10 @@
                     const data = JSON.parse(text);
 
                     // Validar schema
-                    const supportedSchemas = ['omega_v1'];
+                    const supportedSchemas = ['omega_v1', 'omega_v1_bulletproof_20260520'];
                     const isBulletproof = data.lab_schema_variant === 'omega_v2_bulletproof_perprofile' || data.bulletproof === true;
-                    if (!supportedSchemas.includes(data.lab_version)) {
+                    const isVersionSupported = supportedSchemas.includes(data.lab_version) || (data.lab_version && data.lab_version.startsWith('omega_v1'));
+                    if (!isVersionSupported) {
                         alert(`⚠️ Schema no soportado: ${data.lab_version}\nSoportados: ${supportedSchemas.join(', ')}`);
                         return;
                     }

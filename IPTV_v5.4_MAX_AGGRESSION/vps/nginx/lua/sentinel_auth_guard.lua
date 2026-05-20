@@ -62,12 +62,12 @@ end
 
 -- ═══ RESPONSE STATUS HANDLING ═══════════════════════════════════════
 
-    -- USER DOCTRINE 2026-05-11: trigger failover Miami->Brasil via flag (read by wg-health-fast.sh)
+if status == 401 or status == 403 then
+    -- USER DOCTRINE 2026-05-11: trigger failover Miami->Brasil via flag (read by wg-health-fast.sh)
     pcall(function()
         local f = io.open("/tmp/sentinel_force_failover", "w")
         if f then
-            f:write(os.time(), " ", tostring(ngx.var.proxy_host or "unknown"), " status=", status, "
-")
+            f:write(os.time(), " ", tostring(ngx.var.proxy_host or "unknown"), " status=", status, "\n")
             f:close()
         end
     end)

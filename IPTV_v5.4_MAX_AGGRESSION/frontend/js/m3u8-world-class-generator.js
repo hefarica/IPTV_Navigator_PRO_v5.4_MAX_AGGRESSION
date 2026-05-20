@@ -385,7 +385,8 @@
     // L1 — LAB MANDATORIO: bloquear generacion sin LAB calibrado
     function enforceLABPresence() {
         const cfg = window.APE_PROFILES_CONFIG;
-        if (!cfg || cfg.labVersion !== 'omega_v1' || !cfg.bulletproof) {
+        const isVersionSupported = cfg && (cfg.labVersion === 'omega_v1' || (cfg.labVersion && cfg.labVersion.startsWith('omega_v1')));
+        if (!cfg || !isVersionSupported || !cfg.bulletproof) {
             throw new Error('LAB_MANDATORY_MISSING: LAB_CALIBRATED_BULLETPROOF JSON no cargado o invalido. Importa el JSON antes de generar.');
         }
     }

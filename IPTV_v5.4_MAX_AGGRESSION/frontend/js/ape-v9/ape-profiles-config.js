@@ -4659,9 +4659,10 @@
                 semanticFillByProfile: {}
             };
             try {
-                const supportedSchemas = ['omega_v1'];
+                const supportedSchemas = ['omega_v1', 'omega_v1_bulletproof_20260520'];
                 const isBulletproof = data.lab_schema_variant === 'omega_v2_bulletproof_perprofile' || data.bulletproof === true;
-                if (!data || !supportedSchemas.includes(data.lab_version)) {
+                const isVersionSupported = supportedSchemas.includes(data.lab_version) || (data.lab_version && data.lab_version.startsWith('omega_v1'));
+                if (!data || !isVersionSupported) {
                     throw new Error(`Schema invalido (esperado: ${supportedSchemas.join(', ')})`);
                 }
                 if (isBulletproof) console.log('[LAB-CONSUMER] 🛡 Bulletproof JSON detectado — consumiendo 100% de los campos.');
