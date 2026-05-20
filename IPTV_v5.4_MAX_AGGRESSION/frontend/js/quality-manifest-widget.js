@@ -60,7 +60,7 @@
     ['global','hdr_force_conversion_type','-1','hdr','Force Conversion','select'],
     ['global','hdr_brightness_boost','100','hdr','HDR Brightness','number'],
     ['global','sdr_brightness_in_hdr','100','hdr','SDR in HDR Bright','number'],
-    ['global','peak_luminance','8000','hdr','Peak Luminance','number'],
+    ['global','peak_luminance','10000','hdr','Peak Luminance','number'],
     ['global','pq_hdr_enable','1','hdr','HDR Engine','toggle'],
     ['global','pq_hdr_mode','1','hdr','HDR Processing','toggle'],
     ['global','always_hdr','0','hdr','Always HDR','toggle'],

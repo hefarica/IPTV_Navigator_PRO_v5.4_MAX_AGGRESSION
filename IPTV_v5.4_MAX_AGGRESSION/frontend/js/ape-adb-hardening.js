@@ -42,16 +42,16 @@ const ADB_HARDENING = {
 
     // Settings esperados (para verificación)
     expectedSettings: {
-        always_hdr: '1',
-        hdr_conversion_mode: '3',
-        hdr_force_conversion_type: '4',
+        always_hdr: '0',
+        hdr_conversion_mode: '0',
+        hdr_force_conversion_type: '-1',
         display_color_mode: '3',
         window_animation_scale: '0.0',
         force_gpu_rendering: '1',
         tcp_default_init_rwnd: '60',
         wifi_sleep_policy: '2',
         stay_on_while_plugged_in: '3',
-        encoded_surround_output: '1'
+        encoded_surround_output: '2'
     },
 
     /**

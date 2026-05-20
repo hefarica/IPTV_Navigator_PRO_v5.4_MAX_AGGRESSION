@@ -16,12 +16,12 @@ echo "════════════════════════�
 
 # --- CATEGORÍA 1: IMAGEN — HDR10+ Extreme ---
 echo "[1/8] Imagen HDR10+..."
-settings put global always_hdr 1
-settings put global hdr_conversion_mode 3
-settings put global hdr_force_conversion_type 4
+settings put global always_hdr 0
+settings put global hdr_conversion_mode 0
+settings put global hdr_force_conversion_type -1
 settings put global hdr_output_type 4
 settings put global match_content_frame_rate 1
-settings put secure display_color_mode 3
+settings put global display_color_mode 3
 settings put global user_preferred_resolution_height 2160
 settings put global user_preferred_resolution_width 3840
 settings put global user_preferred_refresh_rate 60.0
@@ -92,7 +92,7 @@ settings put secure screensaver_enabled 0
 
 # --- CATEGORÍA 7: AUDIO ---
 echo "[7/8] Audio..."
-settings put global encoded_surround_output 1
+settings put global encoded_surround_output 2
 settings put global hdmi_system_audio_control 1
 
 # --- CATEGORÍA 8: DNS ---

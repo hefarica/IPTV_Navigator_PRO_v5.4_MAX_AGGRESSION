@@ -71,7 +71,7 @@ $MANIFEST = [
     ['global', 'hdr_force_conversion_type', '-1',  'hdr', 'Force Conversion',   'select', ['-1'=>'Disabled','1'=>'HDR10','2'=>'HLG','3'=>'DolbyVision']],
     ['global', 'hdr_brightness_boost',      '100', 'hdr', 'HDR Brightness',     'number', ['min'=>0,'max'=>100]],
     ['global', 'sdr_brightness_in_hdr',     '100', 'hdr', 'SDR in HDR Bright',  'number', ['min'=>0,'max'=>100]],
-    ['global', 'peak_luminance',            '8000','hdr', 'Peak Luminance',     'number', ['min'=>100,'max'=>10000]],
+    ['global', 'peak_luminance',            '10000','hdr', 'Peak Luminance',     'number', ['min'=>100,'max'=>10000]],
     ['global', 'pq_hdr_enable',             '1',   'hdr', 'HDR Engine',         'toggle', null],
     ['global', 'pq_hdr_mode',              '1',   'hdr', 'HDR Processing',     'toggle', null],
     ['global', 'always_hdr',               '0',   'hdr', 'Always HDR',         'toggle', null],
