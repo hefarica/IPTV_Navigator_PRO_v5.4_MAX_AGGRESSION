@@ -7069,6 +7069,29 @@ function rq_handle_request(): void
             ];
             $healthMetrics = OmegaStreamingHealthEngine::evaluateStreamHealth($healthConfig);
             OmegaStreamingHealthEngine::enforceHealthConstraintsAndDefend($healthMetrics, $output);
+
+            // Integración de VisualSupremacyOrchestrator (Fase 3)
+            if (file_exists(__DIR__ . '/v7_fase3/visual_supremacy_orchestrator.php')) {
+                require_once __DIR__ . '/v7_fase3/visual_supremacy_orchestrator.php';
+            } elseif (file_exists(__DIR__ . '/visual_supremacy_orchestrator.php')) {
+                require_once __DIR__ . '/visual_supremacy_orchestrator.php';
+            }
+            if (class_exists('VisualSupremacyOrchestrator')) {
+                $res = $_GET['res'] ?? '1920x1080';
+                $resParts = explode('x', strtolower($res));
+                $width = isset($resParts[0]) ? (int)$resParts[0] : 1920;
+                $height = isset($resParts[1]) ? (int)$resParts[1] : 1080;
+                $streamInfo = [
+                    'width' => $width,
+                    'height' => $height,
+                    'hdr_type' => $_GET['hdr'] ?? 'sdr',
+                    'codec' => $_GET['codec'] ?? 'HEVC',
+                ];
+                $visualConfig = VisualSupremacyOrchestrator::process($channelId ?? 'unknown', $healthMetrics, $streamInfo, $detected_scene ?? 'default');
+                foreach ($visualConfig['directives'] as $dir) {
+                    $output = preg_replace('/(#EXTM3U\r?\n)/i', "$1" . addcslashes((str_starts_with($dir, '#') ? $dir : '#' . $dir) . "\n", '\\$'), $output, 1);
+                }
+            }
         }
 
         // 🔮 APE INVISIBLE AI ENGINE v4.0.0-OMNISCIENT

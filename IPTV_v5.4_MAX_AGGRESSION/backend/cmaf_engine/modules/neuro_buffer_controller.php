@@ -132,7 +132,7 @@ class NeuroBufferController
             return [
                 'avg_bitrate_kbps'  => (float)($health['estimatedBandwidthKbps'] ?? 5000),
                 'avg_dl_ms'         => 500.0,
-                'avg_jitter_ms'     => (float)($health['jitterMs'] ?? 20),
+                'avg_jitter_ms'     => (float)($health['jitterMax'] ?? ($health['jitterMs'] ?? 20)),
                 'avg_loss_rate'     => (float)($health['lossRate'] ?? 0.0),
                 'bandwidth_ratio'   => 1.5,  // conservador
                 'stability_class'   => $health['stabilityClass'] ?? 'STABLE',

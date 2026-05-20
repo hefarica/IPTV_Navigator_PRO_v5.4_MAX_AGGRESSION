@@ -65,8 +65,8 @@ class GracefulDegradationEngine
             'description' => 'LCEVC Phase 4 + HDR10+ dinámico + 5000 nits',
             'video_filter' => 'bwdif=mode=1:parity=-1:deint=0,hqdn3d=4.0:3.0:6.0:4.5,zscale=transfer=st2084:primaries=bt2020:matrix=2020ncl:dither=error_diffusion:range=full:chromal=topleft,chroma_I444',
             'swscale'      => 9,
-            'saturation'   => 1.15,
-            'contrast'     => 1.08,
+            'saturation'   => 1.30, // UHD COLOR EXTREMO
+            'contrast'     => 1.12,
             'lcevc'        => true,
             'hdr_dynamic'  => true,
             'max_cll'      => 5000,
@@ -77,8 +77,8 @@ class GracefulDegradationEngine
             'description' => 'LCEVC Phase 4 + HDR10 estático',
             'video_filter' => 'bwdif=mode=1:parity=-1:deint=0,hqdn3d=4.0:3.0:6.0:4.5,zscale=transfer=st2084:primaries=bt2020:matrix=2020ncl:dither=error_diffusion:range=full:chromal=topleft,chroma_I444',
             'swscale'      => 9,
-            'saturation'   => 1.12,
-            'contrast'     => 1.05,
+            'saturation'   => 1.22,
+            'contrast'     => 1.10,
             'lcevc'        => true,
             'hdr_dynamic'  => false,
             'max_cll'      => 4000,
@@ -89,8 +89,8 @@ class GracefulDegradationEngine
             'description' => 'Lanczos + HDR10 estático',
             'video_filter' => 'bwdif=mode=1:parity=-1:deint=0,hqdn3d=4.0:3.0:6.0:4.5,gradfun=radius=12:strength=0.8,unsharp=luma_msize_x=3:luma_msize_y=3:luma_amount=0.3:chroma_amount=0.0,zscale=transfer=st2084:primaries=bt2020:matrix=2020ncl:range=limited',
             'swscale'      => 9,
-            'saturation'   => 1.08,
-            'contrast'     => 1.03,
+            'saturation'   => 1.15,
+            'contrast'     => 1.08,
             'lcevc'        => false,
             'hdr_dynamic'  => false,
             'max_cll'      => 1000,
@@ -190,12 +190,17 @@ class GracefulDegradationEngine
      */
     public static function computeLevel(array $health): int
     {
-        $risk   = (float)($health['riskScore']  ?? 100);
-        $stall  = (float)($health['stallRate']  ?? 1.0);
-        $jitter = (float)($health['jitterMs']   ?? 999);
-        $loss   = (float)($health['lossRate']   ?? 1.0);
-        $vfi    = (float)($health['vfi']        ?? 0);
-        $stable = ($health['stabilityClass']    ?? 'UNSTABLE') !== 'UNSTABLE';
+        $risk   = (float)($health['riskScore']  ?? 0.0);
+        // stallRate is returned as percentage (e.g. 1.67%) from evaluateStreamHealth
+        // thresholds expect ratio (0.00 - 1.00), so divide by 100.0.
+        $stall  = (float)($health['stallRate']  ?? 0.0) / 100.0;
+        // jitterMax is the key from evaluateStreamHealth
+        $jitter = (float)($health['jitterMax']  ?? ($health['jitterMs'] ?? 0.0));
+        // lossRate is not evaluated by evaluateStreamHealth, default to 0.0 to prevent L7 clamp
+        $loss   = (float)($health['lossRate']   ?? 0.0);
+        $vfi    = (float)($health['vfi']        ?? 100.0);
+        $stable = ($health['stabilityClass']    ?? 'STABLE') !== 'UNSTABLE';
+
 
         // Stream completamente caído → L7 inmediato
         if (!$stable && $risk >= 90 && $stall >= 0.6) {

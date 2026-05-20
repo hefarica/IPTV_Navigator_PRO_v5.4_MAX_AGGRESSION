@@ -264,6 +264,16 @@ class Hdr10PlusDynamicEngine
         $matrix  = $colorSpace['matrix'];
         $range   = $colorSpace['range'];
 
+        $saturation = 1.15;
+        $contrast = 1.08;
+        if ($capability === 'hdr10plus') {
+            $saturation = 1.30; // UHD COLOR EXTREMO (Dazzling, Vivid color boost)
+            $contrast = 1.12;
+        } elseif ($capability === 'hdr10') {
+            $saturation = 1.22;
+            $contrast = 1.10;
+        }
+
         $directives = [
             // Declaración del espacio de color
             "#EXT-X-APE-HDR-CAPABILITY:{$capability}",
@@ -271,10 +281,11 @@ class Hdr10PlusDynamicEngine
             "#EXT-X-APE-HDR-MAXFALL:{$maxFall}",
             "#EXT-X-APE-HDR-GAMMA:{$gamma}",
             "#EXT-X-APE-HDR-BITDEPTH:{$bits}",
+            "#EXT-X-APE-HDR-COLOR-PROFILE:UHD_COLOR_EXTREMO",
 
             // Directivas VLC para color y brillo
-            "#EXTVLCOPT:video-saturation=1.15",
-            "#EXTVLCOPT:video-contrast=1.08",
+            "#EXTVLCOPT:video-saturation={$saturation}",
+            "#EXTVLCOPT:video-contrast={$contrast}",
             "#EXTVLCOPT:video-brightness=1.0",
 
             // Declaración BT.2020 para el decodificador
