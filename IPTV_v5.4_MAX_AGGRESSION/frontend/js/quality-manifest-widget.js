@@ -112,6 +112,22 @@
     ['global','force_hw_ui','1','gpu','Force HW UI','toggle'],
     ['global','hardware_accelerated_rendering_enabled','1','gpu','HW Accel','toggle'],
     ['system','screen_off_timeout','2147483647','power','Screen Timeout','select'],
+    // VPN / Xray — [sync PHP 2026-05-22]
+    ['secure','always_on_vpn_app',        'com.v2ray.ang','vpn', 'VPN App (Xray)',   'readonly'],
+    ['secure','always_on_vpn_lockdown',   '1',            'vpn', 'VPN Lockdown',      'toggle'],
+    // Red / Sistema
+    ['global','tcp_default_init_rwnd',    '60',           'net', 'TCP Init RWND',     'number'],
+    ['global','private_dns_specifier',    'dns.google',   'net', 'Private DNS',       'text'],
+    ['global','stay_on_while_plugged_in', '3',            'net', 'Stay On (plug)',    'toggle'],
+    // AFR Anti-Judder
+    ['daemon','afr_anti_judder',          '1',            'afr', 'AFR Anti-Judder',   'toggle'],
+    // QoE Telemetry
+    ['daemon','qoe_report',               '1',            'qoe', 'QoE Heartbeat',     'toggle'],
+    ['daemon','qoe_interval_s',           '30',           'qoe', 'QoE Sample (s)',    'number'],
+    // Daemon Behavior
+    ['daemon','kill_bandwidth_thieves',   '1',            'daemon','Kill BW Thieves', 'toggle'],
+    ['daemon','drop_caches',              '1',            'daemon','Drop Caches',     'toggle'],
+    ['daemon','tcp_lowlatency_tuning',    '1',            'daemon','TCP Low-Latency', 'toggle'],
   ];
 
   /** Build offline data from embedded manifest (when API is unreachable) */
@@ -203,6 +219,12 @@
         return `<input type="number" id="${id}" data-ns="${s.ns}" data-key="${s.key}" data-type="number"
           value="${displayValue}" min="${min}" max="${max}" ${isApplying ? 'disabled' : ''}
           style="width:72px;padding:2px 6px;border-radius:4px;background:#0f172a;color:#e2e8f0;
+          border:1px solid rgba(148,163,184,0.3);font-size:0.68rem;font-family:monospace">`;
+      }
+      case 'text': {
+        return `<input type="text" id="${id}" data-ns="${s.ns}" data-key="${s.key}" data-type="text"
+          value="${(displayValue ?? '').toString().replace(/"/g, '&quot;')}" ${isApplying ? 'disabled' : ''}
+          style="width:120px;padding:2px 6px;border-radius:4px;background:#0f172a;color:#e2e8f0;
           border:1px solid rgba(148,163,184,0.3);font-size:0.68rem;font-family:monospace">`;
       }
       case 'readonly':
@@ -633,6 +655,13 @@
     });
 
     document.querySelectorAll('[data-type="number"]').forEach(el => {
+      el.addEventListener('change', () => {
+        markDirty(el.dataset.ns, el.dataset.key, el.value, el);
+        if (apiMode === 'local') applySetting(el.dataset.ns, el.dataset.key, el.value, el);
+      });
+    });
+
+    document.querySelectorAll('[data-type="text"]').forEach(el => {
       el.addEventListener('change', () => {
         markDirty(el.dataset.ns, el.dataset.key, el.value, el);
         if (apiMode === 'local') applySetting(el.dataset.ns, el.dataset.key, el.value, el);
@@ -1099,6 +1128,12 @@
     const host = $('#quality-manifest-widget');
     if (!host) return;
 
+    // Render offline state immediately if no live data yet — prevents "Initializing" hang
+    // while Layer 1/2 fetches are pending (up to 8+5s timeouts).
+    if (!lastData) {
+      try { render(offlineData()); } catch (e) { console.error('[QM] offline render error:', e); }
+    }
+
     // Load connection mode from localStorage or default to vps
     let savedMode = localStorage.getItem('qm-api-mode') || 'vps';
     if (!APE_USE_LOCAL_BRIDGE_DEBUG) {
@@ -1179,7 +1214,7 @@
     const fallback = lastData || offlineData();
     fallback.offline = true;
     fallback.connectionMode = 'offline';
-    render(fallback);
+    try { render(fallback); } catch (e) { console.error('[QM] Layer 3 render error:', e); }
   }
 
   // ── Boot ────────────────────────────────────────────────────────────
