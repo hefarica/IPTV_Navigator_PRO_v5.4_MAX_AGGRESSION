@@ -1,0 +1,20 @@
+{
+  "_schema": "codec-cascade/1.0",
+  "_doc": "SSOT de la cascada de codecs (fallback por tier). El generador la usa para declarar CODECS= en cada STREAM-INF segun el tier del canal. NOTA HONESTA: declara el codec ESPERADO + el orden de degradacion; el codec FISICO lo envia el proveedor (no se puede forzar HEVC si el stream es H264). El sistema la aplica al GRABAR/regenerar la lista.",
+  "updated_at": 0,
+  "saved_by": "csv-upload-20260521",
+  "cascade": [
+    { "tier": 1,  "codec": "hvc1.2.4.L153.B0", "profile": "Main 10",    "level": "5.1",     "capability": "4K@60 HDR",        "role": "CORONA" },
+    { "tier": 2,  "codec": "hvc1.2.4.L150.B0", "profile": "Main 10",    "level": "5.0",     "capability": "4K@30 HDR",        "role": "Baja fps" },
+    { "tier": 3,  "codec": "hvc1.2.4.L123.B0", "profile": "Main 10",    "level": "4.1",     "capability": "1080p@60 HDR",     "role": "Baja res, mantiene 60fps" },
+    { "tier": 4,  "codec": "hvc1.2.4.L120.B0", "profile": "Main 10",    "level": "4.0",     "capability": "1080p@30 HDR",     "role": "1080p@30 10-bit" },
+    { "tier": 5,  "codec": "hvc1.2.4.L93.B0",  "profile": "Main 10",    "level": "3.1",     "capability": "720p@30 HDR",      "role": "720p 10-bit" },
+    { "tier": 6,  "codec": "hvc1.2.4.L90.B0",  "profile": "Main 10",    "level": "3.0",     "capability": "540p@30 HDR",      "role": "Ultra-fallback 10-bit" },
+    { "tier": 7,  "codec": "hvc1.2.4.L63.B0",  "profile": "Main 10",    "level": "2.1",     "capability": "360p@30 HDR",      "role": "Bottom 10-bit posible" },
+    { "tier": 8,  "codec": "av01.0.05M.10",    "profile": "AV1",        "level": "Main 10", "capability": "1080p@60 10-bit",  "role": "AV1 nativo (ONN/FireTV HW)" },
+    { "tier": 9,  "codec": "hvc1.1.6.L120.B0", "profile": "Main 8-bit", "level": "4.0",     "capability": "1080p@30 SDR",     "role": "Solo si todo Main 10 fallo" },
+    { "tier": 10, "codec": "hvc1.1.6.L93.B0",  "profile": "Main 8-bit", "level": "3.1",     "capability": "720p@30 SDR",      "role": "Penultimo escalon HEVC" },
+    { "tier": 11, "codec": "avc1.640028",      "profile": "H.264 High", "level": "4.0",     "capability": "1080p@30",         "role": "Garantia universal" },
+    { "tier": 12, "codec": "avc1.4d401e",      "profile": "H.264 Main", "level": "3.0",     "capability": "480p@30",          "role": "Ultimo recurso absoluto" }
+  ]
+}

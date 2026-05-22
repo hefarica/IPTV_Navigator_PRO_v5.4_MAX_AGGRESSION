@@ -1,0 +1,1 @@
+{"metrics":[{"channel_id":"999997","profile":"P0","vst_proxy_avg":480,"vst_proxy_max":600,"rebuffer_count":0,"request_count":15,"error_count":1,"bitrate_avg_bps":20000000,"err4xx":1,"err5xx":0,"redirect_count":3,"seg_latency_ms":210}],"ts":0}
