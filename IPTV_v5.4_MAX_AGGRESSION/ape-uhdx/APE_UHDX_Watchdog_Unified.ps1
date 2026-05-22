@@ -23,7 +23,7 @@ $ErrorActionPreference = "Continue"
 
 $ScriptRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
 $LocalDaemon = Join-Path $ScriptRoot "ape-uhdx-sentinel.sh"
-$RemoteDaemon = "/data/local/tmp/ape-uhdx-sentinel.sh"
+$RemoteDaemon = "/data/local/tmp/ape-uhdx-sentinel-v7.sh"
 $RemoteLock = "/data/local/tmp/ape-uhdx-sentinel.lock"
 $RemoteLog = "/data/local/tmp/ape-uhdx-sentinel.log"
 
