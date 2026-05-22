@@ -538,6 +538,7 @@
       <tr style="border-bottom:1px solid rgba(100,116,139,0.08)">
         <td style="padding:3px 6px;color:#64748b;font-family:monospace;text-align:center">${t.tier}</td>
         <td style="padding:3px 6px;color:#34d399;font-family:monospace;white-space:nowrap">${t.codec}</td>
+        <td style="padding:3px 6px;color:#86efac;font-family:monospace;white-space:nowrap">${t.codec_hev1 || (typeof t.codec === 'string' && t.codec.startsWith('hvc1') ? t.codec.replace(/^hvc1/, 'hev1') : t.codec)}</td>
         <td style="padding:3px 6px;color:#cbd5e1">${t.profile || ''}</td>
         <td style="padding:3px 6px;color:#94a3b8;text-align:center">${t.level || ''}</td>
         <td style="padding:3px 6px;color:#94a3b8">${t.capability || t.role || ''}</td>
@@ -582,7 +583,8 @@
           <table style="width:100%;border-collapse:collapse;font-size:0.6rem">
             <thead><tr style="background:rgba(15,23,42,0.9);position:sticky;top:0">
               <th style="padding:4px 6px;color:#94a3b8;text-align:center">T</th>
-              <th style="padding:4px 6px;color:#94a3b8;text-align:left">Codec String</th>
+              <th style="padding:4px 6px;color:#94a3b8;text-align:left">hvc1 (STREAM-INF)</th>
+              <th style="padding:4px 6px;color:#94a3b8;text-align:left">hev1 (KODIPROP)</th>
               <th style="padding:4px 6px;color:#94a3b8;text-align:left">Profile</th>
               <th style="padding:4px 6px;color:#94a3b8;text-align:center">Lvl</th>
               <th style="padding:4px 6px;color:#94a3b8;text-align:left">Capacidad / Rol</th>
@@ -861,9 +863,10 @@
       codecDownload.addEventListener('click', () => {
         if (!ssot) return;
         const cascade = ssot.getActiveCascade() || [];
-        let csv = 'Tier;Codec String;Profile;Level;Capacidad;Rol\n';
+        let csv = 'Tier;Codec String hvc1;Codec String hev1;Profile;Level;Capacidad;Rol\n';
         cascade.forEach((t) => {
-          csv += `${t.tier};${t.codec};${t.profile || ''};${t.level || ''};${t.capability || t.role || ''};${t.role || ''}\n`;
+          const hev1 = t.codec_hev1 || (typeof t.codec === 'string' && t.codec.startsWith('hvc1') ? t.codec.replace(/^hvc1/, 'hev1') : t.codec);
+          csv += `${t.tier};${t.codec};${hev1};${t.profile || ''};${t.level || ''};${t.capability || t.role || ''};${t.role || ''}\n`;
         });
         const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
         const url = URL.createObjectURL(blob);

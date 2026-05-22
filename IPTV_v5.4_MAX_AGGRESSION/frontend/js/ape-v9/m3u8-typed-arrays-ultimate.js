@@ -23,6 +23,33 @@
     const VERSION = '22.2.0-FUSION-FANTASMA-NUCLEAR';
 
     // ═══════════════════════════════════════════════════════════════════════════
+    // 🔱 CASCADA DUAL HEVC — Single Source of Truth (2026-05-22)
+    // hvc1 → manifest parser (STREAM-INF, CMAF, APE manifest headers)
+    // hev1 → decoder runtime (KODIPROP, EXTVLCOPT, EXTHTTP codec fields)
+    // REGLA DE ORO: NUNCA cruzar. hev1 en STREAM-INF rompe Tizen/webOS.
+    //               hvc1 en KODIPROP video_codec_override es ignorado por ISA.
+    // ═══════════════════════════════════════════════════════════════════════════
+    const HEVC_CASCADE_HVC1 = 'hvc1.2.4.L186.B0,hvc1.2.4.L183.B0,hvc1.2.4.L180.B0,hvc1.2.4.L156.B0,hvc1.2.4.L153.B0,hvc1.2.4.L150.B0,hvc1.2.4.L123.B0,hvc1.2.4.L120.B0,hvc1.2.4.L93.B0,hvc1.2.4.L90.B0,avc1.640028';
+    const HEVC_CASCADE_HEV1 = 'hev1.2.4.L186.B0,hev1.2.4.L183.B0,hev1.2.4.L180.B0,hev1.2.4.L156.B0,hev1.2.4.L153.B0,hev1.2.4.L150.B0,hev1.2.4.L123.B0,hev1.2.4.L120.B0,hev1.2.4.L93.B0,hev1.2.4.L90.B0,avc1.640028';
+    // Helper: obtiene codec hev1 del tier activo para un canal dado (KODIPROP/EXTVLCOPT)
+    function _getHev1ForChannel(channel, profile) {
+        const _cas = (typeof window !== 'undefined' && window.APE_HEVC_CASCADE) || null;
+        if (_cas && typeof _cas.resolveCodecHev1ForChannel === 'function') {
+            try {
+                const r = _cas.resolveCodecHev1ForChannel(channel || {}, profile, { preferAv1: false });
+                return r.codec_hev1 || HEVC_CASCADE_HEV1.split(',')[0];
+            } catch (_) { /* fallback silente */ }
+        }
+        if (_cas && typeof _cas.resolveCodecForChannel === 'function') {
+            try {
+                const r = _cas.resolveCodecForChannel(channel || {}, profile, { preferAv1: false });
+                return r.codec.startsWith('hvc1') ? r.codec.replace(/^hvc1/, 'hev1') : r.codec;
+            } catch (_) { /* fallback silente */ }
+        }
+        return HEVC_CASCADE_HEV1.split(',')[0]; // hev1.2.4.L186.B0
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
     // HDCP-Adaptive Engine — pre-fetch per-channel HDCP-LEVEL decisions (added 2026-05-19)
     // ═══════════════════════════════════════════════════════════════════════════
     // The generator emits HDCP-LEVEL=TYPE-1 by default (aggressive, forces hardware
@@ -2832,12 +2859,12 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
             vlcopts.push(`#EXTVLCOPT:video-visual=${pmProfile?.visuals?.video_visual_mode || 'full-range'}`);
 
             // Codecs
-            // [HEVC-FIRST CODEC LADDER] Lee codec_chain_player_pref (LAB SSOT) → fallback codec_priority legacy.
-            // VLC consume codec-priority y avcodec-codec en orden de preferencia (libVLC core lookup).
-            vlcopts.push(`#EXTVLCOPT:codec=${(pmProfile?.settings?.codec_chain_player_pref) ? pmProfile.settings.codec_chain_player_pref.split(',').slice(0, 2).join(',') : (pmProfile?.settings?.codec_priority ? pmProfile.settings.codec_priority.split(',').slice(0, 2).join(',') : 'hvc1,hev1')}`);
-            vlcopts.push(`#EXTVLCOPT:preferred-codec=${(pmProfile?.settings?.codec_chain_player_pref) ? pmProfile.settings.codec_chain_player_pref.split(',')[0] : ((pmProfile?.settings?.codec) ? pmProfile.settings.codec.toLowerCase() : 'hvc1')}`);
-            vlcopts.push(`#EXTVLCOPT:codec-priority=${pmProfile?.settings?.codec_chain_player_pref || pmProfile?.settings?.codec_priority || 'hvc1,hev1,h265,avc1,h264'}`);
-            vlcopts.push(`#EXTVLCOPT:avcodec-codec=${pmProfile?.settings?.codec_chain_player_pref || 'hvc1,hev1,h265,avc1,h264'}`);
+            // 🔱 hev1 — EXTVLCOPT usa nombres de familia (NO cadenas RFC-6381). VLC acepta: hevc, h264.
+            // hvc1.*/hev1.* en EXTVLCOPT:codec rompen VLC/libvlc — deben ser nombres de familia.
+            vlcopts.push(`#EXTVLCOPT:codec=hevc,h264`);
+            vlcopts.push(`#EXTVLCOPT:preferred-codec=hevc`);
+            vlcopts.push(`#EXTVLCOPT:codec-priority=hevc,h265,h264`);
+            vlcopts.push(`#EXTVLCOPT:avcodec-codec=hevc`);
             vlcopts.push(`#EXTVLCOPT:audio-codec-priority=${pmProfile?.settings?.codec_chain_audio || 'mp4a.40.2,ac-3,mp4a.40.5'}`);
 
             // ── V6.3 PLAYER-CONSUMED INTENT (CMAF/APE → EXTVLCOPT translation) ──
@@ -2909,12 +2936,11 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
             vlcopts.push(`#EXTVLCOPT:avcodec-threads=${pmProfile?.hardware?.avcodec_threads !== undefined ? pmProfile.hardware.avcodec_threads : 0}`);
             vlcopts.push(`#EXTVLCOPT:ffmpeg-hw`);
             vlcopts.push(`#EXTVLCOPT:video-visual=${pmProfile?.visuals?.video_visual_mode || 'full-range'}`);
-            // [HEVC-FIRST CODEC LADDER] Lee codec_chain_player_pref (LAB SSOT) → fallback codec_priority legacy.
-            // VLC consume codec-priority y avcodec-codec en orden de preferencia (libVLC core lookup).
-            vlcopts.push(`#EXTVLCOPT:codec=${(pmProfile?.settings?.codec_chain_player_pref) ? pmProfile.settings.codec_chain_player_pref.split(',').slice(0, 2).join(',') : (pmProfile?.settings?.codec_priority ? pmProfile.settings.codec_priority.split(',').slice(0, 2).join(',') : 'hvc1,hev1')}`);
-            vlcopts.push(`#EXTVLCOPT:preferred-codec=${(pmProfile?.settings?.codec_chain_player_pref) ? pmProfile.settings.codec_chain_player_pref.split(',')[0] : ((pmProfile?.settings?.codec) ? pmProfile.settings.codec.toLowerCase() : 'hvc1')}`);
-            vlcopts.push(`#EXTVLCOPT:codec-priority=${pmProfile?.settings?.codec_chain_player_pref || pmProfile?.settings?.codec_priority || 'hvc1,hev1,h265,avc1,h264'}`);
-            vlcopts.push(`#EXTVLCOPT:avcodec-codec=${pmProfile?.settings?.codec_chain_player_pref || 'hvc1,hev1,h265,avc1,h264'}`);
+            // 🔱 hev1 — EXTVLCOPT usa nombres de familia (NO cadenas RFC-6381). VLC acepta: hevc, h264.
+            vlcopts.push(`#EXTVLCOPT:codec=hevc,h264`);
+            vlcopts.push(`#EXTVLCOPT:preferred-codec=hevc`);
+            vlcopts.push(`#EXTVLCOPT:codec-priority=hevc,h265,h264`);
+            vlcopts.push(`#EXTVLCOPT:avcodec-codec=hevc`);
             vlcopts.push(`#EXTVLCOPT:audio-codec-priority=${pmProfile?.settings?.codec_chain_audio || 'mp4a.40.2,ac-3,mp4a.40.5'}`);
         }
 
@@ -3212,8 +3238,8 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
             '#KODIPROP:inputstream.adaptive.bandwidth_ramp_peak=100000000', // Tope 100 Mbps
             '#KODIPROP:inputstream.adaptive.bandwidth_handoff_ms=60000', // Toma de control Sentinel al minuto
             // -------------------------------------------------------------
-            // [HEVC-FIRST] preferred_codec lee codec_chain_player_pref del LAB (per-profile chain) — fallback hardcoded HEVC-first
-            `#KODIPROP:inputstream.adaptive.preferred_codec=${cfg.codec_chain_player_pref || 'hvc1,hev1,h265,avc1,h264'}`,
+            // 🔱 hev1 — ISA/ExoPlayer espera nombre de familia, NO cadena RFC-6381
+            `#KODIPROP:inputstream.adaptive.preferred_codec=hevc`,
             `#KODIPROP:inputstream.adaptive.audio_codec_priority=${cfg.codec_chain_audio || 'mp4a.40.2,ac-3,mp4a.40.5'}`,
             `#KODIPROP:inputstream.adaptive.max_resolution=${cfg.resolution || '3840x2160'}`,
             `#KODIPROP:inputstream.adaptive.resolution_secure_max=${cfg.resolution || '3840x2160'}`,
@@ -3223,8 +3249,8 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
             '#KODIPROP:inputstream.adaptive.play_timeshift_buffer_size=256', // Amplificado 2x para Fase de Impulso
             '#KODIPROP:inputstream.adaptive.force_hdr=true',
             // ── 🎥 V17.2 CODEC FORCING & HARDWARE DELEGATION ──
-            // [HEVC-FIRST] override hard al codec primary del chain (Kodi 21 Omega+). LAB-driven per-profile.
-            `#KODIPROP:inputstream.adaptive.video_codec_override=${(cfg.codec_chain_player_pref && cfg.codec_chain_player_pref.split(',')[0]) || 'hvc1'}`,
+            // 🔱 hev1 — ISA/ExoPlayer acepta nombre de familia; 'hvc1' (fourcc) es ignorado por ISA
+            `#KODIPROP:inputstream.adaptive.video_codec_override=hevc`,
             '#KODIPROP:inputstream.adaptive.video_profile=main10',
             '#KODIPROP:inputstream.adaptive.hardware_decode=true',
             '#KODIPROP:inputstream.adaptive.tunneling_enabled=true', // Audio/Video direct al Display (Evita Stutter SO)
@@ -6382,7 +6408,15 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
         arr.push('#EXT-X-APE-AV1-FALLBACK-ENABLED:true');
         // [HEVC-FIRST] per-profile family chain from cfg.codec_chain_video_family (LAB SSOT)
         arr.push('#EXT-X-APE-AV1-FALLBACK-CHAIN:' + (cfg.codec_chain_video_family || 'HEVC-MAIN10-L6.1>HEVC-MAIN10-L6.0>HEVC-MAIN10-L5.2>HEVC-MAIN10-L5.1>HEVC-MAIN10-L5.0>HEVC-MAIN10-L4.1>HEVC-MAIN10-L4.0>HEVC-MAIN-L5.1>HEVC-MAIN-L4.0>H264-HIGH'));
-        arr.push('#EXT-X-APE-CODEC-PRIORITY:' + (cfg.codec_chain_player_pref || 'hvc1,hev1,h265,avc1,h264'));
+        // 🔱 hvc1 — directiva APE propietaria leída por ANLE/Cortex (no players estándar); usa cascada hvc1 completa
+        arr.push('#EXT-X-APE-CODEC-PRIORITY:' + HEVC_CASCADE_HVC1);
+        // 🔱 hev1 — runtime codec cascade para ISA/ExoPlayer/VLC (parámetros in-band NAL 32/33/34)
+        // NUNCA va en STREAM-INF CODECS= (rompe Tizen/webOS pre-2022). Solo APE propietario + KODIPROP/EXTVLCOPT.
+        arr.push('#EXT-X-APE-CODEC-PRIORITY-HEV1:' + HEVC_CASCADE_HEV1);
+        // 🔱 per-profile codec ladders desde ape-profiles-config.js (SSOT): emitidos como APE metadata,
+        // leídos por VPS Lua para decisiones floor_lock + virtual_4k por perfil.
+        if (cfg.codec_ladder_hvc1) arr.push('#EXT-X-APE-PROFILE-CODEC-LADDER-HVC1:' + cfg.codec_ladder_hvc1);
+        if (cfg.codec_ladder_hev1) arr.push('#EXT-X-APE-PROFILE-CODEC-LADDER-HEV1:' + cfg.codec_ladder_hev1);
         arr.push('#EXT-X-APE-TELCHEMY-TVQM:ACTIVATED');
         arr.push('#EXT-X-APE-TELCHEMY-TR101290:ACTIVATED');
 
@@ -9139,6 +9173,11 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
 
         // Metadata I-Frame sin URI (Protección para no abrir conexión extra)
         lines.push(`#EXT-X-I-FRAME-STREAM-INF:BANDWIDTH=${Math.round(_bw796 * 0.025)},CODECS="${_codec796}"`);
+
+        // ═══ DUAL CODEC HVC1/HEV1 — GOLDEN RULE per canal ═══
+        // hvc1 → STREAM-INF CODECS= (manifest parser, Tizen/webOS safe)
+        // hev1 → runtime tag APE (ISA/ExoPlayer in-band, VPS Lua phase)
+        lines.push(`#EXT-X-APE-CHANNEL-RUNTIME-CODEC-HEV1:${_getHev1ForChannel(channel, profile)}`);
 
         // ═══ QUALITY SOURCE TELEMETRY — indica si los datos son reales o estimados ═══
         lines.push(`#EXT-X-APE-QUALITY-SOURCE:${_probeData?.source || 'ESTIMATED'}`);

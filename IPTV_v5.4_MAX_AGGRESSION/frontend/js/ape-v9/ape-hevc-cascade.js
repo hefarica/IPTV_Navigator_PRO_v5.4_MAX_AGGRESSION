@@ -24,19 +24,19 @@
     const CORONA_TIER_NUMBER = 9;
 
     const HEVC_CASCADE_13TIER = Object.freeze([
-        { tier: 1,  codec: 'hvc1.2.4.L30.B0',  profile: 'Main 10', level: '1.0', width: 128,  height: 96,   fps: 33.7, hdr: true, family: 'HEVC', role: 'Mínimo absoluto HEVC Main 10' },
-        { tier: 2,  codec: 'hvc1.2.4.L60.B0',  profile: 'Main 10', level: '2.0', width: 352,  height: 288,  fps: 30,   hdr: true, family: 'HEVC', role: 'CIF baseline' },
-        { tier: 3,  codec: 'hvc1.2.4.L63.B0',  profile: 'Main 10', level: '2.1', width: 640,  height: 360,  fps: 30,   hdr: true, family: 'HEVC', role: '360p HDR' },
-        { tier: 4,  codec: 'hvc1.2.4.L90.B0',  profile: 'Main 10', level: '3.0', width: 960,  height: 540,  fps: 30,   hdr: true, family: 'HEVC', role: '540p HDR ultra-fallback' },
-        { tier: 5,  codec: 'hvc1.2.4.L93.B0',  profile: 'Main 10', level: '3.1', width: 1280, height: 720,  fps: 30,   hdr: true, family: 'HEVC', role: '720p HDR 10-bit' },
-        { tier: 6,  codec: 'hvc1.2.4.L120.B0', profile: 'Main 10', level: '4.0', width: 1920, height: 1080, fps: 30,   hdr: true, family: 'HEVC', role: '1080p@30 10-bit (Main 12 Mbps / High 30 Mbps)' },
-        { tier: 7,  codec: 'hvc1.2.4.L123.B0', profile: 'Main 10', level: '4.1', width: 1920, height: 1080, fps: 60,   hdr: true, family: 'HEVC', role: '1080p@60 HDR (Main 20 Mbps / High 50 Mbps)' },
-        { tier: 8,  codec: 'hvc1.2.4.L150.B0', profile: 'Main 10', level: '5.0', width: 3840, height: 2160, fps: 30,   hdr: true, family: 'HEVC', role: '4K@30 HDR (Main 25 Mbps / High 100 Mbps)' },
-        { tier: 9,  codec: 'hvc1.2.4.L153.B0', profile: 'Main 10', level: '5.1', width: 3840, height: 2160, fps: 60,   hdr: true, family: 'HEVC', role: 'CORONA — 4K@60 HDR (Main 40 Mbps / High 160 Mbps)' },
-        { tier: 10, codec: 'hvc1.2.4.L156.B0', profile: 'Main 10', level: '5.2', width: 3840, height: 2160, fps: 120,  hdr: true, family: 'HEVC', role: '4K@120 HDR (Main 60 Mbps / High 240 Mbps)' },
-        { tier: 11, codec: 'hvc1.2.4.L180.B0', profile: 'Main 10', level: '6.0', width: 7680, height: 4320, fps: 30,   hdr: true, family: 'HEVC', role: '8K@30 HDR (Main 60 Mbps / High 240 Mbps)' },
-        { tier: 12, codec: 'hvc1.2.4.L183.B0', profile: 'Main 10', level: '6.1', width: 7680, height: 4320, fps: 60,   hdr: true, family: 'HEVC', role: '8K@60 HDR (Main 120 Mbps / High 480 Mbps)' },
-        { tier: 13, codec: 'hvc1.2.4.L186.B0', profile: 'Main 10', level: '6.2', width: 7680, height: 4320, fps: 120,  hdr: true, family: 'HEVC', role: '8K@120 HDR techo absoluto (Main 240 Mbps / High 800 Mbps)' }
+        { tier: 1,  codec: 'hvc1.2.4.L30.B0',  codec_hev1: 'hev1.2.4.L30.B0',  profile: 'Main 10', level: '1.0', width: 128,  height: 96,   fps: 33.7, hdr: true, family: 'HEVC', role: 'Mínimo absoluto HEVC Main 10' },
+        { tier: 2,  codec: 'hvc1.2.4.L60.B0',  codec_hev1: 'hev1.2.4.L60.B0',  profile: 'Main 10', level: '2.0', width: 352,  height: 288,  fps: 30,   hdr: true, family: 'HEVC', role: 'CIF baseline' },
+        { tier: 3,  codec: 'hvc1.2.4.L63.B0',  codec_hev1: 'hev1.2.4.L63.B0',  profile: 'Main 10', level: '2.1', width: 640,  height: 360,  fps: 30,   hdr: true, family: 'HEVC', role: '360p HDR' },
+        { tier: 4,  codec: 'hvc1.2.4.L90.B0',  codec_hev1: 'hev1.2.4.L90.B0',  profile: 'Main 10', level: '3.0', width: 960,  height: 540,  fps: 30,   hdr: true, family: 'HEVC', role: '540p HDR ultra-fallback' },
+        { tier: 5,  codec: 'hvc1.2.4.L93.B0',  codec_hev1: 'hev1.2.4.L93.B0',  profile: 'Main 10', level: '3.1', width: 1280, height: 720,  fps: 30,   hdr: true, family: 'HEVC', role: '720p HDR 10-bit' },
+        { tier: 6,  codec: 'hvc1.2.4.L120.B0', codec_hev1: 'hev1.2.4.L120.B0', profile: 'Main 10', level: '4.0', width: 1920, height: 1080, fps: 30,   hdr: true, family: 'HEVC', role: '1080p@30 10-bit (Main 12 Mbps / High 30 Mbps)' },
+        { tier: 7,  codec: 'hvc1.2.4.L123.B0', codec_hev1: 'hev1.2.4.L123.B0', profile: 'Main 10', level: '4.1', width: 1920, height: 1080, fps: 60,   hdr: true, family: 'HEVC', role: '1080p@60 HDR (Main 20 Mbps / High 50 Mbps)' },
+        { tier: 8,  codec: 'hvc1.2.4.L150.B0', codec_hev1: 'hev1.2.4.L150.B0', profile: 'Main 10', level: '5.0', width: 3840, height: 2160, fps: 30,   hdr: true, family: 'HEVC', role: '4K@30 HDR (Main 25 Mbps / High 100 Mbps)' },
+        { tier: 9,  codec: 'hvc1.2.4.L153.B0', codec_hev1: 'hev1.2.4.L153.B0', profile: 'Main 10', level: '5.1', width: 3840, height: 2160, fps: 60,   hdr: true, family: 'HEVC', role: 'CORONA — 4K@60 HDR (Main 40 Mbps / High 160 Mbps)' },
+        { tier: 10, codec: 'hvc1.2.4.L156.B0', codec_hev1: 'hev1.2.4.L156.B0', profile: 'Main 10', level: '5.2', width: 3840, height: 2160, fps: 120,  hdr: true, family: 'HEVC', role: '4K@120 HDR (Main 60 Mbps / High 240 Mbps)' },
+        { tier: 11, codec: 'hvc1.2.4.L180.B0', codec_hev1: 'hev1.2.4.L180.B0', profile: 'Main 10', level: '6.0', width: 7680, height: 4320, fps: 30,   hdr: true, family: 'HEVC', role: '8K@30 HDR (Main 60 Mbps / High 240 Mbps)' },
+        { tier: 12, codec: 'hvc1.2.4.L183.B0', codec_hev1: 'hev1.2.4.L183.B0', profile: 'Main 10', level: '6.1', width: 7680, height: 4320, fps: 60,   hdr: true, family: 'HEVC', role: '8K@60 HDR (Main 120 Mbps / High 480 Mbps)' },
+        { tier: 13, codec: 'hvc1.2.4.L186.B0', codec_hev1: 'hev1.2.4.L186.B0', profile: 'Main 10', level: '6.2', width: 7680, height: 4320, fps: 120,  hdr: true, family: 'HEVC', role: '8K@120 HDR techo absoluto (Main 240 Mbps / High 800 Mbps)' }
     ]);
 
     // Acceso rápido por tier number (1-indexed, T1=mínimo, T13=máximo)
@@ -75,9 +75,12 @@
             const ov = rows.find((r) => Number(r.tier) === def.tier);
             if (!ov) return def;
             const codec = (ov.codec && String(ov.codec).trim()) || def.codec;
+            const codec_hev1 = (ov.codec_hev1 && String(ov.codec_hev1).trim())
+                || (codec.startsWith('hvc1') ? codec.replace(/^hvc1/, 'hev1') : codec);
             return Object.freeze({
                 tier: def.tier,
                 codec: codec,
+                codec_hev1: codec_hev1,
                 profile: (ov.profile && String(ov.profile).trim()) || def.profile,
                 level: (ov.level !== undefined && ov.level !== '') ? String(ov.level).trim() : def.level,
                 width: Number(ov.width) || def.width,
@@ -119,7 +122,9 @@
     function isOverridden() { return _activeCascade !== HEVC_CASCADE_13TIER; }
 
     // parseCascadeCSV — SSOT del parseo. Acepta separador ';' (ES-ES) o ','.
-    // Header esperado (flexible): Tier;Codec String;Profile;Level;Capacidad;Rol
+    // Formato legacy (6 cols): Tier;Codec String;Profile;Level;Capacidad;Rol
+    // Formato dual  (7 cols): Tier;Codec String hvc1;Codec String hev1;Profile;Level;Capacidad;Rol
+    // Autodetección por presencia de 'hev1' en el header.
     function parseCascadeCSV(text) {
         const out = [];
         const lines = String(text || '').replace(/\r/g, '').split('\n').filter((l) => l.trim() !== '');
@@ -129,18 +134,38 @@
         // saltar header si la primera celda no es numérica
         const firstCell = lines[0].split(sep)[0].trim().toLowerCase();
         if (isNaN(Number(firstCell)) || firstCell === '') start = 1;
+        // Detectar formato dual: header contiene 'hev1'
+        const headerLine = start > 0 ? lines[0].toLowerCase() : '';
+        const isDual = headerLine.indexOf('hev1') >= 0;
         for (let i = start; i < lines.length; i++) {
             const cols = lines[i].split(sep).map((c) => c.trim());
             const tier = Number(cols[0]);
             if (!(tier >= 1 && tier <= 13)) continue;
-            out.push({
-                tier: tier,
-                codec: cols[1] || '',
-                profile: cols[2] || '',
-                level: cols[3] || '',
-                capability: cols[4] || '',
-                role: cols[5] || ''
-            });
+            if (isDual) {
+                // Formato dual: Tier | hvc1 | hev1 | Profile | Level | Capacidad | Rol
+                const c = cols[1] || '';
+                out.push({
+                    tier:       tier,
+                    codec:      c,
+                    codec_hev1: cols[2] || (c.startsWith('hvc1') ? c.replace(/^hvc1/, 'hev1') : c),
+                    profile:    cols[3] || '',
+                    level:      cols[4] || '',
+                    capability: cols[5] || '',
+                    role:       cols[6] || ''
+                });
+            } else {
+                // Formato legacy: Tier | Codec String | Profile | Level | Capacidad | Rol
+                const c = cols[1] || '';
+                out.push({
+                    tier:       tier,
+                    codec:      c,
+                    codec_hev1: c.startsWith('hvc1') ? c.replace(/^hvc1/, 'hev1') : c,
+                    profile:    cols[2] || '',
+                    level:      cols[3] || '',
+                    capability: cols[4] || '',
+                    role:       cols[5] || ''
+                });
+            }
         }
         return out;
     }
@@ -291,6 +316,29 @@
     }
 
     // ────────────────────────────────────────────────────────────────────────
+    // resolveCodecHev1ForChannel — igual que resolveCodecForChannel pero retorna
+    // también codec_hev1 (para KODIPROP/EXTVLCOPT). Regla de oro:
+    //   codec     → hvc1.* → manifest parser (STREAM-INF)
+    //   codec_hev1 → hev1.* → decoder runtime (KODIPROP, EXTVLCOPT)
+    // ────────────────────────────────────────────────────────────────────────
+    function resolveCodecHev1ForChannel(channel, profile, opts) {
+        const base = resolveCodecForChannel(channel, profile, opts);
+        const tierObj = base.tierObj;
+        return {
+            codec:      base.codec,
+            codec_hev1: tierObj.codec_hev1 || (base.codec.startsWith('hvc1')
+                ? base.codec.replace(/^hvc1/, 'hev1')
+                : base.codec),
+            tier:             base.tier,
+            tierObj:          tierObj,
+            width:            base.width,
+            height:           base.height,
+            fps:              base.fps,
+            resolutionSource: base.resolutionSource
+        };
+    }
+
+    // ────────────────────────────────────────────────────────────────────────
     // generateProfileCascadeArrays — per-profile codec primary + fallback chain
     // ────────────────────────────────────────────────────────────────────────
     // Retorna un objeto P0-P5 donde cada perfil tiene:
@@ -354,8 +402,8 @@
     // Exposición global (browser) + module.exports (Node test)
     // ────────────────────────────────────────────────────────────────────────
     const api = {
-        VERSION: '1.2.0-13tier-pure-hevc-main10-20260522',
-        CSV_SOURCE: 'HEVC_Cascada_Tier_Levels.csv',
+        VERSION: '1.2.0-dual-hvc1-hev1-20260522',
+        CSV_SOURCE: 'Tier-CodecHvc1-CodecHev1-Profile-Level-Capacidad-Rol.csv',
         // CORONA_TIER_NUMBER = 9 → T9 = hvc1.2.4.L153.B0 (4K@60 UHD).
         // El generador usa esta constante para fake-4K y canales premium.
         CORONA_TIER_NUMBER: CORONA_TIER_NUMBER,
@@ -363,6 +411,7 @@
         inferResolutionFromChannel: inferResolutionFromChannel,
         inferFpsFromChannel: inferFpsFromChannel,
         resolveCodecForChannel: resolveCodecForChannel,
+        resolveCodecHev1ForChannel: resolveCodecHev1ForChannel,
         isPremiumChannel: isPremiumChannel,
         PREMIUM_RE: PREMIUM_RE,
         // Per-profile cascade arrays (primary + fallback chain hvc1.2.4.*)
