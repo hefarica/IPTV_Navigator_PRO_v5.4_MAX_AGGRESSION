@@ -9196,23 +9196,38 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
                 }
             }
 
-            // ── FAKE 4K FORZADO — paquete de directivas unificado (mandato HFRC 2026-05-21:
-            //    "4K FORZADO PARA TODOS LOS NIVELES P5→P0") ──────────────────────────────────
-            // Declara RESOLUTION=3840x2160 + T1 codec (hvc1.2.4.L153.B0, RESPETA override CSV del
-            // widget) en CADA canal del catálogo. La URL del canal queda VERBATIM (no se reconstruye
-            // — respeta SHIELDED). El escalado real lo hace el TV/SoC (Path A, ADB) — el codec/res
-            // es HINT que el player negocia con el bitstream real (doctrina F2, no enforcement).
-            // HDR NO se fuerza aquí (VIDEO-RANGE queda honesto: solo PQ si _videoRangePart lo trae)
-            //   → forzar PQ sobre SDR en el catálogo = pantallazo negro en el ONN. El SDR→HDR real
-            //   lo fuerza el TV (hdr_conversion_mode por ADB). fps fiel al canal (FIX-8, no 60 forzado).
-            // Reversible: localStorage.APE_FORCE_FAKE_4K='0' lo desactiva (vuelve a cascada por res).
-            let _forceFake4k = true;
-            try { if (typeof localStorage !== 'undefined' && localStorage.getItem('APE_FORCE_FAKE_4K') === '0') _forceFake4k = false; } catch (_e0) {}
-            if (_forceFake4k && _cascade && _cascade.TIER_BY_NUMBER) {
-                const _t1Fake = _cascade.TIER_BY_NUMBER[_cascade.CORONA_TIER_NUMBER || 9];   // CORONA 4K@60 (T9 = hvc1.2.4.L153.B0)
+            // ── CASCADE-PER-PROFILE FORZADO (mandato HFRC 2026-05-22) ──────────────────────
+            // Aplica la tabla HEVC_Cascada_Tier_Levels: cada perfil recibe el codec+resolución
+            // que le corresponde por resolución según APE_HEVC_CASCADE.generateProfileCascadeArrays().
+            //   P0/P1 → T9  hvc1.2.4.L153.B0  3840×2160  (CORONA 4K@60)
+            //   P2    → T8  hvc1.2.4.L150.B0  3840×2160  (4K@30, QHD→4K)
+            //   P3    → T6  hvc1.2.4.L120.B0  1920×1080  (FHD@30)
+            //   P4    → T5  hvc1.2.4.L93.B0   1280×720   (HD@30)
+            //   P5    → T3  hvc1.2.4.L63.B0   640×360    (360p)
+            // La URL del canal queda VERBATIM (SHIELDED). El escalado real: TV/SoC (ADB).
+            // HDR NO se fuerza (VIDEO-RANGE honesto). fps fiel al canal (FIX-8).
+            // Reversible: localStorage.APE_CASCADE_PER_PROFILE='0' → vuelve a T9 universal.
+            let _profileCascadeEnabled = true;
+            try { if (typeof localStorage !== 'undefined' && localStorage.getItem('APE_CASCADE_PER_PROFILE') === '0') _profileCascadeEnabled = false; } catch (_e0) {}
+            if (_profileCascadeEnabled && _cascade && typeof _cascade.generateProfileCascadeArrays === 'function') {
+                try {
+                    const _profileArrays = _cascade.generateProfileCascadeArrays();
+                    const _pKey = String(profile || 'P0').toUpperCase();
+                    const _pData = _profileArrays[_pKey] || _profileArrays['P0'];
+                    _codec796_csv = _pData.primary;
+                    _res796_csv   = _pData.resolution;
+                    // _fps796_csv intacto (fiel al canal)
+                } catch (_eP) {
+                    // Fallback silente → CORONA T9
+                    const _t1Fake = _cascade.TIER_BY_NUMBER[_cascade.CORONA_TIER_NUMBER || 9];
+                    _codec796_csv = _t1Fake.codec;
+                    _res796_csv   = _t1Fake.width + 'x' + _t1Fake.height;
+                }
+            } else if (_cascade && _cascade.TIER_BY_NUMBER) {
+                // Fallback legacy: CORONA T9 universal
+                const _t1Fake = _cascade.TIER_BY_NUMBER[_cascade.CORONA_TIER_NUMBER || 9];
                 _codec796_csv = _t1Fake.codec;
-                _res796_csv   = `${_t1Fake.width}x${_t1Fake.height}`;  // 3840x2160
-                // _fps796_csv intacto (fiel al canal)
+                _res796_csv   = _t1Fake.width + 'x' + _t1Fake.height;
             }
 
             lines.push(`#EXT-X-STREAM-INF:BANDWIDTH=${_bw796},AVERAGE-BANDWIDTH=${_avgBw},CODECS="${_codec796_csv},${_codecAudio}",RESOLUTION=${_res796_csv},FRAME-RATE=${_fps796_csv}.000${_videoRangePart},HDCP-LEVEL=${_hdcpLevel},STABLE-VARIANT-ID="${_stableVariantId}"`);

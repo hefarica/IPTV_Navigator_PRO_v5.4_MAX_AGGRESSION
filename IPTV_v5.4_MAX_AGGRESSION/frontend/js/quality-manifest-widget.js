@@ -942,6 +942,9 @@
     const codec_cascade = (_ssotCascade && typeof _ssotCascade.getActiveCascade === 'function')
       ? _ssotCascade.getActiveCascade()
       : null;
+    const codec_cascade_per_profile = (_ssotCascade && typeof _ssotCascade.generateProfileCascadeArrays === 'function')
+      ? _ssotCascade.generateProfileCascadeArrays()
+      : null;
 
     try {
       let savedLocally = false;
@@ -981,7 +984,7 @@
                 method: 'POST',
                 cache: 'no-store',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ manifest, codec_cascade, ts: new Date().toISOString(), local_sync: true }),
+                body: JSON.stringify({ manifest, codec_cascade, codec_cascade_per_profile, ts: new Date().toISOString(), local_sync: true }),
               }).catch(e => console.warn('[QM] Background VPS sync failed:', e));
 
               setTimeout(refresh, 1500);
@@ -1003,7 +1006,7 @@
           method: 'POST',
           cache: 'no-store',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ manifest, codec_cascade, ts: new Date().toISOString() }),
+          body: JSON.stringify({ manifest, codec_cascade, codec_cascade_per_profile, ts: new Date().toISOString() }),
         });
         const d = await r.json();
 

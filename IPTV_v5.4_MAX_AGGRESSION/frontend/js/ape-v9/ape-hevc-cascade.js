@@ -291,6 +291,54 @@
     }
 
     // ────────────────────────────────────────────────────────────────────────
+    // generateProfileCascadeArrays — per-profile codec primary + fallback chain
+    // ────────────────────────────────────────────────────────────────────────
+    // Retorna un objeto P0-P5 donde cada perfil tiene:
+    //   primary        → codec string del tier más alto aplicable a ese perfil
+    //   tier           → número de tier (1-13)
+    //   level          → nivel HEVC (e.g. "5.1")
+    //   resolution     → WxH del tier seleccionado
+    //   fps            → fps del perfil
+    //   chain          → [{tier, codec, level, role}, ...] de primary→T1
+    //   chain_codecs   → ['hvc1.2.4.Lxxx.B0', ...] flat, para codec_chain_video
+    //
+    // Mandato 2026-05-22 (HFRC): el generador usa esto como SSOT per-perfil;
+    // cada perfil recibe su codec correcto de la familia hvc1.2.4.*** por resolución.
+    // ────────────────────────────────────────────────────────────────────────
+    const PROFILE_DIMS = Object.freeze({
+        P0: { width: 3840, height: 2160, fps: 60 },   // 4K@60 CORONA
+        P1: { width: 3840, height: 2160, fps: 60 },   // 4K@60
+        P2: { width: 2560, height: 1440, fps: 60 },   // QHD@60
+        P3: { width: 1920, height: 1080, fps: 30 },   // FHD@30
+        P4: { width: 1280, height: 720,  fps: 30 },   // HD@30
+        P5: { width: 854,  height: 480,  fps: 30 }    // SD@30
+    });
+
+    function generateProfileCascadeArrays() {
+        const result = {};
+        for (const profileName in PROFILE_DIMS) {
+            const d = PROFILE_DIMS[profileName];
+            const topTier = resolveTierByResolution(d.width, d.height, d.fps, {});
+            // Cadena descendente: topTier → T1 (todos hvc1.2.4.*)
+            const chain = [];
+            for (let t = topTier.tier; t >= 1; t--) {
+                const to = _activeTierByNumber[t];
+                if (to) chain.push({ tier: t, codec: to.codec, level: to.level, role: to.role });
+            }
+            result[profileName] = Object.freeze({
+                primary:      topTier.codec,
+                tier:         topTier.tier,
+                level:        topTier.level,
+                resolution:   d.width + 'x' + d.height,
+                fps:          d.fps,
+                chain:        Object.freeze(chain),
+                chain_codecs: Object.freeze(chain.map(function (c) { return c.codec; }))
+            });
+        }
+        return Object.freeze(result);
+    }
+
+    // ────────────────────────────────────────────────────────────────────────
     // Premium detection helper — replica regex del fallback resolver para que
     // el generador pueda decidir T1 (CORONA 4K@60) sin re-clasificar canal.
     // ────────────────────────────────────────────────────────────────────────
@@ -317,6 +365,9 @@
         resolveCodecForChannel: resolveCodecForChannel,
         isPremiumChannel: isPremiumChannel,
         PREMIUM_RE: PREMIUM_RE,
+        // Per-profile cascade arrays (primary + fallback chain hvc1.2.4.*)
+        generateProfileCascadeArrays: generateProfileCascadeArrays,
+        PROFILE_DIMS: PROFILE_DIMS,
         // Override runtime (widget Quality Manifest)
         DEFAULT_CASCADE: HEVC_CASCADE_13TIER,
         setCascade: setCascade,
