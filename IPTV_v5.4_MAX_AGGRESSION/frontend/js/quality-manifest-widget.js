@@ -1221,14 +1221,13 @@
   async function boot() {
     const host = $('#quality-manifest-widget');
     if (!host) return;
-    host.innerHTML = `
-      <div style="display:flex;align-items:center;gap:10px;padding:14px">
-        <span style="font-size:1.4rem">🛡️</span>
-        <div>
-          <div style="font-size:0.9rem;color:#e2e8f0;font-weight:700">Quality Manifest Control</div>
-          <div style="font-size:0.72rem;color:#94a3b8">Initializing widget…</div>
-        </div>
-      </div>`;
+    // Render offline manifest IMMEDIATELY — never show "Initializing" state
+    try {
+      render(offlineData());
+    } catch (e) {
+      console.error('[QM] boot render error:', e);
+      host.innerHTML = `<div style="padding:14px;color:#f87171;font-size:0.72rem">⚠ Widget error: ${e.message}</div>`;
+    }
 
     // Load connection mode from localStorage or default to vps
     let savedMode = localStorage.getItem('qm-api-mode') || 'vps';
