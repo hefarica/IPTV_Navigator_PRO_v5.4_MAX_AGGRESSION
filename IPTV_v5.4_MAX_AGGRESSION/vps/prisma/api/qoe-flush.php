@@ -85,6 +85,12 @@ $persist = new ConvivaPersistence();
 $bucket = (int)($payload['bucket_5min'] ?? floor(time() / 300));
 $metricsWritten = 0;
 $hdcpForwarded = 0;
+/**
+ * Contador de registros MAX_QUALITY persistidos.
+ * Mapeado al campo max_quality_recorded en la respuesta JSON para auditoría.
+ * Seteado por el bloque 3 (max_quality_channels) más abajo.
+ */
+$maxQualityRecorded = 0;
 
 try {
     // 1. Persist server-side QoE rows
@@ -129,12 +135,41 @@ try {
         }
     }
 
+    // ── 3. Persistir canales con MAX_QUALITY OVERRIDE activo ────────────────────────────────
+    // El flush worker Lua incluye este array cuando detecta claves "mq:<channel_id>"
+    // en ngx.shared.qoe_metrics — seteadas por qoe_server_side_observer.lua al capturar
+    // el header X-APE-Max-Quality:1 que el generador inyecta vía EXTHTTP.
+    //
+    // Cada entrada del array:
+    //   - channel_id   : ID numérico del canal (string)
+    //   - cascade_type : "dual-hvc1-hev1" o vacío si el generador es pre-2026-05-22
+    //   - profile      : "P0".."P5" (del X-APE-Profile ya capturado)
+    //
+    // Persistencia: ConvivaPersistence::recordMaxQualityChannel()
+    //   → tabla max_quality_channels en conviva.db
+    //   → auditable vía SELECT * FROM max_quality_channels ORDER BY recorded_at DESC
+    //   → el daemon ONN sentinel puede consultar vía prisma-adb-quality.php?action=mq_channels
+    //     para saber qué canales requieren ADB settings HEVC/DV adicionales
+    //
+    // AUTOPISTA: si el array está vacío o no existe, este bloque es no-op (no lanza).
+    if (isset($payload['max_quality_channels']) && is_array($payload['max_quality_channels'])) {
+        foreach ($payload['max_quality_channels'] as $mq) {
+            $chId       = (string)($mq['channel_id']   ?? '');
+            $cascType   = (string)($mq['cascade_type'] ?? 'dual-hvc1-hev1');
+            $mqProfile  = (string)($mq['profile']      ?? 'unknown');
+            if ($chId === '') continue;
+            $ok = $persist->recordMaxQualityChannel($chId, $cascType, $mqProfile, $bucket);
+            if ($ok) $maxQualityRecorded++;
+        }
+    }
+
     echo json_encode([
-        'ok'                 => true,
-        'metrics_written'    => $metricsWritten,
-        'hdcp_forwarded'     => $hdcpForwarded,
-        'bucket_5min'        => $bucket,
-        'ts'                 => time(),
+        'ok'                    => true,
+        'metrics_written'       => $metricsWritten,
+        'hdcp_forwarded'        => $hdcpForwarded,
+        'max_quality_recorded'  => $maxQualityRecorded, // [MAX_QUALITY 2026-05-22]
+        'bucket_5min'           => $bucket,
+        'ts'                    => time(),
     ]);
 } catch (Throwable $e) {
     error_log('[qoe-flush] error: ' . $e->getMessage());

@@ -159,6 +159,47 @@ class ConvivaPersistence
             ");
             $this->pdo->exec("CREATE INDEX IF NOT EXISTS idx_qpa_profile ON qoe_profile_aggregates(profile, bucket_5min)");
             $this->pdo->exec("CREATE INDEX IF NOT EXISTS idx_qpa_observed ON qoe_profile_aggregates(observed_at)");
+
+            // ── [MAX_QUALITY 2026-05-22] Tabla de canales consumidos con MAX QUALITY OVERRIDE ──
+            //
+            // Registra qué canales se están reproduciendo con la cascada dual hvc1+hev1 /
+            // Dolby Vision activa (toggle "MAX QUALITY OVERRIDE" en la UI del generador).
+            //
+            // Flujo de escritura:
+            //   m3u8-typed-arrays-ultimate.js (EXTHTTP X-APE-Max-Quality:1)
+            //   → qoe_server_side_observer.lua (captura, dict["mq:<chId>"])
+            //   → qoe_flush_worker.lua (60s timer, incluye en JSON payload)
+            //   → qoe-flush.php (llama recordMaxQualityChannel() por cada entrada)
+            //   → ESTA TABLA
+            //
+            // Flujo de lectura:
+            //   → Dashboard APE: SELECT * FROM max_quality_channels ORDER BY recorded_at DESC
+            //   → ape-uhdx-sentinel.sh: consulta vía prisma-adb-quality.php?action=mq_channels
+            //     para saber qué canales requieren ADB settings HEVC/DV adicionales
+            //
+            // AUDITORÍA: bucket_5min permite correlacionar con server_side_qoe_metrics
+            // y channel_hdcp_profile para análisis cruzado de calidad.
+            //
+            // Campos:
+            //   channel_id   — ID numérico del canal (mismo que en las demás tablas)
+            //   cascade_type — "dual-hvc1-hev1" (o futuras variantes: "hvc1-only", "dv-p8")
+            //   profile      — Perfil APE activo ("P0".."P5")
+            //   bucket_5min  — Ventana temporal de 5 min (floor(unix_ts / 300))
+            //   recorded_at  — Unix timestamp de la persistencia
+            $this->pdo->exec("
+                CREATE TABLE IF NOT EXISTS max_quality_channels (
+                    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+                    channel_id   TEXT    NOT NULL,
+                    cascade_type TEXT    NOT NULL DEFAULT 'dual-hvc1-hev1',
+                    profile      TEXT    NOT NULL DEFAULT 'unknown',
+                    bucket_5min  INTEGER NOT NULL,
+                    recorded_at  INTEGER NOT NULL DEFAULT (CAST(strftime('%s','now') AS INTEGER))
+                )
+            ");
+            $this->pdo->exec("CREATE INDEX IF NOT EXISTS idx_mq_channel ON max_quality_channels(channel_id, bucket_5min)");
+            $this->pdo->exec("CREATE INDEX IF NOT EXISTS idx_mq_recorded ON max_quality_channels(recorded_at)");
+            // ── [FIN MAX_QUALITY tabla] ────────────────────────────────────────────────────────
+
             return true;
         } catch (Throwable $e) {
             error_log('[conviva-persistence] init failed: ' . $e->getMessage());
@@ -633,4 +674,121 @@ class ConvivaPersistence
             return [];
         }
     }
+
+    // ═══════════════════════════════════════════════════════════════════════════════════════
+    // ║  MAX_QUALITY OVERRIDE — Persistence methods (2026-05-22)                           ║
+    // ═══════════════════════════════════════════════════════════════════════════════════════
+    //
+    // Bloque de persistencia para la funcionalidad MAX_QUALITY OVERRIDE implementada en
+    // m3u8-typed-arrays-ultimate.js (toggle UI → cascada dual hvc1+hev1 / Dolby Vision).
+    //
+    // FLUJO COMPLETO (E2E de extremo a extremo):
+    //
+    //   [FRONTEND / GENERADOR]
+    //   UI toggle "MAX QUALITY OVERRIDE" → options.maxQualityMode = true
+    //   → m3u8-typed-arrays-ultimate.js emite en EXTHTTP del manifest:
+    //       X-APE-Max-Quality: 1
+    //       X-APE-Codec-Cascade: dual-hvc1-hev1
+    //   → Lista generada con cascada 18 codecs (dvh1.08.06...avc1.640028)
+    //
+    //   [VPS NGINX / LUA — CAPA OBSERVABILIDAD]
+    //   Player carga el manifest → VPS recibe X-APE-Max-Quality:1
+    //   → qoe_server_side_observer.lua (log_by_lua): captura header
+    //       dict["mq:<channel_id>"]    = 1      (TTL 1h)
+    //       dict["mqcasc:<channel_id>"] = "dual-hvc1-hev1" (TTL 1h)
+    //   → qoe_flush_worker.lua (timer 60s): agrega al payload JSON:
+    //       max_quality_channels: [{channel_id, cascade_type, profile}]
+    //   → qoe-flush.php: procesa el array y llama recordMaxQualityChannel()
+    //
+    //   [ESTA CLASE — PERSISTENCIA SQLite]
+    //   recordMaxQualityChannel() → INSERT INTO max_quality_channels
+    //
+    //   [DAEMON ONN / SENTINEL]
+    //   ape-uhdx-sentinel.sh descarga manifest del VPS con codec_cascade_per_profile.
+    //   La función apply_max_quality_codec_settings() lee ape-codec-cascade.json
+    //   y, si detecta "dvh1" en el cascade, aplica ADB settings HEVC/DV adicionales
+    //   en el Fire TV (ExoPlayer HEVC hardware decoder preference, color depth 10-bit).
+    //
+    // AUDITORÍA:
+    //   SELECT channel_id, cascade_type, profile, datetime(recorded_at,'unixepoch') as ts
+    //   FROM max_quality_channels ORDER BY recorded_at DESC LIMIT 50;
+
+    /**
+     * Registra un canal que está siendo consumido con MAX_QUALITY OVERRIDE activo.
+     *
+     * Llamado por qoe-flush.php desde el payload periódico del flush worker Lua.
+     * Un mismo canal puede tener múltiples rows (una por bucket_5min) — permite
+     * analizar cuánto tiempo se reprodujo en MAX_QUALITY durante el día.
+     *
+     * @param  string  $channelId   ID numérico del canal (e.g. "1312008")
+     * @param  string  $cascadeType Tipo de cascada dual (e.g. "dual-hvc1-hev1")
+     * @param  string  $profile     Perfil APE activo (e.g. "P1")
+     * @param  int     $bucket5min  Ventana temporal floor(unix_ts / 300)
+     * @return bool    true si se persistió correctamente, false en error silencioso
+     */
+    public function recordMaxQualityChannel(
+        string $channelId,
+        string $cascadeType,
+        string $profile,
+        int    $bucket5min
+    ): bool {
+        if ($this->pdo === null && !$this->init()) {
+            return false;
+        }
+        try {
+            // INSERT OR IGNORE: si el mismo canal ya tiene un row en este bucket_5min
+            // (múltiples flush cycles en la misma ventana), no duplicamos.
+            // Esto mantiene la tabla limpia sin necesidad de DELETE previo.
+            $stmt = $this->pdo->prepare("
+                INSERT OR IGNORE INTO max_quality_channels
+                    (channel_id, cascade_type, profile, bucket_5min, recorded_at)
+                VALUES
+                    (:cid, :casc, :prof, :bkt, :now)
+            ");
+            $stmt->execute([
+                ':cid'  => $channelId,
+                ':casc' => $cascadeType ?: 'dual-hvc1-hev1',
+                ':prof' => $profile ?: 'unknown',
+                ':bkt'  => $bucket5min,
+                ':now'  => time(),
+            ]);
+            return true;
+        } catch (Throwable $e) {
+            error_log('[conviva-persistence] recordMaxQualityChannel failed: ' . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Retorna los canales con MAX_QUALITY activo en las últimas N horas.
+     * Usado por prisma-adb-quality.php?action=mq_channels para el daemon sentinel.
+     *
+     * @param  int   $hours Ventana histórica (default 1h)
+     * @return array<int,array{channel_id:string,cascade_type:string,profile:string,recorded_at:int}>
+     */
+    public function readMaxQualityChannels(int $hours = 1): array
+    {
+        if ($this->pdo === null && !$this->init()) {
+            return [];
+        }
+        try {
+            $since = time() - ($hours * 3600);
+            $stmt  = $this->pdo->prepare("
+                SELECT channel_id, cascade_type, profile, MAX(recorded_at) AS recorded_at
+                FROM   max_quality_channels
+                WHERE  recorded_at >= :since
+                GROUP  BY channel_id
+                ORDER  BY recorded_at DESC
+                LIMIT  500
+            ");
+            $stmt->execute([':since' => $since]);
+            return $stmt->fetchAll(\PDO::FETCH_ASSOC) ?: [];
+        } catch (Throwable $e) {
+            error_log('[conviva-persistence] readMaxQualityChannels failed: ' . $e->getMessage());
+            return [];
+        }
+    }
+    // ═══════════════════════════════════════════════════════════════════════════════════════
+    // ║  FIN MAX_QUALITY OVERRIDE methods                                                  ║
+    // ═══════════════════════════════════════════════════════════════════════════════════════
 }

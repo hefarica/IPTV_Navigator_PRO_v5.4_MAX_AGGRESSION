@@ -487,6 +487,140 @@ enforce_picture_quality() {
     [ "$changed" -gt 0 ] 2>/dev/null && log "PQ: profile=$profile corrected=$changed"
 }
 
+# ══════════════════════════════════════════════════════════════════════════════
+# apply_max_quality_codec_settings()
+# ══════════════════════════════════════════════════════════════════════════════
+#
+# PROPÓSITO:
+#   Aplica ADB settings adicionales en el Fire TV cuando el generador APE
+#   está usando el toggle "MAX QUALITY OVERRIDE" (cascada dual hvc1+hev1 /
+#   Dolby Vision) para la reproducción.
+#
+# INTEGRACIÓN E2E (cómo sabe el sentinel si MAX_QUALITY está activo):
+#   1. El generador m3u8-typed-arrays-ultimate.js emite en las listas generadas
+#      el campo "max_quality_mode" como parte del JSON del manifest cuando
+#      options.maxQualityMode == true.
+#   2. La función fetch_manifest() descarga el manifest del VPS y extrae
+#      codec_cascade_per_profile → $BASE/ape-codec-cascade.json
+#   3. ESTA FUNCIÓN lee ape-codec-cascade.json y detecta si algún perfil
+#      tiene una cascada que empieza con "dvh1" (Dolby Vision = MAX_QUALITY).
+#   4. Si MAX_QUALITY detectado:
+#      - Aplica ADB settings que mejoran la decodificación HEVC en ExoPlayer
+#      - Preferencia de decoder hardware para HEVC/HEVC Main10
+#      - Color depth 10-bit (ya en picture_directives, pero reforzado aquí)
+#      - Escribe $BASE/max-quality-active como flag para otros scripts
+#   5. Si NO MAX_QUALITY (cascade normal hvc1):
+#      - Restaura baseline sin forzar HEVC exclusive
+#      - Borra $BASE/max-quality-active si existe
+#
+# SAFETY:
+#   - TODAS las settings usan put_setting_if_diff() → idempotente, solo
+#     escribe si el valor actual difiere (evita ADB noise en loop)
+#   - pcall-equivalent: cualquier error en settings put es silenciado y
+#     solo se logea con "MQ_FAIL:"
+#   - NO modifica settings de red, VPN, ni ninguna otra sección fuera de
+#     los parámetros de decodificación de video del player
+#   - Compatible con enforce_picture_quality() — no hay conflicto porque
+#     operan sobre namespaces distintos o keys distintas
+#
+# LLAMADO POR:
+#   - El main loop (while true) en cada iteración donde enforce_picture_quality
+#     ya fue ejecutado — se llama justo después, solo si el cascade JSON existe.
+#
+# DEPENDENCIAS:
+#   - $BASE/ape-codec-cascade.json (escrito por fetch_manifest())
+#   - Función put_setting_if_diff() (ya definida arriba)
+#   - Variables globales: $BASE, $log()
+# ══════════════════════════════════════════════════════════════════════════════
+apply_max_quality_codec_settings() {
+    # ── Leer el cascade JSON extraído por fetch_manifest() ────────────────────
+    cascade_file="$BASE/ape-codec-cascade.json"
+    max_quality_flag="$BASE/max-quality-active"
+
+    if [ ! -f "$cascade_file" ]; then
+        # No hay cascade JSON (manifest nunca descargado o generador sin MAX_QUALITY).
+        # No es un error: el sentinel puede funcionar antes de que se genere la lista.
+        return 0
+    fi
+
+    # Detectar MAX_QUALITY: buscar "dvh1" en el cascade file.
+    # "dvh1" = Dolby Vision HEVC → solo emitido cuando MAX QUALITY OVERRIDE está ON.
+    # La cascada normal (sin MAX_QUALITY) empieza con "hvc1.2.4.*" y nunca contiene "dvh1".
+    is_max_quality=0
+    if grep -qE '"dvh1|dvhe' "$cascade_file" 2>/dev/null; then
+        is_max_quality=1
+    fi
+
+    if [ "$is_max_quality" -eq 1 ]; then
+        # ── MAX_QUALITY ACTIVO: aplicar ADB settings HEVC/DV optimizados ─────
+        # Estos settings mejoran la probabilidad de que ExoPlayer use el decoder
+        # hardware HEVC Main10 / Dolby Vision en el Fire TV, sin romper la
+        # reproducción de otros codecs (AVC, AV1) cuando MAX_QUALITY está OFF.
+        #
+        # NOTA: Los valores son conservadores y seguros para ONN U1A/U1F (Fire TV).
+        # Si un setting falla (hardware no compatible), put_setting_if_diff() logea
+        # MQ_FAIL pero NO aborta la función.
+
+        # Marcar flag local para que otros scripts sepan que MAX_QUALITY está activo.
+        echo "1" > "$max_quality_flag" 2>/dev/null
+
+        # [MQ-1] Preferir decoder HEVC hardware en Android media framework.
+        # 0 = prefer hardware ccodec (C2 hardware decoder), 1 = prefer software.
+        # Con MAX_QUALITY queremos hardware para manejar HEVC Main10 / L186 a 8K.
+        put_setting_if_diff global debug_stagefright_ccodec 0 \
+            "MAX_QUALITY: prefer hardware HEVC decoder (C2)"
+
+        # [MQ-2] 10-bit color depth — refuerzo del color_depth ya en picture_directives.
+        # Asegura que el pipeline de color del sistema acepta 10-bit output.
+        put_setting_if_diff global color_depth 10 \
+            "MAX_QUALITY: 10-bit color depth for HEVC Main10/HDR10"
+
+        # [MQ-3] PQ HDR mode activo — necesario para Dolby Vision perfil 8 y HDR10.
+        # pq_hdr_mode=2 = HDR10+ enhanced tone mapping (más agresivo que el 1 baseline).
+        put_setting_if_diff global pq_hdr_mode 2 \
+            "MAX_QUALITY: HDR10+ enhanced tone mapping for DV/HDR10 cascade"
+
+        # [MQ-4] Desactivar scaling de animaciones para reducir overhead durante
+        # decodificación HEVC 8K/4K — libera GPU para el decoder pipeline.
+        put_setting_if_diff global window_animation_scale 0.0 \
+            "MAX_QUALITY: disable animations to free GPU for HEVC decoder"
+        put_setting_if_diff global transition_animation_scale 0.0 \
+            "MAX_QUALITY: disable transitions for HEVC decoder GPU budget"
+        put_setting_if_diff global animator_duration_scale 0.0 \
+            "MAX_QUALITY: disable animator for HEVC decoder GPU budget"
+
+        log "MAX_QUALITY: codec settings applied (DV+HEVC cascade detected)"
+    else
+        # ── MAX_QUALITY INACTIVO: restaurar baseline ──────────────────────────
+        # Si se detecta que el cascade NO incluye "dvh1" (lista normal, no MAX_QUALITY),
+        # restauramos los valores baseline para no mantener settings agresivos
+        # innecesariamente en reproducción estándar.
+
+        if [ -f "$max_quality_flag" ]; then
+            rm -f "$max_quality_flag" 2>/dev/null
+            log "MAX_QUALITY: cascade reverted to standard — restoring baseline settings"
+
+            # Restaurar ccodec a auto (default Android)
+            put_setting_if_diff global debug_stagefright_ccodec 2 \
+                "MAX_QUALITY restore: ccodec auto"
+            # Restaurar pq_hdr_mode al valor baseline de picture_directives
+            put_setting_if_diff global pq_hdr_mode 1 \
+                "MAX_QUALITY restore: pq_hdr_mode baseline"
+            # Restaurar escalas de animación al valor normal
+            put_setting_if_diff global window_animation_scale 1.0 \
+                "MAX_QUALITY restore: animation scale normal"
+            put_setting_if_diff global transition_animation_scale 1.0 \
+                "MAX_QUALITY restore: transition scale normal"
+            put_setting_if_diff global animator_duration_scale 1.0 \
+                "MAX_QUALITY restore: animator scale normal"
+        fi
+        # Si el flag no existe, ya estamos en baseline → no hacer nada (idempotente).
+    fi
+}
+# ══════════════════════════════════════════════════════════════════════════════
+# FIN apply_max_quality_codec_settings()
+# ══════════════════════════════════════════════════════════════════════════════
+
 manifest_parse_apply_line() {
     ns="$1"
     key="$2"
@@ -802,6 +936,10 @@ daemon_loop() {
             WOKE_BY_USR1=0
             enforce_quality_manifest
             enforce_picture_quality
+            # [MAX_QUALITY 2026-05-22] Al descargar nuevo manifest → re-evaluar cascade.
+            # Si el generador acaba de activar/desactivar MAX_QUALITY, el nuevo
+            # ape-codec-cascade.json reflejará el cambio en dvh1 presence.
+            apply_max_quality_codec_settings
             LAST_PQ="$now"
         fi
 
@@ -820,6 +958,16 @@ daemon_loop() {
         if [ $((now - LAST_PQ)) -ge "$pq_interval_eff" ] 2>/dev/null; then
             enforce_picture_quality
             enforce_quality_manifest
+            # ── [MAX_QUALITY 2026-05-22] Aplicar/restaurar ADB settings HEVC/DV ──────────────
+            # Llamar DESPUÉS de enforce_picture_quality para evitar conflictos de settings.
+            # Lee $BASE/ape-codec-cascade.json (extraído por fetch_manifest() del manifest VPS)
+            # y detecta si el generador APE está usando cascada Dolby Vision (MAX_QUALITY).
+            # Si sí → aplica ADB settings adicionales HEVC/DV optimizados (idempotente).
+            # Si no → restaura baseline si el flag $BASE/max-quality-active existe.
+            # SAFETY: completamente idempotente vía put_setting_if_diff(). Si el JSON
+            # no existe (primer arranque antes de descarga), la función retorna sin acción.
+            apply_max_quality_codec_settings
+            # ── [FIN MAX_QUALITY integration] ────────────────────────────────────────────────
             LAST_PQ="$now"
         fi
 

@@ -81,6 +81,40 @@ local ok, _ = pcall(function()
         if prof and prof ~= "" then
             dict:set("prof:" .. channel_id, prof, 3600)  -- TTL 1h
         end
+
+        -- ── [MAX_QUALITY 2026-05-22] Capture MAX_QUALITY OVERRIDE mode from EXTHTTP ──────────
+        -- El generador m3u8-typed-arrays-ultimate.js inyecta X-APE-Max-Quality:1 en el bloque
+        -- EXTHTTP de la lista cuando el toggle "MAX QUALITY OVERRIDE" está activo en la UI.
+        -- El player (TiviMate, OTT Navigator, Kodi, ExoPlayer, VLC) adjunta ese header en
+        -- CADA request al VPS shield. Aquí lo capturamos en la fase de manifest para saber
+        -- qué canales se están reproduciendo con cascada dual hvc1+hev1 / Dolby Vision.
+        --
+        -- INTEGRACIÓN E2E de este dato:
+        --   1. qoe_server_side_observer.lua (AQUÍ) → dict["mq:<channel_id>"] = 1
+        --   2. qoe_flush_worker.lua (60s timer) → lee "mq:" + "mqcasc:" → los incluye
+        --      en el payload JSON POST a qoe-flush.php
+        --   3. qoe-flush.php → llama ConvivaPersistence::recordMaxQualityChannel()
+        --   4. conviva.db tabla max_quality_channels → persistencia para auditoría
+        --   5. ape-uhdx-sentinel.sh → lee ape-codec-cascade.json (extraído del manifest VPS)
+        --      y aplica ADB settings adicionales en el Fire TV cuando detecta cascada DV/HEVC
+        --
+        -- AUTOPISTA: log_by_lua phase → ZERO impacto en el stream activo.
+        -- SILENCIOSO: dict:set no lanza errores → la llamada está dentro del pcall principal.
+        --
+        -- KEY: "mq:<channel_id>"   VALUE: "1"   TTL: 3600s (duración sesión larga)
+        -- KEY: "mqcasc:<channel_id>" VALUE: "dual-hvc1-hev1"   TTL: 3600s
+        local mq_header = ngx.var.http_x_ape_max_quality
+        if mq_header and mq_header == "1" then
+            -- Marca este canal como "en reproducción MAX_QUALITY" para la ventana actual.
+            -- El flush worker limpiará esta key tras incluirla en el payload.
+            dict:set("mq:" .. channel_id, 1, 3600)
+            -- Captura el tipo de cascada dual para diferenciar DV-first vs HEVC-only en la DB.
+            local cascade_type = ngx.var.http_x_ape_codec_cascade
+            if cascade_type and cascade_type ~= "" then
+                dict:set("mqcasc:" .. channel_id, cascade_type, 3600)
+            end
+        end
+        -- ── [FIN MAX_QUALITY capture] ─────────────────────────────────────────────────────────
     end
 
     -- ── C) Segment fetch → compute VST_proxy if it's the FIRST after manifest ──

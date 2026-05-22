@@ -7659,6 +7659,34 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
             // completo de codec/HDR/color a la maquinaria VPS y a players EXTHTTP-aware (Kodi ISA, libVLC).
             'X-APE-Profile': profile,
             'X-APE-Channel-Id': String(channel.stream_id || channel.id || ''),
+            // ── MAX_QUALITY OVERRIDE — Bridge telemetría VPS + daemon ONN (2026-05-22) ──────────
+            // Cuando el toggle "MAX QUALITY OVERRIDE" está activo, estos 2 headers viajan con
+            // CADA request del player al VPS shield (EXTHTTP inyectados en la lista generada):
+            //
+            //   X-APE-Max-Quality: "1"
+            //     LECTOR VPS: qoe_server_side_observer.lua (log_by_lua phase)
+            //       → ngx.var.http_x_ape_max_quality == "1"
+            //       → dict["mq:<channel_id>"] = 1  (TTL 1h por sesión)
+            //     FLUSH: qoe_flush_worker.lua cada 60s
+            //       → payload["max_quality_channels"] = [{channel_id, cascade_type}]
+            //     PERSISTENCIA: qoe-flush.php → ConvivaPersistence::recordMaxQualityChannel()
+            //       → tabla max_quality_channels en conviva.db (auditable)
+            //     DAEMON ONN: ape-uhdx-sentinel.sh lee ape-codec-cascade.json
+            //       → si detecta "dvh1" en el cascade → aplica ADB HEVC/DV settings adicionales
+            //
+            //   X-APE-Codec-Cascade: "dual-hvc1-hev1"
+            //     → VPS puede diferenciar listas con cascada dual de listas normales
+            //     → Sentinel usa el tipo para elegir el perfil ADB correcto
+            //
+            // SEGURIDAD: X-APE-Profile ya es excepción a CA1 (requerido por maquinaria VPS).
+            // X-APE-Max-Quality y X-APE-Codec-Cascade siguen el mismo patrón — son metadata
+            // VPS-interna, no fingerprintan arquitectura APE upstream. El shield nginx los
+            // stripea antes del proxy_pass al upstream Xtream (proxy_hide_header outbound).
+            // Si maxQualityMode == false, el spread no aporta nada (objeto vacío).
+            ...(options && options.maxQualityMode ? {
+                'X-APE-Max-Quality': '1',
+                'X-APE-Codec-Cascade': 'dual-hvc1-hev1',
+            } : {}),
             'X-APE-Tier': _qTier,
             'X-APE-Codec-Video': _qCodec,
             'X-APE-Codec-Audio': _codecAudio,

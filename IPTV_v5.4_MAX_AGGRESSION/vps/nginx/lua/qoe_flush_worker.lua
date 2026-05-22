@@ -38,6 +38,14 @@ local function flush_callback(premature)
         local per_channel = {}          -- chId → {vst_sum, vst_count, vst_max, rebuf, req, err, bps_sum, bps_count}
         local channel_profile = {}      -- chId → "P0".."P5" (Feature 1: from observer X-APE-Profile capture)
         local hdcp_needed = {}          -- list of {channel_id, vst_ms}
+        -- ── [MAX_QUALITY 2026-05-22] Canales con MAX_QUALITY OVERRIDE activo ─────────────────
+        -- Poblado por qoe_server_side_observer.lua desde el header X-APE-Max-Quality:1
+        -- que el generador inyecta via EXTHTTP cuando el toggle MAX QUALITY OVERRIDE está ON.
+        -- El flush envía este dato a qoe-flush.php → ConvivaPersistence::recordMaxQualityChannel()
+        -- → tabla max_quality_channels en conviva.db (auditable, reportable desde dashboard).
+        local max_quality_channels = {} -- list of {channel_id, cascade_type}
+        -- Tabla auxiliar para evitar duplicados dentro del mismo ciclo de flush
+        local max_quality_seen = {}     -- chId → true (dedup guard)
         local keys_to_delete = {}
 
         for _, k in ipairs(keys) do
@@ -84,6 +92,27 @@ local function flush_callback(premature)
             elseif prefix == "prof" then
                 -- [Feature 1] channel→profile mapping. Do NOT delete (persists across cycles, TTL 1h).
                 channel_profile[chId] = tostring(dict:get(k) or "")
+            elseif prefix == "mq" then
+                -- ── [MAX_QUALITY 2026-05-22] Canal en reproducción con MAX_QUALITY OVERRIDE ──
+                -- Seteado por qoe_server_side_observer.lua cuando detecta X-APE-Max-Quality:1
+                -- en el manifest request. Solo se incluye una vez por canal por ciclo de flush.
+                -- IMPORTANTE: NO borramos la key aquí (TTL 1h en el observer) porque el
+                -- canal puede seguir en reproducción MAX_QUALITY durante múltiples ciclos.
+                -- Usamos max_quality_seen como dedup para no enviar el mismo canal 2 veces
+                -- en el mismo payload.
+                if not max_quality_seen[chId] then
+                    max_quality_seen[chId] = true
+                    -- Buscar el tipo de cascada correspondiente (puede no existir si el
+                    -- generador es viejo y no emitía X-APE-Codec-Cascade aún)
+                    local cascade_type = tostring(dict:get("mqcasc:" .. chId) or "dual-hvc1-hev1")
+                    table.insert(max_quality_channels, {
+                        channel_id   = chId,
+                        cascade_type = cascade_type,
+                        profile      = channel_profile[chId] or "unknown",
+                    })
+                end
+                -- DO NOT add to keys_to_delete — la key persiste hasta su TTL natural (1h)
+                -- porque el canal puede seguir reproduciéndose durante el próximo ciclo.
             elseif prefix == "cerr" then   -- [F5] 4xx count
                 local r = per_channel[chId] or {}; r.cerr = (r.cerr or 0) + (tonumber(dict:get(k)) or 0); per_channel[chId] = r
                 table.insert(keys_to_delete, k)
@@ -125,12 +154,17 @@ local function flush_callback(premature)
             })
         end
 
-        if #metrics == 0 and #hdcp_needed == 0 then return end
+        if #metrics == 0 and #hdcp_needed == 0 and #max_quality_channels == 0 then return end
 
         local cjson = require("cjson.safe")
         local body = cjson.encode({
             metrics = metrics,
             hdcp_needed_channels = hdcp_needed,
+            -- ── [MAX_QUALITY 2026-05-22] Lista de canales consumidos con MAX QUALITY OVERRIDE ──
+            -- Procesado por qoe-flush.php → ConvivaPersistence::recordMaxQualityChannel()
+            -- Cada entrada: {channel_id, cascade_type, profile}
+            -- Usado para auditoría, dashboard y trigger ADB en daemon ONN.
+            max_quality_channels = max_quality_channels,
             bucket_5min = math.floor(ngx.time() / 300),
             ts = ngx.time(),
         })
