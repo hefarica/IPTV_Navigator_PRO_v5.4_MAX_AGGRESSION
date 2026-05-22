@@ -396,6 +396,7 @@ Los 3 deben retornar Exit 0.
 | `Skill_Encoding_Profile_Analyzer` | Analiza profile/level del encoder |
 | `god_tier_perceptual_quality` | Doctrina completa de calidad perceptual |
 | `iptv-hdr-lcevc-pipeline` | Pipeline HDR + LCEVC detection |
+| `iptv-hevc-cascade-injector` | **GOLDEN RULE hvc1/hev1** — cascada dual, auditoría RFC 8216, script Python corrector |
 | `omega_crystal_10_10_751_lines` | Baseline 751 líneas por canal OMEGA |
 
 ### Skills de Resiliencia de Streaming (`.agent/skills/`)
