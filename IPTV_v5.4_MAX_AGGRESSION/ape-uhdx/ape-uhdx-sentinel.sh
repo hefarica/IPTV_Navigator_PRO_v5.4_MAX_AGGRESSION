@@ -566,6 +566,14 @@ pull_manifest_if_changed() {
             echo "$remote_hash" > "$MANIFEST_HASH" 2>/dev/null
             echo 1 > "$MANIFEST_TRIGGER" 2>/dev/null
             log "MANIFEST: downloaded new hash=$remote_hash"
+            # Extrae codec_cascade_per_profile y lo escribe como JSON plano
+            # para que scripts/players locales puedan leerlo sin parsear el manifest completo.
+            CASCADE_FILE="$BASE/ape-codec-cascade.json"
+            per_profile=$(grep -oE '"codec_cascade_per_profile"[ ]*:[ ]*\{[^}]*\}' "$MANIFEST" 2>/dev/null | head -1 | sed 's/^"codec_cascade_per_profile"[ ]*:[ ]*//')
+            if [ -n "$per_profile" ]; then
+                echo "$per_profile" > "$CASCADE_FILE" 2>/dev/null
+                log "CASCADE: codec_cascade_per_profile written to $CASCADE_FILE"
+            fi
         else
             rm -f "$tmp" 2>/dev/null
             log "MANIFEST: invalid or empty download"
