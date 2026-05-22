@@ -667,7 +667,8 @@
 
         // Permutación de la época actual (se regenera en cada llamada a init())
         let _epochPermutation = BANK.slice();
-        let _epochSeed = Date.now();
+        // G2: entropía adicional — evita colisión de seed en builds consecutivos del mismo día
+        let _epochSeed = Date.now() ^ (Math.random() * 0xFFFFFFFF | 0) ^ (typeof performance !== 'undefined' ? (performance.now() * 1000 | 0) : 0);
 
         /**
          * Inicializar el motor para una nueva generación de lista.
@@ -675,7 +676,8 @@
          * El seed de época garantiza que cada lista generada tiene una permutación diferente.
          */
         function init(epochSeed) {
-            _epochSeed = epochSeed || Date.now();
+            // G2: entropía adicional cuando no se provee seed externo
+            _epochSeed = epochSeed || (Date.now() ^ (Math.random() * 0xFFFFFFFF | 0) ^ (typeof performance !== 'undefined' ? (performance.now() * 1000 | 0) : 0));
             _epochPermutation = _seededShuffle(BANK, _epochSeed);
             _zapNonce = 0;
             _errorSalt = 0;
@@ -4295,15 +4297,19 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
         const _bexUA = String(UAPhantomEngine.getForChannel(index, cfg._channelName || '') || '');
         const _bexIsBrowser = /Chrome|Edge|Firefox|Safari/i.test(_bexUA) &&
                               !/VLC|Kodi|okhttp|TiviMate|Lavf|Dalvik|ExoPlayer/i.test(_bexUA);
+        // F6: versión Chrome derivada del UA real del canal (evita mismatch JA3 Sec-CH-UA vs User-Agent)
+        const _bexChromeVer = (_bexUA.match(/Chrome\/(\d+)/) || ['','120'])[1];
+        const _bexIsMobile = /Mobile|Android/.test(_bexUA);
+        const _bexPlatform = _bexIsMobile ? '"Android"' : '"Windows"';
         const headers = {
             "User-Agent": _bexUA,
             "Accept": "application/vnd.apple.mpegurl,application/x-mpegURL,video/mp2t,video/MP2T,*/*;q=0.9",
             "Accept-Language": "en-US,en;q=0.9",
             "Accept-Encoding": "identity",
             ...(_bexIsBrowser ? {
-                "Sec-CH-UA": '"Chromium";v="120","Not-A.Brand";v="24"',
-                "Sec-CH-UA-Mobile": "?0",
-                "Sec-CH-UA-Platform": '"Windows"',
+                "Sec-CH-UA": `"Google Chrome";v="${_bexChromeVer}","Chromium";v="${_bexChromeVer}","Not A;Brand";v="8"`,
+                "Sec-CH-UA-Mobile": _bexIsMobile ? '?1' : '?0',
+                "Sec-CH-UA-Platform": _bexPlatform,
                 "Sec-CH-UA-Arch": "x86",
                 "Sec-CH-UA-Bitness": "64",
                 "Sec-CH-UA-Model": '""',
@@ -4329,8 +4335,8 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
             "Pragma": "no-cache",
             "Origin": vpsDomain,
             "Referer": `${vpsDomain}/`,
-            "X-Requested-With": "XMLHttpRequest",
-            "X-App-Version": `APE_${VERSION}_ULTIMATE_HDR`,
+            // F7: X-Requested-With eliminado — incoherencia bot-signal (AJAX browser en player nativo okhttp/VLC)
+            "X-App-Version": `${VERSION}`, // F5: APE_ prefix removido (engine fingerprint)
             "X-Playback-Session-Id": sessionId,
             "X-Device-Id": `DEV_${generateRandomString(16)}`,
             "X-Client-Timestamp": String(timestamp),
@@ -4810,9 +4816,26 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
         // y el Runtime Evasion Engine los inyecta dinámicamente en cada request.
         // ══════════════════════════════════════════════════════════════════════
         const MAX_EXTHTTP_HEADERS = 200;
-        const MAX_EXTHTTP_BYTES = 10240; // 10KB safety limit
+        const MAX_EXTHTTP_BYTES = 8192;  // F1: restaurado — nginx large_client_header_buffers default=8K (era 10240, regresión)
+        const EXTHTTP_WARN_BYTES = 7800; // umbral de compresión preventiva (5% margen de seguridad)
 
-        // ── ⚡ HTTP ANABOLIC ENGINE v1.0: Priority injection (primeros en el budget 10KB) ──
+        function _sanitizePayloadSize(payload) {
+            const raw = JSON.stringify(payload);
+            if (raw.length <= EXTHTTP_WARN_BYTES) return payload;
+            // Fase 1: eliminar headers de metadata no críticos (preserva núcleo funcional)
+            const _lowPri = ['X-Buffer-MB','X-Buffer-Segments','X-VMAF-Target',
+                             'X-QoS-Mode','X-QoE-Target-MOS','X-Rebuffer-Tolerance',
+                             'X-Zapping-Max','X-Startup-Max'];
+            _lowPri.forEach(k => delete payload[k]);
+            // Fase 2: si aún supera, eliminar X-APE-* no críticos (preserva X-APE-Profile y X-APE-Tier)
+            if (JSON.stringify(payload).length > MAX_EXTHTTP_BYTES) {
+                Object.keys(payload).filter(k => k.startsWith('X-APE-') &&
+                    !['X-APE-Profile','X-APE-Tier'].includes(k)).forEach(k => delete payload[k]);
+            }
+            return payload;
+        }
+
+        // ── ⚡ HTTP ANABOLIC ENGINE v1.0: Priority injection (primeros en el budget 8KB) ──
         // Cache por perfil para evitar ~8286 llamadas redundantes (2 por canal × 4143 canales)
         try {
             if (typeof window !== 'undefined') {
@@ -5225,7 +5248,8 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
         h['X-Client-Capability-Hash'] = 'uhd-hdr-dv-atmos-lcevc-' + bitDepth + 'bit';
         h['X-Stream-Variant-Hint'] = `${resW}x${resH}@${fps}fps`;
         h['X-Stream-Negotiation-Id'] = sessionId;
-        h['traceparent'] = `00-${sessionId.replace(/[^0-9a-f]/gi, '').padEnd(32, '0').slice(0, 32)}-${Date.now().toString(16).padEnd(16, '0').slice(0, 16)}-01`;
+        // F4: traceparent eliminado — bot signal para Cloudflare/Akamai WAF (sampled=01 indica instrumentación activa)
+        // h['traceparent'] = `00-${...}-01`;
         h['X-Request-Id'] = sessionId;
 
         // ─── P. Accept-Encoding premium ───
@@ -5270,7 +5294,7 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
         // ── G1: Identity & Device (9) ──
         h['X-Playback-Session-Id'] = sessionId;
         h['X-Request-Id'] = reqId;
-        h['X-Client-Version'] = '22.2.0-OMEGA-CRYSTAL-V5';
+        h['X-Client-Version'] = '22.2.0'; // F5: engine fingerprint removido (era 22.2.0-OMEGA-CRYSTAL-V5)
         h['X-Platform'] = 'AndroidTV';
         h['X-Device-Model'] = 'SHIELD Android TV Pro';
         h['X-Device-OS'] = 'Android/12';
@@ -5291,7 +5315,16 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
         h['Accept'] = 'application/vnd.apple.mpegurl, application/dash+xml, video/mp4, video/mp2t, */*;q=0.8';
         h['Accept-Encoding'] = 'gzip, deflate';
         h['Accept-Language'] = 'es-419,es;q=0.9,en-US;q=0.8,en;q=0.7';
-        h['X-Device-Capabilities'] = 'hdr10=true, hdr10plus=true, dolbyvision=true, hevc=true, av1=true, lcevc=true, 4k=true';
+        // F3: capacidades derivadas del perfil real (evita dolbyvision/4k en canales SDR P3-P5)
+        const _capsByProfile = {
+            P0: 'hdr10=true,hdr10plus=true,dolbyvision=true,hevc=true,av1=true,lcevc=true,8k=true,4k=true',
+            P1: 'hdr10=true,hdr10plus=true,hevc=true,av1=true,lcevc=true,4k=true',
+            P2: 'hdr10=true,hevc=true,lcevc=true,4k=true',
+            P3: 'hevc=true,h264=true,fhd=true',
+            P4: 'h264=true,hd=true',
+            P5: 'h264=true,sd=true'
+        };
+        h['X-Device-Capabilities'] = _capsByProfile[profile] || 'h264=true';
         h['X-Client-HDR-Support'] = 'HDR10, HDR10Plus, DolbyVisionProfile8, DolbyVisionProfile10, HLG';
         h['X-Video-Codecs'] = 'hvc1, hev1, avc1, av01, dvh1, dvhe';
         h['X-Audio-Codecs'] = 'mp4a.40.2, ac-3, mp4a.40.5, opus, flac';  // [FIX-AUDIO 2026-05-20] sin ec-3/Atmos
@@ -5396,7 +5429,7 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
         // l. ~4127 + _httpPayload l. ~7314) que decide por UA del canal.
         // h['Connection'] = 'keep-alive';
         // h['Keep-Alive'] = 'timeout=300, max=1000';
-        h['X-Auth-Type'] = 'OMEGA_TOKEN_V5';
+        h['X-Auth-Type'] = 'Bearer'; // F5: engine fingerprint neutralizado (era OMEGA_TOKEN_V5)
         h['X-Token-Expiry'] = String(Date.now() + 86400000);
         h['X-Subscription-Tier'] = 'ULTRA_PREMIUM_4K_HDR';
         h['X-Content-Access'] = 'UNRESTRICTED';
@@ -7257,8 +7290,10 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
         const jwt = (typeof generateJWT68Fields === 'function')
             ? generateJWT68Fields(channel, profile, index)
             : null;
-        const sessionId = (jwt && jwt.sessionId) || (_sid796 + '_' + _nonce796);
-        const reqId = (jwt && jwt.reqId) || (_nonce796 + index.toString(16));
+        // G3: incluir timestamp del build para diferenciar sesiones distintas con misma lista
+        // (evita replay-attack detection en servidores con validación de sesión estricta)
+        const sessionId = (jwt && jwt.sessionId) || (_sid796 + '_' + _nonce796 + '_' + Date.now().toString(36).slice(-5));
+        const reqId = (jwt && jwt.reqId) || (_nonce796 + index.toString(16) + '_' + Date.now().toString(36).slice(-4));
 
         // ── EXTHTTP DESDE ARRAY DE ORIGEN ────────────────────────────────────
         const _exthttp_base = (typeof build_exthttp === 'function')
@@ -7587,8 +7622,8 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
             // 'X-Forwarded-For': _randomIp,
             // 'X-Real-IP': _randomIp,
             // 'X-Client-IP': _randomIp,
-            'Referer': 'https://www.google.com/',
-            'Origin': 'https://www.google.com',
+            // F2: Referer/Origin movidos al final del objeto (después de todos los spreads)
+            // F2: ver bloque "POOL ROTATIVO" más abajo — prevalece sobre _exthttp_base
             // Calidad y codecs
             // C5 (2026-04-30) — X-Device-Capabilities derivado del perfil real
             // (era hardcoded universal: 4k=true en P3 FHD, dolby-vision en P4 SDR…)
@@ -7730,6 +7765,16 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
                 if (/Mobile|Phone|Pixel/i.test(ua) && /Android/i.test(ua)) return '?1';
                 return '?0';
             })(),
+            // ── F2: POOL ROTATIVO Referer/Origin — ÚLTIMA posición (prevalece sobre spreads anteriores) ──
+            // Determinístico por canal (index % 5): evita Referer estático universal y SPOF dominio VPS
+            'Referer': (() => {
+                const _rp = ['https://www.google.com/','https://www.youtube.com/','https://www.bing.com/','https://duckduckgo.com/','https://www.reddit.com/'];
+                return _rp[Math.abs(index) % _rp.length];
+            })(),
+            'Origin': (() => {
+                const _op = ['https://www.google.com','https://www.youtube.com','https://www.bing.com','https://duckduckgo.com','https://www.reddit.com'];
+                return _op[Math.abs(index) % _op.length];
+            })(),
         };
 
         // ── PLACEHOLDER RESOLVER (anti-{config.X} literal en upstream) ────────
@@ -7845,6 +7890,7 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
             }
         }
 
+        _sanitizePayloadSize(_httpPayload); // F1: compresión preventiva si >7800B, hard-cap 8192B
         let _exthttpJson = JSON.stringify(_httpPayload);
         for (const [ph, val] of Object.entries(_phResolve)) {
             if (typeof val !== 'string' && typeof val !== 'number') continue;
@@ -7995,8 +8041,12 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
             `Accept-Language=es-ES,en;q=0.9`,
             `Connection=keep-alive`
         ].filter(Boolean).join('&');
-        lines.push(`#KODIPROP:inputstream.adaptive.manifest_headers=${_kodiManifestHdrs}`);
-        lines.push(`#KODIPROP:inputstream.adaptive.stream_headers=${_kodiStreamHdrs}`);
+        // G1: cap 8192 bytes — mismo límite que EXTHTTP (nginx large_client_header_buffers default)
+        // Kodi concatena manifest_headers + stream_headers; cada uno debe estar bajo el límite individualmente
+        const _kodiManifestHdrsCapped = _kodiManifestHdrs.length > 8192 ? _kodiManifestHdrs.slice(0, 8192) : _kodiManifestHdrs;
+        const _kodiStreamHdrsCapped   = _kodiStreamHdrs.length > 8192   ? _kodiStreamHdrs.slice(0, 8192)   : _kodiStreamHdrs;
+        lines.push(`#KODIPROP:inputstream.adaptive.manifest_headers=${_kodiManifestHdrsCapped}`);
+        lines.push(`#KODIPROP:inputstream.adaptive.stream_headers=${_kodiStreamHdrsCapped}`);
 
         // ════════════════════════════════════════════════════════════════════════
         // L4 — EXT-X-CMAF — Pipeline fMP4/CMAF (25 líneas)
@@ -10333,3 +10383,48 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
     }
 
 })();
+
+// G4: Post-generation sanity check — 9 invariants críticos anti-403/anti-fingerprint
+// Invocable desde consola o desde generateChannelEntry para validar EXTHTTP emitido
+window.APE_SanityCheck = function(sampleExthttp, profile, ua) {
+    const results = [];
+    try {
+        const _raw = typeof sampleExthttp === 'string' ? sampleExthttp.replace(/^#EXTHTTP:/, '') : JSON.stringify(sampleExthttp);
+        const p = JSON.parse(_raw);
+        // I1: tamaño EXTHTTP ≤ 8192 (nginx large_client_header_buffers default)
+        results.push({ ok: _raw.length <= 8192, id: 'I1', msg: `size=${_raw.length}` });
+        // I2: Referer no contiene dominio VPS (SPOF eliminado en F2)
+        const _ref = p['Referer'] || '';
+        results.push({ ok: !/iptv-ape|duckdns|178\.156|hetzner/i.test(_ref), id: 'I2', msg: `Referer=${_ref.slice(0,50)}` });
+        // I3: Origin no contiene dominio VPS
+        const _orig = p['Origin'] || '';
+        results.push({ ok: !/iptv-ape|duckdns|178\.156|hetzner/i.test(_orig), id: 'I3', msg: `Origin=${_orig.slice(0,50)}` });
+        // I4: versión Chrome en Sec-CH-UA coincide con User-Agent (JA3 mismatch fix F6)
+        const _chV = ((p['Sec-CH-UA'] || '').match(/v="(\d+)"/) || [])[1] || null;
+        const _uaV = ((ua || p['User-Agent'] || '').match(/Chrome\/(\d+)/) || [])[1] || null;
+        results.push({ ok: !_chV || !_uaV || _chV === _uaV, id: 'I4', msg: `CH=${_chV} UA=${_uaV}` });
+        // I5: traceparent ausente (bot signal WAF — eliminado en F4)
+        results.push({ ok: !('traceparent' in p), id: 'I5', msg: 'traceparent absent' });
+        // I6: X-Auth-Type no contiene fingerprint OMEGA (neutralizado en F5)
+        results.push({ ok: !/OMEGA/i.test(p['X-Auth-Type'] || ''), id: 'I6', msg: `Auth=${p['X-Auth-Type']}` });
+        // I7: X-Client-Version sin fingerprints APE/OMEGA/CRYSTAL (neutralizado en F5)
+        results.push({ ok: !/OMEGA|APE|CRYSTAL/i.test(p['X-Client-Version'] || ''), id: 'I7', msg: `CV=${p['X-Client-Version']}` });
+        // I8: P4/P5 no declara dolbyvision ni 4k (coherencia X-Device-Capabilities F3)
+        if (profile === 'P4' || profile === 'P5') {
+            results.push({ ok: !/dolbyvision|4k/i.test(p['X-Device-Capabilities'] || ''), id: 'I8', msg: `Caps=${p['X-Device-Capabilities']}` });
+        } else {
+            results.push({ ok: true, id: 'I8', msg: 'N/A (not P4/P5)' });
+        }
+        // I9: X-Requested-With ausente (bot signal incoherente en players nativos — eliminado en F7)
+        results.push({ ok: !('X-Requested-With' in p), id: 'I9', msg: 'X-Requested-With absent' });
+    } catch(e) {
+        results.push({ ok: false, id: 'PARSE', msg: e.message });
+    }
+    const _failed = results.filter(r => !r.ok);
+    if (_failed.length > 0) {
+        console.warn('[APE-SANITY] FAILED:', _failed.map(r => `${r.id}: ${r.msg}`).join(' | '));
+    } else {
+        console.log('[APE-SANITY] ALL 9 INVARIANTS PASSED');
+    }
+    return { pass: _failed.length === 0, results };
+};
