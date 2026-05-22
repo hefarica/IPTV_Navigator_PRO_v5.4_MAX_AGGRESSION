@@ -2592,6 +2592,8 @@
 #EXT-X-VERSION:9
 #EXT-X-INDEPENDENT-SEGMENTS
 #EXT-X-START:TIME-OFFSET=-3.0,PRECISE=YES
+#EXT-X-TARGETDURATION:2
+#EXT-X-PART-INF:PART-TARGET=0.5
 #EXT-X-SERVER-CONTROL:CAN-BLOCK-RELOAD=YES,PART-HOLD-BACK=0.5,CAN-SKIP-UNTIL=6.0,HOLD-BACK=1.5
 #EXT-X-SESSION-DATA:DATA-ID="exoplayer.load_control",VALUE="{\\"minBufferMs\\":45000,\\"bufferForPlaybackMs\\":500,\\"bufferForPlaybackAfterRebufferMs\\":1000,\\"maxBufferMs\\":130000}"
 #EXT-X-SESSION-DATA:DATA-ID="exoplayer.track_selection",VALUE="{\\"maxDurationForQualityDecreaseMs\\":500,\\"minDurationForQualityIncreaseMs\\":3000,\\"bandwidthFraction\\":0.95}"
@@ -9276,7 +9278,7 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
             const _apeTags = _R_emit.emitApeFallbackTags(_apeTruth);
             for (const _t of _apeTags) lines.push(_t);
         }
-        if (_apeTruth && _R_emit && typeof _R_emit.emitStreamInfFromTruth === 'function') {
+        if (!options?.maxQualityMode && _apeTruth && _R_emit && typeof _R_emit.emitStreamInfFromTruth === 'function') {
             // HDCP-Adaptive: enrich truth with channelId + profile so resolver can lookup
             // window.APE_HDCP_PROFILE[channelId] and emit STABLE-VARIANT-ID="${chId}_${profile}"
             if (typeof _apeTruth.channelId === 'undefined') {
