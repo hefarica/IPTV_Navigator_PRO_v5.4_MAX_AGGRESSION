@@ -230,7 +230,19 @@ $SETTINGS_MANIFEST = @(
     # Power
     @("system","screen_off_timeout","2147483647"),
     @("global","stay_on_while_plugged_in","3"),
-    # Network / DNS
+    # Animation (desactivadas para fluidez de UI)
+    @("global","window_animation_scale","0.0"),
+    @("global","transition_animation_scale","0.0"),
+    @("global","animator_duration_scale","0.0"),
+    # Network / WiFi optimization
+    @("global","wifi_sleep_policy","2"),
+    @("global","wifi_scan_always_enabled","0"),
+    @("global","wifi_suspend_optimizations_enabled","0"),
+    @("global","wifi_networks_available_notification_on","0"),
+    @("global","wifi_watchdog_poor_network_test_enabled","0"),
+    @("global","network_scoring_ui_enabled","0"),
+    @("global","tcp_default_init_rwnd","60"),
+    # DNS privado
     @("global","private_dns_mode","hostname"),
     @("global","private_dns_specifier","dns.google")
 )

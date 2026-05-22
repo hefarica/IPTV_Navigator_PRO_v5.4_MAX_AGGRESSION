@@ -3311,6 +3311,39 @@
 
           <!-- TAB: COMPARTIR -->
           <div id="tab-share" class="tab-content">
+
+            <!-- APE UHDX Setup Kit -->
+            <div style="margin-bottom:18px;padding:16px;border:1px solid rgba(0,255,136,0.25);border-radius:8px;background:rgba(0,255,136,0.04);">
+              <div style="font-size:0.7rem;font-weight:700;color:#00ff88;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;">⚡ APE UHDX Setup Kit</div>
+              <p style="font-size:0.78rem;color:var(--text-muted);margin:0 0 12px 0;">Instala y registra cualquier dispositivo Android en la autopista: sentinel v6.0 freeze-safe, chisel reverse tunnel, <strong style="color:#e2e8f0;">51 settings ADB</strong>, V2RayNG always-on VPN y watchdog Windows silencioso — todo con un comando.</p>
+              <!-- Comando -->
+              <div style="display:flex;gap:8px;align-items:stretch;margin-bottom:12px;">
+                <code id="apeSetupCmd" style="flex:1;background:#0a0a0a;border:1px solid rgba(0,255,136,0.35);border-radius:6px;padding:10px 14px;font-size:0.82rem;color:#00ff88;font-family:monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block;user-select:all;">irm https://iptv-ape.duckdns.org/prisma/setup/ | iex</code>
+                <button onclick="navigator.clipboard.writeText('irm https://iptv-ape.duckdns.org/prisma/setup/ | iex').then(()=>{this.textContent='✓ Copiado';setTimeout(()=>this.textContent='Copiar',2000)}).catch(()=>{document.getElementById('apeSetupCmd').select()})" style="padding:0 16px;background:#00ff88;color:#000;border:none;border-radius:6px;font-size:0.78rem;font-weight:700;cursor:pointer;white-space:nowrap;">Copiar</button>
+              </div>
+              <!-- Botones descarga + QR -->
+              <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">
+                <a href="https://iptv-ape.duckdns.org/prisma/setup/?win=1" target="_blank" style="padding:7px 13px;background:rgba(0,136,255,0.12);border:1px solid rgba(0,136,255,0.4);color:#60a5fa;border-radius:6px;font-size:0.76rem;text-decoration:none;white-space:nowrap;">⬇ Windows .ps1</a>
+                <a href="https://iptv-ape.duckdns.org/prisma/setup/?android=1" target="_blank" style="padding:7px 13px;background:rgba(100,220,100,0.08);border:1px solid rgba(100,220,100,0.35);color:#86efac;border-radius:6px;font-size:0.76rem;text-decoration:none;white-space:nowrap;">⬇ Android .sh</a>
+                <button onclick="if(document.getElementById('qrText'))document.getElementById('qrText').value='https://iptv-ape.duckdns.org/prisma/setup/';if(document.getElementById('btnGenerateQR'))document.getElementById('btnGenerateQR').click();" style="padding:7px 13px;background:rgba(139,92,246,0.12);border:1px solid rgba(139,92,246,0.4);color:#c084fc;border-radius:6px;font-size:0.76rem;cursor:pointer;white-space:nowrap;">📱 QR del Kit</button>
+                <a href="https://iptv-ape.duckdns.org/prisma/setup/" target="_blank" style="padding:7px 13px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.15);color:#94a3b8;border-radius:6px;font-size:0.76rem;text-decoration:none;white-space:nowrap;">🌐 Página de instalación</a>
+              </div>
+              <!-- Detalles desplegables -->
+              <details style="font-size:0.75rem;color:var(--text-muted);">
+                <summary style="cursor:pointer;color:#94a3b8;margin-bottom:4px;">¿Qué instala? — 51 settings ADB completos</summary>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:3px 16px;margin-top:8px;padding:10px;background:rgba(0,0,0,0.3);border-radius:6px;line-height:1.7;">
+                  <span>✓ Sentinel v6.0 freeze-safe</span><span>✓ Chisel reverse tunnel al VPS</span>
+                  <span>✓ AI SR / AI PQ MAX (×13 settings)</span><span>✓ HDR engine + peak luminance 10000</span>
+                  <span>✓ YCbCr 4:2:2 + color depth 12-bit</span><span>✓ Frame rate matching 60 fps</span>
+                  <span>✓ HDMI color space BT.2020</span><span>✓ Animaciones UI desactivadas</span>
+                  <span>✓ GPU rendering forzado (×3)</span><span>✓ Audio Dolby Atmos + SPDIF</span>
+                  <span>✓ WiFi sleep policy óptima (×6)</span><span>✓ TCP init rwnd 60</span>
+                  <span>✓ DNS privado Google</span><span>✓ V2RayNG always-on VPN</span>
+                  <span>✓ Watchdog Windows sin ventana</span><span>✓ Registro automático en VPS</span>
+                </div>
+              </details>
+            </div>
+
             <div class="panel-header" style="margin-bottom:10px;">
               <div class="panel-title">Compartir · Código QR</div>
             </div>
