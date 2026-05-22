@@ -662,16 +662,10 @@ restart_vpn_if_needed() {
     RX_STALL_STREAK=0
 
     active_player=$(get_foreground_package)
-    log "VPN: tun0 down. Restarting $VPN_PACKAGE"
+    log "VPN: tun0 down. Restarting $VPN_PACKAGE (background)"
     am force-stop "$VPN_PACKAGE" 2>/dev/null
     sleep 2
-    am start -n "$V2RAY_MAIN" 2>/dev/null
-    sleep 4
-
-    # Botón de conectar de v2rayNG. Se deja configurable para evitar hardcode rígido.
-    x=$(echo "$V2RAY_TOGGLE_TAP" | awk '{print $1}')
-    y=$(echo "$V2RAY_TOGGLE_TAP" | awk '{print $2}')
-    [ -n "$x" ] && [ -n "$y" ] && input tap "$x" "$y" 2>/dev/null
+    am startservice -n "${VPN_PACKAGE}/.service.V2RayVpnService" 2>/dev/null || true
     sleep 8
 
     if ip addr show tun0 >/dev/null 2>&1; then
@@ -787,7 +781,6 @@ daemon_loop() {
     apply_system_baselines
     apply_tcp_tuning
     enforce_picture_quality
-    soft_cleanup
 
     WOKE_BY_USR1=0
     trap 'WOKE_BY_USR1=1; log "SIGNAL: USR1 instant manifest/PQ apply"' USR1
@@ -867,8 +860,6 @@ daemon_loop() {
             MEM_LOW_STREAK=0
             if [ "$mem" -lt "$HARD_LIMIT_MB" ] 2>/dev/null; then
                 hard_cleanup
-            elif [ "$mem" -lt "$SOFT_LIMIT_MB" ] 2>/dev/null; then
-                soft_cleanup
             fi
         fi
 
