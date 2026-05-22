@@ -359,8 +359,8 @@
             qualityMode: 'HEVC_SAFE_HINT',
             canEmitStreamInf: true,
 
-            codec: _safeCodec, // PREFERRED — HEVC Main10 1080p (T3 @60 / T4 @30 per cascade CSV)
-            fallbackCodec: 'avc1.640028',
+            codec: _safeCodec, // PREFERRED — HEVC Main10 1080p (T7 @60 / T6 @30 per cascade CSV)
+            fallbackCodec: 'hvc1.2.4.L93.B0',
             codecVerified: false,
             codecSource: 'CASCADE_CSV_SAFE_1080P_HINT',
             audioCodec: 'mp4a.40.2',
@@ -390,18 +390,29 @@
         const res = probeData?.resolution || '1280x720';
         const bwObj = probeData?.bandwidth > 0 ? { bandwidth: probeData.bandwidth, averageBandwidth: probeData.avgBandwidth } : getBitrateFallback(res);
 
+        // [2026-05-22 mandato HFRC] F4 usa hvc1.2.4.*** mínimo — sin AVC.
+        // Cascade resuelve por resolución; fallback a L93 (720p Main 10).
+        const _cascadeF4 = (typeof window !== 'undefined' && window.APE_HEVC_CASCADE) || null;
+        let _f4Codec = 'hvc1.2.4.L93.B0';
+        if (_cascadeF4 && typeof _cascadeF4.resolveTierByResolution === 'function') {
+            try {
+                const [_fw, _fh] = (res || '1280x720').split('x').map(Number);
+                _f4Codec = _cascadeF4.resolveTierByResolution(_fw || 1280, _fh || 720, probeData?.frameRate || 30, {}).codec;
+            } catch (_) {}
+        }
+
         return {
             tier: 'F4_AVC_HIGH_SAFE',
             confidence,
             reason: 'NO_HEVC_EVIDENCE',
-            qualityMode: 'AVC_UNIVERSAL_FALLBACK',
+            qualityMode: 'HEVC_MAIN10_FALLBACK',
             canEmitStreamInf: true,
 
-            codec: 'avc1.640028',
+            codec: _f4Codec,
             codecVerified: false,
-            codecSource: 'UNIVERSAL_AVC_FALLBACK',
+            codecSource: 'CASCADE_HEVC_MAIN10_F4',
             audioCodec: 'mp4a.40.2',
-            codecsFull: `avc1.640028,mp4a.40.2`,
+            codecsFull: `${_f4Codec},mp4a.40.2`,
             
             container: 'unknown',
             containerVerified: false,

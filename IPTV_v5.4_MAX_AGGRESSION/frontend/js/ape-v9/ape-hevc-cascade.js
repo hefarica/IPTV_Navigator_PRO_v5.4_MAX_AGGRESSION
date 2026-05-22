@@ -1,10 +1,12 @@
 /**
  * APE HEVC CASCADE SSOT — Tier-CodecString-Profile-Level-Capacidad-Rol
- * Mandato 2026-05-20 (HFRC): TODOS LOS CANALES CON HEVC COMO PRIORIDAD,
- *                            hvc1.2.4.** PARA TODOS LOS CANALES EN CASCADA POR RESOLUCION.
+ * Mandato 2026-05-20/22 (HFRC): TODOS LOS CANALES CON hvc1.2.4.*** MÍNIMO.
+ *                               SIN AV1, SIN H.264, SIN HEVC 8-bit.
+ *                               13 tiers PURE HEVC Main 10 per CSV canónico.
  *
- * Fuente: C:\Users\HFRC\Downloads\Tier-CodecString-Profile-Level-Capacidad-Rol.csv
+ * Fuente: HEVC_Cascada_Tier_Levels.csv (usuario, 2026-05-22)
  * Doctrina: MAX IMAGE FIRST (CLAUDE.md) + NO PLAYER-BREAKING LIES.
+ * CORONA_TIER_NUMBER = 9 (L153 = 4K@60 UHD — slot CORONA del generador).
  *
  * Esta lib es PURO datos + helpers de inferencia. NO hace fetch, NO toca DOM,
  * NO escribe en lista. Solo se importa desde m3u8-typed-arrays-ultimate.js y
@@ -14,31 +16,32 @@
     'use strict';
 
     // ────────────────────────────────────────────────────────────────────────
-    // CASCADA 12-TIER (CSV SSOT) — orden agresivo MAX IMAGE FIRST
+    // CASCADA 13-TIER (CSV SSOT) — PURE HEVC Main 10 / hvc1.2.4.***
+    // Orden: T1 = mínimo absoluto (L30), T13 = techo absoluto (L186 8K@120)
+    // CORONA_TIER_NUMBER = 9 → hvc1.2.4.L153.B0 (4K@60 UHD) — el generador
+    // usa siempre TIER_BY_NUMBER[CORONA_TIER_NUMBER] para fake-4K y premium.
     // ────────────────────────────────────────────────────────────────────────
-    // T1-T7  = HEVC Main 10 (hvc1.2.4.*) → PRIORIDAD ABSOLUTA
-    // T8     = AV1 Main 10              → opt-in (ONN / FireTV HW)
-    // T9-T10 = HEVC Main 8-bit          → solo si Main 10 falla en el decoder
-    // T11-T12 = H.264                    → garantía universal de reproducción
-    // ────────────────────────────────────────────────────────────────────────
-    const HEVC_CASCADE_12TIER = Object.freeze([
-        { tier: 1,  codec: 'hvc1.2.4.L153.B0', profile: 'Main 10',   level: '5.1', width: 3840, height: 2160, fps: 60, hdr: true,  family: 'HEVC', role: 'CORONA — 4K@60 HDR' },
-        { tier: 2,  codec: 'hvc1.2.4.L150.B0', profile: 'Main 10',   level: '5.0', width: 3840, height: 2160, fps: 30, hdr: true,  family: 'HEVC', role: 'Baja fps — 4K@30 HDR' },
-        { tier: 3,  codec: 'hvc1.2.4.L123.B0', profile: 'Main 10',   level: '4.1', width: 1920, height: 1080, fps: 60, hdr: true,  family: 'HEVC', role: 'Baja res, mantiene 60fps — 1080p@60 HDR' },
-        { tier: 4,  codec: 'hvc1.2.4.L120.B0', profile: 'Main 10',   level: '4.0', width: 1920, height: 1080, fps: 30, hdr: true,  family: 'HEVC', role: '1080p@30 10-bit HDR' },
-        { tier: 5,  codec: 'hvc1.2.4.L93.B0',  profile: 'Main 10',   level: '3.1', width: 1280, height: 720,  fps: 30, hdr: true,  family: 'HEVC', role: '720p 10-bit HDR' },
-        { tier: 6,  codec: 'hvc1.2.4.L90.B0',  profile: 'Main 10',   level: '3.0', width: 960,  height: 540,  fps: 30, hdr: true,  family: 'HEVC', role: 'Ultra-fallback 10-bit — 540p@30 HDR' },
-        { tier: 7,  codec: 'hvc1.2.4.L63.B0',  profile: 'Main 10',   level: '2.1', width: 640,  height: 360,  fps: 30, hdr: true,  family: 'HEVC', role: 'Bottom 10-bit posible — 360p@30 HDR' },
-        { tier: 8,  codec: 'av01.0.05M.10',    profile: 'AV1 Main 10', level: '5.0', width: 1920, height: 1080, fps: 60, hdr: true,  family: 'AV1',  role: 'AV1 nativo (ONN/FireTV HW) — 1080p@60 10-bit' },
-        { tier: 9,  codec: 'hvc1.1.6.L120.B0', profile: 'Main 8-bit', level: '4.0', width: 1920, height: 1080, fps: 30, hdr: false, family: 'HEVC', role: 'Solo si todo Main 10 falló — 1080p@30 SDR' },
-        { tier: 10, codec: 'hvc1.1.6.L93.B0',  profile: 'Main 8-bit', level: '3.1', width: 1280, height: 720,  fps: 30, hdr: false, family: 'HEVC', role: 'Penúltimo escalón HEVC — 720p@30 SDR' },
-        { tier: 11, codec: 'avc1.640028',      profile: 'H.264 High',  level: '4.0', width: 1920, height: 1080, fps: 30, hdr: false, family: 'H264', role: 'Garantía universal — 1080p@30 H.264 High' },
-        { tier: 12, codec: 'avc1.4d401e',      profile: 'H.264 Main',  level: '3.0', width: 640,  height: 480,  fps: 30, hdr: false, family: 'H264', role: 'Último recurso absoluto — 480p@30' }
+    const CORONA_TIER_NUMBER = 9;
+
+    const HEVC_CASCADE_13TIER = Object.freeze([
+        { tier: 1,  codec: 'hvc1.2.4.L30.B0',  profile: 'Main 10', level: '1.0', width: 128,  height: 96,   fps: 33.7, hdr: true, family: 'HEVC', role: 'Mínimo absoluto HEVC Main 10' },
+        { tier: 2,  codec: 'hvc1.2.4.L60.B0',  profile: 'Main 10', level: '2.0', width: 352,  height: 288,  fps: 30,   hdr: true, family: 'HEVC', role: 'CIF baseline' },
+        { tier: 3,  codec: 'hvc1.2.4.L63.B0',  profile: 'Main 10', level: '2.1', width: 640,  height: 360,  fps: 30,   hdr: true, family: 'HEVC', role: '360p HDR' },
+        { tier: 4,  codec: 'hvc1.2.4.L90.B0',  profile: 'Main 10', level: '3.0', width: 960,  height: 540,  fps: 30,   hdr: true, family: 'HEVC', role: '540p HDR ultra-fallback' },
+        { tier: 5,  codec: 'hvc1.2.4.L93.B0',  profile: 'Main 10', level: '3.1', width: 1280, height: 720,  fps: 30,   hdr: true, family: 'HEVC', role: '720p HDR 10-bit' },
+        { tier: 6,  codec: 'hvc1.2.4.L120.B0', profile: 'Main 10', level: '4.0', width: 1920, height: 1080, fps: 30,   hdr: true, family: 'HEVC', role: '1080p@30 10-bit (Main 12 Mbps / High 30 Mbps)' },
+        { tier: 7,  codec: 'hvc1.2.4.L123.B0', profile: 'Main 10', level: '4.1', width: 1920, height: 1080, fps: 60,   hdr: true, family: 'HEVC', role: '1080p@60 HDR (Main 20 Mbps / High 50 Mbps)' },
+        { tier: 8,  codec: 'hvc1.2.4.L150.B0', profile: 'Main 10', level: '5.0', width: 3840, height: 2160, fps: 30,   hdr: true, family: 'HEVC', role: '4K@30 HDR (Main 25 Mbps / High 100 Mbps)' },
+        { tier: 9,  codec: 'hvc1.2.4.L153.B0', profile: 'Main 10', level: '5.1', width: 3840, height: 2160, fps: 60,   hdr: true, family: 'HEVC', role: 'CORONA — 4K@60 HDR (Main 40 Mbps / High 160 Mbps)' },
+        { tier: 10, codec: 'hvc1.2.4.L156.B0', profile: 'Main 10', level: '5.2', width: 3840, height: 2160, fps: 120,  hdr: true, family: 'HEVC', role: '4K@120 HDR (Main 60 Mbps / High 240 Mbps)' },
+        { tier: 11, codec: 'hvc1.2.4.L180.B0', profile: 'Main 10', level: '6.0', width: 7680, height: 4320, fps: 30,   hdr: true, family: 'HEVC', role: '8K@30 HDR (Main 60 Mbps / High 240 Mbps)' },
+        { tier: 12, codec: 'hvc1.2.4.L183.B0', profile: 'Main 10', level: '6.1', width: 7680, height: 4320, fps: 60,   hdr: true, family: 'HEVC', role: '8K@60 HDR (Main 120 Mbps / High 480 Mbps)' },
+        { tier: 13, codec: 'hvc1.2.4.L186.B0', profile: 'Main 10', level: '6.2', width: 7680, height: 4320, fps: 120,  hdr: true, family: 'HEVC', role: '8K@120 HDR techo absoluto (Main 240 Mbps / High 800 Mbps)' }
     ]);
 
-    // Acceso rápido por tier number (1-indexed)
+    // Acceso rápido por tier number (1-indexed, T1=mínimo, T13=máximo)
     const TIER_BY_NUMBER = Object.freeze(
-        HEVC_CASCADE_12TIER.reduce((acc, t) => { acc[t.tier] = t; return acc; }, {})
+        HEVC_CASCADE_13TIER.reduce((acc, t) => { acc[t.tier] = t; return acc; }, {})
     );
 
     // ────────────────────────────────────────────────────────────────────────
@@ -51,7 +54,7 @@
     // el generador al grabar la lista). El widget además lo respalda en el VPS.
     // ────────────────────────────────────────────────────────────────────────
     const LS_KEY = 'APE_CODEC_CASCADE_OVERRIDE';
-    let _activeCascade = HEVC_CASCADE_12TIER;
+    let _activeCascade = HEVC_CASCADE_13TIER;
     let _activeTierByNumber = TIER_BY_NUMBER;
 
     function _familyFromCodec(c) {
@@ -68,7 +71,7 @@
     // preserva la geometría (width/height/fps/hdr) del tier — el routing por
     // resolución NO cambia, solo el codec string que se declara en ese escalón.
     function _mergeOntoDefault(rows) {
-        return HEVC_CASCADE_12TIER.map((def) => {
+        return HEVC_CASCADE_13TIER.map((def) => {
             const ov = rows.find((r) => Number(r.tier) === def.tier);
             if (!ov) return def;
             const codec = (ov.codec && String(ov.codec).trim()) || def.codec;
@@ -89,11 +92,11 @@
     }
 
     // setCascade(rows) — aplica un override (no persiste si persist=false).
-    // rows: [{tier, codec, profile?, level?, role?, capability?}], tiers 1..12.
+    // rows: [{tier, codec, profile?, level?, role?, capability?}], tiers 1..13.
     function setCascade(rows, persist) {
         if (!Array.isArray(rows) || rows.length === 0) return { ok: false, error: 'cascade vacía' };
-        const valid = rows.filter((r) => r && Number(r.tier) >= 1 && Number(r.tier) <= 12 && r.codec);
-        if (valid.length === 0) return { ok: false, error: 'ninguna fila válida (tier 1-12 + codec requerido)' };
+        const valid = rows.filter((r) => r && Number(r.tier) >= 1 && Number(r.tier) <= 13 && r.codec);
+        if (valid.length === 0) return { ok: false, error: 'ninguna fila válida (tier 1-13 + codec requerido)' };
         const merged = _mergeOntoDefault(valid);
         _activeCascade = Object.freeze(merged);
         _activeTierByNumber = Object.freeze(merged.reduce((a, t) => { a[t.tier] = t; return a; }, {}));
@@ -104,7 +107,7 @@
     }
 
     function resetCascade() {
-        _activeCascade = HEVC_CASCADE_12TIER;
+        _activeCascade = HEVC_CASCADE_13TIER;
         _activeTierByNumber = TIER_BY_NUMBER;
         if (typeof localStorage !== 'undefined') {
             try { localStorage.removeItem(LS_KEY); } catch (_) {}
@@ -129,7 +132,7 @@
         for (let i = start; i < lines.length; i++) {
             const cols = lines[i].split(sep).map((c) => c.trim());
             const tier = Number(cols[0]);
-            if (!(tier >= 1 && tier <= 12)) continue;
+            if (!(tier >= 1 && tier <= 13)) continue;
             out.push({
                 tier: tier,
                 codec: cols[1] || '',
@@ -145,35 +148,46 @@
     // ────────────────────────────────────────────────────────────────────────
     // resolveTierByResolution — mapea (width, height, fps) → tier object
     // ────────────────────────────────────────────────────────────────────────
-    //   opts.preferAv1            → si player es ONN/FireTV HW, T8
-    //   opts.forceH264Fallback    → fuerza T11 (H.264 garantía universal)
-    //   opts.allow8bitOnly        → fuerza T9/T10 (saltar Main 10)
-    //   opts.degradeToBottom      → fuerza T12 (último recurso)
+    // Búsqueda MAX-RESOLUCIÓN → mínimo dentro de hvc1.2.4.*** (mismo familia).
+    // T1=mínimo absoluto (L30) ... T13=techo absoluto (L186 8K@120).
+    // CORONA = T9 (L153 = 4K@60 UHD) — usar CORONA_TIER_NUMBER para fake-4K.
     //
-    // Default cuando entrada inválida o desconocida → T4 (1080p@30 HDR Main 10),
-    // el tier más común y más probable de funcionar en cualquier decoder HEVC.
+    //   opts.preferAv1         → ignorado (no AV1 en esta familia), usa T7 (1080p@60)
+    //   opts.forceH264Fallback → ignorado (no H264), usa T5 (720p HEVC fallback)
+    //   opts.degradeToBottom   → fuerza T1 (mínimo absoluto L30)
+    //
+    // Default cuando entrada inválida → T6 (1080p@30 Main 10 = L120).
     function resolveTierByResolution(width, height, fps, opts) {
         opts = opts || {};
         const T = _activeTierByNumber; // tabla ACTIVA (default o override CSV)
-        if (opts.forceH264Fallback) return T[11];
-        if (opts.degradeToBottom)   return T[12];
-        if (opts.preferAv1)         return T[8];
+        if (opts.degradeToBottom)   return T[1];
+        // H264/AV1 opts → remap al tier HEVC más cercano en capacidad
+        if (opts.forceH264Fallback) return T[5];  // 720p HEVC → era H264 High
+        if (opts.preferAv1)         return T[7];  // 1080p@60 HEVC → era AV1 1080p@60
 
         const w = Number(width)  || 1920;
         const h = Number(height) || 1080;
         const f = Number(fps)    || 30;
 
-        // 4K (3840×2160 o superior)
-        if (w >= 3840 && h >= 2160) {
-            return f >= 50 ? T[1] : T[2];
+        // 8K (7680×4320 o superior)
+        if (w >= 7680 && h >= 4320) {
+            if (f >= 100) return T[13];  // 8K@120 — techo absoluto
+            if (f >= 50)  return T[12];  // 8K@60
+            return T[11];                // 8K@30
         }
-        // QHD (2560×1440) → tratamos como 4K@30 (Level 5.0) por bandwidth similar
+        // 4K (3840×2160 o superior, incluye DCI 4096)
+        if (w >= 3840 && h >= 2160) {
+            if (f >= 100) return T[10];  // 4K@120
+            if (f >= 50)  return T[9];   // CORONA — 4K@60 UHD
+            return T[8];                 // 4K@30
+        }
+        // QHD (2560×1440) → asimilar a 4K@30 por bandwidth
         if (w >= 2560 && h >= 1440) {
-            return T[2];
+            return T[8];
         }
         // FHD (1920×1080)
         if (w >= 1920 && h >= 1080) {
-            return f >= 50 ? T[3] : T[4];
+            return f >= 50 ? T[7] : T[6];
         }
         // HD (1280×720)
         if (w >= 1280 && h >= 720) {
@@ -181,14 +195,18 @@
         }
         // 540p (960×540)
         if (w >= 960 && h >= 540) {
-            return T[6];
+            return T[4];
         }
-        // SD (≥ 640×360)
+        // 360p (640×360)
         if (w >= 640 && h >= 360) {
-            return T[7];
+            return T[3];
         }
-        // Default: 1080p@30 HDR Main 10 (T4)
-        return T[4];
+        // CIF / 288p
+        if (w >= 352 && h >= 288) {
+            return T[2];
+        }
+        // Default: 1080p@30 (T6 = L120) — tier más común y seguro
+        return T[6];
     }
 
     // ────────────────────────────────────────────────────────────────────────
@@ -288,8 +306,11 @@
     // Exposición global (browser) + module.exports (Node test)
     // ────────────────────────────────────────────────────────────────────────
     const api = {
-        VERSION: '1.1.0-csv-override-20260521',
-        CSV_SOURCE: 'Tier-CodecString-Profile-Level-Capacidad-Rol.csv',
+        VERSION: '1.2.0-13tier-pure-hevc-main10-20260522',
+        CSV_SOURCE: 'HEVC_Cascada_Tier_Levels.csv',
+        // CORONA_TIER_NUMBER = 9 → T9 = hvc1.2.4.L153.B0 (4K@60 UHD).
+        // El generador usa esta constante para fake-4K y canales premium.
+        CORONA_TIER_NUMBER: CORONA_TIER_NUMBER,
         resolveTierByResolution: resolveTierByResolution,
         inferResolutionFromChannel: inferResolutionFromChannel,
         inferFpsFromChannel: inferFpsFromChannel,
@@ -297,16 +318,18 @@
         isPremiumChannel: isPremiumChannel,
         PREMIUM_RE: PREMIUM_RE,
         // Override runtime (widget Quality Manifest)
-        DEFAULT_CASCADE: HEVC_CASCADE_12TIER,
+        DEFAULT_CASCADE: HEVC_CASCADE_13TIER,
         setCascade: setCascade,
         resetCascade: resetCascade,
         getActiveCascade: getActiveCascade,
         isOverridden: isOverridden,
         parseCascadeCSV: parseCascadeCSV
     };
-    // TIER_BY_NUMBER / HEVC_CASCADE_12TIER como getters → siempre la tabla ACTIVA,
-    // para que el generador (línea 9179 TIER_BY_NUMBER[1]) vea el override sin cambios.
+    // TIER_BY_NUMBER / HEVC_CASCADE_13TIER como getters → siempre la tabla ACTIVA,
+    // para que el generador vea el override CSV sin cambios de referencia.
     Object.defineProperty(api, 'TIER_BY_NUMBER', { enumerable: true, get: function () { return _activeTierByNumber; } });
+    Object.defineProperty(api, 'HEVC_CASCADE_13TIER', { enumerable: true, get: function () { return _activeCascade; } });
+    // Alias backward-compat: el generador antiguo leía HEVC_CASCADE_12TIER
     Object.defineProperty(api, 'HEVC_CASCADE_12TIER', { enumerable: true, get: function () { return _activeCascade; } });
 
     // Auto-cargar override persistido (in-browser) — el generador lo usará al grabar.

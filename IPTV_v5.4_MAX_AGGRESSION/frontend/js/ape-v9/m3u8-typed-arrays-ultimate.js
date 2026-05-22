@@ -6258,8 +6258,8 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
         // Tier 3 = L156 (4K@120fps 10-bit) — para deportes/esports HDR
         // Tier 4 = L123 (1080@60fps 10-bit) — para TV premium HDR
         // Tier 6 = L93 (720p@30 10-bit) — ÚLTIMO escalón con color HDR
-        const _chainFamily = cfg.codec_chain_video_family || 'HEVC-MAIN10-L6.1>HEVC-MAIN10-L6.0>HEVC-MAIN10-L5.2>HEVC-MAIN10-L5.1>HEVC-MAIN10-L5.0>HEVC-MAIN10-L4.1>HEVC-MAIN10-L4.0>HEVC-MAIN-L5.1>HEVC-MAIN-L4.0>H264-HIGH';
-        const _chainVideo  = cfg.codec_chain_video       || 'hvc1.2.4.L183.B0,hvc1.2.4.L180.B0,hvc1.2.4.L156.B0,hvc1.2.4.L153.B0,hvc1.2.4.L150.B0,hvc1.2.4.L123.B0,hvc1.2.4.L120.B0,hvc1.1.6.L153.B0,hvc1.1.6.L120.B0,avc1.640028';
+        const _chainFamily = cfg.codec_chain_video_family || 'HEVC-MAIN10-L6.2>HEVC-MAIN10-L6.1>HEVC-MAIN10-L6.0>HEVC-MAIN10-L5.2>HEVC-MAIN10-L5.1>HEVC-MAIN10-L5.0>HEVC-MAIN10-L4.1>HEVC-MAIN10-L4.0>HEVC-MAIN10-L3.1>HEVC-MAIN10-L3.0>HEVC-MAIN10-L2.1';
+        const _chainVideo  = cfg.codec_chain_video       || 'hvc1.2.4.L183.B0,hvc1.2.4.L180.B0,hvc1.2.4.L156.B0,hvc1.2.4.L153.B0,hvc1.2.4.L150.B0,hvc1.2.4.L123.B0,hvc1.2.4.L120.B0,hvc1.2.4.L93.B0,hvc1.2.4.L90.B0,hvc1.2.4.L63.B0';
         const _chainAudio  = cfg.codec_chain_audio       || 'mp4a.40.2,ac-3,mp4a.40.5';
         const _chainHdr    = cfg.codec_chain_hdr         || 'hdr10,hlg,sdr';
         const _chainPref   = cfg.codec_chain_player_pref || 'hvc1,hev1,h265,avc1,h264';
@@ -7514,7 +7514,7 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
                 const _qPremium = _qCascade.isPremiumChannel(channel);
                 const _qR = _qCascade.resolveCodecForChannel(channel, profile, { preferAv1: false, forceH264Fallback: false });
                 if (_qPremium && /^(DEFAULT_|PROFILE_)/.test(_qR.resolutionSource)) {
-                    const _qT1 = _qCascade.TIER_BY_NUMBER[1];
+                    const _qT1 = _qCascade.TIER_BY_NUMBER[_qCascade.CORONA_TIER_NUMBER || 9];
                     _qCodec = _qT1.codec; _qRes = `${_qT1.width}x${_qT1.height}`; _qFps = _qR.fps;
                     _qTier = `T${_qT1.tier}`; _qProfileName = _qT1.profile; _qLevel = _qT1.level;
                 } else {
@@ -9176,7 +9176,7 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
                     // declarar 4K — el player intenta y, si el bitstream es FHD, lo reproduce
                     // sin error (el codec string es informativo, no enforcement).
                     if (_premium && /^(DEFAULT_|PROFILE_)/.test(_resolved.resolutionSource)) {
-                        const _t1 = _cascade.TIER_BY_NUMBER[1];
+                        const _t1 = _cascade.TIER_BY_NUMBER[_cascade.CORONA_TIER_NUMBER || 9];
                         _codec796_csv = _t1.codec;
                         _res796_csv = `${_t1.width}x${_t1.height}`;
                         // [FIX-8 2026-05-20] Respetar fps inferido del content type, NO forzar
@@ -9208,8 +9208,8 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
             // Reversible: localStorage.APE_FORCE_FAKE_4K='0' lo desactiva (vuelve a cascada por res).
             let _forceFake4k = true;
             try { if (typeof localStorage !== 'undefined' && localStorage.getItem('APE_FORCE_FAKE_4K') === '0') _forceFake4k = false; } catch (_e0) {}
-            if (_forceFake4k && _cascade && _cascade.TIER_BY_NUMBER && _cascade.TIER_BY_NUMBER[1]) {
-                const _t1Fake = _cascade.TIER_BY_NUMBER[1];   // CORONA 4K@60 (o override CSV de T1)
+            if (_forceFake4k && _cascade && _cascade.TIER_BY_NUMBER) {
+                const _t1Fake = _cascade.TIER_BY_NUMBER[_cascade.CORONA_TIER_NUMBER || 9];   // CORONA 4K@60 (T9 = hvc1.2.4.L153.B0)
                 _codec796_csv = _t1Fake.codec;
                 _res796_csv   = `${_t1Fake.width}x${_t1Fake.height}`;  // 3840x2160
                 // _fps796_csv intacto (fiel al canal)
