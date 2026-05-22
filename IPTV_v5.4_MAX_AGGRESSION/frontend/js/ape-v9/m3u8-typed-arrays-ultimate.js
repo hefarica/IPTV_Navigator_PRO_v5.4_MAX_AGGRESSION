@@ -7765,14 +7765,47 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
                 if (/Mobile|Phone|Pixel/i.test(ua) && /Android/i.test(ua)) return '?1';
                 return '?0';
             })(),
-            // ── F2: POOL ROTATIVO Referer/Origin — ÚLTIMA posición (prevalece sobre spreads anteriores) ──
-            // Determinístico por canal (index % 5): evita Referer estático universal y SPOF dominio VPS
+            // ── C2/F2: POOL ROTATIVO Referer/Origin — ÚLTIMA posición (prevalece sobre spreads anteriores) ──
+            // 15 dominios neutros, determinístico por canal (index % 15). Expandido de 5→15 (2026-05-22).
+            // Evita Referer estático universal, SPOF dominio VPS y fingerprint por repetición.
             'Referer': (() => {
-                const _rp = ['https://www.google.com/','https://www.youtube.com/','https://www.bing.com/','https://duckduckgo.com/','https://www.reddit.com/'];
+                const _rp = [
+                    'https://www.google.com/',
+                    'https://www.youtube.com/',
+                    'https://www.bing.com/',
+                    'https://duckduckgo.com/',
+                    'https://www.reddit.com/',
+                    'https://www.facebook.com/',
+                    'https://twitter.com/',
+                    'https://www.msn.com/',
+                    'https://www.bbc.com/',
+                    'https://www.cnn.com/',
+                    'https://www.twitch.tv/',
+                    'https://vimeo.com/',
+                    'https://www.yahoo.com/',
+                    'https://www.dailymotion.com/',
+                    'https://www.amazon.com/'
+                ];
                 return _rp[Math.abs(index) % _rp.length];
             })(),
             'Origin': (() => {
-                const _op = ['https://www.google.com','https://www.youtube.com','https://www.bing.com','https://duckduckgo.com','https://www.reddit.com'];
+                const _op = [
+                    'https://www.google.com',
+                    'https://www.youtube.com',
+                    'https://www.bing.com',
+                    'https://duckduckgo.com',
+                    'https://www.reddit.com',
+                    'https://www.facebook.com',
+                    'https://twitter.com',
+                    'https://www.msn.com',
+                    'https://www.bbc.com',
+                    'https://www.cnn.com',
+                    'https://www.twitch.tv',
+                    'https://vimeo.com',
+                    'https://www.yahoo.com',
+                    'https://www.dailymotion.com',
+                    'https://www.amazon.com'
+                ];
                 return _op[Math.abs(index) % _op.length];
             })(),
         };
