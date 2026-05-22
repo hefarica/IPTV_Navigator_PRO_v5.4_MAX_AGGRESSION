@@ -116,7 +116,7 @@
     }
 
     function getActiveCascade() { return _activeCascade; }
-    function isOverridden() { return _activeCascade !== HEVC_CASCADE_12TIER; }
+    function isOverridden() { return _activeCascade !== HEVC_CASCADE_13TIER; }
 
     // parseCascadeCSV — SSOT del parseo. Acepta separador ';' (ES-ES) o ','.
     // Header esperado (flexible): Tier;Codec String;Profile;Level;Capacidad;Rol
