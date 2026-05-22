@@ -838,7 +838,7 @@
         // Inicializar con la época actual al cargar el módulo
         init();
 
-        return { init, get, getForChannel, getForZapping, getForRecovery, getLayeredUA };
+        return { init, get, getForChannel, getForZapping, getForRecovery, getLayeredUA, getEpochSeed: () => _epochSeed };
 
     })();
 
@@ -7127,6 +7127,17 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
 
 
 
+    // ── C2: Pool rotativo Referer/Origin — 20 dominios neutros de alta autoridad ──
+    // Definido a nivel de módulo (una sola instancia, compartida por todos los canales).
+    // Evita SPOF de un solo dominio. Elegidos por tráfico masivo, nunca bloqueados por CDNs.
+    const _NEUTRAL_REFERER_POOL = [
+        'https://www.google.com',    'https://www.bing.com',      'https://search.yahoo.com',  'https://duckduckgo.com',
+        'https://www.youtube.com',   'https://www.twitch.tv',     'https://www.reddit.com',    'https://www.wikipedia.org',
+        'https://www.amazon.com',    'https://www.netflix.com',   'https://www.cloudflare.com','https://www.akamai.com',
+        'https://www.fastly.com',    'https://www.apple.com',     'https://www.microsoft.com', 'https://www.github.com',
+        'https://www.imdb.com',      'https://www.cnn.com',       'https://www.bbc.com',       'https://www.espn.com'
+    ];
+
     // ═══════════════════════════════════════════════════════════════════════════
     // generateChannelEntry — OMEGA CRYSTAL V5 FUSIÓN V21
     // 921 líneas por canal | L0-L10 | Cableado desde arrays de origen
@@ -7765,48 +7776,18 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
                 if (/Mobile|Phone|Pixel/i.test(ua) && /Android/i.test(ua)) return '?1';
                 return '?0';
             })(),
-            // ── C2/F2: POOL ROTATIVO Referer/Origin — ÚLTIMA posición (prevalece sobre spreads anteriores) ──
-            // 15 dominios neutros, determinístico por canal (index % 15). Expandido de 5→15 (2026-05-22).
-            // Evita Referer estático universal, SPOF dominio VPS y fingerprint por repetición.
+            // ── C2/F2: POOL ROTATIVO Referer/Origin — doble rotación (espacial × temporal) ──
+            // 20 dominios neutros de alta autoridad (ver _NEUTRAL_REFERER_POOL a nivel de módulo).
+            // _epochOffset: 4 bits del epochSeed → distinto entre generaciones, estable dentro de la misma.
+            // (Math.abs(index) + _epochOffset) % 20 → idempotente por canal en la sesión, polimórfico entre épocas.
+            // DEBE SER ÚLTIMO en _httpPayload para prevalecer sobre todos los spreads anteriores.
             'Referer': (() => {
-                const _rp = [
-                    'https://www.google.com/',
-                    'https://www.youtube.com/',
-                    'https://www.bing.com/',
-                    'https://duckduckgo.com/',
-                    'https://www.reddit.com/',
-                    'https://www.facebook.com/',
-                    'https://twitter.com/',
-                    'https://www.msn.com/',
-                    'https://www.bbc.com/',
-                    'https://www.cnn.com/',
-                    'https://www.twitch.tv/',
-                    'https://vimeo.com/',
-                    'https://www.yahoo.com/',
-                    'https://www.dailymotion.com/',
-                    'https://www.amazon.com/'
-                ];
-                return _rp[Math.abs(index) % _rp.length];
+                const _epochOffset = (UAPhantomEngine.getEpochSeed() >>> 16) & 0xF;
+                return _NEUTRAL_REFERER_POOL[(Math.abs(index) + _epochOffset) % _NEUTRAL_REFERER_POOL.length] + '/';
             })(),
             'Origin': (() => {
-                const _op = [
-                    'https://www.google.com',
-                    'https://www.youtube.com',
-                    'https://www.bing.com',
-                    'https://duckduckgo.com',
-                    'https://www.reddit.com',
-                    'https://www.facebook.com',
-                    'https://twitter.com',
-                    'https://www.msn.com',
-                    'https://www.bbc.com',
-                    'https://www.cnn.com',
-                    'https://www.twitch.tv',
-                    'https://vimeo.com',
-                    'https://www.yahoo.com',
-                    'https://www.dailymotion.com',
-                    'https://www.amazon.com'
-                ];
-                return _op[Math.abs(index) % _op.length];
+                const _epochOffset = (UAPhantomEngine.getEpochSeed() >>> 16) & 0xF;
+                return _NEUTRAL_REFERER_POOL[(Math.abs(index) + _epochOffset) % _NEUTRAL_REFERER_POOL.length];
             })(),
         };
 
