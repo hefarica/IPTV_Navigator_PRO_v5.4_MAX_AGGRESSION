@@ -167,7 +167,10 @@
 
     function resolveAudioFallback(probeData) {
         const codecs = String(probeData?.codecsFull || probeData?.audioCodec || '').toLowerCase();
-        if (codecs.includes('ec-3')) return 'ec-3';
+        // [FIX-AUDIO 2026-05-20 · HFRC] ec-3 (E-AC3/DD+/Atmos) causa problemas de passthrough.
+        // Si el probe detecta E-AC3, declarar 'ac-3': E-AC3 tiene core AC-3 retrocompatible →
+        // el player decodifica el core Dolby Digital normal e ignora extensiones JOC/Atmos.
+        if (codecs.includes('ec-3') || codecs.includes('eac3')) return 'ac-3';
         if (codecs.includes('ac-3')) return 'ac-3';
         if (codecs.includes('mp4a.40.2')) return 'mp4a.40.2';
         return 'mp4a.40.2';
@@ -289,6 +292,17 @@
         const fps = isSports ? 60 : 30;
         const bwObj = getBitrateFallback(is4k ? '3840x2160' : (isSports ? '1920x1080_60' : '1920x1080_30'));
 
+        // [HEVC-CASCADE-CSV FIX 2026-05-20 · HFRC mandato] Premium canal → T1 CORONA
+        // (hvc1.2.4.L153.B0 4K@60) si el nombre dice 4K, sino T3/T4 según fps.
+        // Antes hardcoded L153 universal — ahora respeta resolución inferida.
+        const _cascade = (typeof window !== 'undefined' && window.APE_HEVC_CASCADE) || null;
+        let _premiumCodec = 'hvc1.2.4.L153.B0';
+        if (_cascade && typeof _cascade.resolveTierByResolution === 'function') {
+            const [_w, _h] = res.split('x').map(Number);
+            const _tier = _cascade.resolveTierByResolution(_w, _h, fps, {});
+            _premiumCodec = _tier.codec;
+        }
+
         return {
             tier: 'F2_HEVC_PREMIUM_HINT',
             confidence,
@@ -296,11 +310,11 @@
             qualityMode: 'MAX_IMAGE_AGGRESSIVE_HINT',
             canEmitStreamInf: true,
 
-            codec: 'hvc1.2.4.L153.B0', // PREFERRED — HEVC Main10 4K60 (L153 = Level 5.1)
+            codec: _premiumCodec, // PREFERRED — HEVC Main10 per cascade CSV (T1 4K@60 / T2 4K@30 / T3 1080p@60 / T4 1080p@30)
             codecVerified: false,
-            codecSource: 'PROFILE_PREMIUM_HINT',
+            codecSource: 'CASCADE_CSV_PREMIUM_HINT',
             audioCodec: 'mp4a.40.2',
-            codecsFull: `hvc1.2.4.L153.B0,mp4a.40.2`,
+            codecsFull: `${_premiumCodec},mp4a.40.2`,
 
             container: 'unknown',
             containerVerified: false,
@@ -329,6 +343,15 @@
         const fps = isSports ? 60 : 30;
         const bwObj = getBitrateFallback(isSports ? '1920x1080_60' : '1920x1080_30');
 
+        // [HEVC-CASCADE-CSV FIX 2026-05-20 · HFRC mandato] Sports/live → T3 (L123 1080p@60),
+        // generalista → T4 (L120 1080p@30). Antes hardcoded L120 universal.
+        const _cascade = (typeof window !== 'undefined' && window.APE_HEVC_CASCADE) || null;
+        let _safeCodec = 'hvc1.2.4.L120.B0';
+        if (_cascade && typeof _cascade.resolveTierByResolution === 'function') {
+            const _tier = _cascade.resolveTierByResolution(1920, 1080, fps, {});
+            _safeCodec = _tier.codec;
+        }
+
         return {
             tier: 'F3_HEVC_SAFE_1080P',
             confidence,
@@ -336,12 +359,12 @@
             qualityMode: 'HEVC_SAFE_HINT',
             canEmitStreamInf: true,
 
-            codec: 'hvc1.2.4.L120.B0', // PREFERRED — HEVC Main10 1080p
+            codec: _safeCodec, // PREFERRED — HEVC Main10 1080p (T3 @60 / T4 @30 per cascade CSV)
             fallbackCodec: 'avc1.640028',
             codecVerified: false,
-            codecSource: 'PROFILE_SAFE_1080P_HINT',
+            codecSource: 'CASCADE_CSV_SAFE_1080P_HINT',
             audioCodec: 'mp4a.40.2',
-            codecsFull: `hvc1.2.4.L120.B0,mp4a.40.2`,
+            codecsFull: `${_safeCodec},mp4a.40.2`,
             
             container: 'unknown',
             containerVerified: false,
@@ -457,9 +480,17 @@
             return buildF3HevcSafe1080p(channel, profile, probeData, confidence, contradictions);
         }
 
-        // Default to F4, but if we suspect something is very broken, fallback to F5
+        // [HEVC-CASCADE-CSV FIX 2026-05-20 · HFRC mandato]
+        // MAX IMAGE FIRST: cualquier canal con manifest HLS → F3 HEVC SAFE 1080p
+        // por defecto (cascada CSV emite hvc1.2.4.* per resolución). Solo se cae
+        // a F4 (AVC) si el probe DETECTÓ explícitamente codec avc1 upstream.
+        // Antes default era F4 (AVC) — producía 0% HEVC sin probe → viola mandato.
+        const _probeSaysAvc = probeData && /^avc1/i.test(String(probeData.videoCodec || ''));
         if (channel.url && channel.url.includes('.m3u8')) {
-           return buildF4AvcHighSafe(channel, profile, probeData, confidence, contradictions);
+            if (_probeSaysAvc) {
+                return buildF4AvcHighSafe(channel, profile, probeData, confidence, contradictions);
+            }
+            return buildF3HevcSafe1080p(channel, profile, probeData, confidence, contradictions);
         }
 
         return buildF5OriginalDirectSafe(channel, profile, probeData, confidence, contradictions);

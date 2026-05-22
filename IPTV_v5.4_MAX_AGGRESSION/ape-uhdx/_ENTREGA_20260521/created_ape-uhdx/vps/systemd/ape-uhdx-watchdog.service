@@ -1,0 +1,11 @@
+[Unit]
+Description=APE UHDX VPS Watchdog (revive ONN unified daemon via ADB/Xray)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+EnvironmentFile=-/etc/ape-uhdx/watchdog.env
+ExecStart=/opt/ape-uhdx/bin/ape-uhdx-vps-watchdog.sh
+TimeoutStartSec=60
+Nice=10

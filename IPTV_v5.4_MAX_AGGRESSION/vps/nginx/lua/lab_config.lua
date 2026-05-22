@@ -190,6 +190,26 @@ function _M.target_bps_for_profile(profile)
     return tonumber(p and p.prisma_target_bandwidth_bps) or 12000000
 end
 
+-- [Feature 1 2026-05-20] Conviva→LAB feedback (OBSERVE-ONLY).
+-- Expone métricas+sugerencias per-profile escritas por lab_tier_qoe_aggregator.php.
+-- NO se auto-aplica a decision_engine en producción (autopista doctrine). El Excel LAB
+-- las consume al recalibrar (human-in-the-loop); telemetry-full puede reportarlas.
+function _M.profile_qoe_feedback()
+    return read_json("lab_tier_qoe_feedback.json", { profiles = {} })
+end
+
+-- Helper: target bps SUGERIDO (base × target_factor del feedback QoE), clamp [0.5,1.5].
+-- Para reporting/telemetría y futura recalibración — NO lo consume decision_engine hoy.
+function _M.suggested_target_bps_for_profile(profile)
+    local base = _M.target_bps_for_profile(profile)
+    local fb = _M.profile_qoe_feedback()
+    local p = fb.profiles and fb.profiles[profile]
+    local factor = tonumber(p and p.target_factor) or 1.0
+    if factor < 0.5 then factor = 0.5 end
+    if factor > 1.5 then factor = 1.5 end
+    return math.floor(base * factor)
+end
+
 -- Helper: salud del loader (último mtime + status por archivo)
 function _M.health()
     local files = {

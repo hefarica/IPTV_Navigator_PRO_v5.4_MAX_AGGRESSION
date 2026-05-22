@@ -2240,7 +2240,19 @@
             if (_apeCfg && typeof _apeCfg.getGlobalDisneyDirectives === 'function') {
                 const _disneyLines = _apeCfg.getGlobalDisneyDirectives();
                 if (Array.isArray(_disneyLines) && _disneyLines.length > 0) {
-                    coreHeader.push(..._disneyLines);
+                    // [FIX-6 2026-05-20] Filtrar singletons RFC 8216 §4.4.4.4 ya presentes
+                    // en coreHeader (EXT-X-INDEPENDENT-SEGMENTS aparecía 2x: línea 2229 +
+                    // Disney directives). MUST NOT appear más de una vez. Se MANTIENE 1.
+                    const _coreSingletons = new Set(
+                        coreHeader.map(l => (l.match(/^(#[A-Z0-9-]+)/) || [])[1]).filter(Boolean)
+                    );
+                    const _RFC_SINGLETONS = new Set(['#EXT-X-INDEPENDENT-SEGMENTS', '#EXT-X-VERSION', '#EXTM3U']);
+                    const _disneyFiltered = _disneyLines.filter(l => {
+                        const tag = (l.match(/^(#[A-Z0-9-]+)/) || [])[1];
+                        if (tag && _RFC_SINGLETONS.has(tag) && _coreSingletons.has(tag)) return false;
+                        return true;
+                    });
+                    coreHeader.push(..._disneyFiltered);
                 }
             }
 
@@ -2558,7 +2570,7 @@ ${_disneyBlockFb}#EXT-X-APE-LCEVC-SDK-VERSION:1.2.4
 #EXT-X-VNOVA-LCEVC-TARGET-SDK:HTML5
 ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random().toString(36).substring(2)).join("") : ""}
 ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random().toString(36).substring(2)).join("") : ""}
-#EXT-X-CONTENT-STEERING:SERVER-URI="https://steer.ape.net/v1",PATHWAY-ID="PRIMARY"
+#EXT-X-CONTENT-STEERING:SERVER-URI="https://iptv-ape.duckdns.org/prisma/api/content-steering.php",PATHWAY-ID="omega"
 #EXT-X-SESSION-DATA:DATA-ID="com.ape.build",VALUE="v5.4-MAX-AGGRESSION"
 #EXT-X-DEFINE:NAME="OMEGA_EPOCH",VALUE="${timestamp}"
 #EXT-X-DEFINE:NAME="OMEGA_COMPLIANCE",VALUE="HLS-RFC8216BIS+CMAF-LL+HDR10+DV-P81-P10+LCEVC-P4"
@@ -2824,7 +2836,7 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
             vlcopts.push(`#EXTVLCOPT:preferred-codec=${(pmProfile?.settings?.codec_chain_player_pref) ? pmProfile.settings.codec_chain_player_pref.split(',')[0] : ((pmProfile?.settings?.codec) ? pmProfile.settings.codec.toLowerCase() : 'hvc1')}`);
             vlcopts.push(`#EXTVLCOPT:codec-priority=${pmProfile?.settings?.codec_chain_player_pref || pmProfile?.settings?.codec_priority || 'hvc1,hev1,h265,avc1,h264'}`);
             vlcopts.push(`#EXTVLCOPT:avcodec-codec=${pmProfile?.settings?.codec_chain_player_pref || 'hvc1,hev1,h265,avc1,h264'}`);
-            vlcopts.push(`#EXTVLCOPT:audio-codec-priority=${pmProfile?.settings?.codec_chain_audio || 'ec-3,ac-3,mp4a.40.2,mp4a.40.5'}`);
+            vlcopts.push(`#EXTVLCOPT:audio-codec-priority=${pmProfile?.settings?.codec_chain_audio || 'mp4a.40.2,ac-3,mp4a.40.5'}`);
 
             // ── V6.3 PLAYER-CONSUMED INTENT (CMAF/APE → EXTVLCOPT translation) ──
             // Mapea la intención de #EXT-X-CMAF-AUDIO-FALLBACK / -ATMOS / -DOLBY-VISION /
@@ -2901,7 +2913,7 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
             vlcopts.push(`#EXTVLCOPT:preferred-codec=${(pmProfile?.settings?.codec_chain_player_pref) ? pmProfile.settings.codec_chain_player_pref.split(',')[0] : ((pmProfile?.settings?.codec) ? pmProfile.settings.codec.toLowerCase() : 'hvc1')}`);
             vlcopts.push(`#EXTVLCOPT:codec-priority=${pmProfile?.settings?.codec_chain_player_pref || pmProfile?.settings?.codec_priority || 'hvc1,hev1,h265,avc1,h264'}`);
             vlcopts.push(`#EXTVLCOPT:avcodec-codec=${pmProfile?.settings?.codec_chain_player_pref || 'hvc1,hev1,h265,avc1,h264'}`);
-            vlcopts.push(`#EXTVLCOPT:audio-codec-priority=${pmProfile?.settings?.codec_chain_audio || 'ec-3,ac-3,mp4a.40.2,mp4a.40.5'}`);
+            vlcopts.push(`#EXTVLCOPT:audio-codec-priority=${pmProfile?.settings?.codec_chain_audio || 'mp4a.40.2,ac-3,mp4a.40.5'}`);
         }
 
         const standard = [
@@ -3200,7 +3212,7 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
             // -------------------------------------------------------------
             // [HEVC-FIRST] preferred_codec lee codec_chain_player_pref del LAB (per-profile chain) — fallback hardcoded HEVC-first
             `#KODIPROP:inputstream.adaptive.preferred_codec=${cfg.codec_chain_player_pref || 'hvc1,hev1,h265,avc1,h264'}`,
-            `#KODIPROP:inputstream.adaptive.audio_codec_priority=${cfg.codec_chain_audio || 'ec-3,ac-3,mp4a.40.2,mp4a.40.5'}`,
+            `#KODIPROP:inputstream.adaptive.audio_codec_priority=${cfg.codec_chain_audio || 'mp4a.40.2,ac-3,mp4a.40.5'}`,
             `#KODIPROP:inputstream.adaptive.max_resolution=${cfg.resolution || '3840x2160'}`,
             `#KODIPROP:inputstream.adaptive.resolution_secure_max=${cfg.resolution || '3840x2160'}`,
             // v6.1 COMPAT: Usa resolución del PERFIL REAL, no 7680x4320 hardcodeado
@@ -5053,7 +5065,10 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
         // ─── C. HDR Static/Dynamic Metadata (12) — SMPTE ST 2086/2094-40 ───
         h['X-HDR-Static-Metadata-Type'] = '1';           // SMPTE ST 2086 mastering display
         h['X-HDR-Static-Metadata-MaxCLL'] = String(peakNits);
-        h['X-HDR-Static-Metadata-MaxFALL'] = '800';
+        // [FIX-2 2026-05-20] MaxFALL derived dinámicamente de peakNits para preservar
+        // invariant MaxCLL ≥ MaxFALL. Antes hardcoded '800' rompía para peakNits=400
+        // (P3) → 400 < 800 = inverted. Ratio 25% per HDR10 broadcast (EBU R103-4).
+        h['X-HDR-Static-Metadata-MaxFALL'] = String(Math.max(50, Math.round(peakNits * 0.25)));
         h['X-HDR-Dynamic-Metadata-Type'] = '4';          // SMPTE ST 2094-40 (HDR10+)
         h['X-HDR-Dynamic-Metadata-Profile'] = 'A';       // HDR10+ Profile A
         h['X-HDR-Dynamic-Metadata-Bezier'] = 'enabled';
@@ -5103,7 +5118,7 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
         h['X-Gsync-FreeSync-Compatible'] = 'true';
 
         // ─── G. Audio premium (14) ───
-        h['X-Audio-Preferred-Codec'] = 'ec+3,ec-3,ac-3,mlpa,dts,mp4a.40.2';  // Atmos, EAC3, AC3, TrueHD, DTS, AAC
+        h['X-Audio-Preferred-Codec'] = 'mp4a.40.2,ac-3';  // [FIX-AUDIO 2026-05-20] AAC+AC3 normal IPTV — sin Atmos/EAC3/TrueHD/DTS (passthrough problemático)
         h['X-Audio-Codec-Fallback'] = 'eac3-joc,eac3,ac3,aac,mp3';
         h['X-Audio-Preferred-Layout'] = audioChannels >= 8 ? '7.1.4' : (audioChannels >= 6 ? '5.1.2' : '2.0');
         h['X-Audio-Atmos-Required'] = 'preferred';
@@ -5279,7 +5294,7 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
         h['X-Device-Capabilities'] = 'hdr10=true, hdr10plus=true, dolbyvision=true, hevc=true, av1=true, lcevc=true, 4k=true';
         h['X-Client-HDR-Support'] = 'HDR10, HDR10Plus, DolbyVisionProfile8, DolbyVisionProfile10, HLG';
         h['X-Video-Codecs'] = 'hvc1, hev1, avc1, av01, dvh1, dvhe';
-        h['X-Audio-Codecs'] = 'ec-3, ac-3, mp4a.40.2, mp4a.40.5, opus, flac';
+        h['X-Audio-Codecs'] = 'mp4a.40.2, ac-3, mp4a.40.5, opus, flac';  // [FIX-AUDIO 2026-05-20] sin ec-3/Atmos
         h['X-Max-Resolution'] = resolution;
         h['X-Max-Framerate'] = String(fps);
         h['X-Color-Depth'] = '12bit';
@@ -6204,7 +6219,7 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
                 hdcpLevel = cfg.hdcp_level || 'NONE';
                 break;
             case 'HEVC':
-                codecs = cfg.codec_string || ('hvc1.2.4.L153.B0,' + (cfg.audio_codec || 'ec-3'));
+                codecs = cfg.codec_string || ('hvc1.2.4.L153.B0,' + (cfg.audio_codec || 'mp4a.40.2'));
                 videoRange = cfg.video_range || 'PQ';
                 hdcpLevel = cfg.hdcp_level || 'NONE';
                 break;
@@ -6245,7 +6260,7 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
         // Tier 6 = L93 (720p@30 10-bit) — ÚLTIMO escalón con color HDR
         const _chainFamily = cfg.codec_chain_video_family || 'HEVC-MAIN10-L6.1>HEVC-MAIN10-L6.0>HEVC-MAIN10-L5.2>HEVC-MAIN10-L5.1>HEVC-MAIN10-L5.0>HEVC-MAIN10-L4.1>HEVC-MAIN10-L4.0>HEVC-MAIN-L5.1>HEVC-MAIN-L4.0>H264-HIGH';
         const _chainVideo  = cfg.codec_chain_video       || 'hvc1.2.4.L183.B0,hvc1.2.4.L180.B0,hvc1.2.4.L156.B0,hvc1.2.4.L153.B0,hvc1.2.4.L150.B0,hvc1.2.4.L123.B0,hvc1.2.4.L120.B0,hvc1.1.6.L153.B0,hvc1.1.6.L120.B0,avc1.640028';
-        const _chainAudio  = cfg.codec_chain_audio       || 'ec-3,ac-3,mp4a.40.2,mp4a.40.5';
+        const _chainAudio  = cfg.codec_chain_audio       || 'mp4a.40.2,ac-3,mp4a.40.5';
         const _chainHdr    = cfg.codec_chain_hdr         || 'hdr10,hlg,sdr';
         const _chainPref   = cfg.codec_chain_player_pref || 'hvc1,hev1,h265,avc1,h264';
         // Lógica estructural obligatoria de fallback
@@ -6345,7 +6360,12 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
         arr.push('#EXT-X-APE-STEALTH-XFF:51.87.232.172');
         arr.push('#EXT-X-APE-BITRATE-ANARCHY:ADAPTIVE_FREEZE_ON_DROP');
         arr.push('#EXT-X-APE-NETWORK-BUFFER-GOD-TIER:JITTER_ADAPTIVE_EXPANSION');
-        arr.push('#EXT-X-PRELOAD-HINT:TYPE=PART');
+        // [FIX-7 2026-05-20] EXT-X-PRELOAD-HINT RFC 8216-bis §4.4.5.3 exige URI + es
+        // media-playlist-only. Aquí es master playlist → era malformado (sin URI) y
+        // strict parsers (Shaka/hls.js strict) rechazaban el bloque. Movido al namespace
+        // custom EXT-X-APE- (silently ignored por players, leído por VPS Lua Fase 1 para
+        // pre-warm de cache). Preserva la intención de preload sin violar RFC.
+        arr.push('#EXT-X-APE-PRELOAD-HINT:TYPE=PART,STRATEGY=PREDICTIVE');
 
         arr.push('#EXT-X-APE-CODEC-ENFORCER:DYNAMIC_TRACK_SELECTION');
         arr.push('#EXT-X-APE-AV1-FALLBACK-DETECT:HARDWARE_DECODE_ONLY');
@@ -6440,7 +6460,13 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
         // B6 (2026-04-30) — derive codec family del perfil cuando channel.codecFamily vacío.
         // Lista emitía ape-codec-family="" en 37,128 canales. Profile.settings.codec
         // tiene los valores canónicos (AV1/HEVC/H264) — los mapeamos a familia.
-        const codecFamRaw = (channel.codecFamily || (typeof PROFILES !== 'undefined' && PROFILES[profile]?.codec) || 'H264').toString().toUpperCase();
+        //
+        // [HEVC-CASCADE-CSV FIX 2026-05-20 · HFRC mandato] Default 'H264' producía
+        // 100% canales (13,137/13,137) con ape-codec-family="h264" porque el feed
+        // Xtream no trae channel.codecFamily. MAX IMAGE FIRST exige HEVC default
+        // (cascada CSV emite hvc1.2.4.* per-resolución, ver ape-hevc-cascade.js).
+        // Solo T11/T12 (avc1.*) marcan codecFamily='H264' explícitamente vía resolver.
+        const codecFamRaw = (channel.codecFamily || (typeof PROFILES !== 'undefined' && PROFILES[profile]?.codec) || 'HEVC').toString().toUpperCase();
         const codecFam = ({
             'AV1': 'av1',
             'HEVC': 'hevc', 'H.265': 'hevc', 'H265': 'hevc',
@@ -7173,13 +7199,19 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
         const _fps796 = _probeData?.frameRate || cfg.fps || 60;
         // [HEVC-FIRST CODEC LADDER] LAB SSOT primary del chain → fallback legacy switch.
         // codec_chain_video[0] = codec real declarado en STREAM-INF (RFC 8216 byte-identical to bytestream).
-        // codec_chain_audio[0] = codec real audio (ec-3 P0/P1/P2, mp4a.40.2 P3/P4, mp4a.40.5 P5).
+        // codec_chain_audio[0] = codec real audio (mp4a.40.2 P0-P4, mp4a.40.5 P5). ec-3/Atmos eliminado 2026-05-20 (passthrough problemático).
         // NO-CLAMP: split(',')[0] sobre texto, sin coerce.
         const _codec796 = _probeData?.videoCodec
             || (cfg.codec_chain_video && String(cfg.codec_chain_video).split(',')[0])
             || (() => { switch (cfg.codec_primary) { case 'VVC': return 'vvc1.1.L63.00.0.0'; case 'AV1': return 'av01.0.08M.08'; case 'AVC': return 'avc1.640028'; default: return 'hvc1.1.6.L153.B0'; } })();
-        const _codecAudio = _probeData?.audioCodec
-            || (cfg.codec_chain_audio && String(cfg.codec_chain_audio).split(',')[0]) || cfg.audio_codec || 'ec-3';
+        let _codecAudio = _probeData?.audioCodec
+            || (cfg.codec_chain_audio && String(cfg.codec_chain_audio).split(',')[0]) || cfg.audio_codec || 'mp4a.40.2';
+        // [FIX-AUDIO 2026-05-20 · HFRC] Guardarraíl ec-3/E-AC3 → ac-3. Directiva explícita del
+        // usuario: ec-3 (Atmos/DD+) causa problemas de passthrough recurrentes. Esto cubre el caso
+        // de que el probe o el bulletproof LAB aún traigan ec-3 en codec_chain_audio. E-AC3 tiene
+        // core AC-3 retrocompatible → declarar ac-3 fuerza Dolby Digital normal sin extensiones JOC.
+        // Corrección permanente de la SSOT: LAB Excel codec_chain_audio P0/P1/P2 (sub-batch B).
+        if (/^(ec-3|ec\+3|eac3|e-ac3)$/i.test(String(_codecAudio).trim())) _codecAudio = 'ac-3';
         // FIX 2026-04-26: cfg.hdr_support ahora es array siempre (LAB-driven).
         // Detectar HDR vs SDR mirando cfg.hdr_mode (string LAB: DOLBY_VISION/HDR10PLUS/HDR10/HLG/SDR)
         // o como fallback si el array contiene algo distinto a solo 'sdr'.
@@ -7468,10 +7500,67 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
         lines.push(`#EXTVLCOPT:adaptive-reload-use-webrtc=false`);
 
         // ════════════════════════════════════════════════════════════════════════
+        // TIER-WIRE H (2026-05-20 · HFRC) — Calidad+Codec al MÁXIMO DETALLE para EXTHTTP
+        // Computa la cascada CSV una sola vez aquí. Es la MISMA función determinista que
+        // usa la emisión STREAM-INF (~L9050) con idénticos inputs → ambos coinciden, sin
+        // divergencia. Safe fallback al legacy (_codec796/_res796/_fps796) si la cascada
+        // no cargó. El bridge X-APE-Profile activa la maquinaria VPS profile-driven
+        // (floor_lock + virtual_4k + lanes + cache-bypass) SIN tocar VPS ni URL.
+        // ════════════════════════════════════════════════════════════════════════
+        const _qCascade = (typeof window !== 'undefined' && window.APE_HEVC_CASCADE) || null;
+        let _qCodec = _codec796, _qRes = _res796, _qFps = _fps796, _qTier = 'TU', _qProfileName = 'Main 10', _qLevel = '';
+        if (_qCascade && typeof _qCascade.resolveCodecForChannel === 'function') {
+            try {
+                const _qPremium = _qCascade.isPremiumChannel(channel);
+                const _qR = _qCascade.resolveCodecForChannel(channel, profile, { preferAv1: false, forceH264Fallback: false });
+                if (_qPremium && /^(DEFAULT_|PROFILE_)/.test(_qR.resolutionSource)) {
+                    const _qT1 = _qCascade.TIER_BY_NUMBER[1];
+                    _qCodec = _qT1.codec; _qRes = `${_qT1.width}x${_qT1.height}`; _qFps = _qR.fps;
+                    _qTier = `T${_qT1.tier}`; _qProfileName = _qT1.profile; _qLevel = _qT1.level;
+                } else {
+                    _qCodec = _qR.codec; _qRes = `${_qR.width}x${_qR.height}`; _qFps = _qR.fps;
+                    _qTier = `T${_qR.tier}`; _qProfileName = _qR.tierObj.profile; _qLevel = _qR.tierObj.level;
+                }
+            } catch (_qe) { /* fallback silente al legacy — no rompe generación */ }
+        }
+        const _qTransfer = _isPqHdr ? 'ST2084' : (_isHlgHdr ? 'arib-std-b67' : 'BT1886');
+        const _qCodecFamily = /^hvc1|^hev1/.test(_qCodec) ? 'hevc' : (/^av01/.test(_qCodec) ? 'av1' : 'h264');
+        const _qMaxFall = Math.round((_hdrNits || 100) * 0.25);
+        const _qCicp = _isAnyHdr ? `9/${_isPqHdr ? 16 : (_isHlgHdr ? 18 : 1)}/9` : '1/1/1';
+
+        // ════════════════════════════════════════════════════════════════════════
         // L2 — EXTHTTP — JSON Payload Colosal (1 línea, payload máximo)
         // Cableado desde: build_exthttp(), HttpAnabolicEngine, JWT, UAPhantomEngine
         // ════════════════════════════════════════════════════════════════════════
         const _httpPayload = {
+            // ═══ TIER-WIRE H — Bridge VPS + Calidad/Codec máximo detalle (2026-05-20) ═══
+            // X-APE-Profile activa la maquinaria VPS profile-driven; el resto da el detalle
+            // completo de codec/HDR/color a la maquinaria VPS y a players EXTHTTP-aware (Kodi ISA, libVLC).
+            'X-APE-Profile': profile,
+            'X-APE-Channel-Id': String(channel.stream_id || channel.id || ''),
+            'X-APE-Tier': _qTier,
+            'X-APE-Codec-Video': _qCodec,
+            'X-APE-Codec-Audio': _codecAudio,
+            'X-APE-Codec-Profile': _qProfileName,
+            'X-APE-Codec-Level': _qLevel,
+            'X-APE-Codec-Chain': cfg.codec_chain_video || '',
+            'X-APE-Codec-Family': _qCodecFamily,
+            'X-APE-Bit-Depth': _isAnyHdr ? '10' : '8',
+            'X-APE-HDR-Mode': _hdrModeM3U,
+            'X-APE-HDR-Transfer': _qTransfer,
+            'X-APE-HDR-Primaries': _isAnyHdr ? 'BT2020' : 'BT709',
+            'X-APE-HDR-Matrix': _isAnyHdr ? 'BT2020NCL' : 'BT709',
+            'X-APE-HDR-Range': 'LIMITED',
+            'X-APE-Color-Space': _isAnyHdr ? 'BT2020' : 'BT709',
+            'X-APE-Chroma': '4:2:0',
+            'X-APE-CICP': _qCicp,
+            'X-APE-MaxCLL': String(_hdrNits),
+            'X-APE-MaxFALL': String(_qMaxFall),
+            'X-APE-Tone-Mapping': _isAnyHdr ? 'HABLE' : 'none',
+            'X-APE-Resolution-Q': _qRes,
+            'X-APE-Framerate-Q': String(_qFps),
+            'X-APE-Bandwidth': String(_bw796),
+            'X-APE-Avg-Bandwidth': String(_avgBw),
             // Identidad y sesión
             'User-Agent': _ua796,
             // C1 (2026-04-30) — 10 X-User-Agent-{Android,iOS,Chrome,TiviMate,OTT,
@@ -7523,7 +7612,7 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
                 if (codecLow.includes('av01') || codecLow.includes('av1')) caps.push('av1=true');
                 if (codecLow.includes('avc1') || codecLow.includes('h264')) caps.push('h264=true');
                 const audCodec = (_codecAudio || '').toLowerCase();
-                if (audCodec.includes('ec-3')) caps.push('atmos=true');
+                // [FIX-AUDIO 2026-05-20 · HFRC] atmos=true ELIMINADO — ec-3/Atmos da problemas de passthrough recurrentes. Audio normal IPTV (AAC/AC-3); ac3=true se declara abajo si aplica.
                 if (audCodec.includes('ac-3')) caps.push('ac3=true');
                 if (parseInt(_fps796, 10) >= 60) caps.push('fps60=true');
                 return caps.join(',');
@@ -7800,10 +7889,13 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
         lines.push(`#KODIPROP:inputstream.adaptive.hdr_dolbyvision_profile=8`);
         lines.push(`#KODIPROP:inputstream.adaptive.audio_language_preference=spa,eng,por`);
         lines.push(`#KODIPROP:inputstream.adaptive.audio_channels=6`);
-        lines.push(`#KODIPROP:inputstream.adaptive.audio_dolby_atmos=true`);
-        lines.push(`#KODIPROP:inputstream.adaptive.audio_dts=true`);
-        lines.push(`#KODIPROP:inputstream.adaptive.audio_truehd=true`);
-        lines.push(`#KODIPROP:inputstream.adaptive.audio_eac3=true`);
+        // [FIX-AUDIO 2026-05-20 · HFRC] Atmos/DTS/TrueHD/EAC3 → false. El ec-3 (E-AC3/DD+,
+        // contenedor Atmos) causa problemas de passthrough recurrentes (ver Sky Sports 4K).
+        // Audio normal IPTV = AAC/AC-3. Mantener audio_aac/audio_ac3=true (otras líneas).
+        lines.push(`#KODIPROP:inputstream.adaptive.audio_dolby_atmos=false`);
+        lines.push(`#KODIPROP:inputstream.adaptive.audio_dts=false`);
+        lines.push(`#KODIPROP:inputstream.adaptive.audio_truehd=false`);
+        lines.push(`#KODIPROP:inputstream.adaptive.audio_eac3=false`);
         lines.push(`#KODIPROP:inputstream.adaptive.audio_ac3=true`);
         lines.push(`#KODIPROP:inputstream.adaptive.audio_aac=true`);
         lines.push(`#KODIPROP:inputstream.adaptive.audio_mp3=true`);
@@ -7911,14 +8003,27 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
         // Cableado desde: cfg (PROFILES), _sid796, _nonce796
         // ════════════════════════════════════════════════════════════════════════
         lines.push(`#EXT-X-CMAF:CODECS="${_codec796},${_codecAudio}",BANDWIDTH=${_bw796},RESOLUTION=${_res796}`);
-        lines.push(`#EXT-X-CMAF-LATENCY:TARGET=0,HOLD-BACK=0,PART-HOLD-BACK=0`);
+        // [FIX-3 2026-05-20] CMAF-LATENCY valores RFC 8216-bis §6.3.6 válidos.
+        // Antes TARGET=0,HOLD-BACK=0,PART-HOLD-BACK=0 → hls.js entraba LL-HLS mode
+        // con live edge=t=0 → 404s continuos. RFC exige PART-HOLD-BACK ≥ 3×PART-TARGET.
+        // Premium/HDR (T1-T4) → latencia agresiva 2s; resto → 4s conservador.
+        // El tag se mantiene; valores ahora son spec-compliant.
+        const _cmafTarget = _isAnyHdr ? '2.0' : '4.0';
+        const _cmafHoldBack = _isAnyHdr ? '6.0' : '12.0';
+        const _cmafPartHoldBack = _isAnyHdr ? '3.0' : '6.0';
+        lines.push(`#EXT-X-CMAF-LATENCY:TARGET=${_cmafTarget},HOLD-BACK=${_cmafHoldBack},PART-HOLD-BACK=${_cmafPartHoldBack}`);
         lines.push(`#EXT-X-CMAF-CHUNK-DURATION:0.5`);
         lines.push(`#EXT-X-CMAF-PART-TARGET:0.5`);
-        lines.push(`#EXT-X-CMAF-PART-HOLD-BACK:1.0`);
-        lines.push(`#EXT-X-CMAF-CONTAINER:fmp4`);
+        // [FIX-3b 2026-05-20] PART-HOLD-BACK ≥ 3×PART-TARGET (0.5×3=1.5), antes 1.0 violaba RFC.
+        lines.push(`#EXT-X-CMAF-PART-HOLD-BACK:1.5`);
+        // [FIX-9 2026-05-20] CONTAINER coherente: premium/HDR declara fmp4 (CMAF real
+        // si el upstream lo soporta; player lo ignora gracefully si es TS). Resto declara
+        // mpegts (realidad Xtream TS). El tag se mantiene SIEMPRE — solo el valor es honesto.
+        // El VPS Lua (Fase 1) leerá este valor para decidir cache slice / init-segment preload.
+        lines.push(`#EXT-X-CMAF-CONTAINER:${_isAnyHdr ? 'fmp4' : 'mpegts'}`);
         lines.push(`#EXT-X-CMAF-INIT-SEGMENT:BYTERANGE="1024@0"`);
         lines.push(`#EXT-X-CMAF-CODEC-FALLBACK:hevc,av1,vp9,h264`);
-        lines.push(`#EXT-X-CMAF-AUDIO-FALLBACK:ec-3,ac-3,mp4a.40.2`);
+        lines.push(`#EXT-X-CMAF-AUDIO-FALLBACK:mp4a.40.2,ac-3`); // [FIX-AUDIO 2026-05-20] sin ec-3/Atmos
         lines.push(`#EXT-X-CMAF-HDR:${_hdrMode},NITS=${_hdrNits}`);
         lines.push(`#EXT-X-CMAF-HDR-METADATA:MDCV=true,CLLI=true`);
         lines.push(`#EXT-X-CMAF-LCEVC:PHASE=4,ENABLED=true`);
@@ -7926,9 +8031,10 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
         lines.push(`#EXT-X-CMAF-AI-FI:MODEL=rife_v4,FPS=${_fps796},ENABLED=true`);
         lines.push(`#EXT-X-CMAF-VRR:MIN=24,MAX=120,ENABLED=true`);
         lines.push(`#EXT-X-CMAF-DOLBY-VISION:PROFILE=8,LEVEL=6,ENABLED=true`);
-        lines.push(`#EXT-X-CMAF-ATMOS:ENABLED=true,CHANNELS=7.1.4`);
-        lines.push(`#EXT-X-CMAF-DTS:ENABLED=true,TYPE=DTS:X`);
-        lines.push(`#EXT-X-CMAF-TRUEHD:ENABLED=true,CHANNELS=7.1`);
+        // [FIX-AUDIO 2026-05-20] Atmos/DTS/TrueHD CMAF → false (audio normal IPTV, sin Atmos passthrough).
+        lines.push(`#EXT-X-CMAF-ATMOS:ENABLED=false,CHANNELS=7.1.4`);
+        lines.push(`#EXT-X-CMAF-DTS:ENABLED=false,TYPE=DTS:X`);
+        lines.push(`#EXT-X-CMAF-TRUEHD:ENABLED=false,CHANNELS=7.1`);
         lines.push(`#EXT-X-CMAF-BUFFER:TARGET=${_buf796},MAX=${_bufMB * 1024 * 1024}`);
         lines.push(`#EXT-X-CMAF-NETWORK:TIMEOUT=60000,RECONNECT=true,COUNT=99`);
         lines.push(`#EXT-X-CMAF-SESSION:SID=${_sid796},NONCE=${_nonce796}`);
@@ -7942,7 +8048,11 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
         // ════════════════════════════════════════════════════════════════════════
         lines.push(`#EXT-X-APE-HDR-DV:MODE=${_hdrMode},NITS=${_hdrNits},BT2020=true`);
         lines.push(`#EXT-X-APE-HDR-METADATA:MDCV=true,CLLI=true,PEAK=${_hdrNits},AVG=1000`);
-        lines.push(`#EXT-X-APE-HDR-TRANSFER:ST2084,HLG,BT709`);
+        // [FIX-5 2026-05-20] Transfer function ÚNICO por perfil (antes ST2084,HLG,BT709
+        // = 3 funciones mutuamente exclusivas en un tag, auto-contradictorio). PQ→ST2084,
+        // HLG→arib-std-b67, SDR→bt1886. Cuando TV firmware lea este tag, recibe valor coherente.
+        const _hdrTransfer = _isPqHdr ? 'ST2084' : (_isHlgHdr ? 'arib-std-b67' : 'BT1886');
+        lines.push(`#EXT-X-APE-HDR-TRANSFER:${_hdrTransfer}`);
         lines.push(`#EXT-X-APE-HDR-PRIMARIES:BT2020`);
         lines.push(`#EXT-X-APE-HDR-MATRIX:BT2020_NCL`);
         lines.push(`#EXT-X-APE-HDR-RANGE:LIMITED`);
@@ -7953,8 +8063,13 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
         lines.push(`#EXT-X-APE-HDR-GAMUT:P3-D65,BT2020`);
         lines.push(`#EXT-X-APE-HDR-WHITEPOINT:D65`);
         lines.push(`#EXT-X-APE-HDR-BLACKLEVEL:0.0001`);
-        lines.push(`#EXT-X-APE-HDR-MAXFALL:1000`);
+        // [FIX-1 2026-05-20] MaxCLL/MaxFALL invariant: MaxCLL ≥ MaxFALL siempre.
+        // Antes: MAXFALL=1000 hardcoded > MAXCLL=_hdrNits (P3=400) → físicamente
+        // imposible. Ahora: MAXCLL=peak (perfil), MAXFALL=~25% del peak (ratio
+        // empírico EBU R103-4 para HDR10 broadcast). Tags se mantienen.
+        // P0→4000/1000, P1→1500/375, P2→1000/250, P3→400/100.
         lines.push(`#EXT-X-APE-HDR-MAXCLL:${_hdrNits}`);
+        lines.push(`#EXT-X-APE-HDR-MAXFALL:${Math.round(_hdrNits * 0.25)}`);
         lines.push(`#EXT-X-APE-DV-PROFILE:8`);
         lines.push(`#EXT-X-APE-DV-LEVEL:6`);
         lines.push(`#EXT-X-APE-DV-COMPATIBILITY:SDR,HDR10,HLG`);
@@ -9029,7 +9144,78 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
             const _hdcpMap = (typeof window !== 'undefined' && window.APE_HDCP_PROFILE) ? window.APE_HDCP_PROFILE : {};
             const _hdcpLevel = _hdcpMap[_hdcpChId] || 'TYPE-1';
             const _stableVariantId = `${_hdcpChId}_${profile}`;
-            lines.push(`#EXT-X-STREAM-INF:BANDWIDTH=${_bw796},AVERAGE-BANDWIDTH=${_avgBw},CODECS="${_codec796},${_codecAudio}",RESOLUTION=${_res796},FRAME-RATE=${_fps796}.000${_videoRangePart},HDCP-LEVEL=${_hdcpLevel},STABLE-VARIANT-ID="${_stableVariantId}"`);
+
+            // ── HEVC CASCADE CSV (added 2026-05-20 · HFRC mandato) ────────────
+            // TODOS los canales emiten hvc1.2.4.** Main 10 per resolución (CSV SSOT).
+            // El generador legacy emitía solo el primer codec de cfg.codec_chain_video
+            // (single string repetido 39K veces). Ahora la cascada decide el codec
+            // por resolución inferida del nombre/grupo/perfil. Premium canales
+            // (DAZN/ESPN/4K/HDR/etc.) suben automáticamente a T1 (CORONA 4K@60).
+            //
+            // Si window.APE_HEVC_CASCADE no está cargada (Live Server hot-reload
+            // pre-deploy o test unit), el código respeta el legacy _codec796/_res796/_fps796
+            // — no rompe nada. Es opt-in con safe fallback.
+            let _codec796_csv = _codec796;
+            let _res796_csv   = _res796;
+            let _fps796_csv   = _fps796;
+            const _cascade = (typeof window !== 'undefined' && window.APE_HEVC_CASCADE) || null;
+            if (_cascade && typeof _cascade.resolveCodecForChannel === 'function') {
+                try {
+                    const _premium = _cascade.isPremiumChannel(channel);
+                    const _resolved = _cascade.resolveCodecForChannel(channel, profile, {
+                        // Premium con resolución default (FHD) → bumpeamos a 4K (T1/T2)
+                        // SOLO si el detector premium dispara — no inventamos 4K en canales
+                        // generalistas. Esto preserva la doctrina "no player-breaking lies"
+                        // a nivel de RESOLUTION (codec string es PREFERRED, no REAL).
+                        preferAv1: false,
+                        forceH264Fallback: false
+                    });
+                    _codec796_csv = _resolved.codec;
+                    // Si premium y la resolución inferida fue genérica (DEFAULT_FHD o PROFILE_*),
+                    // promover a 4K@60 (T1 CORONA). Premium reales (DAZN/ESPN/HBO) merecen
+                    // declarar 4K — el player intenta y, si el bitstream es FHD, lo reproduce
+                    // sin error (el codec string es informativo, no enforcement).
+                    if (_premium && /^(DEFAULT_|PROFILE_)/.test(_resolved.resolutionSource)) {
+                        const _t1 = _cascade.TIER_BY_NUMBER[1];
+                        _codec796_csv = _t1.codec;
+                        _res796_csv = `${_t1.width}x${_t1.height}`;
+                        // [FIX-8 2026-05-20] Respetar fps inferido del content type, NO forzar
+                        // t1.fps=60. Premium movies (HBO/Disney) son 24/30fps → declarar 60
+                        // descalibra ExoPlayer DefaultLoadControl buffer scheduler ("60fps stutter").
+                        // Solo se promueve la RESOLUCIÓN a 4K, el fps queda fiel al canal.
+                        _fps796_csv = _resolved.fps;
+                    } else {
+                        _res796_csv = `${_resolved.width}x${_resolved.height}`;
+                        _fps796_csv = _resolved.fps;
+                    }
+                } catch (_e) {
+                    // Fallback silente al legacy — no rompemos generación por bug en cascade
+                    _codec796_csv = _codec796;
+                    _res796_csv   = _res796;
+                    _fps796_csv   = _fps796;
+                }
+            }
+
+            // ── FAKE 4K FORZADO — paquete de directivas unificado (mandato HFRC 2026-05-21:
+            //    "4K FORZADO PARA TODOS LOS NIVELES P5→P0") ──────────────────────────────────
+            // Declara RESOLUTION=3840x2160 + T1 codec (hvc1.2.4.L153.B0, RESPETA override CSV del
+            // widget) en CADA canal del catálogo. La URL del canal queda VERBATIM (no se reconstruye
+            // — respeta SHIELDED). El escalado real lo hace el TV/SoC (Path A, ADB) — el codec/res
+            // es HINT que el player negocia con el bitstream real (doctrina F2, no enforcement).
+            // HDR NO se fuerza aquí (VIDEO-RANGE queda honesto: solo PQ si _videoRangePart lo trae)
+            //   → forzar PQ sobre SDR en el catálogo = pantallazo negro en el ONN. El SDR→HDR real
+            //   lo fuerza el TV (hdr_conversion_mode por ADB). fps fiel al canal (FIX-8, no 60 forzado).
+            // Reversible: localStorage.APE_FORCE_FAKE_4K='0' lo desactiva (vuelve a cascada por res).
+            let _forceFake4k = true;
+            try { if (typeof localStorage !== 'undefined' && localStorage.getItem('APE_FORCE_FAKE_4K') === '0') _forceFake4k = false; } catch (_e0) {}
+            if (_forceFake4k && _cascade && _cascade.TIER_BY_NUMBER && _cascade.TIER_BY_NUMBER[1]) {
+                const _t1Fake = _cascade.TIER_BY_NUMBER[1];   // CORONA 4K@60 (o override CSV de T1)
+                _codec796_csv = _t1Fake.codec;
+                _res796_csv   = `${_t1Fake.width}x${_t1Fake.height}`;  // 3840x2160
+                // _fps796_csv intacto (fiel al canal)
+            }
+
+            lines.push(`#EXT-X-STREAM-INF:BANDWIDTH=${_bw796},AVERAGE-BANDWIDTH=${_avgBw},CODECS="${_codec796_csv},${_codecAudio}",RESOLUTION=${_res796_csv},FRAME-RATE=${_fps796_csv}.000${_videoRangePart},HDCP-LEVEL=${_hdcpLevel},STABLE-VARIANT-ID="${_stableVariantId}"`);
         }
         let finalUrl = options.dictatorMode ? `${primaryUrl}|User-Agent=${_ua796}&Cache-Control=no-cache&Connection=keep-alive&Referer=${typeof window !== "undefined" ? encodeURIComponent(window.location.origin) : ""}` : primaryUrl;
         if (options.dictatorMode) {
@@ -9068,7 +9254,7 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
             // sustituye al valor de cfg (LAB SSOT) o al fallback hardcoded HEVC-first.
             // Cumple NO-CLAMP: codec strings son texto, no se coercionan.
             const _cgVideo  = cfg.codec_chain_video        || 'hvc1.2.4.L183.B0,hvc1.2.4.L180.B0,hvc1.2.4.L156.B0,hvc1.2.4.L153.B0,hvc1.2.4.L150.B0,hvc1.2.4.L123.B0,hvc1.2.4.L120.B0,hvc1.1.6.L153.B0,hvc1.1.6.L120.B0,avc1.640028';
-            const _cgAudio  = cfg.codec_chain_audio        || 'ec-3,ac-3,mp4a.40.2,mp4a.40.5';
+            const _cgAudio  = cfg.codec_chain_audio        || 'mp4a.40.2,ac-3,mp4a.40.5';
             const _cgHdr    = cfg.codec_chain_hdr          || 'hdr10,hlg,sdr';
             const _cgPref   = cfg.codec_chain_player_pref  || 'hvc1,hev1,h265,avc1,h264';
             const _cgFamily = cfg.codec_chain_video_family || 'HEVC-MAIN10-L6.1>HEVC-MAIN10-L6.0>HEVC-MAIN10-L5.2>HEVC-MAIN10-L5.1>HEVC-MAIN10-L5.0>HEVC-MAIN10-L4.1>HEVC-MAIN10-L4.0>HEVC-MAIN-L5.1>HEVC-MAIN-L4.0>H264-HIGH';
@@ -9089,6 +9275,30 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
         // encoding UTF-16→UTF-8 en VBA writer. Sustituir por `*` ASCII.
         if (_finalM3U.indexOf('�') !== -1) {
             _finalM3U = _finalM3U.replace(/�/g, '*');
+        }
+
+        // [HEVC-CASCADE-CSV FIX 2026-05-20] Resolver placeholder literal
+        // `(bandwidth × 1000)` / `(bandwidth * 1000)` / `(bandwidth_bps)` que
+        // escapan del VBA template y aparecen como literal en `#KODIPROP:
+        // inputstream.adaptive.max_bandwidth=(bandwidth × 1000)` (caso real:
+        // 13,137 ocurrencias en lista APE_LISTA_1779311578202.m3u8 del 2026-05-20).
+        // max_bandwidth de inputstream.adaptive espera entero en bps — el valor
+        // del perfil (_bw796) es la referencia correcta.
+        if (/\(bandwidth\s*[×x*]\s*1000\)|\(bandwidth_bps\)/i.test(_finalM3U)) {
+            const _bwBps = String(_bw796 || 0);
+            _finalM3U = _finalM3U
+                .replace(/\(bandwidth\s*[×x*]\s*1000\)/gi, _bwBps)
+                .replace(/\(bandwidth_bps\)/gi, _bwBps);
+        }
+
+        // [FIX-4 / CONTENT-STEERING 2026-05-20 · Feature 3] Guardarraíl: el LAB CALIBRATED
+        // (Excel) sobrescribe el SERVER-URI del generador con `pool://failover`, que NO es
+        // un URI RFC 3986 válido → hls.js lanza `TypeError: Invalid URL` y deshabilita steering.
+        // Saneamos cualquier `pool://<x>` a la URI HTTPS real del steering endpoint del VPS.
+        // Cubre el bug sin esperar a corregir el Excel (corrección permanente: LAB headers_custom).
+        if (_finalM3U.indexOf('pool://') !== -1) {
+            _finalM3U = _finalM3U.replace(/SERVER-URI="pool:\/\/[^"]*"/gi,
+                'SERVER-URI="https://iptv-ape.duckdns.org/prisma/api/content-steering.php"');
         }
 
         return _finalM3U;

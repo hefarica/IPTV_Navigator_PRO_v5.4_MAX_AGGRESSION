@@ -1,0 +1,10 @@
+[Unit]
+Description=APE UHDX chisel reverse server (expone ADB del ONN en 127.0.0.1:5556)
+After=network-online.target
+Wants=network-online.target
+[Service]
+ExecStart=/opt/ape-uhdx/chisel server --port 7341 --reverse --auth ape:ape-uhdx-1dbe89bd59e51f0de35a
+Restart=always
+RestartSec=5
+[Install]
+WantedBy=multi-user.target

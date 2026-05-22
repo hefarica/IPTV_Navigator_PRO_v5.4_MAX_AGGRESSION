@@ -113,6 +113,36 @@ end
 local doctrine_request_bps = tonumber(reactor:get("bw_computed_request_bps")) or FLOOR_4K_BPS
 max_bitrate_bps = doctrine_request_bps  -- override las 6 RULES anteriores
 
+-- == [F5-A QoE SHADOW 2026-05-21] OBSERVE-ONLY (phase-3.5) ==================
+-- Reads the QoE feedback suggestion for this request's profile and LOGS what it
+-- WOULD adjust, WITHOUT changing max_bitrate_bps. Validate stability 24-72h
+-- before arming auto-apply. Emits X-APE-QoE-Suggested (observe). Throttled
+-- 1/profile/60s. pcall-guarded; never affects the request path. NOT applied.
+do
+    local profile = ngx.var.http_x_ape_profile
+    if profile and profile ~= "" then
+        local sok, lab2 = pcall(require, "lab_config")
+        if sok and lab2 and lab2.suggested_target_bps_for_profile then
+            local gok, sug = pcall(lab2.suggested_target_bps_for_profile, profile)
+            if gok and tonumber(sug) and tonumber(sug) > 0 then
+                local sugN = math.floor(tonumber(sug))
+                ngx.req.set_header("X-APE-QoE-Suggested", tostring(sugN))  -- observe-only header
+                local sk = "qoe_shadow_ts:" .. profile
+                local last = tonumber(reactor:get(sk)) or 0
+                local nowt = ngx.now()
+                if (nowt - last) >= 60 then
+                    reactor:set(sk, nowt)
+                    local applied = max_bitrate_bps
+                    local dpct = (applied > 0) and math.floor((sugN - applied) / applied * 100) or 0
+                    ngx.log(ngx.WARN, "[QoE-SHADOW] profile=", profile,
+                            " applied_bps=", applied, " qoe_suggested_bps=", sugN,
+                            " delta=", dpct, "% (SHADOW: NOT applied)")
+                end
+            end
+        end
+    end
+end
+
 -- Emisión CONSTANTE (no condicional) — siempre en cada request
 ngx.req.set_header("X-Max-Bitrate", tostring(max_bitrate_bps))
 ngx.req.set_header("X-Min-Bitrate", tostring(FLOOR_4K_BPS))  -- floor absoluto upstream (15 Mbps UHDX)

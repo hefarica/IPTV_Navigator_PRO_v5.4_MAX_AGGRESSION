@@ -19,11 +19,22 @@ LIB_DIR="${SCRIPT_DIR}/lib"
 
 mkdir -p "$STATE_DIR"
 
-log() {
-    local ts
-    ts=$(date '+%Y-%m-%d %H:%M:%S')
-    echo "[$ts] $1" | tee -a "$LOG_FILE"
-}
+# [Feature 2 2026-05-20] Structured leveled logger (Disney-style severity).
+# Backward-compat: log() routes to log_info so all existing `log "..."` calls keep
+# working as INFO; log_debug/log_warn/log_error become available + LOG_LEVEL filtering
+# (export LOG_LEVEL=DEBUG to diagnose freezes/rebuffer). Falls back to flat log if lib missing.
+if [ -f "${LIB_DIR}/log_levels.sh" ]; then
+    APE_LOG_FILE="$LOG_FILE"
+    # shellcheck source=/dev/null
+    . "${LIB_DIR}/log_levels.sh"
+    log() { log_info "$@"; }
+else
+    log() {
+        local ts
+        ts=$(date '+%Y-%m-%d %H:%M:%S')
+        echo "[$ts] $1" | tee -a "$LOG_FILE"
+    }
+fi
 
 # Core cycle execution
 run_cycle() {

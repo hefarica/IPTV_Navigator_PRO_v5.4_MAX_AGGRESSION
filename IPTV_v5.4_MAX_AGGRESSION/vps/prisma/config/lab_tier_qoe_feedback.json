@@ -1,0 +1,8 @@
+{
+  "_schema": "lab_tier_qoe_feedback/1.0",
+  "_doc": "Conviva-Lite QoE feedback per profile (P0-P5). Written by lab_tier_qoe_aggregator.php every flush cycle. Consumed by lab_config.lua (visibility) + Excel LAB recalibration (human-in-the-loop). OBSERVE-ONLY: NO auto-applies to decision_engine in production (autopista doctrine). target_factor is a SUGGESTION for next LAB calibration.",
+  "_doctrine": "Hysteresis: factor only moves if avg_vst breach sustained + min 6h window between adjustments. Bounds [0.5, 1.5].",
+  "updated_at": 0,
+  "bucket_5min": 0,
+  "profiles": {}
+}

@@ -140,6 +140,25 @@ class ConvivaPersistence
             ");
             $this->pdo->exec("CREATE INDEX IF NOT EXISTS idx_ssqoe_channel ON server_side_qoe_metrics(channel_id, bucket_5min)");
             $this->pdo->exec("CREATE INDEX IF NOT EXISTS idx_ssqoe_flushed ON server_side_qoe_metrics(flushed_at)");
+
+            // Per-profile QoE aggregates (Feature 1 — Conviva→LAB feedback loop, 2026-05-20).
+            // History of per-profile (P0-P5) QoE + suggested target_factor for LAB recalibration.
+            // OBSERVE-ONLY: target_factor is a suggestion; NOT auto-applied to decision_engine.
+            $this->pdo->exec("
+                CREATE TABLE IF NOT EXISTS qoe_profile_aggregates (
+                    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+                    profile         TEXT    NOT NULL,
+                    bucket_5min     INTEGER NOT NULL,
+                    avg_vst_ms      INTEGER DEFAULT 0,
+                    rebuffer_ratio  REAL    DEFAULT 0,
+                    error_ratio     REAL    DEFAULT 0,
+                    samples         INTEGER DEFAULT 0,
+                    target_factor   REAL    DEFAULT 1.0,
+                    observed_at     INTEGER NOT NULL DEFAULT (CAST(strftime('%s','now') AS INTEGER))
+                )
+            ");
+            $this->pdo->exec("CREATE INDEX IF NOT EXISTS idx_qpa_profile ON qoe_profile_aggregates(profile, bucket_5min)");
+            $this->pdo->exec("CREATE INDEX IF NOT EXISTS idx_qpa_observed ON qoe_profile_aggregates(observed_at)");
             return true;
         } catch (Throwable $e) {
             error_log('[conviva-persistence] init failed: ' . $e->getMessage());
@@ -495,6 +514,46 @@ class ConvivaPersistence
             return true;
         } catch (Throwable $e) {
             error_log('[conviva-persistence] recordServerSideQoE failed: ' . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Records a per-profile QoE aggregate row (Feature 1 — Conviva→LAB loop).
+     * Called by LabTierQoeAggregator. target_factor is a SUGGESTION (observe-only).
+     */
+    public function recordProfileQoE(
+        string $profile,
+        int $bucket5min,
+        int $avgVstMs,
+        float $rebufferRatio,
+        float $errorRatio,
+        int $samples,
+        float $targetFactor
+    ): bool {
+        if ($this->pdo === null && !$this->init()) {
+            return false;
+        }
+        try {
+            $stmt = $this->pdo->prepare("
+                INSERT INTO qoe_profile_aggregates
+                  (profile, bucket_5min, avg_vst_ms, rebuffer_ratio, error_ratio, samples, target_factor, observed_at)
+                VALUES
+                  (:prof, :bkt, :vst, :rbf, :err, :smp, :tf, :now)
+            ");
+            $stmt->execute([
+                ':prof' => $profile,
+                ':bkt'  => $bucket5min,
+                ':vst'  => $avgVstMs,
+                ':rbf'  => $rebufferRatio,
+                ':err'  => $errorRatio,
+                ':smp'  => $samples,
+                ':tf'   => $targetFactor,
+                ':now'  => time(),
+            ]);
+            return true;
+        } catch (Throwable $e) {
+            error_log('[conviva-persistence] recordProfileQoE failed: ' . $e->getMessage());
             return false;
         }
     }

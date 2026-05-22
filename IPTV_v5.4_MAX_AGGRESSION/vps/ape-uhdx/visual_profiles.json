@@ -1,23 +1,57 @@
 {
+  "_doc": "FAKE 4K HDR FORZADO EN LOS 6 NIVELES P0-P5 (mandato HFRC 2026-05-21: '4K forzado para todos los niveles, cada uno se configura distinto'). TODOS: virtual_4k+virtual_4k_hdr+codec_cascade ACTIVE => cada canal (con master playlist) via shield sale 3840x2160 + hvc1.2.4 (T1 cascada) + HDR=PQ. La DIFERENCIA por nivel = floor_bps (cuanto se exige), upscaler (hint neural), y floor_lock (solo ACTIVE en 4K reales P0/P1; BYPASS en P2-P5 para no matar canales HD/SD de bajo bitrate; el body_filter siempre conserva la variante top como fallback). RIESGO ACEPTADO: PQ sobre SDR puede dar pantallazo negro en players que honran VIDEO-RANGE; rollback = virtual_4k_hdr=BYPASS en el nivel afectado. virtual_4k solo actua en MASTER playlists.",
   "P0_SHOWROOM_FLASH_4K": {
     "upscaler": "Anime4K",
     "hdr_intent": "HDR_FORCE",
     "virtual_4k": "ACTIVE",
+    "virtual_4k_hdr": "ACTIVE",
     "floor_lock": "ACTIVE",
-    "floor_bps": 18000000
+    "floor_bps": 18000000,
+    "codec_cascade": "ACTIVE"
   },
   "P1_DAILY_EXTREME_4K": {
     "upscaler": "FSRCNNX",
-    "hdr_intent": "HDR_AUTO",
+    "hdr_intent": "HDR_FORCE",
     "virtual_4k": "ACTIVE",
+    "virtual_4k_hdr": "ACTIVE",
     "floor_lock": "ACTIVE",
-    "floor_bps": 14000000
+    "floor_bps": 14000000,
+    "codec_cascade": "ACTIVE"
   },
   "P2_SAFE_COMPAT": {
     "upscaler": "AdaptiveSharpen",
-    "hdr_intent": "HDR_BYPASS",
-    "virtual_4k": "BYPASS",
+    "hdr_intent": "HDR_FORCE",
+    "virtual_4k": "ACTIVE",
+    "virtual_4k_hdr": "ACTIVE",
     "floor_lock": "BYPASS",
-    "floor_bps": 5000000
+    "floor_bps": 8000000,
+    "codec_cascade": "ACTIVE"
+  },
+  "P3_HD_BOOST": {
+    "upscaler": "ESPCN-L4",
+    "hdr_intent": "HDR_FORCE",
+    "virtual_4k": "ACTIVE",
+    "virtual_4k_hdr": "ACTIVE",
+    "floor_lock": "BYPASS",
+    "floor_bps": 6000000,
+    "codec_cascade": "ACTIVE"
+  },
+  "P4_HD_LITE": {
+    "upscaler": "FSRCNN",
+    "hdr_intent": "HDR_FORCE",
+    "virtual_4k": "ACTIVE",
+    "virtual_4k_hdr": "ACTIVE",
+    "floor_lock": "BYPASS",
+    "floor_bps": 4000000,
+    "codec_cascade": "ACTIVE"
+  },
+  "P5_SD_RESCUE": {
+    "upscaler": "Lanczos",
+    "hdr_intent": "HDR_FORCE",
+    "virtual_4k": "ACTIVE",
+    "virtual_4k_hdr": "ACTIVE",
+    "floor_lock": "BYPASS",
+    "floor_bps": 2000000,
+    "codec_cascade": "ACTIVE"
   }
 }

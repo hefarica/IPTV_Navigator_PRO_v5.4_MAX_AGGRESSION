@@ -3772,8 +3772,11 @@
   <!-- 🔌 APE PARSER GENERATION BRIDGE — connects 26-parser evidence to generation pipeline -->
   <script src="js/ape-v9/parsers/ape-parser-generation-bridge.js?v=1.0"></script>
   <!-- 🛡️ APE MAX QUALITY FALLBACK RESOLVER — MAX IMAGE FIRST · COVERAGE ALWAYS · NO CHANNEL LOSS -->
-  <script src="js/ape-v9/ape-fallback-resolver.js?v=20260519-honest-rules-trifecta"></script>
-  <script src="js/ape-v9/m3u8-typed-arrays-ultimate.js?v=20260519-r1-d1-fix-b-safety"></script>
+  <!-- 🎯 APE HEVC CASCADE CSV SSOT — 12-tier Tier→Codec mapping (HFRC mandato 2026-05-20)
+       MUST load BEFORE ape-fallback-resolver.js y m3u8-typed-arrays-ultimate.js -->
+  <script src="js/ape-v9/ape-hevc-cascade.js?v=1.1-20260521-csv-override"></script>
+  <script src="js/ape-v9/ape-fallback-resolver.js?v=20260520-hevc-cascade-csv"></script>
+  <script src="js/ape-v9/m3u8-typed-arrays-ultimate.js?v=20260520-hevc-cascade-csv"></script>
   <!-- 🪦 OMEGA SLOT REAPER — Pre-flight liberation of Xtream max_connections slots -->
   <script src="js/ape-v9/slot-reaper.js?v=1.0.0-omega-20260409"></script>
   <script src="js/ape-v9/m3u8-quality-upgrader-v2.js?v=2.0"></script>
@@ -4224,7 +4227,7 @@
   <!-- 🛡️ NET SHIELD SENTINEL: Autonomous infrastructure agent widget -->
   <script src="js/netshield-sentinel-widget.js" defer></script>
   <script src="js/prisma-control-widget.js?v=1.3.0" defer></script>
-  <script src="js/quality-manifest-widget.js?v=1.0.0" defer></script>
+  <script src="js/quality-manifest-widget.js?v=1.5.0-20260521-codec-cascade" defer></script>
 
   <!-- ═══════════════════════════════════════════════════════════════════════ -->
   <!-- 🎯 CONVIVA QoE ENGINE v1.0 — Disney+ Grade Telemetry                   -->

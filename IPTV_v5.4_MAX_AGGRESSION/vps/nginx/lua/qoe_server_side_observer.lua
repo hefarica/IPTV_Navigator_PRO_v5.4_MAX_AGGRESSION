@@ -60,7 +60,13 @@ local ok, _ = pcall(function()
     if status >= 400 then
         local err_key = "err:" .. channel_id
         dict:incr(err_key, 1, 0, 300)  -- TTL 300s
+        -- [F5 2026-05-21] split 4xx vs 5xx (richer QoE signal; 5xx = upstream sick).
+        -- Keys are letters-only so the worker's ^([a-z]+): prefix parser captures them.
+        if status >= 500 then dict:incr("serr:" .. channel_id, 1, 0, 300)
+        else dict:incr("cerr:" .. channel_id, 1, 0, 300) end
     end
+    -- [F5 2026-05-21] redirect rate (302/301): upstream session churn / affinity signal
+    if status == 302 or status == 301 then dict:incr("redir:" .. channel_id, 1, 0, 300) end
     local req_key = "req:" .. channel_id
     dict:incr(req_key, 1, 0, 300)
 
@@ -68,6 +74,13 @@ local ok, _ = pcall(function()
     if is_manifest and status == 200 then
         local manifest_ts_key = "mts:" .. session_key .. ":" .. channel_id
         dict:set(manifest_ts_key, now_ms, 30)  -- TTL 30s (segment fetch should follow soon)
+        -- [Feature 1 2026-05-20] Capture X-APE-Profile (sent by the list's EXTHTTP block)
+        -- for per-profile QoE aggregation (Conviva→LAB loop). Channel→profile is static,
+        -- so one set per manifest fetch is enough. NOT consumed in hot path (read at flush).
+        local prof = ngx.var.http_x_ape_profile
+        if prof and prof ~= "" then
+            dict:set("prof:" .. channel_id, prof, 3600)  -- TTL 1h
+        end
     end
 
     -- ── C) Segment fetch → compute VST_proxy if it's the FIRST after manifest ──
@@ -116,6 +129,12 @@ local ok, _ = pcall(function()
         if upstream_time_ms > 0 and body_bytes > 0 then
             local bps = math.floor((body_bytes * 8 * 1000) / upstream_time_ms)
             dict:set("bps:" .. channel_id, bps, 600)
+        end
+
+        -- ── [F5 2026-05-21] segment upstream latency (sum+count -> worker avg) ──
+        if upstream_time_ms > 0 then
+            dict:incr("latsum:" .. channel_id, upstream_time_ms, 0, 300)
+            dict:incr("latcnt:" .. channel_id, 1, 0, 300)
         end
     end
 end)

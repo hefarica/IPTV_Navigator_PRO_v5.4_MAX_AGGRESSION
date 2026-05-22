@@ -103,6 +103,16 @@ try {
             );
             if ($ok) $metricsWritten++;
         }
+
+        // 1b. Conviva→LAB feedback loop (Feature 1, 2026-05-20): aggregate per-profile
+        //     QoE → suggestion JSON. OBSERVE-ONLY (does NOT auto-apply to decision_engine).
+        //     Each metric carries a "profile" field set by the observer from X-APE-Profile.
+        try {
+            require_once __DIR__ . '/../lib/lab_tier_qoe_aggregator.php';
+            LabTierQoeAggregator::aggregate($payload['metrics'], $bucket, $persist);
+        } catch (Throwable $e) {
+            error_log('[qoe-flush] tier aggregator error: ' . $e->getMessage());
+        }
     }
 
     // 2. Forward HDCP-needed channels to existing incident endpoint

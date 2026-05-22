@@ -30,6 +30,11 @@
     brightness: { icon: '☀️', name: 'Brightness',          color: '#eab308', desc: 'Video · Screen Brightness' },
     gpu:        { icon: '⚡', name: 'GPU Rendering',       color: '#10b981', desc: 'Hardware Acceleration · Force GPU' },
     power:      { icon: '🔋', name: 'Power',               color: '#64748b', desc: 'Screen Timeout · Keep Alive' },
+    vpn:        { icon: '🔒', name: 'VPN / Xray',          color: '#8b5cf6', desc: 'Always-on VPN · Lockdown (acceso)' },
+    net:        { icon: '🌐', name: 'Red / Sistema',       color: '#0ea5e9', desc: 'TCP rwnd · DNS · Keep-Alive' },
+    afr:        { icon: '🎞️', name: 'AFR Anti-Judder',     color: '#22c55e', desc: 'Match frame rate · clear pinned mode' },
+    qoe:        { icon: '📊', name: 'QoE Telemetry',       color: '#f97316', desc: 'Judder · Rebuffer → heartbeat' },
+    daemon:     { icon: '🛡️', name: 'Daemon Behavior',     color: '#ef4444', desc: 'Kill BW thieves · RAM · TCP tuning' },
   };
 
   const KNOWN_OPTIONS = {
@@ -37,7 +42,7 @@
     'ai_sr_mode': {'0':'Off','1':'Low','2':'Mid','3':'High'},
     'ai_pic_mode': {'0':'Off','1':'Low','2':'Mid','3':'High'},
     'ai_sr_level': {'0':'Off','1':'Low','2':'Mid','3':'High'},
-    'user_preferred_refresh_rate': {'23.976':'23.976','24.0':'24','29.97':'29.97','30.0':'30','50.0':'50','59.94':'59.94','60.0':'60'},
+    'user_preferred_refresh_rate': {'23.976':'23.976','24.0':'24','25.0':'25','29.97':'29.97','30.0':'30','50.0':'50','59.94':'59.94','60.0':'60'},
     'display_color_mode': {'0':'Native','1':'Boosted','2':'Saturated','3':'HDR'},
     'match_content_frame_rate_pref': {'0':'Never','1':'Non-Seamless','2':'Seamless'},
     'hdr_conversion_mode': {'0':'Passthrough','1':'System','2':'SDR','3':'Force'},
@@ -53,7 +58,10 @@
     'sdr_brightness_in_hdr': {min:0,max:100},
     'peak_luminance': {min:100,max:10000},
     'video_brightness': {min:0,max:100},
-    'screen_brightness': {min:0,max:255}
+    'screen_brightness': {min:0,max:255},
+    // [2026-05-21] wired numeric ranges (real/standard; toggles validate 0/1 inherently)
+    'tcp_default_init_rwnd': {min:1,max:1000},
+    'qoe_interval_s': {min:10,max:300}
   };
 
   let lastData = null;
@@ -457,6 +465,9 @@
       </div>` : ''}
     </div>`;
 
+    // ── Codec Cascade Panel (subir CSV → override del SSOT al grabar lista) ──
+    html += codecCascadeSection();
+
     // ── Footer ──
     const hasDirty = dirtyKeys.size > 0;
     html += `
@@ -482,6 +493,84 @@
 
     host.innerHTML = html;
     bindEvents(data);
+  }
+
+  // ── Codec Cascade section (HTML) ───────────────────────────────────────
+  // Lee la cascada ACTIVA del SSOT (window.APE_HEVC_CASCADE). Subir un CSV la
+  // sobreescribe (override) y persiste en localStorage; el generador la usa al
+  // GRABAR la lista (declara CODECS= por tier). NO fuerza el códec físico del
+  // proveedor — solo la DECLARACIÓN/orden de fallback.
+  function codecCascadeSection() {
+    const ssot = (typeof window !== 'undefined' && window.APE_HEVC_CASCADE) || null;
+    const isOpen = expandedGroups.has('codec');
+    if (!ssot || typeof ssot.getActiveCascade !== 'function') {
+      return `
+      <div style="margin-top:10px;border:1px solid rgba(245,158,11,0.3);border-radius:10px;padding:10px 12px;background:rgba(15,23,42,0.5)">
+        <div style="font-size:0.72rem;color:#fbbf24;font-weight:600">🎬 Codec Cascade</div>
+        <div style="font-size:0.58rem;color:#94a3b8;margin-top:4px">SSOT no cargada (ape-hevc-cascade.js). Recarga la página.</div>
+      </div>`;
+    }
+    const cascade = ssot.getActiveCascade() || [];
+    const overridden = ssot.isOverridden && ssot.isOverridden();
+    const rows = cascade.map((t) => `
+      <tr style="border-bottom:1px solid rgba(100,116,139,0.08)">
+        <td style="padding:3px 6px;color:#64748b;font-family:monospace;text-align:center">${t.tier}</td>
+        <td style="padding:3px 6px;color:#34d399;font-family:monospace;white-space:nowrap">${t.codec}</td>
+        <td style="padding:3px 6px;color:#cbd5e1">${t.profile || ''}</td>
+        <td style="padding:3px 6px;color:#94a3b8;text-align:center">${t.level || ''}</td>
+        <td style="padding:3px 6px;color:#94a3b8">${t.capability || t.role || ''}</td>
+      </tr>`).join('');
+
+    return `
+    <div style="margin-top:10px;border:1px solid ${overridden ? 'rgba(245,158,11,0.45)' : 'rgba(52,211,153,0.3)'};border-radius:10px;overflow:hidden;background:rgba(15,23,42,0.5)">
+      <div class="qm-group-header" data-group="codec" style="display:flex;justify-content:space-between;
+        align-items:center;padding:10px 12px;cursor:pointer;background:rgba(15,23,42,0.8);user-select:none">
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="font-size:1rem">🎬</span>
+          <div>
+            <div style="font-size:0.75rem;font-weight:600;color:#e2e8f0">Codec Cascade
+              <span style="font-size:0.55rem;color:#64748b;font-weight:400;margin-left:4px">${cascade.length} tiers · RFC 6381</span>
+              ${overridden ? `<span style="font-size:0.52rem;padding:1px 6px;border-radius:3px;background:rgba(245,158,11,0.2);color:#fbbf24;font-weight:600;margin-left:4px">CSV override</span>` : `<span style="font-size:0.52rem;padding:1px 6px;border-radius:3px;background:rgba(52,211,153,0.15);color:#34d399;margin-left:4px">default SSOT</span>`}
+            </div>
+            <div style="font-size:0.55rem;color:#64748b">Fallback HEVC Main10 → AV1 → HEVC 8bit → H.264 · se aplica al GRABAR la lista</div>
+          </div>
+        </div>
+        <span style="font-size:0.7rem;color:#64748b">${isOpen ? '▾' : '▸'}</span>
+      </div>
+      ${isOpen ? `<div style="padding:10px 12px">
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;align-items:center">
+          <label style="font-size:0.6rem;padding:3px 10px;border-radius:4px;
+            background:rgba(245,158,11,0.15);color:#fbbf24;border:1px solid rgba(245,158,11,0.3);cursor:pointer">
+            ⬆ Subir CSV
+            <input type="file" id="qm-codec-upload" accept=".csv,text/csv" style="display:none">
+          </label>
+          <button id="qm-codec-reset" style="font-size:0.6rem;padding:3px 10px;border-radius:4px;
+            background:rgba(59,130,246,0.15);color:#60a5fa;border:1px solid rgba(59,130,246,0.3);cursor:pointer">
+            ↩ Default SSOT</button>
+          <button id="qm-codec-download" style="font-size:0.6rem;padding:3px 10px;border-radius:4px;
+            background:rgba(16,185,129,0.15);color:#34d399;border:1px solid rgba(16,185,129,0.3);cursor:pointer">
+            ⬇ Descargar actual</button>
+        </div>
+        <div style="font-size:0.55rem;color:#64748b;margin-bottom:8px;line-height:1.4">
+          ⚠ Honestidad: la cascada <strong>declara</strong> <code>CODECS=</code> por tier en cada STREAM-INF al grabar.
+          El códec <strong>físico</strong> lo envía el proveedor — no se puede forzar HEVC si el stream es H.264.
+          Esto fija la <strong>preferencia y el orden de degradación</strong> que el player intenta.
+        </div>
+        <div style="max-height:240px;overflow-y:auto;border:1px solid rgba(100,116,139,0.15);border-radius:6px">
+          <table style="width:100%;border-collapse:collapse;font-size:0.6rem">
+            <thead><tr style="background:rgba(15,23,42,0.9);position:sticky;top:0">
+              <th style="padding:4px 6px;color:#94a3b8;text-align:center">T</th>
+              <th style="padding:4px 6px;color:#94a3b8;text-align:left">Codec String</th>
+              <th style="padding:4px 6px;color:#94a3b8;text-align:left">Profile</th>
+              <th style="padding:4px 6px;color:#94a3b8;text-align:center">Lvl</th>
+              <th style="padding:4px 6px;color:#94a3b8;text-align:left">Capacidad / Rol</th>
+            </tr></thead>
+            <tbody>${rows}</tbody>
+          </table>
+        </div>
+        <div id="qm-codec-status" style="font-size:0.6rem;text-align:center;padding:4px;margin-top:6px;display:none;border-radius:4px"></div>
+      </div>` : ''}
+    </div>`;
   }
 
   // ── Event binding ───────────────────────────────────────────────────
@@ -692,11 +781,106 @@
         v2rayPushBtn.textContent = '📲 Push to ONN';
       });
     }
+
+    // ── Codec Cascade: subir CSV / reset / descargar ──
+    const codecStatus = () => $('#qm-codec-status');
+    const showCodecStatus = (msg, color) => {
+      const el = codecStatus();
+      if (!el) return;
+      el.style.display = 'block';
+      el.style.background = color + '22';
+      el.style.color = color;
+      el.innerHTML = msg;
+    };
+    const ssot = (typeof window !== 'undefined' && window.APE_HEVC_CASCADE) || null;
+
+    const codecUpload = $('#qm-codec-upload');
+    if (codecUpload) {
+      codecUpload.addEventListener('change', (ev) => {
+        const file = ev.target.files && ev.target.files[0];
+        if (!file || !ssot) return;
+        const reader = new FileReader();
+        reader.onload = () => {
+          try {
+            const rows = ssot.parseCascadeCSV(String(reader.result || ''));
+            if (!rows.length) { showCodecStatus('⛔ CSV sin filas válidas (tier 1-12 + codec)', '#f87171'); return; }
+            const res = ssot.setCascade(rows, true); // persiste en localStorage
+            if (!res.ok) { showCodecStatus('⛔ ' + (res.error || 'error'), '#f87171'); return; }
+            showCodecStatus(`✓ Cascada actualizada: ${res.overridden}/${res.tiers} tiers override. Se aplicará al GRABAR la lista.`, '#34d399');
+            setTimeout(() => render(lastData || data), 600);
+          } catch (e) {
+            showCodecStatus('⛔ Error parseando CSV: ' + e.message, '#f87171');
+          }
+        };
+        reader.readAsText(file);
+      });
+    }
+
+    const codecReset = $('#qm-codec-reset');
+    if (codecReset) {
+      codecReset.addEventListener('click', () => {
+        if (!ssot) return;
+        if (!confirm('↩ Restaurar la cascada de codecs al SSOT por defecto (12-tier)?')) return;
+        ssot.resetCascade();
+        showCodecStatus('✓ Cascada restaurada al default SSOT.', '#60a5fa');
+        setTimeout(() => render(lastData || data), 600);
+      });
+    }
+
+    const codecDownload = $('#qm-codec-download');
+    if (codecDownload) {
+      codecDownload.addEventListener('click', () => {
+        if (!ssot) return;
+        const cascade = ssot.getActiveCascade() || [];
+        let csv = 'Tier;Codec String;Profile;Level;Capacidad;Rol\n';
+        cascade.forEach((t) => {
+          csv += `${t.tier};${t.codec};${t.profile || ''};${t.level || ''};${t.capability || t.role || ''};${t.role || ''}\n`;
+        });
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'codec-cascade-actual.csv';
+        document.body.appendChild(a); a.click(); document.body.removeChild(a);
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+      });
+    }
+  }
+
+  // ── [2026-05-21] Input validation: reject non-valid / non-configurable values ──
+  function validateValue(key, value) {
+    const opt = KNOWN_OPTIONS[key];
+    if (!opt) return { ok: true };               // no constraint declared → accept
+    if (opt.min !== undefined && opt.max !== undefined) {
+      const n = Number(value);
+      if (value === '' || isNaN(n)) return { ok: false, reason: 'no numérico' };
+      if (n < opt.min || n > opt.max) return { ok: false, reason: `fuera de rango (${opt.min}-${opt.max})` };
+      return { ok: true };
+    }
+    // select/enum: the option keys are the only valid values
+    if (typeof opt === 'object') {
+      if (Object.prototype.hasOwnProperty.call(opt, String(value))) return { ok: true };
+      return { ok: false, reason: 'opción no válida' };
+    }
+    return { ok: true };
   }
 
   // ── Mark a setting as dirty (changed but not saved) ────────────────
   function markDirty(ns, key, value, el) {
     const id = `${ns}:${key}`;
+    // Validación de entrada — un valor no válido NO se acepta (no entra a pendingChanges)
+    const v = validateValue(key, value);
+    if (!v.ok) {
+      if (el) {
+        el.style.borderColor = '#ef4444';
+        el.style.boxShadow = '0 0 6px rgba(239,68,68,0.55)';
+        el.title = 'Valor no válido: ' + v.reason;
+      }
+      const sb = $('#qm-save-status');
+      if (sb) { sb.style.display = 'block'; sb.style.background = 'rgba(239,68,68,0.12)'; sb.style.color = '#f87171'; sb.textContent = `⛔ ${key}: VALOR NO VÁLIDO (${v.reason})`; }
+      return;
+    }
+    if (el) { el.style.borderColor = ''; el.style.boxShadow = ''; el.title = ''; }
     dirtyKeys.add(id);
     pendingChanges[id] = { ns, key, value };
     
@@ -739,11 +923,25 @@
     saveBtn.textContent = '⏳ Guardando...';
     saveBtn.disabled = true;
 
-    // Build full manifest from embedded MANIFEST + any overrides
-    const manifest = MANIFEST.map(([ns, key, expected, group, label, type]) => {
-      const override = pendingChanges[`${ns}:${key}`];
-      return { ns, key, value: override ? override.value : expected, group, label, type };
+    // [FIX 2026-05-21] Build manifest from the LIVE current state (lastData) + overrides.
+    // NEVER from the embedded MANIFEST: those are stale defaults, and using them made
+    // every untouched setting revert to the hardcoded value on save ("vuelve al anterior").
+    const liveSettings = (lastData && Array.isArray(lastData.settings) && lastData.settings.length)
+      ? lastData.settings
+      : MANIFEST.map(([ns, key, expected, group, label, type]) => ({ ns, key, current: expected, expected, group, label, type }));
+    const manifest = liveSettings.map((s) => {
+      const baseVal = (s.current !== null && s.current !== undefined && s.current !== '') ? s.current : s.expected;
+      const override = pendingChanges[`${s.ns}:${s.key}`];
+      return { ns: s.ns, key: s.key, value: override ? override.value : baseVal, group: s.group, label: s.label, type: s.type };
     });
+
+    // Snapshot de la cascada de codecs ACTIVA (default o override CSV) para
+    // respaldarla en el VPS junto al manifest. El generador la usa via localStorage
+    // al GRABAR; este backup permite que sobreviva reboots / otro navegador.
+    const _ssotCascade = (typeof window !== 'undefined' && window.APE_HEVC_CASCADE) || null;
+    const codec_cascade = (_ssotCascade && typeof _ssotCascade.getActiveCascade === 'function')
+      ? _ssotCascade.getActiveCascade()
+      : null;
 
     try {
       let savedLocally = false;
@@ -783,7 +981,7 @@
                 method: 'POST',
                 cache: 'no-store',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ manifest, ts: new Date().toISOString(), local_sync: true }),
+                body: JSON.stringify({ manifest, codec_cascade, ts: new Date().toISOString(), local_sync: true }),
               }).catch(e => console.warn('[QM] Background VPS sync failed:', e));
 
               setTimeout(refresh, 1500);
@@ -805,7 +1003,7 @@
           method: 'POST',
           cache: 'no-store',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ manifest, ts: new Date().toISOString() }),
+          body: JSON.stringify({ manifest, codec_cascade, ts: new Date().toISOString() }),
         });
         const d = await r.json();
 

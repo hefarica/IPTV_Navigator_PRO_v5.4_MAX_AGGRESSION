@@ -36,6 +36,7 @@ local function flush_callback(premature)
 
         -- ── Aggregate per channel ──
         local per_channel = {}          -- chId → {vst_sum, vst_count, vst_max, rebuf, req, err, bps_sum, bps_count}
+        local channel_profile = {}      -- chId → "P0".."P5" (Feature 1: from observer X-APE-Profile capture)
         local hdcp_needed = {}          -- list of {channel_id, vst_ms}
         local keys_to_delete = {}
 
@@ -80,6 +81,24 @@ local function flush_callback(premature)
                 local v = tonumber(dict:get(k)) or 0
                 table.insert(hdcp_needed, { channel_id = chId, vst_ms = v, channel_name = "CH-" .. chId })
                 table.insert(keys_to_delete, k)
+            elseif prefix == "prof" then
+                -- [Feature 1] channel→profile mapping. Do NOT delete (persists across cycles, TTL 1h).
+                channel_profile[chId] = tostring(dict:get(k) or "")
+            elseif prefix == "cerr" then   -- [F5] 4xx count
+                local r = per_channel[chId] or {}; r.cerr = (r.cerr or 0) + (tonumber(dict:get(k)) or 0); per_channel[chId] = r
+                table.insert(keys_to_delete, k)
+            elseif prefix == "serr" then   -- [F5] 5xx count
+                local r = per_channel[chId] or {}; r.serr = (r.serr or 0) + (tonumber(dict:get(k)) or 0); per_channel[chId] = r
+                table.insert(keys_to_delete, k)
+            elseif prefix == "redir" then  -- [F5] 302/301 count
+                local r = per_channel[chId] or {}; r.redir = (r.redir or 0) + (tonumber(dict:get(k)) or 0); per_channel[chId] = r
+                table.insert(keys_to_delete, k)
+            elseif prefix == "latsum" then -- [F5] upstream latency sum (ms)
+                local r = per_channel[chId] or {}; r.latsum = (r.latsum or 0) + (tonumber(dict:get(k)) or 0); per_channel[chId] = r
+                table.insert(keys_to_delete, k)
+            elseif prefix == "latcnt" then -- [F5] upstream latency count
+                local r = per_channel[chId] or {}; r.latcnt = (r.latcnt or 0) + (tonumber(dict:get(k)) or 0); per_channel[chId] = r
+                table.insert(keys_to_delete, k)
             end
             ::continue::
         end
@@ -89,14 +108,20 @@ local function flush_callback(premature)
         for chId, r in pairs(per_channel) do
             local vst_avg = (r.vst_count and r.vst_count > 0) and math.floor(r.vst_sum / r.vst_count) or 0
             local bps_avg = (r.bps_count and r.bps_count > 0) and math.floor(r.bps_sum / r.bps_count) or 0
+            local lat_avg = (r.latcnt and r.latcnt > 0) and math.floor(r.latsum / r.latcnt) or 0  -- [F5]
             table.insert(metrics, {
                 channel_id     = chId,
+                profile        = (channel_profile[chId] ~= "" and channel_profile[chId]) or "P3",  -- Feature 1
                 vst_proxy_avg  = vst_avg,
                 vst_proxy_max  = r.vst_max or 0,
                 rebuffer_count = r.rebuf or 0,
                 request_count  = r.req or 0,
                 error_count    = r.err or 0,
                 bitrate_avg_bps = bps_avg,
+                err4xx         = r.cerr or 0,    -- [F5] client errors
+                err5xx         = r.serr or 0,    -- [F5] upstream errors
+                redirect_count = r.redir or 0,   -- [F5] 302/301 churn
+                seg_latency_ms = lat_avg,        -- [F5] avg upstream segment latency
             })
         end
 
