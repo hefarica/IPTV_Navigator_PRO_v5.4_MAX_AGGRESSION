@@ -55,8 +55,8 @@ function Invoke-Adb {
 function Install-ScheduledTask {
     $taskName = "APE_UHDX_Watchdog_Unified"
     $ps = (Get-Command powershell.exe).Source
-    $args = "-NoProfile -ExecutionPolicy Bypass -File `"$PSCommandPath`" -RunOnce -OnnIp `"$OnnIp`""
-    $action = New-ScheduledTaskAction -Execute $ps -Argument $args
+    $taskArgs = "-NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$PSCommandPath`" -RunOnce -OnnIp `"$OnnIp`""
+    $action = New-ScheduledTaskAction -Execute $ps -Argument $taskArgs
     $trigger = New-ScheduledTaskTrigger -Once -At (Get-Date).AddMinutes(1) -RepetitionInterval (New-TimeSpan -Minutes 1)
     $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -MultipleInstances IgnoreNew -StartWhenAvailable
     Register-ScheduledTask -TaskName $taskName -Action $action -Trigger $trigger -Settings $settings -Description "Revive APE UHDX Sentinel on ONN 4K every minute" -Force | Out-Null
@@ -76,16 +76,16 @@ function Test-OnnConnection {
 
 function Get-RemotePid {
     $pidText = Invoke-Adb @("-s", $OnnIp, "shell", "cat $RemoteLock 2>/dev/null")
-    $pid = ($pidText.Trim() -replace "`r","" -replace "`n","")
-    if ($pid -match "^\d+$") { return $pid }
+    $remotePid = ($pidText.Trim() -replace "`r","" -replace "`n","")
+    if ($remotePid -match "^\d+$") { return $remotePid }
     return $null
 }
 
 function Test-DaemonAlive {
-    $pid = Get-RemotePid
-    if (-not $pid) { return $false }
+    $remotePid = Get-RemotePid
+    if (-not $remotePid) { return $false }
 
-    $check = Invoke-Adb @("-s", $OnnIp, "shell", "kill -0 $pid 2>/dev/null; echo `$?")
+    $check = Invoke-Adb @("-s", $OnnIp, "shell", "kill -0 $remotePid 2>/dev/null; echo `$?")
     if ($check.Trim() -eq "0") {
         return $true
     }
@@ -143,8 +143,8 @@ function Start-Daemon {
     Start-Sleep -Seconds 3
 
     if (Test-DaemonAlive) {
-        $pid = Get-RemotePid
-        Write-Log "RESURRECTED: unified daemon alive pid=$pid"
+        $remotePid = Get-RemotePid
+        Write-Log "RESURRECTED: unified daemon alive pid=$remotePid"
         return $true
     }
 
@@ -153,7 +153,7 @@ function Start-Daemon {
 }
 
 function Read-RemoteState {
-    $cmd = "printf 'ai_sr_level='; settings get global ai_sr_level; printf 'hdr_conversion_mode='; settings get global hdr_conversion_mode; printf 'always_hdr='; settings get global always_hdr; printf 'peak_luminance='; settings get global peak_luminance; printf 'chroma='; settings get global color_mode_ycbcr422; printf 'tun0='; if ip addr show tun0 >/dev/null 2>&1; then echo UP; else echo DOWN; fi; printf 'mem='; awk '/MemAvailable/{printf \"%d\n\", `$2/1024}' /proc/meminfo"
+    $cmd = 'printf ''ai_sr_level=''; settings get global ai_sr_level; printf ''hdr_conversion_mode=''; settings get global hdr_conversion_mode; printf ''always_hdr=''; settings get global always_hdr; printf ''peak_luminance=''; settings get global peak_luminance; printf ''chroma=''; settings get global color_mode_ycbcr422; printf ''tun0=''; if ip addr show tun0 >/dev/null 2>&1; then echo UP; else echo DOWN; fi; printf ''mem=''; awk ''/MemAvailable/{print int($2/1024)}'' /proc/meminfo'
     return Invoke-Adb @("-s", $OnnIp, "shell", $cmd)
 }
 
@@ -194,10 +194,17 @@ try {
         return
     }
 
+    # Ensure chisel reverse tunnel is alive (VPS watchdog depends on it)
+    $chiselStatus = Invoke-Adb @("-s", $OnnIp, "shell", "/data/local/tmp/ape-chisel-client.sh status 2>/dev/null || echo dead")
+    if ($chiselStatus.Trim() -match "^dead|^$") {
+        Write-Log "CHISEL_DEAD: relaunching reverse tunnel"
+        Invoke-Adb @("-s", $OnnIp, "shell", "/data/local/tmp/ape-chisel-client.sh daemon") | Out-Null
+    }
+
     $alive = Test-DaemonAlive
     if ($alive) {
-        $pid = Get-RemotePid
-        Write-Log "OK: unified daemon alive pid=$pid"
+        $remotePid = Get-RemotePid
+        Write-Log "OK: unified daemon alive pid=$remotePid"
         $state = Read-RemoteState
         Send-Heartbeat -GuardianState "alive" -DaemonAlive $true -RemoteState $state
         return
