@@ -1957,6 +1957,36 @@
                   </div>
                 </div>
 
+                <!-- MAX QUALITY OVERRIDE -->
+                <div style="padding: 14px; background: linear-gradient(135deg, rgba(139,92,246,0.15), rgba(109,40,217,0.15)); border-radius: 12px; border: 1px solid rgba(139,92,246,0.4); margin-bottom: 12px;">
+                  <div class="panel-title" style="font-size: 0.85rem; margin-bottom: 10px; color: #c4b5fd;">⚡ MAX QUALITY OVERRIDE</div>
+                  <div style="display: flex; flex-direction: column; gap: 10px;">
+                    <label style="display: flex; align-items: flex-start; gap: 10px; cursor: pointer; font-size: 0.82rem;">
+                      <input type="checkbox" id="ape-max-quality-toggle" style="width: 18px; height: 18px; margin-top: 2px; accent-color: #8b5cf6;">
+                      <div style="display: flex; flex-direction: column;">
+                        <strong style="color: #8b5cf6;">MAX QUALITY OVERRIDE</strong>
+                        <div style="color: #9ca3af; font-size: 0.75rem; margin-top: 2px;">
+                          Fuerza 8K, Dolby Vision, Atmos, cascada 18 codecs y LL-HLS en todos los canales. Compatible ~35% de players (ExoPlayer/Kodi premium). Incompatible con VLC/TiviMate básico.
+                        </div>
+                      </div>
+                    </label>
+                  </div>
+                </div>
+                <script>
+                  (function () {
+                    var _mqToggle = document.getElementById('ape-max-quality-toggle');
+                    if (_mqToggle) {
+                      _mqToggle.addEventListener('change', function () {
+                        window.APE_PROFILES_CONFIG = window.APE_PROFILES_CONFIG || {};
+                        window.APE_PROFILES_CONFIG.maxQualityMode = _mqToggle.checked;
+                        if (window.GenTabController && typeof window.GenTabController.setConfig === 'function') {
+                          window.GenTabController.setConfig({ maxQualityMode: _mqToggle.checked });
+                        }
+                      });
+                    }
+                  })();
+                </script>
+
                 <!-- PRO STREAMING OPTIONS -->
                 <div
                   style="padding: 14px; background: linear-gradient(135deg, rgba(59,130,246,0.15), rgba(16,185,129,0.15)); border-radius: 12px; border: 1px solid rgba(59,130,246,0.3);">

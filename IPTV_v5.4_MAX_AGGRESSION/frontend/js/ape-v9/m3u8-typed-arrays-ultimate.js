@@ -2583,6 +2583,43 @@
             : [];
         const _disneyBlockFb = _disneyLinesFb.length > 0 ? _disneyLinesFb.join('\n') + '\n' : '';
 
+        // ── MAX_QUALITY MODE interceptor — override cabecera completa ──────────────────────
+        // Activo solo cuando toggle "MAX QUALITY OVERRIDE" está encendido.
+        // Reduce compatibilidad ~35% a cambio de forzar DV/Atmos/LL-HLS/8K en header.
+        if (options && options.maxQualityMode) {
+            const _mqTs = timestamp;
+            return `#EXTM3U x-tvg-url="" x-tvg-url-epg="" x-tvg-logo="" x-tvg-shift=0 catchup="flussonic" catchup-days="7" catchup-source="{MediaUrl}?utc={utc}&lutc={lutc}" url-tvg="" refresh="1800"
+#EXT-X-VERSION:9
+#EXT-X-INDEPENDENT-SEGMENTS
+#EXT-X-START:TIME-OFFSET=-3.0,PRECISE=YES
+#EXT-X-SERVER-CONTROL:CAN-BLOCK-RELOAD=YES,PART-HOLD-BACK=0.5,CAN-SKIP-UNTIL=6.0,HOLD-BACK=1.5
+#EXT-X-SESSION-DATA:DATA-ID="exoplayer.load_control",VALUE="{\\"minBufferMs\\":45000,\\"bufferForPlaybackMs\\":500,\\"bufferForPlaybackAfterRebufferMs\\":1000,\\"maxBufferMs\\":130000}"
+#EXT-X-SESSION-DATA:DATA-ID="exoplayer.track_selection",VALUE="{\\"maxDurationForQualityDecreaseMs\\":500,\\"minDurationForQualityIncreaseMs\\":3000,\\"bandwidthFraction\\":0.95}"
+#EXT-X-SESSION-DATA:DATA-ID="exoplayer.bandwidth_meter",VALUE="{\\"resetOnNetworkTypeChange\\":false,\\"slidingWindowMaxWeight\\":2000,\\"initialBitrateEstimate\\":120000000}"
+#EXT-X-SESSION-DATA:DATA-ID="hls.js.config",VALUE="{\\"maxBufferLength\\":130,\\"maxMaxBufferLength\\":600,\\"abrBandWidthFactor\\":0.95,\\"abrBandWidthUpFactor\\":0.95,\\"lowLatencyMode\\":true}"
+#EXT-X-SESSION-DATA:DATA-ID="com.ape.codec.chain.player_pref",VALUE="dvh1,hvc1,av01,avc1,h265,h264"
+#EXT-X-SESSION-DATA:DATA-ID="com.ape.codec.chain.audio",VALUE="ec-3,ac-3,mp4a.40.2,mp4a.40.5"
+#EXT-X-SESSION-DATA:DATA-ID="com.ape.codec.chain.hdr",VALUE="dv,hdr10plus,hdr10,hlg,sdr"
+#EXT-X-SESSION-DATA:DATA-ID="com.ape.build",VALUE="v5.4-MAX-QUALITY-OVERRIDE"
+#EXT-X-APE-ANTI-FREEZE-NUCLEAR
+#EXT-X-APE-MULTI-SOURCE:ENABLED|FAILOVER=30ms|RECONNECT=200
+#EXT-X-APE-BUFFER-STRATEGY:NUCLEAR_NO_COMPROMISE|MIN=65s|TARGET=130s
+#EXT-X-APE-QMAX-STRATEGY:GREEDY-BEST-AVAILABLE|FACTOR=0.95
+#EXT-X-APE-LCEVC:PHASE=4,ENABLED=true,ENHANCEMENT=ULTRA,SHARPNESS=1.0
+#EXT-X-APE-HDR-STRATEGY:DV_FIRST|HDR10PLUS|HDR10|HLG|SDR_FALLBACK
+#EXT-X-APE-ATMOS:ENABLED=true,PASSTHROUGH=true,CHANNELS=7.1.4,OBJECT_AUDIO=true
+#EXT-X-APE-DOLBY-VISION:ENABLED=true,PROFILE=8,LEVEL=6,CROSS_COMPATIBLE=true
+#EXT-X-SYS-LAYERS:EXTVLCOPT,KODIPROP,EXT-X-APE,EXT-X-START,LL-HLS,LCEVC,DV,ATMOS
+#EXT-X-SYS-AUDIO-CODEC-PRIORITY:ec-3,ac-3,mp4a.40.2
+#EXT-X-SYS-VIDEO-CODEC-PRIORITY:dvh1,hvc1,av01,avc1
+#EXT-X-CONTENT-STEERING:SERVER-URI="https://iptv-ape.duckdns.org/prisma/api/content-steering.php",PATHWAY-ID="omega-maxq"
+#EXT-X-DEFINE:NAME="OMEGA_EPOCH",VALUE="${_mqTs}"
+#EXT-X-DEFINE:NAME="OMEGA_COMPLIANCE",VALUE="HLS-RFC8216BIS+CMAF-LL+DV-P8+LCEVC-P4+ATMOS"
+#EXT-X-DATERANGE:ID="omega-live-maxq",X-OMEGA-TYPE="LIVE-CATCHUP",X-HDR-TYPE="DV-P8+HDR10+",X-HDR-MAX-CLL=10000
+#EXT-X-KEY:METHOD=NONE
+#EXT-X-SESSION-KEY:METHOD=NONE`;
+        }
+
         return `#EXTM3U x-tvg-url="" x-tvg-url-epg="" x-tvg-logo="" x-tvg-shift=0 catchup="flussonic" catchup-days="7" catchup-source="{MediaUrl}?utc={utc}&lutc={lutc}" url-tvg="" refresh="1800"
 #EXT-X-VERSION:9
 #EXT-X-INDEPENDENT-SEGMENTS
@@ -7410,6 +7447,8 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
         //   P2/P3 (4K/FHD):    hevc,h264       - tier medio, HEVC + AVC
         //   P4/P5 (HD/SD):     h264            - tier bajo, AVC universal
         const _codecPriority = (() => {
+            // MAX_QUALITY: fuerza DV + HEVC + AV1 en todos los perfiles (GOLDEN RULE: family names)
+            if (options && options.maxQualityMode) return 'hevc,dvhe,av1,h264';
             const p = String(profile || 'P3').toUpperCase();
             if (p === 'P0' || p === 'P1') return 'hevc,av1,h264';
             if (p === 'P2' || p === 'P3') return 'hevc,h264';
@@ -8052,6 +8091,18 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
         lines.push(`#KODIPROP:inputstream.adaptive.chooser_bandwidth_max=${_bw796}`);
         lines.push(`#KODIPROP:inputstream.adaptive.media_renewal_time=60`);
         lines.push(`#KODIPROP:inputstream.adaptive.manifest_config={"buffer_assured_duration":60,"buffer_max_duration":120,"connect_timeout":15,"read_timeout":60,"retry_count":99,"reconnect":true,"chunk_size":1048576}`);
+
+        // ── MAX_QUALITY MODE: KODIPROP overrides (activo solo si toggle ON) ──────────────
+        // Override audio_dolby_atmos=false y eac3=false del bloque base.
+        // Kodi ISA toma el ÚLTIMO valor para keys duplicadas.
+        if (options && options.maxQualityMode) {
+            const _mqVChain = 'dvh1.08.06,dvh1.05.09,hvc1.2.4.L186.B0,hvc1.2.4.L183.B0,hvc1.2.4.L180.B0,hvc1.2.4.L156.B0,hvc1.2.4.L153.B0,hvc1.2.4.L150.B0,hvc1.2.4.L123.B0,hvc1.2.4.L120.B0,hvc1.1.6.L153.B0,hvc1.1.6.L120.B0,hvc1.2.4.L93.B0,hvc1.2.4.L90.B0,av01.0.13M.10.0.110.09.16.09.0,av01.0.09M.10.0.110.09.16.09.0,avc1.640033,avc1.640028';
+            lines.push(`#KODIPROP:inputstream.adaptive.audio_dolby_atmos=true`);
+            lines.push(`#KODIPROP:inputstream.adaptive.audio_eac3=true`);
+            lines.push(`#KODIPROP:inputstream.adaptive.live_delay=1`);
+            lines.push(`#EXT-X-APE-AUDIO:CODEC=ec-3,CHANNELS=7.1.4,ATMOS=true`);
+            lines.push(`#EXT-X-CMAF:CODECS="${_mqVChain},ec-3",BANDWIDTH=${_bw796},RESOLUTION=${_res796}`);
+        }
 
         // ════════════════════════════════════════════════════════════════════════
         // L3.6 — KODIPROP — manifest_headers + stream_headers (Kodi sintaxis estricta)
@@ -9207,6 +9258,19 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
         // F5 prohíbe STREAM-INF (canal solo con EXTINF + URL original).
         // Legacy fallback SIN mentiras hardcoded (HDCP-LEVEL/SUPPLEMENTAL-CODECS solo si truth los verifica).
         let _streamInfLine = null;
+        // ── MAX_QUALITY MODE: STREAM-INF con cascada DV+HEVC 18 codecs ──────────────────
+        // GOLDEN RULE respetada: dvh1/hvc1/avc1 en CODECS= (manifest parser safe).
+        // hev1 NUNCA en STREAM-INF. ec-3 en CODECS= es RFC-válido para audio DDP.
+        if (options && options.maxQualityMode) {
+            const _mqVideoChain = 'dvh1.08.06,dvh1.05.09,hvc1.2.4.L186.B0,hvc1.2.4.L183.B0,hvc1.2.4.L180.B0,hvc1.2.4.L156.B0,hvc1.2.4.L153.B0,hvc1.2.4.L150.B0,hvc1.2.4.L123.B0,hvc1.2.4.L120.B0,hvc1.1.6.L153.B0,hvc1.1.6.L120.B0,hvc1.2.4.L93.B0,hvc1.2.4.L90.B0,av01.0.13M.10.0.110.09.16.09.0,av01.0.09M.10.0.110.09.16.09.0,avc1.640033,avc1.640028';
+            const _mqCodecFirst = _mqVideoChain.split(',')[0]; // dvh1.08.06
+            const _mqBwMap = { 'P0': 120000000, 'P1': 80000000, 'P2': 50000000, 'P3': 25000000, 'P4': 15000000, 'P5': 8000000 };
+            const _mqBw = _mqBwMap[String(profile || 'P3').toUpperCase()] || 25000000;
+            const _mqResMap = { 'P0': '7680x4320', 'P1': '3840x2160', 'P2': '3840x2160', 'P3': '1920x1080', 'P4': '1280x720', 'P5': '854x480' };
+            const _mqRes = _mqResMap[String(profile || 'P3').toUpperCase()] || '1920x1080';
+            const _mqFps = (String(profile || 'P3').toUpperCase() === 'P0') ? 120 : 60;
+            _streamInfLine = `#EXT-X-STREAM-INF:BANDWIDTH=${_mqBw},AVERAGE-BANDWIDTH=${Math.round(_mqBw * 0.8)},CODECS="${_mqCodecFirst},ec-3",RESOLUTION=${_mqRes},FRAME-RATE=${_mqFps}.000,HDCP-LEVEL=${_hdcpLevel},STABLE-VARIANT-ID="${_stableVariantId}"`;
+        }
         const _R_emit = (typeof window !== 'undefined') ? window.APEFallbackResolver : null;
         if (_apeTruth && _R_emit && typeof _R_emit.emitApeFallbackTags === 'function') {
             const _apeTags = _R_emit.emitApeFallbackTags(_apeTruth);
@@ -10135,6 +10199,7 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
                     const cfg = window.GenTabController ? window.GenTabController.getConfig() : {};
                     options.dictatorMode = cfg.dictatorMode || false;
                     options.dictatorTier = cfg.dictatorTier || '4k';
+                    options.maxQualityMode = cfg.maxQualityMode || (typeof document !== 'undefined' && document.getElementById?.('ape-max-quality-toggle')?.checked) || false;
                     // ✅ FIX: Llamar método getFilteredChannels() para obtener canales filtrados actuales
                     let channels = [];
 
