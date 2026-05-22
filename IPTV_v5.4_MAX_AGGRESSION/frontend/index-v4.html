@@ -3042,9 +3042,20 @@
                 }
             }
 
+            function _codecLabel(codec) {
+                if (!codec) return '';
+                if (/hvc1\.2\.4\.L153|hev1\.2\.4\.L153/.test(codec)) return 'HEVC 4K';
+                if (/hvc1\.2\.4\.L120|hev1\.2\.4\.L120/.test(codec)) return 'HEVC 1080p';
+                if (/hvc1\.2\.4\.L93|hev1\.2\.4\.L93/.test(codec)) return 'HEVC 720p';
+                if (/hvc1\.1\.|hev1\.1\./.test(codec)) return 'HEVC 8bit';
+                if (/^avc1/.test(codec)) return 'AVC';
+                if (/^av01/.test(codec)) return 'AV1';
+                return codec.substring(0, 14);
+            }
+
             function fetchGuardianTelemetry() {
                 const proxyUrl = "https://iptv-ape.duckdns.org/guardian.php";
-                
+
                 fetch(proxyUrl, { cache: 'no-store' })
                     .then(res => {
                         if(!res.ok) throw new Error("HTTP " + res.status);
@@ -3056,25 +3067,38 @@
                         document.getElementById('ape16-ts-dot').style.boxShadow = '0 0 8px #4ade80';
                         document.getElementById('ape16-ts-text').textContent = 'Online / Sync';
                         document.getElementById('ape16-ts-text').style.color = '#4ade80';
-                        
+
                         // Metrics Snapshot Diff
                         let sess = typeof data.active_sessions === 'number' ? data.active_sessions : (data.active_channels ? Object.keys(data.active_channels).length : 0);
                         updateMetricExchange('ape16-ts-sessions', sess, 'rgba(148, 163, 184, 0.4)');
                         updateMetricExchange('ape16-ts-bandwidth', data.avg_bandwidth_mbps || '0.0', 'rgba(56, 189, 248, 0.4)');
                         updateMetricExchange('ape16-ts-latency', data.avg_latency_ms || '0', 'rgba(74, 222, 128, 0.4)');
                         updateMetricExchange('ape16-ts-errors', data.total_errors || '0', 'rgba(248, 113, 113, 0.4)');
-                        
+
+                        // Event Log — render logs del servidor
+                        const logBox = document.getElementById('ape16-ts-log');
+                        if (data.logs && data.logs.length > 0) {
+                            logBox.innerHTML = '';
+                            data.logs.forEach(line => {
+                                const d = document.createElement('div');
+                                d.style.cssText = 'border-bottom:1px solid rgba(100,116,139,0.1);padding-bottom:2px;';
+                                d.style.color = line.startsWith('PLAY') ? '#6ee7b7' : '#94a3b8';
+                                d.textContent = line;
+                                logBox.appendChild(d);
+                            });
+                        }
+
                         // Active Channels Snapshot
                         const channelsBox = document.getElementById('ape16-ts-channels');
-                        
+
                         if (data.active_channels && Object.keys(data.active_channels).length > 0) {
                             // Limpiar placeholder de 'Ningún canal...'
                             if(channelsBox.innerHTML.includes('Ningún canal')) channelsBox.innerHTML = '';
-                            
+
                             for (const cid in data.active_channels) {
                                 const c = data.active_channels[cid];
                                 let row = document.getElementById('ts-ch-row-' + cid);
-                                
+
                                 if (!row) {
                                     // Crear si no existe
                                     let realName = "";
@@ -3085,26 +3109,37 @@
                                         }
                                         if (chan) realName = chan.name || chan.tvg_name || "";
                                     }
-                                    let displayName = realName ? `ID: ${cid} - ${realName.substring(0,40)}` : (c.name || `CH: ${cid}`);
-                                    
+                                    let displayName = realName ? `ID: ${cid} - ${realName.substring(0,38)}` : (c.name || `CH: ${cid}`);
+
                                     const el = document.createElement('div');
                                     el.id = 'ts-ch-row-' + cid;
-                                    el.style.cssText = "display: flex; justify-content: space-between; align-items: center; padding: 6px 8px; background: rgba(16, 185, 129, 0.05); border-left: 2px solid #4ade80; border-radius: 4px; transition: background 0.3s; margin-bottom: 4px;";
-                                    
+                                    el.style.cssText = "display:flex;justify-content:space-between;align-items:center;padding:5px 8px;background:rgba(16,185,129,0.05);border-left:2px solid #4ade80;border-radius:4px;transition:background 0.3s;margin-bottom:4px;gap:6px;";
+
                                     const nameSpan = document.createElement('span');
-                                    nameSpan.style.cssText = "font-size: 0.75rem; color: #a7f3d0; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 70%;";
+                                    nameSpan.style.cssText = "font-size:0.75rem;color:#a7f3d0;font-weight:bold;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;min-width:0;";
                                     nameSpan.textContent = displayName;
-                                    
+
+                                    const rightDiv = document.createElement('div');
+                                    rightDiv.style.cssText = "display:flex;align-items:center;gap:5px;flex-shrink:0;";
+
+                                    const codecSpan = document.createElement('span');
+                                    codecSpan.id = 'ts-ch-codec-' + cid;
+                                    const cl = _codecLabel(c.codec || '');
+                                    codecSpan.style.cssText = "font-size:0.6rem;font-family:monospace;color:#a5b4fc;background:rgba(139,92,246,0.2);padding:1px 5px;border-radius:3px;white-space:nowrap;" + (cl ? '' : 'display:none;');
+                                    codecSpan.textContent = cl;
+
                                     const latSpan = document.createElement('span');
                                     latSpan.id = 'ts-ch-lat-' + cid;
-                                    latSpan.style.cssText = "font-size: 0.7rem; color: " + (c.lat > 500 ? "#fbbf24" : "#4ade80") + "; font-family: monospace; transition: all 0.3s;";
+                                    latSpan.style.cssText = "font-size:0.7rem;color:" + (c.lat > 500 ? "#fbbf24" : "#4ade80") + ";font-family:monospace;transition:all 0.3s;white-space:nowrap;";
                                     latSpan.textContent = c.lat + "ms";
-                                    
+
+                                    rightDiv.appendChild(codecSpan);
+                                    rightDiv.appendChild(latSpan);
                                     el.appendChild(nameSpan);
-                                    el.appendChild(latSpan);
+                                    el.appendChild(rightDiv);
                                     channelsBox.appendChild(el);
                                 } else {
-                                    // Exchange Diff update: Actualizar solo variaciones de latencia
+                                    // Exchange Diff update
                                     const latSpan = document.getElementById('ts-ch-lat-' + cid);
                                     if (latSpan && latSpan.textContent !== c.lat + "ms") {
                                         latSpan.textContent = c.lat + "ms";
@@ -3112,9 +3147,14 @@
                                         latSpan.style.textShadow = "0 0 5px rgba(255,255,255,0.8)";
                                         setTimeout(() => { latSpan.style.textShadow = "none"; }, 200);
                                     }
+                                    const codecSpan = document.getElementById('ts-ch-codec-' + cid);
+                                    if (codecSpan && c.codec) {
+                                        const cl = _codecLabel(c.codec);
+                                        if (codecSpan.textContent !== cl) { codecSpan.textContent = cl; codecSpan.style.display = ''; }
+                                    }
                                 }
                             }
-                            
+
                             // Remover canales obsoletos
                             Array.from(channelsBox.children).forEach(child => {
                                 if (child.id && child.id.startsWith('ts-ch-row-')) {
