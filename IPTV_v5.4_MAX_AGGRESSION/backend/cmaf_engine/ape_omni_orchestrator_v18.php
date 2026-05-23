@@ -279,7 +279,7 @@ class ApeOmniOrchestratorV18
         $codec       = $channelConfig['codec_primary'] ?? 'avc1.640028,mp4a.40.2';
         $resolution  = $channelConfig['resolution']    ?? '1920x1080';
         $bitrate     = $channelConfig['video_bitrate'] ?? 5000000;
-        $frameRate   = $channelConfig['frame_rate']    ?? 25;
+        $frameRate   = $channelConfig['frame_rate']    ?? 120; // [22.6.0-MEMC-TOTAL-8K120] default 25→120 para activar MEMC hardware TV
         $lcevcEnabled = (bool)($channelConfig['lcevc_enabled'] ?? false);
         $lcevcState   = $channelConfig['lcevc_state']  ?? 'OFF';
         $hdrProfile   = $channelConfig['hdr_profile']  ?? 'SDR';

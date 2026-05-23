@@ -44,7 +44,7 @@ local CACHE_TTL    = 60  -- s
 -- Tier number del slot CORONA en la tabla de 13 tiers (1-indexed ascending).
 -- T9 = hvc1.2.4.L153.B0 = 4K@60 UHD — slot de referencia para P0/P1 y
 -- virtual_4k. Debe coincidir con CORONA_TIER_NUMBER de ape-hevc-cascade.js.
-local CORONA_TIER  = 9
+local CORONA_TIER  = 10 -- [22.6.0-MEMC-TOTAL-8K120] Elevado de T9(4K@60) a T10(4K@120) para MEMC hardware
 
 -- ── DEFAULT_CASCADE (13-tier ascending) ──────────────────────────────────
 -- Replica exacta de HEVC_CASCADE_13TIER en ape-hevc-cascade.js (2026-05-22).

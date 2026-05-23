@@ -207,7 +207,7 @@ class MetadataEngine {
         if (preg_match('/FRAME-RATE=([0-9\.]+)/', $attr, $m)) {
             $res['fps'] = (float)$m[1];
         } else {
-            $res['fps'] = 25.0; // fallback standard
+            $res['fps'] = 120.0; // [22.6.0-MEMC-TOTAL-8K120] fallback 25→120 MEMC
         }
 
         return $res;
@@ -290,7 +290,7 @@ class MetadataEngine {
     }
 
     public function classifyByFPS(float $fps): string {
-        if ($fps >= 50.0) return 'high_motion';
+        if ($fps >= 100.0) return 'high_motion'; // [22.6.0-MEMC-TOTAL-8K120] 50→100
         if ($fps >= 25.0) return 'standard';
         return 'cinema';
     }
@@ -305,7 +305,7 @@ class MetadataEngine {
         $audioChannels = $meta['audio_channels'] ?? 2;
         $duration = $meta['duration'] ?? 0;
 
-        if ($fps >= 50 && $bandwidth > 8000000) {
+        if ($fps >= 100 && $bandwidth > 8000000) { // [22.6.0-MEMC-TOTAL-8K120]
             $signals[] = ['type' => 'DEPORTES', 'weight' => 0.4, 'reason' => 'high_fps+high_bitrate'];
             $score += 0.4;
         }
