@@ -20,7 +20,7 @@
 (function () {
     'use strict';
 
-    const VERSION = '22.5.0-MEMC-UNIVERSAL';
+    const VERSION = '22.6.0-MEMC-TOTAL-8K120';
 
     // ═══════════════════════════════════════════════════════════════════════════
     // 🔱 CASCADA DUAL HEVC — Single Source of Truth (2026-05-22)
@@ -7516,9 +7516,9 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
         //   HDR (PQ/HLG): zscale + gradfun (deband, evita banding HDR) + unsharp sutil
         //   SDR: zscale + unsharp (sharpen +0.4) + hqdn3d (NR temporal sin blur)
         if (_isPqHdr) {
-            lines.push(`#EXTVLCOPT:video-filter=zscale=transfer=st2084:chromal=topleft:matrix=2020_ncl:primaries=2020:range=limited,gradfun=radius=12:strength=0.6,unsharp=lx=3:ly=3:la=0.3`);
+            lines.push(`#EXTVLCOPT:video-filter=zscale=transfer=st2084:chromal=topleft:matrix=2020_ncl:primaries=2020:range=limited,gradfun=radius=12:strength=0.6,unsharp=lx=3:ly=3:la=0.3,minterpolate=fps=120:mi_mode=mci:mc_mode=aobmc:vsbmc=1:me=epzs:scd=5`); // MEMC 8K@120fps
         } else if (_isHlgHdr) {
-            lines.push(`#EXTVLCOPT:video-filter=zscale=transfer=arib-std-b67:chromal=topleft:matrix=2020_ncl:primaries=2020:range=limited,gradfun=radius=10:strength=0.5,unsharp=lx=3:ly=3:la=0.3`);
+            lines.push(`#EXTVLCOPT:video-filter=zscale=transfer=arib-std-b67:chromal=topleft:matrix=2020_ncl:primaries=2020:range=limited,gradfun=radius=10:strength=0.5,unsharp=lx=3:ly=3:la=0.3,minterpolate=fps=120:mi_mode=mci:mc_mode=aobmc:vsbmc=1:me=epzs:scd=5`); // MEMC 8K@120fps
         } else {
             // ═══════════════════════════════════════════════════════════════════════
             // 4K FALSE SUPREMO v1.0 — 2026-05-23
@@ -9532,19 +9532,14 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
                 _res796_csv = '3840x2160';
                 _videoRangePart = ',VIDEO-RANGE=PQ';
             }
-            // ── DOBLE CADENA MEMC v2.0 — 2026-05-23 ──────────────────────────────────
-            // Capa 2 UNIVERSAL: FRAME-RATE=120.000 en STREAM-INF para activar el
-            // MEMC de HARDWARE del televisor en TODOS los tipos de contenido SDR.
-            // Aplica a perfiles P3/P4/P5 (FHD/HD/SD) — máxima fluidez en todo.
-            // P0/P1/P2 (4K/8K nativos) conservan su fps real — no se tocan.
+            // ── DOBLE CADENA MEMC v3.0 — 2026-05-23 ──────────────────────────────────
+            // Capa 2 TOTAL: FRAME-RATE=120.000 en STREAM-INF para activar el
+            // MEMC de HARDWARE del televisor en TODOS los perfiles y tipos.
+            // P0/P1/P2 (4K/8K): el TV activa MEMC de hardware → simula 8K@120fps
+            // P3/P4/P5 (FHD/HD/SD): el TV activa MEMC → simula 4K@120fps
             // Capa 1 (minterpolate en EXTVLCOPT) activa para MPV/Kodi con libavfilter.
-            // Tipos cubiertos: NOVELA, DEPORTES, CINE, NOTICIAS, GENERAL — sin excepciones.
-            const _isSDRProfile = (profile === 'P3' || profile === 'P4' || profile === 'P5');
-            if (_isSDRProfile && !_isAnyHdr) {
-                // Forzar 120fps en STREAM-INF → activa MEMC de hardware del TV
-                // en TODOS los reproductores (TiviMate, OTT, ExoPlayer, VLC, Kodi, MPV)
-                _fps796_csv = 120;
-            }
+            // Sin excepciones — máxima fluidez en todo el contenido.
+            _fps796_csv = 120; // MEMC TOTAL: todos los perfiles P0-P5, todos los tipos
             lines.push(`#EXT-X-STREAM-INF:BANDWIDTH=${_bw796},AVERAGE-BANDWIDTH=${_avgBw},CODECS="${_codec796_csv},${_codecAudio}",RESOLUTION=${_res796_csv},FRAME-RATE=${_fps796_csv}.000${_videoRangePart},HDCP-LEVEL=${_hdcpLevel},STABLE-VARIANT-ID="${_stableVariantId}"`);
         }
         let finalUrl = options.dictatorMode ? `${primaryUrl}|User-Agent=${_ua796}&Cache-Control=no-cache&Connection=keep-alive&Referer=${typeof window !== "undefined" ? encodeURIComponent(window.location.origin) : ""}` : primaryUrl;
