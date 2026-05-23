@@ -145,6 +145,19 @@ http_post_json() {
     wget -q -T "$timeout" --post-data="$payload" --header="Content-Type: application/json" -O /dev/null "$url" 2>/dev/null
 }
 
+# http_post_json_capture — igual que http_post_json pero devuelve el cuerpo
+# de la respuesta por stdout (para que el caller pueda leer campos JSON).
+# Usado por send_heartbeat() para recibir comandos del VPS (restart/stop).
+http_post_json_capture() {
+    timeout="$1"
+    url="$2"
+    payload="$3"
+    if [ -x "$CURL_BIN" ]; then
+        "$CURL_BIN" -k -sf -m "$timeout" -X POST -H "Content-Type: application/json" -d "$payload" "$url" 2>/dev/null && return 0
+    fi
+    wget -q -T "$timeout" --post-data="$payload" --header="Content-Type: application/json" -O - "$url" 2>/dev/null
+}
+
 get_mem_mb() {
     grep "$1" /proc/meminfo 2>/dev/null | awk '{printf "%d", $2/1024}'
 }
@@ -881,7 +894,25 @@ send_heartbeat() {
 
     payload="{\"daemon\":\"ape-uhdx-sentinel\",\"pid\":$$,\"mode\":\"$CURRENT_MODE\",\"profile\":\"$profile\",\"ram_avail_mb\":$mem,\"vpn\":\"$vpn\",\"player\":\"$player\",\"throughput_kbps\":$THROUGHPUT_KBPS,\"packet_loss\":$PACKET_LOSS,\"jitter_ms\":$JITTER_MS,\"avg_rtt_ms\":$AVG_RTT_MS,\"ai_sr_level\":\"$ai_sr\",\"hdr_conversion_mode\":\"$hdr_mode\",\"always_hdr\":\"$always_hdr\",\"peak_luminance\":\"$peak\",\"chroma_ycbcr422\":\"$chroma\",\"manifest_hash\":\"$mhash\",\"uptime\":$uptime}"
 
-    http_post_json 3 "$HEARTBEAT_URL" "$payload" || true
+    # Capturar respuesta para leer comandos VPS (restart/stop desde el widget).
+    # AUTOPISTA: || true — si el POST falla, el daemon sigue sin interrupción.
+    hb_resp=$(http_post_json_capture 3 "$HEARTBEAT_URL" "$payload") || true
+
+    # ── Procesar comando del VPS si viene en la respuesta ──────────────
+    # Formato esperado: {"ok":true,"command":"restart"} o {"command":"none"}
+    if [ -n "$hb_resp" ]; then
+        vps_cmd=$(echo "$hb_resp" | grep -o '"command":"[^"]*"' | cut -d'"' -f4)
+        case "$vps_cmd" in
+            restart)
+                log "VPS command: restart daemon — exiting (watchdog will restart)"
+                exit 0  # el watchdog APE_UHDX_Watchdog_Unified lo reinicia automáticamente
+                ;;
+            stop)
+                log "VPS command: stop daemon — exiting cleanly"
+                exit 0  # sin watchdog restart si el watchdog respeta exit 0
+                ;;
+        esac
+    fi
 }
 
 handle_mode_transition() {

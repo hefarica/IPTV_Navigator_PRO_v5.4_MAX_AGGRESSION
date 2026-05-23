@@ -1182,6 +1182,21 @@
       const r = await fetch(`${BASE_URL}/prisma/api/prisma-adb-quality.php?action=get_manifest&t=${Date.now()}`, { cache: 'no-store', signal: AbortSignal.timeout(5000) });
       const vpsData = await r.json();
       if (vpsData.ok && vpsData.manifest && vpsData.manifest.length > 0) {
+        // ── Cascade restore desde VPS ──────────────────────────────────────
+        // Si el VPS tiene una cascada guardada Y el localStorage no tiene una
+        // override activa → restaurar la cascada del VPS en APE_HEVC_CASCADE.
+        // Esto permite que una nueva sesión de navegador recuerde la cascada
+        // sin que el usuario tenga que re-subir el CSV manualmente.
+        try {
+          const ssot = (typeof window !== 'undefined' && window.APE_HEVC_CASCADE) || null;
+          if (ssot && !ssot.isOverridden() && Array.isArray(vpsData.codec_cascade) && vpsData.codec_cascade.length >= 5) {
+            const res = ssot.setCascade(vpsData.codec_cascade, true); // persiste en localStorage
+            if (res && res.ok) {
+              console.info('[QM] cascade restored from VPS:', res.tiers, 'tiers');
+            }
+          }
+        } catch (_) {}
+
         // Convert VPS manifest format to render format
         const settings = vpsData.manifest.map(m => ({
           ns: m.ns, key: m.key, current: m.value, expected: m.value,

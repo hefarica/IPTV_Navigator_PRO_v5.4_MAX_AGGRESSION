@@ -232,8 +232,10 @@ local floor_ok, floor_err = pcall(function()
             pcall(function()
                 local cc = require("ape_codec_cascade")
                 local casc = cc.load_cascade()
-                local t1 = cc.resolve_tier(casc, { profile = "P0" })  -- T1 CORONA 4K@60
-                if t1 and t1.codec then v4k_codec = t1.codec end
+                -- CORONA = T9 (hvc1.2.4.L153.B0 = 4K@60 UHD) — tier de referencia P0
+                -- Usar corona_tier() es equivalente a resolve_tier({profile="P0"})
+                local t_corona = cc.corona_tier(casc)
+                if t_corona and t_corona.codec then v4k_codec = t_corona.codec end
             end)
             v4k_mod.rewrite_variant_to_4k(kept_variants[1], {
                 codec = v4k_codec,                            -- nil → default hvc1.2.4.L153.B0
@@ -241,7 +243,7 @@ local floor_ok, floor_err = pcall(function()
             })
         end
 
-        -- ═══ CASCADE-DRIVEN CODECS REWRITE (STAGING 2026-05-21) ═══════════
+        -- ═══ CASCADE-DRIVEN CODECS REWRITE ════════════════════════════════
         -- DORMANT por defecto: solo actúa si el perfil define codec_cascade=="ACTIVE"
         -- en visual_profiles.json. Reescribe el codec de video de cada variante al
         -- string del tier resuelto por la cascada (subida por el widget). HINT que
