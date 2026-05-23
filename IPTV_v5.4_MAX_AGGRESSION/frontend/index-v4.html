@@ -1987,6 +1987,36 @@
                   })();
                 </script>
 
+                <!-- PERCEPTUAL 4K MODE -->
+                <div style="padding: 14px; background: linear-gradient(135deg, rgba(16,185,129,0.15), rgba(5,150,105,0.15)); border-radius: 12px; border: 1px solid rgba(16,185,129,0.4); margin-bottom: 12px;">
+                  <div class="panel-title" style="font-size: 0.85rem; margin-bottom: 10px; color: #6ee7b7;">⬆ PERCEPTUAL 4K MODE</div>
+                  <div style="display: flex; flex-direction: column; gap: 10px;">
+                    <label style="display: flex; align-items: flex-start; gap: 10px; cursor: pointer; font-size: 0.82rem;">
+                      <input type="checkbox" id="perceptual-4k" style="width: 18px; height: 18px; margin-top: 2px; accent-color: #10b981;">
+                      <div style="display: flex; flex-direction: column;">
+                        <strong style="color: #10b981;">PERCEPTUAL 4K MODE</strong>
+                        <div style="color: #9ca3af; font-size: 0.75rem; margin-top: 2px;">
+                          Inyecta HDR10 display mode via ADB en Android TV. Maximiza percepción visual sin transcodificación. Requiere Fire TV / Android TV con ADB habilitado.
+                        </div>
+                      </div>
+                    </label>
+                  </div>
+                </div>
+                <script>
+                  (function () {
+                    var _p4kToggle = document.getElementById('perceptual-4k');
+                    if (_p4kToggle) {
+                      _p4kToggle.addEventListener('change', function () {
+                        window.APE_PROFILES_CONFIG = window.APE_PROFILES_CONFIG || {};
+                        window.APE_PROFILES_CONFIG.perceptual4kMode = _p4kToggle.checked;
+                        if (window.GenTabController && typeof window.GenTabController.setConfig === 'function') {
+                          window.GenTabController.setConfig({ perceptual4kMode: _p4kToggle.checked });
+                        }
+                      });
+                    }
+                  })();
+                </script>
+
                 <!-- PRO STREAMING OPTIONS -->
                 <div
                   style="padding: 14px; background: linear-gradient(135deg, rgba(59,130,246,0.15), rgba(16,185,129,0.15)); border-radius: 12px; border: 1px solid rgba(59,130,246,0.3);">
@@ -3878,6 +3908,7 @@
   <!-- 🎯 APE HEVC CASCADE CSV SSOT — 12-tier Tier→Codec mapping (HFRC mandato 2026-05-20)
        MUST load BEFORE ape-fallback-resolver.js y m3u8-typed-arrays-ultimate.js -->
   <script src="js/ape-v9/ape-hevc-cascade.js?v=1.2-20260522-isoverridden-fix"></script>
+  <script src="js/ape-v9/ape-perceptual-4k.js?v=1.0.0-20260522"></script>
   <script src="js/ape-v9/ape-fallback-resolver.js?v=20260520-hevc-cascade-csv"></script>
   <script src="js/ape-v9/m3u8-typed-arrays-ultimate.js?v=20260520-hevc-cascade-csv"></script>
   <!-- 🪦 OMEGA SLOT REAPER — Pre-flight liberation of Xtream max_connections slots -->

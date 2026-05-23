@@ -63,6 +63,20 @@ else
     adb -s "$ADB_TARGET" shell "settings put global match_content_frame_rate 1" 2>/dev/null || true
 fi
 
+# ── 2.5. PERCEPTUAL 4K MODE — HDR10 display pipeline injection ────────
+# Only applied when P4K_MODE env var is set to "1" (passed by sentinel daemon).
+# Injects display_mode_hdr and color pipeline settings; never overwrites if already set.
+# EXTVLCOPT:codec=hevc/dvhe/av1/h264 uses FAMILY names, NOT RFC-6381 strings.
+# This guard prevents any upstream override from substituting hvc1.2.4.L153.B0 (RFC)
+# into EXTVLCOPT where only family names (hevc/h264/av1) are valid.
+if [ "${P4K_MODE:-0}" = "1" ]; then
+    echo "[DIRECTIVES_INJECTOR] PERCEPTUAL 4K MODE active — injecting HDR10 display settings..."
+    adb -s "$ADB_TARGET" shell "settings put global display_mode_hdr 1"           2>/dev/null || true
+    adb -s "$ADB_TARGET" shell "settings put global display_mode_resolution 2160"  2>/dev/null || true
+    adb -s "$ADB_TARGET" shell "settings put secure display_color_mode 1"          2>/dev/null || true
+    adb -s "$ADB_TARGET" shell "settings put global display_mode_refresh_rate 60"  2>/dev/null || true
+fi
+
 # ── 3. Broadcast Intents and System Triggers ───────────────────────────
 echo "[DIRECTIVES_INJECTOR] Broadcasting configuration intent triggers..."
 

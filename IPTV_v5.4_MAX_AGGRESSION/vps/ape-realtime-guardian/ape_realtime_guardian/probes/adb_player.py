@@ -380,8 +380,24 @@ class ADBPlayerProbe(Probe):
         last_resolution = 'unknown'
         last_codec = 'unknown'
         last_decoder = 'unknown'
+        # hvc1 = out-of-band codec params (STREAM-INF Apple/Tizen signaling)
+        # hev1 = in-band codec params (ExoPlayer/ISA signaling) — GOLDEN RULE
+        last_codec_signaling = 'unknown'  # 'hvc1' | 'hev1' | 'unknown'
+
+        # Detect hvc1 (out-of-band) vs hev1 (in-band) from ExoPlayer decoder init log.
+        # ExoPlayer logs codec MIME as video/hevc (both modes) but logs the CSD
+        # init data presence: CSD-present → hev1 (in-band); no CSD → hvc1 (out-of-band).
+        codec_signaling_pattern = re.compile(
+            r'(hvc1|hev1)\.\d+\.\d+\.L\d+',
+            re.IGNORECASE
+        )
 
         for line in output.splitlines():
+            # Detect hvc1 vs hev1 signaling from any logcat line referencing RFC-6381 string
+            cs_match = codec_signaling_pattern.search(line)
+            if cs_match:
+                last_codec_signaling = cs_match.group(1).lower()  # 'hvc1' or 'hev1'
+
             # Try the structured video pattern first
             vm = video_pattern.search(line)
             if vm:
@@ -419,6 +435,8 @@ class ADBPlayerProbe(Probe):
         result['resolution'] = last_resolution
         result['codec'] = last_codec
         result['decoder_type'] = last_decoder
+        # hvc1 = out-of-band (STREAM-INF Apple/Tizen); hev1 = in-band (ExoPlayer ISA)
+        result['codec_signaling'] = last_codec_signaling
 
         # ── BITRATE FLOOR ENFORCEMENT ─────────────────────────────────────
         # Look up the floor for this resolution

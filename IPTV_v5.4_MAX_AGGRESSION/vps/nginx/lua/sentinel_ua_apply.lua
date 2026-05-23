@@ -52,6 +52,19 @@ function M.apply()
             ngx.var.sentinel_ua = rotated_ua
         end
         -- If no rotated UA available, $sentinel_ua keeps its static default → safe
+
+        -- ── Perceptual 4K header passthrough ────────────────────────────
+        -- Forward X-APE-Perceptual-4K and X-APE-HDR-Request intact to upstream.
+        -- hvc1 (out-of-band STREAM-INF) is the negotiated codec; hev1 stays
+        -- in KODIPROP/EXTVLCOPT only. No translation done here — passthrough only.
+        local p4k = ngx.var.http_x_ape_perceptual_4k
+        if p4k and p4k ~= "" then
+            ngx.req.set_header("X-APE-Perceptual-4K", p4k)
+        end
+        local hdr_req = ngx.var.http_x_ape_hdr_request
+        if hdr_req and hdr_req ~= "" then
+            ngx.req.set_header("X-APE-HDR-Request", hdr_req)
+        end
     end)
 
     if not ok then

@@ -411,12 +411,12 @@ function generate_dash_mpd(array $channel, string $cid): string
   <BaseURL>{$base_url}/{$cid}/</BaseURL>
   <Period id="1" start="PT0S">
     <AdaptationSet id="1" contentType="video" mimeType="video/mp4" segmentAlignment="true" startWithSAP="1" lang="{$lang}">
-      <Representation id="v4k" bandwidth="11600000" width="3840" height="2160" frameRate="60" codecs="hev1.2.4.L153.B0">
+      <Representation id="v4k" bandwidth="11600000" width="3840" height="2160" frameRate="60" codecs="hvc1.2.4.L153.B0">
         <SegmentTemplate timescale="90000" media="video_4k_\$Number$.m4s" initialization="video_4k_init.mp4" startNumber="1">
           <SegmentTimeline><S t="0" d="180000" r="-1"/></SegmentTimeline>
         </SegmentTemplate>
       </Representation>
-      <Representation id="vfhd" bandwidth="5500000" width="1920" height="1080" frameRate="60" codecs="hev1.2.4.L150.B0">
+      <Representation id="vfhd" bandwidth="5500000" width="1920" height="1080" frameRate="60" codecs="hvc1.2.4.L150.B0">
         <SegmentTemplate timescale="90000" media="video_fhd_\$Number$.m4s" initialization="video_fhd_init.mp4" startNumber="1">
           <SegmentTimeline><S t="0" d="180000" r="-1"/></SegmentTimeline>
         </SegmentTemplate>
@@ -708,7 +708,7 @@ function serve_cmaf_m3u8_fallback(array $cd): void
     $resolution = $cfg['res']      ?? '1920x1080';
     $fps        = $cfg['fps']      ?? 60;
     $codecs     = ($cfg['codec_primary'] === 'HEVC' || $cfg['codec_primary'] === 'hevc')
-                    ? 'hev1.2.4.L153.B0,mp4a.40.2'
+                    ? 'hvc1.2.4.L153.B0,mp4a.40.2'
                     : 'avc1.640028,mp4a.40.2';
 
     echo "#EXT-X-STREAM-INF:BANDWIDTH={$bw},AVERAGE-BANDWIDTH={$avgBwBps},"

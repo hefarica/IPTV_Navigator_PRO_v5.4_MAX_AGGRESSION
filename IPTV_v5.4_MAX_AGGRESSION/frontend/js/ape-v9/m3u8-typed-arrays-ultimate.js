@@ -3331,7 +3331,6 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
             '#KODIPROP:inputstream.adaptive.tls_cipher_suites=TLS_AES_256_GCM_SHA384',
             '#KODIPROP:inputstream.adaptive.ocsp_stapling=true',
             '#KODIPROP:inputstream.adaptive.early_hints=true',
-            '#EXT-X-START:TIME-OFFSET=-3.0',
             // ── 🔥 OLED SHOWROOM SUPREMACY v5 (5000cd/m² PERCEPTION & ZERO CRASH) ──
             // Exprimir 5000 nits de luminancia sin desbordar el decoder. Negros absolutos orgánicos.
             '#KODIPROP:inputstream.adaptive.hdr_handling=force_hdr',

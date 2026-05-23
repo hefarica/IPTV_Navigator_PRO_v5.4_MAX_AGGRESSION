@@ -65,6 +65,16 @@ print('\\n'.join(parts))
             TEXT="State file not found"
         fi
         ;;
+    perceptual_4k)
+        # PERCEPTUAL 4K MODE: inject HDR10 display mode + 4K resolution settings.
+        # display_mode_hdr=1 → HDR10; display_color_mode=1 → enhanced color; res=2160.
+        adb -s "$ADB_DEVICE" shell "settings put global display_mode_hdr 1"      2>/dev/null || true
+        adb -s "$ADB_DEVICE" shell "settings put global display_mode_resolution 2160" 2>/dev/null || true
+        adb -s "$ADB_DEVICE" shell "settings put secure display_color_mode 1"    2>/dev/null || true
+        adb -s "$ADB_DEVICE" shell "settings put global display_mode_refresh_rate 60" 2>/dev/null || true
+        TITLE="⬆ APE PRISMA: PERCEPTUAL 4K"
+        TEXT="HDR10 display mode activado.\nResolución 4K@60Hz + BT.2020 activados vía ADB."
+        ;;
     *)
         TITLE="🔮 APE PRISMA"
         TEXT="$ACTION: $DETAILS"

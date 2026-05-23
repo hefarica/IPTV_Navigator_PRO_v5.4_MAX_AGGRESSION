@@ -34,6 +34,8 @@ class CollectedMetrics:
     resolution: str = 'unknown'
     codec: str = 'unknown'
     decoder_type: str = 'unknown'
+    # hvc1=out-of-band (STREAM-INF, Apple/Tizen); hev1=in-band (ExoPlayer ISA) — GOLDEN RULE telemetry
+    codec_signaling: str = 'unknown'
     bitrate_floor_kbps: int = 0
     bitrate_floor_violation: bool = False
     bitrate_deficit_kbps: int = 0
@@ -100,6 +102,7 @@ class MetricsCollector:
                 metrics.resolution = d.get('resolution', 'unknown')
                 metrics.codec = d.get('codec', 'unknown')
                 metrics.decoder_type = d.get('decoder_type', 'unknown')
+                metrics.codec_signaling = d.get('codec_signaling', 'unknown')
                 metrics.bitrate_floor_kbps = d.get('bitrate_floor_kbps', 0)
                 metrics.bitrate_floor_violation = d.get('bitrate_floor_violation', False)
                 metrics.bitrate_deficit_kbps = d.get('bitrate_deficit_kbps', 0)

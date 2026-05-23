@@ -154,6 +154,17 @@ end
 -- Always set telescope state header for telemetry (lightweight)
 ngx.req.set_header("X-Telescope-Trend", trend)
 
+-- ── PERCEPTUAL 4K: Forward mode headers to upstream ─────────────────
+-- Reads X-APE-Perceptual-4K from the client request (set by generator EXTHTTP).
+-- When active, signals upstream to prefer CMAF/HEVC nodes and HDR10 streams.
+-- PASSTHROUGH compliant: only forwards, never blocks.
+local p4k_hdr = ngx.var.http_x_ape_perceptual_4k
+if p4k_hdr and p4k_hdr ~= "" then
+    ngx.req.set_header("X-APE-Perceptual-4K", p4k_hdr)
+    ngx.req.set_header("X-APE-HDR-Request", ngx.var.http_x_ape_hdr_request or "HDR10")
+    ngx.req.set_header("X-APE-Node-Preference", "CMAF,HEVC")
+end
+
 -- ═══ PERSIST DECISION STATE ══════════════════════════════════════════
 reactor:set("tl_decision_action", action)
 reactor:set("tl_decision_max_bps", max_bitrate_bps)
