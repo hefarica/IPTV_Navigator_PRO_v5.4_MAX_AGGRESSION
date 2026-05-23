@@ -20,7 +20,7 @@
 (function () {
     'use strict';
 
-    const VERSION = '22.3.0-4KFALSE-SUPREMO';
+    const VERSION = '22.4.0-DOBLE-CADENA-MEMC';
 
     // ═══════════════════════════════════════════════════════════════════════════
     // 🔱 CASCADA DUAL HEVC — Single Source of Truth (2026-05-22)
@@ -9531,6 +9531,26 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
             if (options && options.perceptual4kMode) {
                 _res796_csv = '3840x2160';
                 _videoRangePart = ',VIDEO-RANGE=PQ';
+            }
+            // ── DOBLE CADENA MEMC v1.0 — 2026-05-23 ──────────────────────────────────
+            // Capa 2 de la Doble Cadena: FRAME-RATE=120.000 en STREAM-INF para
+            // activar el MEMC de HARDWARE del televisor (Xiaomi, Hisense, Samsung, LG)
+            // en TODOS los reproductores (ExoPlayer, TiviMate, OTT Navigator, Kodi, VLC).
+            // Capa 1 (minterpolate en EXTVLCOPT) ya activa para MPV/Kodi con libavfilter.
+            // Solo aplica a perfiles SDR (P3/P4/P5) con contenido NOVELA o DEPORTES.
+            // P0/P1/P2 ya tienen su fps real (60fps) — no se tocan.
+            const _isSDRProfile = (profile === 'P3' || profile === 'P4' || profile === 'P5');
+            if (_isSDRProfile && !_isAnyHdr) {
+                const _ctMEMC = (() => {
+                    const _n = (channel.name || channel.group || '').toLowerCase();
+                    if (/sport|futbol|football|nfl|nba|mlb|nhl|f1|racing|deport|liga|champions|copa|eufa|premier|serie.a|bundesliga/i.test(_n)) return 'SPORTS';
+                    if (/novela|telenovela|serie|drama|soap|capitulo|episodio|temporada|season|episode/i.test(_n)) return 'NOVELA';
+                    return 'OTHER';
+                })();
+                if (_ctMEMC === 'NOVELA' || _ctMEMC === 'SPORTS') {
+                    // Forzar 120fps en STREAM-INF → activa MEMC de hardware del TV
+                    _fps796_csv = 120;
+                }
             }
             lines.push(`#EXT-X-STREAM-INF:BANDWIDTH=${_bw796},AVERAGE-BANDWIDTH=${_avgBw},CODECS="${_codec796_csv},${_codecAudio}",RESOLUTION=${_res796_csv},FRAME-RATE=${_fps796_csv}.000${_videoRangePart},HDCP-LEVEL=${_hdcpLevel},STABLE-VARIANT-ID="${_stableVariantId}"`);
         }
