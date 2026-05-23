@@ -2622,6 +2622,19 @@
 #EXT-X-SESSION-KEY:METHOD=NONE`;
         }
 
+        // ── MAX_COMPAT MODE interceptor — Master Playlist RFC-pura ──────────────────────
+        // VERSION:7 = HLS bis, INDEPENDENT-SEGMENTS, sin LL-HLS ni TARGETDURATION global.
+        // Cobertura ~98%: Apple TV (tvOS strict), Tizen 6-8, IPTV Smarters, VLC, Infuse.
+        if (options && options.maxCompatMode) {
+            return `#EXTM3U x-tvg-url=""
+#EXT-X-VERSION:7
+#EXT-X-INDEPENDENT-SEGMENTS
+#EXT-X-START:TIME-OFFSET=-3.0,PRECISE=YES
+#EXT-X-SESSION-DATA:DATA-ID="com.ape.build",VALUE="v5.4-MAX-COMPAT"
+#EXT-X-APE-CHANNELS:${totalChannels}
+${_disneyBlockFb}`;
+        }
+
         return `#EXTM3U x-tvg-url="" x-tvg-url-epg="" x-tvg-logo="" x-tvg-shift=0 catchup="flussonic" catchup-days="7" catchup-source="{MediaUrl}?utc={utc}&lutc={lutc}" url-tvg="" refresh="1800"
 #EXT-X-VERSION:9
 #EXT-X-INDEPENDENT-SEGMENTS
@@ -8133,6 +8146,16 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
             lines.push(`#EXT-X-CMAF:CODECS="${_mqVChain},ec-3",BANDWIDTH=${_bw796},RESOLUTION=${_res796}`);
         }
 
+        // ── PERCEPTUAL 4K MODE: KODIPROP HDR force ──────────────────────────────────────
+        // Fuerza pipeline HDR10/BT.2020/PQ en Kodi ISA. Kodi toma el ÚLTIMO valor — estos
+        // sobreescriben hdr_hdr10=true/hdr_bt2020=true del bloque base con force_hdr explícito.
+        if (options && options.perceptual4kMode) {
+            lines.push('#KODIPROP:inputstream.adaptive.hdr_handling=force_hdr');
+            lines.push('#KODIPROP:inputstream.adaptive.color_primaries=bt2020');
+            lines.push('#KODIPROP:inputstream.adaptive.color_transfer=smpte2084');
+            lines.push('#EXT-X-APE-EDID-HINT:FORCE_4K_PQ');
+        }
+
         // ════════════════════════════════════════════════════════════════════════
         // L3.6 — KODIPROP — manifest_headers + stream_headers (Kodi sintaxis estricta)
         // ════════════════════════════════════════════════════════════════════════
@@ -9300,6 +9323,13 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
             const _mqFps = (String(profile || 'P3').toUpperCase() === 'P0') ? 120 : 60;
             _streamInfLine = `#EXT-X-STREAM-INF:BANDWIDTH=${_mqBw},AVERAGE-BANDWIDTH=${Math.round(_mqBw * 0.8)},CODECS="${_mqCodecFirst},ec-3",RESOLUTION=${_mqRes},FRAME-RATE=${_mqFps}.000,HDCP-LEVEL=${_hdcpLevel},STABLE-VARIANT-ID="${_stableVariantId}"`;
         }
+        // ── PERCEPTUAL 4K MODE — Engaño declarativo en truth object (path truth-driven) ──
+        // Overrides resolution→3840x2160 + videoRange→PQ ANTES de que emitStreamInfFromTruth
+        // construya el STREAM-INF. Player interpreta 4K@PQ → activa upscaler hardware + pipeline HDR.
+        // GOLDEN RULE: hvc1 en CODECS= sigue siendo el codec del truth (sin inventar dvh1).
+        if (options && options.perceptual4kMode && _apeTruth) {
+            _apeTruth = Object.assign({}, _apeTruth, { resolution: '3840x2160', videoRange: 'PQ' });
+        }
         const _R_emit = (typeof window !== 'undefined') ? window.APEFallbackResolver : null;
         if (_apeTruth && _R_emit && typeof _R_emit.emitApeFallbackTags === 'function') {
             const _apeTags = _R_emit.emitApeFallbackTags(_apeTruth);
@@ -9426,6 +9456,11 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
                 _res796_csv   = _t1Fake.width + 'x' + _t1Fake.height;
             }
 
+            // ── PERCEPTUAL 4K MODE override (path legacy) ──────────────────────────────
+            if (options && options.perceptual4kMode) {
+                _res796_csv = '3840x2160';
+                _videoRangePart = ',VIDEO-RANGE=PQ';
+            }
             lines.push(`#EXT-X-STREAM-INF:BANDWIDTH=${_bw796},AVERAGE-BANDWIDTH=${_avgBw},CODECS="${_codec796_csv},${_codecAudio}",RESOLUTION=${_res796_csv},FRAME-RATE=${_fps796_csv}.000${_videoRangePart},HDCP-LEVEL=${_hdcpLevel},STABLE-VARIANT-ID="${_stableVariantId}"`);
         }
         let finalUrl = options.dictatorMode ? `${primaryUrl}|User-Agent=${_ua796}&Cache-Control=no-cache&Connection=keep-alive&Referer=${typeof window !== "undefined" ? encodeURIComponent(window.location.origin) : ""}` : primaryUrl;
@@ -10229,6 +10264,8 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
                     options.dictatorMode = cfg.dictatorMode || false;
                     options.dictatorTier = cfg.dictatorTier || '4k';
                     options.maxQualityMode = cfg.maxQualityMode || (typeof document !== 'undefined' && document.getElementById?.('ape-max-quality-toggle')?.checked) || false;
+                    options.perceptual4kMode = cfg.perceptual4kMode || (typeof document !== 'undefined' && document.getElementById?.('ape-perceptual-4k-toggle')?.checked) || false;
+                    options.maxCompatMode = cfg.maxCompatMode || (typeof document !== 'undefined' && document.getElementById?.('ape-max-compat-toggle')?.checked) || false;
                     // ✅ FIX: Llamar método getFilteredChannels() para obtener canales filtrados actuales
                     let channels = [];
 

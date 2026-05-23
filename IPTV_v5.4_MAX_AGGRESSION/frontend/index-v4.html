@@ -1987,7 +1987,61 @@
                   })();
                 </script>
 
-                <!-- PERCEPTUAL 4K MODE -->
+                <!-- PERCEPTUAL 4K OVERRIDE (M3U8-level) -->
+                <div style="padding: 14px; background: linear-gradient(135deg, rgba(16,185,129,0.15), rgba(5,150,105,0.15)); border-radius: 12px; border: 1px solid rgba(16,185,129,0.4); margin-bottom: 12px;">
+                  <div class="panel-title" style="font-size: 0.85rem; margin-bottom: 10px; color: #6ee7b7;">⬆ PERCEPTUAL 4K MODE</div>
+                  <div style="display: flex; flex-direction: column; gap: 10px;">
+                    <label style="display: flex; align-items: flex-start; gap: 10px; cursor: pointer; font-size: 0.82rem;">
+                      <input type="checkbox" id="ape-perceptual-4k-toggle" style="width: 18px; height: 18px; margin-top: 2px; accent-color: #10b981;">
+                      <div style="display: flex; flex-direction: column;">
+                        <strong style="color: #10b981;">PERCEPTUAL 4K (4K FAKE)</strong>
+                        <div style="color: #9ca3af; font-size: 0.75rem; margin-top: 2px;">
+                          Declara 4K y fuerza pipeline HDR en el TV (BT.2020/PQ) para forzar upscaling por hardware. Mejora visual dramática en streams 1080p.
+                        </div>
+                      </div>
+                    </label>
+                  </div>
+                </div>
+
+                <!-- MAX COMPATIBILITY OVERRIDE -->
+                <div style="padding: 14px; background: linear-gradient(135deg, rgba(245,158,11,0.15), rgba(217,119,6,0.15)); border-radius: 12px; border: 1px solid rgba(245,158,11,0.4); margin-bottom: 12px;">
+                  <div class="panel-title" style="font-size: 0.85rem; margin-bottom: 10px; color: #fcd34d;">🛡️ MAX COMPATIBILITY</div>
+                  <div style="display: flex; flex-direction: column; gap: 10px;">
+                    <label style="display: flex; align-items: flex-start; gap: 10px; cursor: pointer; font-size: 0.82rem;">
+                      <input type="checkbox" id="ape-max-compat-toggle" style="width: 18px; height: 18px; margin-top: 2px; accent-color: #f59e0b;">
+                      <div style="display: flex; flex-direction: column;">
+                        <strong style="color: #f59e0b;">MAX COMPATIBILITY MODE</strong>
+                        <div style="color: #9ca3af; font-size: 0.75rem; margin-top: 2px;">
+                          Genera una Master Playlist RFC-pura (VERSION:7). Elimina tags LL-HLS y TARGETDURATION globales. Cobertura ~98% (Apple/Tizen estrictos).
+                        </div>
+                      </div>
+                    </label>
+                  </div>
+                </div>
+
+                <script>
+                  (function () {
+                    var _newToggles = [
+                      { id: 'ape-perceptual-4k-toggle', key: 'perceptual4kMode' },
+                      { id: 'ape-max-compat-toggle', key: 'maxCompatMode' }
+                    ];
+                    _newToggles.forEach(function(t) {
+                      var el = document.getElementById(t.id);
+                      if (el) {
+                        el.addEventListener('change', function () {
+                          window.APE_PROFILES_CONFIG = window.APE_PROFILES_CONFIG || {};
+                          window.APE_PROFILES_CONFIG[t.key] = el.checked;
+                          if (window.GenTabController && typeof window.GenTabController.setConfig === 'function') {
+                            var conf = {}; conf[t.key] = el.checked;
+                            window.GenTabController.setConfig(conf);
+                          }
+                        });
+                      }
+                    });
+                  })();
+                </script>
+
+                <!-- PERCEPTUAL 4K MODE (ADB) -->
                 <div style="padding: 14px; background: linear-gradient(135deg, rgba(16,185,129,0.15), rgba(5,150,105,0.15)); border-radius: 12px; border: 1px solid rgba(16,185,129,0.4); margin-bottom: 12px;">
                   <div class="panel-title" style="font-size: 0.85rem; margin-bottom: 10px; color: #6ee7b7;">⬆ PERCEPTUAL 4K MODE</div>
                   <div style="display: flex; flex-direction: column; gap: 10px;">
