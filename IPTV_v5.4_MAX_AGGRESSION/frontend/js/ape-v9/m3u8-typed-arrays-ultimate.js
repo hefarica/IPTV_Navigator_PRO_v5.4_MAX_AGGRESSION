@@ -4324,6 +4324,33 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
         ];
     }
 
+    // ═══════════════════════════════════════════════════════════════════════════
+    // _sanitizePayloadSize — SCOPE: módulo (visible desde build_exthttp Y generateChannelEntry)
+    // [FIX-SCOPE 2026-05-23] Movida fuera de build_exthttp para resolver ReferenceError en L8022.
+    // Antes estaba definida DENTRO de build_exthttp (L4899-L4914), lo que la hacía invisible
+    // para generateChannelEntry que la llama en L8022 (fuera del scope de build_exthttp).
+    // Razón: function declarations dentro de funciones no son hoisted al scope padre en strict mode.
+    // Solución: definirla UNA sola vez aquí al nivel del módulo — ambas funciones la ven.
+    // ═══════════════════════════════════════════════════════════════════════════
+    const _MAX_EXTHTTP_BYTES = 8192;  // nginx large_client_header_buffers default=8K
+    const _EXTHTTP_WARN_BYTES = 7800; // umbral de compresión preventiva (5% margen de seguridad)
+    function _sanitizePayloadSize(payload) {
+        const raw = JSON.stringify(payload);
+        if (raw.length <= _EXTHTTP_WARN_BYTES) return payload;
+        // Fase 1: eliminar headers de metadata no críticos (preserva núcleo funcional)
+        const _lowPri = ['X-Buffer-MB','X-Buffer-Segments','X-VMAF-Target',
+                         'X-QoS-Mode','X-QoE-Target-MOS','X-Rebuffer-Tolerance',
+                         'X-Zapping-Max','X-Startup-Max'];
+        _lowPri.forEach(k => delete payload[k]);
+        // Fase 2: si aún supera el hard-cap, eliminar X-APE-* no críticos
+        // (preserva X-APE-Profile y X-APE-Tier que son esenciales para el VPS)
+        if (JSON.stringify(payload).length > _MAX_EXTHTTP_BYTES) {
+            Object.keys(payload).filter(k => k.startsWith('X-APE-') &&
+                !['X-APE-Profile','X-APE-Tier'].includes(k)).forEach(k => delete payload[k]);
+        }
+        return payload;
+    }
+
     function build_exthttp(cfg, profile, index, sessionId, reqId) {
         const timestamp = Math.floor(Date.now() / 1000);
         const nowDate = new Date(Date.now() - 86400000).toUTCString();
@@ -4892,25 +4919,11 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
         // Los headers overflow viajan por #EXT-X-APE-OVERFLOW-HEADERS (base64 JSON)
         // y el Runtime Evasion Engine los inyecta dinámicamente en cada request.
         // ══════════════════════════════════════════════════════════════════════
-        const MAX_EXTHTTP_HEADERS = 200;
+                const MAX_EXTHTTP_HEADERS = 200;
         const MAX_EXTHTTP_BYTES = 8192;  // F1: restaurado — nginx large_client_header_buffers default=8K (era 10240, regresión)
         const EXTHTTP_WARN_BYTES = 7800; // umbral de compresión preventiva (5% margen de seguridad)
-
-        function _sanitizePayloadSize(payload) {
-            const raw = JSON.stringify(payload);
-            if (raw.length <= EXTHTTP_WARN_BYTES) return payload;
-            // Fase 1: eliminar headers de metadata no críticos (preserva núcleo funcional)
-            const _lowPri = ['X-Buffer-MB','X-Buffer-Segments','X-VMAF-Target',
-                             'X-QoS-Mode','X-QoE-Target-MOS','X-Rebuffer-Tolerance',
-                             'X-Zapping-Max','X-Startup-Max'];
-            _lowPri.forEach(k => delete payload[k]);
-            // Fase 2: si aún supera, eliminar X-APE-* no críticos (preserva X-APE-Profile y X-APE-Tier)
-            if (JSON.stringify(payload).length > MAX_EXTHTTP_BYTES) {
-                Object.keys(payload).filter(k => k.startsWith('X-APE-') &&
-                    !['X-APE-Profile','X-APE-Tier'].includes(k)).forEach(k => delete payload[k]);
-            }
-            return payload;
-        }
+        // [FIX-SCOPE 2026-05-23] _sanitizePayloadSize movida a scope de módulo — ver definición antes de build_exthttp
+        // La función se define una sola vez fuera de build_exthttp para ser visible desde generateChannelEntry (L8022)
 
         // ── ⚡ HTTP ANABOLIC ENGINE v1.0: Priority injection (primeros en el budget 8KB) ──
         // Cache por perfil para evitar ~8286 llamadas redundantes (2 por canal × 4143 canales)
