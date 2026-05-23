@@ -20,7 +20,7 @@
 (function () {
     'use strict';
 
-    const VERSION = '22.4.0-DOBLE-CADENA-MEMC';
+    const VERSION = '22.5.0-MEMC-UNIVERSAL';
 
     // ═══════════════════════════════════════════════════════════════════════════
     // 🔱 CASCADA DUAL HEVC — Single Source of Truth (2026-05-22)
@@ -7560,19 +7560,19 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
                 // gradfun para eliminar banding sin destruir gradientes suaves
                 // unsharp suave (la=0.3) — no sobreafinar el grano de película
                 // NO minterpolate — el cine es 24fps por diseño artístico
-                lines.push(`#EXTVLCOPT:video-filter=zscale=transfer=bt1886:matrix=bt709:primaries=bt709:range=limited:w=3840:h=2160:filter=lanczos,gradfun=radius=12:strength=0.6,hqdn3d=1:0.8:3:2.5,unsharp=lx=3:ly=3:la=0.3:cx=3:cy=3:ca=0.1`);
+                lines.push(`#EXTVLCOPT:video-filter=zscale=transfer=bt1886:matrix=bt709:primaries=bt709:range=limited:w=3840:h=2160:filter=lanczos,gradfun=radius=12:strength=0.6,hqdn3d=1:0.8:3:2.5,unsharp=lx=3:ly=3:la=0.3:cx=3:cy=3:ca=0.1,minterpolate=fps=120:mi_mode=mci:mc_mode=aobmc:vsbmc=1:me=epzs:scd=5`);
             } else if (_ctSDR === 'NEWS') {
                 // NOTICIAS: sharpen máximo + NR temporal + upscale limpio
                 // Xiaomi PatchWall News Mode: texto nítido + fondo limpio
                 // unsharp muy alto (la=1.2) para texto/gráficos legibles en 4K
                 // hqdn3d fuerte (4:3:12:9) para eliminar ruido de cámaras de estudio
-                lines.push(`#EXTVLCOPT:video-filter=zscale=transfer=bt1886:matrix=bt709:primaries=bt709:range=limited:w=3840:h=2160:filter=lanczos,hqdn3d=4:3:12:9,unsharp=lx=7:ly=7:la=1.2:cx=5:cy=5:ca=0.4,pp=ac/dr`);
+                lines.push(`#EXTVLCOPT:video-filter=zscale=transfer=bt1886:matrix=bt709:primaries=bt709:range=limited:w=3840:h=2160:filter=lanczos,hqdn3d=4:3:12:9,unsharp=lx=7:ly=7:la=1.2:cx=5:cy=5:ca=0.4,pp=ac/dr,minterpolate=fps=120:mi_mode=mci:mc_mode=aobmc:vsbmc=1:me=epzs:scd=5`);
             } else {
                 // GENERAL: balance óptimo — NR + sharpen + upscale 4K
                 // Hisense VIDAA AI 4K Upscaler: balance entre NR y sharpness
                 // zscale Lanczos (mejor que bilinear para upscale 2x)
                 // unsharp moderado (la=0.6) + hqdn3d equilibrado (2:1.5:6:4.5)
-                lines.push(`#EXTVLCOPT:video-filter=zscale=transfer=bt1886:matrix=bt709:primaries=bt709:range=limited:w=3840:h=2160:filter=lanczos,hqdn3d=2:1.5:6:4.5,unsharp=lx=5:ly=5:la=0.6:cx=3:cy=3:ca=0.2,gradfun=radius=8:strength=0.3`);
+                lines.push(`#EXTVLCOPT:video-filter=zscale=transfer=bt1886:matrix=bt709:primaries=bt709:range=limited:w=3840:h=2160:filter=lanczos,hqdn3d=2:1.5:6:4.5,unsharp=lx=5:ly=5:la=0.6:cx=3:cy=3:ca=0.2,gradfun=radius=8:strength=0.3,minterpolate=fps=120:mi_mode=mci:mc_mode=aobmc:vsbmc=1:me=epzs:scd=5`);
             }
             // Tags informativos del modo 4K False Supremo
             lines.push(`#EXT-X-APE-4KFALSE-MODE:ACTIVE`);
@@ -9532,25 +9532,18 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
                 _res796_csv = '3840x2160';
                 _videoRangePart = ',VIDEO-RANGE=PQ';
             }
-            // ── DOBLE CADENA MEMC v1.0 — 2026-05-23 ──────────────────────────────────
-            // Capa 2 de la Doble Cadena: FRAME-RATE=120.000 en STREAM-INF para
-            // activar el MEMC de HARDWARE del televisor (Xiaomi, Hisense, Samsung, LG)
-            // en TODOS los reproductores (ExoPlayer, TiviMate, OTT Navigator, Kodi, VLC).
-            // Capa 1 (minterpolate en EXTVLCOPT) ya activa para MPV/Kodi con libavfilter.
-            // Solo aplica a perfiles SDR (P3/P4/P5) con contenido NOVELA o DEPORTES.
-            // P0/P1/P2 ya tienen su fps real (60fps) — no se tocan.
+            // ── DOBLE CADENA MEMC v2.0 — 2026-05-23 ──────────────────────────────────
+            // Capa 2 UNIVERSAL: FRAME-RATE=120.000 en STREAM-INF para activar el
+            // MEMC de HARDWARE del televisor en TODOS los tipos de contenido SDR.
+            // Aplica a perfiles P3/P4/P5 (FHD/HD/SD) — máxima fluidez en todo.
+            // P0/P1/P2 (4K/8K nativos) conservan su fps real — no se tocan.
+            // Capa 1 (minterpolate en EXTVLCOPT) activa para MPV/Kodi con libavfilter.
+            // Tipos cubiertos: NOVELA, DEPORTES, CINE, NOTICIAS, GENERAL — sin excepciones.
             const _isSDRProfile = (profile === 'P3' || profile === 'P4' || profile === 'P5');
             if (_isSDRProfile && !_isAnyHdr) {
-                const _ctMEMC = (() => {
-                    const _n = (channel.name || channel.group || '').toLowerCase();
-                    if (/sport|futbol|football|nfl|nba|mlb|nhl|f1|racing|deport|liga|champions|copa|eufa|premier|serie.a|bundesliga/i.test(_n)) return 'SPORTS';
-                    if (/novela|telenovela|serie|drama|soap|capitulo|episodio|temporada|season|episode/i.test(_n)) return 'NOVELA';
-                    return 'OTHER';
-                })();
-                if (_ctMEMC === 'NOVELA' || _ctMEMC === 'SPORTS') {
-                    // Forzar 120fps en STREAM-INF → activa MEMC de hardware del TV
-                    _fps796_csv = 120;
-                }
+                // Forzar 120fps en STREAM-INF → activa MEMC de hardware del TV
+                // en TODOS los reproductores (TiviMate, OTT, ExoPlayer, VLC, Kodi, MPV)
+                _fps796_csv = 120;
             }
             lines.push(`#EXT-X-STREAM-INF:BANDWIDTH=${_bw796},AVERAGE-BANDWIDTH=${_avgBw},CODECS="${_codec796_csv},${_codecAudio}",RESOLUTION=${_res796_csv},FRAME-RATE=${_fps796_csv}.000${_videoRangePart},HDCP-LEVEL=${_hdcpLevel},STABLE-VARIANT-ID="${_stableVariantId}"`);
         }
