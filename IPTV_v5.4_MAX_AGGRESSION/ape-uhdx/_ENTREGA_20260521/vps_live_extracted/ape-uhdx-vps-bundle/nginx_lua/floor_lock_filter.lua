@@ -1,3 +1,4 @@
+-- APE MEMC-TOTAL-8K120 — Synchronized v22.6.0-MEMC-TOTAL-8K120
 -- APE PRISMA v2.0 — FLOOR-LOCK HLS Variant Filter (Lua)
 -- RUNS: body_filter_by_lua_file (on HLS master playlist responses ONLY)
 -- PURPOSE: Remove #EXT-X-STREAM-INF variants with BANDWIDTH below profile floor.

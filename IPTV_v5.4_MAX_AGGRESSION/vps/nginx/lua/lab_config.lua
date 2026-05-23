@@ -107,7 +107,7 @@ local FALLBACK_SENTINEL = {
 -- Disney-Grade LL-HLS / ABR directives (mismos valores para todos los perfiles)
 -- Fallback usado si m3u8_directives_config.json falta o está corrupto.
 local FALLBACK_M3U8_DIRECTIVES = {
-    schema_version = "1.0",
+    schema_version = "22.6.0-MEMC-TOTAL-8K120",
     applies_to_all_profiles = true,
     directives = {
         { tag = "EXT-X-START",         value = "TIME-OFFSET=-3.0,PRECISE=YES", category = "timeline" },

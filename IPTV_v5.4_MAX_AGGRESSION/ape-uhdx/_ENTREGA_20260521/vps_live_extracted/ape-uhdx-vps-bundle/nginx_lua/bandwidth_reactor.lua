@@ -1,3 +1,4 @@
+-- APE MEMC-TOTAL-8K120 — Synchronized v22.6.0-MEMC-TOTAL-8K120
 -- APE PRISMA v2.0 — Bandwidth Reactor + TELESCOPE L1 Engine (Lua)
 -- RUNS: log_by_lua_file (after each response, ZERO impact on request)
 -- SPEED: < 1ms per execution (shared dict operations are sub-microsecond)

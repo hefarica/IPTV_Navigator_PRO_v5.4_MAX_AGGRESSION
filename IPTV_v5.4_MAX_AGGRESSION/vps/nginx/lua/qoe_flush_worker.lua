@@ -1,3 +1,4 @@
+-- APE MEMC-TOTAL-8K120 — Synchronized v22.6.0-MEMC-TOTAL-8K120
 -- ═══════════════════════════════════════════════════════════════════════════
 -- QoE Flush Worker v1.0 — periodic shared-dict → PHP/SQLite flush (60s timer)
 -- ═══════════════════════════════════════════════════════════════════════════

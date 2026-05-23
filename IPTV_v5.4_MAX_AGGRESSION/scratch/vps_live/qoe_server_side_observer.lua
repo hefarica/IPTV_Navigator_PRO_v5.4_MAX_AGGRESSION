@@ -1,3 +1,4 @@
+-- APE MEMC-TOTAL-8K120 — Synchronized v22.6.0-MEMC-TOTAL-8K120
 -- ═══════════════════════════════════════════════════════════════════════════
 -- QoE Server-Side Observer v1.0 — Conviva-equivalent telemetry for native players
 -- ═══════════════════════════════════════════════════════════════════════════

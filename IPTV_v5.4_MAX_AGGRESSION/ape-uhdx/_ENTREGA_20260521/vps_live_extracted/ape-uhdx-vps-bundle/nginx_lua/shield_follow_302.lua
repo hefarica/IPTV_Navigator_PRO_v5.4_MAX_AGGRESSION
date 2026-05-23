@@ -1,3 +1,4 @@
+-- APE MEMC-TOTAL-8K120 — Synchronized v22.6.0-MEMC-TOTAL-8K120
 -- shield_follow_302.lua
 -- For providers that return 302 to rotating CDN IPs
 -- Follows up to 3 redirects and returns the final content

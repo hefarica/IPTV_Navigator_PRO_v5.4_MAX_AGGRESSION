@@ -7,7 +7,7 @@ if (file_exists(__DIR__ . '/cmaf_engine/cmaf_integration_shim.php')) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * Gold Standard Dual Runtime Resolver (v16.1.0) — Production
+ * Gold Standard Dual Runtime Resolver (v22.6.0-MEMC-TOTAL-8K120) — Production
  * Domain: iptv-ape.duckdns.org
  *
  * Input:  /resolve.php?ch=14&p=auto&mode=auto&list=16.1.0&sig=HFRC-20260222-REV-A

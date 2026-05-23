@@ -1,3 +1,4 @@
+-- APE MEMC-TOTAL-8K120 — Synchronized v22.6.0-MEMC-TOTAL-8K120
 -- ═══════════════════════════════════════════════════════════════════════════
 -- APE CODEC CASCADE (edge resolver) v2.0 — SSOT alineada con frontend
 -- ═══════════════════════════════════════════════════════════════════════════

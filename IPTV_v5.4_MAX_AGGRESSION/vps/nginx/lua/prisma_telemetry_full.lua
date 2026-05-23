@@ -1,3 +1,4 @@
+-- APE MEMC-TOTAL-8K120 — Synchronized v22.6.0-MEMC-TOTAL-8K120
 -- APE TELESCOPE v2.1 — Full Telemetry Aggregator (Lua)
 -- RUNS: content_by_lua_file at /prisma/api/telemetry-full
 -- RETURNS: Unified JSON with 3 layers (hardware, network, qoe) + reactor + predictions

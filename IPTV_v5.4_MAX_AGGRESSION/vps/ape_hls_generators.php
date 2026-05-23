@@ -1,6 +1,6 @@
 <?php
 // ─── CONFIGURACIÓN GLOBAL ────────────────────────────────────────────────────
-define('APE_VERSION',       '17.2.1-FULL-DIRECTIVES');
+define('APE_VERSION',       '22.6.0-MEMC-TOTAL-8K120');
 define('APE_ARCHITECTURE',  'DUAL_PROTOCOL_BRIDGE');
 define('APE_COMPLIANCE',    'RFC8216');
 define('APE_RESOLVER_URL',  'https://iptv-ape.duckdns.org/resolve_quality.php');
@@ -136,7 +136,7 @@ function generate_http_headers_json(array $channel, string $ua, string $profile_
     'X-Sharpen-Sigma'           => '0.05',
     'X-Max-Resolution'          => $p['res'],
     'X-Max-Bitrate'             => (string)$p['bitrate'],
-    'X-Frame-Rates'             => '24,25,30,50,60,120',
+    'X-Frame-Rates'             => '120,60,50,30,25,24', // MEMC-TOTAL: 120fps primario
     'X-Aspect-Ratio'            => '16:9,21:9',
     'X-Pixel-Aspect-Ratio'      => '1:1',
     'X-Dolby-Atmos'             => 'true',
@@ -733,7 +733,7 @@ function serve_cmaf_m3u8_fallback(array $cd): void
     $avgBw      = $cfg['bitrate']  ?? 10100;
     $avgBwBps   = $avgBw * 1000;
     $resolution = $cfg['res']      ?? '1920x1080';
-    $fps        = $cfg['fps']      ?? 60;
+    $fps        = $cfg['fps']      ?? 120; // MEMC-TOTAL-8K120: default 120fps
     $codecs     = ($cfg['codec_primary'] === 'HEVC' || $cfg['codec_primary'] === 'hevc')
                     ? 'hev1.2.4.L153.B0,mp4a.40.2'
                     : 'avc1.640028,mp4a.40.2';

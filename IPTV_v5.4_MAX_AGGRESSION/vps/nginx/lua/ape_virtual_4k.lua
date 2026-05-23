@@ -1,3 +1,4 @@
+-- APE MEMC-TOTAL-8K120 — Synchronized v22.6.0-MEMC-TOTAL-8K120
 local _M = {}
 
 -- rewrite_variant_to_4k(variant, opts) — FAKE 4K (resolución + codec hint).

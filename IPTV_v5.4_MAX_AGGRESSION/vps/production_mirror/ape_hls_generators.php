@@ -1,6 +1,6 @@
 <?php
 // ─── CONFIGURACIÓN GLOBAL ────────────────────────────────────────────────────
-define('APE_VERSION',       '17.2.1-FULL-DIRECTIVES');
+define('APE_VERSION', '22.6.0-MEMC-TOTAL-8K120');
 define('APE_ARCHITECTURE',  'DUAL_PROTOCOL_BRIDGE');
 define('APE_COMPLIANCE',    'RFC8216');
 define('APE_RESOLVER_URL',  'https://iptv-ape.duckdns.org/resolve_quality.php');

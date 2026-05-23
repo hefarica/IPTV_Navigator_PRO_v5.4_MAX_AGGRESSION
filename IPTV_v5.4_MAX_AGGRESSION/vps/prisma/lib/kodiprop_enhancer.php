@@ -2,7 +2,7 @@
 declare(strict_types=1);
 
 /**
- * APE PRISMA v1.2 — Kodi InputStream Adaptive Enhancer
+ * APE PRISMA v22.6.0-MEMC-TOTAL-8K120 — Kodi InputStream Adaptive Enhancer
  *
  * Injects #KODIPROP: directives into M3U8 manifests for Kodi players
  * using inputstream.adaptive addon. These directives are honored by:
@@ -29,6 +29,7 @@ class KodiPropEnhancer
         'inputstream.adaptive.min_bandwidth'              => '13000000',  // 13 Mbps floor (provider minimum)
         'inputstream.adaptive.initial_bandwidth'          => '80000000',  // Start at 80 Mbps (assume best)
         'inputstream.adaptive.preferred_video_resolution'  => '2160',
+        'inputstream.adaptive.preferred_video_frame_rate'   => '120', // MEMC-TOTAL-8K120
         'inputstream.adaptive.preferred_audio_language'   => 'es,en',
         'inputstream.adaptive.live_delay'                 => '0',
     ];

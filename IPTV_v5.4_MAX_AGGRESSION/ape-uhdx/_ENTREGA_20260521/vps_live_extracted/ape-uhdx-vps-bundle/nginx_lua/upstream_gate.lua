@@ -1,3 +1,4 @@
+-- APE MEMC-TOTAL-8K120 — Synchronized v22.6.0-MEMC-TOTAL-8K120
 -- ════════════════════════════════════════════════════════════════════════════
 -- NET SHIELD — AUTOPISTA MODE: Pass-through gate (telemetry only, NEVER blocks)
 -- ────────────────────────────────────────────────────────────────────────────

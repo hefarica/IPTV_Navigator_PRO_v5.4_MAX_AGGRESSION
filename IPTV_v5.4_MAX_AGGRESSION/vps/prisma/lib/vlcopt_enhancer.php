@@ -2,7 +2,7 @@
 declare(strict_types=1);
 
 /**
- * APE PRISMA v1.2 — VLC/OTT Navigator Directive Enhancer
+ * APE PRISMA v22.6.0-MEMC-TOTAL-8K120 v1.2 — VLC/OTT Navigator Directive Enhancer
  *
  * Injects #EXTVLCOPT: directives into M3U8 manifests based on active PRISMA lanes.
  * These directives are REAL player instructions honored by:
@@ -76,6 +76,11 @@ class VlcoptEnhancer
             'no-skip-frames'           => '1',
         ],
 
+        'memc_120fps' => [
+            // MEMC-TOTAL-8K120: minterpolate 120fps para MPV/Kodi con libavfilter
+            // Activa interpolación de movimiento por software en reproductores FFmpeg-based
+            'video-filter'             => 'minterpolate=fps=120:mi_mode=mci:mc_mode=aobmc:vsbmc=1:me=epzs:scd=5',
+        ],
         'fake_4k_upscaler' => [
             // Force player to request maximum resolution variant
             'adaptive-maxwidth'        => '3840',

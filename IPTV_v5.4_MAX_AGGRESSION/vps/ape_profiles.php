@@ -2,7 +2,7 @@
 
 /**
  * ═══════════════════════════════════════════════════════════════════════════
- * FULL APE PROFILES - SINGLE SOURCE OF TRUTH (v17.2.1 GOD-TIER)
+ * FULL APE PROFILES - SINGLE SOURCE OF TRUTH (v22.6.0-MEMC-TOTAL-8K120)
  * Every field mirrors the JS generator for dual-source parity.
  * Used by resolve_quality.php and ape_hls_generators.php
  * ═══════════════════════════════════════════════════════════════════════════
@@ -14,7 +14,7 @@ $APE_PROFILES = [
         'res' => '3840x2160',
         'w' => 3840,
         'h' => 2160,
-        'fps' => 60,
+        'fps' => 120,
         'bitrate' => 13400,
         'buffer_ms' => 50000,
         'net_cache' => 60000,
@@ -66,7 +66,7 @@ $APE_PROFILES = [
         'res' => '7680x4320',
         'w' => 7680,
         'h' => 4320,
-        'fps' => 60,
+        'fps' => 120,
         'bitrate' => 42900,
         'buffer_ms' => 40000,
         'net_cache' => 50000,
@@ -118,7 +118,7 @@ $APE_PROFILES = [
         'res' => '3840x2160',
         'w' => 3840,
         'h' => 2160,
-        'fps' => 60,
+        'fps' => 120,
         'bitrate' => 13400,
         'buffer_ms' => 35000,
         'net_cache' => 45000,
@@ -170,7 +170,7 @@ $APE_PROFILES = [
         'res' => '1920x1080',
         'w' => 1920,
         'h' => 1080,
-        'fps' => 50,
+        'fps' => 120,
         'bitrate' => 3700,
         'buffer_ms' => 30000,
         'net_cache' => 40000,
@@ -222,7 +222,7 @@ $APE_PROFILES = [
         'res' => '1280x720',
         'w' => 1280,
         'h' => 720,
-        'fps' => 60,
+        'fps' => 120,
         'bitrate' => 2800,
         'buffer_ms' => 25000,
         'net_cache' => 35000,
@@ -274,7 +274,7 @@ $APE_PROFILES = [
         'res' => '854x480',
         'w' => 854,
         'h' => 480,
-        'fps' => 25,
+        'fps' => 120,
         'bitrate' => 1500,
         'buffer_ms' => 20000,
         'net_cache' => 30000,

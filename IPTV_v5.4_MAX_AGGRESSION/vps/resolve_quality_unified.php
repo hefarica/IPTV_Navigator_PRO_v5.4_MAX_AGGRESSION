@@ -1,4 +1,5 @@
 <?php
+// APE MEMC-TOTAL-8K120 — Synchronized v22.6.0-MEMC-TOTAL-8K120
 declare(strict_types=1);
 /**
  * Module:       resolve_quality_unified.php

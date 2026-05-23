@@ -443,7 +443,7 @@ if ($ch_global !== 'UNKNOWN') {
 // ============================================================================
 
 /** Versión del resolver para cabeceras HTTP */
-if (!defined('RQ_VERSION')) define('RQ_VERSION', '5.0.0-MAESTRO');
+if (!defined('RQ_VERSION')) define('RQ_VERSION', '22.6.0-MEMC-TOTAL-8K120');
 
 /** Directorio base para caché y logs */
 if (!defined('RQ_BASE_DIR')) define('RQ_BASE_DIR', __DIR__);
