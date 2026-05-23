@@ -9415,6 +9415,16 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
             if (typeof _apeTruth.profile === 'undefined') {
                 _apeTruth.profile = profile;
             }
+            // ── MEMC TOTAL FPS OVERRIDE — 2026-05-23 (v22.6.0-MEMC-TOTAL-8K120) ──────
+            // Forzar fps=120 en el truth object ANTES de que emitStreamInfFromTruth
+            // construya el STREAM-INF. Activa el MEMC de hardware del televisor en
+            // TODOS los reproductores (TiviMate, ExoPlayer, VLC, Kodi, OTT Navigator).
+            // El Truth-Driven path interceptaba el bloque MEMC legacy — este fix
+            // garantiza que FRAME-RATE=120.000 llegue al STREAM-INF sin excepción.
+            _apeTruth.fps = 120;
+            _apeTruth.targetFps = 120;
+            _apeTruth.frameRate = 120;
+            // ─────────────────────────────────────────────────────────────────────────
             _streamInfLine = _R_emit.emitStreamInfFromTruth(_apeTruth);
         }
         if (_streamInfLine) {
