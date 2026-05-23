@@ -2600,7 +2600,7 @@
 #EXT-X-SESSION-DATA:DATA-ID="exoplayer.bandwidth_meter",VALUE="{\\"resetOnNetworkTypeChange\\":false,\\"slidingWindowMaxWeight\\":2000,\\"initialBitrateEstimate\\":120000000}"
 #EXT-X-SESSION-DATA:DATA-ID="hls.js.config",VALUE="{\\"maxBufferLength\\":130,\\"maxMaxBufferLength\\":600,\\"abrBandWidthFactor\\":0.95,\\"abrBandWidthUpFactor\\":0.95,\\"lowLatencyMode\\":true}"
 #EXT-X-SESSION-DATA:DATA-ID="com.ape.codec.chain.player_pref",VALUE="dvh1,hvc1,av01,avc1,h265,h264"
-#EXT-X-SESSION-DATA:DATA-ID="com.ape.codec.chain.audio",VALUE="ec-3,ac-3,mp4a.40.2,mp4a.40.5"
+#EXT-X-SESSION-DATA:DATA-ID="com.ape.codec.chain.audio",VALUE="ac-3,mp4a.40.2,mp4a.40.5" // [FIX-AUDIO 2026-05-23] ec-3 removido — ac-3+mp4a.40.2 en todos los modos
 #EXT-X-SESSION-DATA:DATA-ID="com.ape.codec.chain.hdr",VALUE="dv,hdr10plus,hdr10,hlg,sdr"
 #EXT-X-SESSION-DATA:DATA-ID="com.ape.build",VALUE="v5.4-MAX-QUALITY-OVERRIDE"
 #EXT-X-APE-ANTI-FREEZE-NUCLEAR
@@ -2612,7 +2612,7 @@
 #EXT-X-APE-ATMOS:ENABLED=true,PASSTHROUGH=true,CHANNELS=7.1.4,OBJECT_AUDIO=true
 #EXT-X-APE-DOLBY-VISION:ENABLED=true,PROFILE=8,LEVEL=6,CROSS_COMPATIBLE=true
 #EXT-X-SYS-LAYERS:EXTVLCOPT,KODIPROP,EXT-X-APE,EXT-X-START,LL-HLS,LCEVC,DV,ATMOS
-#EXT-X-SYS-AUDIO-CODEC-PRIORITY:ec-3,ac-3,mp4a.40.2
+#EXT-X-SYS-AUDIO-CODEC-PRIORITY:ac-3,mp4a.40.2 // [FIX-AUDIO 2026-05-23] ec-3 removido — passthrough universal
 #EXT-X-SYS-VIDEO-CODEC-PRIORITY:dvh1,hvc1,av01,avc1
 #EXT-X-CONTENT-STEERING:SERVER-URI="https://iptv-ape.duckdns.org/prisma/api/content-steering.php",PATHWAY-ID="omega-maxq"
 #EXT-X-DEFINE:NAME="OMEGA_EPOCH",VALUE="${_mqTs}"
@@ -8142,8 +8142,8 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
             lines.push(`#KODIPROP:inputstream.adaptive.audio_dolby_atmos=true`);
             lines.push(`#KODIPROP:inputstream.adaptive.audio_eac3=true`);
             lines.push(`#KODIPROP:inputstream.adaptive.live_delay=1`);
-            lines.push(`#EXT-X-APE-AUDIO:CODEC=ec-3,CHANNELS=7.1.4,ATMOS=true`);
-            lines.push(`#EXT-X-CMAF:CODECS="${_mqVChain},ec-3",BANDWIDTH=${_bw796},RESOLUTION=${_res796}`);
+            lines.push(`#EXT-X-APE-AUDIO:CODEC=ac-3,CHANNELS=5.1,ATMOS=false`); // [FIX-AUDIO 2026-05-23] ac-3 — compatibilidad passthrough universal
+            lines.push(`#EXT-X-CMAF:CODECS="${_mqVChain},ac-3",BANDWIDTH=${_bw796},RESOLUTION=${_res796}`); // [FIX-AUDIO 2026-05-23] ac-3 — compatibilidad passthrough universal
         }
 
         // ── PERCEPTUAL 4K MODE: KODIPROP HDR force ──────────────────────────────────────
@@ -9321,7 +9321,7 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
             const _mqResMap = { 'P0': '7680x4320', 'P1': '3840x2160', 'P2': '3840x2160', 'P3': '1920x1080', 'P4': '1280x720', 'P5': '854x480' };
             const _mqRes = _mqResMap[String(profile || 'P3').toUpperCase()] || '1920x1080';
             const _mqFps = (String(profile || 'P3').toUpperCase() === 'P0') ? 120 : 60;
-            _streamInfLine = `#EXT-X-STREAM-INF:BANDWIDTH=${_mqBw},AVERAGE-BANDWIDTH=${Math.round(_mqBw * 0.8)},CODECS="${_mqCodecFirst},ec-3",RESOLUTION=${_mqRes},FRAME-RATE=${_mqFps}.000,HDCP-LEVEL=${_hdcpLevel},STABLE-VARIANT-ID="${_stableVariantId}"`;
+            _streamInfLine = `#EXT-X-STREAM-INF:BANDWIDTH=${_mqBw},AVERAGE-BANDWIDTH=${Math.round(_mqBw * 0.8)},CODECS="${_mqCodecFirst},ac-3",RESOLUTION=${_mqRes},FRAME-RATE=${_mqFps}.000,HDCP-LEVEL=${_hdcpLevel},STABLE-VARIANT-ID="${_stableVariantId}"`; // [FIX-AUDIO 2026-05-23] ac-3 — compatibilidad passthrough universal
         }
         // ── PERCEPTUAL 4K MODE — Engaño declarativo en truth object (path truth-driven) ──
         // Overrides resolution→3840x2160 + videoRange→PQ ANTES de que emitStreamInfFromTruth
