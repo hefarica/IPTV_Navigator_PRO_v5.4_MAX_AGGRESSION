@@ -20,7 +20,7 @@
 (function () {
     'use strict';
 
-    const VERSION = '22.2.0-FUSION-FANTASMA-NUCLEAR';
+    const VERSION = '22.3.0-4KFALSE-SUPREMO';
 
     // ═══════════════════════════════════════════════════════════════════════════
     // 🔱 CASCADA DUAL HEVC — Single Source of Truth (2026-05-22)
@@ -7520,7 +7520,65 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
         } else if (_isHlgHdr) {
             lines.push(`#EXTVLCOPT:video-filter=zscale=transfer=arib-std-b67:chromal=topleft:matrix=2020_ncl:primaries=2020:range=limited,gradfun=radius=10:strength=0.5,unsharp=lx=3:ly=3:la=0.3`);
         } else {
-            lines.push(`#EXTVLCOPT:video-filter=zscale=transfer=bt1886:matrix=bt709:primaries=bt709:range=limited,unsharp=lx=3:ly=3:la=0.4,hqdn3d=0:0:3:3`);
+            // ═══════════════════════════════════════════════════════════════════════
+            // 4K FALSE SUPREMO v1.0 — 2026-05-23
+            // Técnicas de players chinos: Xiaomi PatchWall MEMC + Hisense VIDAA
+            // AI Super Resolution + TCL AiPQ Edge Enhancement
+            // Cadenas diferenciadas por tipo de contenido:
+            //   NOVELA/DRAMA  → MEMC 120fps + contornos perfectos (movimiento de novela)
+            //   DEPORTES      → MEMC agresivo 120fps + sharpening máximo + 0 blur
+            //   CINE          → grain preservation + deband + unsharp sutil
+            //   NOTICIAS      → sharpen máximo + NR temporal + upscale limpio
+            //   GENERAL       → balance óptimo: NR + sharpen + upscale 4K Lanczos
+            // Todos los perfiles P3/P4/P5 reciben upscale forzado a 3840x2160
+            // ═══════════════════════════════════════════════════════════════════════
+            const _ctSDR = (() => {
+                const _n = (channel.name || channel.group || '').toLowerCase();
+                if (/sport|futbol|football|nfl|nba|mlb|nhl|f1|racing|deport|liga|champions|copa|eufa|premier|serie.a|bundesliga/i.test(_n)) return 'SPORTS';
+                if (/novela|telenovela|serie|drama|soap|capitulo|episodio|temporada|season|episode/i.test(_n)) return 'NOVELA';
+                if (/cine|movie|film|pelicula|hbo|netflix|disney|cinema|max|prime|apple.tv|mubi|criterion/i.test(_n)) return 'CINEMA';
+                if (/news|noticias|cnn|bbc|fox.news|telemundo|univision|ntn|24h|informativo|noticiero/i.test(_n)) return 'NEWS';
+                return 'GENERAL';
+            })();
+            if (_ctSDR === 'NOVELA') {
+                // NOVELA/DRAMA: movimiento de telenovela (soap opera effect controlado)
+                // Xiaomi PatchWall MEMC: minterpolate fps=120 + contornos perfectos
+                // unsharp alto en luma (la=0.8) para definición de rostros sin pixelamiento
+                // hqdn3d suave para piel lisa (2:1.5:6:4.5) + gradfun anti-banding
+                // zscale Lanczos 3840x2160 — upscale de mayor calidad perceptual
+                lines.push(`#EXTVLCOPT:video-filter=zscale=transfer=bt1886:matrix=bt709:primaries=bt709:range=limited:w=3840:h=2160:filter=lanczos,hqdn3d=2:1.5:6:4.5,unsharp=lx=5:ly=5:la=0.8:cx=3:cy=3:ca=0.2,gradfun=radius=8:strength=0.4,minterpolate=fps=120:mi_mode=mci:mc_mode=aobmc:vsbmc=1:me=epzs:scd=0`);
+            } else if (_ctSDR === 'SPORTS') {
+                // DEPORTES: MEMC agresivo (120fps) + sharpening máximo
+                // Hisense VIDAA Sport Mode: motion clarity + edge enhancement
+                // TCL AiPQ: unsharp agresivo (la=1.0) para pelota/jugadores nítidos
+                // hqdn3d=0 — sin NR para preservar detalle de movimiento rápido
+                // pp=ac/dr/ci — deblocking + deringing + color interpolation
+                lines.push(`#EXTVLCOPT:video-filter=zscale=transfer=bt1886:matrix=bt709:primaries=bt709:range=limited:w=3840:h=2160:filter=lanczos,unsharp=lx=5:ly=5:la=1.0:cx=3:cy=3:ca=0.3,pp=ac/dr/ci,minterpolate=fps=120:mi_mode=mci:mc_mode=aobmc:vsbmc=1:me=epzs:scd=5`);
+            } else if (_ctSDR === 'CINEMA') {
+                // CINE: grain preservation + deband + unsharp sutil
+                // TCL AiPQ Cinema Mode: preservar grano cinematográfico
+                // gradfun para eliminar banding sin destruir gradientes suaves
+                // unsharp suave (la=0.3) — no sobreafinar el grano de película
+                // NO minterpolate — el cine es 24fps por diseño artístico
+                lines.push(`#EXTVLCOPT:video-filter=zscale=transfer=bt1886:matrix=bt709:primaries=bt709:range=limited:w=3840:h=2160:filter=lanczos,gradfun=radius=12:strength=0.6,hqdn3d=1:0.8:3:2.5,unsharp=lx=3:ly=3:la=0.3:cx=3:cy=3:ca=0.1`);
+            } else if (_ctSDR === 'NEWS') {
+                // NOTICIAS: sharpen máximo + NR temporal + upscale limpio
+                // Xiaomi PatchWall News Mode: texto nítido + fondo limpio
+                // unsharp muy alto (la=1.2) para texto/gráficos legibles en 4K
+                // hqdn3d fuerte (4:3:12:9) para eliminar ruido de cámaras de estudio
+                lines.push(`#EXTVLCOPT:video-filter=zscale=transfer=bt1886:matrix=bt709:primaries=bt709:range=limited:w=3840:h=2160:filter=lanczos,hqdn3d=4:3:12:9,unsharp=lx=7:ly=7:la=1.2:cx=5:cy=5:ca=0.4,pp=ac/dr`);
+            } else {
+                // GENERAL: balance óptimo — NR + sharpen + upscale 4K
+                // Hisense VIDAA AI 4K Upscaler: balance entre NR y sharpness
+                // zscale Lanczos (mejor que bilinear para upscale 2x)
+                // unsharp moderado (la=0.6) + hqdn3d equilibrado (2:1.5:6:4.5)
+                lines.push(`#EXTVLCOPT:video-filter=zscale=transfer=bt1886:matrix=bt709:primaries=bt709:range=limited:w=3840:h=2160:filter=lanczos,hqdn3d=2:1.5:6:4.5,unsharp=lx=5:ly=5:la=0.6:cx=3:cy=3:ca=0.2,gradfun=radius=8:strength=0.3`);
+            }
+            // Tags informativos del modo 4K False Supremo
+            lines.push(`#EXT-X-APE-4KFALSE-MODE:ACTIVE`);
+            lines.push(`#EXT-X-APE-4KFALSE-CONTENT-TYPE:${_ctSDR}`);
+            lines.push(`#EXT-X-APE-4KFALSE-TARGET-RES:3840x2160`);
+            lines.push(`#EXT-X-APE-4KFALSE-ENGINE:ZSCALE-LANCZOS+MEMC-120FPS+HQDN3D+UNSHARP`);
         }
         lines.push(`#EXTVLCOPT:video-hdr=${_isAnyHdr ? 'true' : 'false'}`);
         lines.push(`#EXTVLCOPT:video-hdr-nits=${_pmNitsTarget}`);
