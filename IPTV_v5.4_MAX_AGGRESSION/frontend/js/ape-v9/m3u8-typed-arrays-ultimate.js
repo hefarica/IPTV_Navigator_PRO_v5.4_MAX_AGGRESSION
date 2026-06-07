@@ -1958,8 +1958,8 @@
             prefetch_min_bandwidth: 500000000,
             segment_duration: 2,
             bandwidth_guarantee: 500,
-            codec_primary: 'AV1',
-            codec_fallback: 'HEVC',
+            codec_primary: 'HEVC',
+            codec_fallback: 'AVC',
             codec_priority: 'hevc,hev1,hvc1,h265,H265,h.265,H.265,av1,h264',
             hdr_support: ['hdr10', 'dolby_vision', 'hlg'],
             color_depth: 12,
@@ -5710,9 +5710,9 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
         // 🔴 FIX LCEVC-BASE-CODEC (120/120)
         // Usar el perfil ORIGINAL (pre-Cortex) para determinar el codec base.
         // El Cortex fuerza P0 en todos los canales, pero LCEVC-BASE-CODEC
-        // debe reflejar el codec REAL: P0 = AV1 (8K), resto = HEVC.
+        // debe reflejar el codec REAL: P0-P3 = HEVC, P4/P5 = HEVC fallback AVC.
         const _origProfile = cfg._cortex_original_profile || channel._originalProfile || profile;
-        const lcevcBaseCodec = _origProfile === 'P0' ? 'AV1' : 'HEVC';
+        const lcevcBaseCodec = 'HEVC';
 
 
         return [
