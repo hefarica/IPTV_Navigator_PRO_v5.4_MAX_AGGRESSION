@@ -2913,11 +2913,22 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
             // Codecs
             // 🔱 hev1 — EXTVLCOPT usa nombres de familia (NO cadenas RFC-6381). VLC acepta: hevc, h264.
             // hvc1.*/hev1.* en EXTVLCOPT:codec rompen VLC/libvlc — deben ser nombres de familia.
-            vlcopts.push(`#EXTVLCOPT:codec=hevc,h264`);
+            // [HOMOLOGATION CASCADE 2026-06-07 HFRC mandato] Cada player parsea con dialecto propio.
+            // Cascada con TODOS los aliases (hevc|hev1|h265|h.265|H265|H.265|h264|h.264|...) garantiza
+            // universal-match. SSOT en ape-hevc-cascade.js. LAB SSOT no-clamp respetado.
+            const _vcasc1 = (typeof window !== 'undefined' && window.APE_HEVC_CASCADE && typeof window.APE_HEVC_CASCADE.getCodecCascade === 'function')
+                ? window.APE_HEVC_CASCADE.getCodecCascade('video_hevc_first', null)
+                : 'hevc,hev1,h265,h.265,H265,H.265,h264,h.264,H264,H.264,avc,AVC';
+            const _acasc1 = (typeof window !== 'undefined' && window.APE_HEVC_CASCADE && typeof window.APE_HEVC_CASCADE.getCodecCascade === 'function')
+                ? window.APE_HEVC_CASCADE.getCodecCascade('audio_aac_first', pmProfile?.settings?.codec_chain_audio)
+                : (pmProfile?.settings?.codec_chain_audio || 'mp4a.40.2,mp4a.40.5,mp4a,aac,AAC,ac-3,ac3,AC3,AC-3,ec-3,ec3,eac3,EAC3');
+            vlcopts.push(`#EXTVLCOPT:codec=${_vcasc1}`);
+            // [Council S3+S9 WARN wkpwmg7ic 2026-06-07] libvlc preferred-codec es SINGLE-VALUE;
+            // comma-list silently fail. Cascade real va por codec-priority + avcodec-codec (líneas abajo).
             vlcopts.push(`#EXTVLCOPT:preferred-codec=hevc`);
-            vlcopts.push(`#EXTVLCOPT:codec-priority=hevc,h265,h264`);
-            vlcopts.push(`#EXTVLCOPT:avcodec-codec=hevc`);
-            vlcopts.push(`#EXTVLCOPT:audio-codec-priority=${pmProfile?.settings?.codec_chain_audio || 'mp4a.40.2,ac-3,mp4a.40.5'}`);
+            vlcopts.push(`#EXTVLCOPT:codec-priority=${_vcasc1}`);
+            vlcopts.push(`#EXTVLCOPT:avcodec-codec=${_vcasc1}`);
+            vlcopts.push(`#EXTVLCOPT:audio-codec-priority=${_acasc1}`);
 
             // ── V6.3 PLAYER-CONSUMED INTENT (CMAF/APE → EXTVLCOPT translation) ──
             // Mapea la intención de #EXT-X-CMAF-AUDIO-FALLBACK / -ATMOS / -DOLBY-VISION /
@@ -2989,15 +3000,29 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
             vlcopts.push(`#EXTVLCOPT:ffmpeg-hw`);
             vlcopts.push(`#EXTVLCOPT:video-visual=${pmProfile?.visuals?.video_visual_mode || 'full-range'}`);
             // 🔱 hev1 — EXTVLCOPT usa nombres de familia (NO cadenas RFC-6381). VLC acepta: hevc, h264.
-            vlcopts.push(`#EXTVLCOPT:codec=hevc,h264`);
+            // [HOMOLOGATION CASCADE 2026-06-07 HFRC mandato] Universal-match cascade.
+            const _vcasc2 = (typeof window !== 'undefined' && window.APE_HEVC_CASCADE && typeof window.APE_HEVC_CASCADE.getCodecCascade === 'function')
+                ? window.APE_HEVC_CASCADE.getCodecCascade('video_hevc_first', null)
+                : 'hevc,hev1,h265,h.265,H265,H.265,h264,h.264,H264,H.264,avc,AVC';
+            const _acasc2 = (typeof window !== 'undefined' && window.APE_HEVC_CASCADE && typeof window.APE_HEVC_CASCADE.getCodecCascade === 'function')
+                ? window.APE_HEVC_CASCADE.getCodecCascade('audio_aac_first', pmProfile?.settings?.codec_chain_audio)
+                : (pmProfile?.settings?.codec_chain_audio || 'mp4a.40.2,mp4a.40.5,mp4a,aac,AAC,ac-3,ac3,AC3,AC-3,ec-3,ec3,eac3,EAC3');
+            vlcopts.push(`#EXTVLCOPT:codec=${_vcasc2}`);
+            // [Council S3+S9 WARN wkpwmg7ic 2026-06-07] libvlc preferred-codec es SINGLE-VALUE.
             vlcopts.push(`#EXTVLCOPT:preferred-codec=hevc`);
-            vlcopts.push(`#EXTVLCOPT:codec-priority=hevc,h265,h264`);
-            vlcopts.push(`#EXTVLCOPT:avcodec-codec=hevc`);
-            vlcopts.push(`#EXTVLCOPT:audio-codec-priority=${pmProfile?.settings?.codec_chain_audio || 'mp4a.40.2,ac-3,mp4a.40.5'}`);
+            vlcopts.push(`#EXTVLCOPT:codec-priority=${_vcasc2}`);
+            vlcopts.push(`#EXTVLCOPT:avcodec-codec=${_vcasc2}`);
+            vlcopts.push(`#EXTVLCOPT:audio-codec-priority=${_acasc2}`);
         }
 
+        // [Council BLOCK fix wkpwmg7ic 2026-06-07] L3104 spreads standard[] AFTER vlcopts
+        // → last-write-wins kills la cascada de pmProfile. Aplicamos la misma cascada homologada
+        // aquí para que sobreviva. avcodec-codec ACEPTA comma-separated list en libavcodec.
+        const _vcascStd = (typeof window !== 'undefined' && window.APE_HEVC_CASCADE && typeof window.APE_HEVC_CASCADE.getCodecCascade === 'function')
+            ? window.APE_HEVC_CASCADE.getCodecCascade('video_hevc_first', null)
+            : 'hevc,hev1,h265,h.265,H265,H.265,h264,h.264,H264,H.264,avc,AVC';
         const standard = [
-            `#EXTVLCOPT:avcodec-codec=hevc`,
+            `#EXTVLCOPT:avcodec-codec=${_vcascStd}`,
             `#EXTVLCOPT:sout-video-codec=hevc`,
             `#EXTVLCOPT:sout-video-profile=main10`,
             // ── SECCIÓN 7: PLAYBACK QUALITY — MÁXIMA PRIORIDAD ──
@@ -3291,7 +3316,11 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
             '#KODIPROP:inputstream.adaptive.bandwidth_handoff_ms=60000', // Toma de control Sentinel al minuto
             // -------------------------------------------------------------
             // 🔱 hev1 — ISA/ExoPlayer espera nombre de familia, NO cadena RFC-6381
-            `#KODIPROP:inputstream.adaptive.preferred_codec=hevc`,
+            // [HOMOLOGATION CASCADE 2026-06-07 HFRC mandato] Universal-match cascade con
+            // TODOS los aliases (hevc|hev1|h265|h.265|H265|H.265|h264|h.264|H264|H.264|avc|AVC).
+            // Garantiza que el dialect del player encuentre AL MENOS un alias compatible.
+            // SSOT en ape-hevc-cascade.js — exportado vía window.APE_HEVC_CASCADE.getCodecCascade.
+            `#KODIPROP:inputstream.adaptive.preferred_codec=${(typeof window !== 'undefined' && window.APE_HEVC_CASCADE && typeof window.APE_HEVC_CASCADE.getCodecCascade === 'function') ? window.APE_HEVC_CASCADE.getCodecCascade('video_hevc_first', null) : 'hevc,hev1,h265,h.265,H265,H.265,h264,h.264,H264,H.264,avc,AVC'}`,
             `#KODIPROP:inputstream.adaptive.audio_codec_priority=${cfg.codec_chain_audio || 'mp4a.40.2,ac-3,mp4a.40.5'}`,
             `#KODIPROP:inputstream.adaptive.max_resolution=${cfg.resolution || '3840x2160'}`,
             `#KODIPROP:inputstream.adaptive.resolution_secure_max=${cfg.resolution || '3840x2160'}`,
@@ -9672,6 +9701,14 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
             if (typeof _codecSource !== 'undefined' && _codecSource) {
                 lines.push(`#EXT-X-APE-CODEC-SOURCE:${_codecSource}`);
             }
+            // [HOMOLOGATION CASCADE observability 2026-06-07] Tag privado APE con la
+            // cascada homologada completa emitida a KODIPROP/EXTVLCOPT — permite a
+            // dashboards/wrappers auditar qué aliases recibe el player por canal.
+            // RFC 8216 §6.3.1 invisible al player (tag custom propietario).
+            const _ccAll = (typeof window !== 'undefined' && window.APE_HEVC_CASCADE && typeof window.APE_HEVC_CASCADE.getCodecCascade === 'function')
+                ? window.APE_HEVC_CASCADE.getCodecCascade('video_hevc_first', null)
+                : 'hevc,hev1,h265,h.265,H265,H.265,h264,h.264,H264,H.264,avc,AVC';
+            lines.push(`#EXT-X-APE-CODEC-FALLBACK-CHAIN:${_ccAll}`);
         }
         let finalUrl = options.dictatorMode ? `${primaryUrl}|User-Agent=${_ua796}&Cache-Control=no-cache&Connection=keep-alive&Referer=${typeof window !== "undefined" ? encodeURIComponent(window.location.origin) : ""}` : primaryUrl;
         if (options.dictatorMode) {

@@ -412,6 +412,51 @@
         return ANTI_FREEZE_PREMIUM_RE.test(name) || ANTI_FREEZE_PREMIUM_RE.test(group);
     }
 
+    // ════════════════════════════════════════════════════════════════════════
+    // CODEC HOMOLOGATION CASCADE — REGLA UNIVERSAL 2026-06-07 HFRC mandato
+    // ════════════════════════════════════════════════════════════════════════
+    // DOCTRINA: cada player parsea con su propio dialecto del mismo codec
+    //   • HEVC: hevc | hev1 | h265 | H265 | h.265 | H.265 | MPEG-H | x265 …
+    //   • AVC:  h264 | H264 | h.264 | H.264 | avc | AVC | x264 …
+    //   • AAC:  mp4a.40.2 | mp4a | aac | AAC …
+    //   • AC3:  ac-3 | ac3 | AC3 | AC-3 …
+    //   • EC3:  ec-3 | ec3 | eac3 | EAC3 …
+    //
+    // Declarar la cascada con TODOS los aliases en CADA emit site (preferred_codec,
+    // codec-priority, avcodec-codec, etc.) garantiza que el matcher del player
+    // encuentre al menos UN alias que reconoce — sin importar su naming convention
+    // interna. Si solo declaramos "hevc", un player que internamente busca "h.265"
+    // no degrada y freeza.
+    //
+    // GOLDEN RULE preservada: STREAM-INF CODECS= sigue RFC 6381 estricto (hvc1.*,
+    // avc1.*). Las cascadas homologadas SOLO van en campos family-name
+    // (KODIPROP preferred_codec, EXTVLCOPT preferred-codec/codec-priority).
+    //
+    // Orden: HEVC primero (MAX IMAGE FIRST), AVC fallback (compat universal).
+    // Si el caller necesita AVC primero (F4 sin probe sin premium), use _AVC_FIRST.
+    // ════════════════════════════════════════════════════════════════════════
+    const CODEC_HOMOLOGATION = {
+        // Cascada VIDEO HEVC→AVC, todos los aliases. Para preferred_codec, codec-priority.
+        video_hevc_first: 'hevc,hev1,h265,h.265,H265,H.265,h264,h.264,H264,H.264,avc,AVC',
+        // Cascada VIDEO AVC→HEVC, todos los aliases. Para F4 cases si el caller lo pide.
+        video_avc_first:  'h264,h.264,H264,H.264,avc,AVC,hevc,hev1,h265,h.265,H265,H.265',
+        // Cascada solo HEVC (sin AVC) — útil cuando el caller quiere proteger HEVC puro.
+        video_hevc_only:  'hevc,hev1,h265,h.265,H265,H.265',
+        // Cascada solo AVC — útil cuando hay evidencia explícita de H.264 upstream.
+        video_avc_only:   'h264,h.264,H264,H.264,avc,AVC',
+        // Cascada AUDIO AAC primero, luego AC3/EC3 con todos los aliases.
+        audio_aac_first:  'mp4a.40.2,mp4a.40.5,mp4a,aac,AAC,ac-3,ac3,AC3,AC-3,ec-3,ec3,eac3,EAC3',
+    };
+
+    // Helper de selección — caller solicita 'hevc_first' | 'avc_first' | ...
+    // Si LAB provee cfg.codec_chain_video, retorna eso (LAB SSOT no-clamp).
+    function getCodecCascade(kind, labChain) {
+        // LAB override siempre gana — no clampamos values de LAB.
+        if (labChain && typeof labChain === 'string' && labChain.length > 0) return labChain;
+        const key = String(kind || 'video_hevc_first');
+        return CODEC_HOMOLOGATION[key] || CODEC_HOMOLOGATION.video_hevc_first;
+    }
+
     // ────────────────────────────────────────────────────────────────────────
     // Exposición global (browser) + module.exports (Node test)
     // ────────────────────────────────────────────────────────────────────────
@@ -430,6 +475,8 @@
         isAntiFreezePremium: isAntiFreezePremium,
         PREMIUM_RE: PREMIUM_RE,
         ANTI_FREEZE_PREMIUM_RE: ANTI_FREEZE_PREMIUM_RE,
+        CODEC_HOMOLOGATION: CODEC_HOMOLOGATION,
+        getCodecCascade: getCodecCascade,
         // Per-profile cascade arrays (primary + fallback chain hvc1.2.4.*)
         generateProfileCascadeArrays: generateProfileCascadeArrays,
         PROFILE_DIMS: PROFILE_DIMS,
