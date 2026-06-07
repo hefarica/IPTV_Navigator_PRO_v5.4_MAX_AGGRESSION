@@ -3188,6 +3188,27 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
         const labLiveMs = labMs('live-caching', GLOBAL_CACHING.live);
         const labSegments = parseInt(pmProfile?.prefetch_config?.prefetch_segments, 10) || (cfg.buffer_segments || 30);
 
+        // ── HDR PROFILE-AWARE VARS (OTT / TiviMate / Kodi / Universal) ──────
+        const _labVo = pmProfile?.vlcopt || {};
+        const _peakNits = parseInt(_labVo['video-hdr-nits'] || _labVo['video-tone-mapping-peak']) || cfg.peak_luminance_nits || 5000;
+        const _tmRef    = parseInt(_labVo['video-tone-mapping-reference']) || 203;
+        const _isHDR    = (_labVo['video-hdr'] === 'true' || _labVo['video-hdr'] === true)
+                       || (Array.isArray(cfg.hdr_support) && cfg.hdr_support.some(h => h !== 'sdr'));
+        const _colorDepth = parseInt(_labVo['video-bit-depth']) || cfg.color_depth || 8;
+        // Transfer function: LAB key → Kodi ISA lower-case format
+        const _rawTf = (_labVo['video-color-transfer'] || _labVo['video-transfer-function'] || '').toUpperCase();
+        const _kodiTf = _rawTf === 'SMPTE2084' ? 'smpte2084'
+                      : _rawTf === 'ARIB-STD-B67' ? 'arib-std-b67'
+                      : _rawTf === 'HLG' ? 'arib-std-b67'
+                      : _rawTf === 'PQ' ? 'smpte2084'
+                      : _isHDR ? 'smpte2084' : 'bt1886';
+        const _colorPrimaries = _isHDR ? 'bt2020' : 'bt709';
+        const _matrixCoeff    = _isHDR ? 'bt2020nc' : 'bt709';
+        const _colorSpaceKodi = _isHDR ? 'bt2020' : 'bt709';
+        const _pixelFormat    = _colorDepth >= 12 ? 'yuv420p12le'
+                              : _colorDepth >= 10 ? 'yuv420p10le' : 'yuv420p';
+        const _hdrMode = _labVo['video-hdr-mode'] || (_isHDR ? 'HDR10' : 'SDR');
+
         const streamHeaders = JSON.stringify({
             "User-Agent": UAPhantomEngine.getForChannel(index, cfg._channelName || ''),
             "X-APE-Profile": profile,
@@ -3220,12 +3241,17 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
             "X-Video-Profile-Override": "main10",
             "X-Video-Tier": "HIGH",
             "X-Video-Level": "6.1,5.1,5.0,4.1",
-            "X-Pixel-Format": "yuv444p12le",
-            "X-Color-Depth-Force": "12bit",
-            "X-Color-Space-Force": "bt2020",
+            "X-Pixel-Format": _pixelFormat,
+            "X-Color-Depth-Force": _colorDepth + "bit",
+            "X-Color-Space-Force": _colorSpaceKodi,
+            "X-Hdr-Mode": _hdrMode,
+            "X-Hdr-Transfer-Function": _kodiTf,
+            "X-Hdr-Color-Primaries": _colorPrimaries,
+            "X-Tone-Mapping-Peak": String(_peakNits),
+            "X-Tone-Mapping-Reference": String(_tmRef),
             "X-Ignore-Screen-Resolution": "true",
-            "X-HDR-Pipeline": "FORCE_12BIT_MAIN10_OVERDRIVE",
-            "X-Max-Peak-Luminance": "5000",
+            "X-HDR-Pipeline": _isHDR ? "FORCE_HDR_FULL_PIPELINE" : "SDR_BT1886_PASSTHROUGH",
+            "X-Max-Peak-Luminance": String(_peakNits),
             "X-Video-Scaler": "vdpau,opengl,cuda",
             "X-Sharpen-Sigma": "0.01",
             "X-Artifact-Deblocking": "extreme",
@@ -3430,23 +3456,23 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
             '#KODIPROP:inputstream.adaptive.tls_cipher_suites=TLS_AES_256_GCM_SHA384',
             '#KODIPROP:inputstream.adaptive.ocsp_stapling=true',
             '#KODIPROP:inputstream.adaptive.early_hints=true',
-            // ── 🔥 OLED SHOWROOM SUPREMACY v5 (5000cd/m² PERCEPTION & ZERO CRASH) ──
-            // Exprimir 5000 nits de luminancia sin desbordar el decoder. Negros absolutos orgánicos.
-            '#KODIPROP:inputstream.adaptive.hdr_handling=force_hdr',
-            '#KODIPROP:inputstream.adaptive.max_luminance=5000',
-            '#KODIPROP:inputstream.adaptive.min_luminance=0.0000', // Negros OLED Profundos 100%
+            // ── 🔥 OLED SHOWROOM SUPREMACY v6 — PROFILE-AWARE (OTT/TiviMate/Kodi/Universal) ──
+            // Valores derivados del LAB per-profile (no hardcoded). Ver _labVo / _peakNits / _kodiTf.
+            `#KODIPROP:inputstream.adaptive.hdr_handling=${_isHDR ? 'force_hdr' : 'passthrough'}`,
+            `#KODIPROP:inputstream.adaptive.max_luminance=${_peakNits}`,
+            '#KODIPROP:inputstream.adaptive.min_luminance=0.0000',
             '#KODIPROP:inputstream.adaptive.hdr10_plus_parse=true',
             '#KODIPROP:inputstream.adaptive.dolby_vision_rpu=true',
-            '#KODIPROP:inputstream.adaptive.color_primaries=bt2020',
-            '#KODIPROP:inputstream.adaptive.transfer=smpte2084', // Obliga curva PQ pura HDR
-            '#KODIPROP:inputstream.adaptive.matrix_coefficients=bt2020nc',
-            '#KODIPROP:inputstream.adaptive.color_space=bt2020',
-            '#KODIPROP:inputstream.adaptive.pixel_format=yuv420p10le', // Profundidad de espectro expandida
-            // Tone mapping perceptual adaptativo, previene el clipping que causaba crashes de parseo
-            '#KODIPROP:inputstream.adaptive.tone_mapping=mobius', // Renderizado Mobius superior para Highlights en destellos
-            '#KODIPROP:inputstream.adaptive.tone_mapping_peak=5000',
-            '#KODIPROP:inputstream.adaptive.contrast_boost=1.15', // Amplificador dinámico de contraste vital
-            '#KODIPROP:inputstream.adaptive.film_grain_synthesis=false' // Nitidez extrema sin penalización de gpu
+            `#KODIPROP:inputstream.adaptive.color_primaries=${_colorPrimaries}`,
+            `#KODIPROP:inputstream.adaptive.transfer=${_kodiTf}`,
+            `#KODIPROP:inputstream.adaptive.matrix_coefficients=${_matrixCoeff}`,
+            `#KODIPROP:inputstream.adaptive.color_space=${_colorSpaceKodi}`,
+            `#KODIPROP:inputstream.adaptive.pixel_format=${_pixelFormat}`,
+            '#KODIPROP:inputstream.adaptive.tone_mapping=mobius',
+            `#KODIPROP:inputstream.adaptive.tone_mapping_peak=${_peakNits}`,
+            `#KODIPROP:inputstream.adaptive.tone_mapping_reference=${_tmRef}`,
+            '#KODIPROP:inputstream.adaptive.contrast_boost=1.15',
+            '#KODIPROP:inputstream.adaptive.film_grain_synthesis=false'
         ];
 
         // ═══════════════════════════════════════════════════════════════════
@@ -4068,16 +4094,24 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
             'X-SVT-AV1-Film-Grain': '1',
             'X-SVT-AV1-Enable-Tf': 'true',
 
-            // ── HDR10 Separated (SMPTE ST 2086) — 10000 NITS QUANTUM PEAK ──
+            // ── HDR PROFILE-AWARE (OTT/TiviMate/Kodi/Universal) ──
+            'X-Hdr-Mode': _exHdrMode,
+            'X-Hdr-Transfer-Function': _exKodiTf,
+            'X-Hdr-Color-Primaries': _exColorPrimaries,
+            'X-Tone-Mapping-Peak': String(_exPeakNits),
+            'X-Tone-Mapping-Reference': String(_exTmRef),
+            'X-Color-Depth': String(_exColorDepth) + 'bit',
+            'X-Pixel-Format': _exPixelFmt,
+            // ── HDR10 Separated (SMPTE ST 2086) — profile-aware NITS ──
             'X-HDR10-Primaries-G': '0.680,0.320',
             'X-HDR10-Primaries-B': '0.150,0.060',
             'X-HDR10-Primaries-R': '0.640,0.330',
             'X-HDR10-White-Point': '0.3127,0.3290',
-            'X-HDR10-Luminance-Max': '10000',
-            'X-HDR10-Luminance-Min': '0.0005',
-            'X-HDR10-MaxCLL': '10000',
-            'X-HDR10-MaxFALL': '800',
-            'X-HDR10-Contrast-Ratio': '10000000:1',
+            'X-HDR10-Luminance-Max': String(_exPeakNits),
+            'X-HDR10-Luminance-Min': _exIsHDR ? '0.0005' : '0.1',
+            'X-HDR10-MaxCLL': String(_exPeakNits),
+            'X-HDR10-MaxFALL': String(Math.round(_exPeakNits * 0.08)),
+            'X-HDR10-Contrast-Ratio': _exIsHDR ? '10000000:1' : '1000:1',
 
             // ── HDR10+ Scene (SMPTE ST 2094-40) — 10000 NITS ──
             'X-HDR10-Plus-Profile': 'A',
@@ -4454,6 +4488,26 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
 
         const lcevcState = resolveLcevcState(cfg); // LCEVC Dinámico: nunca DISABLED
         const fps = cfg.fps || 30;
+
+        // ── HDR PROFILE-AWARE (OTT Navigator / TiviMate / Universal players) ──
+        const _exPmProfile = (typeof window !== 'undefined' && window.APE_PROFILES_CONFIG
+            && typeof window.APE_PROFILES_CONFIG.getProfile === 'function')
+            ? window.APE_PROFILES_CONFIG.getProfile(profile) : null;
+        const _exVo = _exPmProfile?.vlcopt || {};
+        const _exPeakNits = parseInt(_exVo['video-hdr-nits'] || _exVo['video-tone-mapping-peak']) || cfg.peak_luminance_nits || 5000;
+        const _exTmRef    = parseInt(_exVo['video-tone-mapping-reference']) || 203;
+        const _exIsHDR    = (_exVo['video-hdr'] === 'true' || _exVo['video-hdr'] === true)
+                         || (Array.isArray(cfg.hdr_support) && cfg.hdr_support.some(h => h !== 'sdr'));
+        const _exColorDepth = parseInt(_exVo['video-bit-depth']) || cfg.color_depth || 8;
+        const _exRawTf = (_exVo['video-color-transfer'] || _exVo['video-transfer-function'] || '').toUpperCase();
+        const _exKodiTf = _exRawTf === 'SMPTE2084' ? 'smpte2084'
+                        : _exRawTf === 'ARIB-STD-B67' ? 'arib-std-b67'
+                        : _exRawTf === 'HLG' ? 'arib-std-b67'
+                        : _exRawTf === 'PQ' ? 'smpte2084'
+                        : _exIsHDR ? 'smpte2084' : 'bt1886';
+        const _exColorPrimaries = _exIsHDR ? 'BT2020' : 'BT709';
+        const _exHdrMode = _exVo['video-hdr-mode'] || (_exIsHDR ? 'HDR10' : 'SDR');
+        const _exPixelFmt = _exColorDepth >= 12 ? 'yuv420p12le' : (_exColorDepth >= 10 ? 'yuv420p10le' : 'yuv420p');
 
         let isp = {};
         if (ACTIVE_ISP_LEVEL) {
