@@ -439,11 +439,10 @@
     // family + RFC (hev1/hvc1/avc1/avc3) + dot/dash/case mixed + ISO/IEC formal + encoder name.
     // Cubre cualquier parser/player ISO BMFF / DASH / HLS / DVB / Web / Smart TV / móvil.
     // Doctrina HEVC-FIRST: TODOS los HEVC homologs siempre antes que cualquier H264.
-    // NOTE: tokens with spaces/slashes and non-IANA IDs (hev2,hvc2) removed per council S3/S9/S10
-    // — they produce debug-log noise in VLC and silent no-match in Kodi ISA. Functional tokens
-    // (hevc,hev1,hvc1,h265,h264) always appear first. HINT-ONLY fields: never use in CODECS= (RFC 6381).
-    const _HEVC_ALIASES = 'hevc,hev1,hvc1,h265,H265,h.265,H.265,h-265,H-265,MPEG-H,mpeg-h,mpegh,x265';
-    const _AVC_ALIASES  = 'h264,H264,h.264,H.264,h-264,H-264,avc,AVC,avc1,avc3,mpeg4-avc,MPEG4-AVC,x264';
+    // MANDATO USUARIO: TODAS las homologaciones de cada codec — hint-only en EXTHTTP/EXTVLCOPT/KODIPROP.
+    // NUNCA usar en CODECS= RFC 6381 (solo dot-notation ahí). Aquí es válido: campos family-name.
+    const _HEVC_ALIASES = 'hevc,hev1,hev2,hvc1,hvc2,h265,H265,h.265,H.265,h-265,H-265,MPEG-H,mpeg-h,MPEG-H Part2,MPEG-H Part 2,mpegh,x265,x.265,ISO/IEC 23008-2';
+    const _AVC_ALIASES  = 'h264,H264,h.264,H.264,h-264,H-264,avc,AVC,avc1,avc3,MPEG-4 AVC,mpeg4-avc,MPEG4-AVC,x264,ISO/IEC 14496-10';
     const _AV1_ALIASES  = 'av1,av01,AV1,AOM-AV1,libaom-av1';
     const _VP9_ALIASES  = 'vp9,VP9,vp09,vp9.0';
     const _AAC_ALIASES  = 'mp4a.40.2,mp4a.40.5,mp4a.40.29,mp4a,aac,AAC,aac-lc,AAC-LC,he-aac,HE-AAC,MPEG-4 AAC,MP4A';
