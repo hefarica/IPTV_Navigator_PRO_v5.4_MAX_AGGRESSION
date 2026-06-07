@@ -4673,13 +4673,23 @@
             try {
                 const supportedSchemas = ['omega_v1', 'omega_v1_bulletproof_20260520'];
                 const isBulletproof = data.lab_schema_variant === 'omega_v2_bulletproof_perprofile' || data.bulletproof === true;
-                const isVersionSupported = supportedSchemas.includes(data.lab_version) || (data.lab_version && data.lab_version.startsWith('omega_v1'));
+                // [HARDENING 2026-06-07] Gate de versión tolerante a drift omega_v1→v2+.
+                // El lab_schema_variant YA es 'omega_v2_*'; el día que lab_version suba a
+                // 'omega_v2' por coherencia, el gate viejo (startsWith 'omega_v1') tumbaba el
+                // upload con "Schema invalido". Ahora pasa cualquier 'omega_*' O un JSON
+                // bulletproof reconocido. NO se muta ningún valor (ssot-no-clamp): solo se
+                // amplía la aceptación de schema. JSON ajeno (sin omega_ y no bulletproof) sigue lanzando.
+                const isVersionSupported = (data && data.lab_version && /^omega_/i.test(String(data.lab_version)))
+                    || supportedSchemas.includes(data && data.lab_version)
+                    || isBulletproof;
                 if (!data || !isVersionSupported) {
-                    throw new Error(`Schema invalido (esperado: ${supportedSchemas.join(', ')})`);
+                    throw new Error(`Schema invalido: lab_version='${data && data.lab_version}', schema_variant='${data && data.lab_schema_variant}' (esperado omega_* o bulletproof:true)`);
                 }
                 if (isBulletproof) console.log('[LAB-CONSUMER] 🛡 Bulletproof JSON detectado — consumiendo 100% de los campos.');
-                if (data.playlist_format !== 'm3u8') {
-                    throw new Error('playlist_format debe ser m3u8');
+                // [HARDENING 2026-06-07] playlist_format: warn + asumir m3u8 si difiere/falta,
+                // en vez de throw duro. El LAB es 100% m3u8; un campo cosmético no debe tumbar el upload.
+                if (data.playlist_format && data.playlist_format !== 'm3u8') {
+                    console.warn(`[LAB-CONSUMER] playlist_format='${data.playlist_format}' inesperado; se asume 'm3u8'.`);
                 }
 
                 // === 1. PROFILES ===
