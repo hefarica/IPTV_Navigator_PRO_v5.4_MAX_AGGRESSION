@@ -1772,7 +1772,7 @@
             return 1; // EXTREME (default seguro)
         } catch (e) { return 1; }
     })();
-    console.log(`🖥️ [DEVICE-TIER] Nivel detectado: \${DEVICE_TIER} (\${['','CONSERVATIVE','MODERATE','AGGRESSIVE','VERY_AGGRESSIVE'][DEVICE_TIER]})`);
+    console.log(`🖥️ [DEVICE-TIER] Nivel detectado: ${DEVICE_TIER} (${['','CONSERVATIVE','MODERATE','AGGRESSIVE','VERY_AGGRESSIVE'][DEVICE_TIER]})`);
 
     // ═══════════════════════════════════════════════════════════════════════════
     // ☢️ ISP_LEVELS — 10 Niveles ANTIFREEZE NUCLEAR OBSCENE (nunca bajan)
@@ -1926,7 +1926,7 @@
         }
     };
 
-    console.log(`☢️ [ISP-LEVEL] Activo: \${ACTIVE_ISP_LEVEL.name} | TCP: \${ACTIVE_ISP_LEVEL.tcp_window_mb}MB | Parallel: \${ACTIVE_ISP_LEVEL.parallel_streams} | Burst: \${ACTIVE_ISP_LEVEL.burst_factor}x | Strategy: \${ACTIVE_ISP_LEVEL.strategy}`);
+    console.log(`☢️ [ISP-LEVEL] Activo: ${ACTIVE_ISP_LEVEL.name} | TCP: ${ACTIVE_ISP_LEVEL.tcp_window_mb}MB | Parallel: ${ACTIVE_ISP_LEVEL.parallel_streams} | Burst: ${ACTIVE_ISP_LEVEL.burst_factor}x | Strategy: ${ACTIVE_ISP_LEVEL.strategy}`);
 
     // ═══════════════════════════════════════════════════════════════════════════
     // PERFILES P0-P5 (CONFIGURACIÓN COMPLETA - FALLBACK)
