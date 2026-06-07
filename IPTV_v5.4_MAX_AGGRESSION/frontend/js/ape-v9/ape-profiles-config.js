@@ -336,7 +336,7 @@
                 "t2": 150.0,
                 "playerBuffer": 60000,
                 "fps": 60,
-                "codec": "AV1",
+                "codec": "H265",
                 "headersCount": 233,
                 "bufferSeconds": 25,
                 "focus": "MAXIMA_CALIDAD_8K_HDR_CARGA_ULTRARAPIDA_SIN_CORTES",
@@ -714,7 +714,7 @@
                     "action": "ACTIVATE_BACKUP_URL"
                 },
                 "primary": {
-                    "codec": "AV1",
+                    "codec": "H265",
                     "profile": "MAIN-12,MAIN-10,MAIN,HIGH,BASELINE"
                 }
             },
@@ -971,7 +971,7 @@
                 "t2": 80.0,
                 "playerBuffer": 50000,
                 "fps": 60,
-                "codec": "AV1",
+                "codec": "H265",
                 "headersCount": 233,
                 "bufferSeconds": 20,
                 "focus": "MAXIMA_CALIDAD_4K_HDR10PLUS_SIN_CORTES",
@@ -1348,7 +1348,7 @@
                     "action": "ACTIVATE_BACKUP_URL"
                 },
                 "primary": {
-                    "codec": "AV1",
+                    "codec": "H265",
                     "profile": "MAIN-12,MAIN-10,MAIN,HIGH,BASELINE"
                 }
             },
