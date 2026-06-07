@@ -2930,11 +2930,22 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
             // ── V6.2 VISUAL SUPREMACY (Filters & Color Matrix) ──
             if (vo['video-filter']) vlcopts.push(`#EXTVLCOPT:video-filter=${vo['video-filter']}`);
             if (vo['video-color-space']) vlcopts.push(`#EXTVLCOPT:video-color-space=${vo['video-color-space']}`);
-            if (vo['video-transfer-function']) vlcopts.push(`#EXTVLCOPT:video-transfer-function=${vo['video-transfer-function']}`);
+            // video-transfer-function: soporta clave nativa VLC y alias LAB 'video-color-transfer'
+            const _vtf = vo['video-transfer-function'] || vo['video-color-transfer'];
+            if (_vtf) vlcopts.push(`#EXTVLCOPT:video-transfer-function=${_vtf}`);
             if (vo['video-color-primaries']) vlcopts.push(`#EXTVLCOPT:video-color-primaries=${vo['video-color-primaries']}`);
             if (vo['video-color-range']) vlcopts.push(`#EXTVLCOPT:video-color-range=${vo['video-color-range']}`);
             if (vo['tone-mapping']) vlcopts.push(`#EXTVLCOPT:tone-mapping=${vo['tone-mapping']}`);
-            if (vo['hdr-output-mode']) vlcopts.push(`#EXTVLCOPT:hdr-output-mode=${vo['hdr-output-mode']}`);
+            // hdr-output-mode: soporta clave nativa y alias LAB 'video-hdr-mode'
+            const _hom = vo['hdr-output-mode'] || vo['video-hdr-mode'];
+            if (_hom) vlcopts.push(`#EXTVLCOPT:hdr-output-mode=${_hom}`);
+            // HDR peak luminance para tone-mapping — LAB usa video-tone-mapping-peak o video-hdr-nits
+            const _tmpeak = vo['video-tone-mapping-peak'] || vo['video-hdr-nits'];
+            if (_tmpeak) vlcopts.push(`#EXTVLCOPT:tone-mapping-peak=${_tmpeak}`);
+            // tone-mapping-reference: luminancia blanca de referencia (SDR=203 nits, HDR anchors a 1000)
+            if (vo['video-tone-mapping-reference']) vlcopts.push(`#EXTVLCOPT:tone-mapping-reference=${vo['video-tone-mapping-reference']}`);
+            // video-hdr flag: hint al decoder VLC 4.x para forzar HDR output pipeline
+            if (vo['video-hdr']) vlcopts.push(`#EXTVLCOPT:video-hdr=${vo['video-hdr']}`);
 
             if (vo['sharpen-sigma']) vlcopts.push(`#EXTVLCOPT:sharpen-sigma=${vo['sharpen-sigma']}`);
             if (vo['contrast']) vlcopts.push(`#EXTVLCOPT:contrast=${vo['contrast']}`);
@@ -2992,8 +3003,12 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
                     'network-caching','live-caching','file-caching','disc-caching','tcp-caching','sout-mux-caching',
                     'clock-jitter','clock-synchro',
                     'http-user-agent','http-forward-cookies','http-reconnect','http-continuous-stream','http-continuous',
-                    'video-filter','video-color-space','video-transfer-function','video-color-primaries','video-color-range',
-                    'tone-mapping','hdr-output-mode','sharpen-sigma','contrast','brightness','saturation','gamma',
+                    'video-filter','video-color-space','video-transfer-function','video-color-transfer',
+                    'video-color-primaries','video-color-range',
+                    'tone-mapping','hdr-output-mode','video-hdr-mode',
+                    'tone-mapping-peak','video-tone-mapping-peak','video-hdr-nits',
+                    'tone-mapping-reference','video-tone-mapping-reference',
+                    'video-hdr','sharpen-sigma','contrast','brightness','saturation','gamma',
                     'audio-codec-priority','audio-spatializer','adaptive-logic','adaptive-maxwidth','adaptive-maxheight','demux'
                 ]);
                 // Build emitted-prefix set from current vlcopts (selective path output)
