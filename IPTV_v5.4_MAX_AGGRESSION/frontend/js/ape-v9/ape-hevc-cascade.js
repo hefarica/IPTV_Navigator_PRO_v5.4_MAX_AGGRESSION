@@ -435,17 +435,29 @@
     // Orden: HEVC primero (MAX IMAGE FIRST), AVC fallback (compat universal).
     // Si el caller necesita AVC primero (F4 sin probe sin premium), use _AVC_FIRST.
     // ════════════════════════════════════════════════════════════════════════
+    // MAXIMAL HOMOLOGATION 2026-06-07/2 — cada codec con TODAS sus variantes documentadas:
+    // family + RFC (hev1/hvc1/avc1/avc3) + dot/dash/case mixed + ISO/IEC formal + encoder name.
+    // Cubre cualquier parser/player ISO BMFF / DASH / HLS / DVB / Web / Smart TV / móvil.
+    // Doctrina HEVC-FIRST: TODOS los HEVC homologs siempre antes que cualquier H264.
+    const _HEVC_ALIASES = 'hevc,hev1,hev2,hvc1,hvc2,h265,H265,h.265,H.265,h-265,H-265,MPEG-H,mpeg-h,MPEG-H Part2,MPEG-H Part 2,mpegh,x265,x.265,ISO/IEC 23008-2';
+    const _AVC_ALIASES  = 'h264,H264,h.264,H.264,h-264,H-264,avc,AVC,avc1,avc3,MPEG-4 AVC,mpeg4-avc,MPEG4-AVC,x264,ISO/IEC 14496-10';
+    const _AV1_ALIASES  = 'av1,av01,AV1,AOM-AV1,libaom-av1';
+    const _VP9_ALIASES  = 'vp9,VP9,vp09,vp9.0';
+    const _AAC_ALIASES  = 'mp4a.40.2,mp4a.40.5,mp4a.40.29,mp4a,aac,AAC,aac-lc,AAC-LC,he-aac,HE-AAC,MPEG-4 AAC,MP4A';
+    const _AC3_ALIASES  = 'ac-3,ac3,AC3,AC-3,dolby-digital,DOLBY-DIGITAL,Dolby Digital';
+    const _EC3_ALIASES  = 'ec-3,ec3,eac3,EAC3,EC-3,ddp,DDP,dolby-digital-plus,Dolby Digital Plus';
+
     const CODEC_HOMOLOGATION = {
-        // Cascada VIDEO HEVC→AVC, todos los aliases. Para preferred_codec, codec-priority.
-        video_hevc_first: 'hevc,hev1,h265,h.265,H265,H.265,h264,h.264,H264,H.264,avc,AVC',
-        // Cascada VIDEO AVC→HEVC, todos los aliases. Para F4 cases si el caller lo pide.
-        video_avc_first:  'h264,h.264,H264,H.264,avc,AVC,hevc,hev1,h265,h.265,H265,H.265',
-        // Cascada solo HEVC (sin AVC) — útil cuando el caller quiere proteger HEVC puro.
-        video_hevc_only:  'hevc,hev1,h265,h.265,H265,H.265',
-        // Cascada solo AVC — útil cuando hay evidencia explícita de H.264 upstream.
-        video_avc_only:   'h264,h.264,H264,H.264,avc,AVC',
-        // Cascada AUDIO AAC primero, luego AC3/EC3 con todos los aliases.
-        audio_aac_first:  'mp4a.40.2,mp4a.40.5,mp4a,aac,AAC,ac-3,ac3,AC3,AC-3,ec-3,ec3,eac3,EAC3',
+        // HEVC-FIRST CON TODOS LOS HOMOLOGOS, luego H264 homologs, AV1 al final como fallback.
+        video_hevc_first: _HEVC_ALIASES + ',' + _AVC_ALIASES + ',' + _AV1_ALIASES,
+        // Si caller necesita H264 primero (improbable post-doctrina HEVC-FIRST).
+        video_avc_first:  _AVC_ALIASES  + ',' + _HEVC_ALIASES + ',' + _AV1_ALIASES,
+        // Solo HEVC.
+        video_hevc_only:  _HEVC_ALIASES,
+        // Solo AVC.
+        video_avc_only:   _AVC_ALIASES,
+        // AUDIO: AAC universal primero, luego AC3, luego EC3/DDP.
+        audio_aac_first:  _AAC_ALIASES + ',' + _AC3_ALIASES + ',' + _EC3_ALIASES,
     };
 
     // Helper de selección — caller solicita 'hevc_first' | 'avc_first' | ...

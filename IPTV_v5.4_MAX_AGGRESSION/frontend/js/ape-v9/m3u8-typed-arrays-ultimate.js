@@ -4483,7 +4483,7 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
             "X-Client-Timestamp": String(timestamp),
             "X-Request-Id": reqId,
             "X-Stream-Type": "hls,dash",
-            "X-Quality-Preference": `codec-av1,profile-main-12,main-10,main,tier-high,codec-hevc,${(cfg.hevc_profile || 'MAIN-10-HDR').toLowerCase()}`,
+            "X-Quality-Preference": `codec-hevc,profile-main-12,main-10,tier-high;codec-hev1,profile-main-10,tier-high;codec-hvc1,profile-main-10,tier-high;codec-h265,profile-main-10,tier-high;codec-h.265,profile-main-10,tier-high;codec-H265,profile-main-10,tier-high;codec-H.265,profile-main-10,tier-high;codec-h264,profile-high,tier-high;codec-h.264,profile-high,tier-high;codec-H264,profile-high,tier-high;codec-H.264,profile-high,tier-high;codec-avc,profile-high,tier-high;codec-avc1,profile-high,tier-high;codec-AVC,profile-high,tier-high;codec-av1,profile-main-12,main-10,main,tier-high`,
             "X-Playback-Rate": "1.0,1.25,1.5",
             "X-Segment-Duration": "1,2,4",
             "X-Min-Buffer-Time": "2,4,6",
