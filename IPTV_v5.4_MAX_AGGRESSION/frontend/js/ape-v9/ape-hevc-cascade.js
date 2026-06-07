@@ -398,6 +398,20 @@
         return PREMIUM_RE.test(name) || PREMIUM_RE.test(group);
     }
 
+    // [Council 2026-06-07 · S3+S9+S12 consensus] Detección "anti-freeze premium" más
+    // estricta que PREMIUM_RE: NO incluye 'fhd|hevc|h265|h\.265' porque son tokens de
+    // RESOLUCIÓN/FORMATO, no de CONTENIDO premium. Un canal "MyChannel FHD" genérico
+    // NO debe quedar protegido como HEVC por incluir 'FHD' en el nombre — eso bypasea
+    // el fix F4 anti-freeze para H.264 upstream común en FHD/HD genéricos.
+    // BEIN/DAZN/HBO/etc. SÍ siguen siendo premium (contienen sus tokens reales).
+    const ANTI_FREEZE_PREMIUM_RE = /4k|uhd|hdr|dolby|premium|dazn|espn|sport|sports|event|evento|movie|cine|ppv|liga|champions|nba|f1|ufc|hbo|max|netflix|disney|fox|sky|bein/i;
+
+    function isAntiFreezePremium(channel) {
+        const name  = String(channel?.name  || '');
+        const group = String(channel?.group || channel?.group_title || '');
+        return ANTI_FREEZE_PREMIUM_RE.test(name) || ANTI_FREEZE_PREMIUM_RE.test(group);
+    }
+
     // ────────────────────────────────────────────────────────────────────────
     // Exposición global (browser) + module.exports (Node test)
     // ────────────────────────────────────────────────────────────────────────
@@ -413,7 +427,9 @@
         resolveCodecForChannel: resolveCodecForChannel,
         resolveCodecHev1ForChannel: resolveCodecHev1ForChannel,
         isPremiumChannel: isPremiumChannel,
+        isAntiFreezePremium: isAntiFreezePremium,
         PREMIUM_RE: PREMIUM_RE,
+        ANTI_FREEZE_PREMIUM_RE: ANTI_FREEZE_PREMIUM_RE,
         // Per-profile cascade arrays (primary + fallback chain hvc1.2.4.*)
         generateProfileCascadeArrays: generateProfileCascadeArrays,
         PROFILE_DIMS: PROFILE_DIMS,

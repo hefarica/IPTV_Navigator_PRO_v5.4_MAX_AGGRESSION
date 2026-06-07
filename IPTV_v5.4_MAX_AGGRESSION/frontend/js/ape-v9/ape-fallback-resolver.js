@@ -491,15 +491,36 @@
             return buildF3HevcSafe1080p(channel, profile, probeData, confidence, contradictions);
         }
 
-        // [HEVC-CASCADE-CSV FIX 2026-05-20 · HFRC mandato]
-        // MAX IMAGE FIRST: cualquier canal con manifest HLS → F3 HEVC SAFE 1080p
-        // por defecto (cascada CSV emite hvc1.2.4.* per resolución). Solo se cae
-        // a F4 (AVC) si el probe DETECTÓ explícitamente codec avc1 upstream.
-        // Antes default era F4 (AVC) — producía 0% HEVC sin probe → viola mandato.
+        // [HEVC-CASCADE-CSV 2026-05-20 · REVISED 2026-06-07 Council audit · S1+S5+S9+S12]
+        // Doctrina CLAUDE.md §F0–F5: F4 AVC HIGH SAFE corre cuando NO hay evidencia HEVC
+        // ni hint premium. La revisión de 2026-05-20 forzaba F3 HEVC PREFERRED para TODO
+        // canal con .m3u8 — pero los Explore agents 2026-06-07 confirmaron que ExoPlayer/
+        // OTT Navigator/TiviMate NO degradan codec dentro de variant (RFC 8216 §4.4.4.2),
+        // y la mayoría de upstream IPTV FHD/HD sirve H.264. F3 HEVC declarado sobre H.264
+        // = init decoder failure = freeze.
+        //
+        // Fix: F4 para P3/P4/P5 sin probe-HEVC y sin anti-freeze premium. P0/P1/P2 conservan
+        // F3 HEVC por default (alta probabilidad upstream HEVC en 4K).
+        // Anti-freeze premium usa ANTI_FREEZE_PREMIUM_RE (sin 'fhd|hevc|h265' tokens cosméticos),
+        // garantizando que canales como "BEIN SPORTS FHD" siguen siendo premium pero
+        // "MyChannel FHD" genérico cae a F4.
         const _probeSaysAvc = probeData && /^avc1/i.test(String(probeData.videoCodec || ''));
         if (channel.url && channel.url.includes('.m3u8')) {
             if (_probeSaysAvc) {
                 return buildF4AvcHighSafe(channel, profile, probeData, confidence, contradictions);
+            }
+            // F4 demotion para FHD/HD/SD sin evidencia ni premium real
+            const _profUp = String(profile || '').toUpperCase();
+            const _isFhdHdSd = (_profUp === 'P3' || _profUp === 'P4' || _profUp === 'P5');
+            if (_isFhdHdSd) {
+                const _afp = (typeof window !== 'undefined' && window.APE_HEVC_CASCADE && window.APE_HEVC_CASCADE.isAntiFreezePremium)
+                    ? window.APE_HEVC_CASCADE.isAntiFreezePremium
+                    : isPremiumChannel; // fallback: usa el isPremiumChannel local del resolver
+                let _isAntiFreezePremium = false;
+                try { _isAntiFreezePremium = _afp(channel, profile); } catch (_e) { _isAntiFreezePremium = false; }
+                if (!_isAntiFreezePremium) {
+                    return buildF4AvcHighSafe(channel, profile, probeData, confidence, contradictions);
+                }
             }
             return buildF3HevcSafe1080p(channel, profile, probeData, confidence, contradictions);
         }

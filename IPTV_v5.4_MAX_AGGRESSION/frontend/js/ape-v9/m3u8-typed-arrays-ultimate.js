@@ -9608,22 +9608,35 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
                 // Truth-driven path normalmente gestiona esto. Si caímos aquí con probe,
                 // el codec del cascade ya está; el marker lo registra para observability.
             } else {
-                let _isPremium = false;
+                // [Council 2026-06-07 · S3+S9+S12] Usa isAntiFreezePremium (regex SIN
+                // 'fhd|hevc|h265' tokens cosméticos) para evitar que "MyChannel FHD"
+                // genérico quede protegido como HEVC y freeze. BEIN/DAZN/HBO siguen
+                // siendo premium por sus tokens reales.
+                let _isAntiFreezePrem = false;
                 try {
-                    if (_cascade && typeof _cascade.isPremiumChannel === 'function') {
-                        _isPremium = _cascade.isPremiumChannel(channel);
+                    if (_cascade && typeof _cascade.isAntiFreezePremium === 'function') {
+                        _isAntiFreezePrem = _cascade.isAntiFreezePremium(channel);
+                    } else if (_cascade && typeof _cascade.isPremiumChannel === 'function') {
+                        // Fallback compat: si cascade no expone isAntiFreezePremium (versión
+                        // vieja cacheada), cae al premium clásico — menos óptimo pero seguro.
+                        _isAntiFreezePrem = _cascade.isPremiumChannel(channel);
                     }
                 } catch (_ePm) {}
-                if (_isPremium) {
+                if (_isAntiFreezePrem) {
                     _codecSource = 'premium-hint';
                     // Mantiene HEVC del cascade per-profile actual — sin override.
                     // F2/F3 PREFERRED per CLAUDE.md (DAZN/ESPN/4K/UHD/HDR/Dolby/Sports/etc.).
                 } else {
                     const _pUpper = String(profile || 'P3').toUpperCase();
                     if (_pUpper === 'P3' || _pUpper === 'P4' || _pUpper === 'P5') {
-                        // F4 AVC HIGH SAFE — anti-freeze para FHD/HD/SD sin evidencia HEVC.
-                        // avc1.640028 = H.264 High Profile Level 4.0 → universal compat.
-                        _codec796_csv = 'avc1.640028';
+                        // [Council S3 WARN] AVC Level fps-aware:
+                        //   • avc1.640029 (H.264 High Level 4.1) — cubre 1080p@60fps
+                        //   • avc1.640028 (H.264 High Level 4.0) — cubre 1080p@30fps
+                        // Level 4.0 MaxMBPS=245,760 está justo en el límite de 1080p@30;
+                        // Level 4.1 da headroom para 1080p@60 sin riesgo de strict decoder
+                        // selection en Tizen/WebOS.
+                        const _avcSafe = (Number(_fps796_csv) >= 50) ? 'avc1.640029' : 'avc1.640028';
+                        _codec796_csv = _avcSafe;
                         _codecSource = 'f4-avc-safe';
                     }
                     // P0/P1/P2 sin probe ni premium: conservan HEVC (caso raro,
