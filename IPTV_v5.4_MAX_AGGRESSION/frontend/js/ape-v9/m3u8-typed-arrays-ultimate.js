@@ -4036,7 +4036,7 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
     }
     // 🎯 PROVEN IMAGE QUALITY HEADERS (SMPTE/ITU/Netflix standards)
     // ═══════════════════════════════════════════════════════════════════
-    function build_proven_quality(cfg, profile) {
+    function build_proven_quality(cfg, profile, { _exHdrMode='SDR', _exKodiTf='bt1886', _exColorPrimaries='BT709', _exPeakNits=1000, _exTmRef=203, _exColorDepth=8, _exPixelFmt='yuv420p', _exIsHDR=false } = {}) {
         const el = EL_TARGETS[profile] || EL_TARGETS['P3'];
         const fps = cfg.fps || 30;
         const isHDR = (cfg.color_depth || 8) >= 10;
@@ -5092,7 +5092,7 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
         Object.assign(headers, build_enhancement_layer(cfg, profile));
 
         // ── 🎯 PROVEN IMAGE QUALITY: Merge SMPTE/ITU/Netflix standards ──
-        Object.assign(headers, build_proven_quality(cfg, profile));
+        Object.assign(headers, build_proven_quality(cfg, profile, { _exHdrMode, _exKodiTf, _exColorPrimaries, _exPeakNits, _exTmRef, _exColorDepth, _exPixelFmt, _exIsHDR }));
 
         // ── 🧊 ANTIFREEZE NUCLEAR ENGINE v10.0: Merge X-AF-* headers ──
         Object.assign(headers, build_antifreeze_nuclear_headers(cfg, profile));
