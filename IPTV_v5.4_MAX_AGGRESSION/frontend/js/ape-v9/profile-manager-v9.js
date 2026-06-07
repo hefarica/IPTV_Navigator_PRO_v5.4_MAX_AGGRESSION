@@ -2546,8 +2546,8 @@
                 // Doctrina HEVC-FIRST: cuando se selecciona H265, TODOS los homologs HEVC se
                 // emiten primero; H264 y resto después como fallbacks.
                 const CODEC_NOMENCLATURE = {
-                    'H265':  { names: ['hevc', 'hev1', 'hev2', 'hvc1', 'hvc2', 'h265', 'H265', 'h.265', 'H.265', 'h-265', 'H-265', 'MPEG-H', 'mpeg-h', 'MPEG-H Part2', 'MPEG-H Part 2', 'mpegh', 'x265', 'x.265', 'ISO/IEC 23008-2'], profileTag: 'main-12,main-10', tier: 'HIGH', levels: '6.1,6.0,5.1,5.0,4.1' },
-                    'H264':  { names: ['h264', 'H264', 'h.264', 'H.264', 'h-264', 'H-264', 'avc', 'AVC', 'avc1', 'avc3', 'MPEG-4 AVC', 'mpeg4-avc', 'MPEG4-AVC', 'x264', 'ISO/IEC 14496-10'], profileTag: 'high', tier: 'HIGH', levels: '5.1,5.0,4.2,4.1' },
+                    'H265':  { names: ['hevc', 'hev1', 'hvc1', 'h265', 'H265', 'h.265', 'H.265', 'h-265', 'H-265', 'MPEG-H', 'mpeg-h', 'mpegh', 'x265'], profileTag: 'main-12,main-10', tier: 'HIGH', levels: '6.1,6.0,5.1,5.0,4.1' },
+                    'H264':  { names: ['h264', 'H264', 'h.264', 'H.264', 'h-264', 'H-264', 'avc', 'AVC', 'avc1', 'avc3', 'mpeg4-avc', 'MPEG4-AVC', 'x264'], profileTag: 'high', tier: 'HIGH', levels: '5.1,5.0,4.2,4.1' },
                     'AV1':   { names: ['av1', 'av01', 'AV1', 'AOM-AV1', 'libaom-av1'], profileTag: 'main-12,main-10,main', tier: 'HIGH', levels: '6.1,6.0,5.1' },
                     'VP9':   { names: ['vp9', 'VP9', 'vp09', 'vp9.0'], profileTag: 'profile2,profile0', tier: 'N/A', levels: 'N/A' },
                     'MPEG2': { names: ['mpeg2', 'mpeg-2', 'h262', 'H262', 'MPEG-2', 'MPEG2', 'ISO/IEC 13818-2'], profileTag: 'main', tier: 'HIGH', levels: 'high' }
@@ -2570,11 +2570,12 @@
                 if (CODEC_NOMENCLATURE[normalizedKey]) {
                     priorityChain.push(...CODEC_NOMENCLATURE[normalizedKey].names);
                 }
-                // 2. Agregar los demás en orden descendente de calidad
-                for (let i = selectedIdx + 1; i < QUALITY_ORDER.length; i++) {
+                // 2. Agregar los demás en orden QUALITY_ORDER (todos, no solo los de después)
+                // Fix: loop over all — AV1 at idx 3 would only get MPEG2 if we started at idx+1
+                for (let i = 0; i < QUALITY_ORDER.length; i++) {
                     const fallbackKey = QUALITY_ORDER[i];
                     if (fallbackKey !== normalizedKey && CODEC_NOMENCLATURE[fallbackKey]) {
-                        priorityChain.push(CODEC_NOMENCLATURE[fallbackKey].names[0]); // solo el nombre principal
+                        priorityChain.push(CODEC_NOMENCLATURE[fallbackKey].names[0]);
                     }
                 }
 

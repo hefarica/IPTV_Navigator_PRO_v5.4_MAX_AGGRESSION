@@ -1574,7 +1574,7 @@
                             // ── Codec (LAB names diferentes → generator names) ─────────────
                             codec_primary: _mapCodecPM(s.codec) || hardcoded.codec_primary,
                             codec_fallback: _firstDef(s.codec_fallback, hardcoded.codec_fallback),
-                            codec_priority: _firstDef(s.codec_priority, hardcoded.codec_priority),
+                            codec_priority: _normalizeCodecHEVCFirst(_firstDef(s.codec_priority, hardcoded.codec_priority)),
                             codec_full: _firstDef(s.codec_full, hardcoded.codec_full),
                             // ── HDR / Color (claves LAB con nombres bit_depth/peak_luminance_nits) ──
                             // FIX 2026-04-26 (origen del bug `.join is not a function`):
@@ -1678,6 +1678,48 @@
         const map = { 'AV1': 'AV1', 'H265': 'HEVC', 'HEVC': 'HEVC', 'VP9': 'VP9', 'H264': 'H264', 'AVC': 'H264', 'MPEG2': 'MPEG2' };
         return map[pmCodec.toUpperCase()] || pmCodec;
     }
+
+    // ── IDEMPOTENT CODEC ORDERING GATE (2026-06-07 HFRC mandato) ───────────────
+    // Doctrina: HEVC siempre PRIMERO con TODOS sus homólogos, luego H264, luego AV1.
+    // Se aplica a codec_priority (comma-sep) y X-Quality-Preference (semicolon-sep)
+    // INDEPENDIENTEMENTE de lo que traiga el LAB JSON. El generador decide el orden.
+    const _HEVC_CODEC_RE = /^(dvh1|dvhe|hev1|hev2|hvc1|hvc2|hevc|h265|h\.265|h-265|mpeg-?h|mpegh|x265)/i;
+    const _AVC_CODEC_RE  = /^(avc1?|avc3|h264|h\.264|h-264|mpeg-?4|x264)/i;
+    const _AV1_CODEC_RE  = /^(av1|av01|libaom-av1|aom-av1)/i;
+    const _VP9_CODEC_RE  = /^(vp9|vp09|vp9\.0)/i;
+
+    function _normalizeCodecHEVCFirst(raw) {
+        if (!raw || typeof raw !== 'string') return raw;
+        const parts = raw.split(',').map(s => s.trim()).filter(Boolean);
+        const hevc = [], avc = [], av1 = [], vp9 = [], rest = [];
+        for (const p of parts) {
+            if (_HEVC_CODEC_RE.test(p)) hevc.push(p);
+            else if (_AVC_CODEC_RE.test(p)) avc.push(p);
+            else if (_AV1_CODEC_RE.test(p)) av1.push(p);
+            else if (_VP9_CODEC_RE.test(p)) vp9.push(p);
+            else rest.push(p);
+        }
+        return [...hevc, ...avc, ...av1, ...vp9, ...rest].join(',');
+    }
+
+    function _normalizeXQPrefHEVCFirst(raw) {
+        if (!raw || typeof raw !== 'string' || raw === 'auto') return raw;
+        const FHEVC = /^codec-(dvh1|dvhe|hev1|hev2|hvc1|hvc2|hevc|h265|h\.265|h-265|mpeg-?h|mpegh|x265)/i;
+        const FAVC  = /^codec-(avc1?|avc3|h264|h\.264|h-264|mpeg-?4|x264)/i;
+        const FAV1  = /^codec-(av1|av01)/i;
+        const FVP9  = /^codec-(vp9|vp09)/i;
+        const fields = raw.split(';').map(f => f.trim()).filter(Boolean);
+        const hevc = [], avc = [], av1 = [], vp9 = [], rest = [];
+        for (const f of fields) {
+            if (FHEVC.test(f)) hevc.push(f);
+            else if (FAVC.test(f)) avc.push(f);
+            else if (FAV1.test(f)) av1.push(f);
+            else if (FVP9.test(f)) vp9.push(f);
+            else rest.push(f);
+        }
+        return [...hevc, ...avc, ...av1, ...vp9, ...rest].join(';');
+    }
+    // ────────────────────────────────────────────────────────────────────────────
 
     // ═══════════════════════════════════════════════════════════════════════════
     // CONFIGURACIÓN GLOBAL DE CACHING (controla las 4 directivas globales)
@@ -1918,7 +1960,7 @@
             bandwidth_guarantee: 500,
             codec_primary: 'AV1',
             codec_fallback: 'HEVC',
-            codec_priority: 'av1,hevc,hev1,hvc1,h265,H265,h.265,H.265,h264',
+            codec_priority: 'hevc,hev1,hvc1,h265,H265,h.265,H.265,av1,h264',
             hdr_support: ['hdr10', 'dolby_vision', 'hlg'],
             color_depth: 12,
             audio_channels: 8,
@@ -5078,7 +5120,7 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
                             continue;
                         }
                         if (v === null || v === undefined || v === '') continue;
-                        headers[k] = String(v);
+                        headers[k] = (k === 'X-Quality-Preference') ? _normalizeXQPrefHEVCFirst(String(v)) : String(v);
                         extraHdrCount++;
                     }
                     if (extraHdrCount > 0) {
