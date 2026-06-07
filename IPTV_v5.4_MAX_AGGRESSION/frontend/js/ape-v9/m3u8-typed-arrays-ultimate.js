@@ -4133,12 +4133,16 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
     // ═══════════════════════════════════════════════════════════════════
     function build_hdr_peak_nit_tags(cfg, profile) {
         const isHDR = (cfg.color_depth || 8) >= 10;
-        const peak = isHDR ? 5000 : 1000;
+        // [Image1-parity 2026-05-23/2] Alineado al estándar broadcast HDR10 que VLC reportó
+        // sobre stream real: MaxCLL=1000 cd/m², MaxFALL=400 cd/m². LAB sigue mandando
+        // override per-canal via cfg.max_cll / cfg.max_fall. Valores anteriores (5000/800)
+        // inflaban peak vs lo que realmente entregan los proveedores.
+        const peak = isHDR ? 1000 : 600;
         const minLum = isHDR ? '0.0005' : '0.01';
         return [
             // 16A: ST 2086 Static Metadata
             `#EXT-X-APE-HDR-PEAK-NIT-ENGINE:v1.0-${peak}cd`,
-            `#EXT-X-APE-HDR-MASTERING-DISPLAY:P3-D65|PEAK=${peak}|MIN=${minLum}|MaxCLL=${peak}|MaxFALL=${isHDR ? 800 : 400}`,
+            `#EXT-X-APE-HDR-MASTERING-DISPLAY:P3-D65|PEAK=${peak}|MIN=${minLum}|MaxCLL=${peak}|MaxFALL=${isHDR ? 400 : 200}`,
             `#EXT-X-APE-HDR-CONTRAST-RATIO:10000000:1`,
             // 16B: HDR10+ Dynamic (per-frame)
             `#EXT-X-APE-HDR10-PLUS-DYNAMIC:L1=${minLum}-${peak}|L2=12-TRIMS|L5=ACTIVE-AREA|L6-MaxSCL=${peak},${peak},${peak}`,
@@ -5938,8 +5942,9 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
             `#EXT-X-APE-HDR-TRANSFER-FUNCTION:${cfg.transfer_function || 'SMPTE-ST-2084,ARIB-STD-B67,BT.709'}`,
             `#EXT-X-APE-HDR-COLOR-PRIMARIES:${cfg.color_primaries || 'BT.2020'}`,
             `#EXT-X-APE-HDR-MATRIX-COEFFICIENTS:${cfg.matrix_coefficients || 'BT.2020nc'}`,
-            `#EXT-X-APE-HDR-MAX-CLL:${cfg.max_cll || '4000,400'}`,
-            `#EXT-X-APE-HDR-MAX-FALL:${cfg.max_fall || '1200'}`,
+            // [Image1-parity 2026-05-23/2] Defaults broadcast HDR10 (1000/400). LAB override sigue.
+            `#EXT-X-APE-HDR-MAX-CLL:${cfg.max_cll || '1000,400'}`,
+            `#EXT-X-APE-HDR-MAX-FALL:${cfg.max_fall || '400'}`,
             `#EXT-X-APE-HDR-BIT-DEPTH:${cfg.color_depth || 10}bit`,
             `#EXT-X-APE-HDR-DOLBY-VISION-PROFILE:${cfg.dv_profile || '8.1'}`,
             `#EXT-X-APE-HDR-DOLBY-VISION-LEVEL:${cfg.dv_level || '6'}`,
@@ -5966,7 +5971,7 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
             `#EXT-X-APE-HDR-OUTPUT-MODE:auto`,
             `#EXT-X-APE-HDR-DISPLAY-METADATA-SYNC:true`,
             `#EXT-X-APE-HDR-MASTERING-DISPLAY:G(0.265,0.690)B(0.150,0.060)R(0.680,0.320)WP(0.3127,0.3290)L(10000,0.001)`,
-            `#EXT-X-APE-HDR-CONTENT-LIGHT-LEVEL:${cfg.max_cll || '4000,400'}`,
+            `#EXT-X-APE-HDR-CONTENT-LIGHT-LEVEL:${cfg.max_cll || '1000,400'}`,
             `#EXT-X-APE-HDR-AMBIENT-VIEWING-ENV:DIM`,
             `#EXT-X-APE-HDR-REFERENCE-WHITE:203nits`,
             `#EXT-X-APE-HDR-SCENE-LUMINANCE:true`,
@@ -9391,8 +9396,13 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
             const _mqBw = _mqBwMap[String(profile || 'P3').toUpperCase()] || 25000000;
             const _mqResMap = { 'P0': '7680x4320', 'P1': '3840x2160', 'P2': '3840x2160', 'P3': '1920x1080', 'P4': '1280x720', 'P5': '854x480' };
             const _mqRes = _mqResMap[String(profile || 'P3').toUpperCase()] || '1920x1080';
-            const _mqFps = (String(profile || 'P3').toUpperCase() === 'P0') ? 120 : 60;
-            _streamInfLine = `#EXT-X-STREAM-INF:BANDWIDTH=${_mqBw},AVERAGE-BANDWIDTH=${Math.round(_mqBw * 0.8)},CODECS="${_mqCodecFirst},ac-3",RESOLUTION=${_mqRes},FRAME-RATE=${_mqFps}.000,HDCP-LEVEL=${_hdcpLevel},STABLE-VARIANT-ID="${_stableVariantId}"`; // [FIX-AUDIO 2026-05-23] ac-3 — compatibilidad passthrough universal
+            // [Lost=0 2026-05-23/2] respeta fps del probe si llegó (>=24). Sin probe,
+            // default por perfil: P0=120 (intent MEMC), resto=60 (broadcast 4K HDR estándar).
+            const _probedFps_MQ = Number((_probeData && (_probeData.frameRate || _probeData.fps)) || 0);
+            const _mqFps = (_probedFps_MQ >= 24)
+                ? _probedFps_MQ
+                : ((String(profile || 'P3').toUpperCase() === 'P0') ? 120 : 60);
+            _streamInfLine = `#EXT-X-STREAM-INF:BANDWIDTH=${_mqBw},AVERAGE-BANDWIDTH=${Math.round(_mqBw * 0.8)},CODECS="${_mqCodecFirst},ac-3",RESOLUTION=${_mqRes},FRAME-RATE=${Number(_mqFps).toFixed(3)},HDCP-LEVEL=${_hdcpLevel},STABLE-VARIANT-ID="${_stableVariantId}"`; // [FIX-AUDIO 2026-05-23] ac-3 — compatibilidad passthrough universal
         }
         // ── PERCEPTUAL 4K MODE — Engaño declarativo en truth object (path truth-driven) ──
         // Overrides resolution→3840x2160 + videoRange→PQ ANTES de que emitStreamInfFromTruth
@@ -9415,15 +9425,28 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
             if (typeof _apeTruth.profile === 'undefined') {
                 _apeTruth.profile = profile;
             }
-            // ── MEMC TOTAL FPS OVERRIDE — 2026-05-23 (v22.6.0-MEMC-TOTAL-8K120) ──────
-            // Forzar fps=120 en el truth object ANTES de que emitStreamInfFromTruth
-            // construya el STREAM-INF. Activa el MEMC de hardware del televisor en
-            // TODOS los reproductores (TiviMate, ExoPlayer, VLC, Kodi, OTT Navigator).
-            // El Truth-Driven path interceptaba el bloque MEMC legacy — este fix
-            // garantiza que FRAME-RATE=120.000 llegue al STREAM-INF sin excepción.
-            _apeTruth.fps = 120;
-            _apeTruth.targetFps = 120;
-            _apeTruth.frameRate = 120;
+            // ── MEMC FPS HONESTY — REVISED 2026-05-23/2 (HFRC mandato Lost=0) ───────
+            // El override anterior forzaba fps=120 SIEMPRE — pero los streams reales
+            // de 25/30/50/60 fps llegaban al player con vsync mismatch -> "fotogramas
+            // perdidos" > 0 (VLC reportó 403 perdidos / 5 min sobre canal 50fps real).
+            //
+            // Doctrina nueva, aplica a TODOS los perfiles P0-P5:
+            //  • Si el probe detectó fps real (>=24) -> SE RESPETA -> vsync match -> Lost=0.
+            //  • Sin probe (canal sin upstream visible) -> 120 default (intent MEMC del TV).
+            //
+            // El MEMC HW del televisor sigue activándose en canales SIN probe; los
+            // probados reproducen a su cadencia nativa (50/60/120). Reversible: borrar
+            // este bloque -> vuelve al override 120 universal.
+            const _probedFps_T = Number(_apeTruth.frameRate || _apeTruth.fps || 0);
+            if (_probedFps_T >= 24) {
+                _apeTruth.frameRate  = _probedFps_T;
+                _apeTruth.fps        = _probedFps_T;
+                _apeTruth.targetFps  = _probedFps_T;
+            } else {
+                _apeTruth.frameRate  = 120;
+                _apeTruth.fps        = 120;
+                _apeTruth.targetFps  = 120;
+            }
             // ─────────────────────────────────────────────────────────────────────────
             _streamInfLine = _R_emit.emitStreamInfFromTruth(_apeTruth);
         }
@@ -9542,15 +9565,20 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
                 _res796_csv = '3840x2160';
                 _videoRangePart = ',VIDEO-RANGE=PQ';
             }
-            // ── DOBLE CADENA MEMC v3.0 — 2026-05-23 ──────────────────────────────────
-            // Capa 2 TOTAL: FRAME-RATE=120.000 en STREAM-INF para activar el
-            // MEMC de HARDWARE del televisor en TODOS los perfiles y tipos.
-            // P0/P1/P2 (4K/8K): el TV activa MEMC de hardware → simula 8K@120fps
-            // P3/P4/P5 (FHD/HD/SD): el TV activa MEMC → simula 4K@120fps
-            // Capa 1 (minterpolate en EXTVLCOPT) activa para MPV/Kodi con libavfilter.
-            // Sin excepciones — máxima fluidez en todo el contenido.
-            _fps796_csv = 120; // MEMC TOTAL: todos los perfiles P0-P5, todos los tipos
-            lines.push(`#EXT-X-STREAM-INF:BANDWIDTH=${_bw796},AVERAGE-BANDWIDTH=${_avgBw},CODECS="${_codec796_csv},${_codecAudio}",RESOLUTION=${_res796_csv},FRAME-RATE=${_fps796_csv}.000${_videoRangePart},HDCP-LEVEL=${_hdcpLevel},STABLE-VARIANT-ID="${_stableVariantId}"`);
+            // ── DOBLE CADENA MEMC v3.0 — REVISED 2026-05-23/2 (Lost=0) ──────────────
+            // Capa 2: FRAME-RATE en STREAM-INF para activar el MEMC HW del televisor
+            // EN CANALES SIN PROBE. Si el probe trajo fps real (_fps796 viene de
+            // _probeData?.frameRate || cfg.fps || 60 en L7341), se RESPETA — declarar
+            // 120 sobre un stream 50fps real causaba "perdido" > 0 (vsync mismatch).
+            //
+            // Doctrina: aplica a TODOS los perfiles P0-P5.
+            //  • probe fps >= 24 -> se respeta (vsync match -> Lost=0)
+            //  • sin probe -> 120 (MEMC intent intacto)
+            // Capa 1 (minterpolate en EXTVLCOPT) sigue activa para MPV/Kodi.
+            if (!(Number(_fps796_csv) >= 24)) {
+                _fps796_csv = 120; // MEMC fallback sin probe
+            }
+            lines.push(`#EXT-X-STREAM-INF:BANDWIDTH=${_bw796},AVERAGE-BANDWIDTH=${_avgBw},CODECS="${_codec796_csv},${_codecAudio}",RESOLUTION=${_res796_csv},FRAME-RATE=${Number(_fps796_csv).toFixed(3)}${_videoRangePart},HDCP-LEVEL=${_hdcpLevel},STABLE-VARIANT-ID="${_stableVariantId}"`);
         }
         let finalUrl = options.dictatorMode ? `${primaryUrl}|User-Agent=${_ua796}&Cache-Control=no-cache&Connection=keep-alive&Referer=${typeof window !== "undefined" ? encodeURIComponent(window.location.origin) : ""}` : primaryUrl;
         if (options.dictatorMode) {
