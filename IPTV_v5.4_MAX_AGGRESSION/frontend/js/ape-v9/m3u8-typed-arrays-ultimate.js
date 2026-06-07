@@ -9588,6 +9588,49 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
                 _res796_csv   = _t1Fake.width + 'x' + _t1Fake.height;
             }
 
+            // ── CASCADE F0–F5 ANTI-FREEZE (2026-06-07 · HFRC mandato) ─────────────────
+            // Doctrina CLAUDE.md §F0–F5: si NO hay evidencia probe HEVC NI hint premium,
+            // sobrescribir el codec con avc1.640028 (Tier F4 AVC HIGH SAFE) en lugar del
+            // codec HEVC que la cascada per-profile acaba de asignar.
+            // Causa raíz validada (3 Explore agents 2026-06-07): ExoPlayer / OTT Navigator
+            // / TiviMate NO degradan codec dentro de una STREAM-INF variant (RFC 8216
+            // §4.4.4.2). Si declara HEVC y bitstream del upstream IPTV es H.264 (lo más
+            // común en FHD/HD genéricos), init del HEVC decoder falla → FREEZE.
+            // P0/P1/P2 (4K/8K) conservan HEVC siempre — alta probabilidad de upstream
+            // HEVC y los usuarios validaron empíricamente que reproducen perfecto.
+            // P3/P4/P5 (FHD/HD/SD) sin probe ni premium → AVC safe.
+            // Reusa _cascade.isPremiumChannel (ape-hevc-cascade.js:395) para premium hint.
+            // Reversible: comentar este bloque → vuelve al comportamiento previo.
+            let _codecSource = 'cascade-forzada';
+            const _probeHasCodec = !!(_probeData && _probeData.videoCodec);
+            if (_probeHasCodec) {
+                _codecSource = 'probe';
+                // Truth-driven path normalmente gestiona esto. Si caímos aquí con probe,
+                // el codec del cascade ya está; el marker lo registra para observability.
+            } else {
+                let _isPremium = false;
+                try {
+                    if (_cascade && typeof _cascade.isPremiumChannel === 'function') {
+                        _isPremium = _cascade.isPremiumChannel(channel);
+                    }
+                } catch (_ePm) {}
+                if (_isPremium) {
+                    _codecSource = 'premium-hint';
+                    // Mantiene HEVC del cascade per-profile actual — sin override.
+                    // F2/F3 PREFERRED per CLAUDE.md (DAZN/ESPN/4K/UHD/HDR/Dolby/Sports/etc.).
+                } else {
+                    const _pUpper = String(profile || 'P3').toUpperCase();
+                    if (_pUpper === 'P3' || _pUpper === 'P4' || _pUpper === 'P5') {
+                        // F4 AVC HIGH SAFE — anti-freeze para FHD/HD/SD sin evidencia HEVC.
+                        // avc1.640028 = H.264 High Profile Level 4.0 → universal compat.
+                        _codec796_csv = 'avc1.640028';
+                        _codecSource = 'f4-avc-safe';
+                    }
+                    // P0/P1/P2 sin probe ni premium: conservan HEVC (caso raro,
+                    // típicamente esos perfiles vienen de fuentes premium).
+                }
+            }
+
             // ── PERCEPTUAL 4K MODE override (path legacy) ──────────────────────────────
             if (options && options.perceptual4kMode) {
                 _res796_csv = '3840x2160';
@@ -9610,6 +9653,11 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
             lines.push(`#EXT-X-STREAM-INF:BANDWIDTH=${_bw796},AVERAGE-BANDWIDTH=${_avgBw},CODECS="${_codec796_csv},${_codecAudio}",RESOLUTION=${_res796_csv},FRAME-RATE=${Number(_fps796_csv).toFixed(3)}${_videoRangePart},HDCP-LEVEL=${_hdcpLevel},STABLE-VARIANT-ID="${_stableVariantId}"`);
             if (_fpsSource) {
                 lines.push(`#EXT-X-APE-FPS-SOURCE:${_fpsSource}`);
+            }
+            // [Anti-freeze F0-F5 2026-06-07] Marker observability codec branch.
+            // Valores: probe | premium-hint | f4-avc-safe | cascade-forzada.
+            if (typeof _codecSource !== 'undefined' && _codecSource) {
+                lines.push(`#EXT-X-APE-CODEC-SOURCE:${_codecSource}`);
             }
         }
         let finalUrl = options.dictatorMode ? `${primaryUrl}|User-Agent=${_ua796}&Cache-Control=no-cache&Connection=keep-alive&Referer=${typeof window !== "undefined" ? encodeURIComponent(window.location.origin) : ""}` : primaryUrl;
