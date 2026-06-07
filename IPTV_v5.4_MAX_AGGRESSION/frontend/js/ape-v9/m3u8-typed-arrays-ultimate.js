@@ -3422,7 +3422,7 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
             `#KODIPROP:inputstream.adaptive.audio_codec_override=${cfg.audio_codec || 'eac3'}`,
             `#KODIPROP:inputstream.adaptive.audio_channels=${cfg.audio_channels >= 6 ? '5.1' : '2.0'}`,
             `#KODIPROP:inputstream.adaptive.audio_passthrough=${cfg.audio_channels >= 6 ? 'true' : 'false'}`,
-            `#KODIPROP:inputstream.adaptive.dolby_atmos=${cfg.audio_channels >= 8 ? 'true' : 'false'}`,
+            `#KODIPROP:inputstream.adaptive.dolby_atmos=false`,
             // ── 🎬 CONTENT-AWARE HEVC via KODIPROP ──
             `#KODIPROP:inputstream.adaptive.max_bandwidth=${cfg.max_bandwidth || 50000000}`,
             `#KODIPROP:inputstream.adaptive.initial_bandwidth=${Math.min(cfg.max_bandwidth || 50000000, 10000000)}`,
@@ -8364,7 +8364,7 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
         // Kodi ISA toma el ÚLTIMO valor para keys duplicadas.
         if (options && options.maxQualityMode) {
             const _mqVChain = 'dvh1.08.06,dvh1.05.09,hvc1.2.4.L186.B0,hvc1.2.4.L183.B0,hvc1.2.4.L180.B0,hvc1.2.4.L156.B0,hvc1.2.4.L153.B0,hvc1.2.4.L150.B0,hvc1.2.4.L123.B0,hvc1.2.4.L120.B0,hvc1.1.6.L153.B0,hvc1.1.6.L120.B0,hvc1.2.4.L93.B0,hvc1.2.4.L90.B0,av01.0.13M.10.0.110.09.16.09.0,av01.0.09M.10.0.110.09.16.09.0,avc1.640033,avc1.640028';
-            lines.push(`#KODIPROP:inputstream.adaptive.audio_dolby_atmos=true`);
+            lines.push(`#KODIPROP:inputstream.adaptive.audio_dolby_atmos=false`);
             lines.push(`#KODIPROP:inputstream.adaptive.audio_eac3=true`);
             lines.push(`#KODIPROP:inputstream.adaptive.live_delay=1`);
             lines.push(`#EXT-X-APE-AUDIO:CODEC=ac-3,CHANNELS=5.1,ATMOS=false`); // [FIX-AUDIO 2026-05-23] ac-3 — compatibilidad passthrough universal
