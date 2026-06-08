@@ -21,7 +21,16 @@ TV_PROBE_SH="${SCRIPT_DIR}/lib/tv_capability_probe.sh"
 MV_SH="${SCRIPT_DIR}/lib/m3u8_variant_analyzer.sh"
 VP_DECIDER_SH="${SCRIPT_DIR}/lib/visual_payload_decider.sh"
 VP_APPLY_SH="${SCRIPT_DIR}/lib/visual_payload_apply.sh"
+VP_PAYLOAD_SH="${SCRIPT_DIR}/lib/visual_metadata_payload.sh"
+PY_LAB="${SCRIPT_DIR}/lab/visual_lab_engine.py"
+# Motor Rust determinista (producción) si está compilado; si no → fallback shell decider.
+RUST_BIN="${APE_RUST_VISUAL_BIN:-${SCRIPT_DIR}/engines/rust-visual-engine/target/release/visual-profile-engine}"
+[ -x "$RUST_BIN" ] || RUST_BIN=""
+PY_BIN="$(command -v python3 || command -v python || echo '')"
 REGISTER_URL="${APE_REGISTER_URL:-http://127.0.0.1/prisma/api/device-register.php}"
+
+# Extrae "key":value (string o escalar) de un JSON plano (sin jq)
+_jf() { printf '%s' "$1" | grep -oE "\"$2\":[^,}]*" | head -1 | sed -E "s/^\"$2\"://; s/^\"//; s/\"$//"; }
 
 # Reporta capabilities + telemetry + decisión al VPS (backward-compat; nunca rompe el loop)
 report_to_vps() {  # <target>
@@ -84,15 +93,49 @@ process_device() {  # <target>
             # shellcheck source=/dev/null
             . "$MV_SH"; analyze_m3u8 "$APE_CHANNEL_M3U8" >/dev/null 2>&1 || true
         fi
-        # Plano 4: decisión visual (cruza los 4 planos)
+        # Plano 4: decisión visual (cruza los 4 planos) — shell decider = fallback determinista
         # shellcheck source=/dev/null
         . "$VP_DECIDER_SH"; visual_payload_decider >/dev/null 2>&1 || true   # setea VP_*
+
+        # Motor Rust (PRODUCCIÓN determinista) si está compilado → override de VP_*; si no, queda el shell.
+        if [ -n "$RUST_BIN" ]; then
+            _rin="{\"platform_family\":\"$PLATFORM_FAMILY\",\"soc_family\":\"${SOC_FAMILY:-generic}\",\"tv_resolution_max\":\"${TV_RES_MAX:-unknown}\",\"hdr_support\":\"${TV_HDR:-unknown}\",\"memc_available\":$([ "${TV_MEMC:-}" = available ] && echo true || echo false),\"super_resolution_available\":$([ "${TV_SR:-}" = available ] && echo true || echo false),\"family\":\"${TEL_PLAYER:-unknown}\",\"codec_video\":\"${TEL_CODEC_VIDEO:-unknown}\",\"hardware_decode\":${TEL_HW_DECODE:-false},\"buffer_state\":\"${TEL_BUFFER:-unknown}\",\"dropped_frames\":${TEL_DROPPED:-0},\"judder\":${TEL_JUDDER:-false},\"has_4k\":${MV_HAS_4K:-false},\"has_hevc\":${MV_HAS_HEVC:-false},\"has_hdr\":${MV_HAS_HDR:-false},\"manifest_status\":\"${MV_STATUS:-ok}\",\"score\":\"${NET_SCORE:-unknown}\"}"
+            _rout="$(printf '%s' "$_rin" | timeout 5 "$RUST_BIN" 2>/dev/null)"
+            if [ -n "$_rout" ]; then
+                VP_PROFILE="$(_jf "$_rout" visual_profile)"; VP_VARIANT_POLICY="$(_jf "$_rout" variant_policy)"
+                VP_CODEC="$(_jf "$_rout" preferred_codec)"; VP_RES="$(_jf "$_rout" preferred_resolution)"
+                VP_FPS="$(_jf "$_rout" fps_policy)"; VP_HDR="$(_jf "$_rout" hdr_policy)"
+                VP_MEMC="$(_jf "$_rout" memc_policy)"; VP_SR="$(_jf "$_rout" super_resolution_policy)"
+                VP_COLOR="$(_jf "$_rout" color_policy)"; VP_SHARP="$(_jf "$_rout" sharpness_policy)"; VP_REASON="$(_jf "$_rout" reason)"
+                # variant_policy → URL real del manifest
+                case "$VP_VARIANT_POLICY" in
+                    best_visual)   VP_VARIANT="${MV_BEST_VISUAL:-source}" ;;
+                    anti_rebuffer) VP_VARIANT="${MV_ANTIREBUFFER:-${MV_SAFEST:-source}}" ;;
+                    safe_visual)   VP_VARIANT="${MV_SAFEST:-source}" ;;
+                esac
+                log "  rust-engine: profile=$VP_PROFILE (deterministic production)"
+            fi
+        fi
+        # Plano lab Python (OBSERVE/calibración, no producción) — opcional, no bloquea
+        if [ -n "$PY_BIN" ] && [ -f "$PY_LAB" ]; then
+            _lab="{\"telemetry_json\":{\"codec_video\":\"${TEL_CODEC_VIDEO:-unknown}\",\"hardware_decode\":${TEL_HW_DECODE:-false},\"buffer_state\":\"${TEL_BUFFER:-unknown}\",\"dropped_frames\":${TEL_DROPPED:-0},\"judder\":${TEL_JUDDER:-false},\"foreground_package\":\"${TEL_FG_PKG:-}\"},\"capabilities_json\":{\"tv_resolution_max\":\"${TV_RES_MAX:-0}\",\"super_resolution_available\":$([ "${TV_SR:-}" = available ] && echo true || echo false)},\"m3u8_analysis_json\":{\"has_4k\":${MV_HAS_4K:-false},\"has_hevc\":${MV_HAS_HEVC:-false},\"has_hdr\":${MV_HAS_HDR:-false},\"status\":\"${MV_STATUS:-ok}\"},\"qoe_history_json\":{\"network_score\":\"${NET_SCORE:-unknown}\"}}"
+            _labout="$(printf '%s' "$_lab" | PYTHONIOENCODING=utf-8 timeout 5 "$PY_BIN" "$PY_LAB" 2>/dev/null)"
+            [ -n "$_labout" ] && log "  lab: $(printf '%s' "$_labout" | tr -d '\n' | cut -c1-200)"
+        fi
         log "  telemetry: codec=${TEL_CODEC_VIDEO:-?} hw=${TEL_HW_DECODE:-?} res=${TEL_RES:-?} fps=${TEL_FPS:-?} buf=${TEL_BUFFER:-?} dropped=${TEL_DROPPED:-0} judder=${TEL_JUDDER:-?}"
         log "  tv: res_max=${TV_RES_MAX:-?} hdr=${TV_HDR:-?} memc=${TV_MEMC:-?} sr=${TV_SR:-?} up=${TV_UPSCALER:-?}"
         log "  stream: variants=${MV_VARIANTS:-?} 4k=${MV_HAS_4K:-?} hevc=${MV_HAS_HEVC:-?} hdr=${MV_HAS_HDR:-?}"
         log "  VISUAL: profile=${VP_PROFILE:-?} variant=${VP_VARIANT:-?} codec=${VP_CODEC:-?} res=${VP_RES:-?} memc=${VP_MEMC:-?} sr=${VP_SR:-?} hdr=${VP_HDR:-?} risk=${VP_RISK:-?} reason=${VP_REASON:-}"
         # Plano 4b: aplicar carga visual por el canal correcto (ADB policy-driven)
         [ -f "$VP_APPLY_SH" ] && { . "$VP_APPLY_SH"; visual_payload_apply "$T" 2>&1 | sed 's/^/  apply: /' | tee -a "$LOG" >/dev/null 2>&1 || true; }
+        # Plano metadata: construir + emitir carga visual (JSON sidecar + props + algorithm_stack)
+        if [ -f "$VP_PAYLOAD_SH" ]; then
+            # shellcheck source=/dev/null
+            . "$VP_PAYLOAD_SH"
+            APE_DEVICE_ID="$T"; APE_PLAYER="${TEL_PLAYER:-${PLAYER:-unknown}}"; APE_SELECTED_VARIANT_URL="${VP_VARIANT:-source}"
+            emit_visual_payload "$T" >/dev/null 2>&1 || true
+            log "  metadata: payload emitted (profile=${VP_PROFILE:-?} variant=${VP_VARIANT:-?})"
+        fi
         # Alias REC_* ← VP_* para report_to_vps (compat)
         REC_PROFILE="$VP_PROFILE"; REC_CODEC="$VP_CODEC"; REC_RESOLUTION="$VP_RES"; MEMC_POLICY="$VP_MEMC"; HDR_POLICY="$VP_HDR"; RISK="$VP_RISK"; REASON="$VP_REASON"
         report_to_vps "$T"

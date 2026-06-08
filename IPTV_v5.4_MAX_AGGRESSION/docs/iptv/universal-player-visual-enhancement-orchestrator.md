@@ -143,3 +143,46 @@ Android/Fire = control completo por ADB. Roku = ECP/manifest (sin settings/MEMC)
 app_config/MDM/manifest (sin ADB/MEMC). Web = HLS.js/ABR/manifest. Unknown = truthful source-safe.
 
 Tests read-only: `test_visual_payload_decider.sh` (14 aserciones, 10 casos incl. Roku non-ADB).
+
+## Visual Intelligence Metadata Engine (Rust / Python / Metadata)
+
+**REGLA MADRE:** el VPS NO procesa píxeles ni reencodea. Procesa **conocimiento** (telemetría,
+manifests, reglas, perfiles) y transmite **metadata**. El device/player/TV ejecuta la mejora real.
+
+```
+Rust   = motor rápido/determinista de decisión visual/QoE/perfil (PRODUCCIÓN).
+Python = laboratorio de análisis/scoring/calibración/detección de artefactos (OBSERVE).
+Metadata = carga visual al player/device: JSON sidecar + props ADB + algorithm_stack + manifest hints.
+Device/Player/TV = ejecuta upscaling, MEMC, HDR, color, nitidez, decoder path.
+```
+
+### Rust Visual Decision Engine — `vps/prisma/players/engines/rust-visual-engine/`
+CLI std-only (sin deps, compila offline). Lee JSON de los 4 planos en stdin → emite decisión JSON
+(visual_profile, variant_policy, preferred_codec/resolution, fps/hdr/memc/sr/color/sharpness/artifact policy,
+reason, confidence). Mismas reglas que el shell decider, determinista. `cargo test` = **11/11**.
+Build: `cargo build --release` → `target/release/visual-profile-engine` (gitignored). El orquestador lo
+usa si está compilado (producción); si no → **fallback** al shell `visual_payload_decider.sh`.
+
+### Python Visual Lab Engine — `vps/prisma/players/lab/visual_lab_engine.py`
+stdlib-only, NO reprocesa video. Analiza metadata/telemetría/manifests/logs → scores
+(clarity/color/motion/visual) + riesgos (blur/judder/rebuffer/artifact) + perfil recomendado + `rule_updates`
+para recalibrar el motor Rust. Salida ASCII portable. OBSERVE/calibración, no producción.
+
+### Metadata Visual Payload Layer — `vps/prisma/players/lib/visual_metadata_payload.sh`
+Traduce la decisión a payload transmisible: JSON con `do_not_fake{hdr,4k,codec,fps}` + `algorithm_stack`
+(algoritmos como POLÍTICA, no filtros de video: adaptive_safe_sharpness, oled_vivid_safe_color, motion_crystal,
+anti_blur_texture_guard, super_resolution, anti_rebuffer_visual_guard). Entrega:
+- **Android/Fire**: `setprop persist.ape.visual.profile/memc.policy/hdr.policy` + sidecar
+  `/data/local/tmp/ape-visual-payload.json` + broadcast `com.ape.visual.PAYLOAD_APPLY`.
+- **Roku/Apple/web**: sidecar/manifest/app config — NO device write.
+Test read-only: `test_visual_metadata_payload.sh` (10 aserciones: JSON válido, do_not_fake, algorithm_stack, no fake claims).
+
+### Pipeline integrado (orquestador)
+`detect_universal_player → detect_capabilities → tv_capability_probe → collect_player_telemetry →
+m3u8_variant_analyzer → Rust engine (fallback shell) → Python lab (opcional) → visual_metadata_payload →
+visual_payload_apply → qoe_feedback_loop → report_to_vps`. Si una capa falta (Rust no compilado, Python ausente,
+metadata no aplicable) → degradación graceful sin romper el loop.
+
+### Verdad técnica (toda la capa)
+NO reprocesa video · NO pixel-processing en VPS · NO fake 4K/HDR/codec/fps · MEMC evita judder ·
+SHIELDED/autopista/URLs intactos. `cargo test` 11/11 · py_compile OK · payload test 10/10 · decider 14/14 · bash -n 100%.
