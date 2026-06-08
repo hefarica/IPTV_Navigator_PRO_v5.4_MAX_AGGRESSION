@@ -285,7 +285,9 @@
         auditSummary.F2_HEVC_PREMIUM_HINT++;
         const nameRaw = (channel.name || '');
         const groupRaw = (channel.group || '');
-        const is4k = nameRaw.match(/4k|uhd/i) || groupRaw.match(/4k|uhd/i);
+        const _profUp2 = String(profile || '').toUpperCase();
+        const _is4kProfile2 = (_profUp2 === 'P0' || _profUp2 === 'P1');
+        const is4k = _is4kProfile2 || nameRaw.match(/4k|uhd/i) || groupRaw.match(/4k|uhd/i);
         const isHdrSignal = nameRaw.match(/hdr|dolby|hlg|hdr10/i) || groupRaw.match(/hdr|dolby|hlg|hdr10/i);
         const res = is4k ? '3840x2160' : '1920x1080';
         const isSports = nameRaw.match(/sport|dazn|espn|f1|ufc|liga|champions|nba/i);
@@ -339,16 +341,21 @@
 
     function buildF3HevcSafe1080p(channel, profile, probeData, confidence, contradictions) {
         auditSummary.F3_HEVC_SAFE_1080P++;
+        const _profUp3 = String(profile || '').toUpperCase();
+        const _is4kProfile3 = (_profUp3 === 'P0' || _profUp3 === 'P1');
         const isSports = (channel.name || '').match(/sport|deporte|live/i);
-        const fps = isSports ? 60 : 30;
-        const bwObj = getBitrateFallback(isSports ? '1920x1080_60' : '1920x1080_30');
+        const fps = (_is4kProfile3 || isSports) ? 60 : 30;
+        const bwObj = _is4kProfile3
+            ? getBitrateFallback('3840x2160')
+            : getBitrateFallback(isSports ? '1920x1080_60' : '1920x1080_30');
 
         // [HEVC-CASCADE-CSV FIX 2026-05-20 · HFRC mandato] Sports/live → T3 (L123 1080p@60),
         // generalista → T4 (L120 1080p@30). Antes hardcoded L120 universal.
         const _cascade = (typeof window !== 'undefined' && window.APE_HEVC_CASCADE) || null;
-        let _safeCodec = 'hvc1.2.4.L120.B0';
+        let _safeCodec = _is4kProfile3 ? 'hvc1.2.4.L153.B0' : 'hvc1.2.4.L120.B0';
         if (_cascade && typeof _cascade.resolveTierByResolution === 'function') {
-            const _tier = _cascade.resolveTierByResolution(1920, 1080, fps, {});
+            const [_sw, _sh] = _is4kProfile3 ? [3840, 2160] : [1920, 1080];
+            const _tier = _cascade.resolveTierByResolution(_sw, _sh, fps, {});
             _safeCodec = _tier.codec;
         }
 
@@ -375,9 +382,9 @@
             supplementalCodecs: null,
             supplementalCodecsVerified: false,
             
-            resolution: '1920x1080',
+            resolution: _is4kProfile3 ? '3840x2160' : '1920x1080',
             resolutionVerified: false,
-            
+
             bandwidth: bwObj.bandwidth,
             averageBandwidth: bwObj.averageBandwidth,
             bandwidthVerified: false,
