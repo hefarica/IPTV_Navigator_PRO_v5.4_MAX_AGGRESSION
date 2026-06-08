@@ -93,3 +93,53 @@ Player Playback Plane (codec real, decoder, resolución, FPS, buffer, dropped, j
 `report_to_vps` POSTea a `device-register.php` (extendido backward-compat con `playback_profile_json`):
 codec/decoder/res/fps/buffer/dropped/judder + `recommended_profile/codec/resolution/memc_policy/hdr_policy`.
 Test read-only: `vps/prisma/players/tests/test_playback_decider.sh` (15 aserciones, 8 casos).
+
+## 4K Crystal UHD Visual Upscaler Without VPS Reprocessing
+
+**El VPS NO transcodifica ni reprocesa video.** Es el **cerebro de decisión**; el device/player/TV
+son el **motor de mejora visual**. Cualquier `.m3u8` → perfil personalizado por device → imagen
+"Crystal UHD safe" → cero buffer/judder → **cero falsas promesas**.
+
+### 4 planos coordinados
+1. **Device Capability** — SoC/HW decode/MEMC/AISR (`detect_capabilities.sh`).
+2. **Player Playback** — codec/decoder/res/fps/buffer/dropped/judder reales (`collect_player_telemetry.sh`).
+3. **Network/Stream** — variantes del master playlist, sin descargar video (`m3u8_variant_analyzer.sh`).
+4. **TV/Display** — resolución máx, refresh, HDR, upscaler/MEMC/SR (`tv_capability_probe.sh`).
+
+### Decisión (`visual_payload_decider.sh`) — perfiles y gates
+- **CRYSTAL_UHD_EXTREME**: fuente 4K real + HW decode + buffer OK + 0 dropped + sin judder + red alta + TV≥2160.
+- **CRYSTAL_UHD_SAFE**: HEVC/AV1 HW decode estable.
+- **PERCEPTUAL_4K_BALANCED**: fuente HD/FHD + upscaler/SR del TV + estable (upscale del dispositivo, no fake).
+- **STABLE_1080P_PREMIUM**: 4K causa rebuffer / HEVC sw-decode / dropped altos / buffer bajo.
+- **LOW_LATENCY_SAFE**: zapping frecuente / provider inestable / red baja.
+- **TRUTHFUL_SOURCE_SAFE**: codec/capabilities/manifest desconocidos / player no-foreground / telemetría incompleta.
+Salida: `selected_variant` (best_visual/anti_rebuffer/safest), `preferred_codec/resolution`, `fps_policy`,
+`hdr_policy`, `memc_policy`, `super_resolution_policy`, `color_policy`, `sharpness_policy`, `anti_rebuffer_policy`.
+
+### Aplicación (`visual_payload_apply.sh`)
+- **Android/Fire (ADB)**: universal + SoC + MEMC/AISR/HDR/FPS **policy-driven** (idempotente, reusa
+  helpers de `generic_player.sh`). MEMC se apaga si `avoid_due_to_judder`/`disable`.
+- **Roku/AppleTV/web**: solo manifest/stream/app hints — **NO device write** (reporta `NOT_SUPPORTED`).
+
+### Feedback loop (`qoe_feedback_loop.sh`)
+`telemetry → decision → apply → RE-OBSERVE → adjust`: rebuffer/dropped → baja perfil; judder → MEMC off;
+estable N ciclos → sube un nivel; source pobre → se queda en truthful.
+
+### Cómo se evita mentir / romper
+- **No fake 4K**: si el manifest no tiene 4K (`MV_HAS_4K=false` / `MV_STATUS=FAILED`) → no se declara 4K.
+- **No fake HDR**: HDR solo si fuente + player/TV lo prueban; si no → `disable_fake_hdr`.
+- **No fake codec**: codec desconocido → `source`/TRUTHFUL.
+- **No judder**: MEMC nunca se fuerza con judder; `memc_policy=avoid_due_to_judder`.
+- **Anti-buffer**: si sube dropped/rebuffer tras aplicar → baja perfil/variant (anti_rebuffer).
+- **SHIELDED/autopista intactos**: nunca se altera la URL interna del canal ni se duplican/eliminan canales;
+  solo se **selecciona** la mejor variante existente del `.m3u8` y se sugiere perfil.
+
+### Rollback
+Borrar `persist.ape.visual.profile` + `persist.ape.enh.version` en el device; el siguiente ciclo recalcula.
+Roku/Apple/web no reciben cambios de sistema → rollback = noop.
+
+### Límites reales por plataforma
+Android/Fire = control completo por ADB. Roku = ECP/manifest (sin settings/MEMC). Apple TV =
+app_config/MDM/manifest (sin ADB/MEMC). Web = HLS.js/ABR/manifest. Unknown = truthful source-safe.
+
+Tests read-only: `test_visual_payload_decider.sh` (14 aserciones, 10 casos incl. Roku non-ADB).

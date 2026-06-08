@@ -17,6 +17,10 @@ log() { echo "$(date -u +%FT%TZ) $*" | tee -a "$LOG" 2>/dev/null || echo "$*"; }
 
 TEL_SH="${SCRIPT_DIR}/adb/collect_player_telemetry.sh"
 DECIDER_SH="${SCRIPT_DIR}/lib/playback_profile_decider.sh"
+TV_PROBE_SH="${SCRIPT_DIR}/lib/tv_capability_probe.sh"
+MV_SH="${SCRIPT_DIR}/lib/m3u8_variant_analyzer.sh"
+VP_DECIDER_SH="${SCRIPT_DIR}/lib/visual_payload_decider.sh"
+VP_APPLY_SH="${SCRIPT_DIR}/lib/visual_payload_apply.sh"
 REGISTER_URL="${APE_REGISTER_URL:-http://127.0.0.1/prisma/api/device-register.php}"
 
 # Reporta capabilities + telemetry + decisión al VPS (backward-compat; nunca rompe el loop)
@@ -65,18 +69,32 @@ process_device() {  # <target>
     log "DEVICE $T platform=$PLATFORM_FAMILY control=$CONTROL_PLANE adapter=$(basename "$adapter")"
     log "  caps=$(detect_capabilities "$T" 2>/dev/null | tr -d '\n')"
 
-    # ── PLAYER PLAYBACK PLANE (solo ADB): telemetría software + decisión de perfil ──
-    # Roku/AppleTV/web NO tienen telemetry ADB → se omite (decisión por capabilities/QoE server-side).
-    if [ "$CONTROL_PLANE" = adb ] && [ -f "$TEL_SH" ] && [ -f "$DECIDER_SH" ]; then
+    # ── 4-PLANE VISUAL PIPELINE (solo ADB): TV + player + stream → carga visual ──
+    # Roku/AppleTV/web NO tienen telemetry ADB → decisión por capabilities + QoE server-side.
+    if [ "$CONTROL_PLANE" = adb ] && [ -f "$TEL_SH" ] && [ -f "$VP_DECIDER_SH" ]; then
+        # Plano 2: player playback (telemetría software real)
         # shellcheck source=/dev/null
         . "$TEL_SH"; collect_player_telemetry "$T" >/dev/null 2>&1 || true
+        # Plano 1: device/TV capabilities
+        [ -f "$TV_PROBE_SH" ] && { . "$TV_PROBE_SH"; tv_capability_probe "$T" >/dev/null 2>&1 || true; }
         CAP_SOC_FAMILY="${SOC_FAMILY:-generic}"
         CAP_CAN_MEMC="$( can_apply_memc 2>/dev/null && echo true || echo false )"
-        CAP_PLATFORM="$PLATFORM_FAMILY"
+        # Plano 3: stream/manifest (variantes, sin descargar video) — si hay URL del canal
+        if [ -n "${APE_CHANNEL_M3U8:-}" ] && [ -f "$MV_SH" ]; then
+            # shellcheck source=/dev/null
+            . "$MV_SH"; analyze_m3u8 "$APE_CHANNEL_M3U8" >/dev/null 2>&1 || true
+        fi
+        # Plano 4: decisión visual (cruza los 4 planos)
         # shellcheck source=/dev/null
-        . "$DECIDER_SH"; playback_profile_decider >/dev/null 2>&1 || true   # setea REC_*/HDR_POLICY/MEMC_POLICY
-        log "  telemetry: codec=${TEL_CODEC_VIDEO:-?} hw=${TEL_HW_DECODE:-?} res=${TEL_RES:-?} fps=${TEL_FPS:-?} buf=${TEL_BUFFER:-?} dropped=${TEL_DROPPED:-0} judder=${TEL_JUDDER:-?} conf=${TEL_CONFIDENCE:-0}"
-        log "  decision: profile=${REC_PROFILE:-?} codec=${REC_CODEC:-?} res=${REC_RESOLUTION:-?} fps=${REC_FPS:-?} hdr=${HDR_POLICY:-?} memc=${MEMC_POLICY:-?} risk=${RISK:-?} reason=${REASON:-}"
+        . "$VP_DECIDER_SH"; visual_payload_decider >/dev/null 2>&1 || true   # setea VP_*
+        log "  telemetry: codec=${TEL_CODEC_VIDEO:-?} hw=${TEL_HW_DECODE:-?} res=${TEL_RES:-?} fps=${TEL_FPS:-?} buf=${TEL_BUFFER:-?} dropped=${TEL_DROPPED:-0} judder=${TEL_JUDDER:-?}"
+        log "  tv: res_max=${TV_RES_MAX:-?} hdr=${TV_HDR:-?} memc=${TV_MEMC:-?} sr=${TV_SR:-?} up=${TV_UPSCALER:-?}"
+        log "  stream: variants=${MV_VARIANTS:-?} 4k=${MV_HAS_4K:-?} hevc=${MV_HAS_HEVC:-?} hdr=${MV_HAS_HDR:-?}"
+        log "  VISUAL: profile=${VP_PROFILE:-?} variant=${VP_VARIANT:-?} codec=${VP_CODEC:-?} res=${VP_RES:-?} memc=${VP_MEMC:-?} sr=${VP_SR:-?} hdr=${VP_HDR:-?} risk=${VP_RISK:-?} reason=${VP_REASON:-}"
+        # Plano 4b: aplicar carga visual por el canal correcto (ADB policy-driven)
+        [ -f "$VP_APPLY_SH" ] && { . "$VP_APPLY_SH"; visual_payload_apply "$T" 2>&1 | sed 's/^/  apply: /' | tee -a "$LOG" >/dev/null 2>&1 || true; }
+        # Alias REC_* ← VP_* para report_to_vps (compat)
+        REC_PROFILE="$VP_PROFILE"; REC_CODEC="$VP_CODEC"; REC_RESOLUTION="$VP_RES"; MEMC_POLICY="$VP_MEMC"; HDR_POLICY="$VP_HDR"; RISK="$VP_RISK"; REASON="$VP_REASON"
         report_to_vps "$T"
     fi
 
