@@ -40,8 +40,10 @@ build_visual_payload_json() {
 "memc_policy":"${VP_MEMC:-not_supported}","super_resolution_policy":"${VP_SR:-not_supported}",
 "sharpness_policy":"${VP_SHARP:-adaptive_safe}","color_policy":"${VP_COLOR:-source_safe}",
 "anti_rebuffer_policy":"${VP_ANTIREBUFFER:-balanced}",
+"codec_policy":{"preferred":"${VP_CODEC_LEVEL:-hvc1.2.4.L153.B0}","forbidden_default":"hvc1.2.4.L156.B0","allow_l156_only_if_capability_proven":true},
 "do_not_fake":{"hdr":true,"4k":true,"codec":true,"fps":true},
 "algorithm_stack":$(_algorithm_stack | tr -d '\n'),
+"ttl_ms":${APE_PAYLOAD_TTL_MS:-30000},"issued_at":$(date +%s 2>/dev/null || echo 0),
 "reason":"${VP_REASON:-}","confidence":${VP_CONF:-0.5}}
 EOF
 }

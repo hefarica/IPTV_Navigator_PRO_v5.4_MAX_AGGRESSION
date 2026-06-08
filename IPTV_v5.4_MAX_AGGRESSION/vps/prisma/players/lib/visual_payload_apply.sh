@@ -14,9 +14,29 @@ visual_payload_apply() {
     T="$1"
     local plane="${CONTROL_PLANE:-manual}"
 
+    # ── CONTRATO DE AUTORIDAD: el daemon es reactivo, no gobernante ──
+    # Carga el guard (chokepoint que bloquea am start/force-stop/input/monkey/pm).
+    if [ -f "${_VPA_DIR}/daemon_authority_guard.sh" ]; then
+        # shellcheck source=/dev/null
+        . "${_VPA_DIR}/daemon_authority_guard.sh"
+    fi
+    # TTL: payload caduco → NO se aplica perfil agresivo (safe mode). Solo si viene con issued_at.
+    if [ -n "${APE_PAYLOAD_ISSUED_AT:-}" ] && command -v ape_payload_fresh >/dev/null 2>&1; then
+        if ! ape_payload_fresh "${APE_PAYLOAD_ISSUED_AT}" "${APE_PAYLOAD_TTL_MS:-30000}"; then
+            echo "APPLY[$plane] payload CADUCO (TTL) → TRUTHFUL_SOURCE_SAFE (no agresivo)"
+            VP_PROFILE=TRUTHFUL_SOURCE_SAFE; VP_MEMC=disable; VP_HDR=disable_fake_hdr; VP_SR=disable
+        fi
+    fi
+    # Codec policy: L153 (4K@60) seguro por defecto; L156 solo si 120Hz + buffer probados.
+    if command -v ape_codec_level >/dev/null 2>&1; then
+        local _tv120=false; case "${TV_REFRESH:-}" in *120*) _tv120=true ;; esac
+        local _bok=false; [ "${TEL_BUFFER:-}" = ok ] && _bok=true
+        VP_CODEC_LEVEL="$(ape_codec_level "$_tv120" "$_bok")"
+    fi
+
     if [ "$plane" != adb ]; then
         # Roku / Apple TV / web / unknown → solo manifest/stream/app hints (server-side)
-        echo "APPLY[$plane] manifest_only: variant=${VP_VARIANT:-source} codec_pref=${VP_CODEC:-source} res=${VP_RES:-source} hdr=${VP_HDR:-source} (device write=NOT_SUPPORTED)"
+        echo "APPLY[$plane] manifest_only: variant=${VP_VARIANT:-source} codec_pref=${VP_CODEC:-source} level=${VP_CODEC_LEVEL:-hvc1.2.4.L153.B0} res=${VP_RES:-source} hdr=${VP_HDR:-source} (device write=NOT_SUPPORTED)"
         return 0
     fi
 
