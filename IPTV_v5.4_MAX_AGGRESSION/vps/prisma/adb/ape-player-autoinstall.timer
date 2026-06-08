@@ -1,0 +1,13 @@
+# APE Player Auto-Installer timer — every 60s, survives reboot.
+# Manual enable only:  systemctl enable --now ape-player-autoinstall.timer
+[Unit]
+Description=Run APE Player Auto-Installer periodically (detect new players, install if missing)
+
+[Timer]
+OnBootSec=30s
+OnUnitActiveSec=60s
+Persistent=true
+Unit=ape-player-autoinstall.service
+
+[Install]
+WantedBy=timers.target
