@@ -54,3 +54,42 @@ risk_level · enh_version`. Lo que no se puede → `false` / `NOT_SUPPORTED` (ho
 
 ## NO toca
 nginx · URLs · túneles · SHIELDED · proveedor. Android/Fire vía ADB al device; resto vía network/manifest server-side.
+
+## ADB Playback Telemetry Plane
+
+ADB NO es solo control de hardware/settings: también **observa cómo el player reproduce de verdad**
+y retroalimenta al VPS para que el stream se adapte. Dos planos cuya UNIÓN decide el perfil:
+
+```
+Device Capability Plane (hardware/SoC/MEMC/AIPQ/AISR/settings)
+        +
+Player Playback Plane (codec real, decoder, resolución, FPS, buffer, dropped, judder, errores)
+        → playback_profile_decider → perfil de stream que el VPS entrega
+```
+
+### Cómo detecta (best-effort, read-only, timeout-safe — `collect_player_telemetry.sh`)
+- **Foreground player**: `dumpsys window` (mCurrentFocus/mFocusedApp) + `dumpsys activity activities`.
+- **Codec/decoder real**: `dumpsys media.codec` / `media.metrics` → `video/hevc|avc|av01|vp9|mpeg2`,
+  decoder `OMX.*`/`c2.*`; `OMX.google.*`/`c2.android.*` = software, vendor = hardware.
+- **Resolución/FPS**: `dumpsys SurfaceFlinger` / `dumpsys display` (refresh/active mode).
+- **HDR**: `dumpsys display` (DOLBY_VISION/HDR10/ST2084/HLG) — solo si visible.
+- **Buffer/dropped/judder/errores**: `logcat -d -t 300` (acotado, NUNCA infinito) → rebuffer,
+  `dropped frames`, judder/frame-pacing, último error.
+- **confidence** 0.0–1.0 según cuántas fuentes respondieron.
+
+### Cómo decide (`playback_profile_decider.sh`)
+- HW HEVC + buffer OK + foreground → `CRYSTAL_UHD_SAFE`.
+- HEVC en software-decode o rebuffer → `STABLE_1080P_PREMIUM` (H264 1080p).
+- dropped > umbral → downgrade + MEMC off. Judder → `memc_policy=avoid_due_to_judder`, sin 60fps fake.
+- HDR no probado → `disable_fake_hdr`. Codec desconocido → `TRUTHFUL_SOURCE_SAFE`. Player no-foreground → sin cambios agresivos.
+
+### Qué NO garantiza (verdad técnica)
+- Solo Android/Fire tienen telemetry ADB. **Roku/Apple/Web NO** → `codec_active=unknown`, decisión por
+  capabilities declaradas + QoE server-side (no se inventan datos del player).
+- `dumpsys`/`logcat` son best-effort: si una fuente no responde → `unknown` (no se miente), confidence baja.
+- Nunca fake codec/HDR/fps. MEMC solo donde el SoC lo soporta y nunca si hay judder.
+
+### Reporte al VPS
+`report_to_vps` POSTea a `device-register.php` (extendido backward-compat con `playback_profile_json`):
+codec/decoder/res/fps/buffer/dropped/judder + `recommended_profile/codec/resolution/memc_policy/hdr_policy`.
+Test read-only: `vps/prisma/players/tests/test_playback_decider.sh` (15 aserciones, 8 casos).

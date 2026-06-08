@@ -15,6 +15,20 @@ DEVICES_DB="${APE_DEVICES_DB:-/var/www/html/prisma/db/ape_devices.db}"
 LOG="${APE_ORCH_LOG:-/opt/netshield/state/ape-universal-orchestrator.log}"
 log() { echo "$(date -u +%FT%TZ) $*" | tee -a "$LOG" 2>/dev/null || echo "$*"; }
 
+TEL_SH="${SCRIPT_DIR}/adb/collect_player_telemetry.sh"
+DECIDER_SH="${SCRIPT_DIR}/lib/playback_profile_decider.sh"
+REGISTER_URL="${APE_REGISTER_URL:-http://127.0.0.1/prisma/api/device-register.php}"
+
+# Reporta capabilities + telemetry + decisión al VPS (backward-compat; nunca rompe el loop)
+report_to_vps() {  # <target>
+    command -v curl >/dev/null 2>&1 || return 0
+    curl -s -m 4 -X POST "$REGISTER_URL" -H 'Content-Type: application/json' -d "{
+\"device_id\":\"$1\",\"device_ip\":\"$1\",\"platform\":\"${PLATFORM_FAMILY:-unknown}\",
+\"player\":\"${TEL_PLAYER:-${PLAYER:-unknown}}\",\"settings_applied\":1,
+\"playback_profile_json\":\"{\\\"codec_video\\\":\\\"${TEL_CODEC_VIDEO:-unknown}\\\",\\\"decoder_name\\\":\\\"${TEL_DECODER:-unknown}\\\",\\\"resolution\\\":\\\"${TEL_RES:-unknown}\\\",\\\"fps\\\":\\\"${TEL_FPS:-unknown}\\\",\\\"buffer_state\\\":\\\"${TEL_BUFFER:-unknown}\\\",\\\"dropped_frames\\\":\\\"${TEL_DROPPED:-0}\\\",\\\"judder\\\":\\\"${TEL_JUDDER:-false}\\\",\\\"recommended_profile\\\":\\\"${REC_PROFILE:-}\\\",\\\"recommended_codec\\\":\\\"${REC_CODEC:-}\\\",\\\"recommended_resolution\\\":\\\"${REC_RESOLUTION:-}\\\",\\\"memc_policy\\\":\\\"${MEMC_POLICY:-}\\\",\\\"hdr_policy\\\":\\\"${HDR_POLICY:-}\\\",\\\"control_plane\\\":\\\"${CONTROL_PLANE:-}\\\",\\\"soc_family\\\":\\\"${SOC_FAMILY:-}\\\"}\",
+\"notes\":\"enh=$APE_ENH_VERSION profile=${REC_PROFILE:-} risk=${RISK:-}\"}" >/dev/null 2>&1 || true
+}
+
 enumerate_devices() {
     { adb devices 2>/dev/null | awk 'NR>1 && /\tdevice$/ {print $1}'
       [ -f "$DEVICES_DB" ] && command -v sqlite3 >/dev/null 2>&1 && \
@@ -50,6 +64,22 @@ process_device() {  # <target>
     . "$adapter"
     log "DEVICE $T platform=$PLATFORM_FAMILY control=$CONTROL_PLANE adapter=$(basename "$adapter")"
     log "  caps=$(detect_capabilities "$T" 2>/dev/null | tr -d '\n')"
+
+    # ── PLAYER PLAYBACK PLANE (solo ADB): telemetría software + decisión de perfil ──
+    # Roku/AppleTV/web NO tienen telemetry ADB → se omite (decisión por capabilities/QoE server-side).
+    if [ "$CONTROL_PLANE" = adb ] && [ -f "$TEL_SH" ] && [ -f "$DECIDER_SH" ]; then
+        # shellcheck source=/dev/null
+        . "$TEL_SH"; collect_player_telemetry "$T" >/dev/null 2>&1 || true
+        CAP_SOC_FAMILY="${SOC_FAMILY:-generic}"
+        CAP_CAN_MEMC="$( can_apply_memc 2>/dev/null && echo true || echo false )"
+        CAP_PLATFORM="$PLATFORM_FAMILY"
+        # shellcheck source=/dev/null
+        . "$DECIDER_SH"; playback_profile_decider >/dev/null 2>&1 || true   # setea REC_*/HDR_POLICY/MEMC_POLICY
+        log "  telemetry: codec=${TEL_CODEC_VIDEO:-?} hw=${TEL_HW_DECODE:-?} res=${TEL_RES:-?} fps=${TEL_FPS:-?} buf=${TEL_BUFFER:-?} dropped=${TEL_DROPPED:-0} judder=${TEL_JUDDER:-?} conf=${TEL_CONFIDENCE:-0}"
+        log "  decision: profile=${REC_PROFILE:-?} codec=${REC_CODEC:-?} res=${REC_RESOLUTION:-?} fps=${REC_FPS:-?} hdr=${HDR_POLICY:-?} memc=${MEMC_POLICY:-?} risk=${RISK:-?} reason=${REASON:-}"
+        report_to_vps "$T"
+    fi
+
     # Aplica solo capacidades soportadas (graceful)
     if can_apply_system_settings 2>/dev/null || [ "$CONTROL_PLANE" = adb ]; then
         out="$(apply_visual_profile "$T" 2>&1)"; rc=$?
