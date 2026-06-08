@@ -1,0 +1,17 @@
+# APE Wake Worker — long-running (NOT a timer: wake must fire in ms).
+# Manual enable only:  systemctl enable --now ape-wake-worker.service
+[Unit]
+Description=APE Wake Worker — wakes on-device daemon in ms when a playlist is played
+After=network-online.target adb-persistence.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/opt/netshield/vps/prisma/adb/ape-wake-worker.sh run
+Restart=always
+RestartSec=2
+Nice=5
+# Autopista-safe: solo ADB al device; no toca nginx/URLs/stream.
+
+[Install]
+WantedBy=multi-user.target

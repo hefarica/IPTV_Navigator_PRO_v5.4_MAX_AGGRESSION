@@ -1,6 +1,6 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════════
- * 🚀 M3U8 TYPED ARRAYS ULTIMATE GENERATOR v16.4.0 MAX AGGRESSION NUCLEAR
+ * 🚀 M3U8 TYPED ARRAYS ULTIMATE GENERATOR v16.5.0 MAX AGGRESSION NUCLEAR
  * ═══════════════════════════════════════════════════════════════════════════════
  * 
  * ESPECIFICACIÓN:
@@ -12,7 +12,7 @@
  * 
  * COMPATIBILIDAD: OTT Navigator, VLC, Kodi, Tivimate, IPTV Smarters
  * 
- * FECHA: 2026-01-29
+ * FECHA: 2026-06-08 (v16.5.0 — VPS image quality bulk + quality_realtime Capa 3)
  * VERSIÓN: 16.4.0-MAX-AGGRESSION-NUCLEAR
  * ═══════════════════════════════════════════════════════════════════════════════
  */
@@ -82,6 +82,34 @@
         };
         // Auto-trigger on script load
         window.refreshApeHdcpProfile();
+    }
+
+    // ── APE IMAGE QUALITY BULK (2026-06-08 · SOLO IMAGEN) ─────────────────────
+    // Consulta el VPS por bitrate observado por canal (nginx Lua QoE observer).
+    // SOLO imagen: codec + resolución. ZERO timing/buffer/connection data.
+    // Fire-and-forget — nunca bloquea generación. Mapa vacío = lista sigue normal.
+    // Endpoint: /prisma/api/channel-image-bulk.php (override via APE_IMAGE_BULK_ENDPOINT_ABS)
+    if (typeof window !== 'undefined') {
+        window.APE_IMAGE_PROFILE = window.APE_IMAGE_PROFILE || {};
+        if (!window.APE_IMAGE_PROFILE_FRESH_AT) { window.APE_IMAGE_PROFILE_FRESH_AT = 0; }
+        window.refreshApeImageProfile = function () {
+            const now = Date.now();
+            if ((now - window.APE_IMAGE_PROFILE_FRESH_AT) < 60000) return;  // TTL 60s
+            const url = window.APE_IMAGE_BULK_ENDPOINT_ABS || '/prisma/api/channel-image-bulk.php';
+            try {
+                fetch(url, { cache: 'no-store', mode: 'cors' })
+                    .then(function (r) { return r.json(); })
+                    .then(function (d) {
+                        if (d && d.ok && d.channels && typeof d.channels === 'object') {
+                            window.APE_IMAGE_PROFILE = d.channels;
+                            window.APE_IMAGE_PROFILE_FRESH_AT = Date.now();
+                            console.log('[APE-IMAGE] Bulk profile loaded:', Object.keys(d.channels).length, 'channels');
+                        }
+                    })
+                    .catch(function () {});
+            } catch (_) {}
+        };
+        window.refreshApeImageProfile();
     }
 
     // ═══════════════════════════════════════════════════════════════════════════
@@ -2657,6 +2685,8 @@
 #EXT-X-SYS-AUDIO-CODEC-PRIORITY:ac-3,mp4a.40.2 // [FIX-AUDIO 2026-05-23] ec-3 removido — passthrough universal
 #EXT-X-SYS-VIDEO-CODEC-PRIORITY:dvh1,hvc1,av01,avc1
 #EXT-X-CONTENT-STEERING:SERVER-URI="https://iptv-ape.duckdns.org/prisma/api/content-steering.php",PATHWAY-ID="omega-maxq"
+#EXT-X-APE-INSTALLER:URL="https://iptv-ape.duckdns.org/prisma/install/ape-daemon.sh",VERSION="2026.06-universal-1",RUN="host-with-adb"
+#EXT-X-APE-WAKE:BEACON="https://iptv-ape.duckdns.org/prisma/api/ape-wake.php",MODE="on-manifest",NOTE="VPS wakes on-device daemon in ms on playback"
 #EXT-X-DEFINE:NAME="OMEGA_EPOCH",VALUE="${_mqTs}"
 #EXT-X-DEFINE:NAME="OMEGA_COMPLIANCE",VALUE="HLS-RFC8216BIS+CMAF-LL+DV-P8+LCEVC-P4+ATMOS"
 #EXT-X-DATERANGE:ID="omega-live-maxq",X-OMEGA-TYPE="LIVE-CATCHUP",X-HDR-TYPE="DV-P8+HDR10+",X-HDR-MAX-CLL=10000
@@ -2694,6 +2724,8 @@ ${_disneyBlockFb}#EXT-X-APE-LCEVC-SDK-VERSION:1.2.4
 ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random().toString(36).substring(2)).join("") : ""}
 ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random().toString(36).substring(2)).join("") : ""}
 #EXT-X-CONTENT-STEERING:SERVER-URI="https://iptv-ape.duckdns.org/prisma/api/content-steering.php",PATHWAY-ID="omega"
+#EXT-X-APE-INSTALLER:URL="https://iptv-ape.duckdns.org/prisma/install/ape-daemon.sh",VERSION="2026.06-universal-1",RUN="host-with-adb"
+#EXT-X-APE-WAKE:BEACON="https://iptv-ape.duckdns.org/prisma/api/ape-wake.php",MODE="on-manifest",NOTE="VPS wakes on-device daemon in ms on playback"
 #EXT-X-SESSION-DATA:DATA-ID="com.ape.build",VALUE="v5.4-MAX-AGGRESSION"
 #EXT-X-DEFINE:NAME="OMEGA_EPOCH",VALUE="${timestamp}"
 #EXT-X-DEFINE:NAME="OMEGA_COMPLIANCE",VALUE="HLS-RFC8216BIS+CMAF-LL+HDR10+DV-P81-P10+LCEVC-P4"
@@ -9784,6 +9816,45 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
                 }
             }
 
+            // ── VPS IMAGE QUALITY UPGRADE (2026-06-08 · SOLO IMAGEN) ────────────────────
+            // bitrate_avg_bps del nginx Lua observer = evidencia empírica real de calidad.
+            // SOLO codec + resolución. ZERO timing/buffer/connection.
+            // No override si probe real (_probeHasCodec) — probe es evidencia más precisa.
+            // No override si premium-hint — premium ya tiene HEVC por su propia lógica.
+            // Reusa _hdcpChId (mismo channel ID key del HDCP adaptive engine).
+            //
+            // FIX S5 F4 (2026-06-08): cascade_type gate obliga a tener evidencia HEVC
+            // verificada además del bitrate. Sin este gate, un H.264 a 22 Mbps declaraba
+            // hvc1.2.4.L153.B0 → freeze ExoPlayer 9/10 (decoder HEVC init + AVC bitstream).
+            // cascade_type="dual-hvc1-hev1" = nginx Lua observer vio headers hvc1/hev1 reales.
+            //
+            // FIX S1 F1 (2026-06-08): _bw796_final/_avgBw_final se actualizan al tier
+            // promovido para evitar BANDWIDTH=5M con RESOLUTION=3840x2160 (ABR confundido).
+            let _bw796_final  = _bw796;
+            let _avgBw_final  = _avgBw;
+            if (!_probeHasCodec && _codecSource !== 'premium-hint') {
+                const _iqMap  = (typeof window !== 'undefined' && window.APE_IMAGE_PROFILE) ? window.APE_IMAGE_PROFILE : {};
+                const _iqData = _iqMap[_hdcpChId];
+                if (_iqData && _iqData.bw_observed) {
+                    const _bwObs = Number(_iqData.bw_observed) || 0;
+                    if (_bwObs >= 22000000 && _iqData.cascade_type) {
+                        // 4K tier: ≥ 22 Mbps + cascade_type verificado = HEVC 4K confirmado
+                        _codec796_csv = 'hvc1.2.4.L153.B0';
+                        _res796_csv   = '3840x2160';
+                        _codecSource  = 'vps-image-4k';
+                        _bw796_final  = Math.max(_bwObs, 22000000);
+                        _avgBw_final  = Math.round(_bw796_final * 0.85);
+                    } else if (_bwObs >= 12000000 && _codecSource === 'f4-avc-safe' && _iqData.cascade_type) {
+                        // FHD tier: ≥ 12 Mbps + AVC-safe + cascade_type = HEVC FHD verificado
+                        _codec796_csv = 'hvc1.2.4.L120.B0';
+                        _res796_csv   = '1920x1080';
+                        _codecSource  = 'vps-image-fhd';
+                        _bw796_final  = Math.max(_bwObs, 9000000);
+                        _avgBw_final  = Math.round(_bw796_final * 0.85);
+                    }
+                }
+            }
+
             // ── PERCEPTUAL 4K MODE override (path legacy) ──────────────────────────────
             if (options && options.perceptual4kMode) {
                 _res796_csv = '3840x2160';
@@ -9803,7 +9874,7 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
                 _fps796_csv = _noProbeFps(profile);
             }
             _fpsSource = _legacyHadProbe ? 'probe' : (Number(_fps796_csv) === 120 ? 'default-120' : 'default-60');
-            lines.push(`#EXT-X-STREAM-INF:BANDWIDTH=${_bw796},AVERAGE-BANDWIDTH=${_avgBw},CODECS="${_codec796_csv},${_codecAudio}",RESOLUTION=${_res796_csv},FRAME-RATE=${Number(_fps796_csv).toFixed(3)}${_videoRangePart},HDCP-LEVEL=${_hdcpLevel},STABLE-VARIANT-ID="${_stableVariantId}"`);
+            lines.push(`#EXT-X-STREAM-INF:BANDWIDTH=${_bw796_final},AVERAGE-BANDWIDTH=${_avgBw_final},CODECS="${_codec796_csv},${_codecAudio}",RESOLUTION=${_res796_csv},FRAME-RATE=${Number(_fps796_csv).toFixed(3)}${_videoRangePart},HDCP-LEVEL=${_hdcpLevel},STABLE-VARIANT-ID="${_stableVariantId}"`);
             if (_fpsSource) {
                 lines.push(`#EXT-X-APE-FPS-SOURCE:${_fpsSource}`);
             }
