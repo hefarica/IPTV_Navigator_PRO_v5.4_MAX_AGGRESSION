@@ -54,13 +54,14 @@ if (!function_exists('ape_mesh_presets')) {
      * Formato: "<ns> <key> <val>" (lo valida la allowlist del SettingsApplier).
      */
     function ape_mesh_device_settings(array $streamInfo) {
-        $ds = array('global match_content_frame_rate 1'); // universal, SDR-safe, impacto real (anti-judder)
-        $hdr = isset($streamInfo['hdr_type']) ? strtolower($streamInfo['hdr_type']) : '';
-        // hdr_conversion SOLO si el canal probó HDR real (truth-guard; nunca sobre SDR)
-        if ($hdr === 'pq' || $hdr === 'hlg' || strpos($hdr, 'hdr10') !== false
-            || strpos($hdr, 'dolby') !== false || strpos($hdr, 'dvhe') !== false || strpos($hdr, 'dv') === 0) {
-            $ds[] = 'global hdr_conversion_mode 1';
-        }
+        // Doctrina MAX IMAGE FIRST — INCONDICIONAL (2026-06-16): el SDR->HDR como enhancement de
+        // display on-device se aplica SIEMPRE, no solo si la fuente probo HDR. hdr_conversion_mode=1
+        // (HDR_CONVERSION_SYSTEM) deja que Android convierta SDR->HDR cuando beneficia y haga
+        // passthrough del HDR real; degrada con gracia en displays no-HDR. FREEZELESS (Android lo gestiona).
+        $ds = array(
+            'global match_content_frame_rate 1', // anti-judder universal
+            'global hdr_conversion_mode 1',      // SDR->HDR enhancement incondicional (display-side)
+        );
         return $ds;
     }
 
