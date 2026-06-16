@@ -109,6 +109,34 @@ if (!function_exists('ape_mesh_presets')) {
         static $snap = null; static $snapTs = 0;
         $chId = (string)$chId;
         if ($chId === '') return array();
+
+        // 1) QoE REAL de conviva_events (PREFERIDA). Aqui aterrizan: el agente ADB-DIRECTO-POR-IP
+        //    (PC lee `adb logcat -s ExoPlayer` del Firestick -> VST/rebuffer/bitrate/frame-drop REALES)
+        //    y el browser (sendBeacon). conviva-event.php calcula qoe_score 0-100. Ventana 60s.
+        try {
+            if (@is_file('/var/www/html/prisma/lib/conviva_persistence.php')) {
+                require_once '/var/www/html/prisma/lib/conviva_persistence.php';
+                if (class_exists('ConvivaPersistence')) {
+                    $db = new PDO('sqlite:' . ConvivaPersistence::DEFAULT_DB_PATH);
+                    $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_SILENT);
+                    $st = $db->prepare("SELECT qoe_score, data_json FROM conviva_events WHERE channel_id = :c AND qoe_score IS NOT NULL AND inserted_at > :since ORDER BY timestamp_ms DESC LIMIT 1");
+                    $st->execute(array(':c' => $chId, ':since' => time() - 60));
+                    $ev = $st->fetch(PDO::FETCH_ASSOC);
+                    if ($ev && isset($ev['qoe_score']) && $ev['qoe_score'] !== null) {
+                        $d = json_decode(isset($ev['data_json']) ? (string)$ev['data_json'] : '{}', true);
+                        if (!is_array($d)) $d = array();
+                        return array(
+                            'source'    => 'real',
+                            'qoe_score' => (float)$ev['qoe_score'],
+                            'vst'       => isset($d['vst_ms']) ? (float)$d['vst_ms'] : null,
+                            'rebuffer'  => isset($d['rebuffer_duration_ms']) ? (float)$d['rebuffer_duration_ms'] : null,
+                        );
+                    }
+                }
+            }
+        } catch (\Throwable $e) { /* silent -> cae al proxy server-side */ }
+
+        // 2) Fallback PROXY-QoE del observer server-side (server_side_qoe_metrics). Cache estatica 5s.
         $now = time();
         if ($snap === null || ($now - $snapTs) > 5) {
             $snap = array();
@@ -134,6 +162,7 @@ if (!function_exists('ape_mesh_presets')) {
         // Columnas reales de server_side_qoe_metrics: vst_proxy_avg/max, rebuffer_count,
         // request_count, error_count, bitrate_avg_bps (ver conviva_persistence::recordServerSideQoE).
         return array(
+            'source'   => 'proxy',
             'vst'      => $pick(array('vst_proxy_avg', 'vst_proxy_max', 'vst_avg', 'vst', 'vst_proxy', 'vst_ms')),
             'rebuffer' => $pick(array('rebuffer_count', 'rebuffer', 'rebuffer_ratio', 'rebuffer_proxy')),
             'err'      => $pick(array('error_count', 'err', 'err4xx', 'err5xx')),
@@ -148,6 +177,9 @@ if (!function_exists('ape_mesh_presets')) {
      */
     function ape_risk_from_qoe(array $qoe) {
         if (empty($qoe)) return 0.0;
+        // QoE REAL (conviva_events): qoe_score 0-100 (100=perfecto) -> risk = 100 - qoe_score.
+        if (isset($qoe['qoe_score'])) return max(0.0, min(100.0, 100.0 - (float)$qoe['qoe_score']));
+        // PROXY (server-side): derivar de vst/rebuffer/error.
         $risk = 0.0;
         $vst = isset($qoe['vst']) ? $qoe['vst'] : null;
         if ($vst !== null) { if ($vst > 6000) $risk += 45; elseif ($vst > 3000) $risk += 25; elseif ($vst > 1500) $risk += 10; }

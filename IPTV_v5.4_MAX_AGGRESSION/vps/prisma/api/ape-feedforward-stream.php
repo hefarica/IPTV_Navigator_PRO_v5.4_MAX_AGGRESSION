@@ -72,11 +72,13 @@ while ((time() - $start) < $dur) {
     }
     if ($chId === '') $chId = $keyLabel;
 
-    // D6 — CERRAR EL LAZO QoE: refrescar riskScore POR TICK desde la QoE persistida (server-side
-    // proxy del observer del shield) en vez de quedar congelado al ?risk= del connect. Asi el modulo
-    // Conviva fluye por la URL-2 cada tick: QoE -> riskScore -> engines reducen/suben agresion ->
-    // device_settings/presets. Silent-fail: sin QoE (cliente no observado) -> 0 = comportamiento actual.
-    $health['riskScore'] = ape_risk_from_qoe(ape_qoe_state_by_channel($chId));
+    // D6 — CERRAR EL LAZO QoE: refrescar riskScore POR TICK desde la QoE (real de conviva_events =
+    // ADB-directo/browser; o proxy del observer del shield). En vez de quedar congelado al ?risk= del
+    // connect. Asi el modulo Conviva fluye por la URL-2 cada tick: QoE -> riskScore -> engines suben/
+    // bajan agresion -> device_settings/presets. Silent-fail: sin QoE -> 0 = comportamiento actual.
+    $qoeState  = ape_qoe_state_by_channel($chId);
+    $qoeSource = isset($qoeState['source']) ? $qoeState['source'] : 'none';
+    $health['riskScore'] = ape_risk_from_qoe($qoeState);
 
     $mesh = ape_mesh_presets($chId, $si, $health, $ctTick);
     $device_settings = ape_mesh_device_settings($si);
@@ -86,6 +88,7 @@ while ((time() - $start) < $dur) {
         'channel'         => $chId,
         'channel_source'  => $chSrc,
         'risk'            => $health['riskScore'],
+        'risk_source'     => $qoeSource,
         'engines'         => $mesh['engines'],
         'preset_count'    => count($mesh['presets']),
         'presets'         => $mesh['presets'],
