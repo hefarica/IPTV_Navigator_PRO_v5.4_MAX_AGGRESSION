@@ -551,22 +551,22 @@
         parts.push(`FRAME-RATE=${Number(truth.frameRate || 30).toFixed(3)}`);
         parts.push(`CODECS="${truth.codec},${truth.audioCodec || 'mp4a.40.2'}"`);
 
-        // VIDEO-RANGE solo si verificado por probe (no inventar HDR)
-        if (truth.hdrVerified && (truth.videoRange === 'PQ' || truth.videoRange === 'HLG')) {
-            parts.push(`VIDEO-RANGE=${truth.videoRange}`);
+        // VIDEO-RANGE=PQ INCONDICIONAL (2026-06-16, doctrina SDR→HDR enhancement display-driven —
+        // ver CLAUDE.md "VIDEO-RANGE=PQ Incondicional"). El display/daemon materializa el HDR
+        // (hdr_conversion_mode=1 incondicional); PQ declara la salida HDR resultante. Si el probe
+        // verificó HLG real se respeta HLG; si no, default PQ. FREEZELESS: VIDEO-RANGE es hint de
+        // rango/display, NO cambia CODECS ni declara un decode imposible (Ley Cardinal 1 intacta).
+        const _videoRange = (truth.hdrVerified && truth.videoRange === 'HLG') ? 'HLG' : 'PQ';
+        parts.push(`VIDEO-RANGE=${_videoRange}`);
 
-            // [G-1 FIX 2026-05-19] HDR10 metadata trifecta (CICP) — RFC 8216bis §4.4.6.2.
-            // Emitted ONLY when VIDEO-RANGE is verified PQ or HLG. Probe-provided values
-            // take precedence; spec-safe defaults otherwise (BT.2020 / PQ-or-HLG / BT.2020-NCL).
-            // Per ARTIFACT_HDR10_METADATA_TRIFECTA.md + closes G-1 of
-            // ARTIFACT_FASE1_PROFUNDO_B_RESOLVER_AUDIT.md.
-            const cp = truth.colorPrimaries          || 9;                                       // BT.2020
-            const tc = truth.transferCharacteristics || (truth.videoRange === 'HLG' ? 18 : 16);  // HLG=18 / PQ=16
-            const mc = truth.matrixCoefficients      || 9;                                       // BT.2020 non-constant
-            parts.push(`COLOR-PRIMARIES=${cp}`);
-            parts.push(`TRANSFER-CHARACTERISTICS=${tc}`);
-            parts.push(`MATRIX-COEFFICIENTS=${mc}`);
-        }
+        // HDR10/HLG metadata trifecta (CICP) — RFC 8216bis §4.4.6.2. Probe-provided values take
+        // precedence; spec-safe BT.2020 defaults otherwise (PQ=16 / HLG=18 transfer).
+        const cp = truth.colorPrimaries          || 9;                              // BT.2020
+        const tc = truth.transferCharacteristics || (_videoRange === 'HLG' ? 18 : 16); // HLG=18 / PQ=16
+        const mc = truth.matrixCoefficients      || 9;                              // BT.2020 non-constant
+        parts.push(`COLOR-PRIMARIES=${cp}`);
+        parts.push(`TRANSFER-CHARACTERISTICS=${tc}`);
+        parts.push(`MATRIX-COEFFICIENTS=${mc}`);
 
         // SUPPLEMENTAL-CODECS solo si verificado (no inventar DV/LCEVC)
         if (truth.supplementalCodecsVerified && truth.supplementalCodecs) {

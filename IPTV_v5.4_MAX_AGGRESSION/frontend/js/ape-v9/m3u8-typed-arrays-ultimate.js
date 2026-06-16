@@ -9683,18 +9683,16 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
         } else {
             // Legacy emit sin truth: emite STREAM-INF SIN HDCP-LEVEL ni SUPPLEMENTAL-CODECS hardcoded.
             //
-            // [R-1 FIX — 2026-05-18 · NO PLAYER-BREAKING LIES]
-            // VIDEO-RANGE solo se emite cuando hay evidencia REAL del probe
-            // (_probeData?.videoRange) o cuando truth-resolver lo verifica.
-            // cfg.hdr_mode (LAB SSOT) NO califica como evidencia para HDR claim
-            // — un canal SDR con LAB-tag HDR10 mintiendo VIDEO-RANGE=PQ rompe
-            // pre-init del decoder HDR de ExoPlayer (pantallazo negro HDMI).
-            // Per ARTIFACT_FASE1_PROFUNDO_DESTRIPE §6 R-1.
+            // [SUPERSEDED 2026-06-16 — VIDEO-RANGE=PQ INCONDICIONAL]
+            // Doctrina del propietario (ver CLAUDE.md "VIDEO-RANGE=PQ Incondicional"): se emite
+            // VIDEO-RANGE=PQ en TODO canal como declaración del SDR→HDR enhancement que el display/
+            // daemon materializa (hdr_conversion_mode=1 incondicional). Default PQ; si el probe
+            // verificó HLG real se respeta HLG. FREEZELESS: VIDEO-RANGE es hint de rango/display,
+            // NO cambia CODECS ni declara decode imposible. (Reemplaza el R-1 FIX 2026-05-18.)
             const _probedRange = (_probeData && (_probeData.videoRange || _probeData.video_range)) || null;
-            // [2026-06-08 Council fix S1] let (no const): el path perceptual NO reasigna a un
-            // VIDEO-RANGE=PQ falso (eso lanzaba TypeError en strict-mode → canal perdido). El
-            // valor público queda probe-driven; el intent perceptual va en tag privado (abajo).
-            let _videoRangePart = _probedRange ? `,VIDEO-RANGE="${_probedRange}"` : '';
+            // let (no const): el path perceptual puede reasignar _videoRangePart abajo.
+            const _vrLegacy = (_probedRange === 'HLG') ? 'HLG' : 'PQ';
+            let _videoRangePart = `,VIDEO-RANGE=${_vrLegacy}`;
             // ── HDCP-Adaptive (added 2026-05-19) — per-channel HDCP-LEVEL + STABLE-VARIANT-ID ──
             // Default TYPE-1 (aggressive, forces hardware decoder). Override to NONE only if
             // Conviva detected VST > 3000ms on prior TYPE-1 attempt (stored in window.APE_HDCP_PROFILE).

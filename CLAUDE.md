@@ -173,7 +173,7 @@ Regla: **bitrate real > fallback agresivo > no emitir STREAM-INF**.
 
 | Campo | Solo emitir si... |
 |-------|-------------------|
-| `VIDEO-RANGE=PQ\|HLG` | Probe detectó `VIDEO-RANGE` real en manifest |
+| `VIDEO-RANGE=PQ` | **SUPERSEDED 2026-06-16 — ahora INCONDICIONAL** (SDR→HDR enhancement display-driven). Ver "VIDEO-RANGE=PQ Incondicional" abajo. |
 | `SUPPLEMENTAL-CODECS` | Probe encontró `SUPPLEMENTAL-CODECS` real con `dvh1`/`dvhe` |
 | `HDCP-LEVEL` | Probe encontró `HDCP-LEVEL` real (NUNCA hardcodear `TYPE-1`) |
 | `ape-container=fmp4-cmaf` + verified=true | Probe encontró `#EXT-X-MAP` + `.m4s`/`init.mp4` |
@@ -190,8 +190,30 @@ codecVerified=false  → #EXT-X-APE-CODEC-PREFERRED:hvc1.2.4.L153.B0
 ```
 HDCP-LEVEL="TYPE-1" hardcoded universal      ← ELIMINADO (rompe HDMI HDCP 1.4 sin recovery)
 SUPPLEMENTAL-CODECS="lcev.1.1.1"             ← ELIMINADO (LCEVC inventado, no real)
-VIDEO-RANGE sin probe                         ← ELIMINADO (HDR falso confunde decoders)
+VIDEO-RANGE sin probe                         ← SUPERSEDED 2026-06-16 (ahora INCONDICIONAL, ver abajo)
 ```
+
+### VIDEO-RANGE=PQ Incondicional — SDR→HDR Enhancement Doctrine (2026-06-16, decisión del propietario)
+
+**Decisión LOCKED del propietario (no re-debatir):** `VIDEO-RANGE=PQ` se emite **INCONDICIONALMENTE** en cada
+`#EXT-X-STREAM-INF`, incluso sobre fuentes SDR. **Reemplaza** la regla previa "solo si probado". Razón: el
+ecosistema aplica **SDR→HDR como enhancement de display on-device** (`hdr_conversion_mode=1`, también
+incondicional vía el daemon aplicador-puro + `ape_mesh_device_settings`). La declaración `PQ` describe la
+**salida HDR que el display produce tras el enhancement**, no una mentira sobre el bitstream fuente.
+Doctrina madre: **MAX IMAGE FIRST** — mejor empujar HDR y dejar que el display/daemon lo materialice que
+servir SDR plano.
+
+**Lo que NO cambia (siguen prohibidos / enforced):**
+- `SUPPLEMENTAL-CODECS` inventado (LCEVC/DV falsos) — sigue PROHIBIDO.
+- Declarar un **codec/nivel que el decoder no soporta** (GOLDEN RULE `hvc1`/`hev1` + Ley Cardinal 1
+  Nivel↔Resolución) — el bitstream se entrega tal cual; `VIDEO-RANGE=PQ` es hint de rango/display, NO
+  cambia `CODECS=` ni declara un decode imposible. **FREEZELESS intacto.**
+- CMAF/`fmp4` falso sin `EXT-X-MAP` real — sigue PROHIBIDO.
+
+**Caveat honesto (documentado, no bloqueante):** en players SIN el daemon, `VIDEO-RANGE=PQ` sobre SDR puede
+dar color shift (no freeze). El propietario lo aceptó explícitamente bajo MAX IMAGE FIRST; el modelo es que
+el daemon pone el display en HDR y la declaración casa. Acompañar de `hvc1.2.*` (Main10, 10-bit) cuando el
+codec lo permita para coherencia del pipeline PQ.
 
 ### HDCP-Adaptive Engine (2026-05-19) — reemplaza la prohibición universal
 
@@ -391,7 +413,7 @@ Los 3 deben retornar Exit 0.
 2. Canales premium reciben **HEVC Main10 PREFERRED** en F2
 3. Canales sin evidencia conservan **URL original** (F5)
 4. **0 declaraciones CMAF falsas** (solo si EXT-X-MAP + .m4s/init.mp4)
-5. **0 declaraciones HDR falsas** (solo si VIDEO-RANGE=PQ/HLG probado)
+5. `VIDEO-RANGE=PQ` **INCONDICIONAL** (2026-06-16, SDR→HDR enhancement) — sin gatear por probe; `SUPPLEMENTAL-CODECS`/CMAF/codec-imposible siguen prohibidos
 6. **0 HDCP-LEVEL hardcodeado** (TYPE-1 eliminado)
 7. **0 SUPPLEMENTAL-CODECS falsos** (lcev.1.1.1 eliminado)
 8. **0 headers tóxicos** (Range/If-None-Match/If-Modified-Since/TE/Priority/Upgrade-Insecure-Requests)
