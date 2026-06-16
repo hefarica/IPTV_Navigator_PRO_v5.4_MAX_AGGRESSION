@@ -22,9 +22,10 @@ class MainActivity : Activity() {
                 appendLine("token = ${if (cfg.hasToken()) "provisionado" else "FALTA (provisiona por adb)"}")
                 appendLine()
                 appendLine("Provisión / permisos (una vez, por adb):")
-                appendLine("  pm grant ${BuildId.PKG} android.permission.READ_LOGS")
                 appendLine("  pm grant ${BuildId.PKG} android.permission.WRITE_SECURE_SETTINGS")
-                appendLine("  am startservice -n ${BuildId.PKG}/.AgentService --es token <T> --es vps <URL>")
+                appendLine("  # token por archivo (no command-line):")
+                appendLine("  push token → /sdcard/ape/token  (o run-as filesDir)")
+                appendLine("  am startservice -n ${BuildId.PKG}/.AgentService --es vps <URL> --es dev <DEV>")
             }
         }
         setContentView(ScrollView(this).apply { addView(tv) })

@@ -1,79 +1,71 @@
-# APE Crystal Agent (APK) — el daemon hecho BIEN
+# APE Crystal Agent (APK) — daemon APLICADOR PURO (device-keyed)
 
-> El shell daemon (`ape-outbound-agent.sh`) fue el workaround. Este APK es la **vía correcta**:
-> en Fire OS sin root, una app con permisos `READ_LOGS` + `WRITE_SECURE_SETTINGS` (grantables por
-> `adb pm grant`) hace lo que el shell **no puede** — y todo **HONESTO** (sin fake 4K/HDR público).
+> **Re-concebido 2026-06-15** tras auditoría adversarial (6 lentes, veredicto FLAWED). La versión
+> previa (DecodeObserver→MatchClient→CargaApplier) tenía un fallo que rompía todo: una app
+> **sideloaded** con `READ_LOGS` **solo ve los logs de su propio UID** desde Android 4.1 — NO puede
+> leer el decoder de TiviMate/OTT/ExoPlayer. El "observar" era imposible en sideload.
 
-## Por qué un APK (lo que el council de 13 PhDs destapó del shell daemon)
-
-| Problema del shell daemon (Fire OS) | Quién lo vio | Cómo lo resuelve el APK |
-|---|---|---|
-| `setsid` no detacha → el daemon **muere** y no persiste | S7-F1 | **Foreground Service** + `START_STICKY` + `BootReceiver` (BOOT_COMPLETED / MY_PACKAGE_REPLACED) |
-| **Sin `curl`** → no hace el pull al VPS | S2/S8/S9 | **OkHttp** nativo, con **ConnectionPool keep-alive** (no paga TLS por zap — S8-N1) |
-| `read_real_decode` lee **capacidad** (CodecQuerier) → "hevc 4K" falso | **S12-F1** | `DecodeObserver` lee logcat en **streaming** SOLO de tags de **decoder activo** + filtra `updateFormatChanged`/`output format` (nunca MediaCodecList) |
-| `setprop persist.*` **bloqueado** sin root | **S9-F3/F4** | Usa **`Settings.Global/Secure`** con `WRITE_SECURE_SETTINGS` (sí permitido) — lo vendor-privado se **omite, no se finge** |
-| iData en GET → telemetría en logs | S10-F2 / S1-H1 | **POST** body + token en header `Authorization: Bearer` |
-| MATCH sin `esperado` → degradado | S1-H3 | `ChannelIndex` lee `/sdcard/ape/channels_index.json` (del generador) → inyecta `esperado` |
-| KODIPROP/EXTVLCOPT no se inyectan en runtime | S9-F2 | v1: el VPS los manda en la carga (log + sidecar); **v2: servidor de lista local** (NanoHTTPD) al que OTT apunta |
-
-## Arquitectura
+## Concepción correcta: el daemon NO observa, SOLO aplica
 
 ```
-                 ┌──────────────────────── APK (foreground service, persistente) ───────────────────────┐
-   ZAP en OTT →  │ DecodeObserver (logcat decoder-ACTIVO) ──RealDecode──► AgentService.onZap()           │
-                 │                                                          │ (debounce 800ms, IO)        │
-                 │   ChannelIndex.esperadoFor(ch) ──esperado──┐             ▼                              │
-                 │                                            └──► MatchClient ──POST iData(esperado+real)─┼──► VPS ape-match.php
-                 │                                                 (OkHttp keep-alive, Bearer)            │      MATCH F0-F5
-   panel 4K   ◄──│ CargaApplier (Settings.Global, honesto) ◄────────── CARGA (China Box/Huawei + QoE) ◄──┼──── (carga)
-                 └────────────────────────────────────────────────────────────────────────────────────┘
-   stream del proveedor → directo (verbatim), el APK NO proxea vídeo.
+   El VPS YA proxea el tráfico del device (DNS-hijack) → sabe qué canal/decode juega.
+   ┌─────────────── APK (foreground service, persistente) ───────────────┐
+   │  FeedForwardClient ──suscribe SSE ?device=<id>──►  VPS               │
+   │        │  (Bearer, reconnect, cancel-on-stop)      ape-feedforward-  │
+   │        ▼                                            stream.php        │
+   │  SettingsApplier ◄── device_settings[] (allowlist) ◄─────────────────┤
+   │        │ aplica Settings.Global/System (frame-rate, hdr-conv…)        │
+   └────────┼─────────────────────────────────────────────────────────────┘
+            ▼ panel: frame-rate match (anti-judder), HDR-conv solo si HDR real
+   stream del proveedor → directo (verbatim); el APK NO proxea vídeo, NO cambia canales, NO abre apps.
 ```
 
-**Doctrina honesta (no player-breaking lies):** públicos `RESOLUTION/VIDEO-RANGE/CODECS` SIEMPRE veraces
-(1080p SDR L120 para el caso real). El enriquecimiento (AI-SR upscale al panel, MEMC, floor-lock, color)
-es **processing de display** + metadata privada APE. `VIDEO-RANGE=PQ/HLG` solo si el decoder lo probó.
+- **No observa** (sin `READ_LOGS`, sin logcat). El VPS hace el "ver" — ya tiene el tráfico del device.
+- **No manda telemetría** — solo se suscribe por `device-id`.
+- **Solo aplica** lo que el VPS dicta, y **solo** lo que pasa la **ALLOWLIST** del `SettingsApplier`
+  (frame-rate, hdr-conversion, minimal-post-processing, display-color) — nada arbitrario pese a
+  tener `WRITE_SECURE_SETTINGS`.
+- **Honesto:** los EXTVLCOPT/KODIPROP/EXT-X-APE-* (zscale, SR, color) son **list-level** → llegan al
+  player por la **LISTA** (VPS body_filter/generador), no por el daemon. `hdr_conversion` solo si el
+  VPS probó HDR real (truth-guard del lado VPS).
 
 ## Componentes (`app/src/main/java/com/ape/crystalagent/`)
 
 | Archivo | Rol |
 |---|---|
-| `AgentService.kt` | Foreground service + orquestador del lazo (persistente) |
-| `DecodeObserver.kt` | logcat streaming → realidad del **decoder activo** (fix S12) |
-| `MatchClient.kt` | iData → `ape-match.php` (POST, Bearer, OkHttp keep-alive) |
-| `CargaApplier.kt` | Aplica la carga vía `Settings.*` (honesto; omite lo bloqueado) |
-| `ChannelIndex.kt` | "lo esperado" del canal (índice local del generador) |
-| `Models.kt` | `RealDecode` + `Carga` (JSON) |
-| `Config.kt` | vps/token/dev (SharedPreferences; token nunca en URL) |
-| `BootReceiver.kt` | persistencia tras reboot |
-| `MainActivity.kt` | UI mínima Leanback (estado + instrucciones) |
+| `AgentService.kt` | Foreground service persistente; cablea FeedForwardClient + SettingsApplier; `onTaskRemoved`→re-arranque |
+| `FeedForwardClient.kt` | Suscriptor SSE **device-keyed** (`?device=`); parsea `device_settings`; cancela el Call al parar |
+| `SettingsApplier.kt` | Aplica `device_settings` vía `Settings.*` con **ALLOWLIST** estricta + validación de valor |
+| `Config.kt` | vps/dev (SharedPreferences); **token por ARCHIVO 0600**, nunca en command-line |
+| `BootReceiver.kt` | Persistencia tras reboot (BOOT_COMPLETED / MY_PACKAGE_REPLACED) |
+| `MainActivity.kt` | UI mínima Leanback (estado + provisión) |
+
+Permisos: **`WRITE_SECURE_SETTINGS`** (grantable por adb) + INTERNET/BOOT/FOREGROUND_SERVICE. **Ya NO usa `READ_LOGS`.**
 
 ## Build
-
 Requiere Android SDK + JDK 17. Desde `android/ape-crystal-agent/`:
 ```sh
-./gradlew :app:assembleRelease       # → app/build/outputs/apk/release/app-release-unsigned.apk
-# firmar (debug key sirve para sideload):
+./gradlew :app:assembleRelease
 apksigner sign --ks ~/.android/debug.keystore --ks-pass pass:android \
   --out app-release.apk app/build/outputs/apk/release/app-release-unsigned.apk
 ```
-(O abrir en Android Studio → Build APK.)
 
-## Install (1 sesión ADB en la LAN de Cali)
+## Install (1 sesión ADB)
 ```sh
-sh install.sh 192.168.1.7:5555 <TOKEN_de_ape-cmd-push_enroll> https://iptv-ape.duckdns.org app-release.apk
+sh install.sh 10.200.0.3:5555 <TOKEN> https://iptv-ape.duckdns.org firestick-cali app-release.apk
 ```
-Hace: `install -r` + `pm grant READ_LOGS` + `pm grant WRITE_SECURE_SETTINGS` + arranca/provisiona el servicio.
+Hace: `install -r` + `pm grant WRITE_SECURE_SETTINGS` + **token a `/sdcard/ape/token` (0600)** + arranca/provisiona.
 
-## Verificar
+## Verificar (en device real)
 ```sh
-adb -s 192.168.1.7:5555 logcat -s ApeAgentService:I ApeDecodeObserver:I ApeMatchClient:W ApeCargaApplier:I
-# Zapea un canal → debe verse: "ZAP real → RealDecode(...)" → "CARGA aplicada: codec=hvc1.2.4.L120 ..."
+adb -s 10.200.0.3:5555 logcat -s ApeAgentService:I ApeFeedForward:W ApeSettingsApplier:I
+# Debe verse: "START dev=… token=set" → (cada tick SSE) "device_settings aplicados=N rechazados=0"
 ```
 
-## Roadmap v2
-- **Servidor de lista local (NanoHTTPD):** OTT apunta a `http://127.0.0.1:8790/list.m3u8`; el APK sirve la
-  lista del generador **enriquecida** (KODIPROP/EXTVLCOPT China Box siempre presentes) → cierra el gap S9-F2.
-- **MediaSession real** para `currentChannelId` (NotificationListener) → `esperado` exacto por canal.
-- **TLS pinning** del VPS + rotación de token (S10-F4).
-- **Métricas** (S11): el APK postea KPIs (zaps, enriched%, fake-blocked) a `/prisma/api/metrics`.
+## Pendiente (lado VPS, para tuning per-canal)
+- **Correlación device→canal:** un `log_by_lua` (autopista-safe) en el path del manifest escribe
+  `/dev/shm/ape_device_state/<device>.json` con el canal/decode real que el device pide → el SSE
+  añade `hdr_conversion` solo cuando el canal es HDR real. Hoy device-keyed sin estado = frame-rate match (seguro).
+- TLS pinning del VPS + rotación de token. Métricas (zaps/applied/rejected).
+- (Opcional, mayor impacto visual) servidor de lista local (NanoHTTPD) para que los EXTVLCOPT/KODIPROP
+  lleguen a un player 3rd-party que hoy no los lee de la lista del VPS.

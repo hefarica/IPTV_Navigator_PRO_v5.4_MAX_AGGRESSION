@@ -6,10 +6,9 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
-    <!-- Grantables por adb a una app sideloaded (protectionLevel ...|development): -->
-    <!--   adb shell pm grant com.ape.crystalagent android.permission.READ_LOGS -->
-    <!--   adb shell pm grant com.ape.crystalagent android.permission.WRITE_SECURE_SETTINGS -->
-    <uses-permission android:name="android.permission.READ_LOGS" />
+    <!-- Aplicador puro: NO lee logs (no READ_LOGS). Solo escribe Settings permitidos.
+         Grantable por adb a una app sideloaded (protectionLevel ...|development):
+           adb shell pm grant com.ape.crystalagent android.permission.WRITE_SECURE_SETTINGS -->
     <uses-permission android:name="android.permission.WRITE_SECURE_SETTINGS" />
 
     <!-- Fire TV no tiene pantalla táctil -->

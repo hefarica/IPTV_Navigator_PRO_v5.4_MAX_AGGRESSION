@@ -1,28 +1,50 @@
 package com.ape.crystalagent
 
 import android.content.Context
+import android.util.Log
+import java.io.File
 
 /**
- * Configuración persistente (SharedPreferences). Se provisiona por intent extras:
- *   adb shell am startservice -n com.ape.crystalagent/.AgentService \
- *     --es token <TOKEN> --es vps https://iptv-ape.duckdns.org --es dev firestick-cali
- * El token NUNCA viaja en la URL (S10): va en el header Authorization: Bearer.
+ * Config persistente (SharedPreferences).
+ *
+ * SEGURIDAD (audit S10): el TOKEN se provisiona por ARCHIVO (data dir privado 0600, o /sdcard/ape/token),
+ * NUNCA por command-line `am ... --es token` (se filtra por argv / dumpsys / logs). Se ingiere una vez
+ * a SharedPreferences y el archivo puede borrarse después.
  */
 class Config(ctx: Context) {
     private val sp = ctx.getSharedPreferences("ape", Context.MODE_PRIVATE)
+    private val tokenFilePriv = File(ctx.filesDir, "token")
+    private val tokenFileSd = File("/sdcard/ape/token")
 
     val vpsBase: String get() = sp.getString("vps", DEFAULT_VPS)!!.trimEnd('/')
-    val token: String get() = sp.getString("token", "")!!
     val deviceId: String get() = sp.getString("dev", "firestick-cali")!!
 
-    fun provision(vps: String?, token: String?, dev: String?) {
+    val token: String
+        get() {
+            sp.getString("token", "")!!.let { if (it.isNotEmpty()) return it }
+            // fallback: leer del archivo e ingerirlo una vez
+            for (f in listOf(tokenFilePriv, tokenFileSd)) {
+                try {
+                    if (f.exists()) {
+                        val t = f.readText().trim()
+                        if (t.isNotEmpty()) { sp.edit().putString("token", t).apply(); return t }
+                    }
+                } catch (e: Exception) { Log.w(TAG, "token file err: ${e.message}") }
+            }
+            return ""
+        }
+
+    fun provision(vps: String?, dev: String?) {
         sp.edit().apply {
             vps?.takeIf { it.isNotBlank() }?.let { putString("vps", it) }
-            token?.takeIf { it.isNotBlank() }?.let { putString("token", it) }
             dev?.takeIf { it.isNotBlank() }?.let { putString("dev", it) }
         }.apply()
     }
+
     fun hasToken() = token.isNotEmpty()
 
-    companion object { const val DEFAULT_VPS = "https://iptv-ape.duckdns.org" }
+    companion object {
+        const val TAG = "ApeConfig"
+        const val DEFAULT_VPS = "https://iptv-ape.duckdns.org"
+    }
 }

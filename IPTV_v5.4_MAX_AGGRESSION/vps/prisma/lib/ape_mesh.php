@@ -47,6 +47,32 @@ if (!function_exists('ape_mesh_presets')) {
         return array('engines' => $engines, 'presets' => $presets);
     }
 
+    /**
+     * device_settings = el subconjunto HONESTO que el daemon (aplicador puro) SÍ puede escribir
+     * vía Android Settings a un player 3rd-party en curso. Los EXTVLCOPT/KODIPROP son list-level
+     * (llegan por la lista, no por el daemon) y NO van aquí.
+     * Formato: "<ns> <key> <val>" (lo valida la allowlist del SettingsApplier).
+     */
+    function ape_mesh_device_settings(array $streamInfo) {
+        $ds = array('global match_content_frame_rate 1'); // universal, SDR-safe, impacto real (anti-judder)
+        $hdr = isset($streamInfo['hdr_type']) ? strtolower($streamInfo['hdr_type']) : '';
+        // hdr_conversion SOLO si el canal probó HDR real (truth-guard; nunca sobre SDR)
+        if ($hdr === 'pq' || $hdr === 'hlg' || strpos($hdr, 'hdr10') !== false
+            || strpos($hdr, 'dolby') !== false || strpos($hdr, 'dvhe') !== false || strpos($hdr, 'dv') === 0) {
+            $ds[] = 'global hdr_conversion_mode 1';
+        }
+        return $ds;
+    }
+
+    /** Estado por-device que el VPS correlaciona del tráfico que proxea (qué canal/decode juega). Vacío si aún no hay. */
+    function ape_device_state($device) {
+        $device = preg_replace('/[^0-9A-Za-z_.\-]/', '', (string)$device);
+        if ($device === '') return array();
+        $f = '/dev/shm/ape_device_state/' . $device . '.json';
+        if (is_file($f)) { $j = json_decode(@file_get_contents($f), true); if (is_array($j)) return $j; }
+        return array();
+    }
+
     /** Construye streamInfo+health desde los params GET (URL-2). */
     function ape_mesh_inputs_from_get() {
         $streamInfo = array(
