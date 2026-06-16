@@ -98,6 +98,66 @@ if (!function_exists('ape_mesh_presets')) {
         return 'default';
     }
 
+    /**
+     * D6 — QoE persistida por canal (server-side PROXY del observer Lua del shield). Read-only,
+     * silent-fail, cache estatica 5s para no castigar SQLite a 1Hz. HONESTO: es proxy-QoE de RED
+     * (VST_proxy=manifest->1er-segmento, rebuffer=gap segmentos, err=4xx/5xx) reconstruido del
+     * trafico que el VPS proxea — NO QoE perceptual del decoder. Devuelve [] si no hay QoE
+     * (p.ej. cliente Xray-directo cuyos segmentos NO pasan por el shield -> sin proxy-QoE).
+     */
+    function ape_qoe_state_by_channel($chId) {
+        static $snap = null; static $snapTs = 0;
+        $chId = (string)$chId;
+        if ($chId === '') return array();
+        $now = time();
+        if ($snap === null || ($now - $snapTs) > 5) {
+            $snap = array();
+            try {
+                if (@is_file('/var/www/html/prisma/lib/conviva_persistence.php')) {
+                    require_once '/var/www/html/prisma/lib/conviva_persistence.php';
+                    if (class_exists('ConvivaPersistence')) {
+                        $p = new ConvivaPersistence();
+                        foreach ((array)$p->readServerSideQoESnapshot() as $row) {
+                            if (is_array($row) && isset($row['channel_id'])) $snap[(string)$row['channel_id']] = $row;
+                        }
+                    }
+                }
+            } catch (\Throwable $e) { $snap = array(); }
+            $snapTs = $now;
+        }
+        $r = isset($snap[$chId]) ? $snap[$chId] : null;
+        if (!is_array($r)) return array();
+        $pick = function ($keys) use ($r) {
+            foreach ($keys as $k) { if (isset($r[$k]) && is_numeric($r[$k])) return (float)$r[$k]; }
+            return null;
+        };
+        return array(
+            'vst'      => $pick(array('vst_avg', 'vst', 'vst_proxy', 'vst_ms', 'vst_max')),
+            'rebuffer' => $pick(array('rebuffer_ratio', 'rebuffer', 'rebuffer_count', 'rebuffer_proxy')),
+            'err4xx'   => $pick(array('err4xx', 'err_4xx', 'cerr')),
+            'err5xx'   => $pick(array('err5xx', 'err_5xx', 'serr')),
+            'req'      => $pick(array('req', 'req_count', 'requests')),
+        );
+    }
+
+    /**
+     * D6 — Mapea QoE proxy -> riskScore 0..100 (umbrales tipo conviva-qoe-engine.js). VST_proxy alto,
+     * rebuffer alto o error-rate alto => mas riesgo => los engines decisores (NeuroBuffer/LCEVC/HDR10+)
+     * reducen agresion. Sin QoE (cliente no observado por el shield) => 0 = comportamiento actual (no degrada).
+     */
+    function ape_risk_from_qoe(array $qoe) {
+        if (empty($qoe)) return 0.0;
+        $risk = 0.0;
+        $vst = isset($qoe['vst']) ? $qoe['vst'] : null;
+        if ($vst !== null) { if ($vst > 6000) $risk += 45; elseif ($vst > 3000) $risk += 25; elseif ($vst > 1500) $risk += 10; }
+        $reb = isset($qoe['rebuffer']) ? $qoe['rebuffer'] : null;
+        if ($reb !== null) { if ($reb > 0.05) $risk += 40; elseif ($reb > 0.02) $risk += 22; elseif ($reb > 0.005) $risk += 8; }
+        $req = (isset($qoe['req']) && $qoe['req'] > 0) ? $qoe['req'] : null;
+        $err = (float)((isset($qoe['err4xx']) ? $qoe['err4xx'] : 0) + (isset($qoe['err5xx']) ? $qoe['err5xx'] : 0));
+        if ($req !== null && $err > 0) { $rate = $err / $req; if ($rate > 0.1) $risk += 30; elseif ($rate > 0.03) $risk += 15; }
+        return min(100.0, $risk);
+    }
+
     /** Construye streamInfo+health desde los params GET (URL-2). */
     function ape_mesh_inputs_from_get() {
         $streamInfo = array(
