@@ -221,6 +221,24 @@
       "post": "none",
       "enabled": true,
       "note": "Plano ADB->URL-2: ingest QoE + correlacion per-canal por IP (resuelve canal desde device_state por REMOTE_ADDR cuando llega channel=auto). Base identica al VPS + bloque correlacion."
+    },
+    {
+      "id": "php-prisma-channel-pq-incident",
+      "src": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/channel-pq-incident.php",
+      "dest": "/var/www/html/prisma/api/channel-pq-incident.php",
+      "type": "php",
+      "post": "none",
+      "enabled": true,
+      "note": "Phase G — incidente PQ (pantallazo negro) -> blacklist canal PQ->SDR. Espejo channel-hdcp-incident."
+    },
+    {
+      "id": "php-prisma-channel-pq-bulk",
+      "src": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/channel-pq-bulk.php",
+      "dest": "/var/www/html/prisma/api/channel-pq-bulk.php",
+      "type": "php",
+      "post": "none",
+      "enabled": true,
+      "note": "Phase G — bulk {channel:SDR} para window.APE_PQ_PROFILE del generador. Espejo channel-hdcp-bulk."
     }
   ],
   "needs_review": [

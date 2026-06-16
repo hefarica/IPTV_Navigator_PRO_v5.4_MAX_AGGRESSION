@@ -80,8 +80,22 @@ while ((time() - $start) < $dur) {
     $qoeSource = isset($qoeState['source']) ? $qoeState['source'] : 'none';
     $health['riskScore'] = ape_risk_from_qoe($qoeState);
 
+    // Phase G — AUTO-TRIGGER del rollback PQ: VST_CRITICAL (>8000ms) o qoe_score muy bajo (<=8) en
+    // un canal => pantallazo negro probable con PQ activo => blacklist (proximo zap = SDR + hdr_conv 0).
+    $vstNow = isset($qoeState['vst']) ? (float)$qoeState['vst'] : 0;
+    $qsNow  = isset($qoeState['qoe_score']) ? (float)$qoeState['qoe_score'] : 100;
+    if ($vstNow > 8000 || $qsNow <= 8) { ape_pq_record_incident($chId, (int)$vstNow); }
+
     $mesh = ape_mesh_presets($chId, $si, $health, $ctTick);
     $device_settings = ape_mesh_device_settings($si);
+    // Phase G — si el canal esta blacklisted (pantallazo negro detectado), degradar hdr_conversion a 0
+    // SOLO para ese canal (FREEZELESS: revierte lo que rompe, mantiene PQ incondicional en el resto).
+    $pqBlacklisted = ape_pq_is_blacklisted($chId);
+    if ($pqBlacklisted) {
+        $device_settings = array_map(function ($d) {
+            return ($d === 'global hdr_conversion_mode 1') ? 'global hdr_conversion_mode 0' : $d;
+        }, $device_settings);
+    }
     $payload = json_encode(array(
         'seq'             => $seq,
         'mode'            => $rec ? 'matricula' : 'device',
@@ -89,6 +103,7 @@ while ((time() - $start) < $dur) {
         'channel_source'  => $chSrc,
         'risk'            => $health['riskScore'],
         'risk_source'     => $qoeSource,
+        'pq'              => $pqBlacklisted ? 'SDR' : 'PQ',
         'engines'         => $mesh['engines'],
         'preset_count'    => count($mesh['presets']),
         'presets'         => $mesh['presets'],

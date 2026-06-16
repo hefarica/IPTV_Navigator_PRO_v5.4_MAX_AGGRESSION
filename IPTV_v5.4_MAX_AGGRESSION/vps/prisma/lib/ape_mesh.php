@@ -191,6 +191,71 @@ if (!function_exists('ape_mesh_presets')) {
         return min(100.0, $risk);
     }
 
+    // ── Phase G — ROLLBACK PQ->SDR per-canal (FREEZELESS) ───────────────────────
+    // Si la QoE detecta pantallazo negro (VST_CRITICAL) en un canal con PQ activo, ese canal
+    // queda blacklisted -> el SSE emite hdr_conversion=0 y el generador emite VIDEO-RANGE=SDR
+    // para ESE canal. Mantiene PQ INCONDICIONAL por defecto; solo revierte lo que realmente rompe.
+    // Espejo del patron HDCP-Adaptive (channel_hdcp_profile). Tabla en conviva.db. NO mid-stream.
+    function ape_pq_db() {
+        static $pdo = null; static $tried = false;
+        if ($tried) return $pdo;
+        $tried = true;
+        try {
+            $p = '/opt/netshield/data/conviva.db';
+            if (@is_file('/var/www/html/prisma/lib/conviva_persistence.php')) {
+                require_once '/var/www/html/prisma/lib/conviva_persistence.php';
+                if (class_exists('ConvivaPersistence')) $p = ConvivaPersistence::DEFAULT_DB_PATH;
+            }
+            $pdo = new PDO('sqlite:' . $p);
+            $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_SILENT);
+            $pdo->exec("CREATE TABLE IF NOT EXISTS channel_pq_profile (
+                channel_id TEXT PRIMARY KEY,
+                pq_level TEXT NOT NULL DEFAULT 'SDR' CHECK(pq_level IN ('PQ','SDR')),
+                vst_ms INTEGER DEFAULT 0,
+                incident_count INTEGER DEFAULT 0,
+                last_incident_at INTEGER,
+                updated_at INTEGER NOT NULL DEFAULT (CAST(strftime('%s','now') AS INTEGER)))");
+        } catch (\Throwable $e) { $pdo = null; }
+        return $pdo;
+    }
+
+    /** True si el canal esta blacklisted (PQ->SDR). Read-only, silent-fail. */
+    function ape_pq_is_blacklisted($chId) {
+        $chId = (string)$chId; if ($chId === '') return false;
+        $db = ape_pq_db(); if (!$db) return false;
+        try {
+            $st = $db->prepare("SELECT pq_level FROM channel_pq_profile WHERE channel_id = :c LIMIT 1");
+            $st->execute(array(':c' => $chId));
+            $r = $st->fetch(PDO::FETCH_ASSOC);
+            return ($r && isset($r['pq_level']) && $r['pq_level'] === 'SDR');
+        } catch (\Throwable $e) { return false; }
+    }
+
+    /** Registra un incidente PQ (pantallazo negro) -> blacklist el canal. UPSERT idempotente. */
+    function ape_pq_record_incident($chId, $vstMs = 0) {
+        $chId = (string)$chId; if ($chId === '') return false;
+        $db = ape_pq_db(); if (!$db) return false;
+        try {
+            $st = $db->prepare("INSERT INTO channel_pq_profile (channel_id, pq_level, vst_ms, incident_count, last_incident_at, updated_at)
+                VALUES (:c,'SDR',:v,1,:t,:t)
+                ON CONFLICT(channel_id) DO UPDATE SET pq_level='SDR', vst_ms=:v, incident_count=incident_count+1, last_incident_at=:t, updated_at=:t");
+            $st->execute(array(':c' => $chId, ':v' => (int)$vstMs, ':t' => time()));
+            return true;
+        } catch (\Throwable $e) { return false; }
+    }
+
+    /** Mapa {channel_id: pq_level} de todos los blacklisted (para el bulk del generador). */
+    function ape_pq_blacklist_map() {
+        $db = ape_pq_db(); if (!$db) return array();
+        try {
+            $out = array();
+            foreach ($db->query("SELECT channel_id, pq_level FROM channel_pq_profile WHERE pq_level='SDR'") as $r) {
+                if (isset($r['channel_id'])) $out[(string)$r['channel_id']] = 'SDR';
+            }
+            return $out;
+        } catch (\Throwable $e) { return array(); }
+    }
+
     /** Construye streamInfo+health desde los params GET (URL-2). */
     function ape_mesh_inputs_from_get() {
         $streamInfo = array(
