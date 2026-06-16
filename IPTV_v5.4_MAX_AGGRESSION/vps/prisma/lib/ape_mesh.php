@@ -131,12 +131,13 @@ if (!function_exists('ape_mesh_presets')) {
             foreach ($keys as $k) { if (isset($r[$k]) && is_numeric($r[$k])) return (float)$r[$k]; }
             return null;
         };
+        // Columnas reales de server_side_qoe_metrics: vst_proxy_avg/max, rebuffer_count,
+        // request_count, error_count, bitrate_avg_bps (ver conviva_persistence::recordServerSideQoE).
         return array(
-            'vst'      => $pick(array('vst_avg', 'vst', 'vst_proxy', 'vst_ms', 'vst_max')),
-            'rebuffer' => $pick(array('rebuffer_ratio', 'rebuffer', 'rebuffer_count', 'rebuffer_proxy')),
-            'err4xx'   => $pick(array('err4xx', 'err_4xx', 'cerr')),
-            'err5xx'   => $pick(array('err5xx', 'err_5xx', 'serr')),
-            'req'      => $pick(array('req', 'req_count', 'requests')),
+            'vst'      => $pick(array('vst_proxy_avg', 'vst_proxy_max', 'vst_avg', 'vst', 'vst_proxy', 'vst_ms')),
+            'rebuffer' => $pick(array('rebuffer_count', 'rebuffer', 'rebuffer_ratio', 'rebuffer_proxy')),
+            'err'      => $pick(array('error_count', 'err', 'err4xx', 'err5xx')),
+            'req'      => $pick(array('request_count', 'req', 'req_count', 'requests')),
         );
     }
 
@@ -150,10 +151,10 @@ if (!function_exists('ape_mesh_presets')) {
         $risk = 0.0;
         $vst = isset($qoe['vst']) ? $qoe['vst'] : null;
         if ($vst !== null) { if ($vst > 6000) $risk += 45; elseif ($vst > 3000) $risk += 25; elseif ($vst > 1500) $risk += 10; }
-        $reb = isset($qoe['rebuffer']) ? $qoe['rebuffer'] : null;
-        if ($reb !== null) { if ($reb > 0.05) $risk += 40; elseif ($reb > 0.02) $risk += 22; elseif ($reb > 0.005) $risk += 8; }
+        $reb = isset($qoe['rebuffer']) ? $qoe['rebuffer'] : null;   // rebuffer_count (conteo por bucket)
+        if ($reb !== null) { if ($reb > 10) $risk += 40; elseif ($reb > 3) $risk += 22; elseif ($reb > 0) $risk += 8; }
         $req = (isset($qoe['req']) && $qoe['req'] > 0) ? $qoe['req'] : null;
-        $err = (float)((isset($qoe['err4xx']) ? $qoe['err4xx'] : 0) + (isset($qoe['err5xx']) ? $qoe['err5xx'] : 0));
+        $err = isset($qoe['err']) ? (float)$qoe['err'] : 0.0;       // error_count (4xx+5xx)
         if ($req !== null && $err > 0) { $rate = $err / $req; if ($rate > 0.1) $risk += 30; elseif ($rate > 0.03) $risk += 15; }
         return min(100.0, $risk);
     }
