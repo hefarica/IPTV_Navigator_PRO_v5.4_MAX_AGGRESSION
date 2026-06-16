@@ -212,6 +212,15 @@
       "post": "none",
       "enabled": true,
       "note": "Phase B — Hdr10PlusDynamicEngine v3.4.0 reforzado (SDR->HDR incondicional, DV8.1 hints, BT2446a). VPS corria v3.3.0 vieja (sin saturacion dinamica); deploy = upgrade puro."
+    },
+    {
+      "id": "php-prisma-conviva-event",
+      "src": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/conviva-event.php",
+      "dest": "/var/www/html/prisma/api/conviva-event.php",
+      "type": "php",
+      "post": "none",
+      "enabled": true,
+      "note": "Plano ADB->URL-2: ingest QoE + correlacion per-canal por IP (resuelve canal desde device_state por REMOTE_ADDR cuando llega channel=auto). Base identica al VPS + bloque correlacion."
     }
   ],
   "needs_review": [

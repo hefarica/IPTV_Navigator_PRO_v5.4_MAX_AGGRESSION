@@ -33,6 +33,9 @@ post() { # $1 event_type  $2 data-json
 }
 
 last=""
+# Outer loop: resiliente a desconexiones ADB (reconecta y reanuda logcat).
+while true; do
+"$ADB" connect "$DEV" >/dev/null 2>&1
 "$ADB" -s "$DEV" logcat -T 1 2>/dev/null | while IFS= read -r line; do
   case "$line" in
     *MediaCodecQuerier*isSupported=true*)
@@ -60,4 +63,7 @@ last=""
       echo "[push] error" >&2
       ;;
   esac
+done
+  echo "[push] logcat ended — reconnecting in 3s" >&2
+  sleep 3
 done

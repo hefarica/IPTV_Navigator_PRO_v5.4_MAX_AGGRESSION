@@ -73,6 +73,28 @@ if (json_last_error() !== JSON_ERROR_NONE || !is_array($event)) {
     exit;
 }
 
+// ── Correlacion per-canal por IP (plano ADB->URL-2) ──────────────────────────
+// El runner ADB (adb-conviva-push.sh) no conoce el channel_id porque OTT Navigator no lo logea;
+// POSTea channel.id="auto". Lo resolvemos desde device_state por REMOTE_ADDR: la IP publica del
+// hogar es la MISMA que el player usa al pegar /omega/open (que escribe /dev/shm/ape_devstate_<ip>),
+// asi la QoE del device se atribuye al canal REAL que reproduce. Sin device_state -> queda "auto".
+if (isset($event['channel']['id'])
+    && in_array(strtolower((string)$event['channel']['id']), array('auto', 'unknown', ''), true)) {
+    $ip = $_SERVER['REMOTE_ADDR'] ?? '';
+    if ($ip !== '' && @is_file(__DIR__ . '/../lib/ape_mesh.php')) {
+        require_once __DIR__ . '/../lib/ape_mesh.php';
+        if (function_exists('ape_device_state_by_ip')) {
+            $st = ape_device_state_by_ip($ip);
+            if (!empty($st['channel_id'])) {
+                $event['channel']['id'] = preg_replace('/[^0-9A-Za-z_.\-]/', '', (string)$st['channel_id']);
+                if (empty($event['channel']['name']) && !empty($st['content_type'])) {
+                    $event['channel']['name'] = preg_replace('/[^0-9A-Za-z _.\-]/', '', (string)$st['content_type']);
+                }
+            }
+        }
+    }
+}
+
 // Validate against schema (Phase 1: minimal validator; Phase 2: full JSON Schema)
 $errors = ConvivaQoEServer::validateEvent($event);
 if (!empty($errors)) {
