@@ -84,6 +84,34 @@
         window.refreshApeHdcpProfile();
     }
 
+    // ── APE PQ PROFILE BULK (Phase G 2026-06-16 · ROLLBACK PQ→SDR) ────────────
+    // Canales blacklisted (pantallazo negro con PQ activo, detectado por la QoE) → el generador
+    // emite VIDEO-RANGE=SDR (sin BT.2020/PQ) para ESE canal. El VPS los registra en
+    // channel_pq_profile (POST channel-pq-incident.php). Cachea {channel_id:'SDR'} en
+    // window.APE_PQ_PROFILE. Fire-and-forget, TTL 60s. Vacío → todos PQ incondicional (default).
+    if (typeof window !== 'undefined') {
+        window.APE_PQ_PROFILE = window.APE_PQ_PROFILE || {};
+        if (!window.APE_PQ_PROFILE_FRESH_AT) { window.APE_PQ_PROFILE_FRESH_AT = 0; }
+        window.refreshApePqProfile = function () {
+            const now = Date.now();
+            if ((now - window.APE_PQ_PROFILE_FRESH_AT) < 60000) return;  // TTL 60s
+            const url = window.APE_PQ_BULK_ENDPOINT_ABS || '/prisma/api/channel-pq-bulk.php';
+            try {
+                fetch(url, { cache: 'no-store', mode: 'cors' })
+                    .then(function (r) { return r.json(); })
+                    .then(function (d) {
+                        if (d && typeof d === 'object' && !Array.isArray(d)) {
+                            window.APE_PQ_PROFILE = d;
+                            window.APE_PQ_PROFILE_FRESH_AT = Date.now();
+                            console.log('[PQ-ROLLBACK] Blacklist loaded:', Object.keys(d).length, 'channels SDR');
+                        }
+                    })
+                    .catch(function () {});
+            } catch (_) {}
+        };
+        window.refreshApePqProfile();
+    }
+
     // ── APE IMAGE QUALITY BULK (2026-06-08 · SOLO IMAGEN) ─────────────────────
     // Consulta el VPS por bitrate observado por canal (nginx Lua QoE observer).
     // SOLO imagen: codec + resolución. ZERO timing/buffer/connection data.
@@ -9691,8 +9719,14 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
             // NO cambia CODECS ni declara decode imposible. (Reemplaza el R-1 FIX 2026-05-18.)
             const _probedRange = (_probeData && (_probeData.videoRange || _probeData.video_range)) || null;
             // let (no const): el path perceptual puede reasignar _videoRangePart abajo.
-            const _vrLegacy = (_probedRange === 'HLG') ? 'HLG' : 'PQ';
-            let _videoRangePart = `,VIDEO-RANGE=${_vrLegacy}`;
+            // [Phase G 2026-06-16] ROLLBACK PQ→SDR per-canal: si el canal esta blacklisted (pantallazo
+            // negro detectado por la QoE, window.APE_PQ_PROFILE de channel-pq-bulk.php) → SDR (sin
+            // metadata HDR). El resto sigue PQ incondicional. Chequea id normalizado y raw.
+            const _pqChIdLeg = String(channel.stream_id || channel.id || channel.name || 'unknown').toLowerCase().replace(/\s+/g, '_');
+            const _pqMapLeg = (typeof window !== 'undefined' && window.APE_PQ_PROFILE) ? window.APE_PQ_PROFILE : {};
+            const _pqBlLeg = (_pqMapLeg[_pqChIdLeg] === 'SDR') || (_pqMapLeg[String(channel.stream_id || channel.id || '')] === 'SDR');
+            const _vrLegacy = _pqBlLeg ? 'SDR' : ((_probedRange === 'HLG') ? 'HLG' : 'PQ');
+            let _videoRangePart = (_vrLegacy === 'SDR') ? '' : `,VIDEO-RANGE=${_vrLegacy}`;
             // ── HDCP-Adaptive (added 2026-05-19) — per-channel HDCP-LEVEL + STABLE-VARIANT-ID ──
             // Default TYPE-1 (aggressive, forces hardware decoder). Override to NONE only if
             // Conviva detected VST > 3000ms on prior TYPE-1 attempt (stored in window.APE_HDCP_PROFILE).
@@ -9890,7 +9924,8 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
             // (2) ADITIVO: tag PRIVADO #EXT-X-APE-PERCEPTUAL-4K (invisible al player).
             if (options && options.perceptual4kMode) {
                 _res796_csv = '3840x2160';            // (1) original — intacto
-                _videoRangePart = ',VIDEO-RANGE=PQ';  // (1) original — intacto (let → sin crash)
+                // [Phase G] el override perceptual NO fuerza PQ si el canal esta blacklisted (SDR).
+                if (!_pqBlLeg) { _videoRangePart = ',VIDEO-RANGE=PQ'; }
                 lines.push('#EXT-X-APE-PERCEPTUAL-4K:TARGET-RESOLUTION="3840x2160",HDR-INTENT="PQ",MODE="device-upscaler-hint"'); // (2) aditivo
             }
             // ── DOBLE CADENA MEMC v3.0 — REVISED 2026-06-07 (Council S1/S9 comment fix) ──

@@ -556,17 +556,25 @@
         // (hdr_conversion_mode=1 incondicional); PQ declara la salida HDR resultante. Si el probe
         // verificó HLG real se respeta HLG; si no, default PQ. FREEZELESS: VIDEO-RANGE es hint de
         // rango/display, NO cambia CODECS ni declara un decode imposible (Ley Cardinal 1 intacta).
-        const _videoRange = (truth.hdrVerified && truth.videoRange === 'HLG') ? 'HLG' : 'PQ';
+        // [Phase G 2026-06-16] ROLLBACK PQ→SDR per-canal: si la QoE detectó pantallazo negro en este
+        // canal (window.APE_PQ_PROFILE[chId]==='SDR', pre-cargado de /prisma/api/channel-pq-bulk.php),
+        // se emite SDR SIN la metadata BT.2020/PQ (que es lo que causa el handshake HDR fallido →
+        // pantalla negra en displays no-HDR, hallazgo council S4). El resto sigue PQ incondicional.
+        const _pqMap = (typeof window !== 'undefined' && window.APE_PQ_PROFILE) ? window.APE_PQ_PROFILE : {};
+        const _pqBlacklisted = truth.channelId && _pqMap[truth.channelId] === 'SDR';
+        const _videoRange = _pqBlacklisted ? 'SDR' : ((truth.hdrVerified && truth.videoRange === 'HLG') ? 'HLG' : 'PQ');
         parts.push(`VIDEO-RANGE=${_videoRange}`);
 
-        // HDR10/HLG metadata trifecta (CICP) — RFC 8216bis §4.4.6.2. Probe-provided values take
-        // precedence; spec-safe BT.2020 defaults otherwise (PQ=16 / HLG=18 transfer).
-        const cp = truth.colorPrimaries          || 9;                              // BT.2020
-        const tc = truth.transferCharacteristics || (_videoRange === 'HLG' ? 18 : 16); // HLG=18 / PQ=16
-        const mc = truth.matrixCoefficients      || 9;                              // BT.2020 non-constant
-        parts.push(`COLOR-PRIMARIES=${cp}`);
-        parts.push(`TRANSFER-CHARACTERISTICS=${tc}`);
-        parts.push(`MATRIX-COEFFICIENTS=${mc}`);
+        if (_videoRange !== 'SDR') {
+            // HDR10/HLG metadata trifecta (CICP) — RFC 8216bis §4.4.6.2. SOLO para PQ/HLG; en SDR se
+            // OMITE (un canal SDR no lleva BT.2020/ST2084 — evita el handshake HDR fallido).
+            const cp = truth.colorPrimaries          || 9;                              // BT.2020
+            const tc = truth.transferCharacteristics || (_videoRange === 'HLG' ? 18 : 16); // HLG=18 / PQ=16
+            const mc = truth.matrixCoefficients      || 9;                              // BT.2020 non-constant
+            parts.push(`COLOR-PRIMARIES=${cp}`);
+            parts.push(`TRANSFER-CHARACTERISTICS=${tc}`);
+            parts.push(`MATRIX-COEFFICIENTS=${mc}`);
+        }
 
         // SUPPLEMENTAL-CODECS solo si verificado (no inventar DV/LCEVC)
         if (truth.supplementalCodecsVerified && truth.supplementalCodecs) {
