@@ -38,7 +38,7 @@
         { tag: 'EXT-X-SESSION-DATA',   value: 'DATA-ID="com.ape.network_resilience",VALUE="{\\"connectionTimeoutMs\\":8000,\\"readTimeoutMs\\":15000,\\"retryCount\\":5,\\"retryBackoffMs\\":500,\\"retryBackoffFactor\\":1.5,\\"maxRetryBackoffMs\\":4000,\\"freezeDetectionMs\\":3000,\\"maxFreezeBeforeRestartMs\\":15000,\\"jumpToLiveOnFreeze\\":true}"', category: 'recovery' },
         { tag: 'EXT-X-SESSION-DATA',   value: 'DATA-ID="com.ape.abr_quality_policy",VALUE="{\\"preferHigherBitrate\\":true,\\"minStableTimeBeforeUpgradeMs\\":15000,\\"qualityDropThreshold\\":0.65,\\"qualityRiseThreshold\\":0.85,\\"smoothSwitching\\":true,\\"forbidDowngradeOnTransientStall\\":true}"', category: 'abr' },
         { tag: 'EXT-X-SESSION-DATA',   value: 'DATA-ID="com.ape.universal_parity",VALUE="{\\"applyToResolutions\\":[\\"480p\\",\\"720p\\",\\"1080p\\",\\"1440p\\",\\"2160p\\",\\"4320p\\"],\\"sameBufferStrategy\\":true,\\"sameRecoveryPolicy\\":true,\\"sameLowLatencyMode\\":true,\\"sameABRPolicy\\":true}"', category: 'quality' },
-        { tag: 'EXT-X-SESSION-DATA',   value: 'DATA-ID="com.ape.codec_preferences",VALUE="{\\"preferredCodecs\\":[\\"dvh1\\",\\"hvc1.2\\",\\"hvc1.1\\",\\"av01\\",\\"avc1\\"],\\"hdrModes\\":[\\"PQ\\",\\"HLG\\",\\"DV\\"],\\"audioPassthrough\\":[\\"ec-3\\",\\"ac-3\\",\\"mp4a\\"]}"', category: 'quality' }
+        { tag: 'EXT-X-SESSION-DATA',   value: 'DATA-ID="com.ape.codec_preferences",VALUE="{\\"preferredCodecs\\":[\\"dvh1\\",\\"hvc1.2\\",\\"av01\\",\\"avc1\\"],\\"hdrModes\\":[\\"PQ\\",\\"HLG\\",\\"DV\\"],\\"audioPassthrough\\":[\\"ec-3\\",\\"ac-3\\",\\"mp4a\\"]}"', category: 'quality' }
     ];
 
     const HEADER_CATEGORIES = {
@@ -342,7 +342,7 @@
                 "focus": "MAXIMA_CALIDAD_8K_HDR_CARGA_ULTRARAPIDA_SIN_CORTES",
                 "hdr_canonical": "dolby-vision",
                 "nits_target": 8000,
-                "codec_chain_video": "dvh1.05.06,dvh1.08.06,hvc1.2.4.L183.B0,hvc1.2.4.L180.B0,hvc1.2.4.L156.B0,hvc1.2.4.L153.B0,hvc1.2.4.L150.B0,hvc1.2.4.L123.B0,hvc1.2.4.L120.B0,hvc1.1.6.L153.B0,hvc1.1.6.L120.B0,av01.0.13M.10.0.110.09.16.09.0,avc1.640033,avc1.640028",
+                "codec_chain_video": "dvh1.05.06,dvh1.08.06,hvc1.2.4.L183.B0,hvc1.2.4.L180.B0,hvc1.2.4.L156.B0,hvc1.2.4.L153.B0,hvc1.2.4.L150.B0,hvc1.2.4.L123.B0,hvc1.2.4.L120.B0,hvc1.2.4.L153.B0,hvc1.2.4.L120.B0,av01.0.13M.10.0.110.09.16.09.0,avc1.640033,avc1.640028",
                 "codec_ladder_hvc1": "hvc1.2.4.L186.B0,hvc1.2.4.L183.B0,hvc1.2.4.L180.B0,hvc1.2.4.L156.B0,hvc1.2.4.L153.B0,hvc1.2.4.L150.B0,hvc1.2.4.L123.B0,hvc1.2.4.L120.B0,hvc1.2.4.L93.B0,hvc1.2.4.L90.B0,avc1.640028",
                 "codec_ladder_hev1": "hev1.2.4.L186.B0,hev1.2.4.L183.B0,hev1.2.4.L180.B0,hev1.2.4.L156.B0,hev1.2.4.L153.B0,hev1.2.4.L150.B0,hev1.2.4.L123.B0,hev1.2.4.L120.B0,hev1.2.4.L93.B0,hev1.2.4.L90.B0,avc1.640028",
                 "codec_chain_audio": "mp4a.40.2,ac-3,mp4a.40.5",
@@ -977,7 +977,7 @@
                 "focus": "MAXIMA_CALIDAD_4K_HDR10PLUS_SIN_CORTES",
                 "hdr_canonical": "hdr10+",
                 "nits_target": 8000,
-                "codec_chain_video": "hvc1.2.4.L183.B0,hvc1.2.4.L180.B0,hvc1.2.4.L156.B0,hvc1.2.4.L153.B0,hvc1.2.4.L150.B0,hvc1.2.4.L123.B0,hvc1.2.4.L120.B0,hvc1.1.6.L153.B0,hvc1.1.6.L120.B0,av01.0.12M.10.0.110.09.16.09.0,avc1.640033,avc1.640028",
+                "codec_chain_video": "hvc1.2.4.L183.B0,hvc1.2.4.L180.B0,hvc1.2.4.L156.B0,hvc1.2.4.L153.B0,hvc1.2.4.L150.B0,hvc1.2.4.L123.B0,hvc1.2.4.L120.B0,hvc1.2.4.L153.B0,hvc1.2.4.L120.B0,av01.0.12M.10.0.110.09.16.09.0,avc1.640033,avc1.640028",
                 "codec_ladder_hvc1": "hvc1.2.4.L186.B0,hvc1.2.4.L183.B0,hvc1.2.4.L180.B0,hvc1.2.4.L156.B0,hvc1.2.4.L153.B0,hvc1.2.4.L150.B0,hvc1.2.4.L123.B0,hvc1.2.4.L120.B0,hvc1.2.4.L93.B0,hvc1.2.4.L90.B0,avc1.640028",
                 "codec_ladder_hev1": "hev1.2.4.L186.B0,hev1.2.4.L183.B0,hev1.2.4.L180.B0,hev1.2.4.L156.B0,hev1.2.4.L153.B0,hev1.2.4.L150.B0,hev1.2.4.L123.B0,hev1.2.4.L120.B0,hev1.2.4.L93.B0,hev1.2.4.L90.B0,avc1.640028",
                 "codec_chain_audio": "mp4a.40.2,ac-3,mp4a.40.5",
@@ -1611,7 +1611,7 @@
                 "focus": "MAXIMA_CALIDAD_8K_HDR_CARGA_ULTRARAPIDA_SIN_CORTES",
                 "hdr_canonical": "hdr10",
                 "nits_target": 8000,
-                "codec_chain_video": "hvc1.2.4.L183.B0,hvc1.2.4.L180.B0,hvc1.2.4.L156.B0,hvc1.2.4.L153.B0,hvc1.2.4.L150.B0,hvc1.2.4.L123.B0,hvc1.2.4.L120.B0,hvc1.1.6.L153.B0,hvc1.1.6.L120.B0,avc1.640028",
+                "codec_chain_video": "hvc1.2.4.L183.B0,hvc1.2.4.L180.B0,hvc1.2.4.L156.B0,hvc1.2.4.L153.B0,hvc1.2.4.L150.B0,hvc1.2.4.L123.B0,hvc1.2.4.L120.B0,hvc1.2.4.L153.B0,hvc1.2.4.L120.B0,avc1.640028",
                 "codec_ladder_hvc1": "hvc1.2.4.L186.B0,hvc1.2.4.L183.B0,hvc1.2.4.L180.B0,hvc1.2.4.L156.B0,hvc1.2.4.L153.B0,hvc1.2.4.L150.B0,hvc1.2.4.L123.B0,hvc1.2.4.L120.B0,hvc1.2.4.L93.B0,hvc1.2.4.L90.B0,avc1.640028",
                 "codec_ladder_hev1": "hev1.2.4.L186.B0,hev1.2.4.L183.B0,hev1.2.4.L180.B0,hev1.2.4.L156.B0,hev1.2.4.L153.B0,hev1.2.4.L150.B0,hev1.2.4.L123.B0,hev1.2.4.L120.B0,hev1.2.4.L93.B0,hev1.2.4.L90.B0,avc1.640028",
                 "codec_chain_audio": "mp4a.40.2,ac-3,mp4a.40.5",
@@ -2105,7 +2105,7 @@
                 "focus": "ULTRA_1080P_HDR10_CARGA_RAPIDA_SIN_CORTES",
                 "hdr_canonical": "hlg",
                 "nits_target": 8000,
-                "codec_chain_video": "hvc1.2.4.L183.B0,hvc1.2.4.L180.B0,hvc1.2.4.L156.B0,hvc1.2.4.L153.B0,hvc1.2.4.L150.B0,hvc1.2.4.L123.B0,hvc1.2.4.L120.B0,hvc1.1.6.L153.B0,hvc1.1.6.L120.B0,avc1.640028",
+                "codec_chain_video": "hvc1.2.4.L183.B0,hvc1.2.4.L180.B0,hvc1.2.4.L156.B0,hvc1.2.4.L153.B0,hvc1.2.4.L150.B0,hvc1.2.4.L123.B0,hvc1.2.4.L120.B0,hvc1.2.4.L153.B0,hvc1.2.4.L120.B0,avc1.640028",
                 "codec_ladder_hvc1": "hvc1.2.4.L186.B0,hvc1.2.4.L183.B0,hvc1.2.4.L180.B0,hvc1.2.4.L156.B0,hvc1.2.4.L153.B0,hvc1.2.4.L150.B0,hvc1.2.4.L123.B0,hvc1.2.4.L120.B0,hvc1.2.4.L93.B0,hvc1.2.4.L90.B0,avc1.640028",
                 "codec_ladder_hev1": "hev1.2.4.L186.B0,hev1.2.4.L183.B0,hev1.2.4.L180.B0,hev1.2.4.L156.B0,hev1.2.4.L153.B0,hev1.2.4.L150.B0,hev1.2.4.L123.B0,hev1.2.4.L120.B0,hev1.2.4.L93.B0,hev1.2.4.L90.B0,avc1.640028",
                 "codec_chain_audio": "mp4a.40.2,mp4a.40.5,mp4a.40.29",
@@ -2739,7 +2739,7 @@
                 "focus": "HIGH_720P_BALANCEADO_SIN_CORTES",
                 "hdr_canonical": "sdr",
                 "nits_target": 8000,
-                "codec_chain_video": "hvc1.2.4.L183.B0,hvc1.2.4.L180.B0,hvc1.2.4.L156.B0,hvc1.2.4.L153.B0,hvc1.2.4.L150.B0,hvc1.2.4.L123.B0,hvc1.2.4.L120.B0,hvc1.1.6.L153.B0,hvc1.1.6.L120.B0,avc1.640028",
+                "codec_chain_video": "hvc1.2.4.L183.B0,hvc1.2.4.L180.B0,hvc1.2.4.L156.B0,hvc1.2.4.L153.B0,hvc1.2.4.L150.B0,hvc1.2.4.L123.B0,hvc1.2.4.L120.B0,hvc1.2.4.L153.B0,hvc1.2.4.L120.B0,avc1.640028",
                 "codec_ladder_hvc1": "hvc1.2.4.L186.B0,hvc1.2.4.L183.B0,hvc1.2.4.L180.B0,hvc1.2.4.L156.B0,hvc1.2.4.L153.B0,hvc1.2.4.L150.B0,hvc1.2.4.L123.B0,hvc1.2.4.L120.B0,hvc1.2.4.L93.B0,hvc1.2.4.L90.B0,avc1.640028",
                 "codec_ladder_hev1": "hev1.2.4.L186.B0,hev1.2.4.L183.B0,hev1.2.4.L180.B0,hev1.2.4.L156.B0,hev1.2.4.L153.B0,hev1.2.4.L150.B0,hev1.2.4.L123.B0,hev1.2.4.L120.B0,hev1.2.4.L93.B0,hev1.2.4.L90.B0,avc1.640028",
                 "codec_chain_audio": "mp4a.40.2,mp4a.40.5,mp4a.40.29",

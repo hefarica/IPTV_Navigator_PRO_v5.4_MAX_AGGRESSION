@@ -42,9 +42,14 @@ local CACHE_TTL    = 60  -- s
 
 -- ── CORONA ────────────────────────────────────────────────────────────────
 -- Tier number del slot CORONA en la tabla de 13 tiers (1-indexed ascending).
--- T9 = hvc1.2.4.L153.B0 = 4K@60 UHD — slot de referencia para P0/P1 y
--- virtual_4k. Debe coincidir con CORONA_TIER_NUMBER de ape-hevc-cascade.js.
-local CORONA_TIER  = 10 -- [22.6.0-MEMC-TOTAL-8K120] Elevado de T9(4K@60) a T10(4K@120) para MEMC hardware
+-- MANDATO 2026-05-22 MEMC-TOTAL-8K120: Lua CORONA=T10 (L156, 4K@120) > JS CORONA=T9 (L153, 4K@60).
+-- Divergencia INTENCIONALMENTE documentada (council report 2026-06-08, S1 F2):
+--   Lua (VPS body_filter, virtual_4k): CORONA=T10 = hvc1.2.4.L156.B0 (4K@120) — agresivo MEMC HW
+--   JS  (generador lista): CORONA_TIER_NUMBER=9 = hvc1.2.4.L153.B0 (4K@60) — conservador plataformas
+-- HEVC levels son backwards-compatible en decodificación (L156 decodificable en decoders L153+).
+-- No es player-breaking. El canal IPTV real opera en su bitrate/resolución nativa sin cambio.
+-- Para sincronizar JS con Lua → actualizar ape-hevc-cascade.js CORONA_TIER_NUMBER a 10.
+local CORONA_TIER  = 10 -- [22.6.0-MEMC-TOTAL-8K120] T10=L156 4K@120 (JS usa T9=L153 4K@60)
 
 -- ── DEFAULT_CASCADE (13-tier ascending) ──────────────────────────────────
 -- Replica exacta de HEVC_CASCADE_13TIER en ape-hevc-cascade.js (2026-05-22).
@@ -293,6 +298,77 @@ end
 function _M.corona_tier(cascade)
     local idx = by_number(cascade or DEFAULT_CASCADE)
     return idx[CORONA_TIER] or idx[9]
+end
+
+-- ── HEVC FIRST — detección universal de familia HEVC ──────────────────────
+-- MANDATO 2026-06-08: HEVC First con TODOS sus homólogos sin excepción.
+-- Cubre: RFC 6381 (hvc1/hev1), players nativos Android/Fire TV (hevc, h265,
+-- video/hevc), pipelines ffmpeg/GStreamer (x265, libx265), MPEG formal
+-- (MPEG-H, 23008-2), y variantes de caso mixto de dashboards IPTV.
+-- Case-insensitive. Partial-match (cubre "hvc1.2.4.L153.B0" desde "hvc1").
+-- Autopista-compliant: no ngx.exit, solo evalúa → retorna bool.
+local HEVC_ALL_ALIASES = {
+    -- RFC 6381 canonical (STREAM-INF CODECS=)
+    "hvc1", "hvc2", "hev1", "hev2",
+    -- Uppercase RF 6381 (Android MediaCodec, Fire TV, Amlogic AML_OMX)
+    "HVC1", "HVC2", "HEV1", "HEV2",
+    -- Short forms without number (VLC CLI, OTT Navigator codec picker)
+    "hvc", "hev", "HVC", "HEV",
+    -- Generic family name (ALL case variants — common in IPTV dashboards)
+    "hevc", "HEVC", "Hevc",
+    -- H.265 dot-notation (mixed case — IEEE/ITU-T designation)
+    "h265", "H265",
+    "h.265", "H.265",
+    "h-265", "H-265",
+    "h 265", "H 265",
+    -- Combined designation (broadcaster docs, spec annexes)
+    "H.265/HEVC", "HEVC/H.265", "H265/HEVC", "HEVC/H265",
+    -- HEVC with profile descriptor (Kodi, VLC verbose, Plex)
+    "HEVC Main", "HEVC Main10", "HEVC Main 10",
+    -- MPEG-H family (ISO/IEC formal group name)
+    "MPEG-H", "mpeg-h", "Mpeg-H",
+    "MPEG-H Part2", "MPEG-H Part 2", "MPEG-H HEVC",
+    "mpegh", "MPEGH",
+    -- Encoder names (ffmpeg, GStreamer, HandBrake transcode chains)
+    "x265", "x.265", "libx265", "lib265",
+    -- ISO/IEC 23008-2 notation variants (spec cross-references)
+    "ISO/IEC 23008-2", "ISO-23008-2", "IEC 23008-2", "23008-2",
+    -- MIME type variants (WebRTC SDP, DASH MPD, some IPTV vendor stacks)
+    "video/hevc", "video/H265", "video/h265", "video/HEVC",
+    -- Historical working group name (JCT-VC era docs)
+    "JCT-VC", "jct-vc",
+}
+
+-- is_hevc_family(codec) — retorna true si el string pertenece a la familia HEVC
+-- en cualquiera de sus formas. Case-insensitive via lowercase comparison.
+-- Chequeo rápido por prefijo primero (hvc1/hev1 son 99% del tráfico real).
+function _M.is_hevc_family(codec)
+    if not codec or codec == "" then return false end
+    local c = tostring(codec):lower()
+    -- Prefijos rápidos (orden de frecuencia real en manifests IPTV)
+    local p4 = c:sub(1, 4)
+    if p4 == "hvc1" or p4 == "hvc2" then return true end
+    if p4 == "hev1" or p4 == "hev2" then return true end
+    -- Generic family match
+    if c:find("hevc",   1, true) then return true end
+    if c:find("h265",   1, true) then return true end
+    if c:find("h.265",  1, true) then return true end
+    if c:find("h-265",  1, true) then return true end
+    if c:find("x265",   1, true) then return true end
+    if c:find("mpeg-h", 1, true) then return true end
+    if c:find("mpegh",  1, true) then return true end
+    if c:find("23008-2",1, true) then return true end
+    if c:find("video/hevc", 1, true) then return true end
+    if c:find("video/h265", 1, true) then return true end
+    if c:find("jct-vc",     1, true) then return true end
+    return false
+end
+
+-- hevc_aliases_csv() — retorna string CSV con todos los homólogos HEVC.
+-- Usado por quality_realtime.lua para enriquecer la respuesta con el
+-- chain completo que el sentinel puede usar en KODIPROP/EXTVLCOPT.
+function _M.hevc_aliases_csv()
+    return table.concat(HEVC_ALL_ALIASES, ",")
 end
 
 return _M

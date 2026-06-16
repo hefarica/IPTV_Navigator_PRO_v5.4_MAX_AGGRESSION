@@ -50,7 +50,7 @@ class TelchemyTvqmEngine
         'P0' => [
             'name'           => 'Ultra Premium',
             'resolution'     => '3840x2160',
-            'codec'          => 'hev1.1.6.L153.B0,mp4a.40.2',
+            'codec'          => 'hev1.2.4.L153.B0,mp4a.40.2',
             'bitrate_min'    => 15000000,
             'bitrate_target' => 25000000,
             'format'         => 'cmaf',
@@ -65,7 +65,7 @@ class TelchemyTvqmEngine
         'P1' => [
             'name'           => 'Premium',
             'resolution'     => '3840x2160',
-            'codec'          => 'hev1.1.6.L150.B0,mp4a.40.2',
+            'codec'          => 'hev1.2.4.L150.B0,mp4a.40.2',
             'bitrate_min'    => 8000000,
             'bitrate_target' => 15000000,
             'format'         => 'cmaf',
@@ -79,7 +79,7 @@ class TelchemyTvqmEngine
         'P2' => [
             'name'           => 'High',
             'resolution'     => '1920x1080',
-            'codec'          => 'hev1.1.6.L120.B0,mp4a.40.2',
+            'codec'          => 'hev1.2.4.L120.B0,mp4a.40.2',
             'bitrate_min'    => 4000000,
             'bitrate_target' => 8000000,
             'format'         => 'hls_fmp4',

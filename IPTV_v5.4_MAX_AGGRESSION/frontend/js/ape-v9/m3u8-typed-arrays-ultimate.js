@@ -2687,6 +2687,7 @@
 #EXT-X-CONTENT-STEERING:SERVER-URI="https://iptv-ape.duckdns.org/prisma/api/content-steering.php",PATHWAY-ID="omega-maxq"
 #EXT-X-APE-INSTALLER:URL="https://iptv-ape.duckdns.org/prisma/install/ape-daemon.sh",VERSION="2026.06-universal-1",RUN="host-with-adb"
 #EXT-X-APE-WAKE:BEACON="https://iptv-ape.duckdns.org/prisma/api/ape-wake.php",MODE="on-manifest",NOTE="VPS wakes on-device daemon in ms on playback"
+#EXT-X-APE-FEEDFORWARD:URL="https://iptv-ape.duckdns.org/prisma/api/ape-feedforward.php",STREAM="https://iptv-ape.duckdns.org/prisma/api/ape-feedforward-stream.php",MODE="on-playback",PARAMS="file,ch,hdr,h,w,codec,ct,buf",NOTE="daemon GETs per-session presets; matricula gate + decisor mesh"
 #EXT-X-DEFINE:NAME="OMEGA_EPOCH",VALUE="${_mqTs}"
 #EXT-X-DEFINE:NAME="OMEGA_COMPLIANCE",VALUE="HLS-RFC8216BIS+CMAF-LL+DV-P8+LCEVC-P4+ATMOS"
 #EXT-X-DATERANGE:ID="omega-live-maxq",X-OMEGA-TYPE="LIVE-CATCHUP",X-HDR-TYPE="DV-P8+HDR10+",X-HDR-MAX-CLL=10000
@@ -2726,12 +2727,13 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
 #EXT-X-CONTENT-STEERING:SERVER-URI="https://iptv-ape.duckdns.org/prisma/api/content-steering.php",PATHWAY-ID="omega"
 #EXT-X-APE-INSTALLER:URL="https://iptv-ape.duckdns.org/prisma/install/ape-daemon.sh",VERSION="2026.06-universal-1",RUN="host-with-adb"
 #EXT-X-APE-WAKE:BEACON="https://iptv-ape.duckdns.org/prisma/api/ape-wake.php",MODE="on-manifest",NOTE="VPS wakes on-device daemon in ms on playback"
+#EXT-X-APE-FEEDFORWARD:URL="https://iptv-ape.duckdns.org/prisma/api/ape-feedforward.php",STREAM="https://iptv-ape.duckdns.org/prisma/api/ape-feedforward-stream.php",MODE="on-playback",PARAMS="file,ch,hdr,h,w,codec,ct,buf",NOTE="daemon GETs per-session presets; matricula gate + decisor mesh"
 #EXT-X-SESSION-DATA:DATA-ID="com.ape.build",VALUE="v5.4-MAX-AGGRESSION"
 #EXT-X-DEFINE:NAME="OMEGA_EPOCH",VALUE="${timestamp}"
 #EXT-X-DEFINE:NAME="OMEGA_COMPLIANCE",VALUE="HLS-RFC8216BIS+CMAF-LL+HDR10+DV-P81-P10+LCEVC-P4"
 #EXT-X-KEY:METHOD=NONE
 #EXT-X-SESSION-KEY:METHOD=NONE
-#EXT-X-I-FRAME-STREAM-INF:BANDWIDTH=450000,AVERAGE-BANDWIDTH=400000,CODECS="hvc1.1.6.L153.B0",RESOLUTION=1920x1080
+#EXT-X-I-FRAME-STREAM-INF:BANDWIDTH=450000,AVERAGE-BANDWIDTH=400000,CODECS="hvc1.2.4.L153.B0",RESOLUTION=1920x1080
 #EXT-X-DATERANGE:ID="omega-live-${timestamp}",START-DATE="${new Date().toISOString()}",DURATION=86400,X-OMEGA-TYPE="LIVE-CATCHUP",X-OMEGA-SCOPE="CHANNEL-SESSION",X-OMEGA-BUILD="v5.4-MAX-AGGRESSION"
 #EXT-X-DATERANGE:ID="omega-hdr-window",START-DATE="${new Date().toISOString()}",PLANNED-DURATION=86400,X-HDR-TYPE="HDR10+DV-P81-P10",X-HDR-MAX-CLL=5000,X-HDR-MAX-FALL=800
 #KODIPROP:inputstream.adaptive.manifest_type=hls
@@ -5729,7 +5731,7 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
 
     function build_ape_block(cfg, profile, index, channel) {
         const buildTs = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 18) + 'Z';
-        const codecStr = window._APE_PRIO_QUALITY !== false ? (profile === 'P0' ? 'hvc1.1.6.L183.B0,mp4a.40.2' : 'hvc1.1.6.L150.B0,mp4a.40.2') : `hvc1.1.6.L150.B0,mp4a.40.2`;
+        const codecStr = window._APE_PRIO_QUALITY !== false ? (profile === 'P0' ? 'hvc1.2.4.L183.B0,mp4a.40.2' : 'hvc1.2.4.L150.B0,mp4a.40.2') : `hvc1.2.4.L150.B0,mp4a.40.2`;
         const lcevcState = resolveLcevcState(cfg);
         const lc = resolveLcevcConfig(profile, cfg);
 
@@ -7531,7 +7533,7 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
         // NO-CLAMP: split(',')[0] sobre texto, sin coerce.
         const _codec796 = _probeData?.videoCodec
             || (cfg.codec_chain_video && String(cfg.codec_chain_video).split(',')[0])
-            || (() => { switch (cfg.codec_primary) { case 'VVC': return 'vvc1.1.L63.00.0.0'; case 'AV1': return 'av01.0.08M.08'; case 'AVC': return 'avc1.640028'; default: return 'hvc1.1.6.L153.B0'; } })();
+            || (() => { switch (cfg.codec_primary) { case 'VVC': return 'vvc1.1.L63.00.0.0'; case 'AV1': return 'av01.0.08M.08'; case 'AVC': return 'avc1.640028'; default: return 'hvc1.2.4.L153.B0'; } })();
         let _codecAudio = _probeData?.audioCodec
             || (cfg.codec_chain_audio && String(cfg.codec_chain_audio).split(',')[0]) || cfg.audio_codec || 'mp4a.40.2';
         // [FIX-AUDIO 2026-05-20 · HFRC] Guardarraíl ec-3/E-AC3 → ac-3. Directiva explícita del
@@ -8372,6 +8374,25 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
         lines.push(`#KODIPROP:inputstream.adaptive.network_reconnect=true`);
         lines.push(`#KODIPROP:inputstream.adaptive.network_reconnect_count=99`);
         lines.push(`#KODIPROP:inputstream.adaptive.network_reconnect_delay=500`);
+        // ── LIVE-EDGE RESUME (jump-to-live tras corte de red) — base incondicional ────
+        // Council 2026-06-08 (S9 Player + S5 QoE corregido): tras stall por caída ISP,
+        // el player re-ancla al live edge y pide lo último del proveedor — NO reanuda el
+        // segmento viejo. Estas claves vivían SOLO en la rama LAB (if labProfile); ahora
+        // son base universal. Si LAB las calibra, su upsertKodiprop (L9300+) reemplaza —
+        // LAB gana, cero duplicados.
+        // NAMESPACE CORRECTO (verificado por S9 contra inputstream.adaptive real):
+        //   • live_target_offset_ms / max_live_sync_playback_rate → SÍ existen en ISA (Kodi).
+        //   • live_delay=0 → mecanismo ISA real para "hug live edge" (equivale a
+        //     live_duration_infinity de hls.js, que ISA ignora).
+        //   • live_duration_infinity / nudge_max_retry → son de hls.js → namespace
+        //     inputstream.hlsjs.* (coherente con el mapeador LAB en L9397/L9399). En ISA
+        //     el patrón de retry ya lo cubre network_reconnect_count=99 (L8373+).
+        // Valores S5: offset 3000ms (paridad Disney+ LL-HLS), catch-up 1.04× (inaudible).
+        lines.push(`#KODIPROP:inputstream.adaptive.live_target_offset_ms=3000`);
+        lines.push(`#KODIPROP:inputstream.adaptive.max_live_sync_playback_rate=1.04`);
+        lines.push(`#KODIPROP:inputstream.adaptive.live_delay=0`);
+        lines.push(`#KODIPROP:inputstream.hlsjs.live_duration_infinity=true`);
+        lines.push(`#KODIPROP:inputstream.hlsjs.nudge_max_retry=6`);
         lines.push(`#KODIPROP:inputstream.adaptive.network_user_agent=${_ua796}`);
         lines.push(`#KODIPROP:inputstream.adaptive.network_session_id=${_sid796}`);
         lines.push(`#KODIPROP:inputstream.adaptive.network_request_id=${reqId}`);
@@ -8395,7 +8416,7 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
         // Override audio_dolby_atmos=false y eac3=false del bloque base.
         // Kodi ISA toma el ÚLTIMO valor para keys duplicadas.
         if (options && options.maxQualityMode) {
-            const _mqVChain = 'dvh1.08.06,dvh1.05.09,hvc1.2.4.L186.B0,hvc1.2.4.L183.B0,hvc1.2.4.L180.B0,hvc1.2.4.L156.B0,hvc1.2.4.L153.B0,hvc1.2.4.L150.B0,hvc1.2.4.L123.B0,hvc1.2.4.L120.B0,hvc1.1.6.L153.B0,hvc1.1.6.L120.B0,hvc1.2.4.L93.B0,hvc1.2.4.L90.B0,av01.0.13M.10.0.110.09.16.09.0,av01.0.09M.10.0.110.09.16.09.0,avc1.640033,avc1.640028';
+            const _mqVChain = 'dvh1.08.06,dvh1.05.09,hvc1.2.4.L186.B0,hvc1.2.4.L183.B0,hvc1.2.4.L180.B0,hvc1.2.4.L156.B0,hvc1.2.4.L153.B0,hvc1.2.4.L150.B0,hvc1.2.4.L123.B0,hvc1.2.4.L120.B0,hvc1.2.4.L153.B0,hvc1.2.4.L120.B0,hvc1.2.4.L93.B0,hvc1.2.4.L90.B0,av01.0.13M.10.0.110.09.16.09.0,av01.0.09M.10.0.110.09.16.09.0,avc1.640033,avc1.640028';
             lines.push(`#KODIPROP:inputstream.adaptive.audio_dolby_atmos=false`);
             lines.push(`#KODIPROP:inputstream.adaptive.audio_eac3=true`);
             lines.push(`#KODIPROP:inputstream.adaptive.live_delay=1`);
@@ -9579,7 +9600,7 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
         // GOLDEN RULE respetada: dvh1/hvc1/avc1 en CODECS= (manifest parser safe).
         // hev1 NUNCA en STREAM-INF. ec-3 en CODECS= es RFC-válido para audio DDP.
         if (options && options.maxQualityMode) {
-            const _mqVideoChain = 'dvh1.08.06,dvh1.05.09,hvc1.2.4.L186.B0,hvc1.2.4.L183.B0,hvc1.2.4.L180.B0,hvc1.2.4.L156.B0,hvc1.2.4.L153.B0,hvc1.2.4.L150.B0,hvc1.2.4.L123.B0,hvc1.2.4.L120.B0,hvc1.1.6.L153.B0,hvc1.1.6.L120.B0,hvc1.2.4.L93.B0,hvc1.2.4.L90.B0,av01.0.13M.10.0.110.09.16.09.0,av01.0.09M.10.0.110.09.16.09.0,avc1.640033,avc1.640028';
+            const _mqVideoChain = 'dvh1.08.06,dvh1.05.09,hvc1.2.4.L186.B0,hvc1.2.4.L183.B0,hvc1.2.4.L180.B0,hvc1.2.4.L156.B0,hvc1.2.4.L153.B0,hvc1.2.4.L150.B0,hvc1.2.4.L123.B0,hvc1.2.4.L120.B0,hvc1.2.4.L153.B0,hvc1.2.4.L120.B0,hvc1.2.4.L93.B0,hvc1.2.4.L90.B0,av01.0.13M.10.0.110.09.16.09.0,av01.0.09M.10.0.110.09.16.09.0,avc1.640033,avc1.640028';
             const _mqCodecFirst = _mqVideoChain.split(',')[0]; // dvh1.08.06
             const _mqBwMap = { 'P0': 120000000, 'P1': 80000000, 'P2': 50000000, 'P3': 25000000, 'P4': 15000000, 'P5': 8000000 };
             const _mqBw = _mqBwMap[String(profile || 'P3').toUpperCase()] || 25000000;
@@ -9593,12 +9614,17 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
             _fpsSource = (_probedFps_MQ >= 24) ? 'probe' : (_noProbeFps(profile) === 120 ? 'default-120' : 'default-60');
             _streamInfLine = `#EXT-X-STREAM-INF:BANDWIDTH=${_mqBw},AVERAGE-BANDWIDTH=${Math.round(_mqBw * 0.8)},CODECS="${_mqCodecFirst},ac-3",RESOLUTION=${_mqRes},FRAME-RATE=${Number(_mqFps).toFixed(3)},HDCP-LEVEL=${_hdcpLevel},STABLE-VARIANT-ID="${_stableVariantId}"`; // [FIX-AUDIO 2026-05-23] ac-3 — compatibilidad passthrough universal
         }
-        // ── PERCEPTUAL 4K MODE — Engaño declarativo en truth object (path truth-driven) ──
-        // Overrides resolution→3840x2160 + videoRange→PQ ANTES de que emitStreamInfFromTruth
-        // construya el STREAM-INF. Player interpreta 4K@PQ → activa upscaler hardware + pipeline HDR.
-        // GOLDEN RULE: hvc1 en CODECS= sigue siendo el codec del truth (sin inventar dvh1).
+        // ── PERCEPTUAL 4K MODE — DOS MANERAS (2026-06-09 · mandato usuario: conservar el original) ──
+        // (1) ORIGINAL (NO se toca): override público resolution→3840x2160 + videoRange→PQ en el
+        //     truth ANTES de emitStreamInfFromTruth. En los TVs/players autorizados del operador
+        //     activa el upscaler HW + pipeline HDR y "funciona muy bien" — se mantiene intacto.
+        // (2) ADITIVO: además, el intent viaja en un tag PRIVADO #EXT-X-APE-PERCEPTUAL-4K
+        //     (RFC 8216 §6.3.1: players conformes lo ignoran; el device/VPS upscaler lo lee).
+        // NOTA honestidad (council): VIDEO-RANGE=PQ público sobre SDR puede dar pantallazo negro en
+        // ExoPlayer GENÉRICO; el operador lo asume porque en su hardware rinde mejor (override owner).
         if (options && options.perceptual4kMode && _apeTruth) {
-            _apeTruth = Object.assign({}, _apeTruth, { resolution: '3840x2160', videoRange: 'PQ' });
+            _apeTruth = Object.assign({}, _apeTruth, { resolution: '3840x2160', videoRange: 'PQ' }); // (1) original — intacto
+            lines.push('#EXT-X-APE-PERCEPTUAL-4K:TARGET-RESOLUTION="3840x2160",HDR-INTENT="PQ",MODE="device-upscaler-hint"'); // (2) aditivo
         }
         const _R_emit = (typeof window !== 'undefined') ? window.APEFallbackResolver : null;
         if (_apeTruth && _R_emit && typeof _R_emit.emitApeFallbackTags === 'function') {
@@ -9665,7 +9691,10 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
             // pre-init del decoder HDR de ExoPlayer (pantallazo negro HDMI).
             // Per ARTIFACT_FASE1_PROFUNDO_DESTRIPE §6 R-1.
             const _probedRange = (_probeData && (_probeData.videoRange || _probeData.video_range)) || null;
-            const _videoRangePart = _probedRange ? `,VIDEO-RANGE="${_probedRange}"` : '';
+            // [2026-06-08 Council fix S1] let (no const): el path perceptual NO reasigna a un
+            // VIDEO-RANGE=PQ falso (eso lanzaba TypeError en strict-mode → canal perdido). El
+            // valor público queda probe-driven; el intent perceptual va en tag privado (abajo).
+            let _videoRangePart = _probedRange ? `,VIDEO-RANGE="${_probedRange}"` : '';
             // ── HDCP-Adaptive (added 2026-05-19) — per-channel HDCP-LEVEL + STABLE-VARIANT-ID ──
             // Default TYPE-1 (aggressive, forces hardware decoder). Override to NONE only if
             // Conviva detected VST > 3000ms on prior TYPE-1 attempt (stored in window.APE_HDCP_PROFILE).
@@ -9855,10 +9884,16 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
                 }
             }
 
-            // ── PERCEPTUAL 4K MODE override (path legacy) ──────────────────────────────
+            // ── PERCEPTUAL 4K MODE — DOS MANERAS (2026-06-09 · mandato usuario: conservar el original) ──
+            // (1) ORIGINAL (NO se toca el comportamiento): override público _res796_csv=4K + PQ.
+            //     Único cambio mecánico: _videoRangePart es 'let' arriba (no const) — necesario para
+            //     que ESTA reasignación NO lance TypeError en strict-mode (con const crasheaba y
+            //     perdía el canal en el path legacy). El valor visual PQ queda idéntico al original.
+            // (2) ADITIVO: tag PRIVADO #EXT-X-APE-PERCEPTUAL-4K (invisible al player).
             if (options && options.perceptual4kMode) {
-                _res796_csv = '3840x2160';
-                _videoRangePart = ',VIDEO-RANGE=PQ';
+                _res796_csv = '3840x2160';            // (1) original — intacto
+                _videoRangePart = ',VIDEO-RANGE=PQ';  // (1) original — intacto (let → sin crash)
+                lines.push('#EXT-X-APE-PERCEPTUAL-4K:TARGET-RESOLUTION="3840x2160",HDR-INTENT="PQ",MODE="device-upscaler-hint"'); // (2) aditivo
             }
             // ── DOBLE CADENA MEMC v3.0 — REVISED 2026-06-07 (Council S1/S9 comment fix) ──
             // Capa 2: FRAME-RATE en STREAM-INF. Behaviour real (corregido vs comentario
@@ -9928,7 +9963,7 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
             // [HEVC-FIRST CODEC LADDER GUARDRAIL] Si Excel template no resuelve codec_chain_*,
             // sustituye al valor de cfg (LAB SSOT) o al fallback hardcoded HEVC-first.
             // Cumple NO-CLAMP: codec strings son texto, no se coercionan.
-            const _cgVideo  = cfg.codec_chain_video        || 'hvc1.2.4.L183.B0,hvc1.2.4.L180.B0,hvc1.2.4.L156.B0,hvc1.2.4.L153.B0,hvc1.2.4.L150.B0,hvc1.2.4.L123.B0,hvc1.2.4.L120.B0,hvc1.1.6.L153.B0,hvc1.1.6.L120.B0,avc1.640028';
+            const _cgVideo  = cfg.codec_chain_video        || 'hvc1.2.4.L183.B0,hvc1.2.4.L180.B0,hvc1.2.4.L156.B0,hvc1.2.4.L153.B0,hvc1.2.4.L150.B0,hvc1.2.4.L123.B0,hvc1.2.4.L120.B0,hvc1.2.4.L153.B0,hvc1.2.4.L120.B0,avc1.640028';
             const _cgAudio  = cfg.codec_chain_audio        || 'mp4a.40.2,ac-3,mp4a.40.5';
             const _cgHdr    = cfg.codec_chain_hdr          || 'hdr10,hlg,sdr';
             const _cgPref   = cfg.codec_chain_player_pref  || 'hvc1,hev1,h265,avc1,h264';

@@ -5026,9 +5026,9 @@ class OmegaAbsoluteReconstructor
 
             // Codec y Hardware
             // [HEVC-FIRST CODEC LADDER] Lee $profile['codec_ladder']['player_pref'] (LAB SSOT) → fallback HEVC-first
-            '#KODIPROP:inputstream.adaptive.codec_priority=' . ($profile['codec_ladder']['player_pref'] ?? 'hvc1.2.4.L153.B0,hvc1.2.4.L150.B0,hvc1.2.4.L156.B0,hvc1.2.4.L123.B0,hvc1.2.4.L120.B0,hvc1.2.4.L93.B0,hvc1.1.6.L153.B0,hvc1.1.6.L150.B0,hvc1.1.6.L120.B0,hvc1.1.6.L93.B0,avc1.640028'),
+            '#KODIPROP:inputstream.adaptive.codec_priority=' . ($profile['codec_ladder']['player_pref'] ?? 'hvc1.2.4.L153.B0,hvc1.2.4.L150.B0,hvc1.2.4.L156.B0,hvc1.2.4.L123.B0,hvc1.2.4.L120.B0,hvc1.2.4.L93.B0,hvc1.2.4.L153.B0,hvc1.2.4.L150.B0,hvc1.2.4.L120.B0,hvc1.2.4.L93.B0,avc1.640028'),
             '#KODIPROP:inputstream.adaptive.audio_codec_priority=' . ($profile['codec_ladder']['audio'] ?? 'ec-3,ac-3,mp4a.40.2,mp4a.40.5'),
-            '#KODIPROP:inputstream.adaptive.preferred_codec=' . ($profile['codec_ladder']['player_pref'] ?? 'hvc1.2.4.L153.B0,hvc1.2.4.L150.B0,hvc1.2.4.L156.B0,hvc1.2.4.L123.B0,hvc1.2.4.L120.B0,hvc1.2.4.L93.B0,hvc1.1.6.L153.B0,hvc1.1.6.L150.B0,hvc1.1.6.L120.B0,hvc1.1.6.L93.B0,avc1.640028'),
+            '#KODIPROP:inputstream.adaptive.preferred_codec=' . ($profile['codec_ladder']['player_pref'] ?? 'hvc1.2.4.L153.B0,hvc1.2.4.L150.B0,hvc1.2.4.L156.B0,hvc1.2.4.L123.B0,hvc1.2.4.L120.B0,hvc1.2.4.L93.B0,hvc1.2.4.L153.B0,hvc1.2.4.L150.B0,hvc1.2.4.L120.B0,hvc1.2.4.L93.B0,avc1.640028'),
             '#KODIPROP:inputstream.adaptive.hw_decode=force',
             '#KODIPROP:inputstream.adaptive.gpu_decode=force',
 
@@ -5337,8 +5337,8 @@ class OmegaAbsoluteReconstructor
         $d[] = '#EXT-X-APE-EVC-ENABLED: TRUE';
         $d[] = '#EXT-X-APE-EVC-PROFILE: MAIN';
         // [HEVC-FIRST] Lee $profile['codec_ladder']['player_pref'] (LAB SSOT) → fallback HEVC-first
-        $d[] = '#EXT-X-APE-CODEC-PRIORITY: ' . ($profile['codec_ladder']['player_pref'] ?? 'hvc1.2.4.L153.B0,hvc1.2.4.L150.B0,hvc1.2.4.L156.B0,hvc1.2.4.L123.B0,hvc1.2.4.L120.B0,hvc1.2.4.L93.B0,hvc1.1.6.L153.B0,hvc1.1.6.L150.B0,hvc1.1.6.L120.B0,hvc1.1.6.L93.B0,avc1.640028');
-        $d[] = '#EXT-X-APE-CODEC-PRIORITY-VIDEO: ' . ($profile['codec_ladder']['video'] ?? 'hvc1.2.4.L153.B0,hvc1.2.4.L150.B0,hvc1.2.4.L156.B0,hvc1.2.4.L123.B0,hvc1.2.4.L120.B0,hvc1.2.4.L93.B0,hvc1.1.6.L153.B0,hvc1.1.6.L150.B0,hvc1.1.6.L120.B0,hvc1.1.6.L93.B0,avc1.640028');
+        $d[] = '#EXT-X-APE-CODEC-PRIORITY: ' . ($profile['codec_ladder']['player_pref'] ?? 'hvc1.2.4.L153.B0,hvc1.2.4.L150.B0,hvc1.2.4.L156.B0,hvc1.2.4.L123.B0,hvc1.2.4.L120.B0,hvc1.2.4.L93.B0,hvc1.2.4.L153.B0,hvc1.2.4.L150.B0,hvc1.2.4.L120.B0,hvc1.2.4.L93.B0,avc1.640028');
+        $d[] = '#EXT-X-APE-CODEC-PRIORITY-VIDEO: ' . ($profile['codec_ladder']['video'] ?? 'hvc1.2.4.L153.B0,hvc1.2.4.L150.B0,hvc1.2.4.L156.B0,hvc1.2.4.L123.B0,hvc1.2.4.L120.B0,hvc1.2.4.L93.B0,hvc1.2.4.L153.B0,hvc1.2.4.L150.B0,hvc1.2.4.L120.B0,hvc1.2.4.L93.B0,avc1.640028');
         $d[] = '#EXT-X-APE-CODEC-PRIORITY-AUDIO: ' . ($profile['codec_ladder']['audio'] ?? 'ec-3,ac-3,mp4a.40.2,mp4a.40.5');
         $d[] = '#EXT-X-APE-CODEC-PRIORITY-HDR: ' . ($profile['codec_ladder']['hdr'] ?? 'hdr10,hlg,sdr');
         $d[] = '#EXT-X-APE-AV1-FALLBACK-CHAIN: ' . ($profile['codec_ladder']['video_family'] ?? 'HEVC-MAIN10>HEVC-MAIN>H264-HIGH>H264-MAIN>H264-BASELINE');
@@ -5743,7 +5743,7 @@ function rq_handle_request(): void
                 '#EXT-X-SESSION-DATA:DATA-ID="com.ape.network_resilience",VALUE="{\"connectionTimeoutMs\":8000,\"readTimeoutMs\":15000,\"retryCount\":5,\"retryBackoffMs\":500,\"retryBackoffFactor\":1.5,\"maxRetryBackoffMs\":4000,\"freezeDetectionMs\":3000,\"maxFreezeBeforeRestartMs\":15000,\"jumpToLiveOnFreeze\":true}"',
                 '#EXT-X-SESSION-DATA:DATA-ID="com.ape.abr_quality_policy",VALUE="{\"preferHigherBitrate\":true,\"minStableTimeBeforeUpgradeMs\":15000,\"qualityDropThreshold\":0.65,\"qualityRiseThreshold\":0.85,\"smoothSwitching\":true,\"forbidDowngradeOnTransientStall\":true}"',
                 '#EXT-X-SESSION-DATA:DATA-ID="com.ape.universal_parity",VALUE="{\"applyToResolutions\":[\"480p\",\"720p\",\"1080p\",\"1440p\",\"2160p\",\"4320p\"],\"sameBufferStrategy\":true,\"sameRecoveryPolicy\":true,\"sameLowLatencyMode\":true,\"sameABRPolicy\":true}"',
-                '#EXT-X-SESSION-DATA:DATA-ID="com.ape.codec_preferences",VALUE="{\"preferredCodecs\":[\"hvc1.2.4.L153.B0\",\"hvc1.2.4.L150.B0\",\"hvc1.2.4.L156.B0\",\"hvc1.2.4.L123.B0\",\"hvc1.2.4.L120.B0\",\"hvc1.2.4.L93.B0\",\"hvc1.1.6.L153.B0\",\"hvc1.1.6.L150.B0\",\"hvc1.1.6.L120.B0\",\"hvc1.1.6.L93.B0\",\"avc1.640028\"],\"hdrModes\":[\"PQ\",\"HLG\",\"DV\"],\"audioPassthrough\":[\"ec-3\",\"ac-3\",\"mp4a\"]}"',
+                '#EXT-X-SESSION-DATA:DATA-ID="com.ape.codec_preferences",VALUE="{\"preferredCodecs\":[\"hvc1.2.4.L153.B0\",\"hvc1.2.4.L150.B0\",\"hvc1.2.4.L156.B0\",\"hvc1.2.4.L123.B0\",\"hvc1.2.4.L120.B0\",\"hvc1.2.4.L93.B0\",\"hvc1.2.4.L153.B0\",\"hvc1.2.4.L150.B0\",\"hvc1.2.4.L120.B0\",\"hvc1.2.4.L93.B0\",\"avc1.640028\"],\"hdrModes\":[\"PQ\",\"HLG\",\"DV\"],\"audioPassthrough\":[\"ec-3\",\"ac-3\",\"mp4a\"]}"',
             ];
         foreach ($disney_lines as $_disney_line) {
             $output .= $_disney_line . "\n";

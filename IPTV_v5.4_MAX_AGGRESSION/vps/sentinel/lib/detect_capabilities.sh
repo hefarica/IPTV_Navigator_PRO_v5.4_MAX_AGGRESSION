@@ -19,6 +19,14 @@ if [ "${_dc_self}" = "${0}" ]; then _DC_STANDALONE=true; else _DC_STANDALONE=fal
 ADB_TARGET="${1:-${ADB_TARGET:-10.200.0.3:5555}}"
 _DC_LIB_DIR="$(cd "$(dirname "${_dc_self}")" 2>/dev/null && pwd)"
 
+# Idempotencia de detección (B6 S7): si ya se detectó para ESTE target en este proceso
+# (process_device source-ea aquí, y luego apply_generic_profile lo vuelve a source-ear),
+# no repetir ~10 getprops ADB → evita exceder TimeoutStartSec=120 con varios devices.
+if [ "$_DC_STANDALONE" = false ] && [ -n "${SOC_FAMILY:-}" ] && [ "${_DC_DETECTED_FOR:-}" = "$ADB_TARGET" ]; then
+    return 0
+fi
+_DC_DETECTED_FOR="$ADB_TARGET"
+
 # Reutiliza detect_device.sh (get_adb_prop + DEVICE_BRAND/MODEL/DEVICE/SDK/PLATFORM)
 if [ -f "${_DC_LIB_DIR}/detect_device.sh" ]; then
     # shellcheck source=/dev/null
@@ -43,6 +51,12 @@ DEVICE_BRAND="${DEVICE_BRAND:-$(get_adb_prop ro.product.brand)}"
 DEVICE_MODEL="${DEVICE_MODEL:-$(get_adb_prop ro.product.model)}"
 CHARACTERISTICS="$(get_adb_prop ro.build.characteristics)"
 
+# Identidad ESTABLE (no la IP, que cambia con DHCP → registros duplicados en ape_devices.db).
+# ro.serialno es persistente al hardware; fallback a model+device si el device lo oculta.
+DEVICE_SERIAL="$(get_adb_prop ro.serialno)"
+[ -z "$DEVICE_SERIAL" ] && DEVICE_SERIAL="$(get_adb_prop ro.boot.serialno)"
+[ -z "$DEVICE_SERIAL" ] && DEVICE_SERIAL="${DEVICE_MODEL:-dev}-${DEVICE_DEVICE:-unknown}"
+
 # Familia de SoC (polimórfico — NO solo Amlogic)
 _socsig="$(printf '%s%s' "$SOC" "$HW" | tr '[:upper:]' '[:lower:]')"
 case "$_socsig" in
@@ -55,8 +69,13 @@ case "$_socsig" in
 esac
 
 # Player instalado (best-effort; no falla si pm no responde)
+# GATE por ADB_OK: 'pm list packages' en un device muerto espera el timeout completo
+# de adb en CADA ciclo del auto-installer → arrastra el loop con varios devices offline.
 PLAYER=unknown
-_pkgs="$(adb -s "$ADB_TARGET" shell pm list packages 2>/dev/null | tr -d '\r' || echo '')"
+_pkgs=""
+if [ "$ADB_OK" = true ]; then
+    _pkgs="$(adb -s "$ADB_TARGET" shell pm list packages 2>/dev/null | tr -d '\r' || echo '')"
+fi
 case "$_pkgs" in
     *studio.scillarium.ottnavigator*) PLAYER=ottnavigator ;;
     *ar.tvplayer.tv*)                 PLAYER=tivimate ;;

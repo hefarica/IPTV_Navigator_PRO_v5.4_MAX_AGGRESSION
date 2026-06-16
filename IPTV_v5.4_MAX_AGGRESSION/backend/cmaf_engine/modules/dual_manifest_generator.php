@@ -22,7 +22,7 @@ class DualManifestGenerator
     const LCEVC_URN_SUPPLEMENTAL = 'urn:mpeg:lcevc:2021';
     const LCEVC_URN_ESSENTIAL    = 'urn:mpeg:lcevc:essential:2021';
     const LCEVC_CODEC_H264       = 'avc1.640028';
-    const LCEVC_CODEC_HEVC       = 'hvc1.1.6.L120.B0';  // RFC 6381 §3.3 — Tier 9 cascada definitiva (constraint=B0, NOT .90)
+    const LCEVC_CODEC_HEVC       = 'hvc1.2.4.L120.B0';  // RFC 6381 §3.3 — Tier 9 cascada definitiva (constraint=B0, NOT .90)
 
     const STATE_OFF              = 'OFF';
     const STATE_SIGNAL_ONLY      = 'SIGNAL_ONLY';
@@ -440,16 +440,16 @@ class DualManifestGenerator
             // 4K SDR
             if ($height >= 2160) {
                 if ($fps !== null && $fps >= 50) {
-                    return 'hvc1.1.6.L153.B0';  // T7: 4K@60 Main 8-bit SDR
+                    return 'hvc1.2.4.L153.B0';  // T7: 4K@60 Main 8-bit SDR
                 }
-                return 'hvc1.1.6.L150.B0';      // T8: 4K@30 Main 8-bit SDR
+                return 'hvc1.2.4.L150.B0';      // T8: 4K@30 Main 8-bit SDR
             }
             // 1080p SDR
             if ($height >= 1080) {
-                return 'hvc1.1.6.L120.B0';      // T9: 1080p Main 8-bit SDR
+                return 'hvc1.2.4.L120.B0';      // T9: 1080p Main 8-bit SDR
             }
             // 720p or lower → T10 último HEVC
-            return 'hvc1.1.6.L93.B0';           // T10: 720p Main 8-bit SDR
+            return 'hvc1.2.4.L93.B0';           // T10: 720p Main 8-bit SDR
         }
 
         // bit_depth ausente → caller usa default safe (T9 = LCEVC_CODEC_HEVC)

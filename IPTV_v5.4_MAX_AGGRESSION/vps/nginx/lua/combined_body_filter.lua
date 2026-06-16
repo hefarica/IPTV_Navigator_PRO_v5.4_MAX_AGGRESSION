@@ -14,6 +14,10 @@
 
 local score_mod = require("ape_uhdx_score")
 local v4k_mod = require("ape_virtual_4k")
+-- ape_codec_cascade hoisted aquí (module scope) — evita pcall(require) repetido
+-- en el loop de variantes. package.loaded garantiza singleton por worker.
+-- S6 F1 fix 2026-06-08: pcall inline era correcto pero redundante × variantes.
+local cc_cascade_mod = require("ape_codec_cascade")
 
 -- ═══ STAGE 0: VIDEO BYPASS (BLINDAJE DE MEMORIA) ════════════════════
 local uri = ngx.var.uri or ""
@@ -153,9 +157,24 @@ local floor_ok, floor_err = pcall(function()
             local is_hdr_variant = codecs:find("hvc1.2.4", 1, true) 
                                 or codecs:find("dvh1", 1, true) 
                                 or codecs:find("dvhe", 1, true)
-            local is_hevc_variant = codecs:find("hvc1", 1, true) 
-                                 or codecs:find("hev1", 1, true) 
-                                 or codecs:find("hev", 1, true)
+            -- HEVC FIRST — detección universal 2026-06-08.
+            -- Usa cc_cascade_mod.is_hevc_family() (hoisted al top: singleton per worker).
+            -- Cubre hvc1/hev1/hevc/h265/H.265/x265/libx265/video/hevc/MPEG-H/JCT-VC.
+            -- Fallback inline si el módulo no tiene is_hevc_family (versión anterior en disco).
+            local is_hevc_variant = false
+            if cc_cascade_mod and cc_cascade_mod.is_hevc_family then
+                is_hevc_variant = cc_cascade_mod.is_hevc_family(codecs)
+            else
+                -- Fallback inline — cubre los alias más comunes
+                local cl = codecs:lower()
+                is_hevc_variant = cl:find("hvc1",   1, true) ~= nil
+                               or cl:find("hev1",   1, true) ~= nil
+                               or cl:find("hevc",   1, true) ~= nil
+                               or cl:find("h265",   1, true) ~= nil
+                               or cl:find("h.265",  1, true) ~= nil
+                               or cl:find("x265",   1, true) ~= nil
+                               or cl:find("mpeg-h", 1, true) ~= nil
+            end
 
             if is_hdr_variant then has_hdr = true end
             if is_hevc_variant then has_hevc = true end

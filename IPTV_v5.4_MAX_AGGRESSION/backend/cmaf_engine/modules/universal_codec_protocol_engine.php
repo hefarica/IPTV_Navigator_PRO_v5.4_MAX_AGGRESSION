@@ -24,7 +24,7 @@ declare(strict_types=1);
  *   H.264 High    L4.0:  avc1.640028
  *   H.264 High    L4.1:  avc1.640029
  *   H.264 High    L5.0:  avc1.640032
- *   HEVC Main:            hvc1.1.6.L93.B0
+ *   HEVC Main:            hvc1.2.4.L93.B0
  *   HEVC Main 10:         hvc1.2.4.L120.B0
  *   AV1 Main:             av01.0.04M.08
  *   AAC-LC:               mp4a.40.2
@@ -43,7 +43,7 @@ class UniversalCodecProtocolEngine
     const CODEC_H264_HIGH_40  = 'avc1.640028';
     const CODEC_H264_HIGH_41  = 'avc1.640029';
     const CODEC_H264_HIGH_50  = 'avc1.640032';
-    const CODEC_HEVC_MAIN     = 'hvc1.1.6.L93.B0';
+    const CODEC_HEVC_MAIN     = 'hvc1.2.4.L93.B0';
     const CODEC_HEVC_MAIN10   = 'hvc1.2.4.L120.B0';
     const CODEC_HEVC_HDR10    = 'hvc1.2.4.L150.B0';
     const CODEC_AV1_MAIN      = 'av01.0.04M.08';

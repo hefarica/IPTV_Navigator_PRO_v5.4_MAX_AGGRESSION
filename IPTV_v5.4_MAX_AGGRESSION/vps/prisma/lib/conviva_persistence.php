@@ -489,6 +489,109 @@ class ConvivaPersistence
     }
 
     /**
+     * ── APE Image Quality Bulk (added 2026-06-08 · SOLO IMAGEN) ──────────────
+     *
+     * Returns per-channel observed bitrate + cascade_type from:
+     *   - server_side_qoe_metrics: nginx Lua QoE observer (bitrate_avg_bps)
+     *   - max_quality_channels:    channels that ran with MAX_QUALITY OVERRIDE
+     *
+     * Data window: last 24h only. Only channels with bw_observed > 0 are included.
+     * STRICTLY image-only fields: bw_observed, cascade_type.
+     * EXCLUDED: vst_proxy_avg, rebuffer_count, error_count (timing/QoS data).
+     *
+     * Generator logic (m3u8-typed-arrays-ultimate.js):
+     *   bw_observed >= 22,000,000 → hvc1.2.4.L153.B0 + 3840x2160 (4K tier)
+     *   bw_observed >= 12,000,000 → hvc1.2.4.L120.B0 + 1920x1080 (FHD tier, AVC override)
+     *   Not in map → generator keeps its own per-tier defaults (graceful degradation).
+     *
+     * @return array<string,array{bw_observed:int,cascade_type:string|null}>
+     */
+    public function getImageProfileBulk(): array
+    {
+        if ($this->pdo === null && !$this->init()) {
+            return [];
+        }
+        try {
+            $since = time() - 86400; // last 24h only — stale data = no entry, not wrong entry
+            $stmt  = $this->pdo->prepare("
+                SELECT
+                    s.channel_id,
+                    CAST(AVG(s.bitrate_avg_bps) AS INTEGER) AS bw_observed,
+                    m.cascade_type
+                FROM   server_side_qoe_metrics s
+                LEFT JOIN (
+                    SELECT channel_id, cascade_type
+                    FROM   max_quality_channels
+                    WHERE  recorded_at >= :since2
+                    GROUP  BY channel_id
+                ) m ON s.channel_id = m.channel_id
+                WHERE  s.flushed_at >= :since1
+                GROUP  BY s.channel_id
+                HAVING bw_observed > 0
+                ORDER  BY s.channel_id
+            ");
+            $stmt->execute([':since1' => $since, ':since2' => $since]);
+            $rows = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+            $out  = [];
+            foreach ($rows as $r) {
+                $out[$r['channel_id']] = [
+                    'bw_observed'    => (int)$r['bw_observed'],
+                    'cascade_type'   => $r['cascade_type'] ?: null,
+                    // HEVC FIRST 2026-06-08: flag derivado — true si cascade_type
+                    // contiene cualquier indicador HEVC (no solo "dual-hvc1-hev1").
+                    // Permite que el JS gate use is_hevc_verified directamente sin
+                    // depender del string exacto almacenado en la DB.
+                    'is_hevc_verified' => $this->_isHevcPositiveCascade($r['cascade_type'] ?? null),
+                ];
+            }
+            return $out;
+        } catch (Throwable $e) {
+            error_log('[conviva-persistence] getImageProfileBulk failed: ' . $e->getMessage());
+            return [];
+        }
+    }
+
+    /**
+     * ── HEVC FIRST — Clasificador de cascade_type HEVC-positivo ─────────────
+     *
+     * Retorna true si el string cascade_type almacenado en max_quality_channels
+     * indica que el canal fue observado con un stream HEVC real, independiente
+     * del formato exacto del string. Normaliza: "dual-hvc1-hev1", "hevc",
+     * "h265", "hvc1-only", etc. → true; null / "avc" / "" → false.
+     *
+     * Usado por getImageProfileBulk() para emitir is_hevc_verified:bool en el
+     * response JSON — el generador JS puede usar este flag directamente sin
+     * parsear el string de cascade_type.
+     *
+     * HEVC aliases recognized (mirrors ape_codec_cascade.lua::is_hevc_family):
+     *   hvc1/hvc2/hev1/hev2, hevc, h265, h.265, x265, mpeg-h, 23008-2,
+     *   video/hevc, jct-vc, libx265.
+     */
+    private function _isHevcPositiveCascade(?string $ct): bool
+    {
+        if (empty($ct)) return false;
+        $ct = strtolower(trim($ct));
+        // Rapid prefix checks (most common values first)
+        if (str_starts_with($ct, 'hvc1') || str_starts_with($ct, 'hvc2')) return true;
+        if (str_starts_with($ct, 'hev1') || str_starts_with($ct, 'hev2')) return true;
+        // Substring checks for all HEVC homologs
+        return str_contains($ct, 'hevc')
+            || str_contains($ct, 'h265')
+            || str_contains($ct, 'h.265')
+            || str_contains($ct, 'x265')
+            || str_contains($ct, 'mpeg-h')
+            || str_contains($ct, 'mpegh')
+            || str_contains($ct, '23008-2')
+            || str_contains($ct, 'video/hevc')
+            || str_contains($ct, 'video/h265')
+            || str_contains($ct, 'jct-vc')
+            || str_contains($ct, 'libx265');
+            // NOTE: str_contains('dual') fue removido — producía false positive para
+            // cascade_types hipotéticos como "dual-avc1-*". El caso "dual-hvc1-hev1"
+            // ya es capturado por str_starts_with($ct,'hvc1') en las líneas superiores.
+    }
+
+    /**
      * Returns HDCP-LEVEL for a single channel, or null if no decision stored
      * (caller should use default 'TYPE-1' aggressive in that case).
      *

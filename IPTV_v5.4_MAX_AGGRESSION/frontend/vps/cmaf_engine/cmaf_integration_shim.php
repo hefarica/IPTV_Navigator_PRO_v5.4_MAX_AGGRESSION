@@ -267,7 +267,7 @@ class CmafIntegrationShim
                 case 'hevc':
                 case 'h265':
                     if ($playerCaps['supports_hevc']) {
-                        return 'hvc1.1.6.L120.90,mp4a.40.2';
+                        return 'hvc1.2.4.L120.90,mp4a.40.2';
                     }
                     break;
                 case 'av1':

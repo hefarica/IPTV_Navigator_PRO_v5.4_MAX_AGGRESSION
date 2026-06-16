@@ -441,7 +441,43 @@
     // Doctrina HEVC-FIRST: TODOS los HEVC homologs siempre antes que cualquier H264.
     // MANDATO USUARIO: TODAS las homologaciones de cada codec — hint-only en EXTHTTP/EXTVLCOPT/KODIPROP.
     // NUNCA usar en CODECS= RFC 6381 (solo dot-notation ahí). Aquí es válido: campos family-name.
-    const _HEVC_ALIASES = 'hevc,hev1,hev2,hvc1,hvc2,h265,H265,h.265,H.265,h-265,H-265,MPEG-H,mpeg-h,MPEG-H Part2,MPEG-H Part 2,mpegh,x265,x.265,ISO/IEC 23008-2';
+    // HEVC FIRST — homólogos universales 2026-06-08.
+    // Cubre: RFC 6381 (hvc1/hev1) + Android MediaCodec + Fire TV Amlogic (hevc/h265)
+    // + ffmpeg/GStreamer (x265/libx265) + MPEG formal (MPEG-H/23008-2)
+    // + MIME (video/hevc) + mayúsculas/minúsculas/mixto + designaciones combinadas.
+    // SOLO para campos family-name (KODIPROP preferred_codec, EXTVLCOPT codec-priority,
+    // EXTHTTP X-APE-Codec-Video). NUNCA en CODECS= RFC 6381 (solo dot-notation ahí).
+    const _HEVC_ALIASES = [
+        // RFC 6381 canonical (STREAM-INF CODECS= base forms)
+        'hvc1','hvc2','hev1','hev2',
+        // Uppercase RFC (Android MediaCodec API, Fire TV OMX, Amlogic AML_OMX)
+        'HVC1','HVC2','HEV1','HEV2',
+        // Short forms without number (VLC CLI, OTT Navigator codec picker, Smarters)
+        'hvc','hev','HVC','HEV',
+        // Generic family name — ALL case variants (IPTV dashboards, TiviMate UI)
+        'hevc','HEVC','Hevc',
+        // H.265 dot-notation: IEEE/ITU-T official designation (all case variants)
+        'h265','H265',
+        'h.265','H.265',
+        'h-265','H-265',
+        'h 265','H 265',
+        // Combined designations (broadcaster docs, spec annexes, DVB SI)
+        'H.265/HEVC','HEVC/H.265','H265/HEVC','HEVC/H265',
+        // Profile descriptor forms (Kodi verbose mode, VLC stream info, Plex)
+        'HEVC Main','HEVC Main10','HEVC Main 10','HEVC High',
+        // MPEG-H formal family name (ISO/IEC working group designation)
+        'MPEG-H','mpeg-h','Mpeg-H',
+        'MPEG-H Part2','MPEG-H Part 2','MPEG-H HEVC',
+        'mpegh','MPEGH',
+        // Encoder names (ffmpeg CLI, GStreamer, HandBrake, StaxRip pipelines)
+        'x265','x.265','libx265','lib265',
+        // ISO/IEC 23008-2 notation variants (spec cross-references, MediaInfo output)
+        'ISO/IEC 23008-2','ISO-23008-2','IEC 23008-2','23008-2',
+        // MIME type variants (WebRTC SDP, DASH MPD, some vendor IPTV stacks)
+        'video/hevc','video/H265','video/h265','video/HEVC',
+        // Historical working group name (JCT-VC era documentation)
+        'JCT-VC','jct-vc',
+    ].join(',');
     const _AVC_ALIASES  = 'h264,H264,h.264,H.264,h-264,H-264,avc,AVC,avc1,avc3,MPEG-4 AVC,mpeg4-avc,MPEG4-AVC,x264,ISO/IEC 14496-10';
     const _AV1_ALIASES  = 'av1,av01,AV1,AOM-AV1,libaom-av1';
     const _VP9_ALIASES  = 'vp9,VP9,vp09,vp9.0';

@@ -16,6 +16,36 @@ debe pausar y leerlo antes de responder a cualquier instrucción del usuario.
 
 ---
 
+## ⚡ MANIFIESTO APE VPS HEVC-UHD CRYSTAL INTEGRATOR — DOCTRINA OBLIGATORIA
+
+**Junto al Prompt Maestro**, Gemini (y todo agente del repo) DEBE leer el segundo manifiesto: la skill
+**`ape-vps-hevc-crystal-integrator`** (médula espinal, copia versionada en
+[`docs/manifestos/ape-vps-hevc-crystal-integrator/`](docs/manifestos/ape-vps-hevc-crystal-integrator/)),
+inyectada en `/iptv-freezeless-visual-master-council` PHASE 0 y leída por los 13 PhD como doctrina.
+Revisada por el council: **WARN · 0 BLOCK · preserva el flujo** (`COUNCIL_REVIEW.md`); respaldo de normas
+primarias en `references/web_authority.md`. Reglas de settings en `.gemini/settings/ape-crystal-truth-guards.md`.
+
+**Los 6 truth-guards (no negociables):**
+
+| Área | Verdad técnica | Mentira prohibida |
+|---|---|---|
+| M3U8 installer | `#EXT-X-APE-INSTALLER` es metadata/puntero (RFC 8216 §6.3.1) | "la playlist instala/ejecuta código en el player" |
+| Wake-on-playback | Wake por observación GET del manifest o beacon, encolado no-bloqueante | "el tag HLS despierta/ejecuta en el device" |
+| ADB | Host con ADB instalado, habilitado y **autorizado** (RSA por host) | "ADB se habilita remoto desde la playlist/VPS" |
+| Rol visual VPS | El VPS selecciona variantes/metadata/perfiles/QoE | "el VPS mejora píxeles en un player remoto sin engine real" |
+| Player⇄daemon | El daemon corre en el device/host autorizado; el player manda beacons | "el player aloja un daemon desde metadata HLS" |
+| HEVC-first (GOLDEN RULE) | `hvc1.*` solo en STREAM-INF `CODECS=`; `hev1.*` solo en KODIPROP/EXTVLCOPT | cruzarlos, o declarar un codec/nivel imposible |
+
+**Ley Cardinal 1 — Nivel↔Resolución:** `L153`=4K@60 (techo); en 8K@120 = el **freeze 2026-06-08**. Nunca
+nivel por debajo de la resolución. **Sin fake HDR/CMAF/SUPPLEMENTAL-CODECS · 9 headers tóxicos EXTHTTP ·
+SHIELDED verbatim + NO-STRIP de ~945 headers · autopista (log-phase no-bloqueante).** Mejoras de código
+SOLO si preservan el flujo LAB→JSON→lista→VPS→ADB→player.
+
+> **Caveat obligatorio:** los anchors de playlist son metadata; la instalación y el wake reales requieren
+> ruta VPS desplegada + host/dispositivo ADB autorizado o runtime compatible.
+
+---
+
 ## TEAM AGENT SUPREMO IPTV ENTERPRISE
 
 ### IDENTIDAD DEL AGENTE:

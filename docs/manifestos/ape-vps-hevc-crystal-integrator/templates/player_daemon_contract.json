@@ -1,0 +1,59 @@
+{
+  "contract_version": "2.0.0",
+  "name": "ape_player_daemon_bidirectional_contract",
+  "purpose": "Bidirectional contract for APE VPS HEVC-UHD Crystal-first playback policy, QoE feedback, installer-anchor metadata, ADB bootstrap, and wake-on-playback.",
+  "truth_guards": {
+    "m3u8_tags_are_metadata_only": true,
+    "adb_requires_authorized_host": true,
+    "vps_does_not_directly_process_remote_pixels": true,
+    "wake_is_queued_not_blocking": true,
+    "hevc_codecs_must_not_be_faked": true
+  },
+  "playlist_metadata": {
+    "installer_tag": "#EXT-X-APE-INSTALLER:<url>",
+    "wake_tag": "#EXT-X-APE-WAKE:<url-or-token>",
+    "semantics": "Pointers for compatible components; ignored by standard HLS players that do not understand them."
+  },
+  "player_to_daemon": {
+    "fields": [
+      "session_id",
+      "device_id",
+      "channel_id",
+      "manifest_url",
+      "selected_variant",
+      "codec",
+      "resolution",
+      "qoe_metrics",
+      "wake_reason",
+      "timestamp_ms"
+    ]
+  },
+  "daemon_to_player": {
+    "fields": [
+      "session_id",
+      "recommended_profile",
+      "max_quality_allowed",
+      "fallback_reason",
+      "visual_profile",
+      "decoder_guard",
+      "timestamp_ms"
+    ]
+  },
+  "qoe_fallback_policy": {
+    "primary": "Prefer HEVC/HVC1/HEV1 UHD Crystal when decoder support and QoE are viable.",
+    "fallback_triggers": [
+      "decoder_unsupported",
+      "rebuffer",
+      "stall",
+      "judder",
+      "dropped_frames",
+      "excessive_startup_time",
+      "network_instability"
+    ]
+  },
+  "deployment_notes": {
+    "bootstrap": "Run from host with ADB installed and device authorization already granted.",
+    "wake": "Use Nginx/Lua log phase or API beacon to enqueue non-blocking wake events consumed by a worker.",
+    "validation": "Separate local static checks from production VPS and device checks."
+  }
+}

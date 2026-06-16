@@ -1,5 +1,1976 @@
 {
-  "_doc": "FAKE 4K HDR FORZADO EN LOS 6 NIVELES P0-P5 (mandato HFRC 2026-05-21: '4K forzado para todos los niveles, cada uno se configura distinto'). TODOS: virtual_4k+virtual_4k_hdr+codec_cascade ACTIVE => cada canal (con master playlist) via shield sale 3840x2160 + hvc1.2.4 (T1 cascada) + HDR=PQ. La DIFERENCIA por nivel = floor_bps (cuanto se exige), upscaler (hint neural), y floor_lock (solo ACTIVE en 4K reales P0/P1; BYPASS en P2-P5 para no matar canales HD/SD de bajo bitrate; el body_filter siempre conserva la variante top como fallback). RIESGO ACEPTADO: PQ sobre SDR puede dar pantallazo negro en players que honran VIDEO-RANGE; rollback = virtual_4k_hdr=BYPASS en el nivel afectado. virtual_4k solo actua en MASTER playlists.",
+  "_doc": "APE Visual Intelligence Dual Mode 2026-06. Todo el sistema opera con pureza técnica como base segura y añade un modo experimental visual-first/OLED-UHD activable para maximizar apariencia. El modo experimental puede emitir metadatos, flags, directivas y realce perceptual de alto impacto, pero debe conservar fallback seguro y guardas estrictas contra blurring, textura plástica, halos, clipping, judder, deformaciones, clipping y pérdida de naturalidad. || INTEGRACION 2026-06-09 (HFRC): base = PROPAGACION China Box/Huawei P0-P5 (intensidad 0.15->0.92) + P6 + Dual-Mode honesto; ADEMAS se preserva al top-level el esquema AGRESIVO FORZADO del repo (P0_SHOWROOM_FLASH_4K..P5_SD_RESCUE, HDR_FORCE/virtual_4k, riesgo aceptado) — coexisten, el runtime elige. Tags publicos HDR/4K/8K SOLO con probe real; intencion agresiva via metadata privada APE.",
+  "_contract": {
+    "architecture": "technical_purity_plus_visual_first_experimental",
+    "default_mode": "TRUTHFUL_SOURCE_SAFE",
+    "experimental_mode_env": "APE_VISUAL_FIRST=1",
+    "experimental_mode_profile": "P6_CHINA_BOX_8K_ULTRA_AGGRESSIVE",
+    "technical_purity": {
+      "streamcopy_default": true,
+      "real_filtering_requires": "APE_REAL_ENHANCE=1",
+      "source_truth_preserved_in_safe_modes": true,
+      "fallback_on_instability": "TRUTHFUL_SOURCE_SAFE"
+    },
+    "visual_first_allowed": {
+      "metadata_flags": true,
+      "manifest_hints": true,
+      "device_props_best_effort": true,
+      "perceptual_enhancement": true,
+      "appearance_labels": true,
+      "real_transcode_if_opt_in": "APE_REAL_ENHANCE=1",
+      "aggressive_floor_lock": true,
+      "virtual_4k_8k_intent": true,
+      "hdr_intent_private_metadata": true,
+      "public_hdr_tags_only_after_probe": true,
+      "scaled_china_box_layer_all_profiles": true,
+      "public_truth_guards_apply_to_all_profiles": true,
+      "low_resolution_to_uhd_experience_private_intent": true
+    },
+    "visual_first_disclaimer": "El modo experimental prioriza apariencia; puede usar señales de apariencia UHD/HDR y políticas perceptuales. No debe romper reproducción ni activar cambios si hay buffer bajo, dropped frames, judder fuerte o incapacidad del device.",
+    "do_not_break": {
+      "playback_continuity": true,
+      "geometry": true,
+      "logos": true,
+      "texts": true,
+      "faces_players_ball": true
+    },
+    "avoid": [
+      "blur",
+      "blurring",
+      "low_resolution",
+      "pixelation",
+      "macroblocking",
+      "digital_noise",
+      "mosquito_noise",
+      "banding",
+      "posterization",
+      "clipping",
+      "halos",
+      "ringing",
+      "oversharpening",
+      "ghosting",
+      "judder",
+      "motion_blur",
+      "tearing",
+      "washed_colors",
+      "gray_blacks",
+      "burned_whites",
+      "dull_grass",
+      "deformed_logos",
+      "illegible_text",
+      "altered_faces",
+      "deformed_players",
+      "blurred_ball",
+      "plastic_texture",
+      "excessive_smoothing",
+      "geometry_warp",
+      "face_warp",
+      "text_hallucination"
+    ],
+    "critical_never_accept": [
+      "blurring",
+      "plastic_texture",
+      "halos",
+      "clipping",
+      "judder",
+      "deformed_players",
+      "deformed_logos",
+      "illegible_text"
+    ],
+    "codec_policy": {
+      "default_priority": [
+        "hevc",
+        "hvc1",
+        "hev1",
+        "h265",
+        "h.265",
+        "x265",
+        "av1",
+        "h264"
+      ],
+      "hevc_first": true,
+      "request_max_quality_first": true,
+      "prefer_lossless_source_path": true,
+      "fallback": "best_stable_decodable_variant",
+      "fallback_required_when": [
+        "software_decode_only",
+        "buffer_low",
+        "rebuffer",
+        "stall_proxy_high",
+        "dropped_frames_high",
+        "judder_detected",
+        "device_capability_unknown"
+      ],
+      "forbidden": [
+        "force_hevc_without_hardware_decode",
+        "fake_hdr_as_truth",
+        "deform_geometry",
+        "blur_or_plastic_texture",
+        "public_video_range_pq_without_hdr_probe",
+        "force_hdr_on_sdr_display",
+        "hdr_sink_policy_without_vendor_capability",
+        "sdr2hdr_sysprop_without_root_vendor_validation"
+      ]
+    },
+    "qoe_engine": {
+      "name": "ape_proprietary_conviva_style_engine",
+      "not_conviva_product": true,
+      "reconstructed_metrics": [
+        "VST_proxy",
+        "rebuffer",
+        "stall_count",
+        "stall_duration_ms",
+        "zapping_count",
+        "dropped_frames",
+        "buffer_state"
+      ],
+      "feeds": "HDCP-Adaptive Engine + visual/playback deciders",
+      "gate_default": "pass",
+      "guarded_fallback_gate": "guarded_fallback"
+    },
+    "experimental_mode_profiles": [
+      "P5_OLED_UHD_VISUAL_FIRST_EXPERIMENTAL",
+      "P6_CHINA_BOX_8K_ULTRA_AGGRESSIVE"
+    ],
+    "china_box_propagation": {
+      "source_profile": "P6_CHINA_BOX_8K_ULTRA_AGGRESSIVE",
+      "targets": [
+        "P0_TRUTHFUL_SOURCE_SAFE",
+        "P1_STABLE_1080P_PREMIUM",
+        "P2_PERCEPTUAL_4K_BALANCED",
+        "P3_CRYSTAL_UHD_SAFE",
+        "P4_CRYSTAL_UHD_EXTREME",
+        "P5_OLED_UHD_VISUAL_FIRST_EXPERIMENTAL"
+      ],
+      "scaling": "P0 minimal safe hints -> P5 near-P6 intensity; P6 remains maximum",
+      "public_truth_guard": "no HDR/4K/8K public claims without real probe/source/transcode"
+    }
+  },
+  "P0_TRUTHFUL_SOURCE_SAFE": {
+    "description": "Pureza técnica absoluta. Preserva fuente, evita cambios agresivos y no fuerza flags de apariencia.",
+    "mode": "safe",
+    "visual_priority": 0,
+    "china_box_inheritance": {
+      "inherits_from": "P6_CHINA_BOX_8K_ULTRA_AGGRESSIVE",
+      "level": "P0",
+      "intensity": 0.15,
+      "profile_semantics": "truthful_source_safe_minimal_china_box_floor",
+      "inheritance_strength": "minimal_safe_hints_only",
+      "copied_technique_families": [
+        "floor_lock",
+        "virtual_4k_8k_appearance_intent",
+        "hdr_intent_private_metadata",
+        "hls_truth_guards",
+        "device_vendor_hints",
+        "artifact_suppression",
+        "motion_and_refresh_matching",
+        "hevc_first_codec_policy"
+      ],
+      "p6_activation_flag_inherited": false,
+      "truth_guard": "public manifests remain truthful; HDR/4K/8K public claims require real probe/source/transcode"
+    },
+    "source_truth_policy": {
+      "public_manifest_truth": "preserve_real_codec_resolution_range_until_probe_passes",
+      "private_appearance_intent": "allow_scaled_ape_metadata_by_profile_level",
+      "do_not_claim_real_hdr_without_probe": true,
+      "do_not_claim_real_4k8k_without_source_or_transcode": true,
+      "profile_level": "P0",
+      "visual_intensity": 0.15
+    },
+    "real_enhance": "BYPASS",
+    "metadata_flags": "minimal_truthful",
+    "upscaler": "source_or_device_only_if_supported",
+    "hdr_policy": "passthrough_if_proven_else_sdr_safe",
+    "virtual_4k": "DISABLED",
+    "virtual_hdr": "DISABLED",
+    "fps_policy": "source",
+    "memc_policy": "off_if_judder",
+    "sharpness": "adaptive_safe_low",
+    "denoise": "none_or_light",
+    "color": "source_safe",
+    "floor_lock": {
+      "enabled": true,
+      "strength": "minimal_safe",
+      "goal": "bloquear negros grises y blancos quemados sin aplastar detalle",
+      "black_floor_target": "source_safe_black_floor_anti_gray_only",
+      "white_floor_target": "source_safe_white_no_clipping",
+      "gamma_bias": "none_or_tiny_adaptive_scene_safe",
+      "chroma_floor": "source_safe_vividness_guard_only",
+      "grass_floor": "preserve_source_green_reduce_dullness_only",
+      "anti_washout": true,
+      "anti_crush": true,
+      "guarded_by": [
+        "histogram_luma_guard",
+        "clipping_guard",
+        "skin_tone_guard",
+        "logo_text_guard"
+      ]
+    },
+    "china_box_layer": {
+      "enabled": true,
+      "style": "China Box / Huawei-Hisilicon 4K-8K visual appearance pipeline",
+      "intensity": 0.15,
+      "low_resolution_goal": "tomar señales 480p/576p/720p/1080p y llevarlas a experiencia perceptual UHD cuando el dispositivo lo soporte",
+      "virtual_4k": {
+        "enabled": false,
+        "label": "disabled_truthful_source",
+        "public_resolution_policy": "do_not_advertise_4k_or_8k_unless_source_or_real_transcode_matches",
+        "presentation_target": "native_source_or_display_scaler_if_already_configured",
+        "prefer_device_upscaler": [
+          "Huawei/Hisilicon AI-SR",
+          "Amlogic vendor scaler",
+          "Realtek/MStar TV scaler",
+          "Android TV hardware overlay scaler"
+        ],
+        "safe_source_floor": "no_virtual_floor_in_truthful_mode",
+        "scale_path_if_real_enhance": "zscale_lanczos_or_spline36_to_2160p_with_texture_guard_when_APE_REAL_ENHANCE=1",
+        "metadata_only_if_no_real_pixels": true,
+        "edge_policy": "microcontrast_low_edge_aware_no_halo",
+        "texture_policy": "preserve_source_texture_no_plastic_smoothing",
+        "sports_motion": "ball_player_logo_text_locked_no_geometry_warp"
+      },
+      "hdr_intent": {
+        "enabled": false,
+        "intent_strength": "disabled_public_and_private_except_sdr_safety_note",
+        "private_tags": [],
+        "public_hls_video_range": "emit_PQ_or_HLG_only_when_stream_probe_and_display_capability_pass",
+        "hdr_probe_required": [
+          "stream_color_transfer_smpte2084_or_arib_std_b67",
+          "color_primaries_bt2020_if_hdr",
+          "mastering_display_or_content_light_when_available",
+          "decoder_hdr_capability",
+          "display_hdr_capability"
+        ],
+        "fallback_when_hdr_probe_fails": "sdr_passthrough_or_sdr_safe_tone_only",
+        "avoid_interpret_hdr_as_sdr": true,
+        "tone_map_if_hdr_unsupported": "prefer_mediacodec_or_opengl_hdr_to_sdr_when_available",
+        "sdr_to_hdr": "blocked_in_p0_truthful_mode",
+        "dolby_vision_hdr10plus": "route_to_exoplayer_or_vendor_pipeline_only_if_supported_else_sdr_safe"
+      },
+      "codec_policy": {
+        "hevc_first": true,
+        "preference": "source_or_hevc_if_already_selected_and_stable",
+        "av1_second_if_hw_supported": true,
+        "h264_fallback_when_hevc_unstable": true,
+        "max_quality_first": true,
+        "fallback": "best_stable_decodable_variant",
+        "qoe_gate": "visual_first_guarded_scaled_p0",
+        "qoe_source": "ape_proprietary_conviva_style_engine"
+      }
+    },
+    "hls_public_tag_policy": {
+      "VIDEO_RANGE_PQ": "BLOCK_UNLESS_HDR_PROBE_PASS",
+      "VIDEO_RANGE_HLG": "BLOCK_UNLESS_HDR_PROBE_PASS",
+      "CODECS_hdr_profile": "BLOCK_UNLESS_CODEC_STRING_PROVEN",
+      "RESOLUTION_3840x2160": "BLOCK_UNLESS_SOURCE_OR_REAL_TRANSCODE_2160P",
+      "RESOLUTION_7680x4320": "BLOCK_UNLESS_SOURCE_OR_REAL_TRANSCODE_4320P",
+      "ape_private_tags": "ALLOW_FOR_INTENT_AND_ROUTING_ONLY"
+    },
+    "device_vendor_hints": {
+      "huawei_hisilicon_style": {
+        "ai_super_resolution": "private_detection_only_no_activation",
+        "color_engine": "vivid_oled_sports_reference_guarded",
+        "motion_estimation": "only_if_no_judder_no_soap_artifact"
+      },
+      "amlogic_china_box_style": {
+        "hdr_policy_preferred": "do_not_touch; document_sink_source_guard_only",
+        "known_vendor_paths": [
+          "/sys/module/am_vecm/parameters/hdr_policy"
+        ],
+        "hdr_policy_values": {
+          "0": "SINK",
+          "1": "SOURCE"
+        },
+        "persist_vendor_sys_hdr_state": {
+          "0": "OFF",
+          "1": "ON",
+          "2": "AUTO"
+        },
+        "sdr2hdr_hint": "blocked_by_default",
+        "refresh_rate_switching": "keep_player_default_no_forced_switch",
+        "ui_resolution_hint": "1080p_ui_allow_tv_upscale_for_clean_4k_output_when_user_device_prefers_tv_scaler"
+      },
+      "realtek_mstar_tv_style": {
+        "tv_scaler_first": "allow_only_when_native_output_available_and_no_rebuffer_risk",
+        "noise_reduction": "low_or_off_for_sports_texture_and_motion",
+        "dynamic_contrast": "guarded_no_clipping"
+      },
+      "generic_android_tv_style": {
+        "hardware_overlay_scaler": "do_not_force; allow_display_default_scaler",
+        "surface_pipeline": "prefer_hardware_decoder_and_display_scaler_before_software_upscale"
+      }
+    },
+    "player_routing": {
+      "hdr_real_content": "passthrough_only_if_stream_and_display_probe_pass",
+      "subtitle_complexity_or_shader_needed": "mpv_possible_for_sdr_or_tonemap_path",
+      "unsupported_hdr_on_sdr": "request_sdr_variant_or_tonemap_do_not_force_hdr",
+      "force_highest_supported_bitrate": "never_force; stable_variant_first",
+      "variant_tie_breaker": "prefer_hdr_only_when_hdr_supported_and_all_other_constraints_equal"
+    },
+    "artifact_suppression": {
+      "strength": "minimal_safe",
+      "deblock": "none_or_light_only_when_macroblocks_detected",
+      "deband": "off_or_low_when_banding_detected",
+      "mosquito_noise": "light_around_logos_text_edges_only",
+      "ringing": "block",
+      "halo": "block",
+      "plastic_texture": "hard_block",
+      "face_player_ball_geometry": "locked",
+      "text_logo_integrity": "locked"
+    },
+    "motion_and_refresh": {
+      "match_display_modes": [
+        "23.976",
+        "24",
+        "25",
+        "29.97",
+        "30",
+        "50",
+        "59.94",
+        "60"
+      ],
+      "policy": "source_rate_or_safe_match_display_if_player_default",
+      "switch_policy": "keep_player_default_no_forced_switch",
+      "memc": "off_if_judder_or_soap_effect",
+      "ll_hls_guard": "do_not_generate_invalid_ll_hls_parts_or_codecs",
+      "sports_motion_guard": "ball_player_logo_text_locked_no_geometry_warp"
+    },
+    "validation_guards": [
+      "json_parse_required",
+      "no_public_VIDEO_RANGE_PQ_without_probe",
+      "no_public_VIDEO_RANGE_HLG_without_probe",
+      "no_fake_codec_profile",
+      "no_invalid_ll_hls",
+      "no_force_hdr_on_sdr_display",
+      "no_public_4k8k_resolution_without_source_or_real_transcode",
+      "fallback_on_buffer_low",
+      "fallback_on_dropped_frames",
+      "fallback_on_judder",
+      "fallback_on_rebuffer",
+      "fallback_on_unknown_capability"
+    ],
+    "guard": [
+      "blur",
+      "blurring",
+      "low_resolution",
+      "pixelation",
+      "macroblocking",
+      "digital_noise",
+      "mosquito_noise",
+      "banding",
+      "posterization",
+      "clipping",
+      "halos",
+      "ringing",
+      "oversharpening",
+      "ghosting",
+      "judder",
+      "motion_blur",
+      "tearing",
+      "washed_colors",
+      "gray_blacks",
+      "burned_whites",
+      "dull_grass",
+      "deformed_logos",
+      "illegible_text",
+      "altered_faces",
+      "deformed_players",
+      "blurred_ball",
+      "plastic_texture",
+      "excessive_smoothing",
+      "geometry_warp",
+      "face_warp",
+      "text_hallucination"
+    ],
+    "codec_policy": {
+      "hevc_first": true,
+      "preference": "source_or_hevc_if_already_selected_and_stable",
+      "max_quality_first": true,
+      "fallback": "best_stable_decodable_variant",
+      "qoe_gate": "strict_truthful",
+      "qoe_source": "ape_proprietary_conviva_style_engine"
+    },
+    "fallback_rules": [
+      "qoe_gate_guarded_fallback",
+      "stall_proxy_high",
+      "VST_proxy_high",
+      "rebuffer_detected",
+      "zapping_detected",
+      "hevc_not_hardware_decodable",
+      "buffer_low",
+      "dropped_frames_high",
+      "judder_detected",
+      "device_capability_unknown",
+      "artifact_guard_triggered",
+      "hdr_probe_failed",
+      "display_hdr_capability_absent"
+    ],
+    "conviva_style_note": "Métricas QoE propietarias estilo Conviva; no usa software ni servicio Conviva."
+  },
+  "P1_STABLE_1080P_PREMIUM": {
+    "description": "Estabilidad premium para señales problemáticas: baja riesgo antes que agresividad visual.",
+    "mode": "safe",
+    "visual_priority": 1,
+    "china_box_inheritance": {
+      "inherits_from": "P6_CHINA_BOX_8K_ULTRA_AGGRESSIVE",
+      "level": "P1",
+      "intensity": 0.3,
+      "profile_semantics": "stable_1080p_premium_light_china_box_cleanup",
+      "inheritance_strength": "light_floor_lock_and_device_scaler_hint",
+      "copied_technique_families": [
+        "floor_lock",
+        "virtual_4k_8k_appearance_intent",
+        "hdr_intent_private_metadata",
+        "hls_truth_guards",
+        "device_vendor_hints",
+        "artifact_suppression",
+        "motion_and_refresh_matching",
+        "hevc_first_codec_policy"
+      ],
+      "p6_activation_flag_inherited": false,
+      "truth_guard": "public manifests remain truthful; HDR/4K/8K public claims require real probe/source/transcode"
+    },
+    "source_truth_policy": {
+      "public_manifest_truth": "preserve_real_codec_resolution_range_until_probe_passes",
+      "private_appearance_intent": "allow_scaled_ape_metadata_by_profile_level",
+      "do_not_claim_real_hdr_without_probe": true,
+      "do_not_claim_real_4k8k_without_source_or_transcode": true,
+      "profile_level": "P1",
+      "visual_intensity": 0.3
+    },
+    "real_enhance": "OPT_IN_APE_REAL_ENHANCE",
+    "ffmpeg_profile": "sport_clean_1080p",
+    "metadata_flags": "stable_clean",
+    "upscaler": "zscale_lanczos_to_1080p_if_needed",
+    "hdr_policy": "no_fake_hdr_or_visual_tone_only",
+    "virtual_4k": "DISABLED",
+    "virtual_hdr": "VISUAL_TONE_ONLY_IF_EXPERIMENTAL",
+    "fps_policy": "source_or_match_display",
+    "memc_policy": "disable_on_judder",
+    "sharpness": "edge_aware_medium_safe",
+    "denoise": "light_deblock_mosquito_guard",
+    "color": "oled_vivid_safe_limited",
+    "floor_lock": {
+      "enabled": true,
+      "strength": "light_guarded",
+      "goal": "bloquear negros grises y blancos quemados sin aplastar detalle",
+      "black_floor_target": "clean_black_floor_with_shadow_detail",
+      "white_floor_target": "premium_1080p_white_no_clipping",
+      "gamma_bias": "tiny_2_2_to_2_3_scene_safe",
+      "chroma_floor": "light_oled_vivid_guarded",
+      "grass_floor": "sports_green_light_boost_no_neon",
+      "anti_washout": true,
+      "anti_crush": true,
+      "guarded_by": [
+        "histogram_luma_guard",
+        "clipping_guard",
+        "skin_tone_guard",
+        "logo_text_guard"
+      ]
+    },
+    "china_box_layer": {
+      "enabled": true,
+      "style": "China Box / Huawei-Hisilicon 4K-8K visual appearance pipeline",
+      "intensity": 0.3,
+      "low_resolution_goal": "tomar señales 480p/576p/720p/1080p y llevarlas a experiencia perceptual UHD cuando el dispositivo lo soporte",
+      "virtual_4k": {
+        "enabled": false,
+        "label": "no_public_virtual_4k; device_upscale_hint_only",
+        "public_resolution_policy": "do_not_advertise_4k_or_8k_unless_source_or_real_transcode_matches",
+        "presentation_target": "1080p_clean_or_tv_device_upscale_when_available",
+        "prefer_device_upscaler": [
+          "Huawei/Hisilicon AI-SR",
+          "Amlogic vendor scaler",
+          "Realtek/MStar TV scaler",
+          "Android TV hardware overlay scaler"
+        ],
+        "safe_source_floor": "720p_or_1080p_clean_input_preferred",
+        "scale_path_if_real_enhance": "zscale_lanczos_or_spline36_to_2160p_with_texture_guard_when_APE_REAL_ENHANCE=1",
+        "metadata_only_if_no_real_pixels": true,
+        "edge_policy": "edge_aware_medium_no_halo_no_ringing",
+        "texture_policy": "preserve_texture_reduce_compression_noise_only",
+        "sports_motion": "ball_player_logo_text_locked_no_geometry_warp"
+      },
+      "hdr_intent": {
+        "enabled": false,
+        "intent_strength": "public_blocked_private_sdr_oled_tone_only_if_experimental",
+        "private_tags": [
+          "#EXT-X-APE-FLOOR-LOCK:BLACK=CLEAN,WHITE=SAFE"
+        ],
+        "public_hls_video_range": "emit_PQ_or_HLG_only_when_stream_probe_and_display_capability_pass",
+        "hdr_probe_required": [
+          "stream_color_transfer_smpte2084_or_arib_std_b67",
+          "color_primaries_bt2020_if_hdr",
+          "mastering_display_or_content_light_when_available",
+          "decoder_hdr_capability",
+          "display_hdr_capability"
+        ],
+        "fallback_when_hdr_probe_fails": "sdr_oled_tone_hint_private_only",
+        "avoid_interpret_hdr_as_sdr": true,
+        "tone_map_if_hdr_unsupported": "prefer_mediacodec_or_opengl_hdr_to_sdr_when_available",
+        "sdr_to_hdr": "do_not_publicly_declare; no_vendor_hint_until_validated",
+        "dolby_vision_hdr10plus": "route_to_exoplayer_or_vendor_pipeline_only_if_supported_else_sdr_safe"
+      },
+      "codec_policy": {
+        "hevc_first": true,
+        "preference": "hevc_if_hw_decode_and_no_stall_else_h264_stable",
+        "av1_second_if_hw_supported": true,
+        "h264_fallback_when_hevc_unstable": true,
+        "max_quality_first": true,
+        "fallback": "best_stable_decodable_variant",
+        "qoe_gate": "visual_first_guarded_scaled_p1",
+        "qoe_source": "ape_proprietary_conviva_style_engine"
+      }
+    },
+    "hls_public_tag_policy": {
+      "VIDEO_RANGE_PQ": "BLOCK_UNLESS_HDR_PROBE_PASS",
+      "VIDEO_RANGE_HLG": "BLOCK_UNLESS_HDR_PROBE_PASS",
+      "CODECS_hdr_profile": "BLOCK_UNLESS_CODEC_STRING_PROVEN",
+      "RESOLUTION_3840x2160": "BLOCK_UNLESS_SOURCE_OR_REAL_TRANSCODE_2160P",
+      "RESOLUTION_7680x4320": "BLOCK_UNLESS_SOURCE_OR_REAL_TRANSCODE_4320P",
+      "ape_private_tags": "ALLOW_FOR_INTENT_AND_ROUTING_ONLY"
+    },
+    "device_vendor_hints": {
+      "huawei_hisilicon_style": {
+        "ai_super_resolution": "detect_and_hint_low_intensity_if_supported",
+        "color_engine": "vivid_oled_sports_reference_guarded",
+        "motion_estimation": "only_if_no_judder_no_soap_artifact"
+      },
+      "amlogic_china_box_style": {
+        "hdr_policy_preferred": "private_note_only_source_policy_requires_vendor_validation",
+        "known_vendor_paths": [
+          "/sys/module/am_vecm/parameters/hdr_policy"
+        ],
+        "hdr_policy_values": {
+          "0": "SINK",
+          "1": "SOURCE"
+        },
+        "persist_vendor_sys_hdr_state": {
+          "0": "OFF",
+          "1": "ON",
+          "2": "AUTO"
+        },
+        "sdr2hdr_hint": "blocked_by_default_private_note_only",
+        "refresh_rate_switching": "start_stop_only_if_player_reports_stable",
+        "ui_resolution_hint": "1080p_ui_allow_tv_upscale_for_clean_4k_output_when_user_device_prefers_tv_scaler"
+      },
+      "realtek_mstar_tv_style": {
+        "tv_scaler_first": true,
+        "noise_reduction": "low_or_off_for_sports_texture_and_motion",
+        "dynamic_contrast": "guarded_no_clipping"
+      },
+      "generic_android_tv_style": {
+        "hardware_overlay_scaler": "prefer_display_or_device_scaler_if_exposed_no_force",
+        "surface_pipeline": "prefer_hardware_decoder_and_display_scaler_before_software_upscale"
+      }
+    },
+    "player_routing": {
+      "hdr_real_content": "prefer_sdr_stable_variant_unless_hdr_probe_pass",
+      "subtitle_complexity_or_shader_needed": "mpv_possible_for_sdr_or_tonemap_path",
+      "unsupported_hdr_on_sdr": "request_sdr_variant_or_tonemap_do_not_force_hdr",
+      "force_highest_supported_bitrate": "avoid_force_highest_on_live; stability_first",
+      "variant_tie_breaker": "prefer_hdr_only_when_hdr_supported_and_all_other_constraints_equal"
+    },
+    "artifact_suppression": {
+      "strength": "light",
+      "deblock": "light_adaptive_macroblock_guard",
+      "deband": "low_priority_gradients_only",
+      "mosquito_noise": "light_around_logos_text_edges_guarded",
+      "ringing": "block",
+      "halo": "block",
+      "plastic_texture": "hard_block",
+      "face_player_ball_geometry": "locked",
+      "text_logo_integrity": "locked"
+    },
+    "motion_and_refresh": {
+      "match_display_modes": [
+        "23.976",
+        "24",
+        "25",
+        "29.97",
+        "30",
+        "50",
+        "59.94",
+        "60"
+      ],
+      "policy": "source_or_match_display_when_stable",
+      "switch_policy": "start_stop_only_if_player_reports_stable",
+      "memc": "disabled_on_any_judder",
+      "ll_hls_guard": "do_not_generate_invalid_ll_hls_parts_or_codecs",
+      "sports_motion_guard": "ball_player_logo_text_locked_no_geometry_warp"
+    },
+    "validation_guards": [
+      "json_parse_required",
+      "no_public_VIDEO_RANGE_PQ_without_probe",
+      "no_public_VIDEO_RANGE_HLG_without_probe",
+      "no_fake_codec_profile",
+      "no_invalid_ll_hls",
+      "no_force_hdr_on_sdr_display",
+      "no_public_4k8k_resolution_without_source_or_real_transcode",
+      "fallback_on_buffer_low",
+      "fallback_on_dropped_frames",
+      "fallback_on_judder",
+      "fallback_on_rebuffer",
+      "fallback_on_unknown_capability"
+    ],
+    "guard": [
+      "blur",
+      "blurring",
+      "low_resolution",
+      "pixelation",
+      "macroblocking",
+      "digital_noise",
+      "mosquito_noise",
+      "banding",
+      "posterization",
+      "clipping",
+      "halos",
+      "ringing",
+      "oversharpening",
+      "ghosting",
+      "judder",
+      "motion_blur",
+      "tearing",
+      "washed_colors",
+      "gray_blacks",
+      "burned_whites",
+      "dull_grass",
+      "deformed_logos",
+      "illegible_text",
+      "altered_faces",
+      "deformed_players",
+      "blurred_ball",
+      "plastic_texture",
+      "excessive_smoothing",
+      "geometry_warp",
+      "face_warp",
+      "text_hallucination"
+    ],
+    "codec_policy": {
+      "hevc_first": true,
+      "preference": "hevc_if_hw_decode_and_no_stall_else_h264_stable",
+      "max_quality_first": true,
+      "fallback": "best_stable_decodable_variant",
+      "qoe_gate": "guarded_fallback",
+      "qoe_source": "ape_proprietary_conviva_style_engine"
+    },
+    "fallback_rules": [
+      "qoe_gate_guarded_fallback",
+      "stall_proxy_high",
+      "VST_proxy_high",
+      "rebuffer_detected",
+      "zapping_detected",
+      "hevc_not_hardware_decodable",
+      "buffer_low",
+      "dropped_frames_high",
+      "judder_detected",
+      "device_capability_unknown",
+      "artifact_guard_triggered",
+      "hdr_probe_failed",
+      "display_hdr_capability_absent"
+    ],
+    "conviva_style_note": "Métricas QoE propietarias estilo Conviva; no usa software ni servicio Conviva."
+  },
+  "P2_PERCEPTUAL_4K_BALANCED": {
+    "description": "Equilibrio perceptual: parece más nítido y UHD sin mentir en modo seguro; permite hints de upscaler del device.",
+    "mode": "balanced",
+    "visual_priority": 2,
+    "china_box_inheritance": {
+      "inherits_from": "P6_CHINA_BOX_8K_ULTRA_AGGRESSIVE",
+      "level": "P2",
+      "intensity": 0.45,
+      "profile_semantics": "perceptual_4k_balanced_china_box_appearance",
+      "inheritance_strength": "moderate_floor_lock_virtual_4k_private_hint_light_hdr_intent",
+      "copied_technique_families": [
+        "floor_lock",
+        "virtual_4k_8k_appearance_intent",
+        "hdr_intent_private_metadata",
+        "hls_truth_guards",
+        "device_vendor_hints",
+        "artifact_suppression",
+        "motion_and_refresh_matching",
+        "hevc_first_codec_policy"
+      ],
+      "p6_activation_flag_inherited": false,
+      "truth_guard": "public manifests remain truthful; HDR/4K/8K public claims require real probe/source/transcode"
+    },
+    "source_truth_policy": {
+      "public_manifest_truth": "preserve_real_codec_resolution_range_until_probe_passes",
+      "private_appearance_intent": "allow_scaled_ape_metadata_by_profile_level",
+      "do_not_claim_real_hdr_without_probe": true,
+      "do_not_claim_real_4k8k_without_source_or_transcode": true,
+      "profile_level": "P2",
+      "visual_intensity": 0.45
+    },
+    "real_enhance": "OPT_IN_APE_REAL_ENHANCE",
+    "metadata_flags": "perceptual_uhd_balanced",
+    "upscaler": "device_sr_or_lanczos_if_transcoded",
+    "hdr_policy": "passthrough_if_proven_else_oled_tone_map_sdr",
+    "virtual_4k": "PERCEPTUAL_LABEL_ONLY",
+    "virtual_hdr": "TONE_MAPPING_HINT_ONLY",
+    "fps_policy": "match_display_no_fake_fps",
+    "memc_policy": "enable_only_if_no_judder",
+    "sharpness": "edge_aware_high_guarded",
+    "denoise": "adaptive_light",
+    "color": "oled_vivid_safe",
+    "floor_lock": {
+      "enabled": true,
+      "strength": "moderate_guarded",
+      "goal": "bloquear negros grises y blancos quemados sin aplastar detalle",
+      "black_floor_target": "oled_like_black_with_shadow_detail_guard",
+      "white_floor_target": "bright_white_no_clipping_sports_safe",
+      "gamma_bias": "adaptive_2_2_to_2_35_scene_safe",
+      "chroma_floor": "vivid_but_skin_logo_text_safe",
+      "grass_floor": "sports_green_moderate_boost_no_bleed",
+      "anti_washout": true,
+      "anti_crush": true,
+      "guarded_by": [
+        "histogram_luma_guard",
+        "clipping_guard",
+        "skin_tone_guard",
+        "logo_text_guard"
+      ]
+    },
+    "china_box_layer": {
+      "enabled": true,
+      "style": "China Box / Huawei-Hisilicon 4K-8K visual appearance pipeline",
+      "intensity": 0.45,
+      "low_resolution_goal": "tomar señales 480p/576p/720p/1080p y llevarlas a experiencia perceptual UHD cuando el dispositivo lo soporte",
+      "virtual_4k": {
+        "enabled": true,
+        "label": "virtual_4k_appearance_hint_private_only",
+        "public_resolution_policy": "do_not_advertise_4k_or_8k_unless_source_or_real_transcode_matches",
+        "presentation_target": "2160p_device_or_tv_upscale_when_available",
+        "prefer_device_upscaler": [
+          "Huawei/Hisilicon AI-SR",
+          "Amlogic vendor scaler",
+          "Realtek/MStar TV scaler",
+          "Android TV hardware overlay scaler"
+        ],
+        "safe_source_floor": "720p_clean_minimum_1080p_preferred",
+        "scale_path_if_real_enhance": "zscale_lanczos_or_spline36_to_2160p_with_texture_guard_when_APE_REAL_ENHANCE=1",
+        "metadata_only_if_no_real_pixels": true,
+        "edge_policy": "microcontrast_moderate_edge_aware_no_halo_no_ringing",
+        "texture_policy": "preserve_grain_and_field_texture_avoid_plastic",
+        "sports_motion": "ball_player_logo_text_locked_no_geometry_warp"
+      },
+      "hdr_intent": {
+        "enabled": true,
+        "intent_strength": "light_private_ape_intent",
+        "private_tags": [
+          "#EXT-X-APE-HDR-INTENT:MODE=OLED_SDR_LIGHT",
+          "#EXT-X-APE-VIRTUAL-4K:MODE=PRIVATE_APPEARANCE_HINT",
+          "#EXT-X-APE-FLOOR-LOCK:BLACK=OLED_LITE,WHITE=SPORTS_SAFE"
+        ],
+        "public_hls_video_range": "emit_PQ_or_HLG_only_when_stream_probe_and_display_capability_pass",
+        "hdr_probe_required": [
+          "stream_color_transfer_smpte2084_or_arib_std_b67",
+          "color_primaries_bt2020_if_hdr",
+          "mastering_display_or_content_light_when_available",
+          "decoder_hdr_capability",
+          "display_hdr_capability"
+        ],
+        "fallback_when_hdr_probe_fails": "sdr_oled_peak_hint_private_metadata_only",
+        "avoid_interpret_hdr_as_sdr": true,
+        "tone_map_if_hdr_unsupported": "prefer_mediacodec_or_opengl_hdr_to_sdr_when_available",
+        "sdr_to_hdr": "do_not_publicly_declare; vendor_private_hint_only_if_device_validated",
+        "dolby_vision_hdr10plus": "route_to_exoplayer_or_vendor_pipeline_only_if_supported_else_sdr_safe"
+      },
+      "codec_policy": {
+        "hevc_first": true,
+        "preference": "hevc_first_if_manifest_and_decoder_allow",
+        "av1_second_if_hw_supported": true,
+        "h264_fallback_when_hevc_unstable": true,
+        "max_quality_first": true,
+        "fallback": "best_stable_decodable_variant",
+        "qoe_gate": "visual_first_guarded_scaled_p2",
+        "qoe_source": "ape_proprietary_conviva_style_engine"
+      }
+    },
+    "hls_public_tag_policy": {
+      "VIDEO_RANGE_PQ": "BLOCK_UNLESS_HDR_PROBE_PASS",
+      "VIDEO_RANGE_HLG": "BLOCK_UNLESS_HDR_PROBE_PASS",
+      "CODECS_hdr_profile": "BLOCK_UNLESS_CODEC_STRING_PROVEN",
+      "RESOLUTION_3840x2160": "BLOCK_UNLESS_SOURCE_OR_REAL_TRANSCODE_2160P",
+      "RESOLUTION_7680x4320": "BLOCK_UNLESS_SOURCE_OR_REAL_TRANSCODE_4320P",
+      "ape_private_tags": "ALLOW_FOR_INTENT_AND_ROUTING_ONLY"
+    },
+    "device_vendor_hints": {
+      "huawei_hisilicon_style": {
+        "ai_super_resolution": "prefer_if_exposed_low_to_moderate_intensity",
+        "color_engine": "vivid_oled_sports_reference_guarded",
+        "motion_estimation": "only_if_no_judder_no_soap_artifact"
+      },
+      "amlogic_china_box_style": {
+        "hdr_policy_preferred": "SOURCE_policy_private_hint_only_when_vendor_validated",
+        "known_vendor_paths": [
+          "/sys/module/am_vecm/parameters/hdr_policy"
+        ],
+        "hdr_policy_values": {
+          "0": "SINK",
+          "1": "SOURCE"
+        },
+        "persist_vendor_sys_hdr_state": {
+          "0": "OFF",
+          "1": "ON",
+          "2": "AUTO"
+        },
+        "sdr2hdr_hint": "optional_private_hint_never_force_without_validation",
+        "refresh_rate_switching": "on_start_stop_if_device_stable",
+        "ui_resolution_hint": "1080p_ui_allow_tv_upscale_for_clean_4k_output_when_user_device_prefers_tv_scaler"
+      },
+      "realtek_mstar_tv_style": {
+        "tv_scaler_first": true,
+        "noise_reduction": "low_or_off_for_sports_texture_and_motion",
+        "dynamic_contrast": "guarded_no_clipping"
+      },
+      "generic_android_tv_style": {
+        "hardware_overlay_scaler": "prefer_device_sr_or_tv_scaler_if_supported",
+        "surface_pipeline": "prefer_hardware_decoder_and_display_scaler_before_software_upscale"
+      }
+    },
+    "player_routing": {
+      "hdr_real_content": "prefer_hdr_only_when_hdr_probe_and_display_capability_pass",
+      "subtitle_complexity_or_shader_needed": "mpv_possible_for_sdr_or_tonemap_path",
+      "unsupported_hdr_on_sdr": "request_sdr_variant_or_tonemap_do_not_force_hdr",
+      "force_highest_supported_bitrate": "balanced_visual_variant_when_buffer_ok",
+      "variant_tie_breaker": "prefer_hdr_only_when_hdr_supported_and_all_other_constraints_equal"
+    },
+    "artifact_suppression": {
+      "strength": "moderate",
+      "deblock": "adaptive_macroblock_guard_light_to_moderate",
+      "deband": "moderate_priority_sky_grass_gradients",
+      "mosquito_noise": "moderate_around_logos_text_edges_guarded",
+      "ringing": "hard_block",
+      "halo": "hard_block",
+      "plastic_texture": "hard_block",
+      "face_player_ball_geometry": "locked",
+      "text_logo_integrity": "locked"
+    },
+    "motion_and_refresh": {
+      "match_display_modes": [
+        "23.976",
+        "24",
+        "25",
+        "29.97",
+        "30",
+        "50",
+        "59.94",
+        "60"
+      ],
+      "policy": "match_display_no_fake_fps",
+      "switch_policy": "on_start_stop_if_device_stable",
+      "memc": "enable_only_if_no_judder_no_soap_effect",
+      "ll_hls_guard": "do_not_generate_invalid_ll_hls_parts_or_codecs",
+      "sports_motion_guard": "ball_player_logo_text_locked_no_geometry_warp"
+    },
+    "validation_guards": [
+      "json_parse_required",
+      "no_public_VIDEO_RANGE_PQ_without_probe",
+      "no_public_VIDEO_RANGE_HLG_without_probe",
+      "no_fake_codec_profile",
+      "no_invalid_ll_hls",
+      "no_force_hdr_on_sdr_display",
+      "no_public_4k8k_resolution_without_source_or_real_transcode",
+      "fallback_on_buffer_low",
+      "fallback_on_dropped_frames",
+      "fallback_on_judder",
+      "fallback_on_rebuffer",
+      "fallback_on_unknown_capability"
+    ],
+    "guard": [
+      "blur",
+      "blurring",
+      "low_resolution",
+      "pixelation",
+      "macroblocking",
+      "digital_noise",
+      "mosquito_noise",
+      "banding",
+      "posterization",
+      "clipping",
+      "halos",
+      "ringing",
+      "oversharpening",
+      "ghosting",
+      "judder",
+      "motion_blur",
+      "tearing",
+      "washed_colors",
+      "gray_blacks",
+      "burned_whites",
+      "dull_grass",
+      "deformed_logos",
+      "illegible_text",
+      "altered_faces",
+      "deformed_players",
+      "blurred_ball",
+      "plastic_texture",
+      "excessive_smoothing",
+      "geometry_warp",
+      "face_warp",
+      "text_hallucination"
+    ],
+    "codec_policy": {
+      "hevc_first": true,
+      "preference": "hevc_first_if_manifest_and_decoder_allow",
+      "max_quality_first": true,
+      "fallback": "best_stable_decodable_variant",
+      "qoe_gate": "balanced_guarded",
+      "qoe_source": "ape_proprietary_conviva_style_engine"
+    },
+    "fallback_rules": [
+      "qoe_gate_guarded_fallback",
+      "stall_proxy_high",
+      "VST_proxy_high",
+      "rebuffer_detected",
+      "zapping_detected",
+      "hevc_not_hardware_decodable",
+      "buffer_low",
+      "dropped_frames_high",
+      "judder_detected",
+      "device_capability_unknown",
+      "artifact_guard_triggered",
+      "hdr_probe_failed",
+      "display_hdr_capability_absent"
+    ],
+    "conviva_style_note": "Métricas QoE propietarias estilo Conviva; no usa software ni servicio Conviva."
+  },
+  "P3_CRYSTAL_UHD_SAFE": {
+    "description": "Máxima calidad segura cuando hay decodificación HW, buffer OK y capacidades probadas.",
+    "mode": "premium_safe",
+    "visual_priority": 3,
+    "china_box_inheritance": {
+      "inherits_from": "P6_CHINA_BOX_8K_ULTRA_AGGRESSIVE",
+      "level": "P3",
+      "intensity": 0.62,
+      "profile_semantics": "crystal_uhd_safe_aggressive_guarded_china_box",
+      "inheritance_strength": "aggressive_safe_floor_virtual_4k_moderate_hdr_artifact_suppression",
+      "copied_technique_families": [
+        "floor_lock",
+        "virtual_4k_8k_appearance_intent",
+        "hdr_intent_private_metadata",
+        "hls_truth_guards",
+        "device_vendor_hints",
+        "artifact_suppression",
+        "motion_and_refresh_matching",
+        "hevc_first_codec_policy"
+      ],
+      "p6_activation_flag_inherited": false,
+      "truth_guard": "public manifests remain truthful; HDR/4K/8K public claims require real probe/source/transcode"
+    },
+    "source_truth_policy": {
+      "public_manifest_truth": "preserve_real_codec_resolution_range_until_probe_passes",
+      "private_appearance_intent": "allow_scaled_ape_metadata_by_profile_level",
+      "do_not_claim_real_hdr_without_probe": true,
+      "do_not_claim_real_4k8k_without_source_or_transcode": true,
+      "profile_level": "P3",
+      "visual_intensity": 0.62
+    },
+    "real_enhance": "BYPASS_OR_OPT_IN",
+    "metadata_flags": "crystal_uhd_safe",
+    "upscaler": "device_sr_enable_if_available",
+    "hdr_policy": "hdr_if_proven_else_oled_sdr_peak_hint",
+    "virtual_4k": "ONLY_IF_SOURCE_OR_DEVICE_UPSCALE",
+    "virtual_hdr": "NO_STREAM_FAKE_HDR_SAFE_METADATA_ONLY",
+    "fps_policy": "match_display",
+    "memc_policy": "enable_if_supported_and_no_judder",
+    "sharpness": "edge_aware_high_no_halo",
+    "denoise": "texture_preserving",
+    "color": "oled_vivid_safe_plus_grass_boost",
+    "floor_lock": {
+      "enabled": true,
+      "strength": "aggressive_safe",
+      "goal": "bloquear negros grises y blancos quemados sin aplastar detalle",
+      "black_floor_target": "oled_reference_black_with_shadow_detail_guarded",
+      "white_floor_target": "bright_sports_white_no_clipping_guarded",
+      "gamma_bias": "adaptive_2_2_to_2_4_scene_safe",
+      "chroma_floor": "vivid_oled_guard_skin_logo_text_safe",
+      "grass_floor": "sports_green_vivid_no_neon_no_bleed",
+      "anti_washout": true,
+      "anti_crush": true,
+      "guarded_by": [
+        "histogram_luma_guard",
+        "clipping_guard",
+        "skin_tone_guard",
+        "logo_text_guard"
+      ]
+    },
+    "china_box_layer": {
+      "enabled": true,
+      "style": "China Box / Huawei-Hisilicon 4K-8K visual appearance pipeline",
+      "intensity": 0.62,
+      "low_resolution_goal": "tomar señales 480p/576p/720p/1080p y llevarlas a experiencia perceptual UHD cuando el dispositivo lo soporte",
+      "virtual_4k": {
+        "enabled": true,
+        "label": "virtual_4k_appearance_intent_guarded",
+        "public_resolution_policy": "do_not_advertise_4k_or_8k_unless_source_or_real_transcode_matches",
+        "presentation_target": "2160p_device_upscale_when_available_no_public_claim",
+        "prefer_device_upscaler": [
+          "Huawei/Hisilicon AI-SR",
+          "Amlogic vendor scaler",
+          "Realtek/MStar TV scaler",
+          "Android TV hardware overlay scaler"
+        ],
+        "safe_source_floor": "1080p_preferred_720p_allowed_if_clean",
+        "scale_path_if_real_enhance": "zscale_lanczos_or_spline36_to_2160p_with_texture_guard_when_APE_REAL_ENHANCE=1",
+        "metadata_only_if_no_real_pixels": true,
+        "edge_policy": "microcontrast_high_edge_aware_no_halo_no_ringing",
+        "texture_policy": "preserve_grain_and_field_texture_avoid_plastic",
+        "sports_motion": "ball_player_logo_text_locked_no_geometry_warp"
+      },
+      "hdr_intent": {
+        "enabled": true,
+        "intent_strength": "moderate_private_ape_intent",
+        "private_tags": [
+          "#EXT-X-APE-HDR-INTENT:MODE=OLED_UHD_MODERATE",
+          "#EXT-X-APE-VIRTUAL-4K:MODE=CRYSTAL_SAFE",
+          "#EXT-X-APE-FLOOR-LOCK:BLACK=OLED,WHITE=SPORTS_SAFE"
+        ],
+        "public_hls_video_range": "emit_PQ_or_HLG_only_when_stream_probe_and_display_capability_pass",
+        "hdr_probe_required": [
+          "stream_color_transfer_smpte2084_or_arib_std_b67",
+          "color_primaries_bt2020_if_hdr",
+          "mastering_display_or_content_light_when_available",
+          "decoder_hdr_capability",
+          "display_hdr_capability"
+        ],
+        "fallback_when_hdr_probe_fails": "sdr_oled_peak_hint_private_metadata_only",
+        "avoid_interpret_hdr_as_sdr": true,
+        "tone_map_if_hdr_unsupported": "prefer_mediacodec_or_opengl_hdr_to_sdr_when_available",
+        "sdr_to_hdr": "do_not_publicly_declare; vendor_private_sdr2hdr_hint_only_if_device_validated",
+        "dolby_vision_hdr10plus": "route_to_exoplayer_or_vendor_pipeline_only_if_supported_else_sdr_safe"
+      },
+      "codec_policy": {
+        "hevc_first": true,
+        "preference": "hevc_first_max_quality_when_hw_decode_stable",
+        "av1_second_if_hw_supported": true,
+        "h264_fallback_when_hevc_unstable": true,
+        "max_quality_first": true,
+        "fallback": "best_stable_decodable_variant",
+        "qoe_gate": "visual_first_guarded_scaled_p3",
+        "qoe_source": "ape_proprietary_conviva_style_engine"
+      }
+    },
+    "hls_public_tag_policy": {
+      "VIDEO_RANGE_PQ": "BLOCK_UNLESS_HDR_PROBE_PASS",
+      "VIDEO_RANGE_HLG": "BLOCK_UNLESS_HDR_PROBE_PASS",
+      "CODECS_hdr_profile": "BLOCK_UNLESS_CODEC_STRING_PROVEN",
+      "RESOLUTION_3840x2160": "BLOCK_UNLESS_SOURCE_OR_REAL_TRANSCODE_2160P",
+      "RESOLUTION_7680x4320": "BLOCK_UNLESS_SOURCE_OR_REAL_TRANSCODE_4320P",
+      "ape_private_tags": "ALLOW_FOR_INTENT_AND_ROUTING_ONLY"
+    },
+    "device_vendor_hints": {
+      "huawei_hisilicon_style": {
+        "ai_super_resolution": "prefer_if_exposed_moderate_intensity",
+        "color_engine": "vivid_oled_sports_reference_guarded",
+        "motion_estimation": "only_if_no_judder_no_soap_artifact"
+      },
+      "amlogic_china_box_style": {
+        "hdr_policy_preferred": "SOURCE_policy_private_hint_only_when_vendor_validated",
+        "known_vendor_paths": [
+          "/sys/module/am_vecm/parameters/hdr_policy"
+        ],
+        "hdr_policy_values": {
+          "0": "SINK",
+          "1": "SOURCE"
+        },
+        "persist_vendor_sys_hdr_state": {
+          "0": "OFF",
+          "1": "ON",
+          "2": "AUTO"
+        },
+        "sdr2hdr_hint": "optional_private_hint_never_force_without_root_vendor_validation",
+        "refresh_rate_switching": "on_start_stop_if_device_stable",
+        "ui_resolution_hint": "1080p_ui_allow_tv_upscale_for_clean_4k_output_when_user_device_prefers_tv_scaler"
+      },
+      "realtek_mstar_tv_style": {
+        "tv_scaler_first": true,
+        "noise_reduction": "low_or_off_for_sports_texture_and_motion",
+        "dynamic_contrast": "guarded_no_clipping"
+      },
+      "generic_android_tv_style": {
+        "hardware_overlay_scaler": "prefer_device_ai_sr_or_tv_scaler_if_supported",
+        "surface_pipeline": "prefer_hardware_decoder_and_display_scaler_before_software_upscale"
+      }
+    },
+    "player_routing": {
+      "hdr_real_content": "prefer_exoplayer_or_vendor_decoder_when_hdr_supported",
+      "subtitle_complexity_or_shader_needed": "mpv_possible_for_sdr_or_tonemap_path",
+      "unsupported_hdr_on_sdr": "request_sdr_variant_or_tonemap_do_not_force_hdr",
+      "force_highest_supported_bitrate": "high_visual_variant_when_buffer_ok_and_no_freeze_history",
+      "variant_tie_breaker": "prefer_hdr_only_when_hdr_supported_and_all_other_constraints_equal"
+    },
+    "artifact_suppression": {
+      "strength": "strong_safe",
+      "deblock": "adaptive_macroblock_guard",
+      "deband": "high_priority_sky_grass_gradients_guarded",
+      "mosquito_noise": "strong_around_logos_text_edges_guarded",
+      "ringing": "hard_block",
+      "halo": "hard_block",
+      "plastic_texture": "hard_block",
+      "face_player_ball_geometry": "locked",
+      "text_logo_integrity": "locked"
+    },
+    "motion_and_refresh": {
+      "match_display_modes": [
+        "23.976",
+        "24",
+        "25",
+        "29.97",
+        "30",
+        "50",
+        "59.94",
+        "60"
+      ],
+      "policy": "match_display_sport_motion_clean",
+      "switch_policy": "on_start_stop_if_device_stable",
+      "memc": "sport_clean_motion_only_if_no_judder_no_soap_effect",
+      "ll_hls_guard": "do_not_generate_invalid_ll_hls_parts_or_codecs",
+      "sports_motion_guard": "ball_player_logo_text_locked_no_geometry_warp"
+    },
+    "validation_guards": [
+      "json_parse_required",
+      "no_public_VIDEO_RANGE_PQ_without_probe",
+      "no_public_VIDEO_RANGE_HLG_without_probe",
+      "no_fake_codec_profile",
+      "no_invalid_ll_hls",
+      "no_force_hdr_on_sdr_display",
+      "no_public_4k8k_resolution_without_source_or_real_transcode",
+      "fallback_on_buffer_low",
+      "fallback_on_dropped_frames",
+      "fallback_on_judder",
+      "fallback_on_rebuffer",
+      "fallback_on_unknown_capability"
+    ],
+    "guard": [
+      "blur",
+      "blurring",
+      "low_resolution",
+      "pixelation",
+      "macroblocking",
+      "digital_noise",
+      "mosquito_noise",
+      "banding",
+      "posterization",
+      "clipping",
+      "halos",
+      "ringing",
+      "oversharpening",
+      "ghosting",
+      "judder",
+      "motion_blur",
+      "tearing",
+      "washed_colors",
+      "gray_blacks",
+      "burned_whites",
+      "dull_grass",
+      "deformed_logos",
+      "illegible_text",
+      "altered_faces",
+      "deformed_players",
+      "blurred_ball",
+      "plastic_texture",
+      "excessive_smoothing",
+      "geometry_warp",
+      "face_warp",
+      "text_hallucination"
+    ],
+    "codec_policy": {
+      "hevc_first": true,
+      "preference": "hevc_first_max_quality_when_hw_decode_stable",
+      "max_quality_first": true,
+      "fallback": "best_stable_decodable_variant",
+      "qoe_gate": "pass_required",
+      "qoe_source": "ape_proprietary_conviva_style_engine"
+    },
+    "fallback_rules": [
+      "qoe_gate_guarded_fallback",
+      "stall_proxy_high",
+      "VST_proxy_high",
+      "rebuffer_detected",
+      "zapping_detected",
+      "hevc_not_hardware_decodable",
+      "buffer_low",
+      "dropped_frames_high",
+      "judder_detected",
+      "device_capability_unknown",
+      "artifact_guard_triggered",
+      "hdr_probe_failed",
+      "display_hdr_capability_absent"
+    ],
+    "conviva_style_note": "Métricas QoE propietarias estilo Conviva; no usa software ni servicio Conviva."
+  },
+  "P4_CRYSTAL_UHD_EXTREME": {
+    "description": "Perfil extremo controlado para fuente/capacidades fuertes; prioriza apariencia premium sin aceptar blur ni artefactos.",
+    "mode": "extreme_guarded",
+    "visual_priority": 4,
+    "china_box_inheritance": {
+      "inherits_from": "P6_CHINA_BOX_8K_ULTRA_AGGRESSIVE",
+      "level": "P4",
+      "intensity": 0.8,
+      "profile_semantics": "crystal_uhd_extreme_strong_china_box",
+      "inheritance_strength": "strong_floor_virtual_4k8k_strong_hdr_motion_vendor_hints",
+      "copied_technique_families": [
+        "floor_lock",
+        "virtual_4k_8k_appearance_intent",
+        "hdr_intent_private_metadata",
+        "hls_truth_guards",
+        "device_vendor_hints",
+        "artifact_suppression",
+        "motion_and_refresh_matching",
+        "hevc_first_codec_policy"
+      ],
+      "p6_activation_flag_inherited": false,
+      "truth_guard": "public manifests remain truthful; HDR/4K/8K public claims require real probe/source/transcode"
+    },
+    "source_truth_policy": {
+      "public_manifest_truth": "preserve_real_codec_resolution_range_until_probe_passes",
+      "private_appearance_intent": "allow_scaled_ape_metadata_by_profile_level",
+      "do_not_claim_real_hdr_without_probe": true,
+      "do_not_claim_real_4k8k_without_source_or_transcode": true,
+      "profile_level": "P4",
+      "visual_intensity": 0.8
+    },
+    "real_enhance": "OPT_IN_RECOMMENDED",
+    "metadata_flags": "crystal_uhd_extreme",
+    "upscaler": "device_ai_sr_high_or_real_encode",
+    "hdr_policy": "hdr10_passthrough_if_proven_else_hdr_appearance_metadata",
+    "virtual_4k": "APPEARANCE_HINT_ALLOWED",
+    "virtual_hdr": "APPEARANCE_HINT_ALLOWED",
+    "fps_policy": "match_display_prefer_50_60_no_fps_lie",
+    "memc_policy": "sport_clean_motion_if_no_judder_else_off",
+    "sharpness": "microcontrast_high_guarded_no_halo",
+    "denoise": "adaptive_deblock_mosquito_texture_guard",
+    "color": "oled_uhd_vivid_grass_logo_text_guard",
+    "floor_lock": {
+      "enabled": true,
+      "strength": "strong",
+      "goal": "bloquear negros grises y blancos quemados sin aplastar detalle",
+      "black_floor_target": "oled_reference_black_with_shadow_detail",
+      "white_floor_target": "bright_sports_white_no_clipping",
+      "gamma_bias": "adaptive_2_2_to_2_4_scene_safe",
+      "chroma_floor": "vivid_oled_sports_reference_guarded",
+      "grass_floor": "sports_green_vivid_no_neon_no_bleed",
+      "anti_washout": true,
+      "anti_crush": true,
+      "guarded_by": [
+        "histogram_luma_guard",
+        "clipping_guard",
+        "skin_tone_guard",
+        "logo_text_guard"
+      ]
+    },
+    "china_box_layer": {
+      "enabled": true,
+      "style": "China Box / Huawei-Hisilicon 4K-8K visual appearance pipeline",
+      "intensity": 0.8,
+      "low_resolution_goal": "tomar señales 480p/576p/720p/1080p y llevarlas a experiencia perceptual UHD cuando el dispositivo lo soporte",
+      "virtual_4k": {
+        "enabled": true,
+        "label": "virtual_4k_8k_appearance_intent_guarded",
+        "public_resolution_policy": "do_not_advertise_4k_or_8k_unless_source_or_real_transcode_matches",
+        "presentation_target": "2160p_or_4320p_device_upscale_when_available_no_public_claim",
+        "prefer_device_upscaler": [
+          "Huawei/Hisilicon AI-SR",
+          "Amlogic vendor scaler",
+          "Realtek/MStar TV scaler",
+          "Android TV hardware overlay scaler"
+        ],
+        "safe_source_floor": "1080p_minimum_preferred_for_virtual_4k",
+        "scale_path_if_real_enhance": "zscale_lanczos_or_spline36_to_2160p_with_texture_guard_when_APE_REAL_ENHANCE=1",
+        "metadata_only_if_no_real_pixels": true,
+        "edge_policy": "microcontrast_very_high_edge_aware_no_halo_no_ringing",
+        "texture_policy": "preserve_grain_and_field_texture_avoid_plastic",
+        "sports_motion": "ball_player_logo_text_locked_no_geometry_warp"
+      },
+      "hdr_intent": {
+        "enabled": true,
+        "intent_strength": "strong_private_ape_intent",
+        "private_tags": [
+          "#EXT-X-APE-HDR-INTENT:MODE=OLED_UHD_STRONG",
+          "#EXT-X-APE-VIRTUAL-4K:MODE=CHINA_BOX_4K_8K_GUARDED",
+          "#EXT-X-APE-FLOOR-LOCK:BLACK=OLED,WHITE=SPORTS_SAFE"
+        ],
+        "public_hls_video_range": "emit_PQ_or_HLG_only_when_stream_probe_and_display_capability_pass",
+        "hdr_probe_required": [
+          "stream_color_transfer_smpte2084_or_arib_std_b67",
+          "color_primaries_bt2020_if_hdr",
+          "mastering_display_or_content_light_when_available",
+          "decoder_hdr_capability",
+          "display_hdr_capability"
+        ],
+        "fallback_when_hdr_probe_fails": "sdr_oled_peak_hint_private_metadata_only",
+        "avoid_interpret_hdr_as_sdr": true,
+        "tone_map_if_hdr_unsupported": "prefer_mediacodec_or_opengl_hdr_to_sdr_when_available",
+        "sdr_to_hdr": "do_not_publicly_declare; vendor_private_sdr2hdr_hint_only_if_device_validated",
+        "dolby_vision_hdr10plus": "route_to_exoplayer_or_vendor_pipeline_only_if_supported_else_sdr_safe"
+      },
+      "codec_policy": {
+        "hevc_first": true,
+        "preference": "hevc_first_best_visual_variant_4k_hdr_if_proven",
+        "av1_second_if_hw_supported": true,
+        "h264_fallback_when_hevc_unstable": true,
+        "max_quality_first": true,
+        "fallback": "best_stable_decodable_variant",
+        "qoe_gate": "visual_first_guarded_scaled_p4",
+        "qoe_source": "ape_proprietary_conviva_style_engine"
+      }
+    },
+    "hls_public_tag_policy": {
+      "VIDEO_RANGE_PQ": "BLOCK_UNLESS_HDR_PROBE_PASS",
+      "VIDEO_RANGE_HLG": "BLOCK_UNLESS_HDR_PROBE_PASS",
+      "CODECS_hdr_profile": "BLOCK_UNLESS_CODEC_STRING_PROVEN",
+      "RESOLUTION_3840x2160": "BLOCK_UNLESS_SOURCE_OR_REAL_TRANSCODE_2160P",
+      "RESOLUTION_7680x4320": "BLOCK_UNLESS_SOURCE_OR_REAL_TRANSCODE_4320P",
+      "ape_private_tags": "ALLOW_FOR_INTENT_AND_ROUTING_ONLY"
+    },
+    "device_vendor_hints": {
+      "huawei_hisilicon_style": {
+        "ai_super_resolution": "prefer_if_exposed_strong_intensity",
+        "color_engine": "vivid_oled_sports_reference_guarded",
+        "motion_estimation": "only_if_no_judder_no_soap_artifact"
+      },
+      "amlogic_china_box_style": {
+        "hdr_policy_preferred": "SOURCE_policy_private_hint_only_when_vendor_validated",
+        "known_vendor_paths": [
+          "/sys/module/am_vecm/parameters/hdr_policy"
+        ],
+        "hdr_policy_values": {
+          "0": "SINK",
+          "1": "SOURCE"
+        },
+        "persist_vendor_sys_hdr_state": {
+          "0": "OFF",
+          "1": "ON",
+          "2": "AUTO"
+        },
+        "sdr2hdr_hint": "optional_private_hint_never_force_without_root_vendor_validation",
+        "refresh_rate_switching": "on_start_stop_if_device_stable",
+        "ui_resolution_hint": "1080p_ui_allow_tv_upscale_for_clean_4k_output_when_user_device_prefers_tv_scaler"
+      },
+      "realtek_mstar_tv_style": {
+        "tv_scaler_first": true,
+        "noise_reduction": "low_or_off_for_sports_texture_and_motion",
+        "dynamic_contrast": "guarded_no_clipping"
+      },
+      "generic_android_tv_style": {
+        "hardware_overlay_scaler": "prefer_huawei_hisilicon_amlogic_realtek_mstar_scalers_if_exposed",
+        "surface_pipeline": "prefer_hardware_decoder_and_display_scaler_before_software_upscale"
+      }
+    },
+    "player_routing": {
+      "hdr_real_content": "prefer_exoplayer_or_vendor_decoder_when_hdr_supported",
+      "subtitle_complexity_or_shader_needed": "mpv_possible_for_sdr_or_tonemap_path",
+      "unsupported_hdr_on_sdr": "request_sdr_variant_or_tonemap_do_not_force_hdr",
+      "force_highest_supported_bitrate": "vod_only_or_stable_live_when_buffer_ok_and_no_freeze_history",
+      "variant_tie_breaker": "prefer_hdr_only_when_hdr_supported_and_all_other_constraints_equal"
+    },
+    "artifact_suppression": {
+      "strength": "very_strong_guarded",
+      "deblock": "adaptive_macroblock_guard_high",
+      "deband": "high_priority_sky_grass_gradients",
+      "mosquito_noise": "aggressive_around_logos_text_edges_guarded",
+      "ringing": "hard_block",
+      "halo": "hard_block",
+      "plastic_texture": "hard_block",
+      "face_player_ball_geometry": "locked",
+      "text_logo_integrity": "locked"
+    },
+    "motion_and_refresh": {
+      "match_display_modes": [
+        "23.976",
+        "24",
+        "25",
+        "29.97",
+        "30",
+        "50",
+        "59.94",
+        "60"
+      ],
+      "policy": "match_display_prefer_50_60_no_fps_lie",
+      "switch_policy": "on_start_stop_if_device_stable",
+      "memc": "sport_clean_motion_if_no_judder_else_off",
+      "ll_hls_guard": "do_not_generate_invalid_ll_hls_parts_or_codecs",
+      "sports_motion_guard": "ball_player_logo_text_locked_no_geometry_warp"
+    },
+    "validation_guards": [
+      "json_parse_required",
+      "no_public_VIDEO_RANGE_PQ_without_probe",
+      "no_public_VIDEO_RANGE_HLG_without_probe",
+      "no_fake_codec_profile",
+      "no_invalid_ll_hls",
+      "no_force_hdr_on_sdr_display",
+      "no_public_4k8k_resolution_without_source_or_real_transcode",
+      "fallback_on_buffer_low",
+      "fallback_on_dropped_frames",
+      "fallback_on_judder",
+      "fallback_on_rebuffer",
+      "fallback_on_unknown_capability"
+    ],
+    "guard": [
+      "blur",
+      "blurring",
+      "low_resolution",
+      "pixelation",
+      "macroblocking",
+      "digital_noise",
+      "mosquito_noise",
+      "banding",
+      "posterization",
+      "clipping",
+      "halos",
+      "ringing",
+      "oversharpening",
+      "ghosting",
+      "judder",
+      "motion_blur",
+      "tearing",
+      "washed_colors",
+      "gray_blacks",
+      "burned_whites",
+      "dull_grass",
+      "deformed_logos",
+      "illegible_text",
+      "altered_faces",
+      "deformed_players",
+      "blurred_ball",
+      "plastic_texture",
+      "excessive_smoothing",
+      "geometry_warp",
+      "face_warp",
+      "text_hallucination"
+    ],
+    "codec_policy": {
+      "hevc_first": true,
+      "preference": "hevc_first_best_visual_variant_4k_hdr_if_proven",
+      "max_quality_first": true,
+      "fallback": "best_stable_decodable_variant",
+      "qoe_gate": "pass_required_zero_dropped",
+      "qoe_source": "ape_proprietary_conviva_style_engine"
+    },
+    "fallback_rules": [
+      "qoe_gate_guarded_fallback",
+      "stall_proxy_high",
+      "VST_proxy_high",
+      "rebuffer_detected",
+      "zapping_detected",
+      "hevc_not_hardware_decodable",
+      "buffer_low",
+      "dropped_frames_high",
+      "judder_detected",
+      "device_capability_unknown",
+      "artifact_guard_triggered",
+      "hdr_probe_failed",
+      "display_hdr_capability_absent"
+    ],
+    "conviva_style_note": "Métricas QoE propietarias estilo Conviva; no usa software ni servicio Conviva."
+  },
+  "P5_OLED_UHD_VISUAL_FIRST_EXPERIMENTAL": {
+    "description": "Modo agresivo/experimental: busca imagen brutal OLED-UHD mediante metadatos, flags, directivas y realce perceptual, con fallback seguro si aparecen artefactos.",
+    "mode": "visual_first_experimental",
+    "activation": "APE_VISUAL_FIRST=1",
+    "visual_priority": 5,
+    "china_box_inheritance": {
+      "inherits_from": "P6_CHINA_BOX_8K_ULTRA_AGGRESSIVE",
+      "level": "P5",
+      "intensity": 0.92,
+      "profile_semantics": "visual_first_near_p6_china_box_without_p6_activation_flag",
+      "inheritance_strength": "near_p6_all_techniques_except_china_box_activation_flag",
+      "copied_technique_families": [
+        "floor_lock",
+        "virtual_4k_8k_appearance_intent",
+        "hdr_intent_private_metadata",
+        "hls_truth_guards",
+        "device_vendor_hints",
+        "artifact_suppression",
+        "motion_and_refresh_matching",
+        "hevc_first_codec_policy"
+      ],
+      "p6_activation_flag_inherited": false,
+      "truth_guard": "public manifests remain truthful; HDR/4K/8K public claims require real probe/source/transcode"
+    },
+    "source_truth_policy": {
+      "public_manifest_truth": "preserve_real_codec_resolution_range_until_probe_passes",
+      "private_appearance_intent": "allow_scaled_ape_metadata_by_profile_level",
+      "do_not_claim_real_hdr_without_probe": true,
+      "do_not_claim_real_4k8k_without_source_or_transcode": true,
+      "profile_level": "P5",
+      "visual_intensity": 0.92
+    },
+    "real_enhance": "OPTIONAL_APE_REAL_ENHANCE_FOR_REAL_PIXELS_OTHERWISE_METADATA_AND_DEVICE_HINTS",
+    "metadata_flags": "force_visual_appearance_oled_uhd",
+    "upscaler": "ai_sr_aggressive_guarded_or_device_best_effort",
+    "hdr_policy": "visual_hdr10_plus_appearance_if_supported_else_oled_sdr_peak_hint",
+    "virtual_4k": "ENABLED_AS_APPEARANCE_HINT_NOT_SOURCE_TRUTH",
+    "virtual_hdr": "ENABLED_AS_APPEARANCE_HINT_NOT_SOURCE_TRUTH",
+    "fps_policy": "match_display_sport_motion_clean_no_judder_no_blur",
+    "memc_policy": "aggressive_only_if_no_judder_and_no_dropped_else_disable",
+    "sharpness": "microcontrast_aggressive_edge_aware_no_halo_no_ringing",
+    "denoise": "adaptive_anti_macroblock_anti_mosquito_preserve_texture",
+    "color": "oled_uhd_vivid_black_white_grass_logo_text_guard",
+    "floor_lock": {
+      "enabled": true,
+      "strength": "near_aggressive",
+      "goal": "bloquear negros grises y blancos quemados sin aplastar detalle",
+      "black_floor_target": "oled_reference_black_with_shadow_detail",
+      "white_floor_target": "bright_sports_white_no_clipping",
+      "gamma_bias": "adaptive_2_2_to_2_4_scene_safe",
+      "chroma_floor": "vivid_but_skin_logo_text_safe",
+      "grass_floor": "sports_green_vivid_no_neon_no_bleed",
+      "anti_washout": true,
+      "anti_crush": true,
+      "guarded_by": [
+        "histogram_luma_guard",
+        "clipping_guard",
+        "skin_tone_guard",
+        "logo_text_guard"
+      ]
+    },
+    "china_box_layer": {
+      "enabled": true,
+      "style": "China Box / Huawei-Hisilicon 4K-8K visual appearance pipeline",
+      "intensity": 0.92,
+      "low_resolution_goal": "tomar señales 480p/576p/720p/1080p y llevarlas a experiencia perceptual UHD cuando el dispositivo lo soporte",
+      "virtual_4k": {
+        "enabled": true,
+        "label": "virtual_4k_8k_appearance_intent_near_p6",
+        "public_resolution_policy": "do_not_advertise_4k_or_8k_unless_source_or_real_transcode_matches",
+        "presentation_target": "2160p_or_4320p_device_upscale_when_available",
+        "prefer_device_upscaler": [
+          "Huawei/Hisilicon AI-SR",
+          "Amlogic vendor scaler",
+          "Realtek/MStar TV scaler",
+          "Android TV hardware overlay scaler"
+        ],
+        "safe_source_floor": "1080p_minimum_preferred_for_virtual_4k",
+        "scale_path_if_real_enhance": "zscale_lanczos_or_spline36_to_2160p_with_texture_guard_when_APE_REAL_ENHANCE=1",
+        "metadata_only_if_no_real_pixels": true,
+        "edge_policy": "microcontrast_aggressive_edge_aware_no_halo_no_ringing",
+        "texture_policy": "preserve_grain_and_field_texture_avoid_plastic",
+        "sports_motion": "ball_player_logo_text_locked_no_geometry_warp"
+      },
+      "hdr_intent": {
+        "enabled": true,
+        "intent_strength": "near_maximum_private_ape_intent",
+        "private_tags": [
+          "#EXT-X-APE-HDR-INTENT:MODE=OLED_UHD_AGGRESSIVE_NEAR_P6",
+          "#EXT-X-APE-VIRTUAL-4K:MODE=CHINA_BOX_8K_NEAR_P6",
+          "#EXT-X-APE-FLOOR-LOCK:BLACK=OLED,WHITE=SPORTS_SAFE"
+        ],
+        "public_hls_video_range": "emit_PQ_or_HLG_only_when_stream_probe_and_display_capability_pass",
+        "hdr_probe_required": [
+          "stream_color_transfer_smpte2084_or_arib_std_b67",
+          "color_primaries_bt2020_if_hdr",
+          "mastering_display_or_content_light_when_available",
+          "decoder_hdr_capability",
+          "display_hdr_capability"
+        ],
+        "fallback_when_hdr_probe_fails": "sdr_oled_peak_hint_private_metadata_only",
+        "avoid_interpret_hdr_as_sdr": true,
+        "tone_map_if_hdr_unsupported": "prefer_mediacodec_or_opengl_hdr_to_sdr_when_available",
+        "sdr_to_hdr": "do_not_publicly_declare; vendor_private_sdr2hdr_hint_only_if_device_validated",
+        "dolby_vision_hdr10plus": "route_to_exoplayer_or_vendor_pipeline_only_if_supported_else_sdr_safe"
+      },
+      "codec_policy": {
+        "hevc_first": true,
+        "preference": "hevc_first_best_visual_variant_aggressive_with_qoe_fallback",
+        "av1_second_if_hw_supported": true,
+        "h264_fallback_when_hevc_unstable": true,
+        "max_quality_first": true,
+        "fallback": "best_stable_decodable_variant",
+        "qoe_gate": "visual_first_guarded_scaled_p5",
+        "qoe_source": "ape_proprietary_conviva_style_engine"
+      }
+    },
+    "hls_public_tag_policy": {
+      "VIDEO_RANGE_PQ": "BLOCK_UNLESS_HDR_PROBE_PASS",
+      "VIDEO_RANGE_HLG": "BLOCK_UNLESS_HDR_PROBE_PASS",
+      "CODECS_hdr_profile": "BLOCK_UNLESS_CODEC_STRING_PROVEN",
+      "RESOLUTION_3840x2160": "BLOCK_UNLESS_SOURCE_OR_REAL_TRANSCODE_2160P",
+      "RESOLUTION_7680x4320": "BLOCK_UNLESS_SOURCE_OR_REAL_TRANSCODE_4320P",
+      "ape_private_tags": "ALLOW_FOR_INTENT_AND_ROUTING_ONLY"
+    },
+    "device_vendor_hints": {
+      "huawei_hisilicon_style": {
+        "ai_super_resolution": "prefer_if_exposed_near_aggressive_intensity",
+        "color_engine": "vivid_oled_sports_reference_guarded",
+        "motion_estimation": "only_if_no_judder_no_soap_artifact"
+      },
+      "amlogic_china_box_style": {
+        "hdr_policy_preferred": "SOURCE_policy_private_hint_only_when_vendor_validated",
+        "known_vendor_paths": [
+          "/sys/module/am_vecm/parameters/hdr_policy"
+        ],
+        "hdr_policy_values": {
+          "0": "SINK",
+          "1": "SOURCE"
+        },
+        "persist_vendor_sys_hdr_state": {
+          "0": "OFF",
+          "1": "ON",
+          "2": "AUTO"
+        },
+        "sdr2hdr_hint": "optional_private_hint_never_force_without_root_vendor_validation",
+        "refresh_rate_switching": "on_start_stop_if_device_stable",
+        "ui_resolution_hint": "1080p_ui_allow_tv_upscale_for_clean_4k_output_when_user_device_prefers_tv_scaler"
+      },
+      "realtek_mstar_tv_style": {
+        "tv_scaler_first": true,
+        "noise_reduction": "low_or_off_for_sports_texture_and_motion",
+        "dynamic_contrast": "guarded_no_clipping"
+      },
+      "generic_android_tv_style": {
+        "hardware_overlay_scaler": "prefer_huawei_hisilicon_amlogic_realtek_mstar_android_overlay_scalers",
+        "surface_pipeline": "prefer_hardware_decoder_and_display_scaler_before_software_upscale"
+      }
+    },
+    "player_routing": {
+      "hdr_real_content": "prefer_exoplayer_or_vendor_decoder_when_hdr_supported",
+      "subtitle_complexity_or_shader_needed": "mpv_possible_for_sdr_or_tonemap_path",
+      "unsupported_hdr_on_sdr": "request_sdr_variant_or_tonemap_do_not_force_hdr",
+      "force_highest_supported_bitrate": "vod_only_non_live_hls_when_buffer_ok_and_no_freeze_history",
+      "variant_tie_breaker": "prefer_hdr_only_when_hdr_supported_and_all_other_constraints_equal"
+    },
+    "artifact_suppression": {
+      "strength": "near_p6_aggressive_guarded",
+      "deblock": "adaptive_macroblock_guard_aggressive",
+      "deband": "high_priority_sky_grass_gradients",
+      "mosquito_noise": "aggressive_around_logos_text_edges_guarded",
+      "ringing": "hard_block",
+      "halo": "hard_block",
+      "plastic_texture": "hard_block",
+      "face_player_ball_geometry": "locked",
+      "text_logo_integrity": "locked"
+    },
+    "motion_and_refresh": {
+      "match_display_modes": [
+        "23.976",
+        "24",
+        "25",
+        "29.97",
+        "30",
+        "50",
+        "59.94",
+        "60"
+      ],
+      "policy": "match_display_sport_motion_clean_no_judder_no_blur",
+      "switch_policy": "on_start_stop_if_device_stable",
+      "memc": "aggressive_only_if_no_judder_and_no_dropped_else_disable",
+      "ll_hls_guard": "do_not_generate_invalid_ll_hls_parts_or_codecs",
+      "sports_motion_guard": "ball_player_logo_text_locked_no_geometry_warp"
+    },
+    "validation_guards": [
+      "json_parse_required",
+      "no_public_VIDEO_RANGE_PQ_without_probe",
+      "no_public_VIDEO_RANGE_HLG_without_probe",
+      "no_fake_codec_profile",
+      "no_invalid_ll_hls",
+      "no_force_hdr_on_sdr_display",
+      "no_public_4k8k_resolution_without_source_or_real_transcode",
+      "fallback_on_buffer_low",
+      "fallback_on_dropped_frames",
+      "fallback_on_judder",
+      "fallback_on_rebuffer",
+      "fallback_on_unknown_capability"
+    ],
+    "lcevc_enhancement": "enabled_as_metadata_or_sidecar_if_supported",
+    "hdr10plus_dynamic": "scene_hint_metadata_if_supported",
+    "quantum_pixel_deep_color": "deep_color_appearance_hint_if_supported",
+    "ai_super_resolution": "aggressive_guarded",
+    "cmaf_packaging": "prefer_best_visual_variant_keep_continuity",
+    "player_enrichment": "inject_visual_directives_best_effort",
+    "fallback_rules": [
+      "buffer_low",
+      "dropped_frames_high",
+      "judder_detected",
+      "device_capability_unknown",
+      "artifact_guard_triggered",
+      "qoe_gate_guarded_fallback",
+      "stall_proxy_high",
+      "VST_proxy_high",
+      "rebuffer_detected",
+      "zapping_detected",
+      "hevc_not_hardware_decodable",
+      "hdr_probe_failed",
+      "display_hdr_capability_absent"
+    ],
+    "guard": [
+      "blur",
+      "blurring",
+      "low_resolution",
+      "pixelation",
+      "macroblocking",
+      "digital_noise",
+      "mosquito_noise",
+      "banding",
+      "posterization",
+      "clipping",
+      "halos",
+      "ringing",
+      "oversharpening",
+      "ghosting",
+      "judder",
+      "motion_blur",
+      "tearing",
+      "washed_colors",
+      "gray_blacks",
+      "burned_whites",
+      "dull_grass",
+      "deformed_logos",
+      "illegible_text",
+      "altered_faces",
+      "deformed_players",
+      "blurred_ball",
+      "plastic_texture",
+      "excessive_smoothing",
+      "geometry_warp",
+      "face_warp",
+      "text_hallucination"
+    ],
+    "codec_policy": {
+      "hevc_first": true,
+      "preference": "hevc_first_best_visual_variant_aggressive_with_qoe_fallback",
+      "max_quality_first": true,
+      "fallback": "best_stable_decodable_variant",
+      "qoe_gate": "visual_first_guarded",
+      "qoe_source": "ape_proprietary_conviva_style_engine"
+    },
+    "conviva_style_note": "Métricas QoE propietarias estilo Conviva; no usa software ni servicio Conviva."
+  },
+  "P6_CHINA_BOX_8K_ULTRA_AGGRESSIVE": {
+    "description": "Perfil ultra-agresivo inspirado en pipelines Huawei/Hisilicon y TV boxes Android chinos 4K/8K: maximiza apariencia OLED/UHD mediante floor_lock, virtual_4k/8k y hdr_intent, usando metadata privada APE y gates estrictos para no declarar HDR público sin probe real.",
+    "mode": "visual_first_china_box_aggressive_guarded",
+    "activation": "APE_VISUAL_FIRST=1 + APE_CHINA_BOX_AGGRESSIVE=1",
+    "visual_priority": 6,
+    "real_enhance": "OPTIONAL_APE_REAL_ENHANCE_FOR_REAL_PIXELS_OTHERWISE_METADATA_DEVICE_VENDOR_HINTS",
+    "source_truth_policy": {
+      "public_manifest_truth": "preserve_real_codec_resolution_range_until_probe_passes",
+      "private_appearance_intent": "allow_ultra_aggressive_ape_metadata",
+      "do_not_claim_real_hdr_without_probe": true,
+      "do_not_claim_real_4k8k_without_source_or_transcode": true
+    },
+    "floor_lock": {
+      "enabled": true,
+      "goal": "bloquear negros grises y blancos quemados sin aplastar detalle",
+      "black_floor_target": "oled_reference_black_with_shadow_detail",
+      "white_floor_target": "bright_sports_white_no_clipping",
+      "gamma_bias": "adaptive_2_2_to_2_4_scene_safe",
+      "chroma_floor": "vivid_but_skin_logo_text_safe",
+      "grass_floor": "sports_green_vivid_no_neon_no_bleed",
+      "anti_washout": true,
+      "anti_crush": true,
+      "guarded_by": [
+        "histogram_luma_guard",
+        "clipping_guard",
+        "skin_tone_guard",
+        "logo_text_guard"
+      ]
+    },
+    "virtual_4k": {
+      "enabled": true,
+      "label": "virtual_4k_8k_appearance_intent",
+      "public_resolution_policy": "do_not_advertise_4k_or_8k_unless_source_or_real_transcode_matches",
+      "presentation_target": "2160p_or_4320p_device_upscale_when_available",
+      "prefer_device_upscaler": [
+        "Huawei/Hisilicon AI-SR",
+        "Amlogic vendor scaler",
+        "Realtek/MStar TV scaler",
+        "Android TV hardware overlay scaler"
+      ],
+      "safe_source_floor": "1080p_minimum_preferred_for_virtual_4k",
+      "scale_path_if_real_enhance": "zscale_lanczos_or_spline36_to_2160p_with_texture_guard",
+      "metadata_only_if_no_real_pixels": true,
+      "edge_policy": "microcontrast_aggressive_edge_aware_no_halo_no_ringing",
+      "texture_policy": "preserve_grain_and_field_texture_avoid_plastic",
+      "sports_motion": "ball_player_logo_text_locked_no_geometry_warp"
+    },
+    "hdr_intent": {
+      "enabled": true,
+      "intent_strength": "maximum_private_ape_intent",
+      "private_tags": [
+        "#EXT-X-APE-HDR-INTENT:MODE=OLED_UHD_AGGRESSIVE",
+        "#EXT-X-APE-VIRTUAL-4K:MODE=CHINA_BOX_8K",
+        "#EXT-X-APE-FLOOR-LOCK:BLACK=OLED,WHITE=SPORTS_SAFE"
+      ],
+      "public_hls_video_range": "emit_PQ_or_HLG_only_when_stream_probe_and_display_capability_pass",
+      "hdr_probe_required": [
+        "stream_color_transfer_smpte2084_or_arib_std_b67",
+        "color_primaries_bt2020_if_hdr",
+        "mastering_display_or_content_light_when_available",
+        "decoder_hdr_capability",
+        "display_hdr_capability"
+      ],
+      "fallback_when_hdr_probe_fails": "sdr_oled_peak_hint_private_metadata_only",
+      "avoid_interpret_hdr_as_sdr": true,
+      "tone_map_if_hdr_unsupported": "prefer_mediacodec_or_opengl_hdr_to_sdr_when_available",
+      "sdr_to_hdr": "do_not_publicly_declare; vendor_private_sdr2hdr_hint_only_if_device_validated",
+      "dolby_vision_hdr10plus": "route_to_exoplayer_or_vendor_pipeline_only_if_supported_else_sdr_safe"
+    },
+    "hls_public_tag_policy": {
+      "VIDEO_RANGE_PQ": "BLOCK_UNLESS_HDR_PROBE_PASS",
+      "VIDEO_RANGE_HLG": "BLOCK_UNLESS_HDR_PROBE_PASS",
+      "CODECS_hdr_profile": "BLOCK_UNLESS_CODEC_STRING_PROVEN",
+      "RESOLUTION_3840x2160": "BLOCK_UNLESS_SOURCE_OR_REAL_TRANSCODE_2160P",
+      "RESOLUTION_7680x4320": "BLOCK_UNLESS_SOURCE_OR_REAL_TRANSCODE_4320P",
+      "ape_private_tags": "ALLOW_FOR_INTENT_AND_ROUTING"
+    },
+    "device_vendor_hints": {
+      "huawei_hisilicon_style": {
+        "ai_super_resolution": "prefer_if_exposed_by_device_or_player",
+        "color_engine": "vivid_oled_sports_reference_guarded",
+        "motion_estimation": "only_if_no_judder_no_soap_artifact"
+      },
+      "amlogic_china_box_style": {
+        "hdr_policy_preferred": "SOURCE_policy_when_vendor_validated",
+        "known_vendor_paths": [
+          "/sys/module/am_vecm/parameters/hdr_policy"
+        ],
+        "sdr2hdr_hint": "optional_private_hint_never_force_without_root_vendor_validation",
+        "refresh_rate_switching": "start_stop_match_content",
+        "ui_resolution_hint": "1080p_ui_allow_tv_upscale_for_clean_4k_output"
+      },
+      "realtek_mstar_tv_style": {
+        "tv_scaler_first": true,
+        "noise_reduction": "low_or_off_for_sports_texture",
+        "dynamic_contrast": "guarded_no_clipping"
+      }
+    },
+    "player_routing": {
+      "hdr_real_content": "prefer_exoplayer_or_vendor_decoder_when_hdr_supported",
+      "subtitle_complexity_or_shader_needed": "mpv_possible_for_sdr_or_tonemap_path",
+      "unsupported_hdr_on_sdr": "request_sdr_variant_or_tonemap_do_not_force_hdr",
+      "force_highest_supported_bitrate": "vod_only_non_live_hls_when_buffer_ok_and_no_freeze_history",
+      "variant_tie_breaker": "prefer_hdr_only_when_hdr_supported_and_all_other_constraints_equal"
+    },
+    "artifact_suppression": {
+      "deblock": "adaptive_macroblock_guard",
+      "deband": "high_priority_sky_grass_gradients",
+      "mosquito_noise": "aggressive_around_logos_text_edges_guarded",
+      "ringing": "hard_block",
+      "halo": "hard_block",
+      "plastic_texture": "hard_block",
+      "face_player_ball_geometry": "locked"
+    },
+    "motion_and_refresh": {
+      "match_display_modes": [
+        "23.976",
+        "24",
+        "25",
+        "29.97",
+        "30",
+        "50",
+        "59.94",
+        "60"
+      ],
+      "switch_policy": "on_start_stop_if_device_stable",
+      "memc": "sport_clean_motion_only_if_no_judder_and_no_soap_effect",
+      "ll_hls_guard": "do_not_generate_invalid_ll_hls_parts_or_codecs"
+    },
+    "codec_policy": {
+      "hevc_first": true,
+      "preference": "hevc_hardware_decode_first_best_visual_variant_when_qoe_passes",
+      "av1_second_if_hw_supported": true,
+      "h264_fallback_when_hevc_unstable": true,
+      "max_quality_first": true,
+      "fallback": "best_stable_decodable_variant",
+      "qoe_gate": "visual_first_guarded_strict_no_freeze",
+      "qoe_source": "ape_proprietary_conviva_style_engine"
+    },
+    "validation_guards": [
+      "json_parse_required",
+      "no_public_VIDEO_RANGE_PQ_without_probe",
+      "no_public_VIDEO_RANGE_HLG_without_probe",
+      "no_fake_codec_profile",
+      "no_invalid_ll_hls",
+      "no_force_hdr_on_sdr_display",
+      "fallback_on_buffer_low",
+      "fallback_on_dropped_frames",
+      "fallback_on_judder",
+      "fallback_on_rebuffer",
+      "fallback_on_unknown_capability"
+    ],
+    "fallback_rules": [
+      "buffer_low",
+      "dropped_frames_high",
+      "judder_detected",
+      "device_capability_unknown",
+      "artifact_guard_triggered",
+      "qoe_gate_guarded_fallback",
+      "stall_proxy_high",
+      "VST_proxy_high",
+      "rebuffer_detected",
+      "zapping_detected",
+      "hevc_not_hardware_decodable",
+      "hdr_probe_failed",
+      "display_hdr_capability_absent"
+    ],
+    "guard": [
+      "blur",
+      "blurring",
+      "low_resolution",
+      "pixelation",
+      "macroblocking",
+      "digital_noise",
+      "mosquito_noise",
+      "banding",
+      "posterization",
+      "clipping",
+      "halos",
+      "ringing",
+      "oversharpening",
+      "ghosting",
+      "judder",
+      "motion_blur",
+      "tearing",
+      "washed_colors",
+      "gray_blacks",
+      "burned_whites",
+      "dull_grass",
+      "deformed_logos",
+      "illegible_text",
+      "altered_faces",
+      "deformed_players",
+      "blurred_ball",
+      "plastic_texture",
+      "excessive_smoothing",
+      "geometry_warp",
+      "face_warp",
+      "text_hallucination"
+    ],
+    "evidence_notes": [
+      "Android/Media3 soporta HDR-to-SDR tone mapping en rutas concretas; interpretar HDR como SDR puede verse lavado.",
+      "Amlogic/CoreELEC/LineageOS exponen políticas vendor como hdr_policy y sdr2hdr, pero dependen de kernel/root/device.",
+      "LibreELEC/Kodi recomiendan whitelisting de modos y refresh matching; en muchos casos conviene UI 1080p y escalado por TV.",
+      "ExoPlayer/Jellyfin muestran que la selección HDR requiere guardas; forceHighestSupportedBitrate es workaround acotado, no regla global."
+    ],
+    "conviva_style_note": "Métricas QoE propietarias estilo Conviva; no usa software ni servicio Conviva."
+  },
+  "TRUTHFUL_SOURCE_SAFE": {
+    "alias_of": "P0_TRUTHFUL_SOURCE_SAFE"
+  },
+  "STABLE_1080P_PREMIUM": {
+    "alias_of": "P1_STABLE_1080P_PREMIUM"
+  },
+  "PERCEPTUAL_4K_BALANCED": {
+    "alias_of": "P2_PERCEPTUAL_4K_BALANCED"
+  },
+  "CRYSTAL_UHD_SAFE": {
+    "alias_of": "P3_CRYSTAL_UHD_SAFE"
+  },
+  "CRYSTAL_UHD_EXTREME": {
+    "alias_of": "P4_CRYSTAL_UHD_EXTREME"
+  },
+  "OLED_UHD_VISUAL_FIRST_EXPERIMENTAL": {
+    "alias_of": "P5_OLED_UHD_VISUAL_FIRST_EXPERIMENTAL"
+  },
+  "CHINA_BOX_8K_ULTRA_AGGRESSIVE": {
+    "alias_of": "P6_CHINA_BOX_8K_ULTRA_AGGRESSIVE"
+  },
+  "HUAWEI_BOX_VISUAL_AGGRESSIVE": {
+    "alias_of": "P6_CHINA_BOX_8K_ULTRA_AGGRESSIVE"
+  },
+  "_doc_aggressive_forced_4k": "FAKE 4K HDR FORZADO EN LOS 6 NIVELES P0-P5 (mandato HFRC 2026-05-21: '4K forzado para todos los niveles, cada uno se configura distinto'). TODOS: virtual_4k+virtual_4k_hdr+codec_cascade ACTIVE => cada canal (con master playlist) via shield sale 3840x2160 + hvc1.2.4 (T1 cascada) + HDR=PQ. La DIFERENCIA por nivel = floor_bps (cuanto se exige), upscaler (hint neural), y floor_lock (solo ACTIVE en 4K reales P0/P1; BYPASS en P2-P5 para no matar canales HD/SD de bajo bitrate; el body_filter siempre conserva la variante top como fallback). RIESGO ACEPTADO: PQ sobre SDR puede dar pantallazo negro en players que honran VIDEO-RANGE; rollback = virtual_4k_hdr=BYPASS en el nivel afectado. virtual_4k solo actua en MASTER playlists.",
   "P0_SHOWROOM_FLASH_4K": {
     "upscaler": "Anime4K",
     "hdr_intent": "HDR_FORCE",

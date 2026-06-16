@@ -7,7 +7,15 @@ Wants=network-online.target
 
 [Service]
 Type=simple
-ExecStart=/opt/netshield/vps/prisma/adb/ape-wake-worker.sh run
+# [2026-06-08 Council fix S7] ExecStart parametrizable. El ExecStart hardcoded a
+# /opt/netshield/... NO coincidía con el target del deploy (/var/www/...) → el daemon
+# nunca arrancaba (wake-on-playback silenciosamente roto). Ahora: el deploy puede escribir
+# /etc/default/ape-wake-worker con APE_WAKE_WORKER_SH=<ruta real>; default = ubicación
+# canónica prisma (alineada con ORCH_SH del propio .sh). ExecStartPre falla LOUD si falta.
+EnvironmentFile=-/etc/default/ape-wake-worker
+Environment=APE_WAKE_WORKER_SH=/var/www/html/prisma/adb/ape-wake-worker.sh
+ExecStartPre=/bin/sh -c 'test -x "$APE_WAKE_WORKER_SH" || { echo "ape-wake-worker.sh no encontrado/ejecutable en $APE_WAKE_WORKER_SH"; exit 1; }'
+ExecStart=/bin/sh -c 'exec "$APE_WAKE_WORKER_SH" run'
 Restart=always
 RestartSec=2
 Nice=5

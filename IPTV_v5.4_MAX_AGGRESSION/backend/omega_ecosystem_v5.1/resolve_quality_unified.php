@@ -52,9 +52,9 @@ define('RQ_MAX_MANIFEST_BYTES',  2097152);
 const RQ_PROFILES = [
     'P0_ULTRA_SPORTS_8K' => ['label'=>'Ultra Sports 8K HDR 120fps','fps'=>120,'resolution'=>'7680x4320','hdr'=>'HDR10+','codec_chain'=>[
         ['codec'=>'hvc1.2.4.H153.B0','format'=>'hevc','bw'=>80000000,'res'=>'7680x4320','fps'=>120,'label'=>'HEVC Main10 8K 120fps HDR10+'],
-        ['codec'=>'hvc1.1.6.H150.B0','format'=>'hevc','bw'=>50000000,'res'=>'3840x2160','fps'=>120,'label'=>'HEVC Main 4K 120fps HDR10+'],
+        ['codec'=>'hvc1.2.4.H150.B0','format'=>'hevc','bw'=>50000000,'res'=>'3840x2160','fps'=>120,'label'=>'HEVC Main 4K 120fps HDR10+'],
         ['codec'=>'av01.0.16M.10',   'format'=>'av1', 'bw'=>40000000,'res'=>'3840x2160','fps'=>60, 'label'=>'AV1 4K 60fps HDR10+'],
-        ['codec'=>'hvc1.1.6.H120.B0','format'=>'hevc','bw'=>25000000,'res'=>'1920x1080','fps'=>60, 'label'=>'HEVC Main 1080p 60fps'],
+        ['codec'=>'hvc1.2.4.H120.B0','format'=>'hevc','bw'=>25000000,'res'=>'1920x1080','fps'=>60, 'label'=>'HEVC Main 1080p 60fps'],
         ['codec'=>'avc1.640028',     'format'=>'h264','bw'=>15000000,'res'=>'1920x1080','fps'=>60, 'label'=>'H264 High 1080p 60fps'],
         ['codec'=>'avc1.4d401f',     'format'=>'h264','bw'=>8000000, 'res'=>'1280x720', 'fps'=>30, 'label'=>'H264 Main 720p 30fps'],
         ['codec'=>'avc1.42E01E',     'format'=>'h264','bw'=>3000000, 'res'=>'1280x720', 'fps'=>25, 'label'=>'H264 Baseline 720p 25fps'],
@@ -63,7 +63,7 @@ const RQ_PROFILES = [
         ['codec'=>'dvh1.08.07',      'format'=>'hevc','bw'=>60000000,'res'=>'3840x2160','fps'=>24,'label'=>'HEVC DV 4K 24fps'],
         ['codec'=>'hvc1.2.4.H150.B0','format'=>'hevc','bw'=>50000000,'res'=>'3840x2160','fps'=>24,'label'=>'HEVC Main10 4K 24fps HDR10+'],
         ['codec'=>'av01.0.12M.10',   'format'=>'av1', 'bw'=>35000000,'res'=>'3840x2160','fps'=>24,'label'=>'AV1 4K 24fps HDR10+'],
-        ['codec'=>'hvc1.1.6.H120.B0','format'=>'hevc','bw'=>20000000,'res'=>'1920x1080','fps'=>24,'label'=>'HEVC Main 1080p 24fps'],
+        ['codec'=>'hvc1.2.4.H120.B0','format'=>'hevc','bw'=>20000000,'res'=>'1920x1080','fps'=>24,'label'=>'HEVC Main 1080p 24fps'],
         ['codec'=>'avc1.640028',     'format'=>'h264','bw'=>12000000,'res'=>'1920x1080','fps'=>24,'label'=>'H264 High 1080p 24fps'],
         ['codec'=>'avc1.4d401f',     'format'=>'h264','bw'=>6000000, 'res'=>'1280x720', 'fps'=>24,'label'=>'H264 Main 720p 24fps'],
         ['codec'=>'avc1.42E01E',     'format'=>'h264','bw'=>3000000, 'res'=>'1280x720', 'fps'=>24,'label'=>'H264 Baseline 720p 24fps'],
@@ -71,7 +71,7 @@ const RQ_PROFILES = [
     'P2_NEWS_4K_HDR' => ['label'=>'News 4K HDR 60fps','fps'=>60,'resolution'=>'3840x2160','hdr'=>'HDR10','codec_chain'=>[
         ['codec'=>'hvc1.2.4.H150.B0','format'=>'hevc','bw'=>25000000,'res'=>'3840x2160','fps'=>60,'label'=>'HEVC Main10 4K 60fps HDR10'],
         ['codec'=>'av01.0.12M.10',   'format'=>'av1', 'bw'=>20000000,'res'=>'3840x2160','fps'=>60,'label'=>'AV1 4K 60fps HDR10'],
-        ['codec'=>'hvc1.1.6.H120.B0','format'=>'hevc','bw'=>15000000,'res'=>'1920x1080','fps'=>60,'label'=>'HEVC Main 1080p 60fps'],
+        ['codec'=>'hvc1.2.4.H120.B0','format'=>'hevc','bw'=>15000000,'res'=>'1920x1080','fps'=>60,'label'=>'HEVC Main 1080p 60fps'],
         ['codec'=>'avc1.640028',     'format'=>'h264','bw'=>10000000,'res'=>'1920x1080','fps'=>60,'label'=>'H264 High 1080p 60fps'],
         ['codec'=>'avc1.4d401f',     'format'=>'h264','bw'=>5000000, 'res'=>'1280x720', 'fps'=>30,'label'=>'H264 Main 720p 30fps'],
         ['codec'=>'avc1.42E01E',     'format'=>'h264','bw'=>3000000, 'res'=>'1280x720', 'fps'=>25,'label'=>'H264 Baseline 720p 25fps'],
@@ -80,7 +80,7 @@ const RQ_PROFILES = [
     'P3_DEFAULT_4K' => ['label'=>'Default 4K HDR 60fps','fps'=>60,'resolution'=>'3840x2160','hdr'=>'HDR10','codec_chain'=>[
         ['codec'=>'hvc1.2.4.H150.B0','format'=>'hevc','bw'=>50000000,'res'=>'3840x2160','fps'=>60,'label'=>'HEVC Main10 4K 60fps HDR10'],
         ['codec'=>'av01.0.12M.10',   'format'=>'av1', 'bw'=>35000000,'res'=>'3840x2160','fps'=>60,'label'=>'AV1 4K 60fps HDR10'],
-        ['codec'=>'hvc1.1.6.H120.B0','format'=>'hevc','bw'=>20000000,'res'=>'1920x1080','fps'=>60,'label'=>'HEVC Main 1080p 60fps'],
+        ['codec'=>'hvc1.2.4.H120.B0','format'=>'hevc','bw'=>20000000,'res'=>'1920x1080','fps'=>60,'label'=>'HEVC Main 1080p 60fps'],
         ['codec'=>'avc1.640028',     'format'=>'h264','bw'=>12000000,'res'=>'1920x1080','fps'=>60,'label'=>'H264 High 1080p 60fps'],
         ['codec'=>'avc1.4d401f',     'format'=>'h264','bw'=>6000000, 'res'=>'1280x720', 'fps'=>30,'label'=>'H264 Main 720p 30fps'],
         ['codec'=>'avc1.42E01E',     'format'=>'h264','bw'=>3000000, 'res'=>'1280x720', 'fps'=>25,'label'=>'H264 Baseline 720p 25fps'],
@@ -88,7 +88,7 @@ const RQ_PROFILES = [
     ]],
     // Aliases de compatibilidad con listas legacy
     'SPORTS'  => ['label'=>'Sports (alias P0)','fps'=>60,'resolution'=>'1920x1080','hdr'=>'HDR10+','codec_chain'=>[
-        ['codec'=>'hvc1.1.6.H120.B0','format'=>'hevc','bw'=>25000000,'res'=>'1920x1080','fps'=>60,'label'=>'HEVC 1080p'],
+        ['codec'=>'hvc1.2.4.H120.B0','format'=>'hevc','bw'=>25000000,'res'=>'1920x1080','fps'=>60,'label'=>'HEVC 1080p'],
         ['codec'=>'avc1.640028','format'=>'h264','bw'=>15000000,'res'=>'1920x1080','fps'=>60,'label'=>'H264 1080p'],
         ['codec'=>'avc1.4d401f','format'=>'h264','bw'=>8000000,'res'=>'1280x720','fps'=>30,'label'=>'H264 720p'],
         ['codec'=>'avc1.42E01E','format'=>'h264','bw'=>3000000,'res'=>'1280x720','fps'=>25,'label'=>'H264 Baseline'],
@@ -100,13 +100,13 @@ const RQ_PROFILES = [
         ['codec'=>'avc1.42E01E','format'=>'h264','bw'=>3000000,'res'=>'1280x720','fps'=>24,'label'=>'H264 Baseline'],
     ]],
     'NEWS'    => ['label'=>'News (alias P2)','fps'=>30,'resolution'=>'1920x1080','hdr'=>'HDR10','codec_chain'=>[
-        ['codec'=>'hvc1.1.6.H120.B0','format'=>'hevc','bw'=>15000000,'res'=>'1920x1080','fps'=>30,'label'=>'HEVC 1080p'],
+        ['codec'=>'hvc1.2.4.H120.B0','format'=>'hevc','bw'=>15000000,'res'=>'1920x1080','fps'=>30,'label'=>'HEVC 1080p'],
         ['codec'=>'avc1.640028','format'=>'h264','bw'=>8000000,'res'=>'1920x1080','fps'=>30,'label'=>'H264 1080p'],
         ['codec'=>'avc1.4d401f','format'=>'h264','bw'=>4000000,'res'=>'1280x720','fps'=>30,'label'=>'H264 720p'],
         ['codec'=>'avc1.42E01E','format'=>'h264','bw'=>2000000,'res'=>'854x480','fps'=>25,'label'=>'H264 480p'],
     ]],
     'DEFAULT' => ['label'=>'Default (alias P3)','fps'=>30,'resolution'=>'1920x1080','hdr'=>'HDR10','codec_chain'=>[
-        ['codec'=>'hvc1.1.6.H120.B0','format'=>'hevc','bw'=>20000000,'res'=>'1920x1080','fps'=>30,'label'=>'HEVC 1080p'],
+        ['codec'=>'hvc1.2.4.H120.B0','format'=>'hevc','bw'=>20000000,'res'=>'1920x1080','fps'=>30,'label'=>'HEVC 1080p'],
         ['codec'=>'avc1.640028','format'=>'h264','bw'=>10000000,'res'=>'1920x1080','fps'=>30,'label'=>'H264 1080p'],
         ['codec'=>'avc1.4d401f','format'=>'h264','bw'=>5000000,'res'=>'1280x720','fps'=>30,'label'=>'H264 720p'],
         ['codec'=>'avc1.42E01E','format'=>'h264','bw'=>2000000,'res'=>'854x480','fps'=>25,'label'=>'H264 480p'],

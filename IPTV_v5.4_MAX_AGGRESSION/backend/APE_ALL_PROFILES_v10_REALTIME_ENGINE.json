@@ -704,7 +704,7 @@
         "X-ISP-TCP-KeepAlive": "true",
         "X-Stream-Type": "hls-live",
         "X-Stream-Format": "fmp4,ts",
-        "X-Stream-Codecs": "avc1.640028,mp4a.40.2",
+        "X-Stream-Codecs": "hvc1.2.4.L123.B0,mp4a.40.2",
         "X-Stream-Resolution": "1920x1080",
         "X-Stream-FPS": "60",
         "X-Stream-Bitrate": "20000000"
@@ -882,7 +882,7 @@
         "X-ISP-TCP-KeepAlive": "true",
         "X-Stream-Type": "hls-live",
         "X-Stream-Format": "fmp4,ts",
-        "X-Stream-Codecs": "avc1.4d401f,mp4a.40.2",
+        "X-Stream-Codecs": "hvc1.2.4.L93.B0,mp4a.40.2",
         "X-Stream-Resolution": "1280x720",
         "X-Stream-FPS": "30",
         "X-Stream-Bitrate": "10000000"
@@ -1107,35 +1107,35 @@
       "sources": ["RFC 8216 §4.3.4.2", "RFC 6381", "ExoPlayer Issue #4835/#9519", "Kodi inputstream.adaptive Wiki", "VideoLAN avcodec module"]
     },
     "P0": {
-      "video":        "dvh1.05.06,dvh1.08.06,hvc1.2.4.L183.B0,hvc1.1.6.L183.B0,av01.0.13M.10.0.110.09.16.09.0,avc1.640033,avc1.640028",
+      "video":        "dvh1.05.06,dvh1.08.06,hvc1.2.4.L183.B0,hvc1.2.4.L183.B0,av01.0.13M.10.0.110.09.16.09.0,avc1.640033,avc1.640028",
       "audio":        "ec-3,ac-3,mp4a.40.2,mp4a.40.5",
       "hdr":          "dolby-vision,hdr10+,hdr10,hlg,sdr",
       "player_pref":  "hvc1,hev1,dvh1,dvhe,h265,av1,avc1,h264",
       "video_family": "DV>HEVC-MAIN10>HEVC-MAIN>AV1>H264-HIGH>H264-MAIN"
     },
     "P1": {
-      "video":        "hvc1.2.4.L153.B0,hev1.2.4.L153.B0,hvc1.1.6.L150.B0,av01.0.12M.10.0.110.09.16.09.0,avc1.640033,avc1.640028",
+      "video":        "hvc1.2.4.L153.B0,hev1.2.4.L153.B0,hvc1.2.4.L150.B0,av01.0.12M.10.0.110.09.16.09.0,avc1.640033,avc1.640028",
       "audio":        "ec-3,ac-3,mp4a.40.2,mp4a.40.5",
       "hdr":          "hdr10+,hdr10,hlg,sdr",
       "player_pref":  "hvc1,hev1,h265,av1,avc1,h264",
       "video_family": "HEVC-MAIN10>HEVC-MAIN>AV1>H264-HIGH>H264-MAIN"
     },
     "P2": {
-      "video":        "hvc1.2.4.L153.B0,hev1.2.4.L153.B0,hvc1.1.6.L150.B0,avc1.640033,avc1.640028",
+      "video":        "hvc1.2.4.L153.B0,hev1.2.4.L153.B0,hvc1.2.4.L150.B0,avc1.640033,avc1.640028",
       "audio":        "ec-3,ac-3,mp4a.40.2,mp4a.40.5",
       "hdr":          "hdr10,hlg,sdr",
       "player_pref":  "hvc1,hev1,h265,avc1,h264",
       "video_family": "HEVC-MAIN10>HEVC-MAIN>H264-HIGH>H264-MAIN"
     },
     "P3": {
-      "video":        "hvc1.1.6.L120.B0,hev1.1.6.L120.B0,hvc1.2.4.L120.B0,avc1.640028,avc1.4D401F",
+      "video":        "hvc1.2.4.L120.B0,hev1.2.4.L120.B0,hvc1.2.4.L120.B0,avc1.640028,avc1.4D401F",
       "audio":        "mp4a.40.2,mp4a.40.5,mp4a.40.29",
       "hdr":          "hlg,sdr",
       "player_pref":  "hvc1,hev1,h265,avc1,h264",
       "video_family": "HEVC-MAIN>HEVC-MAIN10>H264-HIGH>H264-MAIN"
     },
     "P4": {
-      "video":        "hvc1.1.6.L93.B0,hev1.1.6.L93.B0,avc1.640020,avc1.4D401F,avc1.42E01F",
+      "video":        "hvc1.2.4.L93.B0,hev1.2.4.L93.B0,avc1.640020,avc1.4D401F,avc1.42E01F",
       "audio":        "mp4a.40.2,mp4a.40.5,mp4a.40.29",
       "hdr":          "sdr",
       "player_pref":  "hvc1,hev1,h265,avc1,h264",

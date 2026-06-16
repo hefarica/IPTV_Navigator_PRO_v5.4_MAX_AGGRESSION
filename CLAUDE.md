@@ -16,6 +16,38 @@ debe pausar y leerlo antes de responder a cualquier instrucción del usuario.
 
 ---
 
+## ⚡ MANIFIESTO APE VPS HEVC-UHD CRYSTAL INTEGRATOR — DOCTRINA OBLIGATORIA
+
+**Junto al Prompt Maestro**, este repositorio tiene un segundo manifiesto de lectura obligatoria: la skill
+**`ape-vps-hevc-crystal-integrator`** (médula espinal, instalada e invocable; copia versionada en
+[`docs/manifestos/ape-vps-hevc-crystal-integrator/`](docs/manifestos/ape-vps-hevc-crystal-integrator/)).
+Está **inyectada en `/iptv-freezeless-visual-master-council` PHASE 0** y la leen los 13 PhD como doctrina
+antes de juzgar. Fue **revisada por el council** (veredicto **WARN · 0 BLOCK · preserva el flujo**; 7
+investigaciones web + 13 PhD; ver su `COUNCIL_REVIEW.md`) y respaldada con normas primarias en su
+`references/web_authority.md`.
+
+**Los 6 truth-guards (no negociables):**
+
+| Área | Verdad técnica | Mentira prohibida |
+|---|---|---|
+| M3U8 installer | `#EXT-X-APE-INSTALLER` es metadata/puntero (RFC 8216 §6.3.1 ignora tags desconocidos) | "la playlist instala/ejecuta código en el player" |
+| Wake-on-playback | El playback dispara wake por observación GET del manifest o beacon, encolado no-bloqueante | "el tag HLS despierta/ejecuta en el device" |
+| ADB | Requiere host con ADB instalado, habilitado y **autorizado** (RSA por host) | "ADB se habilita remoto desde la playlist/VPS" |
+| Rol visual VPS | El VPS selecciona variantes/metadata/perfiles/QoE | "el VPS mejora píxeles en un player remoto sin engine real" |
+| Player⇄daemon | El daemon corre en el device/host autorizado; el player manda beacons | "el player aloja un daemon desde metadata HLS" |
+| HEVC-first (GOLDEN RULE) | `hvc1.*` solo en STREAM-INF `CODECS=`; `hev1.*` solo en KODIPROP/EXTVLCOPT | cruzarlos, o declarar un codec/nivel que el decoder no soporta |
+
+**Ley Cardinal 1 — Nivel↔Resolución:** `L153`=4K@60 (techo); declararlo en 8K@120 = el **freeze 2026-06-08**.
+Nunca un nivel por debajo de la resolución. **Sin fake HDR/CMAF/SUPPLEMENTAL-CODECS · 9 headers tóxicos
+EXTHTTP prohibidos · SHIELDED verbatim + NO-STRIP de los ~945 headers funcionales · autopista
+(log-phase no-bloqueante).** Mejoras de código bienvenidas SOLO si preservan el flujo
+LAB→JSON→lista→VPS→ADB→player. Detalle: la skill `truth_guards.md` + `references/web_authority.md`.
+
+> **Caveat obligatorio:** los anchors de playlist son metadata; la instalación y el wake reales requieren
+> ruta VPS desplegada + host/dispositivo ADB autorizado o runtime compatible.
+
+---
+
 ## DOCTRINA CARDINAL: MAX IMAGE FIRST
 
 ```

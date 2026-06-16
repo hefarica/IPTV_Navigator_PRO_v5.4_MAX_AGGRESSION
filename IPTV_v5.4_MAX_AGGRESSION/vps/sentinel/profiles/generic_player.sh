@@ -14,7 +14,7 @@ _gp_self="${BASH_SOURCE[0]:-$0}"
 _GP_DIR="$(cd "$(dirname "${_gp_self}")" 2>/dev/null && pwd)"
 _GP_LIB="$(cd "${_GP_DIR}/../lib" 2>/dev/null && pwd)"
 
-: "${APE_ENH_VERSION:=2026.06-universal-1}"
+: "${APE_ENH_VERSION:=2026.06-chinabox-1}"   # bump 2026-06-09: re-aplica al añadir China Box vendor hints
 
 # ── Idempotent helpers (get → compare → put SOLO si difiere) ───────────────
 put_if_diff() {  # <namespace> <key> <value>   (settings put)
@@ -65,6 +65,31 @@ apply_amlogic() {
     broadcast_if_available "com.droidlogic.tv.action.AIPQ_ENABLE --ei enable 1"
     broadcast_if_available "com.droidlogic.tv.action.AISR_ENABLE --ei enable 1"
     broadcast_if_available "com.droidlogic.tv.action.MEMC_ENABLE --ei enable 1"
+    apply_china_box_hints
+}
+
+# ── China Box vendor hints (SSOT: visual_profiles.json P6.device_vendor_hints) ──
+# Best-effort, idempotente, SDR-SAFE. Documentado en los 2 informes China Box/Huawei.
+# REGLA truth-guard: NUNCA forzar HDR en display SDR. hdr_policy=1 (SOURCE) NO fuerza HDR —
+# entrega SDR desde fuente SDR y HDR solo desde fuente HDR. sdr2hdr NO se fuerza (hint privado,
+# never force sin root/validación vendor). El sysfs requiere root → su -c best-effort, nunca falla.
+apply_china_box_hints() {
+    case "${SOC_FAMILY:-generic}" in
+        amlogic)
+            # amlogic_china_box_style.hdr_policy_preferred = SOURCE_policy_when_vendor_validated
+            safe_adb_shell "echo 1 > /sys/module/am_vecm/parameters/hdr_policy 2>/dev/null"
+            safe_adb_shell "su -c 'echo 1 > /sys/module/am_vecm/parameters/hdr_policy' 2>/dev/null"
+            # refresh_rate_switching = start_stop_match_content (ya cubierto por match_content_frame_rate=1)
+            ;;
+        realtek)
+            # realtek_mstar_tv_style: tv_scaler_first + noise_reduction low (sports texture) — best-effort
+            setprop_if_diff persist.vendor.rtk.nr.level 1
+            ;;
+    esac
+    # huawei_hisilicon/mediatek/qcom: AI-SR/MEMC se exponen por device; los knobs vendor varían y
+    # NO se inventan props — el lift real en players cerrados (p.ej. Fire OS) viene de la LISTA
+    # (KODIPROP/EXTVLCOPT/cascada HEVC) + el procesado del TV. Ver truth-guard del informe.
+    setprop_if_diff persist.ape.chinabox.hint applied
 }
 
 # ── MediaTek (best-effort) ─────────────────────────────────────────────────
