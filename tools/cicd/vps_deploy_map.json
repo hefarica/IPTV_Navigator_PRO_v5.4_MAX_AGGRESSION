@@ -185,6 +185,15 @@
       "post": "none",
       "enabled": true,
       "note": "F3 — URL-2 SSE stream (presets cada N seg, bounded, X-Accel-Buffering:no, autopista-safe)"
+    },
+    {
+      "id": "lua-device-state-writer",
+      "src": "IPTV_v5.4_MAX_AGGRESSION/vps/nginx/lua/ape_device_state_writer.lua",
+      "dest": "/etc/nginx/lua/ape_device_state_writer.lua",
+      "type": "lua",
+      "post": "none",
+      "enabled": true,
+      "note": "A1 device_state writer (device->canal por IP real); wired by A2"
     }
   ],
   "needs_review": [
