@@ -51,23 +51,34 @@ $start = time(); $seq = 0; $lastHash = '';
 while ((time() - $start) < $dur) {
     if (connection_aborted()) break;
 
-    // device-keyed: refrescar streamInfo/ch del estado por-device en cada tick (puede cambiar de canal)
-    $si = $streamInfo; $chId = $ch;
+    // device-keyed: refrescar del estado REAL por-IP (escrito por log_by_lua de /omega/open) en cada tick
+    $si = $streamInfo; $chId = $ch; $ctTick = $ct; $chSrc = 'key';
     if ($device !== '') {
-        $st = ape_device_state($device);
-        foreach (array('hdr_type','width','height','codec') as $k) {
-            if ((empty($si[$k]) || $si[$k]==='') && !empty($st[$k])) $si[$k] = $st[$k];
+        $ip = isset($_SERVER['REMOTE_ADDR']) ? $_SERVER['REMOTE_ADDR'] : '';
+        $st = ape_device_state_by_ip($ip);                 // path nuevo por IP real (A2)
+        if (empty($st)) $st = ape_device_state($device);   // fallback legado (device-id), normalmente vacio
+        if (!empty($st)) {
+            if ($chId === '' && !empty($st['channel_id'])) { $chId = preg_replace('/[^0-9A-Za-z_.\-]/', '', $st['channel_id']); $chSrc = 'ip'; }
+            if (empty($si['codec'])  && !empty($st['codec_hint']))      $si['codec']  = preg_replace('/[^0-9A-Za-z+._-]/', '', $st['codec_hint']);
+            if (empty($si['height']) && !empty($st['resolution_hint'])) $si['height'] = (int)$st['resolution_hint'];
+            $ctMapped = ape_ct_from_content_type(isset($st['content_type']) ? $st['content_type'] : '');
+            if ($ctMapped !== '' && $ctTick === 'default') $ctTick = $ctMapped;
+            // legado: device_state(device-id) usaba claves hdr_type/width/height/codec/ch
+            foreach (array('hdr_type','width','height','codec') as $k) {
+                if ((empty($si[$k]) || $si[$k]==='') && !empty($st[$k])) $si[$k] = $st[$k];
+            }
+            if ($chId === '' && !empty($st['ch'])) $chId = preg_replace('/[^0-9A-Za-z_.\-]/', '', $st['ch']);
         }
-        if ($chId === '' && !empty($st['ch'])) $chId = preg_replace('/[^0-9A-Za-z_.\-]/', '', $st['ch']);
     }
     if ($chId === '') $chId = $keyLabel;
 
-    $mesh = ape_mesh_presets($chId, $si, $health, $ct);
+    $mesh = ape_mesh_presets($chId, $si, $health, $ctTick);
     $device_settings = ape_mesh_device_settings($si);
     $payload = json_encode(array(
         'seq'             => $seq,
         'mode'            => $rec ? 'matricula' : 'device',
         'channel'         => $chId,
+        'channel_source'  => $chSrc,
         'engines'         => $mesh['engines'],
         'preset_count'    => count($mesh['presets']),
         'presets'         => $mesh['presets'],

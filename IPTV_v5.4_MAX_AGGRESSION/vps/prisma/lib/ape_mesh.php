@@ -73,6 +73,30 @@ if (!function_exists('ape_mesh_presets')) {
         return array();
     }
 
+    /** Estado por-IP escrito por el log_by_lua de /omega/open (A1/A2): /dev/shm/ape_devstate_<ip>.json.
+     *  Misma sanitizacion que la lua: [^0-9A-Fa-f:.] -> '_'. Devuelve [] si no existe o esta stale. */
+    function ape_device_state_by_ip($ip, $maxAgeSec = 300) {
+        $ip = (string)$ip;
+        if ($ip === '') return array();
+        $safe = preg_replace('/[^0-9A-Fa-f:.]/', '_', $ip);
+        $f = '/dev/shm/ape_devstate_' . $safe . '.json';
+        if (!is_file($f)) return array();
+        $j = json_decode(@file_get_contents($f), true);
+        if (!is_array($j)) return array();
+        if ($maxAgeSec > 0 && isset($j['ts']) && (time() - (int)$j['ts']) > $maxAgeSec) return array();
+        return $j;
+    }
+
+    /** Mapea content_type libre (del /omega/open) al ct del mesh: sports|cinema|news|default. '' si vacio. */
+    function ape_ct_from_content_type($ctRaw) {
+        $c = strtolower((string)$ctRaw);
+        if ($c === '') return '';
+        if (strpos($c,'sport')!==false || strpos($c,'deporte')!==false) return 'sports';
+        if (strpos($c,'cine')!==false || strpos($c,'movie')!==false || strpos($c,'cinema')!==false || strpos($c,'pelicula')!==false) return 'cinema';
+        if (strpos($c,'news')!==false || strpos($c,'noticia')!==false) return 'news';
+        return 'default';
+    }
+
     /** Construye streamInfo+health desde los params GET (URL-2). */
     function ape_mesh_inputs_from_get() {
         $streamInfo = array(
