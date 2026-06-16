@@ -69,7 +69,7 @@ SSH_OPTS="-o ConnectTimeout=12 -o BatchMode=yes"
 git_changed() { (cd "$REPO_ROOT" && { git diff --name-only HEAD; git ls-files --others --exclude-standard; } 2>/dev/null | sort -u); }
 CHANGED_LIST="$(git_changed || true)"
 
-mapfile -t ROWS < <("$PY" - "$MANIFEST" "$MODE" "$ONLY_IDS" <<'PYEOF'
+mapfile -t ROWS < <("$PY" - "$MANIFEST" "$MODE" "$ONLY_IDS" <<'PYEOF' | tr -d '\r'
 import json,sys
 mani=json.load(open(sys.argv[1])); mode=sys.argv[2]; only=set(filter(None,sys.argv[3].split(',')))
 nt=mani.get('no_touch',[])
