@@ -6,7 +6,8 @@ local ip = ngx.var.remote_addr
 if not ip or ip == "" then return end
 local ch = args.channel_id; if not ch then return end
 local safe = ip:gsub("[^0-9A-Fa-f:.]", "_")
-local path = "/dev/shm/ape_device_state/" .. safe .. ".json"
+-- Archivo PLANO en /dev/shm (tmpfs 0777 → www-data escribe directo; sin subdir, sin bootstrap, reboot-safe).
+local path = "/dev/shm/ape_devstate_" .. safe .. ".json"
 local tmp  = path .. ".tmp" .. ngx.worker.pid()
 local rec = string.format(
   '{"channel_id":%q,"content_type":%q,"codec_hint":%q,"resolution_hint":%q,"ts":%d,"ip":%q}',

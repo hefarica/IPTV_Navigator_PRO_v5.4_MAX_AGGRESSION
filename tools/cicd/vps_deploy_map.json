@@ -194,6 +194,15 @@
       "post": "none",
       "enabled": true,
       "note": "A1 device_state writer (device->canal por IP real); wired by A2"
+    },
+    {
+      "id": "snippet-ape-visual-location",
+      "src": "IPTV_v5.4_MAX_AGGRESSION/vps/nginx/snippets/ape-visual-v3-2-location.conf",
+      "dest": "/etc/nginx/snippets/ape-visual-v3-2-location.conf",
+      "type": "nginx-conf",
+      "post": "nginx-reload",
+      "enabled": true,
+      "note": "A2 import verbatim del snippet vivo (208 lineas) + 1 linea aditiva log_by_lua_file en /omega/open. Deploy junto a lua-device-state-writer (este se pushea primero por orden de manifiesto)."
     }
   ],
   "needs_review": [
