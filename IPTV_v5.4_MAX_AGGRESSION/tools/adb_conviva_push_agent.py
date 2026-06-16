@@ -99,7 +99,40 @@ PATTERNS = [
         'rx': re.compile(r'(ExoPlaybackException|PlayerError|MediaCodec.*?Exception)', re.IGNORECASE),
         'fields': lambda m: {'error_class': m.group(1)},
     },
+    {
+        'name': 'codec_query_ottnav',
+        'event_type': 'quality_change',
+        # OTT Navigator / Fire TV MTK decoder: 'MediaCodecQuerier: CodecQuery(...
+        #   attributes={CODECS=hev1.2.4.L150.90, WIDTH=3840, HEIGHT=2160, BITRATE=25000000...})
+        #   ... CodecQueryResult(isSupported=true...)'. Captura codec/resolucion/bitrate REALES
+        # del stream que el player resolvio para reproducir (telemetria de calidad real, URL-2).
+        'rx': re.compile(r'MediaCodecQuerier.*?CODECS=([A-Za-z0-9.]+).*?WIDTH=(\d+).*?HEIGHT=(\d+).*?BITRATE=(\d+).*?isSupported=true', re.IGNORECASE),
+        'fields': lambda m: {
+            'codec':       m.group(1),
+            'resolution':  f'{m.group(2)}x{m.group(3)}',
+            'bitrate_bps': int(m.group(4)),
+        },
+    },
 ]
+
+
+def resolve_adb() -> str:
+    """Locate the adb executable cross-platform (Windows/Linux/Mac). Order:
+    env ADB_PATH -> 'adb' on PATH -> known Windows/Linux locations -> 'adb' (last resort)."""
+    from shutil import which
+    cand = os.environ.get('ADB_PATH')
+    if cand and os.path.isfile(cand):
+        return cand
+    w = which('adb')
+    if w:
+        return w
+    for c in (r'C:\Android\platform-tools\adb.exe',
+              'C:/Android/platform-tools/adb.exe',
+              '/c/Android/platform-tools/adb.exe',
+              '/usr/bin/adb', '/usr/local/bin/adb'):
+        if os.path.isfile(c):
+            return c
+    return 'adb'
 
 # Conviva schema constants
 VALID_PLAYERS = {'OTT_Navigator', 'TiviMate', 'IPTV_Smarters', 'VLC', 'Kodi',
@@ -187,7 +220,7 @@ def adb_logcat_lines(device: Optional[str] = None):
     Filters: -s ExoPlayer ConvivaAndroidSDK MediaCodec PlaybackState
     (tune as needed for your player). Use `-T 1` to start at the present.
     """
-    cmd = ['adb']
+    cmd = [resolve_adb()]
     if device:
         cmd += ['-s', device]
     cmd += ['logcat', '-T', '1',
