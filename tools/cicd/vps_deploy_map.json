@@ -203,6 +203,15 @@
       "post": "nginx-reload",
       "enabled": true,
       "note": "A2 import verbatim del snippet vivo (208 lineas) + 1 linea aditiva log_by_lua_file en /omega/open. Deploy junto a lua-device-state-writer (este se pushea primero por orden de manifiesto)."
+    },
+    {
+      "id": "php-cmaf-hdr10plus-engine",
+      "src": "IPTV_v5.4_MAX_AGGRESSION/backend/cmaf_engine/modules/hdr10plus_dynamic_engine.php",
+      "dest": "/var/www/html/cmaf_engine/modules/hdr10plus_dynamic_engine.php",
+      "type": "php",
+      "post": "none",
+      "enabled": true,
+      "note": "Phase B — Hdr10PlusDynamicEngine v3.4.0 reforzado (SDR->HDR incondicional, DV8.1 hints, BT2446a). VPS corria v3.3.0 vieja (sin saturacion dinamica); deploy = upgrade puro."
     }
   ],
   "needs_review": [
