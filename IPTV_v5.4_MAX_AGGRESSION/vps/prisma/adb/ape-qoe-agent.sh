@@ -28,6 +28,7 @@ LOCK="$BASE/ape-qoe-agent.lock"
 LOG="$BASE/ape-qoe-agent.log"
 QUEUE="$BASE/ape-qoe-queue.ndjson"            # eventos no enviados (reintento ordenado)
 CURL="$BASE/curl"                             # MISMO binario estatico que ape-uhdx-sentinel.sh
+CURL_EXTRA="${CURL_EXTRA:-}"                   # opts extra para egress (ej. bind wlan0 + --resolve si el player monopoliza el VPN/tun0). Se setea en el launcher por-device.
 EP="${CONVIVA_EP:-https://iptv-ape.duckdns.org/prisma/api/conviva-event}"
 DEVID="$(getprop ro.serialno 2>/dev/null | tr -dc 'A-Za-z0-9_.-' | cut -c1-64)"
 [ -z "$DEVID" ] && DEVID="onn-4k-unknown"
@@ -70,7 +71,7 @@ current_player(){
 # --- POST fire-and-forget; encola si falla (autopista: nunca abortar) ---
 post_event(){ # $1 = json completo
   if [ -x "$CURL" ]; then
-    "$CURL" -k -sf -m 4 -X POST -H 'Content-Type: application/json' -d "$1" "$EP" >/dev/null 2>&1 && return 0
+    "$CURL" $CURL_EXTRA -k -sf -m 4 -X POST -H 'Content-Type: application/json' -d "$1" "$EP" >/dev/null 2>&1 && return 0
   else
     wget -q -T 4 --post-data="$1" --header='Content-Type: application/json' -O /dev/null "$EP" 2>/dev/null && return 0
   fi
@@ -80,7 +81,7 @@ flush_queue(){
   [ -s "$QUEUE" ] && [ -x "$CURL" ] || return 0
   tmp="$QUEUE.snd"; mv "$QUEUE" "$tmp" 2>/dev/null || return 0
   while IFS= read -r b; do [ -n "$b" ] || continue
-    "$CURL" -k -sf -m 4 -X POST -H 'Content-Type: application/json' -d "$b" "$EP" >/dev/null 2>&1 || echo "$b" >> "$QUEUE"
+    "$CURL" $CURL_EXTRA -k -sf -m 4 -X POST -H 'Content-Type: application/json' -d "$b" "$EP" >/dev/null 2>&1 || echo "$b" >> "$QUEUE"
   done < "$tmp"
   rm -f "$tmp" 2>/dev/null; }
 
@@ -213,7 +214,7 @@ poll_deltas(){
     ara_fsm_set RECOVERING
     last_id=$(cat "$LAST_ID_FILE" 2>/dev/null || echo 0)
     if [ -x "$CURL" ]; then
-      "$CURL" -k -NsS -H "$(ara_auth_header)" "$ARA_ROOT/ara/events?device_id=$DEVID&last_id=$last_id" 2>/dev/null | \
+      "$CURL" $CURL_EXTRA -k -NsS -H "$(ara_auth_header)" "$ARA_ROOT/ara/events?device_id=$DEVID&last_id=$last_id" 2>/dev/null | \
       while IFS= read -r ln; do
         case "$ln" in
           id:*)         printf '%s' "$ln" | sed 's/^id:[ ]*//' > "$LAST_ID_FILE" 2>/dev/null ;;
