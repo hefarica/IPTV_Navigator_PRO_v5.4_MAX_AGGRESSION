@@ -120,6 +120,20 @@ if (!empty($errors)) {
     exit;
 }
 
+// ── OMEGA: heartbeat = liveness del ARA (no lleva QoE) → registra en ara_heartbeats y responde OK.
+// Aditivo: el enum ya acepta 'heartbeat'; aquí lo enrutamos a su sink (bus canónico) ANTES del dispatch
+// QoE, que no aplica al heartbeat. Las rutas quality_change / PQ-ct / Phase-G quedan INTACTAS.
+if (($event['event_type'] ?? '') === 'heartbeat') {
+    try {
+        if (@is_file(__DIR__ . '/../lib/ape_mesh.php')) { require_once __DIR__ . '/../lib/ape_mesh.php'; }
+        if (function_exists('ape_ara_heartbeat') && !empty($event['device_id'])) {
+            ape_ara_heartbeat((string)$event['device_id'], isset($event['data']) && is_array($event['data']) ? $event['data'] : array());
+        }
+    } catch (\Throwable $ehb) { error_log('[conviva-event] heartbeat liveness skipped: ' . $ehb->getMessage()); }
+    echo json_encode(array('ok' => true, 'event_type' => 'heartbeat'));
+    exit;
+}
+
 // Dispatch
 try {
     $result = ConvivaQoEServer::dispatch($event['session_id'], $event);

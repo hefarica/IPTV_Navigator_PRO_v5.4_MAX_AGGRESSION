@@ -223,13 +223,22 @@
       "note": "Phase B — Hdr10PlusDynamicEngine v3.4.0 reforzado (SDR->HDR incondicional, DV8.1 hints, BT2446a). VPS corria v3.3.0 vieja (sin saturacion dinamica); deploy = upgrade puro."
     },
     {
+      "id": "php-prisma-conviva-qoe-server",
+      "src": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/lib/conviva_qoe_server.php",
+      "dest": "/var/www/html/prisma/lib/conviva_qoe_server.php",
+      "type": "php",
+      "post": "none",
+      "enabled": true,
+      "note": "ConvivaQoEServer: validateEvent + dispatch. VALID_EVENT_TYPES incluye 'heartbeat' (liveness del ARA). Lo invoca conviva-event.php."
+    },
+    {
       "id": "php-prisma-conviva-event",
       "src": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/conviva-event.php",
       "dest": "/var/www/html/prisma/api/conviva-event.php",
       "type": "php",
       "post": "none",
       "enabled": true,
-      "note": "Plano ADB->URL-2: ingest QoE + correlacion per-canal por IP (resuelve canal desde device_state por REMOTE_ADDR cuando llega channel=auto). Base identica al VPS + bloque correlacion."
+      "note": "Plano ADB->URL-2: ingest QoE + correlacion per-canal por IP (resuelve canal desde device_state por REMOTE_ADDR cuando llega channel=auto). Base identica al VPS + bloque correlacion. heartbeat -> ape_ara_heartbeat (liveness) antes del dispatch."
     },
     {
       "id": "php-prisma-channel-pq-incident",
