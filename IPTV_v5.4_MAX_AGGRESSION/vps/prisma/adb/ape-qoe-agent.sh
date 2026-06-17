@@ -181,6 +181,14 @@ ara_safe_put(){ # ns key value
         *amlogic*) settings put system display_color_mode "$3" >/dev/null 2>&1 && ara_remember system display_color_mode "$3" && return 0 ;;
         *) log "reject display_color_mode hw=$hw"; return 1 ;;
       esac ;;
+    global.pq_ai_sr_enable|global.ai_sr_level|global.pq_sharpness_enable|global.pq_ai_dnr_enable|global.pq_dnr_enable|global.pq_nr_enable|global.pq_ai_fbc_enable|global.pq_hdr_enable|global.pq_hdr_mode|global.hdr_brightness_boost|global.sdr_brightness_in_hdr|system.ai_pq_mode|system.aipq_enable)
+      # Pipeline AI-PQ por HARDWARE (MediaTek): AI super-resolution / denoise / sharpness / HDR-PQ.
+      # Post-procesado REAL sobre el stream decodificado (cualquier player). Gateado a SoC MTK.
+      hw=$(getprop ro.hardware 2>/dev/null | tr 'A-Z' 'a-z')
+      case "$hw" in
+        mt[0-9]*|*mediatek*) settings put "$1" "$2" "$3" >/dev/null 2>&1 && ara_remember "$1" "$2" "$3" && return 0 ;;
+        *) log "reject pq $1.$2 hw=$hw (no mediatek)"; return 1 ;;
+      esac ;;
     *) log "reject off-list $1.$2"; return 1 ;;
   esac
   return 1; }
@@ -223,9 +231,17 @@ ara_apply_delta(){ # $1 = linea data: JSON — aplica SOLO settings allowlisted;
   line="$1"
   id=$(printf '%s' "$line" | sed -n 's/.*"id":[ ]*\([0-9][0-9]*\).*/\1/p'); [ -z "$id" ] && id="$(now_ms)"
   ara_already "$id" && return 0
-  hcm=$(printf '%s' "$line" | sed -n 's/.*"hdr_conversion_mode"[ ]*:[ ]*"*\([0-9][0-9]*\).*/\1/p'); [ -n "$hcm" ] && ara_safe_put global hdr_conversion_mode "$hcm"
-  mcf=$(printf '%s' "$line" | sed -n 's/.*"match_content_frame_rate"[ ]*:[ ]*"*\([0-9][0-9]*\).*/\1/p'); [ -n "$mcf" ] && ara_safe_put global match_content_frame_rate "$mcf"
-  dcm=$(printf '%s' "$line" | sed -n 's/.*"display_color_mode"[ ]*:[ ]*"*\([0-9][0-9]*\).*/\1/p'); [ -n "$dcm" ] && ara_safe_put system display_color_mode "$dcm"
+  # Aplica genericamente CUALQUIER setting allowlisted presente en el delta. ara_safe_put = gate
+  # final (allowlist + MTK). Soporta el pipeline AI-PQ por hardware completo (super-res/denoise/sharp).
+  for nk in "global hdr_conversion_mode" "global match_content_frame_rate" "system display_color_mode" \
+            "global pq_ai_sr_enable" "global ai_sr_level" "global pq_sharpness_enable" \
+            "global pq_ai_dnr_enable" "global pq_dnr_enable" "global pq_nr_enable" "global pq_ai_fbc_enable" \
+            "global pq_hdr_enable" "global pq_hdr_mode" "global hdr_brightness_boost" "global sdr_brightness_in_hdr" \
+            "system ai_pq_mode" "system aipq_enable"; do
+    ns=${nk%% *}; key=${nk#* }
+    v=$(printf '%s' "$line" | sed -n "s/.*\"$key\"[ ]*:[ ]*\"*\([0-9][0-9]*\).*/\1/p")
+    [ -n "$v" ] && ara_safe_put "$ns" "$key" "$v"
+  done
   printf '%s' "$line" | grep -q 'SDR_FORCE' && ara_remember pq_profile state SDR_FORCE
   ara_mark "$id"; log "applied delta id=$id"; }
 
