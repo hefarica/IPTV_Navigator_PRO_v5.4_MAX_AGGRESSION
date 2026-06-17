@@ -222,7 +222,7 @@ poll_deltas(){
     ara_fsm_set RECOVERING
     last_id=$(cat "$LAST_ID_FILE" 2>/dev/null || echo 0)
     if [ -x "$CURL" ]; then
-      "$CURL" $CURL_EXTRA -k -NsS -H "$(ara_auth_header)" "$ARA_ROOT/ara/events?device_id=$DEVID&last_id=$last_id" 2>/dev/null | \
+      "$CURL" $CURL_EXTRA -k -NsS --speed-limit 1 --speed-time 45 -H "$(ara_auth_header)" "$ARA_ROOT/ara/events?device_id=$DEVID&last_id=$last_id" 2>/dev/null | \
       while IFS= read -r ln; do
         case "$ln" in
           id:*)         printf '%s' "$ln" | sed 's/^id:[ ]*//' > "$LAST_ID_FILE" 2>/dev/null ;;
