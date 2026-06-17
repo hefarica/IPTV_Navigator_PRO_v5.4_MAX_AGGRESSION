@@ -147,6 +147,17 @@ try {
     } catch (\Throwable $eg) {
         error_log('[conviva-event] ARA phase-g delta skipped: ' . $eg->getMessage());
     }
+
+    // ── OMEGA: tuning AI-PQ por content-type (mesh DECIDE + push por device, anti-spam) ──
+    // Cuando el ARA reporta el contenido decodificado, el VPS infiere el ct (fps alto->sports) y empuja
+    // el perfil PQ del VPP por hardware. Fire-and-forget; solo si el ct cambio (cache /dev/shm).
+    try {
+        if (function_exists('ape_pq_push_for_device') && isset($event['event_type'])
+            && $event['event_type'] === 'quality_change' && !empty($event['device_id'])) {
+            $ct = ape_ct_from_qoe(isset($event['data']) && is_array($event['data']) ? $event['data'] : array());
+            ape_pq_push_for_device((string)$event['device_id'], $ct);
+        }
+    } catch (\Throwable $eq) { error_log('[conviva-event] PQ-ct push skipped: ' . $eq->getMessage()); }
 } catch (Throwable $e) {
     // Log to error_log only (do not leak details to client)
     error_log('[conviva-event] dispatch error: ' . $e->getMessage());

@@ -437,3 +437,48 @@ if (!function_exists('ape_pq_should_emit_ara_rollback')) {
         return true;
     }
 }
+
+/* ── Tuning AI-PQ por content-type (el VPS DECIDE el perfil; el ARA aplica los keys que su SoC expone) ──
+ * El ARA reporta el contenido decodificado (res/fps/codec) por QoE; el VPS infiere el ct y empuja el
+ * perfil PQ por device (serial), anti-spam (solo si cambio). Post-procesado real en el VPP del device. */
+if (!function_exists('ape_pq_settings_for_ct')) {
+    function ape_pq_settings_for_ct($ct) {
+        $base = array(
+            'pq_ai_sr_enable' => 1, 'ai_sr_level' => 3, 'ai_pq_mode' => 3, 'aipq_enable' => 1,
+            'pq_sharpness_enable' => 1, 'pq_ai_dnr_enable' => 1, 'pq_dnr_enable' => 1, 'pq_nr_enable' => 1,
+            'pq_ai_fbc_enable' => 1, 'pq_hdr_enable' => 1, 'pq_hdr_mode' => 1,
+            'match_content_frame_rate' => 1, 'hdr_conversion_mode' => 1,
+        );
+        switch ($ct) {
+            case 'sports': // movimiento: preserva textura (denoise OFF), SR+sharp full
+                $base['pq_ai_dnr_enable'] = 0; $base['pq_dnr_enable'] = 0; $base['pq_nr_enable'] = 0; break;
+            case 'cinema': case 'news': case 'default': case 'max_image': default: break; // SR+denoise full
+        }
+        return $base;
+    }
+}
+
+if (!function_exists('ape_ct_from_qoe')) {
+    function ape_ct_from_qoe($data) {
+        // Infiere content-type del contenido decodificado que reporta el ARA (fps alto -> deporte/accion).
+        $fps = 0.0;
+        if (isset($data['framerate'])) $fps = (float)$data['framerate'];
+        elseif (isset($data['fps'])) $fps = (float)$data['fps'];
+        return ($fps >= 48) ? 'sports' : 'max_image';
+    }
+}
+
+if (!function_exists('ape_pq_push_for_device')) {
+    function ape_pq_push_for_device($deviceId, $ct) {
+        if (!$deviceId) return 0;
+        $did = preg_replace('/[^0-9A-Za-z_.\-]/', '', (string)$deviceId);
+        $f = '/dev/shm/ape_pq_ct_' . $did;                    // anti-spam: solo empuja si el ct cambio
+        $prev = @file_get_contents($f);
+        if ($prev !== false && trim($prev) === $ct) return 0;
+        @file_put_contents($f, $ct);
+        $s = ape_pq_settings_for_ct($ct);
+        return ape_insert_delta($did, null, 'device-setting',
+            array('settings' => $s, 'profile' => 'PQ_' . strtoupper($ct)),
+            array('source' => 'mesh-pq-ct', 'ttl_seconds' => 1800, 'priority' => 80));
+    }
+}

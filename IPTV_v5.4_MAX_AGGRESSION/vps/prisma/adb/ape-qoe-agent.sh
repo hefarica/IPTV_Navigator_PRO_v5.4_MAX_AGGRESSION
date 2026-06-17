@@ -108,9 +108,10 @@ logcat_loop(){
         w=$(printf '%s' "$L"|grep -oE 'WIDTH=[0-9]+'|head -1|cut -d= -f2)
         h=$(printf '%s' "$L"|grep -oE 'HEIGHT=[0-9]+'|head -1|cut -d= -f2)
         br=$(printf '%s' "$L"|grep -oE 'BITRATE=[0-9]+'|head -1|cut -d= -f2)
+        fps=$(printf '%s' "$L"|grep -oE 'FRAMERATE=[0-9]+'|head -1|cut -d= -f2)   # para inferencia de ct (sports si fps>=48)
         [ -z "$cod" ] && continue
         sig="$cod-${w}x${h}-$br"; [ "$sig" = "$LAST_SIG" ] && continue; LAST_SIG="$sig"
-        emit quality_change "\"codec\":\"$cod\",\"resolution\":\"${w}x${h}\",\"bitrate_bps\":${br:-0},\"declared\":true"
+        emit quality_change "\"codec\":\"$cod\",\"resolution\":\"${w}x${h}\",\"bitrate_bps\":${br:-0},\"framerate\":${fps:-0},\"declared\":true"
         log "querier(declared) $sig" ;;
       *omx.video.*bitrateInKbps*)
         # codec REALMENTE decodificado (MediaCodecLogger) + bitrate real -> QoE autoritativa
