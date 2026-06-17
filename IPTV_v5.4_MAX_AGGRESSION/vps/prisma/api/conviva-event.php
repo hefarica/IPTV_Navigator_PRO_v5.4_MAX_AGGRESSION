@@ -156,7 +156,7 @@ try {
             $vst   = isset($event['data']['vst_ms']) ? (int)$event['data']['vst_ms'] : 0;
             $qoe   = isset($result['qoe_score']) ? (int)$result['qoe_score'] : 100;
             $etype = isset($event['event_type']) ? (string)$event['event_type'] : '';
-            $damage = ($qoe <= 8) || ($vst > 8000)
+            $damage = ($qoe <= 8) || ($vst > 6000)
                    || in_array($etype, array('error', 'decoder_error'), true)
                    || (isset($result['decision']) && stripos((string)$result['decision'], 'survival') !== false);
             if ($chId !== '' && $damage && function_exists('ape_pq_record_incident')) {
