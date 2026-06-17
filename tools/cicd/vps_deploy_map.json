@@ -268,6 +268,15 @@
       "note": "ARA URL-2 — snippet location=/ara/events (socket php8.3-fpm, patron prisma-conviva-stream). post=none A PROPOSITO: el operador debe anadir el 'include' al server-block + correr nginx -t antes de reload. Copiar el archivo solo es inerte."
     },
     {
+      "id": "php-prisma-push-pq-profile",
+      "src": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/cli/push_pq_profile.php",
+      "dest": "/var/www/html/prisma/cli/push_pq_profile.php",
+      "type": "php",
+      "post": "none",
+      "enabled": true,
+      "note": "AI-PQ pipeline (MediaTek VPP) — empuja perfil PQ (max_image/sports/cinema/off) como policy_delta al ARA. El ARA aplica los 13 levers hardware (AI-SR/denoise/sharpness/HDR-PQ) + enforcer persiste. Post-procesado real sobre el stream decodificado."
+    },
+    {
       "id": "config-ara-env-example",
       "src": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/config/ara.env.example",
       "dest": "/var/www/html/prisma/config/ara.env.example",
