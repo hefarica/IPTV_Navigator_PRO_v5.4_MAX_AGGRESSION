@@ -92,12 +92,12 @@ emit(){ # $1=event_type  $2=data-fragment-sin-llaves-externas
   post_event "$json" &   # background: NO bloquea el read del logcat
 }
 
-LAST_SIG=""; LAST_DRAIN=0; LAST_HEAL=0
+LAST_SIG=""; LAST_DSIG=""; LAST_DRAIN=0; LAST_HEAL=0
 logcat_loop(){
   # -v epoch (timestamps absolutos) -T 1 (solo nuevas lineas). CALIBRAR tags/case contra logcat real.
   logcat -v epoch -T 1 \
     MediaCodec:V MediaCodecVideoRenderer:V ExoPlayerImpl:V ExoPlayer:V \
-    DefaultBandwidthMeter:V MediaCodecQuerier:V Codec2Client:V '*:E' 2>/dev/null | \
+    DefaultBandwidthMeter:V MediaCodecQuerier:V Codec2Client:V MPB_DRM:V MediaCodecLogger:I '*:E' 2>/dev/null | \
   while IFS= read -r L; do
     n=$(date +%s 2>/dev/null)
     [ $((n-LAST_DRAIN)) -ge 30 ] 2>/dev/null && { flush_queue; LAST_DRAIN=$n; }
@@ -110,8 +110,16 @@ logcat_loop(){
         br=$(printf '%s' "$L"|grep -oE 'BITRATE=[0-9]+'|head -1|cut -d= -f2)
         [ -z "$cod" ] && continue
         sig="$cod-${w}x${h}-$br"; [ "$sig" = "$LAST_SIG" ] && continue; LAST_SIG="$sig"
-        emit quality_change "\"codec\":\"$cod\",\"resolution\":\"${w}x${h}\",\"bitrate_bps\":${br:-0}"
-        log "quality_change $sig" ;;
+        emit quality_change "\"codec\":\"$cod\",\"resolution\":\"${w}x${h}\",\"bitrate_bps\":${br:-0},\"declared\":true"
+        log "querier(declared) $sig" ;;
+      *omx.video.*bitrateInKbps*)
+        # codec REALMENTE decodificado (MediaCodecLogger) + bitrate real -> QoE autoritativa
+        dcod=$(printf '%s' "$L"|grep -oE 'omx\.video\.[a-z0-9]+'|head -1|sed 's/.*\.//')
+        kb=$(printf '%s' "$L"|grep -oE 'bitrateInKbps[ ]*=[ ]*[0-9]+'|grep -oE '[0-9]+$'|head -1)
+        [ -z "$dcod" ] && continue
+        dsig="dec-$dcod-${kb}"; [ "$dsig" = "$LAST_DSIG" ] && continue; LAST_DSIG="$dsig"
+        emit quality_change "\"codec\":\"$dcod\",\"bitrate_bps\":$(( ${kb:-0} * 1000 )),\"decoded\":true"
+        log "decoded $dcod ${kb}kbps" ;;
       *"Output format changed"*)
         res=$(printf '%s' "$L"|grep -oE 'width=[0-9]+.*height=[0-9]+'|grep -oE '[0-9]+'|paste -sd 'x' - 2>/dev/null)
         cod=$(printf '%s' "$L"|grep -oE 'mime=video/[A-Za-z0-9.-]+'|cut -d/ -f2)
