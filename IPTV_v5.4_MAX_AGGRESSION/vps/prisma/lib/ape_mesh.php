@@ -450,9 +450,12 @@ if (!function_exists('ape_pq_settings_for_ct')) {
             'match_content_frame_rate' => 1, 'hdr_conversion_mode' => 1,
         );
         switch ($ct) {
-            case 'sports': // movimiento: preserva textura (denoise OFF), SR+sharp full
+            case 'sports': // movimiento (fps alto): denoise OFF (preserva textura/grano), SR+sharp ON
                 $base['pq_ai_dnr_enable'] = 0; $base['pq_dnr_enable'] = 0; $base['pq_nr_enable'] = 0; break;
-            case 'cinema': case 'news': case 'default': case 'max_image': default: break; // SR+denoise full
+            case 'compressed': // baja-bitrate: MAX denoise, sharpness OFF (no amplificar bloques/ruido MPEG)
+                $base['pq_sharpness_enable'] = 0; break;
+            case 'lowres_boost': // SD/HD: AI-SR agresivo + sharp + denoise (upscale a experiencia UHD) -> all max
+            case 'cinema': case 'news': case 'default': case 'max_image': default: break; // all max
         }
         return $base;
     }
@@ -460,11 +463,18 @@ if (!function_exists('ape_pq_settings_for_ct')) {
 
 if (!function_exists('ape_ct_from_qoe')) {
     function ape_ct_from_qoe($data) {
-        // Infiere content-type del contenido decodificado que reporta el ARA (fps alto -> deporte/accion).
+        // Content-adaptive: el VPS elige el perfil VPP que COMPENSA la ineficiencia especifica del contenido
+        // que el ARA decodifica (fps/resolucion/bitrate). "Espejo" por contenido.
         $fps = 0.0;
         if (isset($data['framerate'])) $fps = (float)$data['framerate'];
         elseif (isset($data['fps'])) $fps = (float)$data['fps'];
-        return ($fps >= 48) ? 'sports' : 'max_image';
+        $h = 0;
+        if (isset($data['resolution']) && preg_match('/[x\xc3\x97](\d{3,4})/', (string)$data['resolution'], $m)) $h = (int)$m[1];
+        $bps = isset($data['bitrate_bps']) ? (int)$data['bitrate_bps'] : 0;
+        if ($fps >= 48) return 'sports';                          // alta cadencia -> preserva movimiento
+        if ($h > 0 && $h <= 720) return 'lowres_boost';           // SD/HD -> AI-SR agresivo (sube a UHD)
+        if ($bps > 0 && $bps < 6000000) return 'compressed';      // baja-bitrate -> max denoise, sin sobre-sharpen
+        return 'max_image';                                       // 4K/buen-bitrate -> todo al maximo
     }
 }
 
