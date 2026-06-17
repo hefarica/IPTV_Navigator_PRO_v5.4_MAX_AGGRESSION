@@ -91,3 +91,15 @@ sin `ngx.exit`, sin bloqueo (autopista) · single-variant intacto · mejor score
 **Caveat honesto (scope):** `bw_state`/`bw_ewma_bps` del reactor son **globales por worker** (una sola key), no
 por-cliente. En el despliegue actual de **un hogar / un Fire TV**, global ≈ per-cliente → correcto. Multi-cliente
 necesitaría `bw_state` keyed por IP del cliente — mejora futura, NO en este cableado.
+
+**Review adversarial (workflow `wq2w1pvh0`, 6 agentes): 5/5 lentes PASS · 0 BLOCK confirmado.** El crítico de
+completitud levantó 3 WARN — los 3 aplicados ANTES del deploy:
+- **Frescura (WARN3):** `reactor_tick` re-asserta `bw_state` a 1Hz sobre el último EWMA aunque no haya tráfico
+  reciente. El cableado pasa `age_s = ngx.now() − bw_ts`; si la última muestra REAL es > `FRESHNESS_S` (30s) →
+  `stale_static` (floor estático). El relax SOLO ocurre con una medición baja **reciente** → en single-home ESE
+  es el cliente. (sandbox T10 stale→estático / T11 fresh→relaja).
+- **Floor real (WARN2):** se pasa `cfg.floor_bps` real del perfil (P0=18M / P1=14M) como `floor_4k_bps`, no el
+  15M hardcoded (que queda solo como fallback si faltara `bw_state`).
+- **Superficie activa (WARN1):** `floor_lock=ACTIVE` está solo en **P0/P1** → el relax adaptativo vive solo en
+  esos 2 perfiles 4K (P2–P5 = BYPASS, sin cambio). La frescura acota el global-EWMA a actividad reciente;
+  keyear por canal = mejora futura.

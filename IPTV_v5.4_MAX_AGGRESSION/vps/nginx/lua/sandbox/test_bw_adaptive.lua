@@ -1,9 +1,9 @@
 -- ═══════════════════════════════════════════════════════════════════════
 -- SANDBOX TEST — bw_adaptive_floor (lazo bitrate-reactor → manifest)
--- Ejecutar AISLADO (jamás en nginx):  lua test_bw_adaptive.lua
--- Prueba las 7 invariantes doctrinales sin tocar producción, sin ngx, sin red.
+-- Ejecutar AISLADO (jamás en nginx), desde vps/nginx/lua:  lua sandbox/test_bw_adaptive.lua
+-- Prueba las 11 invariantes doctrinales sin tocar producción, sin ngx, sin red.
 -- ═══════════════════════════════════════════════════════════════════════
-package.path = "./?.lua;" .. package.path
+package.path = "./?.lua;../?.lua;" .. package.path
 local M = require("bw_adaptive_floor")
 
 local pass, fail = 0, 0
@@ -28,7 +28,7 @@ local STATIC_FLOOR = 8000000  -- floor del perfil (~8M): hoy descarta 720/480
 local HEALTHY  = { state = "CBR_SUSTAIN", ewma_bps = 20000000, floor_4k_bps = 13000000 }
 local DEGRADED = { state = "DOUBLE",      ewma_bps = 4000000,  floor_4k_bps = 13000000 } -- ~4M real
 
-print("── bitrate-reactor → manifest · adaptive floor · 7 invariantes ──")
+print("── bitrate-reactor → manifest · adaptive floor · 11 invariantes ──")
 
 -- T1 HEALTHY: floor == estático; 720/480 descartados (sin regresión vs hoy)
 local k1, f1 = M.select_variants(master(), STATIC_FLOOR, "ACTIVE", HEALTHY)
@@ -62,6 +62,33 @@ ok(has(k1,"4k") and has(k2,"4k"), "T6 mejor variante sobrevive healthy Y degrade
 -- T7 sin señal de bw (reactor frío/nil): cae al estático (default seguro)
 local k7, f7, r7 = M.select_variants(master(), STATIC_FLOOR, "ACTIVE", nil)
 ok(f7 == STATIC_FLOOR and r7 == "no_signal_static", "T7 bw nil → floor estático (default seguro)")
+
+-- T8 COLD-START: reactor presente pero ewma=0 (sin medición) → NO relaja (ausencia ≠ bw cero)
+local COLD = { state = "DOUBLE", ewma_bps = 0, floor_4k_bps = 15000000 }
+local k8, f8, r8 = M.select_variants(master(), STATIC_FLOOR, "ACTIVE", COLD)
+ok(f8 == STATIC_FLOOR and r8 == "no_measurement_static",
+   "T8 cold-start (ewma=0) → floor estático, NO relaja por ausencia de datos")
+ok(not has(k8,"720") and not has(k8,"480"), "T8 cold-start mantiene comportamiento de hoy [kept="..names(k8).."]")
+
+-- T9 TRUST-STATE: reactor dice CBR_SUSTAIN aunque ewma (14M) < floor4k (15M) → healthy (confía en el reactor)
+local TRUST = { state = "CBR_SUSTAIN", ewma_bps = 14000000, floor_4k_bps = 15000000 }
+local _, f9, r9 = M.select_variants(master(), STATIC_FLOOR, "ACTIVE", TRUST)
+ok(f9 == STATIC_FLOOR and r9 == "healthy_static",
+   "T9 trust-state: CBR_SUSTAIN manda → floor estático aunque ewma<floor4k")
+
+-- T10 STALE: medición real vieja (age_s=120 > FRESHNESS_S 30) → NO relaja (DOUBLE stale del tick 1Hz)
+local STALE = { state = "DOUBLE", ewma_bps = 4000000, floor_4k_bps = 8000000, age_s = 120 }
+local k10, f10, r10 = M.select_variants(master(), STATIC_FLOOR, "ACTIVE", STALE)
+ok(f10 == STATIC_FLOOR and r10 == "stale_static",
+   "T10 stale (age 120s) → floor estático (no relaja con EWMA vieja)")
+ok(not has(k10,"720"), "T10 stale mantiene comportamiento de hoy [kept="..names(k10).."]")
+
+-- T11 FRESH: misma medición baja pero RECIENTE (age_s=5 < FRESHNESS_S) → SÍ relaja (anti-freeze real)
+local FRESH = { state = "DOUBLE", ewma_bps = 4000000, floor_4k_bps = 8000000, age_s = 5 }
+local k11, f11, r11 = M.select_variants(master(), STATIC_FLOOR, "ACTIVE", FRESH)
+ok(f11 < STATIC_FLOOR and r11 == "degraded_relaxed_to_sustainable",
+   "T11 fresh (age 5s) → relaja a sostenible "..tostring(f11))
+ok(has(k11,"720"), "T11 fresh mantiene 720 sostenible (anti-freeze) [kept="..names(k11).."]")
 
 print(string.format("\n==== %d PASS / %d FAIL ====", pass, fail))
 os.exit(fail == 0 and 0 or 1)

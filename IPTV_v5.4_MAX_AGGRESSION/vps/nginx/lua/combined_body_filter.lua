@@ -18,6 +18,12 @@ local v4k_mod = require("ape_virtual_4k")
 -- en el loop de variantes. package.loaded garantiza singleton por worker.
 -- S6 F1 fix 2026-06-08: pcall inline era correcto pero redundante × variantes.
 local cc_cascade_mod = require("ape_codec_cascade")
+-- ADITIVO 2026-06-16: lazo bitrate-reactor → manifest (floor adaptativo al bw real).
+-- require DEFENSIVO (pcall): si el módulo faltara en disco, bw_floor_mod=nil → el filtro usa
+-- el floor estático cfg.floor_bps = comportamiento de HOY (passthrough additivo, nunca rompe).
+-- Sandbox probado: vps/nginx/lua/sandbox/test_bw_adaptive.lua (13/13). Doc: LUA_ENGINES_..._AUDIT §Wiring.
+local ok_bwf, bw_floor_mod = pcall(require, "bw_adaptive_floor")
+if not ok_bwf then bw_floor_mod = nil end
 
 -- ═══ STAGE 0: VIDEO BYPASS (BLINDAJE DE MEMORIA) ════════════════════
 local uri = ngx.var.uri or ""
@@ -219,13 +225,37 @@ local floor_ok, floor_err = pcall(function()
             end
         end
 
+        -- ADITIVO 2026-06-16: floor ADAPTATIVO al bw real (lazo bitrate-reactor → manifest).
+        -- Monótono ↓: eff_floor <= cfg.floor_bps SIEMPRE (el guard `adj <= eff_floor` lo fuerza)
+        -- → nunca descarta MÁS variantes que el floor estático → 0 pérdida de canal. pcall +
+        -- ngx.shared.circuit_metrics nil-safe → passthrough (autopista). DEGRADED (bw real bajo)
+        -- relaja el floor → sobrevive un peldaño que el player SÍ sostiene (anti-freeze).
+        local eff_floor = tonumber(cfg.floor_bps) or 0
+        if bw_floor_mod then
+            local ok_bw, adj = pcall(function()
+                local R = ngx.shared.circuit_metrics
+                if not R then return nil end
+                local bw_ts = tonumber(R:get("bw_ts"))               -- ts de la última muestra REAL (ngx.now())
+                local age_s = bw_ts and (ngx.now() - bw_ts) or nil   -- nil si nunca hubo muestra real
+                return bw_floor_mod.adaptive_floor(cfg.floor_bps, {
+                    state        = R:get("bw_state"),
+                    ewma_bps     = R:get("bw_ewma_bps"),
+                    floor_4k_bps = cfg.floor_bps,   -- WARN2: floor REAL del perfil (P0=18M/P1=14M), no 15M hardcoded
+                    age_s        = age_s,           -- WARN3: gate de frescura (descarta EWMA stale del tick 1Hz)
+                })
+            end)
+            if ok_bw and type(adj) == "number" and adj <= eff_floor then
+                eff_floor = adj
+            end
+        end
+
         for idx, v in ipairs(variants) do
             local keep = false
             -- Always keep the highest scoring variant as fallback
             if idx == highest_idx then
                 keep = true
             elseif cfg.floor_lock == "ACTIVE" then
-                if v.bw >= cfg.floor_bps then
+                if v.bw >= eff_floor then
                     keep = true
                 end
             else

@@ -44,6 +44,15 @@
       "enabled": true
     },
     {
+      "id": "lua-bw-adaptive-floor",
+      "src": "IPTV_v5.4_MAX_AGGRESSION/vps/nginx/lua/bw_adaptive_floor.lua",
+      "dest": "/etc/nginx/lua/bw_adaptive_floor.lua",
+      "type": "lua",
+      "post": "nginx-reload",
+      "enabled": true,
+      "note": "NEW module — lazo bitrate-reactor->manifest (adaptive floor). Deploy BEFORE/with lua-combined-body-filter, que lo require()."
+    },
+    {
       "id": "lua-combined-body-filter",
       "src": "IPTV_v5.4_MAX_AGGRESSION/vps/nginx/lua/combined_body_filter.lua",
       "dest": "/etc/nginx/lua/combined_body_filter.lua",
