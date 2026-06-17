@@ -181,14 +181,15 @@ ara_safe_put(){ # ns key value
         *amlogic*) settings put system display_color_mode "$3" >/dev/null 2>&1 && ara_remember system display_color_mode "$3" && return 0 ;;
         *) log "reject display_color_mode hw=$hw"; return 1 ;;
       esac ;;
-    global.pq_ai_sr_enable|global.ai_sr_level|global.pq_sharpness_enable|global.pq_ai_dnr_enable|global.pq_dnr_enable|global.pq_nr_enable|global.pq_ai_fbc_enable|global.pq_hdr_enable|global.pq_hdr_mode|global.hdr_brightness_boost|global.sdr_brightness_in_hdr|system.ai_pq_mode|system.aipq_enable)
-      # Pipeline AI-PQ por HARDWARE (MediaTek): AI super-resolution / denoise / sharpness / HDR-PQ.
-      # Post-procesado REAL sobre el stream decodificado (cualquier player). Gateado a SoC MTK.
-      hw=$(getprop ro.hardware 2>/dev/null | tr 'A-Z' 'a-z')
-      case "$hw" in
-        mt[0-9]*|*mediatek*) settings put "$1" "$2" "$3" >/dev/null 2>&1 && ara_remember "$1" "$2" "$3" && return 0 ;;
-        *) log "reject pq $1.$2 hw=$hw (no mediatek)"; return 1 ;;
-      esac ;;
+    global.pq_*|global.ai_sr*|global.ai_pq*|global.aipq*|global.hdr_brightness_boost|global.sdr_brightness_in_hdr|system.ai_pq*|system.aipq*|system.pq_*)
+      # Pipeline VPP por HARDWARE — POLIMORFICO cross-SoC. AI super-res / denoise / sharpness / HDR-PQ.
+      # En vez de hardcodear keys por SoC (MTK pq_ai_sr_*, amlogic/rtk/qcom sus propios), aceptamos
+      # cualquier key del PATRON que EXISTA en este device (settings get != null) -> escribe SOLO lo que
+      # el device expone (safe en cualquier SoC). Las keys reales las auto-descubre ara_pq_discover.
+      cur=$(settings get "$1" "$2" 2>/dev/null)
+      if [ -n "$cur" ] && [ "$cur" != "null" ]; then
+        settings put "$1" "$2" "$3" >/dev/null 2>&1 && ara_remember "$1" "$2" "$3" && return 0
+      else log "reject pq $1.$2 (no existe en este device/SoC)"; return 1; fi ;;
     *) log "reject off-list $1.$2"; return 1 ;;
   esac
   return 1; }
@@ -242,8 +243,29 @@ ara_apply_delta(){ # $1 = linea data: JSON — aplica SOLO settings allowlisted;
     v=$(printf '%s' "$line" | sed -n "s/.*\"$key\"[ ]*:[ ]*\"*\([0-9][0-9]*\).*/\1/p")
     [ -n "$v" ] && ara_safe_put "$ns" "$key" "$v"
   done
+  # POLIMORFICO: aplica TAMBIEN cualquier key PQ/AI extra del objeto "settings" (otros SoC) via el
+  # pattern-allowlist + existence-check. Asi un device amlogic/rtk/qcom aplica SUS keys sin hardcodear.
+  so=$(printf '%s' "$line" | sed -n 's/.*"settings"[ ]*:[ ]*{\([^}]*\)}.*/\1/p')
+  if [ -n "$so" ]; then
+    printf '%s' "$so" | tr ',' '\n' | while IFS= read -r kv; do
+      k=$(printf '%s' "$kv" | sed -n 's/^[ ]*"\([A-Za-z0-9_]*\)"[ ]*:.*/\1/p')
+      v=$(printf '%s' "$kv" | sed -n 's/.*:[ ]*"*\([0-9][0-9]*\).*/\1/p')
+      [ -n "$k" ] && [ -n "$v" ] || continue
+      case "$k" in
+        pq_*|ai_sr*|ai_pq*|aipq*)
+          case "$k" in ai_pq_mode|aipq_enable) ara_safe_put system "$k" "$v" ;; *) ara_safe_put global "$k" "$v" ;; esac ;;
+      esac
+    done
+  fi
   printf '%s' "$line" | grep -q 'SDR_FORCE' && ara_remember pq_profile state SDR_FORCE
   ara_mark "$id"; log "applied delta id=$id"; }
+
+# AUTO-DISCOVERY polimorfico: descubre los levers VPP/PQ que ESTE device expone (cualquier SoC).
+# Reporta para que el VPS sepa que keys empujar por device. Cross-SoC (MTK pq_ai_sr_*, amlogic, etc.).
+ara_pq_discover(){
+  { settings list global 2>/dev/null | grep -i -e pq_ -e ai_sr -e ai_pq -e aipq -e sharp -e dnr -e _nr_ -e super -e memc -e enhance | sed 's/^/global./'
+    settings list system 2>/dev/null | grep -i -e pq_ -e ai_pq -e aipq -e sharp -e dnr -e memc -e enhance | sed 's/^/system./'
+  } 2>/dev/null; }
 
 # poll SSE /ara/events (curl -N: conexion abierta, data-push de deltas). Reconnect resiliente.
 # Nota: el `curl | while` corre en subshell -> last_id/FSM se persisten en archivo (cruzan el pipe);
@@ -293,8 +315,9 @@ case "${1:-daemon}" in
     echo "curl=$([ -x "$CURL" ] && echo OK || echo MISSING) ep=$EP"
     echo "ara_root=$ARA_ROOT token=$([ -n "$ARA_TOKEN" ] && echo set || echo none) lab=${APE_LAB_MODE:-0}"
     echo "state_dir=$STATE_DIR fsm=$(cat "$FSM_FILE" 2>/dev/null || echo INIT)"
-    echo "hw=$(getprop ro.hardware 2>/dev/null) (display_color_mode permitido solo en amlogic)"
+    echo "hw=$(getprop ro.hardware 2>/dev/null) (PQ hardware: $(ara_pq_discover 2>/dev/null | wc -l) levers descubiertos)"
     echo "logcat=$(logcat -d -t 1 >/dev/null 2>&1 && echo READABLE || echo DENIED)" ;;
+  pqdiscover) ara_pq_discover ;;
   fsm) cat "$FSM_FILE" 2>/dev/null || echo INIT ;;
   replay) ara_fsm_set OFFLINE_CACHE; ara_replay_last_good; echo "replayed: $(cat "$LAST_GOOD" 2>/dev/null | wc -l) settings" ;;
   stop) [ -f "$LOCK" ] && { p=$(cat "$LOCK"); is_alive "$p" && kill "$p" 2>/dev/null; rm -f "$LOCK"; echo STOPPED; } || echo "NOT RUNNING" ;;

@@ -203,6 +203,23 @@ incondicional vía el daemon aplicador-puro + `ape_mesh_device_settings`). La de
 Doctrina madre: **MAX IMAGE FIRST** — mejor empujar HDR y dejar que el display/daemon lo materialice que
 servir SDR plano.
 
+> **⚠️ CORRECCIÓN TÉCNICA (2026-06-17, verificada en vivo en Fire TV mt8696):** el `hdr_conversion_mode`
+> de Android **NO hace SDR→HDR** — es conversión entre **TIPOS HDR** (HDR10↔HDR10+↔DV). Valores: `0`=UNKNOWN,
+> `1`=PASSTHROUGH (deja pasar el HDR real; SDR queda SDR), `2`=SYSTEM (este device lo rechaza→revierte a 1),
+> `3`=FORCE. Medido: con contenido SDR la salida queda `dataspace=UNKNOWN/ColorMode::NATIVE` con `1`, `2` **o**
+> `3`. Por tanto `hdr_conversion_mode` **NO "mejora" SDR**. La decisión LOCKED de `VIDEO-RANGE=PQ` incondicional
+> **se mantiene** (es del propietario), pero su justificación correcta es: `hdr_conversion_mode=1` = **passthrough
+> del HDR REAL** (cuando el proveedor sirve HEVC/HDR, llega en HDR pleno), no un fake SDR→HDR.
+>
+> **El lever REAL de "imagen superior" sobre SDR = el pipeline AI-PQ por HARDWARE del SoC** (no `hdr_conversion`):
+> AI super-resolution + denoise + sharpness + HDR-PQ, expuesto por `settings` (MediaTek: `pq_ai_sr_enable`/
+> `ai_sr_level`/`ai_pq_mode`/`pq_sharpness_enable`/`pq_*_dnr`/`pq_hdr_*`). El **ARA** los escribe (allowlisted,
+> gateado por SoC) + **enforcer persiste**; el **VPS** los controla por **URL-2** (`vps/prisma/cli/push_pq_profile.php`,
+> perfiles `max_image/sports/cinema/off`). Post-procesado REAL sobre el frame decodificado (cualquier player,
+> AVC SDR incluido), sin transcode. Ver memoria `ara-aipq-hardware-pipeline`. **Honesto:** el HARDWARE del device
+> post-procesa, el VPS COMANDA; el bitstream sigue siendo el que es (`decoded avc` en logs) pero el VPP lo mejora
+> al mostrarlo.
+
 **Lo que NO cambia (siguen prohibidos / enforced):**
 - `SUPPLEMENTAL-CODECS` inventado (LCEVC/DV falsos) — sigue PROHIBIDO.
 - Declarar un **codec/nivel que el decoder no soporta** (GOLDEN RULE `hvc1`/`hev1` + Ley Cardinal 1
