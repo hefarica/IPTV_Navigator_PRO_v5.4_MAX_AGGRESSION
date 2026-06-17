@@ -134,6 +134,27 @@ if (($event['event_type'] ?? '') === 'heartbeat') {
     exit;
 }
 
+// ── OMEGA URL-2: content_mode_delta = comando MANUAL de content-type (ARA/dashboard fuerza el modo PQ).
+// Aditivo: reusa el pipeline content-adaptive EXISTENTE (ape_pq_settings_for_ct -> keys REALES del VPP del
+// device, verificadas por probe: pq_ai_sr_enable/ai_sr_level=3/pq_*_enable). Whitelist a los CTs reales
+// (minusculas); CT desconocido -> 'max_image' (techo seguro, NUNCA degrada, TG-DOWNGRADE). NO inventa keys.
+// Pre-dispatch con exit; las rutas QoE / PQ-ct / Phase-G quedan INTACTAS. Firma real ape_pq_push (2-arg).
+if (($event['event_type'] ?? '') === 'content_mode_delta') {
+    $allowed = array('sports', 'compressed', 'lowres_boost', 'cinema', 'news', 'max_image', 'default');
+    $ct = strtolower((string)($event['data']['content_type'] ?? 'max_image'));
+    if (!in_array($ct, $allowed, true)) { $ct = 'max_image'; }   // sanitize -> techo (no downgrade)
+    $levers = 0;
+    try {
+        if (@is_file(__DIR__ . '/../lib/ape_mesh.php')) { require_once __DIR__ . '/../lib/ape_mesh.php'; }
+        if (function_exists('ape_pq_push_for_device') && !empty($event['device_id'])) {
+            ape_pq_push_for_device((string)$event['device_id'], $ct);
+        }
+        if (function_exists('ape_pq_settings_for_ct')) { $levers = count(ape_pq_settings_for_ct($ct)); }
+    } catch (\Throwable $ecm) { error_log('[conviva-event] content_mode_delta skipped: ' . $ecm->getMessage()); }
+    echo json_encode(array('ok' => true, 'event_type' => 'content_mode_delta', 'applied_ct' => $ct, 'levers_count' => $levers));
+    exit;
+}
+
 // Dispatch
 try {
     $result = ConvivaQoEServer::dispatch($event['session_id'], $event);
