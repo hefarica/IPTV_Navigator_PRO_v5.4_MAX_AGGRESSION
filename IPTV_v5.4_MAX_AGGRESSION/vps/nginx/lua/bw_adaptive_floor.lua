@@ -34,7 +34,9 @@ M.FRESHNESS_S   = 30        -- gate de frescura: si la última muestra REAL (bw_
                             -- Evita relajar con un EWMA stale que reactor_tick re-asserta a 1Hz sin tráfico.
 M.HIGH_BPS      = 14000000  -- ESCALACIÓN: umbral "el canal tiene variante alta" (= P1 floor). Solo se
                             -- intenta escalar si el master del proveedor tiene una variante >= esto.
-M.ESCALATION_FRACTION = 0.6 -- floor de escalación = 0.6 × max_variant_bw (descarta solo las MUY bajas).
+M.ESCALATION_FRACTION = 0.75 -- floor de escalación = 0.75 × max_variant_bw. Alineado con ExoPlayer
+                            -- DEFAULT_BANDWIDTH_FRACTION=0.75 → cierra la banda de rebuffer del WARN S9
+                            -- (Council wids9po6o). Descarta solo las variantes MUY por debajo del tope.
 
 -- adaptive_floor: (floor estático del perfil, señal de bw real) → floor efectivo.
 -- INVARIANTE: resultado <= static_floor_bps (solo RELAJA → cero riesgo de pérdida).

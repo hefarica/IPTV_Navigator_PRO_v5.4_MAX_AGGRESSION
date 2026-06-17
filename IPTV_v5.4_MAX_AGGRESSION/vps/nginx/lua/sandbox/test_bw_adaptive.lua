@@ -95,7 +95,7 @@ print("── escalation_floor · +imagen freeze-safe ──")
 local HEALTHY_HI = { state = "CBR_SUSTAIN", ewma_bps = 20000000 }  -- red sana, 20M
 -- E1 canal con variante alta (22M) + red sana que sostiene → escala a 0.6*22M=13.2M
 local ef1, er1 = M.escalation_floor(22000000, HEALTHY_HI, 3)
-ok(ef1 == 13200000 and er1 == "escalated", "E1 variante alta 22M + healthy 20M → escala a 13.2M (fuerza tier alto)")
+ok(ef1 == 16500000 and er1 == "escalated", "E1 variante alta 22M + healthy 20M → escala a 16.5M (0.75 × max, fuerza tier alto)")
 -- E2 sin variante alta (max 9M < HIGH_BPS 14M) → no escala (nada que ganar)
 ok(select(1, M.escalation_floor(9000000, HEALTHY_HI, 3)) == 0, "E2 sin variante alta (9M) → 0 (no escala)")
 -- E3 variante alta pero red DOUBLE (degradada) → NO escala (deja al adaptive_floor relajar)

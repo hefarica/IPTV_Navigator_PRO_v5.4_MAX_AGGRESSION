@@ -1996,7 +1996,8 @@
     "virtual_4k_hdr": "ACTIVE",
     "floor_lock": "BYPASS",
     "floor_bps": 8000000,
-    "codec_cascade": "ACTIVE"
+    "codec_cascade": "ACTIVE",
+    "escalation": "ACTIVE"
   },
   "P3_HD_BOOST": {
     "upscaler": "ESPCN-L4",

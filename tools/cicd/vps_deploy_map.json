@@ -71,6 +71,24 @@
       "note": "NEW (Sol 1) — map streamid->profile + default de despliegue (toda la lista actual = P3). Editar SIN tocar Lua. Ausente => combined_body_filter cae al P2 de hoy."
     },
     {
+      "id": "lua-ape-virtual-4k",
+      "src": "IPTV_v5.4_MAX_AGGRESSION/vps/nginx/lua/ape_virtual_4k.lua",
+      "dest": "/etc/nginx/lua/ape_virtual_4k.lua",
+      "type": "lua",
+      "post": "nginx-reload",
+      "enabled": true,
+      "note": "Fake-4K corona: RESOLUTION=3840x2160 + hvc1.2.4.L153.B0 + VIDEO-RANGE=PQ + CICP BT.2020 (additivo, RFC 8216 §4.2 ignora atributos no reconocidos)."
+    },
+    {
+      "id": "config-visual-profiles",
+      "src": "IPTV_v5.4_MAX_AGGRESSION/vps/ape-uhdx/visual_profiles.json",
+      "dest": "/etc/ape-uhdx/visual_profiles.json",
+      "type": "config",
+      "post": "nginx-reload",
+      "enabled": true,
+      "note": "Perfiles P0-P5 (esquema flat agresivo). escalation:ACTIVE en P2 (Council wids9po6o). Lo carga combined_body_filter (cache 60s; nginx-reload lo refresca)."
+    },
+    {
       "id": "lua-combined-body-filter",
       "src": "IPTV_v5.4_MAX_AGGRESSION/vps/nginx/lua/combined_body_filter.lua",
       "dest": "/etc/nginx/lua/combined_body_filter.lua",
