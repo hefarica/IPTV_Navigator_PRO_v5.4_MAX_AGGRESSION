@@ -24,6 +24,10 @@ local cc_cascade_mod = require("ape_codec_cascade")
 -- Sandbox probado: vps/nginx/lua/sandbox/test_bw_adaptive.lua (13/13). Doc: LUA_ENGINES_..._AUDIT §Wiring.
 local ok_bwf, bw_floor_mod = pcall(require, "bw_adaptive_floor")
 if not ok_bwf then bw_floor_mod = nil end
+-- ADITIVO 2026-06-17 (Sol 1): resolver de profile ARBITRARIO (server-side por stream_id) para players que
+-- NO reenvían X-APE-Profile (OkHttp/ExoPlayer). require defensivo → módulo ausente = comportamiento de hoy.
+local ok_pr, profile_resolver = pcall(require, "ape_profile_resolver")
+if not ok_pr then profile_resolver = nil end
 
 -- ═══ STAGE 0: VIDEO BYPASS (BLINDAJE DE MEMORIA) ════════════════════
 local uri = ngx.var.uri or ""
@@ -112,8 +116,8 @@ local floor_ok, floor_err = pcall(function()
         return
     end
 
-    -- Determine profile (default P2 = P2_SAFE_COMPAT)
-    local profile = "P2"
+    -- Determine profile. Orden: cliente (?profile/?p/X-APE-Profile) → Sol 1 server-side (stream_id) → P2.
+    local profile = nil
     local args = ngx.req.get_uri_args()
     if args and args.profile then
         profile = tostring(args.profile):upper()
@@ -124,7 +128,19 @@ local floor_ok, floor_err = pcall(function()
     if hdr_profile then
         profile = tostring(hdr_profile):upper()
     end
-    if not profile:match("^P[0-5]$") then profile = "P2" end
+    if not (profile and profile:match("^P[0-5]$")) then profile = nil end
+    -- ADITIVO 2026-06-17 (Sol 1: ESCALACIÓN DE FLOOR POR CANAL): si el cliente NO trajo un perfil válido
+    -- (OkHttp/ExoPlayer que NO reenvían #EXTHTTP), resolver SERVER-SIDE por la identidad del canal (stream_id).
+    -- by_streamid escala a P1/P0 (floor_lock ACTIVE → fuerza la variante alta) SOLO canales con evidencia QoE;
+    -- el resto → default P2 (BYPASS seguro, todas las variantes). Solo FALLBACK → NUNCA pisa el perfil del
+    -- cliente. pcall + nil-safe → módulo/map ausente → profile nil → P2 de hoy. Freeze-safety: adaptive-floor relaja.
+    if not profile and profile_resolver then
+        local ok_rv, resolved = pcall(function() return profile_resolver.resolve(ngx.var.uri) end)
+        if ok_rv and type(resolved) == "string" and resolved:match("^P[0-5]$") then
+            profile = resolved
+        end
+    end
+    if not profile then profile = "P2" end   -- default final (= comportamiento de hoy si no resolvió)
 
     -- Map P0-P5 to JSON profile keys — CADA NIVEL su propia config (mandato HFRC:
     -- "4K forzado para los 6 niveles, cada uno se configura distinto"). P2 es el
@@ -249,6 +265,33 @@ local floor_ok, floor_err = pcall(function()
             end
         end
 
+        -- ADITIVO 2026-06-17 (ESCALACIÓN +imagen): simétrico al adaptive_floor. SOLO en perfiles BYPASS
+        -- (P2-P5) y SOLO si cfg.escalation=="ACTIVE" (default OFF → inerte). Si el master tiene una variante
+        -- ALTA y el bw real la sostiene (healthy + fresco), TIGHTEN el floor para forzar la variante alta en
+        -- vez de dejar al ABR sub-seleccionar. Freeze-safe: 0 bajo red mala/sin evidencia/sin variante alta;
+        -- la variante top (mayor score) SIEMPRE se conserva (rama idx==highest_idx). pcall + dict nil-safe.
+        local esc_floor = 0
+        -- F3 (review S6): allowlist POSITIVA del floor_lock (string "BYPASS"/nil) — si un perfil futuro
+        -- usa floor_lock como objeto/valor no-estándar, la escalación NO aplica (jamás en P0/P1 ACTIVE).
+        if bw_floor_mod and cfg.escalation == "ACTIVE" and (cfg.floor_lock == "BYPASS" or cfg.floor_lock == nil) then
+            local maxbw = 0
+            for _, v in ipairs(variants) do
+                local b = tonumber(v.bw) or 0
+                if b > maxbw then maxbw = b end
+            end
+            local ok_e, ef = pcall(function()
+                local R = ngx.shared.circuit_metrics
+                if not R then return 0 end
+                local bw_ts = tonumber(R:get("bw_ts"))
+                local age_s = bw_ts and (ngx.now() - bw_ts) or nil
+                return bw_floor_mod.escalation_floor(maxbw, {
+                    state    = R:get("bw_state"),
+                    ewma_bps = R:get("bw_ewma_bps"),
+                }, age_s)
+            end)
+            if ok_e and type(ef) == "number" and ef > 0 then esc_floor = ef end
+        end
+
         for idx, v in ipairs(variants) do
             local keep = false
             -- Always keep the highest scoring variant as fallback
@@ -256,6 +299,11 @@ local floor_ok, floor_err = pcall(function()
                 keep = true
             elseif cfg.floor_lock == "ACTIVE" then
                 if v.bw >= eff_floor then
+                    keep = true
+                end
+            elseif esc_floor > 0 then
+                -- ESCALACIÓN (BYPASS + canal sostiene tier alto): descarta variantes MUY bajas → fuerza la alta
+                if v.bw >= esc_floor then
                     keep = true
                 end
             else

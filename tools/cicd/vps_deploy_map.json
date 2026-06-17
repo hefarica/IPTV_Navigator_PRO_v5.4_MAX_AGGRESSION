@@ -53,6 +53,24 @@
       "note": "NEW module — lazo bitrate-reactor->manifest (adaptive floor). Deploy BEFORE/with lua-combined-body-filter, que lo require()."
     },
     {
+      "id": "lua-ape-profile-resolver",
+      "src": "IPTV_v5.4_MAX_AGGRESSION/vps/nginx/lua/ape_profile_resolver.lua",
+      "dest": "/etc/nginx/lua/ape_profile_resolver.lua",
+      "type": "lua",
+      "post": "nginx-reload",
+      "enabled": true,
+      "note": "NEW (Sol 1) — resuelve profile server-side por stream_id para players que NO reenvian X-APE-Profile. Deploy BEFORE/with lua-combined-body-filter, que lo require()."
+    },
+    {
+      "id": "lua-ape-profile-map",
+      "src": "IPTV_v5.4_MAX_AGGRESSION/vps/nginx/lua/ape_profile_map.json",
+      "dest": "/etc/nginx/lua/ape_profile_map.json",
+      "type": "lua",
+      "post": "nginx-reload",
+      "enabled": true,
+      "note": "NEW (Sol 1) — map streamid->profile + default de despliegue (toda la lista actual = P3). Editar SIN tocar Lua. Ausente => combined_body_filter cae al P2 de hoy."
+    },
+    {
       "id": "lua-combined-body-filter",
       "src": "IPTV_v5.4_MAX_AGGRESSION/vps/nginx/lua/combined_body_filter.lua",
       "dest": "/etc/nginx/lua/combined_body_filter.lua",

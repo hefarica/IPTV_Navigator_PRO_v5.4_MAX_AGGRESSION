@@ -32,6 +32,9 @@ M.FLOOR_4K_BPS  = 15000000  -- SOLO fallback de detección degradada si falta bw
 M.SAFETY_MARGIN = 0.8       -- peldaño sostenible = 0.8 × ewma (margen, no al borde)
 M.FRESHNESS_S   = 30        -- gate de frescura: si la última muestra REAL (bw_ts) tiene > 30s → estático.
                             -- Evita relajar con un EWMA stale que reactor_tick re-asserta a 1Hz sin tráfico.
+M.HIGH_BPS      = 14000000  -- ESCALACIÓN: umbral "el canal tiene variante alta" (= P1 floor). Solo se
+                            -- intenta escalar si el master del proveedor tiene una variante >= esto.
+M.ESCALATION_FRACTION = 0.6 -- floor de escalación = 0.6 × max_variant_bw (descarta solo las MUY bajas).
 
 -- adaptive_floor: (floor estático del perfil, señal de bw real) → floor efectivo.
 -- INVARIANTE: resultado <= static_floor_bps (solo RELAJA → cero riesgo de pérdida).
@@ -79,6 +82,30 @@ function M.adaptive_floor(static_floor_bps, bw_signal)
         return static_floor_bps, "degraded_above_profile_floor_static"
     end
     return sustainable, "degraded_relaxed_to_sustainable"
+end
+
+-- escalation_floor: la palanca de +IMAGEN (simétrica al adaptive_floor). TIGHTEN el floor hacia el tier
+-- alto SOLO cuando el canal puede sostenerlo, para forzar la variante alta en vez de dejar al ABR
+-- sub-seleccionar. Devuelve un floor>0 (descarta las variantes MUY por debajo del tope, el caller SIEMPRE
+-- conserva la top) o 0 = BYPASS (no escalar). FREEZE-SAFE por construcción — escala solo si:
+--   (1) el master tiene una variante alta (max_variant_bw >= HIGH_BPS) → si no, nada que ganar;
+--   (2) hay medición real fresca (ewma>0, age<=FRESHNESS_S) → sin evidencia no se fuerza;
+--   (3) el estado NO es DOUBLE (red sana) → bajo red mala NUNCA escala (deja al adaptive_floor relajar);
+--   (4) el ewma real SOSTIENE el floor de escalación (ewma >= 0.6×max) → no fuerza lo que la red no da.
+-- bw_signal = { state, ewma_bps }  ·  age_s = ngx.now()-bw_ts (frescura)
+function M.escalation_floor(max_variant_bw, bw_signal, age_s)
+    max_variant_bw = tonumber(max_variant_bw) or 0
+    if max_variant_bw < M.HIGH_BPS then return 0, "no_high_variant" end
+    if type(bw_signal) ~= "table" then return 0, "no_signal" end
+    local ewma = tonumber(bw_signal.ewma_bps) or 0
+    if ewma <= 0 then return 0, "no_measurement" end
+    local a = tonumber(age_s)
+    if a and a > M.FRESHNESS_S then return 0, "stale" end
+    if bw_signal.state == "DOUBLE" then return 0, "degraded_bypass" end   -- red no sostiene → no escalar
+    local floor = math.floor(max_variant_bw * M.ESCALATION_FRACTION)
+    if floor < 0 then floor = 0 end
+    if ewma < floor then return 0, "ewma_below_escalation_floor" end      -- no fuerces lo que la red no da
+    return floor, "escalated"
 end
 
 -- select_variants: ESPEJO (lockstep MANUAL) de la keep-logic de combined_body_filter con floor

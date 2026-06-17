@@ -90,5 +90,28 @@ ok(f11 < STATIC_FLOOR and r11 == "degraded_relaxed_to_sustainable",
    "T11 fresh (age 5s) → relaja a sostenible "..tostring(f11))
 ok(has(k11,"720"), "T11 fresh mantiene 720 sostenible (anti-freeze) [kept="..names(k11).."]")
 
+-- ── escalation_floor (la palanca de +imagen, simétrica) ──
+print("── escalation_floor · +imagen freeze-safe ──")
+local HEALTHY_HI = { state = "CBR_SUSTAIN", ewma_bps = 20000000 }  -- red sana, 20M
+-- E1 canal con variante alta (22M) + red sana que sostiene → escala a 0.6*22M=13.2M
+local ef1, er1 = M.escalation_floor(22000000, HEALTHY_HI, 3)
+ok(ef1 == 13200000 and er1 == "escalated", "E1 variante alta 22M + healthy 20M → escala a 13.2M (fuerza tier alto)")
+-- E2 sin variante alta (max 9M < HIGH_BPS 14M) → no escala (nada que ganar)
+ok(select(1, M.escalation_floor(9000000, HEALTHY_HI, 3)) == 0, "E2 sin variante alta (9M) → 0 (no escala)")
+-- E3 variante alta pero red DOUBLE (degradada) → NO escala (deja al adaptive_floor relajar)
+local _, er3 = M.escalation_floor(22000000, { state = "DOUBLE", ewma_bps = 4000000 }, 3)
+ok(er3 == "degraded_bypass", "E3 variante alta + DOUBLE → 0 degraded_bypass (jamás fuerza bajo red mala)")
+-- E4 variante alta + healthy pero ewma (10M) < floor escalación (13.2M) → NO fuerza lo que la red no da
+local _, er4 = M.escalation_floor(22000000, { state = "CBR_SUSTAIN", ewma_bps = 10000000 }, 3)
+ok(er4 == "ewma_below_escalation_floor", "E4 ewma 10M < 0.6*22M → 0 (no fuerza lo que la red no sostiene)")
+-- E5 variante alta + medición STALE (age 120s) → no escala
+local _, er5 = M.escalation_floor(22000000, HEALTHY_HI, 120)
+ok(er5 == "stale", "E5 variante alta + stale 120s → 0 (no escala con medición vieja)")
+-- E6 variante alta + cold (ewma 0) → no escala
+local _, er6 = M.escalation_floor(22000000, { state = "CBR_SUSTAIN", ewma_bps = 0 }, 3)
+ok(er6 == "no_measurement", "E6 cold (ewma 0) → 0 (sin evidencia no escala)")
+-- E7 nil-safe
+ok(select(1, M.escalation_floor(22000000, nil, 3)) == 0, "E7 bw_signal nil → 0 (passthrough seguro)")
+
 print(string.format("\n==== %d PASS / %d FAIL ====", pass, fail))
 os.exit(fail == 0 and 0 or 1)
