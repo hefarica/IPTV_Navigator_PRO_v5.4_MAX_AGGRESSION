@@ -10,20 +10,30 @@
 #        powershell -ExecutionPolicy Bypass -File host-ara-watchdog.ps1 -Install
 # ════════════════════════════════════════════════════════════════════════════
 param(
-  [string]$Endpoint = "https://iptv-ape.duckdns.org",
-  [string]$VpsIp    = "178.156.147.234",
-  [string]$VpsSsh   = "root@178.156.147.234",
-  [int]$IntervalSec = 20,
+  [string]$Endpoint   = "https://iptv-ape.duckdns.org",
+  [string]$VpsHost    = "iptv-ape.duckdns.org",
+  [string]$VpsSsh     = "",                                    # vacio -> derivado del VpsIp resuelto por DNS
+  [string]$DeviceConf = "$env:USERPROFILE\.ape\devices.conf", # fuera del repo, nunca commiteado
+  [int]$IntervalSec   = 20,
   [switch]$Install
 )
 $ErrorActionPreference = "SilentlyContinue"
+
+# VpsIp resuelto por DNS (no hardcodeado); fallback a la ultima IP buena si el DNS cae.
+$VpsIp = try { ([System.Net.Dns]::GetHostAddresses($VpsHost) | Where-Object { $_.AddressFamily -eq 'InterNetwork' } | Select-Object -First 1).IPAddressToString } catch { $null }
+if (-not $VpsIp)  { $VpsIp  = "178.156.147.234" }   # last-known-good (DNS down)
+if (-not $VpsSsh) { $VpsSsh = "root@$VpsIp" }
 
 $Repo   = "C:\Users\HFRC\Desktop\IPTV_Navigator_PRO_v5.4_MAX_AGGRESSION\IPTV_v5.4_MAX_AGGRESSION"
 $Agent  = "$Repo\vps\prisma\adb\ape-qoe-agent.sh"
 $CurlBin= "$Repo\backend\curl_arm32"
 $Stage  = "C:\tmp\ara_stage"
 $LogF   = "C:\tmp\host-ara-watchdog.log"
-$Known  = @("192.168.1.1:5555","192.168.1.1:46543")
+# Seed de IPs del device desde config externa (fuera del repo); mDNS (Discover) sigue siendo el descubridor dinamico.
+$Known  = @()
+if (Test-Path $DeviceConf) {
+  $Known = @(Get-Content $DeviceConf | ForEach-Object { $_.Trim() } | Where-Object { $_ -match '^\d{1,3}(\.\d{1,3}){3}:\d+$' })
+}
 
 function Log($m){ $line="[{0}] {1}" -f (Get-Date -Format "yyyy-MM-dd HH:mm:ss"), $m; Add-Content -Path $LogF -Value $line }
 

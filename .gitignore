@@ -126,3 +126,10 @@ IPTV_v5.4_MAX_AGGRESSION/snapshots/
 IPTV_v5.4_MAX_AGGRESSION/sandbox/
 IPTV_v5.4_MAX_AGGRESSION/tmp/
 Ctmpsc_native_out.txt
+
+# APE secrets / device config (nunca commitear) - 2026-06-17
+.ape/
+devices.conf
+ara.env
+ara_token.txt
+**/secrets.*
