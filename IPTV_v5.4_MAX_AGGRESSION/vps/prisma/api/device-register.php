@@ -19,14 +19,18 @@ if (!$data || empty($data["device_id"])) {
 try {
     $db = new SQLite3("/var/www/html/prisma/db/ape_devices.db");
     $now = gmdate("Y-m-d H:i:s");
+    // Backward-compatible migration (2026-06 · Player Playback Plane): columna para
+    // telemetry/decision JSON. Idempotente: si ya existe, SQLite devuelve error suprimido (@) → no rompe.
+    @$db->exec("ALTER TABLE ape_devices ADD COLUMN playback_profile_json TEXT DEFAULT ''");
     $stmt = $db->prepare("INSERT INTO ape_devices
-        (device_id, device_ip, player, platform, android_version, model, settings_applied, chisel_port, vps_tunnel, user_agent, registered_at, last_seen, notes)
+        (device_id, device_ip, player, platform, android_version, model, settings_applied, chisel_port, vps_tunnel, user_agent, registered_at, last_seen, notes, playback_profile_json)
         VALUES
-        (:device_id,:device_ip,:player,:platform,:android_version,:model,:settings_applied,:chisel_port,:vps_tunnel,:user_agent,:now,:now,:notes)
+        (:device_id,:device_ip,:player,:platform,:android_version,:model,:settings_applied,:chisel_port,:vps_tunnel,:user_agent,:now,:now,:notes,:playback_profile_json)
         ON CONFLICT(device_id) DO UPDATE SET
           device_ip=excluded.device_ip, player=excluded.player,
           settings_applied=excluded.settings_applied, chisel_port=excluded.chisel_port,
-          vps_tunnel=excluded.vps_tunnel, last_seen=excluded.last_seen, notes=excluded.notes");
+          vps_tunnel=excluded.vps_tunnel, last_seen=excluded.last_seen, notes=excluded.notes,
+          playback_profile_json=excluded.playback_profile_json");
     $stmt->bindValue(":device_id", $data["device_id"] ?? "");
     $stmt->bindValue(":device_ip", $data["device_ip"] ?? "");
     $stmt->bindValue(":player", $data["player"] ?? "");
@@ -39,6 +43,7 @@ try {
     $stmt->bindValue(":user_agent", $_SERVER["HTTP_USER_AGENT"] ?? "");
     $stmt->bindValue(":now", $now);
     $stmt->bindValue(":notes", $data["notes"] ?? "");
+    $stmt->bindValue(":playback_profile_json", $data["playback_profile_json"] ?? "");
     $stmt->execute();
     echo json_encode(["ok"=>true,"device_id"=>$data["device_id"],"registered_at"=>$now]);
 } catch (Exception $e) {

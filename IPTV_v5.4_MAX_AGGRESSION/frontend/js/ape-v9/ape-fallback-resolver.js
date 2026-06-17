@@ -285,7 +285,9 @@
         auditSummary.F2_HEVC_PREMIUM_HINT++;
         const nameRaw = (channel.name || '');
         const groupRaw = (channel.group || '');
-        const is4k = nameRaw.match(/4k|uhd/i) || groupRaw.match(/4k|uhd/i);
+        const _profUp2 = String(profile || '').toUpperCase();
+        const _is4kProfile2 = (_profUp2 === 'P0' || _profUp2 === 'P1');
+        const is4k = _is4kProfile2 || nameRaw.match(/4k|uhd/i) || groupRaw.match(/4k|uhd/i);
         const isHdrSignal = nameRaw.match(/hdr|dolby|hlg|hdr10/i) || groupRaw.match(/hdr|dolby|hlg|hdr10/i);
         const res = is4k ? '3840x2160' : '1920x1080';
         const isSports = nameRaw.match(/sport|dazn|espn|f1|ufc|liga|champions|nba/i);
@@ -339,16 +341,21 @@
 
     function buildF3HevcSafe1080p(channel, profile, probeData, confidence, contradictions) {
         auditSummary.F3_HEVC_SAFE_1080P++;
+        const _profUp3 = String(profile || '').toUpperCase();
+        const _is4kProfile3 = (_profUp3 === 'P0' || _profUp3 === 'P1');
         const isSports = (channel.name || '').match(/sport|deporte|live/i);
-        const fps = isSports ? 60 : 30;
-        const bwObj = getBitrateFallback(isSports ? '1920x1080_60' : '1920x1080_30');
+        const fps = (_is4kProfile3 || isSports) ? 60 : 30;
+        const bwObj = _is4kProfile3
+            ? getBitrateFallback('3840x2160')
+            : getBitrateFallback(isSports ? '1920x1080_60' : '1920x1080_30');
 
         // [HEVC-CASCADE-CSV FIX 2026-05-20 · HFRC mandato] Sports/live → T3 (L123 1080p@60),
         // generalista → T4 (L120 1080p@30). Antes hardcoded L120 universal.
         const _cascade = (typeof window !== 'undefined' && window.APE_HEVC_CASCADE) || null;
-        let _safeCodec = 'hvc1.2.4.L120.B0';
+        let _safeCodec = _is4kProfile3 ? 'hvc1.2.4.L153.B0' : 'hvc1.2.4.L120.B0';
         if (_cascade && typeof _cascade.resolveTierByResolution === 'function') {
-            const _tier = _cascade.resolveTierByResolution(1920, 1080, fps, {});
+            const [_sw, _sh] = _is4kProfile3 ? [3840, 2160] : [1920, 1080];
+            const _tier = _cascade.resolveTierByResolution(_sw, _sh, fps, {});
             _safeCodec = _tier.codec;
         }
 
@@ -375,9 +382,9 @@
             supplementalCodecs: null,
             supplementalCodecsVerified: false,
             
-            resolution: '1920x1080',
+            resolution: _is4kProfile3 ? '3840x2160' : '1920x1080',
             resolutionVerified: false,
-            
+
             bandwidth: bwObj.bandwidth,
             averageBandwidth: bwObj.averageBandwidth,
             bandwidthVerified: false,
@@ -491,15 +498,36 @@
             return buildF3HevcSafe1080p(channel, profile, probeData, confidence, contradictions);
         }
 
-        // [HEVC-CASCADE-CSV FIX 2026-05-20 · HFRC mandato]
-        // MAX IMAGE FIRST: cualquier canal con manifest HLS → F3 HEVC SAFE 1080p
-        // por defecto (cascada CSV emite hvc1.2.4.* per resolución). Solo se cae
-        // a F4 (AVC) si el probe DETECTÓ explícitamente codec avc1 upstream.
-        // Antes default era F4 (AVC) — producía 0% HEVC sin probe → viola mandato.
+        // [HEVC-CASCADE-CSV 2026-05-20 · REVISED 2026-06-07 Council audit · S1+S5+S9+S12]
+        // Doctrina CLAUDE.md §F0–F5: F4 AVC HIGH SAFE corre cuando NO hay evidencia HEVC
+        // ni hint premium. La revisión de 2026-05-20 forzaba F3 HEVC PREFERRED para TODO
+        // canal con .m3u8 — pero los Explore agents 2026-06-07 confirmaron que ExoPlayer/
+        // OTT Navigator/TiviMate NO degradan codec dentro de variant (RFC 8216 §4.4.4.2),
+        // y la mayoría de upstream IPTV FHD/HD sirve H.264. F3 HEVC declarado sobre H.264
+        // = init decoder failure = freeze.
+        //
+        // Fix: F4 para P3/P4/P5 sin probe-HEVC y sin anti-freeze premium. P0/P1/P2 conservan
+        // F3 HEVC por default (alta probabilidad upstream HEVC en 4K).
+        // Anti-freeze premium usa ANTI_FREEZE_PREMIUM_RE (sin 'fhd|hevc|h265' tokens cosméticos),
+        // garantizando que canales como "BEIN SPORTS FHD" siguen siendo premium pero
+        // "MyChannel FHD" genérico cae a F4.
         const _probeSaysAvc = probeData && /^avc1/i.test(String(probeData.videoCodec || ''));
         if (channel.url && channel.url.includes('.m3u8')) {
             if (_probeSaysAvc) {
                 return buildF4AvcHighSafe(channel, profile, probeData, confidence, contradictions);
+            }
+            // F4 demotion para FHD/HD/SD sin evidencia ni premium real
+            const _profUp = String(profile || '').toUpperCase();
+            const _isFhdHdSd = (_profUp === 'P3' || _profUp === 'P4' || _profUp === 'P5');
+            if (_isFhdHdSd) {
+                const _afp = (typeof window !== 'undefined' && window.APE_HEVC_CASCADE && window.APE_HEVC_CASCADE.isAntiFreezePremium)
+                    ? window.APE_HEVC_CASCADE.isAntiFreezePremium
+                    : isPremiumChannel; // fallback: usa el isPremiumChannel local del resolver
+                let _isAntiFreezePremium = false;
+                try { _isAntiFreezePremium = _afp(channel, profile); } catch (_e) { _isAntiFreezePremium = false; }
+                if (!_isAntiFreezePremium) {
+                    return buildF4AvcHighSafe(channel, profile, probeData, confidence, contradictions);
+                }
             }
             return buildF3HevcSafe1080p(channel, profile, probeData, confidence, contradictions);
         }
@@ -523,18 +551,26 @@
         parts.push(`FRAME-RATE=${Number(truth.frameRate || 30).toFixed(3)}`);
         parts.push(`CODECS="${truth.codec},${truth.audioCodec || 'mp4a.40.2'}"`);
 
-        // VIDEO-RANGE solo si verificado por probe (no inventar HDR)
-        if (truth.hdrVerified && (truth.videoRange === 'PQ' || truth.videoRange === 'HLG')) {
-            parts.push(`VIDEO-RANGE=${truth.videoRange}`);
+        // VIDEO-RANGE=PQ INCONDICIONAL (2026-06-16, doctrina SDR→HDR enhancement display-driven —
+        // ver CLAUDE.md "VIDEO-RANGE=PQ Incondicional"). El display/daemon materializa el HDR
+        // (hdr_conversion_mode=1 incondicional); PQ declara la salida HDR resultante. Si el probe
+        // verificó HLG real se respeta HLG; si no, default PQ. FREEZELESS: VIDEO-RANGE es hint de
+        // rango/display, NO cambia CODECS ni declara un decode imposible (Ley Cardinal 1 intacta).
+        // [Phase G 2026-06-16] ROLLBACK PQ→SDR per-canal: si la QoE detectó pantallazo negro en este
+        // canal (window.APE_PQ_PROFILE[chId]==='SDR', pre-cargado de /prisma/api/channel-pq-bulk.php),
+        // se emite SDR SIN la metadata BT.2020/PQ (que es lo que causa el handshake HDR fallido →
+        // pantalla negra en displays no-HDR, hallazgo council S4). El resto sigue PQ incondicional.
+        const _pqMap = (typeof window !== 'undefined' && window.APE_PQ_PROFILE) ? window.APE_PQ_PROFILE : {};
+        const _pqBlacklisted = truth.channelId && _pqMap[truth.channelId] === 'SDR';
+        const _videoRange = _pqBlacklisted ? 'SDR' : ((truth.hdrVerified && truth.videoRange === 'HLG') ? 'HLG' : 'PQ');
+        parts.push(`VIDEO-RANGE=${_videoRange}`);
 
-            // [G-1 FIX 2026-05-19] HDR10 metadata trifecta (CICP) — RFC 8216bis §4.4.6.2.
-            // Emitted ONLY when VIDEO-RANGE is verified PQ or HLG. Probe-provided values
-            // take precedence; spec-safe defaults otherwise (BT.2020 / PQ-or-HLG / BT.2020-NCL).
-            // Per ARTIFACT_HDR10_METADATA_TRIFECTA.md + closes G-1 of
-            // ARTIFACT_FASE1_PROFUNDO_B_RESOLVER_AUDIT.md.
-            const cp = truth.colorPrimaries          || 9;                                       // BT.2020
-            const tc = truth.transferCharacteristics || (truth.videoRange === 'HLG' ? 18 : 16);  // HLG=18 / PQ=16
-            const mc = truth.matrixCoefficients      || 9;                                       // BT.2020 non-constant
+        if (_videoRange !== 'SDR') {
+            // HDR10/HLG metadata trifecta (CICP) — RFC 8216bis §4.4.6.2. SOLO para PQ/HLG; en SDR se
+            // OMITE (un canal SDR no lleva BT.2020/ST2084 — evita el handshake HDR fallido).
+            const cp = truth.colorPrimaries          || 9;                              // BT.2020
+            const tc = truth.transferCharacteristics || (_videoRange === 'HLG' ? 18 : 16); // HLG=18 / PQ=16
+            const mc = truth.matrixCoefficients      || 9;                              // BT.2020 non-constant
             parts.push(`COLOR-PRIMARIES=${cp}`);
             parts.push(`TRANSFER-CHARACTERISTICS=${tc}`);
             parts.push(`MATRIX-COEFFICIENTS=${mc}`);

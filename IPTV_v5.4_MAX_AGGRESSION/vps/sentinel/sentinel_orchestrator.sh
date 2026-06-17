@@ -62,7 +62,20 @@ run_cycle() {
     if ! "${LIB_DIR}/inject_directives.sh" "$ADB_TARGET" "$DEVICE_PLATFORM"; then
         log "[ORCHESTRATOR] Directives injection failed."
     fi
-    
+
+    # 3.5 Generic polymorphic profile (NEW 2026-06) — universal coverage for NON-ONN platforms.
+    #     ONN keeps its dedicated onn_4k profile via inject_directives above; this ADDS the
+    #     universal AndroidTV base + per-SoC enhancements (idempotent, persist.ape.enh.version)
+    #     for firetv/generic/mediatek/realtek/etc. WITHOUT breaking ONN behavior.
+    if [ "${DEVICE_PLATFORM:-generic}" != "onn_4k" ] && [ -f "${SCRIPT_DIR}/profiles/generic_player.sh" ]; then
+        log "[ORCHESTRATOR] Applying generic polymorphic profile (platform=$DEVICE_PLATFORM)..."
+        (
+            # shellcheck source=/dev/null
+            . "${SCRIPT_DIR}/profiles/generic_player.sh"
+            apply_generic_profile "$ADB_TARGET"
+        ) >>"$LOG_FILE" 2>&1 || log "[ORCHESTRATOR] generic profile non-fatal error (ignored)."
+    fi
+
     # 4. Probe QoE & App Performance Telemetry
     log "[ORCHESTRATOR] Probing QoE telemetry..."
     if ! "${LIB_DIR}/probe_qoe.sh" "$ADB_TARGET"; then

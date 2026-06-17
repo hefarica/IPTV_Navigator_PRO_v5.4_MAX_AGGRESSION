@@ -120,6 +120,26 @@ Ver `.claude/commands/*.md`.
 | `iptv-url-constructor-7-rules` | God-Mode Zero-Drop URL doctrine | mismo dir |
 | `iptv-exthttp-traps-checklist` | 9 trampas EXTHTTP (400/403/304+0B/EOF) | mismo dir |
 | `iptv-4layer-fallback-doctrine` | Beautiful Madness 4-layer M3U8 headers | mismo dir |
+| `ape-vps-hevc-crystal-integrator` | **Manifiesto médula espinal** — truth-guards VPS/HEVC-UHD Crystal + GOLDEN RULE + Ley Nivel↔Resolución; inyectada en `/iptv-freezeless-visual-master-council` PHASE 0 | skill invocable + repo `docs/manifestos/ape-vps-hevc-crystal-integrator/` |
+
+---
+
+## MANIFIESTO APE VPS HEVC-UHD CRYSTAL INTEGRATOR (médula espinal)
+
+Segundo manifiesto obligatorio del repo (junto al OMEGA working-flow). Skill `ape-vps-hevc-crystal-integrator`,
+**revisada por el council** (7 research web + 13 PhD → **WARN · 0 BLOCK · preserva el flujo**; ver su
+`COUNCIL_REVIEW.md`) y respaldada con normas primarias en `references/web_authority.md`.
+
+**6 truth-guards:** (1) `#EXT-X-APE-INSTALLER`/`#EXT-X-APE-WAKE` son **metadata inerte** (RFC 8216 §6.3.1);
+(2) wake = observación GET del manifest / beacon **no-bloqueante**; (3) **ADB no se habilita remoto**
+(autorización RSA por host); (4) el VPS selecciona variantes/metadata/QoE, **no píxeles**; (5) el daemon
+corre en el device autorizado, no "dentro del player"; (6) **GOLDEN RULE** `hvc1.*` en STREAM-INF /
+`hev1.*` en KODIPROP·EXTVLCOPT (nunca cruzados).
+
+**Ley Cardinal 1 — Nivel↔Resolución:** `L153`=4K@60 techo; en 8K@120 = freeze 2026-06-08. Más:
+sin fake HDR/CMAF/SUPPLEMENTAL-CODECS, 9 headers tóxicos EXTHTTP, SHIELDED verbatim + NO-STRIP de ~945
+headers, log-phase no-bloqueante, invariantes de red BBR/initcwnd. Mejoras de código SOLO si preservan el
+flujo LAB→JSON→lista→VPS→ADB→player.
 
 ---
 

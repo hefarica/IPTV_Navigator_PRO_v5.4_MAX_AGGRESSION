@@ -1,0 +1,73 @@
+{
+  "council": "freezeless-visual-master-council",
+  "date": "2026-06-07",
+  "session": 2,
+  "exit_code": 1,
+  "exit_label": "WARN",
+  "pillar_freezeless": "PASS",
+  "pillar_visual_master": "WIN",
+  "blocker": false,
+  "targets": [
+    {
+      "file": "IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/ape-profiles-config.js",
+      "change": "4x codec AV1->H265 in P0(8K) and P1(4K)"
+    },
+    {
+      "file": "IPTV_v5.4_MAX_AGGRESSION/frontend/index-v4.html",
+      "change": "cache buster bump 20260607-hevc-first-p0p1-codec-fix"
+    }
+  ],
+  "phd_verdicts": {
+    "S1_iptv_hls_architect": "PASS",
+    "S2_llhls_cmaf_engineer": "PASS",
+    "S3_video_codec_engineer": "WIN",
+    "S4_color_scientist_hdr": "PASS",
+    "S5_qoe_qos_researcher": "PASS",
+    "S6_nginx_lua_engineer": "PASS",
+    "S7_linux_vps_sre": "PASS",
+    "S8_network_tcp_quic": "PASS",
+    "S9_player_compatibility": "WARN",
+    "S10_security_headers": "PASS",
+    "S11_data_observability": "PASS",
+    "S12_qa_broadcast_validator": "PASS",
+    "S13_repo_surgeon": "PASS"
+  },
+  "acceptance_criteria": {
+    "1_no_channels_removed": true,
+    "2_premium_hevc_main10_preferred": true,
+    "3_no_evidence_f5_url_original": true,
+    "4_no_false_cmaf": true,
+    "5_no_false_hdr": true,
+    "6_no_toxic_headers": true,
+    "7_no_fake_supplemental_codecs": true,
+    "8_single_url_per_channel": true,
+    "9_channels_removed_zero": true,
+    "10_node_c_exit0_x3": true
+  },
+  "node_c_results": {
+    "ape-profiles-config.js": 0,
+    "ape-fallback-resolver.js": 0,
+    "ape-quality-prober.js": 0,
+    "m3u8-typed-arrays-ultimate.js": 0
+  },
+  "warns": [
+    {
+      "id": "WARN-1",
+      "severity": "LOW",
+      "specialists": ["S9", "S3"],
+      "file": "ape-profiles-config.js",
+      "line_approx": 435,
+      "description": "X-APE-CODEC header in P0 custom_headers still says AV1 while settings.codec is now H265",
+      "impact": "Informational header only. No effect on STREAM-INF CODECS= or playback.",
+      "action": "OPTIONAL"
+    }
+  ],
+  "key_finding": "codec field in settings/adaptive_ladder.primary is METADATA ONLY. Actual CODECS= in STREAM-INF driven by probe (F0/F1) or ape-hevc-cascade.js SSOT (F2/F3/F4). Change is doctrinal alignment fix.",
+  "doctrine_compliance": {
+    "mandate_2026_05_20_hevc_first": true,
+    "max_image_first": true,
+    "omega_no_delete_av1_preserved_as_fallback": true,
+    "no_player_breaking_lies": true,
+    "autopista_passthrough": true
+  }
+}

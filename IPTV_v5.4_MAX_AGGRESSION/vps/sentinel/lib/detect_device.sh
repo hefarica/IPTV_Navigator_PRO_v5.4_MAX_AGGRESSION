@@ -32,6 +32,8 @@ if ! adb -s "$ADB_TARGET" get-state &>/dev/null; then
     else
         DEVICE_BRAND="unknown"
         DEVICE_MODEL="unknown"
+        DEVICE_DEVICE=""
+        DEVICE_SDK=""
         DEVICE_PLATFORM="generic"
         return 0
     fi

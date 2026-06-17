@@ -1,0 +1,179 @@
+﻿HEADER (cols B-G = P0-P5): row5: B=P0 C=P1 D=P2 E=P3 F=P4 G=P5
+EXPORT prefixes: settings. vlcopt. kodiprop. headerOverrides. hlsjs. prefetch_config. other.
+lastRow(colA)=663
+
+R33 EXPORTS=Y A='settings.codec'
+    P0=DVH1
+    P1=HVC1
+    P2=HVC1
+    P3=HVC1
+    P4=AVC1
+    P5=AVC1
+R37 EXPORTS=Y A='settings.codec_full'
+    P0=dvh1.08.06
+    P1=hvc1.2.4.L153.B0
+    P2=hvc1.2.4.L150.B0
+    P3=hvc1.1.6.L120.B0
+    P4=avc1.64001f
+    P5=avc1.42c01e
+R38 EXPORTS=Y A='settings.codec_priority'
+    P0=dvh1,dvhe,hvc1,hev1,av01,vp09
+    P1=hvc1,hev1,av01,vp09
+    P2=hvc1,hev1,av01,vp09,avc1
+    P3=hvc1,avc1,av01
+    P4=hvc1,avc1,av01
+    P5=hvc1,avc1,av01
+R46 EXPORTS=Y A='settings.audio_codec'
+    P0=ac-3
+    P1=ac-3
+    P2=ac-3
+    P3=mp4a.40.2
+    P4=mp4a.40.2
+    P5=mp4a.40.2
+R104 EXPORTS=Y A='vlcopt.codec-priority'
+    P0=dvh1,dvhe,hvc1,hev1,av01,vp09
+    P1=hvc1,hev1,av01,vp09
+    P2=hvc1,hev1,av01,vp09,avc1
+    P3=hvc1,avc1,av01
+    P4=avc1,hvc1
+    P5=avc1
+R126 EXPORTS=Y A='headerOverrides.X-Video-Codecs'
+    P0=DVH1
+    P1=HVC1
+    P2=HVC1
+    P3=HVC1
+    P4=AVC1
+    P5=AVC1
+R135 EXPORTS=Y A='headerOverrides.X-APE-CODEC'
+    P0=av01.0.21M.10.0.112.09.16.09.0,dvh1.08.06,hvc1.2.4.L186.B0
+    P1=dvh1.08.06,hvc1.2.4.L153.B0,hev1.2.4.L153.B0,av01.0.15M.10
+    P2=hvc1.2.4.L123.B0,hev1.2.4.L123.B0,avc1.640033
+    P3=avc1.640028,hvc1.1.6.L120.90
+    P4=avc1.4d401f
+    P5=avc1.42c01e
+R190 EXPORTS=Y A='headerOverrides.X-Audio-Codecs'
+    P0=opus,aac,eac3,ac3,dolby,dts,mp3
+    P1=opus,aac,eac3,ac3,dolby,dts,mp3
+    P2=opus,aac,eac3,ac3,dolby,mp3
+    P3=opus,aac,eac3,ac3,dolby,dts,mp3
+    P4=opus,aac,eac3,ac3,dolby,dts,mp3
+    P5=opus,aac,eac3,ac3,dolby,dts,mp3
+R261 EXPORTS=Y A='headerOverrides.X-Codec-Support'
+    P0=av01.0.21M.10.0.112.09.16.09.0,dvh1.08.06,hvc1.2.4.L186.B0
+    P1=dvh1.08.06,hvc1.2.4.L153.B0,hev1.2.4.L153.B0,av01.0.15M.10
+    P2=hvc1.2.4.L123.B0,hev1.2.4.L123.B0,avc1.640033
+    P3=avc1.640028,hvc1.1.6.L120.90
+    P4=avc1.4d401f
+    P5=avc1.42c01e
+R296 EXPORTS=Y A='headerOverrides.X-APE-PLAYER-ENSLAVEMENT-OVERRIDE-CODEC'
+    P0=TRUE,ENABLED,ADAPTIVE,AUTO
+    P1=TRUE,ENABLED,ADAPTIVE,AUTO
+    P2=TRUE,ENABLED,ADAPTIVE,AUTO
+    P3=TRUE,ENABLED,ADAPTIVE,AUTO
+    P4=TRUE,ENABLED,ADAPTIVE,AUTO
+    P5=TRUE,ENABLED,ADAPTIVE,AUTO
+R350 EXPORTS=Y A='headerOverrides.X-Stream-Codecs'
+    P0=dvh1.08.06,ac-3
+    P1=av01.0.15M.10,ac-3
+    P2=hvc1.2.4.L150.B0,ac-3
+    P3=hvc1.1.6.L120.B0,mp4a.40.2
+    P4=avc1.64001f,mp4a.40.2
+    P5=avc1.42c01e,mp4a.40.2
+R631 EXPORTS=Y A='settings.codec_primary'
+    P0=HEVC
+    P1=HEVC
+    P2=HEVC
+    P3=HEVC
+    P4=AVC
+    P5=AVC
+R632 EXPORTS=Y A='settings.codec_string'
+    P0=hvc1.2.4.L153.B0,ac-3
+    P1=hvc1.2.4.L153.B0,ac-3
+    P2=hvc1.2.4.L150.B0,ac-3
+    P3=hvc1.2.4.L120.B0,mp4a.40.2
+    P4=avc1.640028,mp4a.40.2
+    P5=avc1.42E01E,mp4a.40.2
+R640 EXPORTS=Y A='settings.codec_chain_video'
+    P0=hvc1.2.4.L153.B0,hvc1.2.4.L150.B0,hvc1.2.4.L156.B0,hvc1.2.4.L123.B0,hvc1.2.4.L120.B0,hvc1.2.4.L93.B0,hvc1.1.6.L153.B0,hvc1.1.6.L150.B0,hvc1.1.6.L120.B0,hvc1.1.6.L93.B0,avc1.640028
+    P1=hvc1.2.4.L153.B0,hvc1.2.4.L150.B0,hvc1.2.4.L156.B0,hvc1.2.4.L123.B0,hvc1.2.4.L120.B0,hvc1.2.4.L93.B0,hvc1.1.6.L153.B0,hvc1.1.6.L150.B0,hvc1.1.6.L120.B0,hvc1.1.6.L93.B0,avc1.640028
+    P2=hvc1.2.4.L153.B0,hvc1.2.4.L150.B0,hvc1.2.4.L156.B0,hvc1.2.4.L123.B0,hvc1.2.4.L120.B0,hvc1.2.4.L93.B0,hvc1.1.6.L153.B0,hvc1.1.6.L150.B0,hvc1.1.6.L120.B0,hvc1.1.6.L93.B0,avc1.640028
+    P3=hvc1.2.4.L153.B0,hvc1.2.4.L150.B0,hvc1.2.4.L156.B0,hvc1.2.4.L123.B0,hvc1.2.4.L120.B0,hvc1.2.4.L93.B0,hvc1.1.6.L153.B0,hvc1.1.6.L150.B0,hvc1.1.6.L120.B0,hvc1.1.6.L93.B0,avc1.640028
+    P4=hvc1.2.4.L153.B0,hvc1.2.4.L150.B0,hvc1.2.4.L156.B0,hvc1.2.4.L123.B0,hvc1.2.4.L120.B0,hvc1.2.4.L93.B0,hvc1.1.6.L153.B0,hvc1.1.6.L150.B0,hvc1.1.6.L120.B0,hvc1.1.6.L93.B0,avc1.640028
+    P5=hvc1.2.4.L153.B0,hvc1.2.4.L150.B0,hvc1.2.4.L156.B0,hvc1.2.4.L123.B0,hvc1.2.4.L120.B0,hvc1.2.4.L93.B0,hvc1.1.6.L153.B0,hvc1.1.6.L150.B0,hvc1.1.6.L120.B0,hvc1.1.6.L93.B0,avc1.640028
+R641 EXPORTS=Y A='settings.codec_chain_video_family'
+    P0=HEVC-MAIN10-L5.1>HEVC-MAIN10-L5.0>HEVC-MAIN10-L5.2>HEVC-MAIN10-L4.1>HEVC-MAIN10-L4.0>HEVC-MAIN10-L3.1>HEVC-MAIN-L5.1>HEVC-MAIN-L5.0>HEVC-MAIN-L4.0>HEVC-MAIN-L3.1>H264-HIGH
+    P1=HEVC-MAIN10-L5.1>HEVC-MAIN10-L5.0>HEVC-MAIN10-L5.2>HEVC-MAIN10-L4.1>HEVC-MAIN10-L4.0>HEVC-MAIN10-L3.1>HEVC-MAIN-L5.1>HEVC-MAIN-L5.0>HEVC-MAIN-L4.0>HEVC-MAIN-L3.1>H264-HIGH
+    P2=HEVC-MAIN10-L5.1>HEVC-MAIN10-L5.0>HEVC-MAIN10-L5.2>HEVC-MAIN10-L4.1>HEVC-MAIN10-L4.0>HEVC-MAIN10-L3.1>HEVC-MAIN-L5.1>HEVC-MAIN-L5.0>HEVC-MAIN-L4.0>HEVC-MAIN-L3.1>H264-HIGH
+    P3=HEVC-MAIN10-L5.1>HEVC-MAIN10-L5.0>HEVC-MAIN10-L5.2>HEVC-MAIN10-L4.1>HEVC-MAIN10-L4.0>HEVC-MAIN10-L3.1>HEVC-MAIN-L5.1>HEVC-MAIN-L5.0>HEVC-MAIN-L4.0>HEVC-MAIN-L3.1>H264-HIGH
+    P4=HEVC-MAIN10-L5.1>HEVC-MAIN10-L5.0>HEVC-MAIN10-L5.2>HEVC-MAIN10-L4.1>HEVC-MAIN10-L4.0>HEVC-MAIN10-L3.1>HEVC-MAIN-L5.1>HEVC-MAIN-L5.0>HEVC-MAIN-L4.0>HEVC-MAIN-L3.1>H264-HIGH
+    P5=HEVC-MAIN10-L5.1>HEVC-MAIN10-L5.0>HEVC-MAIN10-L5.2>HEVC-MAIN10-L4.1>HEVC-MAIN10-L4.0>HEVC-MAIN10-L3.1>HEVC-MAIN-L5.1>HEVC-MAIN-L5.0>HEVC-MAIN-L4.0>HEVC-MAIN-L3.1>H264-HIGH
+R642 EXPORTS=Y A='settings.codec_chain_audio'
+    P0=mp4a.40.2,ac-3,mp4a.40.5
+    P1=mp4a.40.2,ac-3,mp4a.40.5
+    P2=mp4a.40.2,ac-3,mp4a.40.5
+    P3=mp4a.40.2,ac-3,mp4a.40.5
+    P4=mp4a.40.2,ac-3,mp4a.40.5
+    P5=mp4a.40.2,ac-3,mp4a.40.5
+R643 EXPORTS=Y A='settings.codec_chain_hdr'
+    P0=hdr10,hlg,sdr
+    P1=hdr10,hlg,sdr
+    P2=hdr10,hlg,sdr
+    P3=sdr
+    P4=sdr
+    P5=sdr
+R644 EXPORTS=Y A='settings.codec_chain_player_pref'
+    P0=hvc1,hev1,h265,avc1,h264
+    P1=hvc1,hev1,h265,avc1,h264
+    P2=hvc1,hev1,h265,avc1,h264
+    P3=hvc1,hev1,h265,avc1,h264
+    P4=avc1,h264,hvc1,hev1
+    P5=avc1,h264
+R650 EXPORTS=N A='codec_primary'
+    P0=HEVC
+    P1=HEVC
+    P2=HEVC
+    P3=HEVC
+    P4=AVC
+    P5=AVC
+R651 EXPORTS=N A='codec_string'
+    P0=hvc1.2.4.L153.B0,ac-3
+    P1=hvc1.2.4.L153.B0,ac-3
+    P2=hvc1.2.4.L150.B0,ac-3
+    P3=hvc1.2.4.L120.B0,mp4a.40.2
+    P4=avc1.640028,mp4a.40.2
+    P5=avc1.42E01E,mp4a.40.2
+R659 EXPORTS=N A='codec_chain_video'
+    P0=hvc1.2.4.L183.B0,hvc1.2.4.L180.B0,hvc1.2.4.L156.B0,hvc1.2.4.L153.B0,hvc1.2.4.L150.B0,hvc1.2.4.L123.B0,hvc1.2.4.L120.B0,hvc1.1.6.L153.B0,hvc1.1.6.L120.B0,avc1.640028
+    P1=hvc1.2.4.L183.B0,hvc1.2.4.L180.B0,hvc1.2.4.L156.B0,hvc1.2.4.L153.B0,hvc1.2.4.L150.B0,hvc1.2.4.L123.B0,hvc1.2.4.L120.B0,hvc1.1.6.L153.B0,hvc1.1.6.L120.B0,avc1.640028
+    P2=hvc1.2.4.L183.B0,hvc1.2.4.L180.B0,hvc1.2.4.L156.B0,hvc1.2.4.L153.B0,hvc1.2.4.L150.B0,hvc1.2.4.L123.B0,hvc1.2.4.L120.B0,hvc1.1.6.L153.B0,hvc1.1.6.L120.B0,avc1.640028
+    P3=hvc1.2.4.L183.B0,hvc1.2.4.L180.B0,hvc1.2.4.L156.B0,hvc1.2.4.L153.B0,hvc1.2.4.L150.B0,hvc1.2.4.L123.B0,hvc1.2.4.L120.B0,hvc1.1.6.L153.B0,hvc1.1.6.L120.B0,avc1.640028
+    P4=hvc1.2.4.L183.B0,hvc1.2.4.L180.B0,hvc1.2.4.L156.B0,hvc1.2.4.L153.B0,hvc1.2.4.L150.B0,hvc1.2.4.L123.B0,hvc1.2.4.L120.B0,hvc1.1.6.L153.B0,hvc1.1.6.L120.B0,avc1.640028
+    P5=hvc1.2.4.L183.B0,hvc1.2.4.L180.B0,hvc1.2.4.L156.B0,hvc1.2.4.L153.B0,hvc1.2.4.L150.B0,hvc1.2.4.L123.B0,hvc1.2.4.L120.B0,hvc1.1.6.L153.B0,hvc1.1.6.L120.B0,avc1.640028
+R660 EXPORTS=N A='codec_chain_video_family'
+    P0=HEVC-MAIN10-L6.1>HEVC-MAIN10-L6.0>HEVC-MAIN10-L5.2>HEVC-MAIN10-L5.1>HEVC-MAIN10-L5.0>HEVC-MAIN10-L4.1>HEVC-MAIN10-L4.0>HEVC-MAIN-L5.1>HEVC-MAIN-L4.0>H264-HIGH
+    P1=HEVC-MAIN10-L6.1>HEVC-MAIN10-L6.0>HEVC-MAIN10-L5.2>HEVC-MAIN10-L5.1>HEVC-MAIN10-L5.0>HEVC-MAIN10-L4.1>HEVC-MAIN10-L4.0>HEVC-MAIN-L5.1>HEVC-MAIN-L4.0>H264-HIGH
+    P2=HEVC-MAIN10-L6.1>HEVC-MAIN10-L6.0>HEVC-MAIN10-L5.2>HEVC-MAIN10-L5.1>HEVC-MAIN10-L5.0>HEVC-MAIN10-L4.1>HEVC-MAIN10-L4.0>HEVC-MAIN-L5.1>HEVC-MAIN-L4.0>H264-HIGH
+    P3=HEVC-MAIN10-L6.1>HEVC-MAIN10-L6.0>HEVC-MAIN10-L5.2>HEVC-MAIN10-L5.1>HEVC-MAIN10-L5.0>HEVC-MAIN10-L4.1>HEVC-MAIN10-L4.0>HEVC-MAIN-L5.1>HEVC-MAIN-L4.0>H264-HIGH
+    P4=HEVC-MAIN10-L6.1>HEVC-MAIN10-L6.0>HEVC-MAIN10-L5.2>HEVC-MAIN10-L5.1>HEVC-MAIN10-L5.0>HEVC-MAIN10-L4.1>HEVC-MAIN10-L4.0>HEVC-MAIN-L5.1>HEVC-MAIN-L4.0>H264-HIGH
+    P5=HEVC-MAIN10-L6.1>HEVC-MAIN10-L6.0>HEVC-MAIN10-L5.2>HEVC-MAIN10-L5.1>HEVC-MAIN10-L5.0>HEVC-MAIN10-L4.1>HEVC-MAIN10-L4.0>HEVC-MAIN-L5.1>HEVC-MAIN-L4.0>H264-HIGH
+R661 EXPORTS=N A='codec_chain_audio'
+    P0=mp4a.40.2,ac-3,mp4a.40.5
+    P1=mp4a.40.2,ac-3,mp4a.40.5
+    P2=mp4a.40.2,ac-3,mp4a.40.5
+    P3=mp4a.40.2,ac-3,mp4a.40.5
+    P4=mp4a.40.2,ac-3,mp4a.40.5
+    P5=mp4a.40.2,ac-3,mp4a.40.5
+R662 EXPORTS=N A='codec_chain_hdr'
+    P0=hdr10,hlg,sdr
+    P1=hdr10,hlg,sdr
+    P2=hdr10,hlg,sdr
+    P3=sdr
+    P4=sdr
+    P5=sdr
+R663 EXPORTS=N A='codec_chain_player_pref'
+    P0=hvc1,hev1,h265,avc1,h264
+    P1=hvc1,hev1,h265,avc1,h264
+    P2=hvc1,hev1,h265,avc1,h264
+    P3=hvc1,hev1,h265,avc1,h264
+    P4=avc1,h264,hvc1,hev1
+    P5=avc1,h264

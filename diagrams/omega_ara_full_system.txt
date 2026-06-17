@@ -1,0 +1,37 @@
+OMEGA ARA + URL-2 — full system (Council-safe cherry-pick, 2026-06-16)
+=====================================================================
+
+  FIRE TV / ONN 4K  (Android, shell-user UID 2000)
+  +-------------------------------------------------------------+
+  |  IPTV player (OTT Navigator / Kodi / VLC)                   |
+  |        ^  aplica SOLO device_settings allowlisted           |
+  |        |  (hdr_conversion / match_content_frame_rate /      |
+  |        |   display_color_mode[amlogic])                     |
+  |  ARA on-device  ape-qoe-agent.sh  (QoE-up + SSE-down + FSM) |
+  |  state: ledger idempotente | last-good allowlist | FSM      |
+  |  FSM: HEALTHY->DEGRADED->RECOVERING->OFFLINE_CACHE->RESTORED |
+  +----|--------------------------------------------^-----------+
+  QoE up| POST fire-and-forget (cola NDJSON)        | SSE down (curl -N,
+       v                                            | conexion abierta,
+  ============================ VPS ================ | data-push de deltas)
+  nginx shield/intercept + Lua body-filter (manifest) + bandwidth_reactor
+       |                                            |
+  conviva-event.php  --(ingest QoE, correlacion IP->canal)-->  conviva.db (SSOT)
+       |   \                                         ^   tables:
+       |    \-- hook Phase G GATEADO                  |    - conviva_events
+       |        (APE_PQ_ROLLBACK_ENABLED=0 default,   |    - policy_deltas   <----+
+       |         anti-flap >=2 incid + cooldown)      |    - ara_heartbeats       |
+       |        -> ape_phase_g_emit_delta             |    - channel_pq_profile   |
+       |                                              |                           |
+  ape_mesh.php (ape_insert_delta / ape_ara_heartbeat / should_emit_ara_rollback) -+
+       |
+  events-sse.php  /ara/events  (auth Bearer; 503 si ARA_TOKEN vacio) == SSE ==> ARA
+
+  URL-1 (datos): player -> Xray:8443 (TUNEL HACIA el VPS, NO bypass) -> nginx ->
+                 SurfShark wg -> provider ; manifest se MUTA VPS-side (variante).
+
+  HOST LAN (no el VPS, por NAT): host-qoe-watchdog.ps1 + adb-keepalive(mDNS) +
+       bootstrap_ara_android.sh  (solo con ADB autorizado).
+
+  LIMITE HONESTO: una playlist sola NO instala app, NO da permisos, NO abre ADB,
+  NO habilita wireless-debug. Sin bootstrap autorizado -> ARA_BOOTSTRAP_REQUIRED.

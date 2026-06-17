@@ -38,7 +38,7 @@
         { tag: 'EXT-X-SESSION-DATA',   value: 'DATA-ID="com.ape.network_resilience",VALUE="{\\"connectionTimeoutMs\\":8000,\\"readTimeoutMs\\":15000,\\"retryCount\\":5,\\"retryBackoffMs\\":500,\\"retryBackoffFactor\\":1.5,\\"maxRetryBackoffMs\\":4000,\\"freezeDetectionMs\\":3000,\\"maxFreezeBeforeRestartMs\\":15000,\\"jumpToLiveOnFreeze\\":true}"', category: 'recovery' },
         { tag: 'EXT-X-SESSION-DATA',   value: 'DATA-ID="com.ape.abr_quality_policy",VALUE="{\\"preferHigherBitrate\\":true,\\"minStableTimeBeforeUpgradeMs\\":15000,\\"qualityDropThreshold\\":0.65,\\"qualityRiseThreshold\\":0.85,\\"smoothSwitching\\":true,\\"forbidDowngradeOnTransientStall\\":true}"', category: 'abr' },
         { tag: 'EXT-X-SESSION-DATA',   value: 'DATA-ID="com.ape.universal_parity",VALUE="{\\"applyToResolutions\\":[\\"480p\\",\\"720p\\",\\"1080p\\",\\"1440p\\",\\"2160p\\",\\"4320p\\"],\\"sameBufferStrategy\\":true,\\"sameRecoveryPolicy\\":true,\\"sameLowLatencyMode\\":true,\\"sameABRPolicy\\":true}"', category: 'quality' },
-        { tag: 'EXT-X-SESSION-DATA',   value: 'DATA-ID="com.ape.codec_preferences",VALUE="{\\"preferredCodecs\\":[\\"dvh1\\",\\"hvc1.2\\",\\"hvc1.1\\",\\"av01\\",\\"avc1\\"],\\"hdrModes\\":[\\"PQ\\",\\"HLG\\",\\"DV\\"],\\"audioPassthrough\\":[\\"ec-3\\",\\"ac-3\\",\\"mp4a\\"]}"', category: 'quality' }
+        { tag: 'EXT-X-SESSION-DATA',   value: 'DATA-ID="com.ape.codec_preferences",VALUE="{\\"preferredCodecs\\":[\\"dvh1\\",\\"hvc1.2\\",\\"av01\\",\\"avc1\\"],\\"hdrModes\\":[\\"PQ\\",\\"HLG\\",\\"DV\\"],\\"audioPassthrough\\":[\\"ec-3\\",\\"ac-3\\",\\"mp4a\\"]}"', category: 'quality' }
     ];
 
     const HEADER_CATEGORIES = {
@@ -336,13 +336,13 @@
                 "t2": 150.0,
                 "playerBuffer": 60000,
                 "fps": 60,
-                "codec": "AV1",
+                "codec": "H265",
                 "headersCount": 233,
                 "bufferSeconds": 25,
                 "focus": "MAXIMA_CALIDAD_8K_HDR_CARGA_ULTRARAPIDA_SIN_CORTES",
                 "hdr_canonical": "dolby-vision",
                 "nits_target": 8000,
-                "codec_chain_video": "dvh1.05.06,dvh1.08.06,hvc1.2.4.L183.B0,hvc1.2.4.L180.B0,hvc1.2.4.L156.B0,hvc1.2.4.L153.B0,hvc1.2.4.L150.B0,hvc1.2.4.L123.B0,hvc1.2.4.L120.B0,hvc1.1.6.L153.B0,hvc1.1.6.L120.B0,av01.0.13M.10.0.110.09.16.09.0,avc1.640033,avc1.640028",
+                "codec_chain_video": "dvh1.05.06,dvh1.08.06,hvc1.2.4.L183.B0,hvc1.2.4.L180.B0,hvc1.2.4.L156.B0,hvc1.2.4.L153.B0,hvc1.2.4.L150.B0,hvc1.2.4.L123.B0,hvc1.2.4.L120.B0,hvc1.2.4.L153.B0,hvc1.2.4.L120.B0,av01.0.13M.10.0.110.09.16.09.0,avc1.640033,avc1.640028",
                 "codec_ladder_hvc1": "hvc1.2.4.L186.B0,hvc1.2.4.L183.B0,hvc1.2.4.L180.B0,hvc1.2.4.L156.B0,hvc1.2.4.L153.B0,hvc1.2.4.L150.B0,hvc1.2.4.L123.B0,hvc1.2.4.L120.B0,hvc1.2.4.L93.B0,hvc1.2.4.L90.B0,avc1.640028",
                 "codec_ladder_hev1": "hev1.2.4.L186.B0,hev1.2.4.L183.B0,hev1.2.4.L180.B0,hev1.2.4.L156.B0,hev1.2.4.L153.B0,hev1.2.4.L150.B0,hev1.2.4.L123.B0,hev1.2.4.L120.B0,hev1.2.4.L93.B0,hev1.2.4.L90.B0,avc1.640028",
                 "codec_chain_audio": "mp4a.40.2,ac-3,mp4a.40.5",
@@ -432,7 +432,7 @@
                 "X-APE-Quality-Threshold": "0.99",
                 "X-Segment-Duration": "1,2,4,6",
                 "X-Prefetch-Enabled": "true,adaptive,auto,false",
-                "X-APE-CODEC": "AV1",
+                "X-APE-CODEC": "HEVC",
                 "X-APE-RESOLUTION": "7680x4320",
                 "X-APE-FPS": "120",
                 "X-Screen-Resolution": "7680x4320",
@@ -453,7 +453,7 @@
                 "Sec-Fetch-Site": "same-origin,none,cross-site,same-site",
                 "X-Buffer-Strategy": "aggressive",
                 "X-Color-Depth": "12bit",
-                "X-Quality-Preference": "codec-hevc,profile-main-12,main-10,tier-high;codec-h265,profile-main-12,main-10,tier-high;codec-h.265,profile-main-12,main-10,tier-high;codec-vp9,profile2,profile0,n/a",
+                "X-Quality-Preference": "codec-hevc,profile-main-12,main-10,tier-high;codec-hev1,profile-main-10,tier-high;codec-hev2,profile-main-10,tier-high;codec-hvc1,profile-main-10,tier-high;codec-hvc2,profile-main-10,tier-high;codec-h265,profile-main-10,tier-high;codec-H265,profile-main-10,tier-high;codec-h.265,profile-main-10,tier-high;codec-H.265,profile-main-10,tier-high;codec-h-265,profile-main-10,tier-high;codec-MPEG-H,profile-main-10,tier-high;codec-mpeg-h,profile-main-10,tier-high;codec-MPEG-H Part2,profile-main-10,tier-high;codec-mpegh,profile-main-10,tier-high;codec-x265,profile-main-10,tier-high;codec-h264,profile-high,tier-high;codec-H264,profile-high,tier-high;codec-h.264,profile-high,tier-high;codec-H.264,profile-high,tier-high;codec-avc,profile-high,tier-high;codec-AVC,profile-high,tier-high;codec-avc1,profile-high,tier-high;codec-avc3,profile-high,tier-high;codec-MPEG-4 AVC,profile-high,tier-high;codec-x264,profile-high,tier-high;codec-av1,profile-main-10,tier-high;codec-av01,profile-main-10,tier-high;codec-AV1,profile-main-10,tier-high;codec-vp9,profile2,profile0,n/a;codec-VP9,profile2,profile0,n/a",
                 "DNT": "1,0",
                 "Sec-GPC": "1,0",
                 // C8 (2026-05-11) — removed (toxic): "Upgrade-Insecure-Requests": "1,0", → HTTPS redirect risk
@@ -714,7 +714,7 @@
                     "action": "ACTIVATE_BACKUP_URL"
                 },
                 "primary": {
-                    "codec": "AV1",
+                    "codec": "H265",
                     "profile": "MAIN-12,MAIN-10,MAIN,HIGH,BASELINE"
                 }
             },
@@ -756,7 +756,7 @@
                 "X-Client-Timestamp": "[TIMESTAMP]",
                 "X-Request-Id": "[GENERATE_UUID]",
                 "X-Stream-Type": "hls,dash,cmaf,smooth,progressive",
-                "X-Quality-Preference": "codec-av1,profile-main-12,main-10,main,tier-high;codec-hevc,main-12,main-10,high;codec-vp9,profile-2,profile-0",
+                "X-Quality-Preference": "codec-hevc,profile-main-12,main-10,tier-high;codec-hev1,profile-main-10,tier-high;codec-hev2,profile-main-10,tier-high;codec-hvc1,profile-main-10,tier-high;codec-hvc2,profile-main-10,tier-high;codec-h265,profile-main-10,tier-high;codec-H265,profile-main-10,tier-high;codec-h.265,profile-main-10,tier-high;codec-H.265,profile-main-10,tier-high;codec-MPEG-H,profile-main-10,tier-high;codec-mpegh,profile-main-10,tier-high;codec-x265,profile-main-10,tier-high;codec-h264,profile-high,tier-high;codec-H264,profile-high,tier-high;codec-h.264,profile-high,tier-high;codec-H.264,profile-high,tier-high;codec-avc,profile-high,tier-high;codec-AVC,profile-high,tier-high;codec-avc1,profile-high,tier-high;codec-av1,profile-main-12,main-10,main,tier-high;codec-av01,profile-main-10,tier-high;codec-vp9,profile-2,profile-0;codec-VP9,profile2,profile0,n/a",
                 // C8 (2026-05-11) — removed (toxic): "Priority": "u=0,i,u=1,i,u=2,u=3", → HTTP/3 priority over /1.1
                 "X-Playback-Rate": "1.0,1.25,0.75,1.5",
                 "X-Segment-Duration": "1,2,4,6",
@@ -931,7 +931,7 @@
                 "X-TELCHEMY-IMPAIRMENT-GUARD": "ENABLED,BLOCKINESS=DETECT,BLUR=DETECT,RINGING=DETECT,MOSQUITO=DETECT",
                 "X-TELCHEMY-BUFFER-POLICY": "ADAPTIVE,MIN=5000,MAX=30000,TARGET=15000",
                 "X-TELCHEMY-GOP-POLICY": "DETECT,IDEAL=2000,TOLERANCE=500,KEYFRAME_FORCE=FALSE",
-                "X-APE-CODEC": "AV1,HEVC,VP9,H264",
+                "X-APE-CODEC": "HEVC,AV1,VP9,H264",
                 "X-ExoPlayer-Buffer-Min": "60000,45000,30000,20000",
                 "X-Manifest-Refresh": "10000,15000,20000,30000",
                 "X-KODI-LIVE-DELAY": "60,45,30,20",
@@ -971,13 +971,13 @@
                 "t2": 80.0,
                 "playerBuffer": 50000,
                 "fps": 60,
-                "codec": "AV1",
+                "codec": "H265",
                 "headersCount": 233,
                 "bufferSeconds": 20,
                 "focus": "MAXIMA_CALIDAD_4K_HDR10PLUS_SIN_CORTES",
                 "hdr_canonical": "hdr10+",
                 "nits_target": 8000,
-                "codec_chain_video": "hvc1.2.4.L183.B0,hvc1.2.4.L180.B0,hvc1.2.4.L156.B0,hvc1.2.4.L153.B0,hvc1.2.4.L150.B0,hvc1.2.4.L123.B0,hvc1.2.4.L120.B0,hvc1.1.6.L153.B0,hvc1.1.6.L120.B0,av01.0.12M.10.0.110.09.16.09.0,avc1.640033,avc1.640028",
+                "codec_chain_video": "hvc1.2.4.L183.B0,hvc1.2.4.L180.B0,hvc1.2.4.L156.B0,hvc1.2.4.L153.B0,hvc1.2.4.L150.B0,hvc1.2.4.L123.B0,hvc1.2.4.L120.B0,hvc1.2.4.L153.B0,hvc1.2.4.L120.B0,av01.0.12M.10.0.110.09.16.09.0,avc1.640033,avc1.640028",
                 "codec_ladder_hvc1": "hvc1.2.4.L186.B0,hvc1.2.4.L183.B0,hvc1.2.4.L180.B0,hvc1.2.4.L156.B0,hvc1.2.4.L153.B0,hvc1.2.4.L150.B0,hvc1.2.4.L123.B0,hvc1.2.4.L120.B0,hvc1.2.4.L93.B0,hvc1.2.4.L90.B0,avc1.640028",
                 "codec_ladder_hev1": "hev1.2.4.L186.B0,hev1.2.4.L183.B0,hev1.2.4.L180.B0,hev1.2.4.L156.B0,hev1.2.4.L153.B0,hev1.2.4.L150.B0,hev1.2.4.L123.B0,hev1.2.4.L120.B0,hev1.2.4.L93.B0,hev1.2.4.L90.B0,avc1.640028",
                 "codec_chain_audio": "mp4a.40.2,ac-3,mp4a.40.5",
@@ -1072,7 +1072,7 @@
                 "X-Buffer-Strategy": "ultra-aggressive",
                 "X-Color-Depth": "12bit",
                 "X-Video-Codecs": "av1,hevc,vp9,h264,mpeg2",
-                "X-Quality-Preference": "codec-av1,profile-main-12,main-10,main,tier-high;codec-hevc,main-12,main-10,high",
+                "X-Quality-Preference": "codec-hevc,profile-main-12,main-10,tier-high;codec-hev1,profile-main-10,tier-high;codec-hev2,profile-main-10,tier-high;codec-hvc1,profile-main-10,tier-high;codec-hvc2,profile-main-10,tier-high;codec-h265,profile-main-10,tier-high;codec-H265,profile-main-10,tier-high;codec-h.265,profile-main-10,tier-high;codec-H.265,profile-main-10,tier-high;codec-MPEG-H,profile-main-10,tier-high;codec-mpegh,profile-main-10,tier-high;codec-x265,profile-main-10,tier-high;codec-h264,profile-high,tier-high;codec-H264,profile-high,tier-high;codec-h.264,profile-high,tier-high;codec-H.264,profile-high,tier-high;codec-avc,profile-high,tier-high;codec-AVC,profile-high,tier-high;codec-avc1,profile-high,tier-high;codec-av1,profile-main-12,main-10,main,tier-high;codec-av01,profile-main-10,tier-high",
                 "X-APE-CODEC": "H265",
                 "X-APE-RESOLUTION": "3840x2160",
                 "X-APE-FPS": "120",
@@ -1348,7 +1348,7 @@
                     "action": "ACTIVATE_BACKUP_URL"
                 },
                 "primary": {
-                    "codec": "AV1",
+                    "codec": "H265",
                     "profile": "MAIN-12,MAIN-10,MAIN,HIGH,BASELINE"
                 }
             },
@@ -1390,7 +1390,7 @@
                 "X-Client-Timestamp": "[TIMESTAMP]",
                 "X-Request-Id": "[GENERATE_UUID]",
                 "X-Stream-Type": "hls,dash,cmaf,smooth,progressive",
-                "X-Quality-Preference": "codec-av1,profile-main-10,main,tier-high;codec-hevc,main-10,main,high;codec-vp9,profile-2,profile-0",
+                "X-Quality-Preference": "codec-hevc,profile-main-12,main-10,tier-high;codec-hev1,profile-main-10,tier-high;codec-hev2,profile-main-10,tier-high;codec-hvc1,profile-main-10,tier-high;codec-hvc2,profile-main-10,tier-high;codec-h265,profile-main-10,tier-high;codec-H265,profile-main-10,tier-high;codec-h.265,profile-main-10,tier-high;codec-H.265,profile-main-10,tier-high;codec-h-265,profile-main-10,tier-high;codec-MPEG-H,profile-main-10,tier-high;codec-mpeg-h,profile-main-10,tier-high;codec-MPEG-H Part2,profile-main-10,tier-high;codec-mpegh,profile-main-10,tier-high;codec-x265,profile-main-10,tier-high;codec-h264,profile-high,tier-high;codec-H264,profile-high,tier-high;codec-h.264,profile-high,tier-high;codec-H.264,profile-high,tier-high;codec-avc,profile-high,tier-high;codec-AVC,profile-high,tier-high;codec-avc1,profile-high,tier-high;codec-avc3,profile-high,tier-high;codec-MPEG-4 AVC,profile-high,tier-high;codec-x264,profile-high,tier-high;codec-av1,profile-main-10,tier-high;codec-av01,profile-main-10,tier-high;codec-AV1,profile-main-10,tier-high;codec-vp9,profile2,profile0,n/a;codec-VP9,profile2,profile0,n/a",
                 // C8 (2026-05-11) — removed (toxic): "Priority": "u=0,i,u=1,i,u=2,u=3", → HTTP/3 priority over /1.1
                 "X-Playback-Rate": "1.0,1.25,0.75,1.5",
                 "X-Segment-Duration": "1,2,4,6",
@@ -1565,7 +1565,7 @@
                 "X-TELCHEMY-IMPAIRMENT-GUARD": "ENABLED,BLOCKINESS=DETECT,BLUR=DETECT,RINGING=DETECT,MOSQUITO=DETECT",
                 "X-TELCHEMY-BUFFER-POLICY": "ADAPTIVE,MIN=5000,MAX=30000,TARGET=15000",
                 "X-TELCHEMY-GOP-POLICY": "DETECT,IDEAL=2000,TOLERANCE=500,KEYFRAME_FORCE=FALSE",
-                "X-APE-CODEC": "AV1,HEVC,VP9,H264",
+                "X-APE-CODEC": "HEVC,AV1,VP9,H264",
                 "X-ExoPlayer-Buffer-Min": "50000,35000,25000,15000",
                 "X-Manifest-Refresh": "12000,18000,25000,35000",
                 "X-KODI-LIVE-DELAY": "50,35,25,15",
@@ -1611,7 +1611,7 @@
                 "focus": "MAXIMA_CALIDAD_8K_HDR_CARGA_ULTRARAPIDA_SIN_CORTES",
                 "hdr_canonical": "hdr10",
                 "nits_target": 8000,
-                "codec_chain_video": "hvc1.2.4.L183.B0,hvc1.2.4.L180.B0,hvc1.2.4.L156.B0,hvc1.2.4.L153.B0,hvc1.2.4.L150.B0,hvc1.2.4.L123.B0,hvc1.2.4.L120.B0,hvc1.1.6.L153.B0,hvc1.1.6.L120.B0,avc1.640028",
+                "codec_chain_video": "hvc1.2.4.L183.B0,hvc1.2.4.L180.B0,hvc1.2.4.L156.B0,hvc1.2.4.L153.B0,hvc1.2.4.L150.B0,hvc1.2.4.L123.B0,hvc1.2.4.L120.B0,hvc1.2.4.L153.B0,hvc1.2.4.L120.B0,avc1.640028",
                 "codec_ladder_hvc1": "hvc1.2.4.L186.B0,hvc1.2.4.L183.B0,hvc1.2.4.L180.B0,hvc1.2.4.L156.B0,hvc1.2.4.L153.B0,hvc1.2.4.L150.B0,hvc1.2.4.L123.B0,hvc1.2.4.L120.B0,hvc1.2.4.L93.B0,hvc1.2.4.L90.B0,avc1.640028",
                 "codec_ladder_hev1": "hev1.2.4.L186.B0,hev1.2.4.L183.B0,hev1.2.4.L180.B0,hev1.2.4.L156.B0,hev1.2.4.L153.B0,hev1.2.4.L150.B0,hev1.2.4.L123.B0,hev1.2.4.L120.B0,hev1.2.4.L93.B0,hev1.2.4.L90.B0,avc1.640028",
                 "codec_chain_audio": "mp4a.40.2,ac-3,mp4a.40.5",
@@ -1707,7 +1707,7 @@
                 "X-Buffer-Strategy": "ultra-aggressive",
                 "X-Color-Depth": "12bit",
                 "X-Video-Codecs": "hevc,h265,h.265,vp9,h264,mpeg2",
-                "X-Quality-Preference": "codec-hevc,profile-main-12,main-10,tier-high;codec-h265,profile-main-12,main-10,tier-high;codec-h.265,profile-main-12,main-10,tier-high;codec-vp9,profile2,profile0,n/a",
+                "X-Quality-Preference": "codec-hevc,profile-main-12,main-10,tier-high;codec-hev1,profile-main-10,tier-high;codec-hev2,profile-main-10,tier-high;codec-hvc1,profile-main-10,tier-high;codec-hvc2,profile-main-10,tier-high;codec-h265,profile-main-10,tier-high;codec-H265,profile-main-10,tier-high;codec-h.265,profile-main-10,tier-high;codec-H.265,profile-main-10,tier-high;codec-h-265,profile-main-10,tier-high;codec-MPEG-H,profile-main-10,tier-high;codec-mpeg-h,profile-main-10,tier-high;codec-MPEG-H Part2,profile-main-10,tier-high;codec-mpegh,profile-main-10,tier-high;codec-x265,profile-main-10,tier-high;codec-h264,profile-high,tier-high;codec-H264,profile-high,tier-high;codec-h.264,profile-high,tier-high;codec-H.264,profile-high,tier-high;codec-avc,profile-high,tier-high;codec-AVC,profile-high,tier-high;codec-avc1,profile-high,tier-high;codec-avc3,profile-high,tier-high;codec-MPEG-4 AVC,profile-high,tier-high;codec-x264,profile-high,tier-high;codec-av1,profile-main-10,tier-high;codec-av01,profile-main-10,tier-high;codec-AV1,profile-main-10,tier-high;codec-vp9,profile2,profile0,n/a;codec-VP9,profile2,profile0,n/a",
                 "X-Concurrent-Downloads": "4,6,8",
                 "User-Agent": "Mozilla/5.0 (APE-NAVIGATOR; ULTRA-8K-HEVC-MASTER) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
                 "Accept-Language": "es-ES,es;q=0.9,en;q=0.8",
@@ -1809,7 +1809,7 @@
                 "X-APE-STRATEGY": "ultra-aggressive",
                 "X-APE-Prefetch-Segments": "20",
                 "X-APE-Quality-Threshold": "0.99",
-                "X-APE-CODEC": "AV1",
+                "X-APE-CODEC": "HEVC",
                 "X-APE-RESOLUTION": "3840x2160",
                 "X-APE-FPS": "120",
                 "X-APE-BITRATE": "21.5",
@@ -1884,7 +1884,7 @@
                 "X-Client-Timestamp": "[TIMESTAMP]",
                 "X-Request-Id": "[GENERATE_UUID]",
                 "X-Stream-Type": "hls,dash,cmaf,smooth,progressive",
-                "X-Quality-Preference": "codec-hevc,profile-main-10,main,tier-high;codec-av1,main-10;codec-vp9,profile-2",
+                "X-Quality-Preference": "codec-hevc,profile-main-12,main-10,tier-high;codec-hev1,profile-main-10,tier-high;codec-hev2,profile-main-10,tier-high;codec-hvc1,profile-main-10,tier-high;codec-hvc2,profile-main-10,tier-high;codec-h265,profile-main-10,tier-high;codec-H265,profile-main-10,tier-high;codec-h.265,profile-main-10,tier-high;codec-H.265,profile-main-10,tier-high;codec-h-265,profile-main-10,tier-high;codec-MPEG-H,profile-main-10,tier-high;codec-mpeg-h,profile-main-10,tier-high;codec-MPEG-H Part2,profile-main-10,tier-high;codec-mpegh,profile-main-10,tier-high;codec-x265,profile-main-10,tier-high;codec-h264,profile-high,tier-high;codec-H264,profile-high,tier-high;codec-h.264,profile-high,tier-high;codec-H.264,profile-high,tier-high;codec-avc,profile-high,tier-high;codec-AVC,profile-high,tier-high;codec-avc1,profile-high,tier-high;codec-avc3,profile-high,tier-high;codec-MPEG-4 AVC,profile-high,tier-high;codec-x264,profile-high,tier-high;codec-av1,profile-main-10,tier-high;codec-av01,profile-main-10,tier-high;codec-AV1,profile-main-10,tier-high;codec-vp9,profile2,profile0,n/a;codec-VP9,profile2,profile0,n/a",
                 // C8 (2026-05-11) — removed (toxic): "Priority": "u=0,i,u=1,i,u=2,u=3", → HTTP/3 priority over /1.1
                 "X-Playback-Rate": "1.0,1.25,0.75,1.5",
                 "X-Segment-Duration": "1,2,4,6",
@@ -2105,7 +2105,7 @@
                 "focus": "ULTRA_1080P_HDR10_CARGA_RAPIDA_SIN_CORTES",
                 "hdr_canonical": "hlg",
                 "nits_target": 8000,
-                "codec_chain_video": "hvc1.2.4.L183.B0,hvc1.2.4.L180.B0,hvc1.2.4.L156.B0,hvc1.2.4.L153.B0,hvc1.2.4.L150.B0,hvc1.2.4.L123.B0,hvc1.2.4.L120.B0,hvc1.1.6.L153.B0,hvc1.1.6.L120.B0,avc1.640028",
+                "codec_chain_video": "hvc1.2.4.L183.B0,hvc1.2.4.L180.B0,hvc1.2.4.L156.B0,hvc1.2.4.L153.B0,hvc1.2.4.L150.B0,hvc1.2.4.L123.B0,hvc1.2.4.L120.B0,hvc1.2.4.L153.B0,hvc1.2.4.L120.B0,avc1.640028",
                 "codec_ladder_hvc1": "hvc1.2.4.L186.B0,hvc1.2.4.L183.B0,hvc1.2.4.L180.B0,hvc1.2.4.L156.B0,hvc1.2.4.L153.B0,hvc1.2.4.L150.B0,hvc1.2.4.L123.B0,hvc1.2.4.L120.B0,hvc1.2.4.L93.B0,hvc1.2.4.L90.B0,avc1.640028",
                 "codec_ladder_hev1": "hev1.2.4.L186.B0,hev1.2.4.L183.B0,hev1.2.4.L180.B0,hev1.2.4.L156.B0,hev1.2.4.L153.B0,hev1.2.4.L150.B0,hev1.2.4.L123.B0,hev1.2.4.L120.B0,hev1.2.4.L93.B0,hev1.2.4.L90.B0,avc1.640028",
                 "codec_chain_audio": "mp4a.40.2,mp4a.40.5,mp4a.40.29",
@@ -2215,7 +2215,7 @@
                 "Sec-Fetch-Site": "same-origin,none,cross-site,same-site",
                 "X-Color-Depth": "12bit",
                 "X-Video-Codecs": "hevc,h265,h.265,vp9,h264,mpeg2",
-                "X-Quality-Preference": "codec-hevc,profile-main-12,main-10,tier-high;codec-h265,profile-main-12,main-10,tier-high;codec-h.265,profile-main-12,main-10,tier-high;codec-vp9,profile2,profile0,n/a",
+                "X-Quality-Preference": "codec-hevc,profile-main-12,main-10,tier-high;codec-hev1,profile-main-10,tier-high;codec-hev2,profile-main-10,tier-high;codec-hvc1,profile-main-10,tier-high;codec-hvc2,profile-main-10,tier-high;codec-h265,profile-main-10,tier-high;codec-H265,profile-main-10,tier-high;codec-h.265,profile-main-10,tier-high;codec-H.265,profile-main-10,tier-high;codec-h-265,profile-main-10,tier-high;codec-MPEG-H,profile-main-10,tier-high;codec-mpeg-h,profile-main-10,tier-high;codec-MPEG-H Part2,profile-main-10,tier-high;codec-mpegh,profile-main-10,tier-high;codec-x265,profile-main-10,tier-high;codec-h264,profile-high,tier-high;codec-H264,profile-high,tier-high;codec-h.264,profile-high,tier-high;codec-H.264,profile-high,tier-high;codec-avc,profile-high,tier-high;codec-AVC,profile-high,tier-high;codec-avc1,profile-high,tier-high;codec-avc3,profile-high,tier-high;codec-MPEG-4 AVC,profile-high,tier-high;codec-x264,profile-high,tier-high;codec-av1,profile-main-10,tier-high;codec-av01,profile-main-10,tier-high;codec-AV1,profile-main-10,tier-high;codec-vp9,profile2,profile0,n/a;codec-VP9,profile2,profile0,n/a",
                 "User-Agent": "Mozilla/5.0 (SMART-TV; Android 14; SHIELD TV Pro) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
                 "Accept-Language": "es-ES,es;q=0.9,en;q=0.8,pt;q=0.7",
                 "Sec-CH-UA": "\"Google Chrome\";v=\"125\", \"Chromium\";v=\"125\"",
@@ -2518,7 +2518,7 @@
                 "X-Client-Timestamp": "[TIMESTAMP]",
                 "X-Request-Id": "[GENERATE_UUID]",
                 "X-Stream-Type": "hls,dash,cmaf,smooth,progressive",
-                "X-Quality-Preference": "codec-hevc,profile-main-10,main;codec-h264,high,main;codec-av1,main",
+                "X-Quality-Preference": "codec-hevc,profile-main-12,main-10,tier-high;codec-hev1,profile-main-10,tier-high;codec-hev2,profile-main-10,tier-high;codec-hvc1,profile-main-10,tier-high;codec-hvc2,profile-main-10,tier-high;codec-h265,profile-main-10,tier-high;codec-H265,profile-main-10,tier-high;codec-h.265,profile-main-10,tier-high;codec-H.265,profile-main-10,tier-high;codec-h-265,profile-main-10,tier-high;codec-MPEG-H,profile-main-10,tier-high;codec-mpeg-h,profile-main-10,tier-high;codec-MPEG-H Part2,profile-main-10,tier-high;codec-mpegh,profile-main-10,tier-high;codec-x265,profile-main-10,tier-high;codec-h264,profile-high,tier-high;codec-H264,profile-high,tier-high;codec-h.264,profile-high,tier-high;codec-H.264,profile-high,tier-high;codec-avc,profile-high,tier-high;codec-AVC,profile-high,tier-high;codec-avc1,profile-high,tier-high;codec-avc3,profile-high,tier-high;codec-MPEG-4 AVC,profile-high,tier-high;codec-x264,profile-high,tier-high;codec-av1,profile-main-10,tier-high;codec-av01,profile-main-10,tier-high;codec-AV1,profile-main-10,tier-high;codec-vp9,profile2,profile0,n/a;codec-VP9,profile2,profile0,n/a",
                 // C8 (2026-05-11) — removed (toxic): "Priority": "u=0,i,u=1,i,u=2,u=3", → HTTP/3 priority over /1.1
                 "X-Playback-Rate": "1.0,1.25,0.75,1.5",
                 "X-Segment-Duration": "2,4,6,8",
@@ -2739,7 +2739,7 @@
                 "focus": "HIGH_720P_BALANCEADO_SIN_CORTES",
                 "hdr_canonical": "sdr",
                 "nits_target": 8000,
-                "codec_chain_video": "hvc1.2.4.L183.B0,hvc1.2.4.L180.B0,hvc1.2.4.L156.B0,hvc1.2.4.L153.B0,hvc1.2.4.L150.B0,hvc1.2.4.L123.B0,hvc1.2.4.L120.B0,hvc1.1.6.L153.B0,hvc1.1.6.L120.B0,avc1.640028",
+                "codec_chain_video": "hvc1.2.4.L183.B0,hvc1.2.4.L180.B0,hvc1.2.4.L156.B0,hvc1.2.4.L153.B0,hvc1.2.4.L150.B0,hvc1.2.4.L123.B0,hvc1.2.4.L120.B0,hvc1.2.4.L153.B0,hvc1.2.4.L120.B0,avc1.640028",
                 "codec_ladder_hvc1": "hvc1.2.4.L186.B0,hvc1.2.4.L183.B0,hvc1.2.4.L180.B0,hvc1.2.4.L156.B0,hvc1.2.4.L153.B0,hvc1.2.4.L150.B0,hvc1.2.4.L123.B0,hvc1.2.4.L120.B0,hvc1.2.4.L93.B0,hvc1.2.4.L90.B0,avc1.640028",
                 "codec_ladder_hev1": "hev1.2.4.L186.B0,hev1.2.4.L183.B0,hev1.2.4.L180.B0,hev1.2.4.L156.B0,hev1.2.4.L153.B0,hev1.2.4.L150.B0,hev1.2.4.L123.B0,hev1.2.4.L120.B0,hev1.2.4.L93.B0,hev1.2.4.L90.B0,avc1.640028",
                 "codec_chain_audio": "mp4a.40.2,mp4a.40.5,mp4a.40.29",
@@ -2852,7 +2852,7 @@
                 "X-Buffer-Strategy": "adaptive",
                 "X-Color-Depth": "12bit",
                 "X-Video-Codecs": "hevc,h265,h.265,vp9,h264,mpeg2",
-                "X-Quality-Preference": "codec-hevc,profile-main-12,main-10,tier-high;codec-h265,profile-main-12,main-10,tier-high;codec-h.265,profile-main-12,main-10,tier-high;codec-vp9,profile2,profile0,n/a",
+                "X-Quality-Preference": "codec-hevc,profile-main-12,main-10,tier-high;codec-hev1,profile-main-10,tier-high;codec-hev2,profile-main-10,tier-high;codec-hvc1,profile-main-10,tier-high;codec-hvc2,profile-main-10,tier-high;codec-h265,profile-main-10,tier-high;codec-H265,profile-main-10,tier-high;codec-h.265,profile-main-10,tier-high;codec-H.265,profile-main-10,tier-high;codec-h-265,profile-main-10,tier-high;codec-MPEG-H,profile-main-10,tier-high;codec-mpeg-h,profile-main-10,tier-high;codec-MPEG-H Part2,profile-main-10,tier-high;codec-mpegh,profile-main-10,tier-high;codec-x265,profile-main-10,tier-high;codec-h264,profile-high,tier-high;codec-H264,profile-high,tier-high;codec-h.264,profile-high,tier-high;codec-H.264,profile-high,tier-high;codec-avc,profile-high,tier-high;codec-AVC,profile-high,tier-high;codec-avc1,profile-high,tier-high;codec-avc3,profile-high,tier-high;codec-MPEG-4 AVC,profile-high,tier-high;codec-x264,profile-high,tier-high;codec-av1,profile-main-10,tier-high;codec-av01,profile-main-10,tier-high;codec-AV1,profile-main-10,tier-high;codec-vp9,profile2,profile0,n/a;codec-VP9,profile2,profile0,n/a",
                 "User-Agent": "Mozilla/5.0 (SMART-TV; Tizen 7.0; Samsung QN65QN85B) AppleWebKit/538.1 (KHTML, like Gecko) SamsungBrowser/2.1 Safari/538.1",
                 "Accept-Language": "es-ES,es;q=0.9,en;q=0.8,pt;q=0.7",
                 "Sec-CH-UA": "\"Google Chrome\";v=\"125\", \"Chromium\";v=\"125\"",
@@ -3152,7 +3152,7 @@
                 "X-Client-Timestamp": "[TIMESTAMP]",
                 "X-Request-Id": "[GENERATE_UUID]",
                 "X-Stream-Type": "hls,dash,cmaf,smooth,progressive",
-                "X-Quality-Preference": "codec-h264,profile-high,main,baseline;codec-hevc,main-10,main",
+                "X-Quality-Preference": "codec-hevc,profile-main-12,main-10,tier-high;codec-hev1,profile-main-10,tier-high;codec-hvc1,profile-main-10,tier-high;codec-h265,profile-main-10,tier-high;codec-h.265,profile-main-10,tier-high;codec-H265,profile-main-10,tier-high;codec-H.265,profile-main-10,tier-high;codec-h264,profile-high,main,baseline;codec-h.264,profile-high,main,baseline;codec-H264,profile-high,main,baseline;codec-avc,profile-high,main,baseline",
                 // C8 (2026-05-11) — removed (toxic): "Priority": "u=0,i,u=1,i,u=2,u=3", → HTTP/3 priority over /1.1
                 "X-Playback-Rate": "1.0,1.25,0.75,1.5",
                 "X-Segment-Duration": "2,4,6,8",
@@ -3473,7 +3473,7 @@
                 "X-ExoPlayer-Buffer-Min": "34000",
                 "X-Manifest-Refresh": "34000",
                 "X-KODI-LIVE-DELAY": "34",
-                "X-Quality-Preference": "codec-h264,profile-high,tier-high;codec-avc,profile-high,tier-high;codec-h.264,profile-high,tier-high;codec-mpeg2,main,high",
+                "X-Quality-Preference": "codec-hevc,profile-main-12,main-10,tier-high;codec-hev1,profile-main-10,tier-high;codec-hvc1,profile-main-10,tier-high;codec-h265,profile-main-10,tier-high;codec-h.265,profile-main-10,tier-high;codec-H265,profile-main-10,tier-high;codec-H.265,profile-main-10,tier-high;codec-h264,profile-high,tier-high;codec-h.264,profile-high,tier-high;codec-H264,profile-high,tier-high;codec-H.264,profile-high,tier-high;codec-avc,profile-high,tier-high;codec-avc1,profile-high,tier-high;codec-AVC,profile-high,tier-high;codec-mpeg2,main,high",
                 "X-APE-STRATEGY": "ultra-aggressive",
                 "X-APE-Prefetch-Segments": "10",
                 "X-APE-Quality-Threshold": "0.95",
@@ -3788,7 +3788,7 @@
                 "X-Client-Timestamp": "[TIMESTAMP]",
                 "X-Request-Id": "[GENERATE_UUID]",
                 "X-Stream-Type": "hls,dash,cmaf,smooth,progressive",
-                "X-Quality-Preference": "codec-h264,profile-main,baseline;codec-mpeg2,main",
+                "X-Quality-Preference": "codec-hevc,profile-main-10,main,tier-high;codec-hev1,profile-main-10,tier-high;codec-hvc1,profile-main-10,tier-high;codec-h265,profile-main-10,tier-high;codec-h.265,profile-main-10,tier-high;codec-H265,profile-main-10,tier-high;codec-H.265,profile-main-10,tier-high;codec-h264,profile-main,baseline;codec-h.264,profile-main,baseline;codec-H264,profile-main,baseline;codec-avc,profile-main,baseline;codec-mpeg2,main",
                 // C8 (2026-05-11) — removed (toxic): "Priority": "u=0,i,u=1,i,u=2,u=3", → HTTP/3 priority over /1.1
                 "X-Playback-Rate": "1.0,1.25,0.75,1.5",
                 "X-Segment-Duration": "2,4,6,8",
@@ -4673,13 +4673,23 @@
             try {
                 const supportedSchemas = ['omega_v1', 'omega_v1_bulletproof_20260520'];
                 const isBulletproof = data.lab_schema_variant === 'omega_v2_bulletproof_perprofile' || data.bulletproof === true;
-                const isVersionSupported = supportedSchemas.includes(data.lab_version) || (data.lab_version && data.lab_version.startsWith('omega_v1'));
+                // [HARDENING 2026-06-07] Gate de versión tolerante a drift omega_v1→v2+.
+                // El lab_schema_variant YA es 'omega_v2_*'; el día que lab_version suba a
+                // 'omega_v2' por coherencia, el gate viejo (startsWith 'omega_v1') tumbaba el
+                // upload con "Schema invalido". Ahora pasa cualquier 'omega_*' O un JSON
+                // bulletproof reconocido. NO se muta ningún valor (ssot-no-clamp): solo se
+                // amplía la aceptación de schema. JSON ajeno (sin omega_ y no bulletproof) sigue lanzando.
+                const isVersionSupported = (data && data.lab_version && /^omega_/i.test(String(data.lab_version)))
+                    || supportedSchemas.includes(data && data.lab_version)
+                    || isBulletproof;
                 if (!data || !isVersionSupported) {
-                    throw new Error(`Schema invalido (esperado: ${supportedSchemas.join(', ')})`);
+                    throw new Error(`Schema invalido: lab_version='${data && data.lab_version}', schema_variant='${data && data.lab_schema_variant}' (esperado omega_* o bulletproof:true)`);
                 }
                 if (isBulletproof) console.log('[LAB-CONSUMER] 🛡 Bulletproof JSON detectado — consumiendo 100% de los campos.');
-                if (data.playlist_format !== 'm3u8') {
-                    throw new Error('playlist_format debe ser m3u8');
+                // [HARDENING 2026-06-07] playlist_format: warn + asumir m3u8 si difiere/falta,
+                // en vez de throw duro. El LAB es 100% m3u8; un campo cosmético no debe tumbar el upload.
+                if (data.playlist_format && data.playlist_format !== 'm3u8') {
+                    console.warn(`[LAB-CONSUMER] playlist_format='${data.playlist_format}' inesperado; se asume 'm3u8'.`);
                 }
 
                 // === 1. PROFILES ===

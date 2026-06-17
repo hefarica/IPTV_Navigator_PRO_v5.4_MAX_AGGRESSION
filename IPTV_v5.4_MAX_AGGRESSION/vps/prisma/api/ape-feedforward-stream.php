@@ -1,0 +1,120 @@
+<?php
+/**
+ * ape-feedforward-stream.php — F3: bus URL-2 en STREAMING (SSE). DEVICE-KEYED o matrícula.
+ *
+ * El daemon aplicador-puro se suscribe por ?device=<id> y SOLO aplica lo que llega
+ * (event: presets → campo device_settings). El VPS (que proxea el tráfico del device) sabe
+ * qué juega vía ape_device_state y le da los settings honestos; si no hay estado → default seguro.
+ *
+ * AUTOPISTA/CPX21: X-Accel-Buffering:no (nginx no bufferiza), bounded (dur≤120s → reconecta),
+ * pm.max_children=50 (headroom). Escala masiva = content_by_lua (pendiente).
+ */
+require_once '/var/www/html/prisma/lib/list_registry.php';
+require_once '/var/www/html/prisma/lib/ape_mesh.php';
+
+header('Content-Type: text/event-stream');
+header('Cache-Control: no-cache');
+header('Connection: keep-alive');
+header('X-Accel-Buffering: no');
+@ini_set('output_buffering', '0');
+@ini_set('zlib.output_compression', '0');
+@set_time_limit(0);
+while (ob_get_level() > 0) { @ob_end_flush(); }
+$emit = function ($s) { echo $s; @flush(); };
+
+$file   = isset($_GET['file'])    ? basename($_GET['file'])                               : '';
+$token  = isset($_GET['list_id']) ? preg_replace('/[^0-9A-Za-z_]/', '', $_GET['list_id'])  : '';
+$device = isset($_GET['device'])  ? preg_replace('/[^0-9A-Za-z_.\-]/', '', $_GET['device']) : '';
+$ch     = isset($_GET['ch'])      ? preg_replace('/[^0-9A-Za-z_.\-]/', '', $_GET['ch'])     : '';
+$iv     = max(1, min(10,  (int)(isset($_GET['iv'])  ? $_GET['iv']  : 3)));
+$dur    = max(5, min(120, (int)(isset($_GET['dur']) ? $_GET['dur'] : 60)));
+
+// ── gate (matrícula o device-keyed) ──
+$rec = null;
+try {
+    if ($file  !== '') $rec = lr_is_registered($file);
+    if (!$rec && $token !== '') $rec = lr_lookup_by_token($token);
+} catch (\Throwable $e) { $rec = null; }
+
+if (!$rec && $device === '') {
+    $emit("event: passthrough\ndata: {\"activated\":false,\"reason\":\"not_registered_passthrough\"}\n\n");
+    exit;
+}
+if ($rec) lr_mark_activation($rec['filename']);
+
+list($streamInfo, $health, $ct) = ape_mesh_inputs_from_get();
+$keyLabel = $rec ? $rec['list_id'] : $device;
+$emit(": connected mode=" . ($rec ? 'matricula' : 'device') . " key=" . $keyLabel . "\n\n");
+$emit("event: hello\ndata: {\"activated\":true,\"mode\":\"" . ($rec ? 'matricula' : 'device') . "\",\"interval\":" . $iv . ",\"duration\":" . $dur . "}\n\n");
+
+$start = time(); $seq = 0; $lastHash = '';
+while ((time() - $start) < $dur) {
+    if (connection_aborted()) break;
+
+    // device-keyed: refrescar del estado REAL por-IP (escrito por log_by_lua de /omega/open) en cada tick
+    $si = $streamInfo; $chId = $ch; $ctTick = $ct; $chSrc = 'key';
+    if ($device !== '') {
+        $ip = isset($_SERVER['REMOTE_ADDR']) ? $_SERVER['REMOTE_ADDR'] : '';
+        $st = ape_device_state_by_ip($ip);                 // path nuevo por IP real (A2)
+        if (empty($st)) $st = ape_device_state($device);   // fallback legado (device-id), normalmente vacio
+        if (!empty($st)) {
+            if ($chId === '' && !empty($st['channel_id'])) { $chId = preg_replace('/[^0-9A-Za-z_.\-]/', '', $st['channel_id']); $chSrc = 'ip'; }
+            if (empty($si['codec'])  && !empty($st['codec_hint']))      $si['codec']  = preg_replace('/[^0-9A-Za-z+._-]/', '', $st['codec_hint']);
+            if (empty($si['height']) && !empty($st['resolution_hint'])) $si['height'] = (int)$st['resolution_hint'];
+            $ctMapped = ape_ct_from_content_type(isset($st['content_type']) ? $st['content_type'] : '');
+            if ($ctMapped !== '' && $ctTick === 'default') $ctTick = $ctMapped;
+            // legado: device_state(device-id) usaba claves hdr_type/width/height/codec/ch
+            foreach (array('hdr_type','width','height','codec') as $k) {
+                if ((empty($si[$k]) || $si[$k]==='') && !empty($st[$k])) $si[$k] = $st[$k];
+            }
+            if ($chId === '' && !empty($st['ch'])) $chId = preg_replace('/[^0-9A-Za-z_.\-]/', '', $st['ch']);
+        }
+    }
+    if ($chId === '') $chId = $keyLabel;
+
+    // D6 — CERRAR EL LAZO QoE: refrescar riskScore POR TICK desde la QoE (real de conviva_events =
+    // ADB-directo/browser; o proxy del observer del shield). En vez de quedar congelado al ?risk= del
+    // connect. Asi el modulo Conviva fluye por la URL-2 cada tick: QoE -> riskScore -> engines suben/
+    // bajan agresion -> device_settings/presets. Silent-fail: sin QoE -> 0 = comportamiento actual.
+    $qoeState  = ape_qoe_state_by_channel($chId);
+    $qoeSource = isset($qoeState['source']) ? $qoeState['source'] : 'none';
+    $health['riskScore'] = ape_risk_from_qoe($qoeState);
+
+    // Phase G — AUTO-TRIGGER del rollback PQ: VST_CRITICAL (>8000ms) o qoe_score muy bajo (<=8) en
+    // un canal => pantallazo negro probable con PQ activo => blacklist (proximo zap = SDR + hdr_conv 0).
+    $vstNow = isset($qoeState['vst']) ? (float)$qoeState['vst'] : 0;
+    $qsNow  = isset($qoeState['qoe_score']) ? (float)$qoeState['qoe_score'] : 100;
+    if ($vstNow > 8000 || $qsNow <= 8) { ape_pq_record_incident($chId, (int)$vstNow); }
+
+    $mesh = ape_mesh_presets($chId, $si, $health, $ctTick);
+    $device_settings = ape_mesh_device_settings($si);
+    // Phase G — si el canal esta blacklisted (pantallazo negro detectado), degradar hdr_conversion a 0
+    // SOLO para ese canal (FREEZELESS: revierte lo que rompe, mantiene PQ incondicional en el resto).
+    $pqBlacklisted = ape_pq_is_blacklisted($chId);
+    if ($pqBlacklisted) {
+        $device_settings = array_map(function ($d) {
+            return ($d === 'global hdr_conversion_mode 1') ? 'global hdr_conversion_mode 0' : $d;
+        }, $device_settings);
+    }
+    $payload = json_encode(array(
+        'seq'             => $seq,
+        'mode'            => $rec ? 'matricula' : 'device',
+        'channel'         => $chId,
+        'channel_source'  => $chSrc,
+        'risk'            => $health['riskScore'],
+        'risk_source'     => $qoeSource,
+        'pq'              => $pqBlacklisted ? 'SDR' : 'PQ',
+        'engines'         => $mesh['engines'],
+        'preset_count'    => count($mesh['presets']),
+        'presets'         => $mesh['presets'],
+        'device_settings' => $device_settings,
+    ), JSON_UNESCAPED_SLASHES);
+
+    $h = md5($payload);
+    if ($h !== $lastHash) { $emit("id: $seq\nevent: presets\ndata: $payload\n\n"); $lastHash = $h; }
+    else { $emit(": hb $seq\n\n"); }
+    $seq++;
+    if ((time() - $start) >= $dur) break;
+    sleep($iv);
+}
+$emit("event: end\ndata: {\"reason\":\"max_duration\",\"reconnect\":true,\"emitted\":$seq}\n\n");

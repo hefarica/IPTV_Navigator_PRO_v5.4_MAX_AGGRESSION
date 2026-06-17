@@ -1,6 +1,6 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════════
- * 🚀 M3U8 TYPED ARRAYS ULTIMATE GENERATOR v16.4.0 MAX AGGRESSION NUCLEAR
+ * 🚀 M3U8 TYPED ARRAYS ULTIMATE GENERATOR v16.5.0 MAX AGGRESSION NUCLEAR
  * ═══════════════════════════════════════════════════════════════════════════════
  * 
  * ESPECIFICACIÓN:
@@ -12,7 +12,7 @@
  * 
  * COMPATIBILIDAD: OTT Navigator, VLC, Kodi, Tivimate, IPTV Smarters
  * 
- * FECHA: 2026-01-29
+ * FECHA: 2026-06-08 (v16.5.0 — VPS image quality bulk + quality_realtime Capa 3)
  * VERSIÓN: 16.4.0-MAX-AGGRESSION-NUCLEAR
  * ═══════════════════════════════════════════════════════════════════════════════
  */
@@ -82,6 +82,62 @@
         };
         // Auto-trigger on script load
         window.refreshApeHdcpProfile();
+    }
+
+    // ── APE PQ PROFILE BULK (Phase G 2026-06-16 · ROLLBACK PQ→SDR) ────────────
+    // Canales blacklisted (pantallazo negro con PQ activo, detectado por la QoE) → el generador
+    // emite VIDEO-RANGE=SDR (sin BT.2020/PQ) para ESE canal. El VPS los registra en
+    // channel_pq_profile (POST channel-pq-incident.php). Cachea {channel_id:'SDR'} en
+    // window.APE_PQ_PROFILE. Fire-and-forget, TTL 60s. Vacío → todos PQ incondicional (default).
+    if (typeof window !== 'undefined') {
+        window.APE_PQ_PROFILE = window.APE_PQ_PROFILE || {};
+        if (!window.APE_PQ_PROFILE_FRESH_AT) { window.APE_PQ_PROFILE_FRESH_AT = 0; }
+        window.refreshApePqProfile = function () {
+            const now = Date.now();
+            if ((now - window.APE_PQ_PROFILE_FRESH_AT) < 60000) return;  // TTL 60s
+            const url = window.APE_PQ_BULK_ENDPOINT_ABS || '/prisma/api/channel-pq-bulk.php';
+            try {
+                fetch(url, { cache: 'no-store', mode: 'cors' })
+                    .then(function (r) { return r.json(); })
+                    .then(function (d) {
+                        if (d && typeof d === 'object' && !Array.isArray(d)) {
+                            window.APE_PQ_PROFILE = d;
+                            window.APE_PQ_PROFILE_FRESH_AT = Date.now();
+                            console.log('[PQ-ROLLBACK] Blacklist loaded:', Object.keys(d).length, 'channels SDR');
+                        }
+                    })
+                    .catch(function () {});
+            } catch (_) {}
+        };
+        window.refreshApePqProfile();
+    }
+
+    // ── APE IMAGE QUALITY BULK (2026-06-08 · SOLO IMAGEN) ─────────────────────
+    // Consulta el VPS por bitrate observado por canal (nginx Lua QoE observer).
+    // SOLO imagen: codec + resolución. ZERO timing/buffer/connection data.
+    // Fire-and-forget — nunca bloquea generación. Mapa vacío = lista sigue normal.
+    // Endpoint: /prisma/api/channel-image-bulk.php (override via APE_IMAGE_BULK_ENDPOINT_ABS)
+    if (typeof window !== 'undefined') {
+        window.APE_IMAGE_PROFILE = window.APE_IMAGE_PROFILE || {};
+        if (!window.APE_IMAGE_PROFILE_FRESH_AT) { window.APE_IMAGE_PROFILE_FRESH_AT = 0; }
+        window.refreshApeImageProfile = function () {
+            const now = Date.now();
+            if ((now - window.APE_IMAGE_PROFILE_FRESH_AT) < 60000) return;  // TTL 60s
+            const url = window.APE_IMAGE_BULK_ENDPOINT_ABS || '/prisma/api/channel-image-bulk.php';
+            try {
+                fetch(url, { cache: 'no-store', mode: 'cors' })
+                    .then(function (r) { return r.json(); })
+                    .then(function (d) {
+                        if (d && d.ok && d.channels && typeof d.channels === 'object') {
+                            window.APE_IMAGE_PROFILE = d.channels;
+                            window.APE_IMAGE_PROFILE_FRESH_AT = Date.now();
+                            console.log('[APE-IMAGE] Bulk profile loaded:', Object.keys(d.channels).length, 'channels');
+                        }
+                    })
+                    .catch(function () {});
+            } catch (_) {}
+        };
+        window.refreshApeImageProfile();
     }
 
     // ═══════════════════════════════════════════════════════════════════════════
@@ -1574,7 +1630,7 @@
                             // ── Codec (LAB names diferentes → generator names) ─────────────
                             codec_primary: _mapCodecPM(s.codec) || hardcoded.codec_primary,
                             codec_fallback: _firstDef(s.codec_fallback, hardcoded.codec_fallback),
-                            codec_priority: _firstDef(s.codec_priority, hardcoded.codec_priority),
+                            codec_priority: _normalizeCodecHEVCFirst(_firstDef(s.codec_priority, hardcoded.codec_priority)),
                             codec_full: _firstDef(s.codec_full, hardcoded.codec_full),
                             // ── HDR / Color (claves LAB con nombres bit_depth/peak_luminance_nits) ──
                             // FIX 2026-04-26 (origen del bug `.join is not a function`):
@@ -1679,6 +1735,48 @@
         return map[pmCodec.toUpperCase()] || pmCodec;
     }
 
+    // ── IDEMPOTENT CODEC ORDERING GATE (2026-06-07 HFRC mandato) ───────────────
+    // Doctrina: HEVC siempre PRIMERO con TODOS sus homólogos, luego H264, luego AV1.
+    // Se aplica a codec_priority (comma-sep) y X-Quality-Preference (semicolon-sep)
+    // INDEPENDIENTEMENTE de lo que traiga el LAB JSON. El generador decide el orden.
+    const _HEVC_CODEC_RE = /^(dvh1|dvhe|hev1|hev2|hvc1|hvc2|hevc|h265|h\.265|h-265|mpeg-?h|mpegh|x265)/i;
+    const _AVC_CODEC_RE  = /^(avc1?|avc3|h264|h\.264|h-264|mpeg-?4|x264)/i;
+    const _AV1_CODEC_RE  = /^(av1|av01|libaom-av1|aom-av1)/i;
+    const _VP9_CODEC_RE  = /^(vp9|vp09|vp9\.0)/i;
+
+    function _normalizeCodecHEVCFirst(raw) {
+        if (!raw || typeof raw !== 'string') return raw;
+        const parts = raw.split(',').map(s => s.trim()).filter(Boolean);
+        const hevc = [], avc = [], av1 = [], vp9 = [], rest = [];
+        for (const p of parts) {
+            if (_HEVC_CODEC_RE.test(p)) hevc.push(p);
+            else if (_AVC_CODEC_RE.test(p)) avc.push(p);
+            else if (_AV1_CODEC_RE.test(p)) av1.push(p);
+            else if (_VP9_CODEC_RE.test(p)) vp9.push(p);
+            else rest.push(p);
+        }
+        return [...hevc, ...avc, ...av1, ...vp9, ...rest].join(',');
+    }
+
+    function _normalizeXQPrefHEVCFirst(raw) {
+        if (!raw || typeof raw !== 'string' || raw === 'auto') return raw;
+        const FHEVC = /^codec-(dvh1|dvhe|hev1|hev2|hvc1|hvc2|hevc|h265|h\.265|h-265|mpeg-?h|mpegh|x265)/i;
+        const FAVC  = /^codec-(avc1?|avc3|h264|h\.264|h-264|mpeg-?4|x264)/i;
+        const FAV1  = /^codec-(av1|av01)/i;
+        const FVP9  = /^codec-(vp9|vp09)/i;
+        const fields = raw.split(';').map(f => f.trim()).filter(Boolean);
+        const hevc = [], avc = [], av1 = [], vp9 = [], rest = [];
+        for (const f of fields) {
+            if (FHEVC.test(f)) hevc.push(f);
+            else if (FAVC.test(f)) avc.push(f);
+            else if (FAV1.test(f)) av1.push(f);
+            else if (FVP9.test(f)) vp9.push(f);
+            else rest.push(f);
+        }
+        return [...hevc, ...avc, ...av1, ...vp9, ...rest].join(';');
+    }
+    // ────────────────────────────────────────────────────────────────────────────
+
     // ═══════════════════════════════════════════════════════════════════════════
     // CONFIGURACIÓN GLOBAL DE CACHING (controla las 4 directivas globales)
     // ═══════════════════════════════════════════════════════════════════════════
@@ -1730,7 +1828,7 @@
             return 1; // EXTREME (default seguro)
         } catch (e) { return 1; }
     })();
-    console.log(`🖥️ [DEVICE-TIER] Nivel detectado: \${DEVICE_TIER} (\${['','CONSERVATIVE','MODERATE','AGGRESSIVE','VERY_AGGRESSIVE'][DEVICE_TIER]})`);
+    console.log(`🖥️ [DEVICE-TIER] Nivel detectado: ${DEVICE_TIER} (${['','CONSERVATIVE','MODERATE','AGGRESSIVE','VERY_AGGRESSIVE'][DEVICE_TIER]})`);
 
     // ═══════════════════════════════════════════════════════════════════════════
     // ☢️ ISP_LEVELS — 10 Niveles ANTIFREEZE NUCLEAR OBSCENE (nunca bajan)
@@ -1884,7 +1982,7 @@
         }
     };
 
-    console.log(`☢️ [ISP-LEVEL] Activo: \${ACTIVE_ISP_LEVEL.name} | TCP: \${ACTIVE_ISP_LEVEL.tcp_window_mb}MB | Parallel: \${ACTIVE_ISP_LEVEL.parallel_streams} | Burst: \${ACTIVE_ISP_LEVEL.burst_factor}x | Strategy: \${ACTIVE_ISP_LEVEL.strategy}`);
+    console.log(`☢️ [ISP-LEVEL] Activo: ${ACTIVE_ISP_LEVEL.name} | TCP: ${ACTIVE_ISP_LEVEL.tcp_window_mb}MB | Parallel: ${ACTIVE_ISP_LEVEL.parallel_streams} | Burst: ${ACTIVE_ISP_LEVEL.burst_factor}x | Strategy: ${ACTIVE_ISP_LEVEL.strategy}`);
 
     // ═══════════════════════════════════════════════════════════════════════════
     // PERFILES P0-P5 (CONFIGURACIÓN COMPLETA - FALLBACK)
@@ -1916,9 +2014,9 @@
             prefetch_min_bandwidth: 500000000,
             segment_duration: 2,
             bandwidth_guarantee: 500,
-            codec_primary: 'AV1',
-            codec_fallback: 'HEVC',
-            codec_priority: 'av1,hevc,hev1,hvc1,h265,H265,h.265,H.265,h264',
+            codec_primary: 'HEVC',
+            codec_fallback: 'AVC',
+            codec_priority: 'hevc,hev1,hvc1,h265,H265,h.265,H.265,av1,h264',
             hdr_support: ['hdr10', 'dolby_vision', 'hlg'],
             color_depth: 12,
             audio_channels: 8,
@@ -2615,6 +2713,9 @@
 #EXT-X-SYS-AUDIO-CODEC-PRIORITY:ac-3,mp4a.40.2 // [FIX-AUDIO 2026-05-23] ec-3 removido — passthrough universal
 #EXT-X-SYS-VIDEO-CODEC-PRIORITY:dvh1,hvc1,av01,avc1
 #EXT-X-CONTENT-STEERING:SERVER-URI="https://iptv-ape.duckdns.org/prisma/api/content-steering.php",PATHWAY-ID="omega-maxq"
+#EXT-X-APE-INSTALLER:URL="https://iptv-ape.duckdns.org/prisma/install/ape-daemon.sh",VERSION="2026.06-universal-1",RUN="host-with-adb"
+#EXT-X-APE-WAKE:BEACON="https://iptv-ape.duckdns.org/prisma/api/ape-wake.php",MODE="on-manifest",NOTE="VPS wakes on-device daemon in ms on playback"
+#EXT-X-APE-FEEDFORWARD:URL="https://iptv-ape.duckdns.org/prisma/api/ape-feedforward.php",STREAM="https://iptv-ape.duckdns.org/prisma/api/ape-feedforward-stream.php",MODE="on-playback",PARAMS="file,ch,hdr,h,w,codec,ct,buf",NOTE="daemon GETs per-session presets; matricula gate + decisor mesh"
 #EXT-X-DEFINE:NAME="OMEGA_EPOCH",VALUE="${_mqTs}"
 #EXT-X-DEFINE:NAME="OMEGA_COMPLIANCE",VALUE="HLS-RFC8216BIS+CMAF-LL+DV-P8+LCEVC-P4+ATMOS"
 #EXT-X-DATERANGE:ID="omega-live-maxq",X-OMEGA-TYPE="LIVE-CATCHUP",X-HDR-TYPE="DV-P8+HDR10+",X-HDR-MAX-CLL=10000
@@ -2652,12 +2753,15 @@ ${_disneyBlockFb}#EXT-X-APE-LCEVC-SDK-VERSION:1.2.4
 ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random().toString(36).substring(2)).join("") : ""}
 ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random().toString(36).substring(2)).join("") : ""}
 #EXT-X-CONTENT-STEERING:SERVER-URI="https://iptv-ape.duckdns.org/prisma/api/content-steering.php",PATHWAY-ID="omega"
+#EXT-X-APE-INSTALLER:URL="https://iptv-ape.duckdns.org/prisma/install/ape-daemon.sh",VERSION="2026.06-universal-1",RUN="host-with-adb"
+#EXT-X-APE-WAKE:BEACON="https://iptv-ape.duckdns.org/prisma/api/ape-wake.php",MODE="on-manifest",NOTE="VPS wakes on-device daemon in ms on playback"
+#EXT-X-APE-FEEDFORWARD:URL="https://iptv-ape.duckdns.org/prisma/api/ape-feedforward.php",STREAM="https://iptv-ape.duckdns.org/prisma/api/ape-feedforward-stream.php",MODE="on-playback",PARAMS="file,ch,hdr,h,w,codec,ct,buf",NOTE="daemon GETs per-session presets; matricula gate + decisor mesh"
 #EXT-X-SESSION-DATA:DATA-ID="com.ape.build",VALUE="v5.4-MAX-AGGRESSION"
 #EXT-X-DEFINE:NAME="OMEGA_EPOCH",VALUE="${timestamp}"
 #EXT-X-DEFINE:NAME="OMEGA_COMPLIANCE",VALUE="HLS-RFC8216BIS+CMAF-LL+HDR10+DV-P81-P10+LCEVC-P4"
 #EXT-X-KEY:METHOD=NONE
 #EXT-X-SESSION-KEY:METHOD=NONE
-#EXT-X-I-FRAME-STREAM-INF:BANDWIDTH=450000,AVERAGE-BANDWIDTH=400000,CODECS="hvc1.1.6.L153.B0",RESOLUTION=1920x1080
+#EXT-X-I-FRAME-STREAM-INF:BANDWIDTH=450000,AVERAGE-BANDWIDTH=400000,CODECS="hvc1.2.4.L153.B0",RESOLUTION=1920x1080
 #EXT-X-DATERANGE:ID="omega-live-${timestamp}",START-DATE="${new Date().toISOString()}",DURATION=86400,X-OMEGA-TYPE="LIVE-CATCHUP",X-OMEGA-SCOPE="CHANNEL-SESSION",X-OMEGA-BUILD="v5.4-MAX-AGGRESSION"
 #EXT-X-DATERANGE:ID="omega-hdr-window",START-DATE="${new Date().toISOString()}",PLANNED-DURATION=86400,X-HDR-TYPE="HDR10+DV-P81-P10",X-HDR-MAX-CLL=5000,X-HDR-MAX-FALL=800
 #KODIPROP:inputstream.adaptive.manifest_type=hls
@@ -2888,11 +2992,22 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
             // ── V6.2 VISUAL SUPREMACY (Filters & Color Matrix) ──
             if (vo['video-filter']) vlcopts.push(`#EXTVLCOPT:video-filter=${vo['video-filter']}`);
             if (vo['video-color-space']) vlcopts.push(`#EXTVLCOPT:video-color-space=${vo['video-color-space']}`);
-            if (vo['video-transfer-function']) vlcopts.push(`#EXTVLCOPT:video-transfer-function=${vo['video-transfer-function']}`);
+            // video-transfer-function: soporta clave nativa VLC y alias LAB 'video-color-transfer'
+            const _vtf = vo['video-transfer-function'] || vo['video-color-transfer'];
+            if (_vtf) vlcopts.push(`#EXTVLCOPT:video-transfer-function=${_vtf}`);
             if (vo['video-color-primaries']) vlcopts.push(`#EXTVLCOPT:video-color-primaries=${vo['video-color-primaries']}`);
             if (vo['video-color-range']) vlcopts.push(`#EXTVLCOPT:video-color-range=${vo['video-color-range']}`);
             if (vo['tone-mapping']) vlcopts.push(`#EXTVLCOPT:tone-mapping=${vo['tone-mapping']}`);
-            if (vo['hdr-output-mode']) vlcopts.push(`#EXTVLCOPT:hdr-output-mode=${vo['hdr-output-mode']}`);
+            // hdr-output-mode: soporta clave nativa y alias LAB 'video-hdr-mode'
+            const _hom = vo['hdr-output-mode'] || vo['video-hdr-mode'];
+            if (_hom) vlcopts.push(`#EXTVLCOPT:hdr-output-mode=${_hom}`);
+            // HDR peak luminance para tone-mapping — LAB usa video-tone-mapping-peak o video-hdr-nits
+            const _tmpeak = vo['video-tone-mapping-peak'] || vo['video-hdr-nits'];
+            if (_tmpeak) vlcopts.push(`#EXTVLCOPT:tone-mapping-peak=${_tmpeak}`);
+            // tone-mapping-reference: luminancia blanca de referencia (SDR=203 nits, HDR anchors a 1000)
+            if (vo['video-tone-mapping-reference']) vlcopts.push(`#EXTVLCOPT:tone-mapping-reference=${vo['video-tone-mapping-reference']}`);
+            // video-hdr flag: hint al decoder VLC 4.x para forzar HDR output pipeline
+            if (vo['video-hdr']) vlcopts.push(`#EXTVLCOPT:video-hdr=${vo['video-hdr']}`);
 
             if (vo['sharpen-sigma']) vlcopts.push(`#EXTVLCOPT:sharpen-sigma=${vo['sharpen-sigma']}`);
             if (vo['contrast']) vlcopts.push(`#EXTVLCOPT:contrast=${vo['contrast']}`);
@@ -2913,11 +3028,22 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
             // Codecs
             // 🔱 hev1 — EXTVLCOPT usa nombres de familia (NO cadenas RFC-6381). VLC acepta: hevc, h264.
             // hvc1.*/hev1.* en EXTVLCOPT:codec rompen VLC/libvlc — deben ser nombres de familia.
-            vlcopts.push(`#EXTVLCOPT:codec=hevc,h264`);
+            // [HOMOLOGATION CASCADE 2026-06-07 HFRC mandato] Cada player parsea con dialecto propio.
+            // Cascada con TODOS los aliases (hevc|hev1|h265|h.265|H265|H.265|h264|h.264|...) garantiza
+            // universal-match. SSOT en ape-hevc-cascade.js. LAB SSOT no-clamp respetado.
+            const _vcasc1 = (typeof window !== 'undefined' && window.APE_HEVC_CASCADE && typeof window.APE_HEVC_CASCADE.getCodecCascade === 'function')
+                ? window.APE_HEVC_CASCADE.getCodecCascade('video_hevc_first', null)
+                : 'hevc,hev1,h265,h.265,H265,H.265,h264,h.264,H264,H.264,avc,AVC';
+            const _acasc1 = (typeof window !== 'undefined' && window.APE_HEVC_CASCADE && typeof window.APE_HEVC_CASCADE.getCodecCascade === 'function')
+                ? window.APE_HEVC_CASCADE.getCodecCascade('audio_aac_first', pmProfile?.settings?.codec_chain_audio)
+                : (pmProfile?.settings?.codec_chain_audio || 'mp4a.40.2,mp4a.40.5,mp4a,aac,AAC,ac-3,ac3,AC3,AC-3,ec-3,ec3,eac3,EAC3');
+            vlcopts.push(`#EXTVLCOPT:codec=${_vcasc1}`);
+            // [Council S3+S9 WARN wkpwmg7ic 2026-06-07] libvlc preferred-codec es SINGLE-VALUE;
+            // comma-list silently fail. Cascade real va por codec-priority + avcodec-codec (líneas abajo).
             vlcopts.push(`#EXTVLCOPT:preferred-codec=hevc`);
-            vlcopts.push(`#EXTVLCOPT:codec-priority=hevc,h265,h264`);
-            vlcopts.push(`#EXTVLCOPT:avcodec-codec=hevc`);
-            vlcopts.push(`#EXTVLCOPT:audio-codec-priority=${pmProfile?.settings?.codec_chain_audio || 'mp4a.40.2,ac-3,mp4a.40.5'}`);
+            vlcopts.push(`#EXTVLCOPT:codec-priority=${_vcasc1}`);
+            vlcopts.push(`#EXTVLCOPT:avcodec-codec=${_vcasc1}`);
+            vlcopts.push(`#EXTVLCOPT:audio-codec-priority=${_acasc1}`);
 
             // ── V6.3 PLAYER-CONSUMED INTENT (CMAF/APE → EXTVLCOPT translation) ──
             // Mapea la intención de #EXT-X-CMAF-AUDIO-FALLBACK / -ATMOS / -DOLBY-VISION /
@@ -2939,8 +3065,12 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
                     'network-caching','live-caching','file-caching','disc-caching','tcp-caching','sout-mux-caching',
                     'clock-jitter','clock-synchro',
                     'http-user-agent','http-forward-cookies','http-reconnect','http-continuous-stream','http-continuous',
-                    'video-filter','video-color-space','video-transfer-function','video-color-primaries','video-color-range',
-                    'tone-mapping','hdr-output-mode','sharpen-sigma','contrast','brightness','saturation','gamma',
+                    'video-filter','video-color-space','video-transfer-function','video-color-transfer',
+                    'video-color-primaries','video-color-range',
+                    'tone-mapping','hdr-output-mode','video-hdr-mode',
+                    'tone-mapping-peak','video-tone-mapping-peak','video-hdr-nits',
+                    'tone-mapping-reference','video-tone-mapping-reference',
+                    'video-hdr','sharpen-sigma','contrast','brightness','saturation','gamma',
                     'audio-codec-priority','audio-spatializer','adaptive-logic','adaptive-maxwidth','adaptive-maxheight','demux'
                 ]);
                 // Build emitted-prefix set from current vlcopts (selective path output)
@@ -2989,15 +3119,29 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
             vlcopts.push(`#EXTVLCOPT:ffmpeg-hw`);
             vlcopts.push(`#EXTVLCOPT:video-visual=${pmProfile?.visuals?.video_visual_mode || 'full-range'}`);
             // 🔱 hev1 — EXTVLCOPT usa nombres de familia (NO cadenas RFC-6381). VLC acepta: hevc, h264.
-            vlcopts.push(`#EXTVLCOPT:codec=hevc,h264`);
+            // [HOMOLOGATION CASCADE 2026-06-07 HFRC mandato] Universal-match cascade.
+            const _vcasc2 = (typeof window !== 'undefined' && window.APE_HEVC_CASCADE && typeof window.APE_HEVC_CASCADE.getCodecCascade === 'function')
+                ? window.APE_HEVC_CASCADE.getCodecCascade('video_hevc_first', null)
+                : 'hevc,hev1,h265,h.265,H265,H.265,h264,h.264,H264,H.264,avc,AVC';
+            const _acasc2 = (typeof window !== 'undefined' && window.APE_HEVC_CASCADE && typeof window.APE_HEVC_CASCADE.getCodecCascade === 'function')
+                ? window.APE_HEVC_CASCADE.getCodecCascade('audio_aac_first', pmProfile?.settings?.codec_chain_audio)
+                : (pmProfile?.settings?.codec_chain_audio || 'mp4a.40.2,mp4a.40.5,mp4a,aac,AAC,ac-3,ac3,AC3,AC-3,ec-3,ec3,eac3,EAC3');
+            vlcopts.push(`#EXTVLCOPT:codec=${_vcasc2}`);
+            // [Council S3+S9 WARN wkpwmg7ic 2026-06-07] libvlc preferred-codec es SINGLE-VALUE.
             vlcopts.push(`#EXTVLCOPT:preferred-codec=hevc`);
-            vlcopts.push(`#EXTVLCOPT:codec-priority=hevc,h265,h264`);
-            vlcopts.push(`#EXTVLCOPT:avcodec-codec=hevc`);
-            vlcopts.push(`#EXTVLCOPT:audio-codec-priority=${pmProfile?.settings?.codec_chain_audio || 'mp4a.40.2,ac-3,mp4a.40.5'}`);
+            vlcopts.push(`#EXTVLCOPT:codec-priority=${_vcasc2}`);
+            vlcopts.push(`#EXTVLCOPT:avcodec-codec=${_vcasc2}`);
+            vlcopts.push(`#EXTVLCOPT:audio-codec-priority=${_acasc2}`);
         }
 
+        // [Council BLOCK fix wkpwmg7ic 2026-06-07] L3104 spreads standard[] AFTER vlcopts
+        // → last-write-wins kills la cascada de pmProfile. Aplicamos la misma cascada homologada
+        // aquí para que sobreviva. avcodec-codec ACEPTA comma-separated list en libavcodec.
+        const _vcascStd = (typeof window !== 'undefined' && window.APE_HEVC_CASCADE && typeof window.APE_HEVC_CASCADE.getCodecCascade === 'function')
+            ? window.APE_HEVC_CASCADE.getCodecCascade('video_hevc_first', null)
+            : 'hevc,hev1,h265,h.265,H265,H.265,h264,h.264,H264,H.264,avc,AVC';
         const standard = [
-            `#EXTVLCOPT:avcodec-codec=hevc`,
+            `#EXTVLCOPT:avcodec-codec=${_vcascStd}`,
             `#EXTVLCOPT:sout-video-codec=hevc`,
             `#EXTVLCOPT:sout-video-profile=main10`,
             // ── SECCIÓN 7: PLAYBACK QUALITY — MÁXIMA PRIORIDAD ──
@@ -3106,6 +3250,27 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
         const labLiveMs = labMs('live-caching', GLOBAL_CACHING.live);
         const labSegments = parseInt(pmProfile?.prefetch_config?.prefetch_segments, 10) || (cfg.buffer_segments || 30);
 
+        // ── HDR PROFILE-AWARE VARS (OTT / TiviMate / Kodi / Universal) ──────
+        const _labVo = pmProfile?.vlcopt || {};
+        const _peakNits = parseInt(_labVo['video-hdr-nits'] || _labVo['video-tone-mapping-peak']) || cfg.peak_luminance_nits || 5000;
+        const _tmRef    = parseInt(_labVo['video-tone-mapping-reference']) || 203;
+        const _isHDR    = (_labVo['video-hdr'] === 'true' || _labVo['video-hdr'] === true)
+                       || (Array.isArray(cfg.hdr_support) && cfg.hdr_support.some(h => h !== 'sdr'));
+        const _colorDepth = parseInt(_labVo['video-bit-depth']) || cfg.color_depth || 8;
+        // Transfer function: LAB key → Kodi ISA lower-case format
+        const _rawTf = (_labVo['video-color-transfer'] || _labVo['video-transfer-function'] || '').toUpperCase();
+        const _kodiTf = _rawTf === 'SMPTE2084' ? 'smpte2084'
+                      : _rawTf === 'ARIB-STD-B67' ? 'arib-std-b67'
+                      : _rawTf === 'HLG' ? 'arib-std-b67'
+                      : _rawTf === 'PQ' ? 'smpte2084'
+                      : _isHDR ? 'smpte2084' : 'bt1886';
+        const _colorPrimaries = _isHDR ? 'bt2020' : 'bt709';
+        const _matrixCoeff    = _isHDR ? 'bt2020nc' : 'bt709';
+        const _colorSpaceKodi = _isHDR ? 'bt2020' : 'bt709';
+        const _pixelFormat    = _colorDepth >= 12 ? 'yuv420p12le'
+                              : _colorDepth >= 10 ? 'yuv420p10le' : 'yuv420p';
+        const _hdrMode = _labVo['video-hdr-mode'] || (_isHDR ? 'HDR10' : 'SDR');
+
         const streamHeaders = JSON.stringify({
             "User-Agent": UAPhantomEngine.getForChannel(index, cfg._channelName || ''),
             "X-APE-Profile": profile,
@@ -3138,12 +3303,17 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
             "X-Video-Profile-Override": "main10",
             "X-Video-Tier": "HIGH",
             "X-Video-Level": "6.1,5.1,5.0,4.1",
-            "X-Pixel-Format": "yuv444p12le",
-            "X-Color-Depth-Force": "12bit",
-            "X-Color-Space-Force": "bt2020",
+            "X-Pixel-Format": _pixelFormat,
+            "X-Color-Depth-Force": _colorDepth + "bit",
+            "X-Color-Space-Force": _colorSpaceKodi,
+            "X-Hdr-Mode": _hdrMode,
+            "X-Hdr-Transfer-Function": _kodiTf,
+            "X-Hdr-Color-Primaries": _colorPrimaries,
+            "X-Tone-Mapping-Peak": String(_peakNits),
+            "X-Tone-Mapping-Reference": String(_tmRef),
             "X-Ignore-Screen-Resolution": "true",
-            "X-HDR-Pipeline": "FORCE_12BIT_MAIN10_OVERDRIVE",
-            "X-Max-Peak-Luminance": "5000",
+            "X-HDR-Pipeline": _isHDR ? "FORCE_HDR_FULL_PIPELINE" : "SDR_BT1886_PASSTHROUGH",
+            "X-Max-Peak-Luminance": String(_peakNits),
             "X-Video-Scaler": "vdpau,opengl,cuda",
             "X-Sharpen-Sigma": "0.01",
             "X-Artifact-Deblocking": "extreme",
@@ -3291,7 +3461,11 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
             '#KODIPROP:inputstream.adaptive.bandwidth_handoff_ms=60000', // Toma de control Sentinel al minuto
             // -------------------------------------------------------------
             // 🔱 hev1 — ISA/ExoPlayer espera nombre de familia, NO cadena RFC-6381
-            `#KODIPROP:inputstream.adaptive.preferred_codec=hevc`,
+            // [HOMOLOGATION CASCADE 2026-06-07 HFRC mandato] Universal-match cascade con
+            // TODOS los aliases (hevc|hev1|h265|h.265|H265|H.265|h264|h.264|H264|H.264|avc|AVC).
+            // Garantiza que el dialect del player encuentre AL MENOS un alias compatible.
+            // SSOT en ape-hevc-cascade.js — exportado vía window.APE_HEVC_CASCADE.getCodecCascade.
+            `#KODIPROP:inputstream.adaptive.preferred_codec=${(typeof window !== 'undefined' && window.APE_HEVC_CASCADE && typeof window.APE_HEVC_CASCADE.getCodecCascade === 'function') ? window.APE_HEVC_CASCADE.getCodecCascade('video_hevc_first', null) : 'hevc,hev1,h265,h.265,H265,H.265,h264,h.264,H264,H.264,avc,AVC'}`,
             `#KODIPROP:inputstream.adaptive.audio_codec_priority=${cfg.codec_chain_audio || 'mp4a.40.2,ac-3,mp4a.40.5'}`,
             `#KODIPROP:inputstream.adaptive.max_resolution=${cfg.resolution || '3840x2160'}`,
             `#KODIPROP:inputstream.adaptive.resolution_secure_max=${cfg.resolution || '3840x2160'}`,
@@ -3310,7 +3484,7 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
             `#KODIPROP:inputstream.adaptive.audio_codec_override=${cfg.audio_codec || 'eac3'}`,
             `#KODIPROP:inputstream.adaptive.audio_channels=${cfg.audio_channels >= 6 ? '5.1' : '2.0'}`,
             `#KODIPROP:inputstream.adaptive.audio_passthrough=${cfg.audio_channels >= 6 ? 'true' : 'false'}`,
-            `#KODIPROP:inputstream.adaptive.dolby_atmos=${cfg.audio_channels >= 8 ? 'true' : 'false'}`,
+            `#KODIPROP:inputstream.adaptive.dolby_atmos=false`,
             // ── 🎬 CONTENT-AWARE HEVC via KODIPROP ──
             `#KODIPROP:inputstream.adaptive.max_bandwidth=${cfg.max_bandwidth || 50000000}`,
             `#KODIPROP:inputstream.adaptive.initial_bandwidth=${Math.min(cfg.max_bandwidth || 50000000, 10000000)}`,
@@ -3344,23 +3518,23 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
             '#KODIPROP:inputstream.adaptive.tls_cipher_suites=TLS_AES_256_GCM_SHA384',
             '#KODIPROP:inputstream.adaptive.ocsp_stapling=true',
             '#KODIPROP:inputstream.adaptive.early_hints=true',
-            // ── 🔥 OLED SHOWROOM SUPREMACY v5 (5000cd/m² PERCEPTION & ZERO CRASH) ──
-            // Exprimir 5000 nits de luminancia sin desbordar el decoder. Negros absolutos orgánicos.
-            '#KODIPROP:inputstream.adaptive.hdr_handling=force_hdr',
-            '#KODIPROP:inputstream.adaptive.max_luminance=5000',
-            '#KODIPROP:inputstream.adaptive.min_luminance=0.0000', // Negros OLED Profundos 100%
+            // ── 🔥 OLED SHOWROOM SUPREMACY v6 — PROFILE-AWARE (OTT/TiviMate/Kodi/Universal) ──
+            // Valores derivados del LAB per-profile (no hardcoded). Ver _labVo / _peakNits / _kodiTf.
+            `#KODIPROP:inputstream.adaptive.hdr_handling=${_isHDR ? 'force_hdr' : 'passthrough'}`,
+            `#KODIPROP:inputstream.adaptive.max_luminance=${_peakNits}`,
+            '#KODIPROP:inputstream.adaptive.min_luminance=0.0000',
             '#KODIPROP:inputstream.adaptive.hdr10_plus_parse=true',
             '#KODIPROP:inputstream.adaptive.dolby_vision_rpu=true',
-            '#KODIPROP:inputstream.adaptive.color_primaries=bt2020',
-            '#KODIPROP:inputstream.adaptive.transfer=smpte2084', // Obliga curva PQ pura HDR
-            '#KODIPROP:inputstream.adaptive.matrix_coefficients=bt2020nc',
-            '#KODIPROP:inputstream.adaptive.color_space=bt2020',
-            '#KODIPROP:inputstream.adaptive.pixel_format=yuv420p10le', // Profundidad de espectro expandida
-            // Tone mapping perceptual adaptativo, previene el clipping que causaba crashes de parseo
-            '#KODIPROP:inputstream.adaptive.tone_mapping=mobius', // Renderizado Mobius superior para Highlights en destellos
-            '#KODIPROP:inputstream.adaptive.tone_mapping_peak=5000',
-            '#KODIPROP:inputstream.adaptive.contrast_boost=1.15', // Amplificador dinámico de contraste vital
-            '#KODIPROP:inputstream.adaptive.film_grain_synthesis=false' // Nitidez extrema sin penalización de gpu
+            `#KODIPROP:inputstream.adaptive.color_primaries=${_colorPrimaries}`,
+            `#KODIPROP:inputstream.adaptive.transfer=${_kodiTf}`,
+            `#KODIPROP:inputstream.adaptive.matrix_coefficients=${_matrixCoeff}`,
+            `#KODIPROP:inputstream.adaptive.color_space=${_colorSpaceKodi}`,
+            `#KODIPROP:inputstream.adaptive.pixel_format=${_pixelFormat}`,
+            '#KODIPROP:inputstream.adaptive.tone_mapping=mobius',
+            `#KODIPROP:inputstream.adaptive.tone_mapping_peak=${_peakNits}`,
+            `#KODIPROP:inputstream.adaptive.tone_mapping_reference=${_tmRef}`,
+            '#KODIPROP:inputstream.adaptive.contrast_boost=1.15',
+            '#KODIPROP:inputstream.adaptive.film_grain_synthesis=false'
         ];
 
         // ═══════════════════════════════════════════════════════════════════
@@ -3924,7 +4098,7 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
     }
     // 🎯 PROVEN IMAGE QUALITY HEADERS (SMPTE/ITU/Netflix standards)
     // ═══════════════════════════════════════════════════════════════════
-    function build_proven_quality(cfg, profile) {
+    function build_proven_quality(cfg, profile, { _exHdrMode='SDR', _exKodiTf='bt1886', _exColorPrimaries='BT709', _exPeakNits=1000, _exTmRef=203, _exColorDepth=8, _exPixelFmt='yuv420p', _exIsHDR=false } = {}) {
         const el = EL_TARGETS[profile] || EL_TARGETS['P3'];
         const fps = cfg.fps || 30;
         const isHDR = (cfg.color_depth || 8) >= 10;
@@ -3982,16 +4156,24 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
             'X-SVT-AV1-Film-Grain': '1',
             'X-SVT-AV1-Enable-Tf': 'true',
 
-            // ── HDR10 Separated (SMPTE ST 2086) — 10000 NITS QUANTUM PEAK ──
+            // ── HDR PROFILE-AWARE (OTT/TiviMate/Kodi/Universal) ──
+            'X-Hdr-Mode': _exHdrMode,
+            'X-Hdr-Transfer-Function': _exKodiTf,
+            'X-Hdr-Color-Primaries': _exColorPrimaries,
+            'X-Tone-Mapping-Peak': String(_exPeakNits),
+            'X-Tone-Mapping-Reference': String(_exTmRef),
+            'X-Color-Depth': String(_exColorDepth) + 'bit',
+            'X-Pixel-Format': _exPixelFmt,
+            // ── HDR10 Separated (SMPTE ST 2086) — profile-aware NITS ──
             'X-HDR10-Primaries-G': '0.680,0.320',
             'X-HDR10-Primaries-B': '0.150,0.060',
             'X-HDR10-Primaries-R': '0.640,0.330',
             'X-HDR10-White-Point': '0.3127,0.3290',
-            'X-HDR10-Luminance-Max': '10000',
-            'X-HDR10-Luminance-Min': '0.0005',
-            'X-HDR10-MaxCLL': '10000',
-            'X-HDR10-MaxFALL': '800',
-            'X-HDR10-Contrast-Ratio': '10000000:1',
+            'X-HDR10-Luminance-Max': String(_exPeakNits),
+            'X-HDR10-Luminance-Min': _exIsHDR ? '0.0005' : '0.1',
+            'X-HDR10-MaxCLL': String(_exPeakNits),
+            'X-HDR10-MaxFALL': String(Math.round(_exPeakNits * 0.08)),
+            'X-HDR10-Contrast-Ratio': _exIsHDR ? '10000000:1' : '1000:1',
 
             // ── HDR10+ Scene (SMPTE ST 2094-40) — 10000 NITS ──
             'X-HDR10-Plus-Profile': 'A',
@@ -4133,13 +4315,21 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
     // ═══════════════════════════════════════════════════════════════════
     function build_hdr_peak_nit_tags(cfg, profile) {
         const isHDR = (cfg.color_depth || 8) >= 10;
-        const peak = isHDR ? 5000 : 1000;
+        // [Image1-parity 2026-05-23/2] Alineado al estándar broadcast HDR10 que VLC reportó
+        // sobre stream real: MaxCLL=1000 cd/m², MaxFALL=400 cd/m². LAB sigue mandando
+        // override per-canal via cfg.max_cll / cfg.max_fall. Valores anteriores (5000/800)
+        // inflaban peak vs lo que realmente entregan los proveedores.
+        const peak = isHDR ? 1000 : 600;
         const minLum = isHDR ? '0.0005' : '0.01';
         return [
             // 16A: ST 2086 Static Metadata
             `#EXT-X-APE-HDR-PEAK-NIT-ENGINE:v1.0-${peak}cd`,
-            `#EXT-X-APE-HDR-MASTERING-DISPLAY:P3-D65|PEAK=${peak}|MIN=${minLum}|MaxCLL=${peak}|MaxFALL=${isHDR ? 800 : 400}`,
-            `#EXT-X-APE-HDR-CONTRAST-RATIO:10000000:1`,
+            `#EXT-X-APE-HDR-MASTERING-DISPLAY:P3-D65|PEAK=${peak}|MIN=${minLum}|MaxCLL=${peak}|MaxFALL=${isHDR ? 400 : 200}`,
+            // [Council S4 WARN 2026-06-07] Contrast coherente con peak/minLum reales:
+            // antes 10M:1 (cinema Dolby), ahora derivado: HDR10 ≈ 1000/0.0005 = 2M:1,
+            // SDR ≈ 600/0.01 = 60K:1. Tone-mappers que leen el ratio dejarán de
+            // sobrecomprimir el rango dinámico declarado.
+            `#EXT-X-APE-HDR-CONTRAST-RATIO:${isHDR ? '2000000' : '60000'}:1`,
             // 16B: HDR10+ Dynamic (per-frame)
             `#EXT-X-APE-HDR10-PLUS-DYNAMIC:L1=${minLum}-${peak}|L2=12-TRIMS|L5=ACTIVE-AREA|L6-MaxSCL=${peak},${peak},${peak}`,
             // 16C: PQ EOTF
@@ -4361,6 +4551,26 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
         const lcevcState = resolveLcevcState(cfg); // LCEVC Dinámico: nunca DISABLED
         const fps = cfg.fps || 30;
 
+        // ── HDR PROFILE-AWARE (OTT Navigator / TiviMate / Universal players) ──
+        const _exPmProfile = (typeof window !== 'undefined' && window.APE_PROFILES_CONFIG
+            && typeof window.APE_PROFILES_CONFIG.getProfile === 'function')
+            ? window.APE_PROFILES_CONFIG.getProfile(profile) : null;
+        const _exVo = _exPmProfile?.vlcopt || {};
+        const _exPeakNits = parseInt(_exVo['video-hdr-nits'] || _exVo['video-tone-mapping-peak']) || cfg.peak_luminance_nits || 5000;
+        const _exTmRef    = parseInt(_exVo['video-tone-mapping-reference']) || 203;
+        const _exIsHDR    = (_exVo['video-hdr'] === 'true' || _exVo['video-hdr'] === true)
+                         || (Array.isArray(cfg.hdr_support) && cfg.hdr_support.some(h => h !== 'sdr'));
+        const _exColorDepth = parseInt(_exVo['video-bit-depth']) || cfg.color_depth || 8;
+        const _exRawTf = (_exVo['video-color-transfer'] || _exVo['video-transfer-function'] || '').toUpperCase();
+        const _exKodiTf = _exRawTf === 'SMPTE2084' ? 'smpte2084'
+                        : _exRawTf === 'ARIB-STD-B67' ? 'arib-std-b67'
+                        : _exRawTf === 'HLG' ? 'arib-std-b67'
+                        : _exRawTf === 'PQ' ? 'smpte2084'
+                        : _exIsHDR ? 'smpte2084' : 'bt1886';
+        const _exColorPrimaries = _exIsHDR ? 'BT2020' : 'BT709';
+        const _exHdrMode = _exVo['video-hdr-mode'] || (_exIsHDR ? 'HDR10' : 'SDR');
+        const _exPixelFmt = _exColorDepth >= 12 ? 'yuv420p12le' : (_exColorDepth >= 10 ? 'yuv420p10le' : 'yuv420p');
+
         let isp = {};
         if (ACTIVE_ISP_LEVEL) {
             isp = {
@@ -4446,7 +4656,7 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
             "X-Client-Timestamp": String(timestamp),
             "X-Request-Id": reqId,
             "X-Stream-Type": "hls,dash",
-            "X-Quality-Preference": `codec-av1,profile-main-12,main-10,main,tier-high,codec-hevc,${(cfg.hevc_profile || 'MAIN-10-HDR').toLowerCase()}`,
+            "X-Quality-Preference": `codec-hevc,profile-main-12,main-10,tier-high;codec-hev1,profile-main-10,tier-high;codec-hvc1,profile-main-10,tier-high;codec-h265,profile-main-10,tier-high;codec-h.265,profile-main-10,tier-high;codec-H265,profile-main-10,tier-high;codec-H.265,profile-main-10,tier-high;codec-h264,profile-high,tier-high;codec-h.264,profile-high,tier-high;codec-H264,profile-high,tier-high;codec-H.264,profile-high,tier-high;codec-avc,profile-high,tier-high;codec-avc1,profile-high,tier-high;codec-AVC,profile-high,tier-high;codec-av1,profile-main-12,main-10,main,tier-high`,
             "X-Playback-Rate": "1.0,1.25,1.5",
             "X-Segment-Duration": "1,2,4",
             "X-Min-Buffer-Time": "2,4,6",
@@ -4944,7 +5154,7 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
         Object.assign(headers, build_enhancement_layer(cfg, profile));
 
         // ── 🎯 PROVEN IMAGE QUALITY: Merge SMPTE/ITU/Netflix standards ──
-        Object.assign(headers, build_proven_quality(cfg, profile));
+        Object.assign(headers, build_proven_quality(cfg, profile, { _exHdrMode, _exKodiTf, _exColorPrimaries, _exPeakNits, _exTmRef, _exColorDepth, _exPixelFmt, _exIsHDR }));
 
         // ── 🧊 ANTIFREEZE NUCLEAR ENGINE v10.0: Merge X-AF-* headers ──
         Object.assign(headers, build_antifreeze_nuclear_headers(cfg, profile));
@@ -5041,7 +5251,7 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
                             continue;
                         }
                         if (v === null || v === undefined || v === '') continue;
-                        headers[k] = String(v);
+                        headers[k] = (k === 'X-Quality-Preference') ? _normalizeXQPrefHEVCFirst(String(v)) : String(v);
                         extraHdrCount++;
                     }
                     if (extraHdrCount > 0) {
@@ -5549,7 +5759,7 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
 
     function build_ape_block(cfg, profile, index, channel) {
         const buildTs = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 18) + 'Z';
-        const codecStr = window._APE_PRIO_QUALITY !== false ? (profile === 'P0' ? 'hvc1.1.6.L183.B0,mp4a.40.2' : 'hvc1.1.6.L150.B0,mp4a.40.2') : `hvc1.1.6.L150.B0,mp4a.40.2`;
+        const codecStr = window._APE_PRIO_QUALITY !== false ? (profile === 'P0' ? 'hvc1.2.4.L183.B0,mp4a.40.2' : 'hvc1.2.4.L150.B0,mp4a.40.2') : `hvc1.2.4.L150.B0,mp4a.40.2`;
         const lcevcState = resolveLcevcState(cfg);
         const lc = resolveLcevcConfig(profile, cfg);
 
@@ -5562,9 +5772,9 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
         // 🔴 FIX LCEVC-BASE-CODEC (120/120)
         // Usar el perfil ORIGINAL (pre-Cortex) para determinar el codec base.
         // El Cortex fuerza P0 en todos los canales, pero LCEVC-BASE-CODEC
-        // debe reflejar el codec REAL: P0 = AV1 (8K), resto = HEVC.
+        // debe reflejar el codec REAL: P0-P3 = HEVC, P4/P5 = HEVC fallback AVC.
         const _origProfile = cfg._cortex_original_profile || channel._originalProfile || profile;
-        const lcevcBaseCodec = _origProfile === 'P0' ? 'AV1' : 'HEVC';
+        const lcevcBaseCodec = 'HEVC';
 
 
         return [
@@ -5938,8 +6148,9 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
             `#EXT-X-APE-HDR-TRANSFER-FUNCTION:${cfg.transfer_function || 'SMPTE-ST-2084,ARIB-STD-B67,BT.709'}`,
             `#EXT-X-APE-HDR-COLOR-PRIMARIES:${cfg.color_primaries || 'BT.2020'}`,
             `#EXT-X-APE-HDR-MATRIX-COEFFICIENTS:${cfg.matrix_coefficients || 'BT.2020nc'}`,
-            `#EXT-X-APE-HDR-MAX-CLL:${cfg.max_cll || '4000,400'}`,
-            `#EXT-X-APE-HDR-MAX-FALL:${cfg.max_fall || '1200'}`,
+            // [Image1-parity 2026-05-23/2] Defaults broadcast HDR10 (1000/400). LAB override sigue.
+            `#EXT-X-APE-HDR-MAX-CLL:${cfg.max_cll || '1000,400'}`,
+            `#EXT-X-APE-HDR-MAX-FALL:${cfg.max_fall || '400'}`,
             `#EXT-X-APE-HDR-BIT-DEPTH:${cfg.color_depth || 10}bit`,
             `#EXT-X-APE-HDR-DOLBY-VISION-PROFILE:${cfg.dv_profile || '8.1'}`,
             `#EXT-X-APE-HDR-DOLBY-VISION-LEVEL:${cfg.dv_level || '6'}`,
@@ -5965,8 +6176,13 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
             `#EXT-X-APE-HDR-METADATA-PASS-THROUGH:true`,
             `#EXT-X-APE-HDR-OUTPUT-MODE:auto`,
             `#EXT-X-APE-HDR-DISPLAY-METADATA-SYNC:true`,
-            `#EXT-X-APE-HDR-MASTERING-DISPLAY:G(0.265,0.690)B(0.150,0.060)R(0.680,0.320)WP(0.3127,0.3290)L(10000,0.001)`,
-            `#EXT-X-APE-HDR-CONTENT-LIGHT-LEVEL:${cfg.max_cll || '4000,400'}`,
+            // [Council S4 WARN 2026-06-07] SMPTE ST 2086 L_max alineado a peak HDR10
+            // broadcast (1000 cd/m²) en lugar de 10000 (Dolby Vision cinema). L_min
+            // 0.0005 coincide con build_hdr_peak_nit_tags. Tone-mappers que confían
+            // en el L-max del mastering display dejarán de comprimir innecesariamente
+            // a los 1000 nits reportados por VLC (MaxCLL=1000/MaxFALL=400).
+            `#EXT-X-APE-HDR-MASTERING-DISPLAY:G(0.265,0.690)B(0.150,0.060)R(0.680,0.320)WP(0.3127,0.3290)L(1000,0.0005)`,
+            `#EXT-X-APE-HDR-CONTENT-LIGHT-LEVEL:${cfg.max_cll || '1000,400'}`,
             `#EXT-X-APE-HDR-AMBIENT-VIEWING-ENV:DIM`,
             `#EXT-X-APE-HDR-REFERENCE-WHITE:203nits`,
             `#EXT-X-APE-HDR-SCENE-LUMINANCE:true`,
@@ -7345,7 +7561,7 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
         // NO-CLAMP: split(',')[0] sobre texto, sin coerce.
         const _codec796 = _probeData?.videoCodec
             || (cfg.codec_chain_video && String(cfg.codec_chain_video).split(',')[0])
-            || (() => { switch (cfg.codec_primary) { case 'VVC': return 'vvc1.1.L63.00.0.0'; case 'AV1': return 'av01.0.08M.08'; case 'AVC': return 'avc1.640028'; default: return 'hvc1.1.6.L153.B0'; } })();
+            || (() => { switch (cfg.codec_primary) { case 'VVC': return 'vvc1.1.L63.00.0.0'; case 'AV1': return 'av01.0.08M.08'; case 'AVC': return 'avc1.640028'; default: return 'hvc1.2.4.L153.B0'; } })();
         let _codecAudio = _probeData?.audioCodec
             || (cfg.codec_chain_audio && String(cfg.codec_chain_audio).split(',')[0]) || cfg.audio_codec || 'mp4a.40.2';
         // [FIX-AUDIO 2026-05-20 · HFRC] Guardarraíl ec-3/E-AC3 → ac-3. Directiva explícita del
@@ -8186,6 +8402,25 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
         lines.push(`#KODIPROP:inputstream.adaptive.network_reconnect=true`);
         lines.push(`#KODIPROP:inputstream.adaptive.network_reconnect_count=99`);
         lines.push(`#KODIPROP:inputstream.adaptive.network_reconnect_delay=500`);
+        // ── LIVE-EDGE RESUME (jump-to-live tras corte de red) — base incondicional ────
+        // Council 2026-06-08 (S9 Player + S5 QoE corregido): tras stall por caída ISP,
+        // el player re-ancla al live edge y pide lo último del proveedor — NO reanuda el
+        // segmento viejo. Estas claves vivían SOLO en la rama LAB (if labProfile); ahora
+        // son base universal. Si LAB las calibra, su upsertKodiprop (L9300+) reemplaza —
+        // LAB gana, cero duplicados.
+        // NAMESPACE CORRECTO (verificado por S9 contra inputstream.adaptive real):
+        //   • live_target_offset_ms / max_live_sync_playback_rate → SÍ existen en ISA (Kodi).
+        //   • live_delay=0 → mecanismo ISA real para "hug live edge" (equivale a
+        //     live_duration_infinity de hls.js, que ISA ignora).
+        //   • live_duration_infinity / nudge_max_retry → son de hls.js → namespace
+        //     inputstream.hlsjs.* (coherente con el mapeador LAB en L9397/L9399). En ISA
+        //     el patrón de retry ya lo cubre network_reconnect_count=99 (L8373+).
+        // Valores S5: offset 3000ms (paridad Disney+ LL-HLS), catch-up 1.04× (inaudible).
+        lines.push(`#KODIPROP:inputstream.adaptive.live_target_offset_ms=3000`);
+        lines.push(`#KODIPROP:inputstream.adaptive.max_live_sync_playback_rate=1.04`);
+        lines.push(`#KODIPROP:inputstream.adaptive.live_delay=0`);
+        lines.push(`#KODIPROP:inputstream.hlsjs.live_duration_infinity=true`);
+        lines.push(`#KODIPROP:inputstream.hlsjs.nudge_max_retry=6`);
         lines.push(`#KODIPROP:inputstream.adaptive.network_user_agent=${_ua796}`);
         lines.push(`#KODIPROP:inputstream.adaptive.network_session_id=${_sid796}`);
         lines.push(`#KODIPROP:inputstream.adaptive.network_request_id=${reqId}`);
@@ -8209,8 +8444,8 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
         // Override audio_dolby_atmos=false y eac3=false del bloque base.
         // Kodi ISA toma el ÚLTIMO valor para keys duplicadas.
         if (options && options.maxQualityMode) {
-            const _mqVChain = 'dvh1.08.06,dvh1.05.09,hvc1.2.4.L186.B0,hvc1.2.4.L183.B0,hvc1.2.4.L180.B0,hvc1.2.4.L156.B0,hvc1.2.4.L153.B0,hvc1.2.4.L150.B0,hvc1.2.4.L123.B0,hvc1.2.4.L120.B0,hvc1.1.6.L153.B0,hvc1.1.6.L120.B0,hvc1.2.4.L93.B0,hvc1.2.4.L90.B0,av01.0.13M.10.0.110.09.16.09.0,av01.0.09M.10.0.110.09.16.09.0,avc1.640033,avc1.640028';
-            lines.push(`#KODIPROP:inputstream.adaptive.audio_dolby_atmos=true`);
+            const _mqVChain = 'dvh1.08.06,dvh1.05.09,hvc1.2.4.L186.B0,hvc1.2.4.L183.B0,hvc1.2.4.L180.B0,hvc1.2.4.L156.B0,hvc1.2.4.L153.B0,hvc1.2.4.L150.B0,hvc1.2.4.L123.B0,hvc1.2.4.L120.B0,hvc1.2.4.L153.B0,hvc1.2.4.L120.B0,hvc1.2.4.L93.B0,hvc1.2.4.L90.B0,av01.0.13M.10.0.110.09.16.09.0,av01.0.09M.10.0.110.09.16.09.0,avc1.640033,avc1.640028';
+            lines.push(`#KODIPROP:inputstream.adaptive.audio_dolby_atmos=false`);
             lines.push(`#KODIPROP:inputstream.adaptive.audio_eac3=true`);
             lines.push(`#KODIPROP:inputstream.adaptive.live_delay=1`);
             lines.push(`#EXT-X-APE-AUDIO:CODEC=ac-3,CHANNELS=5.1,ATMOS=false`); // [FIX-AUDIO 2026-05-23] ac-3 — compatibilidad passthrough universal
@@ -9381,25 +9616,43 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
         // F5 prohíbe STREAM-INF (canal solo con EXTINF + URL original).
         // Legacy fallback SIN mentiras hardcoded (HDCP-LEVEL/SUPPLEMENTAL-CODECS solo si truth los verifica).
         let _streamInfLine = null;
+        // [Council S11 observability 2026-06-07] Trackea cuál de los 3 paths fijó la FPS:
+        // 'probe' (probe>=24) / 'default-120' (P0 sin probe) / 'default-60' (P1-P5 sin probe).
+        // Se emite como #EXT-X-APE-FPS-SOURCE tras el STREAM-INF — invisible al player,
+        // visible a dashboards para distinguir Lost=0 real de MEMC intent.
+        let _fpsSource = null;
+        // Helper único de no-probe fallback (reconcilia los 3 emitters — Council S1 WARN):
+        // P0 ⇒ 120 (intent MEMC del TV en canal premium); resto ⇒ 60 (broadcast 4K HDR estándar).
+        const _noProbeFps = (p) => (String(p || 'P3').toUpperCase() === 'P0') ? 120 : 60;
         // ── MAX_QUALITY MODE: STREAM-INF con cascada DV+HEVC 18 codecs ──────────────────
         // GOLDEN RULE respetada: dvh1/hvc1/avc1 en CODECS= (manifest parser safe).
         // hev1 NUNCA en STREAM-INF. ec-3 en CODECS= es RFC-válido para audio DDP.
         if (options && options.maxQualityMode) {
-            const _mqVideoChain = 'dvh1.08.06,dvh1.05.09,hvc1.2.4.L186.B0,hvc1.2.4.L183.B0,hvc1.2.4.L180.B0,hvc1.2.4.L156.B0,hvc1.2.4.L153.B0,hvc1.2.4.L150.B0,hvc1.2.4.L123.B0,hvc1.2.4.L120.B0,hvc1.1.6.L153.B0,hvc1.1.6.L120.B0,hvc1.2.4.L93.B0,hvc1.2.4.L90.B0,av01.0.13M.10.0.110.09.16.09.0,av01.0.09M.10.0.110.09.16.09.0,avc1.640033,avc1.640028';
+            const _mqVideoChain = 'dvh1.08.06,dvh1.05.09,hvc1.2.4.L186.B0,hvc1.2.4.L183.B0,hvc1.2.4.L180.B0,hvc1.2.4.L156.B0,hvc1.2.4.L153.B0,hvc1.2.4.L150.B0,hvc1.2.4.L123.B0,hvc1.2.4.L120.B0,hvc1.2.4.L153.B0,hvc1.2.4.L120.B0,hvc1.2.4.L93.B0,hvc1.2.4.L90.B0,av01.0.13M.10.0.110.09.16.09.0,av01.0.09M.10.0.110.09.16.09.0,avc1.640033,avc1.640028';
             const _mqCodecFirst = _mqVideoChain.split(',')[0]; // dvh1.08.06
             const _mqBwMap = { 'P0': 120000000, 'P1': 80000000, 'P2': 50000000, 'P3': 25000000, 'P4': 15000000, 'P5': 8000000 };
             const _mqBw = _mqBwMap[String(profile || 'P3').toUpperCase()] || 25000000;
             const _mqResMap = { 'P0': '7680x4320', 'P1': '3840x2160', 'P2': '3840x2160', 'P3': '1920x1080', 'P4': '1280x720', 'P5': '854x480' };
             const _mqRes = _mqResMap[String(profile || 'P3').toUpperCase()] || '1920x1080';
-            const _mqFps = (String(profile || 'P3').toUpperCase() === 'P0') ? 120 : 60;
-            _streamInfLine = `#EXT-X-STREAM-INF:BANDWIDTH=${_mqBw},AVERAGE-BANDWIDTH=${Math.round(_mqBw * 0.8)},CODECS="${_mqCodecFirst},ac-3",RESOLUTION=${_mqRes},FRAME-RATE=${_mqFps}.000,HDCP-LEVEL=${_hdcpLevel},STABLE-VARIANT-ID="${_stableVariantId}"`; // [FIX-AUDIO 2026-05-23] ac-3 — compatibilidad passthrough universal
+            // [Lost=0 2026-05-23/2] respeta fps del probe si llegó (>=24). Sin probe,
+            // default por perfil via _noProbeFps() (P0=120, resto=60). Reconciliado con
+            // truth-driven + legacy paths (Council S1 WARN).
+            const _probedFps_MQ = Number((_probeData && (_probeData.frameRate || _probeData.fps)) || 0);
+            const _mqFps = (_probedFps_MQ >= 24) ? _probedFps_MQ : _noProbeFps(profile);
+            _fpsSource = (_probedFps_MQ >= 24) ? 'probe' : (_noProbeFps(profile) === 120 ? 'default-120' : 'default-60');
+            _streamInfLine = `#EXT-X-STREAM-INF:BANDWIDTH=${_mqBw},AVERAGE-BANDWIDTH=${Math.round(_mqBw * 0.8)},CODECS="${_mqCodecFirst},ac-3",RESOLUTION=${_mqRes},FRAME-RATE=${Number(_mqFps).toFixed(3)},HDCP-LEVEL=${_hdcpLevel},STABLE-VARIANT-ID="${_stableVariantId}"`; // [FIX-AUDIO 2026-05-23] ac-3 — compatibilidad passthrough universal
         }
-        // ── PERCEPTUAL 4K MODE — Engaño declarativo en truth object (path truth-driven) ──
-        // Overrides resolution→3840x2160 + videoRange→PQ ANTES de que emitStreamInfFromTruth
-        // construya el STREAM-INF. Player interpreta 4K@PQ → activa upscaler hardware + pipeline HDR.
-        // GOLDEN RULE: hvc1 en CODECS= sigue siendo el codec del truth (sin inventar dvh1).
+        // ── PERCEPTUAL 4K MODE — DOS MANERAS (2026-06-09 · mandato usuario: conservar el original) ──
+        // (1) ORIGINAL (NO se toca): override público resolution→3840x2160 + videoRange→PQ en el
+        //     truth ANTES de emitStreamInfFromTruth. En los TVs/players autorizados del operador
+        //     activa el upscaler HW + pipeline HDR y "funciona muy bien" — se mantiene intacto.
+        // (2) ADITIVO: además, el intent viaja en un tag PRIVADO #EXT-X-APE-PERCEPTUAL-4K
+        //     (RFC 8216 §6.3.1: players conformes lo ignoran; el device/VPS upscaler lo lee).
+        // NOTA honestidad (council): VIDEO-RANGE=PQ público sobre SDR puede dar pantallazo negro en
+        // ExoPlayer GENÉRICO; el operador lo asume porque en su hardware rinde mejor (override owner).
         if (options && options.perceptual4kMode && _apeTruth) {
-            _apeTruth = Object.assign({}, _apeTruth, { resolution: '3840x2160', videoRange: 'PQ' });
+            _apeTruth = Object.assign({}, _apeTruth, { resolution: '3840x2160', videoRange: 'PQ' }); // (1) original — intacto
+            lines.push('#EXT-X-APE-PERCEPTUAL-4K:TARGET-RESOLUTION="3840x2160",HDR-INTENT="PQ",MODE="device-upscaler-hint"'); // (2) aditivo
         }
         const _R_emit = (typeof window !== 'undefined') ? window.APEFallbackResolver : null;
         if (_apeTruth && _R_emit && typeof _R_emit.emitApeFallbackTags === 'function') {
@@ -9415,34 +9668,65 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
             if (typeof _apeTruth.profile === 'undefined') {
                 _apeTruth.profile = profile;
             }
-            // ── MEMC TOTAL FPS OVERRIDE — 2026-05-23 (v22.6.0-MEMC-TOTAL-8K120) ──────
-            // Forzar fps=120 en el truth object ANTES de que emitStreamInfFromTruth
-            // construya el STREAM-INF. Activa el MEMC de hardware del televisor en
-            // TODOS los reproductores (TiviMate, ExoPlayer, VLC, Kodi, OTT Navigator).
-            // El Truth-Driven path interceptaba el bloque MEMC legacy — este fix
-            // garantiza que FRAME-RATE=120.000 llegue al STREAM-INF sin excepción.
-            _apeTruth.fps = 120;
-            _apeTruth.targetFps = 120;
-            _apeTruth.frameRate = 120;
+            // ── MEMC FPS HONESTY — REVISED 2026-06-07 (Council S1 reconciliation) ──
+            // El override original forzaba fps=120 SIEMPRE — pero los streams reales
+            // de 25/30/50/60 fps llegaban al player con vsync mismatch -> "fotogramas
+            // perdidos" > 0 (VLC reportó 403 perdidos / 5 min sobre canal 50fps real).
+            //
+            // Doctrina, aplica a TODOS los perfiles P0-P5:
+            //  • Si el probe detectó fps real (>=24) -> SE RESPETA -> vsync match -> Lost=0.
+            //  • Sin probe -> _noProbeFps(profile): P0=120 (intent MEMC 8K),
+            //    resto=60 (broadcast 4K HDR estándar). Reconciliado con maxQuality+legacy
+            //    para eliminar la divergencia 120/120/60 que el Council marcó como
+            //    "maintenance trap" (Phase 0 freezeless-visual-master-council 2026-06-07).
+            //
+            // El MEMC HW del televisor es display-side (no manifest-driven); declarar 60
+            // en P1-P5 no le quita capacidad de interpolación si el TV la soporta.
+            // Reversible: borrar este bloque -> vuelve al override 120 universal.
+            const _probedFps_T = Number(_apeTruth.frameRate || _apeTruth.fps || 0);
+            if (_probedFps_T >= 24) {
+                _apeTruth.frameRate  = _probedFps_T;
+                _apeTruth.fps        = _probedFps_T;
+                _apeTruth.targetFps  = _probedFps_T;
+                _fpsSource = 'probe';
+            } else {
+                const _np = _noProbeFps(profile);
+                _apeTruth.frameRate  = _np;
+                _apeTruth.fps        = _np;
+                _apeTruth.targetFps  = _np;
+                _fpsSource = (_np === 120) ? 'default-120' : 'default-60';
+            }
             // ─────────────────────────────────────────────────────────────────────────
             _streamInfLine = _R_emit.emitStreamInfFromTruth(_apeTruth);
         }
         if (_streamInfLine) {
             lines.push(_streamInfLine);
+            // [Council S11 observability 2026-06-07] Marker tras STREAM-INF para
+            // paths truth-driven + maxQuality. (El legacy path lo emite inline arriba.)
+            if (_fpsSource) {
+                lines.push(`#EXT-X-APE-FPS-SOURCE:${_fpsSource}`);
+            }
         } else if (_apeTruth && _apeTruth.tier === 'F5_ORIGINAL_DIRECT_SAFE') {
             // F5: NO STREAM-INF — solo EXTINF + URL original (ya emitido arriba)
         } else {
             // Legacy emit sin truth: emite STREAM-INF SIN HDCP-LEVEL ni SUPPLEMENTAL-CODECS hardcoded.
             //
-            // [R-1 FIX — 2026-05-18 · NO PLAYER-BREAKING LIES]
-            // VIDEO-RANGE solo se emite cuando hay evidencia REAL del probe
-            // (_probeData?.videoRange) o cuando truth-resolver lo verifica.
-            // cfg.hdr_mode (LAB SSOT) NO califica como evidencia para HDR claim
-            // — un canal SDR con LAB-tag HDR10 mintiendo VIDEO-RANGE=PQ rompe
-            // pre-init del decoder HDR de ExoPlayer (pantallazo negro HDMI).
-            // Per ARTIFACT_FASE1_PROFUNDO_DESTRIPE §6 R-1.
+            // [SUPERSEDED 2026-06-16 — VIDEO-RANGE=PQ INCONDICIONAL]
+            // Doctrina del propietario (ver CLAUDE.md "VIDEO-RANGE=PQ Incondicional"): se emite
+            // VIDEO-RANGE=PQ en TODO canal como declaración del SDR→HDR enhancement que el display/
+            // daemon materializa (hdr_conversion_mode=1 incondicional). Default PQ; si el probe
+            // verificó HLG real se respeta HLG. FREEZELESS: VIDEO-RANGE es hint de rango/display,
+            // NO cambia CODECS ni declara decode imposible. (Reemplaza el R-1 FIX 2026-05-18.)
             const _probedRange = (_probeData && (_probeData.videoRange || _probeData.video_range)) || null;
-            const _videoRangePart = _probedRange ? `,VIDEO-RANGE="${_probedRange}"` : '';
+            // let (no const): el path perceptual puede reasignar _videoRangePart abajo.
+            // [Phase G 2026-06-16] ROLLBACK PQ→SDR per-canal: si el canal esta blacklisted (pantallazo
+            // negro detectado por la QoE, window.APE_PQ_PROFILE de channel-pq-bulk.php) → SDR (sin
+            // metadata HDR). El resto sigue PQ incondicional. Chequea id normalizado y raw.
+            const _pqChIdLeg = String(channel.stream_id || channel.id || channel.name || 'unknown').toLowerCase().replace(/\s+/g, '_');
+            const _pqMapLeg = (typeof window !== 'undefined' && window.APE_PQ_PROFILE) ? window.APE_PQ_PROFILE : {};
+            const _pqBlLeg = (_pqMapLeg[_pqChIdLeg] === 'SDR') || (_pqMapLeg[String(channel.stream_id || channel.id || '')] === 'SDR');
+            const _vrLegacy = _pqBlLeg ? 'SDR' : ((_probedRange === 'HLG') ? 'HLG' : 'PQ');
+            let _videoRangePart = (_vrLegacy === 'SDR') ? '' : `,VIDEO-RANGE=${_vrLegacy}`;
             // ── HDCP-Adaptive (added 2026-05-19) — per-channel HDCP-LEVEL + STABLE-VARIANT-ID ──
             // Default TYPE-1 (aggressive, forces hardware decoder). Override to NONE only if
             // Conviva detected VST > 3000ms on prior TYPE-1 attempt (stored in window.APE_HDCP_PROFILE).
@@ -9537,20 +9821,144 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
                 _res796_csv   = _t1Fake.width + 'x' + _t1Fake.height;
             }
 
-            // ── PERCEPTUAL 4K MODE override (path legacy) ──────────────────────────────
-            if (options && options.perceptual4kMode) {
-                _res796_csv = '3840x2160';
-                _videoRangePart = ',VIDEO-RANGE=PQ';
+            // ── CASCADE F0–F5 ANTI-FREEZE (2026-06-07 · HFRC mandato) ─────────────────
+            // Doctrina CLAUDE.md §F0–F5: si NO hay evidencia probe HEVC NI hint premium,
+            // sobrescribir el codec con avc1.640028 (Tier F4 AVC HIGH SAFE) en lugar del
+            // codec HEVC que la cascada per-profile acaba de asignar.
+            // Causa raíz validada (3 Explore agents 2026-06-07): ExoPlayer / OTT Navigator
+            // / TiviMate NO degradan codec dentro de una STREAM-INF variant (RFC 8216
+            // §4.4.4.2). Si declara HEVC y bitstream del upstream IPTV es H.264 (lo más
+            // común en FHD/HD genéricos), init del HEVC decoder falla → FREEZE.
+            // P0/P1/P2 (4K/8K) conservan HEVC siempre — alta probabilidad de upstream
+            // HEVC y los usuarios validaron empíricamente que reproducen perfecto.
+            // P3/P4/P5 (FHD/HD/SD) sin probe ni premium → AVC safe.
+            // Reusa _cascade.isPremiumChannel (ape-hevc-cascade.js:395) para premium hint.
+            // Reversible: comentar este bloque → vuelve al comportamiento previo.
+            let _codecSource = 'cascade-forzada';
+            const _probeHasCodec = !!(_probeData && _probeData.videoCodec);
+            if (_probeHasCodec) {
+                _codecSource = 'probe';
+                // Truth-driven path normalmente gestiona esto. Si caímos aquí con probe,
+                // el codec del cascade ya está; el marker lo registra para observability.
+            } else {
+                // [Council 2026-06-07 · S3+S9+S12] Usa isAntiFreezePremium (regex SIN
+                // 'fhd|hevc|h265' tokens cosméticos) para evitar que "MyChannel FHD"
+                // genérico quede protegido como HEVC y freeze. BEIN/DAZN/HBO siguen
+                // siendo premium por sus tokens reales.
+                let _isAntiFreezePrem = false;
+                try {
+                    if (_cascade && typeof _cascade.isAntiFreezePremium === 'function') {
+                        _isAntiFreezePrem = _cascade.isAntiFreezePremium(channel);
+                    } else if (_cascade && typeof _cascade.isPremiumChannel === 'function') {
+                        // Fallback compat: si cascade no expone isAntiFreezePremium (versión
+                        // vieja cacheada), cae al premium clásico — menos óptimo pero seguro.
+                        _isAntiFreezePrem = _cascade.isPremiumChannel(channel);
+                    }
+                } catch (_ePm) {}
+                if (_isAntiFreezePrem) {
+                    _codecSource = 'premium-hint';
+                    // Mantiene HEVC del cascade per-profile actual — sin override.
+                    // F2/F3 PREFERRED per CLAUDE.md (DAZN/ESPN/4K/UHD/HDR/Dolby/Sports/etc.).
+                } else {
+                    const _pUpper = String(profile || 'P3').toUpperCase();
+                    if (_pUpper === 'P3' || _pUpper === 'P4' || _pUpper === 'P5') {
+                        // [Council S3 WARN] AVC Level fps-aware:
+                        //   • avc1.640029 (H.264 High Level 4.1) — cubre 1080p@60fps
+                        //   • avc1.640028 (H.264 High Level 4.0) — cubre 1080p@30fps
+                        // Level 4.0 MaxMBPS=245,760 está justo en el límite de 1080p@30;
+                        // Level 4.1 da headroom para 1080p@60 sin riesgo de strict decoder
+                        // selection en Tizen/WebOS.
+                        const _avcSafe = (Number(_fps796_csv) >= 50) ? 'avc1.640029' : 'avc1.640028';
+                        _codec796_csv = _avcSafe;
+                        _codecSource = 'f4-avc-safe';
+                    }
+                    // P0/P1/P2 sin probe ni premium: conservan HEVC (caso raro,
+                    // típicamente esos perfiles vienen de fuentes premium).
+                }
             }
-            // ── DOBLE CADENA MEMC v3.0 — 2026-05-23 ──────────────────────────────────
-            // Capa 2 TOTAL: FRAME-RATE=120.000 en STREAM-INF para activar el
-            // MEMC de HARDWARE del televisor en TODOS los perfiles y tipos.
-            // P0/P1/P2 (4K/8K): el TV activa MEMC de hardware → simula 8K@120fps
-            // P3/P4/P5 (FHD/HD/SD): el TV activa MEMC → simula 4K@120fps
-            // Capa 1 (minterpolate en EXTVLCOPT) activa para MPV/Kodi con libavfilter.
-            // Sin excepciones — máxima fluidez en todo el contenido.
-            _fps796_csv = 120; // MEMC TOTAL: todos los perfiles P0-P5, todos los tipos
-            lines.push(`#EXT-X-STREAM-INF:BANDWIDTH=${_bw796},AVERAGE-BANDWIDTH=${_avgBw},CODECS="${_codec796_csv},${_codecAudio}",RESOLUTION=${_res796_csv},FRAME-RATE=${_fps796_csv}.000${_videoRangePart},HDCP-LEVEL=${_hdcpLevel},STABLE-VARIANT-ID="${_stableVariantId}"`);
+
+            // ── VPS IMAGE QUALITY UPGRADE (2026-06-08 · SOLO IMAGEN) ────────────────────
+            // bitrate_avg_bps del nginx Lua observer = evidencia empírica real de calidad.
+            // SOLO codec + resolución. ZERO timing/buffer/connection.
+            // No override si probe real (_probeHasCodec) — probe es evidencia más precisa.
+            // No override si premium-hint — premium ya tiene HEVC por su propia lógica.
+            // Reusa _hdcpChId (mismo channel ID key del HDCP adaptive engine).
+            //
+            // FIX S5 F4 (2026-06-08): cascade_type gate obliga a tener evidencia HEVC
+            // verificada además del bitrate. Sin este gate, un H.264 a 22 Mbps declaraba
+            // hvc1.2.4.L153.B0 → freeze ExoPlayer 9/10 (decoder HEVC init + AVC bitstream).
+            // cascade_type="dual-hvc1-hev1" = nginx Lua observer vio headers hvc1/hev1 reales.
+            //
+            // FIX S1 F1 (2026-06-08): _bw796_final/_avgBw_final se actualizan al tier
+            // promovido para evitar BANDWIDTH=5M con RESOLUTION=3840x2160 (ABR confundido).
+            let _bw796_final  = _bw796;
+            let _avgBw_final  = _avgBw;
+            if (!_probeHasCodec && _codecSource !== 'premium-hint') {
+                const _iqMap  = (typeof window !== 'undefined' && window.APE_IMAGE_PROFILE) ? window.APE_IMAGE_PROFILE : {};
+                const _iqData = _iqMap[_hdcpChId];
+                if (_iqData && _iqData.bw_observed) {
+                    const _bwObs = Number(_iqData.bw_observed) || 0;
+                    if (_bwObs >= 22000000 && _iqData.cascade_type) {
+                        // 4K tier: ≥ 22 Mbps + cascade_type verificado = HEVC 4K confirmado
+                        _codec796_csv = 'hvc1.2.4.L153.B0';
+                        _res796_csv   = '3840x2160';
+                        _codecSource  = 'vps-image-4k';
+                        _bw796_final  = Math.max(_bwObs, 22000000);
+                        _avgBw_final  = Math.round(_bw796_final * 0.85);
+                    } else if (_bwObs >= 12000000 && _codecSource === 'f4-avc-safe' && _iqData.cascade_type) {
+                        // FHD tier: ≥ 12 Mbps + AVC-safe + cascade_type = HEVC FHD verificado
+                        _codec796_csv = 'hvc1.2.4.L120.B0';
+                        _res796_csv   = '1920x1080';
+                        _codecSource  = 'vps-image-fhd';
+                        _bw796_final  = Math.max(_bwObs, 9000000);
+                        _avgBw_final  = Math.round(_bw796_final * 0.85);
+                    }
+                }
+            }
+
+            // ── PERCEPTUAL 4K MODE — DOS MANERAS (2026-06-09 · mandato usuario: conservar el original) ──
+            // (1) ORIGINAL (NO se toca el comportamiento): override público _res796_csv=4K + PQ.
+            //     Único cambio mecánico: _videoRangePart es 'let' arriba (no const) — necesario para
+            //     que ESTA reasignación NO lance TypeError en strict-mode (con const crasheaba y
+            //     perdía el canal en el path legacy). El valor visual PQ queda idéntico al original.
+            // (2) ADITIVO: tag PRIVADO #EXT-X-APE-PERCEPTUAL-4K (invisible al player).
+            if (options && options.perceptual4kMode) {
+                _res796_csv = '3840x2160';            // (1) original — intacto
+                // [Phase G] el override perceptual NO fuerza PQ si el canal esta blacklisted (SDR).
+                if (!_pqBlLeg) { _videoRangePart = ',VIDEO-RANGE=PQ'; }
+                lines.push('#EXT-X-APE-PERCEPTUAL-4K:TARGET-RESOLUTION="3840x2160",HDR-INTENT="PQ",MODE="device-upscaler-hint"'); // (2) aditivo
+            }
+            // ── DOBLE CADENA MEMC v3.0 — REVISED 2026-06-07 (Council S1/S9 comment fix) ──
+            // Capa 2: FRAME-RATE en STREAM-INF. Behaviour real (corregido vs comentario
+            // anterior que decía "sin probe -> 120"):
+            //   • _fps796_csv viene de la chain de L7341: _probeData?.frameRate || cfg.fps || 60
+            //     Sin probe, cfg.fps default 60 -> _fps796_csv = 60, NO 120.
+            //   • El guard `if (!(>=24))` solo dispara si cfg.fps < 24 (improbable), en cuyo
+            //     caso aplicamos _noProbeFps(profile) para reconciliar con los otros 2 paths
+            //     (P0=120, resto=60) en vez del 120 universal anterior.
+            // Capa 1 (minterpolate en EXTVLCOPT) sigue activa para MPV/Kodi.
+            const _legacyHadProbe = Number(_fps796_csv) >= 24 && Number(_probeData?.frameRate || 0) >= 24;
+            if (!(Number(_fps796_csv) >= 24)) {
+                _fps796_csv = _noProbeFps(profile);
+            }
+            _fpsSource = _legacyHadProbe ? 'probe' : (Number(_fps796_csv) === 120 ? 'default-120' : 'default-60');
+            lines.push(`#EXT-X-STREAM-INF:BANDWIDTH=${_bw796_final},AVERAGE-BANDWIDTH=${_avgBw_final},CODECS="${_codec796_csv},${_codecAudio}",RESOLUTION=${_res796_csv},FRAME-RATE=${Number(_fps796_csv).toFixed(3)}${_videoRangePart},HDCP-LEVEL=${_hdcpLevel},STABLE-VARIANT-ID="${_stableVariantId}"`);
+            if (_fpsSource) {
+                lines.push(`#EXT-X-APE-FPS-SOURCE:${_fpsSource}`);
+            }
+            // [Anti-freeze F0-F5 2026-06-07] Marker observability codec branch.
+            // Valores: probe | premium-hint | f4-avc-safe | cascade-forzada.
+            if (typeof _codecSource !== 'undefined' && _codecSource) {
+                lines.push(`#EXT-X-APE-CODEC-SOURCE:${_codecSource}`);
+            }
+            // [HOMOLOGATION CASCADE observability 2026-06-07] Tag privado APE con la
+            // cascada homologada completa emitida a KODIPROP/EXTVLCOPT — permite a
+            // dashboards/wrappers auditar qué aliases recibe el player por canal.
+            // RFC 8216 §6.3.1 invisible al player (tag custom propietario).
+            const _ccAll = (typeof window !== 'undefined' && window.APE_HEVC_CASCADE && typeof window.APE_HEVC_CASCADE.getCodecCascade === 'function')
+                ? window.APE_HEVC_CASCADE.getCodecCascade('video_hevc_first', null)
+                : 'hevc,hev1,h265,h.265,H265,H.265,h264,h.264,H264,H.264,avc,AVC';
+            lines.push(`#EXT-X-APE-CODEC-FALLBACK-CHAIN:${_ccAll}`);
         }
         let finalUrl = options.dictatorMode ? `${primaryUrl}|User-Agent=${_ua796}&Cache-Control=no-cache&Connection=keep-alive&Referer=${typeof window !== "undefined" ? encodeURIComponent(window.location.origin) : ""}` : primaryUrl;
         if (options.dictatorMode) {
@@ -9588,7 +9996,7 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
             // [HEVC-FIRST CODEC LADDER GUARDRAIL] Si Excel template no resuelve codec_chain_*,
             // sustituye al valor de cfg (LAB SSOT) o al fallback hardcoded HEVC-first.
             // Cumple NO-CLAMP: codec strings son texto, no se coercionan.
-            const _cgVideo  = cfg.codec_chain_video        || 'hvc1.2.4.L183.B0,hvc1.2.4.L180.B0,hvc1.2.4.L156.B0,hvc1.2.4.L153.B0,hvc1.2.4.L150.B0,hvc1.2.4.L123.B0,hvc1.2.4.L120.B0,hvc1.1.6.L153.B0,hvc1.1.6.L120.B0,avc1.640028';
+            const _cgVideo  = cfg.codec_chain_video        || 'hvc1.2.4.L183.B0,hvc1.2.4.L180.B0,hvc1.2.4.L156.B0,hvc1.2.4.L153.B0,hvc1.2.4.L150.B0,hvc1.2.4.L123.B0,hvc1.2.4.L120.B0,hvc1.2.4.L153.B0,hvc1.2.4.L120.B0,avc1.640028';
             const _cgAudio  = cfg.codec_chain_audio        || 'mp4a.40.2,ac-3,mp4a.40.5';
             const _cgHdr    = cfg.codec_chain_hdr          || 'hdr10,hlg,sdr';
             const _cgPref   = cfg.codec_chain_player_pref  || 'hvc1,hev1,h265,avc1,h264';

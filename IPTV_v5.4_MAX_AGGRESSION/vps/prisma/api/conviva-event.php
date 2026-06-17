@@ -73,6 +73,41 @@ if (json_last_error() !== JSON_ERROR_NONE || !is_array($event)) {
     exit;
 }
 
+// ── Correlacion per-canal por IP (plano ADB->URL-2) ──────────────────────────
+// El runner ADB (adb-conviva-push.sh) no conoce el channel_id porque OTT Navigator no lo logea;
+// POSTea channel.id="auto". Lo resolvemos desde device_state por REMOTE_ADDR: la IP publica del
+// hogar es la MISMA que el player usa al pegar /omega/open (que escribe /dev/shm/ape_devstate_<ip>),
+// asi la QoE del device se atribuye al canal REAL que reproduce. Sin device_state -> queda "auto".
+if (isset($event['channel']['id'])
+    && in_array(strtolower((string)$event['channel']['id']), array('auto', 'unknown', ''), true)) {
+    $ip = $_SERVER['REMOTE_ADDR'] ?? '';
+    if ($ip !== '' && @is_file(__DIR__ . '/../lib/ape_mesh.php')) {
+        require_once __DIR__ . '/../lib/ape_mesh.php';
+        if (function_exists('ape_device_state_by_ip')) {
+            $st = ape_device_state_by_ip($ip);
+            if (!empty($st['channel_id'])) {
+                $event['channel']['id'] = preg_replace('/[^0-9A-Za-z_.\-]/', '', (string)$st['channel_id']);
+                if (empty($event['channel']['name']) && !empty($st['content_type'])) {
+                    $event['channel']['name'] = preg_replace('/[^0-9A-Za-z _.\-]/', '', (string)$st['content_type']);
+                }
+            }
+        }
+    }
+}
+
+// ── OMEGA: tuning AI-PQ por content-type — ANTES de validar (no depende del canal; por device+fps).
+// El channel=auto del ARA falla la validacion; pero el perfil PQ es device-level + content-based, asi
+// que se decide/empuja aqui (fire-and-forget, anti-spam por /dev/shm). VPS DECIDE, ARA aplica el VPP.
+try {
+    if (isset($event['event_type']) && $event['event_type'] === 'quality_change' && !empty($event['device_id'])) {
+        if (@is_file(__DIR__ . '/../lib/ape_mesh.php')) { require_once __DIR__ . '/../lib/ape_mesh.php'; }
+        if (function_exists('ape_pq_push_for_device')) {
+            $ctp = ape_ct_from_qoe(isset($event['data']) && is_array($event['data']) ? $event['data'] : array());
+            ape_pq_push_for_device((string)$event['device_id'], $ctp);
+        }
+    }
+} catch (\Throwable $eqp) { error_log('[conviva-event] PQ-ct early push skipped: ' . $eqp->getMessage()); }
+
 // Validate against schema (Phase 1: minimal validator; Phase 2: full JSON Schema)
 $errors = ConvivaQoEServer::validateEvent($event);
 if (!empty($errors)) {
@@ -82,6 +117,20 @@ if (!empty($errors)) {
         'error'   => 'validation_failed',
         'details' => $errors,
     ]);
+    exit;
+}
+
+// ── OMEGA: heartbeat = liveness del ARA (no lleva QoE) → registra en ara_heartbeats y responde OK.
+// Aditivo: el enum ya acepta 'heartbeat'; aquí lo enrutamos a su sink (bus canónico) ANTES del dispatch
+// QoE, que no aplica al heartbeat. Las rutas quality_change / PQ-ct / Phase-G quedan INTACTAS.
+if (($event['event_type'] ?? '') === 'heartbeat') {
+    try {
+        if (@is_file(__DIR__ . '/../lib/ape_mesh.php')) { require_once __DIR__ . '/../lib/ape_mesh.php'; }
+        if (function_exists('ape_ara_heartbeat') && !empty($event['device_id'])) {
+            ape_ara_heartbeat((string)$event['device_id'], isset($event['data']) && is_array($event['data']) ? $event['data'] : array());
+        }
+    } catch (\Throwable $ehb) { error_log('[conviva-event] heartbeat liveness skipped: ' . $ehb->getMessage()); }
+    echo json_encode(array('ok' => true, 'event_type' => 'heartbeat'));
     exit;
 }
 
@@ -95,6 +144,47 @@ try {
         'qoe_score' => $result['qoe_score'],
         'decision'  => $result['decision'],
     ]);
+
+    // ── OMEGA ARA URL-2: Phase G PQ->SDR rollback delta (Council-safe, GATEADO) ──
+    // Additive + fire-and-forget. APE_PQ_ROLLBACK_ENABLED=0 por defecto => cero cambio.
+    // Nunca afecta la respuesta ni el dispatch. Anti-flap: >=2 incidentes + cooldown.
+    // El generador PQ->SDR (channel_pq_profile) y el dispatch original quedan INTACTOS.
+    try {
+        if (@is_file(__DIR__ . '/../lib/ape_mesh.php')) { require_once __DIR__ . '/../lib/ape_mesh.php'; }
+        if (function_exists('ape_ara_rollback_enabled') && ape_ara_rollback_enabled()) {
+            $chId  = isset($event['channel']['id']) ? (string)$event['channel']['id'] : '';
+            $vst   = isset($event['data']['vst_ms']) ? (int)$event['data']['vst_ms'] : 0;
+            $qoe   = isset($result['qoe_score']) ? (int)$result['qoe_score'] : 100;
+            $etype = isset($event['event_type']) ? (string)$event['event_type'] : '';
+            $damage = ($qoe <= 8) || ($vst > 8000)
+                   || in_array($etype, array('error', 'decoder_error'), true)
+                   || (isset($result['decision']) && stripos((string)$result['decision'], 'survival') !== false);
+            if ($chId !== '' && $damage && function_exists('ape_pq_record_incident')) {
+                ape_pq_record_incident($chId, $vst); // contador Phase G existente (solo con flag ON)
+                if (function_exists('ape_pq_should_emit_ara_rollback') && ape_pq_should_emit_ara_rollback($chId)
+                    && @is_file(__DIR__ . '/phase_g_delta_hook.php')) {
+                    require_once __DIR__ . '/phase_g_delta_hook.php';
+                    ape_phase_g_emit_delta($event, 'phase_g_rollback', array(
+                        'reason' => 'qoe_black_screen_or_vst_or_decoder_error',
+                        'qoe_score' => $qoe, 'vst_ms' => $vst, 'source' => 'conviva-event',
+                    ));
+                }
+            }
+        }
+    } catch (\Throwable $eg) {
+        error_log('[conviva-event] ARA phase-g delta skipped: ' . $eg->getMessage());
+    }
+
+    // ── OMEGA: tuning AI-PQ por content-type (mesh DECIDE + push por device, anti-spam) ──
+    // Cuando el ARA reporta el contenido decodificado, el VPS infiere el ct (fps alto->sports) y empuja
+    // el perfil PQ del VPP por hardware. Fire-and-forget; solo si el ct cambio (cache /dev/shm).
+    try {
+        if (function_exists('ape_pq_push_for_device') && isset($event['event_type'])
+            && $event['event_type'] === 'quality_change' && !empty($event['device_id'])) {
+            $ct = ape_ct_from_qoe(isset($event['data']) && is_array($event['data']) ? $event['data'] : array());
+            ape_pq_push_for_device((string)$event['device_id'], $ct);
+        }
+    } catch (\Throwable $eq) { error_log('[conviva-event] PQ-ct push skipped: ' . $eq->getMessage()); }
 } catch (Throwable $e) {
     // Log to error_log only (do not leak details to client)
     error_log('[conviva-event] dispatch error: ' . $e->getMessage());

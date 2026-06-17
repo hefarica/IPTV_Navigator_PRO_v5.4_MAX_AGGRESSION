@@ -1,0 +1,13 @@
+# APE background slice — TODO el trabajo async (canon producer + ASR Motor 4) vive aquí.
+# Cap GLOBAL para que la suma de background NUNCA pueda ahogar el stream del Fire TV.
+# 3 vCPU: 150% = 1.5 vCPU máx para background → deja >=1.5 vCPU libres para nginx/PHP/stream.
+# (council S6/S7 2026-06-11 — el load-45 del producer sin acotar disparó riesgo de rebuffer.)
+[Unit]
+Description=APE background (canon producer + ASR) capped — never starves the Fire TV stream
+
+[Slice]
+CPUAccounting=true
+CPUQuota=150%
+IOAccounting=true
+MemoryAccounting=true
+MemoryMax=2G

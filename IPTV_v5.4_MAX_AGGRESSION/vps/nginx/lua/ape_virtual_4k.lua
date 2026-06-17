@@ -27,7 +27,10 @@ function _M.rewrite_variant_to_4k(variant, opts)
 
     if legacy or opts.with_hdr then
         if not variant.tag:find("HDR=PQ", 1, true) then
-            variant.tag = variant.tag .. ",HDR=PQ,VIDEO-RANGE=PQ"
+            -- VIDEO-RANGE=PQ = la señal HDR estándar HLS (la funcional, que el player lee). + CICP BT.2020 PQ
+            -- (COLOR-PRIMARIES=9, TRANSFER-CHARACTERISTICS=16, MATRIX-COEFFICIENTS=9): metadata coherente con
+            -- PQ; los players estándar ignoran atributos no reconocidos (RFC 8216 §4.2) → additivo e inofensivo.
+            variant.tag = variant.tag .. ",HDR=PQ,VIDEO-RANGE=PQ,COLOR-PRIMARIES=9,TRANSFER-CHARACTERISTICS=16,MATRIX-COEFFICIENTS=9"
         end
         variant.is_hdr = true
     end

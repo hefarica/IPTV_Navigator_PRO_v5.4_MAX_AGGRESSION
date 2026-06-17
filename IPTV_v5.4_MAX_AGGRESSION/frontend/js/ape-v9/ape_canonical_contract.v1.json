@@ -1,0 +1,63 @@
+{
+  "$schema": "ape.dual_link.canonical.v1",
+  "_doc": "Contrato canónico de intercambio entre los supermotores (Motor 2). Lo EMITE el homologador (Motor 1, ape-field-homologator.js) y lo CONSUMEN: Rust (decisión/scoring), PHP-FPM (/omega/*), Lua (lectura no-bloqueante en hijack), Python (ML). JSON = el lenguaje común. Reglas: URL de canal VERBATIM (SHIELDED 5), NO-fake (solo evidencia), piso codec Main10, AVC solo como rung de seguridad.",
+  "version": "1.0.0",
+  "canonical_record": {
+    "_key": "string — FNV-1a(provider_url VERBATIM) ⊕ schemaFingerprint, 16 hex (idempotente)",
+    "_schemaFingerprint": "string — campos canónicos ordenados join('|')",
+    "_provider_url": "string — URL de reproducción VERBATIM, jamás reescrita a /omega/resolve",
+    "_cells_count": "int — celdas crudas leídas de la fila",
+    "B_identity": {
+      "tvg_id": "string", "name": "string", "logo": "string", "number": "int",
+      "group": "string", "region": "string", "country": "string", "lang": "string",
+      "content_type": "string", "profile": "string (P0..P5)"
+    },
+    "C_codec_visual": {
+      "codec": "string — codec declarado (hvc1.2.* Main10 floor)",
+      "codecs": "array — familia/cadena de codecs",
+      "codec_family": "string", "codec_chain": "array",
+      "resolution": "string WxH — DECLARADA",
+      "resolution_real": "string WxH — del probe (si difiere de la declarada → fake-4K candidate)",
+      "framerate": "number", "bit_depth": "int",
+      "hdr_mode": "string", "range": "string (SDR|PQ|HLG — solo con probe)"
+    },
+    "D_delivery_qoe": {
+      "transport": "string", "bandwidth": "int", "avg_bandwidth": "int",
+      "profile": "string", "tier": "string", "channel_id": "string",
+      "headers": { "user_agent": "string", "referer": "string", "origin": "string" },
+      "qoe": { "target_mos": "number", "buffer_target_ms": "int" }
+    },
+    "E_open": "object — TODO campo desconocido verbatim (esquema abierto, OMEGA-NO-DELETE) + _toxic.* marcados blocked"
+  },
+  "selection_request": {
+    "_doc": "Lo que un player/sesión pide al selector (Motor 2). El player se identifica; el motor devuelve la mejor config honesta que ESE player puede decodificar.",
+    "session_id": "string",
+    "channel_key": "string — _key del canonical_record",
+    "player": {
+      "family": "string — exoplayer|vlc|kodi|tivimate|ott|hlsjs|tizen|webos|unknown",
+      "ua": "string",
+      "caps": {
+        "hevc_main10": "bool", "hevc_main8": "bool", "av1": "bool", "avc": "bool (siempre true)",
+        "max_resolution": "string WxH", "max_fps": "int", "hdr": "array", "adb_plane": "bool"
+      }
+    }
+  },
+  "selection_response": {
+    "_doc": "Lo que el selector DEVUELVE por sesión. 'Lo mejor' = el tier honesto más alto decodificable por ese player; nunca un claim que el device no soporte.",
+    "session_id": "string",
+    "channel_key": "string",
+    "playback_url": "string — VERBATIM del canonical_record (jamás /omega/resolve)",
+    "chosen": {
+      "codec": "string — Main10 si el device puede; si no, baja a AVC rung de seguridad",
+      "codec_preferred_not_verified": "bool — true si no hay probe que confirme la fuente",
+      "resolution": "string WxH — la REAL del probe, no la inflada",
+      "framerate": "number",
+      "buffer_knobs": "object — del perfil LAB (no-clamp)",
+      "headers_safe": "object — sin los 9 tóxicos",
+      "subtitles_link2": "string|null — URI #EXT-X-MEDIA:TYPE=SUBTITLES si Motor 4 activo"
+    },
+    "score": "int — confianza 0..100 de la decisión",
+    "fallback_chain": "array — degradación: [Main10..., AVC terminal]",
+    "blocked": "array — claims/familias rechazados (fake-4K, fake-HDR, cubo E evasión)"
+  }
+}

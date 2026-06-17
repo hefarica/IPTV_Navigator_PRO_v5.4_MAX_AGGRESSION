@@ -22,7 +22,7 @@ class DualManifestGenerator
     const LCEVC_URN_SUPPLEMENTAL = 'urn:mpeg:lcevc:2021';
     const LCEVC_URN_ESSENTIAL    = 'urn:mpeg:lcevc:essential:2021';
     const LCEVC_CODEC_H264       = 'avc1.640028';
-    const LCEVC_CODEC_HEVC       = 'hvc1.1.6.L120.90';
+    const LCEVC_CODEC_HEVC       = 'hvc1.2.4.L120.90';
 
     const STATE_OFF              = 'OFF';
     const STATE_SIGNAL_ONLY      = 'SIGNAL_ONLY';
@@ -307,7 +307,7 @@ class DualManifestGenerator
     {
         $codec = $dna['codec_priority'][0] ?? 'h264';
         $videoCodec = match($codec) {
-            'hevc', 'h265' => 'hvc1.1.6.L120.90',
+            'hevc', 'h265' => 'hvc1.2.4.L120.90',
             'av1'          => 'av01.0.08M.08',
             default        => 'avc1.640028',
         };

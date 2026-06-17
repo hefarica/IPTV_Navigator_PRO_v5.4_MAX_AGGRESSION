@@ -1,0 +1,20 @@
+[package]
+name = "visual-profile-engine"
+version = "0.1.0"
+edition = "2021"
+description = "APE Rust Visual Decision Engine — deterministic visual/QoE profile decider (NO video reprocessing). Reads device/player/stream/network JSON on stdin, emits a visual payload decision JSON on stdout."
+license = "MIT"
+
+# std-only · zero external dependencies (compila/testea offline, sin red).
+
+[lib]
+name = "visual_profile_engine"
+path = "src/lib.rs"
+
+[[bin]]
+name = "visual-profile-engine"
+path = "src/main.rs"
+
+[profile.release]
+opt-level = 2
+panic = "abort"

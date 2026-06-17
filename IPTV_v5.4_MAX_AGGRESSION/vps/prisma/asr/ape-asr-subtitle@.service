@@ -1,0 +1,39 @@
+# APE Motor 4 — ASR/subtítulos live, instancia POR CANAL (template systemd).
+# Arranque: systemctl start ape-asr-subtitle@<channel_key>.service
+# "Despertado por la URL": el wake worker (ape-wake-worker) lanza esta instancia
+# cuando un canal empieza a reproducirse, y systemd la deja morir sola (max-idle).
+#
+# AUTOPISTA: corre async FUERA del path de reproducción; nice + ionice bajos para
+# que JAMÁS compita con nginx/PHP-FPM por CPU del stream en vivo.
+# EFÍMERO/LEGAL: output solo en /dev/shm (tmpfs RAM), nunca a disco; sin persistencia.
+[Unit]
+Description=APE Motor 4 ASR/subtitles (per-channel) %i
+After=network-online.target nginx.service
+# Recurso: en CPX21 (3vCPU/4GB sin GPU) el backend local solo aguanta ~1 canal.
+# Para multi-canal usar --backend offload (GPU box/API) — ver ape_asr_subtitle_worker.py.
+
+[Service]
+Type=simple
+# %i = channel_key. Ajustar target-lang por defecto o pasarlo desde el wake worker.
+Environment=APE_TARGET_LANG=es
+Environment=APE_ASR_BACKEND=local
+Environment=APE_ASR_MODEL=small
+ExecStart=/usr/bin/python3 /var/www/html/prisma/asr/ape_asr_subtitle_worker.py \
+  --channel-key %i \
+  --segments-dir /dev/shm/ape_cache/%i \
+  --out-vtt /dev/shm/ape_subs/%i.${APE_TARGET_LANG}.vtt \
+  --target-lang ${APE_TARGET_LANG} \
+  --backend ${APE_ASR_BACKEND} \
+  --model ${APE_ASR_MODEL}
+# Nunca debe pelear CPU con el stream:
+Nice=15
+IOSchedulingClass=idle
+CPUWeight=20
+MemoryMax=1500M
+Restart=on-failure
+RestartSec=5
+# Auto-muerte cuando el canal queda inactivo la maneja el worker (--max-idle-sec).
+TimeoutStopSec=10
+
+[Install]
+WantedBy=multi-user.target

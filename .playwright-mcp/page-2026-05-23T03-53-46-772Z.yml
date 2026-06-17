@@ -1,0 +1,421 @@
+- generic [ref=e1]:
+  - generic [ref=e59]:
+    - banner [ref=e60]:
+      - generic [ref=e61]:
+        - heading "IPTV Navigator PRO v3.0.1 · 2025" [level=1] [ref=e62]:
+          - text: IPTV Navigator PRO
+          - generic [ref=e63]: v3.0.1 · 2025
+        - paragraph [ref=e64]: Toolkit local avanzado para generación de listas M3U8 optimizadas, headers PRO y análisis de calidad (4K / 8K / HDR / AV1 / LL-HLS). 100% offline en tu navegador.
+      - generic [ref=e65]:
+        - generic [ref=e68]: Listo para producción OTT
+        - generic [ref=e71]: Standard / XUI · LL-HLS · AV1
+        - 'generic "✅ Probe Server v1.0.5 | 20 streams | FFprobe: OK" [ref=e72]':
+          - generic [ref=e74]: Probe Server
+    - navigation [ref=e75]:
+      - button "Conexión" [ref=e76] [cursor=pointer]:
+        - generic [ref=e77]: Conexión
+      - button "Análisis" [ref=e78] [cursor=pointer]:
+        - generic [ref=e79]: Análisis
+      - button "Filtros+" [ref=e80] [cursor=pointer]:
+        - generic [ref=e81]: Filtros+
+      - button "Ranking" [ref=e82] [cursor=pointer]:
+        - generic [ref=e83]: Ranking
+      - button "Fuentes" [ref=e84] [cursor=pointer]:
+        - generic [ref=e85]: Fuentes
+      - button "Servidores" [ref=e86] [cursor=pointer]:
+        - generic [ref=e87]: Servidores
+      - button "Generador" [active] [ref=e88] [cursor=pointer]:
+        - generic [ref=e89]: Generador
+      - button "Telemetría" [ref=e90] [cursor=pointer]:
+        - generic [ref=e91]: Telemetría
+      - button "Exportar" [ref=e92] [cursor=pointer]:
+        - generic [ref=e93]: Exportar
+      - button "Compartir" [ref=e94] [cursor=pointer]:
+        - generic [ref=e95]: Compartir
+    - main [ref=e96]:
+      - generic [ref=e98]:
+        - generic [ref=e144]:
+          - generic [ref=e145]:
+            - generic [ref=e146]: Generador de Lista M3U8 (Engine v16 / v9.0)
+            - generic [ref=e147]: Advanced
+            - button "💾 Guardar" [ref=e148] [cursor=pointer]
+          - generic "Sin snapshot guardado" [ref=e149]:
+            - generic [ref=e150]:
+              - generic [ref=e151]: 📸
+              - generic [ref=e152]:
+                - generic [ref=e153]: Snapshot de Canales
+                - generic [ref=e154]: Sin snapshot
+            - generic [ref=e155]:
+              - button "📸 Guardar" [ref=e156] [cursor=pointer]
+              - button "🔄 Restaurar" [ref=e157] [cursor=pointer]
+              - button "🗑️" [ref=e158] [cursor=pointer]
+          - generic [ref=e159]:
+            - generic [ref=e160]:
+              - generic [ref=e162]: ⚙️ Opciones de Generación
+              - generic [ref=e163]:
+                - generic [ref=e164]:
+                  - generic [ref=e165]: Formato de Salida
+                  - combobox "Formato de Salida" [ref=e166]:
+                    - option "M3U8 (Estándar)" [selected]
+                    - option "M3U Plus (Extendido)"
+                    - option "JSON (Metadatos)"
+                - generic [ref=e167]:
+                  - generic [ref=e168]: EPG URL (opcional)
+                  - textbox "EPG URL (opcional)" [ref=e169]:
+                    - /placeholder: http://example.com/epg.xml.gz
+                - generic [ref=e170]:
+                  - generic [ref=e171]: Formato Stream
+                  - combobox "Formato Stream" [ref=e172]:
+                    - option "HLS (.m3u8)" [selected]
+                    - option "TS (.ts)"
+                - generic [ref=e173]:
+                  - generic [ref=e174]: Shift (horas)
+                  - spinbutton "Shift (horas)" [ref=e175]: "8760"
+              - generic [ref=e176]:
+                - generic [ref=e177]: 👑 Modo Dictador (Player-Side Zero Lag)
+                - generic [ref=e178]:
+                  - generic [ref=e179] [cursor=pointer]:
+                    - checkbox "Forzar Directo (Zero VPS) Obliga al player al Tier máximo sin proxy. Cancela ABR democrático e inyecta LL-HLS." [checked] [ref=e180]
+                    - generic [ref=e181]:
+                      - strong [ref=e182]: Forzar Directo (Zero VPS)
+                      - generic [ref=e183]: Obliga al player al Tier máximo sin proxy. Cancela ABR democrático e inyecta LL-HLS.
+                  - generic [ref=e184]:
+                    - generic [ref=e185] [cursor=pointer]:
+                      - radio "8K HEVC (P0)" [checked] [ref=e186]
+                      - text: 8K HEVC (P0)
+                    - generic [ref=e187] [cursor=pointer]:
+                      - radio "4K HEVC (P1)" [ref=e188]
+                      - text: 4K HEVC (P1)
+              - generic [ref=e189]:
+                - generic [ref=e190]: ⚡ MAX QUALITY OVERRIDE
+                - generic [ref=e192] [cursor=pointer]:
+                  - checkbox "MAX QUALITY OVERRIDE Fuerza 8K, Dolby Vision, Atmos, cascada 18 codecs y LL-HLS en todos los canales. Compatible ~35% de players (ExoPlayer/Kodi premium). Incompatible con VLC/TiviMate básico." [ref=e193]
+                  - generic [ref=e194]:
+                    - strong [ref=e195]: MAX QUALITY OVERRIDE
+                    - generic [ref=e196]: Fuerza 8K, Dolby Vision, Atmos, cascada 18 codecs y LL-HLS en todos los canales. Compatible ~35% de players (ExoPlayer/Kodi premium). Incompatible con VLC/TiviMate básico.
+              - generic [ref=e197]:
+                - generic [ref=e198]: ⬆ PERCEPTUAL 4K MODE
+                - generic [ref=e200] [cursor=pointer]:
+                  - checkbox "PERCEPTUAL 4K (4K FAKE) Declara 4K y fuerza pipeline HDR en el TV (BT.2020/PQ) para forzar upscaling por hardware. Mejora visual dramática en streams 1080p." [ref=e201]
+                  - generic [ref=e202]:
+                    - strong [ref=e203]: PERCEPTUAL 4K (4K FAKE)
+                    - generic [ref=e204]: Declara 4K y fuerza pipeline HDR en el TV (BT.2020/PQ) para forzar upscaling por hardware. Mejora visual dramática en streams 1080p.
+              - generic [ref=e205]:
+                - generic [ref=e206]: 🛡️ MAX COMPATIBILITY
+                - generic [ref=e208] [cursor=pointer]:
+                  - checkbox "MAX COMPATIBILITY MODE Genera una Master Playlist RFC-pura (VERSION:7). Elimina tags LL-HLS y TARGETDURATION globales. Cobertura ~98% (Apple/Tizen estrictos)." [ref=e209]
+                  - generic [ref=e210]:
+                    - strong [ref=e211]: MAX COMPATIBILITY MODE
+                    - generic [ref=e212]: Genera una Master Playlist RFC-pura (VERSION:7). Elimina tags LL-HLS y TARGETDURATION globales. Cobertura ~98% (Apple/Tizen estrictos).
+              - generic [ref=e213]:
+                - generic [ref=e214]: ⬆ PERCEPTUAL 4K MODE
+                - generic [ref=e216] [cursor=pointer]:
+                  - checkbox "PERCEPTUAL 4K MODE Inyecta HDR10 display mode via ADB en Android TV. Maximiza percepción visual sin transcodificación. Requiere Fire TV / Android TV con ADB habilitado." [ref=e217]
+                  - generic [ref=e218]:
+                    - strong [ref=e219]: PERCEPTUAL 4K MODE
+                    - generic [ref=e220]: Inyecta HDR10 display mode via ADB en Android TV. Maximiza percepción visual sin transcodificación. Requiere Fire TV / Android TV con ADB habilitado.
+              - generic [ref=e221]:
+                - generic [ref=e222]: 🚀 Optimización de Streaming
+                - generic [ref=e223]:
+                  - generic [ref=e224] [cursor=pointer]:
+                    - checkbox "Pro Streaming Buffer agresivo 3s, VLC caching, HTTP reconnect automático, Kodi adaptive, baja latencia" [ref=e225]
+                    - generic [ref=e226]:
+                      - strong [ref=e227]: Pro Streaming
+                      - generic [ref=e228]: Buffer agresivo 3s, VLC caching, HTTP reconnect automático, Kodi adaptive, baja latencia
+                  - generic [ref=e229] [cursor=pointer]:
+                    - checkbox "OTT Navigator User-Agent OTT 1.6.9.4, catchup=\"xc\", headers VLC compatibles" [ref=e230]
+                    - generic [ref=e231]:
+                      - strong [ref=e232]: OTT Navigator
+                      - generic [ref=e233]: User-Agent OTT 1.6.9.4, catchup="xc", headers VLC compatibles
+                  - generic [ref=e234] [cursor=pointer]:
+                    - 'checkbox "Incluir HTTP Headers Agrega #EXTHTTP y #EXTVLCOPT con headers seleccionados" [checked] [ref=e235]'
+                    - generic [ref=e236]:
+                      - strong [ref=e237]: Incluir HTTP Headers
+                      - generic [ref=e238]: "Agrega #EXTHTTP y #EXTVLCOPT con headers seleccionados"
+              - generic [ref=e239]:
+                - generic [ref=e240]:
+                  - generic [ref=e241]: ⚙️ Motor APE V4.1 - Configuración
+                  - generic [ref=e242]: 🤖 Auto ON
+                - paragraph [ref=e243]: Sistema inteligente de detección de nivel, Anti-Freeze y sanitización por player target.
+                - generic [ref=e244]:
+                  - generic [ref=e245]:
+                    - generic [ref=e246]:
+                      - checkbox [checked] [ref=e247] [cursor=pointer]
+                      - strong [ref=e248]: 🤖 Auto-Detect Nivel
+                    - generic [ref=e249]:
+                      - generic [ref=e250]:
+                        - generic [ref=e251]: ❄️
+                        - strong [ref=e252]: Anti-Freeze (Buffer/Reconexión)
+                      - combobox [ref=e253]:
+                        - option "L1 - Mínimo"
+                        - option "L2 - Normal"
+                        - option "L3 - Balanceado ⭐" [selected]
+                        - option "L4 - Agresivo"
+                        - option "L5 - Live-Edge"
+                  - generic [ref=e254]:
+                    - strong [ref=e256]: 🎯 Player Target
+                    - combobox [ref=e257]:
+                      - option "Genérico (balance)" [selected]
+                      - option "VLC"
+                      - option "Kodi"
+                      - option "OTT Navigator"
+                      - option "TiviMate"
+                      - option "Smarters"
+                      - option "Perfect Player"
+                  - generic [ref=e258]:
+                    - strong [ref=e260]: 🗜️ Perfil Compresión
+                    - combobox [ref=e261]:
+                      - option "🤖 AUTO" [selected]
+                      - option "⚡ MODERN"
+                      - option "📺 LEGACY"
+                  - generic [ref=e263]:
+                    - checkbox [ref=e264] [cursor=pointer]
+                    - strong [ref=e265]: ☁️ V5.0 Serverless
+                - generic [ref=e266]: "ℹ️ AUTO: Se seleccionará MODERN o LEGACY automáticamente según CDN/WAF detectado y capacidades del player target."
+                - generic [ref=e267]: "✅ V4.1 Ready: Auto-detect + Anti-Freeze L3 + Sanitización activa"
+              - generic [ref=e269]:
+                - generic [ref=e270]:
+                  - heading "🧩 Generador de group-title" [level=3] [ref=e271]:
+                    - generic [ref=e272]: 🧩
+                    - generic [ref=e273]:
+                      - text: Generador de
+                      - code [ref=e274]: group-title
+                  - paragraph [ref=e275]: Define la jerarquía de clasificación para exportación M3U8
+                - generic [ref=e276]:
+                  - generic [ref=e277]:
+                    - generic [ref=e278]: 📋 Campos Disponibles (máx 5)
+                    - generic [ref=e279]:
+                      - generic [ref=e280]:
+                        - generic [ref=e281]: ⋮⋮
+                        - checkbox "⋮⋮ 🌎 Región Zona geográfica (LATINO, USA, EUROPE...)" [checked] [ref=e282] [cursor=pointer]
+                        - generic [ref=e283]: 🌎 Región
+                        - generic "Zona geográfica (LATINO, USA, EUROPE...)" [ref=e284]
+                      - generic [ref=e285]:
+                        - generic [ref=e286]: ⋮⋮
+                        - checkbox "⋮⋮ 📂 Categoría Tipo de contenido (DEPORTES, CINE, NOTICIAS...)" [checked] [ref=e287] [cursor=pointer]
+                        - generic [ref=e288]: 📂 Categoría
+                        - generic "Tipo de contenido (DEPORTES, CINE, NOTICIAS...)" [ref=e289]
+                      - generic [ref=e290]:
+                        - generic [ref=e291]: ⋮⋮
+                        - checkbox "⋮⋮ 📺 Calidad Resolución (ULTRA HD, FULL HD, HD, SD)" [checked] [ref=e292] [cursor=pointer]
+                        - generic [ref=e293]: 📺 Calidad
+                        - generic "Resolución (ULTRA HD, FULL HD, HD, SD)" [ref=e294]
+                      - generic [ref=e295]:
+                        - generic [ref=e296]: ⋮⋮
+                        - checkbox "⋮⋮ 🗣 Idioma Idioma del audio (ES, EN, PT...)" [ref=e297] [cursor=pointer]
+                        - generic [ref=e298]: 🗣 Idioma
+                        - generic "Idioma del audio (ES, EN, PT...)" [ref=e299]
+                      - generic [ref=e300]:
+                        - generic [ref=e301]: ⋮⋮
+                        - checkbox "⋮⋮ 🏳 País País de origen (MX, AR, US...)" [ref=e302] [cursor=pointer]
+                        - generic [ref=e303]: 🏳 País
+                        - generic "País de origen (MX, AR, US...)" [ref=e304]
+                      - generic [ref=e305]:
+                        - generic [ref=e306]: ⋮⋮
+                        - checkbox "⋮⋮ 🎞 FPS Cuadros por segundo (60FPS, 30FPS)" [ref=e307] [cursor=pointer]
+                        - generic [ref=e308]: 🎞 FPS
+                        - generic "Cuadros por segundo (60FPS, 30FPS)" [ref=e309]
+                    - paragraph [ref=e310]: ⋮⋮ Arrastra para reordenar jerarquía
+                  - generic [ref=e311]:
+                    - generic [ref=e312]: 🔗 Separador
+                    - generic [ref=e313]:
+                      - button "Barra espaciada" [ref=e314] [cursor=pointer]
+                      - button "Pipe espaciado" [ref=e315] [cursor=pointer]
+                      - button "Guión espaciado" [ref=e316] [cursor=pointer]
+                      - button "Mayor que" [ref=e317] [cursor=pointer]
+                      - button "Barra simple" [ref=e318] [cursor=pointer]
+                      - button "Pipe simple" [ref=e319] [cursor=pointer]
+                    - generic [ref=e320]:
+                      - text: ⚠️
+                      - strong [ref=e321]: OTT Navigator
+                      - text: usa
+                      - code [ref=e322]: /
+                      - text: como navegación de carpetas. Otros separadores se mostrarán como texto literal en ese player.
+                    - generic [ref=e323]:
+                      - generic [ref=e324]: "Separador personalizado:"
+                      - textbox / [ref=e325]:
+                        - /placeholder: " / "
+                    - generic [ref=e326]:
+                      - checkbox "Usar group-title jerárquico en exportaciones" [checked] [ref=e327]
+                      - generic [ref=e328] [cursor=pointer]: Usar group-title jerárquico en exportaciones
+                - generic [ref=e329]:
+                  - generic [ref=e330]: 👁 Vista Previa
+                  - generic [ref=e331]: LATINO / DEPORTES / FULL HD
+                  - paragraph [ref=e332]:
+                    - text: "3 niveles · Separador:"
+                    - code [ref=e333]: /
+                - generic [ref=e334]:
+                  - button "🔄 Restaurar" [ref=e335] [cursor=pointer]
+                  - button "💾 Guardar Configuración" [ref=e336] [cursor=pointer]
+              - generic [ref=e337]:
+                - generic [ref=e338]:
+                  - heading "📡 Telemetría en Vivo" [level=4] [ref=e339]:
+                    - generic [ref=e340]: 📡
+                    - generic [ref=e341]: Telemetría en Vivo
+                  - generic [ref=e342] [cursor=pointer]:
+                    - checkbox "Live Updates" [checked] [ref=e343]
+                    - generic [ref=e344]: Live Updates
+                - generic [ref=e345]:
+                  - generic [ref=e346]:
+                    - generic [ref=e347]: 🎯
+                    - generic [ref=e348]: "0"
+                    - generic [ref=e349]: Decisiones
+                  - generic [ref=e350]:
+                    - generic [ref=e351]: ✅
+                    - generic [ref=e352]: 0%
+                    - generic [ref=e353]: Success
+                  - generic [ref=e354]:
+                    - generic [ref=e355]: ⚡
+                    - generic [ref=e356]: 0ms
+                    - generic [ref=e357]: Avg Time
+                  - generic [ref=e358]:
+                    - generic [ref=e359]: 🔄
+                    - generic [ref=e360]: "0"
+                    - generic [ref=e361]: Overrides
+                - generic [ref=e362]:
+                  - generic [ref=e363]:
+                    - generic [ref=e364]: ⚡ MODERN
+                    - generic [ref=e366]: 0%
+                  - generic [ref=e367]:
+                    - generic [ref=e368]: 📺 LEGACY
+                    - generic [ref=e370]: 0%
+              - generic [ref=e371]:
+                - button "📺 Generar M3U8 PRO" [ref=e372] [cursor=pointer]:
+                  - generic [ref=e373]: 📺
+                  - generic [ref=e374]: Generar M3U8 PRO
+                - button "💾 Descargar .m3u8" [ref=e375] [cursor=pointer]:
+                  - generic [ref=e376]: 💾
+                  - generic [ref=e377]: Descargar .m3u8
+                - button "👑 APE v9.0 ULTIMATE" [ref=e378] [cursor=pointer]:
+                  - generic [ref=e379]: 👑
+                  - generic [ref=e380]: APE v9.0 ULTIMATE
+                - button "🧠 Escanear Metadata" [ref=e381] [cursor=pointer]:
+                  - generic [ref=e382]: 🧠
+                  - generic [ref=e383]: Escanear Metadata
+              - button "👑 Generar ELITE v16 (HLS Inteligente)" [ref=e385] [cursor=pointer]:
+                - generic [ref=e386]: 👑
+                - generic [ref=e387]: Generar ELITE v16 (HLS Inteligente)
+              - generic [ref=e388]:
+                - text: Vista Previa
+                - textbox "# La playlist generada aparecerá aquí..." [ref=e389]
+            - generic [ref=e390]:
+              - generic [ref=e391]:
+                - generic [ref=e392]:
+                  - generic [ref=e393]: 🎚️ Gestor de Perfiles APE v9.0
+                  - generic [ref=e394]: 0 activos
+                - paragraph [ref=e395]: Sistema de perfiles P0-P5 con 154 headers HTTP organizados en 10 categorías para máxima compatibilidad.
+                - generic [ref=e396]:
+                  - button "P0 ULTRA" [ref=e397] [cursor=pointer]
+                  - button "P1 8K" [ref=e398] [cursor=pointer]
+                  - button "P2 4K" [ref=e399] [cursor=pointer]
+                  - button "P3 FHD" [ref=e400] [cursor=pointer]
+                  - button "P4 HD" [ref=e401] [cursor=pointer]
+                  - button "P5 SD" [ref=e402] [cursor=pointer]
+                - button "⚙️ Gestionar Perfiles (154 Headers)" [ref=e403] [cursor=pointer]:
+                  - generic [ref=e404]: ⚙️
+                  - generic [ref=e405]: Gestionar Perfiles (154 Headers)
+              - generic [ref=e406]:
+                - generic [ref=e407]:
+                  - heading "📊 Telemetría en Tiempo Real" [level=3] [ref=e408]:
+                    - generic [ref=e409]: 📊
+                    - generic [ref=e410]: Telemetría en Tiempo Real
+                  - paragraph [ref=e411]: Monitoreo continuo de decisiones APE y performance del motor
+                - generic [ref=e412]:
+                  - generic [ref=e413]:
+                    - generic [ref=e414]: 🎯
+                    - generic [ref=e415]: "0"
+                    - generic [ref=e416]: Decisiones APE
+                  - generic [ref=e417]:
+                    - generic [ref=e418]: ✅
+                    - generic [ref=e419]: 0%
+                    - generic [ref=e420]: Tasa de Éxito
+                  - generic [ref=e421]:
+                    - generic [ref=e422]: ⚡
+                    - generic [ref=e423]: 0ms
+                    - generic [ref=e424]: Latencia Promedio
+                  - generic [ref=e425]:
+                    - generic [ref=e426]: 🔄
+                    - generic [ref=e427]: "0"
+                    - generic [ref=e428]: User Overrides
+              - generic [ref=e429]:
+                - generic [ref=e430]:
+                  - heading "🔍 Stream Inspector" [level=3] [ref=e431]:
+                    - generic [ref=e432]: 🔍
+                    - generic [ref=e433]: Stream Inspector
+                  - paragraph [ref=e434]: Análisis de topología en tiempo real
+                - generic [ref=e435]:
+                  - generic [ref=e436]:
+                    - generic [ref=e437]: 🌐
+                    - generic [ref=e438]: Provider
+                    - generic [ref=e439]: —
+                  - generic [ref=e440]:
+                    - generic [ref=e441]: 🛡️
+                    - generic [ref=e442]: CDN / WAF
+                    - generic [ref=e443]: —
+                  - generic [ref=e444]:
+                    - generic [ref=e445]: 🔒
+                    - generic [ref=e446]: Protocolo
+                    - generic [ref=e447]: —
+                - generic [ref=e448]:
+                  - generic [ref=e449]:
+                    - generic [ref=e450]: ⚡
+                    - generic [ref=e451]:
+                      - strong [ref=e452]: "0"
+                      - text: canales MODERN (0%)
+                  - generic [ref=e453]:
+                    - generic [ref=e454]: 📺
+                    - generic [ref=e455]:
+                      - strong [ref=e456]: "0"
+                      - text: canales LEGACY (0%)
+              - generic [ref=e457]:
+                - generic [ref=e458]:
+                  - generic [ref=e459]: 🧠 Configuración Inteligente QoS (Latencia Rayo)
+                  - generic [ref=e460]: "Status: Offline"
+                - paragraph [ref=e461]: El motor mapea la topología de red del router destino. Ajusta matemáticamente el Prefetch, Bitrate absoluto y forza la directiva IP de Tráfico Prioritario (DSCP) en el backend (VPS) evadiendo los estrangulamientos ISP.
+                - generic [ref=e462]:
+                  - generic [ref=e463]:
+                    - generic [ref=e464]: Download Disp. (Mbps)
+                    - spinbutton "Download Disp. (Mbps)" [ref=e465]: "100"
+                  - generic [ref=e466]:
+                    - generic [ref=e467]: Latencia (Ping ms)
+                    - spinbutton "Latencia (Ping ms)" [ref=e468]: "20"
+                - generic [ref=e470] [cursor=pointer]:
+                  - checkbox "Forzar escaneo aduana (Interrumpe pre-generación)" [ref=e471]
+                  - generic [ref=e472]: Forzar escaneo aduana (Interrumpe pre-generación)
+                - generic [ref=e474]:
+                  - button "📡 Auto-Detectar" [ref=e475] [cursor=pointer]
+                  - button "💾 Fijar QoS Snapshot" [ref=e476] [cursor=pointer]
+              - generic [ref=e477]:
+                - generic [ref=e478]: 📊 Resumen de Canales
+                - generic [ref=e479]:
+                  - generic [ref=e480]:
+                    - generic [ref=e481]: Total
+                    - generic [ref=e482]: "0"
+                  - generic [ref=e483]:
+                    - generic [ref=e484]: Filtrados
+                    - generic [ref=e485]: "0"
+                  - generic [ref=e486]:
+                    - generic [ref=e487]: 4K/UHD
+                    - generic [ref=e488]: "0"
+                  - generic [ref=e489]:
+                    - generic [ref=e490]: Grupos
+                    - generic [ref=e491]: "0"
+        - generic [ref=e138]:
+          - generic [ref=e139]: 💾
+          - generic [ref=e140]: Configuración guardada correctamente
+    - contentinfo [ref=e141]:
+      - generic [ref=e142]: IPTV Navigator PRO v3.0.1 · Toolkit local · Compatible con OTT Navigator, TiviMate, IPTV Smarters.
+      - generic [ref=e143]: Funciona 100% en tu navegador · Sin backend · Ideal para pruebas y tuning de listas.
+  - generic [ref=e43] [cursor=pointer]: 🟢 Gateway Online (166ms)
+  - generic [ref=e44]:
+    - generic [ref=e45]:
+      - generic [ref=e46]: 🧬 ANLE v1.0
+      - generic [ref=e47] [cursor=pointer]:
+        - checkbox "ON" [checked] [ref=e48]
+        - text: "ON"
+    - generic [ref=e49]:
+      - text: "📦 2000 aliases (seed: ~2000 + learned: 0)"
+      - text: 🖥️ 0 servers fingerprinted
+      - text: ⚡ 0 channels boosted
+    - button "🔄 Resync Seed (iptv-org)" [ref=e51] [cursor=pointer]
+    - generic [ref=e52]: "⏸️ idle · delete: console ANLE.dictionary.clearLearned()"

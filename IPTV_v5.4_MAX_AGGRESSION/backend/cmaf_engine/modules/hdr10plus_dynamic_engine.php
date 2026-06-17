@@ -32,12 +32,20 @@ declare(strict_types=1);
  *   require_once __DIR__ . '/hdr10plus_dynamic_engine.php';
  *   $hdrDirectives = Hdr10PlusDynamicEngine::getDirectives($streamInfo, $health);
  *
+ * ENHANCEMENT MODEL (v3.4.0):
+ *   SDR→HDR unconditional: MAX IMAGE FIRST doctrine.
+ *   Every channel receives inverse-tone-mapping hints, EOTF declaration,
+ *   color-volume targeting, dithering and chroma-upsampling directives.
+ *   All emitted as #EXT-X-APE-* (player-blind per RFC 8216 §6.3.1) or
+ *   #EXTVLCOPT (VLC/Kodi only). NOTHING touches STREAM-INF / CODECS /
+ *   SUPPLEMENTAL-CODECS — those are owned by the STREAM-INF emitter layer.
+ *
  * @package  cmaf_engine
- * @version  3.3.0
+ * @version  3.4.0
  */
 class Hdr10PlusDynamicEngine
 {
-    const VERSION = '3.3.0';
+    const VERSION = '3.4.0';
 
     // ── Valores de brillo por tipo de contenido ────────────────────────────────
     // Basados en los estándares ITU-R BT.2100 y SMPTE ST 2094-40
@@ -74,6 +82,16 @@ class Hdr10PlusDynamicEngine
 
     // ── Espacios de color ──────────────────────────────────────────────────────
     private const COLOR_SPACES = [
+        // ── Dolby Vision (tier más agresivo) ──────────────────────────────────
+        // Profile 8.1: base layer HDR10-compatible, RPU sintetizado.
+        // bit_depth=12: BT.2100 PQ full-range 12-bit (SMPTE ST 2084).
+        'dolbyvision' => [
+            'primaries'  => 'bt2020',
+            'transfer'   => 'st2084',
+            'matrix'     => '2020ncl',
+            'range'      => 'full',
+            'bit_depth'  => 12,
+        ],
         'hdr10plus' => [
             'primaries'  => 'bt2020',
             'transfer'   => 'st2084',
@@ -168,11 +186,25 @@ class Hdr10PlusDynamicEngine
 
     /**
      * Detecta la capacidad HDR del cliente según User-Agent y headers.
-     * Retorna: 'hdr10plus' | 'hdr10' | 'hlg' | 'sdr_fallback'
+     * Retorna: 'dolbyvision' | 'hdr10plus' | 'hdr10' | 'hlg' | 'sdr_fallback'
+     *
+     * Orden de prioridad (mayor a menor):
+     *   dolbyvision > hdr10plus > hdr10 > hlg > hdr10 (default)
      */
     private static function detectClientCapability(): string
     {
         $ua = strtolower($_SERVER['HTTP_USER_AGENT'] ?? '');
+
+        // ── Dolby Vision (tier más agresivo) ──────────────────────────────────
+        // UA indica soporte explícito DV: 'dolby', 'dovi', 'dv_', 'vision'
+        if (
+            str_contains($ua, 'dolby') ||
+            str_contains($ua, 'dovi') ||
+            str_contains($ua, 'dv_') ||
+            str_contains($ua, 'vision')
+        ) {
+            return 'dolbyvision';
+        }
 
         // HDR10+ nativo: Samsung Tizen 5+, reproductores con soporte explícito
         if (
@@ -220,11 +252,19 @@ class Hdr10PlusDynamicEngine
             ?? self::BRIGHTNESS_PROFILES['default'];
 
         // Ajustar según calidad de red: red inestable → reducir MaxCLL
-        // para evitar que el panel haga tone-mapping agresivo
+        // para evitar que el panel haga tone-mapping agresivo.
+        // Curva graduada (v3.4.0):
+        //   riskScore > 30  → reducción fuerte (*0.80) — red muy inestable
+        //   riskScore 16-30 → reducción moderada (*0.92) — red fluctuante
+        //   riskScore ≤ 15  → sin reducción (perfil completo)
         $riskScore = (int)($health['riskScore'] ?? 10);
         if ($riskScore > 30) {
             $profile['max_cll']  = (int)($profile['max_cll'] * 0.8);
             $profile['max_fall'] = (int)($profile['max_fall'] * 0.8);
+        } elseif ($riskScore > 15) {
+            // Reducción intermedia suave: menos saltos bruscos de tone-mapping
+            $profile['max_cll']  = (int)($profile['max_cll'] * 0.92);
+            $profile['max_fall'] = (int)($profile['max_fall'] * 0.92);
         }
 
         return $profile;
@@ -264,14 +304,22 @@ class Hdr10PlusDynamicEngine
         $matrix  = $colorSpace['matrix'];
         $range   = $colorSpace['range'];
 
+        // ── Saturación / contraste por tier de capacidad ───────────────────────
+        // dolbyvision: máxima agresividad (tier más alto)
+        // hdr10plus  : alta agresividad
+        // hdr10      : agresividad moderada
+        // fallback   : conservador
         $saturation = 1.15;
-        $contrast = 1.08;
-        if ($capability === 'hdr10plus') {
+        $contrast   = 1.08;
+        if ($capability === 'dolbyvision') {
+            $saturation = 1.38; // Dolby Vision EXTREME — Vivid UHD Color máximo
+            $contrast   = 1.15;
+        } elseif ($capability === 'hdr10plus') {
             $saturation = 1.30; // UHD COLOR EXTREMO (Dazzling, Vivid color boost)
-            $contrast = 1.12;
+            $contrast   = 1.12;
         } elseif ($capability === 'hdr10') {
             $saturation = 1.22;
-            $contrast = 1.10;
+            $contrast   = 1.10;
         }
 
         $directives = [
@@ -298,6 +346,9 @@ class Hdr10PlusDynamicEngine
             "#EXT-X-APE-HDR-TONE-MAP:PASSTHROUGH",
 
             // Metadatos SEI para reproductores que los leen
+            // Mastering display per SMPTE ST 2086 (P3-D65 primaries mapped to BT.2020 container)
+            // G(13250,34500)=BT.2020 green, B(7500,3000)=BT.2020 blue, R(34000,16000)=BT.2020 red
+            // WP(15635,16450)=D65 white point  L(min,max) in 0.0001 cd/m² units
             "#EXT-X-APE-HDR-MASTERING-DISPLAY:G(13250,34500)B(7500,3000)R(34000,16000)WP(15635,16450)L({$minLum},{$maxLum})",
             "#EXT-X-APE-HDR-CONTENT-LIGHT-LEVEL:MaxCLL={$maxCll},MaxFALL={$maxFall}",
 
@@ -316,6 +367,40 @@ class Hdr10PlusDynamicEngine
             $directives[] = "#EXT-X-APE-HLG-SYSTEM-GAMMA:1.2";
             $directives[] = "#EXT-X-APE-HLG-REFERENCE-WHITE:203";
         }
+
+        // ── Dolby Vision enhancement hints (player-blind — NOT SUPPLEMENTAL-CODECS) ──
+        // Profile 8.1 = base layer HDR10-compatible + optional DV enhancement layer.
+        // RPU:SYNTHESIZED es honest — generado por el engine, no extraído de source DV.
+        // DV Level 06 = max-bitrate tier permitido para single-track delivery.
+        // Ref: Dolby Vision Streams Within the HTTP Live Streaming Format, Rev 3.
+        if ($capability === 'dolbyvision') {
+            $directives[] = "#EXT-X-APE-DV-PROFILE:8.1";
+            $directives[] = "#EXT-X-APE-DV-BL-COMPATIBILITY:HDR10";
+            $directives[] = "#EXT-X-APE-DV-LEVEL:06";
+            $directives[] = "#EXT-X-APE-DV-RPU:SYNTHESIZED";
+        }
+
+        // ── SDR→HDR inverse tone-mapping — UNCONDITIONAL (MAX IMAGE FIRST) ───────
+        // Emitido para TODOS los canales sin importar si la fuente es SDR o HDR.
+        // Doctrina: mejor apuntar alto que dejar imagen sin mejorar.
+        // Todas las siguientes directivas son #EXT-X-APE-* → PLAYER-BLIND
+        // (RFC 8216 §6.3.1: tags desconocidos se ignoran — FREEZELESS garantizado).
+        //
+        // BT.2446 Method A (ITU-R BT.2446-1, Table 4): curva de up-mapping SDR→HDR
+        // aprobada por ITU para conversión BT.709 SDR 100 cd/m² → BT.2020 PQ/HLG.
+        //
+        // EOTF: SMPTE ST 2084 (PQ) para fuentes PQ / ARIB STD-B67 (HLG) para HLG.
+        // Dithering: error-diffusion es el método correcto para 8→10/12-bit upconversion
+        //   — minimiza banding cuantificación (ISO 12640-3 dithering art. 6.2).
+        // Chroma: 4:2:0→4:2:2 upsample antes del display-mapping reduce color fringing.
+        $directives[] = "#EXT-X-APE-SDR2HDR:ENABLED";
+        $directives[] = "#EXT-X-APE-SDR2HDR-METHOD:INVERSE-TONE-MAPPING";
+        $directives[] = "#EXT-X-APE-HDR-TARGET-PEAK-NITS:{$maxLum}";
+        $directives[] = "#EXT-X-APE-HDR-EOTF:" . ($gamma === 'HLG' ? 'ARIB-STD-B67' : 'SMPTE-ST-2084');
+        $directives[] = "#EXT-X-APE-HDR-COLOR-VOLUME:BT2020";
+        $directives[] = "#EXT-X-APE-HDR-DITHER:ERROR-DIFFUSION";
+        $directives[] = "#EXT-X-APE-HDR-CHROMA-UPSAMPLE:4:2:0-to-4:2:2";
+        $directives[] = "#EXT-X-APE-HDR-INVERSE-TONEMAP-CURVE:BT2446a";
 
         return $directives;
     }

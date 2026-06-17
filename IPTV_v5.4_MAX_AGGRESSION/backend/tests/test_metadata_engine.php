@@ -51,7 +51,7 @@ $masterM3U8 = <<<M3U
 http://example.com/hd.m3u8
 #EXT-X-STREAM-INF:BANDWIDTH=3000000,RESOLUTION=1280x720,CODECS="avc1.64001f,mp4a.40.2"
 http://example.com/sd.m3u8
-#EXT-X-STREAM-INF:BANDWIDTH=12000000,RESOLUTION=3840x2160,CODECS="hev1.1.6.L150,mp4a.40.2",FRAME-RATE=60.000
+#EXT-X-STREAM-INF:BANDWIDTH=12000000,RESOLUTION=3840x2160,CODECS="hev1.2.4.L150,mp4a.40.2",FRAME-RATE=60.000
 http://example.com/4k.m3u8
 #EXT-X-MEDIA:TYPE=AUDIO,GROUP-ID="audio",NAME="English",LANGUAGE="en"
 #EXT-X-MEDIA:TYPE=AUDIO,GROUP-ID="audio",NAME="Spanish",LANGUAGE="es"
@@ -113,7 +113,7 @@ assert_eq('No HDR', 'none', $sdr['hdr_type']);
 echo "\nTEST 5: calculateMetadataScore\n";
 $premium = $engine->calculateMetadataScore([
     'width' => 3840, 'height' => 2160, 'bandwidth' => 15000000,
-    'codecs' => 'hev1.1.6.L150', 'fps' => 60,
+    'codecs' => 'hev1.2.4.L150', 'fps' => 60,
 ]);
 assert_true('Premium score >= 0.7', $premium['total'] >= 0.7);
 assert_eq('Premium grade A, B, or S', true, in_array($premium['grade'], ['A', 'B', 'S']));
@@ -128,7 +128,7 @@ assert_true('Low score < 0.5', $low['total'] < 0.5);
 echo "\nTEST 6: generateStreamFingerprint\n";
 $fp1 = $engine->generateStreamFingerprint(['bandwidth' => 6000000, 'resolution' => '1920x1080', 'codecs' => 'avc1.64001f', 'audio_channels' => 2, 'origin_server' => 'cdn1.example.com']);
 $fp2 = $engine->generateStreamFingerprint(['bandwidth' => 6000000, 'resolution' => '1920x1080', 'codecs' => 'avc1.64001f', 'audio_channels' => 2, 'origin_server' => 'cdn1.example.com']);
-$fp3 = $engine->generateStreamFingerprint(['bandwidth' => 12000000, 'resolution' => '3840x2160', 'codecs' => 'hev1.1.6.L150', 'audio_channels' => 6, 'origin_server' => 'cdn2.example.com']);
+$fp3 = $engine->generateStreamFingerprint(['bandwidth' => 12000000, 'resolution' => '3840x2160', 'codecs' => 'hev1.2.4.L150', 'audio_channels' => 6, 'origin_server' => 'cdn2.example.com']);
 assert_eq('Same stream = same hash', $fp1, $fp2);
 assert_true('Different stream = different hash', $fp1 !== $fp3);
 
@@ -153,7 +153,7 @@ echo "\nTEST 9: classifyByCodec\n";
 $av1 = $engine->classifyByCodec('av01.0.08M.08');
 assert_eq('AV1 primary codec', 'av1', $av1['primary_codec']);
 assert_eq('AV1 score 100', 100, $av1['codec_quality_score']);
-$hevc = $engine->classifyByCodec('hev1.1.6.L150,mp4a.40.2');
+$hevc = $engine->classifyByCodec('hev1.2.4.L150,mp4a.40.2');
 assert_eq('HEVC primary codec', 'hevc', $hevc['primary_codec']);
 assert_eq('HEVC score 90', 90, $hevc['codec_quality_score']);
 $h264 = $engine->classifyByCodec('avc1.64001f,mp4a.40.2');
@@ -170,7 +170,7 @@ echo "\nTEST 11: enrichQosRef\n";
 $qos = ['profile' => 'P3', 'ch' => '14'];
 $enriched = $engine->enrichQosRef($qos, [
     'score' => ['total' => 0.85, 'breakdown' => ['bitrate_score' => 0.6]],
-    'parsed' => ['resolution' => '1920x1080', 'codecs' => 'hev1.1.6.L150', 'fps' => 50],
+    'parsed' => ['resolution' => '1920x1080', 'codecs' => 'hev1.2.4.L150', 'fps' => 50],
     'classification' => ['type' => 'DEPORTES', 'confidence' => 0.92],
     'stream_type' => 'LIVE',
     'fingerprint' => 'abc123',

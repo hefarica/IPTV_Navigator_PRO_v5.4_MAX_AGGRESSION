@@ -398,6 +398,115 @@
         return PREMIUM_RE.test(name) || PREMIUM_RE.test(group);
     }
 
+    // [Council 2026-06-07 · S3+S9+S12 consensus] Detección "anti-freeze premium" más
+    // estricta que PREMIUM_RE: NO incluye 'fhd|hevc|h265|h\.265' porque son tokens de
+    // RESOLUCIÓN/FORMATO, no de CONTENIDO premium. Un canal "MyChannel FHD" genérico
+    // NO debe quedar protegido como HEVC por incluir 'FHD' en el nombre — eso bypasea
+    // el fix F4 anti-freeze para H.264 upstream común en FHD/HD genéricos.
+    // BEIN/DAZN/HBO/etc. SÍ siguen siendo premium (contienen sus tokens reales).
+    const ANTI_FREEZE_PREMIUM_RE = /4k|uhd|hdr|dolby|premium|dazn|espn|sport|sports|event|evento|movie|cine|ppv|liga|champions|nba|f1|ufc|hbo|max|netflix|disney|fox|sky|bein/i;
+
+    function isAntiFreezePremium(channel) {
+        const name  = String(channel?.name  || '');
+        const group = String(channel?.group || channel?.group_title || '');
+        return ANTI_FREEZE_PREMIUM_RE.test(name) || ANTI_FREEZE_PREMIUM_RE.test(group);
+    }
+
+    // ════════════════════════════════════════════════════════════════════════
+    // CODEC HOMOLOGATION CASCADE — REGLA UNIVERSAL 2026-06-07 HFRC mandato
+    // ════════════════════════════════════════════════════════════════════════
+    // DOCTRINA: cada player parsea con su propio dialecto del mismo codec
+    //   • HEVC: hevc | hev1 | h265 | H265 | h.265 | H.265 | MPEG-H | x265 …
+    //   • AVC:  h264 | H264 | h.264 | H.264 | avc | AVC | x264 …
+    //   • AAC:  mp4a.40.2 | mp4a | aac | AAC …
+    //   • AC3:  ac-3 | ac3 | AC3 | AC-3 …
+    //   • EC3:  ec-3 | ec3 | eac3 | EAC3 …
+    //
+    // Declarar la cascada con TODOS los aliases en CADA emit site (preferred_codec,
+    // codec-priority, avcodec-codec, etc.) garantiza que el matcher del player
+    // encuentre al menos UN alias que reconoce — sin importar su naming convention
+    // interna. Si solo declaramos "hevc", un player que internamente busca "h.265"
+    // no degrada y freeza.
+    //
+    // GOLDEN RULE preservada: STREAM-INF CODECS= sigue RFC 6381 estricto (hvc1.*,
+    // avc1.*). Las cascadas homologadas SOLO van en campos family-name
+    // (KODIPROP preferred_codec, EXTVLCOPT preferred-codec/codec-priority).
+    //
+    // Orden: HEVC primero (MAX IMAGE FIRST), AVC fallback (compat universal).
+    // Si el caller necesita AVC primero (F4 sin probe sin premium), use _AVC_FIRST.
+    // ════════════════════════════════════════════════════════════════════════
+    // MAXIMAL HOMOLOGATION 2026-06-07/2 — cada codec con TODAS sus variantes documentadas:
+    // family + RFC (hev1/hvc1/avc1/avc3) + dot/dash/case mixed + ISO/IEC formal + encoder name.
+    // Cubre cualquier parser/player ISO BMFF / DASH / HLS / DVB / Web / Smart TV / móvil.
+    // Doctrina HEVC-FIRST: TODOS los HEVC homologs siempre antes que cualquier H264.
+    // MANDATO USUARIO: TODAS las homologaciones de cada codec — hint-only en EXTHTTP/EXTVLCOPT/KODIPROP.
+    // NUNCA usar en CODECS= RFC 6381 (solo dot-notation ahí). Aquí es válido: campos family-name.
+    // HEVC FIRST — homólogos universales 2026-06-08.
+    // Cubre: RFC 6381 (hvc1/hev1) + Android MediaCodec + Fire TV Amlogic (hevc/h265)
+    // + ffmpeg/GStreamer (x265/libx265) + MPEG formal (MPEG-H/23008-2)
+    // + MIME (video/hevc) + mayúsculas/minúsculas/mixto + designaciones combinadas.
+    // SOLO para campos family-name (KODIPROP preferred_codec, EXTVLCOPT codec-priority,
+    // EXTHTTP X-APE-Codec-Video). NUNCA en CODECS= RFC 6381 (solo dot-notation ahí).
+    const _HEVC_ALIASES = [
+        // RFC 6381 canonical (STREAM-INF CODECS= base forms)
+        'hvc1','hvc2','hev1','hev2',
+        // Uppercase RFC (Android MediaCodec API, Fire TV OMX, Amlogic AML_OMX)
+        'HVC1','HVC2','HEV1','HEV2',
+        // Short forms without number (VLC CLI, OTT Navigator codec picker, Smarters)
+        'hvc','hev','HVC','HEV',
+        // Generic family name — ALL case variants (IPTV dashboards, TiviMate UI)
+        'hevc','HEVC','Hevc',
+        // H.265 dot-notation: IEEE/ITU-T official designation (all case variants)
+        'h265','H265',
+        'h.265','H.265',
+        'h-265','H-265',
+        'h 265','H 265',
+        // Combined designations (broadcaster docs, spec annexes, DVB SI)
+        'H.265/HEVC','HEVC/H.265','H265/HEVC','HEVC/H265',
+        // Profile descriptor forms (Kodi verbose mode, VLC stream info, Plex)
+        'HEVC Main','HEVC Main10','HEVC Main 10','HEVC High',
+        // MPEG-H formal family name (ISO/IEC working group designation)
+        'MPEG-H','mpeg-h','Mpeg-H',
+        'MPEG-H Part2','MPEG-H Part 2','MPEG-H HEVC',
+        'mpegh','MPEGH',
+        // Encoder names (ffmpeg CLI, GStreamer, HandBrake, StaxRip pipelines)
+        'x265','x.265','libx265','lib265',
+        // ISO/IEC 23008-2 notation variants (spec cross-references, MediaInfo output)
+        'ISO/IEC 23008-2','ISO-23008-2','IEC 23008-2','23008-2',
+        // MIME type variants (WebRTC SDP, DASH MPD, some vendor IPTV stacks)
+        'video/hevc','video/H265','video/h265','video/HEVC',
+        // Historical working group name (JCT-VC era documentation)
+        'JCT-VC','jct-vc',
+    ].join(',');
+    const _AVC_ALIASES  = 'h264,H264,h.264,H.264,h-264,H-264,avc,AVC,avc1,avc3,MPEG-4 AVC,mpeg4-avc,MPEG4-AVC,x264,ISO/IEC 14496-10';
+    const _AV1_ALIASES  = 'av1,av01,AV1,AOM-AV1,libaom-av1';
+    const _VP9_ALIASES  = 'vp9,VP9,vp09,vp9.0';
+    const _AAC_ALIASES  = 'mp4a.40.2,mp4a.40.5,mp4a.40.29,mp4a,aac,AAC,aac-lc,AAC-LC,he-aac,HE-AAC,MPEG-4 AAC,MP4A';
+    const _AC3_ALIASES  = 'ac-3,ac3,AC3,AC-3,dolby-digital,DOLBY-DIGITAL,Dolby Digital';
+    const _EC3_ALIASES  = 'ec-3,ec3,eac3,EAC3,EC-3,ddp,DDP,dolby-digital-plus,Dolby Digital Plus';
+
+    const CODEC_HOMOLOGATION = {
+        // HEVC-FIRST CON TODOS LOS HOMOLOGOS, luego H264 homologs, AV1 al final como fallback.
+        video_hevc_first: _HEVC_ALIASES + ',' + _AVC_ALIASES + ',' + _AV1_ALIASES + ',' + _VP9_ALIASES,
+        // Si caller necesita H264 primero (improbable post-doctrina HEVC-FIRST).
+        video_avc_first:  _AVC_ALIASES  + ',' + _HEVC_ALIASES + ',' + _AV1_ALIASES,
+        // Solo HEVC.
+        video_hevc_only:  _HEVC_ALIASES,
+        // Solo AVC.
+        video_avc_only:   _AVC_ALIASES,
+        // AUDIO: AAC universal primero, luego AC3, luego EC3/DDP.
+        audio_aac_first:  _AAC_ALIASES + ',' + _AC3_ALIASES + ',' + _EC3_ALIASES,
+    };
+
+    // Helper de selección — caller solicita 'hevc_first' | 'avc_first' | ...
+    // Si LAB provee cfg.codec_chain_video, retorna eso (LAB SSOT no-clamp).
+    function getCodecCascade(kind, labChain) {
+        // LAB override siempre gana — no clampamos values de LAB.
+        if (labChain && typeof labChain === 'string' && labChain.length > 0) return labChain;
+        const key = String(kind || 'video_hevc_first');
+        return CODEC_HOMOLOGATION[key] || CODEC_HOMOLOGATION.video_hevc_first;
+    }
+
     // ────────────────────────────────────────────────────────────────────────
     // Exposición global (browser) + module.exports (Node test)
     // ────────────────────────────────────────────────────────────────────────
@@ -413,7 +522,11 @@
         resolveCodecForChannel: resolveCodecForChannel,
         resolveCodecHev1ForChannel: resolveCodecHev1ForChannel,
         isPremiumChannel: isPremiumChannel,
+        isAntiFreezePremium: isAntiFreezePremium,
         PREMIUM_RE: PREMIUM_RE,
+        ANTI_FREEZE_PREMIUM_RE: ANTI_FREEZE_PREMIUM_RE,
+        CODEC_HOMOLOGATION: CODEC_HOMOLOGATION,
+        getCodecCascade: getCodecCascade,
         // Per-profile cascade arrays (primary + fallback chain hvc1.2.4.*)
         generateProfileCascadeArrays: generateProfileCascadeArrays,
         PROFILE_DIMS: PROFILE_DIMS,

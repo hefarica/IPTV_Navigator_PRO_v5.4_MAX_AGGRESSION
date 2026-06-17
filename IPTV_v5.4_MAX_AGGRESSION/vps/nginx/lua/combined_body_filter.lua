@@ -14,6 +14,20 @@
 
 local score_mod = require("ape_uhdx_score")
 local v4k_mod = require("ape_virtual_4k")
+-- ape_codec_cascade hoisted aquí (module scope) — evita pcall(require) repetido
+-- en el loop de variantes. package.loaded garantiza singleton por worker.
+-- S6 F1 fix 2026-06-08: pcall inline era correcto pero redundante × variantes.
+local cc_cascade_mod = require("ape_codec_cascade")
+-- ADITIVO 2026-06-16: lazo bitrate-reactor → manifest (floor adaptativo al bw real).
+-- require DEFENSIVO (pcall): si el módulo faltara en disco, bw_floor_mod=nil → el filtro usa
+-- el floor estático cfg.floor_bps = comportamiento de HOY (passthrough additivo, nunca rompe).
+-- Sandbox probado: vps/nginx/lua/sandbox/test_bw_adaptive.lua (13/13). Doc: LUA_ENGINES_..._AUDIT §Wiring.
+local ok_bwf, bw_floor_mod = pcall(require, "bw_adaptive_floor")
+if not ok_bwf then bw_floor_mod = nil end
+-- ADITIVO 2026-06-17 (Sol 1): resolver de profile ARBITRARIO (server-side por stream_id) para players que
+-- NO reenvían X-APE-Profile (OkHttp/ExoPlayer). require defensivo → módulo ausente = comportamiento de hoy.
+local ok_pr, profile_resolver = pcall(require, "ape_profile_resolver")
+if not ok_pr then profile_resolver = nil end
 
 -- ═══ STAGE 0: VIDEO BYPASS (BLINDAJE DE MEMORIA) ════════════════════
 local uri = ngx.var.uri or ""
@@ -102,8 +116,8 @@ local floor_ok, floor_err = pcall(function()
         return
     end
 
-    -- Determine profile (default P2 = P2_SAFE_COMPAT)
-    local profile = "P2"
+    -- Determine profile. Orden: cliente (?profile/?p/X-APE-Profile) → Sol 1 server-side (stream_id) → P2.
+    local profile = nil
     local args = ngx.req.get_uri_args()
     if args and args.profile then
         profile = tostring(args.profile):upper()
@@ -114,7 +128,19 @@ local floor_ok, floor_err = pcall(function()
     if hdr_profile then
         profile = tostring(hdr_profile):upper()
     end
-    if not profile:match("^P[0-5]$") then profile = "P2" end
+    if not (profile and profile:match("^P[0-5]$")) then profile = nil end
+    -- ADITIVO 2026-06-17 (Sol 1: ESCALACIÓN DE FLOOR POR CANAL): si el cliente NO trajo un perfil válido
+    -- (OkHttp/ExoPlayer que NO reenvían #EXTHTTP), resolver SERVER-SIDE por la identidad del canal (stream_id).
+    -- by_streamid escala a P1/P0 (floor_lock ACTIVE → fuerza la variante alta) SOLO canales con evidencia QoE;
+    -- el resto → default P2 (BYPASS seguro, todas las variantes). Solo FALLBACK → NUNCA pisa el perfil del
+    -- cliente. pcall + nil-safe → módulo/map ausente → profile nil → P2 de hoy. Freeze-safety: adaptive-floor relaja.
+    if not profile and profile_resolver then
+        local ok_rv, resolved = pcall(function() return profile_resolver.resolve(ngx.var.uri) end)
+        if ok_rv and type(resolved) == "string" and resolved:match("^P[0-5]$") then
+            profile = resolved
+        end
+    end
+    if not profile then profile = "P2" end   -- default final (= comportamiento de hoy si no resolvió)
 
     -- Map P0-P5 to JSON profile keys — CADA NIVEL su propia config (mandato HFRC:
     -- "4K forzado para los 6 niveles, cada uno se configura distinto"). P2 es el
@@ -153,9 +179,24 @@ local floor_ok, floor_err = pcall(function()
             local is_hdr_variant = codecs:find("hvc1.2.4", 1, true) 
                                 or codecs:find("dvh1", 1, true) 
                                 or codecs:find("dvhe", 1, true)
-            local is_hevc_variant = codecs:find("hvc1", 1, true) 
-                                 or codecs:find("hev1", 1, true) 
-                                 or codecs:find("hev", 1, true)
+            -- HEVC FIRST — detección universal 2026-06-08.
+            -- Usa cc_cascade_mod.is_hevc_family() (hoisted al top: singleton per worker).
+            -- Cubre hvc1/hev1/hevc/h265/H.265/x265/libx265/video/hevc/MPEG-H/JCT-VC.
+            -- Fallback inline si el módulo no tiene is_hevc_family (versión anterior en disco).
+            local is_hevc_variant = false
+            if cc_cascade_mod and cc_cascade_mod.is_hevc_family then
+                is_hevc_variant = cc_cascade_mod.is_hevc_family(codecs)
+            else
+                -- Fallback inline — cubre los alias más comunes
+                local cl = codecs:lower()
+                is_hevc_variant = cl:find("hvc1",   1, true) ~= nil
+                               or cl:find("hev1",   1, true) ~= nil
+                               or cl:find("hevc",   1, true) ~= nil
+                               or cl:find("h265",   1, true) ~= nil
+                               or cl:find("h.265",  1, true) ~= nil
+                               or cl:find("x265",   1, true) ~= nil
+                               or cl:find("mpeg-h", 1, true) ~= nil
+            end
 
             if is_hdr_variant then has_hdr = true end
             if is_hevc_variant then has_hevc = true end
@@ -200,13 +241,69 @@ local floor_ok, floor_err = pcall(function()
             end
         end
 
+        -- ADITIVO 2026-06-16: floor ADAPTATIVO al bw real (lazo bitrate-reactor → manifest).
+        -- Monótono ↓: eff_floor <= cfg.floor_bps SIEMPRE (el guard `adj <= eff_floor` lo fuerza)
+        -- → nunca descarta MÁS variantes que el floor estático → 0 pérdida de canal. pcall +
+        -- ngx.shared.circuit_metrics nil-safe → passthrough (autopista). DEGRADED (bw real bajo)
+        -- relaja el floor → sobrevive un peldaño que el player SÍ sostiene (anti-freeze).
+        local eff_floor = tonumber(cfg.floor_bps) or 0
+        if bw_floor_mod then
+            local ok_bw, adj = pcall(function()
+                local R = ngx.shared.circuit_metrics
+                if not R then return nil end
+                local bw_ts = tonumber(R:get("bw_ts"))               -- ts de la última muestra REAL (ngx.now())
+                local age_s = bw_ts and (ngx.now() - bw_ts) or nil   -- nil si nunca hubo muestra real
+                return bw_floor_mod.adaptive_floor(cfg.floor_bps, {
+                    state        = R:get("bw_state"),
+                    ewma_bps     = R:get("bw_ewma_bps"),
+                    floor_4k_bps = cfg.floor_bps,   -- WARN2: floor REAL del perfil (P0=18M/P1=14M), no 15M hardcoded
+                    age_s        = age_s,           -- WARN3: gate de frescura (descarta EWMA stale del tick 1Hz)
+                })
+            end)
+            if ok_bw and type(adj) == "number" and adj <= eff_floor then
+                eff_floor = adj
+            end
+        end
+
+        -- ADITIVO 2026-06-17 (ESCALACIÓN +imagen): simétrico al adaptive_floor. SOLO en perfiles BYPASS
+        -- (P2-P5) y SOLO si cfg.escalation=="ACTIVE" (default OFF → inerte). Si el master tiene una variante
+        -- ALTA y el bw real la sostiene (healthy + fresco), TIGHTEN el floor para forzar la variante alta en
+        -- vez de dejar al ABR sub-seleccionar. Freeze-safe: 0 bajo red mala/sin evidencia/sin variante alta;
+        -- la variante top (mayor score) SIEMPRE se conserva (rama idx==highest_idx). pcall + dict nil-safe.
+        local esc_floor = 0
+        -- F3 (review S6): allowlist POSITIVA del floor_lock (string "BYPASS"/nil) — si un perfil futuro
+        -- usa floor_lock como objeto/valor no-estándar, la escalación NO aplica (jamás en P0/P1 ACTIVE).
+        if bw_floor_mod and cfg.escalation == "ACTIVE" and (cfg.floor_lock == "BYPASS" or cfg.floor_lock == nil) then
+            local maxbw = 0
+            for _, v in ipairs(variants) do
+                local b = tonumber(v.bw) or 0
+                if b > maxbw then maxbw = b end
+            end
+            local ok_e, ef = pcall(function()
+                local R = ngx.shared.circuit_metrics
+                if not R then return 0 end
+                local bw_ts = tonumber(R:get("bw_ts"))
+                local age_s = bw_ts and (ngx.now() - bw_ts) or nil
+                return bw_floor_mod.escalation_floor(maxbw, {
+                    state    = R:get("bw_state"),
+                    ewma_bps = R:get("bw_ewma_bps"),
+                }, age_s)
+            end)
+            if ok_e and type(ef) == "number" and ef > 0 then esc_floor = ef end
+        end
+
         for idx, v in ipairs(variants) do
             local keep = false
             -- Always keep the highest scoring variant as fallback
             if idx == highest_idx then
                 keep = true
             elseif cfg.floor_lock == "ACTIVE" then
-                if v.bw >= cfg.floor_bps then
+                if v.bw >= eff_floor then
+                    keep = true
+                end
+            elseif esc_floor > 0 then
+                -- ESCALACIÓN (BYPASS + canal sostiene tier alto): descarta variantes MUY bajas → fuerza la alta
+                if v.bw >= esc_floor then
                     keep = true
                 end
             else

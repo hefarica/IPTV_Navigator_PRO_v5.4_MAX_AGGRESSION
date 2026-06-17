@@ -1,0 +1,52 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e3]:
+    - generic [ref=e4]: 🦍
+    - heading "IPTV Navigator PRO" [level=1] [ref=e5]
+    - paragraph [ref=e8]: Sistema listo
+  - generic [ref=e10]:
+    - generic [ref=e11]: 🦍
+    - heading "IPTV Navigator PRO" [level=1] [ref=e12]
+    - generic [ref=e13]: APE ENGINE v9.0
+    - generic [ref=e16]: 40%
+    - paragraph [ref=e17]: Conectando IndexedDB...
+    - generic [ref=e18]:
+      - generic [ref=e19]:
+        - generic [ref=e20]: ✓
+        - generic [ref=e21]: Iniciando sistema APE...
+      - generic [ref=e22]:
+        - generic [ref=e23]: ✓
+        - generic [ref=e24]: Preparando interfaz...
+      - generic [ref=e25]:
+        - generic [ref=e26]: ✓
+        - generic [ref=e27]: Cargando módulos JavaScript...
+      - generic [ref=e28]:
+        - generic [ref=e29]: ▸
+        - generic [ref=e30]: Conectando IndexedDB...
+      - generic [ref=e31]:
+        - generic [ref=e32]: ○
+        - generic [ref=e33]: Restaurando servidores...
+      - generic [ref=e34]:
+        - generic [ref=e35]: ○
+        - generic [ref=e36]: Cargando canales...
+      - generic [ref=e37]:
+        - generic [ref=e38]: ○
+        - generic [ref=e39]: Renderizando interfaz...
+      - generic [ref=e40]:
+        - generic [ref=e41]: ○
+        - generic [ref=e42]: ¡Sistema listo!
+  - option "Auto (recomendado)" [selected]
+  - option "Standard (get.php)"
+  - option "XUI / player_api.php"
+  - generic [ref=e43] [cursor=pointer]: 🟢 Gateway Online (234ms)
+  - generic [ref=e44]:
+    - generic [ref=e45]:
+      - generic [ref=e46]: 🧬 ANLE v1.0
+      - generic [ref=e47] [cursor=pointer]:
+        - checkbox "ON" [checked] [ref=e48]
+        - text: "ON"
+    - generic [ref=e49]:
+      - text: "📦 0 aliases (seed: ~0 + learned: 0)"
+      - text: 🖥️ 0 servers fingerprinted
+      - text: ⚡ 0 channels boosted
+    - button "🔄 Resync Seed (iptv-org)" [ref=e51] [cursor=pointer]
+    - generic [ref=e52]: "⏸️ idle · delete: console ANLE.dictionary.clearLearned()"

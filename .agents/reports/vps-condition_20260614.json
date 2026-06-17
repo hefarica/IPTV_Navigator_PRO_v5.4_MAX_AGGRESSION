@@ -1,0 +1,66 @@
+{
+  "report": "vps-condition",
+  "date": "2026-06-14",
+  "host": "ubuntu-2gb-ash-1",
+  "tier": "Hetzner CPX21",
+  "ip": "178.156.147.234",
+  "domain": "iptv-ape.duckdns.org",
+  "location": "Ashburn VA",
+  "verdict": "OPERATIONAL",
+  "health_status_after": "warning",
+  "health_status_before": "critical",
+  "service_continuity": "uninterrupted (uptime 91d, ~1289 req/5min)",
+  "platform": {
+    "kernel": "6.8.0-generic",
+    "uptime_days": 91,
+    "load_avg": [0.50, 0.36, 0.36],
+    "vcpu": 3,
+    "ram_total_mb": 3819,
+    "ram_available_mb": 2026,
+    "swap_mb": 0,
+    "nginx": "1.24.0 (Ubuntu) active — NOT openresty",
+    "php_fpm": "8.3 active",
+    "shm_cache": "EMPTY_WITH_TRAFFIC (repopulating)"
+  },
+  "disk": {
+    "before": { "size": "38G", "used": "36G", "free_mb": 308, "pct": 100 },
+    "after":  { "size": "38G", "used": "24G", "free_gb": 13, "pct": 65 },
+    "reclaimed_gb_approx": 12.7
+  },
+  "reclaim_actions": [
+    { "action": "journalctl --vacuum-size=500M + SystemMaxUse=500M cap", "gb": 3.0, "risk": "none" },
+    { "action": "rm /root/.cache/pip + /root/.rustup", "gb": 4.1, "risk": "none" },
+    { "action": "rm /root/backups (2026-05-20)", "gb": 0.38, "risk": "none" },
+    { "action": "docker builder prune -f (0 active cache)", "gb": 5.3, "risk": "none" },
+    { "action": "snap refresh.retain=2 + remove disabled revisions", "gb": 0.9, "risk": "none" }
+  ],
+  "preserved_not_deleted": [
+    { "path": "/var/lib/containerd", "gb": 7.2, "reason": "in use by 10 running docker containers (verified active before action)" },
+    { "path": "/opt/ape-dual-link", "gb": 5.3, "reason": "dual-link shadow wired to live endpoints + ROLLBACK.sh" },
+    { "path": "/root/ape_v321_live_deploy_latest + 06-12 backups", "reason": "recent rollback points (2 days old)" }
+  ],
+  "docker_containers": {
+    "count": 10,
+    "anti407_sandbox": 9,
+    "coa_navigator_mysql": 1,
+    "note": "anti407_* = Anti-407 test sandbox (not production streaming path). Optional reclaim ~7GB if no longer needed (user decision)."
+  },
+  "wireguard_audit": {
+    "flag": "unauthorized_wg_peer",
+    "verdict": "NOT an intrusion — whitelist drift after Fire TV Cali key rotation",
+    "wg0_peers": [
+      { "pubkey_prefix": "5idLPkMF", "ip": "10.200.0.2", "device": "ONN 4K Bogota ETB", "last_handshake": "45 days", "whitelisted": true },
+      { "pubkey_prefix": "fhQ5lipG", "ip": "10.200.0.3", "device": "Fire TV Cali (active)", "last_handshake": "4 days", "whitelisted": false }
+    ],
+    "whitelist_file": "/etc/net-shield/authorized_peers.conf",
+    "root_cause": "Cali slot authorizes stale pubkey Ga1ykV7T; live device rotated to fhQ5lipG (updated in wg0.conf, not in whitelist).",
+    "recommended_fix": "Replace Ga1ykV7T line with fhQ5lipG in authorized_peers.conf (1 line). NOT executed — requires explicit OK.",
+    "executed": false
+  },
+  "open_actions": [
+    "Update Cali pubkey in authorized_peers.conf -> closes last health warning (1 line, needs OK)",
+    "Optional: stop Anti-407 sandbox (~7GB) / slim /opt/ape-dual-link (product decisions)",
+    "journald cap (500M) now prevents /var/log/journal regrowth"
+  ],
+  "deploy_readiness": "OK — 13GB free, new CD pre-flight (<1.5GB abort) has ample headroom"
+}

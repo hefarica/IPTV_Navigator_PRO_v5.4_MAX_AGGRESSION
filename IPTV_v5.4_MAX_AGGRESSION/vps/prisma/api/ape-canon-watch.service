@@ -1,0 +1,18 @@
+# Dispara el canon producer cuando se sube una lista nueva (path-unit ape-canon-watch.path).
+# ACOTADO (council S6/S7 2026-06-11): Nice19 + IO idle + CPUQuota 50% (<=0.5 vCPU de 3) +
+# MemoryMax 512M + Slice background. Procesa la lista .gz más reciente → /dev/shm/ape_canon.
+# AUTOPISTA: evento de subida (raro), fuera del path de reproducción; jamás satura el stream.
+[Unit]
+Description=APE canon producer (homologa la lista subida -> /dev/shm/ape_canon) — CPU-capped
+After=nginx.service
+
+[Service]
+Type=oneshot
+Slice=ape-background.slice
+Nice=19
+IOSchedulingClass=idle
+IOSchedulingPriority=7
+CPUQuota=50%
+MemoryMax=512M
+CPUWeight=10
+ExecStart=/bin/bash -c 'L=$(ls -t /var/www/lists/*_SHIELDED.m3u8.gz /var/www/lists/*.m3u8.gz 2>/dev/null | head -1); [ -n "$L" ] && zcat "$L" > /dev/shm/ape_lastlist.m3u8 && /usr/bin/node /opt/ape-dual-link/api/ape-canon-producer.js /dev/shm/ape_lastlist.m3u8 /dev/shm/ape_canon'

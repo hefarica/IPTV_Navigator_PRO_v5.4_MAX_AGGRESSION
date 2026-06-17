@@ -274,3 +274,10 @@ end
 -- pcall-wrapped: if observer file missing or errors, reactor still completes.
 pcall(dofile, "/etc/nginx/lua/qoe_server_side_observer.lua")
 
+-- ═══ APE Wake-on-Manifest chain (2026-06-08 Council fix · UN solo log_by_lua) ═══
+-- nginx permite UN solo log_by_lua_file por location. En vez de un 2º directive
+-- (que tumbaría el reload de todas las locations .m3u8), encadenamos el wake aquí
+-- vía pcall(dofile), igual que el QoE observer. El wake no-opea salvo en .m3u8
+-- (chequea ngx.var.uri internamente). Autopista-safe, post-respuesta, nunca bloquea.
+pcall(dofile, "/etc/nginx/lua/ape_wake_on_manifest.lua")
+

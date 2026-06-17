@@ -1,0 +1,5 @@
+{
+  "_doc": "Mecanismo de ESCALACION DE FLOOR POR CANAL (dirigida por QoE). VERDAD VERIFICADA: los 6 perfiles fuerzan virtual_4k+PQ+codec por igual (P2==P3 en el manifest emitido); la UNICA diferencia REAL es floor_lock (ACTIVE solo en P0/P1 -> descarta variantes bajas -> fuerza la alta). 'default'=P2 (BYPASS, seguro: conserva TODAS las variantes, 0 freeze). 'by_streamid' = canales con EVIDENCIA QoE de bitrate sostenido alto, escalados a P1/P0 (floor_lock ACTIVE) por el writer ape_floor_escalation.php. Solo aplica a players que NO reenvian X-APE-Profile (OkHttp/ExoPlayer). El adaptive-floor relaja si la red real no sostiene. Editar este JSON NO requiere tocar Lua.",
+  "default": "P2",
+  "by_streamid": {}
+}

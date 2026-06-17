@@ -76,6 +76,7 @@ class ConvivaQoEServer
         'quality_change',
         'error',
         'end_session',
+        'heartbeat',
     ];
 
     // ─── Allowed player enum ─────────────────────────────────────────────────

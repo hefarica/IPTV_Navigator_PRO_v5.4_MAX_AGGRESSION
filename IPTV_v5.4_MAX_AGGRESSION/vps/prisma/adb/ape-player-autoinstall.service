@@ -1,0 +1,16 @@
+# APE Player Auto-Installer (oneshot, driven by .timer)
+# NOT auto-installed — manual enable only (see docs). VPS NOT deployed by this repo.
+[Unit]
+Description=APE Player Visual-Enhancement Auto-Installer (ADB, polymorphic, idempotent)
+After=network-online.target adb-persistence.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/opt/netshield/vps/prisma/adb/ape-player-autoinstall.sh
+Nice=10
+TimeoutStartSec=120
+# Idempotent: safe to run repeatedly; never touches nginx/URLs/tunnels.
+
+[Install]
+WantedBy=multi-user.target
