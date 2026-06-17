@@ -163,9 +163,12 @@ ara_fsm_set(){ # $1=state — escribe a archivo (cruza subshells del pipe) y log
   [ "$prev" = "$1" ] && return 0
   echo "$1" > "$FSM_FILE" 2>/dev/null; log "FSM ${prev:-INIT}->$1"; }
 
-ara_remember(){ # ns key value — UPSERT (reemplaza la linea previa del mismo ns key)
-  if [ -f "$LAST_GOOD" ]; then grep -v "^$1 $2 " "$LAST_GOOD" > "$LAST_GOOD.t" 2>/dev/null && mv "$LAST_GOOD.t" "$LAST_GOOD" 2>/dev/null; fi
-  echo "$1 $2 $3" >> "$LAST_GOOD" 2>/dev/null; }
+ara_remember(){ # ns key value — UPSERT real (dedup: 1 sola linea por ns+key)
+  # BUGFIX: si grep -v removia TODAS las lineas devolvia rc=1 y el && mv no corria -> acumulaba.
+  t="$LAST_GOOD.t"
+  if [ -f "$LAST_GOOD" ]; then grep -v "^$1 $2 " "$LAST_GOOD" > "$t" 2>/dev/null; else : > "$t"; fi
+  echo "$1 $2 $3" >> "$t"
+  mv "$t" "$LAST_GOOD" 2>/dev/null; }
 
 # allowlist STRICTA — todo lo demas se RECHAZA con log (sin spam)
 ara_safe_put(){ # ns key value
@@ -198,6 +201,23 @@ ara_reconcile_on_reconnect(){ # RESTORED solo si veniamos de una caida; reconcil
     ara_fsm_set RESTORED; rm -f "$WAS_DOWN_FILE" 2>/dev/null; ara_replay_last_good
   fi
   ara_fsm_set HEALTHY; }
+
+# ENFORCER PERSISTENTE: re-aplica los settings target (last_good) cada N seg para que
+# PERSISTAN aunque el sistema/usuario los revierta. Es el "software residente del player".
+# Solo re-aplica si DRIFTARON (settings get != target). Loguea para respaldo en logs/config.
+ara_enforce_loop(){
+  while true; do
+    if [ -f "$LAST_GOOD" ]; then
+      n=0
+      while read -r ns key val; do
+        [ -n "$ns" ] && [ -n "$key" ] && [ -n "$val" ] || continue
+        cur=$(settings get "$ns" "$key" 2>/dev/null)
+        if [ "$cur" != "$val" ]; then ara_safe_put "$ns" "$key" "$val" >/dev/null 2>&1 && n=$((n+1)); fi
+      done < "$LAST_GOOD"
+      [ "$n" -gt 0 ] && log "enforce: re-aplique $n setting(s) drifteado(s) -> persistencia"
+    fi
+    sleep "${ENFORCE_INTERVAL:-30}"
+  done; }
 
 ara_apply_delta(){ # $1 = linea data: JSON — aplica SOLO settings allowlisted; resto = lo aplica el VPS
   line="$1"
@@ -246,6 +266,7 @@ daemon(){
   emit heartbeat "\"ara_version\":\"$ARA_VER\",\"state\":\"HEALTHY\""
   ara_fsm_set HEALTHY
   poll_deltas &                       # ARA SSE-down policy applier (background, no bloquea logcat)
+  ara_enforce_loop &                  # enforcer persistente: re-aplica settings si driftan (cada 30s)
   while true; do logcat_loop; log "logcat ended; restart in 3s"; sleep 3; done; }
 
 case "${1:-daemon}" in
