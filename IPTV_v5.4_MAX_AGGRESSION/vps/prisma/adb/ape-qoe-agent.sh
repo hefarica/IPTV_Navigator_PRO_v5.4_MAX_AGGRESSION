@@ -129,11 +129,114 @@ logcat_loop(){
     esac
   done; }
 
+# ════════════════════════════════════════════════════════════════════════════
+# OMEGA ARA URL-2 — SSE-DOWN policy deltas + FSM (Council-safe merge, ADDITIVO).
+# Reusa $CURL/$DEVID/emit/log/now_ms del agente QoE-up de arriba. NO reemplaza nada.
+# Allowlist ESTRICTA (MUST-FIX): hdr_conversion_mode + match_content_frame_rate +
+# display_color_mode (SOLO amlogic). SIN minimal_post_processing_allowed.
+# Idempotente (ledger por id). OFFLINE_CACHE reaplica SOLO last-good allowlisted.
+# ════════════════════════════════════════════════════════════════════════════
+ARA_ROOT="${ARA_ENDPOINT:-https://iptv-ape.duckdns.org}"
+ARA_TOKEN="${ARA_TOKEN:-}"
+ARA_VER="ara-sh-council-safe-20260616"
+STATE_DIR="$BASE/ape_ara_state"
+LEDGER="$STATE_DIR/applied_deltas.log"
+LAST_GOOD="$STATE_DIR/last_good_settings.env"   # "ns key value" por linea
+FSM_FILE="$STATE_DIR/fsm_state"
+LAST_ID_FILE="$STATE_DIR/last_id"
+WAS_DOWN_FILE="$STATE_DIR/was_down"
+mkdir -p "$STATE_DIR" 2>/dev/null
+
+ara_auth_header(){ if [ -n "$ARA_TOKEN" ]; then printf 'Authorization: Bearer %s' "$ARA_TOKEN"; else printf 'X-APE-Lab: 1'; fi; }
+
+ara_fsm_set(){ # $1=state — escribe a archivo (cruza subshells del pipe) y loguea SOLO transiciones
+  prev=$(cat "$FSM_FILE" 2>/dev/null)
+  [ "$prev" = "$1" ] && return 0
+  echo "$1" > "$FSM_FILE" 2>/dev/null; log "FSM ${prev:-INIT}->$1"; }
+
+ara_remember(){ # ns key value — UPSERT (reemplaza la linea previa del mismo ns key)
+  if [ -f "$LAST_GOOD" ]; then grep -v "^$1 $2 " "$LAST_GOOD" > "$LAST_GOOD.t" 2>/dev/null && mv "$LAST_GOOD.t" "$LAST_GOOD" 2>/dev/null; fi
+  echo "$1 $2 $3" >> "$LAST_GOOD" 2>/dev/null; }
+
+# allowlist STRICTA — todo lo demas se RECHAZA con log (sin spam)
+ara_safe_put(){ # ns key value
+  case "$1.$2" in
+    global.hdr_conversion_mode|global.match_content_frame_rate)
+      settings put "$1" "$2" "$3" >/dev/null 2>&1 && ara_remember "$1" "$2" "$3" && return 0 ;;
+    system.display_color_mode)
+      hw=$(getprop ro.hardware 2>/dev/null | tr 'A-Z' 'a-z')
+      case "$hw" in
+        *amlogic*) settings put system display_color_mode "$3" >/dev/null 2>&1 && ara_remember system display_color_mode "$3" && return 0 ;;
+        *) log "reject display_color_mode hw=$hw"; return 1 ;;
+      esac ;;
+    *) log "reject off-list $1.$2"; return 1 ;;
+  esac
+  return 1; }
+
+ara_already(){ grep -q "^$1\$" "$LEDGER" 2>/dev/null; }
+ara_mark(){ echo "$1" >> "$LEDGER" 2>/dev/null; }
+
+# OFFLINE_CACHE: reaplica SOLO last-good allowlisted (nunca inventa settings nuevos)
+ara_replay_last_good(){
+  [ -f "$LAST_GOOD" ] || return 0
+  while read -r ns key val; do
+    [ -n "$ns" ] && [ -n "$key" ] && [ -n "$val" ] && ara_safe_put "$ns" "$key" "$val" >/dev/null 2>&1
+  done < "$LAST_GOOD"
+  log "OFFLINE_CACHE replayed last-good"; }
+
+ara_reconcile_on_reconnect(){ # RESTORED solo si veniamos de una caida; reconcilia (ledger dedup)
+  if [ "$(cat "$WAS_DOWN_FILE" 2>/dev/null)" = "1" ]; then
+    ara_fsm_set RESTORED; rm -f "$WAS_DOWN_FILE" 2>/dev/null; ara_replay_last_good
+  fi
+  ara_fsm_set HEALTHY; }
+
+ara_apply_delta(){ # $1 = linea data: JSON — aplica SOLO settings allowlisted; resto = lo aplica el VPS
+  line="$1"
+  id=$(printf '%s' "$line" | sed -n 's/.*"id":[ ]*\([0-9][0-9]*\).*/\1/p'); [ -z "$id" ] && id="$(now_ms)"
+  ara_already "$id" && return 0
+  printf '%s' "$line" | grep -q '"hdr_conversion_mode"[ ]*:[ ]*0' && ara_safe_put global hdr_conversion_mode 0
+  mcf=$(printf '%s' "$line" | sed -n 's/.*"match_content_frame_rate"[ ]*:[ ]*"*\([0-9][0-9]*\).*/\1/p'); [ -n "$mcf" ] && ara_safe_put global match_content_frame_rate "$mcf"
+  dcm=$(printf '%s' "$line" | sed -n 's/.*"display_color_mode"[ ]*:[ ]*"*\([0-9][0-9]*\).*/\1/p'); [ -n "$dcm" ] && ara_safe_put system display_color_mode "$dcm"
+  printf '%s' "$line" | grep -q 'SDR_FORCE' && ara_remember pq_profile state SDR_FORCE
+  ara_mark "$id"; log "applied delta id=$id"; }
+
+# poll SSE /ara/events (curl -N: conexion abierta, data-push de deltas). Reconnect resiliente.
+# Nota: el `curl | while` corre en subshell -> last_id/FSM se persisten en archivo (cruzan el pipe);
+# y el LEDGER garantiza idempotencia aunque un reconnect reenvie deltas ya aplicados.
+poll_deltas(){
+  backoff=1
+  echo 0 > "$LAST_ID_FILE" 2>/dev/null
+  while true; do
+    if [ -z "$ARA_TOKEN" ] && [ "${APE_LAB_MODE:-0}" != "1" ]; then
+      log "ARA_TOKEN vacio y no LAB -> SSE off; OFFLINE_CACHE"; ara_fsm_set OFFLINE_CACHE; ara_replay_last_good; sleep 30; continue
+    fi
+    ara_fsm_set RECOVERING
+    last_id=$(cat "$LAST_ID_FILE" 2>/dev/null || echo 0)
+    if [ -x "$CURL" ]; then
+      "$CURL" -k -NsS -H "$(ara_auth_header)" "$ARA_ROOT/ara/events?device_id=$DEVID&last_id=$last_id" 2>/dev/null | \
+      while IFS= read -r ln; do
+        case "$ln" in
+          id:*)         printf '%s' "$ln" | sed 's/^id:[ ]*//' > "$LAST_ID_FILE" 2>/dev/null ;;
+          data:*)       ara_reconcile_on_reconnect; ara_apply_delta "$(printf '%s' "$ln" | sed 's/^data:[ ]*//')" ;;
+          :*connected*) ara_reconcile_on_reconnect ;;
+        esac
+      done
+    fi
+    ara_fsm_set DEGRADED; echo 1 > "$WAS_DOWN_FILE" 2>/dev/null
+    log "SSE disconnected; OFFLINE_CACHE + retry in ${backoff}s"
+    ara_fsm_set OFFLINE_CACHE; ara_replay_last_good
+    sleep "$backoff"
+    if [ "$backoff" -lt 30 ]; then backoff=$((backoff*2)); else backoff=30; fi
+  done; }
+
 daemon(){
   acquire
-  log "START on-device QoE agent uid=$(id -u 2>/dev/null) dev=$DEVID ses=$SES ep=$EP"
+  log "START on-device QoE+ARA agent uid=$(id -u 2>/dev/null) dev=$DEVID ses=$SES ep=$EP ara=$ARA_ROOT token=$([ -n "$ARA_TOKEN" ] && echo set || echo none)"
   heal_adb_network
   emit first_frame "\"reason\":\"agent_boot\""
+  emit heartbeat "\"ara_version\":\"$ARA_VER\",\"state\":\"HEALTHY\""
+  ara_fsm_set HEALTHY
+  poll_deltas &                       # ARA SSE-down policy applier (background, no bloquea logcat)
   while true; do logcat_loop; log "logcat ended; restart in 3s"; sleep 3; done; }
 
 case "${1:-daemon}" in
@@ -142,7 +245,12 @@ case "${1:-daemon}" in
   selftest)
     echo "uid=$(id -u 2>/dev/null) groups=$(id -Gn 2>/dev/null)"
     echo "curl=$([ -x "$CURL" ] && echo OK || echo MISSING) ep=$EP"
+    echo "ara_root=$ARA_ROOT token=$([ -n "$ARA_TOKEN" ] && echo set || echo none) lab=${APE_LAB_MODE:-0}"
+    echo "state_dir=$STATE_DIR fsm=$(cat "$FSM_FILE" 2>/dev/null || echo INIT)"
+    echo "hw=$(getprop ro.hardware 2>/dev/null) (display_color_mode permitido solo en amlogic)"
     echo "logcat=$(logcat -d -t 1 >/dev/null 2>&1 && echo READABLE || echo DENIED)" ;;
+  fsm) cat "$FSM_FILE" 2>/dev/null || echo INIT ;;
+  replay) ara_fsm_set OFFLINE_CACHE; ara_replay_last_good; echo "replayed: $(cat "$LAST_GOOD" 2>/dev/null | wc -l) settings" ;;
   stop) [ -f "$LOCK" ] && { p=$(cat "$LOCK"); is_alive "$p" && kill "$p" 2>/dev/null; rm -f "$LOCK"; echo STOPPED; } || echo "NOT RUNNING" ;;
-  *) echo "Usage: $0 {daemon|heal|selftest|stop}"; exit 1 ;;
+  *) echo "Usage: $0 {daemon|heal|selftest|fsm|replay|stop}"; exit 1 ;;
 esac

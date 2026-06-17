@@ -239,6 +239,42 @@
       "post": "none",
       "enabled": true,
       "note": "Phase G — bulk {channel:SDR} para window.APE_PQ_PROFILE del generador. Espejo channel-hdcp-bulk."
+    },
+    {
+      "id": "php-prisma-events-sse",
+      "src": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/events-sse.php",
+      "dest": "/var/www/html/prisma/api/events-sse.php",
+      "type": "php",
+      "post": "none",
+      "enabled": true,
+      "note": "ARA URL-2 — SSE /ara/events (Council-safe). Auth Bearer; 503 si ARA_TOKEN vacio. NO sirve hasta que el operador (a) anada 'include snippets/prisma-ara-events.conf;' al server-block vivo + nginx -t + reload, y (b) exponga ARA_TOKEN al pool php-fpm (env). Hasta entonces es inerte."
+    },
+    {
+      "id": "php-prisma-phase-g-delta-hook",
+      "src": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/phase_g_delta_hook.php",
+      "dest": "/var/www/html/prisma/api/phase_g_delta_hook.php",
+      "type": "php",
+      "post": "none",
+      "enabled": true,
+      "note": "ARA URL-2 — ape_phase_g_emit_delta() additivo. Lo invoca conviva-event.php SOLO con APE_PQ_ROLLBACK_ENABLED=1 + anti-flap. Flag OFF por defecto = inerte."
+    },
+    {
+      "id": "snippet-ara-events",
+      "src": "IPTV_v5.4_MAX_AGGRESSION/vps/nginx/snippets/prisma-ara-events.conf",
+      "dest": "/etc/nginx/snippets/prisma-ara-events.conf",
+      "type": "nginx-conf",
+      "post": "none",
+      "enabled": true,
+      "note": "ARA URL-2 — snippet location=/ara/events (socket php8.3-fpm, patron prisma-conviva-stream). post=none A PROPOSITO: el operador debe anadir el 'include' al server-block + correr nginx -t antes de reload. Copiar el archivo solo es inerte."
+    },
+    {
+      "id": "config-ara-env-example",
+      "src": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/config/ara.env.example",
+      "dest": "/var/www/html/prisma/config/ara.env.example",
+      "type": "config",
+      "post": "none",
+      "enabled": true,
+      "note": "ARA URL-2 — plantilla de env (ARA_TOKEN, APE_PQ_ROLLBACK_ENABLED=0, cooldown). Referencia; el ARA_TOKEN real va en el env del pool php-fpm, NO en el webroot."
     }
   ],
   "needs_review": [

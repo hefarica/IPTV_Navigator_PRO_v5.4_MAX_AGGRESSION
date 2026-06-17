@@ -1,0 +1,46 @@
+%% OMEGA ARA + URL-2 — full system (Council-safe cherry-pick, 2026-06-16)
+flowchart TB
+  subgraph DEVICE["Fire TV / ONN 4K (Android, shell-user UID 2000)"]
+    PLAYER["IPTV player\n(OTT Navigator / Kodi / VLC)"]
+    ARA["ARA on-device\nape-qoe-agent.sh\nQoE-up + SSE-down + FSM"]
+    STATE["state.db (ficheros)\nledger idempotente\nlast-good allowlist\nFSM"]
+    ARA --- STATE
+  end
+
+  subgraph LAN["Host LAN (no el VPS — NAT)"]
+    WD["host-qoe-watchdog.ps1\n+ adb-keepalive (mDNS)\nADB autorizado (RSA)"]
+    BOOT["bootstrap_ara_android.sh\n(solo si ADB autorizado;\nsino ARA_BOOTSTRAP_REQUIRED)"]
+  end
+
+  subgraph VPS["VPS 178.156.147.234 (nginx + php-fpm 8.3)"]
+    XRAY["Xray :8443 (tunel del cliente\nHACIA el VPS, no bypass)"]
+    NGINX["nginx shield/intercept\n+ Lua body-filter (manifest)\n+ bandwidth_reactor (telemetria)"]
+    CE["conviva-event.php\n(ingest QoE + correlacion IP->canal)\n+ hook Phase G GATEADO"]
+    MESH["ape_mesh.php\nape_insert_delta / ape_ara_heartbeat\nape_pq_should_emit_ara_rollback"]
+    SSE["events-sse.php\n/ara/events (auth Bearer)\nstreaming push de deltas"]
+    DB[("conviva.db (SSOT)\npolicy_deltas\nara_heartbeats\nchannel_pq_profile")]
+    PG["Phase G PQ->SDR\nflag APE_PQ_ROLLBACK_ENABLED=0\nanti-flap >=2 incid + cooldown"]
+  end
+
+  %% URL-1 data path (a traves del VPS)
+  PLAYER -- "URL-1: manifest+segmentos\n(VLESS+Reality)" --> XRAY --> NGINX
+  NGINX -- "manifest mutado\n(variante/CODECS)" --> PLAYER
+
+  %% URL-2 control bus (streaming + data-push)
+  ARA -- "QoE up (POST fire-and-forget)" --> CE
+  CE --> MESH
+  MESH --> DB
+  PG -. "delta SDR_FORCE\n(solo flag ON + anti-flap)" .-> DB
+  CE -. PG
+  DB --> SSE
+  SSE == "SSE down: push de deltas\n(conexion abierta, curl -N)" ==> ARA
+  ARA -- "aplica SOLO device_settings allowlisted\n(hdr_conversion / frame-rate / display_color_mode[amlogic])" --> PLAYER
+
+  %% supervision
+  WD -. "wake + re-bootstrap (mDNS)" .-> ARA
+  BOOT -. "push agente (1 vez, ADB autorizado)" .-> ARA
+
+  %% limite honesto
+  LIMIT["LIMITE: una playlist sola NO instala app,\nNO da permisos, NO abre ADB. Requiere\nbootstrap autorizado -> sino ARA_BOOTSTRAP_REQUIRED"]:::warn
+  LIMIT -. ARA
+  classDef warn fill:#fff3cd,stroke:#d39e00,color:#663d00;

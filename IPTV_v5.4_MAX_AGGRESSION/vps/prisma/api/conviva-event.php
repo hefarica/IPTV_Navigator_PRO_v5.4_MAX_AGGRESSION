@@ -117,6 +117,36 @@ try {
         'qoe_score' => $result['qoe_score'],
         'decision'  => $result['decision'],
     ]);
+
+    // ── OMEGA ARA URL-2: Phase G PQ->SDR rollback delta (Council-safe, GATEADO) ──
+    // Additive + fire-and-forget. APE_PQ_ROLLBACK_ENABLED=0 por defecto => cero cambio.
+    // Nunca afecta la respuesta ni el dispatch. Anti-flap: >=2 incidentes + cooldown.
+    // El generador PQ->SDR (channel_pq_profile) y el dispatch original quedan INTACTOS.
+    try {
+        if (@is_file(__DIR__ . '/../lib/ape_mesh.php')) { require_once __DIR__ . '/../lib/ape_mesh.php'; }
+        if (function_exists('ape_ara_rollback_enabled') && ape_ara_rollback_enabled()) {
+            $chId  = isset($event['channel']['id']) ? (string)$event['channel']['id'] : '';
+            $vst   = isset($event['data']['vst_ms']) ? (int)$event['data']['vst_ms'] : 0;
+            $qoe   = isset($result['qoe_score']) ? (int)$result['qoe_score'] : 100;
+            $etype = isset($event['event_type']) ? (string)$event['event_type'] : '';
+            $damage = ($qoe <= 8) || ($vst > 8000)
+                   || in_array($etype, array('error', 'decoder_error'), true)
+                   || (isset($result['decision']) && stripos((string)$result['decision'], 'survival') !== false);
+            if ($chId !== '' && $damage && function_exists('ape_pq_record_incident')) {
+                ape_pq_record_incident($chId, $vst); // contador Phase G existente (solo con flag ON)
+                if (function_exists('ape_pq_should_emit_ara_rollback') && ape_pq_should_emit_ara_rollback($chId)
+                    && @is_file(__DIR__ . '/phase_g_delta_hook.php')) {
+                    require_once __DIR__ . '/phase_g_delta_hook.php';
+                    ape_phase_g_emit_delta($event, 'phase_g_rollback', array(
+                        'reason' => 'qoe_black_screen_or_vst_or_decoder_error',
+                        'qoe_score' => $qoe, 'vst_ms' => $vst, 'source' => 'conviva-event',
+                    ));
+                }
+            }
+        }
+    } catch (\Throwable $eg) {
+        error_log('[conviva-event] ARA phase-g delta skipped: ' . $eg->getMessage());
+    }
 } catch (Throwable $e) {
     // Log to error_log only (do not leak details to client)
     error_log('[conviva-event] dispatch error: ' . $e->getMessage());

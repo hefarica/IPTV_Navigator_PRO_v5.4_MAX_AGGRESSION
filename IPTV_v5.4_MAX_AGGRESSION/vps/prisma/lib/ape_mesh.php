@@ -270,3 +270,170 @@ if (!function_exists('ape_mesh_presets')) {
         return array($streamInfo, $health, $ct);
     }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * OMEGA ARA URL-2 — policy-deltas bus (Council-safe cherry-pick, 2026-06-16).
+ * APPEND-ONLY · additive (todo if(!function_exists)) · DB canónica = conviva.db
+ * (NUNCA una ape_url2.db paralela). Players ciegos a #EXT-X-APE-*; el ARA aplica
+ * SOLO device_settings allowlisted. No reemplaza nada del bloque de arriba.
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+if (!function_exists('ape_policy_db_path')) {
+    function ape_policy_db_path() {
+        if (class_exists('ConvivaPersistence') && defined('ConvivaPersistence::DEFAULT_DB_PATH')) {
+            return ConvivaPersistence::DEFAULT_DB_PATH;
+        }
+        $env = getenv('CONVIVA_DB_PATH');
+        if (is_string($env) && $env !== '') { return $env; }
+        return '/opt/netshield/data/conviva.db';
+    }
+}
+
+if (!function_exists('ape_policy_db')) {
+    function ape_policy_db() {
+        $path = ape_policy_db_path();
+        $dir = dirname($path);
+        if (!is_dir($dir)) { @mkdir($dir, 0775, true); }
+        $pdo = new PDO('sqlite:' . $path, null, null, array(
+            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+        ));
+        $pdo->exec('PRAGMA journal_mode=WAL');
+        $pdo->exec('PRAGMA busy_timeout=3000');
+        ape_policy_ensure_tables($pdo);
+        return $pdo;
+    }
+}
+
+if (!function_exists('ape_policy_ensure_tables')) {
+    function ape_policy_ensure_tables(PDO $pdo) {
+        $pdo->exec("CREATE TABLE IF NOT EXISTS policy_deltas (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            created_at INTEGER NOT NULL,
+            expires_at INTEGER NULL,
+            target_device_id TEXT NULL,
+            channel_id TEXT NULL,
+            delta_type TEXT NOT NULL,
+            priority INTEGER NOT NULL DEFAULT 50,
+            payload_json TEXT NOT NULL,
+            applied_count INTEGER NOT NULL DEFAULT 0,
+            source TEXT NOT NULL DEFAULT 'conviva-event'
+        )");
+        $pdo->exec("CREATE INDEX IF NOT EXISTS idx_policy_deltas_target
+            ON policy_deltas(target_device_id, channel_id, id)");
+        $pdo->exec("CREATE INDEX IF NOT EXISTS idx_policy_deltas_expires
+            ON policy_deltas(expires_at)");
+        $pdo->exec("CREATE TABLE IF NOT EXISTS ara_heartbeats (
+            device_id TEXT PRIMARY KEY,
+            last_seen INTEGER NOT NULL,
+            channel_id TEXT NULL,
+            player TEXT NULL,
+            ara_version TEXT NULL,
+            state TEXT NULL,
+            caps_json TEXT NULL,
+            last_error TEXT NULL
+        )");
+    }
+}
+
+if (!function_exists('ape_normalize_channel_id')) {
+    function ape_normalize_channel_id($channel_id) {
+        $s = strtolower(trim((string)$channel_id));
+        $s = preg_replace('/\s+/', '_', $s);
+        $s = preg_replace('/[^a-z0-9_.\-]/', '', $s);
+        return $s !== '' ? $s : 'unknown';
+    }
+}
+
+if (!function_exists('ape_insert_delta')) {
+    function ape_insert_delta($device_id, $channel_id, $delta_type, array $payload, array $opts = array()) {
+        $pdo = ape_policy_db();
+        $now = time();
+        $ttl = isset($opts['ttl_seconds']) ? (int)$opts['ttl_seconds'] : 900;
+        $expires = $ttl > 0 ? $now + $ttl : null;
+        $priority = isset($opts['priority']) ? (int)$opts['priority'] : 50;
+        $source = isset($opts['source']) ? (string)$opts['source'] : 'conviva-event';
+        $ch = $channel_id !== null ? ape_normalize_channel_id($channel_id) : null;
+        $payload['_meta'] = array('created_at' => $now, 'source' => $source, 'schema' => 'ape.policy_delta.v1');
+        $stmt = $pdo->prepare('INSERT INTO policy_deltas
+            (created_at, expires_at, target_device_id, channel_id, delta_type, priority, payload_json, source)
+            VALUES (:created_at, :expires_at, :device, :channel, :type, :priority, :payload, :source)');
+        $stmt->execute(array(
+            ':created_at' => $now,
+            ':expires_at' => $expires,
+            ':device' => $device_id ?: null,
+            ':channel' => $ch,
+            ':type' => $delta_type,
+            ':priority' => $priority,
+            ':payload' => json_encode($payload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE),
+            ':source' => $source,
+        ));
+        return (int)$pdo->lastInsertId();
+    }
+}
+
+if (!function_exists('ape_ara_heartbeat')) {
+    function ape_ara_heartbeat($device_id, array $data = array()) {
+        $pdo = ape_policy_db();
+        $stmt = $pdo->prepare('INSERT INTO ara_heartbeats
+            (device_id, last_seen, channel_id, player, ara_version, state, caps_json, last_error)
+            VALUES (:device_id, :last_seen, :channel_id, :player, :version, :state, :caps, :err)
+            ON CONFLICT(device_id) DO UPDATE SET
+              last_seen=excluded.last_seen, channel_id=excluded.channel_id, player=excluded.player,
+              ara_version=excluded.ara_version, state=excluded.state, caps_json=excluded.caps_json,
+              last_error=excluded.last_error');
+        $stmt->execute(array(
+            ':device_id' => (string)$device_id,
+            ':last_seen' => time(),
+            ':channel_id' => isset($data['channel_id']) ? ape_normalize_channel_id($data['channel_id']) : null,
+            ':player' => isset($data['player']) ? $data['player'] : null,
+            ':version' => isset($data['ara_version']) ? $data['ara_version'] : null,
+            ':state' => isset($data['state']) ? $data['state'] : null,
+            ':caps' => isset($data['caps']) ? json_encode($data['caps'], JSON_UNESCAPED_SLASHES) : null,
+            ':err' => isset($data['last_error']) ? $data['last_error'] : null,
+        ));
+    }
+}
+
+/* ── Anti-flap del rollback PQ->SDR del ARA (MUST-FIX del council) ──────────────
+ * Reusa la tabla channel_pq_profile existente (incident_count/last_incident_at) SIN
+ * tocar ape_pq_record_incident. Flag OFF por defecto = cero cambio de comportamiento. */
+if (!function_exists('ape_ara_rollback_enabled')) {
+    function ape_ara_rollback_enabled() { return getenv('APE_PQ_ROLLBACK_ENABLED') === '1'; }
+}
+
+if (!function_exists('ape_pq_incident_state')) {
+    function ape_pq_incident_state($chId) {
+        $out = array('count' => 0, 'last_at' => 0);
+        if (!function_exists('ape_pq_db')) { return $out; }
+        $db = ape_pq_db(); if (!$db) { return $out; }
+        try {
+            $st = $db->prepare("SELECT incident_count, last_incident_at FROM channel_pq_profile WHERE channel_id = :c LIMIT 1");
+            $st->execute(array(':c' => (string)$chId));
+            $r = $st->fetch(PDO::FETCH_ASSOC);
+            if ($r) { $out['count'] = (int)$r['incident_count']; $out['last_at'] = (int)$r['last_incident_at']; }
+        } catch (\Throwable $e) {}
+        return $out;
+    }
+}
+
+/* True SOLO si: flag ON + incidentes >= MIN(>=2) + cooldown desde el último delta phase_g del canal. */
+if (!function_exists('ape_pq_should_emit_ara_rollback')) {
+    function ape_pq_should_emit_ara_rollback($chId) {
+        if (!ape_ara_rollback_enabled()) { return false; }
+        $min = (int)(getenv('APE_PQ_ROLLBACK_INCIDENTS_MIN') ?: 2);
+        $min = $min < 2 ? 2 : $min;
+        $cooldown = (int)(getenv('APE_PQ_ROLLBACK_COOLDOWN_SECONDS') ?: 1800);
+        $st = ape_pq_incident_state($chId);
+        if ($st['count'] < $min) { return false; }
+        try {
+            $db = ape_policy_db();
+            $q = $db->prepare("SELECT MAX(created_at) AS last FROM policy_deltas WHERE source='phase_g' AND channel_id = :c");
+            $q->execute(array(':c' => ape_normalize_channel_id($chId)));
+            $r = $q->fetch(PDO::FETCH_ASSOC);
+            $last = ($r && $r['last']) ? (int)$r['last'] : 0;
+            if ($last > 0 && (time() - $last) < $cooldown) { return false; }
+        } catch (\Throwable $e) {}
+        return true;
+    }
+}
