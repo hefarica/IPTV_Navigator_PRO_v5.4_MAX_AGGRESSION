@@ -95,6 +95,19 @@ if (isset($event['channel']['id'])
     }
 }
 
+// ── OMEGA: tuning AI-PQ por content-type — ANTES de validar (no depende del canal; por device+fps).
+// El channel=auto del ARA falla la validacion; pero el perfil PQ es device-level + content-based, asi
+// que se decide/empuja aqui (fire-and-forget, anti-spam por /dev/shm). VPS DECIDE, ARA aplica el VPP.
+try {
+    if (isset($event['event_type']) && $event['event_type'] === 'quality_change' && !empty($event['device_id'])) {
+        if (@is_file(__DIR__ . '/../lib/ape_mesh.php')) { require_once __DIR__ . '/../lib/ape_mesh.php'; }
+        if (function_exists('ape_pq_push_for_device')) {
+            $ctp = ape_ct_from_qoe(isset($event['data']) && is_array($event['data']) ? $event['data'] : array());
+            ape_pq_push_for_device((string)$event['device_id'], $ctp);
+        }
+    }
+} catch (\Throwable $eqp) { error_log('[conviva-event] PQ-ct early push skipped: ' . $eqp->getMessage()); }
+
 // Validate against schema (Phase 1: minimal validator; Phase 2: full JSON Schema)
 $errors = ConvivaQoEServer::validateEvent($event);
 if (!empty($errors)) {
