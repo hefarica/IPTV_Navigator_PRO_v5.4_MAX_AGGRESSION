@@ -324,7 +324,18 @@ local floor_ok, floor_err = pcall(function()
         -- Codec = T1 de la cascada (respeta override CSV del widget). HDR=PQ SOLO si
         -- el perfil lo pide (cfg.virtual_4k_hdr=="ACTIVE", showroom P0/P1) → forzar PQ
         -- sobre SDR = pantallazo negro; el SDR→HDR real lo hace el TV por ADB.
-        if cfg.virtual_4k == "ACTIVE" and #kept_variants > 0 then
+        -- LEVER B (2026-06-18, owner override del PQ-incondicional): guard anti-fake-4K-sobre-AVC (FZ-01 / TG-2).
+        -- P0/P1 = premium agresivo (siempre fuerza 4K+PQ). P2-P5 = SOLO si la variante top NO es AVC/H264
+        -- (HEVC/AV1/sin-codec -> permitido). Evita declarar hvc1+4K+PQ sobre bytes AVC (spinner/negro).
+        local _v4k_allow = true
+        if cfg.virtual_4k == "ACTIVE" and #kept_variants > 0 and not (profile == "P0" or profile == "P1") then
+            local _tc = (kept_variants[1].codecs or ""):lower()
+            if _tc:find("avc1", 1, true) or _tc:find("h264", 1, true) then
+                _v4k_allow = false
+                ngx.log(ngx.WARN, "[LEVER-B] virtual_4k SKIP (P2-P5 fuente AVC -> no fake-4K/PQ): profile=" .. tostring(profile))
+            end
+        end
+        if cfg.virtual_4k == "ACTIVE" and #kept_variants > 0 and _v4k_allow then
             local v4k_codec = nil
             pcall(function()
                 local cc = require("ape_codec_cascade")
