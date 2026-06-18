@@ -9,7 +9,9 @@ import android.widget.TextView
 class MainActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        AgentService.start(this)
+        // F1: consent VPN (1 vez) antes de arrancar el servicio que sube el túnel WireGuard full-tunnel
+        val prep = android.net.VpnService.prepare(this)
+        if (prep != null) startActivityForResult(prep, REQ_VPN) else AgentService.start(this)
         val cfg = Config(this)
         val tv = TextView(this).apply {
             setPadding(48, 48, 48, 48)
@@ -30,4 +32,11 @@ class MainActivity : Activity() {
         }
         setContentView(ScrollView(this).apply { addView(tv) })
     }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: android.content.Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == REQ_VPN && resultCode == RESULT_OK) AgentService.start(this)
+    }
+
+    companion object { const val REQ_VPN = 9901 }
 }

@@ -232,6 +232,24 @@
       "note": "F3 — URL-2 SSE stream (presets cada N seg, bounded, X-Accel-Buffering:no, autopista-safe)"
     },
     {
+      "id": "php-prisma-ara-enroll",
+      "src": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/ara-enroll.php",
+      "dest": "/var/www/html/prisma/api/ara-enroll.php",
+      "type": "php",
+      "post": "none",
+      "enabled": true,
+      "note": "F0 — endpoint auto-enrol WG (valida env APE_ENROLL_SECRET, encola /dev/shm/ape_enroll, poll worker). DEPLOYED+LIVE 2026-06-18 (enroll 200, ip 10.200.0.5). Post-actions MANUALES una vez: include snippets/prisma-ara-enroll.conf en sites-enabled/default + env[APE_ENROLL_SECRET] en php-fpm pool + systemctl enable --now ape-enroll-worker + mkdir /var/log/ape-enroll /dev/shm/ape_enroll"
+    },
+    {
+      "id": "nginx-snippet-ara-enroll",
+      "src": "IPTV_v5.4_MAX_AGGRESSION/vps/nginx/snippets/prisma-ara-enroll.conf",
+      "dest": "/etc/nginx/snippets/prisma-ara-enroll.conf",
+      "type": "nginx-conf",
+      "post": "nginx-reload",
+      "enabled": true,
+      "note": "F0 — location = /ara/enroll (FastCGI a ara-enroll.php). Requiere include manual una vez en el server-block 443 junto a prisma-ara-events.conf"
+    },
+    {
       "id": "lua-device-state-writer",
       "src": "IPTV_v5.4_MAX_AGGRESSION/vps/nginx/lua/ape_device_state_writer.lua",
       "dest": "/etc/nginx/lua/ape_device_state_writer.lua",
