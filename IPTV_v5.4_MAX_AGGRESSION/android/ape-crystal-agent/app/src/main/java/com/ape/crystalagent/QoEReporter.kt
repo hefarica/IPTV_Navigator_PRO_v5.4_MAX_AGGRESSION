@@ -46,7 +46,7 @@ class QoEReporter(private val cfg: Config) {
                 .put("codec", codec)
                 .put("resolution", resolution)
                 .put("bitrate_kbps", bitrateKbps)
-                .put("player", "crystalagent-kotlin"))
+                .put("player", "ExoPlayer"))
         } catch (e: Exception) { Log.w(TAG, "quality_change err: ${e.message}") }
     }
 
@@ -65,11 +65,11 @@ class QoEReporter(private val cfg: Config) {
     private fun postEvent(eventType: String, data: JSONObject) {
         if (!cfg.hasToken()) return
         val payload = JSONObject()
-            .put("version", "1.1")
+            .put("version", "1.0")                       // F3 2026-06-19: server exige "1.0" (era "1.1" -> 400)
             .put("session_id", "apk-${cfg.deviceId}")
             .put("device_id", cfg.deviceId)
-            .put("player", "crystalagent-kotlin")
-            .put("channel", JSONObject().put("id", "auto"))
+            .put("player", "ExoPlayer")                  // F3: en VALID_PLAYERS (el APK usa ExoPlayer/media3); era "crystalagent-kotlin" -> 400
+            .put("channel", JSONObject().put("id", "auto").put("name", "auto"))  // F3: server exige channel.name no vacío
             .put("event_type", eventType)
             .put("timestamp_ms", System.currentTimeMillis())
             .put("data", data)
