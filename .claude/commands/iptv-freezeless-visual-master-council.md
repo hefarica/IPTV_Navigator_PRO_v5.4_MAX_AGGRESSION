@@ -724,3 +724,29 @@ b964cc36902839baacb37e23627fb88556b8f28c8790043e4f369db828ffdffe  SUPREME_MASTER
 c2422afc8888138a8f9c60d8eedab0edabfe59f2de8733fe63594a9a550f105a  SUPREME_MASTER_COUNCIL_EMBEDDED_RICH_IDATA_OMEGA.md
 276dc997e8c244c3ba5844c202ac090359e4e3098b1a02214c3ff786d0791d0b  SUPREME_MASTER_COUNCIL_EMBEDDED_VALIDATION.json
 96c611d6dbf39ac444de15920206eb1bd0a9347f2c98c996af7c8f36d18749de  validate_supreme_master_council_embedded.py
+
+---
+
+## ⚡ DIRECTIVA CODEC SUPREMO — Máxima Calidad Extrema de Imagen SIEMPRE (2026-06-19, owner LOCKED)
+
+> **Integración OBLIGATORIA al 100% en TODA especialidad, comando y archivo del VPS — sin excepción, en cada acción.**
+> No basta la mejor RESOLUCIÓN ni la familia de codec: hay que ELEGIR y APLICAR la **MEJOR VERSIÓN del codec**
+> disponible — la más moderna y la que mejor se ve — por **HEURÍSTICA** entre TODAS las variantes que el
+> proveedor SIRVE de verdad (probadas). Nunca conformarse con una variante inferior cuando hay una superior.
+
+**Escalera de supremacía** (modernidad × calidad visual × decodabilidad REAL del device):
+`VVC/H.266 (si real+decodable) > Dolby Vision (dvh1/dvhe) > HEVC Main12 (hvc1.4) > HEVC Main10 (hvc1.2) > AV1 10-bit (av01.*.10) > HEVC Main8 (hvc1.1) > AV1 8-bit > AVC High (avc1.640028) > AVC`
+\+ el nivel/bit-depth/HDR (DV/HDR10+/HLG/PQ) más alto que la resolución pueda cargar (Ley Cardinal 1).
+
+**Heurística obligatoria:** detectar TODAS las variantes del manifest REAL (probe voraz por canal), puntuar
+cada una por la escalera, elegir la SUPREMA y reordenar/declarar esa. HEVC tiene miles de variantes —
+**ninguna mejor variante puede pasarse por alto.** Buscar SIEMPRE técnicas nuevas y mejores. El probe MIDE.
+
+**Truth-guard (no negociable):** "aplicar la mejor versión" = elegir/reordenar/declarar la mejor variante
+**REAL** que el proveedor sirve y que el **decoder del device SOPORTA**. PROHIBIDO inventar un codec/nivel que
+el proveedor no sirve o el decoder no decodifica (= freeze 2026-06-08 · GOLDEN RULE hvc1/hev1 · Ley Cardinal 1
+Nivel↔Resolución). Sin transcode en el VPS. FREEZELESS intacto. El realce real lo da el VPP del device
+(AI-SR/AI-PQ); el VPS SELECCIONA/COMANDA metadata, no pixeles.
+
+**Conciencia universal:** cada acción de cada comando/skill lleva esta búsqueda de imagen extrema como
+prioridad. Si una decisión puede subir el tier de codec sin romper FREEZELESS → **SE SUBE, SIEMPRE.**
