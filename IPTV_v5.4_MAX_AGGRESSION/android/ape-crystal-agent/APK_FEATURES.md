@@ -74,7 +74,16 @@ Toolchain instalado y verificado: **JDK 17 + Android SDK 34 + Gradle 8.5 + AGP 8
 - ✅ **F4 parcial (de los 3 docs):** `QoEReporter` (heartbeat/quality_change → conviva-event), `IDataClient` (ape-match round-trip),
   `SelfUpdateManager` (/ara/version + /ara/agent.apk + sha256 + FileProvider) — cableados en `AgentService`, compilan.
 - ✅ Ya existía: `FeedForwardClient` (SSE IDA), `SettingsApplier` (allowlist), `Config`, `BootReceiver`, `AgentService`.
-- ⏳ **Pendiente (las piezas grandes):** F1 WireGuard embebido + auto-enrol (full-tunnel), F2 ADB self-grant (Shizuku-style) +
-  ampliar `SettingsApplier` a 13 levers + SoC-check, F3 player (ExoPlayer + `ListLoader` streaming).
+- ✅ **F1 CONSTRUIDO+COMMITEADO (2026-06-19, commits 66836f4+61e3703):** `WireGuardManager` (GoBackend VpnService full-tunnel
+  + DNS 10.200.0.1 + keepalive), `EnrollClient` (POST /ara/enroll, KeyPair WG, idempotente), `Secure` (EncryptedSharedPreferences).
+  Lado-servidor F0 DONE+vivo (wg0 up, firestick-cali AFTKRT enrolado 10.200.0.6 + 118 MiB por el túnel, audit E2E).
+- ✅ **F2 CONSTRUIDO:** `AdbSelfGrantManager` (dadb localhost → pm grant WRITE_SECURE_SETTINGS, Shizuku-style sin PC),
+  `SettingsApplier` ~26 levers VPP (EXCEDE el target 13) + try-both-ns (global/system/secure existence-check, council wyj9fvcrf).
+- ✅ **F3 CONSTRUIDO:** `PlayerActivity`/`ApePlayer` (ExoPlayer media3 HEVC-first: setPreferredVideoMimeTypes H265/AV1 +
+  no mixed-mime adaptiveness = fix del fallback-a-AVC de OTT), `ListLoader` (parse streaming, nunca 1GB en RAM, URL verbatim SHIELDED).
+- ⏳ **Lo que REALMENTE falta (gap real, council w09095st6):** `OnboardingFlow.kt` (NO existe) — la máquina de estados que
+  CABLEA F1+F2+F3: consent VPN → enroll → wg.up → detectar WRITE_SECURE_SETTINGS → invocar `AdbSelfGrantManager.selfGrant()`
+  (hoy SIN caller) → SettingsApplier → ListLoader → grilla → PlayerActivity. + UI de grilla/zap (F3 MVP, no paridad TiviMate).
+  + confirmar build CI verde con el grafo completo (WG+dadb+media3) — el "4.11 MB" de arriba es de un estado anterior SIN esas deps.
 - Reconciliación con los docs: Item 1 `/ara/events` YA LIVE; Item 3 `/lists/` deny-all NO era el bloqueo (GET ya abierto);
   los docs OMITEN WireGuard → se mantiene (decisión LOCKED del propietario).

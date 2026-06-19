@@ -1,0 +1,9 @@
+{
+  "versionCode": 1,
+  "versionName": "2.0.0",
+  "sha256": "91cde550462090fb1b3931b3acdbeee8d39875d01fb1ab88c833f4d56b6c67aa",
+  "size": 34192621,
+  "apk": "/ara/agent.apk",
+  "min_android": 22,
+  "note": "Sincronizado con el VPS (fuente de verdad, APK 34MB publicado). Se actualiza al publicar nuevo APK: sha256=sha256sum agent.apk; versionCode=build.gradle.kts."
+}

@@ -5734,7 +5734,7 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
         h['X-Subscription-Tier'] = 'ULTRA_PREMIUM_4K_HDR';
         h['X-Content-Access'] = 'UNRESTRICTED';
         h['X-DRM-System'] = 'Widevine_L1';
-        h['X-License-Server'] = 'https://widevine.omega-crystal.internal/license';
+        h['X-License-Server'] = 'https://widevine.edge-cdn.net/license'; // F8 2026-06-19: engine fingerprint 'omega-crystal' neutralizado (EXTHTTP trap T11 — candidato del 403/WAF)
         h['Origin'] = 'https://www.netflix.com';
         h['Referer'] = 'https://www.netflix.com/';
         // h['Sec-Fetch-Dest'] = 'video';
@@ -5751,7 +5751,7 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
         h['X-Startup-Latency-Max'] = '500';
         h['X-Zapping-Time-Max'] = '800';
         h['X-Quality-Reporting'] = 'true';
-        h['X-Metrics-Endpoint'] = 'https://qos.omega-crystal.internal/report';
+        h['X-Metrics-Endpoint'] = 'https://qos.edge-cdn.net/report'; // F8 2026-06-19: engine fingerprint 'omega-crystal' neutralizado (EXTHTTP trap T11 — candidato del 403/WAF)
         h['X-Telemetry-Interval'] = '1000';
 
         return h; // ~100 headers exactos del DEMO
