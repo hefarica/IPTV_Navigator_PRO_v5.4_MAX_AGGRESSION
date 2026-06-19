@@ -28,6 +28,10 @@ if not ok_bwf then bw_floor_mod = nil end
 -- NO reenvían X-APE-Profile (OkHttp/ExoPlayer). require defensivo → módulo ausente = comportamiento de hoy.
 local ok_pr, profile_resolver = pcall(require, "ape_profile_resolver")
 if not ok_pr then profile_resolver = nil end
+-- ADITIVO 2026-06-19 (Science-Safe): capa device_state que ENVUELVE el resolver vivo. require defensivo →
+-- módulo ausente = comportamiento de hoy. Solo añade un fallback (header→arg→stream_id→DEVSTATE→P2) sin quitar nada.
+local ok_prs, profile_resolver_ss = pcall(require, "ape_profile_resolver_science_safe")
+if not ok_prs then profile_resolver_ss = nil end
 
 -- ═══ STAGE 0: VIDEO BYPASS (BLINDAJE DE MEMORIA) ════════════════════
 local uri = ngx.var.uri or ""
@@ -138,6 +142,15 @@ local floor_ok, floor_err = pcall(function()
         local ok_rv, resolved = pcall(function() return profile_resolver.resolve(ngx.var.uri) end)
         if ok_rv and type(resolved) == "string" and resolved:match("^P[0-5]$") then
             profile = resolved
+        end
+    end
+    -- ADITIVO 2026-06-19 (Science-Safe): si sigue sin perfil, intentar device_state por IP
+    -- (/dev/shm/ape_devstate_<ip>.json). Puramente aditivo + pcall: módulo/archivo ausente o fallo → P2 de hoy.
+    -- Solo FALLBACK tras header/arg/stream_id → NUNCA pisa un perfil ya resuelto. No cambia ninguna ruta existente.
+    if not profile and profile_resolver_ss and type(profile_resolver_ss.profile_from_devstate) == "function" then
+        local ok_ds, ds = pcall(function() return profile_resolver_ss.profile_from_devstate(ngx.var.remote_addr) end)
+        if ok_ds and type(ds) == "string" and ds:match("^P[0-5]$") then
+            profile = ds
         end
     end
     if not profile then profile = "P2" end   -- default final (= comportamiento de hoy si no resolvió)
