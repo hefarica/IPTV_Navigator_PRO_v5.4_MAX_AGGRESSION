@@ -1,0 +1,29 @@
+# APE WireGuard auto-enroll worker (F0) — ROOT.
+# Procesa /dev/shm/ape_enroll (cola escrita por ara-enroll.php / www-data).
+# Necesita root: `wg set`, escribir /etc/wireguard, /etc/ape-realtime-guardian, systemctl kill -HUP.
+#
+# Deploy:
+#   install -D -m 0755 ape-enroll-worker.py /opt/ape-enroll/ape-enroll-worker.py
+#   install -D -m 0644 ape-enroll-worker.service /etc/systemd/system/ape-enroll-worker.service
+#   systemctl daemon-reload && systemctl enable --now ape-enroll-worker.service
+[Unit]
+Description=APE WireGuard auto-enroll worker (root; processes /dev/shm/ape_enroll)
+After=network-online.target wg-quick@wg0.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 /opt/ape-enroll/ape-enroll-worker.py
+Restart=always
+RestartSec=3
+User=root
+# Endpoint/DNS del WG (override si cambia el VPS)
+Environment=APE_WG_ENDPOINT=178.156.147.234:51820
+Environment=APE_WG_DNS=10.200.0.1
+# Hardening acotado (necesita escribir estos paths)
+ProtectHome=yes
+ReadWritePaths=/etc/wireguard /etc/ape-realtime-guardian /dev/shm /var/log/ape-enroll
+NoNewPrivileges=no
+
+[Install]
+WantedBy=multi-user.target
