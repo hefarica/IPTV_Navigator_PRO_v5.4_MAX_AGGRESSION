@@ -232,6 +232,21 @@ dar color shift (no freeze). El propietario lo aceptó explícitamente bajo MAX 
 el daemon pone el display en HDR y la declaración casa. Acompañar de `hvc1.2.*` (Main10, 10-bit) cuando el
 codec lo permita para coherencia del pipeline PQ.
 
+### Refinamiento LEVER B (2026-06-18, owner override) — virtual_4k guard anti-fake-4K-sobre-AVC (VPS Lua)
+
+El propietario refinó la doctrina PQ-incondicional **en la capa del VPS Lua** (`combined_body_filter.lua`):
+el rewrite `virtual_4k` (que declara `RESOLUTION=3840x2160 + hvc1.2.4.L153.B0 + VIDEO-RANGE=PQ` sobre la
+variante top) ahora está **GUARDADO**:
+- **P0/P1 (premium)** → agresivo SIEMPRE (fuerza 4K+PQ; MAX IMAGE intacto).
+- **P2/P3/P4/P5** → SOLO si la variante top **NO es AVC/H264** (HEVC/AV1/sin-codec → permitido). Si el
+  proveedor sirve AVC en esos tiers, NO se declara `hvc1`+4K+PQ sobre bytes AVC → elimina el riesgo **FZ-01**
+  (spinner/pantallazo en players que decodifican el codec declarado sin el daemon ADB).
+
+**Qué NO cambia:** el GENERADOR sigue emitiendo `VIDEO-RANGE=PQ` en el STREAM-INF de la lista (URL-1)
+incondicionalmente (decisión 2026-06-16); el refinamiento es SOLO el rewrite del VPS Lua. Aditivo,
+`pcall`-safe, reversible. Deployed + `nginx -t` + reload OK (backup `leverB_20260618T205656Z`).
+Decisión del propietario vía `/iptv-freezeless-visual-master-council --mode generate` (LEVER B).
+
 ### HDCP-Adaptive Engine (2026-05-19) — reemplaza la prohibición universal
 
 `HDCP-LEVEL=TYPE-1` ahora se emite **por defecto agresivo** en cada `EXT-X-STREAM-INF`,

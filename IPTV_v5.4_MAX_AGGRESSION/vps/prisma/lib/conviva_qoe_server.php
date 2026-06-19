@@ -77,6 +77,7 @@ class ConvivaQoEServer
         'error',
         'end_session',
         'heartbeat',
+        'content_mode_delta',
     ];
 
     // ─── Allowed player enum ─────────────────────────────────────────────────

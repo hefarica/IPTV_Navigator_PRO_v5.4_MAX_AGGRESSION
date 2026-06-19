@@ -88,6 +88,24 @@ while ((time() - $start) < $dur) {
 
     $mesh = ape_mesh_presets($chId, $si, $health, $ctTick);
     $device_settings = ape_mesh_device_settings($si);
+    // PUENTE #1 (Canonical 4K Manifest, council wyj9fvcrf) — merge del ultimo device-setting delta para
+    // que el APK aplique los 13 levers VPP (hoy 2). Flag-gated (APE_4K_BRIDGE_ENABLED=1; default OFF =
+    // cero cambio). Dedup por KEY: NUNCA pisa los 2 globals -> el Phase G de abajo SIEMPRE gana. Silent-fail
+    // (autopista: nunca aborta el SSE). El payload completo entra al md5 dedup -> no spamea si no cambia.
+    if (isset($device) && $device !== '' && getenv('APE_4K_BRIDGE_ENABLED') === '1'
+        && function_exists('ape_ff_device_settings_from_delta')) {
+        try {
+            $extra = ape_ff_device_settings_from_delta($device);
+            if (!empty($extra)) {
+                $have = array();
+                foreach ($device_settings as $d) { $t = explode(' ', $d); if (isset($t[1])) $have[$t[1]] = true; }
+                foreach ($extra as $d) {
+                    $t = explode(' ', $d);
+                    if (isset($t[1]) && !isset($have[$t[1]])) { $device_settings[] = $d; $have[$t[1]] = true; }
+                }
+            }
+        } catch (\Throwable $e) { /* autopista: degrada a los 2 globals */ }
+    }
     // Phase G — si el canal esta blacklisted (pantallazo negro detectado), degradar hdr_conversion a 0
     // SOLO para ese canal (FREEZELESS: revierte lo que rompe, mantiene PQ incondicional en el resto).
     $pqBlacklisted = ape_pq_is_blacklisted($chId);

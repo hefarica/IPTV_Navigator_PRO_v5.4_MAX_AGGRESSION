@@ -324,7 +324,24 @@ local floor_ok, floor_err = pcall(function()
         -- Codec = T1 de la cascada (respeta override CSV del widget). HDR=PQ SOLO si
         -- el perfil lo pide (cfg.virtual_4k_hdr=="ACTIVE", showroom P0/P1) → forzar PQ
         -- sobre SDR = pantallazo negro; el SDR→HDR real lo hace el TV por ADB.
-        if cfg.virtual_4k == "ACTIVE" and #kept_variants > 0 then
+        -- LEVER B (2026-06-18): guard honesto anti-fake-4K-sobre-AVC (FZ-01 / TG-2).
+        -- CHINA BOX FAKE-4K (2026-06-18, ORDEN EXPLÍCITA del propietario — override de LEVER B):
+        -- el dueño ordena declarar 4K FAKE en los canales que NO son 4K real (= fuentes AVC/H264).
+        -- CHINA_BOX_FAKE_4K=true => el guard de LEVER B queda DESACTIVADO: virtual_4k dispara también
+        -- sobre AVC en P2-P5 (fake-4K en "los que no hay 4K real"). REVERSIBLE: CHINA_BOX_FAKE_4K=false
+        -- restaura LEVER B (no fake-4K sobre AVC) en 1 línea. Caveat ACEPTADO por el dueño: 4K+PQ sobre
+        -- AVC SDR puede dar color-shift/negro en players que honran STREAM-INF; sin red Phase-G en 302→CDN
+        -- directo. virtual_4k SOLO actúa en MASTER playlists (inerte si el proveedor responde 302→CDN media).
+        local CHINA_BOX_FAKE_4K = true   -- <== APAGADO en 1 línea: false restaura el guard honesto LEVER B
+        local _v4k_allow = true
+        if (not CHINA_BOX_FAKE_4K) and cfg.virtual_4k == "ACTIVE" and #kept_variants > 0 and not (profile == "P0" or profile == "P1") then
+            local _tc = (kept_variants[1].codecs or ""):lower()
+            if _tc:find("avc1", 1, true) or _tc:find("h264", 1, true) then
+                _v4k_allow = false
+                ngx.log(ngx.WARN, "[LEVER-B] virtual_4k SKIP (P2-P5 fuente AVC -> no fake-4K/PQ): profile=" .. tostring(profile))
+            end
+        end
+        if cfg.virtual_4k == "ACTIVE" and #kept_variants > 0 and _v4k_allow then
             local v4k_codec = nil
             pcall(function()
                 local cc = require("ape_codec_cascade")

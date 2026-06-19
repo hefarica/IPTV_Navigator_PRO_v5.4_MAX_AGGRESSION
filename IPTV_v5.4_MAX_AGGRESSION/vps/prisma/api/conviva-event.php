@@ -156,7 +156,7 @@ try {
             $vst   = isset($event['data']['vst_ms']) ? (int)$event['data']['vst_ms'] : 0;
             $qoe   = isset($result['qoe_score']) ? (int)$result['qoe_score'] : 100;
             $etype = isset($event['event_type']) ? (string)$event['event_type'] : '';
-            $damage = ($qoe <= 8) || ($vst > 8000)
+            $damage = ($qoe <= 8) || ($vst > 6000) /* Phase G VST 8000->6000ms: alinea con riskScore=6000 (ape_mesh.php); Fire TV 4K Max negocia HDR <2s, >6s = el canal no soporta PQ -> rollback honesto */
                    || in_array($etype, array('error', 'decoder_error'), true)
                    || (isset($result['decision']) && stripos((string)$result['decision'], 'survival') !== false);
             if ($chId !== '' && $damage && function_exists('ape_pq_record_incident')) {

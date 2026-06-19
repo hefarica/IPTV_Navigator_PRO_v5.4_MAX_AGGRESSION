@@ -89,6 +89,33 @@
       "note": "Perfiles P0-P5 (esquema flat agresivo). escalation:ACTIVE en P2 (Council wids9po6o). Lo carga combined_body_filter (cache 60s; nginx-reload lo refresca)."
     },
     {
+      "id": "config-4k-manifest",
+      "src": "IPTV_v5.4_MAX_AGGRESSION/vps/ape-uhdx/ape_4k_manifest.json",
+      "dest": "/etc/ape-uhdx/ape_4k_manifest.json",
+      "type": "config",
+      "post": "none",
+      "enabled": true,
+      "note": "SSOT Canonical 4K Manifest (declara 4K + settings, UNA vez). Leido on-demand por push_4k_manifest.php (Plano B device) y manifest-4k.php (Plano A player). enabled:false apaga ambos planos."
+    },
+    {
+      "id": "php-push-4k-manifest",
+      "src": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/cli/push_4k_manifest.php",
+      "dest": "/var/www/html/prisma/cli/push_4k_manifest.php",
+      "type": "php",
+      "post": "none",
+      "enabled": true,
+      "note": "Plano B: lee el SSOT -> ape_insert_delta (device-setting) -> /ara/events SSE -> ARA settings put (VPP MT8696). CLI."
+    },
+    {
+      "id": "php-manifest-4k",
+      "src": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/manifest-4k.php",
+      "dest": "/var/www/html/prisma/api/manifest-4k.php",
+      "type": "php",
+      "post": "none",
+      "enabled": true,
+      "note": "Plano A: endpoint URL-2 que renderiza master M3U8 4K envolviendo ?u= verbatim (SHIELDED). Inerte hasta routing por VPS."
+    },
+    {
       "id": "lua-combined-body-filter",
       "src": "IPTV_v5.4_MAX_AGGRESSION/vps/nginx/lua/combined_body_filter.lua",
       "dest": "/etc/nginx/lua/combined_body_filter.lua",
@@ -230,6 +257,24 @@
       "post": "none",
       "enabled": true,
       "note": "F3 — URL-2 SSE stream (presets cada N seg, bounded, X-Accel-Buffering:no, autopista-safe)"
+    },
+    {
+      "id": "php-prisma-ara-enroll",
+      "src": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/ara-enroll.php",
+      "dest": "/var/www/html/prisma/api/ara-enroll.php",
+      "type": "php",
+      "post": "none",
+      "enabled": true,
+      "note": "F0 — endpoint auto-enrol WG (valida env APE_ENROLL_SECRET, encola /dev/shm/ape_enroll, poll worker). DEPLOYED+LIVE 2026-06-18 (enroll 200, ip 10.200.0.5). Post-actions MANUALES una vez: include snippets/prisma-ara-enroll.conf en sites-enabled/default + env[APE_ENROLL_SECRET] en php-fpm pool + systemctl enable --now ape-enroll-worker + mkdir /var/log/ape-enroll /dev/shm/ape_enroll"
+    },
+    {
+      "id": "nginx-snippet-ara-enroll",
+      "src": "IPTV_v5.4_MAX_AGGRESSION/vps/nginx/snippets/prisma-ara-enroll.conf",
+      "dest": "/etc/nginx/snippets/prisma-ara-enroll.conf",
+      "type": "nginx-conf",
+      "post": "nginx-reload",
+      "enabled": true,
+      "note": "F0 — location = /ara/enroll (FastCGI a ara-enroll.php). Requiere include manual una vez en el server-block 443 junto a prisma-ara-events.conf"
     },
     {
       "id": "lua-device-state-writer",

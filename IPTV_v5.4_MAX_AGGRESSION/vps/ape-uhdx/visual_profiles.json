@@ -405,7 +405,12 @@
       "hdr_probe_failed",
       "display_hdr_capability_absent"
     ],
-    "conviva_style_note": "Métricas QoE propietarias estilo Conviva; no usa software ni servicio Conviva."
+    "conviva_style_note": "Métricas QoE propietarias estilo Conviva; no usa software ni servicio Conviva.",
+    "_china_box_tier": "P0_TRUTHFUL_SOURCE_SAFE",
+    "_guard": "PRIVATE_LAB_ONLY - no emitir en STREAM-INF ni en delta de device",
+    "_memc_note": "memc=null en MT8696 (probe vivo) - documentacion futura, NO emitir memc_mode",
+    "_ai_sr_max": 3,
+    "_ai_pq_max": 3
   },
   "P1_STABLE_1080P_PREMIUM": {
     "description": "Estabilidad premium para señales problemáticas: baja riesgo antes que agresividad visual.",
@@ -669,7 +674,12 @@
       "hdr_probe_failed",
       "display_hdr_capability_absent"
     ],
-    "conviva_style_note": "Métricas QoE propietarias estilo Conviva; no usa software ni servicio Conviva."
+    "conviva_style_note": "Métricas QoE propietarias estilo Conviva; no usa software ni servicio Conviva.",
+    "_china_box_tier": "P1_STABLE_1080P_PREMIUM",
+    "_guard": "PRIVATE_LAB_ONLY - no emitir en STREAM-INF ni en delta de device",
+    "_memc_note": "memc=null en MT8696 (probe vivo) - documentacion futura, NO emitir memc_mode",
+    "_ai_sr_max": 3,
+    "_ai_pq_max": 3
   },
   "P2_PERCEPTUAL_4K_BALANCED": {
     "description": "Equilibrio perceptual: parece más nítido y UHD sin mentir en modo seguro; permite hints de upscaler del device.",
@@ -934,7 +944,12 @@
       "hdr_probe_failed",
       "display_hdr_capability_absent"
     ],
-    "conviva_style_note": "Métricas QoE propietarias estilo Conviva; no usa software ni servicio Conviva."
+    "conviva_style_note": "Métricas QoE propietarias estilo Conviva; no usa software ni servicio Conviva.",
+    "_china_box_tier": "P2_PERCEPTUAL_4K_BALANCED",
+    "_guard": "PRIVATE_LAB_ONLY - no emitir en STREAM-INF ni en delta de device",
+    "_memc_note": "memc=null en MT8696 (probe vivo) - documentacion futura, NO emitir memc_mode",
+    "_ai_sr_max": 3,
+    "_ai_pq_max": 3
   },
   "P3_CRYSTAL_UHD_SAFE": {
     "description": "Máxima calidad segura cuando hay decodificación HW, buffer OK y capacidades probadas.",
@@ -1199,7 +1214,12 @@
       "hdr_probe_failed",
       "display_hdr_capability_absent"
     ],
-    "conviva_style_note": "Métricas QoE propietarias estilo Conviva; no usa software ni servicio Conviva."
+    "conviva_style_note": "Métricas QoE propietarias estilo Conviva; no usa software ni servicio Conviva.",
+    "_china_box_tier": "P3_CRYSTAL_UHD_SAFE",
+    "_guard": "PRIVATE_LAB_ONLY - no emitir en STREAM-INF ni en delta de device",
+    "_memc_note": "memc=null en MT8696 (probe vivo) - documentacion futura, NO emitir memc_mode",
+    "_ai_sr_max": 3,
+    "_ai_pq_max": 3
   },
   "P4_CRYSTAL_UHD_EXTREME": {
     "description": "Perfil extremo controlado para fuente/capacidades fuertes; prioriza apariencia premium sin aceptar blur ni artefactos.",
@@ -1464,7 +1484,12 @@
       "hdr_probe_failed",
       "display_hdr_capability_absent"
     ],
-    "conviva_style_note": "Métricas QoE propietarias estilo Conviva; no usa software ni servicio Conviva."
+    "conviva_style_note": "Métricas QoE propietarias estilo Conviva; no usa software ni servicio Conviva.",
+    "_china_box_tier": "P4_CRYSTAL_UHD_EXTREME",
+    "_guard": "PRIVATE_LAB_ONLY - no emitir en STREAM-INF ni en delta de device",
+    "_memc_note": "memc=null en MT8696 (probe vivo) - documentacion futura, NO emitir memc_mode",
+    "_ai_sr_max": 3,
+    "_ai_pq_max": 3
   },
   "P5_OLED_UHD_VISUAL_FIRST_EXPERIMENTAL": {
     "description": "Modo agresivo/experimental: busca imagen brutal OLED-UHD mediante metadatos, flags, directivas y realce perceptual, con fallback seguro si aparecen artefactos.",
@@ -1736,7 +1761,12 @@
       "qoe_gate": "visual_first_guarded",
       "qoe_source": "ape_proprietary_conviva_style_engine"
     },
-    "conviva_style_note": "Métricas QoE propietarias estilo Conviva; no usa software ni servicio Conviva."
+    "conviva_style_note": "Métricas QoE propietarias estilo Conviva; no usa software ni servicio Conviva.",
+    "_china_box_tier": "P5_OLED_UHD_VISUAL_FIRST_EXPERIMENTAL",
+    "_guard": "PRIVATE_LAB_ONLY - no emitir en STREAM-INF ni en delta de device",
+    "_memc_note": "memc=null en MT8696 (probe vivo) - documentacion futura, NO emitir memc_mode",
+    "_ai_sr_max": 3,
+    "_ai_pq_max": 3
   },
   "P6_CHINA_BOX_8K_ULTRA_AGGRESSIVE": {
     "description": "Perfil ultra-agresivo inspirado en pipelines Huawei/Hisilicon y TV boxes Android chinos 4K/8K: maximiza apariencia OLED/UHD mediante floor_lock, virtual_4k/8k y hdr_intent, usando metadata privada APE y gates estrictos para no declarar HDR público sin probe real.",
@@ -1944,7 +1974,13 @@
       "LibreELEC/Kodi recomiendan whitelisting de modos y refresh matching; en muchos casos conviene UI 1080p y escalado por TV.",
       "ExoPlayer/Jellyfin muestran que la selección HDR requiere guardas; forceHighestSupportedBitrate es workaround acotado, no regla global."
     ],
-    "conviva_style_note": "Métricas QoE propietarias estilo Conviva; no usa software ni servicio Conviva."
+    "conviva_style_note": "Métricas QoE propietarias estilo Conviva; no usa software ni servicio Conviva.",
+    "_china_box_tier": "P6_CHINA_BOX_8K_ULTRA_AGGRESSIVE",
+    "_guard": "PRIVATE_LAB_ONLY - no emitir en STREAM-INF ni en delta de device",
+    "_memc_note": "memc=null en MT8696 (probe vivo) - documentacion futura, NO emitir memc_mode",
+    "_ai_sr_max": 3,
+    "_ai_pq_max": 3,
+    "_reference_only": true
   },
   "TRUTHFUL_SOURCE_SAFE": {
     "alias_of": "P0_TRUTHFUL_SOURCE_SAFE"
@@ -1978,7 +2014,12 @@
     "virtual_4k_hdr": "ACTIVE",
     "floor_lock": "ACTIVE",
     "floor_bps": 18000000,
-    "codec_cascade": "ACTIVE"
+    "codec_cascade": "ACTIVE",
+    "_china_box_tier": "P0_SHOWROOM_FLASH_4K",
+    "_guard": "PRIVATE_LAB_ONLY - no emitir en STREAM-INF ni en delta de device",
+    "_memc_note": "memc=null en MT8696 (probe vivo) - documentacion futura, NO emitir memc_mode",
+    "_ai_sr_max": 3,
+    "_ai_pq_max": 3
   },
   "P1_DAILY_EXTREME_4K": {
     "upscaler": "FSRCNNX",
@@ -1987,7 +2028,12 @@
     "virtual_4k_hdr": "ACTIVE",
     "floor_lock": "ACTIVE",
     "floor_bps": 14000000,
-    "codec_cascade": "ACTIVE"
+    "codec_cascade": "ACTIVE",
+    "_china_box_tier": "P1_DAILY_EXTREME_4K",
+    "_guard": "PRIVATE_LAB_ONLY - no emitir en STREAM-INF ni en delta de device",
+    "_memc_note": "memc=null en MT8696 (probe vivo) - documentacion futura, NO emitir memc_mode",
+    "_ai_sr_max": 3,
+    "_ai_pq_max": 3
   },
   "P2_SAFE_COMPAT": {
     "upscaler": "AdaptiveSharpen",
@@ -1997,7 +2043,12 @@
     "floor_lock": "BYPASS",
     "floor_bps": 8000000,
     "codec_cascade": "ACTIVE",
-    "escalation": "ACTIVE"
+    "escalation": "ACTIVE",
+    "_china_box_tier": "P2_SAFE_COMPAT",
+    "_guard": "PRIVATE_LAB_ONLY - no emitir en STREAM-INF ni en delta de device",
+    "_memc_note": "memc=null en MT8696 (probe vivo) - documentacion futura, NO emitir memc_mode",
+    "_ai_sr_max": 3,
+    "_ai_pq_max": 3
   },
   "P3_HD_BOOST": {
     "upscaler": "ESPCN-L4",
@@ -2006,7 +2057,12 @@
     "virtual_4k_hdr": "ACTIVE",
     "floor_lock": "BYPASS",
     "floor_bps": 6000000,
-    "codec_cascade": "ACTIVE"
+    "codec_cascade": "ACTIVE",
+    "_china_box_tier": "P3_HD_BOOST",
+    "_guard": "PRIVATE_LAB_ONLY - no emitir en STREAM-INF ni en delta de device",
+    "_memc_note": "memc=null en MT8696 (probe vivo) - documentacion futura, NO emitir memc_mode",
+    "_ai_sr_max": 3,
+    "_ai_pq_max": 3
   },
   "P4_HD_LITE": {
     "upscaler": "FSRCNN",
@@ -2015,7 +2071,12 @@
     "virtual_4k_hdr": "ACTIVE",
     "floor_lock": "BYPASS",
     "floor_bps": 4000000,
-    "codec_cascade": "ACTIVE"
+    "codec_cascade": "ACTIVE",
+    "_china_box_tier": "P4_HD_LITE",
+    "_guard": "PRIVATE_LAB_ONLY - no emitir en STREAM-INF ni en delta de device",
+    "_memc_note": "memc=null en MT8696 (probe vivo) - documentacion futura, NO emitir memc_mode",
+    "_ai_sr_max": 3,
+    "_ai_pq_max": 3
   },
   "P5_SD_RESCUE": {
     "upscaler": "Lanczos",
@@ -2024,6 +2085,11 @@
     "virtual_4k_hdr": "ACTIVE",
     "floor_lock": "BYPASS",
     "floor_bps": 2000000,
-    "codec_cascade": "ACTIVE"
+    "codec_cascade": "ACTIVE",
+    "_china_box_tier": "P5_SD_RESCUE",
+    "_guard": "PRIVATE_LAB_ONLY - no emitir en STREAM-INF ni en delta de device",
+    "_memc_note": "memc=null en MT8696 (probe vivo) - documentacion futura, NO emitir memc_mode",
+    "_ai_sr_max": 3,
+    "_ai_pq_max": 3
   }
 }

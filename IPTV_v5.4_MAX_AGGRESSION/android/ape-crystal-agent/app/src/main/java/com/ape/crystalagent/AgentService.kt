@@ -23,15 +23,51 @@ class AgentService : Service() {
     private lateinit var cfg: Config
     private lateinit var ff: FeedForwardClient
     private lateinit var applier: SettingsApplier
+    private lateinit var qoe: QoEReporter
+    private lateinit var idata: IDataClient
+    private lateinit var selfUpdate: SelfUpdateManager
+    private lateinit var enrollClient: EnrollClient
+    private lateinit var wg: WireGuardManager
+    private lateinit var ultra: UltraEnhancePipeline
 
     override fun onCreate() {
         super.onCreate()
         cfg = Config(this)
         applier = SettingsApplier(this)
         ff = FeedForwardClient(cfg)
+        qoe = QoEReporter(cfg)
+        idata = IDataClient(cfg)
+        selfUpdate = SelfUpdateManager(this, cfg)
+        enrollClient = EnrollClient(this, cfg)
+        wg = WireGuardManager(this)
+        ultra = UltraEnhancePipeline(this, cfg)
         startForeground(NID, buildNotif())
-        ff.start(scope) { ds, _ -> applier.apply(ds) }
-        Log.i(TAG, "START dev=${cfg.deviceId} vps=${cfg.vpsBase} token=${if (cfg.hasToken()) "set" else "MISSING"}")
+        // F1: auto-enrol WireGuard + full-tunnel (consent VPN ya concedido por MainActivity)
+        scope.launch(Dispatchers.IO) {
+            val wc = enrollClient.ensureEnrolled()
+            if (wc != null) wg.up(wc)
+            else Log.w(TAG, "WG sin config — sin túnel (autopista: la reproducción sigue)")
+        }
+        // F6: negociar motores UltraEnhance (SoC) + reportar capacidades al VPS (no bloquea nada)
+        scope.launch(Dispatchers.Default) {
+            if (cfg.enhanceEnabled) {
+                val lv = ultra.negotiate()
+                qoe.reportCapabilities(lv)
+            }
+        }
+        // IDA C2: device_settings del VPS → hardware; reporta quality_change si trae codec/res
+        ff.start(scope) { ds, obj ->
+            applier.apply(ds)
+            if (cfg.enhanceEnabled) ultra.applyVpsHints(obj)   // hints content/codec/fps/lcevc → motores
+            val codec = obj.optString("codec_hint", "")
+            val res = obj.optString("resolution_hint", "")
+            if (codec.isNotEmpty() || res.isNotEmpty()) {
+                qoe.reportQualityChange(codec.ifEmpty { "unknown" }, res.ifEmpty { "unknown" })
+            }
+        }
+        qoe.start(scope)          // VUELTA C2: heartbeat/liveness → ara_heartbeats
+        selfUpdate.start(scope)   // auto-update desde /ara/version + /ara/agent.apk
+        Log.i(TAG, "FULL SYSTEM START dev=${cfg.deviceId} vps=${cfg.vpsBase} token=${if (cfg.hasToken()) "set" else "MISSING"}")
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -50,7 +86,7 @@ class AgentService : Service() {
         super.onTaskRemoved(rootIntent)
     }
 
-    override fun onDestroy() { ff.stop(); scope.cancel(); super.onDestroy() }
+    override fun onDestroy() { ff.stop(); qoe.stop(); selfUpdate.stop(); ultra.stop(); wg.down(); scope.cancel(); super.onDestroy() }
     override fun onBind(intent: Intent?): IBinder? = null
 
     private fun buildNotif(): Notification {

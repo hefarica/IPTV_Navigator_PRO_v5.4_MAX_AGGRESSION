@@ -43,6 +43,10 @@ class Config(ctx: Context) {
 
     fun hasToken() = token.isNotEmpty()
 
+    /** A/B del UltraEnhance Engine (F6). Default ON; apagable por adb/URL-2 sin reinstalar. */
+    val enhanceEnabled: Boolean get() = sp.getBoolean("enhance_enabled", true)
+    fun setEnhance(b: Boolean) { sp.edit().putBoolean("enhance_enabled", b).apply() }
+
     companion object {
         const val TAG = "ApeConfig"
         const val DEFAULT_VPS = "https://iptv-ape.duckdns.org"
