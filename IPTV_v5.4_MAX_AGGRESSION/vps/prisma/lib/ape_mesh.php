@@ -492,3 +492,56 @@ if (!function_exists('ape_pq_push_for_device')) {
             array('source' => 'mesh-pq-ct', 'ttl_seconds' => 1800, 'priority' => 80));
     }
 }
+
+/* ── PUENTE #1 policy_delta -> feedforward (Canonical 4K Manifest). Council wyj9fvcrf, GO_WITH_FIXES.
+ * Lee el ULTIMO device-setting vigente del device y lo emite como "<ns> <key> <val>" para que el APK
+ * FeedForwardClient aplique los 13 levers VPP (hoy solo 2 globals). Read-only, silent-fail, cache 5s.
+ * NS=GLOBAL: PROBADO por dump 'settings list global' del MT8696 (backend/onn_settings_global_pq.txt)
+ * que trae TODOS los pq_, ai_sr, aipq, ai_pic_mode=3 en GLOBAL. ai_pq_mode NO existe en el SoC -> el
+ * real es ai_pic_mode (dump L2): se emiten AMBOS. NO transcode (settings put = post-proceso VPP). */
+if (!function_exists('ape_ff_settings_ns_map')) {
+    function ape_ff_settings_ns_map() {
+        return array(
+            'match_content_frame_rate' => 'global', 'hdr_conversion_mode' => 'global',
+            'pq_ai_sr_enable' => 'global', 'ai_sr_level' => 'global', 'aisr_enable' => 'global',
+            'aipq_enable' => 'global', 'pq_sharpness_enable' => 'global',
+            'pq_ai_dnr_enable' => 'global', 'pq_dnr_enable' => 'global', 'pq_nr_enable' => 'global',
+            'pq_ai_fbc_enable' => 'global', 'pq_hdr_enable' => 'global', 'pq_hdr_mode' => 'global',
+            'ai_pq_mode' => 'global', 'ai_pic_mode' => 'global',
+        );
+    }
+}
+if (!function_exists('ape_ff_device_settings_from_delta')) {
+    function ape_ff_device_settings_from_delta($device) {
+        static $cache = array(); static $cacheTs = array();
+        $device = preg_replace('/[^0-9A-Za-z_.\-]/', '', (string)$device);
+        if ($device === '') return array();
+        $now = time();
+        if (isset($cache[$device]) && ($now - $cacheTs[$device]) <= 5) return $cache[$device];
+        $out = array();
+        try {
+            $db = ape_policy_db();
+            $st = $db->prepare("SELECT payload_json FROM policy_deltas
+                WHERE delta_type='device-setting'
+                  AND (expires_at IS NULL OR expires_at >= :now)
+                  AND (target_device_id IS NULL OR target_device_id='' OR target_device_id='*' OR target_device_id=:dev)
+                ORDER BY id DESC LIMIT 1");
+            $st->execute(array(':now' => $now, ':dev' => $device));
+            $row = $st->fetch(PDO::FETCH_ASSOC);
+            if ($row && !empty($row['payload_json'])) {
+                $p = json_decode((string)$row['payload_json'], true);
+                $s = (is_array($p) && isset($p['settings']) && is_array($p['settings'])) ? $p['settings'] : array();
+                $nsMap = ape_ff_settings_ns_map();
+                foreach ($s as $k => $v) {
+                    $k = (string)$k;
+                    if (!isset($nsMap[$k])) continue;               // allowlist por key (espeja el APK)
+                    if (!(is_int($v) || is_float($v) || (is_string($v) && preg_match('/^-?\d{1,4}$/', $v)))) continue;
+                    $out[] = $nsMap[$k] . ' ' . $k . ' ' . (string)(int)$v;
+                    if ($k === 'ai_pq_mode') $out[] = 'global ai_pic_mode ' . (string)(int)$v; // nombre real MT8696
+                }
+            }
+        } catch (\Throwable $e) { $out = array(); }                 // silent-fail: caen los 2 globals
+        $cache[$device] = $out; $cacheTs[$device] = $now;
+        return $out;
+    }
+}

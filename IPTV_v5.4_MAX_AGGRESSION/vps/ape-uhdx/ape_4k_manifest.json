@@ -1,0 +1,100 @@
+{
+  "schema": "ape.canonical_4k_manifest.v1",
+  "version": "2026-06-18.1",
+  "title": "APE Canonical 4K Manifest — SSOT (declara 4K + todos los settings, UNA sola vez)",
+  "enabled": true,
+  "ttl_seconds": 1800,
+  "_doc": "Fuente UNICA de verdad. El 4K + los settings se definen UNA vez aqui; dos proyecciones via URL-2: plane_b_device (policy_delta -> ARA settings put; LLEGA HOY al device, independiente del routing del player) y plane_a_player (master M3U8; listo, INERTE hasta que el player rutee por el VPS). HONESTO: el MT8696 ya esta maxeado (auditoria wzg168f25, 0 levers nuevos); esto CONSOLIDA + DECLARA + ENFORCE, no inventa pixeles. Settings = REALES, copiados de ape_mesh.php ape_pq_settings_for_ct() + push_pq_profile.php. NO transcode. NO toca la URL de playback (SHIELDED verbatim). AUTOPISTA: emision fire-and-forget.",
+
+  "declare": {
+    "resolution": "3840x2160",
+    "codec": "hvc1.2.4.L153.B0",
+    "audio_codec": "mp4a.40.2",
+    "video_range": "PQ",
+    "frame_rate": 60,
+    "bandwidth": 28000000,
+    "average_bandwidth": 22000000,
+    "cicp": { "color_primaries": 9, "transfer_characteristics": 16, "matrix_coefficients": 9 },
+    "_cicp_note": "9=BT.2020 primaries / 16=ST2084 (PQ) transfer / 9=BT.2020 non-constant matrix. Ley Cardinal 1: L153 = Main10 L5.1 = 4K@60 (nivel correcto para 3840x2160)."
+  },
+
+  "plane_b_device": {
+    "delta_type": "device-setting",
+    "soc_gate": "mt8696",
+    "edid_gate_min_height": 2160,
+    "content_mode": "max_image",
+    "_levers_note": "13 levers VPP MediaTek REALES (verbatim de ape_pq_settings_for_ct). COBERTURA HONESTA (council wjxd8ynmw): este policy_delta lo consume el agente .sh (ape-qoe-agent, poll /ara/events) que INTENTA los 13 con settings put (allowlist + existence-check por SoC); en MT8696 ya estan maxeados => CONSOLIDA + ENFORCE (anti-drift), NO sube pixeles nuevos. El plano APK (FeedForwardClient) HOY lee ape-feedforward-stream.php = SOLO 2 globals (match_content_frame_rate + hdr_conversion_mode); para que el APK reciba los 13 falta puentear policy_deltas -> feedforward (follow-up documentado). Post-proceso real sobre el frame decodificado, sin transcode.",
+    "content_types": {
+      "max_image": {
+        "pq_ai_sr_enable": 1, "ai_sr_level": 3, "ai_pq_mode": 3, "aipq_enable": 1,
+        "pq_sharpness_enable": 1, "pq_ai_dnr_enable": 1, "pq_dnr_enable": 1, "pq_nr_enable": 1,
+        "pq_ai_fbc_enable": 1, "pq_hdr_enable": 1, "pq_hdr_mode": 1,
+        "match_content_frame_rate": 1, "hdr_conversion_mode": 1
+      },
+      "sports": {
+        "pq_ai_sr_enable": 1, "ai_sr_level": 3, "ai_pq_mode": 3, "aipq_enable": 1,
+        "pq_sharpness_enable": 1, "pq_ai_dnr_enable": 0, "pq_dnr_enable": 0, "pq_nr_enable": 0,
+        "pq_ai_fbc_enable": 1, "pq_hdr_enable": 1, "pq_hdr_mode": 1,
+        "match_content_frame_rate": 1, "hdr_conversion_mode": 1
+      },
+      "compressed": {
+        "pq_ai_sr_enable": 1, "ai_sr_level": 3, "ai_pq_mode": 3, "aipq_enable": 1,
+        "pq_sharpness_enable": 0, "pq_ai_dnr_enable": 1, "pq_dnr_enable": 1, "pq_nr_enable": 1,
+        "pq_ai_fbc_enable": 1, "pq_hdr_enable": 1, "pq_hdr_mode": 1,
+        "match_content_frame_rate": 1, "hdr_conversion_mode": 1
+      },
+      "off": {
+        "pq_ai_sr_enable": 0, "ai_sr_level": 0, "ai_pq_mode": 0, "aipq_enable": 0,
+        "pq_sharpness_enable": 0, "pq_ai_dnr_enable": 0, "pq_dnr_enable": 0, "pq_nr_enable": 0,
+        "pq_ai_fbc_enable": 0, "pq_hdr_enable": 0, "pq_hdr_mode": 0,
+        "match_content_frame_rate": 0, "hdr_conversion_mode": 0
+      },
+      "_aliases": "lowres_boost / cinema / news / default => identicos a max_image (todo al maximo). off => todos 0 (rollback PER-CONTENT-TYPE via 'push_4k_manifest.php off'). CAVEAT plano APK (puente #1, council wyj9fvcrf): el merge dedup-por-key NO pisa los 2 globals (hdr_conversion_mode/match_content_frame_rate) -> 'off' via APK apaga solo los 11 levers PQ, NO esos 2; el apagado real de esos 2 = Phase G (blacklist) / APE_4K_BRIDGE_ENABLED OFF / enabled:false. El plano .sh (/ara/events) SI aplica los 13 ceros. Rollback GLOBAL de ambos planos = enabled:false."
+    },
+    "globals": [
+      "global match_content_frame_rate 1",
+      "global hdr_conversion_mode 1"
+    ],
+    "carried_format_levers_soc_gated": {
+      "_note": "CARGADOS pero gateados ('si son necesarias'). Auditoria MT8696: estos NO existen o ya estan al techo en este SoC -> el ARA los RECHAZA (off-list/ausente). Se conservan para futuros SoC (amlogic/rtk/qcom). NO se empujan a mt8696.",
+      "color_depth": 12,
+      "hdmi_color_space": "bt2020",
+      "hdr_output_type": "auto",
+      "user_preferred_resolution_height": 2160,
+      "user_preferred_resolution_width": 3840
+    }
+  },
+
+  "plane_a_player": {
+    "_note": "Declaracion 4K canonica para el player. INERTE hasta que el player rutee por el VPS (hoy OTT va directo). El cascade per-canal completo (~948 tags) lo emite el generador; aqui va la declaracion + hints visuales clave (DRY, no se duplica la lista).",
+    "stream_inf": "BANDWIDTH=28000000,AVERAGE-BANDWIDTH=22000000,RESOLUTION=3840x2160,FRAME-RATE=60.000,CODECS=\"hvc1.2.4.L153.B0,mp4a.40.2\",VIDEO-RANGE=PQ,COLOR-PRIMARIES=9,TRANSFER-CHARACTERISTICS=16,MATRIX-COEFFICIENTS=9",
+    "visual_hints": {
+      "extvlcopt": [
+        "--codec=hevc",
+        "--avcodec-hw=any",
+        "--no-drop-late-frames",
+        "--no-skip-frames"
+      ],
+      "kodiprop": [
+        "inputstream.adaptive.stream_selection_type=manual-osd",
+        "inputstream.adaptive.max_resolution=3840x2160"
+      ],
+      "exthttp": {
+        "X-APE-Profile": "P2",
+        "X-APE-Codec-Preferred": "hvc1.2.4.L153.B0",
+        "X-APE-Video-Range": "PQ"
+      }
+    }
+  },
+
+  "safety": {
+    "reversible": "enabled:false apaga ambos planos en 1 linea",
+    "phase_g_rollback": true,
+    "idempotent": true,
+    "no_transcode": true,
+    "shielded_url_verbatim": true,
+    "autopista_fire_and_forget": true,
+    "soc_gate": "mt8696",
+    "edid_gate_min_height": 2160
+  }
+}

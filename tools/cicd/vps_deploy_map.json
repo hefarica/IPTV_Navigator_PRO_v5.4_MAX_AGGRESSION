@@ -89,6 +89,33 @@
       "note": "Perfiles P0-P5 (esquema flat agresivo). escalation:ACTIVE en P2 (Council wids9po6o). Lo carga combined_body_filter (cache 60s; nginx-reload lo refresca)."
     },
     {
+      "id": "config-4k-manifest",
+      "src": "IPTV_v5.4_MAX_AGGRESSION/vps/ape-uhdx/ape_4k_manifest.json",
+      "dest": "/etc/ape-uhdx/ape_4k_manifest.json",
+      "type": "config",
+      "post": "none",
+      "enabled": true,
+      "note": "SSOT Canonical 4K Manifest (declara 4K + settings, UNA vez). Leido on-demand por push_4k_manifest.php (Plano B device) y manifest-4k.php (Plano A player). enabled:false apaga ambos planos."
+    },
+    {
+      "id": "php-push-4k-manifest",
+      "src": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/cli/push_4k_manifest.php",
+      "dest": "/var/www/html/prisma/cli/push_4k_manifest.php",
+      "type": "php",
+      "post": "none",
+      "enabled": true,
+      "note": "Plano B: lee el SSOT -> ape_insert_delta (device-setting) -> /ara/events SSE -> ARA settings put (VPP MT8696). CLI."
+    },
+    {
+      "id": "php-manifest-4k",
+      "src": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/manifest-4k.php",
+      "dest": "/var/www/html/prisma/api/manifest-4k.php",
+      "type": "php",
+      "post": "none",
+      "enabled": true,
+      "note": "Plano A: endpoint URL-2 que renderiza master M3U8 4K envolviendo ?u= verbatim (SHIELDED). Inerte hasta routing por VPS."
+    },
+    {
       "id": "lua-combined-body-filter",
       "src": "IPTV_v5.4_MAX_AGGRESSION/vps/nginx/lua/combined_body_filter.lua",
       "dest": "/etc/nginx/lua/combined_body_filter.lua",
