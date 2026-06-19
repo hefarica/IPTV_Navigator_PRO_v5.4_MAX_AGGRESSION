@@ -124,6 +124,33 @@
       "enabled": true
     },
     {
+      "id": "lua-combined-body-filter-science-safe",
+      "src": "IPTV_v5.4_MAX_AGGRESSION/vps/nginx/lua/combined_body_filter_visual_science_safe.lua",
+      "dest": "/etc/nginx/lua/combined_body_filter_visual_science_safe.lua",
+      "type": "lua",
+      "post": "none",
+      "enabled": true,
+      "note": "Science-Safe NEW body filter. INSTALL-ONLY (post:none) => inert, NOT wired to any nginx hook. Activation = manual hook switch after VPS luac/resty + nginx -t + QoE review. Preserves AVC fallback, resolution-dominant ordering, passthrough on error."
+    },
+    {
+      "id": "lua-bandwidth-reactor-science-safe",
+      "src": "IPTV_v5.4_MAX_AGGRESSION/vps/nginx/lua/bandwidth_reactor_science_safe.lua",
+      "dest": "/etc/nginx/lua/bandwidth_reactor_science_safe.lua",
+      "type": "lua",
+      "post": "none",
+      "enabled": true,
+      "note": "Science-Safe reactor (de-escalates on bandwidth drop). INSTALL-ONLY (post:none) => inert until an explicit hook switch."
+    },
+    {
+      "id": "lua-ape-profile-resolver-science-safe",
+      "src": "IPTV_v5.4_MAX_AGGRESSION/vps/nginx/lua/ape_profile_resolver_science_safe.lua",
+      "dest": "/etc/nginx/lua/ape_profile_resolver_science_safe.lua",
+      "type": "lua",
+      "post": "none",
+      "enabled": true,
+      "note": "Science-Safe profile resolver. REUSES live ape_profile_resolver.lua + adds header/devstate layers. INSTALL-ONLY (post:none)."
+    },
+    {
       "id": "lua-quality-realtime",
       "src": "IPTV_v5.4_MAX_AGGRESSION/vps/nginx/lua/quality_realtime.lua",
       "dest": "/etc/nginx/lua/quality_realtime.lua",
