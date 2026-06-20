@@ -691,3 +691,26 @@ y la **REGLA LEGAL Y ÉTICA** (solo streams/proveedores autorizados).
 **Caveat técnico documentado (aceptado por el propietario):** declarar un codec/nivel que el decoder no
 soporta puede congelar/dropear el canal en players sin el daemon ADB. Decisión tomada con conocimiento
 pleno el 2026-06-20 vía selección explícita "Full literal fake, exactly as written".
+
+---
+
+## ⚡ DIRECTIVA TRANSCODE VPS PERMITIDO — VPS Pixel Processing Unlocked (2026-06-20, owner OVERRIDE)
+
+> **El propietario LEVANTA la cláusula "Sin transcode en el VPS" de la DIRECTIVA CODEC SUPREMO.
+> El procesamiento de PÍXELES en el VPS (decode → filtro → re-encode con FFmpeg: super-resolución,
+> HDR/WCG color science, LCEVC, denoise, sharpening) queda PERMITIDO.** Esto habilita los Agentes 3
+> (Pixel Processor) y 5-color (HDR FFmpeg) del documento "5 Agentes Expertos IPTV UHD Crystal 2026".
+
+**Supersede:** la frase "Sin transcode en el VPS" de la DIRECTIVA CODEC SUPREMO (2026-06-19). El resto de esa directiva (escalera de supremacía, GOLDEN RULE, Ley Cardinal 1) **sigue vigente**.
+
+**Forma de implementación OBLIGATORIA (física, no es preferencia — permiso ≠ física):**
+- **NUNCA inline en `body_filter_by_lua`.** Lua/nginx no decodifica video y un ffmpeg síncrono **bloquea el worker → freeze instantáneo** de todos los streams de ese worker. El código del PDF que mete ffmpeg en el body_filter es **no-funcional** y queda PROHIBIDO en esa forma.
+- **SIEMPRE como servicio async** (`systemd ape-crystal-transcode`): ffmpeg en proceso aparte, salida HLS a RAMdisk `/dev/shm/crystal/<chId>/`, y nginx sirve la variante transcodificada **solo** para los canales marcados.
+- **Opt-in por canal** (`crystal_transcode_control.json`, `enabled=true`): solo canales flagship marcados a propósito. **JAMÁS los 500** (físicamente imposible).
+- **GPU-gated / capacity-capped:** auto-detección de hwaccel (NVENC/VAAPI/Vulkan); **sin GPU = 1–2 canales** CPU x265; **8K real-time es inviable sin GPU** aunque esté permitido.
+
+**FREEZELESS-fallback (única salvaguarda que NO se levanta):** si el transcoder se atrasa o cae → nginx sirve el **passthrough original** de ese canal. **NUNCA un freeze.** Un overload de transcode degrada a passthrough, no funde la caja.
+
+**Lo que SIGUE vigente:** **NO CHANNEL LOSS** · **0 headers tóxicos** · **single-URL anti-509** · **REGLA LEGAL Y ÉTICA** (solo proveedores autorizados) · y **SHIELDED para todo canal NO marcado** (siguen verbatim/passthrough puro). El transcode termina el passthrough **solo** para los canales explícitamente flagueados — esos dejan de ser bytes verbatim del proveedor, aceptado por el propietario para ESOS canales.
+
+**Implementación:** servicio en `vps/crystal-8k/transcode/` (`ape_pixel_processor.py` async supervisor, `ape_hdr_color_science.py` color builder, `crystal_transcode_control.json` opt-in map, `ape-crystal-transcode.service` systemd, `nginx_transcode_serve.conf` con fallback passthrough). Gateado: requiere OK + `iptv-vps-touch-nothing` + backups + verificación de GPU antes de cualquier deploy.

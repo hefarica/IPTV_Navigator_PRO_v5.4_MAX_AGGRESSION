@@ -1,0 +1,28 @@
+# ape-crystal-transcode.service
+# APE Crystal VPS Transcode Supervisor (Agente 3 + 5-color).
+# Owner override 2026-06-20 (DIRECTIVA TRANSCODE VPS PERMITIDO).
+# Deploy: /etc/systemd/system/ape-crystal-transcode.service
+#
+# The CPU/Mem caps below are LOAD-BEARING for FREEZELESS: the transcoder must
+# NEVER be able to starve nginx (the passthrough/SHIELDED channels keep flowing).
+[Unit]
+Description=APE Crystal VPS Pixel Transcode Supervisor (opt-in, FREEZELESS-fallback)
+After=network-online.target nginx.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/ape-api-server/crystal
+Environment=CRYSTAL_CONTROL=/etc/ape/crystal_transcode_control.json
+ExecStart=/usr/bin/python3 /opt/ape-api-server/crystal/ape_pixel_processor.py
+Restart=always
+RestartSec=5
+# Keep nginx alive no matter what the transcoder does:
+Nice=10
+CPUWeight=40
+CPUQuota=300%
+MemoryMax=4G
+OOMScoreAdjust=600
+
+[Install]
+WantedBy=multi-user.target

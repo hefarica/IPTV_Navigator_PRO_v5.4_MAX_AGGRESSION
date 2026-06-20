@@ -1,0 +1,34 @@
+{
+  "_doc": "Opt-in per-channel VPS transcode control. Owner override 2026-06-20 (DIRECTIVA TRANSCODE VPS PERMITIDO). ONLY channels with enabled=true are transcoded; everything else stays SHIELDED passthrough. Deploy target: /etc/ape/crystal_transcode_control.json",
+  "_owner_override": "2026-06-20 VPS pixel transcode PERMITTED (async service only, opt-in, FREEZELESS passthrough fallback)",
+  "_warning": "Real-time transcode is GPU/CPU bound. With no GPU keep max_concurrent_cpu=1. 8K real-time needs a GPU. Flag flagship channels ONLY, never the full catalog.",
+  "global": {
+    "out_root": "/dev/shm/crystal",
+    "max_concurrent_cpu": 1,
+    "max_concurrent_gpu": 4,
+    "segment_seconds": 4,
+    "hls_list_size": 6,
+    "motion_interp_default": false,
+    "freezeless_fallback": true
+  },
+  "channels": [
+    {
+      "channel_id": "EXAMPLE_FLAGSHIP_4K",
+      "enabled": false,
+      "profile": "CRYSTAL_4K",
+      "hdr_mode": "SDR_TO_HDR_UPCONVERT",
+      "motion_interp": false,
+      "source_url": "REPLACE_WITH_VERBATIM_PROVIDER_URL",
+      "_note": "Set enabled=true and a real verbatim provider URL to transcode this one channel. SHIELDED is terminated only for this channel."
+    },
+    {
+      "channel_id": "EXAMPLE_FLAGSHIP_8K",
+      "enabled": false,
+      "profile": "CRYSTAL_8K",
+      "hdr_mode": "HDR_TO_HDR_OPTIMIZE",
+      "motion_interp": false,
+      "source_url": "REPLACE_WITH_VERBATIM_PROVIDER_URL",
+      "_note": "8K real-time requires a GPU. Leave disabled on a CPU-only VPS."
+    }
+  ]
+}

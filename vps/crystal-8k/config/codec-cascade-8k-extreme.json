@@ -1,0 +1,114 @@
+{
+  "_comment": "APE CRYSTAL v8.0 — Codec Cascade with 8K Tiers — FIXED (Cardinal Law 1)",
+  "_version": "8.0-EXTREME-FIXED",
+  "_date": "2026-06-20",
+  "_fixes": "Council S14/S3: tier0 L157->L183 (8K@60=6.1), tier1 L153->L180 (8K@30=6.0), tier2 L153->L156 (4K@120=5.2). idc=30xlevel.",
+  "_gold_rule": "codec = hvc1.* for STREAM-INF; codec_hev1 = hev1.* for KODIPROP/EXTVLCOPT only",
+
+  "cascade": [
+    { "tier": 0, "tier_name": "CORONA_8K_60", "codec": "hvc1.2.4.L183.B0", "codec_hev1": "hev1.2.4.L183.B0",
+      "profile": "Main 10", "level": "6.1", "resolution": "7680x4320", "fps": 60,
+      "bitrate_min": 100000000, "bitrate_target": 200000000, "bitrate_max": 300000000,
+      "hdr": true, "color_primaries": "bt2020", "transfer": "smpte2084", "matrix": "bt2020nc", "bit_depth": 10,
+      "lcevc": true, "role": "8K UHD-2 supreme — god tier (FIXED L157->L183)" },
+
+    { "tier": 1, "tier_name": "CORONA_8K_30", "codec": "hvc1.2.4.L180.B0", "codec_hev1": "hev1.2.4.L180.B0",
+      "profile": "Main 10", "level": "6.0", "resolution": "7680x4320", "fps": 30,
+      "bitrate_min": 80000000, "bitrate_target": 150000000, "bitrate_max": 220000000,
+      "hdr": true, "color_primaries": "bt2020", "transfer": "smpte2084", "matrix": "bt2020nc", "bit_depth": 10,
+      "lcevc": true, "role": "8K UHD-2 cinema (FIXED L153->L180)" },
+
+    { "tier": 2, "tier_name": "APEX_4K_120_HDR", "codec": "hvc1.2.4.L156.B0", "codec_hev1": "hev1.2.4.L156.B0",
+      "profile": "Main 10", "level": "5.2", "resolution": "3840x2160", "fps": 120,
+      "bitrate_min": 60000000, "bitrate_target": 120000000, "bitrate_max": 180000000,
+      "hdr": true, "color_primaries": "bt2020", "transfer": "smpte2084", "matrix": "bt2020nc", "bit_depth": 10,
+      "lcevc": true, "role": "4K UHD-1 HFR HDR sports (FIXED L153->L156)" },
+
+    { "tier": 3, "tier_name": "APEX_4K_60_HDR", "codec": "hvc1.2.4.L150.B0", "codec_hev1": "hev1.2.4.L150.B0",
+      "profile": "Main 10", "level": "5.0", "resolution": "3840x2160", "fps": 60,
+      "bitrate_min": 40000000, "bitrate_target": 80000000, "bitrate_max": 120000000,
+      "hdr": true, "color_primaries": "bt2020", "transfer": "smpte2084", "matrix": "bt2020nc", "bit_depth": 10,
+      "lcevc": true, "role": "4K UHD-1 HDR standard" },
+
+    { "tier": 4, "tier_name": "CRYSTAL_4K_60_HDR", "codec": "hvc1.2.4.L153.B0", "codec_hev1": "hev1.2.4.L153.B0",
+      "profile": "Main 10", "level": "5.1", "resolution": "3840x2160", "fps": 60,
+      "bitrate_min": 25000000, "bitrate_target": 50000000, "bitrate_max": 80000000,
+      "hdr": true, "color_primaries": "bt2020", "transfer": "smpte2084", "matrix": "bt2020nc", "bit_depth": 10,
+      "lcevc": true, "role": "4K crystal — 25 Mbps floor" },
+
+    { "tier": 5, "tier_name": "CRYSTAL_4K_30_HDR", "codec": "hvc1.2.4.L123.B0", "codec_hev1": "hev1.2.4.L123.B0",
+      "profile": "Main 10", "level": "4.1", "resolution": "3840x2160", "fps": 30,
+      "bitrate_min": 20000000, "bitrate_target": 40000000, "bitrate_max": 60000000,
+      "hdr": true, "color_primaries": "bt2020", "transfer": "smpte2084", "matrix": "bt2020nc", "bit_depth": 10,
+      "lcevc": false, "role": "4K HDR 30fps cinema" },
+
+    { "tier": 6, "tier_name": "CRYSTAL_1080_60_HDR", "codec": "hvc1.2.4.L120.B0", "codec_hev1": "hev1.2.4.L120.B0",
+      "profile": "Main 10", "level": "4.0", "resolution": "1920x1080", "fps": 60,
+      "bitrate_min": 15000000, "bitrate_target": 25000000, "bitrate_max": 40000000,
+      "hdr": true, "color_primaries": "bt2020", "transfer": "smpte2084", "matrix": "bt2020nc", "bit_depth": 10,
+      "lcevc": false, "role": "1080p60 HDR sports" },
+
+    { "tier": 7, "tier_name": "CRYSTAL_1080_30_HDR", "codec": "hvc1.2.4.L93.B0", "codec_hev1": "hev1.2.4.L93.B0",
+      "profile": "Main 10", "level": "3.1", "resolution": "1920x1080", "fps": 30,
+      "bitrate_min": 10000000, "bitrate_target": 20000000, "bitrate_max": 30000000,
+      "hdr": true, "color_primaries": "bt2020", "transfer": "smpte2084", "matrix": "bt2020nc", "bit_depth": 10,
+      "lcevc": false, "role": "1080p30 HDR cinema" },
+
+    { "tier": 8, "tier_name": "AV1_NATIVE_4K", "codec": "av01.0.13M.10", "codec_hev1": "av01.0.13M.10",
+      "profile": "Main 10", "level": "6.1", "resolution": "3840x2160", "fps": 60,
+      "bitrate_min": 30000000, "bitrate_target": 60000000, "bitrate_max": 100000000,
+      "hdr": true, "color_primaries": "bt2020", "transfer": "smpte2084", "matrix": "bt2020nc", "bit_depth": 10,
+      "lcevc": true, "role": "AV1 native 4K HDR" },
+
+    { "tier": 9, "tier_name": "AV1_NATIVE_1080", "codec": "av01.0.05M.10", "codec_hev1": "av01.0.05M.10",
+      "profile": "Main 10", "level": "4.0", "resolution": "1920x1080", "fps": 60,
+      "bitrate_min": 8000000, "bitrate_target": 15000000, "bitrate_max": 25000000,
+      "hdr": true, "color_primaries": "bt2020", "transfer": "smpte2084", "matrix": "bt2020nc", "bit_depth": 10,
+      "lcevc": false, "role": "AV1 native 1080p HDR" },
+
+    { "tier": 10, "tier_name": "HEVC_4K_SDR", "codec": "hvc1.1.6.L150.B0", "codec_hev1": "hev1.1.6.L150.B0",
+      "profile": "Main", "level": "5.0", "resolution": "3840x2160", "fps": 30,
+      "bitrate_min": 15000000, "bitrate_target": 30000000, "bitrate_max": 50000000,
+      "hdr": false, "color_primaries": "bt709", "transfer": "bt709", "matrix": "bt709", "bit_depth": 8,
+      "lcevc": false, "role": "4K SDR (HDR-failed fallback; FIXED L120->L150 for 4K)" },
+
+    { "tier": 11, "tier_name": "HEVC_1080_SDR", "codec": "hvc1.1.6.L93.B0", "codec_hev1": "hev1.1.6.L93.B0",
+      "profile": "Main", "level": "3.1", "resolution": "1920x1080", "fps": 30,
+      "bitrate_min": 8000000, "bitrate_target": 15000000, "bitrate_max": 25000000,
+      "hdr": false, "color_primaries": "bt709", "transfer": "bt709", "matrix": "bt709", "bit_depth": 8,
+      "lcevc": false, "role": "1080p SDR universal HEVC" },
+
+    { "tier": 12, "tier_name": "HEVC_720_SDR", "codec": "hvc1.1.6.L90.B0", "codec_hev1": "hev1.1.6.L90.B0",
+      "profile": "Main", "level": "3.0", "resolution": "1280x720", "fps": 30,
+      "bitrate_min": 5000000, "bitrate_target": 10000000, "bitrate_max": 15000000,
+      "hdr": false, "color_primaries": "bt709", "transfer": "bt709", "matrix": "bt709", "bit_depth": 8,
+      "lcevc": false, "role": "720p SDR HEVC minimum" },
+
+    { "tier": 13, "tier_name": "H264_1080_UNIVERSAL", "codec": "avc1.640028", "codec_hev1": "avc1.640028",
+      "profile": "High", "level": "4.0", "resolution": "1920x1080", "fps": 30,
+      "bitrate_min": 5000000, "bitrate_target": 10000000, "bitrate_max": 15000000,
+      "hdr": false, "color_primaries": "bt709", "transfer": "bt709", "matrix": "bt709", "bit_depth": 8,
+      "lcevc": false, "role": "H.264 1080p universal guarantee" },
+
+    { "tier": 14, "tier_name": "H264_480_LAST_RESORT", "codec": "avc1.4d401e", "codec_hev1": "avc1.4d401e",
+      "profile": "Main", "level": "3.0", "resolution": "854x480", "fps": 30,
+      "bitrate_min": 2000000, "bitrate_target": 5000000, "bitrate_max": 8000000,
+      "hdr": false, "color_primaries": "bt709", "transfer": "bt709", "matrix": "bt709", "bit_depth": 8,
+      "lcevc": false, "role": "H.264 480p absolute last resort" }
+  ],
+
+  "profile_mapping": {
+    "P0": { "default_tier": 0, "fps_ge_100": 0, "fps_ge_60": 2, "fps_lt_60": 1, "description": "GOD_TIER_8K_OMEGA" },
+    "P1": { "default_tier": 3, "fps_ge_100": 2, "fps_ge_60": 3, "fps_lt_60": 4, "description": "ULTRA_HD_PREMIUM" },
+    "P2": { "default_tier": 6, "fps_ge_60": 6, "fps_lt_60": 7, "description": "FHD_SPORTS_60fps" },
+    "P3": { "default_tier": 7, "fps_ge_60": 6, "fps_lt_60": 7, "description": "FHD_CINEMA" },
+    "P4": { "default_tier": 11, "description": "HD_BALANCED" },
+    "P5": { "default_tier": 13, "description": "SD_UNIVERSAL" }
+  },
+
+  "bitrate_floor_per_tier_mbps": {
+    "tier_0": 100, "tier_1": 80, "tier_2": 60, "tier_3": 40, "tier_4": 25, "tier_5": 20,
+    "tier_6": 15, "tier_7": 10, "tier_8": 30, "tier_9": 8, "tier_10": 15, "tier_11": 8,
+    "tier_12": 5, "tier_13": 5, "tier_14": 2
+  }
+}
