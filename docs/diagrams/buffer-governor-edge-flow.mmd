@@ -1,0 +1,96 @@
+%% APE Buffer Governor v2.0 — Edge Flow
+%% F0 build-only local. Baseline dorado :8084 /shield/ CONGELADO E INTACTO.
+%% Governor bind 127.0.0.1:8090 (control loopback :8091).
+%% Regla madre: buffer bajo NO se resuelve repitiendo video viejo.
+%% Jerarquia: continuidad > fresco > buffer50 > calidad > proc.
+%% VERDAD HONESTA: pytest E2E + nginx -t real son gates de F1 (Linux/VPS).
+%% Render: mmdc -i buffer-governor-edge-flow.mmd -o buffer-governor-edge-flow.svg
+
+flowchart TD
+    %% ============ ENTRADA ============
+    PLAYER["Player HLS<br/>(TiviMate / OTT / ExoPlayer)<br/>GET manifest + segmentos"]
+    NGINX["nginx /shield/<br/>passthrough autopista<br/>(CERO ngx.exit · NO circuit breaker)"]
+
+    PLAYER -->|GET .m3u8 / .ts / .m4s| NGINX
+
+    %% ============ 5 FASES LUA ============
+    subgraph LUA["5 Fases Lua · OpenResty · invariante CERO ngx.exit"]
+        direction TB
+        L1["ape_buffer_sniper<br/>(SNIPER)<br/>estima buffer · clasifica error 403/blank"]
+        L2["ape_prefetch_planner<br/>(PLANNER)<br/>calcula ventana N+k"]
+        L3["ape_segment_pattern_learner<br/>(GUARD)<br/>aprende patron de segmentos"]
+        L4["ape_no_repeat_guard<br/>(GUARD)<br/>media_seq / uri / hash / PDT"]
+        L5["ape_live_edge_resync + ape_variant_escape<br/>(GUARD)<br/>jump-to-live · downgrade variante"]
+        L1 --> L2 --> L3 --> L4 --> L5
+    end
+
+    NGINX -->|subrequest no-bloqueante| LUA
+
+    %% ============ RUST GOVERNOR :8090 ============
+    subgraph RUST["Rust governor · axum 127.0.0.1:8090 (NO :8084)"]
+        direction TB
+        GOV["Governor FSM<br/>+ ThroughputModel EWMA<br/>decide fase por % buffer"]
+        LEDGER["NoRepeatLedger<br/>anti-repeticion media_seq/uri/hash/PDT"]
+        PREF["PrefetchQueue<br/>ventana N+3 / N+6 / N+10 / N+15"]
+        FETCH["SegmentFetcher<br/>anti-403 4-capas · sin N+1 a bytes-N"]
+        EDGE["LiveEdgeProbe<br/>localiza el live edge real"]
+        AUX["QoeIngest · SidecarBudget<br/>CacheIndex · Metrics · AppState"]
+
+        GOV --> PREF
+        GOV --> EDGE
+        PREF --> FETCH
+        FETCH --> LEDGER
+        EDGE --> LEDGER
+        GOV -.-> AUX
+    end
+
+    LUA -->|POST estado/error · loopback| GOV
+    GOV -->|hint fase/ventana · respuesta| LUA
+
+    %% ============ FSM POR % BUFFER ============
+    GOV --> FSM{"FSM<br/>% buffer ?"}
+    FSM -->|">= 70% GREEN<br/>sidecar ON · N+3"| GREEN["GREEN"]
+    FSM -->|"50-70% YELLOW<br/>limitado · N+6"| YELLOW["YELLOW"]
+    FSM -->|"30-50% ORANGE<br/>sidecar OFF · N+10 · downgrade"| ORANGE["ORANGE"]
+    FSM -->|"< 30% RED<br/>bypass · N+15 · live-edge resync"| RED["RED"]
+    FSM -->|"upstream muerto BLACK<br/>hold manifest · backoff"| BLACK["BLACK"]
+
+    %% ============ DECISION FINAL ============
+    GREEN --> D_FRESH["SERVE FRESH<br/>original fresco N+k<br/>(enhanced si listo)"]
+    YELLOW --> D_FRESH
+    ORANGE --> D_DOWN["DOWNGRADE<br/>baja variante · sidecar OFF<br/>continuidad > calidad"]
+    RED --> D_RESYNC["RESYNC<br/>jump-to-live edge<br/>NO repetir video viejo"]
+    BLACK --> D_HOLD["HOLD<br/>mantiene manifest valido<br/>backoff · NO repetir · NO blank-TS"]
+
+    LEDGER -.->|"veta toda repeticion<br/>(15 invariantes)"| D_FRESH
+    LEDGER -.->|veta repeticion| D_RESYNC
+    LEDGER -.->|veta repeticion| D_HOLD
+
+    %% ============ SALIDA AL PLAYER ============
+    D_FRESH -->|"segmento fresco continuo"| OUT
+    D_DOWN -->|"variante menor continua"| OUT
+    D_RESYNC -->|"salto a live · sin gap repetido"| OUT
+    D_HOLD -->|"fallback HLS valido · sin freeze"| OUT
+    OUT["Respuesta al Player<br/>continuidad > fresco > buffer50 > calidad<br/>(nunca repetir · nunca freeze · nunca blank-TS)"]
+    OUT --> NGINX
+
+    %% ============ BASELINE CONGELADO ============
+    BASE["baseline dorado ape-crystal-rust<br/>:8084 /shield/ — CONGELADO E INTACTO<br/>(F0 no lo toca)"]
+    NGINX -.->|canales NO gobernados| BASE
+
+    %% ============ ESTILOS ============
+    classDef green fill:#1b5e20,stroke:#a5d6a7,color:#fff;
+    classDef yellow fill:#9e7d00,stroke:#ffe082,color:#fff;
+    classDef orange fill:#bf5b00,stroke:#ffcc80,color:#fff;
+    classDef red fill:#7f0000,stroke:#ef9a9a,color:#fff;
+    classDef black fill:#000000,stroke:#9e9e9e,color:#fff;
+    classDef frozen fill:#263238,stroke:#80cbc4,color:#fff,stroke-dasharray: 5 5;
+    classDef decision fill:#1a237e,stroke:#9fa8da,color:#fff;
+
+    class GREEN,D_FRESH green;
+    class YELLOW yellow;
+    class ORANGE,D_DOWN orange;
+    class RED,D_RESYNC red;
+    class BLACK,D_HOLD black;
+    class BASE frozen;
+    class FSM,OUT decision;
