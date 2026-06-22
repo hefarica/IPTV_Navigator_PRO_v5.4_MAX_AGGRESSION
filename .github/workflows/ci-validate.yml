@@ -1,0 +1,77 @@
+name: CI · validate (doctrine + syntax)
+
+# Validation ONLY. This workflow never contacts the VPS and needs no secrets.
+# The actual deploy (CD) is operator-triggered locally via tools/cicd/deploy_vps.ps1.
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+    branches: [master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-validate-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout (full history for diffs)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Setup PHP 8.3
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          tools: none
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Compute changed files
+        id: changed
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            BASE="${{ github.event.pull_request.base.sha }}"
+          else
+            BASE="${{ github.event.before }}"
+          fi
+          if [ -z "$BASE" ] || ! git cat-file -e "$BASE" 2>/dev/null; then
+            echo "files=" >> "$GITHUB_OUTPUT"
+          else
+            FILES=$(git diff --name-only "$BASE" HEAD \
+              | grep -E '\.(js|php|py|sh|json|m3u8)$' \
+              | grep -vE 'node_modules/|/vendor/|backup_master' || true)
+            echo "files<<EOF" >> "$GITHUB_OUTPUT"
+            echo "$FILES" >> "$GITHUB_OUTPUT"
+            echo "EOF" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Run doctrine + syntax gate
+        run: |
+          chmod +x tools/cicd/validate_local.sh
+          mapfile -t F < <(printf '%s\n' "${{ steps.changed.outputs.files }}" | awk 'NF')
+          if [ ${#F[@]} -eq 0 ]; then
+            echo "No changed source files — validating generator trio (default)."
+            bash tools/cicd/validate_local.sh
+          else
+            echo "Validating ${#F[@]} changed file(s)."
+            bash tools/cicd/validate_local.sh "${F[@]}"
+          fi
+
+      - name: Validate deploy manifest is well-formed JSON
+        run: python -m json.tool tools/cicd/vps_deploy_map.json > /dev/null && echo "manifest OK"

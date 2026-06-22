@@ -1,0 +1,607 @@
+{
+  "_doc": "Single source of truth for repo->VPS deploys. Edit this file to add/curate targets. The deploy engine NEVER touches a path that is not listed here, and ALWAYS refuses paths in 'no_touch'. Doctrine: iptv-vps-touch-nothing, omega-no-delete (rsync without --delete), autopista (no breaker), SHIELDED (URLs verbatim).",
+  "vps": {
+    "host": "178.156.147.234",
+    "user": "root",
+    "ssh_target": "root@178.156.147.234",
+    "health_url": "https://iptv-ape.duckdns.org/api/health",
+    "resolve_probe_url": "https://iptv-ape.duckdns.org/api/resolve_quality?ch=__SMOKE__&p=P3",
+    "min_free_mb": 1500,
+    "rollback_root": "/root/ape-deploy-rollback",
+    "repo_vps_root": "IPTV_v5.4_MAX_AGGRESSION/vps"
+  },
+  "no_touch": [
+    "/etc/nginx/conf.d/iptv-intercept.conf",
+    "/var/www/html/OMEGA_V5.4_PRODUCTION_UI_DO_NOT_TOUCH"
+  ],
+  "post_actions": {
+    "nginx-reload": "nginx -t && systemctl reload nginx",
+    "sniper-restart": "systemctl daemon-reload && systemctl restart ape-sniper-rs && sleep 1 && systemctl is-active ape-sniper-rs",
+    "sniper-reload": "systemctl kill -s HUP ape-sniper-rs",
+    "none": "true"
+  },
+  "targets": [
+    {
+      "id": "sniper-hosts-config",
+      "src": "IPTV_v5.4_MAX_AGGRESSION/vps/sniper/config/sniper_hosts.json",
+      "dest": "/etc/ape-sniper/sniper_hosts.json",
+      "type": "json",
+      "post": "sniper-reload",
+      "enabled": true,
+      "note": "SNIPER provider->OWN-healthy-siblings rotation pool (legal truth-guard). SIGHUP-reloads without restart. Edit hosts here, NOT in Rust."
+    },
+    {
+      "id": "sniper-lua-push",
+      "src": "IPTV_v5.4_MAX_AGGRESSION/vps/sniper/lua/ape_sniper_push.lua",
+      "dest": "/etc/nginx/lua/ape_sniper_push.lua",
+      "type": "lua",
+      "post": "nginx-reload",
+      "enabled": true,
+      "note": "SNIPER PUSH hook: upstream_response.lua require()s M.on_upstream_response (telemetry-only append); publisher require()s M.read_decision. FREEZELESS/pcall."
+    },
+    {
+      "id": "sniper-php-error-push",
+      "src": "IPTV_v5.4_MAX_AGGRESSION/vps/sniper/api/ape-error-push.php",
+      "dest": "/var/www/prisma/api/ape-error-push.php",
+      "type": "php",
+      "post": "none",
+      "enabled": true,
+      "note": "SNIPER player error PUSH endpoint + ape_error_push_emit() reused by the 3 existing incident endpoints. Adjust dest to the live prisma api root."
+    },
+    {
+      "id": "cartridge-incident-sniper-fanin",
+      "src": "IPTV_v5.4_MAX_AGGRESSION/vps/crystal-8k/cartridge/ape-cartridge-incident.php",
+      "dest": "/var/www/prisma/cartridge/ape-cartridge-incident.php",
+      "type": "php",
+      "post": "none",
+      "enabled": false,
+      "note": "Existing endpoint EXTENDED with field='error' sniper fan-in. Enable + fix dest to the live cartridge path before deploy. Additive, silent-fail."
+    },
+    {
+      "id": "sniper-systemd-unit",
+      "src": "IPTV_v5.4_MAX_AGGRESSION/vps/sniper/systemd/ape-sniper-rs.service",
+      "dest": "/etc/systemd/system/ape-sniper-rs.service",
+      "type": "systemd",
+      "post": "sniper-restart",
+      "enabled": false,
+      "note": "Enable AFTER the ape-sniper-rs binary is installed at /opt/netshield/bin/ (see wiring_and_deploy). 'systemd' type + 'sniper-restart' post require the deploy engine patch documented in the deploy notes."
+    },
+    {
+      "id": "nginx-floor-lock",
+      "src": "IPTV_v5.4_MAX_AGGRESSION/vps/nginx/conf.d/prisma-floor-lock.conf",
+      "dest": "/etc/nginx/conf.d/prisma-floor-lock.conf",
+      "type": "nginx-conf",
+      "post": "nginx-reload",
+      "enabled": true
+    },
+    {
+      "id": "lua-codec-cascade",
+      "src": "IPTV_v5.4_MAX_AGGRESSION/vps/nginx/lua/ape_codec_cascade.lua",
+      "dest": "/etc/nginx/lua/ape_codec_cascade.lua",
+      "type": "lua",
+      "post": "nginx-reload",
+      "enabled": true
+    },
+    {
+      "id": "lua-bandwidth-reactor",
+      "src": "IPTV_v5.4_MAX_AGGRESSION/vps/nginx/lua/bandwidth_reactor.lua",
+      "dest": "/etc/nginx/lua/bandwidth_reactor.lua",
+      "type": "lua",
+      "post": "nginx-reload",
+      "enabled": true
+    },
+    {
+      "id": "lua-bw-adaptive-floor",
+      "src": "IPTV_v5.4_MAX_AGGRESSION/vps/nginx/lua/bw_adaptive_floor.lua",
+      "dest": "/etc/nginx/lua/bw_adaptive_floor.lua",
+      "type": "lua",
+      "post": "nginx-reload",
+      "enabled": true,
+      "note": "NEW module — lazo bitrate-reactor->manifest (adaptive floor). Deploy BEFORE/with lua-combined-body-filter, que lo require()."
+    },
+    {
+      "id": "lua-ape-profile-resolver",
+      "src": "IPTV_v5.4_MAX_AGGRESSION/vps/nginx/lua/ape_profile_resolver.lua",
+      "dest": "/etc/nginx/lua/ape_profile_resolver.lua",
+      "type": "lua",
+      "post": "nginx-reload",
+      "enabled": true,
+      "note": "NEW (Sol 1) — resuelve profile server-side por stream_id para players que NO reenvian X-APE-Profile. Deploy BEFORE/with lua-combined-body-filter, que lo require()."
+    },
+    {
+      "id": "lua-ape-profile-map",
+      "src": "IPTV_v5.4_MAX_AGGRESSION/vps/nginx/lua/ape_profile_map.json",
+      "dest": "/etc/nginx/lua/ape_profile_map.json",
+      "type": "lua",
+      "post": "nginx-reload",
+      "enabled": true,
+      "note": "NEW (Sol 1) — map streamid->profile + default de despliegue (toda la lista actual = P3). Editar SIN tocar Lua. Ausente => combined_body_filter cae al P2 de hoy."
+    },
+    {
+      "id": "lua-ape-virtual-4k",
+      "src": "IPTV_v5.4_MAX_AGGRESSION/vps/nginx/lua/ape_virtual_4k.lua",
+      "dest": "/etc/nginx/lua/ape_virtual_4k.lua",
+      "type": "lua",
+      "post": "nginx-reload",
+      "enabled": true,
+      "note": "Fake-4K corona: RESOLUTION=3840x2160 + hvc1.2.4.L153.B0 + VIDEO-RANGE=PQ + CICP BT.2020 (additivo, RFC 8216 §4.2 ignora atributos no reconocidos)."
+    },
+    {
+      "id": "config-visual-profiles",
+      "src": "IPTV_v5.4_MAX_AGGRESSION/vps/ape-uhdx/visual_profiles.json",
+      "dest": "/etc/ape-uhdx/visual_profiles.json",
+      "type": "config",
+      "post": "nginx-reload",
+      "enabled": true,
+      "note": "Perfiles P0-P5 (esquema flat agresivo). escalation:ACTIVE en P2 (Council wids9po6o). Lo carga combined_body_filter (cache 60s; nginx-reload lo refresca)."
+    },
+    {
+      "id": "config-4k-manifest",
+      "src": "IPTV_v5.4_MAX_AGGRESSION/vps/ape-uhdx/ape_4k_manifest.json",
+      "dest": "/etc/ape-uhdx/ape_4k_manifest.json",
+      "type": "config",
+      "post": "none",
+      "enabled": true,
+      "note": "SSOT Canonical 4K Manifest (declara 4K + settings, UNA vez). Leido on-demand por push_4k_manifest.php (Plano B device) y manifest-4k.php (Plano A player). enabled:false apaga ambos planos."
+    },
+    {
+      "id": "php-push-4k-manifest",
+      "src": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/cli/push_4k_manifest.php",
+      "dest": "/var/www/html/prisma/cli/push_4k_manifest.php",
+      "type": "php",
+      "post": "none",
+      "enabled": true,
+      "note": "Plano B: lee el SSOT -> ape_insert_delta (device-setting) -> /ara/events SSE -> ARA settings put (VPP MT8696). CLI."
+    },
+    {
+      "id": "php-manifest-4k",
+      "src": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/manifest-4k.php",
+      "dest": "/var/www/html/prisma/api/manifest-4k.php",
+      "type": "php",
+      "post": "none",
+      "enabled": true,
+      "note": "Plano A: endpoint URL-2 que renderiza master M3U8 4K envolviendo ?u= verbatim (SHIELDED). Inerte hasta routing por VPS."
+    },
+    {
+      "id": "lua-combined-body-filter",
+      "src": "IPTV_v5.4_MAX_AGGRESSION/vps/nginx/lua/combined_body_filter.lua",
+      "dest": "/etc/nginx/lua/combined_body_filter.lua",
+      "type": "lua",
+      "post": "nginx-reload",
+      "enabled": true
+    },
+    {
+      "id": "lua-combined-body-filter-science-safe",
+      "src": "IPTV_v5.4_MAX_AGGRESSION/vps/nginx/lua/combined_body_filter_visual_science_safe.lua",
+      "dest": "/etc/nginx/lua/combined_body_filter_visual_science_safe.lua",
+      "type": "lua",
+      "post": "none",
+      "enabled": true,
+      "note": "Science-Safe NEW body filter. INSTALL-ONLY (post:none) => inert, NOT wired to any nginx hook. Activation = manual hook switch after VPS luac/resty + nginx -t + QoE review. Preserves AVC fallback, resolution-dominant ordering, passthrough on error."
+    },
+    {
+      "id": "lua-bandwidth-reactor-science-safe",
+      "src": "IPTV_v5.4_MAX_AGGRESSION/vps/nginx/lua/bandwidth_reactor_science_safe.lua",
+      "dest": "/etc/nginx/lua/bandwidth_reactor_science_safe.lua",
+      "type": "lua",
+      "post": "none",
+      "enabled": true,
+      "note": "Science-Safe reactor (de-escalates on bandwidth drop). INSTALL-ONLY (post:none) => inert until an explicit hook switch."
+    },
+    {
+      "id": "lua-ape-profile-resolver-science-safe",
+      "src": "IPTV_v5.4_MAX_AGGRESSION/vps/nginx/lua/ape_profile_resolver_science_safe.lua",
+      "dest": "/etc/nginx/lua/ape_profile_resolver_science_safe.lua",
+      "type": "lua",
+      "post": "none",
+      "enabled": true,
+      "note": "Science-Safe profile resolver. REUSES live ape_profile_resolver.lua + adds header/devstate layers. INSTALL-ONLY (post:none)."
+    },
+    {
+      "id": "lua-quality-realtime",
+      "src": "IPTV_v5.4_MAX_AGGRESSION/vps/nginx/lua/quality_realtime.lua",
+      "dest": "/etc/nginx/lua/quality_realtime.lua",
+      "type": "lua",
+      "post": "nginx-reload",
+      "enabled": true,
+      "note": "NEW file — not yet present on VPS. First deploy creates it; ensure an include/require references it before relying on it."
+    },
+    {
+      "id": "snippet-public-api-locations",
+      "src": "IPTV_v5.4_MAX_AGGRESSION/vps/nginx/snippets/prisma-public-api-locations.conf",
+      "dest": "/etc/nginx/snippets/prisma-public-api-locations.conf",
+      "type": "nginx-conf",
+      "post": "nginx-reload",
+      "enabled": true
+    },
+    {
+      "id": "snippet-ape-match-location",
+      "src": "IPTV_v5.4_MAX_AGGRESSION/vps/nginx/snippets/prisma-ape-match-location.conf",
+      "dest": "/etc/nginx/snippets/prisma-ape-match-location.conf",
+      "type": "nginx-conf",
+      "post": "nginx-reload",
+      "enabled": true
+    },
+    {
+      "id": "snippet-ape-pull-location",
+      "src": "IPTV_v5.4_MAX_AGGRESSION/vps/nginx/snippets/prisma-ape-pull-location.conf",
+      "dest": "/etc/nginx/snippets/prisma-ape-pull-location.conf",
+      "type": "nginx-conf",
+      "post": "nginx-reload",
+      "enabled": true
+    },
+    {
+      "id": "php-prisma-ape-match",
+      "src": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/ape-match.php",
+      "dest": "/var/www/html/prisma/api/ape-match.php",
+      "type": "php",
+      "post": "none",
+      "enabled": true
+    },
+    {
+      "id": "php-prisma-ape-pull",
+      "src": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/ape-pull.php",
+      "dest": "/var/www/html/prisma/api/ape-pull.php",
+      "type": "php",
+      "post": "none",
+      "enabled": true
+    },
+    {
+      "id": "php-prisma-canon-ingest",
+      "src": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/ape-canon-ingest.php",
+      "dest": "/var/www/html/prisma/api/ape-canon-ingest.php",
+      "type": "php",
+      "post": "none",
+      "enabled": true
+    },
+    {
+      "id": "php-prisma-session-resolve",
+      "src": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/ape-session-resolve.php",
+      "dest": "/var/www/html/prisma/api/ape-session-resolve.php",
+      "type": "php",
+      "post": "none",
+      "enabled": true
+    },
+    {
+      "id": "php-prisma-channel-image-bulk",
+      "src": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/channel-image-bulk.php",
+      "dest": "/var/www/html/prisma/api/channel-image-bulk.php",
+      "type": "php",
+      "post": "none",
+      "enabled": true
+    },
+    {
+      "id": "php-prisma-conviva-persistence",
+      "src": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/lib/conviva_persistence.php",
+      "dest": "/var/www/html/prisma/lib/conviva_persistence.php",
+      "type": "php",
+      "post": "none",
+      "enabled": true
+    },
+    {
+      "id": "php-prisma-list-registry-lib",
+      "src": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/lib/list_registry.php",
+      "dest": "/var/www/html/prisma/lib/list_registry.php",
+      "type": "php",
+      "post": "none",
+      "enabled": true,
+      "note": "F1.0 — per-list matrícula registry (registered_lists table on ape_lists.db)"
+    },
+    {
+      "id": "php-prisma-register-lists-cli",
+      "src": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/cli/register_lists_scan.php",
+      "dest": "/var/www/html/prisma/cli/register_lists_scan.php",
+      "type": "php",
+      "post": "none",
+      "enabled": true,
+      "note": "F1.0 — populate scan of /var/www/lists"
+    },
+    {
+      "id": "php-prisma-list-activate",
+      "src": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/list-activate.php",
+      "dest": "/var/www/html/prisma/api/list-activate.php",
+      "type": "php",
+      "post": "none",
+      "enabled": true,
+      "note": "F1.2 — URL-2 activation gate (matrícula lookup + mark)"
+    },
+    {
+      "id": "php-prisma-ape-feedforward",
+      "src": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/ape-feedforward.php",
+      "dest": "/var/www/html/prisma/api/ape-feedforward.php",
+      "type": "php",
+      "post": "none",
+      "enabled": true,
+      "note": "F2 — feed-forward router: matrícula gate + mesh fan-out (NeuroBuffer+LCEVC+HDR10Plus) → presets"
+    },
+    {
+      "id": "php-prisma-ape-mesh-lib",
+      "src": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/lib/ape_mesh.php",
+      "dest": "/var/www/html/prisma/lib/ape_mesh.php",
+      "type": "php",
+      "post": "none",
+      "enabled": true,
+      "note": "F2 — mesh fan-out reusable (ape_mesh_presets); usado por feedforward one-shot + stream"
+    },
+    {
+      "id": "php-prisma-ape-feedforward-stream",
+      "src": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/ape-feedforward-stream.php",
+      "dest": "/var/www/html/prisma/api/ape-feedforward-stream.php",
+      "type": "php",
+      "post": "none",
+      "enabled": true,
+      "note": "F3 — URL-2 SSE stream (presets cada N seg, bounded, X-Accel-Buffering:no, autopista-safe)"
+    },
+    {
+      "id": "php-prisma-ara-enroll",
+      "src": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/ara-enroll.php",
+      "dest": "/var/www/html/prisma/api/ara-enroll.php",
+      "type": "php",
+      "post": "none",
+      "enabled": true,
+      "note": "F0 — endpoint auto-enrol WG (valida env APE_ENROLL_SECRET, encola /dev/shm/ape_enroll, poll worker). DEPLOYED+LIVE 2026-06-18 (enroll 200, ip 10.200.0.5). Post-actions MANUALES una vez: include snippets/prisma-ara-enroll.conf en sites-enabled/default + env[APE_ENROLL_SECRET] en php-fpm pool + systemctl enable --now ape-enroll-worker + mkdir /var/log/ape-enroll /dev/shm/ape_enroll"
+    },
+    {
+      "id": "nginx-snippet-ara-enroll",
+      "src": "IPTV_v5.4_MAX_AGGRESSION/vps/nginx/snippets/prisma-ara-enroll.conf",
+      "dest": "/etc/nginx/snippets/prisma-ara-enroll.conf",
+      "type": "nginx-conf",
+      "post": "nginx-reload",
+      "enabled": true,
+      "note": "F0 — location = /ara/enroll (FastCGI a ara-enroll.php). Requiere include manual una vez en el server-block 443 junto a prisma-ara-events.conf"
+    },
+    {
+      "id": "lua-device-state-writer",
+      "src": "IPTV_v5.4_MAX_AGGRESSION/vps/nginx/lua/ape_device_state_writer.lua",
+      "dest": "/etc/nginx/lua/ape_device_state_writer.lua",
+      "type": "lua",
+      "post": "none",
+      "enabled": true,
+      "note": "A1 device_state writer (device->canal por IP real); wired by A2"
+    },
+    {
+      "id": "snippet-ape-visual-location",
+      "src": "IPTV_v5.4_MAX_AGGRESSION/vps/nginx/snippets/ape-visual-v3-2-location.conf",
+      "dest": "/etc/nginx/snippets/ape-visual-v3-2-location.conf",
+      "type": "nginx-conf",
+      "post": "nginx-reload",
+      "enabled": true,
+      "note": "A2 import verbatim del snippet vivo (208 lineas) + 1 linea aditiva log_by_lua_file en /omega/open. Deploy junto a lua-device-state-writer (este se pushea primero por orden de manifiesto)."
+    },
+    {
+      "id": "php-cmaf-hdr10plus-engine",
+      "src": "IPTV_v5.4_MAX_AGGRESSION/backend/cmaf_engine/modules/hdr10plus_dynamic_engine.php",
+      "dest": "/var/www/html/cmaf_engine/modules/hdr10plus_dynamic_engine.php",
+      "type": "php",
+      "post": "none",
+      "enabled": true,
+      "note": "Phase B — Hdr10PlusDynamicEngine v3.4.0 reforzado (SDR->HDR incondicional, DV8.1 hints, BT2446a). VPS corria v3.3.0 vieja (sin saturacion dinamica); deploy = upgrade puro."
+    },
+    {
+      "id": "php-prisma-conviva-qoe-server",
+      "src": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/lib/conviva_qoe_server.php",
+      "dest": "/var/www/html/prisma/lib/conviva_qoe_server.php",
+      "type": "php",
+      "post": "none",
+      "enabled": true,
+      "note": "ConvivaQoEServer: validateEvent + dispatch. VALID_EVENT_TYPES incluye 'heartbeat' (liveness del ARA). Lo invoca conviva-event.php."
+    },
+    {
+      "id": "php-prisma-conviva-event",
+      "src": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/conviva-event.php",
+      "dest": "/var/www/html/prisma/api/conviva-event.php",
+      "type": "php",
+      "post": "none",
+      "enabled": true,
+      "note": "Plano ADB->URL-2: ingest QoE + correlacion per-canal por IP (resuelve canal desde device_state por REMOTE_ADDR cuando llega channel=auto). Base identica al VPS + bloque correlacion. heartbeat -> ape_ara_heartbeat (liveness) antes del dispatch."
+    },
+    {
+      "id": "php-prisma-channel-pq-incident",
+      "src": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/channel-pq-incident.php",
+      "dest": "/var/www/html/prisma/api/channel-pq-incident.php",
+      "type": "php",
+      "post": "none",
+      "enabled": true,
+      "note": "Phase G — incidente PQ (pantallazo negro) -> blacklist canal PQ->SDR. Espejo channel-hdcp-incident."
+    },
+    {
+      "id": "php-prisma-channel-pq-bulk",
+      "src": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/channel-pq-bulk.php",
+      "dest": "/var/www/html/prisma/api/channel-pq-bulk.php",
+      "type": "php",
+      "post": "none",
+      "enabled": true,
+      "note": "Phase G — bulk {channel:SDR} para window.APE_PQ_PROFILE del generador. Espejo channel-hdcp-bulk."
+    },
+    {
+      "id": "php-prisma-events-sse",
+      "src": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/events-sse.php",
+      "dest": "/var/www/html/prisma/api/events-sse.php",
+      "type": "php",
+      "post": "none",
+      "enabled": true,
+      "note": "ARA URL-2 — SSE /ara/events (Council-safe). Auth Bearer; 503 si ARA_TOKEN vacio. NO sirve hasta que el operador (a) anada 'include snippets/prisma-ara-events.conf;' al server-block vivo + nginx -t + reload, y (b) exponga ARA_TOKEN al pool php-fpm (env). Hasta entonces es inerte."
+    },
+    {
+      "id": "php-prisma-phase-g-delta-hook",
+      "src": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/phase_g_delta_hook.php",
+      "dest": "/var/www/html/prisma/api/phase_g_delta_hook.php",
+      "type": "php",
+      "post": "none",
+      "enabled": true,
+      "note": "ARA URL-2 — ape_phase_g_emit_delta() additivo. Lo invoca conviva-event.php SOLO con APE_PQ_ROLLBACK_ENABLED=1 + anti-flap. Flag OFF por defecto = inerte."
+    },
+    {
+      "id": "snippet-ara-events",
+      "src": "IPTV_v5.4_MAX_AGGRESSION/vps/nginx/snippets/prisma-ara-events.conf",
+      "dest": "/etc/nginx/snippets/prisma-ara-events.conf",
+      "type": "nginx-conf",
+      "post": "none",
+      "enabled": true,
+      "note": "ARA URL-2 — snippet location=/ara/events (socket php8.3-fpm, patron prisma-conviva-stream). post=none A PROPOSITO: el operador debe anadir el 'include' al server-block + correr nginx -t antes de reload. Copiar el archivo solo es inerte."
+    },
+    {
+      "id": "php-prisma-push-pq-profile",
+      "src": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/cli/push_pq_profile.php",
+      "dest": "/var/www/html/prisma/cli/push_pq_profile.php",
+      "type": "php",
+      "post": "none",
+      "enabled": true,
+      "note": "AI-PQ pipeline (MediaTek VPP) — empuja perfil PQ (max_image/sports/cinema/off) como policy_delta al ARA. El ARA aplica los 13 levers hardware (AI-SR/denoise/sharpness/HDR-PQ) + enforcer persiste. Post-procesado real sobre el stream decodificado."
+    },
+    {
+      "id": "config-ara-env-example",
+      "src": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/config/ara.env.example",
+      "dest": "/var/www/html/prisma/config/ara.env.example",
+      "type": "config",
+      "post": "none",
+      "enabled": true,
+      "note": "ARA URL-2 — plantilla de env (ARA_TOKEN, APE_PQ_ROLLBACK_ENABLED=0, cooldown). Referencia; el ARA_TOKEN real va en el env del pool php-fpm, NO en el webroot."
+    },
+    {
+      "id": "php-cartridge-bulk",
+      "src": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/ape-cartridge-bulk.php",
+      "dest": "/var/www/html/prisma/api/ape-cartridge-bulk.php",
+      "type": "php",
+      "post": "none",
+      "enabled": true
+    },
+    {
+      "id": "php-cartridge-incident",
+      "src": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/ape-cartridge-incident.php",
+      "dest": "/var/www/html/prisma/api/ape-cartridge-incident.php",
+      "type": "php",
+      "post": "none",
+      "enabled": true
+    },
+    {
+      "id": "lua-cartridge-arrays",
+      "src": "IPTV_v5.4_MAX_AGGRESSION/vps/nginx/lua/ape_cartridge_arrays.lua",
+      "dest": "/etc/nginx/lua/ape_cartridge_arrays.lua",
+      "type": "lua",
+      "post": "none",
+      "enabled": true
+    },
+    {
+      "id": "lua-cartridge-injector",
+      "src": "IPTV_v5.4_MAX_AGGRESSION/vps/nginx/lua/ape_cartridge_injector.lua",
+      "dest": "/etc/nginx/lua/ape_cartridge_injector.lua",
+      "type": "lua",
+      "post": "none",
+      "enabled": true
+    },
+    {
+      "id": "lua-cartridge-orchestrator",
+      "src": "IPTV_v5.4_MAX_AGGRESSION/vps/nginx/lua/ape_cartridge_orchestrator.lua",
+      "dest": "/etc/nginx/lua/ape_cartridge_orchestrator.lua",
+      "type": "lua",
+      "post": "none",
+      "enabled": true
+    },
+    {
+      "id": "lua-reactor-tick",
+      "src": "IPTV_v5.4_MAX_AGGRESSION/vps/nginx/lua/reactor_tick.lua",
+      "dest": "/etc/nginx/lua/reactor_tick.lua",
+      "type": "lua",
+      "post": "none",
+      "enabled": true
+    },
+    {
+      "id": "php-cartridge-agent",
+      "src": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/ape-cartridge-agent.php",
+      "dest": "/var/www/html/prisma/api/ape-cartridge-agent.php",
+      "type": "php",
+      "post": "none",
+      "enabled": true
+    },
+    {
+      "id": "php-list-header-store",
+      "src": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/lib/list_header_store.php",
+      "dest": "/var/www/html/prisma/lib/list_header_store.php",
+      "type": "php",
+      "post": "none",
+      "enabled": true
+    },
+    {
+      "id": "php-list-headers-ingest",
+      "src": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/list-headers-ingest.php",
+      "dest": "/var/www/html/prisma/api/list-headers-ingest.php",
+      "type": "php",
+      "post": "none",
+      "enabled": true
+    },
+    {
+      "id": "php-list-headers-bulk",
+      "src": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/list-headers-bulk.php",
+      "dest": "/var/www/html/prisma/api/list-headers-bulk.php",
+      "type": "php",
+      "post": "none",
+      "enabled": true
+    },
+    {
+      "id": "lua-header-value-publisher",
+      "src": "IPTV_v5.4_MAX_AGGRESSION/vps/nginx/lua/ape_header_value_publisher.lua",
+      "dest": "/etc/nginx/lua/ape_header_value_publisher.lua",
+      "type": "lua",
+      "post": "none",
+      "enabled": true
+    },
+    {
+      "id": "sniper-cargo-toml",
+      "src": "vps/sniper/ape-sniper-rs/Cargo.toml",
+      "dest": "/opt/ape-sniper-rs/Cargo.toml",
+      "type": "file",
+      "post": "none",
+      "enabled": true
+    },
+    {
+      "id": "sniper-main-rs",
+      "src": "vps/sniper/ape-sniper-rs/src/main.rs",
+      "dest": "/opt/ape-sniper-rs/src/main.rs",
+      "type": "file",
+      "post": "none",
+      "enabled": true
+    },
+    {
+      "id": "sniper-rules-rs",
+      "src": "vps/sniper/ape-sniper-rs/src/rules.rs",
+      "dest": "/opt/ape-sniper-rs/src/rules.rs",
+      "type": "file",
+      "post": "none",
+      "enabled": true
+    },
+    {
+      "id": "sniper-systemd",
+      "src": "vps/sniper/systemd/ape-sniper-rs.service",
+      "dest": "/etc/systemd/system/ape-sniper-rs.service",
+      "type": "file",
+      "post": "none",
+      "enabled": true
+    },
+    {
+      "id": "php-sniper-error-push",
+      "src": "vps/sniper/api/ape-error-push.php",
+      "dest": "/var/www/html/prisma/sniper/api/ape-error-push.php",
+      "type": "php",
+      "post": "none",
+      "enabled": true
+    }
+  ],
+  "needs_review": [
+    {
+      "id": "resolve-quality-unified",
+      "reason": "Lives in TWO VPS locations: /var/www/html/OMEGA_V5.4_PRODUCTION_UI_DO_NOT_TOUCH/ (no_touch) and /var/www/html/iptv-ape/. Decide canonical dest before enabling.",
+      "candidate_dest": "/var/www/html/iptv-ape/resolve_quality_unified.php"
+    },
+    {
+      "id": "channels-map-json",
+      "reason": "Two VPS copies under OMEGA_V5.4_PRODUCTION_UI_DO_NOT_TOUCH (js/ape-v9 and data). Both inside no_touch dir. Confirm whether VPS serves a copy outside DO_NOT_TOUCH before enabling.",
+      "candidate_dest": null
+    },
+    {
+      "id": "prisma-adb-units",
+      "reason": "ape-player-autoinstall.sh + ape-wake-worker.service not found on VPS — these may target the ADB device/host, not the VPS webroot. Confirm deploy target (device vs /opt vs systemd) before enabling.",
+      "candidate_dest": null
+    }
+  ]
+}
