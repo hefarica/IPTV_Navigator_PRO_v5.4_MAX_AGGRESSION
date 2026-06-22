@@ -1,0 +1,59 @@
+%% APE Buffer Governor v2.0 — FSM de continuidad freezeless
+%% Estados: GREEN / YELLOW / ORANGE / RED / BLACK
+%% Transiciones gobernadas por (buffer%, trend) — trend del ThroughputModel EWMA.
+%% Regla madre: buffer bajo NO se resuelve repitiendo video viejo.
+%% Jerarquía de decisión: continuidad > frescura > buffer 50% > calidad > procesamiento.
+%% Cada estado fija: sidecar (transcode/enhance async ON/OFF), prefetch_depth (N+k), action.
+%% Implementación: vps/buffer-governor/ (Rust main.rs Governor inline + 6 Lua). Bind 127.0.0.1:8090.
+%% ESTADO F0: build-only local (cargo check/test/clippy VERDE 4/4). E2E pytest + nginx -t = gate F1 (Linux/VPS).
+
+stateDiagram-v2
+    direction LR
+
+    [*] --> GREEN
+
+    state "GREEN  buffer>=70%" as GREEN {
+        [*] --> G_run
+        state "sidecar=ON  ·  prefetch=N+3  ·  action=enhance_serve" as G_run
+    }
+    state "YELLOW  50%<=buffer<70%" as YELLOW {
+        [*] --> Y_run
+        state "sidecar=LIMITED  ·  prefetch=N+6  ·  action=hold_quality" as Y_run
+    }
+    state "ORANGE  30%<=buffer<50%" as ORANGE {
+        [*] --> O_run
+        state "sidecar=OFF  ·  prefetch=N+10  ·  action=downgrade_variant" as O_run
+    }
+    state "RED  buffer<30%" as RED {
+        [*] --> R_run
+        state "sidecar=OFF(bypass)  ·  prefetch=N+15  ·  action=live_edge_resync" as R_run
+    }
+    state "BLACK  upstream_dead" as BLACK {
+        [*] --> B_run
+        state "sidecar=OFF  ·  prefetch=0  ·  action=hold_manifest+backoff" as B_run
+    }
+
+    %% ---- Degradaciones (buffer cae o trend negativo) ----
+    GREEN  --> YELLOW : buffer<70%  ||  trend=falling
+    YELLOW --> ORANGE : buffer<50%  ||  trend=falling_fast
+    ORANGE --> RED    : buffer<30%  ||  trend=draining
+    RED    --> BLACK  : upstream_dead (403x4layer || EOF || stall)
+
+    %% ---- Recuperaciones (buffer sube Y trend estable/rising; histéresis +5pp) ----
+    YELLOW --> GREEN  : buffer>=75%  &&  trend>=stable
+    ORANGE --> YELLOW : buffer>=55%  &&  trend>=stable
+    RED    --> ORANGE : buffer>=35%  &&  trend=rising
+    BLACK  --> RED    : upstream_alive (segment 200 fresco)
+
+    %% ---- Saltos rápidos permitidos (caída/recuperación brusca) ----
+    GREEN  --> ORANGE : trend=draining (caida brusca)
+    YELLOW --> RED    : trend=draining (caida brusca)
+    BLACK  --> YELLOW : upstream_alive && buffer>=55% (rearranque sano)
+
+    note right of BLACK
+        Anti-403 4-capas + NoRepeatLedger.
+        NUNCA repetir media_seq / uri / hash / PDT.
+        NUNCA N+1 con bytes de N. Backoff, no bucle 403.
+        Salida: SegmentFetcher sirve original fresco; si enhanced
+        no esta listo -> original (continuidad > calidad).
+    end note
