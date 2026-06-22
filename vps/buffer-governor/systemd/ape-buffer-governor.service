@@ -1,0 +1,46 @@
+# APE Buffer Governor v2.0 — systemd unit
+# Servicio SEPARADO en :8090. NO reemplaza ape-crystal-rust (:8084, baseline dorado).
+# Deploy: /etc/systemd/system/ape-buffer-governor.service
+#
+# CPU/Mem caps LOAD-BEARING para FREEZELESS: el Governor JAMÁS debe ahogar nginx ni el
+# motor Crystal. En 3 cores, este servicio es I/O + lógica (ligero, ~50MB), no transcode.
+
+[Unit]
+Description=APE Buffer Governor v2.0 (continuidad > fresco > buffer>50% > calidad > proc)
+Documentation=https://github.com/hefarica/IPTV_Navigator_PRO_v5.4_MAX_AGGRESSION
+After=network-online.target nginx.service
+Wants=network-online.target
+# Coexiste con el motor Crystal; no depende de él pero arranca después
+After=ape-crystal-rust.service
+
+[Service]
+Type=simple
+# NO root: usuario de servicio dedicado o www-data (ajustar en deploy)
+User=ape-auditor
+Group=ape-auditor
+WorkingDirectory=/opt/ape-buffer-governor
+ExecStart=/opt/ape-buffer-governor/ape-buffer-governor
+Environment=BG_BIND=127.0.0.1:8090
+Environment=RUST_LOG=ape_buffer_governor=info
+Restart=on-failure
+RestartSec=5s
+StartLimitIntervalSec=60
+StartLimitBurst=5
+
+# Caps que protegen nginx + el motor Crystal (prioridad al streaming)
+Nice=10
+CPUWeight=30
+CPUQuota=120%
+MemoryMax=256M
+OOMScoreAdjust=600
+TasksMax=64
+
+# Hardening (es un servicio loopback de control)
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/dev/shm /opt/ape-buffer-governor
+
+[Install]
+WantedBy=multi-user.target
