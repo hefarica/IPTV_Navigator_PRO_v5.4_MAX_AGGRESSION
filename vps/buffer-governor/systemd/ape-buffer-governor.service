@@ -12,6 +12,10 @@ After=network-online.target nginx.service
 Wants=network-online.target
 # Coexiste con el motor Crystal; no depende de él pero arranca después
 After=ape-crystal-rust.service
+# FIX (council F1): StartLimit* DEBE ir en [Unit]; en [Service] systemd las ignora
+# ("Unknown key") y el rate-limit de reinicios quedaba inerte.
+StartLimitIntervalSec=60
+StartLimitBurst=5
 
 [Service]
 Type=simple
@@ -20,12 +24,13 @@ User=ape-auditor
 Group=ape-auditor
 WorkingDirectory=/opt/ape-buffer-governor
 ExecStart=/opt/ape-buffer-governor/ape-buffer-governor
+# NOTA (council F1): main.rs HOY hardcodea bind 127.0.0.1:8090 + log INFO. Estas
+# Environment= son informativas (documentan el bind esperado) hasta que se cablee
+# env-filter en el binario; editarlas no cambia el comportamiento todavía.
 Environment=BG_BIND=127.0.0.1:8090
 Environment=RUST_LOG=ape_buffer_governor=info
 Restart=on-failure
 RestartSec=5s
-StartLimitIntervalSec=60
-StartLimitBurst=5
 
 # Caps que protegen nginx + el motor Crystal (prioridad al streaming)
 Nice=10

@@ -410,6 +410,24 @@
       "post": "none",
       "enabled": true,
       "note": "ARA URL-2 — plantilla de env (ARA_TOKEN, APE_PQ_ROLLBACK_ENABLED=0, cooldown). Referencia; el ARA_TOKEN real va en el env del pool php-fpm, NO en el webroot."
+    },
+    {
+      "id": "buffer-governor-systemd",
+      "src": "vps/buffer-governor/systemd/ape-buffer-governor.service",
+      "dest": "/etc/systemd/system/ape-buffer-governor.service",
+      "type": "service",
+      "post": "none",
+      "enabled": false,
+      "note": "F1 Shadow. enabled=false hasta compilar el binario EN el VPS (cargo build --release; el build local falla por WDAC os 4551) y correr el checklist iptv-vps-touch-nothing. Servicio loopback 127.0.0.1:8090, OOM/CPU-capped; NO toca el trafico. Ver docs/RUNBOOK_F1_SHADOW.md."
+    },
+    {
+      "id": "buffer-governor-control-conf",
+      "src": "vps/buffer-governor/nginx/buffer_governor.conf",
+      "dest": "/etc/nginx/conf.d/buffer-governor.conf",
+      "type": "nginx-conf",
+      "post": "nginx-reload",
+      "enabled": false,
+      "note": "F1 Shadow. Control-only loopback :8091 (allow 127/8; deny all) + shared dicts. NO crea server :80 ni toca el shield de produccion. enabled=false hasta nginx -t + checklist iptv-vps-touch-nothing."
     }
   ],
   "needs_review": [
