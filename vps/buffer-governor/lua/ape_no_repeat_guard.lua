@@ -195,6 +195,13 @@ end
 -- con timeout DURO y passthrough-on-timeout. NUNCA en el request path crítico de
 -- video: solo para manifests, y bajo pcall. Devuelve {gap_detected, resync_to} o nil.
 local function probe_live_edge(manifest_uri, highest_seq)
+  -- FREEZELESS / autopista: las APIs de cosocket (ngx.socket.tcp) están DESHABILITADAS
+  -- en body_filter/header_filter (OpenResty). Si nos invocan desde una fase de filtro,
+  -- NO probamos: degradamos al veredicto de regresión LOCAL (sub-µs, ya suficiente).
+  -- En fase segura (rewrite/access/timer) el probe SÍ corre. Esto elimina de raíz el
+  -- error "API disabled in the context of body_filter_by_lua*" sin mutilar el módulo.
+  local phase = ngx.get_phase and ngx.get_phase()
+  if phase == "body_filter" or phase == "header_filter" then return nil end
   if not cjson then return nil end
   local sock = ngx.socket.tcp()
   if not sock then return nil end
