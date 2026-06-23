@@ -28,11 +28,11 @@ local M = {}
 
 -- ----------------------------------------------------------------------------
 -- Diccionario compartido entre workers. Debe declararse en nginx.conf:
---   lua_shared_dict ape_segpattern 16m;
+--   lua_shared_dict ape_pattern 16m;
 -- Si no existe, el módulo degrada a "sin memoria" (siempre incierto → nil),
 -- nunca lanza error que rompa el request.
 -- ----------------------------------------------------------------------------
-local SHM_NAME = "ape_segpattern"
+local SHM_NAME = "ape_pattern"
 local shm = ngx.shared[SHM_NAME]
 
 -- TTL del patrón aprendido (segundos). Un canal inactivo deja expirar su patrón

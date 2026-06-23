@@ -118,6 +118,13 @@ end
 -- Devuelve la tabla de respuesta decodificada o nil ante cualquier fallo.
 -- NUNCA lanza: todo error se traduce en nil → passthrough en el llamador.
 local function _probe_live_edge(manifest_uri, highest_known)
+    -- FREEZELESS / autopista: resty.http (cosocket) está DESHABILITADO en
+    -- body_filter/header_filter. Si nos llaman desde una fase de filtro → passthrough
+    -- (nil). El resync real solo procede desde una fase segura (rewrite/access/timer).
+    local phase = ngx.get_phase and ngx.get_phase()
+    if phase == "body_filter" or phase == "header_filter" then
+        return nil
+    end
     if not http or not cjson then
         return nil
     end
