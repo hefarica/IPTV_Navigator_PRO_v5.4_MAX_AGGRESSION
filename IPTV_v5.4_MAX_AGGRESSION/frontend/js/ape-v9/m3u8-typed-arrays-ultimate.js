@@ -7665,7 +7665,10 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
         // Cableado desde: UAPhantomEngine, cfg (PROFILES), CAPACITY_OVERDRIVE
         // ════════════════════════════════════════════════════════════════════════
         lines.push(`#EXTVLCOPT:network-caching=${options.dictatorMode ? 500 : _buf796}`);
-        lines.push(`#EXTVLCOPT:clock-synchro=0`);
+        // AV-SYNC (2026-08-30, owner): clock-synchro=0 desactivaba el esclavizado al
+        // master clock → deriva A/V progresiva con cadenas de filtro pesadas
+        // (minterpolate 120fps). =1 re-esclaviza video al clock maestro.
+        lines.push(`#EXTVLCOPT:clock-synchro=1`);
         lines.push(`#EXTVLCOPT:network-timeout=60000`);
         lines.push(`#EXTVLCOPT:network-reconnect=true`);
         lines.push(`#EXTVLCOPT:network-reconnect-delay=500`);
@@ -7829,7 +7832,10 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
         lines.push(`#EXTVLCOPT:audio-channels=6`);
         lines.push(`#EXTVLCOPT:audio-samplerate=48000`);
         lines.push(`#EXTVLCOPT:audio-replay-gain-mode=none`);
-        lines.push(`#EXTVLCOPT:audio-time-stretch=false`);
+        // AV-SYNC (2026-08-30, owner): audio-time-stretch=1 — si el video va lento por
+        // carga de filtros, VLC estira el tempo del audio microscómicamente en vez de
+        // desincronizar. (=false era el combo desync junto a clock-synchro=0.)
+        lines.push(`#EXTVLCOPT:audio-time-stretch=1`);
         lines.push(`#EXTVLCOPT:audio-desync=0`);
         lines.push(`#EXTVLCOPT:audio-volume=256`);
         // B5 — omit empty audio-filter, audio-visual (74k líneas ruido)
@@ -9335,6 +9341,33 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
         // === DYNAMIC LAB INJECTION (post APE_PROFILE_MATRIX legacy) ===
         const labProfile = options.bulletproof_profiles?.[profile];
         if (labProfile) {
+            // 0) FIX-DNR 1+2 (2026-08-30, owner-approved) — SSOT visual del LAB al 100%
+            // 0a) video-filter calibrado MANDA sobre la cadena 4KFALSE hardcodeada.
+            //     vlcopt['video-filter'] (nlmeans/hqdn3d/gradfun/zscale/minterpolate del
+            //     Excel) se aplica byte-exacto vía upsert (reemplaza la línea, sin clamp).
+            //     Fallback intacto: sin LAB o sin cadena → la hardcodeada queda (COVERAGE ALWAYS).
+            //     Cero freeze: #EXTVLCOPT es metadata per-canal; players no-VLC la ignoran
+            //     (tags desconocidos se descartan — RFC 8216 §4.3-safe). No toca CODECS=.
+            if (labProfile.vlcopt && labProfile.vlcopt['video-filter']) {
+                upsertVlcopt(lines, 'video-filter', labProfile.vlcopt['video-filter']);
+                const _engIdx = lines.findIndex(l => l.startsWith('#EXT-X-APE-4KFALSE-ENGINE:'));
+                if (_engIdx !== -1) lines[_engIdx] = `#EXT-X-APE-4KFALSE-ENGINE:LAB-CALIBRATED-DNR+MEMC-120`;
+                lines.push(`#EXT-X-APE-DNR-ENGINE:LAB-SSOT`);
+            }
+            // 0b) X-APE-DNR-POLICY como línea dedicada per-canal. El gate de extras
+            //     (L5241) la inyecta al EXTHTTP JSON, pero _sanitizePayloadSize (cap 8KB,
+            //     Fase 2) evicta X-APE-* — una línea propia es inmune al cap y más legible.
+            //     Mismo opt-in que el gate: solo con includeLabExtras===true.
+            try {
+                const _pmDnr = (typeof window !== 'undefined' && window.APE_PROFILES_CONFIG && typeof window.APE_PROFILES_CONFIG.getProfile === 'function')
+                    ? window.APE_PROFILES_CONFIG.getProfile(profile) : null;
+                if (_pmDnr && _pmDnr.includeLabExtras === true && _pmDnr.headerOverrides) {
+                    const _dnrVal = _pmDnr.headerOverrides['X-APE-DNR-POLICY'];
+                    if (_dnrVal !== undefined && _dnrVal !== null && _dnrVal !== '') {
+                        lines.push(`#EXT-X-APE-DNR-POLICY:${_dnrVal}`);
+                    }
+                }
+            } catch (_) { /* nunca bloquear la generación */ }
             // 1) optimized_knobs → override buffer_ms, reconnect_attempts, live_delay
             const opt = labProfile.optimized_knobs;
             if (opt) {
