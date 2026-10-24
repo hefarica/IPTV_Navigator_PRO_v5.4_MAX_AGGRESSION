@@ -43,6 +43,17 @@ build/
 *.pem
 *.key
 
+# APE config recovery artifacts (contienen credenciales REALES de proveedor — NUNCA commitear)
+/_recovered_config.json
+/_storage_dump/
+/_ape_restore_config.html
+/_ape_storage_dump.html
+/_ape_fix_filter.html
+/_ape_pick_server.html
+/_ape_maintenance.html
+/_storage_dump_server.py
+/_recover_config.py
+
 # M3U8 lists (output) - NOT source code
 IPTV_v5.4_MAX_AGGRESSION/**/*.m3u8
 
