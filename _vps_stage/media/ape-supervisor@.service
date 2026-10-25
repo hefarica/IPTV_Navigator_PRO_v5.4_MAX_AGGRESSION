@@ -1,0 +1,88 @@
+# ═════════════════════════════════════════════════════════════════════════════
+# APE SUPERVISOR (I5) — unidad systemd (plantilla)
+# ═════════════════════════════════════════════════════════════════════════════
+# Instalación de staging (NO ejecutar en prod sin ventana autorizada):
+#   install -m 0755 ape-supervisor.sh ape-supervisor.lua /opt/mediafanout/
+#   install -m 0644 ape-supervisor@.service /etc/systemd/system/
+#   install -d -m 0750 -o root -g www-data /etc/mediafanout
+#   install -m 0640 -o root -g www-data providers.allow.example /etc/mediafanout/providers.allow
+#   install -m 0640 -o root -g www-data urls.conf            /etc/mediafanout/urls.conf
+#   useradd --system --no-create-home --shell /usr/sbin/nologin mediafanout
+#   systemctl daemon-reload && systemctl enable --now ape-supervisor@main.service
+#
+# La instancia (%i) permite perfiles de configuración; en el VPS se usa "main".
+#
+# IMPORTANTE (contrato t4/t9): la unidad de INGESTA `ape-ingest@<key>.service`
+# (propiedad de t4) debe llevar `Restart=no` y NO `WatchdogSec`: el worker es
+# bash y no envía sd_notify. El supervisor es quien reintenta con backoff
+# (1/2/4/8 s) y rota `gen`; su propio timeout de heartbeat (MF_STALE_AFTER=45 s)
+# detecta sesiones estancadas y el siguiente OPEN las reemplaza con gen nuevo.
+# Así un crash NUNCA deja dos escritores en la misma generación.
+# ═════════════════════════════════════════════════════════════════════════════
+[Unit]
+Description=APE media-fanout supervisor (%i) — autoridad de lifecycle
+Documentation=file:/opt/mediafanout/ape-supervisor.lua
+After=network-online.target
+Wants=network-online.target
+# No arrancar dos supervisores: el socket es la garantía de unicidad.
+Conflicts=ape-supervisor.service
+
+[Service]
+Type=simple
+# Root es necesario para crear sockets root:www-data, escribir /var/lib y
+# arrancar/parar unidades ape-ingest@<key>. No hay shell de usuario.
+User=root
+Group=www-data
+UMask=0007
+
+Environment=MF_PROFILE=%i
+Environment=MF_LUA=lua5.1
+Environment=MF_ROOT=/run/mediafanout
+Environment=MF_STATE_DIR=/var/lib/mediafanout
+Environment=MF_WINDOW_ROOT=/dev/shm/mf
+Environment=MF_CONF_DIR=/etc/mediafanout
+Environment=MF_COORD_URL=http://127.0.0.1:8090
+Environment=MF_MAX_SESSIONS=12
+Environment=MF_STALE_AFTER=45
+Environment=MF_SPEC_OWNER=mediafanout:www-data
+Environment=MF_WINDOW_OWNER=mediafanout:www-data
+# Sobreescribe lo anterior sin editar la unidad:
+EnvironmentFile=-/etc/mediafanout/supervisor.env
+
+ExecStart=/opt/mediafanout/ape-supervisor.sh --serve
+ExecReload=/bin/kill -HUP $MAINPID
+Restart=on-failure
+RestartSec=2
+StartLimitIntervalSec=60
+StartLimitBurst=5
+TimeoutStopSec=15
+KillMode=control-group
+
+# Recursos del supervisor (los ffmpeg van en sus propias unidades con
+# MemoryMax=180M / CPUQuota según t4; aquí sólo el árbol de procesos y el socket).
+LimitNOFILE=65536
+TasksMax=512
+MemoryMax=256M
+CPUQuota=50%
+
+# Directorios gestionados por systemd (creados con owner root:www-data)
+RuntimeDirectory=mediafanout
+RuntimeDirectoryMode=0750
+RuntimeDirectoryPreserve=yes
+StateDirectory=mediafanout
+StateDirectoryMode=0750
+
+# Endurecimiento: sólo se escribe en runtime/state/tmpfs de la ventana.
+ProtectSystem=strict
+ReadWritePaths=/run/mediafanout /var/lib/mediafanout /dev/shm/mf
+ProtectHome=yes
+PrivateTmp=no
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictRealtime=yes
+NoNewPrivileges=yes
+
+[Install]
+WantedBy=multi-user.target

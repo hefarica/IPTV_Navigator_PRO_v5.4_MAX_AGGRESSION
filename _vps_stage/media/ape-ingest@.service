@@ -1,0 +1,188 @@
+# ═════════════════════════════════════════════════════════════════════════════
+# APE INGEST WORKER — unidad systemd de STAGING (plantilla, una instancia/key)
+# ═════════════════════════════════════════════════════════════════════════════
+# Fichero:  _vps_stage/media/ape-ingest@.service
+# Instala:  install -m 0644 _vps_stage/media/ape-ingest@.service \
+#                       /etc/systemd/system/ape-ingest@.service
+#           install -m 0755 _vps_stage/media/ape-ingest.sh /usr/local/bin/ape-ingest.sh
+#           systemctl daemon-reload
+#   (NO se instala nada de esto en prod todavía: t4 es staging.)
+#
+# INSTANCIA = `%i` = la clave de sesión (16 hex) que calcula el coordinador
+# (hash(proveedor|canal), I1). Una instancia por canal activo, nunca dos: el
+# flock del script hace imposible el segundo escritor (sale 3).
+#
+# EL SPEC LO ESCRIBE EL SUPERVISOR (t9), NUNCA ESTA UNIDAD
+#   /run/mediafanout/spec/%i.env   0640 root:www-data  (atómico: tmp+rename)
+#     MF_KEY=<key16>
+#     MF_GEN=<n>                  ← persistido+1 en CADA spawn (W1 §6.4)
+#     MF_OUT=/dev/shm/mf/<key16>/<gen>/    ← ruta de FICHEROS (no URL)
+#     MF_UPSTREAM_URL=<url con ticket>     ← credenciales por ENTORNO
+#     MF_IDEM='proveedor|canal'            (trazabilidad)
+#     MF_SRC_SEG_DUR=6  MF_SRC_AUDIO_CODEC=aac   (opcionales)
+#   Orden del supervisor: seed → spec atómico → start → publish state=starting.
+#   Si no hay spec, el worker sale 2 (config) sin tocar tmpfs.
+#
+# LIFECYCLE (contrato I2 + integración t9, 2026-10-25)
+#   El que REINICIA es el supervisor: backoff propio (1/2/4/8 s), `gen++` y
+#   spec nuevo ANTES del start. systemd NO reejecuta nunca con el mismo spec:
+#     * `RestartPreventExitStatus` cubre TODOS los códigos de salida del worker
+#       (1,2,3,4,10,12,13,14,20,21,75,126,127) y TODAS las señales de
+#       terminación (HUP/INT/QUIT/ILL/TRAP/ABRT/BUS/FPE/KILL/USR1/SEGV/USR2/
+#       PIPE/ALRM/IO/PWR/STKFLT/XCPU/XFSZ/VTALRM/PROF/SYS). Resultado
+#       verificable con `systemctl show -p RestartPreventExitStatus` + unidades
+#       transitorias (F3/t7 y t18: cada código/señal termina con NRestarts=0),
+#       sin perder la directiva `Restart=on-failure` del gate I2.
+#     * Si aun así systemd relanzara, el worker vería el directorio de su
+#       generación con contenido y saldría 21 (FENCED) sin escribir → nunca dos
+#       escritores ni dos conexiones upstream para la misma key.
+#     * `StartLimitBurst=5` (5 arranques/5 min) es la última red anti-martilleo.
+#   `RestartSec=2` + `RestartSteps`/`RestartMaxDelaySec` quedan como backoff
+#   documentado (no se usan en la práctica, por el prevent-status).
+#
+# TEMPFS / SEGURIDAD (hallazgos F1/F2/F4/F5 de t7)
+#   * F1: el stderr de ffmpeg se REDACTUA antes de escribirlo (fuera userinfo,
+#     query tokens y user=/password=); el fichero es 0600 en un STATE_DIR 0700
+#     y se borra al parar/rotar/fence (salvo --keep-logs).
+#   * F2: `ExecStopPost --cleanup --own-gen` borra la generación vigente cuando
+#     el flock está libre (SIGKILL/OOM/watchdog) y barre sesiones huérfanas por
+#     edad/presupuesto de tmpfs; el worker también ejecuta el janitor al
+#     arrancar. Sin esto, 80 MiB/sesión podían llenar /dev/shm (1,9 GiB).
+#   * F4: el lock vive en un directorio FIJO del supervisor
+#     (/run/mediafanout/locks), no bajo el window root; además hay un segundo
+#     flock por URL normalizada (sin credenciales/token) para que dos keys
+#     distintas que resuelven la misma URL no abran dos conexiones upstream.
+#   * F5: la cota/poda cubre seg*.<ts|m4s|mp4|aac> (y init.*), no sólo seg*.ts.
+#
+# WATCHDOG (WatchdogSec=15) — MEDIDO, no decorativo
+#   El worker habla sd_notify vía `systemd-notify` (presente en systemd 255):
+#   READY=1 al publicar el primer segmento y WATCHDOG=1 cada MF_HEARTBEAT_S
+#   (5 s). `NotifyAccess=all` porque la notificación la envía el helper, no el
+#   PID principal.
+#   MEDICIÓN en este host (unidad transitoria Type=notify, 2026-10-25):
+#     - con WATCHDOG=1 cada 3 s → sobrevive a t=22 s y termina Result=success;
+#     - sin pings → systemd la mata a los 15 s con Result=watchdog.
+#   Es decir: watchdog real. Con `RestartPreventExitStatus` la muerte por
+#   watchdog NO relanza systemd; la ve el supervisor y reabre con gen++ (15 s
+#   en vez de 45 s). Es exactamente la arquitectura de t9, sólo que detecta el
+#   cuelgue antes.
+#   TimeoutStartSec=30: el worker tiene su PROPIO timeout de arranque (20 s,
+#   MF_STARTUP_TIMEOUT) que rota generación por la vía rápida (RESTART); los
+#   30 s de systemd son la red de seguridad si el arranque se cuelga del todo.
+#
+# VENTANA (t9/t5)
+#   /dev/shm/mf/<key>/<gen>/index.m3u8 + segNNNNN.ts (nombres que t5 sirve tal
+#   cual; sin subdirectorios). tmp+rename vía `-hls_flags temp_file`. Cota dura
+#   de 80 MiB / 8 entradas impuesta por el worker (no "buffer infinito").
+#   MEDIDO en este host: con ProtectSystem=strict + PrivateDevices=yes +
+#   ReadWritePaths=/dev/shm/mf la escritura en /dev/shm/mf funciona y /run
+#   queda de sólo lectura (por eso el tmpfs de ventanas NO va en /run).
+#   Ojo: /run está montado `noexec` en este VPS → el script vive en
+#   /usr/local/bin (nunca en /run).
+#
+# USUARIO (staging)
+#   El supervisor crea spec y sockets como root:www-data (aún no existe la
+#   cuenta `mediafanout`). El worker corre como root para poder escribir la
+#   ventana que crea el supervisor. Endurecimiento pendiente para producción:
+#   `useradd --system --no-create-home mediafanout`, directorios de ventana
+#   0770 root:www-data, y `User=mediafanout` + `Group=www-data` (el proceso
+#   hereda gid www-data y puede leer spec 0640 y conectar al socket 0660).
+#   Mientras tanto se mantiene el resto del aislamiento (ProtectSystem=strict,
+#   ProtectProc=invisible, RestrictAddressFamilies, etc.).
+#
+# LÍMITES (W1 §5/§6.6)
+#   MemoryMax=180M (RSS remux medido 65 MiB) · CPUQuota=60% (remux ~1,1% de un
+#   core) · TasksMax=64 · LimitNOFILE=4096 · LimitCORE=0. Al excederse, el
+#   worker aborta y limpia su generación; el supervisor decide el gen++.
+# ═════════════════════════════════════════════════════════════════════════════
+
+[Unit]
+Description=APE media-fanout ingest worker (1 ffmpeg, remux) — session %i
+Documentation=file:///usr/local/bin/ape-ingest.sh
+After=network-online.target
+Wants=network-online.target
+# La ventana vive en /dev/shm y el spec/socket en /run/mediafanout.
+RequiresMountsFor=/dev/shm /run/mediafanout
+# Anti-martilleo: 5 arranques por ventana de 5 min como máximo. Es la ÚLTIMA
+# RED: aunque un código/señal no estuviera en RestartPreventExitStatus, tras 5
+# intentos systemd deja de relanzar y el supervisor toma el control.
+StartLimitIntervalSec=300
+StartLimitBurst=5
+
+[Service]
+Type=notify
+NotifyAccess=all
+# El spec lo escribe el supervisor; `-` = no falla si aún no está.
+EnvironmentFile=-/run/mediafanout/spec/%i.env
+Environment=MF_SUP_SOCK=/run/mediafanout/mf.sock
+Environment=MF_WINDOW_ROOT=/dev/shm/mf
+Environment=MF_HLS_TIME=auto
+ExecStart=/usr/local/bin/ape-ingest.sh --instance %i
+# Limpieza al parar (F2/t7): si el flock está libre (worker muerto, p.ej. por
+# SIGKILL/OOM/watchdog) borra TAMBIÉN la generación vigente y barre sesiones
+# huérfanas por edad/presupuesto de tmpfs. Si el worker sigue vivo, no toca nada.
+ExecStopPost=-/usr/local/bin/ape-ingest.sh --cleanup --instance %i --own-gen
+
+# Contrato I2: la directiva; el reinicio efectivo lo hace el supervisor (t9).
+Restart=on-failure
+RestartSec=2
+RestartSteps=4
+RestartMaxDelaySec=30
+# F3/t7 + t18 — Neutralización COMPLETA: todos los códigos de salida del worker
+# (1,2,3,4,10,12,13,14,20,21,75,126,127) y TODAS las señales de terminación
+# relevantes (incl. SIGHUP, SIGIO, SIGPWR y SIGSTKFLT). Verificado con unidades
+# transitorias (cada código/señal termina sin reinicio: NRestarts=0). systemd
+# NUNCA reejecuta con el mismo spec; el único que reinicia (con gen++) es el
+# supervisor. StartLimitBurst=5 queda como última red anti-martilleo.
+RestartPreventExitStatus=1 2 3 4 10 12 13 14 20 21 75 126 127 SIGTERM SIGINT SIGQUIT SIGILL SIGTRAP SIGABRT SIGBUS SIGFPE SIGKILL SIGUSR1 SIGSEGV SIGUSR2 SIGPIPE SIGALRM SIGHUP SIGIO SIGPWR SIGSTKFLT SIGXCPU SIGXFSZ SIGVTALRM SIGPROF SIGSYS
+
+# Arranque/parada acotados (contrato I2: "timeout de arranque").
+# 30 s > 20 s del timeout interno del worker: la rotación por RESTART gana.
+TimeoutStartSec=30
+TimeoutStopSec=15
+KillMode=mixed
+KillSignal=SIGTERM
+SendSIGKILL=yes
+WatchdogSec=15
+
+# ── límites medidos (W1 §5/§6.6) ────────────────────────────────────────────
+MemoryMax=180M
+MemoryHigh=150M
+CPUQuota=60%
+TasksMax=64
+LimitNOFILE=4096
+LimitCORE=0
+Nice=5
+IOSchedulingClass=best-effort
+IOSchedulingPriority=6
+
+# ── aislamiento ─────────────────────────────────────────────────────────────
+User=root
+Group=root
+UMask=0022
+NoNewPrivileges=yes
+ProtectSystem=strict
+ReadWritePaths=/dev/shm/mf
+# Ruta del mount de I1: se permite si existe (el worker acepta ambas raíces).
+ReadWritePaths=-/run/mediafanout
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+# DNS + HTTP/HTTPS del proveedor, UDS del supervisor y netlink de getaddrinfo.
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6 AF_NETLINK
+# Ocultar /proc de otros procesos al worker (mitiga el argv de ffmpeg con la URL).
+ProtectProc=invisible
+# NO se activa MemoryDenyWriteExecute: ffmpeg usa rutas de asm propias y no
+# queremos romper el pipeline por un W^X mal asumido (el selftest lo comprueba).
+
+[Install]
+WantedBy=multi-user.target
