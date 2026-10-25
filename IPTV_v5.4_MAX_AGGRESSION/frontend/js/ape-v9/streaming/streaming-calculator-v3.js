@@ -269,6 +269,23 @@
             burstFactor: _round2(burstFactor),
             headroomRatio: _round2(headroomRatio),
             headroomPercent: Math.round((headroomRatio - 1) * 100),
+            // ═══════════════════════════════════════════════════════════════
+            // COLCHÓN (headroom del propietario, 2026-10-24)
+            // Regla: "siempre negativo, y cuanto MÁS negativo mejor".
+            // Para que esa regla sea físicamente verdadera, el número debe medir
+            // el margen que SOBRA sobre el bitrate, no el déficit:
+            //     colchón = (bitrate / bwSafe − 1) × 100
+            //   bw = 2× bitrate → −50 %   (usa la mitad del enlace: holgado)
+            //   bw = bitrate    →   0 %   (sin margen: crítico)
+            //   bw < bitrate    →  >0 %   (sobre-suscrito: el enlace NO alcanza)
+            // Así "-107 es peor que -79" pasa a ser cierto, y un valor positivo
+            // delata sobresuscripción (antes se mostraba como déficit y se leía
+            // al revés).
+            headroomSparePct: (() => {
+                if (!(headroomRatio > 0)) return 0;
+                const spare = (1 / headroomRatio - 1) * 100;  // = (bitrate/bwSafe − 1)×100
+                return Math.round(spare);
+            })(),
 
             // v3.1: Renamed to "Predicted Stall" for clarity
             predictedStallPct: _round2(stallResult.stallRatePct),

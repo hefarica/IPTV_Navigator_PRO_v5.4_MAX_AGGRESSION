@@ -321,9 +321,22 @@
                     bufferTargetSec: bufferSec
                 };
 
+                // ── MEDICIÓN REAL (fix 2026-10-24) ──────────────────────────
+                // ANTES: bandwidthObservedMbps: minBW  ← el PISO del perfil se
+                // pasaba como si fuera "ancho de banda observado" y el resolver
+                // lo recortaba con Math.min(observed, minBw). Resultado: headroom
+                // = minBW/bitrate, constante → "UNSTABLE / Risk 100 / Headroom
+                // -70%" PARA SIEMPRE con red perfecta. El panel nunca midió.
+                // AHORA: estimador real por doble EWMA + Resource Timing.
+                const bwSnap = (window.APE_BW && typeof window.APE_BW.snapshot === 'function')
+                    ? window.APE_BW.snapshot()
+                    : null;
+
                 const runtimeSignals = {
                     bitrateMbps: bitrateMbps,
-                    bandwidthObservedMbps: minBW
+                    bandwidthObservedMbps: bwSnap ? bwSnap.mbps : 0,
+                    bandwidthConfidence: bwSnap ? bwSnap.confidence : 'none',
+                    bandwidthSource: bwSnap ? bwSnap.source : 'none'
                 };
 
                 const result = window.StreamingEngine.computeForUI(engineInputs, runtimeSignals);

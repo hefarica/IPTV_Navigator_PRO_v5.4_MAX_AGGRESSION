@@ -45,6 +45,13 @@
         DEFAULT_MEMORY_OVERHEAD: 1.20,
         MIN_BITRATE_MBPS: 0.1,
         MIN_BANDWIDTH_MBPS: 0.1,
+        // FIX 2026-10-24: margen de seguridad aplicado a la MEDICIÓN (no al piso).
+        // 0.95 = mismo factor que hls.js para bajar/mantener nivel
+        // (`adjustedbw = 0.95 * bw`, abr-controller.ts:928-932) y misma
+        // semántica que `bandwidthSafetyFactor` de dash.js.
+        // Para SUBIR de nivel el factor es 0.7 (abrBandWidthUpFactor).
+        SAFETY_FACTOR: 0.95,
+        SAFETY_FACTOR_UP: 0.7,
         // v1.1: Segment duration tolerance
         SEGMENT_TOLERANCE_MIN: 0.7,
         SEGMENT_TOLERANCE_MAX: 1.3
@@ -90,10 +97,23 @@
             RESOLVER_CONSTANTS.MIN_BANDWIDTH_MBPS,
             Number(profileInputs.minBandwidthMbps || RESOLVER_CONSTANTS.DEFAULT_MIN_BANDWIDTH_MBPS)
         );
+        const bwConfidence = String(runtimeSignals.bandwidthConfidence || (observed > 0 ? 'low' : 'none'));
+        const bwSource = String(runtimeSignals.bandwidthSource || (observed > 0 ? 'runtime' : 'none'));
 
-        // bandwidthSafe: diseño defensivo (no sobreestima)
-        const bandwidthObservedMbps = observed > 0 ? observed : minBw;
-        const bandwidthSafeMbps = Math.min(bandwidthObservedMbps, minBw);
+        // ── FIX 2026-10-24 ────────────────────────────────────────────────
+        // ANTES:  bandwidthSafeMbps = Math.min(bandwidthObservedMbps, minBw)
+        //         → el piso del perfil RECORTABA toda medición real, así que
+        //           ningún enlace podía superar minBw y el headroom quedaba
+        //           clavado en minBw/bitrate (p. ej. 12/40 = -70%).
+        // AHORA:  si hay medición con confianza, manda la medición atenuada
+        //         por un factor de seguridad (0.9, estilo dash.js). El piso
+        //         SOLO actúa como valor de arranque cuando no hay medición.
+        const hasMeasurement = observed > 0 && bwConfidence !== 'none';
+        const bandwidthObservedMbps = hasMeasurement ? observed : minBw;
+        const bandwidthSafeMbps = hasMeasurement
+            ? Math.max(RESOLVER_CONSTANTS.MIN_BANDWIDTH_MBPS,
+                       observed * RESOLVER_CONSTANTS.SAFETY_FACTOR)
+            : minBw;
 
         // ═══════════════════════════════════════════════════════════════════
         // 3) v1.1: SEGMENT DURATION (input vs observed con tolerancia)
@@ -190,6 +210,12 @@
 
             bandwidthObservedMbps: _round1(bandwidthObservedMbps),
             bandwidthSafeMbps: _round1(bandwidthSafeMbps),
+            // FIX 2026-10-24: procedencia de la cifra de ancho de banda.
+            // `hasMeasurement=false` ⇒ el valor es el PISO del perfil, no una
+            // medición: la UI NO debe presentarlo como salud real.
+            hasMeasurement,
+            bandwidthConfidence: bwConfidence,
+            bandwidthSource: bwSource,
 
             // v1.1: Both input and observed segment duration
             segmentDurationSec: _round1(segmentDurationSec),

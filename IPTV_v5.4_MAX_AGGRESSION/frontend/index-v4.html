@@ -2755,7 +2755,12 @@
                 id="btnGenerateAudited" class="btn" data-ape-generate-audited data-ape-prepublish
                 onclick="if(window.GenerationHUD)window.GenerationHUD.show(); if(window.APEGenerationController && typeof window.APEGenerationController.prepublishAndGenerate === 'function') { window.APEGenerationController.prepublishAndGenerate().catch(e=>console.error('[APE-PREPUBLISH]',e)); } else if(window.APEGenerationController && typeof window.APEGenerationController.generateListWithGate === 'function') { window.APEGenerationController.generateListWithGate().catch(e=>console.error('[APE-AUDIT]',e)); } else { if(window.GenerationHUD)window.GenerationHUD.hide(); alert('APEGenerationController aún cargando. Espera un segundo.'); }"
                 style="background: linear-gradient(135deg, #0ea5e9, #0284c7); box-shadow: 0 10px 25px rgba(14,165,233,0.4); margin-left: 10px; font-weight: bold; font-size: 1rem; padding: 14px 22px; border: 2px solid rgba(255,255,255,0.5);"><span
-                  class="icon">🩺</span><span>GENERAR + PREPUBLISH + AUDITAR</span></button>
+                  class="icon">🩺</span><span>GENERAR + PREPUBLISH + AUDITAR</span></button><button
+                id="btnGenerateDual" class="btn"
+                onclick="if(window.GenerationHUD)window.GenerationHUD.show(); if(window.APEGenerationController && typeof window.APEGenerationController.prepublishAndGenerateDual==='function'){ window.APEGenerationController.prepublishAndGenerateDual().catch(e=>{console.error('[APE-DUAL]',e); if(window.app&&window.app.showToast)window.app.showToast('Dual falló: '+e.message,'error'); else alert('Dual falló: '+e.message);}); } else { if(window.GenerationHUD)window.GenerationHUD.hide(); alert('APEGenerationController aún cargando. Espera un segundo.'); }"
+                style="background: linear-gradient(135deg, #22d3ee, #0891b2); box-shadow: 0 10px 25px rgba(34,211,238,0.4); margin-left: 10px; font-weight: bold; font-size: 1rem; padding: 14px 22px; border: 2px solid rgba(255,255,255,0.5);"
+                title="Genera UNA sola lista: el mismo contenido byte-exacto de siempre, con las URLs enrutadas por el plano del VPS (302→CDN, 4K/8K declarado, LL-HLS, failover multi-CDN, QoE) y el bloque #EXT-X-APE-CDN-* de trazabilidad. Guarda un único archivo _CDN.m3u8."><span
+                  class="icon">⚡</span><span>GENERAR LISTA MEJORADA (VPS)</span></button>
                 <label for="publicationMode" style="margin-left:14px; color:var(--text-muted); font-size:0.85rem; font-weight:bold;">Modo:</label>
                 <select id="publicationMode"
                   onchange="window.APE_PUBLICATION_MODE=this.value; console.log('%c[PUB-MODE] '+this.value,'color:#0ea5e9;font-weight:bold;');"
@@ -4010,6 +4015,24 @@
        Solo rellena huecos; nunca borra. Backup manual: apeConfigExport() / apeConfigImport(). -->
   <script src="js/ape-config-persistence-guard.js?v=1.1"></script>
 
+  <!-- 🌐 PLANO DE METADATA: cablea las URLs de la lista al gateway /cdn/ del VPS.
+       Reescribe cada canal (solo hosts de la allowlist) para que la reproducción
+       pase por el plano: sigue el 302 del proveedor, rebasa los segmentos al CDN
+       (el video NO pasa por el VPS), declara 4K/8K y mide QoE.
+       Apagar al instante: localStorage.ape_cdn_mode = 'off' -->
+  <script src="js/ape-cdn-rewrap.js?v=1.1"></script>
+
+  <!-- 🧬 IMPORTADOR DE LA DNA DEL LAB (desbloquea el gate "LAB no importado").
+       La DNA contiene credenciales de proveedor → se sirve solo desde el
+       servidor local (mismo origen), nunca desde internet.
+       Uso en consola:  await apeImportLabLocal()   |   apeLabStatus() -->
+  <script src="js/ape-lab-import-helper.js?v=2.0"></script>
+
+  <!-- 🔧 Transform línea a línea BYTE-EXACTO (solo reescribe líneas ^http://)
+       Usado por la lista CDN. Probado contra la lista real de 1.118 GB:
+       43/43 URLs cableadas, 267 tags con http intactos, 0 CRLF introducidos. -->
+  <script src="js/ape-line-transform.js?v=1.0"></script>
+
   <!-- 🚀 GENERATOR SUPREMACY V5.1 - Tab Hibernation + APE Worker -->
   <script src="js/tab-lifecycle.js?v=5.1"></script>
   <script src="js/generator-bridge.js?v=1.0"></script>
@@ -4197,6 +4220,16 @@
   <!-- ═══════════════════════════════════════════════════════════ -->
 
   <!-- Streaming Architecture v3.0 (3-Layer: Resolver → Calculator → Policy) -->
+  <!-- Medición REAL de ancho de banda (doble EWMA + Resource Timing).
+       Debe ir ANTES del resolver/calculator: Streaming Health sin esto
+       presentaba el piso del perfil como si fuera medición. -->
+  <script src="js/ape-v9/streaming/bw-estimator-v9.js?v=1.0"></script>
+  <!-- Optimizador automático: Risk mínimo + headroom según regla del propietario,
+       con reglas en cadena y rollback. Consola: APE_OPT.optimize({apply:true}) -->
+  <script src="js/ape-v9/streaming/settings-optimizer-v9.js?v=1.0"></script>
+  <!-- Solver del panel: grafo de precedentes/dependientes + función objetivo +
+       botón AUTO-AJUSTAR + propagación al editar un número. -->
+  <script src="js/ape-v9/streaming/profile-solver-v9.js?v=1.0"></script>
   <script src="js/ape-v9/streaming/streaming-input-resolver.js"></script>
   <script src="js/ape-v9/streaming/streaming-calculator-v3.js"></script>
   <script src="js/ape-v9/streaming/streaming-policy.js"></script>

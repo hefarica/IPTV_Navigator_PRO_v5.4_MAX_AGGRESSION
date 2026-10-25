@@ -144,3 +144,6 @@ devices.conf
 ara.env
 ara_token.txt
 **/secrets.*
+
+# DNA del LAB: contiene credenciales de proveedor — NUNCA versionar
+IPTV_v5.4_MAX_AGGRESSION/frontend/lab_master_22.6.0.json

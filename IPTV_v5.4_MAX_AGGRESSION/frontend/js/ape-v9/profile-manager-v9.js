@@ -819,25 +819,62 @@
             }
 
             if (stabilityLabel) {
-                const label = performance.stability?.label || performance.stall_class || 'OPTIMAL';
-                const color = performance.stability?.color || performance.stall_color || '#10b981';
+                // FIX 2026-10-24: sin medición real → "SIN MEDICIÓN", nunca
+                // "UNSTABLE". Antes el piso del perfil se presentaba como
+                // ancho de banda observado y el panel quedaba rojo siempre.
+                const noEvidence = performance.evidence === false;
+                const label = noEvidence
+                    ? 'SIN MEDICIÓN'
+                    : (performance.stability?.label || performance.stall_class || 'OPTIMAL');
+                const color = noEvidence
+                    ? '#64748b'
+                    : (performance.stability?.color || performance.stall_color || '#10b981');
                 stabilityLabel.textContent = label;
                 stabilityLabel.style.color = color;
             }
 
             if (stallPreview) {
-                const stall = performance.stall_rate_percent || 0;
-                stallPreview.textContent = stall <= 1.67 ? `<${stall.toFixed(2)}%` : `${stall.toFixed(2)}%`;
-                stallPreview.style.color = stall <= 1.67 ? '#10b981' : '#f97316';
+                // Sin medición no se publica cifra: un "69%" inventado es peor
+                // que un guion. Se muestra el guion y el motivo.
+                if (performance.evidence === false) {
+                    stallPreview.textContent = '-- (sin medición)';
+                    stallPreview.style.color = '#64748b';
+                } else {
+                    const stall = performance.stall_rate_percent || 0;
+                    stallPreview.textContent = stall <= 1.67 ? `<${stall.toFixed(2)}%` : `${stall.toFixed(2)}%`;
+                    stallPreview.style.color = stall <= 1.67 ? '#10b981' : '#f97316';
+                }
             }
 
             if (riskPreview) {
-                riskPreview.textContent = performance.risk_score || '--';
-                riskPreview.style.color = performance.risk_color || '#64748b';
+                if (performance.evidence === false) {
+                    riskPreview.textContent = '--';
+                    riskPreview.style.color = '#64748b';
+                } else {
+                    riskPreview.textContent = performance.risk_score || '--';
+                    riskPreview.style.color = performance.risk_color || '#64748b';
+                }
             }
 
             if (headroomPreview) {
-                headroomPreview.textContent = performance.headroom_percent || '--';
+                // Muestra el COLCHÓN (headroom del propietario): negativo = margen
+                // disponible, y más negativo = mejor. Positivo = el enlace no
+                // alcanza el bitrate (sobresuscripción) → rojo.
+                if (performance.evidence === false) {
+                    headroomPreview.textContent = '--';
+                    headroomPreview.style.color = '#64748b';
+                } else {
+                    const spare = (typeof performance.headroomSparePct === 'number')
+                        ? performance.headroomSparePct
+                        : performance.headroom_percent;
+                    headroomPreview.textContent = spare;
+                    headroomPreview.style.color =
+                        spare <= -100 ? '#10b981' :   // colchón enorme
+                        spare <= -50 ? '#22c55e' :    // holgado
+                        spare <= -15 ? '#eab308' :    // justo
+                        spare < 0 ? '#f97316' :       // al límite
+                        '#ef4444';                    // sobre-suscrito
+                }
             }
 
             // Actualizar panel de resumen (mostrar si hay warnings)

@@ -1,0 +1,12 @@
+[Unit]
+Description=APE META WATCHDOG — cada 60 s
+Documentation=file:///root/ape-meta-plane-20261024/README.md
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=60s
+AccuracySec=5s
+Unit=ape-meta-watchdog.service
+
+[Install]
+WantedBy=timers.target

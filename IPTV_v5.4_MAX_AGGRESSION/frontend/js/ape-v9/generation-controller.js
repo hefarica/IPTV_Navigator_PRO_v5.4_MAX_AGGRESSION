@@ -583,8 +583,247 @@
         };
     }
 
-    async function prepublishAndGenerate(options = {}) {
-        if (!window.app || typeof window.app.getFilteredChannels !== 'function') {
+    // ═══════════════════════════════════════════════════════════════════════
+    // [APE-DUAL 2026-10-24] Salida dual: DIRECTA + CDN desde UNA sola pasada.
+    // · A (_DIRECTA.m3u8): URLs del proveedor — doctrina vigente, cero dependencia.
+    // · B (_CDN.m3u8):      URLs envueltas /cdn/<host>/… → pasan por el plano VPS
+    //                       (4K/8K declarado, LL-HLS, failover multi-CDN, QoE).
+    // Se usa ReadableStream.tee(): el generador NO se toca ni se ejecuta dos veces.
+    // ═══════════════════════════════════════════════════════════════════════
+
+    // TransformStream línea a línea sobre chunks Uint8Array (LF interno).
+    function _makeLineTransform(fn) {
+        var buf = '';
+        var dec = new TextDecoder();
+        var enc = new TextEncoder();
+        return new TransformStream({
+            transform: function (chunk, ctrl) {
+                buf += dec.decode(chunk, { stream: true });
+                var i;
+                while ((i = buf.indexOf('\n')) >= 0) {
+                    var line = buf.slice(0, i);
+                    buf = buf.slice(i + 1);
+                    ctrl.enqueue(enc.encode(fn(line) + '\n'));
+                }
+            },
+            flush: function (ctrl) {
+                if (buf.length) ctrl.enqueue(enc.encode(fn(buf)));
+            }
+        });
+    }
+
+    // Bloque INERTE de trazabilidad del plano (RFC 8216 §6.3.1: tags desconocidos
+    // se ignoran). NO altera ningún tag existente ni el bitstream: solo documenta
+    // dentro de la lista qué hace el plano /cdn/ con ella.
+    function _cdnPlaneBlock() {
+        var st = (typeof window.apeCdnInfo === 'function') ? window.apeCdnInfo() : {};
+        var lab = (typeof window.apeLabStatus === 'function') ? window.apeLabStatus() : {};
+        var base = String(st.base || 'https://iptv-ape.duckdns.org').replace(/\/+$/, '');
+        return [
+            '#EXT-X-APE-CDN-PLANE:v4',
+            '#EXT-X-APE-CDN-BASE:' + base + '/cdn/',
+            '#EXT-X-APE-CDN-FAILOVER:allowlist+circuit-breaker-15s',
+            '#EXT-X-APE-CDN-302:follow-to-final-origin',
+            '#EXT-X-APE-CDN-LLHLS:passthrough+server-control',
+            '#EXT-X-APE-CDN-UHD:auto(4k|8k)-codecs-truthful',
+            '#EXT-X-APE-CDN-QOE:/_ape/qoe',
+            '#EXT-X-APE-CDN-LAB:' + (lab.labVersion || 'n/a') +
+                '|profiles=' + ((lab.profiles || []).length) +
+                '|bulletproof=' + (lab.bulletproof === true)
+        ].join('\n') + '\n';
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // Destino de guardado con FALLBACK REAL (bug medido en producción):
+    // `showSaveFilePicker` exige "user gesture". El pipeline hace antes el
+    // Pre-Publish (parser stack + admission + dynamic probe de 200 URLs), así
+    // que al llegar aquí el gesto ya caducó y el picker LANZA:
+    //   "Must be handling a user gesture to show a file picker."
+    // Sin fallback, la lista CDN no se escribiría nunca. Con fallback se usa
+    // el mismo camino que la lista normal: chunked-blob + <a download>.
+    // Devuelve { kind:'fs', writable } | { kind:'blob', chunks, name }
+    // ═══════════════════════════════════════════════════════════════════════
+    async function _apeSaveTarget(suggestedName) {
+        var types = [{ description: 'M3U8 Playlist', accept: { 'application/x-mpegURL': ['.m3u8'] } }];
+        if (typeof window.showSaveFilePicker === 'function') {
+            try {
+                var h = await window.showSaveFilePicker({ suggestedName: suggestedName, types: types });
+                return { kind: 'fs', handle: h, name: h.name, writable: await h.createWritable() };
+            } catch (e) {
+                console.warn('[APE-CDN] picker no disponible (' + e.message + ') → fallback chunked-blob');
+            }
+        }
+        return { kind: 'blob', chunks: [], name: suggestedName };
+    }
+
+    function _apeFinishBlobTarget(target) {
+        if (!target || target.kind !== 'blob') return null;
+        var blob = new Blob(target.chunks, { type: 'application/x-mpegURL' });
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement('a');
+        a.href = url;
+        a.download = target.name;
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(function () { URL.revokeObjectURL(url); a.remove(); }, 2000);
+        return { bytes: blob.size, mode: 'BLOB' };
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // [APE-CDN 2026-10-24] Salida ÚNICA: la lista MEJORADA (a través del VPS).
+    // · Misma fuente que la lista normal (generateStream) → mismo contenido.
+    // · Solo se reescriben las líneas ^https?:// (byte-exacto, LF/CRLF intacto)
+    //   y se inyecta el bloque inerte #EXT-X-APE-CDN-* antes del primer #EXTINF.
+    // · Guarda con picker o, si no hay gesto de usuario, chunked-blob.
+    // La lista clásica (URLs directas) sigue disponible con el botón GENERAR.
+    // ═══════════════════════════════════════════════════════════════════════
+    // Abre el destino INMEDIATAMENTE (gesto de usuario fresco).
+    // Debe llamarse como primera operación asíncrona del clic: si se espera a
+    // que termine el Pre-Publish, Chrome ya no considera que hay "user gesture"
+    // y `showSaveFilePicker` lanza NotAllowedError (verificado en producción).
+    // Devuelve { kind:'fs'|'blob'|'cancel', ... }
+    async function _apeOpenTargetNow(name) {
+        var types = [{ description: 'M3U8 Playlist mejorada', accept: { 'application/x-mpegURL': ['.m3u8'] } }];
+        if (typeof window.showSaveFilePicker !== 'function') {
+            return { kind: 'blob', chunks: [], name: name, reason: 'no-fsaa' };
+        }
+        try {
+            var h = await window.showSaveFilePicker({ suggestedName: name, types: types });
+            return { kind: 'fs', handle: h, name: h.name, writable: await h.createWritable() };
+        } catch (e) {
+            if (e && e.name === 'AbortError') {
+                return { kind: 'cancel', name: name };   // el usuario cerró el diálogo
+            }
+            console.warn('[APE-CDN] picker no disponible (' + (e && e.message) + ') → se usará blob al final');
+            return { kind: 'blob', chunks: [], name: name, reason: e && e.name };
+        }
+    }
+
+    async function _cdnOnlyWrite(channels, merged, options = {}) {
+        var gen = window.M3U8TypedArraysGenerator;
+        var stamp = (options.filename || ('APE_LISTA_' + Date.now() + '.m3u8')).replace(/\.m3u8$/i, '');
+
+        if (typeof window.apeCdnRewrap !== 'function') {
+            throw new Error('apeCdnRewrap no cargado (ape-cdn-rewrap.js)');
+        }
+        if (typeof window.apeLineTransform !== 'function') {
+            throw new Error('apeLineTransform no cargado (ape-line-transform.js)');
+        }
+        if (typeof gen.generateStream !== 'function') {
+            throw new Error('M3U8TypedArraysGenerator.generateStream no disponible');
+        }
+
+        // Destino: el abierto al hacer CLIC (gesto válido) o, si no lo hay,
+        // picker tardío → blob. Nunca aborta por falta de gesto.
+        var target = options.preTarget;
+        if (!target) target = await _apeSaveTarget(stamp + '_CDN.m3u8');
+
+        var sink = (target.kind === 'fs')
+            ? target.writable
+            : new WritableStream({ write: function (c) { target.chunks.push(c); } });
+
+        var stats = { lines: 0, urls: 0, wrapped: 0, skipped: 0 };
+        var lineFn = function (line) {
+            stats.lines++;
+            var t = line.trim();
+            if (!/^https?:\/\//i.test(t)) return line;
+            stats.urls++;
+            var out = window.apeCdnRewrap(line);
+            if (out !== line) stats.wrapped++; else stats.skipped++;
+            return out;
+        };
+
+        var source = gen.generateStream(channels, merged);
+        await source
+            .pipeThrough(window.apeLineTransform(lineFn, { block: _cdnPlaneBlock() }))
+            .pipeTo(sink);
+
+        var saved = (target.kind === 'fs')
+            ? { mode: 'FSAA', filename: target.name }
+            : { mode: 'BLOB', filename: target.name, bytes: _apeFinishBlobTarget({ kind: 'blob', chunks: target.chunks, name: target.name }).bytes };
+
+        console.log('%c[APE-CDN] lista MEJORADA generada', 'color:#22d3ee;font-weight:bold;', {
+            archivo: saved.filename, modo: saved.mode,
+            canales: channels.length,
+            urls: stats.urls, cableadas: stats.wrapped, sin_cablear: stats.skipped
+        });
+
+        return {
+            mode: 'CDN_ONLY',
+            filename: saved.filename,
+            saveMode: saved.mode,
+            channels: channels.length,
+            stats: stats
+        };
+    }
+
+    async function _dualWrite(channels, merged, options = {}) {
+        var gen = window.M3U8TypedArraysGenerator;
+        var stamp = (options.filename || ('APE_LISTA_' + Date.now() + '.m3u8')).replace(/\.m3u8$/i, '');
+
+        if (typeof window.apeCdnRewrap !== 'function') {
+            throw new Error('apeCdnRewrap no cargado (ape-cdn-rewrap.js)');
+        }
+        if (typeof gen.generateStream !== 'function') {
+            throw new Error('M3U8TypedArraysGenerator.generateStream no disponible');
+        }
+
+        // AMBOS destinos con el mismo fallback que la ruta CDN (sin abortar por gesto)
+        var targetA = await _apeSaveTarget(stamp + '_DIRECTA.m3u8');
+        var targetB = await _apeSaveTarget(stamp + '_CDN.m3u8');
+
+        var sinkA = (targetA.kind === 'fs')
+            ? targetA.writable
+            : new WritableStream({ write: function (c) { targetA.chunks.push(c); } });
+        var sinkB = (targetB.kind === 'fs')
+            ? targetB.writable
+            : new WritableStream({ write: function (c) { targetB.chunks.push(c); } });
+
+        // Una sola generación → tee() a los dos destinos
+        var source = gen.generateStream(channels, merged);
+        var branches = source.tee();
+
+        var stats = { lines: 0, urls: 0, wrapped: 0, skipped: 0 };
+
+        var lineFn = function (line) {
+            stats.lines++;
+            var t = line.trim();
+            if (!/^https?:\/\//i.test(t)) return line;
+            stats.urls++;
+            var out = window.apeCdnRewrap(line);
+            if (out !== line) stats.wrapped++; else stats.skipped++;
+            return out;
+        };
+
+        await Promise.all([
+            branches[0].pipeTo(sinkA),
+            branches[1]
+                .pipeThrough(
+                    (typeof window.apeLineTransform === 'function')
+                        ? window.apeLineTransform(lineFn, { block: _cdnPlaneBlock() })
+                        : _makeLineTransform(lineFn)
+                )
+                .pipeTo(sinkB)
+        ]);
+
+        if (targetA.kind === 'blob') _apeFinishBlobTarget(targetA);
+        if (targetB.kind === 'blob') _apeFinishBlobTarget(targetB);
+
+        console.log('%c[APE-DUAL] listas generadas', 'color:#22d3ee;font-weight:bold;', {
+            directa: targetA.name, cdn: targetB.name, canales: channels.length,
+            urls: stats.urls, cableadas: stats.wrapped, sin_cablear: stats.skipped
+        });
+
+        return {
+            mode: 'DUAL',
+            filenameA: targetA.name,
+            filenameB: targetB.name,
+            channels: channels.length,
+            stats: stats
+        };
+    }
+
+    async function prepublishAndGenerate(options = {}) {        if (!window.app || typeof window.app.getFilteredChannels !== 'function') {
             throw new Error('window.app.getFilteredChannels no disponible');
         }
         const gen = window.M3U8TypedArraysGenerator;
@@ -675,7 +914,8 @@
         // con defaults silenciosos. Doctrine: single-source — no fallback silent al hardcoded.
         if (!labLoaded || !labCfg.profiles || Object.keys(labCfg.profiles).length === 0) {
             const reason = !labLoaded ? 'LAB JSON no importado (labExportedAt vacío)' : 'profiles vacío en APE_PROFILES_CONFIG';
-            const msg = `❌ Generación abortada: ${reason}. Importa primero el LAB_CALIBRATED_*.json.`;
+            const msg = `❌ Generación abortada: ${reason}. Importa primero el LAB_CALIBRATED_*.json.\n` +
+                `Atajo: en la consola ejecuta  await apeImportLabLocal()  (carga la DNA del servidor local) y vuelve a pulsar el botón.`;
             console.error('[APE-PREPUBLISH]', msg);
             if (window.app?.showToast) window.app.showToast(msg, 'error');
             else alert(msg);
@@ -714,7 +954,31 @@
         };
 
         let downloadResult = null;
-        if (hasStreaming) {
+        // dual: 'cdn' (por defecto, SOLO la mejorada) | 'both' (las dos) | false
+        const dualMode = options.dual || false;
+        const canStream = typeof gen.generateStream === 'function'
+            && typeof window.showSaveFilePicker === 'function';
+        const useDual = dualMode !== false && canStream;
+
+        if (useDual && dualMode === 'both') {
+            // RUTA DUAL: una pasada, dos archivos (_DIRECTA + _CDN)
+            console.log('[APE-PREPUBLISH] RUTA DUAL: generando lista DIRECTA y lista CDN en una sola pasada');
+            downloadResult = await _dualWrite(channels, merged, options);
+            if (window.app.showToast) window.app.showToast(
+                `✅ 2 listas: DIRECTA (proveedor) + CDN (${downloadResult.stats.wrapped} URLs por el VPS, ` +
+                `${downloadResult.stats.skipped} fuera de allowlist)`,
+                'success'
+            );
+        } else if (useDual) {
+            // RUTA CDN: SOLO la lista mejorada (a través del plano del VPS)
+            console.log('[APE-PREPUBLISH] RUTA CDN: generando SOLO la lista mejorada');
+            downloadResult = await _cdnOnlyWrite(channels, merged, options);
+            if (window.app.showToast) window.app.showToast(
+                `✅ Lista MEJORADA: ${channels.length} canales · ${downloadResult.stats.wrapped} URLs por el VPS` +
+                (downloadResult.stats.skipped ? ` · ${downloadResult.stats.skipped} fuera de allowlist` : ''),
+                'success'
+            );
+        } else if (hasStreaming) {
             // RUTA STREAMING: zero-copy a disco, sin Blob en RAM
             console.log('[APE-PREPUBLISH] Usando generateAndDownloadStreaming (zero-copy)');
             merged.filename = options.filename || `APE_LISTA_${Date.now()}.m3u8`;
@@ -812,8 +1076,39 @@
         };
     }
 
-    function attachPrepublishButton(buttonSelector = '[data-ape-prepublish]') {
-        const button = document.querySelector(buttonSelector);
+    // ── [APE-CDN] entrada pública del botón: SOLO la lista mejorada ─────────
+    // IMPORTANTE: el destino se elige AQUÍ, como primera operación asíncrona del
+    // clic, para conservar el "user gesture" que exige showSaveFilePicker.
+    // Si el usuario cancela el diálogo → no se genera nada (no se pierden 2 min).
+    async function prepublishAndGenerateDual(options = {}) {
+        var stamp = 'APE_LISTA_' + Date.now();
+        var pre = await _apeOpenTargetNow(stamp + '_CDN.m3u8');
+
+        if (pre && pre.kind === 'cancel') {
+            console.log('[APE-CDN] el usuario canceló el destino → generación abortada sin trabajo');
+            if (window.app && window.app.showToast) window.app.showToast('Generación cancelada (no se eligió archivo).', 'warning');
+            return { decision: 'cancelled_by_user', channels: 0 };
+        }
+
+        try {
+            return await prepublishAndGenerate(Object.assign({}, options, {
+                dual: 'cdn',
+                filename: stamp + '.m3u8',
+                preTarget: pre
+            }));
+        } catch (e) {
+            // Si el pipeline aborta (LAB ausente, 0 canales, etc.) el archivo ya
+            // elegido se queda a medio abrir: hay que abortarlo para no dejar un
+            // 0-byte bloqueado ni un writable colgando.
+            if (pre && pre.kind === 'fs' && pre.writable) {
+                try { await pre.writable.abort(); } catch (_) { /* ya cerrado */ }
+                console.warn('[APE-CDN] destino liberado tras aborto (no se creó archivo vacío)');
+            }
+            throw e;
+        }
+    }
+
+    function attachPrepublishButton(buttonSelector = '[data-ape-prepublish]') {        const button = document.querySelector(buttonSelector);
         if (!button) return false;
         button.addEventListener('click', async () => {
             const orig = button.textContent;
@@ -845,6 +1140,8 @@
         DEFAULT_GATE_URL,
         // Etapa 3 del plan "Integración sin /resolve/"
         prepublishAndGenerate,
+        // [APE-DUAL 2026-10-24] misma pasada → 2 archivos (_DIRECTA + _CDN)
+        prepublishAndGenerateDual,
         probePrepublishServer,
         callPrepublish,
         attachPrepublishButton,

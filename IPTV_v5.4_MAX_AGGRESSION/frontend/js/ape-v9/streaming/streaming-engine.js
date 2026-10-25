@@ -146,7 +146,14 @@
 
                     // Headroom
                     headroomPercent: metrics.headroomPercent,
+                    // COLCHÓN (negativo = margen; más negativo = mejor).
+                    // Es el número que debe verse en el panel.
+                    headroomSparePct: metrics.headroomSparePct,
                     headroomOk: metrics.headroomRatio >= metrics.unstableMarginUsed,
+                    // FIX 2026-10-24: sin medición no hay veredicto de salud
+                    evidence: runtimeInputs.hasMeasurement === true,
+                    bwConfidence: runtimeInputs.bandwidthConfidence || 'none',
+                    bwSource: runtimeInputs.bandwidthSource || 'none',
 
                     // Stall (renamed to Predicted Stall)
                     predictedStallPct: metrics.predictedStallPct || metrics.stallRatePct,

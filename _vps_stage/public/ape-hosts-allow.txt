@@ -1,0 +1,9 @@
+# ═════════════════════════════════════════════════════════════════════════════
+# Allowlist de hosts para /cdn/  (SSRF guard del plano público)
+# Un host por línea. Sin esquema, sin ruta. Se admiten puertos: host:8080
+# Los comentarios (#) se ignoran. Cambios: recargar nginx o esperar 60 s (cache).
+# ═════════════════════════════════════════════════════════════════════════════
+line.tivi-ott.net
+# añadir aquí los proveedores autorizados, p.ej.:
+# line.dndnscloud.ru
+# 126958958431.4k-26com.com
