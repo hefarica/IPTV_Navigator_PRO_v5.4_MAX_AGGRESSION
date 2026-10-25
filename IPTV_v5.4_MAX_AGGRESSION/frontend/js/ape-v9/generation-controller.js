@@ -823,6 +823,344 @@
         };
     }
 
+    // ═══════════════════════════════════════════════════════════════════════
+    // [APE-SESSION 2026-10-25 · G1] Emisión de URLs de sesión (/sess/...)
+    // ═══════════════════════════════════════════════════════════════════════
+    // Flag EXPLÍCITO y APAGADO POR DEFECTO (`ape_session_mode` / `apeSessionMode`
+    // / `sess_mode`). Con el flag OFF este bloque NO PARTICIPA en la generación:
+    // no se añade ninguna opción al generador, no se transforma ninguna línea y
+    // la lista sale BYTE-IDÉNTICA a la de siempre (se compara por sha256 en la
+    // verificación de la tarea).
+    //
+    // Con el flag ON, cada canal cuyo host esté HABILITADO emite EXACTAMENTE UNA
+    // URL absoluta al endpoint de sesión del coordinador:
+    //
+    //     <base>/sess/<proveedor>/<canal>/live.m3u8
+    //
+    // …y los canales de hosts NO habilitados SIGUEN DIRECTOS con su URL original
+    // intacta: el generador no filtra, no deduplica y no pierde NINGÚN canal
+    // (regla de cobertura del propietario: se emite exactamente el conjunto que
+    // recibe).
+    //
+    // Semántica de <proveedor>/<canal> — la MISMA que valida el VPS:
+    //   · proveedor = host de la URL, en minúsculas, sin scheme/path/userinfo y
+    //     sin :80/:443 → debe figurar en /etc/mediafanout/providers.allow
+    //     (normalización idéntica a ape-supervisor.lua:norm_provider).
+    //   · canal     = último segmento del path, sin query y sin .m3u8/.ts
+    //     (normalización idéntica a ape-supervisor.lua:norm_channel); es la
+    //     clave que casa con `proveedor|canal=URL` de /etc/mediafanout/urls.conf.
+    //   · Ambos tokens se validan aquí con el mismo juego de caracteres que el
+    //     supervisor; si no cumplen, el canal queda DIRECTO (nunca se pierde).
+    //
+    // La ruta DEBE llevar los 3 segmentos (…/<live|playlist|index>.m3u8): es la
+    // única que enruta el borde (`media-fanout.conf:348`, location regex
+    // `^/sess/(?<sess_provider>[^/]+)/(?<sess_channel>[^/]+)/(?:live|playlist|index)\.m3u8$`);
+    // la forma corta `/sess/<proveedor>/<canal>.m3u8` cae en `location /sess/`
+    // → 404 (`media-fanout.conf:353`). Por eso el emisor añade el fichero de
+    // entrada, configurable entre los tres que acepta el borde.
+    //
+    // Anti-509: si un bloque de canal trajera más de una URI (no debería: la
+    // doctrina es 1 URL por canal), la primera se reescribe a la sesión y las
+    // extra se neutralizan como tag inerte `#EXT-X-APE-SESSION-EXTRA:…`
+    // (RFC 8216 §6.3.1: los tags desconocidos se ignoran), de modo que el player
+    // NUNCA abre una segunda conexión directa al proveedor.
+    // ═══════════════════════════════════════════════════════════════════════
+
+    // Base por defecto = MISMO origen que el endpoint de probe ya existente
+    // (cero hardcode nuevo). Se puede sobreescribir con `ape_session_base`.
+    const DEFAULT_SESSION_BASE = (function () {
+        try { return new URL(DEFAULT_VPS_PROBE_URL).origin; } catch (_) { return 'https://iptv-ape.duckdns.org'; }
+    })();
+    const SESSION_ENTRY_DEFAULT = 'live.m3u8';
+    const SESSION_ENTRY_ALLOWED = ['live.m3u8', 'playlist.m3u8', 'index.m3u8'];
+
+    // `norm_provider` del supervisor (ape-supervisor.lua): host canónico.
+    function _sessProvider(value) {
+        let p = String(value === undefined || value === null ? '' : value).trim().toLowerCase();
+        p = p.replace(/^[a-z][a-z0-9+.-]*:\/\//, '');   // scheme
+        p = p.replace(/^.*@/, '');                       // userinfo (NUNCA se propaga)
+        p = p.replace(/\/.*$/, '');                      // path/query
+        p = p.replace(/:80$/, '').replace(/:443$/, '');  // puerto por defecto
+        p = p.replace(/\.$/, '');                        // punto final (FQDN)
+        if (!p || p.length > 190 || !/^[a-z0-9._:-]+$/.test(p)) return null;
+        return p;
+    }
+
+    // `norm_channel` del supervisor (ape-supervisor.lua): idem del canal.
+    function _sessChannel(value) {
+        let c = String(value === undefined || value === null ? '' : value).trim();
+        c = c.replace(/[?#].*$/, '');
+        if (c.indexOf('/') >= 0) { const parts = c.split('/'); c = parts[parts.length - 1]; }
+        c = c.replace(/\.m3u8$/i, '').replace(/\.ts$/i, '');
+        if (!c || c.length > 64 || !/^[A-Za-z0-9_.\-]+$/.test(c)) return null;
+        return c;
+    }
+
+    function _sessFlag(value, dflt) {
+        if (value === undefined || value === null || value === '') return dflt;
+        if (typeof value === 'boolean') return value;
+        const s = String(value).trim().toLowerCase();
+        if (s === '1' || s === 'true' || s === 'yes' || s === 'on' || s === 'sess' || s === 'session') return true;
+        if (s === '0' || s === 'false' || s === 'no' || s === 'off' || s === 'direct' || s === 'directo') return false;
+        return dflt;
+    }
+
+    function _sessList(value) {
+        if (value === undefined || value === null || value === '') return [];
+        const raw = Array.isArray(value) ? value : String(value).split(/[\s,;]+/);
+        const out = [];
+        const seen = Object.create(null);
+        for (const item of raw) {
+            const t = String(item === undefined || item === null ? '' : item).trim();
+            if (!t) continue;
+            const host = (t === '*') ? '*' : _sessProvider(t);
+            if (!host || seen[host]) continue;
+            seen[host] = 1;
+            out.push(host);
+        }
+        return out;
+    }
+
+    function _sessStorage(key) {
+        try { return (window && window.localStorage) ? window.localStorage.getItem(key) : null; }
+        catch (_) { return null; }   // Safari privado / file://
+    }
+
+    function _sessBase(value) {
+        const b = String(value === undefined || value === null ? '' : value).trim();
+        return b ? b.replace(/\/+$/, '') : '';
+    }
+
+    function _sessFirstDefined(list) {
+        for (const v of list) {
+            if (v !== undefined && v !== null && v !== '') return v;
+        }
+        return undefined;
+    }
+
+    /**
+     * Configuración EFECTIVA del modo sesión. Precedencia:
+     *   opciones de la llamada → window.APE_SESSION_* → localStorage → default.
+     * Default = OFF sin proveedores: la generación queda exactamente como antes.
+     * @returns {{mode:boolean,enabled:boolean,source:string,providers:string[],
+     *            base:string,entry:string,strict:boolean,block:boolean}}
+     */
+    function _resolveSessionConfig(options = {}) {
+        const opts = (options && typeof options === 'object') ? options : {};
+        let source = 'default';
+
+        let rawMode = _sessFirstDefined([opts.ape_session_mode, opts.apeSessionMode, opts.sess_mode]);
+        if (rawMode !== undefined) source = 'options';
+        else if (window && window.APE_SESSION_MODE !== undefined && window.APE_SESSION_MODE !== null && window.APE_SESSION_MODE !== '') {
+            rawMode = window.APE_SESSION_MODE;
+            source = 'window';
+        } else {
+            rawMode = _sessFirstDefined([_sessStorage('ape_session_mode')]);
+            if (rawMode !== undefined) source = 'storage';
+        }
+        const mode = _sessFlag(rawMode, false);
+
+        let rawProviders = _sessFirstDefined([
+            opts.ape_session_providers, opts.apeSessionProviders, opts.session_providers
+        ]);
+        if (rawProviders === undefined && window && window.APE_SESSION_PROVIDERS !== undefined && window.APE_SESSION_PROVIDERS !== null) {
+            rawProviders = window.APE_SESSION_PROVIDERS;
+        }
+        if (rawProviders === undefined) rawProviders = _sessFirstDefined([_sessStorage('ape_session_providers')]);
+        const providers = _sessList(rawProviders);
+
+        // La base admite la cadena VACÍA a propósito: '' => rutas relativas
+        // /sess/... (avanzado; un player que abra el fichero local no resuelve
+        // relativas, así que el default es absoluto).
+        let rawBase;
+        if (opts.ape_session_base !== undefined) rawBase = opts.ape_session_base;
+        else if (opts.apeSessionBase !== undefined) rawBase = opts.apeSessionBase;
+        else if (opts.session_base !== undefined) rawBase = opts.session_base;
+        else if (window && window.APE_SESSION_BASE !== undefined && window.APE_SESSION_BASE !== null) rawBase = window.APE_SESSION_BASE;
+        else {
+            const storedBase = _sessStorage('ape_session_base');
+            if (storedBase !== null && storedBase !== undefined) rawBase = storedBase;
+        }
+        const base = (rawBase === undefined || rawBase === null) ? DEFAULT_SESSION_BASE : _sessBase(rawBase);
+
+        let rawEntry = _sessFirstDefined([opts.ape_session_entry, opts.apeSessionEntry]);
+        if (rawEntry === undefined && window && window.APE_SESSION_ENTRY !== undefined && window.APE_SESSION_ENTRY !== null) {
+            rawEntry = window.APE_SESSION_ENTRY;
+        }
+        let entry = String(rawEntry === undefined ? SESSION_ENTRY_DEFAULT : rawEntry).trim().toLowerCase();
+        if (SESSION_ENTRY_ALLOWED.indexOf(entry) < 0) entry = SESSION_ENTRY_DEFAULT;
+
+        // Anti-509 (defecto sí): una única URL por canal; las extra se neutralizan.
+        const strict = _sessFlag(_sessFirstDefined([opts.ape_session_strict, opts.apeSessionStrict]), true);
+        // Bloque inerte #EXT-X-APE-SESSION-* de trazabilidad (sólo en modo sesión).
+        const block = _sessFlag(_sessFirstDefined([opts.ape_session_block, opts.apeSessionBlock]), true);
+
+        // `enabled` exige AMBAS cosas: flag ON **y** al menos un host habilitado.
+        // Sin allowlist no se reescribe nada → cobertura intacta por diseño.
+        return { mode, source, providers, base, entry, strict, block, enabled: mode === true && providers.length > 0 };
+    }
+
+    function _sessHostAllowed(conf, provider) {
+        const list = (conf && conf.providers) || [];
+        for (const p of list) {
+            if (p === '*' || p === provider) return true;
+        }
+        return false;
+    }
+
+    /**
+     * URL de sesión para una URL de canal; `null` = el canal sigue DIRECTO
+     * (host no habilitado, URL no parseable o token de canal inválido).
+     */
+    function _sessEntryUrl(rawUrl, conf, stats) {
+        const st = stats || null;
+        const m = /^[A-Za-z][A-Za-z0-9+.\-]*:\/\/([^\/?#]*)([^?#]*)/.exec(String(rawUrl === undefined || rawUrl === null ? '' : rawUrl).trim());
+        if (!m) { if (st) st.unmappedUrls++; return null; }
+        const provider = _sessProvider(m[1]);
+        if (!provider) { if (st) st.unmappedUrls++; return null; }
+        if (!_sessHostAllowed(conf, provider)) return null;   // host no habilitado → DIRECTO
+        const channel = _sessChannel(m[2] || '');
+        if (!channel) { if (st) st.unmappedUrls++; return null; }
+        if (st) {
+            st.sessionUrls++;
+            st.providers[provider] = (st.providers[provider] || 0) + 1;
+        }
+        return (conf.base || '') + '/sess/' + provider + '/' + channel + '/' + conf.entry;
+    }
+
+    /**
+     * Reescritor línea a línea para `generateStream()` (streaming: nunca
+     * materializa la lista completa en RAM). Devuelve `{ fn, stats }`; `fn` es
+     * puro respecto al estado de su propio parseo y preserva LF/CRLF y todo el
+     * contenido que no es la URI del canal.
+     */
+    function _makeSessionRewriter(cfg) {
+        const conf = cfg || _resolveSessionConfig();
+        const stats = {
+            lines: 0, entries: 0, sessionUrls: 0, directUrls: 0,
+            droppedExtraUrls: 0, unmappedUrls: 0, orphanUrls: 0, otherLines: 0,
+            providers: {}
+        };
+        let inEntry = false;
+        let seenUri = false;
+        let addedBlock = false;
+
+        function blockLines() {
+            const list = (conf.providers || []);
+            let provs = list.slice(0, 8).join(',');
+            if (list.length > 8) provs += ',+' + (list.length - 8);
+            return [
+                '#EXT-X-APE-SESSION-MODE:on',
+                '#EXT-X-APE-SESSION-ENTRY:' + conf.entry,
+                '#EXT-X-APE-SESSION-PROVIDERS:' + (provs || '(ninguno)'),
+                '#EXT-X-APE-SESSION-SINGLE-URL:' + (conf.strict ? 'yes' : 'no'),
+                '#EXT-X-APE-SESSION-DOC:docs/MEDIA_FANOUT_DEPLOY.md'
+            ].join('\n');
+        }
+
+        function fn(line) {
+            const text = String(line === undefined || line === null ? '' : line);
+            const cr = (text.length > 0 && text.charCodeAt(text.length - 1) === 13) ? '\r' : '';
+            const body = cr ? text.slice(0, -1) : text;
+            stats.lines++;
+            const t = body.trim();
+            if (t === '') return text;
+
+            const isTag = t.charCodeAt(0) === 35;                       // '#'
+            const isExtm3u = isTag && t.indexOf('#EXTM3U') === 0;
+            const isExtinf = isTag && t.indexOf('#EXTINF') === 0;
+            const isUri = /^[A-Za-z][A-Za-z0-9+.\-]*:\/\//.test(t);
+
+            // Bloque de trazabilidad inerte: tras #EXTM3U o antes del primer EXTINF.
+            const wantBlock = conf.block && !addedBlock && (isExtm3u || isExtinf || isUri);
+            if (wantBlock) addedBlock = true;
+            const blk = wantBlock ? (blockLines() + '\n') : '';
+
+            if (isExtm3u) {
+                inEntry = false;
+                return wantBlock ? (body + '\n' + blockLines() + cr) : text;
+            }
+            if (isExtinf) {
+                inEntry = true;
+                seenUri = false;
+                stats.entries++;
+                return blk + body + cr;
+            }
+            if (isTag) return text;   // EXTVLCOPT/EXTHTTP/KODIPROP/EXT-X-*: INTACTOS
+
+            // ── línea URI ──────────────────────────────────────────────────
+            if (!isUri) { stats.otherLines++; return text; }
+            if (!inEntry) {
+                stats.orphanUrls++;
+                return blk + body + cr;
+            }
+            if (seenUri) {
+                stats.droppedExtraUrls++;
+                // Anti-509: nunca una segunda URL (ni directa ni de sesión).
+                return conf.strict ? ('#EXT-X-APE-SESSION-EXTRA:' + t + cr) : text;
+            }
+            seenUri = true;
+            const lead = body.match(/^[ \t]*/)[0];
+            const trail = body.match(/[ \t]*$/)[0];
+            const sess = _sessEntryUrl(t, conf, stats);
+            if (!sess) {
+                stats.directUrls++;
+                return blk + text;      // DIRECTO: la línea original, byte a byte
+            }
+            return blk + lead + sess + trail + cr;
+        }
+
+        return { fn: fn, stats: stats };
+    }
+
+    /**
+     * Escritura de la lista en modo sesión (stream-transform, sin Blob en RAM).
+     * Sólo se invoca cuando el flag está ON y hay proveedores habilitados.
+     */
+    async function _sessWrite(channels, merged, options, cfg) {
+        const conf = cfg || _resolveSessionConfig(options);
+        const gen = window.M3U8TypedArraysGenerator;
+        if (!gen || typeof gen.generateStream !== 'function') {
+            throw new Error('M3U8TypedArraysGenerator.generateStream no disponible (necesario para emitir URLs de sesión)');
+        }
+        const name = options.filename || ('APE_LISTA_' + Date.now() + '_SESS.m3u8');
+        let target = options.preTarget;
+        if (!target) target = await _apeSaveTarget(name);
+        if (!target || target.kind === 'cancel') {
+            return { mode: 'SESSION', cancelled: true, channels: 0, stats: null };
+        }
+
+        const rw = _makeSessionRewriter(conf);
+        const sink = (target.kind === 'fs')
+            ? target.writable
+            : new WritableStream({ write: function (c) { target.chunks.push(c); } });
+
+        await gen.generateStream(channels, merged)
+            .pipeThrough(_makeLineTransform(rw.fn))
+            .pipeTo(sink);
+
+        const saved = (target.kind === 'fs')
+            ? { mode: 'FSAA', filename: target.name }
+            : { mode: 'BLOB', filename: target.name, bytes: _apeFinishBlobTarget(target).bytes };
+
+        const providerKeys = Object.keys(rw.stats.providers);
+        console.log('%c[APE-SESSION] lista de sesión generada', 'color:#a78bfa;font-weight:bold;', {
+            archivo: saved.filename, modo: saved.mode, canales: channels.length,
+            entradas: rw.stats.entries, urls_sesion: rw.stats.sessionUrls,
+            directos: rw.stats.directUrls, extras_neutralizadas: rw.stats.droppedExtraUrls,
+            sin_mapear: rw.stats.unmappedUrls, proveedores: providerKeys
+        });
+
+        return {
+            mode: 'SESSION',
+            filename: saved.filename,
+            saveMode: saved.mode,
+            channels: channels.length,
+            providers: providerKeys,
+            stats: rw.stats
+        };
+    }
+
     async function prepublishAndGenerate(options = {}) {        if (!window.app || typeof window.app.getFilteredChannels !== 'function') {
             throw new Error('window.app.getFilteredChannels no disponible');
         }
@@ -953,6 +1291,19 @@
             }
         };
 
+        // ── [APE-SESSION · G1] modo sesión: flag OFF por defecto ────────────
+        // Con el flag OFF `sessCfg.enabled` es false y NO se ejecuta nada de
+        // esto: mismo generador, mismas opciones, mismos bytes que antes.
+        const sessCfg = _resolveSessionConfig(options);
+        if (sessCfg.mode && !sessCfg.enabled) {
+            // Flag ON sin allowlist: no se enruta ningún canal (cobertura
+            // intacta) y se avisa en vez de romper canales silenciosamente.
+            console.warn('[APE-SESSION] ape_session_mode=ON sin proveedores habilitados → 0 canales enrutados; la lista sale DIRECTA (ningún canal se pierde). Configura ape_session_providers con los hosts de providers.allow.');
+            if (window.app && typeof window.app.showToast === 'function') {
+                window.app.showToast('⚠ Modo sesión ON sin proveedores habilitados: lista DIRECTA (cobertura intacta).', 'warning');
+            }
+        }
+
         let downloadResult = null;
         // dual: 'cdn' (por defecto, SOLO la mejorada) | 'both' (las dos) | false
         const dualMode = options.dual || false;
@@ -960,7 +1311,30 @@
             && typeof window.showSaveFilePicker === 'function';
         const useDual = dualMode !== false && canStream;
 
-        if (useDual && dualMode === 'both') {
+        if (sessCfg.enabled) {
+            // RUTA SESIÓN: una sola URL /sess/<proveedor>/<canal>/<entrada> por
+            // canal habilitado; el resto sigue directo (sin perder canales).
+            console.log('[APE-SESSION] modo sesión ON → proveedores=[' + sessCfg.providers.join(',') + '] base=' + (sessCfg.base || '(relativa)'));
+            downloadResult = await _sessWrite(channels, merged, options, sessCfg);
+            if (downloadResult && downloadResult.cancelled) {
+                if (window.app && typeof window.app.showToast === 'function') {
+                    window.app.showToast('Generación cancelada.', 'warning');
+                }
+                return { decision: 'cancelled', channels: channels.length };
+            }
+            const st = downloadResult.stats || {};
+            if (window.app && typeof window.app.showToast === 'function') {
+                window.app.showToast(
+                    `✅ Lista de sesión: ${st.sessionUrls} canales por /sess/ (${downloadResult.providers.length} proveedores) · ` +
+                    `${st.directUrls} directos (host no habilitado) · ${st.droppedExtraUrls} URLs extra neutralizadas`,
+                    'success'
+                );
+            }
+            // En modo sesión NO se prueban URLs del proveedor desde el
+            // navegador: la única conexión upstream la abre el worker
+            // (single-flight). La salud se lee en el coordinador (/mf/metrics).
+            return { decision: 'generated_session', channels: channels.length, downloadResult };
+        } else if (useDual && dualMode === 'both') {
             // RUTA DUAL: una pasada, dos archivos (_DIRECTA + _CDN)
             console.log('[APE-PREPUBLISH] RUTA DUAL: generando lista DIRECTA y lista CDN en una sola pasada');
             downloadResult = await _dualWrite(channels, merged, options);
@@ -1082,7 +1456,10 @@
     // Si el usuario cancela el diálogo → no se genera nada (no se pierden 2 min).
     async function prepublishAndGenerateDual(options = {}) {
         var stamp = 'APE_LISTA_' + Date.now();
-        var pre = await _apeOpenTargetNow(stamp + '_CDN.m3u8');
+        // Con el modo sesión ON el fichero se llama *_SESS (sigue siendo el
+        // mismo botón: el destino se abre con el gesto fresco del clic).
+        var sessOn = _resolveSessionConfig(options).enabled;
+        var pre = await _apeOpenTargetNow(stamp + (sessOn ? '_SESS.m3u8' : '_CDN.m3u8'));
 
         if (pre && pre.kind === 'cancel') {
             console.log('[APE-CDN] el usuario canceló el destino → generación abortada sin trabajo');
@@ -1145,6 +1522,14 @@
         probePrepublishServer,
         callPrepublish,
         attachPrepublishButton,
-        DEFAULT_PREPUBLISH_URL
+        DEFAULT_PREPUBLISH_URL,
+        // [APE-SESSION 2026-10-25 · G1] emisión de URLs de sesión (default OFF).
+        // `apeSessionConfig(opts)` → config efectiva; `apeSessionRewriter(cfg)` →
+        // {fn, stats} para reescribir una lista línea a línea; `apeSessionEntryUrl`
+        // → URL de sesión de una URL de canal (o null = directo).
+        apeSessionConfig: _resolveSessionConfig,
+        apeSessionRewriter: _makeSessionRewriter,
+        apeSessionEntryUrl: _sessEntryUrl,
+        DEFAULT_SESSION_BASE
     };
 })();
