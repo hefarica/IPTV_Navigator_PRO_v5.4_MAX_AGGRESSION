@@ -352,12 +352,101 @@
         };
     }
 
+    /**
+     * Suelo de bitrate por resolución (calidad mínima defendible, HEVC):
+     * 8K 40 · 4K 12 · 1080p 4 · 720p 2 · 480p 1 Mbps.
+     * Evita que el ajuste por enlace destruya la calidad del perfil.
+     */
+    function bitrateFloorFor(resolution) {
+        var m = String(resolution || '').match(/(\d+)x(\d+)/);
+        if (!m) return 1;
+        var w = parseInt(m[1], 10), h = parseInt(m[2], 10);
+        if (h >= 4320) return 40;
+        if (h >= 2160) return 12;
+        if (h >= 1080) return 4;
+        if (h >= 720) return 2;
+        return 1;
+    }
+
+    /**
+     * Ajuste de BITRATE por perfil para cumplir la Ley del enlace:
+     * ratio = bwSafe / bitrate ≥ unstableMargin (1.3 conservador).
+     * Sólo actúa cuando el perfil está en UNSTABLE por enlace; devuelve
+     * null si no hay margen físico (p. ej. 8K sobre 25 Mbps) o si no hace falta.
+     */
+    function fitBitrateForLink(profileId, state) {
+        var api = global.APE_PROFILES_CONFIG;
+        var snap = (global.APE_BW && typeof global.APE_BW.snapshot === 'function')
+            ? global.APE_BW.snapshot() : null;
+        if (!snap || !(snap.mbps > 0)) return null;
+        var profile = api.profiles[profileId];
+        if (!profile || !profile.settings) return null;
+        var bwSafe = snap.mbps * 0.95;
+        var margin = 1.3;                       // base 1.15 + penalizaciones
+        var maxBr = bwSafe / margin;
+        var floor = bitrateFloorFor(profile.settings.resolution);
+        // Bitrate "de diseño" (LAB) guardado la primera vez que se baja.
+        // Permite RESTAURARLO cuando el enlace vuelve a dar margen.
+        var original = Number(profile.settings.bitrate_original) ||
+            Number(profile.settings.bitrate) || 0;
+        var cur = Number(state.bitrate) || 0;
+        if (!(cur > 0) || !(original > 0)) return null;
+        // Si ni el suelo de calidad cabe en el enlace, no se baja a ciegas:
+        // se informa (8K/4K sobre un enlace demasiado estrecho).
+        if (floor > maxBr * 1.02) {
+            return {
+                fit: false, reason: 'enlace insuficiente para el suelo de calidad',
+                from: cur, floor: floor, maxBr: Math.round(maxBr * 10) / 10
+            };
+        }
+        var target = Math.min(original, Math.floor(maxBr * 10) / 10);
+        target = Math.max(floor, target);
+        if (target > original) target = original;
+        var hysteresis = 0.10;                   // evita oscilar con ruido de medición
+        if (target > cur * (1 + hysteresis)) {
+            return {
+                fit: true, restore: true, from: cur, to: target,
+                maxBr: Math.round(maxBr * 10) / 10,
+                floor: floor, bandwidthMbps: snap.mbps
+            };
+        }
+        if (target < cur * (1 - hysteresis)) {
+            return {
+                fit: true, restore: false, from: cur, to: target,
+                maxBr: Math.round(maxBr * 10) / 10,
+                floor: floor, bandwidthMbps: snap.mbps
+            };
+        }
+        return null;
+    }
+
     function applyState(profileId, s) {
         var api = global.APE_PROFILES_CONFIG;
         api.updatePrefetchSetting(profileId, 'prefetch_segments', s.prefetch);
         api.updatePrefetchSetting(profileId, 'parallel_downloads', s.parallel);
         api.updatePrefetchSetting(profileId, 'buffer_target_seconds', s.bufferSeg);
         if (s.minbw !== undefined) api.updatePrefetchSetting(profileId, 'min_bandwidth_mbps', s.minbw);
+        // Bitrate REAL del perfil: si el solver lo bajó para cumplir el enlace,
+        // se persiste aquí (mismo perfil, no cambia de tier). max/avg escalan
+        // para conservar la coherencia BANDWIDTH/AVERAGE-BANDWIDTH.
+        var prof = api.profiles && api.profiles[profileId];
+        if (prof && prof.settings && Number(s.bitrate) > 0) {
+            var curBr = Number(prof.settings.bitrate) || 0;
+            if (Math.abs(curBr - Number(s.bitrate)) > 0.05) {
+                // Guardar el bitrate de diseño antes de la primera bajada.
+                if (Number(s.bitrate) < curBr && !(Number(prof.settings.bitrate_original) > 0)) {
+                    prof.settings.bitrate_original = curBr;
+                }
+                var mx = Number(prof.settings.maxBitrateKbps) || 0;
+                var av = Number(prof.settings.avgBitrateKbps) || 0;
+                var rMax = curBr > 0 && mx > 0 ? mx / (curBr * 1000) : 0;
+                var rAvg = curBr > 0 && av > 0 ? av / (curBr * 1000) : 0;
+                prof.settings.bitrate = Number(s.bitrate);
+                if (rMax > 0) prof.settings.maxBitrateKbps = Math.round(Number(s.bitrate) * 1000 * rMax);
+                if (rAvg > 0) prof.settings.avgBitrateKbps = Math.round(Number(s.bitrate) * 1000 * rAvg);
+                if (typeof api.save === 'function') api.save();
+            }
+        }
         // 🔥 Persistir el suelo fusible (solo el de emergencia; el diseño no se toca)
         if (s.fuseRatio !== undefined && s.fuseDesignMbps > 0
             && typeof api.setFloorFuseBpsForProfile === 'function') {
@@ -485,6 +574,24 @@
 
         // ── 2) Optimizar el estado DENTRO del perfil elegido y aplicarlo.
         var r = adjustProfile(targetId, { apply: true });
+        var r0 = r;                       // referencia antes de tocar el bitrate
+        var fit = null;
+        // Si el perfil está UNSTABLE por enlace (o el Risk sigue alto), la
+        // única palanca física que queda dentro del MISMO perfil es su bitrate.
+        // Se baja sólo hasta el máximo que cumple ratio ≥ 1.3 y nunca por
+        // debajo del suelo de calidad de su resolución.
+        if (global.APE_SOLVER_FIT_BITRATE !== false) {
+            fit = fitBitrateForLink(targetId, r.state);
+            if (fit && fit.fit) {
+                var fittedState = Object.assign({}, r.state, { bitrate: fit.to });
+                var fittedSolve = solve(fittedState, engineInputsFor(targetId));
+                applyState(targetId, fittedSolve.state);
+                r = adjustProfile(targetId, { apply: true });
+                r.fitBitrate = fit;
+            } else if (fit && fit.fit === false) {
+                r.fitBitrate = fit;       // se informa; no se degrada a ciegas
+            }
+        }
         var diag = diagnose(targetId);
         r.diagnostic = diag;
         r.score = r.after;
@@ -507,7 +614,16 @@
         var beforeRisk = (r.profileChanged && oldScore) ? oldScore.risk
             : (r.profileChanged ? r.before.risk : r.before.risk);
         var msg;
-        if (r.profileChanged) {
+        if (r.fitBitrate && r.fitBitrate.fit) {
+            msg = 'Risk ' + Math.round(r0.before.risk) + ' → ' + r.after.risk +
+                ' · bitrate ' + r.fitBitrate.from + ' → ' + r.fitBitrate.to + ' Mbps' +
+                (r.fitBitrate.restore ? ' (restaurado al diseño)' : '') +
+                ' · colchón ' + r.after.sparePct + '% · stall ' + r.after.stallPct + '%';
+        } else if (r.fitBitrate && r.fitBitrate.fit === false) {
+            msg = 'Enlace insuficiente para el suelo de calidad de ' + targetId +
+                ' (' + r.fitBitrate.floor + ' Mbps mín. vs ' + r.fitBitrate.maxBr +
+                ' Mbps que aguanta) · Risk ' + r.after.risk;
+        } else if (r.profileChanged) {
             msg = 'Objetivo: ' + startId + ' → ' + targetId +
                 ' (' + Math.round((selection && selection.best ? selection.best.bitrateMbps : 0)) + ' Mbps) · Risk ' +
                 Math.round(beforeRisk) + ' → ' + r.after.risk +
