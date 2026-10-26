@@ -972,47 +972,45 @@
          * Actualiza las métricas v3.1 en el panel inferior
          */
         _updateV31Metrics(performance) {
-            // Buscar contenedor de métricas v3.1 por estructura
-            const metricsContainer = document.querySelector('.pm9-prefetch-preview');
-            if (!metricsContainer) return;
+            // IDs explícitos (el selector legacy cogía la fila del TÍTULO, no la
+            // del Risk Score, y por eso el número se quedaba clavado en 100).
+            const setText = (id, text, color) => {
+                const el = document.getElementById(id);
+                if (!el) return false;
+                el.textContent = text;
+                if (color) el.style.color = color;
+                return true;
+            };
+            setText('pm9_v31_t1t2', `${performance.t1_mbps || '~'}/${performance.t2_mbps || '~'}`);
+            setText('pm9_v31_burst', `${performance.burst_factor || '~'}x`);
+            setText('pm9_v31_floor', `${performance.stall_floor || '~'}%`);
+            setText('pm9_v31_overhead', `${performance.request_overhead_sec || '~'}s`);
+            // Sin medición real no se publica un Risk inventado (antes nacía en 100).
+            const noEvidence = performance.evidence === false;
+            setText('pm9_risk_score', noEvidence ? '--' : `${performance.risk_score ?? '--'}/100`,
+                noEvidence ? '#64748b' : performance.risk_color);
+            setText('pm9_risk_level', noEvidence ? '(sin medición)' : `(${performance.risk_level || 'N/A'})`);
 
-            // Actualizar T1/T2, Burst, Floor, Overhead por posición
-            const v31Grid = metricsContainer.querySelectorAll('[style*="grid-template-columns: repeat(4"]');
-            if (v31Grid.length > 0) {
-                const cells = v31Grid[0].children;
-                if (cells[0]) {
-                    const val = cells[0].querySelector('div:last-child');
-                    if (val) val.textContent = `${performance.t1_mbps || '~'}/${performance.t2_mbps || '~'}`;
-                }
-                if (cells[1]) {
-                    const val = cells[1].querySelector('div:last-child');
-                    if (val) val.textContent = `${performance.burst_factor || '~'}x`;
-                }
-                if (cells[2]) {
-                    const val = cells[2].querySelector('div:last-child');
-                    if (val) val.textContent = `${performance.stall_floor || '~'}%`;
-                }
-                if (cells[3]) {
-                    const val = cells[3].querySelector('div:last-child');
-                    if (val) val.textContent = `${performance.request_overhead_sec || '~'}s`;
-                }
-            }
-
-            // Actualizar Risk Score
-            const riskRow = metricsContainer.querySelector('[style*="align-items: center"]');
-            if (riskRow) {
-                const riskScore = riskRow.querySelector('span');
-                if (riskScore && riskScore.textContent.includes('Risk Score')) {
-                    riskScore.innerHTML = `🛡️ Risk Score: <strong style="color: ${performance.risk_color}">${performance.risk_score}</strong>/100 <span style="background: ${performance.risk_color}33; padding: 2px 6px; border-radius: 4px; font-size: 10px;">${performance.risk_level}</span>`;
-                }
-            }
-
-            // Actualizar health badge
+            // Health badge
             const healthBadge = document.getElementById('pm9_health_badge');
             if (healthBadge) {
                 const color = performance.risk_score <= 30 ? '#10b981' : performance.risk_score <= 60 ? '#eab308' : '#ef4444';
                 healthBadge.style.background = color;
                 healthBadge.style.boxShadow = `0 0 8px ${color}55`;
+                healthBadge.title = `Health: ${performance.risk_level || 'N/A'} (${performance.risk_score || 0}/100)`;
+            }
+
+            // Fallback legacy: solo si los IDs no existen (paneles viejos)
+            if (!document.getElementById('pm9_risk_score')) {
+                const metricsContainer = document.querySelector('.pm9-prefetch-preview');
+                if (!metricsContainer) return;
+                const riskRow = document.getElementById('pm9_risk_row');
+                if (riskRow) {
+                    const riskScore = riskRow.querySelector('span');
+                    if (riskScore) {
+                        riskScore.innerHTML = `🛡️ Risk Score: <strong style="color: ${performance.risk_color}">${performance.risk_score}</strong>/100 <span style="background: ${performance.risk_color}33; padding: 2px 6px; border-radius: 4px; font-size: 10px;">${performance.risk_level}</span>`;
+                    }
+                }
             }
         }
 
@@ -1806,10 +1804,17 @@
             const strategies = window.PREFETCH_STRATEGIES || {};
             const currentStrategy = strategies[prefetchConfig.strategy] || {};
 
-            // Calculate performance metrics
+            // Calculate performance metrics (con los mismos inputs que usa
+            // _updateStreamingHealth; antes se llamaba sin profileInputs y el
+            // panel nacía con un Risk distinto al real).
             const bitrate = activeProfile.settings?.bitrate || 5;
             const performance = window.PREFETCH_PRESETS
-                ? window.PREFETCH_PRESETS.estimatePerformance(prefetchConfig, bitrate)
+                ? window.PREFETCH_PRESETS.estimatePerformance(prefetchConfig, bitrate, {
+                    profileId: this.activeProfileId,
+                    resolution: activeProfile.settings?.resolution || '1920x1080',
+                    codec: activeProfile.settings?.codec || 'H265',
+                    fps: activeProfile.settings?.fps || 60
+                })
                 : { fill_time_seconds: '~', bandwidth_usage_mbps: '~', memory_usage_mb: '~', stall_rate_percent: '~' };
 
             return `
@@ -1948,34 +1953,34 @@
                                 <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; font-size: 9px;">
                                     <div style="text-align: center;">
                                         <div style="color: #64748b;">T1/T2</div>
-                                        <div style="color: #00ff41; font-family: monospace;">${performance.t1_mbps || '~'}/${performance.t2_mbps || '~'}</div>
+                                        <div id="pm9_v31_t1t2" style="color: #00ff41; font-family: monospace;">${performance.t1_mbps || '~'}/${performance.t2_mbps || '~'}</div>
                                     </div>
                                     <div style="text-align: center;">
                                         <div style="color: #64748b;">Burst</div>
-                                        <div style="color: #00ff41; font-family: monospace;">${performance.burst_factor || '~'}x</div>
+                                        <div id="pm9_v31_burst" style="color: #00ff41; font-family: monospace;">${performance.burst_factor || '~'}x</div>
                                     </div>
                                     <div style="text-align: center;">
                                         <div style="color: #64748b;">Floor</div>
-                                        <div style="color: #00ff41; font-family: monospace;">${performance.stall_floor || '~'}%</div>
+                                        <div id="pm9_v31_floor" style="color: #00ff41; font-family: monospace;">${performance.stall_floor || '~'}%</div>
                                     </div>
                                     <div style="text-align: center;">
                                         <div style="color: #64748b;">Overhead</div>
-                                        <div style="color: #00ff41; font-family: monospace;">${performance.request_overhead_sec || '~'}s</div>
+                                        <div id="pm9_v31_overhead" style="color: #00ff41; font-family: monospace;">${performance.request_overhead_sec || '~'}s</div>
                                     </div>
                                 </div>
                             </div>
                             ` : ''}
                             
                             <!-- Risk Score & Target -->
-                            <div style="margin-top: 10px; display: flex; justify-content: space-between; align-items: center;">
+                            <div id="pm9_risk_row" style="margin-top: 10px; display: flex; justify-content: space-between; align-items: center;">
                                 ${performance.risk_score !== undefined ? `
                                 <div style="font-size: 10px;">
                                     🎲 Risk Score: 
-                                    <span style="
+                                    <span id="pm9_risk_score" style="
                                         color: ${performance.risk_color || '#64748b'};
                                         font-weight: bold;
                                     ">${performance.risk_score}/100</span>
-                                    <span style="color: #64748b; margin-left: 4px;">(${performance.risk_level || 'N/A'})</span>
+                                    <span id="pm9_risk_level" style="color: #64748b; margin-left: 4px;">(${performance.risk_level || 'N/A'})</span>
                                     ${performance.error_penalty > 0 ? `<span style="color: #f97316; margin-left: 4px;">+${performance.error_penalty} err</span>` : ''}
                                 </div>
                                 ` : ''}
@@ -3056,8 +3061,17 @@
         }
 
         saveAndClose() {
-            this.config.save();
+            // Guardar SIN debounce: el usuario espera que al soltar el clic
+            // esté persistido (antes quedaba una ventana de 300 ms).
+            if (this.config && typeof this.config.flushSave === 'function') {
+                this.config.flushSave();
+            } else if (this.config) {
+                this.config.save();
+            }
             console.log('✅ Perfil guardado:', this.activeProfileId);
+
+            // Refrescar salud + Rendimiento Estimado con el estado ya persistido
+            try { this._updateStreamingHealth(); } catch (e) { /* no bloqueante */ }
 
             // Update header count in UI
             const countEl = document.getElementById('activeHeadersCountGen');

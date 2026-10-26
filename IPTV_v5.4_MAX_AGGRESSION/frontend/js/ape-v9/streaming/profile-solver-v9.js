@@ -41,7 +41,7 @@
         PREFETCH_MIN: 4, PREFETCH_MAX: 50,
         PARALLEL_MIN: 1, PARALLEL_MAX: 32,
         SEG_DUR_S: 6,
-        W_HEAD: 0.30, W_MEM: 0.20, W_FILL: 0.15,
+        W_HEAD: 0.30, W_MEM: 0.20, W_FILL: 0.15, W_FUSE: 0.05,
         FILL_REF_S: 20,
         // ids reales del panel (verificados en profile-manager-v9.js)
         IDS: {
@@ -97,6 +97,12 @@
         },
         minbw: {
             editable: true, min: 1, max: 200, step: 1, feeds: ['_piso']
+        },
+        // 🔥 SUELO FUSIBLE: fracción del suelo de DISEÑO a la que puede caer
+        // el suelo de emergencia (recarga de buffer). 0.71 = P1/P2 4K (14→10).
+        fuseDesignMbps: { editable: false },
+        fuseRatio: {
+            editable: true, min: 0.50, max: 0.95, step: 0.01, feeds: ['_fuse']
         },
 
         memoryMB: {
@@ -224,7 +230,9 @@
         var j = (risk / 100)
             - CFG.W_HEAD * (-spare / 100)
             + CFG.W_MEM * (mem / CFG.MEM_CAP_MB)
-            + CFG.W_FILL * (fill / CFG.FILL_REF_S);
+            + CFG.W_FILL * (fill / CFG.FILL_REF_S)
+            // fusible cerca del diseño = sin margen de rescate
+            + CFG.W_FUSE * ((typeof score.fuseRatio === 'number') ? score.fuseRatio : 1);
         return Math.round(j * 10000) / 10000;
     }
 
@@ -254,8 +262,10 @@
             fillTimeSec: Math.round((r.metrics.fillTimeSec || 0) * 100) / 100,
             memoryMB: Math.round(s.prefetch * s.segMB * (1 + s.parallel * 0.10)),
             evidence: r.ui ? r.ui.evidence === true : null,
+            stallPct: (typeof r.metrics.stallRatePct === 'number') ? r.metrics.stallRatePct : null,
             class: r.metrics.stallClass
         };
+        out.fuseRatio = (s.fuseRatio !== undefined) ? s.fuseRatio : 1;
         out.J = objective(out);
         return out;
     }
@@ -268,7 +278,8 @@
         var sweeps = [
             { key: 'bufferSeg', values: [10, 15, 20, 30, 40, 48, 60, 75, 90] },
             { key: 'prefetch', values: [4, 6, 8, 10, 12, 16, 20, 25, 30] },
-            { key: 'parallel', values: [1, 2, 3, 4, 6, 8, 10, 12, 16] }
+            { key: 'parallel', values: [1, 2, 3, 4, 6, 8, 10, 12, 16] },
+            { key: 'fuseRatio', values: [0.55, 0.60, 0.65, 0.71, 0.75, 0.80, 0.85] }
         ];
         for (var round = 0; round < 3; round++) {
             var improved = false;
@@ -299,6 +310,26 @@
             parallel: Number(pf.parallel_downloads) || 4,
             bufferSeg: Number(pf.buffer_target_seconds) || 40,
             minbw: Number(pf.min_bandwidth_mbps) || 40,
+            fuseDesignMbps: (function () {
+                try {
+                    if (api && typeof api.getFloorFuseForProfile === 'function') {
+                        var fz = api.getFloorFuseForProfile(profileId);
+                        if (fz && fz.design_bps > 0) return Math.round(fz.design_bps / 100000) / 10;
+                    }
+                } catch (e) { /* no bloqueante */ }
+                return 0;
+            })(),
+            fuseRatio: (function () {
+                try {
+                    if (api && typeof api.getFloorFuseForProfile === 'function') {
+                        var fz = api.getFloorFuseForProfile(profileId);
+                        if (fz && fz.design_bps > 0 && fz.fuse_bps > 0) {
+                            return Math.round((fz.fuse_bps / fz.design_bps) * 100) / 100;
+                        }
+                    }
+                } catch (e) { /* no bloqueante */ }
+                return 0.71;
+            })(),
             deviceParallel: 32
         };
         clampAll(s); consistency(s); recompute(s);
@@ -322,6 +353,15 @@
         api.updatePrefetchSetting(profileId, 'parallel_downloads', s.parallel);
         api.updatePrefetchSetting(profileId, 'buffer_target_seconds', s.bufferSeg);
         if (s.minbw !== undefined) api.updatePrefetchSetting(profileId, 'min_bandwidth_mbps', s.minbw);
+        // 🔥 Persistir el suelo fusible (solo el de emergencia; el diseño no se toca)
+        if (s.fuseRatio !== undefined && s.fuseDesignMbps > 0
+            && typeof api.setFloorFuseBpsForProfile === 'function') {
+            api.setFloorFuseBpsForProfile(profileId,
+                Math.round(s.fuseDesignMbps * s.fuseRatio * 1000000));
+        }
+        // Persistencia INMEDIATA: AUTO-AJUSTAR debe dejar el estado en disco
+        // al terminar el clic, no depender del debounce de 300 ms.
+        if (typeof api.flushSave === 'function') api.flushSave();
         return true;
     }
 
@@ -401,34 +441,138 @@
 
     function autoAdjust() {
         var api = global.APE_PROFILES_CONFIG;
-        var sid = api.activeProfileId;
-        var r = adjustProfile(sid, { apply: true });
-        var diag = diagnose(sid);
+        var startId = api.activeProfileId;
+        var snap = (global.APE_BW && typeof global.APE_BW.snapshot === 'function')
+            ? global.APE_BW.snapshot() : null;
+        var hasBw = !!(snap && snap.mbps > 0);
+        var selection = null;
+        var targetId = startId;
+        var oldScore = null;
+
+        // ── 1) OBJETIVO GLOBAL: elegir el perfil de mayor calidad que cumpla
+        //         Risk ≤30 y stall ≤1.67 con el enlace medido. Si el perfil
+        //         actual ya cumple, se optimiza dentro de él.
+        if (hasBw && global.APE_SOLVER_AUTO_PROFILE !== false) {
+            selection = findBestProfile();
+            var currentCand = (selection.candidates || []).filter(function (c) {
+                return c.profileId === startId;
+            })[0] || null;
+            oldScore = currentCand ? currentCand.score : null;
+            var best = selection.best;
+            if (best && best.profileId && best.profileId !== startId) {
+                var better = false;
+                if (best.feasible && (!currentCand || !currentCand.feasible)) better = true;
+                else if (best.feasible && currentCand && currentCand.feasible) {
+                    better = best.bitrateMbps > currentCand.bitrateMbps;
+                } else if (!selection.hasFeasible) {
+                    better = !oldScore || best.score.risk < oldScore.risk - 0.5;
+                }
+                if (better && global.ProfileManagerV9
+                    && typeof global.ProfileManagerV9.selectProfile === 'function') {
+                    try {
+                        global.ProfileManagerV9.selectProfile(best.profileId);
+                        targetId = best.profileId;
+                    } catch (e) { targetId = startId; }
+                }
+            }
+        }
+
+        // ── 2) Optimizar el estado DENTRO del perfil elegido y aplicarlo.
+        var r = adjustProfile(targetId, { apply: true });
+        var diag = diagnose(targetId);
         r.diagnostic = diag;
         r.score = r.after;
+        r.selection = selection;
+        r.profileChanged = (targetId !== startId);
+        r.fromProfile = startId;
 
         syncInputs(r.state);
         repaint({ risk: r.after.risk, sparePct: r.after.sparePct, stallPct: r.after.stallPct,
             class: r.after.class, saturated: diag.saturated });
 
-        // Mensaje inequívoco: si el cuello es el enlace, se dice
-        var msg = (diag.bottleneck === 'ENLACE')
-            ? `Risk ${r.after.risk} (saturado por ENLACE: ${diag.bandwidthMbps} Mbps vs ${diag.requiredBwMbps} Mbps necesarios) · tier sostenible: ${diag.bestTier && diag.bestTier.profileId || 'ninguno'}`
-            : `Risk ${r.before.risk} → ${r.after.risk} · colchón ${r.after.sparePct}% · J ${r.before.J} → ${r.after.J}`;
+        // Persistir YA y repintar los dos paneles (superior e inferior).
+        var cfgNow = global.APE_PROFILES_CONFIG;
+        if (cfgNow && typeof cfgNow.flushSave === 'function') cfgNow.flushSave();
+        if (global.ProfileManagerV9 && typeof global.ProfileManagerV9._updateStreamingHealth === 'function') {
+            try { global.ProfileManagerV9._updateStreamingHealth(); } catch (e) { /* no bloqueante */ }
+        }
+
+        // ── 3) Mensaje con la decisión completa (perfil + métricas).
+        var beforeRisk = (r.profileChanged && oldScore) ? oldScore.risk
+            : (r.profileChanged ? r.before.risk : r.before.risk);
+        var msg;
+        if (r.profileChanged) {
+            msg = 'Objetivo: ' + startId + ' → ' + targetId +
+                ' (' + Math.round((selection && selection.best ? selection.best.bitrateMbps : 0)) + ' Mbps) · Risk ' +
+                Math.round(beforeRisk) + ' → ' + r.after.risk +
+                ' · colchón ' + r.after.sparePct + '%';
+        } else if (diag.bottleneck === 'ENLACE') {
+            msg = 'Risk ' + r.after.risk + ' (enlace ' + diag.bandwidthMbps + ' Mbps vs ' +
+                diag.requiredBwMbps + ' necesarios) · ya estás en el mejor tier: ' + targetId;
+        } else {
+            msg = 'Risk ' + r.before.risk + ' → ' + r.after.risk + ' · colchón ' + r.after.sparePct +
+                '% · J ' + r.before.J + ' → ' + r.after.J +
+                ' · fusible ' + Math.round((r.state.fuseRatio || 0) * 100) + '% del suelo';
+        }
 
         var span = (typeof document !== 'undefined')
             ? document.getElementById('pm9_auto_result') : null;
         if (span) {
             span.textContent = msg;
-            span.style.color = (diag.bottleneck === 'ENLACE') ? '#f97316' : '#22c55e';
+            span.style.color = (r.after.risk <= 30) ? '#22c55e' : '#f97316';
         }
         if (global.app && global.app.showToast) {
-            global.app.showToast((diag.bottleneck === 'ENLACE')
-                ? `Enlace insuficiente: ${diag.bandwidthMbps} Mbps medidos, ${diag.requiredBwMbps} necesarios. Baja el tier.`
-                : `Auto-ajuste ${sid}: Risk ${r.before.risk} → ${r.after.risk}`, 'warning');
+            global.app.showToast(r.profileChanged
+                ? ('Perfil ajustado al objetivo: ' + targetId + ' · Risk ' + r.after.risk)
+                : ('Auto-ajuste ' + targetId + ': Risk ' + r.before.risk + ' → ' + r.after.risk),
+                r.after.risk <= 30 ? 'success' : 'warning');
         }
-        console.log('%c[APE-SOLVER] auto-ajuste', 'color:#22c55e;font-weight:bold;', r);
+        console.log('%c[APE-SOLVER] auto-ajuste objetivo', 'color:#22c55e;font-weight:bold;', {
+            from: startId, to: targetId, beforeRisk: beforeRisk, afterRisk: r.after.risk,
+            feasibleTier: selection && selection.hasFeasible, selection: selection
+        });
         return r;
+    }
+
+    // ── 4) SELECCIÓN DE PERFIL POR FUNCIÓN OBJETIVO ──────────────────────
+    // El solver no se limita al perfil abierto: puntúa los 6 perfiles con el
+    // enlace medido y elige el de MAYOR calidad que cumpla el objetivo
+    // (Risk ≤ 30 y stall ≤ 1.67%). Si ninguno cumple, elige el de menor Risk.
+    function scoreProfile(profileId) {
+        var st = stateFromProfile(profileId);
+        var solved = solve(st, engineInputsFor(profileId));
+        var sc = solved.score;
+        var p = global.APE_PROFILES_CONFIG.profiles[profileId];
+        var br = Number(p && p.settings && p.settings.bitrate) || 0;
+        return {
+            profileId: profileId,
+            state: solved.state,
+            score: sc,
+            bitrateMbps: br,
+            feasible: (sc.risk <= 30) &&
+                (sc.stallPct === null || sc.stallPct === undefined || sc.stallPct <= 1.67)
+        };
+    }
+
+    function findBestProfile() {
+        var api = global.APE_PROFILES_CONFIG;
+        var ids = Object.keys(api.profiles || {}).filter(function (id) { return /^P[0-5]$/.test(id); });
+        var cands = ids.map(scoreProfile);
+        var feasible = cands.filter(function (c) { return c.feasible; });
+        feasible.sort(function (a, b) {
+            if (b.bitrateMbps !== a.bitrateMbps) return b.bitrateMbps - a.bitrateMbps;
+            return a.score.risk - b.score.risk;
+        });
+        var byRisk = cands.slice().sort(function (a, b) {
+            if (a.score.risk !== b.score.risk) return a.score.risk - b.score.risk;
+            return b.bitrateMbps - a.bitrateMbps;
+        });
+        return {
+            candidates: cands,
+            feasible: feasible,
+            hasFeasible: feasible.length > 0,
+            best: feasible.length ? feasible[0] : byRisk[0]
+        };
     }
 
     /** bw mínima para alcanzar un colchón objetivo (negativo) */
@@ -584,7 +728,7 @@
         stateFromProfile: stateFromProfile, engineInputsFor: engineInputsFor,
         setField: setField, recompute: recompute, consistency: consistency,
         objective: objective, evaluate: evaluate, solve: solve,
-        adjustProfile: adjustProfile, applyState: applyState,
+        adjustProfile: adjustProfile, applyState: applyState, scoreProfile: scoreProfile, findBestProfile: findBestProfile,
         syncInputs: syncInputs, autoAdjust: autoAdjust, attachUI: attachUI,
         diagnose: diagnose, bestTier: bestTier, why: why, requiredBwFor: requiredBwFor,
         _setState: function (s) { return setField(s, 'prefetch', s.prefetch); }

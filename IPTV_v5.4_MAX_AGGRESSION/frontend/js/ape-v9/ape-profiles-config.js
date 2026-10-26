@@ -4393,6 +4393,9 @@
     })();
 
     const STRATEGIC_HEADERS_STORAGE_KEY = 'ape_strategic_headers_v9';
+    // Overrides del suelo fusible (los mueve el solver AUTO-AJUSTAR).
+    // Sin esta clave el fusible se perdía en cada recarga.
+    const FLOOR_FUSE_STORAGE_KEY = 'ape_floor_fuse_overrides_v1';
 
     // ═══════════════════════════════════════════════════════════════════════
     // CLASE PRINCIPAL
@@ -4415,6 +4418,9 @@
             }
 
             this.strategicHeaders = this._loadStrategicHeaders() || JSON.parse(JSON.stringify(STRATEGIC_HEADERS_CONFIG));
+            // 🔥 Suelo fusible persistido (lo escribe el solver). Sin esto, AUTO-AJUSTAR
+            // calculaba el fusible pero se perdía al recargar.
+            this._floorFuseOverrides = this._loadFloorFuseOverrides();
 
             // 🧪 LAB integration — rehidratar datos optimizados desde LAB Excel si existen
             this.nivel1Directives = [];
@@ -4439,6 +4445,26 @@
             } catch (e) {
                 console.error('⚠️ Error cargando perfiles, usando defaults:', e);
                 return null;
+            }
+        }
+
+        /**
+         * Carga los overrides del suelo fusible (persistidos por save()).
+         */
+        _loadFloorFuseOverrides() {
+            try {
+                const raw = localStorage.getItem(FLOOR_FUSE_STORAGE_KEY);
+                const obj = raw ? JSON.parse(raw) : null;
+                if (!obj || typeof obj !== 'object') return {};
+                const out = {};
+                Object.keys(obj).forEach((pid) => {
+                    const v = Number(obj[pid]);
+                    if (isFinite(v) && v > 0) out[pid] = Math.round(v);
+                });
+                return out;
+            } catch (e) {
+                console.warn('[APE-Profiles] fusible persistido ilegible, se ignora:', e.message);
+                return {};
             }
         }
 
@@ -4475,12 +4501,32 @@
         save() {
             if (this._saveTimer) clearTimeout(this._saveTimer);
             this._saveTimer = setTimeout(() => {
-                localStorage.setItem(STORAGE_KEY, JSON.stringify(this.profiles));
-                localStorage.setItem(MANIFEST_STORAGE_KEY, JSON.stringify(this.manifest));
-                localStorage.setItem(STRATEGIC_HEADERS_STORAGE_KEY, JSON.stringify(this.strategicHeaders));
-                console.log('[APE-Profiles] Perfiles v9.0 + Manifiesto + Headers guardados');
+                this._persistNow();
                 this._saveTimer = null;
             }, 300);
+        }
+
+        /**
+         * Persiste YA (sin debounce). Lo usan el botón Guardar y el solver
+         * AUTO-AJUSTAR: el usuario espera que el cambio esté en disco al
+         * terminar el clic, no 300 ms después.
+         */
+        flushSave() {
+            if (this._saveTimer) {
+                clearTimeout(this._saveTimer);
+                this._saveTimer = null;
+            }
+            this._persistNow();
+            return true;
+        }
+
+        _persistNow() {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(this.profiles));
+            localStorage.setItem(MANIFEST_STORAGE_KEY, JSON.stringify(this.manifest));
+            localStorage.setItem(STRATEGIC_HEADERS_STORAGE_KEY, JSON.stringify(this.strategicHeaders));
+            // El suelo fusible no vive en profiles: se persiste aparte.
+            localStorage.setItem(FLOOR_FUSE_STORAGE_KEY, JSON.stringify(this._floorFuseOverrides || {}));
+            console.log('[APE-Profiles] Perfiles v9.0 + Manifiesto + Headers + fusible guardados');
         }
 
         /**
@@ -5095,6 +5141,86 @@
             }
             return 8000000; // hardcoded fallback 8 Mbps
         }
+        /**
+         * 🔥 SUELO FUSIBLE (FLOOR FUSE) — política por perfil
+         * ────────────────────────────────────────────────────────────────────
+         * Cada perfil tiene DOS suelos:
+         *   · design_bps = suelo de DISEÑO. Es el contrato: por debajo de él una
+         *     variante es inaceptable en operación normal (no se toca).
+         *   · fuse_bps   = suelo de EMERGENCIA. Solo se habilita cuando el buffer
+         *     cae por debajo de trigger_buffer_pct y hay que recargarlo con lo
+         *     poco que haya. Nunca baja de aquí.
+         *
+         * Comportamiento de fusible (histéresis):
+         *   buffer < trigger  → fusible CERRADO  (min_bandwidth = fuse_bps)
+         *   buffer > recover  → fusible ABIERTO  (min_bandwidth = design_bps)
+         *   entre ambos       → mantiene el estado anterior durante hold_s
+         *
+         * Prioridad declarada: NO freeze > calidad. El fusible compra tiempo de
+         * buffer bajando el suelo, no bajando el techo.
+         *
+         * Overrides admitidos desde PRISMA LAB-SYNC v2.0 (prismaProfileAttrs):
+         *   prisma_floor_fuse_bps, prisma_fuse_trigger_pct,
+         *   prisma_fuse_recover_pct, prisma_fuse_hold_s
+         */
+        getFloorFuseForProfile(profileId) {
+            // Tabla base por perfil (bps). El fusible es ~71-72 % del diseño,
+            // nunca por debajo del 30 % del bitrate nominal del perfil.
+            const TABLE = {
+                P0: { design_bps: 25000000, fuse_bps: 18000000 },
+                P1: { design_bps: 14000000, fuse_bps: 10000000 },
+                P2: { design_bps: 14000000, fuse_bps: 10000000 },
+                P3: { design_bps: 5000000, fuse_bps: 3500000 },
+                P4: { design_bps: 2000000, fuse_bps: 1400000 },
+                P5: { design_bps: 1000000, fuse_bps: 700000 }
+            };
+            const base = TABLE[profileId] || TABLE.P3;
+            const attrs = (typeof this.getPrismaProfileAttrs === 'function')
+                ? this.getPrismaProfileAttrs(profileId) : null;
+
+            let design = (attrs && typeof attrs.prisma_floor_min_bandwidth_bps === 'number')
+                ? attrs.prisma_floor_min_bandwidth_bps : base.design_bps;
+            let fuse = (attrs && typeof attrs.prisma_floor_fuse_bps === 'number')
+                ? attrs.prisma_floor_fuse_bps : base.fuse_bps;
+
+            // Guardarraíles: el fusible nunca por debajo del 40 % del diseño
+            // (por debajo ya no es un fusible, es ruina) y nunca por encima del diseño.
+            const minFuseRatio = 0.40;
+
+            if (this._floorFuseOverrides && typeof this._floorFuseOverrides[profileId] === 'number') {
+                fuse = this._floorFuseOverrides[profileId];
+            }
+            if (!(design > 0)) design = base.design_bps;
+            if (!(fuse > 0)) fuse = base.fuse_bps;
+            if (fuse > design) fuse = design;
+            const minFuse = Math.round(design * minFuseRatio);
+            if (fuse < minFuse) fuse = minFuse;
+
+            return {
+                profile: profileId,
+                design_bps: design,
+                fuse_bps: fuse,
+                trigger_buffer_pct: (attrs && attrs.prisma_fuse_trigger_pct) || 25,
+                recover_buffer_pct: (attrs && attrs.prisma_fuse_recover_pct) || 70,
+                hold_s: (attrs && attrs.prisma_fuse_hold_s) || 20,
+                mode: 'buffer-recharge',
+                max_drop_pct: Math.round((1 - (fuse / design)) * 100)
+            };
+        }
+
+        /**
+         * Persiste el suelo fusible de UN perfil (lo llama el botón AUTO-AJUSTAR).
+         * No toca el suelo de diseño: solo el valor de emergencia.
+         */
+        setFloorFuseBpsForProfile(profileId, bps) {
+            const v = Number(bps);
+            if (!(v > 0)) return false;
+            if (!this._floorFuseOverrides) this._floorFuseOverrides = {};
+            this._floorFuseOverrides[profileId] = Math.round(v);
+            this.save();   // persistir el fusible (antes se perdía al recargar)
+            return true;
+        }
+
         getPrismaTargetBpsForProfile(profileId) {
             const attrs = this.getPrismaProfileAttrs(profileId);
             if (attrs && typeof attrs.prisma_target_bandwidth_bps === 'number') {
