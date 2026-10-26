@@ -624,7 +624,8 @@ function serve_hls_fmp4_ignition(array $cd): void
 // El reproductor recibe:
 //   - Content-Type: application/vnd.apple.mpegurl
 //   - #EXT-X-VERSION:7
-//   - #EXT-X-MAP:URI="..." (apunta al .m3u8 del proveedor como init hint)
+//   - #EXT-X-MAP retirado en T11/B-11: esta ruta reenvía el .m3u8 del proveedor,
+//     no un init segment fMP4; declararlo producía un fallo de init en ExoPlayer.
 //   - #KODIPROP:inputstream.adaptive.manifest_type=hls
 //   - URL final: .m3u8 del proveedor (reproducción directa garantizada)
 //
@@ -716,27 +717,34 @@ function serve_cmaf_m3u8_fallback(array $cd): void
     echo "#KODIPROP:inputstream.adaptive.stream_selection_type=adaptive\n";
     echo "#KODIPROP:inputstream.adaptive.max_bandwidth=" . ($cfg['max_bw'] ?? 15150000) . "\n";
 
-    // ── Manifiesto HLS v7 con declaración CMAF ──
+    // ── Manifiesto HLS: el .m3u8 del proveedor envuelto en master sintético ──
     echo "#EXTM3U\n";
     echo "#EXT-X-VERSION:7\n";
     echo "#EXT-X-TARGETDURATION:2\n";
     echo "#EXT-X-MEDIA-SEQUENCE:0\n";
     echo "#EXT-X-INDEPENDENT-SEGMENTS\n";
 
-    // EXT-X-MAP apunta al .m3u8 del proveedor como hint de inicialización.
-    // Los reproductores modernos (OTT Navigator, TiviMate, ExoPlayer) usan
-    // este URI para negociar el codec antes de solicitar segmentos.
-    echo "#EXT-X-MAP:URI=\"{$providerM3u8}\"\n";
+    // [T11/B-11] CMAF NO se declara aquí: esta ruta reenvía el .m3u8 del proveedor,
+    // no un init segment fMP4. Un #EXT-X-MAP apuntando a un .m3u8 hace que ExoPlayer
+    // intente parsearlo como init segment (ftyp+moov) y falle al inicializar el track.
+    // Retirado hasta que exista evidencia real de init.mp4/.m4s verificado.
 
     // EXT-X-STREAM-INF con los parámetros de calidad del perfil
     $bw         = $cfg['max_bw']   ?? 15150000;
     $avgBw      = $cfg['bitrate']  ?? 10100;
     $avgBwBps   = $avgBw * 1000;
     $resolution = $cfg['res']      ?? '1920x1080';
-    $fps        = $cfg['fps']      ?? 120; // MEMC-TOTAL-8K120: default 120fps
+    // [T11/B-10] GOLDEN RULE: la familia hvc1 va SOLO en #EXT-X-STREAM-INF:CODECS=.
+    // La familia hev1 queda reservada a KODIPROP/EXTVLCOPT (runtime). Cruzarlas rompe Tizen/webOS.
     $codecs     = ($cfg['codec_primary'] === 'HEVC' || $cfg['codec_primary'] === 'hevc')
-                    ? 'hev1.2.4.L153.B0,mp4a.40.2'
+                    ? 'hvc1.2.4.L153.B0,mp4a.40.2'
                     : 'avc1.640028,mp4a.40.2';
+    // [T23/B-10b · D-58] FRAME-RATE clampado a la capacidad REAL del nivel declarado.
+    // High@L4.0 (avc1.640028) a 1080p ya toca su techo con 30 fps; declarar 120 lo excede ~4x.
+    // Techo por nivel: HEVC Main10 L153/L123 => 60 · resto => 30. Un fps explícito del perfil
+    // se respeta, pero NUNCA por encima de ese techo: el nivel manda, no el default.
+    $fpsCap     = preg_match('/^hvc1\.2\.4\.L(?:153|123)\./i', $codecs) ? 60 : 30;
+    $fps        = max(1, min((int)($cfg['fps'] ?? $fpsCap), $fpsCap));
 
     echo "#EXT-X-STREAM-INF:BANDWIDTH={$bw},AVERAGE-BANDWIDTH={$avgBwBps},"
        . "RESOLUTION={$resolution},FRAME-RATE={$fps},CODECS=\"{$codecs}\"\n";
