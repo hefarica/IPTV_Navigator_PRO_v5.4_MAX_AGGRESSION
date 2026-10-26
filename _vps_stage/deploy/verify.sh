@@ -22,7 +22,13 @@ bad=0
 # ── Endpoints de LECTURA: se exigen siempre (dry-run y deploy) ──────────────
 c_hdr "1 · lectura (se exige en dry-run y en deploy)"
 check "$BASE/health" 200 "443 /health" || bad=1
-check "$BASE/lists/APE_LISTA_PRODUCTION.m3u8" 200 "443 /lists/ lista viva" || bad=1
+if [ "$DRY" = "1" ]; then
+  # [t92] El nombre de la lista es APE_LISTA_<epoch>[_CDN_SHIELDED].m3u8 y lo
+  # fija la APP en cada publicacion: en dry-run NO se exige un nombre concreto.
+  check "$BASE/lists/" 200 "443 /lists/ (directorio)" || bad=1
+else
+  check "$BASE/lists/APE_LISTA_PRODUCTION.m3u8" 200 "443 /lists/ lista viva" || bad=1
+fi
 check "$BASE/cdn/" 200 "443 /cdn/ plano CDN" || bad=1
 
 # ── Capa lua (8088): solo se exige tras un deploy real ──────────────────────
