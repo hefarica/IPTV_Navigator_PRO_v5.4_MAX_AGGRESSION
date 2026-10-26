@@ -10499,7 +10499,22 @@ lines.push(`#EXT-X-APE-STREAM-TRUTH:src=${_streamTruth.source},w=${_streamTruth.
             const _rsvBw = _bw796_final || _bw796 || 0;
             const _rsvList = (typeof window !== 'undefined' && window.APE_LIST_ID) ? String(window.APE_LIST_ID) : 'v5.4';
             if (primaryUrl) {
-                _resolverUrlWithProvider = `${_rsvBase}/resolve_quality_unified.php?ch=${encodeURIComponent(String(_rsvCh))}&p=${encodeURIComponent(String(profile))}&mode=adaptive&list=${encodeURIComponent(_rsvList)}&bw=${_rsvBw}&buf=${_rsvBuf}${_rsvSid}${_rsvSrv}${_rsvCtx}&url=${encodeURIComponent(primaryUrl)}`;
+                // [t88] CARTUCHO · FUSIBLE DE SUELO POR PERFIL (antes NO se emitía:
+                // `&fuse=1` aparecía 0 veces en el catálogo). Determinista: mismo
+                // canal + perfil ⇒ mismos bytes de URL.
+                const _fuseValo = (function () {
+                    try {
+                        const api = (typeof window !== 'undefined') ? window.APE_PROFILES_CONFIG : null;
+                        if (api && typeof api.getFloorFuseForProfile === 'function') {
+                            const f = api.getFloorFuseForProfile(profile);
+                            const fus = Number(f && f.fuse_bps) || 0;
+                            const des = Number(f && f.design_bps) || 0;
+                            return (fus > 0 && des > 0 && fus <= des) ? 1 : 0;
+                        }
+                    } catch (_e) { }
+                    return 0;
+                })();
+                _resolverUrlWithProvider = `${_rsvBase}/resolve_quality_unified.php?ch=${encodeURIComponent(String(_rsvCh))}&p=${encodeURIComponent(String(profile))}&mode=adaptive&list=${encodeURIComponent(_rsvList)}&bw=${_rsvBw}&buf=${_rsvBuf}${_rsvSid}${_rsvSrv}${_rsvCtx}&fuse=${_fuseValo}&url=${encodeURIComponent(primaryUrl)}`;
             }
         } catch (_eRsv) { _resolverUrlWithProvider = ''; }
         if (_resolverUrlWithProvider) {
