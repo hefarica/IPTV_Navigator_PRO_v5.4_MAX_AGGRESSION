@@ -807,6 +807,30 @@
                 segmentDurationSec: profile.settings?.segment_duration_s
             });
 
+            // FUENTE ÚNICA: si el solver está disponible, su evaluación manda
+            // para Risk/Stall/Headroom. Antes el estimador podía dar otro número
+            // y el panel inferior se quedaba desincronizado del solver.
+            try {
+                if (window.APE_SOLVER && typeof window.APE_SOLVER.evaluate === 'function') {
+                    const _sc = window.APE_SOLVER.evaluate(
+                        window.APE_SOLVER.stateFromProfile(this.activeProfileId),
+                        window.APE_SOLVER.engineInputsFor(this.activeProfileId)
+                    );
+                    if (_sc && isFinite(_sc.risk)) {
+                        performance.risk_score = _sc.risk;
+                        performance.stall_rate_percent = _sc.stallPct;
+                        performance.headroomSparePct = _sc.sparePct;
+                        performance.stall_class = _sc.class;
+                        performance.risk_level = _sc.risk <= 20 ? 'LOW'
+                            : _sc.risk <= 40 ? 'MODERATE'
+                                : _sc.risk <= 60 ? 'ELEVATED'
+                                    : _sc.risk <= 80 ? 'HIGH' : 'CRITICAL';
+                        performance.risk_color = _sc.risk <= 30 ? '#10b981'
+                            : _sc.risk <= 60 ? '#eab308' : '#ef4444';
+                    }
+                }
+            } catch (e) { /* no bloqueante */ }
+
             // Actualizar indicadores del panel superior
             const healthIndicator = document.getElementById('pm9_health_indicator');
             const stabilityLabel = document.getElementById('pm9_stability_label');

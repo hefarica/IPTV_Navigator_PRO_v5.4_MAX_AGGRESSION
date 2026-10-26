@@ -530,6 +530,31 @@
             if (rk) { rk.textContent = score.risk; rk.style.color = score.risk <= 30 ? '#10b981' : (score.risk <= 60 ? '#eab308' : '#ef4444'); }
             var hr = document.getElementById('pm9_headroom_preview');
             if (hr) hr.textContent = score.sparePct;
+
+            // PANEL INFERIOR (Rendimiento Estimado): escribir el resultado del
+            // solver también aquí. El estimador interno puede dar otro número
+            // y dejaba el Risk/Stall de abajo clavados en el valor viejo.
+            var riskColor = score.risk <= 30 ? '#10b981' : (score.risk <= 60 ? '#eab308' : '#ef4444');
+            var riskLevel = score.risk <= 20 ? 'LOW' : score.risk <= 40 ? 'MODERATE'
+                : score.risk <= 60 ? 'ELEVATED' : score.risk <= 80 ? 'HIGH' : 'CRITICAL';
+            var rb = document.getElementById('pm9_risk_score');
+            if (rb) { rb.textContent = score.risk + '/100'; rb.style.color = riskColor; }
+            var rl = document.getElementById('pm9_risk_level');
+            if (rl) rl.textContent = '(' + riskLevel + ')';
+            var bs = document.getElementById('pm9_rt_stall');
+            if (bs) {
+                bs.textContent = (Math.round(score.stallPct * 100) / 100) + '%';
+                bs.style.color = score.stallPct <= 1.67 ? '#10b981' : (score.stallPct <= 3 ? '#eab308' : '#ef4444');
+            }
+            var banner = document.querySelector('.pm9-stability-banner');
+            if (banner) {
+                var bstrong = banner.querySelector('strong');
+                if (bstrong) bstrong.textContent = score.saturated ? 'SATURADO' : score.class;
+                banner.style.background = riskColor + '22';
+                banner.style.borderLeftColor = riskColor;
+            }
+            var hb = document.getElementById('pm9_health_badge');
+            if (hb) { hb.style.background = riskColor; hb.style.boxShadow = '0 0 8px ' + riskColor + '55'; }
         } catch (e) { /* DOM parcial: no romper */ }
     }
 
@@ -606,9 +631,9 @@
         // Persistir YA y repintar los dos paneles (superior e inferior).
         var cfgNow = global.APE_PROFILES_CONFIG;
         if (cfgNow && typeof cfgNow.flushSave === 'function') cfgNow.flushSave();
-        if (global.ProfileManagerV9 && typeof global.ProfileManagerV9._updateStreamingHealth === 'function') {
-            try { global.ProfileManagerV9._updateStreamingHealth(); } catch (e) { /* no bloqueante */ }
-        }
+        // NO volver a llamar a _updateStreamingHealth aquí: recalcularía el
+        // Risk con el estimador y pisaría el Risk/Stall ya aplicados por el
+        // solver (era la causa de que el número no se moviera tras el ajuste).
 
         // ── 3) Mensaje con la decisión completa (perfil + métricas).
         var beforeRisk = (r.profileChanged && oldScore) ? oldScore.risk
