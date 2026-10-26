@@ -3090,17 +3090,38 @@
         }
 
         saveAndClose() {
-            // Guardar SIN debounce: el usuario espera que al soltar el clic
-            // esté persistido (antes quedaba una ventana de 300 ms).
-            if (this.config && typeof this.config.flushSave === 'function') {
+            if (!this.config) return;
+            // Persistencia DIRECTA, sin depender del debounce ni de otro loader:
+            // 1) escribir el objeto completo de perfiles en la misma clave que
+            //    lee ape-profiles-config al arrancar.
+            var snapshot = null;
+            try {
+                snapshot = JSON.stringify(this.config.profiles);
+                localStorage.setItem('ape_profiles_v9', snapshot);
+                localStorage.setItem('ape_profiles_v9_saved_at', new Date().toISOString());
+                localStorage.setItem('ape_profiles_v9_saved_by', 'ProfileManagerV9.saveAndClose');
+            } catch (e) {
+                console.warn('[PM9] no pude escribir localStorage:', e.message);
+            }
+            // 2) flushSave (también persiste manifiesto/headers/fusible).
+            if (typeof this.config.flushSave === 'function') {
                 this.config.flushSave();
-            } else if (this.config) {
+            } else if (typeof this.config.save === 'function') {
                 this.config.save();
             }
-            console.log('✅ Perfil guardado:', this.activeProfileId);
+            var bytes = snapshot ? snapshot.length : 0;
+            console.log('✅ Perfil guardado:', this.activeProfileId,
+                { profilesBytes: bytes, savedAt: localStorage.getItem('ape_profiles_v9_saved_at') });
 
-            // Refrescar salud + Rendimiento Estimado con el estado ya persistido
-            try { this._updateStreamingHealth(); } catch (e) { /* no bloqueante */ }
+            // 3) Aviso visible: antes el botón no daba feedback y parecía no guardar.
+            try {
+                if (window.app && typeof window.app.showToast === 'function') {
+                    window.app.showToast(
+                        'Perfil ' + this.activeProfileId + ' guardado (' + Math.round(bytes / 1024) + ' KB)',
+                        'success'
+                    );
+                }
+            } catch (e) { /* no bloqueante */ }
 
             // Update header count in UI
             const countEl = document.getElementById('activeHeadersCountGen');

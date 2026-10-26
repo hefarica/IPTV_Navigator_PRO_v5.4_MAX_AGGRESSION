@@ -30,7 +30,10 @@
         DB_NAME: 'APE_Profiles_V9',
         DB_VERSION: 1,
         STORE_NAME: 'profiles',
-        LOCALSTORAGE_KEY: 'ape_profiles_v9',
+        // Clave PROPIA: antes compartía 'ape_profiles_v9' con ape-profiles-config
+        // (que guarda un OBJETO P0-P5) y este motor escribe un ARRAY de perfiles
+        // custom → se pisaban y la config se perdía al recargar.
+        LOCALSTORAGE_KEY: 'ape_profiles_pp_v9',
         CURRENT_PROFILE_KEY: 'ape_current_profile_v9',
         DEBUG: false
     };
