@@ -21,11 +21,6 @@ on:
         options: [dry-run, deploy]
         default: dry-run
         required: true
-      list_file:
-        description: 'Ruta local del .m3u8 a publicar (opcional; vacío = no publica lista)'
-        type: string
-        default: ''
-        required: false
 
 # Un despliegue a la vez. Nunca dos contra el mismo VPS.
 concurrency:
@@ -145,6 +140,8 @@ jobs:
     environment:
       name: production          # required reviewers se configuran en GitHub
       url: https://iptv-ape.duckdns.org
+    outputs:
+      stamp: ${{ steps.stamp.outputs.value }}
     steps:
       - uses: actions/checkout@v4
       - name: Preparar SSH (llave efímera desde secretos)
@@ -162,12 +159,25 @@ jobs:
           set -euo pipefail
           chmod +x "$DEPLOY_DIR"/*.sh
           bash "$DEPLOY_DIR/deploy.sh" --apply --yes | tee deploy.log
-      - name: Recordar el stamp del backup (para poder revertir)
+      - name: Recordar el stamp del backup
+        id: stamp
         run: |
           set -euo pipefail
-          STAMP="$(grep -oE '[0-9]{8}T[0-9]{6}Z?' deploy.log | tail -1 || true)"
-          echo "DEPLOY_STAMP=${STAMP}" >> "$GITHUB_ENV"
+          STAMP="$(grep -oE '[0-9]{8}T[0-9]{6}Z' deploy.log | tail -1 || true)"
+          if [ -z "$STAMP" ]; then
+            echo "::error::deploy.sh no reportó stamp; el rollback no podrá apuntar a esta corrida"
+            exit 1
+          fi
+          echo "value=${STAMP}" >> "$GITHUB_OUTPUT"      # <- lo consume el job rollback
+          echo "DEPLOY_STAMP=${STAMP}" >> "$GITHUB_ENV"  # <- pasos siguientes de este job
+          printf '%s\n' "$STAMP" > deploy-stamp.txt      # <- artefacto para revisiones
           echo "backup stamp = ${STAMP}"
+      - name: Publicar el stamp (por si el job pierde el contexto)
+        uses: actions/upload-artifact@v4
+        with:
+          name: deploy-stamp
+          path: deploy-stamp.txt
+          retention-days: 30
       - uses: actions/upload-artifact@v4
         with:
           name: deploy-log
@@ -178,6 +188,10 @@ jobs:
   verify:
     name: 5 · verify (smoke read-only)
     needs: deploy
+    # t91: corre TAMBIÉN en dry-run (línea base del VPS antes de tocar nada).
+    # Con `always()` no se salta porque `deploy` esté skipped; solo se abstiene
+    # si el deploy falló, porque entonces manda el rollback.
+    if: always() && needs.deploy.result != 'failure'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -198,10 +212,14 @@ jobs:
           chmod +x "$DEPLOY_DIR"/*.sh
           bash "$DEPLOY_DIR/verify.sh"
 
-  # ── 6 · PUBLICACIÓN DE LISTA (gz + marcador 8B, atómica) ─────────────────
-    name: 7 · rollback (automático si deploy/verify fallan)
+  # ── 6 · ROLLBACK (solo si deploy o verify fallan, en mode=deploy) ────────
+  # t91: este job había perdido su id al eliminar el antiguo job de publicación
+  # de lista (quedaba una cabecera `name:` huérfana en el nivel de `jobs`).
+  # Recupera id y comentario. Las listas se publican desde la APP, no aquí.
+  rollback:
+    name: 6 · rollback (automático si deploy/verify fallan)
     needs: [deploy, verify]
-    if: ${{ always() && inputs.mode == 'deploy' && (needs.deploy.result == 'failure' || needs.verify.result == 'failure') }}
+    if: always() && inputs.mode == 'deploy' && (needs.deploy.result == 'failure' || needs.verify.result == 'failure')
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -220,11 +238,20 @@ jobs:
         run: |
           set -euo pipefail
           chmod +x "$DEPLOY_DIR"/*.sh
-          STAMP="${{ env.DEPLOY_STAMP }}"
+          # t91: el stamp llega del job `deploy` (output + artefacto). Si no
+          # llega, NO se adivina el "backup más reciente": se avisa y se para.
+          STAMP="${{ needs.deploy.outputs.stamp }}"
           if [ -z "$STAMP" ]; then
-            echo "::warning::sin stamp; se lista el backup más reciente"
-            STAMP="$(ssh "ape@$VPS_HOST" 'ls -1d /var/backups/ape-deploy/*/ 2>/dev/null | tail -1 | xargs -r basename')"
+            echo "::warning::sin stamp de esta corrida; se intenta el artefacto deploy-stamp"
+            if gh run download "$GITHUB_RUN_ID" -n deploy-stamp -D /tmp/dt >/dev/null 2>&1; then
+              STAMP="$(tr -d '[:space:]' < /tmp/dt/deploy-stamp.txt || true)"
+            fi
           fi
-          [ -n "$STAMP" ] || { echo "::error::no hay backup que restaurar"; exit 1; }
-          echo "revirtiendo al stamp $STAMP"
+          if [ -z "$STAMP" ]; then
+            echo "::error::NO se revierte a ciegas: falta el stamp de esta corrida."
+            echo "Backups disponibles en el VPS (elige uno y lanza rollback.sh a mano):"
+            ssh "${{ secrets.VPS_USER }}@$VPS_HOST" 'ls -1d /var/backups/ape-deploy/*/ 2>/dev/null | xargs -r -n1 basename | sed "s/^/  - /"' || true
+            exit 1
+          fi
+          echo "revirtiendo al stamp $STAMP (el de ESTA corrida)"
           bash "$DEPLOY_DIR/rollback.sh" "$STAMP" --yes
