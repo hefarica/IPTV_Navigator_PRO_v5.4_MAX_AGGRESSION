@@ -630,6 +630,35 @@ corrió contra el working tree y quien corrió contra el blob fue T27. T29 ejecu
 heredar mi afirmación: correcto. No se toca código de producción, no se crea `.gitattributes`, `DECISIONES.md` no se
 editó desde la lane del miembro (lo hago yo aquí).
 
+## D-78 · R-6 (los 4 "CLOSURE_MISMATCH" de t5) era contabilidad, no corrupción: CERRADO
+
+`coord-sesiones` marcó 4 mismatch porque comparó contra los hashes **v1** de t5; `json-ssot` reescribió esos 4
+entregables y publicó los **v2** en su suplemento. Verificado por el capitán: los 4 hashes **v2** coinciden
+exactamente con los archivos actuales (`JSON_INVENTORY` `0680ABC3…`, `JSON_PROFILES_MATRIX` `FDD50FE6…`,
+`JSON_DRIFT_REPORT` `36274703…`, `SECRETS_SCAN` `753B0B46…`). No hay pérdida ni corrupción: el cierre de t5 es
+reproducible contra v2. **R-6 CERRADO** como deuda de libro, no de datos.
+
+## D-79 · R-8 y R-9 cerrados: commits de evidencia/higiene `5b49cd6` y `4ca34da`
+
+- **`5b49cd6 docs(campaign)`** (206 archivos, +187.174): `CLAUDE.md` (bloque aditivo), `docs/manifestos/**`,
+  `docs/ops/session-coordination/**`, `.agent/COORDINATION.md` (adenda) y **`audit/alignment/2026-10-25/**`** (evidencia
+  completa: matriz, auditorías, remediaciones, reviews, veredictos) + `.gitignore` (`**/target/`, `.agent-teams/`,
+  `.session/`, `.agents/reports/deploy_*.json`). **Excluido `labmaster_dump.json`** por contener datos de proveedor;
+  no está versionado (verificado).
+- **`4ca34da chore(build)`**: 3.172 artefactos `*/target/**` fuera del índice (R-9).
+- Push `f294922..4ca34da`, remoto == local. Queda como WIP ajeno: 4 `.php`/JS de otras sesiones y `index-v4.html`
+  (no se tocan: no son nuestros).
+
+## D-80 · Certificación final aceptada y equipo ARCHIVADO
+
+`t17` entregó la certificación con un criterio en `failed` **a propósito** (0 CLOSURE_MISMATCH, resuelto en D-78).
+Cierres recalculados: t4 **4/4**, t6 **5/5**, t7 **6/6**, t5 **1/5 → 5/5 contra v2**; scope **14/14**; board
+**rev11** `certified-closed` (`7BDA8767…`); `LIVE_STATUS v3` `13D9B92B…` verificado. Riesgos residuales con dueño:
+R-1 credenciales (usuario), R-2 rotación/purga (usuario), R-3 cron (dsh-lead), R-4 regenerar listas (usuario),
+R-5 2 JS post-freeze bajo L-001 (dsh-lead), R-7 drift ledger↔guard (dsh-lead), `.gitattributes` (owner, D-75).
+Se **archiva** el equipo: la auditoría está cerrada, el veredicto emitido y las remediaciones certificadas. Seguir
+con 7 miembros sería esperar decisiones del owner, no hacer auditoría.
+
 ## D-10 · Registro y trazabilidad
 
 Cada decisión nueva se añade aquí con ID incremental (`D-11`, `D-12`, …) indicando: contexto, decisión, evidencia,
