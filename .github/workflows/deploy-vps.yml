@@ -1,0 +1,230 @@
+# ═══════════════════════════════════════════════════════════════════════════
+# deploy-vps.yml · [t90] CI/CD del VPS — TODO despliegue pasa por aquí
+#
+# POR QUÉ EXISTE: la lista 4K se subió A MANO y está viva. Nadie revisó el VPS
+# antes, no hubo backup y no hubo vuelta atrás posible. Esto lo sustituye.
+#
+# REGLA: disparo MANUAL. `dry-run` es el DEFAULT. `deploy` exige la aprobación
+# del Environment `production` (required reviewers), que se configura en GitHub.
+#
+# Orquesta el pipeline ya existente en `_vps_stage/deploy/`:
+#   inventory → preflight → dry-run → validate → deploy → verify → rollback
+# ═══════════════════════════════════════════════════════════════════════════
+name: Deploy VPS
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'dry-run = solo revisa (por defecto). deploy = aplica de verdad.'
+        type: choice
+        options: [dry-run, deploy]
+        default: dry-run
+        required: true
+      list_file:
+        description: 'Ruta local del .m3u8 a publicar (opcional; vacío = no publica lista)'
+        type: string
+        default: ''
+        required: false
+
+# Un despliegue a la vez. Nunca dos contra el mismo VPS.
+concurrency:
+  group: deploy-vps-production
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  VPS_HOST: ${{ secrets.VPS_HOST }}
+  VPS_USER: ${{ secrets.VPS_USER }}
+  DEPLOY_DIR: _vps_stage/deploy
+  # Ruta de la lista viva en el VPS y el marcador de 8 bytes que la acompaña.
+  LISTS_DIR: /var/www/lists
+  MARKER_BYTES: 8
+
+jobs:
+  # ── 1 · INVENTARIO (read-only) ───────────────────────────────────────────
+  inventory:
+    name: 1 · inventory (read-only)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Preparar SSH (llave efímera desde secretos)
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          printf '%s\n' "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' "${{ secrets.VPS_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+          chmod 644 ~/.ssh/known_hosts
+          printf 'Host *\n  StrictHostKeyChecking yes\n  UserKnownHostsFile ~/.ssh/known_hosts\n  IdentitiesOnly yes\n' > ~/.ssh/config
+          chmod 600 ~/.ssh/config
+      - name: Inventario del VPS (no escribe)
+        run: |
+          set -euo pipefail
+          chmod +x "$DEPLOY_DIR"/*.sh
+          bash "$DEPLOY_DIR/inventory.sh"
+      - name: Guardar inventario como artefacto
+        uses: actions/upload-artifact@v4
+        with:
+          name: inventory
+          path: |
+            _vps_stage/deploy/out/inventory*
+            _vps_stage/deploy/out/stamp*
+          if-no-files-found: warn
+          retention-days: 14
+
+  # ── 2 · PREFLIGHT + DRY-RUN (read-only) ──────────────────────────────────
+  dry-run:
+    name: 2 · preflight + dry-run (read-only)
+    needs: inventory
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Preparar SSH (llave efímera desde secretos)
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          printf '%s\n' "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' "${{ secrets.VPS_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+          chmod 644 ~/.ssh/known_hosts
+          printf 'Host *\n  StrictHostKeyChecking yes\n  UserKnownHostsFile ~/.ssh/known_hosts\n  IdentitiesOnly yes\n' > ~/.ssh/config
+          chmod 600 ~/.ssh/config
+      - name: Comprobaciones previas
+        run: |
+          set -euo pipefail
+          chmod +x "$DEPLOY_DIR"/*.sh
+          bash "$DEPLOY_DIR/preflight.sh"
+      - name: Diff exacto repo ↔ VPS
+        run: |
+          set -euo pipefail
+          bash "$DEPLOY_DIR/dry-run.sh"
+      - name: Publicar el diff para revisión
+        uses: actions/upload-artifact@v4
+        with:
+          name: dry-run-diff
+          path: _vps_stage/deploy/out/
+          if-no-files-found: warn
+          retention-days: 14
+
+  # ── 3 · VALIDACIÓN SINTÁCTICA (read-only) ────────────────────────────────
+  validate:
+    name: 3 · validate (luac -p / php -l / nginx -t)
+    needs: dry-run
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Preparar SSH (llave efímera desde secretos)
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          printf '%s\n' "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' "${{ secrets.VPS_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+          chmod 644 ~/.ssh/known_hosts
+          printf 'Host *\n  StrictHostKeyChecking yes\n  UserKnownHostsFile ~/.ssh/known_hosts\n  IdentitiesOnly yes\n' > ~/.ssh/config
+          chmod 600 ~/.ssh/config
+      - name: Validar sintaxis en el VPS (sin escribir destino)
+        run: |
+          set -euo pipefail
+          chmod +x "$DEPLOY_DIR"/*.sh
+          bash "$DEPLOY_DIR/validate.sh"
+
+  # ── 4 · DEPLOY (solo con mode=deploy + aprobación del Environment) ───────
+  deploy:
+    name: 4 · deploy (APROBACIÓN REQUERIDA)
+    needs: validate
+    if: ${{ inputs.mode == 'deploy' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment:
+      name: production          # required reviewers se configuran en GitHub
+      url: https://iptv-ape.duckdns.org
+    steps:
+      - uses: actions/checkout@v4
+      - name: Preparar SSH (llave efímera desde secretos)
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          printf '%s\n' "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' "${{ secrets.VPS_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+          chmod 644 ~/.ssh/known_hosts
+          printf 'Host *\n  StrictHostKeyChecking yes\n  UserKnownHostsFile ~/.ssh/known_hosts\n  IdentitiesOnly yes\n' > ~/.ssh/config
+          chmod 600 ~/.ssh/config
+      - name: Deploy atómico con backup
+        run: |
+          set -euo pipefail
+          chmod +x "$DEPLOY_DIR"/*.sh
+          bash "$DEPLOY_DIR/deploy.sh" --apply --yes | tee deploy.log
+      - name: Recordar el stamp del backup (para poder revertir)
+        run: |
+          set -euo pipefail
+          STAMP="$(grep -oE '[0-9]{8}T[0-9]{6}Z?' deploy.log | tail -1 || true)"
+          echo "DEPLOY_STAMP=${STAMP}" >> "$GITHUB_ENV"
+          echo "backup stamp = ${STAMP}"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: deploy-log
+          path: deploy.log
+          retention-days: 30
+
+  # ── 5 · VERIFY (smoke, solo GET) ─────────────────────────────────────────
+  verify:
+    name: 5 · verify (smoke read-only)
+    needs: deploy
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Preparar SSH (llave efímera desde secretos)
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          printf '%s\n' "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' "${{ secrets.VPS_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+          chmod 644 ~/.ssh/known_hosts
+          printf 'Host *\n  StrictHostKeyChecking yes\n  UserKnownHostsFile ~/.ssh/known_hosts\n  IdentitiesOnly yes\n' > ~/.ssh/config
+          chmod 600 ~/.ssh/config
+      - name: Smoke del VPS
+        run: |
+          set -euo pipefail
+          chmod +x "$DEPLOY_DIR"/*.sh
+          bash "$DEPLOY_DIR/verify.sh"
+
+  # ── 6 · PUBLICACIÓN DE LISTA (gz + marcador 8B, atómica) ─────────────────
+    name: 7 · rollback (automático si deploy/verify fallan)
+    needs: [deploy, verify]
+    if: ${{ always() && inputs.mode == 'deploy' && (needs.deploy.result == 'failure' || needs.verify.result == 'failure') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Preparar SSH (llave efímera desde secretos)
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          printf '%s\n' "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' "${{ secrets.VPS_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+          chmod 644 ~/.ssh/known_hosts
+          printf 'Host *\n  StrictHostKeyChecking yes\n  UserKnownHostsFile ~/.ssh/known_hosts\n  IdentitiesOnly yes\n' > ~/.ssh/config
+          chmod 600 ~/.ssh/config
+      - name: Revertir al backup
+        run: |
+          set -euo pipefail
+          chmod +x "$DEPLOY_DIR"/*.sh
+          STAMP="${{ env.DEPLOY_STAMP }}"
+          if [ -z "$STAMP" ]; then
+            echo "::warning::sin stamp; se lista el backup más reciente"
+            STAMP="$(ssh "ape@$VPS_HOST" 'ls -1d /var/backups/ape-deploy/*/ 2>/dev/null | tail -1 | xargs -r basename')"
+          fi
+          [ -n "$STAMP" ] || { echo "::error::no hay backup que restaurar"; exit 1; }
+          echo "revirtiendo al stamp $STAMP"
+          bash "$DEPLOY_DIR/rollback.sh" "$STAMP" --yes
