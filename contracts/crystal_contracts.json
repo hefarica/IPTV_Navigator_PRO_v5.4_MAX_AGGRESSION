@@ -1,0 +1,186 @@
+{
+  "schema": "crystal-contracts/v1",
+  "generated_at": "2026-10-26T03:32:29.788Z",
+  "generator": "contracts/build_contracts.mjs",
+  "profiles": {
+    "P1_8K_CRYSTAL": {
+      "input": "4K",
+      "output": [
+        7680,
+        4320
+      ],
+      "scale": "lanczos",
+      "sharpen": "unsharp=5:5:0.60",
+      "hdr": "pq_metadata_only",
+      "feasible_on_current_vps": false,
+      "measured_note": "4K x265 ya mide 0,356x tiempo real en este VPS (0,356 core·s/s por s de video, 3 vCPU). 8K son ~4x pixeles => NO-GO en vivo. Requiere nodo GPU.",
+      "requires_gpu_node": true
+    },
+    "P2_1080_4K_CRYSTAL": {
+      "input": "1080p",
+      "output": [
+        3840,
+        2160
+      ],
+      "scale": "lanczos",
+      "sharpen": "unsharp=5:5:0.80",
+      "hdr": "pq_metadata_only",
+      "feasible_on_current_vps": false,
+      "measured_note": "Upscale+encode 4K no sostiene tiempo real en 3 vCPU. Válido como proceso OFFLINE por lotes.",
+      "requires_gpu_node": false
+    },
+    "P3_720_4K_CRYSTAL": {
+      "input": "720p",
+      "output": [
+        3840,
+        2160
+      ],
+      "scale": "bicubic",
+      "sharpen": "unsharp=5:5:0.90",
+      "hdr": "pq_metadata_only",
+      "feasible_on_current_vps": false,
+      "measured_note": "Idem P2: offline por lotes, no live.",
+      "requires_gpu_node": false
+    },
+    "P4_480_4K_CRYSTAL": {
+      "input": "480p",
+      "output": [
+        3840,
+        2160
+      ],
+      "scale": "neighbor+unsharp_fuerte",
+      "sharpen": "unsharp=7:7:1.20",
+      "hdr": "pq_metadata_only",
+      "feasible_on_current_vps": false,
+      "measured_note": "Idem P2. Calidad subjetiva: el realce agresivo amplifica artefactos de compresión de la fuente.",
+      "requires_gpu_node": false
+    },
+    "P5_480_1080_CRYSTAL": {
+      "input": "480p/576p",
+      "output": [
+        3840,
+        2160
+      ],
+      "scale": "two_stage(1080->4K)",
+      "sharpen": "unsharp=5:5:0.70",
+      "hdr": "pq_metadata_only",
+      "feasible_on_current_vps": false,
+      "measured_note": "Dos etapas = dos kernels; más suave que P4 pero sigue siendo offline.",
+      "requires_gpu_node": false
+    }
+  },
+  "contracts": {
+    "t32-default-8k-v1": {
+      "contract_id": "t32-default-8k-v1",
+      "description": "Contrato por defecto: 4K->8K para fuentes 4K, resto a 4K.",
+      "max_output_resolution": [
+        7680,
+        4320
+      ],
+      "max_bitrate_mbps": 80,
+      "frame_rate": 60,
+      "codecs": [
+        "hevc",
+        "h264"
+      ],
+      "hdr_mode": "pq_metadata_only",
+      "hdr_caveat": "PQ se emite como metadata de display; NO se inventa Dolby Vision profile 10 (requiere RPU + bitstream DV real). DV10 RECHAZADO.",
+      "dv_profile_10": false,
+      "profile_map": {
+        "8K": "P1_8K_CRYSTAL",
+        "4K": "P1_8K_CRYSTAL",
+        "FHD": "P2_1080_4K_CRYSTAL",
+        "HD": "P3_720_4K_CRYSTAL",
+        "SD": "P4_480_4K_CRYSTAL",
+        "UNKNOWN": "P3_720_4K_CRYSTAL"
+      },
+      "headers": {
+        "X-Crystal-Contract": "t32-default-8k-v1",
+        "X-Profile-Default": "P1_8K_CRYSTAL",
+        "X-Max-Resolution": "7680x4320",
+        "X-HDR-Mode": "pq_metadata_only",
+        "X-Frame-Rate": "60.000",
+        "X-Bitrate-Ceil": "80M"
+      }
+    },
+    "t32-roku-4k-v1": {
+      "contract_id": "t32-roku-4k-v1",
+      "description": "Contrato Roku: todo capado a 4K y familia h264.",
+      "max_output_resolution": [
+        3840,
+        2160
+      ],
+      "max_bitrate_mbps": 35,
+      "frame_rate": 60,
+      "codecs": [
+        "h264"
+      ],
+      "hdr_mode": "pq_metadata_only",
+      "hdr_caveat": "Mismo caveat que default: metadata PQ, sin DV inventado.",
+      "dv_profile_10": false,
+      "profile_map": {
+        "8K": "P2_1080_4K_CRYSTAL",
+        "4K": "P2_1080_4K_CRYSTAL",
+        "FHD": "P2_1080_4K_CRYSTAL",
+        "HD": "P3_720_4K_CRYSTAL",
+        "SD": "P4_480_4K_CRYSTAL",
+        "UNKNOWN": "P3_720_4K_CRYSTAL"
+      },
+      "headers": {
+        "X-Crystal-Contract": "t32-roku-4k-v1",
+        "X-Profile-Default": "P2_1080_4K_CRYSTAL",
+        "X-Max-Resolution": "3840x2160",
+        "X-HDR-Mode": "pq_metadata_only",
+        "X-Frame-Rate": "60.000",
+        "X-Bitrate-Ceil": "35M",
+        "X-Roku-Override": "active"
+      }
+    }
+  },
+  "artifacts": {
+    "_vps_stage/media/ape-supervisor.sh": {
+      "sha256": "91aaea7c1e2a674907762f8ee9cebc5c92f767ae2a493357853183e329627987",
+      "bytes": 7142
+    },
+    "_vps_stage/media/ape-supervisor.lua": {
+      "sha256": "59a272dda35a4ff6303dbf519ff54bf56d9cab1d1bc3bd978b2e8722d87d88d1",
+      "bytes": 48083
+    },
+    "_vps_stage/media/ape-supervisor@.service": {
+      "sha256": "60dda70fa06cb3384cf5be9d07096bd45bfb83ac6e4e56daa2990065059bb7a4",
+      "bytes": 3922
+    },
+    "_vps_stage/media/ape-ingest.sh": {
+      "sha256": "a01c6e299062ae9c1a29dd5771c863c44652903bb2a2e8cfe03bcdf7352848f7",
+      "bytes": 125321
+    },
+    "_vps_stage/media/ape-ingest@.service": {
+      "sha256": "29a83c1a954f96a76892cea174c9f78bbeea8bb46d5f404dec442e496122835e",
+      "bytes": 10401
+    },
+    "_vps_stage/lua/ape_session.lua": {
+      "sha256": "cbef5132a3a2f8e5521f271309fed03f9c369ac2c8496f2761317a76f6410965",
+      "bytes": 89549
+    },
+    "_vps_stage/lua/ape_caps.lua": {
+      "sha256": "40404c70eb52b5c9030eeab3305cfce5125d05437f052b0baafdea38367c0043",
+      "bytes": 128983
+    },
+    "_vps_stage/nginx/media-fanout.conf": {
+      "sha256": "b1000903d3f1e5939fe0c4c0658809f7975e820eaf6c6a1fa8e4d1030c4112b9",
+      "bytes": 21313
+    },
+    "_vps_stage/tests/fanout_concurrency.sh": {
+      "sha256": "9b774bffbe6c744fc205136561c506e3bf93af8e1dea575304d16ae5601a6c94",
+      "bytes": 98126
+    }
+  },
+  "manifest": null,
+  "integrity": {
+    "algorithm": "sha256",
+    "master_sha256": "e2bb8e69a31d0f6826a5fee412421440f97477f787e4a057579f01935c3bb621",
+    "master_scope": "stable-stringify(doc SIN integrity)",
+    "artifacts_pinned": 9,
+    "note": "Cualquier cambio en artefactos, perfiles o contratos invalida este pin. verify_contracts.mjs lo comprueba."
+  }
+}
