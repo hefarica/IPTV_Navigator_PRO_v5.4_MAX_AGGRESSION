@@ -167,7 +167,12 @@
         );
 
         let bufferPlayerMs;
-        if (adapters.getPlayerBufferMs) {
+        // Prioridad 1: buffer REAL del player del perfil (settings.playerBuffer).
+        // Sin esto el cálculo caía en bufferBase/4, quedaba por debajo del
+        // umbral y sumaba +10 de Risk artificial en TODOS los perfiles.
+        if (Number(profileInputs.playerBufferMs) > 0) {
+            bufferPlayerMs = Number(profileInputs.playerBufferMs);
+        } else if (adapters.getPlayerBufferMs) {
             bufferPlayerMs = adapters.getPlayerBufferMs(profileInputs);
         } else {
             // Fórmula 4:4:1 existente

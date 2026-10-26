@@ -801,7 +801,10 @@
                 profileId: this.activeProfileId,
                 resolution: profile.settings?.resolution || '1920x1080',
                 codec: profile.settings?.codec || 'H265',
-                fps: profile.settings?.fps || 60
+                fps: profile.settings?.fps || 60,
+                // Inputs REALES que alimentan Stall/Risk (fórmulas v3.1)
+                playerBufferMs: profile.settings?.playerBuffer,
+                segmentDurationSec: profile.settings?.segment_duration_s
             });
 
             // Actualizar indicadores del panel superior
@@ -1813,7 +1816,9 @@
                     profileId: this.activeProfileId,
                     resolution: activeProfile.settings?.resolution || '1920x1080',
                     codec: activeProfile.settings?.codec || 'H265',
-                    fps: activeProfile.settings?.fps || 60
+                    fps: activeProfile.settings?.fps || 60,
+                    playerBufferMs: activeProfile.settings?.playerBuffer,
+                    segmentDurationSec: activeProfile.settings?.segment_duration_s
                 })
                 : { fill_time_seconds: '~', bandwidth_usage_mbps: '~', memory_usage_mb: '~', stall_rate_percent: '~' };
 

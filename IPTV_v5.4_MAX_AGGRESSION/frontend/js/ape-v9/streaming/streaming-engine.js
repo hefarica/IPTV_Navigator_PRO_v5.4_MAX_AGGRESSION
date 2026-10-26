@@ -295,6 +295,13 @@
              * Obtiene el buffer del player
              */
             getPlayerBufferMs: (profileInputs) => {
+                // Si el perfil trae su buffer de player REAL (settings.playerBuffer),
+                // se usa tal cual: la fórmula de jitter del Risk es
+                // max(0, bufferPlayerMs − segmentDuration×1000). Con el fallback
+                // bufferBase/4 el valor quedaba por debajo del umbral SIEMPRE y
+                // sumaba +10 de Risk artificial en todos los perfiles.
+                const pb = Number(profileInputs.playerBufferMs);
+                if (isFinite(pb) && pb > 0) return Math.round(pb);
                 const bufferBase = profileInputs.bufferBaseMs || 6000;
                 // Fórmula 4:4:1 existente
                 return Math.max(250, Math.floor(bufferBase / 4));

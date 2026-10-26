@@ -247,6 +247,11 @@
             parallelDownloads: s.parallel,
             minBandwidthMbps: s.minbw,
             bufferBaseMs: 6000,
+            // Buffer REAL del player del perfil (settings.playerBuffer). Sin esto
+            // el engine usaba bufferBase/4 y el jitter del Risk quedaba en 0
+            // (+10 puntos artificiales en TODOS los perfiles).
+            playerBufferMs: s.playerBuffer,
+            segmentDurationSec: s.segmentSec,
             bufferTargetSec: s.bufferSeg
         };
         var signals = {
@@ -305,7 +310,7 @@
             bitrate: Number(st.bitrate) || 5,
             playerBuffer: Number(st.playerBuffer) || 12000,
             bufferMs: Number(st.buffer) || 12000,
-            segmentSec: CFG.SEG_DUR_S,
+            segmentSec: Number(st.segment_duration_s) > 0 ? Number(st.segment_duration_s) : CFG.SEG_DUR_S,
             prefetch: Number(pf.prefetch_segments) || 8,
             parallel: Number(pf.parallel_downloads) || 4,
             bufferSeg: Number(pf.buffer_target_seconds) || 40,
@@ -449,10 +454,11 @@
         var targetId = startId;
         var oldScore = null;
 
-        // ── 1) OBJETIVO GLOBAL: elegir el perfil de mayor calidad que cumpla
-        //         Risk ≤30 y stall ≤1.67 con el enlace medido. Si el perfil
-        //         actual ya cumple, se optimiza dentro de él.
-        if (hasBw && global.APE_SOLVER_AUTO_PROFILE !== false) {
+        // ── 1) POR DEFECTO: ajustar SOLO el perfil activo (el botón pertenece
+        //         a ese perfil). El barrido global de tiers queda OPT-IN con
+        //         window.APE_SOLVER_AUTO_PROFILE = true; si no, era la causa de
+        //         que al pulsar en P0 se optimizara P3 y P0 no cambiara.
+        if (hasBw && global.APE_SOLVER_AUTO_PROFILE === true) {
             selection = findBestProfile();
             var currentCand = (selection.candidates || []).filter(function (c) {
                 return c.profileId === startId;

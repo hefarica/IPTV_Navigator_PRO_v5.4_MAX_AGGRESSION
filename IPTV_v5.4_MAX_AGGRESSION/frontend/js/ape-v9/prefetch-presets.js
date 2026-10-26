@@ -313,11 +313,16 @@
                     resolution: profileInputs.resolution || '1920x1080',
                     codec: profileInputs.codec || 'H265',
                     fps: profileInputs.fps || 60,
-                    segmentDurationSec: 6,
+                    segmentDurationSec: Number(profileInputs.segmentDurationSec) > 0
+                        ? Number(profileInputs.segmentDurationSec) : 6,
                     prefetchSegments: segments,
                     parallelDownloads: parallel,
                     minBandwidthMbps: minBW,
                     bufferBaseMs: 6000,
+                    // Buffer real del player del perfil: la fórmula de jitter del
+                    // Risk lo necesita; con bufferBase/4 el jitter quedaba en 0
+                    // y sumaba +10 de Risk en todos los perfiles.
+                    playerBufferMs: Number(profileInputs.playerBufferMs) || 0,
                     bufferTargetSec: bufferSec
                 };
 
