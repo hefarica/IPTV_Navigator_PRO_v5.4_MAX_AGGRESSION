@@ -235,6 +235,31 @@
         return true;
     }
 
+    // ═══ [t87] MODO DIRECTO (sin VPS) · interruptor de la UI ════════════════
+    // Hasta hoy APE_DIRECT_MODE se LEÍA en el emisor y en el wrapper pero NO se
+    // ASIGNaba en ningún sitio: el método directo existía y no tenía interruptor.
+    const APE_DIRECT_MODE_KEY = 'ape_direct_mode';
+    function applyDirectMode(on) {
+        const v = (on === true) || (on === '1') || (on === 'true');
+        if (typeof window !== 'undefined') window.APE_DIRECT_MODE = v;
+        try { if (typeof window !== 'undefined' && window.localStorage) window.localStorage.setItem(APE_DIRECT_MODE_KEY, v ? '1' : '0'); } catch (_e) { }
+        return v;
+    }
+    function readStoredDirectMode() {
+        try {
+            const raw = (typeof window !== 'undefined' && window.localStorage) ? window.localStorage.getItem(APE_DIRECT_MODE_KEY) : null;
+            return raw === '1' || raw === 'true';
+        } catch (_e) { return false; }
+    }
+    function attachDirectModeToggle(id = 'apeDirectModeToggle') {
+        const el = (typeof document !== 'undefined') ? document.getElementById(id) : null;
+        if (!el) return false;
+        const stored = readStoredDirectMode();
+        el.checked = stored;
+        applyDirectMode(stored);            // aplica el flag al ARRANCAR
+        el.addEventListener('change', () => applyDirectMode(el.checked === true)); // en caliente
+        return true;
+    }
     function attachAuditedButton(buttonSelector = '[data-ape-generate-audited]') {
         const button = document.querySelector(buttonSelector);
         if (!button) return false;
@@ -1514,6 +1539,9 @@
         renderVerdict,
         attachHealthButton,
         attachAuditedButton,
+        applyDirectMode,
+        readStoredDirectMode,
+        attachDirectModeToggle,
         DEFAULT_GATE_URL,
         // Etapa 3 del plan "Integración sin /resolve/"
         prepublishAndGenerate,
@@ -1533,3 +1561,11 @@
         DEFAULT_SESSION_BASE
     };
 })();
+
+// [t87] Arranque: lee ape_direct_mode y aplica window.APE_DIRECT_MODE.
+try {
+    if (typeof document !== 'undefined') {
+        if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => window.APEGenerationController && window.APEGenerationController.attachDirectModeToggle());
+        else window.APEGenerationController && window.APEGenerationController.attachDirectModeToggle();
+    }
+} catch (_e87) { }

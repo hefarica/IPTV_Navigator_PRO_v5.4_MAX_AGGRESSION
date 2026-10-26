@@ -2761,6 +2761,12 @@
                 style="background: linear-gradient(135deg, #22d3ee, #0891b2); box-shadow: 0 10px 25px rgba(34,211,238,0.4); margin-left: 10px; font-weight: bold; font-size: 1rem; padding: 14px 22px; border: 2px solid rgba(255,255,255,0.5);"
                 title="Genera UNA sola lista: el mismo contenido byte-exacto de siempre, con las URLs enrutadas por el plano del VPS (302→CDN, 4K/8K declarado, LL-HLS, failover multi-CDN, QoE) y el bloque #EXT-X-APE-CDN-* de trazabilidad. Guarda un único archivo _CDN.m3u8."><span
                   class="icon">⚡</span><span>GENERAR LISTA MEJORADA (VPS)</span></button>
+                <label id="apeDirectModeLabel" for="apeDirectModeToggle"
+                  title="ON: URL del proveedor VERBATIM (sin VPS). OFF: URLs enrutadas por el VPS."
+                  style="margin-left:14px; color:var(--text-muted); font-size:0.85rem; font-weight:bold; display:inline-flex; align-items:center; gap:6px; cursor:pointer;">
+                  <input type="checkbox" id="apeDirectModeToggle" style="width:16px; height:16px; cursor:pointer;">
+                  <span>Modo DIRECTO (sin VPS)</span>
+                </label>
                 <label for="publicationMode" style="margin-left:14px; color:var(--text-muted); font-size:0.85rem; font-weight:bold;">Modo:</label>
                 <select id="publicationMode"
                   onchange="window.APE_PUBLICATION_MODE=this.value; console.log('%c[PUB-MODE] '+this.value,'color:#0ea5e9;font-weight:bold;');"

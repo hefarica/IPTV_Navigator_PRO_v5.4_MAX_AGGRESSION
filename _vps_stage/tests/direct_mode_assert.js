@@ -386,6 +386,56 @@ async function generateViaWrapper(channels, directMode) {
     console.log('\n── [UNKNOWN] declarados');
     unknown.forEach(u => console.log(`   · ${u}`));
 
+// ═══════════════════════════════════════════════════════════════════════════
+// [t87] INTERRUPTOR DE MODO DIRECTO EN LA UI (estático: HTML + controlador)
+// Sin DOM en Node, se verifica el CABLEADO: que el control existe, que escribe
+// window.APE_DIRECT_MODE, que persiste en localStorage y que se aplica al arrancar.
+// ═══════════════════════════════════════════════════════════════════════════
+console.log(''); console.log("── [t87] interruptor de modo directo (UI + controlador)");
+{
+    const fs2 = require('node:fs');
+    const path2 = require('node:path');
+    const ROOT2 = path.join(__dirname, '..', '..');
+    const HTML = path2.join(ROOT2, 'IPTV_v5.4_MAX_AGGRESSION', 'frontend', 'index-v4.html');
+    const CTRL = path2.join(ROOT2, 'IPTV_v5.4_MAX_AGGRESSION', 'frontend', 'js', 'ape-v9', 'generation-controller.js');
+    const html = fs2.readFileSync(HTML, 'utf8');
+    const ctrl = fs2.readFileSync(CTRL, 'utf8');
+
+    // (a) el control EXISTE en la UI y está etiquetado
+    ok('t87.a1 existe #apeDirectModeToggle en index-v4.html',
+        /id="apeDirectModeToggle"/.test(html));
+    ok('t87.a2 la etiqueta dice "Modo DIRECTO (sin VPS)"',
+        /Modo DIRECTO \(sin VPS\)/.test(html));
+    ok('t87.a3 es un control de estado (checkbox)',
+        /id="apeDirectModeToggle"[^>]*type="checkbox"|type="checkbox"[^>]*id="apeDirectModeToggle"/.test(html));
+
+    // (b) el controlador ASIGNA window.APE_DIRECT_MODE (hoy nadie lo asignaba)
+    ok('t87.b1 generation-controller.js asigna window.APE_DIRECT_MODE',
+        /window\.APE_DIRECT_MODE\s*=/.test(ctrl));
+    ok('t87.b2 usa la clave de persistencia ape_direct_mode',
+        /ape_direct_mode/.test(ctrl));
+
+    // (c) persistencia + lectura al arrancar
+    ok('t87.c1 escribe en localStorage', /localStorage\.setItem\(APE_DIRECT_MODE_KEY/.test(ctrl));
+    ok('t87.c2 lee de localStorage al arrancar', /localStorage\.getItem\(APE_DIRECT_MODE_KEY/.test(ctrl));
+    ok('t87.c3 engancha el evento change (en caliente, sin recargar)',
+        /addEventListener\('change'/.test(ctrl));
+    ok('t87.c4 se aplica al cargar (DOMContentLoaded o invocación directa)',
+        /attachDirectModeToggle\(\)/.test(ctrl));
+
+    // (d) los DOS botones existen y hay manejador para cada uno
+    ok('t87.d1 existe el botón audited (data-ape-generate-audited)',
+        /data-ape-generate-audited/.test(html));
+    ok('t87.d2 existe el botón #btnGenerateDual',
+        /id="btnGenerateDual"/.test(html));
+    ok('t87.d3 #btnGenerateDual tiene manejador (onclick inline)',
+        /id="btnGenerateDual"[\s\S]{0,400}?onclick=/.test(html));
+
+    // (e) el modo directo se LEE en el emisor y en el wrapper (precondición del método)
+    const EMIT = path2.join(ROOT2, 'IPTV_v5.4_MAX_AGGRESSION', 'frontend', 'js', 'ape-v9', 'm3u8-typed-arrays-ultimate.js');
+    const emit = fs2.readFileSync(EMIT, 'utf8');
+    ok('t87.e1 el emisor LEE window.APE_DIRECT_MODE', /window\.APE_DIRECT_MODE\s*===?\s*true/.test(emit));
+}
     console.log('\n════════════════════════════════════════════════════════');
     if (fail.length === 0) {
         console.log(`RESULTADO: PASS — ${pass} aserciones OK, 0 fallos`);
