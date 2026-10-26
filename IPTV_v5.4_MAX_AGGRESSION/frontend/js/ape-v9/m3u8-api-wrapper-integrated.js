@@ -1221,7 +1221,7 @@
             entry += `#EXTINF:-1 ${attributes},${tvgName}\n`;
 
             // 🌐 #EXTATTRFROMURL — OTT Resolver (Solo si el módulo está activo)
-            if (window.ApeModuleManager?.isEnabled('dual-client-runtime')) {
+            if (!this._isDirectMode() && window.ApeModuleManager?.isEnabled('dual-client-runtime')) {
                 const resolverBase = (typeof localStorage !== 'undefined' && localStorage.getItem('vps_base_url'))
                     || 'https://iptv-ape.duckdns.org';
 
@@ -1253,8 +1253,17 @@
                     }
                 }
 
+                // #region t35-urlparam · RC-2: URL REAL del proveedor, sin derivación
+                // El resolver recibe la URL upstream tal cual; t28 (derivación desde
+                // srv/sid) queda como defensa en profundidad. `ape_jwt=` NO viaja:
+                // es credencial del catálogo, no del upstream.
+                const _providerUrlRaw = String(channel.url || channel.direct_source || url || '');
+                const providerUrl = _providerUrlRaw.split('ape_jwt=')[0].replace(/[?&]+$/, '');
+                const urlParam = providerUrl ? `&url=${encodeURIComponent(providerUrl)}` : '';
+                // #endregion t35-urlparam
+
                 // 🌐 SINCRONIZACIÓN UNIVERSAL: Recopilamos matemática viva del frontend + resilience params + srv credentials
-                entry += `#EXTATTRFROMURL:${resolverBase}${resolveScript}?ch=${encodeURIComponent(chId)}&p=${profile}&mode=adaptive&list=${listId}&bw=${profileConfig.max_bandwidth || 100000000}&buf=${profileConfig.buffer || 8000}&th1=${profileConfig.throughput_t1 || 17.4}&th2=${profileConfig.throughput_t2 || 21.4}&pfseg=${90}&pfpar=${40}&tbw=${Math.round((profileConfig.bitrate_mbps || 8) * 1000)}${originParam}${sidParam}${srvParam}\n`;
+                entry += `#EXTATTRFROMURL:${resolverBase}${resolveScript}?ch=${encodeURIComponent(chId)}&p=${profile}&mode=adaptive&list=${listId}&bw=${profileConfig.max_bandwidth || 100000000}&buf=${profileConfig.buffer || 8000}&th1=${profileConfig.throughput_t1 || 17.4}&th2=${profileConfig.throughput_t2 || 21.4}&pfseg=${90}&pfpar=${40}&tbw=${Math.round((profileConfig.bitrate_mbps || 8) * 1000)}${originParam}${sidParam}${srvParam}${urlParam}\n`;
             }
 
             // Línea URL con JWT
@@ -1487,8 +1496,27 @@
             return deviceClasses[level] || 'UNIVERSAL_PLAYER';
         }
 
+        // ── [t61] MODO DIRECTO (sin VPS) ─────────────────────────────────────
+        // `window.APE_DIRECT_MODE === true` ⇒ la lista lleva la URL del PROVEEDOR
+        // tal cual (host, path y query intactos): sin resolver, sin `srv`/`ctx`/
+        // `url=`, sin `ape_jwt`. Default = false ⇒ el modo VPS queda EXACTAMENTE
+        // igual (esta rama no se ejecuta). Reversible: borrar este bloque.
+        _isDirectMode() {
+            try { return (typeof window !== 'undefined' && window.APE_DIRECT_MODE === true); } catch (e) { return false; }
+        }
+
         _buildChannelUrl(channel, jwt) {
             let baseUrl = '';
+            // [t61] MODO DIRECTO: devolver la URL del PROVEEDOR sin tocar nada.
+            // Se respeta el esquema original (no se fuerza https) y la query se
+            // conserva (el camino VPS la recortaba con split('?')).
+            if (this._isDirectMode && this._isDirectMode()) {
+                const _direct = String(
+                    (channel && (channel.url || channel.direct_source || channel.raw?.server_url || channel.direct_url)) || ''
+                ).trim();
+                if (_direct && /^https?:\/\//i.test(_direct)) return _direct;
+                // sin URL propia no hay directo posible: sigue el camino normal
+            }
 
             if (channel.url && channel.url.startsWith('http')) {
                 baseUrl = channel.url.split('?')[0];

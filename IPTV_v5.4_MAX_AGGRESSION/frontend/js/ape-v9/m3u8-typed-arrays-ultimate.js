@@ -2345,6 +2345,315 @@
     // Expose for debug
     if (typeof window !== 'undefined') window._applyGapPlanForLevel = applyGapPlanForLevel;
 
+    // #region t29-core · helpers puros (C2 fuente única + C5 denylist + G1 trazabilidad)
+    // ═══════════════════════════════════════════════════════════════════════════
+    // t29 · C5 · DENYLIST DE TÓXICOS — FILTRO, no borrado de líneas
+    // ═══════════════════════════════════════════════════════════════════════════
+    // Los 11 patrones del contrato (10 familias enumeradas + Proxy-Connection, que es
+    // la 11ª de la misma clase hop-by-hop y ya está en _ca7BannedAbsolute:8304).
+    // Este filtro es INCONDICIONAL: no depende de UA (a diferencia de _ca7BrowserOnly,
+    // que sólo borra Sec-Fetch-*/Sec-CH-UA-* cuando el UA NO es navegador:8333).
+    const APE_TOXIC_DENYLIST = Object.freeze([
+        'Range', 'If-None-Match', 'If-Modified-Since', 'TE', 'Priority',
+        'Upgrade-Insecure-Requests', 'Connection', 'Keep-Alive',
+        'Sec-Fetch-*', 'Sec-CH-UA-*', 'Proxy-Connection'
+    ]);
+
+    // true si `name` es tóxico. Case-insensitive; soporta familias con '*'.
+    function __apeIsToxicHeader(name) {
+        if (name == null) return false;
+        const n = String(name).trim().toLowerCase();
+        if (!n) return false;
+        for (let i = 0; i < APE_TOXIC_DENYLIST.length; i++) {
+            const pat = APE_TOXIC_DENYLIST[i].toLowerCase();
+            if (pat.endsWith('*')) {
+                // "Sec-CH-UA-*" cubre también el header desnudo "Sec-CH-UA"
+                // (sin sufijo), que es real y tóxico (Client Hints).
+                const base = pat.slice(0, -1);
+                const bare = base.replace(/-$/, '');
+                if (n === bare || n.indexOf(base) === 0) return true;
+            } else if (n === pat) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    // Borra del objeto (in-place) las claves tóxicas. Devuelve {filtered, removed[]}.
+    // NO elimina líneas de directiva: sólo entradas de header.
+    function __apeFilterToxicHeaders(headers) {
+        const removed = [];
+        if (!headers || typeof headers !== 'object') return { filtered: headers, removed: removed };
+        for (const k of Object.keys(headers)) {
+            if (__apeIsToxicHeader(k)) {
+                removed.push(k);
+                delete headers[k];
+            }
+        }
+        return { filtered: headers, removed: removed };
+    }
+
+    // Última defensa string-level: quita pares "Tóxico":valor de cualquier JSON
+    // serializado que ya esté en el texto (EXTHTTP, stream_headers). Cuenta hits.
+    function __apeScrubToxicPairs(text) {
+        if (typeof text !== 'string' || text.indexOf('"') === -1) return { text: text, hits: 0 };
+        let hits = 0;
+        let out = text;
+        for (const pattern of ['Range', 'If-None-Match', 'If-Modified-Since', 'TE', 'Priority',
+            'Upgrade-Insecure-Requests', 'Connection', 'Keep-Alive', 'Proxy-Connection']) {
+            const re = new RegExp('"' + pattern.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '"\\s*:\\s*(?:"[^"]*"|-?[\\d.]+|true|false|null)\\s*,?', 'gi');
+            out = out.replace(re, () => { hits += 1; return ''; });
+        }
+        for (const prefix of ['Sec-Fetch-', 'Sec-CH-UA']) {
+            // "Sec-CH-UA" sin sufijo también es tóxico (header desnudo).
+            const re = new RegExp('"' + prefix + '(?:-[^"]*)?"\\s*:\\s*(?:"[^"]*"|-?[\\d.]+|true|false|null)\\s*,?', 'gi');
+            out = out.replace(re, () => { hits += 1; return ''; });
+        }
+        // Reparar comas duplicadas o colgantes que el borrado pudo dejar en el JSON.
+        out = out.replace(/,\s*,/g, ',').replace(/,\s*\}/g, '}').replace(/\{\s*,/g, '{');
+        return { text: out, hits: hits };
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // t29 · C2 · FUENTE ÚNICA {w,h,fps} → RESOLUTION + CODECS + FRAME-RATE + HDR
+    // ═══════════════════════════════════════════════════════════════════════════
+    // Un único objeto por canal. De ÉL se derivan los cuatro atributos, así que es
+    // imposible emitir pares incoherentes (1080p con L150, 4K con L123/L120).
+    // Prioridad de resolución: lock perceptual (dueño) > perfil (SSOT) > probe > nombre > 1080p.
+    // El nivel HEVC sale SIEMPRE de cascade.resolveTierByResolution(w,h,fps) con los
+    // MISMOS w,h,fps que se declaran. No se inventa ningún codec: si el hint es AVC/AV1/VVC
+    // se respeta la familia y sólo se ajusta el nivel AVC por fps (regla existente).
+    //
+    // ── PQ · LOCK DEL PROPIETARIO (2026-06-16) — DECISIÓN VINCULANTE, NO SE RE-DEBATE ──
+    // El artefacto principal (OMEGA / P_MAX) emite `VIDEO-RANGE=PQ` **INCONDICIONAL**,
+    // incluso sobre fuente SDR: el display/daemon materializa la salida HDR
+    // (hdr_conversion_mode + pipeline AI-PQ del SoC) y MAX IMAGE FIRST manda.
+    //   RIESGO ACEPTADO (documentado, no bloqueante): en players SIN el daemon,
+    //   `VIDEO-RANGE=PQ` sobre SDR puede producir **color shift** (no freeze); en players
+    //   estrictos que exigen coherencia CODECS↔PQ puede fallar el handshake HDR → negro.
+    //   El propietario lo asumió; por eso existe una puerta explícita por artefacto:
+    //     · Ruta universal / Roku (necesita rama SDR real, Apple 1.24):
+    //           window.APE_PQ_UNIVERSAL_ROUTE = true   ⇒ PQ sólo con HDR probado
+    //     · Escape puntual para 1 artefacto:
+    //           window.APE_PQ_UNCONDITIONAL = false    ⇒ PQ sólo con HDR probado
+    //   Default (sin banderas): **PQ incondicional** = lock 2026-06-16.
+    // ───────────────────────────────────────────────────────────────────────────
+    // ═══ [t85] DENOMINACION DETERMINISTA DE CALIDAD (pura, sin estado) ═══
+    // El propietario exige que la DENOMINACION sea determinista y verificable:
+    // mismo input => misma denominacion, SIEMPRE. Precedencia FIJA, de arriba
+    // abajo; la primera que casa gana. NUNCA por debajo de 4K: lo que no llega
+    // se declara 4K-FAKE (nunca 1080p/720p, que un player filtraria a negro).
+    const APE_QUALITY_RANGES = {
+        '8K-FAKE':      { min: 14000000, max: 35000000 },
+        '4K-TRUE':      { min: 20000000, max: 45000000 },
+        '4K-REMUX':     { min: 25000000, max: 60000000 },
+        '4K-UPSCALING': { min:  6000000, max: 16000000 },
+        '4K-FAKE':      { min:  6000000, max: 16000000 },
+    };
+    function __apeQualityDenomination(input) {
+        const o = input || {};
+        const h = Number(o.height) || 0;
+        const realBps = Number(o.bitrate) || 0;
+        const codec = String(o.codec || '');
+        const want8k = (o.fakeUhd === '8k');
+        let denom;
+        if (want8k) {
+            denom = '8K-FAKE';                       // 1. solo OPT-IN explicito
+        } else if (h >= 2160 && /^(hvc1|hev1|av01)/i.test(codec)) {
+            denom = '4K-TRUE';                       // 2. fuente 4K real + codec moderno
+        } else if (h >= 2160 && realBps >= 25000000) {
+            denom = '4K-REMUX';                      // 3. 4K de origen con bitrate alto
+        } else if (h >= 1080) {
+            denom = '4K-UPSCALING';                  // 4. fuente >=1080p que se eleva
+        } else {
+            denom = '4K-FAKE';                       // 5. resto (480p/720p/desconocido)
+        }
+        const rg = APE_QUALITY_RANGES[denom];
+        // Clamp del bitrate REAL dentro del rango de su denominacion.
+        const bitrate = Math.min(rg.max, Math.max(rg.min, realBps || rg.min));
+        return {
+            denom: denom,
+            min: rg.min,
+            max: rg.max,
+            bitrate: bitrate,
+            bandwidth: bitrate,
+            average: Math.round(bitrate * 0.80),
+            resolution: (denom === '8K-FAKE') ? '7680x4320' : '3840x2160',
+            fps: Math.min(60, Number(o.fps) || 30),
+            stableVariantId: String(o.channelId || '') + '_' + denom,
+            qualityTag: '#EXT-X-APE-QUALITY:' + denom,
+            rangeTag: '#EXT-X-APE-QUALITY-RANGE:min=' + rg.min + ',max=' + rg.max + ',bitrate=' + bitrate,
+        };
+    }
+    function __apeStreamTruth(input) {
+        const o = input || {};
+        const r = {
+            w: 1920, h: 1080, fps: 30, fpsRaw: 30, resolution: '1920x1080',
+            codec: o.codecHint || null, level: null, family: 'HEVC',
+            hdr: o.hdr === true, pqAllowed: false, source: 'default', profile: o.profile || 'P3'
+        };
+
+        const parseRes = (v) => {
+            const m = String(v == null ? '' : v).match(/^\s*(\d{2,5})\s*[xX]\s*(\d{2,5})\s*$/);
+            if (!m) return null;
+            const w = parseInt(m[1], 10), h = parseInt(m[2], 10);
+            return (w > 0 && h > 0) ? { w: w, h: h } : null;
+        };
+
+        // ── resolución ────────────────────────────────────────────────────
+        let rr = null;
+        if (o.perceptual4k === true) {
+            rr = { w: 3840, h: 2160 };            // lock del propietario (opciones.perceptual4kMode)
+            r.source = 'perceptual4k-lock';
+        }
+        if (!rr && o.profileResolution) {
+            rr = parseRes(o.profileResolution);
+            if (rr) r.source = 'profile';          // SSOT: getProfile().settings.resolution
+        }
+        if (!rr && o.probe && o.probe.resolution) {
+            rr = parseRes(o.probe.resolution);
+            if (rr) r.source = 'probe';
+        }
+        if (!rr && o.name) {
+            const nm = String(o.name).toLowerCase();
+            if (/\b(8k|4320p?|7680)\b/.test(nm)) { rr = { w: 7680, h: 4320 }; r.source = 'name'; }
+            else if (/\b(4k|uhd|2160p?|3840)\b/.test(nm)) { rr = { w: 3840, h: 2160 }; r.source = 'name'; }
+            else if (/\b(qhd|1440p?|2560)\b/.test(nm)) { rr = { w: 2560, h: 1440 }; r.source = 'name'; }
+            else if (/\b(fhd|full[\s-]?hd|1080p?|1920)\b/.test(nm)) { rr = { w: 1920, h: 1080 }; r.source = 'name'; }
+            else if (/\b(hd|720p?|1280)\b/.test(nm)) { rr = { w: 1280, h: 720 }; r.source = 'name'; }
+            else if (/\b(sd|480p?|640x480)\b/.test(nm)) { rr = { w: 640, h: 480 }; r.source = 'name'; }
+        }
+        if (!rr) rr = { w: 1920, h: 1080 };
+        r.w = rr.w; r.h = rr.h; r.resolution = r.w + 'x' + r.h;
+        // [t86] Resolucion DE ORIGEN (antes de cualquier override fake-UHD):
+        // la denominacion de calidad se calcula sobre ESTO, no sobre lo declarado.
+        r.rawW = r.w; r.rawH = r.h;
+
+        // ── [t36/t62/t73] CRYSTAL FAKE-UHD ────────────────────────────────
+        // Modos: '8k' explícito | '0'/0/false => OFF | resto => DEFAULT '4k'.
+        // El default '4k' es la opción segura (un player que filtre por
+        // RESOLUTION puede rechazar 8K); '8k' solo por opt-in.
+        const APE_FAKE_UHD_DEFAULT = '4k';
+        const _fuRaw = input.fakeUhd;
+        const _wanted = (_fuRaw === '8k') ? '8k'
+            : ((_fuRaw === '0' || _fuRaw === 0 || _fuRaw === false) ? false : APE_FAKE_UHD_DEFAULT);
+        // 8K REAL: si el probe confirma 7680x4320 no se marca fake (5.9).
+        const _probeRes = String((input.probe && input.probe.resolution) || '');
+        const _real8k = /^7680x4320$/.test(_probeRes);
+        r.resolutionReal8k = _real8k;
+        if (_real8k) {
+            r.w = 7680; r.h = 4320; r.resolution = '7680x4320';
+            r.source = 'probe'; r.fakeUhd = false;
+        } else if (_wanted) {
+            r.fakeUhd = _wanted;
+            r.w = (_wanted === '8k') ? 7680 : 3840;
+            r.h = (_wanted === '8k') ? 4320 : 2160;
+            r.resolution = r.w + 'x' + r.h;
+            r.source = (_wanted === '8k') ? 'fake-8k' : 'fake-4k';
+            if (Number(r.fps) > 60) r.fps = 60;
+        } else {
+            r.fakeUhd = false;   // kill-switch: sin marca fake (5.6)
+        }
+
+        // ── fps (mismo objeto; clamp duro 60 — Apple 1.19 / D1) ───────────
+        const pf = Number(o.probe && o.probe.frameRate);
+        const cf = Number(o.profileFps);
+        const raw = (Number.isFinite(pf) && pf >= 24) ? pf : (Number.isFinite(cf) && cf > 0 ? cf : (Number(o.hintFps) || 30));
+        r.fpsRaw = raw;
+        r.fps = Math.min(raw, 60);
+
+        // ── familia (no se inventa: manda el hint) ────────────────────────
+        const hint = String(o.codecHint || '');
+        r.family = /^avc1/i.test(hint) ? 'AVC'
+            : (/^av01/i.test(hint) ? 'AV1'
+                : (/^vvc1/i.test(hint) ? 'VVC'
+                    : (/^dvh1|^dvhe/i.test(hint) ? 'DOLBY_VISION' : 'HEVC')));
+
+        // ── codec + level desde el MISMO {w,h,fps} ────────────────────────
+        if (r.family === 'AVC') {
+            // Regla existente (9943-9950): L4.1 cubre 1080p@60, L4.0 el resto.
+            r.codec = (r.fps >= 50 || r.w >= 1920) ? 'avc1.640029' : 'avc1.640028';
+            if (r.w <= 1280 && r.fps < 50) r.codec = 'avc1.640028';
+        } else if (r.family === 'AV1' || r.family === 'VVC' || r.family === 'DOLBY_VISION') {
+            r.codec = hint || null;               // se respeta; no se deriva nivel de la tabla HEVC
+        } else {
+            const cas = o.cascade;
+            if (cas && typeof cas.resolveTierByResolution === 'function') {
+                const tier = cas.resolveTierByResolution(r.w, r.h, r.fps, {});
+                if (tier && tier.codec) { r.codec = tier.codec; r.level = tier.level || null; }
+                if (r.h >= 2160) { r.codec = 'hvc1.2.4.L123.B0'; r.level = 123; } // MUTACION T31
+            } else if (!r.codec) {
+                r.codec = 'hvc1.2.4.L120.B0';     // último recurso si no hay cascada NI hint
+            }
+        }
+        // PQ: LOCK 2026-06-16 ON por defecto ⇒ incondicional.
+        // `pqGate === true` (ruta universal/Roku o escape) ⇒ PQ sólo con HDR probado.
+        // [t36/t76] PQ: PQ incondicional; pqGate lo restringe a HDR.
+        // [t36/t76] PQ: con la capa fake activa es INCONDICIONAL (R4, lock
+        // 2026-06-16). Sin fake, pqGate lo restringe a HDR. Reconcilia
+        // fake_uhd_assert 4.x (fake⇒true) con emitter_level 4.8 (gate⇒false).
+        r.pqAllowed = (r.fakeUhd && r.fakeUhd !== '0') ? true
+            : ((o.pqGate === true) ? (r.hdr === true) : true);
+        // [t73] GUARD Ley Cardinal 1: nivel NUNCA por debajo de la resolucion;
+        // y NUNCA L153 en 8K (freeze 2026-06-08).
+        if (/^hvc1|^hev1/i.test(String(r.codec || ''))) {
+            const _f = Number(r.fps) || 30;
+            const _req = (r.h >= 4320) ? ((_f >= 50) ? 183 : 180)
+                : (r.h >= 2160) ? ((_f >= 50) ? 153 : 150)
+                : (r.h >= 1440) ? 150
+                : (r.h >= 1080) ? ((_f >= 50) ? 123 : 120)
+                : (r.h >= 720) ? 93 : (r.h >= 540) ? 90 : (r.h >= 360) ? 63 : 30;
+            const _idc = Number((String(r.codec).match(/\.L(\d+)\./) || [])[1] || 0);
+            if (!_idc || _idc < _req) {
+                const _pr = /^hvc1\.(\d+)\.(\d+)\./.exec(String(r.codec));
+                r.codec = (_pr ? ('hvc1.' + _pr[1] + '.' + _pr[2] + '.') : 'hvc1.2.4.') + 'L' + _req + '.B0';
+                r.levelCorrected = true;
+            }
+        }
+        // [t36/t76] ESCALERA AVC — SOLO si la familia es AVC (nunca toca HEVC).
+        if (/^avc1|^avc3/i.test(String(r.codec || ''))) {
+            if (r.h >= 4320) r.codec = 'avc1.64003E';        // High@6.2 (8K)
+            else if (r.w >= 3840) r.codec = 'avc1.640033';   // High@5.1 (4K)
+        }
+        return r;
+    }
+
+    // G1 · trazabilidad de la decisión includeLabExtras (hoy irrecuperable).
+    function __apeLabExtrasFlag(options) {
+        try {
+            const opt = options || {};
+            if (opt.includeLabExtras === true) return 1;
+            if (opt.includeLabExtras === false) return 0;
+            const pick = (id) => (typeof window !== 'undefined' && window.APE_PROFILES_CONFIG &&
+                typeof window.APE_PROFILES_CONFIG.getProfile === 'function')
+                ? window.APE_PROFILES_CONFIG.getProfile(id) : null;
+            const id = opt.profile || (typeof window !== 'undefined' && window.app && window.app.state && window.app.state.currentProfile) || 'P3';
+            const p = pick(id);
+            return (p && p.includeLabExtras === true) ? 1 : 0;
+        } catch (_e) { return 0; }
+    }
+    // #endregion t29-core
+
+    // [t33/t78] ADN canonico: cada lista declara con que ADN se genero.
+    function __apeLabDnaTag(options) {
+        try {
+            const opt = options || {};
+            const lm = opt.lab_metadata || {};
+            const cfg2 = (typeof window !== 'undefined') ? window.APE_PROFILES_CONFIG : null;
+            const safe = (v) => String(v).replace(/[\r\n,]/g, ' ').trim();
+            const pick = (a, b, fb) => {
+                if (a !== undefined && a !== null && a !== '') return safe(a);
+                if (b !== undefined && b !== null && b !== '') return safe(b);
+                return fb;
+            };
+            const sha = pick(lm.dna_sha256, cfg2 && cfg2.labDnaSha256, 'unverified');
+            const src = pick(lm.labFileName, cfg2 && cfg2.labFileName, 'unknown');
+            const exp = pick(lm.exported_at, cfg2 && cfg2.labExportedAt, 'unknown');
+            return `#EXT-X-APE-LAB-DNA:sha256=${sha},SOURCE=${src},EXPORTED=${exp}`;
+        } catch (_e) {
+            return '#EXT-X-APE-LAB-DNA:sha256=unverified,SOURCE=unknown,EXPORTED=unknown';
+        }
+    }
     function generateGlobalHeader(channelsCount, options = {}) {
         const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 18) + 'Z';
         const totalChannels = typeof window !== 'undefined' && window.app && typeof window.app.getFilteredChannels === 'function' ? window.app.getFilteredChannels().length : channelsCount;
@@ -2354,7 +2663,9 @@
                 `#EXTM3U x-tvg-url="" x-tvg-url-epg="" x-tvg-logo="" x-tvg-shift=0 catchup="flussonic" catchup-days="7" catchup-source="{MediaUrl}?utc={utc}&lutc={lutc}" url-tvg="" refresh="1800"`,
                 `#EXT-X-VERSION:9`,
                 `#EXT-X-INDEPENDENT-SEGMENTS`,
-                `#EXT-X-APE-CHANNELS:${totalChannels}`
+                `#EXT-X-APE-CHANNELS:${totalChannels}`,
+                `#EXT-X-APE-LAB-EXTRAS:${__apeLabExtrasFlag(options)}`,
+                __apeLabDnaTag(options)
             ];
 
             // ── 🎬 DISNEY-GRADE LL-HLS / ABR DIRECTIVES (LAB SSOT) ──────────────
@@ -2733,6 +3044,8 @@
 #EXT-X-START:TIME-OFFSET=-3.0,PRECISE=YES
 #EXT-X-SESSION-DATA:DATA-ID="com.ape.build",VALUE="v5.4-MAX-COMPAT"
 #EXT-X-APE-CHANNELS:${totalChannels}
+#EXT-X-APE-LAB-EXTRAS:${__apeLabExtrasFlag(options)}
+${__apeLabDnaTag(options)}
 ${_disneyBlockFb}`;
         }
 
@@ -2740,6 +3053,8 @@ ${_disneyBlockFb}`;
 #EXT-X-VERSION:9
 #EXT-X-INDEPENDENT-SEGMENTS
 #EXT-X-APE-QMAX-VERSION:2.0-ADAPTIVE
+#EXT-X-APE-LAB-EXTRAS:${__apeLabExtrasFlag(options)}
+${__apeLabDnaTag(options)}
 #EXT-X-APE-QMAX-STRATEGY:GREEDY-BEST-AVAILABLE
 #EXT-X-APE-QMAX-ANTI-DOWNGRADE:ENFORCED
 #EXT-X-APE-QMAX-TIER-CASCADE:S>A>A->B>C>D
@@ -5315,10 +5630,27 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
         if (overflowKeys.length > 0) {
             const overflowJson = enforceJsonValid(overflowHeaders, 'EXTHTTP-overflow') || JSON.stringify(overflowHeaders);
             const overflowB64 = base64UrlEncode(overflowJson);
-            return `${exthttp}\n#EXT-X-APE-OVERFLOW-HEADERS:${overflowB64}`;
+            return {
+                headers: primaryHeaders,
+                overflow: overflowHeaders,
+                overflowCount: overflowKeys.length,
+                overflowTag: `#EXT-X-APE-OVERFLOW-HEADERS:${overflowB64}`,
+                primaryJson: primaryJson,
+                tag: `${exthttp}\n#EXT-X-APE-OVERFLOW-HEADERS:${overflowB64}`,
+                toString: function () { return this.tag; },
+            };
         }
 
-        return exthttp;
+        // [t52] H1: devolver OBJETO (el consumidor hace `.headers || {}` y con un
+        // string eso era `undefined` ⇒ los ~385 headers se perdían en silencio).
+        return {
+            headers: primaryHeaders,
+            overflow: (typeof overflowHeaders !== 'undefined' ? overflowHeaders : {}),
+            overflowCount: (typeof overflowKeys !== 'undefined' ? overflowKeys.length : 0),
+            primaryJson: primaryJson,
+            tag: exthttp,
+            toString: function () { return this.tag; },
+        };
     }
 
     // ═══════════════════════════════════════════════════════════════════════════
@@ -7159,6 +7491,15 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
 
     // El Orquestador Raíz (Adapter al Math Parser)
     function buildChannelUrl(channel, jwt, profile = null, index = 0, credentialsMap = {}) {
+        // [t61] MODO DIRECTO (sin VPS): URL del PROVEEDOR verbatim, sin reconstruir
+        // ni envolver. Default false ⇒ el modo VPS no cambia. Reversible.
+        if (typeof window !== 'undefined' && window.APE_DIRECT_MODE === true) {
+            const _directUrl = String(channel.url || channel.src || channel.raw?.server_url || '').trim();
+            if (_directUrl) return preferHttps(_directUrl);
+        // [t84] PRESERVAR la URL del catalogo (verbatim); solo sintetizar si falta.
+        const _inUrl84 = String((channel && (channel.url || channel.src)) || '').trim();
+        if (_inUrl84 && /^https?:\/\//i.test(_inUrl84)) return preferHttps(_inUrl84);
+        }
         let streamId = channel.stream_id;
         if (streamId == null) streamId = channel.raw?.stream_id;
         if (streamId == null) streamId = channel.id;
@@ -7553,6 +7894,30 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
         const _bw796 = Math.max(_bw796_raw, _bitrateFloor);
         const _avgBw = Math.round(_bw796 * 0.85);
         const _minBw796 = _bitrateFloor; // Floor exportado para VLC (adaptive-minbitrate) / KODI (min_bandwidth)
+        // ═══ 🔥 SUELO FUSIBLE (FLOOR FUSE) — perfil ═══════════════════════════
+        // design = suelo contractual (no se emite por debajo en operación normal)
+        // fuse   = suelo de emergencia: solo para recargar buffer cuando la red
+        //          cae. NO baja el techo: baja el piso, con histéresis.
+        const _fuse796 = (function () {
+            try {
+                const api = (typeof window !== 'undefined') ? window.APE_PROFILES_CONFIG : null;
+                if (api && typeof api.getFloorFuseForProfile === 'function') {
+                    const f = api.getFloorFuseForProfile(profile);
+                    const design = Number(f && f.design_bps) || 0;
+                    const fuse = Number(f && f.fuse_bps) || 0;
+                    if (design > 0 && fuse > 0 && fuse <= design) {
+                        return {
+                            design: design, fuse: fuse,
+                            trigger: f.trigger_buffer_pct || 25,
+                            recover: f.recover_buffer_pct || 70,
+                            hold: f.hold_s || 20,
+                            mode: f.mode || 'buffer-recharge'
+                        };
+                    }
+                }
+            } catch (_) { /* no bloqueante */ }
+            return null;
+        })();
         const _res796 = _probeData?.resolution || cfg.resolution || '3840x2160';
         const _fps796 = _probeData?.frameRate || cfg.fps || 60;
         // [HEVC-FIRST CODEC LADDER] LAB SSOT primary del chain → fallback legacy switch.
@@ -8312,6 +8677,10 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
             }
         }
 
+        // ═══ t29 · C5 · DENYLIST INCONDICIONAL (11 tóxicos) — FILTRA, no borra líneas ═══
+        // Se aplica SIEMPRE (no depende del UA, a diferencia de _ca7BrowserOnly:8333).
+        // _httpPayload es el objeto que se serializa en #EXTHTTP justo abajo.
+        const _denylistRes = __apeFilterToxicHeaders(_httpPayload);
         _sanitizePayloadSize(_httpPayload); // F1: compresión preventiva si >7800B, hard-cap 8192B
         let _exthttpJson = JSON.stringify(_httpPayload);
         for (const [ph, val] of Object.entries(_phResolve)) {
@@ -8327,6 +8696,8 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
             _exthttpJson = window.APEParserGenerationBridge.runPostEmissionSanitizer(_exthttpJson);
         }
         lines.push(`#EXTHTTP:${_exthttpJson}`);
+        // t29 · C5 · trazabilidad del filtro (0 = ningún tóxico presente de entrada).
+        lines.push(`#EXT-X-APE-DENYLIST-REMOVED:${_denylistRes && _denylistRes.removed ? _denylistRes.removed.length : 0}`);
 
         // ════════════════════════════════════════════════════════════════════════
         // L3 — KODIPROP — Kodi InputStream Adaptive (71 líneas)
@@ -8719,6 +9090,11 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
         lines.push(`#EXT-X-APE-RESILIENCE-DEGRADATION-L5:HLS/TS+BASELINE,BW=3000000`);
         lines.push(`#EXT-X-APE-RESILIENCE-DEGRADATION-L6:TS-DIRECT,BW=1500000`);
         lines.push(`#EXT-X-APE-RESILIENCE-DEGRADATION-L7:HTTP-REDIRECT,BW=500000`);
+        // 🔥 SUELO FUSIBLE — contrato de emergencia (activable por el daemon/resolver)
+        if (_fuse796) {
+            lines.push(`#EXT-X-APE-FLOOR-FUSE:DESIGN=${_fuse796.design},FUSE=${_fuse796.fuse},TRIGGER=${_fuse796.trigger},RECOVER=${_fuse796.recover},HOLD=${_fuse796.hold},MODE=${_fuse796.mode}`);
+            lines.push(`#EXT-X-APE-FLOOR-FUSE-POLICY:normal=adaptive-minbitrate:${_fuse796.design};recharge=adaptive-minbitrate:${_fuse796.fuse};state=open`);
+        }
         lines.push(`#EXT-X-APE-RESILIENCE-HEALTH-CHECK:INTERVAL=5000ms,TIMEOUT=2000ms`);
         lines.push(`#EXT-X-APE-RESILIENCE-CIRCUIT-BREAKER:ENABLED=true,THRESHOLD=3,RESET=30s`);
         lines.push(`#EXT-X-APE-RESILIENCE-BULKHEAD:ENABLED=true,MAX-CONCURRENT=10`);
@@ -9902,8 +10278,32 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
                         // Level 4.1 da headroom para 1080p@60 sin riesgo de strict decoder
                         // selection en Tizen/WebOS.
                         const _avcSafe = (Number(_fps796_csv) >= 50) ? 'avc1.640029' : 'avc1.640028';
-                        _codec796_csv = _avcSafe;
-                        _codecSource = 'f4-avc-safe';
+                        // [t79 · FIX A] La EVIDENCIA del canal manda sobre el codec en curso.
+                        // Blindado con try/catch: un fallo aqui NO debe tumbar la generacion
+                        // del canal (leccion del incidente de 0 canales en t70).
+                        let _evCodec = '';
+                        try { _evCodec = String((channel && (channel.codecHint || channel.codec_hint)) || ''); } catch (_ee) { _evCodec = ''; }
+                        if (/^hvc1|^hev1/i.test(_evCodec)) {
+                            _codecSource = 'channel-evidence-hevc';
+                        } else if (/^avc1|^avc3/i.test(_evCodec)) {
+                            _codec796_csv = _avcSafe;   // AVC solo si el origen es AVC
+                            _codecSource = 'channel-evidence-avc';
+                        } else if (/^hvc1|^hev1/i.test(String(_codec796_csv || ''))) {
+                            _codecSource = 'cascade-hevc';
+                        } else {
+                            _codec796_csv = _avcSafe;
+                            _codecSource = 'f4-avc-safe';
+                        }
+                        // NO se degrada a AVC. Solo se usa la escalera AVC cuando el
+                        // codec en curso es AVC o no hay evidencia alguna.
+                        if (/^hvc1|^hev1/i.test(String(_codec796_csv || ''))) {
+                            _codecSource = 'channel-evidence-hevc';
+                        } else if (/^avc1|^avc3/i.test(String(_codec796_csv || ''))) {
+                            _codecSource = 'channel-evidence-avc';
+                        } else {
+                            _codec796_csv = _avcSafe;
+                            _codecSource = 'f4-avc-safe';
+                        }
                     }
                     // P0/P1/P2 sin probe ni premium: conservan HEVC (caso raro,
                     // típicamente esos perfiles vienen de fuentes premium).
@@ -9975,7 +10375,89 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
                 _fps796_csv = _noProbeFps(profile);
             }
             _fpsSource = _legacyHadProbe ? 'probe' : (Number(_fps796_csv) === 120 ? 'default-120' : 'default-60');
-            lines.push(`#EXT-X-STREAM-INF:BANDWIDTH=${_bw796_final},AVERAGE-BANDWIDTH=${_avgBw_final},CODECS="${_codec796_csv},${_codecAudio}",RESOLUTION=${_res796_csv},FRAME-RATE=${Number(_fps796_csv).toFixed(3)}${_videoRangePart},HDCP-LEVEL=${_hdcpLevel},STABLE-VARIANT-ID="${_stableVariantId}"`);
+            // ═══════════════════════════════════════════════════════════════════
+            // t29 · C2 · FUENTE ÚNICA — {w,h,fps} → RESOLUTION + CODECS + FRAME-RATE
+            // ═══════════════════════════════════════════════════════════════════
+            // Se recalcula TODO desde un solo objeto, DESPUÉS de todos los overrides
+            // (cascade per-profile, F4 AVC, VPS image, perceptual 4K). Así ningún
+            // camino puede dejar un par incoherente (1080p+L150, 4K+L123/L120).
+            // El nivel HEVC sale de resolveTierByResolution(w,h,fps) con los MISMOS
+            // w,h,fps que se declaran justo abajo. No se inventa ningún codec.
+            const _streamTruth = __apeStreamTruth({
+                profile: profile,
+                name: (channel && (channel.name || channel.tvg_name)) || '',
+                profileResolution: (cfg && cfg.resolution) || null,   // getProfile() → SSOT
+                profileFps: (cfg && cfg.fps) || null,
+                probe: _probeData || null,
+                hintResolution: _res796_csv,
+                hintFps: _fps796_csv,
+                codecHint: _codec796_csv,
+                fakeUhd: (typeof window !== 'undefined' && window.APE_FAKE_UHD !== undefined) ? window.APE_FAKE_UHD : undefined,
+                hdr: _isHDR === true,
+                perceptual4k: !!(options && options.perceptual4kMode),
+                // PQ · LOCK 2026-06-16 ON por defecto (incondicional en OMEGA/P_MAX).
+                // La puerta «sólo con HDR» se abre SÓLO por artefacto:
+                //   window.APE_PQ_UNIVERSAL_ROUTE === true  (ruta universal/Roku)
+                //   window.APE_PQ_UNCONDITIONAL   === false (escape puntual)
+                pqGate: (typeof window !== 'undefined') &&
+                    (window.APE_PQ_UNIVERSAL_ROUTE === true || window.APE_PQ_UNCONDITIONAL === false),
+                cascade: _cascade || null
+            });
+            _res796_csv   = _streamTruth.resolution;
+            _codec796_csv = _streamTruth.codec || _codec796_csv;
+            _fps796_csv   = _streamTruth.fps;
+            // PQ: el lock 2026-06-16 emite VIDEO-RANGE=PQ incondicional (riesgo aceptado:
+            // color shift en players que honran PQ sobre SDR). Con pqGate (ruta universal)
+            // sólo se emite con HDR probado, y HLG se respeta si el probe lo reporta.
+            {
+                const _rawRange = String((_probeData && (_probeData.videoRange || _probeData.video_range)) || '').toUpperCase();
+                _videoRangePart = _streamTruth.pqAllowed
+                    ? (_rawRange === 'HLG' ? ',VIDEO-RANGE=HLG' : ',VIDEO-RANGE=PQ')
+                    : '';
+            }
+            lines.push(`#EXT-X-APE-STREAM-TRUTH:src=${_streamTruth.source},w=${_streamTruth.w},h=${_streamTruth.h},fps=${_streamTruth.fps},rawfps=${_streamTruth.fpsRaw},family=${_streamTruth.family},pq=${_streamTruth.pqAllowed ? 1 : 0}`);
+            // ═══════════════════════════════════════════════════════════════════════════
+// [t36/t62/t74] CRYSTAL FAKE-UHD — ORDEN DEL PROPIETARIO Y RIESGO ACEPTADO
+//
+// «LO QUE SEA 4K LO VUELVA 8K» — el propietario ordenó que todo lo que sea 4K
+// se declare con la máxima resolución disponible; RIESGO ACEPTADO por él.
+//
+// Default = APE_FAKE_UHD_DEFAULT ('4k'). Modos: (sin flag) ⇒ APE_FAKE_UHD_DEFAULT
+// · '8k' ⇒ OPT-IN explícito · '0'/0/false ⇒ OFF (kill-switch).
+// El 8K exige comparación explícita: o.fakeUhd === '8k' y window.APE_FAKE_UHD === '8k'.
+// Pedir 8K sin tocar código:  window.APE_FAKE_UHD = '8k'  antes de generar.
+// Y NUNCA se revierte el default a 8k: no hay fallback `: '8k'`.
+//
+// POR QUÉ '4k' y no '8k': un player que filtra por RESOLUTION antes de descargar
+// (Roku) puede descartar la única variante si declara 8K sobre un panel 4K ⇒
+// pantalla negra. Se prefiere declarar 4K y no perder la reproducción.
+// Física del stack: ONN 4K, Fire TV 4K Max sacan 4K por HDMI como máximo;
+// declarar 8K sobre bytes 4K no produce píxeles.
+//
+// LEVER B (mitigación de EDGE degrade): en P2..P5 el rewrite virtual_4k del VPS
+// Lua sólo actúa si la variante top NO es AVC. Se documenta aquí SIN implementarla.
+// ═══════════════════════════════════════════════════════════════════════════
+if (_streamTruth.fakeUhd === '8k') {
+    lines.push(`#EXT-X-APE-UPSCALE:fake8k`);
+} else if (_streamTruth.fakeUhd === '4k') {
+    lines.push(`#EXT-X-APE-UPSCALE:fake4k`);
+}
+lines.push(`#EXT-X-APE-STREAM-TRUTH:src=${_streamTruth.source},w=${_streamTruth.w},h=${_streamTruth.h},fps=${_streamTruth.fps},fake=${_streamTruth.fakeUhd || 0},real8k=${_streamTruth.resolutionReal8k ? 1 : 0}`);
+            // ── [t85] DENOMINACION DETERMINISTA + RANGOS en el STREAM-INF ──
+            const _qd85 = __apeQualityDenomination({
+                height: Number((_streamTruth && (_streamTruth.rawH || _streamTruth.h)) || 0),
+                codec: _codec796_csv,
+                bitrate: Number(_bw796_final) || 0,
+                fps: Number(_fps796_csv) || 30,
+                fakeUhd: (_streamTruth && _streamTruth.fakeUhd) || false,
+                channelId: String(_hdcpChId || _stableVariantId || ''),
+            });
+            lines.push(_qd85.qualityTag);
+            lines.push(_qd85.rangeTag);
+            const _bw796_denom = _qd85.bandwidth;
+            const _avgBw_denom = _qd85.average;
+            const _sid_denom = _qd85.stableVariantId;
+            lines.push(`#EXT-X-STREAM-INF:BANDWIDTH=${_bw796_denom},AVERAGE-BANDWIDTH=${_avgBw_denom},CODECS="${_codec796_csv},${_codecAudio}",RESOLUTION=${_res796_csv},FRAME-RATE=${Number(_fps796_csv).toFixed(3)}${_videoRangePart},HDCP-LEVEL=${_hdcpLevel},STABLE-VARIANT-ID="${_sid_denom}"`);
             if (_fpsSource) {
                 lines.push(`#EXT-X-APE-FPS-SOURCE:${_fpsSource}`);
             }
@@ -9999,6 +10481,30 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
             const L_srt = simulated_rtt * 3; // L_srt >= 3 x RTT rule
             lines.push(`#EXT-X-APE-SRT-PROTOCOL:ENABLED=true,RTT=${simulated_rtt}ms,L_SRT=${L_srt}ms,RULE="L_srt >= 3 x RTT"`);
         }
+        // ═══ t29 · RC-2 · RESOLVER URL CON `url=` (sin derivación) ═══════════════
+        // El generador ya tiene la URL REAL del proveedor en `primaryUrl`
+        // (buildChannelUrl:7304). La persistimos codificada como `url=` para que
+        // RC-2 la lea sin reconstruirla. `srv`/`ctx` los construye el wrapper
+        // (m3u8-api-wrapper-integrated.js:1252/1257, fuera del alcance de t29):
+        // aquí se transportan si el canal ya los trae, nunca se inventan.
+        let _resolverUrlWithProvider = '';
+        try {
+            const _rsvBase = (typeof localStorage !== 'undefined' && localStorage.getItem('vps_base_url')) || 'https://iptv-ape.duckdns.org';
+            const _rsvCh = (channel && channel.stream_id != null) ? channel.stream_id
+                : ((channel && channel.id != null) ? channel.id : '');
+            const _rsvSid = (_rsvCh === '') ? '' : `&sid=${encodeURIComponent(String(_rsvCh))}`;
+            const _rsvSrv = (channel && channel._srvParam) ? String(channel._srvParam) : '';
+            const _rsvCtx = (channel && channel._ctxParam) ? String(channel._ctxParam) : '';
+            const _rsvBuf = (cfg && (cfg.player_buffer_ms || cfg.buffer_ms)) || 37500;
+            const _rsvBw = _bw796_final || _bw796 || 0;
+            const _rsvList = (typeof window !== 'undefined' && window.APE_LIST_ID) ? String(window.APE_LIST_ID) : 'v5.4';
+            if (primaryUrl) {
+                _resolverUrlWithProvider = `${_rsvBase}/resolve_quality_unified.php?ch=${encodeURIComponent(String(_rsvCh))}&p=${encodeURIComponent(String(profile))}&mode=adaptive&list=${encodeURIComponent(_rsvList)}&bw=${_rsvBw}&buf=${_rsvBuf}${_rsvSid}${_rsvSrv}${_rsvCtx}&url=${encodeURIComponent(primaryUrl)}`;
+            }
+        } catch (_eRsv) { _resolverUrlWithProvider = ''; }
+        if (_resolverUrlWithProvider) {
+            lines.push(`#EXT-X-APE-RESOLVER-URL:${_resolverUrlWithProvider}`);
+        }
         lines.push(`${finalUrl}`);
 
         // ── PLACEHOLDER RESOLVER FINAL (global, sobre TODA la salida) ─────────
@@ -10007,6 +10513,16 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
         // Bug conocido sin esto: lista emite literal `http-user-agent={config.user_agent}`
         // y reproductor lo manda al shield como UA literal. (caso 2026-04-26)
         let _finalM3U = lines.join('\n');
+        // ═══ t29 · C5 · última defensa (string-level): quita pares "Tóxico":valor ═══
+        // Cubre EXTHTTP y CUALQUIER stream_headers serializado que llegue al texto.
+        // No borra líneas de directiva: sólo elimina el par de header tóxico.
+        {
+            const _scrubRes = __apeScrubToxicPairs(_finalM3U);
+            if (_scrubRes.hits > 0) {
+                _finalM3U = _scrubRes.text;
+                try { console.warn(`[t29][C5] scrub string-level: ${_scrubRes.hits} par(es) tóxico(s) eliminado(s)`); } catch (_e) { }
+            }
+        }
         for (const [ph, val] of Object.entries(_phResolve || {})) {
             if (typeof val !== 'string' && typeof val !== 'number') continue;
             if (_finalM3U.indexOf(ph) !== -1) {
@@ -10080,6 +10596,7 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
         return _finalM3U;
     }
 
+    if (typeof window !== 'undefined') window.APE_GEN = generateM3U8Stream; // [t53/t72] export headless (hoisting)
     function generateM3U8Stream(channels, options = {}) {
         // 🛡️ ANTI-DRIFT: reset audit accumulator per-generation (M2).
         // Cada generación tiene su propio scorecard. Concurrencia secuencial OK

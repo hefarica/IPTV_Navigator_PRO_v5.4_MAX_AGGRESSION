@@ -498,17 +498,23 @@ enum ListType: string
 // ============================================================================
 // ENUM: Tipo de reproductor detectado
 // ============================================================================
-
-enum PlayerType: string
-{
-    case VLC      = 'vlc';
-    case KODI     = 'kodi';
-    case OTT      = 'ott';
-    case EXO      = 'exo';
-    case TIVIMATE = 'tivimate';
-    case SMART_TV = 'smart_tv';
-    case WEB      = 'web';
-    case GENERIC  = 'generic';
+// [RC-1 · T28] Guarda idempotente. En el VPS el fatal era:
+//   "Cannot declare enum PlayerType, because the name is already in use"
+// porque otro archivo del mismo request ya lo había declarado. Con enum_exists()
+// ESTA declaración deja de poder ser la causa del fatal. Mismo patrón que usa
+// backend/ape_cmaf_dominance_engine.php para CmafPlayerType.
+if (!enum_exists('PlayerType')) {
+    enum PlayerType: string
+    {
+        case VLC      = 'vlc';
+        case KODI     = 'kodi';
+        case OTT      = 'ott';
+        case EXO      = 'exo';
+        case TIVIMATE = 'tivimate';
+        case SMART_TV = 'smart_tv';
+        case WEB      = 'web';
+        case GENERIC  = 'generic';
+    }
 }
 
 // ============================================================================
@@ -5640,8 +5646,199 @@ function processOmegaChannel(array $channelLines, OmegaAbsoluteReconstructor $re
 
 
 
+// ============================================================================
+// 🚑 FALLO EXPLÍCITO DEL RESOLVER — HTTP 502 + X-APE-Error  (RC-2 · T28)
+// ============================================================================
+// Devuelve SIEMPRE un error de transporte, NUNCA un playlist "válido" con un
+// único canal de error: eso enmascaraba el fallo (el player mostraba "sin
+// imagen" sin ningún error visible). Cuerpo VACÍO por contrato.
+if (!function_exists('ape_resolver_fail_502')) {
+    /**
+     * @param string $code   Código estable para el cliente (p.ej. ORIGIN_UNRESOLVED).
+     * @param string $detail Detalle interno; va a error_log, NUNCA al cliente.
+     */
+    function ape_resolver_fail_502(string $code, string $detail = ''): void
+    {
+        if (!headers_sent()) {
+            http_response_code(502);
+            header('X-APE-Error: ' . $code);
+            header('Content-Type: text/plain; charset=utf-8');
+            header('Content-Length: 0');
+            header('Cache-Control: no-store');
+            header('Access-Control-Allow-Origin: *');
+            header('Access-Control-Expose-Headers: X-APE-Error');
+        }
+        if ($detail !== '') {
+            error_log('[RESOLVER][502] ' . $code . ' :: ' . $detail);
+        }
+        // Sin body: el cliente debe ver un 502 real, no un manifiesto.
+        exit;
+    }
+}
+
+// ============================================================================
+// 🧬 DERIVACIÓN DEL ORIGEN DESDE srv + sid + origin  (RC-2 · T28)
+// ============================================================================
+// El catálogo emite `srv=base64("<host:port>|<user>|<pass>")` + `sid=` + `origin=`
+// y NO emite `url=`. Esta función reconstruye los candidatos de manifiesto del
+// proveedor. NO autentica, NO sondea y NO inventa credenciales: sólo compone
+// URLs; la validación la hace el probe existente y, si ninguno responde, el
+// resolver corta con 502 (ape_resolver_fail_502).
+if (!function_exists('ape_derive_origin_candidates')) {
+    /**
+     * @return string[] Candidatos únicos en orden de preferencia (puede ser []).
+     */
+    function ape_derive_origin_candidates(string $srvParam, string $sid, string $originParam): array
+    {
+        $srvParam    = trim($srvParam);
+        $sid         = trim($sid);
+        $originParam = trim($originParam);
+
+        $host = '';
+        $user = '';
+        $pass = '';
+
+        if ($srvParam !== '') {
+            // srv puede venir base64 (estándar del catálogo) o ya en claro pipe-separated.
+            $decoded = base64_decode($srvParam, true);
+            $raw     = ($decoded !== false && str_contains($decoded, '|')) ? $decoded : $srvParam;
+            $parts   = explode('|', $raw);
+            $host    = trim((string)($parts[0] ?? ''));
+            $user    = trim((string)($parts[1] ?? ''));
+            $pass    = trim((string)($parts[2] ?? ''));
+        }
+
+        // `origin` sólo aporta el host si srv no lo trajo.
+        if ($host === '') {
+            $host = $originParam;
+        }
+
+        // Sin stream_id, host o credenciales no hay nada que derivar (no se adivina).
+        if ($sid === '' || $host === '' || $user === '' || $pass === '') {
+            return [];
+        }
+
+        $host = preg_replace('#^https?://#i', '', $host);
+        $host = rtrim((string)$host, '/');
+
+        // Guardarraíles: host y sid saneados; nada de rutas ni esquemas inyectados.
+        if ($host === '' || strlen($host) > 200 || !preg_match('/^[A-Za-z0-9._:-]+$/', $host)) {
+            return [];
+        }
+        if (!preg_match('/^[A-Za-z0-9._-]{1,128}$/', $sid)) {
+            return [];
+        }
+
+        $u = rawurlencode($user);
+        $p = rawurlencode($pass);
+        $s = rawurlencode($sid);
+
+        // Variantes razonables de manifiesto Xtream (orden de preferencia).
+        $candidates = [
+            'http://'  . $host . '/live/' . $u . '/' . $p . '/' . $s . '.m3u8',
+            'http://'  . $host . '/' . $u . '/' . $p . '/' . $s . '.m3u8',
+            'https://' . $host . '/live/' . $u . '/' . $p . '/' . $s . '.m3u8',
+        ];
+
+        return array_values(array_unique($candidates));
+    }
+}
+
+// ============================================================================
+// 🔥 SUELO FUSIBLE (FLOOR FUSE) — Vía A: activación por query param &fuse=1
+// ============================================================================
+// Espejo EXACTO de frontend/js/ape-v9/ape-profiles-config.js:5120-5163
+// (APE_PROFILES_CONFIG.getFloorFuseForProfile). El resolver es PHP y NO ejecuta
+// JS: la tabla se duplica a propósito. Si cambia en el frontend, cambiar aquí.
+//
+// Doctrina (frontend :5109-5110 — histéresis del fusible):
+//   floor = fuse_bps   → fusible CERRADO (STATE=CLOSED) ← &fuse=1 (recarga de buffer)
+//   floor = design_bps → fusible ABIERTO (STATE=OPEN)   ← sin fuse / fuse≠1
+// Prioridad declarada: NO freeze > calidad. El fusible baja el PISO, nunca el techo.
+//
+// ADITIVO Y REVERSIBLE: sin &fuse=1 no se activa ninguna sobreescritura; las
+// únicas líneas nuevas son metadata inerte (RFC 8216 §6.3.1 ignora tags
+// desconocidos). No toca CODECS, ni $is_hevc, ni el die() de canal corrupto,
+// ni el 302 a binario crudo.
+if (!function_exists('ape_floor_fuse_for_profile')) {
+    /**
+     * Suelo de diseño y suelo fusible (bps) para un perfil P0..P5.
+     *
+     * @param string $profile Perfil pedido por el cliente ('P3', 'p1', 'P1_ULTRA_...', 'DEFAULT', ...)
+     * @return array{profile:string,design_bps:int,fuse_bps:int,trigger_buffer_pct:int,recover_buffer_pct:int,hold_s:int,mode:string,max_drop_pct:int}
+     */
+    function ape_floor_fuse_for_profile(string $profile): array
+    {
+        // Tabla base por perfil (bps) — IDÉNTICA a getFloorFuseForProfile().
+        // design_bps = suelo de DISEÑO (contrato). fuse_bps = suelo de EMERGENCIA.
+        $table = [
+            'P0' => ['design_bps' => 25000000, 'fuse_bps' => 18000000],
+            'P1' => ['design_bps' => 14000000, 'fuse_bps' => 10000000],
+            'P2' => ['design_bps' => 14000000, 'fuse_bps' => 10000000],
+            'P3' => ['design_bps' => 5000000,  'fuse_bps' => 3500000],
+            'P4' => ['design_bps' => 2000000,  'fuse_bps' => 1400000],
+            'P5' => ['design_bps' => 1000000,  'fuse_bps' => 700000],
+        ];
+
+        // Normalización tolerante: 'p1' | 'P1' | 'P1_ULTRA_SPORTS_8K' → 'P1'.
+        // Desconocido ('DEFAULT', 'AUTO', 'SPORTS', 'CINEMA') → P3, mismo fallback
+        // que el frontend ($TABLE[profileId] || $TABLE.P3).
+        $key = 'P3';
+        if (preg_match('/^\s*(P[0-5])(?![0-9])/i', $profile, $m)) {
+            $key = strtoupper($m[1]);
+        }
+
+        $base = $table[$key];
+        return [
+            'profile'            => $key,
+            'design_bps'         => $base['design_bps'],
+            'fuse_bps'           => $base['fuse_bps'],
+            'trigger_buffer_pct' => 25,
+            'recover_buffer_pct' => 70,
+            'hold_s'             => 20,
+            'mode'               => 'buffer-recharge',
+            'max_drop_pct'       => (int)round((1 - ($base['fuse_bps'] / $base['design_bps'])) * 100),
+        ];
+    }
+}
+
+if (!function_exists('ape_floor_fuse_is_active')) {
+    /**
+     * true SOLO si el cliente pide exactamente &fuse=1.
+     * Cualquier otro valor ('0', 'true', '01', ausente) = fusible NO activado.
+     */
+    function ape_floor_fuse_is_active(): bool
+    {
+        return (isset($_GET['fuse']) && $_GET['fuse'] === '1');
+    }
+}
+
+if (!function_exists('ape_floor_fuse_floor_bps')) {
+    /**
+     * Suelo aplicado (bps): fuse_bps si el fusible está CERRADO, design_bps si ABIERTO.
+     * Única fuente de verdad para `adaptive-minbitrate` y `min_bandwidth`.
+     */
+    function ape_floor_fuse_floor_bps(string $profile, ?bool $fuse = null): int
+    {
+        if ($fuse === null) {
+            $fuse = ape_floor_fuse_is_active();
+        }
+        $t = ape_floor_fuse_for_profile($profile);
+        return $fuse ? (int)$t['fuse_bps'] : (int)$t['design_bps'];
+    }
+}
+
 function rq_handle_request(): void
 {
+    // 🔥 SUELO FUSIBLE (Vía A) — decisión ÚNICA por request.
+    // Aditivo: sin &fuse=1 el piso aplicado es el de DISEÑO y no se activa
+    // ninguna sobreescritura (comportamiento previo intacto, línea por línea).
+    $fuse          = ape_floor_fuse_is_active();
+    $fuseProfileIn = (string)($_GET['p'] ?? $_GET['profile'] ?? 'DEFAULT');
+    $fuseTable     = ape_floor_fuse_for_profile($fuseProfileIn);
+    $fuseState     = $fuse ? 'CLOSED' : 'OPEN';
+    $floor_bps     = $fuse ? (int)$fuseTable['fuse_bps'] : (int)$fuseTable['design_bps'];
+
     // ===========================================================
     // OMEGA POLYMORPHIC PROXY (CERO-302 ENFORCEMENT)
     // ===========================================================
@@ -5652,20 +5849,47 @@ function rq_handle_request(): void
         $ctx = str_pad($ctx, strlen($ctx) % 4, '=', STR_PAD_RIGHT);
         $json_payload = base64_decode(strtr($ctx, '-_', '+/'));
         if (!$json_payload) {
-            die("#EXTM3U\n#EXTINF:-1, [⚠️ APE ERROR] PAYLOAD BASE64 INVÁLIDO\nhttp://localhost/error.ts\n");
+            // [RC-2 · T28] Antes: die() devolvía un playlist "válido" con un único
+            // canal de error apuntando a localhost, enmascarando el fallo. Ahora: 502 real.
+            ape_resolver_fail_502('CTX_PAYLOAD_INVALID', 'el parámetro ctx no decodifica base64url');
         }
         $payload = json_decode($json_payload, true);
         if (!is_array($payload)) {
             $payload = [];
         }
 
-        $origin_url = $_GET['url'] ?? '';
-        if (empty($origin_url)) {
-            die("#EXTM3U\n#EXTINF:-1, [⚠️ APE ERROR] ADN DE CANAL CORRUPTO (SIN URL)\nhttp://localhost/error.ts\n");
+        // ─────────────────────────────────────────────────────────────────────
+        // [RC-2 · T28] ORIGEN: url= explícito o DERIVADO de srv + sid + origin
+        // ─────────────────────────────────────────────────────────────────────
+        // El 100 % del catálogo emite srv (base64 "host:port|user|pass") + sid +
+        // origin y NUNCA url=, así que antes todo caía en un die() que devolvía un
+        // playlist con un único canal de error apuntando a localhost. Ahora se
+        // deriva y se prueba; si
+        // ningún candidato responde, 502 explícito (nunca un manifiesto falso).
+        $origin_url     = trim((string)($_GET['url'] ?? ''));
+        $origin_derived = false;
+        $probe_targets  = [];
+
+        if ($origin_url !== '') {
+            // Camino heredado (herramientas del dueño que sí mandan url=).
+            $probe_targets = [$origin_url];
+        } else {
+            $probe_targets = ape_derive_origin_candidates(
+                (string)($_GET['srv'] ?? ''),
+                (string)($_GET['sid'] ?? ''),
+                (string)($_GET['origin'] ?? '')
+            );
+            if (empty($probe_targets)) {
+                ape_resolver_fail_502('ORIGIN_UNRESOLVED', 'sin url= y srv/sid/origin no permiten derivar el manifiesto');
+            }
+            $origin_url     = $probe_targets[0];
+            $origin_derived = true;
         }
+
         $best_quality_url = $origin_url;
         $cache_key = 'probe_' . md5($origin_url . $profile);
         $cached_url = function_exists('apcu_fetch') && apcu_enabled() ? apcu_fetch($cache_key) : false;
+        $probe_ok  = (bool)$cached_url;
 
         if ($cached_url) {
             $best_quality_url = $cached_url;
@@ -5678,31 +5902,46 @@ function rq_handle_request(): void
             $codecs_to_try[] = ['ext' => '', 'id' => 'H264_Base'];
 
             $player_ua = $_SERVER['HTTP_USER_AGENT'] ?? "VLC/3.0.21 LibVLC/3.0.21";
-            foreach ($codecs_to_try as $codec) {
-                $test_url = $origin_url . $codec['ext'];
+            // [T28] Se recorren los candidatos derivados en orden de preferencia;
+            // el primero que responda 2xx/3xx gana. Con url= explícito la lista
+            // tiene un solo elemento y el comportamiento es el mismo de antes.
+            foreach ($probe_targets as $probe_target) {
+                foreach ($codecs_to_try as $codec) {
+                    $test_url = $probe_target . $codec['ext'];
 
-                $ch = curl_init($test_url);
-                curl_setopt($ch, CURLOPT_NOBODY, false);
-                curl_setopt($ch, CURLOPT_HTTPGET, true);
-                curl_setopt($ch, CURLOPT_TIMEOUT_MS, 800);
-                curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-                curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-                curl_setopt($ch, CURLOPT_USERAGENT, $player_ua);
-                // Evadir bloqueos 403 (Anti-HEAD) simulando GET real de 1 byte
-                curl_setopt($ch, CURLOPT_HTTPHEADER, [
-                    "Range: bytes=0-0",
-                    "Accept: */*",
-                    "Connection: close"
-                ]);
-                curl_exec($ch);
-                $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-                curl_close($ch);
-                if ($code >= 200 && $code < 400) {
-                    $best_quality_url = $test_url;
-                    if (function_exists('apcu_store') && apcu_enabled()) apcu_store($cache_key, $best_quality_url, 30);
-                    break;
+                    $ch = curl_init($test_url);
+                    curl_setopt($ch, CURLOPT_NOBODY, false);
+                    curl_setopt($ch, CURLOPT_HTTPGET, true);
+                    curl_setopt($ch, CURLOPT_TIMEOUT_MS, 800);
+                    curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+                    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+                    curl_setopt($ch, CURLOPT_USERAGENT, $player_ua);
+                    // Evadir bloqueos 403 (Anti-HEAD) simulando GET real de 1 byte
+                    curl_setopt($ch, CURLOPT_HTTPHEADER, [
+                        "Range: bytes=0-0",
+                        "Accept: */*",
+                        "Connection: close"
+                    ]);
+                    curl_exec($ch);
+                    $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+                    curl_close($ch);
+                    if ($code >= 200 && $code < 400) {
+                        $origin_url       = $probe_target;
+                        $best_quality_url = $test_url;
+                        $probe_ok         = true;
+                        if (function_exists('apcu_store') && apcu_enabled()) {
+                            apcu_store('probe_' . md5($probe_target . $profile), $best_quality_url, 30);
+                        }
+                        break 2;
+                    }
                 }
             }
+        }
+
+        // [RC-2 · T28] Origen DERIVADO que no resolvió ⇒ 502 explícito.
+        // Con url= explícito se conserva el comportamiento previo (no se corta).
+        if ($origin_derived && !$probe_ok) {
+            ape_resolver_fail_502('ORIGIN_UNRESOLVED', 'ningún candidato derivado de srv/sid respondió 2xx/3xx');
         }
 
         $extension = strtolower(pathinfo(parse_url($best_quality_url, PHP_URL_PATH) ?? '', PATHINFO_EXTENSION));
@@ -5842,6 +6081,29 @@ function rq_handle_request(): void
                 }
             }
             $detected_codec = 'avc1.640028'; // Tier 11
+        }
+
+        // ═══════════════════════════════════════════════════════════════════
+        // 🔥 SUELO FUSIBLE (FLOOR FUSE) — Vía A · EMISIÓN (ADITIVA)
+        // ═══════════════════════════════════════════════════════════════════
+        // Contrato exacto:
+        //   #EXT-X-APE-FLOOR-FUSE:STATE=CLOSED|OPEN,DESIGN=<bps>,FUSE=<bps>,TRIGGER=25,RECOVER=70,HOLD=20,MODE=buffer-recharge
+        //   #EXT-X-APE-FLOOR-FUSE-POLICY:normal=adaptive-minbitrate:<design>;recharge=adaptive-minbitrate:<fuse>;state=<STATE>
+        // STATE (doctrina frontend :5109-5110): CLOSED ⇒ se aplica FUSE (&fuse=1);
+        // OPEN ⇒ se aplica DESIGN. Las dos directivas de piso de abajo existen SOLO
+        // con &fuse=1: sin fuse NO se emite ninguna y el piso del player queda
+        // exactamente como antes (no se reescribe ni se borra ninguna línea previa).
+        $output .= '#EXT-X-APE-FLOOR-FUSE:STATE=' . $fuseState
+            . ',DESIGN=' . $fuseTable['design_bps']
+            . ',FUSE=' . $fuseTable['fuse_bps']
+            . ',TRIGGER=25,RECOVER=70,HOLD=20,MODE=buffer-recharge' . "\n";
+        $output .= '#EXT-X-APE-FLOOR-FUSE-POLICY:normal=adaptive-minbitrate:' . $fuseTable['design_bps']
+            . ';recharge=adaptive-minbitrate:' . $fuseTable['fuse_bps']
+            . ';state=' . $fuseState . "\n";
+        if ($fuse) {
+            // Piso de emergencia: última directiva gana en VLC (EXTVLCOPT) y Kodi (KODIPROP).
+            $output .= '#EXTVLCOPT:adaptive-minbitrate=' . $floor_bps . "\n";
+            $output .= '#KODIPROP:inputstream.adaptive.min_bandwidth=' . $floor_bps . "\n";
         }
 
         $output .= "#EXT-X-STREAM-INF:BANDWIDTH=5100000,AVERAGE-BANDWIDTH=5100000,RESOLUTION={$detected_res},CODECS=\"{$detected_codec},mp4a.40.2\"\n";

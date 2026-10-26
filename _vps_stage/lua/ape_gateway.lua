@@ -238,6 +238,159 @@ if flag("hint", false) then
     if changed then qinc("hint_injected") end
 end
 
+-- ═══ VÍA B — FUSIBLE DE SUELO · EJECUTOR REAL (content handler) ═══════════
+-- LECCIÓN DE t18: la Vía B original vivía en un body_filter que SÓLO estaba
+-- cableado en /meta/ (8088). La ruta PUBLICADA (/cdn/, ape-meta-public.conf)
+-- ejecuta únicamente `content_by_lua_file ape_gateway.lua` ⇒ el fusible no se
+-- ejecutaba, y además no habría tenido objetivo: el cuerpo que sirve /cdn/ es
+-- un manifiesto HLS del PROVEEDOR, y `#EXTVLCOPT:`/`#KODIPROP:` son directivas
+-- M3U Plus del CATÁLOGO, no vocabulario HLS. Medido sobre el artefacto real:
+-- `adaptive-minbitrate` = 0 y `min_bandwidth` = 0, con controles positivos
+-- `adaptive-maxbw` = 2.754 ⇒ el 0 es real, no un fallo de escaneo.
+--
+-- Por eso el fusible pasa a ser SEMÁNTICO y vive aquí, en el único handler que
+-- la ruta publicada ejecuta. No se añade ninguna directiva *_by_lua: se respeta
+-- una por fase. No se toca CODECS/BANDWIDTH/RESOLUTION/FRAME-RATE.
+--
+-- Qué hace, en dos etapas explícitas:
+--   1) DECIDE el suelo con la fuente que YA existía en el gateway
+--      (`lab.floor_for(profile)` → floors de floor_lock_config.json / DNA).
+--   2) Cuando el fusible está CERRADO, INYECTA el suelo de DISEÑO declarado
+--      (#EXTVLCOPT:adaptive-minbitrate / #KODIPROP:...min_bandwidth) y luego lo
+--      RELAJA al suelo de FUSIÓN. La inyección crea el objetivo; la relajación
+--      es la que da efecto. VLC y Kodi honran esas directivas (efecto real);
+--      un parser HLS estricto las ignora como tag desconocido (RFC 8216 §6.3.1:
+--      inofensivo). Abierto ⇒ NO se inyecta nada y el cuerpo es byte-idéntico.
+--
+-- El cuerpo servido es el único sitio donde esto es honesto: el fusible SÓLO
+-- BAJA el suelo (fuse_bps <= design_bps), así que no puede volver un canal más
+-- difícil de reproducir de lo que el propio diseño del LAB ya pretende.
+local FUSE_FLOOR_BPS = {
+    P0 = 18000000, P1 = 10000000, P2 = 10000000,
+    P3 = 3500000,  P4 = 1400000,  P5 = 700000,
+}
+local FUSE_TRIGGER, FUSE_RECOVER, FUSE_HOLD = 25, 70, 20   -- % / % / s
+local FUSE_DEFAULT_PROFILE = "P3"
+
+local function fuse_norm_profile(p)
+    if type(p) ~= "string" then return nil end
+    local u = p:upper()
+    if u:match("^P[0-5]$") then return u end
+    return nil
+end
+
+local function fuse_profile()
+    return fuse_norm_profile(ngx.var.http_x_ape_profile)
+        or fuse_norm_profile(ngx.var.arg_profile)
+        or fuse_norm_profile(ngx.var.arg_p)
+        or FUSE_DEFAULT_PROFILE
+end
+
+local function fuse_keys()
+    local ip = ngx.var.remote_addr or "-"
+    local h  = ngx.var.ape_host or ngx.var.host or "-"
+    return "fusestate:" .. ip .. ":" .. h, "buf:" .. ip .. ":" .. h
+end
+
+-- Relajación del suelo. Misma semántica y mismos patrones que la Vía B de
+-- /meta/ (ape_uri_rebase.lua). La guarda de frontera `%f[%w_]` evita casar
+-- `prefetch_min_bandwidth=` (presupuesto de prefetch), de modo que el ÚNICO
+-- campo tocado sea el suelo.
+local function fuse_rewrite(body, bps)
+    local v = tonumber(bps)
+    if not v then return body, 0 end
+    v = math.floor(v)
+    if v <= 0 then return body, 0 end
+    local s = tostring(v)
+    local hits, n = 0, 0
+    body, n = body:gsub("%f[%w_](adaptive%-minbitrate=)(%d+)", "%1" .. s)
+    hits = hits + n
+    body, n = body:gsub("%f[%w_](min_bandwidth=)(%d+)", "%1" .. s)
+    hits = hits + n
+    return body, hits
+end
+
+-- Inyección del suelo de DISEÑO tras #EXTM3U. Devuelve nº de directivas (0|2).
+local function fuse_inject(body, bps)
+    local v = tonumber(bps)
+    if not v then return body, 0 end
+    v = math.floor(v)
+    if v <= 0 then return body, 0 end
+    if not body:find("#EXTM3U", 1, true) then return body, 0 end
+    local s = tostring(v)
+    local dirs = "#EXTVLCOPT:adaptive-minbitrate=" .. s .. "\n"
+              .. "#KODIPROP:inputstream.adaptive.min_bandwidth=" .. s .. "\n"
+    local out, n = body:gsub("(#EXTM3U[^\n]*\n)", "%1" .. dirs, 1)
+    if n > 0 then return out, 2 end
+    return body, 0
+end
+
+-- Histéresis TRIGGER=25 / RECOVER=70 / HOLD=20 persistida por dispositivo.
+local function fuse_decide(buf)
+    local skey = fuse_keys()
+    local now  = ngx.time()
+    local state, ts = nil, 0
+    if FLAGS then
+        local raw = FLAGS:get(skey)
+        if raw then
+            local s, t = tostring(raw):match("^(%u+):(%d+)$")
+            if s then state, ts = s, tonumber(t) or 0 end
+        end
+    end
+    local engaged = (state == "CLOSED")
+
+    -- HOLD: una vez cerrado no se reabre antes de FUSE_HOLD segundos.
+    if engaged and (now - ts) < FUSE_HOLD then return true end
+
+    local new
+    if buf == nil then
+        new = engaged                    -- sin señal de buffer: mantener estado
+    elseif buf < FUSE_TRIGGER then
+        new = true                       -- buffer bajo  → cerrar (relajar suelo)
+    elseif buf > FUSE_RECOVER then
+        new = false                      -- buffer sano  → abrir (suelo diseño)
+    else
+        new = engaged                    -- zona muerta  → mantener
+    end
+
+    if new ~= engaged and FLAGS then
+        FLAGS:set(skey, (new and "CLOSED" or "OPEN") .. ":" .. now, 3600)
+    end
+    return new
+end
+
+local fuse_forced = (ngx.var.http_x_ape_fuse == "1" or ngx.var.http_x_ape_fuse == "true")
+local fuse_skey, fuse_bkey = fuse_keys()
+local fuse_buf = tonumber(ngx.var.http_x_ape_buffer)
+if fuse_buf == nil and FLAGS then
+    fuse_buf = tonumber(FLAGS:get(fuse_bkey))
+end
+
+local fuse_engaged
+if fuse_forced then
+    fuse_engaged = true                  -- override manual explícito
+    if FLAGS then FLAGS:set(fuse_skey, "CLOSED:" .. ngx.time(), 3600) end
+else
+    fuse_engaged = fuse_decide(fuse_buf)
+end
+
+local fuse_prof    = fuse_profile()
+local design_bps   = tonumber(lab.floor_for(fuse_prof)) or 0
+local fuse_bps     = FUSE_FLOOR_BPS[fuse_prof] or FUSE_FLOOR_BPS[FUSE_DEFAULT_PROFILE]
+-- INVARIANTE: el fusible SÓLO relaja. Nunca por encima del suelo de diseño.
+if design_bps > 0 and fuse_bps > design_bps then fuse_bps = design_bps end
+
+local fuse_injected, fuse_subst, fuse_floor_final = 0, 0, design_bps
+if fuse_engaged then
+    if design_bps > 0 then
+        rebased, fuse_injected = fuse_inject(rebased, design_bps)
+    end
+    if fuse_injected > 0 then
+        rebased, fuse_subst = fuse_rewrite(rebased, fuse_bps)
+        if fuse_subst > 0 then fuse_floor_final = fuse_bps end
+    end
+end
+
 -- ── respuesta ────────────────────────────────────────────────────────────
 ngx.header["Content-Type"]      = ctype
 ngx.header["Content-Length"]    = nil
@@ -251,6 +404,12 @@ ngx.header["X-APE-LL-HLS"]      = sc_added and "server-control-added"
     or (lib.has_parts(rebased) and "passthrough" or "none")
 ngx.header["X-APE-UHD"]         = uhd_mode and (uhd_mode .. ":" .. uhd_n) or "off"
 ngx.header["X-APE-LAB-FLOOR"]   = tostring(lab.floor_for(nil))
+-- Estado del fusible, auditable en la propia respuesta (cabecera + cuerpo).
+ngx.header["X-APE-Floor-Fuse"]  = string.format(
+    "STATE=%s,PROFILE=%s,FLOOR=%d,DESIGN=%d,INJECTED=%d,SUBST=%d,TRIGGER=%d,RECOVER=%d,HOLD=%d,BUF=%s",
+    fuse_engaged and "CLOSED" or "OPEN", fuse_prof, fuse_floor_final, design_bps,
+    fuse_injected, fuse_subst, FUSE_TRIGGER, FUSE_RECOVER, FUSE_HOLD,
+    fuse_buf and tostring(fuse_buf) or "na")
 ngx.print(rebased)
 
 -- ── QoE ──────────────────────────────────────────────────────────────────
@@ -265,3 +424,16 @@ if winner and candidates[1] and winner ~= candidates[1] then qinc("failovers") e
 if sc_added then qinc("llhls_sc") end
 if uhd_mode == "4k" then qinc("uhd4k") end
 if uhd_mode == "8k" then qinc("uhd8k") end
+
+-- ── Métricas propias del fusible (Vía B, ruta publicada) ─────────────────
+-- Contadores distintos por estado: un `fuse_hits`>0 sólo puede ocurrir si de
+-- verdad se sirvió el suelo relajado en /cdn/. `fuse_subst` acumula el número
+-- de sustituciones, no el de peticiones.
+qinc(fuse_engaged and "fuse_closed" or "fuse_open")
+if fuse_injected > 0 then qinc("fuse_injected", fuse_injected) end
+if fuse_subst > 0 then
+    qinc("fuse_hits")
+    qinc("fuse_subst", fuse_subst)
+end
+qset("last_fuse", (fuse_engaged and "CLOSED" or "OPEN") .. ":" .. fuse_prof
+    .. ":" .. tostring(fuse_floor_final))

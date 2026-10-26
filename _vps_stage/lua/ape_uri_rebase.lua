@@ -94,6 +94,56 @@ local function rebase_body(body, origin)
 end
 
 -- ═══════════════════════════════════════════════════════════════════════════
+-- VÍA B — FUSIBLE EN CALIENTE: rewrite del SUELO declarado
+-- ───────────────────────────────────────────────────────────────────────────
+-- Lo pide `ape_header.lua` (header_filter) vía ngx.ctx; aquí sólo se APLICA,
+-- sobre el cuerpo completo ya buffereado al eof (nunca sobre chunks sueltos).
+--
+-- Qué se toca: EXCLUSIVAMENTE el suelo declarado del manifiesto.
+--     #EXTVLCOPT:adaptive-minbitrate=<n>          -> <fuse_bps>
+--     #KODIPROP:inputstream.adaptive.min_bandwidth=<n> -> <fuse_bps>
+--
+-- Qué NO se toca nunca (prohibido por contrato):
+--     CODECS= · BANDWIDTH= · AVERAGE-BANDWIDTH= · RESOLUTION= · FRAME-RATE=
+--     (el fusible no declara códecs ni resoluciones: no puede crear FZ-01)
+--
+-- GUARDA DE FRONTERA `%f[%w_]` (factoría propia, no cosmética): sin ella, el
+-- patrón `min_bandwidth=` también casaría dentro de `prefetch_min_bandwidth=`,
+-- que es un PRESUPUESTO DE PREFETCH y no el suelo del canal. La frontera exige
+-- que el nombre del campo NO venga precedido de carácter alfanumérico ni `_`,
+-- así que `...adaptive.min_bandwidth=` (precedido de `.`) SÍ casa y
+-- `prefetch_min_bandwidth=` (precedido de `_`) NO. Sin esta guarda el fusible
+-- tocaría un segundo campo y rompería "el único campo tocado es el suelo".
+--
+-- Se usa la forma de reemplazo del contrato (`"%1" .. tostring(bps)`). Es
+-- inequívoca: en las cadenas de reemplazo de Lua, `%n` consume UN solo dígito,
+-- así que `"%1" .. "18000000"` = grupo 1 + literal "18000000".
+-- ═══════════════════════════════════════════════════════════════════════════
+
+-- Devuelve (cuerpo_reescrito, nº_de_sustituciones). 0 ⇒ cuerpo intacto.
+-- Defensa en profundidad: el caller ya exige fuse_bps > 0, pero aquí se vuelve
+-- a rechazar 0/negativo/ausente para que jamás se declare un suelo inválido
+-- (`adaptive-minbitrate=-1`) aunque el contrato cambie de sitio.
+local function apply_fuse(body, fuse_bps)
+    local floor_bps = tonumber(fuse_bps)
+    if not floor_bps then return body, 0 end
+    floor_bps = math.floor(floor_bps)
+    if floor_bps <= 0 then return body, 0 end   -- 0 o negativo: no se toca
+    local bps = tostring(floor_bps)
+
+    local n = 0
+    local hits = 0
+
+    body, n = body:gsub("%f[%w_](adaptive%-minbitrate=)(%d+)", "%1" .. bps)
+    hits = hits + n
+
+    body, n = body:gsub("%f[%w_](min_bandwidth=)(%d+)", "%1" .. bps)
+    hits = hits + n
+
+    return body, hits
+end
+
+-- ═══════════════════════════════════════════════════════════════════════════
 -- HANDLER — se ejecuta por cada chunk del cuerpo de la respuesta
 -- ═══════════════════════════════════════════════════════════════════════════
 local chunk = ngx.arg[1]
@@ -134,6 +184,32 @@ if not origin then
 end
 
 local rebased, n_uri, n_attr = rebase_body(body, origin)
-ngx.arg[1] = rebased
 
-ngx.log(ngx.INFO, "[ape-rebase] ok uri=", n_uri, " attrs=", n_attr, " origin=", origin)
+-- ── VÍA B: fusible en caliente, DESPUÉS del rebase y sobre el cuerpo completo ──
+-- Si no hay fusible, `out` es exactamente `rebased` ⇒ byte-idéntico al
+-- comportamiento anterior (criterio de fallback total).
+local out = rebased
+local n_fuse = 0
+if ngx.ctx.ape_fuse == true then
+    local fuse_bps = tonumber(ngx.ctx.ape_fuse_bps)
+    if fuse_bps and fuse_bps > 0 then
+        out, n_fuse = apply_fuse(out, fuse_bps)
+    else
+        -- Cabecera presente pero sin perfil resoluble: no se inventa el suelo.
+        ngx.log(ngx.WARN, "[ape-rebase] fuse activo sin suelo resoluble: cuerpo intacto")
+    end
+end
+
+ngx.arg[1] = out
+
+-- Telemetría: contador de manifiestos realmente fusionados. Nil-safe y a prueba
+-- de un dict ausente o de un valor no numérico (pcall con argumentos, sin closure).
+if n_fuse > 0 then
+    local qoe = ngx.shared.ape_qoe
+    if qoe then
+        pcall(qoe.incr, qoe, "fuse_hits", 1, 0)
+    end
+end
+
+ngx.log(ngx.INFO, "[ape-rebase] ok uri=", n_uri, " attrs=", n_attr,
+        " fuse=", n_fuse, " origin=", origin)

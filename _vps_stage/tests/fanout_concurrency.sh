@@ -75,6 +75,29 @@
 #   1 = algún criterio FAIL; 2 = corrida INVÁLIDA (nginx prod reiniciado o
 #   producción modificada); 3 = entorno/uso.
 # ═════════════════════════════════════════════════════════════════════════════
+# DISPATCHER — t46: el banco por defecto es el CACHE-FIRST (sin transcode)
+# ═════════════════════════════════════════════════════════════════════════════
+# Este archivo contiene DOS bancos:
+#
+#   · CACHE-FIRST (por defecto) → cache_first_bench.sh
+#       Mide coalescing, hit ratio, stale-while-revalidate, failover, prefetch y
+#       p95 del gap entre segmentos sobre un nginx REAL (1.28.3) con proxy_cache
+#       en /dev/shm. NO necesita root, NO toca el VPS, NO usa ffmpeg.
+#       Es el banco que exige el contrato t46.
+#
+#   · V1 LEGACY (--legacy-vps-bench) → el código de más abajo (media-fanout v1)
+#       Banco de staging del diseño ANTIGUO (sesiones/generaciones + FFmpeg +
+#       límites con 503). Se conserva íntegro por OMEGA-NO-DELETE, pero NO es el
+#       camino vigente: el mandato del propietario prohíbe transcode en la ruta
+#       y prohíbe ngx.exit(503). Requiere root + nginx + ffmpeg en el VPS.
+# ═════════════════════════════════════════════════════════════════════════════
+SELF_DIR_D="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if [ "${1:-}" != "--legacy-vps-bench" ]; then
+  exec bash "$SELF_DIR_D/cache_first_bench.sh" "$@"
+fi
+shift
+# A partir de aquí: banco legacy v1 (intacto)
+
 set -u
 set -o pipefail
 

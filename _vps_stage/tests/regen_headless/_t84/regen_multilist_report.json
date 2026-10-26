@@ -1,0 +1,116 @@
+{
+  "tool": "regen_headless",
+  "at": "2026-10-26T15:15:46.589Z",
+  "mode": "4k",
+  "deterministic": false,
+  "lists": [
+    {
+      "input": "_vps_stage/tests/regen_headless/fixtures/mixed_hevc_avc_6.m3u8",
+      "basename": "mixed_hevc_avc_6",
+      "outDir": "_vps_stage/tests/regen_headless/_t84",
+      "channelsParsed": 6,
+      "settings": {
+        "profile": "(sin cabecera ⇒ P3 por defecto)",
+        "usedProfile": "P3",
+        "labExtras": "(sin cabecera ⇒ false)",
+        "labExtrasBool": false,
+        "channelsDeclared": "(sin cabecera)",
+        "dna": "(sin cabecera)",
+        "headerLines": 2,
+        "isOwnList": false
+      },
+      "inheritedDirectives": 12,
+      "inheritedTvgAttrs": 18,
+      "apePerChannel": 0,
+      "inheritMode": null,
+      "runs": [
+        {
+          "label": "4K",
+          "modeTag": "4k",
+          "emitterUnchanged": true,
+          "loadError": null,
+          "exportErr": "generateM3U8Stream is not defined",
+          "exportAvailable": true,
+          "file": "_vps_stage\\tests\\regen_headless\\_t84\\mixed_hevc_avc_6_4K.m3u8",
+          "verify": {
+            "label": "4K",
+            "firstLineIsExtM3U": true,
+            "channelsIn": 6,
+            "extinf": 6,
+            "dnaTag": 1,
+            "anchors": 6,
+            "upscaleFake8k": 0,
+            "upscaleFake4k": 6,
+            "toxic": 0,
+            "toxicPlain": {
+              "total": 0,
+              "byKey": {}
+            },
+            "toxicJson": {
+              "total": 0,
+              "byKey": {}
+            },
+            "toxicChannels": {
+              "channels": 0,
+              "sample": []
+            },
+            "streamInfTotal": 6,
+            "streamInf8k": 0,
+            "streamInf8kL153": 0,
+            "FREEZE_POISON": false,
+            "L153_byOrigin": {
+              "streamInf": 3,
+              "iframeStreamInf": 7,
+              "other": 42,
+              "byTag": {
+                "#EXT-X-I-FRAME-STREAM-INF": 7,
+                "#EXTHTTP": 6,
+                "#EXT-X-CMAF": 6,
+                "#EXT-X-APE-TELCHEMY-CODEC": 6,
+                "#EXTATTRFROMURL": 6,
+                "#EXT-X-APE-QUALITY-OVERRIDE-CODEC": 6,
+                "#EXT-X-APE-IDEMPOTENCIA-CODEC": 6,
+                "#EXT-X-APE-CORTEX-TELEMETRY-CODEC": 6,
+                "#EXT-X-STREAM-INF": 3
+              }
+            },
+            "L180": 0,
+            "L183": 0,
+            "L150": 3,
+            "L153": 52,
+            "res7680": 0,
+            "res3840": 6,
+            "bytes": 303776,
+            "sha256": "87b0ce4a3de0b58f74ad43928a50ddabc74272b7813a6b7c04c6dd06fa87bc08",
+            "inherit": {
+              "injected": 0,
+              "mergedExthttp": 6,
+              "extinfFixed": 0,
+              "lostTotal": 0,
+              "channelsWithLoss": 0,
+              "sample": []
+            },
+            "fails": [],
+            "ok": true,
+            "invariants": {
+              "channels": 6,
+              "anchors": 6,
+              "toxic": 0,
+              "dnaTag": 1,
+              "freeze": 0,
+              "levels": {
+                "L180": 0,
+                "L183": 0,
+                "L150": 3,
+                "L153": 52
+              }
+            }
+          },
+          "deterministic": null,
+          "verdict": "OK"
+        }
+      ]
+    }
+  ],
+  "verdict": "OK"
+}
