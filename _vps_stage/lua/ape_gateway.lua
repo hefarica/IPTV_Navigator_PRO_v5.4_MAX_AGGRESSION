@@ -1,14 +1,14 @@
--- ═══════════════════════════════════════════════════════════════════════════
--- APE GATEWAY v4 — content handler del plano de metadata
--- ═══════════════════════════════════════════════════════════════════════════
+-- ???????????????????????????????????????????????????????????????????????????
+-- APE GATEWAY v4 ? content handler del plano de metadata
+-- ???????????????????????????????????????????????????????????????????????????
 -- Ruta:  /cdn/<host-proveedor>[:puerto]/<ruta>.m3u8[?alt=host2,host3]
 --
--- NOVEDAD v4 (2026-10-24): SEGUIMIENTO DE 302. Verificado en producción: los
--- proveedores Xtream responden 302 a un CDN con token distinto por petición
+-- NOVEDAD v4 (2026-10-24): SEGUIMIENTO DE 302. Verificado en producci?n: los
+-- proveedores Xtream responden 302 a un CDN con token distinto por petici?n
 -- (p.ej. line.tivi-ott.net -> 185.89.249.7/live/play/<token>/<id>). Sin seguir
--- el 302 el gateway servía una playlist VACÍA. Ahora:
+-- el 302 el gateway serv?a una playlist VAC?A. Ahora:
 --   * sigue hasta 3 saltos con ngx.location.capture (sin dependencias externas)
---   * sólo sigue a IP literal pública o a host de la allowlist (anti-SSRF)
+--   * s?lo sigue a IP literal p?blica o a host de la allowlist (anti-SSRF)
 --   * bloquea rangos privados (10/8, 172.16/12, 192.168/16, 127/8, 169.254/16)
 --   * REBASA las URIs al ORIGEN FINAL (el CDN), no al proveedor
 --
@@ -18,7 +18,7 @@
 --   * LL-HLS (SERVER-CONTROL si la fuente trae partes)
 --   * UHD (4K siempre; 4K real -> 8K declarado; CODECS intacto)
 --   * QoE (contadores reales) + floor calibrado del LAB
--- ═══════════════════════════════════════════════════════════════════════════
+-- ???????????????????????????????????????????????????????????????????????????
 local cjson = require "cjson.safe"
 local lib   = require "ape_rebase_lib"
 local uhd   = require "ape_uhd"
@@ -46,22 +46,51 @@ local function qset(key, v)
     if QOE then QOE:set(key, v) end
 end
 
--- ── allowlist ────────────────────────────────────────────────────────────
-local function host_allowed(h)
-    if ngx.var.remote_addr == "127.0.0.1" then return true end
-    local raw = HOSTS and HOSTS:get("allowlist")
-    if not raw then
-        local f = io.open(ALLOW_FILE, "r")
-        if f then raw = f:read("*a"); f:close() else raw = "__missing__" end
-        if HOSTS then HOSTS:set("allowlist", raw, 60) end
+-- ?? [t95] REGISTRO DE HOSTS (la allowlist deja de ser PUERTA) ???????????
+-- Modelo invertido: DENY duro SOLO para rangos privados/reservados (SSRF);
+-- cualquier HOST P?BLICO se permite SIEMPRE y se AUTO-REGISTRA. Un proveedor
+-- nuevo no puede apagar un canal: si est? en las listas generadas, va derecho.
+local SELFHEAL_DIR = "/etc/nginx/ape-hosts-allow.d"
+
+-- Rangos privados/reservados por IP LITERAL (sin DNS, coste O(1)).
+local function _is_private_lit(h)
+    if not h or h == "" then return true end
+    local ip = tostring(h):gsub(":%d+$", "")
+    if ip == "0.0.0.0" or ip == "::1" or ip == "::" then return true end
+    local a, b = ip:match("^(%d+)%.(%d+)%.")
+    if a then
+        a, b = tonumber(a), tonumber(b)
+        if a == 127 or a == 10 or a == 0 then return true end
+        if a == 172 and b >= 16 and b <= 31 then return true end
+        if a == 192 and b == 168 then return true end
+        if a == 169 and b == 254 then return true end
+        return false
     end
-    local blob = "," .. tostring(raw):gsub("[#][^\n]*", ""):gsub("%s+", ",") .. ","
-    local bare = h:gsub(":%d+$", "")
-    return blob:find("," .. h .. ",", 1, true) ~= nil
-        or blob:find("," .. bare .. ",", 1, true) ~= nil
+    local lo = ip:lower()
+    if lo:match("^fc") or lo:match("^fd") or lo:match("^fe80") or lo:match("^ff") then return true end
+    return false
 end
 
--- ── anti-SSRF para redirecciones ─────────────────────────────────────────
+-- Registro en caliente: shared dict inmediato + persistencia AS?NCRONA.
+-- Nunca bloquea la petici?n ni provoca reload.
+local function register_host(h)
+    if not h or h == "" then return end
+    local bare = tostring(h):gsub(":%d+$", "")
+    if HOSTS then
+        HOSTS:set("h:" .. bare, 1, 86400)
+        HOSTS:rpush("selfheal_q", bare)   -- la escribe log_by_lua, fuera de esta fase
+    end
+end
+
+-- Compatibilidad: los llamadores existentes siguen funcionando, pero ahora
+-- significa "no es privado" y registra. NUNCA devuelve false por un p?blico.
+local function host_allowed(h)
+    if _is_private_lit(h) then return false end
+    register_host(h)
+    return true
+end
+
+-- ?? anti-SSRF para redirecciones ?????????????????????????????????????????
 local function is_private_host(h)
     local ip = h:match("^(%d+%.%d+%.%d+%.%d+)")
     if not ip then return false end
@@ -101,7 +130,7 @@ local function safe_host(h)
     return type(h) == "string" and h:match("^[%w%.%-%:]+$") ~= nil
 end
 
--- ── fetch con seguimiento de 302 ─────────────────────────────────────────
+-- ?? fetch con seguimiento de 302 ?????????????????????????????????????????
 local function fetch_follow(h, p, q, hops)
     hops = hops or MAX_HOPS
     local cur_h, cur_p, cur_q = h, p, q or ""
@@ -133,7 +162,7 @@ local function fetch_follow(h, p, q, hops)
     return nil, cur_h
 end
 
--- ═══ petición ════════════════════════════════════════════════════════════
+-- ??? petici?n ????????????????????????????????????????????????????????????
 local host = ngx.var.ape_host
 local path = ngx.var.ape_path or "/"
 local args = ngx.var.args or ""
@@ -144,18 +173,17 @@ for h in (tostring(ngx.var.arg_alt or "") .. ","):gmatch("([^,%s]+)") do
     if h ~= host then candidates[#candidates + 1] = h end
 end
 
--- filtro allowlist
+-- [t95] filtro SSRF: se descartan SOLO rangos privados; los p?blicos pasan
 local allowed = {}
 for _, h in ipairs(candidates) do
-    if host_allowed(h) then allowed[#allowed + 1] = h end
+    if not _is_private_lit(h) then allowed[#allowed + 1] = h; register_host(h) end
 end
 if #allowed == 0 then
-    qinc("cdn_denied")
+    qinc("cdn_denied_private")
     ngx.status = 403
     ngx.header["Content-Type"] = "application/json"
-    ngx.say(cjson.encode({ ok = false, error = "host_not_allowed", host = host,
-        hint = "añadir a " .. ALLOW_FILE }))
-    return
+    ngx.say('{"error":"private_range_blocked","hint":"solo se bloquean rangos privados/reservados (SSRF)"}')
+    ngx.exit(403)
 end
 candidates = allowed
 
@@ -191,7 +219,7 @@ if not res_ok then
     return
 end
 
--- ── cuerpo ───────────────────────────────────────────────────────────────
+-- ?? cuerpo ???????????????????????????????????????????????????????????????
 local body  = res_ok.body or ""
 local ctype = res_ok.header["Content-Type"] or "application/vnd.apple.mpegurl"
 
@@ -238,33 +266,33 @@ if flag("hint", false) then
     if changed then qinc("hint_injected") end
 end
 
--- ═══ VÍA B — FUSIBLE DE SUELO · EJECUTOR REAL (content handler) ═══════════
--- LECCIÓN DE t18: la Vía B original vivía en un body_filter que SÓLO estaba
+-- ??? V?A B ? FUSIBLE DE SUELO ? EJECUTOR REAL (content handler) ???????????
+-- LECCI?N DE t18: la V?a B original viv?a en un body_filter que S?LO estaba
 -- cableado en /meta/ (8088). La ruta PUBLICADA (/cdn/, ape-meta-public.conf)
--- ejecuta únicamente `content_by_lua_file ape_gateway.lua` ⇒ el fusible no se
--- ejecutaba, y además no habría tenido objetivo: el cuerpo que sirve /cdn/ es
+-- ejecuta ?nicamente `content_by_lua_file ape_gateway.lua` ? el fusible no se
+-- ejecutaba, y adem?s no habr?a tenido objetivo: el cuerpo que sirve /cdn/ es
 -- un manifiesto HLS del PROVEEDOR, y `#EXTVLCOPT:`/`#KODIPROP:` son directivas
--- M3U Plus del CATÁLOGO, no vocabulario HLS. Medido sobre el artefacto real:
+-- M3U Plus del CAT?LOGO, no vocabulario HLS. Medido sobre el artefacto real:
 -- `adaptive-minbitrate` = 0 y `min_bandwidth` = 0, con controles positivos
--- `adaptive-maxbw` = 2.754 ⇒ el 0 es real, no un fallo de escaneo.
+-- `adaptive-maxbw` = 2.754 ? el 0 es real, no un fallo de escaneo.
 --
--- Por eso el fusible pasa a ser SEMÁNTICO y vive aquí, en el único handler que
--- la ruta publicada ejecuta. No se añade ninguna directiva *_by_lua: se respeta
+-- Por eso el fusible pasa a ser SEM?NTICO y vive aqu?, en el ?nico handler que
+-- la ruta publicada ejecuta. No se a?ade ninguna directiva *_by_lua: se respeta
 -- una por fase. No se toca CODECS/BANDWIDTH/RESOLUTION/FRAME-RATE.
 --
--- Qué hace, en dos etapas explícitas:
---   1) DECIDE el suelo con la fuente que YA existía en el gateway
---      (`lab.floor_for(profile)` → floors de floor_lock_config.json / DNA).
---   2) Cuando el fusible está CERRADO, INYECTA el suelo de DISEÑO declarado
+-- Qu? hace, en dos etapas expl?citas:
+--   1) DECIDE el suelo con la fuente que YA exist?a en el gateway
+--      (`lab.floor_for(profile)` ? floors de floor_lock_config.json / DNA).
+--   2) Cuando el fusible est? CERRADO, INYECTA el suelo de DISE?O declarado
 --      (#EXTVLCOPT:adaptive-minbitrate / #KODIPROP:...min_bandwidth) y luego lo
---      RELAJA al suelo de FUSIÓN. La inyección crea el objetivo; la relajación
+--      RELAJA al suelo de FUSI?N. La inyecci?n crea el objetivo; la relajaci?n
 --      es la que da efecto. VLC y Kodi honran esas directivas (efecto real);
---      un parser HLS estricto las ignora como tag desconocido (RFC 8216 §6.3.1:
---      inofensivo). Abierto ⇒ NO se inyecta nada y el cuerpo es byte-idéntico.
+--      un parser HLS estricto las ignora como tag desconocido (RFC 8216 ?6.3.1:
+--      inofensivo). Abierto ? NO se inyecta nada y el cuerpo es byte-id?ntico.
 --
--- El cuerpo servido es el único sitio donde esto es honesto: el fusible SÓLO
--- BAJA el suelo (fuse_bps <= design_bps), así que no puede volver un canal más
--- difícil de reproducir de lo que el propio diseño del LAB ya pretende.
+-- El cuerpo servido es el ?nico sitio donde esto es honesto: el fusible S?LO
+-- BAJA el suelo (fuse_bps <= design_bps), as? que no puede volver un canal m?s
+-- dif?cil de reproducir de lo que el propio dise?o del LAB ya pretende.
 local FUSE_FLOOR_BPS = {
     P0 = 18000000, P1 = 10000000, P2 = 10000000,
     P3 = 3500000,  P4 = 1400000,  P5 = 700000,
@@ -292,9 +320,9 @@ local function fuse_keys()
     return "fusestate:" .. ip .. ":" .. h, "buf:" .. ip .. ":" .. h
 end
 
--- Relajación del suelo. Misma semántica y mismos patrones que la Vía B de
+-- Relajaci?n del suelo. Misma sem?ntica y mismos patrones que la V?a B de
 -- /meta/ (ape_uri_rebase.lua). La guarda de frontera `%f[%w_]` evita casar
--- `prefetch_min_bandwidth=` (presupuesto de prefetch), de modo que el ÚNICO
+-- `prefetch_min_bandwidth=` (presupuesto de prefetch), de modo que el ?NICO
 -- campo tocado sea el suelo.
 local function fuse_rewrite(body, bps)
     local v = tonumber(bps)
@@ -310,7 +338,7 @@ local function fuse_rewrite(body, bps)
     return body, hits
 end
 
--- Inyección del suelo de DISEÑO tras #EXTM3U. Devuelve nº de directivas (0|2).
+-- Inyecci?n del suelo de DISE?O tras #EXTM3U. Devuelve n? de directivas (0|2).
 local function fuse_inject(body, bps)
     local v = tonumber(bps)
     if not v then return body, 0 end
@@ -325,7 +353,7 @@ local function fuse_inject(body, bps)
     return body, 0
 end
 
--- Histéresis TRIGGER=25 / RECOVER=70 / HOLD=20 persistida por dispositivo.
+-- Hist?resis TRIGGER=25 / RECOVER=70 / HOLD=20 persistida por dispositivo.
 local function fuse_decide(buf)
     local skey = fuse_keys()
     local now  = ngx.time()
@@ -344,13 +372,13 @@ local function fuse_decide(buf)
 
     local new
     if buf == nil then
-        new = engaged                    -- sin señal de buffer: mantener estado
+        new = engaged                    -- sin se?al de buffer: mantener estado
     elseif buf < FUSE_TRIGGER then
-        new = true                       -- buffer bajo  → cerrar (relajar suelo)
+        new = true                       -- buffer bajo  ? cerrar (relajar suelo)
     elseif buf > FUSE_RECOVER then
-        new = false                      -- buffer sano  → abrir (suelo diseño)
+        new = false                      -- buffer sano  ? abrir (suelo dise?o)
     else
-        new = engaged                    -- zona muerta  → mantener
+        new = engaged                    -- zona muerta  ? mantener
     end
 
     if new ~= engaged and FLAGS then
@@ -368,7 +396,7 @@ end
 
 local fuse_engaged
 if fuse_forced then
-    fuse_engaged = true                  -- override manual explícito
+    fuse_engaged = true                  -- override manual expl?cito
     if FLAGS then FLAGS:set(fuse_skey, "CLOSED:" .. ngx.time(), 3600) end
 else
     fuse_engaged = fuse_decide(fuse_buf)
@@ -377,7 +405,7 @@ end
 local fuse_prof    = fuse_profile()
 local design_bps   = tonumber(lab.floor_for(fuse_prof)) or 0
 local fuse_bps     = FUSE_FLOOR_BPS[fuse_prof] or FUSE_FLOOR_BPS[FUSE_DEFAULT_PROFILE]
--- INVARIANTE: el fusible SÓLO relaja. Nunca por encima del suelo de diseño.
+-- INVARIANTE: el fusible S?LO relaja. Nunca por encima del suelo de dise?o.
 if design_bps > 0 and fuse_bps > design_bps then fuse_bps = design_bps end
 
 local fuse_injected, fuse_subst, fuse_floor_final = 0, 0, design_bps
@@ -391,7 +419,7 @@ if fuse_engaged then
     end
 end
 
--- ── respuesta ────────────────────────────────────────────────────────────
+-- ?? respuesta ????????????????????????????????????????????????????????????
 ngx.header["Content-Type"]      = ctype
 ngx.header["Content-Length"]    = nil
 ngx.header["Cache-Control"]     = "no-store"
@@ -412,7 +440,7 @@ ngx.header["X-APE-Floor-Fuse"]  = string.format(
     fuse_buf and tostring(fuse_buf) or "na")
 ngx.print(rebased)
 
--- ── QoE ──────────────────────────────────────────────────────────────────
+-- ?? QoE ??????????????????????????????????????????????????????????????????
 qinc("req")
 qinc("bytes", #rebased)
 qset("last_ms", elapsed_ms)
@@ -425,9 +453,9 @@ if sc_added then qinc("llhls_sc") end
 if uhd_mode == "4k" then qinc("uhd4k") end
 if uhd_mode == "8k" then qinc("uhd8k") end
 
--- ── Métricas propias del fusible (Vía B, ruta publicada) ─────────────────
--- Contadores distintos por estado: un `fuse_hits`>0 sólo puede ocurrir si de
--- verdad se sirvió el suelo relajado en /cdn/. `fuse_subst` acumula el número
+-- ?? M?tricas propias del fusible (V?a B, ruta publicada) ?????????????????
+-- Contadores distintos por estado: un `fuse_hits`>0 s?lo puede ocurrir si de
+-- verdad se sirvi? el suelo relajado en /cdn/. `fuse_subst` acumula el n?mero
 -- de sustituciones, no el de peticiones.
 qinc(fuse_engaged and "fuse_closed" or "fuse_open")
 if fuse_injected > 0 then qinc("fuse_injected", fuse_injected) end
