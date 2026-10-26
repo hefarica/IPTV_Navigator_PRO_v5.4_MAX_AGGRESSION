@@ -1,0 +1,3761 @@
+{
+  "meta": {
+    "task": "t5 / T4 — Auditoría JSON LAB_CALIBRATED_BULLETPROOF, lab_master y channels_map",
+    "generated_at": "2026-10-26T04:09:04.801Z",
+    "auditor": "json-ssot",
+    "read_only": true,
+    "law_model": {
+      "L1_LEVEL_VS_RESOLUTION": "Declared H.26x level capacity (repo HEVC ladder table) must cover the declared RESOLUTION+fps. HEVC map L90..L186, AVC map level 30/31/40/42. DV/AV1 forms are UNKNOWN by design of this model (documented), never PASS by default.",
+      "L0_MANIFEST_CODEC": "settings.codec_full must equal the doctrinal manifest codec for the profile.",
+      "L2_MANIFEST_RESOLUTION": "X-Stream-Resolution (emitted STREAM-INF claim) must equal the manifest resolution.",
+      "L3_MANIFEST_FPS": "X-Stream-FPS must equal the manifest fps.",
+      "L4_MAIN10_FLOOR": "Preferred video codec must be hvc1.2.* (Main10) or better; AVC allowed only as P5 failsafe.",
+      "L5_LADDER_HAS_MANIFEST_CODEC": "prisma_lab_sync_v20.codec_ladder_per_profile must contain the manifest codec (P5: hvc1.2.4.L90.B0).",
+      "L6_INTERNAL_CODEC_AGREEMENT": "codec_full / codec_string / X-Stream-Codecs / ladder[0] must name the same codec family+level.",
+      "L7_BITRATE_ORDER": "settings.avgBitrateKbps must be <= settings.maxBitrateKbps.",
+      "L8_HEADER_COUNT_CLAIM": "settings.headersCount must equal the measured size of headerOverrides.",
+      "L9_CHANNELS_MAP_ALIGNMENT": "channels_map codec_rfc6381 per profile must agree with the lab_master codec for that profile.",
+      "L10_EXCEL_CANONICAL_MATCH": "Every field mapped in EXCEL_PROFILES_EXTRACT (canonical branch 6_NIVEL_2_PROFILES, D-20) must equal the JSON value. Cited as hoja!celda.",
+      "L11_FPS_LEVEL_CAPACITY": "D-15: the declared fps must be supported by the canonical codec level at the canonical resolution. 120fps without level capacity = FAIL."
+    },
+    "sources": {
+      "lab_master": {
+        "path": "C:/Users/HFRC/Desktop/IPTV_Navigator_PRO_v5.4_MAX_AGGRESSION/IPTV_v5.4_MAX_AGGRESSION/frontend/lab_master_22.6.0.json",
+        "bytes": 280065,
+        "mtime": "2026-08-31T02:13:39.532Z"
+      },
+      "baseline_8k120": {
+        "path": "C:/Users/HFRC/Downloads/LAB_CALIBRATED_BULLETPROOF_22.6.0-MEMC-TOTAL-8K120.json",
+        "bytes": 408174,
+        "mtime": "2026-06-07T21:10:00.053Z"
+      },
+      "baseline_backup0607": {
+        "path": "C:/Users/HFRC/Downloads/LAB_CALIBRATED_BULLETPROOF_22.6.0-MEMC-TOTAL-8K120_BACKUP_20260607.json",
+        "bytes": 408126,
+        "mtime": "2026-05-23T06:30:32.819Z"
+      },
+      "baseline_dnr": {
+        "path": "C:/Users/HFRC/Downloads/LAB_CALIBRATED_BULLETPROOF_22.6.0-MEMC-TOTAL-8K120-DNR.json",
+        "bytes": 423609,
+        "mtime": "2026-08-30T20:25:56.050Z"
+      },
+      "crystal4k": {
+        "path": "C:/Users/HFRC/Downloads/LAB_CALIBRATED_BULLETPROOF_22.6.0-CRYSTAL-4K-UHD.json",
+        "bytes": 280065,
+        "mtime": "2026-08-31T02:13:39.532Z"
+      },
+      "ape_optimized": {
+        "path": "C:/Users/HFRC/Desktop/IPTV_Navigator_PRO_v5.4_MAX_AGGRESSION/IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/APE_ALL_PROFILES_OPTIMIZED.json",
+        "bytes": 203816,
+        "mtime": "2026-10-26T02:38:53.314Z"
+      },
+      "ape_realtime": {
+        "path": "C:/Users/HFRC/Desktop/IPTV_Navigator_PRO_v5.4_MAX_AGGRESSION/IPTV_v5.4_MAX_AGGRESSION/backend/APE_ALL_PROFILES_v10_REALTIME_ENGINE.json",
+        "bytes": 47864,
+        "mtime": "2026-06-11T05:25:34.137Z"
+      }
+    },
+    "manifest_table": {
+      "P0": {
+        "name": "8K Master",
+        "codec": "dvh1.08.06",
+        "resolution": "7680x4320",
+        "fps": 120,
+        "resRank": 5
+      },
+      "P1": {
+        "name": "8K (AV1)",
+        "codec": "av01.0.15M.10",
+        "resolution": "7680x4320",
+        "fps": 120,
+        "resRank": 5
+      },
+      "P2": {
+        "name": "4K",
+        "codec": "hvc1.2.4.L153.B0",
+        "resolution": "3840x2160",
+        "fps": 60,
+        "resRank": 4
+      },
+      "P3": {
+        "name": "FHD",
+        "codec": "hvc1.2.4.L123.B0",
+        "resolution": "1920x1080",
+        "fps": 60,
+        "resRank": 3
+      },
+      "P4": {
+        "name": "HD",
+        "codec": "hvc1.2.4.L93.B0",
+        "resolution": "1280x720",
+        "fps": 30,
+        "resRank": 2
+      },
+      "P5": {
+        "name": "SD failsafe",
+        "codec": "avc1.42c01e",
+        "ladder_required": "hvc1.2.4.L90.B0",
+        "resolution": "854x480",
+        "fps": 30,
+        "resRank": 1
+      }
+    }
+  },
+  "profiles": {
+    "P0": {
+      "manifest_expectation": {
+        "name": "8K Master",
+        "codec": "dvh1.08.06",
+        "resolution": "7680x4320",
+        "fps": 120,
+        "resRank": 5
+      },
+      "observed": {
+        "name": "8K Master",
+        "settings.codec_full": "dvh1.08.06",
+        "settings.codec_string[0]": "hvc1.2.4.L153.B0",
+        "settings.resolution": "7680x4320",
+        "settings.fps": "120",
+        "settings.maxResolution": "7680x4320",
+        "settings.maxBitrateKbps": "200000",
+        "settings.avgBitrateKbps": "160000",
+        "settings.headersCount": "233",
+        "settings.codec": "DVH1",
+        "headerOverrides.X-Stream-Codecs[0]": "dvh1.08.06",
+        "headerOverrides.X-Stream-Resolution": "7680x4320",
+        "headerOverrides.X-Stream-FPS": "60",
+        "headerOverrides.X-APE-RESOLUTION[0]": "7680x4320",
+        "headerOverrides.X-APE-FPS[0]": "120",
+        "headerOverrides.X-Max-Resolution[0]": "7680x4320",
+        "headerOverrides.X-APE-CODEC[0]": "av01.0.21M.10.0.112.09.16.09.0",
+        "headerOverrides.X-HDCP-Level": "TYPE-1",
+        "headerOverrides.X-Profile-Tier": "8K-DV-TOP",
+        "kodiprop[inputstream.adaptive.max_resolution]": "7680x4320",
+        "vlcopt[video-width]x[video-height]": "7680x4320",
+        "measured.headerOverrides_key_count": 402,
+        "prisma_lab_sync_v20.codec_ladder_per_profile.video[0]": "dvh1.05.06",
+        "prisma_lab_sync_v20.codec_ladder_per_profile.video": "dvh1.05.06,dvh1.08.06,hvc1.2.4.L183.B0,hvc1.1.6.L183.B0,av01.0.13M.10.0.110.09.16.09.0,avc1.640033,avc1.640028"
+      },
+      "laws": {
+        "L0_MANIFEST_CODEC": {
+          "verdict": "PASS",
+          "expected": "dvh1.08.06",
+          "observed": "dvh1.08.06",
+          "path": "profiles_calibrated.P0.settings.codec_full"
+        },
+        "L1_LEVEL_VS_RESOLUTION_EMITTED": {
+          "path": "profiles_calibrated.P0.headerOverrides.X-Stream-Codecs | X-Stream-Resolution | X-Stream-FPS",
+          "verdict": "UNKNOWN",
+          "codec": "dvh1.08.06",
+          "resolution": "7680x4320",
+          "fps": "60",
+          "family": "DV",
+          "reason": "Dolby Vision: level field is an HEVC level idc; strict capacity not asserted"
+        },
+        "L1_LEVEL_VS_RESOLUTION_SETTINGS": {
+          "path": "profiles_calibrated.P0.settings.codec_full | settings.resolution | settings.fps",
+          "verdict": "UNKNOWN",
+          "codec": "dvh1.08.06",
+          "resolution": "7680x4320",
+          "fps": "120",
+          "family": "DV",
+          "reason": "Dolby Vision: level field is an HEVC level idc; strict capacity not asserted"
+        },
+        "L1_LEVEL_VS_RESOLUTION_CODEC_STRING": {
+          "path": "profiles_calibrated.P0.settings.codec_string | headerOverrides.X-Stream-Resolution | X-Stream-FPS",
+          "verdict": "FAIL",
+          "codec": "hvc1.2.4.L153.B0",
+          "resolution": "7680x4320",
+          "fps": "60",
+          "family": "HEVC",
+          "declared_level": 153,
+          "capacity": {
+            "resRank": 4,
+            "fps": 60
+          },
+          "required_for_declared": "L183",
+          "reason": "level capacity resolution below declared resolution"
+        },
+        "L2_MANIFEST_RESOLUTION": {
+          "verdict": "PASS",
+          "expected": "7680x4320",
+          "observed": "7680x4320",
+          "path": "profiles_calibrated.P0.headerOverrides.X-Stream-Resolution"
+        },
+        "L3_MANIFEST_FPS": {
+          "verdict": "FAIL",
+          "expected": 120,
+          "observed": "60",
+          "path": "profiles_calibrated.P0.headerOverrides.X-Stream-FPS"
+        },
+        "L4_MAIN10_FLOOR": {
+          "verdict": "PASS",
+          "observed": "dvh1.08.06",
+          "path": "profiles_calibrated.P0.settings.codec_full",
+          "note": "HEVC Main10+/DV primary: satisfies the Main10 floor"
+        },
+        "L5_LADDER_HAS_MANIFEST_CODEC": {
+          "verdict": "PASS",
+          "expected_needle": "dvh1.08.06",
+          "ladder": "dvh1.05.06,dvh1.08.06,hvc1.2.4.L183.B0,hvc1.1.6.L183.B0,av01.0.13M.10.0.110.09.16.09.0,avc1.640033,avc1.640028",
+          "path": "prisma_lab_sync_v20.codec_ladder_per_profile.P0.video"
+        },
+        "L6_INTERNAL_CODEC_AGREEMENT": {
+          "verdict": "FAIL",
+          "distinct_values": [
+            "dvh1.08.06",
+            "hvc1.2.4.l153.b0",
+            "dvh1.05.06"
+          ],
+          "paths": [
+            "profiles_calibrated.P0.settings.codec_full",
+            "profiles_calibrated.P0.settings.codec_string",
+            "profiles_calibrated.P0.headerOverrides.X-Stream-Codecs",
+            "prisma_lab_sync_v20.codec_ladder_per_profile.P0.video"
+          ]
+        },
+        "L7_BITRATE_ORDER": {
+          "verdict": "PASS",
+          "avg": 160000,
+          "max": 200000,
+          "paths": [
+            "profiles_calibrated.P0.settings.avgBitrateKbps",
+            "profiles_calibrated.P0.settings.maxBitrateKbps"
+          ],
+          "note": "ok"
+        },
+        "L8_HEADER_COUNT_CLAIM": {
+          "verdict": "FAIL",
+          "claimed": 233,
+          "measured": 402,
+          "paths": [
+            "profiles_calibrated.P0.settings.headersCount"
+          ]
+        },
+        "L10_EXCEL_CANONICAL_MATCH": {
+          "verdict": "PASS",
+          "excel_source": "6_NIVEL_2_PROFILES (A1:H663) · C:\\Users\\HFRC\\Downloads\\APE_M3U8_LAB_v8_FIXED.xlsm · sha256 663EF44E2D69521EB0E77DDA7B64A32EA4F942992F8F2C80614EAEE8EC52806A",
+          "diff_count": 0,
+          "diffs": [],
+          "paths": []
+        },
+        "L11_FPS_LEVEL_CAPACITY": {
+          "verdict": "UNKNOWN",
+          "declared_fps": "120",
+          "codec": "dvh1.08.06",
+          "resolution": "7680x4320",
+          "level_capacity_fps_ceiling": null,
+          "paths": [
+            "6_NIVEL_2_PROFILES!{col}25 (resolution)",
+            "6_NIVEL_2_PROFILES!{col}32 (fps)",
+            "6_NIVEL_2_PROFILES!{col}37 (codec_full)"
+          ],
+          "note": "fps soportado por el nivel (o no evaluable: DV/AV1)"
+        }
+      },
+      "verdict_overall": "FAIL",
+      "fail_count": 4
+    },
+    "P1": {
+      "manifest_expectation": {
+        "name": "8K (AV1)",
+        "codec": "av01.0.15M.10",
+        "resolution": "7680x4320",
+        "fps": 120,
+        "resRank": 5
+      },
+      "observed": {
+        "name": "4K UHD",
+        "settings.codec_full": "hvc1.2.4.L153.B0",
+        "settings.codec_string[0]": "hvc1.2.4.L153.B0",
+        "settings.resolution": "7680x4320",
+        "settings.fps": "120",
+        "settings.maxResolution": "7680x4320",
+        "settings.maxBitrateKbps": "40000",
+        "settings.avgBitrateKbps": "75000",
+        "settings.headersCount": "233",
+        "settings.codec": "HVC1",
+        "headerOverrides.X-Stream-Codecs[0]": "hvc1.2.4.L153.B0",
+        "headerOverrides.X-Stream-Resolution": "3840x2160",
+        "headerOverrides.X-Stream-FPS": "120",
+        "headerOverrides.X-APE-RESOLUTION[0]": "7680x4320",
+        "headerOverrides.X-APE-FPS[0]": "120",
+        "headerOverrides.X-Max-Resolution[0]": "3840x2160",
+        "headerOverrides.X-APE-CODEC[0]": "dvh1.08.06",
+        "headerOverrides.X-HDCP-Level": "TYPE-1",
+        "headerOverrides.X-Profile-Tier": "4K-HDR10PLUS",
+        "kodiprop[inputstream.adaptive.max_resolution]": "3840x2160",
+        "vlcopt[video-width]x[video-height]": "7680x4320",
+        "measured.headerOverrides_key_count": 400,
+        "prisma_lab_sync_v20.codec_ladder_per_profile.video[0]": "hvc1.2.4.L153.B0",
+        "prisma_lab_sync_v20.codec_ladder_per_profile.video": "hvc1.2.4.L153.B0,hev1.2.4.L153.B0,hvc1.1.6.L150.B0,av01.0.12M.10.0.110.09.16.09.0,avc1.640033,avc1.640028"
+      },
+      "laws": {
+        "L0_MANIFEST_CODEC": {
+          "verdict": "FAIL",
+          "expected": "av01.0.15M.10",
+          "observed": "hvc1.2.4.L153.B0",
+          "path": "profiles_calibrated.P1.settings.codec_full"
+        },
+        "L1_LEVEL_VS_RESOLUTION_EMITTED": {
+          "path": "profiles_calibrated.P1.headerOverrides.X-Stream-Codecs | X-Stream-Resolution | X-Stream-FPS",
+          "verdict": "FAIL",
+          "codec": "hvc1.2.4.L153.B0",
+          "resolution": "3840x2160",
+          "fps": "120",
+          "family": "HEVC",
+          "declared_level": 153,
+          "capacity": {
+            "resRank": 4,
+            "fps": 60
+          },
+          "required_for_declared": "L156",
+          "reason": "level capacity fps below declared fps"
+        },
+        "L1_LEVEL_VS_RESOLUTION_SETTINGS": {
+          "path": "profiles_calibrated.P1.settings.codec_full | settings.resolution | settings.fps",
+          "verdict": "FAIL",
+          "codec": "hvc1.2.4.L153.B0",
+          "resolution": "7680x4320",
+          "fps": "120",
+          "family": "HEVC",
+          "declared_level": 153,
+          "capacity": {
+            "resRank": 4,
+            "fps": 60
+          },
+          "required_for_declared": "L186",
+          "reason": "level capacity resolution below declared resolution"
+        },
+        "L1_LEVEL_VS_RESOLUTION_CODEC_STRING": {
+          "path": "profiles_calibrated.P1.settings.codec_string | headerOverrides.X-Stream-Resolution | X-Stream-FPS",
+          "verdict": "FAIL",
+          "codec": "hvc1.2.4.L153.B0",
+          "resolution": "3840x2160",
+          "fps": "120",
+          "family": "HEVC",
+          "declared_level": 153,
+          "capacity": {
+            "resRank": 4,
+            "fps": 60
+          },
+          "required_for_declared": "L156",
+          "reason": "level capacity fps below declared fps"
+        },
+        "L2_MANIFEST_RESOLUTION": {
+          "verdict": "FAIL",
+          "expected": "7680x4320",
+          "observed": "3840x2160",
+          "path": "profiles_calibrated.P1.headerOverrides.X-Stream-Resolution"
+        },
+        "L3_MANIFEST_FPS": {
+          "verdict": "PASS",
+          "expected": 120,
+          "observed": "120",
+          "path": "profiles_calibrated.P1.headerOverrides.X-Stream-FPS"
+        },
+        "L4_MAIN10_FLOOR": {
+          "verdict": "PASS",
+          "observed": "hvc1.2.4.L153.B0",
+          "path": "profiles_calibrated.P1.settings.codec_full",
+          "note": "HEVC Main10+/DV primary: satisfies the Main10 floor"
+        },
+        "L5_LADDER_HAS_MANIFEST_CODEC": {
+          "verdict": "FAIL",
+          "expected_needle": "av01.0.15M.10",
+          "ladder": "hvc1.2.4.L153.B0,hev1.2.4.L153.B0,hvc1.1.6.L150.B0,av01.0.12M.10.0.110.09.16.09.0,avc1.640033,avc1.640028",
+          "path": "prisma_lab_sync_v20.codec_ladder_per_profile.P1.video"
+        },
+        "L6_INTERNAL_CODEC_AGREEMENT": {
+          "verdict": "PASS",
+          "distinct_values": [
+            "hvc1.2.4.l153.b0"
+          ],
+          "paths": [
+            "profiles_calibrated.P1.settings.codec_full",
+            "profiles_calibrated.P1.settings.codec_string",
+            "profiles_calibrated.P1.headerOverrides.X-Stream-Codecs",
+            "prisma_lab_sync_v20.codec_ladder_per_profile.P1.video"
+          ]
+        },
+        "L7_BITRATE_ORDER": {
+          "verdict": "FAIL",
+          "avg": 75000,
+          "max": 40000,
+          "paths": [
+            "profiles_calibrated.P1.settings.avgBitrateKbps",
+            "profiles_calibrated.P1.settings.maxBitrateKbps"
+          ],
+          "note": "average bitrate declared above the declared maximum (impossible ordering)"
+        },
+        "L8_HEADER_COUNT_CLAIM": {
+          "verdict": "FAIL",
+          "claimed": 233,
+          "measured": 400,
+          "paths": [
+            "profiles_calibrated.P1.settings.headersCount"
+          ]
+        },
+        "L10_EXCEL_CANONICAL_MATCH": {
+          "verdict": "FAIL",
+          "excel_source": "6_NIVEL_2_PROFILES (A1:H663) · C:\\Users\\HFRC\\Downloads\\APE_M3U8_LAB_v8_FIXED.xlsm · sha256 663EF44E2D69521EB0E77DDA7B64A32EA4F942992F8F2C80614EAEE8EC52806A",
+          "diff_count": 6,
+          "diffs": [
+            {
+              "json_path": "profiles_calibrated.P1.settings.resolution",
+              "excel_cell": "6_NIVEL_2_PROFILES!C25",
+              "excel_value": "3840x2160",
+              "json_value": "7680x4320",
+              "status": "DIFF"
+            },
+            {
+              "json_path": "profiles_calibrated.P1.settings.maxResolution",
+              "excel_cell": "6_NIVEL_2_PROFILES!C48",
+              "excel_value": "3840x2160",
+              "json_value": "7680x4320",
+              "status": "DIFF"
+            },
+            {
+              "json_path": "profiles_calibrated.P1.headerOverrides.X-Stream-Codecs",
+              "excel_cell": "6_NIVEL_2_PROFILES!C350",
+              "excel_value": "av01.0.15M.10,ac-3",
+              "json_value": "hvc1.2.4.L153.B0,ac-3",
+              "status": "DIFF"
+            },
+            {
+              "json_path": "profiles_calibrated.P1.headerOverrides.X-APE-RESOLUTION",
+              "excel_cell": "6_NIVEL_2_PROFILES!C136",
+              "excel_value": "3840x2160,2560x1440,1920x1080,1280x720",
+              "json_value": "7680x4320,3840x2160,2560x1440,1920x1080",
+              "status": "DIFF"
+            },
+            {
+              "json_path": "profiles_calibrated.P1.vlcopt.video-width",
+              "excel_cell": "6_NIVEL_2_PROFILES!C109",
+              "excel_value": "3840",
+              "json_value": "7680",
+              "status": "DIFF"
+            },
+            {
+              "json_path": "profiles_calibrated.P1.vlcopt.video-height",
+              "excel_cell": "6_NIVEL_2_PROFILES!C110",
+              "excel_value": "2160",
+              "json_value": "4320",
+              "status": "DIFF"
+            }
+          ],
+          "paths": [
+            "6_NIVEL_2_PROFILES!C25 <-> profiles_calibrated.P1.settings.resolution",
+            "6_NIVEL_2_PROFILES!C48 <-> profiles_calibrated.P1.settings.maxResolution",
+            "6_NIVEL_2_PROFILES!C350 <-> profiles_calibrated.P1.headerOverrides.X-Stream-Codecs",
+            "6_NIVEL_2_PROFILES!C136 <-> profiles_calibrated.P1.headerOverrides.X-APE-RESOLUTION",
+            "6_NIVEL_2_PROFILES!C109 <-> profiles_calibrated.P1.vlcopt.video-width",
+            "6_NIVEL_2_PROFILES!C110 <-> profiles_calibrated.P1.vlcopt.video-height"
+          ]
+        },
+        "L11_FPS_LEVEL_CAPACITY": {
+          "verdict": "FAIL",
+          "declared_fps": "120",
+          "codec": "hvc1.2.4.L153.B0",
+          "resolution": "3840x2160",
+          "level_capacity_fps_ceiling": 60,
+          "paths": [
+            "6_NIVEL_2_PROFILES!{col}25 (resolution)",
+            "6_NIVEL_2_PROFILES!{col}32 (fps)",
+            "6_NIVEL_2_PROFILES!{col}37 (codec_full)"
+          ],
+          "note": "fps 120 excede el techo 60 del nivel 153 a 3840x2160; D-15: corregir a <= 60 (60 solo si el nivel lo soporta)"
+        }
+      },
+      "verdict_overall": "FAIL",
+      "fail_count": 10
+    },
+    "P2": {
+      "manifest_expectation": {
+        "name": "4K",
+        "codec": "hvc1.2.4.L153.B0",
+        "resolution": "3840x2160",
+        "fps": 60,
+        "resRank": 4
+      },
+      "observed": {
+        "name": "2K QHD",
+        "settings.codec_full": "hvc1.2.4.L150.B0",
+        "settings.codec_string[0]": "hvc1.2.4.L150.B0",
+        "settings.resolution": "3840x2160",
+        "settings.fps": "120",
+        "settings.maxResolution": "3840x2160",
+        "settings.maxBitrateKbps": "25000",
+        "settings.avgBitrateKbps": "35000",
+        "settings.headersCount": "233",
+        "settings.codec": "HVC1",
+        "headerOverrides.X-Stream-Codecs[0]": "hvc1.2.4.L150.B0",
+        "headerOverrides.X-Stream-Resolution": "3840x2160",
+        "headerOverrides.X-Stream-FPS": "60",
+        "headerOverrides.X-APE-RESOLUTION[0]": "2560x1440",
+        "headerOverrides.X-APE-FPS[0]": "120",
+        "headerOverrides.X-Max-Resolution[0]": "2560x1440",
+        "headerOverrides.X-APE-CODEC[0]": "hvc1.2.4.L123.B0",
+        "headerOverrides.X-HDCP-Level": "TYPE-1",
+        "headerOverrides.X-Profile-Tier": "4K-HDR10",
+        "kodiprop[inputstream.adaptive.max_resolution]": "2560x1440",
+        "vlcopt[video-width]x[video-height]": "2560x1440",
+        "measured.headerOverrides_key_count": 402,
+        "prisma_lab_sync_v20.codec_ladder_per_profile.video[0]": "hvc1.2.4.L153.B0",
+        "prisma_lab_sync_v20.codec_ladder_per_profile.video": "hvc1.2.4.L153.B0,hev1.2.4.L153.B0,hvc1.1.6.L150.B0,avc1.640033,avc1.640028"
+      },
+      "laws": {
+        "L0_MANIFEST_CODEC": {
+          "verdict": "FAIL",
+          "expected": "hvc1.2.4.L153.B0",
+          "observed": "hvc1.2.4.L150.B0",
+          "path": "profiles_calibrated.P2.settings.codec_full"
+        },
+        "L1_LEVEL_VS_RESOLUTION_EMITTED": {
+          "path": "profiles_calibrated.P2.headerOverrides.X-Stream-Codecs | X-Stream-Resolution | X-Stream-FPS",
+          "verdict": "FAIL",
+          "codec": "hvc1.2.4.L150.B0",
+          "resolution": "3840x2160",
+          "fps": "60",
+          "family": "HEVC",
+          "declared_level": 150,
+          "capacity": {
+            "resRank": 4,
+            "fps": 30
+          },
+          "required_for_declared": "L153",
+          "reason": "level capacity fps below declared fps"
+        },
+        "L1_LEVEL_VS_RESOLUTION_SETTINGS": {
+          "path": "profiles_calibrated.P2.settings.codec_full | settings.resolution | settings.fps",
+          "verdict": "FAIL",
+          "codec": "hvc1.2.4.L150.B0",
+          "resolution": "3840x2160",
+          "fps": "120",
+          "family": "HEVC",
+          "declared_level": 150,
+          "capacity": {
+            "resRank": 4,
+            "fps": 30
+          },
+          "required_for_declared": "L156",
+          "reason": "level capacity fps below declared fps"
+        },
+        "L1_LEVEL_VS_RESOLUTION_CODEC_STRING": {
+          "path": "profiles_calibrated.P2.settings.codec_string | headerOverrides.X-Stream-Resolution | X-Stream-FPS",
+          "verdict": "FAIL",
+          "codec": "hvc1.2.4.L150.B0",
+          "resolution": "3840x2160",
+          "fps": "60",
+          "family": "HEVC",
+          "declared_level": 150,
+          "capacity": {
+            "resRank": 4,
+            "fps": 30
+          },
+          "required_for_declared": "L153",
+          "reason": "level capacity fps below declared fps"
+        },
+        "L2_MANIFEST_RESOLUTION": {
+          "verdict": "PASS",
+          "expected": "3840x2160",
+          "observed": "3840x2160",
+          "path": "profiles_calibrated.P2.headerOverrides.X-Stream-Resolution"
+        },
+        "L3_MANIFEST_FPS": {
+          "verdict": "PASS",
+          "expected": 60,
+          "observed": "60",
+          "path": "profiles_calibrated.P2.headerOverrides.X-Stream-FPS"
+        },
+        "L4_MAIN10_FLOOR": {
+          "verdict": "PASS",
+          "observed": "hvc1.2.4.L150.B0",
+          "path": "profiles_calibrated.P2.settings.codec_full",
+          "note": "HEVC Main10+/DV primary: satisfies the Main10 floor"
+        },
+        "L5_LADDER_HAS_MANIFEST_CODEC": {
+          "verdict": "PASS",
+          "expected_needle": "hvc1.2.4.L153.B0",
+          "ladder": "hvc1.2.4.L153.B0,hev1.2.4.L153.B0,hvc1.1.6.L150.B0,avc1.640033,avc1.640028",
+          "path": "prisma_lab_sync_v20.codec_ladder_per_profile.P2.video"
+        },
+        "L6_INTERNAL_CODEC_AGREEMENT": {
+          "verdict": "FAIL",
+          "distinct_values": [
+            "hvc1.2.4.l150.b0",
+            "hvc1.2.4.l153.b0"
+          ],
+          "paths": [
+            "profiles_calibrated.P2.settings.codec_full",
+            "profiles_calibrated.P2.settings.codec_string",
+            "profiles_calibrated.P2.headerOverrides.X-Stream-Codecs",
+            "prisma_lab_sync_v20.codec_ladder_per_profile.P2.video"
+          ]
+        },
+        "L7_BITRATE_ORDER": {
+          "verdict": "FAIL",
+          "avg": 35000,
+          "max": 25000,
+          "paths": [
+            "profiles_calibrated.P2.settings.avgBitrateKbps",
+            "profiles_calibrated.P2.settings.maxBitrateKbps"
+          ],
+          "note": "average bitrate declared above the declared maximum (impossible ordering)"
+        },
+        "L8_HEADER_COUNT_CLAIM": {
+          "verdict": "FAIL",
+          "claimed": 233,
+          "measured": 402,
+          "paths": [
+            "profiles_calibrated.P2.settings.headersCount"
+          ]
+        },
+        "L10_EXCEL_CANONICAL_MATCH": {
+          "verdict": "PASS",
+          "excel_source": "6_NIVEL_2_PROFILES (A1:H663) · C:\\Users\\HFRC\\Downloads\\APE_M3U8_LAB_v8_FIXED.xlsm · sha256 663EF44E2D69521EB0E77DDA7B64A32EA4F942992F8F2C80614EAEE8EC52806A",
+          "diff_count": 0,
+          "diffs": [],
+          "paths": []
+        },
+        "L11_FPS_LEVEL_CAPACITY": {
+          "verdict": "FAIL",
+          "declared_fps": "120",
+          "codec": "hvc1.2.4.L150.B0",
+          "resolution": "3840x2160",
+          "level_capacity_fps_ceiling": 30,
+          "paths": [
+            "6_NIVEL_2_PROFILES!{col}25 (resolution)",
+            "6_NIVEL_2_PROFILES!{col}32 (fps)",
+            "6_NIVEL_2_PROFILES!{col}37 (codec_full)"
+          ],
+          "note": "fps 120 excede el techo 30 del nivel 150 a 3840x2160; D-15: corregir a <= 30 (60 solo si el nivel lo soporta)"
+        }
+      },
+      "verdict_overall": "FAIL",
+      "fail_count": 8
+    },
+    "P3": {
+      "manifest_expectation": {
+        "name": "FHD",
+        "codec": "hvc1.2.4.L123.B0",
+        "resolution": "1920x1080",
+        "fps": 60,
+        "resRank": 3
+      },
+      "observed": {
+        "name": "FHD 1080p",
+        "settings.codec_full": "hvc1.1.6.L120.B0",
+        "settings.codec_string[0]": "hvc1.2.4.L120.B0",
+        "settings.resolution": "3840x2160",
+        "settings.fps": "120",
+        "settings.maxResolution": "3840x2160",
+        "settings.maxBitrateKbps": "10000",
+        "settings.avgBitrateKbps": "15000",
+        "settings.headersCount": "233",
+        "settings.codec": "HVC1",
+        "headerOverrides.X-Stream-Codecs[0]": "hvc1.1.6.L120.B0",
+        "headerOverrides.X-Stream-Resolution": "1920x1080",
+        "headerOverrides.X-Stream-FPS": "60",
+        "headerOverrides.X-APE-RESOLUTION[0]": "3840x2160",
+        "headerOverrides.X-APE-FPS[0]": "120",
+        "headerOverrides.X-Max-Resolution[0]": "1920x1080",
+        "headerOverrides.X-APE-CODEC[0]": "avc1.640028",
+        "headerOverrides.X-HDCP-Level": "NONE",
+        "headerOverrides.X-Profile-Tier": "FHD-SDR",
+        "kodiprop[inputstream.adaptive.max_resolution]": "1920x1080",
+        "vlcopt[video-width]x[video-height]": "3840x2160",
+        "measured.headerOverrides_key_count": 400,
+        "prisma_lab_sync_v20.codec_ladder_per_profile.video[0]": "hvc1.1.6.L120.B0",
+        "prisma_lab_sync_v20.codec_ladder_per_profile.video": "hvc1.1.6.L120.B0,hev1.1.6.L120.B0,hvc1.2.4.L120.B0,avc1.640028,avc1.4D401F"
+      },
+      "laws": {
+        "L0_MANIFEST_CODEC": {
+          "verdict": "FAIL",
+          "expected": "hvc1.2.4.L123.B0",
+          "observed": "hvc1.1.6.L120.B0",
+          "path": "profiles_calibrated.P3.settings.codec_full"
+        },
+        "L1_LEVEL_VS_RESOLUTION_EMITTED": {
+          "path": "profiles_calibrated.P3.headerOverrides.X-Stream-Codecs | X-Stream-Resolution | X-Stream-FPS",
+          "verdict": "FAIL",
+          "codec": "hvc1.1.6.L120.B0",
+          "resolution": "1920x1080",
+          "fps": "60",
+          "family": "HEVC",
+          "declared_level": 120,
+          "capacity": {
+            "resRank": 3,
+            "fps": 30
+          },
+          "required_for_declared": "L123",
+          "reason": "level capacity fps below declared fps"
+        },
+        "L1_LEVEL_VS_RESOLUTION_SETTINGS": {
+          "path": "profiles_calibrated.P3.settings.codec_full | settings.resolution | settings.fps",
+          "verdict": "FAIL",
+          "codec": "hvc1.1.6.L120.B0",
+          "resolution": "3840x2160",
+          "fps": "120",
+          "family": "HEVC",
+          "declared_level": 120,
+          "capacity": {
+            "resRank": 3,
+            "fps": 30
+          },
+          "required_for_declared": "L156",
+          "reason": "level capacity resolution below declared resolution"
+        },
+        "L1_LEVEL_VS_RESOLUTION_CODEC_STRING": {
+          "path": "profiles_calibrated.P3.settings.codec_string | headerOverrides.X-Stream-Resolution | X-Stream-FPS",
+          "verdict": "FAIL",
+          "codec": "hvc1.2.4.L120.B0",
+          "resolution": "1920x1080",
+          "fps": "60",
+          "family": "HEVC",
+          "declared_level": 120,
+          "capacity": {
+            "resRank": 3,
+            "fps": 30
+          },
+          "required_for_declared": "L123",
+          "reason": "level capacity fps below declared fps"
+        },
+        "L2_MANIFEST_RESOLUTION": {
+          "verdict": "PASS",
+          "expected": "1920x1080",
+          "observed": "1920x1080",
+          "path": "profiles_calibrated.P3.headerOverrides.X-Stream-Resolution"
+        },
+        "L3_MANIFEST_FPS": {
+          "verdict": "PASS",
+          "expected": 60,
+          "observed": "60",
+          "path": "profiles_calibrated.P3.headerOverrides.X-Stream-FPS"
+        },
+        "L4_MAIN10_FLOOR": {
+          "verdict": "FAIL",
+          "observed": "hvc1.1.6.L120.B0",
+          "path": "profiles_calibrated.P3.settings.codec_full",
+          "note": "HEVC Main (hvc1.1.x) primary is BELOW the Main10 floor required since 2026-06-11"
+        },
+        "L5_LADDER_HAS_MANIFEST_CODEC": {
+          "verdict": "FAIL",
+          "expected_needle": "hvc1.2.4.L123.B0",
+          "ladder": "hvc1.1.6.L120.B0,hev1.1.6.L120.B0,hvc1.2.4.L120.B0,avc1.640028,avc1.4D401F",
+          "path": "prisma_lab_sync_v20.codec_ladder_per_profile.P3.video"
+        },
+        "L6_INTERNAL_CODEC_AGREEMENT": {
+          "verdict": "FAIL",
+          "distinct_values": [
+            "hvc1.1.6.l120.b0",
+            "hvc1.2.4.l120.b0"
+          ],
+          "paths": [
+            "profiles_calibrated.P3.settings.codec_full",
+            "profiles_calibrated.P3.settings.codec_string",
+            "profiles_calibrated.P3.headerOverrides.X-Stream-Codecs",
+            "prisma_lab_sync_v20.codec_ladder_per_profile.P3.video"
+          ]
+        },
+        "L7_BITRATE_ORDER": {
+          "verdict": "FAIL",
+          "avg": 15000,
+          "max": 10000,
+          "paths": [
+            "profiles_calibrated.P3.settings.avgBitrateKbps",
+            "profiles_calibrated.P3.settings.maxBitrateKbps"
+          ],
+          "note": "average bitrate declared above the declared maximum (impossible ordering)"
+        },
+        "L8_HEADER_COUNT_CLAIM": {
+          "verdict": "FAIL",
+          "claimed": 233,
+          "measured": 400,
+          "paths": [
+            "profiles_calibrated.P3.settings.headersCount"
+          ]
+        },
+        "L10_EXCEL_CANONICAL_MATCH": {
+          "verdict": "FAIL",
+          "excel_source": "6_NIVEL_2_PROFILES (A1:H663) · C:\\Users\\HFRC\\Downloads\\APE_M3U8_LAB_v8_FIXED.xlsm · sha256 663EF44E2D69521EB0E77DDA7B64A32EA4F942992F8F2C80614EAEE8EC52806A",
+          "diff_count": 8,
+          "diffs": [
+            {
+              "json_path": "profiles_calibrated.P3.settings.resolution",
+              "excel_cell": "6_NIVEL_2_PROFILES!E25",
+              "excel_value": "1920x1080",
+              "json_value": "3840x2160",
+              "status": "DIFF"
+            },
+            {
+              "json_path": "profiles_calibrated.P3.settings.maxResolution",
+              "excel_cell": "6_NIVEL_2_PROFILES!E48",
+              "excel_value": "1920x1080",
+              "json_value": "3840x2160",
+              "status": "DIFF"
+            },
+            {
+              "json_path": "profiles_calibrated.P3.settings.codec_full",
+              "excel_cell": "6_NIVEL_2_PROFILES!E37",
+              "excel_value": "hvc1.2.4.L123.B0",
+              "json_value": "hvc1.1.6.L120.B0",
+              "status": "DIFF"
+            },
+            {
+              "json_path": "profiles_calibrated.P3.headerOverrides.X-Stream-Codecs",
+              "excel_cell": "6_NIVEL_2_PROFILES!E350",
+              "excel_value": "hvc1.2.4.L123.B0,mp4a.40.2",
+              "json_value": "hvc1.1.6.L120.B0,mp4a.40.2",
+              "status": "DIFF"
+            },
+            {
+              "json_path": "profiles_calibrated.P3.headerOverrides.X-APE-CODEC",
+              "excel_cell": "6_NIVEL_2_PROFILES!E135",
+              "excel_value": "hvc1.2.4.L123.B0,avc1.640028",
+              "json_value": "avc1.640028,hvc1.1.6.L120.90",
+              "status": "DIFF"
+            },
+            {
+              "json_path": "profiles_calibrated.P3.headerOverrides.X-APE-RESOLUTION",
+              "excel_cell": "6_NIVEL_2_PROFILES!E136",
+              "excel_value": "1920x1080,1280x720,854x480,640x360",
+              "json_value": "3840x2160,1920x1080,1280x720,854x480",
+              "status": "DIFF"
+            },
+            {
+              "json_path": "profiles_calibrated.P3.vlcopt.video-width",
+              "excel_cell": "6_NIVEL_2_PROFILES!E109",
+              "excel_value": "1920",
+              "json_value": "3840",
+              "status": "DIFF"
+            },
+            {
+              "json_path": "profiles_calibrated.P3.vlcopt.video-height",
+              "excel_cell": "6_NIVEL_2_PROFILES!E110",
+              "excel_value": "1080",
+              "json_value": "2160",
+              "status": "DIFF"
+            }
+          ],
+          "paths": [
+            "6_NIVEL_2_PROFILES!E25 <-> profiles_calibrated.P3.settings.resolution",
+            "6_NIVEL_2_PROFILES!E48 <-> profiles_calibrated.P3.settings.maxResolution",
+            "6_NIVEL_2_PROFILES!E37 <-> profiles_calibrated.P3.settings.codec_full",
+            "6_NIVEL_2_PROFILES!E350 <-> profiles_calibrated.P3.headerOverrides.X-Stream-Codecs",
+            "6_NIVEL_2_PROFILES!E135 <-> profiles_calibrated.P3.headerOverrides.X-APE-CODEC",
+            "6_NIVEL_2_PROFILES!E136 <-> profiles_calibrated.P3.headerOverrides.X-APE-RESOLUTION",
+            "6_NIVEL_2_PROFILES!E109 <-> profiles_calibrated.P3.vlcopt.video-width",
+            "6_NIVEL_2_PROFILES!E110 <-> profiles_calibrated.P3.vlcopt.video-height"
+          ]
+        },
+        "L11_FPS_LEVEL_CAPACITY": {
+          "verdict": "FAIL",
+          "declared_fps": "120",
+          "codec": "hvc1.2.4.L123.B0",
+          "resolution": "1920x1080",
+          "level_capacity_fps_ceiling": 60,
+          "paths": [
+            "6_NIVEL_2_PROFILES!{col}25 (resolution)",
+            "6_NIVEL_2_PROFILES!{col}32 (fps)",
+            "6_NIVEL_2_PROFILES!{col}37 (codec_full)"
+          ],
+          "note": "fps 120 excede el techo 60 del nivel 123 a 1920x1080; D-15: corregir a <= 60 (60 solo si el nivel lo soporta)"
+        }
+      },
+      "verdict_overall": "FAIL",
+      "fail_count": 11
+    },
+    "P4": {
+      "manifest_expectation": {
+        "name": "HD",
+        "codec": "hvc1.2.4.L93.B0",
+        "resolution": "1280x720",
+        "fps": 30,
+        "resRank": 2
+      },
+      "observed": {
+        "name": "HD 720p",
+        "settings.codec_full": "avc1.64001f",
+        "settings.codec_string[0]": "avc1.640028",
+        "settings.resolution": "3840x2160",
+        "settings.fps": "120",
+        "settings.maxResolution": "3840x2160",
+        "settings.maxBitrateKbps": "5000",
+        "settings.avgBitrateKbps": "6000",
+        "settings.headersCount": "233",
+        "settings.codec": "AVC1",
+        "headerOverrides.X-Stream-Codecs[0]": "avc1.64001f",
+        "headerOverrides.X-Stream-Resolution": "1280x720",
+        "headerOverrides.X-Stream-FPS": "30",
+        "headerOverrides.X-APE-RESOLUTION[0]": "3840x2160",
+        "headerOverrides.X-APE-FPS[0]": "120",
+        "headerOverrides.X-Max-Resolution[0]": "1280x720",
+        "headerOverrides.X-APE-CODEC[0]": "avc1.4d401f",
+        "headerOverrides.X-HDCP-Level": "NONE",
+        "headerOverrides.X-Profile-Tier": "HD-SDR",
+        "kodiprop[inputstream.adaptive.max_resolution]": "1280x720",
+        "vlcopt[video-width]x[video-height]": "3840x2160",
+        "measured.headerOverrides_key_count": 400,
+        "prisma_lab_sync_v20.codec_ladder_per_profile.video[0]": "hvc1.1.6.L93.B0",
+        "prisma_lab_sync_v20.codec_ladder_per_profile.video": "hvc1.1.6.L93.B0,hev1.1.6.L93.B0,avc1.640020,avc1.4D401F,avc1.42E01F"
+      },
+      "laws": {
+        "L0_MANIFEST_CODEC": {
+          "verdict": "FAIL",
+          "expected": "hvc1.2.4.L93.B0",
+          "observed": "avc1.64001f",
+          "path": "profiles_calibrated.P4.settings.codec_full"
+        },
+        "L1_LEVEL_VS_RESOLUTION_EMITTED": {
+          "path": "profiles_calibrated.P4.headerOverrides.X-Stream-Codecs | X-Stream-Resolution | X-Stream-FPS",
+          "verdict": "PASS",
+          "codec": "avc1.64001f",
+          "resolution": "1280x720",
+          "fps": "30",
+          "family": "AVC",
+          "declared_level": 31,
+          "capacity": {
+            "resRank": 2,
+            "fps": 30
+          },
+          "required_for_declared": "L93",
+          "reason": "declared level capacity covers declared resolution+fps"
+        },
+        "L1_LEVEL_VS_RESOLUTION_SETTINGS": {
+          "path": "profiles_calibrated.P4.settings.codec_full | settings.resolution | settings.fps",
+          "verdict": "FAIL",
+          "codec": "avc1.64001f",
+          "resolution": "3840x2160",
+          "fps": "120",
+          "family": "AVC",
+          "declared_level": 31,
+          "capacity": {
+            "resRank": 2,
+            "fps": 30
+          },
+          "required_for_declared": "L156",
+          "reason": "level capacity resolution below declared resolution"
+        },
+        "L1_LEVEL_VS_RESOLUTION_CODEC_STRING": {
+          "path": "profiles_calibrated.P4.settings.codec_string | headerOverrides.X-Stream-Resolution | X-Stream-FPS",
+          "verdict": "PASS",
+          "codec": "avc1.640028",
+          "resolution": "1280x720",
+          "fps": "30",
+          "family": "AVC",
+          "declared_level": 40,
+          "capacity": {
+            "resRank": 3,
+            "fps": 30
+          },
+          "required_for_declared": "L93",
+          "reason": "declared level capacity covers declared resolution+fps"
+        },
+        "L2_MANIFEST_RESOLUTION": {
+          "verdict": "PASS",
+          "expected": "1280x720",
+          "observed": "1280x720",
+          "path": "profiles_calibrated.P4.headerOverrides.X-Stream-Resolution"
+        },
+        "L3_MANIFEST_FPS": {
+          "verdict": "PASS",
+          "expected": 30,
+          "observed": "30",
+          "path": "profiles_calibrated.P4.headerOverrides.X-Stream-FPS"
+        },
+        "L4_MAIN10_FLOOR": {
+          "verdict": "FAIL",
+          "observed": "avc1.64001f",
+          "path": "profiles_calibrated.P4.settings.codec_full",
+          "note": "AVC primary on a non-failsafe profile violates the Main10 floor"
+        },
+        "L5_LADDER_HAS_MANIFEST_CODEC": {
+          "verdict": "FAIL",
+          "expected_needle": "hvc1.2.4.L93.B0",
+          "ladder": "hvc1.1.6.L93.B0,hev1.1.6.L93.B0,avc1.640020,avc1.4D401F,avc1.42E01F",
+          "path": "prisma_lab_sync_v20.codec_ladder_per_profile.P4.video"
+        },
+        "L6_INTERNAL_CODEC_AGREEMENT": {
+          "verdict": "FAIL",
+          "distinct_values": [
+            "avc1.64001f",
+            "avc1.640028",
+            "hvc1.1.6.l93.b0"
+          ],
+          "paths": [
+            "profiles_calibrated.P4.settings.codec_full",
+            "profiles_calibrated.P4.settings.codec_string",
+            "profiles_calibrated.P4.headerOverrides.X-Stream-Codecs",
+            "prisma_lab_sync_v20.codec_ladder_per_profile.P4.video"
+          ]
+        },
+        "L7_BITRATE_ORDER": {
+          "verdict": "FAIL",
+          "avg": 6000,
+          "max": 5000,
+          "paths": [
+            "profiles_calibrated.P4.settings.avgBitrateKbps",
+            "profiles_calibrated.P4.settings.maxBitrateKbps"
+          ],
+          "note": "average bitrate declared above the declared maximum (impossible ordering)"
+        },
+        "L8_HEADER_COUNT_CLAIM": {
+          "verdict": "FAIL",
+          "claimed": 233,
+          "measured": 400,
+          "paths": [
+            "profiles_calibrated.P4.settings.headersCount"
+          ]
+        },
+        "L10_EXCEL_CANONICAL_MATCH": {
+          "verdict": "FAIL",
+          "excel_source": "6_NIVEL_2_PROFILES (A1:H663) · C:\\Users\\HFRC\\Downloads\\APE_M3U8_LAB_v8_FIXED.xlsm · sha256 663EF44E2D69521EB0E77DDA7B64A32EA4F942992F8F2C80614EAEE8EC52806A",
+          "diff_count": 9,
+          "diffs": [
+            {
+              "json_path": "profiles_calibrated.P4.settings.resolution",
+              "excel_cell": "6_NIVEL_2_PROFILES!F25",
+              "excel_value": "1280x720",
+              "json_value": "3840x2160",
+              "status": "DIFF"
+            },
+            {
+              "json_path": "profiles_calibrated.P4.settings.maxResolution",
+              "excel_cell": "6_NIVEL_2_PROFILES!F48",
+              "excel_value": "1280x720",
+              "json_value": "3840x2160",
+              "status": "DIFF"
+            },
+            {
+              "json_path": "profiles_calibrated.P4.settings.codec",
+              "excel_cell": "6_NIVEL_2_PROFILES!F33",
+              "excel_value": "HVC1",
+              "json_value": "AVC1",
+              "status": "DIFF"
+            },
+            {
+              "json_path": "profiles_calibrated.P4.settings.codec_full",
+              "excel_cell": "6_NIVEL_2_PROFILES!F37",
+              "excel_value": "hvc1.2.4.L93.B0",
+              "json_value": "avc1.64001f",
+              "status": "DIFF"
+            },
+            {
+              "json_path": "profiles_calibrated.P4.headerOverrides.X-Stream-Codecs",
+              "excel_cell": "6_NIVEL_2_PROFILES!F350",
+              "excel_value": "hvc1.2.4.L93.B0,mp4a.40.2",
+              "json_value": "avc1.64001f,mp4a.40.2",
+              "status": "DIFF"
+            },
+            {
+              "json_path": "profiles_calibrated.P4.headerOverrides.X-APE-CODEC",
+              "excel_cell": "6_NIVEL_2_PROFILES!F135",
+              "excel_value": "hvc1.2.4.L93.B0,avc1.4d401f",
+              "json_value": "avc1.4d401f",
+              "status": "DIFF"
+            },
+            {
+              "json_path": "profiles_calibrated.P4.headerOverrides.X-APE-RESOLUTION",
+              "excel_cell": "6_NIVEL_2_PROFILES!F136",
+              "excel_value": "1280x720,854x480,640x360",
+              "json_value": "3840x2160,1920x1080,1280x720,854x480",
+              "status": "DIFF"
+            },
+            {
+              "json_path": "profiles_calibrated.P4.vlcopt.video-width",
+              "excel_cell": "6_NIVEL_2_PROFILES!F109",
+              "excel_value": "1280",
+              "json_value": "3840",
+              "status": "DIFF"
+            },
+            {
+              "json_path": "profiles_calibrated.P4.vlcopt.video-height",
+              "excel_cell": "6_NIVEL_2_PROFILES!F110",
+              "excel_value": "720",
+              "json_value": "2160",
+              "status": "DIFF"
+            }
+          ],
+          "paths": [
+            "6_NIVEL_2_PROFILES!F25 <-> profiles_calibrated.P4.settings.resolution",
+            "6_NIVEL_2_PROFILES!F48 <-> profiles_calibrated.P4.settings.maxResolution",
+            "6_NIVEL_2_PROFILES!F33 <-> profiles_calibrated.P4.settings.codec",
+            "6_NIVEL_2_PROFILES!F37 <-> profiles_calibrated.P4.settings.codec_full",
+            "6_NIVEL_2_PROFILES!F350 <-> profiles_calibrated.P4.headerOverrides.X-Stream-Codecs",
+            "6_NIVEL_2_PROFILES!F135 <-> profiles_calibrated.P4.headerOverrides.X-APE-CODEC",
+            "6_NIVEL_2_PROFILES!F136 <-> profiles_calibrated.P4.headerOverrides.X-APE-RESOLUTION",
+            "6_NIVEL_2_PROFILES!F109 <-> profiles_calibrated.P4.vlcopt.video-width",
+            "6_NIVEL_2_PROFILES!F110 <-> profiles_calibrated.P4.vlcopt.video-height"
+          ]
+        },
+        "L11_FPS_LEVEL_CAPACITY": {
+          "verdict": "FAIL",
+          "declared_fps": "120",
+          "codec": "hvc1.2.4.L93.B0",
+          "resolution": "1280x720",
+          "level_capacity_fps_ceiling": 30,
+          "paths": [
+            "6_NIVEL_2_PROFILES!{col}25 (resolution)",
+            "6_NIVEL_2_PROFILES!{col}32 (fps)",
+            "6_NIVEL_2_PROFILES!{col}37 (codec_full)"
+          ],
+          "note": "fps 120 excede el techo 30 del nivel 93 a 1280x720; D-15: corregir a <= 30 (60 solo si el nivel lo soporta)"
+        }
+      },
+      "verdict_overall": "FAIL",
+      "fail_count": 9
+    },
+    "P5": {
+      "manifest_expectation": {
+        "name": "SD failsafe",
+        "codec": "avc1.42c01e",
+        "ladder_required": "hvc1.2.4.L90.B0",
+        "resolution": "854x480",
+        "fps": 30,
+        "resRank": 1
+      },
+      "observed": {
+        "name": "SD 480p",
+        "settings.codec_full": "avc1.42c01e",
+        "settings.codec_string[0]": "avc1.42E01E",
+        "settings.resolution": "3840x2160",
+        "settings.fps": "120",
+        "settings.maxResolution": "3840x2160",
+        "settings.maxBitrateKbps": "2000",
+        "settings.avgBitrateKbps": "2200",
+        "settings.headersCount": "233",
+        "settings.codec": "AVC1",
+        "headerOverrides.X-Stream-Codecs[0]": "avc1.42c01e",
+        "headerOverrides.X-Stream-Resolution": "854x480",
+        "headerOverrides.X-Stream-FPS": "30",
+        "headerOverrides.X-APE-RESOLUTION[0]": "3840x2160",
+        "headerOverrides.X-APE-FPS[0]": "120",
+        "headerOverrides.X-Max-Resolution[0]": "854x480",
+        "headerOverrides.X-APE-CODEC[0]": "avc1.42c01e",
+        "headerOverrides.X-HDCP-Level": "NONE",
+        "headerOverrides.X-Profile-Tier": "SD-FAILSAFE",
+        "kodiprop[inputstream.adaptive.max_resolution]": "854x480",
+        "vlcopt[video-width]x[video-height]": "3840x2160",
+        "measured.headerOverrides_key_count": 400,
+        "prisma_lab_sync_v20.codec_ladder_per_profile.video[0]": "avc1.42E01E",
+        "prisma_lab_sync_v20.codec_ladder_per_profile.video": "avc1.42E01E,avc1.42E00D,mp2v.2"
+      },
+      "laws": {
+        "L0_MANIFEST_CODEC": {
+          "verdict": "PASS",
+          "expected": "avc1.42c01e",
+          "observed": "avc1.42c01e",
+          "path": "profiles_calibrated.P5.settings.codec_full"
+        },
+        "L1_LEVEL_VS_RESOLUTION_EMITTED": {
+          "path": "profiles_calibrated.P5.headerOverrides.X-Stream-Codecs | X-Stream-Resolution | X-Stream-FPS",
+          "verdict": "PASS",
+          "codec": "avc1.42c01e",
+          "resolution": "854x480",
+          "fps": "30",
+          "family": "AVC",
+          "declared_level": 30,
+          "capacity": {
+            "resRank": 1,
+            "fps": 30
+          },
+          "required_for_declared": "L90",
+          "reason": "declared level capacity covers declared resolution+fps"
+        },
+        "L1_LEVEL_VS_RESOLUTION_SETTINGS": {
+          "path": "profiles_calibrated.P5.settings.codec_full | settings.resolution | settings.fps",
+          "verdict": "FAIL",
+          "codec": "avc1.42c01e",
+          "resolution": "3840x2160",
+          "fps": "120",
+          "family": "AVC",
+          "declared_level": 30,
+          "capacity": {
+            "resRank": 1,
+            "fps": 30
+          },
+          "required_for_declared": "L156",
+          "reason": "level capacity resolution below declared resolution"
+        },
+        "L1_LEVEL_VS_RESOLUTION_CODEC_STRING": {
+          "path": "profiles_calibrated.P5.settings.codec_string | headerOverrides.X-Stream-Resolution | X-Stream-FPS",
+          "verdict": "PASS",
+          "codec": "avc1.42E01E",
+          "resolution": "854x480",
+          "fps": "30",
+          "family": "AVC",
+          "declared_level": 30,
+          "capacity": {
+            "resRank": 1,
+            "fps": 30
+          },
+          "required_for_declared": "L90",
+          "reason": "declared level capacity covers declared resolution+fps"
+        },
+        "L2_MANIFEST_RESOLUTION": {
+          "verdict": "PASS",
+          "expected": "854x480",
+          "observed": "854x480",
+          "path": "profiles_calibrated.P5.headerOverrides.X-Stream-Resolution"
+        },
+        "L3_MANIFEST_FPS": {
+          "verdict": "PASS",
+          "expected": 30,
+          "observed": "30",
+          "path": "profiles_calibrated.P5.headerOverrides.X-Stream-FPS"
+        },
+        "L4_MAIN10_FLOOR": {
+          "verdict": "PASS",
+          "observed": "avc1.42c01e",
+          "path": "profiles_calibrated.P5.settings.codec_full",
+          "note": "P5 failsafe: AVC primary allowed by manifest"
+        },
+        "L5_LADDER_HAS_MANIFEST_CODEC": {
+          "verdict": "FAIL",
+          "expected_needle": "hvc1.2.4.L90.B0",
+          "ladder": "avc1.42E01E,avc1.42E00D,mp2v.2",
+          "path": "prisma_lab_sync_v20.codec_ladder_per_profile.P5.video"
+        },
+        "L6_INTERNAL_CODEC_AGREEMENT": {
+          "verdict": "FAIL",
+          "distinct_values": [
+            "avc1.42c01e",
+            "avc1.42e01e"
+          ],
+          "paths": [
+            "profiles_calibrated.P5.settings.codec_full",
+            "profiles_calibrated.P5.settings.codec_string",
+            "profiles_calibrated.P5.headerOverrides.X-Stream-Codecs",
+            "prisma_lab_sync_v20.codec_ladder_per_profile.P5.video"
+          ]
+        },
+        "L7_BITRATE_ORDER": {
+          "verdict": "FAIL",
+          "avg": 2200,
+          "max": 2000,
+          "paths": [
+            "profiles_calibrated.P5.settings.avgBitrateKbps",
+            "profiles_calibrated.P5.settings.maxBitrateKbps"
+          ],
+          "note": "average bitrate declared above the declared maximum (impossible ordering)"
+        },
+        "L8_HEADER_COUNT_CLAIM": {
+          "verdict": "FAIL",
+          "claimed": 233,
+          "measured": 400,
+          "paths": [
+            "profiles_calibrated.P5.settings.headersCount"
+          ]
+        },
+        "L10_EXCEL_CANONICAL_MATCH": {
+          "verdict": "FAIL",
+          "excel_source": "6_NIVEL_2_PROFILES (A1:H663) · C:\\Users\\HFRC\\Downloads\\APE_M3U8_LAB_v8_FIXED.xlsm · sha256 663EF44E2D69521EB0E77DDA7B64A32EA4F942992F8F2C80614EAEE8EC52806A",
+          "diff_count": 5,
+          "diffs": [
+            {
+              "json_path": "profiles_calibrated.P5.settings.resolution",
+              "excel_cell": "6_NIVEL_2_PROFILES!G25",
+              "excel_value": "854x480",
+              "json_value": "3840x2160",
+              "status": "DIFF"
+            },
+            {
+              "json_path": "profiles_calibrated.P5.settings.maxResolution",
+              "excel_cell": "6_NIVEL_2_PROFILES!G48",
+              "excel_value": "854x480",
+              "json_value": "3840x2160",
+              "status": "DIFF"
+            },
+            {
+              "json_path": "profiles_calibrated.P5.headerOverrides.X-APE-RESOLUTION",
+              "excel_cell": "6_NIVEL_2_PROFILES!G136",
+              "excel_value": "854x480,640x360,426x240",
+              "json_value": "3840x2160,1920x1080,1280x720,854x480",
+              "status": "DIFF"
+            },
+            {
+              "json_path": "profiles_calibrated.P5.vlcopt.video-width",
+              "excel_cell": "6_NIVEL_2_PROFILES!G109",
+              "excel_value": "854",
+              "json_value": "3840",
+              "status": "DIFF"
+            },
+            {
+              "json_path": "profiles_calibrated.P5.vlcopt.video-height",
+              "excel_cell": "6_NIVEL_2_PROFILES!G110",
+              "excel_value": "480",
+              "json_value": "2160",
+              "status": "DIFF"
+            }
+          ],
+          "paths": [
+            "6_NIVEL_2_PROFILES!G25 <-> profiles_calibrated.P5.settings.resolution",
+            "6_NIVEL_2_PROFILES!G48 <-> profiles_calibrated.P5.settings.maxResolution",
+            "6_NIVEL_2_PROFILES!G136 <-> profiles_calibrated.P5.headerOverrides.X-APE-RESOLUTION",
+            "6_NIVEL_2_PROFILES!G109 <-> profiles_calibrated.P5.vlcopt.video-width",
+            "6_NIVEL_2_PROFILES!G110 <-> profiles_calibrated.P5.vlcopt.video-height"
+          ]
+        },
+        "L11_FPS_LEVEL_CAPACITY": {
+          "verdict": "FAIL",
+          "declared_fps": "120",
+          "codec": "avc1.42c01e",
+          "resolution": "854x480",
+          "level_capacity_fps_ceiling": 30,
+          "paths": [
+            "6_NIVEL_2_PROFILES!{col}25 (resolution)",
+            "6_NIVEL_2_PROFILES!{col}32 (fps)",
+            "6_NIVEL_2_PROFILES!{col}37 (codec_full)"
+          ],
+          "note": "fps 120 excede el techo 30 del nivel 30 a 854x480; D-15: corregir a <= 30 (60 solo si el nivel lo soporta)"
+        }
+      },
+      "verdict_overall": "FAIL",
+      "fail_count": 7
+    }
+  },
+  "cross_source": {
+    "channel_maps": {
+      "frontend": {
+        "path": "C:/Users/HFRC/Desktop/IPTV_Navigator_PRO_v5.4_MAX_AGGRESSION/IPTV_v5.4_MAX_AGGRESSION/frontend/channels_map.json",
+        "bytes": 75107356,
+        "mtime": "2026-06-09T06:00:49.920Z",
+        "records": 9293,
+        "crosstab": {
+          "P0|8K|hvc1.2.4.L183.B0|hdr10_plus": 381,
+          "P1|4K|hvc1.2.4.L150.B0|hdr10": 3287,
+          "P2|1080p|avc1.640028|sdr": 4703,
+          "P1|4K|hvc1.2.4.L150.B0|hdr10_plus": 471,
+          "P2|1080p|avc1.640028|hdr10": 451
+        },
+        "profiles_present": [
+          "P0",
+          "P1",
+          "P2"
+        ]
+      },
+      "backend": {
+        "path": "C:/Users/HFRC/Desktop/IPTV_Navigator_PRO_v5.4_MAX_AGGRESSION/IPTV_v5.4_MAX_AGGRESSION/backend/channels_map.json",
+        "bytes": 29351317,
+        "mtime": "2026-04-03T00:13:56.284Z",
+        "records": 8366,
+        "crosstab": {
+          "P2|-|-|sdr": 3435,
+          "P3|-|-|sdr": 4600,
+          "P1|-|-|sdr": 295,
+          "P2|-|-|dolby_vision": 2,
+          "P0|-|-|dolby_vision": 7,
+          "P0|-|-|sdr": 1,
+          "P3|-|-|dolby_vision": 9,
+          "P4|-|-|sdr": 17
+        },
+        "profiles_present": [
+          "P2",
+          "P3",
+          "P1",
+          "P0",
+          "P4"
+        ]
+      },
+      "frontend_data": {
+        "path": "C:/Users/HFRC/Desktop/IPTV_Navigator_PRO_v5.4_MAX_AGGRESSION/IPTV_v5.4_MAX_AGGRESSION/frontend/data/channels_map.json",
+        "bytes": 28410531,
+        "mtime": "2026-03-17T02:48:13.291Z",
+        "records": 8366
+      }
+    },
+    "ape_profile_files": {
+      "ape_optimized": {
+        "path": "C:/Users/HFRC/Desktop/IPTV_Navigator_PRO_v5.4_MAX_AGGRESSION/IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/APE_ALL_PROFILES_OPTIMIZED.json",
+        "bytes": 203816,
+        "mtime": "2026-10-26T02:38:53.314Z",
+        "meta_version": "APE_v9.0",
+        "meta_exported": "2026-04-09T04:30:16.745Z",
+        "profiles": {
+          "P0": {
+            "name": "GOD_TIER_8K_OMEGA",
+            "settings.resolution": "7680x4320",
+            "settings.fps": 60,
+            "settings.codec": "AV1",
+            "headerOverrides.X-APE-CODEC": "AV1,HEVC,VP9,H264",
+            "headerOverrides.X-Video-Codecs": "hevc,h265,h.265,vp9,h264,mpeg2",
+            "codec_ladder.video": null
+          },
+          "P1": {
+            "name": "SUPREME_4K_HDR",
+            "settings.resolution": "3840x2160",
+            "settings.fps": 60,
+            "settings.codec": "AV1",
+            "headerOverrides.X-APE-CODEC": "AV1,HEVC,VP9,H264",
+            "headerOverrides.X-Video-Codecs": "av1,hevc,vp9,h264,mpeg2",
+            "codec_ladder.video": null
+          },
+          "P2": {
+            "name": "ELITE_4K_BALANCED",
+            "settings.resolution": "3840x2160",
+            "settings.fps": 60,
+            "settings.codec": "HEVC",
+            "headerOverrides.X-APE-CODEC": "HEVC,AV1,VP9,H264",
+            "headerOverrides.X-Video-Codecs": "hevc,h265,h.265,vp9,h264,mpeg2",
+            "codec_ladder.video": null
+          },
+          "P3": {
+            "name": "ULTRA_FHD_STABLE",
+            "settings.resolution": "1920x1080",
+            "settings.fps": 60,
+            "settings.codec": "HEVC",
+            "headerOverrides.X-APE-CODEC": "HEVC,H264,VP9,MPEG2",
+            "headerOverrides.X-Video-Codecs": "hevc,h265,h.265,vp9,h264,mpeg2",
+            "codec_ladder.video": null
+          },
+          "P4": {
+            "name": "HIGH_HD_COMPATIBLE",
+            "settings.resolution": "1280x720",
+            "settings.fps": 30,
+            "settings.codec": "H264",
+            "headerOverrides.X-APE-CODEC": "H264,HEVC,VP9,MPEG2",
+            "headerOverrides.X-Video-Codecs": "hevc,h265,h.265,vp9,h264,mpeg2",
+            "codec_ladder.video": null
+          },
+          "P5": {
+            "name": "SD_FAILSAFE_UNIVERSAL",
+            "settings.resolution": "854x480",
+            "settings.fps": 30,
+            "settings.codec": "H264",
+            "headerOverrides.X-APE-CODEC": "H264,H264-BASELINE,MPEG2,MPEG1",
+            "headerOverrides.X-Video-Codecs": "h264,avc,h.264,mpeg2",
+            "codec_ladder.video": null
+          }
+        }
+      },
+      "ape_realtime": {
+        "path": "C:/Users/HFRC/Desktop/IPTV_Navigator_PRO_v5.4_MAX_AGGRESSION/IPTV_v5.4_MAX_AGGRESSION/backend/APE_ALL_PROFILES_v10_REALTIME_ENGINE.json",
+        "bytes": 47864,
+        "mtime": "2026-06-11T05:25:34.137Z",
+        "meta_version": "APE_v10.0_REALTIME_ENGINE",
+        "meta_exported": "2026-04-11T20:00:00.000Z",
+        "profiles": {
+          "P0": {
+            "name": "GOD_TIER_8K_OMEGA_REALTIME",
+            "settings.resolution": null,
+            "settings.fps": null,
+            "settings.codec": null,
+            "headerOverrides.X-APE-CODEC": null,
+            "headerOverrides.X-Video-Codecs": null,
+            "codec_ladder.video": "dvh1.05.06,dvh1.08.06,hvc1.2.4.L183.B0,hvc1.2.4.L183.B0,av01.0.13M.10.0.110.09.16.09.0,avc1.640033,avc1.640028"
+          },
+          "P1": {
+            "name": "4K_SUPREME_REALTIME",
+            "settings.resolution": null,
+            "settings.fps": null,
+            "settings.codec": null,
+            "headerOverrides.X-APE-CODEC": null,
+            "headerOverrides.X-Video-Codecs": null,
+            "codec_ladder.video": "hvc1.2.4.L153.B0,hev1.2.4.L153.B0,hvc1.2.4.L150.B0,av01.0.12M.10.0.110.09.16.09.0,avc1.640033,avc1.640028"
+          },
+          "P2": {
+            "name": "4K_EXTREME_REALTIME",
+            "settings.resolution": null,
+            "settings.fps": null,
+            "settings.codec": null,
+            "headerOverrides.X-APE-CODEC": null,
+            "headerOverrides.X-Video-Codecs": null,
+            "codec_ladder.video": "hvc1.2.4.L153.B0,hev1.2.4.L153.B0,hvc1.2.4.L150.B0,avc1.640033,avc1.640028"
+          },
+          "P3": {
+            "name": "FHD_ADVANCED_REALTIME",
+            "settings.resolution": null,
+            "settings.fps": null,
+            "settings.codec": null,
+            "headerOverrides.X-APE-CODEC": null,
+            "headerOverrides.X-Video-Codecs": null,
+            "codec_ladder.video": "hvc1.2.4.L120.B0,hev1.2.4.L120.B0,hvc1.2.4.L120.B0,avc1.640028,avc1.4D401F"
+          },
+          "P4": {
+            "name": "HD_STABLE_REALTIME",
+            "settings.resolution": null,
+            "settings.fps": null,
+            "settings.codec": null,
+            "headerOverrides.X-APE-CODEC": null,
+            "headerOverrides.X-Video-Codecs": null,
+            "codec_ladder.video": "hvc1.2.4.L93.B0,hev1.2.4.L93.B0,avc1.640020,avc1.4D401F,avc1.42E01F"
+          },
+          "P5": {
+            "name": "SD_FAILSAFE_REALTIME",
+            "settings.resolution": null,
+            "settings.fps": null,
+            "settings.codec": null,
+            "headerOverrides.X-APE-CODEC": null,
+            "headerOverrides.X-Video-Codecs": null,
+            "codec_ladder.video": "avc1.42E01E,avc1.42E00D,mp2v.2"
+          }
+        }
+      },
+      "note": "These two files are a SECOND and THIRD codec doctrine in the same repo (v9 AV1/HEVC-first and v10 HEVC-first) that disagree with lab_master (DV/Main10 lab ladder). See JSON_DRIFT_REPORT.md §5."
+    },
+    "excel_canonical": {
+      "decision_refs": {
+        "D20": "Rama canónica = C:\\Users\\HFRC\\Downloads\\APE_M3U8_LAB_v8_FIXED.xlsm (sha256 663EF44E…)",
+        "D22": "El export usa SHEET_PROFILES=\"6_NIVEL_2_PROFILES\"; P1 canónico = 3840x2160 + hvc1.2.4.L153.B0",
+        "D15": "El Excel declara fps=120 en los 6 perfiles; sin evidencia de 120fps reales la corrección es 60 (o el techo del nivel)"
+      },
+      "extract": {
+        "path": "C:/Users/HFRC/Desktop/IPTV_Navigator_PRO_v5.4_MAX_AGGRESSION/audit/alignment/2026-10-25/10-excel/EXCEL_PROFILES_EXTRACT.json",
+        "bytes": 844550,
+        "mtime": "2026-10-26T04:05:14.827Z"
+      },
+      "excel_file": {
+        "path": "C:\\Users\\HFRC\\Downloads\\APE_M3U8_LAB_v8_FIXED.xlsm",
+        "sha256": "663EF44E2D69521EB0E77DDA7B64A32EA4F942992F8F2C80614EAEE8EC52806A",
+        "sizeBytes": 3582019,
+        "mtimeUtc": "2026-06-11T06:54:49.080713Z",
+        "readCopyMatchesSource": true
+      },
+      "sheet": "6_NIVEL_2_PROFILES",
+      "sheetDimension": "A1:H663",
+      "per_profile": {
+        "P0": {
+          "resolution": "7680x4320",
+          "resolution_cell": "6_NIVEL_2_PROFILES!B25",
+          "codec_full": "dvh1.08.06",
+          "codec_cell": "6_NIVEL_2_PROFILES!B37",
+          "fps": "120",
+          "fps_cell": "6_NIVEL_2_PROFILES!B32",
+          "x_stream_codecs": "dvh1.08.06,ac-3",
+          "x_stream_codecs_cell": "6_NIVEL_2_PROFILES!B350",
+          "json_vs_excel_diff_count": 0,
+          "json_vs_excel_verdict": "PASS",
+          "fps_capacity_verdict": "UNKNOWN",
+          "fps_capacity_ceiling": null
+        },
+        "P1": {
+          "resolution": "3840x2160",
+          "resolution_cell": "6_NIVEL_2_PROFILES!C25",
+          "codec_full": "hvc1.2.4.L153.B0",
+          "codec_cell": "6_NIVEL_2_PROFILES!C37",
+          "fps": "120",
+          "fps_cell": "6_NIVEL_2_PROFILES!C32",
+          "x_stream_codecs": "av01.0.15M.10,ac-3",
+          "x_stream_codecs_cell": "6_NIVEL_2_PROFILES!C350",
+          "json_vs_excel_diff_count": 6,
+          "json_vs_excel_verdict": "FAIL",
+          "fps_capacity_verdict": "FAIL",
+          "fps_capacity_ceiling": 60
+        },
+        "P2": {
+          "resolution": "3840x2160",
+          "resolution_cell": "6_NIVEL_2_PROFILES!D25",
+          "codec_full": "hvc1.2.4.L150.B0",
+          "codec_cell": "6_NIVEL_2_PROFILES!D37",
+          "fps": "120",
+          "fps_cell": "6_NIVEL_2_PROFILES!D32",
+          "x_stream_codecs": "hvc1.2.4.L150.B0,ac-3",
+          "x_stream_codecs_cell": "6_NIVEL_2_PROFILES!D350",
+          "json_vs_excel_diff_count": 0,
+          "json_vs_excel_verdict": "PASS",
+          "fps_capacity_verdict": "FAIL",
+          "fps_capacity_ceiling": 30
+        },
+        "P3": {
+          "resolution": "1920x1080",
+          "resolution_cell": "6_NIVEL_2_PROFILES!E25",
+          "codec_full": "hvc1.2.4.L123.B0",
+          "codec_cell": "6_NIVEL_2_PROFILES!E37",
+          "fps": "120",
+          "fps_cell": "6_NIVEL_2_PROFILES!E32",
+          "x_stream_codecs": "hvc1.2.4.L123.B0,mp4a.40.2",
+          "x_stream_codecs_cell": "6_NIVEL_2_PROFILES!E350",
+          "json_vs_excel_diff_count": 8,
+          "json_vs_excel_verdict": "FAIL",
+          "fps_capacity_verdict": "FAIL",
+          "fps_capacity_ceiling": 60
+        },
+        "P4": {
+          "resolution": "1280x720",
+          "resolution_cell": "6_NIVEL_2_PROFILES!F25",
+          "codec_full": "hvc1.2.4.L93.B0",
+          "codec_cell": "6_NIVEL_2_PROFILES!F37",
+          "fps": "120",
+          "fps_cell": "6_NIVEL_2_PROFILES!F32",
+          "x_stream_codecs": "hvc1.2.4.L93.B0,mp4a.40.2",
+          "x_stream_codecs_cell": "6_NIVEL_2_PROFILES!F350",
+          "json_vs_excel_diff_count": 9,
+          "json_vs_excel_verdict": "FAIL",
+          "fps_capacity_verdict": "FAIL",
+          "fps_capacity_ceiling": 30
+        },
+        "P5": {
+          "resolution": "854x480",
+          "resolution_cell": "6_NIVEL_2_PROFILES!G25",
+          "codec_full": "avc1.42c01e",
+          "codec_cell": "6_NIVEL_2_PROFILES!G37",
+          "fps": "120",
+          "fps_cell": "6_NIVEL_2_PROFILES!G32",
+          "x_stream_codecs": "avc1.42c01e,mp4a.40.2",
+          "x_stream_codecs_cell": "6_NIVEL_2_PROFILES!G350",
+          "json_vs_excel_diff_count": 5,
+          "json_vs_excel_verdict": "FAIL",
+          "fps_capacity_verdict": "FAIL",
+          "fps_capacity_ceiling": 30
+        }
+      }
+    },
+    "baseline_vs_repo": {
+      "note": "Repo lab_master_22.6.0.json is byte-identical to Downloads/LAB_CALIBRATED_BULLETPROOF_22.6.0-CRYSTAL-4K-UHD.json (same sha256 099A1707…). It descends from baseline_8k120 (NOT from the manifesto-named BACKUP_20260607).",
+      "per_profile": {
+        "P0": {
+          "settings.codec_full": {
+            "repo": "dvh1.08.06",
+            "baseline_8k120": "dvh1.08.06",
+            "backup_0607": "dvh1.08.06",
+            "equal_repo_baseline": true
+          },
+          "settings.resolution": {
+            "repo": "7680x4320",
+            "baseline_8k120": "7680x4320",
+            "backup_0607": "7680x4320"
+          },
+          "settings.fps": {
+            "repo": "120",
+            "baseline_8k120": "120",
+            "backup_0607": "120"
+          },
+          "headerOverrides.X-Stream-Codecs": {
+            "repo": "dvh1.08.06,ac-3",
+            "baseline_8k120": "dvh1.08.06,ac-3",
+            "backup_0607": "dvh1.08.06,ac-3"
+          },
+          "vlcopt.codec-priority": {
+            "repo": "dvh1,dvhe,hvc1,hev1,av01,vp09",
+            "baseline_8k120": "dvh1,dvhe,hvc1,hev1,av01,vp09",
+            "backup_0607": "dvh1,dvhe,hvc1,hev1,av01,vp09"
+          },
+          "headerOverrides.X-Video-Codecs": {
+            "repo": "DVH1",
+            "baseline_8k120": "DVH1",
+            "backup_0607": "DVH1"
+          },
+          "headerOverrides.X-Quality-Preference": {
+            "repo": "codec-hevc,profile-main-12,main-10,tier-high;codec-h265,profile-main-12,main-10,tier-high;codec-h.265,profile-main-12,main-10,tier-high;codec-vp9,profile2,profile0,n/a",
+            "baseline_8k120": "codec-hevc,profile-main-12,main-10,tier-high;codec-h265,profile-main-12,main-10,tier-high;codec-h.265,profile-main-12,main-10,tier-high;codec-vp9,profile2,profile0,n/a",
+            "backup_0607": "codec-hevc,profile-main-12,main-10,tier-high;codec-h265,profile-main-12,main-10,tier-high;codec-h.265,profile-main-12,main-10,tier-high;codec-vp9,profile2,profile0,n/a"
+          },
+          "settings.codec": {
+            "repo": "DVH1",
+            "baseline_8k120": "DVH1",
+            "backup_0607": "DVH1"
+          }
+        },
+        "P1": {
+          "settings.codec_full": {
+            "repo": "hvc1.2.4.L153.B0",
+            "baseline_8k120": "hvc1.2.4.L153.B0",
+            "backup_0607": "av01.0.15M.10",
+            "equal_repo_baseline": true
+          },
+          "settings.resolution": {
+            "repo": "7680x4320",
+            "baseline_8k120": "7680x4320",
+            "backup_0607": "7680x4320"
+          },
+          "settings.fps": {
+            "repo": "120",
+            "baseline_8k120": "120",
+            "backup_0607": "120"
+          },
+          "headerOverrides.X-Stream-Codecs": {
+            "repo": "hvc1.2.4.L153.B0,ac-3",
+            "baseline_8k120": "hvc1.2.4.L153.B0,ac-3",
+            "backup_0607": "av01.0.15M.10,ac-3"
+          },
+          "vlcopt.codec-priority": {
+            "repo": "hvc1,hev1,av01,vp09",
+            "baseline_8k120": "hvc1,hev1,av01,vp09",
+            "backup_0607": "av01,hvc1,hev1,dvh1,vp09"
+          },
+          "headerOverrides.X-Video-Codecs": {
+            "repo": "HVC1",
+            "baseline_8k120": "HVC1",
+            "backup_0607": "AV01"
+          },
+          "headerOverrides.X-Quality-Preference": {
+            "repo": "codec-hevc,profile-main-12,main-10,tier-high;codec-h265,profile-main-12,main-10,tier-high;codec-av1,profile-main-12,main-10,main,tier-high",
+            "baseline_8k120": "codec-hevc,profile-main-12,main-10,tier-high;codec-h265,profile-main-12,main-10,tier-high;codec-av1,profile-main-12,main-10,main,tier-high",
+            "backup_0607": "codec-av1,profile-main-12,main-10,main,tier-high;codec-hevc,main-12,main-10,high"
+          },
+          "settings.codec": {
+            "repo": "HVC1",
+            "baseline_8k120": "HVC1",
+            "backup_0607": "AV01"
+          }
+        },
+        "P2": {
+          "settings.codec_full": {
+            "repo": "hvc1.2.4.L150.B0",
+            "baseline_8k120": "hvc1.2.4.L150.B0",
+            "backup_0607": "hvc1.2.4.L150.B0",
+            "equal_repo_baseline": true
+          },
+          "settings.resolution": {
+            "repo": "3840x2160",
+            "baseline_8k120": "3840x2160",
+            "backup_0607": "3840x2160"
+          },
+          "settings.fps": {
+            "repo": "120",
+            "baseline_8k120": "120",
+            "backup_0607": "120"
+          },
+          "headerOverrides.X-Stream-Codecs": {
+            "repo": "hvc1.2.4.L150.B0,ac-3",
+            "baseline_8k120": "hvc1.2.4.L150.B0,ac-3",
+            "backup_0607": "hvc1.2.4.L150.B0,ac-3"
+          },
+          "vlcopt.codec-priority": {
+            "repo": "hvc1,hev1,av01,vp09,avc1",
+            "baseline_8k120": "hvc1,hev1,av01,vp09,avc1",
+            "backup_0607": "hvc1,hev1,av01,vp09,avc1"
+          },
+          "headerOverrides.X-Video-Codecs": {
+            "repo": "HVC1",
+            "baseline_8k120": "HVC1",
+            "backup_0607": "HVC1"
+          },
+          "headerOverrides.X-Quality-Preference": {
+            "repo": "codec-hevc,profile-main-12,main-10,tier-high;codec-h265,profile-main-12,main-10,tier-high;codec-h.265,profile-main-12,main-10,tier-high;codec-vp9,profile2,profile0,n/a",
+            "baseline_8k120": "codec-hevc,profile-main-12,main-10,tier-high;codec-h265,profile-main-12,main-10,tier-high;codec-h.265,profile-main-12,main-10,tier-high;codec-vp9,profile2,profile0,n/a",
+            "backup_0607": "codec-hevc,profile-main-12,main-10,tier-high;codec-h265,profile-main-12,main-10,tier-high;codec-h.265,profile-main-12,main-10,tier-high;codec-vp9,profile2,profile0,n/a"
+          },
+          "settings.codec": {
+            "repo": "HVC1",
+            "baseline_8k120": "HVC1",
+            "backup_0607": "HVC1"
+          }
+        },
+        "P3": {
+          "settings.codec_full": {
+            "repo": "hvc1.1.6.L120.B0",
+            "baseline_8k120": "hvc1.1.6.L120.B0",
+            "backup_0607": "hvc1.1.6.L120.B0",
+            "equal_repo_baseline": true
+          },
+          "settings.resolution": {
+            "repo": "3840x2160",
+            "baseline_8k120": "3840x2160",
+            "backup_0607": "3840x2160"
+          },
+          "settings.fps": {
+            "repo": "120",
+            "baseline_8k120": "120",
+            "backup_0607": "120"
+          },
+          "headerOverrides.X-Stream-Codecs": {
+            "repo": "hvc1.1.6.L120.B0,mp4a.40.2",
+            "baseline_8k120": "hvc1.1.6.L120.B0,mp4a.40.2",
+            "backup_0607": "hvc1.1.6.L120.B0,mp4a.40.2"
+          },
+          "vlcopt.codec-priority": {
+            "repo": "hvc1,avc1,av01",
+            "baseline_8k120": "hvc1,avc1,av01",
+            "backup_0607": "hvc1,avc1,av01"
+          },
+          "headerOverrides.X-Video-Codecs": {
+            "repo": "HVC1",
+            "baseline_8k120": "HVC1",
+            "backup_0607": "HVC1"
+          },
+          "headerOverrides.X-Quality-Preference": {
+            "repo": "codec-hevc,profile-main-12,main-10,tier-high;codec-h265,profile-main-12,main-10,tier-high;codec-h.265,profile-main-12,main-10,tier-high;codec-vp9,profile2,profile0,n/a",
+            "baseline_8k120": "codec-hevc,profile-main-12,main-10,tier-high;codec-h265,profile-main-12,main-10,tier-high;codec-h.265,profile-main-12,main-10,tier-high;codec-vp9,profile2,profile0,n/a",
+            "backup_0607": "codec-hevc,profile-main-12,main-10,tier-high;codec-h265,profile-main-12,main-10,tier-high;codec-h.265,profile-main-12,main-10,tier-high;codec-vp9,profile2,profile0,n/a"
+          },
+          "settings.codec": {
+            "repo": "HVC1",
+            "baseline_8k120": "HVC1",
+            "backup_0607": "HVC1"
+          }
+        },
+        "P4": {
+          "settings.codec_full": {
+            "repo": "avc1.64001f",
+            "baseline_8k120": "avc1.64001f",
+            "backup_0607": "avc1.64001f",
+            "equal_repo_baseline": true
+          },
+          "settings.resolution": {
+            "repo": "3840x2160",
+            "baseline_8k120": "3840x2160",
+            "backup_0607": "3840x2160"
+          },
+          "settings.fps": {
+            "repo": "120",
+            "baseline_8k120": "120",
+            "backup_0607": "120"
+          },
+          "headerOverrides.X-Stream-Codecs": {
+            "repo": "avc1.64001f,mp4a.40.2",
+            "baseline_8k120": "avc1.64001f,mp4a.40.2",
+            "backup_0607": "avc1.64001f,mp4a.40.2"
+          },
+          "vlcopt.codec-priority": {
+            "repo": "avc1,hvc1",
+            "baseline_8k120": "avc1,hvc1",
+            "backup_0607": "avc1,hvc1"
+          },
+          "headerOverrides.X-Video-Codecs": {
+            "repo": "AVC1",
+            "baseline_8k120": "AVC1",
+            "backup_0607": "AVC1"
+          },
+          "headerOverrides.X-Quality-Preference": {
+            "repo": "codec-hevc,profile-main-12,main-10,tier-high;codec-h265,profile-main-12,main-10,tier-high;codec-h.265,profile-main-12,main-10,tier-high;codec-vp9,profile2,profile0,n/a",
+            "baseline_8k120": "codec-hevc,profile-main-12,main-10,tier-high;codec-h265,profile-main-12,main-10,tier-high;codec-h.265,profile-main-12,main-10,tier-high;codec-vp9,profile2,profile0,n/a",
+            "backup_0607": "codec-hevc,profile-main-12,main-10,tier-high;codec-h265,profile-main-12,main-10,tier-high;codec-h.265,profile-main-12,main-10,tier-high;codec-vp9,profile2,profile0,n/a"
+          },
+          "settings.codec": {
+            "repo": "AVC1",
+            "baseline_8k120": "AVC1",
+            "backup_0607": "AVC1"
+          }
+        },
+        "P5": {
+          "settings.codec_full": {
+            "repo": "avc1.42c01e",
+            "baseline_8k120": "avc1.42c01e",
+            "backup_0607": "avc1.42c01e",
+            "equal_repo_baseline": true
+          },
+          "settings.resolution": {
+            "repo": "3840x2160",
+            "baseline_8k120": "3840x2160",
+            "backup_0607": "3840x2160"
+          },
+          "settings.fps": {
+            "repo": "120",
+            "baseline_8k120": "120",
+            "backup_0607": "120"
+          },
+          "headerOverrides.X-Stream-Codecs": {
+            "repo": "avc1.42c01e,mp4a.40.2",
+            "baseline_8k120": "avc1.42c01e,mp4a.40.2",
+            "backup_0607": "avc1.42c01e,mp4a.40.2"
+          },
+          "vlcopt.codec-priority": {
+            "repo": "avc1",
+            "baseline_8k120": "avc1",
+            "backup_0607": "avc1"
+          },
+          "headerOverrides.X-Video-Codecs": {
+            "repo": "AVC1",
+            "baseline_8k120": "AVC1",
+            "backup_0607": "AVC1"
+          },
+          "headerOverrides.X-Quality-Preference": {
+            "repo": "codec-h264,profile-high,tier-high;codec-avc,profile-high,tier-high;codec-h.264,profile-high,tier-high;codec-mpeg2,main,high",
+            "baseline_8k120": "codec-h264,profile-high,tier-high;codec-avc,profile-high,tier-high;codec-h.264,profile-high,tier-high;codec-mpeg2,main,high",
+            "backup_0607": "codec-h264,profile-high,tier-high;codec-avc,profile-high,tier-high;codec-h.264,profile-high,tier-high;codec-mpeg2,main,high"
+          },
+          "settings.codec": {
+            "repo": "AVC1",
+            "baseline_8k120": "AVC1",
+            "backup_0607": "AVC1"
+          }
+        }
+      }
+    },
+    "channels_map_alignment": {
+      "P0": {
+        "law": "L9_CHANNELS_MAP_ALIGNMENT",
+        "verdict": "FAIL",
+        "channels_map_codec_rfc6381": "hvc1.2.4.L183.B0",
+        "lab_master_codec_full": "dvh1.08.06",
+        "paths": [
+          "frontend/channels_map.json[*].codec_rfc6381 (P0 subset)",
+          "profiles_calibrated.P0.settings.codec_full"
+        ]
+      },
+      "P1": {
+        "law": "L9_CHANNELS_MAP_ALIGNMENT",
+        "verdict": "FAIL",
+        "channels_map_codec_rfc6381": "hvc1.2.4.L150.B0",
+        "lab_master_codec_full": "hvc1.2.4.L153.B0",
+        "paths": [
+          "frontend/channels_map.json[*].codec_rfc6381 (P1 subset)",
+          "profiles_calibrated.P1.settings.codec_full"
+        ]
+      },
+      "P2": {
+        "law": "L9_CHANNELS_MAP_ALIGNMENT",
+        "verdict": "FAIL",
+        "channels_map_codec_rfc6381": "avc1.640028",
+        "lab_master_codec_full": "hvc1.2.4.L150.B0",
+        "paths": [
+          "frontend/channels_map.json[*].codec_rfc6381 (P2 subset)",
+          "profiles_calibrated.P2.settings.codec_full"
+        ]
+      },
+      "P3": {
+        "law": "L9_CHANNELS_MAP_ALIGNMENT",
+        "verdict": "UNKNOWN",
+        "reason": "profile absent from both channels_map copies (map only populates P0/P1/P2)"
+      },
+      "P4": {
+        "law": "L9_CHANNELS_MAP_ALIGNMENT",
+        "verdict": "UNKNOWN",
+        "reason": "profile absent from both channels_map copies (map only populates P0/P1/P2)"
+      },
+      "P5": {
+        "law": "L9_CHANNELS_MAP_ALIGNMENT",
+        "verdict": "UNKNOWN",
+        "reason": "profile absent from both channels_map copies (map only populates P0/P1/P2)"
+      }
+    }
+  },
+  "isolated_failures": [
+    {
+      "profile": "P0",
+      "law": "L1_LEVEL_VS_RESOLUTION_CODEC_STRING",
+      "path": "profiles_calibrated.P0.settings.codec_string | headerOverrides.X-Stream-Resolution | X-Stream-FPS",
+      "expected": null,
+      "observed": null,
+      "detail": "level capacity resolution below declared resolution",
+      "capacity": {
+        "resRank": 4,
+        "fps": 60
+      },
+      "required_for_declared": "L183",
+      "values": {
+        "codec": "hvc1.2.4.L153.B0",
+        "resolution": "7680x4320",
+        "fps": "60",
+        "declared_level": 153,
+        "family": "HEVC",
+        "distinct_values": null,
+        "claimed": null,
+        "measured": null,
+        "avg": null,
+        "max": null,
+        "ladder": null,
+        "declared_fps": null,
+        "level_capacity_fps_ceiling": null,
+        "excel_diffs": null
+      }
+    },
+    {
+      "profile": "P0",
+      "law": "L3_MANIFEST_FPS",
+      "path": "profiles_calibrated.P0.headerOverrides.X-Stream-FPS",
+      "expected": 120,
+      "observed": "60",
+      "detail": null,
+      "capacity": null,
+      "required_for_declared": null,
+      "values": {
+        "codec": null,
+        "resolution": null,
+        "fps": null,
+        "declared_level": null,
+        "family": null,
+        "distinct_values": null,
+        "claimed": null,
+        "measured": null,
+        "avg": null,
+        "max": null,
+        "ladder": null,
+        "declared_fps": null,
+        "level_capacity_fps_ceiling": null,
+        "excel_diffs": null
+      }
+    },
+    {
+      "profile": "P0",
+      "law": "L6_INTERNAL_CODEC_AGREEMENT",
+      "path": [
+        "profiles_calibrated.P0.settings.codec_full",
+        "profiles_calibrated.P0.settings.codec_string",
+        "profiles_calibrated.P0.headerOverrides.X-Stream-Codecs",
+        "prisma_lab_sync_v20.codec_ladder_per_profile.P0.video"
+      ],
+      "expected": null,
+      "observed": [
+        "dvh1.08.06",
+        "hvc1.2.4.l153.b0",
+        "dvh1.05.06"
+      ],
+      "detail": null,
+      "capacity": null,
+      "required_for_declared": null,
+      "values": {
+        "codec": null,
+        "resolution": null,
+        "fps": null,
+        "declared_level": null,
+        "family": null,
+        "distinct_values": [
+          "dvh1.08.06",
+          "hvc1.2.4.l153.b0",
+          "dvh1.05.06"
+        ],
+        "claimed": null,
+        "measured": null,
+        "avg": null,
+        "max": null,
+        "ladder": null,
+        "declared_fps": null,
+        "level_capacity_fps_ceiling": null,
+        "excel_diffs": null
+      }
+    },
+    {
+      "profile": "P0",
+      "law": "L8_HEADER_COUNT_CLAIM",
+      "path": [
+        "profiles_calibrated.P0.settings.headersCount"
+      ],
+      "expected": null,
+      "observed": null,
+      "detail": null,
+      "capacity": null,
+      "required_for_declared": null,
+      "values": {
+        "codec": null,
+        "resolution": null,
+        "fps": null,
+        "declared_level": null,
+        "family": null,
+        "distinct_values": null,
+        "claimed": 233,
+        "measured": 402,
+        "avg": null,
+        "max": null,
+        "ladder": null,
+        "declared_fps": null,
+        "level_capacity_fps_ceiling": null,
+        "excel_diffs": null
+      }
+    },
+    {
+      "profile": "P1",
+      "law": "L0_MANIFEST_CODEC",
+      "path": "profiles_calibrated.P1.settings.codec_full",
+      "expected": "av01.0.15M.10",
+      "observed": "hvc1.2.4.L153.B0",
+      "detail": null,
+      "capacity": null,
+      "required_for_declared": null,
+      "values": {
+        "codec": null,
+        "resolution": null,
+        "fps": null,
+        "declared_level": null,
+        "family": null,
+        "distinct_values": null,
+        "claimed": null,
+        "measured": null,
+        "avg": null,
+        "max": null,
+        "ladder": null,
+        "declared_fps": null,
+        "level_capacity_fps_ceiling": null,
+        "excel_diffs": null
+      }
+    },
+    {
+      "profile": "P1",
+      "law": "L1_LEVEL_VS_RESOLUTION_EMITTED",
+      "path": "profiles_calibrated.P1.headerOverrides.X-Stream-Codecs | X-Stream-Resolution | X-Stream-FPS",
+      "expected": null,
+      "observed": null,
+      "detail": "level capacity fps below declared fps",
+      "capacity": {
+        "resRank": 4,
+        "fps": 60
+      },
+      "required_for_declared": "L156",
+      "values": {
+        "codec": "hvc1.2.4.L153.B0",
+        "resolution": "3840x2160",
+        "fps": "120",
+        "declared_level": 153,
+        "family": "HEVC",
+        "distinct_values": null,
+        "claimed": null,
+        "measured": null,
+        "avg": null,
+        "max": null,
+        "ladder": null,
+        "declared_fps": null,
+        "level_capacity_fps_ceiling": null,
+        "excel_diffs": null
+      }
+    },
+    {
+      "profile": "P1",
+      "law": "L1_LEVEL_VS_RESOLUTION_SETTINGS",
+      "path": "profiles_calibrated.P1.settings.codec_full | settings.resolution | settings.fps",
+      "expected": null,
+      "observed": null,
+      "detail": "level capacity resolution below declared resolution",
+      "capacity": {
+        "resRank": 4,
+        "fps": 60
+      },
+      "required_for_declared": "L186",
+      "values": {
+        "codec": "hvc1.2.4.L153.B0",
+        "resolution": "7680x4320",
+        "fps": "120",
+        "declared_level": 153,
+        "family": "HEVC",
+        "distinct_values": null,
+        "claimed": null,
+        "measured": null,
+        "avg": null,
+        "max": null,
+        "ladder": null,
+        "declared_fps": null,
+        "level_capacity_fps_ceiling": null,
+        "excel_diffs": null
+      }
+    },
+    {
+      "profile": "P1",
+      "law": "L1_LEVEL_VS_RESOLUTION_CODEC_STRING",
+      "path": "profiles_calibrated.P1.settings.codec_string | headerOverrides.X-Stream-Resolution | X-Stream-FPS",
+      "expected": null,
+      "observed": null,
+      "detail": "level capacity fps below declared fps",
+      "capacity": {
+        "resRank": 4,
+        "fps": 60
+      },
+      "required_for_declared": "L156",
+      "values": {
+        "codec": "hvc1.2.4.L153.B0",
+        "resolution": "3840x2160",
+        "fps": "120",
+        "declared_level": 153,
+        "family": "HEVC",
+        "distinct_values": null,
+        "claimed": null,
+        "measured": null,
+        "avg": null,
+        "max": null,
+        "ladder": null,
+        "declared_fps": null,
+        "level_capacity_fps_ceiling": null,
+        "excel_diffs": null
+      }
+    },
+    {
+      "profile": "P1",
+      "law": "L2_MANIFEST_RESOLUTION",
+      "path": "profiles_calibrated.P1.headerOverrides.X-Stream-Resolution",
+      "expected": "7680x4320",
+      "observed": "3840x2160",
+      "detail": null,
+      "capacity": null,
+      "required_for_declared": null,
+      "values": {
+        "codec": null,
+        "resolution": null,
+        "fps": null,
+        "declared_level": null,
+        "family": null,
+        "distinct_values": null,
+        "claimed": null,
+        "measured": null,
+        "avg": null,
+        "max": null,
+        "ladder": null,
+        "declared_fps": null,
+        "level_capacity_fps_ceiling": null,
+        "excel_diffs": null
+      }
+    },
+    {
+      "profile": "P1",
+      "law": "L5_LADDER_HAS_MANIFEST_CODEC",
+      "path": "prisma_lab_sync_v20.codec_ladder_per_profile.P1.video",
+      "expected": "av01.0.15M.10",
+      "observed": null,
+      "detail": null,
+      "capacity": null,
+      "required_for_declared": null,
+      "values": {
+        "codec": null,
+        "resolution": null,
+        "fps": null,
+        "declared_level": null,
+        "family": null,
+        "distinct_values": null,
+        "claimed": null,
+        "measured": null,
+        "avg": null,
+        "max": null,
+        "ladder": "hvc1.2.4.L153.B0,hev1.2.4.L153.B0,hvc1.1.6.L150.B0,av01.0.12M.10.0.110.09.16.09.0,avc1.640033,avc1.640028",
+        "declared_fps": null,
+        "level_capacity_fps_ceiling": null,
+        "excel_diffs": null
+      }
+    },
+    {
+      "profile": "P1",
+      "law": "L7_BITRATE_ORDER",
+      "path": [
+        "profiles_calibrated.P1.settings.avgBitrateKbps",
+        "profiles_calibrated.P1.settings.maxBitrateKbps"
+      ],
+      "expected": null,
+      "observed": null,
+      "detail": "average bitrate declared above the declared maximum (impossible ordering)",
+      "capacity": null,
+      "required_for_declared": null,
+      "values": {
+        "codec": null,
+        "resolution": null,
+        "fps": null,
+        "declared_level": null,
+        "family": null,
+        "distinct_values": null,
+        "claimed": null,
+        "measured": null,
+        "avg": 75000,
+        "max": 40000,
+        "ladder": null,
+        "declared_fps": null,
+        "level_capacity_fps_ceiling": null,
+        "excel_diffs": null
+      }
+    },
+    {
+      "profile": "P1",
+      "law": "L8_HEADER_COUNT_CLAIM",
+      "path": [
+        "profiles_calibrated.P1.settings.headersCount"
+      ],
+      "expected": null,
+      "observed": null,
+      "detail": null,
+      "capacity": null,
+      "required_for_declared": null,
+      "values": {
+        "codec": null,
+        "resolution": null,
+        "fps": null,
+        "declared_level": null,
+        "family": null,
+        "distinct_values": null,
+        "claimed": 233,
+        "measured": 400,
+        "avg": null,
+        "max": null,
+        "ladder": null,
+        "declared_fps": null,
+        "level_capacity_fps_ceiling": null,
+        "excel_diffs": null
+      }
+    },
+    {
+      "profile": "P1",
+      "law": "L10_EXCEL_CANONICAL_MATCH",
+      "path": [
+        "6_NIVEL_2_PROFILES!C25 <-> profiles_calibrated.P1.settings.resolution",
+        "6_NIVEL_2_PROFILES!C48 <-> profiles_calibrated.P1.settings.maxResolution",
+        "6_NIVEL_2_PROFILES!C350 <-> profiles_calibrated.P1.headerOverrides.X-Stream-Codecs",
+        "6_NIVEL_2_PROFILES!C136 <-> profiles_calibrated.P1.headerOverrides.X-APE-RESOLUTION",
+        "6_NIVEL_2_PROFILES!C109 <-> profiles_calibrated.P1.vlcopt.video-width",
+        "6_NIVEL_2_PROFILES!C110 <-> profiles_calibrated.P1.vlcopt.video-height"
+      ],
+      "expected": null,
+      "observed": null,
+      "detail": null,
+      "capacity": null,
+      "required_for_declared": null,
+      "values": {
+        "codec": null,
+        "resolution": null,
+        "fps": null,
+        "declared_level": null,
+        "family": null,
+        "distinct_values": null,
+        "claimed": null,
+        "measured": null,
+        "avg": null,
+        "max": null,
+        "ladder": null,
+        "declared_fps": null,
+        "level_capacity_fps_ceiling": null,
+        "excel_diffs": [
+          {
+            "json_path": "profiles_calibrated.P1.settings.resolution",
+            "excel_cell": "6_NIVEL_2_PROFILES!C25",
+            "excel_value": "3840x2160",
+            "json_value": "7680x4320",
+            "status": "DIFF"
+          },
+          {
+            "json_path": "profiles_calibrated.P1.settings.maxResolution",
+            "excel_cell": "6_NIVEL_2_PROFILES!C48",
+            "excel_value": "3840x2160",
+            "json_value": "7680x4320",
+            "status": "DIFF"
+          },
+          {
+            "json_path": "profiles_calibrated.P1.headerOverrides.X-Stream-Codecs",
+            "excel_cell": "6_NIVEL_2_PROFILES!C350",
+            "excel_value": "av01.0.15M.10,ac-3",
+            "json_value": "hvc1.2.4.L153.B0,ac-3",
+            "status": "DIFF"
+          },
+          {
+            "json_path": "profiles_calibrated.P1.headerOverrides.X-APE-RESOLUTION",
+            "excel_cell": "6_NIVEL_2_PROFILES!C136",
+            "excel_value": "3840x2160,2560x1440,1920x1080,1280x720",
+            "json_value": "7680x4320,3840x2160,2560x1440,1920x1080",
+            "status": "DIFF"
+          },
+          {
+            "json_path": "profiles_calibrated.P1.vlcopt.video-width",
+            "excel_cell": "6_NIVEL_2_PROFILES!C109",
+            "excel_value": "3840",
+            "json_value": "7680",
+            "status": "DIFF"
+          },
+          {
+            "json_path": "profiles_calibrated.P1.vlcopt.video-height",
+            "excel_cell": "6_NIVEL_2_PROFILES!C110",
+            "excel_value": "2160",
+            "json_value": "4320",
+            "status": "DIFF"
+          }
+        ]
+      }
+    },
+    {
+      "profile": "P1",
+      "law": "L11_FPS_LEVEL_CAPACITY",
+      "path": [
+        "6_NIVEL_2_PROFILES!{col}25 (resolution)",
+        "6_NIVEL_2_PROFILES!{col}32 (fps)",
+        "6_NIVEL_2_PROFILES!{col}37 (codec_full)"
+      ],
+      "expected": null,
+      "observed": null,
+      "detail": "fps 120 excede el techo 60 del nivel 153 a 3840x2160; D-15: corregir a <= 60 (60 solo si el nivel lo soporta)",
+      "capacity": null,
+      "required_for_declared": null,
+      "values": {
+        "codec": "hvc1.2.4.L153.B0",
+        "resolution": "3840x2160",
+        "fps": null,
+        "declared_level": null,
+        "family": null,
+        "distinct_values": null,
+        "claimed": null,
+        "measured": null,
+        "avg": null,
+        "max": null,
+        "ladder": null,
+        "declared_fps": "120",
+        "level_capacity_fps_ceiling": 60,
+        "excel_diffs": null
+      }
+    },
+    {
+      "profile": "P2",
+      "law": "L0_MANIFEST_CODEC",
+      "path": "profiles_calibrated.P2.settings.codec_full",
+      "expected": "hvc1.2.4.L153.B0",
+      "observed": "hvc1.2.4.L150.B0",
+      "detail": null,
+      "capacity": null,
+      "required_for_declared": null,
+      "values": {
+        "codec": null,
+        "resolution": null,
+        "fps": null,
+        "declared_level": null,
+        "family": null,
+        "distinct_values": null,
+        "claimed": null,
+        "measured": null,
+        "avg": null,
+        "max": null,
+        "ladder": null,
+        "declared_fps": null,
+        "level_capacity_fps_ceiling": null,
+        "excel_diffs": null
+      }
+    },
+    {
+      "profile": "P2",
+      "law": "L1_LEVEL_VS_RESOLUTION_EMITTED",
+      "path": "profiles_calibrated.P2.headerOverrides.X-Stream-Codecs | X-Stream-Resolution | X-Stream-FPS",
+      "expected": null,
+      "observed": null,
+      "detail": "level capacity fps below declared fps",
+      "capacity": {
+        "resRank": 4,
+        "fps": 30
+      },
+      "required_for_declared": "L153",
+      "values": {
+        "codec": "hvc1.2.4.L150.B0",
+        "resolution": "3840x2160",
+        "fps": "60",
+        "declared_level": 150,
+        "family": "HEVC",
+        "distinct_values": null,
+        "claimed": null,
+        "measured": null,
+        "avg": null,
+        "max": null,
+        "ladder": null,
+        "declared_fps": null,
+        "level_capacity_fps_ceiling": null,
+        "excel_diffs": null
+      }
+    },
+    {
+      "profile": "P2",
+      "law": "L1_LEVEL_VS_RESOLUTION_SETTINGS",
+      "path": "profiles_calibrated.P2.settings.codec_full | settings.resolution | settings.fps",
+      "expected": null,
+      "observed": null,
+      "detail": "level capacity fps below declared fps",
+      "capacity": {
+        "resRank": 4,
+        "fps": 30
+      },
+      "required_for_declared": "L156",
+      "values": {
+        "codec": "hvc1.2.4.L150.B0",
+        "resolution": "3840x2160",
+        "fps": "120",
+        "declared_level": 150,
+        "family": "HEVC",
+        "distinct_values": null,
+        "claimed": null,
+        "measured": null,
+        "avg": null,
+        "max": null,
+        "ladder": null,
+        "declared_fps": null,
+        "level_capacity_fps_ceiling": null,
+        "excel_diffs": null
+      }
+    },
+    {
+      "profile": "P2",
+      "law": "L1_LEVEL_VS_RESOLUTION_CODEC_STRING",
+      "path": "profiles_calibrated.P2.settings.codec_string | headerOverrides.X-Stream-Resolution | X-Stream-FPS",
+      "expected": null,
+      "observed": null,
+      "detail": "level capacity fps below declared fps",
+      "capacity": {
+        "resRank": 4,
+        "fps": 30
+      },
+      "required_for_declared": "L153",
+      "values": {
+        "codec": "hvc1.2.4.L150.B0",
+        "resolution": "3840x2160",
+        "fps": "60",
+        "declared_level": 150,
+        "family": "HEVC",
+        "distinct_values": null,
+        "claimed": null,
+        "measured": null,
+        "avg": null,
+        "max": null,
+        "ladder": null,
+        "declared_fps": null,
+        "level_capacity_fps_ceiling": null,
+        "excel_diffs": null
+      }
+    },
+    {
+      "profile": "P2",
+      "law": "L6_INTERNAL_CODEC_AGREEMENT",
+      "path": [
+        "profiles_calibrated.P2.settings.codec_full",
+        "profiles_calibrated.P2.settings.codec_string",
+        "profiles_calibrated.P2.headerOverrides.X-Stream-Codecs",
+        "prisma_lab_sync_v20.codec_ladder_per_profile.P2.video"
+      ],
+      "expected": null,
+      "observed": [
+        "hvc1.2.4.l150.b0",
+        "hvc1.2.4.l153.b0"
+      ],
+      "detail": null,
+      "capacity": null,
+      "required_for_declared": null,
+      "values": {
+        "codec": null,
+        "resolution": null,
+        "fps": null,
+        "declared_level": null,
+        "family": null,
+        "distinct_values": [
+          "hvc1.2.4.l150.b0",
+          "hvc1.2.4.l153.b0"
+        ],
+        "claimed": null,
+        "measured": null,
+        "avg": null,
+        "max": null,
+        "ladder": null,
+        "declared_fps": null,
+        "level_capacity_fps_ceiling": null,
+        "excel_diffs": null
+      }
+    },
+    {
+      "profile": "P2",
+      "law": "L7_BITRATE_ORDER",
+      "path": [
+        "profiles_calibrated.P2.settings.avgBitrateKbps",
+        "profiles_calibrated.P2.settings.maxBitrateKbps"
+      ],
+      "expected": null,
+      "observed": null,
+      "detail": "average bitrate declared above the declared maximum (impossible ordering)",
+      "capacity": null,
+      "required_for_declared": null,
+      "values": {
+        "codec": null,
+        "resolution": null,
+        "fps": null,
+        "declared_level": null,
+        "family": null,
+        "distinct_values": null,
+        "claimed": null,
+        "measured": null,
+        "avg": 35000,
+        "max": 25000,
+        "ladder": null,
+        "declared_fps": null,
+        "level_capacity_fps_ceiling": null,
+        "excel_diffs": null
+      }
+    },
+    {
+      "profile": "P2",
+      "law": "L8_HEADER_COUNT_CLAIM",
+      "path": [
+        "profiles_calibrated.P2.settings.headersCount"
+      ],
+      "expected": null,
+      "observed": null,
+      "detail": null,
+      "capacity": null,
+      "required_for_declared": null,
+      "values": {
+        "codec": null,
+        "resolution": null,
+        "fps": null,
+        "declared_level": null,
+        "family": null,
+        "distinct_values": null,
+        "claimed": 233,
+        "measured": 402,
+        "avg": null,
+        "max": null,
+        "ladder": null,
+        "declared_fps": null,
+        "level_capacity_fps_ceiling": null,
+        "excel_diffs": null
+      }
+    },
+    {
+      "profile": "P2",
+      "law": "L11_FPS_LEVEL_CAPACITY",
+      "path": [
+        "6_NIVEL_2_PROFILES!{col}25 (resolution)",
+        "6_NIVEL_2_PROFILES!{col}32 (fps)",
+        "6_NIVEL_2_PROFILES!{col}37 (codec_full)"
+      ],
+      "expected": null,
+      "observed": null,
+      "detail": "fps 120 excede el techo 30 del nivel 150 a 3840x2160; D-15: corregir a <= 30 (60 solo si el nivel lo soporta)",
+      "capacity": null,
+      "required_for_declared": null,
+      "values": {
+        "codec": "hvc1.2.4.L150.B0",
+        "resolution": "3840x2160",
+        "fps": null,
+        "declared_level": null,
+        "family": null,
+        "distinct_values": null,
+        "claimed": null,
+        "measured": null,
+        "avg": null,
+        "max": null,
+        "ladder": null,
+        "declared_fps": "120",
+        "level_capacity_fps_ceiling": 30,
+        "excel_diffs": null
+      }
+    },
+    {
+      "profile": "P3",
+      "law": "L0_MANIFEST_CODEC",
+      "path": "profiles_calibrated.P3.settings.codec_full",
+      "expected": "hvc1.2.4.L123.B0",
+      "observed": "hvc1.1.6.L120.B0",
+      "detail": null,
+      "capacity": null,
+      "required_for_declared": null,
+      "values": {
+        "codec": null,
+        "resolution": null,
+        "fps": null,
+        "declared_level": null,
+        "family": null,
+        "distinct_values": null,
+        "claimed": null,
+        "measured": null,
+        "avg": null,
+        "max": null,
+        "ladder": null,
+        "declared_fps": null,
+        "level_capacity_fps_ceiling": null,
+        "excel_diffs": null
+      }
+    },
+    {
+      "profile": "P3",
+      "law": "L1_LEVEL_VS_RESOLUTION_EMITTED",
+      "path": "profiles_calibrated.P3.headerOverrides.X-Stream-Codecs | X-Stream-Resolution | X-Stream-FPS",
+      "expected": null,
+      "observed": null,
+      "detail": "level capacity fps below declared fps",
+      "capacity": {
+        "resRank": 3,
+        "fps": 30
+      },
+      "required_for_declared": "L123",
+      "values": {
+        "codec": "hvc1.1.6.L120.B0",
+        "resolution": "1920x1080",
+        "fps": "60",
+        "declared_level": 120,
+        "family": "HEVC",
+        "distinct_values": null,
+        "claimed": null,
+        "measured": null,
+        "avg": null,
+        "max": null,
+        "ladder": null,
+        "declared_fps": null,
+        "level_capacity_fps_ceiling": null,
+        "excel_diffs": null
+      }
+    },
+    {
+      "profile": "P3",
+      "law": "L1_LEVEL_VS_RESOLUTION_SETTINGS",
+      "path": "profiles_calibrated.P3.settings.codec_full | settings.resolution | settings.fps",
+      "expected": null,
+      "observed": null,
+      "detail": "level capacity resolution below declared resolution",
+      "capacity": {
+        "resRank": 3,
+        "fps": 30
+      },
+      "required_for_declared": "L156",
+      "values": {
+        "codec": "hvc1.1.6.L120.B0",
+        "resolution": "3840x2160",
+        "fps": "120",
+        "declared_level": 120,
+        "family": "HEVC",
+        "distinct_values": null,
+        "claimed": null,
+        "measured": null,
+        "avg": null,
+        "max": null,
+        "ladder": null,
+        "declared_fps": null,
+        "level_capacity_fps_ceiling": null,
+        "excel_diffs": null
+      }
+    },
+    {
+      "profile": "P3",
+      "law": "L1_LEVEL_VS_RESOLUTION_CODEC_STRING",
+      "path": "profiles_calibrated.P3.settings.codec_string | headerOverrides.X-Stream-Resolution | X-Stream-FPS",
+      "expected": null,
+      "observed": null,
+      "detail": "level capacity fps below declared fps",
+      "capacity": {
+        "resRank": 3,
+        "fps": 30
+      },
+      "required_for_declared": "L123",
+      "values": {
+        "codec": "hvc1.2.4.L120.B0",
+        "resolution": "1920x1080",
+        "fps": "60",
+        "declared_level": 120,
+        "family": "HEVC",
+        "distinct_values": null,
+        "claimed": null,
+        "measured": null,
+        "avg": null,
+        "max": null,
+        "ladder": null,
+        "declared_fps": null,
+        "level_capacity_fps_ceiling": null,
+        "excel_diffs": null
+      }
+    },
+    {
+      "profile": "P3",
+      "law": "L4_MAIN10_FLOOR",
+      "path": "profiles_calibrated.P3.settings.codec_full",
+      "expected": null,
+      "observed": "hvc1.1.6.L120.B0",
+      "detail": "HEVC Main (hvc1.1.x) primary is BELOW the Main10 floor required since 2026-06-11",
+      "capacity": null,
+      "required_for_declared": null,
+      "values": {
+        "codec": null,
+        "resolution": null,
+        "fps": null,
+        "declared_level": null,
+        "family": null,
+        "distinct_values": null,
+        "claimed": null,
+        "measured": null,
+        "avg": null,
+        "max": null,
+        "ladder": null,
+        "declared_fps": null,
+        "level_capacity_fps_ceiling": null,
+        "excel_diffs": null
+      }
+    },
+    {
+      "profile": "P3",
+      "law": "L5_LADDER_HAS_MANIFEST_CODEC",
+      "path": "prisma_lab_sync_v20.codec_ladder_per_profile.P3.video",
+      "expected": "hvc1.2.4.L123.B0",
+      "observed": null,
+      "detail": null,
+      "capacity": null,
+      "required_for_declared": null,
+      "values": {
+        "codec": null,
+        "resolution": null,
+        "fps": null,
+        "declared_level": null,
+        "family": null,
+        "distinct_values": null,
+        "claimed": null,
+        "measured": null,
+        "avg": null,
+        "max": null,
+        "ladder": "hvc1.1.6.L120.B0,hev1.1.6.L120.B0,hvc1.2.4.L120.B0,avc1.640028,avc1.4D401F",
+        "declared_fps": null,
+        "level_capacity_fps_ceiling": null,
+        "excel_diffs": null
+      }
+    },
+    {
+      "profile": "P3",
+      "law": "L6_INTERNAL_CODEC_AGREEMENT",
+      "path": [
+        "profiles_calibrated.P3.settings.codec_full",
+        "profiles_calibrated.P3.settings.codec_string",
+        "profiles_calibrated.P3.headerOverrides.X-Stream-Codecs",
+        "prisma_lab_sync_v20.codec_ladder_per_profile.P3.video"
+      ],
+      "expected": null,
+      "observed": [
+        "hvc1.1.6.l120.b0",
+        "hvc1.2.4.l120.b0"
+      ],
+      "detail": null,
+      "capacity": null,
+      "required_for_declared": null,
+      "values": {
+        "codec": null,
+        "resolution": null,
+        "fps": null,
+        "declared_level": null,
+        "family": null,
+        "distinct_values": [
+          "hvc1.1.6.l120.b0",
+          "hvc1.2.4.l120.b0"
+        ],
+        "claimed": null,
+        "measured": null,
+        "avg": null,
+        "max": null,
+        "ladder": null,
+        "declared_fps": null,
+        "level_capacity_fps_ceiling": null,
+        "excel_diffs": null
+      }
+    },
+    {
+      "profile": "P3",
+      "law": "L7_BITRATE_ORDER",
+      "path": [
+        "profiles_calibrated.P3.settings.avgBitrateKbps",
+        "profiles_calibrated.P3.settings.maxBitrateKbps"
+      ],
+      "expected": null,
+      "observed": null,
+      "detail": "average bitrate declared above the declared maximum (impossible ordering)",
+      "capacity": null,
+      "required_for_declared": null,
+      "values": {
+        "codec": null,
+        "resolution": null,
+        "fps": null,
+        "declared_level": null,
+        "family": null,
+        "distinct_values": null,
+        "claimed": null,
+        "measured": null,
+        "avg": 15000,
+        "max": 10000,
+        "ladder": null,
+        "declared_fps": null,
+        "level_capacity_fps_ceiling": null,
+        "excel_diffs": null
+      }
+    },
+    {
+      "profile": "P3",
+      "law": "L8_HEADER_COUNT_CLAIM",
+      "path": [
+        "profiles_calibrated.P3.settings.headersCount"
+      ],
+      "expected": null,
+      "observed": null,
+      "detail": null,
+      "capacity": null,
+      "required_for_declared": null,
+      "values": {
+        "codec": null,
+        "resolution": null,
+        "fps": null,
+        "declared_level": null,
+        "family": null,
+        "distinct_values": null,
+        "claimed": 233,
+        "measured": 400,
+        "avg": null,
+        "max": null,
+        "ladder": null,
+        "declared_fps": null,
+        "level_capacity_fps_ceiling": null,
+        "excel_diffs": null
+      }
+    },
+    {
+      "profile": "P3",
+      "law": "L10_EXCEL_CANONICAL_MATCH",
+      "path": [
+        "6_NIVEL_2_PROFILES!E25 <-> profiles_calibrated.P3.settings.resolution",
+        "6_NIVEL_2_PROFILES!E48 <-> profiles_calibrated.P3.settings.maxResolution",
+        "6_NIVEL_2_PROFILES!E37 <-> profiles_calibrated.P3.settings.codec_full",
+        "6_NIVEL_2_PROFILES!E350 <-> profiles_calibrated.P3.headerOverrides.X-Stream-Codecs",
+        "6_NIVEL_2_PROFILES!E135 <-> profiles_calibrated.P3.headerOverrides.X-APE-CODEC",
+        "6_NIVEL_2_PROFILES!E136 <-> profiles_calibrated.P3.headerOverrides.X-APE-RESOLUTION",
+        "6_NIVEL_2_PROFILES!E109 <-> profiles_calibrated.P3.vlcopt.video-width",
+        "6_NIVEL_2_PROFILES!E110 <-> profiles_calibrated.P3.vlcopt.video-height"
+      ],
+      "expected": null,
+      "observed": null,
+      "detail": null,
+      "capacity": null,
+      "required_for_declared": null,
+      "values": {
+        "codec": null,
+        "resolution": null,
+        "fps": null,
+        "declared_level": null,
+        "family": null,
+        "distinct_values": null,
+        "claimed": null,
+        "measured": null,
+        "avg": null,
+        "max": null,
+        "ladder": null,
+        "declared_fps": null,
+        "level_capacity_fps_ceiling": null,
+        "excel_diffs": [
+          {
+            "json_path": "profiles_calibrated.P3.settings.resolution",
+            "excel_cell": "6_NIVEL_2_PROFILES!E25",
+            "excel_value": "1920x1080",
+            "json_value": "3840x2160",
+            "status": "DIFF"
+          },
+          {
+            "json_path": "profiles_calibrated.P3.settings.maxResolution",
+            "excel_cell": "6_NIVEL_2_PROFILES!E48",
+            "excel_value": "1920x1080",
+            "json_value": "3840x2160",
+            "status": "DIFF"
+          },
+          {
+            "json_path": "profiles_calibrated.P3.settings.codec_full",
+            "excel_cell": "6_NIVEL_2_PROFILES!E37",
+            "excel_value": "hvc1.2.4.L123.B0",
+            "json_value": "hvc1.1.6.L120.B0",
+            "status": "DIFF"
+          },
+          {
+            "json_path": "profiles_calibrated.P3.headerOverrides.X-Stream-Codecs",
+            "excel_cell": "6_NIVEL_2_PROFILES!E350",
+            "excel_value": "hvc1.2.4.L123.B0,mp4a.40.2",
+            "json_value": "hvc1.1.6.L120.B0,mp4a.40.2",
+            "status": "DIFF"
+          },
+          {
+            "json_path": "profiles_calibrated.P3.headerOverrides.X-APE-CODEC",
+            "excel_cell": "6_NIVEL_2_PROFILES!E135",
+            "excel_value": "hvc1.2.4.L123.B0,avc1.640028",
+            "json_value": "avc1.640028,hvc1.1.6.L120.90",
+            "status": "DIFF"
+          },
+          {
+            "json_path": "profiles_calibrated.P3.headerOverrides.X-APE-RESOLUTION",
+            "excel_cell": "6_NIVEL_2_PROFILES!E136",
+            "excel_value": "1920x1080,1280x720,854x480,640x360",
+            "json_value": "3840x2160,1920x1080,1280x720,854x480",
+            "status": "DIFF"
+          },
+          {
+            "json_path": "profiles_calibrated.P3.vlcopt.video-width",
+            "excel_cell": "6_NIVEL_2_PROFILES!E109",
+            "excel_value": "1920",
+            "json_value": "3840",
+            "status": "DIFF"
+          },
+          {
+            "json_path": "profiles_calibrated.P3.vlcopt.video-height",
+            "excel_cell": "6_NIVEL_2_PROFILES!E110",
+            "excel_value": "1080",
+            "json_value": "2160",
+            "status": "DIFF"
+          }
+        ]
+      }
+    },
+    {
+      "profile": "P3",
+      "law": "L11_FPS_LEVEL_CAPACITY",
+      "path": [
+        "6_NIVEL_2_PROFILES!{col}25 (resolution)",
+        "6_NIVEL_2_PROFILES!{col}32 (fps)",
+        "6_NIVEL_2_PROFILES!{col}37 (codec_full)"
+      ],
+      "expected": null,
+      "observed": null,
+      "detail": "fps 120 excede el techo 60 del nivel 123 a 1920x1080; D-15: corregir a <= 60 (60 solo si el nivel lo soporta)",
+      "capacity": null,
+      "required_for_declared": null,
+      "values": {
+        "codec": "hvc1.2.4.L123.B0",
+        "resolution": "1920x1080",
+        "fps": null,
+        "declared_level": null,
+        "family": null,
+        "distinct_values": null,
+        "claimed": null,
+        "measured": null,
+        "avg": null,
+        "max": null,
+        "ladder": null,
+        "declared_fps": "120",
+        "level_capacity_fps_ceiling": 60,
+        "excel_diffs": null
+      }
+    },
+    {
+      "profile": "P4",
+      "law": "L0_MANIFEST_CODEC",
+      "path": "profiles_calibrated.P4.settings.codec_full",
+      "expected": "hvc1.2.4.L93.B0",
+      "observed": "avc1.64001f",
+      "detail": null,
+      "capacity": null,
+      "required_for_declared": null,
+      "values": {
+        "codec": null,
+        "resolution": null,
+        "fps": null,
+        "declared_level": null,
+        "family": null,
+        "distinct_values": null,
+        "claimed": null,
+        "measured": null,
+        "avg": null,
+        "max": null,
+        "ladder": null,
+        "declared_fps": null,
+        "level_capacity_fps_ceiling": null,
+        "excel_diffs": null
+      }
+    },
+    {
+      "profile": "P4",
+      "law": "L1_LEVEL_VS_RESOLUTION_SETTINGS",
+      "path": "profiles_calibrated.P4.settings.codec_full | settings.resolution | settings.fps",
+      "expected": null,
+      "observed": null,
+      "detail": "level capacity resolution below declared resolution",
+      "capacity": {
+        "resRank": 2,
+        "fps": 30
+      },
+      "required_for_declared": "L156",
+      "values": {
+        "codec": "avc1.64001f",
+        "resolution": "3840x2160",
+        "fps": "120",
+        "declared_level": 31,
+        "family": "AVC",
+        "distinct_values": null,
+        "claimed": null,
+        "measured": null,
+        "avg": null,
+        "max": null,
+        "ladder": null,
+        "declared_fps": null,
+        "level_capacity_fps_ceiling": null,
+        "excel_diffs": null
+      }
+    },
+    {
+      "profile": "P4",
+      "law": "L4_MAIN10_FLOOR",
+      "path": "profiles_calibrated.P4.settings.codec_full",
+      "expected": null,
+      "observed": "avc1.64001f",
+      "detail": "AVC primary on a non-failsafe profile violates the Main10 floor",
+      "capacity": null,
+      "required_for_declared": null,
+      "values": {
+        "codec": null,
+        "resolution": null,
+        "fps": null,
+        "declared_level": null,
+        "family": null,
+        "distinct_values": null,
+        "claimed": null,
+        "measured": null,
+        "avg": null,
+        "max": null,
+        "ladder": null,
+        "declared_fps": null,
+        "level_capacity_fps_ceiling": null,
+        "excel_diffs": null
+      }
+    },
+    {
+      "profile": "P4",
+      "law": "L5_LADDER_HAS_MANIFEST_CODEC",
+      "path": "prisma_lab_sync_v20.codec_ladder_per_profile.P4.video",
+      "expected": "hvc1.2.4.L93.B0",
+      "observed": null,
+      "detail": null,
+      "capacity": null,
+      "required_for_declared": null,
+      "values": {
+        "codec": null,
+        "resolution": null,
+        "fps": null,
+        "declared_level": null,
+        "family": null,
+        "distinct_values": null,
+        "claimed": null,
+        "measured": null,
+        "avg": null,
+        "max": null,
+        "ladder": "hvc1.1.6.L93.B0,hev1.1.6.L93.B0,avc1.640020,avc1.4D401F,avc1.42E01F",
+        "declared_fps": null,
+        "level_capacity_fps_ceiling": null,
+        "excel_diffs": null
+      }
+    },
+    {
+      "profile": "P4",
+      "law": "L6_INTERNAL_CODEC_AGREEMENT",
+      "path": [
+        "profiles_calibrated.P4.settings.codec_full",
+        "profiles_calibrated.P4.settings.codec_string",
+        "profiles_calibrated.P4.headerOverrides.X-Stream-Codecs",
+        "prisma_lab_sync_v20.codec_ladder_per_profile.P4.video"
+      ],
+      "expected": null,
+      "observed": [
+        "avc1.64001f",
+        "avc1.640028",
+        "hvc1.1.6.l93.b0"
+      ],
+      "detail": null,
+      "capacity": null,
+      "required_for_declared": null,
+      "values": {
+        "codec": null,
+        "resolution": null,
+        "fps": null,
+        "declared_level": null,
+        "family": null,
+        "distinct_values": [
+          "avc1.64001f",
+          "avc1.640028",
+          "hvc1.1.6.l93.b0"
+        ],
+        "claimed": null,
+        "measured": null,
+        "avg": null,
+        "max": null,
+        "ladder": null,
+        "declared_fps": null,
+        "level_capacity_fps_ceiling": null,
+        "excel_diffs": null
+      }
+    },
+    {
+      "profile": "P4",
+      "law": "L7_BITRATE_ORDER",
+      "path": [
+        "profiles_calibrated.P4.settings.avgBitrateKbps",
+        "profiles_calibrated.P4.settings.maxBitrateKbps"
+      ],
+      "expected": null,
+      "observed": null,
+      "detail": "average bitrate declared above the declared maximum (impossible ordering)",
+      "capacity": null,
+      "required_for_declared": null,
+      "values": {
+        "codec": null,
+        "resolution": null,
+        "fps": null,
+        "declared_level": null,
+        "family": null,
+        "distinct_values": null,
+        "claimed": null,
+        "measured": null,
+        "avg": 6000,
+        "max": 5000,
+        "ladder": null,
+        "declared_fps": null,
+        "level_capacity_fps_ceiling": null,
+        "excel_diffs": null
+      }
+    },
+    {
+      "profile": "P4",
+      "law": "L8_HEADER_COUNT_CLAIM",
+      "path": [
+        "profiles_calibrated.P4.settings.headersCount"
+      ],
+      "expected": null,
+      "observed": null,
+      "detail": null,
+      "capacity": null,
+      "required_for_declared": null,
+      "values": {
+        "codec": null,
+        "resolution": null,
+        "fps": null,
+        "declared_level": null,
+        "family": null,
+        "distinct_values": null,
+        "claimed": 233,
+        "measured": 400,
+        "avg": null,
+        "max": null,
+        "ladder": null,
+        "declared_fps": null,
+        "level_capacity_fps_ceiling": null,
+        "excel_diffs": null
+      }
+    },
+    {
+      "profile": "P4",
+      "law": "L10_EXCEL_CANONICAL_MATCH",
+      "path": [
+        "6_NIVEL_2_PROFILES!F25 <-> profiles_calibrated.P4.settings.resolution",
+        "6_NIVEL_2_PROFILES!F48 <-> profiles_calibrated.P4.settings.maxResolution",
+        "6_NIVEL_2_PROFILES!F33 <-> profiles_calibrated.P4.settings.codec",
+        "6_NIVEL_2_PROFILES!F37 <-> profiles_calibrated.P4.settings.codec_full",
+        "6_NIVEL_2_PROFILES!F350 <-> profiles_calibrated.P4.headerOverrides.X-Stream-Codecs",
+        "6_NIVEL_2_PROFILES!F135 <-> profiles_calibrated.P4.headerOverrides.X-APE-CODEC",
+        "6_NIVEL_2_PROFILES!F136 <-> profiles_calibrated.P4.headerOverrides.X-APE-RESOLUTION",
+        "6_NIVEL_2_PROFILES!F109 <-> profiles_calibrated.P4.vlcopt.video-width",
+        "6_NIVEL_2_PROFILES!F110 <-> profiles_calibrated.P4.vlcopt.video-height"
+      ],
+      "expected": null,
+      "observed": null,
+      "detail": null,
+      "capacity": null,
+      "required_for_declared": null,
+      "values": {
+        "codec": null,
+        "resolution": null,
+        "fps": null,
+        "declared_level": null,
+        "family": null,
+        "distinct_values": null,
+        "claimed": null,
+        "measured": null,
+        "avg": null,
+        "max": null,
+        "ladder": null,
+        "declared_fps": null,
+        "level_capacity_fps_ceiling": null,
+        "excel_diffs": [
+          {
+            "json_path": "profiles_calibrated.P4.settings.resolution",
+            "excel_cell": "6_NIVEL_2_PROFILES!F25",
+            "excel_value": "1280x720",
+            "json_value": "3840x2160",
+            "status": "DIFF"
+          },
+          {
+            "json_path": "profiles_calibrated.P4.settings.maxResolution",
+            "excel_cell": "6_NIVEL_2_PROFILES!F48",
+            "excel_value": "1280x720",
+            "json_value": "3840x2160",
+            "status": "DIFF"
+          },
+          {
+            "json_path": "profiles_calibrated.P4.settings.codec",
+            "excel_cell": "6_NIVEL_2_PROFILES!F33",
+            "excel_value": "HVC1",
+            "json_value": "AVC1",
+            "status": "DIFF"
+          },
+          {
+            "json_path": "profiles_calibrated.P4.settings.codec_full",
+            "excel_cell": "6_NIVEL_2_PROFILES!F37",
+            "excel_value": "hvc1.2.4.L93.B0",
+            "json_value": "avc1.64001f",
+            "status": "DIFF"
+          },
+          {
+            "json_path": "profiles_calibrated.P4.headerOverrides.X-Stream-Codecs",
+            "excel_cell": "6_NIVEL_2_PROFILES!F350",
+            "excel_value": "hvc1.2.4.L93.B0,mp4a.40.2",
+            "json_value": "avc1.64001f,mp4a.40.2",
+            "status": "DIFF"
+          },
+          {
+            "json_path": "profiles_calibrated.P4.headerOverrides.X-APE-CODEC",
+            "excel_cell": "6_NIVEL_2_PROFILES!F135",
+            "excel_value": "hvc1.2.4.L93.B0,avc1.4d401f",
+            "json_value": "avc1.4d401f",
+            "status": "DIFF"
+          },
+          {
+            "json_path": "profiles_calibrated.P4.headerOverrides.X-APE-RESOLUTION",
+            "excel_cell": "6_NIVEL_2_PROFILES!F136",
+            "excel_value": "1280x720,854x480,640x360",
+            "json_value": "3840x2160,1920x1080,1280x720,854x480",
+            "status": "DIFF"
+          },
+          {
+            "json_path": "profiles_calibrated.P4.vlcopt.video-width",
+            "excel_cell": "6_NIVEL_2_PROFILES!F109",
+            "excel_value": "1280",
+            "json_value": "3840",
+            "status": "DIFF"
+          },
+          {
+            "json_path": "profiles_calibrated.P4.vlcopt.video-height",
+            "excel_cell": "6_NIVEL_2_PROFILES!F110",
+            "excel_value": "720",
+            "json_value": "2160",
+            "status": "DIFF"
+          }
+        ]
+      }
+    },
+    {
+      "profile": "P4",
+      "law": "L11_FPS_LEVEL_CAPACITY",
+      "path": [
+        "6_NIVEL_2_PROFILES!{col}25 (resolution)",
+        "6_NIVEL_2_PROFILES!{col}32 (fps)",
+        "6_NIVEL_2_PROFILES!{col}37 (codec_full)"
+      ],
+      "expected": null,
+      "observed": null,
+      "detail": "fps 120 excede el techo 30 del nivel 93 a 1280x720; D-15: corregir a <= 30 (60 solo si el nivel lo soporta)",
+      "capacity": null,
+      "required_for_declared": null,
+      "values": {
+        "codec": "hvc1.2.4.L93.B0",
+        "resolution": "1280x720",
+        "fps": null,
+        "declared_level": null,
+        "family": null,
+        "distinct_values": null,
+        "claimed": null,
+        "measured": null,
+        "avg": null,
+        "max": null,
+        "ladder": null,
+        "declared_fps": "120",
+        "level_capacity_fps_ceiling": 30,
+        "excel_diffs": null
+      }
+    },
+    {
+      "profile": "P5",
+      "law": "L1_LEVEL_VS_RESOLUTION_SETTINGS",
+      "path": "profiles_calibrated.P5.settings.codec_full | settings.resolution | settings.fps",
+      "expected": null,
+      "observed": null,
+      "detail": "level capacity resolution below declared resolution",
+      "capacity": {
+        "resRank": 1,
+        "fps": 30
+      },
+      "required_for_declared": "L156",
+      "values": {
+        "codec": "avc1.42c01e",
+        "resolution": "3840x2160",
+        "fps": "120",
+        "declared_level": 30,
+        "family": "AVC",
+        "distinct_values": null,
+        "claimed": null,
+        "measured": null,
+        "avg": null,
+        "max": null,
+        "ladder": null,
+        "declared_fps": null,
+        "level_capacity_fps_ceiling": null,
+        "excel_diffs": null
+      }
+    },
+    {
+      "profile": "P5",
+      "law": "L5_LADDER_HAS_MANIFEST_CODEC",
+      "path": "prisma_lab_sync_v20.codec_ladder_per_profile.P5.video",
+      "expected": "hvc1.2.4.L90.B0",
+      "observed": null,
+      "detail": null,
+      "capacity": null,
+      "required_for_declared": null,
+      "values": {
+        "codec": null,
+        "resolution": null,
+        "fps": null,
+        "declared_level": null,
+        "family": null,
+        "distinct_values": null,
+        "claimed": null,
+        "measured": null,
+        "avg": null,
+        "max": null,
+        "ladder": "avc1.42E01E,avc1.42E00D,mp2v.2",
+        "declared_fps": null,
+        "level_capacity_fps_ceiling": null,
+        "excel_diffs": null
+      }
+    },
+    {
+      "profile": "P5",
+      "law": "L6_INTERNAL_CODEC_AGREEMENT",
+      "path": [
+        "profiles_calibrated.P5.settings.codec_full",
+        "profiles_calibrated.P5.settings.codec_string",
+        "profiles_calibrated.P5.headerOverrides.X-Stream-Codecs",
+        "prisma_lab_sync_v20.codec_ladder_per_profile.P5.video"
+      ],
+      "expected": null,
+      "observed": [
+        "avc1.42c01e",
+        "avc1.42e01e"
+      ],
+      "detail": null,
+      "capacity": null,
+      "required_for_declared": null,
+      "values": {
+        "codec": null,
+        "resolution": null,
+        "fps": null,
+        "declared_level": null,
+        "family": null,
+        "distinct_values": [
+          "avc1.42c01e",
+          "avc1.42e01e"
+        ],
+        "claimed": null,
+        "measured": null,
+        "avg": null,
+        "max": null,
+        "ladder": null,
+        "declared_fps": null,
+        "level_capacity_fps_ceiling": null,
+        "excel_diffs": null
+      }
+    },
+    {
+      "profile": "P5",
+      "law": "L7_BITRATE_ORDER",
+      "path": [
+        "profiles_calibrated.P5.settings.avgBitrateKbps",
+        "profiles_calibrated.P5.settings.maxBitrateKbps"
+      ],
+      "expected": null,
+      "observed": null,
+      "detail": "average bitrate declared above the declared maximum (impossible ordering)",
+      "capacity": null,
+      "required_for_declared": null,
+      "values": {
+        "codec": null,
+        "resolution": null,
+        "fps": null,
+        "declared_level": null,
+        "family": null,
+        "distinct_values": null,
+        "claimed": null,
+        "measured": null,
+        "avg": 2200,
+        "max": 2000,
+        "ladder": null,
+        "declared_fps": null,
+        "level_capacity_fps_ceiling": null,
+        "excel_diffs": null
+      }
+    },
+    {
+      "profile": "P5",
+      "law": "L8_HEADER_COUNT_CLAIM",
+      "path": [
+        "profiles_calibrated.P5.settings.headersCount"
+      ],
+      "expected": null,
+      "observed": null,
+      "detail": null,
+      "capacity": null,
+      "required_for_declared": null,
+      "values": {
+        "codec": null,
+        "resolution": null,
+        "fps": null,
+        "declared_level": null,
+        "family": null,
+        "distinct_values": null,
+        "claimed": 233,
+        "measured": 400,
+        "avg": null,
+        "max": null,
+        "ladder": null,
+        "declared_fps": null,
+        "level_capacity_fps_ceiling": null,
+        "excel_diffs": null
+      }
+    },
+    {
+      "profile": "P5",
+      "law": "L10_EXCEL_CANONICAL_MATCH",
+      "path": [
+        "6_NIVEL_2_PROFILES!G25 <-> profiles_calibrated.P5.settings.resolution",
+        "6_NIVEL_2_PROFILES!G48 <-> profiles_calibrated.P5.settings.maxResolution",
+        "6_NIVEL_2_PROFILES!G136 <-> profiles_calibrated.P5.headerOverrides.X-APE-RESOLUTION",
+        "6_NIVEL_2_PROFILES!G109 <-> profiles_calibrated.P5.vlcopt.video-width",
+        "6_NIVEL_2_PROFILES!G110 <-> profiles_calibrated.P5.vlcopt.video-height"
+      ],
+      "expected": null,
+      "observed": null,
+      "detail": null,
+      "capacity": null,
+      "required_for_declared": null,
+      "values": {
+        "codec": null,
+        "resolution": null,
+        "fps": null,
+        "declared_level": null,
+        "family": null,
+        "distinct_values": null,
+        "claimed": null,
+        "measured": null,
+        "avg": null,
+        "max": null,
+        "ladder": null,
+        "declared_fps": null,
+        "level_capacity_fps_ceiling": null,
+        "excel_diffs": [
+          {
+            "json_path": "profiles_calibrated.P5.settings.resolution",
+            "excel_cell": "6_NIVEL_2_PROFILES!G25",
+            "excel_value": "854x480",
+            "json_value": "3840x2160",
+            "status": "DIFF"
+          },
+          {
+            "json_path": "profiles_calibrated.P5.settings.maxResolution",
+            "excel_cell": "6_NIVEL_2_PROFILES!G48",
+            "excel_value": "854x480",
+            "json_value": "3840x2160",
+            "status": "DIFF"
+          },
+          {
+            "json_path": "profiles_calibrated.P5.headerOverrides.X-APE-RESOLUTION",
+            "excel_cell": "6_NIVEL_2_PROFILES!G136",
+            "excel_value": "854x480,640x360,426x240",
+            "json_value": "3840x2160,1920x1080,1280x720,854x480",
+            "status": "DIFF"
+          },
+          {
+            "json_path": "profiles_calibrated.P5.vlcopt.video-width",
+            "excel_cell": "6_NIVEL_2_PROFILES!G109",
+            "excel_value": "854",
+            "json_value": "3840",
+            "status": "DIFF"
+          },
+          {
+            "json_path": "profiles_calibrated.P5.vlcopt.video-height",
+            "excel_cell": "6_NIVEL_2_PROFILES!G110",
+            "excel_value": "480",
+            "json_value": "2160",
+            "status": "DIFF"
+          }
+        ]
+      }
+    },
+    {
+      "profile": "P5",
+      "law": "L11_FPS_LEVEL_CAPACITY",
+      "path": [
+        "6_NIVEL_2_PROFILES!{col}25 (resolution)",
+        "6_NIVEL_2_PROFILES!{col}32 (fps)",
+        "6_NIVEL_2_PROFILES!{col}37 (codec_full)"
+      ],
+      "expected": null,
+      "observed": null,
+      "detail": "fps 120 excede el techo 30 del nivel 30 a 854x480; D-15: corregir a <= 30 (60 solo si el nivel lo soporta)",
+      "capacity": null,
+      "required_for_declared": null,
+      "values": {
+        "codec": "avc1.42c01e",
+        "resolution": "854x480",
+        "fps": null,
+        "declared_level": null,
+        "family": null,
+        "distinct_values": null,
+        "claimed": null,
+        "measured": null,
+        "avg": null,
+        "max": null,
+        "ladder": null,
+        "declared_fps": "120",
+        "level_capacity_fps_ceiling": 30,
+        "excel_diffs": null
+      }
+    },
+    {
+      "profile": "P0",
+      "law": "L9_CHANNELS_MAP_ALIGNMENT",
+      "path": "frontend/channels_map.json[*].codec_rfc6381",
+      "expected": "dvh1.08.06",
+      "observed": "hvc1.2.4.L183.B0",
+      "detail": "per-channel map declares a different codec than the LAB profile SSOT"
+    },
+    {
+      "profile": "P1",
+      "law": "L9_CHANNELS_MAP_ALIGNMENT",
+      "path": "frontend/channels_map.json[*].codec_rfc6381",
+      "expected": "hvc1.2.4.L153.B0",
+      "observed": "hvc1.2.4.L150.B0",
+      "detail": "per-channel map declares a different codec than the LAB profile SSOT"
+    },
+    {
+      "profile": "P2",
+      "law": "L9_CHANNELS_MAP_ALIGNMENT",
+      "path": "frontend/channels_map.json[*].codec_rfc6381",
+      "expected": "hvc1.2.4.L150.B0",
+      "observed": "avc1.640028",
+      "detail": "per-channel map declares a different codec than the LAB profile SSOT"
+    }
+  ],
+  "app_lane_crosscheck": {
+    "source_task": "t6 (lane APP) → verificado por t5 (lane JSON)",
+    "file": "C:/Users/HFRC/Desktop/IPTV_Navigator_PRO_v5.4_MAX_AGGRESSION/IPTV_v5.4_MAX_AGGRESSION/frontend/lab_master_22.6.0.json",
+    "sha256_at_audit": "099A1707A2F1AE692FFCFEDE01165F21CD66656B786742CE8DB518581A371FD4",
+    "q1_p1_level_vs_resolution": {
+      "verdict": "CONFIRMADO (literal, sin corrección en ningún nodo)",
+      "impossible_pair": {
+        "codec": "hvc1.2.4.L153.B0",
+        "resolution": "7680x4320",
+        "fps": "120",
+        "level_capacity": "4K@60",
+        "required_level": "L186"
+      },
+      "nodes_declaring_the_level": {
+        "profiles_calibrated.P1.settings.codec_full": "hvc1.2.4.L153.B0",
+        "profiles_calibrated.P1.settings.codec_string": "hvc1.2.4.L153.B0,ac-3",
+        "profiles_calibrated.P1.headerOverrides.X-Stream-Codecs": "hvc1.2.4.L153.B0,ac-3",
+        "prisma_lab_sync_v20.codec_ladder_per_profile.P1.video": "hvc1.2.4.L153.B0,hev1.2.4.L153.B0,hvc1.1.6.L150.B0,av01.0.12M.10.0.110.09.16.09.0,avc1.640033,avc1.640028"
+      },
+      "nodes_with_8k_capable_alternative": {
+        "profiles_calibrated.P1.headerOverrides.X-APE-CODEC": "dvh1.08.06,hvc1.2.4.L153.B0,hev1.2.4.L153.B0,av01.0.15M.10",
+        "profiles_calibrated.P1.headerOverrides.X-Codec-Support": "dvh1.08.06,hvc1.2.4.L153.B0,hev1.2.4.L153.B0,av01.0.15M.10",
+        "profiles_calibrated.P1.headerOverrides.X-HEVC-Level": "6.1,6.0,5.1,5.0,4.1"
+      },
+      "hevc_level_8k120_nodes_found_in_P1": 0,
+      "emitted_triple_also_impossible": {
+        "codec": "hvc1.2.4.L153.B0,ac-3",
+        "resolution": "3840x2160",
+        "fps": "120",
+        "required_level": "L156"
+      }
+    },
+    "q2_fps_all_profiles": {
+      "verdict": "CONFIRMADO en settings.fps (6/6 = \"120\"); REFUTADA la lectura de que el fps emitido esté mal en los 6",
+      "settings_fps": {
+        "P0": "120",
+        "P1": "120",
+        "P2": "120",
+        "P3": "120",
+        "P4": "120",
+        "P5": "120"
+      },
+      "emitted_X_Stream_FPS": {
+        "P0": "60",
+        "P1": "120",
+        "P2": "60",
+        "P3": "60",
+        "P4": "30",
+        "P5": "30"
+      },
+      "differs_from_manifest_settings_fps": [
+        "P2",
+        "P3",
+        "P4",
+        "P5"
+      ],
+      "differs_from_manifest_emitted_fps": [
+        "P0"
+      ],
+      "X_APE_FPS_cardinality": {
+        "P0": "4 values vs 4 resolutions",
+        "P1": "4 values vs 4 resolutions",
+        "P2": "4 values vs 4 resolutions",
+        "P3": "4 values vs 4 resolutions",
+        "P4": "3 values vs 4 resolutions",
+        "P5": "3 values vs 4 resolutions"
+      }
+    },
+    "q3_name_vs_resolution": {
+      "verdict": "CONFIRMADO (nombre ≠ settings.resolution/maxResolution en P1..P5; los campos de emisión sí respetan el tier)",
+      "pairs": {
+        "P0": {
+          "name": "8K Master",
+          "settings.resolution": "7680x4320",
+          "settings.maxResolution": "7680x4320",
+          "headerOverrides.X-Stream-Resolution": "7680x4320",
+          "kodiprop.max_resolution": "7680x4320",
+          "vlcopt.video-width x video-height": "7680x4320"
+        },
+        "P1": {
+          "name": "4K UHD",
+          "settings.resolution": "7680x4320",
+          "settings.maxResolution": "7680x4320",
+          "headerOverrides.X-Stream-Resolution": "3840x2160",
+          "kodiprop.max_resolution": "3840x2160",
+          "vlcopt.video-width x video-height": "7680x4320"
+        },
+        "P2": {
+          "name": "2K QHD",
+          "settings.resolution": "3840x2160",
+          "settings.maxResolution": "3840x2160",
+          "headerOverrides.X-Stream-Resolution": "3840x2160",
+          "kodiprop.max_resolution": "2560x1440",
+          "vlcopt.video-width x video-height": "2560x1440"
+        },
+        "P3": {
+          "name": "FHD 1080p",
+          "settings.resolution": "3840x2160",
+          "settings.maxResolution": "3840x2160",
+          "headerOverrides.X-Stream-Resolution": "1920x1080",
+          "kodiprop.max_resolution": "1920x1080",
+          "vlcopt.video-width x video-height": "3840x2160"
+        },
+        "P4": {
+          "name": "HD 720p",
+          "settings.resolution": "3840x2160",
+          "settings.maxResolution": "3840x2160",
+          "headerOverrides.X-Stream-Resolution": "1280x720",
+          "kodiprop.max_resolution": "1280x720",
+          "vlcopt.video-width x video-height": "3840x2160"
+        },
+        "P5": {
+          "name": "SD 480p",
+          "settings.resolution": "3840x2160",
+          "settings.maxResolution": "3840x2160",
+          "headerOverrides.X-Stream-Resolution": "854x480",
+          "kodiprop.max_resolution": "854x480",
+          "vlcopt.video-width x video-height": "3840x2160"
+        }
+      },
+      "regression_origin": "settings.resolution por tier existía en LAB_CALIBRATED_BULLETPROOF_22.6.0-MEMC-ALIGNED.json (2026-05-23 01:12); el valor 3840x2160 para P3/P4/P5 aparece en …_BACKUP_20260607.json (2026-05-23 01:30) y se arrastra a B2→B3→B4/A1"
+    },
+    "q4_chroma_subsampling": {
+      "verdict": "CONFIRMADO y AMPLIADO: el valor corrupto está en los 6 perfiles, no sólo en P0",
+      "type": "string",
+      "value": "168055555555556",
+      "paths": [
+        "profiles_calibrated.P0.settings.chroma_subsampling",
+        "profiles_calibrated.P1.settings.chroma_subsampling",
+        "profiles_calibrated.P2.settings.chroma_subsampling",
+        "profiles_calibrated.P3.settings.chroma_subsampling",
+        "profiles_calibrated.P4.settings.chroma_subsampling",
+        "profiles_calibrated.P5.settings.chroma_subsampling"
+      ],
+      "same_pattern_elsewhere": [
+        {
+          "path": "profiles_calibrated.P0/P1/P2.optimized_timestamp",
+          "value": "46132.0850925926",
+          "class": "Excel date serial as string"
+        },
+        {
+          "path": "profiles_calibrated.P3/P4/P5.optimized_timestamp",
+          "value": "46132.0850810185",
+          "class": "Excel date serial as string"
+        },
+        {
+          "path": "config_global.Meta_Optimizer_Last_Fit",
+          "value": "0.699752",
+          "class": "number serialized as string"
+        },
+        {
+          "path": "config_global.Meta_Optimizer_Worst_Fit",
+          "value": "0.217547",
+          "class": "number serialized as string"
+        }
+      ]
+    },
+    "masking_note": "El valor imposible 8K@120+L153 vive en los campos que alimentan los placeholders {profile.resolution}/{profile.fps}/{profile.codecs} de placeholders_map (usados por nivel3_per_layer.SI). Si la lista emitida sale correcta, la sustitución ocurre en runtime (lane APP); desde el JSON no hay nodo que lo corrija."
+  },
+  "summary": {
+    "profiles_fail": [
+      "P0",
+      "P1",
+      "P2",
+      "P3",
+      "P4",
+      "P5"
+    ],
+    "profiles_pass": [],
+    "isolated_failure_count": 52,
+    "total_law_evaluations": 84
+  }
+}

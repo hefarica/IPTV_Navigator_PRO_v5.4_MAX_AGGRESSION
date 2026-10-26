@@ -1,0 +1,90 @@
+=== A. CONFIG OBJETIVO ===
+/etc/nginx/conf.d/50-ape-meta-plane.conf|10941|644|root:root|2026-10-26 04:33:48.187178823 +0000
+3e29b9280c05de36c4af445e8a9722573a23c865f240e2d87b2734178e60c515  /etc/nginx/conf.d/50-ape-meta-plane.conf
+
+=== B. DUMP VIVO: proxy_read_timeout (nginx -T) ===
+298:        proxy_read_timeout      60s;
+422:        proxy_read_timeout      60s;
+519:        proxy_read_timeout 300s;
+535:        proxy_read_timeout 86400s;
+826:    proxy_read_timeout 60s;
+-- conteo de 5s restantes:
+0
+
+=== C. nginx -t (validación, no escribe config) ===
+nginx: the configuration file /etc/nginx/nginx.conf syntax is ok
+nginx: configuration file /etc/nginx/nginx.conf test is successful
+nginx_t_exit=0
+
+=== D. SERVICIO nginx (reload vs restart) ===
+MainPID=2001835
+NRestarts=0
+ActiveState=active
+SubState=running
+ActiveEnterTimestamp=Sun 2026-10-25 23:35:04 UTC
+-- /run/nginx.pid:
+2001835
+-- proceso master:
+    PID                  STARTED ELAPSED CMD
+2001835 Sun Oct 25 23:35:04 2026   18659 nginx: master process /usr/sbin/nginx -g daemon on; master_process on;
+
+=== E. HEALTH :8088 ===
+http_code=200
+{"checks":{"last_latency_ms":1,"nginx":true,"shared_dicts":true,"upstreams_down":0,"requests":7,"error_ratio":0.4286,"last_host":"127.0.0.1:8088"},"plane":"meta\/v3","ts":1792989964,"qoe":{"host_down:line.tivi-ott.net":1,"last_ms":1,"bytes":3533,"last_ts":1792988608,"req":7,"all_failed":3,"rebase_ok":7,"last_host":"127.0.0.1:8088"},"ok":true}
+
+
+=== F. SNAPSHOT .bak (fuera de /etc/nginx) ===
+/root/nginx-bak|4096|700|2026-10-26 04:37:03.547878508 +0000
+/root/nginx-bak/50-ape-meta-plane.conf.bak_20261026T043331Z|10939|644|2026-10-24 17:59:36.904964754 +0000
+e06ee870c55201c359990d99459aa9784d01569f5200176cfffed3448525d3f9  /root/nginx-bak/50-ape-meta-plane.conf.bak_20261026T043331Z
+FUERA_DE_ETC=OK
+
+=== G. DUMPS PREVIOS ===
+-rw-r--r-- 1 root root 35974 Oct 26 04:33 /root/nginx-after-20261026T043331Z.conf
+-rw-r--r-- 1 root root 35972 Oct 26 04:33 /root/nginx-before-20261026T043331Z.conf
+4532d37e8323be43b21c5cdd373b17e605898038eed3ea56cdf13dff8f688ad8  /root/nginx-before-20261026T043331Z.conf
+14052b235aecf842a65be2824d68f88e240fb1172df27d728ad42d0c41fbfa06  /root/nginx-after-20261026T043331Z.conf
+
+=== H. DIFF dump previo vs dump vivo (hunks) ===
+diff_exit=1
+-- número de hunks:
+3
+-- líneas cambiadas (sólo +/-):
+-        proxy_read_timeout      5s;
++        proxy_read_timeout      60s;
+-        proxy_read_timeout      5s;
++        proxy_read_timeout      60s;
+-    proxy_read_timeout 20s;
++    proxy_read_timeout 60s;
+
+=== I. ARCHIVOS PROHIBIDOS (hashes) ===
+917c98d819576f55fe60547ce0d5330f3d5fd2a32bcbc7cd73d524f876c3ec58  /etc/nginx/conf.d/iptv-limit-conn.conf
+a9a7146a46b4080f32e0fd1e40772bce53cac3a8f0cd18ed2e1ebc5c31d4ce1f  /etc/nginx/nginx.conf
+a39e8de902cf5449553822eb1682d1a9d481390c1ce136a218d91fbe1ee4ac39  /etc/nginx/snippets/ape-meta-public.conf
+15bf1488e547723c2e2b0132a83a5b83697141e4a1d382fc2afabc4e68817bb7  /etc/cron.d/cache-health-monitor
+f1f5eb674744858ae7c5e84c73262e37545b0c84e557c6466cad20ae7b1f3b5e  /etc/nginx/lua/ape_uhd.lua
+7f1cd8a7f3dd58960c7dfde373ed115eeeac5be4a72a1d1fc5850636f9ccc360  /var/www/lists/APE_LISTA_1792869328847.m3u8.gz
+
+=== J. TIMERS netshield ===
+-                                  - -                                       - netshield-autopilot.timer      netshield-autopilot.service
+-                                  - -                                       - netshield-backup.timer         netshield-backup.service
+-                                  - -                                       - netshield-health.timer         netshield-health.service
+-                                  - -                                       - netshield-sentinel.timer       netshield-sentinel.service
+-                                  - -                                       - netshield-wg-health.timer      netshield-wg-health.service
+
+=== K. CRON.D ===
+total 32
+-rw-r--r-- 1 root root 114 Jun 20 05:34 ape-ip-autoenroll
+-rw-r--r-- 1 root root 259 Oct 26 02:59 cache-health-monitor
+-rw-r--r-- 1 root root 802 Apr 16  2023 certbot
+-rw-r--r-- 1 root root 201 Apr  8  2024 e2scrub_all
+-rw-r--r-- 1 root root 157 Apr 25  2026 mem-pressure-watch
+-rw-r--r-- 1 root root 712 Jan 19  2024 php
+-rw-r--r-- 1 root root 396 Aug  5  2025 sysstat
+-rw-r--r-- 1 root root 197 Apr 25  2026 wg-peer-audit
+
+=== L. LISTA SERVIDA (stat) ===
+bash: line 74: $'\r': command not found
+/var/www/lists/APE_LISTA_1792869328847.m3u8.gz|297134088|2026-10-25 17:56:21.209153230 +0000
+
+=== M. FIN (solo lectura) ===

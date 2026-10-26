@@ -1,0 +1,675 @@
+{
+  "lab_master(repo)": {
+    "path": "C:\\Users\\HFRC\\Desktop\\IPTV_Navigator_PRO_v5.4_MAX_AGGRESSION\\IPTV_v5.4_MAX_AGGRESSION\\frontend\\lab_master_22.6.0.json",
+    "bytes": 280065,
+    "mtime": "2026-08-31T02:13:39.532Z",
+    "bom": false,
+    "version": "22.6.0-CRYSTAL-4K-UHD",
+    "lab_version": "omega_v1",
+    "schema": "omega_v2_bulletproof_perprofile",
+    "exported_at": "2026-05-23T05:39:38",
+    "bulletproof": true,
+    "top_keys": [
+      "playlist_format",
+      "exported_at",
+      "profiles_calibrated",
+      "nivel1_directives",
+      "nivel3_per_layer",
+      "servers",
+      "evasion_pool",
+      "config_global",
+      "placeholders_map",
+      "scoring_metadata",
+      "omega_gap_plan",
+      "lab_version",
+      "lab_schema_variant",
+      "bulletproof",
+      "meta_per_profile",
+      "prisma_lab_sync_v20",
+      "version",
+      "dnr_calibration"
+    ],
+    "counts": {
+      "nivel1_directives": 51,
+      "nivel3_per_layer": {
+        "VLC": 23,
+        "KOD": 16,
+        "HTT": 7,
+        "EI": 8,
+        "SI": 7,
+        "SYS": 0,
+        "URL": 4
+      },
+      "nivel3_total": 65,
+      "placeholders_map": 57,
+      "servers": 4,
+      "evasion_user_agents": 17,
+      "evasion_referers": 4,
+      "config_global": 48,
+      "scoring_metadata_nivel1_count": 50,
+      "scoring_metadata_nivel3_total": 65,
+      "scoring_metadata_placeholders_count": 57,
+      "scoring_metadata_profile_keys_total": 660,
+      "scoring_metadata_total_directives": 2886,
+      "prisma_lab_sync_v20_keys": 12,
+      "dnr_calibration": "present",
+      "omega_gap_plan_items": 56
+    },
+    "per_profile": {
+      "P0": {
+        "settings": 57,
+        "vlcopt": 48,
+        "kodiprop": 8,
+        "headerOverrides": 402,
+        "hlsjs": 41,
+        "prefetch_config": 14,
+        "top_keys": 16
+      },
+      "P1": {
+        "settings": 57,
+        "vlcopt": 48,
+        "kodiprop": 8,
+        "headerOverrides": 400,
+        "hlsjs": 41,
+        "prefetch_config": 14,
+        "top_keys": 16
+      },
+      "P2": {
+        "settings": 57,
+        "vlcopt": 48,
+        "kodiprop": 8,
+        "headerOverrides": 402,
+        "hlsjs": 41,
+        "prefetch_config": 14,
+        "top_keys": 16
+      },
+      "P3": {
+        "settings": 55,
+        "vlcopt": 48,
+        "kodiprop": 8,
+        "headerOverrides": 400,
+        "hlsjs": 41,
+        "prefetch_config": 14,
+        "top_keys": 16
+      },
+      "P4": {
+        "settings": 55,
+        "vlcopt": 48,
+        "kodiprop": 7,
+        "headerOverrides": 400,
+        "hlsjs": 41,
+        "prefetch_config": 14,
+        "top_keys": 16
+      },
+      "P5": {
+        "settings": 55,
+        "vlcopt": 48,
+        "kodiprop": 7,
+        "headerOverrides": 400,
+        "hlsjs": 41,
+        "prefetch_config": 14,
+        "top_keys": 16
+      }
+    }
+  },
+  "crystal4k(dl)": {
+    "path": "C:\\Users\\HFRC\\Downloads\\LAB_CALIBRATED_BULLETPROOF_22.6.0-CRYSTAL-4K-UHD.json",
+    "bytes": 280065,
+    "mtime": "2026-08-31T02:13:39.532Z",
+    "bom": false,
+    "version": "22.6.0-CRYSTAL-4K-UHD",
+    "lab_version": "omega_v1",
+    "schema": "omega_v2_bulletproof_perprofile",
+    "exported_at": "2026-05-23T05:39:38",
+    "bulletproof": true,
+    "top_keys": [
+      "playlist_format",
+      "exported_at",
+      "profiles_calibrated",
+      "nivel1_directives",
+      "nivel3_per_layer",
+      "servers",
+      "evasion_pool",
+      "config_global",
+      "placeholders_map",
+      "scoring_metadata",
+      "omega_gap_plan",
+      "lab_version",
+      "lab_schema_variant",
+      "bulletproof",
+      "meta_per_profile",
+      "prisma_lab_sync_v20",
+      "version",
+      "dnr_calibration"
+    ],
+    "counts": {
+      "nivel1_directives": 51,
+      "nivel3_per_layer": {
+        "VLC": 23,
+        "KOD": 16,
+        "HTT": 7,
+        "EI": 8,
+        "SI": 7,
+        "SYS": 0,
+        "URL": 4
+      },
+      "nivel3_total": 65,
+      "placeholders_map": 57,
+      "servers": 4,
+      "evasion_user_agents": 17,
+      "evasion_referers": 4,
+      "config_global": 48,
+      "scoring_metadata_nivel1_count": 50,
+      "scoring_metadata_nivel3_total": 65,
+      "scoring_metadata_placeholders_count": 57,
+      "scoring_metadata_profile_keys_total": 660,
+      "scoring_metadata_total_directives": 2886,
+      "prisma_lab_sync_v20_keys": 12,
+      "dnr_calibration": "present",
+      "omega_gap_plan_items": 56
+    },
+    "per_profile": {
+      "P0": {
+        "settings": 57,
+        "vlcopt": 48,
+        "kodiprop": 8,
+        "headerOverrides": 402,
+        "hlsjs": 41,
+        "prefetch_config": 14,
+        "top_keys": 16
+      },
+      "P1": {
+        "settings": 57,
+        "vlcopt": 48,
+        "kodiprop": 8,
+        "headerOverrides": 400,
+        "hlsjs": 41,
+        "prefetch_config": 14,
+        "top_keys": 16
+      },
+      "P2": {
+        "settings": 57,
+        "vlcopt": 48,
+        "kodiprop": 8,
+        "headerOverrides": 402,
+        "hlsjs": 41,
+        "prefetch_config": 14,
+        "top_keys": 16
+      },
+      "P3": {
+        "settings": 55,
+        "vlcopt": 48,
+        "kodiprop": 8,
+        "headerOverrides": 400,
+        "hlsjs": 41,
+        "prefetch_config": 14,
+        "top_keys": 16
+      },
+      "P4": {
+        "settings": 55,
+        "vlcopt": 48,
+        "kodiprop": 7,
+        "headerOverrides": 400,
+        "hlsjs": 41,
+        "prefetch_config": 14,
+        "top_keys": 16
+      },
+      "P5": {
+        "settings": 55,
+        "vlcopt": 48,
+        "kodiprop": 7,
+        "headerOverrides": 400,
+        "hlsjs": 41,
+        "prefetch_config": 14,
+        "top_keys": 16
+      }
+    }
+  },
+  "dnr8k120(dl)": {
+    "path": "C:\\Users\\HFRC\\Downloads\\LAB_CALIBRATED_BULLETPROOF_22.6.0-MEMC-TOTAL-8K120-DNR.json",
+    "bytes": 423609,
+    "mtime": "2026-08-30T20:25:56.050Z",
+    "bom": false,
+    "version": "22.6.0-MEMC-TOTAL-8K120",
+    "lab_version": "omega_v1",
+    "schema": "omega_v2_bulletproof_perprofile",
+    "exported_at": "2026-05-23T05:39:38",
+    "bulletproof": true,
+    "top_keys": [
+      "playlist_format",
+      "exported_at",
+      "profiles_calibrated",
+      "nivel1_directives",
+      "nivel3_per_layer",
+      "servers",
+      "evasion_pool",
+      "config_global",
+      "placeholders_map",
+      "scoring_metadata",
+      "omega_gap_plan",
+      "lab_version",
+      "lab_schema_variant",
+      "bulletproof",
+      "meta_per_profile",
+      "prisma_lab_sync_v20",
+      "version",
+      "dnr_calibration"
+    ],
+    "counts": {
+      "nivel1_directives": 51,
+      "nivel3_per_layer": {
+        "VLC": 23,
+        "KOD": 16,
+        "HTT": 7,
+        "EI": 8,
+        "SI": 7,
+        "SYS": 0,
+        "URL": 4
+      },
+      "nivel3_total": 65,
+      "placeholders_map": 57,
+      "servers": 4,
+      "evasion_user_agents": 17,
+      "evasion_referers": 4,
+      "config_global": 48,
+      "scoring_metadata_nivel1_count": 50,
+      "scoring_metadata_nivel3_total": 65,
+      "scoring_metadata_placeholders_count": 57,
+      "scoring_metadata_profile_keys_total": 660,
+      "scoring_metadata_total_directives": 2886,
+      "prisma_lab_sync_v20_keys": 12,
+      "dnr_calibration": "present",
+      "omega_gap_plan_items": 56
+    },
+    "per_profile": {
+      "P0": {
+        "settings": 57,
+        "vlcopt": 48,
+        "kodiprop": 8,
+        "headerOverrides": 402,
+        "hlsjs": 41,
+        "prefetch_config": 14,
+        "top_keys": 16
+      },
+      "P1": {
+        "settings": 57,
+        "vlcopt": 48,
+        "kodiprop": 8,
+        "headerOverrides": 400,
+        "hlsjs": 41,
+        "prefetch_config": 14,
+        "top_keys": 16
+      },
+      "P2": {
+        "settings": 57,
+        "vlcopt": 48,
+        "kodiprop": 8,
+        "headerOverrides": 402,
+        "hlsjs": 41,
+        "prefetch_config": 14,
+        "top_keys": 16
+      },
+      "P3": {
+        "settings": 55,
+        "vlcopt": 48,
+        "kodiprop": 8,
+        "headerOverrides": 400,
+        "hlsjs": 41,
+        "prefetch_config": 14,
+        "top_keys": 16
+      },
+      "P4": {
+        "settings": 55,
+        "vlcopt": 48,
+        "kodiprop": 7,
+        "headerOverrides": 400,
+        "hlsjs": 41,
+        "prefetch_config": 14,
+        "top_keys": 16
+      },
+      "P5": {
+        "settings": 55,
+        "vlcopt": 48,
+        "kodiprop": 7,
+        "headerOverrides": 400,
+        "hlsjs": 41,
+        "prefetch_config": 14,
+        "top_keys": 16
+      }
+    }
+  },
+  "baseline8k120(dl)": {
+    "path": "C:\\Users\\HFRC\\Downloads\\LAB_CALIBRATED_BULLETPROOF_22.6.0-MEMC-TOTAL-8K120.json",
+    "bytes": 408174,
+    "mtime": "2026-06-07T21:10:00.053Z",
+    "bom": false,
+    "version": "22.6.0-MEMC-TOTAL-8K120",
+    "lab_version": "omega_v1",
+    "schema": "omega_v2_bulletproof_perprofile",
+    "exported_at": "2026-05-23T05:39:38",
+    "bulletproof": true,
+    "top_keys": [
+      "playlist_format",
+      "exported_at",
+      "profiles_calibrated",
+      "nivel1_directives",
+      "nivel3_per_layer",
+      "servers",
+      "evasion_pool",
+      "config_global",
+      "placeholders_map",
+      "scoring_metadata",
+      "omega_gap_plan",
+      "lab_version",
+      "lab_schema_variant",
+      "bulletproof",
+      "meta_per_profile",
+      "prisma_lab_sync_v20",
+      "version"
+    ],
+    "counts": {
+      "nivel1_directives": 50,
+      "nivel3_per_layer": {
+        "VLC": 23,
+        "KOD": 16,
+        "HTT": 7,
+        "EI": 8,
+        "SI": 7,
+        "SYS": 0,
+        "URL": 4
+      },
+      "nivel3_total": 65,
+      "placeholders_map": 57,
+      "servers": 4,
+      "evasion_user_agents": 17,
+      "evasion_referers": 4,
+      "config_global": 48,
+      "scoring_metadata_nivel1_count": 50,
+      "scoring_metadata_nivel3_total": 65,
+      "scoring_metadata_placeholders_count": 57,
+      "scoring_metadata_profile_keys_total": 660,
+      "scoring_metadata_total_directives": 2886,
+      "prisma_lab_sync_v20_keys": 12,
+      "dnr_calibration": null,
+      "omega_gap_plan_items": 56
+    },
+    "per_profile": {
+      "P0": {
+        "settings": 57,
+        "vlcopt": 48,
+        "kodiprop": 8,
+        "headerOverrides": 401,
+        "hlsjs": 41,
+        "prefetch_config": 14,
+        "top_keys": 16
+      },
+      "P1": {
+        "settings": 57,
+        "vlcopt": 48,
+        "kodiprop": 8,
+        "headerOverrides": 399,
+        "hlsjs": 41,
+        "prefetch_config": 14,
+        "top_keys": 16
+      },
+      "P2": {
+        "settings": 57,
+        "vlcopt": 48,
+        "kodiprop": 8,
+        "headerOverrides": 401,
+        "hlsjs": 41,
+        "prefetch_config": 14,
+        "top_keys": 16
+      },
+      "P3": {
+        "settings": 55,
+        "vlcopt": 48,
+        "kodiprop": 8,
+        "headerOverrides": 399,
+        "hlsjs": 41,
+        "prefetch_config": 14,
+        "top_keys": 16
+      },
+      "P4": {
+        "settings": 55,
+        "vlcopt": 48,
+        "kodiprop": 7,
+        "headerOverrides": 399,
+        "hlsjs": 41,
+        "prefetch_config": 14,
+        "top_keys": 16
+      },
+      "P5": {
+        "settings": 55,
+        "vlcopt": 48,
+        "kodiprop": 7,
+        "headerOverrides": 399,
+        "hlsjs": 41,
+        "prefetch_config": 14,
+        "top_keys": 16
+      }
+    }
+  },
+  "backup0607(dl)": {
+    "path": "C:\\Users\\HFRC\\Downloads\\LAB_CALIBRATED_BULLETPROOF_22.6.0-MEMC-TOTAL-8K120_BACKUP_20260607.json",
+    "bytes": 408126,
+    "mtime": "2026-05-23T06:30:32.819Z",
+    "bom": false,
+    "version": "22.6.0-MEMC-TOTAL-8K120",
+    "lab_version": "omega_v1",
+    "schema": "omega_v2_bulletproof_perprofile",
+    "exported_at": "2026-05-23T05:39:38",
+    "bulletproof": true,
+    "top_keys": [
+      "playlist_format",
+      "exported_at",
+      "profiles_calibrated",
+      "nivel1_directives",
+      "nivel3_per_layer",
+      "servers",
+      "evasion_pool",
+      "config_global",
+      "placeholders_map",
+      "scoring_metadata",
+      "omega_gap_plan",
+      "lab_version",
+      "lab_schema_variant",
+      "bulletproof",
+      "meta_per_profile",
+      "prisma_lab_sync_v20",
+      "version"
+    ],
+    "counts": {
+      "nivel1_directives": 50,
+      "nivel3_per_layer": {
+        "VLC": 23,
+        "KOD": 16,
+        "HTT": 7,
+        "EI": 8,
+        "SI": 7,
+        "SYS": 0,
+        "URL": 4
+      },
+      "nivel3_total": 65,
+      "placeholders_map": 57,
+      "servers": 4,
+      "evasion_user_agents": 17,
+      "evasion_referers": 4,
+      "config_global": 48,
+      "scoring_metadata_nivel1_count": 50,
+      "scoring_metadata_nivel3_total": 65,
+      "scoring_metadata_placeholders_count": 57,
+      "scoring_metadata_profile_keys_total": 660,
+      "scoring_metadata_total_directives": 2886,
+      "prisma_lab_sync_v20_keys": 12,
+      "dnr_calibration": null,
+      "omega_gap_plan_items": 56
+    },
+    "per_profile": {
+      "P0": {
+        "settings": 57,
+        "vlcopt": 48,
+        "kodiprop": 8,
+        "headerOverrides": 401,
+        "hlsjs": 41,
+        "prefetch_config": 14,
+        "top_keys": 16
+      },
+      "P1": {
+        "settings": 57,
+        "vlcopt": 48,
+        "kodiprop": 8,
+        "headerOverrides": 399,
+        "hlsjs": 41,
+        "prefetch_config": 14,
+        "top_keys": 16
+      },
+      "P2": {
+        "settings": 57,
+        "vlcopt": 48,
+        "kodiprop": 8,
+        "headerOverrides": 401,
+        "hlsjs": 41,
+        "prefetch_config": 14,
+        "top_keys": 16
+      },
+      "P3": {
+        "settings": 55,
+        "vlcopt": 48,
+        "kodiprop": 8,
+        "headerOverrides": 399,
+        "hlsjs": 41,
+        "prefetch_config": 14,
+        "top_keys": 16
+      },
+      "P4": {
+        "settings": 55,
+        "vlcopt": 48,
+        "kodiprop": 7,
+        "headerOverrides": 399,
+        "hlsjs": 41,
+        "prefetch_config": 14,
+        "top_keys": 16
+      },
+      "P5": {
+        "settings": 55,
+        "vlcopt": 48,
+        "kodiprop": 7,
+        "headerOverrides": 399,
+        "hlsjs": 41,
+        "prefetch_config": 14,
+        "top_keys": 16
+      }
+    }
+  },
+  "memcAligned(dl)": {
+    "path": "C:\\Users\\HFRC\\Downloads\\LAB_CALIBRATED_BULLETPROOF_22.6.0-MEMC-ALIGNED.json",
+    "bytes": 847417,
+    "mtime": "2026-05-23T06:12:07.016Z",
+    "bom": true,
+    "lab_version": "omega_v1",
+    "schema": "omega_v2_bulletproof_perprofile",
+    "exported_at": "2026-05-22T22:17:20",
+    "bulletproof": true,
+    "top_keys": [
+      "playlist_format",
+      "exported_at",
+      "profiles_calibrated",
+      "nivel1_directives",
+      "nivel3_per_layer",
+      "servers",
+      "evasion_pool",
+      "config_global",
+      "placeholders_map",
+      "scoring_metadata",
+      "omega_gap_plan",
+      "lab_version",
+      "lab_schema_variant",
+      "bulletproof",
+      "meta_per_profile",
+      "prisma_lab_sync_v20"
+    ],
+    "counts": {
+      "nivel1_directives": 50,
+      "nivel3_per_layer": {
+        "VLC": 23,
+        "KOD": 16,
+        "HTT": 7,
+        "EI": 8,
+        "SI": 7,
+        "SYS": 0,
+        "URL": 4
+      },
+      "nivel3_total": 65,
+      "placeholders_map": 57,
+      "servers": 4,
+      "evasion_user_agents": 17,
+      "evasion_referers": 4,
+      "config_global": 48,
+      "scoring_metadata_nivel1_count": 50,
+      "scoring_metadata_nivel3_total": 65,
+      "scoring_metadata_placeholders_count": 57,
+      "scoring_metadata_profile_keys_total": 660,
+      "scoring_metadata_total_directives": 2886,
+      "prisma_lab_sync_v20_keys": 12,
+      "dnr_calibration": null,
+      "omega_gap_plan_items": 56
+    },
+    "per_profile": {
+      "P0": {
+        "settings": 57,
+        "vlcopt": 48,
+        "kodiprop": 8,
+        "headerOverrides": 401,
+        "hlsjs": 41,
+        "prefetch_config": 14,
+        "top_keys": 16
+      },
+      "P1": {
+        "settings": 57,
+        "vlcopt": 48,
+        "kodiprop": 8,
+        "headerOverrides": 399,
+        "hlsjs": 41,
+        "prefetch_config": 14,
+        "top_keys": 16
+      },
+      "P2": {
+        "settings": 57,
+        "vlcopt": 47,
+        "kodiprop": 8,
+        "headerOverrides": 401,
+        "hlsjs": 41,
+        "prefetch_config": 14,
+        "top_keys": 16
+      },
+      "P3": {
+        "settings": 55,
+        "vlcopt": 48,
+        "kodiprop": 8,
+        "headerOverrides": 399,
+        "hlsjs": 41,
+        "prefetch_config": 14,
+        "top_keys": 16
+      },
+      "P4": {
+        "settings": 55,
+        "vlcopt": 48,
+        "kodiprop": 7,
+        "headerOverrides": 399,
+        "hlsjs": 41,
+        "prefetch_config": 14,
+        "top_keys": 16
+      },
+      "P5": {
+        "settings": 55,
+        "vlcopt": 47,
+        "kodiprop": 7,
+        "headerOverrides": 399,
+        "hlsjs": 41,
+        "prefetch_config": 14,
+        "top_keys": 16
+      }
+    }
+  }
+}

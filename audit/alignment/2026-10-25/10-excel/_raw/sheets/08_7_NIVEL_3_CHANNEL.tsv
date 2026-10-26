@@ -1,0 +1,455 @@
+address	kind	value
+A1	S	🤖 AUTO-LLENAR VALORES POR DEFECTO
+D1	S	→ Brain_AutoFillNivel3()
+A2	S	🧠 SUGERIR ÓPTIMO
+D2	S	→ Brain_SuggestOptimalNivel3()
+A3	S	✅ VALIDAR
+D3	S	→ Brain_ValidateNivel3()
+A4	S	NIVEL 3: BLOQUE POR CANAL (se repite 1 vez por canal en la lista)
+A5	S	Inc
+B5	S	Capa
+C5	S	Tag/Key/Header
+D5	S	Valor (editable, soporta {placeholder})
+E5	S	Status
+F5	S	Notas
+G5	S	player_target
+A6	S	EXTINF
+A7	S	X
+B7	S	EXTINF
+C7	S	tvg-id
+D7	S	{channel.tvg_id}
+E7	S	OFICIAL de facto
+F7	S	EPG match
+A8	S	X
+B8	S	EXTINF
+C8	S	tvg-name
+D8	S	{channel.name}
+E8	S	OFICIAL de facto
+F8	S	Display
+A9	S	X
+B9	S	EXTINF
+C9	S	tvg-logo
+D9	S	{channel.logo}
+E9	S	OFICIAL de facto
+F9	S	Logo URL
+A10	S	X
+B10	S	EXTINF
+C10	S	tvg-chno
+D10	S	{channel.chno}
+E10	S	OFICIAL de facto
+F10	S	Numero canal
+A11	S	X
+B11	S	EXTINF
+C11	S	group-title
+D11	S	{channel.group}
+E11	S	OFICIAL de facto
+F11	S	Categoria
+A12	S	X
+B12	S	EXTINF
+C12	S	catchup
+D12	S	xc
+E12	S	OFICIAL de facto
+F12	S	Modo catchup
+A13	S	X
+B13	S	EXTINF
+C13	S	catchup-days
+D13	S	7
+E13	S	OFICIAL de facto
+F13	S	Dias catchup
+A14	S	X
+B14	S	EXTINF
+C14	S	catchup-source
+D14	S	?utc={utc}&lutc={lutc}
+E14	S	OFICIAL de facto
+F14	S	URL template
+A15	S	EXTVLCOPT
+A16	S	X
+B16	S	EXTVLCOPT
+C16	S	http-user-agent
+D16	S	{config.user_agent}
+E16	S	OFICIAL VLC
+F16	S	UA real
+A17	S	X
+B17	S	EXTVLCOPT
+C17	S	http-referrer
+D17	S	{config.referer}
+E17	S	OFICIAL VLC
+F17	S	Referer
+A18	S	X
+B18	S	EXTVLCOPT
+C18	S	http-reconnect
+D18	S	true
+E18	S	OFICIAL VLC
+F18	S	Auto-reconnect
+A19	S	X
+B19	S	EXTVLCOPT
+C19	S	http-continuous-stream
+D19	S	true
+E19	S	OFICIAL VLC
+F19	S	Continuous
+A20	S	X
+B20	S	EXTVLCOPT
+C20	S	http-forward-cookies
+D20	S	true
+E20	S	OFICIAL VLC
+F20	S	Cookies
+A21	S	X
+B21	S	EXTVLCOPT
+C21	S	http-max-retries
+D21	S	99
+E21	S	OFICIAL VLC
+F21	S	Max retries
+A22	S	X
+B22	S	EXTVLCOPT
+C22	S	http-timeout
+D22	S	30000
+E22	S	OFICIAL VLC
+F22	S	Timeout ms
+A23	S	X
+B23	S	EXTVLCOPT
+C23	S	network-caching
+D23	N	5000
+E23	S	OFICIAL VLC
+F23	S	Buffer red
+A24	S	X
+B24	S	EXTVLCOPT
+C24	S	live-caching
+D24	N	4500
+E24	S	OFICIAL VLC
+F24	S	Buffer live
+A25	S	X
+B25	S	EXTVLCOPT
+C25	S	file-caching
+D25	N	4000
+E25	S	OFICIAL VLC
+F25	S	Buffer file
+A26	S	X
+B26	S	EXTVLCOPT
+C26	S	sout-mux-caching
+D26	S	10000
+E26	S	OFICIAL VLC
+F26	S	Mux caching
+A27	S	X
+B27	S	EXTVLCOPT
+C27	S	avcodec-hw
+D27	S	any
+E27	S	OFICIAL VLC
+F27	S	HW accel
+A28	S	X
+B28	S	EXTVLCOPT
+C28	S	avcodec-threads
+D28	S	0
+E28	S	OFICIAL VLC
+F28	S	Auto threads
+A29	S	X
+B29	S	EXTVLCOPT
+C29	S	avcodec-fast
+D29	S	true
+E29	S	OFICIAL VLC
+F29	S	Fast decode
+A30	S	X
+B30	S	EXTVLCOPT
+C30	S	adaptive-logic
+D30	S	highest
+E30	S	OFICIAL VLC
+F30	S	ABR strategy
+A31	S	X
+B31	S	EXTVLCOPT
+C31	S	adaptive-maxwidth
+D31	N	7680
+E31	S	OFICIAL VLC
+F31	S	Cap width
+A32	S	X
+B32	S	EXTVLCOPT
+C32	S	adaptive-maxheight
+D32	N	4320
+E32	S	OFICIAL VLC
+F32	S	Cap height
+A33	S	X
+B33	S	EXTVLCOPT
+C33	S	adaptive-maxbuffer
+D33	N	60000
+E33	S	OFICIAL VLC
+F33	S	Max buffer
+A34	S	X
+B34	S	EXTVLCOPT
+C34	S	adaptive-livedelay
+D34	S	8000
+E34	S	OFICIAL VLC
+F34	S	Live delay
+A35	S	KODIPROP
+A36	S	X
+B36	S	KODIPROP
+C36	S	inputstream
+D36	S	inputstream.adaptive
+E36	S	OFICIAL Kodi
+F36	S	Plugin
+A37	S	X
+B37	S	KODIPROP
+C37	S	inputstream.adaptive.manifest_type
+D37	S	hls
+E37	S	OFICIAL Kodi
+F37	S	Manifest
+A38	S	X
+B38	S	KODIPROP
+C38	S	inputstream.adaptive.stream_selection_type
+D38	S	adaptive
+E38	S	OFICIAL Kodi
+F38	S	ABR
+A39	S	X
+B39	S	KODIPROP
+C39	S	inputstream.adaptive.manifest_update_parameter
+D39	S	full
+E39	S	OFICIAL Kodi
+F39	S	Refresh
+A40	S	X
+B40	S	KODIPROP
+C40	S	inputstream.adaptive.stream_headers
+D40	S	{config.kodi_headers_urlencoded}
+E40	S	OFICIAL Kodi
+F40	S	Headers URL-encoded
+A41	S	X
+B41	S	KODIPROP
+C41	S	inputstream.adaptive.max_bandwidth
+D41	S	{profile.max_bandwidth}
+E41	S	OFICIAL Kodi
+F41	S	BW upper
+A42	S	X
+B42	S	KODIPROP
+C42	S	inputstream.adaptive.min_bandwidth
+D42	S	{prisma.bitrate_floor}
+E42	S	âš ï¸ BROKEN: {prisma.bitrate_floor} not in NIVEL_2
+F42	S	BW lower
+A43	S	X
+B43	S	KODIPROP
+C43	S	inputstream.adaptive.max_resolution
+D43	S	{profile.resolution}
+E43	S	OFICIAL Kodi
+F43	S	Cap resolucion
+A44	S	X
+B44	S	KODIPROP
+C44	S	inputstream.adaptive.live_delay
+D44	S	8
+E44	S	OFICIAL Kodi
+F44	S	Live delay s
+A45	S	X
+B45	S	KODIPROP
+C45	S	inputstream.adaptive.assured_buffer_duration
+D45	S	{profile.buffer_s}
+E45	S	OFICIAL Kodi
+F45	S	Buffer s
+A46	S	X
+B46	S	KODIPROP
+C46	S	inputstream.adaptive.audio_channels
+D46	S	7.1
+E46	S	OFICIAL Kodi
+F46	S	Audio channels
+A47	S	X
+B47	S	KODIPROP
+C47	S	inputstream.adaptive.audio_passthrough
+D47	S	true
+E47	S	OFICIAL Kodi
+F47	S	Passthrough
+A48	S	EXTHTTP (JSON)
+A49	S	X
+B49	S	EXTHTTP
+C49	S	User-Agent
+D49	S	{config.user_agent}
+E49	S	OFICIAL HTTP
+F49	S	UA
+A50	S	X
+B50	S	EXTHTTP
+C50	S	Accept
+D50	S	*/*
+E50	S	OFICIAL HTTP
+F50	S	Accept
+A51	S	X
+B51	S	EXTHTTP
+C51	S	Accept-Encoding
+D51	S	gzip, deflate
+E51	S	OFICIAL HTTP
+F51	S	Encoding
+A52	S	X
+B52	S	EXTHTTP
+C52	S	Accept-Language
+D52	S	{config.locale}
+E52	S	OFICIAL HTTP
+F52	S	Lang
+B53	S	EXTHTTP
+C53	S	Connection
+E53	S	OFICIAL HTTP
+F53	S	SINGLE-VALUE!
+B54	S	EXTHTTP
+C54	S	Keep-Alive
+E54	S	OFICIAL HTTP
+F54	S	RFC 7230
+A55	S	X
+B55	S	EXTHTTP
+C55	S	Referer
+D55	S	{config.referer}
+E55	S	OFICIAL HTTP
+F55	S	Referer
+A56	S	X
+B56	S	EXTHTTP
+C56	S	Origin
+D56	S	{config.origin}
+E56	S	OFICIAL HTTP
+F56	S	Origin
+B57	S	EXTHTTP
+C57	S	Range
+D57	S	bytes=0-
+E57	S	OFICIAL HTTP
+F57	S	C8 (2026-05-11) DEACTIVATED -- toxic header detona okhttp EOF
+A58	S	X
+B58	S	EXTHTTP
+C58	S	Cache-Control
+D58	S	no-cache
+E58	S	OFICIAL HTTP
+F58	S	Cache
+A59	S	STREAM-INF
+A60	S	X
+B60	S	STREAM-INF
+C60	S	BANDWIDTH
+D60	S	{profile.bandwidth}
+E60	S	OFICIAL RFC 8216bis
+F60	S	Pico bps
+A61	S	X
+B61	S	STREAM-INF
+C61	S	AVERAGE-BANDWIDTH
+D61	S	{profile.avg_bandwidth}
+E61	S	OFICIAL RFC
+F61	S	Promedio
+A62	S	X
+B62	S	STREAM-INF
+C62	S	CODECS
+D62	S	{profile.codecs}
+E62	S	OFICIAL RFC
+F62	S	RFC 6381
+A63	S	X
+B63	S	STREAM-INF
+C63	S	RESOLUTION
+D63	S	{profile.resolution}
+E63	S	OFICIAL RFC
+F63	S	WxH
+A64	S	X
+B64	S	STREAM-INF
+C64	S	FRAME-RATE
+D64	S	{profile.fps}
+E64	S	OFICIAL RFC
+F64	S	fps
+A65	S	X
+B65	S	STREAM-INF
+C65	S	VIDEO-RANGE
+D65	S	{profile.video_range}
+E65	S	OFICIAL RFC
+F65	S	SDR/PQ/HLG
+B66	S	STREAM-INF
+C66	S	HDCP-LEVEL
+D66	S	NONE
+E66	S	OFICIAL RFC
+F66	S	DRM HDCP
+A67	S	X
+B67	S	STREAM-INF
+C67	S	SCORE
+D67	S	100.0
+E67	S	OFICIAL RFC 8216bis
+F67	S	Ranking
+A68	S	SYS
+B69	S	SYS
+C69	S	SYS-TLS-VERIFY-PEER
+D69	B	0
+F69	S	G8 HTTP Error Tree
+B70	S	SYS
+C70	S	SYS-PREFETCH-SEGMENTS
+D70	N	6
+F70	S	G3 Buffer 4-Layer
+B71	S	SYS
+C71	S	SYS-PREFETCH-PARALLEL
+D71	N	6
+F71	S	G2 Multi-Source
+B72	S	SYS
+C72	S	SYS-CATCHUP
+D72	S	flussonic
+F72	S	G4 LAG Live Catch-up
+B73	S	SYS
+C73	S	SYS-CATCHUP-DAYS
+D73	N	7
+F73	S	G4 LAG
+B74	S	SYS
+C74	S	SYS-CLOCK-SYNCHRO
+D74	N	0
+F74	S	G4 LAG clock-sync
+B75	S	SYS
+C75	S	SYS-SERVER-POOL-MODE
+D75	S	failover
+F75	S	G9 Multi-Provider
+B76	S	SYS
+C76	S	SYS-RECONNECT-COUNT
+D76	N	99
+F76	S	G2 CORTES reconexion
+A77	S	URL final
+A78	S	X
+B78	S	URL
+C78	S	url_template
+D78	S	{server_url}/live/{user}/{pass}/{stream_id}.m3u8
+E78	S	URL builder
+F78	S	Template canonical
+A79	S	X
+B79	S	URL
+C79	S	url_template_xtream
+D79	S	{server_url}/live/{user}/{pass}/{stream_id}.m3u8
+E79	S	OFICIAL Xtream
+F79	S	R2: encodeURIComponent en user/pass/streamId
+A80	S	X
+B80	S	URL
+C80	S	url_template_query_hls
+D80	S	{server_url}/?p={pass}&sid={stream_id}&u={user}
+E80	S	OFICIAL Query HLS
+F80	S	R3: keys alfabetizadas, sin playlist= / token=
+A81	S	X
+B81	S	URL
+C81	S	url_template_direct_hls
+D81	S	{server_url}/{stream_path}.m3u8
+E81	S	OFICIAL Direct HLS
+F81	S	R4: ensurePathEndsWithExtension (no trailing /)
+B83	S	-- PRISMA STAGE 1.5 DIRECTIVES --
+A84	S	X
+B84	S	EXTVLCOPT
+C84	S	adaptive-minbw
+D84	S	{prisma.bitrate_floor}
+E84	S	âš ï¸ BROKEN: {prisma.bitrate_floor} not in NIVEL_2
+A85	S	X
+B85	S	EXTVLCOPT
+C85	S	adaptive-maxbw
+D85	N	999999999
+E85	S	No cap superior - dejar provider entregar maximo
+A86	S	X
+B86	S	EXTVLCOPT
+C86	S	prefetch-buffer-size
+D86	N	300000000
+E86	S	300MB prefetch buffer (Ultraboost v1.3)
+A87	S	X
+B87	S	EXTVLCOPT
+C87	S	prefetch-read-size
+D87	N	128000000
+E87	S	128MB read chunk
+A88	S	X
+B88	S	KODIPROP
+C88	S	inputstream.adaptive.initial_bandwidth
+D88	S	{prisma.target_bandwidth}
+E88	S	âš ï¸ BROKEN: {prisma.target_bandwidth} not in NIVEL_2
+A89	S	X
+B89	S	KODIPROP
+C89	S	inputstream.adaptive.preferred_video_resolution
+D89	N	2160
+E89	S	Force 4K preferido
+A90	S	X
+B90	S	KODIPROP
+C90	S	inputstream.adaptive.hdr_color_conversion
+D90	B	1
+E90	S	HDR pipeline activo
+A91	S	X
+B91	S	KODIPROP
+C91	S	inputstream.adaptive.stream_selection_type
+D91	S	fixed
+E91	S	LOCK a top variant - no ABR downgrade (PRISMA strict)

@@ -1,0 +1,100 @@
+{
+  "backend_case_insensitive_collisions": {
+    "groups": 503,
+    "extra_records": 503,
+    "sample": [
+      [
+        "12Keshet.il",
+        "12keshet.il"
+      ],
+      [
+        "13Reshet.il",
+        "13reshet.il"
+      ],
+      [
+        "13thStreet.de",
+        "13thstreet.de"
+      ],
+      [
+        "192TV.nl",
+        "192tv.nl"
+      ],
+      [
+        "24Kitchen.nl",
+        "24kitchen.nl"
+      ],
+      [
+        "24Kitchen.pt",
+        "24kitchen.pt"
+      ],
+      [
+        "24Kitchen.rs",
+        "24kitchen.rs"
+      ],
+      [
+        "24Kitchen.tr",
+        "24kitchen.tr"
+      ],
+      [
+        "4Seven.uk",
+        "4seven.uk"
+      ],
+      [
+        "AB1.fr",
+        "ab1.fr"
+      ]
+    ]
+  },
+  "frontend_data_case_insensitive_collisions": {
+    "groups": 503,
+    "extra_records": 503,
+    "sample": [
+      [
+        "12Keshet.il",
+        "12keshet.il"
+      ],
+      [
+        "13Reshet.il",
+        "13reshet.il"
+      ],
+      [
+        "13thStreet.de",
+        "13thstreet.de"
+      ],
+      [
+        "192TV.nl",
+        "192tv.nl"
+      ],
+      [
+        "24Kitchen.nl",
+        "24kitchen.nl"
+      ],
+      [
+        "24Kitchen.pt",
+        "24kitchen.pt"
+      ],
+      [
+        "24Kitchen.rs",
+        "24kitchen.rs"
+      ],
+      [
+        "24Kitchen.tr",
+        "24kitchen.tr"
+      ],
+      [
+        "4Seven.uk",
+        "4seven.uk"
+      ],
+      [
+        "AB1.fr",
+        "ab1.fr"
+      ]
+    ]
+  },
+  "frontend_case_insensitive_collisions": {
+    "groups": 0,
+    "extra_records": 0,
+    "sample": []
+  },
+  "note": "case-insensitive collisions = same channel identity emitted with different casing (risk of double-emit / EPG split)"
+}

@@ -1,0 +1,117 @@
+{
+  "backend_key_shapes": {
+    "total": 8366,
+    "numeric": 5973,
+    "non_numeric": 2393,
+    "non_numeric_sample": [
+      "01TV.fr",
+      "100nltv.nl",
+      "123tv.de",
+      "12Keshet.il",
+      "12keshet.il",
+      "13Reshet.il",
+      "13Rue.fr",
+      "13emerue.fr",
+      "13reshet.il",
+      "13thStreet.de",
+      "13thstreet.de",
+      "13tv.es"
+    ]
+  },
+  "frontend_data_key_shapes": {
+    "total": 8366,
+    "numeric": 5973,
+    "non_numeric": 2393,
+    "non_numeric_sample": [
+      "01TV.fr",
+      "100nltv.nl",
+      "123tv.de",
+      "12Keshet.il",
+      "12keshet.il",
+      "13Reshet.il",
+      "13Rue.fr",
+      "13emerue.fr",
+      "13reshet.il",
+      "13thStreet.de",
+      "13thstreet.de",
+      "13tv.es"
+    ]
+  },
+  "frontend_stream_id_vs_backend_keys": {
+    "frontend_stream_ids": 9293,
+    "backend_numeric_keys": 5973,
+    "matched": 5973,
+    "frontend_ids_not_in_backend": 3320,
+    "backend_keys_not_in_frontend_ids": 2393,
+    "backend_keys_not_in_frontend_ids_sample": [
+      "01TV.fr",
+      "100nltv.nl",
+      "123tv.de",
+      "12Keshet.il",
+      "12keshet.il",
+      "13Reshet.il",
+      "13Rue.fr",
+      "13emerue.fr",
+      "13reshet.il",
+      "13thStreet.de",
+      "13thstreet.de",
+      "13tv.es"
+    ]
+  },
+  "frontend_slug_suffix_vs_backend_keys": {
+    "frontend_suffixes": 9293,
+    "matched_with_backend": 5973,
+    "suffix_not_in_backend": 3320
+  },
+  "frontend_key_prefixes": [
+    [
+      "us",
+      939
+    ],
+    [
+      "fr",
+      750
+    ],
+    [
+      "de",
+      701
+    ],
+    [
+      "uk",
+      571
+    ],
+    [
+      "ar",
+      526
+    ],
+    [
+      "it",
+      450
+    ],
+    [
+      "nl",
+      418
+    ],
+    [
+      "es",
+      309
+    ],
+    [
+      "tr",
+      227
+    ],
+    [
+      "be",
+      212
+    ],
+    [
+      "ro",
+      205
+    ],
+    [
+      "gr",
+      183
+    ]
+  ],
+  "coverage_note": "frontend(9293) vs backend(8366) vs frontend/data(8366); backend & frontend/data key sets identical"
+}

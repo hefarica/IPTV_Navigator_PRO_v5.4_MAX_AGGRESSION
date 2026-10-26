@@ -1,0 +1,492 @@
+{
+  "path": "C:\\Users\\HFRC\\Desktop\\IPTV_Navigator_PRO_v5.4_MAX_AGGRESSION\\IPTV_v5.4_MAX_AGGRESSION\\backend\\APE_ALL_PROFILES_v10_REALTIME_ENGINE.json",
+  "bytes": 47864,
+  "top_keys": [
+    "_meta",
+    "profiles",
+    "codec_ladder"
+  ],
+  "sections": {
+    "_meta": {
+      "type": "object(5)",
+      "sample_keys": [
+        "type",
+        "version",
+        "generated",
+        "sources",
+        "improvements_over_v9"
+      ],
+      "shallow": {
+        "type": "all_profiles_v10_realtime_engine",
+        "version": "APE_v10.0_REALTIME_ENGINE",
+        "generated": "2026-04-11T20:00:00.000Z",
+        "sources": "array(9)",
+        "improvements_over_v9": "array(12)"
+      }
+    },
+    "profiles": {
+      "type": "object(6)",
+      "sample_keys": [
+        "P0",
+        "P1",
+        "P2",
+        "P3",
+        "P4",
+        "P5"
+      ],
+      "profiles": {
+        "P0": {
+          "type": "object",
+          "keys": [
+            "id",
+            "name",
+            "description",
+            "version",
+            "sources",
+            "hlsjs",
+            "bitmovin",
+            "shaka",
+            "exoplayer",
+            "headerOverrides_v10",
+            "vlcopt_v10",
+            "qoe_targets",
+            "analysis_services"
+          ],
+          "scalars": {
+            "id": "P0",
+            "name": "GOD_TIER_8K_OMEGA_REALTIME",
+            "description": "GOD TIER 8K — Motor tiempo real: HLS.js v1.6 + Bitmovin + Shaka + ExoPlayer + CMCD + QoE",
+            "version": "APE_v10.0_REALTIME_ENGINE",
+            "hlsjs.abrBandWidthFactor": 0.98,
+            "hlsjs.abrBandWidthUpFactor": 0.9,
+            "hlsjs.abrMaxWithRealBitrate": true,
+            "shaka.abr_bandwidthUpgradeTarget": 0.85,
+            "shaka.abr_bandwidthDowngradeTarget": 0.95,
+            "headerOverrides_v10.X-QoE-Bitrate-Target-Mbps": "8",
+            "headerOverrides_v10.X-QoE-Session-Id": "[GENERATE_UUID]",
+            "headerOverrides_v10.X-QoE-Content-Id": "[CHANNEL_ID]",
+            "headerOverrides_v10.X-Bitrate-Ladder": "150000000@3840x2160x120,80000000@3840x2160x60,40000000@1920x1080x60",
+            "headerOverrides_v10.X-Bitrate-Ladder-Source": "bitmovin-stream-lab-2025",
+            "headerOverrides_v10.X-Stream-Codecs": "dvh1.08.06,ec-3",
+            "headerOverrides_v10.X-Stream-Resolution": "7680x4320",
+            "headerOverrides_v10.X-Stream-FPS": "120",
+            "headerOverrides_v10.X-Stream-Bitrate": "150000000",
+            "vlcopt_v10.avcodec-dr": "1",
+            "vlcopt_v10.avcodec-hw": "any",
+            "qoe_targets.avg_bitrate_target_mbps": 8
+          },
+          "nested_counts": {
+            "sources": "array(7)",
+            "hlsjs": "object(22)",
+            "bitmovin": "object(6)",
+            "shaka": "object(7)",
+            "exoplayer": "object(7)",
+            "headerOverrides_v10": "object(50)",
+            "vlcopt_v10": "object(11)",
+            "qoe_targets": "object(8)",
+            "analysis_services": "object(7)"
+          }
+        },
+        "P1": {
+          "type": "object",
+          "keys": [
+            "id",
+            "name",
+            "description",
+            "version",
+            "sources",
+            "hlsjs",
+            "bitmovin",
+            "shaka",
+            "exoplayer",
+            "headerOverrides_v10",
+            "vlcopt_v10",
+            "qoe_targets",
+            "analysis_services"
+          ],
+          "scalars": {
+            "id": "P1",
+            "name": "4K_SUPREME_REALTIME",
+            "description": "4K Supreme — Motor tiempo real con HEVC HDR10+ y LCEVC Phase 4",
+            "version": "APE_v10.0_REALTIME_ENGINE",
+            "hlsjs.abrBandWidthFactor": 0.98,
+            "hlsjs.abrBandWidthUpFactor": 0.9,
+            "hlsjs.abrMaxWithRealBitrate": true,
+            "shaka.abr_bandwidthUpgradeTarget": 0.85,
+            "shaka.abr_bandwidthDowngradeTarget": 0.95,
+            "headerOverrides_v10.X-QoE-Bitrate-Target-Mbps": "8",
+            "headerOverrides_v10.X-QoE-Session-Id": "[GENERATE_UUID]",
+            "headerOverrides_v10.X-QoE-Content-Id": "[CHANNEL_ID]",
+            "headerOverrides_v10.X-Bitrate-Ladder": "80000000@3840x2160x60,40000000@1920x1080x60,20000000@1920x1080x30",
+            "headerOverrides_v10.X-Bitrate-Ladder-Source": "bitmovin-stream-lab-2025",
+            "headerOverrides_v10.X-Stream-Codecs": "hvc1.2.4.L153.B0,ec-3",
+            "headerOverrides_v10.X-Stream-Resolution": "3840x2160",
+            "headerOverrides_v10.X-Stream-FPS": "60",
+            "headerOverrides_v10.X-Stream-Bitrate": "80000000",
+            "vlcopt_v10.avcodec-dr": "1",
+            "vlcopt_v10.avcodec-hw": "any",
+            "qoe_targets.avg_bitrate_target_mbps": 8
+          },
+          "nested_counts": {
+            "sources": "array(7)",
+            "hlsjs": "object(22)",
+            "bitmovin": "object(6)",
+            "shaka": "object(7)",
+            "exoplayer": "object(7)",
+            "headerOverrides_v10": "object(50)",
+            "vlcopt_v10": "object(11)",
+            "qoe_targets": "object(8)",
+            "analysis_services": "object(7)"
+          }
+        },
+        "P2": {
+          "type": "object",
+          "keys": [
+            "id",
+            "name",
+            "description",
+            "version",
+            "sources",
+            "hlsjs",
+            "bitmovin",
+            "shaka",
+            "exoplayer",
+            "headerOverrides_v10",
+            "vlcopt_v10",
+            "qoe_targets",
+            "analysis_services"
+          ],
+          "scalars": {
+            "id": "P2",
+            "name": "4K_EXTREME_REALTIME",
+            "description": "4K Extreme — Balance óptimo calidad/latencia según Bitmovin Stream Lab",
+            "version": "APE_v10.0_REALTIME_ENGINE",
+            "hlsjs.abrBandWidthFactor": 0.95,
+            "hlsjs.abrBandWidthUpFactor": 0.85,
+            "hlsjs.abrMaxWithRealBitrate": true,
+            "shaka.abr_bandwidthUpgradeTarget": 0.85,
+            "shaka.abr_bandwidthDowngradeTarget": 0.95,
+            "headerOverrides_v10.X-QoE-Bitrate-Target-Mbps": "8",
+            "headerOverrides_v10.X-QoE-Session-Id": "[GENERATE_UUID]",
+            "headerOverrides_v10.X-QoE-Content-Id": "[CHANNEL_ID]",
+            "headerOverrides_v10.X-Bitrate-Ladder": "40000000@1920x1080x60,20000000@1920x1080x30,10000000@1280x720x60",
+            "headerOverrides_v10.X-Bitrate-Ladder-Source": "bitmovin-stream-lab-2025",
+            "headerOverrides_v10.X-Stream-Codecs": "hvc1.2.4.L150.B0,ac-3",
+            "headerOverrides_v10.X-Stream-Resolution": "3840x2160",
+            "headerOverrides_v10.X-Stream-FPS": "60",
+            "headerOverrides_v10.X-Stream-Bitrate": "40000000",
+            "vlcopt_v10.avcodec-dr": "1",
+            "vlcopt_v10.avcodec-hw": "any",
+            "qoe_targets.avg_bitrate_target_mbps": 8
+          },
+          "nested_counts": {
+            "sources": "array(7)",
+            "hlsjs": "object(22)",
+            "bitmovin": "object(6)",
+            "shaka": "object(7)",
+            "exoplayer": "object(7)",
+            "headerOverrides_v10": "object(50)",
+            "vlcopt_v10": "object(11)",
+            "qoe_targets": "object(8)",
+            "analysis_services": "object(7)"
+          }
+        },
+        "P3": {
+          "type": "object",
+          "keys": [
+            "id",
+            "name",
+            "description",
+            "version",
+            "sources",
+            "hlsjs",
+            "bitmovin",
+            "shaka",
+            "exoplayer",
+            "headerOverrides_v10",
+            "vlcopt_v10",
+            "qoe_targets",
+            "analysis_services"
+          ],
+          "scalars": {
+            "id": "P3",
+            "name": "FHD_ADVANCED_REALTIME",
+            "description": "FHD Advanced — Configuración óptima para 1080p según ExoPlayer/Akamai",
+            "version": "APE_v10.0_REALTIME_ENGINE",
+            "hlsjs.abrBandWidthFactor": 0.95,
+            "hlsjs.abrBandWidthUpFactor": 0.85,
+            "hlsjs.abrMaxWithRealBitrate": true,
+            "shaka.abr_bandwidthUpgradeTarget": 0.85,
+            "shaka.abr_bandwidthDowngradeTarget": 0.95,
+            "headerOverrides_v10.X-QoE-Bitrate-Target-Mbps": "8",
+            "headerOverrides_v10.X-QoE-Session-Id": "[GENERATE_UUID]",
+            "headerOverrides_v10.X-QoE-Content-Id": "[CHANNEL_ID]",
+            "headerOverrides_v10.X-Bitrate-Ladder": "20000000@1920x1080x30,10000000@1280x720x60,5000000@1280x720x30",
+            "headerOverrides_v10.X-Bitrate-Ladder-Source": "bitmovin-stream-lab-2025",
+            "headerOverrides_v10.X-Stream-Codecs": "hvc1.2.4.L123.B0,mp4a.40.2",
+            "headerOverrides_v10.X-Stream-Resolution": "1920x1080",
+            "headerOverrides_v10.X-Stream-FPS": "60",
+            "headerOverrides_v10.X-Stream-Bitrate": "20000000",
+            "vlcopt_v10.avcodec-dr": "1",
+            "vlcopt_v10.avcodec-hw": "any",
+            "qoe_targets.avg_bitrate_target_mbps": 8
+          },
+          "nested_counts": {
+            "sources": "array(7)",
+            "hlsjs": "object(22)",
+            "bitmovin": "object(6)",
+            "shaka": "object(7)",
+            "exoplayer": "object(7)",
+            "headerOverrides_v10": "object(50)",
+            "vlcopt_v10": "object(11)",
+            "qoe_targets": "object(8)",
+            "analysis_services": "object(7)"
+          }
+        },
+        "P4": {
+          "type": "object",
+          "keys": [
+            "id",
+            "name",
+            "description",
+            "version",
+            "sources",
+            "hlsjs",
+            "bitmovin",
+            "shaka",
+            "exoplayer",
+            "headerOverrides_v10",
+            "vlcopt_v10",
+            "qoe_targets",
+            "analysis_services"
+          ],
+          "scalars": {
+            "id": "P4",
+            "name": "HD_STABLE_REALTIME",
+            "description": "HD Stable — Configuración conservadora para conexiones variables",
+            "version": "APE_v10.0_REALTIME_ENGINE",
+            "hlsjs.abrBandWidthFactor": 0.95,
+            "hlsjs.abrBandWidthUpFactor": 0.85,
+            "hlsjs.abrMaxWithRealBitrate": true,
+            "shaka.abr_bandwidthUpgradeTarget": 0.85,
+            "shaka.abr_bandwidthDowngradeTarget": 0.95,
+            "headerOverrides_v10.X-QoE-Bitrate-Target-Mbps": "8",
+            "headerOverrides_v10.X-QoE-Session-Id": "[GENERATE_UUID]",
+            "headerOverrides_v10.X-QoE-Content-Id": "[CHANNEL_ID]",
+            "headerOverrides_v10.X-Bitrate-Ladder": "10000000@1280x720x30,5000000@854x480x30,2000000@640x360x25",
+            "headerOverrides_v10.X-Bitrate-Ladder-Source": "bitmovin-stream-lab-2025",
+            "headerOverrides_v10.X-Stream-Codecs": "hvc1.2.4.L93.B0,mp4a.40.2",
+            "headerOverrides_v10.X-Stream-Resolution": "1280x720",
+            "headerOverrides_v10.X-Stream-FPS": "30",
+            "headerOverrides_v10.X-Stream-Bitrate": "10000000",
+            "vlcopt_v10.avcodec-dr": "1",
+            "vlcopt_v10.avcodec-hw": "any",
+            "qoe_targets.avg_bitrate_target_mbps": 8
+          },
+          "nested_counts": {
+            "sources": "array(7)",
+            "hlsjs": "object(22)",
+            "bitmovin": "object(6)",
+            "shaka": "object(7)",
+            "exoplayer": "object(7)",
+            "headerOverrides_v10": "object(50)",
+            "vlcopt_v10": "object(11)",
+            "qoe_targets": "object(8)",
+            "analysis_services": "object(7)"
+          }
+        },
+        "P5": {
+          "type": "object",
+          "keys": [
+            "id",
+            "name",
+            "description",
+            "version",
+            "sources",
+            "hlsjs",
+            "bitmovin",
+            "shaka",
+            "exoplayer",
+            "headerOverrides_v10",
+            "vlcopt_v10",
+            "qoe_targets",
+            "analysis_services"
+          ],
+          "scalars": {
+            "id": "P5",
+            "name": "SD_FAILSAFE_REALTIME",
+            "description": "SD Failsafe — Máxima compatibilidad, mínimo ancho de banda",
+            "version": "APE_v10.0_REALTIME_ENGINE",
+            "hlsjs.abrBandWidthFactor": 0.95,
+            "hlsjs.abrBandWidthUpFactor": 0.85,
+            "hlsjs.abrMaxWithRealBitrate": true,
+            "shaka.abr_bandwidthUpgradeTarget": 0.85,
+            "shaka.abr_bandwidthDowngradeTarget": 0.95,
+            "headerOverrides_v10.X-QoE-Bitrate-Target-Mbps": "8",
+            "headerOverrides_v10.X-QoE-Session-Id": "[GENERATE_UUID]",
+            "headerOverrides_v10.X-QoE-Content-Id": "[CHANNEL_ID]",
+            "headerOverrides_v10.X-Bitrate-Ladder": "5000000@854x480x30,2000000@640x360x25,800000@426x240x25",
+            "headerOverrides_v10.X-Bitrate-Ladder-Source": "bitmovin-stream-lab-2025",
+            "headerOverrides_v10.X-Stream-Codecs": "avc1.42c01e,mp4a.40.2",
+            "headerOverrides_v10.X-Stream-Resolution": "854x480",
+            "headerOverrides_v10.X-Stream-FPS": "30",
+            "headerOverrides_v10.X-Stream-Bitrate": "5000000",
+            "vlcopt_v10.avcodec-dr": "1",
+            "vlcopt_v10.avcodec-hw": "any",
+            "qoe_targets.avg_bitrate_target_mbps": 8
+          },
+          "nested_counts": {
+            "sources": "array(7)",
+            "hlsjs": "object(22)",
+            "bitmovin": "object(6)",
+            "shaka": "object(7)",
+            "exoplayer": "object(7)",
+            "headerOverrides_v10": "object(50)",
+            "vlcopt_v10": "object(11)",
+            "qoe_targets": "object(8)",
+            "analysis_services": "object(7)"
+          }
+        }
+      },
+      "shallow": {
+        "P0": "object(13)",
+        "P1": "object(13)",
+        "P2": "object(13)",
+        "P3": "object(13)",
+        "P4": "object(13)",
+        "P5": "object(13)"
+      }
+    },
+    "codec_ladder": {
+      "type": "object(7)",
+      "sample_keys": [
+        "_meta",
+        "P0",
+        "P1",
+        "P2",
+        "P3",
+        "P4",
+        "P5"
+      ],
+      "profiles": {
+        "P0": {
+          "type": "object",
+          "keys": [
+            "video",
+            "audio",
+            "hdr",
+            "player_pref",
+            "video_family"
+          ],
+          "scalars": {
+            "video": "dvh1.05.06,dvh1.08.06,hvc1.2.4.L183.B0,hvc1.2.4.L183.B0,av01.0.13M.10.0.110.09.16.09.0,avc1.640033,avc1.640028",
+            "audio": "ec-3,ac-3,mp4a.40.2,mp4a.40.5",
+            "hdr": "dolby-vision,hdr10+,hdr10,hlg,sdr",
+            "player_pref": "hvc1,hev1,dvh1,dvhe,h265,av1,avc1,h264",
+            "video_family": "DV>HEVC-MAIN10>HEVC-MAIN>AV1>H264-HIGH>H264-MAIN"
+          },
+          "nested_counts": {}
+        },
+        "P1": {
+          "type": "object",
+          "keys": [
+            "video",
+            "audio",
+            "hdr",
+            "player_pref",
+            "video_family"
+          ],
+          "scalars": {
+            "video": "hvc1.2.4.L153.B0,hev1.2.4.L153.B0,hvc1.2.4.L150.B0,av01.0.12M.10.0.110.09.16.09.0,avc1.640033,avc1.640028",
+            "audio": "ec-3,ac-3,mp4a.40.2,mp4a.40.5",
+            "hdr": "hdr10+,hdr10,hlg,sdr",
+            "player_pref": "hvc1,hev1,h265,av1,avc1,h264",
+            "video_family": "HEVC-MAIN10>HEVC-MAIN>AV1>H264-HIGH>H264-MAIN"
+          },
+          "nested_counts": {}
+        },
+        "P2": {
+          "type": "object",
+          "keys": [
+            "video",
+            "audio",
+            "hdr",
+            "player_pref",
+            "video_family"
+          ],
+          "scalars": {
+            "video": "hvc1.2.4.L153.B0,hev1.2.4.L153.B0,hvc1.2.4.L150.B0,avc1.640033,avc1.640028",
+            "audio": "ec-3,ac-3,mp4a.40.2,mp4a.40.5",
+            "hdr": "hdr10,hlg,sdr",
+            "player_pref": "hvc1,hev1,h265,avc1,h264",
+            "video_family": "HEVC-MAIN10>HEVC-MAIN>H264-HIGH>H264-MAIN"
+          },
+          "nested_counts": {}
+        },
+        "P3": {
+          "type": "object",
+          "keys": [
+            "video",
+            "audio",
+            "hdr",
+            "player_pref",
+            "video_family"
+          ],
+          "scalars": {
+            "video": "hvc1.2.4.L120.B0,hev1.2.4.L120.B0,hvc1.2.4.L120.B0,avc1.640028,avc1.4D401F",
+            "audio": "mp4a.40.2,mp4a.40.5,mp4a.40.29",
+            "hdr": "hlg,sdr",
+            "player_pref": "hvc1,hev1,h265,avc1,h264",
+            "video_family": "HEVC-MAIN>HEVC-MAIN10>H264-HIGH>H264-MAIN"
+          },
+          "nested_counts": {}
+        },
+        "P4": {
+          "type": "object",
+          "keys": [
+            "video",
+            "audio",
+            "hdr",
+            "player_pref",
+            "video_family"
+          ],
+          "scalars": {
+            "video": "hvc1.2.4.L93.B0,hev1.2.4.L93.B0,avc1.640020,avc1.4D401F,avc1.42E01F",
+            "audio": "mp4a.40.2,mp4a.40.5,mp4a.40.29",
+            "hdr": "sdr",
+            "player_pref": "hvc1,hev1,h265,avc1,h264",
+            "video_family": "HEVC-MAIN-HD>H264-HIGH>H264-MAIN>H264-BASELINE"
+          },
+          "nested_counts": {}
+        },
+        "P5": {
+          "type": "object",
+          "keys": [
+            "video",
+            "audio",
+            "hdr",
+            "player_pref",
+            "video_family"
+          ],
+          "scalars": {
+            "video": "avc1.42E01E,avc1.42E00D,mp2v.2",
+            "audio": "mp4a.40.5,mp4a.40.29,mp4a.40.2",
+            "hdr": "sdr",
+            "player_pref": "avc1,h264",
+            "video_family": "H264-MAIN>H264-BASELINE>MPEG2"
+          },
+          "nested_counts": {}
+        }
+      },
+      "shallow": {
+        "_meta": "object(4)",
+        "P0": "object(5)",
+        "P1": "object(5)",
+        "P2": "object(5)",
+        "P3": "object(5)",
+        "P4": "object(5)",
+        "P5": "object(5)"
+      }
+    }
+  }
+}

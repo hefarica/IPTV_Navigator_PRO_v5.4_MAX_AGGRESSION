@@ -1,0 +1,287 @@
+{
+  "schema": "ape-change-map/1.0",
+  "purpose": "Mapa maquina-legible de cada ruta con cambios en el arbol de trabajo: estado git, atribucion (solo con evidencia), riesgo de colision para la auditoria y accion permitida.",
+  "generated_by": {
+    "session_id": "be3f50f9-ee2d-4be4-a3e9-54e5ad8e2753",
+    "agent": "coord-sesiones",
+    "team": "alineacion-omni-crystal-1025",
+    "task": "t3",
+    "attempt_id": "cd4695ec-7d17-4f76-bf55-897f91f0939d"
+  },
+  "observed_at": "2026-10-25T22:50:41-05:00",
+  "repo": {
+    "root": "C:/Users/HFRC/Desktop/IPTV_Navigator_PRO_v5.4_MAX_AGGRESSION",
+    "branch": "feat/adb-generic-visual-enhancement-installer",
+    "head": "d322eb214b73134558c4f4964d776bc2bfac0e7c",
+    "head_subject": "feat(contracts): contratos Crystal como DATOS con SHA-256 reales + verificador que puede fallar",
+    "head_date": "2026-10-25T22:32:42-05:00",
+    "remote_sync": "ahead 0 / behind 0 — push db6ddc7..d322eb2 verificado por el capitan (commit-gate/COMMIT_PUSH_GATE.md §1)",
+    "reflog_confirms_no_new_commit": true
+  },
+  "summary": {
+    "tracked_modified": 18,
+    "tracked_deleted": 3172,
+    "untracked": 72,
+    "staged": 0,
+    "note": "Las 18 M incluyen 1 archivo de este equipo (.agent/COORDINATION.md, t2). Las otras 17 son WIP de otras sesiones y NO se tocan.",
+    "delta_vs_previous_photo_2245": {
+      "tracked_modified": "+1 (.agent/COORDINATION.md, nuestro)",
+      "untracked": "+3 (UsersHFRC...qsv_probe.mkv, audit/, docs/ops/)",
+      "session_dirs_iptv": "28 -> 31 (+3: app-generador, json-ssot, 1 sin identificar)"
+    }
+  },
+  "attribution_legend": {
+    "high": "evidencia documental directa (fila del ledger COORDENADAS_SESIONES.md §2 con ruta + sha, o lock con motivo que nombra la ruta)",
+    "medium": "lock de lane que cubre la ruta + ventana temporal compatible (sin fila nominal)",
+    "low": "solo una lane/glob compatible; la ruta exacta no aparece en ningun registro",
+    "none": "sin atribucion posible: se declara DESCONOCIDA, no se adivina"
+  },
+  "risk_legend": {
+    "high": "un auditor de este equipo lo va a LEER y su contenido puede cambiar durante la auditoria (veredicto puede quedar obsoleto)",
+    "medium": "esta en juego en la cadena pero no lo lee directamente esta auditoria, o es un gate que hoy da rojo",
+    "low": "artefacto de staging/documentacion; el riesgo es de commit accidental, no de veredicto",
+    "none": "propiedad de este equipo o historico inerte"
+  },
+  "routes": [
+    {
+      "path": ".agent/COORDINATION.md",
+      "git_state": "M",
+      "area": "coordinacion",
+      "numstat": "+74/-0",
+      "bytes": 21516,
+      "mtime": "2026-10-25T22:45:44-05:00",
+      "attribution": { "agent": "coord-sesiones", "task": "t2", "confidence": "high", "evidence": "escrito por este equipo; prepend TABLERO VIVO; backup .agent/COORDINATION.md.bak_20261026T034317Z" },
+      "risk": "none",
+      "action": "propio: se commitea o no segun el gate del capitan; nadie mas lo edita"
+    },
+    {
+      "path": "IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/m3u8-typed-arrays-ultimate.js",
+      "git_state": "M",
+      "area": "frontend/js generador",
+      "numstat": "+427/-1",
+      "bytes": 746967,
+      "mtime": "2026-10-25T21:52:01-05:00",
+      "attribution": { "agent": "t29 + t33 + t36 (dsh-lead)", "task": "t29/t33/t36", "confidence": "high", "evidence": "COORDENADAS_SESIONES.md §2 fila '21:39-21:52 | t29 + t33 + t36' con sha actual 2315184E…; ademas lock L-001" },
+      "risk": "high",
+      "action": "t6 LEE (nunca escribe); fijar sha256 antes y despues de citar lineas"
+    },
+    {
+      "path": "IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/ape-profiles-config.js",
+      "git_state": "M",
+      "area": "frontend/js generador",
+      "numstat": "+79/-0",
+      "bytes": 367765,
+      "mtime": "2026-10-25T20:09:30-05:00",
+      "attribution": { "agent": "dsh-lead (fuse A+B)", "task": "fuse-A+B", "confidence": "high", "evidence": "COORDENADAS_SESIONES.md §2 fila '~20:09 | DSH lead (fuse A+B) | ape-profiles-config.js, streaming/profile-solver-v9.js'; ademas L-001" },
+      "risk": "high",
+      "action": "t6 LEE; pin de sha256"
+    },
+    {
+      "path": "IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/streaming/profile-solver-v9.js",
+      "git_state": "M",
+      "area": "frontend/js generador",
+      "numstat": "+40/-4",
+      "bytes": 32019,
+      "mtime": "2026-10-25T20:09:47-05:00",
+      "attribution": { "agent": "dsh-lead (fuse A+B)", "task": "fuse-A+B", "confidence": "high", "evidence": "COORDENADAS_SESIONES.md §2 misma fila 20:09; ademas L-001" },
+      "risk": "high",
+      "action": "t6 LEE; pin de sha256"
+    },
+    {
+      "path": "IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/m3u8-api-wrapper-integrated.js",
+      "git_state": "M",
+      "area": "frontend/js generador",
+      "numstat": "+10/-1",
+      "bytes": 102111,
+      "mtime": "2026-10-25T21:43:49-05:00",
+      "attribution": { "agent": "DESCONOCIDA", "task": null, "confidence": "low", "evidence": "solo L-001 (frontend/js/**) cubre la ruta; sin fila nominal en el ledger" },
+      "risk": "high",
+      "action": "t6 LEE; pin de sha256; NO atribuir autoría sin evidencia"
+    },
+    {
+      "path": "IPTV_v5.4_MAX_AGGRESSION/backend/resolve_quality_unified.php",
+      "git_state": "M",
+      "area": "backend PHP resolver",
+      "numstat": "+300/-38",
+      "bytes": 348758,
+      "mtime": "2026-10-25T21:35:16-05:00",
+      "attribution": { "agent": "t28 (dsh-lead)", "task": "t28", "confidence": "high", "evidence": "COORDENADAS_SESIONES.md §2 fila '21:35 | t28 | backend/resolve_quality_unified.php | 0286551e… | cerrado · sha actual 20AC4B26…'" },
+      "risk": "high",
+      "action": "t6 LEE el resolver y cita con sha; NO edita"
+    },
+    {
+      "path": "IPTV_v5.4_MAX_AGGRESSION/backend/cmaf_engine/modules/ai_super_resolution_engine.php",
+      "git_state": "M",
+      "area": "backend PHP cmaf",
+      "numstat": "+11/-22",
+      "bytes": 37321,
+      "mtime": "2026-10-25T22:00:45-05:00",
+      "attribution": { "agent": "t40 (dsh-lead)", "task": "t40", "confidence": "high", "evidence": "COORDENADAS_SESIONES.md §2 fila '22:05 | t40 | backend/cmaf_engine/modules/ai_super_resolution_engine.php | 4B939374… | cerrado · sha actual 02C8197A…'" },
+      "risk": "high",
+      "action": "t6 LEE; es el módulo de IA super-resolution: coherente con la cadena APP↔VPS"
+    },
+    {
+      "path": "IPTV_v5.4_MAX_AGGRESSION/backup_master_v5.4_phantom_engine/backend/cmaf_engine/modules/ai_super_resolution_engine.php",
+      "git_state": "M",
+      "area": "copia espejo (backup)",
+      "numstat": "+11/-22",
+      "bytes": 37347,
+      "mtime": "2026-10-25T22:16:33-05:00",
+      "attribution": { "agent": "t44 (dsh-lead)", "task": "t44", "confidence": "medium", "evidence": "L-002 motivo literal 'saneo de las 4 copias del modulo con headers de marca'; mismo mtime que las otras copias (22:16:33)" },
+      "risk": "low",
+      "action": "nadie del equipo lo toca; es copia espejo, no fuente"
+    },
+    {
+      "path": "IPTV_v5.4_MAX_AGGRESSION/vps/cmaf_engine/modules/ai_super_resolution_engine.php",
+      "git_state": "M",
+      "area": "copia espejo (vps)",
+      "numstat": "+11/-23",
+      "bytes": 52231,
+      "mtime": "2026-10-25T22:16:33-05:00",
+      "attribution": { "agent": "t44 (dsh-lead)", "task": "t44", "confidence": "medium", "evidence": "L-002 'las 4 copias'; mtime idéntico 22:16:33" },
+      "risk": "low",
+      "action": "no tocar"
+    },
+    {
+      "path": "IPTV_v5.4_MAX_AGGRESSION/vps/production_mirror/cmaf_engine/modules/ai_super_resolution_engine.php",
+      "git_state": "M",
+      "area": "copia espejo (production_mirror)",
+      "numstat": "+11/-23",
+      "bytes": 52231,
+      "mtime": "2026-10-25T22:16:33-05:00",
+      "attribution": { "agent": "t44 (dsh-lead)", "task": "t44", "confidence": "high", "evidence": "L-002 ruta exacta 'vps/production_mirror/**' en .session/locks.json + mtime 22:16:33" },
+      "risk": "low",
+      "action": "NO TOCAR: lock L-002 vigente (escritura bloqueada)"
+    },
+    {
+      "path": "IPTV_v5.4_MAX_AGGRESSION/vps/production_mirror/cmaf_engine/cmaf_engine/modules/ai_super_resolution_engine.php",
+      "git_state": "M",
+      "area": "copia espejo (production_mirror anidada)",
+      "numstat": "+11/-23",
+      "bytes": 52231,
+      "mtime": "2026-10-25T22:16:33-05:00",
+      "attribution": { "agent": "t44 (dsh-lead)", "task": "t44", "confidence": "high", "evidence": "L-002 'vps/production_mirror/**' cubre la ruta anidada" },
+      "risk": "low",
+      "action": "NO TOCAR: lock L-002"
+    },
+    {
+      "path": "IPTV_v5.4_MAX_AGGRESSION/frontend/vps/resolve.php",
+      "git_state": "M",
+      "area": "frontend PHP resolver",
+      "numstat": "+3/-3",
+      "bytes": 40906,
+      "mtime": "2026-10-25T21:38:53-05:00",
+      "attribution": { "agent": "DESCONOCIDA", "task": null, "confidence": "none", "evidence": "sin fila en el ledger; no cubierto por ningun lock" },
+      "risk": "medium",
+      "action": "t6 puede leerlo; declarar autoría DESCONOCIDA"
+    },
+    {
+      "path": "IPTV_v5.4_MAX_AGGRESSION/frontend/js/m3u8_ultimate_generator.py",
+      "git_state": "M",
+      "area": "frontend PY generador",
+      "numstat": "+2/-2",
+      "bytes": 10359,
+      "mtime": "2026-10-25T21:38:53-05:00",
+      "attribution": { "agent": "DESCONOCIDA", "task": null, "confidence": "none", "evidence": "sin fila en el ledger; no cubierto por lock" },
+      "risk": "medium",
+      "action": "t6 puede leerlo; autoría DESCONOCIDA"
+    },
+    {
+      "path": "IPTV_v5.4_MAX_AGGRESSION/frontend/js/vps-ops-panel.js",
+      "git_state": "M",
+      "area": "frontend/js panel",
+      "numstat": "+1/-1",
+      "bytes": 10489,
+      "mtime": "2026-10-25T21:40:05-05:00",
+      "attribution": { "agent": "DESCONOCIDA", "task": null, "confidence": "none", "evidence": "sin fila; no cubierto por lock" },
+      "risk": "low",
+      "action": "no es central para la alineación; se documenta y se deja"
+    },
+    {
+      "path": "_vps_stage/lua/ape_gateway.lua",
+      "git_state": "M",
+      "area": "Lua VPS staging",
+      "numstat": "+172/-0",
+      "bytes": 19087,
+      "mtime": "2026-10-25T21:01:57-05:00",
+      "attribution": { "agent": "t46 (dsh-lead)", "task": "t46", "confidence": "medium", "evidence": "L-006 '_vps_stage/lua/**' vigente desde 22:30; sin fila nominal para este archivo" },
+      "risk": "medium",
+      "action": "NO TOCAR: lock L-006. t7 lo compara contra el VPS en lectura"
+    },
+    {
+      "path": "_vps_stage/lua/ape_header.lua",
+      "git_state": "M",
+      "area": "Lua VPS staging",
+      "numstat": "+128/-2",
+      "bytes": 8088,
+      "mtime": "2026-10-25T20:41:02-05:00",
+      "attribution": { "agent": "t46 (dsh-lead)", "task": "t46", "confidence": "medium", "evidence": "L-006" },
+      "risk": "medium",
+      "action": "NO TOCAR: L-006"
+    },
+    {
+      "path": "_vps_stage/lua/ape_uri_rebase.lua",
+      "git_state": "M",
+      "area": "Lua VPS staging",
+      "numstat": "+78/-2",
+      "bytes": 9930,
+      "mtime": "2026-10-25T20:41:08-05:00",
+      "attribution": { "agent": "t46 (dsh-lead)", "task": "t46", "confidence": "medium", "evidence": "L-006" },
+      "risk": "medium",
+      "action": "NO TOCAR: L-006"
+    },
+    {
+      "path": "_vps_stage/tests/fanout_concurrency.sh",
+      "git_state": "M",
+      "area": "tests/gates VPS",
+      "numstat": "+23/-0",
+      "bytes": 99666,
+      "mtime": "2026-10-25T22:32:40-05:00",
+      "attribution": { "agent": "DESCONOCIDA (lane t46)", "task": "t46?", "confidence": "low", "evidence": "cae en la lane _vps_stage/** de t46, pero ninguna fila del ledger nombra este archivo a las 22:32" },
+      "risk": "medium",
+      "action": "NO TOCAR. OJO: este archivo es la causa del rojo del gate de contratos (X-006): el contrato pinnea los bytes del commit (9b774bff…, 98.126 B) y el disco tiene otros (b558b1cd…, 99.666 B)"
+    }
+  ],
+  "deleted_groups": [
+    { "glob": "IPTV_v5.4_MAX_AGGRESSION/backend/upload-server/target/**", "count": 912, "area": "artefactos de build Rust", "risk": "low", "action": "NO restaurar, NO commitear. Es limpieza de build, no pérdida de fuente", "evidence": "git status --short D; commit-gate/EXCLUDED_WIP.md §1" },
+    { "glob": "IPTV_v5.4_MAX_AGGRESSION/test_zip/target/release/**", "count": 910, "area": "artefactos de build Rust", "risk": "low", "action": "idem" },
+    { "glob": "IPTV_v5.4_MAX_AGGRESSION/frontend/tools/stream_probe_server/**", "count": 776, "area": "artefactos de build Rust", "risk": "low", "action": "idem" },
+    { "glob": "IPTV_v5.4_MAX_AGGRESSION/backup_master_v5.4_phantom_engine/frontend/tools/**", "count": 572, "area": "artefactos de build Rust", "risk": "low", "action": "idem" },
+    { "glob": "IPTV_v5.4_MAX_AGGRESSION/test_zip/target/{.rustc_info.json,CACHEDIR.TAG}", "count": 2, "area": "artefactos de build Rust", "risk": "low", "action": "idem" }
+  ],
+  "untracked_groups": [
+    { "glob": ".agent-teams/**", "count": "1 dir", "owner": "mixto (3 equipos + este board)", "risk": "none", "action": "estado de equipos: no se versiona por ahora (decidir con el usuario)" },
+    { "glob": ".session/**", "count": "1 dir (locks.json, session-*.json)", "owner": "dsh-lead", "risk": "none", "action": "estado maquina de session-guard: se lee, no se escribe" },
+    { "glob": "tools/session-guard.js", "count": 1, "owner": "dsh-lead", "risk": "none", "action": "enforcement de locks: solo lectura" },
+    { "glob": "COORDENADAS_SESIONES.md", "count": 1, "owner": "dsh-lead / DSH sesión VPS", "risk": "none", "action": "ledger humano ajeno: leer y, si autoriza su dueño, añadir fila" },
+    { "glob": ".agents/reports/deploy_*.json", "count": 32, "owner": "histórico (jun-2026)", "risk": "none", "action": "marcas de deploy antiguas; citar como históricas, no como estado actual" },
+    { "glob": ".agents/reports/freezeless-visual-master-council_*", "count": 3, "owner": "histórico (jun-2026)", "risk": "none", "action": "reportes del council; consulta" },
+    { "glob": ".dsh/**", "count": "1 dir", "owner": "sesión previa", "risk": "none", "action": "no tocar" },
+    { "glob": ".playwright-mcp/page-2026-06-18T18-05-20-260Z.yml", "count": 1, "owner": "desconocida", "risk": "none", "action": "dump de página; no tocar" },
+    { "glob": "_map_lua_modules.py", "count": 1, "owner": "desconocida", "risk": "none", "action": "script suelto; no ejecutar sin leer" },
+    { "glob": "_vps_stage/**", "count": 16, "owner": "t44/t45/t46/t47 (dsh-lead)", "risk": "medium", "action": "NO TOCAR: staging de VPS en vuelo (nginx, lua, watchdogs, 11 asserts JS, ADN_PIN.json)" },
+    { "glob": "contracts/**", "count": "3 archivos (tracked en HEAD, recién commiteados)", "owner": "DSH sesión VPS (rea-recon)", "risk": "medium", "action": "lock L-007; el verificador está en rojo por X-006" },
+    { "glob": "docs/upscale_lab/**", "count": "1 dir", "owner": "DSH sesión VPS", "risk": "low", "action": "lock L-008" },
+    { "glob": "tools/crystal-upscale/**", "count": "1 dir", "owner": "dsh-lead (t47)", "risk": "medium", "action": "lock L-003: no tocar" },
+    { "glob": "UsersHFRCDesktopIPTV_Navigator_PRO_v5.4_MAX_AGGRESSIONtoolscrystal-upscale_work.qsv_probe.mkv", "count": 1, "owner": "dsh-lead (t47, lock L-003) — binario aplanado", "risk": "medium", "action": "NO borrar/mover/renombrar (X-007). Reportado a su dueño", "bytes": 31545, "mtime": "2026-10-25T22:48:23-05:00", "sha256": "FD4E0DBB26C939480159A7A73FFADF160A8B24000C6731D3FFE1758D5A5FBE86" },
+    { "glob": "c：tmplogcat_dump.txt", "count": 1, "owner": "desconocida (sesión previa)", "risk": "none", "action": "nombre corrupto (dos puntos fullwidth). NO renombrar: rompería el path para quien lo creó" },
+    { "glob": "docs/REA_*.md", "count": 6, "owner": "rea-recon", "risk": "low", "action": "forensia de otra sesión: citar, no copiar ni mover" },
+    { "glob": "docs/evidence/**", "count": "3 (2 bundles .gz + 1 .ps1)", "owner": "rea-recon", "risk": "low", "action": "11,7 MB de evidencia ajena: no tocar" },
+    { "glob": "audit/alignment/2026-10-25/**", "count": "2 lanes hasta ahora: 00-inflight, commit-gate", "owner": "este equipo (00-inflight = coord-sesiones; commit-gate = capitán)", "risk": "none", "action": "cada lane escribe la suya; el resto no" },
+    { "glob": "docs/ops/session-coordination/**", "count": 3, "owner": "coord-sesiones (t2)", "risk": "none", "action": "protocolo + avisos: append-only, no reescribir" },
+    { "glob": "audit_teams_REA/**", "count": "38 .md (tracked)", "owner": "sesión REA/VPS", "risk": "low", "action": "X-005: fuente externa; se cita" }
+  ],
+  "collision_risks_for_audit_lanes": [
+    { "lane": "t4 excel-ssot", "reads": ["**/*.xlsm"], "collide_with": [], "risk": "low", "note": "0 procesos EXCEL/php en ejecución: el .xlsm no está abierto por COM; medido 22:50" },
+    { "lane": "t5 json-ssot", "reads": ["IPTV_v5.4_MAX_AGGRESSION/frontend/lab_master_22.6.0.json", "channels_map.json (73 MB / 28 MB)"], "collide_with": [], "risk": "low", "note": "lab_master_22.6.0.json NO aparece en git status: si su sha difiere de 099A1707… (pin del ledger) es hallazgo, no ruido" },
+    { "lane": "t6 app-generador", "reads": ["IPTV_v5.4_MAX_AGGRESSION/frontend/js/**", "backend/resolve_quality_unified.php", "backend/cmaf_engine/**"], "collide_with": ["L-001", "X-002"], "risk": "high", "note": "4 archivos de su sujeto están modificados sin commitear y siguen moviéndose; debe pinnear sha256" },
+    { "lane": "t7 vps-edge", "reads": ["VPS 178.156.147.234 (ssh read-only)"], "collide_with": ["X-001 (ledger VPS ajeno)"], "risk": "medium", "note": "producción viva; hoy otra sesión desactivó /etc/cron.d/cache-health-monitor a las 21:59 Bogotá" },
+    { "lane": "t8 listas-m3u8", "reads": ["listas en VPS", "listas directas al proveedor"], "collide_with": [], "risk": "medium", "note": "depende de t5+t7; si el VPS cambia la lista servida durante la medición, el muestreo debe declarar la ventana" },
+    { "lane": "t9 verificador", "reads": ["todo audit/alignment/**"], "collide_with": ["X-006"], "risk": "medium", "note": "verify_contracts.mjs está en rojo por WIP ajeno: NO es un FAIL del sistema, es drift (X-006)" }
+  ],
+  "limitations": [
+    "git status es del worktree LOCAL: no se hizo fetch, así que 'ahead/behind' se cita del gate del capitán, no de una medición propia.",
+    "Los mtimes NO identifican autores: 6 de 18 M tienen atribución con evidencia documental directa; 4 medium (lock + ventana); 3 low; 4 DESCONOCIDAS. No se rellena el hueco por parecido.",
+    "Los conteos caducan: foto entre 22:40 y 22:52. Los tamaños de sesión crecen con cada turno."
+  ]
+}

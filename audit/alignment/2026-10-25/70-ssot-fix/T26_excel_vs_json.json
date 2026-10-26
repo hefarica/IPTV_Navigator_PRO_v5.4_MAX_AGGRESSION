@@ -1,0 +1,1270 @@
+{
+  "source_json": {
+    "path": "C:/Users/HFRC/Desktop/IPTV_Navigator_PRO_v5.4_MAX_AGGRESSION/IPTV_v5.4_MAX_AGGRESSION/frontend/lab_master_22.6.0.json",
+    "sha256": "60DBAB4B8CF7A15CD1D59E1F73A9B83FF469BCDD8A93D57345CC8259AB312A93"
+  },
+  "source_excel": {
+    "path": "C:\\Users\\HFRC\\Downloads\\APE_M3U8_LAB_v8_FIXED.xlsm",
+    "sha256": "663EF44E2D69521EB0E77DDA7B64A32EA4F942992F8F2C80614EAEE8EC52806A",
+    "sizeBytes": 3582019,
+    "mtimeUtc": "2026-06-11T06:54:49.080713Z",
+    "sheet": "6_NIVEL_2_PROFILES",
+    "sheetDimension": "A1:H663",
+    "readCopyMatchesSource": true
+  },
+  "decision_context": {
+    "D20_canonical_branch": "Downloads/APE_M3U8_LAB_v8_FIXED.xlsm (663EF44E…)",
+    "D22_P1": "export sheet 6_NIVEL_2_PROFILES row 25/37 = 3840x2160 + hvc1.2.4.L153.B0",
+    "D15_fps": "Excel row 32 = 120 in all 6 profiles; level-capacity correction required"
+  },
+  "profiles": {
+    "P0": {
+      "canonical_excel": {
+        "resolution": "7680x4320",
+        "codec_full": "dvh1.08.06",
+        "fps": "120"
+      },
+      "field_rows": [
+        {
+          "json_path": "profiles_calibrated.P0.settings.resolution",
+          "excel_key": "settings.resolution",
+          "excel_cell": "6_NIVEL_2_PROFILES!B25",
+          "excel_value": "7680x4320",
+          "json_value": "7680x4320",
+          "status": "MATCH"
+        },
+        {
+          "json_path": "profiles_calibrated.P0.settings.maxResolution",
+          "excel_key": "settings.maxResolution",
+          "excel_cell": "6_NIVEL_2_PROFILES!B48",
+          "excel_value": "7680x4320",
+          "json_value": "7680x4320",
+          "status": "MATCH"
+        },
+        {
+          "json_path": "profiles_calibrated.P0.settings.fps",
+          "excel_key": "settings.fps",
+          "excel_cell": "6_NIVEL_2_PROFILES!B32",
+          "excel_value": "120",
+          "json_value": "120",
+          "status": "MATCH"
+        },
+        {
+          "json_path": "profiles_calibrated.P0.settings.targetFps",
+          "excel_key": "settings.targetFps",
+          "excel_cell": "6_NIVEL_2_PROFILES!B51",
+          "excel_value": "120",
+          "json_value": "120",
+          "status": "MATCH"
+        },
+        {
+          "json_path": "profiles_calibrated.P0.settings.codec",
+          "excel_key": "settings.codec",
+          "excel_cell": "6_NIVEL_2_PROFILES!B33",
+          "excel_value": "DVH1",
+          "json_value": "DVH1",
+          "status": "MATCH"
+        },
+        {
+          "json_path": "profiles_calibrated.P0.settings.codec_full",
+          "excel_key": "settings.codec_full",
+          "excel_cell": "6_NIVEL_2_PROFILES!B37",
+          "excel_value": "dvh1.08.06",
+          "json_value": "dvh1.08.06",
+          "status": "MATCH"
+        },
+        {
+          "json_path": "profiles_calibrated.P0.settings.codec_priority",
+          "excel_key": "settings.codec_priority",
+          "excel_cell": "6_NIVEL_2_PROFILES!B38",
+          "excel_value": "dvh1,dvhe,hvc1,hev1,av01,vp09",
+          "json_value": "dvh1,dvhe,hvc1,hev1,av01,vp09",
+          "status": "MATCH"
+        },
+        {
+          "json_path": "profiles_calibrated.P0.settings.bit_depth",
+          "excel_key": "settings.bit_depth",
+          "excel_cell": "6_NIVEL_2_PROFILES!B39",
+          "excel_value": "12",
+          "json_value": "12",
+          "status": "MATCH"
+        },
+        {
+          "json_path": "profiles_calibrated.P0.settings.chroma_subsampling",
+          "excel_key": "settings.chroma_subsampling",
+          "excel_cell": "6_NIVEL_2_PROFILES!B40",
+          "excel_value": "168055555555556",
+          "json_value": null,
+          "status": "EXCEL_ONLY"
+        },
+        {
+          "json_path": "profiles_calibrated.P0.settings.hdrMode",
+          "excel_key": "settings.hdrMode",
+          "excel_cell": "6_NIVEL_2_PROFILES!B53",
+          "excel_value": "DOLBY_VISION_P8",
+          "json_value": "DOLBY_VISION_P8",
+          "status": "MATCH"
+        },
+        {
+          "json_path": "profiles_calibrated.P0.settings.videoRange",
+          "excel_key": "settings.videoRange",
+          "excel_cell": "6_NIVEL_2_PROFILES!B54",
+          "excel_value": "DOVI",
+          "json_value": "DOVI",
+          "status": "MATCH"
+        },
+        {
+          "json_path": "profiles_calibrated.P0.settings.maxBitrateKbps",
+          "excel_key": "settings.maxBitrateKbps",
+          "excel_cell": "6_NIVEL_2_PROFILES!B49",
+          "excel_value": "200000",
+          "json_value": "200000",
+          "status": "MATCH"
+        },
+        {
+          "json_path": "profiles_calibrated.P0.settings.avgBitrateKbps",
+          "excel_key": "settings.avgBitrateKbps",
+          "excel_cell": "6_NIVEL_2_PROFILES!B50",
+          "excel_value": "160000",
+          "json_value": "160000",
+          "status": "MATCH"
+        },
+        {
+          "json_path": "profiles_calibrated.P0.headerOverrides.X-Stream-Codecs",
+          "excel_key": "headerOverrides.X-Stream-Codecs",
+          "excel_cell": "6_NIVEL_2_PROFILES!B350",
+          "excel_value": "dvh1.08.06,ac-3",
+          "json_value": "dvh1.08.06,ac-3",
+          "status": "MATCH"
+        },
+        {
+          "json_path": "profiles_calibrated.P0.headerOverrides.X-Stream-Resolution",
+          "excel_key": "headerOverrides.X-Stream-Resolution",
+          "excel_cell": "6_NIVEL_2_PROFILES!B351",
+          "excel_value": "7680x4320",
+          "json_value": "7680x4320",
+          "status": "MATCH"
+        },
+        {
+          "json_path": "profiles_calibrated.P0.headerOverrides.X-Stream-FPS",
+          "excel_key": "headerOverrides.X-Stream-FPS",
+          "excel_cell": "6_NIVEL_2_PROFILES!B352",
+          "excel_value": "60",
+          "json_value": "30",
+          "status": "DIFF"
+        },
+        {
+          "json_path": "profiles_calibrated.P0.headerOverrides.X-APE-CODEC",
+          "excel_key": "headerOverrides.X-APE-CODEC",
+          "excel_cell": "6_NIVEL_2_PROFILES!B135",
+          "excel_value": "av01.0.21M.10.0.112.09.16.09.0,dvh1.08.06,hvc1.2.4.L186.B0",
+          "json_value": "av01.0.21M.10.0.112.09.16.09.0,dvh1.08.06,hvc1.2.4.L186.B0",
+          "status": "MATCH"
+        },
+        {
+          "json_path": "profiles_calibrated.P0.headerOverrides.X-APE-RESOLUTION",
+          "excel_key": "headerOverrides.X-APE-RESOLUTION",
+          "excel_cell": "6_NIVEL_2_PROFILES!B136",
+          "excel_value": "7680x4320,3840x2160,2560x1440,1920x1080",
+          "json_value": "7680x4320,3840x2160,2560x1440,1920x1080",
+          "status": "MATCH"
+        },
+        {
+          "json_path": "profiles_calibrated.P0.headerOverrides.X-APE-FPS",
+          "excel_key": "headerOverrides.X-APE-FPS",
+          "excel_cell": "6_NIVEL_2_PROFILES!B137",
+          "excel_value": "120,120,120,120",
+          "json_value": "120,120,120,120",
+          "status": "MATCH"
+        },
+        {
+          "json_path": "profiles_calibrated.P0.kodiprop.inputstream.adaptive.max_resolution",
+          "excel_key": "kodiprop.inputstream.adaptive.max_resolution",
+          "excel_cell": "6_NIVEL_2_PROFILES!B121",
+          "excel_value": "7680x4320",
+          "json_value": null,
+          "status": "EXCEL_ONLY"
+        },
+        {
+          "json_path": "profiles_calibrated.P0.vlcopt.video-width",
+          "excel_key": "vlcopt.video-width",
+          "excel_cell": "6_NIVEL_2_PROFILES!B109",
+          "excel_value": "7680",
+          "json_value": "7680",
+          "status": "MATCH"
+        },
+        {
+          "json_path": "profiles_calibrated.P0.vlcopt.video-height",
+          "excel_key": "vlcopt.video-height",
+          "excel_cell": "6_NIVEL_2_PROFILES!B110",
+          "excel_value": "4320",
+          "json_value": "4320",
+          "status": "MATCH"
+        }
+      ],
+      "diff_count": 1,
+      "diffs": [
+        {
+          "json_path": "profiles_calibrated.P0.headerOverrides.X-Stream-FPS",
+          "excel_key": "headerOverrides.X-Stream-FPS",
+          "excel_cell": "6_NIVEL_2_PROFILES!B352",
+          "excel_value": "60",
+          "json_value": "30",
+          "status": "DIFF"
+        }
+      ],
+      "D15_fps_check": {
+        "declared_fps": "120",
+        "codec": "dvh1.08.06",
+        "resolution": "7680x4320",
+        "level_capacity_fps_ceiling": null,
+        "verdict": "UNKNOWN",
+        "recommendation": "fps declarado soportado por el nivel"
+      }
+    },
+    "P1": {
+      "canonical_excel": {
+        "resolution": "3840x2160",
+        "codec_full": "hvc1.2.4.L153.B0",
+        "fps": "120"
+      },
+      "field_rows": [
+        {
+          "json_path": "profiles_calibrated.P1.settings.resolution",
+          "excel_key": "settings.resolution",
+          "excel_cell": "6_NIVEL_2_PROFILES!C25",
+          "excel_value": "3840x2160",
+          "json_value": "3840x2160",
+          "status": "MATCH"
+        },
+        {
+          "json_path": "profiles_calibrated.P1.settings.maxResolution",
+          "excel_key": "settings.maxResolution",
+          "excel_cell": "6_NIVEL_2_PROFILES!C48",
+          "excel_value": "3840x2160",
+          "json_value": "3840x2160",
+          "status": "MATCH"
+        },
+        {
+          "json_path": "profiles_calibrated.P1.settings.fps",
+          "excel_key": "settings.fps",
+          "excel_cell": "6_NIVEL_2_PROFILES!C32",
+          "excel_value": "120",
+          "json_value": "120",
+          "status": "MATCH"
+        },
+        {
+          "json_path": "profiles_calibrated.P1.settings.targetFps",
+          "excel_key": "settings.targetFps",
+          "excel_cell": "6_NIVEL_2_PROFILES!C51",
+          "excel_value": "120",
+          "json_value": "120",
+          "status": "MATCH"
+        },
+        {
+          "json_path": "profiles_calibrated.P1.settings.codec",
+          "excel_key": "settings.codec",
+          "excel_cell": "6_NIVEL_2_PROFILES!C33",
+          "excel_value": "HVC1",
+          "json_value": "HVC1",
+          "status": "MATCH"
+        },
+        {
+          "json_path": "profiles_calibrated.P1.settings.codec_full",
+          "excel_key": "settings.codec_full",
+          "excel_cell": "6_NIVEL_2_PROFILES!C37",
+          "excel_value": "hvc1.2.4.L153.B0",
+          "json_value": "hvc1.2.4.L153.B0",
+          "status": "MATCH"
+        },
+        {
+          "json_path": "profiles_calibrated.P1.settings.codec_priority",
+          "excel_key": "settings.codec_priority",
+          "excel_cell": "6_NIVEL_2_PROFILES!C38",
+          "excel_value": "hvc1,hev1,av01,vp09",
+          "json_value": "hvc1,hev1,av01,vp09",
+          "status": "MATCH"
+        },
+        {
+          "json_path": "profiles_calibrated.P1.settings.bit_depth",
+          "excel_key": "settings.bit_depth",
+          "excel_cell": "6_NIVEL_2_PROFILES!C39",
+          "excel_value": "10",
+          "json_value": "10",
+          "status": "MATCH"
+        },
+        {
+          "json_path": "profiles_calibrated.P1.settings.chroma_subsampling",
+          "excel_key": "settings.chroma_subsampling",
+          "excel_cell": "6_NIVEL_2_PROFILES!C40",
+          "excel_value": "168055555555556",
+          "json_value": null,
+          "status": "EXCEL_ONLY"
+        },
+        {
+          "json_path": "profiles_calibrated.P1.settings.hdrMode",
+          "excel_key": "settings.hdrMode",
+          "excel_cell": "6_NIVEL_2_PROFILES!C53",
+          "excel_value": "HDR10",
+          "json_value": "HDR10",
+          "status": "MATCH"
+        },
+        {
+          "json_path": "profiles_calibrated.P1.settings.videoRange",
+          "excel_key": "settings.videoRange",
+          "excel_cell": "6_NIVEL_2_PROFILES!C54",
+          "excel_value": "PQ",
+          "json_value": "PQ",
+          "status": "MATCH"
+        },
+        {
+          "json_path": "profiles_calibrated.P1.settings.maxBitrateKbps",
+          "excel_key": "settings.maxBitrateKbps",
+          "excel_cell": "6_NIVEL_2_PROFILES!C49",
+          "excel_value": "40000",
+          "json_value": "40000",
+          "status": "MATCH"
+        },
+        {
+          "json_path": "profiles_calibrated.P1.settings.avgBitrateKbps",
+          "excel_key": "settings.avgBitrateKbps",
+          "excel_cell": "6_NIVEL_2_PROFILES!C50",
+          "excel_value": "75000",
+          "json_value": "40000",
+          "status": "DIFF"
+        },
+        {
+          "json_path": "profiles_calibrated.P1.headerOverrides.X-Stream-Codecs",
+          "excel_key": "headerOverrides.X-Stream-Codecs",
+          "excel_cell": "6_NIVEL_2_PROFILES!C350",
+          "excel_value": "av01.0.15M.10,ac-3",
+          "json_value": "hvc1.2.4.L153.B0,ac-3",
+          "status": "DIFF"
+        },
+        {
+          "json_path": "profiles_calibrated.P1.headerOverrides.X-Stream-Resolution",
+          "excel_key": "headerOverrides.X-Stream-Resolution",
+          "excel_cell": "6_NIVEL_2_PROFILES!C351",
+          "excel_value": "3840x2160",
+          "json_value": "3840x2160",
+          "status": "MATCH"
+        },
+        {
+          "json_path": "profiles_calibrated.P1.headerOverrides.X-Stream-FPS",
+          "excel_key": "headerOverrides.X-Stream-FPS",
+          "excel_cell": "6_NIVEL_2_PROFILES!C352",
+          "excel_value": "120",
+          "json_value": "60",
+          "status": "DIFF"
+        },
+        {
+          "json_path": "profiles_calibrated.P1.headerOverrides.X-APE-CODEC",
+          "excel_key": "headerOverrides.X-APE-CODEC",
+          "excel_cell": "6_NIVEL_2_PROFILES!C135",
+          "excel_value": "dvh1.08.06,hvc1.2.4.L153.B0,hev1.2.4.L153.B0,av01.0.15M.10",
+          "json_value": "dvh1.08.06,hvc1.2.4.L153.B0,hev1.2.4.L153.B0,av01.0.15M.10",
+          "status": "MATCH"
+        },
+        {
+          "json_path": "profiles_calibrated.P1.headerOverrides.X-APE-RESOLUTION",
+          "excel_key": "headerOverrides.X-APE-RESOLUTION",
+          "excel_cell": "6_NIVEL_2_PROFILES!C136",
+          "excel_value": "3840x2160,2560x1440,1920x1080,1280x720",
+          "json_value": "3840x2160,2560x1440,1920x1080,1280x720",
+          "status": "MATCH"
+        },
+        {
+          "json_path": "profiles_calibrated.P1.headerOverrides.X-APE-FPS",
+          "excel_key": "headerOverrides.X-APE-FPS",
+          "excel_cell": "6_NIVEL_2_PROFILES!C137",
+          "excel_value": "120,120,120,120",
+          "json_value": "120,120,120,120",
+          "status": "MATCH"
+        },
+        {
+          "json_path": "profiles_calibrated.P1.kodiprop.inputstream.adaptive.max_resolution",
+          "excel_key": "kodiprop.inputstream.adaptive.max_resolution",
+          "excel_cell": "6_NIVEL_2_PROFILES!C121",
+          "excel_value": "3840x2160",
+          "json_value": null,
+          "status": "EXCEL_ONLY"
+        },
+        {
+          "json_path": "profiles_calibrated.P1.vlcopt.video-width",
+          "excel_key": "vlcopt.video-width",
+          "excel_cell": "6_NIVEL_2_PROFILES!C109",
+          "excel_value": "3840",
+          "json_value": "3840",
+          "status": "MATCH"
+        },
+        {
+          "json_path": "profiles_calibrated.P1.vlcopt.video-height",
+          "excel_key": "vlcopt.video-height",
+          "excel_cell": "6_NIVEL_2_PROFILES!C110",
+          "excel_value": "2160",
+          "json_value": "2160",
+          "status": "MATCH"
+        }
+      ],
+      "diff_count": 3,
+      "diffs": [
+        {
+          "json_path": "profiles_calibrated.P1.settings.avgBitrateKbps",
+          "excel_key": "settings.avgBitrateKbps",
+          "excel_cell": "6_NIVEL_2_PROFILES!C50",
+          "excel_value": "75000",
+          "json_value": "40000",
+          "status": "DIFF"
+        },
+        {
+          "json_path": "profiles_calibrated.P1.headerOverrides.X-Stream-Codecs",
+          "excel_key": "headerOverrides.X-Stream-Codecs",
+          "excel_cell": "6_NIVEL_2_PROFILES!C350",
+          "excel_value": "av01.0.15M.10,ac-3",
+          "json_value": "hvc1.2.4.L153.B0,ac-3",
+          "status": "DIFF"
+        },
+        {
+          "json_path": "profiles_calibrated.P1.headerOverrides.X-Stream-FPS",
+          "excel_key": "headerOverrides.X-Stream-FPS",
+          "excel_cell": "6_NIVEL_2_PROFILES!C352",
+          "excel_value": "120",
+          "json_value": "60",
+          "status": "DIFF"
+        }
+      ],
+      "D15_fps_check": {
+        "declared_fps": "120",
+        "codec": "hvc1.2.4.L153.B0",
+        "resolution": "3840x2160",
+        "level_capacity_fps_ceiling": 60,
+        "verdict": "FAIL",
+        "recommendation": "bajar fps a <= 60 (o subir el nivel del codec para sostener 120)"
+      }
+    },
+    "P2": {
+      "canonical_excel": {
+        "resolution": "3840x2160",
+        "codec_full": "hvc1.2.4.L150.B0",
+        "fps": "120"
+      },
+      "field_rows": [
+        {
+          "json_path": "profiles_calibrated.P2.settings.resolution",
+          "excel_key": "settings.resolution",
+          "excel_cell": "6_NIVEL_2_PROFILES!D25",
+          "excel_value": "3840x2160",
+          "json_value": "3840x2160",
+          "status": "MATCH"
+        },
+        {
+          "json_path": "profiles_calibrated.P2.settings.maxResolution",
+          "excel_key": "settings.maxResolution",
+          "excel_cell": "6_NIVEL_2_PROFILES!D48",
+          "excel_value": "3840x2160",
+          "json_value": "3840x2160",
+          "status": "MATCH"
+        },
+        {
+          "json_path": "profiles_calibrated.P2.settings.fps",
+          "excel_key": "settings.fps",
+          "excel_cell": "6_NIVEL_2_PROFILES!D32",
+          "excel_value": "120",
+          "json_value": "120",
+          "status": "MATCH"
+        },
+        {
+          "json_path": "profiles_calibrated.P2.settings.targetFps",
+          "excel_key": "settings.targetFps",
+          "excel_cell": "6_NIVEL_2_PROFILES!D51",
+          "excel_value": "120",
+          "json_value": "120",
+          "status": "MATCH"
+        },
+        {
+          "json_path": "profiles_calibrated.P2.settings.codec",
+          "excel_key": "settings.codec",
+          "excel_cell": "6_NIVEL_2_PROFILES!D33",
+          "excel_value": "HVC1",
+          "json_value": "HVC1",
+          "status": "MATCH"
+        },
+        {
+          "json_path": "profiles_calibrated.P2.settings.codec_full",
+          "excel_key": "settings.codec_full",
+          "excel_cell": "6_NIVEL_2_PROFILES!D37",
+          "excel_value": "hvc1.2.4.L150.B0",
+          "json_value": "hvc1.2.4.L150.B0",
+          "status": "MATCH"
+        },
+        {
+          "json_path": "profiles_calibrated.P2.settings.codec_priority",
+          "excel_key": "settings.codec_priority",
+          "excel_cell": "6_NIVEL_2_PROFILES!D38",
+          "excel_value": "hvc1,hev1,av01,vp09,avc1",
+          "json_value": "hvc1,hev1,av01,vp09,avc1",
+          "status": "MATCH"
+        },
+        {
+          "json_path": "profiles_calibrated.P2.settings.bit_depth",
+          "excel_key": "settings.bit_depth",
+          "excel_cell": "6_NIVEL_2_PROFILES!D39",
+          "excel_value": "10",
+          "json_value": "10",
+          "status": "MATCH"
+        },
+        {
+          "json_path": "profiles_calibrated.P2.settings.chroma_subsampling",
+          "excel_key": "settings.chroma_subsampling",
+          "excel_cell": "6_NIVEL_2_PROFILES!D40",
+          "excel_value": "168055555555556",
+          "json_value": null,
+          "status": "EXCEL_ONLY"
+        },
+        {
+          "json_path": "profiles_calibrated.P2.settings.hdrMode",
+          "excel_key": "settings.hdrMode",
+          "excel_cell": "6_NIVEL_2_PROFILES!D53",
+          "excel_value": "HLG",
+          "json_value": "HLG",
+          "status": "MATCH"
+        },
+        {
+          "json_path": "profiles_calibrated.P2.settings.videoRange",
+          "excel_key": "settings.videoRange",
+          "excel_cell": "6_NIVEL_2_PROFILES!D54",
+          "excel_value": "HLG",
+          "json_value": "HLG",
+          "status": "MATCH"
+        },
+        {
+          "json_path": "profiles_calibrated.P2.settings.maxBitrateKbps",
+          "excel_key": "settings.maxBitrateKbps",
+          "excel_cell": "6_NIVEL_2_PROFILES!D49",
+          "excel_value": "25000",
+          "json_value": "25000",
+          "status": "MATCH"
+        },
+        {
+          "json_path": "profiles_calibrated.P2.settings.avgBitrateKbps",
+          "excel_key": "settings.avgBitrateKbps",
+          "excel_cell": "6_NIVEL_2_PROFILES!D50",
+          "excel_value": "35000",
+          "json_value": "25000",
+          "status": "DIFF"
+        },
+        {
+          "json_path": "profiles_calibrated.P2.headerOverrides.X-Stream-Codecs",
+          "excel_key": "headerOverrides.X-Stream-Codecs",
+          "excel_cell": "6_NIVEL_2_PROFILES!D350",
+          "excel_value": "hvc1.2.4.L150.B0,ac-3",
+          "json_value": "hvc1.2.4.L150.B0,ac-3",
+          "status": "MATCH"
+        },
+        {
+          "json_path": "profiles_calibrated.P2.headerOverrides.X-Stream-Resolution",
+          "excel_key": "headerOverrides.X-Stream-Resolution",
+          "excel_cell": "6_NIVEL_2_PROFILES!D351",
+          "excel_value": "3840x2160",
+          "json_value": "3840x2160",
+          "status": "MATCH"
+        },
+        {
+          "json_path": "profiles_calibrated.P2.headerOverrides.X-Stream-FPS",
+          "excel_key": "headerOverrides.X-Stream-FPS",
+          "excel_cell": "6_NIVEL_2_PROFILES!D352",
+          "excel_value": "60",
+          "json_value": "30",
+          "status": "DIFF"
+        },
+        {
+          "json_path": "profiles_calibrated.P2.headerOverrides.X-APE-CODEC",
+          "excel_key": "headerOverrides.X-APE-CODEC",
+          "excel_cell": "6_NIVEL_2_PROFILES!D135",
+          "excel_value": "hvc1.2.4.L123.B0,hev1.2.4.L123.B0,avc1.640033",
+          "json_value": "hvc1.2.4.L123.B0,hev1.2.4.L123.B0,avc1.640033",
+          "status": "MATCH"
+        },
+        {
+          "json_path": "profiles_calibrated.P2.headerOverrides.X-APE-RESOLUTION",
+          "excel_key": "headerOverrides.X-APE-RESOLUTION",
+          "excel_cell": "6_NIVEL_2_PROFILES!D136",
+          "excel_value": "2560x1440,1920x1080,1280x720,854x480",
+          "json_value": "2560x1440,1920x1080,1280x720,854x480",
+          "status": "MATCH"
+        },
+        {
+          "json_path": "profiles_calibrated.P2.headerOverrides.X-APE-FPS",
+          "excel_key": "headerOverrides.X-APE-FPS",
+          "excel_cell": "6_NIVEL_2_PROFILES!D137",
+          "excel_value": "120,120,120,120",
+          "json_value": "120,120,120,120",
+          "status": "MATCH"
+        },
+        {
+          "json_path": "profiles_calibrated.P2.kodiprop.inputstream.adaptive.max_resolution",
+          "excel_key": "kodiprop.inputstream.adaptive.max_resolution",
+          "excel_cell": "6_NIVEL_2_PROFILES!D121",
+          "excel_value": "2560x1440",
+          "json_value": null,
+          "status": "EXCEL_ONLY"
+        },
+        {
+          "json_path": "profiles_calibrated.P2.vlcopt.video-width",
+          "excel_key": "vlcopt.video-width",
+          "excel_cell": "6_NIVEL_2_PROFILES!D109",
+          "excel_value": "2560",
+          "json_value": "2560",
+          "status": "MATCH"
+        },
+        {
+          "json_path": "profiles_calibrated.P2.vlcopt.video-height",
+          "excel_key": "vlcopt.video-height",
+          "excel_cell": "6_NIVEL_2_PROFILES!D110",
+          "excel_value": "1440",
+          "json_value": "1440",
+          "status": "MATCH"
+        }
+      ],
+      "diff_count": 2,
+      "diffs": [
+        {
+          "json_path": "profiles_calibrated.P2.settings.avgBitrateKbps",
+          "excel_key": "settings.avgBitrateKbps",
+          "excel_cell": "6_NIVEL_2_PROFILES!D50",
+          "excel_value": "35000",
+          "json_value": "25000",
+          "status": "DIFF"
+        },
+        {
+          "json_path": "profiles_calibrated.P2.headerOverrides.X-Stream-FPS",
+          "excel_key": "headerOverrides.X-Stream-FPS",
+          "excel_cell": "6_NIVEL_2_PROFILES!D352",
+          "excel_value": "60",
+          "json_value": "30",
+          "status": "DIFF"
+        }
+      ],
+      "D15_fps_check": {
+        "declared_fps": "120",
+        "codec": "hvc1.2.4.L150.B0",
+        "resolution": "3840x2160",
+        "level_capacity_fps_ceiling": 30,
+        "verdict": "FAIL",
+        "recommendation": "bajar fps a <= 30 (o subir el nivel del codec para sostener 120)"
+      }
+    },
+    "P3": {
+      "canonical_excel": {
+        "resolution": "1920x1080",
+        "codec_full": "hvc1.2.4.L123.B0",
+        "fps": "120"
+      },
+      "field_rows": [
+        {
+          "json_path": "profiles_calibrated.P3.settings.resolution",
+          "excel_key": "settings.resolution",
+          "excel_cell": "6_NIVEL_2_PROFILES!E25",
+          "excel_value": "1920x1080",
+          "json_value": "1920x1080",
+          "status": "MATCH"
+        },
+        {
+          "json_path": "profiles_calibrated.P3.settings.maxResolution",
+          "excel_key": "settings.maxResolution",
+          "excel_cell": "6_NIVEL_2_PROFILES!E48",
+          "excel_value": "1920x1080",
+          "json_value": "1920x1080",
+          "status": "MATCH"
+        },
+        {
+          "json_path": "profiles_calibrated.P3.settings.fps",
+          "excel_key": "settings.fps",
+          "excel_cell": "6_NIVEL_2_PROFILES!E32",
+          "excel_value": "120",
+          "json_value": "120",
+          "status": "MATCH"
+        },
+        {
+          "json_path": "profiles_calibrated.P3.settings.targetFps",
+          "excel_key": "settings.targetFps",
+          "excel_cell": "6_NIVEL_2_PROFILES!E51",
+          "excel_value": "120",
+          "json_value": "120",
+          "status": "MATCH"
+        },
+        {
+          "json_path": "profiles_calibrated.P3.settings.codec",
+          "excel_key": "settings.codec",
+          "excel_cell": "6_NIVEL_2_PROFILES!E33",
+          "excel_value": "HVC1",
+          "json_value": "HVC1",
+          "status": "MATCH"
+        },
+        {
+          "json_path": "profiles_calibrated.P3.settings.codec_full",
+          "excel_key": "settings.codec_full",
+          "excel_cell": "6_NIVEL_2_PROFILES!E37",
+          "excel_value": "hvc1.2.4.L123.B0",
+          "json_value": "hvc1.2.4.L123.B0",
+          "status": "MATCH"
+        },
+        {
+          "json_path": "profiles_calibrated.P3.settings.codec_priority",
+          "excel_key": "settings.codec_priority",
+          "excel_cell": "6_NIVEL_2_PROFILES!E38",
+          "excel_value": "hvc1,avc1,av01",
+          "json_value": "hvc1,avc1,av01",
+          "status": "MATCH"
+        },
+        {
+          "json_path": "profiles_calibrated.P3.settings.bit_depth",
+          "excel_key": "settings.bit_depth",
+          "excel_cell": "6_NIVEL_2_PROFILES!E39",
+          "excel_value": "10",
+          "json_value": "10",
+          "status": "MATCH"
+        },
+        {
+          "json_path": "profiles_calibrated.P3.settings.chroma_subsampling",
+          "excel_key": "settings.chroma_subsampling",
+          "excel_cell": "6_NIVEL_2_PROFILES!E40",
+          "excel_value": "168055555555556",
+          "json_value": null,
+          "status": "EXCEL_ONLY"
+        },
+        {
+          "json_path": "profiles_calibrated.P3.settings.hdrMode",
+          "excel_key": "settings.hdrMode",
+          "excel_cell": "6_NIVEL_2_PROFILES!E53",
+          "excel_value": "SDR",
+          "json_value": "SDR",
+          "status": "MATCH"
+        },
+        {
+          "json_path": "profiles_calibrated.P3.settings.videoRange",
+          "excel_key": "settings.videoRange",
+          "excel_cell": "6_NIVEL_2_PROFILES!E54",
+          "excel_value": "SDR",
+          "json_value": "SDR",
+          "status": "MATCH"
+        },
+        {
+          "json_path": "profiles_calibrated.P3.settings.maxBitrateKbps",
+          "excel_key": "settings.maxBitrateKbps",
+          "excel_cell": "6_NIVEL_2_PROFILES!E49",
+          "excel_value": "10000",
+          "json_value": "10000",
+          "status": "MATCH"
+        },
+        {
+          "json_path": "profiles_calibrated.P3.settings.avgBitrateKbps",
+          "excel_key": "settings.avgBitrateKbps",
+          "excel_cell": "6_NIVEL_2_PROFILES!E50",
+          "excel_value": "15000",
+          "json_value": "10000",
+          "status": "DIFF"
+        },
+        {
+          "json_path": "profiles_calibrated.P3.headerOverrides.X-Stream-Codecs",
+          "excel_key": "headerOverrides.X-Stream-Codecs",
+          "excel_cell": "6_NIVEL_2_PROFILES!E350",
+          "excel_value": "hvc1.2.4.L123.B0,mp4a.40.2",
+          "json_value": "hvc1.2.4.L123.B0,mp4a.40.2",
+          "status": "MATCH"
+        },
+        {
+          "json_path": "profiles_calibrated.P3.headerOverrides.X-Stream-Resolution",
+          "excel_key": "headerOverrides.X-Stream-Resolution",
+          "excel_cell": "6_NIVEL_2_PROFILES!E351",
+          "excel_value": "1920x1080",
+          "json_value": "1920x1080",
+          "status": "MATCH"
+        },
+        {
+          "json_path": "profiles_calibrated.P3.headerOverrides.X-Stream-FPS",
+          "excel_key": "headerOverrides.X-Stream-FPS",
+          "excel_cell": "6_NIVEL_2_PROFILES!E352",
+          "excel_value": "60",
+          "json_value": "60",
+          "status": "MATCH"
+        },
+        {
+          "json_path": "profiles_calibrated.P3.headerOverrides.X-APE-CODEC",
+          "excel_key": "headerOverrides.X-APE-CODEC",
+          "excel_cell": "6_NIVEL_2_PROFILES!E135",
+          "excel_value": "hvc1.2.4.L123.B0,avc1.640028",
+          "json_value": "hvc1.2.4.L123.B0,avc1.640028",
+          "status": "MATCH"
+        },
+        {
+          "json_path": "profiles_calibrated.P3.headerOverrides.X-APE-RESOLUTION",
+          "excel_key": "headerOverrides.X-APE-RESOLUTION",
+          "excel_cell": "6_NIVEL_2_PROFILES!E136",
+          "excel_value": "1920x1080,1280x720,854x480,640x360",
+          "json_value": "1920x1080,1280x720,854x480,640x360",
+          "status": "MATCH"
+        },
+        {
+          "json_path": "profiles_calibrated.P3.headerOverrides.X-APE-FPS",
+          "excel_key": "headerOverrides.X-APE-FPS",
+          "excel_cell": "6_NIVEL_2_PROFILES!E137",
+          "excel_value": "120,120,120,120",
+          "json_value": "120,120,120,120",
+          "status": "MATCH"
+        },
+        {
+          "json_path": "profiles_calibrated.P3.kodiprop.inputstream.adaptive.max_resolution",
+          "excel_key": "kodiprop.inputstream.adaptive.max_resolution",
+          "excel_cell": "6_NIVEL_2_PROFILES!E121",
+          "excel_value": "1920x1080",
+          "json_value": null,
+          "status": "EXCEL_ONLY"
+        },
+        {
+          "json_path": "profiles_calibrated.P3.vlcopt.video-width",
+          "excel_key": "vlcopt.video-width",
+          "excel_cell": "6_NIVEL_2_PROFILES!E109",
+          "excel_value": "1920",
+          "json_value": "1920",
+          "status": "MATCH"
+        },
+        {
+          "json_path": "profiles_calibrated.P3.vlcopt.video-height",
+          "excel_key": "vlcopt.video-height",
+          "excel_cell": "6_NIVEL_2_PROFILES!E110",
+          "excel_value": "1080",
+          "json_value": "1080",
+          "status": "MATCH"
+        }
+      ],
+      "diff_count": 1,
+      "diffs": [
+        {
+          "json_path": "profiles_calibrated.P3.settings.avgBitrateKbps",
+          "excel_key": "settings.avgBitrateKbps",
+          "excel_cell": "6_NIVEL_2_PROFILES!E50",
+          "excel_value": "15000",
+          "json_value": "10000",
+          "status": "DIFF"
+        }
+      ],
+      "D15_fps_check": {
+        "declared_fps": "120",
+        "codec": "hvc1.2.4.L123.B0",
+        "resolution": "1920x1080",
+        "level_capacity_fps_ceiling": 60,
+        "verdict": "FAIL",
+        "recommendation": "bajar fps a <= 60 (o subir el nivel del codec para sostener 120)"
+      }
+    },
+    "P4": {
+      "canonical_excel": {
+        "resolution": "1280x720",
+        "codec_full": "hvc1.2.4.L93.B0",
+        "fps": "120"
+      },
+      "field_rows": [
+        {
+          "json_path": "profiles_calibrated.P4.settings.resolution",
+          "excel_key": "settings.resolution",
+          "excel_cell": "6_NIVEL_2_PROFILES!F25",
+          "excel_value": "1280x720",
+          "json_value": "1280x720",
+          "status": "MATCH"
+        },
+        {
+          "json_path": "profiles_calibrated.P4.settings.maxResolution",
+          "excel_key": "settings.maxResolution",
+          "excel_cell": "6_NIVEL_2_PROFILES!F48",
+          "excel_value": "1280x720",
+          "json_value": "1280x720",
+          "status": "MATCH"
+        },
+        {
+          "json_path": "profiles_calibrated.P4.settings.fps",
+          "excel_key": "settings.fps",
+          "excel_cell": "6_NIVEL_2_PROFILES!F32",
+          "excel_value": "120",
+          "json_value": "120",
+          "status": "MATCH"
+        },
+        {
+          "json_path": "profiles_calibrated.P4.settings.targetFps",
+          "excel_key": "settings.targetFps",
+          "excel_cell": "6_NIVEL_2_PROFILES!F51",
+          "excel_value": "120",
+          "json_value": "120",
+          "status": "MATCH"
+        },
+        {
+          "json_path": "profiles_calibrated.P4.settings.codec",
+          "excel_key": "settings.codec",
+          "excel_cell": "6_NIVEL_2_PROFILES!F33",
+          "excel_value": "HVC1",
+          "json_value": "HVC1",
+          "status": "MATCH"
+        },
+        {
+          "json_path": "profiles_calibrated.P4.settings.codec_full",
+          "excel_key": "settings.codec_full",
+          "excel_cell": "6_NIVEL_2_PROFILES!F37",
+          "excel_value": "hvc1.2.4.L93.B0",
+          "json_value": "hvc1.2.4.L93.B0",
+          "status": "MATCH"
+        },
+        {
+          "json_path": "profiles_calibrated.P4.settings.codec_priority",
+          "excel_key": "settings.codec_priority",
+          "excel_cell": "6_NIVEL_2_PROFILES!F38",
+          "excel_value": "hvc1,avc1,av01",
+          "json_value": "hvc1,avc1,av01",
+          "status": "MATCH"
+        },
+        {
+          "json_path": "profiles_calibrated.P4.settings.bit_depth",
+          "excel_key": "settings.bit_depth",
+          "excel_cell": "6_NIVEL_2_PROFILES!F39",
+          "excel_value": "8",
+          "json_value": "8",
+          "status": "MATCH"
+        },
+        {
+          "json_path": "profiles_calibrated.P4.settings.chroma_subsampling",
+          "excel_key": "settings.chroma_subsampling",
+          "excel_cell": "6_NIVEL_2_PROFILES!F40",
+          "excel_value": "168055555555556",
+          "json_value": null,
+          "status": "EXCEL_ONLY"
+        },
+        {
+          "json_path": "profiles_calibrated.P4.settings.hdrMode",
+          "excel_key": "settings.hdrMode",
+          "excel_cell": "6_NIVEL_2_PROFILES!F53",
+          "excel_value": "SDR",
+          "json_value": "SDR",
+          "status": "MATCH"
+        },
+        {
+          "json_path": "profiles_calibrated.P4.settings.videoRange",
+          "excel_key": "settings.videoRange",
+          "excel_cell": "6_NIVEL_2_PROFILES!F54",
+          "excel_value": "SDR",
+          "json_value": "SDR",
+          "status": "MATCH"
+        },
+        {
+          "json_path": "profiles_calibrated.P4.settings.maxBitrateKbps",
+          "excel_key": "settings.maxBitrateKbps",
+          "excel_cell": "6_NIVEL_2_PROFILES!F49",
+          "excel_value": "5000",
+          "json_value": "5000",
+          "status": "MATCH"
+        },
+        {
+          "json_path": "profiles_calibrated.P4.settings.avgBitrateKbps",
+          "excel_key": "settings.avgBitrateKbps",
+          "excel_cell": "6_NIVEL_2_PROFILES!F50",
+          "excel_value": "6000",
+          "json_value": "5000",
+          "status": "DIFF"
+        },
+        {
+          "json_path": "profiles_calibrated.P4.headerOverrides.X-Stream-Codecs",
+          "excel_key": "headerOverrides.X-Stream-Codecs",
+          "excel_cell": "6_NIVEL_2_PROFILES!F350",
+          "excel_value": "hvc1.2.4.L93.B0,mp4a.40.2",
+          "json_value": "hvc1.2.4.L93.B0,mp4a.40.2",
+          "status": "MATCH"
+        },
+        {
+          "json_path": "profiles_calibrated.P4.headerOverrides.X-Stream-Resolution",
+          "excel_key": "headerOverrides.X-Stream-Resolution",
+          "excel_cell": "6_NIVEL_2_PROFILES!F351",
+          "excel_value": "1280x720",
+          "json_value": "1280x720",
+          "status": "MATCH"
+        },
+        {
+          "json_path": "profiles_calibrated.P4.headerOverrides.X-Stream-FPS",
+          "excel_key": "headerOverrides.X-Stream-FPS",
+          "excel_cell": "6_NIVEL_2_PROFILES!F352",
+          "excel_value": "30",
+          "json_value": "30",
+          "status": "MATCH"
+        },
+        {
+          "json_path": "profiles_calibrated.P4.headerOverrides.X-APE-CODEC",
+          "excel_key": "headerOverrides.X-APE-CODEC",
+          "excel_cell": "6_NIVEL_2_PROFILES!F135",
+          "excel_value": "hvc1.2.4.L93.B0,avc1.4d401f",
+          "json_value": "hvc1.2.4.L93.B0,avc1.4d401f",
+          "status": "MATCH"
+        },
+        {
+          "json_path": "profiles_calibrated.P4.headerOverrides.X-APE-RESOLUTION",
+          "excel_key": "headerOverrides.X-APE-RESOLUTION",
+          "excel_cell": "6_NIVEL_2_PROFILES!F136",
+          "excel_value": "1280x720,854x480,640x360",
+          "json_value": "1280x720,854x480,640x360",
+          "status": "MATCH"
+        },
+        {
+          "json_path": "profiles_calibrated.P4.headerOverrides.X-APE-FPS",
+          "excel_key": "headerOverrides.X-APE-FPS",
+          "excel_cell": "6_NIVEL_2_PROFILES!F137",
+          "excel_value": "120,120,120",
+          "json_value": "120,120,120",
+          "status": "MATCH"
+        },
+        {
+          "json_path": "profiles_calibrated.P4.kodiprop.inputstream.adaptive.max_resolution",
+          "excel_key": "kodiprop.inputstream.adaptive.max_resolution",
+          "excel_cell": "6_NIVEL_2_PROFILES!F121",
+          "excel_value": "1280x720",
+          "json_value": null,
+          "status": "EXCEL_ONLY"
+        },
+        {
+          "json_path": "profiles_calibrated.P4.vlcopt.video-width",
+          "excel_key": "vlcopt.video-width",
+          "excel_cell": "6_NIVEL_2_PROFILES!F109",
+          "excel_value": "1280",
+          "json_value": "1280",
+          "status": "MATCH"
+        },
+        {
+          "json_path": "profiles_calibrated.P4.vlcopt.video-height",
+          "excel_key": "vlcopt.video-height",
+          "excel_cell": "6_NIVEL_2_PROFILES!F110",
+          "excel_value": "720",
+          "json_value": "720",
+          "status": "MATCH"
+        }
+      ],
+      "diff_count": 1,
+      "diffs": [
+        {
+          "json_path": "profiles_calibrated.P4.settings.avgBitrateKbps",
+          "excel_key": "settings.avgBitrateKbps",
+          "excel_cell": "6_NIVEL_2_PROFILES!F50",
+          "excel_value": "6000",
+          "json_value": "5000",
+          "status": "DIFF"
+        }
+      ],
+      "D15_fps_check": {
+        "declared_fps": "120",
+        "codec": "hvc1.2.4.L93.B0",
+        "resolution": "1280x720",
+        "level_capacity_fps_ceiling": 30,
+        "verdict": "FAIL",
+        "recommendation": "bajar fps a <= 30 (o subir el nivel del codec para sostener 120)"
+      }
+    },
+    "P5": {
+      "canonical_excel": {
+        "resolution": "854x480",
+        "codec_full": "avc1.42c01e",
+        "fps": "120"
+      },
+      "field_rows": [
+        {
+          "json_path": "profiles_calibrated.P5.settings.resolution",
+          "excel_key": "settings.resolution",
+          "excel_cell": "6_NIVEL_2_PROFILES!G25",
+          "excel_value": "854x480",
+          "json_value": "854x480",
+          "status": "MATCH"
+        },
+        {
+          "json_path": "profiles_calibrated.P5.settings.maxResolution",
+          "excel_key": "settings.maxResolution",
+          "excel_cell": "6_NIVEL_2_PROFILES!G48",
+          "excel_value": "854x480",
+          "json_value": "854x480",
+          "status": "MATCH"
+        },
+        {
+          "json_path": "profiles_calibrated.P5.settings.fps",
+          "excel_key": "settings.fps",
+          "excel_cell": "6_NIVEL_2_PROFILES!G32",
+          "excel_value": "120",
+          "json_value": "120",
+          "status": "MATCH"
+        },
+        {
+          "json_path": "profiles_calibrated.P5.settings.targetFps",
+          "excel_key": "settings.targetFps",
+          "excel_cell": "6_NIVEL_2_PROFILES!G51",
+          "excel_value": "120",
+          "json_value": "120",
+          "status": "MATCH"
+        },
+        {
+          "json_path": "profiles_calibrated.P5.settings.codec",
+          "excel_key": "settings.codec",
+          "excel_cell": "6_NIVEL_2_PROFILES!G33",
+          "excel_value": "AVC1",
+          "json_value": "AVC1",
+          "status": "MATCH"
+        },
+        {
+          "json_path": "profiles_calibrated.P5.settings.codec_full",
+          "excel_key": "settings.codec_full",
+          "excel_cell": "6_NIVEL_2_PROFILES!G37",
+          "excel_value": "avc1.42c01e",
+          "json_value": "avc1.42c01e",
+          "status": "MATCH"
+        },
+        {
+          "json_path": "profiles_calibrated.P5.settings.codec_priority",
+          "excel_key": "settings.codec_priority",
+          "excel_cell": "6_NIVEL_2_PROFILES!G38",
+          "excel_value": "hvc1,avc1,av01",
+          "json_value": "hvc1,avc1,av01",
+          "status": "MATCH"
+        },
+        {
+          "json_path": "profiles_calibrated.P5.settings.bit_depth",
+          "excel_key": "settings.bit_depth",
+          "excel_cell": "6_NIVEL_2_PROFILES!G39",
+          "excel_value": "8",
+          "json_value": "8",
+          "status": "MATCH"
+        },
+        {
+          "json_path": "profiles_calibrated.P5.settings.chroma_subsampling",
+          "excel_key": "settings.chroma_subsampling",
+          "excel_cell": "6_NIVEL_2_PROFILES!G40",
+          "excel_value": "168055555555556",
+          "json_value": null,
+          "status": "EXCEL_ONLY"
+        },
+        {
+          "json_path": "profiles_calibrated.P5.settings.hdrMode",
+          "excel_key": "settings.hdrMode",
+          "excel_cell": "6_NIVEL_2_PROFILES!G53",
+          "excel_value": "SDR",
+          "json_value": "SDR",
+          "status": "MATCH"
+        },
+        {
+          "json_path": "profiles_calibrated.P5.settings.videoRange",
+          "excel_key": "settings.videoRange",
+          "excel_cell": "6_NIVEL_2_PROFILES!G54",
+          "excel_value": "SDR",
+          "json_value": "SDR",
+          "status": "MATCH"
+        },
+        {
+          "json_path": "profiles_calibrated.P5.settings.maxBitrateKbps",
+          "excel_key": "settings.maxBitrateKbps",
+          "excel_cell": "6_NIVEL_2_PROFILES!G49",
+          "excel_value": "2000",
+          "json_value": "2000",
+          "status": "MATCH"
+        },
+        {
+          "json_path": "profiles_calibrated.P5.settings.avgBitrateKbps",
+          "excel_key": "settings.avgBitrateKbps",
+          "excel_cell": "6_NIVEL_2_PROFILES!G50",
+          "excel_value": "2200",
+          "json_value": "2000",
+          "status": "DIFF"
+        },
+        {
+          "json_path": "profiles_calibrated.P5.headerOverrides.X-Stream-Codecs",
+          "excel_key": "headerOverrides.X-Stream-Codecs",
+          "excel_cell": "6_NIVEL_2_PROFILES!G350",
+          "excel_value": "avc1.42c01e,mp4a.40.2",
+          "json_value": "avc1.42c01e,mp4a.40.2",
+          "status": "MATCH"
+        },
+        {
+          "json_path": "profiles_calibrated.P5.headerOverrides.X-Stream-Resolution",
+          "excel_key": "headerOverrides.X-Stream-Resolution",
+          "excel_cell": "6_NIVEL_2_PROFILES!G351",
+          "excel_value": "854x480",
+          "json_value": "854x480",
+          "status": "MATCH"
+        },
+        {
+          "json_path": "profiles_calibrated.P5.headerOverrides.X-Stream-FPS",
+          "excel_key": "headerOverrides.X-Stream-FPS",
+          "excel_cell": "6_NIVEL_2_PROFILES!G352",
+          "excel_value": "30",
+          "json_value": "30",
+          "status": "MATCH"
+        },
+        {
+          "json_path": "profiles_calibrated.P5.headerOverrides.X-APE-CODEC",
+          "excel_key": "headerOverrides.X-APE-CODEC",
+          "excel_cell": "6_NIVEL_2_PROFILES!G135",
+          "excel_value": "avc1.42c01e",
+          "json_value": "avc1.42c01e",
+          "status": "MATCH"
+        },
+        {
+          "json_path": "profiles_calibrated.P5.headerOverrides.X-APE-RESOLUTION",
+          "excel_key": "headerOverrides.X-APE-RESOLUTION",
+          "excel_cell": "6_NIVEL_2_PROFILES!G136",
+          "excel_value": "854x480,640x360,426x240",
+          "json_value": "854x480,640x360,426x240",
+          "status": "MATCH"
+        },
+        {
+          "json_path": "profiles_calibrated.P5.headerOverrides.X-APE-FPS",
+          "excel_key": "headerOverrides.X-APE-FPS",
+          "excel_cell": "6_NIVEL_2_PROFILES!G137",
+          "excel_value": "120,120,120",
+          "json_value": "120,120,120",
+          "status": "MATCH"
+        },
+        {
+          "json_path": "profiles_calibrated.P5.kodiprop.inputstream.adaptive.max_resolution",
+          "excel_key": "kodiprop.inputstream.adaptive.max_resolution",
+          "excel_cell": "6_NIVEL_2_PROFILES!G121",
+          "excel_value": "854x480",
+          "json_value": null,
+          "status": "EXCEL_ONLY"
+        },
+        {
+          "json_path": "profiles_calibrated.P5.vlcopt.video-width",
+          "excel_key": "vlcopt.video-width",
+          "excel_cell": "6_NIVEL_2_PROFILES!G109",
+          "excel_value": "854",
+          "json_value": "854",
+          "status": "MATCH"
+        },
+        {
+          "json_path": "profiles_calibrated.P5.vlcopt.video-height",
+          "excel_key": "vlcopt.video-height",
+          "excel_cell": "6_NIVEL_2_PROFILES!G110",
+          "excel_value": "480",
+          "json_value": "480",
+          "status": "MATCH"
+        }
+      ],
+      "diff_count": 1,
+      "diffs": [
+        {
+          "json_path": "profiles_calibrated.P5.settings.avgBitrateKbps",
+          "excel_key": "settings.avgBitrateKbps",
+          "excel_cell": "6_NIVEL_2_PROFILES!G50",
+          "excel_value": "2200",
+          "json_value": "2000",
+          "status": "DIFF"
+        }
+      ],
+      "D15_fps_check": {
+        "declared_fps": "120",
+        "codec": "avc1.42c01e",
+        "resolution": "854x480",
+        "level_capacity_fps_ceiling": 30,
+        "verdict": "FAIL",
+        "recommendation": "bajar fps a <= 30 (o subir el nivel del codec para sostener 120)"
+      }
+    }
+  }
+}

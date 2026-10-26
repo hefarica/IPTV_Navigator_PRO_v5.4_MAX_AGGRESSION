@@ -1,0 +1,48 @@
+=== t9 PHYSICAL VERIFICATION — REWRITE EXPERIMENT (reproduced read-only 2026-10-26T04:23Z) ===
+Host: VPS 178.156.147.234 (ubuntu-2gb-ash-1)
+Fixture on disk (PRE-EXISTING, not created by t9): /etc/nginx/ape-selftest/playlist_master4k.m3u8
+  bytes=378  mtime=2026-10-24 17:59:36Z  sha256=4a96480b08b730b664e0d9691c0fd4ac05006eb1801a4774e9adc4197dc307d6
+
+BEFORE  GET http://127.0.0.1:8088/__fixture_master4k.m3u8   (static, no rewrite)
+  body sha256 = 4a96480b08b730b664e0d9691c0fd4ac05006eb1801a4774e9adc4197dc307d6  == disk  => BYTE-IDENTICAL
+  headers: Content-Length: 378 ; Content-Type: application/vnd.apple.mpegurl ; ETag "6adcf208-17a" ; NO X-APE-* headers
+  lines = 7
+
+AFTER   GET https://127.0.0.1/cdn/127.0.0.1:8088/__fixture_master4k.m3u8   (rewrite via 443 -> :8088)
+  body sha256 = 87cab2a2f78363f2615008f6c17ff5a36d301b252448874194799e4cf3c2a281
+  headers: Cache-Control: no-store ; X-APE-CDN: 127.0.0.1:8088 ; X-APE-Origin: http://127.0.0.1:8088 ;
+           X-APE-Failover: false ; X-APE-Upstream-Ms: 1 ; X-APE-URI-Rebased: 2 ; X-APE-LL-HLS: none ;
+           X-APE-UHD: 8k:1 ; X-APE-LAB-FLOOR: 8000000 ; (Content-Length eliminated -> chunked)
+  lines = 8
+
+UNIFIED DIFF (diff before after)
+--- before
++++ after
+@@ -1,7 +1,8 @@
+ #EXTM3U
++#EXT-X-APE-UPSCALE:declared=7680x4320;codec=truthful;mode=8k
+ #EXT-X-VERSION:6
+ #EXT-X-INDEPENDENT-SEGMENTS
+-#EXT-X-STREAM-INF:BANDWIDTH=28000000,AVERAGE-BANDWIDTH=22000000,RESOLUTION=3840x2160,FRAME-RATE=60.000,CODECS="hvc1.2.4.L153.B0,mp4a.40.2",VIDEO-RANGE=PQ
+-2160p/index.m3u8
++#EXT-X-STREAM-INF:BANDWIDTH=28000000,AVERAGE-BANDWIDTH=22000000,RESOLUTION=7680x4320,FRAME-RATE=60.000,CODECS="hvc1.2.4.L153.B0,mp4a.40.2",VIDEO-RANGE=PQ
++http://127.0.0.1:8088/2160p/index.m3u8
+ #EXT-X-STREAM-INF:BANDWIDTH=9000000,AVERAGE-BANDWIDTH=6500000,RESOLUTION=1920x1080,FRAME-RATE=60.000,CODECS="hvc1.1.6.L123.B0,mp4a.40.2"
+-1080p/index.m3u8
++http://127.0.0.1:8088/1080p/index.m3u8
+
+FINDINGS FROM THE PHYSICAL DIFF (t9, not inherited):
+1) RESOLUTION inflated 3840x2160 -> 7680x4320 while CODECS stays hvc1.2.4.L153.B0 (HEVC L5.1 = ceiling 4K@60)
+   => level < resolution: the exact signature of the 2026-06-08 freeze (Ley Cardinal 1). REPRODUCED.
+2) CODECS UNTOUCHED (audio mp4a.40.2 preserved) => GOLDEN RULE not violated by the rewrite; no FZ-01 black screen.
+3) URIs absolutized (relative -> absolute against origin only) => apex/dirname not preserved (RFC 3986 5.2 risk).
+4) VIDEO-RANGE: 1 occurrence before, 1 after => no duplicate.
+5) Proprietary tag #EXT-X-APE-UPSCALE added => inert metadata (RFC 8216 6.3.1).
+6) Content-Length removed => chunked (required for a rewritten body; otherwise nginx truncates).
+
+=== SERVED LIST HASH (A4, the list actually served today) ===
+sha256 = 7f1cd8a7f3dd58960c7dfde373ed115eeeac5be4a72a1d1fc5850636f9ccc360
+  /var/www/lists/APE_LISTA_1792869328847.m3u8.gz  bytes=297134088  mtime=2026-10-25 17:56:21.209153230 +0000
+  gzip -t = OK
+placeholder /var/www/lists/APE_LISTA_1792869328847.m3u8 bytes=8 sha256=144659b48f342d02b9298907ab32fcf0479ac9c99a0d293c7c2ebf8df313dd12
+=> matches t8 LISTS_INVENTORY 1.2 A4 exactly (recomputed by t9 at 04:22Z; unchanged since 17:56:21Z).

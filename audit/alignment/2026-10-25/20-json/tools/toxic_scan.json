@@ -1,0 +1,349 @@
+{
+  "C:\\Users\\HFRC\\Desktop\\IPTV_Navigator_PRO_v5.4_MAX_AGGRESSION\\IPTV_v5.4_MAX_AGGRESSION\\frontend\\lab_master_22.6.0.json": {
+    "bytes": 280065,
+    "mtime": "2026-08-31T02:13:39.532Z",
+    "toxic_hits": 12,
+    "hits": [
+      {
+        "path": "profiles_calibrated.P0.headerOverrides.X-Requested-With",
+        "header": "X-Requested-With",
+        "value_shape": "XMLHttpRequest,fetch,null,null"
+      },
+      {
+        "path": "profiles_calibrated.P1.headerOverrides.X-Requested-With",
+        "header": "X-Requested-With",
+        "value_shape": "XMLHttpRequest,fetch,null,null"
+      },
+      {
+        "path": "profiles_calibrated.P2.headerOverrides.X-Requested-With",
+        "header": "X-Requested-With",
+        "value_shape": "XMLHttpRequest,XMLHttpRequest,XMLHttpRequest,XMLHttpRequest"
+      },
+      {
+        "path": "profiles_calibrated.P3.headerOverrides.X-Requested-With",
+        "header": "X-Requested-With",
+        "value_shape": "XMLHttpRequest,fetch,null,null"
+      },
+      {
+        "path": "profiles_calibrated.P4.headerOverrides.X-Requested-With",
+        "header": "X-Requested-With",
+        "value_shape": "XMLHttpRequest,fetch,null,null"
+      },
+      {
+        "path": "profiles_calibrated.P5.headerOverrides.X-Requested-With",
+        "header": "X-Requested-With",
+        "value_shape": "XMLHttpRequest,fetch,null,null"
+      },
+      {
+        "path": "prisma_lab_sync_v20.config_jsons_consumed_by_vps.enterprise_doctrine_manifest_json.components_pending.lab_sync_v2.0.priority",
+        "header": "priority",
+        "value_shape": "MAXIMA"
+      },
+      {
+        "path": "prisma_lab_sync_v20.config_jsons_consumed_by_vps.enterprise_doctrine_manifest_json.components_pending.floor_lock.priority",
+        "header": "priority",
+        "value_shape": "URGENTE"
+      },
+      {
+        "path": "prisma_lab_sync_v20.config_jsons_consumed_by_vps.enterprise_doctrine_manifest_json.components_pending.sentinel_401.priority",
+        "header": "priority",
+        "value_shape": "ALTA"
+      },
+      {
+        "path": "prisma_lab_sync_v20.config_jsons_consumed_by_vps.enterprise_doctrine_manifest_json.components_pending.telescope_sprints_2_5.priority",
+        "header": "priority",
+        "value_shape": "ALTA"
+      },
+      {
+        "path": "prisma_lab_sync_v20.config_jsons_consumed_by_vps.enterprise_doctrine_manifest_json.components_pending.netflix_parity_audit.priority",
+        "header": "priority",
+        "value_shape": "MEDIA"
+      },
+      {
+        "path": "prisma_lab_sync_v20.config_jsons_consumed_by_vps.enterprise_doctrine_manifest_json.components_pending.v5_transcode_ultraboost.priority",
+        "header": "priority",
+        "value_shape": "BLOCKED"
+      }
+    ]
+  },
+  "C:\\Users\\HFRC\\Desktop\\IPTV_Navigator_PRO_v5.4_MAX_AGGRESSION\\IPTV_v5.4_MAX_AGGRESSION\\frontend\\js\\ape-v9\\APE_ALL_PROFILES_OPTIMIZED.json": {
+    "bytes": 203816,
+    "mtime": "2026-10-26T02:38:53.314Z",
+    "toxic_hits": 84,
+    "hits": [
+      {
+        "path": "profiles.P0.headerOverrides.Upgrade-Insecure-Requests",
+        "header": "Upgrade-Insecure-Requests",
+        "value_shape": "1,0,0,0"
+      },
+      {
+        "path": "profiles.P0.headerOverrides.TE",
+        "header": "TE",
+        "value_shape": "trailers,chunked,compress,deflate"
+      },
+      {
+        "path": "profiles.P0.headerOverrides.Range",
+        "header": "Range",
+        "value_shape": "bytes=0-,bytes=0-,bytes=0-,bytes=0-"
+      },
+      {
+        "path": "profiles.P0.headerOverrides.If-None-Match",
+        "header": "If-None-Match",
+        "value_shape": "*,*,*,*"
+      },
+      {
+        "path": "profiles.P0.headerOverrides.If-Modified-Since",
+        "header": "If-Modified-Since",
+        "value_shape": "[HTTP_DATE]"
+      },
+      {
+        "path": "profiles.P0.headerOverrides.X-Requested-With",
+        "header": "X-Requested-With",
+        "value_shape": "XMLHttpRequest,fetch,null,null"
+      },
+      {
+        "path": "profiles.P0.headerOverrides.Priority",
+        "header": "Priority",
+        "value_shape": "u=0,i,i,i"
+      },
+      {
+        "path": "profiles.P0.headers.Upgrade-Insecure-Requests",
+        "header": "Upgrade-Insecure-Requests",
+        "value_shape": "0,0,0,0"
+      },
+      {
+        "path": "profiles.P0.headers.TE",
+        "header": "TE",
+        "value_shape": "trailers,trailers,trailers,trailers"
+      },
+      {
+        "path": "profiles.P0.headers.If-None-Match",
+        "header": "If-None-Match",
+        "value_shape": "*,*,*,*"
+      },
+      {
+        "path": "profiles.P0.headers.If-Modified-Since",
+        "header": "If-Modified-Since",
+        "value_shape": "[HTTP_DATE]"
+      },
+      {
+        "path": "profiles.P0.headers.Range",
+        "header": "Range",
+        "value_shape": "bytes=0-,bytes=0-2097152,bytes=0-1048576,bytes=0-524288"
+      },
+      {
+        "path": "profiles.P0.headers.X-Requested-With",
+        "header": "X-Requested-With",
+        "value_shape": "XMLHttpRequest,com.android.chrome,tv.ottnavigator,tv.ottnavi…"
+      },
+      {
+        "path": "profiles.P0.headers.Priority",
+        "header": "Priority",
+        "value_shape": "u=0,i,u=1,i,u=2,u=3"
+      },
+      {
+        "path": "profiles.P1.headerOverrides.Priority",
+        "header": "Priority",
+        "value_shape": "u=0,i,i,i"
+      },
+      {
+        "path": "profiles.P1.headerOverrides.Upgrade-Insecure-Requests",
+        "header": "Upgrade-Insecure-Requests",
+        "value_shape": "1,0,0,0"
+      },
+      {
+        "path": "profiles.P1.headerOverrides.TE",
+        "header": "TE",
+        "value_shape": "trailers,chunked,compress,deflate"
+      },
+      {
+        "path": "profiles.P1.headerOverrides.Range",
+        "header": "Range",
+        "value_shape": "bytes=0-,bytes=0-,bytes=0-,bytes=0-"
+      },
+      {
+        "path": "profiles.P1.headerOverrides.If-None-Match",
+        "header": "If-None-Match",
+        "value_shape": "*,*,*,*"
+      },
+      {
+        "path": "profiles.P1.headerOverrides.If-Modified-Since",
+        "header": "If-Modified-Since",
+        "value_shape": "[HTTP_DATE]"
+      },
+      {
+        "path": "profiles.P1.headerOverrides.X-Requested-With",
+        "header": "X-Requested-With",
+        "value_shape": "XMLHttpRequest,fetch,null,null"
+      },
+      {
+        "path": "profiles.P1.headers.Upgrade-Insecure-Requests",
+        "header": "Upgrade-Insecure-Requests",
+        "value_shape": "0,0,0,0"
+      },
+      {
+        "path": "profiles.P1.headers.TE",
+        "header": "TE",
+        "value_shape": "trailers,trailers,trailers,trailers"
+      },
+      {
+        "path": "profiles.P1.headers.If-None-Match",
+        "header": "If-None-Match",
+        "value_shape": "*,*,*,*"
+      },
+      {
+        "path": "profiles.P1.headers.If-Modified-Since",
+        "header": "If-Modified-Since",
+        "value_shape": "[HTTP_DATE]"
+      },
+      {
+        "path": "profiles.P1.headers.Range",
+        "header": "Range",
+        "value_shape": "bytes=0-,bytes=0-2097152,bytes=0-1048576,bytes=0-524288"
+      },
+      {
+        "path": "profiles.P1.headers.X-Requested-With",
+        "header": "X-Requested-With",
+        "value_shape": "XMLHttpRequest,com.android.chrome,tv.ottnavigator,tv.ottnavi…"
+      },
+      {
+        "path": "profiles.P1.headers.Priority",
+        "header": "Priority",
+        "value_shape": "u=0,i,u=1,i,u=2,u=3"
+      },
+      {
+        "path": "profiles.P2.headerOverrides.Upgrade-Insecure-Requests",
+        "header": "Upgrade-Insecure-Requests",
+        "value_shape": "0,0,0,0"
+      },
+      {
+        "path": "profiles.P2.headerOverrides.TE",
+        "header": "TE",
+        "value_shape": "trailers,trailers,trailers,trailers"
+      },
+      {
+        "path": "profiles.P2.headerOverrides.Range",
+        "header": "Range",
+        "value_shape": "bytes=0-,bytes=0-,bytes=0-,bytes=0-"
+      },
+      {
+        "path": "profiles.P2.headerOverrides.If-None-Match",
+        "header": "If-None-Match",
+        "value_shape": "*,*,*,*"
+      },
+      {
+        "path": "profiles.P2.headerOverrides.If-Modified-Since",
+        "header": "If-Modified-Since",
+        "value_shape": "[HTTP_DATE]"
+      },
+      {
+        "path": "profiles.P2.headerOverrides.X-Requested-With",
+        "header": "X-Requested-With",
+        "value_shape": "XMLHttpRequest,XMLHttpRequest,XMLHttpRequest,XMLHttpRequest"
+      },
+      {
+        "path": "profiles.P2.headerOverrides.Priority",
+        "header": "Priority",
+        "value_shape": "u=0,i,i,i"
+      },
+      {
+        "path": "profiles.P2.headers.Upgrade-Insecure-Requests",
+        "header": "Upgrade-Insecure-Requests",
+        "value_shape": "0,0,0,0"
+      },
+      {
+        "path": "profiles.P2.headers.TE",
+        "header": "TE",
+        "value_shape": "trailers,trailers,trailers,trailers"
+      },
+      {
+        "path": "profiles.P2.headers.If-None-Match",
+        "header": "If-None-Match",
+        "value_shape": "*,*,*,*"
+      },
+      {
+        "path": "profiles.P2.headers.If-Modified-Since",
+        "header": "If-Modified-Since",
+        "value_shape": "[HTTP_DATE]"
+      },
+      {
+        "path": "profiles.P2.headers.Range",
+        "header": "Range",
+        "value_shape": "bytes=0-,bytes=0-2097152,bytes=0-1048576,bytes=0-524288"
+      }
+    ]
+  },
+  "C:\\Users\\HFRC\\Desktop\\IPTV_Navigator_PRO_v5.4_MAX_AGGRESSION\\IPTV_v5.4_MAX_AGGRESSION\\backend\\APE_ALL_PROFILES_v10_REALTIME_ENGINE.json": {
+    "bytes": 47864,
+    "mtime": "2026-06-11T05:25:34.137Z",
+    "toxic_hits": 0,
+    "hits": []
+  },
+  "C:\\Users\\HFRC\\Downloads\\LAB_CALIBRATED_BULLETPROOF_22.6.0-MEMC-TOTAL-8K120.json": {
+    "bytes": 408174,
+    "mtime": "2026-06-07T21:10:00.053Z",
+    "toxic_hits": 12,
+    "hits": [
+      {
+        "path": "profiles_calibrated.P0.headerOverrides.X-Requested-With",
+        "header": "X-Requested-With",
+        "value_shape": "XMLHttpRequest,fetch,null,null"
+      },
+      {
+        "path": "profiles_calibrated.P1.headerOverrides.X-Requested-With",
+        "header": "X-Requested-With",
+        "value_shape": "XMLHttpRequest,fetch,null,null"
+      },
+      {
+        "path": "profiles_calibrated.P2.headerOverrides.X-Requested-With",
+        "header": "X-Requested-With",
+        "value_shape": "XMLHttpRequest,XMLHttpRequest,XMLHttpRequest,XMLHttpRequest"
+      },
+      {
+        "path": "profiles_calibrated.P3.headerOverrides.X-Requested-With",
+        "header": "X-Requested-With",
+        "value_shape": "XMLHttpRequest,fetch,null,null"
+      },
+      {
+        "path": "profiles_calibrated.P4.headerOverrides.X-Requested-With",
+        "header": "X-Requested-With",
+        "value_shape": "XMLHttpRequest,fetch,null,null"
+      },
+      {
+        "path": "profiles_calibrated.P5.headerOverrides.X-Requested-With",
+        "header": "X-Requested-With",
+        "value_shape": "XMLHttpRequest,fetch,null,null"
+      },
+      {
+        "path": "prisma_lab_sync_v20.config_jsons_consumed_by_vps.enterprise_doctrine_manifest_json.components_pending.lab_sync_v2.0.priority",
+        "header": "priority",
+        "value_shape": "MAXIMA"
+      },
+      {
+        "path": "prisma_lab_sync_v20.config_jsons_consumed_by_vps.enterprise_doctrine_manifest_json.components_pending.floor_lock.priority",
+        "header": "priority",
+        "value_shape": "URGENTE"
+      },
+      {
+        "path": "prisma_lab_sync_v20.config_jsons_consumed_by_vps.enterprise_doctrine_manifest_json.components_pending.sentinel_401.priority",
+        "header": "priority",
+        "value_shape": "ALTA"
+      },
+      {
+        "path": "prisma_lab_sync_v20.config_jsons_consumed_by_vps.enterprise_doctrine_manifest_json.components_pending.telescope_sprints_2_5.priority",
+        "header": "priority",
+        "value_shape": "ALTA"
+      },
+      {
+        "path": "prisma_lab_sync_v20.config_jsons_consumed_by_vps.enterprise_doctrine_manifest_json.components_pending.netflix_parity_audit.priority",
+        "header": "priority",
+        "value_shape": "MEDIA"
+      },
+      {
+        "path": "prisma_lab_sync_v20.config_jsons_consumed_by_vps.enterprise_doctrine_manifest_json.components_pending.v5_transcode_ultraboost.priority",
+        "header": "priority",
+        "value_shape": "BLOCKED"
+      }
+    ]
+  }
+}

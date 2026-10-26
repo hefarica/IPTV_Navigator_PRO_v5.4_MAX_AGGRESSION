@@ -1,0 +1,412 @@
+{
+  "schema": "t12-structural-integrity/1.0",
+  "before": {
+    "path": "C:\\Users\\HFRC\\Desktop\\IPTV_Navigator_PRO_v5.4_MAX_AGGRESSION\\audit\\alignment\\2026-10-25\\70-ssot-fix\\SSOT_BACKUP\\lab_master_22.6.0.json.bak_20261025T233456Z",
+    "bytes": 280065,
+    "root_keys": 18,
+    "leaf_paths": 5004
+  },
+  "after": {
+    "path": "C:\\Users\\HFRC\\Desktop\\IPTV_Navigator_PRO_v5.4_MAX_AGGRESSION\\IPTV_v5.4_MAX_AGGRESSION\\frontend\\lab_master_22.6.0.json",
+    "bytes": 280121,
+    "root_keys": 18,
+    "leaf_paths": 5006
+  },
+  "root_keys_added": [],
+  "root_keys_removed": [],
+  "profiles_before": [
+    "P0",
+    "P1",
+    "P2",
+    "P3",
+    "P4",
+    "P5"
+  ],
+  "profiles_after": [
+    "P0",
+    "P1",
+    "P2",
+    "P3",
+    "P4",
+    "P5"
+  ],
+  "profiles_exactly_P0_P5": true,
+  "leaf_paths_added": [
+    "profiles_calibrated.P4.kodiprop.inputstream.adaptive.stream_headers",
+    "profiles_calibrated.P5.kodiprop.inputstream.adaptive.stream_headers"
+  ],
+  "leaf_paths_removed": [],
+  "changed_leaf_count": 53,
+  "changed": [
+    {
+      "path": "prisma_lab_sync_v20.codec_ladder_per_profile.P3.video",
+      "before": "hvc1.1.6.L120.B0,hev1.1.6.L120.B0,hvc1.2.4.L120.B0,avc1.640028,avc1.4D401F",
+      "after": "hvc1.2.4.L123.B0,hvc1.1.6.L120.B0,hev1.1.6.L120.B0,avc1.640028,avc1.4D401F"
+    },
+    {
+      "path": "prisma_lab_sync_v20.codec_ladder_per_profile.P4.video",
+      "before": "hvc1.1.6.L93.B0,hev1.1.6.L93.B0,avc1.640020,avc1.4D401F,avc1.42E01F",
+      "after": "hvc1.2.4.L93.B0,hvc1.1.6.L93.B0,avc1.640020,avc1.4D401F,avc1.42E01F"
+    },
+    {
+      "path": "profiles_calibrated.P0.headerOverrides.X-Max-Framerate",
+      "before": "60",
+      "after": "30"
+    },
+    {
+      "path": "profiles_calibrated.P0.headerOverrides.X-Stream-FPS",
+      "before": "60",
+      "after": "30"
+    },
+    {
+      "path": "profiles_calibrated.P0.settings.chroma_subsampling",
+      "before": "168055555555556",
+      "after": null
+    },
+    {
+      "path": "profiles_calibrated.P1.headerOverrides.X-APE-RESOLUTION",
+      "before": "7680x4320,3840x2160,2560x1440,1920x1080",
+      "after": "3840x2160,2560x1440,1920x1080,1280x720"
+    },
+    {
+      "path": "profiles_calibrated.P1.headerOverrides.X-Max-Framerate",
+      "before": "120",
+      "after": "60"
+    },
+    {
+      "path": "profiles_calibrated.P1.headerOverrides.X-Stream-FPS",
+      "before": "120",
+      "after": "60"
+    },
+    {
+      "path": "profiles_calibrated.P1.settings.avgBitrateKbps",
+      "before": "75000",
+      "after": "40000"
+    },
+    {
+      "path": "profiles_calibrated.P1.settings.chroma_subsampling",
+      "before": "168055555555556",
+      "after": null
+    },
+    {
+      "path": "profiles_calibrated.P1.settings.maxResolution",
+      "before": "7680x4320",
+      "after": "3840x2160"
+    },
+    {
+      "path": "profiles_calibrated.P1.settings.resolution",
+      "before": "7680x4320",
+      "after": "3840x2160"
+    },
+    {
+      "path": "profiles_calibrated.P1.vlcopt.video-height",
+      "before": "4320",
+      "after": "2160"
+    },
+    {
+      "path": "profiles_calibrated.P1.vlcopt.video-width",
+      "before": "7680",
+      "after": "3840"
+    },
+    {
+      "path": "profiles_calibrated.P2.headerOverrides.X-Max-Framerate",
+      "before": "60",
+      "after": "30"
+    },
+    {
+      "path": "profiles_calibrated.P2.headerOverrides.X-Stream-FPS",
+      "before": "60",
+      "after": "30"
+    },
+    {
+      "path": "profiles_calibrated.P2.name",
+      "before": "2K QHD",
+      "after": "4K UHD"
+    },
+    {
+      "path": "profiles_calibrated.P2.role",
+      "before": "2K QHD",
+      "after": "4K UHD (L150 4K@30)"
+    },
+    {
+      "path": "profiles_calibrated.P2.settings.avgBitrateKbps",
+      "before": "35000",
+      "after": "25000"
+    },
+    {
+      "path": "profiles_calibrated.P2.settings.chroma_subsampling",
+      "before": "168055555555556",
+      "after": null
+    },
+    {
+      "path": "profiles_calibrated.P3.headerOverrides.X-APE-CODEC",
+      "before": "avc1.640028,hvc1.1.6.L120.90",
+      "after": "hvc1.2.4.L123.B0,avc1.640028"
+    },
+    {
+      "path": "profiles_calibrated.P3.headerOverrides.X-APE-RESOLUTION",
+      "before": "3840x2160,1920x1080,1280x720,854x480",
+      "after": "1920x1080,1280x720,854x480,640x360"
+    },
+    {
+      "path": "profiles_calibrated.P3.headerOverrides.X-Codec-Support",
+      "before": "avc1.640028,hvc1.1.6.L120.90",
+      "after": "hvc1.2.4.L123.B0,avc1.640028"
+    },
+    {
+      "path": "profiles_calibrated.P3.headerOverrides.X-Stream-Codecs",
+      "before": "hvc1.1.6.L120.B0,mp4a.40.2",
+      "after": "hvc1.2.4.L123.B0,mp4a.40.2"
+    },
+    {
+      "path": "profiles_calibrated.P3.settings.avgBitrateKbps",
+      "before": "15000",
+      "after": "10000"
+    },
+    {
+      "path": "profiles_calibrated.P3.settings.chroma_subsampling",
+      "before": "168055555555556",
+      "after": null
+    },
+    {
+      "path": "profiles_calibrated.P3.settings.codec_full",
+      "before": "hvc1.1.6.L120.B0",
+      "after": "hvc1.2.4.L123.B0"
+    },
+    {
+      "path": "profiles_calibrated.P3.settings.codec_string",
+      "before": "hvc1.2.4.L120.B0,mp4a.40.2",
+      "after": "hvc1.2.4.L123.B0,mp4a.40.2"
+    },
+    {
+      "path": "profiles_calibrated.P3.settings.maxResolution",
+      "before": "3840x2160",
+      "after": "1920x1080"
+    },
+    {
+      "path": "profiles_calibrated.P3.settings.resolution",
+      "before": "3840x2160",
+      "after": "1920x1080"
+    },
+    {
+      "path": "profiles_calibrated.P3.vlcopt.video-height",
+      "before": "2160",
+      "after": "1080"
+    },
+    {
+      "path": "profiles_calibrated.P3.vlcopt.video-width",
+      "before": "3840",
+      "after": "1920"
+    },
+    {
+      "path": "profiles_calibrated.P4.headerOverrides.X-APE-CODEC",
+      "before": "avc1.4d401f",
+      "after": "hvc1.2.4.L93.B0,avc1.4d401f"
+    },
+    {
+      "path": "profiles_calibrated.P4.headerOverrides.X-APE-RESOLUTION",
+      "before": "3840x2160,1920x1080,1280x720,854x480",
+      "after": "1280x720,854x480,640x360"
+    },
+    {
+      "path": "profiles_calibrated.P4.headerOverrides.X-Codec-Support",
+      "before": "avc1.4d401f",
+      "after": "hvc1.2.4.L93.B0,avc1.4d401f"
+    },
+    {
+      "path": "profiles_calibrated.P4.headerOverrides.X-Stream-Codecs",
+      "before": "avc1.64001f,mp4a.40.2",
+      "after": "hvc1.2.4.L93.B0,mp4a.40.2"
+    },
+    {
+      "path": "profiles_calibrated.P4.settings.avgBitrateKbps",
+      "before": "6000",
+      "after": "5000"
+    },
+    {
+      "path": "profiles_calibrated.P4.settings.chroma_subsampling",
+      "before": "168055555555556",
+      "after": null
+    },
+    {
+      "path": "profiles_calibrated.P4.settings.codec",
+      "before": "AVC1",
+      "after": "HVC1"
+    },
+    {
+      "path": "profiles_calibrated.P4.settings.codec_full",
+      "before": "avc1.64001f",
+      "after": "hvc1.2.4.L93.B0"
+    },
+    {
+      "path": "profiles_calibrated.P4.settings.codec_string",
+      "before": "avc1.640028,mp4a.40.2",
+      "after": "hvc1.2.4.L93.B0,mp4a.40.2"
+    },
+    {
+      "path": "profiles_calibrated.P4.settings.maxResolution",
+      "before": "3840x2160",
+      "after": "1280x720"
+    },
+    {
+      "path": "profiles_calibrated.P4.settings.resolution",
+      "before": "3840x2160",
+      "after": "1280x720"
+    },
+    {
+      "path": "profiles_calibrated.P4.vlcopt.codec-priority",
+      "before": "avc1,hvc1",
+      "after": "hvc1,avc1"
+    },
+    {
+      "path": "profiles_calibrated.P4.vlcopt.video-height",
+      "before": "2160",
+      "after": "720"
+    },
+    {
+      "path": "profiles_calibrated.P4.vlcopt.video-width",
+      "before": "3840",
+      "after": "1280"
+    },
+    {
+      "path": "profiles_calibrated.P5.headerOverrides.X-APE-RESOLUTION",
+      "before": "3840x2160,1920x1080,1280x720,854x480",
+      "after": "854x480,640x360,426x240"
+    },
+    {
+      "path": "profiles_calibrated.P5.settings.avgBitrateKbps",
+      "before": "2200",
+      "after": "2000"
+    },
+    {
+      "path": "profiles_calibrated.P5.settings.chroma_subsampling",
+      "before": "168055555555556",
+      "after": null
+    },
+    {
+      "path": "profiles_calibrated.P5.settings.maxResolution",
+      "before": "3840x2160",
+      "after": "854x480"
+    },
+    {
+      "path": "profiles_calibrated.P5.settings.resolution",
+      "before": "3840x2160",
+      "after": "854x480"
+    },
+    {
+      "path": "profiles_calibrated.P5.vlcopt.video-height",
+      "before": "2160",
+      "after": "480"
+    },
+    {
+      "path": "profiles_calibrated.P5.vlcopt.video-width",
+      "before": "3840",
+      "after": "854"
+    }
+  ],
+  "app_consumed_root_keys_present": [
+    {
+      "key": "profiles_calibrated",
+      "present": true
+    },
+    {
+      "key": "prisma_lab_sync_v20",
+      "present": true
+    },
+    {
+      "key": "nivel1_directives",
+      "present": true
+    },
+    {
+      "key": "nivel3_per_layer",
+      "present": true
+    },
+    {
+      "key": "servers",
+      "present": true
+    },
+    {
+      "key": "evasion_pool",
+      "present": true
+    },
+    {
+      "key": "config_global",
+      "present": true
+    },
+    {
+      "key": "placeholders_map",
+      "present": true
+    },
+    {
+      "key": "lab_version",
+      "present": true
+    },
+    {
+      "key": "lab_schema_variant",
+      "present": true
+    },
+    {
+      "key": "exported_at",
+      "present": true
+    },
+    {
+      "key": "bulletproof",
+      "present": true
+    }
+  ],
+  "untouched_blocks": {
+    "servers_equal": true,
+    "servers_count": 4,
+    "nivel1_directives_equal": true,
+    "nivel1_count": 51,
+    "nivel3_per_layer_equal": true,
+    "evasion_pool_equal": true,
+    "config_global_equal": true,
+    "placeholders_map_equal": true,
+    "dnr_calibration_equal": true
+  },
+  "per_profile_keycounts_after": {
+    "P0": {
+      "top": 16,
+      "settings": 57,
+      "vlcopt": 48,
+      "kodiprop": 8,
+      "headerOverrides": 402
+    },
+    "P1": {
+      "top": 16,
+      "settings": 57,
+      "vlcopt": 48,
+      "kodiprop": 8,
+      "headerOverrides": 400
+    },
+    "P2": {
+      "top": 16,
+      "settings": 57,
+      "vlcopt": 48,
+      "kodiprop": 8,
+      "headerOverrides": 402
+    },
+    "P3": {
+      "top": 16,
+      "settings": 55,
+      "vlcopt": 48,
+      "kodiprop": 8,
+      "headerOverrides": 400
+    },
+    "P4": {
+      "top": 16,
+      "settings": 55,
+      "vlcopt": 48,
+      "kodiprop": 8,
+      "headerOverrides": 400
+    },
+    "P5": {
+      "top": 16,
+      "settings": 55,
+      "vlcopt": 48,
+      "kodiprop": 8,
+      "headerOverrides": 400
+    }
+  }
+}

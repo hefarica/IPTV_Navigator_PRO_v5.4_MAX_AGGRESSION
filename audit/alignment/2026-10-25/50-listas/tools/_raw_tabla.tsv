@@ -1,0 +1,24 @@
+| archivo | bytes | lineas | EXTINF | URIs | STREAM-INF | c/audio | sinSTREAMINF | EXTHTTP | JSONfail | toxicos | hev1-STREAMINF | hvc1-en-VLC/KODI | MEDIA_URI | IFRAME_URI | VRdup | imposibles | multiURL | dupURL | tvg faltantes |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| hls_master_hevc_main10.m3u8 | 813 | 10 | 0 | 2 | 2 | 2 | -2 | 0 | 0 | 0 | 0 | 0 | 3 | 0 | 0 | 0 | 0 | 0 | 0/0/0/0 |
+| hls_dolby_vision.m3u8 | 372 | 6 | 0 | 1 | 1 | 1 | -1 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 0 | 0 | 0 | 0/0/0/0 |
+| hls_media_cmaf.m3u8 | 176 | 11 | 3 | 3 | 0 | 0 | 3 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 3/3/3/3 |
+| hls_media_ts.m3u8 | 164 | 11 | 3 | 3 | 0 | 0 | 3 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 3/3/3/3 |
+| selftest.m3u8 | 203 | 8 | 1 | 2 | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 1/1/1/1 |
+| selftest_ll.m3u8 | 377 | 12 | 1 | 1 | 0 | 0 | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 1/1/1/1 |
+| selftest_master.m3u8 | 349 | 7 | 0 | 2 | 2 | 2 | -2 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 0/0/0/0 |
+| selftest_master4k.m3u8 | 378 | 7 | 0 | 2 | 2 | 2 | -2 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0/0/0/0 |
+| f1_full.m3u8 | 228 | 4 | 1 | 1 | 0 | 0 | 1 | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 1/1/1/1 |
+| test2.m3u8 | 5532 | 36 | 0 | 3 | 2 | 0 | -2 | 3 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0/0/0/0 |
+| test3.m3u8 | 5517 | 36 | 0 | 3 | 2 | 0 | -2 | 3 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0/0/0/0 |
+| test4.m3u8 | 5514 | 36 | 0 | 3 | 2 | 0 | -2 | 3 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0/0/0/0 |
+| test.m3u8 | 15629 | 203 | 1 | 58 | 0 | 0 | 1 | 6 | 4 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 2 | 1/1/1/1 |
+| lista_omega_mock.m3u8 | 24643 | 201 | 100 | 100 | 0 | 0 | 100 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0/0/0/100 |
+| OMEGA_EXAMPLE_LIST.m3u8 | 2362 | 25 | 5 | 5 | 0 | 0 | 5 | 5 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0/0/0/0 |
+| audit_bulletproof_output.m3u8 | 459587 | 9315 | 10 | 10 | 10 | 10 | 0 | 10 | 0 | {"range":10,"te":10,"priority":10,"upgrade-insecure-requests":5} | 0 | 0 | 0 | 0 | 0 | 10 | 0 | 0 | 0/0/0/0 |
+| lista_omega_v5.4.m3u8 | 2533473 | 16733 | 8366 | 8366 | 0 | 0 | 8366 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0/0/0/8366 |
+| APE_OMEGA_PRODUCTION_v5.2.m3u8 | 224620513 | 2034902 | 2754 | 2753 | 0 | 0 | 2754 | 2754 | 0 | {"range":2754,"if-none-match":2754,"if-modified-since":2754,"te":2754,"priority":2754,"upgrade-insecure-requests":2754} | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0/0/0/0 |
+| APE_TYPED_ARRAYS_ULTIMATE.m3u8 | 222166550 | 2034902 | 2754 | 2753 | 0 | 0 | 2754 | 2754 | 0 | {"range":2754,"if-none-match":2754,"if-modified-since":2754,"te":2754,"priority":2754,"upgrade-insecure-requests":2754} | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0/0/0/0 |
+| downloaded_list.m3u8 | 222166550 | 2034902 | 2754 | 2753 | 0 | 0 | 2754 | 2754 | 0 | {"range":2754,"if-none-match":2754,"if-modified-since":2754,"te":2754,"priority":2754,"upgrade-insecure-requests":2754} | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0/0/0/0 |
+| APE_TYPED_ARRAYS_ULTIMATE_20260319 (17).m3u8 | 58924525 | 929573 | 1359 | 1359 | 1359 | 1359 | 0 | 1359 | 0 | {"range":1359,"if-none-match":1359,"if-modified-since":1359,"te":1359,"priority":1359,"upgrade-insecure-requests":1359} | 1359 | 0 | 0 | 0 | 0 | 1359 | 0 | 0 | 0/0/0/0 |
+| APE_LISTA_1777243113563_SHIELDED.m3u8 | 718342566 | 14332124 | 15444 | 15444 | 15444 | 15444 | 0 | 15444 | 0 | {"range":15444,"te":15444,"priority":15444,"upgrade-insecure-requests":15444} | 0 | 0 | 0 | 0 | 0 | 182 | 0 | 0 | 0/0/0/0 |

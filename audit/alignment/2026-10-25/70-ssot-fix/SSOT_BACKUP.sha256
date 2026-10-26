@@ -1,0 +1,15 @@
+# t12 — SSOT BACKUP + huellas antes/después · generado 2026-10-25T23:38:14.6653418-05:00
+#
+# 1) COPIA DE RESPALDO (intacta, NO se toca). Vive en la carpeta de auditoría, no junto al original.
+099A1707A2F1AE692FFCFEDE01165F21CD66656B786742CE8DB518581A371FD4  audit/alignment/2026-10-25/70-ssot-fix/SSOT_BACKUP/lab_master_22.6.0.json.bak_20261025T233456Z
+#
+# 2) ORIGINAL antes de la remediación (= huella del respaldo, verificado igual)
+099A1707A2F1AE692FFCFEDE01165F21CD66656B786742CE8DB518581A371FD4  IPTV_v5.4_MAX_AGGRESSION/frontend/lab_master_22.6.0.json   # 280065 B · 2026-08-30T21:13:39.531-05:00
+#
+# 3) ARCHIVO REMEDIADO (estado actual del working tree; gitignored, sin commit)
+60DBAB4B8CF7A15CD1D59E1F73A9B83FF469BCDD8A93D57345CC8259AB312A93  IPTV_v5.4_MAX_AGGRESSION/frontend/lab_master_22.6.0.json   # 280121 B · 2026-10-25T23:36:28.782-05:00
+#
+# Rollback exacto (restaura el original byte a byte):
+#   cp "audit/alignment/2026-10-25/70-ssot-fix/SSOT_BACKUP/lab_master_22.6.0.json.bak_20261025T233456Z" \\
+#      "IPTV_v5.4_MAX_AGGRESSION/frontend/lab_master_22.6.0.json"
+#   sha256 del restaurado debe ser 099A1707A2F1AE692FFCFEDE01165F21CD66656B786742CE8DB518581A371FD4

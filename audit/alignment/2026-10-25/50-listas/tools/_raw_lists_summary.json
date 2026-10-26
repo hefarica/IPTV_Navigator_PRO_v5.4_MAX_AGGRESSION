@@ -1,0 +1,951 @@
+[
+ {
+  "file": "IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/parsers/fixtures/hls_master_hevc_main10.m3u8",
+  "bytes": 813,
+  "lines": 10,
+  "extm3u_line": 1,
+  "extinf": 0,
+  "uriLines": 2,
+  "channels_multiURL": 0,
+  "media_with_URI": 3,
+  "iframe_with_URI": 0,
+  "exthttp": {
+   "n": 0,
+   "jsonFail": 0,
+   "toxic": {},
+   "waf": {}
+  },
+  "golden": {
+   "hev1_in_streaminf": 0,
+   "hvc1_in_vlcopt": 0,
+   "hvc1_in_kodiprop": 0,
+   "counts": {
+    "hvc1": 2,
+    "audio": 2
+   }
+  },
+  "streaminf": {
+   "n": 2,
+   "noCodecs": 0,
+   "noRes": 0,
+   "vrDup": 0
+  },
+  "impossible": 0,
+  "media_playlist_tags": {},
+  "dup_urls": 0,
+  "tvg_missing": {
+   "id": 0,
+   "name": 0,
+   "group": 0,
+   "logo": 0
+  },
+  "pairs": 2
+ },
+ {
+  "file": "IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/parsers/fixtures/hls_dolby_vision.m3u8",
+  "bytes": 372,
+  "lines": 6,
+  "extm3u_line": 1,
+  "extinf": 0,
+  "uriLines": 1,
+  "channels_multiURL": 0,
+  "media_with_URI": 1,
+  "iframe_with_URI": 0,
+  "exthttp": {
+   "n": 0,
+   "jsonFail": 0,
+   "toxic": {},
+   "waf": {}
+  },
+  "golden": {
+   "hev1_in_streaminf": 0,
+   "hvc1_in_vlcopt": 0,
+   "hvc1_in_kodiprop": 0,
+   "counts": {
+    "dolby": 1,
+    "audio": 1
+   }
+  },
+  "streaminf": {
+   "n": 1,
+   "noCodecs": 0,
+   "noRes": 0,
+   "vrDup": 0
+  },
+  "impossible": 0,
+  "media_playlist_tags": {},
+  "dup_urls": 0,
+  "tvg_missing": {
+   "id": 0,
+   "name": 0,
+   "group": 0,
+   "logo": 0
+  },
+  "pairs": 1
+ },
+ {
+  "file": "IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/parsers/fixtures/hls_media_cmaf.m3u8",
+  "bytes": 176,
+  "lines": 11,
+  "extm3u_line": 1,
+  "extinf": 3,
+  "uriLines": 3,
+  "channels_multiURL": 0,
+  "media_with_URI": 0,
+  "iframe_with_URI": 0,
+  "exthttp": {
+   "n": 0,
+   "jsonFail": 0,
+   "toxic": {},
+   "waf": {}
+  },
+  "golden": {
+   "hev1_in_streaminf": 0,
+   "hvc1_in_vlcopt": 0,
+   "hvc1_in_kodiprop": 0,
+   "counts": {}
+  },
+  "streaminf": {
+   "n": 0,
+   "noCodecs": 0,
+   "noRes": 0,
+   "vrDup": 0
+  },
+  "impossible": 0,
+  "media_playlist_tags": {
+   "EXT-X-TARGETDURATION": 1,
+   "EXT-X-MEDIA-SEQUENCE": 1,
+   "EXT-X-MAP": 1
+  },
+  "dup_urls": 0,
+  "tvg_missing": {
+   "id": 3,
+   "name": 3,
+   "group": 3,
+   "logo": 3
+  },
+  "pairs": 0
+ },
+ {
+  "file": "IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/parsers/fixtures/hls_media_ts.m3u8",
+  "bytes": 164,
+  "lines": 11,
+  "extm3u_line": 1,
+  "extinf": 3,
+  "uriLines": 3,
+  "channels_multiURL": 0,
+  "media_with_URI": 0,
+  "iframe_with_URI": 0,
+  "exthttp": {
+   "n": 0,
+   "jsonFail": 0,
+   "toxic": {},
+   "waf": {}
+  },
+  "golden": {
+   "hev1_in_streaminf": 0,
+   "hvc1_in_vlcopt": 0,
+   "hvc1_in_kodiprop": 0,
+   "counts": {}
+  },
+  "streaminf": {
+   "n": 0,
+   "noCodecs": 0,
+   "noRes": 0,
+   "vrDup": 0
+  },
+  "impossible": 0,
+  "media_playlist_tags": {
+   "EXT-X-TARGETDURATION": 1,
+   "EXT-X-MEDIA-SEQUENCE": 1,
+   "EXT-X-ENDLIST": 1
+  },
+  "dup_urls": 0,
+  "tvg_missing": {
+   "id": 3,
+   "name": 3,
+   "group": 3,
+   "logo": 3
+  },
+  "pairs": 0
+ },
+ {
+  "file": "_vps_stage/fixtures/selftest.m3u8",
+  "bytes": 203,
+  "lines": 8,
+  "extm3u_line": 1,
+  "extinf": 1,
+  "uriLines": 2,
+  "channels_multiURL": 0,
+  "media_with_URI": 0,
+  "iframe_with_URI": 0,
+  "exthttp": {
+   "n": 0,
+   "jsonFail": 0,
+   "toxic": {},
+   "waf": {}
+  },
+  "golden": {
+   "hev1_in_streaminf": 0,
+   "hvc1_in_vlcopt": 0,
+   "hvc1_in_kodiprop": 0,
+   "counts": {}
+  },
+  "streaminf": {
+   "n": 1,
+   "noCodecs": 1,
+   "noRes": 0,
+   "vrDup": 0
+  },
+  "impossible": 0,
+  "media_playlist_tags": {
+   "EXT-X-MAP": 1
+  },
+  "dup_urls": 0,
+  "tvg_missing": {
+   "id": 1,
+   "name": 1,
+   "group": 1,
+   "logo": 1
+  },
+  "pairs": 1
+ },
+ {
+  "file": "_vps_stage/fixtures/selftest_ll.m3u8",
+  "bytes": 377,
+  "lines": 12,
+  "extm3u_line": 1,
+  "extinf": 1,
+  "uriLines": 1,
+  "channels_multiURL": 0,
+  "media_with_URI": 0,
+  "iframe_with_URI": 0,
+  "exthttp": {
+   "n": 0,
+   "jsonFail": 0,
+   "toxic": {},
+   "waf": {}
+  },
+  "golden": {
+   "hev1_in_streaminf": 0,
+   "hvc1_in_vlcopt": 0,
+   "hvc1_in_kodiprop": 0,
+   "counts": {}
+  },
+  "streaminf": {
+   "n": 0,
+   "noCodecs": 0,
+   "noRes": 0,
+   "vrDup": 0
+  },
+  "impossible": 0,
+  "media_playlist_tags": {
+   "EXT-X-TARGETDURATION": 1,
+   "EXT-X-PART-INF": 1,
+   "EXT-X-MAP": 1,
+   "EXT-X-PART": 4
+  },
+  "dup_urls": 0,
+  "tvg_missing": {
+   "id": 1,
+   "name": 1,
+   "group": 1,
+   "logo": 1
+  },
+  "pairs": 0
+ },
+ {
+  "file": "_vps_stage/fixtures/selftest_master.m3u8",
+  "bytes": 349,
+  "lines": 7,
+  "extm3u_line": 1,
+  "extinf": 0,
+  "uriLines": 2,
+  "channels_multiURL": 0,
+  "media_with_URI": 0,
+  "iframe_with_URI": 0,
+  "exthttp": {
+   "n": 0,
+   "jsonFail": 0,
+   "toxic": {},
+   "waf": {}
+  },
+  "golden": {
+   "hev1_in_streaminf": 0,
+   "hvc1_in_vlcopt": 0,
+   "hvc1_in_kodiprop": 0,
+   "counts": {
+    "avc1": 2,
+    "audio": 2
+   }
+  },
+  "streaminf": {
+   "n": 2,
+   "noCodecs": 0,
+   "noRes": 0,
+   "vrDup": 0
+  },
+  "impossible": 1,
+  "media_playlist_tags": {},
+  "dup_urls": 0,
+  "tvg_missing": {
+   "id": 0,
+   "name": 0,
+   "group": 0,
+   "logo": 0
+  },
+  "pairs": 2
+ },
+ {
+  "file": "_vps_stage/fixtures/selftest_master4k.m3u8",
+  "bytes": 378,
+  "lines": 7,
+  "extm3u_line": 1,
+  "extinf": 0,
+  "uriLines": 2,
+  "channels_multiURL": 0,
+  "media_with_URI": 0,
+  "iframe_with_URI": 0,
+  "exthttp": {
+   "n": 0,
+   "jsonFail": 0,
+   "toxic": {},
+   "waf": {}
+  },
+  "golden": {
+   "hev1_in_streaminf": 0,
+   "hvc1_in_vlcopt": 0,
+   "hvc1_in_kodiprop": 0,
+   "counts": {
+    "hvc1": 2,
+    "audio": 2
+   }
+  },
+  "streaminf": {
+   "n": 2,
+   "noCodecs": 0,
+   "noRes": 0,
+   "vrDup": 0
+  },
+  "impossible": 0,
+  "media_playlist_tags": {},
+  "dup_urls": 0,
+  "tvg_missing": {
+   "id": 0,
+   "name": 0,
+   "group": 0,
+   "logo": 0
+  },
+  "pairs": 2
+ },
+ {
+  "file": "f1_full.m3u8",
+  "bytes": 228,
+  "lines": 4,
+  "extm3u_line": 1,
+  "extinf": 1,
+  "uriLines": 1,
+  "channels_multiURL": 0,
+  "media_with_URI": 0,
+  "iframe_with_URI": 0,
+  "exthttp": {
+   "n": 1,
+   "jsonFail": 0,
+   "toxic": {},
+   "waf": {}
+  },
+  "golden": {
+   "hev1_in_streaminf": 0,
+   "hvc1_in_vlcopt": 0,
+   "hvc1_in_kodiprop": 0,
+   "counts": {}
+  },
+  "streaminf": {
+   "n": 0,
+   "noCodecs": 0,
+   "noRes": 0,
+   "vrDup": 0
+  },
+  "impossible": 0,
+  "media_playlist_tags": {},
+  "dup_urls": 0,
+  "tvg_missing": {
+   "id": 1,
+   "name": 1,
+   "group": 1,
+   "logo": 1
+  },
+  "pairs": 0
+ },
+ {
+  "file": "test2.m3u8",
+  "bytes": 5532,
+  "lines": 36,
+  "extm3u_line": 1,
+  "extinf": 0,
+  "uriLines": 3,
+  "channels_multiURL": 0,
+  "media_with_URI": 0,
+  "iframe_with_URI": 0,
+  "exthttp": {
+   "n": 3,
+   "jsonFail": 0,
+   "toxic": {},
+   "waf": {}
+  },
+  "golden": {
+   "hev1_in_streaminf": 0,
+   "hvc1_in_vlcopt": 0,
+   "hvc1_in_kodiprop": 0,
+   "counts": {}
+  },
+  "streaminf": {
+   "n": 2,
+   "noCodecs": 2,
+   "noRes": 0,
+   "vrDup": 0
+  },
+  "impossible": 0,
+  "media_playlist_tags": {},
+  "dup_urls": 0,
+  "tvg_missing": {
+   "id": 0,
+   "name": 0,
+   "group": 0,
+   "logo": 0
+  },
+  "pairs": 2
+ },
+ {
+  "file": "test3.m3u8",
+  "bytes": 5517,
+  "lines": 36,
+  "extm3u_line": 1,
+  "extinf": 0,
+  "uriLines": 3,
+  "channels_multiURL": 0,
+  "media_with_URI": 0,
+  "iframe_with_URI": 0,
+  "exthttp": {
+   "n": 3,
+   "jsonFail": 0,
+   "toxic": {},
+   "waf": {}
+  },
+  "golden": {
+   "hev1_in_streaminf": 0,
+   "hvc1_in_vlcopt": 0,
+   "hvc1_in_kodiprop": 0,
+   "counts": {}
+  },
+  "streaminf": {
+   "n": 2,
+   "noCodecs": 2,
+   "noRes": 0,
+   "vrDup": 0
+  },
+  "impossible": 0,
+  "media_playlist_tags": {},
+  "dup_urls": 0,
+  "tvg_missing": {
+   "id": 0,
+   "name": 0,
+   "group": 0,
+   "logo": 0
+  },
+  "pairs": 2
+ },
+ {
+  "file": "test4.m3u8",
+  "bytes": 5514,
+  "lines": 36,
+  "extm3u_line": 1,
+  "extinf": 0,
+  "uriLines": 3,
+  "channels_multiURL": 0,
+  "media_with_URI": 0,
+  "iframe_with_URI": 0,
+  "exthttp": {
+   "n": 3,
+   "jsonFail": 0,
+   "toxic": {},
+   "waf": {}
+  },
+  "golden": {
+   "hev1_in_streaminf": 0,
+   "hvc1_in_vlcopt": 0,
+   "hvc1_in_kodiprop": 0,
+   "counts": {}
+  },
+  "streaminf": {
+   "n": 2,
+   "noCodecs": 2,
+   "noRes": 0,
+   "vrDup": 0
+  },
+  "impossible": 0,
+  "media_playlist_tags": {},
+  "dup_urls": 0,
+  "tvg_missing": {
+   "id": 0,
+   "name": 0,
+   "group": 0,
+   "logo": 0
+  },
+  "pairs": 2
+ },
+ {
+  "file": "test.m3u8",
+  "bytes": 15629,
+  "lines": 203,
+  "extm3u_line": 5,
+  "extinf": 1,
+  "uriLines": 58,
+  "channels_multiURL": 0,
+  "media_with_URI": 0,
+  "iframe_with_URI": 0,
+  "exthttp": {
+   "n": 6,
+   "jsonFail": 4,
+   "toxic": {},
+   "waf": {}
+  },
+  "golden": {
+   "hev1_in_streaminf": 0,
+   "hvc1_in_vlcopt": 0,
+   "hvc1_in_kodiprop": 0,
+   "counts": {}
+  },
+  "streaminf": {
+   "n": 0,
+   "noCodecs": 0,
+   "noRes": 0,
+   "vrDup": 0
+  },
+  "impossible": 0,
+  "media_playlist_tags": {
+   "EXT-X-TARGETDURATION": 1,
+   "EXT-X-PART-INF": 1,
+   "EXT-X-SERVER-CONTROL": 1
+  },
+  "dup_urls": 2,
+  "tvg_missing": {
+   "id": 1,
+   "name": 1,
+   "group": 1,
+   "logo": 1
+  },
+  "pairs": 0
+ },
+ {
+  "file": "lista_omega_mock.m3u8",
+  "bytes": 24643,
+  "lines": 201,
+  "extm3u_line": 1,
+  "extinf": 100,
+  "uriLines": 100,
+  "channels_multiURL": 0,
+  "media_with_URI": 0,
+  "iframe_with_URI": 0,
+  "exthttp": {
+   "n": 0,
+   "jsonFail": 0,
+   "toxic": {},
+   "waf": {}
+  },
+  "golden": {
+   "hev1_in_streaminf": 0,
+   "hvc1_in_vlcopt": 0,
+   "hvc1_in_kodiprop": 0,
+   "counts": {}
+  },
+  "streaminf": {
+   "n": 0,
+   "noCodecs": 0,
+   "noRes": 0,
+   "vrDup": 0
+  },
+  "impossible": 0,
+  "media_playlist_tags": {},
+  "dup_urls": 0,
+  "tvg_missing": {
+   "id": 0,
+   "name": 0,
+   "group": 0,
+   "logo": 100
+  },
+  "pairs": 0
+ },
+ {
+  "file": ".agent/skills/iptv-ape-v4-full-builder/templates/OMEGA_EXAMPLE_LIST.m3u8",
+  "bytes": 2362,
+  "lines": 25,
+  "extm3u_line": 1,
+  "extinf": 5,
+  "uriLines": 5,
+  "channels_multiURL": 0,
+  "media_with_URI": 0,
+  "iframe_with_URI": 0,
+  "exthttp": {
+   "n": 5,
+   "jsonFail": 0,
+   "toxic": {},
+   "waf": {
+    "engine_fingerprint": 5
+   }
+  },
+  "golden": {
+   "hev1_in_streaminf": 0,
+   "hvc1_in_vlcopt": 0,
+   "hvc1_in_kodiprop": 0,
+   "counts": {}
+  },
+  "streaminf": {
+   "n": 0,
+   "noCodecs": 0,
+   "noRes": 0,
+   "vrDup": 0
+  },
+  "impossible": 0,
+  "media_playlist_tags": {},
+  "dup_urls": 0,
+  "tvg_missing": {
+   "id": 0,
+   "name": 0,
+   "group": 0,
+   "logo": 0
+  },
+  "pairs": 0
+ },
+ {
+  "file": "IPTV_v5.4_MAX_AGGRESSION/audit_bulletproof_output.m3u8",
+  "bytes": 459587,
+  "lines": 9315,
+  "extm3u_line": 1,
+  "extinf": 10,
+  "uriLines": 10,
+  "channels_multiURL": 0,
+  "media_with_URI": 0,
+  "iframe_with_URI": 0,
+  "exthttp": {
+   "n": 10,
+   "jsonFail": 0,
+   "toxic": {
+    "range": 10,
+    "te": 10,
+    "priority": 10,
+    "upgrade-insecure-requests": 5
+   },
+   "waf": {}
+  },
+  "golden": {
+   "hev1_in_streaminf": 0,
+   "hvc1_in_vlcopt": 0,
+   "hvc1_in_kodiprop": 0,
+   "counts": {
+    "av01": 10,
+    "other": 10
+   }
+  },
+  "streaminf": {
+   "n": 10,
+   "noCodecs": 0,
+   "noRes": 0,
+   "vrDup": 0
+  },
+  "impossible": 10,
+  "media_playlist_tags": {},
+  "dup_urls": 0,
+  "tvg_missing": {
+   "id": 0,
+   "name": 0,
+   "group": 0,
+   "logo": 0
+  },
+  "pairs": 1
+ },
+ {
+  "file": "IPTV_v5.4_MAX_AGGRESSION/backend/lista_omega_v5.4.m3u8",
+  "bytes": 2533473,
+  "lines": 16733,
+  "extm3u_line": 1,
+  "extinf": 8366,
+  "uriLines": 8366,
+  "channels_multiURL": 0,
+  "media_with_URI": 0,
+  "iframe_with_URI": 0,
+  "exthttp": {
+   "n": 0,
+   "jsonFail": 0,
+   "toxic": {},
+   "waf": {}
+  },
+  "golden": {
+   "hev1_in_streaminf": 0,
+   "hvc1_in_vlcopt": 0,
+   "hvc1_in_kodiprop": 0,
+   "counts": {}
+  },
+  "streaminf": {
+   "n": 0,
+   "noCodecs": 0,
+   "noRes": 0,
+   "vrDup": 0
+  },
+  "impossible": 0,
+  "media_playlist_tags": {},
+  "dup_urls": 0,
+  "tvg_missing": {
+   "id": 0,
+   "name": 0,
+   "group": 0,
+   "logo": 8366
+  },
+  "pairs": 0
+ },
+ {
+  "file": "OMEGA_UPDATE/APE_OMEGA_PRODUCTION_v5.2.m3u8",
+  "bytes": 224620513,
+  "lines": 2034902,
+  "extm3u_line": 9,
+  "extinf": 2754,
+  "uriLines": 2753,
+  "channels_multiURL": 0,
+  "media_with_URI": 0,
+  "iframe_with_URI": 0,
+  "exthttp": {
+   "n": 2754,
+   "jsonFail": 0,
+   "toxic": {
+    "range": 2754,
+    "if-none-match": 2754,
+    "if-modified-since": 2754,
+    "te": 2754,
+    "priority": 2754,
+    "upgrade-insecure-requests": 2754
+   },
+   "waf": {
+    "x_requested_with": 2754
+   }
+  },
+  "golden": {
+   "hev1_in_streaminf": 0,
+   "hvc1_in_vlcopt": 0,
+   "hvc1_in_kodiprop": 0,
+   "counts": {}
+  },
+  "streaminf": {
+   "n": 0,
+   "noCodecs": 0,
+   "noRes": 0,
+   "vrDup": 0
+  },
+  "impossible": 0,
+  "media_playlist_tags": {},
+  "dup_urls": 0,
+  "tvg_missing": {
+   "id": 0,
+   "name": 0,
+   "group": 0,
+   "logo": 0
+  },
+  "pairs": 0
+ },
+ {
+  "file": "OMEGA_UPDATE/APE_TYPED_ARRAYS_ULTIMATE.m3u8",
+  "bytes": 222166550,
+  "lines": 2034902,
+  "extm3u_line": 9,
+  "extinf": 2754,
+  "uriLines": 2753,
+  "channels_multiURL": 0,
+  "media_with_URI": 0,
+  "iframe_with_URI": 0,
+  "exthttp": {
+   "n": 2754,
+   "jsonFail": 0,
+   "toxic": {
+    "range": 2754,
+    "if-none-match": 2754,
+    "if-modified-since": 2754,
+    "te": 2754,
+    "priority": 2754,
+    "upgrade-insecure-requests": 2754
+   },
+   "waf": {
+    "x_requested_with": 2754
+   }
+  },
+  "golden": {
+   "hev1_in_streaminf": 0,
+   "hvc1_in_vlcopt": 0,
+   "hvc1_in_kodiprop": 0,
+   "counts": {}
+  },
+  "streaminf": {
+   "n": 0,
+   "noCodecs": 0,
+   "noRes": 0,
+   "vrDup": 0
+  },
+  "impossible": 0,
+  "media_playlist_tags": {},
+  "dup_urls": 0,
+  "tvg_missing": {
+   "id": 0,
+   "name": 0,
+   "group": 0,
+   "logo": 0
+  },
+  "pairs": 0
+ },
+ {
+  "file": "downloaded_list.m3u8",
+  "bytes": 222166550,
+  "lines": 2034902,
+  "extm3u_line": 9,
+  "extinf": 2754,
+  "uriLines": 2753,
+  "channels_multiURL": 0,
+  "media_with_URI": 0,
+  "iframe_with_URI": 0,
+  "exthttp": {
+   "n": 2754,
+   "jsonFail": 0,
+   "toxic": {
+    "range": 2754,
+    "if-none-match": 2754,
+    "if-modified-since": 2754,
+    "te": 2754,
+    "priority": 2754,
+    "upgrade-insecure-requests": 2754
+   },
+   "waf": {
+    "x_requested_with": 2754
+   }
+  },
+  "golden": {
+   "hev1_in_streaminf": 0,
+   "hvc1_in_vlcopt": 0,
+   "hvc1_in_kodiprop": 0,
+   "counts": {}
+  },
+  "streaminf": {
+   "n": 0,
+   "noCodecs": 0,
+   "noRes": 0,
+   "vrDup": 0
+  },
+  "impossible": 0,
+  "media_playlist_tags": {},
+  "dup_urls": 0,
+  "tvg_missing": {
+   "id": 0,
+   "name": 0,
+   "group": 0,
+   "logo": 0
+  },
+  "pairs": 0
+ },
+ {
+  "file": "temp_analysis/APE_TYPED_ARRAYS_ULTIMATE_20260319 (17).m3u8",
+  "bytes": 58924525,
+  "lines": 929573,
+  "extm3u_line": 1,
+  "extinf": 1359,
+  "uriLines": 1359,
+  "channels_multiURL": 0,
+  "media_with_URI": 0,
+  "iframe_with_URI": 0,
+  "exthttp": {
+   "n": 1359,
+   "jsonFail": 0,
+   "toxic": {
+    "range": 1359,
+    "if-none-match": 1359,
+    "if-modified-since": 1359,
+    "te": 1359,
+    "priority": 1359,
+    "upgrade-insecure-requests": 1359
+   },
+   "waf": {
+    "x_requested_with": 1359
+   }
+  },
+  "golden": {
+   "hev1_in_streaminf": 1359,
+   "hvc1_in_vlcopt": 0,
+   "hvc1_in_kodiprop": 0,
+   "counts": {
+    "avc1": 1359,
+    "hev1": 1359,
+    "audio": 1359
+   }
+  },
+  "streaminf": {
+   "n": 1359,
+   "noCodecs": 0,
+   "noRes": 0,
+   "vrDup": 0
+  },
+  "impossible": 1359,
+  "media_playlist_tags": {},
+  "dup_urls": 0,
+  "tvg_missing": {
+   "id": 0,
+   "name": 0,
+   "group": 0,
+   "logo": 0
+  },
+  "pairs": 2
+ },
+ {
+  "file": "IPTV_v5.4_MAX_AGGRESSION/snapshots/2026-04-26_audit_92_omega_premium/APE_LISTA_1777243113563_SHIELDED.m3u8",
+  "bytes": 718342566,
+  "lines": 14332124,
+  "extm3u_line": 1,
+  "extinf": 15444,
+  "uriLines": 15444,
+  "channels_multiURL": 0,
+  "media_with_URI": 0,
+  "iframe_with_URI": 0,
+  "exthttp": {
+   "n": 15444,
+   "jsonFail": 0,
+   "toxic": {
+    "range": 15444,
+    "te": 15444,
+    "priority": 15444,
+    "upgrade-insecure-requests": 15444
+   },
+   "waf": {
+    "engine_fingerprint": 1656
+   }
+  },
+  "golden": {
+   "hev1_in_streaminf": 0,
+   "hvc1_in_vlcopt": 0,
+   "hvc1_in_kodiprop": 0,
+   "counts": {
+    "hvc1": 15444,
+    "audio": 15444
+   }
+  },
+  "streaminf": {
+   "n": 15444,
+   "noCodecs": 0,
+   "noRes": 0,
+   "vrDup": 0
+  },
+  "impossible": 182,
+  "media_playlist_tags": {},
+  "dup_urls": 0,
+  "tvg_missing": {
+   "id": 0,
+   "name": 0,
+   "group": 0,
+   "logo": 0
+  },
+  "pairs": 5
+ }
+]

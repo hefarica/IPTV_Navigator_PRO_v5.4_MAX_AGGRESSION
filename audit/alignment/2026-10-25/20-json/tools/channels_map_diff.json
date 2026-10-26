@@ -1,0 +1,58 @@
+{
+  "records": {
+    "frontend": 9293,
+    "backend": 8366,
+    "frontend_data": 8366
+  },
+  "top_keys": {
+    "frontend": 9293,
+    "backend": 8366,
+    "frontend_data": 8366
+  },
+  "backend_vs_frontend_data": {
+    "shared": 8366,
+    "backend_only": 0,
+    "frontend_data_only": 0,
+    "backend_only_sample": [],
+    "frontend_data_only_sample": []
+  },
+  "stream_ids": {
+    "frontend": 9293,
+    "backend": 1,
+    "frontend_data": 0,
+    "frontend_and_backend": 0,
+    "frontend_only": 9293,
+    "backend_only": 1,
+    "frontend_only_sample": [
+      "100",
+      "1001833",
+      "1001900",
+      "1001901",
+      "1001902",
+      "1001903",
+      "1001904",
+      "1001905",
+      "1001906",
+      "1001907",
+      "1001908",
+      "1001909"
+    ],
+    "backend_only_sample": [
+      "392200"
+    ]
+  },
+  "tvg_ids": {
+    "frontend": 9293,
+    "backend": 0,
+    "frontend_data": 0
+  },
+  "hosts": {
+    "frontend": [
+      "126958958431.4k-26com.com:80",
+      "line.dndnscloud.ru",
+      "line.tivi-ott.net"
+    ],
+    "backend": [],
+    "frontend_data": []
+  }
+}

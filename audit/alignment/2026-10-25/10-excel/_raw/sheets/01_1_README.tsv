@@ -1,0 +1,60 @@
+address	kind	value
+A1	S	APE M3U8 LAB v8.0 - OBSERVATORIO MULTI-NIVEL CON CEREBRO MATEMATICO
+A3	S	30 hojas | 1,754 directivas | 16 capas | 3 niveles | 84,192 intersecciones posibles
+A5	S	'=== ESTRUCTURA DE 3 NIVELES ===
+A6	S	NIVEL 1: CABECERA GLOBAL  (#EXTM3U + #EXT-X-SYS-* + #EXT-X-SYS-EMBEDDED-CONFIG)  -> 1 vez al inicio
+A7	S	NIVEL 2: PERFILES P0-P5 EMBEBIDOS  (#EXT-X-SYS-PROFILE-PN-*)  -> dentro del bloque global
+A8	S	NIVEL 3: BLOQUE POR CANAL  (#EXTINF + #EXTVLCOPT + #KODIPROP + #EXTHTTP + #EXT-X-STREAM-INF + URL)  -> N veces
+A10	S	'=== 16 CAPAS DE TRANSPORTE ===
+A11	S	1.EXTVLCOPT  2.KODIPROP  3.EXTHTTP_JSON  4.EXTATTRFROMURL  5.EXTINF_ATTR  6.EXTM3U_ATTR
+A12	S	7.STREAM_INF  8.MEDIA  9.EXT_X_SYS  10.URL_QUERY_PLAIN  11.URL_QUERY_JWT  12.URL_QUERY_BASE64
+A13	S	13.URL_QUERY_ENCRYPTED  14.COOKIE  15.KODI_LICENSE_DATA  16.EXT_X_DEFINE
+A15	S	'=== 10 GARANTIAS QUE EL CEREBRO OPTIMIZA ===
+A16	S	1. 0 FREEZES (gap-controller)  2. 0 CORTES (ABR)  3. 0 REBUFFER (4-layer buffer)
+A17	S	4. 0 LAG (live catch-up)  5. 0 BUGS CMCD (CTA-5004)  6. MAX ABR  7. MAX IMAGEN
+A18	S	8. HTTP Error Tree (0 errores 3xx/4xx/5xx)  9. Multi-Provider  10. Master Integrator
+A20	S	'=== 30 HOJAS - ORDEN ===
+A21	S	A. NAVEGACION:        1_README, 2_CATALOGO_MASTER, 3_CAPAS, 4_MIME_TYPES
+A22	S	B. SELECTORES NIVEL:  5_NIVEL_1_HEADER, 6_NIVEL_2_PROFILES, 7_NIVEL_3_CHANNEL
+A23	S	C. NUCLEO 3D BRAIN:   8_MATRIX_3D, 9_BRAIN_DASHBOARD, 10_HOMOLOGATION, 11_EXPANSION_ZONE
+A24	S	D. SERIALIZACION:     12_FORMATOS, 13_CRYPTO, 14_KEYRING, 15_CMCD_QOE
+A25	S	E. EVASION/SERVERS:   16_EVASION, 17_SERVERS_POOL, 18_CONFIG
+A26	S	F. URL LAB:           19_URL_BUILDER, 20_URL_PROBE, 21_WATERFALL, 22_UX_IMPACT, 23_BOTTLENECK
+A27	S	G. JSON I/O:          24_JSON_IMPORT, 25_JSON_EXPORT, 26_JSON_DIFF, 27_COMPAT_MATRIX
+A28	S	H. PREVIEW:           28_PREVIEW_M3U8, 29_STATS_HISTORY, 30_EXPORT_FINAL
+A30	S	'=== LEYENDA DE COLORES ===
+A31	S	VERDE   = OFICIAL verificado vs spec del player                                              [PASS]
+A32	S	AMARILLO= PRIVADO APE / X-* custom (player ignora silenciosamente, no rompe)               [WARN]
+A33	S	ROJO    = NO existe en codigo fuente del player (basura, eliminar)                         [FAIL]
+A34	S	AZUL    = Editable por usuario                                                             [EDIT]
+A35	S	GRIS    = Read-only (calculado por cerebro)                                                [LOCK]
+A37	S	'=== ESTADO ACTUAL ===
+A38	S	SESION 1 (esta entrega): Excel base + datos importados. SIN VBA aun.
+A39	S	SESION 2 (proxima):     VBA basico (Import/Export JSON, Build3D, DetectConflicts)
+A40	S	SESION 3:               VBA cerebro matematico (Brain_* macros completas)
+A41	S	SESION 4:               VBA URL Lab + Toolkit integrado + Validacion end-to-end
+A43	S	'=== INPUTS ORIGEN ===
+A44	S	  CATALOGO: CATALOGO_DIRECTIVAS_3LISTS.csv (1761 directivas inventariadas)
+A45	S	  PROFILES: APE_ALL_PROFILES_CALIBRATED_2026-04-12T05-15-42-4513.json (6 perfiles)
+A47	S	'=== BOTONES DINAMICOS DISPONIBLES (asignar macros VBA en Sesion 2) ===
+A48	S	Las celdas marcadas en VERDE [➕ AGREGAR] insertan filas nuevas dinamicamente
+A49	S	Las celdas marcadas en ROJO [➖ QUITAR] eliminan la fila seleccionada
+A50	S	Las celdas marcadas en AZUL [ACCION] ejecutan macros de calculo/test/export
+A52	S	Hojas con botones de gestion dinamica:
+A53	S	  - 8_MATRIX_3D:        marcar/desmarcar masivo + cerebro
+A54	S	  - 9_BRAIN_DASHBOARD:  recalcular, optimizar, simular
+A55	S	  - 11_EXPANSION_ZONE:  + agregar / - quitar directiva custom
+A56	S	  - 14_KEYRING:         + key / - key / regenerar / encriptar
+A57	S	  - 16_EVASION:         + UA / + Referer / + bloqueo handler
+A58	S	  - 17_SERVERS_POOL:    + servidor / test health / refresh active_cons
+A59	S	  - 18_CONFIG:          + parametro custom / save preset / load preset
+A60	S	  - 19_URL_BUILDER:     construir / probar / copiar / VLC / batch
+A61	S	  - 24_JSON_IMPORT:     examinar / importar / preview / limpiar
+A62	S	  - 25_JSON_EXPORT:     exportar / diff / preset / subir toolkit
+A63	S	  - 27_COMPAT_MATRIX:   + prueba / re-ejecutar / marcar ganadora
+A64	S	  - 29_STATS_HISTORY:   limpiar / exportar CSV / graficar
+A65	S	  - 30_EXPORT_FINAL:    JSON completo / M3U8 sample / M3U8 todos
+A66	S	  - 31_SOLVER_SETUP:    + objetivo / + restriccion / + variable / RUN solver
+A68	S	Idempotencia: cualquier macro se puede correr N veces y produce mismo resultado.
+A69	S	Polimorfismo: misma directiva tiene N representaciones segun capa (ms vs s, JSON vs RAW).
+A70	S	Homologacion: cambiar 1 valor propaga a TODAS las capas equivalentes via HOMOLOGATION_RULES.

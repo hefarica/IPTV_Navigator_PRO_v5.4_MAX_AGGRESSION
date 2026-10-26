@@ -1,0 +1,390 @@
+{
+  "schema": "t9-canonical-extract/1.0",
+  "generatedBy": "audit/alignment/2026-10-25/90-matriz/tools/extract_canon.mjs",
+  "provenance": {
+    "excelExtract": {
+      "path": "C:/Users/HFRC/Desktop/IPTV_Navigator_PRO_v5.4_MAX_AGGRESSION/audit/alignment/2026-10-25/10-excel/EXCEL_PROFILES_EXTRACT.json",
+      "sha256": "D977BC999CB4A1A17AD48E42D6FC40761F9C4E210C1464EF18C54F4CD4769588"
+    },
+    "labMaster": {
+      "path": "C:/Users/HFRC/Desktop/IPTV_Navigator_PRO_v5.4_MAX_AGGRESSION/IPTV_v5.4_MAX_AGGRESSION/frontend/lab_master_22.6.0.json",
+      "bytes": 280065,
+      "sha256": "099A1707A2F1AE692FFCFEDE01165F21CD66656B786742CE8DB518581A371FD4"
+    },
+    "excelCanonicalClaimed": "663EF44E2D69521EB0E77DDA7B64A32EA4F942992F8F2C80614EAEE8EC52806A"
+  },
+  "profiles": {
+    "P0": {
+      "excel": {
+        "resolution(row25)": {
+          "path": "settings.settings.resolution",
+          "value": "7680x4320",
+          "kind": "S"
+        },
+        "fps(row32)": {
+          "path": "settings.settings.fps",
+          "value": "120",
+          "kind": "N"
+        },
+        "codec_full(row37)": {
+          "path": "settings.settings.codec_full",
+          "value": "dvh1.08.06",
+          "kind": "S"
+        },
+        "chroma(row40)": {
+          "path": "settings.settings.chroma_subsampling",
+          "value": "168055555555556",
+          "kind": "N"
+        },
+        "maxResolution(row48)": {
+          "path": "settings.settings.maxResolution",
+          "value": "7680x4320",
+          "kind": "S"
+        },
+        "row49": {
+          "path": "settings.settings.maxBitrateKbps",
+          "value": "200000",
+          "kind": "N"
+        },
+        "row50": {
+          "path": "settings.settings.avgBitrateKbps",
+          "value": "160000",
+          "kind": "N"
+        },
+        "name(row8)": {
+          "path": "name",
+          "value": "8K Master",
+          "kind": "S"
+        },
+        "level(row9)": {
+          "path": "level",
+          "value": "6",
+          "kind": "N"
+        }
+      },
+      "json": {
+        "settings.resolution": "7680x4320",
+        "settings.fps": "120",
+        "settings.codec_full": "dvh1.08.06",
+        "settings.codec": "DVH1",
+        "settings.chroma_subsampling": "168055555555556",
+        "settings.maxResolution": "7680x4320",
+        "settings.maxBitrateKbps": "200000",
+        "settings.avgBitrateKbps": "160000",
+        "settings.headersCount": "233",
+        "headerOverrides key count": 402,
+        "name": "8K Master"
+      }
+    },
+    "P1": {
+      "excel": {
+        "resolution(row25)": {
+          "path": "settings.settings.resolution",
+          "value": "3840x2160",
+          "kind": "S"
+        },
+        "fps(row32)": {
+          "path": "settings.settings.fps",
+          "value": "120",
+          "kind": "N"
+        },
+        "codec_full(row37)": {
+          "path": "settings.settings.codec_full",
+          "value": "hvc1.2.4.L153.B0",
+          "kind": "S"
+        },
+        "chroma(row40)": {
+          "path": "settings.settings.chroma_subsampling",
+          "value": "168055555555556",
+          "kind": "N"
+        },
+        "maxResolution(row48)": {
+          "path": "settings.settings.maxResolution",
+          "value": "3840x2160",
+          "kind": "S"
+        },
+        "row49": {
+          "path": "settings.settings.maxBitrateKbps",
+          "value": "40000",
+          "kind": "N"
+        },
+        "row50": {
+          "path": "settings.settings.avgBitrateKbps",
+          "value": "75000",
+          "kind": "N"
+        },
+        "name(row8)": {
+          "path": "name",
+          "value": "4K UHD",
+          "kind": "S"
+        },
+        "level(row9)": {
+          "path": "level",
+          "value": "4",
+          "kind": "N"
+        }
+      },
+      "json": {
+        "settings.resolution": "7680x4320",
+        "settings.fps": "120",
+        "settings.codec_full": "hvc1.2.4.L153.B0",
+        "settings.codec": "HVC1",
+        "settings.chroma_subsampling": "168055555555556",
+        "settings.maxResolution": "7680x4320",
+        "settings.maxBitrateKbps": "40000",
+        "settings.avgBitrateKbps": "75000",
+        "settings.headersCount": "233",
+        "headerOverrides key count": 400,
+        "name": "4K UHD"
+      }
+    },
+    "P2": {
+      "excel": {
+        "resolution(row25)": {
+          "path": "settings.settings.resolution",
+          "value": "3840x2160",
+          "kind": "S"
+        },
+        "fps(row32)": {
+          "path": "settings.settings.fps",
+          "value": "120",
+          "kind": "N"
+        },
+        "codec_full(row37)": {
+          "path": "settings.settings.codec_full",
+          "value": "hvc1.2.4.L150.B0",
+          "kind": "S"
+        },
+        "chroma(row40)": {
+          "path": "settings.settings.chroma_subsampling",
+          "value": "168055555555556",
+          "kind": "N"
+        },
+        "maxResolution(row48)": {
+          "path": "settings.settings.maxResolution",
+          "value": "3840x2160",
+          "kind": "S"
+        },
+        "row49": {
+          "path": "settings.settings.maxBitrateKbps",
+          "value": "25000",
+          "kind": "N"
+        },
+        "row50": {
+          "path": "settings.settings.avgBitrateKbps",
+          "value": "35000",
+          "kind": "N"
+        },
+        "name(row8)": {
+          "path": "name",
+          "value": "2K QHD",
+          "kind": "S"
+        },
+        "level(row9)": {
+          "path": "level",
+          "value": "4",
+          "kind": "N"
+        }
+      },
+      "json": {
+        "settings.resolution": "3840x2160",
+        "settings.fps": "120",
+        "settings.codec_full": "hvc1.2.4.L150.B0",
+        "settings.codec": "HVC1",
+        "settings.chroma_subsampling": "168055555555556",
+        "settings.maxResolution": "3840x2160",
+        "settings.maxBitrateKbps": "25000",
+        "settings.avgBitrateKbps": "35000",
+        "settings.headersCount": "233",
+        "headerOverrides key count": 402,
+        "name": "2K QHD"
+      }
+    },
+    "P3": {
+      "excel": {
+        "resolution(row25)": {
+          "path": "settings.settings.resolution",
+          "value": "1920x1080",
+          "kind": "S"
+        },
+        "fps(row32)": {
+          "path": "settings.settings.fps",
+          "value": "120",
+          "kind": "N"
+        },
+        "codec_full(row37)": {
+          "path": "settings.settings.codec_full",
+          "value": "hvc1.2.4.L123.B0",
+          "kind": "S"
+        },
+        "chroma(row40)": {
+          "path": "settings.settings.chroma_subsampling",
+          "value": "168055555555556",
+          "kind": "N"
+        },
+        "maxResolution(row48)": {
+          "path": "settings.settings.maxResolution",
+          "value": "1920x1080",
+          "kind": "S"
+        },
+        "row49": {
+          "path": "settings.settings.maxBitrateKbps",
+          "value": "10000",
+          "kind": "N"
+        },
+        "row50": {
+          "path": "settings.settings.avgBitrateKbps",
+          "value": "15000",
+          "kind": "N"
+        },
+        "name(row8)": {
+          "path": "name",
+          "value": "FHD 1080p",
+          "kind": "S"
+        },
+        "level(row9)": {
+          "path": "level",
+          "value": "3",
+          "kind": "N"
+        }
+      },
+      "json": {
+        "settings.resolution": "3840x2160",
+        "settings.fps": "120",
+        "settings.codec_full": "hvc1.1.6.L120.B0",
+        "settings.codec": "HVC1",
+        "settings.chroma_subsampling": "168055555555556",
+        "settings.maxResolution": "3840x2160",
+        "settings.maxBitrateKbps": "10000",
+        "settings.avgBitrateKbps": "15000",
+        "settings.headersCount": "233",
+        "headerOverrides key count": 400,
+        "name": "FHD 1080p"
+      }
+    },
+    "P4": {
+      "excel": {
+        "resolution(row25)": {
+          "path": "settings.settings.resolution",
+          "value": "1280x720",
+          "kind": "S"
+        },
+        "fps(row32)": {
+          "path": "settings.settings.fps",
+          "value": "120",
+          "kind": "N"
+        },
+        "codec_full(row37)": {
+          "path": "settings.settings.codec_full",
+          "value": "hvc1.2.4.L93.B0",
+          "kind": "S"
+        },
+        "chroma(row40)": {
+          "path": "settings.settings.chroma_subsampling",
+          "value": "168055555555556",
+          "kind": "N"
+        },
+        "maxResolution(row48)": {
+          "path": "settings.settings.maxResolution",
+          "value": "1280x720",
+          "kind": "S"
+        },
+        "row49": {
+          "path": "settings.settings.maxBitrateKbps",
+          "value": "5000",
+          "kind": "N"
+        },
+        "row50": {
+          "path": "settings.settings.avgBitrateKbps",
+          "value": "6000",
+          "kind": "N"
+        },
+        "name(row8)": {
+          "path": "name",
+          "value": "HD 720p",
+          "kind": "S"
+        },
+        "level(row9)": {
+          "path": "level",
+          "value": "2",
+          "kind": "N"
+        }
+      },
+      "json": {
+        "settings.resolution": "3840x2160",
+        "settings.fps": "120",
+        "settings.codec_full": "avc1.64001f",
+        "settings.codec": "AVC1",
+        "settings.chroma_subsampling": "168055555555556",
+        "settings.maxResolution": "3840x2160",
+        "settings.maxBitrateKbps": "5000",
+        "settings.avgBitrateKbps": "6000",
+        "settings.headersCount": "233",
+        "headerOverrides key count": 400,
+        "name": "HD 720p"
+      }
+    },
+    "P5": {
+      "excel": {
+        "resolution(row25)": {
+          "path": "settings.settings.resolution",
+          "value": "854x480",
+          "kind": "S"
+        },
+        "fps(row32)": {
+          "path": "settings.settings.fps",
+          "value": "120",
+          "kind": "N"
+        },
+        "codec_full(row37)": {
+          "path": "settings.settings.codec_full",
+          "value": "avc1.42c01e",
+          "kind": "S"
+        },
+        "chroma(row40)": {
+          "path": "settings.settings.chroma_subsampling",
+          "value": "168055555555556",
+          "kind": "N"
+        },
+        "maxResolution(row48)": {
+          "path": "settings.settings.maxResolution",
+          "value": "854x480",
+          "kind": "S"
+        },
+        "row49": {
+          "path": "settings.settings.maxBitrateKbps",
+          "value": "2000",
+          "kind": "N"
+        },
+        "row50": {
+          "path": "settings.settings.avgBitrateKbps",
+          "value": "2200",
+          "kind": "N"
+        },
+        "name(row8)": {
+          "path": "name",
+          "value": "SD 480p",
+          "kind": "S"
+        },
+        "level(row9)": {
+          "path": "level",
+          "value": "1",
+          "kind": "N"
+        }
+      },
+      "json": {
+        "settings.resolution": "3840x2160",
+        "settings.fps": "120",
+        "settings.codec_full": "avc1.42c01e",
+        "settings.codec": "AVC1",
+        "settings.chroma_subsampling": "168055555555556",
+        "settings.maxResolution": "3840x2160",
+        "settings.maxBitrateKbps": "2000",
+        "settings.avgBitrateKbps": "2200",
+        "settings.headersCount": "233",
+        "headerOverrides key count": 400,
+        "name": "SD 480p"
+      }
+    }
+  }
+}

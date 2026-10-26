@@ -1,0 +1,48 @@
+address	kind	value
+A1	S	15 FLOOR-LOCK CONFIG - Pisos de bitrate inviolables por perfil
+A2	S	Filtro Lua reescribe master playlist eliminando variants < piso. Player no puede caer fisicamente debajo.
+A3	S	key
+B3	S	value
+C3	S	description
+A4	S	floor_lock_enabled
+B4	B	1
+C4	S	Master switch
+A5	S	floor_lock_min_bandwidth_p0
+B5	N	15000000
+C5	S	Piso 8K UHD bps
+A6	S	floor_lock_min_bandwidth_p1
+B6	N	15000000
+C6	S	Piso 4K HDR10+ bps
+A7	S	floor_lock_min_bandwidth_p2
+B7	N	15000000
+C7	S	Piso 4K UHD bps
+A8	S	floor_lock_min_bandwidth_p3
+B8	N	8000000
+C8	S	Piso FHD 1080p bps
+A9	S	floor_lock_min_bandwidth_p4
+B9	N	8000000
+C9	S	Piso HD 720p bps
+A10	S	floor_lock_min_bandwidth_p5
+B10	N	4000000
+C10	S	Piso SD 480p bps
+A11	S	floor_lock_min_bandwidth_default
+B11	N	8000000
+C11	S	Fallback bps
+A12	S	floor_lock_passthrough_when_unreachable
+B12	B	1
+C12	S	Passthrough fallback
+A13	S	floor_lock_log_unreachable_to_widget
+B13	B	1
+C13	S	Reporta a widget
+A14	S	x_max_bitrate_upstream_header
+B14	N	20000000
+C14	S	Header upstream max
+A15	S	x_min_bitrate_upstream_header
+B15	N	15000000
+C15	S	Header upstream min
+A16	S	tcp_initcwnd_target
+B16	N	64
+C16	S	NGINX initcwnd
+A17	S	tcp_notsent_lowat
+B17	N	131072
+C17	S	TCP tuning

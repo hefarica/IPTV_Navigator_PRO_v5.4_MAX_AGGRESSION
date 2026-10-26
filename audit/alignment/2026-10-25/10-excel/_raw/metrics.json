@@ -1,0 +1,4158 @@
+{
+  "source": {
+    "path": "C:\\Users\\HFRC\\Downloads\\APE_M3U8_LAB_v8_FIXED.xlsm",
+    "sha256": "663EF44E2D69521EB0E77DDA7B64A32EA4F942992F8F2C80614EAEE8EC52806A",
+    "sizeBytes": 3582019,
+    "mtimeUtc": "2026-06-11T06:54:49.080713Z"
+  },
+  "readCopy": {
+    "path": "C:\\Users\\HFRC\\AppData\\Local\\Temp\\lab_ssot_ro_gtqazq_1\\APE_M3U8_LAB_v8_FIXED.xlsm",
+    "sha256": "663EF44E2D69521EB0E77DDA7B64A32EA4F942992F8F2C80614EAEE8EC52806A",
+    "matchesSource": true,
+    "note": "parsed against this temp copy; source only read for hashing/copying"
+  },
+  "workbook": {
+    "workbookProtection": null,
+    "calcPr": "calcId=\"191029\"",
+    "sharedStringsDeclaredUnique": 39709,
+    "sharedStringsParsed": 39709,
+    "sheetCount": 55,
+    "hiddenSheets": [
+      "14_KEYRING",
+      "17_SERVERS_POOL",
+      "_LISTAS_OMEGA",
+      "98_SHIELD_IMMUTABLE",
+      "00_EXPORT_STAGE",
+      "99_DEAD_CHANNELS_BLACKLIST"
+    ]
+  },
+  "package": {
+    "entries": 111,
+    "worksheetParts": 55,
+    "hasVba": true,
+    "vbaParts": [
+      "xl/vbaProject.bin"
+    ],
+    "vbaSignatureParts": [],
+    "hasCalcChain": true,
+    "hasComments": [
+      "xl/comments1.xml"
+    ],
+    "hasDrawings": 15
+  },
+  "sheetFacts": {
+    "1_README": {
+      "index": 1,
+      "state": "visible",
+      "dimension": "A1:A70",
+      "cells": 59,
+      "formulas": 0,
+      "mergedRanges": 0,
+      "sheetProtection": null,
+      "autoFilter": null,
+      "bytes": 7206
+    },
+    "98_VALIDATIONS": {
+      "index": 2,
+      "state": "visible",
+      "dimension": "B1:B6",
+      "cells": 6,
+      "formulas": 0,
+      "mergedRanges": 0,
+      "sheetProtection": null,
+      "autoFilter": null,
+      "bytes": 1474
+    },
+    "2_CATALOGO_MASTER": {
+      "index": 3,
+      "state": "visible",
+      "dimension": "A1:J1762",
+      "cells": 17620,
+      "formulas": 0,
+      "mergedRanges": 0,
+      "sheetProtection": null,
+      "autoFilter": "A1:J1762",
+      "bytes": 607919
+    },
+    "3_CAPAS": {
+      "index": 4,
+      "state": "visible",
+      "dimension": "A1:G17",
+      "cells": 119,
+      "formulas": 0,
+      "mergedRanges": 0,
+      "sheetProtection": null,
+      "autoFilter": null,
+      "bytes": 6031
+    },
+    "4_MIME_TYPES": {
+      "index": 5,
+      "state": "visible",
+      "dimension": "A1:D16",
+      "cells": 64,
+      "formulas": 0,
+      "mergedRanges": 0,
+      "sheetProtection": null,
+      "autoFilter": null,
+      "bytes": 3992
+    },
+    "6_NIVEL_2_PROFILES": {
+      "index": 6,
+      "state": "visible",
+      "dimension": "A1:H663",
+      "cells": 4474,
+      "formulas": 0,
+      "mergedRanges": 5,
+      "sheetProtection": null,
+      "autoFilter": null,
+      "bytes": 215091
+    },
+    "5_NIVEL_1_HEADER": {
+      "index": 7,
+      "state": "visible",
+      "dimension": "A1:F72",
+      "cells": 240,
+      "formulas": 0,
+      "mergedRanges": 3,
+      "sheetProtection": null,
+      "autoFilter": null,
+      "bytes": 15703
+    },
+    "7_NIVEL_3_CHANNEL": {
+      "index": 8,
+      "state": "visible",
+      "dimension": "A1:G91",
+      "cells": 454,
+      "formulas": 0,
+      "mergedRanges": 3,
+      "sheetProtection": null,
+      "autoFilter": null,
+      "bytes": 26636
+    },
+    "8_MATRIX_3D": {
+      "index": 9,
+      "state": "visible",
+      "dimension": "A1:BC2398",
+      "cells": 19710,
+      "formulas": 0,
+      "mergedRanges": 3,
+      "sheetProtection": null,
+      "autoFilter": "A3:BC3",
+      "bytes": 726434
+    },
+    "00_OMEGA_SCORECARD": {
+      "index": 10,
+      "state": "visible",
+      "dimension": "A1:E68",
+      "cells": 303,
+      "formulas": 0,
+      "mergedRanges": 0,
+      "sheetProtection": null,
+      "autoFilter": null,
+      "bytes": 16346
+    },
+    "18_CONFIG": {
+      "index": 11,
+      "state": "visible",
+      "dimension": "A1:E52",
+      "cells": 186,
+      "formulas": 0,
+      "mergedRanges": 2,
+      "sheetProtection": null,
+      "autoFilter": null,
+      "bytes": 12994
+    },
+    "19_ADB_PAYLOAD_INJECTOR": {
+      "index": 12,
+      "state": "visible",
+      "dimension": "A1:F38",
+      "cells": 217,
+      "formulas": 0,
+      "mergedRanges": 2,
+      "sheetProtection": null,
+      "autoFilter": null,
+      "bytes": 12333
+    },
+    "31_SOLVER_SETUP": {
+      "index": 13,
+      "state": "visible",
+      "dimension": "A1:F61",
+      "cells": 233,
+      "formulas": 15,
+      "mergedRanges": 5,
+      "sheetProtection": null,
+      "autoFilter": null,
+      "bytes": 15537
+    },
+    "36_BRAIN_SELECTOR": {
+      "index": 14,
+      "state": "visible",
+      "dimension": "B1:T72",
+      "cells": 176,
+      "formulas": 2,
+      "mergedRanges": 28,
+      "sheetProtection": null,
+      "autoFilter": null,
+      "bytes": 20827
+    },
+    "9_BRAIN_DASHBOARD": {
+      "index": 15,
+      "state": "visible",
+      "dimension": "A1:H80",
+      "cells": 140,
+      "formulas": 0,
+      "mergedRanges": 5,
+      "sheetProtection": null,
+      "autoFilter": null,
+      "bytes": 18789
+    },
+    "33_CHANNELS_FROM_FRONTEND": {
+      "index": 16,
+      "state": "visible",
+      "dimension": "A1:BK37131",
+      "cells": 393759,
+      "formulas": 0,
+      "mergedRanges": 0,
+      "sheetProtection": null,
+      "autoFilter": "A3:BC3",
+      "bytes": 15865456
+    },
+    "34_BRAIN_SCORING": {
+      "index": 17,
+      "state": "visible",
+      "dimension": "A1:V2889",
+      "cells": 63515,
+      "formulas": 0,
+      "mergedRanges": 0,
+      "sheetProtection": null,
+      "autoFilter": "A3:N3",
+      "bytes": 1913424
+    },
+    "10_HOMOLOGATION": {
+      "index": 18,
+      "state": "visible",
+      "dimension": "A1:F33",
+      "cells": 187,
+      "formulas": 0,
+      "mergedRanges": 1,
+      "sheetProtection": null,
+      "autoFilter": null,
+      "bytes": 9249
+    },
+    "11_EXPANSION_ZONE": {
+      "index": 19,
+      "state": "visible",
+      "dimension": "A1:I107",
+      "cells": 21,
+      "formulas": 0,
+      "mergedRanges": 1,
+      "sheetProtection": null,
+      "autoFilter": null,
+      "bytes": 25068
+    },
+    "12_FORMATOS": {
+      "index": 20,
+      "state": "visible",
+      "dimension": "A1:F13",
+      "cells": 78,
+      "formulas": 0,
+      "mergedRanges": 0,
+      "sheetProtection": null,
+      "autoFilter": null,
+      "bytes": 4369
+    },
+    "13_CRYPTO": {
+      "index": 21,
+      "state": "visible",
+      "dimension": "A1:E33",
+      "cells": 134,
+      "formulas": 0,
+      "mergedRanges": 3,
+      "sheetProtection": null,
+      "autoFilter": null,
+      "bytes": 7444
+    },
+    "14_KEYRING": {
+      "index": 22,
+      "state": "veryHidden",
+      "dimension": "A1:F18",
+      "cells": 45,
+      "formulas": 0,
+      "mergedRanges": 0,
+      "sheetProtection": {
+        "algorithmName": "SHA-512",
+        "hashValue": "W9vmMJIwEZe7aL5bFtXqkCdSM6uiU+0Tk8CGICL5W1/Nid9bcHPTZwamPhNqOBu2y4olAIq9x4CUlOHEs2Cy7g==",
+        "saltValue": "6FENQTCKhDS+k+MVIVJASQ==",
+        "spinCount": "100000",
+        "sheet": "1",
+        "objects": "1",
+        "scenarios": "1"
+      },
+      "autoFilter": null,
+      "bytes": 4906
+    },
+    "15_CMCD_QOE": {
+      "index": 23,
+      "state": "visible",
+      "dimension": "A1:E26",
+      "cells": 121,
+      "formulas": 0,
+      "mergedRanges": 0,
+      "sheetProtection": null,
+      "autoFilter": null,
+      "bytes": 6578
+    },
+    "16_EVASION": {
+      "index": 24,
+      "state": "visible",
+      "dimension": "A1:G41",
+      "cells": 199,
+      "formulas": 0,
+      "mergedRanges": 4,
+      "sheetProtection": null,
+      "autoFilter": null,
+      "bytes": 10681
+    },
+    "17_SERVERS_POOL": {
+      "index": 25,
+      "state": "veryHidden",
+      "dimension": "A1:I19",
+      "cells": 101,
+      "formulas": 0,
+      "mergedRanges": 1,
+      "sheetProtection": {
+        "algorithmName": "SHA-512",
+        "hashValue": "xxI4baUhXs0hN3ip0tBzfFk++mN6rSj7n4k7h0PYJ9LNbIc4Hs/aQ6hH8bFT5CdcvIYyJr4t++rvN+CIe48GDw==",
+        "saltValue": "vrT/U90yNxCLAJQubMRaWw==",
+        "spinCount": "100000",
+        "sheet": "1",
+        "objects": "1",
+        "scenarios": "1"
+      },
+      "autoFilter": null,
+      "bytes": 8205
+    },
+    "19_URL_BUILDER": {
+      "index": 26,
+      "state": "visible",
+      "dimension": "A1:G34",
+      "cells": 75,
+      "formulas": 1,
+      "mergedRanges": 4,
+      "sheetProtection": null,
+      "autoFilter": null,
+      "bytes": 12245
+    },
+    "20_URL_PROBE": {
+      "index": 27,
+      "state": "visible",
+      "dimension": "A1:D17",
+      "cells": 61,
+      "formulas": 0,
+      "mergedRanges": 0,
+      "sheetProtection": null,
+      "autoFilter": null,
+      "bytes": 4876
+    },
+    "21_WATERFALL": {
+      "index": 28,
+      "state": "visible",
+      "dimension": "A1:F21",
+      "cells": 105,
+      "formulas": 0,
+      "mergedRanges": 0,
+      "sheetProtection": null,
+      "autoFilter": null,
+      "bytes": 6486
+    },
+    "22_UX_IMPACT": {
+      "index": 29,
+      "state": "visible",
+      "dimension": "A1:D35",
+      "cells": 105,
+      "formulas": 2,
+      "mergedRanges": 4,
+      "sheetProtection": null,
+      "autoFilter": null,
+      "bytes": 7232
+    },
+    "23_BOTTLENECK": {
+      "index": 30,
+      "state": "visible",
+      "dimension": "A1:D23",
+      "cells": 64,
+      "formulas": 0,
+      "mergedRanges": 3,
+      "sheetProtection": null,
+      "autoFilter": null,
+      "bytes": 5267
+    },
+    "24_JSON_IMPORT": {
+      "index": 31,
+      "state": "visible",
+      "dimension": "A1:D21",
+      "cells": 42,
+      "formulas": 0,
+      "mergedRanges": 1,
+      "sheetProtection": null,
+      "autoFilter": null,
+      "bytes": 4503
+    },
+    "25_JSON_EXPORT": {
+      "index": 32,
+      "state": "visible",
+      "dimension": "A1:E13",
+      "cells": 28,
+      "formulas": 0,
+      "mergedRanges": 0,
+      "sheetProtection": null,
+      "autoFilter": null,
+      "bytes": 2623
+    },
+    "26_JSON_DIFF": {
+      "index": 33,
+      "state": "visible",
+      "dimension": "A1:D7",
+      "cells": 21,
+      "formulas": 0,
+      "mergedRanges": 0,
+      "sheetProtection": null,
+      "autoFilter": null,
+      "bytes": 2163
+    },
+    "27_COMPAT_MATRIX": {
+      "index": 34,
+      "state": "visible",
+      "dimension": "A1:K21",
+      "cells": 66,
+      "formulas": 0,
+      "mergedRanges": 0,
+      "sheetProtection": null,
+      "autoFilter": null,
+      "bytes": 10310
+    },
+    "28_PREVIEW_M3U8": {
+      "index": 35,
+      "state": "visible",
+      "dimension": "A1:D5",
+      "cells": 13,
+      "formulas": 0,
+      "mergedRanges": 0,
+      "sheetProtection": null,
+      "autoFilter": null,
+      "bytes": 1835
+    },
+    "29_STATS_HISTORY": {
+      "index": 36,
+      "state": "visible",
+      "dimension": "A1:H10",
+      "cells": 41,
+      "formulas": 0,
+      "mergedRanges": 0,
+      "sheetProtection": null,
+      "autoFilter": null,
+      "bytes": 4559
+    },
+    "30_EXPORT_FINAL": {
+      "index": 37,
+      "state": "visible",
+      "dimension": "A1:B19",
+      "cells": 24,
+      "formulas": 0,
+      "mergedRanges": 1,
+      "sheetProtection": null,
+      "autoFilter": null,
+      "bytes": 2781
+    },
+    "32_PLACEHOLDERS_MAP": {
+      "index": 38,
+      "state": "visible",
+      "dimension": "A1:I69",
+      "cells": 546,
+      "formulas": 30,
+      "mergedRanges": 3,
+      "sheetProtection": null,
+      "autoFilter": "A7:I58",
+      "bytes": 26776
+    },
+    "_LISTAS": {
+      "index": 39,
+      "state": "visible",
+      "dimension": "A1:R49",
+      "cells": 178,
+      "formulas": 0,
+      "mergedRanges": 0,
+      "sheetProtection": null,
+      "autoFilter": null,
+      "bytes": 9384
+    },
+    "37_VALORES_UNIFICADOS": {
+      "index": 40,
+      "state": "visible",
+      "dimension": "A1:M2889",
+      "cells": 21132,
+      "formulas": 0,
+      "mergedRanges": 0,
+      "sheetProtection": null,
+      "autoFilter": "A3:M3",
+      "bytes": 836052
+    },
+    "35_UNIVERSAL_COMPAT_RESULT": {
+      "index": 41,
+      "state": "visible",
+      "dimension": "A1:J24",
+      "cells": 212,
+      "formulas": 0,
+      "mergedRanges": 0,
+      "sheetProtection": null,
+      "autoFilter": null,
+      "bytes": 8853
+    },
+    "00_MACRO_RUN_REPORT": {
+      "index": 42,
+      "state": "visible",
+      "dimension": "A1:F25",
+      "cells": 92,
+      "formulas": 0,
+      "mergedRanges": 0,
+      "sheetProtection": null,
+      "autoFilter": null,
+      "bytes": 5457
+    },
+    "00_WIRING_LOG": {
+      "index": 43,
+      "state": "visible",
+      "dimension": "A1:B322",
+      "cells": 644,
+      "formulas": 0,
+      "mergedRanges": 0,
+      "sheetProtection": null,
+      "autoFilter": null,
+      "bytes": 43988
+    },
+    "00_SOLVER_DIARY": {
+      "index": 44,
+      "state": "visible",
+      "dimension": "A1:D62",
+      "cells": 180,
+      "formulas": 0,
+      "mergedRanges": 0,
+      "sheetProtection": null,
+      "autoFilter": null,
+      "bytes": 11251
+    },
+    "00_CONVERGENCE_DIARY": {
+      "index": 45,
+      "state": "visible",
+      "dimension": "A1:E46",
+      "cells": 161,
+      "formulas": 0,
+      "mergedRanges": 0,
+      "sheetProtection": null,
+      "autoFilter": null,
+      "bytes": 9761
+    },
+    "_LISTAS_OMEGA": {
+      "index": 46,
+      "state": "hidden",
+      "dimension": "A1:B4",
+      "cells": 5,
+      "formulas": 0,
+      "mergedRanges": 0,
+      "sheetProtection": null,
+      "autoFilter": null,
+      "bytes": 1343
+    },
+    "98_SHIELD_IMMUTABLE": {
+      "index": 47,
+      "state": "veryHidden",
+      "dimension": "A1:D12",
+      "cells": 18,
+      "formulas": 0,
+      "mergedRanges": 3,
+      "sheetProtection": {
+        "algorithmName": "SHA-512",
+        "hashValue": "NyQTqnB7FMbPXPH8z7EwqkssDOrLZ/8yqh92woRbzUeap/3VT6dN2o7AvyD7tn76isANSyWdF/yEv/jdDHCFMA==",
+        "saltValue": "2n5rNNjhtrFU2DiW3AlnMA==",
+        "spinCount": "100000",
+        "sheet": "1",
+        "objects": "1",
+        "scenarios": "1"
+      },
+      "autoFilter": null,
+      "bytes": 2991
+    },
+    "00_EXPORT_STAGE": {
+      "index": 48,
+      "state": "hidden",
+      "dimension": "A1:C7",
+      "cells": 21,
+      "formulas": 0,
+      "mergedRanges": 0,
+      "sheetProtection": null,
+      "autoFilter": null,
+      "bytes": 2063
+    },
+    "99_DEAD_CHANNELS_BLACKLIST": {
+      "index": 49,
+      "state": "veryHidden",
+      "dimension": "A1:L573",
+      "cells": 6809,
+      "formulas": 0,
+      "mergedRanges": 0,
+      "sheetProtection": {
+        "algorithmName": "SHA-512",
+        "hashValue": "apge9YzyUjDbsOAsaD84X01PIEzvtEvhP0ItaJ43+6FmFnr4y32P5dLIDtM7tRFXwpIsmk5DKnrGOueWJR+RuQ==",
+        "saltValue": "2U5gDliqpM4+NLNw+8QeQQ==",
+        "spinCount": "100000",
+        "sheet": "1",
+        "objects": "1",
+        "scenarios": "1"
+      },
+      "autoFilter": "A1:L1",
+      "bytes": 248117
+    },
+    "15_FLOOR_LOCK_CONFIG": {
+      "index": 50,
+      "state": "visible",
+      "dimension": "A1:C17",
+      "cells": 47,
+      "formulas": 0,
+      "mergedRanges": 2,
+      "sheetProtection": null,
+      "autoFilter": null,
+      "bytes": 4373
+    },
+    "16_SENTINEL_PROVIDERS": {
+      "index": 51,
+      "state": "visible",
+      "dimension": "A1:H25",
+      "cells": 75,
+      "formulas": 0,
+      "mergedRanges": 2,
+      "sheetProtection": null,
+      "autoFilter": null,
+      "bytes": 8258
+    },
+    "17_TELESCOPE_THRESHOLDS": {
+      "index": 52,
+      "state": "visible",
+      "dimension": "A1:C30",
+      "cells": 86,
+      "formulas": 0,
+      "mergedRanges": 2,
+      "sheetProtection": null,
+      "autoFilter": null,
+      "bytes": 6427
+    },
+    "99_PRISMA_AUDIT_REPORT": {
+      "index": 53,
+      "state": "visible",
+      "dimension": "A1:E13",
+      "cells": 57,
+      "formulas": 0,
+      "mergedRanges": 2,
+      "sheetProtection": null,
+      "autoFilter": null,
+      "bytes": 4387
+    },
+    "8_CODEC_LADDER": {
+      "index": 54,
+      "state": "visible",
+      "dimension": "A1:F7",
+      "cells": 42,
+      "formulas": 0,
+      "mergedRanges": 0,
+      "sheetProtection": null,
+      "autoFilter": null,
+      "bytes": 3181
+    },
+    "33_UA_POOL": {
+      "index": 55,
+      "state": "visible",
+      "dimension": "A1:E13",
+      "cells": 65,
+      "formulas": 0,
+      "mergedRanges": 0,
+      "sheetProtection": null,
+      "autoFilter": null,
+      "bytes": 3624
+    }
+  },
+  "profiles": {
+    "sheet": "6_NIVEL_2_PROFILES",
+    "dimension": "A1:H663",
+    "sections": [
+      {
+        "row": 6,
+        "title": "-- META --",
+        "cell": "A6"
+      },
+      {
+        "row": 24,
+        "title": "-- SETTINGS --",
+        "cell": "A24"
+      },
+      {
+        "row": 66,
+        "title": "-- VLCOPT --",
+        "cell": "A66"
+      },
+      {
+        "row": 116,
+        "title": "-- KODIPROP --",
+        "cell": "A116"
+      },
+      {
+        "row": 125,
+        "title": "-- HEADEROVERRIDES --",
+        "cell": "A125"
+      },
+      {
+        "row": 535,
+        "title": "-- PREFETCH_CONFIG --",
+        "cell": "A535"
+      },
+      {
+        "row": 551,
+        "title": "-- HLSJS --",
+        "cell": "A551"
+      },
+      {
+        "row": 593,
+        "title": "-- OPTIMIZER BOUNDS (Nivel C Per-Profile, bump +15% escalonado) --",
+        "cell": "A593"
+      },
+      {
+        "row": 609,
+        "title": "-- OPTIMIZER RESULTS (populated by Brain_OmegaOptimizer_PerProfile) --",
+        "cell": "A609"
+      },
+      {
+        "row": 621,
+        "title": "-- PRISMA STAGE 1 LAB-SYNC v2.0 (consumed by ProfileVal + Guardian Daemon) --",
+        "cell": "A621"
+      }
+    ],
+    "cellKindStats": {
+      "S": 3155,
+      "N": 657
+    },
+    "keyRows": 646,
+    "duplicateKeyGroups": [
+      {
+        "normalizedKey": "abrBandWidthFactor",
+        "occurrences": [
+          {
+            "row": 563,
+            "key": "hlsjs.abrBandWidthFactor"
+          },
+          {
+            "row": 615,
+            "key": "opt.abrBandWidthFactor"
+          }
+        ],
+        "distinctValueTuples": 2,
+        "divergent": true
+      },
+      {
+        "normalizedKey": "avg_bandwidth_ratio",
+        "occurrences": [
+          {
+            "row": 639,
+            "key": "settings.avg_bandwidth_ratio"
+          },
+          {
+            "row": 658,
+            "key": "avg_bandwidth_ratio"
+          }
+        ],
+        "distinctValueTuples": 1,
+        "divergent": false
+      },
+      {
+        "normalizedKey": "bandwidth_floor",
+        "occurrences": [
+          {
+            "row": 636,
+            "key": "settings.bandwidth_floor"
+          },
+          {
+            "row": 655,
+            "key": "bandwidth_floor"
+          }
+        ],
+        "distinctValueTuples": 1,
+        "divergent": false
+      },
+      {
+        "normalizedKey": "bandwidth_max",
+        "occurrences": [
+          {
+            "row": 638,
+            "key": "settings.bandwidth_max"
+          },
+          {
+            "row": 657,
+            "key": "bandwidth_max"
+          }
+        ],
+        "distinctValueTuples": 1,
+        "divergent": false
+      },
+      {
+        "normalizedKey": "bandwidth_target",
+        "occurrences": [
+          {
+            "row": 637,
+            "key": "settings.bandwidth_target"
+          },
+          {
+            "row": 656,
+            "key": "bandwidth_target"
+          }
+        ],
+        "distinctValueTuples": 1,
+        "divergent": false
+      },
+      {
+        "normalizedKey": "codec_chain_audio",
+        "occurrences": [
+          {
+            "row": 642,
+            "key": "settings.codec_chain_audio"
+          },
+          {
+            "row": 661,
+            "key": "codec_chain_audio"
+          }
+        ],
+        "distinctValueTuples": 1,
+        "divergent": false
+      },
+      {
+        "normalizedKey": "codec_chain_hdr",
+        "occurrences": [
+          {
+            "row": 643,
+            "key": "settings.codec_chain_hdr"
+          },
+          {
+            "row": 662,
+            "key": "codec_chain_hdr"
+          }
+        ],
+        "distinctValueTuples": 1,
+        "divergent": false
+      },
+      {
+        "normalizedKey": "codec_chain_player_pref",
+        "occurrences": [
+          {
+            "row": 644,
+            "key": "settings.codec_chain_player_pref"
+          },
+          {
+            "row": 663,
+            "key": "codec_chain_player_pref"
+          }
+        ],
+        "distinctValueTuples": 2,
+        "divergent": true
+      },
+      {
+        "normalizedKey": "codec_chain_video",
+        "occurrences": [
+          {
+            "row": 640,
+            "key": "settings.codec_chain_video"
+          },
+          {
+            "row": 659,
+            "key": "codec_chain_video"
+          }
+        ],
+        "distinctValueTuples": 2,
+        "divergent": true
+      },
+      {
+        "normalizedKey": "codec_chain_video_family",
+        "occurrences": [
+          {
+            "row": 641,
+            "key": "settings.codec_chain_video_family"
+          },
+          {
+            "row": 660,
+            "key": "codec_chain_video_family"
+          }
+        ],
+        "distinctValueTuples": 2,
+        "divergent": true
+      },
+      {
+        "normalizedKey": "codec_primary",
+        "occurrences": [
+          {
+            "row": 631,
+            "key": "settings.codec_primary"
+          },
+          {
+            "row": 650,
+            "key": "codec_primary"
+          }
+        ],
+        "distinctValueTuples": 2,
+        "divergent": true
+      },
+      {
+        "normalizedKey": "codec_string",
+        "occurrences": [
+          {
+            "row": 632,
+            "key": "settings.codec_string"
+          },
+          {
+            "row": 651,
+            "key": "codec_string"
+          }
+        ],
+        "distinctValueTuples": 2,
+        "divergent": true
+      },
+      {
+        "normalizedKey": "color_primaries",
+        "occurrences": [
+          {
+            "row": 43,
+            "key": "settings.color_primaries"
+          },
+          {
+            "row": 647,
+            "key": "color_primaries"
+          }
+        ],
+        "distinctValueTuples": 2,
+        "divergent": true
+      },
+      {
+        "normalizedKey": "hdr_mode",
+        "occurrences": [
+          {
+            "row": 44,
+            "key": "settings.hdr_mode"
+          },
+          {
+            "row": 645,
+            "key": "hdr_mode"
+          }
+        ],
+        "distinctValueTuples": 2,
+        "divergent": true
+      },
+      {
+        "normalizedKey": "liveSyncDurationCount",
+        "occurrences": [
+          {
+            "row": 64,
+            "key": "settings.liveSyncDurationCount"
+          },
+          {
+            "row": 557,
+            "key": "hlsjs.liveSyncDurationCount"
+          }
+        ],
+        "distinctValueTuples": 2,
+        "divergent": true
+      },
+      {
+        "normalizedKey": "matrix_coefficients",
+        "occurrences": [
+          {
+            "row": 630,
+            "key": "settings.matrix_coefficients"
+          },
+          {
+            "row": 649,
+            "key": "matrix_coefficients"
+          }
+        ],
+        "distinctValueTuples": 1,
+        "divergent": false
+      },
+      {
+        "normalizedKey": "maxLiveSyncPlaybackRate",
+        "occurrences": [
+          {
+            "row": 65,
+            "key": "settings.maxLiveSyncPlaybackRate"
+          },
+          {
+            "row": 574,
+            "key": "hlsjs.maxLiveSyncPlaybackRate"
+          },
+          {
+            "row": 616,
+            "key": "opt.maxLiveSyncPlaybackRate"
+          }
+        ],
+        "distinctValueTuples": 2,
+        "divergent": true
+      },
+      {
+        "normalizedKey": "nits_target",
+        "occurrences": [
+          {
+            "row": 634,
+            "key": "settings.nits_target"
+          },
+          {
+            "row": 653,
+            "key": "nits_target"
+          }
+        ],
+        "distinctValueTuples": 1,
+        "divergent": false
+      },
+      {
+        "normalizedKey": "nudgeMaxRetry",
+        "occurrences": [
+          {
+            "row": 569,
+            "key": "hlsjs.nudgeMaxRetry"
+          },
+          {
+            "row": 614,
+            "key": "opt.nudgeMaxRetry"
+          }
+        ],
+        "distinctValueTuples": 2,
+        "divergent": true
+      },
+      {
+        "normalizedKey": "resolution",
+        "occurrences": [
+          {
+            "row": 21,
+            "key": "resolution"
+          },
+          {
+            "row": 25,
+            "key": "settings.resolution"
+          }
+        ],
+        "distinctValueTuples": 1,
+        "divergent": false
+      },
+      {
+        "normalizedKey": "strategy",
+        "occurrences": [
+          {
+            "row": 27,
+            "key": "settings.strategy"
+          },
+          {
+            "row": 536,
+            "key": "prefetch_config.strategy"
+          }
+        ],
+        "distinctValueTuples": 1,
+        "divergent": false
+      },
+      {
+        "normalizedKey": "target_framerate",
+        "occurrences": [
+          {
+            "row": 633,
+            "key": "settings.target_framerate"
+          },
+          {
+            "row": 652,
+            "key": "target_framerate"
+          }
+        ],
+        "distinctValueTuples": 1,
+        "divergent": false
+      },
+      {
+        "normalizedKey": "transfer_characteristics",
+        "occurrences": [
+          {
+            "row": 629,
+            "key": "settings.transfer_characteristics"
+          },
+          {
+            "row": 648,
+            "key": "transfer_characteristics"
+          }
+        ],
+        "distinctValueTuples": 1,
+        "divergent": false
+      },
+      {
+        "normalizedKey": "video_range",
+        "occurrences": [
+          {
+            "row": 627,
+            "key": "settings.video_range"
+          },
+          {
+            "row": 646,
+            "key": "video_range"
+          }
+        ],
+        "distinctValueTuples": 1,
+        "divergent": false
+      },
+      {
+        "normalizedKey": "vmaf_target",
+        "occurrences": [
+          {
+            "row": 635,
+            "key": "settings.vmaf_target"
+          },
+          {
+            "row": 654,
+            "key": "vmaf_target"
+          }
+        ],
+        "distinctValueTuples": 1,
+        "divergent": false
+      }
+    ],
+    "rowsIndex": {
+      "🤖 AUTO-LLENAR PERFILES": 1,
+      "🧠 OPTIMIZAR PERFILES POR RESOLUCION": 2,
+      "NIVEL 2: PERFILES P0-P5 EMBEBIDOS (importados desde tu JSON CALIBRATED)": 3,
+      "Atributo": 5,
+      "id": 7,
+      "name": 8,
+      "level": 9,
+      "quality": 10,
+      "description": 11,
+      "color": 12,
+      "enabledCategories": 13,
+      "quality_levels": 14,
+      "headers": 15,
+      "buffer_aggression_policy": 16,
+      "error_decision_tree": 17,
+      "error_407_specialized_tree": 18,
+      "multi_provider_integration": 19,
+      "master_audit_unified": 20,
+      "resolution": 21,
+      "calibration_version": 22,
+      "guarantees_10": 23,
+      "settings.resolution": 25,
+      "settings.buffer": 26,
+      "settings.strategy": 27,
+      "settings.bitrate": 28,
+      "settings.t1": 29,
+      "settings.t2": 30,
+      "settings.playerBuffer": 31,
+      "settings.fps": 32,
+      "settings.codec": 33,
+      "settings.headersCount": 34,
+      "settings.bufferSeconds": 35,
+      "settings.focus": 36,
+      "settings.codec_full": 37,
+      "settings.codec_priority": 38,
+      "settings.bit_depth": 39,
+      "settings.chroma_subsampling": 40,
+      "settings.color_space": 41,
+      "settings.color_transfer": 42,
+      "settings.color_primaries": 43,
+      "settings.hdr_mode": 44,
+      "settings.peak_luminance_nits": 45,
+      "settings.audio_codec": 46,
+      "settings.segment_duration_s": 47,
+      "settings.maxResolution": 48,
+      "settings.maxBitrateKbps": 49,
+      "settings.avgBitrateKbps": 50,
+      "settings.targetFps": 51,
+      "settings.bitDepth": 52,
+      "settings.hdrMode": 53,
+      "settings.videoRange": 54,
+      "settings.colorSpace": 55,
+      "settings.peakLuminanceNits": 56,
+      "settings.bufferTargetSec": 57,
+      "settings.bufferMaxSec": 58,
+      "settings.bufferFloorPct": 59,
+      "settings.networkCachingMs": 60,
+      "settings.prefetchSegments": 61,
+      "settings.parallelFetches": 62,
+      "settings.fragLoadMaxRetry": 63,
+      "settings.liveSyncDurationCount": 64,
+      "settings.maxLiveSyncPlaybackRate": 65,
+      "vlcopt.network-caching": 67,
+      "vlcopt.clock-jitter": 68,
+      "vlcopt.clock-synchro": 69,
+      "vlcopt.live-caching": 70,
+      "vlcopt.file-caching": 71,
+      "vlcopt.http-user-agent": 72,
+      "vlcopt.http-referer": 73,
+      "vlcopt.http-forward-cookies": 74,
+      "vlcopt.http-reconnect": 75,
+      "vlcopt.http-continuous-stream": 76,
+      "vlcopt.http-max-retries": 77,
+      "vlcopt.http-timeout": 78,
+      "vlcopt.video-color-space": 79,
+      "vlcopt.video-transfer-function": 80,
+      "vlcopt.video-color-primaries": 81,
+      "vlcopt.video-color-range": 82,
+      "vlcopt.tone-mapping": 83,
+      "vlcopt.hdr-output-mode": 84,
+      "vlcopt.sharpen-sigma": 85,
+      "vlcopt.contrast": 86,
+      "vlcopt.brightness": 87,
+      "vlcopt.saturation": 88,
+      "vlcopt.gamma": 89,
+      "vlcopt.video-filter": 90,
+      "vlcopt.disc-caching": 91,
+      "vlcopt.tcp-caching": 92,
+      "vlcopt.sout-mux-caching": 93,
+      "vlcopt.video-hdr": 94,
+      "vlcopt.video-hdr-nits": 95,
+      "vlcopt.video-hdr-mode": 96,
+      "vlcopt.video-tone-mapping-peak": 97,
+      "vlcopt.video-tone-mapping-reference": 98,
+      "vlcopt.video-color-transfer": 99,
+      "vlcopt.video-bt2020": 100,
+      "vlcopt.video-bit-depth": 101,
+      "vlcopt.video-chroma": 102,
+      "vlcopt.video-fullrange": 103,
+      "vlcopt.codec-priority": 104,
+      "vlcopt.network-reconnect": 105,
+      "vlcopt.network-reconnect-count": 106,
+      "vlcopt.network-continuous-stream": 107,
+      "vlcopt.video-fps": 108,
+      "vlcopt.video-width": 109,
+      "vlcopt.video-height": 110,
+      "vlcopt.adaptive-maxwidth": 111,
+      "vlcopt.adaptive-maxheight": 112,
+      "vlcopt.adaptive-maxbitrate": 113,
+      "vlcopt.adaptive-initial-bandwidth": 115,
+      "kodiprop.inputstream.adaptive.manifest_type": 117,
+      "kodiprop.inputstream.adaptive.stream_headers": 118,
+      "kodiprop.inputstream.adaptive.stream_selection_type": 119,
+      "kodiprop.inputstream.adaptive.manifest_update_parameter": 120,
+      "kodiprop.inputstream.adaptive.max_resolution": 121,
+      "kodiprop.inputstream.adaptive.max_bitrate": 122,
+      "kodiprop.inputstream.adaptive.preferred_video_frame_rate": 123,
+      "kodiprop.inputstream.adaptive.min_bandwidth": 124,
+      "headerOverrides.X-Video-Codecs": 126,
+      "headerOverrides.X-ExoPlayer-Buffer-Min": 127,
+      "headerOverrides.X-Manifest-Refresh": 128,
+      "headerOverrides.X-KODI-LIVE-DELAY": 129,
+      "headerOverrides.X-APE-STRATEGY": 130,
+      "headerOverrides.X-APE-Prefetch-Segments": 131,
+      "headerOverrides.X-APE-Quality-Threshold": 132,
+      "headerOverrides.X-Segment-Duration": 133,
+      "headerOverrides.X-Prefetch-Enabled": 134,
+      "headerOverrides.X-APE-CODEC": 135,
+      "headerOverrides.X-APE-RESOLUTION": 136,
+      "headerOverrides.X-APE-FPS": 137,
+      "headerOverrides.X-Screen-Resolution": 138,
+      "headerOverrides.X-APE-BITRATE": 139,
+      "headerOverrides.X-APE-TARGET-BITRATE": 140,
+      "headerOverrides.X-APE-THROUGHPUT-T1": 141,
+      "headerOverrides.X-APE-THROUGHPUT-T2": 142,
+      "headerOverrides.X-Parallel-Segments": 143,
+      "headerOverrides.X-Prefetch-Segments": 144,
+      "headerOverrides.X-Concurrent-Downloads": 145,
+      "headerOverrides.X-Max-Reconnect-Attempts": 146,
+      "headerOverrides.X-Reconnect-Delay-Ms": 147,
+      "headerOverrides.X-Buffer-Underrun-Strategy": 148,
+      "headerOverrides.Accept-Encoding": 149,
+      "headerOverrides.Accept": 150,
+      "headerOverrides.Sec-Fetch-Dest": 151,
+      "headerOverrides.Cache-Control": 152,
+      "headerOverrides.Sec-Fetch-Site": 153,
+      "headerOverrides.X-Buffer-Strategy": 154,
+      "headerOverrides.X-Color-Depth": 155,
+      "headerOverrides.X-Quality-Preference": 156,
+      "headerOverrides.DNT": 157,
+      "headerOverrides.Sec-GPC": 158,
+      "headerOverrides.Upgrade-Insecure-Requests": 159,
+      "headerOverrides.Sec-Fetch-User": 160,
+      "headerOverrides.Keep-Alive": 161,
+      "headerOverrides.Sec-Fetch-Mode": 162,
+      "headerOverrides.TE": 163,
+      "headerOverrides.User-Agent": 164,
+      "headerOverrides.Accept-Language": 165,
+      "headerOverrides.Sec-CH-UA": 166,
+      "headerOverrides.Sec-CH-UA-Mobile": 167,
+      "headerOverrides.Sec-CH-UA-Platform": 168,
+      "headerOverrides.Sec-CH-UA-Full-Version-List": 169,
+      "headerOverrides.Sec-CH-UA-Arch": 170,
+      "headerOverrides.Sec-CH-UA-Bitness": 171,
+      "headerOverrides.Sec-CH-UA-Model": 172,
+      "headerOverrides.Connection": 173,
+      "headerOverrides.Pragma": 174,
+      "headerOverrides.Range": 175,
+      "headerOverrides.If-None-Match": 176,
+      "headerOverrides.If-Modified-Since": 177,
+      "headerOverrides.Origin": 178,
+      "headerOverrides.Referer": 179,
+      "headerOverrides.X-Requested-With": 180,
+      "headerOverrides.X-App-Version": 181,
+      "headerOverrides.X-Playback-Session-Id": 182,
+      "headerOverrides.X-Device-Id": 183,
+      "headerOverrides.X-Stream-Type": 184,
+      "headerOverrides.Priority": 185,
+      "headerOverrides.X-Playback-Rate": 186,
+      "headerOverrides.X-Min-Buffer-Time": 187,
+      "headerOverrides.X-Max-Buffer-Time": 188,
+      "headerOverrides.X-Request-Priority": 189,
+      "headerOverrides.X-Audio-Codecs": 190,
+      "headerOverrides.X-DRM-Support": 191,
+      "headerOverrides.X-CDN-Provider": 192,
+      "headerOverrides.X-Failover-Enabled": 193,
+      "headerOverrides.X-Buffer-Size": 194,
+      "headerOverrides.X-Client-Timestamp": 195,
+      "headerOverrides.X-Request-Id": 196,
+      "headerOverrides.X-Device-Type": 197,
+      "headerOverrides.X-Network-Type": 198,
+      "headerOverrides.Accept-Charset": 199,
+      "headerOverrides.Accept-CH": 200,
+      "headerOverrides.X-OTT-Navigator-Version": 201,
+      "headerOverrides.X-Player-Type": 202,
+      "headerOverrides.X-Hardware-Decode": 203,
+      "headerOverrides.X-Tunneling-Enabled": 204,
+      "headerOverrides.X-Audio-Track-Selection": 205,
+      "headerOverrides.X-Subtitle-Track-Selection": 206,
+      "headerOverrides.X-EPG-Sync": 207,
+      "headerOverrides.X-Catchup-Support": 208,
+      "headerOverrides.X-Bandwidth-Estimation": 209,
+      "headerOverrides.X-Initial-Bitrate": 210,
+      "headerOverrides.X-Retry-Count": 211,
+      "headerOverrides.X-Retry-Delay-Ms": 212,
+      "headerOverrides.X-Connection-Timeout-Ms": 213,
+      "headerOverrides.X-Read-Timeout-Ms": 214,
+      "headerOverrides.X-Country-Code": 215,
+      "headerOverrides.X-HDR-Support": 216,
+      "headerOverrides.X-Color-Space": 217,
+      "headerOverrides.X-Dynamic-Range": 218,
+      "headerOverrides.X-HDR-Transfer-Function": 219,
+      "headerOverrides.X-Color-Primaries": 220,
+      "headerOverrides.X-Matrix-Coefficients": 221,
+      "headerOverrides.X-Chroma-Subsampling": 222,
+      "headerOverrides.X-HEVC-Tier": 223,
+      "headerOverrides.X-HEVC-Level": 224,
+      "headerOverrides.X-HEVC-Profile": 225,
+      "headerOverrides.X-Video-Profile": 226,
+      "headerOverrides.X-Rate-Control": 227,
+      "headerOverrides.X-Entropy-Coding": 228,
+      "headerOverrides.X-Compression-Level": 229,
+      "headerOverrides.X-Pixel-Format": 230,
+      "headerOverrides.X-Max-Resolution": 231,
+      "headerOverrides.X-Max-Bitrate": 232,
+      "headerOverrides.X-Frame-Rates": 233,
+      "headerOverrides.X-Aspect-Ratio": 234,
+      "headerOverrides.X-Pixel-Aspect-Ratio": 235,
+      "headerOverrides.X-Dolby-Atmos": 236,
+      "headerOverrides.X-Audio-Channels": 237,
+      "headerOverrides.X-Audio-Sample-Rate": 238,
+      "headerOverrides.X-Audio-Bit-Depth": 239,
+      "headerOverrides.X-Spatial-Audio": 240,
+      "headerOverrides.X-Audio-Passthrough": 241,
+      "headerOverrides.X-Segment-Preload": 242,
+      "headerOverrides.X-Reconnect-On-Error": 243,
+      "headerOverrides.X-Seamless-Failover": 244,
+      "headerOverrides.X-Bandwidth-Preference": 245,
+      "headerOverrides.X-BW-Estimation-Window": 246,
+      "headerOverrides.X-BW-Confidence-Threshold": 247,
+      "headerOverrides.X-BW-Smooth-Factor": 248,
+      "headerOverrides.X-Packet-Loss-Monitor": 249,
+      "headerOverrides.X-RTT-Monitoring": 250,
+      "headerOverrides.X-Congestion-Detect": 251,
+      "headerOverrides.X-Tone-Mapping": 252,
+      "headerOverrides.X-HDR-Output-Mode": 253,
+      "headerOverrides.X-Buffer-Target": 254,
+      "headerOverrides.X-Buffer-Max": 255,
+      "headerOverrides.X-Buffer-Min": 256,
+      "headerOverrides.X-Network-Caching": 257,
+      "headerOverrides.X-Live-Caching": 258,
+      "headerOverrides.X-File-Caching": 259,
+      "headerOverrides.X-Sharpen-Sigma": 260,
+      "headerOverrides.X-Codec-Support": 261,
+      "headerOverrides.X-CORTEX-OMEGA-STATE": 262,
+      "headerOverrides.X-APE-AI-SR-ENABLED": 263,
+      "headerOverrides.X-APE-AI-SR-MODEL": 264,
+      "headerOverrides.X-APE-AI-SR-SCALE": 265,
+      "headerOverrides.X-APE-AI-FRAME-INTERPOLATION": 266,
+      "headerOverrides.X-APE-AI-DENOISING": 267,
+      "headerOverrides.X-APE-AI-DEBLOCKING": 268,
+      "headerOverrides.X-APE-AI-SHARPENING": 269,
+      "headerOverrides.X-APE-AI-ARTIFACT-REMOVAL": 270,
+      "headerOverrides.X-APE-AI-COLOR-ENHANCEMENT": 271,
+      "headerOverrides.X-APE-AI-HDR-UPCONVERT": 272,
+      "headerOverrides.X-APE-AI-SCENE-DETECTION": 273,
+      "headerOverrides.X-APE-AI-MOTION-ESTIMATION": 274,
+      "headerOverrides.X-APE-AI-CONTENT-AWARE-ENCODING": 275,
+      "headerOverrides.X-APE-AI-PERCEPTUAL-QUALITY": 276,
+      "headerOverrides.X-APE-LCEVC-ENABLED": 277,
+      "headerOverrides.X-APE-LCEVC-PHASE": 278,
+      "headerOverrides.X-APE-LCEVC-COMPUTE-PRECISION": 279,
+      "headerOverrides.X-APE-LCEVC-UPSCALE-ALGORITHM": 280,
+      "headerOverrides.X-APE-LCEVC-ROI-DYNAMIC": 281,
+      "headerOverrides.X-APE-LCEVC-TRANSPORT": 282,
+      "headerOverrides.X-APE-LCEVC-SDK-ENABLED": 283,
+      "headerOverrides.X-APE-LCEVC-SDK-TARGET": 284,
+      "headerOverrides.X-APE-LCEVC-SDK-WEB-INTEROP": 285,
+      "headerOverrides.X-APE-LCEVC-SDK-DECODER": 286,
+      "headerOverrides.X-APE-GPU-DECODE": 287,
+      "headerOverrides.X-APE-GPU-RENDER": 288,
+      "headerOverrides.X-APE-GPU-PIPELINE": 289,
+      "headerOverrides.X-APE-GPU-PRECISION": 290,
+      "headerOverrides.X-APE-GPU-MEMORY-POOL": 291,
+      "headerOverrides.X-APE-GPU-ZERO-COPY": 292,
+      "headerOverrides.X-APE-VVC-ENABLED": 293,
+      "headerOverrides.X-APE-EVC-ENABLED": 294,
+      "headerOverrides.X-APE-PLAYER-ENSLAVEMENT-PROTOCOL": 295,
+      "headerOverrides.X-APE-PLAYER-ENSLAVEMENT-OVERRIDE-CODEC": 296,
+      "headerOverrides.X-APE-RESILIENCE-L1-FORMAT": 297,
+      "headerOverrides.X-APE-RESILIENCE-L2-FORMAT": 298,
+      "headerOverrides.X-APE-RESILIENCE-L3-FORMAT": 299,
+      "headerOverrides.X-APE-RESILIENCE-HTTP-ERROR-403": 300,
+      "headerOverrides.X-APE-RESILIENCE-HTTP-ERROR-404": 301,
+      "headerOverrides.X-APE-RESILIENCE-HTTP-ERROR-429": 302,
+      "headerOverrides.X-APE-RESILIENCE-HTTP-ERROR-500": 303,
+      "headerOverrides.X-APE-AV1-FALLBACK-ENABLED": 304,
+      "headerOverrides.X-APE-AV1-FALLBACK-CHAIN": 305,
+      "headerOverrides.X-APE-ISP-THROTTLE-ESCALATION-POLICY": 306,
+      "headerOverrides.X-APE-ANTI-CUT-ENGINE": 307,
+      "headerOverrides.X-APE-ANTI-CUT-DETECTION": 308,
+      "headerOverrides.X-APE-ANTI-CUT-ISP-STRANGLE": 309,
+      "headerOverrides.X-APE-RECONNECT-MAX": 310,
+      "headerOverrides.X-APE-RECONNECT-SEAMLESS": 311,
+      "headerOverrides.X-APE-IDENTITY-MORPH": 312,
+      "headerOverrides.X-APE-IDENTITY-ROTATION-INTERVAL": 313,
+      "headerOverrides.X-APE-EVASION-MODE": 314,
+      "headerOverrides.X-APE-EVASION-DNS-OVER-HTTPS": 315,
+      "headerOverrides.X-APE-EVASION-SNI-OBFUSCATION": 316,
+      "headerOverrides.X-APE-EVASION-TLS-FINGERPRINT-RANDOMIZE": 317,
+      "headerOverrides.X-APE-EVASION-GEO-PHANTOM": 318,
+      "headerOverrides.X-APE-EVASION-DEEP-PACKET-INSPECTION-BYPASS": 319,
+      "headerOverrides.X-APE-IP-ROTATION-ENABLED": 320,
+      "headerOverrides.X-APE-IP-ROTATION-STRATEGY": 321,
+      "headerOverrides.X-APE-STEALTH-UA": 322,
+      "headerOverrides.X-APE-STEALTH-XFF": 323,
+      "headerOverrides.X-APE-STEALTH-FINGERPRINT": 324,
+      "headerOverrides.X-APE-SWARM-ENABLED": 325,
+      "headerOverrides.X-APE-SWARM-PEERS": 326,
+      "headerOverrides.X-APE-TRANSPORT-PROTOCOL": 327,
+      "headerOverrides.X-APE-TRANSPORT-CHUNK-SIZE": 328,
+      "headerOverrides.X-APE-TRANSPORT-FALLBACK-1": 329,
+      "headerOverrides.X-APE-CACHE-STRATEGY": 330,
+      "headerOverrides.X-APE-CACHE-SIZE": 331,
+      "headerOverrides.X-APE-CACHE-PREFETCH": 332,
+      "headerOverrides.X-APE-BUFFER-STRATEGY": 333,
+      "headerOverrides.X-APE-BUFFER-PRELOAD-SEGMENTS": 334,
+      "headerOverrides.X-APE-BUFFER-DYNAMIC-ADJUSTMENT": 335,
+      "headerOverrides.X-APE-BUFFER-NEURAL-PREDICTION": 336,
+      "headerOverrides.X-APE-QOS-ENABLED": 337,
+      "headerOverrides.X-APE-QOS-DSCP": 338,
+      "headerOverrides.X-APE-QOS-PRIORITY": 339,
+      "headerOverrides.X-APE-POLYMORPHIC-ENABLED": 340,
+      "headerOverrides.X-APE-POLYMORPHIC-IDEMPOTENT": 341,
+      "headerOverrides.X-TELCHEMY-TVQM": 342,
+      "headerOverrides.X-TELCHEMY-TR101290": 343,
+      "headerOverrides.X-TELCHEMY-IMPAIRMENT-GUARD": 344,
+      "headerOverrides.X-TELCHEMY-BUFFER-POLICY": 345,
+      "headerOverrides.X-TELCHEMY-GOP-POLICY": 346,
+      "headerOverrides.X-HLSjs-Config": 347,
+      "headerOverrides.X-HLSjs-Version": 348,
+      "headerOverrides.X-Stream-Bitrate": 349,
+      "headerOverrides.X-Stream-Codecs": 350,
+      "headerOverrides.X-Stream-Resolution": 351,
+      "headerOverrides.X-Stream-FPS": 352,
+      "headerOverrides.X-HDR-Mode": 353,
+      "headerOverrides.X-HDR-Peak-Nits": 354,
+      "headerOverrides.X-Color-Transfer": 355,
+      "headerOverrides.X-Bit-Depth": 356,
+      "headerOverrides.X-Segment-Duration-S": 357,
+      "headerOverrides.X-HLSjs-Events-Listener": 358,
+      "headerOverrides.X-HLSjs-ErrorDetails-Handled": 359,
+      "headerOverrides.X-HLSjs-API-Version": 360,
+      "headerOverrides.X-HLSjs-Telemetry-Mode": 361,
+      "headerOverrides.X-HLSjs-Recovery-Matrix": 362,
+      "headerOverrides.X-HLSjs-Error-Penalty-Expire-Ms": 363,
+      "headerOverrides.X-HLSjs-State-Transitions": 364,
+      "headerOverrides.X-HDR-Mode-Primary": 365,
+      "headerOverrides.X-HDR-Mode-Fallback": 366,
+      "headerOverrides.X-Max-Luminance-cd-m2": 367,
+      "headerOverrides.X-Min-Luminance-cd-m2": 368,
+      "headerOverrides.X-Dolby-Vision-Profile": 369,
+      "headerOverrides.X-Dolby-Vision-Level": 370,
+      "headerOverrides.X-Max-Framerate": 371,
+      "headerOverrides.X-Min-Framerate": 372,
+      "headerOverrides.X-Frame-Rate-Adaptive": 373,
+      "headerOverrides.X-Display-Aspect-Ratio": 374,
+      "headerOverrides.X-Video-Range": 375,
+      "headerOverrides.X-Transfer-Characteristics": 376,
+      "headerOverrides.X-Color-Primaries-Code": 377,
+      "headerOverrides.X-Chroma-Sample-Position": 378,
+      "headerOverrides.X-Video-Full-Range-Flag": 379,
+      "headerOverrides.X-HDR-Metadata-Type": 380,
+      "headerOverrides.X-AntiFreeze-Policy": 381,
+      "headerOverrides.X-AntiFreeze-Nudge-Retries": 382,
+      "headerOverrides.X-AntiFreeze-Nudge-Offset-S": 383,
+      "headerOverrides.X-AntiFreeze-Skip-Padding-S": 384,
+      "headerOverrides.X-AntiFreeze-Max-Hole-S": 385,
+      "headerOverrides.X-AntiFreeze-Watchdog-Period-S": 386,
+      "headerOverrides.X-AntiFreeze-Stall-Detection-Ms": 387,
+      "headerOverrides.X-AntiFreeze-Guarantee": 388,
+      "headerOverrides.X-QoS-Target-Startup-Ms": 389,
+      "headerOverrides.X-QoS-Target-Rebuffer-Ratio": 390,
+      "headerOverrides.X-QoS-Target-TTFB-Ms": 391,
+      "headerOverrides.X-QoS-Priority-Class": 392,
+      "headerOverrides.X-QoS-DSCP-Marking": 393,
+      "headerOverrides.X-QoS-Traffic-Class": 394,
+      "headerOverrides.X-ABR-Stability": 395,
+      "headerOverrides.X-ABR-Penalty-Expire-Ms": 396,
+      "headerOverrides.X-ABR-Emergency-Starvation-S": 397,
+      "headerOverrides.X-LiveSync-CatchUp-Max": 398,
+      "headerOverrides.X-LiveSync-Target-Latency-S": 399,
+      "headerOverrides.X-LiveSync-Max-Latency-S": 400,
+      "headerOverrides.X-Buffer-Cap-S": 401,
+      "headerOverrides.X-Buffer-Dynamic": 402,
+      "headerOverrides.X-CMCD-Spec": 403,
+      "headerOverrides.X-CMCD-Mode": 404,
+      "headerOverrides.X-CMSD-Support": 405,
+      "headerOverrides.X-Bitrate-Ladder": 406,
+      "headerOverrides.X-Bitrate-Ladder-Spacing": 407,
+      "headerOverrides.X-Bitrate-Ladder-Tiers": 408,
+      "headerOverrides.X-Buffer-Back-S": 409,
+      "headerOverrides.X-Buffer-Size-MB": 410,
+      "headerOverrides.X-Buffer-Front-Flush-S": 411,
+      "headerOverrides.X-Buffer-Memory-Safe": 412,
+      "headerOverrides.X-LiveSync-Drift-Band-S": 413,
+      "headerOverrides.X-LiveSync-Forced-Seek-Trigger-S": 414,
+      "headerOverrides.X-Profile-Boundary-Policy": 415,
+      "headerOverrides.X-ABR-Scope": 416,
+      "headerOverrides.X-Profile-Internal-Ladder-Tiers": 417,
+      "headerOverrides.X-Profile-Internal-Max-Spacing": 418,
+      "headerOverrides.X-Nudge-Max-Retry": 419,
+      "headerOverrides.X-Manual-Level-Policy": 420,
+      "headerOverrides.X-Profile-Tier": 421,
+      "headerOverrides.X-Error-Recovery-301": 422,
+      "headerOverrides.X-Error-Recovery-302": 423,
+      "headerOverrides.X-Error-Recovery-307": 424,
+      "headerOverrides.X-Error-Recovery-308": 425,
+      "headerOverrides.X-Error-Recovery-400": 426,
+      "headerOverrides.X-Error-Recovery-401": 427,
+      "headerOverrides.X-Error-Recovery-403": 428,
+      "headerOverrides.X-Error-Recovery-404": 429,
+      "headerOverrides.X-Error-Recovery-405": 430,
+      "headerOverrides.X-Error-Recovery-408": 431,
+      "headerOverrides.X-Error-Recovery-410": 432,
+      "headerOverrides.X-Error-Recovery-413": 433,
+      "headerOverrides.X-Error-Recovery-416": 434,
+      "headerOverrides.X-Error-Recovery-429": 435,
+      "headerOverrides.X-Error-Recovery-451": 436,
+      "headerOverrides.X-Error-Recovery-500": 437,
+      "headerOverrides.X-Error-Recovery-502": 438,
+      "headerOverrides.X-Error-Recovery-503": 439,
+      "headerOverrides.X-Error-Recovery-504": 440,
+      "headerOverrides.X-Error-Recovery-520": 441,
+      "headerOverrides.X-Error-Recovery-521": 442,
+      "headerOverrides.X-Error-Recovery-522": 443,
+      "headerOverrides.X-Error-Recovery-523": 444,
+      "headerOverrides.X-Error-Recovery-524": 445,
+      "headerOverrides.X-Error-Recovery-525": 446,
+      "headerOverrides.X-Error-Recovery-526": 447,
+      "headerOverrides.X-Error-Recovery-527": 448,
+      "headerOverrides.X-Error-Max-Retries-Per-Code": 449,
+      "headerOverrides.X-Error-Silent-Recovery": 450,
+      "headerOverrides.X-Error-Fallback-CDN-Chain": 451,
+      "headerOverrides.X-Error-Escalation-Policy": 452,
+      "headerOverrides.X-Error-Tree-Version": 453,
+      "headerOverrides.X-Error-Tree-Codes-Covered": 454,
+      "headerOverrides.X-Error-407-Taxonomy": 455,
+      "headerOverrides.X-Error-407-Prevention-Headers": 456,
+      "headerOverrides.X-Error-407-Detection-Heuristics": 457,
+      "headerOverrides.X-Error-407-Recovery-Basic": 458,
+      "headerOverrides.X-Error-407-Recovery-Digest": 459,
+      "headerOverrides.X-Error-407-Recovery-NTLM": 460,
+      "headerOverrides.X-Error-407-Recovery-Negotiate": 461,
+      "headerOverrides.X-Error-407-Recovery-Bearer": 462,
+      "headerOverrides.X-Error-407-Recovery-Fake-Throttle": 463,
+      "headerOverrides.X-Error-407-Recovery-CloudFlare": 464,
+      "headerOverrides.X-Error-407-Recovery-Squid": 465,
+      "headerOverrides.X-Error-407-Fallback-Chain": 466,
+      "headerOverrides.X-Error-407-Cache-Realm-Policy": 467,
+      "headerOverrides.X-Error-407-Max-Retries-Per-Variant": 468,
+      "headerOverrides.X-Error-407-Cooldown-Policy": 469,
+      "headerOverrides.X-Error-407-Never-Inject": 470,
+      "headerOverrides.X-Error-407-Guarantee": 471,
+      "headerOverrides.X-Error-407-PhD-Audit-Version": 472,
+      "headerOverrides.X-MultiProvider-Mode": 473,
+      "headerOverrides.X-SelfBlock-Audit": 474,
+      "headerOverrides.X-Cortex-Bypass-On-User-Connect": 475,
+      "headerOverrides.X-Whitelist-Mode": 476,
+      "headerOverrides.X-Protocol-Support": 477,
+      "headerOverrides.X-Credentials-Isolation": 478,
+      "headerOverrides.X-Parallel-Providers-Max": 479,
+      "headerOverrides.X-Provider-Block-Classifier": 480,
+      "headerOverrides.X-Provider-Host-Whitelist": 481,
+      "headerOverrides.X-Cert-Validation": 482,
+      "headerOverrides.X-CircuitBreaker-Threshold": 483,
+      "headerOverrides.X-CircuitBreaker-Cooldown-Ms": 484,
+      "headerOverrides.X-User-Initiated-Window-Ms": 485,
+      "headerOverrides.X-SlotReaper-Concurrency": 486,
+      "headerOverrides.X-Stalker-Portal-Supported": 487,
+      "headerOverrides.X-MAG-Portal-Supported": 488,
+      "headerOverrides.X-DASH-Supported": 489,
+      "headerOverrides.X-Smooth-Streaming-Supported": 490,
+      "headerOverrides.X-Master-Audit-PhD": 491,
+      "headerOverrides.X-Master-Decision-Tree-Version": 492,
+      "headerOverrides.X-Agents-Consolidated": 493,
+      "headerOverrides.X-Conflict-Matrix-Pairs-Tested": 494,
+      "headerOverrides.X-Regression-Tests-Designed": 495,
+      "headerOverrides.X-Master-Architecture-Note": 496,
+      "headerOverrides.X-CDN-Failover-Action": 497,
+      "headerOverrides.X-User-Initiated-Bypass": 498,
+      "headerOverrides.X-Manifest-Parse-Tolerance": 499,
+      "headerOverrides.X-Conflict-Resolution": 500,
+      "headerOverrides.X-Master-Fixes-Applied-Count": 501,
+      "headerOverrides.X-SuperAgent-Playback-Protection": 502,
+      "headerOverrides.X-SuperAgent-Patches-Applied": 503,
+      "headerOverrides.X-Playback-Recovery-Scope": 504,
+      "headerOverrides.X-Playback-Redundant-Streams": 505,
+      "headerOverrides.X-Playback-Audio-Alternates": 506,
+      "headerOverrides.X-Playback-Start-Offset-S": 507,
+      "headerOverrides.X-Playback-Http-Max-Retries": 508,
+      "headerOverrides.X-Playback-Http-Reconnect": 509,
+      "headerOverrides.X-Playback-Network-Continuous": 510,
+      "headerOverrides.X-Kodi-Manifest-Update": 511,
+      "headerOverrides.X-Kodi-Stream-Selection": 512,
+      "headerOverrides.X-Playback-Coverage-Pct": 513,
+      "headerOverrides.X-Playback-Unrecoverable-Errors": 514,
+      "headerOverrides.X-Playback-Recovery-Path": 515,
+      "headerOverrides.X-Fatal-Error-Trap": 516,
+      "headerOverrides.X-Worker-Crash-Recovery": 517,
+      "headerOverrides.X-HDR-Peak-Luminance-Nits": 518,
+      "headerOverrides.X-HDCP-Level": 519,
+      "headerOverrides.CMCD-Object": 520,
+      "headerOverrides.CMCD-Request": 521,
+      "headerOverrides.CMCD-Session": 522,
+      "headerOverrides.CMCD-Status": 523,
+      "headerOverrides.X-HTTP-Error-400": 524,
+      "headerOverrides.X-HTTP-Error-403": 525,
+      "headerOverrides.X-HTTP-Error-404": 526,
+      "headerOverrides.X-HTTP-Error-429": 527,
+      "headerOverrides.X-HTTP-Error-500": 528,
+      "headerOverrides.X-HTTP-Error-502": 529,
+      "headerOverrides.X-HTTP-Error-503": 530,
+      "headerOverrides.X-HTTP-Error-504": 531,
+      "headerOverrides.Proxy-Authorization": 532,
+      "headerOverrides.X-Auth-Stub-Basic": 533,
+      "headerOverrides.X-Provider-Detection": 534,
+      "prefetch_config.strategy": 536,
+      "prefetch_config.prefetch_segments": 537,
+      "prefetch_config.parallel_downloads": 538,
+      "prefetch_config.buffer_target_seconds": 539,
+      "prefetch_config.min_bandwidth_mbps": 540,
+      "prefetch_config.adaptive_enabled": 541,
+      "prefetch_config.ai_prediction_enabled": 542,
+      "prefetch_config.continuous_prefetch": 543,
+      "prefetch_config.aggression_levels": 544,
+      "prefetch_config.buffer_floor_pct": 545,
+      "prefetch_config.recovery_target_pct": 546,
+      "prefetch_config.segments_ahead": 547,
+      "prefetch_config.parallel_workers": 548,
+      "prefetch_config.cache_size": 550,
+      "hlsjs.maxBufferLength": 552,
+      "hlsjs.maxMaxBufferLength": 553,
+      "hlsjs.backBufferLength": 554,
+      "hlsjs.maxBufferSize": 555,
+      "hlsjs.maxBufferHole": 556,
+      "hlsjs.liveSyncDurationCount": 557,
+      "hlsjs.liveMaxLatencyDurationCount": 558,
+      "hlsjs.lowLatencyMode": 559,
+      "hlsjs.enableWorker": 560,
+      "hlsjs.abrEwmaFastLive": 561,
+      "hlsjs.abrEwmaSlowLive": 562,
+      "hlsjs.abrBandWidthFactor": 563,
+      "hlsjs.abrBandWidthUpFactor": 564,
+      "hlsjs.abrMaxWithRealBitrate": 565,
+      "hlsjs.abrSwitchInterval": 566,
+      "hlsjs.detectStallWithCurrentTimeMs": 567,
+      "hlsjs.nudgeOffset": 568,
+      "hlsjs.nudgeMaxRetry": 569,
+      "hlsjs.maxStarvationDelay": 570,
+      "hlsjs.maxLoadingDelay": 571,
+      "hlsjs.fragLoadPolicy_maxTimeToFirstByteMs": 572,
+      "hlsjs.fragLoadPolicy_maxNumRetry": 573,
+      "hlsjs.maxLiveSyncPlaybackRate": 574,
+      "hlsjs.startPosition": 575,
+      "hlsjs.nudgeOnVideoHole": 576,
+      "hlsjs.skipBufferHolePadding": 577,
+      "hlsjs.highBufferWatchdogPeriod": 578,
+      "hlsjs.liveSyncMode": 579,
+      "hlsjs.liveSyncOnStallIncrease": 580,
+      "hlsjs.abrEwmaDefaultEstimate": 581,
+      "hlsjs.abrEwmaDefaultEstimateMax": 582,
+      "hlsjs.maxFragLookUpTolerance": 583,
+      "hlsjs.appendErrorMaxRetry": 584,
+      "hlsjs.errorPenaltyExpireMs": 585,
+      "hlsjs.initialLiveManifestSize": 586,
+      "hlsjs.preserveManualLevelOnError": 587,
+      "hlsjs.startFragPrefetch": 588,
+      "hlsjs.frontBufferFlushThreshold": 589,
+      "hlsjs.liveMaxLatencyDuration": 590,
+      "hlsjs.liveDurationInfinity": 591,
+      "hlsjs.manifestLoadPolicy_maxNumRetry": 592,
+      "bounds.buffer_lo": 594,
+      "bounds.buffer_hi": 595,
+      "bounds.live_delay_lo": 596,
+      "bounds.live_delay_hi": 597,
+      "bounds.reconnect_lo": 598,
+      "bounds.reconnect_hi": 599,
+      "bounds.fragRetry_lo": 600,
+      "bounds.fragRetry_hi": 601,
+      "bounds.nudgeRetry_lo": 602,
+      "bounds.nudgeRetry_hi": 603,
+      "bounds.abrBWFactor_lo": 604,
+      "bounds.abrBWFactor_hi": 605,
+      "bounds.liveSync_lo": 606,
+      "bounds.liveSync_hi": 607,
+      "opt.buffer_seconds": 610,
+      "opt.live_delay_seconds": 611,
+      "opt.reconnect_attempts": 612,
+      "opt.fragLoad_maxNumRetry": 613,
+      "opt.nudgeMaxRetry": 614,
+      "opt.abrBandWidthFactor": 615,
+      "opt.maxLiveSyncPlaybackRate": 616,
+      "opt.fitness": 617,
+      "opt.timestamp": 618,
+      "opt.solver_trace": 619,
+      "prisma_boost_multiplier": 622,
+      "prisma_zap_grace_seconds": 623,
+      "prisma_floor_min_bandwidth_bps": 624,
+      "prisma_target_bandwidth_bps": 625,
+      "settings.video_range": 627,
+      "settings.transfer_characteristics": 629,
+      "settings.matrix_coefficients": 630,
+      "settings.codec_primary": 631,
+      "settings.codec_string": 632,
+      "settings.target_framerate": 633,
+      "settings.nits_target": 634,
+      "settings.vmaf_target": 635,
+      "settings.bandwidth_floor": 636,
+      "settings.bandwidth_target": 637,
+      "settings.bandwidth_max": 638,
+      "settings.avg_bandwidth_ratio": 639,
+      "settings.codec_chain_video": 640,
+      "settings.codec_chain_video_family": 641,
+      "settings.codec_chain_audio": 642,
+      "settings.codec_chain_hdr": 643,
+      "settings.codec_chain_player_pref": 644,
+      "hdr_mode": 645,
+      "video_range": 646,
+      "color_primaries": 647,
+      "transfer_characteristics": 648,
+      "matrix_coefficients": 649,
+      "codec_primary": 650,
+      "codec_string": 651,
+      "target_framerate": 652,
+      "nits_target": 653,
+      "vmaf_target": 654,
+      "bandwidth_floor": 655,
+      "bandwidth_target": 656,
+      "bandwidth_max": 657,
+      "avg_bandwidth_ratio": 658,
+      "codec_chain_video": 659,
+      "codec_chain_video_family": 660,
+      "codec_chain_audio": 661,
+      "codec_chain_hdr": 662,
+      "codec_chain_player_pref": 663
+    }
+  },
+  "nivel3": {
+    "sheet": "7_NIVEL_3_CHANNEL",
+    "capaCounts": {
+      "Capa": 1,
+      "EXTINF": 8,
+      "EXTVLCOPT": 23,
+      "KODIPROP": 16,
+      "EXTHTTP": 10,
+      "STREAM-INF": 8,
+      "SYS": 8,
+      "URL": 4
+    },
+    "capaIncluded": {
+      "EXTINF": 8,
+      "EXTVLCOPT": 23,
+      "KODIPROP": 16,
+      "EXTHTTP": 7,
+      "STREAM-INF": 7,
+      "URL": 4
+    },
+    "detail": [
+      {
+        "row": 5,
+        "capa": "Capa",
+        "tag": "Tag/Key/Header",
+        "included": false,
+        "value": "Valor (editable, soporta {placeholder})",
+        "cellTag": "B5",
+        "cellValue": "D5"
+      },
+      {
+        "row": 7,
+        "capa": "EXTINF",
+        "tag": "tvg-id",
+        "included": true,
+        "value": "{channel.tvg_id}",
+        "cellTag": "B7",
+        "cellValue": "D7"
+      },
+      {
+        "row": 8,
+        "capa": "EXTINF",
+        "tag": "tvg-name",
+        "included": true,
+        "value": "{channel.name}",
+        "cellTag": "B8",
+        "cellValue": "D8"
+      },
+      {
+        "row": 9,
+        "capa": "EXTINF",
+        "tag": "tvg-logo",
+        "included": true,
+        "value": "{channel.logo}",
+        "cellTag": "B9",
+        "cellValue": "D9"
+      },
+      {
+        "row": 10,
+        "capa": "EXTINF",
+        "tag": "tvg-chno",
+        "included": true,
+        "value": "{channel.chno}",
+        "cellTag": "B10",
+        "cellValue": "D10"
+      },
+      {
+        "row": 11,
+        "capa": "EXTINF",
+        "tag": "group-title",
+        "included": true,
+        "value": "{channel.group}",
+        "cellTag": "B11",
+        "cellValue": "D11"
+      },
+      {
+        "row": 12,
+        "capa": "EXTINF",
+        "tag": "catchup",
+        "included": true,
+        "value": "xc",
+        "cellTag": "B12",
+        "cellValue": "D12"
+      },
+      {
+        "row": 13,
+        "capa": "EXTINF",
+        "tag": "catchup-days",
+        "included": true,
+        "value": "7",
+        "cellTag": "B13",
+        "cellValue": "D13"
+      },
+      {
+        "row": 14,
+        "capa": "EXTINF",
+        "tag": "catchup-source",
+        "included": true,
+        "value": "?utc={utc}&lutc={lutc}",
+        "cellTag": "B14",
+        "cellValue": "D14"
+      },
+      {
+        "row": 16,
+        "capa": "EXTVLCOPT",
+        "tag": "http-user-agent",
+        "included": true,
+        "value": "{config.user_agent}",
+        "cellTag": "B16",
+        "cellValue": "D16"
+      },
+      {
+        "row": 17,
+        "capa": "EXTVLCOPT",
+        "tag": "http-referrer",
+        "included": true,
+        "value": "{config.referer}",
+        "cellTag": "B17",
+        "cellValue": "D17"
+      },
+      {
+        "row": 18,
+        "capa": "EXTVLCOPT",
+        "tag": "http-reconnect",
+        "included": true,
+        "value": "true",
+        "cellTag": "B18",
+        "cellValue": "D18"
+      },
+      {
+        "row": 19,
+        "capa": "EXTVLCOPT",
+        "tag": "http-continuous-stream",
+        "included": true,
+        "value": "true",
+        "cellTag": "B19",
+        "cellValue": "D19"
+      },
+      {
+        "row": 20,
+        "capa": "EXTVLCOPT",
+        "tag": "http-forward-cookies",
+        "included": true,
+        "value": "true",
+        "cellTag": "B20",
+        "cellValue": "D20"
+      },
+      {
+        "row": 21,
+        "capa": "EXTVLCOPT",
+        "tag": "http-max-retries",
+        "included": true,
+        "value": "99",
+        "cellTag": "B21",
+        "cellValue": "D21"
+      },
+      {
+        "row": 22,
+        "capa": "EXTVLCOPT",
+        "tag": "http-timeout",
+        "included": true,
+        "value": "30000",
+        "cellTag": "B22",
+        "cellValue": "D22"
+      },
+      {
+        "row": 23,
+        "capa": "EXTVLCOPT",
+        "tag": "network-caching",
+        "included": true,
+        "value": "5000",
+        "cellTag": "B23",
+        "cellValue": "D23"
+      },
+      {
+        "row": 24,
+        "capa": "EXTVLCOPT",
+        "tag": "live-caching",
+        "included": true,
+        "value": "4500",
+        "cellTag": "B24",
+        "cellValue": "D24"
+      },
+      {
+        "row": 25,
+        "capa": "EXTVLCOPT",
+        "tag": "file-caching",
+        "included": true,
+        "value": "4000",
+        "cellTag": "B25",
+        "cellValue": "D25"
+      },
+      {
+        "row": 26,
+        "capa": "EXTVLCOPT",
+        "tag": "sout-mux-caching",
+        "included": true,
+        "value": "10000",
+        "cellTag": "B26",
+        "cellValue": "D26"
+      },
+      {
+        "row": 27,
+        "capa": "EXTVLCOPT",
+        "tag": "avcodec-hw",
+        "included": true,
+        "value": "any",
+        "cellTag": "B27",
+        "cellValue": "D27"
+      },
+      {
+        "row": 28,
+        "capa": "EXTVLCOPT",
+        "tag": "avcodec-threads",
+        "included": true,
+        "value": "0",
+        "cellTag": "B28",
+        "cellValue": "D28"
+      },
+      {
+        "row": 29,
+        "capa": "EXTVLCOPT",
+        "tag": "avcodec-fast",
+        "included": true,
+        "value": "true",
+        "cellTag": "B29",
+        "cellValue": "D29"
+      },
+      {
+        "row": 30,
+        "capa": "EXTVLCOPT",
+        "tag": "adaptive-logic",
+        "included": true,
+        "value": "highest",
+        "cellTag": "B30",
+        "cellValue": "D30"
+      },
+      {
+        "row": 31,
+        "capa": "EXTVLCOPT",
+        "tag": "adaptive-maxwidth",
+        "included": true,
+        "value": "7680",
+        "cellTag": "B31",
+        "cellValue": "D31"
+      },
+      {
+        "row": 32,
+        "capa": "EXTVLCOPT",
+        "tag": "adaptive-maxheight",
+        "included": true,
+        "value": "4320",
+        "cellTag": "B32",
+        "cellValue": "D32"
+      },
+      {
+        "row": 33,
+        "capa": "EXTVLCOPT",
+        "tag": "adaptive-maxbuffer",
+        "included": true,
+        "value": "60000",
+        "cellTag": "B33",
+        "cellValue": "D33"
+      },
+      {
+        "row": 34,
+        "capa": "EXTVLCOPT",
+        "tag": "adaptive-livedelay",
+        "included": true,
+        "value": "8000",
+        "cellTag": "B34",
+        "cellValue": "D34"
+      },
+      {
+        "row": 36,
+        "capa": "KODIPROP",
+        "tag": "inputstream",
+        "included": true,
+        "value": "inputstream.adaptive",
+        "cellTag": "B36",
+        "cellValue": "D36"
+      },
+      {
+        "row": 37,
+        "capa": "KODIPROP",
+        "tag": "inputstream.adaptive.manifest_type",
+        "included": true,
+        "value": "hls",
+        "cellTag": "B37",
+        "cellValue": "D37"
+      },
+      {
+        "row": 38,
+        "capa": "KODIPROP",
+        "tag": "inputstream.adaptive.stream_selection_type",
+        "included": true,
+        "value": "adaptive",
+        "cellTag": "B38",
+        "cellValue": "D38"
+      },
+      {
+        "row": 39,
+        "capa": "KODIPROP",
+        "tag": "inputstream.adaptive.manifest_update_parameter",
+        "included": true,
+        "value": "full",
+        "cellTag": "B39",
+        "cellValue": "D39"
+      },
+      {
+        "row": 40,
+        "capa": "KODIPROP",
+        "tag": "inputstream.adaptive.stream_headers",
+        "included": true,
+        "value": "{config.kodi_headers_urlencoded}",
+        "cellTag": "B40",
+        "cellValue": "D40"
+      },
+      {
+        "row": 41,
+        "capa": "KODIPROP",
+        "tag": "inputstream.adaptive.max_bandwidth",
+        "included": true,
+        "value": "{profile.max_bandwidth}",
+        "cellTag": "B41",
+        "cellValue": "D41"
+      },
+      {
+        "row": 42,
+        "capa": "KODIPROP",
+        "tag": "inputstream.adaptive.min_bandwidth",
+        "included": true,
+        "value": "{prisma.bitrate_floor}",
+        "cellTag": "B42",
+        "cellValue": "D42"
+      },
+      {
+        "row": 43,
+        "capa": "KODIPROP",
+        "tag": "inputstream.adaptive.max_resolution",
+        "included": true,
+        "value": "{profile.resolution}",
+        "cellTag": "B43",
+        "cellValue": "D43"
+      },
+      {
+        "row": 44,
+        "capa": "KODIPROP",
+        "tag": "inputstream.adaptive.live_delay",
+        "included": true,
+        "value": "8",
+        "cellTag": "B44",
+        "cellValue": "D44"
+      },
+      {
+        "row": 45,
+        "capa": "KODIPROP",
+        "tag": "inputstream.adaptive.assured_buffer_duration",
+        "included": true,
+        "value": "{profile.buffer_s}",
+        "cellTag": "B45",
+        "cellValue": "D45"
+      },
+      {
+        "row": 46,
+        "capa": "KODIPROP",
+        "tag": "inputstream.adaptive.audio_channels",
+        "included": true,
+        "value": "7.1",
+        "cellTag": "B46",
+        "cellValue": "D46"
+      },
+      {
+        "row": 47,
+        "capa": "KODIPROP",
+        "tag": "inputstream.adaptive.audio_passthrough",
+        "included": true,
+        "value": "true",
+        "cellTag": "B47",
+        "cellValue": "D47"
+      },
+      {
+        "row": 49,
+        "capa": "EXTHTTP",
+        "tag": "User-Agent",
+        "included": true,
+        "value": "{config.user_agent}",
+        "cellTag": "B49",
+        "cellValue": "D49"
+      },
+      {
+        "row": 50,
+        "capa": "EXTHTTP",
+        "tag": "Accept",
+        "included": true,
+        "value": "*/*",
+        "cellTag": "B50",
+        "cellValue": "D50"
+      },
+      {
+        "row": 51,
+        "capa": "EXTHTTP",
+        "tag": "Accept-Encoding",
+        "included": true,
+        "value": "gzip, deflate",
+        "cellTag": "B51",
+        "cellValue": "D51"
+      },
+      {
+        "row": 52,
+        "capa": "EXTHTTP",
+        "tag": "Accept-Language",
+        "included": true,
+        "value": "{config.locale}",
+        "cellTag": "B52",
+        "cellValue": "D52"
+      },
+      {
+        "row": 53,
+        "capa": "EXTHTTP",
+        "tag": "Connection",
+        "included": false,
+        "value": null,
+        "cellTag": "B53",
+        "cellValue": null
+      },
+      {
+        "row": 54,
+        "capa": "EXTHTTP",
+        "tag": "Keep-Alive",
+        "included": false,
+        "value": null,
+        "cellTag": "B54",
+        "cellValue": null
+      },
+      {
+        "row": 55,
+        "capa": "EXTHTTP",
+        "tag": "Referer",
+        "included": true,
+        "value": "{config.referer}",
+        "cellTag": "B55",
+        "cellValue": "D55"
+      },
+      {
+        "row": 56,
+        "capa": "EXTHTTP",
+        "tag": "Origin",
+        "included": true,
+        "value": "{config.origin}",
+        "cellTag": "B56",
+        "cellValue": "D56"
+      },
+      {
+        "row": 57,
+        "capa": "EXTHTTP",
+        "tag": "Range",
+        "included": false,
+        "value": "bytes=0-",
+        "cellTag": "B57",
+        "cellValue": "D57"
+      },
+      {
+        "row": 58,
+        "capa": "EXTHTTP",
+        "tag": "Cache-Control",
+        "included": true,
+        "value": "no-cache",
+        "cellTag": "B58",
+        "cellValue": "D58"
+      },
+      {
+        "row": 60,
+        "capa": "STREAM-INF",
+        "tag": "BANDWIDTH",
+        "included": true,
+        "value": "{profile.bandwidth}",
+        "cellTag": "B60",
+        "cellValue": "D60"
+      },
+      {
+        "row": 61,
+        "capa": "STREAM-INF",
+        "tag": "AVERAGE-BANDWIDTH",
+        "included": true,
+        "value": "{profile.avg_bandwidth}",
+        "cellTag": "B61",
+        "cellValue": "D61"
+      },
+      {
+        "row": 62,
+        "capa": "STREAM-INF",
+        "tag": "CODECS",
+        "included": true,
+        "value": "{profile.codecs}",
+        "cellTag": "B62",
+        "cellValue": "D62"
+      },
+      {
+        "row": 63,
+        "capa": "STREAM-INF",
+        "tag": "RESOLUTION",
+        "included": true,
+        "value": "{profile.resolution}",
+        "cellTag": "B63",
+        "cellValue": "D63"
+      },
+      {
+        "row": 64,
+        "capa": "STREAM-INF",
+        "tag": "FRAME-RATE",
+        "included": true,
+        "value": "{profile.fps}",
+        "cellTag": "B64",
+        "cellValue": "D64"
+      },
+      {
+        "row": 65,
+        "capa": "STREAM-INF",
+        "tag": "VIDEO-RANGE",
+        "included": true,
+        "value": "{profile.video_range}",
+        "cellTag": "B65",
+        "cellValue": "D65"
+      },
+      {
+        "row": 66,
+        "capa": "STREAM-INF",
+        "tag": "HDCP-LEVEL",
+        "included": false,
+        "value": "NONE",
+        "cellTag": "B66",
+        "cellValue": "D66"
+      },
+      {
+        "row": 67,
+        "capa": "STREAM-INF",
+        "tag": "SCORE",
+        "included": true,
+        "value": "100.0",
+        "cellTag": "B67",
+        "cellValue": "D67"
+      },
+      {
+        "row": 69,
+        "capa": "SYS",
+        "tag": "SYS-TLS-VERIFY-PEER",
+        "included": false,
+        "value": "0",
+        "cellTag": "B69",
+        "cellValue": "D69"
+      },
+      {
+        "row": 70,
+        "capa": "SYS",
+        "tag": "SYS-PREFETCH-SEGMENTS",
+        "included": false,
+        "value": "6",
+        "cellTag": "B70",
+        "cellValue": "D70"
+      },
+      {
+        "row": 71,
+        "capa": "SYS",
+        "tag": "SYS-PREFETCH-PARALLEL",
+        "included": false,
+        "value": "6",
+        "cellTag": "B71",
+        "cellValue": "D71"
+      },
+      {
+        "row": 72,
+        "capa": "SYS",
+        "tag": "SYS-CATCHUP",
+        "included": false,
+        "value": "flussonic",
+        "cellTag": "B72",
+        "cellValue": "D72"
+      },
+      {
+        "row": 73,
+        "capa": "SYS",
+        "tag": "SYS-CATCHUP-DAYS",
+        "included": false,
+        "value": "7",
+        "cellTag": "B73",
+        "cellValue": "D73"
+      },
+      {
+        "row": 74,
+        "capa": "SYS",
+        "tag": "SYS-CLOCK-SYNCHRO",
+        "included": false,
+        "value": "0",
+        "cellTag": "B74",
+        "cellValue": "D74"
+      },
+      {
+        "row": 75,
+        "capa": "SYS",
+        "tag": "SYS-SERVER-POOL-MODE",
+        "included": false,
+        "value": "failover",
+        "cellTag": "B75",
+        "cellValue": "D75"
+      },
+      {
+        "row": 76,
+        "capa": "SYS",
+        "tag": "SYS-RECONNECT-COUNT",
+        "included": false,
+        "value": "99",
+        "cellTag": "B76",
+        "cellValue": "D76"
+      },
+      {
+        "row": 78,
+        "capa": "URL",
+        "tag": "url_template",
+        "included": true,
+        "value": "{server_url}/live/{user}/{pass}/{stream_id}.m3u8",
+        "cellTag": "B78",
+        "cellValue": "D78"
+      },
+      {
+        "row": 79,
+        "capa": "URL",
+        "tag": "url_template_xtream",
+        "included": true,
+        "value": "{server_url}/live/{user}/{pass}/{stream_id}.m3u8",
+        "cellTag": "B79",
+        "cellValue": "D79"
+      },
+      {
+        "row": 80,
+        "capa": "URL",
+        "tag": "url_template_query_hls",
+        "included": true,
+        "value": "{server_url}/?p={pass}&sid={stream_id}&u={user}",
+        "cellTag": "B80",
+        "cellValue": "D80"
+      },
+      {
+        "row": 81,
+        "capa": "URL",
+        "tag": "url_template_direct_hls",
+        "included": true,
+        "value": "{server_url}/{stream_path}.m3u8",
+        "cellTag": "B81",
+        "cellValue": "D81"
+      },
+      {
+        "row": 84,
+        "capa": "EXTVLCOPT",
+        "tag": "adaptive-minbw",
+        "included": true,
+        "value": "{prisma.bitrate_floor}",
+        "cellTag": "B84",
+        "cellValue": "D84"
+      },
+      {
+        "row": 85,
+        "capa": "EXTVLCOPT",
+        "tag": "adaptive-maxbw",
+        "included": true,
+        "value": "999999999",
+        "cellTag": "B85",
+        "cellValue": "D85"
+      },
+      {
+        "row": 86,
+        "capa": "EXTVLCOPT",
+        "tag": "prefetch-buffer-size",
+        "included": true,
+        "value": "300000000",
+        "cellTag": "B86",
+        "cellValue": "D86"
+      },
+      {
+        "row": 87,
+        "capa": "EXTVLCOPT",
+        "tag": "prefetch-read-size",
+        "included": true,
+        "value": "128000000",
+        "cellTag": "B87",
+        "cellValue": "D87"
+      },
+      {
+        "row": 88,
+        "capa": "KODIPROP",
+        "tag": "inputstream.adaptive.initial_bandwidth",
+        "included": true,
+        "value": "{prisma.target_bandwidth}",
+        "cellTag": "B88",
+        "cellValue": "D88"
+      },
+      {
+        "row": 89,
+        "capa": "KODIPROP",
+        "tag": "inputstream.adaptive.preferred_video_resolution",
+        "included": true,
+        "value": "2160",
+        "cellTag": "B89",
+        "cellValue": "D89"
+      },
+      {
+        "row": 90,
+        "capa": "KODIPROP",
+        "tag": "inputstream.adaptive.hdr_color_conversion",
+        "included": true,
+        "value": "1",
+        "cellTag": "B90",
+        "cellValue": "D90"
+      },
+      {
+        "row": 91,
+        "capa": "KODIPROP",
+        "tag": "inputstream.adaptive.stream_selection_type",
+        "included": true,
+        "value": "fixed",
+        "cellTag": "B91",
+        "cellValue": "D91"
+      }
+    ]
+  },
+  "nivel1": {
+    "sheet": "5_NIVEL_1_HEADER",
+    "directiveCount": 56,
+    "directives": [
+      {
+        "row": 7,
+        "directive": "#EXT-X-SYS-VERSION",
+        "value": "APE_v8.0-LAB",
+        "kind": "S",
+        "included": true,
+        "cellDirective": "B7",
+        "cellValue": "C7"
+      },
+      {
+        "row": 8,
+        "directive": "#EXT-X-SYS-ARCHITECTURE",
+        "value": "TYPED_ARRAYS_ULTIMATE",
+        "kind": "S",
+        "included": true,
+        "cellDirective": "B8",
+        "cellValue": "C8"
+      },
+      {
+        "row": 9,
+        "directive": "#EXT-X-SYS-GENERATED",
+        "value": "{auto-now}",
+        "kind": "S",
+        "included": true,
+        "cellDirective": "B9",
+        "cellValue": "C9"
+      },
+      {
+        "row": 10,
+        "directive": "#EXT-X-SYS-LIST-ID",
+        "value": "APE_LAB_{rand}",
+        "kind": "S",
+        "included": true,
+        "cellDirective": "B10",
+        "cellValue": "C10"
+      },
+      {
+        "row": 11,
+        "directive": "#EXT-X-SYS-MODULES-ACTIVE",
+        "value": "12",
+        "kind": "S",
+        "included": true,
+        "cellDirective": "B11",
+        "cellValue": "C11"
+      },
+      {
+        "row": 12,
+        "directive": "#EXT-X-SYS-MODULES-LIST",
+        "value": "JWT,HeadersMatrix,BufferAdaptativo,SmartCodec,FibonacciDNA,TLSCoherence,Geoblocking,Throughput,DynamicQoS,Manifest,VPNIntegration,LatencyRayo",
+        "kind": "S",
+        "included": true,
+        "cellDirective": "B12",
+        "cellValue": "C12"
+      },
+      {
+        "row": 14,
+        "directive": "#EXT-X-SYS-COMPLIANCE",
+        "value": "RFC8216",
+        "kind": "S",
+        "included": true,
+        "cellDirective": "B14",
+        "cellValue": "C14"
+      },
+      {
+        "row": 15,
+        "directive": "#EXT-X-SYS-COMPATIBLE",
+        "value": "OTT_NAVIGATOR,VLC,KODI,TIVIMATE,SMARTERS",
+        "kind": "S",
+        "included": true,
+        "cellDirective": "B15",
+        "cellValue": "C15"
+      },
+      {
+        "row": 16,
+        "directive": "#EXT-X-SYS-LAYERS",
+        "value": "EXTVLCOPT,KODIPROP,EXT-X-APE,EXT-X-START",
+        "kind": "S",
+        "included": true,
+        "cellDirective": "B16",
+        "cellValue": "C16"
+      },
+      {
+        "row": 18,
+        "directive": "#EXT-X-SYS-GLOBAL-BUFFER-STRATEGY",
+        "value": "NETWORK=8000,LIVE=4500,FILE=4000",
+        "kind": "S",
+        "included": true,
+        "cellDirective": "B18",
+        "cellValue": "C18"
+      },
+      {
+        "row": 19,
+        "directive": "#EXT-X-SYS-NETWORK-CACHING",
+        "value": "8000",
+        "kind": "N",
+        "included": true,
+        "cellDirective": "B19",
+        "cellValue": "C19"
+      },
+      {
+        "row": 20,
+        "directive": "#EXT-X-SYS-LIVE-CACHING",
+        "value": "4500",
+        "kind": "N",
+        "included": true,
+        "cellDirective": "B20",
+        "cellValue": "C20"
+      },
+      {
+        "row": 21,
+        "directive": "#EXT-X-SYS-FILE-CACHING",
+        "value": "4000",
+        "kind": "N",
+        "included": true,
+        "cellDirective": "B21",
+        "cellValue": "C21"
+      },
+      {
+        "row": 23,
+        "directive": "#EXT-X-SYS-ALT-SVC",
+        "value": "h2=\":443\"; ma=86400",
+        "kind": "S",
+        "included": true,
+        "cellDirective": "B23",
+        "cellValue": "C23"
+      },
+      {
+        "row": 24,
+        "directive": "#EXT-X-SYS-PREFER-HTTP3",
+        "value": "false",
+        "kind": "S",
+        "included": false,
+        "cellDirective": "B24",
+        "cellValue": "C24"
+      },
+      {
+        "row": 25,
+        "directive": "#EXT-X-SYS-PROTOCOL-PRIORITY",
+        "value": "http/1.1,h2",
+        "kind": "S",
+        "included": true,
+        "cellDirective": "B25",
+        "cellValue": "C25"
+      },
+      {
+        "row": 26,
+        "directive": "#EXT-X-SYS-MIN-HTTP-VERSION",
+        "value": "1.1",
+        "kind": "S",
+        "included": true,
+        "cellDirective": "B26",
+        "cellValue": "C26"
+      },
+      {
+        "row": 27,
+        "directive": "#EXT-X-SYS-HTTP2-MULTIPLEX",
+        "value": "enabled",
+        "kind": "S",
+        "included": true,
+        "cellDirective": "B27",
+        "cellValue": "C27"
+      },
+      {
+        "row": 28,
+        "directive": "#EXT-X-SYS-HTTP2-MAX-CONCURRENT-STREAMS",
+        "value": "100",
+        "kind": "S",
+        "included": true,
+        "cellDirective": "B28",
+        "cellValue": "C28"
+      },
+      {
+        "row": 29,
+        "directive": "#EXT-X-SYS-HTTP2-PUSH",
+        "value": "disabled",
+        "kind": "S",
+        "included": false,
+        "cellDirective": "B29",
+        "cellValue": "C29"
+      },
+      {
+        "row": 30,
+        "directive": "#EXT-X-SYS-HTTP3-0RTT",
+        "value": "disabled",
+        "kind": "S",
+        "included": false,
+        "cellDirective": "B30",
+        "cellValue": "C30"
+      },
+      {
+        "row": 31,
+        "directive": "#EXT-X-SYS-COMPRESSION",
+        "value": "gzip",
+        "kind": "S",
+        "included": true,
+        "cellDirective": "B31",
+        "cellValue": "C31"
+      },
+      {
+        "row": 32,
+        "directive": "#EXT-X-SYS-COMPRESSION-LEVEL",
+        "value": "4",
+        "kind": "S",
+        "included": true,
+        "cellDirective": "B32",
+        "cellValue": "C32"
+      },
+      {
+        "row": 34,
+        "directive": "#EXT-X-SYS-TLS-PRIORITY",
+        "value": "tls1.2,tls1.1",
+        "kind": "S",
+        "included": true,
+        "cellDirective": "B34",
+        "cellValue": "C34"
+      },
+      {
+        "row": 35,
+        "directive": "#EXT-X-SYS-TLS-REQUIRED",
+        "value": "false",
+        "kind": "S",
+        "included": false,
+        "cellDirective": "B35",
+        "cellValue": "C35"
+      },
+      {
+        "row": 36,
+        "directive": "#EXT-X-SYS-MIN-TLS-VERSION",
+        "value": "1.0",
+        "kind": "S",
+        "included": true,
+        "cellDirective": "B36",
+        "cellValue": "C36"
+      },
+      {
+        "row": 38,
+        "directive": "#EXT-X-SYS-VIDEO-CODEC-PRIORITY",
+        "value": "dvh1,dvhe,hvc1,hev1,av01,vp09,avc1",
+        "kind": "S",
+        "included": true,
+        "cellDirective": "B38",
+        "cellValue": "C38"
+      },
+      {
+        "row": 39,
+        "directive": "#EXT-X-SYS-AUDIO-CODEC-PRIORITY",
+        "value": "ac-3,mp4a.40.2",
+        "kind": "S",
+        "included": true,
+        "cellDirective": "B39",
+        "cellValue": "C39"
+      },
+      {
+        "row": 40,
+        "directive": "#EXT-X-SYS-VIDEO-QUALITY",
+        "value": "high",
+        "kind": "S",
+        "included": true,
+        "cellDirective": "B40",
+        "cellValue": "C40"
+      },
+      {
+        "row": 41,
+        "directive": "#EXT-X-SYS-AUDIO-QUALITY",
+        "value": "high",
+        "kind": "S",
+        "included": true,
+        "cellDirective": "B41",
+        "cellValue": "C41"
+      },
+      {
+        "row": 43,
+        "directive": "#EXT-X-SYS-RESILIENCE-MODE",
+        "value": "ULTRA",
+        "kind": "S",
+        "included": true,
+        "cellDirective": "B43",
+        "cellValue": "C43"
+      },
+      {
+        "row": 44,
+        "directive": "#EXT-X-SYS-RECONNECT-TIMEOUT-MS",
+        "value": "30",
+        "kind": "S",
+        "included": true,
+        "cellDirective": "B44",
+        "cellValue": "C44"
+      },
+      {
+        "row": 45,
+        "directive": "#EXT-X-SYS-RECONNECT-MAX-ATTEMPTS",
+        "value": "50",
+        "kind": "N",
+        "included": true,
+        "cellDirective": "B45",
+        "cellValue": "C45"
+      },
+      {
+        "row": 46,
+        "directive": "#EXT-X-SYS-ZERO-INTERRUPTIONS",
+        "value": "true",
+        "kind": "S",
+        "included": true,
+        "cellDirective": "B46",
+        "cellValue": "C46"
+      },
+      {
+        "row": 47,
+        "directive": "#EXT-X-SYS-AVAILABILITY-TARGET",
+        "value": "99.99",
+        "kind": "S",
+        "included": true,
+        "cellDirective": "B47",
+        "cellValue": "C47"
+      },
+      {
+        "row": 48,
+        "directive": "#EXT-X-SYS-BANDWIDTH-GUARANTEE",
+        "value": "150",
+        "kind": "S",
+        "included": true,
+        "cellDirective": "B48",
+        "cellValue": "C48"
+      },
+      {
+        "row": 50,
+        "directive": "#EXT-X-SYS-FINGERPRINT",
+        "value": "FP_{auto}",
+        "kind": "S",
+        "included": true,
+        "cellDirective": "B50",
+        "cellValue": "C50"
+      },
+      {
+        "row": 51,
+        "directive": "#EXT-X-SYS-FP-DEVICE",
+        "value": "desktop",
+        "kind": "S",
+        "included": true,
+        "cellDirective": "B51",
+        "cellValue": "C51"
+      },
+      {
+        "row": 52,
+        "directive": "#EXT-X-SYS-FP-PLATFORM",
+        "value": "Win32",
+        "kind": "S",
+        "included": true,
+        "cellDirective": "B52",
+        "cellValue": "C52"
+      },
+      {
+        "row": 53,
+        "directive": "#EXT-X-SYS-FP-SCREEN",
+        "value": "1536x864",
+        "kind": "S",
+        "included": true,
+        "cellDirective": "B53",
+        "cellValue": "C53"
+      },
+      {
+        "row": 54,
+        "directive": "#EXT-X-SYS-FP-TZ",
+        "value": "America/Bogota",
+        "kind": "S",
+        "included": true,
+        "cellDirective": "B54",
+        "cellValue": "C54"
+      },
+      {
+        "row": 55,
+        "directive": "#EXT-X-SYS-FP-LANG",
+        "value": "es-419",
+        "kind": "S",
+        "included": true,
+        "cellDirective": "B55",
+        "cellValue": "C55"
+      },
+      {
+        "row": 57,
+        "directive": "#EXT-X-SYS-SERVER-ROTATION",
+        "value": "enabled",
+        "kind": "S",
+        "included": true,
+        "cellDirective": "B57",
+        "cellValue": "C57"
+      },
+      {
+        "row": 58,
+        "directive": "#EXT-X-SYS-SERVER-POOL-SIZE",
+        "value": "3",
+        "kind": "S",
+        "included": true,
+        "cellDirective": "B58",
+        "cellValue": "C58"
+      },
+      {
+        "row": 59,
+        "directive": "#EXT-X-SYS-SERVER-DISTRIBUTION",
+        "value": "round_robin",
+        "kind": "S",
+        "included": true,
+        "cellDirective": "B59",
+        "cellValue": "C59"
+      },
+      {
+        "row": 60,
+        "directive": "#EXT-X-SERVER-1",
+        "value": "http://ky-tv.cc:80",
+        "kind": "S",
+        "included": true,
+        "cellDirective": "B60",
+        "cellValue": "C60"
+      },
+      {
+        "row": 61,
+        "directive": "#EXT-X-SERVER-2",
+        "value": "http://line.tivi-ott.net",
+        "kind": "S",
+        "included": false,
+        "cellDirective": "B61",
+        "cellValue": "C61"
+      },
+      {
+        "row": 62,
+        "directive": "#EXT-X-SERVER-3",
+        "value": "http://pro.123sat.net:2082",
+        "kind": "S",
+        "included": false,
+        "cellDirective": "B62",
+        "cellValue": "C62"
+      },
+      {
+        "row": 64,
+        "directive": "#EXT-X-MOTOR-EVASION",
+        "value": "ENABLED",
+        "kind": "S",
+        "included": true,
+        "cellDirective": "B64",
+        "cellValue": "C64"
+      },
+      {
+        "row": 65,
+        "directive": "#EXT-X-UA-ROTATION",
+        "value": "true",
+        "kind": "S",
+        "included": true,
+        "cellDirective": "B65",
+        "cellValue": "C65"
+      },
+      {
+        "row": 66,
+        "directive": "#EXT-X-UA-POOL-SIZE",
+        "value": "104",
+        "kind": "S",
+        "included": true,
+        "cellDirective": "B66",
+        "cellValue": "C66"
+      },
+      {
+        "row": 67,
+        "directive": "#EXT-X-BLOQUEO-DETECCION",
+        "value": "true",
+        "kind": "S",
+        "included": true,
+        "cellDirective": "B67",
+        "cellValue": "C67"
+      },
+      {
+        "row": 68,
+        "directive": "#EXT-X-BLOQUEO-CODIGOS",
+        "value": "407,403,429,502,503",
+        "kind": "S",
+        "included": true,
+        "cellDirective": "B68",
+        "cellValue": "C68"
+      },
+      {
+        "row": 69,
+        "directive": "#EXT-X-BLOQUEO-RESPUESTA",
+        "value": "auto-retry",
+        "kind": "S",
+        "included": true,
+        "cellDirective": "B69",
+        "cellValue": "C69"
+      },
+      {
+        "row": 70,
+        "directive": "#EXT-X-BLOQUEO-REINTENTOS",
+        "value": "3",
+        "kind": "S",
+        "included": true,
+        "cellDirective": "B70",
+        "cellValue": "C70"
+      },
+      {
+        "row": 72,
+        "directive": "#EXT-X-SYS-HTTP-HEADERS",
+        "value": "{\"User-Agent\":\"Mozilla/5.0 (Web0S; Linux/SmartTV) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.6045.213 Safari/537.36 WebAppManager\",\"Accept\":\"*/*\",\"Referer\":\"https://www.netflix.com/\",\"Origin\":\"https://www.netflix.com\"}",
+        "kind": "S",
+        "included": true,
+        "cellDirective": "B72",
+        "cellValue": "C72"
+      }
+    ]
+  },
+  "directives": {
+    "1_README": {
+      "cellsWithToken": {
+        "#EXTM3U": 1,
+        "#EXTINF": 1,
+        "#EXTHTTP": 1,
+        "#EXTVLCOPT": 1,
+        "#KODIPROP": 1,
+        "#EXT-X-STREAM-INF": 1,
+        "CMCD": 2
+      },
+      "tokenOccurrences": {
+        "#EXTM3U": 1,
+        "#EXTINF": 1,
+        "#EXTHTTP": 1,
+        "#EXTVLCOPT": 1,
+        "#KODIPROP": 1,
+        "#EXT-X-STREAM-INF": 1,
+        "CMCD": 2
+      },
+      "firstSample": {
+        "#EXTM3U": {
+          "cell": "A6",
+          "value": "NIVEL 1: CABECERA GLOBAL  (#EXTM3U + #EXT-X-SYS-* + #EXT-X-SYS-EMBEDDED-CONFIG)  -> 1 vez al inicio"
+        },
+        "#EXTINF": {
+          "cell": "A8",
+          "value": "NIVEL 3: BLOQUE POR CANAL  (#EXTINF + #EXTVLCOPT + #KODIPROP + #EXTHTTP + #EXT-X-STREAM-INF + URL)  -> N veces"
+        },
+        "#EXTHTTP": {
+          "cell": "A8",
+          "value": "NIVEL 3: BLOQUE POR CANAL  (#EXTINF + #EXTVLCOPT + #KODIPROP + #EXTHTTP + #EXT-X-STREAM-INF + URL)  -> N veces"
+        },
+        "#EXTVLCOPT": {
+          "cell": "A8",
+          "value": "NIVEL 3: BLOQUE POR CANAL  (#EXTINF + #EXTVLCOPT + #KODIPROP + #EXTHTTP + #EXT-X-STREAM-INF + URL)  -> N veces"
+        },
+        "#KODIPROP": {
+          "cell": "A8",
+          "value": "NIVEL 3: BLOQUE POR CANAL  (#EXTINF + #EXTVLCOPT + #KODIPROP + #EXTHTTP + #EXT-X-STREAM-INF + URL)  -> N veces"
+        },
+        "#EXT-X-STREAM-INF": {
+          "cell": "A8",
+          "value": "NIVEL 3: BLOQUE POR CANAL  (#EXTINF + #EXTVLCOPT + #KODIPROP + #EXTHTTP + #EXT-X-STREAM-INF + URL)  -> N veces"
+        },
+        "CMCD": {
+          "cell": "A17",
+          "value": "4. 0 LAG (live catch-up)  5. 0 BUGS CMCD (CTA-5004)  6. MAX ABR  7. MAX IMAGEN"
+        }
+      }
+    },
+    "98_VALIDATIONS": {
+      "cellsWithToken": {},
+      "tokenOccurrences": {},
+      "firstSample": {}
+    },
+    "2_CATALOGO_MASTER": {
+      "cellsWithToken": {
+        "#EXT-X-APE-": 896,
+        "X-APE-": 966,
+        "LCEVC": 51,
+        "#EXT-X-PHANTOM-HYDRA": 18,
+        "#EXT-X-SESSION-DATA": 1,
+        "#EXT-X-STREAM-INF": 1,
+        "#EXT-X-VERSION": 1,
+        "#EXT-X-VNOVA-LCEVC": 21,
+        "#EXTATTRFROMURL": 1,
+        "#EXTHTTP": 1,
+        "#EXTINF": 1,
+        "#EXTM3U": 1,
+        "#EXTVLCOPT": 1,
+        "#KODIPROP": 1,
+        "VIDEO-RANGE": 1,
+        "HDCP-LEVEL": 1,
+        "SUPPLEMENTAL-CODECS": 1
+      },
+      "tokenOccurrences": {
+        "#EXT-X-APE-": 896,
+        "X-APE-": 966,
+        "LCEVC": 51,
+        "#EXT-X-PHANTOM-HYDRA": 18,
+        "#EXT-X-SESSION-DATA": 1,
+        "#EXT-X-STREAM-INF": 1,
+        "#EXT-X-VERSION": 1,
+        "#EXT-X-VNOVA-LCEVC": 21,
+        "#EXTATTRFROMURL": 1,
+        "#EXTHTTP": 1,
+        "#EXTINF": 1,
+        "#EXTM3U": 1,
+        "#EXTVLCOPT": 1,
+        "#KODIPROP": 1,
+        "VIDEO-RANGE": 1,
+        "HDCP-LEVEL": 1,
+        "SUPPLEMENTAL-CODECS": 1
+      },
+      "firstSample": {
+        "#EXT-X-APE-": {
+          "cell": "C2",
+          "value": "#EXT-X-APE-ABR-BANDWIDTH-PREFERENCE"
+        },
+        "X-APE-": {
+          "cell": "C2",
+          "value": "#EXT-X-APE-ABR-BANDWIDTH-PREFERENCE"
+        },
+        "LCEVC": {
+          "cell": "C161",
+          "value": "#EXT-X-APE-CONTENT-HEURISTIC-4K-LCEVC"
+        },
+        "#EXT-X-PHANTOM-HYDRA": {
+          "cell": "C952",
+          "value": "#EXT-X-PHANTOM-HYDRA"
+        },
+        "#EXT-X-SESSION-DATA": {
+          "cell": "C980",
+          "value": "#EXT-X-SESSION-DATA"
+        },
+        "#EXT-X-STREAM-INF": {
+          "cell": "C983",
+          "value": "#EXT-X-STREAM-INF"
+        },
+        "#EXT-X-VERSION": {
+          "cell": "C988",
+          "value": "#EXT-X-VERSION"
+        },
+        "#EXT-X-VNOVA-LCEVC": {
+          "cell": "C989",
+          "value": "#EXT-X-VNOVA-LCEVC"
+        },
+        "#EXTATTRFROMURL": {
+          "cell": "C1010",
+          "value": "#EXTATTRFROMURL"
+        },
+        "#EXTHTTP": {
+          "cell": "C1011",
+          "value": "#EXTHTTP"
+        },
+        "#EXTINF": {
+          "cell": "C1012",
+          "value": "#EXTINF"
+        },
+        "#EXTM3U": {
+          "cell": "C1013",
+          "value": "#EXTM3U"
+        },
+        "#EXTVLCOPT": {
+          "cell": "C1014",
+          "value": "#EXTVLCOPT"
+        },
+        "#KODIPROP": {
+          "cell": "C1015",
+          "value": "#KODIPROP"
+        },
+        "VIDEO-RANGE": {
+          "cell": "C1087",
+          "value": "VIDEO-RANGE"
+        },
+        "HDCP-LEVEL": {
+          "cell": "C1088",
+          "value": "HDCP-LEVEL"
+        },
+        "SUPPLEMENTAL-CODECS": {
+          "cell": "C1089",
+          "value": "SUPPLEMENTAL-CODECS"
+        }
+      }
+    },
+    "3_CAPAS": {
+      "cellsWithToken": {
+        "#EXTVLCOPT": 1,
+        "#KODIPROP": 1,
+        "#EXTHTTP": 1,
+        "#EXTATTRFROMURL": 1,
+        "#EXTINF": 1,
+        "#EXTM3U": 1,
+        "#EXT-X-STREAM-INF": 1,
+        "#EXT-X-MEDIA": 1
+      },
+      "tokenOccurrences": {
+        "#EXTVLCOPT": 1,
+        "#KODIPROP": 1,
+        "#EXTHTTP": 1,
+        "#EXTATTRFROMURL": 1,
+        "#EXTINF": 1,
+        "#EXTM3U": 1,
+        "#EXT-X-STREAM-INF": 1,
+        "#EXT-X-MEDIA": 1
+      },
+      "firstSample": {
+        "#EXTVLCOPT": {
+          "cell": "C2",
+          "value": "#EXTVLCOPT:http-user-agent=Mozilla..."
+        },
+        "#KODIPROP": {
+          "cell": "C3",
+          "value": "#KODIPROP:inputstream.adaptive.stream_headers=..."
+        },
+        "#EXTHTTP": {
+          "cell": "C4",
+          "value": "#EXTHTTP:{\"User-Agent\":\"...\",\"Referer\":\"...\"}"
+        },
+        "#EXTATTRFROMURL": {
+          "cell": "C5",
+          "value": "#EXTATTRFROMURL:tvg-shift=\"-3\""
+        },
+        "#EXTINF": {
+          "cell": "C6",
+          "value": "#EXTINF:-1 tvg-id=\"X\" group-title=\"...\""
+        },
+        "#EXTM3U": {
+          "cell": "C7",
+          "value": "#EXTM3U x-tvg-url=\"...\""
+        },
+        "#EXT-X-STREAM-INF": {
+          "cell": "C8",
+          "value": "#EXT-X-STREAM-INF:BANDWIDTH=..."
+        },
+        "#EXT-X-MEDIA": {
+          "cell": "C9",
+          "value": "#EXT-X-MEDIA:TYPE=AUDIO,GROUP-ID=..."
+        }
+      }
+    },
+    "4_MIME_TYPES": {
+      "cellsWithToken": {},
+      "tokenOccurrences": {},
+      "firstSample": {}
+    },
+    "6_NIVEL_2_PROFILES": {
+      "cellsWithToken": {
+        "X-APE-": 95,
+        "LCEVC": 22,
+        "dvh1": 8,
+        "hvc1": 59,
+        "avc1": 45,
+        "hev1": 20,
+        "av01": 15,
+        "CMCD": 6
+      },
+      "tokenOccurrences": {
+        "X-APE-": 623,
+        "LCEVC": 82,
+        "dvh1": 8,
+        "hvc1": 137,
+        "avc1": 45,
+        "hev1": 20,
+        "av01": 15,
+        "CMCD": 6
+      },
+      "firstSample": {
+        "X-APE-": {
+          "cell": "B15",
+          "value": "{\"User-Agent\":\"Mozilla/5.0 (SMART-TV; Linux; Tizen 8.0) AppleWebKit/538.1 (KHTML, like Gecko) SamsungBrowser/2.3 TV Safari/538.1,Mozilla/5.0 (Linux; Android 14; SHIELD Android TV) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Mobile Safari/537.36,Mozilla/5.0 (Linux; Android 13; BRAVIA 4K GB ATV3) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36,Mozilla/5.0 (Wi"
+        },
+        "LCEVC": {
+          "cell": "B15",
+          "value": "{\"User-Agent\":\"Mozilla/5.0 (SMART-TV; Linux; Tizen 8.0) AppleWebKit/538.1 (KHTML, like Gecko) SamsungBrowser/2.3 TV Safari/538.1,Mozilla/5.0 (Linux; Android 14; SHIELD Android TV) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Mobile Safari/537.36,Mozilla/5.0 (Linux; Android 13; BRAVIA 4K GB ATV3) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36,Mozilla/5.0 (Wi"
+        },
+        "dvh1": {
+          "cell": "B37",
+          "value": "dvh1.08.06"
+        },
+        "hvc1": {
+          "cell": "C37",
+          "value": "hvc1.2.4.L153.B0"
+        },
+        "avc1": {
+          "cell": "G37",
+          "value": "avc1.42c01e"
+        },
+        "hev1": {
+          "cell": "B38",
+          "value": "dvh1,dvhe,hvc1,hev1,av01,vp09"
+        },
+        "av01": {
+          "cell": "B38",
+          "value": "dvh1,dvhe,hvc1,hev1,av01,vp09"
+        },
+        "CMCD": {
+          "cell": "A403",
+          "value": "headerOverrides.X-CMCD-Spec"
+        }
+      }
+    },
+    "5_NIVEL_1_HEADER": {
+      "cellsWithToken": {
+        "dvh1": 1,
+        "hvc1": 1,
+        "hev1": 1,
+        "av01": 1,
+        "avc1": 1
+      },
+      "tokenOccurrences": {
+        "dvh1": 1,
+        "hvc1": 1,
+        "hev1": 1,
+        "av01": 1,
+        "avc1": 1
+      },
+      "firstSample": {
+        "dvh1": {
+          "cell": "C38",
+          "value": "dvh1,dvhe,hvc1,hev1,av01,vp09,avc1"
+        },
+        "hvc1": {
+          "cell": "C38",
+          "value": "dvh1,dvhe,hvc1,hev1,av01,vp09,avc1"
+        },
+        "hev1": {
+          "cell": "C38",
+          "value": "dvh1,dvhe,hvc1,hev1,av01,vp09,avc1"
+        },
+        "av01": {
+          "cell": "C38",
+          "value": "dvh1,dvhe,hvc1,hev1,av01,vp09,avc1"
+        },
+        "avc1": {
+          "cell": "C38",
+          "value": "dvh1,dvhe,hvc1,hev1,av01,vp09,avc1"
+        }
+      }
+    },
+    "7_NIVEL_3_CHANNEL": {
+      "cellsWithToken": {
+        "VIDEO-RANGE": 1,
+        "HDCP-LEVEL": 1
+      },
+      "tokenOccurrences": {
+        "VIDEO-RANGE": 1,
+        "HDCP-LEVEL": 1
+      },
+      "firstSample": {
+        "VIDEO-RANGE": {
+          "cell": "C65",
+          "value": "VIDEO-RANGE"
+        },
+        "HDCP-LEVEL": {
+          "cell": "C66",
+          "value": "HDCP-LEVEL"
+        }
+      }
+    },
+    "8_MATRIX_3D": {
+      "cellsWithToken": {
+        "#EXT-X-APE-": 894,
+        "X-APE-": 1051,
+        "LCEVC": 61,
+        "#EXT-X-PHANTOM-HYDRA": 18,
+        "#EXT-X-SESSION-DATA": 1,
+        "#EXT-X-STREAM-INF": 1,
+        "#EXT-X-VERSION": 1,
+        "#EXT-X-VNOVA-LCEVC": 21,
+        "#EXTATTRFROMURL": 1,
+        "#EXTHTTP": 1,
+        "#EXTINF": 1,
+        "#EXTM3U": 1,
+        "#EXTVLCOPT": 1,
+        "#KODIPROP": 1,
+        "VIDEO-RANGE": 1,
+        "HDCP-LEVEL": 1,
+        "SUPPLEMENTAL-CODECS": 1,
+        "CMCD": 6
+      },
+      "tokenOccurrences": {
+        "#EXT-X-APE-": 894,
+        "X-APE-": 1051,
+        "LCEVC": 61,
+        "#EXT-X-PHANTOM-HYDRA": 18,
+        "#EXT-X-SESSION-DATA": 1,
+        "#EXT-X-STREAM-INF": 1,
+        "#EXT-X-VERSION": 1,
+        "#EXT-X-VNOVA-LCEVC": 21,
+        "#EXTATTRFROMURL": 1,
+        "#EXTHTTP": 1,
+        "#EXTINF": 1,
+        "#EXTM3U": 1,
+        "#EXTVLCOPT": 1,
+        "#KODIPROP": 1,
+        "VIDEO-RANGE": 1,
+        "HDCP-LEVEL": 1,
+        "SUPPLEMENTAL-CODECS": 1,
+        "CMCD": 6
+      },
+      "firstSample": {
+        "#EXT-X-APE-": {
+          "cell": "B4",
+          "value": "#EXT-X-APE-ABR-BW-ESTIMATION-WINDOW"
+        },
+        "X-APE-": {
+          "cell": "B4",
+          "value": "#EXT-X-APE-ABR-BW-ESTIMATION-WINDOW"
+        },
+        "LCEVC": {
+          "cell": "B161",
+          "value": "#EXT-X-APE-CONTENT-HEURISTIC-4K-LCEVC"
+        },
+        "#EXT-X-PHANTOM-HYDRA": {
+          "cell": "B952",
+          "value": "#EXT-X-PHANTOM-HYDRA"
+        },
+        "#EXT-X-SESSION-DATA": {
+          "cell": "B980",
+          "value": "#EXT-X-SESSION-DATA"
+        },
+        "#EXT-X-STREAM-INF": {
+          "cell": "B983",
+          "value": "#EXT-X-STREAM-INF"
+        },
+        "#EXT-X-VERSION": {
+          "cell": "B988",
+          "value": "#EXT-X-VERSION"
+        },
+        "#EXT-X-VNOVA-LCEVC": {
+          "cell": "B989",
+          "value": "#EXT-X-VNOVA-LCEVC"
+        },
+        "#EXTATTRFROMURL": {
+          "cell": "B1010",
+          "value": "#EXTATTRFROMURL"
+        },
+        "#EXTHTTP": {
+          "cell": "B1011",
+          "value": "#EXTHTTP"
+        },
+        "#EXTINF": {
+          "cell": "B1012",
+          "value": "#EXTINF"
+        },
+        "#EXTM3U": {
+          "cell": "B1013",
+          "value": "#EXTM3U"
+        },
+        "#EXTVLCOPT": {
+          "cell": "B1014",
+          "value": "#EXTVLCOPT"
+        },
+        "#KODIPROP": {
+          "cell": "B1015",
+          "value": "#KODIPROP"
+        },
+        "VIDEO-RANGE": {
+          "cell": "B1082",
+          "value": "VIDEO-RANGE"
+        },
+        "HDCP-LEVEL": {
+          "cell": "B1083",
+          "value": "HDCP-LEVEL"
+        },
+        "SUPPLEMENTAL-CODECS": {
+          "cell": "B1084",
+          "value": "SUPPLEMENTAL-CODECS"
+        },
+        "CMCD": {
+          "cell": "B2145",
+          "value": "headerOverrides.X-CMCD-Spec"
+        }
+      }
+    },
+    "00_OMEGA_SCORECARD": {
+      "cellsWithToken": {
+        "CMCD": 3,
+        "#EXTINF": 1,
+        "av01": 1
+      },
+      "tokenOccurrences": {
+        "CMCD": 3,
+        "#EXTINF": 1,
+        "av01": 1
+      },
+      "firstSample": {
+        "CMCD": {
+          "cell": "B12",
+          "value": "G5 0 BUGS CMCD (URL Purity + CTA-5004)"
+        },
+        "#EXTINF": {
+          "cell": "B19",
+          "value": "Canales (#EXTINF count)"
+        },
+        "av01": {
+          "cell": "D38",
+          "value": "av01:True DV/HEVC-HDR:True"
+        }
+      }
+    },
+    "18_CONFIG": {
+      "cellsWithToken": {},
+      "tokenOccurrences": {},
+      "firstSample": {}
+    },
+    "19_ADB_PAYLOAD_INJECTOR": {
+      "cellsWithToken": {},
+      "tokenOccurrences": {},
+      "firstSample": {}
+    },
+    "31_SOLVER_SETUP": {
+      "cellsWithToken": {},
+      "tokenOccurrences": {},
+      "firstSample": {}
+    },
+    "36_BRAIN_SELECTOR": {
+      "cellsWithToken": {
+        "#EXT-X-APE-": 1,
+        "X-APE-": 1
+      },
+      "tokenOccurrences": {
+        "#EXT-X-APE-": 1,
+        "X-APE-": 1
+      },
+      "firstSample": {
+        "#EXT-X-APE-": {
+          "cell": "F14",
+          "value": "si=excluye #EXT-X-APE-*, vnova, etc"
+        },
+        "X-APE-": {
+          "cell": "F14",
+          "value": "si=excluye #EXT-X-APE-*, vnova, etc"
+        }
+      }
+    },
+    "9_BRAIN_DASHBOARD": {
+      "cellsWithToken": {
+        "CMCD": 2
+      },
+      "tokenOccurrences": {
+        "CMCD": 2
+      },
+      "firstSample": {
+        "CMCD": {
+          "cell": "B17",
+          "value": "0 BUGS CMCD (CTA-5004)"
+        }
+      }
+    },
+    "33_CHANNELS_FROM_FRONTEND": {
+      "cellsWithToken": {},
+      "tokenOccurrences": {},
+      "firstSample": {}
+    },
+    "34_BRAIN_SCORING": {
+      "cellsWithToken": {
+        "#EXT-X-APE-": 894,
+        "X-APE-": 1140,
+        "#EXT-X-VNOVA-LCEVC": 21,
+        "LCEVC": 71,
+        "SUPPLEMENTAL-CODECS": 1,
+        "#EXT-X-PHANTOM-HYDRA": 18,
+        "#EXT-X-SESSION-DATA": 1,
+        "#EXT-X-STREAM-INF": 1,
+        "#EXT-X-VERSION": 1,
+        "#EXTATTRFROMURL": 1,
+        "#EXTHTTP": 1,
+        "#EXTINF": 1,
+        "#EXTM3U": 1,
+        "#EXTVLCOPT": 1,
+        "#KODIPROP": 1,
+        "VIDEO-RANGE": 1,
+        "HDCP-LEVEL": 1,
+        "CMCD": 12
+      },
+      "tokenOccurrences": {
+        "#EXT-X-APE-": 894,
+        "X-APE-": 1140,
+        "#EXT-X-VNOVA-LCEVC": 21,
+        "LCEVC": 71,
+        "SUPPLEMENTAL-CODECS": 1,
+        "#EXT-X-PHANTOM-HYDRA": 18,
+        "#EXT-X-SESSION-DATA": 1,
+        "#EXT-X-STREAM-INF": 1,
+        "#EXT-X-VERSION": 1,
+        "#EXTATTRFROMURL": 1,
+        "#EXTHTTP": 1,
+        "#EXTINF": 1,
+        "#EXTM3U": 1,
+        "#EXTVLCOPT": 1,
+        "#KODIPROP": 1,
+        "VIDEO-RANGE": 1,
+        "HDCP-LEVEL": 1,
+        "CMCD": 12
+      },
+      "firstSample": {
+        "#EXT-X-APE-": {
+          "cell": "A14",
+          "value": "#EXT-X-APE-AUDIO-CODEC-FALLBACK"
+        },
+        "X-APE-": {
+          "cell": "A14",
+          "value": "#EXT-X-APE-AUDIO-CODEC-FALLBACK"
+        },
+        "#EXT-X-VNOVA-LCEVC": {
+          "cell": "A30",
+          "value": "#EXT-X-VNOVA-LCEVC-FALLBACK-RESOLUTION"
+        },
+        "LCEVC": {
+          "cell": "A30",
+          "value": "#EXT-X-VNOVA-LCEVC-FALLBACK-RESOLUTION"
+        },
+        "SUPPLEMENTAL-CODECS": {
+          "cell": "A118",
+          "value": "SUPPLEMENTAL-CODECS"
+        },
+        "#EXT-X-PHANTOM-HYDRA": {
+          "cell": "A1450",
+          "value": "#EXT-X-PHANTOM-HYDRA"
+        },
+        "#EXT-X-SESSION-DATA": {
+          "cell": "A1477",
+          "value": "#EXT-X-SESSION-DATA"
+        },
+        "#EXT-X-STREAM-INF": {
+          "cell": "A1480",
+          "value": "#EXT-X-STREAM-INF"
+        },
+        "#EXT-X-VERSION": {
+          "cell": "A1485",
+          "value": "#EXT-X-VERSION"
+        },
+        "#EXTATTRFROMURL": {
+          "cell": "A1495",
+          "value": "#EXTATTRFROMURL"
+        },
+        "#EXTHTTP": {
+          "cell": "A1496",
+          "value": "#EXTHTTP"
+        },
+        "#EXTINF": {
+          "cell": "A1497",
+          "value": "#EXTINF"
+        },
+        "#EXTM3U": {
+          "cell": "A1498",
+          "value": "#EXTM3U"
+        },
+        "#EXTVLCOPT": {
+          "cell": "A1499",
+          "value": "#EXTVLCOPT"
+        },
+        "#KODIPROP": {
+          "cell": "A1500",
+          "value": "#KODIPROP"
+        },
+        "VIDEO-RANGE": {
+          "cell": "A1559",
+          "value": "VIDEO-RANGE"
+        },
+        "HDCP-LEVEL": {
+          "cell": "A1560",
+          "value": "HDCP-LEVEL"
+        },
+        "CMCD": {
+          "cell": "A2581",
+          "value": "headerOverrides.X-CMCD-Spec"
+        }
+      }
+    },
+    "10_HOMOLOGATION": {
+      "cellsWithToken": {
+        "VIDEO-RANGE": 1,
+        "CMCD": 4
+      },
+      "tokenOccurrences": {
+        "VIDEO-RANGE": 1,
+        "CMCD": 6
+      },
+      "firstSample": {
+        "VIDEO-RANGE": {
+          "cell": "B20",
+          "value": "SYS-PROFILE-PN-HDR, EXTHTTP:X-HDR-Mode, STREAM-INF:VIDEO-RANGE"
+        },
+        "CMCD": {
+          "cell": "B28",
+          "value": "EXTHTTP:CMCD-Session, URL_QUERY:CMCD"
+        }
+      }
+    },
+    "11_EXPANSION_ZONE": {
+      "cellsWithToken": {},
+      "tokenOccurrences": {},
+      "firstSample": {}
+    },
+    "12_FORMATOS": {
+      "cellsWithToken": {},
+      "tokenOccurrences": {},
+      "firstSample": {}
+    },
+    "13_CRYPTO": {
+      "cellsWithToken": {},
+      "tokenOccurrences": {},
+      "firstSample": {}
+    },
+    "14_KEYRING": {
+      "cellsWithToken": {},
+      "tokenOccurrences": {},
+      "firstSample": {}
+    },
+    "15_CMCD_QOE": {
+      "cellsWithToken": {
+        "CMCD": 1
+      },
+      "tokenOccurrences": {
+        "CMCD": 1
+      },
+      "firstSample": {
+        "CMCD": {
+          "cell": "A1",
+          "value": "CMCD CTA-5004 + Mux Data + Conviva keys"
+        }
+      }
+    },
+    "16_EVASION": {
+      "cellsWithToken": {},
+      "tokenOccurrences": {},
+      "firstSample": {}
+    },
+    "17_SERVERS_POOL": {
+      "cellsWithToken": {},
+      "tokenOccurrences": {},
+      "firstSample": {}
+    },
+    "19_URL_BUILDER": {
+      "cellsWithToken": {},
+      "tokenOccurrences": {},
+      "firstSample": {}
+    },
+    "20_URL_PROBE": {
+      "cellsWithToken": {
+        "#EXTM3U": 1,
+        "#EXTINF": 1,
+        "#EXT-X-MEDIA": 1,
+        "#EXT-X-VERSION": 1,
+        "#EXT-X-TARGETDURATION": 1
+      },
+      "tokenOccurrences": {
+        "#EXTM3U": 1,
+        "#EXTINF": 1,
+        "#EXT-X-MEDIA": 1,
+        "#EXT-X-VERSION": 1,
+        "#EXT-X-TARGETDURATION": 1
+      },
+      "firstSample": {
+        "#EXTM3U": {
+          "cell": "B13",
+          "value": "#EXTM3U\n#EXT-X-VERSION:3\n#EXT-X-MEDIA-SEQUENCE:0\n#EXT-X-ALLOW-CACHE:YES\n#EXT-X-TARGETDURATION:11\n#EXTINF:10.0,\nhttp://bertha.frontcdn.me:80/auth/JCyHupOTGFyTz509JEGyyyqkgEDXz54pHJOkNDMpvsdVJvy63gM12j_"
+        },
+        "#EXTINF": {
+          "cell": "B13",
+          "value": "#EXTM3U\n#EXT-X-VERSION:3\n#EXT-X-MEDIA-SEQUENCE:0\n#EXT-X-ALLOW-CACHE:YES\n#EXT-X-TARGETDURATION:11\n#EXTINF:10.0,\nhttp://bertha.frontcdn.me:80/auth/JCyHupOTGFyTz509JEGyyyqkgEDXz54pHJOkNDMpvsdVJvy63gM12j_"
+        },
+        "#EXT-X-MEDIA": {
+          "cell": "B13",
+          "value": "#EXTM3U\n#EXT-X-VERSION:3\n#EXT-X-MEDIA-SEQUENCE:0\n#EXT-X-ALLOW-CACHE:YES\n#EXT-X-TARGETDURATION:11\n#EXTINF:10.0,\nhttp://bertha.frontcdn.me:80/auth/JCyHupOTGFyTz509JEGyyyqkgEDXz54pHJOkNDMpvsdVJvy63gM12j_"
+        },
+        "#EXT-X-VERSION": {
+          "cell": "B13",
+          "value": "#EXTM3U\n#EXT-X-VERSION:3\n#EXT-X-MEDIA-SEQUENCE:0\n#EXT-X-ALLOW-CACHE:YES\n#EXT-X-TARGETDURATION:11\n#EXTINF:10.0,\nhttp://bertha.frontcdn.me:80/auth/JCyHupOTGFyTz509JEGyyyqkgEDXz54pHJOkNDMpvsdVJvy63gM12j_"
+        },
+        "#EXT-X-TARGETDURATION": {
+          "cell": "B13",
+          "value": "#EXTM3U\n#EXT-X-VERSION:3\n#EXT-X-MEDIA-SEQUENCE:0\n#EXT-X-ALLOW-CACHE:YES\n#EXT-X-TARGETDURATION:11\n#EXTINF:10.0,\nhttp://bertha.frontcdn.me:80/auth/JCyHupOTGFyTz509JEGyyyqkgEDXz54pHJOkNDMpvsdVJvy63gM12j_"
+        }
+      }
+    },
+    "21_WATERFALL": {
+      "cellsWithToken": {},
+      "tokenOccurrences": {},
+      "firstSample": {}
+    },
+    "22_UX_IMPACT": {
+      "cellsWithToken": {
+        "hvc1": 1
+      },
+      "tokenOccurrences": {
+        "hvc1": 1
+      },
+      "firstSample": {
+        "hvc1": {
+          "cell": "B7",
+          "value": "HEVC (hvc1)"
+        }
+      }
+    },
+    "23_BOTTLENECK": {
+      "cellsWithToken": {
+        "LCEVC": 1
+      },
+      "tokenOccurrences": {
+        "LCEVC": 1
+      },
+      "firstSample": {
+        "LCEVC": {
+          "cell": "B12",
+          "value": "Quitar STREAM-INF con codecs Dolby/LCEVC fake"
+        }
+      }
+    },
+    "24_JSON_IMPORT": {
+      "cellsWithToken": {},
+      "tokenOccurrences": {},
+      "firstSample": {}
+    },
+    "25_JSON_EXPORT": {
+      "cellsWithToken": {},
+      "tokenOccurrences": {},
+      "firstSample": {}
+    },
+    "26_JSON_DIFF": {
+      "cellsWithToken": {},
+      "tokenOccurrences": {},
+      "firstSample": {}
+    },
+    "27_COMPAT_MATRIX": {
+      "cellsWithToken": {},
+      "tokenOccurrences": {},
+      "firstSample": {}
+    },
+    "28_PREVIEW_M3U8": {
+      "cellsWithToken": {
+        "#EXTM3U": 1
+      },
+      "tokenOccurrences": {
+        "#EXTM3U": 1
+      },
+      "firstSample": {
+        "#EXTM3U": {
+          "cell": "B4",
+          "value": "#EXTM3U"
+        }
+      }
+    },
+    "29_STATS_HISTORY": {
+      "cellsWithToken": {},
+      "tokenOccurrences": {},
+      "firstSample": {}
+    },
+    "30_EXPORT_FINAL": {
+      "cellsWithToken": {},
+      "tokenOccurrences": {},
+      "firstSample": {}
+    },
+    "32_PLACEHOLDERS_MAP": {
+      "cellsWithToken": {},
+      "tokenOccurrences": {},
+      "firstSample": {}
+    },
+    "_LISTAS": {
+      "cellsWithToken": {
+        "dvh1": 2,
+        "hev1": 3,
+        "hvc1": 1,
+        "av01": 1,
+        "avc1": 2
+      },
+      "tokenOccurrences": {
+        "dvh1": 2,
+        "hev1": 3,
+        "hvc1": 1,
+        "av01": 1,
+        "avc1": 2
+      },
+      "firstSample": {
+        "dvh1": {
+          "cell": "J1",
+          "value": "dvh1.08.06,hev1.2.4.L186.B0"
+        },
+        "hev1": {
+          "cell": "J1",
+          "value": "dvh1.08.06,hev1.2.4.L186.B0"
+        },
+        "hvc1": {
+          "cell": "J4",
+          "value": "hvc1.2.4.L153.B0,mp4a.40.2"
+        },
+        "av01": {
+          "cell": "J5",
+          "value": "av01.0.15M.10,mp4a.40.2"
+        },
+        "avc1": {
+          "cell": "J6",
+          "value": "avc1.640028,mp4a.40.2"
+        }
+      }
+    },
+    "37_VALORES_UNIFICADOS": {
+      "cellsWithToken": {
+        "X-APE-": 1146,
+        "dvh1": 15,
+        "hvc1": 63,
+        "av01": 21,
+        "hev1": 24,
+        "avc1": 58,
+        "LCEVC": 89,
+        "#EXT-X-APE-": 894,
+        "CMCD": 12,
+        "#EXTHTTP": 1,
+        "#EXTVLCOPT": 1,
+        "#KODIPROP": 1,
+        "#EXT-X-VNOVA-LCEVC": 21,
+        "SUPPLEMENTAL-CODECS": 1,
+        "#EXT-X-STREAM-INF": 1,
+        "VIDEO-RANGE": 1,
+        "HDCP-LEVEL": 1,
+        "#EXTATTRFROMURL": 1,
+        "#EXTINF": 1,
+        "#EXT-X-PHANTOM-HYDRA": 18,
+        "#EXT-X-SESSION-DATA": 1,
+        "#EXT-X-VERSION": 1,
+        "#EXTM3U": 1
+      },
+      "tokenOccurrences": {
+        "X-APE-": 1674,
+        "dvh1": 15,
+        "hvc1": 165,
+        "av01": 21,
+        "hev1": 24,
+        "avc1": 58,
+        "LCEVC": 155,
+        "#EXT-X-APE-": 894,
+        "CMCD": 12,
+        "#EXTHTTP": 1,
+        "#EXTVLCOPT": 1,
+        "#KODIPROP": 1,
+        "#EXT-X-VNOVA-LCEVC": 21,
+        "SUPPLEMENTAL-CODECS": 1,
+        "#EXT-X-STREAM-INF": 1,
+        "VIDEO-RANGE": 1,
+        "HDCP-LEVEL": 1,
+        "#EXTATTRFROMURL": 1,
+        "#EXTINF": 1,
+        "#EXT-X-PHANTOM-HYDRA": 18,
+        "#EXT-X-SESSION-DATA": 1,
+        "#EXT-X-VERSION": 1,
+        "#EXTM3U": 1
+      },
+      "firstSample": {
+        "X-APE-": {
+          "cell": "A5",
+          "value": "headerOverrides.X-APE-CODEC"
+        },
+        "dvh1": {
+          "cell": "G5",
+          "value": "av01.0.21M.10.0.112.09.16.09.0,dvh1.08.06,hvc1.2.4.L186.B0"
+        },
+        "hvc1": {
+          "cell": "G5",
+          "value": "av01.0.21M.10.0.112.09.16.09.0,dvh1.08.06,hvc1.2.4.L186.B0"
+        },
+        "av01": {
+          "cell": "G5",
+          "value": "av01.0.21M.10.0.112.09.16.09.0,dvh1.08.06,hvc1.2.4.L186.B0"
+        },
+        "hev1": {
+          "cell": "H5",
+          "value": "dvh1.08.06,hvc1.2.4.L153.B0,hev1.2.4.L153.B0,av01.0.15M.10"
+        },
+        "avc1": {
+          "cell": "I5",
+          "value": "hvc1.2.4.L123.B0,hev1.2.4.L123.B0,avc1.640033"
+        },
+        "LCEVC": {
+          "cell": "A89",
+          "value": "X-LCEVC-Base-Codec"
+        },
+        "#EXT-X-APE-": {
+          "cell": "A131",
+          "value": "#EXT-X-APE-PREFETCH-MIN-BANDWIDTH"
+        },
+        "CMCD": {
+          "cell": "A389",
+          "value": "headerOverrides.X-CMCD-Spec"
+        },
+        "#EXTHTTP": {
+          "cell": "A710",
+          "value": "#EXTHTTP"
+        },
+        "#EXTVLCOPT": {
+          "cell": "A935",
+          "value": "#EXTVLCOPT"
+        },
+        "#KODIPROP": {
+          "cell": "A936",
+          "value": "#KODIPROP"
+        },
+        "#EXT-X-VNOVA-LCEVC": {
+          "cell": "A1029",
+          "value": "#EXT-X-VNOVA-LCEVC-FALLBACK-RESOLUTION"
+        },
+        "SUPPLEMENTAL-CODECS": {
+          "cell": "A1035",
+          "value": "SUPPLEMENTAL-CODECS"
+        },
+        "#EXT-X-STREAM-INF": {
+          "cell": "A1434",
+          "value": "#EXT-X-STREAM-INF"
+        },
+        "VIDEO-RANGE": {
+          "cell": "A1437",
+          "value": "VIDEO-RANGE"
+        },
+        "HDCP-LEVEL": {
+          "cell": "A1438",
+          "value": "HDCP-LEVEL"
+        },
+        "#EXTATTRFROMURL": {
+          "cell": "A1905",
+          "value": "#EXTATTRFROMURL"
+        },
+        "#EXTINF": {
+          "cell": "A1906",
+          "value": "#EXTINF"
+        },
+        "#EXT-X-PHANTOM-HYDRA": {
+          "cell": "A2838",
+          "value": "#EXT-X-PHANTOM-HYDRA"
+        },
+        "#EXT-X-SESSION-DATA": {
+          "cell": "A2864",
+          "value": "#EXT-X-SESSION-DATA"
+        },
+        "#EXT-X-VERSION": {
+          "cell": "A2870",
+          "value": "#EXT-X-VERSION"
+        },
+        "#EXTM3U": {
+          "cell": "A2878",
+          "value": "#EXTM3U"
+        }
+      }
+    },
+    "35_UNIVERSAL_COMPAT_RESULT": {
+      "cellsWithToken": {},
+      "tokenOccurrences": {},
+      "firstSample": {}
+    },
+    "00_MACRO_RUN_REPORT": {
+      "cellsWithToken": {},
+      "tokenOccurrences": {},
+      "firstSample": {}
+    },
+    "00_WIRING_LOG": {
+      "cellsWithToken": {},
+      "tokenOccurrences": {},
+      "firstSample": {}
+    },
+    "00_SOLVER_DIARY": {
+      "cellsWithToken": {},
+      "tokenOccurrences": {},
+      "firstSample": {}
+    },
+    "00_CONVERGENCE_DIARY": {
+      "cellsWithToken": {},
+      "tokenOccurrences": {},
+      "firstSample": {}
+    },
+    "_LISTAS_OMEGA": {
+      "cellsWithToken": {},
+      "tokenOccurrences": {},
+      "firstSample": {}
+    },
+    "98_SHIELD_IMMUTABLE": {
+      "cellsWithToken": {},
+      "tokenOccurrences": {},
+      "firstSample": {}
+    },
+    "00_EXPORT_STAGE": {
+      "cellsWithToken": {},
+      "tokenOccurrences": {},
+      "firstSample": {}
+    },
+    "99_DEAD_CHANNELS_BLACKLIST": {
+      "cellsWithToken": {},
+      "tokenOccurrences": {},
+      "firstSample": {}
+    },
+    "15_FLOOR_LOCK_CONFIG": {
+      "cellsWithToken": {},
+      "tokenOccurrences": {},
+      "firstSample": {}
+    },
+    "16_SENTINEL_PROVIDERS": {
+      "cellsWithToken": {},
+      "tokenOccurrences": {},
+      "firstSample": {}
+    },
+    "17_TELESCOPE_THRESHOLDS": {
+      "cellsWithToken": {},
+      "tokenOccurrences": {},
+      "firstSample": {}
+    },
+    "99_PRISMA_AUDIT_REPORT": {
+      "cellsWithToken": {},
+      "tokenOccurrences": {},
+      "firstSample": {}
+    },
+    "8_CODEC_LADDER": {
+      "cellsWithToken": {
+        "dvh1": 2,
+        "hvc1": 10,
+        "av01": 2,
+        "avc1": 12,
+        "hev1": 9
+      },
+      "tokenOccurrences": {
+        "dvh1": 3,
+        "hvc1": 14,
+        "av01": 2,
+        "avc1": 19,
+        "hev1": 9
+      },
+      "firstSample": {
+        "dvh1": {
+          "cell": "B2",
+          "value": "dvh1.05.06,dvh1.08.06,hvc1.2.4.L183.B0,hvc1.1.6.L183.B0,av01.0.13M.10.0.110.09.16.09.0,avc1.640033,avc1.640028"
+        },
+        "hvc1": {
+          "cell": "B2",
+          "value": "dvh1.05.06,dvh1.08.06,hvc1.2.4.L183.B0,hvc1.1.6.L183.B0,av01.0.13M.10.0.110.09.16.09.0,avc1.640033,avc1.640028"
+        },
+        "av01": {
+          "cell": "B2",
+          "value": "dvh1.05.06,dvh1.08.06,hvc1.2.4.L183.B0,hvc1.1.6.L183.B0,av01.0.13M.10.0.110.09.16.09.0,avc1.640033,avc1.640028"
+        },
+        "avc1": {
+          "cell": "B2",
+          "value": "dvh1.05.06,dvh1.08.06,hvc1.2.4.L183.B0,hvc1.1.6.L183.B0,av01.0.13M.10.0.110.09.16.09.0,avc1.640033,avc1.640028"
+        },
+        "hev1": {
+          "cell": "E2",
+          "value": "hvc1,hev1,dvh1,dvhe,h265,av1,avc1,h264"
+        }
+      }
+    },
+    "33_UA_POOL": {
+      "cellsWithToken": {},
+      "tokenOccurrences": {},
+      "firstSample": {}
+    }
+  },
+  "catalog": {
+    "sheet": "2_CATALOGO_MASTER",
+    "header": {
+      "A": "#",
+      "B": "Seccion",
+      "C": "Tag/Key/Header",
+      "D": "L1 (Feb1)",
+      "E": "L2 (Mar1)",
+      "F": "L3 (Apr11)",
+      "G": "Status",
+      "H": "Player target",
+      "I": "Universal",
+      "J": "Score impacto"
+    },
+    "maxRow": 1762
+  }
+}

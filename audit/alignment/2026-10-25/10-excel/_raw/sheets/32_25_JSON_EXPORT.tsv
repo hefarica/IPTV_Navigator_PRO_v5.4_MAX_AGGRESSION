@@ -1,0 +1,29 @@
+address	kind	value
+A1	S	JSON_EXPORT: exportar JSON optimizado al toolkit
+A3	S	Modo de export
+B3	S	MERGE
+C3	S	MERGE|REPLACE|NEW
+A4	S	Output path
+B4	S	C:\Users\HFRC\Downloads\APE_PROFILE_LAB_OUT.json
+A6	S	Acciones
+B6	S	Macro VBA
+C6	S	Estado
+A7	S	📤 EXPORTAR JSON
+B7	S	ExportJSON
+C7	S	-
+A8	S	👁 VER DIFF
+B8	S	DiffJSON
+C8	S	-
+A9	S	↩️ DESCARTAR
+B9	S	DiscardChanges
+C9	S	-
+A12	S	📤 EXPORTAR JSON
+B12	S	👁 VER DIFF
+C12	S	💾 GUARDAR COMO PRESET
+D12	S	↩️ DESCARTAR CAMBIOS
+E12	S	🚀 EXPORTAR + SUBIR TOOLKIT
+A13	S	→ ExportJSON()
+B13	S	→ DiffJSON()
+C13	S	→ SaveAsPreset()
+D13	S	→ DiscardChanges()
+E13	S	→ ExportAndUploadToToolkit()

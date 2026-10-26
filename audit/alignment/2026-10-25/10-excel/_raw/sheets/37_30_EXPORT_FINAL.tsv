@@ -1,0 +1,25 @@
+address	kind	value
+A1	S	EXPORT_FINAL: JSON listo para subir al toolkit
+A3	S	Item
+B3	S	Valor
+A4	S	Output JSON path
+B4	S	C:\Users\HFRC\Downloads\APE_PROFILE_LAB_OUT.json
+A5	S	Output M3U8 path
+B5	S	C:\Users\HFRC\Downloads\APE_LAB_OUTPUT.m3u8
+A9	S	BOTONES DE EXPORT
+B9	S	Macro VBA
+A10	S	🚀 EXPORTAR JSON COMPLETO
+B10	S	ExportFullJSON
+A11	S	🎬 EXPORTAR LISTA M3U8 (1 canal)
+B11	S	ExportSampleM3U8
+A12	S	📦 EXPORTAR LISTA M3U8 (TODOS canales)
+B12	S	ExportFullM3U8
+A13	S	🔄 EXPORTAR + SUBIR AL TOOLKIT
+B13	S	ExportAndUpload
+A14	S	INTEGRACION CON TOOLKIT
+A17	S	Toolkit path
+B17	S	C:\Users\HFRC\Desktop\IPTV_Navigator_PRO_v5.4_MAX_AGGRESSION\IPTV_v5.4_MAX_AGGRESSION
+A18	S	Profile manager URL
+B18	S	http://127.0.0.1:5500/IPTV_v5.4_MAX_AGGRESSION/frontend/index-v4.html
+A19	S	Importar como
+B19	S	Profile Manager > Importar Todos > APE_PROFILE_LAB_OUT.json

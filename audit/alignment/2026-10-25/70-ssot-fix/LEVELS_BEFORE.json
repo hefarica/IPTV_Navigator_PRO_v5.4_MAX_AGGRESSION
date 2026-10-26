@@ -1,0 +1,102 @@
+{
+  "file": "C:\\Users\\HFRC\\Desktop\\IPTV_Navigator_PRO_v5.4_MAX_AGGRESSION\\audit\\alignment\\2026-10-25\\70-ssot-fix\\SSOT_BACKUP\\lab_master_22.6.0.json.bak_20261025T233456Z",
+  "bytes": 280065,
+  "profiles": [
+    {
+      "profile": "P0",
+      "name": "8K Master",
+      "codec": "dvh1.08.06",
+      "resolution": "7680x4320",
+      "fps": 60,
+      "level": null,
+      "family": "DV",
+      "capacity": null,
+      "verdict": "UNKNOWN",
+      "detail": "sin modelo de capacidad para DV",
+      "settings_fps": "120"
+    },
+    {
+      "profile": "P1",
+      "name": "4K UHD",
+      "codec": "hvc1.2.4.L153.B0",
+      "resolution": "3840x2160",
+      "fps": 120,
+      "level": 153,
+      "family": "HEVC",
+      "capacity": {
+        "resRank": 4,
+        "fps": 60
+      },
+      "verdict": "FAIL",
+      "detail": "HEVC L153 → 4K@60 vs declarado 4K@120",
+      "settings_fps": "120"
+    },
+    {
+      "profile": "P2",
+      "name": "2K QHD",
+      "codec": "hvc1.2.4.L150.B0",
+      "resolution": "3840x2160",
+      "fps": 60,
+      "level": 150,
+      "family": "HEVC",
+      "capacity": {
+        "resRank": 4,
+        "fps": 30
+      },
+      "verdict": "FAIL",
+      "detail": "HEVC L150 → 4K@30 vs declarado 4K@60",
+      "settings_fps": "120"
+    },
+    {
+      "profile": "P3",
+      "name": "FHD 1080p",
+      "codec": "hvc1.1.6.L120.B0",
+      "resolution": "1920x1080",
+      "fps": 60,
+      "level": 120,
+      "family": "HEVC",
+      "capacity": {
+        "resRank": 3,
+        "fps": 30
+      },
+      "verdict": "FAIL",
+      "detail": "HEVC L120 → 1080p@30 vs declarado 1080p@60",
+      "settings_fps": "120"
+    },
+    {
+      "profile": "P4",
+      "name": "HD 720p",
+      "codec": "avc1.64001f",
+      "resolution": "1280x720",
+      "fps": 30,
+      "level": 31,
+      "family": "AVC",
+      "capacity": {
+        "resRank": 2,
+        "fps": 30
+      },
+      "verdict": "PASS",
+      "detail": "AVC L31 → 720p@30 vs declarado 720p@30",
+      "settings_fps": "120"
+    },
+    {
+      "profile": "P5",
+      "name": "SD 480p",
+      "codec": "avc1.42c01e",
+      "resolution": "854x480",
+      "fps": 30,
+      "level": 30,
+      "family": "AVC",
+      "capacity": {
+        "resRank": 1,
+        "fps": 30
+      },
+      "verdict": "PASS",
+      "detail": "AVC L30 → 480p@30 vs declarado 480p@30",
+      "settings_fps": "120"
+    }
+  ],
+  "impossible_count": 3,
+  "unknown_count": 1,
+  "verdict": "IMPOSSIBLE_LEVELS_PRESENT"
+}

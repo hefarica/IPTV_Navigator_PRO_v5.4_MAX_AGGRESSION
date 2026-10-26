@@ -150,3 +150,10 @@ IPTV_v5.4_MAX_AGGRESSION/frontend/lab_master_22.6.0.json
 
 # Cloudflare Wrangler local state: contiene blobs R2 con credenciales de proveedor — NUNCA versionar
 **/.wrangler/
+
+# Coordinación inter-sesión y evidencia local (no versionar)
+.agent-teams/
+.session/
+.agents/reports/deploy_*.json
+audit/**/labmaster_dump.json
+**/target/

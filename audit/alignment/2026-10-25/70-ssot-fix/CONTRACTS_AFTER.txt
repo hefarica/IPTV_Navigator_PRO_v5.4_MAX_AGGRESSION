@@ -1,0 +1,15 @@
+== VERIFICACIÓN DE CONTRATOS ==
+  PASS  schema crystal-contracts/v1
+  PASS  master sha256 e2bb8e69a31d0f68…
+  PASS  artefacto _vps_stage/media/ape-supervisor.sh
+  PASS  artefacto _vps_stage/media/ape-supervisor.lua
+  PASS  artefacto _vps_stage/media/ape-supervisor@.service
+  PASS  artefacto _vps_stage/media/ape-ingest.sh
+  PASS  artefacto _vps_stage/media/ape-ingest@.service
+  PASS  artefacto _vps_stage/lua/ape_session.lua
+  PASS  artefacto _vps_stage/lua/ape_caps.lua
+  PASS  artefacto _vps_stage/nginx/media-fanout.conf
+  PASS  viabilidad GPU/CPU declarada por perfil
+  FAIL  SHA MISMATCH _vps_stage/tests/fanout_concurrency.sh: contrato 9b774bffbe6c744f… vs real b558b1cdff883579…
+
+RESULT=FAIL (1 fallos, 11 ok)

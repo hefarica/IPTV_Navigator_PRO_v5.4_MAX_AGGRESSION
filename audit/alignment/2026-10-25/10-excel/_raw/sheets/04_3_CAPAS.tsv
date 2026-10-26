@@ -1,0 +1,120 @@
+address	kind	value
+A1	S	#
+B1	S	Capa
+C1	S	Sintaxis ejemplo
+D1	S	Quien la lee
+E1	S	Tamano tipico
+F1	S	Niveles validos
+G1	S	Notas
+A2	N	1
+B2	S	EXTVLCOPT
+C2	S	#EXTVLCOPT:http-user-agent=Mozilla...
+D2	S	VLC nativo
+E2	S	1 linea/key (~80b)
+F2	S	1,2,3
+G2	S	Formato legacy nativo VLC desde 2003
+A3	N	2
+B3	S	KODIPROP
+C3	S	#KODIPROP:inputstream.adaptive.stream_headers=...
+D3	S	Kodi inputstream.adaptive
+E3	S	1 linea/key (~150b)
+F3	S	1,3
+G3	S	Plugin oficial Kodi 19+
+A4	N	3
+B4	S	EXTHTTP_JSON
+C4	S	#EXTHTTP:{"User-Agent":"...","Referer":"..."}
+D4	S	TiviMate, OTT, Smarters, ExoPlayer
+E4	S	JSON ~1-8KB max
+F4	S	1,3
+G4	S	OkHttp limit 8KB; >8KB trunca
+A5	N	4
+B5	S	EXTATTRFROMURL
+C5	S	#EXTATTRFROMURL:tvg-shift="-3"
+D5	S	TiviMate, OTT
+E5	S	~100b
+F5	S	3
+G5	S	Override por canal sin reconstruir EXTINF
+A6	N	5
+B6	S	EXTINF_ATTR
+C6	S	#EXTINF:-1 tvg-id="X" group-title="..."
+D6	S	Todos
+E6	S	En linea EXTINF
+F6	S	3
+G6	S	Atributos por canal
+A7	N	6
+B7	S	EXTM3U_ATTR
+C7	S	#EXTM3U x-tvg-url="..."
+D7	S	TiviMate, OTT, Kodi
+E7	S	En linea EXTM3U
+F7	S	1
+G7	S	Cabecera global
+A8	N	7
+B8	S	STREAM_INF
+C8	S	#EXT-X-STREAM-INF:BANDWIDTH=...
+D8	S	Todos HLS
+E8	S	~200b/variant
+F8	S	3
+G8	S	RFC 8216bis ABR
+A9	N	8
+B9	S	MEDIA
+C9	S	#EXT-X-MEDIA:TYPE=AUDIO,GROUP-ID=...
+D9	S	Todos HLS
+E9	S	~250b
+F9	S	1,3
+G9	S	Audio/subs alternativos
+A10	N	9
+B10	S	EXT_X_SYS
+C10	S	#EXT-X-SYS-VERSION:1.0
+D10	S	PRIVADO APE (toolkit lo lee)
+E10	S	~50b/key
+F10	S	1,3
+G10	S	Comentario para player, dato para toolkit
+A11	N	10
+B11	S	URL_QUERY_PLAIN
+C11	S	?key=value&key2=value2
+D11	S	Servidor backend
+E11	S	~20b/param
+F11	S	1,3
+G11	S	Texto plano en URL
+A12	N	11
+B12	S	URL_QUERY_JWT
+C12	S	?ape_jwt=eyJhbGc...
+D12	S	Servidor backend
+E12	S	JWT firmado ~3KB
+F12	S	1,3
+G12	S	JWS HS256, transporta hasta 81 fields
+A13	N	12
+B13	S	URL_QUERY_BASE64
+C13	S	?ape_data=ZGF0YQ
+D13	S	Servidor backend
+E13	S	base64-encoded blob
+F13	S	1,3
+G13	S	Compacto, no firmado
+A14	N	13
+B14	S	URL_QUERY_ENCRYPTED
+C14	S	?ape_enc=<AES-256-GCM-base64>
+D14	S	Servidor backend
+E14	S	encriptado autenticado
+F14	S	1,3
+G14	S	Solo legible con key
+A15	N	14
+B15	S	COOKIE
+C15	S	Cookie: ape_sid=abc123; ape_p=P5
+D15	S	Servidor backend
+E15	S	~200b
+F15	S	1,3
+G15	S	Header HTTP estandar
+A16	N	15
+B16	S	KODI_LICENSE_DATA
+C16	S	inputstream.adaptive.license_data=<base64>
+D16	S	Kodi DRM Widevine
+E16	S	base64
+F16	S	3
+G16	S	Solo si DRM
+A17	N	16
+B17	S	EXT_X_DEFINE
+C17	S	#EXT-X-DEFINE:NAME=X,VALUE=Y luego {$X}
+D17	S	hls.js, Shaka
+E17	S	~30b/var
+F17	S	1
+G17	S	Variable substitution RFC 8216bis

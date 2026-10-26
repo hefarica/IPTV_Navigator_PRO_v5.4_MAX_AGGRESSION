@@ -1,0 +1,200 @@
+address	kind	value
+A1	S	EVASION: UA Pool + Referer Pool + Bloqueo Handling
+A3	S	UA POOL (Activar X = en uso, - = pool pero inactivo)
+A5	S	Activar
+B5	S	#
+C5	S	Categoria
+D5	S	Peso %
+E5	S	User-Agent
+F5	S	Player target
+G5	S	Notas
+A6	S	X
+B6	N	1
+C6	S	chrome
+D6	N	35
+E6	S	Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36
+F6	S	desktop
+G6	S	Chrome desktop top
+A7	S	X
+B7	N	2
+C7	S	chrome
+D7	N	10
+E7	S	Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/125.0.0.0
+F7	S	desktop
+G7	S	Chrome Linux
+A8	S	X
+B8	N	3
+C8	S	firefox
+D8	N	20
+E8	S	Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:128.0) Gecko/20100101 Firefox/128.0
+F8	S	desktop
+G8	S	Firefox 128
+A9	S	X
+B9	N	4
+C9	S	safari
+D9	N	15
+E9	S	Mozilla/5.0 (Macintosh; Intel Mac OS X 14_5) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Safari/605.1.15
+F9	S	desktop
+G9	S	Safari Mac
+A10	S	-
+B10	N	5
+C10	S	android
+D10	N	8
+E10	S	Dalvik/2.1.0 (Linux; U; Android 14; SHIELD Android TV Build/SQ3A.220705.003.A1)
+F10	S	android-tv
+G10	S	Nvidia Shield
+A11	S	X
+B11	N	6
+C11	S	android
+D11	N	7
+E11	S	Mozilla/5.0 (Linux; Android 14; SM-S928B) Chrome/134.0.0.0 Mobile Safari/537.36
+F11	S	mobile
+G11	S	Samsung S24 Ultra
+A12	S	X
+B12	N	7
+C12	S	iptv_apps
+D12	N	8
+E12	S	OTT Navigator/1.6.8.6 (Build 40712) AppleWebKit/606
+F12	S	android-tv
+G12	S	OTT Navigator
+A13	S	X
+B13	N	8
+C13	S	iptv_apps
+D13	N	7
+E13	S	TiviMate/4.7.0 (Linux; Android 11; BRAVIA 4K)
+F13	S	android-tv
+G13	S	TiviMate
+A14	S	X
+B14	N	9
+C14	S	smart-tv
+D14	N	5
+E14	S	Mozilla/5.0 (Web0S; Linux/SmartTV) AppleWebKit/537.36 Chrome/53.0.2785.34 Safari/537.36 WebAppManager
+F14	S	smart-tv
+G14	S	LG webOS
+A15	S	-
+B15	N	10
+C15	S	legacy
+D15	N	0
+E15	S	VLC/3.0.20 LibVLC/3.0.20
+F15	S	desktop
+G15	S	VLC clasico (inactive)
+A16	S	-
+B16	N	11
+C16	S	legacy
+D16	N	0
+E16	S	Kodi/19.0
+F16	S	desktop
+G16	S	Kodi clasico (inactive)
+A17	S	-
+B17	N	12
+C17	S	bot
+D17	S	0
+E17	S	curl/7.88.0
+F17	S	tester
+G17	S	curl (inactive)
+A19	S	REFERER POOL (Activar X = en rotacion)
+A20	S	Activar
+B20	S	#
+C20	S	Domain
+D20	S	Notas
+A21	S	X
+B21	N	1
+C21	S	https://www.netflix.com/
+D21	S	CDN-friendly, neutral
+A22	S	X
+B22	N	2
+C22	S	https://www.youtube.com/
+D22	S	CDN-friendly
+A23	S	X
+B23	N	3
+C23	S	https://premium-iptv-service.com/
+D23	S	Generico IPTV
+A24	S	X
+B24	N	4
+C24	S	https://www.google.com/
+D24	S	Universal
+A25	S	-
+B25	N	5
+C25	S	https://iptv-ape.duckdns.org/
+D25	S	TU dominio - NO USAR
+A27	S	BLOQUEO HANDLING (HTTP error tree)
+A28	S	Activar
+B28	S	HTTP Code
+C28	S	Causa probable
+D28	S	Accion
+E28	S	Reintentos
+F28	S	Delay ms
+G28	S	Fallback
+A29	S	X
+B29	N	400
+C29	S	Bad request
+D29	S	retry-with-clean-headers
+E29	N	3
+F29	N	200
+G29	S	-
+A30	S	X
+B30	N	403
+C30	S	Auth/IP block
+D30	S	rotate-ua,refresh-token,retry
+E30	N	5
+F30	N	200
+G30	S	guest-stub
+A31	S	X
+B31	N	404
+C31	S	Not found
+D31	S	check-manifest-path,fallback-m3u
+E31	N	2
+F31	N	500
+G31	S	fallback-m3u
+A32	S	X
+B32	N	407
+C32	S	Proxy auth required
+D32	S	inject-basic-auth-stub
+E32	N	30
+F32	N	100
+G32	S	YW5vbjphbm9u
+A33	S	X
+B33	N	429
+C33	S	Rate limit
+D33	S	honor-retry-after,backoff
+E33	N	5
+F33	N	1000
+G33	S	-
+A34	S	X
+B34	N	500
+C34	S	Server error
+D34	S	retry,fallback-cdn
+E34	N	3
+F34	N	500
+G34	S	cdn-alt
+A35	S	X
+B35	N	502
+C35	S	Bad gateway
+D35	S	rotate-cdn,retry
+E35	N	5
+F35	N	500
+G35	S	origin-direct
+A36	S	X
+B36	N	503
+C36	S	Service unavail
+D36	S	wait,cdn-rotate,retry
+E36	N	5
+F36	N	1000
+G36	S	origin-direct
+A37	S	X
+B37	N	504
+C37	S	Gateway timeout
+D37	S	timeout-extend,retry
+E37	N	3
+F37	N	1000
+G37	S	low-latency-mode
+A40	S	➕ AGREGAR UA
+B40	S	➕ AGREGAR REFERER
+C40	S	➕ AGREGAR BLOQUEO HANDLER
+D40	S	➖ QUITAR FILA SELECCIONADA
+E40	S	🎲 RANDOMIZAR PESOS
+A41	S	→ AddUserAgent()
+B41	S	→ AddReferer()
+C41	S	→ AddBloqueoHandler()
+D41	S	→ RemoveSelectedRow()
+E41	S	→ RandomizeWeights()

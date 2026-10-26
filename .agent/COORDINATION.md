@@ -1,3 +1,77 @@
+> ⚠️ **LEE ESTO PRIMERO (2026-10-25).** Antes del contenido histórico de abajo hay ahora un
+> **tablero vivo** que dice quién está tocando qué. Si vas a escribir una sola línea en este repo,
+> pasa por él. El contenido previo de este archivo **no se modificó** (byte a byte; verificado por hash).
+
+## TABLERO VIVO — coordinación inter-sesión (2026-10-25T22:43:17-05:00)
+
+**Estado medido cuando se escribió esta sección:** 14 grupos de workspace en `$env:DSH_HOME\sessions`;
+el grupo IPTV contiene **28 directorios de sesión** (6 retirados en `.agent-teams/retired-members.json`);
+**3 equipos** vivos en `.agent-teams/` + `archive/media-fanout`; **17 archivos tracked modificados**,
+**3172 borrados** y **69 untracked** sin commitear.
+
+### Artefactos (esta es la cadena que hay que leer)
+
+| Qué | Dónde |
+|---|---|
+| **Tablero máquina-legible** (claims, locks, cola, conflictos, `no_touch`) | `.agent-teams/session-board/BOARD.json` |
+| **Protocolo de claims** (claim · heartbeat · release · conflicto · anti bare-commit) | `docs/ops/session-coordination/COORDINATION_PROTOCOL.md` |
+| **Avisos** (append-only, 1 línea JSON por evento) | `docs/ops/session-coordination/notices.jsonl` |
+| **Índice humano de avisos** | `docs/ops/session-coordination/NOTICES.md` |
+| **Qué hay en vuelo ahora mismo** | `audit/alignment/2026-10-25/00-inflight/INFLIGHT_INVENTORY.md` |
+| **Enforcement real de locks** (bloquea: exit 1) | `tools/session-guard.js` + `.session/locks.json` |
+| **Ledger humano de la otra sesión** (se lee, no se edita) | `COORDENADAS_SESIONES.md` |
+
+### Las 5 reglas (resumen ejecutable)
+
+1. **CLAIM ANTES DE ESCRIBIR.** Ninguna escritura empieza sin claim publicado en el board
+   (ruta/glob + intención + TTL). Incluye "un cambio de una línea".
+2. **HEARTBEAT.** Claim con TTL > 60 min → heartbeat cada 30 min. Sin heartbeat el claim **caduca** y la
+   ruta queda libre para el siguiente (que lo registra en `notices.jsonl`).
+3. **RELEASE + SHA256.** Terminar = liberar la ruta **y** dejar el sha256 del artefacto en el aviso de
+   cierre. Un cierre sin evidencia se trata como **no verificado**.
+4. **PROHIBIDO EL BARE-COMMIT.** Nada de `git add -A`, `git add .`, `git commit -a` ni `--amend` mientras
+   haya trabajo en vuelo. Commit quirúrgico con rutas explícitas + `git diff --cached --name-status` antes.
+5. **CONFLICTO: EL PRIMERO GANA HASTA SU TTL.** Si un lock/claim ajeno cubre tu ruta: **no escribas**;
+   registra el conflicto y escala. El usuario (HFRC) es el árbitro final para `critical`/`high`.
+
+### Precedencia (sin ambigüedad)
+
+```
+PERMISO DE ESCRITURA → .session/locks.json (unión con el ledger humano; gana el MÁS restrictivo)
+QUÉ ESTÁ EN VUELO   → .agent-teams/session-board/BOARD.json
+CONTEXTO / POR QUÉ  → este archivo + COORDENADAS_SESIONES.md
+```
+
+### Aviso inmediato: rutas que NO se tocan ahora
+
+`IPTV_v5.4_MAX_AGGRESSION/frontend/js/**` (t44, dsh-lead) ·
+`IPTV_v5.4_MAX_AGGRESSION/vps/production_mirror/**` (t44) · `tools/crystal-upscale/**` (t47) ·
+`_vps_stage/nginx/**` y `_vps_stage/lua/**` (t46) · `_vps_stage/tests/emitter_level_assert.js` (t45) ·
+`contracts/**` y `docs/upscale_lab/**` (sesión REA/VPS) · `.session/**` · `COORDENADAS_SESIONES.md`.
+Lista completa y con motivo: `BOARD.json → no_touch[]` (18 globs).
+
+### Conflictos abiertos (detalle con evidencia en `BOARD.json → conflicts[]`)
+
+| ID | Sev | Qué |
+|---|---|---|
+| X-001 | high | Autoridad de coordinación **duplicada**: `session-guard`+`COORDENADAS_SESIONES.md` vs este board |
+| X-002 | high | `frontend/js/**` bloqueado por t44 mientras la lane de auditoría t6 debe leerlo |
+| X-003 | medium | **Drift**: el ledger humano declara locks que `.session/locks.json` no tiene |
+| X-004 | medium | 17 archivos modificados sin commitear: riesgo de bare-commit |
+| X-005 | info | `audit/alignment/` (equipo) vs `audit_teams_REA/` (otra sesión): dos verdades documentales |
+
+### Cómo convive con este documento
+
+- **No reemplaza** el hand-off histórico: `.agent/COORDINATION.md` sigue siendo la Capa 1 del cortex
+  (`iptv-cortex-init-mandatory`) y el lugar donde se documenta *qué se construyó y por qué*.
+- El board documenta *quién puede tocar qué y hasta cuándo*. **No se duplica contenido entre ambos.**
+- Prohibido reescribir este archivo completo: solo `append`/`prepend` de secciones. Las entradas que
+  quedaron falsas se **anotan debajo** con fecha, no se editan.
+- Restauración de esta sección: `Copy-Item .agent/COORDINATION.md.bak_20261026T034317Z .agent/COORDINATION.md -Force`
+  (backup tomado antes del prepend; sha256 del original `348862964AD42E0942541FFF1D4CB9ED81D4E4D316918A5817E8AB2972E9E591`, 16805 bytes).
+
+---
+
 # Multi-Agent Coordination — LAB Importer Extension
 
 > **Read this BEFORE editing any file in this repo.** Two agents are working in parallel; this ledger prevents collisions.

@@ -1,0 +1,511 @@
+{
+  "label": "backend",
+  "file": "C:\\Users\\HFRC\\Desktop\\IPTV_Navigator_PRO_v5.4_MAX_AGGRESSION\\IPTV_v5.4_MAX_AGGRESSION\\backend\\channels_map.json",
+  "bytes": 29351317,
+  "top_level_type": "object",
+  "record_count": 8366,
+  "duplicate_keys": [],
+  "duplicate_key_count": 0,
+  "key_length_min": 2,
+  "key_length_max": 28,
+  "key_charset": {
+    "numeric_only": 5973,
+    "has_underscore": 0,
+    "other": 2393
+  },
+  "first_keys": [
+    "30",
+    "32",
+    "34",
+    "45",
+    "47"
+  ],
+  "last_key": "27mediaset.it",
+  "field_value_summary": {
+    "profile": {
+      "P2": 3437,
+      "P3": 4609,
+      "P1": 295,
+      "P0": 8,
+      "P4": 17
+    },
+    "cmaf_delivery_mode": {
+      "inline": 8366
+    },
+    "cmaf_profile": {
+      "live": 8366
+    },
+    "lcevc_state": {
+      "OFF": 8366
+    },
+    "lcevc_base_codec": {
+      "h264": 8366
+    },
+    "hdr_profile": {
+      "sdr": 8348,
+      "dolby_vision": 18
+    },
+    "dolby_vision_profile": {
+      "": 8366
+    },
+    "color_primaries": {
+      "bt709": 8366
+    },
+    "transfer_characteristics": {
+      "bt709": 8366
+    }
+  },
+  "nested_object_fields": {
+    "math_telemetry": 8366,
+    "fusion_directives": 8366,
+    "codec_priority": 8366,
+    "abr_ladder": 8366,
+    "degradation_chain": 8366
+  },
+  "record_size": {
+    "min": 3452,
+    "max": 16146
+  },
+  "secret_key_hits": {},
+  "crosstab": {
+    "P2|-|-|sdr": 3435,
+    "P3|-|-|sdr": 4600,
+    "P1|-|-|sdr": 295,
+    "P2|-|-|dolby_vision": 2,
+    "P0|-|-|dolby_vision": 7,
+    "P0|-|-|sdr": 1,
+    "P3|-|-|dolby_vision": 9,
+    "P4|-|-|sdr": 17
+  },
+  "records_with_url_userinfo": 0,
+  "signed_url_param_hits": {},
+  "tokenish_value_records": 0,
+  "parse_errors": 0,
+  "depth_max": 4,
+  "trailing_bytes_checked": 0,
+  "unterminated": false,
+  "field_presence_sorted": [
+    [
+      "profile",
+      8366
+    ],
+    [
+      "label",
+      8366
+    ],
+    [
+      "group",
+      8366
+    ],
+    [
+      "math_telemetry",
+      8366
+    ],
+    [
+      "fusion_directives",
+      8366
+    ],
+    [
+      "cmaf_enabled",
+      8366
+    ],
+    [
+      "cmaf_delivery_mode",
+      8366
+    ],
+    [
+      "cmaf_profile",
+      8366
+    ],
+    [
+      "codec_priority",
+      8366
+    ],
+    [
+      "lcevc_enabled",
+      8366
+    ],
+    [
+      "lcevc_state",
+      8366
+    ],
+    [
+      "lcevc_mode",
+      8366
+    ],
+    [
+      "lcevc_base_codec",
+      8366
+    ],
+    [
+      "lcevc_transport",
+      8366
+    ],
+    [
+      "lcevc_fallback",
+      8366
+    ],
+    [
+      "hdr_profile",
+      8366
+    ],
+    [
+      "ai_sr_enabled",
+      8366
+    ],
+    [
+      "ai_sr_mode",
+      8366
+    ],
+    [
+      "lcevc_profile",
+      8366
+    ],
+    [
+      "lcevc_scale_factor",
+      8366
+    ],
+    [
+      "lcevc_source",
+      8366
+    ],
+    [
+      "hdr10_enabled",
+      8366
+    ],
+    [
+      "hdr10_plus_enabled",
+      8366
+    ],
+    [
+      "dolby_vision_enabled",
+      8366
+    ],
+    [
+      "dolby_vision_profile",
+      8366
+    ],
+    [
+      "hlg_enabled",
+      8366
+    ],
+    [
+      "color_primaries",
+      8366
+    ],
+    [
+      "transfer_characteristics",
+      8366
+    ],
+    [
+      "ai_sr_scale_factor",
+      8366
+    ],
+    [
+      "ai_sr_engine",
+      8366
+    ],
+    [
+      "bwdif_enabled",
+      8366
+    ],
+    [
+      "nnedi3_enabled",
+      8366
+    ],
+    [
+      "temporal_sr_enabled",
+      8366
+    ],
+    [
+      "cdn_primary",
+      8366
+    ],
+    [
+      "cdn_backup",
+      8366
+    ],
+    [
+      "cdn_backup2",
+      8366
+    ],
+    [
+      "cdn_routing_mode",
+      8366
+    ],
+    [
+      "circuit_breaker_enabled",
+      8366
+    ],
+    [
+      "health_probe_interval",
+      8366
+    ],
+    [
+      "failover_threshold",
+      8366
+    ],
+    [
+      "player_profile",
+      8366
+    ],
+    [
+      "stealth_ua",
+      8366
+    ],
+    [
+      "hydra_stealth_enabled",
+      8366
+    ],
+    [
+      "stream_inf_enabled",
+      8366
+    ],
+    [
+      "exthttp_enabled",
+      8366
+    ],
+    [
+      "extvlcopt_enabled",
+      8366
+    ],
+    [
+      "kodiprop_enabled",
+      8366
+    ],
+    [
+      "abr_enabled",
+      8366
+    ],
+    [
+      "abr_ladder",
+      8366
+    ],
+    [
+      "abr_max_bitrate",
+      8366
+    ],
+    [
+      "abr_min_bitrate",
+      8366
+    ],
+    [
+      "telchemy_enabled",
+      8366
+    ],
+    [
+      "tvqm_vstq",
+      8366
+    ],
+    [
+      "tvqm_vsmq",
+      8366
+    ],
+    [
+      "tr101290_p1",
+      8366
+    ],
+    [
+      "tr101290_p2",
+      8366
+    ],
+    [
+      "tr101290_p3",
+      8366
+    ],
+    [
+      "vqs_score",
+      8366
+    ],
+    [
+      "vqs_tier",
+      8366
+    ],
+    [
+      "quality_profile",
+      8366
+    ],
+    [
+      "quantum_pixel_overdrive",
+      8366
+    ],
+    [
+      "content_aware_hevc",
+      8366
+    ],
+    [
+      "motor_dinamico_mpd",
+      8366
+    ],
+    [
+      "antigravity_mode",
+      8366
+    ],
+    [
+      "god_mode_zero_drop",
+      8366
+    ],
+    [
+      "ape_version",
+      8366
+    ],
+    [
+      "ape_profile",
+      8366
+    ],
+    [
+      "ape_dna_hash",
+      8366
+    ],
+    [
+      "ape_build_timestamp",
+      8366
+    ],
+    [
+      "ape_deployment_id",
+      8366
+    ],
+    [
+      "ape_node_id",
+      8366
+    ],
+    [
+      "dpi_evasion_enabled",
+      8366
+    ],
+    [
+      "token_auth_enabled",
+      8366
+    ],
+    [
+      "geo_restriction",
+      8366
+    ],
+    [
+      "drm_type",
+      8366
+    ],
+    [
+      "drm_server_url",
+      8366
+    ],
+    [
+      "segment_duration",
+      8366
+    ],
+    [
+      "segment_count",
+      8366
+    ],
+    [
+      "playlist_type",
+      8366
+    ],
+    [
+      "target_duration",
+      8366
+    ],
+    [
+      "referer",
+      8366
+    ],
+    [
+      "origin",
+      8366
+    ],
+    [
+      "cookie",
+      8366
+    ],
+    [
+      "x_forwarded_for",
+      8366
+    ],
+    [
+      "custom_header_1",
+      8366
+    ],
+    [
+      "custom_header_2",
+      8366
+    ],
+    [
+      "custom_header_3",
+      8366
+    ],
+    [
+      "probe_timeout",
+      8366
+    ],
+    [
+      "buffer_size",
+      8366
+    ],
+    [
+      "reconnect_attempts",
+      8366
+    ],
+    [
+      "reconnect_delay",
+      8366
+    ],
+    [
+      "low_latency_mode",
+      8366
+    ],
+    [
+      "live_edge_segments",
+      8366
+    ],
+    [
+      "max_buffer_duration",
+      8366
+    ],
+    [
+      "ext_x_version",
+      8366
+    ],
+    [
+      "ext_x_independent_segments",
+      8366
+    ],
+    [
+      "ext_x_map_uri",
+      8366
+    ],
+    [
+      "network_type",
+      8366
+    ],
+    [
+      "bandwidth_estimate",
+      8366
+    ],
+    [
+      "latency_estimate",
+      8366
+    ],
+    [
+      "jitter_estimate",
+      8366
+    ],
+    [
+      "packet_loss_rate",
+      8366
+    ],
+    [
+      "connection_type",
+      8366
+    ],
+    [
+      "degradation_chain",
+      8366
+    ],
+    [
+      "stream_id",
+      1
+    ]
+  ],
+  "avg_record_size": 3491,
+  "distinct_keys": 8366
+}

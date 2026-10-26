@@ -1,0 +1,27 @@
+=== t9 PHYSICAL CONTRACTS GATE (D-11 verification, read-only) ===
+command: node contracts/verify_contracts.mjs
+== VERIFICACIÓN DE CONTRATOS ==
+  PASS  schema crystal-contracts/v1
+  PASS  master sha256 e2bb8e69a31d0f68…
+  PASS  artefacto _vps_stage/media/ape-supervisor.sh
+  PASS  artefacto _vps_stage/media/ape-supervisor.lua
+  PASS  artefacto _vps_stage/media/ape-supervisor@.service
+  PASS  artefacto _vps_stage/media/ape-ingest.sh
+  PASS  artefacto _vps_stage/media/ape-ingest@.service
+  PASS  artefacto _vps_stage/lua/ape_session.lua
+  PASS  artefacto _vps_stage/lua/ape_caps.lua
+  PASS  artefacto _vps_stage/nginx/media-fanout.conf
+  PASS  viabilidad GPU/CPU declarada por perfil
+  FAIL  SHA MISMATCH _vps_stage/tests/fanout_concurrency.sh: contrato 9b774bffbe6c744f… vs real b558b1cdff883579…
+
+RESULT=FAIL (1 fallos, 11 ok)
+EXIT=1
+
+--- D-11 check: pin vs HEAD bytes vs disk bytes for _vps_stage/tests/fanout_concurrency.sh ---
+pin  (crystal_contracts.json)      = 9b774bffbe6c744f...
+HEAD blob bytes/sha256            = 98126 B / 9b774bffbe6c744fc205136561c506e3bf93af8e1dea575304d16ae5601a6c94   => PIN == HEAD (contract is SANE)
+disk bytes/sha256 (working tree)  = 99666 B / b558b1cdff883579041391830318d424fc8d8d07323ef7a5167374055b7399fc   => disk-only divergence
+git status --porcelain -- path    =  M _vps_stage/tests/fanout_concurrency.sh
+
+VERDICT per D-11: the single FAIL is CONTRACT_DRIFT (foreign uncommitted WIP), NOT an alignment failure.
+11/12 records PASS; the pinned artefact bytes equal HEAD bytes.

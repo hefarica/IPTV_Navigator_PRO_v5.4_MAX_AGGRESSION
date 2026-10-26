@@ -1,0 +1,138 @@
+{
+  "field_counts": {
+    "frontend": 170,
+    "backend": 105,
+    "frontend_data": 104
+  },
+  "fields_in_frontend_only": [
+    "slug",
+    "tvg_id",
+    "tvg_logo",
+    "server",
+    "username",
+    "password",
+    "url_m3u8",
+    "url_ts",
+    "quality_level",
+    "resolution",
+    "res_w",
+    "res_h",
+    "bandwidth",
+    "avg_bandwidth",
+    "codec_rfc6381",
+    "degradation_levels",
+    "current_level",
+    "catchup_enabled",
+    "catchup_days",
+    "catchup_source",
+    "guardian_enabled",
+    "guardian_state",
+    "guardian_consecutive_fails",
+    "guardian_last_check",
+    "guardian_fallback_level",
+    "qos_dscp_class",
+    "qos_priority",
+    "qos_target_bitrate_kbps",
+    "qos_min_bitrate_kbps",
+    "qos_max_bitrate_kbps",
+    "qos_abr_enabled",
+    "qos_parallel_segments",
+    "qoe_score",
+    "qoe_label",
+    "qoe_mos_target",
+    "qoe_rebuffer_tolerance_secs",
+    "buffer_target_secs",
+    "buffer_min_secs",
+    "buffer_max_secs",
+    "prebuffer_secs",
+    "circuit_breaker_state",
+    "circuit_breaker_failures",
+    "circuit_breaker_threshold",
+    "circuit_breaker_timeout_secs",
+    "memory_last_position_secs",
+    "memory_last_played_at",
+    "memory_total_watch_secs",
+    "memory_sessions",
+    "memory_avg_qoe",
+    "net_avg_latency_ms",
+    "net_avg_jitter_ms",
+    "net_avg_packet_loss_pct",
+    "net_avg_bandwidth_kbps",
+    "net_last_measured",
+    "resilience_strategy",
+    "resilience_max_retries",
+    "resilience_retry_backoff",
+    "resilience_silent_reconnect",
+    "resilience_health_probe_interval_secs",
+    "resilience_uptime_pct",
+    "resilience_total_failures",
+    "resilience_total_successes",
+    "sync_version",
+    "sync_timestamp",
+    "sync_source",
+    "interdependency"
+  ],
+  "fields_in_backend_only": [
+    "ext_x_map_uri"
+  ],
+  "fields_in_backend_only_vs_data": [
+    "stream_id"
+  ],
+  "fields_in_frontend_data_only": [],
+  "nested_objects": {
+    "frontend": {
+      "codec_priority": 9293,
+      "degradation_chain": 9293,
+      "abr_ladder": 9293,
+      "math_telemetry": 9293,
+      "fusion_directives": 9293,
+      "interdependency": 9293
+    },
+    "backend": {
+      "math_telemetry": 8366,
+      "fusion_directives": 8366,
+      "codec_priority": 8366,
+      "abr_ladder": 8366,
+      "degradation_chain": 8366
+    },
+    "frontend_data": {
+      "math_telemetry": 8366,
+      "fusion_directives": 8366,
+      "codec_priority": 8366,
+      "abr_ladder": 8366,
+      "degradation_chain": 8366
+    }
+  },
+  "credential_fields": {
+    "frontend": {
+      "username": 9293,
+      "password": 9293
+    },
+    "backend": {},
+    "frontend_data": {}
+  },
+  "depth": {
+    "frontend": 5,
+    "backend": 4,
+    "frontend_data": 4
+  },
+  "record_size": {
+    "frontend": {
+      "min": 7856,
+      "max": 33510
+    },
+    "backend": {
+      "min": 3452,
+      "max": 16146
+    },
+    "frontend_data": {
+      "min": 3341,
+      "max": 16034
+    }
+  },
+  "avg_record_size": {
+    "frontend": 8043,
+    "backend": 3491,
+    "frontend_data": 3380
+  }
+}

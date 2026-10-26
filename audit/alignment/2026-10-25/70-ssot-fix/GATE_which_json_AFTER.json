@@ -1,0 +1,349 @@
+{
+  "schema": "t9-json-export-identity/1.0",
+  "excel": {
+    "path": "C:\\Users\\HFRC\\Downloads\\APE_M3U8_LAB_v8_FIXED.xlsm",
+    "sha256": "663EF44E2D69521EB0E77DDA7B64A32EA4F942992F8F2C80614EAEE8EC52806A",
+    "sizeBytes": 3582019,
+    "mtimeUtc": "2026-06-11T06:54:49.080713Z"
+  },
+  "candidates": [
+    {
+      "id": "lab_master_repo",
+      "path": "C:/Users/HFRC/Desktop/IPTV_Navigator_PRO_v5.4_MAX_AGGRESSION/IPTV_v5.4_MAX_AGGRESSION/frontend/lab_master_22.6.0.json",
+      "bytes": 280108,
+      "sha256": "A3B2B9C48A6C6E2332C61A4E33748E3252D986EF276DE83EAB67EF0976EF70F3",
+      "profiles": {
+        "P0": {
+          "diffs": []
+        },
+        "P1": {
+          "diffs": []
+        },
+        "P2": {
+          "diffs": []
+        },
+        "P3": {
+          "diffs": []
+        },
+        "P4": {
+          "diffs": []
+        },
+        "P5": {
+          "diffs": []
+        }
+      },
+      "totalDiffs": 0,
+      "totalCompares": 24
+    },
+    {
+      "id": "CRYSTAL-4K-UHD",
+      "path": "C:/Users/HFRC/Downloads/LAB_CALIBRATED_BULLETPROOF_22.6.0-CRYSTAL-4K-UHD.json",
+      "bytes": 280065,
+      "sha256": "099A1707A2F1AE692FFCFEDE01165F21CD66656B786742CE8DB518581A371FD4",
+      "profiles": {
+        "P0": {
+          "diffs": []
+        },
+        "P1": {
+          "diffs": [
+            {
+              "field": "settings.resolution",
+              "excelCell": "6_NIVEL_2_PROFILES!C25",
+              "excel": "3840x2160",
+              "json": "7680x4320"
+            },
+            {
+              "field": "settings.maxResolution",
+              "excelCell": "6_NIVEL_2_PROFILES!C48",
+              "excel": "3840x2160",
+              "json": "7680x4320"
+            }
+          ]
+        },
+        "P2": {
+          "diffs": []
+        },
+        "P3": {
+          "diffs": [
+            {
+              "field": "settings.resolution",
+              "excelCell": "6_NIVEL_2_PROFILES!E25",
+              "excel": "1920x1080",
+              "json": "3840x2160"
+            },
+            {
+              "field": "settings.codec_full",
+              "excelCell": "6_NIVEL_2_PROFILES!E37",
+              "excel": "hvc1.2.4.L123.B0",
+              "json": "hvc1.1.6.L120.B0"
+            },
+            {
+              "field": "settings.maxResolution",
+              "excelCell": "6_NIVEL_2_PROFILES!E48",
+              "excel": "1920x1080",
+              "json": "3840x2160"
+            }
+          ]
+        },
+        "P4": {
+          "diffs": [
+            {
+              "field": "settings.resolution",
+              "excelCell": "6_NIVEL_2_PROFILES!F25",
+              "excel": "1280x720",
+              "json": "3840x2160"
+            },
+            {
+              "field": "settings.codec_full",
+              "excelCell": "6_NIVEL_2_PROFILES!F37",
+              "excel": "hvc1.2.4.L93.B0",
+              "json": "avc1.64001f"
+            },
+            {
+              "field": "settings.maxResolution",
+              "excelCell": "6_NIVEL_2_PROFILES!F48",
+              "excel": "1280x720",
+              "json": "3840x2160"
+            }
+          ]
+        },
+        "P5": {
+          "diffs": [
+            {
+              "field": "settings.resolution",
+              "excelCell": "6_NIVEL_2_PROFILES!G25",
+              "excel": "854x480",
+              "json": "3840x2160"
+            },
+            {
+              "field": "settings.maxResolution",
+              "excelCell": "6_NIVEL_2_PROFILES!G48",
+              "excel": "854x480",
+              "json": "3840x2160"
+            }
+          ]
+        }
+      },
+      "totalDiffs": 10,
+      "totalCompares": 24
+    },
+    {
+      "id": "EXPORT_20260611_020645",
+      "path": "C:/Users/HFRC/Downloads/LAB_CALIBRATED_20260611_020645.json",
+      "bytes": 222364,
+      "sha256": "6931BAF4BFA4C9EB0E565560220A2328DDBBF68E450B9E8307C6335E01382C93",
+      "profiles": {
+        "P0": {
+          "diffs": []
+        },
+        "P1": {
+          "diffs": []
+        },
+        "P2": {
+          "diffs": []
+        },
+        "P3": {
+          "diffs": []
+        },
+        "P4": {
+          "diffs": []
+        },
+        "P5": {
+          "diffs": []
+        }
+      },
+      "totalDiffs": 0,
+      "totalCompares": 24
+    },
+    {
+      "id": "MEMC-TOTAL-8K120_BACKUP_20260607",
+      "path": "C:/Users/HFRC/Downloads/LAB_CALIBRATED_BULLETPROOF_22.6.0-MEMC-TOTAL-8K120_BACKUP_20260607.json",
+      "bytes": 408126,
+      "sha256": "FFD3E0E06129067CAD28E7DCD908C505A13E88F16C5B7B0089596C5172CA1DD7",
+      "profiles": {
+        "P0": {
+          "diffs": []
+        },
+        "P1": {
+          "diffs": [
+            {
+              "field": "settings.resolution",
+              "excelCell": "6_NIVEL_2_PROFILES!C25",
+              "excel": "3840x2160",
+              "json": "7680x4320"
+            },
+            {
+              "field": "settings.codec_full",
+              "excelCell": "6_NIVEL_2_PROFILES!C37",
+              "excel": "hvc1.2.4.L153.B0",
+              "json": "av01.0.15M.10"
+            },
+            {
+              "field": "settings.maxResolution",
+              "excelCell": "6_NIVEL_2_PROFILES!C48",
+              "excel": "3840x2160",
+              "json": "7680x4320"
+            }
+          ]
+        },
+        "P2": {
+          "diffs": []
+        },
+        "P3": {
+          "diffs": [
+            {
+              "field": "settings.resolution",
+              "excelCell": "6_NIVEL_2_PROFILES!E25",
+              "excel": "1920x1080",
+              "json": "3840x2160"
+            },
+            {
+              "field": "settings.codec_full",
+              "excelCell": "6_NIVEL_2_PROFILES!E37",
+              "excel": "hvc1.2.4.L123.B0",
+              "json": "hvc1.1.6.L120.B0"
+            },
+            {
+              "field": "settings.maxResolution",
+              "excelCell": "6_NIVEL_2_PROFILES!E48",
+              "excel": "1920x1080",
+              "json": "3840x2160"
+            }
+          ]
+        },
+        "P4": {
+          "diffs": [
+            {
+              "field": "settings.resolution",
+              "excelCell": "6_NIVEL_2_PROFILES!F25",
+              "excel": "1280x720",
+              "json": "3840x2160"
+            },
+            {
+              "field": "settings.codec_full",
+              "excelCell": "6_NIVEL_2_PROFILES!F37",
+              "excel": "hvc1.2.4.L93.B0",
+              "json": "avc1.64001f"
+            },
+            {
+              "field": "settings.maxResolution",
+              "excelCell": "6_NIVEL_2_PROFILES!F48",
+              "excel": "1280x720",
+              "json": "3840x2160"
+            }
+          ]
+        },
+        "P5": {
+          "diffs": [
+            {
+              "field": "settings.resolution",
+              "excelCell": "6_NIVEL_2_PROFILES!G25",
+              "excel": "854x480",
+              "json": "3840x2160"
+            },
+            {
+              "field": "settings.maxResolution",
+              "excelCell": "6_NIVEL_2_PROFILES!G48",
+              "excel": "854x480",
+              "json": "3840x2160"
+            }
+          ]
+        }
+      },
+      "totalDiffs": 11,
+      "totalCompares": 24
+    },
+    {
+      "id": "MEMC-TOTAL-8K120",
+      "path": "C:/Users/HFRC/Downloads/LAB_CALIBRATED_BULLETPROOF_22.6.0-MEMC-TOTAL-8K120.json",
+      "bytes": 408174,
+      "sha256": "29C548050FFF3B3EBC0CD3ABE50CC64DDD2C5DF83687E233452A4A899B158865",
+      "profiles": {
+        "P0": {
+          "diffs": []
+        },
+        "P1": {
+          "diffs": [
+            {
+              "field": "settings.resolution",
+              "excelCell": "6_NIVEL_2_PROFILES!C25",
+              "excel": "3840x2160",
+              "json": "7680x4320"
+            },
+            {
+              "field": "settings.maxResolution",
+              "excelCell": "6_NIVEL_2_PROFILES!C48",
+              "excel": "3840x2160",
+              "json": "7680x4320"
+            }
+          ]
+        },
+        "P2": {
+          "diffs": []
+        },
+        "P3": {
+          "diffs": [
+            {
+              "field": "settings.resolution",
+              "excelCell": "6_NIVEL_2_PROFILES!E25",
+              "excel": "1920x1080",
+              "json": "3840x2160"
+            },
+            {
+              "field": "settings.codec_full",
+              "excelCell": "6_NIVEL_2_PROFILES!E37",
+              "excel": "hvc1.2.4.L123.B0",
+              "json": "hvc1.1.6.L120.B0"
+            },
+            {
+              "field": "settings.maxResolution",
+              "excelCell": "6_NIVEL_2_PROFILES!E48",
+              "excel": "1920x1080",
+              "json": "3840x2160"
+            }
+          ]
+        },
+        "P4": {
+          "diffs": [
+            {
+              "field": "settings.resolution",
+              "excelCell": "6_NIVEL_2_PROFILES!F25",
+              "excel": "1280x720",
+              "json": "3840x2160"
+            },
+            {
+              "field": "settings.codec_full",
+              "excelCell": "6_NIVEL_2_PROFILES!F37",
+              "excel": "hvc1.2.4.L93.B0",
+              "json": "avc1.64001f"
+            },
+            {
+              "field": "settings.maxResolution",
+              "excelCell": "6_NIVEL_2_PROFILES!F48",
+              "excel": "1280x720",
+              "json": "3840x2160"
+            }
+          ]
+        },
+        "P5": {
+          "diffs": [
+            {
+              "field": "settings.resolution",
+              "excelCell": "6_NIVEL_2_PROFILES!G25",
+              "excel": "854x480",
+              "json": "3840x2160"
+            },
+            {
+              "field": "settings.maxResolution",
+              "excelCell": "6_NIVEL_2_PROFILES!G48",
+              "excel": "854x480",
+              "json": "3840x2160"
+            }
+          ]
+        }
+      },
+      "totalDiffs": 10,
+      "totalCompares": 24
+    }
+  ]
+}

@@ -1,0 +1,41 @@
+=== N. DIFF T19 PURO: before(T19) -> after(T19) ===
+diff_exit=1
+-- hunks:
+2
+-- lineas cambiadas:
+-        proxy_read_timeout      5s;
++        proxy_read_timeout      60s;
+-        proxy_read_timeout      5s;
++        proxy_read_timeout      60s;
+
+=== O. proxy_read_timeout en el dump de T19 (after) vs dump vivo ===
+-- T19 after:
+298:        proxy_read_timeout      60s;
+422:        proxy_read_timeout      60s;
+519:        proxy_read_timeout 300s;
+535:        proxy_read_timeout 86400s;
+826:    proxy_read_timeout 20s;
+-- vivo:
+298:        proxy_read_timeout      60s;
+422:        proxy_read_timeout      60s;
+519:        proxy_read_timeout 300s;
+535:        proxy_read_timeout 86400s;
+826:    proxy_read_timeout 60s;
+
+=== P. T22: backup de snippets/ape-meta-public.conf (prueba de autoria posterior) ===
+-rw-r--r-- 1 root root 2509 Oct 25 18:07 /root/nginx-bak/ape-meta-public.conf.bak_20261026T043703Z
+0a4002166054834c756d5451da49f8e9aa6327f5672a1e625a9c044df9ff91de  /root/nginx-bak/ape-meta-public.conf.bak_20261026T043703Z
+
+=== Q. cron.d/cache-health-monitor (solo lectura: permisos y 3 primeras lineas) ===
+/etc/cron.d/cache-health-monitor|259|644|2026-10-26 02:59:58.961769470 +0000
+# Monitorea cache RAM nginx cada 5 min — auto-restart si vacío >15min con tráfico
+# Deployed 2026-04-25 tras incidente freeze SKY SPORTS MAIN EVENTS 4K
+# DESHABILITADO 2026-10-25 bucle-proxy_cache-off: */5 * * * * root /usr/local/bin/cache-health-monitor
+
+=== R. resumen de huellas ===
+3e29b9280c05de36c4af445e8a9722573a23c865f240e2d87b2734178e60c515  /etc/nginx/conf.d/50-ape-meta-plane.conf
+e06ee870c55201c359990d99459aa9784d01569f5200176cfffed3448525d3f9  /root/nginx-bak/50-ape-meta-plane.conf.bak_20261026T043331Z
+a39e8de902cf5449553822eb1682d1a9d481390c1ce136a218d91fbe1ee4ac39  /etc/nginx/snippets/ape-meta-public.conf
+0a4002166054834c756d5451da49f8e9aa6327f5672a1e625a9c044df9ff91de  /root/nginx-bak/ape-meta-public.conf.bak_20261026T043703Z
+
+=== S. FIN (solo lectura) ===

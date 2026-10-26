@@ -1,5 +1,25 @@
 # IPTV Navigator PRO v5.4 MAX AGGRESSION — CLAUDE.md
 
+## 🛑 REALIDAD MEDIDA DEL VPS — LEER ANTES DE TOCAR LA CAPA VPS
+
+**La doctrina OMEGA describe un VPS que NO existe.** Medido el 2026-10-25 (solo lectura, cero mutaciones):
+
+- Producción es **rebase-only metadata**: sirve listas y rebasa URIs. **NO transporta vídeo** (`\.ts|\.m4s|\.mp4$ → 404`).
+- Pipeline real = **3 fases** (`header_filter` → `body_filter` → `log`), **no 5**. `rewrite_by_lua` y `access_by_lua`: 0 ocurrencias.
+- **NO hay** motor Rust `:8084` (unit inexistente, `/health` y `/metrics` = `000`), **NO hay** `shield-location.conf`, **NO hay** `/shield/` (responde **404**), **NO hay** OpenResty (es nginx 1.24.0 stock + módulo Lua), **NO hay** telemetría Conviva (`conviva.db` = 0 B).
+- El **pipeline transformador** del repo (22 `.lua` nunca desplegados) es **aspiracional**: el repo tiene 26 `.lua`, el VPS 14, sólo 4 en común. **Son dos arquitecturas, no dos versiones.**
+
+**Documentos obligatorios de esta capa:**
+[`docs/manifestos/VPS_REALITY_MEASURED_2026-10-25.md`](docs/manifestos/VPS_REALITY_MEASURED_2026-10-25.md) ·
+[`docs/manifestos/OMEGA_WORKING_FLOW_MANIFESTO_SNAPSHOT.md`](docs/manifestos/OMEGA_WORKING_FLOW_MANIFESTO_SNAPSHOT.md) ·
+[`audit/alignment/2026-10-25/40-vps/DOCTRINE_CORRECTION.md`](audit/alignment/2026-10-25/40-vps/DOCTRINE_CORRECTION.md)
+
+**Decisiones vigentes:** D-25 (la doctrina Crystal no existe en producción) · D-31 (no se edita el manifiesto global; se versiona en el repo) · D-32 (rige la arquitectura desplegada) · D-33 (contradicción `/shield/`: gana este archivo).
+
+### ⛔ PROHIBIDO: «desplegar para alinear»
+
+**No se despliega el pipeline Crystal, ni se escriben los 8 módulos sin fuente del Grupo B, ni se reactivan los timers `netshield-*` «para que la documentación cuadre con la realidad».** La realidad es correcta; la documentación era el error. Hacerlo sin incidente medido viola `iptv-vps-touch-nothing` y puede reintroducir el truncado de `Content-Length`, el bucle de reinicios de nginx cada 20 min, o frenar la reproducción. **Se corrige la documentación, no el VPS.**
+
 ## ⚡ PROMPT MAESTRO — LECTURA OBLIGATORIA ANTES DE CUALQUIER ACCIÓN
 
 **ANTES de tocar una sola línea de código en este repositorio**, Claude DEBE leer

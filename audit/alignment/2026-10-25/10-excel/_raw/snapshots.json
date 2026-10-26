@@ -1,0 +1,1371 @@
+[
+  {
+    "path": "C:\\Users\\HFRC\\Downloads\\APE_M3U8_LAB_v8_FIXED.xlsm",
+    "sha256": "663EF44E2D69521EB0E77DDA7B64A32EA4F942992F8F2C80614EAEE8EC52806A",
+    "sizeBytes": 3582019,
+    "mtime": 1781160889.0807133,
+    "sheetCount": 55,
+    "sheets": [
+      {
+        "name": "1_README",
+        "state": "visible",
+        "dimension": "A1:A70"
+      },
+      {
+        "name": "98_VALIDATIONS",
+        "state": "visible",
+        "dimension": "B1:B6"
+      },
+      {
+        "name": "2_CATALOGO_MASTER",
+        "state": "visible",
+        "dimension": "A1:J1762"
+      },
+      {
+        "name": "3_CAPAS",
+        "state": "visible",
+        "dimension": "A1:G17"
+      },
+      {
+        "name": "4_MIME_TYPES",
+        "state": "visible",
+        "dimension": "A1:D16"
+      },
+      {
+        "name": "6_NIVEL_2_PROFILES",
+        "state": "visible",
+        "dimension": "A1:H663"
+      },
+      {
+        "name": "5_NIVEL_1_HEADER",
+        "state": "visible",
+        "dimension": "A1:F72"
+      },
+      {
+        "name": "7_NIVEL_3_CHANNEL",
+        "state": "visible",
+        "dimension": "A1:G91"
+      },
+      {
+        "name": "8_MATRIX_3D",
+        "state": "visible",
+        "dimension": "A1:BC2398"
+      },
+      {
+        "name": "00_OMEGA_SCORECARD",
+        "state": "visible",
+        "dimension": "A1:E68"
+      },
+      {
+        "name": "18_CONFIG",
+        "state": "visible",
+        "dimension": "A1:E52"
+      },
+      {
+        "name": "19_ADB_PAYLOAD_INJECTOR",
+        "state": "visible",
+        "dimension": "A1:F38"
+      },
+      {
+        "name": "31_SOLVER_SETUP",
+        "state": "visible",
+        "dimension": "A1:F61"
+      },
+      {
+        "name": "36_BRAIN_SELECTOR",
+        "state": "visible",
+        "dimension": "B1:T72"
+      },
+      {
+        "name": "9_BRAIN_DASHBOARD",
+        "state": "visible",
+        "dimension": "A1:H80"
+      },
+      {
+        "name": "33_CHANNELS_FROM_FRONTEND",
+        "state": "visible",
+        "dimension": "A1:BK37131"
+      },
+      {
+        "name": "34_BRAIN_SCORING",
+        "state": "visible",
+        "dimension": "A1:V2889"
+      },
+      {
+        "name": "10_HOMOLOGATION",
+        "state": "visible",
+        "dimension": "A1:F33"
+      },
+      {
+        "name": "11_EXPANSION_ZONE",
+        "state": "visible",
+        "dimension": "A1:I107"
+      },
+      {
+        "name": "12_FORMATOS",
+        "state": "visible",
+        "dimension": "A1:F13"
+      },
+      {
+        "name": "13_CRYPTO",
+        "state": "visible",
+        "dimension": "A1:E33"
+      },
+      {
+        "name": "14_KEYRING",
+        "state": "veryHidden",
+        "dimension": "A1:F18"
+      },
+      {
+        "name": "15_CMCD_QOE",
+        "state": "visible",
+        "dimension": "A1:E26"
+      },
+      {
+        "name": "16_EVASION",
+        "state": "visible",
+        "dimension": "A1:G41"
+      },
+      {
+        "name": "17_SERVERS_POOL",
+        "state": "veryHidden",
+        "dimension": "A1:I19"
+      },
+      {
+        "name": "19_URL_BUILDER",
+        "state": "visible",
+        "dimension": "A1:G34"
+      },
+      {
+        "name": "20_URL_PROBE",
+        "state": "visible",
+        "dimension": "A1:D17"
+      },
+      {
+        "name": "21_WATERFALL",
+        "state": "visible",
+        "dimension": "A1:F21"
+      },
+      {
+        "name": "22_UX_IMPACT",
+        "state": "visible",
+        "dimension": "A1:D35"
+      },
+      {
+        "name": "23_BOTTLENECK",
+        "state": "visible",
+        "dimension": "A1:D23"
+      },
+      {
+        "name": "24_JSON_IMPORT",
+        "state": "visible",
+        "dimension": "A1:D21"
+      },
+      {
+        "name": "25_JSON_EXPORT",
+        "state": "visible",
+        "dimension": "A1:E13"
+      },
+      {
+        "name": "26_JSON_DIFF",
+        "state": "visible",
+        "dimension": "A1:D7"
+      },
+      {
+        "name": "27_COMPAT_MATRIX",
+        "state": "visible",
+        "dimension": "A1:K21"
+      },
+      {
+        "name": "28_PREVIEW_M3U8",
+        "state": "visible",
+        "dimension": "A1:D5"
+      },
+      {
+        "name": "29_STATS_HISTORY",
+        "state": "visible",
+        "dimension": "A1:H10"
+      },
+      {
+        "name": "30_EXPORT_FINAL",
+        "state": "visible",
+        "dimension": "A1:B19"
+      },
+      {
+        "name": "32_PLACEHOLDERS_MAP",
+        "state": "visible",
+        "dimension": "A1:I69"
+      },
+      {
+        "name": "_LISTAS",
+        "state": "visible",
+        "dimension": "A1:R49"
+      },
+      {
+        "name": "37_VALORES_UNIFICADOS",
+        "state": "visible",
+        "dimension": "A1:M2889"
+      },
+      {
+        "name": "35_UNIVERSAL_COMPAT_RESULT",
+        "state": "visible",
+        "dimension": "A1:J24"
+      },
+      {
+        "name": "00_MACRO_RUN_REPORT",
+        "state": "visible",
+        "dimension": "A1:F25"
+      },
+      {
+        "name": "00_WIRING_LOG",
+        "state": "visible",
+        "dimension": "A1:B322"
+      },
+      {
+        "name": "00_SOLVER_DIARY",
+        "state": "visible",
+        "dimension": "A1:D62"
+      },
+      {
+        "name": "00_CONVERGENCE_DIARY",
+        "state": "visible",
+        "dimension": "A1:E46"
+      },
+      {
+        "name": "_LISTAS_OMEGA",
+        "state": "hidden",
+        "dimension": "A1:B4"
+      },
+      {
+        "name": "98_SHIELD_IMMUTABLE",
+        "state": "veryHidden",
+        "dimension": "A1:D12"
+      },
+      {
+        "name": "00_EXPORT_STAGE",
+        "state": "hidden",
+        "dimension": "A1:C7"
+      },
+      {
+        "name": "99_DEAD_CHANNELS_BLACKLIST",
+        "state": "veryHidden",
+        "dimension": "A1:L573"
+      },
+      {
+        "name": "15_FLOOR_LOCK_CONFIG",
+        "state": "visible",
+        "dimension": "A1:C17"
+      },
+      {
+        "name": "16_SENTINEL_PROVIDERS",
+        "state": "visible",
+        "dimension": "A1:H25"
+      },
+      {
+        "name": "17_TELESCOPE_THRESHOLDS",
+        "state": "visible",
+        "dimension": "A1:C30"
+      },
+      {
+        "name": "99_PRISMA_AUDIT_REPORT",
+        "state": "visible",
+        "dimension": "A1:E13"
+      },
+      {
+        "name": "8_CODEC_LADDER",
+        "state": "visible",
+        "dimension": "A1:F7"
+      },
+      {
+        "name": "33_UA_POOL",
+        "state": "visible",
+        "dimension": "A1:E13"
+      }
+    ],
+    "hidden": [
+      "14_KEYRING",
+      "17_SERVERS_POOL",
+      "_LISTAS_OMEGA",
+      "98_SHIELD_IMMUTABLE",
+      "00_EXPORT_STAGE",
+      "99_DEAD_CHANNELS_BLACKLIST"
+    ],
+    "vba": true,
+    "vbaBytes": 1715712,
+    "sharedStringsUnique": 39709,
+    "workbookProtection": null,
+    "entries": 111,
+    "sheetSetDiffVsFirst": {
+      "missing": [],
+      "added": []
+    }
+  },
+  {
+    "path": "C:\\Users\\HFRC\\Desktop\\IPTV_Navigator_PRO_v5.4_MAX_AGGRESSION\\IPTV_v5.4_MAX_AGGRESSION\\_audit_snapshot\\2026-04-26_audit_e2e_replicated\\APE_M3U8_LAB_v8_FIXED.PRE_FIX_20260426_083814.xlsm",
+    "sha256": "F8FFFCD25F94CB72E59747ACDEEE7442ABEE32E62D24B5245ED2AA52EDEB970C",
+    "sizeBytes": 3261878,
+    "mtime": 1777210125.1283357,
+    "sheetCount": 47,
+    "sheets": [
+      {
+        "name": "1_README",
+        "state": "visible",
+        "dimension": "A1:A70"
+      },
+      {
+        "name": "2_CATALOGO_MASTER",
+        "state": "visible",
+        "dimension": "A1:J1762"
+      },
+      {
+        "name": "3_CAPAS",
+        "state": "visible",
+        "dimension": "A1:G17"
+      },
+      {
+        "name": "4_MIME_TYPES",
+        "state": "visible",
+        "dimension": "A1:D16"
+      },
+      {
+        "name": "5_NIVEL_1_HEADER",
+        "state": "visible",
+        "dimension": "A1:F72"
+      },
+      {
+        "name": "6_NIVEL_2_PROFILES",
+        "state": "visible",
+        "dimension": "A1:H616"
+      },
+      {
+        "name": "7_NIVEL_3_CHANNEL",
+        "state": "visible",
+        "dimension": "A1:F81"
+      },
+      {
+        "name": "00_OMEGA_SCORECARD",
+        "state": "visible",
+        "dimension": "A1:E61"
+      },
+      {
+        "name": "8_MATRIX_3D",
+        "state": "visible",
+        "dimension": "A1:BC2357"
+      },
+      {
+        "name": "18_CONFIG",
+        "state": "visible",
+        "dimension": "A1:E52"
+      },
+      {
+        "name": "31_SOLVER_SETUP",
+        "state": "visible",
+        "dimension": "A1:F61"
+      },
+      {
+        "name": "36_BRAIN_SELECTOR",
+        "state": "visible",
+        "dimension": "B1:T72"
+      },
+      {
+        "name": "9_BRAIN_DASHBOARD",
+        "state": "visible",
+        "dimension": "A1:H80"
+      },
+      {
+        "name": "33_CHANNELS_FROM_FRONTEND",
+        "state": "visible",
+        "dimension": "A1:BC18217"
+      },
+      {
+        "name": "34_BRAIN_SCORING",
+        "state": "visible",
+        "dimension": "A1:V2848"
+      },
+      {
+        "name": "10_HOMOLOGATION",
+        "state": "visible",
+        "dimension": "A1:F33"
+      },
+      {
+        "name": "11_EXPANSION_ZONE",
+        "state": "visible",
+        "dimension": "A1:I107"
+      },
+      {
+        "name": "12_FORMATOS",
+        "state": "visible",
+        "dimension": "A1:F13"
+      },
+      {
+        "name": "13_CRYPTO",
+        "state": "visible",
+        "dimension": "A1:E33"
+      },
+      {
+        "name": "14_KEYRING",
+        "state": "visible",
+        "dimension": "A1:F18"
+      },
+      {
+        "name": "15_CMCD_QOE",
+        "state": "visible",
+        "dimension": "A1:E26"
+      },
+      {
+        "name": "16_EVASION",
+        "state": "visible",
+        "dimension": "A1:G41"
+      },
+      {
+        "name": "17_SERVERS_POOL",
+        "state": "visible",
+        "dimension": "A1:I19"
+      },
+      {
+        "name": "19_URL_BUILDER",
+        "state": "visible",
+        "dimension": "A1:G34"
+      },
+      {
+        "name": "20_URL_PROBE",
+        "state": "visible",
+        "dimension": "A1:D17"
+      },
+      {
+        "name": "21_WATERFALL",
+        "state": "visible",
+        "dimension": "A1:F21"
+      },
+      {
+        "name": "22_UX_IMPACT",
+        "state": "visible",
+        "dimension": "A1:D35"
+      },
+      {
+        "name": "23_BOTTLENECK",
+        "state": "visible",
+        "dimension": "A1:D23"
+      },
+      {
+        "name": "24_JSON_IMPORT",
+        "state": "visible",
+        "dimension": "A1:D21"
+      },
+      {
+        "name": "25_JSON_EXPORT",
+        "state": "visible",
+        "dimension": "A1:E13"
+      },
+      {
+        "name": "26_JSON_DIFF",
+        "state": "visible",
+        "dimension": "A1:D7"
+      },
+      {
+        "name": "27_COMPAT_MATRIX",
+        "state": "visible",
+        "dimension": "A1:K21"
+      },
+      {
+        "name": "28_PREVIEW_M3U8",
+        "state": "visible",
+        "dimension": "A1:D5"
+      },
+      {
+        "name": "29_STATS_HISTORY",
+        "state": "visible",
+        "dimension": "A1:H10"
+      },
+      {
+        "name": "30_EXPORT_FINAL",
+        "state": "visible",
+        "dimension": "A1:B19"
+      },
+      {
+        "name": "32_PLACEHOLDERS_MAP",
+        "state": "visible",
+        "dimension": "A1:I62"
+      },
+      {
+        "name": "_LISTAS",
+        "state": "visible",
+        "dimension": "A1:N49"
+      },
+      {
+        "name": "37_VALORES_UNIFICADOS",
+        "state": "visible",
+        "dimension": "A1:M2848"
+      },
+      {
+        "name": "35_UNIVERSAL_COMPAT_RESULT",
+        "state": "visible",
+        "dimension": "A1:J24"
+      },
+      {
+        "name": "00_MACRO_RUN_REPORT",
+        "state": "visible",
+        "dimension": "A1:F25"
+      },
+      {
+        "name": "00_WIRING_LOG",
+        "state": "visible",
+        "dimension": "A1:B186"
+      },
+      {
+        "name": "00_SOLVER_DIARY",
+        "state": "visible",
+        "dimension": "A1:D35"
+      },
+      {
+        "name": "00_CONVERGENCE_DIARY",
+        "state": "visible",
+        "dimension": "A1:E46"
+      },
+      {
+        "name": "_LISTAS_OMEGA",
+        "state": "hidden",
+        "dimension": "A1:B4"
+      },
+      {
+        "name": "98_SHIELD_IMMUTABLE",
+        "state": "visible",
+        "dimension": "A1:D12"
+      },
+      {
+        "name": "00_EXPORT_STAGE",
+        "state": "hidden",
+        "dimension": "A1:C7"
+      },
+      {
+        "name": "99_DEAD_CHANNELS_BLACKLIST",
+        "state": "visible",
+        "dimension": "A1:L573"
+      }
+    ],
+    "hidden": [
+      "_LISTAS_OMEGA",
+      "00_EXPORT_STAGE"
+    ],
+    "vba": true,
+    "vbaBytes": 1590784,
+    "sharedStringsUnique": 38575,
+    "workbookProtection": null,
+    "entries": 102,
+    "sheetSetDiffVsFirst": {
+      "missing": [
+        "98_VALIDATIONS",
+        "19_ADB_PAYLOAD_INJECTOR",
+        "15_FLOOR_LOCK_CONFIG",
+        "16_SENTINEL_PROVIDERS",
+        "17_TELESCOPE_THRESHOLDS",
+        "99_PRISMA_AUDIT_REPORT",
+        "8_CODEC_LADDER",
+        "33_UA_POOL"
+      ],
+      "added": []
+    }
+  },
+  {
+    "path": "C:\\Users\\HFRC\\Desktop\\IPTV_Navigator_PRO_v5.4_MAX_AGGRESSION\\IPTV_v5.4_MAX_AGGRESSION\\_audit_snapshot\\2026-04-26_audit_e2e_replicated\\APE_M3U8_LAB_v8_FIXED.PRE_AUDIT_FIXES_20260426_083453.xlsm",
+    "sha256": "F8FFFCD25F94CB72E59747ACDEEE7442ABEE32E62D24B5245ED2AA52EDEB970C",
+    "sizeBytes": 3261878,
+    "mtime": 1777210125.1283357,
+    "sheetCount": 47,
+    "sheets": [
+      {
+        "name": "1_README",
+        "state": "visible",
+        "dimension": "A1:A70"
+      },
+      {
+        "name": "2_CATALOGO_MASTER",
+        "state": "visible",
+        "dimension": "A1:J1762"
+      },
+      {
+        "name": "3_CAPAS",
+        "state": "visible",
+        "dimension": "A1:G17"
+      },
+      {
+        "name": "4_MIME_TYPES",
+        "state": "visible",
+        "dimension": "A1:D16"
+      },
+      {
+        "name": "5_NIVEL_1_HEADER",
+        "state": "visible",
+        "dimension": "A1:F72"
+      },
+      {
+        "name": "6_NIVEL_2_PROFILES",
+        "state": "visible",
+        "dimension": "A1:H616"
+      },
+      {
+        "name": "7_NIVEL_3_CHANNEL",
+        "state": "visible",
+        "dimension": "A1:F81"
+      },
+      {
+        "name": "00_OMEGA_SCORECARD",
+        "state": "visible",
+        "dimension": "A1:E61"
+      },
+      {
+        "name": "8_MATRIX_3D",
+        "state": "visible",
+        "dimension": "A1:BC2357"
+      },
+      {
+        "name": "18_CONFIG",
+        "state": "visible",
+        "dimension": "A1:E52"
+      },
+      {
+        "name": "31_SOLVER_SETUP",
+        "state": "visible",
+        "dimension": "A1:F61"
+      },
+      {
+        "name": "36_BRAIN_SELECTOR",
+        "state": "visible",
+        "dimension": "B1:T72"
+      },
+      {
+        "name": "9_BRAIN_DASHBOARD",
+        "state": "visible",
+        "dimension": "A1:H80"
+      },
+      {
+        "name": "33_CHANNELS_FROM_FRONTEND",
+        "state": "visible",
+        "dimension": "A1:BC18217"
+      },
+      {
+        "name": "34_BRAIN_SCORING",
+        "state": "visible",
+        "dimension": "A1:V2848"
+      },
+      {
+        "name": "10_HOMOLOGATION",
+        "state": "visible",
+        "dimension": "A1:F33"
+      },
+      {
+        "name": "11_EXPANSION_ZONE",
+        "state": "visible",
+        "dimension": "A1:I107"
+      },
+      {
+        "name": "12_FORMATOS",
+        "state": "visible",
+        "dimension": "A1:F13"
+      },
+      {
+        "name": "13_CRYPTO",
+        "state": "visible",
+        "dimension": "A1:E33"
+      },
+      {
+        "name": "14_KEYRING",
+        "state": "visible",
+        "dimension": "A1:F18"
+      },
+      {
+        "name": "15_CMCD_QOE",
+        "state": "visible",
+        "dimension": "A1:E26"
+      },
+      {
+        "name": "16_EVASION",
+        "state": "visible",
+        "dimension": "A1:G41"
+      },
+      {
+        "name": "17_SERVERS_POOL",
+        "state": "visible",
+        "dimension": "A1:I19"
+      },
+      {
+        "name": "19_URL_BUILDER",
+        "state": "visible",
+        "dimension": "A1:G34"
+      },
+      {
+        "name": "20_URL_PROBE",
+        "state": "visible",
+        "dimension": "A1:D17"
+      },
+      {
+        "name": "21_WATERFALL",
+        "state": "visible",
+        "dimension": "A1:F21"
+      },
+      {
+        "name": "22_UX_IMPACT",
+        "state": "visible",
+        "dimension": "A1:D35"
+      },
+      {
+        "name": "23_BOTTLENECK",
+        "state": "visible",
+        "dimension": "A1:D23"
+      },
+      {
+        "name": "24_JSON_IMPORT",
+        "state": "visible",
+        "dimension": "A1:D21"
+      },
+      {
+        "name": "25_JSON_EXPORT",
+        "state": "visible",
+        "dimension": "A1:E13"
+      },
+      {
+        "name": "26_JSON_DIFF",
+        "state": "visible",
+        "dimension": "A1:D7"
+      },
+      {
+        "name": "27_COMPAT_MATRIX",
+        "state": "visible",
+        "dimension": "A1:K21"
+      },
+      {
+        "name": "28_PREVIEW_M3U8",
+        "state": "visible",
+        "dimension": "A1:D5"
+      },
+      {
+        "name": "29_STATS_HISTORY",
+        "state": "visible",
+        "dimension": "A1:H10"
+      },
+      {
+        "name": "30_EXPORT_FINAL",
+        "state": "visible",
+        "dimension": "A1:B19"
+      },
+      {
+        "name": "32_PLACEHOLDERS_MAP",
+        "state": "visible",
+        "dimension": "A1:I62"
+      },
+      {
+        "name": "_LISTAS",
+        "state": "visible",
+        "dimension": "A1:N49"
+      },
+      {
+        "name": "37_VALORES_UNIFICADOS",
+        "state": "visible",
+        "dimension": "A1:M2848"
+      },
+      {
+        "name": "35_UNIVERSAL_COMPAT_RESULT",
+        "state": "visible",
+        "dimension": "A1:J24"
+      },
+      {
+        "name": "00_MACRO_RUN_REPORT",
+        "state": "visible",
+        "dimension": "A1:F25"
+      },
+      {
+        "name": "00_WIRING_LOG",
+        "state": "visible",
+        "dimension": "A1:B186"
+      },
+      {
+        "name": "00_SOLVER_DIARY",
+        "state": "visible",
+        "dimension": "A1:D35"
+      },
+      {
+        "name": "00_CONVERGENCE_DIARY",
+        "state": "visible",
+        "dimension": "A1:E46"
+      },
+      {
+        "name": "_LISTAS_OMEGA",
+        "state": "hidden",
+        "dimension": "A1:B4"
+      },
+      {
+        "name": "98_SHIELD_IMMUTABLE",
+        "state": "visible",
+        "dimension": "A1:D12"
+      },
+      {
+        "name": "00_EXPORT_STAGE",
+        "state": "hidden",
+        "dimension": "A1:C7"
+      },
+      {
+        "name": "99_DEAD_CHANNELS_BLACKLIST",
+        "state": "visible",
+        "dimension": "A1:L573"
+      }
+    ],
+    "hidden": [
+      "_LISTAS_OMEGA",
+      "00_EXPORT_STAGE"
+    ],
+    "vba": true,
+    "vbaBytes": 1590784,
+    "sharedStringsUnique": 38575,
+    "workbookProtection": null,
+    "entries": 102,
+    "sheetSetDiffVsFirst": {
+      "missing": [
+        "98_VALIDATIONS",
+        "19_ADB_PAYLOAD_INJECTOR",
+        "15_FLOOR_LOCK_CONFIG",
+        "16_SENTINEL_PROVIDERS",
+        "17_TELESCOPE_THRESHOLDS",
+        "99_PRISMA_AUDIT_REPORT",
+        "8_CODEC_LADDER",
+        "33_UA_POOL"
+      ],
+      "added": []
+    }
+  },
+  {
+    "path": "C:\\Users\\HFRC\\Desktop\\IPTV_Navigator_PRO_v5.4_MAX_AGGRESSION\\IPTV_v5.4_MAX_AGGRESSION\\_audit_snapshot\\2026-04-26_audit_e2e_replicated\\APE_M3U8_LAB_v8_FIXED.PRE_COM_FINALIZE_20260426_090945.xlsm",
+    "sha256": "060255DDED5893D415F450A0A405EC7E224842881E8910A0000346736960175A",
+    "sizeBytes": 3261886,
+    "mtime": 1777211866.8075216,
+    "sheetCount": 47,
+    "sheets": [
+      {
+        "name": "1_README",
+        "state": "visible",
+        "dimension": "A1:A70"
+      },
+      {
+        "name": "2_CATALOGO_MASTER",
+        "state": "visible",
+        "dimension": "A1:J1762"
+      },
+      {
+        "name": "3_CAPAS",
+        "state": "visible",
+        "dimension": "A1:G17"
+      },
+      {
+        "name": "4_MIME_TYPES",
+        "state": "visible",
+        "dimension": "A1:D16"
+      },
+      {
+        "name": "6_NIVEL_2_PROFILES",
+        "state": "visible",
+        "dimension": "A1:H616"
+      },
+      {
+        "name": "5_NIVEL_1_HEADER",
+        "state": "visible",
+        "dimension": "A1:F72"
+      },
+      {
+        "name": "7_NIVEL_3_CHANNEL",
+        "state": "visible",
+        "dimension": "A1:F81"
+      },
+      {
+        "name": "00_OMEGA_SCORECARD",
+        "state": "visible",
+        "dimension": "A1:E61"
+      },
+      {
+        "name": "8_MATRIX_3D",
+        "state": "visible",
+        "dimension": "A1:BC2357"
+      },
+      {
+        "name": "18_CONFIG",
+        "state": "visible",
+        "dimension": "A1:E52"
+      },
+      {
+        "name": "31_SOLVER_SETUP",
+        "state": "visible",
+        "dimension": "A1:F61"
+      },
+      {
+        "name": "36_BRAIN_SELECTOR",
+        "state": "visible",
+        "dimension": "B1:T72"
+      },
+      {
+        "name": "9_BRAIN_DASHBOARD",
+        "state": "visible",
+        "dimension": "A1:H80"
+      },
+      {
+        "name": "33_CHANNELS_FROM_FRONTEND",
+        "state": "visible",
+        "dimension": "A1:BC18217"
+      },
+      {
+        "name": "34_BRAIN_SCORING",
+        "state": "visible",
+        "dimension": "A1:V2848"
+      },
+      {
+        "name": "10_HOMOLOGATION",
+        "state": "visible",
+        "dimension": "A1:F33"
+      },
+      {
+        "name": "11_EXPANSION_ZONE",
+        "state": "visible",
+        "dimension": "A1:I107"
+      },
+      {
+        "name": "12_FORMATOS",
+        "state": "visible",
+        "dimension": "A1:F13"
+      },
+      {
+        "name": "13_CRYPTO",
+        "state": "visible",
+        "dimension": "A1:E33"
+      },
+      {
+        "name": "14_KEYRING",
+        "state": "visible",
+        "dimension": "A1:F18"
+      },
+      {
+        "name": "15_CMCD_QOE",
+        "state": "visible",
+        "dimension": "A1:E26"
+      },
+      {
+        "name": "16_EVASION",
+        "state": "visible",
+        "dimension": "A1:G41"
+      },
+      {
+        "name": "17_SERVERS_POOL",
+        "state": "visible",
+        "dimension": "A1:I19"
+      },
+      {
+        "name": "19_URL_BUILDER",
+        "state": "visible",
+        "dimension": "A1:G34"
+      },
+      {
+        "name": "20_URL_PROBE",
+        "state": "visible",
+        "dimension": "A1:D17"
+      },
+      {
+        "name": "21_WATERFALL",
+        "state": "visible",
+        "dimension": "A1:F21"
+      },
+      {
+        "name": "22_UX_IMPACT",
+        "state": "visible",
+        "dimension": "A1:D35"
+      },
+      {
+        "name": "23_BOTTLENECK",
+        "state": "visible",
+        "dimension": "A1:D23"
+      },
+      {
+        "name": "24_JSON_IMPORT",
+        "state": "visible",
+        "dimension": "A1:D21"
+      },
+      {
+        "name": "25_JSON_EXPORT",
+        "state": "visible",
+        "dimension": "A1:E13"
+      },
+      {
+        "name": "26_JSON_DIFF",
+        "state": "visible",
+        "dimension": "A1:D7"
+      },
+      {
+        "name": "27_COMPAT_MATRIX",
+        "state": "visible",
+        "dimension": "A1:K21"
+      },
+      {
+        "name": "28_PREVIEW_M3U8",
+        "state": "visible",
+        "dimension": "A1:D5"
+      },
+      {
+        "name": "29_STATS_HISTORY",
+        "state": "visible",
+        "dimension": "A1:H10"
+      },
+      {
+        "name": "30_EXPORT_FINAL",
+        "state": "visible",
+        "dimension": "A1:B19"
+      },
+      {
+        "name": "32_PLACEHOLDERS_MAP",
+        "state": "visible",
+        "dimension": "A1:I62"
+      },
+      {
+        "name": "_LISTAS",
+        "state": "visible",
+        "dimension": "A1:N49"
+      },
+      {
+        "name": "37_VALORES_UNIFICADOS",
+        "state": "visible",
+        "dimension": "A1:M2848"
+      },
+      {
+        "name": "35_UNIVERSAL_COMPAT_RESULT",
+        "state": "visible",
+        "dimension": "A1:J24"
+      },
+      {
+        "name": "00_MACRO_RUN_REPORT",
+        "state": "visible",
+        "dimension": "A1:F25"
+      },
+      {
+        "name": "00_WIRING_LOG",
+        "state": "visible",
+        "dimension": "A1:B186"
+      },
+      {
+        "name": "00_SOLVER_DIARY",
+        "state": "visible",
+        "dimension": "A1:D35"
+      },
+      {
+        "name": "00_CONVERGENCE_DIARY",
+        "state": "visible",
+        "dimension": "A1:E46"
+      },
+      {
+        "name": "_LISTAS_OMEGA",
+        "state": "hidden",
+        "dimension": "A1:B4"
+      },
+      {
+        "name": "98_SHIELD_IMMUTABLE",
+        "state": "visible",
+        "dimension": "A1:D12"
+      },
+      {
+        "name": "00_EXPORT_STAGE",
+        "state": "hidden",
+        "dimension": "A1:C7"
+      },
+      {
+        "name": "99_DEAD_CHANNELS_BLACKLIST",
+        "state": "visible",
+        "dimension": "A1:L573"
+      }
+    ],
+    "hidden": [
+      "_LISTAS_OMEGA",
+      "00_EXPORT_STAGE"
+    ],
+    "vba": true,
+    "vbaBytes": 1590784,
+    "sharedStringsUnique": 38575,
+    "workbookProtection": null,
+    "entries": 102,
+    "sheetSetDiffVsFirst": {
+      "missing": [
+        "98_VALIDATIONS",
+        "19_ADB_PAYLOAD_INJECTOR",
+        "15_FLOOR_LOCK_CONFIG",
+        "16_SENTINEL_PROVIDERS",
+        "17_TELESCOPE_THRESHOLDS",
+        "99_PRISMA_AUDIT_REPORT",
+        "8_CODEC_LADDER",
+        "33_UA_POOL"
+      ],
+      "added": []
+    }
+  },
+  {
+    "path": "C:\\Users\\HFRC\\Desktop\\IPTV_Navigator_PRO_v5.4_MAX_AGGRESSION\\IPTV_v5.4_MAX_AGGRESSION\\_audit_snapshot\\2026-04-26_audit_e2e_replicated\\APE_M3U8_LAB_v8_FIXED.BROKEN_NO_BUTTONS_20260426_095227.xlsm",
+    "sha256": "E2AD777252E95FF6C9C19E3B5DF5F0EA75BECC7736C750C5BB1CE9AF8214EB72",
+    "sizeBytes": 3160208,
+    "mtime": 1777214263.6156924,
+    "sheetCount": 47,
+    "sheets": [
+      {
+        "name": "1_README",
+        "state": "visible",
+        "dimension": "A1:A70"
+      },
+      {
+        "name": "2_CATALOGO_MASTER",
+        "state": "visible",
+        "dimension": "A1:J1762"
+      },
+      {
+        "name": "3_CAPAS",
+        "state": "visible",
+        "dimension": "A1:G17"
+      },
+      {
+        "name": "4_MIME_TYPES",
+        "state": "visible",
+        "dimension": "A1:D16"
+      },
+      {
+        "name": "5_NIVEL_1_HEADER",
+        "state": "visible",
+        "dimension": "A1:F72"
+      },
+      {
+        "name": "6_NIVEL_2_PROFILES",
+        "state": "visible",
+        "dimension": "A1:H616"
+      },
+      {
+        "name": "7_NIVEL_3_CHANNEL",
+        "state": "visible",
+        "dimension": "A1:F81"
+      },
+      {
+        "name": "00_OMEGA_SCORECARD",
+        "state": "visible",
+        "dimension": "A1:E61"
+      },
+      {
+        "name": "8_MATRIX_3D",
+        "state": "visible",
+        "dimension": "A1:BC2357"
+      },
+      {
+        "name": "18_CONFIG",
+        "state": "visible",
+        "dimension": "A1:E52"
+      },
+      {
+        "name": "31_SOLVER_SETUP",
+        "state": "visible",
+        "dimension": "A1:F61"
+      },
+      {
+        "name": "36_BRAIN_SELECTOR",
+        "state": "visible",
+        "dimension": "B1:T72"
+      },
+      {
+        "name": "9_BRAIN_DASHBOARD",
+        "state": "visible",
+        "dimension": "A1:H80"
+      },
+      {
+        "name": "33_CHANNELS_FROM_FRONTEND",
+        "state": "visible",
+        "dimension": "A1:BD18217"
+      },
+      {
+        "name": "34_BRAIN_SCORING",
+        "state": "visible",
+        "dimension": "A1:V2848"
+      },
+      {
+        "name": "10_HOMOLOGATION",
+        "state": "visible",
+        "dimension": "A1:F33"
+      },
+      {
+        "name": "11_EXPANSION_ZONE",
+        "state": "visible",
+        "dimension": "A1:I107"
+      },
+      {
+        "name": "12_FORMATOS",
+        "state": "visible",
+        "dimension": "A1:F13"
+      },
+      {
+        "name": "13_CRYPTO",
+        "state": "visible",
+        "dimension": "A1:E33"
+      },
+      {
+        "name": "14_KEYRING",
+        "state": "veryHidden",
+        "dimension": "A1:F18"
+      },
+      {
+        "name": "15_CMCD_QOE",
+        "state": "visible",
+        "dimension": "A1:E26"
+      },
+      {
+        "name": "16_EVASION",
+        "state": "visible",
+        "dimension": "A1:G41"
+      },
+      {
+        "name": "17_SERVERS_POOL",
+        "state": "veryHidden",
+        "dimension": "A1:I19"
+      },
+      {
+        "name": "19_URL_BUILDER",
+        "state": "visible",
+        "dimension": "A1:G34"
+      },
+      {
+        "name": "20_URL_PROBE",
+        "state": "visible",
+        "dimension": "A1:D17"
+      },
+      {
+        "name": "21_WATERFALL",
+        "state": "visible",
+        "dimension": "A1:F21"
+      },
+      {
+        "name": "22_UX_IMPACT",
+        "state": "visible",
+        "dimension": "A1:D35"
+      },
+      {
+        "name": "23_BOTTLENECK",
+        "state": "visible",
+        "dimension": "A1:D23"
+      },
+      {
+        "name": "24_JSON_IMPORT",
+        "state": "visible",
+        "dimension": "A1:D21"
+      },
+      {
+        "name": "25_JSON_EXPORT",
+        "state": "visible",
+        "dimension": "A1:E13"
+      },
+      {
+        "name": "26_JSON_DIFF",
+        "state": "visible",
+        "dimension": "A1:D7"
+      },
+      {
+        "name": "27_COMPAT_MATRIX",
+        "state": "visible",
+        "dimension": "A1:K21"
+      },
+      {
+        "name": "28_PREVIEW_M3U8",
+        "state": "visible",
+        "dimension": "A1:D5"
+      },
+      {
+        "name": "29_STATS_HISTORY",
+        "state": "visible",
+        "dimension": "A1:H10"
+      },
+      {
+        "name": "30_EXPORT_FINAL",
+        "state": "visible",
+        "dimension": "A1:B19"
+      },
+      {
+        "name": "32_PLACEHOLDERS_MAP",
+        "state": "visible",
+        "dimension": "A1:I62"
+      },
+      {
+        "name": "_LISTAS",
+        "state": "visible",
+        "dimension": "A1:N49"
+      },
+      {
+        "name": "37_VALORES_UNIFICADOS",
+        "state": "visible",
+        "dimension": "A1:M2848"
+      },
+      {
+        "name": "35_UNIVERSAL_COMPAT_RESULT",
+        "state": "visible",
+        "dimension": "A1:J24"
+      },
+      {
+        "name": "00_MACRO_RUN_REPORT",
+        "state": "visible",
+        "dimension": "A1:F25"
+      },
+      {
+        "name": "00_WIRING_LOG",
+        "state": "visible",
+        "dimension": "A1:B189"
+      },
+      {
+        "name": "00_SOLVER_DIARY",
+        "state": "visible",
+        "dimension": "A1:D29"
+      },
+      {
+        "name": "00_CONVERGENCE_DIARY",
+        "state": "visible",
+        "dimension": "A1:E46"
+      },
+      {
+        "name": "_LISTAS_OMEGA",
+        "state": "hidden",
+        "dimension": "A1:B4"
+      },
+      {
+        "name": "98_SHIELD_IMMUTABLE",
+        "state": "veryHidden",
+        "dimension": "A1:D12"
+      },
+      {
+        "name": "00_EXPORT_STAGE",
+        "state": "hidden",
+        "dimension": "A1:C7"
+      },
+      {
+        "name": "99_DEAD_CHANNELS_BLACKLIST",
+        "state": "veryHidden",
+        "dimension": "A1:L573"
+      }
+    ],
+    "hidden": [
+      "14_KEYRING",
+      "17_SERVERS_POOL",
+      "_LISTAS_OMEGA",
+      "98_SHIELD_IMMUTABLE",
+      "00_EXPORT_STAGE",
+      "99_DEAD_CHANNELS_BLACKLIST"
+    ],
+    "vba": true,
+    "vbaBytes": 1148928,
+    "sharedStringsUnique": 38564,
+    "workbookProtection": null,
+    "entries": 96,
+    "sheetSetDiffVsFirst": {
+      "missing": [
+        "98_VALIDATIONS",
+        "19_ADB_PAYLOAD_INJECTOR",
+        "15_FLOOR_LOCK_CONFIG",
+        "16_SENTINEL_PROVIDERS",
+        "17_TELESCOPE_THRESHOLDS",
+        "99_PRISMA_AUDIT_REPORT",
+        "8_CODEC_LADDER",
+        "33_UA_POOL"
+      ],
+      "added": []
+    }
+  }
+]

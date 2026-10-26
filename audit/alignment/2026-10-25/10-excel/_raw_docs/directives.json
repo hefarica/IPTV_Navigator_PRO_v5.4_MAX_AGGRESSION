@@ -1,0 +1,1167 @@
+{
+  "1_README": {
+    "cellsWithToken": {
+      "#EXTM3U": 1,
+      "#EXTINF": 1,
+      "#EXTHTTP": 1,
+      "#EXTVLCOPT": 1,
+      "#KODIPROP": 1,
+      "#EXT-X-STREAM-INF": 1,
+      "CMCD": 2
+    },
+    "tokenOccurrences": {
+      "#EXTM3U": 1,
+      "#EXTINF": 1,
+      "#EXTHTTP": 1,
+      "#EXTVLCOPT": 1,
+      "#KODIPROP": 1,
+      "#EXT-X-STREAM-INF": 1,
+      "CMCD": 2
+    },
+    "firstSample": {
+      "#EXTM3U": {
+        "cell": "A6",
+        "value": "NIVEL 1: CABECERA GLOBAL  (#EXTM3U + #EXT-X-SYS-* + #EXT-X-SYS-EMBEDDED-CONFIG)  -> 1 vez al inicio"
+      },
+      "#EXTINF": {
+        "cell": "A8",
+        "value": "NIVEL 3: BLOQUE POR CANAL  (#EXTINF + #EXTVLCOPT + #KODIPROP + #EXTHTTP + #EXT-X-STREAM-INF + URL)  -> N veces"
+      },
+      "#EXTHTTP": {
+        "cell": "A8",
+        "value": "NIVEL 3: BLOQUE POR CANAL  (#EXTINF + #EXTVLCOPT + #KODIPROP + #EXTHTTP + #EXT-X-STREAM-INF + URL)  -> N veces"
+      },
+      "#EXTVLCOPT": {
+        "cell": "A8",
+        "value": "NIVEL 3: BLOQUE POR CANAL  (#EXTINF + #EXTVLCOPT + #KODIPROP + #EXTHTTP + #EXT-X-STREAM-INF + URL)  -> N veces"
+      },
+      "#KODIPROP": {
+        "cell": "A8",
+        "value": "NIVEL 3: BLOQUE POR CANAL  (#EXTINF + #EXTVLCOPT + #KODIPROP + #EXTHTTP + #EXT-X-STREAM-INF + URL)  -> N veces"
+      },
+      "#EXT-X-STREAM-INF": {
+        "cell": "A8",
+        "value": "NIVEL 3: BLOQUE POR CANAL  (#EXTINF + #EXTVLCOPT + #KODIPROP + #EXTHTTP + #EXT-X-STREAM-INF + URL)  -> N veces"
+      },
+      "CMCD": {
+        "cell": "A17",
+        "value": "4. 0 LAG (live catch-up)  5. 0 BUGS CMCD (CTA-5004)  6. MAX ABR  7. MAX IMAGEN"
+      }
+    }
+  },
+  "2_CATALOGO_MASTER": {
+    "cellsWithToken": {
+      "#EXT-X-APE-": 896,
+      "X-APE-": 966,
+      "LCEVC": 51,
+      "#EXT-X-PHANTOM-HYDRA": 18,
+      "#EXT-X-SESSION-DATA": 1,
+      "#EXT-X-STREAM-INF": 1,
+      "#EXT-X-VERSION": 1,
+      "#EXT-X-VNOVA-LCEVC": 21,
+      "#EXTATTRFROMURL": 1,
+      "#EXTHTTP": 1,
+      "#EXTINF": 1,
+      "#EXTM3U": 1,
+      "#EXTVLCOPT": 1,
+      "#KODIPROP": 1,
+      "VIDEO-RANGE": 1,
+      "HDCP-LEVEL": 1,
+      "SUPPLEMENTAL-CODECS": 1
+    },
+    "tokenOccurrences": {
+      "#EXT-X-APE-": 896,
+      "X-APE-": 966,
+      "LCEVC": 51,
+      "#EXT-X-PHANTOM-HYDRA": 18,
+      "#EXT-X-SESSION-DATA": 1,
+      "#EXT-X-STREAM-INF": 1,
+      "#EXT-X-VERSION": 1,
+      "#EXT-X-VNOVA-LCEVC": 21,
+      "#EXTATTRFROMURL": 1,
+      "#EXTHTTP": 1,
+      "#EXTINF": 1,
+      "#EXTM3U": 1,
+      "#EXTVLCOPT": 1,
+      "#KODIPROP": 1,
+      "VIDEO-RANGE": 1,
+      "HDCP-LEVEL": 1,
+      "SUPPLEMENTAL-CODECS": 1
+    },
+    "firstSample": {
+      "#EXT-X-APE-": {
+        "cell": "C2",
+        "value": "#EXT-X-APE-ABR-BANDWIDTH-PREFERENCE"
+      },
+      "X-APE-": {
+        "cell": "C2",
+        "value": "#EXT-X-APE-ABR-BANDWIDTH-PREFERENCE"
+      },
+      "LCEVC": {
+        "cell": "C161",
+        "value": "#EXT-X-APE-CONTENT-HEURISTIC-4K-LCEVC"
+      },
+      "#EXT-X-PHANTOM-HYDRA": {
+        "cell": "C952",
+        "value": "#EXT-X-PHANTOM-HYDRA"
+      },
+      "#EXT-X-SESSION-DATA": {
+        "cell": "C980",
+        "value": "#EXT-X-SESSION-DATA"
+      },
+      "#EXT-X-STREAM-INF": {
+        "cell": "C983",
+        "value": "#EXT-X-STREAM-INF"
+      },
+      "#EXT-X-VERSION": {
+        "cell": "C988",
+        "value": "#EXT-X-VERSION"
+      },
+      "#EXT-X-VNOVA-LCEVC": {
+        "cell": "C989",
+        "value": "#EXT-X-VNOVA-LCEVC"
+      },
+      "#EXTATTRFROMURL": {
+        "cell": "C1010",
+        "value": "#EXTATTRFROMURL"
+      },
+      "#EXTHTTP": {
+        "cell": "C1011",
+        "value": "#EXTHTTP"
+      },
+      "#EXTINF": {
+        "cell": "C1012",
+        "value": "#EXTINF"
+      },
+      "#EXTM3U": {
+        "cell": "C1013",
+        "value": "#EXTM3U"
+      },
+      "#EXTVLCOPT": {
+        "cell": "C1014",
+        "value": "#EXTVLCOPT"
+      },
+      "#KODIPROP": {
+        "cell": "C1015",
+        "value": "#KODIPROP"
+      },
+      "VIDEO-RANGE": {
+        "cell": "C1087",
+        "value": "VIDEO-RANGE"
+      },
+      "HDCP-LEVEL": {
+        "cell": "C1088",
+        "value": "HDCP-LEVEL"
+      },
+      "SUPPLEMENTAL-CODECS": {
+        "cell": "C1089",
+        "value": "SUPPLEMENTAL-CODECS"
+      }
+    }
+  },
+  "3_CAPAS": {
+    "cellsWithToken": {
+      "#EXTVLCOPT": 1,
+      "#KODIPROP": 1,
+      "#EXTHTTP": 1,
+      "#EXTATTRFROMURL": 1,
+      "#EXTINF": 1,
+      "#EXTM3U": 1,
+      "#EXT-X-STREAM-INF": 1,
+      "#EXT-X-MEDIA": 1
+    },
+    "tokenOccurrences": {
+      "#EXTVLCOPT": 1,
+      "#KODIPROP": 1,
+      "#EXTHTTP": 1,
+      "#EXTATTRFROMURL": 1,
+      "#EXTINF": 1,
+      "#EXTM3U": 1,
+      "#EXT-X-STREAM-INF": 1,
+      "#EXT-X-MEDIA": 1
+    },
+    "firstSample": {
+      "#EXTVLCOPT": {
+        "cell": "C2",
+        "value": "#EXTVLCOPT:http-user-agent=Mozilla..."
+      },
+      "#KODIPROP": {
+        "cell": "C3",
+        "value": "#KODIPROP:inputstream.adaptive.stream_headers=..."
+      },
+      "#EXTHTTP": {
+        "cell": "C4",
+        "value": "#EXTHTTP:{\"User-Agent\":\"...\",\"Referer\":\"...\"}"
+      },
+      "#EXTATTRFROMURL": {
+        "cell": "C5",
+        "value": "#EXTATTRFROMURL:tvg-shift=\"-3\""
+      },
+      "#EXTINF": {
+        "cell": "C6",
+        "value": "#EXTINF:-1 tvg-id=\"X\" group-title=\"...\""
+      },
+      "#EXTM3U": {
+        "cell": "C7",
+        "value": "#EXTM3U x-tvg-url=\"...\""
+      },
+      "#EXT-X-STREAM-INF": {
+        "cell": "C8",
+        "value": "#EXT-X-STREAM-INF:BANDWIDTH=..."
+      },
+      "#EXT-X-MEDIA": {
+        "cell": "C9",
+        "value": "#EXT-X-MEDIA:TYPE=AUDIO,GROUP-ID=..."
+      }
+    }
+  },
+  "4_MIME_TYPES": {
+    "cellsWithToken": {},
+    "tokenOccurrences": {},
+    "firstSample": {}
+  },
+  "6_NIVEL_2_PROFILES": {
+    "cellsWithToken": {
+      "X-APE-": 95,
+      "LCEVC": 21,
+      "dvh1": 10,
+      "av01": 16,
+      "hvc1": 38,
+      "avc1": 34,
+      "hev1": 15,
+      "CMCD": 6
+    },
+    "tokenOccurrences": {
+      "X-APE-": 623,
+      "LCEVC": 80,
+      "dvh1": 10,
+      "av01": 16,
+      "hvc1": 92,
+      "avc1": 34,
+      "hev1": 15,
+      "CMCD": 6
+    },
+    "firstSample": {
+      "X-APE-": {
+        "cell": "B15",
+        "value": "{\"User-Agent\":\"Mozilla/5.0 (SMART-TV; Linux; Tizen 8.0) AppleWebKit/538.1 (KHTML, like Gecko) SamsungBrowser/2.3 TV Safari/538.1,Mozilla/5.0 (Linux; Android 14; SHIELD Android TV) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Mobile Safari/537.36,Mozilla/5.0 (Linux; Android 13; BRAVIA 4K GB ATV3) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36,Mozilla/5.0 (Wi"
+      },
+      "LCEVC": {
+        "cell": "B15",
+        "value": "{\"User-Agent\":\"Mozilla/5.0 (SMART-TV; Linux; Tizen 8.0) AppleWebKit/538.1 (KHTML, like Gecko) SamsungBrowser/2.3 TV Safari/538.1,Mozilla/5.0 (Linux; Android 14; SHIELD Android TV) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Mobile Safari/537.36,Mozilla/5.0 (Linux; Android 13; BRAVIA 4K GB ATV3) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36,Mozilla/5.0 (Wi"
+      },
+      "dvh1": {
+        "cell": "B37",
+        "value": "dvh1.08.06"
+      },
+      "av01": {
+        "cell": "C37",
+        "value": "av01.0.15M.10"
+      },
+      "hvc1": {
+        "cell": "D37",
+        "value": "hvc1.2.4.L150.B0"
+      },
+      "avc1": {
+        "cell": "F37",
+        "value": "avc1.64001f"
+      },
+      "hev1": {
+        "cell": "B38",
+        "value": "dvh1,dvhe,hvc1,hev1,av01,vp09"
+      },
+      "CMCD": {
+        "cell": "A403",
+        "value": "headerOverrides.X-CMCD-Spec"
+      }
+    }
+  },
+  "5_NIVEL_1_HEADER": {
+    "cellsWithToken": {
+      "dvh1": 1,
+      "hvc1": 1,
+      "hev1": 1,
+      "av01": 1,
+      "avc1": 1
+    },
+    "tokenOccurrences": {
+      "dvh1": 1,
+      "hvc1": 1,
+      "hev1": 1,
+      "av01": 1,
+      "avc1": 1
+    },
+    "firstSample": {
+      "dvh1": {
+        "cell": "C38",
+        "value": "dvh1,dvhe,hvc1,hev1,av01,vp09,avc1"
+      },
+      "hvc1": {
+        "cell": "C38",
+        "value": "dvh1,dvhe,hvc1,hev1,av01,vp09,avc1"
+      },
+      "hev1": {
+        "cell": "C38",
+        "value": "dvh1,dvhe,hvc1,hev1,av01,vp09,avc1"
+      },
+      "av01": {
+        "cell": "C38",
+        "value": "dvh1,dvhe,hvc1,hev1,av01,vp09,avc1"
+      },
+      "avc1": {
+        "cell": "C38",
+        "value": "dvh1,dvhe,hvc1,hev1,av01,vp09,avc1"
+      }
+    }
+  },
+  "7_NIVEL_3_CHANNEL": {
+    "cellsWithToken": {
+      "VIDEO-RANGE": 1,
+      "HDCP-LEVEL": 1
+    },
+    "tokenOccurrences": {
+      "VIDEO-RANGE": 1,
+      "HDCP-LEVEL": 1
+    },
+    "firstSample": {
+      "VIDEO-RANGE": {
+        "cell": "C65",
+        "value": "VIDEO-RANGE"
+      },
+      "HDCP-LEVEL": {
+        "cell": "C66",
+        "value": "HDCP-LEVEL"
+      }
+    }
+  },
+  "00_OMEGA_SCORECARD": {
+    "cellsWithToken": {
+      "CMCD": 3,
+      "#EXTINF": 1,
+      "av01": 1
+    },
+    "tokenOccurrences": {
+      "CMCD": 3,
+      "#EXTINF": 1,
+      "av01": 1
+    },
+    "firstSample": {
+      "CMCD": {
+        "cell": "B12",
+        "value": "G5 0 BUGS CMCD (URL Purity + CTA-5004)"
+      },
+      "#EXTINF": {
+        "cell": "B19",
+        "value": "Canales (#EXTINF count)"
+      },
+      "av01": {
+        "cell": "D38",
+        "value": "av01:False DV/HEVC-HDR:True"
+      }
+    }
+  },
+  "8_MATRIX_3D": {
+    "cellsWithToken": {
+      "#EXT-X-APE-": 894,
+      "X-APE-": 1051,
+      "LCEVC": 61,
+      "#EXT-X-PHANTOM-HYDRA": 18,
+      "#EXT-X-SESSION-DATA": 1,
+      "#EXT-X-STREAM-INF": 1,
+      "#EXT-X-VERSION": 1,
+      "#EXT-X-VNOVA-LCEVC": 21,
+      "#EXTATTRFROMURL": 1,
+      "#EXTHTTP": 1,
+      "#EXTINF": 1,
+      "#EXTM3U": 1,
+      "#EXTVLCOPT": 1,
+      "#KODIPROP": 1,
+      "VIDEO-RANGE": 1,
+      "HDCP-LEVEL": 1,
+      "SUPPLEMENTAL-CODECS": 1,
+      "CMCD": 6
+    },
+    "tokenOccurrences": {
+      "#EXT-X-APE-": 894,
+      "X-APE-": 1051,
+      "LCEVC": 61,
+      "#EXT-X-PHANTOM-HYDRA": 18,
+      "#EXT-X-SESSION-DATA": 1,
+      "#EXT-X-STREAM-INF": 1,
+      "#EXT-X-VERSION": 1,
+      "#EXT-X-VNOVA-LCEVC": 21,
+      "#EXTATTRFROMURL": 1,
+      "#EXTHTTP": 1,
+      "#EXTINF": 1,
+      "#EXTM3U": 1,
+      "#EXTVLCOPT": 1,
+      "#KODIPROP": 1,
+      "VIDEO-RANGE": 1,
+      "HDCP-LEVEL": 1,
+      "SUPPLEMENTAL-CODECS": 1,
+      "CMCD": 6
+    },
+    "firstSample": {
+      "#EXT-X-APE-": {
+        "cell": "B4",
+        "value": "#EXT-X-APE-ABR-BW-ESTIMATION-WINDOW"
+      },
+      "X-APE-": {
+        "cell": "B4",
+        "value": "#EXT-X-APE-ABR-BW-ESTIMATION-WINDOW"
+      },
+      "LCEVC": {
+        "cell": "B161",
+        "value": "#EXT-X-APE-CONTENT-HEURISTIC-4K-LCEVC"
+      },
+      "#EXT-X-PHANTOM-HYDRA": {
+        "cell": "B952",
+        "value": "#EXT-X-PHANTOM-HYDRA"
+      },
+      "#EXT-X-SESSION-DATA": {
+        "cell": "B980",
+        "value": "#EXT-X-SESSION-DATA"
+      },
+      "#EXT-X-STREAM-INF": {
+        "cell": "B983",
+        "value": "#EXT-X-STREAM-INF"
+      },
+      "#EXT-X-VERSION": {
+        "cell": "B988",
+        "value": "#EXT-X-VERSION"
+      },
+      "#EXT-X-VNOVA-LCEVC": {
+        "cell": "B989",
+        "value": "#EXT-X-VNOVA-LCEVC"
+      },
+      "#EXTATTRFROMURL": {
+        "cell": "B1010",
+        "value": "#EXTATTRFROMURL"
+      },
+      "#EXTHTTP": {
+        "cell": "B1011",
+        "value": "#EXTHTTP"
+      },
+      "#EXTINF": {
+        "cell": "B1012",
+        "value": "#EXTINF"
+      },
+      "#EXTM3U": {
+        "cell": "B1013",
+        "value": "#EXTM3U"
+      },
+      "#EXTVLCOPT": {
+        "cell": "B1014",
+        "value": "#EXTVLCOPT"
+      },
+      "#KODIPROP": {
+        "cell": "B1015",
+        "value": "#KODIPROP"
+      },
+      "VIDEO-RANGE": {
+        "cell": "B1082",
+        "value": "VIDEO-RANGE"
+      },
+      "HDCP-LEVEL": {
+        "cell": "B1083",
+        "value": "HDCP-LEVEL"
+      },
+      "SUPPLEMENTAL-CODECS": {
+        "cell": "B1084",
+        "value": "SUPPLEMENTAL-CODECS"
+      },
+      "CMCD": {
+        "cell": "B2145",
+        "value": "headerOverrides.X-CMCD-Spec"
+      }
+    }
+  },
+  "18_CONFIG": {
+    "cellsWithToken": {},
+    "tokenOccurrences": {},
+    "firstSample": {}
+  },
+  "19_ADB_PAYLOAD_INJECTOR": {
+    "cellsWithToken": {},
+    "tokenOccurrences": {},
+    "firstSample": {}
+  },
+  "31_SOLVER_SETUP": {
+    "cellsWithToken": {},
+    "tokenOccurrences": {},
+    "firstSample": {}
+  },
+  "36_BRAIN_SELECTOR": {
+    "cellsWithToken": {
+      "#EXT-X-APE-": 1,
+      "X-APE-": 1
+    },
+    "tokenOccurrences": {
+      "#EXT-X-APE-": 1,
+      "X-APE-": 1
+    },
+    "firstSample": {
+      "#EXT-X-APE-": {
+        "cell": "F14",
+        "value": "si=excluye #EXT-X-APE-*, vnova, etc"
+      },
+      "X-APE-": {
+        "cell": "F14",
+        "value": "si=excluye #EXT-X-APE-*, vnova, etc"
+      }
+    }
+  },
+  "9_BRAIN_DASHBOARD": {
+    "cellsWithToken": {
+      "CMCD": 2
+    },
+    "tokenOccurrences": {
+      "CMCD": 2
+    },
+    "firstSample": {
+      "CMCD": {
+        "cell": "B17",
+        "value": "0 BUGS CMCD (CTA-5004)"
+      }
+    }
+  },
+  "33_CHANNELS_FROM_FRONTEND": {
+    "cellsWithToken": {},
+    "tokenOccurrences": {},
+    "firstSample": {}
+  },
+  "34_BRAIN_SCORING": {
+    "cellsWithToken": {
+      "#EXT-X-APE-": 894,
+      "X-APE-": 1140,
+      "#EXT-X-VNOVA-LCEVC": 21,
+      "LCEVC": 71,
+      "SUPPLEMENTAL-CODECS": 1,
+      "#EXT-X-PHANTOM-HYDRA": 18,
+      "#EXT-X-SESSION-DATA": 1,
+      "#EXT-X-STREAM-INF": 1,
+      "#EXT-X-VERSION": 1,
+      "#EXTATTRFROMURL": 1,
+      "#EXTHTTP": 1,
+      "#EXTINF": 1,
+      "#EXTM3U": 1,
+      "#EXTVLCOPT": 1,
+      "#KODIPROP": 1,
+      "VIDEO-RANGE": 1,
+      "HDCP-LEVEL": 1,
+      "CMCD": 12
+    },
+    "tokenOccurrences": {
+      "#EXT-X-APE-": 894,
+      "X-APE-": 1140,
+      "#EXT-X-VNOVA-LCEVC": 21,
+      "LCEVC": 71,
+      "SUPPLEMENTAL-CODECS": 1,
+      "#EXT-X-PHANTOM-HYDRA": 18,
+      "#EXT-X-SESSION-DATA": 1,
+      "#EXT-X-STREAM-INF": 1,
+      "#EXT-X-VERSION": 1,
+      "#EXTATTRFROMURL": 1,
+      "#EXTHTTP": 1,
+      "#EXTINF": 1,
+      "#EXTM3U": 1,
+      "#EXTVLCOPT": 1,
+      "#KODIPROP": 1,
+      "VIDEO-RANGE": 1,
+      "HDCP-LEVEL": 1,
+      "CMCD": 12
+    },
+    "firstSample": {
+      "#EXT-X-APE-": {
+        "cell": "A14",
+        "value": "#EXT-X-APE-AUDIO-CODEC-FALLBACK"
+      },
+      "X-APE-": {
+        "cell": "A14",
+        "value": "#EXT-X-APE-AUDIO-CODEC-FALLBACK"
+      },
+      "#EXT-X-VNOVA-LCEVC": {
+        "cell": "A30",
+        "value": "#EXT-X-VNOVA-LCEVC-FALLBACK-RESOLUTION"
+      },
+      "LCEVC": {
+        "cell": "A30",
+        "value": "#EXT-X-VNOVA-LCEVC-FALLBACK-RESOLUTION"
+      },
+      "SUPPLEMENTAL-CODECS": {
+        "cell": "A118",
+        "value": "SUPPLEMENTAL-CODECS"
+      },
+      "#EXT-X-PHANTOM-HYDRA": {
+        "cell": "A1428",
+        "value": "#EXT-X-PHANTOM-HYDRA"
+      },
+      "#EXT-X-SESSION-DATA": {
+        "cell": "A1455",
+        "value": "#EXT-X-SESSION-DATA"
+      },
+      "#EXT-X-STREAM-INF": {
+        "cell": "A1458",
+        "value": "#EXT-X-STREAM-INF"
+      },
+      "#EXT-X-VERSION": {
+        "cell": "A1463",
+        "value": "#EXT-X-VERSION"
+      },
+      "#EXTATTRFROMURL": {
+        "cell": "A1473",
+        "value": "#EXTATTRFROMURL"
+      },
+      "#EXTHTTP": {
+        "cell": "A1474",
+        "value": "#EXTHTTP"
+      },
+      "#EXTINF": {
+        "cell": "A1475",
+        "value": "#EXTINF"
+      },
+      "#EXTM3U": {
+        "cell": "A1476",
+        "value": "#EXTM3U"
+      },
+      "#EXTVLCOPT": {
+        "cell": "A1477",
+        "value": "#EXTVLCOPT"
+      },
+      "#KODIPROP": {
+        "cell": "A1478",
+        "value": "#KODIPROP"
+      },
+      "VIDEO-RANGE": {
+        "cell": "A1537",
+        "value": "VIDEO-RANGE"
+      },
+      "HDCP-LEVEL": {
+        "cell": "A1538",
+        "value": "HDCP-LEVEL"
+      },
+      "CMCD": {
+        "cell": "A2559",
+        "value": "headerOverrides.X-CMCD-Spec"
+      }
+    }
+  },
+  "10_HOMOLOGATION": {
+    "cellsWithToken": {
+      "VIDEO-RANGE": 1,
+      "CMCD": 4
+    },
+    "tokenOccurrences": {
+      "VIDEO-RANGE": 1,
+      "CMCD": 6
+    },
+    "firstSample": {
+      "VIDEO-RANGE": {
+        "cell": "B20",
+        "value": "SYS-PROFILE-PN-HDR, EXTHTTP:X-HDR-Mode, STREAM-INF:VIDEO-RANGE"
+      },
+      "CMCD": {
+        "cell": "B28",
+        "value": "EXTHTTP:CMCD-Session, URL_QUERY:CMCD"
+      }
+    }
+  },
+  "11_EXPANSION_ZONE": {
+    "cellsWithToken": {},
+    "tokenOccurrences": {},
+    "firstSample": {}
+  },
+  "12_FORMATOS": {
+    "cellsWithToken": {},
+    "tokenOccurrences": {},
+    "firstSample": {}
+  },
+  "13_CRYPTO": {
+    "cellsWithToken": {},
+    "tokenOccurrences": {},
+    "firstSample": {}
+  },
+  "14_KEYRING": {
+    "cellsWithToken": {},
+    "tokenOccurrences": {},
+    "firstSample": {}
+  },
+  "15_CMCD_QOE": {
+    "cellsWithToken": {
+      "CMCD": 1
+    },
+    "tokenOccurrences": {
+      "CMCD": 1
+    },
+    "firstSample": {
+      "CMCD": {
+        "cell": "A1",
+        "value": "CMCD CTA-5004 + Mux Data + Conviva keys"
+      }
+    }
+  },
+  "16_EVASION": {
+    "cellsWithToken": {},
+    "tokenOccurrences": {},
+    "firstSample": {}
+  },
+  "17_SERVERS_POOL": {
+    "cellsWithToken": {},
+    "tokenOccurrences": {},
+    "firstSample": {}
+  },
+  "19_URL_BUILDER": {
+    "cellsWithToken": {},
+    "tokenOccurrences": {},
+    "firstSample": {}
+  },
+  "20_URL_PROBE": {
+    "cellsWithToken": {
+      "#EXTM3U": 1,
+      "#EXTINF": 1,
+      "#EXT-X-MEDIA": 1,
+      "#EXT-X-VERSION": 1,
+      "#EXT-X-TARGETDURATION": 1
+    },
+    "tokenOccurrences": {
+      "#EXTM3U": 1,
+      "#EXTINF": 1,
+      "#EXT-X-MEDIA": 1,
+      "#EXT-X-VERSION": 1,
+      "#EXT-X-TARGETDURATION": 1
+    },
+    "firstSample": {
+      "#EXTM3U": {
+        "cell": "B13",
+        "value": "#EXTM3U\n#EXT-X-VERSION:3\n#EXT-X-MEDIA-SEQUENCE:0\n#EXT-X-ALLOW-CACHE:YES\n#EXT-X-TARGETDURATION:11\n#EXTINF:10.0,\nhttp://bertha.frontcdn.me:80/auth/JCyHupOTGFyTz509JEGyyyqkgEDXz54pHJOkNDMpvsdVJvy63gM12j_"
+      },
+      "#EXTINF": {
+        "cell": "B13",
+        "value": "#EXTM3U\n#EXT-X-VERSION:3\n#EXT-X-MEDIA-SEQUENCE:0\n#EXT-X-ALLOW-CACHE:YES\n#EXT-X-TARGETDURATION:11\n#EXTINF:10.0,\nhttp://bertha.frontcdn.me:80/auth/JCyHupOTGFyTz509JEGyyyqkgEDXz54pHJOkNDMpvsdVJvy63gM12j_"
+      },
+      "#EXT-X-MEDIA": {
+        "cell": "B13",
+        "value": "#EXTM3U\n#EXT-X-VERSION:3\n#EXT-X-MEDIA-SEQUENCE:0\n#EXT-X-ALLOW-CACHE:YES\n#EXT-X-TARGETDURATION:11\n#EXTINF:10.0,\nhttp://bertha.frontcdn.me:80/auth/JCyHupOTGFyTz509JEGyyyqkgEDXz54pHJOkNDMpvsdVJvy63gM12j_"
+      },
+      "#EXT-X-VERSION": {
+        "cell": "B13",
+        "value": "#EXTM3U\n#EXT-X-VERSION:3\n#EXT-X-MEDIA-SEQUENCE:0\n#EXT-X-ALLOW-CACHE:YES\n#EXT-X-TARGETDURATION:11\n#EXTINF:10.0,\nhttp://bertha.frontcdn.me:80/auth/JCyHupOTGFyTz509JEGyyyqkgEDXz54pHJOkNDMpvsdVJvy63gM12j_"
+      },
+      "#EXT-X-TARGETDURATION": {
+        "cell": "B13",
+        "value": "#EXTM3U\n#EXT-X-VERSION:3\n#EXT-X-MEDIA-SEQUENCE:0\n#EXT-X-ALLOW-CACHE:YES\n#EXT-X-TARGETDURATION:11\n#EXTINF:10.0,\nhttp://bertha.frontcdn.me:80/auth/JCyHupOTGFyTz509JEGyyyqkgEDXz54pHJOkNDMpvsdVJvy63gM12j_"
+      }
+    }
+  },
+  "21_WATERFALL": {
+    "cellsWithToken": {},
+    "tokenOccurrences": {},
+    "firstSample": {}
+  },
+  "22_UX_IMPACT": {
+    "cellsWithToken": {
+      "hvc1": 1
+    },
+    "tokenOccurrences": {
+      "hvc1": 1
+    },
+    "firstSample": {
+      "hvc1": {
+        "cell": "B7",
+        "value": "HEVC (hvc1)"
+      }
+    }
+  },
+  "23_BOTTLENECK": {
+    "cellsWithToken": {
+      "LCEVC": 1
+    },
+    "tokenOccurrences": {
+      "LCEVC": 1
+    },
+    "firstSample": {
+      "LCEVC": {
+        "cell": "B12",
+        "value": "Quitar STREAM-INF con codecs Dolby/LCEVC fake"
+      }
+    }
+  },
+  "24_JSON_IMPORT": {
+    "cellsWithToken": {},
+    "tokenOccurrences": {},
+    "firstSample": {}
+  },
+  "25_JSON_EXPORT": {
+    "cellsWithToken": {},
+    "tokenOccurrences": {},
+    "firstSample": {}
+  },
+  "26_JSON_DIFF": {
+    "cellsWithToken": {},
+    "tokenOccurrences": {},
+    "firstSample": {}
+  },
+  "27_COMPAT_MATRIX": {
+    "cellsWithToken": {},
+    "tokenOccurrences": {},
+    "firstSample": {}
+  },
+  "28_PREVIEW_M3U8": {
+    "cellsWithToken": {
+      "#EXTM3U": 1
+    },
+    "tokenOccurrences": {
+      "#EXTM3U": 1
+    },
+    "firstSample": {
+      "#EXTM3U": {
+        "cell": "B4",
+        "value": "#EXTM3U"
+      }
+    }
+  },
+  "29_STATS_HISTORY": {
+    "cellsWithToken": {},
+    "tokenOccurrences": {},
+    "firstSample": {}
+  },
+  "30_EXPORT_FINAL": {
+    "cellsWithToken": {},
+    "tokenOccurrences": {},
+    "firstSample": {}
+  },
+  "32_PLACEHOLDERS_MAP": {
+    "cellsWithToken": {},
+    "tokenOccurrences": {},
+    "firstSample": {}
+  },
+  "_LISTAS": {
+    "cellsWithToken": {
+      "dvh1": 2,
+      "hev1": 3,
+      "hvc1": 1,
+      "av01": 1,
+      "avc1": 2
+    },
+    "tokenOccurrences": {
+      "dvh1": 2,
+      "hev1": 3,
+      "hvc1": 1,
+      "av01": 1,
+      "avc1": 2
+    },
+    "firstSample": {
+      "dvh1": {
+        "cell": "J1",
+        "value": "dvh1.08.06,hev1.2.4.L186.B0"
+      },
+      "hev1": {
+        "cell": "J1",
+        "value": "dvh1.08.06,hev1.2.4.L186.B0"
+      },
+      "hvc1": {
+        "cell": "J4",
+        "value": "hvc1.2.4.L153.B0,mp4a.40.2"
+      },
+      "av01": {
+        "cell": "J5",
+        "value": "av01.0.15M.10,mp4a.40.2"
+      },
+      "avc1": {
+        "cell": "J6",
+        "value": "avc1.640028,mp4a.40.2"
+      }
+    }
+  },
+  "37_VALORES_UNIFICADOS": {
+    "cellsWithToken": {
+      "X-APE-": 1146,
+      "dvh1": 15,
+      "hvc1": 33,
+      "av01": 21,
+      "hev1": 14,
+      "avc1": 30,
+      "LCEVC": 87,
+      "#EXT-X-APE-": 894,
+      "CMCD": 12,
+      "#EXTHTTP": 1,
+      "#EXTVLCOPT": 1,
+      "#KODIPROP": 1,
+      "#EXT-X-VNOVA-LCEVC": 21,
+      "SUPPLEMENTAL-CODECS": 1,
+      "#EXT-X-STREAM-INF": 1,
+      "VIDEO-RANGE": 1,
+      "HDCP-LEVEL": 1,
+      "#EXTATTRFROMURL": 1,
+      "#EXTINF": 1,
+      "#EXT-X-PHANTOM-HYDRA": 18,
+      "#EXT-X-SESSION-DATA": 1,
+      "#EXT-X-VERSION": 1,
+      "#EXTM3U": 1
+    },
+    "tokenOccurrences": {
+      "X-APE-": 1674,
+      "dvh1": 15,
+      "hvc1": 33,
+      "av01": 21,
+      "hev1": 14,
+      "avc1": 30,
+      "LCEVC": 151,
+      "#EXT-X-APE-": 894,
+      "CMCD": 12,
+      "#EXTHTTP": 1,
+      "#EXTVLCOPT": 1,
+      "#KODIPROP": 1,
+      "#EXT-X-VNOVA-LCEVC": 21,
+      "SUPPLEMENTAL-CODECS": 1,
+      "#EXT-X-STREAM-INF": 1,
+      "VIDEO-RANGE": 1,
+      "HDCP-LEVEL": 1,
+      "#EXTATTRFROMURL": 1,
+      "#EXTINF": 1,
+      "#EXT-X-PHANTOM-HYDRA": 18,
+      "#EXT-X-SESSION-DATA": 1,
+      "#EXT-X-VERSION": 1,
+      "#EXTM3U": 1
+    },
+    "firstSample": {
+      "X-APE-": {
+        "cell": "A5",
+        "value": "headerOverrides.X-APE-CODEC"
+      },
+      "dvh1": {
+        "cell": "G5",
+        "value": "av01.0.21M.10.0.112.09.16.09.0,dvh1.08.06,hvc1.2.4.L186.B0"
+      },
+      "hvc1": {
+        "cell": "G5",
+        "value": "av01.0.21M.10.0.112.09.16.09.0,dvh1.08.06,hvc1.2.4.L186.B0"
+      },
+      "av01": {
+        "cell": "G5",
+        "value": "av01.0.21M.10.0.112.09.16.09.0,dvh1.08.06,hvc1.2.4.L186.B0"
+      },
+      "hev1": {
+        "cell": "H5",
+        "value": "dvh1.08.06,hvc1.2.4.L153.B0,hev1.2.4.L153.B0,av01.0.15M.10"
+      },
+      "avc1": {
+        "cell": "I5",
+        "value": "hvc1.2.4.L123.B0,hev1.2.4.L123.B0,avc1.640033"
+      },
+      "LCEVC": {
+        "cell": "A89",
+        "value": "X-LCEVC-Base-Codec"
+      },
+      "#EXT-X-APE-": {
+        "cell": "A131",
+        "value": "#EXT-X-APE-PREFETCH-MIN-BANDWIDTH"
+      },
+      "CMCD": {
+        "cell": "A389",
+        "value": "headerOverrides.X-CMCD-Spec"
+      },
+      "#EXTHTTP": {
+        "cell": "A699",
+        "value": "#EXTHTTP"
+      },
+      "#EXTVLCOPT": {
+        "cell": "A904",
+        "value": "#EXTVLCOPT"
+      },
+      "#KODIPROP": {
+        "cell": "A905",
+        "value": "#KODIPROP"
+      },
+      "#EXT-X-VNOVA-LCEVC": {
+        "cell": "A998",
+        "value": "#EXT-X-VNOVA-LCEVC-FALLBACK-RESOLUTION"
+      },
+      "SUPPLEMENTAL-CODECS": {
+        "cell": "A1004",
+        "value": "SUPPLEMENTAL-CODECS"
+      },
+      "#EXT-X-STREAM-INF": {
+        "cell": "A1403",
+        "value": "#EXT-X-STREAM-INF"
+      },
+      "VIDEO-RANGE": {
+        "cell": "A1406",
+        "value": "VIDEO-RANGE"
+      },
+      "HDCP-LEVEL": {
+        "cell": "A1407",
+        "value": "HDCP-LEVEL"
+      },
+      "#EXTATTRFROMURL": {
+        "cell": "A1864",
+        "value": "#EXTATTRFROMURL"
+      },
+      "#EXTINF": {
+        "cell": "A1865",
+        "value": "#EXTINF"
+      },
+      "#EXT-X-PHANTOM-HYDRA": {
+        "cell": "A2797",
+        "value": "#EXT-X-PHANTOM-HYDRA"
+      },
+      "#EXT-X-SESSION-DATA": {
+        "cell": "A2823",
+        "value": "#EXT-X-SESSION-DATA"
+      },
+      "#EXT-X-VERSION": {
+        "cell": "A2829",
+        "value": "#EXT-X-VERSION"
+      },
+      "#EXTM3U": {
+        "cell": "A2837",
+        "value": "#EXTM3U"
+      }
+    }
+  },
+  "35_UNIVERSAL_COMPAT_RESULT": {
+    "cellsWithToken": {},
+    "tokenOccurrences": {},
+    "firstSample": {}
+  },
+  "00_MACRO_RUN_REPORT": {
+    "cellsWithToken": {},
+    "tokenOccurrences": {},
+    "firstSample": {}
+  },
+  "00_WIRING_LOG": {
+    "cellsWithToken": {},
+    "tokenOccurrences": {},
+    "firstSample": {}
+  },
+  "00_SOLVER_DIARY": {
+    "cellsWithToken": {},
+    "tokenOccurrences": {},
+    "firstSample": {}
+  },
+  "00_CONVERGENCE_DIARY": {
+    "cellsWithToken": {},
+    "tokenOccurrences": {},
+    "firstSample": {}
+  },
+  "_LISTAS_OMEGA": {
+    "cellsWithToken": {},
+    "tokenOccurrences": {},
+    "firstSample": {}
+  },
+  "98_SHIELD_IMMUTABLE": {
+    "cellsWithToken": {},
+    "tokenOccurrences": {},
+    "firstSample": {}
+  },
+  "00_EXPORT_STAGE": {
+    "cellsWithToken": {},
+    "tokenOccurrences": {},
+    "firstSample": {}
+  },
+  "99_DEAD_CHANNELS_BLACKLIST": {
+    "cellsWithToken": {},
+    "tokenOccurrences": {},
+    "firstSample": {}
+  },
+  "15_FLOOR_LOCK_CONFIG": {
+    "cellsWithToken": {},
+    "tokenOccurrences": {},
+    "firstSample": {}
+  },
+  "16_SENTINEL_PROVIDERS": {
+    "cellsWithToken": {},
+    "tokenOccurrences": {},
+    "firstSample": {}
+  },
+  "17_TELESCOPE_THRESHOLDS": {
+    "cellsWithToken": {},
+    "tokenOccurrences": {},
+    "firstSample": {}
+  },
+  "99_PRISMA_AUDIT_REPORT": {
+    "cellsWithToken": {},
+    "tokenOccurrences": {},
+    "firstSample": {}
+  },
+  "8_CODEC_LADDER": {
+    "cellsWithToken": {
+      "dvh1": 2,
+      "hvc1": 10,
+      "av01": 2,
+      "avc1": 12,
+      "hev1": 9
+    },
+    "tokenOccurrences": {
+      "dvh1": 3,
+      "hvc1": 14,
+      "av01": 2,
+      "avc1": 19,
+      "hev1": 9
+    },
+    "firstSample": {
+      "dvh1": {
+        "cell": "B2",
+        "value": "dvh1.05.06,dvh1.08.06,hvc1.2.4.L183.B0,hvc1.1.6.L183.B0,av01.0.13M.10.0.110.09.16.09.0,avc1.640033,avc1.640028"
+      },
+      "hvc1": {
+        "cell": "B2",
+        "value": "dvh1.05.06,dvh1.08.06,hvc1.2.4.L183.B0,hvc1.1.6.L183.B0,av01.0.13M.10.0.110.09.16.09.0,avc1.640033,avc1.640028"
+      },
+      "av01": {
+        "cell": "B2",
+        "value": "dvh1.05.06,dvh1.08.06,hvc1.2.4.L183.B0,hvc1.1.6.L183.B0,av01.0.13M.10.0.110.09.16.09.0,avc1.640033,avc1.640028"
+      },
+      "avc1": {
+        "cell": "B2",
+        "value": "dvh1.05.06,dvh1.08.06,hvc1.2.4.L183.B0,hvc1.1.6.L183.B0,av01.0.13M.10.0.110.09.16.09.0,avc1.640033,avc1.640028"
+      },
+      "hev1": {
+        "cell": "E2",
+        "value": "hvc1,hev1,dvh1,dvhe,h265,av1,avc1,h264"
+      }
+    }
+  },
+  "33_UA_POOL": {
+    "cellsWithToken": {},
+    "tokenOccurrences": {},
+    "firstSample": {}
+  },
+  "30_DISNEY_GRADE_DIRECTIVES": {
+    "cellsWithToken": {
+      "dvh1": 1,
+      "hvc1": 1,
+      "av01": 1,
+      "avc1": 1
+    },
+    "tokenOccurrences": {
+      "dvh1": 1,
+      "hvc1": 2,
+      "av01": 1,
+      "avc1": 1
+    },
+    "firstSample": {
+      "dvh1": {
+        "cell": "B14",
+        "value": "DATA-ID=\"com.ape.codec_preferences\",VALUE=\"{\\\"preferredCodecs\\\":[\\\"dvh1\\\",\\\"hvc1.2\\\",\\\"hvc1.1\\\",\\\"av01\\\",\\\"avc1\\\"],\\\"hdrModes\\\":[\\\"PQ\\\",\\\"HLG\\\",\\\"DV\\\"],\\\"audioPassthrough\\\":[\\\"ec-3\\\",\\\"ac-3\\\",\\\"mp4a\\\"]}\""
+      },
+      "hvc1": {
+        "cell": "B14",
+        "value": "DATA-ID=\"com.ape.codec_preferences\",VALUE=\"{\\\"preferredCodecs\\\":[\\\"dvh1\\\",\\\"hvc1.2\\\",\\\"hvc1.1\\\",\\\"av01\\\",\\\"avc1\\\"],\\\"hdrModes\\\":[\\\"PQ\\\",\\\"HLG\\\",\\\"DV\\\"],\\\"audioPassthrough\\\":[\\\"ec-3\\\",\\\"ac-3\\\",\\\"mp4a\\\"]}\""
+      },
+      "av01": {
+        "cell": "B14",
+        "value": "DATA-ID=\"com.ape.codec_preferences\",VALUE=\"{\\\"preferredCodecs\\\":[\\\"dvh1\\\",\\\"hvc1.2\\\",\\\"hvc1.1\\\",\\\"av01\\\",\\\"avc1\\\"],\\\"hdrModes\\\":[\\\"PQ\\\",\\\"HLG\\\",\\\"DV\\\"],\\\"audioPassthrough\\\":[\\\"ec-3\\\",\\\"ac-3\\\",\\\"mp4a\\\"]}\""
+      },
+      "avc1": {
+        "cell": "B14",
+        "value": "DATA-ID=\"com.ape.codec_preferences\",VALUE=\"{\\\"preferredCodecs\\\":[\\\"dvh1\\\",\\\"hvc1.2\\\",\\\"hvc1.1\\\",\\\"av01\\\",\\\"avc1\\\"],\\\"hdrModes\\\":[\\\"PQ\\\",\\\"HLG\\\",\\\"DV\\\"],\\\"audioPassthrough\\\":[\\\"ec-3\\\",\\\"ac-3\\\",\\\"mp4a\\\"]}\""
+      }
+    }
+  },
+  "98_VALIDATIONS": {
+    "cellsWithToken": {},
+    "tokenOccurrences": {},
+    "firstSample": {}
+  }
+}
