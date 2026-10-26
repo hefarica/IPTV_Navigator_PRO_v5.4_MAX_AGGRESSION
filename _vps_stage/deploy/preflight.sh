@@ -8,7 +8,13 @@ c_hdr "1 · conectividad y identidad (read-only)"
 if out="$(rsh 'hostname; nginx -v 2>&1; php -v 2>&1 | head -1')"; then
   printf '%s\n' "$out" | sed 's/^/   /'
 else
-  c_bad "   no se pudo conectar por SSH"; exit 2
+  rc=$?
+  if [ "$rc" -eq 255 ]; then
+    c_bad "   RED: no se pudo conectar por SSH a $SSH_TARGET (rc=255)"
+    exit 2
+  fi
+  c_bad "   COMANDO: SSH conecto pero el comando remoto fallo (rc=$rc)"
+  exit 3
 fi
 
 c_hdr "2 · manifiesto: origen local + destino remoto"

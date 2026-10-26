@@ -7,8 +7,19 @@ REPO_ROOT="$(cd "$DEPLOY_DIR/../.." && pwd)"
 MANIFEST="$DEPLOY_DIR/manifest.tsv"
 SNAP_DIR="$DEPLOY_DIR/snapshots"
 # Host: se toma de variables de entorno para no hardcodear credenciales ni IPs.
-VPS_HOST="${VPS_HOST:-root@178.156.147.234}"
-SSH_OPTS=(-o BatchMode=yes -o ConnectTimeout=10 -o StrictHostKeyChecking=accept-new)
+# [t92] El host puede venir con o sin usuario. El CI pasa VPS_HOST (sin
+# usuario) y VPS_USER por separado; si VPS_HOST ya trae "user@", se respeta.
+VPS_HOST_RAW="${VPS_HOST:-178.156.147.234}"
+VPS_USER_RAW="${VPS_USER:-root}"
+case "$VPS_HOST_RAW" in
+    *@*) SSH_TARGET="$VPS_HOST_RAW" ;;
+    *)   SSH_TARGET="${VPS_USER_RAW}@${VPS_HOST_RAW}" ;;
+esac
+VPS_HOST="$SSH_TARGET"   # compatibilidad con los scripts existentes
+# [t92] IdentitiesOnly=yes evita probar claves del runner que no son la del CI.
+SSH_KEY="${APE_SSH_KEY:-$HOME/.ssh/id_ed25519}"
+SSH_OPTS=(-o BatchMode=yes -o ConnectTimeout=10 -o StrictHostKeyChecking=accept-new -o IdentitiesOnly=yes)
+[ -f "$SSH_KEY" ] && SSH_OPTS+=(-i "$SSH_KEY")
 STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
 REMOTE_BACKUP_ROOT="/var/backups/ape-deploy"
 

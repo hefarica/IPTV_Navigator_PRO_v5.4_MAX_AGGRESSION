@@ -33,6 +33,10 @@ permissions:
 env:
   VPS_HOST: ${{ secrets.VPS_HOST }}
   VPS_USER: ${{ secrets.VPS_USER }}
+  # [t92] dry-run ⇒ verify solo exige endpoints de lectura
+  APE_DRY_RUN: ${{ inputs.mode == 'dry-run' && '1' || '0' }}
+  # [t92] clave efímera del CI (lib.sh la usa si existe)
+  APE_SSH_KEY: /home/runner/.ssh/id_ed25519
   DEPLOY_DIR: _vps_stage/deploy
   # Ruta de la lista viva en el VPS y el marcador de 8 bytes que la acompaña.
   LISTS_DIR: /var/www/lists
