@@ -311,13 +311,6 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      # [t113] GATE DE PARIDAD: el deploy no puede declarar success si el sha256
-      # del fichero instalado no es el del repo. Corre en el runner (no toca el VPS).
-      - name: PARIDAD sha256 repo vs manifiesto (deploy_parity_assert)
-        run: |
-          set -euo pipefail
-          node _vps_stage/tests/deploy_parity_assert.js
-      - uses: actions/checkout@v4
       - name: Preparar SSH (llave efímera desde secretos)
         run: |
           set -euo pipefail
@@ -346,6 +339,12 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
+      # [t113] GATE DE PARIDAD sha256 (tras checkout: necesita el árbol del repo).
+      # El deploy no puede declarar success si lo instalado no es lo del repo.
+      - name: PARIDAD sha256 repo vs manifiesto (deploy_parity_assert)
+        run: |
+          set -euo pipefail
+          node _vps_stage/tests/deploy_parity_assert.js
       - name: Preparar SSH (llave efímera desde secretos)
         run: |
           set -euo pipefail
