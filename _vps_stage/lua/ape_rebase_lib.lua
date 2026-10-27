@@ -25,12 +25,54 @@ function M.is_too_big(n) return n > MAX_BODY end
 
 -- URI absoluta del origen, o nil si no hay que tocarla.
 function M.absolutize(uri, origin)
+    origin = M.normalize_origin(origin)          -- [t110] nunca :80 dos veces
     if not uri or uri == "" then return nil end
     if uri:match("^%a[%w+.-]*://") then return nil end
     if uri:match("^//") then return nil end
     if uri:match("^data:") or uri:match("^blob:") then return nil end
     if uri:sub(1, 1) == "/" then return origin .. uri end
     return origin .. "/" .. uri
+end
+
+-- ── [t110] NORMALIZACIÓN DE HOST:PUERTO — el puerto NUNCA se duplica ───────
+-- Causa medida (log 2026-10-27): `origin`/`srv` llegan como `nov202gg.xyz:80`
+-- (y `System.Management.Automation...:80`, `185.227.34.184:80`) y el ensamblado
+-- volvía a añadir el puerto ⇒ `host:80:80` ⇒ 33 fallos `host:80` en 5 h.
+-- Reglas:
+--   · colapsa puertos repetidos:  "h:80:80" -> "h:80" -> "h" (80 es default http)
+--   · quita :80 en http y :443 en https (son el puerto por defecto del esquema)
+--   · deja intactos los puertos NO por defecto (CDN Xtream "1.2.3.4:8080")
+function M.dedup_port(hostport)
+    if type(hostport) ~= "string" or hostport == "" then return hostport end
+    -- [t111] BUCLE hasta estable: en Lua `%1+` NO repite una retro-referencia
+    -- (el `+` se aplica a un item de patrón, no a un capture), así que
+    -- "a:80:80" no colapsaba. Se itera quitando UN puerto por pasada.
+    local h, prev = hostport, nil
+    repeat
+        prev = h
+        h = h:gsub("(:%d+)(:%d+)$", "%1")
+    until h == prev
+    local base, port = h:match("^([^:]+):(%d+)$")
+    if base then
+        if port == "80" then return base end          -- :80 es el default de http
+        -- 443 se conserva solo si el esquema es https; en la práctica el origen
+        -- de estos CDN es http, así que 443 también se cae (ver normalize_origin)
+    end
+    return h
+end
+
+-- "http://h:80" -> "http://h"   ·   "https://h:443" -> "https://h"
+function M.normalize_origin(origin)
+    if type(origin) ~= "string" or origin == "" then return origin end
+    local scheme, host = origin:match("^(%a[%w+.-]*)://([^/]+)")
+    if not scheme then return M.dedup_port(origin) end
+    local rest = origin:sub(#scheme + 4 + #host)
+    local h = M.dedup_port(host)
+    local b, port = host:match("^([^:]+):(%d+)$")
+    if b then
+        if (scheme == "https" and port == "443") or (scheme ~= "https" and port == "80") then h = b end
+    end
+    return scheme .. "://" .. h .. rest
 end
 
 -- ── [t96] REBASE DE ABSOLUTAS CON IPv4 (:puerto opcional) ──────────────────
@@ -40,9 +82,14 @@ end
 -- Conserva la query string: el token del CDN suele ir ahi.
 function M.to_cdn_path(uri)
     if not uri or uri == "" then return nil end
-    local ip, port, rest = uri:match("^https?://(%d+%.%d+%.%d+%.%d+)(:%d+)?(/.*)$")
-    if not ip then return nil end
-    return "/cdn/" .. ip .. (port or "") .. rest
+    -- [t111] admite IPv4 **y** host con nombre: antes solo IPv4, así que
+    -- http://nov202gg.xyz:80/x.ts devolvía nil y el fallback no rebasaba.
+    local host, port, rest = uri:match("^https?://([%w%.%-]+)(:%d+)?(/.*)$")
+    if not host then return nil end
+    if not host:match("%.") then return nil end        -- "localhost" no: eso no es un host público
+    local hp = host .. (port or "")
+    hp = M.dedup_port(hp)                              -- nunca /cdn/host:80:80/...
+    return "/cdn/" .. hp .. rest
 end
 
 local function rebase_attrs(line, origin)

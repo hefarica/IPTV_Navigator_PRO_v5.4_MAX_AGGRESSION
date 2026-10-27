@@ -89,8 +89,8 @@ curl -s --max-time 15 '<url del resolver>' | head -c 300 | grep -E 'ape-profile|
 
 | Fichero | SHA-256 |
 |---|---|
-| `_vps_stage/lua/ape_gateway.lua` | `1b71d90e02cd05297f167b5390655832b29acee47e50c31bb0c632c275eafe2b` |
-| `_vps_stage/lua/ape_rebase_lib.lua` | `dbb73e22fcd86a5b530850c17fe08853b9ab7a7ab87513c894c5a88788045ea0` |
+| `_vps_stage/lua/ape_gateway.lua` | `7211eeb820efa51363a326131e76c4401c1416d9e649e3cb025f72451af501be` |
+| `_vps_stage/lua/ape_rebase_lib.lua` | `a95bf84500c2d0754d7c770482cb92ff164aed842255a7634dab0f6ed5a4594d` |
 
 **Si tocas esos ficheros**: actualiza el SHA aquí **y** explica qué cambió en el egress. El guard `_vps_stage/tests/edge_doctrine_assert.js` falla si no lo haces.
 
@@ -192,8 +192,8 @@ El resolver devuelve **la ENTRADA de la lista** (8,6 KB con `ape-profile`, `vide
 
 | Fichero | SHA-256 |
 |---|---|
-| `_vps_stage/lua/ape_gateway.lua` | `1b71d90e02cd05297f167b5390655832b29acee47e50c31bb0c632c275eafe2b` |
-| `_vps_stage/lua/ape_rebase_lib.lua` | `dbb73e22fcd86a5b530850c17fe08853b9ab7a7ab87513c894c5a88788045ea0` |
+| `_vps_stage/lua/ape_gateway.lua` | `7211eeb820efa51363a326131e76c4401c1416d9e649e3cb025f72451af501be` |
+| `_vps_stage/lua/ape_rebase_lib.lua` | `a95bf84500c2d0754d7c770482cb92ff164aed842255a7634dab0f6ed5a4594d` |
 
 *(Sin cambios de código en t101: solo doctrina. El pin sigue vigente y el guard lo verifica.)*
 
@@ -310,3 +310,48 @@ El reintento **marca** la intención y **abre una segunda oportunidad**, pero qu
 `_vps_stage/nginx/ape-meta-staging.conf`: vhost aislado en **127.0.0.1:8089**, mismo handler, health propio en `/staging/health`. **No se copia a `conf.d/` hasta la aprobación.** El 8088/443 **no se toca**.
 
 **Rollback**: borrar el fichero → `nginx -t` → `nginx -s reload` (nunca restart).
+---
+
+## 14. PUERTO DUPLICADO `:80` — el fix cerrado (t111)
+
+**Síntoma medido**: 33 fallos `host:80` en 5 h. El ensamblado añadía el puerto a un `origin` que **ya lo traía** ⇒ `nov202gg.xyz:80:80` ⇒ host irresoluble.
+
+### 14.1 Lo que t110 dejó a medias
+
+| Pieza | t110 | t111 |
+|---|---|---|
+| `dedup_port` | `gsub("(%:%d+)%1+", "%1")` — **el `+` no repite una retro-referencia** ⇒ `:80:80` NO colapsaba | **bucle `repeat … until h == prev`** quitando un puerto por pasada |
+| `to_cdn_path` | **solo IPv4** ⇒ `http://nov202gg.xyz:80/x.ts` devolvía **nil** | acepta **host con nombre** + IPv4, y **deduplica** el puerto |
+
+### 14.2 El fix
+
+```lua
+-- dedup_port
+local h, prev = hostport, nil
+repeat
+    prev = h
+    h = h:gsub("(:%d+)(:%d+)$", "%1")
+until h == prev
+
+-- to_cdn_path
+local host, port, rest = uri:match("^https?://([%w%.%-]+)(:%d+)?(/.*)$")
+if not host then return nil end
+if not host:match("%.") then return nil end
+local hp = M.dedup_port(host .. (port or ""))
+return "/cdn/" .. hp .. rest
+```
+
+### 14.3 Validación
+
+`_vps_stage/tests/port_dedup_assert.js` → **PASS — 80 aserciones, 0 fallos**:
+- **§1** los **24 casos del log** + 9 más: ninguno con puerto duplicado, todos idempotentes;
+- **§2** los casos borde del contrato (`:80:80` colapsa · `:8080` intacto · `absolutize` sin duplicado · `to_cdn_path` con IPv4 y con host);
+- **§3** reproducido el bug de t110 (el patrón viejo no colapsa) y probado que el nuevo sí;
+- **§4** ninguna URL generada lleva `:puerto:puerto`;
+- **§5** el fuente Lua tiene el bucle y no queda el patrón roto.
+
+**Pin de `ape_rebase_lib.lua` actualizado en este documento.**
+
+### 14.4 Lo que este gate NO prueba
+
+**No ejecuta Lua.** Prueba el **algoritmo espejado** y el **fuente**. La ejecución real con `lua 5.1` debe hacerse en el VPS por stdin. **No lo declaro hecho hasta que corra allí.**
