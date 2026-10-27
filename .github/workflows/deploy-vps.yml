@@ -18,7 +18,7 @@ on:
       mode:
         description: 'dry-run = solo revisa (por defecto). deploy = aplica de verdad.'
         type: choice
-        options: [dry-run, deploy]
+        options: [dry-run, staging, deploy]
         default: dry-run
         required: true
 
@@ -135,6 +135,118 @@ jobs:
           bash "$DEPLOY_DIR/validate.sh"
 
   # ── 4 · DEPLOY (solo con mode=deploy + aprobación del Environment) ───────
+  # ── 3b · STAGING (8089) · NO toca produccion ─────────────────────────────
+  staging:
+    name: 3b · staging 8089 (APROBACIÓN REQUERIDA)
+    needs: validate
+    if: ${{ inputs.mode == 'staging' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment:
+      name: production
+      url: https://iptv-ape.duckdns.org
+    steps:
+      - uses: actions/checkout@v4
+      - name: Preparar SSH (llave efímera desde secretos)
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          printf '%s\n' "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' "${{ secrets.VPS_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+          chmod 644 ~/.ssh/known_hosts
+          printf 'Host *\n  StrictHostKeyChecking yes\n  UserKnownHostsFile ~/.ssh/known_hosts\n  IdentitiesOnly yes\n' > ~/.ssh/config
+          chmod 600 ~/.ssh/config
+      - name: Fotografiar produccion ANTES (sha256 intocable)
+        run: |
+          set -euo pipefail
+          ssh "${{ secrets.VPS_USER }}@$VPS_HOST" "bash -s" <<'EOF' | tee before.sha
+          set -euo pipefail
+          sha256sum /etc/nginx/conf.d/50-ape-meta-plane.conf 2>/dev/null || echo "AUSENTE  50-ape-meta-plane.conf"
+          sha256sum /etc/nginx/lua/ape_gateway.lua 2>/dev/null || echo "AUSENTE  ape_gateway.lua"
+          EOF
+          cat before.sha
+      - name: Instalar conf de staging (nombre DISTINTO) + nginx -t + reload
+        run: |
+          set -euo pipefail
+          CONF=_vps_stage/nginx/ape-meta-staging.conf
+          [ -f "$CONF" ] || { echo "::error::falta $CONF"; exit 1; }
+          scp "$CONF" "${{ secrets.VPS_USER }}@$VPS_HOST:/tmp/ape-meta-staging.conf"
+          ssh "${{ secrets.VPS_USER }}@$VPS_HOST" "bash -s" <<'EOF'
+          set -euo pipefail
+          sudo install -m 644 /tmp/ape-meta-staging.conf /etc/nginx/conf.d/99-ape-meta-staging.conf
+          sudo nginx -t
+          sudo nginx -s reload
+          EOF
+      - name: Health del 8089
+        run: |
+          set -euo pipefail
+          ssh "${{ secrets.VPS_USER }}@$VPS_HOST" "bash -s" <<'EOF'
+          set -euo pipefail
+          for i in 1 2 3 4 5; do
+            code=$(curl -s -o /dev/null -m 5 -w '%{http_code}' http://127.0.0.1:8089/staging/health || true)
+            [ "$code" = "200" ] && { echo "staging health=200"; exit 0; }
+            sleep 2
+          done
+          echo "::error::el 8089 no responde su health"
+          exit 1
+          EOF
+      - name: MUESTRA 10 canales 8088 vs 8089 (SECUENCIAL, 1 conexion)
+        run: |
+          set -euo pipefail
+          ssh "${{ secrets.VPS_USER }}@$VPS_HOST" "bash -s" <<'EOF'
+          set -euo pipefail
+          CH="177683 177690 177691 177692 177693 177694 177695 177696 177697 177698"
+          printf '%-8s %-6s %-10s %-6s %-10s %s\n' CH 8088 lat 8089 lat manifiesto
+          for c in $CH; do
+            t0=$(date +%s%N)
+            a=$(curl -s -o /tmp/a.$$ -m 12 -w '%{http_code}' "http://127.0.0.1:8088/cdn/line.tivi-ott.net/live/3JHFTC/U56BDP/$c.m3u8" || echo ERR)
+            t1=$(date +%s%N)
+            b_man=$(head -c 7 /tmp/a.$$ 2>/dev/null | grep -c '#EXTM3U' || true)
+            rm -f /tmp/a.$$
+            t2=$(date +%s%N)
+            b=$(curl -s -o /tmp/b.$$ -m 12 -w '%{http_code}' "http://127.0.0.1:8089/cdn/line.tivi-ott.net/live/3JHFTC/U56BDP/$c.m3u8" || echo ERR)
+            t3=$(date +%s%N)
+            b_man2=$(head -c 7 /tmp/b.$$ 2>/dev/null | grep -c '#EXTM3U' || true)
+            rm -f /tmp/b.$$
+            printf '%-8s %-6s %-10s %-6s %-10s %s\n' "$c" "$a" "$(( (t1-t0)/1000000 ))ms" "$b" "$(( (t3-t2)/1000000 ))ms" "$b_man2"
+            sleep 1.5
+          done
+          EOF
+      - name: Verificar que produccion NO cambio (aborta si cambia)
+        run: |
+          set -euo pipefail
+          ssh "${{ secrets.VPS_USER }}@$VPS_HOST" "bash -s" <<'EOF' | tee after.sha
+          set -euo pipefail
+          sha256sum /etc/nginx/conf.d/50-ape-meta-plane.conf 2>/dev/null || echo "AUSENTE  50-ape-meta-plane.conf"
+          sha256sum /etc/nginx/lua/ape_gateway.lua 2>/dev/null || echo "AUSENTE  ape_gateway.lua"
+          EOF
+          echo "--- comparacion antes/despues:"
+          diff before.sha after.sha && echo "PRODUCCION INTACTA" || { echo "::error::produccion cambio; abortando"; exit 1; }
+      - name: ROLLBACK del staging (siempre)
+        if: always()
+        run: |
+          set -euo pipefail
+          ssh "${{ secrets.VPS_USER }}@$VPS_HOST" "bash -s" <<'EOF'
+          set -euo pipefail
+          if [ -f /etc/nginx/conf.d/99-ape-meta-staging.conf ]; then
+            sudo rm -f /etc/nginx/conf.d/99-ape-meta-staging.conf
+            sudo nginx -t && sudo nginx -s reload
+            echo "staging retirado; nginx recargado (sin restart)"
+          else
+            echo "no habia conf de staging (nada que retirar)"
+          fi
+          EOF
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: staging-evidence
+          path: |
+            before.sha
+            after.sha
+          if-no-files-found: warn
+          retention-days: 14
+
   deploy:
     name: 4 · deploy (APROBACIÓN REQUERIDA)
     needs: validate
