@@ -22,6 +22,7 @@ trap 'c_warn "   limpieza de staging"; rsh "rm -rf \"$STAGING\"" >/dev/null 2>&1
 
 c_hdr "1 · subida a staging + validación remota"
 changed=0
+STAGED_LIST=""   # [t112] destinos realmente subidos a staging
 while IFS=$'\t' read -r src dst mode owner note; do
   lf="$REPO_ROOT/$src"; [ -f "$lf" ] || continue
   lh="$(sha_local "$lf")"
@@ -35,6 +36,7 @@ while IFS=$'\t' read -r src dst mode owner note; do
     *.conf) rsh "cp -a '$STAGING/$b' '$STAGING/_candidate.conf'" >/dev/null || true ;;
   esac
   printf '   STAGED      %s (sha %s…)\n' "$dst" "${lh:0:12}"
+  STAGED_LIST="$STAGED_LIST$dst"$'\n'          # [t112] solo se instala lo que está en staging
   changed=$((changed+1))
 done < <(manifest_rows)
 [ "$changed" -eq 0 ] && { c_ok "   Nada que desplegar (todo idéntico)."; exit 0; }
@@ -49,7 +51,21 @@ fail=0
 while IFS=$'\t' read -r src dst mode owner note; do
   b="$(basename "$src")"
   [ -f "$REPO_ROOT/$src" ] || continue
-  rsh "install -m '$mode' -o '${owner%%:*}' -g '${owner##*:}' '$STAGING/$b' '$dst'" || { c_bad "   install falló: $dst"; fail=1; }
+  # [t112] BUG: se instalaba desde $STAGING SIEMPRE, pero staging solo tiene lo
+  # que cambió. Un fichero no subido => install de un origen inexistente.
+  if ! printf '%s' "$STAGED_LIST" | grep -qxF "$dst"; then
+    printf '   NO-STAGED   %s (sin cambios: no se toca)\n' "$dst"; continue
+  fi
+  [ -f "$STAGING/$b" ] || { c_bad "   FATAL: $STAGING/$b no existe pero $dst está en STAGED_LIST"; fail=1; continue; }
+  rsh "install -m '$mode' -o '${owner%%:*}' -g '${owner##*:}' '$STAGING/$b' '$dst' && sha256sum '$dst' | cut -d' ' -f1" > /tmp/_ape_installed.sha 2>/dev/null \
+    || { c_bad "   install falló: $dst"; fail=1; continue; }
+  got="$(tail -n1 /tmp/_ape_installed.sha | tr -d '[:space:]')"
+  want="$(sha_local "$REPO_ROOT/$src")"
+  if [ "$got" != "$want" ]; then
+    c_bad "   PARIDAD ROTA $dst (repo=$want remoto=$got)"; fail=1
+  else
+    printf '   INSTALADO   %s (sha %s… paridad OK)\n' "$dst" "${want:0:12}"
+  fi
 done < <(manifest_rows)
 if [ "$fail" -ne 0 ] || ! rsh "nginx -t" ; then
   c_bad "   nginx -t falló → ROLLBACK automático"

@@ -64,6 +64,30 @@ else
   check_code "http://127.0.0.1:8088/_ape/health" "8088 _ape/health"
 fi
 
+# ── [t112] PARIDAD OBLIGATORIA DE HASHES ─────────────────────────────────────
+# Regla dura: NO se declara success si el sha256 del fichero instalado no es
+# EXACTAMENTE el del repo. Esto es lo que faltaba: el deploy decía "success"
+# con `ape_gateway.lua` en 11.748 B mientras el repo tenía 21.327 B.
+c_hdr "PARIDAD sha256 repo == remoto (manifiesto completo)"
+parity_bad=0
+while IFS=$'\t' read -r src dst mode owner note; do
+  lf="$REPO_ROOT/$src"
+  [ -f "$lf" ] || { printf '   SIN-FUENTE  %s\n' "$src"; continue; }
+  want="$(sha_local "$lf")"
+  got="$(rsh "[ -f '$dst' ] && sha256sum '$dst' | cut -d' ' -f1 || echo AUSENTE" 2>/dev/null | tr -d '[:space:]')"
+  if [ "$want" = "$got" ]; then
+    printf '   PARIDAD-OK  %s\n' "$dst"
+  else
+    printf '   PARIDAD-ROTA %s (repo=%s remoto=%s)\n' "$dst" "${want:0:12}" "${got:0:12}"
+    parity_bad=$((parity_bad+1))
+  fi
+done < <(manifest_rows)
+if [ "$parity_bad" -ne 0 ]; then
+  c_bad "   $parity_bad fichero(s) con paridad rota → VERIFY FALLA → rollback"
+  exit 2
+fi
+c_ok "   paridad completa: repo == remoto en todo el manifiesto"
+
 c_hdr "RESUMEN VERIFY"
 [ "$DRY" = "1" ] && printf '   modo=dry-run · capa lua omitida\n'
 if [ "$net_fail" -ne 0 ]; then
