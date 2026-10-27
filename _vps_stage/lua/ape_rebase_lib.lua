@@ -1,4 +1,13 @@
 -- ═══════════════════════════════════════════════════════════════════════════
+-- ═══════════════════════════════════════════════════════════════════════════
+-- ⛔ ANTES DE TOCAR: lee docs/edge/EDGE_EGRESS_RESOLVER.md
+--
+-- Este fichero participa en el EGRESS del edge. El proveedor EXIGE egress/auth:
+-- el `/cdn/` crudo devuelve 407 (reason=http_407, all_upstreams_failed) porque
+-- le falta el `srv`/`ctx` que aporta el resolver. NO cambies la logica de
+-- egress/host sin leer ese documento y sin actualizar su pin sha256.
+-- _vps_stage/tests/edge_doctrine_assert.js falla si este aviso desaparece.
+-- ═══════════════════════════════════════════════════════════════════════════
 -- APE REBASE LIB — funciones PURAS (sin ngx) reutilizables por los handlers
 -- ═══════════════════════════════════════════════════════════════════════════
 -- Una sola fuente de verdad para:
@@ -24,15 +33,27 @@ function M.absolutize(uri, origin)
     return origin .. "/" .. uri
 end
 
+-- ── [t96] REBASE DE ABSOLUTAS CON IPv4 (:puerto opcional) ──────────────────
+-- http(s)://<IPv4>(:<puerto>)?/<ruta>  ->  /cdn/<IPv4>(:<puerto>)/<ruta>
+-- Devuelve nil si la URI no es una absoluta con IPv4 (los hosts con nombre
+-- los sigue rebasando el flujo existente con `origin`).
+-- Conserva la query string: el token del CDN suele ir ahi.
+function M.to_cdn_path(uri)
+    if not uri or uri == "" then return nil end
+    local ip, port, rest = uri:match("^https?://(%d+%.%d+%.%d+%.%d+)(:%d+)?(/.*)$")
+    if not ip then return nil end
+    return "/cdn/" .. ip .. (port or "") .. rest
+end
+
 local function rebase_attrs(line, origin)
     line = line:gsub('(URI=")([^"]+)(")', function(pre, uri, post)
-        local abs = M.absolutize(uri, origin)
+        local abs = M.to_cdn_path(uri) or M.absolutize(uri, origin)
         if abs then return pre .. abs .. post end
         return pre .. uri .. post
     end)
     line = line:gsub("(URI=)([^,%s]+)", function(pre, uri)
         if uri:sub(1, 1) == '"' then return pre .. uri end
-        local abs = M.absolutize(uri, origin)
+        local abs = M.to_cdn_path(uri) or M.absolutize(uri, origin)
         if abs then return pre .. abs end
         return pre .. uri
     end)
@@ -51,7 +72,7 @@ function M.rebase_body(body, origin)
                 if line ~= before then n_attr = n_attr + 1 end
                 out[#out + 1] = line
             else
-                local abs = M.absolutize(line, origin)
+                local abs = M.to_cdn_path(line) or M.absolutize(line, origin)
                 if abs then
                     out[#out + 1] = abs
                     n_uri = n_uri + 1

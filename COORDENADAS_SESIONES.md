@@ -556,3 +556,29 @@ micro-caché **no** · HTTP/2 **se conserva** (riesgo de caudal con ventana pequ
 - Un rollback también se ejecuta por el pipeline (ollback.sh <stamp>), no a mano.
 
 Motivo: que quede registro de lo hecho y que nada entre sin trazabilidad ni rollback.
+
+---
+
+## §16 · DOCTRINA DEL EGRESS/RESOLVER — **alerta obligatoria** — 2026-10-26
+
+> ⛔ **ANTES DE TOCAR EL EDGE: lee `docs/edge/EDGE_EGRESS_RESOLVER.md`.**
+
+**Decisión vigente**: el `/cdn/` **crudo** devuelve **407** (`reason: http_407`, `all_upstreams_failed`) en los hosts que exigen **egress/auth** del proveedor. Para esos hosts, el edge **debe usar el resolver**, que aporta el `srv`/`ctx` que el `/cdn/` no tiene.
+
+**Evidencia medida**:
+
+| Camino | Canales 3281 y 698 | Latencia | Tamaño |
+|---|---|---|---|
+| `/cdn/` crudo | **407** persistente (independiente de UA) | 0,29 s | — |
+| **resolver** (`ch/sid/srv/ctx`) | **200** con `ape-profile` y `video-track` | **0,21–0,23 s** | **8,6 KB** |
+
+**Reglas**:
+
+1. **Si un host da 407 por `/cdn/`, NO se insiste por `/cdn/`** — se enruta por el resolver.
+2. **No se inventa un `srv`/`ctx`** en el edge: lo produce el resolver a partir de datos reales.
+3. **Medir siempre SECUENCIAL**: 1 conexión a la vez, 1,5 s de pausa. En paralelo la muestra se invalida.
+4. **El pin sha256 del gateway está en el documento.** Si lo cambias sin actualizar el pin, `_vps_stage/tests/edge_doctrine_assert.js` **falla**.
+
+**Guard**: `node _vps_stage/tests/edge_doctrine_assert.js` → debe dar **0**. Si falla, no es un test roto: es que **la doctrina y el código se han separado**.
+
+**Pendiente (no verificado)**: el recuento de 200/4xx/5xx de `/cdn/` en 24 h exige el `access.log` del VPS — **[UNKNOWN]** hasta entonces. Los comandos exactos están en §7 del documento.
