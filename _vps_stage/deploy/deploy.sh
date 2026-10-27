@@ -35,6 +35,8 @@ while IFS=$'\t' read -r src dst mode owner note <&3; do   # [t115] fd 3: ssh NO 
   if [ "$lh" = "$rh" ]; then printf '   SIN CAMBIO  %s\n' "$dst"; continue; fi
   b="$(basename "$src")"
   rsh "cat > '$STAGING/$b'" < "$lf" || { c_bad "   fallo subiendo $src"; exit 5; }
+  staged_sha="$(rsh "sha256sum '$STAGING/$b' 2>/dev/null | cut -d' ' -f1" | tr -d '[:space:]')"   # [t115] verifica el transporte
+  [ "$staged_sha" = "$lh" ] || { c_bad "   FATAL: staging corrupto $b (local=${lh:0:12} remoto=${staged_sha:0:12})"; exit 5; }
   case "$src" in
     *.lua) rsh "luac -p '$STAGING/$b'" || { c_bad "   luac falla en staging: $b"; exit 6; } ;;
     *.php) rsh "php -l '$STAGING/$b' | grep -q 'No syntax errors'" || { c_bad "   php -l falla en staging: $b"; exit 6; } ;;
@@ -52,7 +54,8 @@ fi
 
 c_hdr "2 · backup de los destinos afectados"
 while IFS=$'\t' read -r src dst mode owner note <&3; do   # [t115]
-  rsh "[ -f '$dst' ] && { mkdir -p \"$BK\$(dirname '$dst')\"; cp -a '$dst' \"$BK$dst\"; echo \"   BACKUP \$dst\"; } || true"
+  rsh "[ -f '$dst' ] && { mkdir -p \"$BK\$(dirname '$dst')\"; cp -a '$dst' \"$BK$dst\"; } || true"
+  printf '   BACKUP    %s\n' "$dst"
 done 3< <(manifest_rows)   # [t115]
 
 c_hdr "3 · instalación (mv atómico dentro del mismo FS) + nginx -t + reload"
@@ -65,7 +68,7 @@ while IFS=$'\t' read -r src dst mode owner note <&3; do   # [t115]
   if ! printf '%s' "$STAGED_LIST" | grep -qxF "$dst"; then
     printf '   NO-STAGED   %s (sin cambios: no se toca)\n' "$dst"; continue
   fi
-  [ -f "$STAGING/$b" ] || { c_bad "   FATAL: $STAGING/$b no existe pero $dst está en STAGED_LIST"; fail=1; continue; }
+  rsh "test -f '$STAGING/$b'" || { c_bad "   FATAL REMOTO: $STAGING/$b no existe pero $dst está en STAGED_LIST"; fail=1; continue; }   # [t115] antes era un -f LOCAL sobre una ruta REMOTA (siempre falso)
   rsh "install -m '$mode' -o '${owner%%:*}' -g '${owner##*:}' '$STAGING/$b' '$dst' && sha256sum '$dst' | cut -d' ' -f1" > /tmp/_ape_installed.sha 2>/dev/null \
     || { c_bad "   install falló: $dst"; fail=1; continue; }
   got="$(tail -n1 /tmp/_ape_installed.sha | tr -d '[:space:]')"

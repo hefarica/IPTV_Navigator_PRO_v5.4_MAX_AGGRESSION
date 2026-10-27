@@ -94,7 +94,7 @@ const iParity = vsh.indexOf('PARIDAD sha256 repo == remoto');
 const iExit0 = vsh.lastIndexOf('exit 0');
 ok('3.4 el bloque está ANTES del exit 0 (no es código muerto)', iParity > 0 && iParity < iExit0,
     `paridad@${iParity} exit0@${iExit0}`);
-ok('3.5 recorre TODO el manifiesto (manifest_rows)', /done < <\(manifest_rows\)/.test(vsh.slice(iParity, iParity + 2000)));
+ok('3.5 recorre TODO el manifiesto (manifest_rows, fd3 o stdin)', /done (?:3)?< <\(manifest_rows\)/.test(vsh.slice(iParity, iParity + 2000)));
 
 // ── §4 comparación remota real (opcional) ────────────────────────────────
 section('[4] Comparación remota real (solo con APE_PARITY_LIVE=1)');
