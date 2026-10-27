@@ -355,3 +355,9 @@ return "/cdn/" .. hp .. rest
 ### 14.4 Lo que este gate NO prueba
 
 **No ejecuta Lua.** Prueba el **algoritmo espejado** y el **fuente**. La ejecución real con `lua 5.1` debe hacerse en el VPS por stdin. **No lo declaro hecho hasta que corra allí.**
+### 14.5 Pin de los dos ficheros del edge
+
+| Fichero | SHA-256 |
+|---|---|
+| `_vps_stage/lua/ape_gateway.lua` | `7211eeb820efa51363a326131e76c4401c1416d9e649e3cb025f72451af501be` |
+| `_vps_stage/lua/ape_rebase_lib.lua` | `f813b1cc9a7da6126f97536a4c4b3fc662395e3d344619371150ee3387ddcfcb` |
