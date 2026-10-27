@@ -1,0 +1,13 @@
+# [t114] Fin de línea NORMALIZADO en el repo. Sin esto, en Windows el árbol de
+# trabajo tiene CRLF y el blob LF: `git status` no ve el cambio, pero el sha256
+# del fichero en disco NO es el del fichero que se despliega. Eso produjo tres
+# pines de doctrina falsos (t104, t106, t113) y tres deploys que mentían.
+*.lua     text eol=lf
+*.sh      text eol=lf
+*.ts      text eol=lf
+*.m3u8    text eol=lf
+*.tsv     text eol=lf
+*.md      text eol=lf
+*.js      text eol=lf
+*.yml     text eol=lf
+*.php     text eol=lf
