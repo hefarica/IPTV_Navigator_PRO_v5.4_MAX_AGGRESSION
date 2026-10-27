@@ -89,7 +89,7 @@ curl -s --max-time 15 '<url del resolver>' | head -c 300 | grep -E 'ape-profile|
 
 | Fichero | SHA-256 |
 |---|---|
-| `_vps_stage/lua/ape_gateway.lua` | `7211eeb820efa51363a326131e76c4401c1416d9e649e3cb025f72451af501be` |
+| `_vps_stage/lua/ape_gateway.lua` | `1b71d90e02cd05297f167b5390655832b29acee47e50c31bb0c632c275eafe2b` |
 | `_vps_stage/lua/ape_rebase_lib.lua` | `a95bf84500c2d0754d7c770482cb92ff164aed842255a7634dab0f6ed5a4594d` |
 
 **Si tocas esos ficheros**: actualiza el SHA aquí **y** explica qué cambió en el egress. El guard `_vps_stage/tests/edge_doctrine_assert.js` falla si no lo haces.
@@ -192,7 +192,7 @@ El resolver devuelve **la ENTRADA de la lista** (8,6 KB con `ape-profile`, `vide
 
 | Fichero | SHA-256 |
 |---|---|
-| `_vps_stage/lua/ape_gateway.lua` | `7211eeb820efa51363a326131e76c4401c1416d9e649e3cb025f72451af501be` |
+| `_vps_stage/lua/ape_gateway.lua` | `1b71d90e02cd05297f167b5390655832b29acee47e50c31bb0c632c275eafe2b` |
 | `_vps_stage/lua/ape_rebase_lib.lua` | `a95bf84500c2d0754d7c770482cb92ff164aed842255a7634dab0f6ed5a4594d` |
 
 *(Sin cambios de código en t101: solo doctrina. El pin sigue vigente y el guard lo verifica.)*
@@ -359,5 +359,5 @@ return "/cdn/" .. hp .. rest
 
 | Fichero | SHA-256 |
 |---|---|
-| `_vps_stage/lua/ape_gateway.lua` | `7211eeb820efa51363a326131e76c4401c1416d9e649e3cb025f72451af501be` |
+| `_vps_stage/lua/ape_gateway.lua` | `1b71d90e02cd05297f167b5390655832b29acee47e50c31bb0c632c275eafe2b` |
 | `_vps_stage/lua/ape_rebase_lib.lua` | `f813b1cc9a7da6126f97536a4c4b3fc662395e3d344619371150ee3387ddcfcb` |

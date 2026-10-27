@@ -23,6 +23,7 @@ trap 'c_warn "   limpieza de staging"; rsh "rm -rf \"$STAGING\"" >/dev/null 2>&1
 c_hdr "1 · subida a staging + validación remota"
 changed=0
 STAGED_LIST=""   # [t112] destinos realmente subidos a staging
+n_installed=0    # [t114] contador real de instalaciones
 while IFS=$'\t' read -r src dst mode owner note; do
   lf="$REPO_ROOT/$src"; [ -f "$lf" ] || continue
   lh="$(sha_local "$lf")"
@@ -65,8 +66,16 @@ while IFS=$'\t' read -r src dst mode owner note; do
     c_bad "   PARIDAD ROTA $dst (repo=$want remoto=$got)"; fail=1
   else
     printf '   INSTALADO   %s (sha %s… paridad OK)\n' "$dst" "${want:0:12}"
+    n_installed=$((n_installed+1))
   fi
 done < <(manifest_rows)
+# [t114] recuento explícito: cuántas se instalaron de cuántas había que instalar
+n_expected=$(printf '%s' "$STAGED_LIST" | grep -c . || true)
+c_ok "   instaladas ${n_installed:-0} de ${n_expected} filas en STAGED_LIST"
+if [ "${n_installed:-0}" -ne "$n_expected" ]; then
+  c_bad "   DESCUADRE: esperaba $n_expected y se instalaron ${n_installed:-0}"
+  fail=1
+fi
 if [ "$fail" -ne 0 ] || ! rsh "nginx -t" ; then
   c_bad "   nginx -t falló → ROLLBACK automático"
   "$DEPLOY_DIR/rollback.sh" "$STAMP" --yes || c_bad "   ROLLBACK TAMBIÉN FALLÓ: intervención manual con $BK"
