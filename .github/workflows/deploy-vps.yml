@@ -311,6 +311,12 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
+      - uses: actions/checkout@v4
+      # [t113] GATE DE PARIDAD sha256 — tras el checkout (necesita el árbol del repo).
+      - name: PARIDAD sha256 repo vs manifiesto (deploy_parity_assert)
+        run: |
+          set -euo pipefail
+          node _vps_stage/tests/deploy_parity_assert.js
       - name: Preparar SSH (llave efímera desde secretos)
         run: |
           set -euo pipefail
