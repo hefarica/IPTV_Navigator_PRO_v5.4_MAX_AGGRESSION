@@ -7927,8 +7927,20 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
         const _codec796 = _probeData?.videoCodec
             || (cfg.codec_chain_video && String(cfg.codec_chain_video).split(',')[0])
             || (() => { switch (cfg.codec_primary) { case 'VVC': return 'vvc1.1.L63.00.0.0'; case 'AV1': return 'av01.0.08M.08'; case 'AVC': return 'avc1.640028'; default: return 'hvc1.2.4.L153.B0'; } })();
-        let _codecAudio = _probeData?.audioCodec
-            || (cfg.codec_chain_audio && String(cfg.codec_chain_audio).split(',')[0]) || cfg.audio_codec || 'mp4a.40.2';
+        // ── [t97] AUDIO REAL: la preferencia viene del ADN, la VERDAD del probe.
+        // Si chocan, gana la verdad. SIN evidencia NO se declara audio: declarar
+        // ac-3 sobre un stream AAC es una mentira al decoder y no reproduce (778
+        // canales 4K afectados). Los 9.742 que funcionan no declaran audio.
+        let _codecAudio = (function () {
+            const probeA = (_probeData && _probeData.audioCodec) ? String(_probeData.audioCodec).trim() : "";
+            if (probeA) return probeA;
+            try {
+                const ch = (typeof channel !== "undefined") ? channel : null;
+                const raw = (ch && ch.raw) || {};
+                const evA = String((ch && (ch.audioCodec || raw.audioCodec || raw["X-Audio-Codec-Preferred"] || raw["X-APE-Codec-Audio"])) || "").trim();
+                return evA;
+            } catch (_e) { return ""; }
+        })();
         // [FIX-AUDIO 2026-05-20 · HFRC] Guardarraíl ec-3/E-AC3 → ac-3. Directiva explícita del
         // usuario: ec-3 (Atmos/DD+) causa problemas de passthrough recurrentes. Esto cubre el caso
         // de que el probe o el bulletproof LAB aún traigan ec-3 en codec_chain_audio. E-AC3 tiene
@@ -10457,7 +10469,7 @@ lines.push(`#EXT-X-APE-STREAM-TRUTH:src=${_streamTruth.source},w=${_streamTruth.
             const _bw796_denom = _qd85.bandwidth;
             const _avgBw_denom = _qd85.average;
             const _sid_denom = _qd85.stableVariantId;
-            lines.push(`#EXT-X-STREAM-INF:BANDWIDTH=${_bw796_denom},AVERAGE-BANDWIDTH=${_avgBw_denom},CODECS="${_codec796_csv},${_codecAudio}",RESOLUTION=${_res796_csv},FRAME-RATE=${Number(_fps796_csv).toFixed(3)}${_videoRangePart},HDCP-LEVEL=${_hdcpLevel},STABLE-VARIANT-ID="${_sid_denom}"`);
+            lines.push(`#EXT-X-STREAM-INF:BANDWIDTH=${_bw796_denom},AVERAGE-BANDWIDTH=${_avgBw_denom},CODECS="${_codec796_csv}${_codecAudio ? ',' + _codecAudio : ''}",RESOLUTION=${_res796_csv},FRAME-RATE=${Number(_fps796_csv).toFixed(3)}${_videoRangePart},HDCP-LEVEL=${_hdcpLevel},STABLE-VARIANT-ID="${_sid_denom}"`);
             if (_fpsSource) {
                 lines.push(`#EXT-X-APE-FPS-SOURCE:${_fpsSource}`);
             }
