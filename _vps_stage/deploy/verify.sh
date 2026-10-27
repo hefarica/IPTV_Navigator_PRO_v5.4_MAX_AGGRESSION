@@ -69,10 +69,15 @@ fi
 # EXACTAMENTE el del repo. Esto es lo que faltaba: el deploy decía "success"
 # con `ape_gateway.lua` en 11.748 B mientras el repo tenía 21.327 B.
 c_hdr "PARIDAD sha256 repo == remoto (manifiesto completo)"
-parity_bad=0
-while IFS=$'\t' read -r src dst mode owner note; do
+parity_bad=0; parity_missing=0; n_checked=0
+n_manifest=$(manifest_rows | grep -c . || true)   # [t115]
+while IFS=$'\t' read -r src dst mode owner note <&3; do   # [t115] fd 3: ssh NO puede robar el manifiesto
+  n_checked=$((n_checked+1))
   lf="$REPO_ROOT/$src"
-  [ -f "$lf" ] || { printf '   SIN-FUENTE  %s\n' "$src"; continue; }
+  if [ ! -f "$lf" ]; then
+    printf '   SIN-FUENTE  %s  (FALLA: el manifiesto cita un origen local inexistente)\n' "$src"
+    parity_missing=$((parity_missing+1)); parity_bad=$((parity_bad+1)); continue
+  fi
   want="$(sha_local "$lf")"
   got="$(rsh "[ -f '$dst' ] && sha256sum '$dst' | cut -d' ' -f1 || echo AUSENTE" 2>/dev/null | tr -d '[:space:]')"
   if [ "$want" = "$got" ]; then
@@ -81,12 +86,16 @@ while IFS=$'\t' read -r src dst mode owner note; do
     printf '   PARIDAD-ROTA %s (repo=%s remoto=%s)\n' "$dst" "${want:0:12}" "${got:0:12}"
     parity_bad=$((parity_bad+1))
   fi
-done < <(manifest_rows)
-if [ "$parity_bad" -ne 0 ]; then
-  c_bad "   $parity_bad fichero(s) con paridad rota → VERIFY FALLA → rollback"
+done 3< <(manifest_rows)   # [t115]
+if [ "$n_checked" -ne "$n_manifest" ]; then
+  c_bad "   CONTEO ROTO: manifiesto=$n_manifest, comprobadas=$n_checked → VERIFY FALLA"
   exit 2
 fi
-c_ok "   paridad completa: repo == remoto en todo el manifiesto"
+if [ "$parity_bad" -ne 0 ]; then
+  c_bad "   $parity_bad fichero(s) con paridad rota ($parity_missing sin fuente) → VERIFY FALLA → rollback"
+  exit 2
+fi
+c_ok "   paridad completa: $n_checked/$n_manifest ficheros repo == remoto"
 
 c_hdr "RESUMEN VERIFY"
 [ "$DRY" = "1" ] && printf '   modo=dry-run · capa lua omitida\n'

@@ -24,8 +24,12 @@ c_hdr "1 · subida a staging + validación remota"
 changed=0
 STAGED_LIST=""   # [t112] destinos realmente subidos a staging
 n_installed=0    # [t114] contador real de instalaciones
-while IFS=$'\t' read -r src dst mode owner note; do
-  lf="$REPO_ROOT/$src"; [ -f "$lf" ] || continue
+n_rows=0         # [t115] filas realmente iteradas
+n_manifest=$(manifest_rows | grep -c . || true)   # [t115] filas del manifiesto
+while IFS=$'\t' read -r src dst mode owner note <&3; do   # [t115] fd 3: ssh NO puede robar el manifiesto por stdin
+  n_rows=$((n_rows+1))
+  lf="$REPO_ROOT/$src"
+  [ -f "$lf" ] || { c_bad "   AUSENTE-LOCAL $src (el manifiesto cita un origen que no existe) → ABORTA"; exit 11; }   # [t115] sin continue silencioso
   lh="$(sha_local "$lf")"
   rh="$(rsh "[ -f '$dst' ] && sha256sum '$dst' | cut -d' ' -f1 || echo AUSENTE")"
   if [ "$lh" = "$rh" ]; then printf '   SIN CAMBIO  %s\n' "$dst"; continue; fi
@@ -39,19 +43,23 @@ while IFS=$'\t' read -r src dst mode owner note; do
   printf '   STAGED      %s (sha %s…)\n' "$dst" "${lh:0:12}"
   STAGED_LIST="$STAGED_LIST$dst"$'\n'          # [t112] solo se instala lo que está en staging
   changed=$((changed+1))
-done < <(manifest_rows)
-[ "$changed" -eq 0 ] && { c_ok "   Nada que desplegar (todo idéntico)."; exit 0; }
+done 3< <(manifest_rows)   # [t115]
+if [ "$n_rows" -ne "$n_manifest" ]; then
+  c_bad "   ABORTA: manifiesto=$n_manifest filas, iteradas=$n_rows (algún comando consumió el stdin del loop)"
+  exit 10
+fi
+[ "$changed" -eq 0 ] && { c_ok "   Nada que desplegar (todo idéntico: $n_rows/$n_manifest filas verificadas)."; exit 0; }
 
 c_hdr "2 · backup de los destinos afectados"
-while IFS=$'\t' read -r src dst mode owner note; do
+while IFS=$'\t' read -r src dst mode owner note <&3; do   # [t115]
   rsh "[ -f '$dst' ] && { mkdir -p \"$BK\$(dirname '$dst')\"; cp -a '$dst' \"$BK$dst\"; echo \"   BACKUP \$dst\"; } || true"
-done < <(manifest_rows)
+done 3< <(manifest_rows)   # [t115]
 
 c_hdr "3 · instalación (mv atómico dentro del mismo FS) + nginx -t + reload"
 fail=0
-while IFS=$'\t' read -r src dst mode owner note; do
+while IFS=$'\t' read -r src dst mode owner note <&3; do   # [t115]
   b="$(basename "$src")"
-  [ -f "$REPO_ROOT/$src" ] || continue
+  [ -f "$REPO_ROOT/$src" ] || { c_bad "   AUSENTE-LOCAL $src en fase de instalación"; fail=1; continue; }   # [t115]
   # [t112] BUG: se instalaba desde $STAGING SIEMPRE, pero staging solo tiene lo
   # que cambió. Un fichero no subido => install de un origen inexistente.
   if ! printf '%s' "$STAGED_LIST" | grep -qxF "$dst"; then
@@ -68,7 +76,7 @@ while IFS=$'\t' read -r src dst mode owner note; do
     printf '   INSTALADO   %s (sha %s… paridad OK)\n' "$dst" "${want:0:12}"
     n_installed=$((n_installed+1))
   fi
-done < <(manifest_rows)
+done 3< <(manifest_rows)   # [t115]
 # [t114] recuento explícito: cuántas se instalaron de cuántas había que instalar
 n_expected=$(printf '%s' "$STAGED_LIST" | grep -c . || true)
 c_ok "   instaladas ${n_installed:-0} de ${n_expected} filas en STAGED_LIST"

@@ -32,7 +32,7 @@ fi
 # Lista de rutas relativas dentro del backup (una por línea) y restauración una a una.
 LIST="$(rsh "find '$BK' -type f" | sed "s|^$BK/||")"
 restored=0
-while IFS= read -r rel; do
+while IFS= read -r rel <&3; do   # [t115] fd 3: el ssh del install NO puede robar la lista
     [ -n "$rel" ] || continue
     if rsh "install -m 644 -o root -g root '$BK/$rel' '/$rel'"; then
         printf '   RESTAURADO /%s\n' "$rel"
@@ -40,7 +40,7 @@ while IFS= read -r rel; do
     else
         c_bad "   FALLO restaurando /$rel"
     fi
-done <<< "$LIST"
+done 3<<< "$LIST"   # [t115]
 
 c_hdr "RECARGA"
 if rsh "nginx -t"; then
