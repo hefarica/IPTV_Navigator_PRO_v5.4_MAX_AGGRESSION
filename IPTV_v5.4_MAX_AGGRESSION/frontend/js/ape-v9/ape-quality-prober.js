@@ -634,3 +634,122 @@
     }
 
 })(typeof window !== 'undefined' ? window : globalThis);
+
+// ─────────────────────────────────────────────────────────────────────────────
+// #region R-metric  ·  [t102] MÉTRICA R = duración_segmento / tiempo_descarga
+//
+// R se mide con LA CONEXIÓN ACTUAL. Jamás en paralelo: una sonda paralela
+// inventa un R que no existe y hace tomar decisiones sobre datos falsos.
+//
+// UMBRALES (propietario):  >=2.0 EXCELENTE · >=1.5 SALUDABLE · >=1.2 MARGEN
+// INSUFICIENTE · >=1.0 CRITICO · >0.5 INVIABLE · <=0.5 FALLO GRAVE
+// ─────────────────────────────────────────────────────────────────────────────
+const APE_R_BANDS = [
+    { min: 2.0, band: 'EXCELENTE',            verdict: 'BUENO',        action: 'mantener' },
+    { min: 1.5, band: 'SALUDABLE',            verdict: 'ACEPTABLE',    action: 'mantener' },
+    { min: 1.2, band: 'MARGEN INSUFICIENTE',  verdict: 'VIGILAR',      action: 'vigilar' },
+    { min: 1.0, band: 'CRITICO',              verdict: 'CRITICO',      action: 'cambiar' },
+    { min: 0.5, band: 'INVIABLE',             verdict: 'INVIABLE',     action: 'inmediato' },
+    { min: -Infinity, band: 'FALLO GRAVE',    verdict: 'FALLO GRAVE',  action: 'no_insistir' },
+];
+
+function apeRClassify(r) {
+    if (r === null || r === undefined || r === '') return { ratio: null, band: 'SIN DATO', verdict: 'SIN DATO', action: 'esperar' };
+    const v = Number(r);
+    if (!isFinite(v) || v < 0) return { ratio: null, band: 'SIN DATO', verdict: 'SIN DATO', action: 'esperar' };
+    // <=0.5 es FALLO GRAVE; >0.5 y <1.0 es INVIABLE
+    if (v <= 0.5) return { ratio: v, band: 'FALLO GRAVE', verdict: 'FALLO GRAVE', action: 'no_insistir' };
+    for (const b of APE_R_BANDS) {
+        if (b.band === 'FALLO GRAVE') continue;
+        if (v >= b.min) return { ratio: v, band: b.band, verdict: b.verdict, action: b.action };
+    }
+    return { ratio: v, band: 'FALLO GRAVE', verdict: 'FALLO GRAVE', action: 'no_insistir' };
+}
+
+// R de un segmento: duración declarada (s) / tiempo de descarga (s)
+function apeRSegment(duracionSeg, tiempoDescargaSeg) {
+    const d = Number(duracionSeg), t = Number(tiempoDescargaSeg);
+    if (!isFinite(d) || !isFinite(t) || d <= 0 || t <= 0) return null;
+    return d / t;
+}
+
+// Sostenido: media móvil de los últimos `ventana` segmentos (3-5) + el último.
+function apeRSeries(segmentos, ventana) {
+    const w = Math.max(3, Math.min(5, Number(ventana) || 4));
+    const vals = (segmentos || []).map(s => apeRSegment(s.duracionSeg, s.descargaSeg)).filter(v => v !== null);
+    if (vals.length === 0) return { n: 0, last: null, mean: null, mean3: null, below12: 0 };
+    const tail = vals.slice(-w);
+    const mean = tail.reduce((a, b) => a + b, 0) / tail.length;
+    const last3 = vals.slice(-3);
+    return {
+        n: vals.length,
+        last: vals[vals.length - 1],
+        mean: mean,
+        mean3: last3.reduce((a, b) => a + b, 0) / last3.length,
+        below12: tail.filter(v => v < 1.2).length,
+        all: vals,
+    };
+}
+
+// REGLAS DE ACCIÓN + PREDICCIÓN de congelación.
+//   media < 1.2 durante 2 segmentos => cambiar
+//   un segmento < 1.0               => inmediato
+//   4-5 s sin datos                 => congelación
+//   buffer < 2 segmentos            => recuperar
+//   autonomía < tiempo_cambio + 2*segmento + 5 s => cambiar
+function apeRDecide(st) {
+    const s = st || {};
+    const seg = Number(s.duracionSeg) || 10;
+    const cambio = Number(s.tiempoCambioSeg) || 8;
+    const bufferSeg = Number(s.bufferSeg) || 0;
+    const idleSeg = Number(s.idleSeg) || 0;
+    const serie = apeRSeries(s.segmentos || [], s.ventana);
+
+    if (idleSeg >= 4) return { switch: true, urgent: true, reason: 'congelacion: >=4-5 s sin datos' };
+    if (bufferSeg > 0 && bufferSeg < 2 * seg) return { switch: true, urgent: true, reason: 'buffer < 2 segmentos' };
+    if (serie.last !== null && serie.last < 1.0) return { switch: true, urgent: true, reason: 'ultimo segmento R<1.0' };
+    if (serie.below12 >= 2) return { switch: true, urgent: false, reason: 'media <1.2 en 2+ segmentos' };
+    if (serie.mean !== null && serie.mean < 1.2) return { switch: true, urgent: false, reason: 'media de ventana <1.2' };
+
+    // Predicción: ¿me da tiempo a cambiar antes de quedarme sin buffer?
+    if (bufferSeg > 0) {
+        const necesario = cambio + 2 * seg + 5;
+        if (bufferSeg < necesario) return { switch: true, urgent: false, reason: `autonomia ${bufferSeg}s < ${necesario}s necesarios` };
+    }
+    return { switch: false, urgent: false, reason: 'saludable: mantener' };
+}
+
+// BITRATE OBJETIVO: mínimo saludable = real x1.5 · recomendado = real x2.0
+// Para deportes/picos se usa p95, no la media.
+const APE_BITRATE_FACTOR = { minimo: 1.5, recomendado: 2.0 };
+function apeBitrateTarget(bitrateRealBps, opts) {
+    const o = opts || {};
+    const b = Number(bitrateRealBps) || 0;
+    const p95 = Number(o.p95Bps) || 0;
+    const base = (o.sports === true && p95 > 0) ? p95 : b;
+    return {
+        base: base,
+        usoP95: (o.sports === true && p95 > 0),
+        minimo: Math.round(base * APE_BITRATE_FACTOR.minimo),
+        recomendado: Math.round(base * APE_BITRATE_FACTOR.recomendado),
+    };
+}
+
+// Tabla por perfil (P0-P5): factor aplicado sobre el bitrate REAL medido.
+const APE_R_PROFILE_TABLE = {
+    P0: { min: 1.5, rec: 2.0, p95: false, nota: '8K/4K supremo — x2.0 recomendado' },
+    P1: { min: 1.5, rec: 2.0, p95: false, nota: '4K 60 — x2.0' },
+    P2: { min: 1.5, rec: 2.0, p95: false, nota: '4K 30 — x2.0' },
+    P3: { min: 1.5, rec: 2.0, p95: true,  nota: 'FHD 60 — deportes: p95' },
+    P4: { min: 1.5, rec: 2.0, p95: false, nota: 'HD estable' },
+    P5: { min: 1.5, rec: 2.0, p95: false, nota: 'SD failsafe' },
+};
+
+if (typeof window !== 'undefined') {
+    window.APE_R = {
+        classify: apeRClassify, segment: apeRSegment, series: apeRSeries,
+        decide: apeRDecide, bitrateTarget: apeBitrateTarget,
+        bands: APE_R_BANDS, profiles: APE_R_PROFILE_TABLE,
+    };
+}
+// #endregion R-metric

@@ -196,3 +196,78 @@ El resolver devuelve **la ENTRADA de la lista** (8,6 KB con `ape-profile`, `vide
 | `_vps_stage/lua/ape_rebase_lib.lua` | `dbb73e22fcd86a5b530850c17fe08853b9ab7a7ab87513c894c5a88788045ea0` |
 
 *(Sin cambios de código en t101: solo doctrina. El pin sigue vigente y el guard lo verifica.)*
+
+---
+
+## 12. MÉTRICA R — cuando el bitrate declarado no sirve para decidir
+
+**El bitrate declarado miente.** Un canal puede declarar 50 Mbps y entregar 0,77 R. Por eso la decisión de ruta/calidad se toma con **R medido**, no con la promesa del manifest.
+
+### 12.1 Definición
+
+```
+R = duración_del_segmento / tiempo_de_descarga
+```
+
+Se mide **con la conexión actual**, **nunca en paralelo**: una sonda paralela inventa un R que no existe y hace decidir sobre datos falsos. Se usan la **media móvil de 3-5 segmentos** y el **último** segmento.
+
+### 12.2 Umbrales y acción
+
+| R | Banda | Veredicto | Acción |
+|---|---|---|---|
+| **≥ 2.0** | EXCELENTE | BUENO | mantener |
+| **≥ 1.5** | SALUDABLE | ACEPTABLE | mantener (objetivo) |
+| **1.2 – 1.49** | MARGEN INSUFICIENTE | VIGILAR | vigilar |
+| **1.0 – 1.19** | CRITICO | CRITICO | cambiar ruta/calidad |
+| **> 0.5 – < 1.0** | INVIABLE | INVIABLE | actuar ya |
+| **≤ 0.5** | FALLO GRAVE | FALLO GRAVE | no insistir |
+
+### 12.3 Reglas de disparo
+
+| Condición | Efecto |
+|---|---|
+| media **< 1.2** en **2 segmentos** | **cambiar** |
+| **un** segmento **< 1.0** | **inmediato** |
+| **4-5 s sin datos** | **congelación** |
+| **buffer < 2 segmentos** | **recuperar** |
+| `autonomía < tiempo_cambio + 2*segmento + 5 s` | **cambiar** |
+
+**Ejemplo de la predicción**: con segmentos de **10 s** y **8 s** de tiempo de cambio, el umbral es **8 + 20 + 5 = 33 s** de autonomía. Por debajo de eso, no da tiempo a cambiar sin cortar.
+
+### 12.4 Casos reales del propietario
+
+| Canal | R | Veredicto |
+|---|---|---|
+| ARENA | **0,77** | **INVIABLE** |
+| WARNER | **0,85** | **INVIABLE** |
+| SKY CINEMA | **1,79** | **ACEPTABLE** |
+| FILM KOMEDI | **3,65** | **BUENO** |
+| FILM KOMEDI (caída) | **0,21** | **FALLO GRAVE** |
+
+**La caída importa más que el valor**: el mismo canal pasa de BUENO a FALLO GRAVE. Un test que solo mire el estado actual no lo detecta; el gate sí.
+
+### 12.5 Bitrate objetivo
+
+```
+mínimo saludable = bitrate_real × 1.5
+recomendado      = bitrate_real × 2.0
+```
+
+**En deportes/contenido con picos se usa el p95**, no la media: la media esconde los picos, y los picos son los que congelan.
+
+| Perfil | Factor mín. | Factor rec. | Base |
+|---|---|---|---|
+| P0-P2 | ×1.5 | ×2.0 | media |
+| **P3** (FHD 60) | ×1.5 | ×2.0 | **p95** (deportes) |
+| P4-P5 | ×1.5 | ×2.0 | media |
+
+### 12.6 Dónde vive
+
+- **Frontend**: bloque `#region R-metric` de `ape-quality-prober.js` → `window.APE_R` (`classify`, `segment`, `series`, `decide`, `bitrateTarget`).
+- **Gate**: `_vps_stage/tests/ratio_assert.js` **extrae ese mismo bloque** del prober y lo evalúa: **no puede haber deriva** entre lo probado y lo usado. **48 aserciones, incluidos los 4 casos del propietario y la caída 3,65 → 0,21.**
+
+### 12.7 [UNKNOWN] — lo que NO se ha hecho
+
+- **El resolver PHP NO se ha tocado**: en el host de trabajo **no hay `php`** (`php -l` imposible). Editar a ciegas un fichero de **7.468 líneas** sería exactamente la clase de error que ya ha roto cosas. **La decisión por R en el VPS queda pendiente** de un entorno con PHP.
+- **AUTO-AJUSTAR como botón de la UI NO se ha cableado**: la función (`APE_R.decide`) está lista y probada, pero **no hay botón**. Falta el trabajo de UI.
+- **Desplegar por Actions**: no ejecutado en esta tarea.
