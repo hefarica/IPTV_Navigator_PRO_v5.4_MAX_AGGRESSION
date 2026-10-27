@@ -304,6 +304,33 @@ $ch_global = get_correlated_channel_id();
 if ($ch_global !== 'UNKNOWN') {
     $latencyMs = (float)($_GET['ping'] ?? $_GET['ttfb'] ?? '150');
     if ($latencyMs < 10) $latencyMs = rand(20, 80);
+    // ═══ [t103] MÉTRICA R — decide el R MEDIDO, no el bitrate declarado.
+    // R = duracion_segmento / tiempo_descarga, medido por el cliente con UNA
+    // sola conexion. Se pasa en ?r= y opcionalmente la lectura previa ?r_prev=.
+    if (!function_exists('ape_r_downgrade')) {
+        function ape_r_downgrade(string $p): string {
+            $order = ['P0', 'P1', 'P2', 'P3', 'P4', 'P5'];
+            $i = array_search(strtoupper(trim($p)), $order, true);
+            if ($i === false) { return $p; }
+            return $order[min(count($order) - 1, $i + 1)];
+        }
+    }
+    $ape_r      = (isset($_GET['r']) && is_numeric($_GET['r'])) ? (float)$_GET['r'] : null;
+    $ape_r_prev = (isset($_GET['r_prev']) && is_numeric($_GET['r_prev'])) ? (float)$_GET['r_prev'] : null;
+    $ape_r_action = 'sin_dato';
+    if ($ape_r !== null) {
+        if ($ape_r <= 0.5)    { $ape_r_action = 'no_insistir'; }
+        elseif ($ape_r < 1.0) { $ape_r_action = 'inmediato'; }
+        elseif ($ape_r < 1.2) { $ape_r_action = 'cambiar'; }
+        elseif ($ape_r < 1.5) { $ape_r_action = 'vigilar'; }
+        else                  { $ape_r_action = 'mantener'; }
+    }
+    if ($ape_r_action === 'vigilar' && $ape_r_prev !== null && $ape_r_prev < 1.2) {
+        $ape_r_action = 'cambiar';
+    }
+    if (in_array($ape_r_action, ['cambiar', 'inmediato', 'no_insistir'], true)) {
+        $p = ape_r_downgrade($p);
+    }
     $p = $_GET['p'] ?? 'P3';
     $bw = $_GET['bw_kbps'] ?? 'Auto';
     $qosMode = $_GET['qos_mode'] ?? 'Default';
