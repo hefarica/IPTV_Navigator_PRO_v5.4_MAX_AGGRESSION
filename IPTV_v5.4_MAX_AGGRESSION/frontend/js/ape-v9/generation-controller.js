@@ -1569,3 +1569,32 @@ try {
         else window.APEGenerationController && window.APEGenerationController.attachDirectModeToggle();
     }
 } catch (_e87) { }
+
+// [t104] AUTO-AJUSTAR — conecta la UI con la métrica R (APE_R.decide).
+// NUNCA lanza sondas en paralelo: usa la muestra que ya tenga el reproductor.
+(function () {
+    if (typeof document === 'undefined') return;
+    function render() {
+        var out = document.getElementById('apeAutoAdjustOut');
+        if (!out) return;
+        var R = (typeof window !== 'undefined') ? window.APE_R : null;
+        if (!R) { out.textContent = 'R: métrica no cargada'; return; }
+        var st = window.APE_R_STATE || { segmentos: [], bufferSeg: 0, duracionSeg: 10, tiempoCambioSeg: 8 };
+        var serie = R.series(st.segmentos, 4);
+        var cls = R.classify(serie.last);
+        var dec = R.decide(st);
+        out.textContent =
+            'R último=' + (serie.last === null ? '—' : serie.last.toFixed(2)) +
+            ' · media=' + (serie.mean === null ? '—' : serie.mean.toFixed(2)) +
+            ' · ' + cls.band + ' → ' + cls.action +
+            (dec.switch ? ' · CAMBIAR (' + dec.reason + ')' : ' · mantener');
+    }
+    function attach() {
+        var b = document.getElementById('apeAutoAdjustBtn');
+        if (!b) return;
+        b.addEventListener('click', render);
+        render();
+    }
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', attach);
+    else attach();
+})();

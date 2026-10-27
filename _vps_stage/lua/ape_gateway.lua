@@ -198,6 +198,24 @@ candidates = allowed
 
 -- failover entre candidatos
 local t0 = ngx.now()
+-- ═══ [t104] EGRESS DEL RESOLVER — reintento ÚNICO ante 407 ═══════════════════
+-- El proveedor exige egress/auth: el `/cdn/` crudo devuelve 407 con
+-- reason=http_407 / all_upstreams_failed. El resolver aporta `srv` y `ctx`
+-- (base64) que el edge no tiene. Aquí se capturan para poder REINTENTAR UNA vez.
+-- NO se inventan: si no vienen en la petición, no hay reintento.
+-- 1 conexión: el capture fallido ya cerró antes de este punto; el reintento abre
+-- una nueva, nunca dos a la vez.
+local _ape_srv = (ngx.var.arg_srv or '')
+local _ape_ctx = (ngx.var.arg_ctx or '')
+local _ape_egress_ok = (_ape_srv ~= '' and _ape_ctx ~= '')
+local _ape_egress_tried = false
+local function _ape_egress_retry(host_try)
+    if not _ape_egress_ok or _ape_egress_tried then return nil end
+    _ape_egress_tried = true
+    ngx.log(ngx.WARN, "[ape-gw] egress-retry 407 host=", tostring(host_try),
+            " srv_len=", #_ape_srv, " ctx_len=", #_ape_ctx)
+    return true
+end
 local winner, res_ok, final_origin, last_status = nil, nil, nil, nil
 local last_reason = nil
 

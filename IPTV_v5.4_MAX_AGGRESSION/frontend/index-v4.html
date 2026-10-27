@@ -2765,6 +2765,11 @@
                   title="ON: URL del proveedor VERBATIM (sin VPS). OFF: URLs enrutadas por el VPS."
                   style="margin-left:14px; color:var(--text-muted); font-size:0.85rem; font-weight:bold; display:inline-flex; align-items:center; gap:6px; cursor:pointer;">
                   <input type="checkbox" id="apeDirectModeToggle" style="width:16px; height:16px; cursor:pointer;">
+                <button id="apeAutoAdjustBtn" class="btn" title="Mide R = duracion/descarga con LA CONEXION ACTUAL (nunca en paralelo) y dice si mantener, vigilar, cambiar o actuar ya."
+                  style="margin-left:10px; background: linear-gradient(135deg,#10b981,#059669); font-weight:bold;">
+                  <span class="icon">📊</span><span>AUTO-AJUSTAR (función objetivo)</span>
+                </button>
+                <span id="apeAutoAdjustOut" style="margin-left:10px; font-size:0.85rem; color:var(--text-muted);"></span>
                   <span>Modo DIRECTO (sin VPS)</span>
                 </label>
                 <label for="publicationMode" style="margin-left:14px; color:var(--text-muted); font-size:0.85rem; font-weight:bold;">Modo:</label>

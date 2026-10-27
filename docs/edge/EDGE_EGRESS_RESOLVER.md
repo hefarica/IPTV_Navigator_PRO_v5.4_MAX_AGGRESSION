@@ -89,7 +89,7 @@ curl -s --max-time 15 '<url del resolver>' | head -c 300 | grep -E 'ape-profile|
 
 | Fichero | SHA-256 |
 |---|---|
-| `_vps_stage/lua/ape_gateway.lua` | `81b44468c4f716bc9ab9d9c80ab4f1f2d6609ad5f3ffb48c14cd565c71408b99` |
+| `_vps_stage/lua/ape_gateway.lua` | `1b71d90e02cd05297f167b5390655832b29acee47e50c31bb0c632c275eafe2b` |
 | `_vps_stage/lua/ape_rebase_lib.lua` | `dbb73e22fcd86a5b530850c17fe08853b9ab7a7ab87513c894c5a88788045ea0` |
 
 **Si tocas esos ficheros**: actualiza el SHA aquí **y** explica qué cambió en el egress. El guard `_vps_stage/tests/edge_doctrine_assert.js` falla si no lo haces.
@@ -192,7 +192,7 @@ El resolver devuelve **la ENTRADA de la lista** (8,6 KB con `ape-profile`, `vide
 
 | Fichero | SHA-256 |
 |---|---|
-| `_vps_stage/lua/ape_gateway.lua` | `81b44468c4f716bc9ab9d9c80ab4f1f2d6609ad5f3ffb48c14cd565c71408b99` |
+| `_vps_stage/lua/ape_gateway.lua` | `1b71d90e02cd05297f167b5390655832b29acee47e50c31bb0c632c275eafe2b` |
 | `_vps_stage/lua/ape_rebase_lib.lua` | `dbb73e22fcd86a5b530850c17fe08853b9ab7a7ab87513c894c5a88788045ea0` |
 
 *(Sin cambios de código en t101: solo doctrina. El pin sigue vigente y el guard lo verifica.)*
@@ -271,3 +271,42 @@ recomendado      = bitrate_real × 2.0
 - **El resolver PHP NO se ha tocado**: en el host de trabajo **no hay `php`** (`php -l` imposible). Editar a ciegas un fichero de **7.468 líneas** sería exactamente la clase de error que ya ha roto cosas. **La decisión por R en el VPS queda pendiente** de un entorno con PHP.
 - **AUTO-AJUSTAR como botón de la UI NO se ha cableado**: la función (`APE_R.decide`) está lista y probada, pero **no hay botón**. Falta el trabajo de UI.
 - **Desplegar por Actions**: no ejecutado en esta tarea.
+
+---
+
+## 13. EGRESS CABLEADO — el reintento único ante 407
+
+**Dónde está**: `_vps_stage/lua/ape_gateway.lua`, en el **content handler**, justo antes del loop de failover. **NO** en `ape_rebase_lib.lua`, que solo reescribe URIs del cuerpo: el egress es una decisión de **construcción del upstream**, y ahí es donde vive.
+
+### 13.1 Qué hace
+
+```lua
+local _ape_srv = (ngx.var.arg_srv or '')
+local _ape_ctx = (ngx.var.arg_ctx or '')
+local _ape_egress_ok = (_ape_srv ~= '' and _ape_ctx ~= '')
+local _ape_egress_tried = false
+local function _ape_egress_retry(host_try)
+    if not _ape_egress_ok or _ape_egress_tried then return nil end
+    _ape_egress_tried = true
+    ngx.log(ngx.WARN, "[ape-gw] egress-retry 407 host=", ...)
+    return true
+end
+```
+
+- **Un solo reintento** (`_ape_egress_tried`): nunca dos.
+- **Solo si hay `srv` y `ctx`** en la petición. **No se inventan**.
+- **1 conexión**: el capture fallido ya cerró antes del reintento; el nuevo abre después. Nunca dos a la vez.
+- Deja **traza en el log** (`[ape-gw] egress-retry 407 host=…`) para que la muestra de staging pueda **probar** que se ejecutó.
+- **El rebase del cuerpo no se toca.**
+
+### 13.2 Lo que este cableado NO garantiza (y hay que probar en staging)
+
+El reintento **marca** la intención y **abre una segunda oportunidad**, pero que el 407 se convierta en 200 depende de que **la location interna del resolver consuma `srv`/`ctx`**. Eso **no lo he verificado** — se prueba con la muestra de staging (§14), no aquí.
+
+**No se ha ejecutado ninguna muestra**: sin acceso al VPS no puedo levantar el 8089 ni medir los 10 canales. **La evidencia de staging no existe todavía.**
+
+### 13.3 Staging
+
+`_vps_stage/nginx/ape-meta-staging.conf`: vhost aislado en **127.0.0.1:8089**, mismo handler, health propio en `/staging/health`. **No se copia a `conf.d/` hasta la aprobación.** El 8088/443 **no se toca**.
+
+**Rollback**: borrar el fichero → `nginx -t` → `nginx -s reload` (nunca restart).
