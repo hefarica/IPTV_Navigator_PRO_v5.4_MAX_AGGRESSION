@@ -129,3 +129,70 @@ Sin eso, cualquier tasa que publique **sería una muestra**, no la salud real.
 - **Documento creado**: 2026-10-26 (sesión t100).
 - **Evidencia de base**: mediciones de t99 + las del capitán sobre 3281 y 698.
 - **Decisión**: el edge usa el egress (`srv`) **del resolver** para los hosts que exigen auth.
+
+---
+
+## 9. CORRECCIÓN — «407» puede ser CANAL MUERTO, no egress
+
+**La regla de §3 era demasiado amplia.** Decía «407 ⇒ ir al resolver». **Es falso en un caso medido.**
+
+### 9.1 La prueba (mismo host, mismo momento)
+
+| Canal | Ruta | Resultado |
+|---|---|---|
+| **HD** `tvg-id=177683` | por `/cdn/` (mismo host `line.tivi-ott.net`) | **200** · 1,16 s |
+| **FHD** `tvg-id=177690` | por `/cdn/` (misma ruta base) | **407** |
+| **FHD** `177690` | **directo al proveedor** (HTTP) | **461** |
+
+Cuerpo del 407 de `177690`:
+```json
+{"ok":false,"tried":["line.tivi-ott.net"],"reason":"http_407",
+ "error":"all_upstreams_failed","ms":282,
+ "path":"/live/3JHFTC/U56BDP/177690.m3u8"}
+```
+
+**Mismo host, misma ruta base, mismo instante: el HD da 200 y el FHD da 407.** Si fuera egress, **fallarían los dos**. ⇒ **el canal `177690` está muerto/rechazado en el proveedor**; el edge hace lo correcto al no poder autenticarse.
+
+### 9.2 El criterio de distinción
+
+| Señal | Qué significa |
+|---|---|
+| El **mismo host sirve otros canales** (200) | el egress **funciona** ⇒ el 407 es **del canal** |
+| El cuerpo trae **`tried: [<host>]`** | el edge **intentó** ese origen ⇒ no es un fallo de configuración |
+| El cuerpo trae **`reason: http_407`** + `all_upstreams_failed` | el **origen** rechazó, no el edge |
+| **Directo al proveedor da 461** (u otro no-2xx) | confirmación independiente: **el canal no existe** |
+
+**Regla corregida**:
+
+> **407 + el mismo host sirve otros canales + `tried`/`reason` en el cuerpo ⇒ CANAL MUERTO, no egress.** Ir al resolver **no arregla nada**: el canal no existe.
+>
+> **407 + TODOS los canales del host fallan ⇒ EGRESS** (ahí sí, resolver).
+
+---
+
+## 10. CORRECCIÓN — el **200 del resolver NO prueba canal vivo**
+
+**Esto es lo que hizo parecer que todo iba bien.**
+
+El resolver devuelve **la ENTRADA de la lista** (8,6 KB con `ape-profile`, `video-track`, `#EXTHTTP`) — **no descarga ni valida el stream**. Verificado: `ch=177690` (el canal muerto) devuelve **200** igual que `ch=177683` (el que funciona).
+
+**Criterio de canal VIVO real**:
+
+| Acepta como vivo | NO acepta como vivo |
+|---|---|
+| El manifiesto del canal vuelve con **`#EXTM3U`** o **`#EXTINF`** | el **200 del resolver** |
+| O un **segmento descarga** (bytes > 0 de vídeo) | un **200 de una página de error** |
+| | el **200 de la entrada** de la lista |
+
+**Regla**: **para declarar un canal vivo hay que pedir el MANIFIESTO del canal**, no la entrada del resolver. El script `_vps_stage/tests/channel_alive_assert.js` aplica este criterio.
+
+---
+
+## 11. Pin actualizado
+
+| Fichero | SHA-256 |
+|---|---|
+| `_vps_stage/lua/ape_gateway.lua` | `81b44468c4f716bc9ab9d9c80ab4f1f2d6609ad5f3ffb48c14cd565c71408b99` |
+| `_vps_stage/lua/ape_rebase_lib.lua` | `dbb73e22fcd86a5b530850c17fe08853b9ab7a7ab87513c894c5a88788045ea0` |
+
+*(Sin cambios de código en t101: solo doctrina. El pin sigue vigente y el guard lo verifica.)*

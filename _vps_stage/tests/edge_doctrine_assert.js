@@ -89,6 +89,25 @@ section('(c) pin sha256 — el gateway no cambia sin actualizar el documento');
         `sha rebase=${shaRb}`);
 }
 
+// ── (f) doctrina del 407: canal muerto ≠ egress ───────────────────────────
+section('(f) 407 puede ser CANAL MUERTO, no egress');
+{
+    ok('f.1 el documento tiene el apartado del 407 como canal muerto', /407[»"']?\s*puede ser CANAL MUERTO/i.test(doc));
+    ok('f.2 cita el caso 177683 vs 177690', /177683/.test(doc) && /177690/.test(doc));
+    ok('f.3 cita el 461 del proveedor directo', /461/.test(doc));
+    ok('f.4 da el criterio tried + reason', /tried/.test(doc) && /http_407/.test(doc));
+    ok('f.5 distingue canal de egress por el mismo host', /mismo host/i.test(doc));
+}
+
+// ── (g) el 200 del resolver NO prueba canal vivo ──────────────────────────
+section('(g) 200 del resolver NO prueba canal vivo');
+{
+    ok('g.1 el documento tiene el apartado', /200 del resolver NO prueba canal vivo|NO prueba canal vivo/i.test(doc));
+    ok('g.2 dice que devuelve la ENTRADA, no valida el stream', /ENTRADA/.test(doc) && /no valida|no descarga/i.test(doc));
+    ok('g.3 da el criterio real (#EXTM3U / segmento)', /#EXTM3U/.test(doc));
+    ok('g.4 menciona el script channel_alive_assert', /channel_alive_assert/.test(doc));
+}
+
 // ── (e) aviso en COORDENADAS_SESIONES.md ───────────────────────────────────
 section('(e) aviso en COORDENADAS_SESIONES.md');
 {
