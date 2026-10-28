@@ -146,16 +146,63 @@ if ok_uhd and uhd then
         .. "#EXT-X-STREAM-INF:BANDWIDTH=9000000,RESOLUTION=1920x1080,CODECS=\"hvc1.1.6.L123.B0\"\n1080p/i.m3u8\n"
     eq("uhd.auto_top4k", uhd.top_resolution(m4k), 3840)
 
-    local a1080, n1080, mode1080 = uhd.declare_auto(master)
+    local a1080, n1080, mode1080, can1080 = uhd.declare_auto(master)
     eq("uhd.auto_1080_a_4k", a1080:find("RESOLUTION=3840x2160", 1, true) ~= nil, true)
     eq("uhd.auto_1080_modo", mode1080, "4k")
+    eq("uhd.auto_1080_can8k", can1080, false)
     eq("uhd.auto_1080_codec_intacto", a1080:find("avc1.640028", 1, true) ~= nil, true)
 
-    local a4k, n4k, mode4k = uhd.declare_auto(m4k)
-    eq("uhd.auto_4k_a_8k", a4k:find("RESOLUTION=7680x4320", 1, true) ~= nil, true)
-    eq("uhd.auto_4k_modo", mode4k, "8k")
+    -- A LOCKED (2026-10-28): 4K L153 -> 4K. El 8K deja de ser automático.
+    local a4k, n4k, mode4k, can4k = uhd.declare_auto(m4k)
+    eq("uhd.auto_4k_l153_techo4k", a4k:find("RESOLUTION=3840x2160", 1, true) ~= nil, true)
+    eq("uhd.auto_4k_l153_no_8k", a4k:find("RESOLUTION=7680x4320", 1, true), nil)
+    eq("uhd.auto_4k_l153_modo", mode4k, "4k")
+    eq("uhd.auto_4k_l153_can8k", can4k, false)
     eq("uhd.auto_4k_codec_intacto", a4k:find("hvc1.2.4.L153.B0", 1, true) ~= nil, true)
     eq("uhd.auto_4k_segunda_intacta", a4k:find("RESOLUTION=1920x1080", 1, true) ~= nil, true)
+    eq("uhd.auto_4k_marca_can8k0", a4k:find(";can8k=0", 1, true) ~= nil, true)
+
+    -- 4K L183 -> 8K (producto, MARCADO) · DECISION_A_LOCKED / ERRATA_AU §1b
+    local m4k183 = "#EXTM3U\n"
+        .. "#EXT-X-STREAM-INF:BANDWIDTH=28000000,RESOLUTION=3840x2160,CODECS=\"hvc1.2.4.L183.B0,mp4a.40.2\"\n2160p/i.m3u8\n"
+    local a183, n183, mode183, can183 = uhd.declare_auto(m4k183, { allow_8k = true })
+    eq("uhd.auto_4k_l183_a_8k", a183:find("RESOLUTION=7680x4320", 1, true) ~= nil, true)
+    eq("uhd.auto_4k_l183_modo", mode183, "8k")
+    eq("uhd.auto_4k_l183_can8k", can183, true)
+    eq("uhd.auto_4k_l183_marca_src", a183:find("src=3840x2160;can8k=1", 1, true) ~= nil, true)
+    eq("uhd.auto_4k_l183_codec_intacto", a183:find("hvc1.2.4.L183.B0", 1, true) ~= nil, true)
+
+    -- 8K L153 -> degradado a 4K (nivel insuficiente para 8K)
+    local m8k153 = "#EXTM3U\n"
+        .. "#EXT-X-STREAM-INF:BANDWIDTH=60000000,RESOLUTION=7680x4320,CODECS=\"hvc1.2.4.L153.B0\"\n4320p/i.m3u8\n"
+    local a8d, _, mode8d, can8d = uhd.declare_auto(m8k153, { allow_8k = true })
+    eq("uhd.auto_8k_l153_degradado", a8d:find("RESOLUTION=3840x2160", 1, true) ~= nil, true)
+    eq("uhd.auto_8k_l153_modo", mode8d, "4k")
+    eq("uhd.auto_8k_l153_can8k", can8d, false)
+
+    -- 8K L183 -> 8K real (fuente >=7680 y nivel suficiente)
+    local m8k183 = "#EXTM3U\n"
+        .. "#EXT-X-STREAM-INF:BANDWIDTH=80000000,RESOLUTION=7680x4320,CODECS=\"hvc1.2.4.L183.B0\"\n4320p/i.m3u8\n"
+    local a8r, _, mode8r, can8r = uhd.declare_auto(m8k183, { allow_8k = true })
+    eq("uhd.auto_8k_l183_a_8k", a8r:find("RESOLUTION=7680x4320", 1, true) ~= nil, true)
+    eq("uhd.auto_8k_l183_can8k", can8r, true)
+    eq("uhd.auto_8k_l183_marca_src", a8r:find("src=7680x4320;can8k=1", 1, true) ~= nil, true)
+
+    -- sin allow_8k (flag uhd8k=0, default vivo) NUNCA declara 8K aunque sea L183
+    local _, _, modeOff, canOff = uhd.declare_auto(m4k183)
+    eq("uhd.auto_sin_allow8k_can8k", canOff, false)
+    eq("uhd.auto_sin_allow8k_modo", modeOff, "4k")
+
+    -- max_resolution manda el MÁXIMO real; top_resolution conserva compatibilidad
+    local asc = "#EXTM3U\n"
+        .. "#EXT-X-STREAM-INF:BANDWIDTH=5500000,RESOLUTION=1280x720,CODECS=\"hvc1.1.6.L93.B0\"\n720p/i.m3u8\n"
+        .. "#EXT-X-STREAM-INF:BANDWIDTH=28000000,RESOLUTION=3840x2160,CODECS=\"hvc1.2.4.L183.B0\"\n2160p/i.m3u8\n"
+    eq("uhd.max_resolution_ascendente", uhd.max_resolution(asc), 3840)
+    eq("uhd.top_resolution_ascendente_compat", uhd.top_resolution(asc), 1280)
+
+    -- idempotencia del marcador: dos pasadas ⇒ un solo #EXT-X-APE-UPSCALE
+    local twice = select(1, uhd.declare_auto(a183, { allow_8k = true }))
+    eq("uhd.auto_marca_unica_tras_dos_pasadas", select(2, twice:gsub("#EXT%-X%-APE%-UPSCALE", "")), 1)
 else
     results[#results + 1] = { name = "uhd.require", pass = false, got = "nil", want = "modulo" }
 end
@@ -181,11 +228,19 @@ else
     results[#results + 1] = { name = "lab.require", pass = false, got = "nil", want = "modulo" }
 end
 
+-- G5 · conteo explícito: si alguien añade o quita un assert, esto falla en rojo.
+local EXPECTED_ASSERTS = 88
+local total = #results
+local asserts_ok = (total == EXPECTED_ASSERTS)
+
 local pass, fail = 0, 0
 for _, r in ipairs(results) do
     if r.pass then pass = pass + 1 else fail = fail + 1 end
 end
+if not asserts_ok then fail = fail + 1 end   -- el desajuste de conteo ES un fallo
+
 ngx.header["Content-Type"] = "application/json"
 ngx.say(cjson.encode({
-    pass = pass, fail = fail, total = #results, results = results,
+    pass = pass, fail = fail, total = total,
+    expected = EXPECTED_ASSERTS, asserts_ok = asserts_ok, results = results,
 }))

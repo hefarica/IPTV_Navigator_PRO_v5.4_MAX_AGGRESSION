@@ -267,18 +267,32 @@ if lib.has_parts(rebased) then
     rebased, sc_added = lib.inject_server_control(rebased)
 end
 
--- UHD: 4K siempre; 4K real -> 8K declarado. CODECS intacto.
+-- UHD: 4K siempre; 8K declarado SÓLO si can_declare_8k (A LOCKED). CODECS intacto.
 local uhd_mode, uhd_n = nil, 0
+local uhd_can8k = nil
 if lib.is_master(rebased) then
     if uhd.codec_truth_fields(rebased) > 0 then
         ngx.log(ngx.WARN, "[ape-gw] hev1 en CODECS: GOLDEN RULE, UHD omitido")
     elseif flag("uhd8k", false) then
-        rebased, uhd_n = uhd.declare(rebased, { target = uhd.TARGET_8K, mode = "8k",
-            add_pq = flag("uhd_pq", false), only_top = true })
-        if uhd_n > 0 then uhd_mode = "8k" end
+        -- Override explícito del propietario (t32): la guarda se APLICA, no sólo se mide.
+        -- Sin can_declare_8k (nivel < L183 o fuente < 3840) ⇒ 4K, nunca 8K ilegal.
+        local ok8 = uhd.can_declare_8k(rebased, { allow_8k = true })
+        uhd_can8k = ok8
+        if ok8 then
+            rebased, uhd_n = uhd.declare(rebased, { target = uhd.TARGET_8K, mode = "8k",
+                add_pq = flag("uhd_pq", false), only_top = true, can8k = true })
+            if uhd_n > 0 then uhd_mode = "8k" end
+        else
+            rebased, uhd_n = uhd.declare(rebased, { target = uhd.TARGET_4K, mode = "4k",
+                add_pq = flag("uhd_pq", false), only_top = true, can8k = false })
+            if uhd_n > 0 then uhd_mode = "4k" end
+        end
     elseif flag("uhd_auto", true) then
         local m
-        rebased, uhd_n, m = uhd.declare_auto(rebased, { add_pq = flag("uhd_pq", false) })
+        rebased, uhd_n, m, uhd_can8k = uhd.declare_auto(rebased, {
+            add_pq = flag("uhd_pq", false),
+            allow_8k = flag("uhd8k", false),
+        })
         if uhd_n > 0 then uhd_mode = m end
     elseif flag("uhd4k", true) then
         rebased, uhd_n = uhd.declare(rebased, { target = uhd.TARGET_4K, mode = "4k",
@@ -479,6 +493,9 @@ if winner and candidates[1] and winner ~= candidates[1] then qinc("failovers") e
 if sc_added then qinc("llhls_sc") end
 if uhd_mode == "4k" then qinc("uhd4k") end
 if uhd_mode == "8k" then qinc("uhd8k") end
+-- Decisión UHD de la ÚLTIMA petición (B-02: la publica /_ape/uhd)
+qset("uhd_mode_last", uhd_mode or "off")
+qset("can8k_last", uhd_can8k and 1 or 0)
 
 -- ?? M?tricas propias del fusible (V?a B, ruta publicada) ?????????????????
 -- Contadores distintos por estado: un `fuse_hits`>0 s?lo puede ocurrir si de

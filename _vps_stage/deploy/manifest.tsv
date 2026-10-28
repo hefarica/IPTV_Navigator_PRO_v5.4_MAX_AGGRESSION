@@ -8,7 +8,8 @@ _vps_stage/lua/ape_uri_rebase.lua	/etc/nginx/lua/ape_uri_rebase.lua	644	www-data
 _vps_stage/lua/ape_wake_on_manifest.lua	/etc/nginx/lua/ape_wake_on_manifest.lua	644	www-data:www-data	log_by_lua_file /meta/ (8088)
 _vps_stage/lua/ape_gateway.lua	/etc/nginx/lua/ape_gateway.lua	644	www-data:www-data	content_by_lua_file /cdn/ (443) — gateway de streams
 _vps_stage/lua/ape_rebase_lib.lua	/etc/nginx/lua/ape_rebase_lib.lua	644	www-data:www-data	require() desde el gateway — [t113] fix del :80 (antes NUNCA se desplegaba)
-_vps_stage/lua/ape_obs.lua	/etc/nginx/lua/ape_obs.lua	644	www-data:www-data	/_ape/health y /_ape/qoe (8088)
+_vps_stage/lua/ape_uhd.lua	/etc/nginx/lua/ape_uhd.lua	644	www-data:www-data	require() desde ape_gateway.lua (declare_auto) y /_ape/luatest — [t29 B-02] antes NO estaba y por eso nunca se desplegaba
+_vps_stage/lua/ape_obs.lua	/etc/nginx/lua/ape_obs.lua	644	www-data:www-data	/_ape/health, /_ape/qoe y /_ape/uhd (8088)
 _vps_stage/lua/ape_lab_api.lua	/etc/nginx/lua/ape_lab_api.lua	644	www-data:www-data	/_ape/lab (8088)
 _vps_stage/lua/ape_luatest.lua	/etc/nginx/lua/ape_luatest.lua	644	www-data:www-data	/_ape/luatest (8088, diagnóstico)
 _vps_stage/nginx/meta-plane.conf	/etc/nginx/conf.d/50-ape-meta-plane.conf	644	root:root	server 8088 completo (plano meta)

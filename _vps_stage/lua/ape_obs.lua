@@ -53,6 +53,24 @@ local function qoe()
     return snap
 end
 
+-- ── UHD (B-02): contadores reales del plano + decisión de la última petición ──
+-- `off` es DERIVADO: req - (uhd4k + uhd8k). No hay contador propio de "off"
+-- porque el gateway sólo incrementa uhd4k/uhd8k (no se le añadió nada más).
+local function uhd_counters()
+    local c4 = Q and tonumber(Q:get("uhd4k")) or 0
+    local c8 = Q and tonumber(Q:get("uhd8k")) or 0
+    local req = Q and tonumber(Q:get("req")) or 0
+    local off = req - c4 - c8
+    if off < 0 then off = 0 end
+    return {
+        uhd4k = c4,
+        uhd8k = c8,
+        off = off,
+        mode_last = (Q and Q:get("uhd_mode_last")) or "off",
+        can8k_last = (Q and tonumber(Q:get("can8k_last"))) or 0,
+    }
+end
+
 local function health()
     local snap = qoe()
     local n_down = 0
@@ -61,7 +79,7 @@ local function health()
     local failed = tonumber(snap.metrics.all_failed) or 0
     local err_ratio = req > 0 and (failed / req) or 0
     ngx.status = 200
-    return {
+    local h = {
         ok = true,
         plane = "meta/v3",
         ts = snap.ts,
@@ -76,6 +94,9 @@ local function health()
         },
         qoe = snap.metrics,
     }
+    -- Añadido AL FINAL (no se reordena ni se renombra ningún campo previo).
+    h.uhd = uhd_counters()
+    return h
 end
 
 local uri = ngx.var.uri or ""
@@ -85,6 +106,12 @@ ngx.header["Cache-Control"] = "no-store"
 if uri == "/_ape/health" then
     -- interno (loopback): completo
     ngx.say(cjson.encode(health()))
+elseif uri == "/_ape/uhd" then
+    -- interno (loopback): estado UHD del plano (B-02)
+    local u = uhd_counters()
+    u.ok = true
+    u.ts = ngx.time()
+    ngx.say(cjson.encode(u))
 elseif uri == "/ape/health" then
     -- público: mínimo, sin métricas internas ni hosts
     local snap = qoe()
