@@ -207,12 +207,12 @@ jobs:
           ffprobe_log="$(grep -E 'width=|height=' canary-evidence.log || true)"
           echo "$ffprobe_log" | grep -q 'width=3840' || { echo "::error::canary no es 4K"; exit 1; }
           echo "$ffprobe_log" | grep -q 'height=2160' || { echo "::error::canary no es 4K"; exit 1; }
-          cpu_s="$(grep -oE 'Consumed [0-9.]+s CPU time' canary-evidence.log | tail -1 | grep -oE '[0-9.]+' | head -1 || true)"
-          wall_s="$(sed -n 's/^wall_seconds=//p' canary-wall.txt | head -1)"
-          if [ -n "$cpu_s" ] && [ -n "$wall_s" ] && [ "$wall_s" -gt 0 ]; then
-            awk -v c="$cpu_s" -v w="$wall_s" 'BEGIN{p=c*100/w; printf "cpu_pct_avg=%.2f (CPUQuota=40%%)\n",p; exit (p<=41.5)?0:1}' | tee cpu-check.txt
+          cpu_pct="$(grep -oE '"cpu_pct_avg":[0-9.]+' canary-evidence.log | head -1 | cut -d: -f2 || true)"
+          if [ -n "$cpu_pct" ]; then
+            echo "cpu_pct_avg=$cpu_pct (CPUQuota=40%%)" | tee cpu-check.txt
+            awk -v p="$cpu_pct" 'BEGIN{exit (p<40.0)?0:1}' || { echo "::error::CPU ${cpu_pct}% >= 40%"; exit 1; }
           else
-            echo "cpu_pct_avg=unavailable (quota 40% aplicada por systemd)" | tee cpu-check.txt
+            echo "cpu_pct_avg=unavailable (CPUQuota=40% aplicada por systemd)" | tee cpu-check.txt
           fi
       - name: Rollback del canary (canal vuelve al origen)
         run: |
@@ -424,7 +424,7 @@ jobs:
     # t91: corre TAMBIÉN en dry-run (línea base del VPS antes de tocar nada).
     # Con `always()` no se salta porque `deploy` esté skipped; solo se abstiene
     # si el deploy falló, porque entonces manda el rollback.
-    if: always() && needs.deploy.result != 'failure'
+    if: always() && inputs.mode != 'canary' && needs.deploy.result != 'failure'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:

@@ -17,6 +17,7 @@ set -euo pipefail
 SESSION="${1:-}"
 [ -n "$SESSION" ] || { echo "uso: $0 <session-id>" >&2; exit 2; }
 [[ "$SESSION" =~ ^[A-Za-z0-9._-]{1,32}$ ]] || { echo "session-id inválido" >&2; exit 2; }
+START_TS="$(date +%s)"
 
 source /etc/ara/canary/env.common 2>/dev/null || true
 SOURCE="${CANARY_SOURCE_URL:-}"
@@ -65,7 +66,12 @@ SEG="$(ls -1t "$OUT"/*.ts 2>/dev/null | head -1 || true)"
 WH="$(ffprobe -v error -select_streams v:0 -show_entries stream=width,height -of csv=s=x:p=0 "$SEG" 2>/dev/null | head -1)"
 [ "$WH" = "3840x2160" ] || { echo "CANARY_FAIL: segmento ${WH:-?} != 3840x2160" >&2; exit 6; }
 
-printf '{"session":"%s","segment":"%s","width":3840,"height":2160,"fps":%s,"seconds":%s,"filters":"deblock,dering(smartblur),yuv444p,lanczos,grain,unsharp,eq,yuv420p"}\n' \
-  "$SESSION" "$(basename "$SEG")" "$FPS" "$SECONDS_OUT" > "$OUT/status.json"
-echo "CANARY_OK: $SEG 3840x2160 fps=$FPS"
+END_TS="$(date +%s)"
+WALL="$((END_TS - START_TS))"
+CGROUP="$(awk -F: '$1==0{print $3}' /proc/self/cgroup 2>/dev/null | head -1)"
+USAGE="$(awk '/usage_usec/{print $2}' "/sys/fs/cgroup${CGROUP}/cpu.stat" 2>/dev/null || echo 0)"
+CPU_PCT="$(awk -v u="${USAGE:-0}" -v w="$WALL" 'BEGIN{if (w>0) printf "%.2f", u/10000.0/w; else printf "null"}')"
+printf '{"session":"%s","segment":"%s","width":3840,"height":2160,"fps":%s,"seconds":%s,"cpu_seconds":%.2f,"wall_seconds":%s,"cpu_pct_avg":%s,"filters":"deblock,dering(smartblur),yuv444p,lanczos,grain,unsharp,eq,yuv420p"}\n' \
+  "$SESSION" "$(basename "$SEG")" "$FPS" "$SECONDS_OUT" "$(awk -v u="${USAGE:-0}" 'BEGIN{printf "%.2f", u/1000000}')" "$WALL" "$CPU_PCT" > "$OUT/status.json"
+echo "CANARY_OK: $SEG 3840x2160 fps=$FPS cpu_pct=${CPU_PCT}% wall=${WALL}s"
 exit 0
