@@ -1,0 +1,291 @@
+{
+  "pass_score": 90,
+  "domains_required": 9,
+  "questions": [
+    {
+      "id": "Q1",
+      "d": "pipeline-order",
+      "q": "Orden exacto de filtros antes y después del scale y por qué",
+      "k": [
+        "deblock",
+        "dering",
+        "antes",
+        "lanczos",
+        "unsharp",
+        "despues",
+        "yuv444p",
+        "yuv420p"
+      ]
+    },
+    {
+      "id": "Q2",
+      "d": "pipeline-order",
+      "q": "Qué pasa si aplicas unsharp antes del scale",
+      "k": [
+        "amplifica",
+        "artefactos",
+        "macrobloques",
+        "ringing",
+        "smear"
+      ]
+    },
+    {
+      "id": "Q3",
+      "d": "perception",
+      "q": "Qué es acutance y cómo se relaciona con nitidez percibida",
+      "k": [
+        "gradiente",
+        "borde",
+        "contraste",
+        "ilusion",
+        "no resuelve",
+        "detalle"
+      ]
+    },
+    {
+      "id": "Q4",
+      "d": "perception",
+      "q": "Techo práctico de luma_amount en unsharp y qué aparece al excederlo",
+      "k": [
+        "1.2",
+        "1.5",
+        "halo",
+        "countershading"
+      ]
+    },
+    {
+      "id": "Q5",
+      "d": "x265",
+      "q": "Parámetros x265 para latencia mínima y GOP fijo",
+      "k": [
+        "zerolatency",
+        "bframes=0",
+        "keyint",
+        "min-keyint",
+        "scenecut=0",
+        "rc-lookahead=0"
+      ]
+    },
+    {
+      "id": "Q6",
+      "d": "x265",
+      "q": "Por qué preset ultrafast y no slow en canary sin GPU",
+      "k": [
+        "sin gpu",
+        "no alcanza",
+        "tiempo real",
+        "cpu",
+        "latencia"
+      ]
+    },
+    {
+      "id": "Q7",
+      "d": "hls",
+      "q": "hls_time, hls_list_size y flags recomendados",
+      "k": [
+        "hls_time 3",
+        "hls_list_size 20",
+        "delete_segments",
+        "independent_segments"
+      ]
+    },
+    {
+      "id": "Q8",
+      "d": "hls",
+      "q": "Por qué no usar hls_time 1 sin zerolatency",
+      "k": [
+        "fragmentacion",
+        "latencia",
+        "gop",
+        "partes"
+      ]
+    },
+    {
+      "id": "Q9",
+      "d": "s905x4",
+      "q": "Capacidades reales de decode y presencia de NPU",
+      "k": [
+        "av1",
+        "4k120",
+        "hevc",
+        "vp9",
+        "no existe",
+        "npu"
+      ]
+    },
+    {
+      "id": "Q10",
+      "d": "s905x4",
+      "q": "Qué es realmente el AI-SR en este SoC",
+      "k": [
+        "shader",
+        "filtro",
+        "gl",
+        "no es ml",
+        "no npu"
+      ]
+    },
+    {
+      "id": "Q11",
+      "d": "s905x4",
+      "q": "Por qué 8K es solo presentación",
+      "k": [
+        "no decode",
+        "sin soporte",
+        "presentacion",
+        "4k estirado",
+        "gpu"
+      ]
+    },
+    {
+      "id": "Q12",
+      "d": "spoof",
+      "q": "Cómo se impide que el player baje resolución vía manifest",
+      "k": [
+        "resolution=",
+        "never-downscale",
+        "min-resolution",
+        "abr",
+        "no puede bajar"
+      ]
+    },
+    {
+      "id": "Q13",
+      "d": "spoof",
+      "q": "Diferencia entre spoofing y canary de píxeles",
+      "k": [
+        "politica",
+        "pixeles",
+        "ambos",
+        "no basta",
+        "complementan"
+      ]
+    },
+    {
+      "id": "Q14",
+      "d": "spoof",
+      "q": "Cómo se verifica la resolución real",
+      "k": [
+        "ffprobe",
+        "segmento",
+        "no manifest",
+        "width",
+        "height"
+      ]
+    },
+    {
+      "id": "Q15",
+      "d": "cgroup",
+      "q": "Directivas systemd para acotar el canary",
+      "k": [
+        "cpuquota",
+        "memorymax",
+        "ioweight",
+        "nice",
+        "cpu.max"
+      ]
+    },
+    {
+      "id": "Q16",
+      "d": "cgroup",
+      "q": "Por qué CPUQuota y no cgcreate manual",
+      "k": [
+        "persistente",
+        "systemd",
+        "reboot",
+        "unificado"
+      ]
+    },
+    {
+      "id": "Q17",
+      "d": "antipattern",
+      "q": "Nombra 3 antipatrones prohibidos",
+      "k": [
+        "bicubic",
+        "unsharp antes",
+        "crf en vivo",
+        "sin cpuquota",
+        "8k nativo"
+      ]
+    },
+    {
+      "id": "Q18",
+      "d": "antipattern",
+      "q": "Por qué crf es malo en vivo",
+      "k": [
+        "variable",
+        "bitrate",
+        "underrun",
+        "buffer"
+      ]
+    },
+    {
+      "id": "Q19",
+      "d": "acceptance",
+      "q": "Criterios de aceptación del canary",
+      "k": [
+        "ffprobe",
+        "3840",
+        "rebuffer",
+        "cpu",
+        "rollback"
+      ]
+    },
+    {
+      "id": "Q20",
+      "d": "acceptance",
+      "q": "Qué debe devolver el rollback",
+      "k": [
+        "revocado",
+        "origen",
+        "sin residuos",
+        "pid muerto"
+      ]
+    },
+    {
+      "id": "Q21",
+      "d": "perception",
+      "q": "Qué hace el grano sintético y cuánto encarece",
+      "k": [
+        "banding",
+        "smear",
+        "enmascara",
+        "8",
+        "12"
+      ]
+    },
+    {
+      "id": "Q22",
+      "d": "x265",
+      "q": "Qué aporta pix_fmt 10-bit",
+      "k": [
+        "banding",
+        "profundidad",
+        "gradiente",
+        "de raiz"
+      ]
+    },
+    {
+      "id": "Q23",
+      "d": "hls",
+      "q": "Qué hace independent_segments",
+      "k": [
+        "decodificable",
+        "solo",
+        "seek",
+        "arranque"
+      ]
+    },
+    {
+      "id": "Q24",
+      "d": "cgroup",
+      "q": "Qué evita el auto-kill a 300s",
+      "k": [
+        "efimero",
+        "no se come",
+        "vps",
+        "rollback"
+      ]
+    }
+  ]
+}
