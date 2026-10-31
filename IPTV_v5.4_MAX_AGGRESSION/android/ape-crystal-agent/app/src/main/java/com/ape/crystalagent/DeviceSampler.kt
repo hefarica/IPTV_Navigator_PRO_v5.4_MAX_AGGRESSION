@@ -95,8 +95,12 @@ class DeviceSampler(private val ctx: Context) {
             SyncProtocol.FeatureSample(null, "unavailable", null, null)
         }
 
-        out["bitrate_bps"] = if (trackFresh && AraStatus.trackBitrate > 0) {
-            SyncProtocol.FeatureSample(AraStatus.trackBitrate.coerceIn(0, 200_000_000), "measured_device", trackAge, 0.7)
+        // F02 (Council t41): `bitrate_bps` viaja con el valor MEDIDO por el guard (bytes reales del
+        // DataSource), nunca con `Format.bitrate` del manifest. Si no hay medición fresca ⇒ null.
+        val guardAge = nowMs - AraStatus.bitrateAt
+        out["bitrate_bps"] = if (AraStatus.bitrateAt > 0L && guardAge in 0..15_000L && AraStatus.bitrateKbps > 0) {
+            SyncProtocol.FeatureSample((AraStatus.bitrateKbps.toLong() * 1000L).coerceIn(0L, 200_000_000L).toInt(),
+                "measured_device", guardAge, 0.6)
         } else {
             SyncProtocol.FeatureSample(null, "unavailable", null, null)
         }

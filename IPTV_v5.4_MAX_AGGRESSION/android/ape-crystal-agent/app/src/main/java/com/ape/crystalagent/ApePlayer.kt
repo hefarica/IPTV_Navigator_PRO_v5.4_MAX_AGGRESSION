@@ -78,7 +78,9 @@ class ApePlayer(private val ctx: Context) {
     fun playChannel(player: ExoPlayer, url: String, ua: String = DEFAULT_UA) {
         val policy = PlaybackPolicy.fromSync(ctx)
         // BG1-FIX: la ventana de 4 s no debe mezclar bytes del canal anterior tras un zap.
+        // F11 (BG5): además se reinician los temporizadores del guard (belowSince / ALERT / lock).
         meter.reset()
+        bitrateGuard?.reset()
         lastTracks = null
         val http = DefaultHttpDataSource.Factory()
             .setUserAgent(ua)
@@ -241,6 +243,7 @@ class ApePlayer(private val ctx: Context) {
     fun release() {
         stopRuntimeTicker()
         if (current === this) current = null
+        bitrateGuard?.reset()          // F11: cancela el ALERT pendiente antes de soltar el player
         bitrateGuard = null
         lastTracks = null
         meter.reset()

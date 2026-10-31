@@ -22,7 +22,12 @@ object BitrateConfig {
         "6k" to (20_000 to 34_000),
         "8k" to (28_000 to 48_000)
     )
-    private val defaultDemand = mapOf("2k" to 1.00f, "4k" to 1.15f, "6k" to 1.30f, "8k" to 1.45f)
+    /**
+     * F07/F08 (Council t41): la SALIDA está capada a 4K por política (`PlaybackPolicy.maxHeight`),
+     * así que pedir banda de 6K/8K en la salida era un claim imposible. Se limita a los niveles
+     * alcanzables y, por debajo de 1440p, NO se etiqueta como "4k" (etiqueta honesta).
+     */
+    private val defaultDemand = mapOf("2k" to 1.00f, "4k" to 1.15f)
 
     fun sourceBand(height: Int): String = when {
         height >= 4320 -> "8k"
@@ -35,12 +40,12 @@ object BitrateConfig {
         else -> "sd480"
     }
 
+    /** Banda de SALIDA alcanzable (decode capado a 4K por política). */
     fun outBand(height: Int): String = when {
-        height >= 4320 -> "8k"
-        height >= 3240 -> "6k"
         height >= 2160 -> "4k"
         height >= 1440 -> "2k"
-        else -> "4k"
+        height >= 1000 -> "fhd1080"
+        else -> "hd720"
     }
 
     fun band(ctx: Context, srcHeight: Int, outHeight: Int): BitrateBand {

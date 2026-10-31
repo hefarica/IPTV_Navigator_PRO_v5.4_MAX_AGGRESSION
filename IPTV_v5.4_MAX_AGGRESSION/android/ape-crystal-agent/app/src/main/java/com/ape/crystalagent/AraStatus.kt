@@ -78,8 +78,6 @@ object AraStatus {
     @Volatile var bitrateState: String = "SETTLED"
     @Volatile var bitrateAt: Long = 0L
     @Volatile var bufferPct: Int = 0
-    @Volatile var fillAggressive: Boolean = false
-    @Volatile var neverStopFilling: Boolean = false
 
     fun ageMs(ts: Long, now: Long = System.currentTimeMillis()): Long =
         if (ts <= 0L) Long.MAX_VALUE else (now - ts).coerceAtLeast(0L)
