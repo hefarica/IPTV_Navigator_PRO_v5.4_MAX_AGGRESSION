@@ -7,29 +7,15 @@
   "evidence": {
     "deploy_stamp": "20261031T162028Z",
     "backup": "/root/ara_backup_20261031T162028Z",
-    "targets": [
-      "/var/www/html/prisma/lib/ape_cursor.php",
-      "/var/www/html/prisma/lib/ape_window.php",
-      "/var/www/html/prisma/lib/ape_resume.php",
-      "/var/www/html/prisma/lib/ape_cmaf_bootstrap.php",
-      "/var/www/html/prisma/lib/ape_hls_state.php",
-      "/var/www/html/prisma/lib/ape_hls_timing.php",
-      "/var/www/html/prisma/lib/ape_ara_state.php",
-      "/var/www/html/prisma/lib/ape_sse_commands.php",
-      "/var/www/html/prisma/api/events-sse.php",
-      "/var/www/html/ape_hls_generators.php",
-      "/var/www/html/cmaf_worker.php",
-      "/var/www/ara/state.php",
-      "/var/www/ara/state_bridge.php"
-    ],
-    "checks": "php -l all; nginx -t ok; endpoints 401; /ara/state sse_seq=3; /ara/events classifier.state=1; /ara/sse state payload",
+    "hotfix": "ape_hls_generators.php 5569e8f6... fallback master RFC-correct",
+    "checks": "php -l local/live=0; nginx -t ok; /ara/events 401; /ara/sse 401; nginx/php8.3-fpm active",
     "deploy": "applied",
     "limit": "manifest/worker E2E and APK pending; A05 blocked"
   },
   "options": [
-    "O1 backup + staged php -l + install + fpm reload + 401 + E2E (chosen)",
-    "O2 direct copy (rejected)",
-    "O3 no deploy (superseded by APLICA)"
+    "O1 deploy + backup + E2E + RFC fallback hotfix (chosen)",
+    "O2 leave fallback media tags in master (rejected)",
+    "O3 rollback (not needed)"
   ],
   "chosen": "O1",
   "commit": null,

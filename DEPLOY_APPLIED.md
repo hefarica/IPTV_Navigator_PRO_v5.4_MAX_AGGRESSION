@@ -15,7 +15,7 @@
 | `/var/www/html/prisma/lib/ape_ara_state.php` | local manifest |
 | `/var/www/html/prisma/lib/ape_sse_commands.php` | local manifest |
 | `/var/www/html/prisma/api/events-sse.php` | `e4b7f7c2...` |
-| `/var/www/html/ape_hls_generators.php` | `4f4e994b...` |
+| `/var/www/html/ape_hls_generators.php` | `5569e8f6...` (hotfix RFC fallback) |
 | `/var/www/html/cmaf_worker.php` | `1a2af51a...` |
 | `/var/www/ara/state.php` | `f15e128a...` |
 | `/var/www/ara/state_bridge.php` | `e5011c13...` |

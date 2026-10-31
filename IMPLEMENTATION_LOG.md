@@ -474,6 +474,20 @@ node_exit=0
 
 **Límite:** no se cargó en navegador real; la prueba usa `vm` con `window`/`localStorage`.
 
+## Hotfix post-deploy — fallback CMAF
+
+`serve_cmaf_m3u8_fallback()` seguía emitiendo `#EXT-X-MEDIA-SEQUENCE:0` y
+`#EXT-X-INDEPENDENT-SEGMENTS` fijos. Se corrigió:
+
+- el fallback es un **master playlist** (`EXT-X-STREAM-INF`), por lo que **no**
+  emite `TARGETDURATION`/`MEDIA-SEQUENCE`/`DISCONTINUITY-SEQUENCE` (tags de media);
+- `INDEPENDENT-SEGMENTS` solo si `target_dna.json` lo prueba.
+
+Verificación: `php -l` local y live → 0; `nginx -t` → ok; `/ara/events` y `/ara/sse`
+sin token → 401; `nginx`/`php8.3-fpm` activos. Hash live:
+`5569e8f6f7d8949a5684548c6100de127c4889333e6543005bb0cde972cc60ef`.
+
+
 
 
 

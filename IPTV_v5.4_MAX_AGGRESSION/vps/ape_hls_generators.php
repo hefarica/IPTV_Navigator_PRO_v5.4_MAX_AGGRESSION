@@ -717,8 +717,9 @@ function serve_cmaf_m3u8_fallback(array $cd): void
     // construida en resolve_quality.php antes de llamar a esta función.
     $providerM3u8 = $finalUrl;
 
-    // I03/I04/I07/G9: the fallback must obey the same continuity contract.
-    $cmafDir  = '/dev/shm/ape_cmaf_cache/' . $ch;
+    // I07/G9: this fallback is a MASTER playlist (EXT-X-STREAM-INF), so it must
+    // NOT emit media-playlist tags (TARGETDURATION/MEDIA-SEQUENCE/DISCONTINUITY-SEQUENCE).
+    // Only INDEPENDENT-SEGMENTS is valid in a master, and only when the DNA proves it.
     $dna      = [];
     $dnaPath  = '/dev/shm/ape_metrics/' . $ch . '/target_dna.json';
     if (is_file($dnaPath)) {
@@ -727,14 +728,6 @@ function serve_cmaf_m3u8_fallback(array $cd): void
             $dna = $decodedDna;
         }
     }
-    $targetDur = ApeHlsTiming::targetDuration($dna);
-    $workerPid = '';
-    $pidPath = $cmafDir . '/worker.pid';
-    if (is_file($pidPath)) {
-        $workerPid = trim((string) @file_get_contents($pidPath));
-    }
-    $hlsState  = ApeHlsState::transition($cmafDir, $workerPid, time());
-    $mediaSeq  = intdiv(time(), max(1, $targetDur));
 
     // ── Verificar que el .m3u8 del proveedor responde ──
     $probeOk = false;
@@ -811,9 +804,6 @@ function serve_cmaf_m3u8_fallback(array $cd): void
     // ── Manifiesto HLS: el .m3u8 del proveedor envuelto en master sintético ──
     echo "#EXTM3U\n";
     echo "#EXT-X-VERSION:7\n";
-    echo "#EXT-X-TARGETDURATION:{$targetDur}\n";
-    echo "#EXT-X-MEDIA-SEQUENCE:{$mediaSeq}\n";
-    echo "#EXT-X-DISCONTINUITY-SEQUENCE:{$hlsState['discontinuity_sequence']}\n";
     if (ApeHlsTiming::independentSegments($dna)) {
         echo "#EXT-X-INDEPENDENT-SEGMENTS\n";
     }
