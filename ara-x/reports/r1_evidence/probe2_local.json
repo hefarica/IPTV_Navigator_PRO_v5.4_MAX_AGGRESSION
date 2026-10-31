@@ -1,0 +1,145 @@
+{
+  "daterange": {
+    "count": 10632,
+    "distinct_ids": 1,
+    "dup_ids": 10631,
+    "id_samples": [
+      "(no-id)",
+      "(no-id)",
+      "(no-id)",
+      "(no-id)",
+      "(no-id)",
+      "(no-id)",
+      "(no-id)",
+      "(no-id)"
+    ],
+    "ids_unique_per_channel": "single-id-shared-by-every-block"
+  },
+  "samples": {},
+  "dist": {
+    "hdr_metadata": [
+      [
+        "MDCV=true,CLLI=true,PEAK=100,AVG=1000",
+        7523
+      ],
+      [
+        "MDCV=true,CLLI=true,PEAK=400,AVG=1000",
+        2300
+      ],
+      [
+        "MDCV=true,CLLI=true,PEAK=1500,AVG=1000",
+        808
+      ]
+    ],
+    "daterange_id_prefix": [
+      [
+        "(no",
+        10632
+      ]
+    ],
+    "hdr_dv": [
+      [
+        "ODE=SDR,NITS=100,BT2020=true",
+        7523
+      ],
+      [
+        "ODE=SDR,NITS=400,BT2020=true",
+        2300
+      ],
+      [
+        "ODE=PQ,NITS=1500,BT2020=true",
+        808
+      ]
+    ],
+    "resolution_supremacy": [
+      [
+        "Y:1280x720",
+        7523
+      ],
+      [
+        "Y:1920x1080",
+        2300
+      ],
+      [
+        "Y:3840x2160",
+        808
+      ]
+    ],
+    "bitrate_anarchy": [
+      [
+        "10000000",
+        7523
+      ],
+      [
+        "15000000",
+        2300
+      ],
+      [
+        "40000000",
+        808
+      ]
+    ],
+    "cmdf": []
+  },
+  "iframe": {
+    "count": 10631,
+    "with_uri": 0,
+    "with_resolution": 0,
+    "sample": "#EXT-X-I-FRAME-STREAM-INF:BANDWIDTH=375000,CODECS=\"hvc1.2.4.L123.B0\""
+  },
+  "cmaf_line": {
+    "count": 10631,
+    "resolutions": [
+      [
+        "1280x720",
+        7523
+      ],
+      [
+        "1920x1080",
+        2300
+      ],
+      [
+        "3840x2160",
+        808
+      ]
+    ],
+    "sample": "#EXT-X-CMAF:CODECS=\"hvc1.2.4.L123.B0,\",BANDWIDTH=15000000,RESOLUTION=1920x1080"
+  },
+  "stream_inf_lines": {
+    "count": 10631,
+    "with_color_primaries": 10586,
+    "with_transfer": 10586,
+    "with_supplemental": 0,
+    "sample": "#EXT-X-STREAM-INF:BANDWIDTH=9000000,AVERAGE-BANDWIDTH=6500000,RESOLUTION=3840x2160,FRAME-RATE=30.000,CODECS=\"hvc1.2.4.L153.B0,mp4a.40.2\",VIDEO-RANGE=PQ,COLOR-PRIMARIES=9,TRANSFER-CHARACTERISTICS=16,MATRIX-COEFFICIENTS=9,HDCP-LEVEL=TYPE-1,STABLE-VARIANT-ID=\"3_P3\""
+  },
+  "count_8k_strings": {
+    "any_7680": 0,
+    "any_8k_token": 5,
+    "eight_kfake": 10631
+  },
+  "logo_empty": 319,
+  "extinf_attrs_seen": {
+    "tvg-id": 10631,
+    "tvg-name": 10631,
+    "tvg-logo": 10631,
+    "tvg-chno": 10631,
+    "tvg-shift": 10631,
+    "group-title": 10631,
+    "ape-profile": 10631,
+    "ape-build": 10631,
+    "ape-region": 10631,
+    "ape-content-type": 10631,
+    "ape-lang": 10631,
+    "ape-country": 10631,
+    "ape-classify-confidence": 10631,
+    "ape-fps": 10631,
+    "ape-transport": 10631,
+    "ape-codec-family": 10631,
+    "catchup": 355,
+    "catchup-days": 355,
+    "catchup-source": 355
+  },
+  "catchup_attrs": 1065,
+  "blank_between_blocks": 0,
+  "total_lines": 10169562
+}

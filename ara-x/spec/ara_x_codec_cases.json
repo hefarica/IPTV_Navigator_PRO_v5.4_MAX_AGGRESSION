@@ -1,0 +1,406 @@
+{
+  "schema": "ara-x.codec-policy.cases/1",
+  "spec": "ara-x-codec-policy.v1",
+  "task": "t8 (D2)",
+  "generated": "2026-10-30",
+  "contract": "ara-x/spec/ara_x_codec_policy.md",
+  "schema_ref": "ara-x/spec/ara_x_codec_policy.schema.json",
+  "how_to_read": "Cada caso aporta un `input` PARCIAL que se mezcla con `default_input` (merge superficial, un nivel). `expect` es un subconjunto de la salida: el verificador compara solo las claves declaradas. `kind` ausente = decision; `aggregate` = invariante de 10.631 canales; `idempotence` = doble ejecucion byte-identica.",
+  "default_input": {
+    "channel_id": "3",
+    "evidence_tier": "F2",
+    "source_family": "h264",
+    "source_resolution": "1920x1080",
+    "measured_fps": 25,
+    "cascade_type": null,
+    "probe_codec_string": null,
+    "declared": {
+      "resolution": "3840x2160",
+      "codecs": "hvc1.2.4.L153.B0,mp4a.40.2",
+      "video_range": "PQ",
+      "frame_rate": 30
+    },
+    "player_knobs": {
+      "vlc_maxwidth": 7680,
+      "vlc_maxheight": 4320,
+      "vlc_vrr_max": 120,
+      "vlc_video_fps": 60,
+      "vlc_minterpolate_fps": 120,
+      "kodi_video_codec": "hevc,av1,vp9,h264"
+    },
+    "soc_raw": "s905x4",
+    "thermal_status": 0,
+    "qoe": { "observed": true, "modeled_only": false },
+    "player_has_selector": true,
+    "requested_8k": false,
+    "variant_present": true,
+    "external_post_step": 0,
+    "declared_url": null,
+    "hdr": { "max_cll": 400, "max_fall": 100, "avg": 1000, "peak": 400, "dv_requested": false }
+  },
+  "cases": [
+    {
+      "id": "C01",
+      "why": "F0 + probe HEVC 4K60: unica via para NATIVE_VERIFIED",
+      "input": {
+        "evidence_tier": "F0",
+        "source_family": "hevc",
+        "source_resolution": "3840x2160",
+        "measured_fps": 60,
+        "cascade_type": "dual-hvc1-hev1",
+        "probe_codec_string": "hvc1.2.4.L153.B0"
+      },
+      "expect": {
+        "wire": { "mode": "NATIVE_VERIFIED", "video_codec": "hvc1.2.4.L153.B0", "resolution": "3840x2160", "resolution_kind": "native", "frame_rate": 60, "level_idc": 153 },
+        "device": { "allowed": true, "soc": "s905x4" },
+        "flags_include": ["probe_verified"],
+        "markers_include": ["#EXT-X-APE-CODEC-VERIFIED:true"],
+        "fail_closed": { "active": false }
+      }
+    },
+    {
+      "id": "C02",
+      "why": "F0 + probe AV1 4K60: familia av01, sin level_idc HEVC",
+      "input": {
+        "evidence_tier": "F0",
+        "source_family": "av1",
+        "source_resolution": "3840x2160",
+        "measured_fps": 60,
+        "probe_codec_string": "av01.0.13M.10"
+      },
+      "expect": {
+        "wire": { "mode": "NATIVE_VERIFIED", "video_codec": "av01.0.13M.10", "resolution": "3840x2160", "frame_rate": 60, "level_idc": null },
+        "flags_include": ["probe_verified"]
+      }
+    },
+    {
+      "id": "C03",
+      "why": "F1 + cascade dual-hvc1-hev1 4K60: DAEMON_VERIFIED (evidencia de cascada, no de probe)",
+      "input": {
+        "evidence_tier": "F1",
+        "source_family": "hevc",
+        "source_resolution": "3840x2160",
+        "measured_fps": 60,
+        "cascade_type": "dual-hvc1-hev1"
+      },
+      "expect": {
+        "wire": { "mode": "DAEMON_VERIFIED", "video_codec": "hvc1.2.4.L153.B0", "level_idc": 153, "frame_rate": 60 },
+        "flags_include": ["cascade_verified"],
+        "markers_include": ["#EXT-X-APE-CODEC-VERIFIED:false"]
+      }
+    },
+    {
+      "id": "C04",
+      "why": "F1 HEVC 4K60 sin cascada: TRUTHFUL_SIGNAL con familia correcta (no es FZ-01)",
+      "input": {
+        "evidence_tier": "F1",
+        "source_family": "hevc",
+        "source_resolution": "3840x2160",
+        "measured_fps": 60
+      },
+      "expect": {
+        "wire": { "mode": "TRUTHFUL_SIGNAL", "video_codec": "hvc1.2.4.L153.B0", "level_idc": 153 },
+        "flags_include": ["truthful_signal"]
+      }
+    },
+    {
+      "id": "C05",
+      "why": "F2 h264 1080p25: CODECS verdad (avc1.640033) + presentacion 4K marcada; FRAME-RATE 25 medido",
+      "input": {},
+      "expect": {
+        "wire": { "mode": "TRUTHFUL_SIGNAL", "video_codec": "avc1.640033", "codecs": "avc1.640033,mp4a.40.2", "resolution": "3840x2160", "resolution_kind": "presentation", "frame_rate": 25, "level_idc": 51 },
+        "flags_include": ["presentation_marked"],
+        "markers_include": ["#EXT-X-APE-UPSCALE:declared=3840x2160;codec=truthful;mode=4k;src=1920x1080;can8k=0"],
+        "degrade": { "order": ["fps", "processing"], "resolution": "forbidden" }
+      }
+    },
+    {
+      "id": "C06",
+      "why": "F2 h264 1080p50: AVC no soporta 4K>30 con codecs permitidos ⇒ se declara la resolucion nativa, fps intacto",
+      "input": { "measured_fps": 50 },
+      "expect": {
+        "wire": { "mode": "TRUTHFUL_SIGNAL", "video_codec": "avc1.64002A", "resolution": "1920x1080", "resolution_kind": "native", "frame_rate": 50, "level_idc": 42 },
+        "flags_include": ["presentation_blocked_level"]
+      }
+    },
+    {
+      "id": "C07",
+      "why": "F2 h264 4K30: AVC High@5.1 sobre 4K real",
+      "input": { "source_resolution": "3840x2160", "measured_fps": 30 },
+      "expect": {
+        "wire": { "video_codec": "avc1.640033", "resolution": "3840x2160", "resolution_kind": "native", "frame_rate": 30, "level_idc": 51 }
+      }
+    },
+    {
+      "id": "C08",
+      "why": "F3 hevc 720p30: CODECS de presentacion (L150 por 4K@30) y la verdad del bitstream en CODEC-PREFERRED (L93)",
+      "input": { "evidence_tier": "F3", "source_family": "hevc", "source_resolution": "1280x720", "measured_fps": 30 },
+      "expect": {
+        "wire": { "video_codec": "hvc1.2.4.L150.B0", "resolution": "3840x2160", "resolution_kind": "presentation", "level_idc": 150 },
+        "markers_include": ["#EXT-X-APE-CODEC-PREFERRED:hvc1.2.4.L93.B0"]
+      }
+    },
+    {
+      "id": "C09",
+      "why": "Declaracion 7680x4320 en la lista: se suprime el wire 8K; h264 1080p25 sigue con presentacion 4K veraz",
+      "input": { "declared": { "resolution": "7680x4320" } },
+      "expect": {
+        "wire": { "resolution": "3840x2160", "video_codec": "avc1.640033" },
+        "flags_include": ["wire_8k_suppressed"],
+        "markers_include": ["#EXT-X-APE-8KFAKE:ENABLED=1;NEVER_REAL=1;TARGET=DISPLAY"]
+      }
+    },
+    {
+      "id": "C10",
+      "why": "Fuente 8K real: se declara 4K (downscale de presentacion), nunca 8K",
+      "input": { "evidence_tier": "F0", "source_family": "hevc", "source_resolution": "7680x4320", "measured_fps": 30, "probe_codec_string": "hvc1.2.4.L183.B0" },
+      "expect": {
+        "wire": { "resolution": "3840x2160", "resolution_kind": "capped", "video_codec": "hvc1.2.4.L150.B0", "level_idc": 150 },
+        "flags_include": ["wire_8k_suppressed"]
+      }
+    },
+    {
+      "id": "C11",
+      "why": "120 fps medidos: techo del SoC 60; se baja fps, nunca la resolucion",
+      "input": { "evidence_tier": "F0", "source_family": "hevc", "source_resolution": "3840x2160", "measured_fps": 120, "probe_codec_string": "hvc1.2.4.L156.B0" },
+      "expect": {
+        "wire": { "frame_rate": 60, "video_codec": "hvc1.2.4.L153.B0" },
+        "flags_include": ["fps_clamped_120"]
+      }
+    },
+    {
+      "id": "C12",
+      "why": "SoC desconocido: TRUTHFUL_ONLY sin presentacion y techo de fps 30",
+      "input": { "measured_fps": 60, "soc_raw": "unknown" },
+      "expect": {
+        "wire": { "resolution": "1920x1080", "resolution_kind": "native", "video_codec": "avc1.640028", "frame_rate": 30 },
+        "device": { "allowed": false, "soc": "unknown" },
+        "flags_include": ["soc_unknown", "fps_clamped_soc"],
+        "fail_closed": { "active": true, "reasons": ["soc_unknown"] }
+      }
+    },
+    {
+      "id": "C13",
+      "why": "PQ por defecto: intencion de display marcada, sin DV ni HLG",
+      "input": {},
+      "expect": {
+        "wire": { "video_range": "PQ", "video_range_kind": "display_intent" },
+        "display": { "hdr_hint": "PQ" },
+        "markers_include": ["#EXT-X-APE-HDR-INTENT:display-pq;SCOPE=DISPLAY;VERIFIED=0"]
+      }
+    },
+    {
+      "id": "C14",
+      "why": "DV pedido sin dvh1 en CODECS: se rechaza y se reporta (no se inventa capa)",
+      "input": { "evidence_tier": "F0", "source_family": "hevc", "source_resolution": "3840x2160", "measured_fps": 60, "probe_codec_string": "hvc1.2.4.L153.B0", "hdr": { "dv_requested": true } },
+      "expect": {
+        "wire": { "video_codec": "hvc1.2.4.L153.B0" },
+        "flags_include": ["dv_without_codec"]
+      }
+    },
+    {
+      "id": "C15",
+      "why": "Termico severe (3): FPS 30 y post-proceso 3; resolucion 4K intacta",
+      "input": { "thermal_status": 3 },
+      "expect": {
+        "fps": { "target": 30, "step": 1 },
+        "processing": { "post_step": 3 },
+        "thermal": { "tier": "T1", "clamps": 3, "status": 3 },
+        "wire": { "resolution": "3840x2160" }
+      }
+    },
+    {
+      "id": "C16",
+      "why": "Termico emergency (5): FPS 24 y post 6; nunca resolucion",
+      "input": { "thermal_status": 5 },
+      "expect": {
+        "fps": { "target": 24, "step": 2 },
+        "processing": { "post_step": 6 },
+        "thermal": { "tier": "T0" },
+        "wire": { "resolution": "3840x2160" }
+      }
+    },
+    {
+      "id": "C17",
+      "why": "Sensor ausente: 0 clamps nuevos, no se declara frio (null != 0)",
+      "input": { "thermal_status": "unknown" },
+      "expect": {
+        "thermal": { "status": "unknown", "tier": "T2", "clamps": 0 },
+        "fps": { "target": 60 },
+        "flags_include": ["thermal_unavailable"],
+        "fail_closed": { "active": false }
+      }
+    },
+    {
+      "id": "C18",
+      "why": "Player sin selector de tracks: no se declara FPS aplicado; el post-proceso compensa",
+      "input": { "thermal_status": 5, "player_has_selector": false },
+      "expect": {
+        "fps": { "applied": false, "target": 24 },
+        "processing": { "post_step": 6 },
+        "flags_include": ["fps_unavailable"]
+      }
+    },
+    {
+      "id": "C19",
+      "why": "QoE no observado: prior P2 y flag; nunca 'sano'",
+      "input": { "qoe": { "observed": false } },
+      "expect": {
+        "flags_include": ["qoe_unknown"]
+      }
+    },
+    {
+      "id": "C20",
+      "why": "buffer_health_pct modelado: no gatilla degradacion de imagen",
+      "input": { "qoe": { "observed": true, "modeled_only": true } },
+      "expect": {
+        "processing": { "post_step": 0 },
+        "flags_include": ["modeled_not_measured"]
+      }
+    },
+    {
+      "id": "C21",
+      "why": "MaxFALL > MaxCLL: metadata fisicamente imposible, se corrige",
+      "input": { "hdr": { "max_cll": 100, "max_fall": 1000, "avg": 1000, "peak": 100 } },
+      "expect": {
+        "flags_include": ["hdr_metadata_fixed"],
+        "markers_include": ["#EXT-X-APE-HDR-MAXFALL:100"]
+      }
+    },
+    {
+      "id": "C22",
+      "why": "Nivel heredado L120 sobre 4K60: se eleva a L153 (ley de niveles)",
+      "input": { "evidence_tier": "F2", "source_family": "hevc", "source_resolution": "3840x2160", "measured_fps": 60, "declared": { "codecs": "hvc1.2.4.L120.B0,mp4a.40.2" } },
+      "expect": {
+        "wire": { "video_codec": "hvc1.2.4.L153.B0", "level_idc": 153 },
+        "flags_include": ["level_fixed"]
+      }
+    },
+    {
+      "id": "C23",
+      "why": "Alias amlogic_s905x4 se canonicaliza a s905x4 (R5 GAP-01)",
+      "input": { "soc_raw": "amlogic_s905x4" },
+      "expect": {
+        "device": { "allowed": true, "soc": "s905x4", "reason": "soc_alias_used" },
+        "flags_include": ["soc_alias_used"]
+      }
+    },
+    {
+      "id": "C24",
+      "why": "SoC no allowlisted: fail-closed total (0 levers, sin presentacion)",
+      "input": { "soc_raw": "rk3588" },
+      "expect": {
+        "device": { "allowed": false, "soc": "unknown" },
+        "fail_closed": { "active": true },
+        "flags_include": ["soc_not_allowlisted"]
+      }
+    },
+    {
+      "id": "C25",
+      "why": "firetv_mt8696 canonicaliza a mt8696 (techo 4K60, sin 8K)",
+      "input": { "soc_raw": "firetv_mt8696" },
+      "expect": {
+        "device": { "allowed": true, "soc": "mt8696", "reason": "soc_alias_used" },
+        "display": { "eight_k": "presentation_only" }
+      }
+    },
+    {
+      "id": "C26",
+      "why": "Canal sin variante (R1 F-12): se emite bloque veraz y se cuenta el warning",
+      "input": { "evidence_tier": "F2", "source_family": "hevc", "source_resolution": "1920x1080", "measured_fps": 25, "variant_present": false },
+      "expect": {
+        "wire": { "video_codec": "hvc1.2.4.L150.B0", "resolution": "3840x2160" },
+        "flags_include": ["channels_without_variant"]
+      }
+    },
+    {
+      "id": "C27",
+      "why": "Peticion explicita de 8K: rechazada, 4K nativo de la fuente",
+      "input": { "requested_8k": true, "source_resolution": "3840x2160", "measured_fps": 30 },
+      "expect": {
+        "wire": { "resolution": "3840x2160", "resolution_kind": "native" },
+        "flags_include": ["wire_8k_suppressed"]
+      }
+    },
+    {
+      "id": "C28",
+      "why": "Knobs VLC 7680/4320/120 se clampan a 3840/2160/60 (R1 F-18)",
+      "input": {},
+      "expect": {
+        "knobs": { "vlc_adaptive_maxwidth": 3840, "vlc_adaptive_maxheight": 2160, "vlc_vrr_max": 60, "vlc_video_fps": 25, "vlc_minterpolate_fps": 0, "kodi_video_codec": "h264" },
+        "flags_include": ["knobs_clamped"]
+      }
+    },
+    {
+      "id": "C29",
+      "why": "video-fps=60 con medido 25: un solo FPS por canal (R1 F-20)",
+      "input": { "player_knobs": { "vlc_video_fps": 60 } },
+      "expect": {
+        "knobs": { "vlc_video_fps": 25 },
+        "flags_include": ["fps_fixed"]
+      }
+    },
+    {
+      "id": "C30",
+      "why": "post_step=9 (D5): rollback PQ->SDR declarado, resolucion intacta",
+      "input": { "external_post_step": 9 },
+      "expect": {
+        "processing": { "post_step": 9 },
+        "display": { "hdr_hint": "SDR" },
+        "wire": { "video_range": "SDR", "resolution": "3840x2160" },
+        "flags_include": ["pq_rollback"]
+      }
+    },
+    {
+      "id": "C31",
+      "why": "Familia desconocida: sin CODECS y sin RESOLUTION (no se inventa familia)",
+      "input": { "source_family": "unknown" },
+      "expect": {
+        "wire": { "video_codec": null, "codecs": null, "resolution": null, "resolution_kind": "unknown" },
+        "flags_include": ["codec_unknown"],
+        "fail_closed": { "active": true, "reasons": ["family_unknown"] }
+      }
+    },
+    {
+      "id": "C32",
+      "why": "F5: sin STREAM-INF, canal conservado",
+      "input": { "evidence_tier": "F5" },
+      "expect": {
+        "wire": { "mode": "PASSTHROUGH_F5", "resolution": null, "resolution_kind": "none", "video_codec": null },
+        "fail_closed": { "active": true, "reasons": ["tier_f5"] }
+      }
+    },
+    {
+      "id": "C33",
+      "why": "CODECS declarado avc1 con familia hevc: prevalece la evidencia de familia",
+      "input": { "evidence_tier": "F2", "source_family": "hevc", "source_resolution": "1920x1080", "measured_fps": 25, "declared": { "codecs": "avc1.640028,mp4a.40.2" } },
+      "expect": {
+        "wire": { "video_codec": "hvc1.2.4.L150.B0" },
+        "flags_include": ["declared_codec_mismatch"]
+      }
+    },
+    {
+      "id": "C34",
+      "why": "URL con user:pass en la entrada: nunca entra en la decision (R6/F-03)",
+      "input": { "declared_url": "http://example.invalid/cred/us3r/p4ss/1" },
+      "expect": {
+        "flags_include": ["url_not_in_decision"],
+        "no_url_in_output": true
+      }
+    },
+    {
+      "id": "C35",
+      "kind": "aggregate",
+      "why": "Invariante NEVER-DROP: 10.631 canales entran, 10.631 decisiones salen, 0 URLs",
+      "input": {},
+      "expect": { "channels": 10631, "decisions": 10631 }
+    },
+    {
+      "id": "C36",
+      "kind": "idempotence",
+      "why": "Misma evidencia ⇒ misma salida byte a byte (POL-11)",
+      "input": { "evidence_tier": "F2", "source_family": "h264", "source_resolution": "1920x1080", "measured_fps": 25 },
+      "expect": { "identical": true }
+    }
+  ]
+}

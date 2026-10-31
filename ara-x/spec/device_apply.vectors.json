@@ -1,0 +1,734 @@
+{
+  "schema": "ara-x.device_apply.vectors.v1",
+  "version": 1,
+  "generated": "2026-10-30",
+  "task": "t10 / D4",
+  "contract": "ara-x/spec/ara_x_device_apply.md",
+  "lever_map": "ara-x/spec/lever_namespace_map.json",
+  "purpose": "Payloads de ejemplo (vectores golden) del contrato de aplicación en device. El verificador ara-x/scripts/d4_check_device_apply.js implementa el algoritmo del contrato por separado y exige que cada vector reproduzca exactamente los campos de `expect`.",
+  "honesty": "Los `measured` son sintéticos (no hay device en esta sesión). Lo que NO es sintético: las 29 claves, sus dominios, el namespace real del dump, la allowlist de 13 del cliente y los códigos de estado; el verificador los cruza contra el código en cada ejecución.",
+  "vectors": [
+    {
+      "id": "V1",
+      "desc": "Camino feliz: 4K/60, SoC canónico, térmica medida fresca, player activo. Cambia 2 claves y difiere 2 acciones de player.",
+      "measured": {
+        "soc_raw": "s905x4",
+        "soc_source": "Build.HARDWARE",
+        "android": 11,
+        "player": "exoplayer",
+        "display": {
+          "native_w": 3840,
+          "native_h": 2160,
+          "panel_24hz": true,
+          "refresh_hz": 60
+        },
+        "thermal": {
+          "prov": "measured",
+          "status": 1,
+          "temp_c": 58
+        },
+        "source": {
+          "fps": 59.94,
+          "resolution": "3840x2160",
+          "codec": "hvc1.2.4.L153.B0",
+          "hdr": "PQ"
+        },
+        "player_runtime": {
+          "active": true,
+          "buffer_ms": 4200,
+          "current": {
+            "max_bitrate_bps": null,
+            "min_bitrate_bps": null
+          }
+        },
+        "phase_g_blacklisted": false
+      },
+      "current_settings": {
+        "hdr_conversion_mode": "global 1",
+        "match_content_frame_rate": "global 1",
+        "minimal_post_processing_allowed": "global 0",
+        "ai_sr_level": "global 2",
+        "pq_ai_sr_enable": "global 1",
+        "ai_pq_mode": null,
+        "ai_pic_mode": "global 3",
+        "aipq_enable": "global 1",
+        "pq_sharpness_enable": "global 1",
+        "pq_ai_dnr_enable": "global 0",
+        "pq_dnr_enable": "global 0",
+        "pq_nr_enable": "global 0",
+        "pq_ai_fbc_enable": "global 1",
+        "pq_hdr_enable": "global 1",
+        "pq_hdr_mode": "global 1"
+      },
+      "policy": {
+        "v": 2,
+        "type": "ara_x_policy",
+        "device_id": "onn4k-001",
+        "seq": 7,
+        "ts": 1700000000,
+        "valid_until": 1700000060,
+        "policy_etag": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "profile": {
+          "active": "P0",
+          "blend": {
+            "P0": 1
+          },
+          "reason": "sports_max_image"
+        },
+        "player": {
+          "buffer_s": 45,
+          "abr_bw_factor": 0.78,
+          "reconnect_attempts": 156,
+          "live_delay_s": 10,
+          "max_bitrate_bps": 25000000,
+          "min_bitrate_bps": 6000000
+        },
+        "device": {
+          "allowed": true,
+          "soc": "s905x4",
+          "thermal_target_c": 70,
+          "levers": {
+            "pq_ai_sr_enable": 1,
+            "ai_sr_level": 3,
+            "ai_pq_mode": 3,
+            "aipq_enable": 1,
+            "pq_sharpness_enable": 1,
+            "pq_ai_dnr_enable": 0,
+            "pq_dnr_enable": 0,
+            "pq_nr_enable": 0,
+            "pq_ai_fbc_enable": 1,
+            "pq_hdr_enable": 1,
+            "pq_hdr_mode": 1,
+            "match_content_frame_rate": 1,
+            "minimal_post_processing_allowed": 0
+          }
+        },
+        "display": {
+          "mode": "4k",
+          "wire_resolution": "3840x2160",
+          "eight_k": "presentation_only",
+          "hdr_hint": "PQ",
+          "min_resolution": "3840x2160",
+          "never_downscale": true
+        },
+        "controls": {
+          "sync_next_s": 30,
+          "flags": [],
+          "degrade_mask": 0
+        },
+        "ref": {
+          "list_version": "2026-10-29T11:54:23Z",
+          "lab_exported_at": "2026-10-26T01:31:05",
+          "artifact_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "generation_id": "gen-20261030-01"
+        },
+        "fps": {
+          "target": 60,
+          "current": 59.94,
+          "min": 24
+        },
+        "thermal": {
+          "status": 1,
+          "limits": {
+            "light_c": 58,
+            "moderate_c": 64,
+            "severe_c": 70,
+            "critical_c": 78
+          }
+        },
+        "processing": {
+          "tier": "max_image"
+        },
+        "degrade": {
+          "order": [
+            "fps",
+            "processing"
+          ]
+        }
+      },
+      "now_s": 1700000010,
+      "expect": {
+        "state": "applied",
+        "denials": [],
+        "warnings": [],
+        "soc": {
+          "measured": "s905x4",
+          "canonical": "s905x4",
+          "gate": "allowlisted",
+          "alias_used": null
+        },
+        "cadence_class": 60,
+        "thermal": {
+          "prov": "measured",
+          "status": 1,
+          "steps": 0,
+          "effective_tier": "max_image"
+        },
+        "writes": [
+          "global ai_pq_mode 3",
+          "global ai_sr_level 3"
+        ],
+        "unchanged_count": 13,
+        "skipped": [],
+        "clamped": [],
+        "aliases": [
+          {
+            "from": "ai_pq_mode",
+            "to": "ai_pic_mode",
+            "value": 3
+          }
+        ],
+        "deferred_codes": [
+          "buffer_s:player_active",
+          "reconnect_attempts:next_media_source"
+        ],
+        "not_applicable": [
+          "abr_bw_factor",
+          "live_delay_s"
+        ],
+        "held_levers": [],
+        "player_ops": [
+          "track_selector.setMaxVideoBitrate",
+          "track_selector.setMinVideoBitrate"
+        ],
+        "ack_reason": null
+      },
+      "vocabulary": "politica v2 (sync_features.json): fps.target, thermal.status+limits, processing.tier, degrade.order, display.min_resolution/never_downscale"
+    },
+    {
+      "id": "V2",
+      "desc": "Térmica SEVERE (status 3) sobre un device fresco: clamp a T1 de 5 claves, alias de SoC del propio ejemplo del protocolo (/sync) y panel 1080p con wire 4K.",
+      "measured": {
+        "soc_raw": "s905x4",
+        "soc_source": "Build.HARDWARE",
+        "android": 11,
+        "player": "exoplayer",
+        "display": {
+          "native_w": 1920,
+          "native_h": 1080,
+          "panel_24hz": false,
+          "refresh_hz": 60
+        },
+        "thermal": {
+          "prov": "measured",
+          "status": 3,
+          "temp_c": 74
+        },
+        "source": {
+          "fps": 25,
+          "resolution": "1920x1080",
+          "codec": "hvc1.2.4.L120.B0",
+          "hdr": "SDR"
+        },
+        "player_runtime": {
+          "active": true,
+          "buffer_ms": 1800,
+          "current": {
+            "max_bitrate_bps": 25000000,
+            "min_bitrate_bps": 6000000
+          }
+        },
+        "phase_g_blacklisted": false
+      },
+      "current_settings": {},
+      "policy": {
+        "v": 2,
+        "type": "ara_x_policy",
+        "device_id": "onn4k-001",
+        "seq": 8,
+        "ts": 1700000000,
+        "valid_until": 1700000060,
+        "policy_etag": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "profile": {
+          "active": "P2",
+          "blend": {
+            "P2": 1
+          },
+          "reason": "default_max_image"
+        },
+        "player": {
+          "buffer_s": 45,
+          "abr_bw_factor": 0.78,
+          "reconnect_attempts": 156,
+          "live_delay_s": 10,
+          "max_bitrate_bps": 25000000,
+          "min_bitrate_bps": 6000000
+        },
+        "device": {
+          "allowed": true,
+          "soc": "amlogic_s905x4",
+          "thermal_target_c": 70,
+          "levers": {
+            "pq_ai_sr_enable": 1,
+            "ai_sr_level": 3,
+            "ai_pq_mode": 3,
+            "aipq_enable": 1,
+            "pq_sharpness_enable": 1,
+            "pq_ai_dnr_enable": 1,
+            "pq_dnr_enable": 1,
+            "pq_nr_enable": 1,
+            "pq_ai_fbc_enable": 1,
+            "pq_hdr_enable": 1,
+            "pq_hdr_mode": 1,
+            "match_content_frame_rate": 1,
+            "minimal_post_processing_allowed": 0
+          }
+        },
+        "display": {
+          "mode": "4k",
+          "wire_resolution": "3840x2160",
+          "eight_k": "presentation_only",
+          "hdr_hint": "SDR",
+          "min_resolution": "3840x2160",
+          "never_downscale": true
+        },
+        "controls": {
+          "sync_next_s": 30,
+          "flags": [],
+          "degrade_mask": 0
+        },
+        "ref": {
+          "list_version": "2026-10-29T11:54:23Z",
+          "lab_exported_at": "2026-10-26T01:31:05",
+          "artifact_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "generation_id": "gen-20261030-01"
+        },
+        "fps": {
+          "target": 30,
+          "current": 25,
+          "min": 24
+        },
+        "thermal": {
+          "status": 3,
+          "limits": {
+            "light_c": 58,
+            "moderate_c": 64,
+            "severe_c": 70,
+            "critical_c": 78
+          }
+        },
+        "processing": {
+          "tier": "max_image"
+        },
+        "degrade": {
+          "order": [
+            "fps",
+            "processing"
+          ]
+        }
+      },
+      "now_s": 1700000010,
+      "expect": {
+        "state": "partial",
+        "denials": [],
+        "warnings": [
+          "soc_alias_used",
+          "wire_above_panel"
+        ],
+        "soc": {
+          "measured": "s905x4",
+          "canonical": "s905x4",
+          "gate": "allowlisted",
+          "alias_used": "amlogic_s905x4"
+        },
+        "cadence_class": 30,
+        "thermal": {
+          "prov": "measured",
+          "status": 3,
+          "steps": 2,
+          "effective_tier": "balanced"
+        },
+        "writes": [
+          "global hdr_conversion_mode 1",
+          "global match_content_frame_rate 1",
+          "global ai_pic_mode 2",
+          "global ai_pq_mode 2",
+          "global ai_sr_level 1",
+          "global aipq_enable 1",
+          "global minimal_post_processing_allowed 1",
+          "global pq_ai_dnr_enable 1",
+          "global pq_ai_fbc_enable 0",
+          "global pq_ai_sr_enable 1",
+          "global pq_dnr_enable 1",
+          "global pq_hdr_enable 1",
+          "global pq_hdr_mode 1",
+          "global pq_nr_enable 1",
+          "global pq_sharpness_enable 0"
+        ],
+        "unchanged_count": 0,
+        "skipped": [],
+        "clamped": [
+          {
+            "key": "minimal_post_processing_allowed",
+            "from": 0,
+            "to": 1
+          },
+          {
+            "key": "ai_sr_level",
+            "from": 3,
+            "to": 1
+          },
+          {
+            "key": "ai_pq_mode",
+            "from": 3,
+            "to": 2
+          },
+          {
+            "key": "pq_ai_fbc_enable",
+            "from": 1,
+            "to": 0
+          },
+          {
+            "key": "pq_sharpness_enable",
+            "from": 1,
+            "to": 0
+          }
+        ],
+        "aliases": [
+          {
+            "from": "ai_pq_mode",
+            "to": "ai_pic_mode",
+            "value": 2
+          }
+        ],
+        "deferred_codes": [
+          "buffer_s:player_active",
+          "reconnect_attempts:next_media_source"
+        ],
+        "not_applicable": [
+          "abr_bw_factor",
+          "live_delay_s"
+        ],
+        "held_levers": [],
+        "player_ops": [],
+        "ack_reason": null
+      },
+      "vocabulary": "politica v2 (sync_features.json): fps.target, thermal.status+limits, processing.tier, degrade.order, display.min_resolution/never_downscale"
+    },
+    {
+      "id": "V3",
+      "desc": "SoC NO mapeado + wire 8K: la política se rechaza ENTERA (sin levers y sin tocar el player) y el denial se reporta con el SoC medido crudo. Es el caso que hoy sería un allowed=false silencioso.",
+      "measured": {
+        "soc_raw": "rk3588",
+        "soc_source": "Build.SOC_MODEL",
+        "android": 12,
+        "player": "exoplayer",
+        "display": {
+          "native_w": 3840,
+          "native_h": 2160,
+          "panel_24hz": true,
+          "refresh_hz": 60
+        },
+        "thermal": {
+          "prov": "unavailable",
+          "status": null,
+          "temp_c": null
+        },
+        "source": {
+          "fps": 30,
+          "resolution": "3840x2160",
+          "codec": "hvc1.2.4.L123.B0",
+          "hdr": "SDR"
+        },
+        "player_runtime": {
+          "active": false,
+          "buffer_ms": null,
+          "current": {
+            "max_bitrate_bps": 25000000,
+            "min_bitrate_bps": 6000000
+          }
+        },
+        "phase_g_blacklisted": false
+      },
+      "current_settings": {
+        "hdr_conversion_mode": "global 1",
+        "match_content_frame_rate": "global 1",
+        "minimal_post_processing_allowed": "global 0"
+      },
+      "policy": {
+        "v": 2,
+        "type": "ara_x_policy",
+        "device_id": "onn4k-001",
+        "seq": 9,
+        "ts": 1700000000,
+        "valid_until": 1700000060,
+        "policy_etag": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "profile": {
+          "active": "P1",
+          "blend": {
+            "P1": 1
+          },
+          "reason": "unknown_soc_probe"
+        },
+        "player": {
+          "buffer_s": 45,
+          "abr_bw_factor": 0.78,
+          "reconnect_attempts": 156,
+          "live_delay_s": 10,
+          "max_bitrate_bps": 25000000,
+          "min_bitrate_bps": 6000000
+        },
+        "device": {
+          "allowed": true,
+          "soc": "rk3588",
+          "thermal_target_c": 70,
+          "levers": {
+            "pq_ai_sr_enable": 1,
+            "ai_sr_level": 3,
+            "ai_pq_mode": 3,
+            "aipq_enable": 1,
+            "pq_sharpness_enable": 1,
+            "pq_ai_dnr_enable": 1,
+            "pq_dnr_enable": 1,
+            "pq_nr_enable": 1,
+            "pq_ai_fbc_enable": 1,
+            "pq_hdr_enable": 1,
+            "pq_hdr_mode": 1,
+            "match_content_frame_rate": 1,
+            "minimal_post_processing_allowed": 0
+          }
+        },
+        "display": {
+          "mode": "8k_emulated",
+          "wire_resolution": "7680x4320",
+          "eight_k": "presentation_only",
+          "hdr_hint": "PQ",
+          "min_resolution": "3840x2160",
+          "never_downscale": true
+        },
+        "controls": {
+          "sync_next_s": 30,
+          "flags": [],
+          "degrade_mask": 0
+        },
+        "ref": {
+          "list_version": "2026-10-29T11:54:23Z",
+          "lab_exported_at": "2026-10-26T01:31:05",
+          "artifact_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "generation_id": "gen-20261030-01"
+        },
+        "fps": {
+          "target": 30,
+          "current": 30,
+          "min": 24
+        },
+        "thermal": {
+          "status": "unknown",
+          "limits": {
+            "light_c": 58,
+            "moderate_c": 64,
+            "severe_c": 70,
+            "critical_c": 78
+          }
+        },
+        "processing": {
+          "tier": "max_image"
+        },
+        "degrade": {
+          "order": [
+            "fps",
+            "processing"
+          ]
+        }
+      },
+      "now_s": 1700000010,
+      "expect": {
+        "state": "denied",
+        "denials": [
+          "soc_unmapped",
+          "wire_8k_forbidden"
+        ],
+        "warnings": [
+          "thermal_unavailable"
+        ],
+        "soc": {
+          "measured": "rk3588",
+          "canonical": null,
+          "gate": "denied",
+          "alias_used": null
+        },
+        "cadence_class": 30,
+        "thermal": {
+          "prov": "unavailable",
+          "status": null,
+          "steps": 0,
+          "effective_tier": "max_image"
+        },
+        "writes": [],
+        "unchanged_count": 3,
+        "skipped": [],
+        "clamped": [],
+        "aliases": [],
+        "deferred_codes": [],
+        "not_applicable": [],
+        "held_levers": [],
+        "player_ops": [],
+        "ack_reason": "soc_unmapped"
+      },
+      "vocabulary": "politica v2 (sync_features.json): fps.target, thermal.status+limits, processing.tier, degrade.order, display.min_resolution/never_downscale"
+    },
+    {
+      "id": "V4",
+      "desc": "device.allowed=false con SoC correcto: fail-closed normal. No se aplican levers nuevos, se MANTIENEN los que ya estaban (no se revierte la imagen) y el estado se reporta como denied con razón.",
+      "measured": {
+        "soc_raw": "amlogic",
+        "soc_source": "Build.HARDWARE",
+        "android": 11,
+        "player": "exoplayer",
+        "display": {
+          "native_w": 3840,
+          "native_h": 2160,
+          "panel_24hz": true,
+          "refresh_hz": 60
+        },
+        "thermal": {
+          "prov": "measured",
+          "status": 0,
+          "temp_c": 45
+        },
+        "source": {
+          "fps": 30,
+          "resolution": "1920x1080",
+          "codec": "hvc1.2.4.L120.B0",
+          "hdr": "SDR"
+        },
+        "player_runtime": {
+          "active": false,
+          "buffer_ms": null,
+          "current": {
+            "max_bitrate_bps": 20000000,
+            "min_bitrate_bps": 6000000
+          }
+        },
+        "phase_g_blacklisted": false
+      },
+      "current_settings": {
+        "hdr_conversion_mode": "global 1",
+        "match_content_frame_rate": "global 1",
+        "minimal_post_processing_allowed": "global 0",
+        "ai_sr_level": "global 3",
+        "pq_sharpness_enable": "global 1"
+      },
+      "policy": {
+        "v": 2,
+        "type": "ara_x_policy",
+        "device_id": "onn4k-001",
+        "seq": 10,
+        "ts": 1700000000,
+        "valid_until": 1700000060,
+        "policy_etag": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        "profile": {
+          "active": "P2",
+          "blend": {
+            "P2": 1
+          },
+          "reason": "offline_safe_default"
+        },
+        "player": {
+          "buffer_s": 45,
+          "abr_bw_factor": 0.78,
+          "reconnect_attempts": 156,
+          "live_delay_s": 10,
+          "max_bitrate_bps": 25000000,
+          "min_bitrate_bps": 6000000
+        },
+        "device": {
+          "allowed": false,
+          "soc": "amlogic",
+          "thermal_target_c": 70,
+          "levers": {}
+        },
+        "display": {
+          "mode": "native",
+          "wire_resolution": "3840x2160",
+          "eight_k": "presentation_only",
+          "hdr_hint": "SDR",
+          "min_resolution": "3840x2160",
+          "never_downscale": true
+        },
+        "controls": {
+          "sync_next_s": 30,
+          "flags": [
+            "offline_safe_default"
+          ],
+          "degrade_mask": 0
+        },
+        "ref": {
+          "list_version": "2026-10-29T11:54:23Z",
+          "lab_exported_at": "2026-10-26T01:31:05",
+          "artifact_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "generation_id": "gen-20261030-01"
+        },
+        "fps": {
+          "target": 30,
+          "current": 30,
+          "min": 24
+        },
+        "thermal": {
+          "status": 0,
+          "limits": {
+            "light_c": 58,
+            "moderate_c": 64,
+            "severe_c": 70,
+            "critical_c": 78
+          }
+        },
+        "processing": {
+          "tier": "max_image"
+        },
+        "degrade": {
+          "order": [
+            "fps",
+            "processing"
+          ]
+        }
+      },
+      "now_s": 1700000010,
+      "expect": {
+        "state": "denied",
+        "denials": [
+          "device_not_allowed"
+        ],
+        "warnings": [],
+        "soc": {
+          "measured": "amlogic",
+          "canonical": "amlogic",
+          "gate": "allowlisted",
+          "alias_used": null
+        },
+        "cadence_class": 30,
+        "thermal": {
+          "prov": "measured",
+          "status": 0,
+          "steps": 0,
+          "effective_tier": "max_image"
+        },
+        "writes": [],
+        "unchanged_count": 3,
+        "skipped": [],
+        "clamped": [],
+        "aliases": [],
+        "deferred_codes": [
+          "buffer_s:player_inactive",
+          "max_bitrate_bps:player_inactive",
+          "reconnect_attempts:next_media_source"
+        ],
+        "not_applicable": [
+          "abr_bw_factor",
+          "live_delay_s"
+        ],
+        "held_levers": [
+          "ai_sr_level",
+          "pq_sharpness_enable"
+        ],
+        "player_ops": [],
+        "ack_reason": "device_not_allowed"
+      },
+      "vocabulary": "politica v2 (sync_features.json): fps.target, thermal.status+limits, processing.tier, degrade.order, display.min_resolution/never_downscale"
+    }
+  ],
+  "vocabulary": "Los policies de estos vectores cumplen la forma v2 de ara-x/vps/schema/sync_features.json (t9/D3). D4 consume solo el subconjunto que necesita para aplicar.",
+  "policy_version": 2,
+  "note_version": "Los policies usan v=2 (SYNC_VERSION del cliente v2, ara-x/vps/client/ara_sync_client.js:28).",
+  "ref_note": "ref v2 exige artifact_sha256 (64 hex) + generation_id + list_version + lab_exported_at."
+}

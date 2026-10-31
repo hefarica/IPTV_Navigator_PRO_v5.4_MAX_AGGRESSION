@@ -1,0 +1,1308 @@
+{
+  "spec": "ara-x-dec.v1",
+  "version": "1.0.0",
+  "task": "t11 (D5) — contrato de decisión del ADC (features, reglas, aprendizaje)",
+  "date": "2026-10-30",
+  "author": "qoe-player-analyst (S5+S9)",
+  "constants_digest": "sha256:9124142d6f891e6f67e56e5610695fae11448f1d5a4b8058f723539f9494b2a7",
+  "contract": "ara-x/spec/ara_x_decision.md",
+  "runner": "node ara-x/scripts/d5_check_decision.js",
+  "determinism": {
+    "clock": "now_ms inyectado; la función pura no lee el reloj del sistema",
+    "rounding": "float -> 4 decimales (half-up); bps -> entero",
+    "rng": "si input.rng[] existe se consumen esos uniformes en orden de brazo ascendente; si existe input.rng_seed se usa xorshift128+ sembrado con sha256(seed)[0:16]; si no hay ninguno, u=0.5 (z=0) => el muestreo colapsa a la media",
+    "idempotence": "el runner ejecuta cada vector dos veces y exige salida byte-idéntica",
+    "invariants": "además de los valores esperados, el runner valida 10 invariantes del contrato sobre cada vector y sobre un barrido determinista de 300 estados sintéticos"
+  },
+  "provenance_note": "Los INPUTS son escenarios escritos a mano. Las EXPECTATIVAS se co-derivaron con la implementación de referencia (d5_check_decision.js) y se revisaron regla por regla contra §5–§11 del contrato; cada vector fija una regla concreta (ver note). La independencia real la aportan los invariantes (INV-2..INV-10) y el barrido, que NO dependen de los valores esperados.",
+  "vectors": [
+    {
+      "id": "V01",
+      "kind": "decide",
+      "name": "cold_start_sin_telemetria",
+      "note": "Sin sensores: brazo fijo A2 (no se explora sin datos), térmico desconocido => conservador (bit + nunca A0), SoC desconocido => fail-closed (allowed=false, levers={}).",
+      "obs": {},
+      "caps": {
+        "fps_lever": false,
+        "vpp_levers": true
+      },
+      "state": {
+        "cold": true,
+        "arm": "A2"
+      },
+      "expect": {
+        "arm": "A2",
+        "u_degrade": 0.15,
+        "fps_cap": 60,
+        "fps_applied": 0,
+        "post_step": 0,
+        "buffer_s": 45,
+        "abr_bw_factor": 0.8,
+        "reconnect_attempts": 10,
+        "live_delay_s": 10,
+        "max_bitrate_bps": 25000000,
+        "min_bitrate_bps": 6000000,
+        "hdr_hint": "PQ",
+        "sync_next_s": 30,
+        "promote_lock_ms": 0,
+        "degrade_mask": 4096,
+        "flags": [
+          "thermal_unknown",
+          "bitrate_unknown",
+          "soc_unknown",
+          "cold_start"
+        ],
+        "soc": "unknown",
+        "allowed": false
+      }
+    },
+    {
+      "id": "V02",
+      "kind": "decide",
+      "name": "sano_4k60_promociona_a_A0",
+      "note": "Todo sano: u=0, máscara 0, sin bits de post; la promoción A2->A0 pasa dwell+margen.",
+      "obs": {
+        "soc": "amlogic_s905x4",
+        "player": "exoplayer_apk",
+        "frame_drop_ratio": 0,
+        "rebuffer_ratio": 0,
+        "stall": false,
+        "ttfb_ewma_ms": 380,
+        "jitter_ewma_ms": 20,
+        "err5xx_rate": 0,
+        "thermal_status": 0,
+        "ram_available_pct": 40,
+        "vst_ms": 900,
+        "bitrate_bps": 15000000,
+        "resolution_class": "4k",
+        "fps_declared": 60
+      },
+      "caps": {
+        "fps_lever": true,
+        "vpp_levers": true
+      },
+      "state": {
+        "arm": "A2",
+        "now_ms": 100000,
+        "arm_since_ms": 60000,
+        "changes_30s": 0
+      },
+      "posteriors": {
+        "A0": [
+          9,
+          1
+        ],
+        "A1": [
+          5,
+          5
+        ],
+        "A2": [
+          5,
+          5
+        ],
+        "A3": [
+          5,
+          5
+        ],
+        "A4": [
+          5,
+          5
+        ]
+      },
+      "rng": [
+        0.9,
+        0.5,
+        0.5,
+        0.5
+      ],
+      "expect": {
+        "arm": "A0",
+        "u_degrade": 0,
+        "fps_cap": 60,
+        "fps_applied": 0,
+        "post_step": 0,
+        "buffer_s": 30,
+        "abr_bw_factor": 0.85,
+        "reconnect_attempts": 6,
+        "live_delay_s": 8,
+        "max_bitrate_bps": 18750000,
+        "min_bitrate_bps": 12750000,
+        "hdr_hint": "PQ",
+        "sync_next_s": 30,
+        "promote_lock_ms": 0,
+        "degrade_mask": 0,
+        "flags": [],
+        "soc": "s905x4",
+        "allowed": true
+      }
+    },
+    {
+      "id": "V03",
+      "kind": "decide",
+      "name": "drops_4pct_baja_fps_primero",
+      "note": "R2 rank-1: 4% de drops (L=0.8) baja FPS a 30 y NO toca post-proceso ni resolución.",
+      "obs": {
+        "soc": "amlogic_s905x4",
+        "player": "exoplayer_apk",
+        "frame_drop_ratio": 0.04,
+        "thermal_status": 0,
+        "bitrate_bps": 12000000,
+        "resolution_class": "4k"
+      },
+      "caps": {
+        "fps_lever": true,
+        "vpp_levers": true
+      },
+      "state": {
+        "arm": "A2"
+      },
+      "expect": {
+        "arm": "A2",
+        "u_degrade": 0.45,
+        "fps_cap": 30,
+        "fps_applied": 1,
+        "post_step": 0,
+        "buffer_s": 45,
+        "abr_bw_factor": 0.8,
+        "reconnect_attempts": 10,
+        "live_delay_s": 10,
+        "max_bitrate_bps": 15000000,
+        "min_bitrate_bps": 10200000,
+        "hdr_hint": "PQ",
+        "sync_next_s": 20,
+        "promote_lock_ms": 0,
+        "degrade_mask": 1,
+        "flags": [],
+        "soc": "s905x4",
+        "allowed": true
+      }
+    },
+    {
+      "id": "V04",
+      "kind": "decide",
+      "name": "stall_reflex_supervivencia",
+      "note": "Stall activo: emergencia => A4, post>=7, HDR SDR, sync 10 s; sin lever de fps => sustitución a post-proceso y flag fps_unavailable.",
+      "obs": {
+        "soc": "amlogic_s905x4",
+        "player": "exoplayer_apk",
+        "stall": true,
+        "rebuffer_ratio": 0.03,
+        "thermal_status": 1,
+        "bitrate_bps": 9000000,
+        "resolution_class": "4k"
+      },
+      "caps": {
+        "fps_lever": false,
+        "vpp_levers": true
+      },
+      "state": {
+        "arm": "A2"
+      },
+      "expect": {
+        "arm": "A4",
+        "u_degrade": 0,
+        "fps_cap": 60,
+        "fps_applied": 0,
+        "post_step": 8,
+        "buffer_s": 110,
+        "abr_bw_factor": 0.66,
+        "reconnect_attempts": 20,
+        "live_delay_s": 20,
+        "max_bitrate_bps": 11250000,
+        "min_bitrate_bps": 7650000,
+        "hdr_hint": "SDR",
+        "sync_next_s": 10,
+        "promote_lock_ms": 0,
+        "degrade_mask": 36348,
+        "flags": [
+          "fps_unavailable"
+        ],
+        "soc": "s905x4",
+        "allowed": true
+      }
+    },
+    {
+      "id": "V05",
+      "kind": "decide",
+      "name": "colapso_de_red_sin_drops",
+      "note": "N=0.8 con todo lo demás sano: el estrés de red fuerza brazo >= A3 (buffer 60, abr 0.76) aunque fps/post sean 0.",
+      "obs": {
+        "soc": "amlogic_s905x4",
+        "player": "exoplayer_apk",
+        "x_net": 0.8,
+        "thermal_status": 0,
+        "bitrate_bps": 12000000,
+        "resolution_class": "4k"
+      },
+      "caps": {
+        "fps_lever": true,
+        "vpp_levers": true
+      },
+      "state": {
+        "arm": "A2"
+      },
+      "expect": {
+        "arm": "A3",
+        "u_degrade": 0.3556,
+        "fps_cap": 60,
+        "fps_applied": 0,
+        "post_step": 1,
+        "buffer_s": 60,
+        "abr_bw_factor": 0.76,
+        "reconnect_attempts": 12,
+        "live_delay_s": 15,
+        "max_bitrate_bps": 15000000,
+        "min_bitrate_bps": 10200000,
+        "hdr_hint": "PQ",
+        "sync_next_s": 30,
+        "promote_lock_ms": 0,
+        "degrade_mask": 4,
+        "flags": [],
+        "soc": "s905x4",
+        "allowed": true
+      }
+    },
+    {
+      "id": "V06",
+      "kind": "decide",
+      "name": "thermal_severe_enum3",
+      "note": "pm_thermal_status=3 (SEVERE): degrada FPS y post>=6, brazo >= A3, sin promoción.",
+      "obs": {
+        "soc": "amlogic_s905x4",
+        "player": "exoplayer_apk",
+        "thermal_status": 3,
+        "frame_drop_ratio": 0.005,
+        "bitrate_bps": 12000000,
+        "resolution_class": "4k"
+      },
+      "caps": {
+        "fps_lever": false,
+        "vpp_levers": true
+      },
+      "state": {
+        "arm": "A2"
+      },
+      "expect": {
+        "arm": "A3",
+        "u_degrade": 0.2625,
+        "fps_cap": 60,
+        "fps_applied": 0,
+        "post_step": 7,
+        "buffer_s": 80,
+        "abr_bw_factor": 0.72,
+        "reconnect_attempts": 12,
+        "live_delay_s": 15,
+        "max_bitrate_bps": 15000000,
+        "min_bitrate_bps": 10200000,
+        "hdr_hint": "PQ",
+        "sync_next_s": 20,
+        "promote_lock_ms": 0,
+        "degrade_mask": 36092,
+        "flags": [
+          "thermal_severe",
+          "fps_unavailable"
+        ],
+        "soc": "s905x4",
+        "allowed": true
+      }
+    },
+    {
+      "id": "V07",
+      "kind": "decide",
+      "name": "thermal_critical_enum5",
+      "note": "pm_thermal_status=5: emergencia, A4, post 9 (VPP mínimo), HDR SDR, sync 10 s, mapa de levers al mínimo (se compara completo).",
+      "obs": {
+        "soc": "amlogic_s905x4",
+        "player": "exoplayer_apk",
+        "thermal_status": 5,
+        "bitrate_bps": 9000000,
+        "resolution_class": "4k"
+      },
+      "caps": {
+        "fps_lever": true,
+        "vpp_levers": true
+      },
+      "state": {
+        "arm": "A2"
+      },
+      "expect": {
+        "arm": "A4",
+        "u_degrade": 0.45,
+        "fps_cap": 24,
+        "fps_applied": 2,
+        "post_step": 9,
+        "buffer_s": 120,
+        "abr_bw_factor": 0.64,
+        "reconnect_attempts": 20,
+        "live_delay_s": 20,
+        "max_bitrate_bps": 11250000,
+        "min_bitrate_bps": 7650000,
+        "hdr_hint": "SDR",
+        "sync_next_s": 10,
+        "promote_lock_ms": 0,
+        "degrade_mask": 12286,
+        "flags": [
+          "thermal_critical"
+        ],
+        "soc": "s905x4",
+        "allowed": true,
+        "levers": {
+          "pq_ai_sr_enable": 0,
+          "ai_sr_level": 0,
+          "ai_pq_mode": 2,
+          "aipq_enable": 0,
+          "pq_sharpness_enable": 0,
+          "pq_ai_dnr_enable": 0,
+          "pq_dnr_enable": 0,
+          "pq_nr_enable": 0,
+          "pq_ai_fbc_enable": 0,
+          "pq_hdr_enable": 0,
+          "pq_hdr_mode": 0,
+          "match_content_frame_rate": 1,
+          "minimal_post_processing_allowed": 1
+        }
+      }
+    },
+    {
+      "id": "V08",
+      "kind": "decide",
+      "name": "temp_72c_mas_enum1_fusion_max",
+      "note": "Fusión térmica honesta: x_therm = max(enum LIGHT 0.25, (72-65)/20 = 0.35) = 0.35 y u_T baja a 0.10 (dos fuentes).",
+      "obs": {
+        "soc": "amlogic_s905x4",
+        "player": "exoplayer_apk",
+        "thermal_status": 1,
+        "cpu_temp_c": 72,
+        "bitrate_bps": 12000000,
+        "resolution_class": "4k"
+      },
+      "caps": {
+        "fps_lever": true,
+        "vpp_levers": true
+      },
+      "state": {
+        "arm": "A1",
+        "now_ms": 60000,
+        "arm_since_ms": 0,
+        "changes_30s": 0
+      },
+      "posteriors": {
+        "A0": [
+          1,
+          9
+        ],
+        "A1": [
+          1,
+          9
+        ],
+        "A2": [
+          1,
+          9
+        ],
+        "A3": [
+          1,
+          9
+        ],
+        "A4": [
+          1,
+          9
+        ]
+      },
+      "expect": {
+        "arm": "A1",
+        "u_degrade": 0.0429,
+        "fps_cap": 60,
+        "fps_applied": 0,
+        "post_step": 0,
+        "buffer_s": 45,
+        "abr_bw_factor": 0.82,
+        "reconnect_attempts": 8,
+        "live_delay_s": 10,
+        "max_bitrate_bps": 15000000,
+        "min_bitrate_bps": 10200000,
+        "hdr_hint": "PQ",
+        "sync_next_s": 30,
+        "promote_lock_ms": 0,
+        "degrade_mask": 0,
+        "flags": [],
+        "soc": "s905x4",
+        "allowed": true
+      }
+    },
+    {
+      "id": "V09",
+      "kind": "decide",
+      "name": "resolucion_bajo_piso_bloquea",
+      "note": "Resolución observada 1080p < piso 4K: NUNCA se comanda resolución; se degrada proceso (post>=4), se bloquea promoción 120 s y se marca RES_LOSS_LOCK.",
+      "obs": {
+        "soc": "amlogic_s905x4",
+        "player": "exoplayer_apk",
+        "resolution_class": "1080p",
+        "thermal_status": 0,
+        "bitrate_bps": 6000000
+      },
+      "caps": {
+        "fps_lever": true,
+        "vpp_levers": true
+      },
+      "state": {
+        "arm": "A2"
+      },
+      "expect": {
+        "arm": "A3",
+        "u_degrade": 0,
+        "fps_cap": 60,
+        "fps_applied": 0,
+        "post_step": 5,
+        "buffer_s": 70,
+        "abr_bw_factor": 0.74,
+        "reconnect_attempts": 12,
+        "live_delay_s": 15,
+        "max_bitrate_bps": 7500000,
+        "min_bitrate_bps": 5100000,
+        "hdr_hint": "PQ",
+        "sync_next_s": 20,
+        "promote_lock_ms": 120000,
+        "degrade_mask": 19580,
+        "flags": [
+          "res_loss_lock"
+        ],
+        "soc": "s905x4",
+        "allowed": true
+      }
+    },
+    {
+      "id": "V10",
+      "kind": "decide",
+      "name": "antiflap_dwell_bloquea_promocion",
+      "note": "Dwell 5 s < 20 s: aunque el muestreo elija A0, el cambio se rechaza y se queda en A2.",
+      "obs": {
+        "soc": "amlogic_s905x4",
+        "player": "exoplayer_apk",
+        "thermal_status": 0,
+        "ram_available_pct": 40,
+        "bitrate_bps": 15000000,
+        "resolution_class": "4k"
+      },
+      "caps": {
+        "fps_lever": true,
+        "vpp_levers": true
+      },
+      "state": {
+        "arm": "A2",
+        "now_ms": 5000,
+        "arm_since_ms": 0,
+        "changes_30s": 0
+      },
+      "posteriors": {
+        "A0": [
+          9,
+          1
+        ],
+        "A1": [
+          5,
+          5
+        ],
+        "A2": [
+          5,
+          5
+        ],
+        "A3": [
+          5,
+          5
+        ],
+        "A4": [
+          5,
+          5
+        ]
+      },
+      "rng": [
+        0.9,
+        0.5,
+        0.5,
+        0.5
+      ],
+      "expect": {
+        "arm": "A2",
+        "u_degrade": 0,
+        "fps_cap": 60,
+        "fps_applied": 0,
+        "post_step": 0,
+        "buffer_s": 45,
+        "abr_bw_factor": 0.8,
+        "reconnect_attempts": 10,
+        "live_delay_s": 10,
+        "max_bitrate_bps": 18750000,
+        "min_bitrate_bps": 12750000,
+        "hdr_hint": "PQ",
+        "sync_next_s": 30,
+        "promote_lock_ms": 0,
+        "degrade_mask": 0,
+        "flags": [
+          "antiflap_hold"
+        ],
+        "soc": "s905x4",
+        "allowed": true
+      }
+    },
+    {
+      "id": "V11",
+      "kind": "decide",
+      "name": "antiflap_dwell_ok_permite_promocion",
+      "note": "Dwell 30 s >= 20 s y margen amplio: la promoción a A0 se aplica.",
+      "obs": {
+        "soc": "amlogic_s905x4",
+        "player": "exoplayer_apk",
+        "thermal_status": 0,
+        "ram_available_pct": 40,
+        "bitrate_bps": 15000000,
+        "resolution_class": "4k"
+      },
+      "caps": {
+        "fps_lever": true,
+        "vpp_levers": true
+      },
+      "state": {
+        "arm": "A2",
+        "now_ms": 30000,
+        "arm_since_ms": 0,
+        "changes_30s": 0
+      },
+      "posteriors": {
+        "A0": [
+          9,
+          1
+        ],
+        "A1": [
+          5,
+          5
+        ],
+        "A2": [
+          5,
+          5
+        ],
+        "A3": [
+          5,
+          5
+        ],
+        "A4": [
+          5,
+          5
+        ]
+      },
+      "rng": [
+        0.9,
+        0.5,
+        0.5,
+        0.5
+      ],
+      "expect": {
+        "arm": "A0",
+        "u_degrade": 0,
+        "fps_cap": 60,
+        "fps_applied": 0,
+        "post_step": 0,
+        "buffer_s": 30,
+        "abr_bw_factor": 0.85,
+        "reconnect_attempts": 6,
+        "live_delay_s": 8,
+        "max_bitrate_bps": 18750000,
+        "min_bitrate_bps": 12750000,
+        "hdr_hint": "PQ",
+        "sync_next_s": 30,
+        "promote_lock_ms": 0,
+        "degrade_mask": 0,
+        "flags": [],
+        "soc": "s905x4",
+        "allowed": true
+      }
+    },
+    {
+      "id": "V12",
+      "kind": "decide",
+      "name": "antiflap_margen_insuficiente",
+      "note": "Posteriores casi idénticos (Beta(400,400)): el muestreo elige A0 pero el margen (~0.0002) < 0.06 rechaza el cambio.",
+      "obs": {
+        "soc": "amlogic_s905x4",
+        "player": "exoplayer_apk",
+        "thermal_status": 0,
+        "ram_available_pct": 40,
+        "bitrate_bps": 15000000,
+        "resolution_class": "4k"
+      },
+      "caps": {
+        "fps_lever": true,
+        "vpp_levers": true
+      },
+      "state": {
+        "arm": "A2",
+        "now_ms": 60000,
+        "arm_since_ms": 0,
+        "changes_30s": 0
+      },
+      "posteriors": {
+        "A0": [
+          400,
+          400
+        ],
+        "A1": [
+          1,
+          1
+        ],
+        "A2": [
+          400,
+          400
+        ],
+        "A3": [
+          1,
+          1
+        ]
+      },
+      "rng": [
+        0.6,
+        0.5,
+        0.4,
+        0.5
+      ],
+      "expect": {
+        "arm": "A2",
+        "u_degrade": 0,
+        "fps_cap": 60,
+        "fps_applied": 0,
+        "post_step": 0,
+        "buffer_s": 45,
+        "abr_bw_factor": 0.8,
+        "reconnect_attempts": 10,
+        "live_delay_s": 10,
+        "max_bitrate_bps": 18750000,
+        "min_bitrate_bps": 12750000,
+        "hdr_hint": "PQ",
+        "sync_next_s": 30,
+        "promote_lock_ms": 0,
+        "degrade_mask": 0,
+        "flags": [
+          "antiflap_hold"
+        ],
+        "soc": "s905x4",
+        "allowed": true
+      }
+    },
+    {
+      "id": "V13",
+      "kind": "decide",
+      "name": "termico_desconocido_conservador",
+      "note": "Sin pm_thermal_status ni temperatura: u_T=1.0, bit THERMAL_UNKNOWN y brazo mínimo A1 (nunca A0); no hay relajación posible.",
+      "obs": {
+        "soc": "amlogic_s905x4",
+        "player": "exoplayer_apk",
+        "bitrate_bps": 15000000,
+        "resolution_class": "4k"
+      },
+      "caps": {
+        "fps_lever": true,
+        "vpp_levers": true
+      },
+      "state": {
+        "arm": "A2",
+        "now_ms": 60000,
+        "arm_since_ms": 0
+      },
+      "posteriors": {
+        "A0": [
+          9,
+          1
+        ],
+        "A1": [
+          5,
+          5
+        ],
+        "A2": [
+          5,
+          5
+        ],
+        "A3": [
+          5,
+          5
+        ],
+        "A4": [
+          5,
+          5
+        ]
+      },
+      "rng": [
+        0.9,
+        0.5,
+        0.5,
+        0.5
+      ],
+      "expect": {
+        "arm": "A1",
+        "u_degrade": 0.15,
+        "fps_cap": 60,
+        "fps_applied": 0,
+        "post_step": 0,
+        "buffer_s": 45,
+        "abr_bw_factor": 0.82,
+        "reconnect_attempts": 8,
+        "live_delay_s": 10,
+        "max_bitrate_bps": 18750000,
+        "min_bitrate_bps": 12750000,
+        "hdr_hint": "PQ",
+        "sync_next_s": 30,
+        "promote_lock_ms": 0,
+        "degrade_mask": 4096,
+        "flags": [
+          "thermal_unknown"
+        ],
+        "soc": "s905x4",
+        "allowed": true
+      }
+    },
+    {
+      "id": "V14",
+      "kind": "decide",
+      "name": "soc_no_allowlisted_fail_closed",
+      "note": "SoC real fuera de la allowlist (rtk_rtd1319): allowed=false y levers={}; la decisión de proceso se sigue calculando.",
+      "obs": {
+        "soc": "rtk_rtd1319",
+        "thermal_status": 0,
+        "bitrate_bps": 12000000,
+        "resolution_class": "4k"
+      },
+      "caps": {
+        "fps_lever": true,
+        "vpp_levers": true
+      },
+      "state": {
+        "arm": "A1",
+        "now_ms": 60000,
+        "arm_since_ms": 0,
+        "changes_30s": 0
+      },
+      "posteriors": {
+        "A0": [
+          1,
+          9
+        ],
+        "A1": [
+          1,
+          9
+        ],
+        "A2": [
+          1,
+          9
+        ],
+        "A3": [
+          1,
+          9
+        ],
+        "A4": [
+          1,
+          9
+        ]
+      },
+      "expect": {
+        "arm": "A1",
+        "u_degrade": 0,
+        "fps_cap": 60,
+        "fps_applied": 0,
+        "post_step": 0,
+        "buffer_s": 45,
+        "abr_bw_factor": 0.82,
+        "reconnect_attempts": 8,
+        "live_delay_s": 10,
+        "max_bitrate_bps": 15000000,
+        "min_bitrate_bps": 10200000,
+        "hdr_hint": "PQ",
+        "sync_next_s": 30,
+        "promote_lock_ms": 0,
+        "degrade_mask": 0,
+        "flags": [
+          "antiflap_hold",
+          "soc_not_allowlisted"
+        ],
+        "soc": "unknown",
+        "allowed": false
+      }
+    },
+    {
+      "id": "V15",
+      "kind": "decide",
+      "name": "sin_lever_fps_sustituye_postproceso",
+      "note": "Player nativo (sin track selector): el paso FPS se sustituye por el post-proceso equivalente (2x) y se marca FPS_UNAVAILABLE.",
+      "obs": {
+        "soc": "amlogic_s905x4",
+        "player": "exoplayer_apk",
+        "frame_drop_ratio": 0.045,
+        "thermal_status": 0,
+        "bitrate_bps": 12000000,
+        "resolution_class": "4k"
+      },
+      "caps": {
+        "fps_lever": false,
+        "vpp_levers": true
+      },
+      "state": {
+        "arm": "A2"
+      },
+      "expect": {
+        "arm": "A3",
+        "u_degrade": 0,
+        "fps_cap": 60,
+        "fps_applied": 0,
+        "post_step": 5,
+        "buffer_s": 70,
+        "abr_bw_factor": 0.74,
+        "reconnect_attempts": 12,
+        "live_delay_s": 15,
+        "max_bitrate_bps": 15000000,
+        "min_bitrate_bps": 10200000,
+        "hdr_hint": "PQ",
+        "sync_next_s": 20,
+        "promote_lock_ms": 0,
+        "degrade_mask": 35964,
+        "flags": [
+          "fps_unavailable"
+        ],
+        "soc": "s905x4",
+        "allowed": true
+      }
+    },
+    {
+      "id": "V16",
+      "kind": "decide",
+      "name": "vst_critico_arranque",
+      "note": "VST 9 s > 8 s: penaliza arranque con post>=2 y flag vst_critical, sin degradar FPS.",
+      "obs": {
+        "soc": "amlogic_s905x4",
+        "player": "exoplayer_apk",
+        "vst_ms": 9000,
+        "thermal_status": 0,
+        "bitrate_bps": 12000000,
+        "resolution_class": "4k"
+      },
+      "caps": {
+        "fps_lever": true,
+        "vpp_levers": true
+      },
+      "state": {
+        "arm": "A2"
+      },
+      "expect": {
+        "arm": "A2",
+        "u_degrade": 0,
+        "fps_cap": 60,
+        "fps_applied": 0,
+        "post_step": 2,
+        "buffer_s": 45,
+        "abr_bw_factor": 0.8,
+        "reconnect_attempts": 10,
+        "live_delay_s": 10,
+        "max_bitrate_bps": 15000000,
+        "min_bitrate_bps": 10200000,
+        "hdr_hint": "PQ",
+        "sync_next_s": 30,
+        "promote_lock_ms": 0,
+        "degrade_mask": 12,
+        "flags": [
+          "vst_critical"
+        ],
+        "soc": "s905x4",
+        "allowed": true
+      }
+    },
+    {
+      "id": "V17",
+      "kind": "decide",
+      "name": "error_5xx_8pct",
+      "note": "8% de 5xx (x_err=1) => L=1 => FPS 24 y brazo A3: el edge enfermo no se compensa promocionando.",
+      "obs": {
+        "soc": "amlogic_s905x4",
+        "player": "exoplayer_apk",
+        "err5xx_rate": 0.08,
+        "thermal_status": 0,
+        "bitrate_bps": 12000000,
+        "resolution_class": "4k"
+      },
+      "caps": {
+        "fps_lever": true,
+        "vpp_levers": true
+      },
+      "state": {
+        "arm": "A2"
+      },
+      "expect": {
+        "arm": "A3",
+        "u_degrade": 0,
+        "fps_cap": 24,
+        "fps_applied": 2,
+        "post_step": 1,
+        "buffer_s": 60,
+        "abr_bw_factor": 0.76,
+        "reconnect_attempts": 12,
+        "live_delay_s": 15,
+        "max_bitrate_bps": 15000000,
+        "min_bitrate_bps": 10200000,
+        "hdr_hint": "PQ",
+        "sync_next_s": 20,
+        "promote_lock_ms": 0,
+        "degrade_mask": 6,
+        "flags": [],
+        "soc": "s905x4",
+        "allowed": true
+      }
+    },
+    {
+      "id": "V18",
+      "kind": "decide",
+      "name": "ram_baja_marca_flag",
+      "note": "RAM 8% (<15%): flag ram_low; por sí sola no altera la escalera (no es evidencia de imagen).",
+      "obs": {
+        "soc": "amlogic_s905x4",
+        "player": "exoplayer_apk",
+        "ram_available_pct": 8,
+        "thermal_status": 0,
+        "bitrate_bps": 12000000,
+        "resolution_class": "4k"
+      },
+      "caps": {
+        "fps_lever": true,
+        "vpp_levers": true
+      },
+      "state": {
+        "arm": "A1",
+        "now_ms": 60000,
+        "arm_since_ms": 0,
+        "changes_30s": 0
+      },
+      "posteriors": {
+        "A0": [
+          1,
+          9
+        ],
+        "A1": [
+          1,
+          9
+        ],
+        "A2": [
+          1,
+          9
+        ],
+        "A3": [
+          1,
+          9
+        ],
+        "A4": [
+          1,
+          9
+        ]
+      },
+      "expect": {
+        "arm": "A1",
+        "u_degrade": 0,
+        "fps_cap": 60,
+        "fps_applied": 0,
+        "post_step": 0,
+        "buffer_s": 45,
+        "abr_bw_factor": 0.82,
+        "reconnect_attempts": 8,
+        "live_delay_s": 10,
+        "max_bitrate_bps": 15000000,
+        "min_bitrate_bps": 10200000,
+        "hdr_hint": "PQ",
+        "sync_next_s": 30,
+        "promote_lock_ms": 0,
+        "degrade_mask": 0,
+        "flags": [
+          "ram_low",
+          "antiflap_hold"
+        ],
+        "soc": "s905x4",
+        "allowed": true
+      }
+    },
+    {
+      "id": "V19",
+      "kind": "decide",
+      "name": "thermal_moderate_enum2",
+      "note": "pm_thermal_status=2 (MODERATE): sube post>=3 y el brazo mínimo a A2, pero NO toca FPS (aún hay margen).",
+      "obs": {
+        "soc": "amlogic_s905x4",
+        "player": "exoplayer_apk",
+        "thermal_status": 2,
+        "bitrate_bps": 12000000,
+        "resolution_class": "4k"
+      },
+      "caps": {
+        "fps_lever": true,
+        "vpp_levers": true
+      },
+      "state": {
+        "arm": "A2",
+        "now_ms": 100000,
+        "arm_since_ms": 0
+      },
+      "expect": {
+        "arm": "A3",
+        "u_degrade": 0.15,
+        "fps_cap": 60,
+        "fps_applied": 0,
+        "post_step": 4,
+        "buffer_s": 70,
+        "abr_bw_factor": 0.74,
+        "reconnect_attempts": 12,
+        "live_delay_s": 15,
+        "max_bitrate_bps": 15000000,
+        "min_bitrate_bps": 10200000,
+        "hdr_hint": "PQ",
+        "sync_next_s": 20,
+        "promote_lock_ms": 0,
+        "degrade_mask": 3132,
+        "flags": [],
+        "soc": "s905x4",
+        "allowed": true
+      }
+    },
+    {
+      "id": "V20",
+      "kind": "decide",
+      "name": "drops_6pct_baja_fps_24",
+      "note": "6% de drops (L>=0.90): FPS 24 (segundo escalón) sin tocar resolución.",
+      "obs": {
+        "soc": "amlogic_s905x4",
+        "player": "exoplayer_apk",
+        "frame_drop_ratio": 0.06,
+        "thermal_status": 0,
+        "bitrate_bps": 12000000,
+        "resolution_class": "4k"
+      },
+      "caps": {
+        "fps_lever": true,
+        "vpp_levers": true
+      },
+      "state": {
+        "arm": "A2"
+      },
+      "expect": {
+        "arm": "A3",
+        "u_degrade": 0,
+        "fps_cap": 24,
+        "fps_applied": 2,
+        "post_step": 1,
+        "buffer_s": 60,
+        "abr_bw_factor": 0.76,
+        "reconnect_attempts": 12,
+        "live_delay_s": 15,
+        "max_bitrate_bps": 15000000,
+        "min_bitrate_bps": 10200000,
+        "hdr_hint": "PQ",
+        "sync_next_s": 20,
+        "promote_lock_ms": 0,
+        "degrade_mask": 6,
+        "flags": [],
+        "soc": "s905x4",
+        "allowed": true
+      }
+    },
+    {
+      "id": "V21",
+      "kind": "decide",
+      "name": "rebuffer_2pct_baja_fps",
+      "note": "Rebuffer 2% (x_rebuf=0.4): L=0.4 => FPS 30; el ratio entra como primitiva, no como penalización suelta.",
+      "obs": {
+        "soc": "amlogic_s905x4",
+        "player": "exoplayer_apk",
+        "rebuffer_ratio": 0.02,
+        "thermal_status": 0,
+        "bitrate_bps": 12000000,
+        "resolution_class": "4k"
+      },
+      "caps": {
+        "fps_lever": true,
+        "vpp_levers": true
+      },
+      "state": {
+        "arm": "A2",
+        "now_ms": 100000,
+        "arm_since_ms": 0,
+        "changes_30s": 0
+      },
+      "expect": {
+        "arm": "A2",
+        "u_degrade": 0.2769,
+        "fps_cap": 30,
+        "fps_applied": 1,
+        "post_step": 0,
+        "buffer_s": 45,
+        "abr_bw_factor": 0.8,
+        "reconnect_attempts": 10,
+        "live_delay_s": 10,
+        "max_bitrate_bps": 15000000,
+        "min_bitrate_bps": 10200000,
+        "hdr_hint": "PQ",
+        "sync_next_s": 20,
+        "promote_lock_ms": 0,
+        "degrade_mask": 1,
+        "flags": [],
+        "soc": "s905x4",
+        "allowed": true
+      }
+    },
+    {
+      "id": "V22",
+      "kind": "decide",
+      "name": "estres_nunca_promociona",
+      "note": "Estado en A0 con 2% de drops: el estrés impone A2 (degrada) aunque el brazo actual fuese más agresivo.",
+      "obs": {
+        "soc": "amlogic_s905x4",
+        "player": "exoplayer_apk",
+        "frame_drop_ratio": 0.02,
+        "thermal_status": 0,
+        "bitrate_bps": 12000000,
+        "resolution_class": "4k"
+      },
+      "caps": {
+        "fps_lever": true,
+        "vpp_levers": true
+      },
+      "state": {
+        "arm": "A0",
+        "now_ms": 100000,
+        "arm_since_ms": 0,
+        "changes_30s": 0
+      },
+      "expect": {
+        "arm": "A2",
+        "u_degrade": 0.2769,
+        "fps_cap": 30,
+        "fps_applied": 1,
+        "post_step": 0,
+        "buffer_s": 45,
+        "abr_bw_factor": 0.8,
+        "reconnect_attempts": 10,
+        "live_delay_s": 10,
+        "max_bitrate_bps": 15000000,
+        "min_bitrate_bps": 10200000,
+        "hdr_hint": "PQ",
+        "sync_next_s": 20,
+        "promote_lock_ms": 0,
+        "degrade_mask": 1,
+        "flags": [],
+        "soc": "s905x4",
+        "allowed": true
+      }
+    },
+    {
+      "id": "V23",
+      "kind": "fuse",
+      "name": "red_degradandose_holt",
+      "note": "EWMA + Holt sobre 3 segmentos: el forecast a 3 muestras cruza el piso de 12 Mbps => breach=true y x_net=0.2934.",
+      "samples": [
+        {
+          "dt_ms": 2000,
+          "bytes": 2250000,
+          "ttfb_ms": 400
+        },
+        {
+          "dt_ms": 2000,
+          "bytes": 2000000,
+          "ttfb_ms": 600
+        },
+        {
+          "dt_ms": 2000,
+          "bytes": 1500000,
+          "ttfb_ms": 900
+        }
+      ],
+      "floor_bps": 12000000,
+      "expect": {
+        "ewma_bps": 7890000,
+        "ttfb_ewma_ms": 592,
+        "jitter_ewma_ms": 92,
+        "forecast_bps": 8479710,
+        "breach": true,
+        "x_net": 0.2934
+      }
+    },
+    {
+      "id": "V24",
+      "kind": "fuse",
+      "name": "red_sana_sin_breach",
+      "note": "Tres segmentos estables por encima del piso: sin breach y x_net=0.",
+      "samples": [
+        {
+          "dt_ms": 2000,
+          "bytes": 4000000,
+          "ttfb_ms": 350
+        },
+        {
+          "dt_ms": 2000,
+          "bytes": 4100000,
+          "ttfb_ms": 340
+        },
+        {
+          "dt_ms": 2000,
+          "bytes": 4050000,
+          "ttfb_ms": 345
+        }
+      ],
+      "floor_bps": 12000000,
+      "expect": {
+        "ewma_bps": 16144000,
+        "ttfb_ewma_ms": 346,
+        "jitter_ewma_ms": 3,
+        "forecast_bps": 16091116,
+        "breach": false,
+        "x_net": 0
+      }
+    },
+    {
+      "id": "V25",
+      "kind": "reward",
+      "name": "recompensa_sana_y_posterior",
+      "note": "Ventana sana con proceso intacto: r=1.0; la actualización fraccional mueve Beta con decay 0.995 y suelo 0.5.",
+      "obs": {
+        "frame_drop_ratio": 0,
+        "rebuffer_ratio": 0,
+        "thermal_status": 0,
+        "vst_ms": 900,
+        "resolution_class": "4k"
+      },
+      "applied": {
+        "fps_applied": 0,
+        "post_step": 0
+      },
+      "posterior_in": [
+        2,
+        2
+      ],
+      "expect": {
+        "reward": 1,
+        "posterior": {
+          "a": 2.99,
+          "b": 1.99
+        }
+      }
+    },
+    {
+      "id": "V26",
+      "kind": "reward",
+      "name": "recompensa_catastrofica_clamp0",
+      "note": "Drops 5% + rebuffer 5% + térmico crítico + VST 9 s + resolución bajo piso: la penalización satura y r se clampa a 0.",
+      "obs": {
+        "frame_drop_ratio": 0.05,
+        "rebuffer_ratio": 0.05,
+        "thermal_status": 4,
+        "vst_ms": 9000,
+        "resolution_class": "1080p"
+      },
+      "applied": {
+        "fps_applied": 2,
+        "post_step": 9
+      },
+      "expect": {
+        "reward": 0
+      }
+    }
+  ]
+}

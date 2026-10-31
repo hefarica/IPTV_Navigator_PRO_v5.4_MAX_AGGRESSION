@@ -1,0 +1,790 @@
+{
+  "schema": "ara-x.actuator_allowlist.v1",
+  "version": 1,
+  "generated": "2026-10-30",
+  "task": "t6 / R5 · inventario real de actuadores ARA (device/VPP)",
+  "report": "ara-x/reports/R5_actuators.md",
+  "verification": "ara-x/scripts/r5_check_actuators.js (137 aserciones: spec <-> codigo; exit 0 = todo casa)",
+  "scope": {
+    "mode": "repo-only",
+    "adb_executed": false,
+    "device_touched": false,
+    "props_written": false,
+    "vps_touched": false,
+    "statement": "Todo lo de este archivo se verificó leyendo el repositorio (código, Lua, nginx, Kotlin, dumps ya presentes). NO se ejecutó ADB, NO se encendió ningún device y NO se escribió ninguna prop."
+  },
+
+  "status_legend": {
+    "live": "código desplegado y con consumidor real identificable",
+    "live_code": "existe en el repo y hay evidencia indirecta de que está vivo en el VPS (endpoint respondió o tabla medida)",
+    "staged": "existe en el repo, NO desplegado (documentado como repo-only por su propia tarea)",
+    "flag_gated": "existe y corre, pero su efecto está apagado por defecto por una variable de entorno",
+    "inoperative": "existe en el código pero NO puede producir el efecto que su nombre promete",
+    "absent": "no existe; cualquier promesa sobre ello es falsa"
+  },
+
+  "doctrine_invariants": [
+    {
+      "id": "INV-1",
+      "rule": "El VPS no toca píxeles: selecciona variantes, metadata, perfiles y QoE. Ningún actuador escribe bitstream ni muta la URL del segmento.",
+      "evidence": ["IPTV_v5.4_MAX_AGGRESSION/vps/prisma/lib/ape_mesh.php:1-8", "ara-x/spec/ARA_X_SYNC_PROTOCOL.md:21-24"]
+    },
+    {
+      "id": "INV-2",
+      "rule": "Todo lever de device pasa por allowlist de clave + regex de valor + comprobación de existencia en el SoC. Nada fuera de la allowlist se escribe.",
+      "evidence": ["IPTV_v5.4_MAX_AGGRESSION/android/ape-crystal-agent/app/src/main/java/com/ape/crystalagent/SettingsApplier.kt:25-40", "IPTV_v5.4_MAX_AGGRESSION/android/ape-crystal-agent/app/src/main/java/com/ape/crystalagent/SettingsApplier.kt:81-123"]
+    },
+    {
+      "id": "INV-3",
+      "rule": "Gate de SoC FAIL-CLOSED: sin caps declaradas o con SoC no listado no se publican levers (el device mantiene los actuales).",
+      "evidence": ["IPTV_v5.4_MAX_AGGRESSION/vps/prisma/lib/ape_mesh.php:686-690", "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/lib/ape_mesh.php:746-748"]
+    },
+    {
+      "id": "INV-4",
+      "rule": "8K es presentación/emulación display-side. Jamás wire 8K ni RESOLUTION=7680x4320 en un SoC sin decode 8K.",
+      "evidence": ["IPTV_v5.4_MAX_AGGRESSION/vps/prisma/lib/ape_mesh.php:692-731", "ara-x/spec/ARA_X_PLAYLIST_BLOCK.md:123-127"]
+    },
+    {
+      "id": "INV-5",
+      "rule": "ADB no se habilita en remoto: requiere autorización RSA por host o pairing en pantalla. Ninguna playlist/VPS puede abrirlo.",
+      "evidence": ["IPTV_v5.4_MAX_AGGRESSION/vps/prisma/adb/bootstrap_ara_android.sh:25-32", "IPTV_v5.4_MAX_AGGRESSION/android/ape-crystal-agent/app/src/main/java/com/ape/crystalagent/AdbSelfGrantManager.kt:10-18"]
+    },
+    {
+      "id": "INV-6",
+      "rule": "Señal ausente != valor cero. Ningún consumidor puede interpretar un sensor no disponible como 'frío' o 'seguro'.",
+      "evidence": ["_vps_stage/lua/ape_attr.lua:24-26", "ara-x/spec/ARA_X_SYNC_PROTOCOL.md:150"]
+    },
+    {
+      "id": "INV-7",
+      "rule": "El plano de reproducción es autopista: cualquier fallo de un actuador degrada a 'no hacer nada', nunca bloquea el player.",
+      "evidence": ["IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/ape-feedforward-stream.php:91-108", "IPTV_v5.4_MAX_AGGRESSION/android/ape-crystal-agent/app/src/main/java/com/ape/crystalagent/AgentService.kt:11-20"]
+    },
+    {
+      "id": "INV-8",
+      "rule": "hdr_conversion_mode NO hace SDR->HDR: es passthrough entre TIPOS de HDR (0 UNKNOWN, 1 PASSTHROUGH, 2 SYSTEM, 3 FORCE). El comentario de ape_mesh.php que afirma lo contrario está corregido por medición.",
+      "evidence": ["CLAUDE.md:226-231", "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/lib/ape_mesh.php:56-65", "docs/rea/05_PLAYER_COMPAT.md:71"]
+    }
+  ],
+
+  "delivery_chain": {
+    "note": "Cadena REAL de un lever, tal como está hoy en el repo. Cualquier capa que falte rompe el actuador completo.",
+    "steps": [
+      "productor PHP (ape_pq_settings_for_ct | ape_pq_profile | ape_mesh_device_settings)",
+      "transporte (SSE ape-feedforward-stream.php  |  HTTP one-shot ape-feedforward.php  |  bus policy_deltas)",
+      "consumidor VPS (ape_ff_device_settings_from_delta, sólo si existe policy_delta vigente)",
+      "entrega al APK (para_keys device_settings[] del evento SSE 'presets')",
+      "SettingsApplier: allowlist key -> regex valor -> try-both-ns (existe?) -> putString",
+      "SoC: el VPP aplica el efecto en el frame decodificado"
+    ],
+    "measured_bottleneck": "Hoy el APK recibe exactamente 3 filas base y NUNCA el bloque ape_vpp; los 13 levers VPP sólo viajan si APE_4K_BRIDGE_ENABLED=1. Ver gaps GAP-03 y GAP-04."
+  },
+
+  "actuators": [
+    {
+      "id": "A1",
+      "name": "SSE device_settings (bus principal del APK)",
+      "class": "endpoint",
+      "status": "live",
+      "direction": "vps->device",
+      "transport": "GET text/event-stream, evento 'presets', campo device_settings[]",
+      "endpoint": "GET /prisma/api/ape-feedforward-stream.php?device=<id>&iv=<1..10>&dur=<5..120>",
+      "auth": "Authorization: Bearer <token por dispositivo> (el token va en cabecera, nunca en la query)",
+      "consumer": "FeedForwardClient.kt -> AgentService -> SettingsApplier.apply()",
+      "payload_fields": ["seq", "mode", "channel", "channel_source", "risk", "risk_source", "pq", "engines", "preset_count", "presets", "device_settings"],
+      "device_settings_rows_today": 3,
+      "device_settings_rows_documented": ["global match_content_frame_rate 1", "global hdr_conversion_mode 1", "global minimal_post_processing_allowed 0"],
+      "limits": {
+        "interval_s": [1, 10],
+        "duration_s": [5, 120],
+        "dedup": "md5 del payload: si no cambia, emite sólo ': hb <seq>'"
+      },
+      "gates": [
+        "device-keyed: sin ?device= y sin matrícula => event 'passthrough' (no emite settings)",
+        "Phase G: si el canal está blacklisted (pq_level=SDR) reescribe exactamente 'global hdr_conversion_mode 1' -> 'global hdr_conversion_mode 0'"
+      ],
+      "missing_key": "ape_vpp NO viaja en este payload (AgentService.optJSONObject(\"ape_vpp\") siempre null en la ruta real)",
+      "evidence": [
+        {"path": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/ape-feedforward-stream.php", "lines": "25-48"},
+        {"path": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/ape-feedforward-stream.php", "lines": "89-137"},
+        {"path": "IPTV_v5.4_MAX_AGGRESSION/android/ape-crystal-agent/app/src/main/java/com/ape/crystalagent/FeedForwardClient.kt", "lines": "51-84"},
+        {"path": "IPTV_v5.4_MAX_AGGRESSION/android/ape-crystal-agent/app/src/main/java/com/ape/crystalagent/AgentService.kt", "lines": "65-79"}
+      ],
+      "honesty": [
+        "El comentario del código dice 'los 13 levers VPP (hoy solo 2 globals)'; contados en el código son 3 filas (match_content_frame_rate, hdr_conversion_mode, minimal_post_processing_allowed).",
+        "El SSE no es 'configuración del player': es Settings de Android. Un player de terceros no lo lee; sólo lo cambia el APK."
+      ]
+    },
+    {
+      "id": "A2",
+      "name": "HTTP one-shot feedforward (device_settings + ape_vpp)",
+      "class": "endpoint",
+      "status": "live_code",
+      "direction": "vps->device",
+      "transport": "GET application/json",
+      "endpoint": "GET /prisma/api/ape-feedforward.php?device=<id>[&vpp=<P0..P5>][&target=4k|8k]",
+      "auth": "Bearer (mismo plano) / matrícula por list_id",
+      "consumer": "NINGUNO en el APK (el APK sólo abre el SSE). Es el único endpoint que publica ape_vpp.",
+      "payload_fields": ["activated", "mode", "list_id", "device", "channel", "content_type", "engines", "preset_count", "presets", "device_settings", "ape_vpp"],
+      "device_settings_rows": {"sin_vpp": 3, "con_vpp_allowed": 14},
+      "gates": [
+        "device-keyed obligatorio para ape_vpp (sin ?device= la clave se omite)",
+        "ape_vpp.allowed sólo si caps.soc allowlisted (ver soc_gate)"
+      ],
+      "evidence": [
+        {"path": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/ape-feedforward.php", "lines": "50-66"},
+        {"path": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/ape-feedforward.php", "lines": "68-82"},
+        {"path": "docs/rea/13_ARA_DEVICE_VERIFY.md", "lines": "5"}
+      ],
+      "honesty": [
+        "Medido server-side el 2026-10-28 (device sintético __selftest__): preset_count=41, device_settings=3, ape_vpp.allowed=false, reason=no_caps.",
+        "Que este endpoint exista NO significa que el device reciba el bloque VPP: la ruta del APK es el SSE."
+      ]
+    },
+    {
+      "id": "A3",
+      "name": "Bus de policy_deltas (SQLite conviva.db)",
+      "class": "vps_metadata",
+      "status": "live_code",
+      "direction": "internal",
+      "transport": "tabla policy_deltas en /opt/netshield/data/conviva.db (override env CONVIVA_DB_PATH)",
+      "consumer": "ape_ff_device_settings_from_delta() (puente #1) y phase_g_delta_hook",
+      "delta_types_canonical": ["device-setting"],
+      "producers": [
+        {"id": "ape_pq_push_for_device", "ttl_s": 1800, "priority": 80, "source": "mesh-pq-ct"},
+        {"id": "push_pq_profile.php", "ttl_s": 1800, "priority": 80, "source": "pq-profile"},
+        {"id": "ape_insert_delta (defaults)", "ttl_s": 900, "priority": 50, "source": "conviva-event"}
+      ],
+      "schema": {
+        "table": "policy_deltas",
+        "columns": ["id", "created_at", "expires_at", "target_device_id", "channel_id", "delta_type", "priority", "payload_json", "applied_count", "source"]
+      },
+      "ttl_rule": "expires_at = now + ttl (ttl>0); ttl<=0 => sin caducidad",
+      "evidence": [
+        {"path": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/lib/ape_mesh.php", "lines": "324-353"},
+        {"path": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/lib/ape_mesh.php", "lines": "364-389"},
+        {"path": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/lib/ape_mesh.php", "lines": "497-509"}
+      ],
+      "honesty": [
+        "Es un bus de METADATA: no ejecuta nada. Su único consumidor que toca el device es el puente #1, y ese puente está apagado por defecto."
+      ]
+    },
+    {
+      "id": "A4",
+      "name": "SettingsApplier (el único actuador que escribe en el device)",
+      "class": "device_settings",
+      "status": "live",
+      "direction": "vps->device",
+      "transport": "ContentResolver -> Settings.Global/System/Secure.putString",
+      "consumer": "SoC (el VPP aplica el efecto)",
+      "auth_required_on_device": ["android.permission.WRITE_SECURE_SETTINGS"],
+      "allowlist_ref": "#/settings_allowlist/device_applier",
+      "mechanism": "try-both-ns: intenta escribir SÓLO en el namespace donde la clave YA existe (getString != null) -> no crea claves inertes",
+      "counters": ["lastApplied", "lastRejected", "AraStatus.lastApplied", "AraStatus.lastRejected"],
+      "evidence": [
+        {"path": "IPTV_v5.4_MAX_AGGRESSION/android/ape-crystal-agent/app/src/main/java/com/ape/crystalagent/SettingsApplier.kt", "lines": "25-40"},
+        {"path": "IPTV_v5.4_MAX_AGGRESSION/android/ape-crystal-agent/app/src/main/java/com/ape/crystalagent/SettingsApplier.kt", "lines": "90-123"},
+        {"path": "IPTV_v5.4_MAX_AGGRESSION/android/ape-crystal-agent/app/src/main/java/com/ape/crystalagent/SettingsApplier.kt", "lines": "136-172"}
+      ],
+      "honesty": [
+        "Es post-proceso del VPP sobre el frame decodificado: no reencoda, no cambia el bitstream y no toca la URL del segmento.",
+        "Si la clave no existe en el SoC se salta y se loguea; el VPS no se entera (no hay ACK de aplicación al VPS)."
+      ]
+    },
+    {
+      "id": "A5",
+      "name": "push_pq_profile.php (CLI de perfil AI-PQ)",
+      "class": "cli",
+      "status": "live",
+      "direction": "internal",
+      "transport": "php CLI -> ape_insert_delta(delta_type=device-setting)",
+      "usage": "php push_pq_profile.php [max_image|sports|cinema|off] [device_id] [channel_id]",
+      "levers": 13,
+      "gates": [
+        "device_id no vacío y ape_soc_allowlisted(device) == true; si no: 'skip: SoC no allowlisted o sin caps' + exit 2",
+        "broadcast (device_id vacío) exige APE_VPP_ALLOW_BROADCAST=1; si no: exit 2"
+      ],
+      "limits": {"ttl_s": 1800, "priority": 80, "source": "pq-profile"},
+      "evidence": [
+        {"path": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/cli/push_pq_profile.php", "lines": "19-38"},
+        {"path": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/cli/push_pq_profile.php", "lines": "40-61"}
+      ],
+      "honesty": [
+        "Escribe en el bus, no en el device. Su efecto final depende de A3 -> puente #1 (flag) -> A1 -> A4.",
+        "El perfil 'cinema' devuelve el set COMPLETO (SR+denoise full): no apaga MEMC como sí hace ape_vpp_levers('cinema')."
+      ]
+    },
+    {
+      "id": "A6",
+      "name": "POST /a/cfg (config por sesión, loopback)",
+      "class": "endpoint",
+      "status": "staged",
+      "direction": "internal",
+      "transport": "POST application/json -> ngx.shared.ape_attr_cfg",
+      "endpoint": "POST /a/cfg (location = /a/cfg, plano 8088)",
+      "bind": "127.0.0.1 only (allow 127.0.0.1; deny all)",
+      "auth": {
+        "session_header": "X-APE-Session (nunca en la query)",
+        "hmac_header": "X-APE-Cfg = hex16(HMAC-SHA256(key, \"cfg|<sesion>|<body>\"))",
+        "key_path": "/etc/nginx/lua/ape_attr.key (0600, fuera del repo; existencia en el VPS NO verificada)"
+      },
+      "storage": {
+        "dict": "ape_attr_cfg",
+        "size": "1m",
+        "key": "cfg:<sesion>",
+        "ttl_default_s": 300,
+        "ttl_clamp_s": [1, 3600]
+      },
+      "limits": {
+        "max_body_bytes": 65536,
+        "nginx_client_max_body_size": "64k",
+        "rate_limit": "6 escrituras / 60 s / sesión (contador rl:<sesión> en el mismo dict)",
+        "response_never_echoes": ["body", "key", "hmac"]
+      },
+      "status_codes": {"204": "escrito", "400": "sin sesión/body vacío/>64KB/no-objeto/JSON sin cierre/sin dict", "403": "sin clave/HMAC ausente/HMAC inválido", "429": "rate limit", "405": "método != POST"},
+      "consumer": "ape_attr.cfg_overrides() -> rellena huecos de los slots en GET /a (el payload del GET siempre gana)",
+      "consumed_keys": ["pq", "hdr", "ua_mode", "referer_mode", "source_format", "audio_codec", "bit_depth"],
+      "evidence": [
+        {"path": "_vps_stage/lua/ape_attr.lua", "lines": "305-314"},
+        {"path": "_vps_stage/lua/ape_attr.lua", "lines": "541-611"},
+        {"path": "_vps_stage/lua/ape_attr.lua", "lines": "613-638"},
+        {"path": "_vps_stage/nginx/meta-plane.conf", "lines": "47-48"},
+        {"path": "_vps_stage/nginx/meta-plane.conf", "lines": "247-257"},
+        {"path": "_vps_stage/nginx/snippets/ape-attr-public.conf", "lines": "32-34"},
+        {"path": "docs/rea/25_CFG_Y_SLOTS.md", "lines": "27-48"}
+      ],
+      "honesty": [
+        "El APK NO es consumidor de /a/cfg: es loopback del VPS y el device no puede alcanzarlo. Leerlo como 'config del APK' es un error de modelo.",
+        "El parseo JSON es por patrón (sin cjson): no valida tipos ni rechaza claves desconocidas; una config con basura se ignora campo a campo.",
+        "Fail-open: si el dict no existe o está corrupto, GET /a responde exactamente como hoy.",
+        "docs/rea/14_APE_A_CONTRACT.md:96-100 se quedó en 'diseñado, NO implementado'; la implementación vigente es docs/rea/25_CFG_Y_SLOTS.md. Contradicción documental: ver GAP-09."
+      ]
+    },
+    {
+      "id": "A7",
+      "name": "#EXTATTRFROMURL / /a v2 (slots, máscara 1000 bits)",
+      "class": "endpoint",
+      "status": "staged",
+      "direction": "vps->player",
+      "transport": "GET /a/2/{c}/{s}/{p}/{payload}/{h} -> base64url(fragmento de directivas)",
+      "endpoint_shape": {
+        "version_byte": "2 (fijo en M.VERSION)",
+        "payload": "base64url(mask[125 B] .. body[2 B por bit encendido])",
+        "mask": {"slots": 1000, "bytes": 125, "bit_i_encendido": "el slot i tiene valor"},
+        "empty_value": "0xFFFF",
+        "body_order": "slot ascendente, big-endian",
+        "full_payload_bytes": 2125,
+        "full_b64url_chars": 2834,
+        "hmac": "hex de los primeros 16 B de HMAC-SHA256(\"2|c|s|p|payload\")"
+      },
+      "consumer": "OTT Navigator >= 1.7.1.4 (gate por UA). TiviMate y 'other' sólo reciben D0 y D5.",
+      "emitted_directives": {
+        "D0": "#EXT-X-APE-URL:<url> (sólo si slot 0 == 1 y la URL está en ngx.shared)",
+        "D1": "#EXT-X-APE-CODEC:hard,exo1,soft_vlc | soft_vlc,exo1,hard",
+        "D2": "#EXT-X-APE-VIDEO-TRACK:<n>",
+        "D3": "#EXT-X-APE-SOURCE-FORMAT:auto|ts|fmp4|hls-ll",
+        "D4": "#EXTHTTP:{...} (sólo OTT)",
+        "D5": "#EXTVLCOPT:http-user-agent= | http-referrer= (todos los UA) + network-caching por perfil",
+        "D6": "#EXT-X-APE-C<slot>:<valor> (slots 16-895, sólo OTT)",
+        "Q": "#EXT-X-APE-Q:uhd=..;hdr=..;flags=..;profile=P<n>"
+      },
+      "slot_map": {
+        "0": "URL_DELTA", "1": "CODEC_ORDER", "2": "VIDEO_TRACK", "3": "SOURCE_FORMAT",
+        "4": "HTTP_UA_MODE (0 no tocar, 1 okhttp/4.9, 2 VLC/3.0)", "5": "HTTP_REFERER_MODE",
+        "6": "FLAGS (2 WANT_B, 4 HDR, 8 UHD4K, 16 UHD8K, 32 INTERLACE, 64 MASTER_HINT)",
+        "7-15": "reservados", "16-26": "calidad (audio_codec, ch, chroma, gop, hdr, pq, depth, fps*100, w, h, tier)",
+        "16-895": "namespace D6 (16-26 se excluyen para no duplicar)", "896-959": "diagnóstico",
+        "960-999": "control (GEN/TTL/STALE)"
+      },
+      "limits": {
+        "build_fragment_ms_budget": 80,
+        "build_fragment_ms_measured_1000_slots": [5.3, 6.3, 7.3],
+        "layer_b_opt_in": "sólo con FLAGS bit 1 o ctx.want_b; sin deflate (zlib ausente) => 40 590 B por respuesta con 1000 slots",
+        "normal_response_bytes": 362,
+        "fail_open": "200 con '#EXT-X-APE-STALE:1' y X-APE-A: stale:<motivo>; NUNCA 4xx"
+      },
+      "evidence": [
+        {"path": "_vps_stage/lua/ape_attr.lua", "lines": "23-26"},
+        {"path": "_vps_stage/lua/ape_attr.lua", "lines": "240-284"},
+        {"path": "_vps_stage/lua/ape_attr.lua", "lines": "316-331"},
+        {"path": "docs/rea/14_APE_A_CONTRACT.md", "lines": "6-46"},
+        {"path": "docs/rea/22_SLOTS_ENDPOINT.md", "lines": "8-28"},
+        {"path": "docs/rea/25_CFG_Y_SLOTS.md", "lines": "6-25"}
+      ],
+      "honesty": [
+        "El fragmento es metadata inerte para el player (RFC 8216 §6.3.1): ningún player ejecuta nada desde ahí.",
+        "Los slots SON el mecanismo de transporte, no un actuador de píxeles: el efecto real depende de que el player interprete esos tags (sólo OTT) o de que el APK lea su propia config (no la lee de aquí).",
+        "Cero despliegue: /etc/nginx/lua/ape_attr* no existe en el VPS (docs/rea/22 §5.4)."
+      ]
+    },
+    {
+      "id": "A8",
+      "name": "Track selection HEVC-first (player del APK)",
+      "class": "player",
+      "status": "live",
+      "direction": "device_local",
+      "transport": "DefaultTrackSelector.parameters",
+      "consumer": "ExoPlayer del APK (ApePlayer/PlayerActivity). NO aplica a OTT Navigator ni a TiviMate.",
+      "settings": {
+        "setPreferredVideoMimeTypes": ["video/hevc", "video/av01", "video/avc"],
+        "clearVideoSizeConstraints": true,
+        "setForceHighestSupportedBitrate": false,
+        "setAllowVideoMixedMimeTypeAdaptiveness": false
+      },
+      "effect": "elige la MEJOR variante REAL que el proveedor sirve y el decoder soporta; no inventa códecs",
+      "evidence": [
+        {"path": "IPTV_v5.4_MAX_AGGRESSION/android/ape-crystal-agent/app/src/main/java/com/ape/crystalagent/ApePlayer.kt", "lines": "31-50"},
+        {"path": "IPTV_v5.4_MAX_AGGRESSION/android/ape-crystal-agent/app/src/main/java/com/ape/crystalagent/ApePlayer.kt", "lines": "17-25"}
+      ],
+      "honesty": [
+        "Si el proveedor sólo sirve AVC, reproduce AVC. 'Preferir HEVC' no crea un bitstream HEVC."
+      ]
+    },
+    {
+      "id": "A9",
+      "name": "Efecto GPU del player del APK (shader post-decode)",
+      "class": "player",
+      "status": "live",
+      "direction": "device_local",
+      "transport": "media3 setVideoEffects(GlEffect) — GPU-directo, sin Bitmap ni readback",
+      "consumer": "sólo el ExoPlayer del APK",
+      "profiles": {
+        "natural": "sin efecto (lista vacía)",
+        "lite": "ApeUltraEnhanceGlEffect(sharpen, denoise) por reflexión",
+        "crystal_uhd (default)": "CrystalGlEffect(sharpen, denoise, vibrance, contrast, outW, outH)"
+      },
+      "gates": [
+        "prefs enhance_enabled (default true)",
+        "output cap: max_height <= 1080 => 1920x1080, si no 3840x2160 (nunca 8K)",
+        "si el shader falla, media3 lanza VideoFrameProcessingException y ExoPlayer cae a render nativo"
+      ],
+      "evidence": [
+        {"path": "IPTV_v5.4_MAX_AGGRESSION/android/ape-crystal-agent/app/src/main/java/com/ape/fluid/FluidBridge.java", "lines": "116-153"},
+        {"path": "IPTV_v5.4_MAX_AGGRESSION/android/ape-crystal-agent/app/src/main/java/com/ape/crystalagent/ApeUltraEnhanceGlEffect.kt", "lines": "22-75"},
+        {"path": "IPTV_v5.4_MAX_AGGRESSION/android/ape-crystal-agent/app/src/main/java/com/ape/crystalagent/ApePlayer.kt", "lines": "43-49"}
+      ],
+      "honesty": [
+        "configure() devuelve el MISMO tamaño de entrada: es post-proceso perceptual, no upscaling de buffer.",
+        "No existe para players de terceros: si el usuario ve con OTT/TiviMate, este actuador no participa."
+      ]
+    },
+    {
+      "id": "A10",
+      "name": "Phase G rollback PQ->SDR por canal",
+      "class": "vps_metadata",
+      "status": "flag_gated",
+      "direction": "vps->device",
+      "transport": "reescritura de la fila hdr_conversion_mode dentro de A1 + blacklist en channel_pq_profile",
+      "flag": "APE_PQ_ROLLBACK_ENABLED=1 (default OFF)",
+      "anti_flap": {"incidents_min": 2, "cooldown_s": 1800, "env": ["APE_PQ_ROLLBACK_INCIDENTS_MIN", "APE_PQ_ROLLBACK_COOLDOWN_SECONDS"]},
+      "trigger": "VST > 6000 ms | qoe_score <= 8 | event_type in (error, decoder_error) | decision contiene 'survival'",
+      "evidence": [
+        {"path": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/lib/ape_mesh.php", "lines": "210-261"},
+        {"path": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/lib/ape_mesh.php", "lines": "414-455"},
+        {"path": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/conviva-event.php", "lines": "148-170"},
+        {"path": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/ape-feedforward-stream.php", "lines": "109-116"}
+      ],
+      "honesty": [
+        "La reescritura es por igualdad de cadena exacta: si cambia el formato de la fila base, el rollback se convierte en no-op silencioso (GAP-08).",
+        "El umbral del trigger del delta (>8000 ms) y el del record (>6000 ms) NO son el mismo número en el mismo archivo."
+      ]
+    },
+    {
+      "id": "X1",
+      "name": "UltraEnhancePipeline (motores 1-4 TFLite/GLSL por Bitmap)",
+      "class": "inoperative",
+      "status": "inoperative",
+      "direction": "device_local",
+      "why": [
+        "processFramePair() no tiene NINGÚN llamador en el APK: el feed de frames real es el efecto GPU (A9), no este pipeline.",
+        "Los .tflite son operaciones de pesos fijos, no redes entrenadas: box-blur (1676 B), unsharp (1580 B), blend lineal 0.5*f0+0.5*f1 (1484 B).",
+        "sr_unsharp NO hace super-resolución: realza alta frecuencia en el mismo tamaño.",
+        "RIFE es un blend lineal: no hay compensación de movimiento ni frames interpolados de verdad.",
+        "LcevcSyntheticPipeline.load() devuelve true SIEMPRE => el 'SR' reportado es un unsharp Laplaciano en CPU."
+      ],
+      "asset_sizes_bytes": {"car_denoise_f32.tflite": 1676, "sr_unsharp_f32.tflite": 1580, "rife_blend_f32.tflite": 1484, "total": 4740},
+      "evidence": [
+        {"path": "IPTV_v5.4_MAX_AGGRESSION/android/ape-crystal-agent/app/src/main/java/com/ape/crystalagent/UltraEnhancePipeline.kt", "lines": "8-22"},
+        {"path": "IPTV_v5.4_MAX_AGGRESSION/android/ape-crystal-agent/app/src/main/java/com/ape/crystalagent/UltraEnhancePipeline.kt", "lines": "52-107"},
+        {"path": "IPTV_v5.4_MAX_AGGRESSION/android/ape-crystal-agent/app/src/main/java/com/ape/crystalagent/UltraEnhancePipeline.kt", "lines": "132-142"},
+        {"path": "IPTV_v5.4_MAX_AGGRESSION/android/ape-crystal-agent/app/src/main/java/com/ape/crystalagent/LcevcSyntheticPipeline.kt", "lines": "15-46"},
+        {"path": "IPTV_v5.4_MAX_AGGRESSION/android/ape-crystal-agent/app/src/main/java/com/ape/crystalagent/TfliteInferenceEngine.kt", "lines": "56-98"},
+        {"path": "IPTV_v5.4_MAX_AGGRESSION/android/ape-crystal-agent/tools/models/build_ape_models.py", "lines": "1-20"}
+      ],
+      "honesty": [
+        "El código se declara honesto en sus propios docstrings; el riesgo está en el REPORTE de capacidades (GAP-05), no en el shader."
+      ]
+    },
+    {
+      "id": "X2",
+      "name": "MediaEnhanceApiPipeline (motor 5)",
+      "class": "inoperative",
+      "status": "inoperative",
+      "direction": "device_local",
+      "why": [
+        "enhance(frame) devuelve el frame SIN TOCAR (no-op declarado).",
+        "isSupported() sólo comprueba que exista una clase por reflexión; no hay dep ni llamada real.",
+        "Hay un early-return en negotiate() que, si isSupported() fuese true, apagaría los motores 1-4 sin aportar nada."
+      ],
+      "evidence": [
+        {"path": "IPTV_v5.4_MAX_AGGRESSION/android/ape-crystal-agent/app/src/main/java/com/ape/crystalagent/MediaEnhanceApiPipeline.kt", "lines": "16-38"},
+        {"path": "IPTV_v5.4_MAX_AGGRESSION/android/ape-crystal-agent/app/src/main/java/com/ape/crystalagent/UltraEnhancePipeline.kt", "lines": "56-64"}
+      ]
+    },
+    {
+      "id": "X3",
+      "name": "Path Bitmap de GlslEnhancePipeline (glReadPixels)",
+      "class": "inoperative",
+      "status": "inoperative",
+      "direction": "device_local",
+      "why": "round-trip CPU<->GPU por frame con readback completo: no es viable en 4K. Cálculo abajo.",
+      "cost_per_frame_4k": {
+        "rgba_readback_bytes_per_pass": 33177600,
+        "two_passes_bytes": 66355200,
+        "gib_per_s_at_30fps": 1.99,
+        "gib_per_s_at_60fps": 3.98,
+        "extra": "cada pass sube la textura de entrada desde Bitmap y asigna un Bitmap ARGB_8888 de salida (33 177 600 B)"
+      },
+      "cost_per_frame_1080p": {"rgba_readback_bytes_per_pass": 8294400, "two_passes_at_60fps_gib_per_s": 1.0},
+      "evidence": [
+        {"path": "IPTV_v5.4_MAX_AGGRESSION/android/ape-crystal-agent/app/src/main/java/com/ape/crystalagent/GlslEnhancePipeline.kt", "lines": "41-45"},
+        {"path": "IPTV_v5.4_MAX_AGGRESSION/android/ape-crystal-agent/app/src/main/java/com/ape/crystalagent/GlslEnhancePipeline.kt", "lines": "68-71"},
+        {"path": "IPTV_v5.4_MAX_AGGRESSION/android/ape-crystal-agent/app/src/main/java/com/ape/crystalagent/GlslEnhancePipeline.kt", "lines": "113-121"},
+        {"path": "IPTV_v5.4_MAX_AGGRESSION/android/ape-crystal-agent/app/src/main/java/com/ape/crystalagent/TfliteInferenceEngine.kt", "lines": "88-98"}
+      ],
+      "honesty": [
+        "Además del readback, TfliteInferenceEngine.toBuffer reserva 3 floats por píxel: 99 532 800 B (~94.9 MiB) por frame 4K y 199 065 600 B (~189.8 MiB) para las 2 entradas de RIFE. No cabe en un box con heap limitado.",
+        "El pbuffer EGL se crea de 1x1: el tamaño real lo manda el FBO por frame, así que tampoco está dimensionado para 4K."
+      ]
+    },
+    {
+      "id": "X4",
+      "name": "POST /sync (protocolo bidireccional ARA-X)",
+      "class": "endpoint",
+      "status": "absent",
+      "direction": "bi",
+      "transport": "HTTP POST JSON <= 16 KB + HMAC",
+      "why": "En producción responde 404. Existe contrato + cliente de referencia + schemas, no servidor.",
+      "evidence": [
+        {"path": "ara-x/spec/ARA_X_SYNC_PROTOCOL.md", "lines": "11-25"},
+        {"path": "ara-x/vps/schema/device_policy.example.json", "lines": "1-43"}
+      ],
+      "honesty": [
+        "Cualquier diseño del gobernador térmico que asuma /sync está diseñando sobre un endpoint que hoy no existe."
+      ]
+    },
+    {
+      "id": "X5",
+      "name": "ADB remoto (imponer settings desde el VPS)",
+      "class": "inoperative",
+      "status": "absent",
+      "direction": "vps->device",
+      "why": [
+        "Android exige habilitar Depuración (USB/inalámbrica) con acciones EN PANTALLA y aceptar el diálogo RSA por host; el device guarda las claves públicas autorizadas.",
+        "Wireless debugging (Android 11+) exige código de 6 dígitos o QR que introduce el usuario.",
+        "El propio bootstrap del repo corta con ARA_BOOTSTRAP_REQUIRED cuando get-state != device.",
+        "El APK sólo puede auto-concederse permisos por localhost + pairing en pantalla (AdbSelfGrantManager); eso NO es ADB remoto.",
+        "Un truco de 'adb connect' desde el VPS sólo funcionaría si el device ya está en modo TCP con ese host autorizado: sigue siendo autorización local, no remota."
+      ],
+      "evidence": [
+        {"path": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/adb/bootstrap_ara_android.sh", "lines": "21-32"},
+        {"path": "IPTV_v5.4_MAX_AGGRESSION/android/ape-crystal-agent/app/src/main/java/com/ape/crystalagent/AdbSelfGrantManager.kt", "lines": "10-73"},
+        {"path": "docs/manifestos/ape-vps-hevc-crystal-integrator/references/web_authority.md", "lines": "93-97"},
+        {"path": "docs/REA_SCOPE_AND_ARTIFACTS.md", "lines": "396-403"}
+      ]
+    }
+  ],
+
+  "settings_allowlist": {
+    "device_applier": {
+      "file": "IPTV_v5.4_MAX_AGGRESSION/android/ape-crystal-agent/app/src/main/java/com/ape/crystalagent/SettingsApplier.kt",
+      "contract": "key -> regex del VALOR. Si la clave no está aquí, se RECHAZA y se loguea. Si el valor no casa la regex, se RECHAZA.",
+      "matching": "Regex.matches = coincidencia COMPLETA (ancla implícita)",
+      "namespace_strategy": "por KEY, no por ns: se escribe sólo en el ns donde la clave ya existe",
+      "count": 29,
+      "keys": [
+        {"key": "match_content_frame_rate", "regex": "^[012]$", "in_vpp_levers": true, "in_ns_map": true, "observed_in_mt8696_global_dump": false, "note": "base del SSE; su ausencia en 'global' haría el skip silencioso"},
+        {"key": "minimal_post_processing_allowed", "regex": "^[01]$", "in_vpp_levers": true, "in_ns_map": false, "observed_in_mt8696_global_dump": false, "note": "0 = NO permitir post-proceso mínimo (VPP completo)"},
+        {"key": "display_color_mode", "regex": "^\\d{1,3}$", "in_vpp_levers": false, "in_ns_map": false, "observed_in_mt8696_global_dump": true},
+        {"key": "hdr_conversion_mode", "regex": "^[0-3]$", "in_vpp_levers": false, "in_ns_map": true, "observed_in_mt8696_global_dump": true, "note": "ver INV-8: passthrough entre tipos HDR, NO SDR->HDR"},
+        {"key": "hdr_force_conversion_type", "regex": "^-?\\d{1,2}$", "in_vpp_levers": false, "in_ns_map": false, "observed_in_mt8696_global_dump": true},
+        {"key": "hdr_output_type", "regex": "^[0-3]$", "in_vpp_levers": false, "in_ns_map": false, "observed_in_mt8696_global_dump": true, "note": "el dump trae 4; la regex rechaza 4 => valor real no empujable (GAP-06)"},
+        {"key": "always_hdr", "regex": "^[01]$", "in_vpp_levers": false, "in_ns_map": false, "observed_in_mt8696_global_dump": true},
+        {"key": "hdr_brightness_boost", "regex": "^\\d{1,3}$", "in_vpp_levers": false, "in_ns_map": false, "observed_in_mt8696_global_dump": true},
+        {"key": "sdr_brightness_in_hdr", "regex": "^\\d{1,3}$", "in_vpp_levers": false, "in_ns_map": false, "observed_in_mt8696_global_dump": true},
+        {"key": "ai_sr_level", "regex": "^[0-3]$", "in_vpp_levers": true, "in_ns_map": true, "observed_in_mt8696_global_dump": true},
+        {"key": "ai_sr_mode", "regex": "^[0-3]$", "in_vpp_levers": false, "in_ns_map": false, "observed_in_mt8696_global_dump": false},
+        {"key": "aisr_enable", "regex": "^[01]$", "in_vpp_levers": false, "in_ns_map": true, "observed_in_mt8696_global_dump": true},
+        {"key": "pq_ai_sr_enable", "regex": "^[01]$", "in_vpp_levers": true, "in_ns_map": true, "observed_in_mt8696_global_dump": true},
+        {"key": "ai_pq_mode", "regex": "^[0-3]$", "in_vpp_levers": true, "in_ns_map": true, "observed_in_mt8696_global_dump": false, "note": "NO existe en MT8696; el nombre real es ai_pic_mode (GAP-05)"},
+        {"key": "ai_pic_mode", "regex": "^[0-3]$", "in_vpp_levers": false, "in_ns_map": true, "observed_in_mt8696_global_dump": true, "note": "nombre REAL del MT8696"},
+        {"key": "aipq_enable", "regex": "^[01]$", "in_vpp_levers": true, "in_ns_map": true, "observed_in_mt8696_global_dump": true},
+        {"key": "pq_ai_dnr_enable", "regex": "^[01]$", "in_vpp_levers": true, "in_ns_map": true, "observed_in_mt8696_global_dump": true},
+        {"key": "pq_ai_fbc_enable", "regex": "^[01]$", "in_vpp_levers": true, "in_ns_map": true, "observed_in_mt8696_global_dump": true},
+        {"key": "pq_sharpness_enable", "regex": "^[01]$", "in_vpp_levers": true, "in_ns_map": true, "observed_in_mt8696_global_dump": true},
+        {"key": "pq_dnr_enable", "regex": "^[01]$", "in_vpp_levers": true, "in_ns_map": true, "observed_in_mt8696_global_dump": true},
+        {"key": "pq_nr_enable", "regex": "^[01]$", "in_vpp_levers": true, "in_ns_map": true, "observed_in_mt8696_global_dump": true},
+        {"key": "pq_hdr_enable", "regex": "^[01]$", "in_vpp_levers": true, "in_ns_map": true, "observed_in_mt8696_global_dump": true},
+        {"key": "pq_hdr_mode", "regex": "^[0-3]$", "in_vpp_levers": true, "in_ns_map": true, "observed_in_mt8696_global_dump": true},
+        {"key": "color_depth", "regex": "^(8|10|12)$", "in_vpp_levers": false, "in_ns_map": false, "observed_in_mt8696_global_dump": true},
+        {"key": "hdmi_color_space", "regex": "^[0-9]$", "in_vpp_levers": false, "in_ns_map": false, "observed_in_mt8696_global_dump": true},
+        {"key": "color_mode_ycbcr422", "regex": "^[01]$", "in_vpp_levers": false, "in_ns_map": false, "observed_in_mt8696_global_dump": true},
+        {"key": "hdr_bit_depth", "regex": "^(8|10|12)$", "in_vpp_levers": false, "in_ns_map": false, "observed_in_mt8696_global_dump": false},
+        {"key": "user_preferred_resolution_height", "regex": "^\\d{3,4}$", "in_vpp_levers": false, "in_ns_map": false, "observed_in_mt8696_global_dump": false, "note": "8K por aquí sería wire 8K: PROHIBIDO por INV-4"},
+        {"key": "user_preferred_resolution_width", "regex": "^\\d{3,4}$", "in_vpp_levers": false, "in_ns_map": false, "observed_in_mt8696_global_dump": false, "note": "idem"}
+      ],
+      "observed_dump": "IPTV_v5.4_MAX_AGGRESSION/backend/onn_settings_global_pq.txt (dump de 'settings list global' del MT8696 ya presente en el repo; 6402 B)"
+    },
+    "vpp_levers": {
+      "file": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/lib/ape_mesh.php",
+      "function": "ape_vpp_levers($pq_profile)",
+      "count": 13,
+      "keys": ["pq_ai_sr_enable", "ai_sr_level", "ai_pq_mode", "aipq_enable", "pq_sharpness_enable", "pq_ai_dnr_enable", "pq_dnr_enable", "pq_nr_enable", "pq_ai_fbc_enable", "pq_hdr_enable", "pq_hdr_mode", "match_content_frame_rate", "minimal_post_processing_allowed"],
+      "profiles": {
+        "max_image": "todos a su valor máximo (default)",
+        "sports": "dnr OFF (2 claves) + MEMC/frame-rate ON; preserva textura en movimiento",
+        "cinema": "match_content_frame_rate=0 y pq_sharpness_enable=0 (booleano: 'moderado' no es expresable, se declara)",
+        "off": "todos los levers a 0"
+      },
+      "note": "ai_pq_mode viaja en los levers pero NO existe en MT8696; el alias a ai_pic_mode sólo lo expande el puente #1 (GAP-05)."
+    },
+    "ns_map": {
+      "file": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/lib/ape_mesh.php",
+      "function": "ape_ff_settings_ns_map()",
+      "count": 15,
+      "namespaces": "TODAS las claves se mapean a 'global' (probado con el dump del MT8696)",
+      "keys": ["match_content_frame_rate", "hdr_conversion_mode", "pq_ai_sr_enable", "ai_sr_level", "aisr_enable", "aipq_enable", "pq_sharpness_enable", "pq_ai_dnr_enable", "pq_dnr_enable", "pq_nr_enable", "pq_ai_fbc_enable", "pq_hdr_enable", "pq_hdr_mode", "ai_pq_mode", "ai_pic_mode"],
+      "alias_expansion": "if key == 'ai_pq_mode' emite además 'global ai_pic_mode <v>'"
+    },
+    "ct_profiles": {
+      "file": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/lib/ape_mesh.php",
+      "function": "ape_pq_settings_for_ct($ct)",
+      "count": 13,
+      "content_types": ["max_image", "sports", "cinema", "news", "compressed", "lowres_boost", "default"],
+      "deltas_vs_base": {
+        "sports": "pq_ai_dnr_enable=0, pq_dnr_enable=0, pq_nr_enable=0",
+        "compressed": "pq_sharpness_enable=0 (no amplificar bloques MPEG)"
+      },
+      "inference": "ape_ct_from_qoe(): fps>=48 -> sports; height<=720 -> lowres_boost; bitrate<6 Mbps -> compressed; resto -> max_image",
+      "note": "'news' sólo es alcanzable por GET ?ct=news, no por inferencia de QoE."
+    },
+    "cli_profile": {
+      "file": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/cli/push_pq_profile.php",
+      "function": "ape_pq_profile($name)",
+      "count": 13,
+      "profiles": ["max_image", "sports", "cinema", "off"],
+      "note": "'cinema' aquí devuelve el set completo (no apaga MEMC) => divergencia con ape_vpp_levers('cinema')"
+    }
+  },
+
+  "soc_gate": {
+    "function": "ape_soc_allowlisted() / ape_vpp_block()",
+    "file": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/lib/ape_mesh.php",
+    "default_allow": ["mt8696", "amlogic", "s905x4", "s905x3"],
+    "matching": "igualdad EXACTA tras strtolower+trim. Sin normalización, sin prefijos, sin guiones, sin subcadenas.",
+    "source_of_soc": "ara_heartbeats.caps_json.soc (lo escribe el heartbeat del APK: Build.SOC_MODEL si SDK>=31 y no vacío, si no Build.HARDWARE)",
+    "reason_codes": {
+      "soc_allowlisted": "permitido",
+      "no_caps": "no hay fila en ara_heartbeats o caps_json vacío",
+      "soc_not_allowlisted": "hay caps pero el SoC no está en la lista",
+      "target_8k_sin_caps_8k": "se pidió target=8k sin caps.soc_8k",
+      "fuente_menor_4k": "emulación 8K no aplica (fuente < 3840 px)",
+      "soc_no_allowlisted": "emulación 8K bloqueada por el gate",
+      "8k_real_por_caps": "hay caps 8K reales; no se mezcla con emulación",
+      "soc_sin_ai_sr": "el gate pasó pero las caps no declaran ai_sr",
+      "supersampling_display_side": "emulación 8K habilitada"
+    },
+    "caps_keys_read_by_vps": ["soc", "soc_8k", "ai_sr", "features[] contiene 'ai_sr'"],
+    "caps_keys_emitted_by_apk": {
+      "heartbeat": ["soc", "soc_8k (siempre \"\")", "names.global/system/secure/props/display_modes/hdr_types/codec_names/codec_types"],
+      "device_capabilities_event": ["artifact_removal", "super_resolution", "frame_interp", "glsl", "media_enhance_api"]
+    },
+    "critical_gap": "El APK NUNCA emite caps.ai_sr ni caps.features => aiSr=false siempre => emulate_8k.enabled=false siempre (GAP-07).",
+    "string_trap": "ara-x/spec/ARA_X_SYNC_PROTOCOL.md usa soc='amlogic_s905x4', que NO casa con la allowlist exacta ('s905x4','amlogic'). Cualquier política que trafique ese string y lo pase tal cual al gate da allowed=false (GAP-01)."
+  },
+
+  "thermal": {
+    "purpose": "Alimentar el gobernador térmico de ARA-X sin inventar señales.",
+    "principle": "INV-6: null != 0. El controller debe tratar 'no disponible' como incertidumbre (peso bajo en fuzzy), nunca como temperatura fría ni como carga 0.",
+    "measured_in_repo": {
+      "sysfs_refs": 0,
+      "statement": "Búsqueda en todo el repo de 'thermal_zone', '/sys/class/thermal', 'gpu_busy', 'devfreq', '/sys/kernel/debug': 0 coincidencias. No hay ni una lectura de temperatura en el código actual."
+    },
+    "signals": [
+      {
+        "id": "pm_thermal_status",
+        "unit": "enum",
+        "range": "0 NONE, 1 LIGHT, 2 MODERATE, 3 SEVERE, 4 CRITICAL, 5 EMERGENCY, 6 SHUTDOWN",
+        "source": "android.os.PowerManager.getCurrentThermalStatus() + addThermalStatusListener() (API 29+)",
+        "requires_adb": false,
+        "requires_permission": [],
+        "available_today": true,
+        "why_it_matters": "Único termómetro PORTABLE sin ADB ni root. Granularidad gruesa: sirve para disparar degradación, no para regular finamente.",
+        "caveat": "Requiere que el APK compile contra API 29+; si el device reporta siempre 0 el firmware no lo implementa (no es prueba de frialdad)."
+      },
+      {
+        "id": "cpu_temp_c",
+        "unit": "degC",
+        "source": "/sys/class/thermal/thermal_zone<N>/temp (milésimas de grado) + <N>/type para identificar la zona de CPU",
+        "requires_adb": true,
+        "available_today": false,
+        "why_it_matters": "El único dato en grados. Sin él, la política de 70 C no se puede verificar.",
+        "caveat": "SELinux no deja leer sysfs_thermal a una app normal: hace falta root o shell (ADB autorizado)."
+      },
+      {
+        "id": "gpu_temp_c",
+        "unit": "degC",
+        "source": "/sys/class/thermal/thermal_zone<N>/temp para la zona de GPU",
+        "requires_adb": true,
+        "available_today": false,
+        "caveat": "El índice de zona y su 'type' son específicos del SoC: hay que descubrirlos, no asumirlos."
+      },
+      {
+        "id": "gpu_load_pct",
+        "unit": "percent",
+        "source": {
+          "amlogic_mali": "/sys/class/misc/mali0/device/utilization (Mali; ruta de familia, NO verificada en S905X4)",
+          "mediatek_powervr": "debugfs /sys/kernel/debug/pvr/** (root) — no legible por una app"
+        },
+        "requires_adb": true,
+        "available_today": false,
+        "caveat": "Android no tiene API pública de carga de GPU. Cualquier 'gpu_load_pct' sin ADB es inventado."
+      },
+      {
+        "id": "vpu_load_pct",
+        "unit": "percent",
+        "source": "sin nodo estándar identificado",
+        "requires_adb": true,
+        "available_today": false,
+        "honest": "PROBABLEMENTE NO EXISTE como nodo legible. El contrato /sync lo pide: debe declararse NOT_AVAILABLE en vez de rellenarse."
+      },
+      {
+        "id": "cpu_load_pct",
+        "unit": "percent",
+        "source": "/proc/stat (delta de jiffies por núcleo)",
+        "requires_adb": false,
+        "available_today": "unknown",
+        "caveat": "Legible por apps en muchas builds, restringido en otras: hay que probarlo y, si falla, declarar NOT_AVAILABLE."
+      },
+      {
+        "id": "ram_available_pct",
+        "unit": "percent",
+        "source": "ActivityManager.MemoryInfo (availMem/totalMem)",
+        "requires_adb": false,
+        "available_today": true,
+        "why_it_matters": "El VPP + AI-SR consumen memoria de GPU; presión de RAM es un buen proxy de riesgo de freeze."
+      },
+      {
+        "id": "battery_temp_c",
+        "unit": "degC",
+        "source": "Intent.ACTION_BATTERY_CHANGED EXTRA_TEMPERATURE (décimas de grado)",
+        "requires_adb": false,
+        "available_today": "device_dependent",
+        "caveat": "En un TV box sin batería suele faltar o valer 0: NO es la temperatura del SoC."
+      },
+      {
+        "id": "frame_drop_ratio",
+        "unit": "ratio",
+        "source": "androidx.media3 DecoderCounters (droppedBufferCount / renderedOutputBufferCount) o FrameMetrics/Choreographer",
+        "requires_adb": false,
+        "available_today": true,
+        "why_it_matters": "Síntoma directo de throttling cuando no hay termómetro."
+      },
+      {
+        "id": "thermal_throttled",
+        "unit": "bool",
+        "source": "derivado: pm_thermal_status >= 3 OR (cpu_freq_actual < 80% del máximo conocido)",
+        "requires_adb": false,
+        "available_today": "derivado",
+        "caveat": "Sin cpu_temp_c es un indicador de segunda mano: no lo llames 'temperatura'."
+      }
+    ],
+    "soc_profiles": {
+      "amlogic_s905x4": {
+        "device": "ONN 4K Box (Android TV)",
+        "soc_family": "Amlogic S905X4 (4x Cortex-A55)",
+        "gpu_family": "ARM Mali-G31",
+        "decode_ceiling": "4K@60; 8K sólo presentación",
+        "thermal_zones_expected": "familia Amlogic: nombres tipo soc_thermal / gpu_thermal / ddr_thermal (ajeno al repo; NO verificado en este device)",
+        "gpu_load_node_expected": "/sys/class/misc/mali0/device/utilization (Mali; NO verificado)",
+        "verified_on_device": false
+      },
+      "firetv_mt8696": {
+        "device": "Fire TV Stick 4K Max (referencia de la corrección HDR del repo)",
+        "soc_family": "MediaTek MT8696 (4x Cortex-A55)",
+        "gpu_family": "Imagination PowerVR",
+        "decode_ceiling": "4K@60; 8K no soportado",
+        "thermal_zones_expected": "familia MediaTek: 'type' tipo mtktscpu / mtktsgpu / mtktspmic / mtktsbattery (NO verificado en este device)",
+        "gpu_load_node_expected": "debugfs /sys/kernel/debug/pvr/** (root) — no legible por app",
+        "verified_on_device": false
+      }
+    },
+    "probe_plan_requires_authorized_adb": {
+      "executed": false,
+      "why_not": "El contrato de esta tarea prohíbe ejecutar ADB.",
+      "commands_read_only": [
+        "adb shell cat /sys/class/thermal/thermal_zone*/type",
+        "adb shell cat /sys/class/thermal/thermal_zone*/temp",
+        "adb shell ls /sys/class/thermal/",
+        "adb shell cat /sys/class/misc/mali0/device/utilization   # Mali, si existe",
+        "adb shell ls /sys/kernel/debug/pvr/                       # PowerVR, si existe y hay root",
+        "adb shell dumpsys thermalservice",
+        "adb shell getprop ro.board.platform && adb shell getprop ro.soc.model",
+        "adb shell cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq",
+        "adb shell cat /proc/stat; sleep 1; adb shell cat /proc/stat   # carga CPU por delta"
+      ],
+      "output_to_record": "sólo 'type' + 'temp' normalizados; nunca el dump completo del device"
+    },
+    "thermal_lever_order": {
+      "note": "Orden propuesto para el gobernador: primero lo que menos destruye imagen, y jamás tocar ABR/códec/URL.",
+      "steps": [
+        "1. minimal_post_processing_allowed -> 1 (permite post-proceso mínimo: menos trabajo de VPP)",
+        "2. ai_sr_level 3 -> 2 -> 1 (baja el coste de AI-SR escalonadamente)",
+        "3. pq_ai_fbc_enable/pq_sharpness_enable -> 0 (quita realce de detalle)",
+        "4. pq_ai_dnr_enable/pq_dnr_enable/pq_nr_enable -> 0 last (el denoise es barato y evita banding)",
+        "5. pq_hdr_mode -> 0 (tone mapping mínimo) y sólo entonces pq_hdr_enable -> 0"
+      ],
+      "never": ["ABR/bitrate por debajo del suelo", "cambiar CODECS del manifest", "mutar la URL del segmento", "subir resolución wire a 8K", "declarar un perfil P0/P1 cuando el gate de SoC ya falló"],
+      "verification_gap": "El efecto térmico REAL de cada paso no está medido: es una hipótesis de ingeniería, no un dato."
+    }
+  },
+
+  "prohibited_actions": [
+    {"id": "P-1", "action": "settings put/get fuera de la allowlist de 29 claves", "why": "INV-2"},
+    {"id": "P-2", "action": "Habilitar ADB en remoto o automatizar el 'accept' del diálogo RSA", "why": "INV-5 + seguridad"},
+    {"id": "P-3", "action": "Declarar wire 8K o RESOLUTION=7680x4320 en un SoC sin decode 8K", "why": "INV-4 / Ley Cardinal 1"},
+    {"id": "P-4", "action": "Escribir user_preferred_resolution_* a 7680x4320", "why": "sería wire 8K por la puerta de atrás"},
+    {"id": "P-5", "action": "Usar super_resolution=LCEVC_SYNTHETIC del APK como evidencia de que el SoC tiene AI-SR", "why": "load() devuelve true siempre (GAP-05)"},
+    {"id": "P-6", "action": "Rellenar cpu_temp_c/gpu_temp_c/gpu_load_pct/vpu_load_pct con 0 cuando no hay lectura", "why": "INV-6"},
+    {"id": "P-7", "action": "Aplicar levers sin pasar por ape_vpp_block()/ape_soc_allowlisted()", "why": "INV-3 fail-closed"},
+    {"id": "P-8", "action": "Asumir que /sync existe (hoy 404) o que el VPS escribe píxeles", "why": "X4 + INV-1"},
+    {"id": "P-9", "action": "Publicar /a/cfg en el 443 o desde el device", "why": "es el único endpoint de escritura del plano; nace loopback-only"},
+    {"id": "P-10", "action": "Prometer que el player aplica #EXTVLCOPT/network-caching", "why": "OTT Navigator y TiviMate lo ignoran (docs/rea/25 §1)"}
+  ],
+
+  "open_gaps": [
+    {"id": "GAP-01", "severity": "high", "summary": "El SoC de ejemplo del protocolo /sync ('amlogic_s905x4') NO casa con la allowlist exacta del gate; la política quedaría allowed=false sin explicación.", "where": ["ara-x/spec/ARA_X_SYNC_PROTOCOL.md:130", "ara-x/spec/ARA_X_SYNC_PROTOCOL.md:174", "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/lib/ape_mesh.php:653-661"], "fix": "Normalizar a la lista canónica {mt8696, amlogic, s905x4, s905x3} o ampliar ape_soc_allowlisted con un mapa de alias explícito y probado."},
+    {"id": "GAP-02", "severity": "medium", "summary": "El generador documenta soc='amlogic-s905x4' (con guion) — mismo problema de igualdad exacta.", "where": ["docs/rea/15_EXTATTRFROMURL_GENERATOR.md:52"], "fix": "Un solo vocabulario de SoC en todo el repo; test que lo verifique."},
+    {"id": "GAP-03", "severity": "high", "summary": "El bloque ape_vpp NO viaja en el SSE que consume el APK; AraStatus.vppAllowed queda siempre null en la ruta real.", "where": ["IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/ape-feedforward-stream.php:89-129", "IPTV_v5.4_MAX_AGGRESSION/android/ape-crystal-agent/app/src/main/java/com/ape/crystalagent/AgentService.kt:69-72"], "fix": "Añadir ape_vpp al payload del SSE (con el mismo dedup) o dejar de leerlo en el APK."},
+    {"id": "GAP-04", "severity": "high", "summary": "Los 13 levers VPP sólo llegan al APK con APE_4K_BRIDGE_ENABLED=1 (default OFF): en producción se aplican 3 filas, no 14.", "where": ["IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/ape-feedforward-stream.php:95-108"], "fix": "Decisión explícita de encender el puente + canary; hoy es un flag invisible."},
+    {"id": "GAP-05", "severity": "high", "summary": "Inflación de capacidad: LcevcSyntheticPipeline.load()=true hace que el APK reporte super_resolution=LCEVC_SYNTHETIC en TODOS los devices; y ai_pq_mode (lever) no existe en MT8696 (el real es ai_pic_mode, alias sólo en el puente).", "where": ["IPTV_v5.4_MAX_AGGRESSION/android/ape-crystal-agent/app/src/main/java/com/ape/crystalagent/LcevcSyntheticPipeline.kt:19", "IPTV_v5.4_MAX_AGGRESSION/android/ape-crystal-agent/app/src/main/java/com/ape/crystalagent/QoEReporter.kt:71-80", "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/lib/ape_mesh.php:556"], "fix": "No usar device_capabilities como evidencia de SR (regla sr=1 de docs/rea/16); expandir el alias también en ape_mesh_device_settings()."},
+    {"id": "GAP-06", "severity": "medium", "summary": "hdr_output_type: la allowlist sólo acepta 0..3 y el dump del SoC trae 4 => el valor real del device es inempujable por diseño.", "where": ["IPTV_v5.4_MAX_AGGRESSION/android/ape-crystal-agent/app/src/main/java/com/ape/crystalagent/SettingsApplier.kt:144", "IPTV_v5.4_MAX_AGGRESSION/backend/onn_settings_global_pq.txt"], "fix": "Ampliar el rango a lo observado (0..4) o retirar la clave de la allowlist hasta mapear el enum."},
+    {"id": "GAP-07", "severity": "medium", "summary": "La emulación 8K display-side nunca se activa: el APK no emite caps.ai_sr/features, así que aiSr=false siempre.", "where": ["IPTV_v5.4_MAX_AGGRESSION/vps/prisma/lib/ape_mesh.php:704-731", "IPTV_v5.4_MAX_AGGRESSION/android/ape-crystal-agent/app/src/main/java/com/ape/crystalagent/QoEReporter.kt:39-49"], "fix": "Declarar ai_sr en caps (con evidencia por SoC) o marcar la rama como NOT_AVAILABLE en la doc."},
+    {"id": "GAP-08", "severity": "medium", "summary": "Phase G reescribe por igualdad de cadena exacta ('global hdr_conversion_mode 1'); cualquier cambio de formato lo convierte en no-op silencioso. Además los umbrales de trigger no coinciden (8000 vs 6000 ms).", "where": ["IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/ape-feedforward-stream.php:111-116", "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/ape-feedforward-stream.php:87", "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/conviva-event.php:159"], "fix": "Reescribir por clave (parsear '<ns> <key> <val>') y unificar el umbral en una constante."},
+    {"id": "GAP-09", "severity": "low", "summary": "Contradicción documental: docs/rea/14 dice que POST /a/cfg está 'diseñado, NO implementado'; docs/rea/25 lo implementa con contrato y tests.", "where": ["docs/rea/14_APE_A_CONTRACT.md:96-100", "docs/rea/25_CFG_Y_SLOTS.md:27-48"], "fix": "Anotar 14 como histórico o fusionar."},
+    {"id": "GAP-10", "severity": "medium", "summary": "7 de las 29 claves de la allowlist no aparecen en el dump 'global' del MT8696 (match_content_frame_rate y minimal_post_processing_allowed entre ellas): pueden estar en system/secure o no existir => skip silencioso de 2 de las 3 filas base del SSE.", "where": ["IPTV_v5.4_MAX_AGGRESSION/backend/onn_settings_global_pq.txt", "IPTV_v5.4_MAX_AGGRESSION/android/ape-crystal-agent/app/src/main/java/com/ape/crystalagent/SettingsApplier.kt:90-123"], "fix": "Verificación con ADB autorizado: settings get de cada clave en los 3 namespaces; reportar cobertura real por SoC."},
+    {"id": "GAP-11", "severity": "medium", "summary": "Cero lecturas térmicas en el repo (0 referencias a sysfs/thermal): el gobernador térmico de ARA-X no tiene todavía ninguna fuente implementada.", "where": ["grep repo: thermal_zone|/sys/class/thermal|gpu_busy|/sys/kernel/debug => 0"], "fix": "Implementar primero pm_thermal_status + ram_available_pct + frame_drop_ratio (sin ADB) y dejar cpu/gpu_temp y gpu_load como NOT_AVAILABLE hasta la campaña con ADB autorizado."},
+    {"id": "GAP-12", "severity": "low", "summary": "Divergencia de perfiles: push_pq_profile('cinema') devuelve el set completo, mientras ape_vpp_levers('cinema') apaga MEMC y sharpness.", "where": ["IPTV_v5.4_MAX_AGGRESSION/vps/prisma/cli/push_pq_profile.php:34", "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/lib/ape_mesh.php:593-597"], "fix": "Una sola fuente de perfiles (p.ej. ape_vpp_levers) usada por CLI y por bloque VPP."}
+  ],
+
+  "acceptance": {
+    "definition_of_done": [
+      "Las 5 superficies pedidas están inventariadas con evidencia archivo:línea",
+      "La allowlist de 29 claves del APK está transcrita exactamente (verificado por script contra el .kt)",
+      "Los 13 levers VPP y el ns_map de 15 claves están transcritos exactamente (verificado contra el .php)",
+      "UltraEnhance queda demostrado inoperativo con números (tamaños de assets, coste de readback)",
+      "ADB remoto queda demostrado imposible con evidencia del repo y de la norma",
+      "Los sensores térmicos están separados en 'sin ADB' / 'requiere ADB autorizado' y los no verificados se declaran",
+      "JSON válido y sin secretos"
+    ]
+  }
+}

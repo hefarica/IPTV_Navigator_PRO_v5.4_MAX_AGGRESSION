@@ -1,0 +1,138 @@
+{
+  "schema": "ara-x.directives.v1",
+  "version": 1,
+  "task": "t12 / D1 · gramática de directivas ARA-X (registro único; el contrato maestro es la prosa normativa)",
+  "status": "normative",
+  "precedence": [
+    "1. ara-x/spec/ARA_X_MASTER_CONTRACT.md (invariantes transversales M-1..M-16 y esta gramática)",
+    "2. ara-x/spec/ara_x_codec_policy.md (D2), ARA_X_SYNC_PROTOCOL.md §13 (D3), ara_x_device_apply.md (D4), ara_x_decision.md (D5) en su dominio",
+    "3. ARA_X_PLAYLIST_BLOCK.md §3 y ARA_X_SYNC_PROTOCOL.md §1-§12 (baselines v0/v1, superseded donde contradigan)",
+    "4. ejemplos de payloads y vectores (ilustrativos, no normativos)"
+  ],
+
+  "namespace": {
+    "prefix": "#EXT-X-ARA-",
+    "case": "case-sensitive, ASCII mayúsculas en el nombre",
+    "separator": ":",
+    "value_charset": "ASCII imprimible 0x20-0x7E, sin LF/CR, sin ',': el valor acaba en fin de línea",
+    "whitespace": "prohibido en el valor (salvo dentro de comillas JSON donde el campo lo declare)",
+    "max_line_bytes": 512,
+    "max_occurrences_global": 1,
+    "max_occurrences_per_channel": 1,
+    "max_per_channel_directives": 6,
+    "reserved_prefixes": ["#EXT-X-ARA-", "#EXT-X-APE-"],
+    "experimental": {
+      "prefix": "#EXT-X-ARA-X-",
+      "rule": "solo con flag OFF por defecto; un consumidor que no lo conoce lo ignora (RFC 8216 §6.3.1)"
+    }
+  },
+
+  "placement": {
+    "global_block": {
+      "insert": "inmediatamente antes del primer #EXTINF del catálogo (después de la cabecera APE, línea 128 del artefacto actual)",
+      "must_follow": "#EXT-X-APE-CHANNELS / cabecera #EXT-X-APE-* / #EXT-X-SESSION-DATA",
+      "must_precede": "primer #EXTINF",
+      "before_footer": true,
+      "eol": "el del artefacto (LF en ambos catálogos medidos)",
+      "never": ["dentro de un bloque de canal", "después de la primera URL", "en la footer tras #EXT-X-APE-VALIDATED"]
+    },
+    "per_channel_block": {
+      "insert": "tras el #EXTINF del canal y antes de su URI, junto al bloque APE del canal",
+      "max_lines": 6,
+      "never": ["después de la URI del canal", "entre #EXT-X-STREAM-INF y su URI"]
+    }
+  },
+
+  "value_classes": {
+    "version": { "grammar": "^[0-9]{4}\\.[0-9]{2}\\.[0-9]{2}-[A-Z0-9-]{1,32}$", "example": "2026.10.30-EVO-NODROP" },
+    "int": { "grammar": "^-?[0-9]{1,6}$", "example": "30" },
+    "bool": { "grammar": "^(true|false)$", "example": "true" },
+    "enum": { "grammar": "^[A-Za-z0-9._+-]{1,40}$", "example": "enabled" },
+    "csv": { "grammar": "^[A-Za-z0-9._+-]{1,40}(,[A-Za-z0-9._+-]{1,40}){0,7}$", "example": "60,30,24" },
+    "resolution": { "grammar": "^[1-9][0-9]{2,4}x[1-9][0-9]{2,4}$", "example": "3840x2160" },
+    "url": { "grammar": "^https://[A-Za-z0-9.-]{1,253}(/[A-Za-z0-9._~-]{1,64}){0,4}$", "example": "https://iptv-ape.duckdns.org/sync", "forbidden_substrings": ["@", "?", "#", "user", "pass", "token", "key="] },
+    "token": { "grammar": "^[A-Za-z0-9._:+-]{1,64}$", "example": "2026-10-30T22:07:37Z" }
+  },
+
+  "block": {
+    "id": "ara-x-global-block",
+    "version": "2026.10.30-EVO-NODROP",
+    "lines_canonical": 27,
+    "render_example": {
+      "LIST_VERSION": "2026-10-30T22:07:37Z",
+      "purpose": "render exacto que el verificador compara contra buildGlobalBlock() del inyector"
+    },
+    "order": [
+      { "n": 1, "tag": "#EXT-X-ARA-VERSION", "class": "version", "canonical": "2026.10.30-EVO-NODROP", "required": true, "semantics": "Versión del bloque. Cambia solo con cambio de gramática o de invariantes; un consumidor que no la conoce ignora el bloque.", "consumers": ["APK ARA", "validador de lista"], "source": "D1" },
+      { "n": 2, "tag": "#EXT-X-ARA-SCHEMA", "class": "int", "canonical": "1", "range": [1, 99], "required": true, "semantics": "Versión del esquema del bloque (independiente de sync.v). v1 = este contrato.", "consumers": ["APK ARA", "validador"], "source": "D1" },
+      { "n": 3, "tag": "#EXT-X-ARA-MODE", "class": "enum", "canonical": "never-drop", "enum": ["never-drop"], "required": true, "semantics": "Declara que el catálogo se rige por el contrato Never-Drop (§6): ningún canal se elimina por fallo de probe/actuador.", "consumers": ["APK ARA", "VPS", "validador"], "source": "D1" },
+      { "n": 4, "tag": "#EXT-X-ARA-DYNAMIC-CONTROL", "class": "enum", "canonical": "enabled", "enum": ["enabled", "disabled"], "required": true, "semantics": "Habilita el meta-controlador (fuzzy+Thompson+térmico+red) vía /sync y levers VPP. Inerte para el reproductor.", "consumers": ["APK ARA"], "source": "D3/D5" },
+      { "n": 5, "tag": "#EXT-X-ARA-PROFILE-AUTO", "class": "bool", "canonical": "true", "required": true, "semantics": "El perfil P0-P5 lo decide el ADC (D5), no la lista. El bloque no fija perfil.", "consumers": ["APK ARA"], "source": "D5" },
+      { "n": 6, "tag": "#EXT-X-ARA-SYNC", "class": "enum", "canonical": "enabled", "enum": ["enabled", "disabled"], "required": true, "semantics": "Pide sincronización con el VPS. Si el endpoint no existe (hoy 404, R3), el device opera con safeDefaultPolicy (fail-open).", "consumers": ["APK ARA"], "source": "D3" },
+      { "n": 7, "tag": "#EXT-X-ARA-VPS-SYNC", "class": "url", "canonical": "https://iptv-ape.duckdns.org/sync", "required": true, "semantics": "Puntero inerte al endpoint /sync. Hoy responde 404 (R3): es una intención declarada, no una capacidad.", "consumers": ["APK ARA"], "source": "D3" },
+      { "n": 8, "tag": "#EXT-X-ARA-SYNC-CADENCE", "class": "int", "canonical": "30", "range": [10, 120], "unit": "s", "required": true, "semantics": "Cadencia base de /sync. Debe coincidir con controls.sync_next_s de la respuesta v2.", "consumers": ["APK ARA", "VPS"], "source": "D3" },
+      { "n": 9, "tag": "#EXT-X-ARA-AUTH", "class": "enum", "canonical": "HMAC-SHA256", "enum": ["HMAC-SHA256"], "required": true, "semantics": "Esquema de firma. No contiene clave ni token (R6-D3-AUTH).", "consumers": ["APK ARA", "VPS"], "source": "D3" },
+      { "n": 10, "tag": "#EXT-X-ARA-CLIENT-TYPE", "class": "enum", "canonical": "onn4k", "enum": ["onn4k", "firetv4k", "generic"], "required": true, "semantics": "Clase de device objetivo de los valores del bloque. Un device de otra clase los ignora y usa su propio default.", "consumers": ["APK ARA"], "source": "D1" },
+      { "n": 11, "tag": "#EXT-X-ARA-MINIMUM-DECODE-RESOLUTION", "class": "resolution", "canonical": "3840x2160", "allowed": ["1280x720", "1920x1080", "2560x1440", "3840x2160"], "required": true, "semantics": "PISO de selección/decodificación: ninguna política puede elegir por debajo de esta resolución. NO crea píxeles ni declara el bitstream (D2 §6.1).", "consumers": ["APK ARA", "VPS"], "source": "D2/D5" },
+      { "n": 12, "tag": "#EXT-X-ARA-MAX-DECODE-RESOLUTION", "class": "resolution", "canonical": "3840x2160", "allowed": ["1280x720", "1920x1080", "2560x1440", "3840x2160"], "required": true, "semantics": "TECHO de decode = capacidad real del SoC (ONN 4K = S905X4, 4K@60). Nunca 7680x4320.", "consumers": ["APK ARA", "VPS"], "source": "D2" },
+      { "n": 13, "tag": "#EXT-X-ARA-MAX-PRESENT-RESOLUTION", "class": "resolution", "canonical": "7680x4320", "allowed": ["3840x2160", "7680x4320"], "required": true, "semantics": "TECHO de PRESENTACIÓN (panel/emulación), no del wire. Solo tiene efecto con 8K-MODE:PRESENTATION.", "consumers": ["APK ARA"], "source": "D2" },
+      { "n": 14, "tag": "#EXT-X-ARA-NEVER-DOWNSCALE", "class": "bool", "canonical": "true", "must_be": "true", "required": true, "semantics": "Prohíbe bajar resolución como palanca de degradación (POL-5/POL-6). El orden de degradación empieza en FPS.", "consumers": ["APK ARA", "VPS"], "source": "D2/D5" },
+      { "n": 15, "tag": "#EXT-X-ARA-FPS-TARGETS", "class": "csv", "canonical": "60,30,24", "allowed_sequence": [[60, 30, 24], [60, 30], [30, 24], [60], [30], [24]], "required": true, "semantics": "Escalera de FPS de DEGRADACIÓN (display), descendente y sin duplicados. NO es el FRAME-RATE del wire (que sigue al fps medido, D2 §7).", "consumers": ["APK ARA", "VPS"], "source": "D5" },
+      { "n": 16, "tag": "#EXT-X-ARA-MINIMUM-FPS", "class": "int", "canonical": "24", "range": [24, 30], "required": true, "semantics": "Suelo de la escalera. Por debajo no se baja: se pasa a post-proceso (D5 §6.1).", "consumers": ["APK ARA", "VPS"], "source": "D5" },
+      { "n": 17, "tag": "#EXT-X-ARA-PRIORITY", "class": "enum", "canonical": "zero-frame-drops", "enum": ["zero-frame-drops", "max-quality", "max-stability"], "required": true, "semantics": "Objetivo del controlador: cero frame drops antes que calidad o estabilidad de red.", "consumers": ["APK ARA", "VPS"], "source": "D1/D5" },
+      { "n": 18, "tag": "#EXT-X-ARA-DEGRADE-ORDER", "class": "csv", "canonical": "fps,processing", "allowed_sequence": [["fps", "processing"], ["fps"], ["processing"]], "required": true, "semantics": "Orden de degradación. PROHIBIDO el token 'resolution' en SoC no_wire_8k (ONN 4K). El schema de /sync lo admite; la política no lo emite (D2 §11).", "consumers": ["APK ARA", "VPS"], "source": "D2/D5" },
+      { "n": 19, "tag": "#EXT-X-ARA-EMERGENCY-DOWNSCALE", "class": "bool", "canonical": "false", "must_be": "false", "required": true, "semantics": "Cierra la puerta trasera de bajar resolución 'solo en emergencia'. Si fuera true, contradiría MINIMUM-DECODE-RESOLUTION.", "consumers": ["APK ARA"], "source": "D2" },
+      { "n": 20, "tag": "#EXT-X-ARA-THERMAL-60FPS", "class": "int", "canonical": "65", "range": [55, 85], "unit": "C", "required": true, "semantics": "Umbral de salida de 60 fps = 65 °C (cuts de R2/D5: [65,78,82,85]).", "consumers": ["APK ARA"], "source": "D5" },
+      { "n": 21, "tag": "#EXT-X-ARA-THERMAL-30FPS", "class": "int", "canonical": "78", "range": [55, 85], "unit": "C", "required": true, "semantics": "Umbral de salida de 30 fps = 78 °C.", "consumers": ["APK ARA"], "source": "D5" },
+      { "n": 22, "tag": "#EXT-X-ARA-THERMAL-24FPS", "class": "int", "canonical": "82", "range": [55, 85], "unit": "C", "required": true, "semantics": "Umbral de salida de 24 fps = 82 °C; por encima, post-proceso mínimo y sin rollback de resolución.", "consumers": ["APK ARA"], "source": "D5" },
+      { "n": 23, "tag": "#EXT-X-ARA-8K-MODE", "class": "enum", "canonical": "PRESENTATION", "enum": ["PRESENTATION", "DISABLED"], "required": true, "semantics": "8K SOLO presentación (emulación/panel). El wire nunca declara 7680x4320 (0 ocurrencias medidas, R1). 'WIRE'/'ENABLED' prohibidos.", "consumers": ["APK ARA", "validador"], "source": "D2" },
+      { "n": 24, "tag": "#EXT-X-ARA-THERMAL-AWARE", "class": "bool", "canonical": "true", "required": true, "semantics": "El ADC considera la térmica. Sensor ausente = incertidumbre (INV-6), no 'frío'.", "consumers": ["APK ARA"], "source": "D4/D5" },
+      { "n": 25, "tag": "#EXT-X-ARA-THERMAL-TARGET", "class": "int", "canonical": "70", "range": [55, 85], "unit": "C", "required": true, "semantics": "Objetivo de régimen térmico; los umbrales 65/78/82 son los escalones. La histéresis (D5 §10) evita el flap alrededor del objetivo.", "consumers": ["APK ARA"], "source": "D4/D5" },
+      { "n": 26, "tag": "#EXT-X-ARA-FALLBACK", "class": "enum", "canonical": "passthrough", "enum": ["passthrough", "safe-default"], "required": true, "semantics": "Si no hay política válida (endpoint 404, firma inválida, TTL vencido): passthrough = no tocar nada y reproducir. Nunca degradar por ausencia de datos.", "consumers": ["APK ARA"], "source": "D3/D4" },
+      { "n": 27, "tag": "#EXT-X-ARA-LIST-VERSION", "class": "token", "canonical": "<LIST_VERSION>", "required": true, "semantics": "Ancla de publicación del artefacto (p. ej. Last-Modified). Junto a ref.artifact_sha256 identifica la generación; el ETag HTTP no sirve (R1 F-19).", "consumers": ["APK ARA", "VPS"], "source": "D3" }
+    ]
+  },
+
+  "per_channel": [
+    { "tag": "#EXT-X-ARA-CHANNEL-ID", "class": "token", "grammar": "^[A-Za-z0-9._:-]{1,32}$", "max": 1, "semantics": "tvg-id del canal. NUNCA la URL (R6/F-03: credenciales en el path).", "source": "D1" },
+    { "tag": "#EXT-X-ARA-PROFILE-HINT", "class": "enum", "grammar": "^P[0-5]$", "max": 1, "semantics": "Pista de perfil; no cambia codec ni resolución del wire.", "source": "D5" },
+    { "tag": "#EXT-X-ARA-8K", "class": "enum", "grammar": "^(presentation|disabled)$", "max": 1, "semantics": "8K por canal: presentación o deshabilitado. 'wire' prohibido.", "source": "D2" },
+    { "tag": "#EXT-X-ARA-THERMAL-BUDGET", "class": "int", "grammar": "^[6-8][0-9]$", "range": [60, 85], "max": 1, "semantics": "Presupuesto térmico del canal (opcional, solo con evidencia).", "source": "D4" },
+    { "tag": "#EXT-X-ARA-CODEC-PREFERRED", "class": "enum", "grammar": "^(avc1|hvc1|hev1|av01|vp09)\\.[0-9A-Za-z.]{2,32}$", "max": 1, "semantics": "Codec REAL preferido del bitstream (verdad D2), separado del CODECS público si este es de presentación.", "source": "D2" }
+  ],
+
+  "companion_markers": [
+    { "tag": "#EXT-X-APE-UPSCALE", "grammar": "^declared=[0-9]{3,4}x[0-9]{3,4};codec=truthful;mode=(4k|8k);src=(1280x720|1920x1080|3840x2160|unknown);can8k=(0|1)$", "semantics": "Presentación 4K/8K marcada sobre fuente menor. can8k=0 siempre hoy (no hay capa 8K real).", "source": "D2", "max_per_channel": 1 },
+    { "tag": "#EXT-X-APE-HDR-INTENT", "grammar": "^display-pq;SCOPE=DISPLAY;VERIFIED=0$", "semantics": "PQ es intención LOCKED de display; no es HDR verificado ni habilita DV/HLG.", "source": "D2", "max_per_channel": 1 },
+    { "tag": "#EXT-X-APE-FPS-TARGET", "grammar": "^(24|30|60);SCOPE=DISPLAY$", "semantics": "Target de display (MEMC); nunca se escribe en FRAME-RATE.", "source": "D2", "max_per_channel": 1 }
+  ],
+
+  "forbidden": [
+    { "tag": "#EXT-X-VERSION", "values": ["6"], "reason": "Downgrade: el artefacto declara VERSION:9; bajarlo puede romper features ya usadas (baseline §2). La versión del wire no es un actuador.", "replaces": "conservar VERSION:9", "evidence": "ARA_X_PLAYLIST_BLOCK.md §2 · R1 §4 tabla (VERSION:9)" },
+    { "tag": "#EXT-X-ARA-MAX-RESOLUTION", "values": ["*"], "reason": "Ambiguo: un solo máximo mezcla decode y presentación. Si un consumidor lo lee como wire, declara 8K indescodificable (Ley Cardinal 1 / freeze 2026-06-08).", "replaces": ["#EXT-X-ARA-MAX-DECODE-RESOLUTION", "#EXT-X-ARA-MAX-PRESENT-RESOLUTION"], "evidence": "ARA_X_PLAYLIST_BLOCK.md §2/§6 · D2 POL-3" },
+    { "tag": "#EXT-X-ARA-LCEVC", "values": ["*"], "reason": "No hay capa LCEVC en el bitstream: los tags LCEVC de la lista actual son metadata ficticia (0 EXT-X-MAP, container=mpegts).", "replaces": "nada (no se emite)", "evidence": "R1 F-06 · D2 §6 · R2 §6" },
+    { "tag": "#EXT-X-ARA-LCEVC-TARGET", "values": ["*"], "reason": "Ídem: promete un codec que no existe.", "replaces": "nada", "evidence": "R1 F-06" },
+    { "tag": "#EXT-X-ARA-AI-SR", "values": ["aggressive", "*"], "reason": "El VPS no procesa píxeles; el realce es del VPP del device vía levers, no de la lista.", "replaces": "levers VPP por /sync (D4)", "evidence": "R1 F-06 · R5 · D4-8" },
+    { "tag": "#EXT-X-ARA-AI-FI", "values": ["*"], "reason": "Ídem; además MEMC no está verificado (memc enabled:false, R5 §8).", "replaces": "nada", "evidence": "R5 §8 · D2 §9" },
+    { "tag": "#EXT-X-ARA-FORCE-HDR", "values": ["*"], "reason": "HDR falso: PQ es intención de display, no una conversión real; DV/HLG exigen evidencia de bitstream.", "replaces": "#EXT-X-APE-HDR-INTENT:display-pq;SCOPE=DISPLAY;VERIFIED=0", "evidence": "D2 §8 · R1 F-05" },
+    { "tag": "#EXT-X-ARA-8K", "values": ["wire"], "reason": "8K en el wire = decode imposible en S905X4/MT8696.", "replaces": "#EXT-X-ARA-8K:presentation", "evidence": "D2 POL-3 · R1 §5.4" },
+    { "tag": "#EXT-X-ARA-8K-MODE", "values": ["WIRE", "ENABLED"], "reason": "Solo PRESENTATION o DISABLED.", "replaces": "PRESENTATION", "evidence": "D2 §6.3" },
+    { "tag": "#EXT-X-ARA-EXEC", "values": ["*"], "reason": "La playlist no ejecuta código ni instala nada (RFC 8216 §6.3.1: tags desconocidos se ignoran).", "replaces": "nada", "evidence": "CLAUDE.md truth-guard 1" },
+    { "tag": "#EXT-X-ARA-INSTALL", "values": ["*"], "reason": "Ídem: /ara/agent.apk se instala por ADB autorizado, no por metadata HLS.", "replaces": "nada", "evidence": "CLAUDE.md truth-guard 1/3" },
+    { "tag": "#EXT-X-ARA-ADB", "values": ["*"], "reason": "ADB exige autorización RSA por host; no se habilita desde la lista.", "replaces": "nada", "evidence": "CLAUDE.md truth-guard 3" },
+    { "tag": "#EXT-X-ARA-SEGMENT", "values": ["*"], "reason": "El bloque no reescribe URLs ni segmentos: las URLs transportan credenciales (R1 F-03) y no se tocan.", "replaces": "nada", "evidence": "R1 F-03 · V2 e2e url_bytes_preserved" },
+    { "tag": "#EXT-X-ARA-REQUIRED-CODEC", "values": ["hvc1.*"], "reason": "Obligar hvc1 sobre family=h264 es exactamente FZ-01.", "replaces": "#EXT-X-ARA-CODEC-PREFERRED (verdad D2)", "evidence": "D2 §5 · R2 FZ-01" },
+    { "tag": "#EXT-X-ARA-USER-RESOLUTION", "values": ["*"], "reason": "user_preferred_resolution_* es la puerta trasera al 8K (D4 T4 / R5 P-4).", "replaces": "nada", "evidence": "D4 §5 · R5 P-4" }
+  ],
+
+  "secret_scan": {
+    "forbidden_regexes": [
+      "(?i)(token|secret|password|passwd|api[_-]?key|authorization)\\s*[:=]",
+      "://[^/@\\s]+:[^/@\\s]+@",
+      "[0-9a-f]{32,}",
+      "/a/[0-9]+/[A-Za-z0-9_-]{4,}/[A-Za-z0-9_-]{4,}/"
+    ],
+    "allow": ["sha256 hex de artefactos (64 hex) citado como evidencia en prosa, nunca en el bloque"],
+    "rule": "el bloque y los bloques por canal no contienen credenciales, tokens, IPs, URLs de canal ni firmas"
+  }
+}

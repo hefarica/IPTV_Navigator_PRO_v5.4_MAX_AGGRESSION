@@ -1,0 +1,376 @@
+{
+  "schema": "ara-x/r1-list-forensics/1",
+  "task": {
+    "id": "t2",
+    "round": "R1",
+    "author": "hls-architect",
+    "disciplines": ["S1 HLS/M3U8 RFC 8216", "S2 LL-HLS/CMAF"],
+    "generated_at": "2026-10-30T17:50:00-05:00",
+    "scope_written": ["ara-x/reports/R1_list_forensics.md", "ara-x/reports/R1_findings.json", "ara-x/reports/r1_evidence/**", "ara-x/scripts/forensics/**"],
+    "untouched": ["generador JS", "VPS", "APK/APK ARA", "lista servida"],
+    "credentials_policy": "no se reproduce ningún valor sensible: sólo longitudes, formas enmascaradas, conteos y hashes"
+  },
+
+  "artifacts": [
+    {
+      "id": "A_local_full",
+      "role": "captura completa de referencia (baseline V0/V2)",
+      "file": "ara-x/evidence/APE_LISTA_4K_live_20261030_full.m3u8",
+      "source_url_shape": "https://iptv-ape.duckdns.org/lists/APE_LISTA_4K.m3u8",
+      "bytes": 572170477,
+      "sha256": "E27C03EB45DACD6E5F19C3F4E016B456236CA2C06F485DDF11165DDC86E2A680",
+      "lines": 10169562,
+      "blank_lines": 10634,
+      "encoding": "UTF-8 sin BOM",
+      "eol": "LF puro (0 CRLF), termina en \\n",
+      "header_lines": 128,
+      "header_nonempty_lines": 127,
+      "header_distinct_tags": 103,
+      "distinct_tag_names": 772,
+      "declared_channels": 10631,
+      "extinf": 10631,
+      "url_lines": 10631,
+      "stream_inf": 10631,
+      "iframe_stream_inf": 10631,
+      "footer_validated": "RFC8216-STRICT,verdict=PASS,channels=10631,exthttp_valid=10631,errors=0,warnings=0,missing_uri=0,missing_bw=0,missing_dur=0,elapsed_ms=95942,timestamp=\"2026-10-29T10:51:07.924Z\"",
+      "scorecard": {
+        "generatedAt": "2026-10-29T10:49:31.982Z",
+        "generatorVersion": "22.6.0-MEMC-TOTAL-8K120",
+        "channelsProcessed": 10631,
+        "duplicatesBlocked": 116941,
+        "headerOverrides": 1711591,
+        "jsonGuardFailures": 0,
+        "rfcViolations": []
+      }
+    },
+    {
+      "id": "B_cdn_served",
+      "role": "lista realmente servida (regenerada 2026-10-30)",
+      "file": "ara-x/evidence/APE_LISTA_CDN_1793397700248_full.m3u8",
+      "source_url_shape": "https://iptv-ape.duckdns.org/lists/APE_LISTA_1793397700248_CDN.m3u8",
+      "bytes": 568241457,
+      "sha256": "81DBDD11EC620B1DEAD702CA404C9959C61F301639A5D0091DA37EBFB95BE14E",
+      "lines": 10139240,
+      "blank_lines": 10634,
+      "encoding": "UTF-8 sin BOM",
+      "eol": "LF puro (0 CRLF), termina en \\n",
+      "header_lines": 128,
+      "header_nonempty_lines": 127,
+      "header_distinct_tags": 103,
+      "distinct_tag_names": 772,
+      "declared_channels": 10631,
+      "extinf": 10631,
+      "url_lines": 10631,
+      "stream_inf": 10586,
+      "iframe_stream_inf": 10631,
+      "footer_validated": "RFC8216-STRICT,verdict=PASS,channels=10631,exthttp_valid=10631,errors=0,warnings=0,missing_uri=0,missing_bw=0,missing_dur=0,elapsed_ms=123964,timestamp=\"2026-10-30T22:04:02.825Z\"",
+      "scorecard": {
+        "generatedAt": "2026-10-30T22:01:58.861Z",
+        "generatorVersion": "22.6.0-MEMC-TOTAL-8K120",
+        "channelsProcessed": 10631,
+        "duplicatesBlocked": 116941,
+        "headerOverrides": 1711591,
+        "jsonGuardFailures": 0,
+        "rfcViolations": []
+      }
+    }
+  ],
+
+  "http_measured": {
+    "method": "HEAD + GET con Range: bytes=0-0 (sin cuerpo completo)",
+    "status": 200,
+    "server": "nginx",
+    "content_type": "application/vnd.apple.mpegurl",
+    "last_modified": "Fri, 30 Oct 2026 22:07:37 GMT",
+    "etag": "W/\"6ae51529-9b2a1b7\"",
+    "etag_embedded_size_bytes": 162701751,
+    "etag_note": "0x9b2a1b7 = 162.701.751 B = artefacto gzip en disco; el cuerpo servido sin Accept-Encoding gzip es 568.241.457 B (ratio 3,49x)",
+    "cache_control": "public, max-age=300",
+    "cors": "Access-Control-Allow-Origin: *",
+    "accept_ranges_header": "bytes",
+    "range_behavior": "Range: bytes=0-0 -> 200 + Transfer-Encoding: chunked (rango NO honrado; se cortó a 144.300.008 B por timeout de curl)",
+    "resumable_download": false
+  },
+
+  "measurements": {
+    "local": {
+      "channels": 10631,
+      "profile_distribution": { "P1": 808, "P3": 2300, "P4": 7523, "P0": 0, "P2": 0, "P5": 0 },
+      "lines_per_block": { "min": 949, "max": 962, "avg": 956.58 },
+      "bytes_per_block": { "min": 52319, "max": 55068, "avg": 53820 },
+      "metadata_share_pct": 99.85,
+      "url_bytes_total": 873274,
+      "url_avg_bytes": 82.1,
+      "per_channel_tags": { "EXTVLCOPT": 133.0, "KODIPROP": 103.0, "EXTATTRFROMURL": 55.0, "EXTHTTP": 1.0, "STREAM_INF": 1.0, "IFRAME_STREAM_INF": 1.0 },
+      "tag_bytes_top": {
+        "EXTHTTP": 77448777,
+        "KODIPROP": 67708784,
+        "EXTVLCOPT": 53510137,
+        "EXTATTRFROMURL": 27213478,
+        "EXTINF": 5500233,
+        "APE_DNR_POLICY": 3636318,
+        "STREAM_INF": 2848883,
+        "DATERANGE": 2517371
+      },
+      "extinf": {
+        "duration": "-1 (100%)",
+        "attributes_per_line": 19,
+        "attributes": ["tvg-id", "tvg-name", "tvg-logo", "tvg-chno", "tvg-shift", "group-title", "ape-profile", "ape-build", "ape-region", "ape-content-type", "ape-lang", "ape-country", "ape-classify-confidence", "ape-fps", "ape-transport", "ape-codec-family", "catchup", "catchup-days", "catchup-source"],
+        "catchup_channels": 355,
+        "empty_tvg_logo": 319,
+        "codec_family": { "h264": 9593, "hevc": 1038 },
+        "ape_fps": { "25": 9807, "50": 824 }
+      },
+      "stream_inf": {
+        "resolution": { "3840x2160": 10631 },
+        "codecs": { "hvc1.2.4.L153.B0,mp4a.40.2": 10631 },
+        "video_range": { "PQ": 10631 },
+        "color_primaries_9": 10586,
+        "transfer_characteristics_16": 10586,
+        "bandwidth": { "9000000": 8021, "12000000": 1757, "28000000": 853 },
+        "average_bandwidth": { "6500000": 8021, "9000000": 1757, "22000000": 853 },
+        "frame_rate": { "30.000": 8709, "60.000": 1922 },
+        "hdcp_level_type1": 10586,
+        "supplemental_codecs": 0,
+        "missing_required_attrs": 0
+      },
+      "truth_x_tab": {
+        "profile_x_x_resolution": { "P1:3840x2160": 808, "P3:1920x1080": 2300, "P4:1280x720": 7523 },
+        "profile_x_x_codec_full": { "P1:hvc1.2.4.L153.B0": 808, "P3:hvc1.2.4.L123.B0": 2300, "P4:hvc1.2.4.L93.B0": 7523 },
+        "profile_x_expected_bitrate": { "P1:40000000": 808, "P3:15000000": 2300, "P4:10000000": 7523 },
+        "truthful_4k_metadata": 808,
+        "declared_4k_wire_only": 9823,
+        "declared_4k_wire_only_pct": 92.4
+      },
+      "apes_tags": {
+        "4kfalse_lines": 42524,
+        "4kfalse_per_channel": 4,
+        "8kfake_lines": 10631,
+        "8kfake_value": "ENABLED=1;NEVER_REAL=1;TARGET=DISPLAY",
+        "4k_premium_lines": 10631,
+        "4k_premium_value": "ACTIVE"
+      },
+      "hdr": {
+        "wire_video_range_PQ": 10631,
+        "exthttp_x_video_range_SDR": 10631,
+        "kodi_hdr_mode": { "SDR": 9823, "PQ": 808 },
+        "ape_hdr_transfer": { "BT1886": 10631 },
+        "ape_hdr_primaries": { "BT2020": 10631 },
+        "ape_hdr_dv_mode": { "SDR": 9823, "PQ": 808 },
+        "ape_dv_profile": { "8": 10631 },
+        "ape_dv_level": { "6": 10631 },
+        "hdr_metadata_variants": {
+          "MDCV=true,CLLI=true,PEAK=100,AVG=1000": 7523,
+          "MDCV=true,CLLI=true,PEAK=400,AVG=1000": 2300,
+          "MDCV=true,CLLI=true,PEAK=1500,AVG=1000": 808
+        },
+        "maxfall_gt_maxcll_channels": 9823,
+        "daterange_header_claim": "X-HDR-TYPE=\"HDR10+DV-P81-P10\",X-HDR-MAX-CLL=10000"
+      },
+      "cmaf": {
+        "ext_x_cmaf_lines": 10631,
+        "container": { "mpegts": 10631 },
+        "init_segment": { "BYTERANGE=\"1024@0\"": 10631 },
+        "ext_x_map": 0,
+        "ext_x_key": 0,
+        "ext_x_media": 0,
+        "ext_x_program_date_time": 0,
+        "ext_x_endlist": 0,
+        "ext_x_media_sequence": 0,
+        "malformed_codecs_sample": "CODECS=\"hvc1.2.4.L123.B0,\""
+      },
+      "llhls": {
+        "server_control": 1,
+        "part_inf": 1,
+        "targetduration": 1,
+        "ext_x_part": 0,
+        "preload_hint": 0,
+        "rendition_report": 0,
+        "skip": 0,
+        "server_control_value": "CAN-BLOCK-RELOAD=YES,PART-HOLD-BACK=1.0,CAN-SKIP-UNTIL=12.0,HOLD-BACK=3.0",
+        "part_target": 1.0,
+        "part_hold_back_ratio": 1.0,
+        "recommended_min_ratio": 3.0
+      },
+      "ext_x_start": [
+        { "line": 7, "value": "TIME-OFFSET=-3.0,PRECISE=YES" },
+        { "line": 57, "value": "TIME-OFFSET=-14,PRECISE=YES" }
+      ],
+      "version_tag": 9,
+      "ext_http": {
+        "count": 10631,
+        "json_valid": 10631,
+        "json_invalid": 0,
+        "distinct_header_names": 203,
+        "header_count_distribution": { "193": 6858, "203": 3773 },
+        "max_line_bytes": 7495,
+        "toxic_headers": 0,
+        "channels_with_toxic": 0
+      },
+      "urls": {
+        "count": 10631,
+        "distinct_exact": 10631,
+        "distinct_normalized": 10631,
+        "scheme": { "https": 10631 },
+        "host": { "iptv-ape.duckdns.org": 10631 },
+        "provider_segment": { "line.tivi-ott.net": 10631 },
+        "path_shape": "/cdn/<17c>/<4c>/<6c>/...",
+        "query_strings": 0,
+        "distinct_path_credential_segment_1": 1,
+        "distinct_path_credential_segment_2": 1,
+        "distinct_stream_ids": 10631,
+        "credentials_values_reproduced": false
+      },
+      "logos": { "picon.tivi-ott.net:25461": 10277, "picon.tele-go.net:25461": 35, "empty": 319 },
+      "groups_distinct": 107,
+      "countries_distinct": 9,
+      "regions_distinct": 15,
+      "duplicates": { "url_exact": 0, "url_normalized": 0, "tvg_id": 0, "tvg_name": 108, "tvg_name_group": 108 },
+      "uniqueness": { "daterange_ids": 10632, "daterange_distinct": 10632, "sid_total": 10631, "sid_distinct": 10630, "spoof_ip_distinct": 600 },
+      "ara_tags": 0,
+      "wire_7680_occurrences": 0
+    },
+
+    "cdn": {
+      "channels": 10631,
+      "profile_distribution": { "P1": 808, "P3": 2300, "P4": 7523 },
+      "lines_per_block": { "min": 944, "max": 960, "avg": 953.73 },
+      "bytes_per_block": { "min": 52319, "max": 55068, "avg": 53450 },
+      "metadata_share_pct": 99.84,
+      "url_bytes_total": 873274,
+      "stream_inf": 10586,
+      "channels_without_stream_inf": 45,
+      "channels_without_stream_inf_profile": "P4",
+      "channels_without_stream_inf_ids": ["904505", "904507", "904508", "904509", "904510", "904511", "904514", "904515", "904516", "904518", "904519", "904520", "904523", "904524", "904525", "904526", "904528", "904529", "904540", "904541", "904542", "904543", "904545", "904547", "904551", "904552", "904555", "904556", "904558", "904561", "904562", "904563", "904564", "904565", "904566", "904567", "904568", "904569", "904570", "904572", "904576", "904577", "904578", "904580", "904581"],
+      "stream_inf_declarations": {
+        "resolution": { "3840x2160": 10586 },
+        "codecs": { "hvc1.2.4.L153.B0,mp4a.40.2": 10586 },
+        "video_range": { "PQ": 10586 },
+        "bandwidth": { "9000000": 8021, "12000000": 1757, "28000000": 808 },
+        "hdcp_level_type1": 10586
+      },
+      "apes_tags": {
+        "4kfalse_lines": 42524,
+        "8kfake_lines": 808,
+        "4k_premium_lines": 808
+      },
+      "uniqueness": { "daterange_ids": 10632, "daterange_distinct": 10632, "sid_total": 10631, "sid_distinct": 10630 },
+      "ara_tags": 0,
+      "wire_7680_occurrences": 0
+    },
+
+    "comparison": {
+      "same_channels": true,
+      "same_order": true,
+      "shared_urls": 10631,
+      "urls_only_in_A": 0,
+      "urls_only_in_B": 0,
+      "shared_tvg_ids": 10631,
+      "tvg_ids_only_in_A": 0,
+      "tvg_ids_only_in_B": 0,
+      "identical_at_same_index": {
+        "tvg_id": 10631, "url_hash": 10631, "host": 10631, "scheme": 10631,
+        "ape_profile": 10631, "ape_codec_family": 10631, "ape_fps": 10631,
+        "x_resolution": 10631, "x_codec_full": 10631, "x_video_range": 10631,
+        "exthttp_header_count": 10631, "hdcp_level": 10631, "country": 10631
+      },
+      "differing_at_same_index": { "stream_inf": 45, "bandwidth": 45, "resolution": 45, "codecs": 45, "frame_rate": 45, "video_range": 45, "8kfake": 9823, "block_lines": 10631 },
+      "line_delta_by_profile": { "P1": -1, "P3": -3, "P4": -3, "P4_without_stream_inf": -4 },
+      "byte_delta": 3929020,
+      "byte_delta_accounted": {
+        "extattrfromurl": -3084846,
+        "ape_8kfake": -550088,
+        "ape_4k_premium": -284867,
+        "stream_inf": -6930,
+        "other_30_tags_content_rotation": -22289,
+        "sum": 3929020,
+        "file_byte_delta": 3929020,
+        "match": true
+      },
+      "line_delta_accounted": {
+        "extattrfromurl": -10631,
+        "ape_4k_premium": -9823,
+        "ape_8kfake": -9823,
+        "stream_inf": -45,
+        "sum": -30322,
+        "file_line_delta": -30322,
+        "match": true
+      },
+      "header_line_differences": 3,
+      "header_diff_lines": ["#EXT-X-SYS-GENERATED", "#EXT-X-SYS-LIST-ID", "#EXT-X-SYS-FINGERPRINT"],
+      "polymorphic_tags_rotated": 30,
+      "polymorphic_examples": [
+        "PHANTOM-HYDRA-UA-VLC: AFTKA(Android 12) -> Roku/DVP-10.5",
+        "APE-SPOOF-IOS: BRAVIA(Android 11) -> Kodi/21.1 (Omega)",
+        "KODIPROP network_user_agent: GSE SmartIPTV/8.5 -> Perfect Player IPTV/1.6.2.1"
+      ]
+    }
+  },
+
+  "rfc_conformance": [
+    { "rule": "RFC 8216 §4.3.2", "text": "A Media Segment tag MUST NOT appear in a Master Playlist. Clients MUST fail to parse Playlists that contain both Media Segment tags and Master Playlist tags", "violation": "#EXTINF x10631 + #EXT-X-DATERANGE x10632 + #EXT-X-STREAM-INF x10631 + #EXT-X-I-FRAME-STREAM-INF x10631", "status": "VIOLATED" },
+    { "rule": "RFC 8216 §4.3.3", "text": "A Media Playlist tag MUST NOT appear in a Master Playlist", "violation": "#EXT-X-TARGETDURATION:2, #EXT-X-PART-INF, #EXT-X-SERVER-CONTROL (1 each)", "status": "VIOLATED" },
+    { "rule": "RFC 8216 §6.2.4", "text": "Each Variant Stream MUST present the same content", "violation": "10631 variantes = 10631 canales distintos", "status": "VIOLATED" },
+    { "rule": "RFC 8216 §4.3.4.3", "text": "Every EXT-X-I-FRAME-STREAM-INF tag MUST include a BANDWIDTH attribute and a URI attribute", "violation": "10631 tags sin URI (BANDWIDTH presente)", "status": "VIOLATED" },
+    { "rule": "RFC 8216 §4.3.5.2", "text": "EXT-X-START define un punto de arranque preferido (TIME-OFFSET REQUIRED)", "violation": "2 instancias con TIME-OFFSET -3.0 y -14", "status": "AMBIGUOUS/CONFLICTING" },
+    { "rule": "RFC 8216 (abstracto/§7)", "text": "This document describes version 7 of the protocol (tabla 1..7)", "violation": "#EXT-X-VERSION:9 + footer 'RFC8216-STRICT verdict=PASS'", "status": "OVERSTATED CLAIM" },
+    { "rule": "RFC 8216 §4.3.2.1", "text": "EXTINF:<duration>,[<title>] con duración decimal", "violation": "#EXTINF:-1 x10631 (convención M3U Plus)", "status": "NON-RFC EXTENSION" },
+    { "rule": "RFC 8216 §6.2.1", "text": "The server MUST NOT reuse the ID attribute value of an EXT-X-DATERANGE tag", "violation": "none (10632 IDs, 10632 distinct)", "status": "COMPLIANT" },
+    { "rule": "RFC 8216 §4.1", "text": "Playlist UTF-8 sin BOM, LF/CRLF", "violation": "none", "status": "COMPLIANT" }
+  ],
+
+  "findings": [
+    { "id": "F-01", "severity": "CRITICAL", "layer": "S1", "title": "Gramática híbrida: Media Segment + Master + Media Playlist tags en un mismo archivo", "metric": "EXTINF x10631 + DATERANGE x10632 + STREAM-INF x10631 + I-FRAME x10631 + TARGETDURATION/PART-INF/SERVER-CONTROL", "rfc": "§4.3.2 / §4.3.3", "impact": "Un cliente RFC-estricto DEBE rechazar el archivo; funciona sólo por indulgencia de TiviMate/OTT/VLC/Kodi", "required_fix": "Elegir un formato: catálogo M3U Plus sin tags HLS de master/media, o master+media reales por canal. ARA-X no debe añadir gramática HLS", "affects": ["A", "B"], "status": "open" },
+    { "id": "F-02", "severity": "CRITICAL", "layer": "S1/S3", "title": "4K/PQ/L153 blanket sobre el 92,4% de los canales", "metric": "10631 wire 4K/L153/PQ vs 7523@720p + 2300@1080p in-band; 9778 con bitrate <28Mbps para 4K declarado", "rfc": "n/a (verdad de contenido)", "impact": "Riesgo FZ-01 / HDR mal mapeado; contradice NO PLAYER-BREAKING LIES y la Ley Cardinal 1", "required_fix": "RESOLUTION/CODECS/VIDEO-RANGE por evidencia; 4K/8K sólo como presentación en tags APE/ARA inertes", "affects": ["A", "B"], "status": "open", "cross_ref": "R2_codec_truth.md" },
+    { "id": "F-03", "severity": "HIGH", "layer": "S10", "title": "Par cuenta/clave constante en el path de las 10631 URLs + CORS *", "metric": "1 valor distinto en cada segmento de 6 caracteres; 10631 streamId; Access-Control-Allow-Origin: *", "rfc": "n/a", "impact": "El catálogo transporta credenciales de proveedor; cualquier origen web puede leerlo", "required_fix": "No incluir URLs en /sync ni en ARA; valorar URLs firmadas; restringir CORS", "affects": ["A", "B"], "status": "open", "cross_ref": "R6_security.md (mide userinfo/query; esta forma es ortogonal)", "credentials_values_reproduced": false },
+    { "id": "F-04", "severity": "HIGH", "layer": "S2", "title": "LL-HLS declarado e inexistente (PART-HOLD-BACK 1x PART-TARGET)", "metric": "SERVER-CONTROL 1, PART-INF 1, EXT-X-PART 0, PRELOAD-HINT 0, RENDITION-REPORT 0; PART-HOLD-BACK=1.0 con PART-TARGET=1.0", "rfc": "n/a (LL-HLS)", "impact": "Cliente LL-HLS bloquearía recarga esperando partes inexistentes", "required_fix": "Quitar SERVER-CONTROL/PART-INF/TARGETDURATION del catálogo; si LL-HLS, en la media playlist con PART-HOLD-BACK >= 3x PART-TARGET", "affects": ["A", "B"], "status": "open" },
+    { "id": "F-05", "severity": "HIGH", "layer": "S4", "title": "HDR contradictorio en 3 direcciones (PQ wire vs SDR/BT.1886 en todas las demás capas)", "metric": "VIDEO-RANGE=PQ 10631 · X-Video-Range=SDR 10631 · HDR-TRANSFER:BT1886 10631 · DV-PROFILE:8 10631 · kodi hdr_mode SDR 9823", "rfc": "n/a", "impact": "Color shift / tone-mapping erróneo en players sin daemon; activación de pipeline HDR sobre contenido SDR", "required_fix": "Una sola decisión de rango por canal, coherente entre wire y metadata; PQ sólo con evidencia", "affects": ["A", "B"], "status": "open" },
+    { "id": "F-06", "severity": "HIGH", "layer": "S2", "title": "CMAF/LCEVC/AI-SR ficticios (0 EXT-X-MAP, contenedor mpegts)", "metric": "EXT-X-CMAF:* x10631; EXT-X-MAP 0; EXT-X-KEY 0; CODECS=\"hvc1.2.4.L123.B0,\" malformado", "rfc": "n/a (truth-guard del repo)", "impact": "Viola la prohibición explícita de CMAF sin EXT-X-MAP + .m4s", "required_fix": "No emitir CMAF si no hay sustrato fMP4 real", "affects": ["A", "B"], "status": "open" },
+    { "id": "F-07", "severity": "HIGH", "layer": "S1", "title": "EXT-X-I-FRAME-STREAM-INF sin URI y copiado idéntico 10631 veces", "metric": "BANDWIDTH=375000,CODECS=\"hvc1.2.4.L123.B0\"; URI=0; RESOLUTION=0", "rfc": "§4.3.4.3", "impact": "10631 violaciones normativas; trick-play inútil", "required_fix": "Eliminar o generar por canal con URI/BANDWIDTH reales", "affects": ["A", "B"], "status": "open" },
+    { "id": "F-08", "severity": "MEDIUM", "layer": "S4", "title": "MaxFALL > MaxCLL (físicamente imposible)", "metric": "PEAK=100,AVG=1000 x7523; PEAK=400,AVG=1000 x2300 -> 9823 canales", "rfc": "n/a (SMPTE ST 2086)", "impact": "Consumidores de metadata HDR estática reciben un valor imposible", "required_fix": "AVG <= PEAK; derivar del probe", "affects": ["A", "B"], "status": "open" },
+    { "id": "F-09", "severity": "MEDIUM", "layer": "S1", "title": "Dos EXT-X-START con offset contradictorio", "metric": "TIME-OFFSET=-3.0 (linea 7) y TIME-OFFSET=-14 (linea 57)", "rfc": "§4.3.5.2", "impact": "Latencia de arranque dependiente del player (3 s vs 14 s)", "required_fix": "Un único EXT-X-START", "affects": ["A", "B"], "status": "open" },
+    { "id": "F-10", "severity": "MEDIUM", "layer": "S1", "title": "VERSION:9 contra un claim 'RFC8216-STRICT PASS' autogenerado", "metric": "#EXT-X-VERSION:9; footer verdict=PASS generado por el mismo generador", "rfc": "RFC 8216 describe v7; §7 tabla 1..7", "impact": "La certificación no es independiente y la etiqueta RFC8216-STRICT es inexacta", "required_fix": "Renombrar el claim (HLS-2nd-ed) o bajar a 7 si no se usan features 8/9; validación independiente", "affects": ["A", "B"], "status": "open" },
+    { "id": "F-11", "severity": "MEDIUM", "layer": "S5/S7", "title": "Coste de parseo: 546 MB, 956,58 líneas/canal, 99,85% metadata", "metric": "EXTHTTP 73,9 MiB + KODIPROP 64,6 MiB + EXTVLCOPT 51,0 MiB; URLs = 873.274 B (0,153%)", "rfc": "n/a", "impact": "Riesgo de OOM/zapping lento en ONN 4K; 546 MB por refresco de cache", "required_fix": "Recortar metadata o servir media playlists por canal; ARA-X ~1 KB", "affects": ["A", "B"], "status": "open" },
+    { "id": "F-12", "severity": "MEDIUM", "layer": "S1", "title": "45 canales sin EXT-X-STREAM-INF en la lista servida mientras el footer dice errors=0", "metric": "ids 904505-904581, P4, bloque de 944 lineas, si=0; footer missing_bw=0", "rfc": "§4.3.4.2 (variante sin URI)", "impact": "Rompe la simetría EXTINF==STREAM-INF; el validador no lo cuenta como error", "required_fix": "Restaurar variante o contar channels_without_variant como warning explícito", "affects": ["B"], "status": "open" },
+    { "id": "F-13", "severity": "MEDIUM", "layer": "S1", "title": "Divergencia A/B: tags APE corregidos, wire 4K intacto; 30 tags rotan contenido", "metric": "8KFAKE 10631->808; wire 4K sigue en 10586; delta 3.929.020 B en 34 tags; 3 lineas de cabecera", "rfc": "n/a", "impact": "'Dos verdades' entre capas y no-determinismo entre generaciones; rompe idempotencia inter-descarga", "required_fix": "Fijar el artefacto por sha256 en /sync; idempotencia sólo intra-generación", "affects": ["A", "B"], "status": "open" },
+    { "id": "F-14", "severity": "MEDIUM", "layer": "S1", "title": "108 tvg-name duplicados (id y URL únicos)", "metric": "10523 nombres únicos / 10631; name+group también 108", "rfc": "n/a", "impact": "Confusión de EPG/zapping; '0 duplicados' no es cierto para nombres", "required_fix": "Deduplicar por huella de nombre o desambiguar", "affects": ["A", "B"], "status": "open" },
+    { "id": "F-15", "severity": "LOW", "layer": "S1", "title": "1 colisión de SID de idempotencia", "metric": "10630 únicos / 10631 (prefijo 13fb1f0c...)", "rfc": "n/a", "impact": "La promesa '1PCT_UNIQUENESS' no se cumple al 100%", "required_fix": "Corregir el generador de SID", "affects": ["A", "B"], "status": "open" },
+    { "id": "F-16", "severity": "LOW", "layer": "S1", "title": "LAB DNA no verificable", "metric": "#EXT-X-APE-LAB-DNA:sha256=unverified,SOURCE=LAB_CALIBRATED,EXPORTED=2026-10-26T01:31:05", "rfc": "n/a", "impact": "Sin trazabilidad real LAB->lista", "required_fix": "Emitir el sha256 real del export LAB", "affects": ["A", "B"], "status": "open" },
+    { "id": "F-17", "severity": "LOW", "layer": "S1", "title": "Catchup y logos inconsistentes", "metric": "catchup por canal 355/10631 (cabecera global promete flussonic/7d); tvg-logo vacío 319", "rfc": "n/a", "impact": "Time-shift real en 3,3% de canales; logos rotos", "required_fix": "Alinear con la cabecera global o retirar la promesa", "affects": ["A", "B"], "status": "open" },
+    { "id": "F-18", "severity": "MEDIUM", "layer": "S2/S7", "title": "Knobs 8K/120 Hz en cliente sobre decoder 4K@60", "metric": "adaptive-maxwidth=7680, adaptive-maxheight=4320, video-vrr_max=120, minterpolate fps=120 (x10631)", "rfc": "n/a (Ley Cardinal 1)", "impact": "Empuja al decoder hacia 8K/120 = escenario freeze 2026-06-08", "required_fix": "Capar a 3840x2160@60", "affects": ["A", "B"], "status": "open" },
+    { "id": "F-19", "severity": "LOW", "layer": "S6", "title": "HTTP incoherente: Accept-Ranges no honrado; ETag = tamaño gzip", "metric": "Range: bytes=0-0 -> 200 chunked; ETag 162.701.751 B vs 568.241.457 B servidos", "rfc": "n/a", "impact": "Sin descarga reanudable de 546 MB; cache/proxy confundidos", "required_fix": "Servir sin gzip o documentar; no prometer rangos", "affects": ["B"], "status": "open" },
+    { "id": "F-20", "severity": "MEDIUM", "layer": "S1", "title": "FPS declarado triple y contradictorio", "metric": "ape-fps 25/50 · VLC video-fps=60 · STREAM-INF FRAME-RATE 30/60 (8709/1922) · X-Framerate 30/60 (7523/3108) -> >=1186 contradicciones", "rfc": "n/a", "impact": "ABR/frame-rate decisions inconsistentes; riesgo de judder", "required_fix": "Un solo FPS por canal coherente en las 4 capas", "affects": ["A", "B"], "status": "open" }
+  ],
+
+  "positives": [
+    { "id": "P-01", "invariant": "Sin pérdida de canales: 10.631 en A y 10.631 en B, mismo orden", "evidence": "10.631/10.631 tvg-id en la misma posición" },
+    { "id": "P-02", "invariant": "0 URLs duplicadas y 0 tvg-id duplicados", "evidence": "10.631 únicos exactos y normalizados en ambos" },
+    { "id": "P-03", "invariant": "Exactamente 1 URL por canal", "evidence": "0 bloques con 0 URLs, 0 con >1 (ambas listas)" },
+    { "id": "P-04", "invariant": "EXT-X-STREAM-INF adyacente a su URL", "evidence": "10.631 (A) / 10.586 (B), 0 malformados" },
+    { "id": "P-05", "invariant": "0 headers tóxicos EXTHTTP", "evidence": "Range/If-None-Match/If-Modified-Since/TE/Priority/Upgrade-Insecure-Requests = 0" },
+    { "id": "P-06", "invariant": "EXTHTTP JSON válido 10.631/10.631", "evidence": "0 fallos de parseo" },
+    { "id": "P-07", "invariant": "Anti-509: 0 EXT-X-MEDIA y 0 I-FRAME con URI", "evidence": "0 y 0" },
+    { "id": "P-08", "invariant": "0 tags ARA y 0 declaraciones wire 8K", "evidence": "0 #EXT-X-ARA-*; 7680x4320 = 0 en 1.140 MB" },
+    { "id": "P-09", "invariant": "Codificación limpia", "evidence": "UTF-8 sin BOM, LF puro, 0 CRLF, termina en \\n" },
+    { "id": "P-10", "invariant": "DATERANGE IDs únicos", "evidence": "10.632/10.632" }
+  ],
+
+  "limitations": [
+    "No se decodificó bitstream: la 'verdad in-band' es la metadata del propio archivo (coherente entre EXT-X-CMAF, EXTHTTP, DATERANGE y ape-*)",
+    "No se validó reproducción real en TiviMate/OTT/VLC/ExoPlayer/Kodi",
+    "HTTP medido una sola vez (HEAD + un Range), no en ventana",
+    "EXTHTTP no se audita header por header (203 nombres): sólo toxicidad, validez JSON, conteo y 8 valores clave",
+    "Las 45 excepciones se identifican por tvg-id/grupo/perfil; no se verificó su URL contra el proveedor",
+    "El efecto de EXT-X-APE-8KFAKE/4KFALSE en el parser propietario del APK no se inspeccionó",
+    "Valores sensibles no reproducidos; cualquier verificación adicional requiere acceso autorizado del propietario"
+  ],
+
+  "handoff": [
+    "El catálogo es M3U Plus, no HLS: ARA-X debe ser metadata inerte y no añadir gramática (§4.3.2)",
+    "La verdad 4K/8K vive en EXT-X-STREAM-INF, que miente en 9.823 canales; la política debe gatear el wire (D2/I5)",
+    "0 declaraciones 8K en wire ya se cumple; corregir knobs VLC 8K/120 (F-18)",
+    "La lista servida muta entre generaciones: /sync debe fijar sha256 del artefacto; idempotencia intra-generación",
+    "El validador ARA-X debe contar channels_without_variant (45) como warning explícito",
+    "No reutilizar URLs en /sync ni en ARA: transportan el par cuenta/clave (F-03)"
+  ]
+}

@@ -1,0 +1,676 @@
+{
+  "schema": "ara-x.lever_namespace_map.v1",
+  "version": 1,
+  "generated": "2026-10-30",
+  "task": "t10 / D4 · contrato de aplicación en device",
+  "contract": "ara-x/spec/ara_x_device_apply.md",
+  "report_r5": "ara-x/spec/actuator_allowlist.json",
+  "verification": "ara-x/scripts/d4_check_device_apply.js",
+  "note": "Mapa lever -> namespace para las 29 claves que el APK sabe escribir. NO inventa claves: cada fila existe en SettingsApplier.kt. Cruza: allowlist APK (29), ape_ff_settings_ns_map (15), ape_vpp_levers (13), allowlist del cliente /sync (13), y el dump real del SoC (backend/onn_settings_global_pq.txt).",
+  "namespaces": {
+    "order_global_first": [
+      "global",
+      "system",
+      "secure"
+    ],
+    "mechanism": "try-both-ns con comprobación de existencia: se escribe SÓLO en el ns donde getString(key) != null; si no existe en ninguno, se salta y se reporta key_absent_on_soc",
+    "server_side_map": "ape_ff_settings_ns_map() declara 'global' para sus 15 claves; el APK NO confía en ese hint (descubre el ns real)",
+    "evidence": [
+      "IPTV_v5.4_MAX_AGGRESSION/android/ape-crystal-agent/app/src/main/java/com/ape/crystalagent/SettingsApplier.kt:86-123",
+      "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/lib/ape_mesh.php:518-529"
+    ]
+  },
+  "apply_tiers": {
+    "T0": {
+      "name": "safety",
+      "why": "revierte lo que rompe la reproducción antes que nada",
+      "capability": "immediate"
+    },
+    "T1": {
+      "name": "cadence",
+      "why": "cadencia de frames antes que cualquier realce",
+      "capability": "immediate"
+    },
+    "T2": {
+      "name": "post_process",
+      "why": "VPP sobre el frame decodificado: es donde vive el realce y también el coste térmico",
+      "capability": "immediate"
+    },
+    "T3": {
+      "name": "output_format",
+      "why": "formato de salida HDMI/color: puede provocar renegociación visible",
+      "capability": "deferred_player_idle"
+    },
+    "T4": {
+      "name": "resolution",
+      "why": "modo de vídeo: renegociación HDMI y riesgo de pantalla negra",
+      "capability": "forbidden_by_contract"
+    }
+  },
+  "soc": {
+    "canonical": [
+      "mt8696",
+      "amlogic",
+      "s905x4",
+      "s905x3"
+    ],
+    "normalize": "minúsculas + trim; se aceptan alias declarados abajo; NO se aceptan prefijos, guiones ni subcadenas",
+    "alias": {
+      "amlogic_s905x4": "s905x4",
+      "amlogic-s905x4": "s905x4",
+      "s905x4": "s905x4",
+      "amlogic_s905x3": "s905x3",
+      "amlogic-s905x3": "s905x3",
+      "s905x3": "s905x3",
+      "mt8696": "mt8696",
+      "mediatek_mt8696": "mt8696",
+      "mediatek-mt8696": "mt8696",
+      "firetv_mt8696": "mt8696",
+      "amlogic": "amlogic"
+    },
+    "measured_source": [
+      "Build.SOC_MODEL (API 31+ y no vacío)",
+      "Build.HARDWARE (fallback)"
+    ],
+    "measured_required": true,
+    "gate": "canonical ∈ canonical[] AND policy.device.allowed === true AND canonical(policy.device.soc) === canonical(measured)",
+    "denials": {
+      "soc_unmapped": "el SoC medido no está en canonical[] (se reporta el valor medido crudo para que el reconciliador lo añada)",
+      "soc_mismatch": "la política habla de otro SoC distinto del medido (identidad de device)",
+      "device_not_allowed": "el VPS cerró el gate (device.allowed=false)"
+    },
+    "alias_source": "espejo exacto de ara-x/vps/schema/sync_features.json -> socs.aliases (t9/D3 v2)",
+    "no_wire_8k": [
+      "s905x4",
+      "s905x3",
+      "mt8696"
+    ]
+  },
+  "keys": [
+    {
+      "key": "hdr_conversion_mode",
+      "tier": "T0",
+      "ns_hint": "global",
+      "ns_observed": "global",
+      "in_ns_map": true,
+      "in_vpp_levers": false,
+      "in_client_allowlist": false,
+      "reachable_from_policy": true,
+      "reachable_via": "base_row",
+      "forbidden_by_contract": false,
+      "domain": "^[0-3]$",
+      "thermal_ceiling": null,
+      "image_impact": "0 passthrough-neutral · 1 passthrough de TIPOS de HDR · 2 SYSTEM (rechazado en MT8696) · 3 FORCE",
+      "notes": "NO hace SDR->HDR (corrección 2026-06-17). Es el lever de rollback ante pantallazo: por eso T0 y sin techo térmico."
+    },
+    {
+      "key": "match_content_frame_rate",
+      "tier": "T1",
+      "ns_hint": "global",
+      "ns_observed": null,
+      "in_ns_map": true,
+      "in_vpp_levers": true,
+      "in_client_allowlist": true,
+      "reachable_from_policy": true,
+      "reachable_via": "base_row + lever",
+      "forbidden_by_contract": false,
+      "domain": "^[012]$",
+      "image_impact": "0 off (sin cambio de cadencia) · 1 seamless (cambia sólo si el contenido lo pide) · 2 always (convierte SIEMPRE)",
+      "notes": "valor 2 PROHIBIDO por contrato: fuerza conversión en todo contenido (judder + desgaste) y no existe clave de MEMC real que lo justifique. Clamp 2->1.",
+      "ceiling_by_tier": {
+        "max_image": 1,
+        "quality": 1,
+        "balanced": 1,
+        "minimal": 0
+      }
+    },
+    {
+      "key": "minimal_post_processing_allowed",
+      "tier": "T2",
+      "ns_hint": "global",
+      "ns_observed": null,
+      "in_ns_map": false,
+      "in_vpp_levers": true,
+      "in_client_allowlist": true,
+      "reachable_from_policy": true,
+      "reachable_via": "base_row + lever",
+      "forbidden_by_contract": false,
+      "domain": "^[01]$",
+      "image_impact": "0 = NO permitir post-proceso mínimo (VPP completo) · 1 = permitir modo mínimo (primer escalón térmico)",
+      "notes": "Primer escalón de degradación térmica: cuesta imagen pero no resolución ni cadencia.",
+      "ceiling_by_tier": {
+        "max_image": 0,
+        "quality": 1,
+        "balanced": 1,
+        "minimal": 1
+      }
+    },
+    {
+      "key": "ai_sr_level",
+      "tier": "T2",
+      "ns_hint": "global",
+      "ns_observed": "global",
+      "in_ns_map": true,
+      "in_vpp_levers": true,
+      "in_client_allowlist": true,
+      "reachable_from_policy": true,
+      "reachable_via": "lever",
+      "forbidden_by_contract": false,
+      "domain": "^[0-3]$",
+      "image_impact": "intensidad de AI-SR (0 off .. 3 máximo)",
+      "notes": "Coste térmico ALTO (hipótesis, sin medir). Segundo escalón.",
+      "ceiling_by_tier": {
+        "max_image": 3,
+        "quality": 2,
+        "balanced": 1,
+        "minimal": 0
+      }
+    },
+    {
+      "key": "pq_ai_sr_enable",
+      "tier": "T2",
+      "ns_hint": "global",
+      "ns_observed": "global",
+      "in_ns_map": true,
+      "in_vpp_levers": true,
+      "in_client_allowlist": true,
+      "reachable_from_policy": true,
+      "reachable_via": "lever",
+      "forbidden_by_contract": false,
+      "domain": "^[01]$",
+      "image_impact": "interruptor maestro de AI-SR",
+      "notes": "Se apaga en el último escalón (T0) junto con aipq.",
+      "ceiling_by_tier": {
+        "max_image": 1,
+        "quality": 1,
+        "balanced": 1,
+        "minimal": 0
+      }
+    },
+    {
+      "key": "ai_pq_mode",
+      "tier": "T2",
+      "ns_hint": "global",
+      "ns_observed": null,
+      "in_ns_map": true,
+      "in_vpp_levers": true,
+      "in_client_allowlist": true,
+      "reachable_from_policy": true,
+      "reachable_via": "lever",
+      "forbidden_by_contract": false,
+      "domain": "^[0-3]$",
+      "image_impact": "modo AI-PQ",
+      "notes": "NO existe en MT8696 (el nombre real es ai_pic_mode). Se emite igual + expansión de alias (R5 GAP-05).",
+      "ceiling_by_tier": {
+        "max_image": 3,
+        "quality": 3,
+        "balanced": 2,
+        "minimal": 0
+      }
+    },
+    {
+      "key": "ai_pic_mode",
+      "tier": "T2",
+      "ns_hint": "global",
+      "ns_observed": "global",
+      "in_ns_map": true,
+      "in_vpp_levers": false,
+      "in_client_allowlist": false,
+      "reachable_from_policy": true,
+      "reachable_via": "alias_of:ai_pq_mode",
+      "alias_of": "ai_pq_mode",
+      "forbidden_by_contract": false,
+      "domain": "^[0-3]$",
+      "image_impact": "modo AI-PQ (nombre real del MT8696)",
+      "notes": "Sólo se escribe como alias del lever ai_pq_mode. Nunca se pide directamente.",
+      "ceiling_by_tier": {
+        "max_image": 3,
+        "quality": 3,
+        "balanced": 2,
+        "minimal": 0
+      }
+    },
+    {
+      "key": "aipq_enable",
+      "tier": "T2",
+      "ns_hint": "global",
+      "ns_observed": "global",
+      "in_ns_map": true,
+      "in_vpp_levers": true,
+      "in_client_allowlist": true,
+      "reachable_from_policy": true,
+      "reachable_via": "lever",
+      "forbidden_by_contract": false,
+      "domain": "^[01]$",
+      "image_impact": "interruptor AI-PQ",
+      "notes": "Coste térmico ALTO (hipótesis).",
+      "ceiling_by_tier": {
+        "max_image": 1,
+        "quality": 1,
+        "balanced": 1,
+        "minimal": 0
+      }
+    },
+    {
+      "key": "pq_ai_fbc_enable",
+      "tier": "T2",
+      "ns_hint": "global",
+      "ns_observed": "global",
+      "in_ns_map": true,
+      "in_vpp_levers": true,
+      "in_client_allowlist": true,
+      "reachable_from_policy": true,
+      "reachable_via": "lever",
+      "forbidden_by_contract": false,
+      "domain": "^[01]$",
+      "image_impact": "frame/block compression compensation",
+      "notes": "Se apaga en el primer escalón térmico (junto con mpp).",
+      "ceiling_by_tier": {
+        "max_image": 1,
+        "quality": 0,
+        "balanced": 0,
+        "minimal": 0
+      }
+    },
+    {
+      "key": "pq_sharpness_enable",
+      "tier": "T2",
+      "ns_hint": "global",
+      "ns_observed": "global",
+      "in_ns_map": true,
+      "in_vpp_levers": true,
+      "in_client_allowlist": true,
+      "reachable_from_policy": true,
+      "reachable_via": "lever",
+      "forbidden_by_contract": false,
+      "domain": "^[01]$",
+      "image_impact": "realce de detalle",
+      "notes": "Booleano: 'moderado' no es expresable (declarado en R5 §8).",
+      "ceiling_by_tier": {
+        "max_image": 1,
+        "quality": 1,
+        "balanced": 0,
+        "minimal": 0
+      }
+    },
+    {
+      "key": "pq_ai_dnr_enable",
+      "tier": "T2",
+      "ns_hint": "global",
+      "ns_observed": "global",
+      "in_ns_map": true,
+      "in_vpp_levers": true,
+      "in_client_allowlist": true,
+      "reachable_from_policy": true,
+      "reachable_via": "lever",
+      "forbidden_by_contract": false,
+      "domain": "^[01]$",
+      "image_impact": "denoise inteligente; en sports el perfil lo apaga para preservar textura",
+      "notes": "Se mantiene hasta T0: es barato y evita banding/bloques.",
+      "ceiling_by_tier": {
+        "max_image": 1,
+        "quality": 1,
+        "balanced": 1,
+        "minimal": 1
+      }
+    },
+    {
+      "key": "pq_dnr_enable",
+      "tier": "T2",
+      "ns_hint": "global",
+      "ns_observed": "global",
+      "in_ns_map": true,
+      "in_vpp_levers": true,
+      "in_client_allowlist": true,
+      "reachable_from_policy": true,
+      "reachable_via": "lever",
+      "forbidden_by_contract": false,
+      "domain": "^[01]$",
+      "image_impact": "denoise clásico",
+      "notes": "Idem dnr.",
+      "ceiling_by_tier": {
+        "max_image": 1,
+        "quality": 1,
+        "balanced": 1,
+        "minimal": 1
+      }
+    },
+    {
+      "key": "pq_nr_enable",
+      "tier": "T2",
+      "ns_hint": "global",
+      "ns_observed": "global",
+      "in_ns_map": true,
+      "in_vpp_levers": true,
+      "in_client_allowlist": true,
+      "reachable_from_policy": true,
+      "reachable_via": "lever",
+      "forbidden_by_contract": false,
+      "domain": "^[01]$",
+      "image_impact": "noise reduction",
+      "notes": "Idem dnr.",
+      "ceiling_by_tier": {
+        "max_image": 1,
+        "quality": 1,
+        "balanced": 1,
+        "minimal": 1
+      }
+    },
+    {
+      "key": "pq_hdr_enable",
+      "tier": "T2",
+      "ns_hint": "global",
+      "ns_observed": "global",
+      "in_ns_map": true,
+      "in_vpp_levers": true,
+      "in_client_allowlist": true,
+      "reachable_from_policy": true,
+      "reachable_via": "lever",
+      "forbidden_by_contract": false,
+      "domain": "^[01]$",
+      "image_impact": "motor HDR del VPP",
+      "notes": "Se apaga al final: apagarlo en SDR no cambia nada y en HDR sí se nota.",
+      "ceiling_by_tier": {
+        "max_image": 1,
+        "quality": 1,
+        "balanced": 1,
+        "minimal": 1
+      }
+    },
+    {
+      "key": "pq_hdr_mode",
+      "tier": "T2",
+      "ns_hint": "global",
+      "ns_observed": "global",
+      "in_ns_map": true,
+      "in_vpp_levers": true,
+      "in_client_allowlist": true,
+      "reachable_from_policy": true,
+      "reachable_via": "lever",
+      "forbidden_by_contract": false,
+      "domain": "^[0-3]$",
+      "image_impact": "modo del motor HDR",
+      "notes": "En T0 baja a 0 antes de apagar pq_hdr_enable.",
+      "ceiling_by_tier": {
+        "max_image": 1,
+        "quality": 1,
+        "balanced": 1,
+        "minimal": 0
+      }
+    },
+    {
+      "key": "aisr_enable",
+      "tier": "T2",
+      "ns_hint": "global",
+      "ns_observed": "global",
+      "in_ns_map": true,
+      "in_vpp_levers": false,
+      "in_client_allowlist": false,
+      "reachable_from_policy": false,
+      "reachable_via": "alias_candidate_of pq_ai_sr_enable (NO expandido)",
+      "forbidden_by_contract": false,
+      "domain": "^[01]$",
+      "thermal_ceiling": null,
+      "image_impact": "interruptor AI-SR (nombre alternativo del SoC)",
+      "notes": "Alias candidato, pero expandirlo duplicaría escrituras sin ganancia demostrada: se declara y no se toca."
+    },
+    {
+      "key": "ai_sr_mode",
+      "tier": "T2",
+      "ns_hint": null,
+      "ns_observed": null,
+      "in_ns_map": false,
+      "in_vpp_levers": false,
+      "in_client_allowlist": false,
+      "reachable_from_policy": false,
+      "reachable_via": "none",
+      "forbidden_by_contract": false,
+      "domain": "^[0-3]$",
+      "thermal_ceiling": null,
+      "image_impact": "desconocido en este SoC",
+      "notes": "Allowlisted en el APK pero sin fuente en la política ni presencia en el dump: no se usa."
+    },
+    {
+      "key": "display_color_mode",
+      "tier": "T3",
+      "ns_hint": "global",
+      "ns_observed": "global",
+      "in_ns_map": false,
+      "in_vpp_levers": false,
+      "in_client_allowlist": false,
+      "reachable_from_policy": false,
+      "reachable_via": "none",
+      "forbidden_by_contract": false,
+      "domain": "^\\d{1,3}$",
+      "thermal_ceiling": null,
+      "image_impact": "modo de color del display",
+      "notes": "Sin fuente en la política actual (el cliente /sync no lo acepta en device.levers)."
+    },
+    {
+      "key": "color_depth",
+      "tier": "T3",
+      "ns_hint": "global",
+      "ns_observed": "global",
+      "in_ns_map": false,
+      "in_vpp_levers": false,
+      "in_client_allowlist": false,
+      "reachable_from_policy": false,
+      "reachable_via": "none",
+      "forbidden_by_contract": false,
+      "domain": "^(8|10|12)$",
+      "thermal_ceiling": null,
+      "image_impact": "profundidad de color de salida",
+      "notes": "Cambiarla en caliente renegocia HDMI (riesgo de parpadeo): si algún día se expone, va en T3 (deferred)."
+    },
+    {
+      "key": "hdmi_color_space",
+      "tier": "T3",
+      "ns_hint": "global",
+      "ns_observed": "global",
+      "in_ns_map": false,
+      "in_vpp_levers": false,
+      "in_client_allowlist": false,
+      "reachable_from_policy": false,
+      "reachable_via": "none",
+      "forbidden_by_contract": false,
+      "domain": "^[0-9]$",
+      "thermal_ceiling": null,
+      "image_impact": "espacio de color HDMI",
+      "notes": "Idem: renegociación."
+    },
+    {
+      "key": "color_mode_ycbcr422",
+      "tier": "T3",
+      "ns_hint": "global",
+      "ns_observed": "global",
+      "in_ns_map": false,
+      "in_vpp_levers": false,
+      "in_client_allowlist": false,
+      "reachable_from_policy": false,
+      "reachable_via": "none",
+      "forbidden_by_contract": false,
+      "domain": "^[01]$",
+      "thermal_ceiling": null,
+      "image_impact": "submuestreo de croma en la salida",
+      "notes": "Idem."
+    },
+    {
+      "key": "hdr_bit_depth",
+      "tier": "T3",
+      "ns_hint": null,
+      "ns_observed": null,
+      "in_ns_map": false,
+      "in_vpp_levers": false,
+      "in_client_allowlist": false,
+      "reachable_from_policy": false,
+      "reachable_via": "none",
+      "forbidden_by_contract": false,
+      "domain": "^(8|10|12)$",
+      "thermal_ceiling": null,
+      "image_impact": "profundidad HDR",
+      "notes": "No aparece en el dump global: probablemente no existe en este SoC."
+    },
+    {
+      "key": "hdr_output_type",
+      "tier": "T3",
+      "ns_hint": "global",
+      "ns_observed": "global",
+      "in_ns_map": false,
+      "in_vpp_levers": false,
+      "in_client_allowlist": false,
+      "reachable_from_policy": false,
+      "reachable_via": "none",
+      "forbidden_by_contract": false,
+      "domain": "^[0-3]$",
+      "thermal_ceiling": null,
+      "image_impact": "tipo de salida HDR",
+      "notes": "El SoC trae 4 y la regex acepta 0..3 (R5 GAP-06): aunque se expusiera, el valor real sería rechazado."
+    },
+    {
+      "key": "hdr_force_conversion_type",
+      "tier": "T3",
+      "ns_hint": "global",
+      "ns_observed": "global",
+      "in_ns_map": false,
+      "in_vpp_levers": false,
+      "in_client_allowlist": false,
+      "reachable_from_policy": false,
+      "reachable_via": "none",
+      "forbidden_by_contract": false,
+      "domain": "^-?\\d{1,2}$",
+      "thermal_ceiling": null,
+      "image_impact": "forzar conversión a un tipo HDR concreto",
+      "notes": "Forzar tipo HDR sobre SDR es exactamente lo que la doctrina prohíbe: se deja fuera."
+    },
+    {
+      "key": "always_hdr",
+      "tier": "T3",
+      "ns_hint": "global",
+      "ns_observed": "global",
+      "in_ns_map": false,
+      "in_vpp_levers": false,
+      "in_client_allowlist": false,
+      "reachable_from_policy": false,
+      "reachable_via": "none",
+      "forbidden_by_contract": true,
+      "forbidden_reason": "forzar HDR en TODO contenido produce color falso sobre SDR (mentira de rango, no realce)",
+      "domain": "^[01]$",
+      "thermal_ceiling": null,
+      "image_impact": "HDR forzado",
+      "notes": "Prohibido por contrato aunque exista en el SoC."
+    },
+    {
+      "key": "hdr_brightness_boost",
+      "tier": "T3",
+      "ns_hint": "global",
+      "ns_observed": "global",
+      "in_ns_map": false,
+      "in_vpp_levers": false,
+      "in_client_allowlist": false,
+      "reachable_from_policy": false,
+      "reachable_via": "none",
+      "forbidden_by_contract": false,
+      "domain": "^\\d{1,3}$",
+      "thermal_ceiling": null,
+      "image_impact": "brillo en HDR",
+      "notes": "Sin fuente en la política."
+    },
+    {
+      "key": "sdr_brightness_in_hdr",
+      "tier": "T3",
+      "ns_hint": "global",
+      "ns_observed": "global",
+      "in_ns_map": false,
+      "in_vpp_levers": false,
+      "in_client_allowlist": false,
+      "reachable_from_policy": false,
+      "reachable_via": "none",
+      "forbidden_by_contract": false,
+      "domain": "^\\d{1,3}$",
+      "thermal_ceiling": null,
+      "image_impact": "brillo de SDR dentro de una sesión HDR",
+      "notes": "Sin fuente en la política."
+    },
+    {
+      "key": "user_preferred_resolution_height",
+      "tier": "T4",
+      "ns_hint": null,
+      "ns_observed": null,
+      "in_ns_map": false,
+      "in_vpp_levers": false,
+      "in_client_allowlist": false,
+      "reachable_from_policy": false,
+      "reachable_via": "none",
+      "forbidden_by_contract": true,
+      "forbidden_reason": "es la puerta trasera al wire 8K (7680x4320) y a degradar la salida por térmica: prohibido",
+      "domain": "^\\d{3,4}$",
+      "thermal_ceiling": null,
+      "image_impact": "resolución de salida HDMI",
+      "notes": "El contrato NUNCA la escribe. Si se escribiera 4320, se declararía un decode que el SoC no tiene."
+    },
+    {
+      "key": "user_preferred_resolution_width",
+      "tier": "T4",
+      "ns_hint": null,
+      "ns_observed": null,
+      "in_ns_map": false,
+      "in_vpp_levers": false,
+      "in_client_allowlist": false,
+      "reachable_from_policy": false,
+      "reachable_via": "none",
+      "forbidden_by_contract": true,
+      "forbidden_reason": "idem height",
+      "domain": "^\\d{3,4}$",
+      "thermal_ceiling": null,
+      "image_impact": "resolución de salida HDMI",
+      "notes": "Idem."
+    }
+  ],
+  "aliases": [
+    {
+      "from": "ai_pq_mode",
+      "to": "ai_pic_mode",
+      "why": "ai_pq_mode NO existe en MT8696 (R5 GAP-05); el nombre real es ai_pic_mode",
+      "when": "siempre que el lever ai_pq_mode llegue en la política",
+      "same_value": true,
+      "evidence": [
+        "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/lib/ape_mesh.php:556",
+        "IPTV_v5.4_MAX_AGGRESSION/backend/onn_settings_global_pq.txt"
+      ]
+    }
+  ],
+  "forbidden": [
+    {
+      "id": "F-1",
+      "thing": "user_preferred_resolution_width/height",
+      "why": "wire 8K por la puerta de atrás + degradación de salida"
+    },
+    {
+      "id": "F-2",
+      "thing": "always_hdr=1",
+      "why": "HDR falso sobre SDR"
+    },
+    {
+      "id": "F-3",
+      "thing": "match_content_frame_rate=2",
+      "why": "conversión forzada de cadencia en todo contenido; sin clave de MEMC real"
+    },
+    {
+      "id": "F-4",
+      "thing": "escribir RESOLUTION/CODECS/BANDWIDTH del manifest",
+      "why": "el device no toca el bitstream ni la URL del segmento"
+    },
+    {
+      "id": "F-5",
+      "thing": "levers fuera de la allowlist de 13 del cliente /sync",
+      "why": "el cliente los rechaza; D4 tampoco los inventa"
+    },
+    {
+      "id": "F-6",
+      "thing": "cualquier lectura/escritura por ADB o props inventadas",
+      "why": "ADB no se habilita remoto; las props no son un actuador"
+    }
+  ],
+  "tiers_source": "ara-x/vps/schema/sync_features.json -> processing.tiers (t9/D3 v2)",
+  "vocabulary": "Soc canonico, aliases, no_wire_8k, fps.targets, processing.tiers y levers.vpp se toman del catalogo sync_features.json v2 (fuente unica)."
+}

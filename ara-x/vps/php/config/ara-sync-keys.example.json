@@ -1,0 +1,22 @@
+{
+  "_note": "Formato del store de claves por dispositivo. NUNCA en el repo ni en el webroot: se instala en /etc/ara-x/sync-keys.json con modo 0600 y propietario legible por PHP-FPM (www-data; root:root 0600 no es legible por el pool) — V3-F-08. Este archivo es solo un ejemplo sin secretos reales; el valor debe generarse con CSPRNG (64 hex lowercase = 32 bytes).",
+  "keys": {
+    "k1": {
+      "secret": "REPLACE_WITH_64_LOWERCASE_HEX_FROM_CSPRNG",
+      "device_ids": ["onn4k-001"],
+      "created_at": 1700000000,
+      "retires_at": null
+    },
+    "k2": {
+      "secret": "REPLACE_WITH_64_LOWERCASE_HEX_FROM_CSPRNG",
+      "device_ids": ["onn4k-001"],
+      "created_at": 1700000000,
+      "retires_at": 1700086400
+    }
+  },
+  "_rules": {
+    "device_binding": "una clave solo sirve para los device_ids listados; device_ids null/vacío = 401 fail-closed (V3-F-08)",
+    "rotation": "key_id nuevo + clave anterior con retires_at <= now+24h (R6-D3-AUTH-06)",
+    "empty_store": "si el store falta, no es 0600 o no tiene claves, /sync responde 503 sync_disabled (R6-D3-AUTH-08)"
+  }
+}

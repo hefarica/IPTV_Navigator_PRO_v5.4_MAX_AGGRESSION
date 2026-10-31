@@ -1,0 +1,8 @@
+# La captura del catálogo (150 MB) y los paquetes no se versionan.
+evidence/*.m3u8
+evidence/*.m3u8.gz
+evidence/*.bin
+deliverables/*.zip
+deliverables/*.7z
+*.log
+node_modules/

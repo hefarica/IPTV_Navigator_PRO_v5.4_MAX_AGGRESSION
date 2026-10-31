@@ -1,0 +1,520 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://iptv-ape.duckdns.org/schemas/ara-x/sync_response.schema.json",
+  "title": "ARA-X sync response / device policy v2 (VPS -> device)",
+  "description": "Política solucionable por el device sin tocar URLs. v=2 añade display.min_resolution/never_downscale, fps, thermal, processing.tier, degrade.order, content.* con prov=lab_ssot y ref con la identidad del artefacto (artifact_sha256 + generation_id) para decidir si el catálogo local sigue siendo la misma generación. Sin campos URL (R6-D3-SSRF-01).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "v",
+    "type",
+    "device_id",
+    "seq",
+    "ts",
+    "valid_until",
+    "policy_etag",
+    "profile",
+    "player",
+    "device",
+    "display",
+    "fps",
+    "thermal",
+    "processing",
+    "degrade",
+    "controls",
+    "ref"
+  ],
+  "properties": {
+    "v": {
+      "type": "integer",
+      "enum": [
+        2
+      ]
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "ara_x_policy"
+      ]
+    },
+    "device_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._-]{3,128}$"
+    },
+    "seq": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 2147483647
+    },
+    "ts": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 4102444800
+    },
+    "valid_until": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 4102444800
+    },
+    "policy_etag": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{64}$"
+    },
+    "profile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "active",
+        "blend",
+        "reason"
+      ],
+      "properties": {
+        "active": {
+          "type": "string",
+          "enum": [
+            "P0",
+            "P1",
+            "P2",
+            "P3",
+            "P4",
+            "P5"
+          ]
+        },
+        "blend": {
+          "type": "object",
+          "additionalProperties": false,
+          "minProperties": 1,
+          "maxProperties": 6,
+          "properties": {
+            "P0": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "P1": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "P2": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "P3": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "P4": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "P5": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            }
+          }
+        },
+        "reason": {
+          "type": "string",
+          "enum": [
+            "nominal",
+            "thermal_guard",
+            "stability_guard",
+            "soc_decode_ceiling",
+            "offline_safe_default",
+            "shadow_noop"
+          ]
+        }
+      }
+    },
+    "player": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "buffer_s",
+        "abr_bw_factor",
+        "reconnect_attempts",
+        "live_delay_s",
+        "max_bitrate_bps",
+        "min_bitrate_bps"
+      ],
+      "properties": {
+        "buffer_s": {
+          "type": "number",
+          "minimum": 5,
+          "maximum": 120
+        },
+        "abr_bw_factor": {
+          "type": "number",
+          "minimum": 0.5,
+          "maximum": 0.98
+        },
+        "reconnect_attempts": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 500
+        },
+        "live_delay_s": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 60
+        },
+        "max_bitrate_bps": {
+          "type": "integer",
+          "minimum": 1000000,
+          "maximum": 80000000
+        },
+        "min_bitrate_bps": {
+          "type": "integer",
+          "minimum": 1000000,
+          "maximum": 80000000
+        }
+      }
+    },
+    "device": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "allowed",
+        "soc",
+        "thermal_target_c",
+        "levers"
+      ],
+      "properties": {
+        "allowed": {
+          "type": "boolean"
+        },
+        "soc": {
+          "type": "string",
+          "enum": [
+            "mt8696",
+            "amlogic",
+            "s905x4",
+            "s905x3",
+            "unknown"
+          ]
+        },
+        "thermal_target_c": {
+          "type": "number",
+          "minimum": 55,
+          "maximum": 85
+        },
+        "levers": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "integer",
+            "minimum": -1000,
+            "maximum": 1000
+          }
+        }
+      }
+    },
+    "display": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "mode",
+        "wire_resolution",
+        "min_resolution",
+        "never_downscale",
+        "eight_k",
+        "hdr_hint"
+      ],
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": [
+            "native",
+            "4k",
+            "8k_emulated"
+          ]
+        },
+        "wire_resolution": {
+          "type": "string",
+          "enum": [
+            "1280x720",
+            "1920x1080",
+            "2560x1440",
+            "3840x2160"
+          ]
+        },
+        "min_resolution": {
+          "type": "string",
+          "enum": [
+            "1280x720",
+            "1920x1080",
+            "2560x1440",
+            "3840x2160"
+          ]
+        },
+        "never_downscale": {
+          "type": "boolean"
+        },
+        "eight_k": {
+          "type": "string",
+          "enum": [
+            "presentation_only",
+            "disabled"
+          ]
+        },
+        "hdr_hint": {
+          "type": "string",
+          "enum": [
+            "SDR",
+            "PQ",
+            "HLG"
+          ]
+        }
+      }
+    },
+    "fps": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "target",
+        "current",
+        "min"
+      ],
+      "properties": {
+        "target": {
+          "type": "integer",
+          "enum": [
+            24,
+            30,
+            60
+          ]
+        },
+        "current": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 1,
+          "maximum": 240
+        },
+        "min": {
+          "type": "integer",
+          "enum": [
+            24
+          ]
+        }
+      }
+    },
+    "thermal": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "limits"
+      ],
+      "properties": {
+        "status": {
+          "type": [
+            "integer",
+            "string"
+          ],
+          "enum": [
+            "unknown",
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6
+          ]
+        },
+        "limits": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "light_c",
+            "moderate_c",
+            "severe_c",
+            "critical_c"
+          ],
+          "properties": {
+            "light_c": {
+              "type": "integer",
+              "minimum": 55,
+              "maximum": 85
+            },
+            "moderate_c": {
+              "type": "integer",
+              "minimum": 55,
+              "maximum": 85
+            },
+            "severe_c": {
+              "type": "integer",
+              "minimum": 55,
+              "maximum": 85
+            },
+            "critical_c": {
+              "type": "integer",
+              "minimum": 55,
+              "maximum": 85
+            }
+          }
+        }
+      }
+    },
+    "processing": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "tier"
+      ],
+      "properties": {
+        "tier": {
+          "type": "string",
+          "enum": [
+            "minimal",
+            "balanced",
+            "quality",
+            "max_image"
+          ]
+        }
+      }
+    },
+    "degrade": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "order"
+      ],
+      "properties": {
+        "order": {
+          "type": "array",
+          "maxItems": 3,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "enum": [
+              "fps",
+              "processing",
+              "resolution"
+            ]
+          }
+        }
+      }
+    },
+    "content": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "motion_score",
+        "film_grain",
+        "scene_complexity",
+        "dark_ratio",
+        "prov",
+        "age_ms",
+        "conf"
+      ],
+      "properties": {
+        "motion_score": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "film_grain": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "scene_complexity": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "dark_ratio": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "prov": {
+          "type": "string",
+          "enum": [
+            "lab_ssot"
+          ]
+        },
+        "age_ms": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 604800000
+        },
+        "conf": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 1
+        }
+      }
+    },
+    "controls": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sync_next_s",
+        "flags",
+        "degrade_mask"
+      ],
+      "properties": {
+        "sync_next_s": {
+          "type": "integer",
+          "minimum": 10,
+          "maximum": 120
+        },
+        "flags": {
+          "type": "array",
+          "maxItems": 16,
+          "items": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9._:+-]{1,64}$"
+          }
+        },
+        "degrade_mask": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 65535
+        }
+      }
+    },
+    "ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "artifact_sha256",
+        "generation_id",
+        "list_version",
+        "lab_exported_at"
+      ],
+      "properties": {
+        "artifact_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "generation_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9._:+-]{1,64}$"
+        },
+        "list_version": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9._:+-]{1,64}$"
+        },
+        "lab_exported_at": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9._:+-]{1,64}$"
+        }
+      }
+    }
+  }
+}

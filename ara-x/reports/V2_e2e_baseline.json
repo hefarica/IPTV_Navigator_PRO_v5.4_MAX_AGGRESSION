@@ -1,0 +1,181 @@
+{
+  "ok": true,
+  "captureComplete": true,
+  "zeroWrongBlocks": true,
+  "truncated": false,
+  "elapsedMs": 260770,
+  "input": {
+    "file": "APE_LISTA_4K_live_20261030_full.m3u8",
+    "bytes": 572170477,
+    "sha256": "e27c03eb45dacd6e5f19c3f4e016b456236ca2c06f485ddf11165ddc86e2a680"
+  },
+  "output": {
+    "file": "APE_LISTA_4K_live_20261030_full_ARA-X_once.m3u8",
+    "bytes": 572171381,
+    "sha256": "24e1e3f6babb8c6df82a3de25616423d78aa608881407063ddcd277a4ddc951d"
+  },
+  "secondPass": {
+    "injected": false,
+    "reason": "already_present",
+    "sha256": "24e1e3f6babb8c6df82a3de25616423d78aa608881407063ddcd277a4ddc951d",
+    "byteIdentical": true
+  },
+  "inject": {
+    "injected": true,
+    "reason": "injected",
+    "bytes": 572170477,
+    "lines": 10169562,
+    "blockLines": 27,
+    "eol": "LF",
+    "trailingNewline": true
+  },
+  "compare": {
+    "ok": true,
+    "checks": [
+      {
+        "name": "channels_preserved",
+        "ok": true,
+        "before": 10631,
+        "after": 10631
+      },
+      {
+        "name": "capture_complete",
+        "ok": true,
+        "before": 10631,
+        "after": 10631
+      },
+      {
+        "name": "url_count_preserved",
+        "ok": true,
+        "before": 10631,
+        "after": 10631
+      },
+      {
+        "name": "url_bytes_preserved",
+        "ok": true,
+        "before": "f69a048f8c4c14a8ee6dd3eb9ab000b9c70e26d1e8178414c322a4f40f55f330",
+        "after": "f69a048f8c4c14a8ee6dd3eb9ab000b9c70e26d1e8178414c322a4f40f55f330"
+      },
+      {
+        "name": "stream_inf_preserved",
+        "ok": true,
+        "before": 10631,
+        "after": 10631
+      },
+      {
+        "name": "extattr_preserved",
+        "ok": true,
+        "before": 584705,
+        "after": 584705
+      },
+      {
+        "name": "ara_block_exactly_once",
+        "ok": true,
+        "before": 0,
+        "after": 1
+      },
+      {
+        "name": "no_duplicate_ara_directives",
+        "ok": true,
+        "before": 0,
+        "after": 0
+      },
+      {
+        "name": "url_block_shape_preserved",
+        "ok": true,
+        "before": 0,
+        "after": 0
+      },
+      {
+        "name": "media_only_tags_not_added",
+        "ok": true,
+        "before": {
+          "#EXT-X-SERVER-CONTROL": 1,
+          "#EXT-X-TARGETDURATION": 1
+        },
+        "after": {
+          "#EXT-X-SERVER-CONTROL": 1,
+          "#EXT-X-TARGETDURATION": 1
+        }
+      }
+    ]
+  },
+  "before": {
+    "lines": 10169562,
+    "extinf": 10631,
+    "streamInf": 10631,
+    "extattr": 584705,
+    "araTags": 0,
+    "araVersion": 0,
+    "araDirectiveNames": [],
+    "duplicateAra": [],
+    "urls": 10631,
+    "urlSha256": "f69a048f8c4c14a8ee6dd3eb9ab000b9c70e26d1e8178414c322a4f40f55f330",
+    "blocks": 10631,
+    "blocksWithWrongUrlCount": 0,
+    "wrongSamples": [],
+    "mediaTags": {
+      "#EXT-X-SERVER-CONTROL": 1,
+      "#EXT-X-TARGETDURATION": 1
+    },
+    "sampleUrls": [
+      "https://iptv-ape.duckdns.org/…P/3.m3u8",
+      "https://iptv-ape.duckdns.org/…P/5.m3u8",
+      "https://iptv-ape.duckdns.org/…P/6.m3u8"
+    ],
+    "declaredChannels": 10631
+  },
+  "after": {
+    "lines": 10169589,
+    "extinf": 10631,
+    "streamInf": 10631,
+    "extattr": 584705,
+    "araTags": 27,
+    "araVersion": 1,
+    "araDirectiveNames": [
+      "8K-MODE",
+      "AUTH",
+      "CLIENT-TYPE",
+      "DEGRADE-ORDER",
+      "DYNAMIC-CONTROL",
+      "EMERGENCY-DOWNSCALE",
+      "FALLBACK",
+      "FPS-TARGETS",
+      "LIST-VERSION",
+      "MAX-DECODE-RESOLUTION",
+      "MAX-PRESENT-RESOLUTION",
+      "MINIMUM-DECODE-RESOLUTION",
+      "MINIMUM-FPS",
+      "MODE",
+      "NEVER-DOWNSCALE",
+      "PRIORITY",
+      "PROFILE-AUTO",
+      "SCHEMA",
+      "SYNC",
+      "SYNC-CADENCE",
+      "THERMAL-24FPS",
+      "THERMAL-30FPS",
+      "THERMAL-60FPS",
+      "THERMAL-AWARE",
+      "THERMAL-TARGET",
+      "VERSION",
+      "VPS-SYNC"
+    ],
+    "duplicateAra": [],
+    "urls": 10631,
+    "urlSha256": "f69a048f8c4c14a8ee6dd3eb9ab000b9c70e26d1e8178414c322a4f40f55f330",
+    "blocks": 10631,
+    "blocksWithWrongUrlCount": 0,
+    "wrongSamples": [],
+    "mediaTags": {
+      "#EXT-X-SERVER-CONTROL": 1,
+      "#EXT-X-TARGETDURATION": 1
+    },
+    "sampleUrls": [
+      "https://iptv-ape.duckdns.org/…P/3.m3u8",
+      "https://iptv-ape.duckdns.org/…P/5.m3u8",
+      "https://iptv-ape.duckdns.org/…P/6.m3u8"
+    ],
+    "declaredChannels": 10631
+  }
+}

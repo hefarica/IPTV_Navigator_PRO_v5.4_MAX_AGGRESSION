@@ -1,0 +1,1456 @@
+{
+  "left": "ara-x\\reports\\_r1_fp_local.jsonl",
+  "right": "ara-x\\reports\\_r1_fp_cdn.jsonl",
+  "left_channels": 10631,
+  "right_channels": 10631,
+  "fields": {
+    "id": {
+      "left_distinct": 10631,
+      "right_distinct": 10631,
+      "same_at_same_index": 10631,
+      "mismatched_at_index": 0,
+      "left_top": [
+        [
+          "3",
+          1
+        ],
+        [
+          "5",
+          1
+        ],
+        [
+          "6",
+          1
+        ],
+        [
+          "8",
+          1
+        ],
+        [
+          "9",
+          1
+        ],
+        [
+          "11",
+          1
+        ],
+        [
+          "12",
+          1
+        ],
+        [
+          "14",
+          1
+        ],
+        [
+          "15",
+          1
+        ],
+        [
+          "17",
+          1
+        ],
+        [
+          "18",
+          1
+        ],
+        [
+          "20",
+          1
+        ]
+      ],
+      "right_top": [
+        [
+          "3",
+          1
+        ],
+        [
+          "5",
+          1
+        ],
+        [
+          "6",
+          1
+        ],
+        [
+          "8",
+          1
+        ],
+        [
+          "9",
+          1
+        ],
+        [
+          "11",
+          1
+        ],
+        [
+          "12",
+          1
+        ],
+        [
+          "14",
+          1
+        ],
+        [
+          "15",
+          1
+        ],
+        [
+          "17",
+          1
+        ],
+        [
+          "18",
+          1
+        ],
+        [
+          "20",
+          1
+        ]
+      ]
+    },
+    "profile": {
+      "left_distinct": 3,
+      "right_distinct": 3,
+      "same_at_same_index": 10631,
+      "mismatched_at_index": 0,
+      "left_top": [
+        [
+          "P4",
+          7523
+        ],
+        [
+          "P3",
+          2300
+        ],
+        [
+          "P1",
+          808
+        ]
+      ],
+      "right_top": [
+        [
+          "P4",
+          7523
+        ],
+        [
+          "P3",
+          2300
+        ],
+        [
+          "P1",
+          808
+        ]
+      ]
+    },
+    "cfam": {
+      "left_distinct": 2,
+      "right_distinct": 2,
+      "same_at_same_index": 10631,
+      "mismatched_at_index": 0,
+      "left_top": [
+        [
+          "h264",
+          9593
+        ],
+        [
+          "hevc",
+          1038
+        ]
+      ],
+      "right_top": [
+        [
+          "h264",
+          9593
+        ],
+        [
+          "hevc",
+          1038
+        ]
+      ]
+    },
+    "fps": {
+      "left_distinct": 2,
+      "right_distinct": 2,
+      "same_at_same_index": 10631,
+      "mismatched_at_index": 0,
+      "left_top": [
+        [
+          "25",
+          9807
+        ],
+        [
+          "50",
+          824
+        ]
+      ],
+      "right_top": [
+        [
+          "25",
+          9807
+        ],
+        [
+          "50",
+          824
+        ]
+      ]
+    },
+    "bw": {
+      "left_distinct": 3,
+      "right_distinct": 4,
+      "same_at_same_index": 10586,
+      "mismatched_at_index": 45,
+      "left_top": [
+        [
+          "9000000",
+          8021
+        ],
+        [
+          "12000000",
+          1757
+        ],
+        [
+          "28000000",
+          853
+        ]
+      ],
+      "right_top": [
+        [
+          "9000000",
+          8021
+        ],
+        [
+          "12000000",
+          1757
+        ],
+        [
+          "28000000",
+          808
+        ],
+        [
+          "null",
+          45
+        ]
+      ]
+    },
+    "res": {
+      "left_distinct": 1,
+      "right_distinct": 2,
+      "same_at_same_index": 10586,
+      "mismatched_at_index": 45,
+      "left_top": [
+        [
+          "3840x2160",
+          10631
+        ]
+      ],
+      "right_top": [
+        [
+          "3840x2160",
+          10586
+        ],
+        [
+          "null",
+          45
+        ]
+      ]
+    },
+    "codecs": {
+      "left_distinct": 1,
+      "right_distinct": 2,
+      "same_at_same_index": 10586,
+      "mismatched_at_index": 45,
+      "left_top": [
+        [
+          "hvc1.2.4.L153.B0,mp4a.40.2",
+          10631
+        ]
+      ],
+      "right_top": [
+        [
+          "hvc1.2.4.L153.B0,mp4a.40.2",
+          10586
+        ],
+        [
+          "null",
+          45
+        ]
+      ]
+    },
+    "fr": {
+      "left_distinct": 2,
+      "right_distinct": 3,
+      "same_at_same_index": 10586,
+      "mismatched_at_index": 45,
+      "left_top": [
+        [
+          "30.000",
+          8709
+        ],
+        [
+          "60.000",
+          1922
+        ]
+      ],
+      "right_top": [
+        [
+          "30.000",
+          8664
+        ],
+        [
+          "60.000",
+          1922
+        ],
+        [
+          "null",
+          45
+        ]
+      ]
+    },
+    "hdcp": {
+      "left_distinct": 2,
+      "right_distinct": 2,
+      "same_at_same_index": 10631,
+      "mismatched_at_index": 0,
+      "left_top": [
+        [
+          "TYPE-1",
+          10586
+        ],
+        [
+          "null",
+          45
+        ]
+      ],
+      "right_top": [
+        [
+          "TYPE-1",
+          10586
+        ],
+        [
+          "null",
+          45
+        ]
+      ]
+    },
+    "vr": {
+      "left_distinct": 1,
+      "right_distinct": 2,
+      "same_at_same_index": 10586,
+      "mismatched_at_index": 45,
+      "left_top": [
+        [
+          "PQ",
+          10631
+        ]
+      ],
+      "right_top": [
+        [
+          "PQ",
+          10586
+        ],
+        [
+          "null",
+          45
+        ]
+      ]
+    },
+    "sf": {
+      "left_distinct": 1,
+      "right_distinct": 2,
+      "same_at_same_index": 808,
+      "mismatched_at_index": 9823,
+      "left_top": [
+        [
+          "1",
+          10631
+        ]
+      ],
+      "right_top": [
+        [
+          "0",
+          9823
+        ],
+        [
+          "1",
+          808
+        ]
+      ]
+    },
+    "xres": {
+      "left_distinct": 3,
+      "right_distinct": 3,
+      "same_at_same_index": 10631,
+      "mismatched_at_index": 0,
+      "left_top": [
+        [
+          "1280x720",
+          7523
+        ],
+        [
+          "1920x1080",
+          2300
+        ],
+        [
+          "3840x2160",
+          808
+        ]
+      ],
+      "right_top": [
+        [
+          "1280x720",
+          7523
+        ],
+        [
+          "1920x1080",
+          2300
+        ],
+        [
+          "3840x2160",
+          808
+        ]
+      ]
+    },
+    "xcodec": {
+      "left_distinct": 3,
+      "right_distinct": 3,
+      "same_at_same_index": 10631,
+      "mismatched_at_index": 0,
+      "left_top": [
+        [
+          "hvc1.2.4.L93.B0",
+          7523
+        ],
+        [
+          "hvc1.2.4.L123.B0",
+          2300
+        ],
+        [
+          "hvc1.2.4.L153.B0",
+          808
+        ]
+      ],
+      "right_top": [
+        [
+          "hvc1.2.4.L93.B0",
+          7523
+        ],
+        [
+          "hvc1.2.4.L123.B0",
+          2300
+        ],
+        [
+          "hvc1.2.4.L153.B0",
+          808
+        ]
+      ]
+    },
+    "xrange": {
+      "left_distinct": 1,
+      "right_distinct": 1,
+      "same_at_same_index": 10631,
+      "mismatched_at_index": 0,
+      "left_top": [
+        [
+          "SDR",
+          10631
+        ]
+      ],
+      "right_top": [
+        [
+          "SDR",
+          10631
+        ]
+      ]
+    },
+    "hdrs": {
+      "left_distinct": 2,
+      "right_distinct": 2,
+      "same_at_same_index": 10631,
+      "mismatched_at_index": 0,
+      "left_top": [
+        [
+          "193",
+          6858
+        ],
+        [
+          "203",
+          3773
+        ]
+      ],
+      "right_top": [
+        [
+          "193",
+          6858
+        ],
+        [
+          "203",
+          3773
+        ]
+      ]
+    },
+    "url": {
+      "left_distinct": 10631,
+      "right_distinct": 10631,
+      "same_at_same_index": 10631,
+      "mismatched_at_index": 0,
+      "left_top": [
+        [
+          "bfd3e15eb3d78844",
+          1
+        ],
+        [
+          "f9631c5b0e95ce4e",
+          1
+        ],
+        [
+          "0d102041ebab558d",
+          1
+        ],
+        [
+          "1d7764ed1493ef55",
+          1
+        ],
+        [
+          "cf52acf45a0e33bf",
+          1
+        ],
+        [
+          "ae6d0a98715e8aec",
+          1
+        ],
+        [
+          "3672c60984c1e688",
+          1
+        ],
+        [
+          "926918c550300b8c",
+          1
+        ],
+        [
+          "abff930a7fea3c00",
+          1
+        ],
+        [
+          "5ef24b318f5bb3ed",
+          1
+        ],
+        [
+          "69778c23eaf327c8",
+          1
+        ],
+        [
+          "63819d91bebd80da",
+          1
+        ]
+      ],
+      "right_top": [
+        [
+          "bfd3e15eb3d78844",
+          1
+        ],
+        [
+          "f9631c5b0e95ce4e",
+          1
+        ],
+        [
+          "0d102041ebab558d",
+          1
+        ],
+        [
+          "1d7764ed1493ef55",
+          1
+        ],
+        [
+          "cf52acf45a0e33bf",
+          1
+        ],
+        [
+          "ae6d0a98715e8aec",
+          1
+        ],
+        [
+          "3672c60984c1e688",
+          1
+        ],
+        [
+          "926918c550300b8c",
+          1
+        ],
+        [
+          "abff930a7fea3c00",
+          1
+        ],
+        [
+          "5ef24b318f5bb3ed",
+          1
+        ],
+        [
+          "69778c23eaf327c8",
+          1
+        ],
+        [
+          "63819d91bebd80da",
+          1
+        ]
+      ]
+    },
+    "host": {
+      "left_distinct": 1,
+      "right_distinct": 1,
+      "same_at_same_index": 10631,
+      "mismatched_at_index": 0,
+      "left_top": [
+        [
+          "iptv-ape.duckdns.org",
+          10631
+        ]
+      ],
+      "right_top": [
+        [
+          "iptv-ape.duckdns.org",
+          10631
+        ]
+      ]
+    },
+    "scheme": {
+      "left_distinct": 1,
+      "right_distinct": 1,
+      "same_at_same_index": 10631,
+      "mismatched_at_index": 0,
+      "left_top": [
+        [
+          "https",
+          10631
+        ]
+      ],
+      "right_top": [
+        [
+          "https",
+          10631
+        ]
+      ]
+    },
+    "lines": {
+      "left_distinct": 5,
+      "right_distinct": 6,
+      "same_at_same_index": 0,
+      "mismatched_at_index": 10631,
+      "left_top": [
+        [
+          "955",
+          4906
+        ],
+        [
+          "956",
+          4851
+        ],
+        [
+          "957",
+          828
+        ],
+        [
+          "948",
+          45
+        ],
+        [
+          "961",
+          1
+        ]
+      ],
+      "right_top": [
+        [
+          "952",
+          4906
+        ],
+        [
+          "953",
+          4851
+        ],
+        [
+          "956",
+          807
+        ],
+        [
+          "944",
+          45
+        ],
+        [
+          "954",
+          21
+        ],
+        [
+          "960",
+          1
+        ]
+      ]
+    },
+    "urls": {
+      "left_distinct": 1,
+      "right_distinct": 1,
+      "same_at_same_index": 10631,
+      "mismatched_at_index": 0,
+      "left_top": [
+        [
+          "1",
+          10631
+        ]
+      ],
+      "right_top": [
+        [
+          "1",
+          10631
+        ]
+      ]
+    },
+    "si": {
+      "left_distinct": 1,
+      "right_distinct": 2,
+      "same_at_same_index": 10586,
+      "mismatched_at_index": 45,
+      "left_top": [
+        [
+          "1",
+          10631
+        ]
+      ],
+      "right_top": [
+        [
+          "1",
+          10586
+        ],
+        [
+          "0",
+          45
+        ]
+      ]
+    },
+    "country": {
+      "left_distinct": 9,
+      "right_distinct": 9,
+      "same_at_same_index": 10631,
+      "mismatched_at_index": 0,
+      "left_top": [
+        [
+          "EUROPA OCCIDENTAL",
+          4776
+        ],
+        [
+          "ASIA / ORIENTE MEDIO",
+          1394
+        ],
+        [
+          "NORTEAMÉRICA",
+          1368
+        ],
+        [
+          "EUROPA ORIENTAL",
+          1195
+        ],
+        [
+          "AMÉRICA LATINA",
+          978
+        ],
+        [
+          "RESTO DEL MUNDO",
+          670
+        ],
+        [
+          "ÁFRICA",
+          166
+        ],
+        [
+          "CARIBE",
+          44
+        ],
+        [
+          "OCEANÍA",
+          40
+        ]
+      ],
+      "right_top": [
+        [
+          "EUROPA OCCIDENTAL",
+          4776
+        ],
+        [
+          "ASIA / ORIENTE MEDIO",
+          1394
+        ],
+        [
+          "NORTEAMÉRICA",
+          1368
+        ],
+        [
+          "EUROPA ORIENTAL",
+          1195
+        ],
+        [
+          "AMÉRICA LATINA",
+          978
+        ],
+        [
+          "RESTO DEL MUNDO",
+          670
+        ],
+        [
+          "ÁFRICA",
+          166
+        ],
+        [
+          "CARIBE",
+          44
+        ],
+        [
+          "OCEANÍA",
+          40
+        ]
+      ]
+    }
+  },
+  "url_set": {
+    "only_left": 0,
+    "only_right": 0,
+    "shared": 10631
+  },
+  "id_set": {
+    "only_left": 0,
+    "only_right": 0,
+    "shared": 10631
+  },
+  "order_head": {
+    "left": [
+      "0:3",
+      "1:5",
+      "2:6",
+      "3:8",
+      "4:9",
+      "5:11",
+      "6:12",
+      "7:14",
+      "8:15",
+      "9:17",
+      "10:18",
+      "11:20"
+    ],
+    "right": [
+      "0:3",
+      "1:5",
+      "2:6",
+      "3:8",
+      "4:9",
+      "5:11",
+      "6:12",
+      "7:14",
+      "8:15",
+      "9:17",
+      "10:18",
+      "11:20"
+    ]
+  },
+  "samples": {
+    "id": [],
+    "profile": [],
+    "cfam": [],
+    "fps": [],
+    "bw": [
+      {
+        "i": 5791,
+        "left": "28000000",
+        "right": null,
+        "left_name": "|IL| CHANNEL 9 [line.tivi-ott.net]",
+        "right_name": "|IL| CHANNEL 9 [line.tivi-ott.net]"
+      },
+      {
+        "i": 5793,
+        "left": "28000000",
+        "right": null,
+        "left_name": "|IL| CHANNEL 11 [line.tivi-ott.net]",
+        "right_name": "|IL| CHANNEL 11 [line.tivi-ott.net]"
+      },
+      {
+        "i": 5794,
+        "left": "28000000",
+        "right": null,
+        "left_name": "|IL| CHANNEL 12 [line.tivi-ott.net]",
+        "right_name": "|IL| CHANNEL 12 [line.tivi-ott.net]"
+      },
+      {
+        "i": 5795,
+        "left": "28000000",
+        "right": null,
+        "left_name": "|IL| CHANNEL 13 [line.tivi-ott.net]",
+        "right_name": "|IL| CHANNEL 13 [line.tivi-ott.net]"
+      },
+      {
+        "i": 5796,
+        "left": "28000000",
+        "right": null,
+        "left_name": "|IL| CHANNEL 14 [line.tivi-ott.net]",
+        "right_name": "|IL| CHANNEL 14 [line.tivi-ott.net]"
+      },
+      {
+        "i": 5797,
+        "left": "28000000",
+        "right": null,
+        "left_name": "|IL| BIG BROTHER [line.tivi-ott.net]",
+        "right_name": "|IL| BIG BROTHER [line.tivi-ott.net]"
+      },
+      {
+        "i": 5800,
+        "left": "28000000",
+        "right": null,
+        "left_name": "|IL| GOOD LIFE [line.tivi-ott.net]",
+        "right_name": "|IL| GOOD LIFE [line.tivi-ott.net]"
+      },
+      {
+        "i": 5801,
+        "left": "28000000",
+        "right": null,
+        "left_name": "|IL| HOME PLUS [line.tivi-ott.net]",
+        "right_name": "|IL| HOME PLUS [line.tivi-ott.net]"
+      },
+      {
+        "i": 5802,
+        "left": "28000000",
+        "right": null,
+        "left_name": "|IL| HOP! CHILDHOOD [line.tivi-ott.net]",
+        "right_name": "|IL| HOP! CHILDHOOD [line.tivi-ott.net]"
+      },
+      {
+        "i": 5804,
+        "left": "28000000",
+        "right": null,
+        "left_name": "|IL| I24 [line.tivi-ott.net]",
+        "right_name": "|IL| I24 [line.tivi-ott.net]"
+      }
+    ],
+    "res": [
+      {
+        "i": 5791,
+        "left": "3840x2160",
+        "right": null,
+        "left_name": "|IL| CHANNEL 9 [line.tivi-ott.net]",
+        "right_name": "|IL| CHANNEL 9 [line.tivi-ott.net]"
+      },
+      {
+        "i": 5793,
+        "left": "3840x2160",
+        "right": null,
+        "left_name": "|IL| CHANNEL 11 [line.tivi-ott.net]",
+        "right_name": "|IL| CHANNEL 11 [line.tivi-ott.net]"
+      },
+      {
+        "i": 5794,
+        "left": "3840x2160",
+        "right": null,
+        "left_name": "|IL| CHANNEL 12 [line.tivi-ott.net]",
+        "right_name": "|IL| CHANNEL 12 [line.tivi-ott.net]"
+      },
+      {
+        "i": 5795,
+        "left": "3840x2160",
+        "right": null,
+        "left_name": "|IL| CHANNEL 13 [line.tivi-ott.net]",
+        "right_name": "|IL| CHANNEL 13 [line.tivi-ott.net]"
+      },
+      {
+        "i": 5796,
+        "left": "3840x2160",
+        "right": null,
+        "left_name": "|IL| CHANNEL 14 [line.tivi-ott.net]",
+        "right_name": "|IL| CHANNEL 14 [line.tivi-ott.net]"
+      },
+      {
+        "i": 5797,
+        "left": "3840x2160",
+        "right": null,
+        "left_name": "|IL| BIG BROTHER [line.tivi-ott.net]",
+        "right_name": "|IL| BIG BROTHER [line.tivi-ott.net]"
+      },
+      {
+        "i": 5800,
+        "left": "3840x2160",
+        "right": null,
+        "left_name": "|IL| GOOD LIFE [line.tivi-ott.net]",
+        "right_name": "|IL| GOOD LIFE [line.tivi-ott.net]"
+      },
+      {
+        "i": 5801,
+        "left": "3840x2160",
+        "right": null,
+        "left_name": "|IL| HOME PLUS [line.tivi-ott.net]",
+        "right_name": "|IL| HOME PLUS [line.tivi-ott.net]"
+      },
+      {
+        "i": 5802,
+        "left": "3840x2160",
+        "right": null,
+        "left_name": "|IL| HOP! CHILDHOOD [line.tivi-ott.net]",
+        "right_name": "|IL| HOP! CHILDHOOD [line.tivi-ott.net]"
+      },
+      {
+        "i": 5804,
+        "left": "3840x2160",
+        "right": null,
+        "left_name": "|IL| I24 [line.tivi-ott.net]",
+        "right_name": "|IL| I24 [line.tivi-ott.net]"
+      }
+    ],
+    "codecs": [
+      {
+        "i": 5791,
+        "left": "hvc1.2.4.L153.B0,mp4a.40.2",
+        "right": null,
+        "left_name": "|IL| CHANNEL 9 [line.tivi-ott.net]",
+        "right_name": "|IL| CHANNEL 9 [line.tivi-ott.net]"
+      },
+      {
+        "i": 5793,
+        "left": "hvc1.2.4.L153.B0,mp4a.40.2",
+        "right": null,
+        "left_name": "|IL| CHANNEL 11 [line.tivi-ott.net]",
+        "right_name": "|IL| CHANNEL 11 [line.tivi-ott.net]"
+      },
+      {
+        "i": 5794,
+        "left": "hvc1.2.4.L153.B0,mp4a.40.2",
+        "right": null,
+        "left_name": "|IL| CHANNEL 12 [line.tivi-ott.net]",
+        "right_name": "|IL| CHANNEL 12 [line.tivi-ott.net]"
+      },
+      {
+        "i": 5795,
+        "left": "hvc1.2.4.L153.B0,mp4a.40.2",
+        "right": null,
+        "left_name": "|IL| CHANNEL 13 [line.tivi-ott.net]",
+        "right_name": "|IL| CHANNEL 13 [line.tivi-ott.net]"
+      },
+      {
+        "i": 5796,
+        "left": "hvc1.2.4.L153.B0,mp4a.40.2",
+        "right": null,
+        "left_name": "|IL| CHANNEL 14 [line.tivi-ott.net]",
+        "right_name": "|IL| CHANNEL 14 [line.tivi-ott.net]"
+      },
+      {
+        "i": 5797,
+        "left": "hvc1.2.4.L153.B0,mp4a.40.2",
+        "right": null,
+        "left_name": "|IL| BIG BROTHER [line.tivi-ott.net]",
+        "right_name": "|IL| BIG BROTHER [line.tivi-ott.net]"
+      },
+      {
+        "i": 5800,
+        "left": "hvc1.2.4.L153.B0,mp4a.40.2",
+        "right": null,
+        "left_name": "|IL| GOOD LIFE [line.tivi-ott.net]",
+        "right_name": "|IL| GOOD LIFE [line.tivi-ott.net]"
+      },
+      {
+        "i": 5801,
+        "left": "hvc1.2.4.L153.B0,mp4a.40.2",
+        "right": null,
+        "left_name": "|IL| HOME PLUS [line.tivi-ott.net]",
+        "right_name": "|IL| HOME PLUS [line.tivi-ott.net]"
+      },
+      {
+        "i": 5802,
+        "left": "hvc1.2.4.L153.B0,mp4a.40.2",
+        "right": null,
+        "left_name": "|IL| HOP! CHILDHOOD [line.tivi-ott.net]",
+        "right_name": "|IL| HOP! CHILDHOOD [line.tivi-ott.net]"
+      },
+      {
+        "i": 5804,
+        "left": "hvc1.2.4.L153.B0,mp4a.40.2",
+        "right": null,
+        "left_name": "|IL| I24 [line.tivi-ott.net]",
+        "right_name": "|IL| I24 [line.tivi-ott.net]"
+      }
+    ],
+    "fr": [
+      {
+        "i": 5791,
+        "left": "30.000",
+        "right": null,
+        "left_name": "|IL| CHANNEL 9 [line.tivi-ott.net]",
+        "right_name": "|IL| CHANNEL 9 [line.tivi-ott.net]"
+      },
+      {
+        "i": 5793,
+        "left": "30.000",
+        "right": null,
+        "left_name": "|IL| CHANNEL 11 [line.tivi-ott.net]",
+        "right_name": "|IL| CHANNEL 11 [line.tivi-ott.net]"
+      },
+      {
+        "i": 5794,
+        "left": "30.000",
+        "right": null,
+        "left_name": "|IL| CHANNEL 12 [line.tivi-ott.net]",
+        "right_name": "|IL| CHANNEL 12 [line.tivi-ott.net]"
+      },
+      {
+        "i": 5795,
+        "left": "30.000",
+        "right": null,
+        "left_name": "|IL| CHANNEL 13 [line.tivi-ott.net]",
+        "right_name": "|IL| CHANNEL 13 [line.tivi-ott.net]"
+      },
+      {
+        "i": 5796,
+        "left": "30.000",
+        "right": null,
+        "left_name": "|IL| CHANNEL 14 [line.tivi-ott.net]",
+        "right_name": "|IL| CHANNEL 14 [line.tivi-ott.net]"
+      },
+      {
+        "i": 5797,
+        "left": "30.000",
+        "right": null,
+        "left_name": "|IL| BIG BROTHER [line.tivi-ott.net]",
+        "right_name": "|IL| BIG BROTHER [line.tivi-ott.net]"
+      },
+      {
+        "i": 5800,
+        "left": "30.000",
+        "right": null,
+        "left_name": "|IL| GOOD LIFE [line.tivi-ott.net]",
+        "right_name": "|IL| GOOD LIFE [line.tivi-ott.net]"
+      },
+      {
+        "i": 5801,
+        "left": "30.000",
+        "right": null,
+        "left_name": "|IL| HOME PLUS [line.tivi-ott.net]",
+        "right_name": "|IL| HOME PLUS [line.tivi-ott.net]"
+      },
+      {
+        "i": 5802,
+        "left": "30.000",
+        "right": null,
+        "left_name": "|IL| HOP! CHILDHOOD [line.tivi-ott.net]",
+        "right_name": "|IL| HOP! CHILDHOOD [line.tivi-ott.net]"
+      },
+      {
+        "i": 5804,
+        "left": "30.000",
+        "right": null,
+        "left_name": "|IL| I24 [line.tivi-ott.net]",
+        "right_name": "|IL| I24 [line.tivi-ott.net]"
+      }
+    ],
+    "hdcp": [],
+    "vr": [
+      {
+        "i": 5791,
+        "left": "PQ",
+        "right": null,
+        "left_name": "|IL| CHANNEL 9 [line.tivi-ott.net]",
+        "right_name": "|IL| CHANNEL 9 [line.tivi-ott.net]"
+      },
+      {
+        "i": 5793,
+        "left": "PQ",
+        "right": null,
+        "left_name": "|IL| CHANNEL 11 [line.tivi-ott.net]",
+        "right_name": "|IL| CHANNEL 11 [line.tivi-ott.net]"
+      },
+      {
+        "i": 5794,
+        "left": "PQ",
+        "right": null,
+        "left_name": "|IL| CHANNEL 12 [line.tivi-ott.net]",
+        "right_name": "|IL| CHANNEL 12 [line.tivi-ott.net]"
+      },
+      {
+        "i": 5795,
+        "left": "PQ",
+        "right": null,
+        "left_name": "|IL| CHANNEL 13 [line.tivi-ott.net]",
+        "right_name": "|IL| CHANNEL 13 [line.tivi-ott.net]"
+      },
+      {
+        "i": 5796,
+        "left": "PQ",
+        "right": null,
+        "left_name": "|IL| CHANNEL 14 [line.tivi-ott.net]",
+        "right_name": "|IL| CHANNEL 14 [line.tivi-ott.net]"
+      },
+      {
+        "i": 5797,
+        "left": "PQ",
+        "right": null,
+        "left_name": "|IL| BIG BROTHER [line.tivi-ott.net]",
+        "right_name": "|IL| BIG BROTHER [line.tivi-ott.net]"
+      },
+      {
+        "i": 5800,
+        "left": "PQ",
+        "right": null,
+        "left_name": "|IL| GOOD LIFE [line.tivi-ott.net]",
+        "right_name": "|IL| GOOD LIFE [line.tivi-ott.net]"
+      },
+      {
+        "i": 5801,
+        "left": "PQ",
+        "right": null,
+        "left_name": "|IL| HOME PLUS [line.tivi-ott.net]",
+        "right_name": "|IL| HOME PLUS [line.tivi-ott.net]"
+      },
+      {
+        "i": 5802,
+        "left": "PQ",
+        "right": null,
+        "left_name": "|IL| HOP! CHILDHOOD [line.tivi-ott.net]",
+        "right_name": "|IL| HOP! CHILDHOOD [line.tivi-ott.net]"
+      },
+      {
+        "i": 5804,
+        "left": "PQ",
+        "right": null,
+        "left_name": "|IL| I24 [line.tivi-ott.net]",
+        "right_name": "|IL| I24 [line.tivi-ott.net]"
+      }
+    ],
+    "sf": [
+      {
+        "i": 0,
+        "left": 1,
+        "right": 0,
+        "left_name": "|AL| TOP CHANNEL FHD [line.tivi-ott.net]",
+        "right_name": "|AL| TOP CHANNEL FHD [line.tivi-ott.net]"
+      },
+      {
+        "i": 1,
+        "left": 1,
+        "right": 0,
+        "left_name": "|AL| TOP CHANNEL HD [line.tivi-ott.net]",
+        "right_name": "|AL| TOP CHANNEL HD [line.tivi-ott.net]"
+      },
+      {
+        "i": 2,
+        "left": 1,
+        "right": 0,
+        "left_name": "|AL| VIZION PLUS FHD [line.tivi-ott.net]",
+        "right_name": "|AL| VIZION PLUS FHD [line.tivi-ott.net]"
+      },
+      {
+        "i": 3,
+        "left": 1,
+        "right": 0,
+        "left_name": "|AL| VIZION PLUS HD [line.tivi-ott.net]",
+        "right_name": "|AL| VIZION PLUS HD [line.tivi-ott.net]"
+      },
+      {
+        "i": 4,
+        "left": 1,
+        "right": 0,
+        "left_name": "|AL| KLAN TV FHD [line.tivi-ott.net]",
+        "right_name": "|AL| KLAN TV FHD [line.tivi-ott.net]"
+      },
+      {
+        "i": 5,
+        "left": 1,
+        "right": 0,
+        "left_name": "|AL| KLAN TV HD [line.tivi-ott.net]",
+        "right_name": "|AL| KLAN TV HD [line.tivi-ott.net]"
+      },
+      {
+        "i": 6,
+        "left": 1,
+        "right": 0,
+        "left_name": "|AL| KLAN KOSOVA FHD [line.tivi-ott.net]",
+        "right_name": "|AL| KLAN KOSOVA FHD [line.tivi-ott.net]"
+      },
+      {
+        "i": 7,
+        "left": 1,
+        "right": 0,
+        "left_name": "|AL| KLAN KOSOVA HD [line.tivi-ott.net]",
+        "right_name": "|AL| KLAN KOSOVA HD [line.tivi-ott.net]"
+      },
+      {
+        "i": 8,
+        "left": 1,
+        "right": 0,
+        "left_name": "|AL| KTV KOHAVISION FHD [line.tivi-ott.net]",
+        "right_name": "|AL| KTV KOHAVISION FHD [line.tivi-ott.net]"
+      },
+      {
+        "i": 9,
+        "left": 1,
+        "right": 0,
+        "left_name": "|AL| KTV KOHAVISION HD [line.tivi-ott.net]",
+        "right_name": "|AL| KTV KOHAVISION HD [line.tivi-ott.net]"
+      }
+    ],
+    "xres": [],
+    "xcodec": [],
+    "xrange": [],
+    "hdrs": [],
+    "url": [],
+    "host": [],
+    "scheme": [],
+    "lines": [
+      {
+        "i": 0,
+        "left": 956,
+        "right": 953,
+        "left_name": "|AL| TOP CHANNEL FHD [line.tivi-ott.net]",
+        "right_name": "|AL| TOP CHANNEL FHD [line.tivi-ott.net]"
+      },
+      {
+        "i": 1,
+        "left": 955,
+        "right": 952,
+        "left_name": "|AL| TOP CHANNEL HD [line.tivi-ott.net]",
+        "right_name": "|AL| TOP CHANNEL HD [line.tivi-ott.net]"
+      },
+      {
+        "i": 2,
+        "left": 956,
+        "right": 953,
+        "left_name": "|AL| VIZION PLUS FHD [line.tivi-ott.net]",
+        "right_name": "|AL| VIZION PLUS FHD [line.tivi-ott.net]"
+      },
+      {
+        "i": 3,
+        "left": 955,
+        "right": 952,
+        "left_name": "|AL| VIZION PLUS HD [line.tivi-ott.net]",
+        "right_name": "|AL| VIZION PLUS HD [line.tivi-ott.net]"
+      },
+      {
+        "i": 4,
+        "left": 956,
+        "right": 953,
+        "left_name": "|AL| KLAN TV FHD [line.tivi-ott.net]",
+        "right_name": "|AL| KLAN TV FHD [line.tivi-ott.net]"
+      },
+      {
+        "i": 5,
+        "left": 955,
+        "right": 952,
+        "left_name": "|AL| KLAN TV HD [line.tivi-ott.net]",
+        "right_name": "|AL| KLAN TV HD [line.tivi-ott.net]"
+      },
+      {
+        "i": 6,
+        "left": 956,
+        "right": 953,
+        "left_name": "|AL| KLAN KOSOVA FHD [line.tivi-ott.net]",
+        "right_name": "|AL| KLAN KOSOVA FHD [line.tivi-ott.net]"
+      },
+      {
+        "i": 7,
+        "left": 955,
+        "right": 952,
+        "left_name": "|AL| KLAN KOSOVA HD [line.tivi-ott.net]",
+        "right_name": "|AL| KLAN KOSOVA HD [line.tivi-ott.net]"
+      },
+      {
+        "i": 8,
+        "left": 956,
+        "right": 953,
+        "left_name": "|AL| KTV KOHAVISION FHD [line.tivi-ott.net]",
+        "right_name": "|AL| KTV KOHAVISION FHD [line.tivi-ott.net]"
+      },
+      {
+        "i": 9,
+        "left": 955,
+        "right": 952,
+        "left_name": "|AL| KTV KOHAVISION HD [line.tivi-ott.net]",
+        "right_name": "|AL| KTV KOHAVISION HD [line.tivi-ott.net]"
+      }
+    ],
+    "urls": [],
+    "si": [
+      {
+        "i": 5791,
+        "left": 1,
+        "right": 0,
+        "left_name": "|IL| CHANNEL 9 [line.tivi-ott.net]",
+        "right_name": "|IL| CHANNEL 9 [line.tivi-ott.net]"
+      },
+      {
+        "i": 5793,
+        "left": 1,
+        "right": 0,
+        "left_name": "|IL| CHANNEL 11 [line.tivi-ott.net]",
+        "right_name": "|IL| CHANNEL 11 [line.tivi-ott.net]"
+      },
+      {
+        "i": 5794,
+        "left": 1,
+        "right": 0,
+        "left_name": "|IL| CHANNEL 12 [line.tivi-ott.net]",
+        "right_name": "|IL| CHANNEL 12 [line.tivi-ott.net]"
+      },
+      {
+        "i": 5795,
+        "left": 1,
+        "right": 0,
+        "left_name": "|IL| CHANNEL 13 [line.tivi-ott.net]",
+        "right_name": "|IL| CHANNEL 13 [line.tivi-ott.net]"
+      },
+      {
+        "i": 5796,
+        "left": 1,
+        "right": 0,
+        "left_name": "|IL| CHANNEL 14 [line.tivi-ott.net]",
+        "right_name": "|IL| CHANNEL 14 [line.tivi-ott.net]"
+      },
+      {
+        "i": 5797,
+        "left": 1,
+        "right": 0,
+        "left_name": "|IL| BIG BROTHER [line.tivi-ott.net]",
+        "right_name": "|IL| BIG BROTHER [line.tivi-ott.net]"
+      },
+      {
+        "i": 5800,
+        "left": 1,
+        "right": 0,
+        "left_name": "|IL| GOOD LIFE [line.tivi-ott.net]",
+        "right_name": "|IL| GOOD LIFE [line.tivi-ott.net]"
+      },
+      {
+        "i": 5801,
+        "left": 1,
+        "right": 0,
+        "left_name": "|IL| HOME PLUS [line.tivi-ott.net]",
+        "right_name": "|IL| HOME PLUS [line.tivi-ott.net]"
+      },
+      {
+        "i": 5802,
+        "left": 1,
+        "right": 0,
+        "left_name": "|IL| HOP! CHILDHOOD [line.tivi-ott.net]",
+        "right_name": "|IL| HOP! CHILDHOOD [line.tivi-ott.net]"
+      },
+      {
+        "i": 5804,
+        "left": 1,
+        "right": 0,
+        "left_name": "|IL| I24 [line.tivi-ott.net]",
+        "right_name": "|IL| I24 [line.tivi-ott.net]"
+      }
+    ],
+    "country": []
+  },
+  "totals": {
+    "left_lines": 10158803,
+    "right_lines": 10128481,
+    "left_bytes": 566660095,
+    "right_bytes": 562731075
+  },
+  "dups": {
+    "left_url_dups": 0,
+    "right_url_dups": 0,
+    "left_id_dups": 0,
+    "right_id_dups": 0
+  }
+}

@@ -1,0 +1,277 @@
+{
+  "file": "ara-x/evidence/APE_LISTA_4K_live_20261030_full.m3u8",
+  "bytes": 572170477,
+  "header_lines": [
+    "#EXTM3U x-tvg-url=\"\" x-tvg-url-epg=\"\" x-tvg-logo=\"\" x-tvg-shift=0 catchup=\"flussonic\" catchup-days=\"7\" catchup-source=\"{MediaUrl}?utc={utc}&lutc={lutc}\" url-tvg=\"\" refresh=\"1800\"",
+    "#EXT-X-VERSION:9",
+    "#EXT-X-INDEPENDENT-SEGMENTS",
+    "#EXT-X-APE-CHANNELS:10631",
+    "#EXT-X-APE-LAB-EXTRAS:1",
+    "#EXT-X-APE-LAB-DNA:sha256=unverified,SOURCE=LAB_CALIBRATED,EXPORTED=2026-10-26T01:31:05",
+    "#EXT-X-START:TIME-OFFSET=-3.0,PRECISE=YES",
+    "#EXT-X-SERVER-CONTROL:CAN-BLOCK-RELOAD=YES,PART-HOLD-BACK=1.0,CAN-SKIP-UNTIL=12.0,HOLD-BACK=3.0",
+    "#EXT-X-TARGETDURATION:2",
+    "#EXT-X-PART-INF:PART-TARGET=1.0",
+    "#EXT-X-SESSION-DATA:DATA-ID=\"exoplayer.load_control\",VALUE=\"{\\\"minBufferMs\\\":20000,\\\"bufferForPlaybackMs\\\":1000,\\\"bufferForPlaybackAfterRebufferMs\\\":2000,\\\"maxBufferMs\\\":30000}\"",
+    "#EXT-X-SESSION-DATA:DATA-ID=\"exoplayer.track_selection\",VALUE=\"{\\\"maxDurationForQualityDecreaseMs\\\":2000,\\\"minDurationForQualityIncreaseMs\\\":15000,\\\"bandwidthFraction\\\":0.65}\"",
+    "#EXT-X-SESSION-DATA:DATA-ID=\"com.ape.live_sync\",VALUE=\"{\\\"liveSyncDurationCount\\\":3,\\\"liveMaxLatencyDurationCount\\\":10,\\\"liveTargetOffsetMs\\\":3000,\\\"maxLiveOffsetMs\\\":12000}\"",
+    "#EXT-X-SESSION-DATA:DATA-ID=\"com.ape.recovery_policy\",VALUE=\"{\\\"resumeFromLastPositionMs\\\":true,\\\"skipDuplicateSegments\\\":true,\\\"alignToProgramDateTime\\\":true,\\\"maxResumeDriftMs\\\":500,\\\"preserveBitrateOnResume\\\":true}\"",
+    "#EXT-X-SESSION-DATA:DATA-ID=\"com.ape.network_resilience\",VALUE=\"{\\\"connectionTimeoutMs\\\":8000,\\\"readTimeoutMs\\\":15000,\\\"retryCount\\\":5,\\\"retryBackoffMs\\\":500,\\\"retryBackoffFactor\\\":1.5,\\\"maxRetryBackoffMs\\\":4000,\\\"freezeDetectionMs\\\":3000,\\\"maxFreezeBeforeRestartMs\\\":15000,\\\"jumpToLiveOnFreeze\\\":true}\"",
+    "#EXT-X-SESSION-DATA:DATA-ID=\"com.ape.abr_quality_policy\",VALUE=\"{\\\"preferHigherBitrate\\\":true,\\\"minStableTimeBeforeUpgradeMs\\\":15000,\\\"qualityDropThreshold\\\":0.65,\\\"qualityRiseThreshold\\\":0.85,\\\"smoothSwitching\\\":true,\\\"forbidDowngradeOnTransientStall\\\":true}\"",
+    "#EXT-X-SESSION-DATA:DATA-ID=\"com.ape.universal_parity\",VALUE=\"{\\\"applyToResolutions\\\":[\\\"480p\\\",\\\"720p\\\",\\\"1080p\\\",\\\"1440p\\\",\\\"2160p\\\",\\\"4320p\\\"],\\\"sameBufferStrategy\\\":true,\\\"sameRecoveryPolicy\\\":true,\\\"sameLowLatencyMode\\\":true,\\\"sameABRPolicy\\\":true}\"",
+    "#EXT-X-SESSION-DATA:DATA-ID=\"com.ape.codec_preferences\",VALUE=\"{\\\"preferredCodecs\\\":[\\\"dvh1\\\",\\\"hvc1.2\\\",\\\"av01\\\",\\\"avc1\\\"],\\\"hdrModes\\\":[\\\"PQ\\\",\\\"HLG\\\",\\\"DV\\\"],\\\"audioPassthrough\\\":[\\\"ec-3\\\",\\\"ac-3\\\",\\\"mp4a\\\"]}\"",
+    "#EXT-X-APE-QOE-ENGINE:URI=\"https://iptv-ape.duckdns.org/prisma/lib/conviva-qoe-engine.js\",VERSION=\"1.0.0-disney-grade\",AUTO_LOAD=\"true\",FALLBACK_URI=\"js/conviva-qoe-engine.js\",TELEMETRY_ENDPOINT=\"https://iptv-ape.duckdns.org/prisma/api/conviva-event.php\"",
+    "#EXT-X-APE-LAB-SCHEMA-VARIANT:omega_v2_bulletproof_perprofile",
+    "#EXT-X-APE-LAB-EXPORTED-AT:2026-10-26T01:31:05",
+    "#EXT-X-APE-LAB-BULLETPROOF:true",
+    "#EXT-X-APE-LAB-FILENAME:LAB_CALIBRATED",
+    "#EXT-X-APE-LAB-PROFILE-P0:NAME=\"8K Master\",ROLE=\"8K Master\",FITNESS=0.7398,SOLVER=\"LHS->GA->SA->NM 0,1s\",TIMESTAMP=46132.0850925926",
+    "#EXT-X-APE-LAB-BOUNDS-P0:nudge_retry=[10,17],buffer=[105,315],abr_bw_factor=[0.85,0.98],frag_retry=[21,44],live_sync=[1.25,1.7],reconnect=[88,350],live_delay=[14,35]",
+    "#EXT-X-APE-LAB-KNOBS-P0:abrBandWidthFactor=0.85,reconnect_attempts=350,maxLiveSyncPlaybackRate=1.25,buffer_seconds=105,nudgeMaxRetry=13,fragLoad_maxNumRetry=32,live_delay_seconds=14",
+    "#EXT-X-APE-LAB-PROFILE-P1:NAME=\"4K UHD Pro\",ROLE=\"4K UHD Pro\",FITNESS=1,SOLVER=\"LHS->GA->SA->NM 0,0s\",TIMESTAMP=46132.0850925926",
+    "#EXT-X-APE-LAB-BOUNDS-P1:nudge_retry=[8,14],buffer=[72,195],abr_bw_factor=[0.8,0.95],frag_retry=[16,35],live_sync=[1.2,1.6],reconnect=[64,290],live_delay=[10,29]",
+    "#EXT-X-APE-LAB-KNOBS-P1:abrBandWidthFactor=0.8483,reconnect_attempts=215,maxLiveSyncPlaybackRate=1.2866,buffer_seconds=72,nudgeMaxRetry=10,fragLoad_maxNumRetry=27,live_delay_seconds=10",
+    "#EXT-X-APE-LAB-PROFILE-P2:NAME=\"4K Balanced\",ROLE=\"4K Balanced\",FITNESS=1,SOLVER=\"LHS->GA->SA->NM 0,0s\",TIMESTAMP=46132.0850925926",
+    "#EXT-X-APE-LAB-BOUNDS-P2:nudge_retry=[6,12],buffer=[45,130],abr_bw_factor=[0.7,0.92],frag_retry=[10,26],live_sync=[1.15,1.5],reconnect=[44,218],live_delay=[7,20]",
+    "#EXT-X-APE-LAB-KNOBS-P2:abrBandWidthFactor=0.7832,reconnect_attempts=214,maxLiveSyncPlaybackRate=1.3286,buffer_seconds=58,nudgeMaxRetry=10,fragLoad_maxNumRetry=20,live_delay_seconds=10",
+    "#EXT-X-APE-LAB-PROFILE-P3:NAME=\"FHD 1080p\",ROLE=\"FHD 1080p\",FITNESS=0.9909,SOLVER=\"LHS->GA->SA->NM 0,1s\",TIMESTAMP=46132.0850810185",
+    "#EXT-X-APE-LAB-BOUNDS-P3:nudge_retry=[5,10],buffer=[26,80],abr_bw_factor=[0.65,0.9],frag_retry=[7,20],live_sync=[1.1,1.4],reconnect=[32,156],live_delay=[5,16]",
+    "#EXT-X-APE-LAB-KNOBS-P3:abrBandWidthFactor=0.65,reconnect_attempts=156,maxLiveSyncPlaybackRate=1.25,buffer_seconds=55,nudgeMaxRetry=10,fragLoad_maxNumRetry=20,live_delay_seconds=10",
+    "#EXT-X-APE-LAB-PROFILE-P4:NAME=\"HD 720p\",ROLE=\"HD 720p\",FITNESS=0.2502,SOLVER=\"LHS->GA->SA->NM 0,1s\",TIMESTAMP=46132.0850810185",
+    "#EXT-X-APE-LAB-BOUNDS-P4:nudge_retry=[3,7],buffer=[18,52],abr_bw_factor=[0.55,0.85],frag_retry=[3,12],live_sync=[1.05,1.3],reconnect=[23,115],live_delay=[4,12]",
+    "#EXT-X-APE-LAB-KNOBS-P4:abrBandWidthFactor=0.55,reconnect_attempts=115,maxLiveSyncPlaybackRate=1.25,buffer_seconds=52,nudgeMaxRetry=7,fragLoad_maxNumRetry=12,live_delay_seconds=10",
+    "#EXT-X-APE-LAB-PROFILE-P5:NAME=\"SD 480p\",ROLE=\"SD 480p\",FITNESS=0.2175,SOLVER=\"LHS->GA->SA->NM 0,1s\",TIMESTAMP=46132.0850810185",
+    "#EXT-X-APE-LAB-BOUNDS-P5:nudge_retry=[3,5],buffer=[10,30],abr_bw_factor=[0.5,0.8],frag_retry=[1,5],live_sync=[1,1.2],reconnect=[10,60],live_delay=[3,8]",
+    "#EXT-X-APE-LAB-KNOBS-P5:abrBandWidthFactor=0.5,reconnect_attempts=60,maxLiveSyncPlaybackRate=1.2,buffer_seconds=30,nudgeMaxRetry=5,fragLoad_maxNumRetry=5,live_delay_seconds=8",
+    "#EXT-X-SESSION-DATA:DATA-ID=\"com.ape.lab.schema\",VALUE=\"omega_v2_bulletproof_perprofile\"",
+    "#EXT-X-SESSION-DATA:DATA-ID=\"com.ape.lab.exported_at\",VALUE=\"2026-10-26T01:31:05\"",
+    "#EXT-X-SESSION-DATA:DATA-ID=\"com.ape.lab.bulletproof\",VALUE=\"true\"",
+    "#EXT-X-SESSION-DATA:DATA-ID=\"com.ape.lab.filename\",VALUE=\"LAB_CALIBRATED\"",
+    "#EXT-X-SESSION-DATA:DATA-ID=\"com.ape.profile.master\",VALUE=\"P0\"",
+    "#EXT-X-SESSION-DATA:DATA-ID=\"com.ape.profile.master_name\",VALUE=\"8K Master\"",
+    "#EXT-X-SESSION-DATA:DATA-ID=\"com.ape.profile.master_role\",VALUE=\"8K Master\"",
+    "#EXT-X-SESSION-DATA:DATA-ID=\"com.ape.codec.chain.player_pref\",VALUE=\"hvc1,hev1,h265,avc1,h264\"",
+    "#EXT-X-SESSION-DATA:DATA-ID=\"com.ape.codec.chain.audio\",VALUE=\"mp4a.40.2,ac-3,mp4a.40.5\"",
+    "#EXT-X-SESSION-DATA:DATA-ID=\"com.ape.codec.chain.hdr\",VALUE=\"hdr10,hlg,sdr\"",
+    "#EXT-X-SESSION-DATA:DATA-ID=\"com.ape.codec.chain.video_family\",VALUE=\"HEVC-MAIN10-L5.1>HEVC-MAIN10-L5.0>HEVC-MAIN10-L5.2>HEVC-MAIN10-L4.1>HEVC-MAIN10-L4.0>HEVC-MAIN10-L3.1>H264-HIGH\"",
+    "#EXT-X-SESSION-DATA:DATA-ID=\"com.ape.qos.target_mos\",VALUE=\"4.8\"",
+    "#EXT-X-SESSION-DATA:DATA-ID=\"com.ape.zapping.max_ms\",VALUE=\"800\"",
+    "#EXT-X-SESSION-DATA:DATA-ID=\"com.ape.startup.max_ms\",VALUE=\"500\"",
+    "#EXT-X-SESSION-DATA:DATA-ID=\"com.ape.rebuffer.tolerance\",VALUE=\"0\"",
+    "#EXT-X-START:TIME-OFFSET=-14,PRECISE=YES",
+    "#EXT-X-APE-ANTI-FREEZE-NUCLEAR",
+    "#EXT-X-APE-MULTI-SOURCE:ENABLED|FAILOVER=50ms|RECONNECT=350",
+    "#EXT-X-APE-BUFFER-STRATEGY:NUCLEAR_NO_COMPROMISE|MIN=52s|TARGET=105s",
+    "#EXT-X-APE-QMAX-STRATEGY:GREEDY-BEST-AVAILABLE|FACTOR=0,85",
+    "#EXT-X-DATERANGE:ID=\"omega-live-P0\",X-OMEGA-TYPE=\"LIVE-CATCHUP\",X-HDR-TYPE=\"HDR10+DV-P81-P10\",X-HDR-MAX-CLL=10000",
+    "#EXT-X-APE-EVASION-GET:405-REWRITE-TO-HEAD",
+    "#EXT-X-CONTENT-STEERING:SERVER-URI=\"pool://failover\",PATHWAY-ID=\"omega\"",
+    "#EXT-X-SESSION-DATA:DATA-ID=\"com.ape.build\",VALUE=\"P0_22.6.0-MEMC-TOTAL-8K120\"",
+    "#EXT-X-SYS-VERSION:APE_v8.0-LAB",
+    "#EXT-X-SYS-ARCHITECTURE:TYPED_ARRAYS_ULTIMATE",
+    "#EXT-X-SYS-GENERATED:2026-10-29T10:49:32.032Z",
+    "#EXT-X-SYS-LIST-ID:APE_LAB_9zdfpzfc8hog",
+    "#EXT-X-SYS-MODULES-ACTIVE:12",
+    "#EXT-X-SYS-MODULES-LIST:JWT,HeadersMatrix,BufferAdaptativo,SmartCodec,FibonacciDNA,TLSCoherence,Geoblocking,Throughput,DynamicQoS,Manifest,VPNIntegration,LatencyRayo",
+    "#EXT-X-SYS-COMPLIANCE:RFC8216",
+    "#EXT-X-SYS-COMPATIBLE:OTT_NAVIGATOR,VLC,KODI,TIVIMATE,SMARTERS",
+    "#EXT-X-SYS-LAYERS:EXTVLCOPT,KODIPROP,EXT-X-APE,EXT-X-START",
+    "#EXT-X-SYS-GLOBAL-BUFFER-STRATEGY:NETWORK=8000,LIVE=4500,FILE=4000",
+    "#EXT-X-SYS-NETWORK-CACHING:8000",
+    "#EXT-X-SYS-LIVE-CACHING:4500",
+    "#EXT-X-SYS-FILE-CACHING:4000",
+    "#EXT-X-SYS-ALT-SVC:h2=\":443\"; ma=86400",
+    "#EXT-X-SYS-PROTOCOL-PRIORITY:http/1.1,h2",
+    "#EXT-X-SYS-MIN-HTTP-VERSION:1.1",
+    "#EXT-X-SYS-HTTP2-MULTIPLEX:enabled",
+    "#EXT-X-SYS-HTTP2-MAX-CONCURRENT-STREAMS:100",
+    "#EXT-X-SYS-COMPRESSION:gzip",
+    "#EXT-X-SYS-COMPRESSION-LEVEL:4",
+    "#EXT-X-SYS-TLS-PRIORITY:tls1.2,tls1.1",
+    "#EXT-X-SYS-MIN-TLS-VERSION:1.0",
+    "#EXT-X-SYS-VIDEO-CODEC-PRIORITY:dvh1,dvhe,hvc1,hev1,av01,vp09,avc1",
+    "#EXT-X-SYS-AUDIO-CODEC-PRIORITY:ac-3,mp4a.40.2",
+    "#EXT-X-SYS-VIDEO-QUALITY:high",
+    "#EXT-X-SYS-AUDIO-QUALITY:high",
+    "#EXT-X-SYS-RESILIENCE-MODE:ULTRA",
+    "#EXT-X-SYS-RECONNECT-TIMEOUT-MS:30",
+    "#EXT-X-SYS-RECONNECT-MAX-ATTEMPTS:50",
+    "#EXT-X-SYS-ZERO-INTERRUPTIONS:true",
+    "#EXT-X-SYS-AVAILABILITY-TARGET:99.99",
+    "#EXT-X-SYS-BANDWIDTH-GUARANTEE:150",
+    "#EXT-X-SYS-FINGERPRINT:FP_2026-10-29T10:49:32.032Z",
+    "#EXT-X-SYS-FP-DEVICE:desktop",
+    "#EXT-X-SYS-FP-PLATFORM:Win32",
+    "#EXT-X-SYS-FP-SCREEN:1536x864",
+    "#EXT-X-SYS-FP-TZ:America/Bogota",
+    "#EXT-X-SYS-FP-LANG:es-419",
+    "#EXT-X-SYS-SERVER-ROTATION:enabled",
+    "#EXT-X-SYS-SERVER-POOL-SIZE:3",
+    "#EXT-X-SYS-SERVER-DISTRIBUTION:round_robin",
+    "#EXT-X-SERVER-1:http://line.tivi-ott.net",
+    "#EXT-X-MOTOR-EVASION:ENABLED",
+    "#EXT-X-UA-ROTATION:true",
+    "#EXT-X-UA-POOL-SIZE:104",
+    "#EXT-X-BLOQUEO-DETECCION:true",
+    "#EXT-X-BLOQUEO-CODIGOS:407,403,429,502,503",
+    "#EXT-X-BLOQUEO-RESPUESTA:auto-retry",
+    "#EXT-X-BLOQUEO-REINTENTOS:3",
+    "#EXT-X-SYS-HTTP-HEADERS:{\"User-Agent\":\"Mozilla/5.0 (Web0S; Linux/SmartTV) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.6045.213 Safari/537.36 WebAppManager\",\"Accept\":\"*/*\",\"Referer\":\"https://www.netflix.com/\",\"Origin\":\"https://www.netflix.com\"}",
+    "#EXT-X-APE-CMCD-OBJECT:type=l,br=5000,d=6000,ot=v",
+    "#EXT-X-APE-CMCD-SESSION:sid=\"{sessionId}\",cid=\"{streamId}\",sf=h,st=l",
+    "#EXT-X-APE-CMCD-REQUEST:bl=30000,dl=6000,nor=\"../next.ts\"",
+    "#EXT-X-APE-CMCD-STATUS:bs,rtp=1000",
+    "#EXT-X-APE-CDN-PLANE:v4",
+    "#EXT-X-APE-CDN-BASE:https://iptv-ape.duckdns.org/cdn/",
+    "#EXT-X-APE-CDN-FAILOVER:allowlist+circuit-breaker-15s",
+    "#EXT-X-APE-CDN-302:follow-to-final-origin",
+    "#EXT-X-APE-CDN-LLHLS:passthrough+server-control",
+    "#EXT-X-APE-CDN-UHD:auto(4k|8k)-codecs-truthful",
+    "#EXT-X-APE-CDN-QOE:/_ape/qoe",
+    "#EXT-X-APE-CDN-LAB:n/a|profiles=6|bulletproof=true"
+  ],
+  "start_lines": [
+    {
+      "line": 7,
+      "v": "#EXT-X-START:TIME-OFFSET=-3.0,PRECISE=YES"
+    },
+    {
+      "line": 57,
+      "v": "#EXT-X-START:TIME-OFFSET=-14,PRECISE=YES"
+    }
+  ],
+  "ara_tags": 0,
+  "resolution_7680": 0,
+  "resolution_2160": 12247,
+  "cmaf": {
+    "map_tag": 0,
+    "key_tag": 0,
+    "media_tag": 0,
+    "endlist": 0,
+    "pdt": 0,
+    "media_sequence": 0,
+    "container": [
+      [
+        ":mpegts",
+        10631
+      ]
+    ],
+    "init_segment": [
+      [
+        ":BYTERANGE=\"1024@0\"",
+        10631
+      ]
+    ]
+  },
+  "apes": {
+    "8kfake_sample": "#EXT-X-APE-8KFAKE:ENABLED=1;NEVER_REAL=1;TARGET=DISPLAY",
+    "4kpremium_sample": "#EXT-X-APE-4K-PREMIUM:ACTIVE",
+    "4kfalse_samples": {
+      "#EXT-X-APE-4KFALSE-MODE": "#EXT-X-APE-4KFALSE-MODE:ACTIVE",
+      "#EXT-X-APE-4KFALSE-CONTENT-TYPE": "#EXT-X-APE-4KFALSE-CONTENT-TYPE:GENERAL",
+      "#EXT-X-APE-4KFALSE-TARGET-RES": "#EXT-X-APE-4KFALSE-TARGET-RES:3840x2160",
+      "#EXT-X-APE-4KFALSE-ENGINE": "#EXT-X-APE-4KFALSE-ENGINE:LAB-CALIBRATED-DNR+MEMC-120"
+    },
+    "8kfake_needs_dv": null
+  },
+  "hdr": {
+    "kodi_hdr_mode": [
+      [
+        "SDR",
+        9823
+      ],
+      [
+        "PQ",
+        808
+      ]
+    ],
+    "dv_profile": [
+      [
+        "8",
+        10631
+      ]
+    ],
+    "hdr_transfer": [
+      [
+        ":BT1886",
+        10631
+      ]
+    ],
+    "hdr_primaries": [
+      [
+        ":BT2020",
+        10631
+      ]
+    ],
+    "hdr_range": [
+      [
+        "LIMITED",
+        10631
+      ]
+    ],
+    "hdr_dv_mode": [
+      [
+        "ODE=SDR,NITS=100,BT2020=true",
+        7523
+      ],
+      [
+        "ODE=SDR,NITS=400,BT2020=true",
+        2300
+      ],
+      [
+        "ODE=PQ,NITS=1500,BT2020=true",
+        808
+      ]
+    ]
+  },
+  "daterange": {
+    "count": 10632,
+    "distinct_ids": 1,
+    "dup_ids": 10631,
+    "ids_sample": [
+      "(no-id)"
+    ]
+  },
+  "sid": {
+    "count": 10631,
+    "distinct": 10630,
+    "dups": 1,
+    "dup_sample": [
+      "13fb1f0c…"
+    ]
+  },
+  "nonce": {
+    "count": 0,
+    "distinct": 0
+  },
+  "urls": {
+    "count": 10631,
+    "with_at": 0,
+    "with_userinfo_scheme": 0,
+    "path_shape_top": [
+      [
+        "/cdn/<17c>/<4c>/<6c>/…",
+        10631
+      ]
+    ],
+    "provider_hosts": [
+      [
+        "line.tivi-ott.net",
+        10631
+      ]
+    ],
+    "query_present": 0
+  },
+  "exthttp": {
+    "with_url_value": 0
+  },
+  "lab": {
+    "channels": "10631",
+    "dna": "a256=unverified,SOURCE=LAB_CALIBRATED,EXPORTED=2026-10-26T01:31:05"
+  },
+  "misc": {
+    "ph_headers": 0,
+    "empty_lines": 10634
+  },
+  "total_lines": 10169562
+}

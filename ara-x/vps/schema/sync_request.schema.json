@@ -1,0 +1,2044 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://iptv-ape.duckdns.org/schemas/ara-x/sync_request.schema.json",
+  "title": "ARA-X sync request v2 (device -> VPS) — honest telemetry with provenance",
+  "description": "v=2. Cada magnitud viaja como {value, prov, age_ms, conf}. value=null <-> prov=unavailable (nunca 0 por ausencia). content.* no viaja del device: lo aporta el VPS desde el LAB SSOT. ref fija la identidad del catalogo (artifact_sha256 + generation_id), porque las listas son polimorficas entre generaciones (R1 §0.8). client.soc acepta el token canonico o \"unknown\" + soc_raw para un SoC no identificado (D4-F10, fail-closed). La firma HMAC sigue siendo ARA-X-SYNC-V1 sobre el body crudo (R6-D3-AUTH-02).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "v",
+    "type",
+    "device_id",
+    "seq",
+    "ts",
+    "nonce",
+    "client",
+    "ref",
+    "metrics",
+    "state"
+  ],
+  "properties": {
+    "v": {
+      "type": "integer",
+      "enum": [
+        2
+      ]
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "ara_x_sync"
+      ]
+    },
+    "device_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._-]{3,128}$"
+    },
+    "seq": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 2147483647
+    },
+    "ts": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 4102444800
+    },
+    "nonce": {
+      "type": "string",
+      "minLength": 16,
+      "maxLength": 64,
+      "pattern": "^[a-f0-9]+$"
+    },
+    "client": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "app",
+        "version",
+        "soc",
+        "android",
+        "player"
+      ],
+      "properties": {
+        "app": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64,
+          "pattern": "^[A-Za-z0-9._-]+$"
+        },
+        "version": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 32,
+          "pattern": "^[A-Za-z0-9._:+-]+$"
+        },
+        "soc": {
+          "type": "string",
+          "enum": [
+            "mt8696",
+            "amlogic",
+            "s905x4",
+            "s905x3",
+            "unknown"
+          ]
+        },
+        "soc_raw": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64,
+          "pattern": "^[A-Za-z0-9._-]+$"
+        },
+        "android": {
+          "type": "integer",
+          "minimum": 7,
+          "maximum": 99
+        },
+        "player": {
+          "type": "string",
+          "enum": [
+            "exoplayer",
+            "vlc",
+            "kodi",
+            "tivimate",
+            "ott",
+            "hlsjs",
+            "other"
+          ]
+        },
+        "player_version": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 32,
+          "pattern": "^[A-Za-z0-9._:+-]+$"
+        }
+      }
+    },
+    "ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "artifact_sha256",
+        "generation_id",
+        "list_version"
+      ],
+      "properties": {
+        "artifact_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "generation_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9._:+-]{1,64}$"
+        },
+        "list_version": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9._:+-]{1,64}$"
+        }
+      }
+    },
+    "session": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "playback_state": {
+          "type": "string",
+          "enum": [
+            "playing",
+            "paused",
+            "buffering",
+            "idle",
+            "unknown"
+          ]
+        },
+        "list_version": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9._:+-]{1,64}$"
+        },
+        "started_at": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4102444800
+        }
+      }
+    },
+    "metrics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "window_s",
+        "conf",
+        "features",
+        "source"
+      ],
+      "properties": {
+        "window_s": {
+          "type": "integer",
+          "minimum": 10,
+          "maximum": 60
+        },
+        "conf": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 1
+        },
+        "features": {
+          "type": "object",
+          "additionalProperties": false,
+          "minProperties": 1,
+          "maxProperties": 40,
+          "properties": {
+            "vst_ms": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "value",
+                "prov",
+                "age_ms",
+                "conf"
+              ],
+              "properties": {
+                "value": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ],
+                  "minimum": 0,
+                  "maximum": 60000
+                },
+                "prov": {
+                  "type": "string",
+                  "enum": [
+                    "measured_device",
+                    "measured_server",
+                    "derived",
+                    "modeled",
+                    "unavailable"
+                  ]
+                },
+                "age_ms": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ],
+                  "minimum": 0,
+                  "maximum": 300000
+                },
+                "conf": {
+                  "type": [
+                    "number",
+                    "null"
+                  ],
+                  "minimum": 0,
+                  "maximum": 1
+                }
+              }
+            },
+            "startup_outcome": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "value",
+                "prov",
+                "age_ms",
+                "conf"
+              ],
+              "properties": {
+                "value": {
+                  "type": [
+                    "integer",
+                    "string",
+                    "null"
+                  ],
+                  "enum": [
+                    "ok",
+                    "timeout",
+                    "error",
+                    "unknown",
+                    null
+                  ]
+                },
+                "prov": {
+                  "type": "string",
+                  "enum": [
+                    "measured_device",
+                    "measured_server",
+                    "derived",
+                    "modeled",
+                    "unavailable"
+                  ]
+                },
+                "age_ms": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ],
+                  "minimum": 0,
+                  "maximum": 300000
+                },
+                "conf": {
+                  "type": [
+                    "number",
+                    "null"
+                  ],
+                  "minimum": 0,
+                  "maximum": 1
+                }
+              }
+            },
+            "rebuffer_events": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "value",
+                "prov",
+                "age_ms",
+                "conf"
+              ],
+              "properties": {
+                "value": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ],
+                  "minimum": 0,
+                  "maximum": 99
+                },
+                "prov": {
+                  "type": "string",
+                  "enum": [
+                    "measured_device",
+                    "measured_server",
+                    "derived",
+                    "modeled",
+                    "unavailable"
+                  ]
+                },
+                "age_ms": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ],
+                  "minimum": 0,
+                  "maximum": 300000
+                },
+                "conf": {
+                  "type": [
+                    "number",
+                    "null"
+                  ],
+                  "minimum": 0,
+                  "maximum": 1
+                }
+              }
+            },
+            "rebuffer_ms": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "value",
+                "prov",
+                "age_ms",
+                "conf"
+              ],
+              "properties": {
+                "value": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ],
+                  "minimum": 0,
+                  "maximum": 600000
+                },
+                "prov": {
+                  "type": "string",
+                  "enum": [
+                    "measured_device",
+                    "measured_server",
+                    "derived",
+                    "modeled",
+                    "unavailable"
+                  ]
+                },
+                "age_ms": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ],
+                  "minimum": 0,
+                  "maximum": 300000
+                },
+                "conf": {
+                  "type": [
+                    "number",
+                    "null"
+                  ],
+                  "minimum": 0,
+                  "maximum": 1
+                }
+              }
+            },
+            "rebuffer_ratio": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "value",
+                "prov",
+                "age_ms",
+                "conf"
+              ],
+              "properties": {
+                "value": {
+                  "type": [
+                    "number",
+                    "null"
+                  ],
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "prov": {
+                  "type": "string",
+                  "enum": [
+                    "measured_device",
+                    "measured_server",
+                    "derived",
+                    "modeled",
+                    "unavailable"
+                  ]
+                },
+                "age_ms": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ],
+                  "minimum": 0,
+                  "maximum": 300000
+                },
+                "conf": {
+                  "type": [
+                    "number",
+                    "null"
+                  ],
+                  "minimum": 0,
+                  "maximum": 1
+                }
+              }
+            },
+            "play_ms": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "value",
+                "prov",
+                "age_ms",
+                "conf"
+              ],
+              "properties": {
+                "value": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ],
+                  "minimum": 0,
+                  "maximum": 600000
+                },
+                "prov": {
+                  "type": "string",
+                  "enum": [
+                    "measured_device",
+                    "measured_server",
+                    "derived",
+                    "modeled",
+                    "unavailable"
+                  ]
+                },
+                "age_ms": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ],
+                  "minimum": 0,
+                  "maximum": 300000
+                },
+                "conf": {
+                  "type": [
+                    "number",
+                    "null"
+                  ],
+                  "minimum": 0,
+                  "maximum": 1
+                }
+              }
+            },
+            "frame_drop_count": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "value",
+                "prov",
+                "age_ms",
+                "conf"
+              ],
+              "properties": {
+                "value": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ],
+                  "minimum": 0,
+                  "maximum": 1000000
+                },
+                "prov": {
+                  "type": "string",
+                  "enum": [
+                    "measured_device",
+                    "measured_server",
+                    "derived",
+                    "modeled",
+                    "unavailable"
+                  ]
+                },
+                "age_ms": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ],
+                  "minimum": 0,
+                  "maximum": 300000
+                },
+                "conf": {
+                  "type": [
+                    "number",
+                    "null"
+                  ],
+                  "minimum": 0,
+                  "maximum": 1
+                }
+              }
+            },
+            "frame_drop_ratio": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "value",
+                "prov",
+                "age_ms",
+                "conf"
+              ],
+              "properties": {
+                "value": {
+                  "type": [
+                    "number",
+                    "null"
+                  ],
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "prov": {
+                  "type": "string",
+                  "enum": [
+                    "measured_device",
+                    "measured_server",
+                    "derived",
+                    "modeled",
+                    "unavailable"
+                  ]
+                },
+                "age_ms": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ],
+                  "minimum": 0,
+                  "maximum": 300000
+                },
+                "conf": {
+                  "type": [
+                    "number",
+                    "null"
+                  ],
+                  "minimum": 0,
+                  "maximum": 1
+                }
+              }
+            },
+            "fps_declared": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "value",
+                "prov",
+                "age_ms",
+                "conf"
+              ],
+              "properties": {
+                "value": {
+                  "type": [
+                    "number",
+                    "null"
+                  ],
+                  "minimum": 1,
+                  "maximum": 240
+                },
+                "prov": {
+                  "type": "string",
+                  "enum": [
+                    "measured_device",
+                    "measured_server",
+                    "derived",
+                    "modeled",
+                    "unavailable"
+                  ]
+                },
+                "age_ms": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ],
+                  "minimum": 0,
+                  "maximum": 300000
+                },
+                "conf": {
+                  "type": [
+                    "number",
+                    "null"
+                  ],
+                  "minimum": 0,
+                  "maximum": 1
+                }
+              }
+            },
+            "fps_effective": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "value",
+                "prov",
+                "age_ms",
+                "conf"
+              ],
+              "properties": {
+                "value": {
+                  "type": [
+                    "number",
+                    "null"
+                  ],
+                  "minimum": 1,
+                  "maximum": 240
+                },
+                "prov": {
+                  "type": "string",
+                  "enum": [
+                    "measured_device",
+                    "measured_server",
+                    "derived",
+                    "modeled",
+                    "unavailable"
+                  ]
+                },
+                "age_ms": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ],
+                  "minimum": 0,
+                  "maximum": 300000
+                },
+                "conf": {
+                  "type": [
+                    "number",
+                    "null"
+                  ],
+                  "minimum": 0,
+                  "maximum": 1
+                }
+              }
+            },
+            "frame_time_ms": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "value",
+                "prov",
+                "age_ms",
+                "conf"
+              ],
+              "properties": {
+                "value": {
+                  "type": [
+                    "number",
+                    "null"
+                  ],
+                  "minimum": 0,
+                  "maximum": 1000
+                },
+                "prov": {
+                  "type": "string",
+                  "enum": [
+                    "measured_device",
+                    "measured_server",
+                    "derived",
+                    "modeled",
+                    "unavailable"
+                  ]
+                },
+                "age_ms": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ],
+                  "minimum": 0,
+                  "maximum": 300000
+                },
+                "conf": {
+                  "type": [
+                    "number",
+                    "null"
+                  ],
+                  "minimum": 0,
+                  "maximum": 1
+                }
+              }
+            },
+            "frame_time_var_ms2": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "value",
+                "prov",
+                "age_ms",
+                "conf"
+              ],
+              "properties": {
+                "value": {
+                  "type": [
+                    "number",
+                    "null"
+                  ],
+                  "minimum": 0,
+                  "maximum": 1000000
+                },
+                "prov": {
+                  "type": "string",
+                  "enum": [
+                    "measured_device",
+                    "measured_server",
+                    "derived",
+                    "modeled",
+                    "unavailable"
+                  ]
+                },
+                "age_ms": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ],
+                  "minimum": 0,
+                  "maximum": 300000
+                },
+                "conf": {
+                  "type": [
+                    "number",
+                    "null"
+                  ],
+                  "minimum": 0,
+                  "maximum": 1
+                }
+              }
+            },
+            "buffer_ms": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "value",
+                "prov",
+                "age_ms",
+                "conf"
+              ],
+              "properties": {
+                "value": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ],
+                  "minimum": 0,
+                  "maximum": 600000
+                },
+                "prov": {
+                  "type": "string",
+                  "enum": [
+                    "measured_device",
+                    "measured_server",
+                    "derived",
+                    "modeled",
+                    "unavailable"
+                  ]
+                },
+                "age_ms": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ],
+                  "minimum": 0,
+                  "maximum": 300000
+                },
+                "conf": {
+                  "type": [
+                    "number",
+                    "null"
+                  ],
+                  "minimum": 0,
+                  "maximum": 1
+                }
+              }
+            },
+            "buffer_pct": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "value",
+                "prov",
+                "age_ms",
+                "conf"
+              ],
+              "properties": {
+                "value": {
+                  "type": [
+                    "number",
+                    "null"
+                  ],
+                  "minimum": 0,
+                  "maximum": 100
+                },
+                "prov": {
+                  "type": "string",
+                  "enum": [
+                    "measured_device",
+                    "measured_server",
+                    "derived",
+                    "modeled",
+                    "unavailable"
+                  ]
+                },
+                "age_ms": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ],
+                  "minimum": 0,
+                  "maximum": 300000
+                },
+                "conf": {
+                  "type": [
+                    "number",
+                    "null"
+                  ],
+                  "minimum": 0,
+                  "maximum": 1
+                }
+              }
+            },
+            "bitrate_bps": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "value",
+                "prov",
+                "age_ms",
+                "conf"
+              ],
+              "properties": {
+                "value": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ],
+                  "minimum": 0,
+                  "maximum": 200000000
+                },
+                "prov": {
+                  "type": "string",
+                  "enum": [
+                    "measured_device",
+                    "measured_server",
+                    "derived",
+                    "modeled",
+                    "unavailable"
+                  ]
+                },
+                "age_ms": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ],
+                  "minimum": 0,
+                  "maximum": 300000
+                },
+                "conf": {
+                  "type": [
+                    "number",
+                    "null"
+                  ],
+                  "minimum": 0,
+                  "maximum": 1
+                }
+              }
+            },
+            "throughput_bps": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "value",
+                "prov",
+                "age_ms",
+                "conf"
+              ],
+              "properties": {
+                "value": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ],
+                  "minimum": 0,
+                  "maximum": 1000000000
+                },
+                "prov": {
+                  "type": "string",
+                  "enum": [
+                    "measured_device",
+                    "measured_server",
+                    "derived",
+                    "modeled",
+                    "unavailable"
+                  ]
+                },
+                "age_ms": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ],
+                  "minimum": 0,
+                  "maximum": 300000
+                },
+                "conf": {
+                  "type": [
+                    "number",
+                    "null"
+                  ],
+                  "minimum": 0,
+                  "maximum": 1
+                }
+              }
+            },
+            "ttfb_ms": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "value",
+                "prov",
+                "age_ms",
+                "conf"
+              ],
+              "properties": {
+                "value": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ],
+                  "minimum": 0,
+                  "maximum": 60000
+                },
+                "prov": {
+                  "type": "string",
+                  "enum": [
+                    "measured_device",
+                    "measured_server",
+                    "derived",
+                    "modeled",
+                    "unavailable"
+                  ]
+                },
+                "age_ms": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ],
+                  "minimum": 0,
+                  "maximum": 300000
+                },
+                "conf": {
+                  "type": [
+                    "number",
+                    "null"
+                  ],
+                  "minimum": 0,
+                  "maximum": 1
+                }
+              }
+            },
+            "rtt_ms": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "value",
+                "prov",
+                "age_ms",
+                "conf"
+              ],
+              "properties": {
+                "value": {
+                  "type": [
+                    "number",
+                    "null"
+                  ],
+                  "minimum": 0,
+                  "maximum": 60000
+                },
+                "prov": {
+                  "type": "string",
+                  "enum": [
+                    "measured_device",
+                    "measured_server",
+                    "derived",
+                    "modeled",
+                    "unavailable"
+                  ]
+                },
+                "age_ms": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ],
+                  "minimum": 0,
+                  "maximum": 300000
+                },
+                "conf": {
+                  "type": [
+                    "number",
+                    "null"
+                  ],
+                  "minimum": 0,
+                  "maximum": 1
+                }
+              }
+            },
+            "jitter_ms": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "value",
+                "prov",
+                "age_ms",
+                "conf"
+              ],
+              "properties": {
+                "value": {
+                  "type": [
+                    "number",
+                    "null"
+                  ],
+                  "minimum": 0,
+                  "maximum": 60000
+                },
+                "prov": {
+                  "type": "string",
+                  "enum": [
+                    "measured_device",
+                    "measured_server",
+                    "derived",
+                    "modeled",
+                    "unavailable"
+                  ]
+                },
+                "age_ms": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ],
+                  "minimum": 0,
+                  "maximum": 300000
+                },
+                "conf": {
+                  "type": [
+                    "number",
+                    "null"
+                  ],
+                  "minimum": 0,
+                  "maximum": 1
+                }
+              }
+            },
+            "err_rate_4xx": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "value",
+                "prov",
+                "age_ms",
+                "conf"
+              ],
+              "properties": {
+                "value": {
+                  "type": [
+                    "number",
+                    "null"
+                  ],
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "prov": {
+                  "type": "string",
+                  "enum": [
+                    "measured_device",
+                    "measured_server",
+                    "derived",
+                    "modeled",
+                    "unavailable"
+                  ]
+                },
+                "age_ms": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ],
+                  "minimum": 0,
+                  "maximum": 300000
+                },
+                "conf": {
+                  "type": [
+                    "number",
+                    "null"
+                  ],
+                  "minimum": 0,
+                  "maximum": 1
+                }
+              }
+            },
+            "err_rate_5xx": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "value",
+                "prov",
+                "age_ms",
+                "conf"
+              ],
+              "properties": {
+                "value": {
+                  "type": [
+                    "number",
+                    "null"
+                  ],
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "prov": {
+                  "type": "string",
+                  "enum": [
+                    "measured_device",
+                    "measured_server",
+                    "derived",
+                    "modeled",
+                    "unavailable"
+                  ]
+                },
+                "age_ms": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ],
+                  "minimum": 0,
+                  "maximum": 300000
+                },
+                "conf": {
+                  "type": [
+                    "number",
+                    "null"
+                  ],
+                  "minimum": 0,
+                  "maximum": 1
+                }
+              }
+            },
+            "redirect_rate": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "value",
+                "prov",
+                "age_ms",
+                "conf"
+              ],
+              "properties": {
+                "value": {
+                  "type": [
+                    "number",
+                    "null"
+                  ],
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "prov": {
+                  "type": "string",
+                  "enum": [
+                    "measured_device",
+                    "measured_server",
+                    "derived",
+                    "modeled",
+                    "unavailable"
+                  ]
+                },
+                "age_ms": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ],
+                  "minimum": 0,
+                  "maximum": 300000
+                },
+                "conf": {
+                  "type": [
+                    "number",
+                    "null"
+                  ],
+                  "minimum": 0,
+                  "maximum": 1
+                }
+              }
+            },
+            "cpu_temp_c": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "value",
+                "prov",
+                "age_ms",
+                "conf"
+              ],
+              "properties": {
+                "value": {
+                  "type": [
+                    "number",
+                    "null"
+                  ],
+                  "minimum": -10,
+                  "maximum": 125
+                },
+                "prov": {
+                  "type": "string",
+                  "enum": [
+                    "measured_device",
+                    "measured_server",
+                    "derived",
+                    "modeled",
+                    "unavailable"
+                  ]
+                },
+                "age_ms": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ],
+                  "minimum": 0,
+                  "maximum": 300000
+                },
+                "conf": {
+                  "type": [
+                    "number",
+                    "null"
+                  ],
+                  "minimum": 0,
+                  "maximum": 1
+                }
+              }
+            },
+            "gpu_temp_c": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "value",
+                "prov",
+                "age_ms",
+                "conf"
+              ],
+              "properties": {
+                "value": {
+                  "type": [
+                    "number",
+                    "null"
+                  ],
+                  "minimum": -10,
+                  "maximum": 125
+                },
+                "prov": {
+                  "type": "string",
+                  "enum": [
+                    "measured_device",
+                    "measured_server",
+                    "derived",
+                    "modeled",
+                    "unavailable"
+                  ]
+                },
+                "age_ms": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ],
+                  "minimum": 0,
+                  "maximum": 300000
+                },
+                "conf": {
+                  "type": [
+                    "number",
+                    "null"
+                  ],
+                  "minimum": 0,
+                  "maximum": 1
+                }
+              }
+            },
+            "pm_thermal_status": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "value",
+                "prov",
+                "age_ms",
+                "conf"
+              ],
+              "properties": {
+                "value": {
+                  "type": [
+                    "integer",
+                    "string",
+                    "null"
+                  ],
+                  "enum": [
+                    0,
+                    1,
+                    2,
+                    3,
+                    4,
+                    5,
+                    6,
+                    "unknown",
+                    null
+                  ]
+                },
+                "prov": {
+                  "type": "string",
+                  "enum": [
+                    "measured_device",
+                    "measured_server",
+                    "derived",
+                    "modeled",
+                    "unavailable"
+                  ]
+                },
+                "age_ms": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ],
+                  "minimum": 0,
+                  "maximum": 300000
+                },
+                "conf": {
+                  "type": [
+                    "number",
+                    "null"
+                  ],
+                  "minimum": 0,
+                  "maximum": 1
+                }
+              }
+            },
+            "gpu_load_pct": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "value",
+                "prov",
+                "age_ms",
+                "conf"
+              ],
+              "properties": {
+                "value": {
+                  "type": [
+                    "number",
+                    "null"
+                  ],
+                  "minimum": 0,
+                  "maximum": 100
+                },
+                "prov": {
+                  "type": "string",
+                  "enum": [
+                    "measured_device",
+                    "measured_server",
+                    "derived",
+                    "modeled",
+                    "unavailable"
+                  ]
+                },
+                "age_ms": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ],
+                  "minimum": 0,
+                  "maximum": 300000
+                },
+                "conf": {
+                  "type": [
+                    "number",
+                    "null"
+                  ],
+                  "minimum": 0,
+                  "maximum": 1
+                }
+              }
+            },
+            "vpu_load_pct": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "value",
+                "prov",
+                "age_ms",
+                "conf"
+              ],
+              "properties": {
+                "value": {
+                  "type": [
+                    "number",
+                    "null"
+                  ],
+                  "minimum": 0,
+                  "maximum": 100
+                },
+                "prov": {
+                  "type": "string",
+                  "enum": [
+                    "measured_device",
+                    "measured_server",
+                    "derived",
+                    "modeled",
+                    "unavailable"
+                  ]
+                },
+                "age_ms": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ],
+                  "minimum": 0,
+                  "maximum": 300000
+                },
+                "conf": {
+                  "type": [
+                    "number",
+                    "null"
+                  ],
+                  "minimum": 0,
+                  "maximum": 1
+                }
+              }
+            },
+            "ram_available_pct": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "value",
+                "prov",
+                "age_ms",
+                "conf"
+              ],
+              "properties": {
+                "value": {
+                  "type": [
+                    "number",
+                    "null"
+                  ],
+                  "minimum": 0,
+                  "maximum": 100
+                },
+                "prov": {
+                  "type": "string",
+                  "enum": [
+                    "measured_device",
+                    "measured_server",
+                    "derived",
+                    "modeled",
+                    "unavailable"
+                  ]
+                },
+                "age_ms": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ],
+                  "minimum": 0,
+                  "maximum": 300000
+                },
+                "conf": {
+                  "type": [
+                    "number",
+                    "null"
+                  ],
+                  "minimum": 0,
+                  "maximum": 1
+                }
+              }
+            },
+            "stutter_probability": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "value",
+                "prov",
+                "age_ms",
+                "conf"
+              ],
+              "properties": {
+                "value": {
+                  "type": [
+                    "number",
+                    "null"
+                  ],
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "prov": {
+                  "type": "string",
+                  "enum": [
+                    "measured_device",
+                    "measured_server",
+                    "derived",
+                    "modeled",
+                    "unavailable"
+                  ]
+                },
+                "age_ms": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ],
+                  "minimum": 0,
+                  "maximum": 300000
+                },
+                "conf": {
+                  "type": [
+                    "number",
+                    "null"
+                  ],
+                  "minimum": 0,
+                  "maximum": 1
+                }
+              }
+            }
+          }
+        },
+        "source": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "resolution",
+            "codec",
+            "fps",
+            "hdr",
+            "prov",
+            "age_ms"
+          ],
+          "properties": {
+            "resolution": {
+              "type": "string",
+              "pattern": "^[0-9]{3,5}x[0-9]{3,5}$"
+            },
+            "codec": {
+              "type": "string",
+              "minLength": 3,
+              "maxLength": 128,
+              "pattern": "^[A-Za-z0-9._-]+$"
+            },
+            "fps": {
+              "type": "number",
+              "minimum": 1,
+              "maximum": 240
+            },
+            "hdr": {
+              "type": "string",
+              "enum": [
+                "SDR",
+                "PQ",
+                "HLG",
+                "DV"
+              ]
+            },
+            "prov": {
+              "type": "string",
+              "enum": [
+                "measured_device",
+                "measured_server",
+                "derived",
+                "unavailable"
+              ]
+            },
+            "age_ms": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "minimum": 0,
+              "maximum": 300000
+            }
+          }
+        }
+      }
+    },
+    "events": {
+      "type": "array",
+      "maxItems": 8,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "type",
+          "prov",
+          "age_ms"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "decoder_error",
+              "device_capabilities",
+              "startup_error",
+              "playback_stall",
+              "thermal_event"
+            ]
+          },
+          "code": {
+            "type": "string",
+            "enum": [
+              "MediaCodec",
+              "ExoPlaybackException",
+              "surface",
+              "unknown"
+            ]
+          },
+          "prov": {
+            "type": "string",
+            "enum": [
+              "measured_device",
+              "measured_server",
+              "derived",
+              "modeled",
+              "unavailable"
+            ]
+          },
+          "age_ms": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0,
+            "maximum": 300000
+          },
+          "message_hash": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          }
+        }
+      }
+    },
+    "capabilities": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "super_resolution",
+        "frame_interp",
+        "glsl",
+        "media_enhance_api",
+        "prov"
+      ],
+      "properties": {
+        "super_resolution": {
+          "type": "boolean"
+        },
+        "frame_interp": {
+          "type": "boolean"
+        },
+        "glsl": {
+          "type": "boolean"
+        },
+        "media_enhance_api": {
+          "type": "boolean"
+        },
+        "soc_8k": {
+          "type": "string",
+          "maxLength": 16
+        },
+        "prov": {
+          "type": "string",
+          "enum": [
+            "measured_device",
+            "measured_server",
+            "derived",
+            "modeled",
+            "unavailable"
+          ]
+        }
+      }
+    },
+    "state": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "active_profile",
+        "profile_blend"
+      ],
+      "properties": {
+        "active_profile": {
+          "type": "string",
+          "enum": [
+            "P0",
+            "P1",
+            "P2",
+            "P3",
+            "P4",
+            "P5"
+          ]
+        },
+        "profile_blend": {
+          "type": "object",
+          "additionalProperties": false,
+          "minProperties": 1,
+          "maxProperties": 6,
+          "properties": {
+            "P0": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "P1": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "P2": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "P3": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "P4": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "P5": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            }
+          }
+        },
+        "policy_etag": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$"
+        },
+        "apply": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "st"
+          ],
+          "properties": {
+            "st": {
+              "type": "string",
+              "enum": [
+                "denied",
+                "partial",
+                "deferred",
+                "applied",
+                "noop"
+              ]
+            },
+            "rs": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "enum": [
+                "soc_unmapped",
+                "soc_mismatch",
+                "device_not_allowed",
+                "wire_8k_forbidden",
+                "eight_k_native_forbidden",
+                "policy_expired",
+                "policy_invalid",
+                "soc_alias_used",
+                "wire_above_panel",
+                "thermal_unavailable",
+                "thermal_status_disagreement",
+                "cadence_unknown",
+                "degrade_resolution_not_actuable",
+                "lever_not_reachable",
+                "value_out_of_domain",
+                "forbidden_by_contract",
+                "key_absent_on_soc",
+                null
+              ]
+            },
+            "etag": {
+              "type": "string",
+              "pattern": "^sha256:[a-f0-9]{64}$"
+            },
+            "soc": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "m",
+                "src",
+                "c",
+                "g"
+              ],
+              "properties": {
+                "m": {
+                  "type": "string",
+                  "enum": [
+                    "mt8696",
+                    "amlogic",
+                    "s905x4",
+                    "s905x3",
+                    "unknown"
+                  ]
+                },
+                "src": {
+                  "type": "string",
+                  "enum": [
+                    "Build.HARDWARE",
+                    "Build.SOC_MODEL",
+                    "unknown"
+                  ]
+                },
+                "c": {
+                  "type": "string",
+                  "enum": [
+                    "mt8696",
+                    "amlogic",
+                    "s905x4",
+                    "s905x3",
+                    "unknown"
+                  ]
+                },
+                "g": {
+                  "type": "string",
+                  "enum": [
+                    "allowlisted",
+                    "not_allowlisted",
+                    "no_caps"
+                  ]
+                },
+                "alias": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9._:+-]{1,64}$"
+                }
+              }
+            },
+            "th": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "prov",
+                "st",
+                "steps",
+                "tier"
+              ],
+              "properties": {
+                "prov": {
+                  "type": "string",
+                  "enum": [
+                    "measured",
+                    "modeled",
+                    "unavailable"
+                  ]
+                },
+                "st": {
+                  "type": [
+                    "integer",
+                    "string",
+                    "null"
+                  ],
+                  "enum": [
+                    "unknown",
+                    0,
+                    1,
+                    2,
+                    3,
+                    4,
+                    5,
+                    6,
+                    null
+                  ]
+                },
+                "steps": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 6
+                },
+                "tier": {
+                  "type": "string",
+                  "enum": [
+                    "minimal",
+                    "balanced",
+                    "quality",
+                    "max_image"
+                  ]
+                }
+              }
+            },
+            "cad": {
+              "type": "integer",
+              "minimum": 10,
+              "maximum": 120
+            },
+            "ap": {
+              "type": "array",
+              "maxItems": 16,
+              "items": {
+                "type": "string",
+                "minLength": 3,
+                "maxLength": 64,
+                "pattern": "^[a-z_]+ [a-z0-9_]+ -?[0-9]{1,4}$"
+              }
+            },
+            "un": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 1000
+            },
+            "sk": {
+              "type": "array",
+              "maxItems": 16,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "k",
+                  "r"
+                ],
+                "properties": {
+                  "k": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 64,
+                    "pattern": "^[a-z0-9_]+$"
+                  },
+                  "r": {
+                    "type": "string",
+                    "enum": [
+                      "lever_not_reachable",
+                      "value_out_of_domain",
+                      "forbidden_by_contract",
+                      "key_absent_on_soc"
+                    ]
+                  }
+                }
+              }
+            },
+            "cl": {
+              "type": "array",
+              "maxItems": 16,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "k",
+                  "from",
+                  "to"
+                ],
+                "properties": {
+                  "k": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 64,
+                    "pattern": "^[a-z0-9_]+$"
+                  },
+                  "from": {
+                    "type": "integer",
+                    "minimum": -1000,
+                    "maximum": 1000
+                  },
+                  "to": {
+                    "type": "integer",
+                    "minimum": -1000,
+                    "maximum": 1000
+                  }
+                }
+              }
+            },
+            "df": {
+              "type": "array",
+              "maxItems": 16,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "k",
+                  "r"
+                ],
+                "properties": {
+                  "k": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 64,
+                    "pattern": "^[a-z0-9_]+$"
+                  },
+                  "r": {
+                    "type": "string",
+                    "enum": [
+                      "player_active",
+                      "lifecycle_pending",
+                      "not_applicable"
+                    ]
+                  }
+                }
+              }
+            },
+            "hl": {
+              "type": "array",
+              "maxItems": 16,
+              "items": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 64,
+                "pattern": "^[a-z0-9_]+$"
+              }
+            },
+            "ap_trunc": {
+              "type": "boolean"
+            }
+          }
+        },
+        "levers": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "integer",
+            "minimum": -1000,
+            "maximum": 1000
+          }
+        }
+      }
+    }
+  }
+}

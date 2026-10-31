@@ -1,0 +1,71 @@
+{
+  "v": 2,
+  "type": "ara_x_policy",
+  "device_id": "onn4k-001",
+  "seq": 7,
+  "ts": 1700000000,
+  "valid_until": 1700000030,
+  "policy_etag": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  "profile": {
+    "active": "P2",
+    "blend": { "P0": 0, "P1": 0.2, "P2": 0.8, "P3": 0, "P4": 0, "P5": 0 },
+    "reason": "thermal_guard"
+  },
+  "player": {
+    "buffer_s": 45,
+    "abr_bw_factor": 0.78,
+    "reconnect_attempts": 156,
+    "live_delay_s": 10,
+    "max_bitrate_bps": 25000000,
+    "min_bitrate_bps": 6000000
+  },
+  "device": {
+    "allowed": true,
+    "soc": "s905x4",
+    "thermal_target_c": 70,
+    "levers": { "pq_ai_sr_enable": 1, "ai_sr_level": 3 }
+  },
+  "display": {
+    "mode": "4k",
+    "wire_resolution": "3840x2160",
+    "min_resolution": "3840x2160",
+    "never_downscale": true,
+    "eight_k": "presentation_only",
+    "hdr_hint": "PQ"
+  },
+  "fps": {
+    "target": 60,
+    "current": 59.94,
+    "min": 24
+  },
+  "thermal": {
+    "status": 1,
+    "limits": { "light_c": 60, "moderate_c": 66, "severe_c": 72, "critical_c": 78 }
+  },
+  "processing": {
+    "tier": "quality"
+  },
+  "degrade": {
+    "order": ["fps", "processing"]
+  },
+  "content": {
+    "motion_score": 22,
+    "film_grain": 0.35,
+    "scene_complexity": 48,
+    "dark_ratio": 0.12,
+    "prov": "lab_ssot",
+    "age_ms": 3600000,
+    "conf": 0.9
+  },
+  "controls": {
+    "sync_next_s": 30,
+    "flags": ["nominal"],
+    "degrade_mask": 0
+  },
+  "ref": {
+    "artifact_sha256": "81dbdd11ec620b1dead702ca404c9959c61f301639a5d0091da37ebfb95be14e",
+    "generation_id": "gen-1793397700248-20261030T220737Z",
+    "list_version": "2026-10-30T22:07:37Z",
+    "lab_exported_at": "2026-10-26T01:31:05"
+  }
+}

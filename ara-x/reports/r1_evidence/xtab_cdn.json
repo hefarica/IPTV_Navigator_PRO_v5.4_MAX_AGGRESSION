@@ -1,0 +1,550 @@
+{
+  "channels": 10631,
+  "profile_x_xres": [
+    {
+      "a": "P1",
+      "b": "3840x2160",
+      "n": 808
+    },
+    {
+      "a": "P3",
+      "b": "1920x1080",
+      "n": 2300
+    },
+    {
+      "a": "P4",
+      "b": "1280x720",
+      "n": 7523
+    }
+  ],
+  "profile_x_xcodec": [
+    {
+      "a": "P1",
+      "b": "hvc1.2.4.L153.B0",
+      "n": 808
+    },
+    {
+      "a": "P3",
+      "b": "hvc1.2.4.L123.B0",
+      "n": 2300
+    },
+    {
+      "a": "P4",
+      "b": "hvc1.2.4.L93.B0",
+      "n": 7523
+    }
+  ],
+  "profile_x_bw": [
+    {
+      "a": "P1",
+      "b": "28000000",
+      "n": 808
+    },
+    {
+      "a": "P3",
+      "b": "12000000",
+      "n": 572
+    },
+    {
+      "a": "P3",
+      "b": "9000000",
+      "n": 1728
+    },
+    {
+      "a": "P4",
+      "b": "12000000",
+      "n": 1185
+    },
+    {
+      "a": "P4",
+      "b": "9000000",
+      "n": 6293
+    },
+    {
+      "a": "P4",
+      "b": "null",
+      "n": 45
+    }
+  ],
+  "profile_x_fr": [
+    {
+      "a": "P1",
+      "b": "30.000",
+      "n": 643
+    },
+    {
+      "a": "P1",
+      "b": "60.000",
+      "n": 165
+    },
+    {
+      "a": "P3",
+      "b": "30.000",
+      "n": 1728
+    },
+    {
+      "a": "P3",
+      "b": "60.000",
+      "n": 572
+    },
+    {
+      "a": "P4",
+      "b": "30.000",
+      "n": 6293
+    },
+    {
+      "a": "P4",
+      "b": "60.000",
+      "n": 1185
+    },
+    {
+      "a": "P4",
+      "b": "null",
+      "n": 45
+    }
+  ],
+  "profile_x_sf": [
+    {
+      "a": "P1",
+      "b": "1",
+      "n": 808
+    },
+    {
+      "a": "P3",
+      "b": "0",
+      "n": 2300
+    },
+    {
+      "a": "P4",
+      "b": "0",
+      "n": 7523
+    }
+  ],
+  "profile_x_hdrs": [
+    {
+      "a": "P1",
+      "b": "193",
+      "n": 522
+    },
+    {
+      "a": "P1",
+      "b": "203",
+      "n": 286
+    },
+    {
+      "a": "P3",
+      "b": "193",
+      "n": 1454
+    },
+    {
+      "a": "P3",
+      "b": "203",
+      "n": 846
+    },
+    {
+      "a": "P4",
+      "b": "193",
+      "n": 4882
+    },
+    {
+      "a": "P4",
+      "b": "203",
+      "n": 2641
+    }
+  ],
+  "profile_x_si": [
+    {
+      "a": "P1",
+      "b": "1",
+      "n": 808
+    },
+    {
+      "a": "P3",
+      "b": "1",
+      "n": 2300
+    },
+    {
+      "a": "P4",
+      "b": "0",
+      "n": 45
+    },
+    {
+      "a": "P4",
+      "b": "1",
+      "n": 7478
+    }
+  ],
+  "xres_x_res": [
+    {
+      "a": "1280x720",
+      "b": "3840x2160",
+      "n": 7478
+    },
+    {
+      "a": "1280x720",
+      "b": "null",
+      "n": 45
+    },
+    {
+      "a": "1920x1080",
+      "b": "3840x2160",
+      "n": 2300
+    },
+    {
+      "a": "3840x2160",
+      "b": "3840x2160",
+      "n": 808
+    }
+  ],
+  "codec_truth": {
+    "declared_4k_wire_only": 9823,
+    "truthful_4k_metadata": 808
+  },
+  "hdcp_missing": 45,
+  "si_zero": [
+    {
+      "i": 5791,
+      "id": "904505",
+      "name": "|IL| CHANNEL 9 [line.tivi-ott.net]",
+      "group": "RESTO DEL MUNDO / GENERALISTA / FULL HD",
+      "profile": "P4"
+    },
+    {
+      "i": 5793,
+      "id": "904507",
+      "name": "|IL| CHANNEL 11 [line.tivi-ott.net]",
+      "group": "RESTO DEL MUNDO / GENERALISTA / FULL HD",
+      "profile": "P4"
+    },
+    {
+      "i": 5794,
+      "id": "904508",
+      "name": "|IL| CHANNEL 12 [line.tivi-ott.net]",
+      "group": "RESTO DEL MUNDO / GENERALISTA / FULL HD",
+      "profile": "P4"
+    },
+    {
+      "i": 5795,
+      "id": "904509",
+      "name": "|IL| CHANNEL 13 [line.tivi-ott.net]",
+      "group": "RESTO DEL MUNDO / GENERALISTA / FULL HD",
+      "profile": "P4"
+    },
+    {
+      "i": 5796,
+      "id": "904510",
+      "name": "|IL| CHANNEL 14 [line.tivi-ott.net]",
+      "group": "RESTO DEL MUNDO / GENERALISTA / FULL HD",
+      "profile": "P4"
+    },
+    {
+      "i": 5797,
+      "id": "904511",
+      "name": "|IL| BIG BROTHER [line.tivi-ott.net]",
+      "group": "RESTO DEL MUNDO / GENERALISTA / FULL HD",
+      "profile": "P4"
+    },
+    {
+      "i": 5800,
+      "id": "904514",
+      "name": "|IL| GOOD LIFE [line.tivi-ott.net]",
+      "group": "RESTO DEL MUNDO / GENERALISTA / FULL HD",
+      "profile": "P4"
+    },
+    {
+      "i": 5801,
+      "id": "904515",
+      "name": "|IL| HOME PLUS [line.tivi-ott.net]",
+      "group": "NORTEAMÉRICA / GENERALISTA / FULL HD",
+      "profile": "P4"
+    },
+    {
+      "i": 5802,
+      "id": "904516",
+      "name": "|IL| HOP! CHILDHOOD [line.tivi-ott.net]",
+      "group": "RESTO DEL MUNDO / GENERALISTA / FULL HD",
+      "profile": "P4"
+    },
+    {
+      "i": 5804,
+      "id": "904518",
+      "name": "|IL| I24 [line.tivi-ott.net]",
+      "group": "RESTO DEL MUNDO / GENERALISTA / FULL HD",
+      "profile": "P4"
+    },
+    {
+      "i": 5805,
+      "id": "904519",
+      "name": "|IL| KAN23 [line.tivi-ott.net]",
+      "group": "RESTO DEL MUNDO / GENERALISTA / FULL HD",
+      "profile": "P4"
+    },
+    {
+      "i": 5806,
+      "id": "904520",
+      "name": "|IL| LULI [line.tivi-ott.net]",
+      "group": "RESTO DEL MUNDO / GENERALISTA / FULL HD",
+      "profile": "P4"
+    },
+    {
+      "i": 5809,
+      "id": "904523",
+      "name": "|IL| VIVA [line.tivi-ott.net]",
+      "group": "RESTO DEL MUNDO / GENERALISTA / FULL HD",
+      "profile": "P4"
+    },
+    {
+      "i": 5810,
+      "id": "904524",
+      "name": "|IL| VIVA+ [line.tivi-ott.net]",
+      "group": "RESTO DEL MUNDO / GENERALISTA / FULL HD",
+      "profile": "P4"
+    },
+    {
+      "i": 5811,
+      "id": "904525",
+      "name": "|IL| YALDUT [line.tivi-ott.net]",
+      "group": "RESTO DEL MUNDO / GENERALISTA / FULL HD",
+      "profile": "P4"
+    },
+    {
+      "i": 5812,
+      "id": "904526",
+      "name": "|IL| YAMTIHONI [line.tivi-ott.net]",
+      "group": "RESTO DEL MUNDO / GENERALISTA / FULL HD",
+      "profile": "P4"
+    },
+    {
+      "i": 5814,
+      "id": "904528",
+      "name": "|IL| ZOOM [line.tivi-ott.net]",
+      "group": "RESTO DEL MUNDO / GENERALISTA / FULL HD",
+      "profile": "P4"
+    },
+    {
+      "i": 5815,
+      "id": "904529",
+      "name": "|IL| HALA TV [line.tivi-ott.net]",
+      "group": "RESTO DEL MUNDO / GENERALISTA / FULL HD",
+      "profile": "P4"
+    },
+    {
+      "i": 5826,
+      "id": "904540",
+      "name": "|IL| JUNIOR [line.tivi-ott.net]",
+      "group": "RESTO DEL MUNDO / INFANTIL / FULL HD",
+      "profile": "P4"
+    },
+    {
+      "i": 5827,
+      "id": "904541",
+      "name": "|IL| NICK JR [line.tivi-ott.net]",
+      "group": "RESTO DEL MUNDO / INFANTIL / FULL HD",
+      "profile": "P4"
+    },
+    {
+      "i": 5828,
+      "id": "904542",
+      "name": "|IL| NICKELODEON [line.tivi-ott.net]",
+      "group": "RESTO DEL MUNDO / INFANTIL / FULL HD",
+      "profile": "P4"
+    },
+    {
+      "i": 5829,
+      "id": "904543",
+      "name": "|IL| BABY [line.tivi-ott.net]",
+      "group": "RESTO DEL MUNDO / INFANTIL / FULL HD",
+      "profile": "P4"
+    },
+    {
+      "i": 5831,
+      "id": "904545",
+      "name": "|IL| YES COMEDY [line.tivi-ott.net]",
+      "group": "RESTO DEL MUNDO / CINE / FULL HD",
+      "profile": "P4"
+    },
+    {
+      "i": 5833,
+      "id": "904547",
+      "name": "|IL| YES DRAMA [line.tivi-ott.net]",
+      "group": "EUROPA OCCIDENTAL / CINE / FULL HD",
+      "profile": "P4"
+    },
+    {
+      "i": 5837,
+      "id": "904551",
+      "name": "|IL| ENTERTAINMENT [line.tivi-ott.net]",
+      "group": "EUROPA OCCIDENTAL / ENTRETENIMIENTO / FULL HD",
+      "profile": "P4"
+    },
+    {
+      "i": 5838,
+      "id": "904552",
+      "name": "|IL| FOOD NETWORK [line.tivi-ott.net]",
+      "group": "RESTO DEL MUNDO / ENTRETENIMIENTO / FULL HD",
+      "profile": "P4"
+    },
+    {
+      "i": 5841,
+      "id": "904555",
+      "name": "|IL| NATIONAL GEO WILD [line.tivi-ott.net]",
+      "group": "RESTO DEL MUNDO / GENERALISTA / FULL HD",
+      "profile": "P4"
+    },
+    {
+      "i": 5842,
+      "id": "904556",
+      "name": "|IL| YES- CH 23 HENICKETA [line.tivi-ott.net]",
+      "group": "RESTO DEL MUNDO / INFANTIL / FULL HD",
+      "profile": "P4"
+    },
+    {
+      "i": 5844,
+      "id": "904558",
+      "name": "|IL| TURKISH DRAMA 2 [line.tivi-ott.net]",
+      "group": "EUROPA OCCIDENTAL / CINE / FULL HD",
+      "profile": "P4"
+    },
+    {
+      "i": 5847,
+      "id": "904561",
+      "name": "|IL| YES- CH 33 Makan TV [line.tivi-ott.net]",
+      "group": "RESTO DEL MUNDO / GENERALISTA / FULL HD",
+      "profile": "P4"
+    },
+    {
+      "i": 5848,
+      "id": "904562",
+      "name": "|IL| HOT DIY-IL [line.tivi-ott.net]",
+      "group": "RESTO DEL MUNDO / GENERALISTA / FULL HD",
+      "profile": "P4"
+    },
+    {
+      "i": 5849,
+      "id": "904563",
+      "name": "|IL| HOT-Nofesh-tv [line.tivi-ott.net]",
+      "group": "RESTO DEL MUNDO / GENERALISTA / FULL HD",
+      "profile": "P4"
+    },
+    {
+      "i": 5850,
+      "id": "904564",
+      "name": "|IL| HOT-Reality-iL [line.tivi-ott.net]",
+      "group": "RESTO DEL MUNDO / ENTRETENIMIENTO / FULL HD",
+      "profile": "P4"
+    },
+    {
+      "i": 5851,
+      "id": "904565",
+      "name": "|IL| Yam Tichoni 25 [line.tivi-ott.net]",
+      "group": "RESTO DEL MUNDO / GENERALISTA / FULL HD",
+      "profile": "P4"
+    },
+    {
+      "i": 5852,
+      "id": "904566",
+      "name": "|IL| HOT Yam Tichoni + [line.tivi-ott.net]",
+      "group": "RESTO DEL MUNDO / GENERALISTA / FULL HD",
+      "profile": "P4"
+    },
+    {
+      "i": 5853,
+      "id": "904567",
+      "name": "|IL| HOT TURKISH DRAMA-1 [line.tivi-ott.net]",
+      "group": "EUROPA OCCIDENTAL / CINE / FULL HD",
+      "profile": "P4"
+    },
+    {
+      "i": 5854,
+      "id": "904568",
+      "name": "|IL| HOT TURKISH DRAMA-2 [line.tivi-ott.net]",
+      "group": "EUROPA OCCIDENTAL / CINE / FULL HD",
+      "profile": "P4"
+    },
+    {
+      "i": 5855,
+      "id": "904569",
+      "name": "|IL| HOT TURKISH DRAMA-3 [line.tivi-ott.net]",
+      "group": "EUROPA OCCIDENTAL / CINE / FULL HD",
+      "profile": "P4"
+    },
+    {
+      "i": 5856,
+      "id": "904570",
+      "name": "|IL| HOT KIDS [line.tivi-ott.net]",
+      "group": "RESTO DEL MUNDO / INFANTIL / FULL HD",
+      "profile": "P4"
+    },
+    {
+      "i": 5858,
+      "id": "904572",
+      "name": "|IL| israel ciname [line.tivi-ott.net]",
+      "group": "RESTO DEL MUNDO / GENERALISTA / FULL HD",
+      "profile": "P4"
+    },
+    {
+      "i": 5862,
+      "id": "904576",
+      "name": "|IL| YES CH 66 [line.tivi-ott.net]",
+      "group": "RESTO DEL MUNDO / GENERALISTA / FULL HD",
+      "profile": "P4"
+    },
+    {
+      "i": 5863,
+      "id": "904577",
+      "name": "|IL| Animal-planet [line.tivi-ott.net]",
+      "group": "RESTO DEL MUNDO / GENERALISTA / FULL HD",
+      "profile": "P4"
+    },
+    {
+      "i": 5864,
+      "id": "904578",
+      "name": "|IL| yes history [line.tivi-ott.net]",
+      "group": "RESTO DEL MUNDO / DOCUMENTALES / FULL HD",
+      "profile": "P4"
+    },
+    {
+      "i": 5866,
+      "id": "904580",
+      "name": "|IL| Food Channel [line.tivi-ott.net]",
+      "group": "RESTO DEL MUNDO / ENTRETENIMIENTO / FULL HD",
+      "profile": "P4"
+    },
+    {
+      "i": 5867,
+      "id": "904581",
+      "name": "|IL| YES CH 20 [line.tivi-ott.net]",
+      "group": "RESTO DEL MUNDO / GENERALISTA / FULL HD",
+      "profile": "P4"
+    }
+  ],
+  "sf_zero_but_not_p1": 9823,
+  "p1_without_sf": 0,
+  "line_deltas_pending": null,
+  "lines_families": [
+    {
+      "lines": 944,
+      "n": 45
+    },
+    {
+      "lines": 952,
+      "n": 4906
+    },
+    {
+      "lines": 953,
+      "n": 4851
+    },
+    {
+      "lines": 954,
+      "n": 21
+    },
+    {
+      "lines": 956,
+      "n": 807
+    },
+    {
+      "lines": 960,
+      "n": 1
+    }
+  ]
+}

@@ -1,0 +1,184 @@
+{
+  "schema": "ara-x.sync_features.v1",
+  "version": 2,
+  "task": "t9 / D3 · contrato de sincronización bidireccional ARA↔VPS",
+  "sources": [
+    "ara-x/reports/R4_telemetry_matrix.md §6.1 (vector F01-F32, prov/age_ms/conf)",
+    "ara-x/spec/actuator_allowlist.json (R5: 13 levers VPP, SoC gate exacto, thermal)",
+    "ara-x/reports/R6_security.md §4 (R6-D3-AUTH/REPLAY/SSRF/RATE/NET/DATA/SCHEMA)"
+  ],
+  "provenance": {
+    "request": ["measured_device", "measured_server", "derived", "modeled", "unavailable"],
+    "response_content": ["lab_ssot"],
+    "excluded_from_request": ["lab_ssot"],
+    "rule": "null <-> unavailable. Un valor no medido es null con prov=unavailable; nunca 0. content.* solo lo aporta el VPS desde el LAB SSOT."
+  },
+  "limits": {
+    "max_features": 40,
+    "max_events": 8,
+    "max_age_ms": 300000,
+    "max_content_age_ms": 604800000,
+    "max_body_bytes": 16384,
+    "ts_skew_s": 300,
+    "nonce_ttl_s": 600,
+    "idempotency_ttl_s": 120,
+    "max_policy_ttl_s": 120
+  },
+  "artifact": {
+    "sha256_pattern": "^[a-f0-9]{64}$",
+    "generation_id_pattern": "^[A-Za-z0-9._:+-]{1,64}$",
+    "list_version_pattern": "^[A-Za-z0-9._:+-]{1,64}$",
+    "unknown_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+    "etag_is_gzip_size": true,
+    "range_honored": false,
+    "rule": "La identidad del catalogo es artifact_sha256 + generation_id (R1 §0.8): byte-identidad solo intra-generacion. El ETag HTTP de /lists es el tamano del gzip (R1 F-19) y Range no se honra (200 + chunked, nunca 206): no sirven para identificar ni para verificar por partes.",
+    "evidence": "ara-x/reports/R1_list_forensics.md §0.8/§1.2 · ara-x/reports/R1_findings.json (F-19 + handoff)"
+  },
+  "features": {
+    "vst_ms": { "type": "integer", "min": 0, "max": 60000, "unit": "ms", "adb_only": false, "note": "F01 · player/APK" },
+    "startup_outcome": { "type": "enum", "values": ["ok", "timeout", "error", "unknown"], "adb_only": false, "note": "F02" },
+    "rebuffer_events": { "type": "integer", "min": 0, "max": 99, "unit": "count", "adb_only": false, "note": "F03" },
+    "rebuffer_ms": { "type": "integer", "min": 0, "max": 600000, "unit": "ms", "adb_only": false, "note": "F04" },
+    "rebuffer_ratio": { "type": "number", "min": 0, "max": 1, "unit": "ratio", "adb_only": false, "note": "F05 · exige play_ms" },
+    "play_ms": { "type": "integer", "min": 0, "max": 600000, "unit": "ms", "adb_only": false, "note": "denominador de F05" },
+    "frame_drop_count": { "type": "integer", "min": 0, "max": 1000000, "unit": "count", "adb_only": false, "note": "F06" },
+    "frame_drop_ratio": { "type": "number", "min": 0, "max": 1, "unit": "ratio", "adb_only": false, "note": "F07 · hoy unavailable fuera del APK" },
+    "fps_declared": { "type": "number", "min": 1, "max": 240, "unit": "fps", "adb_only": false, "note": "F08" },
+    "fps_effective": { "type": "number", "min": 1, "max": 240, "unit": "fps", "adb_only": false, "note": "F09" },
+    "frame_time_ms": { "type": "number", "min": 0, "max": 1000, "unit": "ms", "adb_only": false, "note": "F10" },
+    "frame_time_var_ms2": { "type": "number", "min": 0, "max": 1000000, "unit": "ms2", "adb_only": false, "note": "F11" },
+    "buffer_ms": { "type": "integer", "min": 0, "max": 600000, "unit": "ms", "adb_only": false, "note": "F12" },
+    "buffer_pct": { "type": "number", "min": 0, "max": 100, "unit": "percent", "adb_only": false, "note": "F13 · derivado, declarar base" },
+    "bitrate_bps": { "type": "integer", "min": 0, "max": 200000000, "unit": "bps", "adb_only": false, "note": "F14" },
+    "throughput_bps": { "type": "integer", "min": 0, "max": 1000000000, "unit": "bps", "adb_only": false, "note": "F15 · server" },
+    "ttfb_ms": { "type": "integer", "min": 0, "max": 60000, "unit": "ms", "adb_only": false, "note": "F16 · server" },
+    "rtt_ms": { "type": "number", "min": 0, "max": 60000, "unit": "ms", "adb_only": false, "note": "RTT de red (baseline v1); server/device" },
+    "jitter_ms": { "type": "number", "min": 0, "max": 60000, "unit": "ms", "adb_only": false, "note": "F17 · derivado server" },
+    "err_rate_4xx": { "type": "number", "min": 0, "max": 1, "unit": "ratio", "adb_only": false, "note": "F18 · server" },
+    "err_rate_5xx": { "type": "number", "min": 0, "max": 1, "unit": "ratio", "adb_only": false, "note": "F19 · server" },
+    "redirect_rate": { "type": "number", "min": 0, "max": 1, "unit": "ratio", "adb_only": false, "note": "F20 · server" },
+    "cpu_temp_c": { "type": "number", "min": -10, "max": 125, "unit": "degC", "adb_only": true, "note": "F21 · NO legible por app; requiere ADB autorizado" },
+    "gpu_temp_c": { "type": "number", "min": -10, "max": 125, "unit": "degC", "adb_only": true, "note": "F22b · requiere ADB" },
+    "pm_thermal_status": { "type": "enum", "values": [0, 1, 2, 3, 4, 5, 6, "unknown"], "adb_only": false, "note": "F22 · PowerManager.getCurrentThermalStatus (API 29+); sin ADB" },
+    "gpu_load_pct": { "type": "number", "min": 0, "max": 100, "unit": "percent", "adb_only": true, "note": "F23 · sin API pública; requiere ADB" },
+    "vpu_load_pct": { "type": "number", "min": 0, "max": 100, "unit": "percent", "adb_only": true, "note": "F24 · nodo no identificado; NOT_AVAILABLE" },
+    "ram_available_pct": { "type": "number", "min": 0, "max": 100, "unit": "percent", "adb_only": false, "note": "F25 · ActivityManager" },
+    "stutter_probability": { "type": "number", "min": 0, "max": 1, "unit": "ratio", "adb_only": false, "note": "F26 · derivado; no derivar de jitter" }
+  },
+  "content": {
+    "motion_score": { "type": "number", "min": 0, "max": 100 },
+    "film_grain": { "type": "number", "min": 0, "max": 1 },
+    "scene_complexity": { "type": "number", "min": 0, "max": 100 },
+    "dark_ratio": { "type": "number", "min": 0, "max": 1 }
+  },
+  "events": {
+    "max": 8,
+    "types": ["decoder_error", "device_capabilities", "startup_error", "playback_stall", "thermal_event"],
+    "codes": ["MediaCodec", "ExoPlaybackException", "surface", "unknown"],
+    "note": "D3 acepta decoder_error y device_capabilities en /sync. R4-F01 (conviva-event.php VALID_EVENT_TYPES) queda documentado como pre-existente NO-GO hasta corregirse en su scope."
+  },
+  "capabilities": {
+    "keys": ["super_resolution", "frame_interp", "glsl", "media_enhance_api", "soc_8k"],
+    "note": "Solo booleanos/strings cortos; nunca evidencia de SR por LCEVC sintético (R5 GAP-05)."
+  },
+  "socs": {
+    "canonical": ["mt8696", "amlogic", "s905x4", "s905x3"],
+    "aliases": {
+      "amlogic_s905x4": "s905x4",
+      "amlogic-s905x4": "s905x4",
+      "s905x4": "s905x4",
+      "amlogic_s905x3": "s905x3",
+      "amlogic-s905x3": "s905x3",
+      "s905x3": "s905x3",
+      "mt8696": "mt8696",
+      "mediatek_mt8696": "mt8696",
+      "mediatek-mt8696": "mt8696",
+      "firetv_mt8696": "mt8696",
+      "amlogic": "amlogic"
+    },
+    "no_wire_8k": ["s905x4", "s905x3", "mt8696", "amlogic"],
+    "onn4k": "s905x4",
+    "unmapped": "unknown",
+    "request": ["mt8696", "amlogic", "s905x4", "s905x3", "unknown"],
+    "response": ["mt8696", "amlogic", "s905x4", "s905x3", "unknown"],
+    "request_rule": "D4-F10: un SoC no canónico viaja como soc='unknown' + soc_raw obligatorio; el servidor responde fail-closed (allowed=false, levers={}, flags soc_unmapped) en vez de 400 silencioso. 'unknown' NO es token del gate R5 ni entra en no_wire_8k.",
+    "note": "R5 GAP-01: el gate del VPS compara por igualdad EXACTA. El contrato v2 exige el token canónico; soc_raw queda como diagnóstico."
+  },
+  "display": {
+    "min_resolutions": ["1280x720", "1920x1080", "2560x1440", "3840x2160"],
+    "wire_resolutions": ["1280x720", "1920x1080", "2560x1440", "3840x2160"],
+    "eight_k": ["presentation_only", "disabled"],
+    "modes": ["native", "4k", "8k_emulated"],
+    "hdr_hints": ["SDR", "PQ", "HLG"],
+    "onn4k_min_resolution": "3840x2160"
+  },
+  "fps": { "targets": [24, 30, 60], "min": 24, "max_measured": 240 },
+  "processing": { "tiers": ["minimal", "balanced", "quality", "max_image"] },
+  "degrade": { "keys": ["fps", "processing", "resolution"], "max_items": 3 },
+  "thermal": {
+    "statuses": ["unknown", 0, 1, 2, 3, 4, 5, 6],
+    "limits_min_c": 55,
+    "limits_max_c": 85,
+    "limit_keys": ["light_c", "moderate_c", "severe_c", "critical_c"],
+    "rule": "limits estrictamente crecientes y dentro de 55..85; pm_thermal_status=unknown NO significa frialdad."
+  },
+  "ack": {
+    "task": "t10 / D4 · ack L3 en state.apply (D4-F02 resuelto en el mismo lote que R4 §6.5)",
+    "states": ["denied", "partial", "deferred", "applied", "noop"],
+    "blocking_reasons": ["soc_unmapped", "soc_mismatch", "device_not_allowed", "wire_8k_forbidden", "eight_k_native_forbidden", "policy_expired", "policy_invalid"],
+    "warning_reasons": ["soc_alias_used", "wire_above_panel", "thermal_unavailable", "thermal_status_disagreement", "cadence_unknown", "degrade_resolution_not_actuable"],
+    "skipped_reasons": ["lever_not_reachable", "value_out_of_domain", "forbidden_by_contract", "key_absent_on_soc"],
+    "soc_sources": ["Build.HARDWARE", "Build.SOC_MODEL", "unknown"],
+    "soc_gates": ["allowlisted", "not_allowlisted", "no_caps"],
+    "thermal_prov": ["measured", "modeled", "unavailable"],
+    "defer_reasons": ["player_active", "lifecycle_pending", "not_applicable"],
+    "translations": {
+      "gate_denied": {
+        "when": "gate=='denied'",
+        "target": "soc.g",
+        "values": ["not_allowlisted", "no_caps"],
+        "default": "not_allowlisted",
+        "rule": "el 'gate denied' del contrato D4 no existe en el wire: se traduce a soc.g=not_allowlisted|no_caps (nunca se deja 'allowed')"
+      },
+      "lifecycle": {
+        "map": { "player_inactive": "lifecycle_pending", "next_media_source": "lifecycle_pending" },
+        "target": "df[].r",
+        "key": "lifecycle",
+        "rule": "player_inactive|next_media_source del contrato D4 se pliegan a df[].r=lifecycle_pending"
+      },
+      "clamped": {
+        "from": "clamped[].key",
+        "to": "cl[].k",
+        "fields": ["k", "from", "to"],
+        "rule": "clamped[].key → cl[].k (mismos from/to); nunca se pierde el clamp"
+      }
+    },
+    "limits": {
+      "max_lines": 16,
+      "max_unreachable": 1000,
+      "max_steps": 6,
+      "max_key_len": 64,
+      "max_ap_line_len": 64,
+      "max_ack_bytes": 1024
+    },
+    "note": "L2 sigue vivo por heartbeat.data.caps.apply {st,rs,m,etag8} mientras device_capabilities devuelva 400 (D4-F04/R4-F01). L3 no lleva politica, ni URLs, ni credenciales."
+  },
+  "levers": {
+    "vpp": [
+      "pq_ai_sr_enable",
+      "ai_sr_level",
+      "ai_pq_mode",
+      "aipq_enable",
+      "pq_sharpness_enable",
+      "pq_ai_dnr_enable",
+      "pq_dnr_enable",
+      "pq_nr_enable",
+      "pq_ai_fbc_enable",
+      "pq_hdr_enable",
+      "pq_hdr_mode",
+      "match_content_frame_rate",
+      "minimal_post_processing_allowed"
+    ],
+    "source": "ara-x/spec/actuator_allowlist.json → settings_allowlist.device_applier.keys[in_vpp_levers=true] (13)"
+  }
+}

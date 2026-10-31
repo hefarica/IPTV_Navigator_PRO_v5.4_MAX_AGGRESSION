@@ -1,0 +1,226 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://iptv-ape.duckdns.org/schemas/ara-x/ara_x_codec_policy.schema.json",
+  "title": "ARA-X codec/display policy decision (D2)",
+  "description": "Salida determinista de la politica D2 para UN canal: que se declara en el wire (RESOLUTION/CODECS/VIDEO-RANGE/FRAME-RATE), que se clampa en knobs de player, y que politica de display/degradacion se emite. No transporta URLs (POL-10) ni claves de resolucion actuables (POL-5). Valida tambien las 36 salidas de ara_x_codec_cases.json.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "spec",
+    "channel",
+    "wire",
+    "markers",
+    "device",
+    "display",
+    "fps",
+    "processing",
+    "degrade",
+    "knobs",
+    "thermal",
+    "flags",
+    "fail_closed"
+  ],
+  "properties": {
+    "spec": {
+      "type": "string",
+      "enum": ["ara-x-codec-policy.v1"]
+    },
+    "channel": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "evidence_tier", "source_family", "source_resolution", "measured_fps", "cascade", "probe_verified"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 64, "pattern": "^[A-Za-z0-9._:-]+$" },
+        "evidence_tier": { "type": "string", "enum": ["F0", "F1", "F2", "F3", "F4", "F5"] },
+        "source_family": { "type": "string", "enum": ["hevc", "h264", "av1", "vp9", "unknown"] },
+        "source_resolution": { "type": "string", "enum": ["7680x4320", "3840x2160", "1920x1080", "1280x720", "unknown"] },
+        "measured_fps": { "type": ["integer", "null"], "enum": [null, 24, 25, 30, 50, 60, 120] },
+        "cascade": { "type": "boolean" },
+        "probe_verified": { "type": "boolean" }
+      }
+    },
+    "wire": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "mode",
+        "resolution",
+        "resolution_kind",
+        "video_codec",
+        "codecs",
+        "video_range",
+        "video_range_kind",
+        "frame_rate",
+        "frame_rate_kind",
+        "supplemental_codecs",
+        "level_idc",
+        "reason"
+      ],
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": ["NATIVE_VERIFIED", "DAEMON_VERIFIED", "TRUTHFUL_SIGNAL", "TRUTHFUL_ONLY", "PASSTHROUGH_F5"]
+        },
+        "resolution": { "type": ["string", "null"], "enum": [null, "1280x720", "1920x1080", "3840x2160"] },
+        "resolution_kind": { "type": "string", "enum": ["native", "presentation", "capped", "unknown", "none"] },
+        "video_codec": {
+          "type": ["string", "null"],
+          "enum": [
+            null,
+            "hvc1.2.4.L93.B0",
+            "hvc1.2.4.L120.B0",
+            "hvc1.2.4.L123.B0",
+            "hvc1.2.4.L150.B0",
+            "hvc1.2.4.L153.B0",
+            "avc1.640028",
+            "avc1.64002A",
+            "avc1.640033",
+            "av01.0.08M.08",
+            "av01.0.13M.10"
+          ]
+        },
+        "codecs": {
+          "type": ["string", "null"],
+          "enum": [
+            null,
+            "hvc1.2.4.L93.B0,mp4a.40.2",
+            "hvc1.2.4.L120.B0,mp4a.40.2",
+            "hvc1.2.4.L123.B0,mp4a.40.2",
+            "hvc1.2.4.L150.B0,mp4a.40.2",
+            "hvc1.2.4.L153.B0,mp4a.40.2",
+            "avc1.640028,mp4a.40.2",
+            "avc1.64002A,mp4a.40.2",
+            "avc1.640033,mp4a.40.2",
+            "av01.0.08M.08,mp4a.40.2",
+            "av01.0.13M.10,mp4a.40.2"
+          ]
+        },
+        "video_range": { "type": "string", "enum": ["PQ", "SDR"] },
+        "video_range_kind": { "type": "string", "enum": ["display_intent", "verified", "none"] },
+        "frame_rate": { "type": ["integer", "null"], "enum": [null, 24, 25, 30, 50, 60] },
+        "frame_rate_kind": { "type": "string", "enum": ["measured", "declared", "default"] },
+        "supplemental_codecs": { "type": ["string", "null"], "enum": [null] },
+        "level_idc": { "type": ["integer", "null"], "enum": [null, 40, 42, 51, 93, 120, 123, 150, 153] },
+        "reason": { "type": "string", "minLength": 3, "maxLength": 96, "pattern": "^[A-Za-z0-9._:-]+$" }
+      }
+    },
+    "markers": {
+      "type": "array",
+      "maxItems": 6,
+      "items": { "type": "string", "minLength": 8, "maxLength": 180, "pattern": "^#EXT-X-APE-[A-Z0-9-]+:" }
+    },
+    "device": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["allowed", "soc", "reason"],
+      "properties": {
+        "allowed": { "type": "boolean" },
+        "soc": { "type": "string", "enum": ["mt8696", "amlogic", "s905x4", "s905x3", "unknown"] },
+        "reason": {
+          "type": "string",
+          "enum": ["soc_allowlisted", "soc_alias_used", "soc_unknown", "soc_not_allowlisted", "no_caps", "soc_mismatch"]
+        }
+      }
+    },
+    "display": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mode", "wire_resolution", "min_resolution", "never_downscale", "eight_k", "hdr_hint"],
+      "properties": {
+        "mode": { "type": "string", "enum": ["native", "4k"] },
+        "wire_resolution": { "type": "string", "enum": ["3840x2160"] },
+        "min_resolution": { "type": "string", "enum": ["3840x2160"] },
+        "never_downscale": { "type": "boolean", "enum": [true] },
+        "eight_k": { "type": "string", "enum": ["presentation_only"] },
+        "hdr_hint": { "type": "string", "enum": ["PQ", "SDR"] }
+      }
+    },
+    "fps": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["target", "current", "min", "step", "applied"],
+      "properties": {
+        "target": { "type": "integer", "enum": [24, 30, 60] },
+        "current": { "type": ["number", "null"], "minimum": 1, "maximum": 120 },
+        "min": { "type": "integer", "enum": [24] },
+        "step": { "type": "integer", "minimum": 0, "maximum": 2 },
+        "applied": { "type": "boolean" }
+      }
+    },
+    "processing": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tier", "post_step"],
+      "properties": {
+        "tier": { "type": "string", "enum": ["minimal", "balanced", "quality", "max_image"] },
+        "post_step": { "type": "integer", "minimum": 0, "maximum": 9 }
+      }
+    },
+    "degrade": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["order", "resolution"],
+      "properties": {
+        "order": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 2,
+          "items": { "type": "string", "enum": ["fps", "processing"] }
+        },
+        "resolution": { "type": "string", "enum": ["forbidden"] }
+      }
+    },
+    "knobs": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "vlc_adaptive_maxwidth",
+        "vlc_adaptive_maxheight",
+        "vlc_vrr_max",
+        "vlc_video_fps",
+        "vlc_minterpolate_fps",
+        "kodi_video_codec"
+      ],
+      "properties": {
+        "vlc_adaptive_maxwidth": { "type": "integer", "minimum": 1280, "maximum": 3840 },
+        "vlc_adaptive_maxheight": { "type": "integer", "minimum": 720, "maximum": 2160 },
+        "vlc_vrr_max": { "type": "integer", "minimum": 24, "maximum": 60 },
+        "vlc_video_fps": { "type": "integer", "minimum": 24, "maximum": 60 },
+        "vlc_minterpolate_fps": { "type": "integer", "enum": [0] },
+        "kodi_video_codec": { "type": "string", "enum": ["hvc1", "h264", "av1", "vp9", "none"] }
+      }
+    },
+    "thermal": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "tier", "clamps", "reason"],
+      "properties": {
+        "status": { "type": ["integer", "string"], "enum": ["unknown", 0, 1, 2, 3, 4, 5, 6] },
+        "tier": { "type": "string", "enum": ["T0", "T1", "T2", "T3"] },
+        "clamps": { "type": "integer", "minimum": 0, "maximum": 9 },
+        "reason": { "type": "string", "enum": ["thermal_measured", "thermal_unavailable"] }
+      }
+    },
+    "flags": {
+      "type": "array",
+      "maxItems": 16,
+      "items": { "type": "string", "minLength": 2, "maxLength": 48, "pattern": "^[a-z0-9_]+$" }
+    },
+    "fail_closed": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["active", "reasons"],
+      "properties": {
+        "active": { "type": "boolean" },
+        "reasons": {
+          "type": "array",
+          "maxItems": 4,
+          "items": {
+            "type": "string",
+            "enum": ["soc_unknown", "soc_not_allowlisted", "family_unknown", "tier_f5", "no_evidence", "thermal_unknown"]
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,1450 @@
+{
+  "schema": "ara-x.v2.e2e/1",
+  "generated_at": "2026-10-30T19:31:04.994-05:00",
+  "host": "win32/x64 10.0.26200",
+  "node": "v24.12.0",
+  "ok": true,
+  "verdict": "PASS",
+  "elapsed_ms": 809387,
+  "generation": {
+    "schema": "ara-x.playlist.generation/1",
+    "ara_version": "2026.10.30-EVO-NODROP",
+    "list_version": "2026-10-30T22:07:37Z",
+    "block_sha256": "54a08b9550b849b8f97560f75dfcdda1cdba57b9782c74be9c6f1ec76f16fd65",
+    "block_lines": 27,
+    "per_channel": false,
+    "sync_url": "https://iptv-ape.duckdns.org/sync",
+    "client_type": "onn4k",
+    "identity_rule": "artifact_sha256 = sha256 del input; generation_id = sha256(schema|artifact_sha256|ara_version|list_version|block_sha256|per_channel) acotado a 32 hex. Byte-identidad solo intra-generación (R1 §0.8); entre generaciones no se afirma."
+  },
+  "totals": {
+    "lists": 2,
+    "lists_passed": 2,
+    "checks": 78,
+    "fail": 0,
+    "elapsed_ms": 809336
+  },
+  "run_history": [
+    {
+      "at": "2026-10-30T19:17:49.560-05:00",
+      "lists": [
+        "4K_LOCAL_FULL",
+        "CDN_FULL"
+      ],
+      "elapsed_ms": 707531,
+      "ok": true
+    },
+    {
+      "at": "2026-10-30T19:31:04.994-05:00",
+      "lists": [
+        "4K_LOCAL_FULL",
+        "CDN_FULL"
+      ],
+      "elapsed_ms": 809385,
+      "ok": true
+    }
+  ],
+  "lists": [
+    {
+      "id": "4K_LOCAL_FULL",
+      "label": "APE_LISTA_4K (captura local full)",
+      "ok": true,
+      "ran_at": "2026-10-30T19:31:04.994-05:00",
+      "elapsed_ms": 422027,
+      "input": {
+        "file": "ara-x/evidence/APE_LISTA_4K_live_20261030_full.m3u8",
+        "bytes": 572170477,
+        "sha256": "e27c03eb45dacd6e5f19c3f4e016b456236ca2c06f485ddf11165ddc86e2a680",
+        "artifact_sha256": "e27c03eb45dacd6e5f19c3f4e016b456236ca2c06f485ddf11165ddc86e2a680",
+        "generation_id": "ara-x.gen1:dfe8a76ede5068f722b9d88e83fc7759",
+        "source_identity": {
+          "list_id": "APE_LAB_9zdfpzfc8hog",
+          "generated": "2026-10-29T10:49:32.032Z",
+          "sys_version": "APE_v8.0-LAB",
+          "lab_dna": "sha256=unverified,SOURCE=LAB_CALIBRATED,EXPORTED=2026-10-26T01:31:05"
+        }
+      },
+      "generation": {
+        "schema": "ara-x.playlist.generation/1",
+        "ara_version": "2026.10.30-EVO-NODROP",
+        "list_version": "2026-10-30T22:07:37Z",
+        "block_sha256": "54a08b9550b849b8f97560f75dfcdda1cdba57b9782c74be9c6f1ec76f16fd65",
+        "block_lines": 27,
+        "per_channel": false,
+        "sync_url": "https://iptv-ape.duckdns.org/sync",
+        "client_type": "onn4k",
+        "generation_id": "ara-x.gen1:dfe8a76ede5068f722b9d88e83fc7759"
+      },
+      "before": {
+        "extinf": 10631,
+        "urls": 10631,
+        "streamInf": 10631,
+        "extattr": 584705,
+        "declaredChannels": 10631,
+        "blocks": 10631,
+        "blocksWithWrongUrlCount": 0,
+        "channelsWithoutStreamInf": 0
+      },
+      "after": {
+        "extinf": 10631,
+        "urls": 10631,
+        "streamInf": 10631,
+        "extattr": 584705,
+        "declaredChannels": 10631,
+        "blocks": 10631,
+        "blocksWithWrongUrlCount": 0,
+        "channelsWithoutStreamInf": 0,
+        "araVersion": 1,
+        "araTags": 27,
+        "araGlobalLines": 27,
+        "araChannelLines": 0
+      },
+      "url_integrity": {
+        "urls_before": 10631,
+        "urls_after": 10631,
+        "per_url_sha256_mismatches": 0,
+        "mismatch_positions_sample": [],
+        "aggregate_sha256_before": "f69a048f8c4c14a8ee6dd3eb9ab000b9c70e26d1e8178414c322a4f40f55f330",
+        "aggregate_sha256_after": "f69a048f8c4c14a8ee6dd3eb9ab000b9c70e26d1e8178414c322a4f40f55f330",
+        "aggregate_equal": true,
+        "per_url_digest_before": "15fb5ef3d3b56e4caa7162f59b23a4be1c90fd969f2982f1a62744768fd58f19",
+        "per_url_digest_after": "15fb5ef3d3b56e4caa7162f59b23a4be1c90fd969f2982f1a62744768fd58f19",
+        "per_url_digest_equal": true,
+        "validator_aggregate_equal": true,
+        "sample_urls": [
+          "https://iptv-ape.duckdns.org/…P/3.m3u8",
+          "https://iptv-ape.duckdns.org/…P/5.m3u8",
+          "https://iptv-ape.duckdns.org/…P/6.m3u8"
+        ]
+      },
+      "validator": {
+        "ok": true,
+        "errors": [],
+        "preexisting": [
+          {
+            "code": "grammar_mixed_master_media",
+            "message": "el catálogo mezcla Master tags y Media Playlist tags (RFC 8216 §4.3.2)",
+            "count": 3,
+            "detail": {
+              "mediaPlaylistTags": {
+                "#EXT-X-SERVER-CONTROL": 1,
+                "#EXT-X-TARGETDURATION": 1,
+                "#EXT-X-PART-INF": 1
+              },
+              "masterTags": {
+                "#EXT-X-SESSION-DATA": 24,
+                "#EXT-X-CONTENT-STEERING": 1,
+                "#EXT-X-I-FRAME-STREAM-INF": 10631,
+                "#EXT-X-STREAM-INF": 10631
+              }
+            }
+          },
+          {
+            "code": "grammar_mixed_segment_master",
+            "message": "el catálogo mezcla Media Segment tags (#EXTINF/#EXT-X-DATERANGE) y Master tags",
+            "count": 21263
+          },
+          {
+            "code": "iframe_without_uri",
+            "message": "#EXT-X-I-FRAME-STREAM-INF sin atributo URI (RFC 8216 §4.3.4.3)",
+            "count": 10631
+          },
+          {
+            "code": "ext_x_start_duplicated",
+            "message": "más de un EXT-X-START (arranque ambiguo)",
+            "count": 1,
+            "detail": [
+              "TIME-OFFSET=-3.0,PRECISE=YES",
+              "TIME-OFFSET=-14,PRECISE=YES"
+            ]
+          },
+          {
+            "code": "cmaf_malformed_codecs",
+            "message": "CODECS con elemento vacío (coma final) en #EXT-X-CMAF",
+            "count": 10631
+          },
+          {
+            "code": "hdr_maxfall_gt_maxcll",
+            "message": "MaxFALL (AVG) > MaxCLL (PEAK): metadata HDR físicamente imposible",
+            "count": 9823,
+            "detail": [
+              "PEAK=400,AVG=1000",
+              "PEAK=100,AVG=1000"
+            ]
+          },
+          {
+            "code": "tvg_name_duplicate",
+            "message": "tvg-name duplicado con tvg-id/URL distintos",
+            "count": 108
+          },
+          {
+            "code": "sid_collision",
+            "message": "colisión de SID en #EXT-X-CMAF-IDEMPOTENCIA",
+            "count": 1
+          },
+          {
+            "code": "extinf_non_rfc_duration",
+            "message": "EXTINF con duración no decimal (convención M3U Plus, no RFC 8216)",
+            "count": 10631
+          }
+        ]
+      },
+      "compare": {
+        "ok": true,
+        "checks": [
+          {
+            "name": "channels_preserved",
+            "ok": true,
+            "before": 10631,
+            "after": 10631
+          },
+          {
+            "name": "capture_complete",
+            "ok": true,
+            "before": 10631,
+            "after": 10631
+          },
+          {
+            "name": "url_count_preserved",
+            "ok": true,
+            "before": 10631,
+            "after": 10631
+          },
+          {
+            "name": "url_bytes_preserved",
+            "ok": true,
+            "before": "f69a048f8c4c14a8ee6dd3eb9ab000b9c70e26d1e8178414c322a4f40f55f330",
+            "after": "f69a048f8c4c14a8ee6dd3eb9ab000b9c70e26d1e8178414c322a4f40f55f330"
+          },
+          {
+            "name": "stream_inf_preserved",
+            "ok": true,
+            "before": 10631,
+            "after": 10631
+          },
+          {
+            "name": "extattr_preserved",
+            "ok": true,
+            "before": 584705,
+            "after": 584705
+          },
+          {
+            "name": "ara_block_exactly_once",
+            "ok": true,
+            "before": 0,
+            "after": 1
+          },
+          {
+            "name": "no_duplicate_ara_directives",
+            "ok": true,
+            "before": 0,
+            "after": 0
+          },
+          {
+            "name": "url_block_shape_preserved",
+            "ok": true,
+            "before": 0,
+            "after": 0
+          },
+          {
+            "name": "ara_block_before_first_extinf",
+            "ok": true,
+            "before": false,
+            "after": true
+          },
+          {
+            "name": "ara_no_misplaced",
+            "ok": true,
+            "before": 0,
+            "after": 0
+          },
+          {
+            "name": "ara_no_forbidden",
+            "ok": true,
+            "before": 0,
+            "after": 0
+          },
+          {
+            "name": "media_only_tags_not_added",
+            "ok": true,
+            "before": {
+              "#EXT-X-SERVER-CONTROL": 1,
+              "#EXT-X-TARGETDURATION": 1
+            },
+            "after": {
+              "#EXT-X-SERVER-CONTROL": 1,
+              "#EXT-X-TARGETDURATION": 1
+            }
+          },
+          {
+            "name": "master_tags_not_added",
+            "ok": true,
+            "before": {
+              "#EXT-X-SESSION-DATA": 24,
+              "#EXT-X-CONTENT-STEERING": 1,
+              "#EXT-X-I-FRAME-STREAM-INF": 10631,
+              "#EXT-X-STREAM-INF": 10631
+            },
+            "after": {
+              "#EXT-X-SESSION-DATA": 24,
+              "#EXT-X-CONTENT-STEERING": 1,
+              "#EXT-X-I-FRAME-STREAM-INF": 10631,
+              "#EXT-X-STREAM-INF": 10631
+            }
+          }
+        ],
+        "failed": []
+      },
+      "inject": {
+        "injected": true,
+        "reason": "injected",
+        "bytes": 572170477,
+        "lines": 10169562,
+        "blockLines": 27,
+        "perChannelLines": 0,
+        "channelsWithDirectives": 0,
+        "eol": "LF",
+        "trailingNewline": true
+      },
+      "second_pass": {
+        "injected": false,
+        "reason": "already_present",
+        "once": {
+          "bytes": 572171381,
+          "sha256": "c8b5039ed8624b3d586bf60a85d1d15248475082f7552878e051ec1ae0d1ea07"
+        },
+        "twice": {
+          "bytes": 572171381,
+          "sha256": "c8b5039ed8624b3d586bf60a85d1d15248475082f7552878e051ec1ae0d1ea07"
+        },
+        "byte_identical": true
+      },
+      "outputs": [
+        {
+          "role": "once",
+          "file": "ara-x/evidence/APE_LISTA_4K_ARA-X_once.m3u8",
+          "bytes": 572171381,
+          "sha256": "c8b5039ed8624b3d586bf60a85d1d15248475082f7552878e051ec1ae0d1ea07",
+          "matches_generated": true
+        },
+        {
+          "role": "twice",
+          "file": "ara-x/evidence/APE_LISTA_4K_ARA-X_twice.m3u8",
+          "bytes": 572171381,
+          "sha256": "c8b5039ed8624b3d586bf60a85d1d15248475082f7552878e051ec1ae0d1ea07",
+          "matches_generated": true
+        }
+      ],
+      "previous_outputs": [
+        {
+          "role": "once",
+          "file": "ara-x/evidence/APE_LISTA_4K_ARA-X_once.m3u8",
+          "bytes": 572171381,
+          "sha256": "c8b5039ed8624b3d586bf60a85d1d15248475082f7552878e051ec1ae0d1ea07",
+          "published": true
+        },
+        {
+          "role": "twice",
+          "file": "ara-x/evidence/APE_LISTA_4K_ARA-X_twice.m3u8",
+          "bytes": 572171381,
+          "sha256": "c8b5039ed8624b3d586bf60a85d1d15248475082f7552878e051ec1ae0d1ea07",
+          "published": true
+        }
+      ],
+      "cross_generation": {
+        "reference_file": "ara-x/evidence/APE_LISTA_4K_live_20261030_full_ARA-X_once.m3u8",
+        "reference_bytes": 572171381,
+        "reference_sha256": "24e1e3f6babb8c6df82a3de25616423d78aa608881407063ddcd277a4ddc951d",
+        "v2_bytes": 572171381,
+        "v2_sha256": "c8b5039ed8624b3d586bf60a85d1d15248475082f7552878e051ec1ae0d1ea07",
+        "same_bytes": true,
+        "compared_lines": 10169589,
+        "differing_lines": 1,
+        "samples": [
+          {
+            "line": 155,
+            "a": "#EXT-X-ARA-LIST-VERSION:2026-10-30T22:07:37Z",
+            "b": "#EXT-X-ARA-LIST-VERSION:2026-10-29T11:54:23Z"
+          }
+        ],
+        "interpretation": "La byte-identidad NO se afirma entre generaciones (R1 §0.8: solo intra-generación). La referencia I2 se generó con otro list_version; se comprueba que el resto del archivo es idéntico."
+      },
+      "preexisting": [
+        {
+          "code": "grammar_mixed_master_media",
+          "message": "el catálogo mezcla Master tags y Media Playlist tags (RFC 8216 §4.3.2)",
+          "count": 3,
+          "detail": {
+            "mediaPlaylistTags": {
+              "#EXT-X-SERVER-CONTROL": 1,
+              "#EXT-X-TARGETDURATION": 1,
+              "#EXT-X-PART-INF": 1
+            },
+            "masterTags": {
+              "#EXT-X-SESSION-DATA": 24,
+              "#EXT-X-CONTENT-STEERING": 1,
+              "#EXT-X-I-FRAME-STREAM-INF": 10631,
+              "#EXT-X-STREAM-INF": 10631
+            }
+          }
+        },
+        {
+          "code": "grammar_mixed_segment_master",
+          "message": "el catálogo mezcla Media Segment tags (#EXTINF/#EXT-X-DATERANGE) y Master tags",
+          "count": 21263
+        },
+        {
+          "code": "iframe_without_uri",
+          "message": "#EXT-X-I-FRAME-STREAM-INF sin atributo URI (RFC 8216 §4.3.4.3)",
+          "count": 10631
+        },
+        {
+          "code": "ext_x_start_duplicated",
+          "message": "más de un EXT-X-START (arranque ambiguo)",
+          "count": 1,
+          "detail": [
+            "TIME-OFFSET=-3.0,PRECISE=YES",
+            "TIME-OFFSET=-14,PRECISE=YES"
+          ]
+        },
+        {
+          "code": "cmaf_malformed_codecs",
+          "message": "CODECS con elemento vacío (coma final) en #EXT-X-CMAF",
+          "count": 10631
+        },
+        {
+          "code": "hdr_maxfall_gt_maxcll",
+          "message": "MaxFALL (AVG) > MaxCLL (PEAK): metadata HDR físicamente imposible",
+          "count": 9823,
+          "detail": [
+            "PEAK=400,AVG=1000",
+            "PEAK=100,AVG=1000"
+          ]
+        },
+        {
+          "code": "tvg_name_duplicate",
+          "message": "tvg-name duplicado con tvg-id/URL distintos",
+          "count": 108
+        },
+        {
+          "code": "sid_collision",
+          "message": "colisión de SID en #EXT-X-CMAF-IDEMPOTENCIA",
+          "count": 1
+        },
+        {
+          "code": "extinf_non_rfc_duration",
+          "message": "EXTINF con duración no decimal (convención M3U Plus, no RFC 8216)",
+          "count": 10631
+        }
+      ],
+      "checks": [
+        {
+          "name": "file_present",
+          "ok": true,
+          "detail": "APE_LISTA_4K_live_20261030_full.m3u8"
+        },
+        {
+          "name": "input_sha256_hex64",
+          "ok": true,
+          "detail": "e27c03eb45dacd6e…"
+        },
+        {
+          "name": "input_known_artifact",
+          "ok": true,
+          "detail": {
+            "expected": "e27c03eb45dacd6e…",
+            "got": "e27c03eb45dacd6e…"
+          }
+        },
+        {
+          "name": "input_extinf_expected",
+          "ok": true,
+          "detail": {
+            "expect": 10631,
+            "got": 10631
+          }
+        },
+        {
+          "name": "input_urls_expected",
+          "ok": true,
+          "detail": {
+            "expect": 10631,
+            "got": 10631
+          }
+        },
+        {
+          "name": "input_streaminf_expected",
+          "ok": true,
+          "detail": {
+            "expect": 10631,
+            "got": 10631
+          }
+        },
+        {
+          "name": "input_extattr_expected",
+          "ok": true,
+          "detail": {
+            "expect": 584705,
+            "got": 584705
+          }
+        },
+        {
+          "name": "input_declared_channels_expected",
+          "ok": true,
+          "detail": {
+            "expect": 10631,
+            "got": 10631
+          }
+        },
+        {
+          "name": "input_channels_without_streaminf_expected",
+          "ok": true,
+          "detail": {
+            "expect": 0,
+            "got": 0
+          }
+        },
+        {
+          "name": "input_extinf_equals_ape_channels",
+          "ok": true,
+          "detail": {
+            "extinf": 10631,
+            "ape_channels": 10631
+          }
+        },
+        {
+          "name": "input_capture_complete",
+          "ok": true,
+          "detail": {
+            "declared": 10631,
+            "measured": 10631
+          }
+        },
+        {
+          "name": "input_no_ara_block",
+          "ok": true,
+          "detail": {
+            "validator_araTags": 0,
+            "scan_araTags": 0
+          }
+        },
+        {
+          "name": "injected",
+          "ok": true,
+          "detail": "injected"
+        },
+        {
+          "name": "block_lines_27",
+          "ok": true,
+          "detail": 27
+        },
+        {
+          "name": "eol_preserved",
+          "ok": true,
+          "detail": {
+            "input_crlf_lines": 0,
+            "inject_eol": "LF"
+          }
+        },
+        {
+          "name": "validator_ok",
+          "ok": true,
+          "detail": []
+        },
+        {
+          "name": "validator_no_errors",
+          "ok": true,
+          "detail": 0
+        },
+        {
+          "name": "channels_preserved",
+          "ok": true,
+          "detail": {
+            "before": 10631,
+            "after": 10631
+          }
+        },
+        {
+          "name": "urls_preserved",
+          "ok": true,
+          "detail": {
+            "before": 10631,
+            "after": 10631
+          }
+        },
+        {
+          "name": "streaminf_preserved",
+          "ok": true,
+          "detail": {
+            "before": 10631,
+            "after": 10631
+          }
+        },
+        {
+          "name": "extattr_preserved",
+          "ok": true,
+          "detail": {
+            "before": 584705,
+            "after": 584705
+          }
+        },
+        {
+          "name": "declared_channels_preserved",
+          "ok": true,
+          "detail": {
+            "before": 10631,
+            "after": 10631
+          }
+        },
+        {
+          "name": "extinf_equals_ape_channels_after",
+          "ok": true,
+          "detail": {
+            "extinf": 10631,
+            "ape_channels": 10631
+          }
+        },
+        {
+          "name": "capture_complete_after",
+          "ok": true,
+          "detail": {
+            "declared": 10631,
+            "measured": 10631
+          }
+        },
+        {
+          "name": "zero_wrong_url_blocks_after",
+          "ok": true,
+          "detail": {
+            "blocks": 10631,
+            "wrong": 0,
+            "samples": []
+          }
+        },
+        {
+          "name": "ara_block_exactly_once",
+          "ok": true,
+          "detail": {
+            "araVersion": 1,
+            "araTags": 27,
+            "araVersionLines": 1,
+            "expectedTags": 27,
+            "duplicates": []
+          }
+        },
+        {
+          "name": "ara_never_drop_unique",
+          "ok": true,
+          "detail": {
+            "neverDropLines": 1,
+            "araTags": 27
+          }
+        },
+        {
+          "name": "ara_placement_clean",
+          "ok": true,
+          "detail": {
+            "blockBeforeFirstExtinf": true,
+            "contiguous": true,
+            "misplaced": 0,
+            "unknown": 0,
+            "badValue": 0,
+            "forbidden": 0,
+            "channelLines": 0
+          }
+        },
+        {
+          "name": "compare_ok",
+          "ok": true,
+          "detail": []
+        },
+        {
+          "name": "per_url_sha256_equal",
+          "ok": true,
+          "detail": {
+            "before": 10631,
+            "after": 10631,
+            "mismatches": 0
+          }
+        },
+        {
+          "name": "url_perurl_digest_equal",
+          "ok": true,
+          "detail": {
+            "before": "15fb5ef3d3b56e4c…",
+            "after": "15fb5ef3d3b56e4c…"
+          }
+        },
+        {
+          "name": "url_aggregate_sha_equal",
+          "ok": true,
+          "detail": {
+            "before": "f69a048f8c4c14a8…",
+            "after": "f69a048f8c4c14a8…"
+          }
+        },
+        {
+          "name": "preexisting_reported",
+          "ok": true,
+          "detail": {
+            "codes": 9
+          }
+        },
+        {
+          "name": "r1_channels_without_streaminf_match",
+          "ok": true,
+          "detail": {
+            "expect": 0,
+            "got": 0
+          }
+        },
+        {
+          "name": "second_pass_noop",
+          "ok": true,
+          "detail": "already_present"
+        },
+        {
+          "name": "second_pass_byte_identical",
+          "ok": true,
+          "detail": {
+            "once": "c8b5039ed8624b3d…",
+            "twice": "c8b5039ed8624b3d…"
+          }
+        },
+        {
+          "name": "output_once_published",
+          "ok": true,
+          "detail": {
+            "file": "ara-x/evidence/APE_LISTA_4K_ARA-X_once.m3u8",
+            "bytes": 572171381,
+            "sha256": "c8b5039ed8624b3d586bf60a85d1d15248475082f7552878e051ec1ae0d1ea07"
+          }
+        },
+        {
+          "name": "output_twice_published",
+          "ok": true,
+          "detail": {
+            "file": "ara-x/evidence/APE_LISTA_4K_ARA-X_twice.m3u8",
+            "bytes": 572171381,
+            "sha256": "c8b5039ed8624b3d586bf60a85d1d15248475082f7552878e051ec1ae0d1ea07"
+          }
+        },
+        {
+          "name": "generation_metadata_valid",
+          "ok": true,
+          "detail": {
+            "artifact_sha256": "e27c03eb45dacd6e…",
+            "generation_id": "ara-x.gen1:dfe8a76ede5068f722b9d88e83fc7759"
+          }
+        }
+      ],
+      "errors": []
+    },
+    {
+      "id": "CDN_FULL",
+      "label": "APE_LISTA_CDN_1793397700248 (full)",
+      "ok": true,
+      "ran_at": "2026-10-30T19:31:04.994-05:00",
+      "elapsed_ms": 387309,
+      "input": {
+        "file": "ara-x/evidence/APE_LISTA_CDN_1793397700248_full.m3u8",
+        "bytes": 568241457,
+        "sha256": "81dbdd11ec620b1dead702ca404c9959c61f301639a5d0091da37ebfb95be14e",
+        "artifact_sha256": "81dbdd11ec620b1dead702ca404c9959c61f301639a5d0091da37ebfb95be14e",
+        "generation_id": "ara-x.gen1:adf46af40f32b7720f887fb81abf891b",
+        "source_identity": {
+          "list_id": "APE_LAB_g2pph2csp4oi",
+          "generated": "2026-10-30T22:01:59.538Z",
+          "sys_version": "APE_v8.0-LAB",
+          "lab_dna": "sha256=unverified,SOURCE=LAB_CALIBRATED,EXPORTED=2026-10-26T01:31:05"
+        }
+      },
+      "generation": {
+        "schema": "ara-x.playlist.generation/1",
+        "ara_version": "2026.10.30-EVO-NODROP",
+        "list_version": "2026-10-30T22:07:37Z",
+        "block_sha256": "54a08b9550b849b8f97560f75dfcdda1cdba57b9782c74be9c6f1ec76f16fd65",
+        "block_lines": 27,
+        "per_channel": false,
+        "sync_url": "https://iptv-ape.duckdns.org/sync",
+        "client_type": "onn4k",
+        "generation_id": "ara-x.gen1:adf46af40f32b7720f887fb81abf891b"
+      },
+      "before": {
+        "extinf": 10631,
+        "urls": 10631,
+        "streamInf": 10586,
+        "extattr": 574074,
+        "declaredChannels": 10631,
+        "blocks": 10631,
+        "blocksWithWrongUrlCount": 0,
+        "channelsWithoutStreamInf": 45
+      },
+      "after": {
+        "extinf": 10631,
+        "urls": 10631,
+        "streamInf": 10586,
+        "extattr": 574074,
+        "declaredChannels": 10631,
+        "blocks": 10631,
+        "blocksWithWrongUrlCount": 0,
+        "channelsWithoutStreamInf": 45,
+        "araVersion": 1,
+        "araTags": 27,
+        "araGlobalLines": 27,
+        "araChannelLines": 0
+      },
+      "url_integrity": {
+        "urls_before": 10631,
+        "urls_after": 10631,
+        "per_url_sha256_mismatches": 0,
+        "mismatch_positions_sample": [],
+        "aggregate_sha256_before": "f69a048f8c4c14a8ee6dd3eb9ab000b9c70e26d1e8178414c322a4f40f55f330",
+        "aggregate_sha256_after": "f69a048f8c4c14a8ee6dd3eb9ab000b9c70e26d1e8178414c322a4f40f55f330",
+        "aggregate_equal": true,
+        "per_url_digest_before": "15fb5ef3d3b56e4caa7162f59b23a4be1c90fd969f2982f1a62744768fd58f19",
+        "per_url_digest_after": "15fb5ef3d3b56e4caa7162f59b23a4be1c90fd969f2982f1a62744768fd58f19",
+        "per_url_digest_equal": true,
+        "validator_aggregate_equal": true,
+        "sample_urls": [
+          "https://iptv-ape.duckdns.org/…P/3.m3u8",
+          "https://iptv-ape.duckdns.org/…P/5.m3u8",
+          "https://iptv-ape.duckdns.org/…P/6.m3u8"
+        ]
+      },
+      "validator": {
+        "ok": true,
+        "errors": [],
+        "preexisting": [
+          {
+            "code": "grammar_mixed_master_media",
+            "message": "el catálogo mezcla Master tags y Media Playlist tags (RFC 8216 §4.3.2)",
+            "count": 3,
+            "detail": {
+              "mediaPlaylistTags": {
+                "#EXT-X-SERVER-CONTROL": 1,
+                "#EXT-X-TARGETDURATION": 1,
+                "#EXT-X-PART-INF": 1
+              },
+              "masterTags": {
+                "#EXT-X-SESSION-DATA": 24,
+                "#EXT-X-CONTENT-STEERING": 1,
+                "#EXT-X-I-FRAME-STREAM-INF": 10631,
+                "#EXT-X-STREAM-INF": 10586
+              }
+            }
+          },
+          {
+            "code": "grammar_mixed_segment_master",
+            "message": "el catálogo mezcla Media Segment tags (#EXTINF/#EXT-X-DATERANGE) y Master tags",
+            "count": 21263
+          },
+          {
+            "code": "iframe_without_uri",
+            "message": "#EXT-X-I-FRAME-STREAM-INF sin atributo URI (RFC 8216 §4.3.4.3)",
+            "count": 10631
+          },
+          {
+            "code": "ext_x_start_duplicated",
+            "message": "más de un EXT-X-START (arranque ambiguo)",
+            "count": 1,
+            "detail": [
+              "TIME-OFFSET=-3.0,PRECISE=YES",
+              "TIME-OFFSET=-14,PRECISE=YES"
+            ]
+          },
+          {
+            "code": "cmaf_malformed_codecs",
+            "message": "CODECS con elemento vacío (coma final) en #EXT-X-CMAF",
+            "count": 10631
+          },
+          {
+            "code": "hdr_maxfall_gt_maxcll",
+            "message": "MaxFALL (AVG) > MaxCLL (PEAK): metadata HDR físicamente imposible",
+            "count": 9823,
+            "detail": [
+              "PEAK=400,AVG=1000",
+              "PEAK=100,AVG=1000"
+            ]
+          },
+          {
+            "code": "channel_without_stream_inf",
+            "message": "canales sin #EXT-X-STREAM-INF (no son pérdida de canal: la URL existe)",
+            "count": 45
+          },
+          {
+            "code": "tvg_name_duplicate",
+            "message": "tvg-name duplicado con tvg-id/URL distintos",
+            "count": 108
+          },
+          {
+            "code": "sid_collision",
+            "message": "colisión de SID en #EXT-X-CMAF-IDEMPOTENCIA",
+            "count": 1
+          },
+          {
+            "code": "extinf_non_rfc_duration",
+            "message": "EXTINF con duración no decimal (convención M3U Plus, no RFC 8216)",
+            "count": 10631
+          }
+        ]
+      },
+      "compare": {
+        "ok": true,
+        "checks": [
+          {
+            "name": "channels_preserved",
+            "ok": true,
+            "before": 10631,
+            "after": 10631
+          },
+          {
+            "name": "capture_complete",
+            "ok": true,
+            "before": 10631,
+            "after": 10631
+          },
+          {
+            "name": "url_count_preserved",
+            "ok": true,
+            "before": 10631,
+            "after": 10631
+          },
+          {
+            "name": "url_bytes_preserved",
+            "ok": true,
+            "before": "f69a048f8c4c14a8ee6dd3eb9ab000b9c70e26d1e8178414c322a4f40f55f330",
+            "after": "f69a048f8c4c14a8ee6dd3eb9ab000b9c70e26d1e8178414c322a4f40f55f330"
+          },
+          {
+            "name": "stream_inf_preserved",
+            "ok": true,
+            "before": 10586,
+            "after": 10586
+          },
+          {
+            "name": "extattr_preserved",
+            "ok": true,
+            "before": 574074,
+            "after": 574074
+          },
+          {
+            "name": "ara_block_exactly_once",
+            "ok": true,
+            "before": 0,
+            "after": 1
+          },
+          {
+            "name": "no_duplicate_ara_directives",
+            "ok": true,
+            "before": 0,
+            "after": 0
+          },
+          {
+            "name": "url_block_shape_preserved",
+            "ok": true,
+            "before": 0,
+            "after": 0
+          },
+          {
+            "name": "ara_block_before_first_extinf",
+            "ok": true,
+            "before": false,
+            "after": true
+          },
+          {
+            "name": "ara_no_misplaced",
+            "ok": true,
+            "before": 0,
+            "after": 0
+          },
+          {
+            "name": "ara_no_forbidden",
+            "ok": true,
+            "before": 0,
+            "after": 0
+          },
+          {
+            "name": "media_only_tags_not_added",
+            "ok": true,
+            "before": {
+              "#EXT-X-SERVER-CONTROL": 1,
+              "#EXT-X-TARGETDURATION": 1
+            },
+            "after": {
+              "#EXT-X-SERVER-CONTROL": 1,
+              "#EXT-X-TARGETDURATION": 1
+            }
+          },
+          {
+            "name": "master_tags_not_added",
+            "ok": true,
+            "before": {
+              "#EXT-X-SESSION-DATA": 24,
+              "#EXT-X-CONTENT-STEERING": 1,
+              "#EXT-X-I-FRAME-STREAM-INF": 10631,
+              "#EXT-X-STREAM-INF": 10586
+            },
+            "after": {
+              "#EXT-X-SESSION-DATA": 24,
+              "#EXT-X-CONTENT-STEERING": 1,
+              "#EXT-X-I-FRAME-STREAM-INF": 10631,
+              "#EXT-X-STREAM-INF": 10586
+            }
+          }
+        ],
+        "failed": []
+      },
+      "inject": {
+        "injected": true,
+        "reason": "injected",
+        "bytes": 568241457,
+        "lines": 10139240,
+        "blockLines": 27,
+        "perChannelLines": 0,
+        "channelsWithDirectives": 0,
+        "eol": "LF",
+        "trailingNewline": true
+      },
+      "second_pass": {
+        "injected": false,
+        "reason": "already_present",
+        "once": {
+          "bytes": 568242361,
+          "sha256": "c32722c8afc33949df7edcd8a2ead0e0b7c1ebaa4ac57af58aacc4ae7a9a2dda"
+        },
+        "twice": {
+          "bytes": 568242361,
+          "sha256": "c32722c8afc33949df7edcd8a2ead0e0b7c1ebaa4ac57af58aacc4ae7a9a2dda"
+        },
+        "byte_identical": true
+      },
+      "outputs": [
+        {
+          "role": "once",
+          "file": "ara-x/evidence/APE_LISTA_CDN_1793397700248_full_ARA-X_once.m3u8",
+          "bytes": 568242361,
+          "sha256": "c32722c8afc33949df7edcd8a2ead0e0b7c1ebaa4ac57af58aacc4ae7a9a2dda",
+          "matches_generated": true
+        },
+        {
+          "role": "twice",
+          "file": "ara-x/evidence/APE_LISTA_CDN_1793397700248_full_ARA-X_twice.m3u8",
+          "bytes": 568242361,
+          "sha256": "c32722c8afc33949df7edcd8a2ead0e0b7c1ebaa4ac57af58aacc4ae7a9a2dda",
+          "matches_generated": true
+        }
+      ],
+      "previous_outputs": [
+        {
+          "role": "once",
+          "file": "ara-x/evidence/APE_LISTA_CDN_1793397700248_full_ARA-X_once.m3u8",
+          "bytes": 568242361,
+          "sha256": "c32722c8afc33949df7edcd8a2ead0e0b7c1ebaa4ac57af58aacc4ae7a9a2dda",
+          "published": true
+        },
+        {
+          "role": "twice",
+          "file": "ara-x/evidence/APE_LISTA_CDN_1793397700248_full_ARA-X_twice.m3u8",
+          "bytes": 568242361,
+          "sha256": "c32722c8afc33949df7edcd8a2ead0e0b7c1ebaa4ac57af58aacc4ae7a9a2dda",
+          "published": true
+        }
+      ],
+      "cross_generation": null,
+      "preexisting": [
+        {
+          "code": "grammar_mixed_master_media",
+          "message": "el catálogo mezcla Master tags y Media Playlist tags (RFC 8216 §4.3.2)",
+          "count": 3,
+          "detail": {
+            "mediaPlaylistTags": {
+              "#EXT-X-SERVER-CONTROL": 1,
+              "#EXT-X-TARGETDURATION": 1,
+              "#EXT-X-PART-INF": 1
+            },
+            "masterTags": {
+              "#EXT-X-SESSION-DATA": 24,
+              "#EXT-X-CONTENT-STEERING": 1,
+              "#EXT-X-I-FRAME-STREAM-INF": 10631,
+              "#EXT-X-STREAM-INF": 10586
+            }
+          }
+        },
+        {
+          "code": "grammar_mixed_segment_master",
+          "message": "el catálogo mezcla Media Segment tags (#EXTINF/#EXT-X-DATERANGE) y Master tags",
+          "count": 21263
+        },
+        {
+          "code": "iframe_without_uri",
+          "message": "#EXT-X-I-FRAME-STREAM-INF sin atributo URI (RFC 8216 §4.3.4.3)",
+          "count": 10631
+        },
+        {
+          "code": "ext_x_start_duplicated",
+          "message": "más de un EXT-X-START (arranque ambiguo)",
+          "count": 1,
+          "detail": [
+            "TIME-OFFSET=-3.0,PRECISE=YES",
+            "TIME-OFFSET=-14,PRECISE=YES"
+          ]
+        },
+        {
+          "code": "cmaf_malformed_codecs",
+          "message": "CODECS con elemento vacío (coma final) en #EXT-X-CMAF",
+          "count": 10631
+        },
+        {
+          "code": "hdr_maxfall_gt_maxcll",
+          "message": "MaxFALL (AVG) > MaxCLL (PEAK): metadata HDR físicamente imposible",
+          "count": 9823,
+          "detail": [
+            "PEAK=400,AVG=1000",
+            "PEAK=100,AVG=1000"
+          ]
+        },
+        {
+          "code": "channel_without_stream_inf",
+          "message": "canales sin #EXT-X-STREAM-INF (no son pérdida de canal: la URL existe)",
+          "count": 45
+        },
+        {
+          "code": "tvg_name_duplicate",
+          "message": "tvg-name duplicado con tvg-id/URL distintos",
+          "count": 108
+        },
+        {
+          "code": "sid_collision",
+          "message": "colisión de SID en #EXT-X-CMAF-IDEMPOTENCIA",
+          "count": 1
+        },
+        {
+          "code": "extinf_non_rfc_duration",
+          "message": "EXTINF con duración no decimal (convención M3U Plus, no RFC 8216)",
+          "count": 10631
+        }
+      ],
+      "checks": [
+        {
+          "name": "file_present",
+          "ok": true,
+          "detail": "APE_LISTA_CDN_1793397700248_full.m3u8"
+        },
+        {
+          "name": "input_sha256_hex64",
+          "ok": true,
+          "detail": "81dbdd11ec620b1d…"
+        },
+        {
+          "name": "input_known_artifact",
+          "ok": true,
+          "detail": {
+            "expected": "81dbdd11ec620b1d…",
+            "got": "81dbdd11ec620b1d…"
+          }
+        },
+        {
+          "name": "input_extinf_expected",
+          "ok": true,
+          "detail": {
+            "expect": 10631,
+            "got": 10631
+          }
+        },
+        {
+          "name": "input_urls_expected",
+          "ok": true,
+          "detail": {
+            "expect": 10631,
+            "got": 10631
+          }
+        },
+        {
+          "name": "input_streaminf_expected",
+          "ok": true,
+          "detail": {
+            "expect": 10586,
+            "got": 10586
+          }
+        },
+        {
+          "name": "input_extattr_expected",
+          "ok": true,
+          "detail": {
+            "got": 574074
+          }
+        },
+        {
+          "name": "input_declared_channels_expected",
+          "ok": true,
+          "detail": {
+            "expect": 10631,
+            "got": 10631
+          }
+        },
+        {
+          "name": "input_channels_without_streaminf_expected",
+          "ok": true,
+          "detail": {
+            "expect": 45,
+            "got": 45
+          }
+        },
+        {
+          "name": "input_extinf_equals_ape_channels",
+          "ok": true,
+          "detail": {
+            "extinf": 10631,
+            "ape_channels": 10631
+          }
+        },
+        {
+          "name": "input_capture_complete",
+          "ok": true,
+          "detail": {
+            "declared": 10631,
+            "measured": 10631
+          }
+        },
+        {
+          "name": "input_no_ara_block",
+          "ok": true,
+          "detail": {
+            "validator_araTags": 0,
+            "scan_araTags": 0
+          }
+        },
+        {
+          "name": "injected",
+          "ok": true,
+          "detail": "injected"
+        },
+        {
+          "name": "block_lines_27",
+          "ok": true,
+          "detail": 27
+        },
+        {
+          "name": "eol_preserved",
+          "ok": true,
+          "detail": {
+            "input_crlf_lines": 0,
+            "inject_eol": "LF"
+          }
+        },
+        {
+          "name": "validator_ok",
+          "ok": true,
+          "detail": []
+        },
+        {
+          "name": "validator_no_errors",
+          "ok": true,
+          "detail": 0
+        },
+        {
+          "name": "channels_preserved",
+          "ok": true,
+          "detail": {
+            "before": 10631,
+            "after": 10631
+          }
+        },
+        {
+          "name": "urls_preserved",
+          "ok": true,
+          "detail": {
+            "before": 10631,
+            "after": 10631
+          }
+        },
+        {
+          "name": "streaminf_preserved",
+          "ok": true,
+          "detail": {
+            "before": 10586,
+            "after": 10586
+          }
+        },
+        {
+          "name": "extattr_preserved",
+          "ok": true,
+          "detail": {
+            "before": 574074,
+            "after": 574074
+          }
+        },
+        {
+          "name": "declared_channels_preserved",
+          "ok": true,
+          "detail": {
+            "before": 10631,
+            "after": 10631
+          }
+        },
+        {
+          "name": "extinf_equals_ape_channels_after",
+          "ok": true,
+          "detail": {
+            "extinf": 10631,
+            "ape_channels": 10631
+          }
+        },
+        {
+          "name": "capture_complete_after",
+          "ok": true,
+          "detail": {
+            "declared": 10631,
+            "measured": 10631
+          }
+        },
+        {
+          "name": "zero_wrong_url_blocks_after",
+          "ok": true,
+          "detail": {
+            "blocks": 10631,
+            "wrong": 0,
+            "samples": []
+          }
+        },
+        {
+          "name": "ara_block_exactly_once",
+          "ok": true,
+          "detail": {
+            "araVersion": 1,
+            "araTags": 27,
+            "araVersionLines": 1,
+            "expectedTags": 27,
+            "duplicates": []
+          }
+        },
+        {
+          "name": "ara_never_drop_unique",
+          "ok": true,
+          "detail": {
+            "neverDropLines": 1,
+            "araTags": 27
+          }
+        },
+        {
+          "name": "ara_placement_clean",
+          "ok": true,
+          "detail": {
+            "blockBeforeFirstExtinf": true,
+            "contiguous": true,
+            "misplaced": 0,
+            "unknown": 0,
+            "badValue": 0,
+            "forbidden": 0,
+            "channelLines": 0
+          }
+        },
+        {
+          "name": "compare_ok",
+          "ok": true,
+          "detail": []
+        },
+        {
+          "name": "per_url_sha256_equal",
+          "ok": true,
+          "detail": {
+            "before": 10631,
+            "after": 10631,
+            "mismatches": 0
+          }
+        },
+        {
+          "name": "url_perurl_digest_equal",
+          "ok": true,
+          "detail": {
+            "before": "15fb5ef3d3b56e4c…",
+            "after": "15fb5ef3d3b56e4c…"
+          }
+        },
+        {
+          "name": "url_aggregate_sha_equal",
+          "ok": true,
+          "detail": {
+            "before": "f69a048f8c4c14a8…",
+            "after": "f69a048f8c4c14a8…"
+          }
+        },
+        {
+          "name": "preexisting_reported",
+          "ok": true,
+          "detail": {
+            "codes": 10
+          }
+        },
+        {
+          "name": "r1_channels_without_streaminf_match",
+          "ok": true,
+          "detail": {
+            "expect": 45,
+            "got": 45
+          }
+        },
+        {
+          "name": "second_pass_noop",
+          "ok": true,
+          "detail": "already_present"
+        },
+        {
+          "name": "second_pass_byte_identical",
+          "ok": true,
+          "detail": {
+            "once": "c32722c8afc33949…",
+            "twice": "c32722c8afc33949…"
+          }
+        },
+        {
+          "name": "output_once_published",
+          "ok": true,
+          "detail": {
+            "file": "ara-x/evidence/APE_LISTA_CDN_1793397700248_full_ARA-X_once.m3u8",
+            "bytes": 568242361,
+            "sha256": "c32722c8afc33949df7edcd8a2ead0e0b7c1ebaa4ac57af58aacc4ae7a9a2dda"
+          }
+        },
+        {
+          "name": "output_twice_published",
+          "ok": true,
+          "detail": {
+            "file": "ara-x/evidence/APE_LISTA_CDN_1793397700248_full_ARA-X_twice.m3u8",
+            "bytes": 568242361,
+            "sha256": "c32722c8afc33949df7edcd8a2ead0e0b7c1ebaa4ac57af58aacc4ae7a9a2dda"
+          }
+        },
+        {
+          "name": "generation_metadata_valid",
+          "ok": true,
+          "detail": {
+            "artifact_sha256": "81dbdd11ec620b1d…",
+            "generation_id": "ara-x.gen1:adf46af40f32b7720f887fb81abf891b"
+          }
+        }
+      ],
+      "errors": []
+    }
+  ],
+  "commands": [
+    "node ara-x/scripts/e2e/run_e2e.js --selftest",
+    "node ara-x/scripts/e2e/run_e2e.js --list 4K",
+    "node ara-x/scripts/e2e/run_e2e.js --list CDN",
+    "node ara-x/scripts/e2e/run_e2e.js --list all",
+    "node --test \"ara-x/tests/*.test.js\"",
+    "node --check ara-x/scripts/e2e/run_e2e.js"
+  ],
+  "limitations": [
+    "Solo lectura local de las capturas de `ara-x/evidence/`; no hay red, VPS ni deploy.",
+    "`#EXT-X-APE-CHANNELS` ya viene en la cabecera del catálogo: V2 comprueba EXTINF == ese valor (truncamiento) antes y después; no lo reescribe.",
+    "El footer `#EXT-X-APE-VALIDATED … errors=0` es del validador del generador y NO se usa como prueba; los conteos y los hallazgos pre-existentes se miden aquí con `ara_x_validator`.",
+    "Byte-identidad: solo intra-generación (once vs twice). Cambiar `list_version` (u otro parámetro del bloque) produce otro archivo por diseño; la comparación con la generación previa de I2 se reporta como informativa, no como PASS de estabilidad entre generaciones.",
+    "Los nombres de salida del 4K (`APE_LISTA_4K_ARA-X_*`) son los fijados por el scope de t20 y no incluyen `_full`; el `artifact_sha256` de la tabla identifica la captura full de origen.",
+    "Salidas publicadas en `ara-x/evidence/`.",
+    "Reporte con las dos capturas completas.",
+    "La forma `node --test ara-x/tests/` no es ejecutable en Node 24.12.0/Windows (el runner trata el directorio como módulo); la suite se ejecuta con el glob `node --test \"ara-x/tests/*.test.js\"`, que cubre los mismos archivos.",
+    "Reporte reconstruido desde V2_e2e.json: solo se normalizó el formato de timestamps de run_history/generated_at (una versión previa de stamp() rotulaba la hora UTC con el offset local). No se re-ejecutó el E2E ni se alteró ningún dato de listas, hashes o checks."
+  ]
+}
