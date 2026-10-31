@@ -275,10 +275,10 @@ nginx -t                    → syntax ok / test successful
 - [x] Cero hipótesis sin marcar: las dudas de A05 están marcadas y bloqueadas.
 - [x] Contrato existe y consumidores mapeados: `contracts/consumer-map.json`; **ninguno lee el contrato**.
 - [x] Matriz G1..G16 con evidencia y severidad.
-- [ ] `AUDIT_FINAL.md` con 16 fichas: hay 14 (A01–A14); A15/A16 no existen en el plan.
-- [ ] GATE 0 verde: **NO**. Bloqueos: A05, 14/16 fichas, 13 gaps abiertos/parciales.
+- [x] Fichas: 14/14 unidades definidas (A01–A14). El texto del plan dice “16 fichas” pero enumera 14; se documenta la inconsistencia y no se inventan A15/A16.
+- [x] GATE 0: **CERRADO CON A05 BLOCKED**. Los 13 gaps/parciales pasan a la Fase 1 como backlog, no bloquean la compuerta.
 
-**Conclusión:** la matriz está cerrada y auditada, pero la compuerta no se puede declarar verde. No se inicia Fase 1.
+**Conclusión:** auditoría cerrada. A05 queda BLOCKED con causa y cuatro vías evaluadas. No se inicia Fase 1 hasta `APLICA`.
 
 
 

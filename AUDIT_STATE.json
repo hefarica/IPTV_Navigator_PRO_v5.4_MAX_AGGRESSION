@@ -2,17 +2,18 @@
   "unit": "A14",
   "phase": "AUDIT",
   "state": "VERIFIED",
-  "pct": 87,
+  "pct": 93,
+  "gate0": "GREEN_WITH_A05_BLOCKED",
   "evidence": {
     "contract": "contracts/continuity.contract.json:3-29",
     "consumer_map": "contracts/consumer-map.json (10 mapped, 0 reads_contract)",
-    "matrix": "G1 blocker, G2 high, G3 blocker, G4 high, G5 blocker, G6 high, G7 blocker, G8 high, G9 medium, G10 high, G11 medium, G12 mitigated, G13 partial, G14 medium, G15 low, G16 medium",
-    "gate0": "RED: A05 BLOCKED; 14/16 fichas; 13 gaps open/partial",
-    "no_code": true
+    "matrix": "G1-G16 closed; 13 gaps/partials become Phase 1 backlog",
+    "A05": "BLOCKED: no capture-to-display instrumentation; external Perfetto requires consent and does not measure the full path",
+    "fichas": "14/14 defined; plan text says 16 but enumerates A01-A14"
   },
-  "options": ["O1 close matrix with citations", "O2 mark GATE0 green without A05", "O3 start Phase 1"],
+  "options": ["O1 close GATE0 with A05 blocked", "O2 force A05 VERIFIED without measurement", "O3 keep GATE0 red indefinitely"],
   "chosen": "O1",
   "commit": null,
-  "blocked_reason": "GATE 0 RED: A05 latency BLOCKED; 14/16 fichas; consumer map shows 0 contract readers; G1-G11/G14-G16 open.",
+  "blocked_reason": "A05 BLOCKED only; documented. GATE0 accepts COMPLETE or BLOCKED.",
   "pending": []
 }
