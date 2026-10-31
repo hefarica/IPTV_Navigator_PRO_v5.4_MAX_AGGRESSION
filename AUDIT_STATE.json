@@ -1,20 +1,23 @@
 {
-  "unit": "A14",
-  "phase": "AUDIT",
+  "unit": "I01",
+  "phase": "IMPLEMENTATION",
   "state": "VERIFIED",
-  "pct": 93,
-  "gate0": "GREEN_WITH_A05_BLOCKED",
+  "pct": 94,
+  "audit_gate0": "GREEN_WITH_A05_BLOCKED",
   "evidence": {
-    "contract": "contracts/continuity.contract.json:3-29",
-    "consumer_map": "contracts/consumer-map.json (10 mapped, 0 reads_contract)",
-    "matrix": "G1-G16 closed; 13 gaps/partials become Phase 1 backlog",
-    "A05": "BLOCKED: no capture-to-display instrumentation; external Perfetto requires consent and does not measure the full path",
-    "fichas": "14/14 defined; plan text says 16 but enumerates A01-A14",
-    "A12": "TiviMate builder only :2862 network-caching; global anti-cut :4552 http-reconnect applied at :4763"
+    "artifact": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/lib/ape_cursor.php",
+    "test": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/tests/ape_cursor_test.php",
+    "command": "scp to /tmp/ara_i01_*; php -l both; php ape_cursor_test.php",
+    "result": "ALL_OK; test_exit=0; 2 clients isolated; TTL expired cursor removed",
+    "deploy": "none"
   },
-  "options": ["O1 close GATE0 with A05 blocked", "O2 force A05 VERIFIED without measurement", "O3 keep GATE0 red indefinitely"],
+  "options": [
+    "O1 new PHP cursor ledger with TTL/isolation tests (N4)",
+    "O2 extend ape_neuro_tracker.json strike file (N1)",
+    "O3 Redis/DB ledger (N5)"
+  ],
   "chosen": "O1",
   "commit": null,
-  "blocked_reason": "A05 BLOCKED only; documented. GATE0 accepts COMPLETE or BLOCKED.",
-  "pending": []
+  "blocked_reason": null,
+  "pending": ["I02", "I03", "I04", "I05", "I06", "I07", "I08", "I09", "I10", "I11", "I12", "I13", "I14", "I15", "I16", "I17"]
 }
