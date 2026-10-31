@@ -9,7 +9,8 @@
     "consumer_map": "contracts/consumer-map.json (10 mapped, 0 reads_contract)",
     "matrix": "G1-G16 closed; 13 gaps/partials become Phase 1 backlog",
     "A05": "BLOCKED: no capture-to-display instrumentation; external Perfetto requires consent and does not measure the full path",
-    "fichas": "14/14 defined; plan text says 16 but enumerates A01-A14"
+    "fichas": "14/14 defined; plan text says 16 but enumerates A01-A14",
+    "A12": "TiviMate builder only :2862 network-caching; global anti-cut :4552 http-reconnect applied at :4763"
   },
   "options": ["O1 close GATE0 with A05 blocked", "O2 force A05 VERIFIED without measurement", "O3 keep GATE0 red indefinitely"],
   "chosen": "O1",

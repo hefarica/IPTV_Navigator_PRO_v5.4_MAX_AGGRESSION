@@ -220,7 +220,8 @@ No son el mismo archivo; el de backend no está en la ruta del proxy.
 - Capacidades: VLC `supports_vlcopt=true, supports_kodiprop=false` (`:1821-1822`); Kodi lo inverso (`:1837-1838`); TiviMate `supports_vlcopt=true` (`:1885-1886`); OTT ninguno (`:1853-1854`).
 - VLC: `buildVlcDirectives` `:2742`; `#EXTVLCOPT:http-reconnect=true` `:2758` y `http-continuous` `:2759`.
 - Kodi: `buildKodiDirectives` `:2796`; buffers `:2805-2807`; no emite `http-reconnect`, usa `retry_count/exponential` en el bloque enriquecido (`:5078-5080`).
-- TiviMate: `buildTivimateDirectives` (dispatch `:2721`; EXTVLCOPT network-caching `:2862`); comparte `http-reconnect` si usa la rama VLC-like.
+- TiviMate: `buildTivimateDirectives` (dispatch `:2721`) solo añade `#EXTVLCOPT:network-caching` (`:2862`). **No** añade `http-reconnect` en su builder.
+- Anti-cut global: `:4552` añade `http-reconnect=true` a `anti_cut['extvlcopt']` y `:4763` lo aplica a `$vlcopts` para todos los players. TiviMate lo recibe por esta vía global, no por su builder.
 
 **API server:** `ape_api_server.py:1390-1396` y `ape_api_server_v2.1.py:1151-1157` emiten **EXTVLCOPT y KODIPROP a todos** sin detección de player; no es la ruta del resolver.
 
