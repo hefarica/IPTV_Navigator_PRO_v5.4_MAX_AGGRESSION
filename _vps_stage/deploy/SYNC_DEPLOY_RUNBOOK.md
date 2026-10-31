@@ -11,7 +11,8 @@ No se tocó playback, `/lists/` ni la lista viva.
 | Dato | Valor |
 |---|---|
 | GitHub Actions run | **41168703925** · `success` · head `ddb7911` |
-| URL | https://github.com/hefarica/IPTV_Navigator_PRO_v5.4_MAX_AGGRESSION/actions/runs/41168703925 |
+| Dry-run final (docs) | **41168879054** · `success` · head `4d81245` |
+| URL | https://github.com/hefarica/IPTV_Navigator_PRO_v5.4_MAX_AGGRESSION/actions/runs/41168879054 |
 | Jobs | inventory ✓ · preflight+dry-run ✓ · validate ✓ · verify (dry-run) ✓ |
 | Dry-run local stamp | `20261031T042237Z` |
 | Snapshot de hashes remotos | `_vps_stage/deploy/snapshots/dryrun_remote_hashes_20261031T042237Z.txt` |
