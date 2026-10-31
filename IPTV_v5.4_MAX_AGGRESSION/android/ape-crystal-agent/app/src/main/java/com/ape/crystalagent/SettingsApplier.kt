@@ -20,6 +20,8 @@ class SettingsApplier(ctx: Context) {
     private val cr: ContentResolver = ctx.contentResolver
     @Volatile var lastApplied: Int = 0; private set
     @Volatile var lastRejected: Int = 0; private set
+    // [perf] evita reescribir el mismo valor cada ciclo SSE de 3 s.
+    private val lastWritten = HashMap<String, String>()
 
     /** Resultado por fila: lo que se aplicó y lo que no (para el ack `/sync`, sin inventar). */
     data class ApplyReport(val applied: List<String>, val rejected: List<String>)
@@ -37,7 +39,19 @@ class SettingsApplier(ctx: Context) {
             if (!isAllowed(ns, key, value)) {
                 Log.w(TAG, "RECHAZADO (no allowlist o valor inválido): $ns/$key=$value"); rejected.add(s); continue
             }
-            if (putSetting(ns, key, value)) applied.add(s) else rejected.add(s)
+            // El SSE base manda 1; la homologación QUALITY-LOCK manda 2.
+            // No permitir que el base vuelva a bajar el lock ya aplicado.
+            if (key == "match_content_frame_rate" && value == "1" && lastWritten[key] == "2") {
+                applied.add(s); continue
+            }
+            if (lastWritten[key] == value) {
+                // idempotente: ya está aplicado; no se reescribe en cada SSE.
+                applied.add(s); continue
+            }
+            if (putSetting(ns, key, value)) {
+                lastWritten[key] = value
+                applied.add(s)
+            } else rejected.add(s)
         }
         Log.i(TAG, "device_settings aplicados=${applied.size} rechazados=${rejected.size}")
         lastApplied = applied.size; lastRejected = rejected.size
@@ -133,12 +147,43 @@ class SettingsApplier(ctx: Context) {
                 Log.w(TAG, "put $ns/$k err: ${e.message}")
             }
         }
+        // [fix] Hay keys que existen pero getString() no las expone a la app
+        // (p.ej. match_content_frame_rate en secure). Se intenta el ns doctrinal
+        // con WRITE_SECURE_SETTINGS antes de declararla inexistente.
+        if (!wrote) {
+            val forced = NS_HINT[k]
+            if (forced != null) {
+                try {
+                    val r = when (forced) {
+                        "global" -> Settings.Global.putString(cr, k, v)
+                        "system" -> Settings.System.putString(cr, k, v)
+                        "secure" -> Settings.Secure.putString(cr, k, v)
+                        else -> false
+                    }
+                    if (r) { wrote = true; Log.i(TAG, "put $forced/$k=$v (fallback write)") }
+                } catch (e: SecurityException) {
+                    Log.w(TAG, "SIN PERMISO fallback $forced/$k — adb shell pm grant ${BuildId.PKG} android.permission.WRITE_SECURE_SETTINGS")
+                } catch (e: Exception) {
+                    Log.w(TAG, "put fallback $forced/$k err: ${e.message}")
+                }
+            }
+        }
         if (!wrote) Log.w(TAG, "$k no existe en ningun ns de este device — skip")
         return wrote
     }
 
     companion object {
         const val TAG = "ApeSettingsApplier"
+
+        /** ns real medido en el ONN Android 14/S905X4 cuando getString no lo expone. */
+        private val NS_HINT: Map<String, String> = mapOf(
+            "match_content_frame_rate" to "secure",
+            "minimal_post_processing_allowed" to "secure",
+            "hdr_conversion_mode" to "global",
+            "hdr_force_conversion_type" to "global",
+            "user_preferred_resolution_width" to "global",
+            "user_preferred_resolution_height" to "global"
+        )
         // ALLOWLIST doctrinal: "ns/key" -> regex del valor permitido. NADA fuera de aquí se aplica.
         // Expandido 2026-06-18: set COMPLETO del VPP MediaTek MT8696 (AI-SR + AI-PQ + sharpness/denoise +
         // HDR display-driven) para que el ARA APK aplique TODA la metadata que viaja por URL-2 (decisión

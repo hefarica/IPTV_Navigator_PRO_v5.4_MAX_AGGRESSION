@@ -100,9 +100,13 @@ class SyncStore(ctx: Context) {
          * No son "mejor imagen": son "no romper".
          */
         val SAFE_ROWS: List<String> = listOf(
-            "global match_content_frame_rate 1",
+            // [homologación] 6 keys que SÍ existen en el ONN Android 14/S905X4.
+            "secure match_content_frame_rate 2",
             "global hdr_conversion_mode 1",
-            "global minimal_post_processing_allowed 0"
+            "secure minimal_post_processing_allowed 0",
+            "global hdr_force_conversion_type -1",
+            "global user_preferred_resolution_width 3840",
+            "global user_preferred_resolution_height 2160"
         )
     }
 }

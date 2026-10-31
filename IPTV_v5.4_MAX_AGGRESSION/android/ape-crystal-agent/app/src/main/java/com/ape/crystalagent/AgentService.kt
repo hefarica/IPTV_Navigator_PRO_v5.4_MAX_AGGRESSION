@@ -100,6 +100,9 @@ class AgentService : Service() {
                     AraStatus.vppAllowed = if (vpp != null && vpp.has("allowed")) vpp.optBoolean("allowed") else null
                     AraStatus.vppReason = vpp?.optString("reason") ?: ""
                     applier.apply(ds)
+                    // [homologación] tags de lista → sólo keys Android reales + prefs del player.
+                    val hom = PresetHomologator.apply(this@AgentService, obj)
+                    if (hom.androidSettings.isNotEmpty()) applier.apply(hom.androidSettings)
                     if (cfg.enhanceEnabled) ultra.applyVpsHints(obj)   // hints content/codec/fps/lcevc → motores
                     val codec = obj.optString("codec_hint", "")
                     val res = obj.optString("resolution_hint", "")

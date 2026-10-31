@@ -53,6 +53,12 @@ object AraStatus {
     @Volatile var display4k: Boolean? = null
     @Volatile var displayMode: String = ""
 
+    // ── Homologación de presets de lista ─────────────────────────────────────
+    @Volatile var lastPresetCount: Int = 0
+    @Volatile var lastPresetLocal: Int = 0
+    @Volatile var lastPresetUnknown: Int = 0
+    @Volatile var lastPresetAndroid: Int = 0
+
     fun ageMs(ts: Long, now: Long = System.currentTimeMillis()): Long =
         if (ts <= 0L) Long.MAX_VALUE else (now - ts).coerceAtLeast(0L)
 

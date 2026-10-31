@@ -205,6 +205,9 @@ class MainActivity : Activity() {
             append("VPP: ").append(vpp).append('\n')
             append("Settings recibidos: ").append(AraStatus.lastSettings.size).append('\n')
             append("Aplicados/rechazados: ").append(AraStatus.lastApplied).append(" / ").append(AraStatus.lastRejected).append('\n')
+            append("Presets homologados: ").append(AraStatus.lastPresetCount)
+                .append(" (Android: ").append(AraStatus.lastPresetAndroid)
+                .append(", player: ").append(AraStatus.lastPresetLocal).append(")\n")
             append("Último SSE: ").append(AraStatus.ageLabel(AraStatus.lastSseAt)).append('\n')
             append("Directiva: ").append(AraStatus.lastDirective?.toString()?.take(900) ?: "sin directiva")
         }
