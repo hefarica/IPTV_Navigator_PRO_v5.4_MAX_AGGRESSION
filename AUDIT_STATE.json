@@ -1,18 +1,18 @@
 {
-  "unit": "A03",
+  "unit": "A04",
   "phase": "AUDIT",
   "state": "VERIFIED",
-  "pct": 67,
+  "pct": 69,
   "evidence": {
-    "python": "IPTV_v5.4_MAX_AGGRESSION/generate_m3u8_v54_max_aggression.py:657-665 build_ape_block custom #EXT-X-APE-*",
-    "js": "IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/m3u8-typed-arrays-ultimate.js:6349-6361 custom #EXT-X-APE-CMAF-*",
-    "standard_tags": "no #EXT-X-MEDIA-SEQUENCE/DISCONTINUITY/PROGRAM-DATE-TIME/MAP emission; JS only searches at :226",
-    "contract": "no X-APE-Cursor/X-APE-Resume-Seq/ara_state in either generator",
-    "syntax": "py_compile=0; node_check=0"
+    "php": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/events-sse.php:20-30 auth; :32 device_id; :76-91 policy_deltas; :93-95 heartbeat; :102-104 close",
+    "nginx": "IPTV_v5.4_MAX_AGGRESSION/vps/nginx/snippets/prisma-ara-events.conf:15-40",
+    "trap": "vps_configs/autopista-trap.conf:20-24 raw IPv4 server; :128 444 /ara/ only in trap",
+    "measure": "php -l = 0; GET /ara/events = 401; no 444 public",
+    "commands": "no PRE_FILL_MAX/EMERGENCY_FILL/UNLIMITED_BITRATE"
   },
-  "options": ["O1 audit generators and document tag gaps", "O2 add standard continuity tags", "O3 replace generators"],
+  "options": ["O1 audit existing SSE and trap scope", "O2 extend commands in events-sse", "O3 create a parallel endpoint"],
   "chosen": "O1",
   "commit": null,
   "blocked_reason": null,
-  "pending": ["A04", "A05", "A06", "A07", "A08", "A09", "A10", "A11", "A12", "A13", "A14"]
+  "pending": ["A05", "A06", "A07", "A08", "A09", "A10", "A11", "A12", "A13", "A14"]
 }

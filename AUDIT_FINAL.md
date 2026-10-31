@@ -67,4 +67,21 @@ La cabecera declara “154 headers” (línea 7) y distribuciones +30/+34/+36/+2
 
 **Conclusión:** los generadores emiten metadata propietaria, pero no la secuencia/ventana/cursor del contrato. A03 confirma el GAP de continuidad.
 
+## A04 — events-sse.php y colisión autopista-trap
+
+**Estado:** VERIFIED (repo + baseline público 401; producción no inferida más allá de la sonda GET).
+
+**Archivo real:** `IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/events-sse.php`.
+
+**Auth:** Bearer obligatorio; `ARA_TOKEN` vacío → 503; regex `^Bearer\s+` + `hash_equals` (`:20-30`); no acepta token por query string. `device_id` obligatorio (`:32-35`).
+
+**Payload:** lee `policy_deltas` de `conviva.db` (`:76-91`), filtra `expires_at`, `target_device_id` y `channel_id`; emite `event: policy.delta`, `data: {...}` con `id`. Heartbeat cada 15 s (`:59`, `:93-95`); cierre por rotación a 3600 s (`:67`, `:102-104`). No hay comandos `PRE_FILL_MAX`/`EMERGENCY_FILL`/`UNLIMITED_BITRATE`.
+
+**Nginx:** `vps/nginx/snippets/prisma-ara-events.conf:15-40`; location exacto, `fastcgi_buffering off`, `fastcgi_request_buffering off`, socket `php8.3-fpm.sock`, `HTTP_AUTHORIZATION` pasado a PHP, `fastcgi_read_timeout 3700s`.
+
+**Colisión con autopista-trap:** `vps_configs/autopista-trap.conf:20-24` es un `server` `listen 80` cuyo `server_name` solo matchea IPv4 literal; `:128` devuelve 444 para `/ara/` en **ese** server. El vhost público HTTPS no está en ese scope. Medido: `/ara/events` sin Bearer → **401**, no 444. No hay colisión pública; el 444 es intencional en el trap de IP.
+
+**Verificación:** `php -l` en VPS → 0; `/ara/events` → 401.
+
+
 
