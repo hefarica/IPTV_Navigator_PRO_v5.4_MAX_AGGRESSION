@@ -8,12 +8,14 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.MimeTypes
 import androidx.media3.common.Tracks
 import androidx.media3.common.util.UnstableApi
+import androidx.media3.datasource.DataSource
 import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.analytics.AnalyticsListener
 import androidx.media3.exoplayer.hls.HlsMediaSource
 import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
 import com.ape.fluid.FluidBridge
+import com.ape.fluid.FluidStore
 
 /**
  * Player propio con TRACK-SELECTION HEVC-first (F3). Si el master del proveedor ofrece HEVC + AVC,
@@ -29,15 +31,25 @@ class ApePlayer(private val ctx: Context) {
 
     private var exo: ExoPlayer? = null
     private var ticker: Runnable? = null
+    private lateinit var selector: DefaultTrackSelector
 
     fun build(): ExoPlayer {
+        // 4K-first: buffer/caché máximos y selección de la mejor variante real.
+        FluidStore.prefs(ctx).edit()
+            .putString("buffer_profile", "max")
+            .putInt("cache_mib", 256)
+            .putInt("max_height", 2160)
+            .apply()
         FluidBridge.warmup(ctx)
         val sel = DefaultTrackSelector(ctx)
+        selector = sel
         sel.parameters = sel.buildUponParameters()
             .setPreferredVideoMimeTypes(MimeTypes.VIDEO_H265, MimeTypes.VIDEO_AV1, MimeTypes.VIDEO_H264)
-            .clearVideoSizeConstraints()
-            .setForceHighestSupportedBitrate(false)          // el VPS controla el floor
+            .setMaxVideoSize(3840, 2160)
+            .setMinVideoSize(0, 0)
+            .setForceHighestSupportedBitrate(true)            // no ABR que caiga a 720p
             .setAllowVideoMixedMimeTypeAdaptiveness(false)   // no mezclar HEVC+AVC en ABR
+            .setAllowVideoNonSeamlessAdaptiveness(false)      // no cambiar de resolución
             .build()
         val builder = ExoPlayer.Builder(ctx).setTrackSelector(sel)
         // APE Fluid: buffer/caché/decoder-fallback sobre el player existente (sin player nuevo).
@@ -55,14 +67,55 @@ class ApePlayer(private val ctx: Context) {
     fun playChannel(player: ExoPlayer, url: String, ua: String = DEFAULT_UA) {
         val http = DefaultHttpDataSource.Factory()
             .setUserAgent(ua)
+            .setConnectTimeoutMs(15_000)
+            .setReadTimeoutMs(30_000)
             .setAllowCrossProtocolRedirects(true)            // sigue el 302 line→CDN
-        val src = HlsMediaSource.Factory(http).createMediaSource(MediaItem.fromUri(url))
+        // Cache + timeouts del pipeline Fluid; NO un DataSource aislado.
+        val ds = runCatching {
+            FluidBridge.dataSource(ctx, http) as DataSource.Factory
+        }.getOrDefault(http)
+        val src = HlsMediaSource.Factory(ds).createMediaSource(MediaItem.fromUri(url))
         player.setMediaSource(src)
         player.prepare()
         player.playWhenReady = true
         AraStatus.playerActive = true
         FluidBridge.attach(ctx, player, url, ua)
-        Log.i(TAG, "playChannel HEVC-first ua=$ua url=$url")
+        Log.i(TAG, "playChannel HEVC-first no-downscale ua=$ua url=$url")
+    }
+
+    /**
+     * Fija la mejor resolución REAL disponible (cap 4K) después de que ExoPlayer
+     * parseó el master. Nunca permite que el ABR elija una variante menor.
+     */
+    fun lockHighest(tracks: Tracks) {
+        if (!::selector.isInitialized) return
+        var bestPixels = 0
+        var bestW = 0
+        var bestH = 0
+        for (g in tracks.groups) {
+            if (g.type != C.TRACK_TYPE_VIDEO) continue
+            for (i in 0 until g.length) {
+                val f = g.getTrackFormat(i)
+                if (f.width <= 0 || f.height <= 0) continue
+                if (f.width > 3840 || f.height > 2160) continue
+                val pixels = f.width * f.height
+                if (pixels > bestPixels) {
+                    bestPixels = pixels; bestW = f.width; bestH = f.height
+                }
+            }
+        }
+        if (bestPixels == 0) return
+        try {
+            selector.parameters = selector.buildUponParameters()
+                .setMinVideoSize(bestW, bestH)
+                .setMaxVideoSize(bestW, bestH)
+                .setForceHighestSupportedBitrate(true)
+                .setAllowVideoNonSeamlessAdaptiveness(false)
+                .build()
+            Log.i(TAG, "LOCK resolución $bestW" + "x$bestH (no downscale)")
+        } catch (e: Exception) {
+            Log.w(TAG, "lockHighest falló: ${e.message}")
+        }
     }
 
     /** Loguea qué variante eligió el track selector (codec/res/bitrate) — la verdad de tierra. */

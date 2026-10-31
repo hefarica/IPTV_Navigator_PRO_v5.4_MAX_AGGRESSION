@@ -92,7 +92,8 @@ public final class FluidBridge {
         SharedPreferences preferences = FluidStore.prefs(context);
         String profile = preferences.getString("buffer_profile", "balanced");
         int min = 10000, max = 30000, start = 1000, resume = 2500, bytes = 32 * 1024 * 1024;
-        if ("reserve".equals(profile)) { min = 15000; max = 45000; start = 1500; resume = 3000; bytes = 48 * 1024 * 1024; }
+        if ("max".equals(profile)) { min = 30000; max = 120000; start = 2000; resume = 5000; bytes = 256 * 1024 * 1024; }
+        else if ("reserve".equals(profile)) { min = 15000; max = 45000; start = 1500; resume = 3000; bytes = 48 * 1024 * 1024; }
         else if ("low_latency".equals(profile)) { min = 3000; max = 10000; start = 700; resume = 1500; bytes = 24 * 1024 * 1024; }
         try {
             String name = "androidx.media3.exoplayer.DefaultLoadControl$Builder";
@@ -165,8 +166,8 @@ public final class FluidBridge {
     public static Object dataSource(Context context, Object upstream) {
         try {
             String api = "androidx.media3.datasource.DefaultHttpDataSource$Factory";
-            call(api, upstream, "setConnectTimeoutMs", new Class<?>[]{int.class}, 10000);
-            call(api, upstream, "setReadTimeoutMs", new Class<?>[]{int.class}, 10000);
+            call(api, upstream, "setConnectTimeoutMs", new Class<?>[]{int.class}, 15000);
+            call(api, upstream, "setReadTimeoutMs", new Class<?>[]{int.class}, 30000);
         } catch (Exception ignored) { }
         if (!FluidStore.prefs(context).getBoolean("cache_enabled", true)) return upstream;
         if (diskCache == null) { warmup(context); return upstream; }

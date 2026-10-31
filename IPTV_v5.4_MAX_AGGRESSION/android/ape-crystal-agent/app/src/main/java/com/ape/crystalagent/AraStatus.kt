@@ -49,6 +49,10 @@ object AraStatus {
     @Volatile var playerBufferMs: Long? = null
     @Volatile var playerBufferAt: Long = 0L
 
+    // ── Salida 4K / presentación ─────────────────────────────────────────────
+    @Volatile var display4k: Boolean? = null
+    @Volatile var displayMode: String = ""
+
     fun ageMs(ts: Long, now: Long = System.currentTimeMillis()): Long =
         if (ts <= 0L) Long.MAX_VALUE else (now - ts).coerceAtLeast(0L)
 

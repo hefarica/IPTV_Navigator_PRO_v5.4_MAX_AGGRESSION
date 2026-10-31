@@ -22,6 +22,7 @@ class PlayerActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        Display4K.apply(this)
         val view = PlayerView(this).apply { useController = false }
         setContentView(view)
 
@@ -33,7 +34,10 @@ class PlayerActivity : Activity() {
         val p = a.build(); player = p
         view.player = p
         p.addListener(object : Player.Listener {
-            override fun onTracksChanged(tracks: Tracks) { a.logSelected(tracks) }
+            override fun onTracksChanged(tracks: Tracks) {
+                a.lockHighest(tracks)
+                a.logSelected(tracks)
+            }
         })
         if (ua != null) a.playChannel(p, url, ua) else a.playChannel(p, url)
     }

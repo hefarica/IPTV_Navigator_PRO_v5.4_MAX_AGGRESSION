@@ -44,6 +44,7 @@ class MainActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        Display4K.apply(this)
         window.statusBarColor = bg
         window.navigationBarColor = bg
         // [crashfix v4] El constructor de ADB/onboarding no debe tumbar la UI.

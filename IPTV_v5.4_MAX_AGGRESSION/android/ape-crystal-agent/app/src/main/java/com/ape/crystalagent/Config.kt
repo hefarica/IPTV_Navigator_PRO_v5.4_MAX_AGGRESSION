@@ -36,7 +36,9 @@ class Config(ctx: Context) {
     }
 
     val vpsBase: String get() = sp.getString("vps", DEFAULT_VPS)!!.trimEnd('/')
-    val deviceId: String get() = sp.getString("dev", defaultDeviceId)!!
+    // Backward compatible con el ONN actual: su /sync key k1 está bound a firestick-cali.
+    // El device-id único autogenerado queda para una migración explícita, no para romper sync.
+    val deviceId: String get() = sp.getString("dev", "firestick-cali")!!
 
     /**
      * [sinWG] Modo directo HTTPS/SSE. FALSE por defecto: el ARA NO crea túnel WireGuard.
