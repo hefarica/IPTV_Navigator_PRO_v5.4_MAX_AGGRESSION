@@ -5,6 +5,7 @@ import android.graphics.SurfaceTexture
 import android.util.AttributeSet
 import android.util.Log
 import android.view.TextureView
+import android.view.View
 
 /**
  * TextureView whose surface is marked setSkipScreenshot when the hidden API
@@ -44,11 +45,29 @@ class PrivacyOverlayView @JvmOverloads constructor(
         try {
             val scClass = Class.forName("android.view.SurfaceControl")
             val txClass = Class.forName("android.view.SurfaceControl\$Transaction")
-            val getSc = TextureView::class.java.getDeclaredMethod("getSurfaceControl").apply { isAccessible = true }
-            surfaceControl = getSc.invoke(this)
+            // The repo's working path: overlay root ViewRootImpl -> window SurfaceControl.
+            // TextureView.getSurfaceControl does not exist on Android 14.
+            val viewRootImpl = View::class.java.getDeclaredMethod("getViewRootImpl")
+                .apply { isAccessible = true }.invoke(this)
+                ?: throw IllegalStateException("no ViewRootImpl")
+            var sc: Any? = runCatching {
+                viewRootImpl.javaClass.getMethod("getSurfaceControl").invoke(viewRootImpl)
+            }.getOrNull()
+            if (sc == null) {
+                var cls: Class<*>? = viewRootImpl.javaClass
+                while (cls != null && sc == null) {
+                    sc = runCatching {
+                        cls!!.getDeclaredField("mSurfaceControl").apply { isAccessible = true }
+                            .get(viewRootImpl)
+                    }.getOrNull()
+                    cls = cls.superclass
+                }
+            }
+            if (sc == null) throw IllegalStateException("SurfaceControl null")
+            surfaceControl = sc
             skipScreenshot = txClass.getMethod("setSkipScreenshot", scClass, Boolean::class.javaPrimitiveType)
             applyPrivacy(true)
-            Log.i(TAG, "skipScreenshot applied")
+            Log.i(TAG, "skipScreenshot applied root=${viewRootImpl.javaClass.simpleName}")
         } catch (e: Throwable) {
             privacyAvailable = false
             Log.e(TAG, "privacy unavailable: ${e.javaClass.simpleName}: ${e.message}")

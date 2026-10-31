@@ -25,6 +25,9 @@ class SseTestActivity : Activity() {
         receiver = MetaReceiver(tokenProvider = { token }).also { it.connect() }
         overlay = PrivacyOverlayView(this)
         addContentView(overlay, ViewGroup.LayoutParams(200, 200))
+        // Red visual witness: if setSkipScreenshot works, it is absent from screenshots.
+        addContentView(android.view.View(this).apply { setBackgroundColor(0xFFFF0000.toInt()) },
+            ViewGroup.LayoutParams(200, 200))
         Log.i("ARA-SSE", "test started token=${token.isNotEmpty()} privacy=${PrivacyOverlayView.privacyAvailable}")
     }
 
