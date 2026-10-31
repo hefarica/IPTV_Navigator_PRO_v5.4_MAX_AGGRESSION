@@ -1,24 +1,23 @@
 {
-  "unit": "I13",
+  "unit": "I14",
   "phase": "IMPLEMENTATION",
   "state": "VERIFIED",
   "pct": 100,
   "audit_gate0": "GREEN_WITH_A05_BLOCKED",
   "evidence": {
-    "artifact": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/events-sse.php:81-99",
-    "helper": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/lib/ape_sse_commands.php",
-    "test": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/tests/ape_sse_commands_test.php",
-    "result": "ALL_OK; allowlist + normalized args; unknown dropped; test_exit=0 lint_exit=0",
+    "server": "ara-x/vps/crystal/state.php + state_bridge.php",
+    "android": "AraCommandBridge + MetaReceiver device_id + StatePublisher device_id",
+    "test": "state_bridge ALL_OK; gradle compileDebugKotlin BUILD SUCCESSFUL",
     "deploy": "none",
-    "limit": "no producer inserts command rows yet"
+    "limit": "no APK runtime E2E; no server deploy"
   },
   "options": [
-    "O1 allowlist + normalize in existing SSE emitter (N1)",
-    "O2 new command endpoint (N4)",
-    "O3 accept arbitrary command strings (N0, unsafe)"
+    "O1 production bridge + receiver in capture service (N1)",
+    "O2 only SseTestActivity wiring (N0, test-only)",
+    "O3 new command endpoint (N4)"
   ],
   "chosen": "O1",
   "commit": null,
   "blocked_reason": null,
-  "pending": ["I14", "I15", "I16", "I17"]
+  "pending": ["I15", "I16", "I17"]
 }

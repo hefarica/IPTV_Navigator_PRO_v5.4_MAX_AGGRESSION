@@ -15,6 +15,7 @@ import okhttp3.Request
 import org.json.JSONException
 import org.json.JSONObject
 import java.io.IOException
+import java.net.URLEncoder
 import java.util.concurrent.TimeUnit
 
 /**
@@ -34,14 +35,18 @@ class MetaReceiver(
     private var reconnectDelay = 1000L
     @Volatile private var stopped = false
 
-    fun connect(baseUrl: String = "https://iptv-ape.duckdns.org") {
+    fun connect(
+        baseUrl: String = "https://iptv-ape.duckdns.org",
+        deviceId: String = "unknown"
+    ) {
         val token = tokenProvider()
         if (token.isNullOrBlank()) {
             onError("token_no_disponible")
             return
         }
+        val safeDevice = URLEncoder.encode(deviceId, "UTF-8")
         val request = Request.Builder()
-            .url("$baseUrl/ara/sse")
+            .url("$baseUrl/ara/sse?device_id=$safeDevice")
             .header("Authorization", "Bearer $token")
             .header("Accept", "text/event-stream")
             .build()
@@ -86,7 +91,7 @@ class MetaReceiver(
                 if (!stopped) {
                     delay(reconnectDelay.coerceAtMost(30_000L))
                     reconnectDelay = (reconnectDelay * 2).coerceAtMost(30_000L)
-                    connect(baseUrl)
+                    connect(baseUrl, deviceId)
                 }
             }
         }

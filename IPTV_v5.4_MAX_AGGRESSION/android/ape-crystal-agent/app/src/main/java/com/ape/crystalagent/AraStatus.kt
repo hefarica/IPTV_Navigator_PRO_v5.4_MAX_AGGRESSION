@@ -18,6 +18,7 @@ object AraStatus {
     @Volatile var lastRejected: Int = 0
     @Volatile var lastTrack: String = ""
     @Volatile var playerActive: Boolean = false
+    @Volatile var currentChannelId: String = ""
 
     // ── /sync (D3) ────────────────────────────────────────────────────────────
     /** idle | disabled | no_key | applied | partial | denied | not_modified | endpoint_absent | unauthorized | rate_limited | protocol | replay | offline | server_error | error */

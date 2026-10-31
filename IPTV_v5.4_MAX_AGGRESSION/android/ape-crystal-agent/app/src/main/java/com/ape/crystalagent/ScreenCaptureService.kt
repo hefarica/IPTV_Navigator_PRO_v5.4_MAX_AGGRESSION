@@ -47,6 +47,7 @@ class ScreenCaptureService : Service() {
             return START_NOT_STICKY
         }
         projection = mp
+        AraCommandBridge.start(this)
         mp.registerCallback(object : MediaProjection.Callback() {
             override fun onStop() { stopSelf() }
         }, Handler(mainLooper))
@@ -144,6 +145,7 @@ class ScreenCaptureService : Service() {
     }
 
     override fun onDestroy() {
+        AraCommandBridge.stop()
         runCatching { virtualDisplay?.release() }
         runCatching { reader?.close() }
         runCatching { projection?.stop() }

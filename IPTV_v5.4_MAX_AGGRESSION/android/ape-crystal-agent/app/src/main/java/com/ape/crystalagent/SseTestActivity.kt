@@ -33,7 +33,7 @@ class SseTestActivity : Activity() {
                 Log.i("ARA-SSE", "event: $json")
                 mapper.apply(json)
             }
-        ).also { it.connect() }
+        ).also { it.connect(deviceId = AraDeviceId.get(this)) }
         // Real overlay window: ViewRootImpl belongs to the overlay, not the Activity.
         val wm = getSystemService(WindowManager::class.java)
         val pv = PrivacyOverlayView(this)

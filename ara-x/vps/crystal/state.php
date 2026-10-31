@@ -9,6 +9,8 @@ if ($want === 'Bearer ' || !hash_equals($want, $sent)) {
     exit;
 }
 
+require_once __DIR__ . '/state_bridge.php';
+
 $raw = file_get_contents('php://input');
 $data = json_decode($raw, true);
 if (!is_array($data)) {
@@ -32,8 +34,15 @@ try {
     $payload = json_encode($data, JSON_UNESCAPED_SLASHES);
     $stmt = $pdo->prepare('INSERT INTO m(payload,ts) VALUES(?,?)');
     $stmt->execute([$payload, time()]);
+    $seq = (int)$pdo->lastInsertId();
+    $sseSeq = null;
+    try {
+        $sseSeq = ApeStateBridge::append($data);
+    } catch (Throwable $e) {
+        // State remains persisted in m even if the SSE bridge DB is unavailable.
+    }
     header('Content-Type: application/json');
-    echo '{"ok":true,"seq":' . (int)$pdo->lastInsertId() . '}';
+    echo json_encode(['ok' => true, 'seq' => $seq, 'sse_seq' => $sseSeq], JSON_UNESCAPED_SLASHES);
 } catch (Throwable $e) {
     http_response_code(500);
     header('Content-Type: application/json');

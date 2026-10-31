@@ -26,6 +26,8 @@ object StatePublisher {
         }.getOrDefault("")
         if (token.isBlank()) return
         val body = JSONObject()
+            .put("device_id", AraDeviceId.get(ctx))
+            .put("channel_id", AraStatus.currentChannelId)
             .put("presets", org.json.JSONArray().put("CAPTURE-$kind"))
             .put("levers", JSONObject())
             .put("flags", JSONObject()

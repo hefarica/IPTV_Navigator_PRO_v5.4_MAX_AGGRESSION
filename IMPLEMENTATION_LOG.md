@@ -349,6 +349,50 @@ test_exit=0 lint_exit=0
 
 **Límite:** no hay productor que inserte estas filas en `policy_deltas`; I13 valida el vocabulario y el filtro del emisor SSE.
 
+## I14 — MetaReceiver a actuadores y clasificador a SSE
+
+**Estado:** VERIFIED (local; sin deploy).
+
+**Archivos:**
+
+- `ara-x/vps/crystal/state_bridge.php`
+- `ara-x/vps/crystal/state.php:12,33-45`
+- `IPTV_v5.4_MAX_AGGRESSION/android/.../AraDeviceId.kt`
+- `IPTV_v5.4_MAX_AGGRESSION/android/.../AraCommandBridge.kt`
+- `IPTV_v5.4_MAX_AGGRESSION/android/.../MetaReceiver.kt:37-50`
+- `IPTV_v5.4_MAX_AGGRESSION/android/.../StatePublisher.kt:28-30`
+- `IPTV_v5.4_MAX_AGGRESSION/android/.../ScreenCaptureService.kt:50,148`
+
+**Cambios:**
+
+- `MetaReceiver.connect()` ahora envía `?device_id=`; antes `/ara/sse` devolvía 400.
+- `AraCommandBridge` instancia `MetaReceiver` + `MetaMapper` en `ScreenCaptureService`, no solo en `SseTestActivity`.
+- `StatePublisher` envía `device_id` y `channel_id`.
+- `state.php` persiste en `events.db:m` y, si hay `device_id`, inserta `classifier.state` en `policy_deltas` (TTL 30 s) para que `/ara/sse` lo entregue.
+
+**Verificación:**
+
+```text
+php -l state_bridge.php → 0
+php -l tests/state_bridge_test.php → 0
+php -l state.php → 0
+PASS inserts row
+PASS device stored
+PASS type classifier.state
+PASS source ara_classifier
+PASS class kept
+PASS no device -> null
+PASS invalid kind -> null
+ALL_OK
+test_exit=0 lint_exit=0
+
+gradlew :app:compileDebugKotlin --offline
+BUILD SUCCESSFUL in 55s
+gradle_exit=0
+```
+
+**Límite:** no se ejecutó el APK en el ONN; la compilación Kotlin pasa, pero el E2E SSE en dispositivo no se midió. No se desplegó `state.php` ni `state_bridge.php`.
+
 
 
 
