@@ -3,6 +3,7 @@ package com.ape.crystalagent
 import android.content.Context
 import android.util.Log
 import androidx.media3.common.C
+import androidx.media3.common.Effect
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MimeTypes
 import androidx.media3.common.Tracks
@@ -11,6 +12,7 @@ import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.hls.HlsMediaSource
 import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
+import com.ape.fluid.FluidBridge
 
 /**
  * Player propio con TRACK-SELECTION HEVC-first (F3). Si el master del proveedor ofrece HEVC + AVC,
@@ -27,6 +29,7 @@ class ApePlayer(private val ctx: Context) {
     private var exo: ExoPlayer? = null
 
     fun build(): ExoPlayer {
+        FluidBridge.warmup(ctx)
         val sel = DefaultTrackSelector(ctx)
         sel.parameters = sel.buildUponParameters()
             .setPreferredVideoMimeTypes(MimeTypes.VIDEO_H265, MimeTypes.VIDEO_AV1, MimeTypes.VIDEO_H264)
@@ -34,11 +37,15 @@ class ApePlayer(private val ctx: Context) {
             .setForceHighestSupportedBitrate(false)          // el VPS controla el floor
             .setAllowVideoMixedMimeTypeAdaptiveness(false)   // no mezclar HEVC+AVC en ABR
             .build()
-        return ExoPlayer.Builder(ctx).setTrackSelector(sel).build().also { p ->
+        val builder = ExoPlayer.Builder(ctx).setTrackSelector(sel)
+        // APE Fluid: buffer/caché/decoder-fallback sobre el player existente (sin player nuevo).
+        FluidBridge.configureBuilder(ctx, builder)
+        return builder.build().also { p ->
             exo = p
-            // F6: UltraEnhance GPU-directo sobre cada frame (denoise+unsharp). Autopista: si falla → repro nativa.
-            runCatching { p.setVideoEffects(listOf(ApeUltraEnhanceGlEffect(0.6f, 0.2f))) }
-                .onFailure { Log.w(TAG, "setVideoEffects: ${it.message}") }
+            runCatching {
+                @Suppress("UNCHECKED_CAST")
+                p.setVideoEffects(FluidBridge.effects(ctx) as List<Effect>)
+            }.onFailure { Log.w(TAG, "Fluid effects: ${it.message}") }
         }
     }
 
@@ -50,6 +57,8 @@ class ApePlayer(private val ctx: Context) {
         player.setMediaSource(src)
         player.prepare()
         player.playWhenReady = true
+        AraStatus.playerActive = true
+        FluidBridge.attach(ctx, player, url, ua)
         Log.i(TAG, "playChannel HEVC-first ua=$ua url=$url")
     }
 
@@ -59,13 +68,19 @@ class ApePlayer(private val ctx: Context) {
             if (g.type == C.TRACK_TYPE_VIDEO) {
                 for (i in 0 until g.length) if (g.isTrackSelected(i)) {
                     val f = g.getTrackFormat(i)
-                    Log.i(TAG, "VIDEO elegido: mime=${f.sampleMimeType} codecs=${f.codecs} ${f.width}x${f.height} bps=${f.bitrate}")
+                    val line = "mime=${f.sampleMimeType} codecs=${f.codecs} ${f.width}x${f.height} bps=${f.bitrate}"
+                    AraStatus.lastTrack = line
+                    Log.i(TAG, "VIDEO elegido: $line")
                 }
             }
         }
     }
 
-    fun release() { exo?.release(); exo = null }
+    fun release() {
+        exo?.let { FluidBridge.detach(it) }
+        exo?.release(); exo = null
+        AraStatus.playerActive = false
+    }
 
     companion object {
         const val TAG = "ApePlayer"

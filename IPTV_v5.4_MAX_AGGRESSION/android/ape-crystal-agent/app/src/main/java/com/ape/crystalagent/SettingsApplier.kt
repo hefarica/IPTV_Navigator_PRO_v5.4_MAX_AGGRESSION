@@ -18,6 +18,8 @@ import android.util.Log
  */
 class SettingsApplier(ctx: Context) {
     private val cr: ContentResolver = ctx.contentResolver
+    @Volatile var lastApplied: Int = 0; private set
+    @Volatile var lastRejected: Int = 0; private set
 
     /** device_settings = lista de "<ns> <key> <val>" que el VPS computó para este device/canal. */
     fun apply(deviceSettings: List<String>) {
@@ -32,7 +34,48 @@ class SettingsApplier(ctx: Context) {
             if (putSetting(ns, key, value)) ok++ else rejected++
         }
         Log.i(TAG, "device_settings aplicados=$ok rechazados=$rejected")
+        lastApplied = ok; lastRejected = rejected
+        AraStatus.lastApplied = ok
+        AraStatus.lastRejected = rejected
     }
+
+    /** [2.2.0] Panel de diagnóstico: lee cada key en global/system/secure y muestra lo que el ARA ve. */
+    fun diagnosticReport(): String {
+        val sb = StringBuilder()
+        val soc = try {
+            if (android.os.Build.VERSION.SDK_INT >= 31 && android.os.Build.SOC_MODEL.isNotBlank())
+                android.os.Build.SOC_MODEL else android.os.Build.HARDWARE
+        } catch (e: Exception) { "?" }
+        sb.appendLine("== DIAGNÓSTICO ARA ==")
+        sb.appendLine("SoC: $soc")
+        sb.appendLine("modelo: ${android.os.Build.MODEL}")
+        sb.appendLine("Android: ${android.os.Build.VERSION.RELEASE} (SDK ${android.os.Build.VERSION.SDK_INT})")
+        sb.appendLine("últimos settings: aplicados=$lastApplied rechazados=$lastRejected")
+        sb.appendLine()
+        var present = 0
+        for (key in ALLOW_KEY.keys.sorted()) {
+            val vals = listOf(
+                "global" to read("global", key),
+                "system" to read("system", key),
+                "secure" to read("secure", key)
+            )
+            if (vals.any { it.second != null }) present++
+            sb.appendLine("$key: " + vals.joinToString(" · ") { "${it.first}=${it.second ?: "—"}" })
+        }
+        sb.appendLine()
+        sb.appendLine("claves presentes: $present/${ALLOW_KEY.size}")
+        sb.appendLine("Si una clave no aparece en ningún ns, este SoC no la expone y no se puede aplicar.")
+        return sb.toString()
+    }
+
+    private fun read(ns: String, key: String): String? = try {
+        when (ns) {
+            "global" -> Settings.Global.getString(cr, key)
+            "system" -> Settings.System.getString(cr, key)
+            "secure" -> Settings.Secure.getString(cr, key)
+            else -> null
+        }
+    } catch (e: Exception) { null }
 
     // Allowlist por KEY (cualquier ns): el ns real del lever varia por SoC; putSetting elige donde EXISTE.
     private fun isAllowed(ns: String, key: String, value: String): Boolean {

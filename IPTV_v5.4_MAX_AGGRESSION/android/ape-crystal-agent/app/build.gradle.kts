@@ -26,8 +26,8 @@ android {
         applicationId = "com.ape.crystalagent"
         minSdk = 22            // Fire OS 5 (Android 5.1) en adelante
         targetSdk = 28         // <29: conserva libertad de servicio en background en Fire OS
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = 10
+        versionName = "3.1.1-ara-panel-release"
         buildConfigField("String", "ENROLL_SECRET", "\"$apeEnrollSecret\"")
     }
 
@@ -37,7 +37,9 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = false   // app pequeña; sin ofuscación para depurar en device
+            isMinifyEnabled = false
+            // Misma clave debug del ARA: actualiza in-place, pero el APK NO es debuggable.
+            signingConfig = signingConfigs.getByName("debug")
         }
         debug {
             isMinifyEnabled = false

@@ -19,6 +19,17 @@ class Config(ctx: Context) {
     val vpsBase: String get() = sp.getString("vps", DEFAULT_VPS)!!.trimEnd('/')
     val deviceId: String get() = sp.getString("dev", "firestick-cali")!!
 
+    /**
+     * [sinWG] Modo directo HTTPS/SSE. FALSE por defecto: el ARA NO crea túnel WireGuard.
+     * Se deja el flag por si el propietario quiere volver a WG en el futuro; hoy la decisión
+     * es NO WG (el túnel producía freeze en su device).
+     */
+    val useWg: Boolean get() = sp.getBoolean("use_wg", false)
+
+    fun setToken(t: String) { sp.edit().putString("token", t.trim()).apply() }
+    fun setDeviceId(d: String) { sp.edit().putString("dev", d.trim()).apply() }
+    fun setUseWg(v: Boolean) { sp.edit().putBoolean("use_wg", v).apply() }
+
     val token: String
         get() {
             sp.getString("token", "")!!.let { if (it.isNotEmpty()) return it }

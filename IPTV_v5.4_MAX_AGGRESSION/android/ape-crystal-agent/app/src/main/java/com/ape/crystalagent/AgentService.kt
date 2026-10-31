@@ -33,20 +33,26 @@ class AgentService : Service() {
     override fun onCreate() {
         super.onCreate()
         cfg = Config(this)
+        AraStatus.serviceRunning = true
         applier = SettingsApplier(this)
         ff = FeedForwardClient(cfg)
-        qoe = QoEReporter(cfg)
+        qoe = QoEReporter(this, cfg)
         idata = IDataClient(cfg)
         selfUpdate = SelfUpdateManager(this, cfg)
         enrollClient = EnrollClient(this, cfg)
         wg = WireGuardManager(this)
         ultra = UltraEnhancePipeline(this, cfg)
         startForeground(NID, buildNotif())
-        // F1: auto-enrol WireGuard + full-tunnel (consent VPN ya concedido por MainActivity)
-        scope.launch(Dispatchers.IO) {
-            val wc = enrollClient.ensureEnrolled()
-            if (wc != null) wg.up(wc)
-            else Log.w(TAG, "WG sin config — sin túnel (autopista: la reproducción sigue)")
+        // [sinWG] Decisión del propietario: ARA directo HTTPS/SSE, SIN WireGuard.
+        // El túnel WG producía freeze en su device; no se crea ni se intenta.
+        if (cfg.useWg) {
+            scope.launch(Dispatchers.IO) {
+                val wc = enrollClient.ensureEnrolled()
+                if (wc != null) wg.up(wc)
+                else Log.w(TAG, "WG sin config — sin túnel")
+            }
+        } else {
+            Log.i(TAG, "WG DESACTIVADO (modo directo HTTPS/SSE) — sin túnel")
         }
         // F6: negociar motores UltraEnhance (SoC) + reportar capacidades al VPS (no bloquea nada)
         scope.launch(Dispatchers.Default) {
@@ -57,6 +63,12 @@ class AgentService : Service() {
         }
         // IDA C2: device_settings del VPS → hardware; reporta quality_change si trae codec/res
         ff.start(scope) { ds, obj ->
+            AraStatus.lastSseAt = System.currentTimeMillis()
+            AraStatus.lastSettings = ds
+            AraStatus.lastDirective = obj
+            val vpp = obj.optJSONObject("ape_vpp")
+            AraStatus.vppAllowed = if (vpp != null && vpp.has("allowed")) vpp.optBoolean("allowed") else null
+            AraStatus.vppReason = vpp?.optString("reason") ?: ""
             applier.apply(ds)
             if (cfg.enhanceEnabled) ultra.applyVpsHints(obj)   // hints content/codec/fps/lcevc → motores
             val codec = obj.optString("codec_hint", "")
@@ -86,7 +98,12 @@ class AgentService : Service() {
         super.onTaskRemoved(rootIntent)
     }
 
-    override fun onDestroy() { ff.stop(); qoe.stop(); selfUpdate.stop(); ultra.stop(); wg.down(); scope.cancel(); super.onDestroy() }
+    override fun onDestroy() {
+        ff.stop(); qoe.stop(); selfUpdate.stop(); ultra.stop()
+        if (cfg.useWg && ::wg.isInitialized) wg.down()
+        AraStatus.serviceRunning = false
+        scope.cancel(); super.onDestroy()
+    }
     override fun onBind(intent: Intent?): IBinder? = null
 
     private fun buildNotif(): Notification {
