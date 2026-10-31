@@ -83,6 +83,7 @@ object AraStatus {
     @Volatile var captureFrames: Long = 0L
     @Volatile var captureLuma: Double = 0.0
     @Volatile var captureLap: Double = 0.0
+    @Volatile var captureMotion: Double = 0.0
     @Volatile var captureKind: String = "—"
 
     fun ageMs(ts: Long, now: Long = System.currentTimeMillis()): Long =

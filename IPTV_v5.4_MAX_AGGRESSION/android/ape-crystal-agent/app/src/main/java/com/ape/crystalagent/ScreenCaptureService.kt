@@ -66,11 +66,13 @@ class ScreenCaptureService : Service() {
                 try { measure(img) } finally { img.close() }
             }.onFailure { Log.w(TAG, "frame: ${it.message}") }
         }, handler)
+        // API 34 de este build no expone MediaProjectionConfig.createVirtualDisplay;
+        // la captura de una sola app es API 35. Se captura el display completo.
         virtualDisplay = mp.createVirtualDisplay(
             "ARA-CAPTURE", ir.width, ir.height, dm.densityDpi,
             DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR, ir.surface, null, handler
         )
-        Log.i(TAG, "captura iniciada ${ir.width}x${ir.height}")
+        Log.i(TAG, "captura iniciada ${ir.width}x${ir.height} sdk=${Build.VERSION.SDK_INT}")
         return START_STICKY
     }
 
@@ -109,18 +111,21 @@ class ScreenCaptureService : Service() {
         if (n == 0) return
         val avg = sum / n
         val lapVar = lap / n
+        val motion = abs(avg - lastLuma)
         lastLuma = avg
         frames++
         val kind = when {
-            lapVar < 2.0 && frames > 30 -> "SLATE"
-            lapVar > 12.0 -> "DETAIL"
+            frames > 30 && lapVar < 1.0 && motion < 0.8 -> "SLATE"
+            lapVar > 8.0 -> "DETAIL"
+            motion > 4.0 -> "MOTION"
             else -> "FLAT"
         }
         AraStatus.captureFrames = frames
         AraStatus.captureLuma = avg
         AraStatus.captureLap = lapVar
+        AraStatus.captureMotion = motion
         AraStatus.captureKind = kind
-        if (frames % 15L == 0L) Log.i(TAG, "kind=$kind luma=${"%.1f".format(avg)} lap=${"%.2f".format(lapVar)} frames=$frames")
+        if (frames % 15L == 0L) Log.i(TAG, "kind=$kind luma=${"%.1f".format(avg)} lap=${"%.2f".format(lapVar)} motion=${"%.2f".format(motion)} frames=$frames")
     }
 
     private fun notification(): Notification {
