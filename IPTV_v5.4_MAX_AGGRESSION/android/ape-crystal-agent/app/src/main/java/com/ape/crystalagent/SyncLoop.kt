@@ -143,6 +143,8 @@ class SyncLoop(
                 AraStatus.syncReason = if (report.rejected.isEmpty()) "" else "rejected=${report.rejected.size}"
 
                 store.savePolicy(res.rawBody, p.etag, p.seq, p.ts, p.validUntil, p.profile, p.blend, report.applied)
+                // 4K-first: display.min_resolution y player.buffer_s del /sync al player.
+                PlaybackPolicy.persist(ctx, p.minResolution, if (p.bufferS > 0) p.bufferS else null)
                 val ack = buildAck(p, report, "applied", null)
                 store.saveApply(ack)
 

@@ -42,7 +42,9 @@ class SyncClient(private val cfg: Config) {
         val soc: String,
         val levers: Map<String, Int>,
         val tier: String,
-        val nextSyncS: Int
+        val nextSyncS: Int,
+        val minResolution: String = "",
+        val bufferS: Int = 0
     )
 
     data class Result(
@@ -193,6 +195,12 @@ class SyncClient(private val cfg: Config) {
         if (display.optBoolean("never_downscale", false) != true) return Triple(null, emptyList(), "never_downscale")
         if (display.optString("wire_resolution", "") == "7680x4320") return Triple(null, emptyList(), "wire_8k")
         if (display.optString("eight_k", "") == "native") return Triple(null, emptyList(), "eight_k_native")
+        // Player 4K-first: min_resolution y buffer_s se aplican al player (PlaybackPolicy).
+        val minResolution = display.optString("min_resolution", "")
+        if (minResolution.isNotBlank() && PlaybackPolicy.parseResolution(minResolution) == null)
+            return Triple(null, emptyList(), "display_min_resolution")
+        val bufferS = p.optJSONObject("player")?.optInt("buffer_s", 0) ?: 0
+        if (bufferS != 0 && (bufferS < 5 || bufferS > 300)) return Triple(null, emptyList(), "player_buffer_s")
 
         val tier = p.optJSONObject("processing")?.optString("tier", "") ?: return Triple(null, emptyList(), "processing_missing")
         if (tier !in TIERS) return Triple(null, emptyList(), "processing_tier")
@@ -214,7 +222,8 @@ class SyncClient(private val cfg: Config) {
         val policy = Policy(
             deviceId = deviceId, seq = seq, ts = ts, validUntil = validUntil, etag = etag,
             profile = active, blend = blend, allowed = allowed, soc = policySoc,
-            levers = levers, tier = tier, nextSyncS = nextSyncS
+            levers = levers, tier = tier, nextSyncS = nextSyncS,
+            minResolution = minResolution, bufferS = bufferS
         )
         return Triple(policy, rows, null)
     }

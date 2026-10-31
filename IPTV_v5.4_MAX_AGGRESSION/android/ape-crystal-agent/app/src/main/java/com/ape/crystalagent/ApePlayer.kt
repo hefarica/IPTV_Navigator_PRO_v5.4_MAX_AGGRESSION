@@ -35,17 +35,22 @@ class ApePlayer(private val ctx: Context) {
 
     fun build(): ExoPlayer {
         // 4K-first: buffer/caché máximos y selección de la mejor variante real.
+        val policy = PlaybackPolicy.fromSync(ctx)
         FluidStore.prefs(ctx).edit()
             .putString("buffer_profile", "max")
-            .putInt("cache_mib", 256)
-            .putInt("max_height", 2160)
+            .putInt("cache_mib", policy.cacheMiB)
+            .putInt("max_height", policy.maxHeight)
+            .putInt("buffer_min_s", policy.bufferMinS)
+            .putInt("buffer_max_s", policy.bufferMaxS)
             .apply()
+        Log.i(TAG, "policy target=${policy.targetWidth}x${policy.targetHeight} max=${policy.maxWidth}x${policy.maxHeight} " +
+            "neverDownscale=${policy.neverDownscale} buffer=${policy.bufferMinS}/${policy.bufferMaxS}s cache=${policy.cacheMiB}MiB")
         FluidBridge.warmup(ctx)
         val sel = DefaultTrackSelector(ctx)
         selector = sel
         sel.parameters = sel.buildUponParameters()
             .setPreferredVideoMimeTypes(MimeTypes.VIDEO_H265, MimeTypes.VIDEO_AV1, MimeTypes.VIDEO_H264)
-            .setMaxVideoSize(3840, 2160)
+            .setMaxVideoSize(policy.maxWidth, policy.maxHeight)
             .setMinVideoSize(0, 0)
             .setForceHighestSupportedBitrate(true)            // no ABR que caiga a 720p
             .setAllowVideoMixedMimeTypeAdaptiveness(false)   // no mezclar HEVC+AVC en ABR
@@ -65,10 +70,11 @@ class ApePlayer(private val ctx: Context) {
     }
 
     fun playChannel(player: ExoPlayer, url: String, ua: String = DEFAULT_UA) {
+        val policy = PlaybackPolicy.fromSync(ctx)
         val http = DefaultHttpDataSource.Factory()
             .setUserAgent(ua)
-            .setConnectTimeoutMs(15_000)
-            .setReadTimeoutMs(30_000)
+            .setConnectTimeoutMs(policy.connectTimeoutMs)
+            .setReadTimeoutMs(policy.readTimeoutMs)
             .setAllowCrossProtocolRedirects(true)            // sigue el 302 line→CDN
         // Cache + timeouts del pipeline Fluid; NO un DataSource aislado.
         val ds = runCatching {
@@ -86,23 +92,33 @@ class ApePlayer(private val ctx: Context) {
     /**
      * Fija la mejor resolución REAL disponible (cap 4K) después de que ExoPlayer
      * parseó el master. Nunca permite que el ABR elija una variante menor.
+     *
+     *  · 8K presente en el master ⇒ NUNCA se decodifica: se marca `8k_presentation`
+     *    (presentación) y el lock se queda en la mejor ≤ 4K.
+     *  · Si la mejor real < target (p. ej. sólo 1080p) ⇒ se reproduce y se marca
+     *    `4k_upscaled` (upscale de display; no se declara 4K en el wire).
      */
     fun lockHighest(tracks: Tracks) {
         if (!::selector.isInitialized) return
+        val policy = PlaybackPolicy.fromSync(ctx)
         var bestPixels = 0
         var bestW = 0
         var bestH = 0
+        var sawAbove4k = false
         for (g in tracks.groups) {
             if (g.type != C.TRACK_TYPE_VIDEO) continue
             for (i in 0 until g.length) {
                 val f = g.getTrackFormat(i)
                 if (f.width <= 0 || f.height <= 0) continue
-                if (f.width > 3840 || f.height > 2160) continue
+                if (f.width > policy.maxWidth || f.height > policy.maxHeight) { sawAbove4k = true; continue }
                 val pixels = f.width * f.height
                 if (pixels > bestPixels) {
                     bestPixels = pixels; bestW = f.width; bestH = f.height
                 }
             }
+        }
+        if (sawAbove4k && policy.eightKPresentation) {
+            Log.i(TAG, "8k_presentation: master con variante >4K; decode capado a 4K (nunca decode 8K)")
         }
         if (bestPixels == 0) return
         try {
@@ -112,7 +128,10 @@ class ApePlayer(private val ctx: Context) {
                 .setForceHighestSupportedBitrate(true)
                 .setAllowVideoNonSeamlessAdaptiveness(false)
                 .build()
-            Log.i(TAG, "LOCK resolución $bestW" + "x$bestH (no downscale)")
+            Log.i(TAG, "LOCK resolución ${bestW}x$bestH (neverDownscale=${policy.neverDownscale}, min_resolution=${policy.minWidth}x${policy.minHeight})")
+            if (bestH < policy.targetHeight) {
+                Log.i(TAG, "4k_upscaled: fuente ${bestW}x$bestH < target ${policy.targetWidth}x${policy.targetHeight} (upscale de display, wire intacto)")
+            }
         } catch (e: Exception) {
             Log.w(TAG, "lockHighest falló: ${e.message}")
         }
@@ -127,6 +146,10 @@ class ApePlayer(private val ctx: Context) {
                     val line = "mime=${f.sampleMimeType} codecs=${f.codecs} ${f.width}x${f.height} bps=${f.bitrate}"
                     AraStatus.lastTrack = line
                     Log.i(TAG, "VIDEO elegido: $line")
+                    val p = PlaybackPolicy.fromSync(ctx)
+                    if (f.height in 1 until p.targetHeight) {
+                        Log.i(TAG, "4k_upscaled: seleccionado ${f.width}x${f.height} < ${p.targetWidth}x${p.targetHeight} (display upscale)")
+                    }
                     // Snapshot estructurado para el sampler de /sync: MEDIDO del Format real.
                     AraStatus.trackCodec = f.codecs ?: ""
                     AraStatus.trackW = if (f.width > 0) f.width else 0
