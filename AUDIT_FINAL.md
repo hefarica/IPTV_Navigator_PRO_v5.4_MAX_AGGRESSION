@@ -257,12 +257,12 @@ nginx -t                    → syntax ok / test successful
 
 | GAP | Evidencia | Severidad | Estado |
 |---|---|---|---|
-| G1 cursor `/dev/shm/ape_cursor/` | contrato `:5`; grep global: no writer/reader de `ape_cursor` | blocker | ABIERTO |
-| G2 ventana persistente 30/10 | `cmaf_worker.php:104-107` window 10 + extra 20; sin persistencia | high | ABIERTO |
+| G1 cursor `/dev/shm/ape_cursor/` | I01 local: `ApeCursor` escribe/lee `ape_cursor`; producción sin deploy | blocker | PARCIAL (I01 local) |
+| G2 ventana persistente 30/10 | I02 local: `ApeWindow` 45→30, reset solo cambio de canal; producción sin deploy | high | PARCIAL (I02 local) |
 | G3 `start_number_source=epoch` | `ape_hls_generators.php:595` emite; `:577` usaba `segCount-5`; I03 local lo cambia a epoch | high | PARCIAL (I03 local, sin deploy) |
 | G4 `DISCONTINUITY` estándar | `ape_hls_generators.php` I04 local: `DISCONTINUITY`/`DISCONTINUITY-SEQUENCE`; producción sin deploy | high | PARCIAL (I04 local) |
 | G5 resume `last_delivered+1` | `ape_hls_generators.php` I05 local: cursor + `ApeResume::window`; prefetch URLs +1/+2; producción sin deploy | high | PARCIAL (I05 local) |
-| G6 retención 30/10 / rm solo cambio de canal | `cmaf_worker.php:104-107`; no hay rm por canal | high | ABIERTO |
+| G6 retención 30/10 / rm solo cambio de canal | I02 local: `ApeWindow::resetOnChannelChange`; producción sin deploy | high | PARCIAL (I02 local) |
 | G7 resolver sirve vía CMAF | `ape_hls_generators.php` I06 local escribe `origin_url.txt`/`target_dna.json` y lanza `cmaf_worker`; producción sin deploy | high | PARCIAL (I06 local) |
 | G8 `PROGRAM-DATE-TIME` estándar | `ape_hls_generators.php` I04 local: tag antes del primer `EXTINF`; producción sin deploy | high | PARCIAL (I04 local) |
 | G9 `hls_time` al GOP real | I07 local: `TARGETDURATION` desde `target_dna.seg_dur`; `INDEPENDENT-SEGMENTS` solo si probado; producción sin deploy | medium | PARCIAL (I07 local) |
@@ -278,7 +278,7 @@ nginx -t                    → syntax ok / test successful
 
 - [x] A01..A14 COMPLETO o BLOCKED con motivo: A01–A04, A06–A14 VERIFIED; A05 BLOCKED por latencia no instrumentada.
 - [x] Cero hipótesis sin marcar: las dudas de A05 están marcadas y bloqueadas.
-- [x] Contrato existe y consumidores mapeados: `contracts/consumer-map.json`; **ninguno lee el contrato**.
+- [x] Contrato existe y consumidores mapeados: `contracts/consumer-map.json`; I12/I16/I17 ya leen el contrato, el resto sigue pendiente de cablear.
 - [x] Matriz G1..G16 con evidencia y severidad.
 - [x] Fichas: 14/14 unidades definidas (A01–A14). El texto del plan dice “16 fichas” pero enumera 14; se documenta la inconsistencia y no se inventan A15/A16.
 - [x] GATE 0: **CERRADO CON A05 BLOCKED**. Los 13 gaps/parciales pasan a la Fase 1 como backlog, no bloquean la compuerta.
