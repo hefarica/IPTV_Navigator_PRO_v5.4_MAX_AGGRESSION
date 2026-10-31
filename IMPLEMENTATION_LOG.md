@@ -289,6 +289,36 @@ test_exit=0
 
 **Límite:** el transcode añade 3 encodes en el worker; no se ha medido CPU/throughput en producción. No se desplegó.
 
+## I12 — `ara_state` dinámico en metadata de lista (contrato §3)
+
+**Estado:** VERIFIED (local; sin deploy).
+
+**Archivos:**
+
+- `IPTV_v5.4_MAX_AGGRESSION/vps/prisma/lib/ape_ara_state.php`
+- `IPTV_v5.4_MAX_AGGRESSION/vps/prisma/tests/ape_ara_state_test.php`
+- `IPTV_v5.4_MAX_AGGRESSION/vps/ape_hls_generators.php:638-645`
+
+**Fuente:** `/dev/shm/ape_state/<ch>.json`; si no existe, **no se emite** el tag. Campos: `class`, `confidence`, `buffer_pct`, `bitrate_bps`, `media_sequence`, `timestamp`; `class` solo `SLATE|FLAT|DETAIL|MOTION`; confidence 0..1; buffer 0..100.
+
+**Tag:** `#EXT-X-APE-ARA-STATE:{json}`; es metadata ignorable para RFC 8216.
+
+**Verificación (VPS temporal `/tmp/ara_i12_41044`):**
+
+```text
+PASS missing file is null
+PASS loads valid state
+PASS normalizes confidence
+PASS tag is dynamic
+PASS invalid class is null
+PASS clamps confidence/buffer
+PASS no state -> empty tag
+ALL_OK
+test_exit=0 lint_exit=0
+```
+
+**Límite:** todavía no hay productor de `/dev/shm/ape_state/<ch>.json`; I12 prueba el inyector y la ausencia de datos inventados.
+
 
 
 

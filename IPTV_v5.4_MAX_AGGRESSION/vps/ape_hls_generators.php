@@ -20,6 +20,7 @@ require_once __DIR__ . '/prisma/lib/ape_cursor.php';
 require_once __DIR__ . '/prisma/lib/ape_resume.php';
 require_once __DIR__ . '/prisma/lib/ape_cmaf_bootstrap.php';
 require_once __DIR__ . '/prisma/lib/ape_hls_timing.php';
+require_once __DIR__ . '/prisma/lib/ape_ara_state.php';
 
 // ─── USER AGENTS POOL ────────────────────────────────────────────────────────
 $UA_POOL = [
@@ -646,6 +647,11 @@ function serve_hls_fmp4_ignition(array $cd): void
     // Manifiesto HLS v7 — RFC 8216 §4.3.2.5 (EXT-X-MAP requiere VERSION >= 7)
     echo "#EXTM3U\n";
     echo "#EXT-X-VERSION:7\n";
+    $araState = ApeAraState::load((string) $ch);
+    $araTag = ApeAraState::tag($araState);
+    if ($araTag !== '') {
+        echo $araTag . "\n";
+    }
     echo "#EXT-X-TARGETDURATION:{$targetDur}\n";
     echo "#EXT-X-MEDIA-SEQUENCE:{$mediaSeq}\n";
     echo "#EXT-X-DISCONTINUITY-SEQUENCE:{$hlsState['discontinuity_sequence']}\n";
