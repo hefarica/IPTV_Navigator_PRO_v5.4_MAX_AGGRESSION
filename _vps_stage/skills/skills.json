@@ -1,0 +1,35 @@
+{
+  "name": "ara-vps-skills",
+  "version": "1.0.0",
+  "phase": "FASE0",
+  "generated": "2026-10-31",
+  "skills": [
+    {
+      "id": "skills-index",
+      "path": "SKILLS.md",
+      "sha256": "5798f775cd79afa6bf59734c91d6835d8d83fb3c9cdcddea149f4cb0470f054d"
+    },
+    {
+      "id": "vps-visual-emulate",
+      "path": "corpus/vps-visual-emulate.md",
+      "sha256": "94099c0325c945f8f381db75c9aa78281fc5ae688cb6275fe19a4cf9dd3292ca"
+    },
+    {
+      "id": "canary-isolation",
+      "path": "corpus/canary-isolation.md",
+      "sha256": "48db2b279f4d5f0a39f59e7136d0e84b8c27b5f666d7ce0aab213a4613b7cf5f"
+    },
+    {
+      "id": "s905x4-limits",
+      "path": "corpus/s905x4-limits.md",
+      "sha256": "5152bedb1fc66d970404105632437faabe26ca3bfac880ca154c526f805a32a2"
+    }
+  ],
+  "gate": {
+    "command": "ara-skill check --for-canary",
+    "requires": ["ffmpeg", "ffprobe", "libx265", "systemctl"],
+    "for_canary": ["ffmpeg", "ffprobe", "libx265", "systemctl"],
+    "filters": ["deblock", "smartblur", "scale", "noise", "unsharp", "eq", "format"],
+    "note": "ffmpeg 6.1 Ubuntu no incluye el filtro literal dering; la etapa dering se implementa con smartblur (edge-aware) y se declara como limitación."
+  }
+}

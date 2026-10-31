@@ -16,9 +16,9 @@ on:
   workflow_dispatch:
     inputs:
       mode:
-        description: 'dry-run = solo revisa (por defecto). deploy = aplica de verdad.'
+        description: 'dry-run = solo revisa (por defecto). staging = 8089. deploy = aplica. canary = FASE0/1 aislado.'
         type: choice
-        options: [dry-run, staging, deploy]
+        options: [dry-run, staging, deploy, canary]
         default: dry-run
         required: true
 
@@ -33,8 +33,9 @@ permissions:
 env:
   VPS_HOST: ${{ secrets.VPS_HOST }}
   VPS_USER: ${{ secrets.VPS_USER }}
-  # [t92] dry-run ⇒ verify solo exige endpoints de lectura
-  APE_DRY_RUN: ${{ inputs.mode == 'dry-run' && '1' || '0' }}
+  # [t92] dry-run y staging/canary NO ejecutan el smoke completo de /sync
+  # (solo el deploy real escribe el endpoint). `deploy` es el único no-dry.
+  APE_DRY_RUN: ${{ inputs.mode == 'deploy' && '0' || '1' }}
   # [t92] clave efímera del CI (lib.sh la usa si existe)
   APE_SSH_KEY: /home/runner/.ssh/id_ed25519
   DEPLOY_DIR: _vps_stage/deploy
@@ -133,6 +134,114 @@ jobs:
           set -euo pipefail
           chmod +x "$DEPLOY_DIR"/*.sh
           bash "$DEPLOY_DIR/validate.sh"
+
+  # ── 3c · FASE0/1 · skills gate + canary 4K aislado (APROBACIÓN REQUERIDA) ──
+  # No usa deploy.sh/manifest: instala sólo /etc/ara, /usr/local/bin y la unit.
+  # NO toca /lists/, /sync, /ara ni el catálogo; rollback del canal al final.
+  canary:
+    name: 3c · FASE0/1 skills + canary 4K (APROBACIÓN REQUERIDA)
+    needs: validate
+    if: ${{ inputs.mode == 'canary' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment:
+      name: production
+      url: https://iptv-ape.duckdns.org
+    env:
+      CANARY_ID: canary-${{ github.run_id }}
+      CANARY_LIST: /var/www/lists/APE_LISTA_1793397700248_CDN.m3u8.gz
+      CANARY_SECONDS: '6'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Preparar SSH (llave efímera desde secretos)
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          printf '%s\n' "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' "${{ secrets.VPS_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+          chmod 644 ~/.ssh/known_hosts
+          printf 'Host *\n  StrictHostKeyChecking yes\n  UserKnownHostsFile ~/.ssh/known_hosts\n  IdentitiesOnly yes\n' > ~/.ssh/config
+          chmod 600 ~/.ssh/config
+      - name: Baseline de listas y auth (para probar aislamiento)
+        run: |
+          set -euo pipefail
+          TARGET="${{ secrets.VPS_USER }}@$VPS_HOST"
+          ssh "$TARGET" 'sha256sum /var/www/lists/APE_LISTA_4K.m3u8 /var/www/lists/APE_LISTA_1793397700248_CDN.m3u8.gz; echo ---; find /etc/nginx/snippets -maxdepth 1 -type f -printf "%f %s\n" | sort; echo ---; sha256sum /var/www/html/prisma/api/ara-sync.php 2>/dev/null || echo AUSENTE-sync' | tee baseline-before.txt
+      - name: Staging FASE0/1 en el VPS (sin destino productivo)
+        run: |
+          set -euo pipefail
+          TARGET="${{ secrets.VPS_USER }}@$VPS_HOST"
+          ssh "$TARGET" 'rm -rf /tmp/ape-fase01 && mkdir -p /tmp/ape-fase01'
+          scp -r _vps_stage/skills _vps_stage/canary "$TARGET:/tmp/ape-fase01/"
+      - name: Instalar skills + canary (backup/stamp propios)
+        run: |
+          set -euo pipefail
+          TARGET="${{ secrets.VPS_USER }}@$VPS_HOST"
+          ssh "$TARGET" 'bash /tmp/ape-fase01/canary/install.sh' | tee fase01-install.log
+      - name: Gate ara-skill check
+        run: |
+          set -euo pipefail
+          TARGET="${{ secrets.VPS_USER }}@$VPS_HOST"
+          ssh "$TARGET" 'ara-skill check; ara-skill check --for-canary' | tee fase01-gate.log
+      - name: Canary de UN canal (6 s muestreados, 5 fps)
+        run: |
+          set -euo pipefail
+          TARGET="${{ secrets.VPS_USER }}@$VPS_HOST"
+          START="$(date +%s)"
+          ssh "$TARGET" "ape-canaryctl start '$CANARY_ID' --from-list '$CANARY_LIST' --seconds '$CANARY_SECONDS'" | tee canary-start.log
+          state="active"
+          for _ in $(seq 1 60); do
+            sleep 5
+            state="$(ssh "$TARGET" "systemctl is-active 'ape-canary@$CANARY_ID.service'" 2>/dev/null || true)"
+            [ "$state" != "active" ] && break
+          done
+          END="$(date +%s)"
+          echo "wall_seconds=$((END-START))" | tee canary-wall.txt
+          [ "$state" != "active" ] || { echo "::error::canary excedió 300s"; exit 1; }
+      - name: Evidencia ffprobe + CPU + resultado systemd
+        run: |
+          set -euo pipefail
+          TARGET="${{ secrets.VPS_USER }}@$VPS_HOST"
+          ssh "$TARGET" "set -euo pipefail; ID='$CANARY_ID'; D=/var/lib/ara/canary/\$ID; cat \$D/status.json; SEG=\$(ls -1t \$D/*.ts | head -1); ffprobe -v error -select_streams v:0 -show_entries stream=width,height,r_frame_rate -of default=nw=1 \"\$SEG\"; systemctl show -p Result --value 'ape-canary@'\$ID'.service'; journalctl -u 'ape-canary@'\$ID'.service' --no-pager | sed -E 's#https?://[^ ]+#<redacted>#g' | grep -E 'Consumed .* CPU time|encoded [0-9]+ frames' | tail -3" | tee canary-evidence.log
+          ffprobe_log="$(grep -E 'width=|height=' canary-evidence.log || true)"
+          echo "$ffprobe_log" | grep -q 'width=3840' || { echo "::error::canary no es 4K"; exit 1; }
+          echo "$ffprobe_log" | grep -q 'height=2160' || { echo "::error::canary no es 4K"; exit 1; }
+          cpu_s="$(grep -oE 'Consumed [0-9.]+s CPU time' canary-evidence.log | tail -1 | grep -oE '[0-9.]+' | head -1 || true)"
+          wall_s="$(sed -n 's/^wall_seconds=//p' canary-wall.txt | head -1)"
+          if [ -n "$cpu_s" ] && [ -n "$wall_s" ] && [ "$wall_s" -gt 0 ]; then
+            awk -v c="$cpu_s" -v w="$wall_s" 'BEGIN{p=c*100/w; printf "cpu_pct_avg=%.2f (CPUQuota=40%%)\n",p; exit (p<=41.5)?0:1}' | tee cpu-check.txt
+          else
+            echo "cpu_pct_avg=unavailable (quota 40% aplicada por systemd)" | tee cpu-check.txt
+          fi
+      - name: Rollback del canary (canal vuelve al origen)
+        run: |
+          set -euo pipefail
+          TARGET="${{ secrets.VPS_USER }}@$VPS_HOST"
+          ssh "$TARGET" "ape-canaryctl rollback '$CANARY_ID'" | tee canary-rollback.log
+      - name: Verificar aislamiento (listas y auth sin cambios)
+        run: |
+          set -euo pipefail
+          TARGET="${{ secrets.VPS_USER }}@$VPS_HOST"
+          ssh "$TARGET" 'sha256sum /var/www/lists/APE_LISTA_4K.m3u8 /var/www/lists/APE_LISTA_1793397700248_CDN.m3u8.gz; echo ---; find /etc/nginx/snippets -maxdepth 1 -type f -printf "%f %s\n" | sort; echo ---; sha256sum /var/www/html/prisma/api/ara-sync.php 2>/dev/null || echo AUSENTE-sync' | tee baseline-after.txt
+          diff -u baseline-before.txt baseline-after.txt | tee isolation.diff
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: fase01-canary-evidence
+          path: |
+            fase01-install.log
+            fase01-gate.log
+            canary-start.log
+            canary-wall.txt
+            canary-evidence.log
+            cpu-check.txt
+            canary-rollback.log
+            baseline-before.txt
+            baseline-after.txt
+            isolation.diff
+          if-no-files-found: warn
+          retention-days: 14
 
   # ── 4 · DEPLOY (solo con mode=deploy + aprobación del Environment) ───────
   # ── 3b · STAGING (8089) · NO toca produccion ─────────────────────────────

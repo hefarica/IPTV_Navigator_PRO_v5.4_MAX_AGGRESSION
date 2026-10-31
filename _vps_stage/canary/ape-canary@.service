@@ -1,0 +1,31 @@
+[Unit]
+Description=ARA canary visual 4K (un canal) — %i
+Documentation=file:/etc/ara/skills/SKILLS.md
+After=network-online.target
+Wants=network-online.target
+ConditionPathExists=/etc/ara/skills/SKILLS.md
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+EnvironmentFile=/etc/ara/canary/%i.env
+ExecStartPre=/usr/local/bin/ara-skill check --for-canary
+ExecStart=/usr/local/bin/ape-visual-emulate.sh %i
+TimeoutStartSec=60
+TimeoutStopSec=30
+RuntimeMaxSec=300
+Restart=no
+KillMode=control-group
+CPUQuota=40%
+MemoryMax=1G
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/var/lib/ara/canary
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
