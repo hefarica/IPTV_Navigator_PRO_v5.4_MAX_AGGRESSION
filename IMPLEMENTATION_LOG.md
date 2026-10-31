@@ -487,6 +487,21 @@ Verificación: `php -l` local y live → 0; `nginx -t` → ok; `/ara/events` y `
 sin token → 401; `nginx`/`php8.3-fpm` activos. Hash live:
 `5569e8f6f7d8949a5684548c6100de127c4889333e6543005bb0cde972cc60ef`.
 
+Prueba real del fallback con servidor local y `.m3u8` fixture:
+
+```text
+#EXTM3U
+#EXT-X-VERSION:7
+#EXT-X-STREAM-INF:BANDWIDTH=...,CODECS="hvc1.2.4.L153.B0,mp4a.40.2"
+http://127.0.0.1:18765/feed.m3u8
+PASS_no_media_sequence
+PASS_no_targetduration
+PASS_no_discontinuity_sequence
+PASS_master_stream_inf
+PASS_independent_not_claimed
+```
+
+
 
 
 
