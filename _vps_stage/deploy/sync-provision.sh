@@ -97,7 +97,8 @@ if [ -n "$ART_SHA" ]; then
   ref="$(printf '{"artifact_sha256":"%s","generation_id":"%s","list_version":"%s","lab_exported_at":"%s"}' \
     "$ART_SHA" "${ART_GEN:-unknown}" "${ART_LIST:-unknown}" "${ART_EXPORTED:-unknown}")"
   rsh "cat > /tmp/ara-sync-artifact.json.$$" <<< "$ref" || exit 6
-  rsh "install -m 0600 -o www-data -g www-data /tmp/ara-sync-artifact.json.$$ /etc/ara-x/artifact.json && rm -f /tmp/ara-sync-artifact.json.$$" \
+  # PHP default: /var/lib/ara-x/artifact.json (ara-sync.php). No /etc/ara-x.
+  rsh "install -m 0600 -o www-data -g www-data /tmp/ara-sync-artifact.json.$$ /var/lib/ara-x/artifact.json && rm -f /tmp/ara-sync-artifact.json.$$" \
     || { c_bad "   no se pudo instalar artifact.json"; exit 6; }
   c_ok "   artifact.json instalado (0600 www-data)"
 else
