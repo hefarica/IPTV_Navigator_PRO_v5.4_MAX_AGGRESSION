@@ -1,0 +1,35 @@
+{
+  "schema": "ara-x.integration.x1/1",
+  "captured_at": "2026-10-30T21:59:00-05:00",
+  "claim_granted": false,
+  "claim_note": "No hay autorización para IPTV_v5.4_MAX_AGGRESSION/frontend/** (write_scopes del workstream = ara-x/**; forbidden_scopes incluye IPTV_v5.4_MAX_AGGRESSION/frontend/**). El generador además estaba sucio (` M`) antes de X1.",
+  "hot_files": {
+    "IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/m3u8-typed-arrays-ultimate.js": {
+      "bytes": 807127,
+      "sha256": "098399226831C01F442EB7061003154D55053F2F1115E66215D51B9AECD34F92",
+      "dirty_before_x1": true
+    },
+    "IPTV_v5.4_MAX_AGGRESSION/frontend/index-v4.html": {
+      "bytes": 267489,
+      "sha256": "9A4261B636BD9905E3DB0A19FBBB48DBA5A45792BD4DC45846A9A701B250D763",
+      "dirty_before_x1": false
+    }
+  },
+  "staged_artifacts": {
+    "ara-x/integration/ara-x-hook.js": {
+      "bytes": 8052,
+      "sha256": "80DD237F68DD456FD1D8C53401F70CED6AEB98BCD53991E922E2AACEA774A823"
+    },
+    "ara-x/integration/ara-x-hook.patch": {
+      "bytes": 12537,
+      "sha256": "C7B615DF56CAD2E631B1CC448B2A03DF6E07C6DD424090C53DC50FEFE73EC6E5"
+    }
+  },
+  "invariants": [
+    "los dos hot files no cambian durante X1 (hash estable)",
+    "el bloque del hook es byte-idéntico a buildGlobalBlock() de ara-x/playlist/ara_x_injector.js",
+    "con ARA_X_ENABLED ausente/false el hook es identidad (applyText devuelve el mismo string)",
+    "con ON el bloque va entre el header y el primer #EXTINF; 27 líneas; 0 URLs mutadas; idempotente",
+    "el patch aplica con git apply --check sobre el árbol actual y los archivos parcheados pasan node -c"
+  ]
+}
