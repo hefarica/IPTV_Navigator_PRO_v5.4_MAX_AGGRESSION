@@ -1,24 +1,23 @@
 {
-  "unit": "I08",
+  "unit": "I09",
   "phase": "IMPLEMENTATION",
   "state": "VERIFIED",
   "pct": 99,
   "audit_gate0": "GREEN_WITH_A05_BLOCKED",
   "evidence": {
-    "artifact": "IPTV_v5.4_MAX_AGGRESSION/backend/resolve_quality_unified.php:4412-4421",
-    "helper": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/lib/ape_cursor.php writeFromHeaders",
-    "test": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/tests/ape_cursor_test.php",
-    "result": "ALL_OK; header cursor 77; missing header rejected; test_exit=0 lint_exit=0",
-    "deploy": "none",
-    "limit": "no client sends X-APE-Resume-Seq yet"
+    "artifact": "vps_configs/autopista-trap.conf:65",
+    "change": "m3u8 proxy_cache_valid 200 206 5s -> 1s",
+    "stale": "vps_configs/autopista-trap.conf:112 already includes timeout/http_403 for .ts",
+    "result": "wrapper nginx -t syntax ok / test successful; exit 0",
+    "deploy": "none"
   },
   "options": [
-    "O1 write cursor from contract headers in strike tracker (N1)",
-    "O2 write cursor from strikes count (N1)",
-    "O3 new emitter (N4)"
+    "O1 change manifest TTL to 1s in existing trap config (N1)",
+    "O2 disable manifest cache entirely (N1)",
+    "O3 Lua cache override (N3)"
   ],
   "chosen": "O1",
   "commit": null,
   "blocked_reason": null,
-  "pending": ["I09", "I10", "I11", "I12", "I13", "I14", "I15", "I16", "I17"]
+  "pending": ["I10", "I11", "I12", "I13", "I14", "I15", "I16", "I17"]
 }

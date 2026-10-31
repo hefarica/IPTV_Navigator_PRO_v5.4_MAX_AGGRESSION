@@ -233,6 +233,23 @@ test_exit=0 lint_exit=0
 
 **Límite:** no hay cliente que envíe esos headers todavía; I08 prueba el receptor, no el emisor.
 
+## I09 — Manifest cache 1s / stale `.ts` (G11/G12)
+
+**Estado:** VERIFIED (local; sin deploy).
+
+**Cambio:** `vps_configs/autopista-trap.conf:65` `proxy_cache_valid 200 206 5s` → `1s` en `location ~* \.m3u8$`. El bloque `.ts` ya tenía `proxy_cache_use_stale ... timeout ...` en `:112`; no se tocó.
+
+**Verificación (wrapper nginx temporal en VPS; sin tocar config viva):**
+
+```text
+nginx: the configuration file /tmp/ara_i09b_44818/nginx-test.conf syntax is ok
+nginx: configuration file /tmp/ara_i09b_44818/nginx-test.conf test is successful
+nginx_test_exit=0
+```
+
+**Límite:** el wrapper valida el bloque con `proxy_cache_path` y módulos reales, pero no es `nginx -t` sobre la config viva; eso exige APLICA + backup + reload.
+
+
 
 
 

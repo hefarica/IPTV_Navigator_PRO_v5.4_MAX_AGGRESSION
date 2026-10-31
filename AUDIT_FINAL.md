@@ -267,7 +267,7 @@ nginx -t                    → syntax ok / test successful
 | G8 `PROGRAM-DATE-TIME` estándar | `ape_hls_generators.php` I04 local: tag antes del primer `EXTINF`; producción sin deploy | high | PARCIAL (I04 local) |
 | G9 `hls_time` al GOP real | I07 local: `TARGETDURATION` desde `target_dna.seg_dur`; `INDEPENDENT-SEGMENTS` solo si probado; producción sin deploy | medium | PARCIAL (I07 local) |
 | G10 Strike Tracker escribe cursor | I08 local: `ApeCursor::writeFromHeaders` en `resolve_quality_unified.php:4414-4421`; sin header no inventa | high | PARCIAL (I08 local) |
-| G11 manifest cache 1s u off | `vps_configs/autopista-trap.conf:65` 5s; `:146` 20s | medium | ABIERTO |
+| G11 manifest cache 1s u off | I09 local: `autopista-trap.conf:65` m3u8 TTL 1s; `:146` default 20s; producción sin deploy | medium | PARCIAL (I09 local) |
 | G12 stale en timeout `.ts` | `vps_configs/autopista-trap.conf:112` `proxy_cache_use_stale ... timeout http_403 ...` | medium | MITIGADO nativo |
 | G13 slice 1m uniforme | `vps_configs/autopista-trap.conf:90` `slice 1m`; no uniforme en todas las rutas | medium | PARCIAL |
 | G14 `lab_config` fail-loud | `lab_config.lua:38-39,47-48` loguea WARN/ERR y devuelve defaults | medium | ABIERTO |
