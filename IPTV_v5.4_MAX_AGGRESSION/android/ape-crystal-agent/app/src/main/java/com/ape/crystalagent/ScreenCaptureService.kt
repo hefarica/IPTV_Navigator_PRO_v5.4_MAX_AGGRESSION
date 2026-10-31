@@ -126,6 +126,7 @@ class ScreenCaptureService : Service() {
         AraStatus.captureMotion = motion
         AraStatus.captureKind = kind
         if (frames % 15L == 0L) Log.i(TAG, "kind=$kind luma=${"%.1f".format(avg)} lap=${"%.2f".format(lapVar)} motion=${"%.2f".format(motion)} frames=$frames")
+        if (frames % 30L == 0L) StatePublisher.publish(this, kind, avg, lapVar, motion, frames)
     }
 
     private fun notification(): Notification {
