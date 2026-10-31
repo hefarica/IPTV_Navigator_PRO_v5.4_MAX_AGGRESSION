@@ -1,24 +1,24 @@
 {
   "unit": "I17",
   "phase": "IMPLEMENTATION",
-  "state": "VERIFIED",
+  "state": "APLICA_PENDING",
   "pct": 100,
   "audit_gate0": "GREEN_WITH_A05_BLOCKED",
   "evidence": {
-    "generator": "scripts/gen_contract_headers.py",
-    "generated": "IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/headers-contract.js",
-    "merge": "headers-matrix-v9.js getHeaders + _contractValue",
-    "test": "CONTRACT_PRESENT=4/4 HEADERS_TOTAL=113 DUPES=0; node_exit=0",
+    "all_units": "I01-I17 VERIFIED local",
+    "manifest": "deploy_manifest.json (19 files, 0 missing)",
+    "plan": "DEPLOY_PLAN.md",
     "deploy": "none",
-    "limit": "vm test, not real browser"
+    "requires": "APLICA"
   },
   "options": [
-    "O1 generated contract headers + dedupe merge (N1)",
-    "O2 replace 139-header matrix with 4 (N1, regression)",
-    "O3 duplicate the 4 names inside the matrix (N0, drift)"
+    "O1 wait for explicit APLICA (current)",
+    "O2 deploy without APLICA (forbidden)",
+    "O3 partial deploy (forbidden)"
   ],
   "chosen": "O1",
   "commit": null,
   "blocked_reason": null,
+  "next": "APLICA",
   "pending": []
 }

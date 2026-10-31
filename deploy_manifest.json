@@ -1,0 +1,102 @@
+{
+  "generated_at": "2026-10-31T16:18:20Z",
+  "deploy": false,
+  "requires": "APLICA",
+  "files": [
+    {
+      "path": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/lib/ape_cursor.php",
+      "bytes": 4275,
+      "sha256": "e441fba3366fd6f433e1ec4df1f09b41e5464e6f9257079e1d670c2a339d0e31"
+    },
+    {
+      "path": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/lib/ape_window.php",
+      "bytes": 3569,
+      "sha256": "452a48790ebe2f21adbeeab448443a47942d303f974f6fef85eb1219ce06a4fe"
+    },
+    {
+      "path": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/lib/ape_resume.php",
+      "bytes": 1799,
+      "sha256": "4aff60a33afa426cb07331337e06f16be8e29114ed478d59d81bae4ae4bdce0a"
+    },
+    {
+      "path": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/lib/ape_cmaf_bootstrap.php",
+      "bytes": 2475,
+      "sha256": "9fb497373dd714dc7a10cd45ca5be16582271e0874c586c20104581e018f43a8"
+    },
+    {
+      "path": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/lib/ape_hls_state.php",
+      "bytes": 1687,
+      "sha256": "337f9896e205cc63ba05b1f7604582b67b9662b8ba409e66a8ac3a54286f4fb4"
+    },
+    {
+      "path": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/lib/ape_hls_timing.php",
+      "bytes": 558,
+      "sha256": "946b3582a6868fceb0d7c6a6e539f5ae2fccb5aa6c79b920478f5813eda661d2"
+    },
+    {
+      "path": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/lib/ape_ara_state.php",
+      "bytes": 2266,
+      "sha256": "a4761104c89e8a53dfda9cdf3b66ea9343212e74cf75f4f25699ae19bc3483cd"
+    },
+    {
+      "path": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/lib/ape_sse_commands.php",
+      "bytes": 1597,
+      "sha256": "5621d5cacc3067ff487fae8dbd8d09f284d90f5f4a492c6a27e73a5f84dc4e10"
+    },
+    {
+      "path": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/events-sse.php",
+      "bytes": 4667,
+      "sha256": "e4b7f7c2cac3f9696e46eedb7902f9b97ade71935822e733258b92c8b454ae1b"
+    },
+    {
+      "path": "IPTV_v5.4_MAX_AGGRESSION/vps/ape_hls_generators.php",
+      "bytes": 43514,
+      "sha256": "4f4e994b0e6d8e0fbe4151fc1f0f10fc516e91ed0f7ed76ed1b6e50eecb1cc29"
+    },
+    {
+      "path": "IPTV_v5.4_MAX_AGGRESSION/vps/cmaf_worker.php",
+      "bytes": 18853,
+      "sha256": "1a2af51ae1361ae55cad8217d174e71c7a2e07b89777d357a9fc616fa24e4d09"
+    },
+    {
+      "path": "IPTV_v5.4_MAX_AGGRESSION/vps/nginx/lua/lab_config.lua",
+      "bytes": 11610,
+      "sha256": "f15fbb4c6a5e7c4fcc655aba8e8da9bd56b6a803d05990351b3cede8eb816eb7"
+    },
+    {
+      "path": "IPTV_v5.4_MAX_AGGRESSION/backend/resolve_quality_unified.php",
+      "bytes": 343044,
+      "sha256": "8dd510b4d0219db2541a9ff4f88c948af392bc526c6af485257a25d5c89d36cc"
+    },
+    {
+      "path": "vps_configs/autopista-trap.conf",
+      "bytes": 6994,
+      "sha256": "e55aa3af95d8e0f8fe9b64fe9a6fccac30ae798f8470111deb9394c557511629"
+    },
+    {
+      "path": "ara-x/vps/crystal/state.php",
+      "bytes": 1846,
+      "sha256": "f15e128a36813cd0b802989aa4aa6f12e94eb4a781979e4226e7652e3bffce45"
+    },
+    {
+      "path": "ara-x/vps/crystal/state_bridge.php",
+      "bytes": 2795,
+      "sha256": "e5011c13a25f30d2ef7d55653b784628877ea973829084e33e58d721930b0cd2"
+    },
+    {
+      "path": "IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/headers-contract.js",
+      "bytes": 222,
+      "sha256": "f6e05abd631ac226876578bb7ba60920431ffc6cc18b4376fce95ca99b135a85"
+    },
+    {
+      "path": "IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/headers-matrix-v9.js",
+      "bytes": 31831,
+      "sha256": "29d306723da2b77f3fc39ea5fd9a0831d0be5da93e079c27950a285911a8a9c7"
+    },
+    {
+      "path": "IPTV_v5.4_MAX_AGGRESSION/frontend/index-v4.html",
+      "bytes": 267546,
+      "sha256": "e9fe5e5e6500a3aab138f6f1e604944706374ffda714dac0fd38e298810d285d"
+    }
+  ]
+}
