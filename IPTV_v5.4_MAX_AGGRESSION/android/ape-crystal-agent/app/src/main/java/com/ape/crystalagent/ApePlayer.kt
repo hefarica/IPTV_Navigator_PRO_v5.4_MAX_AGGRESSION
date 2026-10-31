@@ -49,6 +49,7 @@ class ApePlayer(private val ctx: Context) {
             .apply()
         Log.i(TAG, "policy target=${policy.targetWidth}x${policy.targetHeight} max=${policy.maxWidth}x${policy.maxHeight} " +
             "neverDownscale=${policy.neverDownscale} buffer=${policy.bufferMinS}/${policy.bufferMaxS}s cache=${policy.cacheMiB}MiB")
+        ImageEnhancer.applyDefaults(ctx)
         FluidBridge.warmup(ctx)
         val sel = DefaultTrackSelector(ctx)
         selector = sel
@@ -99,6 +100,7 @@ class ApePlayer(private val ctx: Context) {
         player.playWhenReady = true
         AraStatus.playerActive = true
         FluidBridge.attach(ctx, player, url, ua)
+        refreshEffects()
         Log.i(TAG, "playChannel HEVC-first no-downscale ua=$ua url=$url")
     }
 
@@ -237,7 +239,8 @@ class ApePlayer(private val ctx: Context) {
         runCatching {
             val effects = FluidBridge.effects(ctx).map { it as Effect }
             p.setVideoEffects(effects)
-        }
+            Log.i(TAG, "shader effects applied n=${effects.size}")
+        }.onFailure { Log.w(TAG, "shader effects failed: ${it.message}") }
     }
 
     fun release() {
