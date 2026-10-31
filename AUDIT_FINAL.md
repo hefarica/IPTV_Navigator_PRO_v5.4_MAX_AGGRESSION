@@ -209,6 +209,22 @@ No son el mismo archivo; el de backend no está en la ruta del proxy.
 
 **Conclusión:** no existen 4 rendiciones reales en la cadena activa. Hay 1 video en el worker, 2 video en el MPD hardcodeado y 1 audio; `media_0` es la única representación de vídeo del worker. El inventario de 4 no está en estos artefactos.
 
+## A12 — Cabeceras por reproductor y reconexión
+
+**Estado:** VERIFIED (auditoría de repo; producción no inferida).
+
+**Resolver actual:** `backend/resolve_quality_unified.php` (7.495 líneas).
+- Detección por UA: `:1793` VLC, `:1794` Kodi, `:1796` OTT Navigator, `:1798` Smarters, `:1799` TiviMate.
+- Capacidades: VLC `supports_vlcopt=true, supports_kodiprop=false` (`:1821-1822`); Kodi lo inverso (`:1837-1838`); TiviMate `supports_vlcopt=true` (`:1885-1886`); OTT ninguno (`:1853-1854`).
+- VLC: `buildVlcDirectives` `:2742`; `#EXTVLCOPT:http-reconnect=true` `:2758` y `http-continuous` `:2759`.
+- Kodi: `buildKodiDirectives` `:2796`; buffers `:2805-2807`; no emite `http-reconnect`, usa `retry_count/exponential` en el bloque enriquecido (`:5078-5080`).
+- TiviMate: `buildTivimateDirectives` (dispatch `:2721`; EXTVLCOPT network-caching `:2862`); comparte `http-reconnect` si usa la rama VLC-like.
+
+**API server:** `ape_api_server.py:1390-1396` y `ape_api_server_v2.1.py:1151-1157` emiten **EXTVLCOPT y KODIPROP a todos** sin detección de player; no es la ruta del resolver.
+
+**Efecto:** VLC/TiviMate obtienen reconexión HTTP por EXTVLCOPT; Kodi no emite `http-reconnect`, pero tiene retry/backoff en KODIPROP; OTT no recibe ninguna etiqueta de reconnect. No hay evidencia de que un tag inválido se inyecte al player equivocado en el resolver actual.
+
+
 
 
 
