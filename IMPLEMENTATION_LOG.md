@@ -75,3 +75,22 @@ test_exit=0
 
 **No desplegado:** solo `/dev/shm/ape_window_test_*`; no se tocó `/dev/shm/ape_cmaf_cache` de producción.
 
+## I03 — MEDIA-SEQUENCE con fuente epoch (G3)
+
+**Estado:** VERIFIED (local; sin deploy).
+
+**Hallazgo corregido:** `vps/ape_hls_generators.php:577` calculaba `$mediaSeq = max(0, $segCount - 5)`; el tag `:595` existía, pero se reiniciaba con el conteo. A03/A09 lo habían declarado ausente por limitar el grep a Python/JS.
+
+**Cambio:** `$mediaSeq = intdiv(time(), max(1, $targetDur));` en `:577`; el tag `:595` no cambia.
+
+**Verificación (VPS temporal `/tmp/ara_i03b_*`):**
+
+```text
+No syntax errors detected in .../ape_hls_generators.php
+a=896730923 b=896730924 monotonic=YES
+test_exit=0
+```
+
+**Límite:** la ruta de fallback `:724` conserva `MEDIA-SEQUENCE:0`; no se tocó en I03.
+
+

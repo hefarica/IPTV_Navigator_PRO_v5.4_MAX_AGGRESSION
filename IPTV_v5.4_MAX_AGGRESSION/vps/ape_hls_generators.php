@@ -574,7 +574,7 @@ function serve_hls_fmp4_ignition(array $cd): void
     $segCount = count($chunks);
     $window   = array_slice($chunks, -5); // últimos 5 segmentos
     $targetDur = 2;
-    $mediaSeq  = max(0, $segCount - 5);
+    $mediaSeq = intdiv(time(), max(1, $targetDur)); // I03/G3: epoch source, monotonic across restarts
 
     // ── Servir manifiesto HLS v7 con fMP4 ──
     header('Content-Type: application/vnd.apple.mpegurl; charset=utf-8');

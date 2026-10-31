@@ -67,6 +67,8 @@ La cabecera declara “154 headers” (línea 7) y distribuciones +30/+34/+36/+2
 
 **Conclusión:** los generadores emiten metadata propietaria, pero no la secuencia/ventana/cursor del contrato. A03 confirma el GAP de continuidad.
 
+**Corrección 2026-10-31:** A03 se limitó a Python/JS. `vps/ape_hls_generators.php:595` **sí emite** `#EXT-X-MEDIA-SEQUENCE`, pero con `$mediaSeq = max(0, $segCount - 5)` (`:577`), una fuente que se reinicia con el conteo. G3 no es “no existe”: es “existe con fuente incorrecta”. I03 corrige la fuente a epoch en local.
+
 ## A04 — events-sse.php y colisión autopista-trap
 
 **Estado:** VERIFIED (repo + baseline público 401; producción no inferida más allá de la sonda GET).
@@ -181,7 +183,9 @@ No son el mismo archivo; el de backend no está en la ruta del proxy.
 - `frontend/js/ape-v9/m3u8-typed-arrays-ultimate.js:226` solo `findIndex` de validación; `:6354-6356` solo tags `#EXT-X-APE-CMAF-*`; **no emite** `#EXT-X-MEDIA-SEQUENCE`.
 - `backend/resolve_quality_unified.php` no aparece como emisor en este grep.
 
-**Conclusión:** hay usos reales de las etiquetas fuera del generador activo (ingest/test/docs), pero el generador de listas y el resolver no las emiten. El GAP de continuidad sigue en la capa activa.
+**Corrección 2026-10-31:** el grep global omitió en el resumen `vps/ape_hls_generators.php:595`, que sí emite `#EXT-X-MEDIA-SEQUENCE`; su fuente era `segCount-5`. A09 queda corregido: el problema es la fuente, no la ausencia total.
+
+**Conclusión:** hay usos reales de las etiquetas fuera del generador activo (ingest/test/docs) y una emisión activa con fuente incorrecta; el GAP de continuidad sigue en la capa activa.
 
 ## A10 — Prefetch a 127.0.0.1:80 tras ff5ff5a
 
@@ -255,7 +259,7 @@ nginx -t                    → syntax ok / test successful
 |---|---|---|---|
 | G1 cursor `/dev/shm/ape_cursor/` | contrato `:5`; grep global: no writer/reader de `ape_cursor` | blocker | ABIERTO |
 | G2 ventana persistente 30/10 | `cmaf_worker.php:104-107` window 10 + extra 20; sin persistencia | high | ABIERTO |
-| G3 `start_number_source=epoch` | `m3u8-typed-arrays-ultimate.js:226` solo findIndex; A09: generador no emite | blocker | ABIERTO |
+| G3 `start_number_source=epoch` | `ape_hls_generators.php:595` emite; `:577` usaba `segCount-5`; I03 local lo cambia a epoch | high | PARCIAL (I03 local, sin deploy) |
 | G4 `DISCONTINUITY` estándar | `m3u8-typed-arrays-ultimate.js:6354-6356` solo tags APE-CMAF; no estándar | high | ABIERTO |
 | G5 resume `last_delivered+1` | `prefetch_segment.lua:46-54` elige el último `.ts`; no `+1` | blocker | ABIERTO |
 | G6 retención 30/10 / rm solo cambio de canal | `cmaf_worker.php:104-107`; no hay rm por canal | high | ABIERTO |
