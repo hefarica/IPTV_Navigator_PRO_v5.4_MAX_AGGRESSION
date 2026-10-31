@@ -1,18 +1,18 @@
 {
-  "unit": "A07",
+  "unit": "A08",
   "phase": "AUDIT",
   "state": "VERIFIED",
-  "pct": 73,
+  "pct": 75,
   "evidence": {
-    "resolvers": "backend 342703 sha 7728bfb5; vps 6270 sha 27db7ab7; production_mirror 3894 sha 42154e5b",
-    "proxy": "vps/cmaf_proxy.php:38,47-48,53-69 exec cmaf_worker only if origin_url.txt exists",
-    "worker": "vps/cmaf_worker.php:31-32,64,187 reads target_dna, writes manifest/pid, proc_open ffmpeg",
-    "cache_reader": "vps/ape_hls_generators.php:530-540,696 fallback cmaf_worker_not_ready_using_provider_m3u8",
-    "gap": "no writer of origin_url.txt/target_dna.json in vps/*.php or backend/*.php"
+    "upstream_gate": "vps/nginx/lua/upstream_gate.lua:20-44 telemetry + UA, no block",
+    "upstream_response": "vps/nginx/lua/upstream_response.lua:66-70 content_length=nil for m3u8; no sequence",
+    "decision_engine": "vps/nginx/lua/decision_engine.lua:9 no ngx.exit/503; no sequence",
+    "bandwidth_reactor": "vps/nginx/lua/bandwidth_reactor.lua:82-151 ring buffer; no sequence",
+    "sequence_grep": "no MEDIA-SEQUENCE/DISCONTINUITY/PROGRAM-DATE-TIME/media_sequence/segment_uri in the four"
   },
-  "options": ["O1 audit existing chain and document break", "O2 wire unified resolver to write DNA/origin", "O3 rewrite worker"],
+  "options": ["O1 audit four Lua and document no window/sequence effects", "O2 add sequence logic to Lua", "O3 rewrite data-plane"],
   "chosen": "O1",
   "commit": null,
   "blocked_reason": null,
-  "pending": ["A08", "A09", "A10", "A11", "A12", "A13", "A14"]
+  "pending": ["A09", "A10", "A11", "A12", "A13", "A14"]
 }

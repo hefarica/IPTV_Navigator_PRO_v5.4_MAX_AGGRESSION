@@ -144,6 +144,23 @@ No son el mismo archivo; el de backend no está en la ruta del proxy.
 
 **Verificación:** grep de writers → solo `cmaf_proxy.php:47-48` y `cmaf_worker.php:64` como lectores; `ape_hls_generators.php:696` como fallback.
 
+## A08 — Lua de data-plane
+
+**Estado:** VERIFIED (auditoría de repo; producción no inferida).
+
+**Archivos:** `vps/nginx/lua/upstream_gate.lua` (46 líneas), `upstream_response.lua` (134), `decision_engine.lua` (184), `bandwidth_reactor.lua` (283).
+
+**Efectos sobre ventana/secuencia:**
+
+- `upstream_gate.lua:20-44`: solo telemetría y rotación de UA; **no** bloquea, no toca secuencia/ventana.
+- `upstream_response.lua:66-70`: para `.m3u8/.m3u` limpia `ngx.header.content_length` para forzar chunked; no toca `MEDIA-SEQUENCE` ni ventana. `:114` lee URI, no secuencia.
+- `decision_engine.lua:9`: declara no `ngx.exit`/no 503; ajusta headers; no secuencia.
+- `bandwidth_reactor.lua:82-151`: ring buffer de 12 muestras y contadores de 60s; telemetría, no secuencia.
+- Grep de `MEDIA-SEQUENCE|DISCONTINUITY|PROGRAM-DATE-TIME|media_sequence|segment_uri` en los cuatro → **sin coincidencias**.
+
+**Conclusión:** los cuatro Lua **no modifican la ventana ni la secuencia**. El único cambio de cuerpo es quitar `Content-Length` del manifest para chunked. La continuidad no está aquí; no se toca.
+
+
 
 
 
