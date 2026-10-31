@@ -103,6 +103,8 @@ La cabecera declara “154 headers” (línea 7) y distribuciones +30/+34/+36/+2
 - heredar 50–80 ms (inferencia, viola E6).
 Ninguna mide la latencia real sin código o sin una fuente de tiempo común.
 
+**Addendum 2026-10-31 — vía externa Perfetto:** el ONN expone `perfetto v34.0`; `com.ape.crystalagent` no estaba corriendo y `dumpsys media.projection` no lista servicio. Al abrir `MainActivity`, Android mostró el diálogo de consentimiento de MediaProjection (“¿Deseas iniciar una grabación…?”); se canceló y se hizo `force-stop`. No se aceptó captura ni se generó traza. Perfetto no elimina el requisito de consentimiento ni mide captura→display por sí solo.
+
 ## A06 — Entregable Excel
 
 **Estado:** VERIFIED (artefacto existe y es byte-idéntico en dos rutas).
