@@ -58,6 +58,10 @@ while IFS=$'\t' read -r src dst mode owner note <&3; do   # [t115]
   printf '   BACKUP    %s\n' "$dst"
 done 3< <(manifest_rows)   # [t115]
 
+c_hdr "2.1 · dirs de estado /sync (idempotente)"
+rsh "install -d -m 0750 -o root -g www-data /etc/ara-x && install -d -m 0750 -o www-data -g www-data /var/lib/ara-x" \
+  || { c_bad "   no se pudieron crear los dirs de /sync"; exit 12; }
+
 c_hdr "3 · instalación (mv atómico dentro del mismo FS) + nginx -t + reload"
 fail=0
 while IFS=$'\t' read -r src dst mode owner note <&3; do   # [t115]
@@ -91,6 +95,33 @@ if [ "$fail" -ne 0 ] || ! rsh "nginx -t" ; then
   c_bad "   nginx -t falló → ROLLBACK automático"
   "$DEPLOY_DIR/rollback.sh" "$STAMP" --yes || c_bad "   ROLLBACK TAMBIÉN FALLÓ: intervención manual con $BK"
   exit 7
+fi
+
+# [t35] Provisionar estado de /sync (migración + key/artifact desde el
+# Environment). Si falta la clave, NO falla el deploy: /sync quedará 503.
+if [ -x "$DEPLOY_DIR/sync-provision.sh" ]; then
+  if ! "$DEPLOY_DIR/sync-provision.sh" --apply; then
+    c_bad "   sync-provision falló → ROLLBACK automático"
+    "$DEPLOY_DIR/rollback.sh" "$STAMP" --yes || true
+    exit 13
+  fi
+fi
+
+# [t35] Añadir `include snippets/prisma-ara-sync.conf;` al snippet público 443
+# (idempotente; backup dentro del stamp para rollback).
+if [ -x "$DEPLOY_DIR/sync-include.sh" ]; then
+  if ! "$DEPLOY_DIR/sync-include.sh" "$STAMP" --apply; then
+    c_bad "   sync-include falló → ROLLBACK automático"
+    "$DEPLOY_DIR/rollback.sh" "$STAMP" --yes || true
+    exit 14
+  fi
+fi
+
+# Revalidar tras provision/include antes del reload.
+if ! rsh "nginx -t"; then
+  c_bad "   nginx -t falló tras provision/include → ROLLBACK"
+  "$DEPLOY_DIR/rollback.sh" "$STAMP" --yes || true
+  exit 15
 fi
 rsh "nginx -s reload" || { c_bad "   reload falló → ROLLBACK"; "$DEPLOY_DIR/rollback.sh" "$STAMP" --yes; exit 8; }
 c_ok "   desplegado y recargado"

@@ -43,6 +43,27 @@ bash _vps_stage/deploy/validate.sh
 bash _vps_stage/deploy/deploy.sh --apply --yes
 ```
 
+## `/sync` (t35) — activación bajo Environment `production`
+
+El manifiesto incluye 6 artefactos de `/sync` (PHP, snippets nginx, zona, Lua staged y migración SQL).
+El deploy:
+
+1. crea `/etc/ara-x` (0750 root:www-data) y `/var/lib/ara-x` (0750 www-data:www-data);
+2. instala los ficheros y aplica `_vps_stage/sql/ara_sync.sql` con `sqlite3` (si falta, el PHP crea las tablas);
+3. `sync-provision.sh` escribe `/etc/ara-x/sync-keys.json` y `artifact.json` desde el Environment
+   (`ARA_SYNC_KEY`, `ARA_SYNC_DEVICE_IDS`, `ARA_SYNC_ARTIFACT_SHA256`, …). **Si falta el secreto o
+   la identidad R1, el deploy ABORTA y hace rollback** (no se habilita `/sync` a medias);
+4. `sync-include.sh` añade `include snippets/prisma-ara-sync.conf;` al snippet público vivo (idempotente,
+   backup dentro del stamp) y revalida `nginx -t`;
+5. `verify.sh` ejecuta `sync-smoke.js`: 401 sin HMAC, 401 key desconocida, 413, 429, 200 HMAC (si hay
+   `ARA_SYNC_VERIFY_KEY`), `/ara/events` con token (si `ARA_VERIFY_TOKEN`) y `/lists/` 200.
+
+Rollback: `rollback.sh <stamp> --yes` restaura los destinos del manifiesto **y** el snippet público
+respaldado por `sync-include.sh`. Las claves/DB pueden quedar; no afectan playback.
+
+**Nunca** se ejecuta el mapa legacy `tools/cicd` (R3-R1) ni se tocan `/lists/`, segmentos o playback.
+Producción sigue **NO-GO** hasta cerrar R6-F01/V3-F-01 y V3-F-09 y aprobar el Environment.
+
 ## Requisitos previos en el VPS (ya verificados en el inventario)
 
 - `luac`/`lua` 5.1.5 presentes (nginx 1.24.0 con módulo Lua) · `php` 8.3.6 + `php8.3-fpm`

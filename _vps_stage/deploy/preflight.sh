@@ -18,7 +18,8 @@ else
 fi
 
 c_hdr "2 · manifiesto: origen local + destino remoto"
-remote_hashes="$(rsh 'for f in /etc/nginx/lua/ape_header.lua /etc/nginx/lua/ape_uri_rebase.lua /etc/nginx/lua/ape_wake_on_manifest.lua /etc/nginx/lua/ape_gateway.lua /etc/nginx/lua/ape_obs.lua /etc/nginx/lua/ape_lab_api.lua /etc/nginx/lua/ape_luatest.lua /etc/nginx/conf.d/ape-meta-plane.conf /var/www/html/lists/APE_LISTA_PRODUCTION.m3u8; do if [ -f "$f" ]; then printf "%s  %s\n" "$(sha256sum "$f" | cut -d" " -f1)" "$f"; else printf "%s  %s\n" "AUSENTE" "$f"; fi; done' 2>/dev/null)"
+dests="$(manifest_rows | cut -f2 | tr '\n' ' ')"
+remote_hashes="$(rsh "for f in $dests; do if [ -f \"\$f\" ]; then printf '%s  %s\n' \"\$(sha256sum \"\$f\" | cut -d' ' -f1)\" \"\$f\"; else printf 'AUSENTE  %s\n' \"\$f\"; fi; done" 2>/dev/null)"
 n=0
 while IFS=$'\t' read -r src dst mode owner note; do
   n=$((n+1))

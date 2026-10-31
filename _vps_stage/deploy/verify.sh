@@ -82,6 +82,10 @@ while IFS=$'\t' read -r src dst mode owner note <&3; do   # [t115] fd 3: ssh NO 
   got="$(rsh "[ -f '$dst' ] && sha256sum '$dst' | cut -d' ' -f1 || echo AUSENTE" 2>/dev/null | tr -d '[:space:]')"
   if [ "$want" = "$got" ]; then
     printf '   PARIDAD-OK  %s\n' "$dst"
+  elif [ "$DRY" = "1" ] && [ "$got" = "AUSENTE" ]; then
+    # [t35] En dry-run los ficheros NUEVOS del manifiesto aún no existen en el
+    # VPS: se reportan como pendientes, no como paridad rota (el deploy los sube).
+    printf '   PARIDAD-PENDIENTE (dry-run) %s\n' "$dst"
   else
     printf '   PARIDAD-ROTA %s (repo=%s remoto=%s)\n' "$dst" "${want:0:12}" "${got:0:12}"
     parity_bad=$((parity_bad+1))
@@ -96,6 +100,18 @@ if [ "$parity_bad" -ne 0 ]; then
   exit 2
 fi
 c_ok "   paridad completa: $n_checked/$n_manifest ficheros repo == remoto"
+
+# ── [t35] SYNC SMOKE (solo deploy real; dry-run no tiene /sync desplegado) ───
+if [ "$DRY" != "1" ] && [ -f "$DEPLOY_DIR/sync-smoke.js" ]; then
+  c_hdr "SYNC SMOKE · /sync + /ara/events + /lists/"
+  if ! SYNC_BASE="$BASE" SYNC_IP="$HOST_IP" SYNC_DEVICE_ID="${ARA_SYNC_DEVICE_ID:-onn4k-001}" \
+       SYNC_KEY="${ARA_SYNC_VERIFY_KEY:-}" SYNC_KEY_ID="${ARA_SYNC_KEY_ID:-k1}" \
+       SYNC_ARTIFACT_SHA="${ARA_SYNC_ARTIFACT_SHA256:-$(printf '0%.0s' $(seq 1 64))}" \
+       SYNC_TOKEN="${ARA_VERIFY_TOKEN:-}" node "$DEPLOY_DIR/sync-smoke.js"; then
+    c_bad "   sync-smoke falló (401/413/429/200/listas) → VERIFY FALLA"
+    exit 4
+  fi
+fi
 
 c_hdr "RESUMEN VERIFY"
 [ "$DRY" = "1" ] && printf '   modo=dry-run · capa lua omitida\n'

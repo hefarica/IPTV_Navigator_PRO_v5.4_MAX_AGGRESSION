@@ -15,3 +15,12 @@ _vps_stage/lua/ape_luatest.lua	/etc/nginx/lua/ape_luatest.lua	644	www-data:www-d
 _vps_stage/nginx/meta-plane.conf	/etc/nginx/conf.d/50-ape-meta-plane.conf	644	root:root	server 8088 completo (plano meta)
 # HALLAZGO t89: el server 8088 vivo está en /etc/nginx/conf.d/50-ape-meta-plane.conf (10941 B).
 # Si el fichero no existe en local, preflight lo reporta como AUSENTE y no se despliega.
+# ── [t35] SYNC-DEPLOY · /sync (staged hasta aprobación del Environment) ─────
+# El PHP y los snippets son NUEVOS: no tocan playback ni listas. El include al
+# 443 lo añade sync-include.sh de forma idempotente (backup dentro del stamp).
+ara-x/vps/php/ara-sync.php	/var/www/html/prisma/api/ara-sync.php	644	www-data:www-data	POST /sync (PHP staged, D3 v2)
+ara-x/vps/nginx/ara-sync.conf	/etc/nginx/snippets/prisma-ara-sync.conf	644	root:root	location = /sync (snippet server 443)
+ara-x/vps/nginx/ara-sync-zone.conf	/etc/nginx/conf.d/00-ara-sync-zone.conf	644	root:root	limit_req_zone ara_sync/ara_sync_lua (solo /sync)
+ara-x/vps/lua/ara_x_sync.lua	/etc/nginx/lua/ara_x_sync.lua	644	www-data:www-data	variante Lua /sync (staged, NO production)
+ara-x/vps/nginx/ara-sync-lua.conf	/etc/nginx/snippets/ara-sync-lua.conf	644	root:root	location Lua /sync (staged, no incluida por defecto)
+_vps_stage/sql/ara_sync.sql	/var/lib/ara-x/schema.sql	600	www-data:www-data	migración SQLite ara_sync_state/nonce/replay/keys

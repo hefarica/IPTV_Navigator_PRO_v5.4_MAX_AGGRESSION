@@ -473,11 +473,42 @@ cuerpo** y **no** toca seq/nonce/replay.
 | Artefacto | Estado |
 |---|---|
 | `ara-x/vps/php/ara-sync.php` | staged; `php -l` **PASS** vía stdin (VPS, sin escribir archivo); sin funciones de red (gate = 0) |
-| `ara-x/vps/nginx/ara-sync.conf` | staged; `nginx -t` **NOT_RUN** (requiere ventana) |
-| `ara-x/vps/nginx/ara-sync-zone.conf` | staged; zona + `log_format` sin IP |
+| `ara-x/vps/nginx/ara-sync.conf` | staged; `nginx -t` **NOT_RUN** en local (se valida en deploy con la config montada) |
+| `ara-x/vps/nginx/ara-sync-zone.conf` | staged; zonas `ara_sync` + `ara_sync_lua` + `log_format` sin IP |
+| `ara-x/vps/lua/ara_x_sync.lua` | variante Lua staged (V3-R2: HMAC embebido, sin `ape_attr`, solo campos del schema); **NO** es la variante de producción |
+| `ara-x/vps/nginx/ara-sync-lua.conf` | snippet Lua staged; no se incluye por defecto en el 443 |
 | `ara-x/vps/php/config/ara-sync-keys.example.json` | formato del store; sin secretos reales |
 | `ara-x/vps/schema/sync_features.json` | catálogo canónico (features, content, eventos, SoC, levers) |
 | `ara-x/scripts/gen_sync_schemas.js` | genera ambos schemas; `--check` falla con drift |
+| `_vps_stage/deploy/sync-provision.sh` | migración SQLite + key/artifact desde Environment (sin hardcode) |
+| `_vps_stage/sql/ara_sync.sql` | migración `ara_sync_state/nonce/replay/keys` |
+| `_vps_stage/deploy/sync-include.sh` | añade/include idempotente al 443 con backup dentro del stamp |
+| `_vps_stage/deploy/sync-smoke.js` | smoke HTTP: 401 sin firma, 401 key desconocida, 413, 429, 200 HMAC, listas |
+
+### 13.9.1 Deploy map t35 (staged; activación sólo con Environment `production`)
+
+| Origen | Destino VPS | Modo |
+|---|---|---|
+| `ara-x/vps/php/ara-sync.php` | `/var/www/html/prisma/api/ara-sync.php` | 644 `www-data:www-data` |
+| `ara-x/vps/nginx/ara-sync.conf` | `/etc/nginx/snippets/prisma-ara-sync.conf` | 644 `root:root` |
+| `ara-x/vps/nginx/ara-sync-zone.conf` | `/etc/nginx/conf.d/00-ara-sync-zone.conf` | 644 `root:root` |
+| `ara-x/vps/lua/ara_x_sync.lua` | `/etc/nginx/lua/ara_x_sync.lua` | 644 `www-data:www-data` |
+| `ara-x/vps/nginx/ara-sync-lua.conf` | `/etc/nginx/snippets/ara-sync-lua.conf` | 644 `root:root` |
+| `_vps_stage/sql/ara_sync.sql` | `/var/lib/ara-x/schema.sql` | 600 `www-data:www-data` |
+
+`sync-include.sh` añade `include snippets/prisma-ara-sync.conf;` al **snippet público vivo**
+`/etc/nginx/snippets/ape-meta-public.conf` (backup en `/var/backups/ape-deploy/<stamp>/`; rollback lo restaura).
+No se reescribe el snippet público ni se tocan `/lists/`, playback, `.m3u8`/segmentos.
+
+**Secretos (nunca en repo):** el workflow inyecta `ARA_SYNC_KEY` (64 hex), `ARA_SYNC_DEVICE_IDS`,
+`ARA_SYNC_KEY_ID`, `ARA_SYNC_ARTIFACT_SHA256`/`ARA_SYNC_GENERATION_ID`/`ARA_SYNC_LIST_VERSION`
+desde el Environment `production`. `sync-provision.sh` escribe `/etc/ara-x/sync-keys.json` (0600
+`www-data`) y `/etc/ara-x/artifact.json` (0600). **Si falta la clave o la identidad R1, el deploy
+aborta y hace rollback**: no se habilita `/sync` a medias ni se inventa una clave.
+
+**Device:** el APK lee el secreto crudo (64 hex, sin comentarios) de `/sdcard/ape/sync.key`
+o del data dir privado; el `key_id` va en SharedPreferences (`sync_key_id`, default `k1`).
+Nunca se mete la clave en el APK ni en BuildConfig.
 
 ### 13.10 Hallazgos pre-existentes y NO-GO de producción
 
@@ -504,9 +535,13 @@ mientras tanto el contrato, el cliente, el mock y el endpoint quedan **staged** 
   (`allow 127.0.0.1; deny all`) y **no** es consumible por el device (R5: corrección de modelo).
 - Aceptación post-deploy: `POST /sync` sin firma ⇒ **401**; `GET /sync` ⇒ **405**; `/health` 200;
   `/ara/events` sigue 401 sin Bearer; `/lists/APE_LISTA_4K.m3u8` sigue 200 sin límites nuevos.
-- **Matriz de tests**: 23 casos de seguridad (`sync_security.test.js`) + contrato v2 + E2E
-  (`sync_e2e.test.js`) + playlist = **74/74 PASS**; schemas sin drift; `php -l` PASS vía stdin.
-- **Bloqueo de scope**: `_vps_stage/**` y `IPTV_v5.4_MAX_AGGRESSION/vps/**` están fuera del write-scope
-  de `ara-x-dynamic-controller`; el deploy del snippet/manifiesto requiere autorización del owner u
-  otro workstream dueño.
+- **Matriz de tests**: contrato v2 (`sync_contract.test.js`), E2E (`sync_e2e.test.js`), 23 casos de
+  seguridad (`sync_security.test.js`), Lua (`lua_module.test.js`) e I3 (`sync.test.js`) verdes;
+  schemas sin drift; `php -l` y `luac -p` PASS vía stdin (VPS, sin escribir archivo).
+- **Deploy t35**: `_vps_stage/deploy/manifest.tsv` incluye los 6 artefactos de `/sync`;
+  `preflight.sh` + `dry-run.sh` + `validate.sh` pasan en read-only; el deploy real exige
+  `workflow_dispatch mode=deploy` + aprobación del Environment `production`.
+- **Bloqueo vigente**: R6-F01 (CORS/path de la lista) y V3-F-09 (R3-R4/R5/R6/R7) siguen abiertos;
+  el deploy de producción permanece **NO-GO** hasta que el owner los acepte/cierre. Este repo deja
+  el endpoint **listo para key/token**, no habilitado por defecto.
 
