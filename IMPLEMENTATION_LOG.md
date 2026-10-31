@@ -45,3 +45,33 @@ test_exit=0
 ```
 
 **No desplegado:** el archivo no se copió a `/var/www/html` ni a `/etc/nginx`; la prueba usó `/tmp/ara_i01_*` y `/dev/shm/ape_cursor` con claves de test, limpiadas.
+
+## I02 — Ventana persistente (G2/G6)
+
+**Estado:** VERIFIED (local; sin deploy).
+
+**Archivos:**
+
+- `IPTV_v5.4_MAX_AGGRESSION/vps/prisma/lib/ape_window.php`
+- `IPTV_v5.4_MAX_AGGRESSION/vps/prisma/tests/ape_window_test.php`
+
+**Política:** `keep=30`; `delete_threshold=10`; solo se poda cuando hay más de 40; se borran los más antiguos hasta 30. `resetOnChannelChange()` es el único camino que vacía la ventana completa.
+
+**Verificación (VPS temporal `/tmp/ara_i02_*`):**
+
+```text
+PASS initial 45 segments
+PASS prune deletes down to 30
+PASS oldest removed
+PASS newest retained
+PASS normal prune is idempotent
+PASS state write
+PASS state read
+PASS channel change clears 30 segments
+PASS channel change clears state
+ALL_OK
+test_exit=0
+```
+
+**No desplegado:** solo `/dev/shm/ape_window_test_*`; no se tocó `/dev/shm/ape_cmaf_cache` de producción.
+

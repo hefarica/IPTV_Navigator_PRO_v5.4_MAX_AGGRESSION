@@ -1,23 +1,22 @@
 {
-  "unit": "I01",
+  "unit": "I02",
   "phase": "IMPLEMENTATION",
   "state": "VERIFIED",
-  "pct": 94,
+  "pct": 95,
   "audit_gate0": "GREEN_WITH_A05_BLOCKED",
   "evidence": {
-    "artifact": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/lib/ape_cursor.php",
-    "test": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/tests/ape_cursor_test.php",
-    "command": "scp to /tmp/ara_i01_*; php -l both; php ape_cursor_test.php",
-    "result": "ALL_OK; test_exit=0; 2 clients isolated; TTL expired cursor removed",
+    "artifact": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/lib/ape_window.php",
+    "test": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/tests/ape_window_test.php",
+    "result": "ALL_OK; 45->30; normal prune idempotent; channel change clears 30; state cleared",
     "deploy": "none"
   },
   "options": [
-    "O1 new PHP cursor ledger with TTL/isolation tests (N4)",
-    "O2 extend ape_neuro_tracker.json strike file (N1)",
-    "O3 Redis/DB ledger (N5)"
+    "O1 new PHP window state module with 30/10 policy (N4)",
+    "O2 rely on cmaf_worker ffmpeg window only (N0)",
+    "O3 use ApeCursor ledger for segments (N1)"
   ],
   "chosen": "O1",
   "commit": null,
   "blocked_reason": null,
-  "pending": ["I02", "I03", "I04", "I05", "I06", "I07", "I08", "I09", "I10", "I11", "I12", "I13", "I14", "I15", "I16", "I17"]
+  "pending": ["I03", "I04", "I05", "I06", "I07", "I08", "I09", "I10", "I11", "I12", "I13", "I14", "I15", "I16", "I17"]
 }
