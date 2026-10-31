@@ -256,6 +256,14 @@ jobs:
     environment:
       name: production          # required reviewers se configuran en GitHub
       url: https://iptv-ape.duckdns.org
+    env:
+      ARA_SYNC_KEY: ${{ secrets.ARA_SYNC_KEY }}
+      ARA_SYNC_KEY_ID: ${{ vars.ARA_SYNC_KEY_ID }}
+      ARA_SYNC_DEVICE_IDS: ${{ vars.ARA_SYNC_DEVICE_IDS }}
+      ARA_SYNC_ARTIFACT_SHA256: ${{ vars.ARA_SYNC_ARTIFACT_SHA256 }}
+      ARA_SYNC_GENERATION_ID: ${{ vars.ARA_SYNC_GENERATION_ID }}
+      ARA_SYNC_LIST_VERSION: ${{ vars.ARA_SYNC_LIST_VERSION }}
+      ARA_SYNC_LAB_EXPORTED_AT: ${{ vars.ARA_SYNC_LAB_EXPORTED_AT }}
     outputs:
       stamp: ${{ steps.stamp.outputs.value }}
     steps:
@@ -310,6 +318,12 @@ jobs:
     if: always() && needs.deploy.result != 'failure'
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    env:
+      ARA_SYNC_VERIFY_KEY: ${{ secrets.ARA_SYNC_KEY }}
+      ARA_SYNC_KEY_ID: ${{ vars.ARA_SYNC_KEY_ID }}
+      ARA_SYNC_DEVICE_ID: ${{ vars.ARA_SYNC_DEVICE_ID }}
+      ARA_SYNC_ARTIFACT_SHA256: ${{ vars.ARA_SYNC_ARTIFACT_SHA256 }}
+      ARA_VERIFY_TOKEN: ${{ secrets.ARA_VERIFY_TOKEN }}
     steps:
       - uses: actions/checkout@v4
       # [t113] GATE DE PARIDAD sha256 — tras el checkout (necesita el árbol del repo).
