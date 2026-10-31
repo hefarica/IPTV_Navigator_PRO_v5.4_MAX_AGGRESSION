@@ -43,6 +43,7 @@ object PresetHomologator {
         }
         val accepted = parsed.size
         PresetBus.recordElapsed(t0, accepted)
+        Log.i(TAG, "rawTags=" + rawTags.joinToString("|"))
 
         // Cableado real: usa el tag CRUDO (EXTVLCOPT/ARA-* se clasifican por prefijo).
         PresetRouter.route(ctx, rawTags)
