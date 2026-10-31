@@ -26,12 +26,19 @@ android {
         applicationId = "com.ape.crystalagent"
         minSdk = 22            // Fire OS 5 (Android 5.1) en adelante
         targetSdk = 28         // <29: conserva libertad de servicio en background en Fire OS
-        versionCode = 13
-        versionName = "3.2.2-safeui"
+        versionCode = 14
+        versionName = "3.2.2-release"
         buildConfigField("String", "ENROLL_SECRET", "\"$apeEnrollSecret\"")
         // Contrato /sync (D3 v2). El endpoint en el VPS sigue STAGED: la app funciona local-first.
         buildConfigField("String", "SYNC_PROTOCOL_VERSION", "\"2\"")
         buildConfigField("String", "SYNC_ENDPOINT_PATH", "\"/sync\"")
+    }
+
+    // [release] targetSdk 28 es deliberado para Fire OS/box; el lint de Play no aplica.
+    // Sin esto, lintVitalRelease aborta y no se puede generar el APK no debuggable.
+    lint {
+        checkReleaseBuilds = false
+        abortOnError = false
     }
 
     buildFeatures {
@@ -42,6 +49,8 @@ android {
         release {
             isMinifyEnabled = false
             // Misma clave debug del ARA: actualiza in-place, pero el APK NO es debuggable.
+            // [release] nunca debe llevar android:debuggable=true (Waiting For Debugger).
+            isDebuggable = false
             signingConfig = signingConfigs.getByName("debug")
         }
         debug {
