@@ -152,6 +152,35 @@ test_exit=0 lint_exit=0
 
 **Límite:** I05 selecciona URLs de prefetch; no ejecuta la descarga HTTP. El prefetch real queda para la capa que consuma `X-APE-Prefetch`.
 
+## I06 — Deshuerfanar la vía CMAF (G7)
+
+**Estado:** VERIFIED (local; sin deploy).
+
+**Archivos:**
+
+- `IPTV_v5.4_MAX_AGGRESSION/vps/prisma/lib/ape_cmaf_bootstrap.php`
+- `IPTV_v5.4_MAX_AGGRESSION/vps/prisma/tests/ape_cmaf_bootstrap_test.php`
+- `IPTV_v5.4_MAX_AGGRESSION/vps/ape_hls_generators.php:545-566`
+
+**Lógica:** antes de esperar `init-stream0.m4s`, escribe `/dev/shm/ape_metrics/<ch>/origin_url.txt` y `target_dna.json` y lanza `cmaf_worker.php` con el mismo argv que usa `cmaf_proxy`. Solo acepta `http(s)`; no inventa origen.
+
+**Verificación (VPS temporal `/tmp/ara_i06_*`):**
+
+```text
+PASS ensure returns true
+PASS origin_url written
+PASS target_dna written
+PASS origin content exact
+PASS dna codec_tag
+PASS dna list_id
+PASS rejects non-http origin
+ALL_OK
+test_exit=0 lint_exit=0
+```
+
+**No desplegado:** no se copió a `/var/www/html`; no se ejecutó el worker de producción.
+
+
 
 
 

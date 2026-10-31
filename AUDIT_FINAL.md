@@ -263,7 +263,7 @@ nginx -t                    → syntax ok / test successful
 | G4 `DISCONTINUITY` estándar | `ape_hls_generators.php` I04 local: `DISCONTINUITY`/`DISCONTINUITY-SEQUENCE`; producción sin deploy | high | PARCIAL (I04 local) |
 | G5 resume `last_delivered+1` | `ape_hls_generators.php` I05 local: cursor + `ApeResume::window`; prefetch URLs +1/+2; producción sin deploy | high | PARCIAL (I05 local) |
 | G6 retención 30/10 / rm solo cambio de canal | `cmaf_worker.php:104-107`; no hay rm por canal | high | ABIERTO |
-| G7 resolver sirve vía CMAF | `cmaf_proxy.php:53-69` exige `origin_url.txt`; A07: nadie lo escribe | blocker | ABIERTO |
+| G7 resolver sirve vía CMAF | `ape_hls_generators.php` I06 local escribe `origin_url.txt`/`target_dna.json` y lanza `cmaf_worker`; producción sin deploy | high | PARCIAL (I06 local) |
 | G8 `PROGRAM-DATE-TIME` estándar | `ape_hls_generators.php` I04 local: tag antes del primer `EXTINF`; producción sin deploy | high | PARCIAL (I04 local) |
 | G9 `hls_time` al GOP real | `cmaf_worker.php:100-102` usa `min_seg_duration=6`; no `hls_time` | medium | ABIERTO |
 | G10 Strike Tracker escribe cursor | `resolve_quality_unified.php:4414-4449` escribe strikes/trauma; `:4540` header; no cursor | high | ABIERTO |

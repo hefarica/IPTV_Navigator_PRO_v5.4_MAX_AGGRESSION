@@ -1,24 +1,24 @@
 {
-  "unit": "I05",
+  "unit": "I06",
   "phase": "IMPLEMENTATION",
   "state": "VERIFIED",
-  "pct": 98,
+  "pct": 99,
   "audit_gate0": "GREEN_WITH_A05_BLOCKED",
   "evidence": {
-    "artifact": "IPTV_v5.4_MAX_AGGRESSION/vps/ape_hls_generators.php:590-608",
-    "helper": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/lib/ape_resume.php",
-    "test": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/tests/ape_resume_test.php",
-    "result": "ALL_OK; window starts at 106; excludes 105; prefetch +1/+2; test_exit=0 lint_exit=0",
+    "artifact": "IPTV_v5.4_MAX_AGGRESSION/vps/ape_hls_generators.php:545-566",
+    "helper": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/lib/ape_cmaf_bootstrap.php",
+    "test": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/tests/ape_cmaf_bootstrap_test.php",
+    "result": "ALL_OK; origin/dna exact; non-http rejected; test_exit=0 lint_exit=0",
     "deploy": "none",
-    "limit": "no HTTP prefetch executed; URL selection only"
+    "limit": "worker launch not exercised in test"
   },
   "options": [
-    "O1 integrate cursor/resume into existing HLS generator (N1)",
-    "O2 modify prefetch_segment.lua to prefetch last+1 (N1)",
-    "O3 new playlist builder (N4)"
+    "O1 write origin/dna and launch existing cmaf_worker (N2)",
+    "O2 modify cmaf_proxy to accept an origin parameter (N1)",
+    "O3 replace the resolver (N4)"
   ],
   "chosen": "O1",
   "commit": null,
   "blocked_reason": null,
-  "pending": ["I06", "I07", "I08", "I09", "I10", "I11", "I12", "I13", "I14", "I15", "I16", "I17"]
+  "pending": ["I07", "I08", "I09", "I10", "I11", "I12", "I13", "I14", "I15", "I16", "I17"]
 }

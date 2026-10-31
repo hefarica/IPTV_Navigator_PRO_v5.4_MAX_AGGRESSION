@@ -18,6 +18,7 @@ require_once __DIR__ . '/ape_profiles.php';
 require_once __DIR__ . '/prisma/lib/ape_hls_state.php';
 require_once __DIR__ . '/prisma/lib/ape_cursor.php';
 require_once __DIR__ . '/prisma/lib/ape_resume.php';
+require_once __DIR__ . '/prisma/lib/ape_cmaf_bootstrap.php';
 
 // ─── USER AGENTS POOL ────────────────────────────────────────────────────────
 $UA_POOL = [
@@ -542,6 +543,23 @@ function serve_hls_fmp4_ignition(array $cd): void
     // Ruta RAM-disk donde el worker deposita los segmentos fMP4
     $cmafDir  = '/dev/shm/ape_cmaf_cache/' . $ch;
     $initSeg  = $cmafDir . '/init-stream0.m4s';
+
+    // I06/G7: write the two files cmaf_proxy expects and launch the existing worker.
+    $originUrl = $cd['finalUrl'] ?? ($cd['channel_orig']['url'] ?? '');
+    if ($originUrl !== '') {
+        ApeCmafBootstrap::ensure(
+            (string) $ch,
+            (string) $originUrl,
+            $cmafDir,
+            [
+                'codec_tag' => (string) ($cfg['codec_str'] ?? 'avc1'),
+                'list_id' => (string) ($cd['list_id'] ?? ''),
+            ],
+            '/dev/shm/ape_metrics',
+            __DIR__ . '/cmaf_worker.php',
+            true
+        );
+    }
 
     // URL base del proxy de segmentos
     $protocol = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') ? 'https' : 'http';
