@@ -20,6 +20,7 @@
 
 const https = require('node:https');
 const crypto = require('node:crypto');
+const net = require('node:net');
 const { URL } = require('node:url');
 
 const BASE = new URL(process.env.SYNC_BASE || 'https://iptv-ape.duckdns.org');
@@ -57,7 +58,9 @@ function request(method, path, body, headers = {}) {
       headers: { Host: BASE.hostname, ...headers },
       timeout: 15000
     };
-    if (IP) {
+    // Sólo forzar IP si es una dirección válida; si falta o es un hostname,
+    // dejar que Node resuelva por DNS (el runner tiene DNS; el VPS no es fiable).
+    if (IP && net.isIP(IP)) {
       opts.lookup = (host, opts2, cb) => cb(null, IP, 4);
     }
     const req = https.request(opts, (res) => {
@@ -188,7 +191,8 @@ function signed(seq, nonce) {
 
   // 7 · /lists/ 200
   try {
-    const r = await request('GET', '/lists/APE_LISTA_4K.m3u8');
+    // HEAD: la lista viva pesa ~513 MB; un GET completo agota el timeout.
+    const r = await request('HEAD', '/lists/APE_LISTA_4K.m3u8');
     record('/lists/APE_LISTA_4K.m3u8', r.status, 200);
   } catch (e) { record('/lists/APE_LISTA_4K.m3u8', 0, 200, e.message); }
 
