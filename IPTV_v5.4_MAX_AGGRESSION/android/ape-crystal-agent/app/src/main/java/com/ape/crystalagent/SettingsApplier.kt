@@ -21,22 +21,29 @@ class SettingsApplier(ctx: Context) {
     @Volatile var lastApplied: Int = 0; private set
     @Volatile var lastRejected: Int = 0; private set
 
+    /** Resultado por fila: lo que se aplicó y lo que no (para el ack `/sync`, sin inventar). */
+    data class ApplyReport(val applied: List<String>, val rejected: List<String>)
+
     /** device_settings = lista de "<ns> <key> <val>" que el VPS computó para este device/canal. */
-    fun apply(deviceSettings: List<String>) {
-        var ok = 0; var rejected = 0
+    fun apply(deviceSettings: List<String>) { applyDetailed(deviceSettings) }
+
+    fun applyDetailed(deviceSettings: List<String>): ApplyReport {
+        val applied = ArrayList<String>(deviceSettings.size)
+        val rejected = ArrayList<String>(deviceSettings.size)
         for (s in deviceSettings) {
             val p = s.trim().split(Regex("\\s+"), limit = 3)
-            if (p.size != 3) { rejected++; continue }
+            if (p.size != 3) { rejected.add(s); continue }
             val ns = p[0]; val key = p[1]; val value = p[2]
             if (!isAllowed(ns, key, value)) {
-                Log.w(TAG, "RECHAZADO (no allowlist o valor inválido): $ns/$key=$value"); rejected++; continue
+                Log.w(TAG, "RECHAZADO (no allowlist o valor inválido): $ns/$key=$value"); rejected.add(s); continue
             }
-            if (putSetting(ns, key, value)) ok++ else rejected++
+            if (putSetting(ns, key, value)) applied.add(s) else rejected.add(s)
         }
-        Log.i(TAG, "device_settings aplicados=$ok rechazados=$rejected")
-        lastApplied = ok; lastRejected = rejected
-        AraStatus.lastApplied = ok
-        AraStatus.lastRejected = rejected
+        Log.i(TAG, "device_settings aplicados=${applied.size} rechazados=${rejected.size}")
+        lastApplied = applied.size; lastRejected = rejected.size
+        AraStatus.lastApplied = applied.size
+        AraStatus.lastRejected = rejected.size
+        return ApplyReport(applied, rejected)
     }
 
     /** [2.2.0] Panel de diagnóstico: lee cada key en global/system/secure y muestra lo que el ARA ve. */
@@ -51,6 +58,14 @@ class SettingsApplier(ctx: Context) {
         sb.appendLine("modelo: ${android.os.Build.MODEL}")
         sb.appendLine("Android: ${android.os.Build.VERSION.RELEASE} (SDK ${android.os.Build.VERSION.SDK_INT})")
         sb.appendLine("últimos settings: aplicados=$lastApplied rechazados=$lastRejected")
+        sb.appendLine()
+        sb.appendLine("== /sync (D3) ==")
+        sb.appendLine("self-check contrato: ${AraStatus.syncSelfCheck.ifEmpty { "no ejecutado" }}")
+        sb.appendLine("estado: ${AraStatus.syncState}${if (AraStatus.syncReason.isNotEmpty()) " · ${AraStatus.syncReason}" else ""}")
+        sb.appendLine("http=${AraStatus.syncHttp} seq=${AraStatus.syncSeq} fallos=${AraStatus.syncFailures}")
+        sb.appendLine("etag=${AraStatus.syncEtag.take(20)}${if (AraStatus.syncEtag.length > 20) "…" else ""} perfil=${AraStatus.syncProfile.ifEmpty { "—" }}")
+        sb.appendLine("aplicados=${AraStatus.syncApplied} rechazados=${AraStatus.syncRejected}")
+        sb.appendLine("último: ${AraStatus.ageLabel(AraStatus.syncLastAt)} · próximo en ${((AraStatus.syncNextAt - System.currentTimeMillis()).coerceAtLeast(0L) / 1000L)}s")
         sb.appendLine()
         var present = 0
         for (key in ALLOW_KEY.keys.sorted()) {

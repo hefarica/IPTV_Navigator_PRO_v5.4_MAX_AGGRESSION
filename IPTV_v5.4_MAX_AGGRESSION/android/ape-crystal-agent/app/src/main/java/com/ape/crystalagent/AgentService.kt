@@ -29,6 +29,8 @@ class AgentService : Service() {
     private lateinit var enrollClient: EnrollClient
     private lateinit var wg: WireGuardManager
     private lateinit var ultra: UltraEnhancePipeline
+    private lateinit var syncStore: SyncStore
+    private lateinit var syncLoop: SyncLoop
 
     override fun onCreate() {
         super.onCreate()
@@ -42,6 +44,9 @@ class AgentService : Service() {
         enrollClient = EnrollClient(this, cfg)
         wg = WireGuardManager(this)
         ultra = UltraEnhancePipeline(this, cfg)
+        // /sync (D3): canal de control. Offline-first: si el endpoint no existe, no pasa nada.
+        syncStore = SyncStore(this)
+        syncLoop = SyncLoop(this, cfg, applier, syncStore)
         startForeground(NID, buildNotif())
         // [sinWG] Decisión del propietario: ARA directo HTTPS/SSE, SIN WireGuard.
         // El túnel WG producía freeze en su device; no se crea ni se intenta.
@@ -79,7 +84,8 @@ class AgentService : Service() {
         }
         qoe.start(scope)          // VUELTA C2: heartbeat/liveness → ara_heartbeats
         selfUpdate.start(scope)   // auto-update desde /ara/version + /ara/agent.apk
-        Log.i(TAG, "FULL SYSTEM START dev=${cfg.deviceId} vps=${cfg.vpsBase} token=${if (cfg.hasToken()) "set" else "MISSING"}")
+        syncLoop.start(scope)     // /sync (D3): 30 s, offline-first, backoff y fail-closed
+        Log.i(TAG, "FULL SYSTEM START dev=${cfg.deviceId} vps=${cfg.vpsBase} token=${if (cfg.hasToken()) "set" else "MISSING"} syncKey=${if (cfg.hasSyncKey()) "set" else "MISSING"} sync=${if (cfg.syncEnabled) "on" else "off"}")
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -100,6 +106,7 @@ class AgentService : Service() {
 
     override fun onDestroy() {
         ff.stop(); qoe.stop(); selfUpdate.stop(); ultra.stop()
+        if (::syncLoop.isInitialized) syncLoop.stop()
         if (cfg.useWg && ::wg.isInitialized) wg.down()
         AraStatus.serviceRunning = false
         scope.cancel(); super.onDestroy()

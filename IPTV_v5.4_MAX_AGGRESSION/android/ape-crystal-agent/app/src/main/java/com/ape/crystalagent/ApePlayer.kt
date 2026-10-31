@@ -10,6 +10,7 @@ import androidx.media3.common.Tracks
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.analytics.AnalyticsListener
 import androidx.media3.exoplayer.hls.HlsMediaSource
 import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
 import com.ape.fluid.FluidBridge
@@ -27,6 +28,7 @@ import com.ape.fluid.FluidBridge
 class ApePlayer(private val ctx: Context) {
 
     private var exo: ExoPlayer? = null
+    private var ticker: Runnable? = null
 
     fun build(): ExoPlayer {
         FluidBridge.warmup(ctx)
@@ -42,6 +44,7 @@ class ApePlayer(private val ctx: Context) {
         FluidBridge.configureBuilder(ctx, builder)
         return builder.build().also { p ->
             exo = p
+            installAnalytics(p)
             runCatching {
                 @Suppress("UNCHECKED_CAST")
                 p.setVideoEffects(FluidBridge.effects(ctx) as List<Effect>)
@@ -71,15 +74,76 @@ class ApePlayer(private val ctx: Context) {
                     val line = "mime=${f.sampleMimeType} codecs=${f.codecs} ${f.width}x${f.height} bps=${f.bitrate}"
                     AraStatus.lastTrack = line
                     Log.i(TAG, "VIDEO elegido: $line")
+                    // Snapshot estructurado para el sampler de /sync: MEDIDO del Format real.
+                    AraStatus.trackCodec = f.codecs ?: ""
+                    AraStatus.trackW = if (f.width > 0) f.width else 0
+                    AraStatus.trackH = if (f.height > 0) f.height else 0
+                    AraStatus.trackFps = if (f.frameRate > 0f) f.frameRate else 0f
+                    AraStatus.trackBitrate = if (f.bitrate > 0) f.bitrate else 0
+                    AraStatus.trackHdr = hdrOf(f.colorInfo?.colorTransfer)
+                    AraStatus.trackAt = System.currentTimeMillis()
                 }
             }
         }
+        peekRuntime()
+        startRuntimeTicker()
+    }
+
+    private fun hdrOf(colorTransfer: Int?): String = when (colorTransfer) {
+        C.COLOR_TRANSFER_ST2084 -> "PQ"
+        C.COLOR_TRANSFER_HLG -> "HLG"
+        else -> "SDR"
+    }
+
+    /** Buffer del PLAYER (nunca el `buffer_health_pct` del daemon) + contadores de decoder. */
+    private fun peekRuntime() {
+        val p = exo ?: return
+        try {
+            AraStatus.playerBufferMs = p.totalBufferedDuration.coerceAtLeast(0L)
+            AraStatus.playerBufferAt = System.currentTimeMillis()
+        } catch (e: Exception) { /* autopista: sin dato */ }
+    }
+
+    /** Contador REAL de frames descartados vía AnalyticsListener (si el build lo expone). */
+    private fun installAnalytics(p: ExoPlayer) {
+        try {
+            p.addAnalyticsListener(object : AnalyticsListener {
+                override fun onDroppedVideoFrames(eventTime: AnalyticsListener.EventTime, droppedFrames: Int, elapsedMs: Long) {
+                    AraStatus.trackDropped = droppedFrames.toLong()
+                    AraStatus.trackDroppedValid = true
+                }
+            })
+        } catch (e: Exception) { /* sin contador ⇒ el feature queda unavailable */ }
+    }
+
+    /** Ticker ligero (2 s) sólo mientras hay player: mantiene `buffer_ms` fresco y con edad honesta. */
+    private fun startRuntimeTicker() {
+        stopRuntimeTicker()
+        if (exo == null) return
+        val handler = android.os.Handler(android.os.Looper.getMainLooper())
+        val r = object : Runnable {
+            override fun run() {
+                peekRuntime()
+                if (exo != null) handler.postDelayed(this, 2_000L)
+            }
+        }
+        ticker = r
+        handler.postDelayed(r, 2_000L)
+    }
+
+    private fun stopRuntimeTicker() {
+        val t = ticker ?: return
+        try { android.os.Handler(android.os.Looper.getMainLooper()).removeCallbacks(t) } catch (e: Exception) { }
+        ticker = null
     }
 
     fun release() {
+        stopRuntimeTicker()
         exo?.let { FluidBridge.detach(it) }
         exo?.release(); exo = null
         AraStatus.playerActive = false
+        AraStatus.playerBufferMs = null
+        AraStatus.playerBufferAt = 0L
     }
 
     companion object {

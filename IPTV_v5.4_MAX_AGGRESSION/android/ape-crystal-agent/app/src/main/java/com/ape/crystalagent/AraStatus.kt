@@ -19,6 +19,36 @@ object AraStatus {
     @Volatile var lastTrack: String = ""
     @Volatile var playerActive: Boolean = false
 
+    // ── /sync (D3) ────────────────────────────────────────────────────────────
+    /** idle | disabled | no_key | applied | partial | denied | not_modified | endpoint_absent | unauthorized | rate_limited | protocol | replay | offline | server_error | error */
+    @Volatile var syncState: String = "idle"
+    @Volatile var syncReason: String = ""
+    @Volatile var syncLastAt: Long = 0L
+    @Volatile var syncNextAt: Long = 0L
+    @Volatile var syncHttp: Int = 0
+    @Volatile var syncSeq: Long = 0L
+    @Volatile var syncEtag: String = ""
+    @Volatile var syncProfile: String = ""
+    @Volatile var syncApplied: Int = 0
+    @Volatile var syncRejected: Int = 0
+    @Volatile var syncFailures: Int = 0
+    @Volatile var syncSelfCheck: String = ""
+
+    // ── Track del player (lo llena ApePlayer; lo usa el sampler de /sync) ─────
+    @Volatile var trackCodec: String = ""
+    @Volatile var trackW: Int = 0
+    @Volatile var trackH: Int = 0
+    @Volatile var trackFps: Float = 0f
+    @Volatile var trackBitrate: Int = 0
+    @Volatile var trackHdr: String = "SDR"
+    @Volatile var trackDropped: Long = 0L
+    @Volatile var trackRendered: Long = 0L
+    /** true sólo si el contador viene de un `AnalyticsListener` real (si no, el feature es `unavailable`). */
+    @Volatile var trackDroppedValid: Boolean = false
+    @Volatile var trackAt: Long = 0L
+    @Volatile var playerBufferMs: Long? = null
+    @Volatile var playerBufferAt: Long = 0L
+
     fun ageMs(ts: Long, now: Long = System.currentTimeMillis()): Long =
         if (ts <= 0L) Long.MAX_VALUE else (now - ts).coerceAtLeast(0L)
 
