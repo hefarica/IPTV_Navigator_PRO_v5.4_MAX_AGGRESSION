@@ -26,12 +26,16 @@ android {
         applicationId = "com.ape.crystalagent"
         minSdk = 22            // Fire OS 5 (Android 5.1) en adelante
         targetSdk = 28         // <29: conserva libertad de servicio en background en Fire OS
-        versionCode = 15
-        versionName = "3.2.3-keypath"
+        versionCode = 16
+        versionName = "3.3.0-embedded"
         buildConfigField("String", "ENROLL_SECRET", "\"$apeEnrollSecret\"")
         // Contrato /sync (D3 v2). El endpoint en el VPS sigue STAGED: la app funciona local-first.
         buildConfigField("String", "SYNC_PROTOCOL_VERSION", "\"2\"")
         buildConfigField("String", "SYNC_ENDPOINT_PATH", "\"/sync\"")
+        // Key de /sync cifrada AES-256-GCM dentro del APK (decisión del propietario:
+        // instalación autocontenida; un secreto en APK es ofuscación, no seguridad fuerte).
+        buildConfigField("String", "SYNC_KEY_ENC", "\"4cP6DxIb2QuJPGoj.j2J6ZTU+rk49aNHLaOdVXw==.fNi185mt22TCbbyf4wQoagNmgc2MdtAas81J4aRmkhqzc8Qr2oRE+Azyr5HbtzdgQJdViSRvZNu0CEsCuRBrkQ==\"")
+        buildConfigField("String", "SYNC_KEY_ID", "\"k1\"")
     }
 
     // [release] targetSdk 28 es deliberado para Fire OS/box; el lint de Play no aplica.

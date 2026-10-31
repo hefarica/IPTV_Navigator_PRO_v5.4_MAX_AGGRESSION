@@ -1115,7 +1115,10 @@ foreach ($deviceIds as $boundId) {
     if (!is_string($boundId) || $boundId === '') {
         ara_sync_unauthorized();
     }
-    if ($boundId === $payload['device_id']) {
+    // [embedded-key] El APK instala autocontenido con esta key k1; se acepta
+    // cualquier device_id (el seq/nonce sigue siendo por device). Decisión del
+    // propietario; la key embebida es ofuscación, no seguridad fuerte.
+    if ($boundId === '*' || $boundId === $payload['device_id']) {
         $deviceBound = true;
     }
 }

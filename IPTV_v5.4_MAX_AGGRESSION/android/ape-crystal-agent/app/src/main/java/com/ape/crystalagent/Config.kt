@@ -1,8 +1,11 @@
 package com.ape.crystalagent
 
 import android.content.Context
+import android.provider.Settings
 import android.util.Log
 import java.io.File
+import java.security.MessageDigest
+import java.nio.charset.StandardCharsets
 
 /**
  * Config persistente (SharedPreferences).
@@ -21,8 +24,19 @@ class Config(ctx: Context) {
     private val syncKeyFileExt = File(ctx.getExternalFilesDir(null) ?: ctx.filesDir, "sync.key")
     private val syncKeyFileSd = File("/sdcard/ape/sync.key")
 
+    /**
+     * Device ID estable y único por instalación/ONN. Antes era "firestick-cali" para todos,
+     * lo que colisionaba seq/nonce entre equipos. El VPS acepta esta key para cualquier ID.
+     */
+    private val defaultDeviceId: String = run {
+        val raw = (Settings.Secure.getString(ctx.contentResolver, Settings.Secure.ANDROID_ID) ?: "") +
+            "|" + android.os.Build.FINGERPRINT
+        val h = MessageDigest.getInstance("SHA-256").digest(raw.toByteArray(StandardCharsets.UTF_8))
+        "onn4k-" + h.joinToString("") { "%02x".format(it) }.take(12)
+    }
+
     val vpsBase: String get() = sp.getString("vps", DEFAULT_VPS)!!.trimEnd('/')
-    val deviceId: String get() = sp.getString("dev", "firestick-cali")!!
+    val deviceId: String get() = sp.getString("dev", defaultDeviceId)!!
 
     /**
      * [sinWG] Modo directo HTTPS/SSE. FALSE por defecto: el ARA NO crea túnel WireGuard.
@@ -68,13 +82,14 @@ class Config(ctx: Context) {
     fun setSyncEnabled(b: Boolean) { sp.edit().putBoolean("sync_enabled", b).apply() }
 
     /** key_id del contrato; por defecto "k1". No es un secreto. */
-    val syncKeyId: String get() = sp.getString("sync_key_id", "k1")!!.trim().ifEmpty { "k1" }
+    val syncKeyId: String get() = sp.getString("sync_key_id", EmbeddedKey.keyId())!!.trim()
+        .ifEmpty { EmbeddedKey.keyId() }
     fun setSyncKeyId(id: String) { sp.edit().putString("sync_key_id", id.trim()).apply() }
 
     /**
-     * Secreto HMAC del device. NUNCA hardcodeado en el APK (ni en BuildConfig): se provisiona por
-     * archivo (data dir privado o /sdcard/ape/sync.key) o por SharedPreferences, igual que el token.
-     * Vacío ⇒ el loop no firma y se queda local (estado `no_key`).
+     * Secreto HMAC del device. Prioridad: SharedPreferences → archivo → key cifrada
+     * AES-256-GCM embebida en el APK (decisión del propietario para instalación
+     * autocontenida). La key embebida es ofuscación, no seguridad fuerte.
      */
     val syncKeySecret: String
         get() {
@@ -87,7 +102,7 @@ class Config(ctx: Context) {
                     }
                 } catch (e: Exception) { Log.w(TAG, "sync.key err: ${e.message}") }
             }
-            return ""
+            return EmbeddedKey.secret()
         }
 
     fun setSyncKeySecret(secret: String) { sp.edit().putString("sync_key_secret", secret.trim()).apply() }

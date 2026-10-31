@@ -46,8 +46,8 @@ fi
 if [ -n "$KEY" ] && ! printf '%s' "$KEY_ID" | grep -qE '^[A-Za-z0-9._-]{1,32}$'; then
   c_bad "   ARA_SYNC_KEY_ID inválido"; exit 2
 fi
-if [ -n "$KEY" ] && ! printf '%s' "$DEVICE_IDS" | grep -qE '^[A-Za-z0-9._-]+(,[A-Za-z0-9._-]+)*$'; then
-  c_bad "   ARA_SYNC_DEVICE_IDS vacío o inválido (device_ids:null está prohibido)"; exit 2
+if [ -n "$KEY" ] && ! printf '%s' "$DEVICE_IDS" | grep -qE '^(\*|[A-Za-z0-9._-]+(,[A-Za-z0-9._-]+)*)$'; then
+  c_bad "   ARA_SYNC_DEVICE_IDS vacío o inválido (usa '*' o lista de IDs)"; exit 2
 fi
 if [ -n "$ART_SHA" ] && ! printf '%s' "$ART_SHA" | grep -qE '^[a-f0-9]{64}$'; then
   c_bad "   ARA_SYNC_ARTIFACT_SHA256 inválido"; exit 2
