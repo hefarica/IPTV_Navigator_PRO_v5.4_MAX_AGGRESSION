@@ -247,7 +247,10 @@ class MainActivity : Activity() {
     }
 
     private fun beginOnboarding() {
-        flow?.start { step, ok, detail -> runOnUiThread { toastText("[$step] ${if (ok) "OK" else "…"} $detail") } }
+        // [crashfix] el arranque del servicio/ADB es best-effort; nunca debe mostrar force close.
+        runCatching {
+            flow?.start { step, ok, detail -> runOnUiThread { toastText("[$step] ${if (ok) "OK" else "…"} $detail") } }
+        }.onFailure { toastText("Onboarding no disponible; panel local activo") }
     }
 
     override fun onDestroy() {

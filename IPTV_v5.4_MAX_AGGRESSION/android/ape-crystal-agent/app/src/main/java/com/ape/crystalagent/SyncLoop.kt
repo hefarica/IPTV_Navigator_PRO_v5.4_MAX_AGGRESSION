@@ -48,9 +48,16 @@ class SyncLoop(
     fun start(scope: CoroutineScope) {
         if (job != null) return
         job = scope.launch(Dispatchers.IO) {
-            AraStatus.syncSelfCheck = SyncProtocol.selfCheck()
-            Log.i(TAG, "sync self-check: ${AraStatus.syncSelfCheck} (contrato v${SyncProtocol.VERSION})")
-            sampler.logOnce()
+            // [crashfix] selfCheck/sampler también pueden fallar: no deben matar el proceso.
+            try {
+                AraStatus.syncSelfCheck = SyncProtocol.selfCheck()
+                Log.i(TAG, "sync self-check: ${AraStatus.syncSelfCheck} (contrato v${SyncProtocol.VERSION})")
+                sampler.logOnce()
+            } catch (t: Throwable) {
+                Log.w(TAG, "self-check/sampler falló: ${t.javaClass.simpleName} — se continúa local")
+                AraStatus.syncState = "error"
+                AraStatus.syncReason = t.javaClass.simpleName
+            }
             while (currentCoroutineContext().isActive) {
                 val waitMs = try {
                     runOnce()

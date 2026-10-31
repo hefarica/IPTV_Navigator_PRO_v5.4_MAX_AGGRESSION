@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.Intent
 import android.util.Log
 import kotlinx.coroutines.*
+import kotlinx.coroutines.CoroutineExceptionHandler
 
 /**
  * OnboardingFlow (F1+F2+F3 wiring) — máquina de estados idempotente de primer arranque.
@@ -23,7 +24,11 @@ class OnboardingFlow(private val ctx: Context) {
     enum class Step { ENROLL_WG, ADB_GRANT, READY }
 
     private val adb = AdbSelfGrantManager(ctx)
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    // [crashfix] un fallo de ADB/onboarding no debe tumbar la app.
+    private val scope = CoroutineScope(
+        SupervisorJob() + Dispatchers.Default +
+            CoroutineExceptionHandler { _, t -> Log.w(TAG, "onboarding no capturado: ${t.message}") }
+    )
 
     /**
      * Arranca el flujo idempotente. Llamar tras el consent VPN (RESULT_OK) desde MainActivity.
