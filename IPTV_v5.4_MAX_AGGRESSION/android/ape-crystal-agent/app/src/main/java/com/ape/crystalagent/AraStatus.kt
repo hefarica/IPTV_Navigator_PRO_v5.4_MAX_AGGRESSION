@@ -63,6 +63,9 @@ object AraStatus {
     @Volatile var lastPresetP95: Long = -1
     @Volatile var lastPresetP99: Long = -1
     @Volatile var lastPresetMax: Long = -1
+    @Volatile var presetApplied: Int = 0
+    @Volatile var presetStored: Int = 0
+    @Volatile var presetDeclared: Int = 0
 
     fun ageMs(ts: Long, now: Long = System.currentTimeMillis()): Long =
         if (ts <= 0L) Long.MAX_VALUE else (now - ts).coerceAtLeast(0L)

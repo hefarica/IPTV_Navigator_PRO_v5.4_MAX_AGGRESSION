@@ -28,6 +28,7 @@ object PresetHomologator {
         val arr = directive?.optJSONArray("presets") ?: return Result(emptyList(), 0, 0, 0)
         val rows = LinkedHashSet<String>()
         val parsed = ArrayList<Pair<String, String>>(arr.length())
+        val rawTags = ArrayList<String>(arr.length())
         var unknown = 0
         // ZONA CALIENTE: SOLO parseo + memoria. Nada de SharedPreferences ni Settings.
         val t0 = System.nanoTime()
@@ -36,11 +37,15 @@ object PresetHomologator {
             if (raw.isEmpty()) { unknown++; continue }
             val (name, value) = parse(raw)
             if (name.isBlank()) { unknown++; continue }
+            rawTags.add(raw)
             PresetBus.put(name, value)
             parsed.add(name to value)
         }
         val accepted = parsed.size
         PresetBus.recordElapsed(t0, accepted)
+
+        // Cableado real: usa el tag CRUDO (EXTVLCOPT/ARA-* se clasifican por prefijo).
+        PresetRouter.route(ctx, rawTags)
 
         // Fuera del camino caliente: mapeo a keys Android reales.
         for ((name, value) in parsed) {

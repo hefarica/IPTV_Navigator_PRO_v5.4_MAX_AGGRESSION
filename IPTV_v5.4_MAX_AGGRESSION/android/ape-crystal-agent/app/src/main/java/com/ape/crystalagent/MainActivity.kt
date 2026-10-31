@@ -211,6 +211,9 @@ class MainActivity : Activity() {
                 .append(") p50/p95/p99/max: ")
                 .append(AraStatus.lastPresetP50).append('/').append(AraStatus.lastPresetP95).append('/')
                 .append(AraStatus.lastPresetP99).append('/').append(AraStatus.lastPresetMax).append(" ms\n")
+            append("Verdad presets: APPLIED ").append(AraStatus.presetApplied)
+                .append(" · STORED ").append(AraStatus.presetStored)
+                .append(" · DECLARED ").append(AraStatus.presetDeclared).append('\n')
             append("Último SSE: ").append(AraStatus.ageLabel(AraStatus.lastSseAt)).append('\n')
             append("Directiva: ").append(AraStatus.lastDirective?.toString()?.take(900) ?: "sin directiva")
         }

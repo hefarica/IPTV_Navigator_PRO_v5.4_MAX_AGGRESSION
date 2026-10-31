@@ -61,6 +61,7 @@ class ApePlayer(private val ctx: Context) {
         FluidBridge.configureBuilder(ctx, builder)
         return builder.build().also { p ->
             exo = p
+            current = this
             installAnalytics(p)
             runCatching {
                 @Suppress("UNCHECKED_CAST")
@@ -213,8 +214,18 @@ class ApePlayer(private val ctx: Context) {
         ticker = null
     }
 
+    /** Reconstruye los efectos GL desde las prefs que acaba de escribir PresetRouter. */
+    fun refreshEffects() {
+        val p = exo ?: return
+        runCatching {
+            val effects = FluidBridge.effects(ctx).map { it as Effect }
+            p.setVideoEffects(effects)
+        }
+    }
+
     fun release() {
         stopRuntimeTicker()
+        if (current === this) current = null
         exo?.let { FluidBridge.detach(it) }
         exo?.release(); exo = null
         AraStatus.playerActive = false
@@ -223,6 +234,7 @@ class ApePlayer(private val ctx: Context) {
     }
 
     companion object {
+        @Volatile var current: ApePlayer? = null
         const val TAG = "ApePlayer"
         const val DEFAULT_UA = "Mozilla/5.0 (Web0S; Linux/SmartTV) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.6045.213 Safari/537.36 WebAppManager"
     }
