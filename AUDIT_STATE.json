@@ -1,21 +1,19 @@
 {
-  "unit": "A01",
+  "unit": "A02",
   "phase": "AUDIT",
   "state": "VERIFIED",
-  "pct": 63,
+  "pct": 65,
   "evidence": {
-    "artifact": "deliverables/LAB_2026-10-26/LAB_CALIBRATED_BULLETPROOF_CERTIFIED.json",
-    "schema": "profiles_calibrated P0..P5 (player profile calibration, not classifier calibration)",
-    "readers": [
-      "deliverables/LAB_2026-10-26/verify_bulletproof.py:6",
-      "deliverables/LAB_2026-10-26/compare_calibrated.py:3"
-    ],
-    "lab_config": "IPTV_v5.4_MAX_AGGRESSION/vps/nginx/lua/lab_config.lua:18 reads /var/www/html/prisma/config/, not LAB_CALIBRATED_BULLETPROOF",
-    "runtime_consumer": "none found in Lua/Kotlin/JS for LAB_CALIBRATED_BULLETPROOF"
+    "artifact": "IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/headers-matrix-v9.js",
+    "stats": "totalHeaders=139, L1=15, L2=16, L3=18, L4=25, L5=65, profiles=4",
+    "declared": "header comment says 154; code exposes 139",
+    "load": "frontend/index-v4.html:4087",
+    "consumer_gap": "m3u8-typed-arrays-ultimate.js:11741 getHeaders(){return {}}; m3u8-api-wrapper-integrated.js:513 boolean .getHeaders/getStats",
+    "banned": "DNT at :132 but banned at :536; Alt-Svc request at :272"
   },
-  "options": ["O1 reuse existing artifact and document its real schema", "O2 regenerate with synthesize_bulletproof.py", "O3 create classifier calibration from scratch"],
+  "options": ["O1 audit existing matrix and document 139", "O2 fix generator/wrapper wiring", "O3 create a new matrix"],
   "chosen": "O1",
   "commit": null,
   "blocked_reason": null,
-  "pending": ["A02", "A03", "A04", "A05", "A06", "A07", "A08", "A09", "A10", "A11", "A12", "A13", "A14"]
+  "pending": ["A03", "A04", "A05", "A06", "A07", "A08", "A09", "A10", "A11", "A12", "A13", "A14"]
 }
