@@ -10724,6 +10724,20 @@ lines.push(`#EXT-X-APE-STREAM-TRUTH:src=${_streamTruth.source},w=${_streamTruth.
                     const encoded = encoder.encode(headerChunk);
                     totalBytes += encoded.byteLength;
                     controller.enqueue(encoded);
+
+                    // ── ARA-X (opt-in, default OFF, fail-open) ────────────────────
+                    // Inserta el bloque global inerte ANTES del primer #EXTINF.
+                    // Con window.ARA_X_ENABLED apagado (default) no se ejecuta nada.
+                    try {
+                        if (typeof window !== 'undefined' && window.ARA_X_HOOK && window.ARA_X_HOOK.enabled()) {
+                            const araChunk = window.ARA_X_HOOK.blockChunk(options);
+                            if (araChunk) {
+                                const araEncoded = encoder.encode(araChunk);
+                                totalBytes += araEncoded.byteLength;
+                                controller.enqueue(araEncoded);
+                            }
+                        }
+                    } catch (_araXErr) { /* fail-open: nunca romper la generación */ }
                     if (useHUD) {
                         window.HUD_TYPED_ARRAYS.log('📋 Header global streamed', '#06b6d4');
                     }
@@ -10744,9 +10758,16 @@ lines.push(`#EXT-X-APE-STREAM-TRUTH:src=${_streamTruth.source},w=${_streamTruth.
                     try {
                         // Detectar perfil
                         const profile = forceProfile || determineProfile(channel) || 'P3';
-                        const entry = generateChannelEntry(channel, profile, index, credentialsMap, options);
+                        let entry = generateChannelEntry(channel, profile, index, credentialsMap, options);
                         // CA11: validar el channel entry ANTES de enqueue al stream
                         _ca11ValidateEntry(entry, index);
+
+                        // ── ARA-X per-channel (opt-in, default OFF) ───────────────────
+                        try {
+                            if (typeof window !== 'undefined' && window.ARA_X_HOOK && window.ARA_X_HOOK.perChannelEnabled()) {
+                                entry = window.ARA_X_HOOK.augmentEntry(entry);
+                            }
+                        } catch (_araXErr) { /* fail-open */ }
                         const chunk = entry + '\n\n';
                         const encoded = encoder.encode(chunk);
                         totalBytes += encoded.byteLength;
