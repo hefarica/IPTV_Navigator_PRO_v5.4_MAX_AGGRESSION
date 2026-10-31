@@ -2,6 +2,23 @@
 
 **Estado:** `APLICA_PENDING`. **No se ha desplegado nada.** Este plan se ejecuta solo tras la respuesta literal `APLICA`.
 
+## 0. Rutas resueltas (read-only, 2026-10-31)
+
+| Repo | Destino real | Hash vivo | Acción |
+|---|---|---|---|
+| `vps/prisma/api/events-sse.php` | `/var/www/html/prisma/api/events-sse.php` | `1edacfdb...` | reemplazar |
+| `ara-x/vps/crystal/state.php` | `/var/www/ara/state.php` | `55190a3d...` | reemplazar |
+| `ara-x/vps/crystal/state_bridge.php` | `/var/www/ara/state_bridge.php` | ausente | crear |
+| `vps/ape_hls_generators.php` | `/var/www/html/ape_hls_generators.php` | `2ac91322...` | reemplazar |
+| `vps/cmaf_worker.php` | `/var/www/html/cmaf_worker.php` | `842ef139...` | reemplazar |
+| `vps/nginx/lua/lab_config.lua` | no existe en `/etc/nginx` | — | **no desplegar** |
+| `vps_configs/autopista-trap.conf` | no es config activa | — | **no desplegar** |
+| `backend/resolve_quality_unified.php` | no está en ruta del proxy | — | **no desplegar sin mapeo** |
+
+`/ara/state` usa `fastcgi_param SCRIPT_FILENAME /var/www/ara/state.php;` en
+`/etc/nginx/snippets/ara-state.conf`. `/ara/sse` y `/ara/events` usan PHP 8.3.
+`conviva.db` existe en `/opt/netshield/data/conviva.db` con dueño `www-data`.
+
 ## 1. Preflight obligatorio (read-only)
 
 ```bash
@@ -11,14 +28,6 @@ php -v
 php -m | grep -E 'pdo_sqlite|sqlite3|json'
 ls -l /var/www/html/ /opt/netshield/data/ 2>/dev/null
 ```
-
-Resolver **antes de copiar** las rutas reales de:
-
-- `events-sse.php` (repo: `vps/prisma/api/events-sse.php`)
-- `state.php` + `state_bridge.php` (repo: `ara-x/vps/crystal/`)
-- `ape_hls_generators.php`, `cmaf_worker.php`
-- `lab_config.lua`
-- Config nginx activa (no asumir `vps_configs/autopista-trap.conf`)
 
 Si una ruta no coincide, se detiene el deploy y se reporta; no se adivina.
 
