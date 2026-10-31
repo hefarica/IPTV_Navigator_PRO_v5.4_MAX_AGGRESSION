@@ -717,6 +717,25 @@ function serve_cmaf_m3u8_fallback(array $cd): void
     // construida en resolve_quality.php antes de llamar a esta función.
     $providerM3u8 = $finalUrl;
 
+    // I03/I04/I07/G9: the fallback must obey the same continuity contract.
+    $cmafDir  = '/dev/shm/ape_cmaf_cache/' . $ch;
+    $dna      = [];
+    $dnaPath  = '/dev/shm/ape_metrics/' . $ch . '/target_dna.json';
+    if (is_file($dnaPath)) {
+        $decodedDna = json_decode((string) @file_get_contents($dnaPath), true);
+        if (is_array($decodedDna)) {
+            $dna = $decodedDna;
+        }
+    }
+    $targetDur = ApeHlsTiming::targetDuration($dna);
+    $workerPid = '';
+    $pidPath = $cmafDir . '/worker.pid';
+    if (is_file($pidPath)) {
+        $workerPid = trim((string) @file_get_contents($pidPath));
+    }
+    $hlsState  = ApeHlsState::transition($cmafDir, $workerPid, time());
+    $mediaSeq  = intdiv(time(), max(1, $targetDur));
+
     // ── Verificar que el .m3u8 del proveedor responde ──
     $probeOk = false;
     $probeCh = curl_init($providerM3u8);
@@ -792,9 +811,12 @@ function serve_cmaf_m3u8_fallback(array $cd): void
     // ── Manifiesto HLS: el .m3u8 del proveedor envuelto en master sintético ──
     echo "#EXTM3U\n";
     echo "#EXT-X-VERSION:7\n";
-    echo "#EXT-X-TARGETDURATION:2\n";
-    echo "#EXT-X-MEDIA-SEQUENCE:0\n";
-    echo "#EXT-X-INDEPENDENT-SEGMENTS\n";
+    echo "#EXT-X-TARGETDURATION:{$targetDur}\n";
+    echo "#EXT-X-MEDIA-SEQUENCE:{$mediaSeq}\n";
+    echo "#EXT-X-DISCONTINUITY-SEQUENCE:{$hlsState['discontinuity_sequence']}\n";
+    if (ApeHlsTiming::independentSegments($dna)) {
+        echo "#EXT-X-INDEPENDENT-SEGMENTS\n";
+    }
 
     // [T11/B-11] CMAF NO se declara aquí: esta ruta reenvía el .m3u8 del proveedor,
     // no un init segment fMP4. Un #EXT-X-MAP apuntando a un .m3u8 hace que ExoPlayer
