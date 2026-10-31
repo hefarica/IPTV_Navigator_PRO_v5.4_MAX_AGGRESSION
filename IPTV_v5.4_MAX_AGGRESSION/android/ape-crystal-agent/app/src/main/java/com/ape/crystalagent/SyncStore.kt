@@ -106,7 +106,12 @@ class SyncStore(ctx: Context) {
             "secure minimal_post_processing_allowed 0",
             "global hdr_force_conversion_type -1",
             "global user_preferred_resolution_width 3840",
-            "global user_preferred_resolution_height 2160"
+            "global user_preferred_resolution_height 2160",
+            "global display_size_forced 3840x2160",
+            "global user_preferred_refresh_rate 60.000004",
+            "global are_user_disabled_hdr_formats_allowed 1",
+            "global db_id_audio_drc_mode 2",
+            "global db_id_droidlogic_audio_digital_mode 1"
         )
     }
 }

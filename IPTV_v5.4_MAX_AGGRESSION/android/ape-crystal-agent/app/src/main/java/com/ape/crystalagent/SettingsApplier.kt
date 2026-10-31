@@ -17,6 +17,7 @@ import android.util.Log
  * aquí no se infiere nada — el VPS decide, el daemon valida contra la allowlist y aplica.
  */
 class SettingsApplier(ctx: Context) {
+    private val appCtx: Context = ctx.applicationContext
     private val cr: ContentResolver = ctx.contentResolver
     @Volatile var lastApplied: Int = 0; private set
     @Volatile var lastRejected: Int = 0; private set
@@ -32,7 +33,8 @@ class SettingsApplier(ctx: Context) {
     fun applyDetailed(deviceSettings: List<String>): ApplyReport {
         val applied = ArrayList<String>(deviceSettings.size)
         val rejected = ArrayList<String>(deviceSettings.size)
-        for (s in deviceSettings) {
+        // Orden físico: el cambio de tamaño/densidad recrea el surface; va primero.
+        for (s in deviceSettings.sortedBy { orderOf(it) }) {
             val p = s.trim().split(Regex("\\s+"), limit = 3)
             if (p.size != 3) { rejected.add(s); continue }
             val ns = p[0]; val key = p[1]; val value = p[2]
@@ -97,6 +99,21 @@ class SettingsApplier(ctx: Context) {
         return sb.toString()
     }
 
+    private fun orderOf(row: String): Int {
+        val k = row.trim().split(Regex("\\s+"), limit = 3).getOrNull(1) ?: return 90
+        return when {
+            k == "display_size_forced" -> 0
+            k == "display_density_forced" -> 1
+            k == "user_preferred_refresh_rate" -> 2
+            k.contains("hdr", true) -> 3
+            k.contains("pq_", true) || k.contains("db_id_pq", true) -> 4
+            k.contains("audio", true) -> 5
+            k.contains("db_id_", true) -> 6
+            k.contains("resolution", true) -> 7
+            else -> 90
+        }
+    }
+
     private fun read(ns: String, key: String): String? = try {
         when (ns) {
             "global" -> Settings.Global.getString(cr, key)
@@ -124,6 +141,11 @@ class SettingsApplier(ctx: Context) {
         }
         var wrote = false
         for (ns in order) {
+            if (!SettingsCatalog.isKnown(ns, k) && read(ns, k) == null) continue
+            if (!KeyGuard.writable(appCtx, ns)) {
+                Log.w(TAG, "SKIPPED_DENIED $ns/$k (sin WRITE_SECURE_SETTINGS)")
+                continue
+            }
             val exists = try {
                 when (ns) {
                     "global" -> Settings.Global.getString(cr, k)
@@ -152,7 +174,7 @@ class SettingsApplier(ctx: Context) {
         // con WRITE_SECURE_SETTINGS antes de declararla inexistente.
         if (!wrote) {
             val forced = NS_HINT[k]
-            if (forced != null) {
+            if (forced != null && SettingsCatalog.isKnown(forced, k) && KeyGuard.writable(appCtx, forced)) {
                 try {
                     val r = when (forced) {
                         "global" -> Settings.Global.putString(cr, k, v)
@@ -182,7 +204,14 @@ class SettingsApplier(ctx: Context) {
             "hdr_conversion_mode" to "global",
             "hdr_force_conversion_type" to "global",
             "user_preferred_resolution_width" to "global",
-            "user_preferred_resolution_height" to "global"
+            "user_preferred_resolution_height" to "global",
+            "display_size_forced" to "global",
+            "display_density_forced" to "secure",
+            "user_preferred_refresh_rate" to "global",
+            "are_user_disabled_hdr_formats_allowed" to "global",
+            "user_disabled_hdr_formats" to "global",
+            "db_id_audio_drc_mode" to "global",
+            "db_id_droidlogic_audio_digital_mode" to "global"
         )
         // ALLOWLIST doctrinal: "ns/key" -> regex del valor permitido. NADA fuera de aquí se aplica.
         // Expandido 2026-06-18: set COMPLETO del VPP MediaTek MT8696 (AI-SR + AI-PQ + sharpness/denoise +
@@ -197,6 +226,13 @@ class SettingsApplier(ctx: Context) {
             // ── frame-rate / post-processing / color ──
             "match_content_frame_rate"        to Regex("^[012]$"),   // 0 off · 1 seamless · 2 always
             "minimal_post_processing_allowed" to Regex("^[01]$"),
+            "display_size_forced"             to Regex("^[0-9]{3,5}x[0-9]{3,5}$"),
+            "display_density_forced"          to Regex("^[0-9]{2,4}$"),
+            "user_preferred_refresh_rate"     to Regex("^[0-9]{1,3}(\\.[0-9]+)?$"),
+            "are_user_disabled_hdr_formats_allowed" to Regex("^[01]$"),
+            "user_disabled_hdr_formats"       to Regex("^$"),
+            "db_id_audio_drc_mode"            to Regex("^[0-9]{1,2}$"),
+            "db_id_droidlogic_audio_digital_mode" to Regex("^[0-9]{1,2}$"),
             "display_color_mode"              to Regex("^\\d{1,3}$"),
             // ── HDR (display-driven; truth-guard del lado VPS decide cuándo) ──
             "hdr_conversion_mode"             to Regex("^[0-3]$"),

@@ -27,21 +27,23 @@ object PresetHomologator {
     fun apply(ctx: Context, directive: JSONObject?): Result {
         val arr = directive?.optJSONArray("presets") ?: return Result(emptyList(), 0, 0, 0)
         val rows = LinkedHashSet<String>()
-        val prefs = ctx.getSharedPreferences("ape_preset_settings", Context.MODE_PRIVATE)
-        val editor = prefs.edit()
-        var accepted = 0
+        val parsed = ArrayList<Pair<String, String>>(arr.length())
         var unknown = 0
-
+        // ZONA CALIENTE: SOLO parseo + memoria. Nada de SharedPreferences ni Settings.
+        val t0 = System.nanoTime()
         for (i in 0 until arr.length()) {
             val raw = arr.optString(i, "").trim()
             if (raw.isEmpty()) { unknown++; continue }
             val (name, value) = parse(raw)
             if (name.isBlank()) { unknown++; continue }
-            // setting de app: TODAS las etiquetas, sin excepción.
-            editor.putString("preset_" + sanitize(name), value)
-            accepted++
+            PresetBus.put(name, value)
+            parsed.add(name to value)
+        }
+        val accepted = parsed.size
+        PresetBus.recordElapsed(t0, accepted)
 
-            // Sólo las que tienen una key Android REAL se aplican además al sistema.
+        // Fuera del camino caliente: mapeo a keys Android reales.
+        for ((name, value) in parsed) {
             if (value.contains("3840x2160") || name.contains("TARGET") ||
                 name.contains("RESOLUTION") || name.contains("LCEVC-TARGET")) {
                 rows.add("global user_preferred_resolution_width 3840")
@@ -57,6 +59,11 @@ object PresetHomologator {
                 rows.add("secure minimal_post_processing_allowed 0")
             }
         }
+
+        // Persistencia asíncrona, también fuera del camino caliente.
+        val prefs = ctx.getSharedPreferences("ape_preset_settings", Context.MODE_PRIVATE)
+        val editor = prefs.edit()
+        for ((name, value) in parsed) editor.putString("preset_" + sanitize(name), value)
         editor.putInt("preset_count", accepted)
         editor.putInt("preset_android_rows", rows.size)
         editor.apply()
@@ -74,7 +81,8 @@ object PresetHomologator {
         AraStatus.lastPresetLocal = accepted
         AraStatus.lastPresetUnknown = unknown
         AraStatus.lastPresetAndroid = rows.size
-        Log.i(TAG, "presets homologados=$accepted androidRows=${rows.size} unknown=$unknown")
+        Log.i(TAG, "presets homologados=$accepted androidRows=${rows.size} unknown=$unknown " +
+            "p50=${PresetBus.p50}ms p95=${PresetBus.p95}ms p99=${PresetBus.p99}ms max=${PresetBus.max}ms coalesce=${PresetBus.coalesced}")
         return Result(rows.toList(), accepted, rows.size, unknown)
     }
 

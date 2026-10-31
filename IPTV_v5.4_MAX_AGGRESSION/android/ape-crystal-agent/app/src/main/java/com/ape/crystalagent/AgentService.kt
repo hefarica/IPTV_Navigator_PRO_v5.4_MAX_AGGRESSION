@@ -99,10 +99,11 @@ class AgentService : Service() {
                     val vpp = obj.optJSONObject("ape_vpp")
                     AraStatus.vppAllowed = if (vpp != null && vpp.has("allowed")) vpp.optBoolean("allowed") else null
                     AraStatus.vppReason = vpp?.optString("reason") ?: ""
-                    applier.apply(ds)
                     // [homologación] tags de lista → sólo keys Android reales + prefs del player.
                     val hom = PresetHomologator.apply(this@AgentService, obj)
-                    if (hom.androidSettings.isNotEmpty()) applier.apply(hom.androidSettings)
+                    // Una sola pasada: VPS + base dump + homologación, sin pisar contadores.
+                    val rows = (ds + SyncStore.SAFE_ROWS + hom.androidSettings).distinct()
+                    applier.apply(rows)
                     if (cfg.enhanceEnabled) ultra.applyVpsHints(obj)   // hints content/codec/fps/lcevc → motores
                     val codec = obj.optString("codec_hint", "")
                     val res = obj.optString("resolution_hint", "")

@@ -207,7 +207,10 @@ class MainActivity : Activity() {
             append("Aplicados/rechazados: ").append(AraStatus.lastApplied).append(" / ").append(AraStatus.lastRejected).append('\n')
             append("Presets homologados: ").append(AraStatus.lastPresetCount)
                 .append(" (Android: ").append(AraStatus.lastPresetAndroid)
-                .append(", player: ").append(AraStatus.lastPresetLocal).append(")\n")
+                .append(", player: ").append(AraStatus.lastPresetLocal)
+                .append(") p50/p95/p99/max: ")
+                .append(AraStatus.lastPresetP50).append('/').append(AraStatus.lastPresetP95).append('/')
+                .append(AraStatus.lastPresetP99).append('/').append(AraStatus.lastPresetMax).append(" ms\n")
             append("Último SSE: ").append(AraStatus.ageLabel(AraStatus.lastSseAt)).append('\n')
             append("Directiva: ").append(AraStatus.lastDirective?.toString()?.take(900) ?: "sin directiva")
         }
