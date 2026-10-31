@@ -140,13 +140,15 @@ function signed(seq, nonce) {
   // 4 · HMAC válido -> 200 (PRIMERO: el test de rate-limit consume el burst)
   if (KEY) {
     try {
-      const s = signed(2, (tag + 'a').padEnd(16, '0').slice(0, 16));
+      // seq monotónico alto: evita 409 con el último seq de un deploy anterior.
+      const seq = Math.floor(Date.now() / 1000);
+      const s = signed(seq, (tag + 'a').padEnd(16, '0').slice(0, 16));
       const r = await request('POST', '/sync', s.raw, s.headers);
       const ok = record('200 HMAC válido', r.status, 200);
       if (ok) {
         const sig = r.headers['x-ara-sig'] || '';
         const bodyHash = crypto.createHash('sha256').update(r.body).digest('hex');
-        const canonical = ['ARA-X-SYNC-RESP-V1', DEVICE, '2', String(JSON.parse(r.body).ts), bodyHash].join('\n');
+        const canonical = ['ARA-X-SYNC-RESP-V1', DEVICE, String(seq), String(JSON.parse(r.body).ts), bodyHash].join('\n');
         const want = crypto.createHmac('sha256', KEY).update(canonical).digest('hex');
         record('200 firma de respuesta', sig === want ? 200 : 0, 200);
       }
