@@ -415,6 +415,34 @@ gradle_exit=0
 
 **Límite:** política y observabilidad; no se fuerza al player a mantener 60% (eso requeriría cambiar `DefaultLoadControl` y medir startup). No se ejecutó en ONN.
 
+## I16 — Exportador Excel alineado al contrato
+
+**Estado:** VERIFIED (local; sin deploy).
+
+**Archivo:** `deliverables/LAB_2026-10-26/export_ara_state_contract.py`
+
+**Comportamiento:** lee `contracts/continuity.contract.json`; cabeceras = `ara_state_fields` + `cursor_<field>`; escribe un `.xlsx` **separado**; falla si falta una columna o si el input no es un array.
+
+**Verificación:**
+
+```text
+OK rows=1 cols=11
+HEADERS=class,confidence,buffer_pct,bitrate_bps,media_sequence,timestamp,
+cursor_media_sequence,cursor_segment_uri,cursor_byte_offset,cursor_pts,cursor_program_date_time
+ROWS=1
+export_exit=0
+read_exit=0
+```
+
+**No regresión:** el `.xlsm` certificado no se tocó:
+
+```text
+SHA-256 813a05aa3aa6070c33c6172933bbfd2714791340af48fb70686de33c742a2399
+bytes   3425790
+```
+
+**Límite:** no se inyectaron columnas dentro del `.xlsm` certificado (rompería VBA/SHA); el exportador es un artefacto nuevo y aditivo.
+
 
 
 

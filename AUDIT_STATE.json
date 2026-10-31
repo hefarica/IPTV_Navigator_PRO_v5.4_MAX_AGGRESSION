@@ -1,24 +1,24 @@
 {
-  "unit": "I15",
+  "unit": "I16",
   "phase": "IMPLEMENTATION",
   "state": "VERIFIED",
   "pct": 100,
   "audit_gate0": "GREEN_WITH_A05_BLOCKED",
   "evidence": {
-    "policy": "BufferPolicy FLOOR_PCT=60 CEILING_PCT=null",
-    "status": "AraStatus bufferFloorPct/bufferCeilingPct/bufferState",
-    "guard": "BitrateGuard publish/reset",
-    "test": "gradle compileDebugKotlin BUILD SUCCESSFUL",
+    "artifact": "deliverables/LAB_2026-10-26/export_ara_state_contract.py",
+    "headers": "ara_state_fields + cursor_fields prefix",
+    "test": "1 row, 11 cols, export_exit=0 read_exit=0",
+    "certified_sha": "813a05aa3aa6070c33c6172933bbfd2714791340af48fb70686de33c742a2399",
     "deploy": "none",
-    "limit": "ExoPlayer buffer_max_s unchanged; no runtime"
+    "limit": "separate xlsx; certified xlsm untouched"
   },
   "options": [
-    "O1 policy 60/no ceiling in existing guard (N1)",
-    "O2 force buffer_min_s=60% max (N1, startup risk)",
-    "O3 new buffer daemon (N4)"
+    "O1 separate xlsx exporter from contract (N3)",
+    "O2 edit certified xlsm headers (N1, breaks VBA/SHA)",
+    "O3 CSV only (N2)"
   ],
   "chosen": "O1",
   "commit": null,
   "blocked_reason": null,
-  "pending": ["I16", "I17"]
+  "pending": ["I17"]
 }
