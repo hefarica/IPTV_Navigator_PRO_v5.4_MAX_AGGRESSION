@@ -1,0 +1,56 @@
+{
+  "id": "crystal_6k_lite",
+  "out": "5760x3240",
+  "buffer": "max",
+  "quality": "fast",
+  "thermal_limit": 74,
+  "lcevc": "SYNTHETIC",
+  "never_downscale": true,
+  "min_res": "2560x1440",
+  "presentation": "6k_presentation",
+  "degrade_order": [
+    "fps",
+    "processing"
+  ],
+  "bitrate_mbps": 30,
+  "maxrate_mbps": 39,
+  "bufsize": "64M",
+  "lcevc_layer": [
+    "detail_restore",
+    "edge_enhance"
+  ],
+  "lcevc_phase": 4,
+  "presets": [
+    "#EXT-X-APE-BUFFER-LEVEL:AGGRESSIVE",
+    "#EXT-X-APE-BUFFER-MULTIPLIER:3",
+    "#EXT-X-APE-BUFFER-CONNECTIONS:6",
+    "#EXT-X-APE-BUFFER-STRATEGY:DUAL_TCP_PREFETCH",
+    "#EXT-X-APE-QUALITY-LOCK:NATIVA_MAXIMA",
+    "#EXT-X-APE-LCEVC-MODE:CLIENT-UPSCALING",
+    "#EXT-X-APE-LCEVC-VERSION:PHASE4",
+    "#EXT-X-APE-LCEVC-TARGET:5760x3240",
+    "#EXTVLCOPT:zscale=width=5760:height=3240:filter=lanczos",
+    "#EXTVLCOPT:dither=error_diffusion:chroma=1444",
+    "#EXTVLCOPT:swscale-mode=9",
+    "#EXT-X-ARA-NEVER-DROP:true",
+    "#EXT-X-ARA-FPS-FALLBACK:30,24"
+  ],
+  "settings": {
+    "display_size_forced": "5760x3240",
+    "user_preferred_refresh_rate": "30",
+    "db_id_pq_sharpness": "32",
+    "db_id_pq_noise": "24",
+    "db_id_hdr_policy": "1"
+  },
+  "metadata": {
+    "EXT-X-ARA-LCEVC": "SYNTHETIC",
+    "EXT-X-ARA-LCEVC-LAYER": "enhance",
+    "EXT-X-ARA-LCEVC-PHASE": "4",
+    "EXT-X-ARA-PRESENTATION": "6k_presentation",
+    "EXT-X-ARA-NEVER-DOWNSCALE": "true",
+    "EXT-X-ARA-MIN-RES": "2560x1440",
+    "EXT-X-ARA-BUFFER": "max",
+    "EXT-X-ARA-DEGRADE-ORDER": "fps,processing",
+    "EXT-X-ARA-THERMAL-LIMIT": "74"
+  }
+}
