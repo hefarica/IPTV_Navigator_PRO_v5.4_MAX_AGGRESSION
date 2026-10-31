@@ -9,6 +9,7 @@ declare(strict_types=1);
  */
 
 require_once __DIR__ . '/../lib/ape_mesh.php';
+require_once __DIR__ . '/../lib/ape_sse_commands.php';
 
 function ara_sse_fail(int $code, string $msg): void {
     http_response_code($code);
@@ -82,6 +83,17 @@ while (!connection_aborted() && (time() - $started) < 3600) {
         $lastId = max($lastId, (int)$row['id']);
         $payload = json_decode((string)$row['payload_json'], true);
         if (!is_array($payload)) { $payload = array('raw' => (string)$row['payload_json']); }
+
+        // I13: only allow the command vocabulary; normal policy.delta passes through.
+        $hasCommand = isset($payload['command']) || ApeSseCommands::isAllowed((string)$row['delta_type']);
+        if ($hasCommand) {
+            $normalized = ApeSseCommands::fromDelta((string)$row['delta_type'], $payload);
+            if ($normalized === null) {
+                continue;
+            }
+            $payload = $normalized;
+        }
+
         $payload['id'] = (int)$row['id'];
         $payload['delta_type'] = (string)$row['delta_type'];
         $payload['channel_id'] = $row['channel_id'];

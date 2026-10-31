@@ -319,6 +319,36 @@ test_exit=0 lint_exit=0
 
 **Límite:** todavía no hay productor de `/dev/shm/ape_state/<ch>.json`; I12 prueba el inyector y la ausencia de datos inventados.
 
+## I13 — Comandos SSE (contrato)
+
+**Estado:** VERIFIED (local; sin deploy).
+
+**Archivos:**
+
+- `IPTV_v5.4_MAX_AGGRESSION/vps/prisma/lib/ape_sse_commands.php`
+- `IPTV_v5.4_MAX_AGGRESSION/vps/prisma/tests/ape_sse_commands_test.php`
+- `IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/events-sse.php:81-99`
+
+**Comandos:** `PRE_FILL_MAX`, `EMERGENCY_FILL`, `UNLIMITED_BITRATE`, `CRYSTAL-UHD-MIN`, `CRYSTAL-UHD-MED`, `CRYSTAL-UHD-MAX`. Cualquier otro se descarta; `policy.delta` normal pasa sin cambios.
+
+**Verificación (VPS temporal `/tmp/ara_i13_80169`):**
+
+```text
+PASS PRE_FILL_MAX allowed
+PASS CRYSTAL-UHD-MAX allowed
+PASS unknown rejected
+PASS normalizes segments
+PASS keeps command
+PASS fromDelta accepts command
+PASS fromDelta keeps buffer
+PASS fromDelta rejects unknown
+PASS normalize rejects unknown
+ALL_OK
+test_exit=0 lint_exit=0
+```
+
+**Límite:** no hay productor que inserte estas filas en `policy_deltas`; I13 valida el vocabulario y el filtro del emisor SSE.
+
 
 
 
