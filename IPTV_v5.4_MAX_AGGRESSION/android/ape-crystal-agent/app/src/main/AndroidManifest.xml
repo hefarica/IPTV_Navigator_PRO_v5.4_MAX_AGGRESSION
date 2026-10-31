@@ -5,6 +5,8 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
     <!-- Aplicador puro: NO lee logs (no READ_LOGS). Solo escribe Settings permitidos.
          Grantable por adb a una app sideloaded (protectionLevel ...|development):
            adb shell pm grant com.ape.crystalagent android.permission.WRITE_SECURE_SETTINGS -->
@@ -44,6 +46,15 @@
             android:name=".AgentService"
             android:exported="false" />
 
+        <activity
+            android:name=".ScreenCaptureActivity"
+            android:exported="true" />
+
+        <service
+            android:name=".ScreenCaptureService"
+            android:foregroundServiceType="mediaProjection"
+            android:exported="false" />
+
         <receiver
             android:name=".BootReceiver"
             android:exported="true">
@@ -51,6 +62,15 @@
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
                 <action android:name="android.intent.action.QUICKBOOT_POWERON" />
                 <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
+
+        <!-- A/B de imagen: toggle y captura PixelCopy vía adb broadcast. Solo test local. -->
+        <receiver
+            android:name=".AbTestReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.ape.crystalagent.AB" />
             </intent-filter>
         </receiver>
 

@@ -79,6 +79,12 @@ object AraStatus {
     @Volatile var bitrateAt: Long = 0L
     @Volatile var bufferPct: Int = 0
 
+    // ── Captura global (MediaProjection, consentida) ─────────────────────────
+    @Volatile var captureFrames: Long = 0L
+    @Volatile var captureLuma: Double = 0.0
+    @Volatile var captureLap: Double = 0.0
+    @Volatile var captureKind: String = "—"
+
     fun ageMs(ts: Long, now: Long = System.currentTimeMillis()): Long =
         if (ts <= 0L) Long.MAX_VALUE else (now - ts).coerceAtLeast(0L)
 
