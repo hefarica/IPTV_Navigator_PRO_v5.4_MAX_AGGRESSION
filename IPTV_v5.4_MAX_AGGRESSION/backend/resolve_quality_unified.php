@@ -4413,6 +4413,13 @@ function rq_enrich_channel_output(string $output, string $playerUA, string $host
     $ch_id_str = (string)$ch_id;
     $strikes = 0;
 
+    // I08/G10: strike tracker also persists the continuity cursor when the
+    // contract headers are present; no header means no invented sequence.
+    require_once __DIR__ . '/../vps/prisma/lib/ape_cursor.php';
+    if ($clientIp !== '0.0.0.0' && $ch_id > 0) {
+        ApeCursor::writeFromHeaders($clientIp, $ch_id_str, $_SERVER);
+    }
+
     if ($clientIp !== '0.0.0.0' && $ch_id > 0) {
         $trackerFile = '/dev/shm/ape_neuro_tracker.json';
         $now = time();

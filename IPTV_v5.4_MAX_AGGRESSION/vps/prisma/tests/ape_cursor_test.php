@@ -47,5 +47,16 @@ ApeCursor::clear($ipB, $ch);
 $check('cleanup A', ApeCursor::read($ipA, $ch) === null);
 $check('cleanup B', ApeCursor::read($ipB, $ch) === null);
 
+$headers = [
+    'HTTP_X_APE_RESUME_SEQ' => '77',
+    'HTTP_X_APE_CURSOR' => '/seg/77.ts',
+];
+$check('writeFromHeaders writes cursor', ApeCursor::writeFromHeaders($ipA, $ch, $headers) === true);
+$fromHeaders = ApeCursor::read($ipA, $ch);
+$check('header cursor last_delivered 77', is_array($fromHeaders) && ($fromHeaders['last_delivered'] ?? null) === 77);
+$check('header cursor segment_uri', is_array($fromHeaders) && ($fromHeaders['segment_uri'] ?? null) === '/seg/77.ts');
+$check('missing header does not write', ApeCursor::writeFromHeaders($ipA, $ch, []) === false);
+ApeCursor::clear($ipA, $ch);
+
 echo $fail === 0 ? "ALL_OK\n" : "FAILURES={$fail}\n";
 exit($fail === 0 ? 0 : 1);

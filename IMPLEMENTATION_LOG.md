@@ -208,6 +208,32 @@ test_exit=0 lint_exit=0
 
 **Límite:** no se mide el GOP real del proveedor; se usa el `seg_dur` que el worker declara. La verificación dinámica del GOP queda pendiente.
 
+## I08 — Strike Tracker escribe cursor (G10)
+
+**Estado:** VERIFIED (local; sin deploy).
+
+**Archivos:**
+
+- `IPTV_v5.4_MAX_AGGRESSION/vps/prisma/lib/ape_cursor.php` (`writeFromHeaders`)
+- `IPTV_v5.4_MAX_AGGRESSION/backend/resolve_quality_unified.php:4412-4421`
+- `IPTV_v5.4_MAX_AGGRESSION/vps/prisma/tests/ape_cursor_test.php`
+
+**Lógica:** el strike tracker sigue escribiendo `ape_neuro_tracker.json`; además, si llegan `X-APE-Resume-Seq` y `X-APE-Cursor`, persiste el cursor. Sin `X-APE-Resume-Seq` numérico no escribe nada; no inventa secuencia.
+
+**Verificación (VPS temporal `/tmp/ara_i08_*`):**
+
+```text
+PASS writeFromHeaders writes cursor
+PASS header cursor last_delivered 77
+PASS header cursor segment_uri
+PASS missing header does not write
+ALL_OK
+test_exit=0 lint_exit=0
+```
+
+**Límite:** no hay cliente que envíe esos headers todavía; I08 prueba el receptor, no el emisor.
+
+
 
 
 

@@ -1,24 +1,24 @@
 {
-  "unit": "I07",
+  "unit": "I08",
   "phase": "IMPLEMENTATION",
   "state": "VERIFIED",
   "pct": 99,
   "audit_gate0": "GREEN_WITH_A05_BLOCKED",
   "evidence": {
-    "artifact": "IPTV_v5.4_MAX_AGGRESSION/vps/ape_hls_generators.php:598-608,641-645",
-    "helper": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/lib/ape_hls_timing.php",
-    "test": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/tests/ape_hls_timing_test.php",
-    "result": "ALL_OK; target from DNA; independent only when proven; test_exit=0 lint_exit=0",
+    "artifact": "IPTV_v5.4_MAX_AGGRESSION/backend/resolve_quality_unified.php:4412-4421",
+    "helper": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/lib/ape_cursor.php writeFromHeaders",
+    "test": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/tests/ape_cursor_test.php",
+    "result": "ALL_OK; header cursor 77; missing header rejected; test_exit=0 lint_exit=0",
     "deploy": "none",
-    "limit": "GOP not measured; uses worker seg_dur"
+    "limit": "no client sends X-APE-Resume-Seq yet"
   },
   "options": [
-    "O1 use target_dna seg_dur and gate independent tag (N1)",
-    "O2 hardcode hls_time 6 (N1)",
-    "O3 probe GOP live in generator (N4)"
+    "O1 write cursor from contract headers in strike tracker (N1)",
+    "O2 write cursor from strikes count (N1)",
+    "O3 new emitter (N4)"
   ],
   "chosen": "O1",
   "commit": null,
   "blocked_reason": null,
-  "pending": ["I08", "I09", "I10", "I11", "I12", "I13", "I14", "I15", "I16", "I17"]
+  "pending": ["I09", "I10", "I11", "I12", "I13", "I14", "I15", "I16", "I17"]
 }

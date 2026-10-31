@@ -112,6 +112,25 @@ final class ApeCursor
         return $last + 1;
     }
 
+    /**
+     * I08/G10: write the cursor from the contract headers, only when present.
+     * @param array<string,mixed> $server
+     */
+    public static function writeFromHeaders(string $clientIp, string|int $channelId, array $server): bool
+    {
+        $seq = $server['HTTP_X_APE_RESUME_SEQ'] ?? '';
+        if (!is_string($seq) || !ctype_digit($seq)) {
+            return false;
+        }
+        $segmentUri = $server['HTTP_X_APE_CURSOR'] ?? '';
+        return self::write($clientIp, $channelId, [
+            'media_sequence' => (int) $seq,
+            'segment_uri' => is_string($segmentUri) ? $segmentUri : '',
+            'last_delivered' => (int) $seq,
+            'program_date_time' => gmdate('Y-m-d\TH:i:s.000\Z'),
+        ]);
+    }
+
     public static function clear(string $clientIp, string|int $channelId): bool
     {
         $path = self::path($clientIp, $channelId);
