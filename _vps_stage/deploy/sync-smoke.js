@@ -137,17 +137,7 @@ function signed(seq, nonce) {
     record('413 body >16 KB', r.status, 413);
   } catch (e) { record('413 body >16 KB', 0, 413, e.message); }
 
-  // 4 · rate-limit: 7 peticiones -> alguna 429 (burst 6)
-  let saw429 = false;
-  for (let i = 0; i < 7; i += 1) {
-    try {
-      const r = await request('POST', '/sync', baseReq, { 'Content-Type': 'application/json', 'X-ARA-Sync-Version': '2' });
-      if (r.status === 429) saw429 = true;
-    } catch (e) { /* red: lo reporta el chequeo siguiente */ }
-  }
-  record('429 rate-limit', saw429 ? 429 : 0, 429);
-
-  // 5 · HMAC válido -> 200 (solo si el Environment inyecta la clave)
+  // 4 · HMAC válido -> 200 (PRIMERO: el test de rate-limit consume el burst)
   if (KEY) {
     try {
       const s = signed(2, (tag + 'a').padEnd(16, '0').slice(0, 16));
@@ -164,6 +154,16 @@ function signed(seq, nonce) {
   } else {
     console.log('SKIP 200 HMAC válido: falta SYNC_KEY en el Environment');
   }
+
+  // 5 · rate-limit: 7 peticiones -> alguna 429 (burst 6)
+  let saw429 = false;
+  for (let i = 0; i < 7; i += 1) {
+    try {
+      const r = await request('POST', '/sync', baseReq, { 'Content-Type': 'application/json', 'X-ARA-Sync-Version': '2' });
+      if (r.status === 429) saw429 = true;
+    } catch (e) { /* red: lo reporta el chequeo siguiente */ }
+  }
+  record('429 rate-limit', saw429 ? 429 : 0, 429);
 
   // 6 · /ara/events con token -> 200 (solo si se inyecta token)
   if (TOKEN) {
