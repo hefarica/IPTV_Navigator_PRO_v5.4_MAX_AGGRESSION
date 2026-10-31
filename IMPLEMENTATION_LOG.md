@@ -180,6 +180,35 @@ test_exit=0 lint_exit=0
 
 **No desplegado:** no se copió a `/var/www/html`; no se ejecutó el worker de producción.
 
+## I07 — HLS timing y `INDEPENDENT-SEGMENTS` (G9)
+
+**Estado:** VERIFIED (local; sin deploy).
+
+**Archivos:**
+
+- `IPTV_v5.4_MAX_AGGRESSION/vps/prisma/lib/ape_hls_timing.php`
+- `IPTV_v5.4_MAX_AGGRESSION/vps/prisma/tests/ape_hls_timing_test.php`
+- `IPTV_v5.4_MAX_AGGRESSION/vps/ape_hls_generators.php:598-608,641-645`
+
+**Lógica:** `TARGETDURATION` se toma de `target_dna.seg_dur` (2..12; fallback 6), no de un 2 fijo. `#EXT-X-INDEPENDENT-SEGMENTS` solo se emite si el DNA declara `independent_segments=true`; por defecto no se miente.
+
+**Verificación (VPS temporal `/tmp/ara_i07b_*`):**
+
+```text
+PASS dna 6 -> target 6
+PASS dna 4 -> target 4
+PASS dna 1 clamps to 6
+PASS dna 20 clamps to 6
+PASS missing dna -> 6
+PASS independent false by default
+PASS independent true only when proven
+ALL_OK
+test_exit=0 lint_exit=0
+```
+
+**Límite:** no se mide el GOP real del proveedor; se usa el `seg_dur` que el worker declara. La verificación dinámica del GOP queda pendiente.
+
+
 
 
 

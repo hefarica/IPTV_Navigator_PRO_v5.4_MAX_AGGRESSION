@@ -19,6 +19,7 @@ require_once __DIR__ . '/prisma/lib/ape_hls_state.php';
 require_once __DIR__ . '/prisma/lib/ape_cursor.php';
 require_once __DIR__ . '/prisma/lib/ape_resume.php';
 require_once __DIR__ . '/prisma/lib/ape_cmaf_bootstrap.php';
+require_once __DIR__ . '/prisma/lib/ape_hls_timing.php';
 
 // ─── USER AGENTS POOL ────────────────────────────────────────────────────────
 $UA_POOL = [
@@ -594,7 +595,16 @@ function serve_hls_fmp4_ignition(array $cd): void
     sort($chunks);
     $segCount = count($chunks);
     $window   = array_slice($chunks, -5); // últimos 5 segmentos
-    $targetDur = 2;
+    // I07/G9: TARGETDURATION from the worker DNA, not a fixed 2s.
+    $dna = [];
+    $dnaPath = '/dev/shm/ape_metrics/' . $ch . '/target_dna.json';
+    if (is_file($dnaPath)) {
+        $decodedDna = json_decode((string) @file_get_contents($dnaPath), true);
+        if (is_array($decodedDna)) {
+            $dna = $decodedDna;
+        }
+    }
+    $targetDur = ApeHlsTiming::targetDuration($dna);
     $mediaSeq = intdiv(time(), max(1, $targetDur)); // I03/G3: epoch source, monotonic across restarts
 
     // I04/G4+G8: worker.pid is the real restart signal.
@@ -639,7 +649,9 @@ function serve_hls_fmp4_ignition(array $cd): void
     echo "#EXT-X-TARGETDURATION:{$targetDur}\n";
     echo "#EXT-X-MEDIA-SEQUENCE:{$mediaSeq}\n";
     echo "#EXT-X-DISCONTINUITY-SEQUENCE:{$hlsState['discontinuity_sequence']}\n";
-    echo "#EXT-X-INDEPENDENT-SEGMENTS\n";
+    if (ApeHlsTiming::independentSegments($dna)) {
+        echo "#EXT-X-INDEPENDENT-SEGMENTS\n";
+    }
     // Segmento de inicialización fMP4 (contiene el átomo moov)
     echo "#EXT-X-MAP:URI=\"{$baseUrl}?sid={$ch}&seg=init-stream0.m4s\"\n";
 
