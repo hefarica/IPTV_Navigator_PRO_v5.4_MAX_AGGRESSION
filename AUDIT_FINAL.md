@@ -181,6 +181,23 @@ No son el mismo archivo; el de backend no está en la ruta del proxy.
 
 **Conclusión:** hay usos reales de las etiquetas fuera del generador activo (ingest/test/docs), pero el generador de listas y el resolver no las emiten. El GAP de continuidad sigue en la capa activa.
 
+## A10 — Prefetch a 127.0.0.1:80 tras ff5ff5a
+
+**Estado:** VERIFIED (auditoría de repo; producción no inferida).
+
+**Commit:** `ff5ff5a` modifica solo `vps_configs/autopista-trap.conf` (38+, 4−).
+
+**Prefetch real:** `prefetch_segment.lua`:
+- `:101` `sock:connect("127.0.0.1", 80)`.
+- `:108-109` envía `GET <ts_path>` con `Host: <req_host>`.
+- `:59-67` `req_host` es `ngx.var.host` o el host de la URL absoluta del segmento; nunca se fuerza `127.0.0.1` como Host.
+- `:73-82` `ts_path` es la ruta del segmento (`/...`/`shield/...`), no `/ara/`.
+
+**Trap:** `vps_configs/autopista-trap.conf:20-24` solo aplica a `Host` IPv4 literal; `:128` devuelve 444 para `/ara/` en ese server. El prefetch no usa Host `127.0.0.1` ni path `/ara/`, así que **no cae en 444**.
+
+**Riesgo distinto:** el `listen 80` público del vhost normal redirige a HTTPS (visto en la configuración auditada); el prefetch lee solo cabeceras y puede recibir un 301, no calentar la caché. No es 444, pero puede ser un prefetch inefectivo.
+
+
 
 
 

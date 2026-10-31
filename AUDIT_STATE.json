@@ -1,19 +1,18 @@
 {
-  "unit": "A09",
+  "unit": "A10",
   "phase": "AUDIT",
   "state": "VERIFIED",
-  "pct": 77,
+  "pct": 79,
   "evidence": {
-    "grep": "966 matches, 250 shown before cap; full spill retained by tool",
-    "real_emitter": "_vps_stage/media/ape-ingest.sh:2028,2044,2207,2218,2526,2538",
-    "test": "test_exporter2.js:5976; test_exporter.js:7205",
-    "docs": "docs/MEDIA_FANOUT_CONCURRENCY_REPORT.md:281",
-    "active_generator": "m3u8-typed-arrays-ultimate.js:226 findIndex only; :6354-6356 custom APE tags",
-    "resolver": "no matching emission in backend/resolve_quality_unified.php"
+    "commit": "ff5ff5a modifies vps_configs/autopista-trap.conf 38+/4-",
+    "prefetch": "prefetch_segment.lua:101 connect 127.0.0.1:80; :108-109 Host=req_host; :59-67 host from manifest/CDN; :73-82 segment path",
+    "trap": "vps_configs/autopista-trap.conf:20-24 IPv4-only server; :128 444 /ara/ only",
+    "result": "prefetch does not use Host=127.0.0.1 nor path /ara/; no 444",
+    "other_risk": "public port 80 may 301 to HTTPS; prefetch reads headers only, may not warm cache"
   },
-  "options": ["O1 global grep and classify uses", "O2 inject standard tags in active generator", "O3 replace generator"],
+  "options": ["O1 trace prefetch and trap scope", "O2 change prefetch to https/SNI", "O3 remove prefetch"],
   "chosen": "O1",
   "commit": null,
   "blocked_reason": null,
-  "pending": ["A10", "A11", "A12", "A13", "A14"]
+  "pending": ["A11", "A12", "A13", "A14"]
 }
