@@ -46,7 +46,8 @@ class MainActivity : Activity() {
         super.onCreate(savedInstanceState)
         window.statusBarColor = bg
         window.navigationBarColor = bg
-        flow = OnboardingFlow(this)
+        // [crashfix v4] El constructor de ADB/onboarding no debe tumbar la UI.
+        flow = runCatching { OnboardingFlow(this) }.getOrNull()
         val cfg = Config(this)
 
         val root = ScrollView(this).apply { setBackgroundColor(bg) }
@@ -161,10 +162,11 @@ class MainActivity : Activity() {
         val hdrNames = hdrTypes.joinToString(", ") {
             when (it) { 1 -> "Dolby Vision"; 2 -> "HDR10"; 3 -> "HLG"; 4 -> "HDR10+"; else -> "tipo $it" }
         }.ifBlank { "sin datos" }
-        val prefs = FluidStore.prefs(this)
-        val image = prefs.getString("image_profile", "crystal_uhd") ?: "crystal_uhd"
-        val buffer = prefs.getString("buffer_profile", "balanced") ?: "balanced"
-        val enhance = prefs.getBoolean("enhance_enabled", true)
+        // [crashfix v4] FluidStore puede no estar disponible en un update/device raro.
+        val prefs = runCatching { FluidStore.prefs(this) }.getOrNull()
+        val image = runCatching { prefs?.getString("image_profile", "crystal_uhd") }.getOrNull() ?: "crystal_uhd"
+        val buffer = runCatching { prefs?.getString("buffer_profile", "balanced") }.getOrNull() ?: "balanced"
+        val enhance = runCatching { prefs?.getBoolean("enhance_enabled", true) }.getOrNull() ?: true
         val hdrConv = runCatching { Settings.Global.getString(contentResolver, "hdr_conversion_mode") }.getOrNull()
         val prefW = runCatching { Settings.Global.getString(contentResolver, "user_preferred_resolution_width") }.getOrNull()
         val prefH = runCatching { Settings.Global.getString(contentResolver, "user_preferred_resolution_height") }.getOrNull()
