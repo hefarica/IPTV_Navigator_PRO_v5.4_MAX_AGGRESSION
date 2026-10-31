@@ -501,6 +501,24 @@ PASS_master_stream_inf
 PASS_independent_not_claimed
 ```
 
+Prueba real del camino fMP4 con fixtures en `/dev/shm` y `serve_hls_fmp4_ignition()`:
+
+```text
+#EXT-X-TARGETDURATION:4
+#EXT-X-MEDIA-SEQUENCE:448366001
+#EXT-X-DISCONTINUITY-SEQUENCE:0
+#EXT-X-MAP:URI="http://test.local//cmaf_proxy.php?..."
+#EXT-X-PROGRAM-DATE-TIME:2026-10-31T16:26:45.000Z
+PASS_media_sequence
+PASS_discontinuity_sequence
+PASS_program_date_time
+PASS_target_duration_4
+PASS_independent_not_claimed
+```
+
+El doble slash observado se corrigió con `rtrim(dirname(...), '/\\')`; hash live
+final `58294832032bd518fd8518927c544b24abfa8c9eef49b3df1876542650261c7d`.
+
 
 
 

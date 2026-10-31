@@ -7,19 +7,21 @@
   "evidence": {
     "deploy_stamp": "20261031T162028Z",
     "backup": "/root/ara_backup_20261031T162028Z",
-    "hotfix": "ape_hls_generators.php 5569e8f6... fallback master RFC-correct",
-    "checks": "php -l local/live=0; nginx -t ok; /ara/events 401; /ara/sse 401; nginx/php8.3-fpm active",
+    "hotfix": "fallback master RFC-correct; fMP4 base URL normalized",
+    "fmp4_test": "TARGETDURATION=4, MEDIA-SEQUENCE=448366001, DISCONTINUITY-SEQUENCE=0, PROGRAM-DATE-TIME present, INDEPENDENT not claimed",
+    "live_hash": "58294832032bd518fd8518927c544b24abfa8c9eef49b3df1876542650261c7d",
+    "checks": "php -l=0; nginx -t ok; endpoints 401; nginx/php8.3-fpm active",
     "deploy": "applied",
-    "limit": "manifest/worker E2E and APK pending; A05 blocked"
+    "limit": "real channel manifest and 4-rendition worker E2E pending; A05 blocked"
   },
   "options": [
-    "O1 deploy + backup + E2E + RFC fallback hotfix (chosen)",
-    "O2 leave fallback media tags in master (rejected)",
+    "O1 fixture E2E + RFC fallback + base URL fix (chosen)",
+    "O2 leave media tags in master (rejected)",
     "O3 rollback (not needed)"
   ],
   "chosen": "O1",
   "commit": null,
   "blocked_reason": null,
-  "next": "verify manifest and worker",
+  "next": "real channel manifest",
   "pending": []
 }

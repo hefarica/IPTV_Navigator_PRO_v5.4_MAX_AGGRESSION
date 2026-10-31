@@ -566,7 +566,7 @@ function serve_hls_fmp4_ignition(array $cd): void
     // URL base del proxy de segmentos
     $protocol = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') ? 'https' : 'http';
     $baseUrl  = $protocol . '://' . $_SERVER['HTTP_HOST']
-              . dirname($_SERVER['SCRIPT_NAME'])
+              . rtrim(dirname($_SERVER['SCRIPT_NAME']), '/\\')
               . '/cmaf_proxy.php';
 
     // ── Esperar hasta 3 segundos a que el worker produzca el init segment ──
