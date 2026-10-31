@@ -272,7 +272,7 @@ nginx -t                    → syntax ok / test successful
 | G13 slice 1m uniforme | `nginx -T` activo: 0 `location *.ts`; trap `:90` sí tiene `slice 1m`, pero no está en la ruta viva | low | N/A (metadata-only) |
 | G14 `lab_config` fail-loud | I11 local: `lab_config.lua` loguea `FAIL-LOUD` y marca `_M.degraded`; sigue devolviendo defaults | medium | PARCIAL (I11 local) |
 | G15 `%06d` | I11 local: `cmaf_worker.php:164` `%06d` | low | PARCIAL (I11 local) |
-| G16 4 rendiciones | A11: worker 1 video + 1 audio; DASH 2 video + 1 audio | medium | ABIERTO |
+| G16 4 rendiciones | I11 local: source copy + 3 libx264 scales; test 4 Representation/4 playlists; producción sin deploy | medium | PARCIAL (I11 local) |
 
 **GATE 0:**
 

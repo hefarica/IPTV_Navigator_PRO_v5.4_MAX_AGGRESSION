@@ -135,17 +135,19 @@ $cmd .= ' -avoid_negative_ts make_zero';
 $cmd .= ' -max_delay 0';
 // Input: TS crudo desde stdin (pipe:0)
 $cmd .= ' -f mpegts -i pipe:0';
-// Mapear primer stream de video y primer stream de audio
-$cmd .= ' -map 0:v:0? -map 0:a:0?';
-// Copiar streams sin recodificar (cero latencia, cero CPU)
-$cmd .= ' -c:v copy -c:a copy';
-// Bitstream filters para conversión TS→fMP4
-$cmd .= ' -bsf:v h264_mp4toannexb';
-$cmd .= ' -tag:v avc1';
+// I11/G16: 4 real renditions. Keep source as copy; encode 3 lower scales.
+$cmd .= ' -filter_complex "[0:v]split=3[s1][s2][s3];[s1]scale=-2:1080[v1];[s2]scale=-2:720[v2];[s3]scale=-2:480[v3]"';
+$cmd .= ' -map 0:v:0 -map "[v1]" -map "[v2]" -map "[v3]" -map 0:a:0?';
+$cmd .= ' -c:v:0 copy -c:v:1 libx264 -c:v:2 libx264 -c:v:3 libx264';
+$cmd .= ' -preset veryfast -g 48 -keyint_min 48 -sc_threshold 0';
+$cmd .= ' -c:a copy';
+// Bitstream filters para conversión TS→fMP4 (solo el stream copiado)
+$cmd .= ' -bsf:v:0 h264_mp4toannexb';
+$cmd .= ' -tag:v:0 avc1';
 $cmd .= ' -bsf:a aac_adtstoasc';
 $cmd .= ' -tag:a mp4a';
 // Declarar bitrate al muxer DASH (requerido para el MPD)
-$cmd .= " -b:v {$targetKbps}k";
+$cmd .= " -b:v:0 {$targetKbps}k -b:v:1 5000k -b:v:2 2500k -b:v:3 1200k";
 // Flags fMP4: fragmentar en keyframes, moov vacío inicial, base_moof para live
 $cmd .= ' -movflags +frag_keyframe+empty_moov+default_base_moof';
 $cmd .= ' -max_muxing_queue_size 9999';

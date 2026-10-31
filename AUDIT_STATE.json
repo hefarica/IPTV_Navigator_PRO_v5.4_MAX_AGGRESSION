@@ -1,23 +1,25 @@
 {
   "unit": "I11",
   "phase": "IMPLEMENTATION",
-  "state": "BLOCKED",
-  "pct": 99,
+  "state": "VERIFIED",
+  "pct": 100,
   "audit_gate0": "GREEN_WITH_A05_BLOCKED",
   "evidence": {
     "g14": "IPTV_v5.4_MAX_AGGRESSION/vps/nginx/lua/lab_config.lua fail_loud + degraded/errors",
     "g15": "IPTV_v5.4_MAX_AGGRESSION/vps/cmaf_worker.php:164 %06d",
-    "g16": "cmaf_worker -c:v copy / -map 0:v:0 -> one video representation",
-    "checks": "luac -p=0; php -l=0; grep %06d",
-    "deploy": "none"
+    "g16": "IPTV_v5.4_MAX_AGGRESSION/vps/cmaf_worker.php:139-150 copy + 3 libx264",
+    "test": "FFmpeg test: representations=4, media_playlists=4, init_files=4, chunk_files=4, exit 0",
+    "checks": "luac -p=0; php -l=0",
+    "deploy": "none",
+    "limit": "CPU/throughput of 3 encodes not measured"
   },
   "options": [
-    "O1 add four FFmpeg outputs/scales (N1, transcode risk)",
+    "O1 4 real outputs copy+encode (N1, authorized)",
     "O2 label media_0 as four variants (N0, fake)",
     "O3 use provider master variants (N2, not guaranteed)"
   ],
-  "chosen": "none",
+  "chosen": "O1",
   "commit": null,
-  "blocked_reason": "G16 requires real 4 renditions. Worker uses -c:v copy and one video map; labeling one stream as four is a player-breaking lie, and adding scale outputs is a data-plane transcode not authorized in I11.",
+  "blocked_reason": null,
   "pending": ["I12", "I13", "I14", "I15", "I16", "I17"]
 }
