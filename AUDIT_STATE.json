@@ -1,18 +1,17 @@
 {
-  "unit": "A10",
+  "unit": "A11",
   "phase": "AUDIT",
   "state": "VERIFIED",
-  "pct": 79,
+  "pct": 81,
   "evidence": {
-    "commit": "ff5ff5a modifies vps_configs/autopista-trap.conf 38+/4-",
-    "prefetch": "prefetch_segment.lua:101 connect 127.0.0.1:80; :108-109 Host=req_host; :59-67 host from manifest/CDN; :73-82 segment path",
-    "trap": "vps_configs/autopista-trap.conf:20-24 IPv4-only server; :128 444 /ara/ only",
-    "result": "prefetch does not use Host=127.0.0.1 nor path /ara/; no 444",
-    "other_risk": "public port 80 may 301 to HTTPS; prefetch reads headers only, may not warm cache"
+    "worker": "vps/cmaf_worker.php:139 -map 0:v:0? -map 0:a:0?; :154 dash; :163-164 RepresentationID; :167 fmp4",
+    "dash": "vps/ape_hls_generators.php:440-457 Representations v4k, vfhd, a1",
+    "hls": "vps/ape_hls_generators.php:540-572 init-stream0/chunk-stream0",
+    "count": "worker 1 video + 1 audio; fallback DASH 2 video + 1 audio; no 4 real renditions"
   },
-  "options": ["O1 trace prefetch and trap scope", "O2 change prefetch to https/SNI", "O3 remove prefetch"],
+  "options": ["O1 inventory real representations", "O2 create 4 renditions", "O3 leave worker single-representation"],
   "chosen": "O1",
   "commit": null,
   "blocked_reason": null,
-  "pending": ["A11", "A12", "A13", "A14"]
+  "pending": ["A12", "A13", "A14"]
 }

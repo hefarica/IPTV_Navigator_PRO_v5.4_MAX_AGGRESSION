@@ -197,6 +197,19 @@ No son el mismo archivo; el de backend no está en la ruta del proxy.
 
 **Riesgo distinto:** el `listen 80` público del vhost normal redirige a HTTPS (visto en la configuración auditada); el prefetch lee solo cabeceras y puede recibir un 301, no calentar la caché. No es 444, pero puede ser un prefetch inefectivo.
 
+## A11 — Rendiciones reales vs media_0
+
+**Estado:** VERIFIED (auditoría de repo; producción no inferida).
+
+**Worker activo:** `vps/cmaf_worker.php:139` `-map 0:v:0? -map 0:a:0?`; `:154` `-f dash`; `:163-164` nombres por `RepresentationID`; `:167` `-hls_segment_type fmp4`. Produce una representación de vídeo (`media_0`) y una de audio (`media_1`) como máximo.
+
+**Generador DASH:** `vps/ape_hls_generators.php:440-457` declara `AdaptationSet` video con `Representation v4k` (`:441`), `vfhd` (`:446`), y audio `a1` (`:453`). Son **3 Representations** (2 video + 1 audio), no 4.
+
+**HLS CMAF:** `ape_hls_generators.php:540-572` usa `init-stream0.m4s` y `chunk-stream0-*.m4s` desde `/dev/shm/ape_cmaf_cache`; no hay 4 variantes reales en esta ruta.
+
+**Conclusión:** no existen 4 rendiciones reales en la cadena activa. Hay 1 video en el worker, 2 video en el MPD hardcodeado y 1 audio; `media_0` es la única representación de vídeo del worker. El inventario de 4 no está en estos artefactos.
+
+
 
 
 
