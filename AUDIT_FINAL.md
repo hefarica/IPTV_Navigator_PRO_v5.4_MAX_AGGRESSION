@@ -118,6 +118,33 @@ Ninguna mide la latencia real sin código o sin una fuente de tiempo común.
 
 **Conclusión:** el entregable Excel existe y es real; no hay GAP total en A06. La auditoría no valida el contenido de cada celda ni la ejecución de macros en este paso.
 
+## A07 — resolve_quality_unified.php vs cmaf_worker
+
+**Estado:** VERIFIED (auditoría de repo; producción no inferida).
+
+**Identidades reales (distintas):**
+
+```text
+backend/resolve_quality_unified.php           342703 B  sha 7728bfb5...
+vps/resolve_quality_unified.php                 6270 B  sha 27db7ab7...
+vps/production_mirror/resolve_quality_unified.php 3894 B sha 42154e5b...
+```
+
+No son el mismo archivo; el de backend no está en la ruta del proxy.
+
+**Cadena real:**
+
+1. `vps/cmaf_proxy.php:38` apunta a `/dev/shm/ape_cmaf_cache/$streamId`.
+2. `cmaf_proxy.php:47-48` busca `origin_url.txt` y `target_dna.json` en `/dev/shm/ape_metrics/$streamId/`.
+3. `cmaf_proxy.php:53-69`: si el manifiesto falta/es viejo **y existe `origin_url.txt`**, lanza `exec('php cmaf_worker.php ...')`.
+4. `cmaf_worker.php:64` lee `target_dna.json`; `:31-32` escribe `manifest.mpd`/`worker.pid`; `:187` abre FFmpeg con `proc_open`.
+5. `ape_hls_generators.php:530-540` lee `/dev/shm/ape_cmaf_cache/{ch}`; si no está listo, `:696` registra `cmaf_worker_not_ready_using_provider_m3u8` y cae al M3U8 directo del proveedor.
+
+**Dónde muere:** no hay ningún writer de `origin_url.txt` ni `target_dna.json` en `vps/*.php` o `backend/*.php` (solo lectores/comentarios). `resolve_quality_unified.php` no los escribe. Por tanto, la condición `file_exists($originFile)` del proxy no se cumple desde estos artefactos y el worker no se auto-lanza; el generador cae al proveedor.
+
+**Verificación:** grep de writers → solo `cmaf_proxy.php:47-48` y `cmaf_worker.php:64` como lectores; `ape_hls_generators.php:696` como fallback.
+
+
 
 
 
