@@ -249,6 +249,17 @@ nginx_test_exit=0
 
 **Límite:** el wrapper valida el bloque con `proxy_cache_path` y módulos reales, pero no es `nginx -t` sobre la config viva; eso exige APLICA + backup + reload.
 
+## I10 — slice 1m uniforme (G13)
+
+**Estado:** VERIFIED (no-op justificado; sin deploy).
+
+**Evidencia:** `nginx -T` de la config viva no contiene ninguna `location ~* \.ts$`; producción es metadata-only y no transporta segmentos. `vps_configs/autopista-trap.conf:90` sí tiene `slice 1m`, pero ese server no está en la ruta viva.
+
+**Decisión:** no se añade `slice` a un data-plane que no existe. Se evita un cambio cosmético que no afecta a producción.
+
+**Verificación:** `nginx -T | grep -E 'location .*\.ts|slice 1m'` → sin coincidencias de `.ts` activo.
+
+
 
 
 

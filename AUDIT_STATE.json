@@ -1,23 +1,22 @@
 {
-  "unit": "I09",
+  "unit": "I10",
   "phase": "IMPLEMENTATION",
   "state": "VERIFIED",
   "pct": 99,
   "audit_gate0": "GREEN_WITH_A05_BLOCKED",
   "evidence": {
-    "artifact": "vps_configs/autopista-trap.conf:65",
-    "change": "m3u8 proxy_cache_valid 200 206 5s -> 1s",
-    "stale": "vps_configs/autopista-trap.conf:112 already includes timeout/http_403 for .ts",
-    "result": "wrapper nginx -t syntax ok / test successful; exit 0",
+    "live": "nginx -T: no location ~* \\.ts$ in active config",
+    "trap": "vps_configs/autopista-trap.conf:90 has slice 1m but not active",
+    "decision": "no-op; no fake slice on metadata-only",
     "deploy": "none"
   },
   "options": [
-    "O1 change manifest TTL to 1s in existing trap config (N1)",
-    "O2 disable manifest cache entirely (N1)",
-    "O3 Lua cache override (N3)"
+    "O1 verify active scope and no-op (N0)",
+    "O2 add slice 1m to all repo configs (N1)",
+    "O3 add a future guard script (N3)"
   ],
   "chosen": "O1",
   "commit": null,
   "blocked_reason": null,
-  "pending": ["I10", "I11", "I12", "I13", "I14", "I15", "I16", "I17"]
+  "pending": ["I11", "I12", "I13", "I14", "I15", "I16", "I17"]
 }
