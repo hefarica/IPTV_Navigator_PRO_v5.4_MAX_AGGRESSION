@@ -24,6 +24,7 @@ class PrivacyOverlayView @JvmOverloads constructor(
     private var surfaceControl: Any? = null
     private var skipScreenshot: java.lang.reflect.Method? = null
     private var applied = false
+    private var attempts = 0
 
     init {
         isOpaque = false
@@ -63,7 +64,16 @@ class PrivacyOverlayView @JvmOverloads constructor(
                     cls = cls.superclass
                 }
             }
-            if (sc == null) throw IllegalStateException("SurfaceControl null")
+            if (sc == null) {
+                // SurfaceControl may not exist until relayoutWindow()/first frame.
+                attempts++
+                if (attempts < 20) {
+                    Log.d(TAG, "SurfaceControl todavía null; retry $attempts")
+                    postDelayed({ setup() }, 250L)
+                    return
+                }
+                throw IllegalStateException("SurfaceControl null after $attempts")
+            }
             surfaceControl = sc
             skipScreenshot = txClass.getMethod("setSkipScreenshot", scClass, Boolean::class.javaPrimitiveType)
             applyPrivacy(true)
