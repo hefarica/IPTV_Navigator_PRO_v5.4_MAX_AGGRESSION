@@ -49,3 +49,22 @@ La cabecera declara “154 headers” (línea 7) y distribuciones +30/+34/+36/+2
 
 **Conclusión:** la matriz existe, pero no está cableada al generador; el valor real es 139, no 154. No se edita código funcional en A02.
 
+## A03 — Generadores HLS
+
+**Estado:** VERIFIED (auditoría de repo; producción no inferida).
+
+**Archivos:** `IPTV_v5.4_MAX_AGGRESSION/generate_m3u8_v54_max_aggression.py` (957 líneas) y `IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/m3u8-typed-arrays-ultimate.js` (12.671 líneas).
+
+**Sintaxis:** `python -m py_compile` = 0; `node --check` = 0.
+
+**Tags observados:**
+
+- Python emite `#EXTHTTP`, `#EXTVLCOPT`, y tags propietarios `#EXT-X-APE-*` (`build_ape_block`, alrededor de `:657-665`). No emite `#EXT-X-MEDIA-SEQUENCE`, `#EXT-X-DISCONTINUITY`, `#EXT-X-PROGRAM-DATE-TIME` ni `#EXT-X-MAP`.
+- JS emite `#EXT-X-STREAM-INF`, `#EXT-X-TARGETDURATION` y tags propietarios `#EXT-X-APE-CMAF-*` (`:6349-6361`). No emite las etiquetas estándar de continuidad.
+- `#EXT-X-APE-CMAF-MEDIA-SEQUENCE:dynamic` y `#EXT-X-APE-CMAF-DISCONTINUITY-SEQUENCE:auto` no son las etiquetas RFC 8216 `#EXT-X-MEDIA-SEQUENCE` / `#EXT-X-DISCONTINUITY-SEQUENCE`.
+
+**Cursor / ara_state:** no hay `X-APE-Cursor`, `X-APE-Resume-Seq` ni `ara_state` en ninguno de los dos generadores.
+
+**Conclusión:** los generadores emiten metadata propietaria, pero no la secuencia/ventana/cursor del contrato. A03 confirma el GAP de continuidad.
+
+
