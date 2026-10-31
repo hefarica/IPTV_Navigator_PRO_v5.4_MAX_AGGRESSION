@@ -1,0 +1,11 @@
+{
+  "ok": true,
+  "files_verified": 120,
+  "files_expected": 120,
+  "payload_bytes": 21339375,
+  "extras": [
+    "ara-x/MANIFEST_SHA256.txt"
+  ],
+  "failures": [],
+  "manifest_sha256": "f7f4481370c65316ae00054fccc01083066921f09c22219674cb74f3b9265a71"
+}

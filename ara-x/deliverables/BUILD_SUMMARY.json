@@ -1,0 +1,163 @@
+{
+  "ok": true,
+  "stamp": "20261030_222000",
+  "zip": {
+    "file": "ARA_X_DELIVERY_20261030_222000.zip",
+    "bytes": 3119531,
+    "sha256": "c014c46fe49e3bba31c506ae4a3543c232b1af0cfe63680414609061cdfc3362"
+  },
+  "manifest": {
+    "file": "MANIFEST_SHA256.txt",
+    "bytes": 13089,
+    "sha256": "f7f4481370c65316ae00054fccc01083066921f09c22219674cb74f3b9265a71",
+    "entries": 120,
+    "payload_bytes": 21339375,
+    "excludes_self": true
+  },
+  "evidence_manifest": {
+    "file": "EVIDENCE_MANIFEST.json",
+    "bytes": 2321,
+    "sha256": "b8a20660f776d71e0be46cee56647c2cd6d71cdfd459ec0802d9f7eda7a3bfee",
+    "files": 10,
+    "total_bytes": 4715998572
+  },
+  "verification": {
+    "expand_archive": "OK",
+    "verify_package": {
+      "ok": true,
+      "files_verified": 120,
+      "files_expected": 120,
+      "payload_bytes": 21339375,
+      "extras": [
+        "ara-x/MANIFEST_SHA256.txt"
+      ],
+      "failures": [],
+      "manifest_sha256": "f7f4481370c65316ae00054fccc01083066921f09c22219674cb74f3b9265a71"
+    },
+    "verify_exit": 0,
+    "tar_entries": 121
+  },
+  "secret_scan_exit": 0,
+  "key_inputs": [
+    {
+      "path": "ara-x/spec/ARA_X_MASTER_CONTRACT.md",
+      "bytes": 53694,
+      "sha256": "719920ec511efff1ab54086e087e9790da9ae2282ea10e7d8746d8bd108b6eae"
+    },
+    {
+      "path": "ara-x/spec/ara_x_directives.json",
+      "bytes": 17577,
+      "sha256": "6aaffb6f9a9725e194a3919da40b87b91e4e46dddb797cd2fd9d8f7fa9c05f18"
+    },
+    {
+      "path": "ara-x/spec/4k8k_matrix.json",
+      "bytes": 43085,
+      "sha256": "878054c6849222c41b84da3fa228f11222a9eca8721f370724cac94c6a218d6c"
+    },
+    {
+      "path": "ara-x/spec/actuator_allowlist.json",
+      "bytes": 54971,
+      "sha256": "c4670507012d71bbfddc0d04a3667edffeb6958707088ddf6596b2cd6c3b0df9"
+    },
+    {
+      "path": "ara-x/reports/R1_list_forensics.md",
+      "bytes": 40336,
+      "sha256": "305c8ee6e059a6f8e4701eaa9956152122f021ebf9ee6be93bd297cb7aa5fd24"
+    },
+    {
+      "path": "ara-x/reports/R1_findings.json",
+      "bytes": 27102,
+      "sha256": "55c9a6ea4302befaeebc218ef8bb1e782077de6402272e295c24307a39f95800"
+    },
+    {
+      "path": "ara-x/reports/R2_codec_truth.md",
+      "bytes": 33087,
+      "sha256": "193bf597393c87b9c07ee0fb8c2d6023f2f960e1bc721eab7435782f537b7cd8"
+    },
+    {
+      "path": "ara-x/reports/R3_vps_sync_reality.md",
+      "bytes": 43424,
+      "sha256": "a75be1858886e396d2267789508699b62e7b694bc7a844ca86edef72a8dbaf5d"
+    },
+    {
+      "path": "ara-x/reports/R4_telemetry_matrix.md",
+      "bytes": 55594,
+      "sha256": "92420ff000e96bc59df617bf615eef77a59e02fdcced5f8e8ef6739c3e0f8d85"
+    },
+    {
+      "path": "ara-x/reports/R5_actuators.md",
+      "bytes": 32440,
+      "sha256": "5af6f98d3eaf3f294f7875854aaa40cf195bc90706953c39b9fb572ca2d87bdd"
+    },
+    {
+      "path": "ara-x/reports/R5_policy_catalog.md",
+      "bytes": 10389,
+      "sha256": "8492f86384a7b1deb5168022b84db7c5a646cf77c1d32a64d0d589f713e3852c"
+    },
+    {
+      "path": "ara-x/reports/R6_security.md",
+      "bytes": 39630,
+      "sha256": "9823c7283014f096aff05ba4bcd31e9f19a904b2d6bf899d3b0bcec7b79ab954"
+    },
+    {
+      "path": "ara-x/reports/D3_sync_contract.md",
+      "bytes": 11258,
+      "sha256": "c0693ecb6952881c8557ef263ed6951e6b81c4eb2293cb63046a133308f55f06"
+    },
+    {
+      "path": "ara-x/reports/T0_ownership_registration.md",
+      "bytes": 8753,
+      "sha256": "3a7037f18e04311fd773b5ff01c747772461f112cc532de6ec9ae98863fcc8ef"
+    },
+    {
+      "path": "ara-x/reports/V0_baseline_verification.md",
+      "bytes": 5697,
+      "sha256": "154e6d87066cd922436ffd86b54c8151690fee767b700a20f7beb2efcedf3c84"
+    },
+    {
+      "path": "ara-x/reports/V1_validation.log",
+      "bytes": 69896,
+      "sha256": "7816eda469e58bbda8a5a2e98e0de5ffdece54da2761eb74d9f7398c92e52ec6"
+    },
+    {
+      "path": "ara-x/reports/V2_e2e_report.md",
+      "bytes": 19028,
+      "sha256": "87fafab298772c42ff20e54690e70086e0b85cf973e3a2348ce553e89e41645f"
+    },
+    {
+      "path": "ara-x/reports/V2_e2e.json",
+      "bytes": 43305,
+      "sha256": "1dd71d1bf28c18bf221c5e4ba49000f1fae3a8fe631a541d7e27171a02984377"
+    },
+    {
+      "path": "ara-x/reports/V3_security.md",
+      "bytes": 14445,
+      "sha256": "a1f40e0dcae82a5aa03dcae9e4591287006b51da29637ca9f03401a35e3fc25b"
+    },
+    {
+      "path": "ara-x/reports/V3_repair_r2.md",
+      "bytes": 10385,
+      "sha256": "94475e477c1ba3184a0aef0300273906f28da6127bb2c05053075cbe7ec15be0"
+    },
+    {
+      "path": "ara-x/reports/V3_repair_t26.md",
+      "bytes": 9988,
+      "sha256": "83a492a449f470d6276bf035873bf789ce1cf75f9b0824ae3dec7e0d2ee9f13f"
+    },
+    {
+      "path": "ara-x/reports/V3_repair_t26_final.md",
+      "bytes": 9302,
+      "sha256": "126326c8f90f1ea328207dac5953ae1840b6162ce2ebbc06d089acd0b321ab92"
+    },
+    {
+      "path": "ara-x/reports/DEPLOY_PENDING_SINCE_25OCT.md",
+      "bytes": 8625,
+      "sha256": "89aca45cda3a527cbc0cd28c98c4cdb75ee8eedf02c4f01549dfe026c7ce1076"
+    },
+    {
+      "path": "ara-x/integration/baseline.json",
+      "bytes": 1634,
+      "sha256": "b999a1e617f330885e482085c3d86eaf71c08ac284e8f361fc11d6befe97a58c"
+    }
+  ]
+}

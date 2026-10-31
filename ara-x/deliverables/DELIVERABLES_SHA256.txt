@@ -1,0 +1,16 @@
+# Entregables X2 — sha256  bytes  path (el propio archivo no se lista a sí mismo)
+c014c46fe49e3bba31c506ae4a3543c232b1af0cfe63680414609061cdfc3362  3119531  ara-x/deliverables/ARA_X_DELIVERY_20261030_222000.zip
+f93b3541e7cc0efe43e2e2d03406eacb4176517367819fc423095f88398c337c  11490  ara-x/deliverables/build_package.ps1
+af1ca0c98f707ad0bc9563f8c7ff54e57bfd2413831b7551bb0241b40990008f  5334  ara-x/deliverables/BUILD_SUMMARY.json
+89aca45cda3a527cbc0cd28c98c4cdb75ee8eedf02c4f01549dfe026c7ce1076  8625  ara-x/deliverables/DEPLOY_PENDING_SINCE_25OCT.md
+b8a20660f776d71e0be46cee56647c2cd6d71cdfd459ec0802d9f7eda7a3bfee  2321  ara-x/deliverables/EVIDENCE_MANIFEST.json
+f7f4481370c65316ae00054fccc01083066921f09c22219674cb74f3b9265a71  13089  ara-x/deliverables/MANIFEST_SHA256.txt
+3d68bade3366fa034299e288cabd7912b6512144a065475e649d1fd71623bc70  6134  ara-x/deliverables/MANIFEST.json
+359b15e9314b924839690b075718b9e7f2905f55ae4732fa0a6b3a89481ad7c8  2632  ara-x/deliverables/PACKAGE_README.md
+99ebeae64bf2c11f9ab7fac5abcbac79309e8a6dcde003d4d895e0fcd603aaca  160  ara-x/deliverables/secret_scan_repo.json
+dcc7d03974a4b6ff7919f7384b2f142efdc39dc06d4dee4203578c29f09580bd  164  ara-x/deliverables/secret_scan_stage.json
+8d2e2ae69f9192163b0c731624088eb2e6064778e1e55dca22f592668c552309  264  ara-x/deliverables/verify_package_result.json
+b7414b510f9080e486037e15deee7bac06f3c2ffb1b390301de34b3b09d62c95  4216  ara-x/deliverables/VERIFY_PACKAGE.js
+ece47077216f23cea01015818cf3eae1bab52c5b324d74bb8c05d4f6c17fba4a  22476  ara-x/deliverables/X2_final_report.md
+# Reporte original (mismo contenido que la copia en deliverables):
+ece47077216f23cea01015818cf3eae1bab52c5b324d74bb8c05d4f6c17fba4a  22476  ara-x/reports/X2_final_report.md

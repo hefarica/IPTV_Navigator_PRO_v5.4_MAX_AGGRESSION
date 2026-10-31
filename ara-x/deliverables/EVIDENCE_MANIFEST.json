@@ -1,0 +1,58 @@
+{
+  "schema": "ara-x.x2.evidence/1",
+  "generated_at": "2026-10-30T22:20:00",
+  "note": "Capturas crudas y salidas ARA-X de las listas A/B. NO se empaquetan (4,7 GB y el par cuenta/clave del path, V3-F-01). Se entrega size+sha256; reproducibles/verificables con los scripts de V2/R1.",
+  "files": [
+    {
+      "path": "ara-x/evidence/APE_LISTA_4K_ARA-X_once.m3u8",
+      "bytes": 572171381,
+      "sha256": "c8b5039ed8624b3d586bf60a85d1d15248475082f7552878e051ec1ae0d1ea07"
+    },
+    {
+      "path": "ara-x/evidence/APE_LISTA_4K_ARA-X_twice.m3u8",
+      "bytes": 572171381,
+      "sha256": "c8b5039ed8624b3d586bf60a85d1d15248475082f7552878e051ec1ae0d1ea07"
+    },
+    {
+      "path": "ara-x/evidence/APE_LISTA_4K_live_20261030_full_ARA-X_once.m3u8",
+      "bytes": 572171381,
+      "sha256": "24e1e3f6babb8c6df82a3de25616423d78aa608881407063ddcd277a4ddc951d"
+    },
+    {
+      "path": "ara-x/evidence/APE_LISTA_4K_live_20261030_full_ARA-X_twice.m3u8",
+      "bytes": 572171381,
+      "sha256": "24e1e3f6babb8c6df82a3de25616423d78aa608881407063ddcd277a4ddc951d"
+    },
+    {
+      "path": "ara-x/evidence/APE_LISTA_4K_live_20261030_full.m3u8",
+      "bytes": 572170477,
+      "sha256": "e27c03eb45dacd6e5f19c3f4e016b456236ca2c06f485ddf11165ddc86e2a680"
+    },
+    {
+      "path": "ara-x/evidence/APE_LISTA_4K_live_20261030.m3u8",
+      "bytes": 150410194,
+      "sha256": "2f1a00aa5e36455e80253d0e7aa913fe906afade9dc366eeb5df28b0586c21e8"
+    },
+    {
+      "path": "ara-x/evidence/APE_LISTA_CDN_1793397700248_full_ARA-X_once.m3u8",
+      "bytes": 568242361,
+      "sha256": "c32722c8afc33949df7edcd8a2ead0e0b7c1ebaa4ac57af58aacc4ae7a9a2dda"
+    },
+    {
+      "path": "ara-x/evidence/APE_LISTA_CDN_1793397700248_full_ARA-X_twice.m3u8",
+      "bytes": 568242361,
+      "sha256": "c32722c8afc33949df7edcd8a2ead0e0b7c1ebaa4ac57af58aacc4ae7a9a2dda"
+    },
+    {
+      "path": "ara-x/evidence/APE_LISTA_CDN_1793397700248_full.m3u8",
+      "bytes": 568241457,
+      "sha256": "81dbdd11ec620b1dead702ca404c9959c61f301639a5d0091da37ebfb95be14e"
+    },
+    {
+      "path": "ara-x/evidence/T0_ownership_scopes_pre_edit.json",
+      "bytes": 6198,
+      "sha256": "a5d3811a3fd66087480c7693e25772181a2aa4193618cc60e8141cbaae8e1a84"
+    }
+  ],
+  "total_bytes": 4715998572
+}
