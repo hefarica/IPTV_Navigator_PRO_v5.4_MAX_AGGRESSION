@@ -224,6 +224,24 @@ No son el mismo archivo; el de backend no está en la ruta del proxy.
 
 **Efecto:** VLC/TiviMate obtienen reconexión HTTP por EXTVLCOPT; Kodi no emite `http-reconnect`, pero tiene retry/backoff en KODIPROP; OTT no recibe ninguna etiqueta de reconnect. No hay evidencia de que un tag inválido se inyecte al player equivocado en el resolver actual.
 
+## A13 — Estado real de /ara/sse y /ara/events (VPS)
+
+**Estado:** VERIFIED (sonda read-only 2026-10-31 15:40 UTC).
+
+**Resultados:**
+
+```text
+GET /ara/events sin token  → 401 application/json {"ok":false,"error":"UNAUTHORIZED"}
+GET /ara/sse sin token     → 401 application/json {"error":"unauthorized"}
+GET /ara/sse con token     → 200 text/event-stream;charset=UTF-8
+                             ": hb"
+nginx                       → active
+nginx -t                    → syntax ok / test successful
+```
+
+**Lectura:** ambos endpoints existen y fallan cerrados sin token. `/ara/sse` responde SSE autenticado con heartbeat; no había payload en la ventana de 3 s. `/ara/events` conserva su 401. `nginx -t` pasa y el servicio está activo.
+
+
 
 
 

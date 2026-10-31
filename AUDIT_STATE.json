@@ -1,19 +1,18 @@
 {
-  "unit": "A12",
+  "unit": "A13",
   "phase": "AUDIT",
   "state": "VERIFIED",
-  "pct": 83,
+  "pct": 85,
   "evidence": {
-    "resolver": "backend/resolve_quality_unified.php:1793-1806 UA detection; :1817-1838 capabilities",
-    "vlc": ":2742 buildVlcDirectives; :2758 http-reconnect; :2759 http-continuous",
-    "kodi": ":2796 buildKodiDirectives; :2805-2807 buffers; :5078-5080 retry/backoff",
-    "tivimate": ":2721 dispatch; :2862 network-caching",
-    "api_server": "ape_api_server.py:1390-1396 emits EXTVLCOPT+KODIPROP to all",
-    "effect": "VLC/TiviMate reconnect tag; Kodi retry; OTT none"
+    "events": "GET /ara/events noauth=401 JSON UNAUTHORIZED",
+    "sse_noauth": "GET /ara/sse noauth=401 JSON unauthorized",
+    "sse_auth": "GET /ara/sse Bearer=200 text/event-stream; ': hb'",
+    "nginx": "systemctl is-active=active; nginx -t successful",
+    "time": "2026-10-31T15:40:05Z"
   },
-  "options": ["O1 audit current per-player resolver", "O2 add reconnect tag to Kodi", "O3 reuse api_server emitter"],
+  "options": ["O1 read-only probe both endpoints", "O2 deploy new route", "O3 disable events"],
   "chosen": "O1",
   "commit": null,
   "blocked_reason": null,
-  "pending": ["A13", "A14"]
+  "pending": ["A14"]
 }
