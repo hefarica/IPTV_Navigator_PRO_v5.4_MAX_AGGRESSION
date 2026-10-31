@@ -1,5 +1,5 @@
 diff --git a/IPTV_v5.4_MAX_AGGRESSION/frontend/index-v4.html b/IPTV_v5.4_MAX_AGGRESSION/frontend/index-v4.html
-index 9135edd..21bbdca 100644
+index 31696bd..f540bcd 100644
 --- a/IPTV_v5.4_MAX_AGGRESSION/frontend/index-v4.html
 +++ b/IPTV_v5.4_MAX_AGGRESSION/frontend/index-v4.html
 @@ -3980,6 +3980,8 @@
@@ -226,10 +226,10 @@ index 0000000..3cb5082
 +  };
 +});
 diff --git a/IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/m3u8-typed-arrays-ultimate.js b/IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/m3u8-typed-arrays-ultimate.js
-index c8ef387..5640d4d 100644
+index b7b5944..9d998b9 100644
 --- a/IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/m3u8-typed-arrays-ultimate.js
 +++ b/IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/m3u8-typed-arrays-ultimate.js
-@@ -11200,6 +11200,20 @@ lines.push(`#EXT-X-APE-STREAM-TRUTH:src=${_streamTruth.source},w=${_streamTruth.
+@@ -10724,6 +10724,20 @@ lines.push(`#EXT-X-APE-STREAM-TRUTH:src=${_streamTruth.source},w=${_streamTruth.
                      const encoded = encoder.encode(headerChunk);
                      totalBytes += encoded.byteLength;
                      controller.enqueue(encoded);
@@ -250,7 +250,7 @@ index c8ef387..5640d4d 100644
                      if (useHUD) {
                          window.HUD_TYPED_ARRAYS.log('📋 Header global streamed', '#06b6d4');
                      }
-@@ -11220,9 +11234,16 @@ lines.push(`#EXT-X-APE-STREAM-TRUTH:src=${_streamTruth.source},w=${_streamTruth.
+@@ -10744,9 +10758,16 @@ lines.push(`#EXT-X-APE-STREAM-TRUTH:src=${_streamTruth.source},w=${_streamTruth.
                      try {
                          // Detectar perfil
                          const profile = forceProfile || determineProfile(channel) || 'P3';

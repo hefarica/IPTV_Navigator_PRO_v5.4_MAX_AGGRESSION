@@ -163,35 +163,30 @@ function main() {
   globalThis.ARA_X_ENABLED = savedEnabled;
   if (savedPerChannel === undefined) delete globalThis.ARA_X_PER_CHANNEL; else globalThis.ARA_X_PER_CHANNEL = savedPerChannel;
 
-  // 7 · patch
+  // 7 · patch contra un worktree LIMPIO de HEAD (no contra el árbol de trabajo)
   const patchText = fs.readFileSync(PATCH, 'utf8');
   const diffFiles = patchText.split('\n').filter((l) => l.startsWith('diff --git')).length;
   const newFiles = patchText.split('\n').filter((l) => l.startsWith('new file mode')).length;
   const hunks = patchText.split('\n').filter((l) => l.startsWith('@@')).length;
   check('X1-7:shape', 'patch con 3 archivos (1 nuevo) y 4 hunks', diffFiles === 3 && newFiles === 1 && hunks === 4, `${diffFiles} files · ${newFiles} new · ${hunks} hunks`);
-  const applyCheck = run('git', ['apply', '--check', '--whitespace=nowarn', PATCH], { cwd: ROOT });
-  check('X1-7:applies', 'git apply --check sobre el árbol actual', applyCheck.status === 0,
-    (applyCheck.stderr || applyCheck.stdout || '').trim().slice(0, 200) || 'exit 0');
 
+  const headRev = (run('git', ['rev-parse', '--short', 'HEAD'], { cwd: ROOT }).stdout || '').trim();
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'x1-verify-'));
-  let tmpDetail = '';
+  const wt = path.join(tmp, 'head');
+  let wtDetail = '';
   try {
-    const g = (args) => run('git', ['-c', 'core.autocrlf=false', '-c', 'core.safecrlf=false', ...args], { cwd: tmp });
-    g(['init', '-q']);
-    g(['-c', 'user.email=x@y.z', '-c', 'user.name=x1', 'config', 'user.email', 'x@y.z']);
-    g(['config', 'user.name', 'x1']);
-    for (const rel of [REL_GEN, REL_HTML]) {
-      fs.mkdirSync(path.dirname(path.join(tmp, rel)), { recursive: true });
-      fs.copyFileSync(path.join(ROOT, rel), path.join(tmp, rel));
-    }
-    g(['add', '-A']);
-    run('git', ['-c', 'user.email=x@y.z', '-c', 'user.name=x1', 'commit', '-qm', 'base'], { cwd: tmp });
-    const applied = run('git', ['apply', '--whitespace=nowarn', PATCH], { cwd: tmp });
-    const nodeCheck = (rel) => run(process.execPath, ['-c', path.join(tmp, rel)]).status;
-    const genPatched = fs.readFileSync(path.join(tmp, REL_GEN), 'utf8');
-    const htmlPatched = fs.readFileSync(path.join(tmp, REL_HTML), 'utf8');
-    const hookPatched = fs.existsSync(path.join(tmp, REL_HOOK));
+    const add = run('git', ['worktree', 'add', '--detach', wt, 'HEAD'], { cwd: ROOT });
+    const applyCheck = run('git', ['-C', wt, 'apply', '--check', '--whitespace=nowarn', PATCH], { cwd: ROOT });
+    check('X1-7:applies', `git apply --check sobre worktree LIMPIO de HEAD (${headRev})`,
+      add.status === 0 && applyCheck.status === 0,
+      (applyCheck.stderr || applyCheck.stdout || '').trim().slice(0, 200) || 'exit 0');
+    const applied = run('git', ['-C', wt, 'apply', '--whitespace=nowarn', PATCH], { cwd: ROOT });
+    const nodeCheck = (rel) => run(process.execPath, ['-c', path.join(wt, rel)]).status;
+    const genPatched = fs.readFileSync(path.join(wt, REL_GEN), 'utf8');
+    const htmlPatched = fs.readFileSync(path.join(wt, REL_HTML), 'utf8');
+    const hookPatched = fs.existsSync(path.join(wt, REL_HOOK));
     const checksTmp = {
+      head: headRev,
       applied: applied.status === 0,
       hookCreated: hookPatched,
       genCheck: nodeCheck(REL_GEN) === 0,
@@ -207,12 +202,13 @@ function main() {
         return hookTag !== -1 && genTag !== -1 && hookTag < genTag;
       })()
     };
-    tmpDetail = JSON.stringify(checksTmp);
-    check('X1-7:apply-temp', 'aplicado en repo temporal: hook creado + node -c del generador y del hook',
-      checksTmp.applied && checksTmp.hookCreated && checksTmp.genCheck && checksTmp.hookCheck, tmpDetail);
+    wtDetail = JSON.stringify(checksTmp);
+    check('X1-7:apply-head', `aplicado en worktree LIMPIO de HEAD: hook creado + node -c generador y hook`,
+      checksTmp.applied && checksTmp.hookCreated && checksTmp.genCheck && checksTmp.hookCheck, wtDetail);
     check('X1-7:guards', 'generador parcheado: 2 guards fail-open, 0 bloque hardcodeado, let entry, orden de scripts',
-      checksTmp.guards && checksTmp.noHardcodedBlock && checksTmp.letEntry && checksTmp.scriptOrder, tmpDetail);
+      checksTmp.guards && checksTmp.noHardcodedBlock && checksTmp.letEntry && checksTmp.scriptOrder, wtDetail);
   } finally {
+    if (wt && fs.existsSync(wt)) run('git', ['worktree', 'remove', '--force', wt], { cwd: ROOT });
     if (!keep) fs.rmSync(tmp, { recursive: true, force: true });
   }
 

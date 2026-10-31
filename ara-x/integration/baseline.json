@@ -21,8 +21,8 @@
       "sha256": "80DD237F68DD456FD1D8C53401F70CED6AEB98BCD53991E922E2AACEA774A823"
     },
     "ara-x/integration/ara-x-hook.patch": {
-      "bytes": 12537,
-      "sha256": "C7B615DF56CAD2E631B1CC448B2A03DF6E07C6DD424090C53DC50FEFE73EC6E5"
+      "bytes": 12492,
+      "sha256": "D72723E0210A76B2D83464EE2F93F0ED22D5BDBAD406CFEA9ED1CB4D7B03AA3A"
     }
   },
   "invariants": [
@@ -31,5 +31,19 @@
     "con ARA_X_ENABLED ausente/false el hook es identidad (applyText devuelve el mismo string)",
     "con ON el bloque va entre el header y el primer #EXTINF; 27 líneas; 0 URLs mutadas; idempotente",
     "el patch aplica con git apply --check sobre el árbol actual y los archivos parcheados pasan node -c"
-  ]
+  ],
+  "head": {
+    "commit": "0833af7efc1a952c1ea15ed8b6126ce7606847df",
+    "files": {
+      "IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/m3u8-typed-arrays-ultimate.js": {
+        "bytes": 741881,
+        "sha256": "594B38482B714881923B2E6821469668F2FAD410AB49BFEA1C49506951D145D1"
+      },
+      "IPTV_v5.4_MAX_AGGRESSION/frontend/index-v4.html": {
+        "bytes": 262783,
+        "sha256": "474A63DAB048B46E7C053D47F70B46C31AE05D6735A0EE626CE0EC6C3569E654"
+      }
+    }
+  },
+  "hot_files_note": "hot_files describe el worktree principal (sucio, +985 lineas no verificadas); head.files describe los blobs limpios de HEAD contra los que aplica el parche."
 }
