@@ -38,6 +38,8 @@ esac
   echo "CANARY_FAIL: ara-skill check --for-canary" >&2
   exit 78
 }
+CGROUP="$(awk -F: '$1==0{print $3}' /proc/self/cgroup 2>/dev/null | head -1)"
+START_USAGE="$(awk '/usage_usec/{print $2}' "/sys/fs/cgroup${CGROUP}/cpu.stat" 2>/dev/null || echo 0)"
 
 mkdir -p "$OUT"
 chmod 0750 "$OUT" 2>/dev/null || true
@@ -68,8 +70,8 @@ WH="$(ffprobe -v error -select_streams v:0 -show_entries stream=width,height -of
 
 END_TS="$(date +%s)"
 WALL="$((END_TS - START_TS))"
-CGROUP="$(awk -F: '$1==0{print $3}' /proc/self/cgroup 2>/dev/null | head -1)"
-USAGE="$(awk '/usage_usec/{print $2}' "/sys/fs/cgroup${CGROUP}/cpu.stat" 2>/dev/null || echo 0)"
+END_USAGE="$(awk '/usage_usec/{print $2}' "/sys/fs/cgroup${CGROUP}/cpu.stat" 2>/dev/null || echo 0)"
+USAGE="$((END_USAGE - START_USAGE))"
 CPU_PCT="$(awk -v u="${USAGE:-0}" -v w="$WALL" 'BEGIN{if (w>0) printf "%.2f", u/10000.0/w; else printf "null"}')"
 printf '{"session":"%s","segment":"%s","width":3840,"height":2160,"fps":%s,"seconds":%s,"cpu_seconds":%.2f,"wall_seconds":%s,"cpu_pct_avg":%s,"filters":"deblock,dering(smartblur),yuv444p,lanczos,grain,unsharp,eq,yuv420p"}\n' \
   "$SESSION" "$(basename "$SEG")" "$FPS" "$SECONDS_OUT" "$(awk -v u="${USAGE:-0}" 'BEGIN{printf "%.2f", u/1000000}')" "$WALL" "$CPU_PCT" > "$OUT/status.json"
