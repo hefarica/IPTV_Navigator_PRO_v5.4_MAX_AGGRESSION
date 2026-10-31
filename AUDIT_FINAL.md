@@ -270,8 +270,8 @@ nginx -t                    → syntax ok / test successful
 | G11 manifest cache 1s u off | I09 local: `autopista-trap.conf:65` m3u8 TTL 1s; `:146` default 20s; producción sin deploy | medium | PARCIAL (I09 local) |
 | G12 stale en timeout `.ts` | `vps_configs/autopista-trap.conf:112` `proxy_cache_use_stale ... timeout http_403 ...` | medium | MITIGADO nativo |
 | G13 slice 1m uniforme | `nginx -T` activo: 0 `location *.ts`; trap `:90` sí tiene `slice 1m`, pero no está en la ruta viva | low | N/A (metadata-only) |
-| G14 `lab_config` fail-loud | `lab_config.lua:38-39,47-48` loguea WARN/ERR y devuelve defaults | medium | ABIERTO |
-| G15 `%06d` | `cmaf_worker.php:164` `-media_seg_name ... %05d` | low | ABIERTO |
+| G14 `lab_config` fail-loud | I11 local: `lab_config.lua` loguea `FAIL-LOUD` y marca `_M.degraded`; sigue devolviendo defaults | medium | PARCIAL (I11 local) |
+| G15 `%06d` | I11 local: `cmaf_worker.php:164` `%06d` | low | PARCIAL (I11 local) |
 | G16 4 rendiciones | A11: worker 1 video + 1 audio; DASH 2 video + 1 audio | medium | ABIERTO |
 
 **GATE 0:**

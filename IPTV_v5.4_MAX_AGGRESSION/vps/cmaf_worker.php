@@ -161,7 +161,7 @@ $cmd .= " -window_size {$windowSize} -extra_window_size {$extraWindowSize}";
 $cmd .= ' -single_file 0';
 // NAMING CANÓNICO APE — debe coincidir exactamente con resolve_quality.php
 $cmd .= " -init_seg_name 'init-\$RepresentationID\$.m4s'";
-$cmd .= " -media_seg_name 'chunk-\$RepresentationID\$-\$Number%05d\$.m4s'";
+$cmd .= " -media_seg_name 'chunk-\$RepresentationID\$-\$Number%06d\$.m4s'";
 // Generar también manifiestos HLS por representación (media_0.m3u8, media_1.m3u8)
 $cmd .= ' -hls_playlist 1 -hls_master_name master.m3u8';
 $cmd .= ' -hls_segment_type fmp4';

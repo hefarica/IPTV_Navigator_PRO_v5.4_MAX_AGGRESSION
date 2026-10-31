@@ -1,22 +1,23 @@
 {
-  "unit": "I10",
+  "unit": "I11",
   "phase": "IMPLEMENTATION",
-  "state": "VERIFIED",
+  "state": "BLOCKED",
   "pct": 99,
   "audit_gate0": "GREEN_WITH_A05_BLOCKED",
   "evidence": {
-    "live": "nginx -T: no location ~* \\.ts$ in active config",
-    "trap": "vps_configs/autopista-trap.conf:90 has slice 1m but not active",
-    "decision": "no-op; no fake slice on metadata-only",
+    "g14": "IPTV_v5.4_MAX_AGGRESSION/vps/nginx/lua/lab_config.lua fail_loud + degraded/errors",
+    "g15": "IPTV_v5.4_MAX_AGGRESSION/vps/cmaf_worker.php:164 %06d",
+    "g16": "cmaf_worker -c:v copy / -map 0:v:0 -> one video representation",
+    "checks": "luac -p=0; php -l=0; grep %06d",
     "deploy": "none"
   },
   "options": [
-    "O1 verify active scope and no-op (N0)",
-    "O2 add slice 1m to all repo configs (N1)",
-    "O3 add a future guard script (N3)"
+    "O1 add four FFmpeg outputs/scales (N1, transcode risk)",
+    "O2 label media_0 as four variants (N0, fake)",
+    "O3 use provider master variants (N2, not guaranteed)"
   ],
-  "chosen": "O1",
+  "chosen": "none",
   "commit": null,
-  "blocked_reason": null,
-  "pending": ["I11", "I12", "I13", "I14", "I15", "I16", "I17"]
+  "blocked_reason": "G16 requires real 4 renditions. Worker uses -c:v copy and one video map; labeling one stream as four is a player-breaking lie, and adding scale outputs is a data-plane transcode not authorized in I11.",
+  "pending": ["I12", "I13", "I14", "I15", "I16", "I17"]
 }

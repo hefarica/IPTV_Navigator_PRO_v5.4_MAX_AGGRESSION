@@ -13,10 +13,20 @@
 --   local mult = lab.boost_multiplier_for_profile("P3")  -- 1.5
 --   local cfg = lab.floor_lock()  -- entire floor_lock_config table
 
-local _M = { _VERSION = "1.0.0" }
+local _M = { _VERSION = "1.0.0", degraded = false, errors = {} }
 
 local CONFIG_DIR = "/var/www/html/prisma/config/"
 local CACHE_TTL_SECONDS = 300
+
+local function fail_loud(message)
+    _M.degraded = true
+    if #_M.errors < 20 then
+        _M.errors[#_M.errors + 1] = message
+    end
+    if ngx then
+        ngx.log(ngx.ERR, "[lab_config] FAIL-LOUD " .. message)
+    end
+end
 local cjson = (function() local ok,m = pcall(require,"cjson.safe"); if ok then return m end; return require("cjson") end)()
 
 -- Permitir uso fuera de NGINX (tests CLI) cayendo a tabla local
@@ -35,16 +45,19 @@ local function read_json(filename, defaults)
     local path = CONFIG_DIR .. filename
     local f = io.open(path, "r")
     if not f then
-        if ngx then ngx.log(ngx.WARN, "[lab_config] missing: " .. path .. " · using defaults") end
+        fail_loud("missing: " .. path)
         return defaults
     end
     local content = f:read("*a")
     f:close()
-    if not content or #content == 0 then return defaults end
+    if not content or #content == 0 then
+        fail_loud("empty: " .. path)
+        return defaults
+    end
 
     local ok, parsed = pcall(cjson.decode, content)
     if not ok or not parsed then
-        if ngx then ngx.log(ngx.ERR, "[lab_config] corrupt JSON: " .. path) end
+        fail_loud("corrupt JSON: " .. path)
         return defaults
     end
 

@@ -259,6 +259,33 @@ nginx_test_exit=0
 
 **Verificación:** `nginx -T | grep -E 'location .*\.ts|slice 1m'` → sin coincidencias de `.ts` activo.
 
+## I11 — lab_config fail-loud, `%06d`, rendiciones (G14/G15/G16)
+
+**Estado:** BLOCKED (G14/G15 implementados local; G16 sin transcode).
+
+**G14:** `lab_config.lua` ahora tiene `fail_loud()`: `ngx.ERR` + `_M.degraded` + `_M.errors` (máx. 20) para missing/empty/corrupt. Sigue devolviendo defaults para no romper el reactor; el fallo ya es visible.
+
+**G15:** `cmaf_worker.php:164` `%05d` → `%06d`.
+
+**G16:** no se implementa. El worker hace `-c:v copy` y produce **una** representación de vídeo (`media_0`); declarar 4 sin encode sería falso.
+
+**Opciones G16:**
+
+- O1 añadir 4 salidas/scale a FFmpeg · N1 · rev 2 · riesgo 4 · alineación 3 · coste 5 → descartada: transcode en data-plane.
+- O2 etiquetar `media_0` como 4 variantes · N0 · rev 3 · riesgo 5 · alineación 1 · coste 1 → descartada: mentira al player.
+- O3 usar variantes del master del proveedor · N2 · rev 3 · riesgo 3 · alineación 4 · coste 4 → descartada: no hay master de 4 garantizado.
+
+**Verificación:**
+
+```text
+luac -p lab_config.lua → 0
+php -l cmaf_worker.php → 0
+grep %06d → línea 164
+```
+
+**Bloqueo:** G16 exige transcode o un master real de 4 variantes; ninguna está en la cadena actual. No se avanza a I12.
+
+
 
 
 
