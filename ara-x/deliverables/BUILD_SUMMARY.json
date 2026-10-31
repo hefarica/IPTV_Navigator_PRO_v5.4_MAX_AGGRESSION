@@ -1,23 +1,23 @@
 {
   "ok": true,
-  "stamp": "20261030_222000",
+  "stamp": "20261030_224500",
   "zip": {
-    "file": "ARA_X_DELIVERY_20261030_222000.zip",
-    "bytes": 3119531,
-    "sha256": "c014c46fe49e3bba31c506ae4a3543c232b1af0cfe63680414609061cdfc3362"
+    "file": "ARA_X_DELIVERY_20261030_224500.zip",
+    "bytes": 3120183,
+    "sha256": "26f8d6294c3ae70c364f67a4df81a7f6d81526b88766a2cadec527e2af6b7601"
   },
   "manifest": {
     "file": "MANIFEST_SHA256.txt",
     "bytes": 13089,
-    "sha256": "f7f4481370c65316ae00054fccc01083066921f09c22219674cb74f3b9265a71",
+    "sha256": "379dc834b05b84d484c81de0223d87af04b017844e642c46713b9e611821bea5",
     "entries": 120,
-    "payload_bytes": 21339375,
+    "payload_bytes": 21341154,
     "excludes_self": true
   },
   "evidence_manifest": {
     "file": "EVIDENCE_MANIFEST.json",
     "bytes": 2321,
-    "sha256": "b8a20660f776d71e0be46cee56647c2cd6d71cdfd459ec0802d9f7eda7a3bfee",
+    "sha256": "c38cb12efc6e45889db2df84e95fa3d5c8b7b2597889138a8e4492bc44d8ece3",
     "files": 10,
     "total_bytes": 4715998572
   },
@@ -27,12 +27,12 @@
       "ok": true,
       "files_verified": 120,
       "files_expected": 120,
-      "payload_bytes": 21339375,
+      "payload_bytes": 21341154,
       "extras": [
         "ara-x/MANIFEST_SHA256.txt"
       ],
       "failures": [],
-      "manifest_sha256": "f7f4481370c65316ae00054fccc01083066921f09c22219674cb74f3b9265a71"
+      "manifest_sha256": "379dc834b05b84d484c81de0223d87af04b017844e642c46713b9e611821bea5"
     },
     "verify_exit": 0,
     "tar_entries": 121
@@ -156,8 +156,8 @@
     },
     {
       "path": "ara-x/integration/baseline.json",
-      "bytes": 1634,
-      "sha256": "b999a1e617f330885e482085c3d86eaf71c08ac284e8f361fc11d6befe97a58c"
+      "bytes": 2291,
+      "sha256": "bd58655732bf4866c4a6e67992685f97a729e660060cb7e0ef2e12be69d1046d"
     }
   ]
 }

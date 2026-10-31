@@ -1,6 +1,6 @@
 {
   "schema": "ara-x.x2.evidence/1",
-  "generated_at": "2026-10-30T22:20:00",
+  "generated_at": "2026-10-30T22:45:00",
   "note": "Capturas crudas y salidas ARA-X de las listas A/B. NO se empaquetan (4,7 GB y el par cuenta/clave del path, V3-F-01). Se entrega size+sha256; reproducibles/verificables con los scripts de V2/R1.",
   "files": [
     {

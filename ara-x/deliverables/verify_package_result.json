@@ -2,10 +2,10 @@
   "ok": true,
   "files_verified": 120,
   "files_expected": 120,
-  "payload_bytes": 21339375,
+  "payload_bytes": 21341154,
   "extras": [
     "ara-x/MANIFEST_SHA256.txt"
   ],
   "failures": [],
-  "manifest_sha256": "f7f4481370c65316ae00054fccc01083066921f09c22219674cb74f3b9265a71"
+  "manifest_sha256": "379dc834b05b84d484c81de0223d87af04b017844e642c46713b9e611821bea5"
 }
