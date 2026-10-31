@@ -16,6 +16,9 @@ class Config(ctx: Context) {
     private val tokenFilePriv = File(ctx.filesDir, "token")
     private val tokenFileSd = File("/sdcard/ape/token")
     private val syncKeyFilePriv = File(ctx.filesDir, "sync.key")
+    // Release/sideload no puede leer /sdcard/ape si el dueño es media_rw; esta ruta
+    // app-specific sí es legible por la app sin permisos de almacenamiento.
+    private val syncKeyFileExt = File(ctx.getExternalFilesDir(null) ?: ctx.filesDir, "sync.key")
     private val syncKeyFileSd = File("/sdcard/ape/sync.key")
 
     val vpsBase: String get() = sp.getString("vps", DEFAULT_VPS)!!.trimEnd('/')
@@ -76,7 +79,7 @@ class Config(ctx: Context) {
     val syncKeySecret: String
         get() {
             sp.getString("sync_key_secret", "")!!.let { if (it.isNotEmpty()) return it }
-            for (f in listOf(syncKeyFilePriv, syncKeyFileSd)) {
+            for (f in listOf(syncKeyFilePriv, syncKeyFileExt, syncKeyFileSd)) {
                 try {
                     if (f.exists()) {
                         val t = f.readText().trim()
