@@ -74,6 +74,9 @@ class BitrateGuard(
         AraStatus.bitrateOutBand = ""
         AraStatus.bitrateAt = 0L
         AraStatus.bufferPct = 0
+        AraStatus.bufferFloorPct = BufferPolicy.FLOOR_PCT
+        AraStatus.bufferCeilingPct = BufferPolicy.CEILING_PCT
+        AraStatus.bufferState = BufferPolicy.state(0)
     }
 
     fun evaluate(tracks: Tracks) {
@@ -178,6 +181,9 @@ class BitrateGuard(
         AraStatus.bitrateOutBand = BitrateConfig.outBand(policy.targetHeight)
         AraStatus.bitrateState = state
         AraStatus.bufferPct = bufPct
+        AraStatus.bufferFloorPct = BufferPolicy.FLOOR_PCT
+        AraStatus.bufferCeilingPct = BufferPolicy.CEILING_PCT
+        AraStatus.bufferState = BufferPolicy.state(bufPct)
         AraStatus.bitrateAt = System.currentTimeMillis()
         calls++
         if (state != lastLoggedState || lastLocked != lastLoggedLock || calls % 4 == 0) {

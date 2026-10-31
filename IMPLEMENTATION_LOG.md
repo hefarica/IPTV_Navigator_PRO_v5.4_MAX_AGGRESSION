@@ -393,6 +393,28 @@ gradle_exit=0
 
 **Límite:** no se ejecutó el APK en el ONN; la compilación Kotlin pasa, pero el E2E SSE en dispositivo no se midió. No se desplegó `state.php` ni `state_bridge.php`.
 
+## I15 — Buffer libre: piso 60%, sin techo
+
+**Estado:** VERIFIED (local; sin deploy).
+
+**Archivos:**
+
+- `IPTV_v5.4_MAX_AGGRESSION/android/.../BufferPolicy.kt`
+- `IPTV_v5.4_MAX_AGGRESSION/android/.../AraStatus.kt:81-84`
+- `IPTV_v5.4_MAX_AGGRESSION/android/.../BitrateGuard.kt:76-81,180-185`
+
+**Cambio:** `BufferPolicy.FLOOR_PCT=60`, `CEILING_PCT=null`; el panel publica `bufferPct`, `bufferFloorPct`, `bufferCeilingPct` y `bufferState` (`BELOW_FLOOR`/`OK`). No se impone un techo ni se cambia `bufferMaxS` de ExoPlayer; el buffer real sigue siendo el del player.
+
+**Verificación:**
+
+```text
+gradlew :app:compileDebugKotlin --offline
+BUILD SUCCESSFUL in 5s
+gradle_exit=0
+```
+
+**Límite:** política y observabilidad; no se fuerza al player a mantener 60% (eso requeriría cambiar `DefaultLoadControl` y medir startup). No se ejecutó en ONN.
+
 
 
 

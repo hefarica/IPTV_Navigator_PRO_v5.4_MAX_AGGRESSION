@@ -79,6 +79,9 @@ object AraStatus {
     @Volatile var bitrateState: String = "SETTLED"
     @Volatile var bitrateAt: Long = 0L
     @Volatile var bufferPct: Int = 0
+    @Volatile var bufferFloorPct: Int = 60
+    @Volatile var bufferCeilingPct: Int? = null
+    @Volatile var bufferState: String = "OK"
 
     // ── Captura global (MediaProjection, consentida) ─────────────────────────
     @Volatile var captureFrames: Long = 0L

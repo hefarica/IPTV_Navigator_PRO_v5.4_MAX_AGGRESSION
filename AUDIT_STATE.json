@@ -1,23 +1,24 @@
 {
-  "unit": "I14",
+  "unit": "I15",
   "phase": "IMPLEMENTATION",
   "state": "VERIFIED",
   "pct": 100,
   "audit_gate0": "GREEN_WITH_A05_BLOCKED",
   "evidence": {
-    "server": "ara-x/vps/crystal/state.php + state_bridge.php",
-    "android": "AraCommandBridge + MetaReceiver device_id + StatePublisher device_id",
-    "test": "state_bridge ALL_OK; gradle compileDebugKotlin BUILD SUCCESSFUL",
+    "policy": "BufferPolicy FLOOR_PCT=60 CEILING_PCT=null",
+    "status": "AraStatus bufferFloorPct/bufferCeilingPct/bufferState",
+    "guard": "BitrateGuard publish/reset",
+    "test": "gradle compileDebugKotlin BUILD SUCCESSFUL",
     "deploy": "none",
-    "limit": "no APK runtime E2E; no server deploy"
+    "limit": "ExoPlayer buffer_max_s unchanged; no runtime"
   },
   "options": [
-    "O1 production bridge + receiver in capture service (N1)",
-    "O2 only SseTestActivity wiring (N0, test-only)",
-    "O3 new command endpoint (N4)"
+    "O1 policy 60/no ceiling in existing guard (N1)",
+    "O2 force buffer_min_s=60% max (N1, startup risk)",
+    "O3 new buffer daemon (N4)"
   ],
   "chosen": "O1",
   "commit": null,
   "blocked_reason": null,
-  "pending": ["I15", "I16", "I17"]
+  "pending": ["I16", "I17"]
 }
