@@ -1,0 +1,19 @@
+/usr/bin/ffmpeg
+OK   ffmpeg
+/usr/bin/ffprobe
+OK   ffprobe
+OK   x265 10-bit
+OK   filtro deblock
+FALLA filtro dering
+OK   filtro hqdn3d
+OK   filtro deband
+OK   filtro unsharp
+OK   filtro eq
+OK   filtro noise
+OK   filtro scale
+OK   libx265
+OK   disco 5G
+FALLA nginx lua
+FALLA auth_sync.php
+PREFLIGHT FALLA
+preflight_rc=1
