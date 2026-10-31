@@ -160,6 +160,28 @@ No son el mismo archivo; el de backend no está en la ruta del proxy.
 
 **Conclusión:** los cuatro Lua **no modifican la ventana ni la secuencia**. El único cambio de cuerpo es quitar `Content-Length` del manifest para chunked. La continuidad no está aquí; no se toca.
 
+## A09 — Grep global de MEDIA-SEQUENCE / DISCONTINUITY / PROGRAM-DATE-TIME
+
+**Estado:** VERIFIED (grep global literal; resultado completo en spill de 966 coincidencias, cap 250).
+
+**Conteo:** 966 coincidencias; 250 mostradas antes del cap. Incluye código, tests, docs, backups y snapshots.
+
+**Emisor real fuera del generador activo:**
+
+- `_vps_stage/media/ape-ingest.sh:2028` `echo '#EXT-X-MEDIA-SEQUENCE:0'`
+- `_vps_stage/media/ape-ingest.sh:2044` `echo "#EXT-X-MEDIA-SEQUENCE:$lo"`
+- `_vps_stage/media/ape-ingest.sh:2207,2218,2526,2538` más secuencias.
+- `test_exporter2.js:5976` `lines.push('#EXT-X-MEDIA-SEQUENCE:0')` (test).
+- `docs/MEDIA_FANOUT_CONCURRENCY_REPORT.md:281` ejemplo.
+
+**Generador activo:**
+
+- `frontend/js/ape-v9/m3u8-typed-arrays-ultimate.js:226` solo `findIndex` de validación; `:6354-6356` solo tags `#EXT-X-APE-CMAF-*`; **no emite** `#EXT-X-MEDIA-SEQUENCE`.
+- `backend/resolve_quality_unified.php` no aparece como emisor en este grep.
+
+**Conclusión:** hay usos reales de las etiquetas fuera del generador activo (ingest/test/docs), pero el generador de listas y el resolver no las emiten. El GAP de continuidad sigue en la capa activa.
+
+
 
 
 

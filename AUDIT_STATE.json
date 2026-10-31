@@ -1,18 +1,19 @@
 {
-  "unit": "A08",
+  "unit": "A09",
   "phase": "AUDIT",
   "state": "VERIFIED",
-  "pct": 75,
+  "pct": 77,
   "evidence": {
-    "upstream_gate": "vps/nginx/lua/upstream_gate.lua:20-44 telemetry + UA, no block",
-    "upstream_response": "vps/nginx/lua/upstream_response.lua:66-70 content_length=nil for m3u8; no sequence",
-    "decision_engine": "vps/nginx/lua/decision_engine.lua:9 no ngx.exit/503; no sequence",
-    "bandwidth_reactor": "vps/nginx/lua/bandwidth_reactor.lua:82-151 ring buffer; no sequence",
-    "sequence_grep": "no MEDIA-SEQUENCE/DISCONTINUITY/PROGRAM-DATE-TIME/media_sequence/segment_uri in the four"
+    "grep": "966 matches, 250 shown before cap; full spill retained by tool",
+    "real_emitter": "_vps_stage/media/ape-ingest.sh:2028,2044,2207,2218,2526,2538",
+    "test": "test_exporter2.js:5976; test_exporter.js:7205",
+    "docs": "docs/MEDIA_FANOUT_CONCURRENCY_REPORT.md:281",
+    "active_generator": "m3u8-typed-arrays-ultimate.js:226 findIndex only; :6354-6356 custom APE tags",
+    "resolver": "no matching emission in backend/resolve_quality_unified.php"
   },
-  "options": ["O1 audit four Lua and document no window/sequence effects", "O2 add sequence logic to Lua", "O3 rewrite data-plane"],
+  "options": ["O1 global grep and classify uses", "O2 inject standard tags in active generator", "O3 replace generator"],
   "chosen": "O1",
   "commit": null,
   "blocked_reason": null,
-  "pending": ["A09", "A10", "A11", "A12", "A13", "A14"]
+  "pending": ["A10", "A11", "A12", "A13", "A14"]
 }
