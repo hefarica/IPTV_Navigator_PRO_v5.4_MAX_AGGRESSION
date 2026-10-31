@@ -32,6 +32,10 @@ class ApePlayer(private val ctx: Context) {
     private var exo: ExoPlayer? = null
     private var ticker: Runnable? = null
     private lateinit var selector: DefaultTrackSelector
+    private val meter = BitrateMeter()
+    private var bitrateGuard: BitrateGuard? = null
+    /** Último `Tracks` observado: permite reevaluar la banda cada 2 s (ALERT tras 8 s real). */
+    @Volatile private var lastTracks: Tracks? = null
 
     fun build(): ExoPlayer {
         // 4K-first: buffer/caché máximos y selección de la mejor variante real.
@@ -62,6 +66,7 @@ class ApePlayer(private val ctx: Context) {
         return builder.build().also { p ->
             exo = p
             current = this
+            bitrateGuard = BitrateGuard(ctx, meter, p, selector)
             installAnalytics(p)
             runCatching {
                 @Suppress("UNCHECKED_CAST")
@@ -72,15 +77,20 @@ class ApePlayer(private val ctx: Context) {
 
     fun playChannel(player: ExoPlayer, url: String, ua: String = DEFAULT_UA) {
         val policy = PlaybackPolicy.fromSync(ctx)
+        // BG1-FIX: la ventana de 4 s no debe mezclar bytes del canal anterior tras un zap.
+        meter.reset()
+        lastTracks = null
         val http = DefaultHttpDataSource.Factory()
             .setUserAgent(ua)
             .setConnectTimeoutMs(policy.connectTimeoutMs)
             .setReadTimeoutMs(policy.readTimeoutMs)
             .setAllowCrossProtocolRedirects(true)            // sigue el 302 line→CDN
         // Cache + timeouts del pipeline Fluid; NO un DataSource aislado.
-        val ds = runCatching {
+        val base = runCatching {
             FluidBridge.dataSource(ctx, http) as DataSource.Factory
         }.getOrDefault(http)
+        // Mide bytes REALES que entran (red o caché), no el bitrate declarado del manifest.
+        val ds = StatsDataSource.Factory(base, meter)
         val src = HlsMediaSource.Factory(ds).createMediaSource(MediaItem.fromUri(url))
         player.setMediaSource(src)
         player.prepare()
@@ -162,6 +172,8 @@ class ApePlayer(private val ctx: Context) {
                 }
             }
         }
+        lastTracks = tracks
+        bitrateGuard?.evaluate(tracks)
         peekRuntime()
         startRuntimeTicker()
     }
@@ -201,6 +213,9 @@ class ApePlayer(private val ctx: Context) {
         val r = object : Runnable {
             override fun run() {
                 peekRuntime()
+                // BG1-FIX: medición REAL continua (ventana 4 s) ⇒ el piso/techo y el ALERT de 8 s
+                // funcionan sin depender de que ExoPlayer emita otro onTracksChanged.
+                lastTracks?.let { bitrateGuard?.evaluate(it) }
                 if (exo != null) handler.postDelayed(this, 2_000L)
             }
         }
@@ -226,6 +241,9 @@ class ApePlayer(private val ctx: Context) {
     fun release() {
         stopRuntimeTicker()
         if (current === this) current = null
+        bitrateGuard = null
+        lastTracks = null
+        meter.reset()
         exo?.let { FluidBridge.detach(it) }
         exo?.release(); exo = null
         AraStatus.playerActive = false

@@ -193,6 +193,14 @@ class MainActivity : Activity() {
             append("HDR soportados: ").append(hdrNames).append('\n')
             append("hdr_conversion_mode: ").append(hdrConv ?: "—").append('\n')
             append("Último track: ").append(AraStatus.lastTrack.ifBlank { "sin reproducción" }).append('\n')
+            append("Bitrate: ").append(AraStatus.bitrateKbps).append(" kbps (red ")
+                .append(AraStatus.bitrateNetworkKbps).append(", máx ")
+                .append(AraStatus.bitrateMaxVariantKbps).append(") · banda ")
+                .append(AraStatus.bitrateFloorKbps).append('–').append(AraStatus.bitrateCeilKbps)
+                .append(" (").append(AraStatus.bitrateSourceBand.ifBlank { "—" })
+                .append("→").append(AraStatus.bitrateOutBand.ifBlank { "—" })
+                .append(") · buf ").append(AraStatus.bufferPct).append("% · ")
+                .append(AraStatus.bitrateState).append('\n')
             append("Player: ").append(if (AraStatus.playerActive) "ACTIVO" else "inactivo")
         }
 
