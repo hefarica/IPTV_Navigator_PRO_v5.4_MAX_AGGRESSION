@@ -321,7 +321,7 @@ jobs:
     env:
       ARA_SYNC_VERIFY_KEY: ${{ secrets.ARA_SYNC_KEY }}
       ARA_SYNC_KEY_ID: ${{ vars.ARA_SYNC_KEY_ID }}
-      ARA_SYNC_DEVICE_ID: ${{ vars.ARA_SYNC_DEVICE_ID }}
+      ARA_SYNC_DEVICE_ID: deploy-verify-${{ github.run_id }}
       ARA_SYNC_ARTIFACT_SHA256: ${{ vars.ARA_SYNC_ARTIFACT_SHA256 }}
       ARA_VERIFY_TOKEN: ${{ secrets.ARA_VERIFY_TOKEN }}
     steps:
