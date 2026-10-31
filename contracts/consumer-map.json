@@ -1,0 +1,72 @@
+{
+  "version": "1.0.0",
+  "contract": "contracts/continuity.contract.json",
+  "audit_unit": "A14",
+  "consumers": [
+    {
+      "id": "generator",
+      "artifact": "IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/m3u8-typed-arrays-ultimate.js",
+      "reads_contract": false,
+      "evidence": ":226 findIndex only; :6354-6356 custom APE tags; no standard MEDIA-SEQUENCE/DISCONTINUITY/PROGRAM-DATE-TIME"
+    },
+    {
+      "id": "headers_matrix",
+      "artifact": "IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/headers-matrix-v9.js",
+      "reads_contract": false,
+      "evidence": "139 headers; no contract read; generator not wired (:11741 stub)"
+    },
+    {
+      "id": "resolver",
+      "artifact": "IPTV_v5.4_MAX_AGGRESSION/backend/resolve_quality_unified.php",
+      "reads_contract": false,
+      "evidence": "7495 lines; no continuity contract read; emits EXTVLCOPT/KODIPROP only"
+    },
+    {
+      "id": "cmaf_worker",
+      "artifact": "IPTV_v5.4_MAX_AGGRESSION/vps/cmaf_worker.php",
+      "reads_contract": false,
+      "evidence": ":104-107 window 10+20; :64 target_dna.json; no contract"
+    },
+    {
+      "id": "prefetch",
+      "artifact": "prefetch_segment.lua",
+      "reads_contract": false,
+      "evidence": ":46-54 prefetch last segment; :101 127.0.0.1:80; no cursor"
+    },
+    {
+      "id": "nginx",
+      "artifact": "vps_configs/autopista-trap.conf",
+      "reads_contract": false,
+      "evidence": ":65 cache 5s; :90 slice 1m; :128 444 /ara/ only"
+    },
+    {
+      "id": "sse",
+      "artifact": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/events-sse.php",
+      "reads_contract": false,
+      "evidence": ":20-30 Bearer; :76-91 policy_deltas; no contract fields"
+    },
+    {
+      "id": "apk_receiver",
+      "artifact": "IPTV_v5.4_MAX_AGGRESSION/android/ape-crystal-agent/app/src/main/java/com/ape/crystalagent/MetaReceiver.kt",
+      "reads_contract": false,
+      "evidence": ":24-88 /ara/sse; applies events; no contract read"
+    },
+    {
+      "id": "excel",
+      "artifact": "deliverables/LAB_2026-10-26/APE_M3U8_LAB_v8_FIXED_CERTIFIED.xlsm",
+      "reads_contract": false,
+      "evidence": "3,425,790 B; sha 813a05aa...; no contract fields in audit"
+    },
+    {
+      "id": "lab",
+      "artifact": "deliverables/LAB_2026-10-26/verify_bulletproof.py",
+      "reads_contract": false,
+      "evidence": ":4 reads xlsm; no continuity contract"
+    }
+  ],
+  "summary": {
+    "mapped": 10,
+    "reads_contract": 0,
+    "aligned": 0
+  }
+}

@@ -241,6 +241,44 @@ nginx -t                    → syntax ok / test successful
 
 **Lectura:** ambos endpoints existen y fallan cerrados sin token. `/ara/sse` responde SSE autenticado con heartbeat; no había payload en la ventana de 3 s. `/ara/events` conserva su 401. `nginx -t` pasa y el servicio está activo.
 
+## A14 — Matriz de gaps G1–G16
+
+**Estado:** VERIFIED (matriz cerrada con cita; GATE 0 sigue ROJO).
+
+**Contrato:** `contracts/continuity.contract.json:3-29`.  
+**Mapa de consumidores:** `contracts/consumer-map.json` (10 consumidores, 0 leen el contrato).
+
+| GAP | Evidencia | Severidad | Estado |
+|---|---|---|---|
+| G1 cursor `/dev/shm/ape_cursor/` | contrato `:5`; grep global: no writer/reader de `ape_cursor` | blocker | ABIERTO |
+| G2 ventana persistente 30/10 | `cmaf_worker.php:104-107` window 10 + extra 20; sin persistencia | high | ABIERTO |
+| G3 `start_number_source=epoch` | `m3u8-typed-arrays-ultimate.js:226` solo findIndex; A09: generador no emite | blocker | ABIERTO |
+| G4 `DISCONTINUITY` estándar | `m3u8-typed-arrays-ultimate.js:6354-6356` solo tags APE-CMAF; no estándar | high | ABIERTO |
+| G5 resume `last_delivered+1` | `prefetch_segment.lua:46-54` elige el último `.ts`; no `+1` | blocker | ABIERTO |
+| G6 retención 30/10 / rm solo cambio de canal | `cmaf_worker.php:104-107`; no hay rm por canal | high | ABIERTO |
+| G7 resolver sirve vía CMAF | `cmaf_proxy.php:53-69` exige `origin_url.txt`; A07: nadie lo escribe | blocker | ABIERTO |
+| G8 `PROGRAM-DATE-TIME` estándar | `m3u8-typed-arrays-ultimate.js:6356` solo `APE-CMAF-PROGRAM-DATE-TIME` | high | ABIERTO |
+| G9 `hls_time` al GOP real | `cmaf_worker.php:100-102` usa `min_seg_duration=6`; no `hls_time` | medium | ABIERTO |
+| G10 Strike Tracker escribe cursor | `resolve_quality_unified.php:4414-4449` escribe strikes/trauma; `:4540` header; no cursor | high | ABIERTO |
+| G11 manifest cache 1s u off | `vps_configs/autopista-trap.conf:65` 5s; `:146` 20s | medium | ABIERTO |
+| G12 stale en timeout `.ts` | `vps_configs/autopista-trap.conf:112` `proxy_cache_use_stale ... timeout http_403 ...` | medium | MITIGADO nativo |
+| G13 slice 1m uniforme | `vps_configs/autopista-trap.conf:90` `slice 1m`; no uniforme en todas las rutas | medium | PARCIAL |
+| G14 `lab_config` fail-loud | `lab_config.lua:38-39,47-48` loguea WARN/ERR y devuelve defaults | medium | ABIERTO |
+| G15 `%06d` | `cmaf_worker.php:164` `-media_seg_name ... %05d` | low | ABIERTO |
+| G16 4 rendiciones | A11: worker 1 video + 1 audio; DASH 2 video + 1 audio | medium | ABIERTO |
+
+**GATE 0:**
+
+- [x] A01..A14 COMPLETO o BLOCKED con motivo: A01–A04, A06–A14 VERIFIED; A05 BLOCKED por latencia no instrumentada.
+- [x] Cero hipótesis sin marcar: las dudas de A05 están marcadas y bloqueadas.
+- [x] Contrato existe y consumidores mapeados: `contracts/consumer-map.json`; **ninguno lee el contrato**.
+- [x] Matriz G1..G16 con evidencia y severidad.
+- [ ] `AUDIT_FINAL.md` con 16 fichas: hay 14 (A01–A14); A15/A16 no existen en el plan.
+- [ ] GATE 0 verde: **NO**. Bloqueos: A05, 14/16 fichas, 13 gaps abiertos/parciales.
+
+**Conclusión:** la matriz está cerrada y auditada, pero la compuerta no se puede declarar verde. No se inicia Fase 1.
+
+
 
 
 

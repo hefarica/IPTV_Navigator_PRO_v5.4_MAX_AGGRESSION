@@ -1,18 +1,18 @@
 {
-  "unit": "A13",
+  "unit": "A14",
   "phase": "AUDIT",
   "state": "VERIFIED",
-  "pct": 85,
+  "pct": 87,
   "evidence": {
-    "events": "GET /ara/events noauth=401 JSON UNAUTHORIZED",
-    "sse_noauth": "GET /ara/sse noauth=401 JSON unauthorized",
-    "sse_auth": "GET /ara/sse Bearer=200 text/event-stream; ': hb'",
-    "nginx": "systemctl is-active=active; nginx -t successful",
-    "time": "2026-10-31T15:40:05Z"
+    "contract": "contracts/continuity.contract.json:3-29",
+    "consumer_map": "contracts/consumer-map.json (10 mapped, 0 reads_contract)",
+    "matrix": "G1 blocker, G2 high, G3 blocker, G4 high, G5 blocker, G6 high, G7 blocker, G8 high, G9 medium, G10 high, G11 medium, G12 mitigated, G13 partial, G14 medium, G15 low, G16 medium",
+    "gate0": "RED: A05 BLOCKED; 14/16 fichas; 13 gaps open/partial",
+    "no_code": true
   },
-  "options": ["O1 read-only probe both endpoints", "O2 deploy new route", "O3 disable events"],
+  "options": ["O1 close matrix with citations", "O2 mark GATE0 green without A05", "O3 start Phase 1"],
   "chosen": "O1",
   "commit": null,
-  "blocked_reason": null,
-  "pending": ["A14"]
+  "blocked_reason": "GATE 0 RED: A05 latency BLOCKED; 14/16 fichas; consumer map shows 0 contract readers; G1-G11/G14-G16 open.",
+  "pending": []
 }
