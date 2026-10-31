@@ -30,6 +30,7 @@
 -- ???????????????????????????????????????????????????????????????????????????
 local cjson = require "cjson.safe"
 local lib   = require "ape_rebase_lib"
+local lastgood = require("ape_lastgood")
 local uhd   = require "ape_uhd"
 local lab   = require "ape_lab_bridge"
 
@@ -226,12 +227,27 @@ for _, h in ipairs(candidates) do
         if res and res.status and res.status >= 200 and res.status < 300 then
             winner, res_ok = h, res
             final_origin = "http://" .. fh
+            if HOSTS then HOSTS:delete(dk) end
             break
         end
         last_status = (res and res.status) or 502
         last_reason = why or (res and res.status and ("http_" .. res.status)) or "capture_failed"
-        if HOSTS then HOSTS:set(dk, 1, 15) end
-        qinc("host_down:" .. h)
+        -- [t61] 407 es auth/egress transitorio: UN reintento inmediato, y NUNCA
+        -- se marca el host como caído por un 4xx (antes: 15 s de fail-fast que
+        -- convertía un 407 puntual en 502 durante toda la ventana).
+        if last_status == 407 then
+            local res2, fh2, why2 = fetch_follow(h, path, args)
+            if res2 and res2.status and res2.status >= 200 and res2.status < 300 then
+                winner, res_ok = h, res2
+                final_origin = "http://" .. fh2
+                if HOSTS then HOSTS:delete(dk) end
+                break
+            end
+            last_status = (res2 and res2.status) or last_status
+            last_reason = why2 or (res2 and res2.status and ("http_" .. res2.status)) or last_reason
+        end
+        if HOSTS and ((last_status == nil) or last_status >= 500) then HOSTS:set(dk, 1, 3) end
+        if (last_status == nil) or last_status >= 500 then qinc("host_down:" .. h) end
     end
 end
 
@@ -239,6 +255,20 @@ local elapsed_ms = math.floor(((ngx.now() - t0) * 1000) + 0.5)
 
 if not res_ok then
     qinc("all_failed")
+    -- ═══ [t62] BUFFER INFINITO: servir el ÚLTIMO MANIFIESTO BUENO ═══════════
+    -- Sólo metadata: no se proxea vídeo ni se inventa 206. Si hay last-good para
+    -- esta ruta se responde 200 con `#EXT-X-APE-STALE:1`; si no, 502 como antes.
+    local st = lastgood.serve_stale(QOE, ngx.var.host, path, ngx.time())
+    if st then
+        qinc("lastgood_served")
+        for k, v in pairs(st.headers) do ngx.header[k] = v end
+        ngx.header["X-APE-Reason"] = tostring(last_reason)
+        ngx.header["X-APE-Upstream-Ms"] = tostring(elapsed_ms)
+        ngx.status = 200
+        ngx.print(st.body)
+        return
+    end
+    qinc("lastgood_miss")
     ngx.status = (last_status and last_status >= 400) and last_status or 502
     ngx.header["Content-Type"] = "application/json"
     ngx.say(cjson.encode({ ok = false, error = "all_upstreams_failed",
@@ -480,6 +510,15 @@ ngx.header["X-APE-Floor-Fuse"]  = string.format(
     fuse_injected, fuse_subst, FUSE_TRIGGER, FUSE_RECOVER, FUSE_HOLD,
     fuse_buf and tostring(fuse_buf) or "na")
 ngx.print(rebased)
+
+-- ═══ [t62] BUFFER INFINITO: refrescar el ÚLTIMO MANIFIESTO BUENO ═══════════
+-- Sólo 200 con forma de manifiesto (nunca 4xx de auth ni JSON de error).
+-- Best-effort: si el dict está lleno o el body es enorme, no se cachea y ya está.
+local _lg_ok, _lg_why = lastgood.should_cache(ngx.status, rebased, ctype)
+if lastgood and _lg_ok then
+    lastgood.put(QOE, ngx.var.host, path, rebased, final_origin, 25, ngx.time())
+    qinc("lastgood_put")
+end
 
 -- ?? QoE ??????????????????????????????????????????????????????????????????
 qinc("req")
