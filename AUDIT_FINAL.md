@@ -103,6 +103,22 @@ La cabecera declara “154 headers” (línea 7) y distribuciones +30/+34/+36/+2
 - heredar 50–80 ms (inferencia, viola E6).
 Ninguna mide la latencia real sin código o sin una fuente de tiempo común.
 
+## A06 — Entregable Excel
+
+**Estado:** VERIFIED (artefacto existe y es byte-idéntico en dos rutas).
+
+**Ruta real:** `deliverables/LAB_2026-10-26/APE_M3U8_LAB_v8_FIXED_CERTIFIED.xlsm`.  
+**Duplicado:** `deliverables/VALIDACION_ENTREGA_2026-10-28/lab/APE_M3U8_LAB_v8_FIXED_CERTIFIED.xlsm`.
+
+**Identidad:** 3.425.790 bytes; SHA-256 `813a05aa3aa6070c33c6172933bbfd2714791340af48fb70686de33c742a2399`; misma hash en el duplicado.
+
+**Estructura OOXML:** 111 entradas; `xl/vbaProject.bin` presente; 22 hojas `xl/worksheets/sheet*.xml` (se listaron hasta sheet22). No se ejecutó ninguna macro; solo se leyó el ZIP.
+
+**Consumidores:** `verify_bulletproof.py:4`, `synthesize_bulletproof_certified.py:5`, `run_export.py:4`, `fix_excel.py:6`.
+
+**Conclusión:** el entregable Excel existe y es real; no hay GAP total en A06. La auditoría no valida el contenido de cada celda ni la ejecución de macros en este paso.
+
+
 
 
 

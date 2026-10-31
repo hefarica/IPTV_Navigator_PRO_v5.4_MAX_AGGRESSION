@@ -1,21 +1,19 @@
 {
-  "unit": "A05",
+  "unit": "A06",
   "phase": "AUDIT",
-  "state": "BLOCKED",
-  "pct": 69,
+  "state": "VERIFIED",
+  "pct": 71,
   "evidence": {
-    "capture": "ScreenCaptureService.kt:60 ImageReader w/2 x h/2; :71 createVirtualDisplay; :117-120 classifier; :129 StatePublisher",
-    "receiver": "MetaReceiver.kt:24-88 /ara/sse; StatePublisher.kt:19-51; MetaMapper.kt:12-61",
-    "buffer": "BitrateConfig.kt:12 floor/ceil; BitrateGuard.kt:95-96 bufferPct vs bufferMaxS; no floor 60%/<1ms",
-    "latency": "no capture-to-display instrumentation in ScreenCaptureService; 50-80ms is LSFG repo, not measured here"
+    "artifact": "deliverables/LAB_2026-10-26/APE_M3U8_LAB_v8_FIXED_CERTIFIED.xlsm",
+    "sha256": "813a05aa3aa6070c33c6172933bbfd2714791340af48fb70686de33c742a2399",
+    "size": 3425790,
+    "duplicate": "deliverables/VALIDACION_ENTREGA_2026-10-28/lab/APE_M3U8_LAB_v8_FIXED_CERTIFIED.xlsm identical",
+    "ooxml": "111 entries; vbaProject.bin present; 22 worksheet XML",
+    "consumers": "verify_bulletproof.py:4; synthesize_bulletproof_certified.py:5; run_export.py:4; fix_excel.py:6"
   },
-  "options": [
-    "O1 instrument capture/display timestamps in ScreenCaptureService (N1; functional code prohibited at GATE 0)",
-    "O2 external screenrecord / presentation timing (N0; does not measure capture-to-display)",
-    "O3 reuse LSFG 50-80ms as this device latency (N5; violates E6)"
-  ],
-  "chosen": "none",
+  "options": ["O1 audit existing Excel", "O2 regenerate via COM", "O3 create a new workbook"],
+  "chosen": "O1",
   "commit": null,
-  "blocked_reason": "A05 requires real capture-to-display latency. No instrumentation exists; O1 edits functional code with GATE 0 red, O2 measures presentation only, O3 is inference from another device/repo.",
-  "pending": ["A06", "A07", "A08", "A09", "A10", "A11", "A12", "A13", "A14"]
+  "blocked_reason": null,
+  "pending": ["A07", "A08", "A09", "A10", "A11", "A12", "A13", "A14"]
 }
