@@ -57,9 +57,9 @@ if [ "$APPLY" -ne 1 ]; then
   printf '   dirs: /etc/ara-x (0750 root:www-data) · /var/lib/ara-x (0750 www-data:www-data)\n'
   printf '   sql : _vps_stage/sql/ara_sync.sql → /var/lib/ara-x/sync.db\n'
   [ -n "$KEY" ] && printf '   key : key_id=%s device_ids=%s → /etc/ara-x/sync-keys.json (0600 www-data)\n' "$KEY_ID" "$DEVICE_IDS" \
-                 || printf '   key : SKIP (sin ARA_SYNC_KEY; /sync devolverá 503)\n'
+                 || printf '   key : FALTA ARA_SYNC_KEY → el deploy abortará con rollback\n'
   [ -n "$ART_SHA" ] && printf '   ref : %s… → /etc/ara-x/artifact.json (0600)\n' "${ART_SHA:0:12}" \
-                     || printf '   ref : SKIP (sin ARA_SYNC_ARTIFACT_SHA256)\n'
+                     || printf '   ref : FALTA ARA_SYNC_ARTIFACT_SHA256 → el deploy abortará con rollback\n'
   exit 0
 fi
 

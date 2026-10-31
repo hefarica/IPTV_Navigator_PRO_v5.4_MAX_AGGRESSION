@@ -109,7 +109,7 @@ function signed(seq, nonce) {
   const raw = JSON.stringify(payload(seq, nonce));
   const bodyHash = crypto.createHash('sha256').update(raw).digest('hex');
   const canonical = ['ARA-X-SYNC-V1', DEVICE, String(seq), String(JSON.parse(raw).ts), nonce, bodyHash].join('\n');
-  const sig = crypto.createHmac('sha256', Buffer.from(KEY, 'hex')).update(canonical).digest('hex');
+  const sig = crypto.createHmac('sha256', KEY).update(canonical).digest('hex');
   return {
     raw,
     headers: {
@@ -168,7 +168,7 @@ function signed(seq, nonce) {
         const sig = r.headers['x-ara-sig'] || '';
         const bodyHash = crypto.createHash('sha256').update(r.body).digest('hex');
         const canonical = ['ARA-X-SYNC-RESP-V1', DEVICE, '2', String(JSON.parse(r.body).ts), bodyHash].join('\n');
-        const want = crypto.createHmac('sha256', Buffer.from(KEY, 'hex')).update(canonical).digest('hex');
+        const want = crypto.createHmac('sha256', KEY).update(canonical).digest('hex');
         record('200 firma de respuesta', sig === want ? 200 : 0, 200);
       }
     } catch (e) { record('200 HMAC válido', 0, 200, e.message); }
