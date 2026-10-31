@@ -26,7 +26,14 @@ class SseTestActivity : Activity() {
                 else -> ""
             }.trim()
         }.getOrDefault("")
-        receiver = MetaReceiver(tokenProvider = { token }).also { it.connect() }
+        val mapper = MetaMapper(this)
+        receiver = MetaReceiver(
+            tokenProvider = { token },
+            onEvent = { json ->
+                Log.i("ARA-SSE", "event: $json")
+                mapper.apply(json)
+            }
+        ).also { it.connect() }
         // Real overlay window: ViewRootImpl belongs to the overlay, not the Activity.
         val wm = getSystemService(WindowManager::class.java)
         val pv = PrivacyOverlayView(this)
