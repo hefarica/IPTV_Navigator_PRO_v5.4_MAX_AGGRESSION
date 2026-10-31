@@ -1,23 +1,23 @@
 {
-  "unit": "I03",
+  "unit": "I04",
   "phase": "IMPLEMENTATION",
   "state": "VERIFIED",
-  "pct": 96,
+  "pct": 97,
   "audit_gate0": "GREEN_WITH_A05_BLOCKED",
   "evidence": {
-    "artifact": "IPTV_v5.4_MAX_AGGRESSION/vps/ape_hls_generators.php:577,595",
-    "change": "mediaSeq = intdiv(time(), max(1, targetDur)); tag unchanged",
-    "audit_correction": "A03/A09/G3 corrected: tag existed with segCount-5 source",
-    "result": "php -l=0; monotonic=YES; test_exit=0",
+    "artifact": "IPTV_v5.4_MAX_AGGRESSION/vps/ape_hls_generators.php:605,614-617",
+    "helper": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/lib/ape_hls_state.php",
+    "test": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/tests/ape_hls_state_test.php",
+    "result": "ALL_OK; test_exit=0; lint_exit=0; no repeated discontinuity after restart",
     "deploy": "none"
   },
   "options": [
-    "O1 fix existing ape_hls_generators source to epoch (N1)",
-    "O2 new JS sequence module (N4)",
-    "O3 leave segCount-5 and document (N0)"
+    "O1 extend ape_hls_generators with state from worker.pid (N1)",
+    "O2 emit DISCONTINUITY on every manifest (N1)",
+    "O3 new HLS generator (N4)"
   ],
   "chosen": "O1",
   "commit": null,
   "blocked_reason": null,
-  "pending": ["I04", "I05", "I06", "I07", "I08", "I09", "I10", "I11", "I12", "I13", "I14", "I15", "I16", "I17"]
+  "pending": ["I05", "I06", "I07", "I08", "I09", "I10", "I11", "I12", "I13", "I14", "I15", "I16", "I17"]
 }

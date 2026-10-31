@@ -260,11 +260,11 @@ nginx -t                    → syntax ok / test successful
 | G1 cursor `/dev/shm/ape_cursor/` | contrato `:5`; grep global: no writer/reader de `ape_cursor` | blocker | ABIERTO |
 | G2 ventana persistente 30/10 | `cmaf_worker.php:104-107` window 10 + extra 20; sin persistencia | high | ABIERTO |
 | G3 `start_number_source=epoch` | `ape_hls_generators.php:595` emite; `:577` usaba `segCount-5`; I03 local lo cambia a epoch | high | PARCIAL (I03 local, sin deploy) |
-| G4 `DISCONTINUITY` estándar | `m3u8-typed-arrays-ultimate.js:6354-6356` solo tags APE-CMAF; no estándar | high | ABIERTO |
+| G4 `DISCONTINUITY` estándar | `ape_hls_generators.php` I04 local: `DISCONTINUITY`/`DISCONTINUITY-SEQUENCE`; producción sin deploy | high | PARCIAL (I04 local) |
 | G5 resume `last_delivered+1` | `prefetch_segment.lua:46-54` elige el último `.ts`; no `+1` | blocker | ABIERTO |
 | G6 retención 30/10 / rm solo cambio de canal | `cmaf_worker.php:104-107`; no hay rm por canal | high | ABIERTO |
 | G7 resolver sirve vía CMAF | `cmaf_proxy.php:53-69` exige `origin_url.txt`; A07: nadie lo escribe | blocker | ABIERTO |
-| G8 `PROGRAM-DATE-TIME` estándar | `m3u8-typed-arrays-ultimate.js:6356` solo `APE-CMAF-PROGRAM-DATE-TIME` | high | ABIERTO |
+| G8 `PROGRAM-DATE-TIME` estándar | `ape_hls_generators.php` I04 local: tag antes del primer `EXTINF`; producción sin deploy | high | PARCIAL (I04 local) |
 | G9 `hls_time` al GOP real | `cmaf_worker.php:100-102` usa `min_seg_duration=6`; no `hls_time` | medium | ABIERTO |
 | G10 Strike Tracker escribe cursor | `resolve_quality_unified.php:4414-4449` escribe strikes/trauma; `:4540` header; no cursor | high | ABIERTO |
 | G11 manifest cache 1s u off | `vps_configs/autopista-trap.conf:65` 5s; `:146` 20s | medium | ABIERTO |

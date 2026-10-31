@@ -15,6 +15,7 @@ define('APE_MODULES_COUNT', 13);
 // ─── PERFILES DE CALIDAD ─────────────────────────────────────────────────────
 $APE_PROFILES = [];
 require_once __DIR__ . '/ape_profiles.php';
+require_once __DIR__ . '/prisma/lib/ape_hls_state.php';
 
 // ─── USER AGENTS POOL ────────────────────────────────────────────────────────
 $UA_POOL = [
@@ -576,6 +577,14 @@ function serve_hls_fmp4_ignition(array $cd): void
     $targetDur = 2;
     $mediaSeq = intdiv(time(), max(1, $targetDur)); // I03/G3: epoch source, monotonic across restarts
 
+    // I04/G4+G8: worker.pid is the real restart signal.
+    $workerPid = '';
+    $pidPath = $cmafDir . '/worker.pid';
+    if (is_file($pidPath)) {
+        $workerPid = trim((string) @file_get_contents($pidPath));
+    }
+    $hlsState = ApeHlsState::transition($cmafDir, $workerPid, time());
+
     // ── Servir manifiesto HLS v7 con fMP4 ──
     header('Content-Type: application/vnd.apple.mpegurl; charset=utf-8');
     header('Cache-Control: no-cache, no-store, must-revalidate');
@@ -593,12 +602,21 @@ function serve_hls_fmp4_ignition(array $cd): void
     echo "#EXT-X-VERSION:7\n";
     echo "#EXT-X-TARGETDURATION:{$targetDur}\n";
     echo "#EXT-X-MEDIA-SEQUENCE:{$mediaSeq}\n";
+    echo "#EXT-X-DISCONTINUITY-SEQUENCE:{$hlsState['discontinuity_sequence']}\n";
     echo "#EXT-X-INDEPENDENT-SEGMENTS\n";
     // Segmento de inicialización fMP4 (contiene el átomo moov)
     echo "#EXT-X-MAP:URI=\"{$baseUrl}?sid={$ch}&seg=init-stream0.m4s\"\n";
 
     // Segmentos de media fMP4 (ventana deslizante)
+    $firstSegment = true;
     foreach ($window as $chunk) {
+        if ($firstSegment) {
+            if (!empty($hlsState['discontinuity'])) {
+                echo "#EXT-X-DISCONTINUITY\n";
+            }
+            echo "#EXT-X-PROGRAM-DATE-TIME:{$hlsState['program_date_time']}\n";
+            $firstSegment = false;
+        }
         $segName = basename($chunk);
         echo "#EXTINF:{$targetDur}.000,\n";
         echo "{$baseUrl}?sid={$ch}&seg={$segName}\n";

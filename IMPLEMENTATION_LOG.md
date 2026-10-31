@@ -93,4 +93,35 @@ test_exit=0
 
 **Límite:** la ruta de fallback `:724` conserva `MEDIA-SEQUENCE:0`; no se tocó en I03.
 
+## I04 — DISCONTINUITY + DISCONTINUITY-SEQUENCE + PROGRAM-DATE-TIME (G4/G8)
+
+**Estado:** VERIFIED (local; sin deploy).
+
+**Archivos:**
+
+- `IPTV_v5.4_MAX_AGGRESSION/vps/prisma/lib/ape_hls_state.php`
+- `IPTV_v5.4_MAX_AGGRESSION/vps/prisma/tests/ape_hls_state_test.php`
+- `IPTV_v5.4_MAX_AGGRESSION/vps/ape_hls_generators.php`
+
+**Lógica:** `worker.pid` es la señal de reinicio. Primer arranque: secuencia 0, sin `DISCONTINUITY`. PID nuevo: secuencia +1, `DISCONTINUITY` una vez. `PROGRAM-DATE-TIME` se emite antes del primer `EXTINF`.
+
+**Verificación (VPS temporal `/tmp/ara_i04c_*`):**
+
+```text
+PASS first start sequence 0
+PASS first start no discontinuity
+PASS program date time is UTC
+PASS same pid no discontinuity
+PASS same pid sequence stays 0
+PASS new pid discontinuity true
+PASS new pid sequence increments
+PASS after restart no repeated discontinuity
+PASS after restart sequence stays 1
+ALL_OK
+test_exit=0 lint_exit=0
+```
+
+**No desplegado:** no se copió a `/var/www/html`; la prueba usó `/dev/shm/ape_hls_test_*`.
+
+
 
