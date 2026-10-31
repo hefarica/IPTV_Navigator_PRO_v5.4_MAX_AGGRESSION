@@ -50,6 +50,10 @@
             android:name=".ScreenCaptureActivity"
             android:exported="true" />
 
+        <activity
+            android:name=".SseTestActivity"
+            android:exported="true" />
+
         <service
             android:name=".ScreenCaptureService"
             android:foregroundServiceType="mediaProjection"
