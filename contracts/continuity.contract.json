@@ -1,0 +1,31 @@
+{
+  "version": "1.0.0",
+  "cursor": {
+    "key": "md5(clientIp+ch_id)",
+    "store": "/dev/shm/ape_cursor/",
+    "ttl_s": 300,
+    "fields": ["media_sequence", "segment_uri", "byte_offset", "pts", "program_date_time"]
+  },
+  "resume": {
+    "start_at": "last_delivered+1",
+    "max_lookback_segments": 30
+  },
+  "manifest": {
+    "start_number_source": "epoch",
+    "discontinuity_on_restart": true,
+    "program_date_time": "required",
+    "list_size": 30,
+    "delete_threshold": 10
+  },
+  "window": {
+    "retention_segments": 30,
+    "rm_on": "channel_change_only"
+  },
+  "headers": ["X-APE-Cursor", "X-APE-Resume-Seq", "X-APE-Window-Span", "X-APE-Discontinuity-Seq"],
+  "states": ["SLATE", "FLAT", "DETAIL", "MOTION"],
+  "buffer": {
+    "floor_pct": 60,
+    "ceiling_pct": null
+  },
+  "ara_state_fields": ["class", "confidence", "buffer_pct", "bitrate_bps", "media_sequence", "timestamp"]
+}
