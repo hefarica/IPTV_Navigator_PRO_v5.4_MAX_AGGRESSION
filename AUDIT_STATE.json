@@ -1,18 +1,21 @@
 {
-  "unit": "A04",
+  "unit": "A05",
   "phase": "AUDIT",
-  "state": "VERIFIED",
+  "state": "BLOCKED",
   "pct": 69,
   "evidence": {
-    "php": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/events-sse.php:20-30 auth; :32 device_id; :76-91 policy_deltas; :93-95 heartbeat; :102-104 close",
-    "nginx": "IPTV_v5.4_MAX_AGGRESSION/vps/nginx/snippets/prisma-ara-events.conf:15-40",
-    "trap": "vps_configs/autopista-trap.conf:20-24 raw IPv4 server; :128 444 /ara/ only in trap",
-    "measure": "php -l = 0; GET /ara/events = 401; no 444 public",
-    "commands": "no PRE_FILL_MAX/EMERGENCY_FILL/UNLIMITED_BITRATE"
+    "capture": "ScreenCaptureService.kt:60 ImageReader w/2 x h/2; :71 createVirtualDisplay; :117-120 classifier; :129 StatePublisher",
+    "receiver": "MetaReceiver.kt:24-88 /ara/sse; StatePublisher.kt:19-51; MetaMapper.kt:12-61",
+    "buffer": "BitrateConfig.kt:12 floor/ceil; BitrateGuard.kt:95-96 bufferPct vs bufferMaxS; no floor 60%/<1ms",
+    "latency": "no capture-to-display instrumentation in ScreenCaptureService; 50-80ms is LSFG repo, not measured here"
   },
-  "options": ["O1 audit existing SSE and trap scope", "O2 extend commands in events-sse", "O3 create a parallel endpoint"],
-  "chosen": "O1",
+  "options": [
+    "O1 instrument capture/display timestamps in ScreenCaptureService (N1; functional code prohibited at GATE 0)",
+    "O2 external screenrecord / presentation timing (N0; does not measure capture-to-display)",
+    "O3 reuse LSFG 50-80ms as this device latency (N5; violates E6)"
+  ],
+  "chosen": "none",
   "commit": null,
-  "blocked_reason": null,
-  "pending": ["A05", "A06", "A07", "A08", "A09", "A10", "A11", "A12", "A13", "A14"]
+  "blocked_reason": "A05 requires real capture-to-display latency. No instrumentation exists; O1 edits functional code with GATE 0 red, O2 measures presentation only, O3 is inference from another device/repo.",
+  "pending": ["A06", "A07", "A08", "A09", "A10", "A11", "A12", "A13", "A14"]
 }

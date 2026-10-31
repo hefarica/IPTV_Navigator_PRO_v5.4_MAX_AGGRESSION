@@ -83,5 +83,26 @@ La cabecera declara “154 headers” (línea 7) y distribuciones +30/+34/+36/+2
 
 **Verificación:** `php -l` en VPS → 0; `/ara/events` → 401.
 
+## A05 — APK, captura, clasificador, SSE y latencia
+
+**Estado:** BLOCKED (inventario de código completo; latencia real no instrumentada).
+
+**Captura:** `ScreenCaptureService.kt:60` crea `ImageReader` a `w/2 x h/2` (960×540 en este ONN); `:71` `createVirtualDisplay`; `:117` clasificación por `lapVar/motion`; `:128` log cada 15 frames; `:129` publica estado cada 30 frames.
+
+**Clasificador:** reglas Kotlin en `ScreenCaptureService.kt:117-120`; no es TFLite. No hay modelo ni confianza.
+
+**SSE:** `MetaReceiver.kt:24-88` (OkHttp, `/ara/sse`, reconexión exponencial); `StatePublisher.kt:19-51` (`/ara/state`, `source=ara_classifier`); `MetaMapper.kt:12-61` (levers/presets con clamp).
+
+**Buffer:** `BitrateConfig.kt:12` define bandas `floorKbps/ceilKbps`; `BitrateGuard.kt:95-96` calcula `bufferPct` contra `bufferMaxS`; el buffer libre 60%/<1 ms del contrato **no está implementado**.
+
+**Latencia:** grep de `latency|nanoTime|elapsedRealtime|capture.*time` no encuentra instrumentación de captura→display en `ScreenCaptureService`; solo hay timestamps de bitrate/glitch. La cifra 50–80 ms es del repo LSFG, no medida en este ONN.
+
+**Por qué BLOCKED:** A05 exige latencias reales. Las tres vías evaluadas:
+- instrumentar `ScreenCaptureService` (código funcional; prohibido con GATE 0 rojo),
+- `screenrecord` externo (mide presentación, no captura→display),
+- heredar 50–80 ms (inferencia, viola E6).
+Ninguna mide la latencia real sin código o sin una fuente de tiempo común.
+
+
 
 
