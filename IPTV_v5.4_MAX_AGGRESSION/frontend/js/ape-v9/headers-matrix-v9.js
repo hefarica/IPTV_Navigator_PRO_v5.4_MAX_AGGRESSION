@@ -4,16 +4,16 @@
  * ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
  * 
  * ARQUITECTURA DE EVASIÓN ACUMULATIVA
- * - 154 headers HTTP organizados en 5 niveles progresivos
+ * - 139 headers HTTP organizados en 5 niveles progresivos (+4 del contrato)
  * - Perfiles de coherencia TLS/HTTP/2 validados
  * - Compatibilidad: TiviMate, OTT Navigator, VLC, Kodi, ExoPlayer
  * 
  * NIVELES:
- *   L1 (SAFE)     : 28 headers - Conectividad básica
- *   L2 (STABLE)   : +30 headers - Smart TV estándar
- *   L3 (ADVANCED) : +34 headers - WAF bypass básico
- *   L4 (EXTREME)  : +36 headers - Client Hints + Spoofing
- *   L5 (ULTRA)    : +26 headers - Guerra total CDN
+ *   L1 (SAFE)     : 15 headers - Conectividad básica
+ *   L2 (STABLE)   : 16 headers - Smart TV estándar
+ *   L3 (ADVANCED) : 18 headers - WAF bypass básico
+ *   L4 (EXTREME)  : 25 headers - Client Hints + Spoofing
+ *   L5 (ULTRA)    : 65 headers - Guerra total CDN
  * 
  * AUTOR: APE Engine Team - IPTV Navigator PRO
  * VERSIÓN: 9.0.0-ULTIMATE
@@ -523,6 +523,15 @@
                 processed[key] = this._processValue(value, profile, context);
             }
 
+            // I17: merge the SSOT-generated header names, never duplicate an existing key.
+            const contractHeaders = (typeof window !== 'undefined' && Array.isArray(window.APE_CONTRACT_HEADERS))
+                ? window.APE_CONTRACT_HEADERS : [];
+            for (const key of contractHeaders) {
+                if (Object.prototype.hasOwnProperty.call(processed, key)) continue;
+                const value = this._contractValue(key, context);
+                if (value !== '') processed[key] = value;
+            }
+
             // 🛡️ PROXY-SAFE: Eliminar headers que causan 407/403
             // Sincronizado con PROXY_BANNED_HEADERS de m3u8-typed-arrays-ultimate.js
             const BANNED = new Set([
@@ -553,6 +562,20 @@
         _levelToProfileId(level) {
             const mapping = { 5: 'P1', 4: 'P2', 3: 'P3', 2: 'P4', 1: 'P5' };
             return mapping[level] || 'P3';
+        }
+
+        /**
+         * I17: derive the context key from the contract header name.
+         * X-APE-Resume-Seq -> resumeSeq; no per-header switch/duplicate list.
+         */
+        _contractValue(header, context) {
+            if (!context || typeof header !== 'string') return '';
+            const suffix = header.replace(/^X-APE-/, '');
+            const key = suffix.split('-')
+                .map((part, i) => i === 0 ? part.toLowerCase() : part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
+                .join('');
+            const value = context[key];
+            return value === undefined || value === null ? '' : String(value);
         }
 
         /**

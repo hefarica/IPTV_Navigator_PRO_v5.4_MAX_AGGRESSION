@@ -443,6 +443,37 @@ bytes   3425790
 
 **Límite:** no se inyectaron columnas dentro del `.xlsm` certificado (rompería VBA/SHA); el exportador es un artefacto nuevo y aditivo.
 
+## I17 — Matriz de cabeceras única derivada del contrato
+
+**Estado:** VERIFIED (local; sin deploy).
+
+**Archivos:**
+
+- `scripts/gen_contract_headers.py`
+- `IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/headers-contract.js` (generado)
+- `IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/headers-matrix-v9.js:526-535,562-576`
+- `IPTV_v5.4_MAX_AGGRESSION/frontend/index-v4.html:4087`
+
+**Cambio:** las 4 cabeceras del contrato se generan desde `contracts/continuity.contract.json` a `window.APE_CONTRACT_HEADERS`; `getHeaders()` las fusiona por nombre, sin sobrescribir una existente y derivando el valor del contexto (`cursor`, `resumeSeq`, `windowSpan`, `discontinuitySeq`). La matriz sigue siendo una sola.
+
+**Verificación:**
+
+```text
+gen_exit=0 headers=4
+matrix_check=0
+contract_check=0
+CONTRACT_PRESENT=4/4
+HEADERS_TOTAL=113
+DUPES=0
+VALUES={"X-APE-Cursor":"/s/77.ts","X-APE-Resume-Seq":"77","X-APE-Window-Span":"30","X-APE-Discontinuity-Seq":"0"}
+OK
+node_exit=0
+```
+
+**Nota:** 139 es el total crudo de `LAYERS`; `getHeaders(5)` devuelve 113 tras el bloqueo de headers tóxicos. La cabecera del archivo se corrigió de 154 a 139.
+
+**Límite:** no se cargó en navegador real; la prueba usa `vm` con `window`/`localStorage`.
+
 
 
 
