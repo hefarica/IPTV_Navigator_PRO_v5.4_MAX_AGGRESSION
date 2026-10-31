@@ -50,7 +50,11 @@ if [ "$n_rows" -ne "$n_manifest" ]; then
   c_bad "   ABORTA: manifiesto=$n_manifest filas, iteradas=$n_rows (algún comando consumió el stdin del loop)"
   exit 10
 fi
-[ "$changed" -eq 0 ] && { c_ok "   Nada que desplegar (todo idéntico: $n_rows/$n_manifest filas verificadas)."; exit 0; }
+if [ "$changed" -eq 0 ]; then
+  # [t35-fix] NO salir: /sync puede necesitar provision/include/reload aunque
+  # los ficheros ya estén idénticos (p.ej. tras un verify fallido con rollback).
+  c_warn "   Sin cambios de ficheros ($n_rows/$n_manifest filas); continúo con /sync, reload y verify."
+fi
 
 c_hdr "2 · backup de los destinos afectados"
 while IFS=$'\t' read -r src dst mode owner note <&3; do   # [t115]
