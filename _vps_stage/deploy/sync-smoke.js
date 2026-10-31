@@ -18,13 +18,10 @@
  * · 200 HMAC válido (si hay clave) · /ara/events 200 (si hay token) · /lists/ 200.
  */
 
-const https = require('node:https');
 const crypto = require('node:crypto');
-const net = require('node:net');
 const { URL } = require('node:url');
 
 const BASE = new URL(process.env.SYNC_BASE || 'https://iptv-ape.duckdns.org');
-const IP = process.env.SYNC_IP || '';
 const DEVICE = process.env.SYNC_DEVICE_ID || 'onn4k-001';
 const KEY = process.env.SYNC_KEY || '';
 const KEY_ID = process.env.SYNC_KEY_ID || 'k1';
@@ -48,31 +45,20 @@ function record(name, status, expect, detail = '') {
   return ok;
 }
 
-function request(method, path, body, headers = {}) {
-  return new Promise((resolve, reject) => {
-    const opts = {
-      method,
-      hostname: BASE.hostname,
-      port: BASE.port || 443,
-      path,
-      headers: { Host: BASE.hostname, ...headers },
-      timeout: 15000
-    };
-    // Sólo forzar IP si es una dirección válida; si falta o es un hostname,
-    // dejar que Node resuelva por DNS (el runner tiene DNS; el VPS no es fiable).
-    if (IP && net.isIP(IP)) {
-      opts.lookup = (host, opts2, cb) => cb(null, IP, 4);
-    }
-    const req = https.request(opts, (res) => {
-      const chunks = [];
-      res.on('data', (c) => chunks.push(c));
-      res.on('end', () => resolve({ status: res.statusCode, headers: res.headers, body: Buffer.concat(chunks).toString('utf8') }));
-    });
-    req.on('timeout', () => req.destroy(new Error('timeout')));
-    req.on('error', reject);
-    if (body !== undefined) req.write(body);
-    req.end();
+async function request(method, path, body, headers = {}) {
+  // fetch resuelve por DNS estándar y no acepta el `lookup` roto que usaba
+  // https.request con SYNC_IP. HEAD evita descargar la lista de ~513 MB.
+  const res = await fetch(new URL(path, BASE), {
+    method,
+    headers,
+    body: body === undefined ? undefined : body,
+    signal: AbortSignal.timeout(15000)
   });
+  return {
+    status: res.status,
+    headers: Object.fromEntries(res.headers),
+    body: await res.text()
+  };
 }
 
 function payload(seq, nonce) {
