@@ -16,6 +16,8 @@ define('APE_MODULES_COUNT', 13);
 $APE_PROFILES = [];
 require_once __DIR__ . '/ape_profiles.php';
 require_once __DIR__ . '/prisma/lib/ape_hls_state.php';
+require_once __DIR__ . '/prisma/lib/ape_cursor.php';
+require_once __DIR__ . '/prisma/lib/ape_resume.php';
 
 // ─── USER AGENTS POOL ────────────────────────────────────────────────────────
 $UA_POOL = [
@@ -584,6 +586,22 @@ function serve_hls_fmp4_ignition(array $cd): void
         $workerPid = trim((string) @file_get_contents($pidPath));
     }
     $hlsState = ApeHlsState::transition($cmafDir, $workerPid, time());
+
+    // I05/G5: resume at last_delivered+1 when the client has a cursor.
+    $clientIp = $_SERVER['REMOTE_ADDR'] ?? '';
+    $cursor = $clientIp !== '' ? ApeCursor::read($clientIp, $ch) : null;
+    $startSeq = ApeCursor::startSequence($cursor);
+    if ($cursor !== null) {
+        $resumeWindow = ApeResume::window($chunks, $startSeq);
+        if ($resumeWindow !== []) {
+            $window = $resumeWindow;
+            $mediaSeq = ApeResume::firstSequence($resumeWindow, $startSeq);
+        }
+        $prefetchUrls = ApeResume::prefetchUrls($baseUrl, $ch, max(0, $startSeq - 1), 2);
+        if ($prefetchUrls !== []) {
+            header('X-APE-Prefetch: ' . implode(',', $prefetchUrls));
+        }
+    }
 
     // ── Servir manifiesto HLS v7 con fMP4 ──
     header('Content-Type: application/vnd.apple.mpegurl; charset=utf-8');

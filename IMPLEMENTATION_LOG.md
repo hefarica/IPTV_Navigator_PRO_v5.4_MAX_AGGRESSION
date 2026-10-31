@@ -123,5 +123,35 @@ test_exit=0 lint_exit=0
 
 **No desplegado:** no se copió a `/var/www/html`; la prueba usó `/dev/shm/ape_hls_test_*`.
 
+## I05 — Reanudación desde last_delivered+1 (G5)
+
+**Estado:** VERIFIED (local; sin deploy).
+
+**Archivos:**
+
+- `IPTV_v5.4_MAX_AGGRESSION/vps/prisma/lib/ape_resume.php`
+- `IPTV_v5.4_MAX_AGGRESSION/vps/prisma/tests/ape_resume_test.php`
+- `IPTV_v5.4_MAX_AGGRESSION/vps/ape_hls_generators.php` (cursor + ventana + `X-APE-Prefetch`)
+
+**Lógica:** si el cliente tiene cursor, `ApeResume::window()` filtra `chunk-stream0-*` desde `last_delivered+1`; `mediaSeq` pasa al primer segmento de esa ventana; `prefetchUrls()` calcula `+1/+2` y se publica en `X-APE-Prefetch`.
+
+**Verificación (VPS temporal `/tmp/ara_i05_55598`):**
+
+```text
+PASS window starts at 106
+PASS window excludes 105
+PASS window includes 110
+PASS missing resume falls back to last 5
+PASS no cursor keeps last 5
+PASS prefetch has 2 URLs
+PASS prefetch URL +1
+PASS prefetch URL +2
+ALL_OK
+test_exit=0 lint_exit=0
+```
+
+**Límite:** I05 selecciona URLs de prefetch; no ejecuta la descarga HTTP. El prefetch real queda para la capa que consuma `X-APE-Prefetch`.
+
+
 
 

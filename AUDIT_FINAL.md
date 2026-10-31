@@ -261,7 +261,7 @@ nginx -t                    → syntax ok / test successful
 | G2 ventana persistente 30/10 | `cmaf_worker.php:104-107` window 10 + extra 20; sin persistencia | high | ABIERTO |
 | G3 `start_number_source=epoch` | `ape_hls_generators.php:595` emite; `:577` usaba `segCount-5`; I03 local lo cambia a epoch | high | PARCIAL (I03 local, sin deploy) |
 | G4 `DISCONTINUITY` estándar | `ape_hls_generators.php` I04 local: `DISCONTINUITY`/`DISCONTINUITY-SEQUENCE`; producción sin deploy | high | PARCIAL (I04 local) |
-| G5 resume `last_delivered+1` | `prefetch_segment.lua:46-54` elige el último `.ts`; no `+1` | blocker | ABIERTO |
+| G5 resume `last_delivered+1` | `ape_hls_generators.php` I05 local: cursor + `ApeResume::window`; prefetch URLs +1/+2; producción sin deploy | high | PARCIAL (I05 local) |
 | G6 retención 30/10 / rm solo cambio de canal | `cmaf_worker.php:104-107`; no hay rm por canal | high | ABIERTO |
 | G7 resolver sirve vía CMAF | `cmaf_proxy.php:53-69` exige `origin_url.txt`; A07: nadie lo escribe | blocker | ABIERTO |
 | G8 `PROGRAM-DATE-TIME` estándar | `ape_hls_generators.php` I04 local: tag antes del primer `EXTINF`; producción sin deploy | high | PARCIAL (I04 local) |

@@ -1,23 +1,24 @@
 {
-  "unit": "I04",
+  "unit": "I05",
   "phase": "IMPLEMENTATION",
   "state": "VERIFIED",
-  "pct": 97,
+  "pct": 98,
   "audit_gate0": "GREEN_WITH_A05_BLOCKED",
   "evidence": {
-    "artifact": "IPTV_v5.4_MAX_AGGRESSION/vps/ape_hls_generators.php:605,614-617",
-    "helper": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/lib/ape_hls_state.php",
-    "test": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/tests/ape_hls_state_test.php",
-    "result": "ALL_OK; test_exit=0; lint_exit=0; no repeated discontinuity after restart",
-    "deploy": "none"
+    "artifact": "IPTV_v5.4_MAX_AGGRESSION/vps/ape_hls_generators.php:590-608",
+    "helper": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/lib/ape_resume.php",
+    "test": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/tests/ape_resume_test.php",
+    "result": "ALL_OK; window starts at 106; excludes 105; prefetch +1/+2; test_exit=0 lint_exit=0",
+    "deploy": "none",
+    "limit": "no HTTP prefetch executed; URL selection only"
   },
   "options": [
-    "O1 extend ape_hls_generators with state from worker.pid (N1)",
-    "O2 emit DISCONTINUITY on every manifest (N1)",
-    "O3 new HLS generator (N4)"
+    "O1 integrate cursor/resume into existing HLS generator (N1)",
+    "O2 modify prefetch_segment.lua to prefetch last+1 (N1)",
+    "O3 new playlist builder (N4)"
   ],
   "chosen": "O1",
   "commit": null,
   "blocked_reason": null,
-  "pending": ["I05", "I06", "I07", "I08", "I09", "I10", "I11", "I12", "I13", "I14", "I15", "I16", "I17"]
+  "pending": ["I06", "I07", "I08", "I09", "I10", "I11", "I12", "I13", "I14", "I15", "I16", "I17"]
 }
