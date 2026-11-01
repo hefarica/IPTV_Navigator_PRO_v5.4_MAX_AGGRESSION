@@ -73,17 +73,26 @@ function stopCurrent(reason) {
   try { fs.rmSync(c.dir, { recursive: true, force: true }); } catch (_) {}
 }
 
-function start(id, spec) {
+function start(id, spec, sdr) {
   stopCurrent('switch');
   const src = probeSource(spec);
-  const copy4k = src.width >= 3840 && src.height >= 2160 &&
+  const copy4k = !sdr && src.width >= 3840 && src.height >= 2160 &&
     (src.transfer === 'smpte2084' || src.transfer === 'arib-std-b67') &&
     (src.codec === 'hevc' || src.codec === 'h264');
-  const dir = path.join(OUT_ROOT, id);
+  const dir = path.join(OUT_ROOT, id, sdr ? 'sdr' : '');
   fs.mkdirSync(dir, { recursive: true });
   for (const f of fs.readdirSync(dir)) fs.rmSync(path.join(dir, f), { recursive: true, force: true });
 
-  const videoArgs = copy4k
+  const videoArgs = sdr
+    ? [
+      '-vf', "scale=w='max(iw,1920)':h='max(ih,1080)':force_original_aspect_ratio=decrease:force_divisible_by=2:flags=lanczos,setparams=color_primaries=bt709:color_trc=bt709:colorspace=bt709:range=limited,format=yuv420p",
+      '-pix_fmt', 'yuv420p',
+      '-color_primaries', 'bt709', '-color_trc', 'bt709', '-colorspace', 'bt709',
+      '-c:v', 'libx264', '-preset', 'veryfast', '-tune', 'zerolatency',
+      '-profile:v', 'high', '-level:v', '4.2', '-tag:v', 'avc1',
+      '-b:v', '4000k', '-maxrate', '4400k', '-bufsize', '8000k',
+    ]
+    : copy4k
     ? ['-c:v', 'copy', '-tag:v', 'hvc1']
     : [
       '-vf', "scale=w='max(iw,1920)':h='max(ih,1080)':force_original_aspect_ratio=decrease:force_divisible_by=2:flags=lanczos,setparams=color_primaries=bt709:color_trc=bt709:colorspace=bt709:range=limited,zscale=t=linear:npl=100,format=gbrpf32le,zscale=p=bt2020:transfer=smpte2084:matrix=bt2020nc:primaries=bt2020,format=yuv420p10le",
@@ -96,10 +105,12 @@ function start(id, spec) {
     ];
   // Some 4K provider audio is EAC3 with 0 channels / no sample rate.
   // Do not break the video MPD: if audio is invalid, emit video-only.
-  const audioArgs = copy4k
+  const audioArgs = sdr
+    ? (src.audioOk ? ['-c:a', 'aac', '-b:a', '128k', '-ac', '2'] : ['-an'])
+    : copy4k
     ? (src.audioOk ? ['-c:a', 'aac', '-b:a', '256k', '-ac', '2'] : ['-an'])
     : ['-c:a', 'aac', '-b:a', '128k', '-ac', '2'];
-  const hasAudio = !(copy4k && !src.audioOk);
+  const hasAudio = sdr ? src.audioOk : !(copy4k && !src.audioOk);
   const args = [
     '-hide_banner', '-nostdin', '-loglevel', 'warning',
     '-user_agent', spec.ua || 'VLC/3.0.19 LibVLC/3.0.19',
@@ -124,16 +135,16 @@ function start(id, spec) {
     stdio: ['ignore', 'ignore', 'pipe'],
   });
   current = {
-    id, child, dir, lastAccess: Date.now(), started: Date.now(),
+    id, sdr: !!sdr, child, dir, lastAccess: Date.now(), started: Date.now(),
     copy4k,
-    hdr: copy4k || src.transfer === 'smpte2084' || src.transfer === 'arib-std-b67',
-    width: copy4k ? src.width : Math.max(1920, src.width || 0),
-    height: copy4k ? src.height : Math.max(1080, src.height || 0),
-    codecString: copy4k ? 'hvc1.2.4.L153.B0' : 'hvc1.2.4.L123.B0',
+    hdr: !sdr && (copy4k || src.transfer === 'smpte2084' || src.transfer === 'arib-std-b67'),
+    width: sdr ? Math.max(1920, src.width || 0) : (copy4k ? src.width : Math.max(1920, src.width || 0)),
+    height: sdr ? Math.max(1080, src.height || 0) : (copy4k ? src.height : Math.max(1080, src.height || 0)),
+    codecString: sdr ? 'avc1.640028' : (copy4k ? 'hvc1.2.4.L153.B0' : 'hvc1.2.4.L123.B0'),
     audioCodec: hasAudio ? 'mp4a.40.2' : '',
-    bandwidth: copy4k ? 20000000 : 3000000,
+    bandwidth: sdr ? 4500000 : (copy4k ? 20000000 : 3000000),
   };
-  log('START', id, 'pid=' + child.pid, 'copy4k=' + copy4k, 'src=' + src.width + 'x' + src.height + '/' + src.transfer);
+  log('START', id, 'pid=' + child.pid, 'sdr=' + !!sdr, 'copy4k=' + copy4k, 'src=' + src.width + 'x' + src.height + '/' + src.transfer);
   child.stderr.on('data', d => {
     const s = String(d).trim();
     if (s) log('FFMPEG', s.slice(0, 300));
@@ -145,12 +156,12 @@ function start(id, spec) {
   });
 }
 
-function waitForFile(id, name, cb) {
-  const file = path.join(OUT_ROOT, id, name);
+function waitForFile(id, name, cb, sdr) {
+  const file = path.join(OUT_ROOT, id, sdr ? 'sdr' : '', name);
   const t0 = Date.now();
   const tick = () => {
     if (fs.existsSync(file)) return cb(null, file);
-    if (!current || current.id !== id) return cb(new Error('stream stopped'));
+    if (!current || current.id !== id || !!current.sdr !== !!sdr) return cb(new Error('stream stopped'));
     if (Date.now() - t0 > WAIT_MS) return cb(new Error('startup timeout'));
     setTimeout(tick, 200);
   };
@@ -220,14 +231,15 @@ function publicBase(req) {
   return proto + '://' + (req.headers.host || 'iptv-ape.duckdns.org') + '/jit';
 }
 
-function manifestJson(req, id) {
+function manifestJson(req, id, sdr) {
   const base = publicBase(req);
-  const active = !!(current && current.id === id);
+  const prefix = '/live/' + id + (sdr ? '/sdr' : '');
+  const active = !!(current && current.id === id && !!current.sdr === !!sdr);
   return {
-    version: '1.0', channel: id, status: active ? 'active' : 'inactive',
+    version: '1.0', channel: id, status: active ? 'active' : 'inactive', variant: sdr ? 'sdr' : 'hdr',
     formats: {
-      hls: { url: base + '/live/' + id + '/master.m3u8', protocol: 'HLS', container: 'CMAF/fMP4' },
-      dash: { url: base + '/live/' + id + '/manifest.mpd', protocol: 'DASH', container: 'CMAF/fMP4' },
+      hls: { url: base + prefix + '/master.m3u8', protocol: 'HLS', container: 'CMAF/fMP4' },
+      dash: { url: base + prefix + '/manifest.mpd', protocol: 'DASH', container: 'CMAF/fMP4' },
     },
     streams: [{
       bandwidth: current ? current.bandwidth : 3000000,
@@ -296,32 +308,34 @@ const server = http.createServer((req, res) => {
       uptime_s: current ? Math.round((Date.now() - current.started) / 1000) : 0,
     }));
   }
-  const jm = u.pathname.match(/^\/live\/([^/]+)\/manifest\.json$/);
+  const jm = u.pathname.match(/^\/live\/([^/]+)\/(sdr\/)?manifest\.json$/);
   if (jm) {
     const id = safeId(jm[1]);
     if (!id) { res.writeHead(400); return res.end('bad channel'); }
+    const sdr = !!jm[2];
     // Start on manifest request so a player that asks JSON first also warms.
     const map = loadMap();
     if (!map[id] || !map[id].url) { res.writeHead(404); return res.end('unknown channel'); }
-    if (!current || current.id !== id) start(id, map[id]);
+    if (!current || current.id !== id || !!current.sdr !== sdr) start(id, map[id], sdr);
     current.lastAccess = Date.now();
     res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
-    return res.end(JSON.stringify(manifestJson(req, id)));
+    return res.end(JSON.stringify(manifestJson(req, id, sdr)));
   }
-  const m = u.pathname.match(/^\/live\/([^/]+)\/(master\.m3u8|index\.m3u8|manifest\.mpd|media_[0-9]+\.m3u8|init-[0-9]+\.m4s|chunk-[0-9]+-[0-9]+\.m4s)$/);
+  const m = u.pathname.match(/^\/live\/([^/]+)\/(sdr\/)?(master\.m3u8|index\.m3u8|manifest\.mpd|media_[0-9]+\.m3u8|init-[0-9]+\.m4s|chunk-[0-9]+-[0-9]+\.m4s)$/);
   if (!m) { res.writeHead(404); return res.end('not found'); }
   const id = safeId(m[1]);
   if (!id) { res.writeHead(400); return res.end('bad channel'); }
+  const sdr = !!m[2];
   const map = loadMap();
   if (!map[id] || !map[id].url) { res.writeHead(404); return res.end('unknown channel'); }
-  if (!current || current.id !== id) start(id, map[id]);
+  if (!current || current.id !== id || !!current.sdr !== sdr) start(id, map[id], sdr);
   current.lastAccess = Date.now();
 
-  let name = m[2];
+  let name = m[3];
   if (name === 'index.m3u8') name = 'media_0.m3u8';
   const waitName = (name === 'master.m3u8' || name === 'manifest.mpd' || name === 'media_0.m3u8') ? name : null;
   const serve = () => {
-    const file = path.join(OUT_ROOT, id, name);
+    const file = path.join(OUT_ROOT, id, sdr ? 'sdr' : '', name);
     if (!fs.existsSync(file)) { res.writeHead(404); return res.end('not ready'); }
     const type = MIME[path.extname(file)] || 'application/octet-stream';
     if (name === 'master.m3u8' || name === 'manifest.mpd') {
@@ -334,7 +348,7 @@ const server = http.createServer((req, res) => {
   if (waitName) return waitForFile(id, waitName, (err) => {
     if (err) { res.writeHead(503, { 'Content-Type': 'text/plain' }); return res.end(err.message); }
     serve();
-  });
+  }, sdr);
   serve();
 });
 

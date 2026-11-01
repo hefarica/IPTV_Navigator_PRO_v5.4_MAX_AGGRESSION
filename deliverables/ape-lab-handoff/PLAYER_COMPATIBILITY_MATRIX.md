@@ -24,7 +24,7 @@
 | Kodi + inputstream.adaptive | expected | expected | device-dependent | TV-dependent | PENDING real test |
 | Shaka Player | expected | expected | browser-dependent | browser-dependent | PENDING real test |
 | ExoPlayer/Media3 | expected | expected | device-dependent | device-dependent | PENDING real test |
-| ONN 4K + ARA | playlist loaded | app-dependent | Main10 HDR10 decoder confirmed | TV-dependent | FAILED on 1080 HDR10: ERROR_CODE_DECODER_INIT_FAILED (4001) |
+| ONN 4K + ARA | playlist loaded | app-dependent | HDR10 init failed; SDR AVC fallback works | TV-dependent | HDR failed 4001; SDR/H.264 1080p PLAYED |
 
 ## ONN 4K decoder evidence
 
@@ -94,3 +94,24 @@ decoder fallback 1/2 and 2/2: same failure
 Conclusion: the ONN's advertised HEVC Main10 HDR10 capability does not
 guarantee that this 1080p60 PQ stream initializes. A real SDR/AVC fallback
 path is still required before claiming device compatibility.
+
+## Device fallback verified 2026-11-01
+
+Observed:
+
+`	ext
+HDR HEVC 1080p:
+ERROR_CODE_DECODER_INIT_FAILED (4001)
+
+ARA automatic fallback:
+https://iptv-ape.duckdns.org/jit/live/3/sdr/master.m3u8
+
+Selected:
+mime=video/avc codecs=avc1.640028 1920x1080 bps=4500000
+`
+
+Screenshot shows live video rendering in APE Crystal Agent on the ONN.
+
+Conclusion: HDR10 is not usable on this ONN for this 1080p60 stream; the
+SDR/H.264 variant is the working fallback. Maximum-quality HDR remains
+device-dependent, not universal.
