@@ -789,30 +789,32 @@
         };
     }
 
-    /** Perfil más alto que el enlace SÍ sostiene (spare ≤ −15 %). */
+    /**
+     * Perfil sostenible REAL: usa Risk/Headroom/Stall del solver, no solo el
+     * bitrate de diseño. Si el actual no cumple, devuelve otro perfil.
+     */
     function bestTier(profileId) {
         var api = global.APE_PROFILES_CONFIG;
         var sid = profileId || api.activeProfileId;
         var snap = (global.APE_BW && global.APE_BW.snapshot) ? global.APE_BW.snapshot() : null;
         var bw = snap ? snap.mbps : 0;
         if (!(bw > 0)) return null;
-        var maxBitrate = bw * 0.95 * 0.85;          // spare ≤ −15 %
-        var best = null;
-        Object.keys(api.profiles).forEach(function (id) {
-            var p = api.profiles[id];
-            var br = Number(p.settings && p.settings.bitrate) || 0;
-            if (br > 0 && br <= maxBitrate) {
-                if (!best || br > best.bitrateMbps) {
-                    best = { profileId: id, bitrateMbps: br, current: (id === sid) };
-                }
-            }
-        });
-        return best ? {
+        var sel = findBestProfile();
+        var best = sel.best;
+        if (!best) return { profileId: null, note: 'sin perfiles evaluables' };
+        return {
             profileId: best.profileId,
             bitrateMbps: best.bitrateMbps,
             isCurrent: best.profileId === sid,
-            maxBitrateMbps: Math.round(maxBitrate * 100) / 100
-        } : { profileId: null, note: 'ningún perfil cabe en ' + Math.round(bw) + ' Mbps' };
+            feasible: !!best.feasible,
+            risk: best.score.risk,
+            sparePct: best.score.sparePct,
+            maxBitrateMbps: Math.round(bw * 0.95 * 0.85 * 100) / 100,
+            currentFeasible: (sel.candidates || []).some(function (c) {
+                return c.profileId === sid && c.feasible;
+            }),
+            note: best.feasible ? '' : 'ningún perfil cumple; se aplica el de menor riesgo'
+        };
     }
 
     /** Explicación en consola de por qué el número no mejora. */
@@ -883,16 +885,22 @@
                 if (span) { span.textContent = (t && t.note) || 'sin medición suficiente todavía'; span.style.color = '#f97316'; }
                 return;
             }
-            if (t.isCurrent) {
-                if (span) { span.textContent = 'este perfil YA es el sostenible (' + t.bitrateMbps + ' Mbps)'; span.style.color = '#22c55e'; }
-                return;
-            }
+            // Aplicar SIEMPRE la función objetivo al perfil elegido, incluso si
+            // bestTier devuelve el actual. Antes solo mostraba texto y no tocaba
+            // el perfil seleccionado.
             if (global.ProfileManagerV9 && typeof global.ProfileManagerV9.selectProfile === 'function') {
-                global.ProfileManagerV9.selectProfile(t.profileId);
+                if (t.profileId !== (global.APE_PROFILES_CONFIG.activeProfileId || '')) {
+                    global.ProfileManagerV9.selectProfile(t.profileId);
+                }
+                if (typeof global.ProfileManagerV9.recomputeActiveProfile === 'function') {
+                    global.ProfileManagerV9.recomputeActiveProfile();
+                }
             }
             if (span) {
-                span.textContent = 'cambiado a ' + t.profileId + ' (' + t.bitrateMbps + ' Mbps ≤ ' + t.maxBitrateMbps + ' sostenibles)';
-                span.style.color = '#a855f7';
+                span.textContent = (t.isCurrent ? 'aplicado al actual ' : 'cambiado a ') +
+                    t.profileId + ' · Risk ' + t.risk + ' · colchón ' + t.sparePct +
+                    '% · ' + t.bitrateMbps + ' Mbps';
+                span.style.color = t.feasible ? '#22c55e' : '#f97316';
             }
             console.log('%c[APE-SOLVER] tier sostenible aplicado', 'color:#a855f7;font-weight:bold;', t);
         });
