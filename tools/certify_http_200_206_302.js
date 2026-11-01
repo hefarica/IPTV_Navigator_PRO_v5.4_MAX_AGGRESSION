@@ -26,10 +26,10 @@ const LIST_200 = [
   ['JSON_4K_SDR', '/jit/live/1174213/sdr/manifest.json'],
 ];
 const RANGE_206 = [
-  ['RANGE_1080_INIT', '/jit/live/3/init-0.m4s', '/jit/live/3/master.m3u8'],
-  ['RANGE_1080_SDR_INIT', '/jit/live/3/sdr/init-0.m4s', '/jit/live/3/sdr/master.m3u8'],
-  ['RANGE_4K_INIT', '/jit/live/1174213/init-0.m4s', '/jit/live/1174213/master.m3u8'],
-  ['RANGE_4K_SDR_INIT', '/jit/live/1174213/sdr/init-0.m4s', '/jit/live/1174213/sdr/master.m3u8'],
+  ['RANGE_1080_INIT', '/jit/live/3', '/jit/live/3/master.m3u8'],
+  ['RANGE_1080_SDR_INIT', '/jit/live/3/sdr', '/jit/live/3/sdr/master.m3u8'],
+  ['RANGE_4K_INIT', '/jit/live/1174213', '/jit/live/1174213/master.m3u8'],
+  ['RANGE_4K_SDR_INIT', '/jit/live/1174213/sdr', '/jit/live/1174213/sdr/master.m3u8'],
 ];
 
 async function req(path, opts) {
@@ -59,18 +59,27 @@ async function retry200(path) {
     total++; if (ok) pass++;
     console.log((ok ? 'PASS ' : 'FAIL ') + name + ' = ' + r.status + ' (HTTP 200)');
   }
-  for (const [name, path, warm] of RANGE_206) {
+  for (const [name, basePath, warm] of RANGE_206) {
     await retry200(warm);
-    let status = 0;
-    for (let i = 0; i < 3; i++) {
-      const r = await req(path, { headers: { Range: 'bytes=0-1023' }, redirect: 'manual' });
-      status = r.status;
-      if (status === 206) break;
-      await new Promise(res => setTimeout(res, 2000));
+    let init = null;
+    try {
+      const media = await req(basePath + '/media_0.m3u8');
+      const txt = await media.text();
+      const m = txt.match(/#EXT-X-MAP:URI="([^"]+)"/);
+      init = m ? m[1] : null;
+    } catch (_) { }
+    let status = init ? 0 : 404;
+    if (init) {
+      for (let i = 0; i < 3; i++) {
+        const r = await req(basePath + '/' + init, { headers: { Range: 'bytes=0-1023' }, redirect: 'manual' });
+        status = r.status;
+        if (status === 206) break;
+        await new Promise(res => setTimeout(res, 2000));
+      }
     }
     const ok = status === 206;
     total++; if (ok) pass++;
-    console.log((ok ? 'PASS ' : 'FAIL ') + name + ' = ' + status + ' (HTTP 206 Range)');
+    console.log((ok ? 'PASS ' : 'FAIL ') + name + ' = ' + status + ' (' + (init || 'no EXT-X-MAP') + ')');
   }
   for (const rid of ['3', '1174213']) {
     const redirect = await req('/jit/go/' + rid, { redirect: 'manual' });

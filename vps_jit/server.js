@@ -159,6 +159,7 @@ function start(id, spec, sdr, sdr720) {
     ? (src.audioOk ? ['-c:a', 'aac', '-b:a', '256k', '-ac', '2'] : ['-an'])
     : ['-c:a', 'aac', '-b:a', '128k', '-ac', '2'];
   const hasAudio = isSdr ? src.audioOk : !(copy4k && !src.audioOk);
+  const session = Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
   const args = [
     '-hide_banner', '-nostdin', '-loglevel', 'warning',
     '-user_agent', spec.ua || 'VLC/3.0.19 LibVLC/3.0.19',
@@ -173,8 +174,8 @@ function start(id, spec, sdr, sdr720) {
     '-window_size', '6', '-extra_window_size', '2',
     '-remove_at_exit', '0',
     '-hls_playlist', '1', '-hls_master_name', 'master.m3u8',
-    '-init_seg_name', 'init-$RepresentationID$.m4s',
-    '-media_seg_name', 'chunk-$RepresentationID$-$Number$.m4s',
+    '-init_seg_name', 'init-' + session + '-$RepresentationID$.m4s',
+    '-media_seg_name', 'chunk-' + session + '-$RepresentationID$-$Number$.m4s',
     'manifest.mpd',
   ];
   const child = spawn('nice', ['-n', '19', 'ffmpeg', ...args], {
@@ -458,7 +459,7 @@ const server = http.createServer((req, res) => {
     res.writeHead(200, { 'Content-Type': 'application/json' });
     return res.end(JSON.stringify(manifestJson(req, id, sdr, sdr720)));
   }
-  const m = u.pathname.match(/^\/live\/([^/]+)\/(sdr720\/|sdr\/)?(master\.m3u8|index\.m3u8|manifest\.mpd|media_[0-9]+\.m3u8|init-[0-9]+\.m4s|chunk-[0-9]+-[0-9]+\.m4s)$/);
+  const m = u.pathname.match(/^\/live\/([^/]+)\/(sdr720\/|sdr\/)?(master\.m3u8|index\.m3u8|manifest\.mpd|media_[0-9]+\.m3u8|init-[A-Za-z0-9_-]+\.m4s|chunk-[A-Za-z0-9_-]+\.m4s)$/);
   if (!m) { res.writeHead(404); return res.end('not found'); }
   const id = safeId(m[1]);
   if (!id) { res.writeHead(400); return res.end('bad channel'); }
