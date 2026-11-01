@@ -2676,7 +2676,16 @@
             const utf8 = unescape(encodeURIComponent(JSON.stringify(pack)));
             const b64 = (typeof btoa === 'function') ? btoa(utf8) : null;
             if (!b64) return null;
-            return `#EXT-X-APE-LAB-METADATA:${b64}`;
+            // Chunked: ninguna línea supera 3.5 KB. Cualquier parser M3U8
+            // (player, VPS, ARA, Lua) puede leerla sin buffer gigante.
+            const CHUNK = 3500;
+            const parts = [];
+            for (let i = 0; i < b64.length; i += CHUNK) {
+                parts.push(b64.slice(i, i + CHUNK));
+            }
+            return parts.map((part, i) =>
+                `#EXT-X-APE-LAB-METADATA:${i + 1}/${parts.length}:${part}`
+            ).join('\n');
         } catch (e) {
             console.warn('[LAB-METADATA] no se pudo serializar:', e && e.message);
             return null;
@@ -9152,6 +9161,30 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
                     (channel && (channel.stream_id || channel.id)) || '');
             }
         } catch (_eRt) { /* aditivo: nunca rompe la generación */ }
+        // ── CAP REAL #EXTHTTP: 200 headers / 8192 bytes ──────────────────────
+        // build_exthttp() ya particiona, pero generateChannelEntry agrega headers
+        // anabólicos/JWT/realtime DESPUÉS y podía superar el cap (auditoría real:
+        // 228 headers / 9704 bytes). Particionar aquí, al final, es la única
+        // garantía para nginx large_client_header_buffers=8K.
+        const _finalPrimary = {};
+        const _finalOverflow = {};
+        let _finalCount = 0;
+        let _finalBytes = 0;
+        for (const _k of Object.keys(_httpPayload)) {
+            const _v = String(_httpPayload[_k]);
+            const _entryBytes = _k.length + _v.length + 6;
+            if (_finalCount < 200 && (_finalBytes + _entryBytes) < 8192) {
+                _finalPrimary[_k] = _v;
+                _finalCount++;
+                _finalBytes += _entryBytes;
+            } else {
+                _finalOverflow[_k] = _v;
+            }
+        }
+        for (const _k of Object.keys(_httpPayload)) {
+            if (!(_k in _finalPrimary)) delete _httpPayload[_k];
+        }
+        const _overflowKeys = Object.keys(_finalOverflow);
         let _exthttpJson = JSON.stringify(_httpPayload);
         for (const [ph, val] of Object.entries(_phResolve)) {
             if (typeof val !== 'string' && typeof val !== 'number') continue;
@@ -9166,6 +9199,9 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
             _exthttpJson = window.APEParserGenerationBridge.runPostEmissionSanitizer(_exthttpJson);
         }
         lines.push(`#EXTHTTP:${_exthttpJson}`);
+        if (_overflowKeys.length > 0) {
+            lines.push(`#EXT-X-APE-OVERFLOW-HEADERS:${base64UrlEncode(JSON.stringify(_finalOverflow))}`);
+        }
         // t29 · C5 · trazabilidad del filtro (0 = ningún tóxico presente de entrada).
         lines.push(`#EXT-X-APE-DENYLIST-REMOVED:${_denylistRes && _denylistRes.removed ? _denylistRes.removed.length : 0}`);
 

@@ -33,6 +33,9 @@ class ListLoader(private val cfg: Config) {
     var labMetadataSha256: String = ""
         private set
 
+    private val labMetaParts = HashMap<Int, String>()
+    private var labMetaTotal = 0
+
     private val client = OkHttpClient.Builder()
         .connectTimeout(10, TimeUnit.SECONDS)
         .readTimeout(180, TimeUnit.SECONDS)   // lista grande
@@ -44,6 +47,8 @@ class ListLoader(private val cfg: Config) {
             .apply { if (cfg.hasToken()) addHeader("Authorization", "Bearer ${cfg.token}") }
             .build()
         var count = 0
+        labMetaParts.clear()
+        labMetaTotal = 0
         client.newCall(req).execute().use { r ->
             if (!r.isSuccessful) { Log.w(TAG, "list HTTP ${r.code}"); return 0 }
             val body = r.body ?: return 0
@@ -53,18 +58,23 @@ class ListLoader(private val cfg: Config) {
                     when {
                         line.startsWith("#EXT-X-APE-LAB-METADATA:") -> {
                             try {
-                                val b64 = line.substring("#EXT-X-APE-LAB-METADATA:".length).trim()
-                                val raw = Base64.decode(b64, Base64.DEFAULT)
-                                val json = JSONObject(String(raw, StandardCharsets.UTF_8))
-                                labMetadata = json
-                                labMetadataSha256 = MessageDigest.getInstance("SHA-256")
-                                    .digest(raw).joinToString("") { "%02x".format(it) }
-                                AraStatus.labMetadataProfile = json.optString("profile")
-                                AraStatus.labMetadataSha256 = labMetadataSha256
-                                AraStatus.labMetadataFieldCount =
-                                    json.optJSONObject("fields")?.length() ?: 0
-                                cfg.saveLabMetadata(json.toString(), labMetadataSha256)
-                                Log.i(TAG, "LAB metadata: profile=${json.optString("profile")} sha=${labMetadataSha256.take(16)}")
+                                val body = line.substring("#EXT-X-APE-LAB-METADATA:".length).trim()
+                                val m = Regex("""^(\d+)/(\d+):(.+)$""").find(body)
+                                if (m != null) {
+                                    val idx = m.groupValues[1].toInt()
+                                    labMetaTotal = m.groupValues[2].toInt()
+                                    labMetaParts[idx] = m.groupValues[3]
+                                    if (labMetaParts.size == labMetaTotal) {
+                                        val b64 = (1..labMetaTotal).joinToString("") {
+                                            labMetaParts[it] ?: ""
+                                        }
+                                        applyLabMetadataB64(b64)
+                                        labMetaParts.clear()
+                                    }
+                                } else {
+                                    // Compatibilidad con metadata de una línea.
+                                    applyLabMetadataB64(body)
+                                }
                             } catch (e: Exception) {
                                 Log.w(TAG, "LAB metadata inválida: ${e.message}")
                             }
@@ -90,6 +100,20 @@ class ListLoader(private val cfg: Config) {
         }
         Log.i(TAG, "Lista: $count canales")
         return count
+    }
+
+    private fun applyLabMetadataB64(b64: String) {
+        val raw = Base64.decode(b64, Base64.DEFAULT)
+        val json = JSONObject(String(raw, StandardCharsets.UTF_8))
+        labMetadata = json
+        labMetadataSha256 = MessageDigest.getInstance("SHA-256")
+            .digest(raw).joinToString("") { "%02x".format(it) }
+        AraStatus.labMetadataProfile = json.optString("profile")
+        AraStatus.labMetadataSha256 = labMetadataSha256
+        AraStatus.labMetadataFieldCount =
+            json.optJSONObject("fields")?.length() ?: 0
+        cfg.saveLabMetadata(json.toString(), labMetadataSha256)
+        Log.i(TAG, "LAB metadata: profile=${json.optString("profile")} sha=${labMetadataSha256.take(16)}")
     }
 
     private fun parseMeta(extinf: String): HashMap<String, String> {

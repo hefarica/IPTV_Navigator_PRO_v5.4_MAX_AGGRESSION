@@ -50,6 +50,8 @@ function main() {
     var labMetaSha = null;
     var labMetaRef = null;
     var listId = null;
+    var labMetaParts = {};
+    var labMetaTotal = 0;
 
     function slimE(E) {  // SLIM: solo lo que el resolve usa (tóxicos + cubo-E). La lista queda intacta (NO-STRIP); los X-APE-* llegan vivos por el hijack.
         var out = {}; E = E || {};
@@ -88,7 +90,16 @@ function main() {
     rl.on('line', function (line) {
         if (halted) return;
         if (line.lastIndexOf('#EXT-X-APE-LAB-METADATA:', 0) === 0) {
-            labMetaB64 = line.slice('#EXT-X-APE-LAB-METADATA:'.length).trim();
+            var body = line.slice('#EXT-X-APE-LAB-METADATA:'.length).trim();
+            var m = body.match(/^(\d+)\/(\d+):(.+)$/);
+            if (m) {
+                var idx = parseInt(m[1], 10);
+                labMetaTotal = parseInt(m[2], 10);
+                labMetaParts[idx] = m[3];
+            } else {
+                // Compatibilidad con metadata de una sola línea.
+                labMetaB64 = body;
+            }
             return;
         }
         var isExtinf = line.lastIndexOf('#EXTINF', 0) === 0;   // startsWith('#EXTINF')
@@ -98,6 +109,13 @@ function main() {
     });
     rl.on('close', function () {
         // Metadata PRIMERO: los records deben nacer con la referencia M.
+        if (labMetaTotal > 0) {
+            labMetaB64 = '';
+            for (var mi = 1; mi <= labMetaTotal; mi++) {
+                if (!labMetaParts[mi]) { labMetaB64 = null; break; }
+                labMetaB64 += labMetaParts[mi];
+            }
+        }
         if (labMetaB64) {
             try {
                 var metaBuf = Buffer.from(labMetaB64, 'base64');
