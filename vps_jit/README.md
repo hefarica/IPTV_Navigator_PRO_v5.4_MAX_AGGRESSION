@@ -13,6 +13,27 @@ GET /jit/live/<id>/seg_NNN.m4s            CMAF segments
 GET /jit/health                           service state
 ```
 
+## Native 4K HDR passthrough
+
+If `ffprobe` reports a real 4K HDR HEVC source (3840x2160, BT.2020/PQ), the
+service does **not** transcode video and does **not** downscale:
+
+```text
+-c:v copy -tag:v hvc1
+audio only: EAC3 -> AAC 256k (DASH muxer rejects EAC3 copy here)
+```
+
+Verified with `TNT SPORTS ULTIMATE 4K` (id 1174213):
+
+```text
+HLS master: RESOLUTION=3840x2160, VIDEO-RANGE=PQ
+MPD:        maxWidth=3840 maxHeight=2160, CICP 9/16/9
+init:       hevc Main10, yuv420p10le, level 153, BT.2020/PQ
+CPU:        21 % (video copy)
+```
+
+1080/480/720 sources still use the zscale HDR10 transcode path.
+
 ## Runtime
 
 ```text

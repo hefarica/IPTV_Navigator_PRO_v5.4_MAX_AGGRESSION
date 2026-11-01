@@ -9,7 +9,7 @@
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
-const { spawn } = require('child_process');
+const { spawn, execFileSync } = require('child_process');
 
 const PORT = Number(process.env.PORT || 3099);
 const BIND = process.env.BIND || '127.0.0.1';
@@ -26,6 +26,25 @@ const MIME = {
   '.mp4': 'video/mp4',
 };
 function log(...a) { console.log(new Date().toISOString(), ...a); }
+function probeSource(spec) {
+  try {
+    const out = execFileSync('ffprobe', [
+      '-v', 'error', '-user_agent', spec.ua || 'VLC/3.0.19 LibVLC/3.0.19',
+      '-select_streams', 'v:0',
+      '-show_entries', 'stream=width,height,codec_name,color_transfer,color_primaries',
+      '-of', 'json', spec.url,
+    ], { encoding: 'utf8', timeout: 15000 });
+    const s = (JSON.parse(out).streams || [])[0] || {};
+    return {
+      width: Number(s.width) || 0, height: Number(s.height) || 0,
+      codec: s.codec_name || '', transfer: s.color_transfer || '',
+      primaries: s.color_primaries || '',
+    };
+  } catch (e) {
+    log('PROBE_ERROR', e.message);
+    return { width: 0, height: 0, codec: '', transfer: '', primaries: '' };
+  }
+}
 function loadMap() {
   try { return JSON.parse(fs.readFileSync(MAP_FILE, 'utf8')); }
   catch (e) { log('MAP_ERROR', e.message); return {}; }
@@ -43,24 +62,37 @@ function stopCurrent(reason) {
 
 function start(id, spec) {
   stopCurrent('switch');
+  const src = probeSource(spec);
+  const copy4k = src.width >= 3840 && src.height >= 2160 &&
+    (src.transfer === 'smpte2084' || src.transfer === 'arib-std-b67') &&
+    (src.codec === 'hevc' || src.codec === 'h264');
   const dir = path.join(OUT_ROOT, id);
   fs.mkdirSync(dir, { recursive: true });
   for (const f of fs.readdirSync(dir)) fs.rmSync(path.join(dir, f), { recursive: true, force: true });
+
+  const videoArgs = copy4k
+    ? ['-c:v', 'copy', '-tag:v', 'hvc1']
+    : [
+      '-vf', "scale=w='max(iw,1920)':h='max(ih,1080)':force_original_aspect_ratio=decrease:force_divisible_by=2:flags=lanczos,setparams=color_primaries=bt709:color_trc=bt709:colorspace=bt709:range=limited,zscale=t=linear:npl=100,format=gbrpf32le,zscale=p=bt2020:transfer=smpte2084:matrix=bt2020nc:primaries=bt2020,format=yuv420p10le",
+      '-pix_fmt', 'yuv420p10le',
+      '-color_primaries', 'bt2020', '-color_trc', 'smpte2084', '-colorspace', 'bt2020nc',
+      '-c:v', 'libx265', '-preset', 'ultrafast', '-tune', 'zerolatency',
+      '-threads', '3', '-tag:v', 'hvc1',
+      '-x265-params', 'pools=3:frame-threads=1:hdr10=1:colorprim=bt2020:transfer=smpte2084:colormatrix=bt2020nc:master-display=G(13250,34500)B(7500,3000)R(34000,16000)WP(15635,16450)L(10000000,1):max-cll=100,100',
+      '-b:v', '3000k', '-maxrate', '3300k', '-bufsize', '6000k',
+    ];
+  // EAC3 copy is rejected by the DASH muxer for this stream; keep 4K video
+  // in copy and transcode ONLY audio to AAC.
+  const audioArgs = copy4k
+    ? ['-c:a', 'aac', '-b:a', '256k', '-ac', '2']
+    : ['-c:a', 'aac', '-b:a', '128k', '-ac', '2'];
   const args = [
     '-hide_banner', '-nostdin', '-loglevel', 'warning',
     '-user_agent', spec.ua || 'VLC/3.0.19 LibVLC/3.0.19',
     '-i', spec.url,
     '-map', '0:v:0', '-map', '0:a:0?',
-    // HDR10 at minimum 1920x1080. 480/720 sources are upscaled with Lanczos;
-    // 1080p stays 1080p; 4K is not downscaled by this expression.
-    '-vf', "scale=w='max(iw,1920)':h='max(ih,1080)':force_original_aspect_ratio=decrease:force_divisible_by=2:flags=lanczos,setparams=color_primaries=bt709:color_trc=bt709:colorspace=bt709:range=limited,zscale=t=linear:npl=100,format=gbrpf32le,zscale=p=bt2020:transfer=smpte2084:matrix=bt2020nc:primaries=bt2020,format=yuv420p10le",
-    '-pix_fmt', 'yuv420p10le',
-    '-color_primaries', 'bt2020', '-color_trc', 'smpte2084', '-colorspace', 'bt2020nc',
-    '-c:v', 'libx265', '-preset', 'ultrafast', '-tune', 'zerolatency',
-    '-threads', '3', '-tag:v', 'hvc1',
-    '-x265-params', 'pools=3:frame-threads=1:hdr10=1:colorprim=bt2020:transfer=smpte2084:colormatrix=bt2020nc:master-display=G(13250,34500)B(7500,3000)R(34000,16000)WP(15635,16450)L(10000000,1):max-cll=100,100',
-    '-b:v', '3000k', '-maxrate', '3300k', '-bufsize', '6000k',
-    '-c:a', 'aac', '-b:a', '128k', '-ac', '2',
+    ...videoArgs,
+    ...audioArgs,
     // One FFmpeg -> shared fMP4 for DASH + HLS.
     '-f', 'dash',
     '-seg_duration', '2', '-frag_duration', '2',
@@ -76,8 +108,17 @@ function start(id, spec) {
     detached: false,
     stdio: ['ignore', 'ignore', 'pipe'],
   });
-  current = { id, child, dir, lastAccess: Date.now(), started: Date.now() };
-  log('START', id, 'pid=' + child.pid);
+  current = {
+    id, child, dir, lastAccess: Date.now(), started: Date.now(),
+    copy4k,
+    hdr: copy4k || src.transfer === 'smpte2084' || src.transfer === 'arib-std-b67',
+    width: copy4k ? src.width : Math.max(1920, src.width || 0),
+    height: copy4k ? src.height : Math.max(1080, src.height || 0),
+    codecString: copy4k ? 'hvc1.2.4.L153.B0' : 'hvc1.2.4.L123.B0',
+    audioCodec: 'mp4a.40.2',
+    bandwidth: copy4k ? 20000000 : 3000000,
+  };
+  log('START', id, 'pid=' + child.pid, 'copy4k=' + copy4k, 'src=' + src.width + 'x' + src.height + '/' + src.transfer);
   child.stderr.on('data', d => {
     const s = String(d).trim();
     if (s) log('FFMPEG', s.slice(0, 300));
@@ -102,13 +143,16 @@ function waitForFile(id, name, cb) {
 }
 
 function hdrMaster(text) {
+  const codec = current ? current.codecString : 'hvc1.2.4.L123.B0';
+  const audio = current ? current.audioCodec : 'mp4a.40.2';
   return text
-    .replace(/CODECS="[^"]*"/, 'CODECS="hvc1.2.4.L123.B0,mp4a.40.2"')
-    .replace(/\bAUDIO="/, 'VIDEO-RANGE=PQ,AUDIO="');
+    .replace(/CODECS="[^"]*"/, 'CODECS="' + codec + ',' + audio + '"')
+    .replace(/BANDWIDTH=\d+/, 'BANDWIDTH=' + (current ? current.bandwidth : 3000000))
+    .replace(/\bAUDIO="/, current && current.hdr ? 'VIDEO-RANGE=PQ,AUDIO="' : 'AUDIO="');
 }
 
 function hdrMpd(text) {
-  if (text.indexOf('cicp:ColourPrimaries') === -1) {
+  if (current && current.hdr && text.indexOf('cicp:ColourPrimaries') === -1) {
     const props = [
       '<SupplementalProperty schemeIdUri="urn:mpeg:mpegB:cicp:ColourPrimaries" value="9"/>',
       '<SupplementalProperty schemeIdUri="urn:mpeg:mpegB:cicp:TransferCharacteristics" value="16"/>',
@@ -116,8 +160,7 @@ function hdrMpd(text) {
     ].join('\n');
     text = text.replace(/(<AdaptationSet[^>]*contentType="video"[^>]*>)/, '$1\n' + props);
   }
-  return text
-    .replace(/codecs="hvc1"/g, 'codecs="hvc1.2.4.L123.B0"');
+  return text.replace(/codecs="hvc1"/g, 'codecs="' + (current ? current.codecString : 'hvc1.2.4.L123.B0') + '"');
 }
 
 function publicBase(req) {
@@ -135,12 +178,21 @@ function manifestJson(req, id) {
       dash: { url: base + '/live/' + id + '/manifest.mpd', protocol: 'DASH', container: 'CMAF/fMP4' },
     },
     streams: [{
-      bandwidth: 3300000, average_bandwidth: 3000000, resolution: '1920x1080',
-      codecs: 'hvc1.2.4.L123.B0,mp4a.40.2', uri: 'media_0.m3u8',
-      hdr: 'HDR10', video_range: 'PQ', color_primaries: 'BT.2020',
-      transfer: 'SMPTE ST 2084', matrix: 'BT.2020 non-constant',
-      master_display: 'G(13250,34500)B(7500,3000)R(34000,16000)WP(15635,16450)L(10000000,1)',
-      max_cll: 1000, max_fall: 400,
+      bandwidth: current ? current.bandwidth : 3000000,
+      average_bandwidth: current ? Math.round(current.bandwidth * 0.9) : 2700000,
+      resolution: current ? current.width + 'x' + current.height : '1920x1080',
+      codecs: (current ? current.codecString : 'hvc1.2.4.L123.B0') + ',' +
+        (current ? current.audioCodec : 'mp4a.40.2'),
+      uri: 'media_0.m3u8',
+      hdr: current && current.hdr ? 'HDR10' : 'SDR',
+      video_range: current && current.hdr ? 'PQ' : 'SDR',
+      color_primaries: current && current.hdr ? 'BT.2020' : 'BT.709',
+      transfer: current && current.hdr ? 'SMPTE ST 2084' : 'BT.709',
+      matrix: current && current.hdr ? 'BT.2020 non-constant' : 'BT.709',
+      master_display: current && current.hdr
+        ? 'G(13250,34500)B(7500,3000)R(34000,16000)WP(15635,16450)L(10000000,1)' : null,
+      max_cll: current && current.hdr ? 1000 : null,
+      max_fall: current && current.hdr ? 400 : null,
     }],
     clients_connected: active ? 1 : 0,
     active_since: active ? new Date(current.started).toISOString() : null,
