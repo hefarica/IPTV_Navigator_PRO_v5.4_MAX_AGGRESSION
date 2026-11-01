@@ -73,17 +73,28 @@ function stopCurrent(reason) {
   try { fs.rmSync(c.dir, { recursive: true, force: true }); } catch (_) {}
 }
 
-function start(id, spec, sdr) {
+function start(id, spec, sdr, sdr720) {
   stopCurrent('switch');
   const src = probeSource(spec);
-  const copy4k = !sdr && src.width >= 3840 && src.height >= 2160 &&
+  const isSdr = !!(sdr || sdr720);
+  const is720 = !!sdr720;
+  const copy4k = !isSdr && src.width >= 3840 && src.height >= 2160 &&
     (src.transfer === 'smpte2084' || src.transfer === 'arib-std-b67') &&
     (src.codec === 'hevc' || src.codec === 'h264');
-  const dir = path.join(OUT_ROOT, id, sdr ? 'sdr' : '');
+  const dir = path.join(OUT_ROOT, id, is720 ? 'sdr720' : (isSdr ? 'sdr' : ''));
   fs.mkdirSync(dir, { recursive: true });
   for (const f of fs.readdirSync(dir)) fs.rmSync(path.join(dir, f), { recursive: true, force: true });
 
-  const videoArgs = sdr
+  const videoArgs = is720
+    ? [
+      '-vf', "scale=w=1280:h=720:force_original_aspect_ratio=decrease:force_divisible_by=2:flags=lanczos,setparams=color_primaries=bt709:color_trc=bt709:colorspace=bt709:range=limited,format=yuv420p",
+      '-pix_fmt', 'yuv420p',
+      '-color_primaries', 'bt709', '-color_trc', 'bt709', '-colorspace', 'bt709',
+      '-c:v', 'libx264', '-preset', 'veryfast', '-tune', 'zerolatency',
+      '-profile:v', 'high', '-level:v', '4.0', '-tag:v', 'avc1',
+      '-b:v', '2200k', '-maxrate', '2400k', '-bufsize', '4400k',
+    ]
+    : isSdr
     ? [
       '-vf', "scale=w=1920:h=1080:force_original_aspect_ratio=decrease:force_divisible_by=2:flags=lanczos,setparams=color_primaries=bt709:color_trc=bt709:colorspace=bt709:range=limited,format=yuv420p",
       '-pix_fmt', 'yuv420p',
@@ -105,12 +116,12 @@ function start(id, spec, sdr) {
     ];
   // Some 4K provider audio is EAC3 with 0 channels / no sample rate.
   // Do not break the video MPD: if audio is invalid, emit video-only.
-  const audioArgs = sdr
+  const audioArgs = isSdr
     ? (src.audioOk ? ['-c:a', 'aac', '-b:a', '128k', '-ac', '2'] : ['-an'])
     : copy4k
     ? (src.audioOk ? ['-c:a', 'aac', '-b:a', '256k', '-ac', '2'] : ['-an'])
     : ['-c:a', 'aac', '-b:a', '128k', '-ac', '2'];
-  const hasAudio = sdr ? src.audioOk : !(copy4k && !src.audioOk);
+  const hasAudio = isSdr ? src.audioOk : !(copy4k && !src.audioOk);
   const args = [
     '-hide_banner', '-nostdin', '-loglevel', 'warning',
     '-user_agent', spec.ua || 'VLC/3.0.19 LibVLC/3.0.19',
@@ -135,16 +146,16 @@ function start(id, spec, sdr) {
     stdio: ['ignore', 'ignore', 'pipe'],
   });
   current = {
-    id, sdr: !!sdr, child, dir, lastAccess: Date.now(), started: Date.now(),
+    id, sdr: isSdr, sdr720: is720, child, dir, lastAccess: Date.now(), started: Date.now(),
     copy4k,
-    hdr: !sdr && (copy4k || src.transfer === 'smpte2084' || src.transfer === 'arib-std-b67'),
-    width: sdr ? Math.max(1920, src.width || 0) : (copy4k ? src.width : Math.max(1920, src.width || 0)),
-    height: sdr ? Math.max(1080, src.height || 0) : (copy4k ? src.height : Math.max(1080, src.height || 0)),
-    codecString: sdr ? 'avc1.640028' : (copy4k ? 'hvc1.2.4.L153.B0' : 'hvc1.2.4.L123.B0'),
+    hdr: !isSdr && (copy4k || src.transfer === 'smpte2084' || src.transfer === 'arib-std-b67'),
+    width: is720 ? 1280 : (isSdr ? 1920 : (copy4k ? src.width : Math.max(1920, src.width || 0))),
+    height: is720 ? 720 : (isSdr ? 1080 : (copy4k ? src.height : Math.max(1080, src.height || 0))),
+    codecString: isSdr ? 'avc1.640028' : (copy4k ? 'hvc1.2.4.L153.B0' : 'hvc1.2.4.L123.B0'),
     audioCodec: hasAudio ? 'mp4a.40.2' : '',
-    bandwidth: sdr ? 4500000 : (copy4k ? 20000000 : 3000000),
+    bandwidth: is720 ? 2400000 : (isSdr ? 4500000 : (copy4k ? 20000000 : 3000000)),
   };
-  log('START', id, 'pid=' + child.pid, 'sdr=' + !!sdr, 'copy4k=' + copy4k, 'src=' + src.width + 'x' + src.height + '/' + src.transfer);
+  log('START', id, 'pid=' + child.pid, 'sdr=' + isSdr, 'sdr720=' + is720, 'copy4k=' + copy4k, 'src=' + src.width + 'x' + src.height + '/' + src.transfer);
   child.stderr.on('data', d => {
     const s = String(d).trim();
     if (s) log('FFMPEG', s.slice(0, 300));
@@ -156,12 +167,12 @@ function start(id, spec, sdr) {
   });
 }
 
-function waitForFile(id, name, cb, sdr) {
-  const file = path.join(OUT_ROOT, id, sdr ? 'sdr' : '', name);
+function waitForFile(id, name, cb, sdr, sdr720) {
+  const file = path.join(OUT_ROOT, id, sdr720 ? 'sdr720' : (sdr ? 'sdr' : ''), name);
   const t0 = Date.now();
   const tick = () => {
     if (fs.existsSync(file)) return cb(null, file);
-    if (!current || current.id !== id || !!current.sdr !== !!sdr) return cb(new Error('stream stopped'));
+    if (!current || current.id !== id || !!current.sdr720 !== !!sdr720 || !!current.sdr !== !!sdr) return cb(new Error('stream stopped'));
     if (Date.now() - t0 > WAIT_MS) return cb(new Error('startup timeout'));
     setTimeout(tick, 200);
   };
@@ -231,12 +242,12 @@ function publicBase(req) {
   return proto + '://' + (req.headers.host || 'iptv-ape.duckdns.org') + '/jit';
 }
 
-function manifestJson(req, id, sdr) {
+function manifestJson(req, id, sdr, sdr720) {
   const base = publicBase(req);
-  const prefix = '/live/' + id + (sdr ? '/sdr' : '');
-  const active = !!(current && current.id === id && !!current.sdr === !!sdr);
+  const prefix = '/live/' + id + (sdr720 ? '/sdr720' : (sdr ? '/sdr' : ''));
+  const active = !!(current && current.id === id && !!current.sdr === !!sdr && !!current.sdr720 === !!sdr720);
   return {
-    version: '1.0', channel: id, status: active ? 'active' : 'inactive', variant: sdr ? 'sdr' : 'hdr',
+    version: '1.0', channel: id, status: active ? 'active' : 'inactive', variant: sdr720 ? 'sdr720' : (sdr ? 'sdr' : 'hdr'),
     formats: {
       hls: { url: base + prefix + '/master.m3u8', protocol: 'HLS', container: 'CMAF/fMP4' },
       dash: { url: base + prefix + '/manifest.mpd', protocol: 'DASH', container: 'CMAF/fMP4' },
@@ -308,34 +319,36 @@ const server = http.createServer((req, res) => {
       uptime_s: current ? Math.round((Date.now() - current.started) / 1000) : 0,
     }));
   }
-  const jm = u.pathname.match(/^\/live\/([^/]+)\/(sdr\/)?manifest\.json$/);
+  const jm = u.pathname.match(/^\/live\/([^/]+)\/(sdr720\/|sdr\/)?manifest\.json$/);
   if (jm) {
     const id = safeId(jm[1]);
     if (!id) { res.writeHead(400); return res.end('bad channel'); }
-    const sdr = !!jm[2];
+    const sdr720 = jm[2] === 'sdr720/';
+    const sdr = !sdr720 && jm[2] === 'sdr/';
     // Start on manifest request so a player that asks JSON first also warms.
     const map = loadMap();
     if (!map[id] || !map[id].url) { res.writeHead(404); return res.end('unknown channel'); }
-    if (!current || current.id !== id || !!current.sdr !== sdr) start(id, map[id], sdr);
+    if (!current || current.id !== id || !!current.sdr !== sdr || !!current.sdr720 !== sdr720) start(id, map[id], sdr, sdr720);
     current.lastAccess = Date.now();
     res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
-    return res.end(JSON.stringify(manifestJson(req, id, sdr)));
+    return res.end(JSON.stringify(manifestJson(req, id, sdr, sdr720)));
   }
-  const m = u.pathname.match(/^\/live\/([^/]+)\/(sdr\/)?(master\.m3u8|index\.m3u8|manifest\.mpd|media_[0-9]+\.m3u8|init-[0-9]+\.m4s|chunk-[0-9]+-[0-9]+\.m4s)$/);
+  const m = u.pathname.match(/^\/live\/([^/]+)\/(sdr720\/|sdr\/)?(master\.m3u8|index\.m3u8|manifest\.mpd|media_[0-9]+\.m3u8|init-[0-9]+\.m4s|chunk-[0-9]+-[0-9]+\.m4s)$/);
   if (!m) { res.writeHead(404); return res.end('not found'); }
   const id = safeId(m[1]);
   if (!id) { res.writeHead(400); return res.end('bad channel'); }
-  const sdr = !!m[2];
+  const sdr720 = m[2] === 'sdr720/';
+  const sdr = !sdr720 && m[2] === 'sdr/';
   const map = loadMap();
   if (!map[id] || !map[id].url) { res.writeHead(404); return res.end('unknown channel'); }
-  if (!current || current.id !== id || !!current.sdr !== sdr) start(id, map[id], sdr);
+  if (!current || current.id !== id || !!current.sdr !== sdr || !!current.sdr720 !== sdr720) start(id, map[id], sdr, sdr720);
   current.lastAccess = Date.now();
 
   let name = m[3];
   if (name === 'index.m3u8') name = 'media_0.m3u8';
   const waitName = (name === 'master.m3u8' || name === 'manifest.mpd' || name === 'media_0.m3u8') ? name : null;
   const serve = () => {
-    const file = path.join(OUT_ROOT, id, sdr ? 'sdr' : '', name);
+    const file = path.join(OUT_ROOT, id, sdr720 ? 'sdr720' : (sdr ? 'sdr' : ''), name);
     if (!fs.existsSync(file)) { res.writeHead(404); return res.end('not ready'); }
     const type = MIME[path.extname(file)] || 'application/octet-stream';
     if (name === 'master.m3u8' || name === 'manifest.mpd') {
@@ -348,7 +361,7 @@ const server = http.createServer((req, res) => {
   if (waitName) return waitForFile(id, waitName, (err) => {
     if (err) { res.writeHead(503, { 'Content-Type': 'text/plain' }); return res.end(err.message); }
     serve();
-  }, sdr);
+  }, sdr, sdr720);
   serve();
 });
 
@@ -360,3 +373,4 @@ process.on('SIGINT', () => { stopCurrent('signal'); process.exit(0); });
 
 fs.mkdirSync(OUT_ROOT, { recursive: true });
 server.listen(PORT, BIND, () => log('LISTEN', BIND + ':' + PORT, 'map=' + MAP_FILE));
+

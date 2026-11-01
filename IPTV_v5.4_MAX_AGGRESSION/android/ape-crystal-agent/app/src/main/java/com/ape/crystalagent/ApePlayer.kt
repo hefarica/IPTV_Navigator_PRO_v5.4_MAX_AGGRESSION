@@ -172,7 +172,7 @@ class ApePlayer(private val ctx: Context) {
         // HDR init failure on JIT: switch to the same channel's real SDR/H.264
         // variant. Never declare H.264 over the HDR URL; this is a different
         // server-side rendition selected by path.
-        if (currentUrl.contains("/jit/live/") && !currentUrl.contains("/sdr/")) {
+        if (currentUrl.contains("/jit/live/") && !currentUrl.contains("/sdr/") && !currentUrl.contains("/sdr720/")) {
             val m = Regex("^(.*/jit/live/[^/]+/)(?!sdr/)(.*)$").find(currentUrl)
             val sdrUrl = m?.let { it.groupValues[1] + "sdr/" + it.groupValues[2] }
             if (sdrUrl != null) {
@@ -181,6 +181,13 @@ class ApePlayer(private val ctx: Context) {
                 openMedia(player, sdrUrl, currentUa, currentHeaders)
                 return
             }
+        }
+        if (currentUrl.contains("/sdr/") && !currentUrl.contains("/sdr720/")) {
+            val sdr720Url = currentUrl.replace("/sdr/", "/sdr720/")
+            fallbackAttempt++
+            Log.w(TAG, "SDR 1080 failed -> SDR720/H.264 same channel: $sdr720Url")
+            openMedia(player, sdr720Url, currentUa, currentHeaders)
+            return
         }
         // TRUTH-GUARD: si la fuente real es AVC, no se puede "fallback" a HEVC
         // sobre la misma URL. Eso cambiaba el codec declarado y dejaba tracks vacíos.
