@@ -311,6 +311,18 @@ const server = http.createServer((req, res) => {
     res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
     return res.end(JSON.stringify({ service: 'ape-jit-cmaf', count: channels.length, channels: channels }));
   }
+  const gm = u.pathname.match(/^\/go\/([^/]+)\/?$/);
+  if (gm) {
+    const id = safeId(gm[1]);
+    if (!id) { res.writeHead(400); return res.end('bad channel'); }
+    const map = loadMap();
+    if (!map[id] || !map[id].url) { res.writeHead(404); return res.end('unknown channel'); }
+    res.writeHead(302, {
+      'Location': publicBase(req) + '/live/' + id + '/master.m3u8',
+      'Cache-Control': 'no-store',
+    });
+    return res.end();
+  }
   if (u.pathname === '/health') {
     res.writeHead(200, { 'Content-Type': 'application/json' });
     return res.end(JSON.stringify({
