@@ -49,8 +49,19 @@ The deployed service uses one 1080p HEVC rendition to preserve real-time.
 ## Not implemented
 
 - LCEVC (requires licensed encoder and enhancement layer).
-- Three-rendition ABR (CPU).
-- DASH (only HLS/CMAF now).
+- Three-rendition ABR: measured 25.13 fps for a 30 fps source on the 3-vCPU VPS
+  (6 s encoded in 5.97 s, 189% CPU), so it is not sustainable real-time.
+- DASH is now implemented alongside HLS from the same fMP4 segments.
+
+## Measured limits
+
+```text
+1 x 1080p HEVC, threads=2:  66.84 fps  (HLS test)
+1 x 1080p DASH+HLS:         55.13 fps  (DASH test)
+3 x ABR 1080/720/480, t=1:  25.13 fps  (not real-time)
+```
+
+One 1080p rendition is the safe operating point.
 
 ## List generation
 
