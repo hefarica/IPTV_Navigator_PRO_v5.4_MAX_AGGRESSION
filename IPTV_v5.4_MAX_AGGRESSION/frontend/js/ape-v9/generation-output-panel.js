@@ -83,26 +83,49 @@
 
   async function sendDeltaToVps(v) {
     var arr = getDeltaArray(v);
-    try {
-      var r = await fetch('/prisma/api/ape-output-config.php', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        cache: 'no-store',
-        body: JSON.stringify({
-          delta_pct: v,
-          delta_array: arr,
-          rule: 'IN >= OUT * (1 + delta)',
-          source: 'generation-output-panel',
-          generated_at: new Date().toISOString()
-        })
-      });
-      var j = await r.json().catch(function () { return {}; });
-      if (!r.ok || j.ok !== true) throw new Error(j.error || ('http_' + r.status));
-      return j;
-    } catch (e) {
-      console.warn('[APE-OUT] delta VPS no confirmado:', e && e.message);
-      return null;
+    var payload = {
+      delta_pct: v,
+      delta_array: arr,
+      rule: 'IN >= OUT * (1 + delta)',
+      source: 'generation-output-panel',
+      generated_at: new Date().toISOString()
+    };
+    var lastErr = null;
+    for (var attempt = 1; attempt <= 2; attempt++) {
+      try {
+        var r = await fetch('/prisma/api/ape-output-config.php', {
+          method: 'POST',
+          mode: 'cors',
+          credentials: 'same-origin',
+          headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+          cache: 'no-store',
+          body: JSON.stringify(payload)
+        });
+        var txt = await r.text();
+        var j = {};
+        try { j = JSON.parse(txt); } catch (_) { throw new Error('respuesta_no_json'); }
+        if (!r.ok || j.ok !== true) throw new Error(j.error || ('http_' + r.status));
+
+        // Verificación real: leer de vuelta lo almacenado en el VPS.
+        var g = await fetch('/prisma/api/ape-output-config.php', {
+          method: 'GET', mode: 'cors', credentials: 'same-origin', cache: 'no-store',
+          headers: { 'Accept': 'application/json' }
+        });
+        var gt = await g.text();
+        var gj = {};
+        try { gj = JSON.parse(gt); } catch (_) { throw new Error('verificacion_no_json'); }
+        if (!g.ok || gj.ok !== true || !gj.delta_array) throw new Error(gj.error || 'sin_confirmacion_vps');
+        var keys = Object.keys(arr);
+        var mismatch = keys.filter(function (k) { return Number(gj.delta_array[k]) !== Number(arr[k]); });
+        if (mismatch.length) throw new Error('vps_array_distinto:' + mismatch.join(','));
+        return { ok: true, confirmed: true, post: j, readback: gj };
+      } catch (e) {
+        lastErr = e;
+        if (attempt < 2) await new Promise(function (res) { setTimeout(res, 350); });
+      }
     }
+    console.warn('[APE-OUT] delta VPS no confirmado:', lastErr && lastErr.message);
+    return { ok: false, confirmed: false, error: lastErr && lastErr.message };
   }
 
   function applyDelta(notify) {
@@ -119,8 +142,8 @@
     if (notify) {
       status('Delta ' + v + '% aplicado; enviando al VPS…', '#38bdf8');
       sendDeltaToVps(v).then(function (res) {
-        if (res) status('Delta ' + v + '% aplicado y confirmado por VPS', '#22c55e');
-        else status('Delta ' + v + '% aplicado localmente; VPS no confirmó', '#f59e0b');
+        if (res && res.confirmed) status('Delta ' + v + '% guardado y leído de vuelta en VPS', '#22c55e');
+        else status('Delta ' + v + '% local; VPS: ' + ((res && res.error) || 'sin respuesta'), '#f59e0b');
       });
     }
     return v;
@@ -343,10 +366,10 @@
       '<button id="ape-delta-apply" type="button" style="margin-left:5px;background:#0ea5e9;color:#fff;border:0;border-radius:6px;padding:6px 10px;font-size:.8rem;font-weight:800;cursor:pointer;">Aplicar</button>' +
       '</div>' +
       '<div style="display:flex;gap:7px;flex-wrap:wrap;margin-top:7px;font-size:.8rem;">' +
-      '<span style="color:#86efac;border:1px solid rgba(34,197,94,.45);border-radius:999px;padding:3px 8px;">ENTRA MÁS · descarga / prefetch / buffer</span>' +
-      '<span style="color:#fca5a5;border:1px solid rgba(239,68,68,.4);border-radius:999px;padding:3px 8px;">SALE MENOS · reproducción / bitrate</span>' +
+      '<span style="color:#86efac;border:1px solid rgba(34,197,94,.45);border-radius:999px;padding:3px 8px;">ENTRADA EXTRA · descarga / prefetch / buffer</span>' +
+      '<span style="color:#fca5a5;border:1px solid rgba(239,68,68,.4);border-radius:999px;padding:3px 8px;">SALIDA INTACTA · imagen / bitrate del proveedor</span>' +
       '</div>' +
-      '<div style="font-size:.82rem;color:#94a3b8;margin-top:6px;">Entrada ≥ salida × (1 + delta). Cada perfil aplica el cálculo sobre sus propios valores; aquí no se muestran Mbps absolutos.</div></div>' +
+      '<div style="font-size:.82rem;color:#94a3b8;margin-top:6px;">Entrada requerida ≥ salida solicitada × (1 + delta). La salida NO se reduce: es la que pide la reproducción/imagen; el margen se reserva en entrada.</div></div>' +
       '<div style="background:rgba(2,6,23,.38);border:1px solid rgba(148,163,184,.25);border-radius:10px;padding:10px;font-size:.8rem;color:#94a3b8;">' +
       '<div style="font-weight:800;color:#e2e8f0;">MODO</div>' +
       '<select id="ape-gen-mode-select" style="margin-top:5px;width:100%;padding:5px 6px;border-radius:6px;background:#0f172a;color:#e2e8f0;border:1px solid #334155;font-size:.74rem;">' +

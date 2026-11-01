@@ -1611,6 +1611,11 @@ try {
     function applyScope(scope) {
         render();
         closeMenu();
+        if (scope === 'current' && typeof window !== 'undefined'
+            && window.APE_AUTO_ADJUST && typeof window.APE_AUTO_ADJUST.apply === 'function') {
+            window.APE_AUTO_ADJUST.apply();
+            return;
+        }
         try {
             var pm = window.ProfileManagerV9;
             if (!pm) return;
@@ -1695,9 +1700,14 @@ try {
         if (b) {
             b.addEventListener('click', function (e) {
                 e.preventDefault();
-                var m = document.getElementById('apeAutoAdjustMenu');
-                if (m && m.style.display === 'flex') closeMenu();
-                else openMenu();
+                e.stopPropagation();
+                // El botón principal ejecuta la rutina real; el menú queda
+                // disponible sólo para el botón inyectado del solver.
+                if (window.APE_AUTO_ADJUST && typeof window.APE_AUTO_ADJUST.apply === 'function') {
+                    window.APE_AUTO_ADJUST.apply();
+                } else {
+                    openMenu();
+                }
             });
         }
         // El botón del solver (pm9_auto_adjust_btn) se inyecta después del

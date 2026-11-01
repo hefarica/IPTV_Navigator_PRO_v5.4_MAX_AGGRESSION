@@ -494,15 +494,22 @@
     function adjustProfileObjective(profileId) {
         var sid = profileId || (global.APE_PROFILES_CONFIG.activeProfileId || 'P3');
         var r = adjustProfile(sid, { apply: true });
-        var fit = fitBitrateForLink(sid, r.state);
-        if (fit && fit.fit) {
-            var fittedState = Object.assign({}, r.state, { bitrate: fit.to });
-            var fittedSolve = solve(fittedState, engineInputsFor(sid));
-            applyState(sid, fittedSolve.state);
-            r = adjustProfile(sid, { apply: true });
-            r.fitBitrate = fit;
-        } else if (fit) {
-            r.fitBitrate = fit;
+        // PRESERVE OUTPUT: la salida del proveedor no se recorta. El margen
+        // adicional del delta se reserva en entrada/prefetch/buffer, nunca
+        // bajando el bitrate del perfil.
+        var allowFit = global.APE_SOLVER_PRESERVE_OUTPUT !== true
+            && global.APE_SOLVER_FIT_BITRATE === true;
+        if (allowFit) {
+            var fit = fitBitrateForLink(sid, r.state);
+            if (fit && fit.fit) {
+                var fittedState = Object.assign({}, r.state, { bitrate: fit.to });
+                var fittedSolve = solve(fittedState, engineInputsFor(sid));
+                applyState(sid, fittedSolve.state);
+                r = adjustProfile(sid, { apply: true });
+                r.fitBitrate = fit;
+            } else if (fit) {
+                r.fitBitrate = fit;
+            }
         }
         r.diagnostic = diagnose(sid);
         r.score = r.after;
@@ -640,7 +647,9 @@
         // única palanca física que queda dentro del MISMO perfil es su bitrate.
         // Se baja sólo hasta el máximo que cumple ratio ≥ 1.3 y nunca por
         // debajo del suelo de calidad de su resolución.
-        if (global.APE_SOLVER_FIT_BITRATE !== false) {
+        var allowFit = global.APE_SOLVER_PRESERVE_OUTPUT !== true
+            && global.APE_SOLVER_FIT_BITRATE === true;
+        if (allowFit) {
             fit = fitBitrateForLink(targetId, r.state);
             if (fit && fit.fit) {
                 var fittedState = Object.assign({}, r.state, { bitrate: fit.to });

@@ -16,6 +16,24 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'OPTIONS') {
     http_response_code(204);
     exit;
 }
+if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'GET') {
+    $file = '/dev/shm/ape_output_config.json';
+    if (!is_file($file)) {
+        http_response_code(404);
+        echo json_encode(['ok' => false, 'error' => 'NO_CONFIG_YET']);
+        exit;
+    }
+    $stored = json_decode((string)@file_get_contents($file), true);
+    if (!is_array($stored)) {
+        http_response_code(500);
+        echo json_encode(['ok' => false, 'error' => 'STORE_CORRUPT']);
+        exit;
+    }
+    $stored['ok'] = true;
+    $stored['readback'] = true;
+    echo json_encode($stored, JSON_UNESCAPED_SLASHES);
+    exit;
+}
 if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
     http_response_code(405);
     echo json_encode(['ok' => false, 'error' => 'POST_ONLY']);
