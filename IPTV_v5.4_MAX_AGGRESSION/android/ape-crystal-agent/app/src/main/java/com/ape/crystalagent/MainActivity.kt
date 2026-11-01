@@ -49,6 +49,9 @@ class MainActivity : Activity() {
         window.navigationBarColor = bg
         // [crashfix v4] El constructor de ADB/onboarding no debe tumbar la UI.
         flow = runCatching { OnboardingFlow(this) }.getOrNull()
+        runCatching { CaptureWatchdogService.start(this) }
+        // BG19 (t57): abrir la app garantiza el daemon (antes sólo el botón/onboarding lo arrancaban).
+        runCatching { AgentService.ensureRunning(this, "app_open") }
         val cfg = Config(this)
 
         val root = ScrollView(this).apply { setBackgroundColor(bg) }
@@ -72,13 +75,45 @@ class MainActivity : Activity() {
         val save = Button(this).apply {
             text = "Guardar token y arrancar ARA (sin WG)"
             setTextColor(Color.WHITE); background = round(accent)
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { bottomMargin = dp(20) }
             setOnClickListener {
                 val t = token.text.toString().trim()
                 if (t.length < 16) { toastText("Token demasiado corto"); return@setOnClickListener }
+                if (t == cfg.stateToken) { toastText("Bearer y SSE deben ser distintos"); return@setOnClickListener }
                 cfg.setToken(t)
                 token.setText("")
+                Thread { TokenVaultClient.backup(cfg) }.start()
                 AgentService.start(this@MainActivity)
                 flow?.start { step, ok, detail -> runOnUiThread { toastText("[$step] ${if (ok) "OK" else "…"} $detail") } }
+            }
+        }
+        val stateToken = EditText(this).apply {
+            hint = "SSE TOKEN (/ara/state)"
+            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
+            setSingleLine(true)
+            isFocusableInTouchMode = true
+            setTextColor(ink); setHintTextColor(muted)
+            setBackgroundColor(Color.rgb(255, 255, 255))
+            setPadding(dp(12), dp(10), dp(12), dp(10))
+        }
+        val saveState = Button(this).apply {
+            text = "Guardar SSE token (solo estado)"
+            setTextColor(ink); background = round(Color.rgb(226, 232, 240))
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { topMargin = dp(12); bottomMargin = dp(16) }
+            setOnClickListener {
+                val t = stateToken.text.toString().trim()
+                if (t.length < 16) { toastText("SSE token demasiado corto"); return@setOnClickListener }
+                if (t == cfg.eventToken) { toastText("SSE y Bearer deben ser distintos"); return@setOnClickListener }
+                cfg.setStateToken(t)
+                stateToken.setText("")
+                Thread { TokenVaultClient.backup(cfg) }.start()
+                toastText("SSE token guardado")
             }
         }
         val grant = Button(this).apply {
@@ -92,6 +127,9 @@ class MainActivity : Activity() {
         content.addView(sectionTitle("CONEXIÓN Y PERMISO"))
         content.addView(token)
         content.addView(save)
+        content.addView(text("SSE token separado para /ara/state", 12f, muted))
+        content.addView(stateToken)
+        content.addView(saveState)
         content.addView(grant)
 
         content.addView(sectionTitle("ESTADO GENERAL"))
@@ -126,6 +164,12 @@ class MainActivity : Activity() {
             setOnClickListener {
                 val u = url.text.toString().trim()
                 if (!u.startsWith("http://") && !u.startsWith("https://")) { toastText("URL inválida"); return@setOnClickListener }
+                // La lista puede traer la biblioteca LAB en metadata chunked.
+                // Se parsea en segundo plano; el player arranca sin esperar.
+                Thread {
+                    runCatching { ListLoader(cfg).loadStreaming(u) { } }
+                        .onFailure { android.util.Log.w("ApeListLoader", "metadata/list: ${it.message}") }
+                }.start()
                 startActivity(Intent(this@MainActivity, PlayerActivity::class.java).putExtra("url", u))
             }
         }
@@ -140,6 +184,13 @@ class MainActivity : Activity() {
             }
         }
         refresh.post(ticker!!)
+        // Prueba/automatización: cargar metadata de una lista sin pasar por la UI.
+        intent?.getStringExtra("list_url")?.trim()?.takeIf { it.startsWith("http") }?.let { lu ->
+            Thread {
+                runCatching { ListLoader(cfg).loadStreaming(lu) { } }
+                    .onFailure { android.util.Log.w("ApeListLoader", "metadata/list: ${it.message}") }
+            }.start()
+        }
         beginOnboarding()
     }
 
