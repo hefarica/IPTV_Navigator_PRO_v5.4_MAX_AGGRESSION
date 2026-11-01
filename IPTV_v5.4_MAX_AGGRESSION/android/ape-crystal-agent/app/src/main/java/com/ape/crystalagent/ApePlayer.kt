@@ -14,6 +14,7 @@ import androidx.media3.common.Tracks
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DataSource
 import androidx.media3.datasource.DefaultHttpDataSource
+import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.analytics.AnalyticsListener
 import androidx.media3.exoplayer.hls.HlsMediaSource
@@ -78,7 +79,10 @@ class ApePlayer(private val ctx: Context) {
             .setAllowVideoMixedMimeTypeAdaptiveness(false)   // no mezclar HEVC+AVC en ABR
             .setAllowVideoNonSeamlessAdaptiveness(false)      // no cambiar de resolución
             .build()
-        val builder = ExoPlayer.Builder(ctx).setTrackSelector(sel)
+        // MediaCodec puede fallar incluso con format_supported=YES; el fallback
+        // de Media3 permite pasar de decoder HW a SW sin cambiar el codec declarado.
+        val renderers = DefaultRenderersFactory(ctx).setEnableDecoderFallback(true)
+        val builder = ExoPlayer.Builder(ctx, renderers).setTrackSelector(sel)
         // APE Fluid: buffer/caché/decoder-fallback sobre el player existente (sin player nuevo).
         FluidBridge.configureBuilder(ctx, builder)
         return builder.build().also { p ->
