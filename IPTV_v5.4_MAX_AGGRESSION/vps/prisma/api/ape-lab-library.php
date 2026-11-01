@@ -53,7 +53,7 @@ if ($profile !== '' && isset($meta['profile']) && strtoupper((string)$meta['prof
 $fields = $meta['fields'] ?? [];
 $flatCount = 0;
 if (is_array($fields)) {
-    foreach ($fields as $section => $value) {
+    foreach ($fields as $secName => $value) {
         if (is_array($value)) {
             // Un objeto por sección cuenta sus claves; una lista cuenta sus items.
             $flatCount += (array_is_list($value) ? count($value) : count(array_keys($value)));
