@@ -15,9 +15,19 @@ import java.nio.charset.StandardCharsets
  * a SharedPreferences y el archivo puede borrarse después.
  */
 class Config(ctx: Context) {
+    private val appCtx = ctx.applicationContext
     private val sp = ctx.getSharedPreferences("ape", Context.MODE_PRIVATE)
     private val tokenFilePriv = File(ctx.filesDir, "token")
     private val tokenFileSd = File("/sdcard/ape/token")
+    private val eventTokenPriv = File(ctx.filesDir, "event_token")
+    private val stateTokenPriv = File(ctx.filesDir, "state_token")
+
+    /*
+     * HARDENING: dos credenciales con scopes distintos.
+     * - Event token (Bearer): solo /ara/events.
+     * - State token (SSE): solo /ara/state.
+     * Nunca se hace fallback de una a la otra, ni se registran sus valores.
+     */
     private val syncKeyFilePriv = File(ctx.filesDir, "sync.key")
     // Release/sideload no puede leer /sdcard/ape si el dueño es media_rw; esta ruta
     // app-specific sí es legible por la app sin permisos de almacenamiento.
@@ -47,24 +57,106 @@ class Config(ctx: Context) {
      */
     val useWg: Boolean get() = sp.getBoolean("use_wg", false)
 
-    fun setToken(t: String) { sp.edit().putString("token", t.trim()).apply() }
+    /** JSON completo de metadata de la lista (biblioteca dinámica del ARA). */
+    fun saveLabMetadata(rawJson: String, sha256: String) {
+        sp.edit()
+            .putString("lab_metadata_json", rawJson)
+            .putString("lab_metadata_sha256", sha256)
+            .putLong("lab_metadata_at", System.currentTimeMillis())
+            .apply()
+    }
+
+    fun labMetadataJson(): String = sp.getString("lab_metadata_json", "") ?: ""
+    fun labMetadataSha256(): String = sp.getString("lab_metadata_sha256", "") ?: ""
+
+    fun setToken(t: String) {
+        val v = t.trim()
+        if (!validToken(v) || v == stateToken) return
+        sp.edit().putString(KEY_EVENT_TOKEN, v).commit()
+        writePrivate(eventTokenPriv, v)
+    }
+
+    /** Bearer scoped to /ara/events. */
+    val eventToken: String get() = token
+
+    /** SSE token scoped to /ara/state; separate storage and no Bearer fallback. */
+    val stateToken: String get() {
+        sp.getString(KEY_STATE_TOKEN, "")!!.trim().let { stored ->
+            if (validToken(stored)) {
+                persistIfNeeded(stateTokenPriv, stored)
+                return stored
+            }
+        }
+        // Provisión one-time desde archivo privado; nunca desde el Bearer ni storage externo.
+        return runCatching {
+            if (!stateTokenPriv.isFile) return ""
+            val v = stateTokenPriv.readText().trim()
+            if (!validToken(v)) return ""
+            sp.edit().putString(KEY_STATE_TOKEN, v).commit()
+            v
+        }.getOrDefault("")
+    }
+
+    fun setStateToken(t: String) {
+        val v = t.trim()
+        if (!validToken(v) || v == token) return
+        sp.edit().putString(KEY_STATE_TOKEN, v).commit()
+        writePrivate(stateTokenPriv, v)
+    }
+
+    fun hasStateToken(): Boolean = validToken(stateToken)
+
+    private fun validToken(v: String): Boolean =
+        v.length in 16..512 && v.none { it.isWhitespace() }
     fun setDeviceId(d: String) { sp.edit().putString("dev", d.trim()).apply() }
     fun setUseWg(v: Boolean) { sp.edit().putBoolean("use_wg", v).apply() }
 
     val token: String
         get() {
-            sp.getString("token", "")!!.let { if (it.isNotEmpty()) return it }
-            // fallback: leer del archivo e ingerirlo una vez
-            for (f in listOf(tokenFilePriv, tokenFileSd)) {
+            sp.getString(KEY_EVENT_TOKEN, "")!!.let {
+                if (validToken(it)) {
+                    persistIfNeeded(eventTokenPriv, it)
+                    return it
+                }
+            }
+            // fallback: leer del archivo privado/legacy e ingerirlo una vez
+            for (f in listOf(eventTokenPriv, tokenFilePriv, tokenFileSd)) {
                 try {
                     if (f.exists()) {
                         val t = f.readText().trim()
-                        if (t.isNotEmpty()) { sp.edit().putString("token", t).apply(); return t }
+                        if (validToken(t)) {
+                            sp.edit().putString(KEY_EVENT_TOKEN, t).commit()
+                            persistIfNeeded(eventTokenPriv, t)
+                            return t
+                        }
                     }
                 } catch (e: Exception) { Log.w(TAG, "token file err: ${e.message}") }
             }
             return ""
         }
+
+    /** Atomic private 0600 backup; survives app updates, never external storage. */
+    private fun writePrivate(file: File, value: String) {
+        runCatching {
+            val tmp = File(file.parentFile, file.name + ".tmp")
+            tmp.writeText(value)
+            tmp.setReadable(true, true)
+            tmp.setWritable(true, true)
+            tmp.setExecutable(false, false)
+            if (!tmp.renameTo(file)) {
+                file.writeText(value)
+                file.setReadable(true, true)
+                file.setWritable(true, true)
+                tmp.delete()
+            }
+        }
+    }
+
+    private fun persistIfNeeded(file: File, value: String) {
+        runCatching {
+            if (!file.isFile || file.readText().trim() != value) writePrivate(file, value)
+        }
+    }
 
     fun provision(vps: String?, dev: String?) {
         sp.edit().apply {
@@ -121,5 +213,10 @@ class Config(ctx: Context) {
     companion object {
         const val TAG = "ApeConfig"
         const val DEFAULT_VPS = "https://iptv-ape.duckdns.org"
+        const val KEY_EVENT_TOKEN = "token"
+        const val KEY_STATE_TOKEN = "state_token"
+        const val PATH_EVENTS = "/ara/events"
+        const val PATH_STATE = "/ara/state"
+        const val PATH_VAULT = "/prisma/api/token-vault.php"
     }
 }

@@ -19,6 +19,9 @@ object AraStatus {
     @Volatile var lastTrack: String = ""
     @Volatile var playerActive: Boolean = false
     @Volatile var currentChannelId: String = ""
+    @Volatile var labMetadataProfile: String = ""
+    @Volatile var labMetadataSha256: String = ""
+    @Volatile var labMetadataFieldCount: Int = 0
 
     // ── /sync (D3) ────────────────────────────────────────────────────────────
     /** idle | disabled | no_key | applied | partial | denied | not_modified | endpoint_absent | unauthorized | rate_limited | protocol | replay | offline | server_error | error */
@@ -89,6 +92,13 @@ object AraStatus {
     @Volatile var captureLap: Double = 0.0
     @Volatile var captureMotion: Double = 0.0
     @Volatile var captureKind: String = "—"
+    @Volatile var captureFrameGapMs: Long = 0L
+    @Volatile var captureFps: Double = 0.0
+    @Volatile var captureFreezeMs: Long = 0L
+    @Volatile var captureStalls: Long = 0L
+    @Volatile var captureAt: Long = 0L
+    @Volatile var lastZapAt: Long = 0L
+    @Volatile var lastFallbackChain: String = ""
 
     fun ageMs(ts: Long, now: Long = System.currentTimeMillis()): Long =
         if (ts <= 0L) Long.MAX_VALUE else (now - ts).coerceAtLeast(0L)

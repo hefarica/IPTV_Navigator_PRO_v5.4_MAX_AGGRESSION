@@ -1,10 +1,14 @@
 package com.ape.crystalagent
 
+import android.util.Base64
 import android.util.Log
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import org.json.JSONObject
 import java.io.BufferedReader
 import java.io.InputStreamReader
+import java.nio.charset.StandardCharsets
+import java.security.MessageDigest
 import java.util.concurrent.TimeUnit
 
 /** Un canal de la lista APE (URL-1 verbatim del proveedor + la metadata iData de URL-2). */
@@ -20,6 +24,14 @@ data class IptvChannel(
  * lista que el VPS/player consumen).
  */
 class ListLoader(private val cfg: Config) {
+
+    /** JSON metadata global de la lista (#EXT-X-APE-LAB-METADATA). */
+    @Volatile
+    var labMetadata: JSONObject? = null
+        private set
+    @Volatile
+    var labMetadataSha256: String = ""
+        private set
 
     private val client = OkHttpClient.Builder()
         .connectTimeout(10, TimeUnit.SECONDS)
@@ -39,6 +51,24 @@ class ListLoader(private val cfg: Config) {
                 var meta = HashMap<String, String>()
                 reader.forEachLine { line ->
                     when {
+                        line.startsWith("#EXT-X-APE-LAB-METADATA:") -> {
+                            try {
+                                val b64 = line.substring("#EXT-X-APE-LAB-METADATA:".length).trim()
+                                val raw = Base64.decode(b64, Base64.DEFAULT)
+                                val json = JSONObject(String(raw, StandardCharsets.UTF_8))
+                                labMetadata = json
+                                labMetadataSha256 = MessageDigest.getInstance("SHA-256")
+                                    .digest(raw).joinToString("") { "%02x".format(it) }
+                                AraStatus.labMetadataProfile = json.optString("profile")
+                                AraStatus.labMetadataSha256 = labMetadataSha256
+                                AraStatus.labMetadataFieldCount =
+                                    json.optJSONObject("fields")?.length() ?: 0
+                                cfg.saveLabMetadata(json.toString(), labMetadataSha256)
+                                Log.i(TAG, "LAB metadata: profile=${json.optString("profile")} sha=${labMetadataSha256.take(16)}")
+                            } catch (e: Exception) {
+                                Log.w(TAG, "LAB metadata inválida: ${e.message}")
+                            }
+                        }
                         line.startsWith("#EXTINF") -> meta = parseMeta(line)
                         line.startsWith("http") -> {
                             onChannel(
