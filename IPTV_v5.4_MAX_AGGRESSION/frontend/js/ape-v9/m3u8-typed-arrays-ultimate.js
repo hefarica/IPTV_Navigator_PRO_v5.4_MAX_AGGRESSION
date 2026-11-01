@@ -2754,6 +2754,20 @@
         }
     }
 
+    function __apeContinuityTags() {
+        if (typeof window !== 'undefined' && window.APE_CONTINUITY_LAW && typeof window.APE_CONTINUITY_LAW.tags === 'function') {
+            return window.APE_CONTINUITY_LAW.tags();
+        }
+        return [
+            '#EXT-X-APE-CONTINUITY-LAW:STREAMING_CONTINUITY_LAW_V1',
+            '#EXT-X-APE-CONTINUITY-MANIFEST:no-store',
+            '#EXT-X-APE-CONTINUITY-RANGE:206',
+            '#EXT-X-APE-CONTINUITY-SEGMENTS:session-unique',
+            '#EXT-X-APE-CONTINUITY-TRANSPORT:declared',
+            '#EXT-X-APE-CONTINUITY-FALLBACK:HDR>SDR1080>SDR720'
+        ];
+    }
+
     function generateGlobalHeader(channelsCount, options = {}) {
         const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 18) + 'Z';
         const totalChannels = typeof window !== 'undefined' && window.app && typeof window.app.getFilteredChannels === 'function' ? window.app.getFilteredChannels().length : channelsCount;
@@ -2765,7 +2779,8 @@
                 `#EXT-X-INDEPENDENT-SEGMENTS`,
                 `#EXT-X-APE-CHANNELS:${totalChannels}`,
                 `#EXT-X-APE-LAB-EXTRAS:${__apeLabExtrasFlag(options)}`,
-                __apeLabDnaTag(options)
+                __apeLabDnaTag(options),
+                ...__apeContinuityTags()
             ];
             const _labMetaTag = generateLabMetadataTag();
             if (_labMetaTag) coreHeader.push(_labMetaTag);
@@ -3102,6 +3117,7 @@
             return `#EXTM3U x-tvg-url="" x-tvg-url-epg="" x-tvg-logo="" x-tvg-shift=0 catchup="flussonic" catchup-days="7" catchup-source="{MediaUrl}?utc={utc}&lutc={lutc}" url-tvg="" refresh="1800"
 #EXT-X-VERSION:9
 #EXT-X-INDEPENDENT-SEGMENTS
+${__apeContinuityTags().join('\n')}
 #EXT-X-START:TIME-OFFSET=-3.0,PRECISE=YES
 #EXT-X-TARGETDURATION:2
 #EXT-X-PART-INF:PART-TARGET=0.5
@@ -3149,6 +3165,7 @@ ${generateLabMetadataTag() || ''}`;
 #EXT-X-APE-CHANNELS:${totalChannels}
 #EXT-X-APE-LAB-EXTRAS:${__apeLabExtrasFlag(options)}
 ${__apeLabDnaTag(options)}
+${__apeContinuityTags().join('\n')}
 ${generateLabMetadataTag() || ''}
 ${_disneyBlockFb}`;
         }
@@ -3192,6 +3209,7 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
 #EXT-X-APE-BUILD:v6.0-NUCLEAR-HACKS-${timestamp}
 #EXT-X-APE-PARADIGM:PLAYER-ENSLAVEMENT-PROTOCOL-V6.0-NUCLEAR
 #EXT-X-APE-CHANNELS:${totalChannels}
+${__apeContinuityTags().join('\n')}
 #EXT-X-APE-PROFILES:P0-ULTRA_EXTREME_8K,P1-4K_SUPREME_60FPS,P2-4K_EXTREME_30FPS,P3-FHD_ADVANCED_60FPS,P4-HD_STABLE_30FPS,P5-SD_FAILSAFE_25FPS
 #EXT-X-APE-ISP-THROTTLE:10-LEVELS-NUCLEAR-OBSCENE-NEVER-DOWN
 #EXT-X-APE-ISP-THROTTLE-VERSION:4.0-OBSCENE

@@ -737,6 +737,22 @@
         },
         getProfileIds: function() {
             return Object.keys(DEFAULT_PROFILES);
-        }
+        },
+        continuityLaw: Object.freeze({
+            version: '1.0',
+            manifest: 'no-store',
+            range: 206,
+            segment: 'session-unique',
+            fallback: ['HDR', 'SDR_1080', 'SDR_720'],
+            policy: 'docs/policies/STREAMING_CONTINUITY_LAW.md',
+            requiredTags: [
+                '#EXT-X-APE-CONTINUITY-LAW:STREAMING_CONTINUITY_LAW_V1',
+                '#EXT-X-APE-CONTINUITY-MANIFEST:no-store',
+                '#EXT-X-APE-CONTINUITY-RANGE:206',
+                '#EXT-X-APE-CONTINUITY-SEGMENTS:session-unique',
+                '#EXT-X-APE-CONTINUITY-TRANSPORT:declared',
+                '#EXT-X-APE-CONTINUITY-FALLBACK:HDR>SDR1080>SDR720'
+            ]
+        })
     };
 }));
