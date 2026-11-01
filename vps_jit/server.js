@@ -3,7 +3,7 @@
 /*
  * APE JIT CMAF — one active channel at a time.
  * Input: /opt/ape-jit/channels.json  { "<id>": { "url": "...", "ua": "..." } }
- * Output: /dev/shm/ape-jit/<id>/{init.mp4,seg_*.m4s,index.m3u8}
+ * Output: /dev/shm/ape-jit/<id>/{manifest.mpd,master.m3u8,media_*.m3u8,init-*.m4s,chunk-*.m4s}
  * Never accepts a URL from the client; only an id in the allowlist.
  */
 const http = require('http');
@@ -16,15 +16,15 @@ const BIND = process.env.BIND || '127.0.0.1';
 const MAP_FILE = process.env.MAP_FILE || '/opt/ape-jit/channels.json';
 const OUT_ROOT = process.env.OUT_ROOT || '/dev/shm/ape-jit';
 const IDLE_MS = Number(process.env.IDLE_MS || 20000);
-const WAIT_MS = Number(process.env.WAIT_MS || 12000);
+const WAIT_MS = Number(process.env.WAIT_MS || 15000);
 
-let current = null; // { id, child, dir, lastAccess, started }
+let current = null;
 const MIME = {
   '.m3u8': 'application/vnd.apple.mpegurl',
+  '.mpd': 'application/dash+xml',
   '.m4s': 'video/iso.segment',
   '.mp4': 'video/mp4',
 };
-
 function log(...a) { console.log(new Date().toISOString(), ...a); }
 function loadMap() {
   try { return JSON.parse(fs.readFileSync(MAP_FILE, 'utf8')); }
@@ -55,11 +55,15 @@ function start(id, spec) {
     '-threads', '2', '-tag:v', 'hvc1',
     '-b:v', '2500k', '-maxrate', '2800k', '-bufsize', '5000k',
     '-c:a', 'aac', '-b:a', '128k', '-ac', '2',
-    '-f', 'hls', '-hls_time', '2', '-hls_list_size', '6',
-    '-hls_flags', 'delete_segments+independent_segments+omit_endlist',
-    '-hls_segment_type', 'fmp4', '-hls_fmp4_init_filename', 'init.mp4',
-    '-hls_segment_filename', path.join(dir, 'seg_%03d.m4s'),
-    'index.m3u8',
+    // One FFmpeg -> shared fMP4 for DASH + HLS.
+    '-f', 'dash',
+    '-seg_duration', '2', '-frag_duration', '2',
+    '-window_size', '6', '-extra_window_size', '2',
+    '-remove_at_exit', '0',
+    '-hls_playlist', '1', '-hls_master_name', 'master.m3u8',
+    '-init_seg_name', 'init-$RepresentationID$.m4s',
+    '-media_seg_name', 'chunk-$RepresentationID$-$Number$.m4s',
+    'manifest.mpd',
   ];
   const child = spawn('nice', ['-n', '19', 'ffmpeg', ...args], {
     cwd: dir,
@@ -79,8 +83,8 @@ function start(id, spec) {
   });
 }
 
-function waitForPlaylist(id, cb) {
-  const file = path.join(OUT_ROOT, id, 'index.m3u8');
+function waitForFile(id, name, cb) {
+  const file = path.join(OUT_ROOT, id, name);
   const t0 = Date.now();
   const tick = () => {
     if (fs.existsSync(file)) return cb(null, file);
@@ -91,15 +95,28 @@ function waitForPlaylist(id, cb) {
   tick();
 }
 
-function master() {
-  return [
-    '#EXTM3U',
-    '#EXT-X-VERSION:7',
-    '#EXT-X-INDEPENDENT-SEGMENTS',
-    '#EXT-X-STREAM-INF:BANDWIDTH=2800000,AVERAGE-BANDWIDTH=2600000,RESOLUTION=1920x1080,CODECS="hvc1.1.6.L120.B0,mp4a.40.2"',
-    'index.m3u8',
-    '',
-  ].join('\n');
+function publicBase(req) {
+  const proto = (req.headers['x-forwarded-proto'] || 'https').split(',')[0].trim();
+  return proto + '://' + (req.headers.host || 'iptv-ape.duckdns.org') + '/jit';
+}
+
+function manifestJson(req, id) {
+  const base = publicBase(req);
+  const active = !!(current && current.id === id);
+  return {
+    version: '1.0', channel: id, status: active ? 'active' : 'inactive',
+    formats: {
+      hls: { url: base + '/live/' + id + '/master.m3u8', protocol: 'HLS', container: 'CMAF/fMP4' },
+      dash: { url: base + '/live/' + id + '/manifest.mpd', protocol: 'DASH', container: 'CMAF/fMP4' },
+    },
+    streams: [{
+      bandwidth: 2800000, average_bandwidth: 2600000, resolution: '1920x1080',
+      codecs: 'hvc1.1.6.L120.B0,mp4a.40.2', uri: 'media_0.m3u8',
+    }],
+    clients_connected: active ? 1 : 0,
+    active_since: active ? new Date(current.started).toISOString() : null,
+    generated_at: new Date().toISOString(),
+  };
 }
 
 const server = http.createServer((req, res) => {
@@ -118,7 +135,19 @@ const server = http.createServer((req, res) => {
       uptime_s: current ? Math.round((Date.now() - current.started) / 1000) : 0,
     }));
   }
-  const m = u.pathname.match(/^\/live\/([^/]+)\/(master\.m3u8|index\.m3u8|init\.mp4|seg_[0-9]+\.m4s)$/);
+  const jm = u.pathname.match(/^\/live\/([^/]+)\/manifest\.json$/);
+  if (jm) {
+    const id = safeId(jm[1]);
+    if (!id) { res.writeHead(400); return res.end('bad channel'); }
+    // Start on manifest request so a player that asks JSON first also warms.
+    const map = loadMap();
+    if (!map[id] || !map[id].url) { res.writeHead(404); return res.end('unknown channel'); }
+    if (!current || current.id !== id) start(id, map[id]);
+    current.lastAccess = Date.now();
+    res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
+    return res.end(JSON.stringify(manifestJson(req, id)));
+  }
+  const m = u.pathname.match(/^\/live\/([^/]+)\/(master\.m3u8|index\.m3u8|manifest\.mpd|media_[0-9]+\.m3u8|init-[0-9]+\.m4s|chunk-[0-9]+-[0-9]+\.m4s)$/);
   if (!m) { res.writeHead(404); return res.end('not found'); }
   const id = safeId(m[1]);
   if (!id) { res.writeHead(400); return res.end('bad channel'); }
@@ -127,21 +156,20 @@ const server = http.createServer((req, res) => {
   if (!current || current.id !== id) start(id, map[id]);
   current.lastAccess = Date.now();
 
-  if (m[2] === 'master.m3u8') {
-    res.writeHead(200, { 'Content-Type': MIME['.m3u8'], 'Cache-Control': 'no-store' });
-    return res.end(master());
-  }
-  if (m[2] === 'index.m3u8') {
-    return waitForPlaylist(id, (err) => {
-      if (err) { res.writeHead(503, { 'Content-Type': 'text/plain' }); return res.end(err.message); }
-      res.writeHead(200, { 'Content-Type': MIME['.m3u8'], 'Cache-Control': 'no-store' });
-      fs.createReadStream(path.join(OUT_ROOT, id, 'index.m3u8')).pipe(res);
-    });
-  }
-  const file = path.join(OUT_ROOT, id, m[2]);
-  if (!fs.existsSync(file)) { res.writeHead(404); return res.end('not ready'); }
-  res.writeHead(200, { 'Content-Type': MIME[path.extname(file)] || 'application/octet-stream' });
-  fs.createReadStream(file).pipe(res);
+  let name = m[2];
+  if (name === 'index.m3u8') name = 'media_0.m3u8';
+  const waitName = (name === 'master.m3u8' || name === 'manifest.mpd' || name === 'media_0.m3u8') ? name : null;
+  const serve = () => {
+    const file = path.join(OUT_ROOT, id, name);
+    if (!fs.existsSync(file)) { res.writeHead(404); return res.end('not ready'); }
+    res.writeHead(200, { 'Content-Type': MIME[path.extname(file)] || 'application/octet-stream', 'Cache-Control': 'no-store' });
+    fs.createReadStream(file).pipe(res);
+  };
+  if (waitName) return waitForFile(id, waitName, (err) => {
+    if (err) { res.writeHead(503, { 'Content-Type': 'text/plain' }); return res.end(err.message); }
+    serve();
+  });
+  serve();
 });
 
 setInterval(() => {
