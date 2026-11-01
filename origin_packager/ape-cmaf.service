@@ -1,0 +1,19 @@
+[Unit]
+Description=APE Authorized-Origin CMAF Packager
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+EnvironmentFile=/etc/ape-cmaf.env
+ExecStart=/opt/ape-cmaf/packager.sh
+Restart=always
+RestartSec=5
+LimitNOFILE=65536
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ReadWritePaths=/srv/ape-cmaf
+
+[Install]
+WantedBy=multi-user.target
