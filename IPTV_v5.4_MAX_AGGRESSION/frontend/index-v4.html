@@ -4237,6 +4237,11 @@
        Debe ir ANTES del resolver/calculator: Streaming Health sin esto
        presentaba el piso del perfil como si fuera medición. -->
   <script src="js/ape-v9/streaming/bw-estimator-v9.js?v=1.0"></script>
+  <!-- Predicción AI (motor real): EWMA2 + pendiente + ventana neuro-buffer.
+       Pronostica el throughput a 10 s sobre la medición de APE_BW y entrega una
+       decisión ACOTADA de prefetch (estrecha, nunca excede el SSOT del perfil).
+       Sin medición ⇒ EVIDENCE=none. API: APE_PREDICT.snapshot()/decide(). -->
+  <script src="js/ape-v9/streaming/predictive-prefetch-v9.js?v=20261101-ai-v1"></script>
   <!-- Optimizador automático: Risk mínimo + headroom según regla del propietario,
        con reglas en cadena y rollback. Consola: APE_OPT.optimize({apply:true}) -->
   <script src="js/ape-v9/streaming/settings-optimizer-v9.js?v=1.0"></script>

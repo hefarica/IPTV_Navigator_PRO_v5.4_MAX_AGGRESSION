@@ -1622,11 +1622,44 @@
                             // ── Throughput ─────────────────────────────────────────────────
                             throughput_t1: s.t1 || hardcoded.throughput_t1,
                             throughput_t2: s.t2 || hardcoded.throughput_t2,
-                            // ── Prefetch (from PM's prefetch config or hardcoded) ──────────
-                            prefetch_segments: pf?.segments || hardcoded.prefetch_segments,
-                            prefetch_parallel: pf?.parallelDownloads || hardcoded.prefetch_parallel,
-                            prefetch_buffer_target: pf?.bufferTarget ? pf.bufferTarget * 1000 : hardcoded.prefetch_buffer_target,
-                            prefetch_min_bandwidth: pf?.minBandwidth ? pf.minBandwidth * 1000000 : hardcoded.prefetch_min_bandwidth,
+                            // ── Prefetch (PM SSOT snake_case → generador) ──────────────────
+                            // [WIRE 2026-11-01] getPrefetchConfig() devuelve claves snake_case
+                            // (prefetch_segments / parallel_downloads / buffer_target_seconds /
+                            // min_bandwidth_mbps / adaptive_enabled / ai_prediction_enabled).
+                            // Antes se leían pf.segments · pf.parallelDownloads · pf.bufferTarget ·
+                            // pf.minBandwidth → undefined SIEMPRE → caía al hardcoded, y los dos
+                            // toggles del panel Prefetch nunca llegaban al generador.
+                            // snake_case manda; camelCase queda como compatibilidad legacy.
+                            prefetch_segments: (function () {
+                                const v = _firstDef(pf && pf.prefetch_segments, pf && pf.segments);
+                                return (v !== undefined && v !== null && v !== '' && Number.isFinite(Number(v)))
+                                    ? Number(v) : hardcoded.prefetch_segments;
+                            })(),
+                            prefetch_parallel: (function () {
+                                const v = _firstDef(pf && pf.parallel_downloads, pf && pf.parallelDownloads);
+                                return (v !== undefined && v !== null && v !== '' && Number.isFinite(Number(v)))
+                                    ? Number(v) : hardcoded.prefetch_parallel;
+                            })(),
+                            prefetch_buffer_target: (function () {
+                                const v = _firstDef(pf && pf.buffer_target_seconds, pf && pf.bufferTarget);
+                                return (v !== undefined && v !== null && v !== '' && Number.isFinite(Number(v)) && Number(v) > 0)
+                                    ? Number(v) * 1000 : hardcoded.prefetch_buffer_target;
+                            })(),
+                            prefetch_min_bandwidth: (function () {
+                                const v = _firstDef(pf && pf.min_bandwidth_mbps, pf && pf.minBandwidth);
+                                return (v !== undefined && v !== null && v !== '' && Number.isFinite(Number(v)) && Number(v) > 0)
+                                    ? Number(v) * 1000000 : hardcoded.prefetch_min_bandwidth;
+                            })(),
+                            // ── Toggles del panel Prefetch Inteligente (estado REAL) ───────
+                            // adaptive ON por defecto (doctrina anti-freeze del repo); AI OFF
+                            // salvo que el perfil lo declare. El generador DECLARA el estado;
+                            // la palanca que lo ejecuta vive en settings-optimizer-v9 (solver
+                            // R1-R6) y en el decision_engine del VPS.
+                            prefetch_adaptive_enabled: (pf && pf.adaptive_enabled !== undefined && pf.adaptive_enabled !== null)
+                                ? _toBool(pf.adaptive_enabled) : true,
+                            prefetch_ai_prediction: (pf && pf.ai_prediction_enabled !== undefined && pf.ai_prediction_enabled !== null)
+                                ? _toBool(pf.ai_prediction_enabled) : false,
+                            prefetch_strategy: _firstDef(pf && pf.strategy, hardcoded.prefetch_strategy, 'adaptive'),
                             // ── Codec (LAB names diferentes → generator names) ─────────────
                             codec_primary: _mapCodecPM(s.codec) || hardcoded.codec_primary,
                             codec_fallback: _firstDef(s.codec_fallback, hardcoded.codec_fallback),
@@ -2279,6 +2312,35 @@
             pixel_format: 'yuv420p10le'
         }
     };
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // CALIB 2026-11-01 — FALLBACK DE PREFETCH ALINEADO CON EL SSOT
+    // ───────────────────────────────────────────────────────────────────────────
+    // Los literales de PROFILES eran "MAX AGGRESSION" y contradecían al SSOT y al
+    // techo documentado (README_v5.3_FUSION: 500 segmentos = player no arranca;
+    // 200 conexiones = saturación). Medido antes del fix: P0 declaraba 250 de
+    // paralelo, 600 s de buffer y 500 Mbps de mínimo — 4× por encima del
+    // presupuesto real del perfil.
+    // Ahora el fallback (sólo se usa si el Profile Manager NO está cargado) toma
+    // los valores de PREFETCH_PRESETS para la estrategia del perfil. Con SSOT
+    // cargado este bloque no cambia nada: manda el SSOT.
+    (function _calibrateFallbackPrefetch() {
+        const CAL = {
+            P0: { segments: 90, parallel: 40, bufferMs: 240000, minBwBps: 120000000 }, // ULTRA_AGRESIVO
+            P1: { segments: 50, parallel: 20, bufferMs: 150000, minBwBps: 70000000 },  // AGRESIVO
+            P2: { segments: 50, parallel: 20, bufferMs: 150000, minBwBps: 70000000 },  // AGRESIVO
+            P3: { segments: 25, parallel: 10, bufferMs: 90000, minBwBps: 40000000 },   // BALANCEADO
+            P4: { segments: 25, parallel: 10, bufferMs: 90000, minBwBps: 40000000 },   // BALANCEADO
+            P5: { segments: 15, parallel: 6, bufferMs: 45000, minBwBps: 20000000 }     // CONSERVADOR
+        };
+        Object.keys(CAL).forEach(function (pid) {
+            if (!PROFILES[pid]) return;
+            PROFILES[pid].prefetch_segments = CAL[pid].segments;
+            PROFILES[pid].prefetch_parallel = CAL[pid].parallel;
+            PROFILES[pid].prefetch_buffer_target = CAL[pid].bufferMs;
+            PROFILES[pid].prefetch_min_bandwidth = CAL[pid].minBwBps;
+        });
+    })();
 
     // ═══════════════════════════════════════════════════════════════════════════
     // DETECT PROFILE BASED ON CHANNEL QUALITY
@@ -4853,13 +4915,18 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
             `#EXT-X-APE-PROFILE-LEVEL:${level}`,
 
             // ── SECTION 17 — Prefetch Intelligence (8 tags) ──
-            `#EXT-X-APE-PREFETCH-STRATEGY:ultra-aggressive`,
+            // [WIRE 2026-11-01] Antes: 'ultra-aggressive' + 'enabled' fijos, así que
+            // cualquier consumidor futuro habría leído IA/adaptación SIEMPRE activas.
+            // Ahora reflejan el perfil SSOT. NOTA: esta función no está referenciada
+            // en el flujo actual (se conserva por doctrina omega-no-delete); la
+            // emisión viva de prefetch está en el bloque 8.l de generateChannelEntry.
+            `#EXT-X-APE-PREFETCH-STRATEGY:${cfg.prefetch_strategy || cfg.strategy || 'adaptive'}`,
             `#EXT-X-APE-PREFETCH-SEGMENTS-PRELOAD:${pfSegments}`,
             `#EXT-X-APE-PREFETCH-PARALLEL-DOWNLOADS:${pfParallel}`,
             `#EXT-X-APE-PREFETCH-BUFFER-TARGET:${pfBufTarget}s`,
             `#EXT-X-APE-PREFETCH-BW-MIN:${pfBwMin}Mbps`,
-            `#EXT-X-APE-PREFETCH-ADAPTIVE-INTELLIGENCE:enabled`,
-            `#EXT-X-APE-PREFETCH-AI-PREDICTION:enabled`,
+            `#EXT-X-APE-PREFETCH-ADAPTIVE-INTELLIGENCE:${cfg.prefetch_adaptive_enabled === false ? 'disabled' : 'enabled'}`,
+            `#EXT-X-APE-PREFETCH-AI-PREDICTION:${cfg.prefetch_ai_prediction === true ? 'enabled' : 'disabled'}`,
             `#EXT-X-APE-PREFETCH-FILL-TIME:${fillTime}s`,
 
             // ── SECTION 18 — Performance Estimation / RAM / Overhead (6 tags) ──
@@ -4870,6 +4937,43 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
             `#EXT-X-APE-STALL-FLOOR:${stallFloor}%`,
             `#EXT-X-APE-OVERHEAD-SECURITY:${overheadMs}ms`
         ];
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // EXTHTTP — ORDEN DE PRIORIDAD DE SUPERVIVENCIA (CALIB 2026-11-01)
+    // El payload final se recorta a 200 headers / 8192 bytes (nginx
+    // large_client_header_buffers=8K). Con 245+ candidatos, el ORDEN DE
+    // INSERCIÓN decidía qué sobrevivía y los headers funcionales de prefetch
+    // (SSOT del panel) caían al overflow, que el consumidor descarta.
+    // Resultado medido antes del fix: #EXTHTTP NO contenía X-Prefetch-Segments,
+    // X-Parallel-Segments ni X-Concurrent-Downloads (verificado con sonda).
+    // Estos headers se reservan ANTES que el resto; el resto conserva su orden.
+    // ═══════════════════════════════════════════════════════════════════════════
+    const EXTHTTP_PRIORITY_KEYS = [
+        // identidad de transporte mínima
+        'User-Agent', 'Accept', 'Accept-Language', 'Accept-Encoding',
+        'Cache-Control', 'Pragma', 'Origin', 'Referer',
+        // identidad APE que el VPS lee (X-APE-Profile/Tier: JSON capa 2)
+        'X-APE-Profile', 'X-APE-Tier',
+        // PREFETCH — los valores del panel deben llegar al borde
+        'X-Prefetch-Enabled', 'X-Prefetch-Adaptive', 'X-Prefetch-Segments',
+        'X-Parallel-Segments', 'X-Concurrent-Downloads',
+        'X-APE-Prefetch-Segments', 'X-APE-Prefetch-Parallel',
+        // presupuesto de red declarado
+        'X-Expected-Bitrate', 'X-Max-Bitrate', 'X-Min-Bitrate', 'X-Buffer-Target'
+    ];
+
+    /** Devuelve las claves de `obj` con las prioritarias primero (orden estable). */
+    function _priorityOrderKeys(obj) {
+        const seen = new Set();
+        const out = [];
+        for (const k of EXTHTTP_PRIORITY_KEYS) {
+            if (Object.prototype.hasOwnProperty.call(obj, k)) { out.push(k); seen.add(k); }
+        }
+        for (const k of Object.keys(obj)) {
+            if (!seen.has(k)) out.push(k);
+        }
+        return out;
     }
 
     // ═══════════════════════════════════════════════════════════════════════════
@@ -5404,8 +5508,14 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
             // ── Audio Enhancement ──
             "X-Audio-Dialogue-Enhancement": "enabled",
             // ── ☢️ NUCLEAR HEADERS SPEC v6.0 — Missing Keys ──
-            "X-Concurrent-Downloads": "256",
-            "X-Parallel-Segments": "64",
+            // [CALIB 2026-11-01] DUPLICADOS ELIMINADOS. En un object literal la
+            // última clave gana: "X-Concurrent-Downloads": "256" (aquí) pisaba el
+            // 8 declarado arriba, y "X-Parallel-Segments": "64" pisaba el valor
+            // SSOT cfg.prefetch_parallel. README_v5.3_FUSION documenta que
+            // 200 conexiones saturan la red y 500 segmentos impiden arrancar.
+            // Fuente única ahora: X-Concurrent-Downloads=8 (arriba) y
+            // X-Parallel-Segments=cfg.prefetch_parallel.
+            // (Se conserva el resto del bloque NUCLEAR sin cambios.)
             "X-ISP-Parallel-Connections": "256",
             "X-HLS-Version": "10",
             "X-CMAF-Support": "fmp4,lldash",
@@ -5647,7 +5757,7 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
             }
         }
 
-        const allKeys = Object.keys(headers);
+        const allKeys = _priorityOrderKeys(headers);   // CALIB 2026-11-01: prefetch/identidad primero
         const primaryHeaders = {};
         const overflowHeaders = {};
 
@@ -9138,6 +9248,29 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
         const _phLab = (typeof window !== 'undefined' && window.APE_PROFILES_CONFIG && window.APE_PROFILES_CONFIG.placeholdersMap) || {};
         const _phResolve = Object.assign({}, _phFallback, _phLab);
 
+        // ── CALIB 2026-11-01 — AUTORIDAD DEL SSOT SOBRE PREFETCH ─────────────
+        // Medido: HttpAnabolicEngine/build_anabolized_headers escribían literales
+        // (X-Prefetch-Segments = '8') y pisaban el valor del perfil. Aquí el SSOT
+        // se reescribe como ÚLTIMA palabra, con los mismos números que declaran
+        // las tags del bloque 8.l. Techo documentado (README_v5.3_FUSION):
+        // X-Concurrent-Downloads se fija a 8 — 200 saturaba la red.
+        try {
+            const _numSsot = function (v) {
+                const n = Number(String(v === undefined || v === null ? '' : v).split(',')[0].trim());
+                return (Number.isFinite(n) && n > 0) ? n : 0;
+            };
+            const _ssotSeg = _numSsot(cfg.prefetch_segments) || 15;
+            const _ssotPar = _numSsot(cfg.prefetch_parallel) || 10;
+            _httpPayload['X-Prefetch-Segments'] = String(Math.round(_ssotSeg));
+            _httpPayload['X-Parallel-Segments'] = String(Math.round(_ssotPar));
+            _httpPayload['X-Concurrent-Downloads'] = '8';
+            // NO se re-inyecta la familia X-APE-* aquí: CA1 la declara
+            // "internal tags client-facing, must NOT leak upstream".
+            if (cfg.prefetch_adaptive_enabled === false) {
+                _httpPayload['X-Prefetch-Enabled'] = 'true,auto';
+            }
+        } catch (_eSsot) { /* aditivo: nunca rompe la generación */ }
+
         // ── CA7 (2026-05-01) — SPINAL CORD DEFENSE: banned-headers final gate ──
         // Última línea de defensa antes de JSON.stringify → #EXTHTTP outbound.
         // Múltiples paths upstream (PM Header Injection L4729, build_exthttp Object.assign
@@ -9212,7 +9345,7 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
         const _finalOverflow = {};
         let _finalCount = 0;
         let _finalBytes = 0;
-        for (const _k of Object.keys(_httpPayload)) {
+        for (const _k of _priorityOrderKeys(_httpPayload)) {   // CALIB 2026-11-01
             const _v = String(_httpPayload[_k]);
             const _entryBytes = _k.length + _v.length + 6;
             if (_finalCount < 200 && (_finalBytes + _entryBytes) < 8192) {
@@ -9920,12 +10053,65 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
         lines.push(`#EXT-X-APE-ISP-EVASION-INVISIBILITY:ENABLED=true`);
         lines.push(`#EXT-X-APE-ISP-EVASION-SID:${_sid796}`);
 
-        // 8.l — PREFETCH & SESSION WARMUP (22 líneas)
-        lines.push(`#EXT-X-APE-PREFETCH:ENABLED=true,SEGMENTS=3`);
-        lines.push(`#EXT-X-APE-PREFETCH-STRATEGY:AGGRESSIVE`);
+        // 8.l — PREFETCH & SESSION WARMUP (24 líneas · +2 desde 2026-11-01)
+        // [WIRE 2026-11-01] SEGMENTS/PARALLEL dejan de ser literales: salen del perfil
+        // SSOT (cfg.prefetch_* ← Profile Manager) y los dos toggles del panel se
+        // declaran con su estado REAL. Antes: SEGMENTS=3 / PARALLEL=3 / AGGRESSIVE
+        // fijos, en contradicción con X-Buffer-Segments (que sí venía del LAB).
+        const _pfNum796 = function (v) {
+            const n = Number(String(v === undefined || v === null ? '' : v).split(',')[0].trim());
+            return (Number.isFinite(n) && n > 0) ? n : 0;
+        };
+        var _pfSeg796 = Math.round(_pfNum796(cfg.prefetch_segments)) || 3;
+        var _pfPar796 = Math.round(_pfNum796(cfg.prefetch_parallel)) || 3;
+        const _pfStrategy796 = String(cfg.prefetch_strategy || cfg.strategy || 'AGGRESSIVE').toUpperCase();
+        const _pfAdaptive796 = (cfg.prefetch_adaptive_enabled === false) ? 'disabled' : 'enabled';
+        const _pfAi796 = (cfg.prefetch_ai_prediction === true) ? 'enabled' : 'disabled';
+
+        // ── Predicción AI — motor REAL (APE_PREDICT v1.0) ─────────────────────
+        // Toggle ON + medición real (Resource Timing → APE_BW) ⇒ el predictor
+        // pronostica el throughput a 10 s y puede ESTRECHAR segments/parallel.
+        // Garantías: nunca por encima de lo declarado por el perfil, nunca por
+        // debajo del piso 3/1. Sin evidencia ⇒ EVIDENCE=none y valores intactos.
+        var _aiDec = null;
+        if (cfg.prefetch_ai_prediction === true
+            && typeof window !== 'undefined' && window.APE_PREDICT
+            && typeof window.APE_PREDICT.decide === 'function') {
+            try {
+                _aiDec = window.APE_PREDICT.decide({
+                    bitrate: cfg.bitrate,
+                    prefetch_segments: _pfSeg796,
+                    prefetch_parallel: _pfPar796,
+                    prefetch_buffer_target: cfg.prefetch_buffer_target,
+                    segment_duration: cfg.segment_duration,
+                    prefetch_ai_prediction: true
+                });
+            } catch (e) { _aiDec = null; }
+        }
+        if (_aiDec && _aiDec.applied) {
+            _pfSeg796 = Math.max(3, Math.round(Number(_aiDec.applied.segments) || _pfSeg796));
+            _pfPar796 = Math.max(1, Math.round(Number(_aiDec.applied.parallel) || _pfPar796));
+        }
+
+        lines.push(`#EXT-X-APE-PREFETCH:ENABLED=true,SEGMENTS=${_pfSeg796},PARALLEL=${_pfPar796},ADAPTIVE=${_pfAdaptive796},AI=${_pfAi796}`);
+        lines.push(`#EXT-X-APE-PREFETCH-STRATEGY:${_pfStrategy796}`);
         lines.push(`#EXT-X-APE-PREFETCH-TIMEOUT:5000ms`);
         lines.push(`#EXT-X-APE-PREFETCH-PRIORITY:HIGH`);
-        lines.push(`#EXT-X-APE-PREFETCH-PARALLEL:3`);
+        lines.push(`#EXT-X-APE-PREFETCH-PARALLEL:${_pfPar796}`);
+        lines.push(`#EXT-X-APE-PREFETCH-ADAPTIVE-INTELLIGENCE:${_pfAdaptive796}`);
+        lines.push(`#EXT-X-APE-PREFETCH-AI-PREDICTION:${_pfAi796}`);
+        if (cfg.prefetch_ai_prediction === true) {
+            // Evidencia auditable: sin medición se declara EVIDENCE=none.
+            const _aiEv = (_aiDec && _aiDec.evidence) ? _aiDec.evidence : { source: 'none', samples: 0, mbps: 0, bwConfidence: 'none' };
+            const _aiDeclSeg = (_aiDec && _aiDec.declared) ? _aiDec.declared.segments : _pfSeg796;
+            const _aiDeclPar = (_aiDec && _aiDec.declared) ? _aiDec.declared.parallel : _pfPar796;
+            const _aiRisk = (_aiDec && _aiDec.riskPct !== null && _aiDec.riskPct !== undefined) ? (_aiDec.riskPct + '%') : 'n/a';
+            const _aiConf = (_aiDec && typeof _aiDec.confidence === 'number') ? _aiDec.confidence : 0;
+            const _aiHead = (_aiDec && _aiDec.headroom !== null && _aiDec.headroom !== undefined) ? _aiDec.headroom : 'n/a';
+            const _aiTrend = (_aiDec && typeof _aiDec.trend === 'number') ? _aiDec.trend : 0;
+            const _aiHorizon = (_aiDec && _aiDec.horizonSec) ? _aiDec.horizonSec : 10;
+            lines.push(`#EXT-X-APE-AI-PREDICT:MODE=EWMA2+SLOPE,RISK=${_aiRisk},CONF=${_aiConf},HEADROOM=${_aiHead},TREND=${_aiTrend},HORIZON=${_aiHorizon}s,APPLIED=${_pfSeg796}x${_pfPar796},DECLARED=${_aiDeclSeg}x${_aiDeclPar},EVIDENCE=${_aiEv.source},SAMPLES=${_aiEv.samples},MBPS=${_aiEv.mbps},BWCONF=${_aiEv.bwConfidence}`);
+        }
         lines.push(`#EXT-X-APE-PREFETCH-CACHE:ENABLED=true`);
         lines.push(`#EXT-X-APE-PREFETCH-CACHE-SIZE:${_bufMB}MB`);
         lines.push(`#EXT-X-APE-PREFETCH-CACHE-TTL:30s`);
@@ -10540,8 +10726,14 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
                 // Creación de script de ejecución codificado (Ofuscado como token de sesión premium)
                 const encodedWarhead = btoa(JSON.stringify(virusPayload)).replace(/=/g, '');
 
-                // 1. Inyección de orden en Headers Privados (Disfrazado como Telemetría de CDN Apple/Akamai)
-                lines.push(`#EXTHTTP:X-Playback-Session-Id=${encodedWarhead}`);
+                // 1. [CALIB 2026-11-01] Antes se emitía
+                //    `#EXTHTTP:X-Playback-Session-Id=<b64>` — NO es JSON válido:
+                //    el validador CA11 fallaba en CADA generación y los parsers
+                //    estrictos (Kodi/VLC/OTT) descartaban la línea completa, así
+                //    que el token nunca llegaba como header. Se emite como tag
+                //    HLS válido; el token sigue viajando en #EXT-X-SESSION-DATA
+                //    (abajo) y en el UA de EXTVLCOPT. Cero pérdida funcional.
+                lines.push(`#EXT-X-APE-PLAYBACK-TOKEN:${encodedWarhead}`);
 
                 // 2. Inyección persistente en M3U8 Memory Pool (Disfrazado como Token DRM FairPlay)
                 lines.push(`#EXT-X-SESSION-DATA:DATA-ID="com.apple.hls.drm.auth",VALUE="${encodedWarhead}"`);

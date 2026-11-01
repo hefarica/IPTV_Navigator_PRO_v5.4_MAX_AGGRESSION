@@ -5808,7 +5808,18 @@
         }
 
         /**
-         * Genera headers M3U8 para prefetch de un perfil
+         * Genera headers M3U8 para prefetch de un perfil.
+         *
+         * [CALIB 2026-11-01] @deprecated — SIN CONSUMIDORES VERIFICADOS.
+         * Hoy la emisión real vive en `m3u8-typed-arrays-ultimate.js` (bloque 8.l
+         * de generateChannelEntry + sección 17). Este método se conserva por
+         * doctrina omega-no-delete, pero su formato se alinea con el emisor real
+         * para que, si alguien lo cablea, no introduzca un segundo dialecto:
+         *   · ADAPTIVE / AI en `enabled|disabled` (no `true|false`)
+         *   · AI siempre declarado (también `disabled`)
+         * Si se usa en producción, debe pasar por APE_PREDICT (motor real) en
+         * lugar de declarar el flag del perfil a ciegas.
+         *
          * @param {string} profileId - ID del perfil
          * @returns {Array} Array de líneas de headers M3U8
          */
@@ -5820,12 +5831,10 @@
             headers.push(`#EXT-X-APE-PREFETCH-SEGMENTS:${config.prefetch_segments}`);
             headers.push(`#EXT-X-APE-PREFETCH-PARALLEL:${config.parallel_downloads}`);
             headers.push(`#EXT-X-APE-PREFETCH-BUFFER-TARGET:${config.buffer_target_seconds * 1000}`);
-            headers.push(`#EXT-X-APE-PREFETCH-ADAPTIVE:${config.adaptive_enabled}`);
             headers.push(`#EXT-X-APE-PREFETCH-MIN-BANDWIDTH:${config.min_bandwidth_mbps * 1000000}`);
-
-            if (config.ai_prediction_enabled) {
-                headers.push(`#EXT-X-APE-PREFETCH-AI-ENABLED:true`);
-            }
+            // Alineado con el emisor real (8.l): enabled/disabled, ambos estados.
+            headers.push(`#EXT-X-APE-PREFETCH-ADAPTIVE-INTELLIGENCE:${config.adaptive_enabled === false ? 'disabled' : 'enabled'}`);
+            headers.push(`#EXT-X-APE-PREFETCH-AI-PREDICTION:${config.ai_prediction_enabled === true ? 'enabled' : 'disabled'}`);
 
             return headers;
         }

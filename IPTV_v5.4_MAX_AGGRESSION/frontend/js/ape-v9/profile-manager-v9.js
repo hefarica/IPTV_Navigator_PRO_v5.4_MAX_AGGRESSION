@@ -2281,6 +2281,37 @@
                 })
                 : { fill_time_seconds: '~', bandwidth_usage_mbps: '~', memory_usage_mb: '~', stall_rate_percent: '~' };
 
+            // ── Predicción AI: estado REAL (motor APE_PREDICT v1.0) ──────────
+            // Sin medición se muestra "sin evidencia"; nunca se inventan Mbps.
+            let aiStatus = null;
+            let aiDecision = null;
+            try {
+                if (window.APE_PREDICT && typeof window.APE_PREDICT.snapshot === 'function') {
+                    aiStatus = window.APE_PREDICT.snapshot();
+                }
+                if (window.APE_PREDICT && typeof window.APE_PREDICT.decide === 'function') {
+                    aiDecision = window.APE_PREDICT.decide({
+                        bitrate: activeProfile.settings?.bitrate,
+                        prefetch_segments: prefetchConfig.prefetch_segments,
+                        prefetch_parallel: prefetchConfig.parallel_downloads,
+                        prefetch_buffer_target: (Number(prefetchConfig.buffer_target_seconds) || 0) * 1000,
+                        segment_duration: activeProfile.settings?.segment_duration_s,
+                        prefetch_ai_prediction: prefetchConfig.ai_prediction_enabled === true
+                    });
+                }
+            } catch (e) { aiStatus = null; aiDecision = null; }
+            const aiHasEvidence = !!(aiStatus && aiStatus.evidence && aiStatus.evidence.source === 'resource-timing');
+            const aiColor = !prefetchConfig.ai_prediction_enabled ? '#64748b'
+                : (aiHasEvidence ? (aiDecision && aiDecision.riskPct >= 35 ? '#ef4444' : aiDecision && aiDecision.riskPct >= 20 ? '#eab308' : '#10b981') : '#64748b');
+            const aiLine = !prefetchConfig.ai_prediction_enabled
+                ? 'Apagada — el generador declarará AI=disabled'
+                : (aiHasEvidence
+                    ? `medido ${(aiStatus.evidence.mbps || 0).toFixed(1)} Mbps · pronóstico ${(aiStatus.predicted || 0).toFixed(1)} Mbps · tendencia ${((aiStatus.trend || 0) * 100).toFixed(1)}% · conf ${(aiStatus.confidence || 0).toFixed(2)}`
+                    : 'Sin evidencia medida todavía — pulsa «Medir ahora»');
+            const aiRiskLine = (prefetchConfig.ai_prediction_enabled && aiDecision && aiDecision.riskPct !== null)
+                ? `Riesgo ${aiDecision.riskPct}% · headroom ${aiDecision.headroom}× · aplicado ${aiDecision.applied.segments}×${aiDecision.applied.parallel} de ${aiDecision.declared.segments}×${aiDecision.declared.parallel}${aiDecision.restricted ? ' (estrechado)' : ''}`
+                : '';
+
             return `
                 <div class="pm9-prefetch-config">
                     <div class="pm9-prefetch-header" onclick="window.ProfileManagerV9.togglePrefetchDropdown()">
@@ -2351,6 +2382,23 @@
                                        onchange="window.ProfileManagerV9.updatePrefetchValue('ai_prediction_enabled', this.checked)">
                                 <span>Predicción AI</span>
                             </label>
+                        </div>
+
+                        <!-- Predicción AI — estado medido (APE_PREDICT v1.0) -->
+                        <div class="pm9-ai-status" style="margin: 8px 0 4px; padding: 7px 9px; border-radius: 4px;
+                             background: rgba(255,255,255,0.04); border-left: 3px solid ${aiColor};">
+                            <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
+                                <span style="font-size:10px; color:${aiColor}; font-weight:600;">
+                                    ${aiHasEvidence ? '● MEDIDO' : '○ SIN EVIDENCIA'} · horizonte 10 s
+                                </span>
+                                <button onclick="window.ProfileManagerV9.measurePredictiveAI()"
+                                        style="font-size:9px; padding:2px 8px; cursor:pointer; border-radius:3px;
+                                               border:1px solid ${aiColor}66; background:transparent; color:${aiColor};">
+                                    Medir ahora
+                                </button>
+                            </div>
+                            <div style="font-size:9px; color:#94a3b8; margin-top:4px; line-height:1.35;">${aiLine}</div>
+                            ${aiRiskLine ? `<div style="font-size:9px; color:${aiColor}; margin-top:3px;">${aiRiskLine}</div>` : ''}
                         </div>
                         
                         <!-- Performance Preview v3.1 (StreamingEngine) -->
@@ -2547,6 +2595,29 @@
         // ═══════════════════════════════════════════════════════════════
         // MÉTODOS DE INTERACCIÓN
         // ═══════════════════════════════════════════════════════════════
+
+        /**
+         * Predicción AI — mide AHORA con datos reales del navegador (Resource
+         * Timing vía APE_BW), refresca la ventana del predictor y re-renderiza.
+         * Si no hay medición disponible lo dice; no inventa Mbps.
+         */
+        measurePredictiveAI() {
+            try {
+                if (!window.APE_BW || !window.APE_PREDICT) {
+                    console.warn('⚠️ [PREDICT] APE_BW/APE_PREDICT no cargados');
+                    return null;
+                }
+                const added = (typeof window.APE_BW.harvest === 'function') ? window.APE_BW.harvest() : 0;
+                window.APE_PREDICT.observe();
+                const sn = window.APE_PREDICT.snapshot();
+                console.log(`🤖 [PREDICT] +${added} muestras · fuente=${sn.evidence.source} · ${sn.evidence.mbps} Mbps · conf=${sn.confidence} · tendencia=${sn.trend}`);
+                this.render();
+                return sn;
+            } catch (e) {
+                console.warn('⚠️ [PREDICT] measurePredictiveAI:', e && e.message);
+                return null;
+            }
+        }
 
         selectProfile(profileId) {
             this.activeProfileId = profileId;
@@ -3979,3 +4050,4 @@
     console.log('%c🎚️ Profile Manager v9.0 Listo', 'color: #10b981; font-weight: bold;');
 
 })();
+
