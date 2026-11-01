@@ -12,7 +12,7 @@
   var DELTA_PCT = (function () {
     try {
       var v = Number(localStorage.getItem('ape_output_delta_pct'));
-      return isFinite(v) && v >= 0 && v <= 90 ? v : 15;
+      return isFinite(v) && v >= 1 && v <= 90 ? v : 15;
     } catch (_) { return 15; }
   })();
 
@@ -221,11 +221,15 @@
       '<div style="font-size:.84rem;font-weight:800;color:#86efac;">CONDICIÓN DE BUFFER</div>' +
       '<div style="display:flex;align-items:center;gap:9px;font-size:1.05rem;color:#94a3b8;margin-top:7px;">' +
       '<label for="ape-delta-input" style="white-space:nowrap;">Delta por perfil</label>' +
-      '<input id="ape-delta-input" type="number" min="0" max="90" step="1" value="' + DELTA_PCT + '" ' +
+      '<input id="ape-delta-input" type="number" min="1" max="90" step="1" value="' + DELTA_PCT + '" ' +
       'style="width:78px;padding:5px 7px;border-radius:6px;background:#0f172a;color:#e2e8f0;border:1px solid #334155;font-size:1.05rem;font-weight:800;">' +
       '<span style="color:#e2e8f0;font-weight:800;">%</span>' +
       '</div>' +
-      '<div style="font-size:.82rem;color:#64748b;margin-top:5px;">Cada perfil aplica este delta sobre sus propios valores; aquí no se usan Mbps absolutos.</div></div>' +
+      '<div style="display:flex;gap:7px;flex-wrap:wrap;margin-top:7px;font-size:.8rem;">' +
+      '<span style="color:#86efac;border:1px solid rgba(34,197,94,.45);border-radius:999px;padding:3px 8px;">ENTRA MÁS · descarga / prefetch / buffer</span>' +
+      '<span style="color:#fca5a5;border:1px solid rgba(239,68,68,.4);border-radius:999px;padding:3px 8px;">SALE MENOS · reproducción / bitrate</span>' +
+      '</div>' +
+      '<div style="font-size:.82rem;color:#94a3b8;margin-top:6px;">Entrada ≥ salida × (1 + delta). Cada perfil aplica el cálculo sobre sus propios valores; aquí no se muestran Mbps absolutos.</div></div>' +
       '<div style="background:rgba(2,6,23,.38);border:1px solid rgba(148,163,184,.25);border-radius:10px;padding:10px;font-size:.8rem;color:#94a3b8;">' +
       '<div style="font-weight:800;color:#e2e8f0;">MODO</div>' +
       '<select id="ape-gen-mode-select" style="margin-top:5px;width:100%;padding:5px 6px;border-radius:6px;background:#0f172a;color:#e2e8f0;border:1px solid #334155;font-size:.74rem;">' +
@@ -329,7 +333,7 @@
       di.value = String(DELTA_PCT);
       di.addEventListener('input', function () {
         var v = Number(di.value);
-        if (isFinite(v) && v >= 0 && v <= 90) {
+        if (isFinite(v) && v >= 1 && v <= 90) {
           DELTA_PCT = v;
           try { localStorage.setItem('ape_output_delta_pct', String(v)); } catch (_) { }
           guard();
