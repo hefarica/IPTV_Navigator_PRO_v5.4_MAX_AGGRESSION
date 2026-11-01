@@ -15,19 +15,24 @@ rm -f "$OUT_DIR"/index.m3u8 "$OUT_DIR"/init.mp4 "$OUT_DIR"/seg_*.m4s
 # ffmpeg writes the fMP4 init with a relative URI only when CWD == OUT_DIR.
 cd "$OUT_DIR"
 
-# AAC in MPEG-TS needs ADTS->ASC before entering fMP4. Other audio codecs
-# (AC-3/E-AC-3) must not receive this bitstream filter.
+# fMP4 audio support:
+#   AAC  -> copy + ADTS->ASC
+#   AC3/EAC3 -> copy
+#   MP2/MP3/other -> transcode AUDIO ONLY to AAC (video stays copy)
 AUDIO_CODEC="$("${FFPROBE:-ffprobe}" -v error -select_streams a:0 -show_entries stream=codec_name -of default=nw=1:nk=1 "$INPUT_URL" 2>/dev/null | head -1 || true)"
-AUDIO_BSF=()
-if [[ "$AUDIO_CODEC" == "aac" ]]; then
-  AUDIO_BSF=(-bsf:a aac_adtstoasc)
-fi
+AUDIO_ARGS=()
+case "$AUDIO_CODEC" in
+  aac)         AUDIO_ARGS=(-c:a copy -bsf:a aac_adtstoasc) ;;
+  ac3|eac3)    AUDIO_ARGS=(-c:a copy) ;;
+  mp2|mp3|"")  AUDIO_ARGS=(-c:a aac -b:a 128k -ac 2) ;;
+  *)           AUDIO_ARGS=(-c:a aac -b:a 128k -ac 2) ;;
+esac
 
 exec "${FFMPEG:-ffmpeg}" -hide_banner -nostdin -loglevel warning \
   -reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5 \
   -i "$INPUT_URL" \
   -map 0:v:0 -map 0:a? \
-  -c copy "${AUDIO_BSF[@]}" \
+  -c:v copy "${AUDIO_ARGS[@]}" \
   -f hls \
   -hls_time "$HLS_TIME" \
   -hls_list_size "$HLS_LIST_SIZE" \

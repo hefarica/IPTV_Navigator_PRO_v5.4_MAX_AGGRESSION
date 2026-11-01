@@ -20,6 +20,20 @@ It produces real:
 
 It does **not** invent CMAF tags for `.ts` sources.
 
+### Audio handling (measured on the real provider)
+
+The real provider serves **H.264 video + MP2 audio**. MP2 cannot be copied
+into fMP4, so the packager keeps video `-c copy` and transcodes **audio only**
+to AAC:
+
+```text
+AAC       → copy + aac_adtstoasc
+AC3/EAC3  → copy
+MP2/MP3   → transcode audio to AAC 128k
+```
+
+Verified output: `init.mp4` reports `h264 1920x1080` + `aac`.
+
 ## Requirements
 
 - Linux host controlled by the owner.
