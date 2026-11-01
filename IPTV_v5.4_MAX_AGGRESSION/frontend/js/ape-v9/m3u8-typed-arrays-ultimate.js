@@ -6689,8 +6689,11 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
                 if (url.startsWith('https://')) return url.replace(/^https:\/\//, 'http://');
                 return url;
             }
-            const noSSLHosts = ['line.tivi-ott.net', 'candycloud8k.biz', 'pro.123sat.net'];
-            if (noSSLHosts.some(h => parsed.hostname.includes(h))) {
+            // Sin hosts fijos: la lista/config declara qué hosts no soportan TLS.
+            const noSSLHosts = Array.isArray(window.APE_NO_SSL_HOSTS)
+                ? window.APE_NO_SSL_HOSTS
+                : (Array.isArray(window.APE_USER_PROVIDER_HOSTS) ? [] : []);
+            if (noSSLHosts.some(h => h && String(h).length > 2 && parsed.hostname.includes(String(h)))) {
                 if (url.startsWith('https://')) return url.replace(/^https:\/\//, 'http://');
                 return url;
             }
