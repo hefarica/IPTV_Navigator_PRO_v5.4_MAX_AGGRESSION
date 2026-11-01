@@ -55,7 +55,15 @@ rl.on('line', line => {
 });
 rl.on('close', () => {
   fs.writeFileSync(path.join(outDir, 'channels.json'), JSON.stringify(map));
-  let out = '#EXTM3U\n';
+  const continuity = [
+    '#EXT-X-APE-CONTINUITY-LAW:STREAMING_CONTINUITY_LAW_V1',
+    '#EXT-X-APE-CONTINUITY-MANIFEST:no-store',
+    '#EXT-X-APE-CONTINUITY-RANGE:206',
+    '#EXT-X-APE-CONTINUITY-SEGMENTS:session-unique',
+    '#EXT-X-APE-CONTINUITY-TRANSPORT:declared',
+    '#EXT-X-APE-CONTINUITY-FALLBACK:HDR>SDR1080>SDR720',
+  ].join('\n');
+  let out = '#EXTM3U\n' + continuity + '\n';
   for (const e of entries) {
     out += `#EXTINF:-1 tvg-id="${e.tvg || e.id}" tvg-name="${e.name.replace(/"/g, '')}"`;
     if (e.logo) out += ` tvg-logo="${e.logo.replace(/"/g, '')}"`;
