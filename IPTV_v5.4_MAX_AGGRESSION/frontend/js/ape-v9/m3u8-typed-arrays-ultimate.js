@@ -7569,6 +7569,23 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
         if (!creds) {
             const rawHost = String(channel.raw?.server_url || channel.server_url || channel.url || '').replace(/^https?:\/\//, '').replace(/\/.*$/, '').replace(/:\d+$/, '').toLowerCase();
             if (rawHost && credentialsMap[`host:${rawHost}`]) creds = credentialsMap[`host:${rawHost}`];
+            // Fuente host-only: emparejar el host con el servidor activo de la app.
+            if (!creds && rawHost) {
+                try {
+                    const servers = window.app?.state?.activeServers || [];
+                    const srv = servers.find(s => {
+                        const h = String(s.baseUrl || s.url || '').replace(/^https?:\/\//, '').replace(/\/.*$/, '').split(':')[0].toLowerCase();
+                        return h && (h === rawHost || h.includes(rawHost) || rawHost.includes(h));
+                    });
+                    if (srv) {
+                        creds = {
+                            baseUrl: String(srv.baseUrl || srv.url || '').replace(/\/player_api\.php.*$/, '').replace(/\/$/, ''),
+                            username: sanitizeCredential(srv._lockedUsername || srv.username || srv.user || ''),
+                            password: sanitizeCredential(srv._lockedPassword || srv.password || srv.pass || '')
+                        };
+                    }
+                } catch (_e) { /* noop */ }
+            }
         }
         if (!creds && sid) {
             try {
@@ -8488,6 +8505,10 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
         let primaryUrl = (typeof buildChannelUrl === 'function')
             ? buildChannelUrl(channel, jwt, profile, index, credentialsMap)
             : (channel.url || channel.src || '');
+        // STRICT URI: ninguna entrada puede emitirse sin URL absoluta + path.
+        if (!isPlayableStreamUrl(primaryUrl)) {
+            throw new Error(`[URL-GUARD] canal ${channel.name || channel.id || index} sin URI reproducible: ${primaryUrl || '(vacía)'}`);
+        }
 
         // 2026-05-01 — sid/nonce REMOVIDOS del URL para preservar cache upstream NGINX.
         // Los valores siguen disponibles vía: KODIPROP network_session_id/nonce (L7637-7639),
@@ -11198,6 +11219,29 @@ lines.push(`#EXT-X-APE-STREAM-TRUTH:src=${_streamTruth.source},w=${_streamTruth.
 
     if (typeof window !== 'undefined') window.APE_GEN = generateM3U8Stream; // [t53/t72] export headless (hoisting)
     function generateM3U8Stream(channels, options = {}) {
+        // PREFLIGHT: DIRECTO y VPS deben tener URI completa antes de abrir el stream.
+        // No se permite generar una lista que luego el decoder no pueda abrir.
+        if (window.APE_STRICT_URI !== false) {
+            const bad = [];
+            const _preCreds = (typeof buildCredentialsMap === 'function') ? buildCredentialsMap(options) : {};
+            for (let _i = 0; _i < (channels || []).length; _i++) {
+                const _c = channels[_i] || {};
+                const _u = String(_c.url || _c.src || _c.raw?.server_url || '').trim();
+                let _repaired = '';
+                if (!isPlayableStreamUrl(_u)) {
+                    // Reparar tanto VPS como DIRECTO con el servidor activo/credenciales.
+                    try { _repaired = buildChannelUrl(_c, null, 'P3', _i, _preCreds) || ''; } catch (_e) { _repaired = ''; }
+                }
+                if (!isPlayableStreamUrl(_u) && !isPlayableStreamUrl(_repaired)) {
+                    bad.push(_c.name || _c.id || ('#' + _i));
+                }
+            }
+            if (bad.length) {
+                const msg = `[URL-GUARD] ${bad.length} canal(es) sin URI completa; NO se genera la lista. Ejemplos: ${bad.slice(0, 5).join(' | ')}`;
+                console.error(msg);
+                throw new Error(msg);
+            }
+        }
         // 🛡️ ANTI-DRIFT: reset audit accumulator per-generation (M2).
         // Cada generación tiene su propio scorecard. Concurrencia secuencial OK
         // (user-triggered single click). Si en futuro hay paralelismo, refactor.
