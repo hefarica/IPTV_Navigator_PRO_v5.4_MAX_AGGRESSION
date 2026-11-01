@@ -163,6 +163,43 @@ function hdrMpd(text) {
   return text.replace(/codecs="hvc1"/g, 'codecs="' + (current ? current.codecString : 'hvc1.2.4.L123.B0') + '"');
 }
 
+function sendStatic(req, res, file, type) {
+  const stat = fs.statSync(file);
+  const size = stat.size;
+  const range = req.headers.range;
+  res.setHeader('Accept-Ranges', 'bytes');
+  res.setHeader('Content-Type', type);
+  res.setHeader('Cache-Control', 'no-store');
+  if (range) {
+    const m = /^bytes=(\d*)-(\d*)$/.exec(String(range).trim());
+    if (!m) {
+      res.writeHead(416, { 'Content-Range': 'bytes */' + size });
+      return res.end();
+    }
+    let start = m[1] === '' ? null : Number(m[1]);
+    let end = m[2] === '' ? null : Number(m[2]);
+    if (start === null && end === null) {
+      res.writeHead(416, { 'Content-Range': 'bytes */' + size });
+      return res.end();
+    }
+    if (start === null) { start = Math.max(0, size - end); end = size - 1; }
+    else if (end === null || end >= size) end = size - 1;
+    if (start < 0 || start > end || start >= size) {
+      res.writeHead(416, { 'Content-Range': 'bytes */' + size });
+      return res.end();
+    }
+    res.writeHead(206, {
+      'Content-Range': 'bytes ' + start + '-' + end + '/' + size,
+      'Content-Length': end - start + 1,
+    });
+    if (req.method === 'HEAD') return res.end();
+    return fs.createReadStream(file, { start, end }).pipe(res);
+  }
+  res.writeHead(200, { 'Content-Length': size });
+  if (req.method === 'HEAD') return res.end();
+  fs.createReadStream(file).pipe(res);
+}
+
 function publicBase(req) {
   const proto = (req.headers['x-forwarded-proto'] || 'https').split(',')[0].trim();
   return proto + '://' + (req.headers.host || 'iptv-ape.duckdns.org') + '/jit';
@@ -249,8 +286,7 @@ const server = http.createServer((req, res) => {
       res.writeHead(200, { 'Content-Type': type, 'Cache-Control': 'no-store' });
       return res.end(name === 'master.m3u8' ? hdrMaster(txt) : hdrMpd(txt));
     }
-    res.writeHead(200, { 'Content-Type': type, 'Cache-Control': 'no-store' });
-    fs.createReadStream(file).pipe(res);
+    sendStatic(req, res, file, type);
   };
   if (waitName) return waitForFile(id, waitName, (err) => {
     if (err) { res.writeHead(503, { 'Content-Type': 'text/plain' }); return res.end(err.message); }
