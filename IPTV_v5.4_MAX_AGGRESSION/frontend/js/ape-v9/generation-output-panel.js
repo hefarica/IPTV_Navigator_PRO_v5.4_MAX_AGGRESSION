@@ -150,20 +150,20 @@
     if (!tab || $('#ape-gen-output-panel')) return;
     var panel = document.createElement('section');
     panel.id = 'ape-gen-output-panel';
-    panel.style.cssText = 'margin:0 0 14px;padding:14px;border:1px solid rgba(56,189,248,.42);border-radius:14px;background:linear-gradient(135deg,rgba(14,165,233,.12),rgba(15,23,42,.72));';
+    panel.style.cssText = 'margin:0 0 14px;padding:18px;border:1px solid rgba(56,189,248,.46);border-radius:16px;background:linear-gradient(135deg,rgba(14,165,233,.10),rgba(15,23,42,.48));backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);box-shadow:0 12px 40px rgba(0,0,0,.28);';
     panel.innerHTML =
       '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;">' +
-      '<div><div style="font-size:.9rem;font-weight:900;color:#7dd3fc;">⚙️ OPTIMIZACIÓN Y SALIDAS</div>' +
-      '<div style="font-size:.68rem;color:#94a3b8;margin-top:3px;">Cada tarjeta genera su lista con el generador que le corresponde. Los perfiles no se tocan aquí.</div></div>' +
-      '<div id="ape-gen-status" style="font-size:.68rem;color:#94a3b8;font-weight:700;">listo</div></div>' +
-      '<div style="display:flex;gap:14px;flex-wrap:wrap;align-items:center;margin-top:10px;padding:8px 10px;border-radius:9px;background:rgba(2,6,23,.42);border:1px solid rgba(148,163,184,.22);font-size:.7rem;color:#cbd5e1;">' +
+      '<div><div style="font-size:1.05rem;font-weight:900;color:#7dd3fc;">⚙️ OPTIMIZACIÓN Y SALIDAS</div>' +
+      '<div style="font-size:.8rem;color:#94a3b8;margin-top:3px;">Cada tarjeta genera su lista con el generador que le corresponde. Los perfiles no se tocan aquí.</div></div>' +
+      '<div id="ape-gen-status" style="font-size:.8rem;color:#94a3b8;font-weight:700;">listo</div></div>' +
+      '<div style="display:flex;gap:14px;flex-wrap:wrap;align-items:center;margin-top:10px;padding:8px 10px;border-radius:9px;background:rgba(2,6,23,.28);border:1px solid rgba(148,163,184,.22);font-size:.82rem;color:#cbd5e1;">' +
       '<strong style="color:#7dd3fc;">Salidas:</strong>' +
       '<label style="cursor:pointer;"><input type="checkbox" id="ape-sel-vps" checked style="accent-color:#0ea5e9;"> VPS</label>' +
       '<label style="cursor:pointer;"><input type="checkbox" id="ape-sel-direct" style="accent-color:#a855f7;"> DIRECTO</label>' +
       '<label style="cursor:pointer;"><input type="checkbox" id="ape-sel-both" style="accent-color:#22d3ee;"> AMBAS</label>' +
-      '<span id="ape-sel-state" style="color:#94a3b8;font-size:.64rem;">VPS seleccionado</span>' +
+      '<span id="ape-sel-state" style="color:#94a3b8;font-size:.74rem;">VPS seleccionado</span>' +
       '</div>' +
-      '<div style="display:flex;gap:14px;flex-wrap:wrap;align-items:center;margin-top:8px;padding:8px 10px;border-radius:9px;background:rgba(2,6,23,.42);border:1px solid rgba(148,163,184,.22);font-size:.7rem;color:#cbd5e1;">' +
+      '<div style="display:flex;gap:14px;flex-wrap:wrap;align-items:center;margin-top:8px;padding:8px 10px;border-radius:9px;background:rgba(2,6,23,.28);border:1px solid rgba(148,163,184,.22);font-size:.82rem;color:#cbd5e1;">' +
       '<strong style="color:#86efac;">SALIDAS:</strong>' +
       '<label style="cursor:pointer;"><input type="checkbox" id="ape-out-hls" checked style="accent-color:#22c55e;"> HLS</label>' +
       '<label style="cursor:pointer;"><input type="checkbox" id="ape-out-dash" style="accent-color:#38bdf8;"> DASH</label>' +
@@ -171,42 +171,42 @@
       '<label style="cursor:pointer;"><input type="checkbox" id="ape-out-jit" checked style="accent-color:#f59e0b;"> JIT</label>' +
       '<label style="cursor:pointer;" title="Una sola casilla para ambas calidades"><input type="checkbox" id="ape-out-hdr" checked style="accent-color:#ef4444;"> 4K HDR / 1080 HDR</label>' +
       '</div>' +
-      '<div style="display:flex;gap:14px;flex-wrap:wrap;align-items:center;margin-top:8px;padding:8px 10px;border-radius:9px;background:rgba(2,6,23,.42);border:1px solid rgba(148,163,184,.22);font-size:.7rem;color:#cbd5e1;">' +
+      '<div style="display:flex;gap:14px;flex-wrap:wrap;align-items:center;margin-top:8px;padding:8px 10px;border-radius:9px;background:rgba(2,6,23,.28);border:1px solid rgba(148,163,184,.22);font-size:.82rem;color:#cbd5e1;">' +
       '<strong style="color:#fbbf24;">FORMATO:</strong>' +
       '<label style="cursor:pointer;"><input type="radio" name="ape-out-format" value="m3u8" checked style="accent-color:#22c55e;"> .M3U8</label>' +
       '<label style="cursor:pointer;"><input type="radio" name="ape-out-format" value="mpd" style="accent-color:#38bdf8;"> .MPD</label>' +
       '<label style="cursor:pointer;"><input type="radio" name="ape-out-format" value="hybrid" style="accent-color:#a855f7;"> HÍBRIDA</label>' +
-      '<span id="ape-out-matrix-state" style="color:#94a3b8;font-size:.64rem;">HLS · .M3U8</span>' +
-      '<span style="font-size:.6rem;color:#64748b;flex-basis:100%;">HLS descargable con el generador actual. DASH/MPD se sirve desde JIT; no se fabrica un MPD falso.</span>' +
+      '<span id="ape-out-matrix-state" style="color:#94a3b8;font-size:.74rem;">HLS · .M3U8</span>' +
+      '<span style="font-size:.82rem;color:#64748b;flex-basis:100%;">HLS descargable con el generador actual. DASH/MPD se sirve desde JIT; no se fabrica un MPD falso.</span>' +
       '</div>' +
       '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:9px;margin-top:12px;">' +
       // VPS
-      '<div style="background:rgba(2,6,23,.55);border:1px solid rgba(14,165,233,.45);border-radius:11px;padding:11px;">' +
-      '<div style="font-weight:800;color:#7dd3fc;font-size:.78rem;">VPS · Lista CDN</div>' +
-      '<div style="font-size:.68rem;color:#94a3b8;margin:4px 0 7px;">prepublishAndGenerateDual() · _CDN.m3u8</div>' +
-      '<button data-ape-run="vps" style="background:linear-gradient(135deg,#0ea5e9,#0284c7);color:#fff;border:0;border-radius:7px;padding:7px 12px;font-size:.7rem;font-weight:800;cursor:pointer;">Generar VPS</button>' +
-      '<span style="font-size:.62rem;color:#64748b;margin-left:7px;">VPS + metadata</span></div>' +
+      '<div style="background:rgba(2,6,23,.38);border:1px solid rgba(14,165,233,.45);border-radius:11px;padding:11px;">' +
+      '<div style="font-weight:800;color:#7dd3fc;font-size:1.05rem;">VPS · Lista CDN</div>' +
+      '<div style="font-size:.8rem;color:#94a3b8;margin:4px 0 7px;">prepublishAndGenerateDual() · _CDN.m3u8</div>' +
+      '<button data-ape-run="vps" style="background:linear-gradient(135deg,#0ea5e9,#0284c7);color:#fff;border:0;border-radius:7px;padding:7px 12px;font-size:.82rem;font-weight:800;cursor:pointer;">Generar VPS</button>' +
+      '<span style="font-size:.84rem;color:#64748b;margin-left:7px;">VPS + metadata</span></div>' +
       // DIRECTO
-      '<div style="background:rgba(2,6,23,.55);border:1px solid rgba(168,85,247,.45);border-radius:11px;padding:11px;">' +
-      '<div style="font-weight:800;color:#c4b5fd;font-size:.78rem;">DIRECTO · Lista limpia</div>' +
-      '<div style="font-size:.68rem;color:#94a3b8;margin:4px 0 7px;">prepublishAndGenerate() · URLs del proveedor</div>' +
-      '<button data-ape-run="direct" style="background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff;border:0;border-radius:7px;padding:7px 12px;font-size:.7rem;font-weight:800;cursor:pointer;">Generar DIRECTO</button>' +
-      '<span style="font-size:.62rem;color:#64748b;margin-left:7px;">sin VPS</span></div>' +
+      '<div style="background:rgba(2,6,23,.38);border:1px solid rgba(168,85,247,.45);border-radius:11px;padding:11px;">' +
+      '<div style="font-weight:800;color:#c4b5fd;font-size:1.05rem;">DIRECTO · Lista limpia</div>' +
+      '<div style="font-size:.8rem;color:#94a3b8;margin:4px 0 7px;">prepublishAndGenerate() · URLs del proveedor</div>' +
+      '<button data-ape-run="direct" style="background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff;border:0;border-radius:7px;padding:7px 12px;font-size:.82rem;font-weight:800;cursor:pointer;">Generar DIRECTO</button>' +
+      '<span style="font-size:.84rem;color:#64748b;margin-left:7px;">sin VPS</span></div>' +
       // AMBAS
-      '<div style="background:rgba(2,6,23,.55);border:1px solid rgba(34,211,238,.45);border-radius:11px;padding:11px;">' +
-      '<div style="font-weight:800;color:#67e8f9;font-size:.78rem;">AMBAS · lista híbrida</div>' +
-      '<div style="font-size:.68rem;color:#94a3b8;margin:4px 0 7px;">URI del canal en VPS · segmentos directos del proveedor</div>' +
-      '<button data-ape-run="both" style="background:linear-gradient(135deg,#0891b2,#22d3ee);color:#06240f;border:0;border-radius:7px;padding:7px 12px;font-size:.7rem;font-weight:800;cursor:pointer;">Generar AMBAS</button>' +
-      '<span style="font-size:.62rem;color:#64748b;margin-left:7px;">una sola lista</span></div>' +
+      '<div style="background:rgba(2,6,23,.38);border:1px solid rgba(34,211,238,.45);border-radius:11px;padding:11px;">' +
+      '<div style="font-weight:800;color:#67e8f9;font-size:1.05rem;">AMBAS · lista híbrida</div>' +
+      '<div style="font-size:.8rem;color:#94a3b8;margin:4px 0 7px;">URI del canal en VPS · segmentos directos del proveedor</div>' +
+      '<button data-ape-run="both" style="background:linear-gradient(135deg,#0891b2,#22d3ee);color:#06240f;border:0;border-radius:7px;padding:7px 12px;font-size:.82rem;font-weight:800;cursor:pointer;">Generar AMBAS</button>' +
+      '<span style="font-size:.84rem;color:#64748b;margin-left:7px;">una sola lista</span></div>' +
       '</div>' +
       // Options
       '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:9px;margin-top:9px;">' +
-      '<div id="ape-opt-pro" style="background:rgba(2,6,23,.45);border:1px solid rgba(148,163,184,.25);border-radius:9px;padding:9px;cursor:pointer;font-size:.7rem;color:#e2e8f0;"><b><span data-ape-opt-dot>○</span> Pro Streaming</b><div style="color:#64748b;font-size:.62rem;margin-top:2px;">buffer agresivo, cache, reconnect</div></div>' +
-      '<div id="ape-opt-ott" style="background:rgba(2,6,23,.45);border:1px solid rgba(148,163,184,.25);border-radius:9px;padding:9px;cursor:pointer;font-size:.7rem;color:#e2e8f0;"><b><span data-ape-opt-dot>○</span> OTT Navigator</b><div style="color:#64748b;font-size:.62rem;margin-top:2px;">UA OTT, catchup, headers VLC</div></div>' +
-      '<div id="ape-opt-hdr" style="background:rgba(2,6,23,.45);border:1px solid rgba(148,163,184,.25);border-radius:9px;padding:9px;cursor:pointer;font-size:.7rem;color:#e2e8f0;"><b><span data-ape-opt-dot>○</span> Incluir HTTP Headers</b><div style="color:#64748b;font-size:.62rem;margin-top:2px;">#EXTHTTP / #EXTVLCOPT</div></div>' +
+      '<div id="ape-opt-pro" style="background:rgba(2,6,23,.32);border:1px solid rgba(148,163,184,.25);border-radius:9px;padding:9px;cursor:pointer;font-size:.82rem;color:#e2e8f0;"><b><span data-ape-opt-dot>○</span> Pro Streaming</b><div style="color:#64748b;font-size:.84rem;margin-top:2px;">buffer agresivo, cache, reconnect</div></div>' +
+      '<div id="ape-opt-ott" style="background:rgba(2,6,23,.32);border:1px solid rgba(148,163,184,.25);border-radius:9px;padding:9px;cursor:pointer;font-size:.82rem;color:#e2e8f0;"><b><span data-ape-opt-dot>○</span> OTT Navigator</b><div style="color:#64748b;font-size:.84rem;margin-top:2px;">UA OTT, catchup, headers VLC</div></div>' +
+      '<div id="ape-opt-hdr" style="background:rgba(2,6,23,.32);border:1px solid rgba(148,163,184,.25);border-radius:9px;padding:9px;cursor:pointer;font-size:.82rem;color:#e2e8f0;"><b><span data-ape-opt-dot>○</span> Incluir HTTP Headers</b><div style="color:#64748b;font-size:.84rem;margin-top:2px;">#EXTHTTP / #EXTVLCOPT</div></div>' +
       '</div>' +
       // Buffer + mode
-      '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:8px;padding:7px 9px;border-radius:8px;background:rgba(2,6,23,.35);border:1px solid rgba(148,163,184,.18);font-size:.64rem;color:#94a3b8;">' +
+      '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:8px;padding:7px 9px;border-radius:8px;background:rgba(2,6,23,.24);border:1px solid rgba(148,163,184,.18);font-size:.74rem;color:#94a3b8;">' +
       '<strong style="color:#67e8f9;">JIT:</strong>' +
       '<a href="https://iptv-ape.duckdns.org/jit/playlist.m3u8" target="_blank" rel="noopener" style="color:#7dd3fc;">lista HLS</a>' +
       '<a href="https://iptv-ape.duckdns.org/jit/live/1174213/manifest.mpd" target="_blank" rel="noopener" style="color:#38bdf8;">DASH 4K</a>' +
@@ -215,21 +215,21 @@
       '<a href="https://iptv-ape.duckdns.org/jit/capabilities.json" target="_blank" rel="noopener" style="color:#fbbf24;">capacidades</a>' +
       '</div>' +
       '<div style="display:grid;grid-template-columns:1.5fr 1fr;gap:9px;margin-top:9px;">' +
-      '<div style="background:rgba(2,6,23,.55);border:1px solid rgba(34,197,94,.3);border-radius:10px;padding:10px;">' +
-      '<div style="font-size:.72rem;font-weight:800;color:#86efac;">CONDICIÓN DE BUFFER</div>' +
-      '<div style="display:flex;gap:14px;flex-wrap:wrap;font-size:.67rem;color:#94a3b8;margin-top:5px;">' +
+      '<div style="background:rgba(2,6,23,.38);border:1px solid rgba(34,197,94,.3);border-radius:10px;padding:10px;">' +
+      '<div style="font-size:.84rem;font-weight:800;color:#86efac;">CONDICIÓN DE BUFFER</div>' +
+      '<div style="display:flex;gap:14px;flex-wrap:wrap;font-size:1.05rem;color:#94a3b8;margin-top:5px;">' +
       '<span>Entrada <b id="ape-buf-in" style="color:#e2e8f0;">SIN DATO</b></span>' +
       '<span>Salida <b id="ape-buf-out" style="color:#e2e8f0;">SIN DATO</b></span>' +
       '<span>Delta <b id="ape-buf-delta" style="color:#e2e8f0;">—</b></span>' +
       '<b id="ape-buf-state" style="color:#f59e0b;">SIN DATO</b></div>' +
-      '<div style="font-size:.6rem;color:#64748b;margin-top:4px;">Se exige entrada ≥ salida × 1.15 para generar.</div></div>' +
-      '<div style="background:rgba(2,6,23,.55);border:1px solid rgba(148,163,184,.25);border-radius:10px;padding:10px;font-size:.68rem;color:#94a3b8;">' +
+      '<div style="font-size:.82rem;color:#64748b;margin-top:4px;">Se exige entrada ≥ salida × 1.15 para generar.</div></div>' +
+      '<div style="background:rgba(2,6,23,.38);border:1px solid rgba(148,163,184,.25);border-radius:10px;padding:10px;font-size:.8rem;color:#94a3b8;">' +
       '<div style="font-weight:800;color:#e2e8f0;">MODO</div>' +
-      '<select id="ape-gen-mode-select" style="margin-top:5px;width:100%;padding:5px 6px;border-radius:6px;background:#0f172a;color:#e2e8f0;border:1px solid #334155;font-size:.64rem;">' +
+      '<select id="ape-gen-mode-select" style="margin-top:5px;width:100%;padding:5px 6px;border-radius:6px;background:#0f172a;color:#e2e8f0;border:1px solid #334155;font-size:.74rem;">' +
       '<option value="strict_terminal">Strict Terminal · &gt;99% 200</option>' +
       '<option value="balanced_95" selected>Balanced 95 · &gt;95% playback</option>' +
       '<option value="diagnostic">Diagnostic · auditoría</option>' +
-      '</select><div id="ape-gen-mode" style="margin-top:3px;color:#c4b5fd;font-size:.6rem;">—</div></div>' +
+      '</select><div id="ape-gen-mode" style="margin-top:3px;color:#c4b5fd;font-size:.82rem;">—</div></div>' +
       '</div>';
     tab.insertBefore(panel, tab.firstChild);
 
@@ -328,3 +328,4 @@
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', render);
   else setTimeout(render, 0);
 })();
+
