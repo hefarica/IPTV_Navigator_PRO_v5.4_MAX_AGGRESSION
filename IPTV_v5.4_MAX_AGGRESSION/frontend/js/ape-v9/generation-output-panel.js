@@ -206,6 +206,14 @@
       '<div id="ape-opt-hdr" style="background:rgba(2,6,23,.45);border:1px solid rgba(148,163,184,.25);border-radius:9px;padding:9px;cursor:pointer;font-size:.7rem;color:#e2e8f0;"><b><span data-ape-opt-dot>○</span> Incluir HTTP Headers</b><div style="color:#64748b;font-size:.62rem;margin-top:2px;">#EXTHTTP / #EXTVLCOPT</div></div>' +
       '</div>' +
       // Buffer + mode
+      '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:8px;padding:7px 9px;border-radius:8px;background:rgba(2,6,23,.35);border:1px solid rgba(148,163,184,.18);font-size:.64rem;color:#94a3b8;">' +
+      '<strong style="color:#67e8f9;">JIT:</strong>' +
+      '<a href="https://iptv-ape.duckdns.org/jit/playlist.m3u8" target="_blank" rel="noopener" style="color:#7dd3fc;">lista HLS</a>' +
+      '<a href="https://iptv-ape.duckdns.org/jit/live/1174213/manifest.mpd" target="_blank" rel="noopener" style="color:#38bdf8;">DASH 4K</a>' +
+      '<a href="https://iptv-ape.duckdns.org/jit/live/3/manifest.mpd" target="_blank" rel="noopener" style="color:#38bdf8;">DASH 1080</a>' +
+      '<a href="https://iptv-ape.duckdns.org/jit/catalog.json" target="_blank" rel="noopener" style="color:#fbbf24;">catálogo</a>' +
+      '<a href="https://iptv-ape.duckdns.org/jit/capabilities.json" target="_blank" rel="noopener" style="color:#fbbf24;">capacidades</a>' +
+      '</div>' +
       '<div style="display:grid;grid-template-columns:1.5fr 1fr;gap:9px;margin-top:9px;">' +
       '<div style="background:rgba(2,6,23,.55);border:1px solid rgba(34,197,94,.3);border-radius:10px;padding:10px;">' +
       '<div style="font-size:.72rem;font-weight:800;color:#86efac;">CONDICIÓN DE BUFFER</div>' +
