@@ -245,6 +245,34 @@ const server = http.createServer((req, res) => {
     res.writeHead(200, { 'Content-Type': MIME['.m3u8'], 'Cache-Control': 'no-store' });
     return fs.createReadStream(f).pipe(res);
   }
+  if (u.pathname === '/capabilities.json') {
+    res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
+    return res.end(JSON.stringify({
+      service: 'ape-jit-cmaf',
+      transports: ['vps-list', 'provider-direct'],
+      formats: ['HLS', 'DASH', 'CMAF/fMP4'],
+      codecs: ['HEVC Main10', 'AAC'],
+      hdr: ['SDR', 'HDR10 (BT.2020/PQ)'],
+      resolutions: { '4k': '3840x2160 passthrough', 'hd': '1920x1080 HDR10' },
+      limits: { concurrent_channels: 1, idle_stop_s: Math.round(IDLE_MS / 1000) },
+      active: current ? current.id : null,
+    }));
+  }
+  if (u.pathname === '/catalog.json') {
+    const map = loadMap();
+    const base = publicBase(req);
+    const channels = Object.keys(map).map(function (id) {
+      return {
+        id: id,
+        hls: base + '/live/' + id + '/master.m3u8',
+        dash: base + '/live/' + id + '/manifest.mpd',
+        json: base + '/live/' + id + '/manifest.json',
+        active: !!(current && current.id === id),
+      };
+    });
+    res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
+    return res.end(JSON.stringify({ service: 'ape-jit-cmaf', count: channels.length, channels: channels }));
+  }
   if (u.pathname === '/health') {
     res.writeHead(200, { 'Content-Type': 'application/json' });
     return res.end(JSON.stringify({
