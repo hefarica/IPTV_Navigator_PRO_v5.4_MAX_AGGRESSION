@@ -237,10 +237,19 @@ function hdrMaster(text) {
       ? '\n#EXT-X-APE-CRYSTAL-UPSCALE:SOURCE=' + current.sourceWidth + 'x' + current.sourceHeight +
         ';TARGET=' + current.width + 'x' + current.height + ';FILTER=LANCZOS'
       : '\n#EXT-X-APE-CRYSTAL-UPSCALE:NATIVE';
+    const enhance = (current && !current.upscaled)
+      ? '\n#EXT-X-APE-CRYSTAL-ENHANCE:4K_PLUS' +
+        '\n#EXT-X-APE-CRYSTAL-VPP:DEVICE_DISPLAY;POLICY=MAX_IMAGE_FIRST' +
+        '\n#EXT-X-APE-CRYSTAL-TARGET:' + current.width + 'x' + current.height
+      : '\n#EXT-X-APE-CRYSTAL-ENHANCE:UPSCALE_4K';
+    const sixKTag = (current && current.sixK)
+      ? '\n#EXT-X-APE-CRYSTAL-6K:ENABLED=true' +
+        '\n#EXT-X-APE-CRYSTAL-6K-TARGET:6144x3456'
+      : '\n#EXT-X-APE-CRYSTAL-6K:AVAILABLE=OPT_IN;ENV=APE_6K';
     text = text.replace('#EXTM3U',
       '#EXTM3U\n' +
       '#EXT-X-APE-CRYSTAL-UHD:ENABLED=true\n' +
-      '#EXT-X-APE-CRYSTAL-MODE:' + mode + up + '\n' +
+      '#EXT-X-APE-CRYSTAL-MODE:' + mode + up + enhance + sixKTag + '\n' +
       '#EXT-X-APE-CRYSTAL-POLICY:MAX_IMAGE_FIRST');
   }
   return text

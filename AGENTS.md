@@ -3,6 +3,59 @@
 **Repo:** IPTV_Navigator_PRO_v5.4_MAX_AGGRESSION
 **Mission:** Convertir este repositorio en una plataforma IPTV enterprise de máxima calidad de imagen, máxima continuidad de transmisión, máxima compatibilidad de reproductores y máxima observabilidad operativa.
 
+## ⛔ LEY ANTI-DEGRADACIÓN (INNEGOCIABLE)
+
+Está prohibido resolver un fallo bajando la señal:
+
+```text
+4K → FHD/HD/SD
+HEVC → H.264 para ocultar fallo
+HDR10/PQ → SDR para ocultar fallo
+50/60 fps → 25/30
+bitrate de vídeo recortado
+canales de audio reducidos
+reemplazar fuente 4K por variante FHD
+```
+
+La única excepción es una autorización escrita del propietario con:
+
+```text
+canal_id, device_id, degradación, motivo, fecha
+```
+
+El 4K se mantiene 4K. El rebuffering se corrige con JIT nativo, ruta/proxy, buffer/prefetch o metadatos honestos, **nunca degradando**.
+
+Ley completa: [`docs/policies/ANTI_DEGRADATION_LAW.md`](docs/policies/ANTI_DEGRADATION_LAW.md)  
+Contrato: [`contracts/anti_degradation_contract.json`](contracts/anti_degradation_contract.json)  
+Gate: `node tools/check_anti_degradation_policy.js`
+
+## ✨ LEY CRYSTAL 4K UHD — MEJORA OBLIGATORIA
+
+No basta con conservar el 4K: hay que intentar mejorarlo siempre.
+
+Orden:
+
+```text
+1. remux nativo sin recomprimir
+2. VPP / display enhancement
+3. upscaling real 4K→8K si hay capacidad
+4. realce sintético/display “fake” como enhancement
+```
+
+Permitido: AI-SR, sharpen, NR, HDR sintético de display, metadata de enhancement.  
+Prohibido: bajar 4K a FHD/HD/SD, recortar bitrate o declarar que una fuente FHD es 4K real.
+
+La fuente se declara real; el enhancement se declara como enhancement.  
+Ley: [`docs/policies/CRYSTAL_4K_ENHANCEMENT_LAW.md`](docs/policies/CRYSTAL_4K_ENHANCEMENT_LAW.md)  
+Gate: `node tools/check_crystal_4k_law.js`
+
+## ⚡ LEY CRYSTAL 6K MAX ENHANCEMENT
+
+Siempre buscar 6K/8K con remux, AI-SR, neural upscale, Lanczos/NGU/ESRGAN, RIFE, VPP del SoC, HDR sintético de display y metadata.  
+6K es opt-in (`APE_6K=1`); no es real-time en 3 vCPU; nunca degradar 4K ni declarar 6K falso.
+
+Ley: [`docs/policies/CRYSTAL_6K_MAX_ENHANCEMENT_LAW.md`](docs/policies/CRYSTAL_6K_MAX_ENHANCEMENT_LAW.md)  
+Gate: `node tools/check_crystal_6k_law.js`
 
 ## 🚨 ÚLTIMOS CAMBIOS (2026-11-01) — LEER ANTES DE TOCAR PREFETCH / IA / EXTHTTP
 
@@ -46,6 +99,8 @@ node frontend/tests/deploy-live-predictive-prefetch.verify.js  # 9/9 (sitio púb
 **Deploy (2026-11-01):** UI desplegada en `iptv-ape.duckdns.org` (`/var/www/html`,
 stamps `20261101T160901Z` + `20261101T161053Z`) desde `git HEAD`. Rollback:
 `cp -a /var/backups/ape-deploy/<stamp>/html/. /var/www/html/`.
+
+---
 
 ---
 
@@ -133,7 +188,7 @@ Bajo `.agents/skills/`, una carpeta por skill con 8 archivos + 3 subdirectorios:
 
 ---
 
-## SLASH COMMANDS (7)
+## SLASH COMMANDS (8)
 
 | Comando | Delegate to | Descripción |
 |---------|-------------|-------------|
@@ -144,8 +199,10 @@ Bajo `.agents/skills/`, una carpeta por skill con 8 archivos + 3 subdirectorios:
 | `/check-nginx-streaming` | nginx-openresty-lua-engineer | Audit nginx + Lua autopista compliance |
 | `/watchdog-status` | linux-vps-sre-engineer | Status de watchdogs + health checks |
 | `/player-compat` | player-compatibility-engineer + video-codec-engineer + color-scientist-hdr | Matrix compat por player/device |
+| `/equipo-10-adn` | Team Agent 10 ADN (8 agentes reales / disciplinas S1–S10) | Convocar el equipo con su ADN de llegada + lo aprendido en la auditoría 2026-10-26 (Council → harness → consolidado → auditoría → paquete) |
 
 Ver `.claude/commands/*.md`.
+Contexto largo del Equipo 10 ADN (evidencia, correcciones y deuda): `docs/manifestos/EQUIPO_10_ADN_CONTEXTO_2026-10-26.md`.
 
 ---
 

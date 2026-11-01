@@ -1,0 +1,29 @@
+{
+  "version": "1.0",
+  "status": "mandatory",
+  "effective": "2026-11-01",
+  "law": "docs/policies/CRYSTAL_4K_ENHANCEMENT_LAW.md",
+  "priority": [
+    "native_remux",
+    "display_vpp",
+    "real_upscale_if_capacity",
+    "synthetic_display_enhancement"
+  ],
+  "allowed": [
+    "remux_native_4k",
+    "display_vpp",
+    "ai_super_resolution",
+    "synthetic_sharpening",
+    "synthetic_hdr_display",
+    "upscale_4k_to_8k_if_capacity",
+    "enhancement_metadata"
+  ],
+  "forbidden": [
+    "downscale_4k_to_fhd",
+    "replace_4k_with_fhd",
+    "declare_fhd_as_4k_source",
+    "declare_fake_source_resolution",
+    "bitrate_video_reduction"
+  ],
+  "gate": "node tools/check_crystal_4k_law.js"
+}

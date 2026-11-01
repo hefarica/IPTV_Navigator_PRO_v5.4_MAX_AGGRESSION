@@ -1,0 +1,34 @@
+{
+  "version": "1.0",
+  "status": "mandatory",
+  "effective": "2026-11-01",
+  "law": "docs/policies/CRYSTAL_6K_MAX_ENHANCEMENT_LAW.md",
+  "target": "6144x3456",
+  "techniques": [
+    "native_remux",
+    "ai_super_resolution",
+    "neural_upscale",
+    "lanczos",
+    "ngu",
+    "esrgan",
+    "rife_interpolation",
+    "soc_vpp",
+    "synthetic_hdr_display",
+    "tone_mapping",
+    "grain_synthesis",
+    "lcevc_enhancement",
+    "hevc_main10",
+    "av1",
+    "metadata_enhancement"
+  ],
+  "default_enabled": false,
+  "opt_in_env": "APE_6K=1",
+  "forbidden": [
+    "downscale_4k_to_fhd",
+    "declare_fake_6k_source",
+    "declare_fake_8k_source",
+    "bitrate_video_reduction",
+    "audio_removal"
+  ],
+  "gate": "node tools/check_crystal_6k_law.js"
+}

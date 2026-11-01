@@ -1,5 +1,19 @@
 # IPTV Navigator PRO v5.4 MAX AGGRESSION — CLAUDE.md
 
+## ✨ LEY CRYSTAL 4K UHD — MEJORA OBLIGATORIA
+
+Siempre intentar remux nativo, VPP/display enhancement, upscaling real 4K→8K si hay capacidad y realce sintético de display. Prohibido bajar 4K a FHD, recortar bitrate o declarar como 4K una fuente FHD. Ley: docs/policies/CRYSTAL_4K_ENHANCEMENT_LAW.md. Gate: 
+ode tools/check_crystal_4k_law.js.
+
+## ⚡ LEY CRYSTAL 6K MAX ENHANCEMENT
+
+Remux, AI-SR, neural upscale, Lanczos/NGU/ESRGAN, RIFE, VPP, HDR sintético y metadata 6K. Opt-in `APE_6K=1`; no real-time en 3 vCPU; prohibido degradar 4K o declarar 6K falso. Ley: docs/policies/CRYSTAL_6K_MAX_ENHANCEMENT_LAW.md. Gate: `node tools/check_crystal_6k_law.js`.
+
+## ⛔ LEY ANTI-DEGRADACIÓN (INNEGOCIABLE)
+
+Prohibido resolver fallos bajando 4K a FHD/HD/SD, HEVC a H.264, HDR a SDR, fps o bitrate. El 4K se mantiene 4K. Ley: docs/policies/ANTI_DEGRADATION_LAW.md · Gate: 
+ode tools/check_anti_degradation_policy.js.
+
 ## 🚨 CAMBIOS RECIENTES (2026-11-01) — PREFETCH / “Predicción AI” / EXTHTTP
 
 Antes de tocar el generador o el panel, revisa `AGENTS.md` → sección
@@ -12,7 +26,6 @@ estado real. `X-Concurrent-Downloads` es 8 único; los headers de prefetch sobre
 recorte EXTHTTP por prioridad; `X-APE-Prefetch-*` ya no se filtra aguas arriba; el fallback
 P0 pasó de 250 a 40; el `#EXTHTTP` del master token es ahora JSON válido (CA11 0 errores).
 Verificación: 43 unit + 11 live + 18 UI (Chrome headless) + 25/25 e2e.
-
 
 ## 🛑 REALIDAD MEDIDA DEL VPS — LEER ANTES DE TOCAR LA CAPA VPS
 
@@ -612,7 +625,7 @@ Ver `AGENTS.md` para la versión limpia (sin mojibake encoding) de la doctrina c
 - `player-compatibility-engineer.md` (S9, 32 skills) — hls.js / ExoPlayer
 - `security-auth-headers-engineer.md` (S10, 31 skills) — Toxic headers / signed URLs
 
-**7 Slash Commands** definidos en `.claude/commands/`:
+**8 Slash Commands** definidos en `.claude/commands/`:
 - `/audit-iptv` — Full forensic audit
 - `/validate-m3u8` — RFC 8216 + player compat
 - `/build-skills` — Regenerar skills library
@@ -620,6 +633,7 @@ Ver `AGENTS.md` para la versión limpia (sin mojibake encoding) de la doctrina c
 - `/check-nginx-streaming` — nginx autopista compliance
 - `/watchdog-status` — Health checks status
 - `/player-compat` — Player matrix
+- `/equipo-10-adn` — Convocatoria del Equipo 10 ADN (ADN de llegada + aprendizaje 2026-10-26; contexto largo en `docs/manifestos/EQUIPO_10_ADN_CONTEXTO_2026-10-26.md`)
 
 **Index canónico**: `.agents/skills_index.json` (JSON validado).
 **Reporte instalación**: `.agents/SKILLS_INSTALLATION_REPORT.md`.
@@ -666,3 +680,6 @@ Nivel↔Resolución). Sin transcode en el VPS. FREEZELESS intacto. El realce rea
 
 **Conciencia universal:** cada acción de cada comando/skill lleva esta búsqueda de imagen extrema como
 prioridad. Si una decisión puede subir el tier de codec sin romper FREEZELESS → **SE SUBE, SIEMPRE.**
+
+
+

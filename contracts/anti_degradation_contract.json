@@ -1,0 +1,31 @@
+{
+  "version": "1.0",
+  "status": "mandatory",
+  "effective": "2026-11-01",
+  "law": "docs/policies/ANTI_DEGRADATION_LAW.md",
+  "forbidden_automatic_actions": [
+    "resolution_downscale_4k_to_fhd",
+    "resolution_downscale_4k_to_hd",
+    "codec_hevc_to_h264_for_fix",
+    "hdr_to_sdr_for_fix",
+    "fps_reduction_for_fix",
+    "video_bitrate_reduction_for_fix",
+    "audio_channel_reduction_for_fix",
+    "replace_4k_source_with_fhd"
+  ],
+  "allowed_without_exception": [
+    "jit_native_copy_4k",
+    "buffer_prefetch_adjustment",
+    "cdn_route_change",
+    "measured_bitrate_metadata_correction",
+    "remove_false_audio_claims"
+  ],
+  "exception_requires": [
+    "channel_id",
+    "device_id",
+    "degradation",
+    "reason",
+    "date"
+  ],
+  "gate": "node tools/check_anti_degradation_policy.js"
+}
