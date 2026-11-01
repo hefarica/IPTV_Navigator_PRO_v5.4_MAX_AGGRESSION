@@ -101,3 +101,32 @@ channel 3: 1920x1080 native, no upscale
 
 Truth guard: Crystal UHD is a quality policy/metadata plus the real 1080p
 HEVC Main10 encode. Native 4K HDR is passthrough only. No fake 4K pixels.
+
+## Crystal UHD 2K update (2026-11-01)
+
+Every source <=1080p now targets:
+
+`	ext
+2560x1440
+HEVC Main10 HDR10
+Lanczos + pad
+6.0 Mbps target / 6.6 max
+`
+
+Verified init segment:
+
+`	ext
+channel 3: 1920x1080 -> 2560x1440, hevc Main 10, level 150
+channel 100: 720x576 -> 2560x1440
+`
+
+Tags:
+
+`	ext
+#EXT-X-APE-CRYSTAL-MODE:CRYSTAL_2K_HDR_UPSCALE
+#EXT-X-APE-CRYSTAL-UPSCALE:SOURCE=...;TARGET=2560x1440;FILTER=LANCZOS
+`
+
+Native 4K HDR remains passthrough. SDR fallbacks remain 1080/720 for decoder
+continuity. HTTP contracts: 23/23 status checks and 14/14 manifest contracts.
+Playback performance at 2K on the 3-vCPU VPS is not claimed by these tests.

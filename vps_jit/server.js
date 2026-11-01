@@ -106,13 +106,13 @@ function start(id, spec, sdr, sdr720) {
     : copy4k
     ? ['-c:v', 'copy', '-tag:v', 'hvc1']
     : [
-      '-vf', "scale=w=1920:h=1080:force_original_aspect_ratio=decrease:force_divisible_by=2:flags=lanczos,pad=1920:1080:(ow-iw)/2:(oh-ih)/2,setparams=color_primaries=bt709:color_trc=bt709:colorspace=bt709:range=limited,zscale=t=linear:npl=100,format=gbrpf32le,zscale=p=bt2020:transfer=smpte2084:matrix=bt2020nc:primaries=bt2020,format=yuv420p10le",
+      '-vf', "scale=w=2560:h=1440:force_original_aspect_ratio=decrease:force_divisible_by=2:flags=lanczos,pad=2560:1440:(ow-iw)/2:(oh-ih)/2,setparams=color_primaries=bt709:color_trc=bt709:colorspace=bt709:range=limited,zscale=t=linear:npl=100,format=gbrpf32le,zscale=p=bt2020:transfer=smpte2084:matrix=bt2020nc:primaries=bt2020,format=yuv420p10le",
       '-pix_fmt', 'yuv420p10le',
       '-color_primaries', 'bt2020', '-color_trc', 'smpte2084', '-colorspace', 'bt2020nc',
       '-c:v', 'libx265', '-preset', 'ultrafast', '-tune', 'zerolatency',
       '-threads', '3', '-tag:v', 'hvc1',
       '-x265-params', 'pools=3:frame-threads=1:hdr10=1:colorprim=bt2020:transfer=smpte2084:colormatrix=bt2020nc:master-display=G(13250,34500)B(7500,3000)R(34000,16000)WP(15635,16450)L(10000000,1):max-cll=100,100',
-      '-b:v', '3000k', '-maxrate', '3300k', '-bufsize', '6000k',
+      '-b:v', '6000k', '-maxrate', '6600k', '-bufsize', '12000k',
     ];
   // Some 4K provider audio is EAC3 with 0 channels / no sample rate.
   // Do not break the video MPD: if audio is invalid, emit video-only.
@@ -145,8 +145,8 @@ function start(id, spec, sdr, sdr720) {
     detached: false,
     stdio: ['ignore', 'ignore', 'pipe'],
   });
-  const outWidth = is720 ? 1280 : (isSdr ? 1920 : (copy4k ? src.width : Math.max(1920, src.width || 0)));
-  const outHeight = is720 ? 720 : (isSdr ? 1080 : (copy4k ? src.height : Math.max(1080, src.height || 0)));
+  const outWidth = is720 ? 1280 : (isSdr ? 1920 : (copy4k ? src.width : 2560));
+  const outHeight = is720 ? 720 : (isSdr ? 1080 : (copy4k ? src.height : 1440));
   const upscaled = !copy4k && ((src.width || 0) < outWidth || (src.height || 0) < outHeight);
   current = {
     id, sdr: isSdr, sdr720: is720, child, dir, lastAccess: Date.now(), started: Date.now(),
@@ -157,11 +157,11 @@ function start(id, spec, sdr, sdr720) {
     width: outWidth,
     height: outHeight,
     upscaled,
-    codecString: isSdr ? 'avc1.640028' : (copy4k ? 'hvc1.2.4.L153.B0' : 'hvc1.2.4.L123.B0'),
+    codecString: isSdr ? 'avc1.640028' : 'hvc1.2.4.L153.B0',
     audioCodec: hasAudio ? 'mp4a.40.2' : '',
-    bandwidth: is720 ? 2400000 : (isSdr ? 4500000 : (copy4k ? 20000000 : 3000000)),
+    bandwidth: is720 ? 2400000 : (isSdr ? 4500000 : (copy4k ? 20000000 : 6500000)),
     crystal: true,
-    crystalMode: copy4k ? 'NATIVE_4K_HDR' : (upscaled ? 'CRYSTAL_UHD_UPSCALE' : (is720 ? 'SDR720_STABLE' : (isSdr ? 'FHD_SDR' : 'FHD_HDR10'))),
+    crystalMode: copy4k ? 'NATIVE_4K_HDR' : (upscaled ? 'CRYSTAL_2K_HDR_UPSCALE' : (is720 ? 'SDR720_STABLE' : (isSdr ? 'FHD_SDR' : 'FHD_HDR10'))),
   };
   log('START', id, 'pid=' + child.pid, 'sdr=' + isSdr, 'sdr720=' + is720, 'copy4k=' + copy4k, 'crystal=' + current.crystalMode, 'src=' + src.width + 'x' + src.height + '/' + src.transfer + '->' + outWidth + 'x' + outHeight);
   child.stderr.on('data', d => {
@@ -330,7 +330,7 @@ const server = http.createServer((req, res) => {
       crystal_uhd: {
         enabled: true,
         applies_to: 'all JIT channels',
-        modes: ['NATIVE_4K_HDR', 'FHD_HDR10', 'FHD_SDR', 'SDR720_STABLE'],
+        modes: ['NATIVE_4K_HDR', 'CRYSTAL_2K_HDR_UPSCALE', 'FHD_HDR10', 'FHD_SDR', 'SDR720_STABLE'],
         note: 'policy/metadata; no fake 4K pixels',
       },
       limits: { concurrent_channels: 1, idle_stop_s: Math.round(IDLE_MS / 1000) },
@@ -347,6 +347,7 @@ const server = http.createServer((req, res) => {
       active_mode: current ? current.crystalMode : null,
       modes: {
         NATIVE_4K_HDR: 'native 3840x2160 HEVC Main10 HDR10 passthrough',
+        CRYSTAL_2K_HDR_UPSCALE: 'HEVC Main10 2560x1440 HDR10, Lanczos upscale from <=1080p',
         FHD_HDR10: 'HEVC Main10 1920x1080 HDR10, zscale SDR->PQ',
         FHD_SDR: 'H.264 1920x1080 SDR fallback for incompatible decoders',
         SDR720_STABLE: 'H.264 1280x720 SDR continuity fallback',
@@ -443,5 +444,6 @@ process.on('SIGINT', () => { stopCurrent('signal'); process.exit(0); });
 
 fs.mkdirSync(OUT_ROOT, { recursive: true });
 server.listen(PORT, BIND, () => log('LISTEN', BIND + ':' + PORT, 'map=' + MAP_FILE));
+
 
 
