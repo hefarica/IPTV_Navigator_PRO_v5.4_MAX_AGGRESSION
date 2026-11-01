@@ -1192,6 +1192,14 @@
         // después con apeCdnRewrap. Así el toggle global no puede convertir el
         // botón "directo" en otra cosa ni producir doble wrapper.
         if (typeof window !== 'undefined') window.APE_DIRECT_MODE = true;
+        if (typeof window !== 'undefined' && options && options.buffer_delta_pct != null) {
+            var _bd = Number(options.buffer_delta_pct);
+            if (isFinite(_bd) && _bd >= 1 && _bd <= 90) window.APE_OUTPUT_DELTA_PCT = Math.round(_bd);
+        }
+        if (typeof window !== 'undefined' && options && options.buffer_delta_array
+            && typeof options.buffer_delta_array === 'object') {
+            window.APE_OUTPUT_DELTA_ARRAY = options.buffer_delta_array;
+        }
         if (!window.app || typeof window.app.getFilteredChannels !== 'function') {
             throw new Error('window.app.getFilteredChannels no disponible');
         }

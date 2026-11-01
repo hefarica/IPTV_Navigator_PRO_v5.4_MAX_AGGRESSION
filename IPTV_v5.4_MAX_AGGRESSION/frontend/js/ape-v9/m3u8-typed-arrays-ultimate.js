@@ -2758,7 +2758,7 @@
         if (typeof window !== 'undefined' && window.APE_CONTINUITY_LAW && typeof window.APE_CONTINUITY_LAW.tags === 'function') {
             return window.APE_CONTINUITY_LAW.tags();
         }
-        return [
+        var tags = [
             '#EXT-X-APE-CONTINUITY-LAW:STREAMING_CONTINUITY_LAW_V1',
             '#EXT-X-APE-CONTINUITY-MANIFEST:no-store',
             '#EXT-X-APE-CONTINUITY-RANGE:206',
@@ -2766,6 +2766,24 @@
             '#EXT-X-APE-CONTINUITY-TRANSPORT:declared',
             '#EXT-X-APE-CONTINUITY-FALLBACK:HDR>SDR1080>SDR720'
         ];
+        var _delta = Number((typeof window !== 'undefined' && window.APE_OUTPUT_DELTA_PCT != null)
+            ? window.APE_OUTPUT_DELTA_PCT : NaN);
+        var _arr = (typeof window !== 'undefined' && window.APE_OUTPUT_DELTA_ARRAY
+            && typeof window.APE_OUTPUT_DELTA_ARRAY === 'object') ? window.APE_OUTPUT_DELTA_ARRAY : null;
+        if (_arr) {
+            var _vals = [];
+            Object.keys(_arr).sort().forEach(function (k) {
+                var v = Math.round(Number(_arr[k]));
+                if (isFinite(v) && v >= 1 && v <= 90) _vals.push(k + '=' + v);
+            });
+            if (_vals.length) tags.push('#EXT-X-APE-BUFFER-DELTA-ARRAY:' + _vals.join(','));
+        }
+        if (isFinite(_delta) && _delta >= 1 && _delta <= 90) {
+            _delta = Math.round(_delta);
+            tags.push('#EXT-X-APE-BUFFER-DELTA-PCT:' + _delta);
+            tags.push('#EXT-X-APE-BUFFER-DELTA-RULE:IN>=OUT*(1+' + (_delta / 100) + ')');
+        }
+        return tags;
     }
 
     function generateGlobalHeader(channelsCount, options = {}) {

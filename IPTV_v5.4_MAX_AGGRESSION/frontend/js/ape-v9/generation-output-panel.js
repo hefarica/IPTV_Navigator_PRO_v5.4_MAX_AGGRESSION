@@ -15,6 +15,116 @@
       return isFinite(v) && v >= 1 && v <= 90 ? v : 15;
     } catch (_) { return 15; }
   })();
+  window.APE_OUTPUT_DELTA_PCT = DELTA_PCT;
+
+  function profileIds() {
+    try {
+      var c = window.APE_PROFILES_CONFIG;
+      if (c && c.profiles && Object.keys(c.profiles).length) return Object.keys(c.profiles).sort();
+    } catch (_) { }
+    return ['P0', 'P1', 'P2', 'P3', 'P4', 'P5'];
+  }
+
+  function normalizeDeltaArray(raw, fallback) {
+    var out = {};
+    var ids = profileIds();
+    if (raw && typeof raw === 'object') {
+      Object.keys(raw).forEach(function (k) {
+        var v = Math.round(Number(raw[k]));
+        if (isFinite(v) && v >= 1 && v <= 90) out[k] = v;
+      });
+    }
+    if (Object.keys(out).length === 0) {
+      var b = Math.round(Number(fallback));
+      if (!isFinite(b) || b < 1 || b > 90) b = 15;
+      ids.forEach(function (id) { out[id] = b; });
+    }
+    ids.forEach(function (id) {
+      if (!out[id]) out[id] = Number(fallback) >= 1 && Number(fallback) <= 90 ? Math.round(Number(fallback)) : 15;
+    });
+    return out;
+  }
+
+  function getDeltaArray(base) {
+    if (window.APE_OUTPUT_DELTA_ARRAY && typeof window.APE_OUTPUT_DELTA_ARRAY === 'object') {
+      return normalizeDeltaArray(window.APE_OUTPUT_DELTA_ARRAY, base);
+    }
+    try {
+      var stored = JSON.parse(localStorage.getItem('ape_output_delta_array') || 'null');
+      if (stored && typeof stored === 'object') return normalizeDeltaArray(stored, base);
+    } catch (_) { }
+    return normalizeDeltaArray(null, base);
+  }
+
+  function setDeltaArray(arr) {
+    var n = normalizeDeltaArray(arr, DELTA_PCT);
+    window.APE_OUTPUT_DELTA_ARRAY = n;
+    try { localStorage.setItem('ape_output_delta_array', JSON.stringify(n)); } catch (_) { }
+    return n;
+  }
+
+  // Proceso externo puede actualizar el array entre corridas:
+  // window.APE_BUFFER_DELTA_API.set({P0:40,P1:38,...}); luego Generar VPS.
+  window.APE_BUFFER_DELTA_API = {
+    set: function (arr) { return setDeltaArray(arr); },
+    get: function () { return getDeltaArray(currentDelta()); },
+    profiles: profileIds
+  };
+
+  function currentDelta() {
+    var di = document.getElementById('ape-delta-input');
+    var v = di ? Number(di.value) : DELTA_PCT;
+    if (!isFinite(v)) v = DELTA_PCT;
+    v = Math.round(v);
+    if (v < 1) v = 1;
+    if (v > 90) v = 90;
+    return v;
+  }
+
+  async function sendDeltaToVps(v) {
+    var arr = getDeltaArray(v);
+    try {
+      var r = await fetch('/prisma/api/ape-output-config.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        cache: 'no-store',
+        body: JSON.stringify({
+          delta_pct: v,
+          delta_array: arr,
+          rule: 'IN >= OUT * (1 + delta)',
+          source: 'generation-output-panel',
+          generated_at: new Date().toISOString()
+        })
+      });
+      var j = await r.json().catch(function () { return {}; });
+      if (!r.ok || j.ok !== true) throw new Error(j.error || ('http_' + r.status));
+      return j;
+    } catch (e) {
+      console.warn('[APE-OUT] delta VPS no confirmado:', e && e.message);
+      return null;
+    }
+  }
+
+  function applyDelta(notify) {
+    var v = currentDelta();
+    DELTA_PCT = v;
+    window.APE_OUTPUT_DELTA_PCT = v;
+    window.APE_BUFFER_DELTA_PCT = v;
+    var arr = getDeltaArray(v);
+    setDeltaArray(arr);
+    try { localStorage.setItem('ape_output_delta_pct', String(v)); } catch (_) { }
+    var di = document.getElementById('ape-delta-input');
+    if (di) di.value = String(v);
+    guard();
+    if (notify) {
+      status('Delta ' + v + '% aplicado; enviando al VPS…', '#38bdf8');
+      sendDeltaToVps(v).then(function (res) {
+        if (res) status('Delta ' + v + '% aplicado y confirmado por VPS', '#22c55e');
+        else status('Delta ' + v + '% aplicado localmente; VPS no confirmó', '#f59e0b');
+      });
+    }
+    return v;
+  }
 
   function toast(msg, type) {
     try {
@@ -91,20 +201,24 @@
   }
 
   async function runVps() {
+    var d = applyDelta(false);
     if (!checkGeneration() || !formatGuard()) return;
     try {
-      status('Generando VPS…', '#38bdf8');
-      await window.APEGenerationController.prepublishAndGenerateDual();
-      status('VPS completado', '#22c55e');
+      status('Generando VPS con delta ' + d + '%…', '#38bdf8');
+      sendDeltaToVps(d);
+      await window.APEGenerationController.prepublishAndGenerateDual({ buffer_delta_pct: d, buffer_delta_array: getDeltaArray(d) });
+      status('VPS completado · delta ' + d + '% (array por perfil)', '#22c55e');
     } catch (e) { status('VPS falló: ' + e.message, '#ef4444'); toast('VPS falló: ' + e.message, 'error'); }
   }
 
   async function runDirect() {
+    var d = applyDelta(false);
     if (!checkGeneration() || !formatGuard()) return;
     try {
-      status('Generando DIRECTO…', '#38bdf8');
-      await window.APEGenerationController.prepublishAndGenerate();
-      status('DIRECTO completado', '#22c55e');
+      status('Generando DIRECTO con delta ' + d + '%…', '#38bdf8');
+      sendDeltaToVps(d);
+      await window.APEGenerationController.prepublishAndGenerate({ buffer_delta_pct: d, buffer_delta_array: getDeltaArray(d) });
+      status('DIRECTO completado · delta ' + d + '% (array por perfil)', '#22c55e');
     } catch (e) { status('DIRECTO falló: ' + e.message, '#ef4444'); toast('DIRECTO falló: ' + e.message, 'error'); }
   }
 
@@ -112,11 +226,13 @@
   // proveedor (comprobado en APE_LISTA_..._CDN: playlist VPS -> media playlist
   // con segmentos en host del proveedor). Se usa el generador CDN existente.
   async function runBoth() {
+    var d = applyDelta(false);
     if (!checkGeneration() || !formatGuard()) return;
     try {
-      status('Generando AMBAS (URI VPS + vídeo directo)…', '#38bdf8');
-      await window.APEGenerationController.prepublishAndGenerateDual();
-      status('AMBAS completado: URI VPS · segmentos directos', '#22c55e');
+      status('Generando AMBAS (URI VPS + vídeo directo) · delta ' + d + '%…', '#38bdf8');
+      sendDeltaToVps(d);
+      await window.APEGenerationController.prepublishAndGenerateDual({ buffer_delta_pct: d, buffer_delta_array: getDeltaArray(d) });
+      status('AMBAS completado · delta ' + d + '% (array por perfil)', '#22c55e');
     } catch (e) { status('AMBAS falló: ' + e.message, '#ef4444'); toast('AMBAS falló: ' + e.message, 'error'); }
   }
 
@@ -224,6 +340,7 @@
       '<input id="ape-delta-input" type="number" min="1" max="90" step="1" value="' + DELTA_PCT + '" ' +
       'style="width:78px;padding:5px 7px;border-radius:6px;background:#0f172a;color:#e2e8f0;border:1px solid #334155;font-size:1.05rem;font-weight:800;">' +
       '<span style="color:#e2e8f0;font-weight:800;">%</span>' +
+      '<button id="ape-delta-apply" type="button" style="margin-left:5px;background:#0ea5e9;color:#fff;border:0;border-radius:6px;padding:6px 10px;font-size:.8rem;font-weight:800;cursor:pointer;">Aplicar</button>' +
       '</div>' +
       '<div style="display:flex;gap:7px;flex-wrap:wrap;margin-top:7px;font-size:.8rem;">' +
       '<span style="color:#86efac;border:1px solid rgba(34,197,94,.45);border-radius:999px;padding:3px 8px;">ENTRA MÁS · descarga / prefetch / buffer</span>' +
@@ -331,15 +448,11 @@
     var di = document.getElementById('ape-delta-input');
     if (di) {
       di.value = String(DELTA_PCT);
-      di.addEventListener('input', function () {
-        var v = Number(di.value);
-        if (isFinite(v) && v >= 1 && v <= 90) {
-          DELTA_PCT = v;
-          try { localStorage.setItem('ape_output_delta_pct', String(v)); } catch (_) { }
-          guard();
-        }
-      });
+      di.addEventListener('input', function () { applyDelta(false); });
+      di.addEventListener('change', function () { applyDelta(false); });
     }
+    var da = document.getElementById('ape-delta-apply');
+    if (da) da.addEventListener('click', function () { applyDelta(true); });
     guard();
     setInterval(function () { guard(); var m = $('#ape-gen-mode'); if (m) m.textContent = modeText(); }, 2000);
   }
