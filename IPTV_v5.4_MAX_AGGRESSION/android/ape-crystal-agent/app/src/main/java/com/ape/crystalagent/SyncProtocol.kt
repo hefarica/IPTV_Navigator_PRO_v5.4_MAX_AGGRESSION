@@ -36,6 +36,8 @@ object SyncProtocol {
     val SOC_ALIASES: Map<String, String> = mapOf(
         "amlogic_s905x4" to "s905x4", "amlogic-s905x4" to "s905x4", "s905x4" to "s905x4",
         "amlogic_s905x3" to "s905x3", "amlogic-s905x3" to "s905x3", "s905x3" to "s905x3",
+        "amlogic_s905y4" to "amlogic", "amlogic-s905y4" to "amlogic", "s905y4" to "amlogic",
+        "amls905y4" to "amlogic", "amls905y4-s" to "amlogic", "s905y4-s" to "amlogic",
         "mt8696" to "mt8696", "mediatek_mt8696" to "mt8696", "mediatek-mt8696" to "mt8696",
         "firetv_mt8696" to "mt8696", "amlogic" to "amlogic"
     )

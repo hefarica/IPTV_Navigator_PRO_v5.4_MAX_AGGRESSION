@@ -1,0 +1,36 @@
+name: media-session-routine
+
+# Requires a self-hosted runner with adb and the authorized ONN attached.
+# Hosted ubuntu-latest cannot see the USB/Wi-Fi ADB device.
+on:
+  workflow_dispatch:
+    inputs:
+      serial:
+        description: 'ADB serial (e.g. 192.168.1.7:5555)'
+        required: true
+        default: '192.168.1.7:5555'
+      samples:
+        description: 'Number of observations'
+        required: true
+        default: '3'
+      interval:
+        description: 'Seconds between observations'
+        required: true
+        default: '10'
+
+jobs:
+  observe:
+    runs-on: [self-hosted, windows, onn-adb]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: MediaSession follow-up
+        run: node tools/media_session_routine.js --serial "${{ inputs.serial }}" --samples "${{ inputs.samples }}" --interval "${{ inputs.interval }}"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: media-session-evidence
+          path: artifacts/media_session/
+          if-no-files-found: warn

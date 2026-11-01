@@ -119,7 +119,14 @@ class SyncClient(private val cfg: Config) {
                 return Result(Kind.PROTOCOL, http = code, reason = "bad_signature", reqSeq = input.seq)
             }
 
-            val checked = validatePolicy(parsed, cfg.deviceId, input.seq, nowS(), socCanonical = input.socRaw, lastPolicySeq = lastPolicySeq)
+            val checked = validatePolicy(
+                parsed,
+                cfg.deviceId,
+                input.seq,
+                nowS(),
+                socCanonical = SyncProtocol.canonicalSoc(input.socRaw),
+                lastPolicySeq = lastPolicySeq
+            )
             val pol = checked.first
             if (pol == null) {
                 return Result(Kind.PROTOCOL, http = code, reason = checked.third ?: "policy_invalid", rawBody = body, reqSeq = input.seq)
