@@ -85,6 +85,9 @@ function start(id, spec, sdr, sdr720) {
   fs.mkdirSync(dir, { recursive: true });
   for (const f of fs.readdirSync(dir)) fs.rmSync(path.join(dir, f), { recursive: true, force: true });
 
+  const use2k = process.env.APE_2K === '1';
+  const targetW = use2k ? 2048 : 1920;
+  const targetH = 1080;
   const videoArgs = is720
     ? [
       '-vf', "scale=w=1280:h=720:force_original_aspect_ratio=decrease:force_divisible_by=2:flags=lanczos,pad=1280:720:(ow-iw)/2:(oh-ih)/2,setparams=color_primaries=bt709:color_trc=bt709:colorspace=bt709:range=limited,format=yuv420p",
@@ -106,13 +109,13 @@ function start(id, spec, sdr, sdr720) {
     : copy4k
     ? ['-c:v', 'copy', '-tag:v', 'hvc1']
     : [
-      '-vf', "scale=w=2560:h=1440:force_original_aspect_ratio=decrease:force_divisible_by=2:flags=lanczos,pad=2560:1440:(ow-iw)/2:(oh-ih)/2,setparams=color_primaries=bt709:color_trc=bt709:colorspace=bt709:range=limited,zscale=t=linear:npl=100,format=gbrpf32le,zscale=p=bt2020:transfer=smpte2084:matrix=bt2020nc:primaries=bt2020,format=yuv420p10le",
+      '-vf', (use2k ? 'fps=30,' : '') + `scale=w=${targetW}:h=${targetH}:force_original_aspect_ratio=decrease:force_divisible_by=2:flags=lanczos,pad=${targetW}:${targetH}:(ow-iw)/2:(oh-ih)/2,setparams=color_primaries=bt709:color_trc=bt709:colorspace=bt709:range=limited,zscale=t=linear:npl=100,format=gbrpf32le,zscale=p=bt2020:transfer=smpte2084:matrix=bt2020nc:primaries=bt2020,format=yuv420p10le`,
       '-pix_fmt', 'yuv420p10le',
       '-color_primaries', 'bt2020', '-color_trc', 'smpte2084', '-colorspace', 'bt2020nc',
       '-c:v', 'libx265', '-preset', 'ultrafast', '-tune', 'zerolatency',
       '-threads', '3', '-tag:v', 'hvc1',
       '-x265-params', 'pools=3:frame-threads=1:hdr10=1:colorprim=bt2020:transfer=smpte2084:colormatrix=bt2020nc:master-display=G(13250,34500)B(7500,3000)R(34000,16000)WP(15635,16450)L(10000000,1):max-cll=100,100',
-      '-b:v', '6000k', '-maxrate', '6600k', '-bufsize', '12000k',
+      '-b:v', use2k ? '5000k' : '3000k', '-maxrate', use2k ? '5500k' : '3300k', '-bufsize', use2k ? '10000k' : '6000k',
     ];
   // Some 4K provider audio is EAC3 with 0 channels / no sample rate.
   // Do not break the video MPD: if audio is invalid, emit video-only.
@@ -145,8 +148,8 @@ function start(id, spec, sdr, sdr720) {
     detached: false,
     stdio: ['ignore', 'ignore', 'pipe'],
   });
-  const outWidth = is720 ? 1280 : (isSdr ? 1920 : (copy4k ? src.width : 2560));
-  const outHeight = is720 ? 720 : (isSdr ? 1080 : (copy4k ? src.height : 1440));
+  const outWidth = is720 ? 1280 : (isSdr ? 1920 : (copy4k ? src.width : targetW));
+  const outHeight = is720 ? 720 : (isSdr ? 1080 : (copy4k ? src.height : targetH));
   const upscaled = !copy4k && ((src.width || 0) < outWidth || (src.height || 0) < outHeight);
   current = {
     id, sdr: isSdr, sdr720: is720, child, dir, lastAccess: Date.now(), started: Date.now(),
@@ -157,11 +160,12 @@ function start(id, spec, sdr, sdr720) {
     width: outWidth,
     height: outHeight,
     upscaled,
-    codecString: isSdr ? 'avc1.640028' : 'hvc1.2.4.L153.B0',
+    codecString: isSdr ? 'avc1.640028' : (use2k ? 'hvc1.2.4.L153.B0' : 'hvc1.2.4.L123.B0'),
     audioCodec: hasAudio ? 'mp4a.40.2' : '',
-    bandwidth: is720 ? 2400000 : (isSdr ? 4500000 : (copy4k ? 20000000 : 6500000)),
+    bandwidth: is720 ? 2400000 : (isSdr ? 4500000 : (copy4k ? 20000000 : (use2k ? 5500000 : 3000000))),
     crystal: true,
-    crystalMode: copy4k ? 'NATIVE_4K_HDR' : (upscaled ? 'CRYSTAL_2K_HDR_UPSCALE' : (is720 ? 'SDR720_STABLE' : (isSdr ? 'FHD_SDR' : 'FHD_HDR10'))),
+    use2k,
+    crystalMode: copy4k ? 'NATIVE_4K_HDR' : (upscaled ? (use2k ? 'CRYSTAL_2K_HDR_UPSCALE' : 'CRYSTAL_UHD_UPSCALE') : (is720 ? 'SDR720_STABLE' : (isSdr ? 'FHD_SDR' : 'FHD_HDR10'))),
   };
   log('START', id, 'pid=' + child.pid, 'sdr=' + isSdr, 'sdr720=' + is720, 'copy4k=' + copy4k, 'crystal=' + current.crystalMode, 'src=' + src.width + 'x' + src.height + '/' + src.transfer + '->' + outWidth + 'x' + outHeight);
   child.stderr.on('data', d => {
@@ -444,6 +448,8 @@ process.on('SIGINT', () => { stopCurrent('signal'); process.exit(0); });
 
 fs.mkdirSync(OUT_ROOT, { recursive: true });
 server.listen(PORT, BIND, () => log('LISTEN', BIND + ':' + PORT, 'map=' + MAP_FILE));
+
+
 
 
 

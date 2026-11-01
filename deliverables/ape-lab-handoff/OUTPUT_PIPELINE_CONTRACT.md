@@ -130,3 +130,16 @@ Tags:
 Native 4K HDR remains passthrough. SDR fallbacks remain 1080/720 for decoder
 continuity. HTTP contracts: 23/23 status checks and 14/14 manifest contracts.
 Playback performance at 2K on the 3-vCPU VPS is not claimed by these tests.
+
+## 2K status (2026-11-01, measured)
+
+2K was implemented as opt-in APE_2K=1 targeting DCI 2048x1080 HEVC Main10 HDR10.
+Measured on the 3-vCPU VPS: only 1 segment per 10s at 2048x1080 and also at 2560x1440.
+It is therefore NOT enabled by default; default remains 1920x1080 HDR.
+
+`	ext
+APE_2K=1  -> 2048x1080 target (not real-time on current VPS)
+default   -> 1920x1080 HDR
+`
+
+No current claim of stable 2K live playback.
