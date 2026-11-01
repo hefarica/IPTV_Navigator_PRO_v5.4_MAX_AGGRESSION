@@ -26,6 +26,27 @@ const MIME = {
   '.mp4': 'video/mp4',
 };
 function log(...a) { console.log(new Date().toISOString(), ...a); }
+
+function setBaseHeaders(res) {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Range, Origin, X-Requested-With, Content-Type, Accept, Accept-Encoding');
+  res.setHeader('Access-Control-Expose-Headers', 'Content-Range, Accept-Ranges, Content-Length, ETag, Server-Timing');
+  res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+  res.setHeader('Vary', '*');
+  res.setHeader('Connection', 'keep-alive');
+  res.setHeader('Keep-Alive', 'timeout=5, max=100');
+  res.setHeader('X-Cache-Control', 'no-transform');
+  res.setHeader('Surrogate-Control', 'no-store');
+}
+
+function setNoCacheHeaders(res) {
+  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate, private, max-age=0');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  res.setHeader('ETag', 'W/"' + Date.now() + '-' + Math.random().toString(36).slice(2) + '"');
+  res.setHeader('Server-Timing', 'cache;desc="no-store"');
+}
 function probeSource(spec) {
   try {
     const out = execFileSync('ffprobe', [
@@ -250,7 +271,7 @@ function sendStatic(req, res, file, type) {
   const range = req.headers.range;
   res.setHeader('Accept-Ranges', 'bytes');
   res.setHeader('Content-Type', type);
-  res.setHeader('Cache-Control', 'no-store');
+  setNoCacheHeaders(res);
   if (range) {
     const m = /^bytes=(\d*)-(\d*)$/.exec(String(range).trim());
     if (!m) {
@@ -330,15 +351,22 @@ function manifestJson(req, id, sdr, sdr720) {
 }
 
 const server = http.createServer((req, res) => {
+  setBaseHeaders(res);
+  if (req.method === 'OPTIONS') {
+    res.writeHead(204);
+    return res.end();
+  }
   const u = new URL(req.url, 'http://localhost');
   if (u.pathname === '/playlist.m3u8') {
     const f = path.join(path.dirname(MAP_FILE), 'APE_JIT_LIST.m3u8');
     if (!fs.existsSync(f)) { res.writeHead(404); return res.end('playlist not built'); }
-    res.writeHead(200, { 'Content-Type': MIME['.m3u8'], 'Cache-Control': 'no-store' });
+    setNoCacheHeaders(res);
+    res.writeHead(200, { 'Content-Type': MIME['.m3u8'] });
     return fs.createReadStream(f).pipe(res);
   }
   if (u.pathname === '/capabilities.json') {
-    res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
+    setNoCacheHeaders(res);
+    res.writeHead(200, { 'Content-Type': 'application/json' });
     return res.end(JSON.stringify({
       service: 'ape-jit-cmaf',
       transports: ['vps-list', 'provider-direct'],
@@ -357,7 +385,8 @@ const server = http.createServer((req, res) => {
     }));
   }
   if (u.pathname === '/crystal.json') {
-    res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
+    setNoCacheHeaders(res);
+    res.writeHead(200, { 'Content-Type': 'application/json' });
     return res.end(JSON.stringify({
       policy: 'APE_CRYSTAL_UHD',
       enabled: true,
@@ -388,7 +417,8 @@ const server = http.createServer((req, res) => {
         active: !!(current && current.id === id),
       };
     });
-    res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
+    setNoCacheHeaders(res);
+    res.writeHead(200, { 'Content-Type': 'application/json' });
     return res.end(JSON.stringify({ service: 'ape-jit-cmaf', count: channels.length, channels: channels }));
   }
   const gm = u.pathname.match(/^\/go\/([^/]+)\/?$/);
@@ -397,6 +427,7 @@ const server = http.createServer((req, res) => {
     if (!id) { res.writeHead(400); return res.end('bad channel'); }
     const map = loadMap();
     if (!map[id] || !map[id].url) { res.writeHead(404); return res.end('unknown channel'); }
+    setNoCacheHeaders(res);
     res.writeHead(302, {
       'Location': publicBase(req) + '/live/' + id + '/master.m3u8',
       'Cache-Control': 'no-store',
@@ -404,6 +435,7 @@ const server = http.createServer((req, res) => {
     return res.end();
   }
   if (u.pathname === '/health') {
+    setNoCacheHeaders(res);
     res.writeHead(200, { 'Content-Type': 'application/json' });
     return res.end(JSON.stringify({
       ok: true, active: current ? current.id : null,
@@ -422,7 +454,8 @@ const server = http.createServer((req, res) => {
     if (!map[id] || !map[id].url) { res.writeHead(404); return res.end('unknown channel'); }
     if (!current || current.id !== id || !!current.sdr !== sdr || !!current.sdr720 !== sdr720) start(id, map[id], sdr, sdr720);
     current.lastAccess = Date.now();
-    res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
+    setNoCacheHeaders(res);
+    res.writeHead(200, { 'Content-Type': 'application/json' });
     return res.end(JSON.stringify(manifestJson(req, id, sdr, sdr720)));
   }
   const m = u.pathname.match(/^\/live\/([^/]+)\/(sdr720\/|sdr\/)?(master\.m3u8|index\.m3u8|manifest\.mpd|media_[0-9]+\.m3u8|init-[0-9]+\.m4s|chunk-[0-9]+-[0-9]+\.m4s)$/);
@@ -445,7 +478,8 @@ const server = http.createServer((req, res) => {
     const type = MIME[path.extname(file)] || 'application/octet-stream';
     if (name === 'master.m3u8' || name === 'manifest.mpd') {
       const txt = fs.readFileSync(file, 'utf8');
-      res.writeHead(200, { 'Content-Type': type, 'Cache-Control': 'no-store' });
+      setNoCacheHeaders(res);
+      res.writeHead(200, { 'Content-Type': type });
       return res.end(name === 'master.m3u8' ? hdrMaster(txt) : hdrMpd(txt));
     }
     sendStatic(req, res, file, type);
@@ -465,6 +499,8 @@ process.on('SIGINT', () => { stopCurrent('signal'); process.exit(0); });
 
 fs.mkdirSync(OUT_ROOT, { recursive: true });
 server.listen(PORT, BIND, () => log('LISTEN', BIND + ':' + PORT, 'map=' + MAP_FILE));
+
+
 
 
 
