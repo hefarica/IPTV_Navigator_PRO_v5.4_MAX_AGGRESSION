@@ -19,7 +19,7 @@ import java.net.URLEncoder
 import java.util.concurrent.TimeUnit
 
 /**
- * SSE receiver against the real /ara/sse endpoint.
+ * SSE receiver against the real /ara/events endpoint (Bearer token).
  * Auth token is supplied by a provider; it is never logged or hardcoded.
  */
 class MetaReceiver(
@@ -46,7 +46,7 @@ class MetaReceiver(
         }
         val safeDevice = URLEncoder.encode(deviceId, "UTF-8")
         val request = Request.Builder()
-            .url("$baseUrl/ara/sse?device_id=$safeDevice")
+            .url("$baseUrl${Config.PATH_EVENTS}?device_id=$safeDevice")
             .header("Authorization", "Bearer $token")
             .header("Accept", "text/event-stream")
             .build()

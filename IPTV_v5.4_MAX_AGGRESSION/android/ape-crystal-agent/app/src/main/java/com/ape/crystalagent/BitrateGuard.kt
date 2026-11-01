@@ -46,14 +46,41 @@ class BitrateGuard(
     @Volatile private var lastLoggedState = ""
     @Volatile private var lastLoggedLock = -1
     @Volatile private var calls = 0
+    /** NF-01: instante del último publish/emisión (para detectar congelación y re-armar). */
+    @Volatile private var lastPublishAt = 0L
+    @Volatile private var ticks = 0
     private val handler = Handler(Looper.getMainLooper())
     private val promoteAlert = Runnable {
         if (belowSince > 0L) {
             state = "ALERT"
             AraStatus.bitrateState = state
+            lastPublishAt = SystemClock.elapsedRealtime()
             Log.i(TAG, "bitrate state=ALERT timer=8s below_floor_ms=${SystemClock.elapsedRealtime() - belowSince}")
+            Log.i(TAG_HB, "heartbeat state=ALERT source=timer below_floor_ms=${SystemClock.elapsedRealtime() - belowSince}")
         }
     }
+
+    /**
+     * NF-01/NF-02: latido CONTINUO. Se llama en cada tick del ÚNICO ticker, pase lo que pase con los
+     * Tracks (vacíos, sin vídeo, player parado). Garantiza que `since_publish` nunca crezca sin cota
+     * y que el estado sea visible con su edad.
+     */
+    fun heartbeat(reason: String) {
+        ticks++
+        val now = SystemClock.elapsedRealtime()
+        val since = if (lastPublishAt > 0L) now - lastPublishAt else -1L
+        Log.i(TAG_HB, "heartbeat tick=$ticks state=$state reason=$reason " +
+            "bitrate=${AraStatus.bitrateKbps}kbps samples=${meter.samples()} age=${meter.ageMs()}ms " +
+            "since_publish=${since}ms locked=${lastLocked / 1000}kbps " +
+            "floor=${AraStatus.bitrateFloorKbps} ceil=${AraStatus.bitrateCeilKbps}")
+    }
+
+    /** ¿Llevamos más de [maxMs] sin publicar? (watchdog de re-armado del ticker) */
+    fun isStale(maxMs: Long = 6_000L, now: Long = SystemClock.elapsedRealtime()): Boolean =
+        lastPublishAt > 0L && now - lastPublishAt > maxMs
+
+    fun lastPublishAgeMs(now: Long = SystemClock.elapsedRealtime()): Long =
+        if (lastPublishAt <= 0L) -1L else now - lastPublishAt
 
     /** F11/F10: se llama en `playChannel` (zap) y en `release()`. Limpia temporizador Y panel. */
     fun reset() {
@@ -88,7 +115,19 @@ class BitrateGuard(
                 if (f.width > 0 && f.height > 0 && f.bitrate > 0) variants.add(f)
             }
         }
-        if (variants.isEmpty()) return
+        // NF-01: NADA de retornos silenciosos. Sin vídeo válido se publica NO_TRACKS y se late.
+        if (variants.isEmpty()) {
+            handler.removeCallbacks(promoteAlert)
+            belowSince = 0L
+            state = "NO_TRACKS"
+            AraStatus.bitrateState = state
+            AraStatus.bitrateKbps = 0
+            AraStatus.bitrateAt = System.currentTimeMillis()
+            lastPublishAt = SystemClock.elapsedRealtime()
+            Log.w(TAG_HB, "heartbeat state=NO_TRACKS variants=0 groups=${tracks.groups.size} " +
+                "— no se toca el lock (preservado=${lastLocked / 1000}kbps)")
+            return
+        }
 
         val p = selector.parameters
         val wf = variants.map { WindowFormat(it.width, it.height, it.bitrate) }
@@ -124,7 +163,14 @@ class BitrateGuard(
             return
         }
 
-        val windowFmt = inWindow.maxByOrNull { it.bitrate } ?: return
+        val windowFmt = inWindow.maxByOrNull { it.bitrate }
+        if (windowFmt == null) {
+            state = "NO_WINDOW"
+            AraStatus.bitrateState = state
+            lastPublishAt = SystemClock.elapsedRealtime()
+            Log.w(TAG_HB, "heartbeat state=NO_WINDOW reason=empty_after_filter — no se toca el selector")
+            return
+        }
         val band = BitrateConfig.band(ctx, windowFmt.height, policy.targetHeight)
         val maxKbps = windowFmt.bitrate / 1000
         val measured = if (maxKbps > 0 && networkKbps > maxKbps) maxKbps else networkKbps
@@ -185,6 +231,7 @@ class BitrateGuard(
         AraStatus.bufferCeilingPct = BufferPolicy.CEILING_PCT
         AraStatus.bufferState = BufferPolicy.state(bufPct)
         AraStatus.bitrateAt = System.currentTimeMillis()
+        lastPublishAt = SystemClock.elapsedRealtime()
         calls++
         if (state != lastLoggedState || lastLocked != lastLoggedLock || calls % 4 == 0) {
             lastLoggedState = state
@@ -217,5 +264,9 @@ class BitrateGuard(
         }.onFailure { Log.w(TAG, "lockTo: ${it.message}") }
     }
 
-    companion object { const val TAG = "ApeBitrateGuard" }
+    companion object {
+        const val TAG = "ApeBitrateGuard"
+        /** NF-01: tag propio para que `adb logcat -s BitrateGuard` capture el latido. */
+        const val TAG_HB = "BitrateGuard"
+    }
 }

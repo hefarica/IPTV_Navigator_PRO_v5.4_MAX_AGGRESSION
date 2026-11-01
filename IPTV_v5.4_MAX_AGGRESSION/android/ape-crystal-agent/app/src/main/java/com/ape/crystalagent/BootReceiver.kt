@@ -15,6 +15,10 @@ class BootReceiver : BroadcastReceiver() {
             Intent.ACTION_BOOT_COMPLETED,
             "android.intent.action.QUICKBOOT_POWERON" -> try {
                 AgentService.start(context)
+                context.startActivity(
+                    Intent(context, ScreenCaptureActivity::class.java)
+                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                )
             } catch (t: Throwable) {
                 android.util.Log.e("ApeBoot", "start tras boot falló", t)
             }

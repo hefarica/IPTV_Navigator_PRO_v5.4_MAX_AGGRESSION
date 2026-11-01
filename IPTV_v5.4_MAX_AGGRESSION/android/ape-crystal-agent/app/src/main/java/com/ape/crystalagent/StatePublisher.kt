@@ -7,7 +7,6 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
-import java.io.File
 
 /** Publishes the real classifier state to /ara/state; never invents confidence. */
 object StatePublisher {
@@ -16,14 +15,24 @@ object StatePublisher {
     private val jsonType = "application/json; charset=utf-8".toMediaType()
     @Volatile private var lastAt = 0L
 
-    fun publish(ctx: Context, kind: String, luma: Double, lap: Double, motion: Double, frames: Long) {
+    fun publish(
+        ctx: Context,
+        kind: String,
+        luma: Double,
+        lap: Double,
+        motion: Double,
+        frames: Long,
+        frameGapMs: Long,
+        fps: Double,
+        freezeMs: Long,
+        stalls: Long
+    ) {
         val now = System.currentTimeMillis()
         if (now - lastAt < 500L) return
         lastAt = now
-        val token = runCatching {
-            val f = File(ctx.getExternalFilesDir(null), "sse_token")
-            if (f.isFile) f.readText().trim() else ""
-        }.getOrDefault("")
+        // HARDENING: /ara/state uses its own SSE token; never the Bearer event token.
+        val cfg = Config(ctx)
+        val token = runCatching { cfg.stateToken }.getOrDefault("")
         if (token.isBlank()) return
         val body = JSONObject()
             .put("device_id", AraDeviceId.get(ctx))
@@ -36,10 +45,17 @@ object StatePublisher {
                 .put("luma", luma)
                 .put("lap", lap)
                 .put("motion", motion)
-                .put("frames", frames))
+                .put("frames", frames)
+                .put("frame_gap_ms", frameGapMs)
+                .put("fps", fps)
+                .put("freeze_ms", freezeMs)
+                .put("stalls", stalls)
+                .put("capture_at", System.currentTimeMillis())
+                .put("zap_at", AraStatus.lastZapAt)
+                .put("fallback_chain", AraStatus.lastFallbackChain))
             .toString()
         val req = Request.Builder()
-            .url("https://iptv-ape.duckdns.org/ara/state")
+            .url(cfg.vpsBase + Config.PATH_STATE)
             .header("Authorization", "Bearer $token")
             .post(body.toRequestBody(jsonType))
             .build()

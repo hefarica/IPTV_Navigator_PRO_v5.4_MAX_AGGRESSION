@@ -33,6 +33,7 @@ class PlayerActivity : Activity() {
         val a = ApePlayer(this); ape = a
         val p = a.build(); player = p
         view.player = p
+        PlayerHub.attach(this, view, a)
         p.addListener(object : Player.Listener {
             override fun onTracksChanged(tracks: Tracks) {
                 a.lockHighest(tracks)
@@ -42,5 +43,5 @@ class PlayerActivity : Activity() {
         if (ua != null) a.playChannel(p, url, ua) else a.playChannel(p, url)
     }
 
-    override fun onDestroy() { ape?.release(); player = null; super.onDestroy() }
+    override fun onDestroy() { PlayerHub.detach(); ape?.release(); player = null; super.onDestroy() }
 }

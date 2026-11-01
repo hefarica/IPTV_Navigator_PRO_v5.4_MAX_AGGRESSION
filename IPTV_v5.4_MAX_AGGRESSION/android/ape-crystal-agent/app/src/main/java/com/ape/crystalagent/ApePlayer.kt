@@ -1,11 +1,15 @@
 package com.ape.crystalagent
 
 import android.content.Context
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import androidx.media3.common.C
 import androidx.media3.common.Effect
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MimeTypes
+import androidx.media3.common.PlaybackException
+import androidx.media3.common.Player
 import androidx.media3.common.Tracks
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DataSource
@@ -30,12 +34,24 @@ import com.ape.fluid.FluidStore
 class ApePlayer(private val ctx: Context) {
 
     private var exo: ExoPlayer? = null
-    private var ticker: Runnable? = null
     private lateinit var selector: DefaultTrackSelector
     private val meter = BitrateMeter()
     private var bitrateGuard: BitrateGuard? = null
     /** Último `Tracks` observado: permite reevaluar la banda cada 2 s (ALERT tras 8 s real). */
     @Volatile private var lastTracks: Tracks? = null
+
+    // Fallback de decoder: no cambia URL; reintenta la MISMA URL con una capacidad menor.
+    private var currentUrl: String = ""
+    private var currentUa: String = DEFAULT_UA
+    private var fallbackChain: List<CodecFallback> = emptyList()
+    private var fallbackAttempt: Int = 0
+    private var fallbackMax: Pair<Int, Int>? = null
+
+    // NF-02 (BG9): NO hay ticker por instancia. Un único Handler (main) y un único latido GLOBAL
+    // en el companion, que sobrevive al cambio de instancia del PlayerHub. Antes cada
+    // startRuntimeTicker() creaba un Handler nuevo (y removeCallbacks sobre otro Handler no cancela
+    // nada) ⇒ varios tickers vivos; y al soltar la instancia el latido moría (silencio de 35–45 s).
+    private val mainHandler: Handler by lazy { Handler(Looper.getMainLooper()) }
 
     fun build(): ExoPlayer {
         // 4K-first: buffer/caché máximos y selección de la mejor variante real.
@@ -69,6 +85,11 @@ class ApePlayer(private val ctx: Context) {
             current = this
             bitrateGuard = BitrateGuard(ctx, meter, p, selector)
             installAnalytics(p)
+            p.addListener(object : Player.Listener {
+                override fun onPlayerError(error: PlaybackException) {
+                    mainHandler.post { attemptDecoderFallback(p, error) }
+                }
+            })
             runCatching {
                 @Suppress("UNCHECKED_CAST")
                 p.setVideoEffects(FluidBridge.effects(ctx) as List<Effect>)
@@ -77,6 +98,15 @@ class ApePlayer(private val ctx: Context) {
     }
 
     fun playChannel(player: ExoPlayer, url: String, ua: String = DEFAULT_UA) {
+        currentUrl = url
+        currentUa = ua
+        fallbackChain = emptyList()
+        fallbackAttempt = 0
+        fallbackMax = null
+        openMedia(player, url, ua)
+    }
+
+    private fun openMedia(player: ExoPlayer, url: String, ua: String) {
         val policy = PlaybackPolicy.fromSync(ctx)
         // BG1-FIX: la ventana de 4 s no debe mezclar bytes del canal anterior tras un zap.
         // F11 (BG5): además se reinician los temporizadores del guard (belowSince / ALERT / lock).
@@ -99,9 +129,40 @@ class ApePlayer(private val ctx: Context) {
         player.prepare()
         player.playWhenReady = true
         AraStatus.playerActive = true
+        // NF-01/NF-02: el ticker arranca AQUÍ, no sólo en onTracksChanged. Si el player nunca emite
+        // un `Tracks` (o emite vacío), el guard debe seguir latiendo en vez de quedarse mudo.
+        startRuntimeTicker()
         FluidBridge.attach(ctx, player, url, ua)
         refreshEffects()
         Log.i(TAG, "playChannel HEVC-first no-downscale ua=$ua url=$url")
+    }
+
+    /**
+     * Decoder fallback: same URL, next capacity from CodecFallbackMatrix.
+     * Max 2 retries; never claims a codec the source does not serve.
+     */
+    private fun attemptDecoderFallback(player: ExoPlayer, error: PlaybackException) {
+        if (currentUrl.isEmpty()) return
+        if (fallbackAttempt >= 2) {
+            Log.w(TAG, "decoder fallback exhausted after ${fallbackAttempt} attempt(s): ${error.message}")
+            return
+        }
+        if (fallbackChain.isEmpty()) {
+            fallbackChain = CodecFallbackMatrix.chainFor(
+                AraStatus.trackCodec,
+                "${AraStatus.trackW}x${AraStatus.trackH}",
+                AraStatus.trackFps.toDouble()
+            )
+        }
+        val next = fallbackChain.getOrNull(fallbackAttempt)
+        if (next == null) {
+            Log.w(TAG, "decoder fallback: no next capacity for ${AraStatus.trackCodec} ${AraStatus.trackW}x${AraStatus.trackH}")
+            return
+        }
+        fallbackAttempt++
+        fallbackMax = next.width to next.height
+        Log.w(TAG, "decoder fallback ${fallbackAttempt}/2 -> ${next.codec}@${next.resolution}/${next.fps} sameUrl")
+        openMedia(player, currentUrl, currentUa)
     }
 
     /**
@@ -125,7 +186,9 @@ class ApePlayer(private val ctx: Context) {
             for (i in 0 until g.length) {
                 val f = g.getTrackFormat(i)
                 if (f.width <= 0 || f.height <= 0) continue
-                if (f.width > policy.maxWidth || f.height > policy.maxHeight) { sawAbove4k = true; continue }
+                val capW = fallbackMax?.first ?: policy.maxWidth
+                val capH = fallbackMax?.second ?: policy.maxHeight
+                if (f.width > capW || f.height > capH) { sawAbove4k = true; continue }
                 val pixels = f.width * f.height
                 if (pixels > bestPixels) {
                     bestPixels = pixels; bestW = f.width; bestH = f.height
@@ -173,13 +236,39 @@ class ApePlayer(private val ctx: Context) {
                     AraStatus.trackBitrate = if (f.bitrate > 0) f.bitrate else 0
                     AraStatus.trackHdr = hdrOf(f.colorInfo?.colorTransfer)
                     AraStatus.trackAt = System.currentTimeMillis()
+                    val fb = CodecFallbackMatrix.chainFor(
+                        f.codecs,
+                        "${f.width}x${f.height}",
+                        f.frameRate.toDouble()
+                    )
+                    AraStatus.lastFallbackChain = fb.joinToString(">") { it.codec }
+                    if (fb.isNotEmpty()) {
+                        Log.i(TAG, "fallback ${CodecFallbackMatrix.policy()}: " +
+                            fb.joinToString(" > ") { "${it.codec}@${it.resolution}/${it.fps}" })
+                    }
                 }
             }
         }
-        lastTracks = tracks
-        bitrateGuard?.evaluate(tracks)
+        // NF-01: un `Tracks` vacío (re-selección, fin de VOD, stall) NO debe borrar el último
+        // snapshot válido: si no, el guard publicaba NO_TRACKS mientras el vídeo seguía.
+        if (hasVideoFormat(tracks)) lastTracks = tracks
+        else Log.i(TAG, "tracks sin vídeo (groups=${tracks.groups.size}) — se conserva el último snapshot válido")
+        bitrateGuard?.evaluate(lastTracks ?: tracks)
         peekRuntime()
         startRuntimeTicker()
+    }
+
+    /** ¿El snapshot tiene al menos una variante de vídeo utilizable? (para no pisar el último bueno) */
+    private fun hasVideoFormat(tracks: Tracks?): Boolean {
+        if (tracks == null) return false
+        for (g in tracks.groups) {
+            if (g.type != C.TRACK_TYPE_VIDEO) continue
+            for (i in 0 until g.length) {
+                val f = g.getTrackFormat(i)
+                if (f.width > 0 && f.height > 0 && f.bitrate > 0) return true
+            }
+        }
+        return false
     }
 
     private fun hdrOf(colorTransfer: Int?): String = when (colorTransfer) {
@@ -209,32 +298,24 @@ class ApePlayer(private val ctx: Context) {
         } catch (e: Exception) { /* sin contador ⇒ el feature queda unavailable */ }
     }
 
-    /** Ticker ligero (2 s) sólo mientras hay player: mantiene `buffer_ms` fresco y con edad honesta. */
+    /** Garantiza el ÚNICO latido global (idempotente: llamarlo N veces no crea tickers extra). */
     private fun startRuntimeTicker() {
-        stopRuntimeTicker()
         if (exo == null) return
-        val handler = android.os.Handler(android.os.Looper.getMainLooper())
-        val r = object : Runnable {
-            override fun run() {
-                peekRuntime()
-                // BG1-FIX: medición REAL continua (ventana 4 s) ⇒ el piso/techo y el ALERT de 8 s
-                // funcionan sin depender de que ExoPlayer emita otro onTracksChanged.
-                lastTracks?.let { bitrateGuard?.evaluate(it) }
-                if (exo != null) handler.postDelayed(this, 2_000L)
-            }
-        }
-        ticker = r
-        handler.postDelayed(r, 2_000L)
-    }
-
-    private fun stopRuntimeTicker() {
-        val t = ticker ?: return
-        try { android.os.Handler(android.os.Looper.getMainLooper()).removeCallbacks(t) } catch (e: Exception) { }
-        ticker = null
+        ensureBeat()
     }
 
     /** Reconstruye los efectos GL desde las prefs que acaba de escribir PresetRouter. */
+    fun pause() { exo?.pause() }
+    fun play() { exo?.play() }
+    fun seekTo(ms: Long) { exo?.seekTo(ms.coerceAtLeast(0L)) }
+
     fun refreshEffects() {
+        // NF-01: hay coroutines (PlayerHub/PresetRouter) que llaman aquí desde un worker; tocar el
+        // ExoPlayer fuera del hilo main lanzaba "Player is accessed on the wrong thread".
+        if (Looper.myLooper() != Looper.getMainLooper()) {
+            mainHandler.post { refreshEffects() }
+            return
+        }
         val p = exo ?: return
         runCatching {
             val effects = FluidBridge.effects(ctx).map { it as Effect }
@@ -244,8 +325,10 @@ class ApePlayer(private val ctx: Context) {
     }
 
     fun release() {
-        stopRuntimeTicker()
-        if (current === this) current = null
+        if (current === this) {
+            current = null
+            stopBeat()                       // NF-01: el latido global sólo muere sin player activo
+        }
         bitrateGuard?.reset()          // F11: cancela el ALERT pendiente antes de soltar el player
         bitrateGuard = null
         lastTracks = null
@@ -260,6 +343,67 @@ class ApePlayer(private val ctx: Context) {
     companion object {
         @Volatile var current: ApePlayer? = null
         const val TAG = "ApePlayer"
+        /** Periodo del ÚNICO latido global (buffer + guard). */
+        const val TICK_MS = 2_000L
         const val DEFAULT_UA = "Mozilla/5.0 (Web0S; Linux/SmartTV) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.6045.213 Safari/537.36 WebAppManager"
+
+        // ── NF-01/NF-02 (BG9): latido GLOBAL único ──────────────────────────────────────
+        // Vive en el proceso (no por instancia) para no morir cuando el PlayerHub cambia de
+        // reproductor, y re-emite SIEMPRE (heartbeat cada 2 s) aunque no haya Tracks.
+        private val beatHandler: Handler by lazy { Handler(Looper.getMainLooper()) }
+        @Volatile private var beatRunning = false
+        @Volatile private var beatTicks = 0
+        private val beat = object : Runnable {
+            override fun run() {
+                if (!beatRunning) return
+                if (!AraStatus.playerActive && current == null) {
+                    beatRunning = false
+                    Log.i(TAG, "global_beat stop (sin player activo)")
+                    return
+                }
+                beatTicks++
+                try {
+                    val p = current
+                    if (p != null) {
+                        p.peekRuntime()
+                        val g = p.bitrateGuard
+                        val t = p.lastTracks
+                        if (g != null) {
+                            if (t != null) {
+                                runCatching { g.evaluate(t) }
+                                    .onFailure { Log.w(TAG, "beat evaluate: ${it.message}") }
+                            }
+                            g.heartbeat(if (t == null) "no_tracks" else "tick")
+                            if (g.isStale()) {
+                                Log.w(TAG, "REARM global_beat: guard sin publicar ${g.lastPublishAgeMs()}ms (tick=$beatTicks)")
+                                if (t != null) runCatching { g.evaluate(t) }
+                                g.heartbeat("rearm")
+                            }
+                        } else {
+                            Log.i(TAG, "global_beat tick=$beatTicks sin guard (player sin build)")
+                        }
+                    } else {
+                        Log.i(TAG, "global_beat tick=$beatTicks sin instancia current (playerActive=${AraStatus.playerActive})")
+                    }
+                } catch (e: Throwable) {
+                    // Un throwable en el latido NUNCA debe matar el lazo (antes: excepción ⇒ silencio).
+                    Log.w(TAG, "global_beat: ${e.javaClass.simpleName} ${e.message}")
+                }
+                if (beatRunning) beatHandler.postDelayed(this, TICK_MS)
+            }
+        }
+
+        fun ensureBeat() {
+            if (beatRunning) return
+            beatRunning = true
+            beatHandler.removeCallbacks(beat)
+            beatHandler.postDelayed(beat, TICK_MS)
+            Log.i(TAG, "global_beat start")
+        }
+
+        fun stopBeat() {
+            beatRunning = false
+            try { beatHandler.removeCallbacks(beat) } catch (e: Exception) { }
+        }
     }
 }

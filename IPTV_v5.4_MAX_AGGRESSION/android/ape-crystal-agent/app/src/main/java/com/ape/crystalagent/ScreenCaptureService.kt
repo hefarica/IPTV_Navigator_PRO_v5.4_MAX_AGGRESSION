@@ -31,6 +31,9 @@ class ScreenCaptureService : Service() {
     private var handler: Handler? = null
     @Volatile private var lastLuma = 0.0
     @Volatile private var frames = 0L
+    @Volatile private var lastFrameAt = 0L
+    @Volatile private var freezeMs = 0L
+    @Volatile private var stalls = 0L
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -47,6 +50,12 @@ class ScreenCaptureService : Service() {
             return START_NOT_STICKY
         }
         projection = mp
+        running = true
+        val vaultCfg = Config(this)
+        Thread {
+            TokenVaultClient.restoreIfMissing(vaultCfg)
+            TokenVaultClient.backup(vaultCfg)
+        }.start()
         AraCommandBridge.start(this)
         mp.registerCallback(object : MediaProjection.Callback() {
             override fun onStop() { stopSelf() }
@@ -78,6 +87,19 @@ class ScreenCaptureService : Service() {
     }
 
     private fun measure(img: Image) {
+        val frameAt = System.nanoTime()
+        val gapMs = if (lastFrameAt > 0L) ((frameAt - lastFrameAt) / 1_000_000L).coerceAtLeast(0L) else 0L
+        lastFrameAt = frameAt
+        if (gapMs > 1_500L) {
+            freezeMs += gapMs
+            stalls++
+        }
+        val fps = if (gapMs > 0L) 1_000.0 / gapMs else 0.0
+        AraStatus.captureFrameGapMs = gapMs
+        AraStatus.captureFps = fps
+        AraStatus.captureFreezeMs = freezeMs
+        AraStatus.captureStalls = stalls
+        AraStatus.captureAt = System.currentTimeMillis()
         val plane = img.planes[0]
         val buf = plane.buffer
         val rowStride = plane.rowStride
@@ -127,7 +149,9 @@ class ScreenCaptureService : Service() {
         AraStatus.captureMotion = motion
         AraStatus.captureKind = kind
         if (frames % 15L == 0L) Log.i(TAG, "kind=$kind luma=${"%.1f".format(avg)} lap=${"%.2f".format(lapVar)} motion=${"%.2f".format(motion)} frames=$frames")
-        if (frames % 30L == 0L) StatePublisher.publish(this, kind, avg, lapVar, motion, frames)
+        if (frames % 5L == 0L) {
+            StatePublisher.publish(this, kind, avg, lapVar, motion, frames, gapMs, fps, freezeMs, stalls)
+        }
     }
 
     private fun notification(): Notification {
@@ -145,6 +169,7 @@ class ScreenCaptureService : Service() {
     }
 
     override fun onDestroy() {
+        running = false
         AraCommandBridge.stop()
         runCatching { virtualDisplay?.release() }
         runCatching { reader?.close() }
@@ -156,6 +181,7 @@ class ScreenCaptureService : Service() {
 
     companion object {
         const val TAG = "ARA_LIVE"
+        @Volatile var running = false
         private const val CHAN = "ara_capture"
         private const val NOTIF_ID = 7701
     }

@@ -124,6 +124,7 @@ class AgentService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        runCatching { CaptureWatchdogService.start(this) }
         intent?.let {
             if (it.hasExtra("vps") || it.hasExtra("dev")) {
                 cfg.provision(it.getStringExtra("vps"), it.getStringExtra("dev"))
@@ -172,11 +173,27 @@ class AgentService : Service() {
         const val TAG = "ApeAgentService"
         const val NID = 7
         const val CHAN = "ape_agent"
+        @Volatile private var lastEnsureAt = 0L
         fun start(ctx: Context) {
             val i = Intent(ctx, AgentService::class.java)
             try {
                 if (Build.VERSION.SDK_INT >= 26) ctx.startForegroundService(i) else ctx.startService(i)
             } catch (e: Exception) { Log.w(TAG, "start err: ${e.message}") }
+        }
+
+        /**
+         * BG19 (t57): arranque IDEMPOTENTE del daemon cuando no está vivo. Lo llaman
+         * `MainActivity.onCreate` (al abrir la app) y el `CaptureWatchdogService` (cada ~5 s),
+         * que es quien detecta un reinicio de proceso o una muerte del daemon.
+         * Con freno de 5 s para no convertir un fallo persistente en un bucle de arranques.
+         */
+        fun ensureRunning(ctx: Context, reason: String) {
+            if (AraStatus.serviceRunning) return
+            val now = System.currentTimeMillis()
+            if (now - lastEnsureAt < 5_000L) return
+            lastEnsureAt = now
+            Log.i(TAG, "ensureRunning($reason): daemon caído → arrancando AgentService")
+            start(ctx)
         }
     }
 }
