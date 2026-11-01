@@ -1,0 +1,4 @@
+profile	channels	tag_cll	tag_fall	daterange_cll	daterange_peak	metadata_peak	metadata_avg	exthttp_xape_cll	exthttp_xape_fall	exthttp_xhdr_cll	exthttp_xhdr_fall	hdr_type	source_res	declared_res	video_range	codec	dv_mode	dv_profile	hdr_verified
+P4	7457	100	25	600	400	100	1000	0	0	5000	800	SDR	1280x720	3840x2160	PQ	hvc1.2.4.L153.B0,mp4a.40.2	SDR	8	false
+P3	2308	400	100	1000	600	400	1000	400 (1487 ch) / 0 (821 ch)	100 / 0	5000	800	SDR + HLG fallback	1920x1080	3840x2160	PQ	hvc1.2.4.L153.B0,mp4a.40.2	SDR	8	false
+P1	808	1500	375	4000	2000	1500	1000	0	0	5000	800	HDR10 + HLG	3840x2160	3840x2160	PQ	hvc1.2.4.L153.B0,mp4a.40.2	PQ	8	false

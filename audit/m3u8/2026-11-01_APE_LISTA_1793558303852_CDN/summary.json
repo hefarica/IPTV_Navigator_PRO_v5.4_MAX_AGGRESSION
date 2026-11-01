@@ -1,0 +1,924 @@
+{
+  "generated_at": "2026-11-01T19:02:07.137Z",
+  "source": {
+    "file": "APE_LISTA_1793558303852_CDN.m3u8",
+    "sha256": "882dddf0524c913a8a708b6814502490e66262cff2d8ad3726ac5e088a93cf79",
+    "bytes": 606074057,
+    "lines": 10315622,
+    "channels": 10573,
+    "header_lines": 148
+  },
+  "structure": {
+    "line_stats": {
+      "n": 10573,
+      "min": 951,
+      "p50": 973,
+      "p90": 974,
+      "p99": 974,
+      "max": 976,
+      "avg": 973
+    },
+    "crlf": 0,
+    "lf": 10315622,
+    "max_line_len": 8133,
+    "extm3u": 1,
+    "stream_inf": 10573,
+    "channels_no_url": 0,
+    "channels_multi_url": 0,
+    "channels_multi_streaminf": 0,
+    "endlist": 0,
+    "playlist_type": 0
+  },
+  "maxcll": {
+    "coverage": {
+      "apeCll": 10573,
+      "apeFall": 10573,
+      "daterangeCll": 10573,
+      "exthttpHdrCll": 10573,
+      "metadataPeak": 10573
+    },
+    "conflicts": {
+      "cllDistinctValues": 10573,
+      "apeFallGtApeCll": 0,
+      "metaAvgGtPeak": 9765,
+      "daterangeCllGtPeak": 10573,
+      "sdrButPq": 9765,
+      "streamResNeExthttpRes": 9765,
+      "streamCodecNeExthttpCodec": 1487,
+      "levelUnderResolution": 0,
+      "tagVsHeaderCll": 9086,
+      "tagVsHeaderFall": 9086,
+      "cllZero": 9086,
+      "fallZero": 9086,
+      "dvProfile8OnSdr": 9765,
+      "dvRpuClaimed": 10573,
+      "sdrWithXhdrCll5000": 9765,
+      "metaAvg1000": 10573,
+      "daterangeWithoutMaxFall": 0
+    },
+    "distributions": {
+      "apeCll": [
+        [
+          "0",
+          9086
+        ],
+        [
+          "400",
+          1487
+        ]
+      ],
+      "apeFall": [
+        [
+          "0",
+          9086
+        ],
+        [
+          "100",
+          1487
+        ]
+      ],
+      "daterangeCll": [
+        [
+          "600",
+          7457
+        ],
+        [
+          "1000",
+          2308
+        ],
+        [
+          "4000",
+          808
+        ]
+      ],
+      "daterangePeak": [
+        [
+          "400",
+          7457
+        ],
+        [
+          "600",
+          2308
+        ],
+        [
+          "2000",
+          808
+        ]
+      ],
+      "metadataPeak": [
+        [
+          "100",
+          7457
+        ],
+        [
+          "400",
+          2308
+        ],
+        [
+          "1500",
+          808
+        ]
+      ],
+      "metadataAvg": [
+        [
+          "1000",
+          10573
+        ]
+      ],
+      "exthttpHdrCll": [
+        [
+          "5000",
+          10573
+        ]
+      ],
+      "exthttpHdrFall": [
+        [
+          "800",
+          10573
+        ]
+      ],
+      "apeTagCll": [
+        [
+          "100",
+          7457
+        ],
+        [
+          "400",
+          2308
+        ],
+        [
+          "1500",
+          808
+        ]
+      ],
+      "apeTagFall": [
+        [
+          "25",
+          7457
+        ],
+        [
+          "100",
+          2308
+        ],
+        [
+          "375",
+          808
+        ]
+      ]
+    },
+    "verified": {
+      "true": 0,
+      "false": 10573
+    },
+    "profiles": [
+      [
+        "P4",
+        7457
+      ],
+      [
+        "P3",
+        2308
+      ],
+      [
+        "P1",
+        808
+      ]
+    ],
+    "hdr_types": [
+      [
+        "SDR",
+        7457
+      ],
+      [
+        "SDR + HLG fallback",
+        2308
+      ],
+      [
+        "HDR10 + HLG",
+        808
+      ]
+    ],
+    "dv_modes": [
+      [
+        "SDR",
+        9765
+      ],
+      [
+        "PQ",
+        808
+      ]
+    ],
+    "stream_res": [
+      [
+        "3840x2160",
+        10573
+      ]
+    ],
+    "stream_codec": [
+      [
+        "hvc1.2.4.L153.B0",
+        10573
+      ]
+    ],
+    "video_range": [
+      [
+        "PQ",
+        10573
+      ]
+    ],
+    "hdcp": [
+      [
+        "TYPE-1",
+        10528
+      ]
+    ],
+    "fourk": [
+      [
+        "ACTIVE",
+        10573
+      ]
+    ],
+    "targets": [
+      [
+        "3840x2160",
+        10573
+      ]
+    ],
+    "examples": {
+      "cllConflicts": [
+        {
+          "ch": "|AL| TOP CHANNEL FHD [line.tivi-ott.net]",
+          "profile": "P3",
+          "ape": 400,
+          "dhdr": 1000,
+          "xhdr": 5000,
+          "metaPeak": 400,
+          "type": "SDR + HLG fallback"
+        },
+        {
+          "ch": "|AL| TOP CHANNEL HD [line.tivi-ott.net]",
+          "profile": "P4",
+          "ape": 0,
+          "dhdr": 600,
+          "xhdr": 5000,
+          "metaPeak": 100,
+          "type": "SDR"
+        },
+        {
+          "ch": "|AL| VIZION PLUS FHD [line.tivi-ott.net]",
+          "profile": "P3",
+          "ape": 0,
+          "dhdr": 1000,
+          "xhdr": 5000,
+          "metaPeak": 400,
+          "type": "SDR + HLG fallback"
+        },
+        {
+          "ch": "|AL| VIZION PLUS HD [line.tivi-ott.net]",
+          "profile": "P4",
+          "ape": 0,
+          "dhdr": 600,
+          "xhdr": 5000,
+          "metaPeak": 100,
+          "type": "SDR"
+        },
+        {
+          "ch": "|AL| KLAN TV FHD [line.tivi-ott.net]",
+          "profile": "P3",
+          "ape": 400,
+          "dhdr": 1000,
+          "xhdr": 5000,
+          "metaPeak": 400,
+          "type": "SDR + HLG fallback"
+        }
+      ],
+      "fallGtCll": [],
+      "avgGtPeak": [
+        {
+          "ch": "|AL| TOP CHANNEL FHD [line.tivi-ott.net]",
+          "avg": 1000,
+          "peak": 400
+        },
+        {
+          "ch": "|AL| TOP CHANNEL HD [line.tivi-ott.net]",
+          "avg": 1000,
+          "peak": 100
+        },
+        {
+          "ch": "|AL| VIZION PLUS FHD [line.tivi-ott.net]",
+          "avg": 1000,
+          "peak": 400
+        },
+        {
+          "ch": "|AL| VIZION PLUS HD [line.tivi-ott.net]",
+          "avg": 1000,
+          "peak": 100
+        },
+        {
+          "ch": "|AL| KLAN TV FHD [line.tivi-ott.net]",
+          "avg": 1000,
+          "peak": 400
+        }
+      ],
+      "cllGtPeak": [
+        {
+          "ch": "|AL| TOP CHANNEL FHD [line.tivi-ott.net]",
+          "cll": 1000,
+          "peak": 600
+        },
+        {
+          "ch": "|AL| TOP CHANNEL HD [line.tivi-ott.net]",
+          "cll": 600,
+          "peak": 400
+        },
+        {
+          "ch": "|AL| VIZION PLUS FHD [line.tivi-ott.net]",
+          "cll": 1000,
+          "peak": 600
+        },
+        {
+          "ch": "|AL| VIZION PLUS HD [line.tivi-ott.net]",
+          "cll": 600,
+          "peak": 400
+        },
+        {
+          "ch": "|AL| KLAN TV FHD [line.tivi-ott.net]",
+          "cll": 1000,
+          "peak": 600
+        }
+      ],
+      "resMismatch": [
+        {
+          "ch": "|AL| TOP CHANNEL FHD [line.tivi-ott.net]",
+          "stream": "3840x2160",
+          "exthttp": "1920x1080",
+          "profile": "P3"
+        },
+        {
+          "ch": "|AL| TOP CHANNEL HD [line.tivi-ott.net]",
+          "stream": "3840x2160",
+          "exthttp": "1280x720",
+          "profile": "P4"
+        },
+        {
+          "ch": "|AL| VIZION PLUS FHD [line.tivi-ott.net]",
+          "stream": "3840x2160",
+          "exthttp": "1920x1080",
+          "profile": "P3"
+        },
+        {
+          "ch": "|AL| VIZION PLUS HD [line.tivi-ott.net]",
+          "stream": "3840x2160",
+          "exthttp": "1280x720",
+          "profile": "P4"
+        },
+        {
+          "ch": "|AL| KLAN TV FHD [line.tivi-ott.net]",
+          "stream": "3840x2160",
+          "exthttp": "1920x1080",
+          "profile": "P3"
+        }
+      ],
+      "codecMismatch": [
+        {
+          "ch": "|AL| TOP CHANNEL FHD [line.tivi-ott.net]",
+          "stream": "hvc1.2.4.L153.B0",
+          "exthttp": "hvc1.2.4.L150.B0",
+          "profile": "P3"
+        },
+        {
+          "ch": "|AL| KLAN TV FHD [line.tivi-ott.net]",
+          "stream": "hvc1.2.4.L153.B0",
+          "exthttp": "hvc1.2.4.L150.B0",
+          "profile": "P3"
+        },
+        {
+          "ch": "|AL| KTV KOHAVISION FHD [line.tivi-ott.net]",
+          "stream": "hvc1.2.4.L153.B0",
+          "exthttp": "hvc1.2.4.L150.B0",
+          "profile": "P3"
+        },
+        {
+          "ch": "|AL| DUKAGJINI FHD [line.tivi-ott.net]",
+          "stream": "hvc1.2.4.L153.B0",
+          "exthttp": "hvc1.2.4.L150.B0",
+          "profile": "P3"
+        },
+        {
+          "ch": "|AL| RTV21 FHD [line.tivi-ott.net]",
+          "stream": "hvc1.2.4.L153.B0",
+          "exthttp": "hvc1.2.4.L150.B0",
+          "profile": "P3"
+        }
+      ],
+      "sdrPq": [
+        {
+          "ch": "|AL| TOP CHANNEL FHD [line.tivi-ott.net]",
+          "type": "SDR + HLG fallback",
+          "vrange": "PQ",
+          "res": "3840x2160",
+          "codecs": "hvc1.2.4.L153.B0,mp4a.40.2"
+        },
+        {
+          "ch": "|AL| TOP CHANNEL HD [line.tivi-ott.net]",
+          "type": "SDR",
+          "vrange": "PQ",
+          "res": "3840x2160",
+          "codecs": "hvc1.2.4.L153.B0,mp4a.40.2"
+        },
+        {
+          "ch": "|AL| VIZION PLUS FHD [line.tivi-ott.net]",
+          "type": "SDR + HLG fallback",
+          "vrange": "PQ",
+          "res": "3840x2160",
+          "codecs": "hvc1.2.4.L153.B0,mp4a.40.2"
+        },
+        {
+          "ch": "|AL| VIZION PLUS HD [line.tivi-ott.net]",
+          "type": "SDR",
+          "vrange": "PQ",
+          "res": "3840x2160",
+          "codecs": "hvc1.2.4.L153.B0,mp4a.40.2"
+        },
+        {
+          "ch": "|AL| KLAN TV FHD [line.tivi-ott.net]",
+          "type": "SDR + HLG fallback",
+          "vrange": "PQ",
+          "res": "3840x2160",
+          "codecs": "hvc1.2.4.L153.B0,mp4a.40.2"
+        }
+      ],
+      "levelUnderRes": [],
+      "tagCllMismatch": [
+        {
+          "ch": "|AL| TOP CHANNEL HD [line.tivi-ott.net]",
+          "tag": 100,
+          "hdr": 0
+        },
+        {
+          "ch": "|AL| VIZION PLUS FHD [line.tivi-ott.net]",
+          "tag": 400,
+          "hdr": 0
+        },
+        {
+          "ch": "|AL| VIZION PLUS HD [line.tivi-ott.net]",
+          "tag": 100,
+          "hdr": 0
+        },
+        {
+          "ch": "|AL| KLAN TV HD [line.tivi-ott.net]",
+          "tag": 100,
+          "hdr": 0
+        },
+        {
+          "ch": "|AL| KLAN KOSOVA FHD [line.tivi-ott.net]",
+          "tag": 400,
+          "hdr": 0
+        }
+      ],
+      "tagFallMismatch": [
+        {
+          "ch": "|AL| TOP CHANNEL HD [line.tivi-ott.net]",
+          "tag": 25,
+          "hdr": 0
+        },
+        {
+          "ch": "|AL| VIZION PLUS FHD [line.tivi-ott.net]",
+          "tag": 100,
+          "hdr": 0
+        },
+        {
+          "ch": "|AL| VIZION PLUS HD [line.tivi-ott.net]",
+          "tag": 25,
+          "hdr": 0
+        },
+        {
+          "ch": "|AL| KLAN TV HD [line.tivi-ott.net]",
+          "tag": 25,
+          "hdr": 0
+        },
+        {
+          "ch": "|AL| KLAN KOSOVA FHD [line.tivi-ott.net]",
+          "tag": 100,
+          "hdr": 0
+        }
+      ]
+    }
+  },
+  "values": {
+    "4KFALSE-CONTENT-TYPE": {
+      "GENERAL": 6649,
+      "NOVELA": 389,
+      "NEWS": 275,
+      "CINEMA": 1271,
+      "SPORTS": 1989
+    },
+    "4KFALSE-ENGINE": {
+      "LAB-CALIBRATED-DNR+MEMC-120": 10573
+    },
+    "4KFALSE-MODE": {
+      "ACTIVE": 10573
+    },
+    "4KFALSE-TARGET-RES": {
+      "3840x2160": 10573
+    },
+    "QUALITY-SOURCE": {
+      "ESTIMATED": 10573
+    },
+    "HDR": {
+      "SDR_OR_UNKNOWN": 10573
+    },
+    "HDR-VERIFIED": {
+      "false": 10573
+    },
+    "HDR-DV": {
+      "SDR/NITS=400": 2308,
+      "SDR/NITS=100": 7457,
+      "PQ/NITS=1500": 808
+    },
+    "HDR-METADATA": {
+      "PEAK=400,AVG=1000": 2308,
+      "PEAK=100,AVG=1000": 7457,
+      "PEAK=1500,AVG=1000": 808
+    },
+    "HDR10PLUS": {},
+    "HDR10PLUS-V2": {},
+    "DV-PROFILE": {
+      "8": 10573
+    },
+    "DATERANGE-HDR": {
+      "HDR10+DV-P81-P10": 1,
+      "SDR + HLG fallback": 2308,
+      "SDR": 7457,
+      "HDR10 + HLG": 808
+    }
+  },
+  "legacy_14gap": {
+    "gaps": {
+      "GAP 1 — Dynamic Range Classifier": {
+        "score": 2.5,
+        "present": 1,
+        "total": 4,
+        "weight": 8,
+        "missing": [
+          "colorspace=all=auto",
+          "tonemap=mobius",
+          "trc=auto"
+        ]
+      },
+      "GAP 2 — Space Validator": {
+        "score": 0,
+        "present": 0,
+        "total": 4,
+        "weight": 7,
+        "missing": [
+          "format=yuv444p",
+          "range=limited",
+          "chromal=topleft",
+          "deband"
+        ]
+      },
+      "GAP 3 — Bitrate Anarchy Protocol": {
+        "score": 0,
+        "present": 0,
+        "total": 4,
+        "weight": 9,
+        "missing": [
+          "ANTI-CUT-ISP-STRANGLE",
+          "bandwidth_ramp=true",
+          "bandwidth_ramp_peak=100000000",
+          "OMEGA-ENGINE-BANDWIDTH-MONITOR"
+        ]
+      },
+      "GAP 4 — Hardware Agent Spoofing": {
+        "score": 2.5,
+        "present": 1,
+        "total": 4,
+        "weight": 7,
+        "missing": [
+          "X-Device-Class",
+          "X-Decoding-Capability",
+          "SHIELD-TV-PRO"
+        ]
+      },
+      "GAP 5 — Quantum Pixel Overdrive": {
+        "score": 2.5,
+        "present": 1,
+        "total": 4,
+        "weight": 7,
+        "missing": [
+          "yuv444p10le",
+          "yuv444p",
+          "saturation"
+        ]
+      },
+      "GAP 6 — Luma Precision Engine": {
+        "score": 7.5,
+        "present": 3,
+        "total": 4,
+        "weight": 8,
+        "missing": [
+          "LUMA-GAMMA"
+        ]
+      },
+      "GAP 7 — Network Buffer God Tier": {
+        "score": 2.5,
+        "present": 1,
+        "total": 4,
+        "weight": 9,
+        "missing": [
+          "BUFFER-STRATEGY:ADAPTIVE_PREDICTIVE_NEURAL",
+          "BUFFER-PRELOAD-SEGMENTS:30",
+          "BUFFER-DYNAMIC-ADJUSTMENT:ENABLED"
+        ]
+      },
+      "GAP 8 — Codec Priority Enforcer": {
+        "score": 2.5,
+        "present": 1,
+        "total": 4,
+        "weight": 8,
+        "missing": [
+          "preferred_codec=hevc",
+          "video_codec_override=hevc",
+          "AV1-FALLBACK-CHAIN"
+        ]
+      },
+      "GAP 9 — fMP4/CMAF Pipeline": {
+        "score": 2.5,
+        "present": 1,
+        "total": 4,
+        "weight": 8,
+        "missing": [
+          "TRANSPORT-PROTOCOL:CMAF_UNIVERSAL",
+          "TRANSPORT-CHUNK-SIZE:200MS",
+          "TRANSPORT-FALLBACK-1:HLS_FMP4"
+        ]
+      },
+      "GAP 10 — VRR/Refresh Sync": {
+        "score": 0,
+        "present": 0,
+        "total": 4,
+        "weight": 7,
+        "missing": [
+          "vrr_sync",
+          "tunneling_enabled=true",
+          "CORTEX-CONSTANT-FRAME-RATE",
+          "CORTEX-OPTICAL-FLOW-MINTERPOLATE"
+        ]
+      },
+      "GAP 11 — DLSS/AI Reconstruction": {
+        "score": 0,
+        "present": 0,
+        "total": 4,
+        "weight": 9,
+        "missing": [
+          "CORTEX-AI-SUPER-RESOLUTION",
+          "CORTEX-AI-SPATIAL-DENOISE",
+          "CORTEX-LCEVC",
+          "CORTEX-TEMPORAL-ARTIFACT-REPAIR"
+        ]
+      },
+      "GAP 12 — Audio Pipeline Real": {
+        "score": 7.5,
+        "present": 3,
+        "total": 4,
+        "weight": 7,
+        "missing": [
+          "earc"
+        ]
+      },
+      "GAP 13 — DRM/License Wrapping": {
+        "score": 5,
+        "present": 2,
+        "total": 4,
+        "weight": 6,
+        "missing": [
+          "drm_widevine",
+          "EXT-X-KEY"
+        ]
+      },
+      "GAP 14 — Checklist Auditoría Auto": {
+        "score": 2.5,
+        "present": 1,
+        "total": 4,
+        "weight": 8,
+        "missing": [
+          "TELEMETRY-TVQM",
+          "TELEMETRY-TR101290",
+          "IMPAIRMENT-GUARD"
+        ]
+      }
+    },
+    "weighted": 2.59
+  },
+  "probes": {
+    "channel_1": {
+      "manifest": "https://iptv-ape.duckdns.org/cdn/line.tivi-ott.net/live/3JHFTC/U56BDP/3.m3u8",
+      "manifest_status": 200,
+      "manifest_type": "application/x-mpegURL",
+      "manifest_lines": 14,
+      "manifest_hls_version": 3,
+      "target_duration": 11,
+      "server_headers": {
+        "X-APE-LL-HLS": "none",
+        "X-APE-UHD": "off",
+        "X-APE-LAB-FLOOR": "8000000",
+        "X-APE-CDN": "line.tivi-ott.net"
+      },
+      "segment": {
+        "codec": "h264",
+        "profile": "High",
+        "level": 40,
+        "width": 1920,
+        "height": 1080,
+        "pix_fmt": "yuv420p",
+        "color_space": "bt709",
+        "color_transfer": "bt709",
+        "color_primaries": "bt709",
+        "fps": 25,
+        "format": "mpegts",
+        "bitrate_bps": 4143230,
+        "duration_s": 9.984,
+        "hdr_side_data": false
+      }
+    },
+    "channel_47": {
+      "channel": "|AL| KLAN MACEDONIA 4K [line.tivi-ott.net]",
+      "profile_list": "P1",
+      "manifest": "https://iptv-ape.duckdns.org/cdn/line.tivi-ott.net/live/3JHFTC/U56BDP/47.m3u8",
+      "manifest_status": 200,
+      "manifest_type": "application/x-mpegURL",
+      "server_headers": {
+        "X-APE-LL-HLS": "none",
+        "X-APE-UHD": "off",
+        "X-APE-Floor-Fuse": "STATE=OPEN,PROFILE=P3"
+      },
+      "segment": {
+        "codec": "h264",
+        "profile": "Main",
+        "level": 40,
+        "width": 1920,
+        "height": 1080,
+        "pix_fmt": "yuv420p",
+        "fps": 25,
+        "format": "mpegts",
+        "bitrate_bps": 6452460,
+        "duration_s": 10.224,
+        "hdr_side_data": false,
+        "color_tags": false
+      }
+    }
+  },
+  "totals": {
+    "tags_top": [
+      [
+        "#EXTVLCOPT",
+        1416782
+      ],
+      [
+        "#KODIPROP",
+        1089019
+      ],
+      [
+        "#EXTATTRFROMURL",
+        570942
+      ],
+      [
+        "#EXT-X-DATERANGE",
+        10574
+      ],
+      [
+        "#EXTINF",
+        10573
+      ],
+      [
+        "#EXT-X-APE-4KFALSE-MODE",
+        10573
+      ],
+      [
+        "#EXT-X-APE-4KFALSE-CONTENT-TYPE",
+        10573
+      ],
+      [
+        "#EXT-X-APE-4KFALSE-TARGET-RES",
+        10573
+      ],
+      [
+        "#EXT-X-APE-4KFALSE-ENGINE",
+        10573
+      ],
+      [
+        "#EXTHTTP",
+        10573
+      ],
+      [
+        "#EXT-X-APE-OVERFLOW-HEADERS",
+        10573
+      ],
+      [
+        "#EXT-X-APE-DENYLIST-REMOVED",
+        10573
+      ],
+      [
+        "#EXT-X-CMAF",
+        10573
+      ],
+      [
+        "#EXT-X-CMAF-LATENCY",
+        10573
+      ],
+      [
+        "#EXT-X-CMAF-CHUNK-DURATION",
+        10573
+      ],
+      [
+        "#EXT-X-CMAF-PART-TARGET",
+        10573
+      ],
+      [
+        "#EXT-X-CMAF-PART-HOLD-BACK",
+        10573
+      ],
+      [
+        "#EXT-X-CMAF-CONTAINER",
+        10573
+      ],
+      [
+        "#EXT-X-CMAF-INIT-SEGMENT",
+        10573
+      ],
+      [
+        "#EXT-X-CMAF-CODEC-FALLBACK",
+        10573
+      ],
+      [
+        "#EXT-X-CMAF-AUDIO-FALLBACK",
+        10573
+      ],
+      [
+        "#EXT-X-CMAF-HDR",
+        10573
+      ],
+      [
+        "#EXT-X-CMAF-HDR-METADATA",
+        10573
+      ],
+      [
+        "#EXT-X-CMAF-LCEVC",
+        10573
+      ],
+      [
+        "#EXT-X-CMAF-AI-SR",
+        10573
+      ]
+    ],
+    "groups_top": [
+      [
+        "EUROPA OCCIDENTAL / GENERALISTA / FULL HD",
+        1960
+      ],
+      [
+        "EUROPA OCCIDENTAL / DEPORTES / FULL HD",
+        1084
+      ],
+      [
+        "AMÉRICA LATINA / GENERALISTA / FULL HD",
+        610
+      ],
+      [
+        "EUROPA ORIENTAL / GENERALISTA / FULL HD",
+        600
+      ],
+      [
+        "ASIA ORIENTE MEDIO / GENERALISTA / FULL HD",
+        571
+      ],
+      [
+        "NORTEAMÉRICA / GENERALISTA / FULL HD",
+        538
+      ],
+      [
+        "EUROPA OCCIDENTAL / CINE / FULL HD",
+        481
+      ],
+      [
+        "RESTO DEL MUNDO / GENERALISTA / FULL HD",
+        302
+      ],
+      [
+        "NORTEAMÉRICA / DEPORTES / FULL HD",
+        267
+      ],
+      [
+        "EUROPA ORIENTAL / DEPORTES / FULL HD",
+        238
+      ]
+    ],
+    "domains": [
+      [
+        "iptv-ape.duckdns.org",
+        10573
+      ]
+    ]
+  }
+}

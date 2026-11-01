@@ -1,0 +1,158 @@
+{
+  "gaps": {
+    "GAP 1 — Dynamic Range Classifier": {
+      "score": 2.5,
+      "present": 1,
+      "total": 4,
+      "weight": 8,
+      "missing": [
+        "colorspace=all=auto",
+        "tonemap=mobius",
+        "trc=auto"
+      ]
+    },
+    "GAP 2 — Space Validator": {
+      "score": 0,
+      "present": 0,
+      "total": 4,
+      "weight": 7,
+      "missing": [
+        "format=yuv444p",
+        "range=limited",
+        "chromal=topleft",
+        "deband"
+      ]
+    },
+    "GAP 3 — Bitrate Anarchy Protocol": {
+      "score": 0,
+      "present": 0,
+      "total": 4,
+      "weight": 9,
+      "missing": [
+        "ANTI-CUT-ISP-STRANGLE",
+        "bandwidth_ramp=true",
+        "bandwidth_ramp_peak=100000000",
+        "OMEGA-ENGINE-BANDWIDTH-MONITOR"
+      ]
+    },
+    "GAP 4 — Hardware Agent Spoofing": {
+      "score": 2.5,
+      "present": 1,
+      "total": 4,
+      "weight": 7,
+      "missing": [
+        "X-Device-Class",
+        "X-Decoding-Capability",
+        "SHIELD-TV-PRO"
+      ]
+    },
+    "GAP 5 — Quantum Pixel Overdrive": {
+      "score": 2.5,
+      "present": 1,
+      "total": 4,
+      "weight": 7,
+      "missing": [
+        "yuv444p10le",
+        "yuv444p",
+        "saturation"
+      ]
+    },
+    "GAP 6 — Luma Precision Engine": {
+      "score": 7.5,
+      "present": 3,
+      "total": 4,
+      "weight": 8,
+      "missing": [
+        "LUMA-GAMMA"
+      ]
+    },
+    "GAP 7 — Network Buffer God Tier": {
+      "score": 2.5,
+      "present": 1,
+      "total": 4,
+      "weight": 9,
+      "missing": [
+        "BUFFER-STRATEGY:ADAPTIVE_PREDICTIVE_NEURAL",
+        "BUFFER-PRELOAD-SEGMENTS:30",
+        "BUFFER-DYNAMIC-ADJUSTMENT:ENABLED"
+      ]
+    },
+    "GAP 8 — Codec Priority Enforcer": {
+      "score": 2.5,
+      "present": 1,
+      "total": 4,
+      "weight": 8,
+      "missing": [
+        "preferred_codec=hevc",
+        "video_codec_override=hevc",
+        "AV1-FALLBACK-CHAIN"
+      ]
+    },
+    "GAP 9 — fMP4/CMAF Pipeline": {
+      "score": 2.5,
+      "present": 1,
+      "total": 4,
+      "weight": 8,
+      "missing": [
+        "TRANSPORT-PROTOCOL:CMAF_UNIVERSAL",
+        "TRANSPORT-CHUNK-SIZE:200MS",
+        "TRANSPORT-FALLBACK-1:HLS_FMP4"
+      ]
+    },
+    "GAP 10 — VRR/Refresh Sync": {
+      "score": 0,
+      "present": 0,
+      "total": 4,
+      "weight": 7,
+      "missing": [
+        "vrr_sync",
+        "tunneling_enabled=true",
+        "CORTEX-CONSTANT-FRAME-RATE",
+        "CORTEX-OPTICAL-FLOW-MINTERPOLATE"
+      ]
+    },
+    "GAP 11 — DLSS/AI Reconstruction": {
+      "score": 0,
+      "present": 0,
+      "total": 4,
+      "weight": 9,
+      "missing": [
+        "CORTEX-AI-SUPER-RESOLUTION",
+        "CORTEX-AI-SPATIAL-DENOISE",
+        "CORTEX-LCEVC",
+        "CORTEX-TEMPORAL-ARTIFACT-REPAIR"
+      ]
+    },
+    "GAP 12 — Audio Pipeline Real": {
+      "score": 7.5,
+      "present": 3,
+      "total": 4,
+      "weight": 7,
+      "missing": [
+        "earc"
+      ]
+    },
+    "GAP 13 — DRM/License Wrapping": {
+      "score": 5,
+      "present": 2,
+      "total": 4,
+      "weight": 6,
+      "missing": [
+        "drm_widevine",
+        "EXT-X-KEY"
+      ]
+    },
+    "GAP 14 — Checklist Auditoría Auto": {
+      "score": 2.5,
+      "present": 1,
+      "total": 4,
+      "weight": 8,
+      "missing": [
+        "TELEMETRY-TVQM",
+        "TELEMETRY-TR101290",
+        "IMPAIRMENT-GUARD"
+      ]
+    }
+  },
+  "weighted": 2.59
+}
