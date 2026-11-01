@@ -110,8 +110,8 @@ class ListLoader(private val cfg: Config) {
             .digest(raw).joinToString("") { "%02x".format(it) }
         AraStatus.labMetadataProfile = json.optString("profile")
         AraStatus.labMetadataSha256 = labMetadataSha256
-        AraStatus.labMetadataFieldCount =
-            json.optJSONObject("fields")?.length() ?: 0
+        val applied = LabMetadataStore.apply(cfg.appContext(), json)
+        AraStatus.labMetadataFieldCount = applied
         cfg.saveLabMetadata(json.toString(), labMetadataSha256)
         Log.i(TAG, "LAB metadata: profile=${json.optString("profile")} sha=${labMetadataSha256.take(16)}")
     }

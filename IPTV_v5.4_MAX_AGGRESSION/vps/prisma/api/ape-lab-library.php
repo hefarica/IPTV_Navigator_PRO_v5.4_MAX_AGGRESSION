@@ -51,12 +51,24 @@ if ($profile !== '' && isset($meta['profile']) && strtoupper((string)$meta['prof
 }
 
 $fields = $meta['fields'] ?? [];
+$flatCount = 0;
+if (is_array($fields)) {
+    foreach ($fields as $section => $value) {
+        if (is_array($value)) {
+            // Un objeto por sección cuenta sus claves; una lista cuenta sus items.
+            $flatCount += (array_is_list($value) ? count($value) : count(array_keys($value)));
+        } else {
+            $flatCount++;
+        }
+    }
+}
 $out = [
     'list_id' => $meta['list_id'] ?? $list_id,
     'profile' => $meta['profile'] ?? null,
     'generated_at' => $meta['generated_at'] ?? null,
     'schema' => $meta['schema'] ?? null,
-    'field_count' => is_array($fields) ? count($fields) : 0,
+    'field_count' => $flatCount,
+    'section_count' => is_array($fields) ? count($fields) : 0,
     'sections' => is_array($fields) ? array_keys($fields) : []
 ];
 

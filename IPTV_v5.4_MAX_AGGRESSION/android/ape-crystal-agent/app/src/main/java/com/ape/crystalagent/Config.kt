@@ -66,6 +66,8 @@ class Config(ctx: Context) {
             .apply()
     }
 
+    fun appContext(): Context = appCtx
+
     fun labMetadataJson(): String = sp.getString("lab_metadata_json", "") ?: ""
     fun labMetadataSha256(): String = sp.getString("lab_metadata_sha256", "") ?: ""
 
