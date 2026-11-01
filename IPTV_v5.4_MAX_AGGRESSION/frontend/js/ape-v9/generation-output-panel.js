@@ -87,6 +87,18 @@
     } catch (e) { status('DIRECTO falló: ' + e.message, '#ef4444'); toast('DIRECTO falló: ' + e.message, 'error'); }
   }
 
+  // AMBAS = UNA lista híbrida: URI de canal en VPS y segmentos directos del
+  // proveedor (comprobado en APE_LISTA_..._CDN: playlist VPS -> media playlist
+  // con segmentos en host del proveedor). Se usa el generador CDN existente.
+  async function runBoth() {
+    if (!checkGeneration()) return;
+    try {
+      status('Generando AMBAS (URI VPS + vídeo directo)…', '#38bdf8');
+      await window.APEGenerationController.prepublishAndGenerateDual();
+      status('AMBAS completado: URI VPS · segmentos directos', '#22c55e');
+    } catch (e) { status('AMBAS falló: ' + e.message, '#ef4444'); toast('AMBAS falló: ' + e.message, 'error'); }
+  }
+
   function bindOption(id, cardId) {
     var input = document.getElementById(id);
     var card = document.getElementById(cardId);
@@ -147,10 +159,10 @@
       '<span style="font-size:.62rem;color:#64748b;margin-left:7px;">sin VPS</span></div>' +
       // AMBAS
       '<div style="background:rgba(2,6,23,.55);border:1px solid rgba(34,211,238,.45);border-radius:11px;padding:11px;">' +
-      '<div style="font-weight:800;color:#67e8f9;font-size:.78rem;">AMBAS · dos salidas</div>' +
-      '<div style="font-size:.68rem;color:#94a3b8;margin:4px 0 7px;">Selecciona y genera una por una para conservar el gesto de guardado.</div>' +
-      '<button data-ape-run="vps" style="background:rgba(14,165,233,.2);color:#7dd3fc;border:1px solid rgba(14,165,233,.5);border-radius:7px;padding:6px 9px;font-size:.66rem;font-weight:700;cursor:pointer;">1 · VPS</button>' +
-      '<button data-ape-run="direct" style="background:rgba(168,85,247,.2);color:#c4b5fd;border:1px solid rgba(168,85,247,.5);border-radius:7px;padding:6px 9px;font-size:.66rem;font-weight:700;cursor:pointer;">2 · DIRECTO</button></div>' +
+      '<div style="font-weight:800;color:#67e8f9;font-size:.78rem;">AMBAS · lista híbrida</div>' +
+      '<div style="font-size:.68rem;color:#94a3b8;margin:4px 0 7px;">URI del canal en VPS · segmentos directos del proveedor</div>' +
+      '<button data-ape-run="both" style="background:linear-gradient(135deg,#0891b2,#22d3ee);color:#06240f;border:0;border-radius:7px;padding:7px 12px;font-size:.7rem;font-weight:800;cursor:pointer;">Generar AMBAS</button>' +
+      '<span style="font-size:.62rem;color:#64748b;margin-left:7px;">una sola lista</span></div>' +
       '</div>' +
       // Options
       '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:9px;margin-top:9px;">' +
@@ -179,7 +191,12 @@
     tab.insertBefore(panel, tab.firstChild);
 
     panel.querySelectorAll('[data-ape-run]').forEach(function (b) {
-      b.addEventListener('click', function () { b.getAttribute('data-ape-run') === 'vps' ? runVps() : runDirect(); });
+      b.addEventListener('click', function () {
+        var k = b.getAttribute('data-ape-run');
+        if (k === 'vps') runVps();
+        else if (k === 'direct') runDirect();
+        else runBoth();
+      });
     });
     bindOption('proStreamingOptimized', 'ape-opt-pro');
     bindOption('ottNavOptimizedGen', 'ape-opt-ott');
@@ -203,6 +220,9 @@
       });
       panel.querySelectorAll('[data-ape-run="direct"]').forEach(function (b) {
         b.disabled = !sd.checked; b.style.opacity = sd.checked ? '1' : '.4'; b.style.cursor = sd.checked ? 'pointer' : 'not-allowed';
+      });
+      panel.querySelectorAll('[data-ape-run="both"]').forEach(function (b) {
+        b.disabled = !sb.checked; b.style.opacity = sb.checked ? '1' : '.4'; b.style.cursor = sb.checked ? 'pointer' : 'not-allowed';
       });
     }
     if (sv) sv.addEventListener('change', function () { if (sb) sb.checked = false; selPaint(); });
