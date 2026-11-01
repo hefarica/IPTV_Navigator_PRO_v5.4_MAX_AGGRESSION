@@ -6675,6 +6675,11 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
 
     const XTREAM_HTTP_PORTS = ['2082', '2083', '8080', '8000', '25461', '25463', '80'];
 
+    function isPlayableStreamUrl(url) {
+        // Debe ser absoluta y tener al menos un path no vacío.
+        return typeof url === 'string' && /^https?:\/\/[^/]+\/.+/.test(url.trim());
+    }
+
     function preferHttps(url) {
         if (!url || typeof url !== 'string') return url;
         try {
@@ -7547,7 +7552,9 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
         // ni envolver. Default false ⇒ el modo VPS no cambia. Reversible.
         if (typeof window !== 'undefined' && window.APE_DIRECT_MODE === true) {
             const _directUrl = String(channel.url || channel.src || channel.raw?.server_url || '').trim();
-            if (_directUrl) return preferHttps(_directUrl);
+            if (isPlayableStreamUrl(_directUrl)) return preferHttps(_directUrl);
+            // Host-only no es una URI; seguir al constructor con credenciales/stream_id.
+        }
         // [t84] PRESERVAR la URL del catalogo (verbatim); solo sintetizar si falta.
         const _inUrl84 = String((channel && (channel.url || channel.src)) || '').trim();
         if (_inUrl84 && /^https?:\/\//i.test(_inUrl84)) return preferHttps(_inUrl84);
@@ -7586,7 +7593,12 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
             const hostMatch = originalUrl.match(/^https?:\/\/[^\/]+/i);
             baseUrl = hostMatch ? hostMatch[0] : '';
         }
-        if (!baseUrl) return preferHttps(originalUrl);
+        if (!baseUrl) {
+            // Aceptar host-only solo como base, nunca como URI final.
+            const hostOnly = originalUrl.match(/^[a-z0-9.-]+\.[a-z]{2,}(?::\d+)?$/i);
+            baseUrl = hostOnly ? ('http://' + originalUrl) : '';
+        }
+        if (!baseUrl) return '';
 
         const username = creds ? creds.username : '';
         const password = creds ? creds.password : '';
@@ -7631,18 +7643,25 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
         if (!dPath) dPath = `/hls/${streamId}.${ext}`;
 
         const input = {
-            serverType: srvType, baseUrl: baseUrl, username: username, password: password,
+            serverType: srvType, baseUrl: baseUrl,
+            username: username || channel._username || '',
+            password: password || channel._password || '',
             streamId: streamId, directPath: dPath, endpointPath: ePath, extension: ext,
             typePath: typePath, extraParams: extra, forceHttps: false, preservePort: true
         };
 
         try {
-            const pUrl = _buildPerfectUrl(input);
-            return preferHttps(pUrl);
+            const pUrl = preferHttps(_buildPerfectUrl(input));
+            if (isPlayableStreamUrl(pUrl)) return pUrl;
+            console.warn('[URL-GUARD] URI no absoluta descartada:', pUrl);
+            return '';
         } catch (err) {
             console.warn('[Mathematical URL Constructor Error] Fallback triggered:', err.message);
             let fbUrl = `${baseUrl}/${typePath}/${username}/${password}/${streamId}.${ext}`;
-            return preferHttps(fbUrl.replace(/\s+/g, '').replace(/([^:]\/)\/+/g, "$1"));
+            fbUrl = preferHttps(fbUrl.replace(/\s+/g, '').replace(/([^:]\/)\/+/g, "$1"));
+            if (isPlayableStreamUrl(fbUrl)) return fbUrl;
+            console.warn('[URL-GUARD] fallback no reproducible:', fbUrl);
+            return '';
         }
     }
 
