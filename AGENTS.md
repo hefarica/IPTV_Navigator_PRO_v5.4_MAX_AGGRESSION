@@ -36,11 +36,16 @@ node frontend/tests/ape-predictive-prefetch.test.js          # 43 PASS
 node frontend/tests/predictive-prefetch-live.js              # 11 PASS (medición loopback real)
 node frontend/tests/ui-predictive-prefetch.verify.js         # 18 PASS (Chrome headless + evidencia real)
 node frontend/tests/e2e-bulletproof-full-audit.js            # 25/25 (necesita el LAB JSON)
+node frontend/tests/deploy-live-predictive-prefetch.verify.js  # 9/9 (sitio público real)
 ```
 `node -c` sobre el generador y `node -c` sobre los 3 JS de CLAUDE.md antes de cada commit.
 
 **Referencia completa:** `IPTV_v5.4_MAX_AGGRESSION/docs/manifestos/APEX_AI_PREDICTIVE_PREFETCH_2026-11-01.md`
 (contiene fórmulas, evidencia medida, límites honestos y rollback).
+
+**Deploy (2026-11-01):** UI desplegada en `iptv-ape.duckdns.org` (`/var/www/html`,
+stamps `20261101T160901Z` + `20261101T161053Z`) desde `git HEAD`. Rollback:
+`cp -a /var/backups/ape-deploy/<stamp>/html/. /var/www/html/`.
 
 ---
 

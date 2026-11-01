@@ -172,6 +172,46 @@ por aserto (`headroom < 100`).
 | Precedencia `network-caching` LAB vs t63 | LAB mandaba 105 s y t63 lo pisaba con 90000 | el LAB de `bulletproof_profiles` manda: **105000** en el e2e |
 | `X-APE-Prefetch-*` en EXTHTTP | presentes (2 claves por canal) | **eliminadas** (CA1) |
 
+## 5.e Deploy real en el VPS (2026-11-01)
+
+**Estado antes:** el sitio `https://iptv-ape.duckdns.org/` servía un `index-v4.html`
+que referenciaba **220 assets locales**, pero en `/var/www/html` sólo existían
+**14 archivos JS**: `profile-manager-v9.js`, `ape-profiles-config.js` y todo
+`js/ape-v9/streaming/*` devolvían **404**. La UI no podía arrancar con esa base.
+
+**Qué se desplegó** (siempre desde `git HEAD`, nunca del working tree con ediciones ajenas):
+
+| Stamp | Contenido |
+|---|---|
+| `20261101T160901Z` | `index-v4.html` + `js/` completo (252 archivos) + `css/` + 2 CSS raíz |
+| `20261101T161053Z` | 28 assets referenciados fuera de `js/`: 23 raíz, `core/` (2), `tests/` (3) |
+
+Método: bundle verificado por SHA-256 → extracción en `/tmp` → validación de hashes →
+backup en `/var/backups/ape-deploy/<stamp>/html` → `cp -a` sin borrar archivos →
+`chown www-data` → verificación de hashes instalados.
+
+**Verificación:**
+- `curl` HTTPS local con Host real: **220/220 referencias del index → 200** (antes 404 masivos).
+- `sha256sum -c` de los 6 archivos clave: OK.
+- Chrome headless sobre el sitio público: **9/9** (`node frontend/tests/deploy-live-predictive-prefetch.verify.js`):
+  arranque completo (~15 s, 219 scripts, 0 excepciones), `APE_PREDICT`/`APE_BW`/
+  `ProfileManagerV9` presentes, 3 mediciones reales same-origin, evidencia
+  `resource-timing`, sección Prefetch con toggle IA + botón «Medir ahora».
+- Captura del sitio desplegado: [`assets/deploy-live-2026-11-01.png`](assets/deploy-live-2026-11-01.png).
+
+**Rollback (sin nginx de por medio, son estáticos):**
+```bash
+cp -a /var/backups/ape-deploy/20261101T161053Z/html/. /var/www/html/
+cp -a /var/backups/ape-deploy/20261101T160901Z/html/. /var/www/html/
+chown -R www-data:www-data /var/www/html/js /var/www/html/css /var/www/html/core
+```
+
+**404 restantes (preexistentes, backend fuera de este cambio):** `/api/health`,
+`/api/jwt-config`, `/api/netshield-sentinel.php` (503), `/prisma/api/sentinel-status`,
+`/prisma/api/telemetry-full`, `/lab_master_22.6.0.json` (artefacto no versionado),
+`/favicon.ico`; y un Mixed Content del generador hacia `http://178.156.147.234:8765/health‘.
+Ninguno afecta al motor de predicción ni a la carga de la UI.
+
 ## 6. Límites honestos (lo que NO hace)
 
 - **No es ML.** Es un predictor determinista (EWMA² + regresión + logística). No hay red neuronal, ni entrenamiento, ni "modelo de IA" que se pueda vender como tal.
@@ -186,6 +226,7 @@ por aserto (`headroom < 100`).
 1. Quitar `<script …predictive-prefetch-v9.js>` de `index-v4.html` (el generador degrada a `AI=enabled,EVIDENCE=none` sin la línea `AI-PREDICT`).
 2. O revertir el bloque 8.l + el bloque SSOT del bridge en `m3u8-typed-arrays-ultimate.js`.
 3. Los tests y el módulo son aditivos: borrarlos no afecta al resto.
+
 
 
 
