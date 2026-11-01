@@ -16,6 +16,8 @@
     } catch (_) { return 15; }
   })();
   window.APE_OUTPUT_DELTA_PCT = DELTA_PCT;
+  var VPS_BASE = (window.APE_VPS_BASE || 'https://iptv-ape.duckdns.org').replace(/\/+$/, '');
+  var VPS_CONFIG_URL = VPS_BASE + '/prisma/api/ape-output-config.php';
 
   function profileIds() {
     try {
@@ -93,27 +95,31 @@
     var lastErr = null;
     for (var attempt = 1; attempt <= 2; attempt++) {
       try {
-        var r = await fetch('/prisma/api/ape-output-config.php', {
+        var r = await fetch(VPS_CONFIG_URL, {
           method: 'POST',
           mode: 'cors',
-          credentials: 'same-origin',
+          credentials: 'omit',
           headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
           cache: 'no-store',
           body: JSON.stringify(payload)
         });
         var txt = await r.text();
         var j = {};
-        try { j = JSON.parse(txt); } catch (_) { throw new Error('respuesta_no_json'); }
+        try { j = JSON.parse(txt); } catch (_) {
+          throw new Error('respuesta_no_json:' + r.status + ':' + txt.slice(0, 90).replace(/\s+/g, ' '));
+        }
         if (!r.ok || j.ok !== true) throw new Error(j.error || ('http_' + r.status));
 
         // Verificación real: leer de vuelta lo almacenado en el VPS.
-        var g = await fetch('/prisma/api/ape-output-config.php', {
-          method: 'GET', mode: 'cors', credentials: 'same-origin', cache: 'no-store',
+        var g = await fetch(VPS_CONFIG_URL, {
+          method: 'GET', mode: 'cors', credentials: 'omit', cache: 'no-store',
           headers: { 'Accept': 'application/json' }
         });
         var gt = await g.text();
         var gj = {};
-        try { gj = JSON.parse(gt); } catch (_) { throw new Error('verificacion_no_json'); }
+        try { gj = JSON.parse(gt); } catch (_) {
+          throw new Error('verificacion_no_json:' + g.status + ':' + gt.slice(0, 90).replace(/\s+/g, ' '));
+        }
         if (!g.ok || gj.ok !== true || !gj.delta_array) throw new Error(gj.error || 'sin_confirmacion_vps');
         var keys = Object.keys(arr);
         var mismatch = keys.filter(function (k) { return Number(gj.delta_array[k]) !== Number(arr[k]); });

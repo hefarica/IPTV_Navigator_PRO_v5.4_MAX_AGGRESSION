@@ -11,6 +11,8 @@
     'use strict';
     var IDS = { out: 'apeAutoAdjustOut' };
     var BUSY = false;
+    var VPS_BASE = (global.APE_VPS_BASE || 'https://iptv-ape.duckdns.org').replace(/\/+$/, '');
+    var VPS_CONFIG_URL = VPS_BASE + '/prisma/api/ape-output-config.php';
 
     function el() { return document.getElementById(IDS.out); }
     function status(msg, color) {
@@ -121,8 +123,8 @@
 
     async function publishDelta(array) {
         try {
-            var r = await fetch('/prisma/api/ape-output-config.php', {
-                method: 'POST', mode: 'cors', credentials: 'same-origin',
+            var r = await fetch(VPS_CONFIG_URL, {
+                method: 'POST', mode: 'cors', credentials: 'omit',
                 headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
                 cache: 'no-store',
                 body: JSON.stringify({ delta_array: array, delta_pct: array[activeId()], source: 'auto-adjust' })
