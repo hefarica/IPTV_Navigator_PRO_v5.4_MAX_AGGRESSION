@@ -7558,7 +7558,6 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
         // [t84] PRESERVAR la URL del catalogo (verbatim); solo sintetizar si falta.
         const _inUrl84 = String((channel && (channel.url || channel.src)) || '').trim();
         if (_inUrl84 && /^https?:\/\//i.test(_inUrl84)) return preferHttps(_inUrl84);
-        }
         let streamId = channel.stream_id;
         if (streamId == null) streamId = channel.raw?.stream_id;
         if (streamId == null) streamId = channel.id;
