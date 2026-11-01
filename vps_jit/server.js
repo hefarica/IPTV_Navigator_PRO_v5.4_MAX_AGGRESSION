@@ -78,7 +78,10 @@ function start(id, spec, sdr, sdr720) {
   const src = probeSource(spec);
   const isSdr = !!(sdr || sdr720);
   const is720 = !!sdr720;
-  const copy4k = !isSdr && src.width >= 3840 && src.height >= 2160 &&
+  const av1 = process.env.APE_SCHEME === 'av1' && !isSdr;
+  const sixK = av1 && process.env.APE_6K === '1';
+  const is4kSource = src.width >= 3840 && src.height >= 2160;
+  const copy4k = !isSdr && is4kSource && (!av1 || !sixK) &&
     (src.transfer === 'smpte2084' || src.transfer === 'arib-std-b67') &&
     (src.codec === 'hevc' || src.codec === 'h264');
   const dir = path.join(OUT_ROOT, id, is720 ? 'sdr720' : (isSdr ? 'sdr' : ''));
@@ -88,6 +91,8 @@ function start(id, spec, sdr, sdr720) {
   const use2k = process.env.APE_2K === '1';
   const targetW = use2k ? 2048 : 1920;
   const targetH = 1080;
+  const av1TargetW = is4kSource ? (sixK ? 6144 : 3840) : 2048;
+  const av1TargetH = is4kSource ? (sixK ? 3456 : 2160) : 1080;
   const videoArgs = is720
     ? [
       '-vf', "scale=w=1280:h=720:force_original_aspect_ratio=decrease:force_divisible_by=2:flags=lanczos,pad=1280:720:(ow-iw)/2:(oh-ih)/2,setparams=color_primaries=bt709:color_trc=bt709:colorspace=bt709:range=limited,format=yuv420p",
@@ -108,6 +113,14 @@ function start(id, spec, sdr, sdr720) {
     ]
     : copy4k
     ? ['-c:v', 'copy', '-tag:v', 'hvc1']
+    : av1
+    ? [
+      '-vf', `fps=30,scale=w=${av1TargetW}:h=${av1TargetH}:force_original_aspect_ratio=decrease:force_divisible_by=2:flags=lanczos,pad=${av1TargetW}:${av1TargetH}:(ow-iw)/2:(oh-ih)/2,setparams=color_primaries=bt709:color_trc=bt709:colorspace=bt709:range=limited,zscale=t=smpte2084:p=bt2020:m=bt2020nc:r=limited,format=yuv420p10le`,
+      '-pix_fmt', 'yuv420p10le',
+      '-color_primaries', 'bt2020', '-color_trc', 'smpte2084', '-colorspace', 'bt2020nc',
+      '-c:v', 'libsvtav1', '-preset', '13', '-crf', '30', '-g', '48',
+      '-pix_fmt', 'yuv420p10le',
+    ]
     : [
       '-vf', (use2k ? 'fps=30,' : '') + `scale=w=${targetW}:h=${targetH}:force_original_aspect_ratio=decrease:force_divisible_by=2:flags=lanczos,pad=${targetW}:${targetH}:(ow-iw)/2:(oh-ih)/2,setparams=color_primaries=bt709:color_trc=bt709:colorspace=bt709:range=limited,zscale=t=linear:npl=100,format=gbrpf32le,zscale=p=bt2020:transfer=smpte2084:matrix=bt2020nc:primaries=bt2020,format=yuv420p10le`,
       '-pix_fmt', 'yuv420p10le',
@@ -148,8 +161,8 @@ function start(id, spec, sdr, sdr720) {
     detached: false,
     stdio: ['ignore', 'ignore', 'pipe'],
   });
-  const outWidth = is720 ? 1280 : (isSdr ? 1920 : (copy4k ? src.width : targetW));
-  const outHeight = is720 ? 720 : (isSdr ? 1080 : (copy4k ? src.height : targetH));
+  const outWidth = is720 ? 1280 : (isSdr ? 1920 : (copy4k ? src.width : (av1 ? av1TargetW : targetW)));
+  const outHeight = is720 ? 720 : (isSdr ? 1080 : (copy4k ? src.height : (av1 ? av1TargetH : targetH)));
   const upscaled = !copy4k && ((src.width || 0) < outWidth || (src.height || 0) < outHeight);
   current = {
     id, sdr: isSdr, sdr720: is720, child, dir, lastAccess: Date.now(), started: Date.now(),
@@ -160,12 +173,14 @@ function start(id, spec, sdr, sdr720) {
     width: outWidth,
     height: outHeight,
     upscaled,
-    codecString: isSdr ? 'avc1.640028' : (use2k ? 'hvc1.2.4.L153.B0' : 'hvc1.2.4.L123.B0'),
+    codecString: isSdr ? 'avc1.640028' : (av1 ? (sixK ? 'av01.0.16M.10' : 'av01.0.08M.10') : (use2k ? 'hvc1.2.4.L153.B0' : 'hvc1.2.4.L123.B0')),
     audioCodec: hasAudio ? 'mp4a.40.2' : '',
-    bandwidth: is720 ? 2400000 : (isSdr ? 4500000 : (copy4k ? 20000000 : (use2k ? 5500000 : 3000000))),
+    bandwidth: is720 ? 2400000 : (isSdr ? 4500000 : (copy4k ? 20000000 : (av1 ? (sixK ? 25000000 : 5500000) : (use2k ? 5500000 : 3000000)))),
     crystal: true,
     use2k,
-    crystalMode: copy4k ? 'NATIVE_4K_HDR' : (upscaled ? (use2k ? 'CRYSTAL_2K_HDR_UPSCALE' : 'CRYSTAL_UHD_UPSCALE') : (is720 ? 'SDR720_STABLE' : (isSdr ? 'FHD_SDR' : 'FHD_HDR10'))),
+    av1,
+    sixK,
+    crystalMode: copy4k ? 'NATIVE_4K_HDR' : (av1 ? (sixK ? 'CRYSTAL_6K_AV1' : 'CRYSTAL_2K_AV1') : (upscaled ? (use2k ? 'CRYSTAL_2K_HDR_UPSCALE' : 'CRYSTAL_UHD_UPSCALE') : (is720 ? 'SDR720_STABLE' : (isSdr ? 'FHD_SDR' : 'FHD_HDR10')))),
   };
   log('START', id, 'pid=' + child.pid, 'sdr=' + isSdr, 'sdr720=' + is720, 'copy4k=' + copy4k, 'crystal=' + current.crystalMode, 'src=' + src.width + 'x' + src.height + '/' + src.transfer + '->' + outWidth + 'x' + outHeight);
   child.stderr.on('data', d => {
@@ -334,7 +349,7 @@ const server = http.createServer((req, res) => {
       crystal_uhd: {
         enabled: true,
         applies_to: 'all JIT channels',
-        modes: ['NATIVE_4K_HDR', 'CRYSTAL_2K_HDR_UPSCALE', 'FHD_HDR10', 'FHD_SDR', 'SDR720_STABLE'],
+        modes: ['NATIVE_4K_HDR', 'CRYSTAL_2K_HDR_UPSCALE', 'CRYSTAL_2K_AV1', 'CRYSTAL_6K_AV1', 'FHD_HDR10', 'FHD_SDR', 'SDR720_STABLE'],
         note: 'policy/metadata; no fake 4K pixels',
       },
       limits: { concurrent_channels: 1, idle_stop_s: Math.round(IDLE_MS / 1000) },
@@ -351,7 +366,9 @@ const server = http.createServer((req, res) => {
       active_mode: current ? current.crystalMode : null,
       modes: {
         NATIVE_4K_HDR: 'native 3840x2160 HEVC Main10 HDR10 passthrough',
-        CRYSTAL_2K_HDR_UPSCALE: 'HEVC Main10 2560x1440 HDR10, Lanczos upscale from <=1080p',
+        CRYSTAL_2K_HDR_UPSCALE: 'HEVC Main10 2048x1080 HDR10, Lanczos upscale from <=1080p',
+        CRYSTAL_2K_AV1: 'SVT-AV1 2048x1080 HDR10, opt-in APE_SCHEME=av1',
+        CRYSTAL_6K_AV1: 'SVT-AV1 6144x3456 HDR10, opt-in APE_6K=1; not real-time on 3 vCPU',
         FHD_HDR10: 'HEVC Main10 1920x1080 HDR10, zscale SDR->PQ',
         FHD_SDR: 'H.264 1920x1080 SDR fallback for incompatible decoders',
         SDR720_STABLE: 'H.264 1280x720 SDR continuity fallback',
@@ -448,6 +465,8 @@ process.on('SIGINT', () => { stopCurrent('signal'); process.exit(0); });
 
 fs.mkdirSync(OUT_ROOT, { recursive: true });
 server.listen(PORT, BIND, () => log('LISTEN', BIND + ':' + PORT, 'map=' + MAP_FILE));
+
+
 
 
 
