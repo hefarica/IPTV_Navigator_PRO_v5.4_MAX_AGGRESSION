@@ -133,6 +133,10 @@ class ApePlayer(private val ctx: Context) {
             AraStatus.trackH = 0
             AraStatus.trackHdr = "SDR"
             AraStatus.trackAt = 0L
+            // El compositor GL puede dejar negro el cambio HDR->SDR; el fallback
+            // prioriza continuidad.
+            runCatching { player.setVideoEffects(emptyList()) }
+                .onFailure { Log.w(TAG, "SDR effects off: ${it.message}") }
         }
         val http = DefaultHttpDataSource.Factory()
             .setUserAgent(ua)
