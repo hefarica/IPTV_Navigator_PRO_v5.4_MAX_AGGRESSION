@@ -152,6 +152,13 @@ class ApePlayer(private val ctx: Context) {
             Log.w(TAG, "decoder fallback exhausted after ${fallbackAttempt} attempt(s): ${error.message}")
             return
         }
+        // TRUTH-GUARD: si la fuente real es AVC, no se puede "fallback" a HEVC
+        // sobre la misma URL. Eso cambiaba el codec declarado y dejaba tracks vacíos.
+        val srcCodec = (AraStatus.trackCodec ?: "").lowercase()
+        if (srcCodec.startsWith("avc") || srcCodec.startsWith("h264")) {
+            Log.w(TAG, "decoder fallback omitido: fuente AVC real; no se declara HEVC sameUrl")
+            return
+        }
         if (fallbackChain.isEmpty()) {
             fallbackChain = CodecFallbackMatrix.chainFor(
                 AraStatus.trackCodec,
