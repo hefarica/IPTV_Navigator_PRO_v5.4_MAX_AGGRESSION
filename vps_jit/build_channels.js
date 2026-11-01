@@ -60,6 +60,7 @@ rl.on('close', () => {
     out += `#EXTINF:-1 tvg-id="${e.tvg || e.id}" tvg-name="${e.name.replace(/"/g, '')}"`;
     if (e.logo) out += ` tvg-logo="${e.logo.replace(/"/g, '')}"`;
     if (e.group) out += ` group-title="${e.group.replace(/"/g, '')}"`;
+    out += ` x-json-metadata="${publicBase}/live/${e.id}/manifest.json"`;
     out += `,${e.name.replace(/\r?\n/g, ' ')}\n${publicBase}/live/${e.id}/master.m3u8\n`;
   }
   fs.writeFileSync(path.join(outDir, 'APE_JIT_LIST.m3u8'), out);
