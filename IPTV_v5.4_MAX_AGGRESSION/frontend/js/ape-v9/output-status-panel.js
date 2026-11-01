@@ -30,7 +30,7 @@
   function colour(status) {
     if (status === '200') return '#22c55e';
     if (status === '206') return '#06b6d4';
-    if (status === '302') return '#a855f7';
+    if (status === '301' || status === '302' || status === '307' || status === '308') return '#a855f7';
     if (/^4|^5/.test(status)) return '#ef4444';
     return '#94a3b8';
   }
