@@ -28,3 +28,4 @@ IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/ape-canon-producer.js	/var/www/html/pris
 IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/ape-session-resolve.php	/var/www/html/prisma/api/ape-session-resolve.php	644	www-data:www-data	LAB metadata consumer (por record M.ref)
 IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/ape-lab-library.php	/var/www/html/prisma/api/ape-lab-library.php	644	www-data:www-data	GET biblioteca por list_id
 IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/ape-field-homologator.js	/var/www/html/prisma/api/ape-field-homologator.js	644	www-data:www-data	Dependencia del producer
+IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/list-activate.php	/var/www/html/prisma/api/list-activate.php	644	www-data:www-data	Auto-inyecta metadata LAB al activar lista
