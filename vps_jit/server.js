@@ -35,14 +35,27 @@ function probeSource(spec) {
       '-of', 'json', spec.url,
     ], { encoding: 'utf8', timeout: 15000 });
     const s = (JSON.parse(out).streams || [])[0] || {};
+    let audioOk = false, audioCodec = '';
+    try {
+      const aout = execFileSync('ffprobe', [
+        '-v', 'error', '-user_agent', spec.ua || 'VLC/3.0.19 LibVLC/3.0.19',
+        '-select_streams', 'a:0',
+        '-show_entries', 'stream=codec_name,channels,sample_rate',
+        '-of', 'json', spec.url,
+      ], { encoding: 'utf8', timeout: 15000 });
+      const a = (JSON.parse(aout).streams || [])[0] || {};
+      audioCodec = a.codec_name || '';
+      audioOk = Number(a.channels) > 0 && Number(a.sample_rate) > 0;
+    } catch (_) { }
     return {
       width: Number(s.width) || 0, height: Number(s.height) || 0,
       codec: s.codec_name || '', transfer: s.color_transfer || '',
       primaries: s.color_primaries || '',
+      audioOk: audioOk, audioCodec: audioCodec,
     };
   } catch (e) {
     log('PROBE_ERROR', e.message);
-    return { width: 0, height: 0, codec: '', transfer: '', primaries: '' };
+    return { width: 0, height: 0, codec: '', transfer: '', primaries: '', audioOk: false, audioCodec: '' };
   }
 }
 function loadMap() {
@@ -81,11 +94,12 @@ function start(id, spec) {
       '-x265-params', 'pools=3:frame-threads=1:hdr10=1:colorprim=bt2020:transfer=smpte2084:colormatrix=bt2020nc:master-display=G(13250,34500)B(7500,3000)R(34000,16000)WP(15635,16450)L(10000000,1):max-cll=100,100',
       '-b:v', '3000k', '-maxrate', '3300k', '-bufsize', '6000k',
     ];
-  // EAC3 copy is rejected by the DASH muxer for this stream; keep 4K video
-  // in copy and transcode ONLY audio to AAC.
+  // Some 4K provider audio is EAC3 with 0 channels / no sample rate.
+  // Do not break the video MPD: if audio is invalid, emit video-only.
   const audioArgs = copy4k
-    ? ['-c:a', 'aac', '-b:a', '256k', '-ac', '2']
+    ? (src.audioOk ? ['-c:a', 'aac', '-b:a', '256k', '-ac', '2'] : ['-an'])
     : ['-c:a', 'aac', '-b:a', '128k', '-ac', '2'];
+  const hasAudio = !(copy4k && !src.audioOk);
   const args = [
     '-hide_banner', '-nostdin', '-loglevel', 'warning',
     '-user_agent', spec.ua || 'VLC/3.0.19 LibVLC/3.0.19',
@@ -93,6 +107,7 @@ function start(id, spec) {
     '-map', '0:v:0', '-map', '0:a:0?',
     ...videoArgs,
     ...audioArgs,
+    '-max_muxing_queue_size', '8192',
     // One FFmpeg -> shared fMP4 for DASH + HLS.
     '-f', 'dash',
     '-seg_duration', '2', '-frag_duration', '2',
@@ -115,7 +130,7 @@ function start(id, spec) {
     width: copy4k ? src.width : Math.max(1920, src.width || 0),
     height: copy4k ? src.height : Math.max(1080, src.height || 0),
     codecString: copy4k ? 'hvc1.2.4.L153.B0' : 'hvc1.2.4.L123.B0',
-    audioCodec: 'mp4a.40.2',
+    audioCodec: hasAudio ? 'mp4a.40.2' : '',
     bandwidth: copy4k ? 20000000 : 3000000,
   };
   log('START', id, 'pid=' + child.pid, 'copy4k=' + copy4k, 'src=' + src.width + 'x' + src.height + '/' + src.transfer);
@@ -146,7 +161,7 @@ function hdrMaster(text) {
   const codec = current ? current.codecString : 'hvc1.2.4.L123.B0';
   const audio = current ? current.audioCodec : 'mp4a.40.2';
   return text
-    .replace(/CODECS="[^"]*"/, 'CODECS="' + codec + ',' + audio + '"')
+    .replace(/CODECS="[^"]*"/, 'CODECS="' + codec + (audio ? ',' + audio : '') + '"')
     .replace(/BANDWIDTH=\d+/, 'BANDWIDTH=' + (current ? current.bandwidth : 3000000))
     .replace(/\bAUDIO="/, current && current.hdr ? 'VIDEO-RANGE=PQ,AUDIO="' : 'AUDIO="');
 }
@@ -218,8 +233,8 @@ function manifestJson(req, id) {
       bandwidth: current ? current.bandwidth : 3000000,
       average_bandwidth: current ? Math.round(current.bandwidth * 0.9) : 2700000,
       resolution: current ? current.width + 'x' + current.height : '1920x1080',
-      codecs: (current ? current.codecString : 'hvc1.2.4.L123.B0') + ',' +
-        (current ? current.audioCodec : 'mp4a.40.2'),
+      codecs: (current ? current.codecString : 'hvc1.2.4.L123.B0') +
+        (current && current.audioCodec ? ',' + current.audioCodec : ''),
       uri: 'media_0.m3u8',
       hdr: current && current.hdr ? 'HDR10' : 'SDR',
       video_range: current && current.hdr ? 'PQ' : 'SDR',
