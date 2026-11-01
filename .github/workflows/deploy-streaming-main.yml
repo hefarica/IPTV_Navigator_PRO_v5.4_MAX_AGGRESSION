@@ -32,7 +32,9 @@ jobs:
       VPS_HOST: ${{ secrets.VPS_HOST }}
       VPS_USER: ${{ secrets.VPS_USER }}
     steps:
-      - uses: actions/checkout@v4`n        with:`n          ref: feat/adb-generic-visual-enhancement-installer
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/adb-generic-visual-enhancement-installer
 
       - name: Prepare ephemeral SSH
         run: |
