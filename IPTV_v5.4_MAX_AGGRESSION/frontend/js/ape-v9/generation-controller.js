@@ -1670,6 +1670,18 @@ try {
         m.style.display = 'flex';
     }
 
+    // API directa para el botón inyectado por el solver. No depende de eventos
+    // ni del orden de carga de los scripts.
+    if (typeof window !== 'undefined') {
+        window.apeOpenAutoAdjustMenu = function (e) {
+            if (e && typeof e.preventDefault === 'function') e.preventDefault();
+            if (e && typeof e.stopPropagation === 'function') e.stopPropagation();
+            var m = document.getElementById('apeAutoAdjustMenu');
+            if (m && m.style.display === 'flex') closeMenu();
+            else openMenu();
+        };
+    }
+
     function attach() {
         var b = document.getElementById('apeAutoAdjustBtn');
         if (b) {

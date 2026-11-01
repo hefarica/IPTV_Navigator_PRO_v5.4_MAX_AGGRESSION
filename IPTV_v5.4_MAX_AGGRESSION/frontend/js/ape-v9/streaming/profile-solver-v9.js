@@ -862,7 +862,7 @@
         bar.innerHTML =
             '<button id="pm9_auto_adjust_btn" style="background:linear-gradient(135deg,#16a34a,#22c55e);' +
             'color:#06240f;border:0;border-radius:6px;padding:8px 14px;font-weight:800;cursor:pointer;' +
-            'font-size:0.62rem">⚡ AUTO-AJUSTAR (función objetivo)</button>' +
+            'font-size:0.62rem" onclick="if(window.apeOpenAutoAdjustMenu){window.apeOpenAutoAdjustMenu(event)}">⚡ AUTO-AJUSTAR (función objetivo)</button>' +
             '<button id="pm9_best_tier_btn" style="background:linear-gradient(135deg,#7c3aed,#a855f7);' +
             'color:#fff;border:0;border-radius:6px;padding:8px 12px;font-weight:800;cursor:pointer;' +
             'font-size:0.62rem">🎯 TIER SOSTENIBLE</button>' +
@@ -870,14 +870,8 @@
             'Minimiza Risk · maximiza colchón · respeta reglas en cadena</span>';
 
         anchor.parentNode.insertBefore(bar, anchor);
-        document.getElementById('pm9_auto_adjust_btn').addEventListener('click', function (e) {
-            // El menú flotante decide perfil actual vs P0–P5. No ejecutar aquí
-            // directamente para no saltarse la segunda premisa (perfil/LAB).
-            e.preventDefault();
-            if (typeof global.dispatchEvent === 'function') {
-                global.dispatchEvent(new CustomEvent('ape:open-auto-adjust-menu'));
-            }
-        });
+        // El botón usa onclick inline -> window.apeOpenAutoAdjustMenu.
+        // NO añadir otro listener: abriría y cerraría el menú en el mismo clic.
 
         // El headroom SOLO lo mueve el tier (enlace vs bitrate). Este botón es la
         // palanca que sí puede bajar el número; no toca el LAB: cambia de perfil.
