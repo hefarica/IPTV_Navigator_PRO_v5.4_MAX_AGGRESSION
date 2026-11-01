@@ -44,6 +44,26 @@ No envía `MediaSession.dispatchMediaKeyEvent`, no cambia volumen, no hace `forc
 | `no_active_media_session` | Comprobar que OTT Navigator sigue en primer plano |
 | `metadata_missing` | Comprobar que OTT publica metadata; no inventar canal |
 
+## QoE al VPS
+
+Con `--vps`, cada muestra activa publica un `quality_change` real a:
+
+```text
+POST /prisma/api/conviva-event.php
+```
+
+Verificado:
+
+```text
+conviva_events = 2 filas
+player = OTT_Navigator
+channel = SKY-SPORTS-F1-UHD
+qoe_score = 75
+decision = NO_ACTION
+```
+
+Esto cubre QoE del player externo desde MediaSession. No inventa bitrate del decoder ni frame drops; usa lo que el MediaSession expone (estado, posición, metadata).
+
 ## Frecuencia recomendada
 
 - On-demand durante diagnóstico: 3 muestras / 10 s.

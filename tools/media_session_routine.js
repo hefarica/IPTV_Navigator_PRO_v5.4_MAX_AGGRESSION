@@ -11,6 +11,7 @@
 'use strict';
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 const { execFileSync } = require('child_process');
 
 function arg(name, fallback) {
@@ -21,6 +22,9 @@ const serial = arg('serial', process.env.ANDROID_SERIAL || '');
 const samples = Math.max(2, Number(arg('samples', '3')));
 const interval = Math.max(5, Number(arg('interval', '10')));
 const outDir = path.resolve(arg('out', 'artifacts/media_session'));
+const postVps = process.argv.includes('--vps');
+const vpsBase = arg('vps-base', 'https://iptv-ape.duckdns.org').replace(/\/+$/, '');
+const deviceId = arg('device', 'onn4k-media-session');
 
 function adb(args) {
   const bin = process.env.ADB || 'adb';
@@ -66,17 +70,54 @@ function snapshot() {
   return { at: new Date().toISOString(), active, sessions };
 }
 
-function main() {
+async function postQoe(session, index) {
+  if (!postVps || !session || !session.title) return null;
+  var sid = 'ms-' + crypto.createHash('sha256').update(String(session.package) + '|' + String(session.title)).digest('hex').slice(0, 20);
+  var cid = String(session.title).replace(/[^A-Za-z0-9_.-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 48) || 'media-session';
+  var payload = {
+    version: '1.0',
+    session_id: sid,
+    device_id: deviceId,
+    player: 'OTT_Navigator',
+    channel: { id: cid, name: String(session.title).slice(0, 120) },
+    event_type: 'quality_change',
+    timestamp_ms: Date.now(),
+    data: {
+      position_ms: Number(session.position) || 0,
+      buffered_position_ms: Number(session.buffered_position) || 0,
+      media_session_state: session.state || 'unknown',
+      media_session_sample: index,
+      source: 'media_session_routine'
+    }
+  };
+  try {
+    var r = await fetch(vpsBase + '/prisma/api/conviva-event.php', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+      cache: 'no-store',
+      body: JSON.stringify(payload)
+    });
+    var txt = await r.text();
+    var body = {};
+    try { body = JSON.parse(txt); } catch (_) { body = { raw: txt.slice(0, 120) }; }
+    return { http: r.status, body: body };
+  } catch (e) {
+    return { http: 0, error: e && e.message ? e.message : String(e) };
+  }
+}
+
+async function main() {
   fs.mkdirSync(outDir, { recursive: true });
   const file = path.join(outDir, `media_session_${new Date().toISOString().replace(/[:.]/g, '-')}.jsonl`);
   const fd = fs.openSync(file, 'a');
   const rows = [];
   for (let i = 0; i < samples; i++) {
     const s = snapshot();
+    if (s.active[0]) s.qoe = await postQoe(s.active[0], i);
     fs.writeSync(fd, JSON.stringify(s) + '\n');
     rows.push(s);
-    console.log(`[${s.at}] active=${s.active.length} ` + s.active.map(x => `${x.package} state=${x.state} position=${x.position} title=${x.title || ''}`).join(' | '));
-    if (i < samples - 1) Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, interval * 1000);
+    console.log(`[${s.at}] active=${s.active.length} ` + s.active.map(x => `${x.package} state=${x.state} position=${x.position} title=${x.title || ''}`).join(' | ') + (s.qoe ? ` qoe_http=${s.qoe.http}` : ''));
+    if (i < samples - 1) await new Promise(r => setTimeout(r, interval * 1000));
   }
   fs.closeSync(fd);
 
@@ -109,6 +150,7 @@ function main() {
     warnings,
     strict,
     problems,
+    qoe: rows.map(r => r.qoe || null),
     ok: problems.length === 0
   };
   fs.writeFileSync(path.join(outDir, 'latest.json'), JSON.stringify(summary, null, 2));
@@ -116,9 +158,7 @@ function main() {
   return summary.ok ? 0 : 1;
 }
 
-try {
-  process.exitCode = main();
-} catch (e) {
+main().then(code => { process.exitCode = code; }).catch(e => {
   console.error('MEDIA_SESSION_ROUTINE_ERROR ' + (e && e.message ? e.message : e));
   process.exitCode = 2;
-}
+});
