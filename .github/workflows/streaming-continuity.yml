@@ -1,0 +1,37 @@
+name: streaming-continuity-law
+
+on:
+  push:
+    paths:
+      - 'vps_jit/**'
+      - 'tools/certify_http_200_206_302.js'
+      - 'tools/verify_streaming_headers.js'
+      - 'tools/check_streaming_continuity.js'
+      - 'docs/policies/STREAMING_CONTINUITY_LAW.md'
+      - 'contracts/streaming_continuity_contract.json'
+      - '.github/workflows/streaming-continuity.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: streaming-continuity-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  enforce:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Validate contract JSON
+        run: python -m json.tool contracts/streaming_continuity_contract.json > /dev/null
+      - name: Certify 200/206/302
+        run: node tools/certify_http_200_206_302.js
+      - name: Verify critical headers
+        run: node tools/verify_streaming_headers.js
+      - name: Enforce continuity law
+        run: node tools/check_streaming_continuity.js

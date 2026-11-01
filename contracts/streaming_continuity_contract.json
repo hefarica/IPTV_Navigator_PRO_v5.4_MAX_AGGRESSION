@@ -1,0 +1,53 @@
+{
+  "version": "1.0",
+  "status": "mandatory",
+  "effective": "2026-11-01",
+  "manifests": {
+    "cache_control": "no-cache, no-store, must-revalidate, private, max-age=0",
+    "pragma": "no-cache",
+    "expires": "0"
+  },
+  "segments": {
+    "unique_per_session": true,
+    "init_pattern": "^init-[A-Za-z0-9]+-[0-9]+\\.m4s$",
+    "chunk_pattern": "^chunk-[A-Za-z0-9]+-[0-9]+-[0-9]+\\.m4s$",
+    "cache_control": "no-cache, no-store, must-revalidate, private, max-age=0",
+    "etag": "dynamic",
+    "vary": "*"
+  },
+  "range": {
+    "status": 206,
+    "accept_ranges": "bytes",
+    "content_type": "video/iso.segment",
+    "unsatisfiable": 416
+  },
+  "cors": {
+    "allow_origin": "*",
+    "allow_methods": "GET, HEAD, OPTIONS",
+    "expose": "Content-Range, Accept-Ranges, Content-Length, ETag"
+  },
+  "transports": [
+    "JIT_CONTROLLED",
+    "VPS_CDN",
+    "DIRECT_PROVIDER"
+  ],
+  "fallback": [
+    "HDR",
+    "SDR_1080",
+    "SDR_720"
+  ],
+  "forbidden_tokens": [
+    "4KFALSE",
+    "8KFAKE",
+    "LCEVC",
+    "AI-SR",
+    "AI-FI",
+    "DV-PROFILE",
+    "QUANTUM-PIXEL"
+  ],
+  "ci": [
+    "node tools/certify_http_200_206_302.js",
+    "node tools/verify_streaming_headers.js",
+    "node tools/check_streaming_continuity.js"
+  ]
+}
