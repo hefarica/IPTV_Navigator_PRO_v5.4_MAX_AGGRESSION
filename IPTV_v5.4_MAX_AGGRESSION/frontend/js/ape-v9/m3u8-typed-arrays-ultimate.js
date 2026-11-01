@@ -11347,13 +11347,18 @@ lines.push(`#EXT-X-APE-STREAM-TRUTH:src=${_streamTruth.source},w=${_streamTruth.
                 const _labBufFromBulletproof = !!(typeof labProfile !== 'undefined' && labProfile
                     && labProfile.optimized_knobs
                     && Number(labProfile.optimized_knobs.buffer_seconds) > 0);
-                if (Number.isNaN(_labBufMs) && !_labBufFromBulletproof) {
+                // Dictator/Ultra must not be overwritten by the profile table.
+                // Existing generator produced 500 ms but this calibration pass
+                // replaced it with 72000 ms, making zapping slow.
+                const _iNc = lines.findIndex(l => typeof l === 'string' && l.indexOf('#EXTVLCOPT:network-caching=') === 0);
+                if (options && options.dictatorMode) {
+                    if (_iNc !== -1) lines[_iNc] = '#EXTVLCOPT:network-caching=500';
+                } else if (Number.isNaN(_labBufMs) && !_labBufFromBulletproof) {
                     const _rtP = (typeof window.ApeRealtimeEngine.getProfile === 'function')
                         ? window.ApeRealtimeEngine.getProfile(profile) : null;
                     const _rtNc = (_rtP && _rtP.vlcopt) ? parseInt(_rtP.vlcopt['network-caching'], 10) : NaN;
-                    if (!Number.isNaN(_rtNc)) {
-                        const _iNc = lines.findIndex(l => typeof l === 'string' && l.indexOf('#EXTVLCOPT:network-caching=') === 0);
-                        if (_iNc !== -1) lines[_iNc] = '#EXTVLCOPT:network-caching=' + _rtNc;
+                    if (!Number.isNaN(_rtNc) && _iNc !== -1) {
+                        lines[_iNc] = '#EXTVLCOPT:network-caching=' + _rtNc;
                     }
                 }
                 window.ApeRealtimeEngine.injectVlcopt(lines, profile);

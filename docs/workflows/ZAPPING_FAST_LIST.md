@@ -73,6 +73,21 @@ python3 tools/build_fast_zapping_list.py \
   /var/www/lists/APE_LISTA_1793569066655_CDN_FAST.m3u8
 ```
 
+## Modo Dictador / Ultra agresivo
+
+El generador calculaba 500 ms cuando `dictatorMode` estaba activo, pero una
+calibración posterior lo sobrescribía con el valor del perfil (72000 ms). Ya está
+corregido:
+
+```text
+if (options.dictatorMode) network-caching = 500
+else perfil/LAB
+```
+
+El HTML público carga `m3u8-typed-arrays-ultimate.js?v=20261101-dictator-cache-v1`.
+
+Esto solo cambia el buffer de arranque; no toca resolución, códec, HDR ni bitrate.
+
 ## Límite honesto
 
 La lista FAST mejora el arranque, el parseo y la memoria del zapping. No puede
