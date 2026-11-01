@@ -11,7 +11,14 @@
  */
 'use strict';
 var fs = require('fs'), path = require('path'), readline = require('readline');
-var H = require('/opt/ape-dual-link/js/ape-field-homologator.js');
+var crypto = require('crypto');
+var H;
+try {
+    H = require('/opt/ape-dual-link/js/ape-field-homologator.js');
+} catch (e) {
+    // Deploy alterno: el homologador viaja junto a este producer.
+    H = require(require('path').join(__dirname, 'ape-field-homologator.js'));
+}
 
 // ── AUTO-PROTECCIÓN AUTOPISTA (council S6/S7 2026-06-11): el producer homologa 22.595 canales
 //    (~5min CPU). En 3 vCPU compartidos con nginx/PHP del Fire TV, correrlo a prioridad normal
@@ -39,6 +46,10 @@ function main() {
     var MAX_TOTAL_BYTES = 256 * 1024 * 1024;   // presupuesto /dev/shm para el canon
     var written = 0, skipped = 0, bad = 0, totalBytes = 0, halted = false;
     var block = [], inChannel = false;
+    var labMetaB64 = null;
+    var labMetaSha = null;
+    var labMetaRef = null;
+    var listId = null;
 
     function slimE(E) {  // SLIM: solo lo que el resolve usa (tóxicos + cubo-E). La lista queda intacta (NO-STRIP); los X-APE-* llegan vivos por el hijack.
         var out = {}; E = E || {};
@@ -50,6 +61,9 @@ function main() {
         var key = String(r._key).toLowerCase().replace(/[^a-f0-9]/g, '');
         if (!key) { bad++; return; }
         var wire = { _key: r._key, _schemaFingerprint: r._schemaFingerprint, _provider_url: r._provider_url, B: r.B || {}, C: r.C || {}, D: r.D || {}, E: slimE(r.E) };
+        if (labMetaSha && labMetaRef) {
+            wire.M = { kind: 'ape-lab-metadata-v1', ref: labMetaRef, list_id: listId, sha256: labMetaSha };
+        }
         var line = JSON.stringify(wire);
         if (totalBytes + line.length > MAX_TOTAL_BYTES) { halted = true; return; }
         var p = path.join(shm, key + '.json');
@@ -73,14 +87,39 @@ function main() {
     var rl = readline.createInterface({ input: fs.createReadStream(listPath, { encoding: 'utf8' }), crlfDelay: Infinity });
     rl.on('line', function (line) {
         if (halted) return;
+        if (line.lastIndexOf('#EXT-X-APE-LAB-METADATA:', 0) === 0) {
+            labMetaB64 = line.slice('#EXT-X-APE-LAB-METADATA:'.length).trim();
+            return;
+        }
         var isExtinf = line.lastIndexOf('#EXTINF', 0) === 0;   // startsWith('#EXTINF')
         if (isExtinf) { if (inChannel) flush(); inChannel = true; block = [line]; return; }
         if (inChannel) block.push(line);
         // líneas antes del primer #EXTINF (cabecera global) se ignoran (no son canal)
     });
     rl.on('close', function () {
+        // Metadata PRIMERO: los records deben nacer con la referencia M.
+        if (labMetaB64) {
+            try {
+                var metaBuf = Buffer.from(labMetaB64, 'base64');
+                var metaObj = JSON.parse(metaBuf.toString('utf8'));
+                // Biblioteca POR LISTA, no un valor fijo global.
+                listId = crypto.createHash('sha256')
+                    .update(fs.readFileSync(listPath)).digest('hex').slice(0, 16);
+                var metaDir = path.join(shm, '_lab_meta');
+                fs.mkdirSync(metaDir, { recursive: true });
+                labMetaRef = '_lab_meta/' + listId + '.json';
+                var metaPath = path.join(shm, labMetaRef);
+                var metaTmp = metaPath + '.tmp_' + process.pid;
+                // Guardar el list_id dentro del JSON para lookup de biblioteca.
+                metaObj.list_id = listId;
+                var metaFinal = Buffer.from(JSON.stringify(metaObj));
+                labMetaSha = crypto.createHash('sha256').update(metaFinal).digest('hex');
+                fs.writeFileSync(metaTmp, metaFinal);
+                fs.renameSync(metaTmp, metaPath);
+            } catch (e) { bad++; }
+        }
         flush();
-        console.log(JSON.stringify({ status: halted ? 'partial_budget' : 'ok', written: written, skipped_idempotent: skipped, bad: bad, total_bytes: totalBytes, halted: halted, shm: shm }));
+        console.log(JSON.stringify({ status: halted ? 'partial_budget' : 'ok', written: written, skipped_idempotent: skipped, bad: bad, total_bytes: totalBytes, halted: halted, shm: shm, lab_metadata: labMetaSha || null, list_id: listId || null }));
     });
     rl.on('error', function (e) { console.error('read error: ' + e.message); process.exit(1); });
 }

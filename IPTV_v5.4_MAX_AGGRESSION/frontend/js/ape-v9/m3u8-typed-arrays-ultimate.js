@@ -2654,6 +2654,35 @@
             return '#EXT-X-APE-LAB-DNA:sha256=unverified,SOURCE=unknown,EXPORTED=unknown';
         }
     }
+    /**
+     * JSON metadata global (una sola línea por lista) con el perfil activo completo:
+     * settings + vlcopt + kodiprop + hlsjs + prefetch_config + optimized_knobs +
+     * bounds + actor_injections + headerOverrides. VPS/ARA lo leen como si viniera
+     * de la propia lista. No se replica por canal.
+     */
+    function generateLabMetadataTag() {
+        try {
+            if (typeof window === 'undefined' || !window.APE_PROFILES_CONFIG) return null;
+            const cfg = window.APE_PROFILES_CONFIG;
+            const pid = (window.ProfileManagerV9 && window.ProfileManagerV9.activeProfileId) || 'P3';
+            const p = (typeof cfg.getProfile === 'function') ? cfg.getProfile(pid) : null;
+            if (!p) return null;
+            const pack = {
+                schema: 'ape-lab-metadata-v1',
+                profile: pid,
+                generated_at: new Date().toISOString(),
+                fields: p
+            };
+            const utf8 = unescape(encodeURIComponent(JSON.stringify(pack)));
+            const b64 = (typeof btoa === 'function') ? btoa(utf8) : null;
+            if (!b64) return null;
+            return `#EXT-X-APE-LAB-METADATA:${b64}`;
+        } catch (e) {
+            console.warn('[LAB-METADATA] no se pudo serializar:', e && e.message);
+            return null;
+        }
+    }
+
     function generateGlobalHeader(channelsCount, options = {}) {
         const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 18) + 'Z';
         const totalChannels = typeof window !== 'undefined' && window.app && typeof window.app.getFilteredChannels === 'function' ? window.app.getFilteredChannels().length : channelsCount;
@@ -2667,6 +2696,8 @@
                 `#EXT-X-APE-LAB-EXTRAS:${__apeLabExtrasFlag(options)}`,
                 __apeLabDnaTag(options)
             ];
+            const _labMetaTag = generateLabMetadataTag();
+            if (_labMetaTag) coreHeader.push(_labMetaTag);
 
             // ── 🎬 DISNEY-GRADE LL-HLS / ABR DIRECTIVES (LAB SSOT) ──────────────
             // Source: LAB Excel sheet 30_DISNEY_GRADE_DIRECTIVES (via bulletproof JSON
@@ -3031,7 +3062,8 @@
 #EXT-X-DEFINE:NAME="OMEGA_COMPLIANCE",VALUE="HLS-RFC8216BIS+CMAF-LL+DV-P8+LCEVC-P4+ATMOS"
 #EXT-X-DATERANGE:ID="omega-live-maxq",X-OMEGA-TYPE="LIVE-CATCHUP",X-HDR-TYPE="DV-P8+HDR10+",X-HDR-MAX-CLL=10000
 #EXT-X-KEY:METHOD=NONE
-#EXT-X-SESSION-KEY:METHOD=NONE`;
+#EXT-X-SESSION-KEY:METHOD=NONE
+${generateLabMetadataTag() || ''}`;
         }
 
         // ── MAX_COMPAT MODE interceptor — Master Playlist RFC-pura ──────────────────────
@@ -3046,6 +3078,7 @@
 #EXT-X-APE-CHANNELS:${totalChannels}
 #EXT-X-APE-LAB-EXTRAS:${__apeLabExtrasFlag(options)}
 ${__apeLabDnaTag(options)}
+${generateLabMetadataTag() || ''}
 ${_disneyBlockFb}`;
         }
 
@@ -3055,6 +3088,7 @@ ${_disneyBlockFb}`;
 #EXT-X-APE-QMAX-VERSION:2.0-ADAPTIVE
 #EXT-X-APE-LAB-EXTRAS:${__apeLabExtrasFlag(options)}
 ${__apeLabDnaTag(options)}
+${generateLabMetadataTag() || ''}
 #EXT-X-APE-QMAX-STRATEGY:GREEDY-BEST-AVAILABLE
 #EXT-X-APE-QMAX-ANTI-DOWNGRADE:ENFORCED
 #EXT-X-APE-QMAX-TIER-CASCADE:S>A>A->B>C>D
@@ -5534,16 +5568,25 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
                 const pmProfile = window.APE_PROFILES_CONFIG.getProfile(pmProfileId);
                 const enabledCats = pmProfile?.enabledCategories || Object.keys(pmCats);
                 let pmInjected = 0;
+                // Never allow a calibrated value to override hop-by-hop / toxic headers.
+                const PM9_PROTECTED_HEADERS = new Set([
+                    'Connection', 'Keep-Alive', 'Range', 'If-None-Match',
+                    'If-Modified-Since', 'TE', 'Priority', 'Upgrade-Insecure-Requests',
+                    'Proxy-Authorization', 'Transfer-Encoding', 'Content-Length'
+                ]);
 
                 for (const catId of enabledCats) {
                     const cat = pmCats[catId];
                     if (!cat || !cat.headers) continue;
                     for (const headerName of cat.headers) {
-                        if (headers[headerName] !== undefined) continue; // Don't overwrite existing
+                        const explicit = !!(pmProfile?.headerOverrides &&
+                            Object.prototype.hasOwnProperty.call(pmProfile.headerOverrides, headerName));
+                        if (headers[headerName] !== undefined &&
+                            (!explicit || PM9_PROTECTED_HEADERS.has(headerName))) continue;
                         const val = window.APE_PROFILES_CONFIG.getHeaderValue(pmProfileId, headerName);
                         if (val !== undefined && val !== null && val !== '') {
                             headers[headerName] = String(val);
-                            pmInjected++;
+                            if (explicit) pmInjected++;
                         }
                     }
                 }
@@ -5561,7 +5604,7 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
                     let dupBlocked = 0;
                     for (const [k, v] of Object.entries(pmProfile.headerOverrides)) {
                         if (pm9Set.has(k)) continue;          // ya cubierto por PM9 loop
-                        if (headers[k] !== undefined) {        // ya seteado por hardcoded path
+                        if (headers[k] !== undefined && PM9_PROTECTED_HEADERS.has(k)) {
                             dupBlocked++;
                             continue;
                         }
@@ -7798,6 +7841,408 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
     // 921 líneas por canal | L0-L10 | Cableado desde arrays de origen
     // Sin hardcoding | Polimorfismo + Idempotencia | Compatibilidad Universal
     // ═══════════════════════════════════════════════════════════════════════════
+    // ═══════════════════════════════════════════════════════════════════════════
+    // APE ATTRFROMURL (t48, REPO-ONLY) — helpers de firma y payload
+    // Doctrina: la CLAVE NUNCA se hardcodea. Se inyecta en window.APE_ATTRFROMURL.key.
+    // Sin clave configurada ⇒ no se emite la línea (no se inventa una firma).
+    // ═══════════════════════════════════════════════════════════════════════════
+    // t61 — Configuración de la clave HMAC del endpoint /a. Orden de precedencia:
+    //   1) window.APE_ATTRFROMURL.key | .hmacKey   (lo que ya existía)
+    //   2) window.APE_CONFIG.ape_attrfromurl_key   (JSON de configuración de la App)
+    //   3) <meta name="ape-attrfromurl-key" content="…">   (inyección desde el HTML)
+    // La clave NUNCA se hardcodea en este archivo. Sin clave ⇒ no se emite la línea /a
+    // (no se firma un HMAC inválido): comportamiento declarado NOT_RUN en la doc.
+    function _apeAttrCfg() {
+        const raw = (typeof window !== 'undefined' && window.APE_ATTRFROMURL && typeof window.APE_ATTRFROMURL === 'object')
+            ? window.APE_ATTRFROMURL : null;
+        if (raw && (raw.key || raw.hmacKey)) return raw;
+
+        let kCfg = '';
+        try {
+            if (typeof window !== 'undefined' && window.APE_CONFIG && typeof window.APE_CONFIG === 'object') {
+                kCfg = window.APE_CONFIG.ape_attrfromurl_key || window.APE_CONFIG.attrfromurl_key || '';
+            }
+        } catch (e) { kCfg = ''; }
+
+        let kMeta = '';
+        try {
+            if (typeof document !== 'undefined' && document.querySelector) {
+                const m = document.querySelector('meta[name="ape-attrfromurl-key"]');
+                if (m) kMeta = m.getAttribute('content') || '';
+            }
+        } catch (e) { kMeta = ''; }
+
+        const key = String(kCfg || '') || String(kMeta || '');
+        if (!key) return raw;                       // sin clave en ninguna fuente
+        return Object.assign({}, raw || {}, { key: key });
+    }
+
+    function _apeUtf8Bytes(str) {
+        const s = String(str == null ? '' : str);
+        const out = [];
+        for (let i = 0; i < s.length; i++) {
+            let cp = s.codePointAt(i);
+            if (cp > 0xFFFF) i++;
+            if (cp < 0x80) out.push(cp);
+            else if (cp < 0x800) out.push(0xC0 | (cp >> 6), 0x80 | (cp & 63));
+            else if (cp < 0x10000) out.push(0xE0 | (cp >> 12), 0x80 | ((cp >> 6) & 63), 0x80 | (cp & 63));
+            else out.push(0xF0 | (cp >> 18), 0x80 | ((cp >> 12) & 63), 0x80 | ((cp >> 6) & 63), 0x80 | (cp & 63));
+        }
+        return out;
+    }
+
+    function _apeB64Url(bytes) {
+        const ABC = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
+        let out = '', i = 0;
+        for (; i + 2 < bytes.length; i += 3) {
+            const n = (bytes[i] << 16) | (bytes[i + 1] << 8) | bytes[i + 2];
+            out += ABC[(n >>> 18) & 63] + ABC[(n >>> 12) & 63] + ABC[(n >>> 6) & 63] + ABC[n & 63];
+        }
+        const rem = bytes.length - i;
+        if (rem === 1) { const n = bytes[i] << 16; out += ABC[(n >>> 18) & 63] + ABC[(n >>> 12) & 63]; }
+        else if (rem === 2) { const n = (bytes[i] << 16) | (bytes[i + 1] << 8); out += ABC[(n >>> 18) & 63] + ABC[(n >>> 12) & 63] + ABC[(n >>> 6) & 63]; }
+        return out;
+    }
+
+    function _apeRotr(x, n) { return (x >>> n) | (x << (32 - n)); }
+
+    const _APE_SHA256_K = [
+        0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5,
+        0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174,
+        0xe49b69c1, 0xefbe4786, 0x0fc19dc6, 0x240ca1cc, 0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da,
+        0x983e5152, 0xa831c66d, 0xb00327c8, 0xbf597fc7, 0xc6e00bf3, 0xd5a79147, 0x06ca6351, 0x14292967,
+        0x27b70a85, 0x2e1b2138, 0x4d2c6dfc, 0x53380d13, 0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85,
+        0xa2bfe8a1, 0xa81a664b, 0xc24b8b70, 0xc76c51a3, 0xd192e819, 0xd6990624, 0xf40e3585, 0x106aa070,
+        0x19a4c116, 0x1e376c08, 0x2748774c, 0x34b0bcb5, 0x391c0cb3, 0x4ed8aa4a, 0x5b9cca4f, 0x682e6ff3,
+        0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2
+    ];
+
+    function _apeSha256(bytes) {
+        const K = _APE_SHA256_K;
+        let h0 = 0x6a09e667 | 0, h1 = 0xbb67ae85 | 0, h2 = 0x3c6ef372 | 0, h3 = 0xa54ff53a | 0,
+            h4 = 0x510e527f | 0, h5 = 0x9b05688c | 0, h6 = 0x1f83d9ab | 0, h7 = 0x5be0cd19 | 0;
+        const ml = bytes.length * 8;
+        const p = bytes.slice();
+        p.push(0x80);
+        while (p.length % 64 !== 56) p.push(0);
+        const hi = Math.floor(ml / 0x100000000), lo = ml >>> 0;
+        p.push((hi >>> 24) & 255, (hi >>> 16) & 255, (hi >>> 8) & 255, hi & 255,
+               (lo >>> 24) & 255, (lo >>> 16) & 255, (lo >>> 8) & 255, lo & 255);
+        const w = new Array(64);
+        for (let off = 0; off < p.length; off += 64) {
+            for (let i = 0; i < 16; i++) {
+                w[i] = ((p[off + i * 4] << 24) | (p[off + i * 4 + 1] << 16) | (p[off + i * 4 + 2] << 8) | p[off + i * 4 + 3]) | 0;
+            }
+            for (let i = 16; i < 64; i++) {
+                const s0 = (_apeRotr(w[i - 15], 7) ^ _apeRotr(w[i - 15], 18) ^ (w[i - 15] >>> 3));
+                const s1 = (_apeRotr(w[i - 2], 17) ^ _apeRotr(w[i - 2], 19) ^ (w[i - 2] >>> 10));
+                w[i] = (w[i - 16] + s0 + w[i - 7] + s1) | 0;
+            }
+            let a = h0, b = h1, c = h2, d = h3, e = h4, f = h5, g = h6, h = h7;
+            for (let i = 0; i < 64; i++) {
+                const S1 = _apeRotr(e, 6) ^ _apeRotr(e, 11) ^ _apeRotr(e, 25);
+                const ch = (e & f) ^ (~e & g);
+                const t1 = (h + S1 + ch + K[i] + w[i]) | 0;
+                const S0 = _apeRotr(a, 2) ^ _apeRotr(a, 13) ^ _apeRotr(a, 22);
+                const maj = (a & b) ^ (a & c) ^ (b & c);
+                const t2 = (S0 + maj) | 0;
+                h = g; g = f; f = e; e = (d + t1) | 0; d = c; c = b; b = a; a = (t1 + t2) | 0;
+            }
+            h0 = (h0 + a) | 0; h1 = (h1 + b) | 0; h2 = (h2 + c) | 0; h3 = (h3 + d) | 0;
+            h4 = (h4 + e) | 0; h5 = (h5 + f) | 0; h6 = (h6 + g) | 0; h7 = (h7 + h) | 0;
+        }
+        const out = [];
+        [h0, h1, h2, h3, h4, h5, h6, h7].forEach(x => {
+            out.push((x >>> 24) & 255, (x >>> 16) & 255, (x >>> 8) & 255, x & 255);
+        });
+        return out;
+    }
+
+    function _apeHmacSha256Hex(keyStr, msgStr) {
+        let key = _apeUtf8Bytes(keyStr);
+        if (key.length > 64) key = _apeSha256(key);
+        while (key.length < 64) key.push(0);
+        const ipad = key.map(b => b ^ 0x36);
+        const opad = key.map(b => b ^ 0x5c);
+        const inner = _apeSha256(ipad.concat(_apeUtf8Bytes(msgStr)));
+        const outer = _apeSha256(opad.concat(inner));
+        return outer.map(b => b.toString(16).padStart(2, '0')).join('');
+    }
+
+    // payload = máscara de 1000 bits (125 B, bit i = slot i presente) ‖ body 2 B BE por
+    // bit encendido, en orden de slot ascendente. Diccionario FIJADO por el contrato
+    // docs/rea/14_APE_A_CONTRACT.md + _vps_stage/lua/ape_attr.lua (M.SLOT):
+    //   0 URL_DELTA · 1 CODEC_ORDER · 2 VIDEO_TRACK · 3 SOURCE_FORMAT · 4 HTTP_UA_MODE
+    //   5 HTTP_REFERER_MODE · 6 FLAGS · 16-895 D6 · 896-959 diag · 960-999 ctrl
+    // Sólo se emite lo que el generador SABE (SOURCE_FORMAT). El resto se omite y el
+    // endpoint aplica su default seguro; inventar slots sería fabricar atributos.
+    // t56 — enriquecimiento ADITIVO: 7 posiciones de slot, 2 B BE, 0xFFFF = vacío.
+    // Diccionario fijado por el contrato (14_APE_A_CONTRACT §3 + ape_attr.lua M.SLOT L240-247):
+    //   0 URL_DELTA · 1 CODEC_ORDER · 2 VIDEO_TRACK · 3 SOURCE_FORMAT · 4 HTTP_UA_MODE
+    //   5 HTTP_REFERER_MODE · 6 FLAGS
+    // NADA se elimina: las 54 líneas legacy y las 1.293 del namespace APE custom siguen
+    // intactas; esto sólo hace crecer el payload de la MISMA línea /a. Si no hay dato, el
+    // slot no viaja (0xFFFF).
+    function _apeAttrPayload(slots) {
+        const mask = new Array(125).fill(0);
+        const body = [];
+        const put = (idx, val) => {
+            const v = Number(val);
+            if (!isFinite(v) || v < 0 || v > 0xFFFE) return;
+            mask[idx >> 3] |= (1 << (idx & 7));            // LSB-first: igual que ape_attr.lua L219
+            body.push((v >> 8) & 0xFF, v & 0xFF);           // big-endian: igual que ape_attr.lua L231
+        };
+        const s = slots || {};
+
+        // slot 0 · URL_DELTA = 0 → sin cambio: el endpoint omite D0 y el player usa la URL-1
+        // (ape_attr.lua L281 sólo emite D0 cuando el valor es 1).
+        put(0, 0);
+
+        // slot 1 · CODEC_ORDER = 0 → orden normal `hard,exo1,soft_vlc`; 1 = invertido si hay
+        // interlace real. El generador no expone el dato de interlace ⇒ se queda en 0.
+        put(1, (s.interlace === true) ? 1 : 0);
+
+        // slot 2 · VIDEO_TRACK → el generador NO conoce índice de pista ⇒ NO se emite (0xFFFF).
+        // El contrato lo define como ÍNDICE de pista, no como resolución.
+
+        // slot 3 · SOURCE_FORMAT: 0 auto · 1 ts · 2 fmp4 · 3 hls-ll (sólo si es determinable)
+        if (s.sourceFormat === 1 || s.sourceFormat === 2 || s.sourceFormat === 3) put(3, s.sourceFormat);
+
+        // slots 4 y 5 · HTTP_UA_MODE / HTTP_REFERER_MODE = 0 → "no tocar": la lista ya fija
+        // User-Agent y Referer; el endpoint no debe reescribirlos.
+        put(4, 0);
+        put(5, 0);
+
+        // slot 6 · FLAGS (mapa de t56): 0x0002 want_b · 0x0004 hdr · 0x0008 uhd4k ·
+        // 0x0010 uhd8k · 0x0020 interlace. Sólo se enciende lo que el canal declara de verdad.
+        let flags = 0;
+        if (s.interlace === true) flags |= 0x0020;
+        const hdrTxt = String(s.hdr || '').toLowerCase();
+        if (hdrTxt && hdrTxt.indexOf('sdr') === -1) flags |= 0x0004;
+        const mr = String(s.resolution || '').match(/(\d{2,5})\s*[xX×]\s*(\d{2,5})/);
+        if (mr) {
+            const w = parseInt(mr[1], 10), hh = parseInt(mr[2], 10);
+            if (w >= 7680 || hh >= 4320) flags |= 0x0010;        // uhd8k
+            else if (w >= 3840 || hh >= 2160) flags |= 0x0008;   // uhd4k
+        }
+        put(6, flags);
+
+        // ══════════════════════════════════════════════════════════════════════
+        // t57 — SLOTS DE CALIDAD (namespace custom 16-895). Sólo se emite el slot
+        // cuando el generador TIENE el dato real del canal; si no, se omite (0xFFFF).
+        // ══════════════════════════════════════════════════════════════════════
+
+        // slot 16 · AUDIO_CODEC: 1 AAC · 2 AC3 · 3 EAC3 · 4 AC4 · 5 OPUS · 6 MP3 · 7 otro
+        const ac = String(s.audioCodec || '').toLowerCase();
+        if (ac) {
+            let audioCode = 0;
+            if (/ec-3|eac3|e-ac3/.test(ac)) audioCode = 3;
+            else if (/ac-3|ac3/.test(ac)) audioCode = 2;
+            else if (/ac-4|ac4/.test(ac)) audioCode = 4;
+            else if (/opus/.test(ac)) audioCode = 5;
+            else if (/mp3/.test(ac)) audioCode = 6;
+            else if (/mp4a|aac/.test(ac)) audioCode = 1;
+            else audioCode = 7;
+            put(16, audioCode);
+        }
+
+        // slot 20 · HDR_PROFILE: 0 SDR · 1 HDR10 · 2 HLG · 3 HDR10+ · 4 DV P8.1 · 5 DV P5 · 6 DV P8.2
+        // Fuente: cfg.hdr_mode del LAB (DOLBY_VISION/HDR10PLUS/HDR10/HLG/SDR); fallback al
+        // hdr del resolver. El generador NO distingue el perfil DV (P5/P8.1/P8.2) ⇒ se declara 4.
+        const hm = String(s.hdrMode || '').toUpperCase();
+        const ht = String(s.hdr || '').toUpperCase();
+        let hdrCode = -1;
+        if (hm === 'DOLBY_VISION' || /DVH1|DVHE|DOLBY/.test(ht)) hdrCode = 4;
+        else if (hm === 'HDR10PLUS' || /HDR10\+|10PLUS/.test(ht)) hdrCode = 3;
+        else if (hm === 'HDR10' || /HDR10/.test(ht)) hdrCode = 1;
+        else if (hm === 'HLG' || /HLG/.test(ht)) hdrCode = 2;
+        else if (hm === 'SDR') hdrCode = 0;
+        if (hdrCode >= 0) put(20, hdrCode);
+
+        // slot 21 · QUALITY_PROFILE: 0=P0 … 5=P5 — del perfil con el que se genera el canal
+        const qm = String(s.qualityProfile || '').match(/^P([0-5])$/);
+        if (qm) put(21, parseInt(qm[1], 10));
+
+        // slot 22 · BIT_DEPTH: derivado del códec DECLARADO (no inventado):
+        // hvc1/hev1 .2 → Main10 (10) · .4 → Main12 (12) · .1 → Main (8) · av01 … .10 → 10 · avc1 → 8
+        const cdc = String(s.codec || '').toLowerCase();
+        if (cdc) {
+            let depth = 0;
+            if (/^hvc1\.2|^hev1\.2/.test(cdc)) depth = 10;
+            else if (/^hvc1\.4|^hev1\.4/.test(cdc)) depth = 12;
+            else if (/^hvc1\.1|^hev1\.1/.test(cdc)) depth = 8;
+            else if (/^av01/.test(cdc)) depth = /\.10(\.|$)/.test(cdc) ? 10 : 8;
+            else if (/^avc1/.test(cdc)) depth = 8;
+            if (depth) put(22, depth);
+        }
+
+        // slot 23 · FRAME_RATE ×100 (2397 = 23,97 fps)
+        const fpsNum = Number(s.frameRate);
+        if (isFinite(fpsNum) && fpsNum > 0 && fpsNum < 300) put(23, Math.round(fpsNum * 100));
+
+        // slots 24/25 · SOURCE_W / SOURCE_H
+        if (mr) { put(24, parseInt(mr[1], 10)); put(25, parseInt(mr[2], 10)); }
+
+        // slot 26 · TIER: 0=F0 … 5=F5 (tier real del resolver; si no corrió, se omite)
+        const tm = String(s.tier || '').match(/^F([0-5])/);
+        if (tm) put(26, parseInt(tm[1], 10));
+
+        return _apeB64Url(mask.concat(body));
+    }
+
+    function _apeIsTiviMateUa(ua) { return /TiviMate/i.test(String(ua == null ? '' : ua)); }
+
+    // URL firmada por canal. Devuelve null (⇒ NO se emite línea) si falta la clave.
+    function _apeBuildAttrFromUrl(channel, profile, nonce, ua, slots) {
+        const cfg = _apeAttrCfg();
+        if (!cfg || cfg.enabled === false) return null;
+        const key = cfg.key || cfg.hmacKey || '';
+        if (typeof key !== 'string' || key.length === 0) return null;   // sin clave ⇒ sin línea
+        if (_apeIsTiviMateUa(ua)) return null;                          // TiviMate ignora el tag ⇒ no ensuciar
+        const host = (typeof cfg.host === 'string' && cfg.host) ? cfg.host.replace(/\/+$/, '') : 'https://iptv-ape.duckdns.org';
+        const p = /^P[0-5]$/.test(String(profile || '')) ? String(profile) : 'P3';
+        const id = String((channel && (channel.id || channel.name)) || '');
+        if (!id) return null;
+        const c = _apeB64Url(_apeUtf8Bytes(id));
+        const s = String(cfg.sessionNonce || nonce || '').replace(/[^A-Za-z0-9_-]/g, '').slice(0, 32);
+        if (!c || !s) return null;
+        const payload = _apeAttrPayload(slots);
+        // Canónico EXACTO del contrato: "2|c|s|p|payload" (ape_attr.lua L11, 14_APE_A_CONTRACT L18).
+        const canonical = '2|' + c + '|' + s + '|' + p + '|' + payload;
+        const h = _apeHmacSha256Hex(key, canonical).slice(0, 32);
+        return '#EXTATTRFROMURL:' + host + '/a/2/' + c + '/' + s + '/' + p + '/' + payload + '/' + h;
+    }
+
+    // SOURCE_FORMAT (slot 3) derivado de la URL real del canal: 1 ts · 2 fmp4 · 3 hls-ll.
+    function _apeSourceFormat(channel) {
+        const u = String((channel && channel.url) || '').toLowerCase().split('?')[0];
+        if (/\.ts$/.test(u)) return 1;
+        if (/\.m4s$|\.cmfv$|\.mp4$|init\.mp4$/.test(u)) return 2;
+        if (/\.m3u8$/.test(u)) return 3;
+        return 0;
+    }
+
+    // UA con perfil: CONSERVA el prefijo del proveedor y AÑADE sufijo (nunca reemplaza).
+    // Default OFF (sin config ⇒ devuelve el UA intacto). Lista blanca por host.
+    function _apeUaWithProfile(ua, profile, channel) {
+        const cfg = _apeAttrCfg();
+        if (!cfg || cfg.uaSuffix === false) return ua;
+        const base = String(ua == null ? '' : ua);
+        if (!base) return ua;
+        if (base.indexOf('APE/1.0') !== -1) return base;   // idempotente
+        let host = '';
+        try { host = (channel && channel.url) ? new URL(channel.url).hostname : ''; } catch (e) { host = ''; }
+        if (!host) host = String((channel && channel._host) || '');
+        const wl = Array.isArray(cfg.uaWhitelist) ? cfg.uaWhitelist : null;
+        if (wl && wl.length > 0) {
+            const ok = wl.some(hh => hh && (host === hh || host.endsWith('.' + hh)));
+            if (!ok) return ua;                             // host no autorizado ⇒ UA intacto
+        }
+        const p = /^P[0-5]$/.test(String(profile || '')) ? String(profile) : 'P3';
+        const dev = (String(cfg.devModel || 'generic').replace(/[^A-Za-z0-9._-]/g, '').slice(0, 32)) || 'generic';
+        const soc = (String(cfg.soc || 'unknown').replace(/[^A-Za-z0-9._-]/g, '').slice(0, 32)) || 'unknown';
+        return base + ' APE/1.0 dev=' + dev + ' soc=' + soc + ' p=' + p;
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // t60 — 4K FAKE UNIVERSAL (orden directa del propietario, repo-only)
+    // Reescribe SOLO los atributos RESOLUTION y CODECS de cada #EXT-X-STREAM-INF.
+    // NO borra líneas: conserva BANDWIDTH/AVERAGE-BANDWIDTH/FRAME-RATE/HDCP/VIDEO-RANGE
+    // y todo lo demás; sólo añade marcas al bloque del canal.
+    // El 8K NO se declara en RESOLUTION por defecto: el 8K fake es display-side y va
+    // marcado (#EXT-X-APE-8KFAKE ... NEVER_REAL=1). Para que RESOLUTION diga 8K hace
+    // falta el flag explícito window.APE_8K_DECLARE === true (por defecto OFF).
+    // ═══════════════════════════════════════════════════════════════════════════
+    // t63 — Crystal UHD: intensidad del post-proceso (VPP) por perfil. Cuanto PEOR es la
+    // fuente, MÁS ayuda necesita el display ⇒ P5 (SD) lleva más intensidad que P1 (4K).
+    // Es METADATA para el daemon/ARA: la playlist no toca píxeles (PIXELS=0, SCOPE=DISPLAY).
+    const _APE_CRYSTAL_VPP = { P0: 40, P1: 35, P2: 45, P3: 55, P4: 70, P5: 85 };
+    function _apeCrystalVppLine(profile) {
+        const p = /^P[0-5]$/.test(String(profile || '')) ? String(profile) : 'P3';
+        const n = _APE_CRYSTAL_VPP[p];
+        return '#EXT-X-APE-CRYSTAL-UHD:PROFILE=' + p + ';VPP_INTENSITY=' + n + ';SCOPE=DISPLAY;PIXELS=0';
+    }
+
+    function _apeApply4kFake(m3u, ctx) {
+        const c = ctx || {};
+        const declare8k = (typeof window !== 'undefined' && window.APE_8K_DECLARE === true);
+        const targetRes = declare8k ? '7680x4320' : '3840x2160';
+        const targetCodecs = 'hvc1.2.4.L153.B0,mp4a.40.2';
+        const FIXED_SI = '#EXT-X-STREAM-INF:BANDWIDTH=28000000,AVERAGE-BANDWIDTH=22000000,RESOLUTION='
+            + targetRes + ',FRAME-RATE=30.000,CODECS="' + targetCodecs + '",VIDEO-RANGE=PQ';
+
+        let lines = String(m3u == null ? '' : m3u).split('\n');
+
+        // índice de la URI del bloque = última línea no vacía que no es tag
+        const uriIdxOf = (arr) => {
+            for (let i = arr.length - 1; i >= 0; i--) {
+                const t = arr[i].trim();
+                if (t && t.charAt(0) !== '#') return i;
+            }
+            return -1;
+        };
+
+        // (1) t61 — todo bloque DEBE declarar variante. Canal sin STREAM-INF (caso de los
+        // 45 de la lista publicada, p.ej. tvg-id 904505/904507): se inserta la línea fija
+        // INMEDIATAMENTE ANTES de la URI, conservando todo lo demás.
+        if (!lines.some(l => l.startsWith('#EXT-X-STREAM-INF:'))) {
+            const u0 = uriIdxOf(lines);
+            if (u0 !== -1) lines.splice(u0, 0, FIXED_SI);
+            else lines.push(FIXED_SI);
+        }
+
+        // (2) Reescribir RESOLUTION/CODECS de cada variante.
+        for (let i = 0; i < lines.length; i++) {
+            if (!lines[i].startsWith('#EXT-X-STREAM-INF:')) continue;
+            let l = lines[i];
+            if (/RESOLUTION=\d+x\d+/.test(l)) l = l.replace(/RESOLUTION=\d+x\d+/, 'RESOLUTION=' + targetRes);
+            else l = l + ',RESOLUTION=' + targetRes;
+            if (/CODECS="[^"]*"/.test(l)) l = l.replace(/CODECS="[^"]*"/, 'CODECS="' + targetCodecs + '"');
+            else l = l + ',CODECS="' + targetCodecs + '"';
+            lines[i] = l;
+        }
+
+        // (3) ORDEN ESTRUCTURAL (t61) — el STREAM-INF debe ir INMEDIATAMENTE seguido de la URI.
+        // Lo que quede entre medias (tags #EXT-X-APE-*, #EXTHTTP, etc.) se MUEVE a antes del
+        // STREAM-INF; no se borra ni se altera.
+        let i = 0;
+        while (i < lines.length) {
+            if (lines[i].startsWith('#EXT-X-STREAM-INF:')) {
+                const u = uriIdxOf(lines);
+                if (u > i + 1) {
+                    const between = lines.slice(i + 1, u);
+                    lines = [].concat(lines.slice(0, i), between, [lines[i]], [lines[u]], lines.slice(u + 1));
+                    i = i + between.length;              // queda apuntando al STREAM-INF movido
+                }
+            }
+            i++;
+        }
+
+        // (4) Marca de modo 4K fake: una sola vez por canal (ya existía en el generador).
+        const MK4K = '#EXT-X-APE-4KFALSE-MODE:ACTIVE';
+        if (lines.indexOf(MK4K) === -1 && !lines.some(l => l.startsWith('#EXT-X-APE-4KFALSE-MODE:'))) {
+            const si = lines.findIndex(l => l.startsWith('#EXT-X-STREAM-INF:'));
+            if (si !== -1) lines.splice(si, 0, MK4K);
+            else lines.unshift(MK4K);
+        }
+
+        // (5) t61 — marcas 8K fake / 4K premium en TODOS los canales (antes: sólo nativos).
+        // El 8K sigue siendo display-side y marcado NEVER_REAL=1: NO se pone 7680x4320 salvo flag.
+        const marks = [
+            '#EXT-X-APE-8KFAKE:ENABLED=1;NEVER_REAL=1;TARGET=DISPLAY',
+            '#EXT-X-APE-4K-PREMIUM:ACTIVE'
+        ];
+        for (const mk of marks) {
+            const tag = mk.split(':')[0] + ':';
+            if (lines.some(l => l.startsWith(tag))) continue;
+            const si2 = lines.findIndex(l => l.startsWith('#EXT-X-STREAM-INF:'));
+            if (si2 !== -1) lines.splice(si2, 0, mk);
+            else lines.unshift(mk);
+        }
+
+        return lines.join('\n');
+    }
+
     function generateChannelEntry(channel, profile = 'P3', index = 0, credentialsMap = {}, options = {}) {
         const lines = [];
 
@@ -7853,6 +8298,9 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
         const _uaVLC = UAPhantomEngine.get('VLC');
         const _uaSafari = UAPhantomEngine.get('SAFARI');
         const _randomIp = getRandomIp();
+        // t48 — UA con perfil: sufijo APE/1.0 AÑADIDO al prefijo del proveedor.
+        // Default OFF: sin window.APE_ATTRFROMURL devuelve el UA intacto (cero cambio).
+        const _uaApeProfile = _apeUaWithProfile(_ua796, profile, channel);
 
         // ── PERFIL DESDE ARRAY DE ORIGEN ─────────────────────────────────────
         const cfg = getProfileConfig(profile);
@@ -8052,7 +8500,7 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
         lines.push(`#EXTVLCOPT:network-reconnect-count=99`);
         lines.push(`#EXTVLCOPT:network-reconnect-fade-in=true`);
         lines.push(`#EXTVLCOPT:network-continuous-stream=true`);
-        lines.push(`#EXTVLCOPT:http-user-agent=${_ua796}`);
+        lines.push(`#EXTVLCOPT:http-user-agent=${_uaApeProfile}`);
         lines.push(`#EXTVLCOPT:http-referrer=https://www.google.com/`);
         lines.push(`#EXTVLCOPT:http-forward-cookies=true`);
         lines.push(`#EXTVLCOPT:http-reconnect=true`);
@@ -8393,7 +8841,7 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
             'X-APE-Bandwidth': String(_bw796),
             'X-APE-Avg-Bandwidth': String(_avgBw),
             // Identidad y sesión
-            'User-Agent': _ua796,
+            'User-Agent': _uaApeProfile,
             // C1 (2026-04-30) — 10 X-User-Agent-{Android,iOS,Chrome,TiviMate,OTT,
             // Kodi,ExoPlayer,VLC,Safari} REMOVED. Llevaban UAs cruzados de label
             // (Android con UA Windows, iOS con UA MAG322, etc.) → fingerprint anti-bot
@@ -8694,6 +9142,16 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
         // _httpPayload es el objeto que se serializa en #EXTHTTP justo abajo.
         const _denylistRes = __apeFilterToxicHeaders(_httpPayload);
         _sanitizePayloadSize(_httpPayload); // F1: compresión preventiva si >7800B, hard-cap 8192B
+        // t63 — APE Realtime Engine v10: CMCD (RFC 9000) + QoE + ABR al bloque #EXTHTTP.
+        // Aditivo: Object.assign sobre el payload existente; si el motor no está cargado,
+        // el try/catch deja el bloque byte-idéntico a como estaba.
+        try {
+            if (typeof window !== 'undefined' && window.ApeRealtimeEngine
+                && typeof window.ApeRealtimeEngine.injectHeaders === 'function') {
+                window.ApeRealtimeEngine.injectHeaders(_httpPayload, profile,
+                    (channel && (channel.stream_id || channel.id)) || '');
+            }
+        } catch (_eRt) { /* aditivo: nunca rompe la generación */ }
         let _exthttpJson = JSON.stringify(_httpPayload);
         for (const [ph, val] of Object.entries(_phResolve)) {
             if (typeof val !== 'string' && typeof val !== 'number') continue;
@@ -9082,6 +9540,28 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
         lines.push(`#EXTATTRFROMURL:X-APE-SPORT-MODE=true`);
         lines.push(`#EXTATTRFROMURL:X-APE-SPORT-MODE-BOOST=true`);
         lines.push(`#EXTATTRFROMURL:X-APE-QUANTUM-PIXEL=12BIT`);
+
+        // ════════════════════════════════════════════════════════════════════════
+        // L7b — EXTATTRFROMURL POR CANAL (t48, REPO-ONLY) — exactamente 1 línea
+        // URL: <host>/a/2/{c}/{s}/{p}/{payload}/{h}   (c=base64url(id), s=nonce de
+        // sesión, p=P0-P5, payload=máscara+slots 2B, h=HMAC-SHA256[:32] hex)
+        // Sin clave en window.APE_ATTRFROMURL.key ⇒ 0 líneas (no se inventa firma).
+        // TiviMate ignora el tag y OTT Navigator lo usa: si el UA es TiviMate-only
+        // no se emite. La URL-1 del canal NO se toca.
+        // ════════════════════════════════════════════════════════════════════════
+        const _attrFromUrlLine = _apeBuildAttrFromUrl(channel, profile, _nonce796, _uaApeProfile, {
+            sourceFormat: _apeSourceFormat(channel),
+            resolution: _res796,                                            // t56 → FLAGS uhd4k/uhd8k
+            hdr: (_apeTruth && _apeTruth.hdr) ? _apeTruth.hdr : '',          // t56 → FLAGS hdr
+            // t57 — slots de calidad, con datos reales del canal
+            audioCodec: _codecAudio,
+            hdrMode: cfg.hdr_mode,
+            qualityProfile: profile,
+            codec: _codec796,
+            frameRate: _fps796,
+            tier: (_apeTruth && _apeTruth.tier) ? _apeTruth.tier : ''
+        });
+        if (_attrFromUrlLine) lines.push(_attrFromUrlLine);
 
         // ════════════════════════════════════════════════════════════════════════
         // L8 — EXT-X-APE-* NÚCLEO CRYSTAL (510 líneas, 23 secciones × ~22)
@@ -10539,6 +11019,37 @@ lines.push(`#EXT-X-APE-STREAM-TRUTH:src=${_streamTruth.source},w=${_streamTruth.
         // del resolver EXTHTTP (líneas 6611-6651), por ejemplo en EXTVLCOPT y KODIPROP.
         // Bug conocido sin esto: lista emite literal `http-user-agent={config.user_agent}`
         // y reproductor lo manda al shield como UA literal. (caso 2026-04-26)
+        // ═══ t63 — APE Realtime Engine v10: #EXTVLCOPT por perfil (P0 90000 → P5 10000) ═══
+        // Idempotente (el motor comprueba si la clave ya existe). Se inyecta ANTES del
+        // join para que quede dentro del bloque; el reorden de t60/t61 mantiene STREAM-INF→URI.
+        try {
+            if (typeof window !== 'undefined' && window.ApeRealtimeEngine
+                && typeof window.ApeRealtimeEngine.injectVlcopt === 'function') {
+                // t63 — network-caching por perfil (P0 90000 → P5 10000). Regla de precedencia:
+                // si el LAB aportó el valor (_labBufMs válido) se RESPETA y no se toca (doctrina
+                // iptv-lab-ssot-no-clamp). Sólo cuando el generador está en el fallback hardcodeado
+                // se aplica la tabla del motor. No se borra ninguna línea: se ajusta el valor.
+                if (Number.isNaN(_labBufMs)) {
+                    const _rtP = (typeof window.ApeRealtimeEngine.getProfile === 'function')
+                        ? window.ApeRealtimeEngine.getProfile(profile) : null;
+                    const _rtNc = (_rtP && _rtP.vlcopt) ? parseInt(_rtP.vlcopt['network-caching'], 10) : NaN;
+                    if (!Number.isNaN(_rtNc)) {
+                        const _iNc = lines.findIndex(l => typeof l === 'string' && l.indexOf('#EXTVLCOPT:network-caching=') === 0);
+                        if (_iNc !== -1) lines[_iNc] = '#EXTVLCOPT:network-caching=' + _rtNc;
+                    }
+                }
+                window.ApeRealtimeEngine.injectVlcopt(lines, profile);
+            }
+            if (typeof window !== 'undefined') window.__APE_ACTIVE_PROFILE__ = profile;
+        } catch (_eVlc) { /* aditivo: nunca rompe la generación */ }
+
+        // ═══ t63 — Crystal UHD: intensidad VPP por perfil (metadata, sin píxeles) ═══
+        try {
+            if (!lines.some(l => typeof l === 'string' && l.indexOf('#EXT-X-APE-CRYSTAL-UHD:') === 0)) {
+                lines.push(_apeCrystalVppLine(profile));
+            }
+        } catch (_eCry) { /* aditivo */ }
+
         let _finalM3U = lines.join('\n');
         // ═══ t29 · C5 · última defensa (string-level): quita pares "Tóxico":valor ═══
         // Cubre EXTHTTP y CUALQUIER stream_headers serializado que llegue al texto.
@@ -10619,6 +11130,14 @@ lines.push(`#EXT-X-APE-STREAM-TRUTH:src=${_streamTruth.source},w=${_streamTruth.
             _finalM3U = _finalM3U.replace(/SERVER-URI="pool:\/\/[^"]*"/gi,
                 'SERVER-URI="https://iptv-ape.duckdns.org/prisma/api/content-steering.php"');
         }
+
+        // ═══ t60 — 4K FAKE UNIVERSAL (orden del propietario) ═══
+        // Reescribe atributos de los STREAM-INF + añade marcas. No elimina ninguna línea.
+        _finalM3U = _apeApply4kFake(_finalM3U, {
+            profile: profile,
+            res: _res796,
+            name: (channel && channel.name) || ''
+        });
 
         return _finalM3U;
     }
@@ -11639,6 +12158,513 @@ lines.push(`#EXT-X-APE-STREAM-TRUTH:src=${_streamTruth.source},w=${_streamTruth.
         }
         setTimeout(() => { if (btn) btn.innerHTML = oText; }, 3000);
     }
+
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // t63 — APE REALTIME ENGINE v10 (skill iptv-realtime-engine-integrator)
+    // Módulo ADITIVO: expone window.ApeRealtimeEngine (CMCD RFC 9000, QoE, ABR y
+    // EXTVLCOPT por perfil P0-P5: network-caching 90000 → 10000). Guard de doble
+    // inyección propio del módulo. No modifica ni reordena nada existente.
+    // ═══════════════════════════════════════════════════════════════════════════
+/**
+ * ╔══════════════════════════════════════════════════════════════════════════════╗
+ * ║   APE REALTIME ENGINE MODULE v10.0                                          ║
+ * ║   Integración Quirúrgica de Perfiles P0-P5 al Gestor de Headers             ║
+ * ║                                                                              ║
+ * ║   INSTRUCCIONES DE INYECCIÓN:                                                ║
+ * ║   1. Pegar este módulo ANTES del cierre del IIFE principal del generador.    ║
+ * ║   2. Llamar a ApeRealtimeEngine.init() después de que ApeProfileManager     ║
+ * ║      cargue el perfil activo.                                                ║
+ * ║   3. En generateChannelEntry(), llamar a                                     ║
+ * ║      ApeRealtimeEngine.injectHeaders(httpHeadersObj, profileId) para        ║
+ * ║      enriquecer el bloque #EXTHTTP.                                          ║
+ * ║   4. Llamar a ApeRealtimeEngine.injectVlcopt(linesArray, profileId) para    ║
+ * ║      enriquecer el bloque #EXTVLCOPT.                                        ║
+ * ║                                                                              ║
+ * ║   GARANTÍAS:                                                                 ║
+ * ║   - NO modifica ninguna función existente.                                   ║
+ * ║   - NO altera el orden de directivas (RFC 8216 intacto).                    ║
+ * ║   - ES idempotente: llamarlo N veces produce el mismo resultado.             ║
+ * ║   - ES polimórfico: cada perfil (P0-P5) produce headers distintos.          ║
+ * ╚══════════════════════════════════════════════════════════════════════════════╝
+ */
+
+// ─── GUARD: Evitar doble inyección ───────────────────────────────────────────
+if (typeof window.__APE_REALTIME_ENGINE_v10__ === 'undefined') {
+window.__APE_REALTIME_ENGINE_v10__ = true;
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SECCIÓN 1: CONFIGURACIONES POR PERFIL (P0 → P5)
+// Fuentes: HLS.js v1.6, Bitmovin Stream Lab, Shaka v4.x, ExoPlayer Media3,
+//          Mux Data QoE, Akamai Stream Validator, CMCD RFC 9000
+// ─────────────────────────────────────────────────────────────────────────────
+
+const APE_PROFILE_MATRIX = {
+
+  // ── P0: GOD TIER 8K OMEGA ──────────────────────────────────────────────────
+  P0: {
+    _meta: { name: 'GOD_TIER_8K_OMEGA_REALTIME', bitrate: 150000000, resolution: '7680x4320', fps: 120, codec: 'dvh1.08.06,ec-3' },
+
+    // HLS.js v1.6 — Ventanas EWMA agresivas, buffer máximo, LL-HLS activo
+    hlsjs: {
+      maxBufferLength: 60, maxMaxBufferLength: 600, backBufferLength: 120,
+      maxBufferSize: 60 * 1024 * 1024, maxBufferHole: 0.5,
+      liveSyncDurationCount: 3, liveMaxLatencyDurationCount: 10,
+      lowLatencyMode: true, enableWorker: true,
+      abrEwmaFastLive: 3.0, abrEwmaSlowLive: 9.0,
+      abrBandWidthFactor: 0.98, abrBandWidthUpFactor: 0.90,
+      abrMaxWithRealBitrate: true, abrSwitchInterval: 5,
+      detectStallWithCurrentTimeMs: 250, nudgeOffset: 0.1, nudgeMaxRetry: 3,
+      fragLoadPolicy_maxTimeToFirstByteMs: 8000, fragLoadPolicy_maxNumRetry: 6,
+      cmcd_useHeaders: true,
+    },
+
+    // ExoPlayer Media3 — Buffers enormes para 8K
+    exoplayer: {
+      minBufferMs: 90000, maxBufferMs: 180000,
+      bufferForPlaybackMs: 2500, bufferForPlaybackAfterRebufferMs: 5000,
+      liveTargetOffsetMs: 3000, liveMinPlaybackSpeed: 0.97, liveMaxPlaybackSpeed: 1.03,
+    },
+
+    // Shaka Player v4.x
+    shaka: {
+      bufferingGoal: 60, rebufferingGoal: 2, bufferBehind: 60,
+      stallThreshold: 1.0, stallSkip: 0.1,
+      abr_switchInterval: 5, abr_bandwidthUpgradeTarget: 0.85, abr_bandwidthDowngradeTarget: 0.95,
+    },
+
+    // VLC/Kodi opts
+    vlcopt: {
+      'network-caching': '90000', 'live-caching': '45000',
+      'clock-jitter': '0', 'clock-synchro': '0',
+      'http-reconnect': 'true', 'http-continuous-stream': 'true',
+      'http-max-retries': '99', 'http-timeout': '8000',
+      'avcodec-dr': '1', 'avcodec-hw': 'any',
+      'network-continuous-stream': 'true',
+    },
+
+    // Bitrate ladder (Bitmovin Stream Lab)
+    bitrateLadder: '150000000@7680x4320x120,80000000@3840x2160x60,40000000@1920x1080x60',
+  },
+
+  // ── P1: 4K SUPREME ─────────────────────────────────────────────────────────
+  P1: {
+    _meta: { name: '4K_SUPREME_REALTIME', bitrate: 80000000, resolution: '3840x2160', fps: 60, codec: 'hvc1.2.4.L153.B0,ec-3' },
+    hlsjs: {
+      maxBufferLength: 45, maxMaxBufferLength: 600, backBufferLength: 90,
+      maxBufferSize: 60 * 1024 * 1024, maxBufferHole: 0.5,
+      liveSyncDurationCount: 3, liveMaxLatencyDurationCount: 10,
+      lowLatencyMode: true, enableWorker: true,
+      abrEwmaFastLive: 3.0, abrEwmaSlowLive: 9.0,
+      abrBandWidthFactor: 0.98, abrBandWidthUpFactor: 0.90,
+      abrMaxWithRealBitrate: true, abrSwitchInterval: 5,
+      detectStallWithCurrentTimeMs: 250, nudgeOffset: 0.1, nudgeMaxRetry: 3,
+      fragLoadPolicy_maxTimeToFirstByteMs: 8000, fragLoadPolicy_maxNumRetry: 6,
+      cmcd_useHeaders: true,
+    },
+    exoplayer: {
+      minBufferMs: 60000, maxBufferMs: 120000,
+      bufferForPlaybackMs: 2500, bufferForPlaybackAfterRebufferMs: 5000,
+      liveTargetOffsetMs: 3000, liveMinPlaybackSpeed: 0.97, liveMaxPlaybackSpeed: 1.03,
+    },
+    shaka: {
+      bufferingGoal: 45, rebufferingGoal: 2, bufferBehind: 45,
+      stallThreshold: 1.0, stallSkip: 0.1,
+      abr_switchInterval: 5, abr_bandwidthUpgradeTarget: 0.85, abr_bandwidthDowngradeTarget: 0.95,
+    },
+    vlcopt: {
+      'network-caching': '60000', 'live-caching': '30000',
+      'clock-jitter': '0', 'clock-synchro': '0',
+      'http-reconnect': 'true', 'http-continuous-stream': 'true',
+      'http-max-retries': '99', 'http-timeout': '8000',
+      'avcodec-dr': '1', 'avcodec-hw': 'any',
+      'network-continuous-stream': 'true',
+    },
+    bitrateLadder: '80000000@3840x2160x60,40000000@1920x1080x60,20000000@1920x1080x30',
+  },
+
+  // ── P2: 4K EXTREME ─────────────────────────────────────────────────────────
+  P2: {
+    _meta: { name: '4K_EXTREME_REALTIME', bitrate: 40000000, resolution: '3840x2160', fps: 60, codec: 'hvc1.2.4.L150.B0,ac-3' },
+    hlsjs: {
+      maxBufferLength: 30, maxMaxBufferLength: 600, backBufferLength: 60,
+      maxBufferSize: 60 * 1024 * 1024, maxBufferHole: 0.5,
+      liveSyncDurationCount: 3, liveMaxLatencyDurationCount: 10,
+      lowLatencyMode: true, enableWorker: true,
+      abrEwmaFastLive: 3.0, abrEwmaSlowLive: 9.0,
+      abrBandWidthFactor: 0.95, abrBandWidthUpFactor: 0.85,
+      abrMaxWithRealBitrate: true, abrSwitchInterval: 8,
+      detectStallWithCurrentTimeMs: 250, nudgeOffset: 0.1, nudgeMaxRetry: 3,
+      fragLoadPolicy_maxTimeToFirstByteMs: 8000, fragLoadPolicy_maxNumRetry: 6,
+      cmcd_useHeaders: true,
+    },
+    exoplayer: {
+      minBufferMs: 45000, maxBufferMs: 90000,
+      bufferForPlaybackMs: 2500, bufferForPlaybackAfterRebufferMs: 5000,
+      liveTargetOffsetMs: 5000, liveMinPlaybackSpeed: 0.97, liveMaxPlaybackSpeed: 1.03,
+    },
+    shaka: {
+      bufferingGoal: 30, rebufferingGoal: 2, bufferBehind: 30,
+      stallThreshold: 1.0, stallSkip: 0.1,
+      abr_switchInterval: 8, abr_bandwidthUpgradeTarget: 0.85, abr_bandwidthDowngradeTarget: 0.95,
+    },
+    vlcopt: {
+      'network-caching': '45000', 'live-caching': '22000',
+      'clock-jitter': '0', 'clock-synchro': '0',
+      'http-reconnect': 'true', 'http-continuous-stream': 'true',
+      'http-max-retries': '50', 'http-timeout': '8000',
+      'avcodec-dr': '1', 'avcodec-hw': 'any',
+      'network-continuous-stream': 'true',
+    },
+    bitrateLadder: '40000000@3840x2160x60,20000000@1920x1080x60,10000000@1280x720x60',
+  },
+
+  // ── P3: FHD ADVANCED ───────────────────────────────────────────────────────
+  P3: {
+    _meta: { name: 'FHD_ADVANCED_REALTIME', bitrate: 20000000, resolution: '1920x1080', fps: 60, codec: 'avc1.640028,mp4a.40.2' },
+    hlsjs: {
+      maxBufferLength: 20, maxMaxBufferLength: 300, backBufferLength: 45,
+      maxBufferSize: 30 * 1024 * 1024, maxBufferHole: 0.5,
+      liveSyncDurationCount: 3, liveMaxLatencyDurationCount: 10,
+      lowLatencyMode: false, enableWorker: true,
+      abrEwmaFastLive: 3.0, abrEwmaSlowLive: 9.0,
+      abrBandWidthFactor: 0.95, abrBandWidthUpFactor: 0.85,
+      abrMaxWithRealBitrate: true, abrSwitchInterval: 8,
+      detectStallWithCurrentTimeMs: 250, nudgeOffset: 0.1, nudgeMaxRetry: 3,
+      fragLoadPolicy_maxTimeToFirstByteMs: 8000, fragLoadPolicy_maxNumRetry: 4,
+      cmcd_useHeaders: true,
+    },
+    exoplayer: {
+      minBufferMs: 30000, maxBufferMs: 60000,
+      bufferForPlaybackMs: 2500, bufferForPlaybackAfterRebufferMs: 5000,
+      liveTargetOffsetMs: 5000, liveMinPlaybackSpeed: 0.97, liveMaxPlaybackSpeed: 1.03,
+    },
+    shaka: {
+      bufferingGoal: 20, rebufferingGoal: 2, bufferBehind: 20,
+      stallThreshold: 1.0, stallSkip: 0.1,
+      abr_switchInterval: 8, abr_bandwidthUpgradeTarget: 0.85, abr_bandwidthDowngradeTarget: 0.95,
+    },
+    vlcopt: {
+      'network-caching': '30000', 'live-caching': '15000',
+      'clock-jitter': '0', 'clock-synchro': '0',
+      'http-reconnect': 'true', 'http-continuous-stream': 'true',
+      'http-max-retries': '30', 'http-timeout': '8000',
+      'avcodec-dr': '1', 'avcodec-hw': 'any',
+      'network-continuous-stream': 'true',
+    },
+    bitrateLadder: '20000000@1920x1080x60,10000000@1280x720x60,5000000@1280x720x30',
+  },
+
+  // ── P4: HD STABLE ──────────────────────────────────────────────────────────
+  P4: {
+    _meta: { name: 'HD_STABLE_REALTIME', bitrate: 10000000, resolution: '1280x720', fps: 30, codec: 'avc1.4d401f,mp4a.40.2' },
+    hlsjs: {
+      maxBufferLength: 15, maxMaxBufferLength: 120, backBufferLength: 30,
+      maxBufferSize: 20 * 1024 * 1024, maxBufferHole: 0.5,
+      liveSyncDurationCount: 3, liveMaxLatencyDurationCount: 10,
+      lowLatencyMode: false, enableWorker: true,
+      abrEwmaFastLive: 3.0, abrEwmaSlowLive: 9.0,
+      abrBandWidthFactor: 0.90, abrBandWidthUpFactor: 0.80,
+      abrMaxWithRealBitrate: true, abrSwitchInterval: 10,
+      detectStallWithCurrentTimeMs: 250, nudgeOffset: 0.1, nudgeMaxRetry: 3,
+      fragLoadPolicy_maxTimeToFirstByteMs: 10000, fragLoadPolicy_maxNumRetry: 4,
+      cmcd_useHeaders: true,
+    },
+    exoplayer: {
+      minBufferMs: 20000, maxBufferMs: 45000,
+      bufferForPlaybackMs: 2500, bufferForPlaybackAfterRebufferMs: 5000,
+      liveTargetOffsetMs: 8000, liveMinPlaybackSpeed: 0.97, liveMaxPlaybackSpeed: 1.03,
+    },
+    shaka: {
+      bufferingGoal: 15, rebufferingGoal: 2, bufferBehind: 15,
+      stallThreshold: 1.0, stallSkip: 0.1,
+      abr_switchInterval: 10, abr_bandwidthUpgradeTarget: 0.80, abr_bandwidthDowngradeTarget: 0.95,
+    },
+    vlcopt: {
+      'network-caching': '20000', 'live-caching': '10000',
+      'clock-jitter': '0', 'clock-synchro': '0',
+      'http-reconnect': 'true', 'http-continuous-stream': 'true',
+      'http-max-retries': '20', 'http-timeout': '10000',
+      'avcodec-dr': '1', 'avcodec-hw': 'any',
+      'network-continuous-stream': 'true',
+    },
+    bitrateLadder: '10000000@1280x720x30,5000000@854x480x30,2000000@640x360x25',
+  },
+
+  // ── P5: SD FAILSAFE ────────────────────────────────────────────────────────
+  P5: {
+    _meta: { name: 'SD_FAILSAFE_REALTIME', bitrate: 5000000, resolution: '854x480', fps: 30, codec: 'avc1.42c01e,mp4a.40.2' },
+    hlsjs: {
+      maxBufferLength: 10, maxMaxBufferLength: 60, backBufferLength: 20,
+      maxBufferSize: 10 * 1024 * 1024, maxBufferHole: 1.0,
+      liveSyncDurationCount: 3, liveMaxLatencyDurationCount: 10,
+      lowLatencyMode: false, enableWorker: true,
+      abrEwmaFastLive: 3.0, abrEwmaSlowLive: 9.0,
+      abrBandWidthFactor: 0.85, abrBandWidthUpFactor: 0.70,
+      abrMaxWithRealBitrate: true, abrSwitchInterval: 15,
+      detectStallWithCurrentTimeMs: 250, nudgeOffset: 0.1, nudgeMaxRetry: 3,
+      fragLoadPolicy_maxTimeToFirstByteMs: 15000, fragLoadPolicy_maxNumRetry: 6,
+      cmcd_useHeaders: true,
+    },
+    exoplayer: {
+      minBufferMs: 10000, maxBufferMs: 25000,
+      bufferForPlaybackMs: 2500, bufferForPlaybackAfterRebufferMs: 5000,
+      liveTargetOffsetMs: 10000, liveMinPlaybackSpeed: 0.97, liveMaxPlaybackSpeed: 1.03,
+    },
+    shaka: {
+      bufferingGoal: 10, rebufferingGoal: 2, bufferBehind: 10,
+      stallThreshold: 1.5, stallSkip: 0.2,
+      abr_switchInterval: 15, abr_bandwidthUpgradeTarget: 0.75, abr_bandwidthDowngradeTarget: 0.95,
+    },
+    vlcopt: {
+      'network-caching': '10000', 'live-caching': '5000',
+      'clock-jitter': '0', 'clock-synchro': '0',
+      'http-reconnect': 'true', 'http-continuous-stream': 'true',
+      'http-max-retries': '10', 'http-timeout': '15000',
+      'avcodec-dr': '1', 'avcodec-hw': 'any',
+      'network-continuous-stream': 'true',
+    },
+    bitrateLadder: '5000000@854x480x30,2000000@640x360x25,800000@426x240x25',
+  },
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SECCIÓN 2: GENERADORES DE HEADERS POR PERFIL
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Genera los headers CMCD (RFC 9000) para el perfil dado.
+ * @param {string} profileId - 'P0' a 'P5'
+ * @param {string} channelId - ID del canal
+ * @returns {Object} headers CMCD
+ */
+function _buildCmcdHeaders(profileId, channelId) {
+  const p = APE_PROFILE_MATRIX[profileId];
+  if (!p) return {};
+  const br = Math.round(p._meta.bitrate / 1000); // kbps
+  const bl = p.exoplayer.minBufferMs;
+  const sid = (typeof crypto !== 'undefined' && crypto.randomUUID)
+    ? crypto.randomUUID()
+    : Math.random().toString(36).slice(2, 18);
+  return {
+    'CMCD-Object': `br=${br},ot=v,tb=${br}`,
+    'CMCD-Request': `bl=${bl},mtp=${br},su`,
+    'CMCD-Session': `sf=h,st=l,v=1,cid=${channelId || 'ape-channel'},sid=${sid}`,
+    'CMCD-Status': 'bs=false',
+  };
+}
+
+/**
+ * Genera los headers de QoE (Mux Data style) para el perfil dado.
+ * @param {string} profileId
+ * @returns {Object} headers QoE
+ */
+function _buildQoeHeaders(profileId) {
+  return {
+    'X-QoE-Startup-Target-Ms': '2000',
+    'X-QoE-Rebuffer-Ratio-Target': '0.005',
+    'X-QoE-TTFB-Target-Ms': '200',
+    'X-QoE-Bitrate-Target-Mbps': String(Math.round(APE_PROFILE_MATRIX[profileId]._meta.bitrate / 1e6)),
+    'X-QoE-Monitor': 'hlsanalyzer,qosifire,mux-data,akamai-media-analytics',
+    'X-QoE-Player': 'hlsjs-1.6,bitmovin-player,shaka-4.x,exoplayer-media3',
+  };
+}
+
+/**
+ * Genera los headers de ABR y configuración de player para el perfil dado.
+ * @param {string} profileId
+ * @returns {Object} headers de ABR y player
+ */
+function _buildPlayerConfigHeaders(profileId) {
+  const p = APE_PROFILE_MATRIX[profileId];
+  if (!p) return {};
+  return {
+    // HLS.js config compacto
+    'X-HLSjs-Config': JSON.stringify({
+      maxBufferLength: p.hlsjs.maxBufferLength,
+      backBufferLength: p.hlsjs.backBufferLength,
+      lowLatencyMode: p.hlsjs.lowLatencyMode,
+      abrEwmaFastLive: p.hlsjs.abrEwmaFastLive,
+      abrEwmaSlowLive: p.hlsjs.abrEwmaSlowLive,
+      abrBandWidthFactor: p.hlsjs.abrBandWidthFactor,
+      abrBandWidthUpFactor: p.hlsjs.abrBandWidthUpFactor,
+      abrMaxWithRealBitrate: p.hlsjs.abrMaxWithRealBitrate,
+      detectStallWithCurrentTimeMs: p.hlsjs.detectStallWithCurrentTimeMs,
+      nudgeOffset: p.hlsjs.nudgeOffset,
+    }),
+    'X-HLSjs-Version': '1.6.15',
+    // Shaka config compacto
+    'X-Shaka-Config': JSON.stringify({
+      'streaming.bufferingGoal': p.shaka.bufferingGoal,
+      'streaming.rebufferingGoal': p.shaka.rebufferingGoal,
+      'streaming.bufferBehind': p.shaka.bufferBehind,
+      'abr.switchInterval': p.shaka.abr_switchInterval,
+      'abr.bandwidthUpgradeTarget': p.shaka.abr_bandwidthUpgradeTarget,
+      'abr.bandwidthDowngradeTarget': p.shaka.abr_bandwidthDowngradeTarget,
+    }),
+    'X-Shaka-Version': '4.x',
+    // ExoPlayer config compacto
+    'X-ExoPlayer-Config': JSON.stringify({
+      minBufferMs: p.exoplayer.minBufferMs,
+      maxBufferMs: p.exoplayer.maxBufferMs,
+      bufferForPlaybackMs: p.exoplayer.bufferForPlaybackMs,
+      liveTargetOffsetMs: p.exoplayer.liveTargetOffsetMs,
+    }),
+    'X-ExoPlayer-Version': 'Media3-1.3',
+    // ABR multi-motor
+    'X-ABR-Algorithm': 'EWMA-HLSjs,BOLA-Shaka,Bandwidth-ExoPlayer',
+    'X-ABR-Fast-Window-S': String(p.hlsjs.abrEwmaFastLive),
+    'X-ABR-Slow-Window-S': String(p.hlsjs.abrEwmaSlowLive),
+    'X-ABR-BW-Factor': String(p.hlsjs.abrBandWidthFactor),
+    'X-ABR-Switch-Interval-S': String(p.hlsjs.abrSwitchInterval),
+    'X-Low-Latency-Mode': p.hlsjs.lowLatencyMode ? 'true' : 'false',
+    'X-Live-Sync-Duration-Count': String(p.hlsjs.liveSyncDurationCount),
+    'X-Live-Max-Latency-Count': String(p.hlsjs.liveMaxLatencyDurationCount),
+    'X-Stall-Detection-Ms': String(p.hlsjs.detectStallWithCurrentTimeMs),
+    'X-Fragment-Retry-Max': String(p.hlsjs.fragLoadPolicy_maxNumRetry),
+    'X-Fragment-TTFB-Max-Ms': String(p.hlsjs.fragLoadPolicy_maxTimeToFirstByteMs),
+    // Bitrate ladder
+    'X-Bitrate-Ladder': p.bitrateLadder,
+    'X-Bitrate-Ladder-Source': 'bitmovin-stream-lab-2025',
+    'X-Segment-Duration-Live': '2',
+    // Stream metadata
+    'X-Stream-Type': 'hls-live',
+    'X-Stream-Format': 'fmp4,ts',
+    'X-Stream-Codecs': p._meta.codec,
+    'X-Stream-Resolution': p._meta.resolution,
+    'X-Stream-FPS': String(p._meta.fps),
+    'X-Stream-Bitrate': String(p._meta.bitrate),
+    // QoS
+    'X-QoS-DSCP': 'EF',
+    'X-QoS-Priority': 'CS7',
+    'X-Priority': 'u=0, i',
+    'X-Request-Priority': 'high',
+    'X-ISP-TCP-Window': '16777216',
+    'X-ISP-TCP-NoDelay': 'true',
+    'X-ISP-TCP-KeepAlive': 'true',
+    // Akamai pragma
+    'X-Akamai-Pragma': 'akamai-x-cache-on,akamai-x-get-cache-key,akamai-x-get-true-cache-key',
+  };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SECCIÓN 3: API PÚBLICA — ApeRealtimeEngine
+// ─────────────────────────────────────────────────────────────────────────────
+
+window.ApeRealtimeEngine = {
+
+  VERSION: '10.0.0-REALTIME-ENGINE',
+
+  /**
+   * Inicializa el motor. Llamar una vez al arrancar el generador.
+   */
+  init() {
+    console.log(`🚀 [APE Realtime Engine v${this.VERSION}] Iniciado. Perfiles disponibles: ${Object.keys(APE_PROFILE_MATRIX).join(', ')}`);
+  },
+
+  /**
+   * Devuelve la configuración completa de un perfil.
+   * @param {string} profileId - 'P0' a 'P5'
+   * @returns {Object|null}
+   */
+  getProfile(profileId) {
+    return APE_PROFILE_MATRIX[profileId] || null;
+  },
+
+  /**
+   * Inyecta los headers v10 en el objeto de headers HTTP existente.
+   * IDEMPOTENTE: si ya tiene los headers, los sobreescribe con los mismos valores.
+   *
+   * @param {Object} httpHeadersObj - El objeto de headers que se convertirá en #EXTHTTP
+   * @param {string} profileId - 'P0' a 'P5'
+   * @param {string} [channelId] - ID del canal (para CMCD)
+   * @returns {Object} El mismo objeto httpHeadersObj, enriquecido
+   */
+  injectHeaders(httpHeadersObj, profileId, channelId) {
+    if (!APE_PROFILE_MATRIX[profileId]) {
+      console.warn(`[APE Realtime Engine] Perfil desconocido: ${profileId}. Usando P3 como fallback.`);
+      profileId = 'P3';
+    }
+
+    const cmcd = _buildCmcdHeaders(profileId, channelId);
+    const qoe = _buildQoeHeaders(profileId);
+    const player = _buildPlayerConfigHeaders(profileId);
+
+    // Merge quirúrgico: no eliminar headers existentes, solo añadir/actualizar los nuevos
+    Object.assign(httpHeadersObj, cmcd, qoe, player);
+
+    return httpHeadersObj;
+  },
+
+  /**
+   * Inyecta las opciones VLC/Kodi v10 en el array de líneas de la lista.
+   * Solo añade las opciones que NO existen ya en el array (idempotencia).
+   *
+   * @param {string[]} linesArray - El array de líneas donde se añadirán los #EXTVLCOPT
+   * @param {string} profileId - 'P0' a 'P5'
+   * @returns {string[]} El mismo linesArray, enriquecido
+   */
+  injectVlcopt(linesArray, profileId) {
+    if (!APE_PROFILE_MATRIX[profileId]) profileId = 'P3';
+
+    const opts = APE_PROFILE_MATRIX[profileId].vlcopt;
+    for (const [key, value] of Object.entries(opts)) {
+      const line = `#EXTVLCOPT:${key}=${value}`;
+      // Idempotencia: solo añadir si no existe ya
+      if (!linesArray.some(l => l.startsWith(`#EXTVLCOPT:${key}=`))) {
+        linesArray.push(line);
+      }
+    }
+
+    return linesArray;
+  },
+
+  /**
+   * Devuelve todos los headers v10 como un objeto plano (para debugging o serialización).
+   * @param {string} profileId
+   * @param {string} [channelId]
+   * @returns {Object}
+   */
+  getAllHeaders(profileId, channelId) {
+    if (!APE_PROFILE_MATRIX[profileId]) profileId = 'P3';
+    return {
+      ..._buildCmcdHeaders(profileId, channelId),
+      ..._buildQoeHeaders(profileId),
+      ..._buildPlayerConfigHeaders(profileId),
+    };
+  },
+
+  /**
+   * Devuelve el bitrate ladder del perfil como array de objetos.
+   * @param {string} profileId
+   * @returns {Array<{bitrate: number, resolution: string, fps: number}>}
+   */
+  getBitrateLadder(profileId) {
+    const p = APE_PROFILE_MATRIX[profileId];
+    if (!p) return [];
+    return p.bitrateLadder.split(',').map(entry => {
+      const [br, res] = entry.split('@');
+      const [w, h, fps] = res.split('x');
+      return { bitrate: parseInt(br), resolution: `${w}x${h}`, fps: parseInt(fps) };
+    });
+  },
+
+  /**
+   * Diagnóstico: muestra en consola el estado del motor y los perfiles.
+   */
+  diagnose() {
+    console.group('🔬 APE Realtime Engine v10.0 — Diagnóstico');
+    for (const [pid, p] of Object.entries(APE_PROFILE_MATRIX)) {
+      console.log(`  ${pid}: ${p._meta.name} | ${p._meta.resolution}@${p._meta.fps}fps | ${Math.round(p._meta.bitrate/1e6)}Mbps | buffer=${p.hlsjs.maxBufferLength}s | LL-HLS=${p.hlsjs.lowLatencyMode}`);
+    }
+    console.groupEnd();
+  },
+};
+
+// Auto-init
+window.ApeRealtimeEngine.init();
+
+} // END GUARD
 
 })();
 

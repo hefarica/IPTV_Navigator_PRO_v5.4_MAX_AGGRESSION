@@ -24,3 +24,7 @@ ara-x/vps/nginx/ara-sync-zone.conf	/etc/nginx/conf.d/00-ara-sync-zone.conf	644	r
 ara-x/vps/lua/ara_x_sync.lua	/etc/nginx/lua/ara_x_sync.lua	644	www-data:www-data	variante Lua /sync (staged, NO production)
 ara-x/vps/nginx/ara-sync-lua.conf	/etc/nginx/snippets/ara-sync-lua.conf	644	root:root	location Lua /sync (staged, no incluida por defecto)
 _vps_stage/sql/ara_sync.sql	/var/lib/ara-x/schema.sql	600	www-data:www-data	migración SQLite ara_sync_state/nonce/replay/keys
+IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/ape-canon-producer.js	/var/www/html/prisma/api/ape-canon-producer.js	644	www-data:www-data	LAB metadata library producer (por lista)
+IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/ape-session-resolve.php	/var/www/html/prisma/api/ape-session-resolve.php	644	www-data:www-data	LAB metadata consumer (por record M.ref)
+IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/ape-lab-library.php	/var/www/html/prisma/api/ape-lab-library.php	644	www-data:www-data	GET biblioteca por list_id
+IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/ape-field-homologator.js	/var/www/html/prisma/api/ape-field-homologator.js	644	www-data:www-data	Dependencia del producer

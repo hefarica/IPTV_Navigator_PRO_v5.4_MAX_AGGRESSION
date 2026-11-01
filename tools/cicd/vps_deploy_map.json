@@ -189,6 +189,33 @@
       "enabled": true
     },
     {
+      "id": "js-prisma-canon-producer",
+      "src": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/ape-canon-producer.js",
+      "dest": "/var/www/html/prisma/api/ape-canon-producer.js",
+      "type": "config",
+      "post": "none",
+      "enabled": true,
+      "note": "Consume #EXT-X-APE-LAB-METADATA y escribe _lab_meta/<list_id>.json por lista."
+    },
+    {
+      "id": "js-prisma-field-homologator",
+      "src": "IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/ape-field-homologator.js",
+      "dest": "/var/www/html/prisma/api/ape-field-homologator.js",
+      "type": "config",
+      "post": "none",
+      "enabled": true,
+      "note": "Dependencia del producer; homologa cada bloque de lista."
+    },
+    {
+      "id": "php-prisma-lab-library",
+      "src": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/ape-lab-library.php",
+      "dest": "/var/www/html/prisma/api/ape-lab-library.php",
+      "type": "php",
+      "post": "none",
+      "enabled": true,
+      "note": "Biblioteca por list_id; campos dinámicos, sin valores fijos."
+    },
+    {
       "id": "php-prisma-channel-image-bulk",
       "src": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/channel-image-bulk.php",
       "dest": "/var/www/html/prisma/api/channel-image-bulk.php",

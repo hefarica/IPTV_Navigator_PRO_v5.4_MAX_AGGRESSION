@@ -1186,7 +1186,13 @@
         };
     }
 
-    async function prepublishAndGenerate(options = {}) {        if (!window.app || typeof window.app.getFilteredChannels !== 'function') {
+    async function prepublishAndGenerate(options = {}) {
+        // Ambos botones (DIRECTO y VPS) comparten el mismo motor de mejor lista.
+        // Forzamos URLs del proveedor en la generación: el botón VPS las envuelve
+        // después con apeCdnRewrap. Así el toggle global no puede convertir el
+        // botón "directo" en otra cosa ni producir doble wrapper.
+        if (typeof window !== 'undefined') window.APE_DIRECT_MODE = true;
+        if (!window.app || typeof window.app.getFilteredChannels !== 'function') {
             throw new Error('window.app.getFilteredChannels no disponible');
         }
         const gen = window.M3U8TypedArraysGenerator;
@@ -1589,10 +1595,99 @@ try {
             ' · ' + cls.band + ' → ' + cls.action +
             (dec.switch ? ' · CAMBIAR (' + dec.reason + ')' : ' · mantener');
     }
+    function closeMenu() {
+        var m = document.getElementById('apeAutoAdjustMenu');
+        if (m) m.style.display = 'none';
+    }
+
+    function applyScope(scope) {
+        render();
+        closeMenu();
+        try {
+            var pm = window.ProfileManagerV9;
+            if (!pm) return;
+            var out = document.getElementById('apeAutoAdjustOut');
+            var r;
+            if (scope === 'all' && typeof pm.recomputeAllProfiles === 'function') {
+                r = pm.recomputeAllProfiles();
+                if (out) {
+                    out.textContent += ' · P0–P5 ajustados: ' + (r.count || 0) +
+                        (r.bufferAdjusted ? ' · buffers LI/LS ajustados: ' + r.bufferAdjusted : '') +
+                        (r.objectiveAdjusted ? ' · objetivo Risk/Headroom aplicado' : '');
+                }
+            } else if (typeof pm.recomputeActiveProfile === 'function') {
+                r = pm.recomputeActiveProfile();
+                if (r && out) {
+                    out.textContent += ' · perfil actual · piso ' + r.floor +
+                        ' Mbps ≤ ' + r.bitrate + ' Mbps';
+                    if (r.bufferAdjusted) out.textContent += ' · buffer ajustado LI/LS';
+                    if (r.objectiveAdjusted) out.textContent += ' · objetivo Risk/Headroom aplicado';
+                }
+            }
+        } catch (e) {
+            console.warn('[AUTO-AJUSTAR] recalculation failed:', e && e.message);
+        }
+    }
+
+    function openMenu() {
+        var b = document.getElementById('pm9_auto_adjust_btn') ||
+            document.getElementById('apeAutoAdjustBtn');
+        if (!b) return;
+        var m = document.getElementById('apeAutoAdjustMenu');
+        if (!m) {
+            m = document.createElement('div');
+            m.id = 'apeAutoAdjustMenu';
+            m.style.cssText = 'position:fixed;z-index:1000000;display:none;flex-direction:column;gap:8px;background:rgba(15,23,42,.97);padding:14px;border-radius:12px;border:1px solid rgba(16,185,129,.55);box-shadow:0 10px 30px rgba(0,0,0,.65);min-width:310px;';
+            var title = document.createElement('div');
+            title.textContent = '⚡ AUTO-AJUSTAR';
+            title.style.cssText = 'color:#6ee7b7;font-weight:800;font-size:.8rem;text-align:center;letter-spacing:.5px;';
+            m.appendChild(title);
+            var cur = document.createElement('button');
+            cur.type = 'button';
+            cur.textContent = '🎯 Aplicar al perfil actual';
+            cur.style.cssText = 'background:rgba(16,185,129,.18);color:#6ee7b7;border:1px solid rgba(16,185,129,.45);padding:10px 14px;border-radius:8px;cursor:pointer;font-weight:700;';
+            cur.onclick = function () { applyScope('current'); };
+            m.appendChild(cur);
+            var all = document.createElement('button');
+            all.type = 'button';
+            all.textContent = '📦 AUTO-AJUSTAR P0–P5 (todos)';
+            all.style.cssText = 'background:rgba(139,92,246,.2);color:#c4b5fd;border:1px solid rgba(139,92,246,.45);padding:10px 14px;border-radius:8px;cursor:pointer;font-weight:700;';
+            all.onclick = function () { applyScope('all'); };
+            m.appendChild(all);
+            var cancel = document.createElement('button');
+            cancel.type = 'button';
+            cancel.textContent = 'Cancelar';
+            cancel.style.cssText = 'background:transparent;color:#94a3b8;border:1px solid rgba(148,163,184,.3);padding:7px 12px;border-radius:8px;cursor:pointer;';
+            cancel.onclick = closeMenu;
+            m.appendChild(cancel);
+            document.body.appendChild(m);
+        }
+        var rect = b.getBoundingClientRect();
+        var top = Math.min(window.innerHeight - 190, rect.bottom + 8);
+        var left = Math.min(window.innerWidth - 330, Math.max(8, rect.left));
+        m.style.top = Math.max(8, top) + 'px';
+        m.style.left = Math.max(8, left) + 'px';
+        m.style.display = 'flex';
+    }
+
     function attach() {
         var b = document.getElementById('apeAutoAdjustBtn');
-        if (!b) return;
-        b.addEventListener('click', render);
+        if (b) {
+            b.addEventListener('click', function (e) {
+                e.preventDefault();
+                var m = document.getElementById('apeAutoAdjustMenu');
+                if (m && m.style.display === 'flex') closeMenu();
+                else openMenu();
+            });
+        }
+        // El botón del solver (pm9_auto_adjust_btn) se inyecta después del
+        // perfil. Dispara este evento para abrir el mismo menú flotante.
+        if (typeof window !== 'undefined') {
+            window.addEventListener('ape:open-auto-adjust-menu', function (e) {
+                if (e && typeof e.preventDefault === 'function') e.preventDefault();
+                openMenu();
+            });
+        }
         render();
     }
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', attach);

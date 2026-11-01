@@ -146,6 +146,15 @@
         static THROUGHPUT_T2_MULTIPLIER = 1.6;
         static SEGMENT_DURATION = 6; // segundos
 
+        // Contrato de cálculo (P1 como referencia):
+        // precedentes = entradas; derivados = nunca se leen como entrada.
+        static PRECEDENCE_FIELDS = Object.freeze(['resolution', 'fps', 'codec', 'buffer']);
+        static DERIVED_FIELDS = Object.freeze([
+            'bitrate', 'bitrate_floor_mbps', 't1', 't2',
+            'buffer_c1_ms', 'buffer_c2_ms', 'playerBuffer', 'buffer_total_ms',
+            'jitter_max_ms', 'headersCount', 'ram_estimate_mb'
+        ]);
+
         // BITRATE FLOOR — piso mínimo absoluto por quality (Mbps).
         // Distinto de bitrate_range_mbps.min (rango óptimo): el floor es el guardarail
         // inferior bajo el cual variantes HLS son inaceptables (player no debe elegirlas).
@@ -274,11 +283,426 @@
          */
         _computeBitrateFloor(profile) {
             const s = profile?.settings || {};
-            if (s.bitrate_floor_mbps != null && !isNaN(s.bitrate_floor_mbps)) {
-                return Number(s.bitrate_floor_mbps);
-            }
             const q = String(profile?.quality || 'FHD').toUpperCase();
-            return ProfileManagerV9.BITRATE_FLOOR_TABLE[q] || 5;
+            const fallback = ProfileManagerV9.BITRATE_FLOOR_TABLE[q] || 5;
+            const configured = (s.bitrate_floor_mbps != null && !isNaN(s.bitrate_floor_mbps))
+                ? Number(s.bitrate_floor_mbps)
+                : fallback;
+            const bitrate = Number(s.bitrate);
+            // El piso NUNCA puede superar el bitrate objetivo. Si el LAB trae un
+            // floor viejo (ej. 14) con un target nuevo (ej. 0.9), se recorta al
+            // 80% del target. Si el floor heredado es absurdo para la calidad,
+            // se usa la tabla de calidad como respaldo. No toca codec/res/fps.
+            if (isFinite(bitrate) && bitrate > 0) {
+                const maxFloor = Math.max(0.1, bitrate * 0.8);
+                let floor = configured;
+                if (floor > maxFloor) {
+                    floor = Math.min(fallback, maxFloor);
+                }
+                return Number(Math.max(0.1, Math.min(floor, maxFloor)).toFixed(2));
+            }
+            return Number(configured);
+        }
+
+        /**
+         * Calibración mínima 720p: si el target está por debajo de 2 Mbps,
+         * se eleva al doble (nunca por debajo de 2 Mbps). No toca codec/res/fps.
+         */
+        _calibrateHdBase(profile) {
+            const s = profile?.settings || {};
+            const res = String(s.resolution || '');
+            const quality = String(profile?.quality || '').toUpperCase();
+            const isHd = /1280x720/i.test(res) || quality === 'HD';
+            let bitrate = Number(s.bitrate);
+            if (!isFinite(bitrate) || bitrate <= 0) return 0;
+            if (isHd && bitrate < 2.0) {
+                bitrate = Math.max(2.0, bitrate * 2);
+                s.bitrate = parseFloat(bitrate.toFixed(1));
+            }
+            return Number(s.bitrate) || bitrate;
+        }
+
+        /** BPP base por resolución (referencia de P1: 4K AV1 → 40 Mbps). */
+        _bppFor(width, height) {
+            if (width >= 7680 || height >= 4320) return 0.08;
+            if (width >= 3840 || height >= 2160) return 0.10;
+            if (width >= 1920 || height >= 1080) return 0.15;
+            if (width >= 1280 || height >= 720) return 0.25;
+            return 0.30;
+        }
+
+        _codecFactor(codec) {
+            const c = String(codec || '').toUpperCase();
+            if (c.includes('AV1')) return 0.80;
+            if (c.includes('H265') || c.includes('HEVC')) return 0.85;
+            if (c.includes('VP9')) return 0.90;
+            if (c.includes('H264') || c.includes('AVC')) return 1.00;
+            return 0.90;
+        }
+
+        /**
+         * Motor único de cálculo. SOLO escribe campos derivados.
+         * Precedencia: resolution, fps, codec, buffer base.
+         * Derivados: bitrate, floor, t1, t2, playerBuffer, total, jitterMax,
+         * headersCount y RAM. Idempotente: ejecutarlo N veces da el mismo result.
+         * NO toca codec, resolution, fps ni el buffer base.
+         */
+        _applyDerivedProfile(profile) {
+            if (!profile || !profile.settings) return null;
+            const s = profile.settings;
+            const m = String(s.resolution || '').match(/(\d{3,5})\s*[xX]\s*(\d{3,5})/);
+            if (!m) return null;
+            const width = parseInt(m[1], 10);
+            const height = parseInt(m[2], 10);
+            const fps = Number(s.fps) > 0 ? Number(s.fps) : 30;
+            const baseMs = Number(s.buffer) > 0 ? Number(s.buffer) : 10000;
+
+            // El LAB calibra el bitrate. Solo se deriva si el perfil no lo trae.
+            const configuredBitrate = Number(s.bitrate);
+            const calculatedBitrate = Math.max(0.1, Math.round(
+                (width * height * fps * this._bppFor(width, height) * this._codecFactor(s.codec)) / 1e6
+            * 10) / 10);
+            const bitrate = configuredBitrate > 0 ? configuredBitrate : calculatedBitrate;
+            const configuredFloor = Number(s.bitrate_floor_mbps);
+            const floor = configuredFloor > 0 && configuredFloor <= bitrate
+                ? configuredFloor
+                : Math.max(0.1, Math.round(bitrate * 0.5 * 100) / 100);
+            const t1 = parseFloat((bitrate * ProfileManagerV9.THROUGHPUT_T1_MULTIPLIER).toFixed(1));
+            const t2 = parseFloat((bitrate * ProfileManagerV9.THROUGHPUT_T2_MULTIPLIER).toFixed(1));
+            const player = Math.max(250, Math.round(baseMs * (4 / 3)));
+            const total = (baseMs * 2) + player;
+            const jitterMax = Math.max(0, Math.round(player * 0.8));
+            const headers = Math.min(200, Math.max(1, Math.round(Number(s.headersCount) || 200)));
+            const ramMb = Number(((total / 1000) * (bitrate / 8)).toFixed(1));
+
+            s.bitrate = bitrate;
+            s.bitrate_floor_mbps = floor;
+            s.t1 = t1;
+            s.t2 = t2;
+            s.buffer_c1_ms = baseMs;
+            s.buffer_c2_ms = baseMs;
+            s.playerBuffer = player;
+            s.buffer_total_ms = total;
+            s.jitter_max_ms = jitterMax;
+            s.headersCount = headers;
+            s.ram_estimate_mb = ramMb;
+
+            const set = (k, v) => this.config.setHeaderOverride(profile.id, k, String(v));
+            set('X-APE-BITRATE', bitrate);
+            set('X-APE-TARGET-BITRATE', Math.round(bitrate * 1000));
+            set('X-APE-BITRATE-FLOOR', floor);
+            set('X-Min-Bitrate', Math.round(floor * 1000000));
+            set('X-APE-THROUGHPUT-T1', t1);
+            set('X-APE-THROUGHPUT-T2', t2);
+            set('X-Network-Caching', baseMs);
+            set('X-Live-Caching', baseMs);
+            set('X-Buffer-Size', total);
+            set('X-Buffer-Target', player);
+            set('X-Buffer-Min', baseMs);
+            set('X-Buffer-Max', total * 4);
+            set('X-Min-Buffer-Time', Math.floor(baseMs / 1000));
+            set('X-Max-Buffer-Time', Math.floor(total / 1000));
+            this._syncLabDerived(profile, {width, height, fps, baseMs, player, total, bitrate, floor, t1, t2});
+            return {bitrate, floor, t1, t2, player, total, jitterMax, headers, ramMb};
+        }
+
+        /**
+         * Hereda los precedentes del LAB a las secciones derivadas.
+         * Solo capacidad/caché/buffer/bitrate/resolución/fps.
+         * NO toca códec, HDR, color, DRM, seguridad ni identidad.
+         */
+        _syncLabDerived(profile, c) {
+            const s = profile.settings || {};
+            const b = Number(c.bitrate);
+            const base = Number(c.baseMs);
+            const player = Number(c.player);
+            const total = Number(c.total);
+            const res = `${c.width}x${c.height}`;
+            const bBps = Math.round(b * 1e6);
+            const floorBps = Math.round(Number(c.floor) * 1e6);
+
+            const put = (obj, key, value) => {
+                if (!obj || value == null) return;
+                const v = String(value);
+                if (String(obj[key]) !== v) obj[key] = v;
+            };
+            const putNum = (obj, key, value) => put(obj, key, Number(value));
+
+            putNum(s, 'networkCachingMs', base);
+            put(s, 'bufferTargetSec', Math.round(total / 1000));
+            put(s, 'maxResolution', res);
+            putNum(s, 'maxBitrateKbps', Math.round(b * 1000));
+            putNum(s, 'avgBitrateKbps', Math.round(b * 0.8 * 1000));
+            putNum(s, 'targetFps', c.fps);
+            put(s, 'target_framerate', `${c.fps}FPS`);
+
+            const vlc = profile.vlcopt || (profile.vlcopt = {});
+            putNum(vlc, 'network-caching', base);
+            putNum(vlc, 'live-caching', base);
+            putNum(vlc, 'file-caching', player);
+            putNum(vlc, 'disc-caching', player);
+            putNum(vlc, 'tcp-caching', player);
+            putNum(vlc, 'sout-mux-caching', player);
+            putNum(vlc, 'video-fps', c.fps);
+            putNum(vlc, 'video-width', c.width);
+            putNum(vlc, 'video-height', c.height);
+            putNum(vlc, 'adaptive-maxwidth', c.width);
+            putNum(vlc, 'adaptive-maxheight', c.height);
+            putNum(vlc, 'adaptive-maxbitrate', bBps);
+            putNum(vlc, 'adaptive-initial-bandwidth', bBps);
+
+            const kodi = profile.kodiprop || (profile.kodiprop = {});
+            put(kodi, 'inputstream.adaptive.max_resolution', res);
+            putNum(kodi, 'inputstream.adaptive.max_bitrate', Math.round(b * 1000));
+            putNum(kodi, 'inputstream.adaptive.min_bandwidth', floorBps);
+            putNum(kodi, 'inputstream.adaptive.preferred_video_frame_rate', c.fps);
+
+            const hls = profile.hlsjs || (profile.hlsjs = {});
+            putNum(hls, 'maxBufferLength', Math.round(total / 1000));
+            putNum(hls, 'maxMaxBufferLength', Math.round(total / 1000));
+            putNum(hls, 'backBufferLength', Math.round(base / 1000));
+            putNum(hls, 'abrEwmaDefaultEstimate', bBps);
+            putNum(hls, 'abrEwmaDefaultEstimateMax', bBps);
+
+            const pref = profile.prefetch_config || (profile.prefetch_config = {});
+            // Si el solver ya optimizó Risk/Headroom, NO pisar su prefetch.
+            if (profile._objectiveApplied !== true) {
+                putNum(pref, 'buffer_target_seconds', Math.round(total / 1000));
+                putNum(pref, 'min_bandwidth_mbps', c.floor);
+            }
+
+            const opt = profile.optimized_knobs || (profile.optimized_knobs = {});
+            putNum(opt, 'buffer_seconds', Math.round(total / 1000));
+            putNum(opt, 'live_delay_seconds', Math.round(player / 1000));
+
+            const ho = profile.headerOverrides || (profile.headerOverrides = {});
+            const first = (key, value) => {
+                if (value == null) return;
+                const cur = String(ho[key] ?? '');
+                if (cur.includes(',')) {
+                    const parts = cur.split(',');
+                    parts[0] = String(value);
+                    ho[key] = parts.join(',');
+                } else {
+                    ho[key] = String(value);
+                }
+            };
+            const single = (key, value) => { if (value != null) ho[key] = String(value); };
+            single('X-Network-Caching', base);
+            single('X-Live-Caching', base);
+            single('X-File-Caching', player);
+            single('X-ExoPlayer-Buffer-Min', base);
+            single('X-Manifest-Refresh', base);
+            single('X-KODI-LIVE-DELAY', Math.floor(base / 1000));
+            single('X-Buffer-Target', player);
+            single('X-Buffer-Min', base);
+            single('X-Buffer-Max', total);
+            single('X-Min-Buffer-Time', Math.floor(base / 1000));
+            single('X-Max-Buffer-Time', Math.floor(total / 1000));
+            single('X-APE-FPS', c.fps);
+            single('X-Max-Framerate', c.fps);
+            single('X-Stream-Bitrate', bBps);
+            single('X-Stream-Resolution', res);
+            single('X-Stream-FPS', c.fps);
+            first('X-APE-BITRATE', b);
+            first('X-APE-TARGET-BITRATE', bBps);
+            first('X-APE-THROUGHPUT-T1', c.t1);
+            first('X-APE-THROUGHPUT-T2', c.t2);
+            first('X-APE-RESOLUTION', res);
+            first('X-Screen-Resolution', res);
+            first('X-Max-Resolution', res);
+            first('X-Max-Bitrate', bBps);
+            first('X-Initial-Bitrate', bBps);
+            single('X-Min-Bitrate', floorBps);
+
+            const actor = (profile.actor_injections && profile.actor_injections.player) || null;
+            if (actor) {
+                const patchJson = (key, patch) => {
+                    const raw = actor[key];
+                    if (typeof raw !== 'string') return;
+                    try {
+                        const obj = JSON.parse(raw);
+                        let changed = false;
+                        for (const [k, v] of Object.entries(patch)) {
+                            if (obj[k] !== v) { obj[k] = v; changed = true; }
+                        }
+                        if (changed) actor[key] = JSON.stringify(obj);
+                    } catch (e) { /* valor no JSON: no tocar */ }
+                };
+                patchJson('vlc', {
+                    network_caching_ms: base,
+                    live_caching_ms: base,
+                    sout_mux_caching_ms: player
+                });
+                patchJson('exoplayer', {
+                    minBufferMs: base,
+                    bufferForPlaybackMs: player
+                });
+                patchJson('kodi', {
+                    inputstream_adaptive_max_buffer_duration: Math.round(total / 1000),
+                    inputstream_adaptive_assured_buffer_duration: Math.round(base / 1000)
+                });
+                patchJson('hlsjs', {
+                    maxMaxBufferLength: Math.round(total / 1000)
+                });
+            }
+        }
+
+        /** Rango LI/LS del buffer base (segundos) por resolución. */
+        _bufferRange(profile) {
+            const s = profile?.settings || {};
+            const m = String(s.resolution || '').match(/(\d{3,5})\s*[xX]\s*(\d{3,5})/);
+            const w = m ? parseInt(m[1], 10) : 1280;
+            const h = m ? parseInt(m[2], 10) : 720;
+            if (w >= 7680 || h >= 4320) return {li: 10, ls: 19}; // 8K
+            if (w >= 3840 || h >= 2160) return {li: 8, ls: 15};  // 4K
+            if (w >= 1920 || h >= 1080) return {li: 6, ls: 12};  // FHD
+            if (w >= 1280 || h >= 720) return {li: 4, ls: 10};   // HD
+            return {li: 3, ls: 8};                                // SD
+        }
+
+        _bufferSec(profile) {
+            const ms = Number(profile?.settings?.buffer);
+            return isFinite(ms) && ms > 0 ? ms / 1000 : 0;
+        }
+
+        _bufferOutOfRange(profile) {
+            const r = this._bufferRange(profile);
+            const sec = this._bufferSec(profile);
+            return sec > 0 && (sec < r.li || sec > r.ls);
+        }
+
+        _bufferStyle(profile) {
+            return this._bufferOutOfRange(profile)
+                ? 'border-color:#ef4444;color:#ef4444;'
+                : 'border-color:#00ff41;';
+        }
+
+        /** AUTO-AJUSTAR: lleva los segundos al LI/LS más cercano, sin saltos. */
+        _autoAdjustBuffer(profile) {
+            if (!profile || !profile.settings) return false;
+            const r = this._bufferRange(profile);
+            const sec = this._bufferSec(profile);
+            if (!(sec > 0)) return false;
+            const clamped = Math.min(r.ls, Math.max(r.li, sec));
+            if (Math.abs(clamped - sec) < 0.01) return false;
+            profile.settings.buffer = Math.round(clamped * 1000);
+            return true;
+        }
+
+        normalizeAllProfiles() {
+            const raw = (typeof this.config.getAllProfiles === 'function')
+                ? this.config.getAllProfiles()
+                : (this.config.profiles || {});
+            const all = Array.isArray(raw) ? raw : Object.values(raw || {});
+            let changed = 0;
+            for (const p of all) {
+                if (this._applyDerivedProfile(p)) changed++;
+            }
+            return changed;
+        }
+
+        /**
+         * Recalcula el perfil activo con el motor único.
+         * No modifica codec, resolución, fps ni buffer base.
+         */
+        recomputeActiveProfile() {
+            const profile = this.config.getProfile(this.activeProfileId);
+            if (!profile || !profile.settings) return null;
+            const bufferAdjusted = this._autoAdjustBuffer(profile);
+            const r = this._applyDerivedProfile(profile);
+            if (!r) return null;
+            const objective = this._applyObjective(profile);
+            if (typeof this.config.flushSave === 'function') this.config.flushSave();
+            this._updateStreamingHealth();
+            this.render();
+            return Object.assign({bufferAdjusted: bufferAdjusted, objectiveAdjusted: !!objective}, r,
+                objective && objective.after ? {
+                    risk: objective.after.risk,
+                    sparePct: objective.after.sparePct,
+                    stallPct: objective.after.stallPct,
+                    overheadSec: objective.after.fillTimeSec
+                } : {});
+        }
+
+        /** AUTO-AJUSTAR todos los perfiles P0–P5, incluido buffer LI/LS. */
+        _applyObjective(profile) {
+            if (!profile || !profile.settings) return null;
+            try {
+                const snap = (window.APE_BW && typeof window.APE_BW.snapshot === 'function')
+                    ? window.APE_BW.snapshot() : null;
+                if (!snap || !(snap.mbps > 0)) return null;
+                if (!window.APE_SOLVER || typeof window.APE_SOLVER.adjustProfileObjective !== 'function') return null;
+                const r = window.APE_SOLVER.adjustProfileObjective(profile.id);
+                if (!r) return null;
+                profile._objectiveApplied = true;
+                // Refrescar floor/T1/T2 con el bitrate que haya fijado el solver.
+                const s = profile.settings;
+                const b = Number(s.bitrate);
+                if (b > 0) {
+                    const configuredFloor = Number(s.bitrate_floor_mbps);
+                    const floor = configuredFloor > 0 && configuredFloor <= b
+                        ? configuredFloor : Math.max(0.1, Math.round(b * 0.5 * 100) / 100);
+                    s.bitrate_floor_mbps = floor;
+                    s.t1 = parseFloat((b * ProfileManagerV9.THROUGHPUT_T1_MULTIPLIER).toFixed(1));
+                    s.t2 = parseFloat((b * ProfileManagerV9.THROUGHPUT_T2_MULTIPLIER).toFixed(1));
+                    this.config.setHeaderOverride(profile.id, 'X-APE-THROUGHPUT-T1', String(s.t1));
+                    this.config.setHeaderOverride(profile.id, 'X-APE-THROUGHPUT-T2', String(s.t2));
+                    this.config.setHeaderOverride(profile.id, 'X-APE-BITRATE-FLOOR', String(floor));
+                    this.config.setHeaderOverride(profile.id, 'X-APE-BITRATE', String(b));
+                    this.config.setHeaderOverride(profile.id, 'X-Min-Bitrate', String(Math.round(floor * 1000000)));
+                }
+                return r;
+            } catch (e) {
+                console.warn('[AUTO-AJUSTAR] objective solver failed:', e && e.message);
+                return null;
+            }
+        }
+
+        recomputeAllProfiles() {
+            const raw = (typeof this.config.getAllProfiles === 'function')
+                ? this.config.getAllProfiles()
+                : (this.config.profiles || {});
+            const all = Array.isArray(raw) ? raw : Object.values(raw || {});
+            let count = 0;
+            let adjusted = 0;
+            let objective = 0;
+            for (const p of all) {
+                if (!p || !p.settings) continue;
+                if (this._autoAdjustBuffer(p)) adjusted++;
+                this._applyDerivedProfile(p);
+                if (this._applyObjective(p)) objective++;
+                count++;
+            }
+            if (typeof this.config.flushSave === 'function') this.config.flushSave();
+            this._updateStreamingHealth();
+            this.render();
+            return {count: count, bufferAdjusted: adjusted, objectiveAdjusted: objective, total: all.length};
+        }
+
+        /**
+         * Normaliza SOLO aritmética del perfil (floor/T1/T2) antes de pintar.
+         * No toca codec, resolución, fps, buffers ni headers de imagen.
+         */
+        _normalizeArithmetic(profile) {
+            if (!profile || !profile.settings) return;
+            const s = profile.settings;
+            const bitrate = this._calibrateHdBase(profile);
+            if (!isFinite(bitrate) || bitrate <= 0) return;
+
+            const t1 = parseFloat((bitrate * ProfileManagerV9.THROUGHPUT_T1_MULTIPLIER).toFixed(1));
+            const t2 = parseFloat((bitrate * ProfileManagerV9.THROUGHPUT_T2_MULTIPLIER).toFixed(1));
+            const floor = this._computeBitrateFloor(profile);
+
+            if (s.t1 !== t1 || s.t2 !== t2 || s.bitrate_floor_mbps !== floor) {
+                s.t1 = t1;
+                s.t2 = t2;
+                s.bitrate_floor_mbps = floor;
+                this.config.setHeaderOverride(profile.id, 'X-APE-THROUGHPUT-T1', String(t1));
+                this.config.setHeaderOverride(profile.id, 'X-APE-THROUGHPUT-T2', String(t2));
+                this.config.setHeaderOverride(profile.id, 'X-APE-BITRATE-FLOOR', String(floor));
+                this.config.setHeaderOverride(profile.id, 'X-Min-Bitrate', String(Math.round(floor * 1000000)));
+            }
         }
         /**
          * True si el field aún no fue overrided manualmente por el usuario tras Import LAB.
@@ -390,6 +814,7 @@
             // Marcar como expandido
             this.isOpen = true;
 
+            this.normalizeAllProfiles();
             const profiles = this.config.getDegradationHierarchy ? this.config.getDegradationHierarchy() : Object.values(this.config.getAllProfiles());
             const activeProfile = this.config.getProfile(this.activeProfileId);
             const activeManifest = this.config.getManifestConfig();
@@ -469,6 +894,8 @@
                                 <label>Buffer Base (s)${this._isLabSourced('buffer') ? ' <span class="pm9-badge-lab" title="Calibrado por LAB Excel">🛡</span>' : ' <span class="pm9-badge-manual">🔧</span>'}</label>
                                 <input type="number" id="pm9_buffer_sec" value="${activeProfile.settings.buffer != null ? activeProfile.settings.buffer / 1000 : ''}"
                                        data-lab-sourced="${this._isLabSourced('buffer')}"
+                                       style="${this._bufferStyle(activeProfile)}"
+                                       title="LI ${this._bufferRange(activeProfile).li}s · LS ${this._bufferRange(activeProfile).ls}s"
                                        oninput="window.ProfileManagerV9.updateSetting('bufferSeconds', window.ProfileManagerV9._labNum(this.value))">
                             </div>
                             <div class="pm9-setting">
@@ -760,9 +1187,17 @@
                         <button class="pm9-btn pm9-btn-warning" onclick="window.ProfileManagerV9.resetProfile()">
                             ⟲ Default
                         </button>
-                        <button class="pm9-btn pm9-btn-primary" onclick="window.ProfileManagerV9.saveAndClose()">
-                            💾 Guardar
+                        <button class="pm9-btn pm9-btn-primary" onclick="window.ProfileManagerV9.toggleSaveMenu()">
+                            💾 Guardar ▾
                         </button>
+                    </div>
+
+                    <!-- Menú Flotante de Guardado -->
+                    <div id="ape-floating-save-menu" style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 1000000; flex-direction: column; gap: 10px; background: rgba(15, 23, 42, 0.97); padding: 16px; border-radius: 12px; border: 1px solid rgba(16, 185, 129, 0.5); box-shadow: 0 10px 25px rgba(0,0,0,0.6); backdrop-filter: blur(10px); min-width: 280px;">
+                        <div style="color: #6ee7b7; font-size: 0.8rem; font-weight: bold; text-align: center; text-transform: uppercase;">💾 Guardar estado</div>
+                        <button onclick="window.ProfileManagerV9.saveCurrentProfile()" style="background: rgba(16, 185, 129, 0.2); color: #6ee7b7; border: 1px solid rgba(16, 185, 129, 0.4); padding: 10px 14px; border-radius: 8px; cursor: pointer; font-weight: 700;">💾 Guardar perfil actual (<span id="pm9-save-current-id">P0</span>)</button>
+                        <button onclick="window.ProfileManagerV9.saveAllProfiles()" style="background: rgba(139, 92, 246, 0.2); color: #c4b5fd; border: 1px solid rgba(139, 92, 246, 0.4); padding: 10px 14px; border-radius: 8px; cursor: pointer; font-weight: 700;">📦 Guardar P0–P5 (estado actual)</button>
+                        <button onclick="window.ProfileManagerV9.toggleSaveMenu()" style="background: transparent; color: #94a3b8; border: 1px solid rgba(148,163,184,0.3); padding: 7px 12px; border-radius: 8px; cursor: pointer;">Cancelar</button>
                     </div>
 
                     <!-- Menú Flotante de Opciones Extras -->
@@ -3087,6 +3522,59 @@
             });
 
             input.click();
+        }
+
+        toggleSaveMenu() {
+            const el = document.getElementById('ape-floating-save-menu');
+            if (!el) return;
+            const open = el.style.display === 'flex';
+            el.style.display = open ? 'none' : 'flex';
+            const id = document.getElementById('pm9-save-current-id');
+            if (id) id.textContent = this.activeProfileId || 'P0';
+        }
+
+        _persistProfileSnapshot(label) {
+            if (!this.config) return null;
+            let snapshot = null;
+            try {
+                snapshot = JSON.stringify(this.config.profiles);
+                localStorage.setItem('ape_profiles_v9', snapshot);
+                localStorage.setItem('ape_profiles_v9_saved_at', new Date().toISOString());
+                localStorage.setItem('ape_profiles_v9_saved_by', label);
+            } catch (e) {
+                console.warn('[PM9] no pude escribir localStorage:', e.message);
+            }
+            if (typeof this.config.flushSave === 'function') this.config.flushSave();
+            else if (typeof this.config.save === 'function') this.config.save();
+            return snapshot;
+        }
+
+        saveCurrentProfile() {
+            if (!this.config) return;
+            this._applyDerivedProfile(this.config.getProfile(this.activeProfileId));
+            const snap = this._persistProfileSnapshot('ProfileManagerV9.saveCurrentProfile');
+            const bytes = snap ? snap.length : 0;
+            try {
+                if (window.app && typeof window.app.showToast === 'function') {
+                    window.app.showToast('Perfil ' + this.activeProfileId + ' guardado (' + Math.round(bytes / 1024) + ' KB)', 'success');
+                }
+            } catch (e) { /* no bloqueante */ }
+            this.toggleSaveMenu();
+            console.log('✅ Perfil guardado:', this.activeProfileId, { profilesBytes: bytes });
+        }
+
+        saveAllProfiles() {
+            if (!this.config) return;
+            this.normalizeAllProfiles();
+            const snap = this._persistProfileSnapshot('ProfileManagerV9.saveAllProfiles');
+            const bytes = snap ? snap.length : 0;
+            try {
+                if (window.app && typeof window.app.showToast === 'function') {
+                    window.app.showToast('P0–P5 guardados (' + Math.round(bytes / 1024) + ' KB)', 'success');
+                }
+            } catch (e) { /* no bloqueante */ }
+            this.toggleSaveMenu();
+            console.log('✅ P0–P5 guardados:', { profilesBytes: bytes });
         }
 
         saveAndClose() {

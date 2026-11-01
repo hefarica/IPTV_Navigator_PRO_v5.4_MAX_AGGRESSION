@@ -2762,7 +2762,7 @@
                 title="Genera UNA sola lista: el mismo contenido byte-exacto de siempre, con las URLs enrutadas por el plano del VPS (302→CDN, 4K/8K declarado, LL-HLS, failover multi-CDN, QoE) y el bloque #EXT-X-APE-CDN-* de trazabilidad. Guarda un único archivo _CDN.m3u8."><span
                   class="icon">⚡</span><span>GENERAR LISTA MEJORADA (VPS)</span></button>
                 <label id="apeDirectModeLabel" for="apeDirectModeToggle"
-                  title="ON: URL del proveedor VERBATIM (sin VPS). OFF: URLs enrutadas por el VPS."
+                  title="Modo global para otras rutas. Los botones PREPUBLISH (directo) y LISTA MEJORADA (VPS) ya fijan su propio transporte."
                   style="margin-left:14px; color:var(--text-muted); font-size:0.85rem; font-weight:bold; display:inline-flex; align-items:center; gap:6px; cursor:pointer;">
                   <input type="checkbox" id="apeDirectModeToggle" style="width:16px; height:16px; cursor:pointer;">
                 <button id="apeAutoAdjustBtn" class="btn" title="Mide R = duracion/descarga con LA CONEXION ACTUAL (nunca en paralelo) y dice si mantener, vigilar, cambiar o actuar ya."
@@ -3914,7 +3914,8 @@
 
 
   <!-- 🎚️ APE v9 PROFILE SYSTEM - MUST load BEFORE app.js -->
-  <script src="js/ape-v9/ape-profiles-config.js?v=20261026-savefix"></script>
+  <script src="js/ape-v9/lab-extra-headers.js?v=20261101-lab-extra"></script>
+<script src="js/ape-v9/ape-profiles-config.js?v=20261101-header-homolog-v2"></script>
   <!-- profile-manager-v9.js loaded later at v9.0.3 (line ~3171) -->
   <script src="js/ape-v9/profile-bridge-v9.js?v=1.1"></script>
   <script src="js/ape-v9/ape-xtream-atomic-probe.js?v=20260420-oropuro-rust"></script>
@@ -3977,16 +3978,16 @@
   <!-- 🛡️ APE MAX QUALITY FALLBACK RESOLVER — MAX IMAGE FIRST · COVERAGE ALWAYS · NO CHANNEL LOSS -->
   <!-- 🎯 APE HEVC CASCADE CSV SSOT — 12-tier Tier→Codec mapping (HFRC mandato 2026-05-20)
        MUST load BEFORE ape-fallback-resolver.js y m3u8-typed-arrays-ultimate.js -->
-  <script src="js/ape-v9/ape-hevc-cascade.js?v=20260607-council-pass-vp9-wired"></script>
+  <script src="js/ape-v9/ape-hevc-cascade.js?v=20261101-fallback-matrix"></script>
   <script src="js/ape-v9/ape-perceptual-4k.js?v=1.0.0-20260522"></script>
-  <script src="js/ape-v9/ape-fallback-resolver.js?v=20260607-hardening-p0p1-4k-resolution-f2f3"></script>
-  <script src="js/ape-v9/m3u8-typed-arrays-ultimate.js?v=20261026-audio-truth"></script>
+  <script src="js/ape-v9/ape-fallback-resolver.js?v=20261101-fallback-chain"></script>
+  <script src="js/ape-v9/m3u8-typed-arrays-ultimate.js?v=20261101-lab-metadata"></script>
   <!-- 🪦 OMEGA SLOT REAPER — Pre-flight liberation of Xtream max_connections slots -->
   <script src="js/ape-v9/slot-reaper.js?v=1.0.0-omega-20260409"></script>
   <script src="js/ape-v9/m3u8-quality-upgrader-v2.js?v=2.0"></script>
   <script src="js/ape-v9/hud-typed-arrays.js?v=16.1-tickprofile-20260417"></script>
   <!-- 🩺 APE GENERATION CONTROLLER — engancha botón health-check + generateHealthyList -->
-  <script src="js/ape-v9/generation-controller.js?v=2.2-vps-probe-no-local-server-20260417"></script>
+  <script src="js/ape-v9/generation-controller.js?v=20261101-objective-menu-v2"></script>
   <!-- 🩺 GENERATION HUD OVERLAY — panel discreto top-right que muestra fases del pipeline.
        Solo observa console.log (no toca el flow). window.GenerationHUD.show()/hide() -->
   <script src="js/ape-v9/generation-hud-overlay.js?v=1.2-auto-close-inactivity"></script>
@@ -4241,7 +4242,7 @@
   <script src="js/ape-v9/streaming/settings-optimizer-v9.js?v=1.0"></script>
   <!-- Solver del panel: grafo de precedentes/dependientes + función objetivo +
        botón AUTO-AJUSTAR + propagación al editar un número. -->
-  <script src="js/ape-v9/streaming/profile-solver-v9.js?v=20261026-savefix"></script>
+  <script src="js/ape-v9/streaming/profile-solver-v9.js?v=20261101-objective-menu-v3"></script>
   <script src="js/ape-v9/streaming/streaming-input-resolver.js?v=20261026-savefix"></script>
   <script src="js/ape-v9/streaming/streaming-calculator-v3.js?v=20261026-savefix"></script>
   <script src="js/ape-v9/streaming/streaming-policy.js"></script>
@@ -4257,7 +4258,7 @@
   <script src="js/ape-v9/vpn-integration-supremo.js"></script>
   <!-- Latency Rayo Supremo v1.0 (23 metadatos por canal) -->
   <script src="js/ape-v9/latency-rayo-supremo.js"></script>
-  <script src="js/ape-v9/profile-manager-v9.js?v=20261026-savefix"></script>
+  <script src="js/ape-v9/profile-manager-v9.js?v=20261101-objective-menu-v2"></script>
   <!-- Profile Manager - Custom Headers Extension -->
   <script src="js/profile-manager-custom-headers.js"></script>
   <script src="js/m3u8-custom-headers-integration.js"></script>

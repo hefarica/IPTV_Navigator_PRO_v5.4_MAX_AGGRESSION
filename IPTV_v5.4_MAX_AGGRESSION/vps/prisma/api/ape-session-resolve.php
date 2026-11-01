@@ -146,6 +146,29 @@ foreach (array_keys($E) as $k) {
     if (preg_match('/bypass|sandvine|exploit|spoof|phantom|hydra|circuit-breaker/i', $k . json_encode($E[$k]))) { $blocked[] = 'cubo-E:'.$k; }
 }
 
+// JSON metadata global de la lista: el productor lo deja una vez en
+// /dev/shm/ape_canon/_lab_meta.json y cada record canónico referencia su sha256.
+$labMeta = null;
+$metaRef = is_array($rec['M'] ?? null) ? (string)($rec['M']['ref'] ?? '') : '';
+if ($metaRef !== '' && preg_match('#^_lab_meta/[a-f0-9]{16}\.json$#', $metaRef)) {
+    $metaFile = $CANONDIR . '/' . $metaRef;
+    $metaRaw = is_file($metaFile) ? (string)@file_get_contents($metaFile) : '';
+    $wantSha = strtolower((string)($rec['M']['sha256'] ?? ''));
+    if ($metaRaw !== '' && $wantSha !== '' && hash_equals($wantSha, hash('sha256', $metaRaw))) {
+        $decodedMeta = json_decode($metaRaw, true);
+        if (is_array($decodedMeta)) { $labMeta = $decodedMeta; }
+    }
+} elseif ($metaRef === '_lab_meta.json') {
+    // Compatibilidad con metadata global antigua.
+    $metaFile = $CANONDIR . '/_lab_meta.json';
+    $metaRaw = is_file($metaFile) ? (string)@file_get_contents($metaFile) : '';
+    $wantSha = strtolower((string)($rec['M']['sha256'] ?? ''));
+    if ($metaRaw !== '' && $wantSha !== '' && hash_equals($wantSha, hash('sha256', $metaRaw))) {
+        $decodedMeta = json_decode($metaRaw, true);
+        if (is_array($decodedMeta)) { $labMeta = $decodedMeta; }
+    }
+}
+
 $verified = !empty($rec['_probe_verified']) || !empty($C['codec_verified']);
 $score = 100;
 if (!$verified) { $score -= 15; }
@@ -169,5 +192,6 @@ echo json_encode([
     ],
     'score'          => $score,
     'fallback_chain' => $chain,
-    'blocked'        => $blocked
+    'blocked'        => $blocked,
+    'lab_metadata'   => $labMeta ?: new stdClass()
 ], JSON_UNESCAPED_SLASHES);

@@ -275,6 +275,51 @@
         }
     };
 
+    // 🧪 LAB Bulletproof Extra — 174 headers que el LAB calibra y antes no
+    // tenían campo en el panel PM9. Se cargan desde lab-extra-headers.js
+    // (generado del LAB real) para que el panel y el generador los consuman.
+    (function mergeLabExtraHeaders() {
+        try {
+            const extra = (typeof window !== 'undefined' && Array.isArray(window.APE_LAB_EXTRA_HEADERS))
+                ? window.APE_LAB_EXTRA_HEADERS : [];
+            if (!extra.length) return;
+            HEADER_CATEGORIES.lab_bulletproof_extra = {
+                name: '🧪 20. LAB Bulletproof Extra',
+                description: '174 headers calibrados por LAB que no existían en el panel PM9',
+                headers: extra.slice()
+            };
+        } catch (e) { /* no bloqueante */ }
+    })();
+
+    // 🧠 Mapeo semántico: headers PM9-only que el LAB calibra en otra sección,
+    // no en headerOverrides. Se usan para leer/escribir el mismo valor.
+    const PM9_SEMANTIC_ALIASES = Object.freeze({
+        'X-Codec-Full': ['settings', 'codec_full'],
+        'X-Codec-Priority': ['settings', 'codec_priority'],
+        'X-Audio-Codec-Preferred': ['settings', 'audio_codec'],
+        'X-Tone-Mapping-Peak': ['vlcopt', 'video-tone-mapping-peak'],
+        'X-Tone-Mapping-Reference': ['vlcopt', 'video-tone-mapping-reference'],
+        'X-BT2020': ['vlcopt', 'video-bt2020'],
+        'X-Full-Range': ['vlcopt', 'video-fullrange'],
+        'X-ABR-Fast-Window-S': ['hlsjs', 'abrEwmaFastLive'],
+        'X-ABR-Slow-Window-S': ['hlsjs', 'abrEwmaSlowLive'],
+        'X-ABR-BW-Factor': ['hlsjs', 'abrBandWidthFactor'],
+        'X-ABR-Switch-Interval-S': ['hlsjs', 'abrSwitchInterval'],
+        'X-Low-Latency-Mode': ['hlsjs', 'lowLatencyMode'],
+        'X-Live-Sync-Duration-Count': ['hlsjs', 'liveSyncDurationCount'],
+        'X-Live-Max-Latency-Count': ['hlsjs', 'liveMaxLatencyDurationCount'],
+        'X-Stall-Detection-Ms': ['hlsjs', 'detectStallWithCurrentTimeMs'],
+        'X-Fragment-Retry-Max': ['hlsjs', 'fragLoadPolicy_maxNumRetry'],
+        'X-Fragment-TTFB-Max-Ms': ['hlsjs', 'fragLoadPolicy_maxTimeToFirstByteMs']
+    });
+
+    function getAliasValue(profile, headerName) {
+        const path = PM9_SEMANTIC_ALIASES[headerName];
+        if (!path || !profile) return undefined;
+        const section = profile[path[0]];
+        return section && typeof section === 'object' ? section[path[1]] : undefined;
+    }
+
     // ═══════════════════════════════════════════════════════════════════════
     // 🛡️ ANTI-DRIFT — PM9 canonical header lookup
     // Used by importFromLABData to resolve LAB→PM9 rename collisions.
@@ -5557,9 +5602,28 @@
             const profile = this.profiles[profileId];
             if (!profile) return this.defaultHeaderValues[headerName] || '';
 
-            // Check override first
-            if (profile.headerOverrides && profile.headerOverrides[headerName] !== undefined) {
-                return profile.headerOverrides[headerName];
+            const canonical = (typeof findPm9CanonicalName === 'function')
+                ? (findPm9CanonicalName(headerName) || headerName)
+                : headerName;
+
+            // Check override first. Accept canonical PM9 names and case/separator drift.
+            if (profile.headerOverrides) {
+                if (profile.headerOverrides[canonical] !== undefined) {
+                    return profile.headerOverrides[canonical];
+                }
+                if (profile.headerOverrides[headerName] !== undefined) {
+                    return profile.headerOverrides[headerName];
+                }
+                if (typeof _normalizeHeaderKey === 'function') {
+                    const want = _normalizeHeaderKey(headerName);
+                    for (const k of Object.keys(profile.headerOverrides)) {
+                        if (_normalizeHeaderKey(k) === want) return profile.headerOverrides[k];
+                    }
+                }
+            }
+            const aliasValue = getAliasValue(profile, canonical);
+            if (aliasValue !== undefined && aliasValue !== null && aliasValue !== '') {
+                return aliasValue;
             }
             return this.defaultHeaderValues[headerName] || '';
         }
@@ -5574,7 +5638,25 @@
             if (!profile.headerOverrides) {
                 profile.headerOverrides = {};
             }
-            profile.headerOverrides[headerName] = value;
+            const canonical = (typeof findPm9CanonicalName === 'function')
+                ? (findPm9CanonicalName(headerName) || headerName)
+                : headerName;
+            // Remove case/separator duplicates so there is only one wire key.
+            if (typeof _normalizeHeaderKey === 'function') {
+                const want = _normalizeHeaderKey(canonical);
+                for (const k of Object.keys(profile.headerOverrides)) {
+                    if (k !== canonical && _normalizeHeaderKey(k) === want) {
+                        delete profile.headerOverrides[k];
+                    }
+                }
+            }
+            profile.headerOverrides[canonical] = value;
+            // Semantic mirror: settings/vlcopt/hlsjs fields that LAB uses instead
+            // of headerOverrides are updated with the same value.
+            const path = PM9_SEMANTIC_ALIASES[canonical];
+            if (path && profile[path[0]] && typeof profile[path[0]] === 'object') {
+                profile[path[0]][path[1]] = value;
+            }
             this.save();
             return true;
         }
@@ -6021,6 +6103,7 @@
     // por _computeLABDiff y por importFromLABData para resolver renames.
     instance.findPm9CanonicalName = findPm9CanonicalName;
     instance.getPm9HeaderSet = getPm9HeaderSet;
+    instance.PM9_SEMANTIC_ALIASES = PM9_SEMANTIC_ALIASES;
     window.APE_PROFILES_CONFIG = instance;
 
     // C1+A4 (2026-04-30) — UA pool 2026-fresh para fallback cuando PhantomHydra no

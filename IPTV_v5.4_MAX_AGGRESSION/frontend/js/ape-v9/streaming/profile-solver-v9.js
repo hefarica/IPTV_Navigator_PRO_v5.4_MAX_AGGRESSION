@@ -227,8 +227,12 @@
         var spare = (typeof score.sparePct === 'number') ? score.sparePct : 0;
         var mem = Number(score.memoryMB) || 0;
         var fill = Number(score.fillTimeSec) || 0;
+        // Penalizar SOLO el déficit de headroom (spare < 0), nunca premiarlo.
+        // Antes `-W_HEAD * (-spare/100)` premiaba el déficit y anulaba la
+        // condición de colchón del objetivo.
+        var headPenalty = Math.max(0, -spare) / 100;
         var j = (risk / 100)
-            - CFG.W_HEAD * (-spare / 100)
+            + CFG.W_HEAD * headPenalty
             + CFG.W_MEM * (mem / CFG.MEM_CAP_MB)
             + CFG.W_FILL * (fill / CFG.FILL_REF_S)
             // fusible cerca del diseño = sin margen de rescate
@@ -482,6 +486,37 @@
         return out;
     }
 
+    /**
+     * Objetivo unificado: primero resuelve Risk/Headroom/Stall/Overhead y
+     * después aplica el fit de bitrate al enlace. Es la función que deben usar
+     * los menús AUTO-AJUSTAR (perfil actual y P0–P5).
+     */
+    function adjustProfileObjective(profileId) {
+        var sid = profileId || (global.APE_PROFILES_CONFIG.activeProfileId || 'P3');
+        var r = adjustProfile(sid, { apply: true });
+        var fit = fitBitrateForLink(sid, r.state);
+        if (fit && fit.fit) {
+            var fittedState = Object.assign({}, r.state, { bitrate: fit.to });
+            var fittedSolve = solve(fittedState, engineInputsFor(sid));
+            applyState(sid, fittedSolve.state);
+            r = adjustProfile(sid, { apply: true });
+            r.fitBitrate = fit;
+        } else if (fit) {
+            r.fitBitrate = fit;
+        }
+        r.diagnostic = diagnose(sid);
+        r.score = r.after;
+        var _bufferSeg = Number(r.state && r.state.bufferSeg) || 0;
+        r.overheadOk = _bufferSeg > 0
+            ? Number(r.after.fillTimeSec) <= _bufferSeg * 0.8
+            : true;
+        r.feasible = (r.after.risk <= 30) &&
+            (Number(r.after.sparePct) >= 15) &&
+            (r.after.stallPct === null || r.after.stallPct === undefined || r.after.stallPct <= 1.67) &&
+            r.overheadOk;
+        return r;
+    }
+
     function deepCopy(o) { return JSON.parse(JSON.stringify(o)); }
 
     // ── 5) UI: botón + propagación al editar ─────────────────────────────
@@ -697,6 +732,7 @@
             score: sc,
             bitrateMbps: br,
             feasible: (sc.risk <= 30) &&
+                (sc.sparePct >= 15) &&
                 (sc.stallPct === null || sc.stallPct === undefined || sc.stallPct <= 1.67)
         };
     }
@@ -834,8 +870,13 @@
             'Minimiza Risk · maximiza colchón · respeta reglas en cadena</span>';
 
         anchor.parentNode.insertBefore(bar, anchor);
-        document.getElementById('pm9_auto_adjust_btn').addEventListener('click', function () {
-            autoAdjust();
+        document.getElementById('pm9_auto_adjust_btn').addEventListener('click', function (e) {
+            // El menú flotante decide perfil actual vs P0–P5. No ejecutar aquí
+            // directamente para no saltarse la segunda premisa (perfil/LAB).
+            e.preventDefault();
+            if (typeof global.dispatchEvent === 'function') {
+                global.dispatchEvent(new CustomEvent('ape:open-auto-adjust-menu'));
+            }
         });
 
         // El headroom SOLO lo mueve el tier (enlace vs bitrate). Este botón es la
@@ -875,7 +916,8 @@
         stateFromProfile: stateFromProfile, engineInputsFor: engineInputsFor,
         setField: setField, recompute: recompute, consistency: consistency,
         objective: objective, evaluate: evaluate, solve: solve,
-        adjustProfile: adjustProfile, applyState: applyState, scoreProfile: scoreProfile, findBestProfile: findBestProfile,
+        adjustProfile: adjustProfile, adjustProfileObjective: adjustProfileObjective,
+        applyState: applyState, scoreProfile: scoreProfile, findBestProfile: findBestProfile,
         syncInputs: syncInputs, autoAdjust: autoAdjust, attachUI: attachUI,
         diagnose: diagnose, bestTier: bestTier, why: why, requiredBwFor: requiredBwFor,
         _setState: function (s) { return setField(s, 'prefetch', s.prefetch); }
