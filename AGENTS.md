@@ -3,6 +3,45 @@
 **Repo:** IPTV_Navigator_PRO_v5.4_MAX_AGGRESSION
 **Mission:** Convertir este repositorio en una plataforma IPTV enterprise de máxima calidad de imagen, máxima continuidad de transmisión, máxima compatibilidad de reproductores y máxima observabilidad operativa.
 
+
+## 🚨 ÚLTIMOS CAMBIOS (2026-11-01) — LEER ANTES DE TOCAR PREFETCH / IA / EXTHTTP
+
+Se implementó el **motor real de “Predicción AI”** y se calibró la capa **EXTHTTP**.
+Si vas a tocar `m3u8-typed-arrays-ultimate.js`, `profile-manager-v9.js`, `ape-profiles-config.js`
+o `frontend/js/ape-v9/streaming/*`, lee esto primero.
+
+**Qué existe ahora**
+- `frontend/js/ape-v9/streaming/predictive-prefetch-v9.js` → `window.APE_PREDICT`:
+  EWMA² sobre `APE_BW` + tendencia + pendiente + ventana neuro-buffer 70/30/10 +
+  riesgo logístico + evidencia medida. Sin medición ⇒ `EVIDENCE=none, MBPS=0`.
+- El toggle del panel (“Adaptación Inteligente” / “Predicción AI”) escribe
+  `prefetch_config.*` y **ahora se honra**: el generador emite
+  `#EXT-X-APE-AI-PREDICT:…APPLIED=xXy,DECLARED=AxB,EVIDENCE=resource-timing`.
+- Gobernador acotado: sólo **estrecha** (50 % / 75 % / ×0.75), pisos 3/1, techo = SSOT.
+
+**Invariantes — NO romper**
+1. `X-Concurrent-Downloads` = **8** único (256/200 saturaban; README_v5.3_FUSION).
+2. `X-Prefetch-Segments` / `X-Parallel-Segments` = **SSOT del perfil**, reservados por
+   `EXTHTTP_PRIORITY_KEYS` antes del recorte 200 headers / 8192 B.
+3. La familia `X-APE-Prefetch-*` **NO se emite** en EXTHTTP (CA1: familia interna).
+4. Fallback de prefetch en `PROFILES` alineado con `PREFETCH_PRESETS` (P0 90/40, no 250).
+5. `#EXTHTTP` **debe ser JSON válido**: el token de sesión va como
+   `#EXT-X-APE-PLAYBACK-TOKEN`, nunca como `#EXTHTTP:key=value`.
+6. Precedencia LAB: si `options.bulletproof_profiles` trae `optimized_knobs.buffer_seconds`,
+   la tabla t63 **no** lo pisa (network-caching del LAB manda).
+
+**Verificación obligatoria (todo verde antes de commit)**
+```bash
+node frontend/tests/ape-predictive-prefetch.test.js          # 43 PASS
+node frontend/tests/predictive-prefetch-live.js              # 11 PASS (medición loopback real)
+node frontend/tests/ui-predictive-prefetch.verify.js         # 18 PASS (Chrome headless + evidencia real)
+node frontend/tests/e2e-bulletproof-full-audit.js            # 25/25 (necesita el LAB JSON)
+```
+`node -c` sobre el generador y `node -c` sobre los 3 JS de CLAUDE.md antes de cada commit.
+
+**Referencia completa:** `IPTV_v5.4_MAX_AGGRESSION/docs/manifestos/APEX_AI_PREDICTIVE_PREFETCH_2026-11-01.md`
+(contiene fórmulas, evidencia medida, límites honestos y rollback).
+
 ---
 
 ## REGLA LEGAL Y ÉTICA (cardinal, no negociable)

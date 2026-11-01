@@ -2291,7 +2291,10 @@
                 }
                 if (window.APE_PREDICT && typeof window.APE_PREDICT.decide === 'function') {
                     aiDecision = window.APE_PREDICT.decide({
-                        bitrate: activeProfile.settings?.bitrate,
+                        // settings.bitrate está en Mbps (UI); decide() lo espera en kbps
+                        // como cfg.bitrate del generador. Sin ×1000 el headroom salía
+                        // 1000× inflado (medido en Chrome: 16777× en vez de 16.78×).
+                        bitrate: (Number(activeProfile.settings?.bitrate) || 0) * 1000,
                         prefetch_segments: prefetchConfig.prefetch_segments,
                         prefetch_parallel: prefetchConfig.parallel_downloads,
                         prefetch_buffer_target: (Number(prefetchConfig.buffer_target_seconds) || 0) * 1000,

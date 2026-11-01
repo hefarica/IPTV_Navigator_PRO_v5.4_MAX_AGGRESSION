@@ -4958,7 +4958,6 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
         // PREFETCH — los valores del panel deben llegar al borde
         'X-Prefetch-Enabled', 'X-Prefetch-Adaptive', 'X-Prefetch-Segments',
         'X-Parallel-Segments', 'X-Concurrent-Downloads',
-        'X-APE-Prefetch-Segments', 'X-APE-Prefetch-Parallel',
         // presupuesto de red declarado
         'X-Expected-Bitrate', 'X-Max-Bitrate', 'X-Min-Bitrate', 'X-Buffer-Target'
     ];
@@ -5388,7 +5387,10 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
             "X-Manifest-Refresh": String(GLOBAL_CACHING.file),
             "X-KODI-LIVE-DELAY": String(Math.floor(GLOBAL_CACHING.file / 1000)),
             "X-APE-STRATEGY": "ultra-aggressive",
-            "X-APE-Prefetch-Segments": "20",
+            // [CALIB 2026-11-01] X-APE-Prefetch-Segments ELIMINADO de EXTHTTP:
+            // CA1 lo clasifica como familia interna (X-APE-*) que no debe
+            // filtrarse aguas arriba; el valor funcional viaja en
+            // X-Prefetch-Segments / X-Parallel-Segments (autoridad SSOT).
             "X-APE-Quality-Threshold": "0.99",
             "X-APE-CODEC": (cfg.codec_primary || 'H264').toUpperCase(),
             "X-APE-RESOLUTION": cfg.resolution || '1920x1080',
@@ -5581,8 +5583,9 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
         headers['X-APE-Risk-Score'] = `${_risk}`;
         headers['X-APE-Headroom'] = `${_headroom}`;
         headers['X-APE-Stall-Rate-Target'] = _headroom > 150 ? '0.07' : _headroom > 100 ? '0.5' : '2.0';
-        headers['X-APE-Prefetch-Segments'] = `${cfg.prefetch_segments || 90}`;
-        headers['X-APE-Prefetch-Parallel'] = `${cfg.prefetch_parallel || 40}`;
+        // [CALIB 2026-11-01] X-APE-Prefetch-Segments / -Parallel ya NO se emiten
+        // en EXTHTTP (CA1: familia interna no debe filtrarse al proveedor).
+        // Los valores del SSOT viajan en X-Prefetch-Segments / X-Parallel-Segments.
         headers['X-APE-RAM-Estimate'] = `${((_bufTotal / 1000) * _bpsMbps / 8).toFixed(0)}MB`;
         headers['X-APE-Overhead-Security'] = `${_playerBuf - Math.floor(_bufC1 / 5)}ms`;
 
@@ -11299,7 +11302,16 @@ lines.push(`#EXT-X-APE-STREAM-TRUTH:src=${_streamTruth.source},w=${_streamTruth.
                 // si el LAB aportó el valor (_labBufMs válido) se RESPETA y no se toca (doctrina
                 // iptv-lab-ssot-no-clamp). Sólo cuando el generador está en el fallback hardcodeado
                 // se aplica la tabla del motor. No se borra ninguna línea: se ajusta el valor.
-                if (Number.isNaN(_labBufMs)) {
+                //
+                // [CALIB 2026-11-01] La regla sólo reconocía el LAB vía Profile Manager
+                // (_labBufMs). Con BULLETPROOF LAB por `options.bulletproof_profiles` (sin PM),
+                // optimized_knobs.buffer_seconds YA escribió el network-caching del LAB
+                // (105 s en el LAB vigente) y esta tabla lo PISABA con 90000 — contradiciendo
+                // la propia regla. Ahora el LAB de bulletproof también manda.
+                const _labBufFromBulletproof = !!(typeof labProfile !== 'undefined' && labProfile
+                    && labProfile.optimized_knobs
+                    && Number(labProfile.optimized_knobs.buffer_seconds) > 0);
+                if (Number.isNaN(_labBufMs) && !_labBufFromBulletproof) {
                     const _rtP = (typeof window.ApeRealtimeEngine.getProfile === 'function')
                         ? window.ApeRealtimeEngine.getProfile(profile) : null;
                     const _rtNc = (_rtP && _rtP.vlcopt) ? parseInt(_rtP.vlcopt['network-caching'], 10) : NaN;

@@ -1,5 +1,19 @@
 # IPTV Navigator PRO v5.4 MAX AGGRESSION — CLAUDE.md
 
+## 🚨 CAMBIOS RECIENTES (2026-11-01) — PREFETCH / “Predicción AI” / EXTHTTP
+
+Antes de tocar el generador o el panel, revisa `AGENTS.md` → sección
+“ÚLTIMOS CAMBIOS (2026-11-01)” y el manifiesto
+`docs/manifestos/APEX_AI_PREDICTIVE_PREFETCH_2026-11-01.md`.
+
+Resumen: existe `APE_PREDICT` (motor real: EWMA² + pendiente + ventana neuro-buffer +
+evidencia Resource Timing). Los toggles del panel ya llegan al SSOT y se declaran con su
+estado real. `X-Concurrent-Downloads` es 8 único; los headers de prefetch sobreviven al
+recorte EXTHTTP por prioridad; `X-APE-Prefetch-*` ya no se filtra aguas arriba; el fallback
+P0 pasó de 250 a 40; el `#EXTHTTP` del master token es ahora JSON válido (CA11 0 errores).
+Verificación: 43 unit + 11 live + 18 UI (Chrome headless) + 25/25 e2e.
+
+
 ## 🛑 REALIDAD MEDIDA DEL VPS — LEER ANTES DE TOCAR LA CAPA VPS
 
 **La doctrina OMEGA describe un VPS que NO existe.** Medido el 2026-10-25 (solo lectura, cero mutaciones):

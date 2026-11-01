@@ -1,7 +1,7 @@
 # APE PREDICTIVE PREFETCH v1.0 — "Predicción AI" con motor real
 
 **Fecha:** 2026-11-01 · **Ámbito:** frontend (`index-v4.html` + `ape-v9/streaming`)
-**Estado:** implementado y verificado en working tree. **Sin commit** (pendiente de revisión del propietario).
+**Estado:** implementado, verificado y commiteado (base dcbabc5 + calibración final 2026-11-01).
 **Doctrina aplicada:** MAX IMAGE FIRST · no mocks · no datos falsos · no tocar VPS · SSOT del perfil manda.
 
 ---
@@ -111,7 +111,8 @@ Sin medición (predictor reseteado):
 AI apagada: no se emite `AI-PREDICT` y `PREFETCH` declara `AI=disabled`.
 
 Regresión del harness del repo (`frontend/tests/e2e-bulletproof-full-audit.js`):
-**24 PASS / 1 FAIL, idéntico a `git show HEAD`** (el FAIL es el `network-caching=105000` preexistente del LAB).
+**25 PASS / 0 FAIL** (antes 24/1: el fallo `network-caching=105000` se corrigió respetando
+la precedencia del LAB de `bulletproof_profiles` sobre la tabla t63).
 
 ## 5.b Deuda de headers cerrada en la misma tanda (medida antes/después)
 
@@ -131,9 +132,45 @@ funcionales (identidad de transporte + prefetch) antes del recorte 200/8192 — 
 orden de inserción decidía y los de prefetch se perdían; además, un bloque de
 "autoridad SSOT" reescribe los 3 headers de prefetch como última palabra.
 
-**Nota:** `X-APE-*` NO se re-inyecta en EXTHTTP (CA1: familia interna, no debe filtrarse
-aguas arriba). Los `X-APE-Prefetch-*` que aún aparezcan vienen de `build_exthttp()` y se
-dejan como están en esta tanda (pre-existente, fuera de alcance).
+**Nota:** `X-APE-*` NO se filtra en EXTHTTP (CA1: familia interna, no debe llegar al
+proveedor). Los `X-APE-Prefetch-Segments` / `X-APE-Prefetch-Parallel` que emitía
+`build_exthttp()` **fueron eliminados** en esta tanda: el valor funcional viaja en
+`X-Prefetch-Segments` / `X-Parallel-Segments`. Verificado con sonda: ya no aparecen.
+
+## 5.c Verificación en NAVEGADOR REAL (Chrome headless + CDP)
+
+Prueba reproducible: [`frontend/tests/ui-predictive-prefetch.verify.js`](../../frontend/tests/ui-predictive-prefetch.verify.js)
+— sirve el frontend real por loopback, mide **6 descargas HTTP reales de 1 MB** en el
+propio Chrome, alimenta `APE_BW` → `APE_PREDICT` y renderiza `ProfileManagerV9`.
+
+Resultado: **18 PASS / 0 FAIL** · captura:
+[`assets/prediccion-ai-2026-11-01.png`](assets/prediccion-ai-2026-11-01.png)
+
+Texto realmente pintado en el panel (extraído del DOM):
+
+```
+● MEDIDO · horizonte 10 s                      [Medir ahora]
+medido 167.8 Mbps · pronóstico 167.8 Mbps · tendencia 0.0% · conf 0.60
+Riesgo 0% · headroom 16.78× · aplicado 90×40 de 90×40
+```
+
+Asertos clave: `APE_BW`/`APE_PREDICT`/`APE_PROFILES_CONFIG` cargados · 6 mediciones
+reales (`resource-timing`) · `render()` sin error · bloque visible (`offsetParent != null`)
+· toggle y botón presentes · estado `MEDIDO` · riesgo/aplicado visibles · sin `undefined`
+ni `NaN` en el panel (con `StreamingEngine` real cargado).
+
+**Bug encontrado y corregido gracias a esta prueba:** el panel pasaba `settings.bitrate`
+en **Mbps** a `decide()`, que lo espera en **kbps** (como `cfg.bitrate`) → el headroom
+salía 1000× inflado (`16777×` en vez de `16.78×`). Corregido con `×1000` y verificado
+por aserto (`headroom < 100`).
+
+## 5.d Otras dos correcciones de esta tanda
+
+| Fix | Medido antes | Medido después |
+|---|---|---|
+| Fallback P0 `prefetch_parallel` | 250 (P0), 200/180/150/120/100 (P1-P5) | 40/20/20/10/10/6 — igual que `PREFETCH_PRESETS` |
+| Precedencia `network-caching` LAB vs t63 | LAB mandaba 105 s y t63 lo pisaba con 90000 | el LAB de `bulletproof_profiles` manda: **105000** en el e2e |
+| `X-APE-Prefetch-*` en EXTHTTP | presentes (2 claves por canal) | **eliminadas** (CA1) |
 
 ## 6. Límites honestos (lo que NO hace)
 
@@ -149,4 +186,6 @@ dejan como están en esta tanda (pre-existente, fuera de alcance).
 1. Quitar `<script …predictive-prefetch-v9.js>` de `index-v4.html` (el generador degrada a `AI=enabled,EVIDENCE=none` sin la línea `AI-PREDICT`).
 2. O revertir el bloque 8.l + el bloque SSOT del bridge en `m3u8-typed-arrays-ultimate.js`.
 3. Los tests y el módulo son aditivos: borrarlos no afecta al resto.
+
+
 
