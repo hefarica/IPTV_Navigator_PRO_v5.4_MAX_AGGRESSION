@@ -24,7 +24,7 @@
 | Kodi + inputstream.adaptive | expected | expected | device-dependent | TV-dependent | PENDING real test |
 | Shaka Player | expected | expected | browser-dependent | browser-dependent | PENDING real test |
 | ExoPlayer/Media3 | expected | expected | device-dependent | device-dependent | PENDING real test |
-| ONN 4K + ARA | expected | app-dependent | Main10 HDR10 decoder confirmed | TV-dependent | PENDING real playback |
+| ONN 4K + ARA | playlist loaded | app-dependent | Main10 HDR10 decoder confirmed | TV-dependent | FAILED on 1080 HDR10: ERROR_CODE_DECODER_INIT_FAILED (4001) |
 
 ## ONN 4K decoder evidence
 
@@ -73,3 +73,24 @@ startup time
 rebuffer count
 freeze count
 ```
+
+## Real device test 2026-11-01
+
+Command:
+
+`	ext
+PlayerActivity --es url https://iptv-ape.duckdns.org/jit/live/3/master.m3u8
+`
+
+Observed:
+
+`	ext
+VIDEO elegido: video/hevc hvc1.2.4.L123.90 1920x1080 bps=3000000
+ColorInfo: BT2020, Limited range, ST2084 PQ, 10bit
+player error: ERROR_CODE_DECODER_INIT_FAILED (4001)
+decoder fallback 1/2 and 2/2: same failure
+`
+
+Conclusion: the ONN's advertised HEVC Main10 HDR10 capability does not
+guarantee that this 1080p60 PQ stream initializes. A real SDR/AVC fallback
+path is still required before claiming device compatibility.
