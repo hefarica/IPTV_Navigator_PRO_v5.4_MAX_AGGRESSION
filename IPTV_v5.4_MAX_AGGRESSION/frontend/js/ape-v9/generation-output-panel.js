@@ -22,6 +22,25 @@
     if (el) { el.textContent = msg; el.style.color = color || '#94a3b8'; }
   }
 
+  function selectedFormat() {
+    var r = document.querySelector('input[name="ape-out-format"]:checked');
+    return r ? r.value : 'm3u8';
+  }
+
+  function formatGuard() {
+    var f = selectedFormat();
+    if (f === 'mpd') {
+      toast('DASH/MPD lo sirve el JIT; el generador actual descarga HLS .m3u8. No se genera un MPD falso.', 'warning');
+      status('DASH/MPD: usar salida JIT; no hay generador MPD de descarga', '#f59e0b');
+      return false;
+    }
+    if (f === 'hybrid') {
+      toast('Se generará la lista HLS; el manifiesto DASH se sirve desde JIT.', 'info');
+      status('HÍBRIDA: HLS descargable + DASH servido por JIT', '#a855f7');
+    }
+    return true;
+  }
+
   function activeBitrate() {
     try {
       var cfg = window.APE_PROFILES_CONFIG;
@@ -70,7 +89,7 @@
   }
 
   async function runVps() {
-    if (!checkGeneration()) return;
+    if (!checkGeneration() || !formatGuard()) return;
     try {
       status('Generando VPS…', '#38bdf8');
       await window.APEGenerationController.prepublishAndGenerateDual();
@@ -79,7 +98,7 @@
   }
 
   async function runDirect() {
-    if (!checkGeneration()) return;
+    if (!checkGeneration() || !formatGuard()) return;
     try {
       status('Generando DIRECTO…', '#38bdf8');
       await window.APEGenerationController.prepublishAndGenerate();
@@ -91,7 +110,7 @@
   // proveedor (comprobado en APE_LISTA_..._CDN: playlist VPS -> media playlist
   // con segmentos en host del proveedor). Se usa el generador CDN existente.
   async function runBoth() {
-    if (!checkGeneration()) return;
+    if (!checkGeneration() || !formatGuard()) return;
     try {
       status('Generando AMBAS (URI VPS + vídeo directo)…', '#38bdf8');
       await window.APEGenerationController.prepublishAndGenerateDual();
@@ -143,6 +162,22 @@
       '<label style="cursor:pointer;"><input type="checkbox" id="ape-sel-direct" style="accent-color:#a855f7;"> DIRECTO</label>' +
       '<label style="cursor:pointer;"><input type="checkbox" id="ape-sel-both" style="accent-color:#22d3ee;"> AMBAS</label>' +
       '<span id="ape-sel-state" style="color:#94a3b8;font-size:.64rem;">VPS seleccionado</span>' +
+      '</div>' +
+      '<div style="display:flex;gap:14px;flex-wrap:wrap;align-items:center;margin-top:8px;padding:8px 10px;border-radius:9px;background:rgba(2,6,23,.42);border:1px solid rgba(148,163,184,.22);font-size:.7rem;color:#cbd5e1;">' +
+      '<strong style="color:#86efac;">SALIDAS:</strong>' +
+      '<label style="cursor:pointer;"><input type="checkbox" id="ape-out-hls" checked style="accent-color:#22c55e;"> HLS</label>' +
+      '<label style="cursor:pointer;"><input type="checkbox" id="ape-out-dash" style="accent-color:#38bdf8;"> DASH</label>' +
+      '<label style="cursor:pointer;"><input type="checkbox" id="ape-out-hybrid" style="accent-color:#a855f7;"> HÍBRIDA HLS+DASH</label>' +
+      '<label style="cursor:pointer;"><input type="checkbox" id="ape-out-jit" checked style="accent-color:#f59e0b;"> JIT</label>' +
+      '<label style="cursor:pointer;" title="Una sola casilla para ambas calidades"><input type="checkbox" id="ape-out-hdr" checked style="accent-color:#ef4444;"> 4K HDR / 1080 HDR</label>' +
+      '</div>' +
+      '<div style="display:flex;gap:14px;flex-wrap:wrap;align-items:center;margin-top:8px;padding:8px 10px;border-radius:9px;background:rgba(2,6,23,.42);border:1px solid rgba(148,163,184,.22);font-size:.7rem;color:#cbd5e1;">' +
+      '<strong style="color:#fbbf24;">FORMATO:</strong>' +
+      '<label style="cursor:pointer;"><input type="radio" name="ape-out-format" value="m3u8" checked style="accent-color:#22c55e;"> .M3U8</label>' +
+      '<label style="cursor:pointer;"><input type="radio" name="ape-out-format" value="mpd" style="accent-color:#38bdf8;"> .MPD</label>' +
+      '<label style="cursor:pointer;"><input type="radio" name="ape-out-format" value="hybrid" style="accent-color:#a855f7;"> HÍBRIDA</label>' +
+      '<span id="ape-out-matrix-state" style="color:#94a3b8;font-size:.64rem;">HLS · .M3U8</span>' +
+      '<span style="font-size:.6rem;color:#64748b;flex-basis:100%;">HLS descargable con el generador actual. DASH/MPD se sirve desde JIT; no se fabrica un MPD falso.</span>' +
       '</div>' +
       '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:9px;margin-top:12px;">' +
       // VPS
@@ -229,6 +264,41 @@
     if (sd) sd.addEventListener('change', function () { if (sb) sb.checked = false; selPaint(); });
     if (sb) sb.addEventListener('change', function () { if (sb.checked) { sv.checked = true; sd.checked = true; } selPaint(); });
     selPaint();
+
+    // SALIDAS + FORMATO: la selección de formato manda sobre HLS/DASH.
+    var oh = document.getElementById('ape-out-hls');
+    var od = document.getElementById('ape-out-dash');
+    var ox = document.getElementById('ape-out-hybrid');
+    var oj = document.getElementById('ape-out-jit');
+    var ohdr = document.getElementById('ape-out-hdr');
+    var ofs = document.querySelectorAll('input[name="ape-out-format"]');
+    var om = document.getElementById('ape-out-matrix-state');
+    function formatValue() {
+      for (var i = 0; i < ofs.length; i++) if (ofs[i].checked) return ofs[i].value;
+      return 'm3u8';
+    }
+    function paintOutputs() {
+      if (!oh || !od || !ox) return;
+      if (ox.checked) { oh.checked = true; od.checked = true; }
+      if (oh.checked && od.checked) ox.checked = true;
+      else ox.checked = false;
+      var f = oh.checked && od.checked ? 'hybrid' : (od.checked ? 'mpd' : 'm3u8');
+      ofs.forEach(function (r) { if (r.value === f) r.checked = true; });
+      if (om) om.textContent = (oh.checked ? 'HLS ' : '') + (od.checked ? 'DASH ' : '') +
+        (oj && oj.checked ? 'JIT ' : '') + (ohdr && ohdr.checked ? 'HDR' : '') + ' · .' + f.toUpperCase();
+    }
+    ofs.forEach(function (r) {
+      r.addEventListener('change', function () {
+        if (r.value === 'm3u8') { oh.checked = true; od.checked = false; ox.checked = false; }
+        if (r.value === 'mpd') { oh.checked = false; od.checked = true; ox.checked = false; }
+        if (r.value === 'hybrid') { oh.checked = true; od.checked = true; ox.checked = true; }
+        paintOutputs();
+      });
+    });
+    [oh, od, ox, oj, ohdr].forEach(function (el) {
+      if (el) el.addEventListener('change', paintOutputs);
+    });
+    paintOutputs();
     var p = document.getElementById('publicationMode');
     var ps = document.getElementById('ape-gen-mode-select');
     function paintMode() {
