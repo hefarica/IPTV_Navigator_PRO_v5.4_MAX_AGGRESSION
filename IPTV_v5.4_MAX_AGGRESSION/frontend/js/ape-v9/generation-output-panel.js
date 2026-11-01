@@ -8,7 +8,13 @@
   if (window.__APE_GEN_OUTPUT_PANEL__) return;
   window.__APE_GEN_OUTPUT_PANEL__ = true;
   var $ = function (s) { return document.querySelector(s); };
-  var MIN_DELTA = 0.15; // entrada >= salida * 1.15
+  // Delta relativo por perfil, no un valor absoluto en Mbps.
+  var DELTA_PCT = (function () {
+    try {
+      var v = Number(localStorage.getItem('ape_output_delta_pct'));
+      return isFinite(v) && v >= 0 && v <= 90 ? v : 15;
+    } catch (_) { return 15; }
+  })();
 
   function toast(msg, type) {
     try {
@@ -60,29 +66,25 @@
 
   function guard() {
     var inM = inputMbps(), outM = activeBitrate();
-    var delta = inM > 0 && outM > 0 ? inM - outM : null;
-    var pct = inM > 0 ? delta / inM * 100 : null;
-    var ok = delta != null && inM >= outM * (1 + MIN_DELTA);
-    var e = $('#ape-buf-in'), s = $('#ape-buf-out'), d = $('#ape-buf-delta'), b = $('#ape-buf-state');
-    if (e) e.textContent = inM > 0 ? inM.toFixed(1) + ' Mbps' : 'SIN DATO';
-    if (s) s.textContent = outM > 0 ? outM.toFixed(1) + ' Mbps' : 'SIN DATO';
-    if (d) d.textContent = delta == null ? '—' : delta.toFixed(1) + ' Mbps (' + pct.toFixed(1) + '%)';
+    var has = inM > 0 && outM > 0;
+    var ok = has && inM >= outM * (1 + DELTA_PCT / 100);
+    var b = $('#ape-buf-state');
     if (b) {
-      b.textContent = delta == null ? 'SIN DATO' : (ok ? 'BUFFER OK' : 'BUFFER RIESGO');
-      b.style.color = delta == null ? '#f59e0b' : (ok ? '#22c55e' : '#ef4444');
+      b.textContent = has ? (ok ? 'BUFFER OK' : 'BUFFER RIESGO') : 'SIN DATO';
+      b.style.color = has ? (ok ? '#22c55e' : '#ef4444') : '#f59e0b';
     }
-    return { inM: inM, outM: outM, delta: delta, ok: ok };
+    return { inM: inM, outM: outM, has: has, ok: ok };
   }
 
   function checkGeneration() {
     var g = guard();
-    if (g.delta == null) {
+    if (!g.has) {
       toast('Sin medición de entrada: se permite generar, pero no se puede validar el buffer.', 'warning');
       return true;
     }
     if (!g.ok) {
-      toast('Buffer en riesgo: entrada ' + g.inM.toFixed(1) + ' Mbps vs salida ' + g.outM.toFixed(1) + ' Mbps. No se genera hasta que entre más de lo que sale.', 'error');
-      status('BLOQUEADO: entrada <= salida × 1.15', '#ef4444');
+      toast('Buffer insuficiente para el perfil activo con delta ' + DELTA_PCT + '%.', 'error');
+      status('BLOQUEADO: el perfil activo no cumple el delta ' + DELTA_PCT + '%', '#ef4444');
       return false;
     }
     return true;
@@ -217,12 +219,13 @@
       '<div style="display:grid;grid-template-columns:1.5fr 1fr;gap:9px;margin-top:9px;">' +
       '<div style="background:rgba(2,6,23,.38);border:1px solid rgba(34,197,94,.3);border-radius:10px;padding:10px;">' +
       '<div style="font-size:.84rem;font-weight:800;color:#86efac;">CONDICIÓN DE BUFFER</div>' +
-      '<div style="display:flex;gap:14px;flex-wrap:wrap;font-size:1.05rem;color:#94a3b8;margin-top:5px;">' +
-      '<span>Entrada <b id="ape-buf-in" style="color:#e2e8f0;">SIN DATO</b></span>' +
-      '<span>Salida <b id="ape-buf-out" style="color:#e2e8f0;">SIN DATO</b></span>' +
-      '<span>Delta <b id="ape-buf-delta" style="color:#e2e8f0;">—</b></span>' +
-      '<b id="ape-buf-state" style="color:#f59e0b;">SIN DATO</b></div>' +
-      '<div style="font-size:.82rem;color:#64748b;margin-top:4px;">Se exige entrada ≥ salida × 1.15 para generar.</div></div>' +
+      '<div style="display:flex;align-items:center;gap:9px;font-size:1.05rem;color:#94a3b8;margin-top:7px;">' +
+      '<label for="ape-delta-input" style="white-space:nowrap;">Delta por perfil</label>' +
+      '<input id="ape-delta-input" type="number" min="0" max="90" step="1" value="' + DELTA_PCT + '" ' +
+      'style="width:78px;padding:5px 7px;border-radius:6px;background:#0f172a;color:#e2e8f0;border:1px solid #334155;font-size:1.05rem;font-weight:800;">' +
+      '<span style="color:#e2e8f0;font-weight:800;">%</span>' +
+      '</div>' +
+      '<div style="font-size:.82rem;color:#64748b;margin-top:5px;">Cada perfil aplica este delta sobre sus propios valores; aquí no se usan Mbps absolutos.</div></div>' +
       '<div style="background:rgba(2,6,23,.38);border:1px solid rgba(148,163,184,.25);border-radius:10px;padding:10px;font-size:.8rem;color:#94a3b8;">' +
       '<div style="font-weight:800;color:#e2e8f0;">MODO</div>' +
       '<select id="ape-gen-mode-select" style="margin-top:5px;width:100%;padding:5px 6px;border-radius:6px;background:#0f172a;color:#e2e8f0;border:1px solid #334155;font-size:.74rem;">' +
@@ -321,6 +324,18 @@
       paintMode();
     });
     paintMode();
+    var di = document.getElementById('ape-delta-input');
+    if (di) {
+      di.value = String(DELTA_PCT);
+      di.addEventListener('input', function () {
+        var v = Number(di.value);
+        if (isFinite(v) && v >= 0 && v <= 90) {
+          DELTA_PCT = v;
+          try { localStorage.setItem('ape_output_delta_pct', String(v)); } catch (_) { }
+          guard();
+        }
+      });
+    }
     guard();
     setInterval(function () { guard(); var m = $('#ape-gen-mode'); if (m) m.textContent = modeText(); }, 2000);
   }
