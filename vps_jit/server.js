@@ -51,9 +51,9 @@ function start(id, spec) {
     '-user_agent', spec.ua || 'VLC/3.0.19 LibVLC/3.0.19',
     '-i', spec.url,
     '-map', '0:v:0', '-map', '0:a:0?',
-    // HDR10 at native 1920x1080. zscale performs a real SDR->PQ conversion
-    // (npl=100) instead of simply tagging SDR pixels as PQ.
-    '-vf', 'zscale=t=linear:npl=100,format=gbrpf32le,zscale=p=bt2020:transfer=smpte2084:matrix=bt2020nc:primaries=bt2020,format=yuv420p10le',
+    // HDR10 at minimum 1920x1080. 480/720 sources are upscaled with Lanczos;
+    // 1080p stays 1080p; 4K is not downscaled by this expression.
+    '-vf', "scale=w='max(iw,1920)':h='max(ih,1080)':force_original_aspect_ratio=decrease:force_divisible_by=2:flags=lanczos,setparams=color_primaries=bt709:color_trc=bt709:colorspace=bt709:range=limited,zscale=t=linear:npl=100,format=gbrpf32le,zscale=p=bt2020:transfer=smpte2084:matrix=bt2020nc:primaries=bt2020,format=yuv420p10le",
     '-pix_fmt', 'yuv420p10le',
     '-color_primaries', 'bt2020', '-color_trc', 'smpte2084', '-colorspace', 'bt2020nc',
     '-c:v', 'libx265', '-preset', 'ultrafast', '-tune', 'zerolatency',
@@ -104,7 +104,6 @@ function waitForFile(id, name, cb) {
 function hdrMaster(text) {
   return text
     .replace(/CODECS="[^"]*"/, 'CODECS="hvc1.2.4.L123.B0,mp4a.40.2"')
-    .replace(/RESOLUTION=\d+x\d+/, 'RESOLUTION=1920x1080')
     .replace(/\bAUDIO="/, 'VIDEO-RANGE=PQ,AUDIO="');
 }
 

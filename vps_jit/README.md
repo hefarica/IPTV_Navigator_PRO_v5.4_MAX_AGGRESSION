@@ -25,8 +25,10 @@ output cache:     /dev/shm/ape-jit/<id>
 ## FFmpeg profile
 
 ```text
-video: H.264 SDR 1080p -> HEVC Main10 HDR10, 3 threads, 1920x1080
-color: zscale SDR->PQ (npl=100), BT.2020 / SMPTE ST 2084 / BT.2020nc
+video: H.264 SDR -> HEVC Main10 HDR10, 3 threads, minimum 1920x1080
+      480/720 sources: Lanczos upscale to 1920x1080
+      1080 sources:    unchanged (no downscale)
+color: setparams bt709 -> zscale SDR->PQ (npl=100), BT.2020 / ST 2084 / BT.2020nc
 audio: MP2/AAC source -> AAC 128k
 container: HLS fMP4/CMAF (init-*.m4s + chunk-*.m4s)
 bitrate: 3000k / max 3300k / bufsize 6000k
@@ -67,6 +69,15 @@ The deployed service uses one 1080p HEVC rendition to preserve real-time.
 
 The source has ~25 real frames/s (149 frames in 6 s), so 1080p HDR10 at
 30.25 fps is the non-downgrade operating point. Resolution stays 1920x1080.
+
+SD verification with a real channel (`1313573`, name says UHD EN SD):
+
+```text
+HLS master: RESOLUTION=1920x1080, VIDEO-RANGE=PQ
+DASH MPD:   maxWidth=1920 maxHeight=1080
+MPD video:  width=1920 height=1080, hvc1.2.4.L123.B0
+CICP:       primaries 9, transfer 16, matrix 9
+```
 
 ## List generation
 
