@@ -95,10 +95,14 @@ class ApePlayer(private val ctx: Context) {
                     mainHandler.post { attemptDecoderFallback(p, error) }
                 }
             })
-            runCatching {
-                @Suppress("UNCHECKED_CAST")
-                p.setVideoEffects(FluidBridge.effects(ctx) as List<Effect>)
-            }.onFailure { Log.w(TAG, "Fluid effects: ${it.message}") }
+            if (!suppressVideoEffects) {
+                runCatching {
+                    @Suppress("UNCHECKED_CAST")
+                    p.setVideoEffects(FluidBridge.effects(ctx) as List<Effect>)
+                }.onFailure { Log.w(TAG, "Fluid effects: ${it.message}") }
+            } else {
+                Log.w(TAG, "efectos GL desactivados por diagnóstico")
+            }
         }
     }
 
@@ -365,6 +369,7 @@ class ApePlayer(private val ctx: Context) {
     }
 
     companion object {
+        @Volatile var suppressVideoEffects: Boolean = false
         @Volatile var current: ApePlayer? = null
         const val TAG = "ApePlayer"
         /** Periodo del ÚNICO latido global (buffer + guard). */
