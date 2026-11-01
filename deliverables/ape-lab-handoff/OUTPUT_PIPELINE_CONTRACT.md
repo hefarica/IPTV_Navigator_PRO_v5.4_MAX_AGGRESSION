@@ -66,3 +66,38 @@ The UI blocks generation when measured input does not exceed output by the
 - No guarantee of zero freezes on every device/network; this requires device and
   network E2E testing.
 - LCEVC is not available in the installed FFmpeg.
+
+## APE Crystal UHD policy (2026-11-01)
+
+Applied to every JIT channel.
+
+`	ext
+HLS tag:  #EXT-X-APE-CRYSTAL-UHD:ENABLED=true
+Mode:     NATIVE_4K_HDR | CRYSTAL_UHD_UPSCALE | FHD_HDR10 | FHD_SDR | SDR720_STABLE
+Policy:   MAX_IMAGE_FIRST
+`
+
+Upscale rule:
+
+`	ext
+source 360/480/576/720
+→ Lanczos + pad
+→ 1920x1080
+→ HEVC Main10 HDR10 (PQ)
+`
+
+Verified:
+
+`	ext
+channel 100: 720x576 → 1920x1080
+init: hevc Main 10, level 123, 1920x1080
+tag: SOURCE=720x576;TARGET=1920x1080;FILTER=LANCZOS
+`
+
+`	ext
+channel 5 / 1313573: 1280x720 → 1920x1080
+channel 3: 1920x1080 native, no upscale
+`
+
+Truth guard: Crystal UHD is a quality policy/metadata plus the real 1080p
+HEVC Main10 encode. Native 4K HDR is passthrough only. No fake 4K pixels.

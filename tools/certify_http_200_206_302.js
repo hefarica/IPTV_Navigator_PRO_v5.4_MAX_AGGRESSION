@@ -10,6 +10,7 @@ const LIST_200 = [
   ['JIT_HLS_LIST', '/jit/playlist.m3u8'],
   ['JIT_CATALOG', '/jit/catalog.json'],
   ['JIT_CAPABILITIES', '/jit/capabilities.json'],
+  ['JIT_CRYSTAL', '/jit/crystal.json'],
   ['VPS_CDN_LIST', '/lists/APE_LISTA_1793531111695_CDN.m3u8'],
   ['HLS_1080', '/jit/live/3/master.m3u8'],
   ['HLS_1080_SDR', '/jit/live/3/sdr/master.m3u8'],
@@ -81,5 +82,6 @@ async function retry200(path) {
   console.log('\nTOTAL=' + total + ' PASS=' + pass + ' FAIL=' + (total - pass));
   if (pass !== total) process.exitCode = 1;
 })();
+
 
 

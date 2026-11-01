@@ -87,7 +87,7 @@ function start(id, spec, sdr, sdr720) {
 
   const videoArgs = is720
     ? [
-      '-vf', "scale=w=1280:h=720:force_original_aspect_ratio=decrease:force_divisible_by=2:flags=lanczos,setparams=color_primaries=bt709:color_trc=bt709:colorspace=bt709:range=limited,format=yuv420p",
+      '-vf', "scale=w=1280:h=720:force_original_aspect_ratio=decrease:force_divisible_by=2:flags=lanczos,pad=1280:720:(ow-iw)/2:(oh-ih)/2,setparams=color_primaries=bt709:color_trc=bt709:colorspace=bt709:range=limited,format=yuv420p",
       '-pix_fmt', 'yuv420p',
       '-color_primaries', 'bt709', '-color_trc', 'bt709', '-colorspace', 'bt709',
       '-c:v', 'libx264', '-preset', 'veryfast', '-tune', 'zerolatency',
@@ -96,7 +96,7 @@ function start(id, spec, sdr, sdr720) {
     ]
     : isSdr
     ? [
-      '-vf', "scale=w=1920:h=1080:force_original_aspect_ratio=decrease:force_divisible_by=2:flags=lanczos,setparams=color_primaries=bt709:color_trc=bt709:colorspace=bt709:range=limited,format=yuv420p",
+      '-vf', "scale=w=1920:h=1080:force_original_aspect_ratio=decrease:force_divisible_by=2:flags=lanczos,pad=1920:1080:(ow-iw)/2:(oh-ih)/2,setparams=color_primaries=bt709:color_trc=bt709:colorspace=bt709:range=limited,format=yuv420p",
       '-pix_fmt', 'yuv420p',
       '-color_primaries', 'bt709', '-color_trc', 'bt709', '-colorspace', 'bt709',
       '-c:v', 'libx264', '-preset', 'veryfast', '-tune', 'zerolatency',
@@ -106,7 +106,7 @@ function start(id, spec, sdr, sdr720) {
     : copy4k
     ? ['-c:v', 'copy', '-tag:v', 'hvc1']
     : [
-      '-vf', "scale=w='max(iw,1920)':h='max(ih,1080)':force_original_aspect_ratio=decrease:force_divisible_by=2:flags=lanczos,setparams=color_primaries=bt709:color_trc=bt709:colorspace=bt709:range=limited,zscale=t=linear:npl=100,format=gbrpf32le,zscale=p=bt2020:transfer=smpte2084:matrix=bt2020nc:primaries=bt2020,format=yuv420p10le",
+      '-vf', "scale=w=1920:h=1080:force_original_aspect_ratio=decrease:force_divisible_by=2:flags=lanczos,pad=1920:1080:(ow-iw)/2:(oh-ih)/2,setparams=color_primaries=bt709:color_trc=bt709:colorspace=bt709:range=limited,zscale=t=linear:npl=100,format=gbrpf32le,zscale=p=bt2020:transfer=smpte2084:matrix=bt2020nc:primaries=bt2020,format=yuv420p10le",
       '-pix_fmt', 'yuv420p10le',
       '-color_primaries', 'bt2020', '-color_trc', 'smpte2084', '-colorspace', 'bt2020nc',
       '-c:v', 'libx265', '-preset', 'ultrafast', '-tune', 'zerolatency',
@@ -145,17 +145,25 @@ function start(id, spec, sdr, sdr720) {
     detached: false,
     stdio: ['ignore', 'ignore', 'pipe'],
   });
+  const outWidth = is720 ? 1280 : (isSdr ? 1920 : (copy4k ? src.width : Math.max(1920, src.width || 0)));
+  const outHeight = is720 ? 720 : (isSdr ? 1080 : (copy4k ? src.height : Math.max(1080, src.height || 0)));
+  const upscaled = !copy4k && ((src.width || 0) < outWidth || (src.height || 0) < outHeight);
   current = {
     id, sdr: isSdr, sdr720: is720, child, dir, lastAccess: Date.now(), started: Date.now(),
     copy4k,
     hdr: !isSdr && (copy4k || src.transfer === 'smpte2084' || src.transfer === 'arib-std-b67'),
-    width: is720 ? 1280 : (isSdr ? 1920 : (copy4k ? src.width : Math.max(1920, src.width || 0))),
-    height: is720 ? 720 : (isSdr ? 1080 : (copy4k ? src.height : Math.max(1080, src.height || 0))),
+    sourceWidth: src.width || 0,
+    sourceHeight: src.height || 0,
+    width: outWidth,
+    height: outHeight,
+    upscaled,
     codecString: isSdr ? 'avc1.640028' : (copy4k ? 'hvc1.2.4.L153.B0' : 'hvc1.2.4.L123.B0'),
     audioCodec: hasAudio ? 'mp4a.40.2' : '',
     bandwidth: is720 ? 2400000 : (isSdr ? 4500000 : (copy4k ? 20000000 : 3000000)),
+    crystal: true,
+    crystalMode: copy4k ? 'NATIVE_4K_HDR' : (upscaled ? 'CRYSTAL_UHD_UPSCALE' : (is720 ? 'SDR720_STABLE' : (isSdr ? 'FHD_SDR' : 'FHD_HDR10'))),
   };
-  log('START', id, 'pid=' + child.pid, 'sdr=' + isSdr, 'sdr720=' + is720, 'copy4k=' + copy4k, 'src=' + src.width + 'x' + src.height + '/' + src.transfer);
+  log('START', id, 'pid=' + child.pid, 'sdr=' + isSdr, 'sdr720=' + is720, 'copy4k=' + copy4k, 'crystal=' + current.crystalMode, 'src=' + src.width + 'x' + src.height + '/' + src.transfer + '->' + outWidth + 'x' + outHeight);
   child.stderr.on('data', d => {
     const s = String(d).trim();
     if (s) log('FFMPEG', s.slice(0, 300));
@@ -182,6 +190,18 @@ function waitForFile(id, name, cb, sdr, sdr720) {
 function hdrMaster(text) {
   const codec = current ? current.codecString : 'hvc1.2.4.L123.B0';
   const audio = current ? current.audioCodec : 'mp4a.40.2';
+  const mode = current ? current.crystalMode : 'FHD_HDR10';
+  if (text.indexOf('#EXT-X-APE-CRYSTAL-UHD') === -1) {
+    const up = current && current.upscaled
+      ? '\n#EXT-X-APE-CRYSTAL-UPSCALE:SOURCE=' + current.sourceWidth + 'x' + current.sourceHeight +
+        ';TARGET=' + current.width + 'x' + current.height + ';FILTER=LANCZOS'
+      : '\n#EXT-X-APE-CRYSTAL-UPSCALE:NATIVE';
+    text = text.replace('#EXTM3U',
+      '#EXTM3U\n' +
+      '#EXT-X-APE-CRYSTAL-UHD:ENABLED=true\n' +
+      '#EXT-X-APE-CRYSTAL-MODE:' + mode + up + '\n' +
+      '#EXT-X-APE-CRYSTAL-POLICY:MAX_IMAGE_FIRST');
+  }
   return text
     .replace(/CODECS="[^"]*"/, 'CODECS="' + codec + (audio ? ',' + audio : '') + '"')
     .replace(/BANDWIDTH=\d+/, 'BANDWIDTH=' + (current ? current.bandwidth : 3000000))
@@ -196,6 +216,11 @@ function hdrMpd(text) {
       '<SupplementalProperty schemeIdUri="urn:mpeg:mpegB:cicp:MatrixCoefficients" value="9"/>',
     ].join('\n');
     text = text.replace(/(<AdaptationSet[^>]*contentType="video"[^>]*>)/, '$1\n' + props);
+  }
+  if (current && text.indexOf('urn:ape:crystal:uhd') === -1) {
+    const crystal = '<SupplementalProperty schemeIdUri="urn:ape:crystal:uhd" value="' +
+      (current.crystalMode || 'FHD_HDR10') + '"/>';
+    text = text.replace(/(<AdaptationSet[^>]*contentType="video"[^>]*>)/, '$1\n' + crystal);
   }
   return text.replace(/codecs="hvc1"/g, 'codecs="' + (current ? current.codecString : 'hvc1.2.4.L123.B0') + '"');
 }
@@ -248,6 +273,16 @@ function manifestJson(req, id, sdr, sdr720) {
   const active = !!(current && current.id === id && !!current.sdr === !!sdr && !!current.sdr720 === !!sdr720);
   return {
     version: '1.0', channel: id, status: active ? 'active' : 'inactive', variant: sdr720 ? 'sdr720' : (sdr ? 'sdr' : 'hdr'),
+    crystal_uhd: {
+      enabled: true,
+      mode: current ? current.crystalMode : 'FHD_HDR10',
+      policy: 'MAX_IMAGE_FIRST',
+      source_resolution: current ? current.sourceWidth + 'x' + current.sourceHeight : null,
+      output_resolution: current ? current.width + 'x' + current.height : null,
+      upscaled: !!(current && current.upscaled),
+      upscale_filter: current && current.upscaled ? 'LANCZOS' : null,
+      note: 'metadata/profile; 4K pixels only on native 4K HDR passthrough',
+    },
     formats: {
       hls: { url: base + prefix + '/master.m3u8', protocol: 'HLS', container: 'CMAF/fMP4' },
       dash: { url: base + prefix + '/manifest.mpd', protocol: 'DASH', container: 'CMAF/fMP4' },
@@ -292,8 +327,31 @@ const server = http.createServer((req, res) => {
       codecs: ['HEVC Main10', 'AAC'],
       hdr: ['SDR', 'HDR10 (BT.2020/PQ)'],
       resolutions: { '4k': '3840x2160 passthrough', 'hd': '1920x1080 HDR10' },
+      crystal_uhd: {
+        enabled: true,
+        applies_to: 'all JIT channels',
+        modes: ['NATIVE_4K_HDR', 'FHD_HDR10', 'FHD_SDR', 'SDR720_STABLE'],
+        note: 'policy/metadata; no fake 4K pixels',
+      },
       limits: { concurrent_channels: 1, idle_stop_s: Math.round(IDLE_MS / 1000) },
       active: current ? current.id : null,
+    }));
+  }
+  if (u.pathname === '/crystal.json') {
+    res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
+    return res.end(JSON.stringify({
+      policy: 'APE_CRYSTAL_UHD',
+      enabled: true,
+      applies_to: 'all JIT channels',
+      active_channel: current ? current.id : null,
+      active_mode: current ? current.crystalMode : null,
+      modes: {
+        NATIVE_4K_HDR: 'native 3840x2160 HEVC Main10 HDR10 passthrough',
+        FHD_HDR10: 'HEVC Main10 1920x1080 HDR10, zscale SDR->PQ',
+        FHD_SDR: 'H.264 1920x1080 SDR fallback for incompatible decoders',
+        SDR720_STABLE: 'H.264 1280x720 SDR continuity fallback',
+      },
+      truth_guard: 'VPS selects/signals; device applies AI-SR/AI-PQ. No fake 4K pixels.',
     }));
   }
   if (u.pathname === '/catalog.json') {
@@ -385,4 +443,5 @@ process.on('SIGINT', () => { stopCurrent('signal'); process.exit(0); });
 
 fs.mkdirSync(OUT_ROOT, { recursive: true });
 server.listen(PORT, BIND, () => log('LISTEN', BIND + ':' + PORT, 'map=' + MAP_FILE));
+
 
