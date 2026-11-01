@@ -25,10 +25,13 @@ output cache:     /dev/shm/ape-jit/<id>
 ## FFmpeg profile
 
 ```text
-video: H.264 source -> HEVC libx265 ultrafast, 2 threads, 1080p
+video: H.264 SDR 1080p -> HEVC Main10 HDR10, 3 threads, 1920x1080
+color: zscale SDR->PQ (npl=100), BT.2020 / SMPTE ST 2084 / BT.2020nc
 audio: MP2/AAC source -> AAC 128k
-container: HLS fMP4/CMAF (init.mp4 + .m4s)
-bitrate: 2500k / max 2800k / bufsize 5000k
+container: HLS fMP4/CMAF (init-*.m4s + chunk-*.m4s)
+bitrate: 3000k / max 3300k / bufsize 6000k
+DASH: manifest.mpd + CICP SupplementalProperty
+HLS: VIDEO-RANGE=PQ + hvc1.2.4.L123.B0
 ```
 
 Measured on the production VPS:
@@ -56,12 +59,14 @@ The deployed service uses one 1080p HEVC rendition to preserve real-time.
 ## Measured limits
 
 ```text
-1 x 1080p HEVC, threads=2:  66.84 fps  (HLS test)
-1 x 1080p DASH+HLS:         55.13 fps  (DASH test)
-3 x ABR 1080/720/480, t=1:  25.13 fps  (not real-time)
+1 x 1080p SDR HEVC, t=2:        66.84 fps
+1 x 1080p HDR10 (no zscale), t=3: 27.47 fps
+1 x 1080p HDR10 + zscale, t=3:  30.25 fps
+3 x ABR 1080/720/480, t=1:      25.13 fps (not real-time)
 ```
 
-One 1080p rendition is the safe operating point.
+The source has ~25 real frames/s (149 frames in 6 s), so 1080p HDR10 at
+30.25 fps is the non-downgrade operating point. Resolution stays 1920x1080.
 
 ## List generation
 

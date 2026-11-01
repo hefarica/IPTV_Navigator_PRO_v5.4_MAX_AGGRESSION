@@ -51,9 +51,15 @@ function start(id, spec) {
     '-user_agent', spec.ua || 'VLC/3.0.19 LibVLC/3.0.19',
     '-i', spec.url,
     '-map', '0:v:0', '-map', '0:a:0?',
+    // HDR10 at native 1920x1080. zscale performs a real SDR->PQ conversion
+    // (npl=100) instead of simply tagging SDR pixels as PQ.
+    '-vf', 'zscale=t=linear:npl=100,format=gbrpf32le,zscale=p=bt2020:transfer=smpte2084:matrix=bt2020nc:primaries=bt2020,format=yuv420p10le',
+    '-pix_fmt', 'yuv420p10le',
+    '-color_primaries', 'bt2020', '-color_trc', 'smpte2084', '-colorspace', 'bt2020nc',
     '-c:v', 'libx265', '-preset', 'ultrafast', '-tune', 'zerolatency',
-    '-threads', '2', '-tag:v', 'hvc1',
-    '-b:v', '2500k', '-maxrate', '2800k', '-bufsize', '5000k',
+    '-threads', '3', '-tag:v', 'hvc1',
+    '-x265-params', 'pools=3:frame-threads=1:hdr10=1:colorprim=bt2020:transfer=smpte2084:colormatrix=bt2020nc:master-display=G(13250,34500)B(7500,3000)R(34000,16000)WP(15635,16450)L(10000000,1):max-cll=100,100',
+    '-b:v', '3000k', '-maxrate', '3300k', '-bufsize', '6000k',
     '-c:a', 'aac', '-b:a', '128k', '-ac', '2',
     // One FFmpeg -> shared fMP4 for DASH + HLS.
     '-f', 'dash',
@@ -95,6 +101,26 @@ function waitForFile(id, name, cb) {
   tick();
 }
 
+function hdrMaster(text) {
+  return text
+    .replace(/CODECS="[^"]*"/, 'CODECS="hvc1.2.4.L123.B0,mp4a.40.2"')
+    .replace(/RESOLUTION=\d+x\d+/, 'RESOLUTION=1920x1080')
+    .replace(/\bAUDIO="/, 'VIDEO-RANGE=PQ,AUDIO="');
+}
+
+function hdrMpd(text) {
+  if (text.indexOf('cicp:ColourPrimaries') === -1) {
+    const props = [
+      '<SupplementalProperty schemeIdUri="urn:mpeg:mpegB:cicp:ColourPrimaries" value="9"/>',
+      '<SupplementalProperty schemeIdUri="urn:mpeg:mpegB:cicp:TransferCharacteristics" value="16"/>',
+      '<SupplementalProperty schemeIdUri="urn:mpeg:mpegB:cicp:MatrixCoefficients" value="9"/>',
+    ].join('\n');
+    text = text.replace(/(<AdaptationSet[^>]*contentType="video"[^>]*>)/, '$1\n' + props);
+  }
+  return text
+    .replace(/codecs="hvc1"/g, 'codecs="hvc1.2.4.L123.B0"');
+}
+
 function publicBase(req) {
   const proto = (req.headers['x-forwarded-proto'] || 'https').split(',')[0].trim();
   return proto + '://' + (req.headers.host || 'iptv-ape.duckdns.org') + '/jit';
@@ -110,8 +136,12 @@ function manifestJson(req, id) {
       dash: { url: base + '/live/' + id + '/manifest.mpd', protocol: 'DASH', container: 'CMAF/fMP4' },
     },
     streams: [{
-      bandwidth: 2800000, average_bandwidth: 2600000, resolution: '1920x1080',
-      codecs: 'hvc1.1.6.L120.B0,mp4a.40.2', uri: 'media_0.m3u8',
+      bandwidth: 3300000, average_bandwidth: 3000000, resolution: '1920x1080',
+      codecs: 'hvc1.2.4.L123.B0,mp4a.40.2', uri: 'media_0.m3u8',
+      hdr: 'HDR10', video_range: 'PQ', color_primaries: 'BT.2020',
+      transfer: 'SMPTE ST 2084', matrix: 'BT.2020 non-constant',
+      master_display: 'G(13250,34500)B(7500,3000)R(34000,16000)WP(15635,16450)L(10000000,1)',
+      max_cll: 1000, max_fall: 400,
     }],
     clients_connected: active ? 1 : 0,
     active_since: active ? new Date(current.started).toISOString() : null,
@@ -162,7 +192,13 @@ const server = http.createServer((req, res) => {
   const serve = () => {
     const file = path.join(OUT_ROOT, id, name);
     if (!fs.existsSync(file)) { res.writeHead(404); return res.end('not ready'); }
-    res.writeHead(200, { 'Content-Type': MIME[path.extname(file)] || 'application/octet-stream', 'Cache-Control': 'no-store' });
+    const type = MIME[path.extname(file)] || 'application/octet-stream';
+    if (name === 'master.m3u8' || name === 'manifest.mpd') {
+      const txt = fs.readFileSync(file, 'utf8');
+      res.writeHead(200, { 'Content-Type': type, 'Cache-Control': 'no-store' });
+      return res.end(name === 'master.m3u8' ? hdrMaster(txt) : hdrMpd(txt));
+    }
+    res.writeHead(200, { 'Content-Type': type, 'Cache-Control': 'no-store' });
     fs.createReadStream(file).pipe(res);
   };
   if (waitName) return waitForFile(id, waitName, (err) => {
