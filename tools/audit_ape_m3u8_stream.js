@@ -6,6 +6,7 @@
  */
 'use strict';
 const fs = require('fs');
+const zlib = require('zlib');
 const readline = require('readline');
 
 const MAX_EXTHTTP_HEADERS = 200;
@@ -21,7 +22,10 @@ let overflowLines = 0, overflowTotalHeaders = 0, overflowBad = 0;
 let metaTotal = 0, metaBad = '';
 const metaChunks = new Map();
 
-const rl = readline.createInterface({ input: fs.createReadStream(file), crlfDelay: Infinity });
+const rawInput = /\.gz$/i.test(file)
+  ? fs.createReadStream(file).pipe(zlib.createGunzip())
+  : fs.createReadStream(file);
+const rl = readline.createInterface({ input: rawInput, crlfDelay: Infinity });
 rl.on('line', (line) => {
   lines++;
   if (lines === 1) first = line;
