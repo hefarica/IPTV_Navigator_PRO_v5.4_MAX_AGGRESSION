@@ -9,6 +9,7 @@ on:
       - 'tools/check_streaming_continuity.js'
       - 'docs/policies/STREAMING_CONTINUITY_LAW.md'
       - 'contracts/streaming_continuity_contract.json'
+      - 'IPTV_v5.4_MAX_AGGRESSION/frontend/**'
       - '.github/workflows/streaming-continuity.yml'
   workflow_dispatch:
 
@@ -29,6 +30,8 @@ jobs:
           node-version: '20'
       - name: Validate contract JSON
         run: python -m json.tool contracts/streaming_continuity_contract.json > /dev/null
+      - name: Validate app/LAB wiring
+        run: node tools/check_app_continuity_wiring.js
       - name: Certify 200/206/302
         run: node tools/certify_http_200_206_302.js
       - name: Verify critical headers
