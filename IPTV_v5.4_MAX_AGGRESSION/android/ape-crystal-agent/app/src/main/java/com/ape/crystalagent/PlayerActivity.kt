@@ -40,7 +40,19 @@ class PlayerActivity : Activity() {
                 a.logSelected(tracks)
             }
         })
-        if (ua != null) a.playChannel(p, url, ua) else a.playChannel(p, url)
+        val headersJson = intent.getStringExtra("headers")
+        val headers = runCatching {
+            val o = org.json.JSONObject(headersJson ?: "{}")
+            val out = HashMap<String, String>()
+            val it = o.keys()
+            while (it.hasNext()) {
+                val k = it.next()
+                val v = o.optString(k, "")
+                if (v.isNotEmpty()) out[k] = v
+            }
+            out
+        }.getOrDefault(emptyMap())
+        a.playChannel(p, url, ua ?: ApePlayer.DEFAULT_UA, headers)
     }
 
     override fun onDestroy() { PlayerHub.detach(); ape?.release(); player = null; super.onDestroy() }

@@ -43,6 +43,7 @@ class ApePlayer(private val ctx: Context) {
     // Fallback de decoder: no cambia URL; reintenta la MISMA URL con una capacidad menor.
     private var currentUrl: String = ""
     private var currentUa: String = DEFAULT_UA
+    private var currentHeaders: Map<String, String> = emptyMap()
     private var fallbackChain: List<CodecFallback> = emptyList()
     private var fallbackAttempt: Int = 0
     private var fallbackMax: Pair<Int, Int>? = null
@@ -97,16 +98,19 @@ class ApePlayer(private val ctx: Context) {
         }
     }
 
-    fun playChannel(player: ExoPlayer, url: String, ua: String = DEFAULT_UA) {
+    fun playChannel(player: ExoPlayer, url: String, ua: String = DEFAULT_UA,
+                    headers: Map<String, String> = emptyMap()) {
         currentUrl = url
         currentUa = ua
+        currentHeaders = headers
         fallbackChain = emptyList()
         fallbackAttempt = 0
         fallbackMax = null
-        openMedia(player, url, ua)
+        openMedia(player, url, ua, headers)
     }
 
-    private fun openMedia(player: ExoPlayer, url: String, ua: String) {
+    private fun openMedia(player: ExoPlayer, url: String, ua: String,
+                          headers: Map<String, String> = emptyMap()) {
         val policy = PlaybackPolicy.fromSync(ctx)
         // BG1-FIX: la ventana de 4 s no debe mezclar bytes del canal anterior tras un zap.
         // F11 (BG5): además se reinician los temporizadores del guard (belowSince / ALERT / lock).
@@ -115,6 +119,7 @@ class ApePlayer(private val ctx: Context) {
         lastTracks = null
         val http = DefaultHttpDataSource.Factory()
             .setUserAgent(ua)
+            .setDefaultRequestProperties(headers)
             .setConnectTimeoutMs(policy.connectTimeoutMs)
             .setReadTimeoutMs(policy.readTimeoutMs)
             .setAllowCrossProtocolRedirects(true)            // sigue el 302 line→CDN
@@ -162,7 +167,7 @@ class ApePlayer(private val ctx: Context) {
         fallbackAttempt++
         fallbackMax = next.width to next.height
         Log.w(TAG, "decoder fallback ${fallbackAttempt}/2 -> ${next.codec}@${next.resolution}/${next.fps} sameUrl")
-        openMedia(player, currentUrl, currentUa)
+        openMedia(player, currentUrl, currentUa, currentHeaders)
     }
 
     /**
