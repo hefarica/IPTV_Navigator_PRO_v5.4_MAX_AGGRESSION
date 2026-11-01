@@ -125,6 +125,15 @@ class ApePlayer(private val ctx: Context) {
         meter.reset()
         bitrateGuard?.reset()
         lastTracks = null
+        if (url.contains("/sdr/")) {
+            // El fallback SDR es siempre 1080p: no arrastrar el lock HDR 4K anterior.
+            fallbackMax = 1920 to 1080
+            AraStatus.trackCodec = ""
+            AraStatus.trackW = 0
+            AraStatus.trackH = 0
+            AraStatus.trackHdr = "SDR"
+            AraStatus.trackAt = 0L
+        }
         val http = DefaultHttpDataSource.Factory()
             .setUserAgent(ua)
             .setDefaultRequestProperties(headers)

@@ -85,7 +85,7 @@ function start(id, spec, sdr) {
 
   const videoArgs = sdr
     ? [
-      '-vf', "scale=w='max(iw,1920)':h='max(ih,1080)':force_original_aspect_ratio=decrease:force_divisible_by=2:flags=lanczos,setparams=color_primaries=bt709:color_trc=bt709:colorspace=bt709:range=limited,format=yuv420p",
+      '-vf', "scale=w=1920:h=1080:force_original_aspect_ratio=decrease:force_divisible_by=2:flags=lanczos,setparams=color_primaries=bt709:color_trc=bt709:colorspace=bt709:range=limited,format=yuv420p",
       '-pix_fmt', 'yuv420p',
       '-color_primaries', 'bt709', '-color_trc', 'bt709', '-colorspace', 'bt709',
       '-c:v', 'libx264', '-preset', 'veryfast', '-tune', 'zerolatency',

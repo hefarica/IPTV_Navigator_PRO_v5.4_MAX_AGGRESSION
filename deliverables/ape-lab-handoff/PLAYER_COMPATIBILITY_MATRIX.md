@@ -115,3 +115,18 @@ Screenshot shows live video rendering in APE Crystal Agent on the ONN.
 Conclusion: HDR10 is not usable on this ONN for this 1080p60 stream; the
 SDR/H.264 variant is the working fallback. Maximum-quality HDR remains
 device-dependent, not universal.
+
+## 4K HDR -> SDR fallback status 2026-11-01
+
+Observed on ONN:
+
+`	ext
+HDR 4K HEVC init: ERROR_CODE_DECODER_INIT_FAILED
+SDR URL requested: /jit/live/1174213/sdr/master.m3u8
+SDR init on VPS: 1920x1080 h264
+Device did not reach stable SDR playback within the test window
+`
+
+The 4K source requires 4K decode + downscale + H.264 encode on a 3-vCPU VPS;
+the 1080 source SDR fallback is the verified stable path. 4K HDR playback on
+this ONN is not claimed.
