@@ -16,11 +16,13 @@ const LIST_200 = [
   ['DASH_1080', '/jit/live/3/manifest.mpd'],
   ['DASH_1080_SDR', '/jit/live/3/sdr/manifest.mpd'],
   ['JSON_1080', '/jit/live/3/manifest.json'],
+  ['JSON_1080_SDR', '/jit/live/3/sdr/manifest.json'],
   ['HLS_4K', '/jit/live/1174213/master.m3u8'],
   ['HLS_4K_SDR', '/jit/live/1174213/sdr/master.m3u8'],
   ['DASH_4K', '/jit/live/1174213/manifest.mpd'],
   ['DASH_4K_SDR', '/jit/live/1174213/sdr/manifest.mpd'],
   ['JSON_4K', '/jit/live/1174213/manifest.json'],
+  ['JSON_4K_SDR', '/jit/live/1174213/sdr/manifest.json'],
 ];
 const RANGE_206 = [
   ['RANGE_1080_INIT', '/jit/live/3/init-0.m4s', '/jit/live/3/master.m3u8'],
@@ -69,11 +71,15 @@ async function retry200(path) {
     total++; if (ok) pass++;
     console.log((ok ? 'PASS ' : 'FAIL ') + name + ' = ' + status + ' (HTTP 206 Range)');
   }
-  const redirect = await req('/jit/go/3', { redirect: 'manual' });
-  const loc = redirect.headers.get('location') || '';
-  const ok = redirect.status === 302 && /\/jit\/live\/3\/master\.m3u8$/.test(loc);
-  total++; if (ok) pass++;
-  console.log((ok ? 'PASS ' : 'FAIL ') + 'REDIRECT_302 = ' + redirect.status + ' · ' + loc);
+  for (const rid of ['3', '1174213']) {
+    const redirect = await req('/jit/go/' + rid, { redirect: 'manual' });
+    const loc = redirect.headers.get('location') || '';
+    const ok = redirect.status === 302 && new RegExp('/jit/live/' + rid + '/master\\.m3u8$').test(loc);
+    total++; if (ok) pass++;
+    console.log((ok ? 'PASS ' : 'FAIL ') + 'REDIRECT_302_' + rid + ' = ' + redirect.status + ' · ' + loc);
+  }
   console.log('\nTOTAL=' + total + ' PASS=' + pass + ' FAIL=' + (total - pass));
   if (pass !== total) process.exitCode = 1;
 })();
+
+
