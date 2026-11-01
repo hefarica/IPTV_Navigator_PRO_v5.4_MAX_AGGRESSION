@@ -28,6 +28,20 @@ try {
 
 if ($rec) {
     lr_mark_activation($rec['filename']);
+
+    // Biblioteca LAB por lista: se genera al activar la lista REAL, en background.
+    // No hay valores fijos: el productor lee la metadata chunked de ESA lista.
+    if (!empty($rec['path']) && is_file($rec['path'])) {
+        $producer = '/var/www/html/prisma/api/ape-canon-producer.js';
+        $shm      = '/dev/shm/ape_canon';
+        if (is_file($producer) && is_dir($shm)) {
+            $cmd = 'nohup node ' . escapeshellarg($producer) . ' '
+                 . escapeshellarg($rec['path']) . ' ' . escapeshellarg($shm)
+                 . ' >/dev/null 2>&1 &';
+            @exec($cmd);
+        }
+    }
+
     echo json_encode(array(
         'activated'     => true,
         'matricula'     => true,
