@@ -176,6 +176,7 @@ jobs:
           path: |
             _vps_stage/deploy/out/inventory*
             _vps_stage/deploy/out/stamp*
+            _vps_stage/deploy/out/gate-206.txt
             _vps_stage/deploy/out/nginx-probe.txt
             _vps_stage/deploy/out/sites-available-default.conf
             _vps_stage/deploy/out/live-*.conf
