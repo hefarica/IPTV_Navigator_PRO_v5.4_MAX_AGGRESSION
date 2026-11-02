@@ -65,10 +65,24 @@ async function run() {
   console.log(`[5/5] Ejecutando Validación E2E (Sanity Check)...`);
   const report = generateReport(channels, capturedData);
 
-  fs.writeFileSync(REPORT_PATH, report);
-  console.log(`\n✅ Prueba E2E finalizada. Reporte generado en: ${REPORT_PATH}`);
+  fs.writeFileSync(REPORT_PATH, report.markdown);
 
   captureProcess.kill();
+
+  // Exit por veredicto, con la misma escala que ya usa coherence-validator.js:
+  //   2 = fallos criticos P0 · 1 = fallos no criticos · 0 = limpio
+  // El mensaje final dice lo que de verdad paso; antes imprimia "Prueba E2E finalizada"
+  // con un tick verde aunque el informe estuviera lleno de CRITICAL FAIL.
+  if (report.totalCritical > 0) {
+    console.log(`\n🔴 E2E CRITICAL — ${report.totalCritical} fallos P0. Reporte en: ${REPORT_PATH}`);
+    process.exit(2);
+  }
+  if (report.totalFail > 0) {
+    console.log(`\n⚠️  E2E WARN — ${report.totalFail} fallos no criticos. Reporte en: ${REPORT_PATH}`);
+    process.exit(1);
+  }
+  console.log(`\n✅ E2E PASS — invariantes criticos OK. Reporte en: ${REPORT_PATH}`);
+  // exit-ok: se alcanza solo si totalCritical y totalFail son 0; ambas ramas previas salen antes
   process.exit(0);
 }
 
@@ -157,7 +171,11 @@ function generateReport(channels, capturedData) {
     md += `> **✅ ÉXITO:** Todos los invariantes críticos pasaron. El generador está inyectando headers seguros y coherentes que sobreviven intactos hasta el servidor.\n`;
   }
 
-  return md;
+  // Se devuelven los conteos, no solo el markdown: el llamador necesita el veredicto
+  // para fijar el exit code. Antes esta funcion calculaba totalCritical, escribia
+  // "ALERTA: fallos criticos" en el informe y el proceso salia 0 igual. El informe
+  // decia CRITICAL y el build leia exito.
+  return { markdown: md, totalPass, totalFail, totalCritical };
 }
 
 run().catch(err => {

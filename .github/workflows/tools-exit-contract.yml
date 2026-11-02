@@ -1,0 +1,80 @@
+name: tools exit contract
+
+# Blinda el defecto que costo tres rondas y aparecio tres veces en este repo:
+# una herramienta escribe un veredicto (DEFECTOS / CRITICAL / FAIL) y despues hace
+# `process.exit(0)` sin mirarlo. El informe dice una cosa y el build lee exito.
+#
+#   validate_exthttp.js  -> exit(0) incondicional  (corregido ronda 23)
+#   parse_defects.js     -> exit(0) incondicional  (corregido ronda 23)
+#   e2e-runner.js        -> exit(0) incondicional  (corregido ronda 24)
+#
+# El checker detecta la FORMA, no la semantica: por eso este workflow lo falsifica
+# creando el defecto a proposito y comprobando que lo caza. Un checker que no se
+# prueba contra el defecto que persigue es el mismo problema otra vez.
+
+on:
+  push:
+    paths:
+      - 'tools/**'
+      - '.github/workflows/tools-exit-contract.yml'
+  pull_request:
+    paths:
+      - 'tools/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  contrato:
+    name: Exit refleja veredicto
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Baseline limpia en tools/
+        run: |
+          set -uo pipefail
+          set +e
+          out=$(node tools/check-exit-contract.js tools 2>&1); code=$?
+          set -e
+          echo "$out"
+          [ "$code" -eq 0 ] || { echo "::error::hay process.exit(0) sin rama condicional ni marca exit-ok"; exit 1; }
+          echo "$out" | grep -q '"candidatos_total": 0' || { echo '::error::el baseline no esta limpio'; exit 1; }
+
+      - name: El checker caza el defecto (falsificacion)
+        run: |
+          set -uo pipefail
+          mkdir -p /tmp/exitgate/malo
+          cat > /tmp/exitgate/malo/defecto.js <<'JS'
+          function f() { console.log('veredicto DEFECTOS'); process.exit(0); }
+          JS
+          set +e
+          out=$(node tools/check-exit-contract.js /tmp/exitgate 2>&1); code=$?
+          set -e
+          echo "$out"
+          # Si esto pasara con exit 0, el checker no persigue nada.
+          [ "$code" -eq 1 ] || { echo "::error::no detecto el exit(0) incondicional tras un veredicto DEFECTOS"; exit 1; }
+          echo "$out" | grep -q 'defecto.js' || { echo '::error::no nombro el fichero defectuoso'; exit 1; }
+
+      - name: El checker respeta la marca exit-ok (falsificacion inversa)
+        run: |
+          set -uo pipefail
+          cat > /tmp/exitgate/malo/defecto.js <<'JS'
+          function f() { console.log('veredicto PASS'); // exit-ok: solo se alcanza con 0 fallos
+            process.exit(0); }
+          JS
+          set +e
+          out=$(node tools/check-exit-contract.js /tmp/exitgate 2>&1); code=$?
+          set -e
+          echo "$out"
+          [ "$code" -eq 0 ] || { echo "::error::un escape exit-ok documentado no fue respetado"; exit 1; }
+          echo "$out" | grep -q '"candidatos_total": 0' || { echo '::error::el escape no limpio el candidato'; exit 1; }
+
+      - name: Sintaxis del checker
+        run: node -c tools/check-exit-contract.js
