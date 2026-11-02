@@ -1,0 +1,248 @@
+{
+  "schema": "ape.cap-verdicts/1",
+  "version": "2026-11-02",
+  "produced_by": "t10 arquitecto-lanes (t9b)",
+  "purpose": "Veredicto explicito de los 7 tokens que gen_demuxed_master.js dejo en candidates_not_removed. Consumible por el generador: prohibited[] esta en la misma forma que VIDEO_CAP_RULES ({tag,key,kind,effect}).",
+  "source": {
+    "file": "APE_LISTA_1793589060441.m3u8",
+    "bytes": 604593696,
+    "sha256": "523d52a6d147f81ce5a212e47b9c55401fb409cd4a41aee96f8ba80b5b5049d6",
+    "sha256_recomputed_this_pass": true,
+    "sha256_matches_reference": true,
+    "channels_censused": 10573,
+    "lines_censused": 10315662,
+    "scope": "censo (sin muestreo)"
+  },
+  "verdict_codes": {
+    "cap_de_video": "limita resolucion/bitrate/fps de video -> ELIMINAR",
+    "no_cap": "se conserva; no limita pixeles",
+    "inocuo_para_vlc": "el token no existe en el runtime que lo consumiria -> se puede eliminar sin efecto",
+    "indeterminado": "NO_COMPUTADO con razon exacta; no se inventa veredicto"
+  },
+  "evidence_states": {
+    "observado": "medido sobre los bytes por el escaner censal (scan.json)",
+    "heredado_citado": "medido en otra tarea y citado con su artefacto (t4 / VLC_OPT_AUDIT)",
+    "documentado": "semantica leida en la wiki oficial de inputstream.adaptive (no ejecutada)",
+    "no_computado": "no medible en este entorno, con razon"
+  },
+  "decision_rule": [
+    "1. ¿El token esta en los nombres AUSENTES de VLC (VLC_OPT_AUDIT.md)? -> inocuo_para_vlc (borrable).",
+    "2. ¿Es clave DOCUMENTADA de inputstream.adaptive con semantica de limite (bitrate/resolucion/fps)? -> cap_de_video (eliminar).",
+    "3. ¿Nombra una magnitud de VIDEO pero no esta documentada? -> se retira por politica defensiva y se declara que hoy no capa.",
+    "4. ¿Nombra una magnitud que NO es video (buffer/red/reloj) y no esta documentada? -> indeterminado: no es cap y borrarlo a ciegas tiene efecto no medible."
+  ],
+  "verdicts": [
+    {
+      "id": "C1",
+      "tag": "#EXTVLCOPT",
+      "key": "adaptive-bandwidth-factor",
+      "kind": "other",
+      "values_censal": { "1.0": 10573 },
+      "limits_video": false,
+      "video_named": true,
+      "read_by": [],
+      "verdict": "inocuo_para_vlc",
+      "evidence_state": "heredado_citado",
+      "evidence": [
+        "tools/ape-image-recipes/VLC_OPT_AUDIT.md (familia adaptive-*, 36 tokens ausentes de los 365 binarios)",
+        "docs/cartography/APE_LISTA_523d52a6/04_LANE_CAPABILITY_MATRIX.md §7.3 (EXTVLCOPT: solo red/reloj pasan; video-filter es unsafe)",
+        "scratch/cap_candidates_02/scan.json -> per_token.abf"
+      ],
+      "reason": "Token inexistente en VLC (no se aplica nunca). Ademas, por nombre, 1.0 seria el multiplicador neutro del factor ABR: no recortaria aunque se leyera. Basura en el manifiesto, borrable sin efecto.",
+      "deletable": true,
+      "changes_behavior_if_removed": "nada medible; ningun runtime del catalogo lee #EXTVLCOPT:adaptive-bandwidth-factor"
+    },
+    {
+      "id": "C2",
+      "tag": "#EXTVLCOPT",
+      "key": "adaptive-maxbw",
+      "kind": "bitrate",
+      "values_censal": { "999999999": 10573 },
+      "limits_video": false,
+      "video_named": true,
+      "read_by": [],
+      "verdict": "inocuo_para_vlc",
+      "evidence_state": "heredado_citado",
+      "evidence": [
+        "tools/ape-image-recipes/VLC_OPT_AUDIT.md (adaptive-maxbw ausente)",
+        "scratch/cap_candidates_02/scan.json -> cap_effective['inputstream.adaptive.adaptive-maxbw'] = {channels_above_declared_BANDWIDTH: 10573, channels_below: 0}"
+      ],
+      "reason": "Doble razon medida: (a) el token no existe en VLC; (b) 999999999 bit/s (~1 Gbps) esta POR ENCIMA del BANDWIDTH declarado (9/12/28 Mbps) en 10573/10573 canales, asi que no caparia ni en la hipotesis de que se leyera. Nombre enganoso (maxbw) sin efecto.",
+      "deletable": true,
+      "changes_behavior_if_removed": "nada medible"
+    },
+    {
+      "id": "C3",
+      "tag": "#EXTVLCOPT",
+      "key": "video-display-fps",
+      "kind": "fps",
+      "values_censal": { "30": 7457, "60": 3116 },
+      "limits_video": false,
+      "video_named": true,
+      "read_by": [],
+      "verdict": "inocuo_para_vlc",
+      "evidence_state": "heredado_citado",
+      "evidence": [
+        "tools/ape-image-recipes/VLC_OPT_AUDIT.md (familia video-* declarativa, 17 tokens ausentes: incluye video-display-fps)",
+        "scratch/cap_candidates_02/scan.json -> crosstab.vfps_vs_framerate"
+      ],
+      "reason": "Token ausente de VLC -> inerte. Riesgo latente documentado: en 1185 canales el token declara 30 mientras la variante declara FRAME-RATE=60.000; si algun dia un runtime lo honrara, seria un cap descendente de fps. Se borra.",
+      "deletable": true,
+      "changes_behavior_if_removed": "nada medible",
+      "latent_risk": { "downward_cap_channels": 1185, "cross": "vfps=30 | framerate=60.000" }
+    },
+    {
+      "id": "C4",
+      "tag": "#EXTVLCOPT",
+      "key": "video-fps",
+      "kind": "fps",
+      "values_censal": { "30": 7457, "60": 3116 },
+      "limits_video": false,
+      "video_named": true,
+      "read_by": [],
+      "verdict": "inocuo_para_vlc",
+      "evidence_state": "heredado_citado",
+      "evidence": [
+        "tools/ape-image-recipes/VLC_OPT_AUDIT.md (video-fps ausente)",
+        "scratch/cap_candidates_02/scan.json -> per_token.vfps + crosstab.vfps_vs_framerate"
+      ],
+      "reason": "Identico a video-display-fps: token inexistente en VLC, inerte. Mismo riesgo latente (1185 canales con 30 sobre variante de 60). Se borra.",
+      "deletable": true,
+      "changes_behavior_if_removed": "nada medible",
+      "latent_risk": { "downward_cap_channels": 1185, "cross": "vfps=30 | framerate=60.000" }
+    },
+    {
+      "id": "C5",
+      "tag": "#KODIPROP",
+      "key": "inputstream.adaptive.chooser_bandwidth_max",
+      "kind": "bitrate",
+      "effect": "kodi-addon-key",
+      "values_censal": { "8000000": 9765, "19800000": 808 },
+      "limits_video": true,
+      "video_named": true,
+      "read_by": ["kodi+inputstream.adaptive (propiedad DOCUMENTADA)"],
+      "verdict": "cap_de_video",
+      "evidence_state": "documentado",
+      "evidence": [
+        "https://github.com/xbmc/inputstream.adaptive/wiki/Stream-selection-types-properties -> 'inputstream.adaptive.chooser_bandwidth_max: Allows to set the maximum stream bandwidth. The value is defined in bit/s.' (aplica en stream_selection_type=adaptive)",
+        "scratch/cap_candidates_02/scan.json -> crosstab.chooser_vs_bw = {8M|9M:7963, 8M|12M:1757, 8M|28M:45, 19.8M|28M:808}",
+        "scratch/cap_candidates_02/scan.json -> cap_effective: channels_below_declared_BANDWIDTH=10573, at_or_above=0"
+      ],
+      "reason": "Unico cap de video REAL de los 7: propiedad documentada de ISA que fija el bitrate maximo del stream, y su valor queda por debajo del BANDWIDTH declarado en el MISMO bloque en 10573/10573 canales (8 < 9/12/28 Mbps; 19.8 < 28 Mbps). Viola la ley del operador: el video no se capa. ELIMINAR.",
+      "deletable": true,
+      "changes_behavior_if_removed": "Kodi dejara de recibir el techo de bitrate desde la playlist y usara el ajuste de usuario/ISA (la propiedad solo puede BAJAR el ajuste del usuario, nunca subirlo, segun la doc). El techo sigue disponible por la via legitima: ajuste del addon en el dispositivo.",
+      "removal_count_expected": 10573
+    },
+    {
+      "id": "C6",
+      "tag": "#KODIPROP",
+      "key": "inputstream.adaptive.max_buffer_duration",
+      "kind": "other",
+      "values_censal": { "104": 7457, "110": 2308, "144": 808 },
+      "limits_video": false,
+      "video_named": false,
+      "read_by": [],
+      "verdict": "indeterminado",
+      "evidence_state": "no_computado",
+      "evidence": [
+        "https://github.com/xbmc/inputstream.adaptive/wiki/Integration (lista de propiedades: max_buffer_duration NO aparece)",
+        "https://github.com/xbmc/inputstream.adaptive/wiki/Stream-selection-types-properties (propiedades de seleccion: NO aparece; el control de buffer documentado es manifest_config.timeshift_bufferlimit y live_delay)",
+        "scratch/cap_candidates_02/scan.json -> per_token.buf (104/110/144, 0 canales sin token)"
+      ],
+      "reason": "NO_COMPUTADO: la clave no figura en las dos paginas de propiedades de ISA. Por nombre y semantica es un knob de BUFFERING, no de video, asi que no viola la ley anti-cap; pero retirarla a ciegas cambia una politica de buffer cuyo efecto no es medible sin Kodi en ejecucion. Ausencia en la doc NO prueba ausencia de soporte (puede haber lectura no documentada): no se convierte la duda en veredicto.",
+      "deletable": false,
+      "deletable_note": "borrable SOLO con decision del operador y registrando que el efecto en buffering queda NO_VERIFICADO",
+      "recommended_action": "conservar y reportar; si se retira, hacerlo fuera del modo automatico"
+    },
+    {
+      "id": "C7",
+      "tag": "#KODIPROP",
+      "key": "inputstream.adaptive.preferred_video_resolution",
+      "kind": "resolution",
+      "values_censal": { "2160": 10573 },
+      "limits_video": false,
+      "video_named": true,
+      "read_by": [],
+      "verdict": "inocuo_para_vlc",
+      "label_note": "La etiqueta se usa en el sentido del contrato: ningun runtime DOCUMENTADO lo lee (no es un token de VLC). El runtime que lo consumiria es Kodi/ISA y no lo documenta.",
+      "evidence_state": "documentado",
+      "evidence": [
+        "https://github.com/xbmc/inputstream.adaptive/wiki/Stream-selection-types-properties -> las claves de resolucion documentadas son chooser_resolution_max y chooser_resolution_secure_max, con valores 480p/640p/720p/1080p/2K/1440p/4K; preferred_video_resolution NO existe",
+        "https://github.com/xbmc/inputstream.adaptive/wiki/Integration -> resolution_limit usa formato 'width x height' (ej. 1280x720); '2160' no casa con ninguno de los dos formatos",
+        "scratch/cap_candidates_02/scan.json -> crosstab.prefres_vs_res = {pref=2160 | res=3840x2160: 10573}"
+      ],
+      "reason": "No es una clave documentada de ISA, su valor '2160' no usa el enum documentado ni el formato 'width x height', y numericamente coincide con la resolucion vertical ya declarada (3840x2160) en 10573/10573 -> hoy no capa nada observable. Se retira por POLITICA DEFENSIVA: nombra resolucion de video y la ley prohibe capar video ante una directiva de video no verificable.",
+      "deletable": true,
+      "changes_behavior_if_removed": "nada medible hoy (no documentada; 0 canales con resolucion declarada por encima de 2160p)"
+    }
+  ],
+  "prohibited": [
+    {
+      "tag": "#KODIPROP",
+      "key": "inputstream.adaptive.chooser_bandwidth_max",
+      "kind": "bitrate",
+      "effect": "kodi-addon-key",
+      "verdict": "cap_de_video",
+      "note": "anexar a VIDEO_CAP_RULES de gen_demuxed_master.js; se contara como caps_limiting en 10573/10573"
+    }
+  ],
+  "inert_removable": [
+    { "tag": "#EXTVLCOPT", "key": "adaptive-bandwidth-factor", "kind": "other", "effect": "inert-vlc", "verdict": "inocuo_para_vlc" },
+    { "tag": "#EXTVLCOPT", "key": "adaptive-maxbw", "kind": "bitrate", "effect": "inert-vlc", "verdict": "inocuo_para_vlc" },
+    { "tag": "#EXTVLCOPT", "key": "video-display-fps", "kind": "fps", "effect": "inert-vlc", "verdict": "inocuo_para_vlc" },
+    { "tag": "#EXTVLCOPT", "key": "video-fps", "kind": "fps", "effect": "inert-vlc", "verdict": "inocuo_para_vlc" },
+    { "tag": "#KODIPROP", "key": "inputstream.adaptive.preferred_video_resolution", "kind": "resolution", "effect": "undocumented-key", "verdict": "inocuo_para_vlc" }
+  ],
+  "indeterminado": [
+    {
+      "tag": "#KODIPROP",
+      "key": "inputstream.adaptive.max_buffer_duration",
+      "kind": "other",
+      "verdict": "indeterminado",
+      "not_computed_reason": "clave no documentada por ISA (2 paginas oficiales) y sin Kodi en ejecucion; no limita video por semantica, pero su efecto en buffering al retirarla no es medible aqui",
+      "recommended_action": "conservar y reportar; no borrar en modo automatico"
+    }
+  ],
+  "already_resolved_by_t7": [
+    { "tag": "#KODIPROP", "key": "inputstream.adaptive.max_resolution", "kind": "resolution", "effect": "kodi-addon-key", "value_seen": "1920x1080", "status": "removed_by_t7" },
+    { "tag": "#KODIPROP", "key": "inputstream.adaptive.max_bitrate", "kind": "bitrate", "effect": "kodi-addon-key", "status": "removed_by_t7" },
+    { "tag": "#KODIPROP", "key": "inputstream.adaptive.max_framerate", "kind": "fps", "effect": "kodi-addon-key", "status": "removed_by_t7" },
+    { "tag": "#EXTVLCOPT", "key": "adaptive-maxbitrate", "kind": "bitrate", "effect": "inert-vlc", "status": "removed_by_t7" },
+    { "tag": "#EXTVLCOPT", "key": "adaptive-maxwidth", "kind": "resolution", "effect": "inert-vlc", "status": "removed_by_t7" },
+    { "tag": "#EXTVLCOPT", "key": "adaptive-maxheight", "kind": "resolution", "effect": "inert-vlc", "status": "removed_by_t7" },
+    { "tag": "#EXTVLCOPT", "key": "video-width", "kind": "resolution", "effect": "inert-vlc", "status": "removed_by_t7" },
+    { "tag": "#EXTVLCOPT", "key": "video-height", "kind": "resolution", "effect": "inert-vlc", "status": "removed_by_t7" }
+  ],
+  "by_tag": {
+    "#EXTVLCOPT:adaptive-bandwidth-factor": "inocuo_para_vlc",
+    "#EXTVLCOPT:adaptive-maxbw": "inocuo_para_vlc",
+    "#EXTVLCOPT:video-display-fps": "inocuo_para_vlc",
+    "#EXTVLCOPT:video-fps": "inocuo_para_vlc",
+    "#KODIPROP:inputstream.adaptive.chooser_bandwidth_max": "cap_de_video",
+    "#KODIPROP:inputstream.adaptive.max_buffer_duration": "indeterminado",
+    "#KODIPROP:inputstream.adaptive.preferred_video_resolution": "inocuo_para_vlc"
+  },
+  "counts": {
+    "total_candidates": 7,
+    "cap_de_video": 1,
+    "inocuo_para_vlc": 5,
+    "no_cap": 0,
+    "indeterminado": 1,
+    "lines_removed_if_prohibited_applied": 10573,
+    "lines_removed_if_inert_removable_applied": 52865
+  },
+  "limits": [
+    "Ningun veredicto esta en 'aplicado' ni 'verificado': no hay Kodi/ISA instalado ni se ejecuto player alguno.",
+    "El valor de adaptive-maxbw se interpreta como bit/s por analogia con las opciones de red de VLC; no se verifico su unidad en ningun runtime (el token no existe en VLC).",
+    "El cruce cap<->BANDWIDTH compara contra el BANDWIDTH DECLARADO por la lista; el bitrate real del canal no se midio (requiere probe remoto: NO COMPUTADO por diseno).",
+    "La ausencia de max_buffer_duration en la documentacion no prueba que el addon no la lea (puede existir soporte no documentado)."
+  ],
+  "artifacts": [
+    "scratch/cap_candidates_02/scan.json (censo + cross-tabs + sha256_matches_reference:true)",
+    "scratch/cap_candidates_02/scan_cap_candidates.js (escaner reproducible, 1 pase, 27 s)",
+    "scratch/avisynth_probe_2026/live_corrected/report.json (origen: candidates_not_removed)",
+    "docs/cartography/APE_LISTA_523d52a6/05_CAP_CANDIDATES.md (informe humano)",
+    "docs/cartography/APE_LISTA_523d52a6/04_LANE_CAPABILITY_MATRIX.md §7.3 (base de inocuo_para_vlc)",
+    "tools/ape-image-recipes/VLC_OPT_AUDIT.md (familias adaptive-* y video-* ausentes)"
+  ]
+}
