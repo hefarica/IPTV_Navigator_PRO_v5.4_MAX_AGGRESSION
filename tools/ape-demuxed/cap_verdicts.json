@@ -1,6 +1,6 @@
 {
   "schema": "ape.cap-verdicts/1",
-  "version": "2026-11-02",
+  "version": "2026-11-02b",
   "produced_by": "t10 arquitecto-lanes (t9b)",
   "purpose": "Veredicto explicito de los 7 tokens que gen_demuxed_master.js dejo en candidates_not_removed. Consumible por el generador: prohibited[] esta en la misma forma que VIDEO_CAP_RULES ({tag,key,kind,effect}).",
   "source": {
@@ -37,7 +37,9 @@
       "tag": "#EXTVLCOPT",
       "key": "adaptive-bandwidth-factor",
       "kind": "other",
-      "values_censal": { "1.0": 10573 },
+      "values_censal": {
+        "1.0": 10573
+      },
       "limits_video": false,
       "video_named": true,
       "read_by": [],
@@ -57,7 +59,9 @@
       "tag": "#EXTVLCOPT",
       "key": "adaptive-maxbw",
       "kind": "bitrate",
-      "values_censal": { "999999999": 10573 },
+      "values_censal": {
+        "999999999": 10573
+      },
       "limits_video": false,
       "video_named": true,
       "read_by": [],
@@ -76,7 +80,10 @@
       "tag": "#EXTVLCOPT",
       "key": "video-display-fps",
       "kind": "fps",
-      "values_censal": { "30": 7457, "60": 3116 },
+      "values_censal": {
+        "30": 7457,
+        "60": 3116
+      },
       "limits_video": false,
       "video_named": true,
       "read_by": [],
@@ -89,14 +96,20 @@
       "reason": "Token ausente de VLC -> inerte. Riesgo latente documentado: en 1185 canales el token declara 30 mientras la variante declara FRAME-RATE=60.000; si algun dia un runtime lo honrara, seria un cap descendente de fps. Se borra.",
       "deletable": true,
       "changes_behavior_if_removed": "nada medible",
-      "latent_risk": { "downward_cap_channels": 1185, "cross": "vfps=30 | framerate=60.000" }
+      "latent_risk": {
+        "downward_cap_channels": 1185,
+        "cross": "vfps=30 | framerate=60.000"
+      }
     },
     {
       "id": "C4",
       "tag": "#EXTVLCOPT",
       "key": "video-fps",
       "kind": "fps",
-      "values_censal": { "30": 7457, "60": 3116 },
+      "values_censal": {
+        "30": 7457,
+        "60": 3116
+      },
       "limits_video": false,
       "video_named": true,
       "read_by": [],
@@ -109,7 +122,10 @@
       "reason": "Identico a video-display-fps: token inexistente en VLC, inerte. Mismo riesgo latente (1185 canales con 30 sobre variante de 60). Se borra.",
       "deletable": true,
       "changes_behavior_if_removed": "nada medible",
-      "latent_risk": { "downward_cap_channels": 1185, "cross": "vfps=30 | framerate=60.000" }
+      "latent_risk": {
+        "downward_cap_channels": 1185,
+        "cross": "vfps=30 | framerate=60.000"
+      }
     },
     {
       "id": "C5",
@@ -117,10 +133,15 @@
       "key": "inputstream.adaptive.chooser_bandwidth_max",
       "kind": "bitrate",
       "effect": "kodi-addon-key",
-      "values_censal": { "8000000": 9765, "19800000": 808 },
+      "values_censal": {
+        "8000000": 9765,
+        "19800000": 808
+      },
       "limits_video": true,
       "video_named": true,
-      "read_by": ["kodi+inputstream.adaptive (propiedad DOCUMENTADA)"],
+      "read_by": [
+        "kodi+inputstream.adaptive (propiedad DOCUMENTADA)"
+      ],
       "verdict": "cap_de_video",
       "evidence_state": "documentado",
       "evidence": [
@@ -138,7 +159,11 @@
       "tag": "#KODIPROP",
       "key": "inputstream.adaptive.max_buffer_duration",
       "kind": "other",
-      "values_censal": { "104": 7457, "110": 2308, "144": 808 },
+      "values_censal": {
+        "104": 7457,
+        "110": 2308,
+        "144": 808
+      },
       "limits_video": false,
       "video_named": false,
       "read_by": [],
@@ -159,7 +184,9 @@
       "tag": "#KODIPROP",
       "key": "inputstream.adaptive.preferred_video_resolution",
       "kind": "resolution",
-      "values_censal": { "2160": 10573 },
+      "values_censal": {
+        "2160": 10573
+      },
       "limits_video": false,
       "video_named": true,
       "read_by": [],
@@ -174,6 +201,66 @@
       "reason": "No es una clave documentada de ISA, su valor '2160' no usa el enum documentado ni el formato 'width x height', y numericamente coincide con la resolucion vertical ya declarada (3840x2160) en 10573/10573 -> hoy no capa nada observable. Se retira por POLITICA DEFENSIVA: nombra resolucion de video y la ley prohibe capar video ante una directiva de video no verificable.",
       "deletable": true,
       "changes_behavior_if_removed": "nada medible hoy (no documentada; 0 canales con resolucion declarada por encima de 2160p)"
+    },
+    {
+      "id": "C8",
+      "tag": "#EXT-X-CMAF",
+      "key": "#EXT-X-CMAF:",
+      "kinds": [
+        "resolution",
+        "bitrate"
+      ],
+      "kind": "resolution+bitrate",
+      "effect": "inert-vlc",
+      "values_censal": {
+        "RESOLUTION": {
+          "1280x720": 7457,
+          "1920x1080": 2308,
+          "3840x2160": 808
+        },
+        "BANDWIDTH": {
+          "8000000": 9765,
+          "19800000": 808
+        },
+        "CODECS": {
+          "hvc1.2.4.L93.B0,": 7457,
+          "hvc1.2.4.L123.B0,": 2308,
+          "hvc1.2.4.L153.B0,": 808
+        }
+      },
+      "occurrences_censal": {
+        "tags": 10573,
+        "channels": 10573,
+        "channels_with_more_than_one": 0,
+        "missing_resolution": 0,
+        "missing_bandwidth": 0,
+        "missing_codecs": 0
+      },
+      "limits_video": false,
+      "declares_below_variant": true,
+      "video_named": true,
+      "read_by": [
+        "ara-x (gobernador APE: validate_catalog.js:281-285, ara_x_validator.js:276-284, ara_x_decision_core.js:187-189)"
+      ],
+      "read_by_playback_runtimes": [],
+      "verdict": "no_cap",
+      "evidence_state": "observado",
+      "label_note": "no_cap porque ningun runtime de reproduccion lo aplica (0/366 binarios VLC con el literal, 0 parsers del frontend activo, tag fuera de RFC 8216) y porque el unico consumidor real (ara-x) lo usa como EVIDENCIA de tier, no como techo.",
+      "evidence": [
+        "scratch/cmaf_cap_03/scan.json -> cmaf_tag (10573 ocurrencias, 0 sin RESOLUTION/BANDWIDTH/CODECS), distinct.resolution (3 valores), comparisons (res_below_si=9765, equal=808, bw_below_si=10573)",
+        "scratch/cmaf_cap_03/scan.json -> literal_probe.vlc_hits {EXT-X-CMAF:0, EXT-X-STREAM-INF:3, EXT-X-MAP:2, EXT-X-MEDIA:4} sobre 366 binarios / 150.518.756 B",
+        "scratch/cmaf_cap_03/links.json -> identidades 10573/10573: cmaf.BANDWIDTH == chooser_bandwidth_max == adaptive-maxbitrate; cmaf.CODECS == I-FRAME.CODECS",
+        "rg -l EXT-X-CMAF frontend/ -> 0 archivos (el parser del frontend activo no lo menciona)",
+        "ara-x/scripts/policy/validate_catalog.js:281-285 (extrae cmafRes/cmafCodecs/cmafBandwidth)",
+        "ara-x/playlist/ara_x_validator.js:276-284 (marca cmafMalformedCodecs por la coma final)",
+        "ara-x/controller/ara_x_decision_core.js:187-189 (usa el tag como evidencia de que solo P1 es 4K)"
+      ],
+      "reason": "Declara techo de bitrate del tier (identico al cap real de KODIPROP, 10573/10573) y nivel del ladder I-FRAME (10573/10573), con la resolucion del tier por perfil. Ningun runtime de reproduccion lo lee (tag no RFC + 0 literales en VLC + 0 en el frontend) => no recorta un pixel. Pero el gobernador ara-x SI lo lee y lo usa como evidencia: borrarlo destruye el unico dato in-band de que 3840x2160 = 808 canales y de que P3/P4 no son destinos 4K. Ademas su CODECS con coma final ya dispara cmafMalformedCodecs en 10573/10573. Contradiccion declarativa con STREAM-INF en 9765/10573 (92,4%).",
+      "deletable": false,
+      "deletable_note": "borrarlo destruye evidencia del gobernador; si se quiere retirar, antes hay que sustituir la evidencia que ara_x_decision_core deriva de el",
+      "changes_behavior_if_removed": "ninguno en reproduccion; SI cambia el input del gobernador ara-x (perderia la evidencia de resolucion por perfil)",
+      "latent_risk": "si un parser futuro honrara RESOLUTION/BANDWIDTH como techo, caparia a 720p/1080p en 9765 canales y a 19,8 Mbps en los 808 restantes",
+      "doctrinal_answer": "no es un cap que muerde ni un fallback de variante: es una etiqueta de tier inerte con contradiccion declarativa parcial y funcion de evidencia"
     }
   ],
   "prohibited": [
@@ -187,11 +274,41 @@
     }
   ],
   "inert_removable": [
-    { "tag": "#EXTVLCOPT", "key": "adaptive-bandwidth-factor", "kind": "other", "effect": "inert-vlc", "verdict": "inocuo_para_vlc" },
-    { "tag": "#EXTVLCOPT", "key": "adaptive-maxbw", "kind": "bitrate", "effect": "inert-vlc", "verdict": "inocuo_para_vlc" },
-    { "tag": "#EXTVLCOPT", "key": "video-display-fps", "kind": "fps", "effect": "inert-vlc", "verdict": "inocuo_para_vlc" },
-    { "tag": "#EXTVLCOPT", "key": "video-fps", "kind": "fps", "effect": "inert-vlc", "verdict": "inocuo_para_vlc" },
-    { "tag": "#KODIPROP", "key": "inputstream.adaptive.preferred_video_resolution", "kind": "resolution", "effect": "undocumented-key", "verdict": "inocuo_para_vlc" }
+    {
+      "tag": "#EXTVLCOPT",
+      "key": "adaptive-bandwidth-factor",
+      "kind": "other",
+      "effect": "inert-vlc",
+      "verdict": "inocuo_para_vlc"
+    },
+    {
+      "tag": "#EXTVLCOPT",
+      "key": "adaptive-maxbw",
+      "kind": "bitrate",
+      "effect": "inert-vlc",
+      "verdict": "inocuo_para_vlc"
+    },
+    {
+      "tag": "#EXTVLCOPT",
+      "key": "video-display-fps",
+      "kind": "fps",
+      "effect": "inert-vlc",
+      "verdict": "inocuo_para_vlc"
+    },
+    {
+      "tag": "#EXTVLCOPT",
+      "key": "video-fps",
+      "kind": "fps",
+      "effect": "inert-vlc",
+      "verdict": "inocuo_para_vlc"
+    },
+    {
+      "tag": "#KODIPROP",
+      "key": "inputstream.adaptive.preferred_video_resolution",
+      "kind": "resolution",
+      "effect": "undocumented-key",
+      "verdict": "inocuo_para_vlc"
+    }
   ],
   "indeterminado": [
     {
@@ -204,14 +321,63 @@
     }
   ],
   "already_resolved_by_t7": [
-    { "tag": "#KODIPROP", "key": "inputstream.adaptive.max_resolution", "kind": "resolution", "effect": "kodi-addon-key", "value_seen": "1920x1080", "status": "removed_by_t7" },
-    { "tag": "#KODIPROP", "key": "inputstream.adaptive.max_bitrate", "kind": "bitrate", "effect": "kodi-addon-key", "status": "removed_by_t7" },
-    { "tag": "#KODIPROP", "key": "inputstream.adaptive.max_framerate", "kind": "fps", "effect": "kodi-addon-key", "status": "removed_by_t7" },
-    { "tag": "#EXTVLCOPT", "key": "adaptive-maxbitrate", "kind": "bitrate", "effect": "inert-vlc", "status": "removed_by_t7" },
-    { "tag": "#EXTVLCOPT", "key": "adaptive-maxwidth", "kind": "resolution", "effect": "inert-vlc", "status": "removed_by_t7" },
-    { "tag": "#EXTVLCOPT", "key": "adaptive-maxheight", "kind": "resolution", "effect": "inert-vlc", "status": "removed_by_t7" },
-    { "tag": "#EXTVLCOPT", "key": "video-width", "kind": "resolution", "effect": "inert-vlc", "status": "removed_by_t7" },
-    { "tag": "#EXTVLCOPT", "key": "video-height", "kind": "resolution", "effect": "inert-vlc", "status": "removed_by_t7" }
+    {
+      "tag": "#KODIPROP",
+      "key": "inputstream.adaptive.max_resolution",
+      "kind": "resolution",
+      "effect": "kodi-addon-key",
+      "value_seen": "1920x1080",
+      "status": "removed_by_t7"
+    },
+    {
+      "tag": "#KODIPROP",
+      "key": "inputstream.adaptive.max_bitrate",
+      "kind": "bitrate",
+      "effect": "kodi-addon-key",
+      "status": "removed_by_t7"
+    },
+    {
+      "tag": "#KODIPROP",
+      "key": "inputstream.adaptive.max_framerate",
+      "kind": "fps",
+      "effect": "kodi-addon-key",
+      "status": "removed_by_t7"
+    },
+    {
+      "tag": "#EXTVLCOPT",
+      "key": "adaptive-maxbitrate",
+      "kind": "bitrate",
+      "effect": "inert-vlc",
+      "status": "removed_by_t7"
+    },
+    {
+      "tag": "#EXTVLCOPT",
+      "key": "adaptive-maxwidth",
+      "kind": "resolution",
+      "effect": "inert-vlc",
+      "status": "removed_by_t7"
+    },
+    {
+      "tag": "#EXTVLCOPT",
+      "key": "adaptive-maxheight",
+      "kind": "resolution",
+      "effect": "inert-vlc",
+      "status": "removed_by_t7"
+    },
+    {
+      "tag": "#EXTVLCOPT",
+      "key": "video-width",
+      "kind": "resolution",
+      "effect": "inert-vlc",
+      "status": "removed_by_t7"
+    },
+    {
+      "tag": "#EXTVLCOPT",
+      "key": "video-height",
+      "kind": "resolution",
+      "effect": "inert-vlc",
+      "status": "removed_by_t7"
+    }
   ],
   "by_tag": {
     "#EXTVLCOPT:adaptive-bandwidth-factor": "inocuo_para_vlc",
@@ -220,16 +386,18 @@
     "#EXTVLCOPT:video-fps": "inocuo_para_vlc",
     "#KODIPROP:inputstream.adaptive.chooser_bandwidth_max": "cap_de_video",
     "#KODIPROP:inputstream.adaptive.max_buffer_duration": "indeterminado",
-    "#KODIPROP:inputstream.adaptive.preferred_video_resolution": "inocuo_para_vlc"
+    "#KODIPROP:inputstream.adaptive.preferred_video_resolution": "inocuo_para_vlc",
+    "#EXT-X-CMAF:": "no_cap"
   },
   "counts": {
-    "total_candidates": 7,
+    "total_candidates": 8,
     "cap_de_video": 1,
     "inocuo_para_vlc": 5,
-    "no_cap": 0,
+    "no_cap": 1,
     "indeterminado": 1,
     "lines_removed_if_prohibited_applied": 10573,
-    "lines_removed_if_inert_removable_applied": 52865
+    "lines_removed_if_inert_removable_applied": 52865,
+    "note": "lines_removed_if_* cuentan solo las listas que se aplican; C8 (no_cap) NO se elimina"
   },
   "limits": [
     "Ningun veredicto esta en 'aplicado' ni 'verificado': no hay Kodi/ISA instalado ni se ejecuto player alguno.",
@@ -244,5 +412,35 @@
     "docs/cartography/APE_LISTA_523d52a6/05_CAP_CANDIDATES.md (informe humano)",
     "docs/cartography/APE_LISTA_523d52a6/04_LANE_CAPABILITY_MATRIX.md §7.3 (base de inocuo_para_vlc)",
     "tools/ape-image-recipes/VLC_OPT_AUDIT.md (familias adaptive-* y video-* ausentes)"
-  ]
+  ],
+  "no_cap": [
+    {
+      "tag": "#EXT-X-CMAF",
+      "key": "#EXT-X-CMAF:",
+      "kind": "resolution+bitrate",
+      "effect": "inert-vlc",
+      "verdict": "no_cap",
+      "note": "se conserva: no limita en reproduccion y es evidencia del gobernador ara-x"
+    }
+  ],
+  "coherence_with_t10": {
+    "changes_any_of_the_7": false,
+    "detail": "el tag CMAF no altera ninguno de los 7 veredictos de t10: cap_de_video sigue siendo 1 (chooser_bandwidth_max), inocuo_para_vlc 5, indeterminado 1. Solo se añade un candidato nuevo con veredicto no_cap.",
+    "reinforcement": "el BANDWIDTH del CMAF es identico al cap real de chooser_bandwidth_max en 10573/10573: aplicar t7 (adaptive-maxbitrate) + t10 (chooser) deja el constante de cap SOLO en esta linea inerte. Cero enforcement, evidencia intacta."
+  },
+  "t14_addendum": {
+    "deliverable_md": "docs/cartography/APE_LISTA_523d52a6/07_CMAF_TAG_CAP.md",
+    "added_entry": "C8",
+    "censal_artifacts": [
+      "scratch/cmaf_cap_03/scan.json",
+      "scratch/cmaf_cap_03/links.json"
+    ],
+    "source_sha256_verified": true,
+    "not_computed": [
+      "no hay test de reproduccion con el tag inyectado (0 players ejecutados)",
+      "ara-x no se ejecuto: su lectura se cita por codigo, no por corrida",
+      "bitrate real del canal no medido (sin red): las comparaciones son contra el BANDWIDTH declarado"
+    ]
+  },
+  "updated_by": "t14 arquitecto-lanes (adjudicacion #EXT-X-CMAF)"
 }
