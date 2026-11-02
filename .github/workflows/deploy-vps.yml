@@ -66,6 +66,46 @@ jobs:
           set -euo pipefail
           chmod +x "$DEPLOY_DIR"/*.sh
           bash "$DEPLOY_DIR/inventory.sh"
+      # ── SONDA nginx READ-ONLY (evidencia para el fix del HTTP 206) ─────────
+      # El 206 falla en el bloque `location ~* \.m3u8$` de sites-available/default.
+      # Medido: ese archivo NO coincide con ningún .conf del repo, así que no se
+      # puede sobrescribir a ciegas. Esta sonda solo LEE: no escribe, no recarga,
+      # no reinicia. Trae el archivo byte-exacto para parchearlo localmente.
+      - name: Sonda nginx read-only (206)
+        run: |
+          set -uo pipefail
+          TARGET="${{ secrets.VPS_USER }}@$VPS_HOST"
+          mkdir -p "$DEPLOY_DIR/out"
+          OUT="$DEPLOY_DIR/out/nginx-probe.txt"
+          {
+            echo "=== nginx -t SIN sudo ==="
+            ssh "$TARGET" 'nginx -t 2>&1; echo EXIT_SIN_SUDO=$?' || true
+            echo
+            echo "=== nginx -t CON sudo -n ==="
+            ssh "$TARGET" 'sudo -n nginx -t 2>&1; echo EXIT_CON_SUDO=$?' || true
+            echo
+            echo "=== hashes ==="
+            ssh "$TARGET" 'sha256sum /etc/nginx/sites-available/default /etc/nginx/nginx.conf 2>&1' || true
+            echo
+            echo "=== conf.d ==="
+            ssh "$TARGET" 'ls -la /etc/nginx/conf.d/ 2>&1' || true
+            echo
+            echo "=== sites-enabled ==="
+            ssh "$TARGET" 'ls -la /etc/nginx/sites-enabled/ 2>&1' || true
+            echo
+            echo "=== locations m3u8 / lists ==="
+            ssh "$TARGET" "grep -n -E 'location[[:space:]]+.*(m3u8|lists)' /etc/nginx/sites-available/default 2>&1 || echo SIN_MATCH" || true
+            echo
+            echo "=== gzip_static / gunzip / Accept-Ranges ==="
+            ssh "$TARGET" "grep -n -E 'gzip_static|gunzip|Accept-Ranges' /etc/nginx/sites-available/default 2>&1 || echo NINGUNO" || true
+          } | tee "$OUT"
+      - name: Traer la config viva byte-exacta (read-only)
+        run: |
+          set -euo pipefail
+          TARGET="${{ secrets.VPS_USER }}@$VPS_HOST"
+          scp -q "$TARGET:/etc/nginx/sites-available/default" "$DEPLOY_DIR/out/sites-available-default.conf"
+          echo "sha256 local:"
+          sha256sum "$DEPLOY_DIR/out/sites-available-default.conf"
       - name: Guardar inventario como artefacto
         uses: actions/upload-artifact@v4
         with:
@@ -73,6 +113,8 @@ jobs:
           path: |
             _vps_stage/deploy/out/inventory*
             _vps_stage/deploy/out/stamp*
+            _vps_stage/deploy/out/nginx-probe.txt
+            _vps_stage/deploy/out/sites-available-default.conf
           if-no-files-found: warn
           retention-days: 14
 
