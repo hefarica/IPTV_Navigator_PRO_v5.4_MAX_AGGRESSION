@@ -115,6 +115,34 @@ jobs:
           fi
           echo 'el parche 302 versionado es reproducible desde el baseline'
 
+      # DIAGNOSTICO DE LOCALIZACION (solo lectura).
+      #
+      # La comprobacion de anclajes del job 2 encontro 0 ocurrencias de 'gzip_static always;' y de
+      # 'gunzip on;' en /etc/nginx/sites-available/default. Eso significa que el bloque que mi auditoria
+      # describia NO vive en ese fichero. Antes de tocar nada hay que saber DONDE vive: nginx -T mergea
+      # todos los includes, y ahi se ve el fichero real de cada directiva.
+      - name: Donde vive de verdad el manejo de .m3u8 y el gzip
+        run: |
+          set -uo pipefail
+          TARGET="${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}"
+          echo '--- ficheros de configuracion que nginx carga ---'
+          ssh "$TARGET" 'sudo -n nginx -T 2>/dev/null | grep -n "^# configuration file" || true'
+          echo
+          echo '--- quien declara gzip_static (con fichero) ---'
+          ssh "$TARGET" 'sudo -n nginx -T 2>/dev/null | grep -n -B0 "gzip_static" || echo "SIN gzip_static EN TODO nginx -T"'
+          echo
+          echo '--- quien declara gunzip ---'
+          ssh "$TARGET" 'sudo -n nginx -T 2>/dev/null | grep -n "gunzip" || echo "SIN gunzip EN TODO nginx -T"'
+          echo
+          echo '--- quien declara gzip on/off ---'
+          ssh "$TARGET" 'sudo -n nginx -T 2>/dev/null | grep -n -E "^\s*gzip (on|off)" || echo "SIN gzip on/off"'
+          echo
+          echo '--- donde se atiende .m3u8 ---'
+          ssh "$TARGET" 'sudo -n nginx -T 2>/dev/null | grep -n -E "m3u8|location .*lists" || echo "SIN coincidencias m3u8"'
+          echo
+          echo '--- rutas reales de los ficheros de listas ---'
+          ssh "$TARGET" 'sudo -n ls -la /etc/nginx/sites-enabled/ 2>/dev/null | head -20; echo "---"; sudo -n ls -la /etc/nginx/snippets/ 2>/dev/null | head -20'
+
   plan:
     name: 2 · Plan y verificacion previa del gate (solo lectura)
     needs: verificar
