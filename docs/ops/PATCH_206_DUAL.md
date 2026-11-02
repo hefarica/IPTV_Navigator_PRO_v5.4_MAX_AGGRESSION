@@ -22,43 +22,62 @@ deja `gunzip on`. **Cada uno arregla la mitad.**
 `vps/nginx/live-baseline-2026-11-02/sites-enabled-default.PATCHED-206-dual.conf`
 
 Construido a partir de la baseline verificada por hash (`6c8e507f…`), dentro de `location ~* \.m3u8$`.
-El diff contra la baseline son **exactamente dos líneas de directiva**:
+El diff contra la baseline son **exactamente tres líneas de directiva**:
 
 ```diff
-+        gzip off;
-         gzip_static always;
+-        gzip_static always;
 -        gunzip on;
++        gzip off;
++        gzip_static on;
 +        gunzip off;
 ```
 
 Verificado sobre el fichero resultante:
 
 ```
-gzip off;              ×1
-gzip_static always;    ×1
-gunzip off;            ×1
+gzip_static always     ×0
 gunzip on;             ×0
+gzip off;              ×1
+gzip_static on;        ×1
+gunzip off;            ×1
 llaves                 abre=21 cierra=21  BALANCEADO
 ```
 
 Los comentarios de la baseline describían el comportamiento viejo («gunzip descomprime al vuelo»,
-«streaming decompression»). Con `gunzip off` eso es falso, así que **se reescribieron**: un comentario
-que describe lo contrario de su directiva es peor que no tener comentario.
+«streaming decompression»). Con estas directivas eso es falso, así que **se reescribieron**. Un
+comentario que describe lo contrario de su directiva es peor que no tener comentario.
 
-## 3 · La matriz que predice — y la celda que NO está medida
+## 2-bis · Por qué `gzip_static on` y no `always` — esto cierra el hueco de medición
 
-| Lista | `identity` | `gzip` | Motivo |
+La primera versión de este parche mantenía `gzip_static always` y añadía `gunzip off`. Eso dejaba una
+celda **predicha y no medida**: qué hace nginx cuando `always` le pide servir el `.gz` a un cliente que no
+lo acepta y `gunzip` está apagado. Sin nginx en este host, no se podía observar.
+
+**En vez de instalar nginx para responder esa pregunta, se diseñó fuera.**
+
+Con `gzip_static on` —el valor por defecto de nginx— el `.gz` se sirve **solo** a clientes que envían
+`Accept-Encoding: gzip`. Un cliente sin gzip recibe **el fichero plano**, que es un estático normal con
+`Content-Length` y `Content-Range`. `gunzip` deja de participar por completo: nunca hay que descomprimir
+para servir.
+
+Resultado: **ninguna de las cuatro celdas depende de una interacción deducida.** Las dos celdas nuevas
+—«grande + identity» y «pequeña + gzip»— se reducen al mismo caso: *nginx sirviendo un fichero plano
+estático con Range*, que es exactamente el caso que **ya está medido hoy** en «pequeña + identity»
+(163.187 B → 206). Cambia el tamaño del fichero, no el mecanismo.
+
+`gunzip off` se mantiene como defensa explícita: si alguien vuelve a poner `always`, esa línea impide
+que se sirva un `.gz` descomprimido en streaming a un cliente que no lo pidió.
+
+## 3 · La matriz que predice
+
+| Lista | `identity` | `gzip` | Mecanismo |
 |---|---|---|---|
-| grande | **206** (predicho) | **206** | `gunzip off` → identity recibe el plano con Range; `gzip_static always` → gzip recibe el `.gz` con Range |
-| pequeña | **206** | **206** (predicho) | `gzip off` → sin compresión dinámica; no hay `.gz`, cae al plano; ambos con Range |
+| grande | **206** | 206 (medido hoy) | plano con Range · `.gz` con Range |
+| pequeña | 206 (medido hoy) | **206** | plano con Range · plano con Range |
 
-**La celda «grande + identity» está PREDICHA, no medida.** No hay nginx ni docker en este host, así que
-no pude reproducir la combinación. La predicción se apoya en la semántica de `gzip_static always` +
-`gunzip off`: nginx no puede entregar el `.gz` a un cliente que no lo aceptó sin descomprimir, y sin
-`gunzip` cae al fichero plano. Es lo que ya asume `PATCHED.conf`, pero **no lo he observado**.
-
-Las otras tres celdas sí tienen respaldo de medición: «grande+gzip» es lo que producción hace hoy
-(206 sobre el `.gz`), y «pequeña+identity» es lo que producción hace hoy (206 sobre el plano).
+Las dos celdas nuevas son «plano estático con Range», el camino más simple de nginx. **Sigue siendo una
+predicción, no una medición en producción** — pero ya no depende de ninguna interacción entre directivas
+que no haya visto funcionar: depende del mismo comportamiento que una celda de producción demuestra hoy.
 
 ## 4 · Cómo se verifica en cuanto se aplique
 
@@ -120,7 +139,12 @@ semántica de caché.
 
 ## 8 · Lo que este informe NO dice
 
-- No dice que el parche funcione: **falta medir la celda grande+identity.**
+- No dice que el parche funcione: **no está medido en producción**. La diferencia con la versión anterior
+  es que ya no depende de una interacción deducida entre directivas, solo del comportamiento de servir un
+  plano estático con Range, que una celda de producción demuestra hoy.
 - No ha probado un cliente real (VLC/OTT/ExoPlayer) pidiendo rangos.
-- No ha medido el impacto de `gunzip off` en CPU ni en ancho de banda del servidor.
+- No ha medido el impacto en CPU ni en ancho de banda del servidor.
+- **No ha medido el efecto de `gzip_static on` en el tráfico de los clientes gzip sobre las listas
+  pequeñas**: hoy reciben 200 comprimido; pasarán a recibir el plano. Son 163.187 B, despreciable, pero
+  no está medido.
 - No ha aplicado nada: el VPS sigue con cero escrituras esta sesión.
