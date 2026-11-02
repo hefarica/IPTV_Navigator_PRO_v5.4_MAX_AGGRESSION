@@ -1,13 +1,13 @@
 {
   "schema": "ape-lista-cartographer/map@1",
-  "generated_at": "2026-11-02T13:37:40.098Z",
+  "generated_at": "2026-11-02T14:29:43.556Z",
   "tool": {
     "name": "map_list.js",
     "version": "1.0.0",
     "schema": "ape-lista-cartographer/map@1",
     "node": "v24.12.0",
     "platform": "win32 x64",
-    "elapsed_ms": 58822
+    "elapsed_ms": 57155
   },
   "environment": {
     "node": "v24.12.0",
@@ -33,11 +33,11 @@
     }
   },
   "source": {
-    "path_masked": "C:\\Users\\HFRC\\AppData\\Local\\DSH_HERRAMIENTAS\\DSH_BLUEGREEN_021\\home\\attachments\\v1\\files\\52\\<REDACTED>\\APE_LISTA_1793589060441.m3u8",
+    "path_masked": "C:\\Users\\HFRC\\Downloads\\APE_LISTA_1793589060441.m3u8",
     "name_masked": "APE_LISTA_1793589060441.m3u8",
     "bytes": 604593696,
     "sha256": "523d52a6d147f81ce5a212e47b9c55401fb409cd4a41aee96f8ba80b5b5049d6",
-    "mtime_iso": "2026-11-02T12:29:32.738Z",
+    "mtime_iso": "2026-11-02T03:14:22.317Z",
     "lines": 10315662,
     "channels": 10573,
     "uri_lines": 10573,
@@ -3326,6 +3326,7 @@
         "key": "BANDWIDTH",
         "count": 10573,
         "distinct": 3,
+        "distinct_method": "sha256-16 por valor, Set (exacto)",
         "values": [
           {
             "value": "9000000",
@@ -3339,12 +3340,15 @@
             "value": "28000000",
             "count": 853
           }
-        ]
+        ],
+        "values_truncated": false,
+        "examples": null
       },
       {
         "key": "AVERAGE-BANDWIDTH",
         "count": 10573,
         "distinct": 3,
+        "distinct_method": "sha256-16 por valor, Set (exacto)",
         "values": [
           {
             "value": "6500000",
@@ -3358,23 +3362,29 @@
             "value": "22000000",
             "count": 853
           }
-        ]
+        ],
+        "values_truncated": false,
+        "examples": null
       },
       {
         "key": "RESOLUTION",
         "count": 10573,
         "distinct": 1,
+        "distinct_method": "sha256-16 por valor, Set (exacto)",
         "values": [
           {
             "value": "3840x2160",
             "count": 10573
           }
-        ]
+        ],
+        "values_truncated": false,
+        "examples": null
       },
       {
         "key": "FRAME-RATE",
         "count": 10573,
         "distinct": 2,
+        "distinct_method": "sha256-16 por valor, Set (exacto)",
         "values": [
           {
             "value": "30.000",
@@ -3384,79 +3394,106 @@
             "value": "60.000",
             "count": 1922
           }
-        ]
+        ],
+        "values_truncated": false,
+        "examples": null
       },
       {
         "key": "CODECS",
         "count": 10573,
         "distinct": 1,
+        "distinct_method": "sha256-16 por valor, Set (exacto)",
         "values": [
           {
             "value": "hvc1.2.4.L153.B0,mp4a.40.2",
             "count": 10573
           }
-        ]
+        ],
+        "values_truncated": false,
+        "examples": null
       },
       {
         "key": "VIDEO-RANGE",
         "count": 10573,
         "distinct": 1,
+        "distinct_method": "sha256-16 por valor, Set (exacto)",
         "values": [
           {
             "value": "PQ",
             "count": 10573
           }
-        ]
+        ],
+        "values_truncated": false,
+        "examples": null
       },
       {
         "key": "COLOR-PRIMARIES",
         "count": 10528,
         "distinct": 1,
+        "distinct_method": "sha256-16 por valor, Set (exacto)",
         "values": [
           {
             "value": "9",
             "count": 10528
           }
-        ]
+        ],
+        "values_truncated": false,
+        "examples": null
       },
       {
         "key": "TRANSFER-CHARACTERISTICS",
         "count": 10528,
         "distinct": 1,
+        "distinct_method": "sha256-16 por valor, Set (exacto)",
         "values": [
           {
             "value": "16",
             "count": 10528
           }
-        ]
+        ],
+        "values_truncated": false,
+        "examples": null
       },
       {
         "key": "MATRIX-COEFFICIENTS",
         "count": 10528,
         "distinct": 1,
+        "distinct_method": "sha256-16 por valor, Set (exacto)",
         "values": [
           {
             "value": "9",
             "count": 10528
           }
-        ]
+        ],
+        "values_truncated": false,
+        "examples": null
       },
       {
         "key": "HDCP-LEVEL",
         "count": 10528,
         "distinct": 1,
+        "distinct_method": "sha256-16 por valor, Set (exacto)",
         "values": [
           {
             "value": "TYPE-1",
             "count": 10528
           }
-        ]
+        ],
+        "values_truncated": false,
+        "examples": null
       },
       {
         "key": "STABLE-VARIANT-ID",
         "count": 10528,
-        "distinct": "alta cardinalidad (>64)",
-        "values": null
+        "distinct": 10528,
+        "distinct_method": "sha256-16 por valor, Set (exacto)",
+        "values": null,
+        "values_truncated": true,
+        "examples": [
+          "3_P3",
+          "5_P4",
+          "6_P3"
+        ]
       }
     ],
     "bandwidth": {
@@ -3733,7 +3770,91 @@
         "name": "X-Client-Timestamp",
         "count": 250
       }
-    ]
+    ],
+    "field_population": {
+      "objects_analyzed": 250,
+      "fields_distinct": 249,
+      "fields_universal": 168,
+      "fields_partial": 81,
+      "partial": [
+        {
+          "name": "X-PEVCE-Live-Caching",
+          "declared_in": 213,
+          "pct_of_all_analyzed": 85.2
+        },
+        {
+          "name": "X-PEVCE-TCP-Caching",
+          "declared_in": 213,
+          "pct_of_all_analyzed": 85.2
+        },
+        {
+          "name": "X-PEVCE-HTTP-Reconnect",
+          "declared_in": 213,
+          "pct_of_all_analyzed": 85.2
+        },
+        {
+          "name": "X-PEVCE-HTTP-Continuous",
+          "declared_in": 213,
+          "pct_of_all_analyzed": 85.2
+        },
+        {
+          "name": "X-PEVCE-HW-Decode",
+          "declared_in": 213,
+          "pct_of_all_analyzed": 85.2
+        },
+        {
+          "name": "X-PEVCE-HW-Threads",
+          "declared_in": 213,
+          "pct_of_all_analyzed": 85.2
+        },
+        {
+          "name": "X-PEVCE-Skip-Frame",
+          "declared_in": 213,
+          "pct_of_all_analyzed": 85.2
+        },
+        {
+          "name": "X-PEVCE-Skip-Idct",
+          "declared_in": 213,
+          "pct_of_all_analyzed": 85.2
+        },
+        {
+          "name": "X-PEVCE-Timeshift-RAM",
+          "declared_in": 213,
+          "pct_of_all_analyzed": 85.2
+        },
+        {
+          "name": "X-PEVCE-Deinterlace",
+          "declared_in": 213,
+          "pct_of_all_analyzed": 85.2
+        },
+        {
+          "name": "X-PEVCE-Force-HDR",
+          "declared_in": 213,
+          "pct_of_all_analyzed": 85.2
+        },
+        {
+          "name": "X-Hardware-Decode",
+          "declared_in": 213,
+          "pct_of_all_analyzed": 85.2
+        },
+        {
+          "name": "X-Tunneling-Enabled",
+          "declared_in": 213,
+          "pct_of_all_analyzed": 85.2
+        },
+        {
+          "name": "X-Audio-Track-Selection",
+          "declared_in": 213,
+          "pct_of_all_analyzed": 85.2
+        },
+        {
+          "name": "X-Initial-Bitrate",
+          "declared_in": 213,
+          "pct_of_all_analyzed": 85.2
+        }
+      ],
+      "note": "pct_of_all_analyzed mide EXTENSIÓN del campo; pct_of_declaring mide la contradicción sobre los canales que lo declaran. Para un campo parcial sólo el segundo es un ratio de población."
+    }
   },
   "overflow": {
     "lines_census": 10573,
@@ -4873,99 +4994,159 @@
     "contradictions": [
       {
         "id": "C1",
+        "decl": "c1",
         "label": "STREAM-INF RESOLUTION ≠ KODIPROP max_resolution",
         "channels": 10573,
         "scope": "censo",
-        "denominator": 10573,
-        "pct": 100
+        "declaring_channels": 10573,
+        "total_channels": 10573,
+        "denominator_basis": "total_de_canales",
+        "pct_of_declaring": 100,
+        "pct_of_total": 100,
+        "note": null
       },
       {
         "id": "C2",
+        "decl": "c2",
         "label": "STREAM-INF VIDEO-RANGE=PQ vs EXTVLCOPT video-hdr*=SDR/false",
         "channels": 10573,
         "scope": "censo",
-        "denominator": 10573,
-        "pct": 100
+        "declaring_channels": 10573,
+        "total_channels": 10573,
+        "denominator_basis": "total_de_canales",
+        "pct_of_declaring": 100,
+        "pct_of_total": 100,
+        "note": null
       },
       {
         "id": "C3",
+        "decl": "c3",
         "label": "STREAM-INF CODECS=hvc1… vs EXTVLCOPT codec sin hevc",
         "channels": 7457,
         "scope": "censo",
-        "denominator": 10573,
-        "pct": 70.53
+        "declaring_channels": 10573,
+        "total_channels": 10573,
+        "denominator_basis": "total_de_canales",
+        "pct_of_declaring": 70.53,
+        "pct_of_total": 70.53,
+        "note": null
       },
       {
         "id": "C4",
+        "decl": "c4",
         "label": "I-FRAME-STREAM-INF con nivel HEVC < STREAM-INF",
         "channels": 9765,
         "scope": "censo",
-        "denominator": 10573,
-        "pct": 92.36
+        "declaring_channels": 10573,
+        "total_channels": 10573,
+        "denominator_basis": "total_de_canales",
+        "pct_of_declaring": 92.36,
+        "pct_of_total": 92.36,
+        "note": null
       },
       {
         "id": "C5",
+        "decl": "c5",
         "label": "EXTHTTP X-APE-Codec-Video con nivel HEVC < STREAM-INF",
         "channels": 37,
         "scope": "muestra (capas pesadas)",
-        "denominator": 250,
-        "pct": 14.8
+        "declaring_channels": 37,
+        "total_channels": 10573,
+        "denominator_basis": "poblacion_que_lo_declara",
+        "pct_of_declaring": 100,
+        "pct_of_total": 0.35,
+        "note": "campo de capa pesada: la poblacion que lo declara se mide DENTRO de la muestra"
       },
       {
         "id": "C6",
+        "decl": "c6",
         "label": "La familia CMAF declara contenedor y #EXT-X-MAP = 0",
         "channels": 10573,
         "scope": "censo",
-        "denominator": 10573,
-        "pct": 100
+        "declaring_channels": 10573,
+        "total_channels": 10573,
+        "denominator_basis": "total_de_canales",
+        "pct_of_declaring": 100,
+        "pct_of_total": 100,
+        "note": null
       },
       {
         "id": "C7",
+        "decl": "c7",
         "label": "#EXT-X-VERSION real ≠ #EXT-X-CMAF-VERSION declarado",
         "channels": 10573,
         "scope": "censo",
-        "denominator": 10573,
-        "pct": 100
+        "declaring_channels": 10573,
+        "total_channels": 10573,
+        "denominator_basis": "total_de_canales",
+        "pct_of_declaring": 100,
+        "pct_of_total": 100,
+        "note": null
       },
       {
         "id": "C8",
+        "decl": "c8",
         "label": "#EXT-X-PART-INF PART-TARGET real ≠ #EXT-X-CMAF-PART-TARGET",
         "channels": 10573,
         "scope": "censo",
-        "denominator": 10573,
-        "pct": 100
+        "declaring_channels": 10573,
+        "total_channels": 10573,
+        "denominator_basis": "total_de_canales",
+        "pct_of_declaring": 100,
+        "pct_of_total": 100,
+        "note": null
       },
       {
         "id": "C9",
+        "decl": "c9",
         "label": "#EXT-X-SERVER-CONTROL PART-HOLD-BACK real ≠ #EXT-X-CMAF-PART-HOLD-BACK",
         "channels": 10573,
         "scope": "censo",
-        "denominator": 10573,
-        "pct": 100
+        "declaring_channels": 10573,
+        "total_channels": 10573,
+        "denominator_basis": "total_de_canales",
+        "pct_of_declaring": 100,
+        "pct_of_total": 100,
+        "note": null
       },
       {
         "id": "C11",
+        "decl": "c11",
         "label": "Init segment declarado por la familia sin #EXT-X-MAP",
         "channels": 10573,
         "scope": "censo",
-        "denominator": 10573,
-        "pct": 100
+        "declaring_channels": 10573,
+        "total_channels": 10573,
+        "denominator_basis": "total_de_canales",
+        "pct_of_declaring": 100,
+        "pct_of_total": 100,
+        "note": null
       },
       {
         "id": "C12",
+        "decl": "c12",
         "label": "Techo adaptativo VLC (maxwidth) > KODIPROP max_resolution",
         "channels": 10573,
         "scope": "censo",
-        "denominator": 10573,
-        "pct": 100
+        "declaring_channels": 10573,
+        "total_channels": 10573,
+        "denominator_basis": "total_de_canales",
+        "pct_of_declaring": 100,
+        "pct_of_total": 100,
+        "note": null
       },
       {
         "id": "C13",
+        "decl": "c13",
         "label": "STREAM-INF sin HDCP-LEVEL",
         "channels": 45,
         "scope": "censo",
-        "denominator": 10573,
-        "pct": 0.43
+        "declaring_channels": 10573,
+        "total_channels": 10573,
+        "denominator_basis": "total_de_canales",
+        "pct_of_declaring": 0.43,
+        "pct_of_total": 0.43,
+        "note": null
       }
     ],
     "not_implemented": [
@@ -4976,11 +5157,137 @@
       }
     ],
     "golden_rule": {
-      "violations": 0,
-      "hvc1_in_kodiprop_or_vlc": 0,
-      "hev1_in_stream_inf": 0,
-      "rfc6381_in_kodiprop_or_vlc": 0,
-      "note": "hvc1.* solo en STREAM-INF CODECS; hev1.* solo en KODIPROP/EXTVLCOPT. KODIPROP/EXTVLCOPT no emiten RFC 6381 por diseño, así que cualquier hvc1/hev1 ahí es una violación."
+      "rules": [
+        {
+          "id": "G1",
+          "rule": "hvc1.* sólo en CODECS de #EXT-X-STREAM-INF",
+          "violations": 0,
+          "sinks_checked": [
+            "#KODIPROP",
+            "#EXTVLCOPT"
+          ]
+        },
+        {
+          "id": "G2",
+          "rule": "hev1.* no puede aparecer en CODECS de #EXT-X-STREAM-INF",
+          "violations": 0,
+          "sinks_checked": [
+            "#EXT-X-STREAM-INF"
+          ]
+        }
+      ],
+      "violations_in_evaluated_sinks": 0,
+      "sinks_declared_by_rule": 4,
+      "sinks_measured_with_rfc6381": 19,
+      "sinks_evaluated_with_data": 2,
+      "sinks_declared_but_empty": [
+        "#KODIPROP",
+        "#EXTVLCOPT"
+      ],
+      "sinks_out_of_scope": [
+        {
+          "tag": "#EXTHTTP",
+          "lines": 10573,
+          "lines_hvc1": 10573,
+          "lines_hev1": 808,
+          "hvc1": 19569,
+          "hev1": 808
+        },
+        {
+          "tag": "#EXT-X-CMAF",
+          "lines": 10573,
+          "lines_hvc1": 10573,
+          "lines_hev1": 0,
+          "hvc1": 10573,
+          "hev1": 0
+        },
+        {
+          "tag": "#EXTATTRFROMURL",
+          "lines": 10573,
+          "lines_hvc1": 10573,
+          "lines_hev1": 0,
+          "hvc1": 10573,
+          "hev1": 0
+        },
+        {
+          "tag": "#EXT-X-APE-QUALITY-OVERRIDE-CODEC",
+          "lines": 10573,
+          "lines_hvc1": 10573,
+          "lines_hev1": 0,
+          "hvc1": 10573,
+          "hev1": 0
+        },
+        {
+          "tag": "#EXT-X-APE-IDEMPOTENCIA-CODEC",
+          "lines": 10573,
+          "lines_hvc1": 10573,
+          "lines_hev1": 0,
+          "hvc1": 10573,
+          "hev1": 0
+        },
+        {
+          "tag": "#EXT-X-APE-CORTEX-TELEMETRY-CODEC",
+          "lines": 10573,
+          "lines_hvc1": 10573,
+          "lines_hev1": 0,
+          "hvc1": 10573,
+          "hev1": 0
+        },
+        {
+          "tag": "#EXT-X-I-FRAME-STREAM-INF",
+          "lines": 10573,
+          "lines_hvc1": 10573,
+          "lines_hev1": 0,
+          "hvc1": 10573,
+          "hev1": 0
+        },
+        {
+          "tag": "#EXT-X-APE-CHANNEL-RUNTIME-CODEC-HEV1",
+          "lines": 10573,
+          "lines_hvc1": 0,
+          "lines_hev1": 10573,
+          "hvc1": 0,
+          "hev1": 10573
+        },
+        {
+          "tag": "#EXT-X-APE-CODEC-FALLBACK-1",
+          "lines": 10528,
+          "lines_hvc1": 10528,
+          "lines_hev1": 0,
+          "hvc1": 10528,
+          "hev1": 0
+        },
+        {
+          "tag": "#EXT-X-APE-CODEC-FALLBACK-2",
+          "lines": 10528,
+          "lines_hvc1": 10528,
+          "lines_hev1": 0,
+          "hvc1": 10528,
+          "hev1": 0
+        },
+        {
+          "tag": "#EXT-X-APE-CODEC-FALLBACK-3",
+          "lines": 10528,
+          "lines_hvc1": 10528,
+          "lines_hev1": 0,
+          "hvc1": 10528,
+          "hev1": 0
+        },
+        {
+          "tag": "#EXT-X-APE-CODEC-FALLBACK-4",
+          "lines": 10528,
+          "lines_hvc1": 10528,
+          "lines_hev1": 0,
+          "hvc1": 10528,
+          "hev1": 0
+        }
+      ],
+      "hev1_outside_evaluated_sinks": {
+        "occurrences": 11381,
+        "lines_with_hev1": 11381
+      },
+      "denominator": "2 de 19 sumideros medidos con RFC 6381 (4 declarados por la regla; 2 de ellos no portan la cadena en esta lista)",
+      "note": "hvc1.* sólo en STREAM-INF CODECS; hev1.* sólo en KODIPROP/EXTVLCOPT. El cero es SOBRE LOS SUMIDEROS EVALUADOS: fuera de ellos la lista sí emite cadenas RFC 6381 (ver hev1_outside_evaluated_sinks y 06_VERIFICATION.md H1)."
     }
   },
   "runtime_matrix": {
@@ -5969,13 +6276,20 @@
   "artifacts": {
     "json": "C:\\Users\\HFRC\\Desktop\\IPTV_Navigator_PRO_v5.4_MAX_AGGRESSION\\.agents\\skills\\ape-lista-cartographer\\reports\\map_523d52a6.json",
     "markdown": "C:\\Users\\HFRC\\Desktop\\IPTV_Navigator_PRO_v5.4_MAX_AGGRESSION\\.agents\\skills\\ape-lista-cartographer\\reports\\map_523d52a6.md",
-    "fixture": "C:\\Users\\HFRC\\Desktop\\IPTV_Navigator_PRO_v5.4_MAX_AGGRESSION\\.agents\\skills\\ape-lista-cartographer\\fixtures\\canal_001_P3.txt"
+    "fixture": null
   },
   "redaction": {
     "host_masked": true,
     "user_pass_masked": true,
     "secrets_scrubbed": 5,
-    "note": "El host del stream y los hosts de tvg-logo se enmascaran salvo --keep-host. Usuario y contraseña se enmascaran siempre, también en fixtures. Los valores de #EXTHTTP no se almacenan (solo nombres y tamaños)."
+    "note": "El host del stream y los hosts de tvg-logo se enmascaran salvo --keep-host. Usuario y contraseña se enmascaran siempre, también en fixtures. Los valores de #EXTHTTP no se almacenan (solo nombres y tamaños).",
+    "leak_checks": {
+      "json_parses": true,
+      "host_occurrences_in_output": 0,
+      "credential_occurrences_in_output": 0,
+      "sha256_preserved": true,
+      "redactions_applied": 5
+    }
   },
   "network": {
     "used": false,

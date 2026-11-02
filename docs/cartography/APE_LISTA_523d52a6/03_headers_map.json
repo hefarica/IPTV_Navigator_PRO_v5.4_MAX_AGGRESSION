@@ -10,7 +10,16 @@
     "declared_channels_tag": "#EXT-X-APE-CHANNELS:10573",
     "analyzer": "03_headers_analyzer.mjs",
     "generated_at": "2026-11-02T12:44:51.397Z",
-    "redaction": "Valores emitidos pasan por redact(): user:pass@, rutas Xtream, JWT, Bearer/Basic, token=/password= y blobs base64/hex >=40 sustituidos por ***REDACTED***"
+    "redaction": "Valores emitidos pasan por redact(): user:pass@, rutas Xtream, JWT, Bearer/Basic, token=/password= y blobs base64/hex >=40 sustituidos por ***REDACTED***",
+    "schema_probe": {
+      "producer": "03_schema_probe.mjs",
+      "source": "C:\\Users\\HFRC\\Downloads\\APE_LISTA_1793589060441.m3u8",
+      "source_bytes": 604593696,
+      "channels_measured": 10573,
+      "exthttp_parsed": 10573,
+      "exthttp_bad_json": 0,
+      "note": "Añade/reemplaza secciones para t12. NO reescribe el censo de 03_headers_analyzer.mjs."
+    }
   },
   "global_tag_counts": {
     "#EXTVLCOPT": 1416786,
@@ -2077,6 +2086,648 @@
       "X-QoS-DSCP": [
         "EF"
       ]
+    },
+    "overflow_consistency": {
+      "superseded_claim": "SUSTITUIDO por t12: «cada campo aparece o en el principal o en el overflow, nunca en ambos y nunca en ninguno» es FALSO.",
+      "measured": {
+        "names_in_union": 276,
+        "names_summing_to_channels": 225,
+        "names_conditional": 51
+      },
+      "see": "exthttp.schemas"
+    },
+    "schemas": {
+      "H2_correction_scope": {
+        "names_in_union": 276,
+        "names_summing_to_channels": 225,
+        "names_conditional": 51,
+        "statement_that_was_false": "«Cada campo esta o en el objeto principal o en el overflow, nunca en ninguno» — FALSO: 51 de 276 nombres no suman 10573.",
+        "statement_that_replaces_it": "225 de 276 nombres suman exactamente 10573 (principal + overflow). Los otros 51 son CONDICIONALES: su presencia depende del esquema de campos del canal, no de su posicion respecto del corte de 200 campos."
+      },
+      "schema_count": 6,
+      "schemas": [
+        {
+          "id": "S1",
+          "key_set_sha1_8": "7b1dc543",
+          "channels": 4759,
+          "fields_in_main": 199,
+          "profiles": {
+            "P4": 4759
+          },
+          "exclusive_fields_in_main": [],
+          "exclusive_count": 0
+        },
+        {
+          "id": "S2",
+          "key_set_sha1_8": "6f928c2e",
+          "channels": 2682,
+          "fields_in_main": 200,
+          "profiles": {
+            "P4": 2682
+          },
+          "exclusive_fields_in_main": [
+            "X-HDR-Support"
+          ],
+          "exclusive_count": 1
+        },
+        {
+          "id": "S3",
+          "key_set_sha1_8": "8bfe1c3e",
+          "channels": 1470,
+          "fields_in_main": 200,
+          "profiles": {
+            "P3": 1470
+          },
+          "exclusive_fields_in_main": [
+            "X-APE-Channel-Id",
+            "X-APE-Codec-Video",
+            "X-APE-Codec-Audio",
+            "X-APE-Codec-Profile",
+            "X-APE-Codec-Level",
+            "X-APE-Codec-Chain",
+            "X-APE-Codec-Family",
+            "X-APE-Bit-Depth",
+            "X-APE-HDR-Mode",
+            "X-APE-HDR-Transfer",
+            "X-APE-HDR-Primaries",
+            "X-APE-HDR-Matrix",
+            "X-APE-HDR-Range",
+            "X-APE-Color-Space",
+            "X-APE-Chroma",
+            "X-APE-CICP",
+            "X-APE-MaxCLL",
+            "X-APE-MaxFALL",
+            "X-APE-Tone-Mapping",
+            "X-APE-Resolution-Q",
+            "X-APE-Framerate-Q",
+            "X-APE-Bandwidth",
+            "X-APE-Avg-Bandwidth",
+            "X-APE-Follow-Redirects",
+            "X-APE-Max-Redirects",
+            "X-APE-Auth-Retry",
+            "X-APE-Auth-Method",
+            "X-APE-Fallback-UA",
+            "X-APE-Fallback-Referer",
+            "X-APE-Fallback-XFF",
+            "X-APE-Fallback-Tunnel",
+            "X-APE-Fallback-Backoff"
+          ],
+          "exclusive_count": 32
+        },
+        {
+          "id": "S4",
+          "key_set_sha1_8": "76a5ce58",
+          "channels": 1113,
+          "fields_in_main": 200,
+          "profiles": {
+            "P3": 838,
+            "P1": 275
+          },
+          "exclusive_fields_in_main": [
+            "X-Retry-Delay-Ms",
+            "X-Connection-Timeout-Ms",
+            "X-Read-Timeout-Ms",
+            "X-Reconnect-On-Error",
+            "X-Max-Reconnect-Attempts",
+            "X-Reconnect-Delay-Ms",
+            "X-Seamless-Failover",
+            "X-Country-Code"
+          ],
+          "exclusive_count": 8
+        },
+        {
+          "id": "S5",
+          "key_set_sha1_8": "4f59af2d",
+          "channels": 533,
+          "fields_in_main": 200,
+          "profiles": {
+            "P1": 533
+          },
+          "exclusive_fields_in_main": [],
+          "exclusive_count": 0
+        },
+        {
+          "id": "S6",
+          "key_set_sha1_8": "bc11a7c1",
+          "channels": 16,
+          "fields_in_main": 200,
+          "profiles": {
+            "P4": 16
+          },
+          "exclusive_fields_in_main": [
+            "X-QoS-DSCP"
+          ],
+          "exclusive_count": 1
+        }
+      ],
+      "families": {
+        "with_ape_codec_block": {
+          "schemas": [
+            "S3"
+          ],
+          "channels": 1470,
+          "note": "S3 (1.470, todo P3): el bloque X-APE-Codec-*/HDR/RED en el objeto principal. 32 campos exclusivos."
+        },
+        "without_ape_codec_block": {
+          "schemas": [
+            "S1",
+            "S2",
+            "S4",
+            "S5",
+            "S6"
+          ],
+          "channels": 9103,
+          "note": "NO es homogeneo: se subdivide por bloques opcionales (X-HDR-Support en S2, bloque de reconexion en S4, X-QoS-DSCP en S6) y por la posicion del corte (199 vs 200 campos)."
+        }
+      },
+      "conditional_fields": {
+        "count": 51,
+        "names": [
+          "X-FPS",
+          "X-BW-Confidence-Threshold",
+          "X-BW-Estimation-Window",
+          "X-BW-Smooth-Factor",
+          "X-Bandwidth-Estimation",
+          "X-Bandwidth-Preference",
+          "X-Catchup-Support",
+          "X-EPG-Sync",
+          "X-Subtitle-Track-Selection",
+          "X-Retry-Count",
+          "X-HDR-Support",
+          "X-APE-Auth-Method",
+          "X-APE-Auth-Retry",
+          "X-APE-Avg-Bandwidth",
+          "X-APE-Bandwidth",
+          "X-APE-Bit-Depth",
+          "X-APE-CICP",
+          "X-APE-Channel-Id",
+          "X-APE-Chroma",
+          "X-APE-Codec-Audio",
+          "X-APE-Codec-Chain",
+          "X-APE-Codec-Family",
+          "X-APE-Codec-Level",
+          "X-APE-Codec-Profile",
+          "X-APE-Codec-Video",
+          "X-APE-Color-Space",
+          "X-APE-Fallback-Backoff",
+          "X-APE-Fallback-Referer",
+          "X-APE-Fallback-Tunnel",
+          "X-APE-Fallback-UA",
+          "X-APE-Fallback-XFF",
+          "X-APE-Follow-Redirects",
+          "X-APE-Framerate-Q",
+          "X-APE-HDR-Matrix",
+          "X-APE-HDR-Mode",
+          "X-APE-HDR-Primaries",
+          "X-APE-HDR-Range",
+          "X-APE-HDR-Transfer",
+          "X-APE-Max-Redirects",
+          "X-APE-MaxCLL",
+          "X-APE-MaxFALL",
+          "X-APE-Resolution-Q",
+          "X-APE-Tone-Mapping",
+          "X-Connection-Timeout-Ms",
+          "X-Country-Code",
+          "X-Max-Reconnect-Attempts",
+          "X-Read-Timeout-Ms",
+          "X-Reconnect-Delay-Ms",
+          "X-Reconnect-On-Error",
+          "X-Retry-Delay-Ms",
+          "X-Seamless-Failover"
+        ],
+        "matrix_main_presence_by_schema": {
+          "X-FPS": {
+            "main_total": 4775,
+            "overflow_total": 0,
+            "total": 4775,
+            "present_in_main_of": {
+              "S1": 4759,
+              "S6": 16
+            }
+          },
+          "X-BW-Confidence-Threshold": {
+            "main_total": 4328,
+            "overflow_total": 1470,
+            "total": 5798,
+            "present_in_main_of": {
+              "S2": 2682,
+              "S4": 1113,
+              "S5": 533
+            }
+          },
+          "X-BW-Estimation-Window": {
+            "main_total": 4328,
+            "overflow_total": 1470,
+            "total": 5798,
+            "present_in_main_of": {
+              "S2": 2682,
+              "S4": 1113,
+              "S5": 533
+            }
+          },
+          "X-BW-Smooth-Factor": {
+            "main_total": 4328,
+            "overflow_total": 1470,
+            "total": 5798,
+            "present_in_main_of": {
+              "S2": 2682,
+              "S4": 1113,
+              "S5": 533
+            }
+          },
+          "X-Bandwidth-Estimation": {
+            "main_total": 4328,
+            "overflow_total": 1470,
+            "total": 5798,
+            "present_in_main_of": {
+              "S2": 2682,
+              "S4": 1113,
+              "S5": 533
+            }
+          },
+          "X-Bandwidth-Preference": {
+            "main_total": 4328,
+            "overflow_total": 1470,
+            "total": 5798,
+            "present_in_main_of": {
+              "S2": 2682,
+              "S4": 1113,
+              "S5": 533
+            }
+          },
+          "X-Catchup-Support": {
+            "main_total": 4328,
+            "overflow_total": 1470,
+            "total": 5798,
+            "present_in_main_of": {
+              "S2": 2682,
+              "S4": 1113,
+              "S5": 533
+            }
+          },
+          "X-EPG-Sync": {
+            "main_total": 4328,
+            "overflow_total": 1470,
+            "total": 5798,
+            "present_in_main_of": {
+              "S2": 2682,
+              "S4": 1113,
+              "S5": 533
+            }
+          },
+          "X-Subtitle-Track-Selection": {
+            "main_total": 4328,
+            "overflow_total": 1470,
+            "total": 5798,
+            "present_in_main_of": {
+              "S2": 2682,
+              "S4": 1113,
+              "S5": 533
+            }
+          },
+          "X-Retry-Count": {
+            "main_total": 3795,
+            "overflow_total": 0,
+            "total": 3795,
+            "present_in_main_of": {
+              "S2": 2682,
+              "S4": 1113
+            }
+          },
+          "X-HDR-Support": {
+            "main_total": 2682,
+            "overflow_total": 1113,
+            "total": 3795,
+            "present_in_main_of": {
+              "S2": 2682
+            }
+          },
+          "X-APE-Auth-Method": {
+            "main_total": 1470,
+            "overflow_total": 0,
+            "total": 1470,
+            "present_in_main_of": {
+              "S3": 1470
+            }
+          },
+          "X-APE-Auth-Retry": {
+            "main_total": 1470,
+            "overflow_total": 0,
+            "total": 1470,
+            "present_in_main_of": {
+              "S3": 1470
+            }
+          },
+          "X-APE-Avg-Bandwidth": {
+            "main_total": 1470,
+            "overflow_total": 0,
+            "total": 1470,
+            "present_in_main_of": {
+              "S3": 1470
+            }
+          },
+          "X-APE-Bandwidth": {
+            "main_total": 1470,
+            "overflow_total": 0,
+            "total": 1470,
+            "present_in_main_of": {
+              "S3": 1470
+            }
+          },
+          "X-APE-Bit-Depth": {
+            "main_total": 1470,
+            "overflow_total": 0,
+            "total": 1470,
+            "present_in_main_of": {
+              "S3": 1470
+            }
+          },
+          "X-APE-CICP": {
+            "main_total": 1470,
+            "overflow_total": 0,
+            "total": 1470,
+            "present_in_main_of": {
+              "S3": 1470
+            }
+          },
+          "X-APE-Channel-Id": {
+            "main_total": 1470,
+            "overflow_total": 0,
+            "total": 1470,
+            "present_in_main_of": {
+              "S3": 1470
+            }
+          },
+          "X-APE-Chroma": {
+            "main_total": 1470,
+            "overflow_total": 0,
+            "total": 1470,
+            "present_in_main_of": {
+              "S3": 1470
+            }
+          },
+          "X-APE-Codec-Audio": {
+            "main_total": 1470,
+            "overflow_total": 0,
+            "total": 1470,
+            "present_in_main_of": {
+              "S3": 1470
+            }
+          },
+          "X-APE-Codec-Chain": {
+            "main_total": 1470,
+            "overflow_total": 0,
+            "total": 1470,
+            "present_in_main_of": {
+              "S3": 1470
+            }
+          },
+          "X-APE-Codec-Family": {
+            "main_total": 1470,
+            "overflow_total": 0,
+            "total": 1470,
+            "present_in_main_of": {
+              "S3": 1470
+            }
+          },
+          "X-APE-Codec-Level": {
+            "main_total": 1470,
+            "overflow_total": 0,
+            "total": 1470,
+            "present_in_main_of": {
+              "S3": 1470
+            }
+          },
+          "X-APE-Codec-Profile": {
+            "main_total": 1470,
+            "overflow_total": 0,
+            "total": 1470,
+            "present_in_main_of": {
+              "S3": 1470
+            }
+          },
+          "X-APE-Codec-Video": {
+            "main_total": 1470,
+            "overflow_total": 0,
+            "total": 1470,
+            "present_in_main_of": {
+              "S3": 1470
+            }
+          },
+          "X-APE-Color-Space": {
+            "main_total": 1470,
+            "overflow_total": 0,
+            "total": 1470,
+            "present_in_main_of": {
+              "S3": 1470
+            }
+          },
+          "X-APE-Fallback-Backoff": {
+            "main_total": 1470,
+            "overflow_total": 0,
+            "total": 1470,
+            "present_in_main_of": {
+              "S3": 1470
+            }
+          },
+          "X-APE-Fallback-Referer": {
+            "main_total": 1470,
+            "overflow_total": 0,
+            "total": 1470,
+            "present_in_main_of": {
+              "S3": 1470
+            }
+          },
+          "X-APE-Fallback-Tunnel": {
+            "main_total": 1470,
+            "overflow_total": 0,
+            "total": 1470,
+            "present_in_main_of": {
+              "S3": 1470
+            }
+          },
+          "X-APE-Fallback-UA": {
+            "main_total": 1470,
+            "overflow_total": 0,
+            "total": 1470,
+            "present_in_main_of": {
+              "S3": 1470
+            }
+          },
+          "X-APE-Fallback-XFF": {
+            "main_total": 1470,
+            "overflow_total": 0,
+            "total": 1470,
+            "present_in_main_of": {
+              "S3": 1470
+            }
+          },
+          "X-APE-Follow-Redirects": {
+            "main_total": 1470,
+            "overflow_total": 0,
+            "total": 1470,
+            "present_in_main_of": {
+              "S3": 1470
+            }
+          },
+          "X-APE-Framerate-Q": {
+            "main_total": 1470,
+            "overflow_total": 0,
+            "total": 1470,
+            "present_in_main_of": {
+              "S3": 1470
+            }
+          },
+          "X-APE-HDR-Matrix": {
+            "main_total": 1470,
+            "overflow_total": 0,
+            "total": 1470,
+            "present_in_main_of": {
+              "S3": 1470
+            }
+          },
+          "X-APE-HDR-Mode": {
+            "main_total": 1470,
+            "overflow_total": 0,
+            "total": 1470,
+            "present_in_main_of": {
+              "S3": 1470
+            }
+          },
+          "X-APE-HDR-Primaries": {
+            "main_total": 1470,
+            "overflow_total": 0,
+            "total": 1470,
+            "present_in_main_of": {
+              "S3": 1470
+            }
+          },
+          "X-APE-HDR-Range": {
+            "main_total": 1470,
+            "overflow_total": 0,
+            "total": 1470,
+            "present_in_main_of": {
+              "S3": 1470
+            }
+          },
+          "X-APE-HDR-Transfer": {
+            "main_total": 1470,
+            "overflow_total": 0,
+            "total": 1470,
+            "present_in_main_of": {
+              "S3": 1470
+            }
+          },
+          "X-APE-Max-Redirects": {
+            "main_total": 1470,
+            "overflow_total": 0,
+            "total": 1470,
+            "present_in_main_of": {
+              "S3": 1470
+            }
+          },
+          "X-APE-MaxCLL": {
+            "main_total": 1470,
+            "overflow_total": 0,
+            "total": 1470,
+            "present_in_main_of": {
+              "S3": 1470
+            }
+          },
+          "X-APE-MaxFALL": {
+            "main_total": 1470,
+            "overflow_total": 0,
+            "total": 1470,
+            "present_in_main_of": {
+              "S3": 1470
+            }
+          },
+          "X-APE-Resolution-Q": {
+            "main_total": 1470,
+            "overflow_total": 0,
+            "total": 1470,
+            "present_in_main_of": {
+              "S3": 1470
+            }
+          },
+          "X-APE-Tone-Mapping": {
+            "main_total": 1470,
+            "overflow_total": 0,
+            "total": 1470,
+            "present_in_main_of": {
+              "S3": 1470
+            }
+          },
+          "X-Connection-Timeout-Ms": {
+            "main_total": 1113,
+            "overflow_total": 0,
+            "total": 1113,
+            "present_in_main_of": {
+              "S4": 1113
+            }
+          },
+          "X-Country-Code": {
+            "main_total": 1113,
+            "overflow_total": 0,
+            "total": 1113,
+            "present_in_main_of": {
+              "S4": 1113
+            }
+          },
+          "X-Max-Reconnect-Attempts": {
+            "main_total": 1113,
+            "overflow_total": 0,
+            "total": 1113,
+            "present_in_main_of": {
+              "S4": 1113
+            }
+          },
+          "X-Read-Timeout-Ms": {
+            "main_total": 1113,
+            "overflow_total": 0,
+            "total": 1113,
+            "present_in_main_of": {
+              "S4": 1113
+            }
+          },
+          "X-Reconnect-Delay-Ms": {
+            "main_total": 1113,
+            "overflow_total": 0,
+            "total": 1113,
+            "present_in_main_of": {
+              "S4": 1113
+            }
+          },
+          "X-Reconnect-On-Error": {
+            "main_total": 1113,
+            "overflow_total": 0,
+            "total": 1113,
+            "present_in_main_of": {
+              "S4": 1113
+            }
+          },
+          "X-Retry-Delay-Ms": {
+            "main_total": 1113,
+            "overflow_total": 0,
+            "total": 1113,
+            "present_in_main_of": {
+              "S4": 1113
+            }
+          },
+          "X-Seamless-Failover": {
+            "main_total": 1113,
+            "overflow_total": 0,
+            "total": 1113,
+            "present_in_main_of": {
+              "S4": 1113
+            }
+          }
+        }
+      },
+      "percent_denominator_note": {
+        "problem": "Un porcentaje sobre 10.573 canales es ENGAÑOSO para un campo condicional. X-APE-Codec-Video en 1.470 de 10.573 da 13,9 %, pero sobre los canales que lo declaran es 100 %.",
+        "rule": "Para campos condicionales se reporta (a) absolutos, (b) % sobre el esquema que lo declara y (c) % sobre el total, y se dice cual se esta usando."
+      }
     }
   },
   "kodiprop": {
@@ -5021,5 +5672,443 @@
         10573
       ]
     ]
-  }
+  },
+  "schema_version_t12": "1.0.0",
+  "generated_by_t12": "2026-11-02T14:27:23.017Z",
+  "codec_sinks": {
+    "denominator": {
+      "total_sinks": 20,
+      "runtime_bound_sinks": 4,
+      "inert_sinks": 16,
+      "runtime_bound_list": [
+        "#EXT-X-STREAM-INF",
+        "#EXT-X-I-FRAME-STREAM-INF",
+        "#KODIPROP",
+        "#EXTVLCOPT"
+      ],
+      "explanation": "El denominador es el numero de SUMIDEROS (tags distintos donde aparece un codec string), no el numero de canales. Un veredicto sin denominador explicito es una afirmacion sin alcance."
+    },
+    "verdict": "4 de 20 sumideros son enlazados por un runtime del catalogo; en esos 4 hay 0 cruces medidos. En los 16 sumideros restantes SI hay cruces (hev1 fuera de KODIPROP/EXTVLCOPT): 2 sumideros, todos inertes.",
+    "sinks": [
+      {
+        "tag": "#EXTHTTP",
+        "hvc1": 19569,
+        "hev1": 808,
+        "total": 20377,
+        "runtime_bound": false,
+        "families_declared": [
+          "hvc1",
+          "hev1"
+        ],
+        "values_observed": {
+          "hvc1.2.4.L93.B0": 8927,
+          "hvc1.2.4.L123.B0": 6260,
+          "hvc1.2.4.L153.B0": 1616,
+          "hvc1.2.4.L120.B0": 1470,
+          "hvc1.2.4.L150.B0": 1296,
+          "hev1.2.4.L153.B0": 808
+        }
+      },
+      {
+        "tag": "#EXT-X-STREAM-INF",
+        "hvc1": 10573,
+        "hev1": 0,
+        "total": 10573,
+        "runtime_bound": true,
+        "families_declared": [
+          "hvc1"
+        ],
+        "values_observed": {
+          "hvc1.2.4.L153.B0": 10573
+        }
+      },
+      {
+        "tag": "#EXT-X-I-FRAME-STREAM-INF",
+        "hvc1": 10573,
+        "hev1": 0,
+        "total": 10573,
+        "runtime_bound": true,
+        "families_declared": [
+          "hvc1"
+        ],
+        "values_observed": {
+          "hvc1.2.4.L93.B0": 7457,
+          "hvc1.2.4.L123.B0": 2308,
+          "hvc1.2.4.L153.B0": 808
+        }
+      },
+      {
+        "tag": "#EXT-X-CMAF",
+        "hvc1": 10573,
+        "hev1": 0,
+        "total": 10573,
+        "runtime_bound": false,
+        "families_declared": [
+          "hvc1"
+        ],
+        "values_observed": {
+          "hvc1.2.4.L93.B0": 7457,
+          "hvc1.2.4.L123.B0": 2308,
+          "hvc1.2.4.L153.B0": 808
+        }
+      },
+      {
+        "tag": "#EXTATTRFROMURL",
+        "hvc1": 10573,
+        "hev1": 0,
+        "total": 10573,
+        "runtime_bound": false,
+        "families_declared": [
+          "hvc1"
+        ],
+        "values_observed": {
+          "hvc1.2.4.L93.B0": 7457,
+          "hvc1.2.4.L123.B0": 2308,
+          "hvc1.2.4.L153.B0": 808
+        }
+      },
+      {
+        "tag": "#EXT-X-APE-QUALITY-OVERRIDE-CODEC",
+        "hvc1": 10573,
+        "hev1": 0,
+        "total": 10573,
+        "runtime_bound": false,
+        "families_declared": [
+          "hvc1"
+        ],
+        "values_observed": {
+          "hvc1.2.4.L93.B0": 7457,
+          "hvc1.2.4.L123.B0": 2308,
+          "hvc1.2.4.L153.B0": 808
+        }
+      },
+      {
+        "tag": "#EXT-X-APE-IDEMPOTENCIA-CODEC",
+        "hvc1": 10573,
+        "hev1": 0,
+        "total": 10573,
+        "runtime_bound": false,
+        "families_declared": [
+          "hvc1"
+        ],
+        "values_observed": {
+          "hvc1.2.4.L93.B0": 7457,
+          "hvc1.2.4.L123.B0": 2308,
+          "hvc1.2.4.L153.B0": 808
+        }
+      },
+      {
+        "tag": "#EXT-X-APE-CORTEX-TELEMETRY-CODEC",
+        "hvc1": 10573,
+        "hev1": 0,
+        "total": 10573,
+        "runtime_bound": false,
+        "families_declared": [
+          "hvc1"
+        ],
+        "values_observed": {
+          "hvc1.2.4.L93.B0": 7457,
+          "hvc1.2.4.L123.B0": 2308,
+          "hvc1.2.4.L153.B0": 808
+        }
+      },
+      {
+        "tag": "#EXT-X-APE-CHANNEL-RUNTIME-CODEC-HEV1",
+        "hvc1": 0,
+        "hev1": 10573,
+        "total": 10573,
+        "runtime_bound": false,
+        "families_declared": [
+          "hev1"
+        ],
+        "values_observed": {
+          "hev1.2.4.L153.B0": 7463,
+          "hev1.2.4.L150.B0": 2011,
+          "hev1.2.4.L123.B0": 1003,
+          "hev1.2.4.L120.B0": 96
+        }
+      },
+      {
+        "tag": "#EXT-X-APE-CODEC-PREFERRED",
+        "hvc1": 10528,
+        "hev1": 0,
+        "total": 10528,
+        "runtime_bound": false,
+        "families_declared": [
+          "hvc1"
+        ],
+        "values_observed": {
+          "hvc1.2.4.L150.B0": 7963,
+          "hvc1.2.4.L123.B0": 2400,
+          "hvc1.2.4.L120.B0": 165
+        }
+      },
+      {
+        "tag": "#EXT-X-APE-CODEC-FALLBACK-1",
+        "hvc1": 10528,
+        "hev1": 0,
+        "total": 10528,
+        "runtime_bound": false,
+        "families_declared": [
+          "hvc1"
+        ],
+        "values_observed": {
+          "hvc1.2.4.L123.B0": 8606,
+          "hvc1.2.4.L120.B0": 1757,
+          "hvc1.2.4.L93.B0": 165
+        }
+      },
+      {
+        "tag": "#EXT-X-APE-CODEC-FALLBACK-2",
+        "hvc1": 10528,
+        "hev1": 0,
+        "total": 10528,
+        "runtime_bound": false,
+        "families_declared": [
+          "hvc1"
+        ],
+        "values_observed": {
+          "hvc1.2.4.L123.B0": 7963,
+          "hvc1.2.4.L93.B0": 1922,
+          "hvc1.2.4.L120.B0": 643
+        }
+      },
+      {
+        "tag": "#EXT-X-APE-CODEC-FALLBACK-3",
+        "hvc1": 10528,
+        "hev1": 0,
+        "total": 10528,
+        "runtime_bound": false,
+        "families_declared": [
+          "hvc1"
+        ],
+        "values_observed": {
+          "hvc1.2.4.L120.B0": 7963,
+          "hvc1.2.4.L93.B0": 2400,
+          "hvc1.2.4.L90.B0": 165
+        }
+      },
+      {
+        "tag": "#EXT-X-APE-CODEC-FALLBACK-4",
+        "hvc1": 10528,
+        "hev1": 0,
+        "total": 10528,
+        "runtime_bound": false,
+        "families_declared": [
+          "hvc1"
+        ],
+        "values_observed": {
+          "hvc1.2.4.L93.B0": 8606,
+          "hvc1.2.4.L90.B0": 1922
+        }
+      },
+      {
+        "tag": "#EXT-X-APE-CODEC-FALLBACK-5",
+        "hvc1": 10363,
+        "hev1": 0,
+        "total": 10363,
+        "runtime_bound": false,
+        "families_declared": [
+          "hvc1"
+        ],
+        "values_observed": {
+          "hvc1.2.4.L93.B0": 7963,
+          "hvc1.2.4.L90.B0": 2400
+        }
+      },
+      {
+        "tag": "#EXT-X-APE-CODEC-FALLBACK-6",
+        "hvc1": 8606,
+        "hev1": 0,
+        "total": 8606,
+        "runtime_bound": false,
+        "families_declared": [
+          "hvc1"
+        ],
+        "values_observed": {
+          "hvc1.2.4.L90.B0": 8606
+        }
+      },
+      {
+        "tag": "#EXT-X-APE-CODEC-FALLBACK-7",
+        "hvc1": 7963,
+        "hev1": 0,
+        "total": 7963,
+        "runtime_bound": false,
+        "families_declared": [
+          "hvc1"
+        ],
+        "values_observed": {
+          "hvc1.2.4.L90.B0": 7963
+        }
+      },
+      {
+        "tag": "#EXT-X-SESSION-DATA",
+        "hvc1": 1,
+        "hev1": 0,
+        "total": 1,
+        "runtime_bound": false,
+        "families_declared": [
+          "hvc1"
+        ],
+        "values_observed": {
+          "hvc1.2": 1
+        }
+      },
+      {
+        "tag": "#KODIPROP",
+        "hvc1": 0,
+        "hev1": 0,
+        "total": 0,
+        "runtime_bound": true,
+        "families_declared": [],
+        "values_observed": {}
+      },
+      {
+        "tag": "#EXTVLCOPT",
+        "hvc1": 0,
+        "hev1": 0,
+        "total": 0,
+        "runtime_bound": true,
+        "families_declared": [],
+        "values_observed": {}
+      }
+    ],
+    "runtime_bound_evaluated": [
+      "#EXT-X-STREAM-INF",
+      "#EXT-X-I-FRAME-STREAM-INF",
+      "#KODIPROP",
+      "#EXTVLCOPT"
+    ],
+    "crossings_hev1_outside_allowed": [
+      {
+        "tag": "#EXTHTTP",
+        "hev1_occurrences": 808,
+        "runtime_bound": false,
+        "effect": "tag desconocido para todo runtime medido: metadata INERTE (RFC 8216 6.3.1)",
+        "families": [
+          "hvc1",
+          "hev1"
+        ],
+        "values_observed": {
+          "hvc1.2.4.L93.B0": 8927,
+          "hvc1.2.4.L123.B0": 6260,
+          "hvc1.2.4.L153.B0": 1616,
+          "hvc1.2.4.L120.B0": 1470,
+          "hvc1.2.4.L150.B0": 1296,
+          "hev1.2.4.L153.B0": 808
+        }
+      },
+      {
+        "tag": "#EXT-X-APE-CHANNEL-RUNTIME-CODEC-HEV1",
+        "hev1_occurrences": 10573,
+        "runtime_bound": false,
+        "effect": "tag desconocido para todo runtime medido: metadata INERTE (RFC 8216 6.3.1)",
+        "families": [
+          "hev1"
+        ],
+        "values_observed": {
+          "hev1.2.4.L153.B0": 7463,
+          "hev1.2.4.L150.B0": 2011,
+          "hev1.2.4.L123.B0": 1003,
+          "hev1.2.4.L120.B0": 96
+        }
+      }
+    ],
+    "hvc1_in_sinks_other_than_stream_inf": {
+      "count": 16,
+      "tags": [
+        "#EXTHTTP",
+        "#EXT-X-I-FRAME-STREAM-INF",
+        "#EXT-X-CMAF",
+        "#EXTATTRFROMURL",
+        "#EXT-X-APE-QUALITY-OVERRIDE-CODEC",
+        "#EXT-X-APE-IDEMPOTENCIA-CODEC",
+        "#EXT-X-APE-CORTEX-TELEMETRY-CODEC",
+        "#EXT-X-APE-CODEC-PREFERRED",
+        "#EXT-X-APE-CODEC-FALLBACK-1",
+        "#EXT-X-APE-CODEC-FALLBACK-2",
+        "#EXT-X-APE-CODEC-FALLBACK-3",
+        "#EXT-X-APE-CODEC-FALLBACK-4",
+        "#EXT-X-APE-CODEC-FALLBACK-5",
+        "#EXT-X-APE-CODEC-FALLBACK-6",
+        "#EXT-X-APE-CODEC-FALLBACK-7",
+        "#EXT-X-SESSION-DATA"
+      ],
+      "classification": "NO es cruce de familia: declaran la MISMA familia (hvc1) que el manifiesto, en sinks inertes. Es redundancia declarativa, no contradiccion hvc1/hev1."
+    },
+    "hev1_in_exthttp": {
+      "channels": 808,
+      "of_channels": 10573,
+      "pct": 7.64,
+      "by_profile": {
+        "P1": 808
+      },
+      "note": "El 100 % de los canales P1 lleva hev1.* en #EXTHTTP; ningun P3 ni P4. Que un canal lo lleve en #EXTHTTP y en RUNTIME-CODEC no duplica el canal: son dos sumideros."
+    },
+    "level_divergence": {
+      "note": "El unico sumidero que un cliente HLS conforme enlaza para decidir decode es #EXT-X-STREAM-INF, y declara UN solo valor (L153) en el 100 % de los canales. Los demas sumideros varian por perfil y, en P4/P3, declaran niveles MAS BAJOS.",
+      "stream_inf": {
+        "hvc1.2.4.L153.B0": 10573
+      },
+      "i_frame_stream_inf": {
+        "hvc1.2.4.L93.B0": 7457,
+        "hvc1.2.4.L123.B0": 2308,
+        "hvc1.2.4.L153.B0": 808
+      },
+      "runtime_codec_hev1": {
+        "hev1.2.4.L153.B0": 7463,
+        "hev1.2.4.L150.B0": 2011,
+        "hev1.2.4.L123.B0": 1003,
+        "hev1.2.4.L120.B0": 96
+      },
+      "exthttp": {
+        "hvc1.2.4.L93.B0": 8927,
+        "hvc1.2.4.L123.B0": 6260,
+        "hvc1.2.4.L153.B0": 1616,
+        "hvc1.2.4.L120.B0": 1470,
+        "hvc1.2.4.L150.B0": 1296,
+        "hev1.2.4.L153.B0": 808
+      }
+    },
+    "out_of_scope_observation": {
+      "tag": "#EXT-X-CMAF",
+      "occurrences": 10573,
+      "finding": "Durante el censo de sumideros aparecio un tag `#EXT-X-CMAF:` (10573 ocurrencias) que declara CODECS + BANDWIDTH=8000000 + RESOLUTION=1920x1080. Es otro cap de video declarado, en un tag inerte, y NO figura en cap_verdicts.json (t10) ni en la tabla de caps de t7. Se reporta aqui porque salio de ESTA medicion; NO se adjudica en t12 (fuera de alcance)."
+    }
+  },
+  "corrections_t12": [
+    {
+      "id": "T12-H1",
+      "severity": "ALTA",
+      "location": "03_HEADERS_MAP.md §3.4 (y originalmente «GOLDEN RULE: 0 violaciones»)",
+      "was_false": "«GOLDEN RULE: 0 violaciones» se calculaba sobre 4 sumideros sin declarar el denominador. Hay 18 sumideros con codec string y en 2 de ellos SI hay hev1 fuera de KODIPROP/EXTVLCOPT.",
+      "replaced_by": "«0 cruces en 4 de 20 sumideros (los 4 que un runtime del catalogo enlaza)». Los 2 sumideros con cruce real son INERTES y se enumeran con su conteo.",
+      "evidence": "codec_sinks{} en 03_headers_map.json; medicion en 03_schema_probe.mjs"
+    },
+    {
+      "id": "T12-H2",
+      "severity": "ALTA",
+      "location": "03_HEADERS_MAP.md §2.2 (y la nota de §2.4)",
+      "was_false": "«Cada campo aparece o en el objeto principal o en el overflow, nunca en ambos y nunca en ninguno».",
+      "replaced_by": "225 de 276 nombres suman 10573. Los otros 51 son condicionales: hay 6 esquemas de campos distintos (S1..S6), agrupables en «con bloque X-APE-Codec» (1470 canales) y «sin bloque» (9103 canales, 5 variantes).",
+      "evidence": "exthttp.schemas{} en 03_headers_map.json; medicion en 03_schema_probe.mjs"
+    },
+    {
+      "id": "T12-H2b",
+      "severity": "MEDIA",
+      "location": "interpretacion del censo de #EXTHTTP",
+      "was_false": "Atribuir los campos exclusivos del bloque APE a «todos los P3»: el perfil P3 tiene 2.308 canales, pero el bloque solo aparece en 1.470.",
+      "replaced_by": "El discriminante NO es el perfil sino el ESQUEMA (S3): 1.470 canales P3 lo tienen en el objeto principal; los otros 838 P3 estan en S4. Por eso un % sobre 10.573 es enganoso (ver percent_denominator_note).",
+      "evidence": "exthttp.schemas.families + conditional_fields.matrix_main_presence_by_schema"
+    },
+    {
+      "id": "T12-H2c",
+      "severity": "BAJA",
+      "location": "03_HEADERS_MAP.md §2.4 (tabla de bloques), nota 2 y hallazgo H-03-02",
+      "was_false": "El bloque X-APE-* extendido tiene «30 campos».",
+      "replaced_by": "**32 campos**, enumerados uno a uno. El «30» agrupaba X-APE-Fallback-* como comodin y omitia X-APE-Channel-Id y X-APE-CICP del conteo.",
+      "evidence": "exthttp.schemas.schemas[S3].exclusive_fields_in_main (32 nombres)"
+    }
+  ]
 }

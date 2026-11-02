@@ -105,7 +105,19 @@ El tope de 8.192 bytes **nunca se alcanza** (máximo medido 8.124, margen de 68 
 el **cap de 200 campos**: cada objeto se corta en 200 y el resto se desplaza a `#EXT-X-APE-OVERFLOW-HEADERS`.
 Prueba aritmética de que el corte es por campos y es determinista, campo por campo:
 `9.103 + 1.470 = 10.573`, `7.990 + 2.583 = 10.573`, `4.775 + 5.798 = 10.573`, `16 + 10.557 = 10.573`.
-Cada campo aparece **o** en el objeto principal **o** en el overflow, nunca en ambos y nunca en ninguno.
+
+> ### ⚠️ AFIRMACIÓN RETIRADA (t12 / H2)
+> La versión original de este párrafo decía: *«Cada campo aparece **o** en el objeto principal **o** en el
+> overflow, nunca en ambos y nunca en ninguno»*. **Eso es FALSO y se retira.**
+>
+> Medición corregida: de **276** nombres distintos en la unión, **225 suman exactamente 10.573**
+> (principal + overflow) y **51 son CONDICIONALES**: su presencia no depende del corte de 200 campos sino
+> del **esquema de campos del canal**. Ejemplo: `X-APE-Codec-Video` = **1.470 principal / 0 overflow**
+> (no está en las otras 9.103).
+>
+> Los cuatro productos aritméticos de arriba **siguen siendo ciertos** — describen canales concretos, no
+> el universo de campos. Lo falso era generalizarlos a todos los nombres.
+> Consecuencia estructural en **§2.8**.
 
 ### 2.3 Overflow (`#EXT-X-APE-OVERFLOW-HEADERS`, base64→JSON)
 
@@ -138,15 +150,17 @@ Frecuencia por nombre (censo total, `exthttp.field_frequency`). Se agrupan por b
 | Buffer / ABR / red | `X-Buffer-*` (7), `X-Min/Max-Bitrate`, `X-Expected/Average-Bitrate`, `X-Concurrent-Downloads`, `X-Prefetch-*`, `X-Parallel-Segments`, `X-Network-Caching`, `X-Live-Caching`, `X-Network-Type` | 10.573 |
 | QoE / player | `CMCD-*` (4), `X-QoE-*` (6), `X-HLSjs-*` (2), `X-Shaka-Version`, `X-ExoPlayer-*` (2), `X-FPS`, `X-Player-Type`, `X-OTT-Navigator-Version` | 4.775 – 7.990 |
 | Resiliencia | `X-Retry-*`, `X-Reconnect-*`, `X-Read-Timeout-Ms`, `X-Connection-Timeout-Ms`, `X-Failover-Enabled`, `X-Seamless-Failover` | 1.113 – 10.573 |
-| **Bloque `X-APE-*` extendido** | 30 campos (`X-APE-Codec-Video`, `X-APE-Codec-Family`, `X-APE-Codec-Level`, `X-APE-Codec-Profile`, `X-APE-Codec-Chain`, `X-APE-Bit-Depth`, `X-APE-Chroma`, `X-APE-Color-Space`, `X-APE-HDR-Mode`, `X-APE-HDR-Transfer`, `X-APE-HDR-Range`, `X-APE-HDR-Primaries`, `X-APE-HDR-Matrix`, `X-APE-MaxCLL`, `X-APE-MaxFALL`, `X-APE-Bandwidth`, `X-APE-Avg-Bandwidth`, `X-APE-Resolution-Q`, `X-APE-Framerate-Q`, `X-APE-Tone-Mapping`, `X-APE-Auth-Method`, `X-APE-Auth-Retry`, `X-APE-Fallback-*` (5), `X-APE-Follow-Redirects`, `X-APE-Max-Redirects` …) | **1.470** |
+| **Bloque `X-APE-*` extendido** | **32 campos** (t12 corrige el «30» de la versión original): `X-APE-Channel-Id`, `X-APE-Codec-Video`, `X-APE-Codec-Audio`, `X-APE-Codec-Profile`, `X-APE-Codec-Level`, `X-APE-Codec-Chain`, `X-APE-Codec-Family`, `X-APE-Bit-Depth`, `X-APE-Chroma`, `X-APE-CICP`, `X-APE-Color-Space`, `X-APE-HDR-Mode`, `X-APE-HDR-Transfer`, `X-APE-HDR-Range`, `X-APE-HDR-Primaries`, `X-APE-HDR-Matrix`, `X-APE-MaxCLL`, `X-APE-MaxFALL`, `X-APE-Bandwidth`, `X-APE-Avg-Bandwidth`, `X-APE-Resolution-Q`, `X-APE-Framerate-Q`, `X-APE-Tone-Mapping`, `X-APE-Auth-Method`, `X-APE-Auth-Retry`, `X-APE-Fallback-UA`, `-Referer`, `-XFF`, `-Tunnel`, `-Backoff`, `X-APE-Follow-Redirects`, `X-APE-Max-Redirects` | **1.470** (13,9 % del total · **100 % de S3**) |
 
-¹ `X-APE-Channel-Id` aparece 1.470 veces: **solo el 13,9 % de los canales lleva el identificador de canal**
-dentro de `#EXTHTTP`. El resto lo lleva únicamente en `#EXTINF tvg-id` y en `EXTATTRFROMURL`.
-² El bloque `X-APE-*` extendido (30 campos) **solo se emite en 1.470 canales (13,9 %)**. En los otros 9.103
+¹ `X-APE-Channel-Id` aparece 1.470 veces: **13,9 % del total de canales, pero 100 % de los canales de su
+esquema (S3)**. Decir solo «13,9 %» hace leer el campo como marginal cuando en S3 es universal (t12, §2.8).
+El resto de canales lo lleva únicamente en `#EXTINF tvg-id` y en `EXTATTRFROMURL`.
+² El bloque `X-APE-*` extendido (**32 campos**, no 30 — corregido en t12) **solo se emite en 1.470 canales
+= 13,9 % del total / 100 % del esquema S3**. En los otros 9.103
 **no aparece ni en el objeto principal ni en el overflow** — no es una víctima del corte de 200, es una
 emisión condicional. Prueba de complementariedad exacta: `X-PEVCE-Live-Caching` → 9.103 en principal +
-1.470 en overflow = 10.573; `X-APE-Codec-Video` → 1.470 en principal + **0** en overflow. Existen **dos
-órdenes de campos** y el bloque `X-APE-*` sobrevive al corte solo en el orden de los 1.470.
+1.470 en overflow = 10.573; `X-APE-Codec-Video` → 1.470 en principal + **0** en overflow. Hay **seis
+esquemas de campos** (no dos) y el bloque `X-APE-*` solo existe en el esquema de los 1.470 — ver §2.8.
 
 ### 2.5 Headers tóxicos — 0 de 0
 
@@ -193,6 +207,74 @@ proveedor; se registra como riesgo, no como hallazgo.
 `X-Session-Id`, `X-Request-Id` y `X-Playback-Session-Id` son identificadores opacos por reproducción, no
 secretos de acceso: no autentican nada por sí solos y se emiten redactados en el JSON.
 **`#EXTHTTP` no transporta credenciales en esta lista.**
+
+---
+
+### 2.8 Los SEIS esquemas de `#EXTHTTP` (corrección estructural de t12 / H2)
+
+Agrupando los 10.573 objetos por **conjunto de claves EXACTO** (hash del set ordenado, no por indicadores
+sueltos), no hay uno ni dos esquemas: hay **seis**.
+
+| Esquema | Canales | Campos en el principal | Perfil | Campos exclusivos de su principal |
+|---|---:|---:|---|---:|
+| **S1** | 4.759 | **199** | P4 ×4.759 | 0 |
+| **S2** | 2.682 | 200 | P4 ×2.682 | 1 (`X-HDR-Support`) |
+| **S3** | **1.470** | 200 | **P3 ×1.470** | **32** (bloque `X-APE-Codec-*` / HDR / red) |
+| **S4** | 1.113 | 200 | P3 ×838 · P1 ×275 | 8 (bloque de reconexión) |
+| **S5** | 533 | 200 | P1 ×533 | 0 |
+| **S6** | 16 | 200 | P4 ×16 | 1 (`X-QoS-DSCP`) |
+| **Σ** | **10.573** | | | |
+
+Las dos familias que explican el censo:
+
+- **Con bloque `X-APE-Codec`** — **S3, 1.470 canales** (todos P3). 32 campos que **no aparecen en ningún
+  otro esquema**: `X-APE-Channel-Id`, `X-APE-Codec-Video/-Audio/-Profile/-Level/-Chain/-Family`,
+  `X-APE-Bit-Depth`, `X-APE-HDR-Mode/-Transfer/-Primaries/-Matrix/-Range`, `X-APE-Color-Space`,
+  `X-APE-Chroma`, `X-APE-CICP`, `X-APE-MaxCLL/-MaxFALL`, `X-APE-Tone-Mapping`,
+  `X-APE-Resolution-Q/-Framerate-Q`, `X-APE-Bandwidth/-Avg-Bandwidth`,
+  `X-APE-Follow-Redirects/-Max-Redirects`, `X-APE-Auth-Retry/-Auth-Method`, `X-APE-Fallback-*` (5).
+- **Sin bloque `X-APE-Codec`** — **9.103 canales** (S1+S2+S4+S5+S6). **No es homogénea**: se subdivide por
+  bloques opcionales y por dónde cae el corte de 200.
+
+**El discriminante NO es el perfil.** P3 tiene 2.308 canales; el bloque APE-Codec está en **1.470**. Los
+otros **838 P3 viven en S4** (sin el bloque). Decir «el esquema P3» es una imprecisión: S3 ≠ P3.
+
+**Los 51 nombres condicionales** (los que no suman 10.573). Se agrupan así:
+
+| Bloque | Nombres | Canales que lo tienen | Dónde vive |
+|---|---:|---:|---|
+| `X-APE-Codec/HDR/Color/red` (32) | 32 | **1.470** | principal de S3; **ausente** en el resto |
+| Reconexión/timeout/país (8) | 8 | **1.113** | principal de S4; ausente en el resto |
+| `X-HDR-Support` | 1 | 3.795 | principal de S2 (2.682) + overflow de S4 (1.113) |
+| `X-FPS` | 1 | 4.775 | principal de S1 (4.759) + S6 (16) |
+| Catch-up/EPG/subtítulos/BW (9) | 9 | **5.798** | principal de S2+S4+S5 (4.328) + overflow de S3 (1.470) |
+| **Σ** | **51** | | |
+
+**Regla de porcentaje (obligatoria a partir de t12).** Un % sobre 10.573 es **engañoso** para un campo
+condicional: `X-APE-Codec-Video` en 1.470 de 10.573 da 13,9 %, pero **sobre los canales que lo declaran es
+100 %**. Para campos condicionales se reporta (a) absoluto, (b) % sobre el esquema que lo declara y
+(c) % sobre el total — diciendo cuál se usa. La formulación original de C5 («13,9 %») queda **retirada**.
+
+**Corroboración independiente: los 6 esquemas explican el rango 226–265 campos/canal de §2.3.** El
+histograma de campos del overflow casa 1:1 con los esquemas:
+
+| Esquema | Campos principal | Campos overflow | Total/canal | Canales |
+|---|---:|---:|---:|---:|
+| S1 | 199 | **27** | 226 | 4.759 |
+| S6 | 200 | **26** | 226 | 16 |
+| S5 | 200 | 33 | 233 | 533 |
+| S2 | 200 | 35 | 235 | 2.682 |
+| S4 | 200 | 43 | 243 | 1.113 |
+| S3 | 200 | **65** | 265 | 1.470 |
+
+Mínimo 226, máximo 265 — exactamente el rango medido en §2.3, que queda así **derivado del esquema** y no
+solo observado.
+
+**Nota sobre el mínimo de overflow (26 vs 27).** t6 reportó `overflow min 27`; mi medición da **26**. Los dos
+datos son compatibles y el histograma lo explica: **26 es el mínimo verdadero** (16 canales de S6) y **27 es
+la MODA** (4.759 canales de S1). t6 probablemente reportó el valor más frecuente. Se documentan ambos.
+
+Matriz completa campo × esquema: `exthttp.schemas.conditional_fields.matrix_main_presence_by_schema` en el JSON.
 
 ---
 
@@ -243,26 +325,80 @@ de licencia ni certificado, es decir **cero credenciales DRM** (bien) y también
 utilizable** (el DRM es declarativo). Contexto: la lista contiene **1** `#EXT-X-KEY` en todo el archivo
 (preámbulo), para 10.573 canales.
 
-### 3.4 GOLDEN RULE `hvc1` / `hev1` — 0 violaciones, y el mecanismo
+### 3.4 GOLDEN RULE `hvc1` / `hev1` — **0 cruces en 4 de 20 sumideros** (denominador explícito)
 
-Regla del repo: `hvc1.*` **solo** en `#EXT-X-STREAM-INF CODECS=`; `hev1.*` **solo** en `#KODIPROP`/`#EXTVLCOPT`;
-nunca cruzados. Medición por sumidero (canales que emiten cada forma):
+> ### ⚠️ TÍTULO Y VEREDICTO ANTERIORES RETIRADOS (t12 / H1)
+> La versión original decía **«GOLDEN RULE `hvc1`/`hev1` — 0 violaciones»** y escaneaba **4 sumideros**
+> sin declarar el denominador. Eso permitía leer «0 violaciones» como si cubriera toda la lista.
+> **No la cubre.** Hay **20** sumideros con capacidad de llevar un codec string y en **2 de ellos sí hay
+> `hev1` fuera de `KODIPROP`/`EXTVLCOPT`**.
 
-| Sumidero | canales con `hvc1.*` | canales con `hev1.*` |
-|---|---|---|
-| `#EXT-X-STREAM-INF` CODECS | **10.573** | **0** |
-| `#KODIPROP` | **0** | **0** |
-| `#EXTVLCOPT` | **0** | **0** |
-| `#EXT-X-APE-CODEC-REAL` / `-PREFERRED` | 10.528 | **0** |
+Regla del repo: `hvc1.*` **solo** en `#EXT-X-STREAM-INF CODECS=`; `hev1.*` **solo** en
+`#KODIPROP`/`#EXTVLCOPT`; nunca cruzados.
 
-**Violaciones: 0.** `violation_counts = {}`, `violations_sample = []`.
+**Denominador: 20 sumideros** (tags distintos donde puede aparecer un codec string). De ellos,
+**4 son enlazados por un runtime del catálogo** (`04_LANE_CAPABILITY_MATRIX.md` §6: los lectores de
+manifiesto HLS y los dos que leen `#KODIPROP`/`#EXTVLCOPT`) y **16 son inertes** (tag desconocido →
+RFC 8216 §6.3.1; ningún runtime medido los enlaza).
 
-Pero el "0" tiene una causa que hay que decir, porque cambia lo que significa:
-**`#KODIPROP` y `#EXTVLCOPT` no emiten jamás una cadena de códec RFC 6381.** `KODIPROP` usa
-`video_codec=hevc,av1,vp9,h264` (familias) y `EXTVLCOPT` usa `codec=h264|hevc,h264|hevc,av1,h264` (familias).
-Con esos valores la forma cruzada `hev1.` **es inexpresable**: la regla no se cumple por disciplina de
-emisión, se cumple porque el lado que debía llevar `hev1` no lleva ningún codec string. Un futuro cambio que
-ponga una cadena RFC 6381 en `KODIPROP` no tendría red de seguridad en esta lista.
+| # | Sumidero | `hvc1.*` | `hev1.*` | ¿Runtime lo enlaza? |
+|---|---|---:|---:|---|
+| 1 | `#EXTHTTP` | 19.569 | **808** | no — cabecera HTTP |
+| 2 | `#EXT-X-STREAM-INF` | **10.573** | 0 | **SÍ** (todos los clientes HLS) |
+| 3 | `#EXT-X-I-FRAME-STREAM-INF` | **10.573** | 0 | **SÍ** (clientes HLS) |
+| 4 | `#EXT-X-CMAF` | 10.573 | 0 | no |
+| 5 | `#EXTATTRFROMURL` | 10.573 | 0 | no |
+| 6 | `#EXT-X-APE-QUALITY-OVERRIDE-CODEC` | 10.573 | 0 | no |
+| 7 | `#EXT-X-APE-IDEMPOTENCIA-CODEC` | 10.573 | 0 | no |
+| 8 | `#EXT-X-APE-CORTEX-TELEMETRY-CODEC` | 10.573 | 0 | no |
+| 9 | **`#EXT-X-APE-CHANNEL-RUNTIME-CODEC-HEV1`** | 0 | **10.573** | no — tag propietario |
+| 10 | `#EXT-X-APE-CODEC-PREFERRED` | 10.528 | 0 | no |
+| 11-14 | `#EXT-X-APE-CODEC-FALLBACK-1…4` | 10.528 c/u | 0 | no |
+| 15 | `#EXT-X-APE-CODEC-FALLBACK-5` | 10.363 | 0 | no |
+| 16 | `#EXT-X-APE-CODEC-FALLBACK-6` | 8.606 | 0 | no |
+| 17 | `#EXT-X-APE-CODEC-FALLBACK-7` | 7.963 | 0 | no |
+| 18 | `#EXT-X-SESSION-DATA` | 1 | 0 | no (preámbulo; lista de *preferencias* `hvc1.2`, no declaración del stream) |
+| 19 | `#KODIPROP` | **0** | **0** | **SÍ** (Kodi/ISA) |
+| 20 | `#EXTVLCOPT` | **0** | **0** | **SÍ** (VLC) |
+
+**Veredicto corregido:**
+
+- **0 cruces en 4 de 20 sumideros** — los 4 que un runtime del catálogo enlaza
+  (`STREAM-INF`, `I-FRAME`, `KODIPROP`, `EXTVLCOPT`). En `#KODIPROP` y `#EXTVLCOPT` la cuenta es **0 y 0**:
+  **ni una sola cadena de códec RFC 6381**, así que `hev1` no puede aparecer ahí.
+- **2 cruces reales, ambos en sumideros INERTES:**
+  - `#EXT-X-APE-CHANNEL-RUNTIME-CODEC-HEV1` — **10.573 canales (100 %)**, valor
+    `hev1.2.4.L153.B0`×7.463 · `hev1.2.4.L150.B0`×**2.011** · `hev1.2.4.L123.B0`×1.003 · `hev1.2.4.L120.B0`×96.
+  - `#EXTHTTP` — **808 canales**, valor `hev1.2.4.L153.B0`×808. **Los 808 son exactamente los P1**
+    (100 % de P1, 0 % de P3 y P4).
+- **No son «0 violaciones».** Son **declaraciones cruzadas de familia en sinks que nadie ejecuta**.
+  Clasificación: **contradicción declarativa, efecto medido NULO** (ningún runtime del catálogo lo lee).
+  El riesgo no es de reproducción: es que un auditor lea `hev1` en el 100 % de los canales y concluya
+  —como concluyó el verificador— que la lista declara una familia que su manifiesto no usa.
+
+**El otro lado, para no inflar el conteo:** `hvc1.*` aparece en **17 tags** además de `STREAM-INF`.
+Eso **no es un cruce de familia** — declaran la MISMA familia que el manifiesto, en sinks extra. Es
+**redundancia declarativa**, no contradicción `hvc1`/`hev1`, y se cuenta aparte
+(`codec_sinks.hvc1_in_sinks_other_than_stream_inf`).
+
+**Divergencia de NIVEL entre sumideros** (el dato que el «0 violaciones» tapaba):
+
+| Sumidero | L90 | L93 | L120 | L123 | L150 | L153 |
+|---|---:|---:|---:|---:|---:|---:|
+| `#EXT-X-STREAM-INF` | 0 | 0 | 0 | 0 | 0 | **10.573** |
+| `#EXT-X-I-FRAME-STREAM-INF` | 0 | 7.457 | 0 | 2.308 | 0 | 808 |
+| `#EXT-X-APE-CHANNEL-RUNTIME-CODEC-HEV1` | 0 | 0 | 96 (hev1) | 1.003 (hev1) | 2.011 (hev1) | 7.463 (hev1) |
+| `#EXTHTTP` | 0 | 8.927 | 1.470 | 6.260 | 1.296 | 1.616 + 808 (hev1) |
+
+El **único** sumidero que un cliente HLS conforme usa para decidir decode (`STREAM-INF`) declara
+**un solo valor, L153, en el 100 %** de los canales. Todos los demás varían por perfil y en P4/P3
+declaran niveles **más bajos**. No hay canal al que se le declare un nivel que su manifiesto no tenga;
+el riesgo es el inverso (sobre-declaración en `STREAM-INF`, ya registrado en C4/C5 de §8).
+
+**Por qué el «0» anterior no era una mentira pero sí un alcance disfrazado:** el cálculo era correcto
+sobre sus 4 sumideros; el defecto fue **presentar el resultado sin denominador**. Un veredicto sin
+denominador se lee como universal. De ahí la fórmula nueva, obligatoria:
+**«0 cruces en N de M sumideros»**, nunca «0 violaciones» a secas.
 
 ---
 
@@ -558,7 +694,7 @@ Contradicciones **medidas**, con su conteo:
 | C2 | `STREAM-INF` dice `PQ` · `EXTVLCOPT video-hdr-mode=SDR` y `video-hdr=false` | **10.573 (100 %)** | Misma doctrina. Efecto en VLC: `video-hdr=false` desactiva la salida HDR del decoder → un canal marcado PQ podría mostrarse en SDR en VLC. **No probado**, requiere ejecutar VLC. |
 | C3 | `STREAM-INF CODECS=hvc1` · `EXTVLCOPT codec=h264` | **7.457 (70,5 %)** | VLC recibe la instrucción de demuxear **solo H.264** mientras el manifiesto declara HEVC. Es la contradicción con mayor potencial de efecto real de toda la lista. **No probada** (sin ejecución de VLC). |
 | C4 | `STREAM-INF L153` · `I-FRAME-STREAM-INF L93/L123` | **10.573 (100 %)** | Tres niveles HEVC distintos para el mismo canal. `L93`/`L123` **están por debajo** de lo que 3840x2160 exige (Ley Cardinal 1: `L153`=4K@60 techo; L123=4.1 y L93=4.0 no soportan 4K). Inerte porque el tag no tiene `URI` y ningún cliente lo usa para decidir decode, pero la declaración es inconsistente. |
-| C5 | `STREAM-INF L153` · `EXTHTTP X-APE-Codec-Video L150/L123` | **1.470 (13,9 %)** | Ídem, en la capa de headers (inerte para el player). |
+| C5 | `STREAM-INF L153` · `EXTHTTP X-APE-Codec-Video L150/L123` | **1.470** (100 % de los canales que declaran el campo; **13,9 % del total** — ver §2.8) | Ídem, en la capa de headers (inerte para el player). Denominador corregido en t12: reportar solo el 13,9 % inducía a leer el campo como marginal cuando en su esquema es universal. |
 | C6 | `#EXT-X-CMAF-CONTAINER=mpegts` · `X-APE-CMAF=fmp4` · `#EXT-X-MAP=0` | **10.573 (100 %)** | Triple contradicción sobre el contenedor. Ninguna de las tres es verificable como real: **no hay fMP4 en el manifiesto**. |
 | C7 | `#EXT-X-VERSION:9` (real) · `#EXT-X-CMAF-VERSION:7` · `X-APE-MANIFEST-VERSION=7` | 10.573 (100 %) | El tag real es 9. Los otros dos son inertes. |
 | C8 | `#EXT-X-PART-INF:PART-TARGET=1.0` (real) · `#EXT-X-CMAF-PART-TARGET:0.5` · `-CHUNK-DURATION:0.5` | 10.573 (100 %) | El real es 1.0. `X-APE-PART-TARGET=0.5`. Inerte. |
@@ -579,7 +715,7 @@ inflar el conteo de violaciones doctrinales.
 | ID | Severidad | Capa | Hallazgo | Corrección propuesta |
 |---|---|---|---|---|
 | H-03-01 | **HIGH** | `#EXTVLCOPT` / `#EXT-X-STREAM-INF` | 7.457 canales (70,5 %) declaran `codec=h264` en VLC mientras la variante declara `hvc1.2.4.L153.B0` (C3). | Derivar `#EXTVLCOPT:codec=` del códec real de la variante, no del perfil. Verificar con VLC antes de afirmar efecto. |
-| H-03-02 | **MEDIUM** | `#EXTHTTP` | El cap de 200 campos expulsa **26–65 campos por canal** a `#EXT-X-APE-OVERFLOW-HEADERS`, un tag que ningún reproductor lee: 383.777 pares header→valor quedan fuera del objeto que el player sí recibe. Y por separado, el bloque de códec/HDR `X-APE-*` (30 campos) **solo se emite en 1.470 canales (13,9 %)**; en 9.103 no existe en ninguna de las dos partes. | Aplicar `EXTHTTP_PRIORITY_KEYS` a los headers de códec/HDR antes del recorte (la infra existe para prefetch y no cubre este bloque) y unificar el orden de campos para que el corte sea determinista entre perfiles. |
+| H-03-02 | **MEDIUM** | `#EXTHTTP` | El cap de 200 campos expulsa **26–65 campos por canal** a `#EXT-X-APE-OVERFLOW-HEADERS`, un tag que ningún reproductor lee: 383.777 pares header→valor quedan fuera del objeto que el player sí recibe. Y por separado, el bloque de códec/HDR `X-APE-*` (**32 campos**, no 30) **solo se emite en 1.470 canales = 13,9 % del total, 100 % del esquema S3**; en 9.103 no existe en ninguna de las dos partes (t12, §2.8). | Aplicar `EXTHTTP_PRIORITY_KEYS` a los headers de códec/HDR antes del recorte (la infra existe para prefetch y no cubre este bloque) y unificar el orden de campos para que el corte sea determinista entre esquemas. |
 | H-03-03 | **MEDIUM** | CMAF | `#EXT-X-CMAF-CONTAINER: mpegts` + `#EXT-X-MAP: 0` + `X-APE-CMAF=fmp4` en el 100 % (C6): la familia CMAF afirma CMAF que no existe. | Alinear `-CONTAINER` con la realidad (`mpegts`) y retirar `X-APE-CMAF`/`-INIT-SEGMENT`, o emitir `#EXT-X-MAP` real. |
 | H-03-04 | **MEDIUM** | `#EXT-X-I-FRAME-STREAM-INF` | 10.573 tags omiten `URI`, obligatorio por RFC 8216 §4.4.6.6 (consecuencia de Single-URL-per-channel). | Mantener la doctrina (correcta anti-509) y **documentarla como no-conformidad consciente**; o retirar el tag, que hoy no aporta nada. |
 | H-03-05 | **LOW** | niveles HEVC | Tres niveles por canal: `L153` (variante), `L93/L123` (I-frame), `L150/L123` (EXTHTTP) (C4/C5). `L93`/`L123` por debajo de 4K. | Unificar en `L153` en las tres capas, o dejar solo la de variante. |
@@ -655,6 +791,121 @@ es un censo total, no una muestra.
 
 ---
 
-**Estado:** cerrado. `#EXTHTTP`, `#KODIPROP`, `#EXTVLCOPT`, `#EXTATTRFROMURL`, las tres familias propietarias
-y los encabezados de variante quedan mapeados sobre **10.573/10.573 canales** (censo total, no muestra),
-con `#EXT-X-MAP = 0` verificado y las 13 desalineaciones entre capas contadas.
+**Estado:** cerrado (revisión t12). `#EXTHTTP`, `#KODIPROP`, `#EXTVLCOPT`, `#EXTATTRFROMURL`, las tres
+familias propietarias y los encabezados de variante quedan mapeados sobre **10.573/10.573 canales**
+(censo total, no muestra), con `#EXT-X-MAP = 0` verificado, las 13 desalineaciones entre capas contadas,
+y **dos correcciones de alcance aplicadas** (§3.4 y §2.2/§2.8).
+
+---
+
+# CORRECCIONES (t12)
+
+Aplicadas tras la verificación adversarial de t6 (`06_VERIFICATION.md`, hallazgos D4 y D5, ambos ALTA).
+Cada entrada dice **qué afirmación era falsa**, **qué la reemplaza** y **con qué se midió**. Las cifras de
+t6 se re-midieron aquí de forma independiente antes de adoptarlas; cuando un número de t6 no se sostuvo,
+se dice.
+
+## C1 (H1, ALTA) — «GOLDEN RULE: 0 violaciones» tenía denominador incompleto
+
+| | |
+|---|---|
+| **Dónde estaba** | §3.4, título y veredicto. También circulaba como «0 violaciones» en el resumen. |
+| **Qué era falso** | El **alcance**, no el cálculo. Se escaneaban 4 sumideros y se presentaba el resultado **sin denominador**, lo que se lee como universal. |
+| **Qué la reemplaza** | «**0 cruces en 4 de 20 sumideros**» (los 4 que un runtime del catálogo enlaza). Los otros 16 son inertes y **en 2 de ellos sí hay `hev1` fuera de `KODIPROP`/`EXTVLCOPT`**. |
+| **Medición** | `03_schema_probe.mjs` → `codec_sinks{}`. 20 sumideros; `#EXT-X-APE-CHANNEL-RUNTIME-CODEC-HEV1` con **10.573** `hev1` (100 % de canales); `#EXTHTTP` con **808** `hev1` (los 808 son P1). |
+
+**Matices que la corrección obliga a fijar** (y que el «0 violaciones» ocultaba):
+
+1. **Conteo de tag ≠ conteo de valor.** `#EXT-X-APE-CHANNEL-RUNTIME-CODEC-HEV1` aparece **10.573** veces
+   (una por canal), pero los valores que contiene se reparten: `L153`×7.463, `L150`×**2.011**, `L123`×1.003,
+   `L120`×96. El dato «`hev1.2.4.L150.B0` aparece 2.011 veces» es correcto **y corresponde solo a ese tag**.
+   El verificador lo dio junto al «808 canales lo llevan en #EXTHTTP»; **esa asociación es imprecisa**:
+   los 808 de `#EXTHTTP` llevan `hev1.2.4.L153.B0`, **no** `L150`. Los dos números son ciertos por separado.
+2. **`hvc1.*` en 17 tags ≠ 17 cruces.** Son la **misma** familia que el manifiesto, en sinks inertes:
+   redundancia declarativa. Contarlas como violación inflaría el número. Se cuentan aparte.
+3. **`#EXT-X-SESSION-DATA` (1 ocurrencia)** contiene `hvc1.2` dentro de una lista de **preferencias**
+   (`preferredCodecs`), no una declaración del stream. Es preámbulo, no por canal.
+4. **La causa del «0» en KODIPROP/EXTVLCOPT sigue en pie y es la de siempre:** no emiten ninguna cadena
+   RFC 6381 (`video_codec=hevc,av1,vp9,h264`, `codec=h264`), así que `hev1` es **inexpresable** ahí.
+   La regla no se cumple por disciplina, se cumple por ausencia de superficie.
+
+## C2 (H2, ALTA) — «cada campo está en el principal o en el overflow, nunca en ninguno»
+
+| | |
+|---|---|
+| **Dónde estaba** | §2.2 (frase final) y la nota de §2.4. |
+| **Qué era falso** | La afirmación **entera**: **51 de 276** nombres no suman 10.573. |
+| **Qué la reemplaza** | **225 de 276** suman exactamente 10.573; los **51** restantes son **condicionales**: dependen del **esquema de campos** del canal, no de su posición frente al corte de 200. |
+| **Medición** | `03_schema_probe.mjs` → `exthttp.schemas.H2_correction_scope`. Confirmado el **51** y el **225** de t6; también `union = 276`. |
+
+Lo que **sí** sobrevive de §2.2: el cap es de **200 campos** y no de 8.192 bytes (máx. medido 8.124, 0 objetos
+por encima). Los cuatro productos aritméticos citados (`9.103+1.470`, `7.990+2.583`, `4.775+5.798`,
+`16+10.557`) son correctos **como ejemplos de campos concretos**, no como ley general.
+
+## C3 (H2, MEDIA) — «hay DOS esquemas» era una simplificación; hay SEIS
+
+| | |
+|---|---|
+| **Dónde estaba** | Interpretación del censo de `#EXTHTTP`; recogido por t6 como «uno en 1.470 canales (P3) y otro en 9.103». |
+| **Qué era falso** | Ni son dos, ni el discriminante es el **perfil**. Agrupando por conjunto de claves **exacto** salen **6** esquemas. |
+| **Qué la reemplaza** | §2.8: **S1** 4.759 (P4, 199 campos) · **S2** 2.682 (P4, +`X-HDR-Support`) · **S3** 1.470 (**P3**, +32 campos del bloque APE) · **S4** 1.113 (P3×838 + P1×275, +8 de reconexión) · **S5** 533 (P1) · **S6** 16 (P4, +`X-QoS-DSCP`). |
+| **Medición** | `03_schema_probe.mjs` → `exthttp.schemas.schemas[]` con `key_set_sha1_8`, tamaño, perfiles y campos exclusivos. Σ = 10.573 exacto. |
+
+**El error concreto que esto corrige:** P3 tiene **2.308** canales, pero el bloque `X-APE-Codec` está solo en
+**1.470**; los otros **838 P3 viven en S4**. Llamarlo «el esquema P3» es falso: **S3 ≠ P3**.
+
+## C4 (MEDIA) — porcentajes sobre 10.573 en campos condicionales
+
+| | |
+|---|---|
+| **Dónde estaba** | C5 de la matriz de coherencia (§8) y su lectura en el resumen: «13,9 %». |
+| **Qué era falso** | El **denominador**. 1.470/10.573 = 13,9 % es aritméticamente correcto pero semánticamente engañoso: sobre los canales que **declaran** el campo, es **100 %**. |
+| **Qué la reemplaza** | Regla obligatoria (§2.8): para campos condicionales se reporta (a) absoluto, (b) % sobre el esquema que lo declara, (c) % sobre el total — **diciendo cuál se usa**. |
+| **Medición** | `exthttp.schemas.percent_denominator_note` + la matriz `conditional_fields.matrix_main_presence_by_schema`. |
+
+## C5 (fuera de alcance, registrado) — `#EXT-X-CMAF:` declara otro cap de vídeo
+
+Al censar **todos** los sumideros apareció un tag que no estaba en el inventario de caps:
+`#EXT-X-CMAF:` ×**10.573**, con `CODECS="hvc1…"`, `BANDWIDTH=8000000` y `RESOLUTION=1920x1080`.
+Es otro cap de vídeo declarado —en un tag **inerte**— y **no figura** en la tabla de caps de t7 ni en
+`cap_verdicts.json` de t10. **Se registra aquí porque salió de esta medición; NO se adjudica en t12**
+(fuera de alcance). Queda como candidato para una tarea de caps posterior.
+
+## C6 (menor) — el bloque APE tiene 32 campos, no 30
+
+| | |
+|---|---|
+| **Dónde estaba** | §2.4 (tabla de bloques), nota ², y el hallazgo H-03-02 de §9. |
+| **Qué era falso** | El conteo: decía «30 campos». |
+| **Qué la reemplaza** | **32 campos**, enumerados uno a uno en la tabla y en `exthttp.schemas.schemas[S3].exclusive_fields_in_main`. |
+| **Medición** | `03_schema_probe.mjs` → S3 `exclusive_count = 32`, con los 32 nombres. El «30» agrupaba `X-APE-Fallback-*` como comodín y omitía `X-APE-Channel-Id` y `X-APE-CICP` del conteo. |
+
+## Lo que NO se corrige aquí (y por qué)
+
+- **D1 de t6** (`STABLE-VARIANT-ID` «25 valores» → 10.528): pertenece a **01_STRUCTURE.md**, que esta tarea
+  tiene prohibido tocar. No se toca.
+- **Menores de t6** (overflow min 27 vs 26, `distinct_fields` 249 vs 250): re-medidos aquí.
+  `distinct_field_names` en el objeto principal = **250** (mi cifra original se sostiene); el **249** de t6
+  no se reproduce con mi método y la diferencia es **un** nombre — queda como discrepancia abierta, sin
+  adoptarla por autoridad. El mínimo de campos en overflow es **26**, pero **27 es la moda** (4.759 canales);
+  ver el histograma de §2.8, que reconcilia ambos datos en vez de declararlos incompatibles.
+- **La skill y 01/02/04/06**: fuera de alcance.
+
+## Reproducibilidad de esta corrección
+
+```powershell
+# 1) censo original (sin cambios desde t3)
+node docs\cartography\APE_LISTA_523d52a6\03_headers_analyzer.mjs --out docs\cartography\APE_LISTA_523d52a6\03_headers_map.json
+
+# 2) LAS DOS CORRECCIONES de t12 (añade/reemplaza secciones; idempotente)
+node docs\cartography\APE_LISTA_523d52a6\03_schema_probe.mjs
+#   -> [ok] canales=10573 sumideros=20 (runtime=4) cruces=2
+#   -> [ok] nombres=276 suman=225 condicionales=51 esquemas=6
+
+# 3) validación
+node -e "JSON.parse(require('fs').readFileSync('docs/cartography/APE_LISTA_523d52a6/03_headers_map.json','utf8'));console.log('JSON OK')"
+```
+
+`03_schema_probe.mjs` **no reescribe** el censo: solo añade/reemplaza `codec_sinks`, `exthttp.schemas`,
+`corrections_t12` y `meta.schema_probe`. Correrlo dos veces produce el mismo resultado.
+

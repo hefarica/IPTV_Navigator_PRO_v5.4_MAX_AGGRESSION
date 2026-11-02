@@ -164,6 +164,26 @@ no deben confundirse:
 - **desalineación entre capas** (misma capa, valores distintos) → hallazgo de coherencia, no
   violación de la regla de oro.
 
+**Dos denominadores, siempre.** Todo ratio de coherencia se publica dos veces y con su nombre:
+
+| Denominador | Qué mide | Cuándo manda |
+|---|---|---|
+| `pct_of_declaring` — canales en los que el campo **existe** | contradicción sobre la población expuesta | campo **parcial** (no está en todos los canales) |
+| `pct_of_total` — canales de la lista | **extensión** del campo, no contradicción | campo universal |
+
+Caso medido que obligó a este cambio: `X-APE-Codec-Video` sólo existe en algunos canales; dividir
+sus contradicciones por el total da un porcentaje bajo que parece "poca cosa" cuando sobre los
+canales que lo declaran la contradicción es del **100 %** (`06_VERIFICATION.md` D6). El mapper
+publica `declaring_channels`, `total_channels`, `pct_of_declaring`, `pct_of_total` y
+`denominator_basis` en cada fila de `coherence.contradictions[]`, y el mismo criterio en
+`exthttp.field_population`.
+
+**El "0 violaciones" de la GOLDEN RULE lleva su alcance.** La regla se evalúa sobre unos pocos
+sumideros (dónde puede viajar una cadena RFC 6381); la lista emite cadenas en más sitios. Se publica
+`golden_rule.denominator` («N de M sumideros medidos con RFC 6381») y
+`hev1_outside_evaluated_sinks`. **No se escribe "0 violaciones" a secas**: se escribe "0 cruces en
+los sumideros evaluados (N de M)" y se remite a `06_VERIFICATION.md` H1.
+
 ### Paso 8 — Matriz de capacidad por runtime
 Se construye por **etapa** (9 etapas de imagen) × **runtime** (VLC 3/4, OTT Navigator, TiviMate,
 ExoPlayer/Media3, Kodi+ISA, hls.js, VPS/Lua, ARA/VPP), con dos veredictos por celda:
@@ -207,6 +227,11 @@ Antes de dar por buena una cartografía:
    cifras estructurales.
 7. **Contraste con una segunda implementación** (rg/ffprobe) de al menos 3 cifras.
 8. `validate_filter_chain.js` reproduce el defecto publicado con su mensaje literal.
+9. **Ningún ratio se publica sin su denominador.** Si el campo es parcial, `denominator_basis` debe
+   ser `poblacion_que_lo_declara` y `pct_of_declaring` el ratio que manda; los dos porcentajes
+   aparecen juntos. Lo verifica el test **T16**.
+10. **El distinct de una clave es exacto, no el tamaño de la lista de ejemplos.** Lo verifica
+    **T17** sobre `STABLE-VARIANT-ID` (10.528, no 25).
 
 ## 9. Reglas de oro (las que ya costaron caro)
 
@@ -226,6 +251,19 @@ Antes de dar por buena una cartografía:
    `scope.mode` y el Markdown también, con el denominador.
 8. **Cero red.** La cartografía no hace peticiones: salud HTTP, variantes reales y bitstream quedan
    `NO COMPUTADO` por diseño, no por pereza.
+9. **Un ratio sin denominador no es una medición.** Si el campo es parcial (`X-APE-Codec-Video`
+   existe en 1.470 de 10.573 canales), el ratio se calcula **sobre los que lo declaran** y el del
+   total se publica al lado, con su nombre. `13,9 %` y `100 %` describen el mismo hecho con dos
+   denominadores; el engañoso es el que se presenta sin decir sobre qué divide.
+10. **El "0 violaciones" lleva su alcance.** La GOLDEN RULE se evalúa sobre 4 sumideros declarados
+    (2 de ellos sin RFC 6381 en la lista de referencia) de los **19** tags que portan `hvc1.`/`hev1.`
+    medidos: 0 cruces en los evaluados, y fuera de ellos la lista **sí** emite cadenas
+    (`#EXT-X-APE-CHANNEL-RUNTIME-CODEC-HEV1`, 10.573 líneas). Un absoluto sin el recuento de
+    sumideros es un absoluto con denominador incompleto (`06_VERIFICATION.md` H1).
+11. **Un conteo distinto se mide, no se copia del tamaño de una lista de ejemplos.** `25` valores
+    distintos de `STABLE-VARIANT-ID` era el tope de la muestra impresa; el valor real es **10.528**
+    (uno por canal). El mapper lo cuenta con huella de 64 bits por valor en un `Set`, así que
+    truncar la lista de ejemplos ya no puede degradar la cifra.
 
 ## 10. Comandos permitidos
 
@@ -285,6 +323,10 @@ repo, se restaura con `git checkout -- <ruta>` (fuera del alcance de la skill).
 | Sintaxis de cadenas | `video_filter.syntax.status` | `PASS` / `FAIL` / `NO_COMPUTADO`, con defecto literal |
 | `#EXTHTTP` válido | `exthttp.invalid` | 0 |
 | Headers tóxicos | `exthttp.toxic_hits` | 0 distintos |
-| Coherencia entre capas | `coherence.contradictions` | cada fila con conteo y % |
+| Coherencia entre capas | `coherence.contradictions` | cada fila con `pct_of_declaring` **y** `pct_of_total`; `denominator_basis` explícito |
+| Ratio de un campo parcial | `coherence.contradictions[].denominator_basis` | `poblacion_que_lo_declara` (nunca el total) |
+| Extensión de un campo de `#EXTHTTP` | `exthttp.field_population` | `fields_universal` vs `fields_partial`, con `declared_in` |
+| Valores distintos de una clave | `stream_inf.keys[].distinct` | exacto (huella de 64 bits + `Set`), no tamaño de la lista de ejemplos |
+| GOLDEN RULE con alcance | `coherence.golden_rule` | `violations_in_evaluated_sinks` **y** `denominator` («N de M sumideros») + `hev1_outside_evaluated_sinks` |
 | Capacidad por runtime | `runtime_matrix.cells` | 0 celdas sin fuente ni estado |
 | Huecos | `not_computed` | toda métrica no medida, con razón |

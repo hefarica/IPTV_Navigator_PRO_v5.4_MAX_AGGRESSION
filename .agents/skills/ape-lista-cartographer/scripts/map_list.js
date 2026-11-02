@@ -659,6 +659,10 @@ function newAcc() {
         golden_hvc1_in_kodiprop_or_vlc: 0,
         golden_hev1_in_streaminf: 0,
         rfc6381_in_kodiprop_or_vlc: 0,
+        // Denominadores: canales en los que el chequeo ES APLICABLE (el campo se declara en ambos
+        // lados). Un campo parcial (p. ej. X-APE-Codec-Video, 1.470 de 10.573) se juzga sobre los
+        // que lo declaran, no sobre el total.
+        decl: { c1: 0, c2: 0, c3: 0, c4: 0, c5: 0, c6: 0, c7: 0, c8: 0, c9: 0, c11: 0, c12: 0, c13: 0 },
       },
       // sub-esquemas
       kodipropFamilies: new Map(),
@@ -671,6 +675,7 @@ function newAcc() {
     profiles: new Map(),
     codecFamilies: new Map(),
     ffmpegStatus: null,
+    sinks: new Map(),
     sampledDetail: null,
     fixture: null,
   };
@@ -796,6 +801,19 @@ function handleLine(acc, line, lineNo, ch, heavy) {
   const tag = tagNameOf(line);
   if (!tag) return ch;
   acc.tagCounts.set(tag, (acc.tagCounts.get(tag) || 0) + 1);
+  // Censo de sumideros de RFC 6381: qué TAG transporta cada cadena hvc1./hev1. Es el denominador
+  // que faltaba en el "0 violaciones" (ver 06_VERIFICATION.md H1).
+  if (line.indexOf('hvc1') >= 0 || line.indexOf('hev1') >= 0) {
+    let rec = acc.sinks.get(tag);
+    if (!rec) { rec = { tag, lines: 0, lines_hvc1: 0, lines_hev1: 0, hvc1: 0, hev1: 0 }; acc.sinks.set(tag, rec); }
+    rec.lines++;
+    const nh = countSub(line, 'hvc1.');
+    const ne = countSub(line, 'hev1.');
+    rec.hvc1 += nh;
+    rec.hev1 += ne;
+    if (nh) rec.lines_hvc1++;
+    if (ne) rec.lines_hev1++;
+  }
   if (!acc.tagFirstLine.has(tag)) acc.tagFirstLine.set(tag, lineNo);
   if (!ch && tag !== '#EXTINF') {
     acc.headerLines.push(lineNo);
@@ -848,14 +866,21 @@ function handleLine(acc, line, lineNo, ch, heavy) {
       if (ch) ch.keys = attrs.size;
       for (const k of attrs.keys()) acc.cross.siKeys.push(k);
       acc.cross.siKeyCounts.set(attrs.size, (acc.cross.siKeyCounts.get(attrs.size) || 0) + 1);
-      // valores por clave, con cardinalidad acotada (STABLE-VARIANT-ID es único por canal)
+      // Valores por clave. `hashes` da el nº de valores DISTINTOS exacto aunque la cardinalidad sea
+      // alta (STABLE-VARIANT-ID es único por canal: 10.528). `counts` sólo guarda hasta 64 valores
+      // para poder listar los más frecuentes; al desbordar NO se pierde el conteo exacto, sólo la
+      // lista — así un "25" de una lista de ejemplos no puede volver a pasar por medición.
       for (const [k, v] of attrs) {
         let rec = acc.cross.siValues.get(k);
-        if (!rec) { rec = { counts: new Map(), overflow: false }; acc.cross.siValues.set(k, rec); }
-        if (!rec.overflow && v !== '') {
+        if (!rec) { rec = { counts: new Map(), hashes: new Set(), high: false, examples: [], lines: 0 }; acc.cross.siValues.set(k, rec); }
+        if (v === '') continue;
+        rec.lines++;
+        rec.hashes.add(sha(v, 16));
+        if (!rec.high) {
           rec.counts.set(v, (rec.counts.get(v) || 0) + 1);
-          if (rec.counts.size > 64) { rec.overflow = true; rec.counts.clear(); }
+          if (rec.counts.size > 64) { rec.high = true; rec.counts.clear(); }
         }
+        if (rec.examples.length < 3) rec.examples.push(v);
       }
       const bump = (m, v) => { if (v != null && v !== '') m.set(v, (m.get(v) || 0) + 1); };
       bump(acc.cross.siCodecs, attrs.get('CODECS'));
@@ -1007,6 +1032,12 @@ function handleLine(acc, line, lineNo, ch, heavy) {
 
 function bumpOnce(map, v) { if (v) map.set(v, (map.get(v) || 0) + 1); }
 
+/** Cuenta ocurrencias literales sin regex (para el censo de sumideros). */
+function countSub(hay, needle) {
+  let n = 0; let i = 0;
+  for (;;) { const j = hay.indexOf(needle, i); if (j < 0) return n; n++; i = j + needle.length; }
+}
+
 /* ════════════════════════════════════════ evaluación de coherencia */
 
 /** Razón de nivel HEVC (L153 > L150 > L123 > L93) para comparar declaraciones. */
@@ -1019,46 +1050,55 @@ function hevcLevel(codecStr) {
 function evaluateCoherence(acc) {
   const c = acc.cross.c;
   const chs = acc.channels;
+  const realV = acc.extXVersion;
   for (const ch of chs) {
-    // C1 resolución
-    if (ch.si && ch.si.resolution && ch.kodipropMaxRes && ch.si.resolution !== ch.kodipropMaxRes) c.resolution_streaminf_vs_kodiprop++;
+    // C1 resolución declarada en dos capas
+    if (ch.si && ch.si.resolution && ch.kodipropMaxRes) {
+      c.decl.c1++;
+      if (ch.si.resolution !== ch.kodipropMaxRes) c.resolution_streaminf_vs_kodiprop++;
+    }
     // C2 PQ vs EXTVLCOPT SDR
-    if (ch.si && ch.si.videoRange === 'PQ' && ((ch.vlcHdrMode && ch.vlcHdrMode !== 'PQ') || ch.vlcHdrBool === 'false')) c.pq_vs_vlchdr++;
-    // C3 hvc1 vs codec=h264
-    if (ch.si && ch.si.codecs && /hvc1|hev1/.test(ch.si.codecs) && ch.vlcCodec && !/hevc|hvc1|hev1/.test(ch.vlcCodec)) c.codec_hvc1_vs_vlch264++;
-    // C4 nivel I-FRAME por debajo del de la variante
+    if (ch.si && ch.si.videoRange === 'PQ' && (ch.vlcHdrMode || ch.vlcHdrBool)) {
+      c.decl.c2++;
+      if ((ch.vlcHdrMode && ch.vlcHdrMode !== 'PQ') || ch.vlcHdrBool === 'false') c.pq_vs_vlchdr++;
+    }
+    // C3 hvc1 en la variante vs codec declarado a VLC
+    if (ch.si && ch.si.codecs && /hvc1|hev1/.test(ch.si.codecs) && ch.vlcCodec) {
+      c.decl.c3++;
+      if (!/hevc|hvc1|hev1/.test(ch.vlcCodec)) c.codec_hvc1_vs_vlch264++;
+    }
+    // C4 nivel del I-FRAME por debajo del de la variante
     const lvSi = hevcLevel(ch.si && ch.si.codecs);
     const lvIf = hevcLevel(ch.iframeCodecs);
-    if (lvSi != null && lvIf != null && lvIf < lvSi) c.iframe_level_below_streaminf++;
+    if (lvSi != null && lvIf != null) { c.decl.c4++; if (lvIf < lvSi) c.iframe_level_below_streaminf++; }
+    // C5 nivel declarado en #EXTHTTP. CAMPO PARCIAL: sólo existe en algunos canales, así que el
+    // denominador es "canales que lo declaran", no el total (06_VERIFICATION.md D6).
     const lvX = hevcLevel(ch.xapeCodecVideo);
-    if (lvSi != null && lvX != null && lvX < lvSi) c.xape_codec_below_streaminf++;
-    // C6 la familia CMAF declara contenedor mientras NO existe #EXT-X-MAP
-    if (acc.extXMap === 0 && ch.cmafContainer) c.cmaf_container_vs_fmp4++;
-    // C11 init segment declarado por la familia sin el tag que lo define
-    if (acc.extXMap === 0 && ch.cmafInitSegment) c.cmaf_init_without_map++;
-    // C12 techo adaptativo vs kodiprop
+    if (lvSi != null && lvX != null) { c.decl.c5++; if (lvX < lvSi) c.xape_codec_below_streaminf++; }
+    // C6 / C11 la familia CMAF declara contenedor/init-segment sin que exista #EXT-X-MAP
+    if (ch.cmafContainer) { c.decl.c6++; if (acc.extXMap === 0) c.cmaf_container_vs_fmp4++; }
+    if (ch.cmafInitSegment) { c.decl.c11++; if (acc.extXMap === 0) c.cmaf_init_without_map++; }
+    // C12 techo adaptativo de VLC vs max_resolution de KODIPROP
     if (ch.vlcMaxWidth && ch.kodipropMaxRes) {
+      c.decl.c12++;
       const w = Number(ch.vlcMaxWidth);
       const kr = /(\d+)x(\d+)/.exec(ch.kodipropMaxRes);
       if (kr && w > Number(kr[1])) c.vlc_adaptive_vs_kodiprop_res++;
     }
-  }
-  // C7 / C8 / C9: el tag HLS real contra el declarado por la familia CMAF, por canal
-  const realV = acc.extXVersion;
-  for (const ch of chs) {
-    if (realV && ch.cmafVersion && realV !== ch.cmafVersion) c.version_vs_cmafversion++;
+    // C13 HDCP ausente en la variante
+    if (ch.si) { c.decl.c13++; if (!ch.si.hdcp) c.hdcp_missing++; }
+    // C7 / C8 / C9: el tag HLS real (global, cabecera) contra el declarado por la familia CMAF
+    if (realV && ch.cmafVersion) { c.decl.c7++; if (realV !== ch.cmafVersion) c.version_vs_cmafversion++; }
     // #EXT-X-PART-INF / #EXT-X-SERVER-CONTROL viven en la CABECERA (valor global); se comparan
     // contra el valor que declara la familia CMAF en CADA canal.
     const pt = ch.partTarget || acc.globalPartTarget;
     const phb = ch.partHoldBack || acc.globalPartHoldBack;
-    if (pt && ch.cmafPartTarget && pt !== ch.cmafPartTarget) c.cmaf_part_target_mismatch++;
-    if (phb && ch.cmafPartHoldBack && phb !== ch.cmafPartHoldBack) c.cmaf_part_holdback_mismatch++;
+    if (pt && ch.cmafPartTarget) { c.decl.c8++; if (pt !== ch.cmafPartTarget) c.cmaf_part_target_mismatch++; }
+    if (phb && ch.cmafPartHoldBack) { c.decl.c9++; if (phb !== ch.cmafPartHoldBack) c.cmaf_part_holdback_mismatch++; }
+    // Golden rule G2: hev1 en CODECS de STREAM-INF
+    if (ch.si && ch.si.codecs && /hev1\./.test(ch.si.codecs) && !/hvc1\./.test(ch.si.codecs)) c.golden_hev1_in_streaminf++;
   }
-  // C13 HDCP ausente
-  c.hdcp_missing = acc.cross.siHdcpMissing;
-  // Golden rule: hev1 en STREAM-INF
-  for (const ch of chs) if (ch.si && ch.si.codecs && /hev1\./.test(ch.si.codecs) && !/hvc1\./.test(ch.si.codecs)) c.golden_hev1_in_streaminf++;
-  // RFC 6381 en capas que no lo emiten por diseño
+  // RFC 6381 en capas que no lo emiten por diseño (KODIPROP/EXTVLCOPT)
   c.rfc6381_in_kodiprop_or_vlc = chs.filter((x) => x.rfc6381inKodi || x.rfc6381inVlc).length;
   return c;
 }
@@ -1393,8 +1433,18 @@ function renderMarkdown(map) {
       p();
       p('| Clave | Presente en | Valores distintos | Valor(es) |');
       p('|---|---|---|---|');
-      for (const k of map.stream_inf.keys) p(`| \`${k.key}\` | ${fmt(k.count)} | ${k.distinct} | ${(k.values || []).slice(0, 3).map((v) => `\`${v.value}\`×${fmt(v.count)}`).join(' · ') || '—'} |`);
+      for (const k of map.stream_inf.keys) {
+        const vals = k.values
+          ? k.values.slice(0, 3).map((v) => `\`${v.value}\`×${fmt(v.count)}`).join(' · ')
+          : (k.examples && k.examples.length ? `${k.examples.map((e) => `\`${e}\``).join(' · ')} … (${fmt(k.distinct)} distintos; lista truncada)` : '—');
+        p(`| \`${k.key}\` | ${fmt(k.count)} | ${fmt(k.distinct)} | ${vals} |`);
+      }
       p();
+      {
+        const sv = map.stream_inf.keys.find((k) => k.key === 'STABLE-VARIANT-ID');
+        if (sv) p(`> \`STABLE-VARIANT-ID\`: **${fmt(sv.distinct)} valores distintos** medidos (huella de 64 bits por valor, \`Set\`), no el tamaño de una lista de ejemplos. Un 25 de una tabla de muestra no es una medición (\`06_VERIFICATION.md\` D1).`);
+        p();
+      }
     }
   }
 
@@ -1464,17 +1514,33 @@ function renderMarkdown(map) {
   if (map.coherence) {
     p('## 9. Coherencia entre capas');
     p();
-    p('| # | Contradicción | Canales | % | Denominador |');
-    p('|---|---|---|---|---|');
+    p('| # | Contradicción | Canales que la cometen | % de los que la declaran | Canales que la declaran | % del total | Total | Base del ratio |');
+    p('|---|---|---|---|---|---|---|---|');
     for (const c of map.coherence.contradictions) {
-      if (c.channels > 0) p(`| ${c.id} | ${c.label} | ${fmt(c.channels)} | ${c.pct} % | ${fmt(c.denominator)} (\`${c.scope}\`) |`);
+      const base = c.denominator_basis === 'poblacion_que_lo_declara' ? '`población`' : '`total`';
+      p(`| ${c.id} | ${c.label} | ${fmt(c.channels)} | **${c.pct_of_declaring} %** | ${fmt(c.declaring_channels)} | ${c.pct_of_total} % | ${fmt(c.total_channels)} | ${base} (\`${c.scope}\`) |`);
     }
+    p();
+    p('> **Dos denominadores, no uno.** El ratio que manda es el de la **población que declara el campo**; el del total se publica al lado y mide otra cosa (extensión, no contradicción). Un campo parcial —`X-APE-Codec-Video` sólo existe en algunos canales— dividido por el total produce un porcentaje engañoso (`06_VERIFICATION.md` D6).');
     p();
     if (map.coherence.not_implemented && map.coherence.not_implemented.length) {
       for (const n of map.coherence.not_implemented) p(`- **${n.id} no implementado:** ${n.label}. Razón: ${n.reason}`);
       p();
     }
-    p(`GOLDEN RULE \`hvc1\`/\`hev1\`: **${map.coherence.golden_rule.violations}** violaciones (${map.coherence.golden_rule.note}).`);
+    {
+      const g = map.coherence.golden_rule;
+      p(`GOLDEN RULE \`hvc1\`/\`hev1\`: **${g.violations_in_evaluated_sinks}** cruces en los sumideros evaluados — ${g.denominator}.`);
+      p();
+      if (g.sinks_out_of_scope.length) {
+        const top = g.sinks_out_of_scope.slice().sort((a, b) => b.hev1 - a.hev1)[0];
+        p(`> **Alcance declarado.** Fuera de los sumideros evaluados la lista sí emite cadenas RFC 6381: ${fmt(g.hev1_outside_evaluated_sinks.occurrences)} ocurrencias de \`hev1.*\` en ${fmt(g.hev1_outside_evaluated_sinks.lines_with_hev1)} líneas${top && top.hev1 ? `, la mayor en \`${top.tag}\` (${fmt(top.hev1)})` : ''}. Un "0 violaciones" sin este denominador es un absoluto con alcance incompleto (\`06_VERIFICATION.md\` H1).`);
+        p();
+        p('| Sumidero fuera de alcance | Líneas | hvc1.* | hev1.* |');
+        p('|---|---|---|---|');
+        for (const s of g.sinks_out_of_scope.slice(0, 8)) p(`| \`${s.tag}\` | ${fmt(s.lines)} | ${fmt(s.hvc1)} | ${fmt(s.hev1)} |`);
+        p();
+      }
+    }
     p();
   }
 
@@ -1640,21 +1706,36 @@ async function main() {
   /* ── matriz de contradicciones etiquetada */
   const chs = acc.channels.length;
   const contradictionRows = [
-    { id: 'C1', label: 'STREAM-INF RESOLUTION ≠ KODIPROP max_resolution', channels: contradictions.resolution_streaminf_vs_kodiprop },
-    { id: 'C2', label: 'STREAM-INF VIDEO-RANGE=PQ vs EXTVLCOPT video-hdr*=SDR/false', channels: contradictions.pq_vs_vlchdr },
-    { id: 'C3', label: 'STREAM-INF CODECS=hvc1… vs EXTVLCOPT codec sin hevc', channels: contradictions.codec_hvc1_vs_vlch264 },
-    { id: 'C4', label: 'I-FRAME-STREAM-INF con nivel HEVC < STREAM-INF', channels: contradictions.iframe_level_below_streaminf },
-    { id: 'C5', label: 'EXTHTTP X-APE-Codec-Video con nivel HEVC < STREAM-INF', channels: contradictions.xape_codec_below_streaminf, scope: opts.sample ? 'muestra (capas pesadas)' : 'censo' },
-    { id: 'C6', label: 'La familia CMAF declara contenedor y #EXT-X-MAP = 0', channels: contradictions.cmaf_container_vs_fmp4 },
-    { id: 'C7', label: '#EXT-X-VERSION real ≠ #EXT-X-CMAF-VERSION declarado', channels: contradictions.version_vs_cmafversion },
-    { id: 'C8', label: '#EXT-X-PART-INF PART-TARGET real ≠ #EXT-X-CMAF-PART-TARGET', channels: contradictions.cmaf_part_target_mismatch },
-    { id: 'C9', label: '#EXT-X-SERVER-CONTROL PART-HOLD-BACK real ≠ #EXT-X-CMAF-PART-HOLD-BACK', channels: contradictions.cmaf_part_holdback_mismatch },
-    { id: 'C11', label: 'Init segment declarado por la familia sin #EXT-X-MAP', channels: contradictions.cmaf_init_without_map },
-    { id: 'C12', label: 'Techo adaptativo VLC (maxwidth) > KODIPROP max_resolution', channels: contradictions.vlc_adaptive_vs_kodiprop_res },
-    { id: 'C13', label: 'STREAM-INF sin HDCP-LEVEL', channels: contradictions.hdcp_missing },
+    { id: 'C1', decl: 'c1', label: 'STREAM-INF RESOLUTION ≠ KODIPROP max_resolution', channels: contradictions.resolution_streaminf_vs_kodiprop },
+    { id: 'C2', decl: 'c2', label: 'STREAM-INF VIDEO-RANGE=PQ vs EXTVLCOPT video-hdr*=SDR/false', channels: contradictions.pq_vs_vlchdr },
+    { id: 'C3', decl: 'c3', label: 'STREAM-INF CODECS=hvc1… vs EXTVLCOPT codec sin hevc', channels: contradictions.codec_hvc1_vs_vlch264 },
+    { id: 'C4', decl: 'c4', label: 'I-FRAME-STREAM-INF con nivel HEVC < STREAM-INF', channels: contradictions.iframe_level_below_streaminf },
+    { id: 'C5', decl: 'c5', label: 'EXTHTTP X-APE-Codec-Video con nivel HEVC < STREAM-INF', channels: contradictions.xape_codec_below_streaminf, scope: opts.sample ? 'muestra (capas pesadas)' : 'censo' },
+    { id: 'C6', decl: 'c6', label: 'La familia CMAF declara contenedor y #EXT-X-MAP = 0', channels: contradictions.cmaf_container_vs_fmp4 },
+    { id: 'C7', decl: 'c7', label: '#EXT-X-VERSION real ≠ #EXT-X-CMAF-VERSION declarado', channels: contradictions.version_vs_cmafversion },
+    { id: 'C8', decl: 'c8', label: '#EXT-X-PART-INF PART-TARGET real ≠ #EXT-X-CMAF-PART-TARGET', channels: contradictions.cmaf_part_target_mismatch },
+    { id: 'C9', decl: 'c9', label: '#EXT-X-SERVER-CONTROL PART-HOLD-BACK real ≠ #EXT-X-CMAF-PART-HOLD-BACK', channels: contradictions.cmaf_part_holdback_mismatch },
+    { id: 'C11', decl: 'c11', label: 'Init segment declarado por la familia sin #EXT-X-MAP', channels: contradictions.cmaf_init_without_map },
+    { id: 'C12', decl: 'c12', label: 'Techo adaptativo VLC (maxwidth) > KODIPROP max_resolution', channels: contradictions.vlc_adaptive_vs_kodiprop_res },
+    { id: 'C13', decl: 'c13', label: 'STREAM-INF sin HDCP-LEVEL', channels: contradictions.hdcp_missing },
   ].map((r) => {
-    const scoped = String(r.scope || 'censo').startsWith('muestra') && sampleSet ? sampleSet.size : chs;
-    return { ...r, scope: r.scope || 'censo', denominator: scoped, pct: pct(r.channels, scoped) };
+    // DOS denominadores, cada uno con su nombre. El que manda es la población que DECLARA el dato
+    // (puede contradecir); el total se publica al lado para que nadie lo confunda con aquélla.
+    const declaring = contradictions.decl ? (contradictions.decl[r.decl] || 0) : 0;
+    const total = chs;
+    const sampleScoped = String(r.scope || 'censo').startsWith('muestra');
+    return {
+      ...r,
+      scope: r.scope || 'censo',
+      declaring_channels: declaring,
+      total_channels: total,
+      denominator_basis: declaring > 0 && declaring < total ? 'poblacion_que_lo_declara' : 'total_de_canales',
+      pct_of_declaring: pct(r.channels, declaring),
+      pct_of_total: pct(r.channels, total),
+      note: sampleScoped
+        ? 'campo de capa pesada: la poblacion que lo declara se mide DENTRO de la muestra'
+        : null,
+    };
   });
 
   /* ── nombre enmascarado del archivo ── */
@@ -1745,11 +1826,15 @@ async function main() {
         for (const k of acc.cross.siKeys) m.set(k, (m.get(k) || 0) + 1);
         return [...m.entries()].sort((a, b) => b[1] - a[1]).map(([key, count]) => {
           const rec = acc.cross.siValues.get(key);
-          const usable = rec && !rec.overflow;
           return {
-            key, count,
-            distinct: usable ? rec.counts.size : (rec && rec.overflow ? 'alta cardinalidad (>64)' : null),
-            values: usable ? topEntries(rec.counts, 6).map((v) => ({ value: v.key, count: v.count })) : null,
+            key,
+            count,
+            // EXACTO: huella de 64 bits por valor, contada con Set. No es una lista de ejemplos.
+            distinct: rec ? rec.hashes.size : null,
+            distinct_method: rec ? 'sha256-16 por valor, Set (exacto)' : null,
+            values: rec && !rec.high ? topEntries(rec.counts, 6).map((v) => ({ value: v.key, count: v.count })) : null,
+            values_truncated: rec ? rec.high : false,
+            examples: rec && rec.high ? rec.examples : null,
           };
         });
       })(),
@@ -1779,6 +1864,26 @@ async function main() {
       jwt_values: acc.exthttp.jwtHits,
       invalid_samples: acc.exthttp.invalidSamples,
       field_frequency: topEntries(acc.exthttp.fieldFrequency, 40).map((t) => ({ name: t.key, count: t.count })),
+      // Un campo que no está en todos los canales NO se juzga sobre el total. Aquí van los dos
+      // denominadores con nombre, para que un "1.470/10.573 = 13,9 %" no vuelva a leerse como
+      // cobertura del campo (06_VERIFICATION.md D6).
+      field_population: (() => {
+        const analizados = acc.exthttp.occurrences;
+        const entradas = [...acc.exthttp.fieldFrequency.entries()];
+        const parciales = entradas.filter(([, n]) => n < analizados).sort((a, b) => b[1] - a[1]);
+        return {
+          objects_analyzed: analizados,
+          fields_distinct: entradas.length,
+          fields_universal: entradas.length - parciales.length,
+          fields_partial: parciales.length,
+          partial: parciales.slice(0, 15).map(([name, n]) => ({
+            name,
+            declared_in: n,
+            pct_of_all_analyzed: pct(n, analizados),
+          })),
+          note: 'pct_of_all_analyzed mide EXTENSIÓN del campo; pct_of_declaring mide la contradicción sobre los canales que lo declaran. Para un campo parcial sólo el segundo es un ratio de población.',
+        };
+      })(),
     },
     overflow: {
       lines_census: overflowLinesCensus,
@@ -1828,13 +1933,33 @@ async function main() {
       not_implemented: [
         { id: 'C10', label: 'audio Atmos/DTS/TrueHD: la familia CMAF dice ENABLED=false y la capa de atributos dice presente', reason: 'requiere cruzar 3 tags de familia con 3 campos de #EXTHTTP; el campo X-APE-ATMOS no está en el top-40 de frecuencias y el chequeo quedaría muestral o ciego — se deja a revisión manual sobre el JSON' },
       ],
-      golden_rule: {
-        violations: contradictions.golden_hvc1_in_kodiprop_or_vlc + contradictions.golden_hev1_in_streaminf,
-        hvc1_in_kodiprop_or_vlc: contradictions.golden_hvc1_in_kodiprop_or_vlc,
-        hev1_in_stream_inf: contradictions.golden_hev1_in_streaminf,
-        rfc6381_in_kodiprop_or_vlc: contradictions.rfc6381_in_kodiprop_or_vlc,
-        note: 'hvc1.* solo en STREAM-INF CODECS; hev1.* solo en KODIPROP/EXTVLCOPT. KODIPROP/EXTVLCOPT no emiten RFC 6381 por diseño, así que cualquier hvc1/hev1 ahí es una violación.',
-      },
+      // El claim "0 violaciones" sólo vale por los sumideros que la regla EVALÚA. Aquí se publica
+      // el censo completo de tags que portan RFC 6381 para que el denominador sea explícito
+      // (06_VERIFICATION.md H1: hev1.* también vive en #EXT-X-APE-CHANNEL-RUNTIME-CODEC-HEV1).
+      golden_rule: (() => {
+        const evaluados = ['#EXT-X-STREAM-INF', '#EXT-X-APE-CODEC-PREFERRED', '#KODIPROP', '#EXTVLCOPT'];
+        const all = [...acc.sinks.values()].sort((a, b) => b.lines - a.lines);
+        const enAlcance = all.filter((s) => evaluados.includes(s.tag));
+        const fuera = all.filter((s) => !evaluados.includes(s.tag));
+        const hev1Fuera = fuera.reduce((n, s) => n + s.hev1, 0);
+        const lineasHev1Fuera = fuera.reduce((n, s) => n + (s.lines_hev1 || 0), 0);
+        const vacios = evaluados.filter((tag) => !all.some((s) => s.tag === tag));
+        return {
+          rules: [
+            { id: 'G1', rule: 'hvc1.* sólo en CODECS de #EXT-X-STREAM-INF', violations: contradictions.golden_hvc1_in_kodiprop_or_vlc, sinks_checked: ['#KODIPROP', '#EXTVLCOPT'] },
+            { id: 'G2', rule: 'hev1.* no puede aparecer en CODECS de #EXT-X-STREAM-INF', violations: contradictions.golden_hev1_in_streaminf, sinks_checked: ['#EXT-X-STREAM-INF'] },
+          ],
+          violations_in_evaluated_sinks: contradictions.golden_hvc1_in_kodiprop_or_vlc + contradictions.golden_hev1_in_streaminf,
+          sinks_declared_by_rule: evaluados.length,
+          sinks_measured_with_rfc6381: all.length,
+          sinks_evaluated_with_data: enAlcance.length,
+          sinks_declared_but_empty: vacios,
+          sinks_out_of_scope: fuera.slice(0, 12),
+          hev1_outside_evaluated_sinks: { occurrences: hev1Fuera, lines_with_hev1: lineasHev1Fuera },
+          denominator: `${enAlcance.length} de ${all.length} sumideros medidos con RFC 6381 (${evaluados.length} declarados por la regla; ${vacios.length} de ellos no portan la cadena en esta lista)`,
+          note: 'hvc1.* sólo en STREAM-INF CODECS; hev1.* sólo en KODIPROP/EXTVLCOPT. El cero es SOBRE LOS SUMIDEROS EVALUADOS: fuera de ellos la lista sí emite cadenas RFC 6381 (ver hev1_outside_evaluated_sinks y 06_VERIFICATION.md H1).',
+        };
+      })(),
     },
     runtime_matrix: runtimeMatrix,
     verdict,
@@ -1863,41 +1988,57 @@ async function main() {
     .filter((s) => s && s.length >= 3 && !/^<.*>$/.test(s));
   const preserve = new Set([map.source.sha256]);
   if (fixtureInfo && fixtureInfo.sha256) preserve.add(fixtureInfo.sha256);
-  const scrubStats = { n: 0 };
   map.tool.elapsed_ms = Date.now() - t0;
-  let jsonText = scrub(JSON.stringify(map, null, 2), secrets, preserve, scrubStats);
-  map.redaction.secrets_scrubbed = scrubStats.n || 0;
-  // el recuento real de sustituciones se escribe después del scrub (es el único campo que cambia)
-  jsonText = jsonText.replace(/"secrets_scrubbed": 0/, `"secrets_scrubbed": ${scrubStats.n || 0}`);
 
+  // 1) borrador serializado y scrubado: sirve para CONTAR las redacciones antes de fijar los campos
+  const draftStats = { n: 0 };
+  const draftJson = scrub(JSON.stringify(map, null, 2), secrets, preserve, draftStats);
+  map.redaction.secrets_scrubbed = draftStats.n || 0;
+
+  // 2) Markdown (lleva el recuento ya fijado)
   let mdText = null;
   const mdStats = { n: 0 };
   if (!opts.jsonOnly) mdText = scrub(renderMarkdown(map), secrets, preserve, mdStats);
 
-  /* ── control de fugas: se mide sobre el texto YA escrito ── */
-  const outText = jsonText + (mdText || '');
+  // 3) control de fugas sobre el texto que se va a escribir
+  const outText = draftJson + (mdText || '');
   const leakChecks = {
-    json_parses: (() => { try { JSON.parse(jsonText); return true; } catch { return false; } })(),
+    json_parses: (() => { try { JSON.parse(draftJson); return true; } catch { return false; } })(),
     host_occurrences_in_output: [...acc.hosts]
       .filter((h) => h && h.length > 3 && !/^<.*>$/.test(h))
       .reduce((n, h) => n + countOccurrences(outText, h), 0),
     credential_occurrences_in_output: secrets.reduce((n, s) => n + (s.length > 3 ? countOccurrences(outText, s) : 0), 0),
-    sha256_preserved: countOccurrences(jsonText, map.source.sha256) > 0,
-    redactions_applied: scrubStats.n || 0,
+    sha256_preserved: countOccurrences(draftJson, map.source.sha256) > 0,
+    redactions_applied: draftStats.n || 0,
   };
-  map.redaction.secrets_scrubbed = scrubStats.n || 0;
   map.redaction.leak_checks = leakChecks;
-  jsonText = jsonText.replace(/"secrets_scrubbed": \d+/, `"secrets_scrubbed": ${scrubStats.n || 0}`);
+
+  // 4) serialización FINAL: el JSON tiene que CONTENER su propio informe de fugas
+  //    (bug corregido en t13: antes se escribía el texto del borrador y el informe se perdía)
+  let jsonText = scrub(JSON.stringify(map, null, 2), secrets, preserve, { n: 0 });
   fs.writeFileSync(jsonPath, jsonText, 'utf8');
   if (mdText) fs.writeFileSync(mdPath, mdText, 'utf8');
-  if (!leakChecks.json_parses) { console.error('[map_list] ERROR: el JSON emitido no parsea'); process.exit(1); }
+
+  // 5) verificación POST-ESCRITURA de lo que quedó en disco (no del borrador en memoria)
+  const written = fs.readFileSync(jsonPath, 'utf8');
+  const postCheck = {
+    json_parses: (() => { try { JSON.parse(written); return true; } catch { return false; } })(),
+    contains_own_report: written.includes('"leak_checks"') && written.includes('"host_occurrences_in_output"'),
+    host_occurrences: [...acc.hosts]
+      .filter((h) => h && h.length > 3 && !/^<.*>$/.test(h))
+      .reduce((n, h) => n + countOccurrences(written, h), 0),
+    credential_occurrences: secrets.reduce((n, s) => n + (s.length > 3 ? countOccurrences(written, s) : 0), 0),
+    sha256_preserved: countOccurrences(written, map.source.sha256) > 0,
+  };
+  if (!postCheck.json_parses) { console.error('[map_list] ERROR: el JSON emitido no parsea'); process.exit(1); }
+  if (!postCheck.contains_own_report) { console.error('[map_list] ERROR: el JSON emitido no contiene su propio informe de fugas'); process.exit(1); }
   if (!opts.quiet) {
     log(`canales ${fmt(map.source.channels)} · líneas ${fmt(map.source.lines)} · tags ${fmt(map.tag_vocabulary.distinct)} · ${map.scope.mode}`);
     log(`filtros: ${map.video_filter.distinct_chains} firmas · sintaxis ${map.video_filter.syntax.status}`);
     log(`EXTHTTP: ${fmt(map.exthttp.objects_analyzed)} analizados de ${fmt(map.exthttp.lines_census)} · ${map.exthttp.invalid} inválidos · tóxicos ${Object.keys(map.exthttp.toxic_hits).length}`);
     log(`JSON  → ${jsonPath}`);
     if (mdPath) log(`MD    → ${mdPath}`);
-    log(`control de fugas → host:${leakChecks.host_occurrences_in_output} credencial:${leakChecks.credential_occurrences_in_output} sha_preservado:${leakChecks.sha256_preserved} json_ok:${leakChecks.json_parses}`);
+    log(`control de fugas (post-escritura) → host:${postCheck.host_occurrences} credencial:${postCheck.credential_occurrences} sha_preservado:${postCheck.sha256_preserved} json_ok:${postCheck.json_parses} informe_propio:${postCheck.contains_own_report}`);
     log(`elapsed ${((Date.now() - t0) / 1000).toFixed(1)} s`);
   }
   // las comprobaciones de fuga van al JSON ya emitido: se anexan al log de auditoría del run
@@ -1905,7 +2046,7 @@ async function main() {
     console.error(`[map_list] ASSERTION: canales ${map.source.channels} != esperado ${opts.expectChannels}`);
     process.exit(2);
   }
-  if (leakChecks.host_occurrences_in_output > 0 || leakChecks.credential_occurrences_in_output > 0) {
+  if (postCheck.host_occurrences > 0 || postCheck.credential_occurrences > 0) {
     console.error('[map_list] ASSERTION: fuga de host/credencial en la salida');
     process.exit(2);
   }

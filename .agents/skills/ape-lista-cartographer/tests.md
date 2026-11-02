@@ -195,6 +195,71 @@ parser es indistinguible de un 0 real si no hay un test que lo distinga.
 
 ---
 
+## T16 — Un campo parcial NO se divide por el total (denominador nombrado)
+
+El mapper publica **dos** ratios por contradicción. Si el campo no existe en todos los canales, el
+que manda es `pct_of_declaring`; el del total sólo mide extensión.
+
+```bash
+node -e "const m=JSON.parse(require('fs').readFileSync('<map.json>','utf8'));
+const bad=[];
+for (const r of m.coherence.contradictions) {
+  if (!('declaring_channels' in r) || !('total_channels' in r) || !('pct_of_declaring' in r) || !('pct_of_total' in r)) bad.push(r.id+':sin_denominadores');
+  const parcial = r.declaring_channels > 0 && r.declaring_channels < r.total_channels;
+  if (parcial && r.denominator_basis !== 'poblacion_que_lo_declara') bad.push(r.id+':base_mal');
+  if (r.declaring_channels > 0) {
+    const esperado = Math.round(1000*r.channels/r.declaring_channels)/10;
+    if (Math.abs(r.pct_of_declaring - esperado) > 0.11) bad.push(r.id+':pct_no_calcula_sobre_declarantes');
+  }
+}
+const c5 = m.coherence.contradictions.find((r) => r.id === 'C5');
+if (!c5) bad.push('C5:ausente');
+else if (c5.pct_of_declaring !== 100) bad.push('C5:pct_declarantes=' + c5.pct_of_declaring);
+// control negativo: si alguien vuelve a dividir por el total, estos dos coinciden y el test cae
+const distintos = m.coherence.contradictions.filter((r) => r.pct_of_declaring !== r.pct_of_total).length;
+if (!distintos) bad.push('ningun_ratio_distingue_poblacion_de_total');
+if (bad.length) { console.error('FALLA T16:', bad.join(', ')); process.exit(1); }
+console.log('T16 PASS · filas con dos denominadores:', m.coherence.contradictions.length, '· C5 pct_decl=' + c5.pct_of_declaring + ' pct_total=' + c5.pct_of_total);"
+```
+
+**Esperado:** exit 0. En la lista de referencia: `C5.pct_of_declaring = 100` y
+`C5.pct_of_total = 0,35` (37 canales que declaran `X-APE-Codec-Video` sobre 250 muestreados, frente
+a 10.573 del total).
+
+**Por qué existe:** el informe anterior publicaba `1.470/10.573 = 13,9 %` para un campo que sólo
+existe en 1.470 canales; sobre los que lo declaran la contradicción es del 100 %
+(`06_VERIFICATION.md` D6). El test falla si alguien vuelve a dividir por el total o si deja de
+publicar la población que declara.
+
+---
+
+## T17 — El distinct de una clave es exacto, no el tamaño de la lista de ejemplos
+
+```bash
+node -e "const m=JSON.parse(require('fs').readFileSync('<map.json>','utf8'));
+const bad=[];
+for (const k of m.stream_inf.keys) {
+  if (typeof k.distinct !== 'number') bad.push(k.key+':distinct_no_numerico');
+  else if (k.distinct > k.count) bad.push(k.key+':distinct>count');
+}
+const sv = m.stream_inf.keys.find((k) => k.key === 'STABLE-VARIANT-ID');
+if (!sv) bad.push('STABLE-VARIANT-ID:ausente');
+else {
+  if (sv.distinct !== 10528) bad.push('STABLE-VARIANT-ID:distinct=' + sv.distinct + ' (esperado 10528)');
+  if (!sv.values_truncated) bad.push('STABLE-VARIANT-ID:se esperaba lista truncada con distinct exacto');
+}
+if (bad.length) { console.error('FALLA T17:', bad.join(', ')); process.exit(1); }
+console.log('T17 PASS · STABLE-VARIANT-ID distinct exacto =', sv.distinct, '(lista de ejemplos truncada:', sv.values_truncated + ')');"
+```
+
+**Esperado:** exit 0 · `STABLE-VARIANT-ID.distinct = 10528`.
+
+**Por qué existe:** `01_STRUCTURE.md` §7.1 decía «25 valores distintos» cuando 25 era el **tope de la
+lista de ejemplos** que imprimía el script (`06_VERIFICATION.md` D1). Ahora el conteo se hace con
+huella de 64 bits por valor en un `Set`: truncar la lista de ejemplos ya no puede degradar la cifra.
+
+---
+
 ## Smoke E2E (secuencia mínima antes de publicar)
 
 ```bash

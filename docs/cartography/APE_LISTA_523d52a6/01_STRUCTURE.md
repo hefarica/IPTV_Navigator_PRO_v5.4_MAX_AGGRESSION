@@ -616,8 +616,16 @@ Distribuciones complementarias medidas (todas en `distributions` del JSON): `ape
 | `COLOR-PRIMARIES` | 10.528 | 1 | `9`×10.528 |
 | `HDCP-LEVEL` | 10.528 | 1 | `TYPE-1`×10.528 |
 | `MATRIX-COEFFICIENTS` | 10.528 | 1 | `9`×10.528 |
-| `STABLE-VARIANT-ID` | 10.528 | 25 | `1000_P4`×1 `1001244_P4`×1 `1001245_P4`×1 |
+| `STABLE-VARIANT-ID` | 10.528 | **10.528** | uno por canal, forma `<streamId>_<perfil>`: `1000_P4`, `1001244_P4`, `1001245_P4`, … |
 | `TRANSFER-CHARACTERISTICS` | 10.528 | 1 | `16`×10.528 |
+
+> **Corrección 2026-11-02 (t13 · verificación adversarial D1).** Esta tabla decía «25 valores
+> distintos» en `STABLE-VARIANT-ID`. El **25 era el tope de la lista de ejemplos** que imprimía el
+> script, no una medición. Hay **10.528** valores distintos (uno por canal que declara el atributo):
+> medido por el capitán con `rg -o --no-filename 'STABLE-VARIANT-ID=[^,]+' <lista> | Sort-Object
+> -Unique | Measure-Object` → `10528`; y remedido de forma independiente por `map_list.js`
+> (`stream_inf.keys[].distinct`, huella de 64 bits por valor contada con `Set`) → `10528`.
+> El resto de las celdas de §7.1 no cambia.
 
 **Valores únicos (no hay variación en toda la lista):**
 
@@ -627,7 +635,7 @@ Distribuciones complementarias medidas (todas en `distributions` del JSON): `ape
 - `HDCP-LEVEL` = `TYPE-1` en los **10.528** canales que lo declaran.
 - `BANDWIDTH` = `9000000` (7963) / `12000000` (1757) / `28000000` (853).
 - `FRAME-RATE` = `30.000` (8651) / `60.000` (1922).
-- `STABLE-VARIANT-ID` = `<streamId>_<perfil>` (valor distinto por canal).
+- `STABLE-VARIANT-ID` = `<streamId>_<perfil>` (valor distinto por canal: **10.528** valores distintos, ver nota de corrección arriba).
 
 ### 7.2 `#EXT-X-I-FRAME-STREAM-INF` — 1 por canal, 2 claves
 
