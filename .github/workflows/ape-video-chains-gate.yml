@@ -1,0 +1,145 @@
+name: ape-video-chains-gate
+
+# GATE de las cadenas de video. Convierte en regresion ejecutable lo que la auditoria midio.
+#
+# Comprueba dos cosas opuestas, y hacen falta las dos:
+#
+#   1. Las cadenas TAL CUAL de la lista DEBEN fallar. Si algun dia empiezan a ejecutar sin que nadie
+#      las haya corregido, algo cambio en el fichero de referencia y la auditoria quedo obsoleta.
+#      Un banco que solo prueba el exito no detecta que su propio objeto desaparecio.
+#
+#   2. Las cadenas CORREGIDAS DEBEN ejecutar. Si dejan de hacerlo, alguien reintrodujo un parametro
+#      fuera de rango, y este gate lo dice con el error literal.
+#
+# Mide en la salida del grafo con showinfo, sin encoder de por medio: un banco que se rompe al
+# guardar el frame no puede decir nada sobre la cadena.
+
+on:
+  push:
+    paths:
+      - '.github/workflows/ape-video-chains-gate.yml'
+      - 'tools/ape-image-recipes/ref_chains.txt'
+      - 'tools/ape-image-recipes/ref_chains_fixed.txt'
+      - 'tools/ape-image-recipes/v2_chains_fixed.txt'
+      - 'tools/ape-image-recipes/v2_chains_local.js'
+      - 'tools/ape-image-recipes/fix_ref_chains.js'
+  workflow_dispatch:
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Instalar ffmpeg
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ffmpeg
+          ffmpeg -hide_banner -version | head -2
+
+      - name: El parche de las cadenas es reproducible
+        run: |
+          set -euo pipefail
+          # ref_chains_fixed.txt tiene que ser exactamente lo que produce la herramienta desde las
+          # originales. Si alguien lo edita a mano, deja de ser reproducible y el gate lo dice.
+          node tools/ape-image-recipes/fix_ref_chains.js \
+            tools/ape-image-recipes/ref_chains.txt /tmp/regen.txt
+          if ! diff -q /tmp/regen.txt tools/ape-image-recipes/ref_chains_fixed.txt; then
+            echo '::error::ref_chains_fixed.txt no coincide con lo que genera fix_ref_chains.js'
+            diff /tmp/regen.txt tools/ape-image-recipes/ref_chains_fixed.txt | head -20
+            exit 1
+          fi
+          echo 'ref_chains_fixed.txt es reproducible desde ref_chains.txt'
+
+      - name: Las cadenas TAL CUAL de la lista deben FALLAR
+        run: |
+          set -uo pipefail
+          node tools/ape-image-recipes/v2_chains_local.js \
+            --chains tools/ape-image-recipes/ref_chains.txt > /tmp/orig.json 2>/tmp/orig.err
+          rc=$?
+          echo "exit=$rc (se espera 4: las tres deben fallar)"
+          cat /tmp/orig.err
+          if [ "$rc" -ne 4 ]; then
+            echo '::error::las cadenas originales ya no fallan; el fichero de referencia cambio y la auditoria quedo obsoleta'
+            exit 1
+          fi
+          python3 - <<'PY'
+          import json, sys
+          j = json.load(open('/tmp/orig.json'))
+          r = j['resumen']
+          print(f"  perfiles {r['perfiles']} · ok {r['ok']} · con problema {r['con_problema']}")
+          if r['con_problema'] != r['perfiles'] or r['perfiles'] == 0:
+              sys.exit('::error::se esperaba que fallasen TODAS las cadenas originales')
+          PY
+
+      - name: Las cadenas CORREGIDAS deben EJECUTAR
+        run: |
+          set -uo pipefail
+          node tools/ape-image-recipes/v2_chains_local.js \
+            --chains tools/ape-image-recipes/ref_chains_fixed.txt > /tmp/fix.json 2>/tmp/fix.err
+          rc=$?
+          echo "exit=$rc (se espera 0)"
+          cat /tmp/fix.err
+          if [ "$rc" -ne 0 ]; then
+            echo '::error::alguna cadena corregida dejo de ejecutar: se reintrodujo un parametro fuera de rango'
+            exit 1
+          fi
+          echo 'las tres cadenas corregidas ejecutan'
+
+      - name: Las V2 corregidas del operador deben ejecutar donde se declaro
+        run: |
+          set -uo pipefail
+          # P0 y P1 no estan en el fichero (memoria). P2 no puede con minterpolate a 6144x3456 y esta
+          # documentado; se comprueba que P5/P4/P3 siguen dando EXACTAMENTE su resolucion declarada.
+          node tools/ape-image-recipes/v2_chains_local.js \
+            --chains tools/ape-image-recipes/v2_chains_fixed.txt > /tmp/v2.json 2>/tmp/v2.err
+          cat /tmp/v2.err
+          python3 - <<'PY'
+          import json, sys
+          j = json.load(open('/tmp/v2.json'))
+          ok = {f['perfil']: f for f in j['filas']}
+          fallos = []
+          for p in ('P5', 'P4', 'P3'):
+              f = ok.get(p)
+              if not f or f['estado'] != 'OK' or f['real'] != f['declarado']:
+                  fallos.append(f"{p}: {f['estado'] if f else 'ausente'} ({f and f.get('real')} vs {f and f.get('declarado')})")
+          medidos = [f"{p}={ok[p]['real']}" for p in ('P5', 'P4', 'P3') if p in ok]
+          print("  declaradas y medidas: " + ", ".join(medidos))
+          if fallos:
+              for f in fallos: print(f'::error::{f}')
+              sys.exit(1)
+          print('  P5/P4/P3 ejecutan y dan exactamente su resolucion declarada')
+          # P2 debe constar como no ejecutable, no como aprobado en silencio.
+          p2 = ok.get('P2')
+          if p2 and p2['estado'] == 'OK':
+              print('  AVISO: P2 ahora ejecuta (antes fallaba por memoria de minterpolate). Revisar el informe.')
+          elif p2:
+              print(f"  P2 sigue sin ejecutar, como esta documentado: {p2.get('error','')[:80]}")
+          PY
+
+      - name: Ninguna cadena corregida hace downscale
+        run: |
+          set -uo pipefail
+          fallos=0
+          for par in "1280x720" "1920x1080" "3840x2160"; do
+            echo "  origen $par: sin escalador declarado, salida esperada = origen"
+          done
+          python3 - <<'PY'
+          import json, sys
+          # La regla es NUNCA downscale. Se comprueba sobre lo medido, no sobre lo declarado.
+          j = json.load(open('/tmp/fix.json'))
+          malos = []
+          for f in j['filas']:
+              ow, oh = map(int, f['origen'].split('x'))
+              rw, rh = map(int, f['real'].split('x'))
+              if rw < ow or rh < oh:
+                  malos.append(f"{f['perfil']}: {f['origen']} -> {f['real']} es downscale")
+          for m in malos: print(f'::error::{m}')
+          if malos: sys.exit(1)
+          print('  ninguna cadena baja resolucion respecto a su origen')
+          # Y se deja escrito el otro hecho, para que nadie lo confunda con un upscale:
+          iguales = [f for f in j['filas'] if f['real'] == f['origen']]
+          print(f'  {len(iguales)} de {len(j["filas"])} cadenas devuelven EXACTAMENTE la resolucion de entrada (no escalan)')
+          PY
