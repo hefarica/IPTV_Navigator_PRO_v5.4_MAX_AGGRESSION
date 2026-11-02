@@ -139,11 +139,20 @@ jobs:
         run: |
           set -euo pipefail
           # Las tres directivas del parche. Todo lo demas identico.
-          sed -i 's/^            gzip on;$/            gzip off;/' /tmp/ape/conf/nginx.conf
+          # La indentacion se ignora a proposito: el intento anterior exigia un numero exacto de
+          # espacios y el sed NO aplico, dejando gzip encendido. La asercion de abajo lo detecta.
+          sed -i -E 's/^[[:space:]]*gzip on;[[:space:]]*$/    gzip off;/' /tmp/ape/conf/nginx.conf
           sed -i 's/gzip_static always;/gzip_static on;/' /tmp/ape/conf/nginx.conf
           sed -i 's/gunzip on;/gunzip off;/' /tmp/ape/conf/nginx.conf
           echo '--- directivas relevantes tras el parche ---'
           grep -nE 'gzip|gunzip' /tmp/ape/conf/nginx.conf
+          # ASERCION: si alguna de las tres no se aplico, la prueba no vale y hay que parar aqui.
+          fail=0
+          grep -qE '^[[:space:]]*gzip on;' /tmp/ape/conf/nginx.conf && { echo '::error::gzip on sigue presente, el sed no aplico'; fail=1; }
+          grep -q  'gzip_static always'   /tmp/ape/conf/nginx.conf && { echo '::error::gzip_static always sigue presente'; fail=1; }
+          grep -q  'gunzip on'            /tmp/ape/conf/nginx.conf && { echo '::error::gunzip on sigue presente'; fail=1; }
+          [ "$fail" -eq 0 ] || exit 1
+          echo 'las 3 directivas del parche estan aplicadas'
           nginx -t -c /tmp/ape/conf/nginx.conf
           nginx -s reload -c /tmp/ape/conf/nginx.conf
           sleep 1
