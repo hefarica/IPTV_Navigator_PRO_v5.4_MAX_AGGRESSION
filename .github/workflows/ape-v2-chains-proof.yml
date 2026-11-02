@@ -29,10 +29,21 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Instalar ffmpeg
+        run: |
+          set -euo pipefail
+          if command -v ffmpeg >/dev/null 2>&1; then
+            echo 'ffmpeg ya presente'
+          else
+            echo 'ffmpeg ausente en el runner: se instala'
+            sudo apt-get update -qq
+            sudo apt-get install -y -qq ffmpeg
+          fi
+          ffmpeg -hide_banner -version | head -2
+
       - name: ffmpeg disponible y con que filtros
         run: |
           set -euo pipefail
-          ffmpeg -hide_banner -version | head -2
           echo '--- filtros que usan las cadenas ---'
           for f in bwdif zscale format hqdn3d pp unsharp gradfun cas minterpolate; do
             if ffmpeg -hide_banner -h filter=$f >/dev/null 2>&1; then echo "  OK      $f"; else echo "  FALTA   $f"; fi
@@ -76,7 +87,7 @@ jobs:
 
           echo
           echo '=== RESUMEN ==='
-          column -t -s'|' /tmp/resultado.txt
+          sed 's/|/  |  /g' /tmp/resultado.txt
           echo
           echo "cadenas con problema: $falls"
           if [ "$falls" -ne 0 ]; then
