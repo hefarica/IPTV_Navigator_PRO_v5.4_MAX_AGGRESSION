@@ -784,6 +784,11 @@
                         🛡 LAB Bulletproof Details — ${p.id} (${totalKeys} fields, read-only desde LAB Excel)
                     </summary>
                     <div style="padding: 12px 16px;">
+                        <div style="font-size: 0.78rem; margin-bottom: 10px; padding: 7px 10px; border-radius: 6px; background: rgba(56,189,248,0.10); border: 1px solid rgba(56,189,248,0.28); color: #7dd3fc;">
+                            🔊 AUDIO SAFE · ${_esc((p.settings && p.settings.audio_mode) || 'passthrough_safe')}
+                            · fallback ${_esc((p.settings && p.settings.audio_fallback) || 'aac_lc_2ch')}
+                            · eARC ${_esc((p.settings && p.settings.audio_earc) || 'auto')}
+                        </div>
                         ${meta ? `<div style="font-size: 0.8rem; opacity: 0.85; margin-bottom: 10px;">${meta}</div>` : ''}
                         ${allSections.map(s => `
                             <details class="pm9-lab-section" style="margin-top: 8px;">
