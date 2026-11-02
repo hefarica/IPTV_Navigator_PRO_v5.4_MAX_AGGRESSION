@@ -1,0 +1,272 @@
+name: APE · nginx 206/302 · verificar y aplicar
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Aplica los dos parches medidos que llevan el gate de 12/20 a 20/20:
+#   - gunzip off + gzip_static on   -> desbloquea la pata 206 (4/8 -> 8/8)
+#   - return 301 -> return 302     -> desbloquea la pata 302 (0/4 -> 4/4)
+#
+# POR QUE EXISTE, Y POR QUE EL DEFAULT NO CAMBIA NADA
+#
+# Los dos parches estan medidos en nginx del runner de CI, NO en el host. El marco
+# adversarial nombro el supuesto que podia matarlos: "que el entorno observado sea
+# produccion y no un espejo con estado distinto". Este workflow convierte ese supuesto
+# en una comprobacion: ANTES de tocar nada compara la config viva del host contra el
+# baseline del repo, y si no es identica se para. Un parche generado sobre un snapshot
+# viejo no se aplica: se reporta.
+#
+# REGLA: disparo MANUAL. `verify-only` es el DEFAULT y es de solo lectura. `apply`
+# exige escribir la confirmacion exacta y pasa por el Environment `production`.
+# ═══════════════════════════════════════════════════════════════════════════
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'verify-only = solo compara y muestra el plan (lectura). apply = aplica con backup y rollback.'
+        type: choice
+        options: [verify-only, apply]
+        default: verify-only
+        required: true
+      confirm:
+        description: 'Solo para apply. Escribe exactamente: CONFIRMO 206 y 302 en produccion'
+        type: string
+        required: false
+        default: ''
+
+concurrency:
+  group: ape-nginx-206-302
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  LIVE_CONF: /etc/nginx/sites-available/default
+  BASELINE: vps/nginx/live-baseline-2026-11-02/sites-enabled-default.conf
+  PARCHE_206: vps/nginx/live-baseline-2026-11-02/sites-enabled-default.PATCHED-206-dual.conf
+  PARCHE_302: vps/nginx/live-baseline-2026-11-02/sites-enabled-default.PATCHED-302.conf
+
+jobs:
+  verificar:
+    name: 1 · La config viva y el baseline son el mismo fichero
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: production
+    outputs:
+      identico: ${{ steps.compare.outputs.identico }}
+      sha_vivo: ${{ steps.compare.outputs.sha_vivo }}
+      sha_base: ${{ steps.compare.outputs.sha_base }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Preparar SSH (llave efimera desde secretos del repo)
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          printf '%s\n' "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' "${{ secrets.VPS_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+          printf 'Host *\n  StrictHostKeyChecking yes\n  UserKnownHostsFile ~/.ssh/known_hosts\n  IdentitiesOnly yes\n' > ~/.ssh/config
+          echo "TARGET=${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" >> "$GITHUB_ENV"
+
+      - name: Traer la config VIVA del host (solo lectura)
+        run: |
+          set -euo pipefail
+          ssh "$TARGET" "sudo -n cat '$LIVE_CONF'" > /tmp/live.conf
+          echo "  lineas: $(wc -l < /tmp/live.conf)"
+          echo "  sha256: $(sha256sum /tmp/live.conf | cut -d' ' -f1)"
+          # Ficha de identidad del host: si esto no cuadra, no estamos donde creemos.
+          ssh "$TARGET" 'nginx -v 2>&1; hostname; sudo -n nginx -T 2>/dev/null | grep -c "^# configuration file" || true'
+
+      - name: Comparar contra el baseline del repo
+        id: compare
+        run: |
+          set -uo pipefail
+          sha_vivo=$(sha256sum /tmp/live.conf | cut -d' ' -f1)
+          sha_base=$(sha256sum "$BASELINE" | cut -d' ' -f1)
+          echo "sha_vivo=$sha_vivo" >> "$GITHUB_OUTPUT"
+          echo "sha_base=$sha_base" >> "$GITHUB_OUTPUT"
+          echo "  vivo:     $sha_vivo"
+          echo "  baseline: $sha_base"
+
+          if diff -q /tmp/live.conf "$BASELINE" >/dev/null 2>&1; then
+            echo "identico=true" >> "$GITHUB_OUTPUT"
+            echo "IDENTICO: el baseline del repo ES la config viva. Los parches medidos aplican."
+          else
+            echo "identico=false" >> "$GITHUB_OUTPUT"
+            echo "DISTINTO: la config viva cambio desde el snapshot. El parche NO se aplica."
+            echo "--- diff (vivo -> baseline), primeras 60 lineas ---"
+            diff /tmp/live.conf "$BASELINE" | head -60 || true
+          fi
+
+      - name: Comprobar que los parches siguen siendo reproducibles
+        run: |
+          set -euo pipefail
+          # Los parches del repo tienen que ser el baseline mas los cambios exactos. Si el baseline
+          # cambio y los parches no, ya no representan nada.
+          node tools/ape-http-conformance/make_302_patch.js "$BASELINE" /tmp/regen302.conf
+          if ! diff -q /tmp/regen302.conf "$PARCHE_302"; then
+            echo '::error::PATCHED-302.conf no coincide con lo que genera la herramienta desde el baseline'
+            exit 1
+          fi
+          echo 'el parche 302 versionado es reproducible desde el baseline'
+
+  plan:
+    name: 2 · Plan y verificacion previa del gate (solo lectura)
+    needs: verificar
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Estado del gate ANTES de tocar nada
+        run: |
+          set -uo pipefail
+          # Linea base medida contra el sitio publico. Si produccion ya no falla donde fallaba,
+          # algo cambio y el diagnostico quedo viejo: se reporta antes de aplicar.
+          set +e
+          node tools/ape-http-conformance/gate_matrix.js > /tmp/gate_antes.json 2>/tmp/gate_antes.err
+          rc=$?
+          set -e
+          echo "exit=$rc (12/20 -> exit 1 esperado)"
+          cat /tmp/gate_antes.err
+          node -e "
+            const j=require('/tmp/gate_antes.json');
+            // El campo se llama 'cumplen'. Leer 'pasan' daria undefined, y 'undefined < 20' es false:
+            // la asercion de rollback nunca habria saltado. Se lee el nombre real y se exige presente.
+            if (typeof j.resumen.cumplen !== 'number') {
+              console.log('::error::la matriz no trae resumen.cumplen numerico; no se puede decidir');
+              process.exit(1);
+            }
+            console.log('  celdas: '+j.resumen.celdas+'  cumplen: '+j.resumen.cumplen+'  faltan: '+j.resumen.faltan+'  veredicto: '+j.resumen.veredicto_gate);
+          " || true
+
+      - name: Decidir
+        if: needs.verificar.outputs.identico != 'true'
+        run: |
+          echo '::error::la config viva NO es el baseline del repo. No se aplica nada.'
+          echo 'El parche se genero sobre un snapshot y la realidad ya es otra. Hay que regenerarlo.'
+          echo 'sha vivo:     ${{ needs.verificar.outputs.sha_vivo }}'
+          echo 'sha baseline: ${{ needs.verificar.outputs.sha_base }}'
+          exit 1
+
+  aplicar:
+    name: 3 · Aplicar con backup y rollback automatico
+    needs: [verificar, plan]
+    if: inputs.mode == 'apply' && needs.verificar.outputs.identico == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Exigir la confirmacion literal
+        run: |
+          set -euo pipefail
+          if [ "${{ inputs.confirm }}" != "CONFIRMO 206 y 302 en produccion" ]; then
+            echo '::error::falta la confirmacion literal. No se toca produccion.'
+            echo "  recibido: '${{ inputs.confirm }}'"
+            echo "  esperado: 'CONFIRMO 206 y 302 en produccion'"
+            exit 1
+          fi
+          echo 'confirmacion literal presente'
+
+      - name: Preparar SSH
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          printf '%s\n' "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' "${{ secrets.VPS_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+          printf 'Host *\n  StrictHostKeyChecking yes\n  UserKnownHostsFile ~/.ssh/known_hosts\n  IdentitiesOnly yes\n' > ~/.ssh/config
+          echo "TARGET=${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" >> "$GITHUB_ENV"
+
+      - name: Construir la config parcheada a partir de lo que HAY en el host
+        run: |
+          set -euo pipefail
+          ssh "$TARGET" "sudo -n cat '$LIVE_CONF'" > /tmp/live.conf
+          # Se parte del fichero VIVO, no del baseline: aunque sean identicos (ya comprobado),
+          # partir del vivo elimina cualquier ventana entre la comparacion y la escritura.
+          cp /tmp/live.conf /tmp/nuevo.conf
+
+          apply() {
+            local de="$1" a="$2" desc="$3"
+            if ! grep -q -- "$de" /tmp/nuevo.conf; then
+              echo "::error::no encuentro '$de' en la config viva ($desc)"; return 1
+            fi
+            sed -i "s|$de|$a|g" /tmp/nuevo.conf
+            echo "  aplicado: $desc"
+          }
+
+          # Los tres cambios del parche dual (206) y el 302. Cada uno con su motivo.
+          apply 'gzip_static always;' 'gzip_static on;'   '206: no forzar el .gz si el cliente no lo pide'
+          apply 'gunzip on;'          'gunzip off;'        '206: no descomprimir en vuelo (elimina el rango)'
+          n301=$(grep -c 'return 301 ' /tmp/nuevo.conf || true)
+          [ "$n301" = '1' ] || { echo "::error::se esperaba exactamente 1 'return 301 ' y hay $n301"; exit 1; }
+          sed -i 's|return 301 |return 302 |' /tmp/nuevo.conf
+          echo "  aplicado: 302: 301 permanente -> 302 temporal"
+
+          echo '--- cambios efectivos ---'
+          diff /tmp/live.conf /tmp/nuevo.conf || true
+
+      - name: Backup, prueba y reload con rollback automatico
+        run: |
+          set -uo pipefail
+          STAMP=$(date -u +%Y%m%dT%H%M%SZ)
+          BAK="/root/ape-nginx-backup-$STAMP.conf"
+          echo "backup remoto: $BAK"
+
+          # 1) Copia de seguridad ANTES de escribir nada.
+          ssh "$TARGET" "sudo -n cp -a '$LIVE_CONF' '$BAK' && sudo -n ls -l '$BAK'"
+
+          rollback() {
+            echo "::error::ROLLBACK: restaurando $BAK"
+            ssh "$TARGET" "sudo -n cp -a '$BAK' '$LIVE_CONF' && sudo -n nginx -t && sudo -n nginx -s reload"
+            echo "::error::produccion restaurada al estado anterior"
+          }
+
+          # 2) Escribir la nueva config.
+          scp -q /tmp/nuevo.conf "$TARGET:/tmp/ape-nuevo.conf"
+          if ! ssh "$TARGET" "sudo -n install -m 0644 -o root -g root /tmp/ape-nuevo.conf '$LIVE_CONF'"; then
+            rollback; exit 1
+          fi
+
+          # 3) nginx -t. Si falla, se restaura SIN recargar.
+          if ! ssh "$TARGET" 'sudo -n nginx -t'; then
+            rollback; exit 1
+          fi
+          echo 'nginx -t OK'
+
+          # 4) reload.
+          if ! ssh "$TARGET" 'sudo -n nginx -s reload'; then
+            rollback; exit 1
+          fi
+          sleep 3
+          if ! ssh "$TARGET" 'sudo -n ss -ltn | grep -qE ":443 "'; then
+            rollback; exit 1
+          fi
+          echo "APLICADO. Para revertir: sudo cp -a $BAK $LIVE_CONF && sudo nginx -t && sudo nginx -s reload"
+
+      - name: Matriz DESPUES — 20/20 o rollback
+        run: |
+          set -uo pipefail
+          sleep 5
+          set +e
+          node tools/ape-http-conformance/gate_matrix.js > /tmp/gate_despues.json 2>/tmp/gate_despues.err
+          rc=$?
+          set -e
+          cat /tmp/gate_despues.err
+          node -e "
+            const j=require('/tmp/gate_despues.json');
+            if (typeof j.resumen.cumplen !== 'number') {
+              console.log('::error::la matriz no trae resumen.cumplen numerico; no se puede decidir, se revierte');
+              process.exit(1);
+            }
+            console.log('DESPUES  celdas: '+j.resumen.celdas+'  cumplen: '+j.resumen.cumplen+'  faltan: '+j.resumen.faltan+'  veredicto: '+j.resumen.veredicto_gate);
+            if (j.resumen.cumplen < 20) {
+              console.log('::error::el gate no llego a 20/20 ('+j.resumen.cumplen+'/20) tras aplicar. REVERTIR con el backup.');
+              process.exit(1);
+            }
+            console.log('CONFIRMADO 20/20 medido en produccion');
+          "
