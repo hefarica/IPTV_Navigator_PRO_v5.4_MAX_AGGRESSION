@@ -51,6 +51,21 @@
     return { jit: !!(oj && oj.checked), hdrMode: hdr };
   }
 
+  function currentManifestMetadata() {
+    var dictator = document.getElementById('dictatorMode');
+    var tier = document.querySelector('input[name="dictatorTier"]:checked');
+    var maxQ = document.getElementById('ape-max-quality-toggle');
+    var perceptual = document.getElementById('ape-perceptual-4k-toggle');
+    var maxCompat = document.getElementById('ape-max-compat-toggle');
+    return {
+      dictatorMode: !!(dictator && dictator.checked),
+      dictatorTier: tier ? String(tier.value) : '4K',
+      maxQualityMode: !!(maxQ && maxQ.checked),
+      perceptual4kMode: !!(perceptual && perceptual.checked),
+      maxCompatMode: !!(maxCompat && maxCompat.checked)
+    };
+  }
+
   async function ensureJitCatalog() {
     if (_jitMap.size > 0) return true;
     if (_jitLoading) return _jitLoading;
@@ -94,6 +109,7 @@
       loadOutOpts: loadOutOpts,
       saveOutOpts: saveOutOpts,
       currentOutOpts: currentOutOpts,
+      currentManifestMetadata: currentManifestMetadata,
       ensureJitCatalog: ensureJitCatalog,
       jitUrlForChannel: jitUrlForChannel,
       runDirect: runDirect
@@ -386,7 +402,8 @@
         buffer_delta_pct: d,
         buffer_delta_array: getDeltaArray(d),
         jit: out.jit,
-        hdrMode: out.hdrMode
+        hdrMode: out.hdrMode,
+        manifestMetadata: currentManifestMetadata()
       });
       status('DIRECTO completado · delta ' + d + '% (array por perfil)', '#22c55e');
     } catch (e) {

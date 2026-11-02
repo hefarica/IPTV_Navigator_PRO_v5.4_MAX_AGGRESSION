@@ -1342,6 +1342,18 @@
         if (window.APE_HDR_MODE && window.APE_HDR_MODE !== 'auto') {
             merged.hdr_force = window.APE_HDR_MODE === 'pq' ? 'pq' : 'sdr';
         }
+        // Manifest metadata is deliberately nested and separate from the
+        // operational generation JSON (buffer_delta_*, jit, hdrMode).
+        if (options.manifestMetadata && typeof options.manifestMetadata === 'object') {
+            merged.manifest_metadata = Object.assign({}, options.manifestMetadata);
+            // Preserve the original Typed Arrays option path too: these five
+            // fields are consumed by generateChannelEntry/generateGlobalHeader.
+            merged.dictatorMode = options.manifestMetadata.dictatorMode === true;
+            merged.dictatorTier = String(options.manifestMetadata.dictatorTier || '4K');
+            merged.maxQualityMode = options.manifestMetadata.maxQualityMode === true;
+            merged.perceptual4kMode = options.manifestMetadata.perceptual4kMode === true;
+            merged.maxCompatMode = options.manifestMetadata.maxCompatMode === true;
+        }
 
         // ── [APE-SESSION · G1] modo sesión: flag OFF por defecto ────────────
         // Con el flag OFF `sessCfg.enabled` es false y NO se ejecuta nada de

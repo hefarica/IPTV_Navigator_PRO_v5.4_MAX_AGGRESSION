@@ -29,7 +29,11 @@ function panelContext(catalog) {
   const elements = {
     'ape-out-jit': { checked: false },
     'ape-out-hdr': { value: 'auto' },
-    'ape-delta-input': { value: '15' }
+    'ape-delta-input': { value: '15' },
+    'dictatorMode': { checked: false },
+    'ape-max-quality-toggle': { checked: false },
+    'ape-perceptual-4k-toggle': { checked: false },
+    'ape-max-compat-toggle': { checked: false }
   };
   const store = new Map();
   const calls = [];
@@ -47,6 +51,7 @@ function panelContext(catalog) {
     getElementById: function (id) { return elements[id] || null; },
     querySelector: function (sel) {
       if (sel && sel.indexOf('ape-out-format') !== -1) return { value: 'm3u8' };
+      if (sel && sel.indexOf('dictatorTier') !== -1) return { value: '4K' };
       return null;
     },
     querySelectorAll: function () { return []; },
@@ -99,6 +104,10 @@ async function testA() {
   assert(ctx.hooks, 'test hooks missing');
   ctx.elements['ape-out-jit'].checked = true;
   ctx.elements['ape-out-hdr'].value = 'pq';
+  ctx.elements['dictatorMode'].checked = true;
+  ctx.elements['ape-max-quality-toggle'].checked = false;
+  ctx.elements['ape-perceptual-4k-toggle'].checked = false;
+  ctx.elements['ape-max-compat-toggle'].checked = true;
   ok((await ctx.hooks.ensureJitCatalog()) === true, 'A1 catalog loaded');
   ok(ctx.hooks.jitUrlForChannel({ tvg_id: '3' }) === 'https://iptv-ape.duckdns.org/jit/live/3/master.m3u8', 'A2 tvg_id -> hls');
   ok(ctx.hooks.jitUrlForChannel({ tvg_id: 'nope' }) === null, 'A3 unknown id -> null');
@@ -106,6 +115,9 @@ async function testA() {
   ok(ctx.calls.length === 1, 'A4 controller called once');
   ok(ctx.calls[0].jit === true, 'A5 jit passed to controller');
   ok(ctx.calls[0].hdrMode === 'pq', 'A6 hdrMode passed to controller');
+  ok(ctx.calls[0].manifestMetadata && ctx.calls[0].manifestMetadata.dictatorMode === true, 'A6b dictatorMode passed as metadata');
+  ok(ctx.calls[0].manifestMetadata && ctx.calls[0].manifestMetadata.dictatorTier === '4K', 'A6c dictatorTier passed as metadata');
+  ok(ctx.calls[0].manifestMetadata && ctx.calls[0].manifestMetadata.maxCompatMode === true, 'A6d maxCompatMode passed as metadata');
   ok(ctx.window.APE_USE_JIT === undefined, 'A7 APE_USE_JIT restored');
   ok(ctx.window.APE_HDR_MODE === undefined, 'A8 APE_HDR_MODE restored');
   ctx.hooks.saveOutOpts(true, 'sdr');
@@ -212,15 +224,53 @@ function testB() {
   ok(sdrWithResolver.indexOf('VIDEO-RANGE=SDR') !== -1, 'B7 resolver cannot override forced SDR');
   delete global.APEFallbackResolver;
 
+  const metadataTag = gen._outputMetadataTag({
+    manifest_metadata: {
+      dictatorMode: true,
+      dictatorTier: '4K',
+      maxQualityMode: false,
+      perceptual4kMode: false,
+      maxCompatMode: true
+    }
+  });
+  ok(metadataTag === '#EXT-X-APE-OUTPUT-METADATA:{"dictatorMode":true,"dictatorTier":"4K","maxQualityMode":false,"perceptual4kMode":false,"maxCompatMode":true}', 'B8 manifest metadata tag exact');
+  const mqSdr = gen.generateChannelEntry(channel, 'P4', 0, {}, { maxQualityMode: true, hdr_force: 'sdr' });
+  ok(mqSdr.indexOf('VIDEO-RANGE=SDR') !== -1, 'B9 hdr_force wins over maxQualityMode STREAM-INF');
+
   const auto2 = gen.generateChannelEntry(channel, 'P4', 0, {}, {});
   ok(stableLines(auto) === stableLines(auto2), 'C1 semantic stable with JIT off + HDR auto');
   ok(stableLines(auto).indexOf('/jit/') === -1, 'C2 no JIT URL when JIT off');
 }
 
-(async function main() {
+async function testE() {
+  const gen = global.M3U8TypedArraysGenerator;
+  const channel = { id: '3', tvg_id: '3', name: 'Manifest Test', url: 'http://example.com/live/user/pass/123.ts' };
+  const stream = gen.generateStream([channel], {
+    manifest_metadata: {
+      dictatorMode: true,
+      dictatorTier: '8K',
+      maxQualityMode: false,
+      perceptual4kMode: false,
+      maxCompatMode: true
+    }
+  });
+  const reader = stream.getReader();
+  let text = '';
+  for (;;) {
+    const r = await reader.read();
+    if (r.done) break;
+    text += Buffer.from(r.value).toString('utf8');
+  }
+  ok(text.indexOf('#EXT-X-APE-OUTPUT-METADATA:') !== -1, 'E1 manifest carries output metadata');
+  ok(text.indexOf('"dictatorMode":true') !== -1, 'E2 metadata dictatorMode true');
+  ok(text.indexOf('"maxCompatMode":true') !== -1, 'E3 metadata maxCompatMode true');
+}
+
+async function main() {
   try {
     await testA();
     testB();
+    await testE();
     await testD();
     console.log('\\ntest_out_opts: ' + passed + ' assertions OK');
   } catch (e) {
@@ -228,4 +278,6 @@ function testB() {
     console.error(e && e.stack || e);
     process.exitCode = 1;
   }
-})();
+}
+
+main();

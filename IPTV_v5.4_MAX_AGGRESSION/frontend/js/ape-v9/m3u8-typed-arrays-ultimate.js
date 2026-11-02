@@ -2847,6 +2847,19 @@
         ].join('\n');
     }
 
+    function __apeOutputMetadataTag(options) {
+        const md = options && options.manifest_metadata;
+        if (!md || typeof md !== 'object') return '';
+        const safe = {
+            dictatorMode: md.dictatorMode === true,
+            dictatorTier: String(md.dictatorTier || '4K'),
+            maxQualityMode: md.maxQualityMode === true,
+            perceptual4kMode: md.perceptual4kMode === true,
+            maxCompatMode: md.maxCompatMode === true
+        };
+        return '#EXT-X-APE-OUTPUT-METADATA:' + JSON.stringify(safe);
+    }
+
     function generateGlobalHeader(channelsCount, options = {}) {
         const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 18) + 'Z';
         const totalChannels = typeof window !== 'undefined' && window.app && typeof window.app.getFilteredChannels === 'function' ? window.app.getFilteredChannels().length : channelsCount;
@@ -10956,7 +10969,14 @@ ${__apeContinuityTags().join('\n')}
             const _probedFps_MQ = Number((_probeData && (_probeData.frameRate || _probeData.fps)) || 0);
             const _mqFps = (_probedFps_MQ >= 24) ? _probedFps_MQ : _noProbeFps(profile);
             _fpsSource = (_probedFps_MQ >= 24) ? 'probe' : (_noProbeFps(profile) === 120 ? 'default-120' : 'default-60');
-            _streamInfLine = `#EXT-X-STREAM-INF:BANDWIDTH=${_mqBw},AVERAGE-BANDWIDTH=${Math.round(_mqBw * 0.8)},CODECS="${_mqCodecFirst},ac-3",RESOLUTION=${_mqRes},FRAME-RATE=${Number(_mqFps).toFixed(3)},HDCP-LEVEL=${_hdcpLevel},STABLE-VARIANT-ID="${_stableVariantId}"`; // [FIX-AUDIO 2026-05-23] ac-3 — compatibilidad passthrough universal
+            const _mqForcedRange = options.hdr_force === 'sdr'
+                ? ',VIDEO-RANGE=SDR'
+                : (options.hdr_force === 'pq' ? ',VIDEO-RANGE=PQ' : '');
+            const _mqHdcpChId = String(channel.stream_id || channel.id || channel.name || 'unknown').toLowerCase().replace(/\s+/g, '_');
+            const _mqHdcpMap = (typeof window !== 'undefined' && window.APE_HDCP_PROFILE) ? window.APE_HDCP_PROFILE : {};
+            const _mqHdcpLevel = _mqHdcpMap[_mqHdcpChId] || 'TYPE-1';
+            const _mqStableVariantId = `${_mqHdcpChId}_${profile}`;
+            _streamInfLine = `#EXT-X-STREAM-INF:BANDWIDTH=${_mqBw},AVERAGE-BANDWIDTH=${Math.round(_mqBw * 0.8)},CODECS="${_mqCodecFirst},ac-3",RESOLUTION=${_mqRes},FRAME-RATE=${Number(_mqFps).toFixed(3)}${_mqForcedRange},HDCP-LEVEL=${_mqHdcpLevel},STABLE-VARIANT-ID="${_mqStableVariantId}"`; // [FIX-AUDIO 2026-05-23] ac-3 — compatibilidad passthrough universal
         }
         // ── PERCEPTUAL 4K MODE — DOS MANERAS (2026-06-09 · mandato usuario: conservar el original) ──
         // (1) ORIGINAL (NO se toca): override público resolution→3840x2160 + videoRange→PQ en el
@@ -11682,7 +11702,10 @@ lines.push(`#EXT-X-APE-STREAM-TRUTH:src=${_streamTruth.source},w=${_streamTruth.
 
                 // PASO 1: GLOBAL HEADER
                 if (includeHeader) {
-                    const headerText = generateGlobalHeader(channels.length, options) + '\n' + __omegaComplianceTags();
+                    const _outputMetadataTag = __apeOutputMetadataTag(options);
+                    const headerText = generateGlobalHeader(channels.length, options)
+                        + (_outputMetadataTag ? '\n' + _outputMetadataTag : '')
+                        + '\n' + __omegaComplianceTags();
                     // 🛡️ M5: RFC 8216 order guard — verifica EXTM3U/VERSION/MEDIA-SEQUENCE order.
                     // Solo telemetría: registra violations en _apeAuditAcc.rfcViolations,
                     // NO aborta. Player ignora; verifier post-gen puede reportar.
@@ -12300,7 +12323,8 @@ lines.push(`#EXT-X-APE-STREAM-TRUTH:src=${_streamTruth.source},w=${_streamTruth.
             },
 
             // Generadores individuales (para debug/testing)
-            _generateGlobalHeader: generateGlobalHeader
+            _generateGlobalHeader: generateGlobalHeader,
+            _outputMetadataTag: __apeOutputMetadataTag
         };
 
         // Integración con app
