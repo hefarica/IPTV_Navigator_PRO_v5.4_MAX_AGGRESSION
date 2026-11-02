@@ -1,0 +1,7 @@
+#EXTM3U
+#EXT-X-APE-LAB-SCHEMA-VARIANT:test
+#EXT-X-APE-LAB-PROFILE-P0:NAME="malo",ROLE="malo",FITNESS=0.5,SOLVER="x"
+#EXT-X-APE-LAB-BOUNDS-P0:buffer=[105,315],live_delay=[3,8],nudge_retry=[10,17]
+#EXT-X-APE-LAB-KNOBS-P0:buffer_seconds=50,live_delay_seconds=11,nudgeMaxRetry=13
+#EXTINF:-1,canal
+http://example.invalid/a.ts

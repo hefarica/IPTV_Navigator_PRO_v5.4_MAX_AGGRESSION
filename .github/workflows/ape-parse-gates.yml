@@ -161,3 +161,45 @@ jobs:
               sys.exit(f"::error::lista de 3 canales identicos reporta {j['resumen']['VARIA']} tags VARIA")
           print(f"  OK {j['resumen']['CONSTANTE']} constantes, 0 VARIA")
           PY
+
+      - name: lab_calibration_check no inventa violaciones ni las esconde
+        run: |
+          set -uo pipefail
+          # Direccion 1: dos knobs fuera de su bound -> exit 4 y contados.
+          set +e
+          out=$(node tools/ape-parse-defects/lab_calibration_check.js tools/ape-parse-defects/fixtures/lab_bounds_out.m3u8); code=$?
+          set -e
+          echo "$out"; echo "exit=$code"
+          [ "$code" -eq 4 ] || { echo "::error::fixture fuera de rango con exit $code, se esperaba 4"; exit 1; }
+          python3 - "$out" <<'PY'
+          import json, sys
+          j = json.loads(sys.argv[1])
+          if j['resumen']['violaciones'] != 2:
+              sys.exit(f"::error::esperaba 2 violaciones, reporto {j['resumen']['violaciones']}")
+          nombres = {v['knob'] for v in j['violaciones']}
+          if nombres != {'buffer_seconds', 'live_delay_seconds'}:
+              sys.exit(f"::error::violaciones inesperadas: {sorted(nombres)}")
+          print('  OK 2 violaciones, knobs exactos')
+          PY
+
+          # Direccion 2: todos los knobs en rango -> exit 0 y cero violaciones. Sin esta mitad,
+          # un checker que siempre devuelve 4 se veria verde sobre la lista real.
+          set +e
+          out2=$(node tools/ape-parse-defects/lab_calibration_check.js tools/ape-parse-defects/fixtures/lab_bounds_ok.m3u8); code2=$?
+          set -e
+          echo "$out2"; echo "exit=$code2"
+          [ "$code2" -eq 0 ] || { echo "::error::fixture en rango con exit $code2, se esperaba 0"; exit 1; }
+          python3 - "$out2" <<'PY'
+          import json, sys
+          j = json.loads(sys.argv[1])
+          if j['resumen']['violaciones'] != 0:
+              sys.exit(f"::error::reporto {j['resumen']['violaciones']} violaciones en un fixture coherente")
+          print('  OK 0 violaciones en fixture coherente')
+          PY
+
+          # Direccion 3: un fichero ausente sigue siendo 5, distinto de "hay defectos" (4).
+          set +e
+          node tools/ape-parse-defects/lab_calibration_check.js tools/ape-parse-defects/fixtures/no_existe.m3u8 >/dev/null 2>&1; code3=$?
+          set -e
+          echo "ausente exit=$code3"
+          [ "$code3" -eq 5 ] || { echo "::error::fichero ausente con exit $code3, se esperaba 5"; exit 1; }

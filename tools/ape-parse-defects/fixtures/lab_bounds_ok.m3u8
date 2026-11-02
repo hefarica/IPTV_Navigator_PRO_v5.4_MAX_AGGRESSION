@@ -1,0 +1,7 @@
+#EXTM3U
+#EXT-X-APE-LAB-SCHEMA-VARIANT:test
+#EXT-X-APE-LAB-PROFILE-P1:NAME="ok",ROLE="ok",FITNESS=1,SOLVER="x"
+#EXT-X-APE-LAB-BOUNDS-P1:buffer=[40,100],live_delay=[3,8],nudge_retry=[5,10]
+#EXT-X-APE-LAB-KNOBS-P1:buffer_seconds=50,live_delay_seconds=5,nudgeMaxRetry=7
+#EXTINF:-1,canal
+http://example.invalid/a.ts
