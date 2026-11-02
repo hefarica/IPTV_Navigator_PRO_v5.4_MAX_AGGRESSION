@@ -1,0 +1,19 @@
+{
+  "schema": "ape.skill.install.lock.v1",
+  "name": "iptv-suprema-2026-premium",
+  "version": "1.0.0",
+  "profile": "IPTV_PREMIUM",
+  "based_on": "creador_habilidades",
+  "installed_at": "2026-11-02T00:00:00-05:00",
+  "source": "local",
+  "external_packages": [],
+  "network_required": false,
+  "writes_production": false,
+  "validation": {
+    "command": "python .agents/skills/iptv-suprema-2026-premium/scripts/validate_suprema_profile.py profiles/IPTV_PREMIUM.json",
+    "expected": "ok: true"
+  }
+}
+
+
+
