@@ -41,7 +41,10 @@ permissions:
   contents: read
 
 env:
-  LIVE_CONF: /etc/nginx/sites-available/default
+  # El fichero que nginx CARGA de verdad. En este host sites-enabled/default NO es un symlink a
+  # sites-available/default: son dos ficheros distintos. Leer el de available devolvia 344 lineas sin
+  # gzip_static ni gunzip (medicion 2026-11-02, run 41535518695). El activo es este, 8071 bytes.
+  LIVE_CONF: /etc/nginx/sites-enabled/default
   BASELINE: vps/nginx/live-baseline-2026-11-02/sites-enabled-default.conf
   PARCHE_206: vps/nginx/live-baseline-2026-11-02/sites-enabled-default.PATCHED-206-dual.conf
   PARCHE_302: vps/nginx/live-baseline-2026-11-02/sites-enabled-default.PATCHED-302.conf
