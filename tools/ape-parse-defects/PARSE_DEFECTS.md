@@ -30,11 +30,12 @@
 | Medida | Valor |
 |---|---|
 | líneas > 4.096 B | **10.573** — exactamente una por canal |
+| líneas > 6.144 B | **10.573** — la misma cuenta: ninguna baja de 6 KB |
+| líneas > 8.192 B | **0** |
 | línea más larga | **8.133 B** (línea 96.013) |
-| líneas > 8.192 B | 0 |
 
-Es decir: **todos los bloques de canal llevan una línea de entre ~4 KB y 8,1 KB.** Coincide con el
-censo de `#EXTHTTP` de la cartografía (7.197–8.124 B por bloque).
+Es decir: **las 10.573 líneas de canal caen todas en la banda 6,1–8,1 KB.** No es una cola larga: es un
+bloque uniforme. Coincide con el censo de `#EXTHTTP` de la cartografía (7.197–8.124 B por bloque).
 
 ### Por qué esto rompe parsers de verdad
 
