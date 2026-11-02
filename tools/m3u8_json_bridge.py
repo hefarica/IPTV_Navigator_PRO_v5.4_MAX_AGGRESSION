@@ -12,6 +12,7 @@ Usage:
 """
 import hashlib
 import json
+import re
 import sys
 
 
@@ -26,14 +27,42 @@ def read(path):
     return text
 
 
+def _parse_channels(lines):
+    channels = []
+    ext = None
+    for line in lines:
+        s = line.strip()
+        if s.startswith('#EXTINF'):
+            ext = s
+            continue
+        if ext and s.startswith('http'):
+            attrs = dict(re.findall(r'([A-Za-z0-9_-]+)="([^"]*)"', ext))
+            name = ext.rsplit(',', 1)[-1].strip() if ',' in ext else ''
+            channels.append({
+                'name': name,
+                'tvg_id': attrs.get('tvg-id'),
+                'tvg_name': attrs.get('tvg-name'),
+                'tvg_logo': attrs.get('tvg-logo'),
+                'group_title': attrs.get('group-title'),
+                'url': s,
+                'attributes': attrs,
+            })
+            ext = None
+    return channels
+
+
 def to_doc(text, path):
+    lines = text.splitlines(keepends=True)
     return {
         'schema': 'ape.m3u8.json.v1',
         'source': path,
         'sha256': hashlib.sha256(text.encode('utf-8')).hexdigest(),
-        'line_count': len(text.splitlines(keepends=True)),
-        'channels': sum(1 for l in text.splitlines() if l.startswith('#EXTINF')),
-        'lines': text.splitlines(keepends=True),
+        'line_count': len(lines),
+        'channels': sum(1 for l in lines if l.startswith('#EXTINF')),
+        'lines': lines,
+        # Structured index: useful for skill/Alexa/API consumers. The raw
+        # lines remain the authority for the lossless reverse conversion.
+        'channel_index': _parse_channels(lines),
     }
 
 

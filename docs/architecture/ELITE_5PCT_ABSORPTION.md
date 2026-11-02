@@ -131,3 +131,8 @@ Salida HLS + JSON + REA + catálogo
 
 Verificado sobre FAST: 10.573 canales, 0 duplicados, mismos hashes en dos ejecuciones. DASH/WebRTC/P2P no se fabrican.
 
+
+## Índice estructurado
+
+El JSON del puente conserva `lines` y añade `channel_index` con nombre, `tvg-*`, grupo, URL y atributos. La conversión inversa sigue usando las líneas originales; el índice es aditivo.
+
