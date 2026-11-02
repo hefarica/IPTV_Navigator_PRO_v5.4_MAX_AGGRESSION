@@ -295,6 +295,11 @@ function scanMaster(file) {
     blockTail: [],
     _tail: null,
     _tailChannel: 0,
+    // [G6] Metadata chunked del LAB: #EXT-X-APE-LAB-METADATA:<i>/<n>:<base64>
+    // Los 20 chunks concatenados en orden decodifican el JSON del laboratorio
+    // (51.890 B en la lista de referencia). Un generador que reescribe el fichero
+    // puede tirar uno o truncarlo y el manifiesto seguiria pareciendo valido.
+    labMeta: [],
     firstLines: []
   };
 
@@ -350,6 +355,16 @@ function scanMaster(file) {
         if (!('AUDIO' in v.attrs)) res.streamInfWithoutAudio++;
         if (res.variants.length < 200000) res.variants.push(v);
         res._pendingVariant = v;
+        break;
+      }
+      // [G6] Metadata chunked del LAB. Forma: <i>/<n>:<base64>
+      case '#EXT-X-APE-LAB-METADATA': {
+        const m = /^\s*(\d+)\s*\/\s*(\d+)\s*:(.*)$/.exec(body);
+        if (m && res.labMeta.length < 4096) {
+          res.labMeta.push({ line: res.lines, i: Number(m[1]), n: Number(m[2]), payload: m[3] });
+        } else if (res.labMeta.length < 4096) {
+          res.labMeta.push({ line: res.lines, i: null, n: null, payload: '', malformed: body.slice(0, 120) });
+        }
         break;
       }
       default: break;
@@ -584,6 +599,112 @@ function gateBlockLayout(scan) {
     reason: malos > 0
       ? malos + ' de ' + bloques.length + ' bloques tienen menos de ' + MIN +
         ' tags tras la URI: cerrar el bloque en la URI los pierde en todos esos canales'
+      : null
+  };
+}
+
+// ---------------------------------------------------------------------------
+// G6 — metadata chunked del LAB: completa y decodificable
+// ---------------------------------------------------------------------------
+// La cabecera embebe el laboratorio en N chunks `#EXT-X-APE-LAB-METADATA:<i>/<n>:<b64>`.
+// Concatenados en orden y decodificados UNA vez dan el JSON del LAB (51.890 B, schema
+// ape-lab-metadata-v1, 20 chunks en la lista de referencia). Es la pieza que el operador
+// llama "lo excepcional", y un generador que reescribe el fichero puede tirar un chunk,
+// duplicarlo o truncarlo y el manifiesto seguiria pareciendo valido.
+//
+// Ausente = NO_COMPUTADO, no FAIL: un master puede no ser de este ecosistema y eso no es
+// un defecto. Declarada pero incompleta o indescifrable = FAIL, sin excepcion.
+function gateLabMetadata(scan) {
+  if (!scan.labMeta.length) {
+    return {
+      gate: 'G6_lab_metadata_chunks',
+      status: 'NO_COMPUTADO',
+      reason: 'el master no declara #EXT-X-APE-LAB-METADATA: no hay metadata chunked que verificar',
+      chunks: 0,
+      failures: [],
+      failures_total: 0
+    };
+  }
+
+  const failures = [];
+  const malformed = scan.labMeta.filter(c => c.i === null);
+  if (malformed.length) {
+    failures.push({ kind: 'malformed', count: malformed.length, sample: malformed.slice(0, 5).map(c => c.malformed) });
+  }
+
+  const bien = scan.labMeta.filter(c => c.i !== null);
+  const ns = [...new Set(bien.map(c => c.n))];
+  if (ns.length > 1) {
+    failures.push({ kind: 'n_inconsistente', valores: ns.slice(0, 10) });
+  }
+  const n = ns.length === 1 ? ns[0] : (ns.length ? Math.max(...ns) : 0);
+
+  const vistos = new Set();
+  const duplicados = [];
+  for (const c of bien) {
+    if (vistos.has(c.i)) duplicados.push(c.i);
+    vistos.add(c.i);
+  }
+  if (duplicados.length) {
+    failures.push({ kind: 'indice_duplicado', indices: [...new Set(duplicados)].slice(0, 20) });
+  }
+
+  const faltan = [];
+  const fueraDeRango = [];
+  for (let k = 1; k <= n; k++) if (!vistos.has(k)) faltan.push(k);
+  for (const c of bien) if (c.i < 1 || c.i > n) fueraDeRango.push(c.i);
+  if (faltan.length) failures.push({ kind: 'chunks_faltantes', indices: faltan.slice(0, 50), total_faltan: faltan.length });
+  if (fueraDeRango.length) failures.push({ kind: 'indice_fuera_de_rango', indices: [...new Set(fueraDeRango)].slice(0, 20) });
+
+  // Solo se intenta decodificar si la estructura esta completa: decodificar un conjunto
+  // incompleto daria un JSON invalido por construccion y ocultaria la causa real.
+  let decoded = null;
+  let jsonOk = null;
+  let jsonKeys = null;
+  let b64Ok = null;
+  if (!failures.length) {
+    const concat = bien
+      .slice()
+      .sort((a, b) => a.i - b.i)
+      .map(c => c.payload.replace(/\s+/g, ''))
+      .join('');
+    let buf = null;
+    try {
+      buf = Buffer.from(concat, 'base64');
+      b64Ok = buf.toString('base64') === concat;
+    } catch (_) {
+      b64Ok = false;
+    }
+    if (!b64Ok) {
+      failures.push({ kind: 'base64_invalido', chars: concat.length });
+    } else {
+      decoded = buf.length;
+      const txt = buf.toString('utf8');
+      try {
+        const j = JSON.parse(txt);
+        jsonOk = true;
+        jsonKeys = j && typeof j === 'object' && !Array.isArray(j) ? Object.keys(j).slice(0, 20) : null;
+      } catch (e) {
+        jsonOk = false;
+        failures.push({ kind: 'json_invalido', error: String(e.message).slice(0, 160), inicio: txt.slice(0, 120) });
+      }
+    }
+  }
+
+  return {
+    gate: 'G6_lab_metadata_chunks',
+    status: failures.length ? 'FAIL' : 'PASS',
+    chunks: scan.labMeta.length,
+    declared_total: n,
+    base64_chars: bien.length && !failures.length ? bien.reduce((s, c) => s + c.payload.replace(/\s+/g, '').length, 0) : null,
+    base64_roundtrip_ok: b64Ok,
+    decoded_bytes: decoded,
+    json_valid: jsonOk,
+    json_root_keys: jsonKeys,
+    failures,
+    failures_total: failures.length,
+    reason: failures.length
+      ? 'la metadata chunked del LAB esta declarada pero no es integra: ' + failures.map(f => f.kind).join(', ')
       : null
   };
 }
@@ -870,11 +991,13 @@ function main() {
   const g3 = gateCaps(scan);
   const g4 = gateThroughpass(scan, opt);
   const g5 = gateBlockLayout(scan);
+  const g6 = gateLabMetadata(scan);
 
-  const gates = [g1, g2, g3, g4, g5];
+  const gates = [g1, g2, g3, g4, g5, g6];
   const fails = gates.filter(g => g.status === 'FAIL');
-  // G5 es duro: tirar la cola del bloque es pérdida de datos silenciosa, no un aviso.
-  const hardGates = [g1, g2, g3, g5];
+  // G5 y G6 son duros: tirar la cola del bloque o romper la metadata del LAB es
+  // pérdida de datos silenciosa, no un aviso.
+  const hardGates = [g1, g2, g3, g5, g6];
   const hardUncomputed = hardGates.filter(g => g.status === 'NO_COMPUTADO');
   const allPass = gates.every(g => g.status === 'PASS');
 
@@ -924,7 +1047,11 @@ function main() {
       scan_ms: scanMs,
       total_ms: Date.now() - t0
     },
-    gates: { g1_structure: g1, g2_zero_video_downscale: g2, g3_zero_video_caps: g3, g4_audio_throughpass: g4 },
+    // Derivado del array, NO enumerado a mano: antes esta linea listaba g1..g4 y G5/G6
+    // corrian pero no llegaban al informe JSON, asi que cualquier consumidor del informe
+    // los veia como inexistentes. Un gate invisible en el informe no esta conectado.
+    // La clave va en minusculas para conservar exactamente las claves historicas.
+    gates: Object.fromEntries(gates.map(g => [g.gate.toLowerCase(), g])),
     evidence: {
       master: opt.input,
       master_sha256: scan.sha256,

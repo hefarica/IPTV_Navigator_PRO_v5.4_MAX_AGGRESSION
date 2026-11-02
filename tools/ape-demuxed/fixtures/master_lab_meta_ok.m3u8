@@ -1,0 +1,13 @@
+#EXTM3U
+#EXT-X-APE-LAB-METADATA:1/2:eyJzY2hlbWEiOiJhcGUtbGFiLW1ldGFkYXRhLXYxIiwicHJvZmlsZSI6IlA0IiwiZ2Vu
+#EXT-X-APE-LAB-METADATA:2/2:ZXJhdGVkX2F0IjoiMjAyNi0xMS0wMlQwMDowMDowMC4wMDBaIiwiY2hhbm5lbHMiOjJ9
+#EXTINF:-1 tvg-id="canal-a",Canal A
+#EXTVLCOPT:network-caching=1000
+http://example.test/live/u/p/1.m3u8
+#EXTVLCOPT:clock-jitter=0
+#EXT-X-APE-CRYSTAL-UHD:PROFILE=P4
+
+#EXT-X-STREAM-INF:BANDWIDTH=1000000,RESOLUTION=1920x1080
+http://example.test/live/u/p/2.m3u8
+#EXTVLCOPT:clock-jitter=0
+#EXT-X-APE-CRYSTAL-UHD:PROFILE=P4

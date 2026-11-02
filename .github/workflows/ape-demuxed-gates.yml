@@ -67,3 +67,44 @@ jobs:
           # regresion que existe para cazar. Un gate que nunca falla no es un gate.
           echo "$out" | grep -q 'G5_block_layout_tail *FAIL' || { echo '::error::G5 no fallo con la cola ausente: el gate esta roto'; exit 1; }
           [ "$code" -eq 1 ] || { echo "::error::se esperaba exit 1 en el fixture defectuoso, se obtuvo $code"; exit 1; }
+
+      - name: G6 PASS con la metadata del LAB integra y decodificable
+        run: |
+          set -uo pipefail
+          set +e
+          out=$(node tools/ape-demuxed/verify_demuxed.js tools/ape-demuxed/fixtures/master_lab_meta_ok.m3u8 2>&1)
+          code=$?
+          set -e
+          echo "$out"
+          echo "exit=$code"
+          echo "$out" | grep -q 'G6_lab_metadata_chunks *PASS' || { echo '::error::G6 no dio PASS con la metadata integra'; exit 1; }
+          if [ "$code" -eq 1 ]; then echo '::error::el fixture con metadata integra dio veredicto FAIL'; exit 1; fi
+
+      - name: G6 FAIL cuando falta un chunk del LAB (falsificacion)
+        run: |
+          set -uo pipefail
+          set +e
+          out=$(node tools/ape-demuxed/verify_demuxed.js tools/ape-demuxed/fixtures/master_lab_meta_missing_chunk.m3u8 2>&1)
+          code=$?
+          set -e
+          echo "$out"
+          echo "exit=$code"
+          echo "$out" | grep -q 'G6_lab_metadata_chunks *FAIL' || { echo '::error::G6 no fallo con un chunk perdido: el gate esta roto'; exit 1; }
+          [ "$code" -eq 1 ] || { echo "::error::se esperaba exit 1 con chunk perdido, se obtuvo $code"; exit 1; }
+
+      - name: El informe JSON publica TODOS los gates declarados
+        run: |
+          set -uo pipefail
+          set +e
+          node tools/ape-demuxed/verify_demuxed.js tools/ape-demuxed/fixtures/master_lab_meta_ok.m3u8 --json /tmp/report.json >/dev/null 2>&1
+          set -e
+          # El informe enumeraba g1..g4 a mano y G5/G6 corrian sin llegar al JSON: quien
+          # consumiera el informe los veia como inexistentes. Este assert impide repetirlo.
+          node -e '
+            const j = require("/tmp/report.json");
+            const claves = Object.keys(j.gates);
+            const requeridas = ["g1_structure","g2_zero_video_downscale","g3_zero_video_caps","g4_audio_throughpass","g5_block_layout_tail","g6_lab_metadata_chunks"];
+            const faltan = requeridas.filter(k => !claves.includes(k));
+            if (faltan.length) { console.error("::error::faltan gates en el informe JSON: " + faltan.join(",")); process.exit(1); }
+            console.log("informe JSON con los " + claves.length + " gates: " + claves.join(","));
+          '
