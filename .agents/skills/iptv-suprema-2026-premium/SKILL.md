@@ -129,6 +129,94 @@ Generator chain:
 LAB Excel -> profile JSON -> APE generator -> per-channel headers/tags -> M3U8 -> player
 ```
 
+## 6.1 REA reverse-engineering method
+
+Use this order; do not skip evidence acquisition:
+
+1. **Inventory** the supplied artifacts (DOCX, PDF, JSON validation, live list, channel block).
+2. **Extract** structure: document XML/JSON, playlist lines, headers, blocks.
+3. **Hash and date** every source; record scope limits.
+4. **Compare** documentation against the live list; keep differences, do not reconcile them by guessing.
+5. **Classify** every value into one of the four scopes.
+6. **Build** the profile/recipe from documented values.
+7. **Validate** JSON/frontmatter/commands.
+8. **Report** with states and limits.
+
+REA outputs are not a claim of runtime quality. They are a traceable reconstruction of declarations plus whatever was actually observed.
+
+## 6.2 How the audited list was built
+
+Documented/live construction chain:
+
+```text
+LAB Excel
+  -> per-profile JSON (P0-P5)
+  -> APE generator
+  -> per-channel EXTVLCOPT / KODIPROP / EXT-X-APE / EXTHTTP / EXT-X-CMAF / URI
+  -> M3U8 catalog
+  -> player/session
+```
+
+Catalog numbers:
+
+```text
+10.315.662 lines
+188 header lines before first channel
+10.573 channels
+10.573 unique URLs
+975,643 lines/channel after header
+P4 7.457 / P3 2.308 / P1 808
+```
+
+AXN block (D6):
+
+```text
+1 EXTINF
+133 EXTVLCOPT
+103 KODIPROP
+54 EXTATTRFROMURL
+614 EXT-X-APE-*
+25 EXT-X-CMAF*
+20 EXT-X-VNOVA-*
+18 EXT-X-PHANTOM-*
+1 EXTHTTP (200 fields, 8.124 bytes)
+1 URI
+= 973 registros
+```
+
+This is the concrete evidence for “how the list was created”: per-profile template + per-channel identity + APE metadata + transport headers, not a single hand-written playlist.
+
+## 6.3 Reliability observed
+
+| Signal | Observation |
+|---|---|
+| Host concentration | 10.573/10.573 URLs on `line.tivi-ott.net` |
+| Transport | 100% HTTP; one credential pair embedded |
+| Sample HTTP | 50 probed: 46×200, 4×407 |
+| Redirect | 302 → 200 `application/x-mpegURL` |
+| Direct re-fetch after sample | 461/509 observed |
+| Full health | not measured |
+| Multi-CDN | not present |
+
+Reliability claim must match this evidence: the list has a single logical origin and a rate/connection ceiling; a sample is not proof of all-channel health.
+
+## 6.4 What “supreme image quality” means here
+
+“Suprema” is the **composition target**, not a measured guarantee:
+
+```text
+source truth
++ APE classification
++ spatial/neural reconstruction
++ display target
++ manifest variant
++ fallback ladder
++ buffer/continuity
++ evidence receipt
+```
+
+The list declares 4K/PQ/HEVC L153 and AI-SR/RIFE/LCEVC/HDR paths. It cannot be called verified 4K/PQ unless the bitstream and the applied engine are independently observed. The skill must say `declared` until then.
+
 ## 7. Image pipeline
 
 ### 7.1 Spatial (VLC)

@@ -76,6 +76,54 @@
     "M3U8 catalog",
     "player/session"
   ],
+  "rea_method": [
+    "inventory artifacts",
+    "extract document/list structure",
+    "hash and date sources",
+    "compare documentation vs live list",
+    "classify values into four scopes",
+    "build profile/recipe",
+    "validate JSON/frontmatter/commands",
+    "report states and limits"
+  ],
+  "list_construction": {
+    "catalog": {
+      "lines": 10315662,
+      "header_lines": 188,
+      "channels": 10573,
+      "unique_urls": 10573,
+      "lines_per_channel_after_header": 975.643,
+      "profiles": {"P4": 7457, "P3": 2308, "P1": 808}
+    },
+    "axn_block": {
+      "records": 973,
+      "extinf": 1,
+      "extvlcopt": 133,
+      "kodiprop": 103,
+      "extattrfromurl": 54,
+      "ape": 614,
+      "cmaf": 25,
+      "vnova": 20,
+      "phantom": 18,
+      "exthttp_fields": 200,
+      "exthttp_bytes": 8124,
+      "uri": 1
+    }
+  },
+  "reliability": {
+    "host_concentration": "10573/10573 on line.tivi-ott.net",
+    "transport": "100% HTTP; one credential pair embedded",
+    "sample_http": {"probed": 50, "200": 46, "407": 4},
+    "observed_after_sample": ["461", "509"],
+    "full_health_measured": false,
+    "multi_cdn": false
+  },
+  "supreme_image_quality": {
+    "status": "composition target, not measured guarantee",
+    "declared": ["4K/PQ/HEVC L153 variant", "Real-ESRGAN x4", "RIFE v4", "LCEVC phase 4", "HDR conversion", "VRR 24-120", "VLC spatial chain"],
+    "verified": [],
+    "rule": "declared stays declared until bitstream + applied engine receipt exist"
+  },
   "evidence": {
     "corpus": [
       "White_Paper_APE_REA_4K_6K_8K_v1_2.docx",

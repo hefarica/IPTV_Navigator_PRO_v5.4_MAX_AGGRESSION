@@ -56,6 +56,54 @@ SDR 100 nits + BT2020 + BT1886 + 10-bit + HABLE (color)
 LAB Excel -> JSON por perfil -> generador APE -> headers/tags por canal -> M3U8 -> player
 ```
 
+## Método REA
+
+```text
+inventario -> extracción -> hash/fecha -> comparación docs/live
+-> clasificación por ámbito -> perfil/receta -> validación -> reporte
+```
+
+## Construcción de la lista
+
+```text
+10.315.662 líneas
+188 de encabezado
+10.573 canales
+10.573 URLs únicas
+P4 7.457 · P3 2.308 · P1 808
+```
+
+Bloque AXN D6:
+
+```text
+973 registros: 1 EXTINF + 133 EXTVLCOPT + 103 KODIPROP
++ 54 EXTATTRFROMURL + 614 APE + 25 CMAF
++ 20 VNOVA + 18 PHANTOM + 1 EXTHTTP + 1 URI
+```
+
+## Fiabilidad observada
+
+```text
+100% de URLs en un solo host
+100% HTTP
+un par de credenciales
+muestra 50: 46×200, 4×407
+re-fetch posterior: 461/509
+full health: no medido
+multi-CDN: no
+```
+
+## Suprema calidad
+
+“Suprema” es el objetivo de composición, no una garantía medida:
+
+```text
+source truth + APE + reconstrucción + display
++ variante + fallback + buffer + evidencia
+```
+
+La variante 4K/PQ, AI-SR, RIFE y LCEVC permanecen como `declared` hasta que exista bitstream y recibo de aplicación.
+
 ## Matriz de madurez
 
 | Área | Score | Evidencia |
