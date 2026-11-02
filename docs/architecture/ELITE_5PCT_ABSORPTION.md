@@ -95,3 +95,15 @@ kodiprop: 6
 
 No se declara “639 campos” si el JSON no los contiene. El Gestor muestra los
 headers reales; no se inventan 87 campos para cuadrar una cifra.
+
+## REA generado
+
+```text
+tools/generate_rea_skills.py
+.github/workflows/generate-rea-skills.yml
+REA channels: 10.573
+idempotency: sha256:dec8238cabb459e4...
+```r
+
+El workflow solo transforma; no resuelve URLs ni ejecuta playout.
+

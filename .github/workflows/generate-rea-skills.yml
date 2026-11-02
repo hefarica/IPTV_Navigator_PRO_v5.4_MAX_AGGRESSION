@@ -1,0 +1,38 @@
+name: Generate REA Skills
+
+# Isomorphic M3U8 -> JSON + deterministic idempotency hash.
+# No network resolution, no credential use, no playout.
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'playlists/*.m3u8'
+      - 'tools/generate_rea_skills.py'
+
+permissions:
+  contents: read
+
+jobs:
+  transform:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Generate deterministic REA metadata
+        run: |
+          mkdir -p output/json output/skills
+          shopt -s nullglob
+          for m3u in playlists/*.m3u8; do
+            base="$(basename "$m3u" .m3u8)"
+            python3 tools/generate_rea_skills.py "$m3u" "output/json/$base"
+          done
+          cp output/json/*/alexa_interaction_model.json output/skills/ 2>/dev/null || true
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: rea-skills-isomorphic
+          path: |
+            output/json/
+            output/skills/
