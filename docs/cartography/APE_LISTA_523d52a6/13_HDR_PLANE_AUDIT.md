@@ -49,7 +49,20 @@ HDR-METADATA: PEAK=100,AVG=1000     ← AVG = 1.000 con PEAK = 100
 luminancia de **cualquier píxel**. El promedio de un frame nunca supera a su píxel más brillante,
 luego **MaxFALL ≤ MaxCLL siempre**, para cualquier contenido.
 
-Aquí `AVG > PEAK` en **7.458 canales** (los 7.437 + 20 + 1 con `cll < 1000`).
+Aquí `AVG > PEAK` en **9.765 canales** — todos los que tienen `cll < 1000`:
+
+```
+7.437  (cll=100)   ┐
+2.307  (cll=400)   ├─ 9.765 = la población SDR completa
+   20  (cll=100)   │
+    1  (cll=400)   ┘
+```
+
+Solo los **808** con `cll=1500` son coherentes (`1000 < 1500`). `9.765 + 808 = 10.573`. ✓
+
+> **Corrección de mi propio borrador:** la primera versión de este informe decía 7.458, contando sólo el
+> grupo de 720p. Los 2.307 canales con `cll=400` también tienen `AVG=1000 > PEAK=400`. El número correcto
+> es **9.765**, y coincide exactamente con la población SDR.
 
 **Y la misma cantidad aparece dos veces con valores distintos:**
 
