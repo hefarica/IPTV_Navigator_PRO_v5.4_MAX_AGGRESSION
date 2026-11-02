@@ -1,0 +1,5984 @@
+{
+  "schema": "ape-lista-cartographer/map@1",
+  "generated_at": "2026-11-02T13:37:40.098Z",
+  "tool": {
+    "name": "map_list.js",
+    "version": "1.0.0",
+    "schema": "ape-lista-cartographer/map@1",
+    "node": "v24.12.0",
+    "platform": "win32 x64",
+    "elapsed_ms": 58822
+  },
+  "environment": {
+    "node": "v24.12.0",
+    "platform": "win32 x64",
+    "ffmpeg": {
+      "present": true,
+      "bin": "ffmpeg",
+      "version": "ffmpeg version 8.0.1-full_build-www.gyan.dev Copyright (c) 2000-2025 the FFmpeg developers",
+      "reason": null
+    },
+    "vlc": {
+      "present": true,
+      "version": "3.0.24",
+      "version_source": "declarada por el operador (--vlc-version)",
+      "video_filter_plugins": 41,
+      "avfilter_binaries": 0,
+      "exe": "C:\\Program Files\\VideoLAN\\VLC\\vlc.exe",
+      "reason": null
+    },
+    "vlc4": {
+      "present": false,
+      "reason": "no hay binario VLC 4.x en esta máquina (fila de la matriz en grado x)"
+    }
+  },
+  "source": {
+    "path_masked": "C:\\Users\\HFRC\\AppData\\Local\\DSH_HERRAMIENTAS\\DSH_BLUEGREEN_021\\home\\attachments\\v1\\files\\52\\<REDACTED>\\APE_LISTA_1793589060441.m3u8",
+    "name_masked": "APE_LISTA_1793589060441.m3u8",
+    "bytes": 604593696,
+    "sha256": "523d52a6d147f81ce5a212e47b9c55401fb409cd4a41aee96f8ba80b5b5049d6",
+    "mtime_iso": "2026-11-02T12:29:32.738Z",
+    "lines": 10315662,
+    "channels": 10573,
+    "uri_lines": 10573,
+    "distinct_uris": 10573,
+    "hosts": 1,
+    "logo_hosts": 2,
+    "credential_pairs": 1,
+    "schemes": "http×10573",
+    "uri_templates": [
+      {
+        "template": "http://<HOST>/live/<USER>/<PASS>/100.m3u8",
+        "count": 1
+      },
+      {
+        "template": "http://<HOST>/live/<USER>/<PASS>/1000.m3u8",
+        "count": 1
+      },
+      {
+        "template": "http://<HOST>/live/<USER>/<PASS>/1001244.m3u8",
+        "count": 1
+      },
+      {
+        "template": "http://<HOST>/live/<USER>/<PASS>/1001245.m3u8",
+        "count": 1
+      },
+      {
+        "template": "http://<HOST>/live/<USER>/<PASS>/1001246.m3u8",
+        "count": 1
+      }
+    ],
+    "distinct_stream_ids": 10573,
+    "encoding": {
+      "utf8_errors": 0,
+      "utf8_error_sample": null,
+      "non_ascii_bytes": 88954,
+      "crlf_lines": 0,
+      "max_line_len": 8133,
+      "max_line_len_line": 96013,
+      "ends_with_newline": true
+    }
+  },
+  "scope": {
+    "mode": "muestra",
+    "sample_n": 250,
+    "detail_denominator": 250,
+    "note": "Estructura (líneas, bloques, vocabulario de tags, familias) censal. Capas pesadas (EXTHTTP/overflow con JSON.parse y base64) solo sobre los canales muestreados."
+  },
+  "header": {
+    "lines": 188,
+    "first_extinf_line": 189,
+    "tags": 134,
+    "tag_counts": [
+      {
+        "key": "#EXT-X-SESSION-DATA",
+        "count": 24
+      },
+      {
+        "key": "#EXT-X-APE-LAB-METADATA",
+        "count": 20
+      },
+      {
+        "key": "#KODIPROP",
+        "count": 6
+      },
+      {
+        "key": "#EXTVLCOPT",
+        "count": 4
+      },
+      {
+        "key": "#EXT-X-APE-BUFFER-STRATEGY",
+        "count": 2
+      },
+      {
+        "key": "#EXT-X-SERVER-CONTROL",
+        "count": 2
+      },
+      {
+        "key": "#EXT-X-START",
+        "count": 2
+      },
+      {
+        "key": "#EXT-X-APE-ANTI-FREEZE-NUCLEAR",
+        "count": 1
+      },
+      {
+        "key": "#EXT-X-APE-AUDIO-CODEC-PRIORITY",
+        "count": 1
+      },
+      {
+        "key": "#EXT-X-APE-AUDIO-DOWNMIX",
+        "count": 1
+      },
+      {
+        "key": "#EXT-X-APE-AUDIO-EARC",
+        "count": 1
+      },
+      {
+        "key": "#EXT-X-APE-AUDIO-FALLBACK",
+        "count": 1
+      },
+      {
+        "key": "#EXT-X-APE-AUDIO-NO-DAMAGE",
+        "count": 1
+      },
+      {
+        "key": "#EXT-X-APE-AUDIO-PASSTHROUGH",
+        "count": 1
+      },
+      {
+        "key": "#EXT-X-APE-AUDIO-SAFE-FORMATS",
+        "count": 1
+      },
+      {
+        "key": "#EXT-X-APE-AUDIO-TRANSCODE-ON-INVALID",
+        "count": 1
+      },
+      {
+        "key": "#EXT-X-APE-AUDIO-VALIDATE",
+        "count": 1
+      },
+      {
+        "key": "#EXT-X-APE-AUDIT-OMEGA",
+        "count": 1
+      },
+      {
+        "key": "#EXT-X-APE-AV1-FALLBACK-CHAIN",
+        "count": 1
+      },
+      {
+        "key": "#EXT-X-APE-BUFFER-DYNAMIC-ADJUSTMENT",
+        "count": 1
+      },
+      {
+        "key": "#EXT-X-APE-BUFFER-PRELOAD-SEGMENTS",
+        "count": 1
+      },
+      {
+        "key": "#EXT-X-APE-CHANNELS",
+        "count": 1
+      },
+      {
+        "key": "#EXT-X-APE-CMCD-OBJECT",
+        "count": 1
+      },
+      {
+        "key": "#EXT-X-APE-CMCD-REQUEST",
+        "count": 1
+      },
+      {
+        "key": "#EXT-X-APE-CMCD-SESSION",
+        "count": 1
+      }
+    ],
+    "ape_channels_declared": 10573
+  },
+  "blocks": {
+    "n": 10573,
+    "min": 954,
+    "p50": 976,
+    "mean": 975.643,
+    "p90": 977,
+    "p95": 977,
+    "p99": 977,
+    "max": 981,
+    "sum": 10315474,
+    "histogram": [
+      {
+        "value": 976,
+        "count": 5433,
+        "pct": 51.39
+      },
+      {
+        "value": 977,
+        "count": 3152,
+        "pct": 29.81
+      },
+      {
+        "value": 973,
+        "count": 1705,
+        "pct": 16.13
+      },
+      {
+        "value": 972,
+        "count": 216,
+        "pct": 2.04
+      },
+      {
+        "value": 954,
+        "count": 45,
+        "pct": 0.43
+      },
+      {
+        "value": 978,
+        "count": 20,
+        "pct": 0.19
+      },
+      {
+        "value": 974,
+        "count": 1,
+        "pct": 0.01
+      },
+      {
+        "value": 981,
+        "count": 1,
+        "pct": 0.01
+      }
+    ],
+    "lines_after_uri": [
+      {
+        "value": 3,
+        "count": 10572,
+        "pct": 99.99
+      },
+      {
+        "value": 7,
+        "count": 1,
+        "pct": 0.01
+      }
+    ],
+    "empties": {
+      "total": 10576,
+      "per_block": [
+        {
+          "value": 1,
+          "count": 10572,
+          "pct": 99.99
+        },
+        {
+          "value": 3,
+          "count": 1,
+          "pct": 0.01
+        }
+      ]
+    },
+    "sum_check_exact": true,
+    "sum_check": {
+      "header_lines": 188,
+      "block_lines": 10315474,
+      "total_lines": 10315662
+    }
+  },
+  "tag_vocabulary": {
+    "distinct": 819,
+    "classes": [
+      {
+        "class": "#EXT-X-APE-*",
+        "lines": 6498710
+      },
+      {
+        "class": "#EXTVLCOPT",
+        "lines": 1416786
+      },
+      {
+        "class": "#KODIPROP",
+        "lines": 1089025
+      },
+      {
+        "class": "#EXTATTRFROMURL",
+        "lines": 570942
+      },
+      {
+        "class": "#EXT-X-CMAF*",
+        "lines": 264325
+      },
+      {
+        "class": "#EXT-X-VNOVA*",
+        "lines": 211460
+      },
+      {
+        "class": "#EXT-X-PHANTOM-HYDRA*",
+        "lines": 190314
+      },
+      {
+        "class": "#EXT-X-* (otros)",
+        "lines": 31762
+      },
+      {
+        "class": "#EXTINF",
+        "lines": 10573
+      },
+      {
+        "class": "#EXTHTTP",
+        "lines": 10573
+      },
+      {
+        "class": "#EXT-X-SYS-*",
+        "lines": 42
+      },
+      {
+        "class": "#EXTM3U",
+        "lines": 1
+      }
+    ],
+    "header_only": 129,
+    "block_only": 685,
+    "both": 5,
+    "template_tags": [
+      {
+        "tag": "#EXT-X-DATERANGE",
+        "lines": 10574
+      },
+      {
+        "tag": "#EXT-X-APE-QUANTUM-PIXEL",
+        "lines": 10574
+      },
+      {
+        "tag": "#EXT-X-APE-AUDIO-PASSTHROUGH",
+        "lines": 10574
+      },
+      {
+        "tag": "#EXTINF",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-4KFALSE-MODE",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-4KFALSE-CONTENT-TYPE",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-4KFALSE-TARGET-RES",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-4KFALSE-ENGINE",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXTHTTP",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-OVERFLOW-HEADERS",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-DENYLIST-REMOVED",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-CMAF",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-CMAF-LATENCY",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-CMAF-CHUNK-DURATION",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-CMAF-PART-TARGET",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-CMAF-PART-HOLD-BACK",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-CMAF-CONTAINER",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-CMAF-INIT-SEGMENT",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-CMAF-CODEC-FALLBACK",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-CMAF-AUDIO-FALLBACK",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-CMAF-HDR",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-CMAF-HDR-METADATA",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-CMAF-LCEVC",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-CMAF-AI-SR",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-CMAF-AI-FI",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-CMAF-VRR",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-CMAF-DOLBY-VISION",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-CMAF-ATMOS",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-CMAF-DTS",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-CMAF-TRUEHD",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-CMAF-BUFFER",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-CMAF-NETWORK",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-CMAF-SESSION",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-CMAF-POLIMORFISMO",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-CMAF-IDEMPOTENCIA",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-CMAF-VERSION",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-HDR-DV",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-HDR-METADATA",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-HDR-TRANSFER",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-HDR-PRIMARIES",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-HDR-MATRIX",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-HDR-RANGE",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-HDR-CHROMA",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-HDR-BITDEPTH",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-HDR-COLORSPACE",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-HDR-TONE-MAPPING",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-HDR-GAMUT",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-HDR-WHITEPOINT",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-HDR-BLACKLEVEL",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-HDR-MAXCLL",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-HDR-MAXFALL",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-DV-PROFILE",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-DV-LEVEL",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-DV-COMPATIBILITY",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-DV-CROSSCONVERSION",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-DV-METADATA",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-DV-ENHANCEMENT",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-LCEVC-PHASE",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-LCEVC-ENABLED",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-LCEVC-BITRATE-SAVING",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-LCEVC-QUALITY-BOOST",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-LCEVC-RESOLUTION-BOOST",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-LCEVC-LATENCY",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-LCEVC-FALLBACK",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-AI-SR",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-AI-SR-QUALITY",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-AI-SR-DENOISE",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-AI-SR-SHARPEN",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-AI-SR-ARTIFACT-REMOVAL",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-AI-FI",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-AI-FI-QUALITY",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-AI-FI-GHOSTING",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-AI-FI-BLUR",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-AI-FI-JUDDER",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-VRR",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-VRR-GSYNC",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-VRR-FREESYNC",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-VRR-HDMI21",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-LUMA-PRECISION",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-CHROMA-PRECISION",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-BITRATE-ANARCHY",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-RESOLUTION-SUPREMACY",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-FPS-SUPREMACY",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-TELCHEMY",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-TELCHEMY-QOS",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-TELCHEMY-QOE",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-TELCHEMY-BUFFER",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-TELCHEMY-LATENCY",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-TELCHEMY-BITRATE",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-TELCHEMY-CODEC",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-TELCHEMY-RESOLUTION",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-TELCHEMY-AVAILABILITY",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-TELCHEMY-SID",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-HTTP-QOS-MODE",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-HTTP-QOE-TARGET-MOS",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-HTTP-REBUFFER-TOLERANCE",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-HTTP-ZAPPING-MAX",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-HTTP-STARTUP-MAX",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-SCORECARD",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-SCORECARD-DYNAMIC",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-SCORECARD-THRESHOLD",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-SCORECARD-ACTION",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-RESILIENCE",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-RESILIENCE-FAILOVER",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-RESILIENCE-RETRY",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-RESILIENCE-RECONNECT",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-RESILIENCE-DEGRADATION",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-RESILIENCE-DEGRADATION-L1",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-RESILIENCE-DEGRADATION-L2",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-RESILIENCE-DEGRADATION-L3",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-RESILIENCE-DEGRADATION-L4",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-RESILIENCE-DEGRADATION-L5",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-RESILIENCE-DEGRADATION-L6",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-RESILIENCE-DEGRADATION-L7",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-FLOOR-FUSE",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-FLOOR-FUSE-POLICY",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-RESILIENCE-HEALTH-CHECK",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-RESILIENCE-CIRCUIT-BREAKER",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-RESILIENCE-BULKHEAD",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-RESILIENCE-TIMEOUT",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-RESILIENCE-KEEPALIVE",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-RESILIENCE-PIPELINING",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-RESILIENCE-HTTP2",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-RESILIENCE-HTTP3",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-RESILIENCE-TLS13",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-RESILIENCE-SID",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-SPOOF",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-SPOOF-ANDROID",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-SPOOF-IOS",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-SPOOF-CHROME",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-SPOOF-TIVIMATE",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-SPOOF-OTT",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-SPOOF-KODI",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-SPOOF-EXOPLAYER",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-SPOOF-VLC",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-SPOOF-SAFARI",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-SPOOF-IP",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-SPOOF-REFERER",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-SPOOF-ORIGIN",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-SPOOF-ACCEPT",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-SPOOF-ACCEPT-LANGUAGE",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-SPOOF-ACCEPT-ENCODING",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-SPOOF-CONNECTION",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-SPOOF-CACHE-CONTROL",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-SPOOF-PRAGMA",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-SPOOF-SEC-FETCH-DEST",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-SPOOF-SEC-FETCH-MODE",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-SPOOF-SEC-FETCH-SITE",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-DRM",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-DRM-SECURITY",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-DRM-HDCP",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-DRM-ROBUSTNESS",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-DRM-PERSISTENT",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-DRM-OFFLINE",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-DRM-TIMEOUT",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-DRM-RENEWAL",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-DRM-PLAYREADY",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-DRM-FAIRPLAY",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-DRM-CLEARKEY",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-DRM-AES128",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-DRM-AES256",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-DRM-SAMPLE-AES",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-DRM-CBCS",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-DRM-CENC",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-DRM-KEY-ROTATION",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-DRM-SESSION-ID",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-DRM-REQUEST-ID",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-DRM-NONCE",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-DRM-JWT",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-DRM-PROXY",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-CORTEX",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-CORTEX-LATENCY",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-CORTEX-DIAGNOSIS",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-CORTEX-RESOLUTION",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-CORTEX-DECISION-TREE",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-CORTEX-ERROR-400",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-CORTEX-ERROR-401",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-CORTEX-ERROR-403",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-CORTEX-ERROR-404",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-CORTEX-ERROR-405",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-CORTEX-ERROR-407",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-CORTEX-ERROR-429",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-CORTEX-ERROR-500",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-CORTEX-ERROR-502",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-CORTEX-ERROR-503",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-CORTEX-ERROR-504",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-CORTEX-PILAR5",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-CORTEX-AUTOMATION",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-CORTEX-ML",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-CORTEX-FEEDBACK",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-CORTEX-SID",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-CORTEX-NONCE",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-AUDIO",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-AUDIO-ATMOS",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-AUDIO-DTS-X",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-AUDIO-TRUEHD",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-AUDIO-EAC3",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-AUDIO-AC3",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-AUDIO-AAC",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-AUDIO-MP3",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-AUDIO-SAMPLERATE",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-AUDIO-BITDEPTH",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-AUDIO-BITRATE",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-AUDIO-LANGUAGE",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-AUDIO-TRACK-ID",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-AUDIO-SYNC",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-AUDIO-DESYNC",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-AUDIO-VOLUME",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-AUDIO-NORMALIZATION",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-AUDIO-REPLAY-GAIN",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-AUDIO-TIME-STRETCH",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-AUDIO-FILTER",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-AUDIO-VISUAL",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-BUFFER-NUCLEAR",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-BUFFER-NUCLEAR-TARGET",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-BUFFER-NUCLEAR-MIN",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-BUFFER-NUCLEAR-MAX",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-BUFFER-NUCLEAR-MB",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-BUFFER-NUCLEAR-SEGMENTS",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-BUFFER-NUCLEAR-AHEAD",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-BUFFER-NUCLEAR-BEHIND",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-BUFFER-NUCLEAR-LIVE-DELAY",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-BUFFER-NUCLEAR-HOLD-BACK",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-BUFFER-NUCLEAR-PART-HOLD-BACK",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-BUFFER-NUCLEAR-CHUNK-DURATION",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-BUFFER-NUCLEAR-PART-TARGET",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-BUFFER-NUCLEAR-PREFETCH",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-BUFFER-NUCLEAR-PRELOAD",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-BUFFER-NUCLEAR-WARMUP",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-BUFFER-NUCLEAR-DRAIN",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-BUFFER-NUCLEAR-FLUSH",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-BUFFER-NUCLEAR-STALL-THRESHOLD",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-BUFFER-NUCLEAR-STALL-ACTION",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-BUFFER-NUCLEAR-REBUFFER-THRESHOLD",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-BUFFER-NUCLEAR-SID",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-BBR-HIJACK",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-BBR-HIJACK-BW",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-BBR-HIJACK-AVG-BW",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-BBR-HIJACK-INITIAL-BW",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-BBR-HIJACK-MIN-BW",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-BBR-HIJACK-FACTOR",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-BBR-HIJACK-LOOKAHEAD",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-BBR-HIJACK-LOGIC",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-BBR-HIJACK-SEGCOUNT",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-BBR-HIJACK-RELOAD-THRESHOLD",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-BBR-HIJACK-RELOAD-MAXPERIOD",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-BBR-HIJACK-RELOAD-MINPERIOD",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-BBR-HIJACK-USE-CACHE",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-BBR-HIJACK-USE-ETAG",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-BBR-HIJACK-USE-IF-MODIFIED",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-BBR-HIJACK-USE-IF-NONE-MATCH",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-BBR-HIJACK-USE-RANGE",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-BBR-HIJACK-USE-CHUNKED",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-BBR-HIJACK-USE-KEEPALIVE",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-BBR-HIJACK-USE-HTTP2",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-BBR-HIJACK-USE-HTTP3",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-BBR-HIJACK-SID",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-PLAYER-ENSLAVE",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-PLAYER-ENSLAVE-EXOPLAYER",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-PLAYER-ENSLAVE-VLC",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-PLAYER-ENSLAVE-KODI",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-PLAYER-ENSLAVE-TIVIMATE",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-PLAYER-ENSLAVE-OTT",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-PLAYER-ENSLAVE-FIRETV",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-PLAYER-ENSLAVE-SHIELD",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-PLAYER-ENSLAVE-APPLETV",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-PLAYER-ENSLAVE-ROKU",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-PLAYER-ENSLAVE-TIZEN",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-PLAYER-ENSLAVE-WEBOS",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-PLAYER-ENSLAVE-CHROMECAST",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-PLAYER-ENSLAVE-IOS",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-PLAYER-ENSLAVE-ANDROID",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-PLAYER-ENSLAVE-WINDOWS",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-PLAYER-ENSLAVE-MACOS",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-PLAYER-ENSLAVE-LINUX",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-PLAYER-ENSLAVE-WEBRTC",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-PLAYER-ENSLAVE-WEBTRANSPORT",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-PLAYER-ENSLAVE-WEBSOCKET",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-PLAYER-ENSLAVE-SID",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-QUALITY-OVERRIDE",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-QUALITY-OVERRIDE-RESOLUTION",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-QUALITY-OVERRIDE-FRAMERATE",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-QUALITY-OVERRIDE-CODEC",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-QUALITY-OVERRIDE-AUDIO",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-QUALITY-OVERRIDE-HDR",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-QUALITY-OVERRIDE-NITS",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-QUALITY-OVERRIDE-LCEVC",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-QUALITY-OVERRIDE-AI-SR",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-QUALITY-OVERRIDE-AI-FI",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-QUALITY-OVERRIDE-VRR",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-QUALITY-OVERRIDE-VMAF",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-QUALITY-OVERRIDE-PSNR",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-QUALITY-OVERRIDE-SSIM",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-QUALITY-OVERRIDE-BITDEPTH",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-QUALITY-OVERRIDE-CHROMA",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-QUALITY-OVERRIDE-COLORSPACE",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-QUALITY-OVERRIDE-TRANSFER",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-QUALITY-OVERRIDE-PRIMARIES",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-QUALITY-OVERRIDE-MATRIX",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-QUALITY-OVERRIDE-RANGE",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-QUALITY-OVERRIDE-SID",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-THROUGHPUT",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-THROUGHPUT-MEASURE",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-THROUGHPUT-ESCALATION",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-THROUGHPUT-ESCALATION-L1",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-THROUGHPUT-ESCALATION-L2",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-THROUGHPUT-ESCALATION-L3",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-THROUGHPUT-ESCALATION-L4",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-THROUGHPUT-ESCALATION-L5",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-THROUGHPUT-ESCALATION-L6",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-THROUGHPUT-ESCALATION-L7",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-THROUGHPUT-DEVICE",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-THROUGHPUT-TIER-1",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-THROUGHPUT-TIER-2",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-THROUGHPUT-TIER-3",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-THROUGHPUT-QOS-ESCALATION",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-THROUGHPUT-BOTTLENECK-THRESHOLD",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-THROUGHPUT-BOTTLENECK-ACTION",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-THROUGHPUT-BOTTLENECK-SCALE",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-THROUGHPUT-BOTTLENECK-NOTIFY",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-THROUGHPUT-BOTTLENECK-FAILOVER",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-THROUGHPUT-BOTTLENECK-DEGRADATION",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-THROUGHPUT-SID",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-ISP-EVASION",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-ISP-EVASION-DPI",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-ISP-EVASION-THROTTLE",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-ISP-EVASION-DEEP-INSPECTION",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-ISP-EVASION-TRAFFIC-SHAPING",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-ISP-EVASION-PORT-BLOCKING",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-ISP-EVASION-PROTOCOL-BLOCKING",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-ISP-EVASION-GEO-BLOCKING",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-ISP-EVASION-IP-BLOCKING",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-ISP-EVASION-DNS",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-ISP-EVASION-SNI",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-ISP-EVASION-TLS",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-ISP-EVASION-HTTP2",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-ISP-EVASION-QUIC",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-ISP-EVASION-TIMING",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-ISP-EVASION-FRAGMENTATION",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-ISP-EVASION-PADDING",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-ISP-EVASION-OBFUSCATION",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-ISP-EVASION-CAMOUFLAGE",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-ISP-EVASION-STEALTH",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-ISP-EVASION-INVISIBILITY",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-ISP-EVASION-SID",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-PREFETCH",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-PREFETCH-STRATEGY",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-PREFETCH-TIMEOUT",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-PREFETCH-PRIORITY",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-PREFETCH-PARALLEL",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-PREFETCH-ADAPTIVE-INTELLIGENCE",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-PREFETCH-AI-PREDICTION",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-AI-PREDICT",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-PREFETCH-CACHE",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-PREFETCH-CACHE-SIZE",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-PREFETCH-CACHE-TTL",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-PREFETCH-INIT",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-SESSION-WARMUP",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-SESSION-WARMUP-TIMEOUT",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-SESSION-WARMUP-SEGMENTS",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-SESSION-WARMUP-PARALLEL",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-SESSION-WARMUP-PRIORITY",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-SESSION-WARMUP-CACHE",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-SESSION-WARMUP-PRECONNECT",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-SESSION-WARMUP-DNS-PREFETCH",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-SESSION-WARMUP-TLS-PRECONNECT",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-SESSION-WARMUP-HTTP2-PRECONNECT",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-SESSION-WARMUP-QUIC-PRECONNECT",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-SESSION-WARMUP-SID",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-SESSION-WARMUP-NONCE",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-SPACE-VALIDATOR",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-SPACE-VALIDATOR-MANIFEST",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-SPACE-VALIDATOR-CODECS",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-SPACE-VALIDATOR-AUDIO",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-SPACE-VALIDATOR-HDR",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-SPACE-VALIDATOR-LCEVC",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-SPACE-VALIDATOR-CMAF",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-SPACE-VALIDATOR-DRM",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-SPACE-VALIDATOR-BUFFER",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-SPACE-VALIDATOR-BANDWIDTH",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-SPACE-VALIDATOR-RESOLUTION",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-SPACE-VALIDATOR-FRAMERATE",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-SPACE-VALIDATOR-VMAF",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-SPACE-VALIDATOR-MOS",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-SPACE-VALIDATOR-PSNR",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-SPACE-VALIDATOR-SSIM",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-SPACE-VALIDATOR-JITTER",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-SPACE-VALIDATOR-LOSS",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-SPACE-VALIDATOR-LATENCY",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-SPACE-VALIDATOR-STARTUP",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-SPACE-VALIDATOR-REBUFFER",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-SPACE-VALIDATOR-SID",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-CHECKLIST-14D",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-CHECKLIST-14D-1",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-CHECKLIST-14D-2",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-CHECKLIST-14D-3",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-CHECKLIST-14D-4",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-CHECKLIST-14D-5",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-CHECKLIST-14D-6",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-CHECKLIST-14D-7",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-CHECKLIST-14D-8",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-CHECKLIST-14D-9",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-CHECKLIST-14D-10",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-CHECKLIST-14D-11",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-CHECKLIST-14D-12",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-CHECKLIST-14D-13",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-CHECKLIST-14D-14",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-CHECKLIST-14D-SCORE",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-CHECKLIST-14D-STATUS",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-CHECKLIST-14D-TIMESTAMP",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-CHECKLIST-14D-SID",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-CHECKLIST-14D-NONCE",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-CHECKLIST-14D-LIST-HASH",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-CHECKLIST-14D-VERSION",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-POLIMORFISMO",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-POLIMORFISMO-UNIQUENESS",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-POLIMORFISMO-STRATEGY",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-POLIMORFISMO-SEED",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-POLIMORFISMO-NONCE",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-POLIMORFISMO-SID",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-POLIMORFISMO-LIST-HASH",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-POLIMORFISMO-TIMESTAMP",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-POLIMORFISMO-UA",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-POLIMORFISMO-IP",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-POLIMORFISMO-SESSION",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-POLIMORFISMO-REQUEST",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-POLIMORFISMO-JWT",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-POLIMORFISMO-ANABOLIC",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-POLIMORFISMO-CORTEX",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-POLIMORFISMO-CAPACITY",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-POLIMORFISMO-PHANTOM",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-POLIMORFISMO-EVASION",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-POLIMORFISMO-SPOOF",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-POLIMORFISMO-DRM",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-POLIMORFISMO-RESILIENCE",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-POLIMORFISMO-DEGRADATION",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-IDEMPOTENCIA",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-IDEMPOTENCIA-STRATEGY",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-IDEMPOTENCIA-SEED",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-IDEMPOTENCIA-SID",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-IDEMPOTENCIA-CHANNEL-ID",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-IDEMPOTENCIA-CHANNEL-NAME",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-IDEMPOTENCIA-PROFILE",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-IDEMPOTENCIA-CODEC",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-IDEMPOTENCIA-RESOLUTION",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-IDEMPOTENCIA-FRAMERATE",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-IDEMPOTENCIA-BANDWIDTH",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-IDEMPOTENCIA-HDR",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-IDEMPOTENCIA-NITS",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-IDEMPOTENCIA-BUFFER",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-IDEMPOTENCIA-BUFFER-MB",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-IDEMPOTENCIA-CORTEX",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-IDEMPOTENCIA-PHANTOM",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-IDEMPOTENCIA-DRM",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-IDEMPOTENCIA-JWT",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-IDEMPOTENCIA-ANABOLIC",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-IDEMPOTENCIA-LIST-HASH",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-IDEMPOTENCIA-TIMESTAMP",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-CONTENT-CLASS",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-CONTENT-HEURISTIC",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-CONTENT-HEURISTIC-TYPE",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-CONTENT-HEURISTIC-QOS",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-CONTENT-HEURISTIC-BUFFER",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-CONTENT-HEURISTIC-FPS",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-CONTENT-HEURISTIC-VMAF",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-CONTENT-HEURISTIC-SPORT-MODE",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-CONTENT-HEURISTIC-SPORT-BOOST",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-CONTENT-HEURISTIC-CINEMA-GRAIN",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-CONTENT-HEURISTIC-NEWS-LATENCY",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-CONTENT-HEURISTIC-4K-LCEVC",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-CONTENT-HEURISTIC-REGION",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-CONTENT-HEURISTIC-BRAND",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-CONTENT-HEURISTIC-EXPECTED-BITRATE",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-CONTENT-HEURISTIC-DEVICE-TARGET",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-CONTENT-HEURISTIC-ADAPTIVE-QOS",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-CONTENT-HEURISTIC-ADAPTIVE-BUFFER",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-CONTENT-HEURISTIC-ADAPTIVE-FPS",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-CONTENT-HEURISTIC-ADAPTIVE-VMAF",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-CONTENT-HEURISTIC-SID",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-CONTENT-HEURISTIC-NONCE",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-TLS-JA3",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-TLS-JA4",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-TLS-VERSION",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-TLS-CIPHERS",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-TLS-CURVES",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-TLS-EXTENSIONS",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-TLS-ALPN",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-TLS-SESSION-RESUMPTION",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-TLS-EARLY-DATA",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-TLS-0RTT",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-TLS-SNI-OBFUSCATE",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-TLS-COHERENCE",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-TLS-COHERENCE-CHROME",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-TLS-COHERENCE-ANDROID",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-TLS-COHERENCE-IOS",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-TLS-COHERENCE-EXOPLAYER",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-TLS-COHERENCE-KODI",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-TLS-COHERENCE-VLC",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-TLS-COHERENCE-TIVIMATE",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-TLS-COHERENCE-OTT",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-TLS-SID",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-XTREAM",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-XTREAM-EXPLOIT-1",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-XTREAM-EXPLOIT-2",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-XTREAM-EXPLOIT-3",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-XTREAM-EXPLOIT-4",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-XTREAM-EXPLOIT-5",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-XTREAM-EXPLOIT-6",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-XTREAM-EXPLOIT-7",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-XTREAM-EXPLOIT-8",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-XTREAM-FORMAT",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-XTREAM-QUALITY",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-XTREAM-CODEC",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-XTREAM-RESOLUTION",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-XTREAM-BANDWIDTH",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-XTREAM-OUTPUT",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-XTREAM-CONTAINER",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-XTREAM-PREFETCH",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-XTREAM-WARMUP",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-XTREAM-SESSION",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-XTREAM-NONCE",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-XTREAM-JWT",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-XTREAM-SID",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-MULTI-SERVER",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-MULTI-SERVER-PRIMARY",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-MULTI-SERVER-SECONDARY",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-MULTI-SERVER-TERTIARY",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-MULTI-SERVER-CDN-1",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-MULTI-SERVER-CDN-2",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-MULTI-SERVER-CDN-3",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-MULTI-SERVER-CDN-4",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-MULTI-SERVER-CDN-5",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-MULTI-SERVER-FAILOVER",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-MULTI-SERVER-LOAD-BALANCE",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-MULTI-SERVER-HEALTH-CHECK",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-MULTI-SERVER-LATENCY-THRESHOLD",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-MULTI-SERVER-BANDWIDTH-THRESHOLD",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-MULTI-SERVER-SWITCH-STRATEGY",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-MULTI-SERVER-STICKY-SESSION",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-MULTI-SERVER-GEO-ROUTING",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-MULTI-SERVER-ANYCAST",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-MULTI-SERVER-EDGE-CACHE",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-MULTI-SERVER-ORIGIN-SHIELD",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-MULTI-SERVER-PREFETCH",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-MULTI-SERVER-SID",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-VPN",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-VPN-PROTOCOL",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-VPN-SPLIT-TUNNEL",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-VPN-KILL-SWITCH",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-VPN-DNS-LEAK",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-VPN-IPV6-LEAK",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-VPN-OBFUSCATION",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-VPN-STEALTH",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-VPN-DOUBLE-HOP",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-VPN-MULTI-HOP",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-VPN-ONION",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-VPN-TOR",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-VPN-I2P",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-VPN-PROXY",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-VPN-SOCKS5",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-VPN-HTTP-PROXY",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-VPN-SHADOWSOCKS",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-VPN-V2RAY",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-VPN-TROJAN",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-VPN-XRAY",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-VPN-HYSTERIA",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-VPN-SID",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-VNOVA-LCEVC",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-VNOVA-LCEVC-VERSION",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-VNOVA-LCEVC-CODEC",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-VNOVA-LCEVC-RESOLUTION",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-VNOVA-LCEVC-BANDWIDTH-SAVING",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-VNOVA-LCEVC-QUALITY-BOOST",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-VNOVA-LCEVC-LATENCY",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-VNOVA-LCEVC-FALLBACK",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-VNOVA-LCEVC-FALLBACK-RESOLUTION",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-VNOVA-LCEVC-ENHANCEMENT-LAYER",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-VNOVA-LCEVC-BASE-LAYER",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-VNOVA-LCEVC-ENHANCEMENT-CODEC",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-VNOVA-LCEVC-BASE-CODEC",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-VNOVA-LCEVC-ENHANCEMENT-BANDWIDTH",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-VNOVA-LCEVC-BASE-BANDWIDTH",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-VNOVA-LCEVC-ENHANCEMENT-RESOLUTION",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-VNOVA-LCEVC-BASE-RESOLUTION",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-VNOVA-LCEVC-ENHANCEMENT-FPS",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-VNOVA-LCEVC-BASE-FPS",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-VNOVA-LCEVC-SID",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-CORTEX-TELEMETRY",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-CORTEX-TELEMETRY-VMAF",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-CORTEX-TELEMETRY-MOS",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-CORTEX-TELEMETRY-PSNR",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-CORTEX-TELEMETRY-SSIM",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-CORTEX-TELEMETRY-JITTER",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-CORTEX-TELEMETRY-LOSS",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-CORTEX-TELEMETRY-LATENCY",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-CORTEX-TELEMETRY-STARTUP",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-CORTEX-TELEMETRY-REBUFFER",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-CORTEX-TELEMETRY-BW",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-CORTEX-TELEMETRY-BUFFER",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-CORTEX-TELEMETRY-RESOLUTION",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-CORTEX-TELEMETRY-FPS",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-CORTEX-TELEMETRY-CODEC",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-CORTEX-TELEMETRY-HDR",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-CORTEX-TELEMETRY-LCEVC",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-CORTEX-TELEMETRY-AI-SR",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-CORTEX-TELEMETRY-AI-FI",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-CORTEX-TELEMETRY-DRM",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-CORTEX-TELEMETRY-SID",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-CORTEX-TELEMETRY-NONCE",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-PHANTOM-HYDRA",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-PHANTOM-HYDRA-UA-TIER1",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-PHANTOM-HYDRA-UA-TIER2",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-PHANTOM-HYDRA-UA-TIER3",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-PHANTOM-HYDRA-UA-TIVIMATE",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-PHANTOM-HYDRA-UA-OTT",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-PHANTOM-HYDRA-UA-KODI",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-PHANTOM-HYDRA-UA-EXOPLAYER",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-PHANTOM-HYDRA-UA-VLC",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-PHANTOM-HYDRA-UA-SAFARI",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-PHANTOM-HYDRA-IP",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-PHANTOM-HYDRA-DNS-DOH",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-PHANTOM-HYDRA-SNI",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-PHANTOM-HYDRA-DPI-BYPASS",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-PHANTOM-HYDRA-SANDVINE-BYPASS",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-PHANTOM-HYDRA-GEO-PHANTOM",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-PHANTOM-HYDRA-SID",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-PHANTOM-HYDRA-NONCE",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-DNR-ENGINE",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-DNR-POLICY",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-SYS-SYS-PREFETCH-PARALLEL",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-SYS-SYS-SOCKET-RCVBUF-KB",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-SYS-SYS-TCP-KEEPALIVE-MS",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-SYS-SYS-CATCHUP",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-SYS-SYS-SERVER-POOL-MODE",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-SYS-SYS-PREFETCH-SEGMENTS",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-SYS-SYS-CATCHUP-DAYS",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-SYS-SYS-RECONNECT-COUNT",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-SYS-SYS-TLS-VERIFY-PEER",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-SYS-SYS-CLOCK-SYNCHRO",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-SYS-SYS-CONGESTION-CONTROL",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-SYS-SYS-TLS-SESSION-RESUME",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-NET-MTU",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-NET-PACING",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-NET-QOS-DSCP",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-NET-ECN",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-I-FRAME-STREAM-INF",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-CHANNEL-RUNTIME-CODEC-HEV1",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-QUALITY-SOURCE",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-FALLBACK-TIER",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-CONFIDENCE",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-FALLBACK-REASON",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-QUALITY-MODE",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-CODEC-SOURCE",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-CONTAINER",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-CONTAINER-VERIFIED",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-HDR",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-HDR-VERIFIED",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-8KFAKE",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-4K-PREMIUM",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-STREAM-INF",
+        "lines": 10573
+      },
+      {
+        "tag": "#EXT-X-APE-CRYSTAL-UHD",
+        "lines": 10573
+      }
+    ],
+    "top": [
+      {
+        "tag": "#EXTVLCOPT",
+        "lines": 1416786,
+        "first_line": 147
+      },
+      {
+        "tag": "#KODIPROP",
+        "lines": 1089025,
+        "first_line": 160
+      },
+      {
+        "tag": "#EXTATTRFROMURL",
+        "lines": 570942,
+        "first_line": 497
+      },
+      {
+        "tag": "#EXT-X-APE-AUDIO-PASSTHROUGH",
+        "lines": 10574,
+        "first_line": 169
+      },
+      {
+        "tag": "#EXT-X-APE-QUANTUM-PIXEL",
+        "lines": 10574,
+        "first_line": 156
+      },
+      {
+        "tag": "#EXT-X-DATERANGE",
+        "lines": 10574,
+        "first_line": 88
+      },
+      {
+        "tag": "#EXT-X-APE-4K-PREMIUM",
+        "lines": 10573,
+        "first_line": 1160
+      },
+      {
+        "tag": "#EXT-X-APE-4KFALSE-CONTENT-TYPE",
+        "lines": 10573,
+        "first_line": 216
+      },
+      {
+        "tag": "#EXT-X-APE-4KFALSE-ENGINE",
+        "lines": 10573,
+        "first_line": 218
+      },
+      {
+        "tag": "#EXT-X-APE-4KFALSE-MODE",
+        "lines": 10573,
+        "first_line": 215
+      },
+      {
+        "tag": "#EXT-X-APE-4KFALSE-TARGET-RES",
+        "lines": 10573,
+        "first_line": 217
+      },
+      {
+        "tag": "#EXT-X-APE-8KFAKE",
+        "lines": 10573,
+        "first_line": 1159
+      },
+      {
+        "tag": "#EXT-X-APE-AI-FI",
+        "lines": 10573,
+        "first_line": 463
+      },
+      {
+        "tag": "#EXT-X-APE-AI-FI-BLUR",
+        "lines": 10573,
+        "first_line": 466
+      },
+      {
+        "tag": "#EXT-X-APE-AI-FI-GHOSTING",
+        "lines": 10573,
+        "first_line": 465
+      },
+      {
+        "tag": "#EXT-X-APE-AI-FI-JUDDER",
+        "lines": 10573,
+        "first_line": 467
+      },
+      {
+        "tag": "#EXT-X-APE-AI-FI-QUALITY",
+        "lines": 10573,
+        "first_line": 464
+      },
+      {
+        "tag": "#EXT-X-APE-AI-PREDICT",
+        "lines": 10573,
+        "first_line": 802
+      },
+      {
+        "tag": "#EXT-X-APE-AI-SR",
+        "lines": 10573,
+        "first_line": 458
+      },
+      {
+        "tag": "#EXT-X-APE-AI-SR-ARTIFACT-REMOVAL",
+        "lines": 10573,
+        "first_line": 462
+      },
+      {
+        "tag": "#EXT-X-APE-AI-SR-DENOISE",
+        "lines": 10573,
+        "first_line": 460
+      },
+      {
+        "tag": "#EXT-X-APE-AI-SR-QUALITY",
+        "lines": 10573,
+        "first_line": 459
+      },
+      {
+        "tag": "#EXT-X-APE-AI-SR-SHARPEN",
+        "lines": 10573,
+        "first_line": 461
+      },
+      {
+        "tag": "#EXT-X-APE-AUDIO",
+        "lines": 10573,
+        "first_line": 641
+      },
+      {
+        "tag": "#EXT-X-APE-AUDIO-AAC",
+        "lines": 10573,
+        "first_line": 647
+      },
+      {
+        "tag": "#EXT-X-APE-AUDIO-AC3",
+        "lines": 10573,
+        "first_line": 646
+      },
+      {
+        "tag": "#EXT-X-APE-AUDIO-ATMOS",
+        "lines": 10573,
+        "first_line": 642
+      },
+      {
+        "tag": "#EXT-X-APE-AUDIO-BITDEPTH",
+        "lines": 10573,
+        "first_line": 651
+      },
+      {
+        "tag": "#EXT-X-APE-AUDIO-BITRATE",
+        "lines": 10573,
+        "first_line": 652
+      },
+      {
+        "tag": "#EXT-X-APE-AUDIO-DESYNC",
+        "lines": 10573,
+        "first_line": 656
+      },
+      {
+        "tag": "#EXT-X-APE-AUDIO-DTS-X",
+        "lines": 10573,
+        "first_line": 643
+      },
+      {
+        "tag": "#EXT-X-APE-AUDIO-EAC3",
+        "lines": 10573,
+        "first_line": 645
+      },
+      {
+        "tag": "#EXT-X-APE-AUDIO-FILTER",
+        "lines": 10573,
+        "first_line": 661
+      },
+      {
+        "tag": "#EXT-X-APE-AUDIO-LANGUAGE",
+        "lines": 10573,
+        "first_line": 653
+      },
+      {
+        "tag": "#EXT-X-APE-AUDIO-MP3",
+        "lines": 10573,
+        "first_line": 648
+      },
+      {
+        "tag": "#EXT-X-APE-AUDIO-NORMALIZATION",
+        "lines": 10573,
+        "first_line": 658
+      },
+      {
+        "tag": "#EXT-X-APE-AUDIO-REPLAY-GAIN",
+        "lines": 10573,
+        "first_line": 659
+      },
+      {
+        "tag": "#EXT-X-APE-AUDIO-SAMPLERATE",
+        "lines": 10573,
+        "first_line": 650
+      },
+      {
+        "tag": "#EXT-X-APE-AUDIO-SYNC",
+        "lines": 10573,
+        "first_line": 655
+      },
+      {
+        "tag": "#EXT-X-APE-AUDIO-TIME-STRETCH",
+        "lines": 10573,
+        "first_line": 660
+      }
+    ]
+  },
+  "extinf": {
+    "attributes": [
+      {
+        "name": "tvg-id",
+        "count": 10573
+      },
+      {
+        "name": "tvg-name",
+        "count": 10573
+      },
+      {
+        "name": "tvg-logo",
+        "count": 10573
+      },
+      {
+        "name": "tvg-chno",
+        "count": 10573
+      },
+      {
+        "name": "tvg-shift",
+        "count": 10573
+      },
+      {
+        "name": "group-title",
+        "count": 10573
+      },
+      {
+        "name": "ape-profile",
+        "count": 10573
+      },
+      {
+        "name": "ape-build",
+        "count": 10573
+      },
+      {
+        "name": "ape-region",
+        "count": 10573
+      },
+      {
+        "name": "ape-content-type",
+        "count": 10573
+      },
+      {
+        "name": "ape-lang",
+        "count": 10573
+      },
+      {
+        "name": "ape-country",
+        "count": 10573
+      },
+      {
+        "name": "ape-classify-confidence",
+        "count": 10573
+      },
+      {
+        "name": "ape-fps",
+        "count": 10573
+      },
+      {
+        "name": "ape-transport",
+        "count": 10573
+      },
+      {
+        "name": "ape-codec-family",
+        "count": 10573
+      },
+      {
+        "name": "catchup",
+        "count": 355
+      },
+      {
+        "name": "catchup-days",
+        "count": 355
+      },
+      {
+        "name": "catchup-source",
+        "count": 355
+      }
+    ],
+    "durations": [
+      {
+        "value": "-1",
+        "count": 10573,
+        "pct": 100
+      }
+    ],
+    "forms": [
+      {
+        "form": "attrs|name",
+        "count": 10573
+      }
+    ],
+    "distributions": {
+      "ape-profile": [
+        {
+          "value": "P4",
+          "count": 7457,
+          "pct": 70.53
+        },
+        {
+          "value": "P3",
+          "count": 2308,
+          "pct": 21.83
+        },
+        {
+          "value": "P1",
+          "count": 808,
+          "pct": 7.64
+        }
+      ],
+      "ape-codec-family": [
+        {
+          "value": "h264",
+          "count": 9535,
+          "pct": 90.18
+        },
+        {
+          "value": "hevc",
+          "count": 1038,
+          "pct": 9.82
+        }
+      ]
+    }
+  },
+  "stream_inf": {
+    "instances": 10573,
+    "key_count_distribution": [
+      {
+        "value": 11,
+        "count": 10528,
+        "pct": 99.57
+      },
+      {
+        "value": 6,
+        "count": 45,
+        "pct": 0.43
+      }
+    ],
+    "keys": [
+      {
+        "key": "BANDWIDTH",
+        "count": 10573,
+        "distinct": 3,
+        "values": [
+          {
+            "value": "9000000",
+            "count": 7963
+          },
+          {
+            "value": "12000000",
+            "count": 1757
+          },
+          {
+            "value": "28000000",
+            "count": 853
+          }
+        ]
+      },
+      {
+        "key": "AVERAGE-BANDWIDTH",
+        "count": 10573,
+        "distinct": 3,
+        "values": [
+          {
+            "value": "6500000",
+            "count": 7963
+          },
+          {
+            "value": "9000000",
+            "count": 1757
+          },
+          {
+            "value": "22000000",
+            "count": 853
+          }
+        ]
+      },
+      {
+        "key": "RESOLUTION",
+        "count": 10573,
+        "distinct": 1,
+        "values": [
+          {
+            "value": "3840x2160",
+            "count": 10573
+          }
+        ]
+      },
+      {
+        "key": "FRAME-RATE",
+        "count": 10573,
+        "distinct": 2,
+        "values": [
+          {
+            "value": "30.000",
+            "count": 8651
+          },
+          {
+            "value": "60.000",
+            "count": 1922
+          }
+        ]
+      },
+      {
+        "key": "CODECS",
+        "count": 10573,
+        "distinct": 1,
+        "values": [
+          {
+            "value": "hvc1.2.4.L153.B0,mp4a.40.2",
+            "count": 10573
+          }
+        ]
+      },
+      {
+        "key": "VIDEO-RANGE",
+        "count": 10573,
+        "distinct": 1,
+        "values": [
+          {
+            "value": "PQ",
+            "count": 10573
+          }
+        ]
+      },
+      {
+        "key": "COLOR-PRIMARIES",
+        "count": 10528,
+        "distinct": 1,
+        "values": [
+          {
+            "value": "9",
+            "count": 10528
+          }
+        ]
+      },
+      {
+        "key": "TRANSFER-CHARACTERISTICS",
+        "count": 10528,
+        "distinct": 1,
+        "values": [
+          {
+            "value": "16",
+            "count": 10528
+          }
+        ]
+      },
+      {
+        "key": "MATRIX-COEFFICIENTS",
+        "count": 10528,
+        "distinct": 1,
+        "values": [
+          {
+            "value": "9",
+            "count": 10528
+          }
+        ]
+      },
+      {
+        "key": "HDCP-LEVEL",
+        "count": 10528,
+        "distinct": 1,
+        "values": [
+          {
+            "value": "TYPE-1",
+            "count": 10528
+          }
+        ]
+      },
+      {
+        "key": "STABLE-VARIANT-ID",
+        "count": 10528,
+        "distinct": "alta cardinalidad (>64)",
+        "values": null
+      }
+    ],
+    "bandwidth": {
+      "n": 10573,
+      "min": 9000000,
+      "p50": 9000000,
+      "mean": 11031400.738,
+      "p90": 12000000,
+      "p95": 28000000,
+      "p99": 28000000,
+      "max": 28000000,
+      "sum": 116635000000
+    },
+    "hdcp_missing": 45
+  },
+  "iframe_stream_inf": {
+    "codecs": [
+      {
+        "value": "hvc1.2.4.L93.B0",
+        "count": 7457
+      },
+      {
+        "value": "hvc1.2.4.L123.B0",
+        "count": 2308
+      },
+      {
+        "value": "hvc1.2.4.L153.B0",
+        "count": 808
+      }
+    ]
+  },
+  "daterange": {
+    "transfer": [
+      {
+        "value": "BT.1886",
+        "count": 9765
+      },
+      {
+        "value": "SMPTE_ST_2084",
+        "count": 808
+      }
+    ],
+    "hdr_type": [
+      {
+        "value": "SDR",
+        "count": 7457
+      },
+      {
+        "value": "SDR + HLG fallback",
+        "count": 2308
+      },
+      {
+        "value": "HDR10 + HLG",
+        "count": 808
+      },
+      {
+        "value": "HDR10+DV-P81-P10",
+        "count": 1
+      }
+    ],
+    "bit_depth": [
+      {
+        "value": "8",
+        "count": 9765
+      },
+      {
+        "value": "12",
+        "count": 808
+      }
+    ],
+    "chroma": [
+      {
+        "value": "4:2:0",
+        "count": 10573
+      }
+    ]
+  },
+  "exthttp": {
+    "lines_census": 10573,
+    "objects_analyzed": 250,
+    "valid": 250,
+    "invalid": 0,
+    "non_object": 0,
+    "distinct_fields": 249,
+    "field_stats": {
+      "n": 250,
+      "min": 199,
+      "p50": 199,
+      "mean": 199.488,
+      "p90": 200,
+      "p95": 200,
+      "p99": 200,
+      "max": 200,
+      "sum": 49872
+    },
+    "byte_stats": {
+      "n": 250,
+      "min": 7197,
+      "p50": 8106,
+      "mean": 7813.252,
+      "p90": 8110,
+      "p95": 8110,
+      "p99": 8110,
+      "max": 8110,
+      "sum": 1953313
+    },
+    "toxic_hits": {},
+    "lookalike_hits": {
+      "X-QoS-Priority": 250,
+      "X-Priority": 250
+    },
+    "credential_hits": {},
+    "bearer_values": 0,
+    "jwt_values": 0,
+    "invalid_samples": [],
+    "field_frequency": [
+      {
+        "name": "Accept",
+        "count": 250
+      },
+      {
+        "name": "Accept-CH",
+        "count": 250
+      },
+      {
+        "name": "Accept-Encoding",
+        "count": 250
+      },
+      {
+        "name": "Accept-Language",
+        "count": 250
+      },
+      {
+        "name": "Cache-Control",
+        "count": 250
+      },
+      {
+        "name": "DNT",
+        "count": 250
+      },
+      {
+        "name": "Origin",
+        "count": 250
+      },
+      {
+        "name": "Pragma",
+        "count": 250
+      },
+      {
+        "name": "Referer",
+        "count": 250
+      },
+      {
+        "name": "Sec-GPC",
+        "count": 250
+      },
+      {
+        "name": "User-Agent",
+        "count": 250
+      },
+      {
+        "name": "X-AI-Content-Type",
+        "count": 250
+      },
+      {
+        "name": "X-AI-Motion-Estimation",
+        "count": 250
+      },
+      {
+        "name": "X-AI-SR-Artifact-Removal",
+        "count": 250
+      },
+      {
+        "name": "X-AI-SR-Enabled",
+        "count": 250
+      },
+      {
+        "name": "X-AI-SR-GPU-Acceleration",
+        "count": 250
+      },
+      {
+        "name": "X-AI-SR-Model",
+        "count": 250
+      },
+      {
+        "name": "X-AI-SR-Noise-Reduction",
+        "count": 250
+      },
+      {
+        "name": "X-AI-SR-Precision",
+        "count": 250
+      },
+      {
+        "name": "X-AI-SR-Scale",
+        "count": 250
+      },
+      {
+        "name": "X-AI-SR-Tile-Size",
+        "count": 250
+      },
+      {
+        "name": "X-APE-Profile",
+        "count": 250
+      },
+      {
+        "name": "X-APE-Tier",
+        "count": 250
+      },
+      {
+        "name": "X-App-Version",
+        "count": 250
+      },
+      {
+        "name": "X-Audio-Bitrate",
+        "count": 250
+      },
+      {
+        "name": "X-Audio-Codec-Preferred",
+        "count": 250
+      },
+      {
+        "name": "X-Audio-Codecs",
+        "count": 250
+      },
+      {
+        "name": "X-Audio-DRC-Profile",
+        "count": 250
+      },
+      {
+        "name": "X-Audio-Objects",
+        "count": 250
+      },
+      {
+        "name": "X-Audio-TrueHD",
+        "count": 250
+      },
+      {
+        "name": "X-Average-Bitrate",
+        "count": 250
+      },
+      {
+        "name": "X-Buffer-Max",
+        "count": 250
+      },
+      {
+        "name": "X-Buffer-Min",
+        "count": 250
+      },
+      {
+        "name": "X-Buffer-Size",
+        "count": 250
+      },
+      {
+        "name": "X-Buffer-Strategy",
+        "count": 250
+      },
+      {
+        "name": "X-Buffer-Target",
+        "count": 250
+      },
+      {
+        "name": "X-Buffer-Underrun-Strategy",
+        "count": 250
+      },
+      {
+        "name": "X-CDN-Provider",
+        "count": 250
+      },
+      {
+        "name": "X-Chapter-Markers",
+        "count": 250
+      },
+      {
+        "name": "X-Client-Timestamp",
+        "count": 250
+      }
+    ]
+  },
+  "overflow": {
+    "lines_census": 10573,
+    "objects_analyzed": 250,
+    "decoded": 250,
+    "invalid": 0,
+    "non_object": 0,
+    "field_stats": {
+      "n": 250,
+      "min": 27,
+      "p50": 27,
+      "mean": 35.96,
+      "p90": 65,
+      "p95": 65,
+      "p99": 65,
+      "max": 65,
+      "sum": 8990
+    },
+    "byte_stats": {
+      "n": 250,
+      "min": 1120,
+      "p50": 1120,
+      "mean": 1635.668,
+      "p90": 2901,
+      "p95": 2902,
+      "p99": 2902,
+      "max": 2902,
+      "sum": 408917
+    },
+    "distinct_fields": 66,
+    "invalid_samples": []
+  },
+  "kodiprop": {
+    "lines": 1089025,
+    "distinct_keys": 109,
+    "families": [
+      {
+        "family": "inputstream.adaptive",
+        "lines": 983295
+      },
+      {
+        "family": "inputstream.hlsjs",
+        "lines": 95157
+      },
+      {
+        "family": "inputstream",
+        "lines": 10573
+      }
+    ],
+    "keys": [
+      {
+        "key": "inputstream",
+        "lines": 10573
+      },
+      {
+        "key": "inputstream.adaptive.abr_bandwidth_factor",
+        "lines": 10573
+      },
+      {
+        "key": "inputstream.adaptive.assured_buffer_duration",
+        "lines": 10573
+      },
+      {
+        "key": "inputstream.adaptive.audio_aac",
+        "lines": 10573
+      },
+      {
+        "key": "inputstream.adaptive.audio_ac3",
+        "lines": 10573
+      },
+      {
+        "key": "inputstream.adaptive.audio_bitdepth",
+        "lines": 10573
+      },
+      {
+        "key": "inputstream.adaptive.audio_channels",
+        "lines": 10573
+      },
+      {
+        "key": "inputstream.adaptive.audio_dolby_atmos",
+        "lines": 10573
+      },
+      {
+        "key": "inputstream.adaptive.audio_dts",
+        "lines": 10573
+      },
+      {
+        "key": "inputstream.adaptive.audio_eac3",
+        "lines": 10573
+      },
+      {
+        "key": "inputstream.adaptive.audio_language_preference",
+        "lines": 10573
+      },
+      {
+        "key": "inputstream.adaptive.audio_mp3",
+        "lines": 10573
+      },
+      {
+        "key": "inputstream.adaptive.audio_passthrough",
+        "lines": 10573
+      },
+      {
+        "key": "inputstream.adaptive.audio_samplerate",
+        "lines": 10573
+      },
+      {
+        "key": "inputstream.adaptive.audio_truehd",
+        "lines": 10573
+      },
+      {
+        "key": "inputstream.adaptive.bandwidth_factor",
+        "lines": 10573
+      },
+      {
+        "key": "inputstream.adaptive.buffer_ahead",
+        "lines": 10573
+      },
+      {
+        "key": "inputstream.adaptive.buffer_behind",
+        "lines": 10573
+      },
+      {
+        "key": "inputstream.adaptive.buffer_duration",
+        "lines": 10573
+      },
+      {
+        "key": "inputstream.adaptive.buffer_for_playback_after_rebuffer_ms",
+        "lines": 10573
+      },
+      {
+        "key": "inputstream.adaptive.buffer_for_playback_ms",
+        "lines": 10573
+      },
+      {
+        "key": "inputstream.adaptive.buffer_hold_back",
+        "lines": 10573
+      },
+      {
+        "key": "inputstream.adaptive.buffer_live_delay",
+        "lines": 10573
+      },
+      {
+        "key": "inputstream.adaptive.buffer_part_hold_back",
+        "lines": 10573
+      },
+      {
+        "key": "inputstream.adaptive.buffer_segments",
+        "lines": 10573
+      },
+      {
+        "key": "inputstream.adaptive.buffer_size",
+        "lines": 10573
+      },
+      {
+        "key": "inputstream.adaptive.chooser_bandwidth_max",
+        "lines": 10573
+      },
+      {
+        "key": "inputstream.adaptive.drm_hdcp_level",
+        "lines": 10573
+      },
+      {
+        "key": "inputstream.adaptive.drm_key_request_properties",
+        "lines": 10573
+      },
+      {
+        "key": "inputstream.adaptive.drm_level",
+        "lines": 10573
+      },
+      {
+        "key": "inputstream.adaptive.drm_license_timeout",
+        "lines": 10573
+      },
+      {
+        "key": "inputstream.adaptive.drm_offline_license",
+        "lines": 10573
+      },
+      {
+        "key": "inputstream.adaptive.drm_persistent_license",
+        "lines": 10573
+      },
+      {
+        "key": "inputstream.adaptive.drm_robustness_level",
+        "lines": 10573
+      },
+      {
+        "key": "inputstream.adaptive.drm_security_level",
+        "lines": 10573
+      },
+      {
+        "key": "inputstream.adaptive.drm_server_certificate",
+        "lines": 10573
+      },
+      {
+        "key": "inputstream.adaptive.drm_type",
+        "lines": 10573
+      },
+      {
+        "key": "inputstream.adaptive.frag_load_max_num_retry",
+        "lines": 10573
+      },
+      {
+        "key": "inputstream.adaptive.hdr_bt2020",
+        "lines": 10573
+      },
+      {
+        "key": "inputstream.adaptive.hdr_color_conversion",
+        "lines": 10573
+      }
+    ],
+    "max_resolution": [
+      {
+        "value": "1920x1080",
+        "count": 10573
+      }
+    ],
+    "video_codec": [
+      {
+        "value": "hevc,av1,vp9,h264",
+        "count": 10573
+      }
+    ],
+    "drm_type": [
+      {
+        "value": "widevine",
+        "count": 10573
+      }
+    ]
+  },
+  "extvlcopt": {
+    "lines": 1416786,
+    "distinct_options": 138,
+    "options": [
+      {
+        "option": "adaptive-bandwidth-factor",
+        "lines": 10573
+      },
+      {
+        "option": "adaptive-bw-factor",
+        "lines": 10573
+      },
+      {
+        "option": "adaptive-initial-bandwidth",
+        "lines": 10573
+      },
+      {
+        "option": "adaptive-livedelay",
+        "lines": 10573
+      },
+      {
+        "option": "adaptive-livesyncplaybackrate",
+        "lines": 10573
+      },
+      {
+        "option": "adaptive-logic",
+        "lines": 10573
+      },
+      {
+        "option": "adaptive-lookahead-count",
+        "lines": 10573
+      },
+      {
+        "option": "adaptive-maxbitrate",
+        "lines": 10573
+      },
+      {
+        "option": "adaptive-maxbuffer",
+        "lines": 10573
+      },
+      {
+        "option": "adaptive-maxbw",
+        "lines": 10573
+      },
+      {
+        "option": "adaptive-maxheight",
+        "lines": 10573
+      },
+      {
+        "option": "adaptive-maxwidth",
+        "lines": 10573
+      },
+      {
+        "option": "adaptive-minbitrate",
+        "lines": 10573
+      },
+      {
+        "option": "adaptive-minbw",
+        "lines": 10573
+      },
+      {
+        "option": "adaptive-reload-maxperiod",
+        "lines": 10573
+      },
+      {
+        "option": "adaptive-reload-minperiod",
+        "lines": 10573
+      },
+      {
+        "option": "adaptive-reload-threshold",
+        "lines": 10573
+      },
+      {
+        "option": "adaptive-reload-use-0rtt",
+        "lines": 10573
+      },
+      {
+        "option": "adaptive-reload-use-byte-range",
+        "lines": 10573
+      },
+      {
+        "option": "adaptive-reload-use-cache",
+        "lines": 10573
+      },
+      {
+        "option": "adaptive-reload-use-chunked",
+        "lines": 10573
+      },
+      {
+        "option": "adaptive-reload-use-early-data",
+        "lines": 10573
+      },
+      {
+        "option": "adaptive-reload-use-etag",
+        "lines": 10573
+      },
+      {
+        "option": "adaptive-reload-use-http2",
+        "lines": 10573
+      },
+      {
+        "option": "adaptive-reload-use-http3",
+        "lines": 10573
+      },
+      {
+        "option": "adaptive-reload-use-if-modified-since",
+        "lines": 10573
+      },
+      {
+        "option": "adaptive-reload-use-if-none-match",
+        "lines": 10573
+      },
+      {
+        "option": "adaptive-reload-use-if-range",
+        "lines": 10573
+      },
+      {
+        "option": "adaptive-reload-use-keep-alive",
+        "lines": 10573
+      },
+      {
+        "option": "adaptive-reload-use-pipelining",
+        "lines": 10573
+      },
+      {
+        "option": "adaptive-reload-use-push",
+        "lines": 10573
+      },
+      {
+        "option": "adaptive-reload-use-quic",
+        "lines": 10573
+      },
+      {
+        "option": "adaptive-reload-use-range",
+        "lines": 10573
+      },
+      {
+        "option": "adaptive-reload-use-server-push",
+        "lines": 10573
+      },
+      {
+        "option": "adaptive-reload-use-server-sent-events",
+        "lines": 10573
+      },
+      {
+        "option": "adaptive-reload-use-session-resumption",
+        "lines": 10573
+      },
+      {
+        "option": "adaptive-reload-use-tls13",
+        "lines": 10573
+      },
+      {
+        "option": "adaptive-reload-use-webrtc",
+        "lines": 10573
+      },
+      {
+        "option": "adaptive-reload-use-websocket",
+        "lines": 10573
+      },
+      {
+        "option": "adaptive-reload-use-webtransport",
+        "lines": 10573
+      },
+      {
+        "option": "adaptive-segcount-factor",
+        "lines": 10573
+      },
+      {
+        "option": "adaptive-use-access",
+        "lines": 10573
+      },
+      {
+        "option": "audio-channels",
+        "lines": 10573
+      },
+      {
+        "option": "audio-desync",
+        "lines": 10573
+      },
+      {
+        "option": "audio-language",
+        "lines": 10573
+      },
+      {
+        "option": "audio-replay-gain-mode",
+        "lines": 10573
+      },
+      {
+        "option": "audio-samplerate",
+        "lines": 10573
+      },
+      {
+        "option": "audio-time-stretch",
+        "lines": 10573
+      },
+      {
+        "option": "audio-track-id",
+        "lines": 10573
+      },
+      {
+        "option": "audio-volume",
+        "lines": 10573
+      },
+      {
+        "option": "avcodec-corrupted",
+        "lines": 10573
+      },
+      {
+        "option": "avcodec-dr",
+        "lines": 10573
+      },
+      {
+        "option": "avcodec-error-resilience",
+        "lines": 10573
+      },
+      {
+        "option": "avcodec-fast",
+        "lines": 10573
+      },
+      {
+        "option": "avcodec-hurry-up",
+        "lines": 10573
+      },
+      {
+        "option": "avcodec-hw",
+        "lines": 10573
+      },
+      {
+        "option": "avcodec-skip-frame",
+        "lines": 10573
+      },
+      {
+        "option": "avcodec-skip-idct",
+        "lines": 10573
+      },
+      {
+        "option": "avcodec-threads",
+        "lines": 10573
+      },
+      {
+        "option": "clock-jitter",
+        "lines": 10573
+      }
+    ],
+    "codec": [
+      {
+        "value": "h264",
+        "count": 7457
+      },
+      {
+        "value": "hevc,h264",
+        "count": 2308
+      },
+      {
+        "value": "hevc,av1,h264",
+        "count": 808
+      }
+    ],
+    "hdr_mode": [
+      {
+        "value": "SDR",
+        "count": 10573
+      }
+    ],
+    "hdr_flag": [
+      {
+        "value": "false",
+        "count": 10573
+      }
+    ]
+  },
+  "extattrfromurl": {
+    "lines": 570942,
+    "distinct_attributes": 54,
+    "attributes": [
+      {
+        "attribute": "X-APE-AI-FI",
+        "lines": 10573
+      },
+      {
+        "attribute": "X-APE-AI-SR",
+        "lines": 10573
+      },
+      {
+        "attribute": "X-APE-ANABOLIC-HEADERS",
+        "lines": 10573
+      },
+      {
+        "attribute": "X-APE-ATMOS",
+        "lines": 10573
+      },
+      {
+        "attribute": "X-APE-BANDWIDTH",
+        "lines": 10573
+      },
+      {
+        "attribute": "X-APE-BUFFER",
+        "lines": 10573
+      },
+      {
+        "attribute": "X-APE-BUFFER-MB",
+        "lines": 10573
+      },
+      {
+        "attribute": "X-APE-BUFFER-SEGMENTS",
+        "lines": 10573
+      },
+      {
+        "attribute": "X-APE-CAPACITY-OVERDRIVE",
+        "lines": 10573
+      },
+      {
+        "attribute": "X-APE-CDN-IP",
+        "lines": 10573
+      },
+      {
+        "attribute": "X-APE-CHUNK-DURATION",
+        "lines": 10573
+      },
+      {
+        "attribute": "X-APE-CMAF",
+        "lines": 10573
+      },
+      {
+        "attribute": "X-APE-CODEC",
+        "lines": 10573
+      },
+      {
+        "attribute": "X-APE-CORTEX",
+        "lines": 10573
+      },
+      {
+        "attribute": "X-APE-DOLBY-VISION",
+        "lines": 10573
+      },
+      {
+        "attribute": "X-APE-DRM",
+        "lines": 10573
+      },
+      {
+        "attribute": "X-APE-DRM-HDCP",
+        "lines": 10573
+      },
+      {
+        "attribute": "X-APE-DTS-X",
+        "lines": 10573
+      },
+      {
+        "attribute": "X-APE-EVASION",
+        "lines": 10573
+      },
+      {
+        "attribute": "X-APE-FRAMERATE",
+        "lines": 10573
+      },
+      {
+        "attribute": "X-APE-HDR-MODE",
+        "lines": 10573
+      },
+      {
+        "attribute": "X-APE-HDR-NITS",
+        "lines": 10573
+      },
+      {
+        "attribute": "X-APE-HOLD-BACK",
+        "lines": 10573
+      },
+      {
+        "attribute": "X-APE-IDEMPOTENCIA",
+        "lines": 10573
+      },
+      {
+        "attribute": "X-APE-INIT-SEGMENT",
+        "lines": 10573
+      },
+      {
+        "attribute": "X-APE-JWT",
+        "lines": 10573
+      },
+      {
+        "attribute": "X-APE-LCEVC",
+        "lines": 10573
+      },
+      {
+        "attribute": "X-APE-LIST-HASH",
+        "lines": 10573
+      },
+      {
+        "attribute": "X-APE-LIVE-DELAY",
+        "lines": 10573
+      },
+      {
+        "attribute": "X-APE-MANIFEST-TYPE",
+        "lines": 10573
+      },
+      {
+        "attribute": "X-APE-MANIFEST-VERSION",
+        "lines": 10573
+      },
+      {
+        "attribute": "X-APE-NONCE",
+        "lines": 10573
+      },
+      {
+        "attribute": "X-APE-PART-HOLD-BACK",
+        "lines": 10573
+      },
+      {
+        "attribute": "X-APE-PART-TARGET",
+        "lines": 10573
+      },
+      {
+        "attribute": "X-APE-PLAYLIST-TYPE",
+        "lines": 10573
+      },
+      {
+        "attribute": "X-APE-POLIMORFISMO",
+        "lines": 10573
+      },
+      {
+        "attribute": "X-APE-PROFILE",
+        "lines": 10573
+      },
+      {
+        "attribute": "X-APE-QUANTUM-PIXEL",
+        "lines": 10573
+      },
+      {
+        "attribute": "X-APE-REQUEST-ID",
+        "lines": 10573
+      },
+      {
+        "attribute": "X-APE-RESOLUTION",
+        "lines": 10573
+      },
+      {
+        "attribute": "X-APE-SCORECARD",
+        "lines": 10573
+      },
+      {
+        "attribute": "X-APE-SESSION-ID",
+        "lines": 10573
+      },
+      {
+        "attribute": "X-APE-SID",
+        "lines": 10573
+      },
+      {
+        "attribute": "X-APE-SPOOF-IP",
+        "lines": 10573
+      },
+      {
+        "attribute": "X-APE-SPOOF-UA",
+        "lines": 10573
+      },
+      {
+        "attribute": "X-APE-SPORT-MODE",
+        "lines": 10573
+      },
+      {
+        "attribute": "X-APE-SPORT-MODE-BOOST",
+        "lines": 10573
+      },
+      {
+        "attribute": "X-APE-TARGET-DURATION",
+        "lines": 10573
+      },
+      {
+        "attribute": "X-APE-TELCHEMY",
+        "lines": 10573
+      },
+      {
+        "attribute": "X-APE-TIMESTAMP",
+        "lines": 10573
+      },
+      {
+        "attribute": "X-APE-TRUEHD",
+        "lines": 10573
+      },
+      {
+        "attribute": "X-APE-UA-PHANTOM",
+        "lines": 10573
+      },
+      {
+        "attribute": "X-APE-VMAF",
+        "lines": 10573
+      },
+      {
+        "attribute": "X-APE-VRR",
+        "lines": 10573
+      }
+    ]
+  },
+  "families": {
+    "ape": {
+      "tags": 688,
+      "lines": 6498710
+    },
+    "cmaf": {
+      "tags": 25,
+      "lines": 264325,
+      "container": [
+        {
+          "value": "mpegts",
+          "count": 10573
+        }
+      ]
+    },
+    "vnova": {
+      "tags": 20,
+      "lines": 211460,
+      "base_resolution": [
+        {
+          "value": "1920x1080",
+          "count": 10573
+        }
+      ]
+    },
+    "phantom": {
+      "tags": 18,
+      "lines": 190314
+    },
+    "ext_x_map": 0,
+    "ext_x_media": 0,
+    "ext_x_version": "9"
+  },
+  "video_filter": {
+    "entries": 10573,
+    "distinct_chains": 3,
+    "chains": [
+      {
+        "sha8": "8d81dab8",
+        "length": 277,
+        "channels": 7457,
+        "share_pct": 70.53,
+        "profiles": {
+          "P4": 7457
+        },
+        "stages": [
+          "denoise",
+          "deinterlace",
+          "sharpening",
+          "motion_interp"
+        ],
+        "filters": [
+          "hqdn3d",
+          "yadif",
+          "unsharp",
+          "minterpolate"
+        ],
+        "vlc_modules": [
+          "hqdn3d"
+        ],
+        "not_vlc_modules": [
+          "yadif",
+          "unsharp",
+          "minterpolate"
+        ],
+        "ffmpeg_syntax": {
+          "status": "FAIL",
+          "violations": [
+            {
+              "filter": "unsharp",
+              "param": "chroma_msize_x",
+              "kind": "fuera_de_rango",
+              "value": "0",
+              "detail": "rango real [3 .. 23] (ffmpeg -h filter=unsharp)"
+            },
+            {
+              "filter": "unsharp",
+              "param": "chroma_msize_y",
+              "kind": "fuera_de_rango",
+              "value": "0",
+              "detail": "rango real [3 .. 23] (ffmpeg -h filter=unsharp)"
+            }
+          ],
+          "unverifiable": 8,
+          "unverifiable_params": [
+            {
+              "filter": "hqdn3d",
+              "param": "luma_spatial",
+              "value": "2.0",
+              "type": "double",
+              "why": "tipo string: lo resuelve el filtro al ejecutar"
+            },
+            {
+              "filter": "hqdn3d",
+              "param": "chroma_spatial",
+              "value": "1.5",
+              "type": "double",
+              "why": "tipo string: lo resuelve el filtro al ejecutar"
+            },
+            {
+              "filter": "hqdn3d",
+              "param": "luma_tmp",
+              "value": "3.0",
+              "type": "double",
+              "why": "tipo string: lo resuelve el filtro al ejecutar"
+            },
+            {
+              "filter": "hqdn3d",
+              "param": "chroma_tmp",
+              "value": "2.5",
+              "type": "double",
+              "why": "tipo string: lo resuelve el filtro al ejecutar"
+            },
+            {
+              "filter": "minterpolate",
+              "param": "fps",
+              "value": "120",
+              "type": "video_rate",
+              "why": "tipo string: lo resuelve el filtro al ejecutar"
+            },
+            {
+              "filter": "minterpolate",
+              "param": "mi_mode",
+              "value": "mci",
+              "type": "int",
+              "why": "valor simbólico sobre parámetro <int>"
+            },
+            {
+              "filter": "minterpolate",
+              "param": "mc_mode",
+              "value": "aobmc",
+              "type": "int",
+              "why": "valor simbólico sobre parámetro <int>"
+            },
+            {
+              "filter": "minterpolate",
+              "param": "me",
+              "value": "epzs",
+              "type": "int",
+              "why": "valor simbólico sobre parámetro <int>"
+            }
+          ],
+          "filters": [
+            "hqdn3d",
+            "yadif",
+            "unsharp",
+            "minterpolate"
+          ]
+        },
+        "chain_redacted": "hqdn3d=luma_spatial=2.0:chroma_spatial=1.5:luma_tmp=3.0:chroma_tmp=2.5,yadif=mode=1:parity=-1:deint=0,unsharp=luma_msize_x=3:luma_msize_y=3:luma_amount=0.25:chroma_msize_x=0:chroma_msize_y=0:chroma_amount=0.0,minterpolate=fps=120:mi_mode=mci:mc_mode=aobmc:vsbmc=1:me=epzs:scd=0"
+      },
+      {
+        "sha8": "bafb024d",
+        "length": 344,
+        "channels": 2308,
+        "share_pct": 21.83,
+        "profiles": {
+          "P3": 2308
+        },
+        "stages": [
+          "denoise",
+          "deinterlace",
+          "debanding",
+          "sharpening",
+          "color_hdr",
+          "motion_interp"
+        ],
+        "filters": [
+          "nlmeans",
+          "bwdif",
+          "gradfun",
+          "unsharp",
+          "zscale",
+          "minterpolate"
+        ],
+        "vlc_modules": [
+          "gradfun"
+        ],
+        "not_vlc_modules": [
+          "nlmeans",
+          "bwdif",
+          "unsharp",
+          "zscale",
+          "minterpolate"
+        ],
+        "ffmpeg_syntax": {
+          "status": "FAIL",
+          "violations": [
+            {
+              "filter": "unsharp",
+              "param": "chroma_msize_x",
+              "kind": "fuera_de_rango",
+              "value": "0",
+              "detail": "rango real [3 .. 23] (ffmpeg -h filter=unsharp)"
+            },
+            {
+              "filter": "unsharp",
+              "param": "chroma_msize_y",
+              "kind": "fuera_de_rango",
+              "value": "0",
+              "detail": "rango real [3 .. 23] (ffmpeg -h filter=unsharp)"
+            }
+          ],
+          "unverifiable": 9,
+          "unverifiable_params": [
+            {
+              "filter": "zscale",
+              "param": "transfer",
+              "value": "bt709",
+              "type": "int",
+              "why": "tipo string: lo resuelve el filtro al ejecutar"
+            },
+            {
+              "filter": "zscale",
+              "param": "primaries",
+              "value": "bt709",
+              "type": "int",
+              "why": "tipo string: lo resuelve el filtro al ejecutar"
+            },
+            {
+              "filter": "zscale",
+              "param": "matrix",
+              "value": "bt709",
+              "type": "int",
+              "why": "tipo string: lo resuelve el filtro al ejecutar"
+            },
+            {
+              "filter": "zscale",
+              "param": "dither",
+              "value": "error_diffusion",
+              "type": "int",
+              "why": "valor simbólico sobre parámetro <int>"
+            },
+            {
+              "filter": "zscale",
+              "param": "range",
+              "value": "full",
+              "type": "int",
+              "why": "valor simbólico sobre parámetro <int>"
+            },
+            {
+              "filter": "minterpolate",
+              "param": "fps",
+              "value": "120",
+              "type": "video_rate",
+              "why": "tipo string: lo resuelve el filtro al ejecutar"
+            },
+            {
+              "filter": "minterpolate",
+              "param": "mi_mode",
+              "value": "mci",
+              "type": "int",
+              "why": "valor simbólico sobre parámetro <int>"
+            },
+            {
+              "filter": "minterpolate",
+              "param": "mc_mode",
+              "value": "aobmc",
+              "type": "int",
+              "why": "valor simbólico sobre parámetro <int>"
+            }
+          ],
+          "filters": [
+            "nlmeans",
+            "bwdif",
+            "gradfun",
+            "unsharp",
+            "zscale",
+            "minterpolate"
+          ]
+        },
+        "chain_redacted": "nlmeans=s=2.5:p=5:r=11,bwdif=mode=1:parity=-1:deint=0,gradfun=radius=12:strength=0.8,unsharp=luma_msize_x=3:luma_msize_y=3:luma_amount=0.3:chroma_msize_x=0:chroma_msize_y=0:chroma_amount=0.0,zscale=transfer=bt709:primaries=bt709:matrix=bt709:dither=error_diffusion:range=full,minterpolate=fps=120:mi_mode=mci:mc_mode=aobmc:vsbmc=1:me=epzs:scd=0"
+      },
+      {
+        "sha8": "f02239ca",
+        "length": 348,
+        "channels": 808,
+        "share_pct": 7.64,
+        "profiles": {
+          "P1": 808
+        },
+        "stages": [
+          "denoise",
+          "deinterlace",
+          "debanding",
+          "sharpening",
+          "color_hdr",
+          "motion_interp"
+        ],
+        "filters": [
+          "nlmeans",
+          "bwdif",
+          "gradfun",
+          "unsharp",
+          "zscale",
+          "minterpolate"
+        ],
+        "vlc_modules": [
+          "gradfun"
+        ],
+        "not_vlc_modules": [
+          "nlmeans",
+          "bwdif",
+          "unsharp",
+          "zscale",
+          "minterpolate"
+        ],
+        "ffmpeg_syntax": {
+          "status": "FAIL",
+          "violations": [
+            {
+              "filter": "unsharp",
+              "param": "chroma_msize_x",
+              "kind": "fuera_de_rango",
+              "value": "0",
+              "detail": "rango real [3 .. 23] (ffmpeg -h filter=unsharp)"
+            },
+            {
+              "filter": "unsharp",
+              "param": "chroma_msize_y",
+              "kind": "fuera_de_rango",
+              "value": "0",
+              "detail": "rango real [3 .. 23] (ffmpeg -h filter=unsharp)"
+            },
+            {
+              "filter": "minterpolate",
+              "param": "scd",
+              "kind": "fuera_de_rango",
+              "value": "5",
+              "detail": "rango real [0 .. 1] (ffmpeg -h filter=minterpolate)"
+            }
+          ],
+          "unverifiable": 9,
+          "unverifiable_params": [
+            {
+              "filter": "zscale",
+              "param": "transfer",
+              "value": "st2084",
+              "type": "int",
+              "why": "tipo string: lo resuelve el filtro al ejecutar"
+            },
+            {
+              "filter": "zscale",
+              "param": "primaries",
+              "value": "bt2020",
+              "type": "int",
+              "why": "tipo string: lo resuelve el filtro al ejecutar"
+            },
+            {
+              "filter": "zscale",
+              "param": "matrix",
+              "value": "2020ncl",
+              "type": "int",
+              "why": "tipo string: lo resuelve el filtro al ejecutar"
+            },
+            {
+              "filter": "zscale",
+              "param": "dither",
+              "value": "error_diffusion",
+              "type": "int",
+              "why": "valor simbólico sobre parámetro <int>"
+            },
+            {
+              "filter": "zscale",
+              "param": "range",
+              "value": "full",
+              "type": "int",
+              "why": "valor simbólico sobre parámetro <int>"
+            },
+            {
+              "filter": "minterpolate",
+              "param": "fps",
+              "value": "120",
+              "type": "video_rate",
+              "why": "tipo string: lo resuelve el filtro al ejecutar"
+            },
+            {
+              "filter": "minterpolate",
+              "param": "mi_mode",
+              "value": "mci",
+              "type": "int",
+              "why": "valor simbólico sobre parámetro <int>"
+            },
+            {
+              "filter": "minterpolate",
+              "param": "mc_mode",
+              "value": "aobmc",
+              "type": "int",
+              "why": "valor simbólico sobre parámetro <int>"
+            }
+          ],
+          "filters": [
+            "nlmeans",
+            "bwdif",
+            "gradfun",
+            "unsharp",
+            "zscale",
+            "minterpolate"
+          ]
+        },
+        "chain_redacted": "nlmeans=s=3.0:p=7:r=15,bwdif=mode=1:parity=-1:deint=0,gradfun=radius=16:strength=1.0,unsharp=luma_msize_x=3:luma_msize_y=3:luma_amount=0.4:chroma_msize_x=0:chroma_msize_y=0:chroma_amount=0.0,zscale=transfer=st2084:primaries=bt2020:matrix=2020ncl:dither=error_diffusion:range=full,minterpolate=fps=120:mi_mode=mci:mc_mode=aobmc:vsbmc=1:me=epzs:scd=5"
+      }
+    ],
+    "syntax": {
+      "status": "FAIL",
+      "violations": 7,
+      "distinct_chains": 3,
+      "reason": null
+    },
+    "note": "El veredicto de sintaxis sale de `ffmpeg -h filter=NAME` (rangos/enums reales del binario). Los parámetros de tipo string con validación interna —zscale es el caso— quedan como no verificables aquí: los juzga scripts/validate_filter_chain.js ejecutando ffmpeg."
+  },
+  "coherence": {
+    "contradictions": [
+      {
+        "id": "C1",
+        "label": "STREAM-INF RESOLUTION ≠ KODIPROP max_resolution",
+        "channels": 10573,
+        "scope": "censo",
+        "denominator": 10573,
+        "pct": 100
+      },
+      {
+        "id": "C2",
+        "label": "STREAM-INF VIDEO-RANGE=PQ vs EXTVLCOPT video-hdr*=SDR/false",
+        "channels": 10573,
+        "scope": "censo",
+        "denominator": 10573,
+        "pct": 100
+      },
+      {
+        "id": "C3",
+        "label": "STREAM-INF CODECS=hvc1… vs EXTVLCOPT codec sin hevc",
+        "channels": 7457,
+        "scope": "censo",
+        "denominator": 10573,
+        "pct": 70.53
+      },
+      {
+        "id": "C4",
+        "label": "I-FRAME-STREAM-INF con nivel HEVC < STREAM-INF",
+        "channels": 9765,
+        "scope": "censo",
+        "denominator": 10573,
+        "pct": 92.36
+      },
+      {
+        "id": "C5",
+        "label": "EXTHTTP X-APE-Codec-Video con nivel HEVC < STREAM-INF",
+        "channels": 37,
+        "scope": "muestra (capas pesadas)",
+        "denominator": 250,
+        "pct": 14.8
+      },
+      {
+        "id": "C6",
+        "label": "La familia CMAF declara contenedor y #EXT-X-MAP = 0",
+        "channels": 10573,
+        "scope": "censo",
+        "denominator": 10573,
+        "pct": 100
+      },
+      {
+        "id": "C7",
+        "label": "#EXT-X-VERSION real ≠ #EXT-X-CMAF-VERSION declarado",
+        "channels": 10573,
+        "scope": "censo",
+        "denominator": 10573,
+        "pct": 100
+      },
+      {
+        "id": "C8",
+        "label": "#EXT-X-PART-INF PART-TARGET real ≠ #EXT-X-CMAF-PART-TARGET",
+        "channels": 10573,
+        "scope": "censo",
+        "denominator": 10573,
+        "pct": 100
+      },
+      {
+        "id": "C9",
+        "label": "#EXT-X-SERVER-CONTROL PART-HOLD-BACK real ≠ #EXT-X-CMAF-PART-HOLD-BACK",
+        "channels": 10573,
+        "scope": "censo",
+        "denominator": 10573,
+        "pct": 100
+      },
+      {
+        "id": "C11",
+        "label": "Init segment declarado por la familia sin #EXT-X-MAP",
+        "channels": 10573,
+        "scope": "censo",
+        "denominator": 10573,
+        "pct": 100
+      },
+      {
+        "id": "C12",
+        "label": "Techo adaptativo VLC (maxwidth) > KODIPROP max_resolution",
+        "channels": 10573,
+        "scope": "censo",
+        "denominator": 10573,
+        "pct": 100
+      },
+      {
+        "id": "C13",
+        "label": "STREAM-INF sin HDCP-LEVEL",
+        "channels": 45,
+        "scope": "censo",
+        "denominator": 10573,
+        "pct": 0.43
+      }
+    ],
+    "not_implemented": [
+      {
+        "id": "C10",
+        "label": "audio Atmos/DTS/TrueHD: la familia CMAF dice ENABLED=false y la capa de atributos dice presente",
+        "reason": "requiere cruzar 3 tags de familia con 3 campos de #EXTHTTP; el campo X-APE-ATMOS no está en el top-40 de frecuencias y el chequeo quedaría muestral o ciego — se deja a revisión manual sobre el JSON"
+      }
+    ],
+    "golden_rule": {
+      "violations": 0,
+      "hvc1_in_kodiprop_or_vlc": 0,
+      "hev1_in_stream_inf": 0,
+      "rfc6381_in_kodiprop_or_vlc": 0,
+      "note": "hvc1.* solo en STREAM-INF CODECS; hev1.* solo en KODIPROP/EXTVLCOPT. KODIPROP/EXTVLCOPT no emiten RFC 6381 por diseño, así que cualquier hvc1/hev1 ahí es una violación."
+    }
+  },
+  "runtime_matrix": {
+    "legend": {
+      "verdict": {
+        "N": "NATIVO",
+        "P": "PLUGIN/DAEMON",
+        "D": "DECLARATIVO (metadata inerte)",
+        "I": "IMPOSIBLE"
+      },
+      "evidence_quality": {
+        "m": "medido",
+        "r": "registro/arquitectura documentada",
+        "s": "ausencia documentada de mecanismo",
+        "x": "no medido"
+      },
+      "evidence_state": [
+        "declarado",
+        "observado",
+        "resuelto",
+        "heredado_citado",
+        "aplicado",
+        "verificado",
+        "no_computado",
+        "no_aplica"
+      ]
+    },
+    "rows": [
+      "VLC 3.x",
+      "VLC 4.x",
+      "OTT Navigator",
+      "TiviMate",
+      "ExoPlayer / Media3",
+      "Kodi + ISA",
+      "hls.js (navegador)",
+      "VPS/Lua (rebase-only)",
+      "ARA / VPP del SoC"
+    ],
+    "columns": [
+      "deinterlace",
+      "denoise",
+      "scaling",
+      "color_hdr",
+      "tonemapping",
+      "sharpening",
+      "debanding",
+      "motion_interp",
+      "bitdepth"
+    ],
+    "cells": [
+      {
+        "runtime": "VLC 3.x",
+        "stage": "deinterlace",
+        "verdict": "N",
+        "verdict_playlist": "D",
+        "evidence_quality": "m",
+        "evidence_quality_playlist": "m",
+        "evidence_state": "heredado_citado",
+        "source": "heredado:04 §4 (medido con VLC 3.0.24)"
+      },
+      {
+        "runtime": "VLC 3.x",
+        "stage": "denoise",
+        "verdict": "N",
+        "verdict_playlist": "D",
+        "evidence_quality": "m",
+        "evidence_quality_playlist": "m",
+        "evidence_state": "heredado_citado",
+        "source": "heredado:04 §4 (medido con VLC 3.0.24)"
+      },
+      {
+        "runtime": "VLC 3.x",
+        "stage": "scaling",
+        "verdict": null,
+        "verdict_playlist": null,
+        "evidence_quality": null,
+        "evidence_quality_playlist": null,
+        "evidence_state": "heredado_citado",
+        "source": "heredado:04 §4 (medido con VLC 3.0.24)"
+      },
+      {
+        "runtime": "VLC 3.x",
+        "stage": "color_hdr",
+        "verdict": "D",
+        "verdict_playlist": "D",
+        "evidence_quality": "m",
+        "evidence_quality_playlist": "m",
+        "evidence_state": "heredado_citado",
+        "source": "heredado:04 §4 (medido con VLC 3.0.24)"
+      },
+      {
+        "runtime": "VLC 3.x",
+        "stage": "tonemapping",
+        "verdict": null,
+        "verdict_playlist": null,
+        "evidence_quality": null,
+        "evidence_quality_playlist": null,
+        "evidence_state": "heredado_citado",
+        "source": "heredado:04 §4 (medido con VLC 3.0.24)"
+      },
+      {
+        "runtime": "VLC 3.x",
+        "stage": "sharpening",
+        "verdict": "N",
+        "verdict_playlist": "D",
+        "evidence_quality": "m",
+        "evidence_quality_playlist": "m",
+        "evidence_state": "heredado_citado",
+        "source": "heredado:04 §4 (medido con VLC 3.0.24)"
+      },
+      {
+        "runtime": "VLC 3.x",
+        "stage": "debanding",
+        "verdict": "N",
+        "verdict_playlist": "D",
+        "evidence_quality": "m",
+        "evidence_quality_playlist": "m",
+        "evidence_state": "heredado_citado",
+        "source": "heredado:04 §4 (medido con VLC 3.0.24)"
+      },
+      {
+        "runtime": "VLC 3.x",
+        "stage": "motion_interp",
+        "verdict": "I",
+        "verdict_playlist": "I",
+        "evidence_quality": "m",
+        "evidence_quality_playlist": "m",
+        "evidence_state": "heredado_citado",
+        "source": "heredado:04 §4 (medido con VLC 3.0.24)"
+      },
+      {
+        "runtime": "VLC 3.x",
+        "stage": "bitdepth",
+        "verdict": null,
+        "verdict_playlist": null,
+        "evidence_quality": null,
+        "evidence_quality_playlist": null,
+        "evidence_state": "heredado_citado",
+        "source": "heredado:04 §4 (medido con VLC 3.0.24)"
+      },
+      {
+        "runtime": "VLC 4.x",
+        "stage": "deinterlace",
+        "verdict": "D",
+        "verdict_playlist": "D",
+        "evidence_quality": "x",
+        "evidence_quality_playlist": "x",
+        "evidence_state": "no_computado",
+        "source": "sin binario VLC 4.x en esta máquina"
+      },
+      {
+        "runtime": "VLC 4.x",
+        "stage": "denoise",
+        "verdict": "D",
+        "verdict_playlist": "D",
+        "evidence_quality": "x",
+        "evidence_quality_playlist": "x",
+        "evidence_state": "no_computado",
+        "source": "sin binario VLC 4.x en esta máquina"
+      },
+      {
+        "runtime": "VLC 4.x",
+        "stage": "scaling",
+        "verdict": null,
+        "verdict_playlist": null,
+        "evidence_quality": null,
+        "evidence_quality_playlist": null,
+        "evidence_state": "no_computado",
+        "source": "sin binario VLC 4.x en esta máquina"
+      },
+      {
+        "runtime": "VLC 4.x",
+        "stage": "color_hdr",
+        "verdict": "D",
+        "verdict_playlist": "D",
+        "evidence_quality": "x",
+        "evidence_quality_playlist": "x",
+        "evidence_state": "no_computado",
+        "source": "sin binario VLC 4.x en esta máquina"
+      },
+      {
+        "runtime": "VLC 4.x",
+        "stage": "tonemapping",
+        "verdict": null,
+        "verdict_playlist": null,
+        "evidence_quality": null,
+        "evidence_quality_playlist": null,
+        "evidence_state": "no_computado",
+        "source": "sin binario VLC 4.x en esta máquina"
+      },
+      {
+        "runtime": "VLC 4.x",
+        "stage": "sharpening",
+        "verdict": "D",
+        "verdict_playlist": "D",
+        "evidence_quality": "x",
+        "evidence_quality_playlist": "x",
+        "evidence_state": "no_computado",
+        "source": "sin binario VLC 4.x en esta máquina"
+      },
+      {
+        "runtime": "VLC 4.x",
+        "stage": "debanding",
+        "verdict": "D",
+        "verdict_playlist": "D",
+        "evidence_quality": "x",
+        "evidence_quality_playlist": "x",
+        "evidence_state": "no_computado",
+        "source": "sin binario VLC 4.x en esta máquina"
+      },
+      {
+        "runtime": "VLC 4.x",
+        "stage": "motion_interp",
+        "verdict": "I",
+        "verdict_playlist": "D",
+        "evidence_quality": "s",
+        "evidence_quality_playlist": "x",
+        "evidence_state": "no_computado",
+        "source": "sin binario VLC 4.x en esta máquina"
+      },
+      {
+        "runtime": "VLC 4.x",
+        "stage": "bitdepth",
+        "verdict": null,
+        "verdict_playlist": null,
+        "evidence_quality": null,
+        "evidence_quality_playlist": null,
+        "evidence_state": "no_computado",
+        "source": "sin binario VLC 4.x en esta máquina"
+      },
+      {
+        "runtime": "OTT Navigator",
+        "stage": "deinterlace",
+        "verdict": "D",
+        "verdict_playlist": "D",
+        "evidence_quality": "s",
+        "evidence_quality_playlist": "s",
+        "evidence_state": "declarado",
+        "source": "heredado:04_LANE_CAPABILITY_MATRIX.md§1"
+      },
+      {
+        "runtime": "OTT Navigator",
+        "stage": "denoise",
+        "verdict": "D",
+        "verdict_playlist": "D",
+        "evidence_quality": "s",
+        "evidence_quality_playlist": "s",
+        "evidence_state": "declarado",
+        "source": "heredado:04_LANE_CAPABILITY_MATRIX.md§1"
+      },
+      {
+        "runtime": "OTT Navigator",
+        "stage": "scaling",
+        "verdict": null,
+        "verdict_playlist": null,
+        "evidence_quality": null,
+        "evidence_quality_playlist": null,
+        "evidence_state": "no_aplica",
+        "source": "heredado:04_LANE_CAPABILITY_MATRIX.md§1"
+      },
+      {
+        "runtime": "OTT Navigator",
+        "stage": "color_hdr",
+        "verdict": "D",
+        "verdict_playlist": "D",
+        "evidence_quality": "s",
+        "evidence_quality_playlist": "s",
+        "evidence_state": "declarado",
+        "source": "heredado:04_LANE_CAPABILITY_MATRIX.md§1"
+      },
+      {
+        "runtime": "OTT Navigator",
+        "stage": "tonemapping",
+        "verdict": null,
+        "verdict_playlist": null,
+        "evidence_quality": null,
+        "evidence_quality_playlist": null,
+        "evidence_state": "no_aplica",
+        "source": "heredado:04_LANE_CAPABILITY_MATRIX.md§1"
+      },
+      {
+        "runtime": "OTT Navigator",
+        "stage": "sharpening",
+        "verdict": "D",
+        "verdict_playlist": "D",
+        "evidence_quality": "s",
+        "evidence_quality_playlist": "s",
+        "evidence_state": "declarado",
+        "source": "heredado:04_LANE_CAPABILITY_MATRIX.md§1"
+      },
+      {
+        "runtime": "OTT Navigator",
+        "stage": "debanding",
+        "verdict": "D",
+        "verdict_playlist": "D",
+        "evidence_quality": "s",
+        "evidence_quality_playlist": "s",
+        "evidence_state": "declarado",
+        "source": "heredado:04_LANE_CAPABILITY_MATRIX.md§1"
+      },
+      {
+        "runtime": "OTT Navigator",
+        "stage": "motion_interp",
+        "verdict": "I",
+        "verdict_playlist": "D",
+        "evidence_quality": "s",
+        "evidence_quality_playlist": "s",
+        "evidence_state": "declarado",
+        "source": "heredado:04_LANE_CAPABILITY_MATRIX.md§1"
+      },
+      {
+        "runtime": "OTT Navigator",
+        "stage": "bitdepth",
+        "verdict": null,
+        "verdict_playlist": null,
+        "evidence_quality": null,
+        "evidence_quality_playlist": null,
+        "evidence_state": "no_aplica",
+        "source": "heredado:04_LANE_CAPABILITY_MATRIX.md§1"
+      },
+      {
+        "runtime": "TiviMate",
+        "stage": "deinterlace",
+        "verdict": "D",
+        "verdict_playlist": "D",
+        "evidence_quality": "s",
+        "evidence_quality_playlist": "s",
+        "evidence_state": "declarado",
+        "source": "heredado:04_LANE_CAPABILITY_MATRIX.md§1"
+      },
+      {
+        "runtime": "TiviMate",
+        "stage": "denoise",
+        "verdict": "D",
+        "verdict_playlist": "D",
+        "evidence_quality": "s",
+        "evidence_quality_playlist": "s",
+        "evidence_state": "declarado",
+        "source": "heredado:04_LANE_CAPABILITY_MATRIX.md§1"
+      },
+      {
+        "runtime": "TiviMate",
+        "stage": "scaling",
+        "verdict": null,
+        "verdict_playlist": null,
+        "evidence_quality": null,
+        "evidence_quality_playlist": null,
+        "evidence_state": "no_aplica",
+        "source": "heredado:04_LANE_CAPABILITY_MATRIX.md§1"
+      },
+      {
+        "runtime": "TiviMate",
+        "stage": "color_hdr",
+        "verdict": "D",
+        "verdict_playlist": "D",
+        "evidence_quality": "s",
+        "evidence_quality_playlist": "s",
+        "evidence_state": "declarado",
+        "source": "heredado:04_LANE_CAPABILITY_MATRIX.md§1"
+      },
+      {
+        "runtime": "TiviMate",
+        "stage": "tonemapping",
+        "verdict": null,
+        "verdict_playlist": null,
+        "evidence_quality": null,
+        "evidence_quality_playlist": null,
+        "evidence_state": "no_aplica",
+        "source": "heredado:04_LANE_CAPABILITY_MATRIX.md§1"
+      },
+      {
+        "runtime": "TiviMate",
+        "stage": "sharpening",
+        "verdict": "D",
+        "verdict_playlist": "D",
+        "evidence_quality": "s",
+        "evidence_quality_playlist": "s",
+        "evidence_state": "declarado",
+        "source": "heredado:04_LANE_CAPABILITY_MATRIX.md§1"
+      },
+      {
+        "runtime": "TiviMate",
+        "stage": "debanding",
+        "verdict": "D",
+        "verdict_playlist": "D",
+        "evidence_quality": "s",
+        "evidence_quality_playlist": "s",
+        "evidence_state": "declarado",
+        "source": "heredado:04_LANE_CAPABILITY_MATRIX.md§1"
+      },
+      {
+        "runtime": "TiviMate",
+        "stage": "motion_interp",
+        "verdict": "I",
+        "verdict_playlist": "D",
+        "evidence_quality": "s",
+        "evidence_quality_playlist": "s",
+        "evidence_state": "declarado",
+        "source": "heredado:04_LANE_CAPABILITY_MATRIX.md§1"
+      },
+      {
+        "runtime": "TiviMate",
+        "stage": "bitdepth",
+        "verdict": null,
+        "verdict_playlist": null,
+        "evidence_quality": null,
+        "evidence_quality_playlist": null,
+        "evidence_state": "no_aplica",
+        "source": "heredado:04_LANE_CAPABILITY_MATRIX.md§1"
+      },
+      {
+        "runtime": "ExoPlayer / Media3",
+        "stage": "deinterlace",
+        "verdict": "D",
+        "verdict_playlist": "D",
+        "evidence_quality": "s",
+        "evidence_quality_playlist": "s",
+        "evidence_state": "declarado",
+        "source": "heredado:04_LANE_CAPABILITY_MATRIX.md§1"
+      },
+      {
+        "runtime": "ExoPlayer / Media3",
+        "stage": "denoise",
+        "verdict": "D",
+        "verdict_playlist": "D",
+        "evidence_quality": "s",
+        "evidence_quality_playlist": "s",
+        "evidence_state": "declarado",
+        "source": "heredado:04_LANE_CAPABILITY_MATRIX.md§1"
+      },
+      {
+        "runtime": "ExoPlayer / Media3",
+        "stage": "scaling",
+        "verdict": null,
+        "verdict_playlist": null,
+        "evidence_quality": null,
+        "evidence_quality_playlist": null,
+        "evidence_state": "no_aplica",
+        "source": "heredado:04_LANE_CAPABILITY_MATRIX.md§1"
+      },
+      {
+        "runtime": "ExoPlayer / Media3",
+        "stage": "color_hdr",
+        "verdict": "D",
+        "verdict_playlist": "D",
+        "evidence_quality": "s",
+        "evidence_quality_playlist": "s",
+        "evidence_state": "declarado",
+        "source": "heredado:04_LANE_CAPABILITY_MATRIX.md§1"
+      },
+      {
+        "runtime": "ExoPlayer / Media3",
+        "stage": "tonemapping",
+        "verdict": null,
+        "verdict_playlist": null,
+        "evidence_quality": null,
+        "evidence_quality_playlist": null,
+        "evidence_state": "no_aplica",
+        "source": "heredado:04_LANE_CAPABILITY_MATRIX.md§1"
+      },
+      {
+        "runtime": "ExoPlayer / Media3",
+        "stage": "sharpening",
+        "verdict": "D",
+        "verdict_playlist": "D",
+        "evidence_quality": "s",
+        "evidence_quality_playlist": "s",
+        "evidence_state": "declarado",
+        "source": "heredado:04_LANE_CAPABILITY_MATRIX.md§1"
+      },
+      {
+        "runtime": "ExoPlayer / Media3",
+        "stage": "debanding",
+        "verdict": "D",
+        "verdict_playlist": "D",
+        "evidence_quality": "s",
+        "evidence_quality_playlist": "s",
+        "evidence_state": "declarado",
+        "source": "heredado:04_LANE_CAPABILITY_MATRIX.md§1"
+      },
+      {
+        "runtime": "ExoPlayer / Media3",
+        "stage": "motion_interp",
+        "verdict": "I",
+        "verdict_playlist": "D",
+        "evidence_quality": "s",
+        "evidence_quality_playlist": "s",
+        "evidence_state": "declarado",
+        "source": "heredado:04_LANE_CAPABILITY_MATRIX.md§1"
+      },
+      {
+        "runtime": "ExoPlayer / Media3",
+        "stage": "bitdepth",
+        "verdict": null,
+        "verdict_playlist": null,
+        "evidence_quality": null,
+        "evidence_quality_playlist": null,
+        "evidence_state": "no_aplica",
+        "source": "heredado:04_LANE_CAPABILITY_MATRIX.md§1"
+      },
+      {
+        "runtime": "Kodi + ISA",
+        "stage": "deinterlace",
+        "verdict": "D",
+        "verdict_playlist": "D",
+        "evidence_quality": "s",
+        "evidence_quality_playlist": "s",
+        "evidence_state": "declarado",
+        "source": "heredado:04_LANE_CAPABILITY_MATRIX.md§1"
+      },
+      {
+        "runtime": "Kodi + ISA",
+        "stage": "denoise",
+        "verdict": "D",
+        "verdict_playlist": "D",
+        "evidence_quality": "s",
+        "evidence_quality_playlist": "s",
+        "evidence_state": "declarado",
+        "source": "heredado:04_LANE_CAPABILITY_MATRIX.md§1"
+      },
+      {
+        "runtime": "Kodi + ISA",
+        "stage": "scaling",
+        "verdict": null,
+        "verdict_playlist": null,
+        "evidence_quality": null,
+        "evidence_quality_playlist": null,
+        "evidence_state": "no_aplica",
+        "source": "heredado:04_LANE_CAPABILITY_MATRIX.md§1"
+      },
+      {
+        "runtime": "Kodi + ISA",
+        "stage": "color_hdr",
+        "verdict": "D",
+        "verdict_playlist": "D",
+        "evidence_quality": "s",
+        "evidence_quality_playlist": "s",
+        "evidence_state": "declarado",
+        "source": "heredado:04_LANE_CAPABILITY_MATRIX.md§1"
+      },
+      {
+        "runtime": "Kodi + ISA",
+        "stage": "tonemapping",
+        "verdict": null,
+        "verdict_playlist": null,
+        "evidence_quality": null,
+        "evidence_quality_playlist": null,
+        "evidence_state": "no_aplica",
+        "source": "heredado:04_LANE_CAPABILITY_MATRIX.md§1"
+      },
+      {
+        "runtime": "Kodi + ISA",
+        "stage": "sharpening",
+        "verdict": "D",
+        "verdict_playlist": "D",
+        "evidence_quality": "s",
+        "evidence_quality_playlist": "s",
+        "evidence_state": "declarado",
+        "source": "heredado:04_LANE_CAPABILITY_MATRIX.md§1"
+      },
+      {
+        "runtime": "Kodi + ISA",
+        "stage": "debanding",
+        "verdict": "D",
+        "verdict_playlist": "D",
+        "evidence_quality": "s",
+        "evidence_quality_playlist": "s",
+        "evidence_state": "declarado",
+        "source": "heredado:04_LANE_CAPABILITY_MATRIX.md§1"
+      },
+      {
+        "runtime": "Kodi + ISA",
+        "stage": "motion_interp",
+        "verdict": "I",
+        "verdict_playlist": "D",
+        "evidence_quality": "s",
+        "evidence_quality_playlist": "s",
+        "evidence_state": "declarado",
+        "source": "heredado:04_LANE_CAPABILITY_MATRIX.md§1"
+      },
+      {
+        "runtime": "Kodi + ISA",
+        "stage": "bitdepth",
+        "verdict": null,
+        "verdict_playlist": null,
+        "evidence_quality": null,
+        "evidence_quality_playlist": null,
+        "evidence_state": "no_aplica",
+        "source": "heredado:04_LANE_CAPABILITY_MATRIX.md§1"
+      },
+      {
+        "runtime": "hls.js (navegador)",
+        "stage": "deinterlace",
+        "verdict": "D",
+        "verdict_playlist": "D",
+        "evidence_quality": "s",
+        "evidence_quality_playlist": "s",
+        "evidence_state": "declarado",
+        "source": "heredado:04_LANE_CAPABILITY_MATRIX.md§1"
+      },
+      {
+        "runtime": "hls.js (navegador)",
+        "stage": "denoise",
+        "verdict": "D",
+        "verdict_playlist": "D",
+        "evidence_quality": "s",
+        "evidence_quality_playlist": "s",
+        "evidence_state": "declarado",
+        "source": "heredado:04_LANE_CAPABILITY_MATRIX.md§1"
+      },
+      {
+        "runtime": "hls.js (navegador)",
+        "stage": "scaling",
+        "verdict": null,
+        "verdict_playlist": null,
+        "evidence_quality": null,
+        "evidence_quality_playlist": null,
+        "evidence_state": "no_aplica",
+        "source": "heredado:04_LANE_CAPABILITY_MATRIX.md§1"
+      },
+      {
+        "runtime": "hls.js (navegador)",
+        "stage": "color_hdr",
+        "verdict": "D",
+        "verdict_playlist": "D",
+        "evidence_quality": "s",
+        "evidence_quality_playlist": "s",
+        "evidence_state": "declarado",
+        "source": "heredado:04_LANE_CAPABILITY_MATRIX.md§1"
+      },
+      {
+        "runtime": "hls.js (navegador)",
+        "stage": "tonemapping",
+        "verdict": null,
+        "verdict_playlist": null,
+        "evidence_quality": null,
+        "evidence_quality_playlist": null,
+        "evidence_state": "no_aplica",
+        "source": "heredado:04_LANE_CAPABILITY_MATRIX.md§1"
+      },
+      {
+        "runtime": "hls.js (navegador)",
+        "stage": "sharpening",
+        "verdict": "D",
+        "verdict_playlist": "D",
+        "evidence_quality": "s",
+        "evidence_quality_playlist": "s",
+        "evidence_state": "declarado",
+        "source": "heredado:04_LANE_CAPABILITY_MATRIX.md§1"
+      },
+      {
+        "runtime": "hls.js (navegador)",
+        "stage": "debanding",
+        "verdict": "D",
+        "verdict_playlist": "D",
+        "evidence_quality": "s",
+        "evidence_quality_playlist": "s",
+        "evidence_state": "declarado",
+        "source": "heredado:04_LANE_CAPABILITY_MATRIX.md§1"
+      },
+      {
+        "runtime": "hls.js (navegador)",
+        "stage": "motion_interp",
+        "verdict": "I",
+        "verdict_playlist": "D",
+        "evidence_quality": "s",
+        "evidence_quality_playlist": "s",
+        "evidence_state": "declarado",
+        "source": "heredado:04_LANE_CAPABILITY_MATRIX.md§1"
+      },
+      {
+        "runtime": "hls.js (navegador)",
+        "stage": "bitdepth",
+        "verdict": null,
+        "verdict_playlist": null,
+        "evidence_quality": null,
+        "evidence_quality_playlist": null,
+        "evidence_state": "no_aplica",
+        "source": "heredado:04_LANE_CAPABILITY_MATRIX.md§1"
+      },
+      {
+        "runtime": "VPS/Lua (rebase-only)",
+        "stage": "deinterlace",
+        "verdict": "I",
+        "verdict_playlist": "I",
+        "evidence_quality": "r",
+        "evidence_quality_playlist": "r",
+        "evidence_state": "declarado",
+        "source": "heredado:04_LANE_CAPABILITY_MATRIX.md§1"
+      },
+      {
+        "runtime": "VPS/Lua (rebase-only)",
+        "stage": "denoise",
+        "verdict": "I",
+        "verdict_playlist": "I",
+        "evidence_quality": "r",
+        "evidence_quality_playlist": "r",
+        "evidence_state": "declarado",
+        "source": "heredado:04_LANE_CAPABILITY_MATRIX.md§1"
+      },
+      {
+        "runtime": "VPS/Lua (rebase-only)",
+        "stage": "scaling",
+        "verdict": null,
+        "verdict_playlist": null,
+        "evidence_quality": null,
+        "evidence_quality_playlist": null,
+        "evidence_state": "no_aplica",
+        "source": "heredado:04_LANE_CAPABILITY_MATRIX.md§1"
+      },
+      {
+        "runtime": "VPS/Lua (rebase-only)",
+        "stage": "color_hdr",
+        "verdict": "D",
+        "verdict_playlist": "I",
+        "evidence_quality": "r",
+        "evidence_quality_playlist": "r",
+        "evidence_state": "declarado",
+        "source": "heredado:04_LANE_CAPABILITY_MATRIX.md§1"
+      },
+      {
+        "runtime": "VPS/Lua (rebase-only)",
+        "stage": "tonemapping",
+        "verdict": null,
+        "verdict_playlist": null,
+        "evidence_quality": null,
+        "evidence_quality_playlist": null,
+        "evidence_state": "no_aplica",
+        "source": "heredado:04_LANE_CAPABILITY_MATRIX.md§1"
+      },
+      {
+        "runtime": "VPS/Lua (rebase-only)",
+        "stage": "sharpening",
+        "verdict": "I",
+        "verdict_playlist": "I",
+        "evidence_quality": "r",
+        "evidence_quality_playlist": "r",
+        "evidence_state": "declarado",
+        "source": "heredado:04_LANE_CAPABILITY_MATRIX.md§1"
+      },
+      {
+        "runtime": "VPS/Lua (rebase-only)",
+        "stage": "debanding",
+        "verdict": "I",
+        "verdict_playlist": "I",
+        "evidence_quality": "r",
+        "evidence_quality_playlist": "r",
+        "evidence_state": "declarado",
+        "source": "heredado:04_LANE_CAPABILITY_MATRIX.md§1"
+      },
+      {
+        "runtime": "VPS/Lua (rebase-only)",
+        "stage": "motion_interp",
+        "verdict": "I",
+        "verdict_playlist": "I",
+        "evidence_quality": "r",
+        "evidence_quality_playlist": "r",
+        "evidence_state": "declarado",
+        "source": "heredado:04_LANE_CAPABILITY_MATRIX.md§1"
+      },
+      {
+        "runtime": "VPS/Lua (rebase-only)",
+        "stage": "bitdepth",
+        "verdict": null,
+        "verdict_playlist": null,
+        "evidence_quality": null,
+        "evidence_quality_playlist": null,
+        "evidence_state": "no_aplica",
+        "source": "heredado:04_LANE_CAPABILITY_MATRIX.md§1"
+      },
+      {
+        "runtime": "ARA / VPP del SoC",
+        "stage": "deinterlace",
+        "verdict": "I",
+        "verdict_playlist": "D",
+        "evidence_quality": "r",
+        "evidence_quality_playlist": "s",
+        "evidence_state": "declarado",
+        "source": "heredado:04 §6.8 (efecto en píxeles NO_VERIFICADO sin device)"
+      },
+      {
+        "runtime": "ARA / VPP del SoC",
+        "stage": "denoise",
+        "verdict": "P",
+        "verdict_playlist": "D",
+        "evidence_quality": "r",
+        "evidence_quality_playlist": "s",
+        "evidence_state": "declarado",
+        "source": "heredado:04 §6.8 (efecto en píxeles NO_VERIFICADO sin device)"
+      },
+      {
+        "runtime": "ARA / VPP del SoC",
+        "stage": "scaling",
+        "verdict": null,
+        "verdict_playlist": null,
+        "evidence_quality": null,
+        "evidence_quality_playlist": null,
+        "evidence_state": "declarado",
+        "source": "heredado:04 §6.8 (efecto en píxeles NO_VERIFICADO sin device)"
+      },
+      {
+        "runtime": "ARA / VPP del SoC",
+        "stage": "color_hdr",
+        "verdict": "P",
+        "verdict_playlist": "D",
+        "evidence_quality": "r",
+        "evidence_quality_playlist": "s",
+        "evidence_state": "declarado",
+        "source": "heredado:04 §6.8 (efecto en píxeles NO_VERIFICADO sin device)"
+      },
+      {
+        "runtime": "ARA / VPP del SoC",
+        "stage": "tonemapping",
+        "verdict": null,
+        "verdict_playlist": null,
+        "evidence_quality": null,
+        "evidence_quality_playlist": null,
+        "evidence_state": "declarado",
+        "source": "heredado:04 §6.8 (efecto en píxeles NO_VERIFICADO sin device)"
+      },
+      {
+        "runtime": "ARA / VPP del SoC",
+        "stage": "sharpening",
+        "verdict": "P",
+        "verdict_playlist": "D",
+        "evidence_quality": "r",
+        "evidence_quality_playlist": "s",
+        "evidence_state": "declarado",
+        "source": "heredado:04 §6.8 (efecto en píxeles NO_VERIFICADO sin device)"
+      },
+      {
+        "runtime": "ARA / VPP del SoC",
+        "stage": "debanding",
+        "verdict": "I",
+        "verdict_playlist": "D",
+        "evidence_quality": "r",
+        "evidence_quality_playlist": "s",
+        "evidence_state": "declarado",
+        "source": "heredado:04 §6.8 (efecto en píxeles NO_VERIFICADO sin device)"
+      },
+      {
+        "runtime": "ARA / VPP del SoC",
+        "stage": "motion_interp",
+        "verdict": "I",
+        "verdict_playlist": "D",
+        "evidence_quality": "r",
+        "evidence_quality_playlist": "s",
+        "evidence_state": "declarado",
+        "source": "heredado:04 §6.8 (efecto en píxeles NO_VERIFICADO sin device)"
+      },
+      {
+        "runtime": "ARA / VPP del SoC",
+        "stage": "bitdepth",
+        "verdict": null,
+        "verdict_playlist": null,
+        "evidence_quality": null,
+        "evidence_quality_playlist": null,
+        "evidence_state": "declarado",
+        "source": "heredado:04 §6.8 (efecto en píxeles NO_VERIFICADO sin device)"
+      }
+    ],
+    "counts": {
+      "N": 4,
+      "sin_cadena": 27,
+      "D": 32,
+      "I": 15,
+      "P": 3
+    }
+  },
+  "verdict": {
+    "claims": [
+      {
+        "id": "V1",
+        "claim": "La lista está identificada por tamaño y sha256 medidos en esta máquina",
+        "state": "observado",
+        "evidence": "sha256 calculado en el mismo pase de lectura; bytes contados"
+      },
+      {
+        "id": "V2",
+        "claim": "La cabecera y el bloque de canal están delimitados por #EXTINF, no por un tramo fijo",
+        "state": "observado",
+        "evidence": "10573 bloques delimitados; cabecera = líneas previas al primer #EXTINF"
+      },
+      {
+        "id": "V3",
+        "claim": "El vocabulario de tags está censado (nombres distintos y líneas por nombre)",
+        "state": "observado",
+        "evidence": "819 nombres distintos sobre 10315662 líneas"
+      },
+      {
+        "id": "V4",
+        "claim": "Cada cadena de filtros pertenece a un perfil declarado (correlación medida)",
+        "state": "observado",
+        "evidence": "Pares cadena→perfil contados por canal"
+      },
+      {
+        "id": "V5",
+        "claim": "Todo #EXTHTTP analizado es JSON válido (objeto, no array ni escalar)",
+        "state": "resuelto",
+        "evidence": "250 válidos / 0 inválidos sobre 250 objetos analizados (JSON.parse real)"
+      },
+      {
+        "id": "V6",
+        "claim": "No hay headers tóxicos (Range/If-None-Match/If-Modified-Since/TE/Priority/Upgrade-Insecure-Requests)",
+        "state": "resuelto",
+        "evidence": "búsqueda exacta case-insensitive en objeto principal y overflow: 0 coincidencias"
+      },
+      {
+        "id": "V7",
+        "claim": "Las cadenas de filtros parsean en el ffmpeg instalado",
+        "state": "fallido",
+        "evidence": "3 cadenas distintas; 7 violaciones de nombre/rango/enum contra ffmpeg -h"
+      },
+      {
+        "id": "V8",
+        "claim": "La cadena se APLICA en algún runtime desde la playlist",
+        "state": "heredado_citado",
+        "evidence": "heredado:04 §4 — VLC 3.0.24 descarta #EXTVLCOPT:video-filter por política (unsafe option); los demás runtimes no tienen mecanismo"
+      },
+      {
+        "id": "V9",
+        "claim": "El filtro mejora la imagen (efecto en píxeles)",
+        "state": "no_computado",
+        "evidence": "requiere captura y diff de frames; ninguna herramienta de esta skill mide píxeles"
+      },
+      {
+        "id": "V10",
+        "claim": "No hay #EXT-X-MAP: el contenedor NO es CMAF/fMP4 real",
+        "state": "observado",
+        "evidence": "#EXT-X-MAP = 0; #EXT-X-MEDIA = 0"
+      }
+    ],
+    "legend": [
+      "declarado",
+      "observado",
+      "resuelto",
+      "heredado_citado",
+      "aplicado",
+      "verificado",
+      "no_computado",
+      "fallido"
+    ]
+  },
+  "not_computed": [
+    {
+      "metric": "resolución / códec / HDR REALES por canal",
+      "state": "NO_COMPUTADO",
+      "reason": "requiere probe del manifest remoto y del bitstream; esta skill es análisis estático local sin red"
+    },
+    {
+      "metric": "salud HTTP de las URIs",
+      "state": "NO_COMPUTADO",
+      "reason": "sin red por diseño (la cartografía no hace peticiones)"
+    },
+    {
+      "metric": "variantes internas de cada manifest HLS",
+      "state": "NO_COMPUTADO",
+      "reason": "la URI del canal apunta a un manifest remoto no descargado"
+    },
+    {
+      "metric": "efecto en píxeles de cualquier filtro",
+      "state": "NO_COMPUTADO",
+      "reason": "requiere captura de frames y diff; no hay vout/grabber en esta herramienta"
+    },
+    {
+      "metric": "matriz VLC 4.x",
+      "state": "NO_COMPUTADO",
+      "reason": "no hay binario VLC 4.x en esta máquina (fila de la matriz en grado x)"
+    },
+    {
+      "metric": "capacidad de OTT/TiviMate/ExoPlayer/Kodi/hls.js",
+      "state": "NO_COMPUTADO",
+      "reason": "no ejecutables desde esta herramienta; sus celdas son arquitectura documentada (grado s)"
+    },
+    {
+      "metric": "estabilidad temporal de la estructura entre generaciones",
+      "state": "NO_COMPUTADO",
+      "reason": "se analiza una sola instantánea del archivo; sin segunda generación no hay serie"
+    },
+    {
+      "metric": "censo de capas pesadas (EXTHTTP/KODIPROP/EXTVLCOPT por canal)",
+      "state": "NO_COMPUTADO",
+      "reason": "modo muestra --sample 250: el detalle se calcula sobre los canales muestreados; el resto de métricas sigue siendo censal"
+    }
+  ],
+  "artifacts": {
+    "json": "C:\\Users\\HFRC\\Desktop\\IPTV_Navigator_PRO_v5.4_MAX_AGGRESSION\\.agents\\skills\\ape-lista-cartographer\\reports\\map_523d52a6.json",
+    "markdown": "C:\\Users\\HFRC\\Desktop\\IPTV_Navigator_PRO_v5.4_MAX_AGGRESSION\\.agents\\skills\\ape-lista-cartographer\\reports\\map_523d52a6.md",
+    "fixture": "C:\\Users\\HFRC\\Desktop\\IPTV_Navigator_PRO_v5.4_MAX_AGGRESSION\\.agents\\skills\\ape-lista-cartographer\\fixtures\\canal_001_P3.txt"
+  },
+  "redaction": {
+    "host_masked": true,
+    "user_pass_masked": true,
+    "secrets_scrubbed": 5,
+    "note": "El host del stream y los hosts de tvg-logo se enmascaran salvo --keep-host. Usuario y contraseña se enmascaran siempre, también en fixtures. Los valores de #EXTHTTP no se almacenan (solo nombres y tamaños)."
+  },
+  "network": {
+    "used": false,
+    "note": "esta skill no hace peticiones: toda la evidencia es estática y local"
+  }
+}

@@ -1,0 +1,43 @@
+{
+  "skill": "ape-lista-cartographer",
+  "specialist": "S1",
+  "specialist_name": "IPTV/HLS Architect",
+  "kind": "anchor",
+  "parent_anchor": "ape-image-pipeline-truth",
+  "installed_at": "2026-11-02T13:20:00Z",
+  "installed_by": "ape-lista-cartografia (equipo de cartografía forense, miembro redactor-skill)",
+  "version": "1.0.0",
+  "spec_version": "iptv-enterprise-300-skills-v1",
+  "reference_artifact": {
+    "name": "APE_LISTA_1793589060441.m3u8",
+    "bytes": 604593696,
+    "sha256": "523d52a6d147f81ce5a212e47b9c55401fb409cd4a41aee96f8ba80b5b5049d6",
+    "read_only": true,
+    "cartography": "docs/cartography/APE_LISTA_523d52a6/"
+  },
+  "dependencies_required": [
+    "node>=18"
+  ],
+  "dependencies_optional": [
+    "ffmpeg (validación de sintaxis y ejecución de cadenas; sin él ambos pasos quedan NO_COMPUTADO)",
+    "vlc (sólo inventario estático de plugins; el proceso NO se ejecuta)"
+  ],
+  "external_repos_consumed": [],
+  "external_packages_installed": [],
+  "network_used": false,
+  "files": {
+    "SKILL.md": "especificación de 14 secciones + reglas de oro",
+    "README.md": "propósito y estructura",
+    "scripts/map_list.js": "mapper: 1 pase (censo) o 2 (muestra) → JSON + Markdown",
+    "scripts/validate_filter_chain.js": "juez de ejecución: y4m sintético + -filter_script → PASS/FAIL",
+    "checklist.md": "pre/durante/post/rollback",
+    "commands.md": "comandos permitidos y prohibidos",
+    "tests.md": "T1–T14 + smoke E2E, con estados observados",
+    "references.md": "fuentes leídas y fuentes declaradas como no consultadas",
+    "audit-report.md": "log de instalación y de la primera corrida real",
+    "fixtures/": "bloques reales anonimizados + cadenas de filtros medidas",
+    "reports/": "salida real del mapper sobre la lista de referencia"
+  },
+  "license": "Same as parent repo (private)",
+  "integrity_sha256_self": "not-computed-at-install"
+}
