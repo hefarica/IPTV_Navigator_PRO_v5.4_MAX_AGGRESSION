@@ -157,3 +157,7 @@ IPTV_v5.4_MAX_AGGRESSION/frontend/lab_master_22.6.0.json
 .agents/reports/deploy_*.json
 audit/**/labmaster_dump.json
 **/target/
+
+# artefactos de sesion: pueden contener credenciales y extractos de la lista real
+scratch/
+
