@@ -55,7 +55,8 @@ const EXIT_MEANING = {
   3: { ok: false, meaning: 'VIDEO_DOWNSCALE_VIOLATION' },
   4: { ok: false, meaning: 'INPUT_MISSING' },
   5: { ok: false, meaning: 'INVALID_EVIDENCE' },
-  6: { ok: false, meaning: 'OUTPUT_PATH_INSIDE_REPO (rechazo correcto si la salida caia en el repo)' }
+  6: { ok: false, meaning: 'OUTPUT_PATH_INSIDE_REPO (rechazo correcto si la salida caia en el repo)' },
+  8: { ok: false, meaning: 'OUTPUT_EXISTS (colision en preflight; no hay artefacto que validar)' }
 };
 
 function gitRoot() {
