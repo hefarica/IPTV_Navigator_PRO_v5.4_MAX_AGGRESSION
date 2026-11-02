@@ -30,7 +30,7 @@ jobs:
           node-version: '20'
       - name: Python bridge / health / metadata tests
         run: |
-          python3 tools/test_m3u8_bridge.py
+          python3 tools/test_m3u8_bridge.py`r`n          python3 tools/test_mpd_bridge.py
           python3 tools/test_health_enrich.py
           python3 tools/test_metadata_enrich.py
       - name: Node URL-GUARD / LAB / audio gates
@@ -40,3 +40,4 @@ jobs:
           node frontend/tests/lab-profile-count.test.js
           node tools/check_audio_safe_policy.js
           node tools/check_omega_directives.js
+
