@@ -159,3 +159,12 @@ Adjunta `status/uptime/bitrate/codec/latency` solo desde un health map real; sin
 
 Contrato: `contracts/ape_health.schema.json`. Test: `tools/test_health_enrich.py`.
 
+
+## Metadatos EPG/TMDB
+
+```text
+tools/ape_metadata_enrich.py
+```
+
+Adjunta `tvg-id/tvg-logo/EPG/TMDB` solo desde un mapa real; no llama APIs ni inventa IDs.
+
