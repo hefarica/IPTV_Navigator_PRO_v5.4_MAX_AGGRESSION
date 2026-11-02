@@ -144,6 +144,31 @@ jobs:
           done
           ssh "$TARGET" 'sudo -n nginx -T 2>/dev/null' > "$DEPLOY_DIR/out/nginx-T-merged.conf" || true
           echo "nginx -T bytes: $(wc -c < "$DEPLOY_DIR/out/nginx-T-merged.conf")"
+      # ── GATE del parche 206: el archivo que CORRE y la existencia del .m3u8 plano
+      # `gunzip off` solo es seguro si el listado sin comprimir existe en disco.
+      # Sin esto, try_files $uri =404 devolveria 404 y romperia la lista.
+      - name: Gate del parche 206 (read-only)
+        run: |
+          set -uo pipefail
+          TARGET="${{ secrets.VPS_USER }}@$VPS_HOST"
+          OUT="$DEPLOY_DIR/out/gate-206.txt"
+          {
+            echo "=== sha256 del archivo QUE CORRE ==="
+            ssh "$TARGET" 'sha256sum /etc/nginx/sites-enabled/default 2>&1; wc -c < /etc/nginx/sites-enabled/default 2>&1' || true
+            echo "esperado repo: 6c8e507f4bf555089b581ddf5a261bfbb1c27dacb84c676d60ccc227dcd7764f  8071 B"
+            echo
+            echo "=== el .m3u8 PLANO existe? (prerrequisito de gunzip off) ==="
+            ssh "$TARGET" 'ls -l /var/www/html/lists/APE_LISTA_1793589060441.m3u8 /var/www/html/lists/APE_LISTA_1793589060441.m3u8.gz /var/www/lists/APE_LISTA_1793589060441.m3u8 /var/www/lists/APE_LISTA_1793589060441.m3u8.gz 2>&1' || true
+            echo
+            echo "=== que directorio usa el bloque m3u8 (root del server) ==="
+            ssh "$TARGET" "grep -n -E '^\s*root\s|^\s*alias\s' /etc/nginx/sites-enabled/default 2>&1 || echo SIN_ROOT" || true
+            echo
+            echo "=== 206 REAL contra la URL publica, como la pide un player ==="
+            ssh "$TARGET" 'curl -sS -o /dev/null -D - -m 25 -k -H "Range: bytes=0-1023" -H "Host: iptv-ape.duckdns.org" https://127.0.0.1/lists/APE_LISTA_1793589060441.m3u8 2>&1 | grep -iE "^HTTP|content-length|content-range|accept-ranges|transfer-encoding" || echo SIN_DATOS' || true
+            echo
+            echo "=== 206 con Accept-Encoding: gzip (el caso que hoy descomprime) ==="
+            ssh "$TARGET" 'curl -sS -o /dev/null -D - -m 25 -k -H "Range: bytes=0-1023" -H "Accept-Encoding: gzip" -H "Host: iptv-ape.duckdns.org" https://127.0.0.1/lists/APE_LISTA_1793589060441.m3u8 2>&1 | grep -iE "^HTTP|content-length|content-range|accept-ranges|content-encoding|transfer-encoding" || echo SIN_DATOS' || true
+          } | tee "$OUT"
       - name: Guardar inventario como artefacto
         uses: actions/upload-artifact@v4
         with:
