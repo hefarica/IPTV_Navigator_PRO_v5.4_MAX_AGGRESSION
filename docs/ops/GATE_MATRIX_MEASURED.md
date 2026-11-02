@@ -60,11 +60,16 @@ problema; simplemente no la había probado así.
 | Paso | Celdas | Cambio |
 |---|---|---|
 | Hoy | **12 / 20** | — |
-| Con el parche de 3 líneas (`PATCHED-206-dual.conf`) | **16 / 20** | +4: las cuatro celdas de 206 |
+| Con `gunzip off` + `gzip_static on` | 14 / 20 | +2: las listas grandes con identity |
+| Con `gzip off` en la location | 16 / 20 | +2: las listas pequeñas con gzip |
 | Con `301`→`302` en la línea 21 | **20 / 20** | +4: las cuatro celdas de 302 |
 
-Los dos cambios son **independientes** y ninguno está autorizado. El primero es de compresión; el
-segundo de semántica de caché.
+**Corrección:** versiones anteriores de este documento decían «el parche de 3 líneas arregla 4 celdas»
+como si fuera **un** cambio. `gate_matrix.js` lo separa en **dos** mecanismos independientes, +2 cada
+uno, que suman las mismas 4. Importa porque si se aplica sólo uno, el gate queda en 14/20 y no en 16/20,
+y las dos mitades fallan por causas distintas.
+
+Los tres cambios son **independientes** y ninguno está autorizado.
 
 ## 6 · Lo que esta matriz NO prueba
 
@@ -74,3 +79,32 @@ segundo de semántica de caché.
 - Los GET completos se cortan al primer chunk: el estado y las cabeceras son reales, el cuerpo no se
   descarga entero.
 - No mide concurrencia, ni caché intermedia (CDN/proxy), ni el comportamiento bajo carga.
+
+## 7 · Intento de validar el parche sin tocar el VPS — y por qué no salió
+
+Antes de pedir autorización para el parche quise **medir** que funciona, no sólo razonarlo. Plan: levantar
+`nginx:1.24.0` en un contenedor con la misma configuración y medir las 4 celdas antes y después.
+
+**No se pudo.** El error, literal:
+
+```
+[rootlesskit:parent] error: failed to setup UID/GID map:
+  newuidmap 660 [0 1000 1 1 100000 65536] failed:
+  newuidmap: write to uid_map failed: Operation not permitted
+```
+
+- `nginx` no está instalado en el host (ni `/usr/bin/nginx` ni `/usr/sbin/nginx`).
+- El daemon de Docker no corre (`/var/run/docker.sock` no existe).
+- Hay `dockerd-rootless.sh` con todos los prerrequisitos (`newuidmap`, `newgidmap`, `/etc/subuid`,
+  `/etc/subgid` configurados), pero **el kernel de este WSL no permite escribir `uid_map`**.
+- `sudo` pide contraseña interactiva, y esta sesión no puede darla.
+
+**Consecuencia honesta:** el parche está **razonado a partir de las 4 celdas que sí medí**, no validado
+empíricamente. La evidencia directa es que los dos modos de fallo existen y son exactamente los
+predichos: la lista grande con `identity` devuelve 200 (el `.gz` se sirve descomprimido) y la pequeña con
+`gzip` devuelve 200 (compresión dinámica). Que apagar cada una de esas dos compresiones elimine su fallo
+correspondiente es la deducción — sólida, pero deducción.
+
+**Quien autorice el parche debería saber esto.** Es un cambio de 3 líneas en un fichero de
+configuración, con copia de respaldo, reversible en un comando, y la verificación es `gate_matrix.js`
+antes y después.

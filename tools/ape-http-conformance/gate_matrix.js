@@ -125,11 +125,59 @@ async function evaluar(nombre) {
   const ok = celdas.filter(c => c.cumple).length;
   const huecos = celdas.filter(c => !c.cumple);
 
+  /**
+   * Remedio por hueco. No es una prediccion suelta: cada entrada nombra el artefacto del repo y
+   * el mecanismo concreto que se midio. Los huecos de 206 son DOS causas distintas y necesitan
+   * DOS cambios distintos; tratarlos como uno solo fue un error de rondas anteriores.
+   */
+  const remedio = (h) => {
+    if (h.pata === '302') {
+      return {
+        causa: 'la linea del redirect usa 301 en vez de 302',
+        artefacto: 'vps/nginx/live-baseline-2026-11-02/sites-enabled-default.conf',
+        cambio: 'return 301 -> return 302 en la redireccion http->https',
+        celdas: '+4'
+      };
+    }
+    if (h.pata === '206' && h.perfil === 'identity') {
+      return {
+        causa: 'lista grande con .gz: gzip_static always + gunzip on sirven el .gz descomprimido en streaming, sin Content-Range',
+        artefacto: 'vps/nginx/live-baseline-2026-11-02/sites-enabled-default.PATCHED-206-dual.conf',
+        cambio: 'gunzip off (y gzip_static on)',
+        celdas: '+2'
+      };
+    }
+    if (h.pata === '206' && h.perfil === 'gzip') {
+      return {
+        causa: 'lista pequena sin .gz: gzip dinamico comprime al vuelo y elimina el rango',
+        artefacto: 'vps/nginx/live-baseline-2026-11-02/sites-enabled-default.PATCHED-206-dual.conf',
+        cambio: 'gzip off en la location de listas',
+        celdas: '+2'
+      };
+    }
+    return { causa: 'no clasificado', artefacto: null, cambio: null, celdas: '?' };
+  };
+
+  const huecosConRemedio = huecos.map((h) => ({ ...h, ...remedio(h) }));
+
+  // Agrupado por cambio: el operador decide por cambios, no por celdas.
+  const porCambio = new Map();
+  for (const h of huecosConRemedio) {
+    const k = h.cambio || 'no clasificado';
+    if (!porCambio.has(k)) porCambio.set(k, { cambio: k, artefacto: h.artefacto, celdas: [], causa: h.causa });
+    porCambio.get(k).celdas.push(h.lista + ' / ' + h.pata + ' / ' + h.perfil);
+  }
+
   const informe = {
     host: HOST,
     generado: new Date().toISOString(),
     criterio: '200 en GET completo · 206 en GET con Range · 302 exacto en HTTP plano, por perfil',
-    resumen: { celdas: total, cumplen: ok, faltan: huecos.length },
+    resumen: {
+      celdas: total,
+      cumplen: ok,
+      faltan: huecos.length,
+      veredicto_gate: ok === total ? 'CUMPLE' : 'NO CUMPLE'
+    },
     por_lista: filas.map(f => ({
       lista: f.lista,
       '200 identity': f['200 identity'],
@@ -138,7 +186,14 @@ async function evaluar(nombre) {
       '206 gzip': f['206 gzip'],
       'redirect http': f['redirect http']
     })),
-    huecos,
+    huecos: huecosConRemedio,
+    cambios_necesarios: [...porCambio.values()].map(c => ({
+      cambio: c.cambio,
+      artefacto: c.artefacto,
+      causa: c.causa,
+      celdas_que_arregla: c.celdas.length,
+      detalle: c.celdas
+    })),
     detalle: filas.map(f => ({ lista: f.lista, ...f.detalle }))
   };
 
@@ -148,7 +203,12 @@ async function evaluar(nombre) {
   }
 
   // Resumen legible por stderr para que se vea sin parsear el JSON.
-  process.stderr.write(`\n${ok}/${total} celdas del gate cumplen\n`);
+  process.stderr.write(`\n${ok}/${total} celdas del gate cumplen · veredicto: ${informe.resumen.veredicto_gate}\n`);
+  for (const c of informe.cambios_necesarios) {
+    process.stderr.write(`\n  CAMBIO: ${c.cambio}  (arregla ${c.celdas_que_arregla} celdas)\n`);
+    process.stderr.write(`    causa: ${c.causa}\n`);
+    process.stderr.write(`    artefacto: ${c.artefacto || 'sin artefacto'}\n`);
+  }
   for (const f of informe.por_lista) {
     process.stderr.write(
       `  ${f.lista.padEnd(34)} ` +
