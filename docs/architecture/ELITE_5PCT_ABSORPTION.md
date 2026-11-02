@@ -107,3 +107,15 @@ idempotency: sha256:dec8238cabb459e4...
 
 El workflow solo transforma; no resuelve URLs ni ejecuta playout.
 
+
+## MPD <-> JSON
+
+```text
+tools/mpd_json_bridge.py
+MPD real JIT: 2.410 bytes, 1 Period
+sha256: a2d09ba9515e81fc...
+roundtrip_identical: true
+```
+
+Es un puente lossless; no implementa un motor DASH/WebRTC.
+
