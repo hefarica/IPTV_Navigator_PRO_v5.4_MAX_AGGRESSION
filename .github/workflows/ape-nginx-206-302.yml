@@ -202,19 +202,25 @@ jobs:
           echo "  sha256 baseline del repo: ${{ needs.verificar.outputs.sha_base }}"
 
           fallos=0
+          # IDEMPOTENTE. La primera aplicacion ya dejo 'gzip_static on;' y 'gunzip off;' en el fichero
+          # vivo, asi que exigir la forma ORIGINAL haria fallar el reintento sobre un host ya parcheado.
+          # Cada anclaje vale si aparece UNA vez la forma original O una vez la forma final.
           check() {
-            local patron="$1" desc="$2" n
-            n=$(grep -c -- "$patron" /tmp/live.conf || true)
-            if [ "$n" -ne 1 ]; then
-              echo "::error::anclaje '$patron' aparece $n veces en el fichero vivo ($desc); se esperaba exactamente 1"
-              fallos=$((fallos+1))
+            local original="$1" final="$2" desc="$3" n_orig n_final
+            n_orig=$(grep -c -- "$original" /tmp/live.conf || true)
+            n_final=$(grep -c -- "$final" /tmp/live.conf || true)
+            if [ "$n_orig" -eq 1 ] && [ "$n_final" -eq 0 ]; then
+              echo "  OK pendiente de aplicar: $original  ($desc)"
+            elif [ "$n_final" -ge 1 ] && [ "$n_orig" -eq 0 ]; then
+              echo "  OK ya aplicado: $final  ($desc)"
             else
-              echo "  OK anclaje unico: $patron  ($desc)"
+              echo "::error::anclaje '$original' aparece $n_orig veces y '$final' $n_final veces ($desc); se esperaba exactamente una de las dos"
+              fallos=$((fallos+1))
             fi
           }
-          check 'gzip_static always;' '206: se cambia a gzip_static on'
-          check 'gunzip on;'          '206: se cambia a gunzip off'
-          check 'return 301 '         '302: se cambia a return 302'
+          check 'gzip_static always;' 'gzip_static on;' '206: gzip_static'
+          check 'gunzip on;'          'gunzip off;'       '206: gunzip'
+          check 'return 301 '         'return 302 '       '302: redireccion'
 
           if [ "$fallos" -ne 0 ]; then
             echo "::error::$fallos anclajes no son utilizables sobre el fichero vivo. NO se aplica."
@@ -273,25 +279,63 @@ jobs:
           # partir del vivo elimina cualquier ventana entre la comparacion y la escritura.
           cp /tmp/live.conf /tmp/nuevo.conf
 
-          apply() {
-            local de="$1" a="$2" desc="$3"
-            if ! grep -q -- "$de" /tmp/nuevo.conf; then
-              echo "::error::no encuentro '$de' en la config viva ($desc)"; return 1
+          # IDEMPOTENTE A PROPOSITO.
+          #
+          # La primera aplicacion (run 41535974555) dejo el fichero con gzip_static on; y gunzip off;.
+          # Una segunda pasada buscando la forma ORIGINAL habria fallado el anclaje y se habria negado
+          # a continuar, que es lo que paso al reintentar sin querer. Ahora cada cambio comprueba tres
+          # casos: ya aplicado -> no toca nada; forma original presente -> aplica; ninguna de las dos ->
+          # error. Asi el workflow se puede correr las veces que haga falta sobre el mismo host.
+          aplicar_cambio() {
+            local original="$1" final="$2" desc="$3" n_orig n_final
+            n_orig=$(grep -c -- "$original" /tmp/nuevo.conf || true)
+            n_final=$(grep -c -- "$final" /tmp/nuevo.conf || true)
+            if [ "$n_final" -ge 1 ] && [ "$n_orig" -eq 0 ]; then
+              echo "  ya aplicado: $desc"
+              return 0
             fi
-            sed -i "s|$de|$a|g" /tmp/nuevo.conf
+            if [ "$n_orig" -ne 1 ]; then
+              echo "::error::'$original' aparece $n_orig veces ($desc); se esperaba 1 si no estaba ya aplicado"
+              return 1
+            fi
+            sed -i "s|$original|$final|g" /tmp/nuevo.conf
             echo "  aplicado: $desc"
           }
 
-          # Los tres cambios del parche dual (206) y el 302. Cada uno con su motivo.
-          apply 'gzip_static always;' 'gzip_static on;'   '206: no forzar el .gz si el cliente no lo pide'
-          apply 'gunzip on;'          'gunzip off;'        '206: no descomprimir en vuelo (elimina el rango)'
+          # Tres cambios para la pata 206 y uno para la 302. Cada uno con su motivo medido.
+          aplicar_cambio 'gzip_static always;' 'gzip_static on;' \
+            '206: no forzar el .gz si el cliente no lo pide'
+          aplicar_cambio 'gunzip on;' 'gunzip off;' \
+            '206: no descomprimir en vuelo (elimina el rango)'
+          # Cuarto cambio. Las dos listas pequenas seguian devolviendo 200 en la pierna 206+gzip porque
+          # nginx las comprime en caliente: gzip on global, sin .gz pregenerado. gzip off dentro del
+          # location desactiva SOLO la compresion dinamica de ese location; gzip_static on sigue
+          # sirviendo el .gz si existe. Medido en el run 41535974555: 18/20, y las dos celdas que
+          # faltaban eran exactamente estas dos listas en 206+gzip.
+          if grep -qE '^\s*gzip off;' /tmp/nuevo.conf; then
+            echo '  ya aplicado: 206: gzip dinamico off en el location de .m3u8'
+          else
+            n_gs=$(grep -c -- 'gzip_static on;' /tmp/nuevo.conf || true)
+            if [ "$n_gs" -ne 1 ]; then
+              echo "::error::se esperaba 1 'gzip_static on;' para anclar la insercion de gzip off; y hay $n_gs"
+              exit 1
+            fi
+            sed -i 's|^\(\s*\)gzip_static on;|\1gzip_static on;\n\1gzip off;|' /tmp/nuevo.conf
+            echo '  aplicado: 206: gzip dinamico off en el location de .m3u8'
+          fi
+
           n301=$(grep -c 'return 301 ' /tmp/nuevo.conf || true)
-          [ "$n301" = '1' ] || { echo "::error::se esperaba exactamente 1 'return 301 ' y hay $n301"; exit 1; }
-          sed -i 's|return 301 |return 302 |' /tmp/nuevo.conf
-          echo "  aplicado: 302: 301 permanente -> 302 temporal"
+          n302=$(grep -c 'return 302 ' /tmp/nuevo.conf || true)
+          if [ "$n302" -ge 1 ] && [ "$n301" -eq 0 ]; then
+            echo '  ya aplicado: 302: 301 permanente -> 302 temporal'
+          else
+            [ "$n301" = '1' ] || { echo "::error::se esperaba exactamente 1 'return 301 ' y hay $n301"; exit 1; }
+            sed -i 's|return 301 |return 302 |' /tmp/nuevo.conf
+            echo "  aplicado: 302: 301 permanente -> 302 temporal"
+          fi
 
           echo '--- cambios efectivos ---'
-          diff /tmp/live.conf /tmp/nuevo.conf || true
+          diff /tmp/live.conf /tmp/nuevo.conf || echo '  (sin diferencias: ya estaba aplicado)'
 
       - name: Backup, prueba y reload con rollback automatico
         run: |
@@ -331,7 +375,11 @@ jobs:
           fi
           echo "APLICADO. Para revertir: sudo cp -a $BAK $LIVE_CONF && sudo nginx -t && sudo nginx -s reload"
 
-      - name: Matriz DESPUES — 20/20 o rollback
+      # El nombre anterior decia "20/20 o rollback" y era MENTIRA: el paso solo imprimia la palabra
+      # rollback y salia con 1. No revertia nada, porque la funcion rollback() vive en el scope del paso
+      # anterior. Se renombra a lo que de verdad hace. El rollback automatico existe y funciona donde
+      # importa: si nginx -t falla o el :443 no escucha, el paso de arriba restaura y no recarga.
+      - name: Matriz DESPUES — informa y falla si no llega a 20/20
         run: |
           set -uo pipefail
           sleep 5
