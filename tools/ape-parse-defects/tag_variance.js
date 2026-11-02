@@ -58,6 +58,12 @@ function valorTag(linea, nombre) {
 }
 
 const stats = new Map();   // nombre -> { bloques, valores:Set, ejemplos:[] }
+/**
+ * Tags que caen FUERA de cualquier bloque de canal: cabecera, y todo lo anterior al primer #EXTINF.
+ * Se cuentan aparte porque `#EXTM3U`, `#EXT-X-VERSION`, `#EXT-X-KEY` y `#EXT-X-TARGETDURATION` viven
+ * ahi. Antes se perdian y el censo los reportaba AUSENTE — que se lee como cero y no lo es.
+ */
+const fuera = new Map();
 let bloques = 0;
 let enBloque = false;
 
@@ -71,13 +77,22 @@ function tocar(nombre, valor) {
   s.valores.set(valor, (s.valores.get(valor) || 0) + 1);
 }
 
+function tocarFuera(nombre, valor) {
+  let s = fuera.get(nombre);
+  if (!s) {
+    s = { n: 0, valores: new Map() };
+    fuera.set(nombre, s);
+  }
+  s.n++;
+  s.valores.set(valor, (s.valores.get(valor) || 0) + 1);
+}
+
 function procesar(linea) {
   if (linea.startsWith('#EXTINF')) {
     bloques++;
     enBloque = true;
     return;
   }
-  if (!enBloque) return;
   if (!linea.startsWith('#')) return;
 
   const nombre = nombreTag(linea);
@@ -85,11 +100,13 @@ function procesar(linea) {
 
   // El tag de metadata chunked lleva el indice dentro del valor (1/20:...), asi que cada
   // chunk seria "distinto" por construccion. Se agrupa por el tag sin indice.
-  if (nombre === 'EXT-X-APE-LAB-METADATA') {
-    tocar('EXT-X-APE-LAB-METADATA', '<chunked>');
+  const valor = nombre === 'EXT-X-APE-LAB-METADATA' ? '<chunked>' : valorTag(linea, nombre);
+
+  if (!enBloque) {
+    tocarFuera(nombre, valor);
     return;
   }
-  tocar(nombre, valorTag(linea, nombre));
+  tocar(nombre, valor);
 }
 
 function finalizar() {
@@ -131,6 +148,18 @@ function finalizar() {
     RARO: filas.filter((f) => f.clase === 'RARO').length
   };
 
+  const fueraDeBloque = {};
+  for (const [nombre, s] of fuera) {
+    fueraDeBloque[nombre] = {
+      ocurrencias: s.n,
+      valores_distintos: s.valores.size,
+      valores: [...s.valores.entries()].slice(0, 3).map(([v, c]) => ({
+        valor: v.length > 90 ? v.slice(0, 90) + '…' : v,
+        n: c
+      }))
+    };
+  }
+
   const informe = {
     archivo: path,
     min_cobertura: MIN_COB,
@@ -138,14 +167,18 @@ function finalizar() {
     constante: filas.filter((f) => f.clase === 'CONSTANTE'),
     varia: filas.filter((f) => f.clase === 'VARIA'),
     parcial: filas.filter((f) => f.clase === 'PARCIAL'),
-    raro: filas.filter((f) => f.clase === 'RARO')
+    raro: filas.filter((f) => f.clase === 'RARO'),
+    // Tags fuera de bloque: cabecera. Se listan aparte y NUNCA se suman a las clases de
+    // arriba: un tag de cabecera no describe un canal, y contarlo como constante seria
+    // volver a leer "no computado" como "cero".
+    fuera_de_bloque: fueraDeBloque
   };
 
   process.stdout.write(JSON.stringify(informe, null, 2) + '\n');
   if (outJson) fs.writeFileSync(outJson, JSON.stringify(informe, null, 2) + '\n');
 
   process.stderr.write(
-    `\n${bloques} bloques · ${filas.length} tags\n` +
+    `\n${bloques} bloques · ${filas.length} tags en bloque · ${Object.keys(fueraDeBloque).length} tags fuera de bloque\n` +
     `  CONSTANTE ${resumen.CONSTANTE} · VARIA ${resumen.VARIA} · ` +
     `PARCIAL ${resumen.PARCIAL} · RARO ${resumen.RARO}\n`
   );
