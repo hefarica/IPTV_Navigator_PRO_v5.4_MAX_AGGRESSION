@@ -85,7 +85,7 @@ jobs:
       - name: Un fichero ausente devuelve 5, no 4
         run: |
           set -uo pipefail
-          for tool in parse_defects validate_exthttp; do
+          for tool in parse_defects validate_exthttp audio_contradictions; do
             set +e
             node "tools/ape-parse-defects/$tool.js" tools/ape-parse-defects/fixtures/no_existe.m3u8 >/dev/null 2>&1; code=$?
             set -e
@@ -94,3 +94,28 @@ jobs:
             # Con un unico codigo, un fichero ausente se reportaba como lista defectuosa.
             [ "$code" -eq 5 ] || { echo "::error::$tool devolvio $code para un fichero ausente, se esperaba 5"; exit 1; }
           done
+
+      - name: audio_contradictions detecta el plano de audio contradictorio
+        run: |
+          set -uo pipefail
+          set +e
+          out=$(node tools/ape-parse-defects/audio_contradictions.js tools/ape-parse-defects/fixtures/audio_contradicciones.m3u8 2>&1); code=$?
+          set -e
+          echo "$out"; echo "exit=$code"
+          # El fixture es un bloque de canal REAL extraido de la lista de referencia, que
+          # declara Atmos/DTS/TrueHD/EAC3 como false en KODIPROP y ENABLED=true en la capa APE.
+          [ "$code" -eq 4 ] || { echo "::error::no detecto las contradicciones del bloque real (exit $code)"; exit 1; }
+          echo "$out" | grep -q '"C1_booleano_opuesto": 4' || { echo '::error::no conto las 4 propiedades con valor opuesto'; exit 1; }
+          echo "$out" | grep -q '"C4_passthrough_imposible": 1' || { echo '::error::no detecto el passthrough imposible sin EXT-X-MEDIA'; exit 1; }
+
+      - name: audio_contradictions calla cuando la lista es coherente
+        run: |
+          set -uo pipefail
+          set +e
+          out=$(node tools/ape-parse-defects/audio_contradictions.js tools/ape-parse-defects/fixtures/parse_clean.m3u8 2>&1); code=$?
+          set -e
+          echo "$out"; echo "exit=$code"
+          # Falsificacion inversa: una lista sin tags de audio contradictorios debe dar 0.
+          # Sin esta mitad, el detector podria estar devolviendo 4 por cualquier cosa.
+          [ "$code" -eq 0 ] || { echo "::error::lista coherente con exit $code, se esperaba 0"; exit 1; }
+          echo "$out" | grep -q '"total": 0' || { echo '::error::reporto contradicciones en una lista limpia'; exit 1; }
