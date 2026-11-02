@@ -39,8 +39,18 @@ def load_input(path):
     return text, m3u8_json_bridge.to_doc(text, path)
 
 
-def main(src, outdir):
+def load_health(path):
+    if not path:
+        return {}
+    data = json.load(open(path, encoding='utf-8'))
+    if isinstance(data.get('urls'), dict):
+        data = data['urls']
+    return data if isinstance(data, dict) else {}
+
+
+def main(src, outdir, health_path=None):
     text, bridge = load_input(src)
+    health = load_health(health_path)
     # Reuse the REA parser logic without touching its CLI.
     chans = []
     ext = None
@@ -89,6 +99,7 @@ def main(src, outdir):
                 'persistence_mode': 'immutable',
                 'polymorphic_outputs': ['hls', 'dash', 'webrtc'],
                 'quality_tiers': ['4k', '1080p', '720p', '480p'],
+                'health': health.get(c['url'], {}),
             }
         } for c in unique],
     }
@@ -115,7 +126,7 @@ def main(src, outdir):
 
 
 if __name__ == '__main__':
-    if len(sys.argv) != 3:
-        print('usage: ape_polymorphic_pipeline.py <m3u8|m3u8.gz|json> <outdir>', file=sys.stderr)
+    if len(sys.argv) not in (3, 4):
+        print('usage: ape_polymorphic_pipeline.py <m3u8|m3u8.gz|json> <outdir> [health.json]', file=sys.stderr)
         raise SystemExit(2)
-    raise SystemExit(main(sys.argv[1], sys.argv[2]))
+    raise SystemExit(main(sys.argv[1], sys.argv[2], sys.argv[3] if len(sys.argv) == 4 else None))
