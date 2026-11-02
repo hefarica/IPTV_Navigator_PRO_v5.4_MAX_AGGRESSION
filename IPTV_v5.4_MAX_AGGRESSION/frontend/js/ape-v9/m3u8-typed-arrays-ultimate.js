@@ -2814,6 +2814,7 @@
             '#EXT-X-APE-TRANSPORT-FALLBACK-1:HLS_FMP4',
             '#KODIPROP:inputstream.adaptive.audio_passthrough_earc=strict',
             '#EXT-X-APE-AUDIO-EARC:ENABLED',
+            '#EXT-X-KEY:METHOD=NONE',
             '#EXT-X-APE-DRM-WIDEVINE:ENFORCE',
             '#KODIPROP:inputstream.adaptive.drm_widevine_enforce=true',
             '#EXT-X-APE-TELCHEMY-TVQM:ENABLED',
