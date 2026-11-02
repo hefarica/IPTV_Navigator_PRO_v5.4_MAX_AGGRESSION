@@ -1,0 +1,131 @@
+name: ape-302-proof
+
+# Prueba EMPIRICA del parche 302, en nginx real.
+#
+# El requisito del operador es que TODAS las listas entreguen 200, 206 y 302. La pata 302 es la
+# unica de las tres que nunca se habia escrito ni medido: produccion sirve 301 en el puerto 80.
+#
+# Este job mide dos cosas:
+#
+#   1. El cambio: baseline devuelve 301, parcheado devuelve 302.
+#   2. La AISLACION: los 200 y 206 se sirven en el server del 443, que el parche no toca. Se sirve
+#      una lista en un tercer puerto bajo AMBAS configuraciones y se exige 200 y 206 en las dos.
+#      Si esa pata cambiara, el parche no seria seguro.
+#
+# Sin VPS. Sin tocar produccion.
+
+on:
+  push:
+    paths:
+      - '.github/workflows/ape-302-proof.yml'
+      - 'tools/ape-http-conformance/make_302_patch.js'
+      - 'vps/nginx/live-baseline-2026-11-02/sites-enabled-default.PATCHED-302.conf'
+  workflow_dispatch:
+
+jobs:
+  proof:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Instalar nginx
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq nginx curl
+          nginx -v 2>&1 | head -1
+
+      - name: El parche cambia exactamente una directiva
+        run: |
+          set -euo pipefail
+          node tools/ape-http-conformance/make_302_patch.js \
+            vps/nginx/live-baseline-2026-11-02/sites-enabled-default.conf \
+            /tmp/regen.conf | tee /tmp/patch.json
+          python3 - <<'PY'
+          import json, sys
+          j = json.load(open('/tmp/patch.json'))
+          fallos = []
+          if j['return_301_restantes'] != 0: fallos.append('quedan return 301')
+          if j['return_302'] != 1: fallos.append(f"return 302 = {j['return_302']}, se esperaba 1")
+          if not j['cambio_unico']: fallos.append('no es un cambio unico')
+          print(f"  lineas de directiva: {j['lineas_de_directiva']}")
+          for f in fallos: print(f'::error::{f}')
+          sys.exit(1 if fallos else 0)
+          PY
+          # y el fichero versionado tiene que ser identico al regenerado
+          if ! diff -q /tmp/regen.conf vps/nginx/live-baseline-2026-11-02/sites-enabled-default.PATCHED-302.conf; then
+            echo '::error::el parche versionado no coincide con el que genera la herramienta'
+            exit 1
+          fi
+          echo 'el parche versionado es reproducible desde el baseline'
+
+      - name: Medir 301 contra 302 en nginx real
+        run: |
+          set -uo pipefail
+          mkdir -p /tmp/ape/www
+          # Una lista pequena para la pata 200/206.
+          python3 -c "open('/tmp/ape/www/lista.m3u8','w').write('#EXTM3U\n' + '#EXTINF:-1,c\nhttp://x/y.ts\n'*300)"
+
+          banco() {
+            local puerto_redir="$1" puerto_lista="$2" directiva="$3" etiqueta="$4"
+            cat > /tmp/ape/nginx-$etiqueta.conf <<CONF
+          worker_processes 1;
+          error_log /tmp/ape/err-$etiqueta.log warn;
+          pid /tmp/ape/pid-$etiqueta;
+          events { worker_connections 64; }
+          http {
+            include /etc/nginx/mime.types;
+            access_log off;
+            # --- server del puerto 80 EN PRODUCCION: esto es lo que se mide ---
+            server {
+              listen $puerto_redir;
+              location / { $directiva https://\$host\$request_uri; }
+            }
+            # --- server del 443 EN PRODUCCION (200/206): el parche NO lo toca ---
+            server {
+              listen $puerto_lista;
+              root /tmp/ape/www;
+              location ~* \.m3u8\$ {
+                default_type application/vnd.apple.mpegurl;
+                add_header Accept-Ranges bytes always;
+                try_files \$uri =404;
+              }
+            }
+          }
+          CONF
+            nginx -p /tmp/ape -c /tmp/ape/nginx-$etiqueta.conf -t >/dev/null 2>&1 || {
+              echo "::error::nginx -t falla en $etiqueta"; nginx -p /tmp/ape -c /tmp/ape/nginx-$etiqueta.conf -t; return 1; }
+            nginx -p /tmp/ape -c /tmp/ape/nginx-$etiqueta.conf
+            sleep 1
+          }
+
+          banco 8081 8082 'return 301' base
+          banco 8091 8092 'return 302' parche
+
+          fallos=0
+          c301=$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8081/lists/x.m3u8)
+          c302=$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8091/lists/x.m3u8)
+          echo "baseline (return 301) -> $c301   esperado 301"
+          echo "parche   (return 302) -> $c302   esperado 302"
+          [ "$c301" = '301' ] || { echo "::error::el baseline no reproduce produccion (301), dio $c301"; fallos=$((fallos+1)); }
+          [ "$c302" = '302' ] || { echo "::error::el parche no entrega 302, dio $c302"; fallos=$((fallos+1)); }
+
+          # Aislacion: la pata 200/206 tiene que ser identica bajo las dos configuraciones.
+          for p in 8082 8092; do
+            p200=$(curl -s -o /dev/null -w '%{http_code}' -H 'User-Agent: x' "http://127.0.0.1:$p/lista.m3u8")
+            p206=$(curl -s -o /dev/null -w '%{http_code}' -H 'Range: bytes=0-1023' "http://127.0.0.1:$p/lista.m3u8")
+            echo "  puerto $p · 200 -> $p200 · 206 -> $p206"
+            [ "$p200" = '200' ] || { echo "::error::pata 200 rota en $p"; fallos=$((fallos+1)); }
+            [ "$p206" = '206' ] || { echo "::error::pata 206 rota en $p"; fallos=$((fallos+1)); }
+          done
+
+          nginx -p /tmp/ape -c /tmp/ape/nginx-base.conf -s stop 2>/dev/null || true
+          nginx -p /tmp/ape -c /tmp/ape/nginx-parche.conf -s stop 2>/dev/null || true
+
+          echo
+          if [ "$fallos" -ne 0 ]; then
+            echo "::error::la prueba del 302 fallo en $fallos comprobaciones"
+            exit 1
+          fi
+          echo 'CONFIRMADO: baseline 301, parche 302, y la pata 200/206 intacta en ambas configuraciones'
