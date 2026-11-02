@@ -1,0 +1,25 @@
+# ============================================================================
+# FIXTURE SINTETICO — NO son datos medidos de ningun proveedor.
+# Sirve para ejercitar el transformador y sus rutas de fallo.
+# Dominio `.invalid` (RFC 6761): garantizado no resoluble. Credenciales ya enmascaradas.
+# Caso: master MUXED (sin #EXT-X-MEDIA) con caps de video prohibidos.
+#   Esperado: exit 2 (AUDIO_NO_COMPUTADO) + caps eliminados en la salida.
+# ============================================================================
+#EXTM3U
+#EXT-X-VERSION:9
+#EXT-X-INDEPENDENT-SEGMENTS
+#EXTVLCOPT:network-caching=55000
+#EXTVLCOPT:clock-jitter=0
+#EXTVLCOPT:adaptive-maxbitrate=8000000
+#EXTVLCOPT:adaptive-maxwidth=1920
+#EXTVLCOPT:adaptive-maxheight=1080
+#EXTVLCOPT:video-width=1280
+#EXTVLCOPT:video-height=720
+#KODIPROP:inputstream=inputstream.adaptive
+#KODIPROP:inputstream.adaptive.manifest_type=hls
+#KODIPROP:inputstream.adaptive.max_resolution=1920x1080
+#KODIPROP:inputstream.adaptive.max_bitrate=8000000
+#KODIPROP:inputstream.adaptive.max_framerate=30
+#KODIPROP:inputstream.adaptive.chooser_bandwidth_max=8000000
+#EXT-X-STREAM-INF:BANDWIDTH=9000000,AVERAGE-BANDWIDTH=6500000,RESOLUTION=3840x2160,FRAME-RATE=30.000,CODECS="hvc1.2.4.L153.B0,mp4a.40.2",VIDEO-RANGE=PQ,STABLE-VARIANT-ID="fx_P4"
+https://fx.invalid/live/***/***/1001.m3u8

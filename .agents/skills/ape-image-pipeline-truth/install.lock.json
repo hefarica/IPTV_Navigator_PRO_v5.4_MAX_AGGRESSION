@@ -1,0 +1,40 @@
+{
+  "skill": "ape-image-pipeline-truth",
+  "version": "1.0.0",
+  "installed_at": "2026-11-02T07:58:41-05:00",
+  "installed_by": "lead (sesion iptv-suprema-2026-premium)",
+  "kind": "superskill-operativa",
+  "scope": "verdad medida del pipeline de imagen APE: LAB -> JSON -> M3U8 -> VPS -> ARA",
+  "source_of_truth": {
+    "list": "APE_LISTA_1793589060441.m3u8",
+    "bytes": 604593696,
+    "sha256": "523d52a6d147f81ce5a212e47b9c55401fb409cd4a41aee96f8ba80b5b5049d6",
+    "served_replica": "https://iptv-ape.duckdns.org/lists/APE_LISTA_1793589060441.m3u8",
+    "served_replica_verified": "Content-Length identico -> byte-identica"
+  },
+  "toolchain_pinned": {
+    "ffmpeg": "8.0.1-full_build-www.gyan.dev",
+    "vlc": "3.0.24 (C:\\Program Files\\VideoLAN\\VLC)",
+    "node": "runtime del harness",
+    "rg": "C:\\Users\\HFRC\\AppData\\Local\\Microsoft\\WinGet\\Links\\rg.exe"
+  },
+  "artifacts_it_depends_on": [
+    "tools/ape-image-recipes/recipes.json",
+    "tools/ape-image-recipes/compile.js",
+    "tools/ape-image-recipes/decode_lab_metadata.js",
+    "tools/ape-image-recipes/audit_vlcopt.js",
+    "tools/ape-image-recipes/CORRECTIONS.md",
+    "tools/ape-image-recipes/VLC_OPT_AUDIT.md",
+    "tools/ape-image-recipes/PROMPT_LOOP.md",
+    "docs/cartography/APE_LISTA_523d52a6/01_STRUCTURE.md",
+    "docs/cartography/APE_LISTA_523d52a6/02_VIDEO_FILTER_MATRIX.md",
+    "docs/cartography/APE_LISTA_523d52a6/03_HEADERS_MAP.md"
+  ],
+  "corrections_incorporated": 6,
+  "team_contributors": ["t1 cartografo-estructura", "t2 analista-cadenas", "t3 analista-headers"],
+  "deps": [],
+  "no_network_deps": true,
+  "modifies_harness": false,
+  "modifies_vps": false,
+  "modifies_excel": false
+}

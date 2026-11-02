@@ -1,0 +1,20 @@
+# Bloque P3 emitido por compile.js — layout medido en la lista de referencia
+# El URI NO es la última línea: le siguen 2 tags y una línea vacía.
+# Generado con: node compile.js --profile P3 --emit m3u --url "..." --vpp-intensity 55
+# Credenciales literales USER/PASS: este archivo es un ejemplo, no una lista real.
+
+#EXTVLCOPT:video-filter=hqdn3d,gradfun{strength=1.6,radius=12},sharpen{sigma=0.4}
+#EXT-X-APE-IMAGE-RECIPE:{"s":"ape.image-recipe/1","p":"P3","tier":"premium","src":"1920x1080","dst":"3840x2160","fps":60,"hdr":"HLG","vlc":["hqdn3d","gradfun{strength=1.6,radius=12}","sharpen{sigma=0.4}"],"executed_by":"vlc-engine","note":"metadata declarativa; la aplica el runtime VLC. Un player sin motor VLC la ignora."}
+http://host:port/live/USER/PASS/987.m3u8
+#EXTVLCOPT:clock-jitter=0
+#EXT-X-APE-CRYSTAL-UHD:PROFILE=P3;VPP_INTENSITY=55;SCOPE=DISPLAY;PIXELS=0
+
+# --- qué ejecuta cada línea ---
+# 1. #EXTVLCOPT:video-filter  -> solo se aplica con motor VLC (VLC desktop o el VLC 3.6.x
+#    embebido de OTT Navigator). Con ExoPlayer/sistema es decorado.
+# 2. #EXT-X-APE-IMAGE-RECIPE  -> plano de control. Ningún player lo ejecuta; lo lee un
+#    daemon/ARA. Es la forma dinamica de llevar el recetario al manifiesto.
+# 3. URI                      -> el stream.
+# 4. #EXTVLCOPT:clock-jitter  -> opcion real de VLC (verificada en binarios).
+# 5. #EXT-X-APE-CRYSTAL-UHD   -> PROFILE y SCOPE medidos en la lista; VPP_INTENSITY
+#    observado solo en P3 (=55). No se inventa: sin --vpp-intensity el campo se omite.

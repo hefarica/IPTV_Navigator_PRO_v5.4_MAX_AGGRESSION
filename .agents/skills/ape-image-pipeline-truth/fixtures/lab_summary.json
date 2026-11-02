@@ -1,0 +1,17 @@
+{
+  "parsed": true,
+  "top_level_keys": [
+    "schema",
+    "profile",
+    "generated_at",
+    "fields"
+  ],
+  "decodedBytes": 51890,
+  "chunks": 20,
+  "quality_levels": {},
+  "prefetch_config": null,
+  "has_player_enslavement": false,
+  "has_actor_injections": false,
+  "soc_vpp_dnr": null,
+  "header_lines_scanned": 188
+}
