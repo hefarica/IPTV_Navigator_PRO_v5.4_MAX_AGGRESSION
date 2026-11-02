@@ -42,7 +42,21 @@ jobs:
                     '#EXT-X-APE-HDR-TRANSFER:BT1886\n'
                     'http://example.invalid/{n}.ts\n')
           grande = cab + ''.join(bloque.format(n=i) for i in range(4000))
+          # El "pequeno" se ajusta EXACTAMENTE al tamano de las listas pequenas de produccion
+          # (163.187 B) porque el intento anterior con 5 KB no reprodujo el fallo: daba 206 con
+          # gzip donde produccion da 200. Si la causa es el tamano, esto lo revela.
+          objetivo = 163187
           pequeno = cab + ''.join(bloque.format(n=i) for i in range(40))
+          relleno = '#EXT-X-APE-PADDING:'
+          i = 0
+          while len(pequeno) + len(relleno) + 8 < objetivo:
+              pequeno += relleno + str(i).zfill(8) + '\n'
+              i += 1
+          # Ajuste final exacto al byte.
+          faltan = objetivo - len(pequeno) - 1
+          if faltan > 0:
+              pequeno += '#EXT-X-APE-PAD:' + ('x' * max(0, faltan - 15)) + '\n'
+          print('pequeno bytes =', len(pequeno), '(objetivo', objetivo, ')')
           open('/tmp/ape/www/grande.m3u8','w').write(grande)
           open('/tmp/ape/www/pequeno.m3u8','w').write(pequeno)
           print('grande', len(grande), 'pequeno', len(pequeno))
