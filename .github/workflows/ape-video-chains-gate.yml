@@ -125,6 +125,36 @@ jobs:
               print(f"  P2 sigue sin ejecutar, como esta documentado: {p2.get('error','')[:80]}")
           PY
 
+      - name: Los modulos de las cadenas no existen en VLC
+        run: |
+          set +e
+          set -uo pipefail
+          # VLC es el motor al que van dirigidas estas lineas (#EXTVLCOPT), asi que su inventario de
+          # filtros manda. En el runner no hay VLC instalado: la herramienta cae en la lista
+          # documentada con su procedencia anotada, y si no hubiera lista saldria con 5 en vez de
+          # adivinar.
+          node tools/ape-image-recipes/vlc_filter_modules.js \
+            --chains tools/ape-image-recipes/ref_chains.txt > /tmp/vlc_ref.json 2>/tmp/vlc_ref.err
+          rc=$?
+          cat /tmp/vlc_ref.err
+          if [ "$rc" -eq 5 ]; then
+            echo '::error::sin inventario de VLC: no se puede decidir'
+            exit 1
+          fi
+          python3 - <<'PY'
+          import json, sys
+          j = json.load(open('/tmp/vlc_ref.json'))
+          r = j['resumen']
+          print(f"  fuente: {j['fuente_inventario']} ({j['modulos_en_vlc']} modulos)")
+          print(f"  cadenas con algun modulo ausente: {r['cadenas_con_modulo_ausente']} de {r['cadenas']}")
+          print(f"  ausentes distintos: {', '.join(r['modulos_ausentes_distintos'])}")
+          # Esto NO se invierte: la lista usa modulos que VLC no tiene, y el gate lo deja escrito.
+          # Si algun dia deja de ser cierto, alguien cambio las cadenas y toca revisar el informe.
+          if r['cadenas_con_modulo_ausente'] != r['cadenas']:
+              print('  AVISO: alguna cadena ya solo usa modulos que VLC tiene. Revisar 21_VLC_FILTER_INVENTORY.md')
+          PY
+          echo 'las cadenas de la lista usan modulos que VLC no tiene (medido, no supuesto)'
+
       - name: Ninguna cadena corregida hace downscale
         run: |
           set -uo pipefail
