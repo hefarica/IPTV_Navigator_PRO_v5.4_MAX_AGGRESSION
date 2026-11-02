@@ -270,7 +270,11 @@ function maskCredentials(s) {
   let v = s;
   v = v.replace(/\b([a-zA-Z][a-zA-Z0-9+.\-]*:\/\/)[^\s\/@:]+:[^\s\/@]*@/g, '$1***:***@');
   // Xtream: scheme://host[:port]/<user>/<pass>/<rest>
-  v = v.replace(/\b([a-zA-Z][a-zA-Z0-9+.\-]*:\/\/[^\s\/:]+(?::\d+)?\/)[^\s\/?#]+\/[^\s\/?#]+(?=[\/?#])/g, '$1***/***');
+  // Idempotente: si los dos segmentos ya son '***' no se vuelve a enmascarar (evita ***/***/***).
+  v = v.replace(
+    /\b([a-zA-Z][a-zA-Z0-9+.\-]*:\/\/[^\s\/:]+(?::\d+)?\/)([^\s\/?#]+)\/([^\s\/?#]+)(?=[\/?#])/g,
+    (m, prefix, a, b) => (a === '***' || b === '***' ? m : `${prefix}***/***`)
+  );
   v = v.replace(/\b(token|password|pass|pwd|secret|apikey|api_key|username|user)=([^\s&,;"']+)/gi, '$1=***');
   return v;
 }
@@ -285,7 +289,7 @@ function looksLikePlaceholder(uri) {
   return false;
 }
 
-const inc = (map, k) => map.set(k, (map.get(k) || 0) + 1);
+const inc = (map, k, n = 1) => map.set(k, (map.get(k) || 0) + n);
 const sortedObj = (map) => {
   const o = {};
   for (const [k, v] of [...map.entries()].sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : 1))) o[k] = v;
@@ -519,6 +523,18 @@ function analyseLine(line, lineIndex, block, counters) {
  * ========================================================================================== */
 
 /**
+ * Una sola dimensión ('1920'), no 'WxH'. Necesario para adaptive-maxwidth / video-width /
+ * adaptive-maxheight / video-height, que en la lista real llevan un entero suelto.
+ */
+function parseDim(s) {
+  if (typeof s !== 'string') return null;
+  const m = /^\s*(\d{2,5})\s*$/.exec(s);
+  if (!m) return null;
+  const v = parseInt(m[1], 10);
+  return v > 0 ? v : null;
+}
+
+/**
  * Decide si un cap LIMITA respecto de la fuente declarada del canal.
  * Devuelve true | false | null (null = NO COMPUTADO, no se puede saber).
  * Fail-honest: la ausencia de fuente NO se interpreta como "no limita" ni como "limita".
@@ -526,14 +542,19 @@ function analyseLine(line, lineIndex, block, counters) {
 function capLimits(rule, valueText, source) {
   if (!source) return null;
   if (rule.kind === 'resolution') {
-    const cap = parseResolution(valueText);
-    if (!cap || !source.resolution) return null;
+    if (!source.resolution) return null;
     if (rule.key === 'adaptive-maxwidth' || rule.key === 'video-width') {
-      return cap.w < source.resolution.w;
+      const w = parseDim(valueText);
+      if (w === null) return null;
+      return w < source.resolution.w;
     }
     if (rule.key === 'adaptive-maxheight' || rule.key === 'video-height') {
-      return cap.h < source.resolution.h;
+      const h = parseDim(valueText);
+      if (h === null) return null;
+      return h < source.resolution.h;
     }
+    const cap = parseResolution(valueText);
+    if (!cap) return null;
     return cap.area < source.resolution.area;
   }
   if (rule.kind === 'bitrate') {
@@ -725,7 +746,7 @@ async function run(opts) {
       extinf: 0,
     },
     codecs: {
-      video_codecs_observed: {},
+      stream_inf_codecs_observed: {},
       audio_codecs_used: {},
       codecs_rewritten: 0,
       codecs_absent: 0,
@@ -850,6 +871,19 @@ async function run(opts) {
         inc(report._capsRemoved || (report._capsRemoved = new Map()), `${c.rule.tag}:${c.rule.key}`);
         inc(report._capsEffect || (report._capsEffect = new Map()), c.rule.effect);
       }
+      // Desglose por clave: cuántas veces aparece, cuántas LIMITA de verdad y con qué valores.
+      // Es lo que responde "cuando limiten" con datos, no con la intención de la regla.
+      const k = `${c.rule.tag}:${c.rule.key}`;
+      const det = (report._capsDetail || (report._capsDetail = new Map())).get(k) || {
+        effect: c.rule.effect, kind: c.rule.kind, present: 0, limiting: 0, not_limiting: 0, undetermined: 0, removed: 0, values: new Map(),
+      };
+      det.present++;
+      if (lim === true) det.limiting++;
+      else if (lim === false) det.not_limiting++;
+      else det.undetermined++;
+      if (removeIt) det.removed++;
+      if (det.values.size < 12) inc(det.values, `${c.valueText}`);
+      report._capsDetail.set(k, det);
     }
     for (const c of block.candidateLines) {
       inc(report._candidates || (report._candidates = new Map()), `${c.rule.tag}:${c.rule.key}`);
@@ -874,6 +908,8 @@ async function run(opts) {
         inc(report._audioCodecs || (report._audioCodecs = new Map()), r.codec || '(sin codec)');
       }
       if (stereo) report.audio.stereo_fallback_present = true;
+      if (!report.audio.source) report.audio.source = 'in_source';
+      report.audio.renditions += emitMedia.length;
       report.audio.demuxed = true;
     }
 
@@ -885,7 +921,8 @@ async function run(opts) {
       rewrite.set(si.lineIndex, rewriteStreamInf(si.attrs, renditions ? gid : null, audioCodecs, counters));
     }
 
-    inc(counters.streamInf, 'done');
+    // Cuenta VARIANTES, no bloques: un master multi-variante tiene varios STREAM-INF por bloque.
+    inc(counters.streamInf, 'done', block.streamInfLines.length);
     return { source, emitMedia, rewrite, dropLines, gid, violations };
   };
 
@@ -895,17 +932,26 @@ async function run(opts) {
   const flushBlock = (block) => {
     const decision = finalizeBlock(block);
     if (!outStream) return decision;
-    // Insertar EXT-X-MEDIA al inicio del bloque (tras su #EXTINF si lo hay) [R7]
-    if (decision.emitMedia.length) {
-      for (const m of decision.emitMedia) write(m);
-    }
+    // Las #EXT-X-MEDIA se insertan INMEDIATAMENTE ANTES del primer #EXT-X-STREAM-INF del bloque.
+    // Nunca al principio del fichero: #EXTM3U tiene que ser la primera línea o el manifiesto es
+    // inválido. Y deben preceder al STREAM-INF que las referencia con AUDIO= (RFC 8216 §4.3.4).
+    const firstStreamInfLine = block.streamInfLines.length ? block.streamInfLines[0].lineIndex : -1;
+    let mediaEmitted = false;
     for (const { line, lineIndex } of blockLines) {
+      if (lineIndex === firstStreamInfLine && decision.emitMedia.length && !mediaEmitted) {
+        for (const m of decision.emitMedia) write(m);
+        mediaEmitted = true;
+      }
       if (decision.dropLines.has(lineIndex)) continue;
       if (decision.rewrite.has(lineIndex)) {
         write(STREAM_INF + decision.rewrite.get(lineIndex));
         continue;
       }
       write(line);
+    }
+    // Salvaguarda: si el bloque no tenía STREAM-INF en blockLines (raro), emitir al final.
+    if (decision.emitMedia.length && !mediaEmitted) {
+      for (const m of decision.emitMedia) write(m);
     }
     return decision;
   };
@@ -966,13 +1012,27 @@ async function run(opts) {
   report.video.caps_removed = sortedObj(report._capsRemoved || new Map());
   report.video.caps_by_effect = sortedObj(report._capsEffect || new Map());
   report.video.candidates_not_removed = sortedObj(report._candidates || new Map());
-  report.codecs.video_codecs_observed = sortedObj(report._videoCodecs || new Map());
+  report.video.caps_detail_by_key = Object.fromEntries(
+    [...(report._capsDetail || new Map()).entries()]
+      .sort((a, b) => b[1].present - a[1].present || (a[0] < b[0] ? -1 : 1))
+      .map(([k, d]) => [k, {
+        effect_measured: d.effect,
+        kind: d.kind,
+        present: d.present,
+        limiting: d.limiting,
+        not_limiting: d.not_limiting,
+        undetermined: d.undetermined,
+        removed: d.removed,
+        values_observed: Object.fromEntries([...d.values.entries()].sort((a, b) => b[1] - a[1])),
+      }])
+  );
+  report.codecs.stream_inf_codecs_observed = sortedObj(report._videoCodecs || new Map());
   report.codecs.audio_codecs_used = sortedObj(report._audioCodecs || new Map());
   report.codecs.codecs_rewritten = counters.codecsRewritten.get('total') || 0;
   report.codecs.codecs_absent = counters.codecsAbsent.get('total') || 0;
   report.codecs.codecs_no_video_codec = counters.codecsNoVideoCodec.get('total') || 0;
   delete report._capsRemoved; delete report._capsEffect; delete report._candidates;
-  delete report._videoCodecs; delete report._audioCodecs;
+  delete report._videoCodecs; delete report._audioCodecs; delete report._capsDetail;
 
   // --- Veredicto del audio [R1]
   if (report.audio.demuxed) {

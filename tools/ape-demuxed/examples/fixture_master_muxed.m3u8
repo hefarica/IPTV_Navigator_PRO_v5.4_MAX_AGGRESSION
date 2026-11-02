@@ -1,3 +1,4 @@
+#EXTM3U
 # ============================================================================
 # FIXTURE SINTETICO — NO son datos medidos de ningun proveedor.
 # Sirve para ejercitar el transformador y sus rutas de fallo.
@@ -5,7 +6,6 @@
 # Caso: master MUXED (sin #EXT-X-MEDIA) con caps de video prohibidos.
 #   Esperado: exit 2 (AUDIO_NO_COMPUTADO) + caps eliminados en la salida.
 # ============================================================================
-#EXTM3U
 #EXT-X-VERSION:9
 #EXT-X-INDEPENDENT-SEGMENTS
 #EXTVLCOPT:network-caching=55000

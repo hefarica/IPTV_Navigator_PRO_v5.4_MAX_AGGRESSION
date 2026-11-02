@@ -1,0 +1,140 @@
+{
+  "tool": "gen_demuxed_master.js",
+  "version": "1.0.0",
+  "generated_at": "2026-11-02T13:32:00.412Z",
+  "input": {
+    "path": "tools\\ape-demuxed\\examples\\fixture_master_demuxed_source.m3u8",
+    "size_bytes": 1507
+  },
+  "options": {
+    "mode": "master",
+    "caps": "all",
+    "mask_credentials": true,
+    "allow_muxed_passthrough": false,
+    "declared_source_override": null,
+    "report_only": false
+  },
+  "audio": {
+    "source": "in_source",
+    "renditions": 2,
+    "stereo_fallback_present": true,
+    "demuxed": true,
+    "status": "OK",
+    "reason": "el master de entrada ya declaraba #EXT-X-MEDIA TYPE=AUDIO con URI="
+  },
+  "video": {
+    "caps_removed": {
+      "#EXTVLCOPT:adaptive-maxbitrate": 1,
+      "#EXTVLCOPT:video-height": 1,
+      "#EXTVLCOPT:video-width": 1,
+      "#KODIPROP:inputstream.adaptive.max_bitrate": 1,
+      "#KODIPROP:inputstream.adaptive.max_resolution": 1
+    },
+    "caps_by_effect": {
+      "inert-vlc": 3,
+      "kodi-addon-key": 2
+    },
+    "caps_not_limiting": 0,
+    "caps_limiting": 5,
+    "caps_undetermined": 0,
+    "candidates_not_removed": {},
+    "downscale_violations": [],
+    "source_resolution_missing": 0,
+    "caps_detail_by_key": {
+      "#EXTVLCOPT:adaptive-maxbitrate": {
+        "effect_measured": "inert-vlc",
+        "kind": "bitrate",
+        "present": 1,
+        "limiting": 1,
+        "not_limiting": 0,
+        "undetermined": 0,
+        "removed": 1,
+        "values_observed": {
+          "8000000": 1
+        }
+      },
+      "#EXTVLCOPT:video-height": {
+        "effect_measured": "inert-vlc",
+        "kind": "resolution",
+        "present": 1,
+        "limiting": 1,
+        "not_limiting": 0,
+        "undetermined": 0,
+        "removed": 1,
+        "values_observed": {
+          "720": 1
+        }
+      },
+      "#EXTVLCOPT:video-width": {
+        "effect_measured": "inert-vlc",
+        "kind": "resolution",
+        "present": 1,
+        "limiting": 1,
+        "not_limiting": 0,
+        "undetermined": 0,
+        "removed": 1,
+        "values_observed": {
+          "1280": 1
+        }
+      },
+      "#KODIPROP:inputstream.adaptive.max_bitrate": {
+        "effect_measured": "kodi-addon-key",
+        "kind": "bitrate",
+        "present": 1,
+        "limiting": 1,
+        "not_limiting": 0,
+        "undetermined": 0,
+        "removed": 1,
+        "values_observed": {
+          "8000000": 1
+        }
+      },
+      "#KODIPROP:inputstream.adaptive.max_resolution": {
+        "effect_measured": "kodi-addon-key",
+        "kind": "resolution",
+        "present": 1,
+        "limiting": 1,
+        "not_limiting": 0,
+        "undetermined": 0,
+        "removed": 1,
+        "values_observed": {
+          "1920x1080": 1
+        }
+      }
+    }
+  },
+  "structure": {
+    "blocks": 1,
+    "stream_inf": 1,
+    "stream_inf_per_channel": {
+      "1": 1
+    },
+    "iframe_stream_inf": 0,
+    "media_with_uri": 2,
+    "media_without_uri": 0,
+    "extinf": 0
+  },
+  "codecs": {
+    "stream_inf_codecs_observed": {
+      "ec-3": 1,
+      "hvc1.2.4.L153.B0": 1
+    },
+    "audio_codecs_used": {
+      "ec-3": 1,
+      "mp4a.40.2": 1
+    },
+    "codecs_rewritten": 1,
+    "codecs_absent": 0,
+    "codecs_no_video_codec": 0
+  },
+  "emission": {
+    "playlist_written": true,
+    "path": "tools\\ape-demuxed\\examples\\fixture_demuxed_master.OUTPUT.m3u8",
+    "bytes_written": 1319,
+    "lines_written": 16
+  },
+  "exit": {
+    "code": 0,
+    "reason": "demuxed emitido"
+  }
+}

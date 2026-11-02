@@ -1,0 +1,177 @@
+{
+  "tool": "gen_demuxed_master.js",
+  "version": "1.0.0",
+  "generated_at": "2026-11-02T13:30:50.588Z",
+  "input": {
+    "path": "C:\\Users\\HFRC\\Downloads\\APE_LISTA_1793589060441.m3u8",
+    "size_bytes": 604593696
+  },
+  "options": {
+    "mode": "catalogue",
+    "caps": "all",
+    "mask_credentials": false,
+    "allow_muxed_passthrough": false,
+    "declared_source_override": null,
+    "report_only": true
+  },
+  "audio": {
+    "source": null,
+    "renditions": 0,
+    "stereo_fallback_present": false,
+    "demuxed": false,
+    "status": "NO_COMPUTADO",
+    "reason": "#EXT-X-MEDIA TYPE=AUDIO con URI= = 0 en la entrada y no se aportó --audio; el origen es MUXED. No se inventa ninguna URI (anti-invención). Para audio demuxed real hay que aportar --audio con renditions medidas."
+  },
+  "video": {
+    "caps_removed": {
+      "#EXTVLCOPT:adaptive-maxbitrate": 10573,
+      "#EXTVLCOPT:adaptive-maxheight": 10573,
+      "#EXTVLCOPT:adaptive-maxwidth": 10573,
+      "#EXTVLCOPT:video-height": 10573,
+      "#EXTVLCOPT:video-width": 10573,
+      "#KODIPROP:inputstream.adaptive.max_framerate": 10573,
+      "#KODIPROP:inputstream.adaptive.max_resolution": 10573
+    },
+    "caps_by_effect": {
+      "inert-vlc": 52865,
+      "kodi-addon-key": 21146
+    },
+    "caps_not_limiting": 32150,
+    "caps_limiting": 41861,
+    "caps_undetermined": 0,
+    "candidates_not_removed": {
+      "#EXTVLCOPT:adaptive-bandwidth-factor": 10573,
+      "#EXTVLCOPT:adaptive-maxbw": 10573,
+      "#EXTVLCOPT:video-display-fps": 10573,
+      "#EXTVLCOPT:video-fps": 10573,
+      "#KODIPROP:inputstream.adaptive.chooser_bandwidth_max": 10573,
+      "#KODIPROP:inputstream.adaptive.max_buffer_duration": 10573,
+      "#KODIPROP:inputstream.adaptive.preferred_video_resolution": 10573
+    },
+    "downscale_violations": [],
+    "source_resolution_missing": 0,
+    "caps_detail_by_key": {
+      "#EXTVLCOPT:adaptive-maxbitrate": {
+        "effect_measured": "inert-vlc",
+        "kind": "bitrate",
+        "present": 10573,
+        "limiting": 10573,
+        "not_limiting": 0,
+        "undetermined": 0,
+        "removed": 10573,
+        "values_observed": {
+          "8000000": 9765,
+          "19800000": 808
+        }
+      },
+      "#EXTVLCOPT:adaptive-maxheight": {
+        "effect_measured": "inert-vlc",
+        "kind": "resolution",
+        "present": 10573,
+        "limiting": 0,
+        "not_limiting": 10573,
+        "undetermined": 0,
+        "removed": 10573,
+        "values_observed": {
+          "4320": 10573
+        }
+      },
+      "#EXTVLCOPT:adaptive-maxwidth": {
+        "effect_measured": "inert-vlc",
+        "kind": "resolution",
+        "present": 10573,
+        "limiting": 0,
+        "not_limiting": 10573,
+        "undetermined": 0,
+        "removed": 10573,
+        "values_observed": {
+          "7680": 10573
+        }
+      },
+      "#EXTVLCOPT:video-height": {
+        "effect_measured": "inert-vlc",
+        "kind": "resolution",
+        "present": 10573,
+        "limiting": 9765,
+        "not_limiting": 808,
+        "undetermined": 0,
+        "removed": 10573,
+        "values_observed": {
+          "720": 7457,
+          "1080": 2308,
+          "2160": 808
+        }
+      },
+      "#EXTVLCOPT:video-width": {
+        "effect_measured": "inert-vlc",
+        "kind": "resolution",
+        "present": 10573,
+        "limiting": 9765,
+        "not_limiting": 808,
+        "undetermined": 0,
+        "removed": 10573,
+        "values_observed": {
+          "1280": 7457,
+          "1920": 2308,
+          "3840": 808
+        }
+      },
+      "#KODIPROP:inputstream.adaptive.max_framerate": {
+        "effect_measured": "kodi-addon-key",
+        "kind": "fps",
+        "present": 10573,
+        "limiting": 1185,
+        "not_limiting": 9388,
+        "undetermined": 0,
+        "removed": 10573,
+        "values_observed": {
+          "30": 7457,
+          "60": 3116
+        }
+      },
+      "#KODIPROP:inputstream.adaptive.max_resolution": {
+        "effect_measured": "kodi-addon-key",
+        "kind": "resolution",
+        "present": 10573,
+        "limiting": 10573,
+        "not_limiting": 0,
+        "undetermined": 0,
+        "removed": 10573,
+        "values_observed": {
+          "1920x1080": 10573
+        }
+      }
+    }
+  },
+  "structure": {
+    "blocks": 10573,
+    "stream_inf": 10573,
+    "stream_inf_per_channel": {
+      "1": 10573
+    },
+    "iframe_stream_inf": 10573,
+    "media_with_uri": 0,
+    "media_without_uri": 0,
+    "extinf": 0
+  },
+  "codecs": {
+    "stream_inf_codecs_observed": {
+      "hvc1.2.4.L153.B0": 10573,
+      "mp4a.40.2": 10573
+    },
+    "audio_codecs_used": {},
+    "codecs_rewritten": 0,
+    "codecs_absent": 0,
+    "codecs_no_video_codec": 0
+  },
+  "emission": {
+    "playlist_written": false,
+    "path": null,
+    "bytes_written": 0,
+    "lines_written": 0
+  },
+  "exit": {
+    "code": 2,
+    "reason": "audio no computado y sin --allow-muxed-passthrough"
+  }
+}

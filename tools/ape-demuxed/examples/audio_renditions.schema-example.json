@@ -1,0 +1,32 @@
+{
+  "_ADVERTENCIA": [
+    "ESTO ES UN EJEMPLO DE ESQUEMA, NO DATOS MEDIDOS.",
+    "Las URIs usan el dominio reservado .invalid (RFC 6761): NO existen y NO se pueden resolver.",
+    "Los campos 'evidence' muestran el VOCABULARIO ACEPTADO; nadie sondeo estas URIs.",
+    "El generador NO puede verificar que una URI exista: solo rechaza formas de fabricacion",
+    "(placeholders) y exige que el operador DECLARE la evidencia. La garantia es del operador."
+  ],
+  "renditions": [
+    {
+      "uri": "https://fx.invalid/audio/***/***/1001_es_eac3.m3u8",
+      "codec": "ec-3",
+      "channels": "6",
+      "language": "spa",
+      "name": "EAC3 5.1",
+      "default": true,
+      "autoselect": true,
+      "evidence": "probed"
+    },
+    {
+      "uri": "https://fx.invalid/audio/***/***/1001_es_stereo.m3u8",
+      "codec": "mp4a.40.2",
+      "channels": "2",
+      "language": "spa",
+      "name": "AAC estereo",
+      "default": false,
+      "autoselect": true,
+      "role": "fallback",
+      "evidence": "probed"
+    }
+  ]
+}
