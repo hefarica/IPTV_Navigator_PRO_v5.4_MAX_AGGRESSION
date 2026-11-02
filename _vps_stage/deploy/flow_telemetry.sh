@@ -54,11 +54,33 @@ for f in /var/log/nginx/*; do
 done
 echo
 
-# Ficheros a considerar: el actual y rotados comprimidos o no.
+# ── Fuente correcta ────────────────────────────────────────────────────────
+# La config viva (sites-enabled/default, sha256 6c8e507f…, línea 55) declara:
+#     access_log /var/log/nginx/playlist_access.log;
+# para el server que atiende /lists/. Por eso access.log tiene 0 entradas de
+# /lists/ aunque haya tráfico: NO es el fichero que lo registra. Leer access.log
+# y concluir «no hay tráfico» es medir el fichero equivocado.
+#
+# Se agregan los playlist_access.log (actual + rotados), acotados en número y en
+# líneas por fichero. playlist_error.log NO entra aquí: es el log de errores.
+PL_BASE="/var/log/nginx/playlist_access.log"
+
 FICHEROS=""
-for f in "$LOGS" "${LOGS}.1" "${LOGS}.2.gz"; do
+[ -r "$PL_BASE" ] && FICHEROS="$FICHEROS $PL_BASE"
+for f in "$PL_BASE".1 "$PL_BASE".2.gz "$PL_BASE".3.gz "$PL_BASE".4.gz; do
   [ -r "$f" ] && FICHEROS="$FICHEROS $f"
 done
+# Si no existe ninguno, se cae a access.log para no reportar vacío por una ruta
+# distinta a la esperada, y se dice que se está usando el sustituto.
+FUENTE="playlist_access.log"
+if [ -z "$FICHEROS" ]; then
+  FUENTE="access.log (SUSTITUTO: no existe playlist_access.log)"
+  for f in "$LOGS" "${LOGS}.1" "${LOGS}.2.gz"; do
+    [ -r "$f" ] && FICHEROS="$FICHEROS $f"
+  done
+fi
+echo "fuente_de_agregacion: $FUENTE"
+echo
 
 echo "--- ficheros leídos:"
 for f in $FICHEROS; do
