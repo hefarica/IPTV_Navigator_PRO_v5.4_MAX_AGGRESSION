@@ -1,23 +1,31 @@
-# Cadenas V2 CORREGIDAS — solo se tocan los dos puntos que ffmpeg rechaza.
+# Cadenas V2 CORREGIDAS — solo se tocan los puntos que ffmpeg rechaza, cada uno con su error medido.
 # Formato: PERFIL|origen|destino_declarado|cadena
 #
-# Que se cambio y por que (evidencia: run 41487670064, ffmpeg real del runner)
+# Evidencia: runs 41487670064 (originales) y 41488179961 (corregidas v1). ffmpeg real del runner.
 #
 #   1. `pp=ac/dr/ci`  ->  ELIMINADO
-#      ffmpeg: "No option name near 'ac/dr/ci'". `ac/dr/ci` es la sintaxis de libpostproc que usa
-#      VLC en su filtro `pp`; el filtro `pp` de ffmpeg NO la acepta. Era la unica pieza de la cadena
-#      escrita en dialecto VLC.
+#      "No option name near 'ac/dr/ci'". `ac/dr/ci` es la sintaxis de libpostproc que usa VLC en su
+#      filtro `pp`; el `pp` de ffmpeg no la acepta.
 #
 #   2. `filter=lanczos+accurate_rnd+full_chroma_int`  ->  `filter=lanczos`
-#      ffmpeg: "Unable to parse option value". `accurate_rnd` y `full_chroma_int` son flags de
-#      sws_flags del filtro `scale`; `zscale` solo acepta nombres de kernel (point, bilinear,
-#      bicubic, spline16, spline36, lanczos...). Meter flags de `scale` en `zscale` es un idioma
-#      cruzado.
+#      "Unable to parse option value". `accurate_rnd`/`full_chroma_int` son flags de sws_flags del
+#      filtro `scale`; `zscale` solo acepta nombres de kernel.
+#
+#   3. `transfer=bt1886`  ->  `transfer=bt709`
+#      "Unable to parse option value \"bt1886\"". BT.1886 es una EOTF de display; zimg no la expone
+#      como valor de transfer. El SDR real de estas cadenas es BT.709.
+#
+#   4. `transfer=st2084`  ->  `transfer=smpte2084`
+#      "Unable to parse option value \"st2084\"". zimg nombra el PQ `smpte2084`.
+#
+#   5. `dither=blue-noise`  ->  `dither=error_diffusion`
+#      "Unable to parse option value \"blue-noise\"". El dithering por ruido azul es de libplacebo
+#      (`dithering=blue-noise`); zscale solo tiene none/ordered/random/error_diffusion.
 #
 # Nada mas se toca: ni resoluciones, ni fps, ni npl, ni fuerza de enfoque.
 #
 # P0 y P1 siguen fuera por presupuesto de memoria (ver el workflow).
-P5|854x480|1920x1080|bwdif=mode=send_frame:parity=-1:deint=0,zscale=transfer=linear:npl=100:range=limited,format=yuv444p16le,hqdn3d=2:1.5:6:4.5,zscale=w=3840:h=2160:filter=lanczos,zscale=transfer=bt1886:matrix=bt709:primaries=bt709:range=limited,unsharp=lx=5:ly=5:la=0.8:cx=3:cy=3:ca=0.25,gradfun=radius=8:strength=0.4,zscale=w=1920:h=1080:filter=lanczos:dither=blue-noise,cas=strength=0.45,gradfun=radius=6:strength=0.3,minterpolate=fps=120:mi_mode=mci:mc_mode=aobmc:vsbmc=1:me=umh:mb_size=8:scd=5,format=yuv420p10le
-P4|1280x720|2560x1440|zscale=transfer=linear:npl=100:range=limited,format=yuv444p16le,hqdn3d=2:1.5:6:4.5,zscale=w=5120:h=2880:filter=lanczos,zscale=transfer=bt1886:matrix=bt709:primaries=bt709:range=limited,unsharp=lx=5:ly=5:la=0.8:cx=3:cy=3:ca=0.25,gradfun=radius=10:strength=0.45,zscale=w=2560:h=1440:filter=lanczos:dither=blue-noise,cas=strength=0.45,gradfun=radius=6:strength=0.3,minterpolate=fps=120:mi_mode=mci:mc_mode=aobmc:vsbmc=1:me=umh:mb_size=8:scd=5,format=yuv420p10le
-P3|1920x1080|3840x2160|zscale=transfer=linear:npl=1000:range=limited,format=yuv444p16le,hqdn3d=1:0.8:3:2.5,zscale=w=7680:h=4320:filter=lanczos,zscale=transfer=arib-std-b67:chromal=topleft:matrix=2020_ncl:primaries=2020:range=limited,unsharp=lx=3:ly=3:la=0.28,gradfun=radius=12:strength=0.55,zscale=w=3840:h=2160:filter=lanczos:dither=blue-noise,cas=strength=0.4,gradfun=radius=8:strength=0.35,minterpolate=fps=60:mi_mode=mci:mc_mode=aobmc:vsbmc=1:me=umh:mb_size=8:scd=5,format=yuv420p10le
-P2|3840x2160|6144x3456|zscale=transfer=linear:npl=1000:range=limited,format=yuv444p16le,zscale=w=10240:h=5760:filter=lanczos,zscale=transfer=st2084:chromal=topleft:matrix=2020_ncl:primaries=2020:range=limited,gradfun=radius=12:strength=0.5,zscale=w=6144:h=3456:filter=lanczos:dither=blue-noise,cas=strength=0.35,gradfun=radius=8:strength=0.3,minterpolate=fps=60:mi_mode=mci:mc_mode=aobmc:vsbmc=1:me=umh:mb_size=8:scd=5,format=yuv420p10le
+P5|854x480|1920x1080|bwdif=mode=send_frame:parity=-1:deint=0,zscale=transfer=linear:npl=100:range=limited,format=yuv444p16le,hqdn3d=2:1.5:6:4.5,zscale=w=3840:h=2160:filter=lanczos,zscale=transfer=bt709:matrix=bt709:primaries=bt709:range=limited,unsharp=lx=5:ly=5:la=0.8:cx=3:cy=3:ca=0.25,gradfun=radius=8:strength=0.4,zscale=w=1920:h=1080:filter=lanczos:dither=error_diffusion,cas=strength=0.45,gradfun=radius=6:strength=0.3,minterpolate=fps=120:mi_mode=mci:mc_mode=aobmc:vsbmc=1:me=umh:mb_size=8:scd=5,format=yuv420p10le
+P4|1280x720|2560x1440|zscale=transfer=linear:npl=100:range=limited,format=yuv444p16le,hqdn3d=2:1.5:6:4.5,zscale=w=5120:h=2880:filter=lanczos,zscale=transfer=bt709:matrix=bt709:primaries=bt709:range=limited,unsharp=lx=5:ly=5:la=0.8:cx=3:cy=3:ca=0.25,gradfun=radius=10:strength=0.45,zscale=w=2560:h=1440:filter=lanczos:dither=error_diffusion,cas=strength=0.45,gradfun=radius=6:strength=0.3,minterpolate=fps=120:mi_mode=mci:mc_mode=aobmc:vsbmc=1:me=umh:mb_size=8:scd=5,format=yuv420p10le
+P3|1920x1080|3840x2160|zscale=transfer=linear:npl=1000:range=limited,format=yuv444p16le,hqdn3d=1:0.8:3:2.5,zscale=w=7680:h=4320:filter=lanczos,zscale=transfer=arib-std-b67:chromal=topleft:matrix=2020_ncl:primaries=2020:range=limited,unsharp=lx=3:ly=3:la=0.28,gradfun=radius=12:strength=0.55,zscale=w=3840:h=2160:filter=lanczos:dither=error_diffusion,cas=strength=0.4,gradfun=radius=8:strength=0.35,minterpolate=fps=60:mi_mode=mci:mc_mode=aobmc:vsbmc=1:me=umh:mb_size=8:scd=5,format=yuv420p10le
+P2|3840x2160|6144x3456|zscale=transfer=linear:npl=1000:range=limited,format=yuv444p16le,zscale=w=10240:h=5760:filter=lanczos,zscale=transfer=smpte2084:chromal=topleft:matrix=2020_ncl:primaries=2020:range=limited,gradfun=radius=12:strength=0.5,zscale=w=6144:h=3456:filter=lanczos:dither=error_diffusion,cas=strength=0.35,gradfun=radius=8:strength=0.3,minterpolate=fps=60:mi_mode=mci:mc_mode=aobmc:vsbmc=1:me=umh:mb_size=8:scd=5,format=yuv420p10le
