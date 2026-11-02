@@ -175,14 +175,46 @@
   function formatGuard() {
     var f = selectedFormat();
     if (f === 'mpd') {
-      toast('DASH/MPD lo sirve el JIT; el generador actual descarga HLS .m3u8. No se genera un MPD falso.', 'warning');
-      status('DASH/MPD: usar salida JIT; no hay generador MPD de descarga', '#f59e0b');
-      return false;
+      toast('DASH/MPD: se descargará el MPD real del canal JIT activo.', 'info');
+      status('DASH/MPD: preparando descarga del canal JIT activo', '#38bdf8');
+      return true;
     }
     if (f === 'hybrid') {
       toast('Se generará la lista HLS; el manifiesto DASH se sirve desde JIT.', 'info');
       status('HÍBRIDA: HLS descargable + DASH servido por JIT', '#a855f7');
     }
+    return true;
+  }
+
+  async function downloadActiveJitMpd() {
+    var base = 'https://iptv-ape.duckdns.org';
+    status('DASH/MPD: consultando canal JIT activo…', '#38bdf8');
+    var catRes = await fetch(base + '/jit/catalog.json', { cache: 'no-store' });
+    if (!catRes.ok) throw new Error('catálogo JIT HTTP ' + catRes.status);
+    var cat = await catRes.json();
+    var list = Array.isArray(cat) ? cat : (cat.channels || cat.items || []);
+    var active = null;
+    for (var i = 0; i < list.length; i++) {
+      if (list[i] && list[i].active === true) { active = list[i]; break; }
+    }
+    if (!active) {
+      throw new Error('no hay canal JIT activo; abre primero su salida HLS/JIT');
+    }
+    var dash = active.dash || (base + '/jit/live/' + encodeURIComponent(active.id) + '/manifest.mpd');
+    var r = await fetch(dash, { cache: 'no-store' });
+    if (!r.ok) throw new Error('MPD HTTP ' + r.status);
+    var text = await r.text();
+    if (text.indexOf('<MPD') === -1) throw new Error('el JIT no devolvió un MPD válido');
+    var blob = new Blob([text], { type: 'application/dash+xml' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = 'APE_' + active.id + '_manifest.mpd';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(function () { URL.revokeObjectURL(url); }, 3000);
+    status('DASH/MPD descargado · canal JIT ' + active.id, '#22c55e');
     return true;
   }
 
@@ -232,6 +264,11 @@
   async function runVps() {
     var d = applyDelta(false);
     if (!checkGeneration() || !formatGuard()) return;
+    if (selectedFormat() === 'mpd') {
+      try { await downloadActiveJitMpd(); }
+      catch (e) { status('DASH/MPD: ' + e.message, '#ef4444'); toast('DASH/MPD: ' + e.message, 'error'); }
+      return;
+    }
     try {
       status('Generando VPS con delta ' + d + '%…', '#38bdf8');
       sendDeltaToVps(d);
@@ -243,6 +280,11 @@
   async function runDirect() {
     var d = applyDelta(false);
     if (!checkGeneration() || !formatGuard()) return;
+    if (selectedFormat() === 'mpd') {
+      try { await downloadActiveJitMpd(); }
+      catch (e) { status('DASH/MPD: ' + e.message, '#ef4444'); toast('DASH/MPD: ' + e.message, 'error'); }
+      return;
+    }
     try {
       status('Generando DIRECTO con delta ' + d + '%…', '#38bdf8');
       sendDeltaToVps(d);
@@ -257,6 +299,11 @@
   async function runBoth() {
     var d = applyDelta(false);
     if (!checkGeneration() || !formatGuard()) return;
+    if (selectedFormat() === 'mpd') {
+      try { await downloadActiveJitMpd(); }
+      catch (e) { status('DASH/MPD: ' + e.message, '#ef4444'); toast('DASH/MPD: ' + e.message, 'error'); }
+      return;
+    }
     try {
       status('Generando AMBAS (URI VPS + vídeo directo) · delta ' + d + '%…', '#38bdf8');
       sendDeltaToVps(d);
@@ -324,7 +371,7 @@
       '<label style="cursor:pointer;"><input type="radio" name="ape-out-format" value="mpd" style="accent-color:#38bdf8;"> .MPD</label>' +
       '<label style="cursor:pointer;"><input type="radio" name="ape-out-format" value="hybrid" style="accent-color:#a855f7;"> HÍBRIDA</label>' +
       '<span id="ape-out-matrix-state" style="color:#94a3b8;font-size:.74rem;">HLS · .M3U8</span>' +
-      '<span style="font-size:.82rem;color:#64748b;flex-basis:100%;">HLS descargable con el generador actual. DASH/MPD se sirve desde JIT; no se fabrica un MPD falso.</span>' +
+      '<span style="font-size:.82rem;color:#64748b;flex-basis:100%;">.M3U8 genera la lista HLS. .MPD descarga el manifiesto DASH del canal JIT activo; no se fabrica un MPD falso.</span>' +
       '</div>' +
       '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:9px;margin-top:12px;">' +
       // VPS
