@@ -119,3 +119,15 @@ roundtrip_identical: true
 
 Es un puente lossless; no implementa un motor DASH/WebRTC.
 
+
+## Pipeline ejecutable
+
+```text
+tools/ape_polymorphic_pipeline.py
+Entrada M3U8 o JSON
+Deduplicación por SHA-256 de URL
+Salida HLS + JSON + REA + catálogo
+```
+
+Verificado sobre FAST: 10.573 canales, 0 duplicados, mismos hashes en dos ejecuciones. DASH/WebRTC/P2P no se fabrican.
+

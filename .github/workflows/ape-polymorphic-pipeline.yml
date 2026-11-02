@@ -1,0 +1,33 @@
+name: APE Polymorphic Pipeline
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'playlists/*.m3u8'
+      - 'tools/ape_polymorphic_pipeline.py'
+      - 'tools/m3u8_json_bridge.py'
+      - 'tools/generate_rea_skills.py'
+
+permissions:
+  contents: read
+
+jobs:
+  transform:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Run deterministic pipeline
+        run: |
+          shopt -s nullglob
+          for m3u in playlists/*.m3u8; do
+            base="$(basename "$m3u" .m3u8)"
+            python3 tools/ape_polymorphic_pipeline.py "$m3u" "output/$base"
+          done
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ape-polymorphic-output
+          path: output/
