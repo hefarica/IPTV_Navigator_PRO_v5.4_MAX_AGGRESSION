@@ -1,0 +1,214 @@
+name: ape-206-local-proof
+
+# Prueba EMPIRICA del parche 206, sin tocar el VPS.
+#
+# En la ronda 36 intente levantar nginx en el host local y el kernel de WSL lo bloqueo
+# (newuidmap: write to uid_map failed: Operation not permitted). El runner de GitHub Actions
+# es Ubuntu y trae nginx, asi que la medicion que no pude hacer en local se hace aqui.
+#
+# Lo que se prueba: que la configuracion parcheada haga que las CUATRO celdas de 206 devuelvan
+# 206, partiendo de una configuracion que reproduce el fallo medido en produccion (12/20).
+#
+# Si la prediccion es falsa, este workflow falla y el parche NO debe autorizarse.
+
+on:
+  push:
+    paths:
+      - '.github/workflows/ape-206-local-proof.yml'
+      - 'vps/nginx/live-baseline-2026-11-02/sites-enabled-default.PATCHED-206-dual.conf'
+  workflow_dispatch:
+
+jobs:
+  proof:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Instalar nginx y preparar el banco de pruebas
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq nginx >/dev/null
+          nginx -v 2>&1 || true
+          mkdir -p /tmp/ape/www /tmp/ape/conf
+          # Dos ficheros como en produccion: uno grande con .gz precomprimido, uno pequeno sin .gz.
+          python3 - <<'PY'
+          import os
+          os.makedirs('/tmp/ape/www', exist_ok=True)
+          # Cabecera + bloques: contenido realista, tamano suficiente para que gzip tenga efecto.
+          cab = '#EXTM3U\n#EXT-X-VERSION:6\n'
+          bloque = ('#EXTINF:-1 tvg-id="c{n}",canal {n}\n'
+                    '#EXT-X-APE-RESOLUTION-SUPREMACY:1280x720\n'
+                    '#EXT-X-APE-HDR-TRANSFER:BT1886\n'
+                    'http://example.invalid/{n}.ts\n')
+          grande = cab + ''.join(bloque.format(n=i) for i in range(4000))
+          pequeno = cab + ''.join(bloque.format(n=i) for i in range(40))
+          open('/tmp/ape/www/grande.m3u8','w').write(grande)
+          open('/tmp/ape/www/pequeno.m3u8','w').write(pequeno)
+          print('grande', len(grande), 'pequeno', len(pequeno))
+          PY
+          gzip -k -9 /tmp/ape/www/grande.m3u8
+          ls -l /tmp/ape/www/
+
+      - name: Config BASELINE (reproduce el fallo de produccion)
+        run: |
+          set -euo pipefail
+          cat > /tmp/ape/conf/nginx.conf <<'CONF'
+          worker_processes 1;
+          error_log /tmp/ape/error.log warn;
+          pid /tmp/ape/nginx.pid;
+          events { worker_connections 64; }
+          http {
+            include /etc/nginx/mime.types;
+            default_type application/octet-stream;
+            access_log off;
+            client_body_temp_path /tmp/ape/body;
+            proxy_temp_path /tmp/ape/proxy;
+            fastcgi_temp_path /tmp/ape/fastcgi;
+            uwsgi_temp_path /tmp/ape/uwsgi;
+            scgi_temp_path /tmp/ape/scgi;
+            gzip on;
+            server {
+              listen 8080;
+              root /tmp/ape/www;
+              # --- directivas copiadas del baseline real (sites-enabled-default.conf) ---
+              sendfile on;
+              gzip_static always;
+              gunzip on;
+              gzip_vary on;
+              add_header Accept-Ranges bytes always;
+              location /lists/ {
+                alias /tmp/ape/www/;
+                try_files $uri $uri.gz =404;
+              }
+            }
+          }
+          CONF
+          nginx -t -c /tmp/ape/conf/nginx.conf
+          nginx -c /tmp/ape/conf/nginx.conf
+          sleep 1
+          curl -s -o /dev/null -w 'sanity=%{http_code}\n' http://127.0.0.1:8080/lists/grande.m3u8
+
+      - name: Medir las 4 celdas del BASELINE
+        run: |
+          set -euo pipefail
+          medir() {
+            local f="$1" gz="$2" rng="$3"
+            local args=(-s -o /dev/null -w '%{http_code}')
+            [ "$gz" = "gzip" ] && args+=(-H 'Accept-Encoding: gzip')
+            [ "$rng" = "range" ] && args+=(-H 'Range: bytes=0-1023')
+            curl "${args[@]}" "http://127.0.0.1:8080/lists/$f"
+          }
+          {
+            echo "BASELINE grande identity=$(medir grande.m3u8 identity full)"
+            echo "BASELINE grande gzip=$(medir grande.m3u8 gzip full)"
+            echo "BASELINE grande rango_identity=$(medir grande.m3u8 identity range)"
+            echo "BASELINE grande rango_gzip=$(medir grande.m3u8 gzip range)"
+            echo "BASELINE pequeno identity=$(medir pequeno.m3u8 identity full)"
+            echo "BASELINE pequeno gzip=$(medir pequeno.m3u8 gzip full)"
+            echo "BASELINE pequeno rango_identity=$(medir pequeno.m3u8 identity range)"
+            echo "BASELINE pequeno rango_gzip=$(medir pequeno.m3u8 gzip range)"
+          } | tee /tmp/ape/baseline.txt
+
+      - name: Config PARCHEADA (la que se va a autorizar o no)
+        run: |
+          set -euo pipefail
+          # Las tres directivas del parche. Todo lo demas identico.
+          sed -i 's/^            gzip on;$/            gzip off;/' /tmp/ape/conf/nginx.conf
+          sed -i 's/gzip_static always;/gzip_static on;/' /tmp/ape/conf/nginx.conf
+          sed -i 's/gunzip on;/gunzip off;/' /tmp/ape/conf/nginx.conf
+          echo '--- directivas relevantes tras el parche ---'
+          grep -nE 'gzip|gunzip' /tmp/ape/conf/nginx.conf
+          nginx -t -c /tmp/ape/conf/nginx.conf
+          nginx -s reload -c /tmp/ape/conf/nginx.conf
+          sleep 1
+
+      - name: Medir las 4 celdas PARCHEADAS y decidir
+        run: |
+          set -euo pipefail
+          medir() {
+            local f="$1" gz="$2" rng="$3"
+            local args=(-s -o /dev/null -w '%{http_code}')
+            [ "$gz" = "gzip" ] && args+=(-H 'Accept-Encoding: gzip')
+            [ "$rng" = "range" ] && args+=(-H 'Range: bytes=0-1023')
+            curl "${args[@]}" "http://127.0.0.1:8080/lists/$f"
+          }
+          {
+            echo "PARCHE grande identity=$(medir grande.m3u8 identity full)"
+            echo "PARCHE grande gzip=$(medir grande.m3u8 gzip full)"
+            echo "PARCHE grande rango_identity=$(medir grande.m3u8 identity range)"
+            echo "PARCHE grande rango_gzip=$(medir grande.m3u8 gzip range)"
+            echo "PARCHE pequeno identity=$(medir pequeno.m3u8 identity full)"
+            echo "PARCHE pequeno gzip=$(medir pequeno.m3u8 gzip full)"
+            echo "PARCHE pequeno rango_identity=$(medir pequeno.m3u8 identity range)"
+            echo "PARCHE pequeno rango_gzip=$(medir pequeno.m3u8 gzip range)"
+          } | tee /tmp/ape/parche.txt
+
+          echo
+          echo "=== VEREDICTO ==="
+          python3 - <<'PY'
+          import re, sys
+
+          def leer(p):
+              d = {}
+              for l in open(p):
+                  m = re.match(r'^(BASELINE|PARCHE) (\w+) (\w+)=(\d+)$', l.strip())
+                  if m:
+                      d[(m.group(2), m.group(3))] = int(m.group(4))
+              return d
+
+          b = leer('/tmp/ape/baseline.txt')
+          p = leer('/tmp/ape/parche.txt')
+
+          fallos = []
+
+          # 1) El baseline DEBE reproducir el fallo medido en produccion.
+          #    Si no lo reproduce, el banco de pruebas no sirve y la prueba no prueba nada.
+          esperado_baseline = {
+              ('grande','rango_identity'): 200,   # gunzip on descomprime y elimina el rango
+              ('pequeno','rango_gzip'): 200,      # gzip dinamico elimina el rango
+              ('grande','identity'): 200,
+              ('pequeno','identity'): 200,
+          }
+          print('\n-- baseline vs fallo de produccion medido --')
+          for k, v in esperado_baseline.items():
+              got = b.get(k)
+              ok = got == v
+              print(f'  {"OK  " if ok else "FALLA"} {k[0]} {k[1]}: {got} (esperado {v})')
+              if not ok:
+                  fallos.append(f'baseline {k[0]} {k[1]} = {got}, esperado {v}; el banco no reproduce produccion')
+
+          # 2) Tras el parche, las CUATRO celdas de 206 deben dar 206.
+          print('\n-- parche: las 4 celdas de 206 --')
+          for k in [('grande','rango_identity'), ('grande','rango_gzip'),
+                    ('pequeno','rango_identity'), ('pequeno','rango_gzip')]:
+              got = p.get(k)
+              ok = got == 206
+              print(f'  {"OK  " if ok else "FALLA"} {k[0]} {k[1]}: {got} (esperado 206)')
+              if not ok:
+                  fallos.append(f'{k[0]} {k[1]} = {got} tras el parche, esperado 206')
+
+          # 3) Y las celdas de 200 no se rompen por el camino.
+          print('\n-- parche: la pata 200 sigue en pie --')
+          for k in [('grande','identity'), ('pequeno','identity'), ('grande','gzip'), ('pequeno','gzip')]:
+              got = p.get(k)
+              ok = got == 200
+              print(f'  {"OK  " if ok else "FALLA"} {k[0]} {k[1]}: {got} (esperado 200)')
+              if not ok:
+                  fallos.append(f'{k[0]} {k[1]} = {got} tras el parche, esperado 200')
+
+          print()
+          if fallos:
+              for f in fallos:
+                  print(f'::error::{f}')
+              sys.exit('PREDICCION FALSA: el parche no hace lo que se predijo')
+          print('PREDICCION CONFIRMADA: el parche lleva las 4 celdas de 206 a 206 sin romper la pata 200')
+          PY
+
+      - name: Volcar los logs si algo falla
+        if: failure()
+        run: |
+          echo '=== nginx error.log ==='
+          tail -40 /tmp/ape/error.log 2>/dev/null || echo '(sin log)'
+          echo '=== config final ==='
+          sed -n '1,60p' /tmp/ape/conf/nginx.conf 2>/dev/null || true
