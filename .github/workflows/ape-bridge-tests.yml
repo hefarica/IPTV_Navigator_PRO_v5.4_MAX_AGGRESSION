@@ -35,6 +35,7 @@ jobs:
           python3 tools/test_health_enrich.py
           python3 tools/test_metadata_enrich.py
           python3 tools/test_pipeline_idempotence.py
+          python3 tools/test_alexa_resolver.py
       - name: Node URL-GUARD / LAB / audio gates
         run: |
           node frontend/tests/url-guard-resolution.test.js
