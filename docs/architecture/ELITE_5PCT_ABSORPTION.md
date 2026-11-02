@@ -156,3 +156,6 @@ tools/ape_health_enrich.py
 
 Adjunta `status/uptime/bitrate/codec/latency` solo desde un health map real; sin datos deja `unknown`. No hace probing ni inventa disponibilidad.
 
+
+Contrato: `contracts/ape_health.schema.json`. Test: `tools/test_health_enrich.py`.
+

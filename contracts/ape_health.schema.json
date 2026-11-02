@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "ape.health.v1",
+  "title": "APE channel health map",
+  "type": "object",
+  "additionalProperties": {
+    "type": "object",
+    "properties": {
+      "status": { "type": "string" },
+      "uptime": { "type": ["string", "number"] },
+      "bitrate": { "type": ["string", "number"] },
+      "codec": { "type": "string" },
+      "latency": { "type": ["string", "number"] }
+    },
+    "additionalProperties": true
+  }
+}
