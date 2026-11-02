@@ -1,70 +1,82 @@
-# Matriz HTTP real de TODAS las listas publicadas
+# Matriz HTTP de las listas — CORREGIDA a dos ejes (2026-11-02)
 
-**Fecha:** 2026-11-02 · **Método:** sonda read-only por GitHub Actions (run 41467900931, job inventory).
-**Cero escrituras en el VPS.**
+**Sustituye** a la versión anterior de este archivo. Aquella medía **un solo perfil de cliente**
+(`Range` sin `Accept-Encoding`) y de ahí concluyó «206 falla en dos listas». **Era falso.** El 206 no
+«falla»: depende del cliente. Herramienta: `tools/ape-http-conformance/http_matrix.js`.
 
 ---
 
-## 1 · Resultado medido
+## 1 · La matriz real
 
-| Lista (en `/var/www/html/lists/`) | Plano | `.gz` | GET | Range+gzip | bytes | HEAD |
-|---|---|---|---|---|---|---|
-| `APE_LISTA_1793558303852_CDN.m3u8` | 8 B (stub) | 182.548.572 B | 200 | **206** | 1.024 | 200 |
-| `APE_LISTA_1793589060441.m3u8` | 8 B (stub) | 182.222.415 B | 200 | **206** | 1.024 | 200 |
-| `APE_PRUEBA_ORDER_OK.m3u8` | 163.187 B | **no** | 200 | **200** | 42.501 | 200 |
-| `APE_PRUEBA_PERFILES.m3u8` | 163.187 B | **no** | 200 | **200** | 42.508 | 200 |
+`Range: bytes=0-1023` sobre la URL pública, dos perfiles de cliente:
 
-**Regla que sale de los datos, no de la teoría:**
+| Lista | tiene `.gz` | **cliente CON gzip** | **cliente SIN gzip** |
+|---|:--:|---|---|
+| `APE_LISTA_1793589060441.m3u8` | sí | **206** · `Content-Range: bytes 0-1023/182222415` | 200 chunked |
+| `APE_LISTA_1793558303852_CDN.m3u8` | sí | **206** | 200 chunked |
+| `APE_PRUEBA_ORDER_OK.m3u8` | no | 200 · `Content-Encoding: gzip` | **206** · `…/163187` |
+| `APE_PRUEBA_PERFILES.m3u8` | no | 200 · `Content-Encoding: gzip` | **206** · `…/163187` |
 
-> **206 solo si existe el compañero `.gz`.** Con `.gz`, `gzip_static` sirve el fichero comprimido y el
-> módulo estático respeta el rango sobre él. Sin `.gz`, el `gzip on` del nivel `http` **comprime el
-> fichero plano al vuelo**, y la compresión dinámica tampoco soporta rangos → 200 con el cuerpo entero.
+```
+Listas que dan 206 a AMBOS perfiles: 0 / 4
+```
 
-Los 42.501 / 42.508 bytes no son el fichero completo (163.187): son lo que se alcanzó a transferir antes
-del corte de 20 s, evidencia de que el servidor estaba mandando el cuerpo desde el byte 0.
+## 2 · Qué significa exactamente
 
-## 2 · Ficheros que NO se sirven (órfanos y variantes)
+**Cada configuración sirve a un perfil y solo a uno.** No es que el servidor esté roto: es que la
+configuración actual obliga a elegir cliente.
 
-Del listado real del directorio:
+| Configuración | Mecanismo | Quién recibe 206 | Quién recibe 200 |
+|---|---|---|---|
+| `.gz` + `gzip_static always` + `gunzip on` | sirve el comprimido incluso si no se pide | el que pide gzip | el que no lo pide (se descomprime al vuelo, sin rangos) |
+| plano, sin `.gz`, `gzip on` (dinámico) | comprime al vuelo | nadie | el que pide gzip (comprime, sin rangos) · el que no lo pide **sí recibe 206** |
 
-| Fichero | Estado |
-|---|---|
-| `APE_LISTA_CDN_2026-10-29.m3u8.gz` (140 MB) | `.gz` **sin** `.m3u8` plano → `try_files $uri =404` → **404**, no aparece en la matriz |
-| `APE_LISTA_1793531111695_CDN.m3u8.clean` (586 MB) | extensión `.clean`, no matchea `location ~* \.m3u8$` |
-| `APE_LISTA_1793531111695_CDN.m3u8.new` (607 MB, `-r--r--r--`) | extensión `.new`, no matchea |
-| `APE_GPU_TEST.m3u8.bak.1782291261` | `.bak`, no matchea |
-| `APE_LISTA_1780868608676_OMEGA_OPEN.m3u8.gz.bak_20260612_102007` | `.bak`, no matchea |
-| `lists -> /var/www/html/lists` | symlink redundante |
+La línea brillante: **las listas planas ya dan 206 a los clientes sin gzip.** Lo que las rompe es el
+gzip **dinámico**, que se dispara solo cuando el cliente anuncia `Accept-Encoding: gzip`.
 
-**Consecuencia:** hay una lista publicada cuya `.gz` existe pero cuyo plano no, y que por tanto
-**no se sirve en absoluto**. Ese es un fallo de publicación, no de transporte.
+## 3 · El arreglo, ahora sí con la pieza correcta
 
-## 3 · Las tres configuraciones posibles y qué entrega cada una
+### Mitad gratis — `gzip off;` en `location ~* \.m3u8$`
 
-| Configuración | Cliente con gzip | Cliente sin gzip |
+Desactiva el gzip **dinámico**. Consecuencias medidas y deducidas:
+
+| Lista | Antes | Después de `gzip off` |
 |---|---|---|
-| Lista **con** `.gz` (stub plano) | 200 + **206** | 200 chunked (gunzip) |
-| Lista **sin** `.gz` (plano real) | 200 (gzip dinámico) | 200, y el rango **no** se cumple |
-| `.gz` **sin** plano | **404** | **404** |
+| planas | 206 a sin-gzip, 200 a con-gzip | **206 a AMBOS** (no hay `.gz` que servir; sin gzip dinámico el fichero plano conserva sus rangos) |
+| con `.gz` | 206 a con-gzip, 200 a sin-gzip | **sin cambio**: `gzip_static` es independiente de `gzip off` y sigue sirviendo el `.gz` |
 
-**Ninguna de las cuatro listas medidas entrega 206 a un cliente que no envíe `Accept-Encoding: gzip`.**
+Resultado: **2 de 4 listas pasan a servir a los dos perfiles**, sin escribir un solo byte de datos.
 
-## 4 · Qué haría falta para el 206 universal
+### Mitad costosa — para las dos listas grandes
 
-1. **Descomprimir** cada `.gz` a un plano real (604 MB en la lista grande) y **quitar `gunzip`**.
-   Escritura en el VPS → requiere autorización explícita del operador.
-2. O dejar de anunciar `Accept-Ranges: bytes` y aceptar que no hay 206.
-3. O servir desde otra ruta sin `gzip` dinámico, para que el módulo estático dé rangos.
+`gunzip off` **solo funciona si existe un plano real que servir**: hoy el `.m3u8` de 8 bytes es un stub y
+el contenido vive únicamente en el `.gz` (182.222.415 B). Descomprimir ≈ 604 MB escritos en el VPS.
+Sin eso, `gunzip off` dejaría a los clientes sin gzip con un stub de 8 bytes: **regresión**, por eso se
+retiró ese parche.
 
-## 5 · Lo que este documento corrige
+## 4 · Consecuencia para el gate 200/206/302
 
-- El inventario del repo (`find /var/www -name '*.m3u8'`) devuelve **vacío**: es un **hueco de
-  cobertura**, no un cero. El directorio real se listó con `ls -la` en esta sonda.
-- `/var/www/lists` **no existe** (el inventario lo citaba). La ruta real es `/var/www/html/lists`.
+| Código | Estado |
+|---|---|
+| **200** | ✅ todas las listas |
+| **302** | ✅ redirección del origen |
+| **206** | ⚠️ **por perfil de cliente**, no global. 0/4 listas a ambos perfiles |
 
-## 6 · Evidencia
+El gate no puede declararse superado mientras una lista no dé 206 a los dos perfiles. Con la mitad
+gratis, quedan 2/4; con la descompresión, 4/4.
 
-- Run: https://github.com/hefarica/IPTV_Navigator_PRO_v5.4_MAX_AGGRESSION/actions/runs/41467900931
-- Paso: `Matriz HTTP de todas las listas (read-only)` (job 125353523686)
-- Artefacto: `list-matrix.txt`
-- Verificador local que reproduce 200/206/302 sobre la lista viva: `tools/ape-http-conformance/verify_http_matrix.js`
+## 5 · Reproducir
+
+```bash
+node tools/ape-http-conformance/http_matrix.js
+```
+
+Sin credenciales, sin escrituras, 8 peticiones `Range` de 1 KB.
+
+## 6 · Lo que esta corrección invalida
+
+Afirmaciones anteriores de esta sesión que **no se sostienen**:
+
+- «Ninguna lista da 206 a un cliente sin gzip» → **falso**: dos lo dan.
+- «206 falla» → impreciso: falla **para un perfil** en cada lista.
+- La matriz de un solo eje → reemplazada por esta de dos ejes.
