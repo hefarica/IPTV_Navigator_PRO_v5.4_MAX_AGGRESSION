@@ -1,0 +1,826 @@
+{
+  "schema": "ape-lista-video-filter-matrix/1",
+  "generated_at": "2026-11-02T12:52:04.521Z",
+  "subject": {
+    "file": "APE_LISTA_1793589060441.m3u8",
+    "sha256": "523d52a6d147f81ce5a212e47b9c55401fb409cd4a41aee96f8ba80b5b5049d6",
+    "bytes": 604593696,
+    "lines": 10315662,
+    "note": "Solo lectura. No se modifico la lista."
+  },
+  "tools": {
+    "ffmpeg": "8.0.1-full_build-www.gyan.dev (libzimg, libplacebo, libvmaf habilitados)",
+    "vlc": "3.0.24 (C:\\Program Files\\VideoLAN\\VLC), 363 plugins, 41 video_filter",
+    "ripgrep": "15.2.0",
+    "node": "v24.12.0"
+  },
+  "inventory": {
+    "video_filter_lines": 10573,
+    "distinct_signatures": 3,
+    "profiles_declared": {
+      "P1": 808,
+      "P3": 2308,
+      "P4": 7457
+    },
+    "entries": 10573,
+    "entries_without_profile": 0,
+    "entries_without_video_filter": 0,
+    "correlation": "biyectiva: SIG S1<->P4 (7457), SIG S2<->P3 (2308), SIG S3<->P1 (808)",
+    "stage_occurrences": {
+      "hqdn3d": 7457,
+      "yadif": 7457,
+      "nlmeans": 3116,
+      "bwdif": 3116,
+      "gradfun": 3116,
+      "unsharp": 10573,
+      "zscale": 3116,
+      "minterpolate": 10573
+    },
+    "absent_tokens": {
+      "ffmpeg{": 0,
+      "libplacebo": 0,
+      "cas=": 0,
+      "avfilter": 0,
+      "transfer=bt1886": 0,
+      "pp": 0
+    },
+    "other_extvlcopt_census": {
+      "total_lines": 1416786,
+      "per_channel": 134,
+      "extra_singletons": [
+        "#EXTVLCOPT:colorspace=all=auto:trc=auto",
+        "#EXTVLCOPT:tonemap=mobius",
+        "#EXTVLCOPT:format=yuv444p10le",
+        "#EXTVLCOPT:saturation=1.08"
+      ],
+      "note": "Las 4 lineas sueltas estan en las lineas 147-150 del archivo y no pertenecen a ninguna entrada de canal."
+    }
+  },
+  "signatures": [
+    {
+      "id": "S1",
+      "sha1_12": "12d44ac8852c",
+      "profile": "P4",
+      "count": 7457,
+      "len": 277,
+      "text": "hqdn3d=luma_spatial=2.0:chroma_spatial=1.5:luma_tmp=3.0:chroma_tmp=2.5,yadif=mode=1:parity=-1:deint=0,unsharp=luma_msize_x=3:luma_msize_y=3:luma_amount=0.25:chroma_msize_x=0:chroma_msize_y=0:chroma_amount=0.0,minterpolate=fps=120:mi_mode=mci:mc_mode=aobmc:vsbmc=1:me=epzs:scd=0",
+      "stages": [
+        "hqdn3d",
+        "yadif",
+        "unsharp",
+        "minterpolate"
+      ]
+    },
+    {
+      "id": "S2",
+      "sha1_12": "848a97b5fea6",
+      "profile": "P3",
+      "count": 2308,
+      "len": 344,
+      "text": "nlmeans=s=2.5:p=5:r=11,bwdif=mode=1:parity=-1:deint=0,gradfun=radius=12:strength=0.8,unsharp=luma_msize_x=3:luma_msize_y=3:luma_amount=0.3:chroma_msize_x=0:chroma_msize_y=0:chroma_amount=0.0,zscale=transfer=bt709:primaries=bt709:matrix=bt709:dither=error_diffusion:range=full,minterpolate=fps=120:mi_mode=mci:mc_mode=aobmc:vsbmc=1:me=epzs:scd=0",
+      "stages": [
+        "nlmeans",
+        "bwdif",
+        "gradfun",
+        "unsharp",
+        "zscale",
+        "minterpolate"
+      ]
+    },
+    {
+      "id": "S3",
+      "sha1_12": "2faa0fc2a91f",
+      "profile": "P1",
+      "count": 808,
+      "len": 348,
+      "text": "nlmeans=s=3.0:p=7:r=15,bwdif=mode=1:parity=-1:deint=0,gradfun=radius=16:strength=1.0,unsharp=luma_msize_x=3:luma_msize_y=3:luma_amount=0.4:chroma_msize_x=0:chroma_msize_y=0:chroma_amount=0.0,zscale=transfer=st2084:primaries=bt2020:matrix=2020ncl:dither=error_diffusion:range=full,minterpolate=fps=120:mi_mode=mci:mc_mode=aobmc:vsbmc=1:me=epzs:scd=5",
+      "stages": [
+        "nlmeans",
+        "bwdif",
+        "gradfun",
+        "unsharp",
+        "zscale",
+        "minterpolate"
+      ]
+    }
+  ],
+  "stages": [
+    {
+      "filter": "hqdn3d",
+      "chains": [
+        "S1"
+      ],
+      "occurrences_chains": 7457,
+      "params_in_list": "luma_spatial=2.0:chroma_spatial=1.5:luma_tmp=3.0:chroma_tmp=2.5",
+      "valid": "luma_spatial/chroma_spatial/luma_tmp/chroma_tmp <double> [0 .. DBL_MAX]",
+      "ffmpeg": "PASS",
+      "ffmpeg_evidence": "B01 exit=0 (480p, 20 frames); H01 0.17 s / 50 frames 720p",
+      "vlc": "MODULO EXISTENTE con nombres de opcion DISTINTOS",
+      "vlc_evidence": "plugins/video_filter/libhqdn3d_plugin.dll; opciones luma-spat, chroma-spat, luma-temp, chroma-temp (guion, no guion_bajo); V3 log \"using video filter module hqdn3d\"",
+      "vlc_note": "VLC acepta hqdn3d{luma-spat=2.0} (V4 OK). Con el nombre underscore VLC CARGA el modulo pero IGNORA la opcion (V8/V9: hqdn3d{luma_spatial=2.0} y hqdn3d{bogus=1} cargan igual) -> se aplican los DEFAULT, no los valores pedidos.",
+      "ott": "INERTE",
+      "ott_note": "#EXTVLCOPT es extension de VLC; ExoPlayer/hls.js/Kodi/TiviMate ignoran la linea (RFC 8216 6.3.1)."
+    },
+    {
+      "filter": "nlmeans",
+      "chains": [
+        "S2",
+        "S3"
+      ],
+      "occurrences_chains": 3116,
+      "params_in_list": "S2: s=2.5:p=5:r=11 | S3: s=3.0:p=7:r=15",
+      "valid": "s <double> [1 .. 30]; p <int> [0 .. 99]; r <int> [0 .. 99]; pc/rc [0 .. 99]",
+      "ffmpeg": "PASS",
+      "ffmpeg_evidence": "B06 (s=2.5 p=5 r=11) exit=0; B07 (s=3.0 p=7 r=15) exit=0",
+      "vlc": "NO EXISTE",
+      "vlc_evidence": "sin modulo nlmeans entre los 41 plugins video_filter; V7 log: \"no video filter modules matched\" + \"Failed to create video filter nlmeans\"",
+      "vlc_note": "",
+      "ott": "INERTE",
+      "ott_note": ""
+    },
+    {
+      "filter": "bwdif",
+      "chains": [
+        "S2",
+        "S3"
+      ],
+      "occurrences_chains": 3116,
+      "params_in_list": "mode=1:parity=-1:deint=0",
+      "valid": "mode <int> [0 .. 1]; parity <int> [-1 .. 1]; deint <int> [0 .. 1]",
+      "ffmpeg": "PASS",
+      "ffmpeg_evidence": "B08 exit=0",
+      "vlc": "NO EXISTE como modulo \"bwdif\"",
+      "vlc_evidence": "sin modulo bwdif; el modulo deinterlace de VLC expone metodos yadif/linear/blend/mean (strings del DLL)",
+      "vlc_note": "Equivalente funcional parcial y SOLO con la gramatica de VLC: deinterlace{mode=yadif2x} (V11 carga el modulo).",
+      "ott": "INERTE",
+      "ott_note": ""
+    },
+    {
+      "filter": "yadif",
+      "chains": [
+        "S1"
+      ],
+      "occurrences_chains": 7457,
+      "params_in_list": "mode=1:parity=-1:deint=0",
+      "valid": "mode <int> [0 .. 3]; parity <int> [-1 .. 1]; deint <int> [0 .. 1]",
+      "ffmpeg": "PASS",
+      "ffmpeg_evidence": "B02 exit=0",
+      "vlc": "NO EXISTE como modulo \"yadif\"",
+      "vlc_evidence": "libdeinterlace_plugin.dll contiene yadif/yadif2x como METODOS, no como modulo",
+      "vlc_note": "La lista YA emite #EXTVLCOPT:video-deinterlace=1 y video-deinterlace-mode=yadif2x en las 10.573 entradas -> el desentrelazado ya esta cubierto por la via nativa de VLC; el stage yadif/bwdif del video-filter es redundante incluso si se arreglara la sintaxis.",
+      "ott": "INERTE",
+      "ott_note": ""
+    },
+    {
+      "filter": "gradfun",
+      "chains": [
+        "S2",
+        "S3"
+      ],
+      "occurrences_chains": 3116,
+      "params_in_list": "S2: radius=12:strength=0.8 | S3: radius=16:strength=1.0",
+      "valid": "strength <float> [0.51 .. 64]; radius <int> [4 .. 32]",
+      "ffmpeg": "PASS",
+      "ffmpeg_evidence": "B09 radius=12 strength=0.8 exit=0; B10 radius=16 strength=1.0 exit=0; C17 strength=0.4 -> FAIL out of range [0.51 - 64]",
+      "vlc": "MODULO EXISTENTE con los MISMOS nombres de opcion",
+      "vlc_evidence": "libgradfun_plugin.dll strings: gradfun-radius, gradfun-strength, \"Radius in pixels\", \"Strength used to modify the value of a pixel\"; V10 log \"using video filter module gradfun\" con gradfun{radius=12,strength=0.8}",
+      "vlc_note": "Es la UNICA etapa de la lista que VLC podria ejecutar con los valores exactos pedidos, pero solo escrita como gradfun{radius=12,strength=0.8}.",
+      "ott": "INERTE",
+      "ott_note": ""
+    },
+    {
+      "filter": "unsharp",
+      "chains": [
+        "S1",
+        "S2",
+        "S3"
+      ],
+      "occurrences_chains": 10573,
+      "params_in_list": "luma_msize_x=3:luma_msize_y=3:luma_amount={0.25|0.3|0.4}:chroma_msize_x=0:chroma_msize_y=0:chroma_amount=0.0",
+      "valid": "luma_msize_x/y <int> [3 .. 23]; chroma_msize_x/y <int> [3 .. 23]; *amount <float> [-2 .. 5]",
+      "ffmpeg": "FAIL",
+      "ffmpeg_evidence": "[Parsed_unsharp_2] Value 0.000000 for parameter chroma_msize_x out of range [3 - 23] / Error applying option chroma_msize_x to filter unsharp: Result too large (A1/A2/A3/B03/C01/C02)",
+      "vlc": "NO EXISTE",
+      "vlc_evidence": "sin modulo unsharp; VLC tiene sharpen con UNA sola opcion sigma (libsharpen_plugin.dll strings: sharpen-sigma)",
+      "vlc_note": "chroma_msize=0 es el UNICO defecto de S1 y S2: al corregirlo a 3, las cadenas S1 y S2 completas pasan en ffmpeg 8.0.1 (K1 exit=0, K2 exit=0).",
+      "ott": "INERTE",
+      "ott_note": ""
+    },
+    {
+      "filter": "zscale",
+      "chains": [
+        "S2",
+        "S3"
+      ],
+      "occurrences_chains": 3116,
+      "params_in_list": "S2: transfer=bt709:primaries=bt709:matrix=bt709:dither=error_diffusion:range=full | S3: transfer=st2084:primaries=bt2020:matrix=2020ncl:dither=error_diffusion:range=full",
+      "valid": "transfer/primaries/matrix <int> [-1 .. INT_MAX] con nombres zimg: transfer admite 709/smpte2084/bt709/2020_10/2020_12/linear/...; matrix admite 709/2020_ncl/2020_cl/bt2020nc/bt2020c/...; dither <int> [0..3] = none|ordered|random|error_diffusion; filter <int> [0..5] = point|bilinear|bicubic|spline16|spline36|lanczos",
+      "ffmpeg": "FAIL (S3) / PASS condicional (S2)",
+      "ffmpeg_evidence": "S3: Unable to parse option value \"st2084\" (B12/K3) y Invalid chars 'cl' at the end of expression '2020ncl' (C08). S2: nombres validos, pero sobre fuente SIN etiquetar falla con code 3074: no path between colorspaces (B11); sobre fuente etiquetada pasa (K2 exit=0)",
+      "vlc": "NO EXISTE",
+      "vlc_evidence": "sin modulo zscale; VLC gestiona color via video_chroma (swscale) y opciones video-hdr/video-bt2020, no via cadena de filtros",
+      "vlc_note": "Defecto adicional no sintactico: la cadena no declara *in (matrixin/transferin/primariesin/rangein). Sin esos parametros zscale depende de que el bitstream venga etiquetado; si no, aborta la cadena entera. Medido: F04 falla incluso con un mp4 contenedor que solo trae color_space=bt709 (transfer y primaries unknown).",
+      "ott": "INERTE",
+      "ott_note": ""
+    },
+    {
+      "filter": "minterpolate",
+      "chains": [
+        "S1",
+        "S2",
+        "S3"
+      ],
+      "occurrences_chains": 10573,
+      "params_in_list": "S1/S2: fps=120:mi_mode=mci:mc_mode=aobmc:vsbmc=1:me=epzs:scd=0 | S3: igual pero scd=5",
+      "valid": "fps <video_rate>; mi_mode <int> [0..2]; mc_mode <int> [0..1]; me <int> [1..9] (default epzs, SI EXISTE); me_mode <int> [0..1]; mb_size [4..16]; vsbmc [0..1]; scd <int> [0..1]; scd_threshold <double> [0..100]",
+      "ffmpeg": "FAIL (S3) / PASS (S1,S2)",
+      "ffmpeg_evidence": "S3: Value 5.000000 for parameter scd out of range [0 - 1] (C04/K4). S1/S2: B05 exit=0. me=epzs valido (C14); me=11 -> out of range [1 - 9] (C16)",
+      "vlc": "NO EXISTE",
+      "vlc_evidence": "sin modulo minterpolate; V6 log \"no video filter modules matched\" + \"Failed to create video filter minterpolate\". VLC tiene modulo fps (remuestreo simple, no interpolacion de movimiento).",
+      "vlc_note": "Coste medido: 46.9x tiempo real a 720p con la cadena completa. No es ejecutable en tiempo real ni en ffmpeg ni en VLC.",
+      "ott": "INERTE",
+      "ott_note": ""
+    }
+  ],
+  "parameter_validation": [
+    {
+      "filter": "unsharp",
+      "param": "chroma_msize_x",
+      "value_in_list": "0",
+      "valid_range": "[3 .. 23]",
+      "chains": [
+        "S1",
+        "S2",
+        "S3"
+      ],
+      "chains_affected": 10573,
+      "verdict": "FAIL",
+      "error": "Value 0.000000 for parameter chroma_msize_x out of range [3 - 23]",
+      "test": "C01"
+    },
+    {
+      "filter": "unsharp",
+      "param": "chroma_msize_y",
+      "value_in_list": "0",
+      "valid_range": "[3 .. 23]",
+      "chains": [
+        "S1",
+        "S2",
+        "S3"
+      ],
+      "chains_affected": 10573,
+      "verdict": "FAIL",
+      "error": "Value 0.000000 for parameter chroma_msize_y out of range [3 - 23]",
+      "test": "C02"
+    },
+    {
+      "filter": "zscale",
+      "param": "transfer",
+      "value_in_list": "st2084",
+      "valid_range": "nombre zimg: smpte2084 (16) / bt709 (1) / 2020_10 (14) / 2020_12 (15) / linear (8). \"st2084\" NO existe",
+      "chains": [
+        "S3"
+      ],
+      "chains_affected": 808,
+      "verdict": "FAIL",
+      "error": "Undefined constant or missing '(' in 'st2084' / Unable to parse option value \"st2084\"",
+      "test": "C06, K3"
+    },
+    {
+      "filter": "zscale",
+      "param": "matrix",
+      "value_in_list": "2020ncl",
+      "valid_range": "nombre zimg: 2020_ncl (9) o bt2020nc (9). \"2020ncl\" NO existe",
+      "chains": [
+        "S3"
+      ],
+      "chains_affected": 808,
+      "verdict": "FAIL",
+      "error": "Invalid chars 'cl' at the end of expression '2020ncl'",
+      "test": "C08"
+    },
+    {
+      "filter": "minterpolate",
+      "param": "scd",
+      "value_in_list": "5",
+      "valid_range": "[0 .. 1] (none=0, fdiff=1)",
+      "chains": [
+        "S3"
+      ],
+      "chains_affected": 808,
+      "verdict": "FAIL",
+      "error": "Value 5.000000 for parameter scd out of range [0 - 1]",
+      "test": "C04, K4"
+    },
+    {
+      "filter": "zscale",
+      "param": "*in (matrixin/transferin/primariesin/rangein)",
+      "value_in_list": "(ausentes)",
+      "valid_range": "necesarios si el bitstream no viene etiquetado",
+      "chains": [
+        "S2",
+        "S3"
+      ],
+      "chains_affected": 3116,
+      "verdict": "FAIL condicional",
+      "error": "code 3074: no path between colorspaces",
+      "test": "B11, F04"
+    },
+    {
+      "filter": "zscale",
+      "param": "transfer",
+      "value_in_list": "bt709",
+      "valid_range": "bt709 (1) existe",
+      "chains": [
+        "S2"
+      ],
+      "chains_affected": 2308,
+      "verdict": "PASS",
+      "error": "",
+      "test": "K2"
+    },
+    {
+      "filter": "zscale",
+      "param": "primaries",
+      "value_in_list": "bt2020",
+      "valid_range": "bt2020 (9) existe",
+      "chains": [
+        "S3"
+      ],
+      "chains_affected": 808,
+      "verdict": "PASS (nombre valido)",
+      "error": "",
+      "test": "C11"
+    },
+    {
+      "filter": "zscale",
+      "param": "dither",
+      "value_in_list": "error_diffusion",
+      "valid_range": "error_diffusion (3) existe",
+      "chains": [
+        "S2",
+        "S3"
+      ],
+      "chains_affected": 3116,
+      "verdict": "PASS",
+      "error": "",
+      "test": "C12"
+    },
+    {
+      "filter": "zscale",
+      "param": "range",
+      "value_in_list": "full",
+      "valid_range": "full (1) existe",
+      "chains": [
+        "S2",
+        "S3"
+      ],
+      "chains_affected": 3116,
+      "verdict": "PASS",
+      "error": "",
+      "test": "F01"
+    },
+    {
+      "filter": "minterpolate",
+      "param": "me",
+      "value_in_list": "epzs",
+      "valid_range": "[1 .. 9], epzs=8 -- el parametro SI existe (default epzs)",
+      "chains": [
+        "S1",
+        "S2",
+        "S3"
+      ],
+      "chains_affected": 10573,
+      "verdict": "PASS",
+      "error": "",
+      "test": "C14"
+    },
+    {
+      "filter": "minterpolate",
+      "param": "fps",
+      "value_in_list": "120",
+      "valid_range": "<video_rate>, 120 valido",
+      "chains": [
+        "S1",
+        "S2",
+        "S3"
+      ],
+      "chains_affected": 10573,
+      "verdict": "PASS (sintaxis)",
+      "error": "",
+      "test": "B05"
+    },
+    {
+      "filter": "nlmeans",
+      "param": "s/p/r",
+      "value_in_list": "S2 2.5/5/11 - S3 3.0/7/15",
+      "valid_range": "s [1..30], p [0..99], r [0..99]",
+      "chains": [
+        "S2",
+        "S3"
+      ],
+      "chains_affected": 3116,
+      "verdict": "PASS",
+      "error": "",
+      "test": "B06, B07"
+    },
+    {
+      "filter": "gradfun",
+      "param": "radius/strength",
+      "value_in_list": "S2 12/0.8 - S3 16/1.0",
+      "valid_range": "radius [4..32], strength [0.51..64]",
+      "chains": [
+        "S2",
+        "S3"
+      ],
+      "chains_affected": 3116,
+      "verdict": "PASS",
+      "error": "",
+      "test": "B09, B10"
+    },
+    {
+      "filter": "bwdif",
+      "param": "mode/parity/deint",
+      "value_in_list": "1/-1/0",
+      "valid_range": "mode [0..1], parity [-1..1], deint [0..1]",
+      "chains": [
+        "S2",
+        "S3"
+      ],
+      "chains_affected": 3116,
+      "verdict": "PASS",
+      "error": "",
+      "test": "B08"
+    },
+    {
+      "filter": "yadif",
+      "param": "mode/parity/deint",
+      "value_in_list": "1/-1/0",
+      "valid_range": "mode [0..3], parity [-1..1], deint [0..1]",
+      "chains": [
+        "S1"
+      ],
+      "chains_affected": 7457,
+      "verdict": "PASS",
+      "error": "",
+      "test": "B02"
+    },
+    {
+      "filter": "hqdn3d",
+      "param": "luma_spatial/chroma_spatial/luma_tmp/chroma_tmp",
+      "value_in_list": "2.0/1.5/3.0/2.5",
+      "valid_range": "<double> [0 .. DBL_MAX]",
+      "chains": [
+        "S1"
+      ],
+      "chains_affected": 7457,
+      "verdict": "PASS",
+      "error": "",
+      "test": "B01"
+    }
+  ],
+  "defect_cascade": [
+    {
+      "test": "K1",
+      "target": "S1 (P4) con SOLO unsharp corregido",
+      "result": "exit=0 en 2.17 s -> S1 tiene UN unico defecto"
+    },
+    {
+      "test": "K2",
+      "target": "S2 (P3) con SOLO unsharp corregido, fuente etiquetada",
+      "result": "exit=0 en 3.74 s -> S2 tiene UN unico defecto sintactico; el zscale es fragil ante fuente sin etiquetar"
+    },
+    {
+      "test": "K3",
+      "target": "S3 (P1) con unsharp corregido",
+      "result": "exit=-22: Unable to parse option value \"st2084\""
+    },
+    {
+      "test": "K4",
+      "target": "S3 con zscale corregido",
+      "result": "exit=-34: Value 5.000000 for parameter scd out of range [0 - 1]"
+    },
+    {
+      "test": "K5",
+      "target": "S3 con todo corregido",
+      "result": "exit=0 en 11.38 s"
+    }
+  ],
+  "global_verdict": {
+    "chains_that_parse_in_ffmpeg_8_0_1": 0,
+    "chains_total": 10573,
+    "first_failure_in_all_chains": "unsharp: Value 0.000000 for parameter chroma_msize_x out of range [3 - 23]",
+    "filters_applied_in_vlc": 0,
+    "reproduction_in_vlc": "OK (la lista se reproduce; los errores de filtro son no fatales)",
+    "minterpolate_120_real_time": "NO alcanzable. 46.9x tiempo real medido con la cadena P3 completa a 720p (93.75 s de CPU para 2.00 s de contenido). A 4K con nlmeans: 0.084 fps."
+  },
+  "runtime_matrix": [
+    {
+      "runtime": "VLC 3.0.24 (Windows, este host)",
+      "measured": true,
+      "can_execute_filter_chain": false,
+      "reproduce": true,
+      "evidence": [
+        "41 plugins en C:\\Program Files\\VideoLAN\\VLC\\plugins\\video_filter; 0 con token \"avfilter\"; 0 DLL *avfilter* o *ffmpeg* en los 363 plugins",
+        "V1 log: main debug: Adding 'hqdn3d=luma_spatial=2.0' as interactive / looking for video filter module matching \"hqdn3d=luma_spatial=2.0,chain\": 48 candidates / no video filter modules matched / main error: Failed to create video filter ... / main error: Failed to add filter 'hqdn3d=luma_spatial=2.0' (32 veces en la sesion)",
+        "V1 reprodujo el archivo completo (decoder avcodec + vout display vdummy + EOF + salida limpia) pese a los 32 errores de filtro",
+        "V3 hqdn3d -> \"using video filter module hqdn3d\" (el modulo SI existe y carga)",
+        "V4 hqdn3d{luma-spat=2.0,chroma-spat=1.5} -> carga correctamente",
+        "V5 hqdn3d=luma_spatial=2.0:chroma_spatial=1.5 -> \"no video filter modules matched\" (la sintaxis de la lista es la que mata el filtro)",
+        "V6 minterpolate -> no module; V7 nlmeans -> no module",
+        "V10 gradfun{radius=12,strength=0.8} -> carga, con los MISMOS nombres de opcion que ffmpeg",
+        "V11 deinterlace{mode=yadif2x} -> carga",
+        "V8/V9 hqdn3d{luma_spatial=2.0} y hqdn3d{bogus=1} -> cargan igual: VLC ignora opciones desconocidas dentro de {} (aplicaria DEFAULTS)"
+      ],
+      "syntax_rule": "VLC divide --video-filter por \":\" y cada token debe ser <modulo> o <modulo>{opt=val,opt=val}. La lista usa <filtro>=<param>:<param>, que VLC lee como nombre de modulo completo.",
+      "verdict": "La lista REPRODUCE en VLC. Los filtros NO se aplican: 0 de 10.573 cadenas producen efecto. De las 7 etapas distintas, solo hqdn3d y gradfun tienen modulo VLC, y ninguna de las dos se invoca con la gramatica correcta."
+    },
+    {
+      "runtime": "ExoPlayer / OTT Navigator / TiviMate / hls.js / Kodi",
+      "measured": false,
+      "can_execute_filter_chain": false,
+      "reproduce": true,
+      "evidence": [
+        "RFC 8216 seccion 6.3.1: las lineas que empiezan por # son comentarios o tags y el cliente DEBE ignorar los tags que no reconoce. #EXTVLCOPT es extension propietaria de VLC."
+      ],
+      "syntax_rule": "Ninguno de estos players implementa un motor de filtros por cadena de texto en la playlist: la decodificacion la hace el decoder del sistema (MediaCodec/VideoToolbox/AVFoundation).",
+      "verdict": "INERTE. La linea se descarta sin error de parseo; no hay ejecucion de filtros posible ni con sintaxis corregida. No medido en esta maquina: veredicto normativo, no empirico."
+    },
+    {
+      "runtime": "VPS-ARA (nginx, metadata-only)",
+      "measured": false,
+      "can_execute_filter_chain": false,
+      "reproduce": true,
+      "evidence": [
+        "CLAUDE.md (REALIDAD MEDIDA DEL VPS 2026-10-25): produccion es rebase-only metadata y NO transporta video (.ts|.m4s|.mp4 -> 404). No hay motor de transcodificacion."
+      ],
+      "syntax_rule": "La cadena viaja como texto en la playlist; el VPS no la interpreta.",
+      "verdict": "INERTE por construccion: sin transporte de video no hay pixeles que filtrar. No re-medido en esta tarea."
+    }
+  ],
+  "corrected_chains": [
+    {
+      "profile": "P4",
+      "chains_in_list": 7457,
+      "source_signature": "S1",
+      "target": "720p SDR, 30 fps (coherente con #EXTVLCOPT:video-fps=30 y video-display-fps=30 ya presentes)",
+      "chain": "hqdn3d=luma_spatial=2.0:chroma_spatial=1.5:luma_tmp=3.0:chroma_tmp=2.5,yadif=mode=1:parity=-1:deint=0,unsharp=luma_msize_x=3:luma_msize_y=3:luma_amount=0.25:chroma_msize_x=3:chroma_msize_y=3:chroma_amount=0.0,fps=fps=30",
+      "changed": [
+        "unsharp chroma_msize_x 0->3",
+        "unsharp chroma_msize_y 0->3",
+        "minterpolate fps=120 -> fps=fps=30"
+      ],
+      "command": "ffmpeg -hide_banner -nostdin -y -v error -i scratch/avisynth_probe_2026/filtro_src_hd_720p25_2s.y4m -vf \"<chain>\" -frames:v 200 -f null -",
+      "result": "exit=0, 200 frames en 0.44 s = 452.6 fps (15.1x el objetivo de 30 fps)",
+      "test_ids": [
+        "I2",
+        "I1"
+      ]
+    },
+    {
+      "profile": "P3",
+      "chains_in_list": 2308,
+      "source_signature": "S2",
+      "target": "1080p SDR bt709, 60 fps (coherente con video-fps=60 / video-display-fps=60)",
+      "chain": "hqdn3d=luma_spatial=1.5:chroma_spatial=1.0:luma_tmp=2.0:chroma_tmp=1.5,bwdif=mode=1:parity=-1:deint=0,gradfun=radius=12:strength=0.8,unsharp=luma_msize_x=3:luma_msize_y=3:luma_amount=0.3:chroma_msize_x=3:chroma_msize_y=3:chroma_amount=0.0,zscale=matrixin=bt709:transferin=bt709:primariesin=bt709:rangein=limited:transfer=bt709:primaries=bt709:matrix=bt709:dither=error_diffusion:range=full,fps=fps=60",
+      "changed": [
+        "unsharp chroma_msize_x/y 0->3",
+        "nlmeans -> hqdn3d (coste medido 132x menor)",
+        "zscale + matrixin/transferin/primariesin/rangein",
+        "minterpolate fps=120 -> fps=fps=60"
+      ],
+      "command": "ffmpeg -hide_banner -nostdin -y -v error -i scratch/avisynth_probe_2026/filtro_src_fhd_1080p25_1s.y4m -vf \"<chain>\" -frames:v 120 -f null -",
+      "result": "exit=0, 120 frames en 0.50 s = 241.3 fps (4.0x el objetivo de 60 fps)",
+      "test_ids": [
+        "I3",
+        "K2"
+      ]
+    },
+    {
+      "profile": "P1",
+      "chains_in_list": 808,
+      "source_signature": "S3",
+      "target": "4K, intencion HDR (smpte2084/bt2020), 60 fps declarado",
+      "chain": "hqdn3d=luma_spatial=1.0:chroma_spatial=0.8:luma_tmp=1.5:chroma_tmp=1.2,bwdif=mode=1:parity=-1:deint=0,gradfun=radius=16:strength=1.0,unsharp=luma_msize_x=3:luma_msize_y=3:luma_amount=0.4:chroma_msize_x=3:chroma_msize_y=3:chroma_amount=0.0,zscale=matrixin=bt709:transferin=bt709:primariesin=bt709:rangein=limited:transfer=smpte2084:primaries=bt2020:matrix=bt2020nc:dither=error_diffusion:range=full,fps=fps=60",
+      "changed": [
+        "unsharp chroma_msize_x/y 0->3",
+        "nlmeans -> hqdn3d",
+        "zscale transfer st2084 -> smpte2084",
+        "zscale matrix 2020ncl -> bt2020nc",
+        "zscale + *in",
+        "minterpolate scd=5 -> fps=fps=60"
+      ],
+      "command": "ffmpeg -hide_banner -nostdin -y -v error -f lavfi -i testsrc2=size=3840x2160:rate=25 -t 1 -vf \"<chain>\" -frames:v 60 -f null -",
+      "result": "exit=0, 60 frames en 2.03 s = 29.6 fps a 3840x2160 -> NO alcanza los 60 fps declarados (49%); si se sostiene a 25/30 fps. Con el nlmeans original a 4K: 4 frames en 47.81 s = 0.084 fps.",
+      "honest_limit": "A 4K esta cadena NO es tiempo real a 60 fps en este host. Para 60 fps reales hay que sacar la conversion HDR del filtro (dejarla al display) o bajar fps=fps=30.",
+      "test_ids": [
+        "I4",
+        "E2"
+      ]
+    },
+    {
+      "profile": "P5",
+      "chains_in_list": 0,
+      "source_signature": null,
+      "target": "NO EXISTE en esta lista: 0 de 10.573 entradas declaran X-APE-Profile P5 (reparto medido: P1=808, P3=2308, P4=7457). Cadena PROPUESTA, no derivada de la lista.",
+      "chain": "hqdn3d=luma_spatial=1.2:chroma_spatial=0.8:luma_tmp=1.5:chroma_tmp=1.0,yadif=mode=0:parity=-1:deint=0,fps=fps=30",
+      "changed": [
+        "propuesta de minimo coste (sin interpolacion, sin conversion de color)"
+      ],
+      "command": "ffmpeg -hide_banner -nostdin -y -v error -i scratch/avisynth_probe_2026/filtro_src_sd_480p25_2s.y4m -vf \"<chain>\" -frames:v 60 -f null -",
+      "result": "exit=0, 60 frames en 0.15 s (I5)",
+      "test_ids": [
+        "I5"
+      ]
+    }
+  ],
+  "measurements": [
+    {
+      "id": "H00",
+      "what": "baseline null, 720p, 50 frames",
+      "seconds": 0.07,
+      "frames": 50,
+      "fps": 714.3,
+      "note": "coste de E/S"
+    },
+    {
+      "id": "H01",
+      "what": "hqdn3d (params de la lista), 720p",
+      "seconds": 0.17,
+      "frames": 50,
+      "fps": 294.1
+    },
+    {
+      "id": "H02",
+      "what": "yadif, 720p",
+      "seconds": 0.07,
+      "frames": 50,
+      "fps": 714.3
+    },
+    {
+      "id": "H03",
+      "what": "unsharp corregido, 720p",
+      "seconds": 0.09,
+      "frames": 50,
+      "fps": 555.6
+    },
+    {
+      "id": "H04",
+      "what": "nlmeans s=2.5 p=5 r=11, 720p",
+      "seconds": 22.45,
+      "frames": 50,
+      "fps": 2.23,
+      "note": "11.2x tiempo real"
+    },
+    {
+      "id": "H05",
+      "what": "gradfun radius=12 strength=0.8, 720p",
+      "seconds": 0.13,
+      "frames": 50,
+      "fps": 384.6
+    },
+    {
+      "id": "H06",
+      "what": "minterpolate mci fps=120, 720p (100 frames de salida)",
+      "seconds": 23.55,
+      "frames": 100,
+      "fps": 4.25
+    },
+    {
+      "id": "H07",
+      "what": "minterpolate mi_mode=dup fps=120, 720p",
+      "seconds": 0.09,
+      "frames": 100,
+      "fps": 1111.1,
+      "note": "dup NO interpola: descarta frames"
+    },
+    {
+      "id": "H08",
+      "what": "fps=fps=60 solo, 720p",
+      "seconds": 0.1,
+      "frames": 100,
+      "fps": 1000
+    },
+    {
+      "id": "H09",
+      "what": "zscale con *in, 720p",
+      "seconds": 0.16,
+      "frames": 50,
+      "fps": 312.5
+    },
+    {
+      "id": "E1",
+      "what": "minterpolate mci fps=120, 480p, 240 frames de salida",
+      "seconds": 19.4,
+      "frames": 240,
+      "fps": 12.4,
+      "note": "9.7x el tiempo real de su propia salida"
+    },
+    {
+      "id": "E2",
+      "what": "minterpolate mci fps=120, 720p, 240 frames de salida",
+      "seconds": 46.9,
+      "frames": 240,
+      "fps": 5.1,
+      "note": "23.4x el tiempo real de su propia salida"
+    },
+    {
+      "id": "X1",
+      "what": "CADENA ORIGINAL P3 COMPLETA (solo unsharp corregido), 720p, 2.00 s de contenido",
+      "seconds": 93.75,
+      "frames": 240,
+      "fps": 2.56,
+      "note": "46.9x tiempo real -> el objetivo de la lista no es alcanzable en tiempo real"
+    },
+    {
+      "id": "X2",
+      "what": "CADENA ORIGINAL P1 con nlmeans a 3840x2160",
+      "seconds": 47.81,
+      "frames": 4,
+      "fps": 0.084,
+      "note": "714x por debajo de los 60 fps que declara P1 (60/0.084)"
+    },
+    {
+      "id": "X3",
+      "what": "P4 corregida, 720p",
+      "seconds": 0.44,
+      "frames": 200,
+      "fps": 452.6
+    },
+    {
+      "id": "X4",
+      "what": "P3 corregida, 1080p",
+      "seconds": 0.5,
+      "frames": 120,
+      "fps": 241.3
+    },
+    {
+      "id": "X5",
+      "what": "P1 corregida, 3840x2160",
+      "seconds": 2.03,
+      "frames": 60,
+      "fps": 29.6
+    }
+  ],
+  "refutations_vs_captain_facts": [
+    {
+      "claim": "minterpolate no tiene el parametro `me`",
+      "status": "REFUTADO",
+      "evidence": "ffmpeg -h filter=minterpolate -> \"me <int> ..FV....... motion estimation method (from 1 to 9) (default epzs)\". C14 minterpolate=me=epzs -> exit=0. C16 me=11 -> \"Value 11.000000 for parameter me out of range [1 - 9]\". El parametro existe y epzs=8 es su default."
+    },
+    {
+      "claim": "el filtro `pp` no existe (mensaje \"Unknown filter 'pp'\")",
+      "status": "CONFIRMADO en el fondo, mensaje CORREGIDO",
+      "evidence": "G01: \"[AVFilterGraph] No such filter: 'pp'\" (no \"Unknown filter\"). G02 pp=default: \"No option name near 'default'\"."
+    },
+    {
+      "claim": "zscale no tiene transfer bt1886",
+      "status": "CONFIRMADO",
+      "evidence": "G05 zscale=transfer=bt1886 -> \"Undefined constant or missing '(' in 'bt1886'\". Ademas la lista declara #EXT-X-APE-HDR-TRANSFER:BT1886 en 10.573 entradas (metadata), no como argumento de filtro: transfer=bt1886 en cadena = 0 ocurrencias."
+    },
+    {
+      "claim": "gradfun strength [0.51,64] radius [4,32]",
+      "status": "CONFIRMADO",
+      "evidence": "ffmpeg -h filter=gradfun; C17 strength=0.4 -> \"out of range [0.51 - 64]\"."
+    },
+    {
+      "claim": "zscale dither no admite blue-noise",
+      "status": "CONFIRMADO",
+      "evidence": "C13 zscale=dither=blue_noise -> \"Undefined constant or missing '(' in 'blue_noise'\". Enum medido: none|ordered|random|error_diffusion (0..3)."
+    },
+    {
+      "claim": "VLC no tiene plugin avfilter/ffmpeg; 41 plugins video_filter",
+      "status": "CONFIRMADO",
+      "evidence": "plugins/video_filter = 41 DLL; 0 con token avfilter; 363 plugins totales; ninguna DLL *avfilter*/*ffmpeg*."
+    },
+    {
+      "claim": "10.573 lineas video-filter, todas con minterpolate, 3.116 con zscale y gradfun, 0 ffmpeg{ / bt1886 / libplacebo / cas=",
+      "status": "CONFIRMADO",
+      "evidence": "rg -c sobre el archivo completo: EXTVLCOPT:video-filter= 10573; minterpolate 10573; zscale 3116; gradfun 3116; nlmeans 3116; bwdif 3116; hqdn3d 7457; \"ffmpeg{\" 0; \"libplacebo\" 0; \"cas=\" 0; \"avfilter\" 0; transfer=bt1886 0."
+    },
+    {
+      "claim": "las muestras A y B del capitan son las unicas firmas",
+      "status": "REFUTADO por incompleto",
+      "evidence": "Hay TRES firmas distintas, no dos: 7457 (hqdn3d/yadif, P4), 2308 (nlmeans 2.5, P3) y 808 (nlmeans 3.0 + transfer=st2084 + matrix=2020ncl + scd=5, P1). La tercera no estaba en las muestras y es la unica con defectos de zscale y scd."
+    }
+  ],
+  "evidence_artifacts": [
+    "scratch/avisynth_probe_2026/vf_extract/all_vf_raw.txt (10573 lineas video-filter extraidas)",
+    "scratch/avisynth_probe_2026/vf_extract/SIG_1.txt, SIG_2.txt, SIG_3.txt (las 3 firmas distintas, texto exacto)",
+    "scratch/avisynth_probe_2026/vf_extract/profile_signature_matrix.json (correlacion firma<->perfil por entrada)",
+    "scratch/avisynth_probe_2026/vf_extract/help_nlmeans.txt .. help_zscale.txt (salida literal de ffmpeg -h filter=)",
+    "scratch/avisynth_probe_2026/vf_extract/filtro_matrix_results.tsv (ronda A-E: exit code, mensaje exacto, cadena)",
+    "scratch/avisynth_probe_2026/vf_extract/filtro_matrix2_results.tsv (ronda F-I: zscale *in, mensajes, coste por etapa)",
+    "scratch/avisynth_probe_2026/vf_extract/err_A1.txt .. err_C04.txt (stderr literal de ffmpeg por test)",
+    "scratch/avisynth_probe_2026/vf_extract/vlc/vlc_V0.log .. vlc_V11.log (logs VLC -vvv con resolucion de modulos)",
+    "scratch/avisynth_probe_2026/vf_extract/vlc_runtime_probe.json",
+    "scratch/avisynth_probe_2026/vf_extract/vlc_video_filter_plugins.json (los 41 plugins y su token avfilter)",
+    "scratch/avisynth_probe_2026/filtro_run_matrix.ps1, filtro_run_matrix2.ps1, filtro_vlc_runtime_probe.ps1, filtro_vlc_plugin_strings.ps1, filtro_correlate_profiles.js"
+  ],
+  "honest_limits": [
+    "Las fuentes de prueba son sinteticas (testsrc2 / y4m 480p-1080p) y un mp4 H.264 480p. No se ha probado contra un TS HLS real del proveedor: el coste por etapa escala con la resolucion y el contenido, y el numero de 4K sale de una fuente lavfi.",
+    "ExoPlayer/OTT/TiviMate/Kodi y VPS-ARA NO se han ejecutado en esta tarea. Su veredicto INERTE es normativo (RFC 8216 6.3.1) y de arquitectura documentada, no empirico.",
+    "La cifra 46.9x tiempo real es de este host (Windows, ffmpeg 8.0.1 gyan build, sin GPU). En hardware distinto el factor cambia; el orden de magnitud no.",
+    "No se ha verificado si el bitstream real de cada canal llega etiquetado (matrix/transfer/primaries), que es lo que decide si el zscale de S2 funciona o aborta. Solo se demuestra que la cadena NO lo garantiza."
+  ]
+}

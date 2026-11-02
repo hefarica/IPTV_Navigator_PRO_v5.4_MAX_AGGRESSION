@@ -1,0 +1,1351 @@
+{
+  "schema": "ape.lane-capability-matrix/1",
+  "version": "2026-11-02",
+  "produced_by": "t4 arquitecto-lanes",
+  "subject": {
+    "file": "APE_LISTA_1793589060441.m3u8",
+    "bytes": 604593696,
+    "sha256": "523d52a6d147f81ce5a212e47b9c55401fb409cd4a41aee96f8ba80b5b5049d6",
+    "channels": 10573,
+    "video_filter_occurrences": 10573,
+    "read_only": true
+  },
+  "measurement_env": {
+    "os": "Windows",
+    "gpu": null,
+    "vlc": "3.0.24 (C:\\Program Files\\VideoLAN\\VLC, FileVersion 3.0.24)",
+    "vlc4_installed": false,
+    "ffmpeg": "8.0.1-full_build-www.gyan.dev",
+    "node": "v24.12.0",
+    "test_item": "scratch/lane_matrix_04/test_720p25.ts (1280x720@25 H.264 MPEG-TS, 3 s, testsrc2)",
+    "date": "2026-11-02 America/Bogota"
+  },
+  "verdict_codes": {
+    "NATIVO": "N — el runtime lo ejecuta por si mismo",
+    "PLUGIN/DAEMON": "P — necesita componente externo autorizado (daemon/SoC)",
+    "DECLARATIVO": "D — metadata que el runtime ignora (no filtra, no rompe)",
+    "IMPOSIBLE": "I — no existe mecanismo"
+  },
+  "evidence_grades": {
+    "m": "MEDIDO en esta tarea (log/CSV citado en artifact)",
+    "r": "CODIGO O DOCUMENTO DEL REPO (ruta citada)",
+    "s": "SPEC / ARQUITECTURA / ausencia documentada de mecanismo",
+    "x": "NO MEDIDO — no se promueve a NATIVO"
+  },
+  "stages": [
+    {
+      "id": "deinterlace",
+      "es": "desentrelazado"
+    },
+    {
+      "id": "denoise",
+      "es": "denoise"
+    },
+    {
+      "id": "scaling",
+      "es": "escalado"
+    },
+    {
+      "id": "color_hdr",
+      "es": "color/HDR"
+    },
+    {
+      "id": "tonemapping",
+      "es": "tonemapping"
+    },
+    {
+      "id": "sharpening",
+      "es": "sharpening"
+    },
+    {
+      "id": "debanding",
+      "es": "debanding"
+    },
+    {
+      "id": "motion_interp",
+      "es": "interpolacion de movimiento"
+    },
+    {
+      "id": "bit_depth",
+      "es": "bit-depth"
+    }
+  ],
+  "runtimes": [
+    {
+      "id": "vlc3",
+      "name": "VLC 3.0.24 (desktop, medido)",
+      "grade": "m",
+      "mechanism": "libVLC: filtros de video por modulo; cadena --video-filter separada por \":\"; opciones de item filtradas por lista de seguridad",
+      "artifact": "scratch/lane_matrix_04/vlc_battery_results.csv"
+    },
+    {
+      "id": "vlc4",
+      "name": "VLC 4.x (NO INSTALADO — no medido)",
+      "grade": "x",
+      "mechanism": "sin binario 4.x en la maquina; nada promovido a NATIVO",
+      "artifact": "Get-ChildItem 'C:\\Program Files' -Recurse -Filter vlc.exe -> solo 3.0.24"
+    },
+    {
+      "id": "ott",
+      "name": "OTT Navigator (Android)",
+      "grade": "s",
+      "mechanism": "ExoPlayer por defecto; motor VLC 3.6.x opcional; #EXTVLCOPT solo user-agent/http-referrer; #KODIPROP inputstream.adaptive.*",
+      "artifact": ".agents/skills/ape-image-pipeline-truth/SKILL.md §11 (changelog ottnav)"
+    },
+    {
+      "id": "tivimate",
+      "name": "TiviMate (Android)",
+      "grade": "s",
+      "mechanism": "ExoPlayer (docs/rea/05_PLAYER_COMPAT.md:26); atributos M3U Plus + #EXTHTTP; sin canal de filtros",
+      "artifact": "docs/rea/05_PLAYER_COMPAT.md:26"
+    },
+    {
+      "id": "exoplayer",
+      "name": "ExoPlayer / Media3 (libreria)",
+      "grade": "s",
+      "mechanism": "decodifica por MediaCodec y renderiza; post-proceso solo por codigo de app (media3-effect); ningun tag de manifiesto",
+      "artifact": "docs/rea/05_PLAYER_COMPAT.md:25"
+    },
+    {
+      "id": "kodi",
+      "name": "Kodi + inputstream.adaptive",
+      "grade": "s",
+      "mechanism": "#KODIPROP:inputstream.adaptive.* (103 claves/canal); desentrelazado y escalado son ajustes del reproductor, no tags",
+      "artifact": "scratch/avisynth_probe_2026/fixtures/canal_001.txt"
+    },
+    {
+      "id": "hlsjs",
+      "name": "hls.js (navegador, MSE)",
+      "grade": "s",
+      "mechanism": "demuxer/remuxer sobre MSE; el <video> decodifica; tags desconocidos ignorados",
+      "artifact": ".agents/skills/hlsjs-internals-m3u8-parser-attrlist/SKILL.md"
+    },
+    {
+      "id": "vps_lua",
+      "name": "VPS nginx-Lua (rebase-only, produccion medida)",
+      "grade": "r",
+      "mechanism": "rebase-only metadata: no transporta video (.ts/.m4s/.mp4 -> 404); solo reescribe URIs y etiquetas",
+      "artifact": "docs/manifestos/VPS_REALITY_MEASURED_2026-10-25.md:18,58"
+    },
+    {
+      "id": "ara_vpp",
+      "name": "ARA + VPP del SoC (daemon en device)",
+      "grade": "r",
+      "mechanism": "el daemon escribe settings del SoC; el VPP post-procesa el frame decodificado (cualquier codec, cualquier player); efecto en pixeles NO_VERIFICADO sin device",
+      "artifact": "vps/prisma/cli/push_pq_profile.php:22-30; docs/rea/08_VPP_AI_SR.md:42"
+    }
+  ],
+  "cells": [
+    {
+      "runtime": "vlc3",
+      "stage": "deinterlace",
+      "stage_es": "desentrelazado",
+      "verdict": "N",
+      "evidence_grade": "m",
+      "artifact": "scratch/lane_matrix_04/vlc/L06_deinterlace_opt.log + (C11,C12)",
+      "note": "modulo deinterlace carga por CLI (`L06`); desde playlist el nombre de la lista (video-deinterlace*) no existe y no se aplica nada",
+      "verdict_playlist": "D",
+      "playlist_note": "carril #EXTVLCOPT: video-filter es unsafe-ignored (DBG.log): desde la playlist no se aplica nada de la cadena"
+    },
+    {
+      "runtime": "vlc3",
+      "stage": "denoise",
+      "stage_es": "denoise",
+      "verdict": "N",
+      "evidence_grade": "m",
+      "artifact": "scratch/lane_matrix_04/vlc/L01_hqdn3d_bare.log + L02_hqdn3d_braces.log",
+      "note": "hqdn3d carga por CLI con opciones reales (luma-spat/chroma-spat/luma-temp/chroma-temp)",
+      "verdict_playlist": "D",
+      "playlist_note": "carril #EXTVLCOPT: video-filter es unsafe-ignored (DBG.log): desde la playlist no se aplica nada de la cadena"
+    },
+    {
+      "runtime": "vlc3",
+      "stage": "scaling",
+      "stage_es": "escalado",
+      "verdict": "I",
+      "evidence_grade": "m",
+      "artifact": "scratch/lane_matrix_04/vlc/M07_scale.log",
+      "note": "`scale` NO es seleccionable como filtro (18 \"no match\"); el escalado ocurre en el vout, no en la cadena",
+      "verdict_playlist": "I",
+      "playlist_note": "carril #EXTVLCOPT: video-filter es unsafe-ignored (DBG.log): desde la playlist no se aplica nada de la cadena"
+    },
+    {
+      "runtime": "vlc3",
+      "stage": "color_hdr",
+      "stage_es": "color/HDR",
+      "verdict": "D",
+      "evidence_grade": "m",
+      "artifact": "scratch/lane_matrix_04/vlc_battery_e_results.csv (E11,E12,E13) + vlc_bc/DBG.log",
+      "note": "VLC 3 no aplica color/HDR desde la playlist; saturation/tonemap existen como opciones de vout pero sin prueba de aplicacion",
+      "verdict_playlist": "D",
+      "playlist_note": "carril #EXTVLCOPT: video-filter es unsafe-ignored (DBG.log): desde la playlist no se aplica nada de la cadena"
+    },
+    {
+      "runtime": "vlc3",
+      "stage": "tonemapping",
+      "stage_es": "tonemapping",
+      "verdict": "D",
+      "evidence_grade": "m",
+      "artifact": "scratch/lane_matrix_04/vlc_battery_e_results.csv (E12_tonemap)",
+      "note": "opcion tonemap sin objecion, sin prueba de aplicacion; no hay modulo de tonemapping en la cadena",
+      "verdict_playlist": "D",
+      "playlist_note": "carril #EXTVLCOPT: video-filter es unsafe-ignored (DBG.log): desde la playlist no se aplica nada de la cadena"
+    },
+    {
+      "runtime": "vlc3",
+      "stage": "sharpening",
+      "stage_es": "sharpening",
+      "verdict": "N",
+      "evidence_grade": "m",
+      "artifact": "scratch/lane_matrix_04/vlc/M02_sharpen.log + vlc_battery_c_results.csv (C10)",
+      "note": "sharpen{sigma=...} carga y `sigma` resuelve",
+      "verdict_playlist": "D",
+      "playlist_note": "carril #EXTVLCOPT: video-filter es unsafe-ignored (DBG.log): desde la playlist no se aplica nada de la cadena"
+    },
+    {
+      "runtime": "vlc3",
+      "stage": "debanding",
+      "stage_es": "debanding",
+      "verdict": "N",
+      "evidence_grade": "m",
+      "artifact": "scratch/lane_matrix_04/vlc/L03_gradfun_braces.log + (C08,C09)",
+      "note": "gradfun{radius,strength} carga; ambos nombres resuelven",
+      "verdict_playlist": "D",
+      "playlist_note": "carril #EXTVLCOPT: video-filter es unsafe-ignored (DBG.log): desde la playlist no se aplica nada de la cadena"
+    },
+    {
+      "runtime": "vlc3",
+      "stage": "motion_interp",
+      "stage_es": "interpolacion de movimiento",
+      "verdict": "I",
+      "evidence_grade": "m",
+      "artifact": "scratch/lane_matrix_04/vlc/M06_fps.log",
+      "note": "solo existe `fps` (duplica/descarta frames); no hay interpolacion de movimiento",
+      "verdict_playlist": "I",
+      "playlist_note": "carril #EXTVLCOPT: video-filter es unsafe-ignored (DBG.log): desde la playlist no se aplica nada de la cadena"
+    },
+    {
+      "runtime": "vlc3",
+      "stage": "bit_depth",
+      "stage_es": "bit-depth",
+      "verdict": "I",
+      "evidence_grade": "m",
+      "artifact": "scratch/lane_matrix_04/vlc/M07_scale.log",
+      "note": "no hay filtro de profundidad; lo decide decoder/vout; `format` sin prueba de aplicacion",
+      "verdict_playlist": "I",
+      "playlist_note": "carril #EXTVLCOPT: video-filter es unsafe-ignored (DBG.log): desde la playlist no se aplica nada de la cadena"
+    },
+    {
+      "runtime": "vlc4",
+      "stage": "deinterlace",
+      "stage_es": "desentrelazado",
+      "verdict": "D",
+      "evidence_grade": "x",
+      "artifact": "Get-ChildItem 'C:\\Program Files' -Recurse -Filter vlc.exe -> solo 3.0.24",
+      "note": "sin binario 4.x: la cadena de la lista seria inerte por continuidad de diseno, NO medido"
+    },
+    {
+      "runtime": "vlc4",
+      "stage": "denoise",
+      "stage_es": "denoise",
+      "verdict": "D",
+      "evidence_grade": "x",
+      "artifact": "Get-ChildItem 'C:\\Program Files' -Recurse -Filter vlc.exe -> solo 3.0.24",
+      "note": "no medido"
+    },
+    {
+      "runtime": "vlc4",
+      "stage": "scaling",
+      "stage_es": "escalado",
+      "verdict": "D",
+      "evidence_grade": "x",
+      "artifact": "Get-ChildItem 'C:\\Program Files' -Recurse -Filter vlc.exe -> solo 3.0.24",
+      "note": "no medido"
+    },
+    {
+      "runtime": "vlc4",
+      "stage": "color_hdr",
+      "stage_es": "color/HDR",
+      "verdict": "D",
+      "evidence_grade": "x",
+      "artifact": "Get-ChildItem 'C:\\Program Files' -Recurse -Filter vlc.exe -> solo 3.0.24",
+      "note": "no medido; vout GPU/libplacebo es roadmap upstream, no filtergraph de playlist"
+    },
+    {
+      "runtime": "vlc4",
+      "stage": "tonemapping",
+      "stage_es": "tonemapping",
+      "verdict": "D",
+      "evidence_grade": "x",
+      "artifact": "Get-ChildItem 'C:\\Program Files' -Recurse -Filter vlc.exe -> solo 3.0.24",
+      "note": "no medido"
+    },
+    {
+      "runtime": "vlc4",
+      "stage": "sharpening",
+      "stage_es": "sharpening",
+      "verdict": "D",
+      "evidence_grade": "x",
+      "artifact": "Get-ChildItem 'C:\\Program Files' -Recurse -Filter vlc.exe -> solo 3.0.24",
+      "note": "no medido"
+    },
+    {
+      "runtime": "vlc4",
+      "stage": "debanding",
+      "stage_es": "debanding",
+      "verdict": "D",
+      "evidence_grade": "x",
+      "artifact": "Get-ChildItem 'C:\\Program Files' -Recurse -Filter vlc.exe -> solo 3.0.24",
+      "note": "no medido"
+    },
+    {
+      "runtime": "vlc4",
+      "stage": "motion_interp",
+      "stage_es": "interpolacion de movimiento",
+      "verdict": "I",
+      "evidence_grade": "s",
+      "artifact": "Get-ChildItem 'C:\\Program Files' -Recurse -Filter vlc.exe -> solo 3.0.24",
+      "note": "sin modulo de interpolacion en la arquitectura de filtros publicada"
+    },
+    {
+      "runtime": "vlc4",
+      "stage": "bit_depth",
+      "stage_es": "bit-depth",
+      "verdict": "I",
+      "evidence_grade": "s",
+      "artifact": "Get-ChildItem 'C:\\Program Files' -Recurse -Filter vlc.exe -> solo 3.0.24",
+      "note": "sin mecanismo de bit-depth por playlist"
+    },
+    {
+      "runtime": "ott",
+      "stage": "deinterlace",
+      "stage_es": "desentrelazado",
+      "verdict": "D",
+      "evidence_grade": "s",
+      "artifact": ".agents/skills/ape-image-pipeline-truth/SKILL.md §11 (changelog ottnav)",
+      "note": "no lee video-filter; el desentrelazado lo decide decoder/HW"
+    },
+    {
+      "runtime": "ott",
+      "stage": "denoise",
+      "stage_es": "denoise",
+      "verdict": "D",
+      "evidence_grade": "s",
+      "artifact": ".agents/skills/ape-image-pipeline-truth/SKILL.md §11 (changelog ottnav)",
+      "note": "no hay mecanismo de filtros en la app"
+    },
+    {
+      "runtime": "ott",
+      "stage": "scaling",
+      "stage_es": "escalado",
+      "verdict": "D",
+      "evidence_grade": "s",
+      "artifact": ".agents/skills/ape-image-pipeline-truth/SKILL.md §11 (changelog ottnav)",
+      "note": "escala el display/SoC, no la playlist"
+    },
+    {
+      "runtime": "ott",
+      "stage": "color_hdr",
+      "stage_es": "color/HDR",
+      "verdict": "D",
+      "evidence_grade": "s",
+      "artifact": ".agents/skills/ape-image-pipeline-truth/SKILL.md §11 (changelog ottnav)",
+      "note": "HDR lo decide el decoder/panel"
+    },
+    {
+      "runtime": "ott",
+      "stage": "tonemapping",
+      "stage_es": "tonemapping",
+      "verdict": "D",
+      "evidence_grade": "s",
+      "artifact": ".agents/skills/ape-image-pipeline-truth/SKILL.md §11 (changelog ottnav)",
+      "note": "sin mecanismo"
+    },
+    {
+      "runtime": "ott",
+      "stage": "sharpening",
+      "stage_es": "sharpening",
+      "verdict": "D",
+      "evidence_grade": "s",
+      "artifact": ".agents/skills/ape-image-pipeline-truth/SKILL.md §11 (changelog ottnav)",
+      "note": "sin mecanismo"
+    },
+    {
+      "runtime": "ott",
+      "stage": "debanding",
+      "stage_es": "debanding",
+      "verdict": "D",
+      "evidence_grade": "s",
+      "artifact": ".agents/skills/ape-image-pipeline-truth/SKILL.md §11 (changelog ottnav)",
+      "note": "sin mecanismo"
+    },
+    {
+      "runtime": "ott",
+      "stage": "motion_interp",
+      "stage_es": "interpolacion de movimiento",
+      "verdict": "I",
+      "evidence_grade": "s",
+      "artifact": ".agents/skills/ape-image-pipeline-truth/SKILL.md §11 (changelog ottnav)",
+      "note": "sin motor de interpolacion"
+    },
+    {
+      "runtime": "ott",
+      "stage": "bit_depth",
+      "stage_es": "bit-depth",
+      "verdict": "I",
+      "evidence_grade": "s",
+      "artifact": ".agents/skills/ape-image-pipeline-truth/SKILL.md §11 (changelog ottnav)",
+      "note": "sin mecanismo"
+    },
+    {
+      "runtime": "tivimate",
+      "stage": "deinterlace",
+      "stage_es": "desentrelazado",
+      "verdict": "D",
+      "evidence_grade": "s",
+      "artifact": "docs/rea/05_PLAYER_COMPAT.md:26",
+      "note": "sin canal de filtros"
+    },
+    {
+      "runtime": "tivimate",
+      "stage": "denoise",
+      "stage_es": "denoise",
+      "verdict": "D",
+      "evidence_grade": "s",
+      "artifact": "docs/rea/05_PLAYER_COMPAT.md:26",
+      "note": "sin canal de filtros"
+    },
+    {
+      "runtime": "tivimate",
+      "stage": "scaling",
+      "stage_es": "escalado",
+      "verdict": "D",
+      "evidence_grade": "s",
+      "artifact": "docs/rea/05_PLAYER_COMPAT.md:26",
+      "note": "escala el display"
+    },
+    {
+      "runtime": "tivimate",
+      "stage": "color_hdr",
+      "stage_es": "color/HDR",
+      "verdict": "D",
+      "evidence_grade": "s",
+      "artifact": "docs/rea/05_PLAYER_COMPAT.md:26",
+      "note": "HDR lo decide el decoder/panel"
+    },
+    {
+      "runtime": "tivimate",
+      "stage": "tonemapping",
+      "stage_es": "tonemapping",
+      "verdict": "D",
+      "evidence_grade": "s",
+      "artifact": "docs/rea/05_PLAYER_COMPAT.md:26",
+      "note": "sin mecanismo"
+    },
+    {
+      "runtime": "tivimate",
+      "stage": "sharpening",
+      "stage_es": "sharpening",
+      "verdict": "D",
+      "evidence_grade": "s",
+      "artifact": "docs/rea/05_PLAYER_COMPAT.md:26",
+      "note": "sin mecanismo"
+    },
+    {
+      "runtime": "tivimate",
+      "stage": "debanding",
+      "stage_es": "debanding",
+      "verdict": "D",
+      "evidence_grade": "s",
+      "artifact": "docs/rea/05_PLAYER_COMPAT.md:26",
+      "note": "sin mecanismo"
+    },
+    {
+      "runtime": "tivimate",
+      "stage": "motion_interp",
+      "stage_es": "interpolacion de movimiento",
+      "verdict": "I",
+      "evidence_grade": "s",
+      "artifact": "docs/rea/05_PLAYER_COMPAT.md:26",
+      "note": "sin motor"
+    },
+    {
+      "runtime": "tivimate",
+      "stage": "bit_depth",
+      "stage_es": "bit-depth",
+      "verdict": "I",
+      "evidence_grade": "s",
+      "artifact": "docs/rea/05_PLAYER_COMPAT.md:26",
+      "note": "sin mecanismo"
+    },
+    {
+      "runtime": "exoplayer",
+      "stage": "deinterlace",
+      "stage_es": "desentrelazado",
+      "verdict": "D",
+      "evidence_grade": "s",
+      "artifact": "docs/rea/05_PLAYER_COMPAT.md:25",
+      "note": "la libreria no lee #EXTVLCOPT/#KODIPROP; el post-proceso exige codigo de app"
+    },
+    {
+      "runtime": "exoplayer",
+      "stage": "denoise",
+      "stage_es": "denoise",
+      "verdict": "D",
+      "evidence_grade": "s",
+      "artifact": "docs/rea/05_PLAYER_COMPAT.md:25",
+      "note": "idem"
+    },
+    {
+      "runtime": "exoplayer",
+      "stage": "scaling",
+      "stage_es": "escalado",
+      "verdict": "D",
+      "evidence_grade": "s",
+      "artifact": "docs/rea/05_PLAYER_COMPAT.md:25",
+      "note": "idem"
+    },
+    {
+      "runtime": "exoplayer",
+      "stage": "color_hdr",
+      "stage_es": "color/HDR",
+      "verdict": "D",
+      "evidence_grade": "s",
+      "artifact": "docs/rea/05_PLAYER_COMPAT.md:25",
+      "note": "idem"
+    },
+    {
+      "runtime": "exoplayer",
+      "stage": "tonemapping",
+      "stage_es": "tonemapping",
+      "verdict": "D",
+      "evidence_grade": "s",
+      "artifact": "docs/rea/05_PLAYER_COMPAT.md:25",
+      "note": "idem"
+    },
+    {
+      "runtime": "exoplayer",
+      "stage": "sharpening",
+      "stage_es": "sharpening",
+      "verdict": "D",
+      "evidence_grade": "s",
+      "artifact": "docs/rea/05_PLAYER_COMPAT.md:25",
+      "note": "idem"
+    },
+    {
+      "runtime": "exoplayer",
+      "stage": "debanding",
+      "stage_es": "debanding",
+      "verdict": "D",
+      "evidence_grade": "s",
+      "artifact": "docs/rea/05_PLAYER_COMPAT.md:25",
+      "note": "idem"
+    },
+    {
+      "runtime": "exoplayer",
+      "stage": "motion_interp",
+      "stage_es": "interpolacion de movimiento",
+      "verdict": "I",
+      "evidence_grade": "s",
+      "artifact": "docs/rea/05_PLAYER_COMPAT.md:25",
+      "note": "sin motor de interpolacion"
+    },
+    {
+      "runtime": "exoplayer",
+      "stage": "bit_depth",
+      "stage_es": "bit-depth",
+      "verdict": "I",
+      "evidence_grade": "s",
+      "artifact": "docs/rea/05_PLAYER_COMPAT.md:25",
+      "note": "sin mecanismo"
+    },
+    {
+      "runtime": "kodi",
+      "stage": "deinterlace",
+      "stage_es": "desentrelazado",
+      "verdict": "D",
+      "evidence_grade": "s",
+      "artifact": "scratch/avisynth_probe_2026/fixtures/canal_001.txt",
+      "note": "Kodi desentrelaza por ajuste del reproductor, no por tag; #KODIPROP no lleva filtros"
+    },
+    {
+      "runtime": "kodi",
+      "stage": "denoise",
+      "stage_es": "denoise",
+      "verdict": "D",
+      "evidence_grade": "s",
+      "artifact": "scratch/avisynth_probe_2026/fixtures/canal_001.txt",
+      "note": "sin filtro accionable por playlist"
+    },
+    {
+      "runtime": "kodi",
+      "stage": "scaling",
+      "stage_es": "escalado",
+      "verdict": "D",
+      "evidence_grade": "s",
+      "artifact": "scratch/avisynth_probe_2026/fixtures/canal_001.txt",
+      "note": "metodo de escalado es ajuste de Kodi, no tag"
+    },
+    {
+      "runtime": "kodi",
+      "stage": "color_hdr",
+      "stage_es": "color/HDR",
+      "verdict": "D",
+      "evidence_grade": "s",
+      "artifact": "scratch/avisynth_probe_2026/fixtures/canal_001.txt",
+      "note": "HDR depende de decoder/device"
+    },
+    {
+      "runtime": "kodi",
+      "stage": "tonemapping",
+      "stage_es": "tonemapping",
+      "verdict": "D",
+      "evidence_grade": "s",
+      "artifact": "scratch/avisynth_probe_2026/fixtures/canal_001.txt",
+      "note": "sin mecanismo por playlist"
+    },
+    {
+      "runtime": "kodi",
+      "stage": "sharpening",
+      "stage_es": "sharpening",
+      "verdict": "D",
+      "evidence_grade": "s",
+      "artifact": "scratch/avisynth_probe_2026/fixtures/canal_001.txt",
+      "note": "idem"
+    },
+    {
+      "runtime": "kodi",
+      "stage": "debanding",
+      "stage_es": "debanding",
+      "verdict": "D",
+      "evidence_grade": "s",
+      "artifact": "scratch/avisynth_probe_2026/fixtures/canal_001.txt",
+      "note": "idem"
+    },
+    {
+      "runtime": "kodi",
+      "stage": "motion_interp",
+      "stage_es": "interpolacion de movimiento",
+      "verdict": "I",
+      "evidence_grade": "s",
+      "artifact": "scratch/avisynth_probe_2026/fixtures/canal_001.txt",
+      "note": "sin motor"
+    },
+    {
+      "runtime": "kodi",
+      "stage": "bit_depth",
+      "stage_es": "bit-depth",
+      "verdict": "I",
+      "evidence_grade": "s",
+      "artifact": "scratch/avisynth_probe_2026/fixtures/canal_001.txt",
+      "note": "sin mecanismo"
+    },
+    {
+      "runtime": "hlsjs",
+      "stage": "deinterlace",
+      "stage_es": "desentrelazado",
+      "verdict": "D",
+      "evidence_grade": "s",
+      "artifact": ".agents/skills/hlsjs-internals-m3u8-parser-attrlist/SKILL.md",
+      "note": "el navegador decodifica y compone; no hay hook de filtros en hls.js"
+    },
+    {
+      "runtime": "hlsjs",
+      "stage": "denoise",
+      "stage_es": "denoise",
+      "verdict": "D",
+      "evidence_grade": "s",
+      "artifact": ".agents/skills/hlsjs-internals-m3u8-parser-attrlist/SKILL.md",
+      "note": "idem"
+    },
+    {
+      "runtime": "hlsjs",
+      "stage": "scaling",
+      "stage_es": "escalado",
+      "verdict": "D",
+      "evidence_grade": "s",
+      "artifact": ".agents/skills/hlsjs-internals-m3u8-parser-attrlist/SKILL.md",
+      "note": "escala CSS/display"
+    },
+    {
+      "runtime": "hlsjs",
+      "stage": "color_hdr",
+      "stage_es": "color/HDR",
+      "verdict": "D",
+      "evidence_grade": "s",
+      "artifact": ".agents/skills/hlsjs-internals-m3u8-parser-attrlist/SKILL.md",
+      "note": "HDR depende del navegador/SO"
+    },
+    {
+      "runtime": "hlsjs",
+      "stage": "tonemapping",
+      "stage_es": "tonemapping",
+      "verdict": "D",
+      "evidence_grade": "s",
+      "artifact": ".agents/skills/hlsjs-internals-m3u8-parser-attrlist/SKILL.md",
+      "note": "sin mecanismo"
+    },
+    {
+      "runtime": "hlsjs",
+      "stage": "sharpening",
+      "stage_es": "sharpening",
+      "verdict": "D",
+      "evidence_grade": "s",
+      "artifact": ".agents/skills/hlsjs-internals-m3u8-parser-attrlist/SKILL.md",
+      "note": "sin mecanismo"
+    },
+    {
+      "runtime": "hlsjs",
+      "stage": "debanding",
+      "stage_es": "debanding",
+      "verdict": "D",
+      "evidence_grade": "s",
+      "artifact": ".agents/skills/hlsjs-internals-m3u8-parser-attrlist/SKILL.md",
+      "note": "sin mecanismo"
+    },
+    {
+      "runtime": "hlsjs",
+      "stage": "motion_interp",
+      "stage_es": "interpolacion de movimiento",
+      "verdict": "I",
+      "evidence_grade": "s",
+      "artifact": ".agents/skills/hlsjs-internals-m3u8-parser-attrlist/SKILL.md",
+      "note": "sin motor"
+    },
+    {
+      "runtime": "hlsjs",
+      "stage": "bit_depth",
+      "stage_es": "bit-depth",
+      "verdict": "I",
+      "evidence_grade": "s",
+      "artifact": ".agents/skills/hlsjs-internals-m3u8-parser-attrlist/SKILL.md",
+      "note": "sin mecanismo"
+    },
+    {
+      "runtime": "vps_lua",
+      "stage": "deinterlace",
+      "stage_es": "desentrelazado",
+      "verdict": "I",
+      "evidence_grade": "r",
+      "artifact": "docs/manifestos/VPS_REALITY_MEASURED_2026-10-25.md:18,58",
+      "note": "no transporta video (segmentos 404): no hay pixel que filtrar"
+    },
+    {
+      "runtime": "vps_lua",
+      "stage": "denoise",
+      "stage_es": "denoise",
+      "verdict": "I",
+      "evidence_grade": "r",
+      "artifact": "docs/manifestos/VPS_REALITY_MEASURED_2026-10-25.md:18,58",
+      "note": "idem"
+    },
+    {
+      "runtime": "vps_lua",
+      "stage": "scaling",
+      "stage_es": "escalado",
+      "verdict": "I",
+      "evidence_grade": "r",
+      "artifact": "docs/manifestos/VPS_REALITY_MEASURED_2026-10-25.md:18,58",
+      "note": "idem; reescribir RESOLUTION es etiqueta, no escalado"
+    },
+    {
+      "runtime": "vps_lua",
+      "stage": "color_hdr",
+      "stage_es": "color/HDR",
+      "verdict": "D",
+      "evidence_grade": "r",
+      "artifact": "docs/manifestos/VPS_REALITY_MEASURED_2026-10-25.md:18,58",
+      "note": "reescribe etiquetas (RESOLUTION/CODECS/VIDEO-RANGE); cambia lo que el player cree, no el bitstream"
+    },
+    {
+      "runtime": "vps_lua",
+      "stage": "tonemapping",
+      "stage_es": "tonemapping",
+      "verdict": "I",
+      "evidence_grade": "r",
+      "artifact": "docs/manifestos/VPS_REALITY_MEASURED_2026-10-25.md:18,58",
+      "note": "sin pixeles"
+    },
+    {
+      "runtime": "vps_lua",
+      "stage": "sharpening",
+      "stage_es": "sharpening",
+      "verdict": "I",
+      "evidence_grade": "r",
+      "artifact": "docs/manifestos/VPS_REALITY_MEASURED_2026-10-25.md:18,58",
+      "note": "sin pixeles"
+    },
+    {
+      "runtime": "vps_lua",
+      "stage": "debanding",
+      "stage_es": "debanding",
+      "verdict": "I",
+      "evidence_grade": "r",
+      "artifact": "docs/manifestos/VPS_REALITY_MEASURED_2026-10-25.md:18,58",
+      "note": "sin pixeles"
+    },
+    {
+      "runtime": "vps_lua",
+      "stage": "motion_interp",
+      "stage_es": "interpolacion de movimiento",
+      "verdict": "I",
+      "evidence_grade": "r",
+      "artifact": "docs/manifestos/VPS_REALITY_MEASURED_2026-10-25.md:18,58",
+      "note": "sin pixeles"
+    },
+    {
+      "runtime": "vps_lua",
+      "stage": "bit_depth",
+      "stage_es": "bit-depth",
+      "verdict": "I",
+      "evidence_grade": "r",
+      "artifact": "docs/manifestos/VPS_REALITY_MEASURED_2026-10-25.md:18,58",
+      "note": "sin pixeles"
+    },
+    {
+      "runtime": "ara_vpp",
+      "stage": "deinterlace",
+      "stage_es": "desentrelazado",
+      "verdict": "I",
+      "evidence_grade": "r",
+      "artifact": "vps/prisma/cli/push_pq_profile.php:22-30; docs/rea/08_VPP_AI_SR.md:42",
+      "note": "sin lever en la allowlist medida"
+    },
+    {
+      "runtime": "ara_vpp",
+      "stage": "denoise",
+      "stage_es": "denoise",
+      "verdict": "P",
+      "evidence_grade": "r",
+      "artifact": "pq_ai_dnr_enable / pq_dnr_enable / pq_nr_enable",
+      "note": "existe la clave; efecto NO_VERIFICADO sin device"
+    },
+    {
+      "runtime": "ara_vpp",
+      "stage": "scaling",
+      "stage_es": "escalado",
+      "verdict": "P",
+      "evidence_grade": "r",
+      "artifact": "pq_ai_sr_enable + ai_sr_level",
+      "note": "AI super-resolution del SoC; efecto NO_VERIFICADO"
+    },
+    {
+      "runtime": "ara_vpp",
+      "stage": "color_hdr",
+      "stage_es": "color/HDR",
+      "verdict": "P",
+      "evidence_grade": "r",
+      "artifact": "pq_hdr_enable / pq_hdr_mode / hdr_conversion_mode",
+      "note": "hdr_conversion_mode = passthrough entre tipos HDR; NO hace SDR->HDR"
+    },
+    {
+      "runtime": "ara_vpp",
+      "stage": "tonemapping",
+      "stage_es": "tonemapping",
+      "verdict": "I",
+      "evidence_grade": "r",
+      "artifact": "vps/prisma/cli/push_pq_profile.php:22-30; docs/rea/08_VPP_AI_SR.md:42",
+      "note": "sin lever explicito de tone mapping en la allowlist"
+    },
+    {
+      "runtime": "ara_vpp",
+      "stage": "sharpening",
+      "stage_es": "sharpening",
+      "verdict": "P",
+      "evidence_grade": "r",
+      "artifact": "pq_sharpness_enable (booleano)",
+      "note": "sin intensidad expresable; efecto NO_VERIFICADO"
+    },
+    {
+      "runtime": "ara_vpp",
+      "stage": "debanding",
+      "stage_es": "debanding",
+      "verdict": "I",
+      "evidence_grade": "r",
+      "artifact": "vps/prisma/cli/push_pq_profile.php:22-30; docs/rea/08_VPP_AI_SR.md:42",
+      "note": "sin lever"
+    },
+    {
+      "runtime": "ara_vpp",
+      "stage": "motion_interp",
+      "stage_es": "interpolacion de movimiento",
+      "verdict": "I",
+      "evidence_grade": "r",
+      "artifact": "vps/prisma/cli/push_pq_profile.php:22-30; docs/rea/08_VPP_AI_SR.md:42",
+      "note": "match_content_frame_rate ajusta cadencia de salida, NO interpola"
+    },
+    {
+      "runtime": "ara_vpp",
+      "stage": "bit_depth",
+      "stage_es": "bit-depth",
+      "verdict": "I",
+      "evidence_grade": "r",
+      "artifact": "vps/prisma/cli/push_pq_profile.php:22-30; docs/rea/08_VPP_AI_SR.md:42",
+      "note": "sin lever"
+    }
+  ],
+  "vlc_valid_subset": {
+    "grammar": "video-filter=<modulo>{opt=val,opt=val}:<modulo>{...}  —  \":\" separa MODULOS, \",\" separa OPCIONES dentro de {}",
+    "measured_separator": {
+      "colon_loads_multiple": "L05 hqdn3d{...}:gradfun{...} -> carga hqdn3d Y gradfun",
+      "comma_loads_only_first": "L04 hqdn3d{...},gradfun{...},sharpen{...} -> carga SOLO hqdn3d",
+      "artifact": "scratch/lane_matrix_04/vlc/L04_chain_COMMA.log, L05_chain_COLON.log"
+    },
+    "modules": [
+      {
+        "module": "hqdn3d",
+        "options_real": [
+          "luma-spat",
+          "chroma-spat",
+          "luma-temp",
+          "chroma-temp"
+        ],
+        "options_rejected": [
+          "luma_spatial",
+          "luma-spatial",
+          "luma_tmp"
+        ],
+        "artifact": "vlc_battery_c_results.csv C01-C07"
+      },
+      {
+        "module": "gradfun",
+        "options_real": [
+          "radius",
+          "strength"
+        ],
+        "options_rejected": [],
+        "artifact": "C08,C09"
+      },
+      {
+        "module": "deinterlace",
+        "options_real": [
+          "mode"
+        ],
+        "options_rejected": [
+          "deinterlace-mode"
+        ],
+        "artifact": "C11,C12"
+      },
+      {
+        "module": "sharpen",
+        "options_real": [
+          "sigma"
+        ],
+        "options_rejected": [],
+        "artifact": "C10"
+      },
+      {
+        "module": "postproc",
+        "options_real": [
+          "q",
+          "name"
+        ],
+        "options_rejected": [],
+        "artifact": "C14 + strings DLL"
+      },
+      {
+        "module": "adjust",
+        "options_real": [
+          "contrast",
+          "brightness",
+          "gamma",
+          "saturation",
+          "brightness-threshold"
+        ],
+        "options_rejected": [],
+        "artifact": "C16,C17 + strings DLL"
+      },
+      {
+        "module": "transform",
+        "options_real": [
+          "type"
+        ],
+        "options_rejected": [],
+        "artifact": "C18"
+      },
+      {
+        "module": "croppadd",
+        "options_real": [
+          "croptop",
+          "cropbottom",
+          "cropleft",
+          "cropright",
+          "paddtop",
+          "paddbottom",
+          "paddleft",
+          "paddright"
+        ],
+        "options_rejected": [],
+        "artifact": "C19 + strings DLL"
+      },
+      {
+        "module": "fps",
+        "options_real": [
+          "fps"
+        ],
+        "options_rejected": [],
+        "artifact": "C13"
+      },
+      {
+        "module": "gaussianblur",
+        "options_real": [
+          "sigma"
+        ],
+        "options_rejected": [],
+        "artifact": "C20"
+      },
+      {
+        "module": "grain",
+        "options_real": [
+          "variance",
+          "period-min",
+          "period-max"
+        ],
+        "options_rejected": [],
+        "artifact": "C23"
+      },
+      {
+        "module": "antiflicker",
+        "options_real": [
+          "window-size",
+          "softening-size"
+        ],
+        "options_rejected": [],
+        "artifact": "M10 + strings DLL"
+      },
+      {
+        "module": "rotate",
+        "options_real": [
+          "angle",
+          "use-motion"
+        ],
+        "options_rejected": [],
+        "artifact": "M08 + strings DLL"
+      }
+    ],
+    "valid_chains": [
+      "--video-filter=hqdn3d{luma-spat=2.0,chroma-spat=1.5,luma-temp=3.0,chroma-temp=2.5}:gradfun{radius=12,strength=0.8}:sharpen{sigma=0.5}",
+      "--video-filter=deinterlace{mode=yadif2x}"
+    ],
+    "not_vlc_modules": [
+      "nlmeans",
+      "bwdif",
+      "yadif",
+      "zscale",
+      "minterpolate",
+      "unsharp",
+      "cas",
+      "libplacebo",
+      "pp",
+      "ffmpeg{...}",
+      "scale (no seleccionable como filtro)",
+      "tonemap (opcion de vout, no modulo)"
+    ],
+    "module_inventory": {
+      "video_filter_plugins": 41,
+      "binaries_scanned": 366,
+      "avfilter_binaries": 0,
+      "artifact": "plugins\\video_filter\\*.dll + Get-ChildItem -Recurse"
+    }
+  },
+  "playlist_lane_gate": {
+    "finding": "main error: unsafe option \"video-filter\" has been ignored for security reasons",
+    "consequence": "el carril #EXTVLCOPT:video-filter= esta cerrado por politica en VLC 3.0.24, con independencia de la sintaxis",
+    "measured": {
+      "filters_loaded_from_playlist": 0,
+      "playback_completed": true,
+      "artifact": "scratch/lane_matrix_04/vlc_bc/DBG.log"
+    },
+    "extvlcopt_results": {
+      "unsafe_ignored": [
+        "video-filter",
+        "avcodec-hw"
+      ],
+      "allowed_no_objection": [
+        "network-caching",
+        "live-caching",
+        "clock-jitter",
+        "http-user-agent",
+        "http-referrer",
+        "deinterlace",
+        "deinterlace-mode",
+        "saturation",
+        "tonemap",
+        "format",
+        "postproc-q"
+      ],
+      "absent_from_binaries_silently_dropped": [
+        "video-deinterlace",
+        "video-deinterlace-mode",
+        "adaptive-*",
+        "hls-*",
+        "ts-*",
+        "video-hdr*",
+        "video-width",
+        "video-height",
+        "video-fps"
+      ],
+      "artifact": "scratch/lane_matrix_04/vlc_battery_e_results.csv + tools/ape-image-recipes/VLC_OPT_AUDIT.md"
+    },
+    "caveat": "ausencia de aviso NO es prueba de aplicacion"
+  },
+  "emission_rules": {
+    "principle": "un tag de imagen en la playlist es DECLARADO, nunca APLICADO; un tag desconocido es metadata inerte y no filtra nada",
+    "by_player": [
+      {
+        "player": "vlc",
+        "emit": [
+          "#EXTVLCOPT:network-caching",
+          "#EXTVLCOPT:live-caching",
+          "#EXTVLCOPT:clock-jitter",
+          "#EXTVLCOPT:http-user-agent",
+          "#EXTVLCOPT:http-referrer"
+        ],
+        "never": [
+          "#EXTVLCOPT:video-filter=*",
+          "#EXTVLCOPT:video-deinterlace*",
+          "#EXTVLCOPT:adaptive-*",
+          "#EXTVLCOPT:hls-*",
+          "#EXTVLCOPT:ts-*",
+          "#EXTVLCOPT:video-hdr*"
+        ],
+        "basis": "vlc_battery_e_results.csv + DBG.log"
+      },
+      {
+        "player": "ott",
+        "emit": [
+          "#EXTVLCOPT:http-user-agent",
+          "#EXTVLCOPT:http-referrer",
+          "#KODIPROP:inputstream.adaptive.*",
+          "#EXTHTTP"
+        ],
+        "never": [
+          "cualquier cadena de filtros"
+        ],
+        "basis": "ape-image-pipeline-truth §11"
+      },
+      {
+        "player": "tivimate",
+        "emit": [
+          "#EXTHTTP (JSON, un valor por header)",
+          "atributos M3U Plus"
+        ],
+        "never": [
+          "#EXTVLCOPT:video-filter",
+          "tags HLS en lista M3U Plus"
+        ],
+        "basis": "skill tivimate-single-value-headers-enforcer + doctrina"
+      },
+      {
+        "player": "exoplayer",
+        "emit": [
+          "EXT-X-STREAM-INF/CODECS/VIDEO-RANGE/EXT-X-MEDIA"
+        ],
+        "never": [
+          "presentar #EXTVLCOPT/#KODIPROP/#EXT-X-APE-* como leidos por el player"
+        ],
+        "basis": "docs/rea/05_PLAYER_COMPAT.md:25"
+      },
+      {
+        "player": "kodi",
+        "emit": [
+          "#KODIPROP:inputstream.adaptive.* documentadas"
+        ],
+        "never": [
+          "inputstream.adaptive.video_ai_*",
+          "inputstream.adaptive.hdr_*",
+          "inputstream.adaptive.drm_* inventadas",
+          "inputstream.adaptive.video_lcevc"
+        ],
+        "basis": "fixture canal_001.txt (103 claves) + ausencia de doc"
+      },
+      {
+        "player": "hlsjs",
+        "emit": [
+          "tags HLS estandar"
+        ],
+        "never": [
+          "tags propietarios como filtro"
+        ],
+        "basis": "hlsjs-internals-m3u8-parser-attrlist"
+      },
+      {
+        "player": "vps_lua",
+        "emit": [
+          "rewrite de URIs",
+          "etiquetas declarativas"
+        ],
+        "never": [
+          "promesas de pixeles",
+          "transcode (ANTI-DEGRADACION)"
+        ],
+        "basis": "VPS_REALITY_MEASURED_2026-10-25.md"
+      },
+      {
+        "player": "ara_vpp",
+        "emit": [
+          "comando de perfil PQ por el canal del daemon"
+        ],
+        "never": [
+          "settings del SoC desde la playlist"
+        ],
+        "basis": "push_pq_profile.php"
+      }
+    ],
+    "never_emit_global": [
+      "video-filter con nombres ffmpeg (nlmeans/bwdif/yadif/zscale/unsharp/minterpolate)",
+      "cadenas multi-modulo VLC separadas por \",\" (solo aplica la primera)",
+      "#EXTVLCOPT:video-deinterlace* (nombre inexistente, se descarta en silencio)",
+      "#KODIPROP con claves que el addon no documenta",
+      "#EXT-X-APE-* presentado como filtro aplicado o mejora de imagen",
+      "RESOLUTION/VIDEO-RANGE/CODECS sin verdad del probe"
+    ],
+    "inert_tag_rule": "un tag desconocido en HLS es metadata inerte; el unico runtime que intenta leer #EXTVLCOPT (VLC) descarta la opcion de imagen por seguridad; OTT/Kodi solo consumen claves de red/DRM documentadas"
+  },
+  "doctrine_confrontation": [
+    {
+      "doctrine": "MAX IMAGE FIRST",
+      "status": "intacta",
+      "note": "no recorta resolucion/codec/HDR/fps; solo prohibe declarar filtros inexistentes"
+    },
+    {
+      "doctrine": "ANTI-DEGRADACION",
+      "status": "intacta",
+      "note": "no se propone transcode en VPS para que el filtro funcione"
+    },
+    {
+      "doctrine": "GOLDEN RULE hvc1/hev1",
+      "status": "no tocada",
+      "note": "contradiccion medida en la lista (ape-codec-family=h264 vs CODECS=hvc1) registrada, no resuelta aqui"
+    },
+    {
+      "doctrine": "VIDEO-RANGE=PQ incondicional (owner 2026-06-16)",
+      "status": "respetada como hint de display",
+      "note": "no es filtro ni etapa ejecutada"
+    },
+    {
+      "doctrine": "lever real = VPP del SoC via ARA/VPS",
+      "status": "confirmada",
+      "note": "unico carril que cambia pixeles; el VPS comanda, el device post-procesa"
+    }
+  ],
+  "corrections": [
+    {
+      "claim": "VLC parte --video-filter por \":\" y por \",\"",
+      "by": "ape-image-pipeline-truth §6 / 02_VIDEO_FILTER_MATRIX.md §7.2",
+      "status": "REFUTADO",
+      "evidence": "L04 con \",\" solo carga el primer modulo; L05 con \":\" carga dos"
+    },
+    {
+      "claim": "el carril #EXTVLCOPT:video-filter=<modulos VLC> es viable",
+      "by": "ape-image-pipeline-truth §5",
+      "status": "REFUTADO en VLC 3.0.24",
+      "evidence": "unsafe option \"video-filter\" ignorada (DBG.log)"
+    },
+    {
+      "claim": "hqdn3d no acepta ninguna opcion",
+      "by": "recipes.json evidence.vlc_accepted_options + skill §6",
+      "status": "REFUTADO",
+      "evidence": "C01/C04/C05/C06 resuelven luma-spat/chroma-spat/luma-temp/chroma-temp"
+    },
+    {
+      "claim": "video-deinterlace-mode=yadif2x cubre el desentrelazado",
+      "by": "02_VIDEO_FILTER_MATRIX.md §2 nota",
+      "status": "REFUTADO",
+      "evidence": "token ausente de los 365 binarios (VLC_OPT_AUDIT.md) y sin aviso en runtime"
+    },
+    {
+      "claim": "el arnes headless aborta con Too high level of recursion",
+      "by": "ape-image-pipeline-truth §18",
+      "status": "MATIZADO",
+      "evidence": "98 avisos en L05, decoder abierto y EOF reached; no aborta"
+    },
+    {
+      "claim": "VLC 3.x no tiene plugin avfilter y sus 41 modulos son los listados",
+      "by": "capitan",
+      "status": "CONFIRMADO",
+      "evidence": "41 DLL, 0 binarios avfilter de 366"
+    },
+    {
+      "claim": "los nombres ffmpeg no son modulos de VLC",
+      "by": "capitan",
+      "status": "CONFIRMADO",
+      "evidence": "L08-L13: 18 no-match por modulo"
+    }
+  ],
+  "adversarial_check": {
+    "tooling": "adversarial_frame + adversarial_verdict (deterministas, sin juez LLM)",
+    "tesis": "el carril #EXTVLCOPT:video-filter= esta cerrado por politica en VLC 3.0.24 y la cadena CLI usa \":\" entre modulos",
+    "contra_tesis": "la ausencia es un artefacto de la ventana observada (productor muerto, log roto, ventana corta, u otra ruta)",
+    "veredicto": "TESIS",
+    "marcador": "pesos TESIS 17 vs CONTRA 1; 6 items con artefacto del lado ganador",
+    "pruebas_discriminantes_resueltas": [
+      {
+        "test": "existencia del productor",
+        "resultado": "el log SI registra el rechazo (2x unsafe option); el cero no es un log mudo",
+        "artefacto": "scratch/lane_matrix_04/vlc_bc/DBG.log"
+      },
+      {
+        "test": "cobertura de la ventana",
+        "resultado": "la ventana cubre el ciclo completo: decoder avcodec -> EOF reached -> logger stopped",
+        "artefacto": "scratch/lane_matrix_04/vlc_bc/DBG.log"
+      },
+      {
+        "test": "etiqueta alternativa",
+        "resultado": "buscado el hecho y no el nombre: using video filter module=0, hqdn3d=0, luma-spat=0, video-filter=2 (ambas unsafe)",
+        "artefacto": "scratch/lane_matrix_04/vlc_bc/DBG.log"
+      },
+      {
+        "test": "otra ruta",
+        "resultado": "por CLI si ocurre (hqdn3d+gradfun); la tesis ya lo afirma",
+        "artefacto": "scratch/lane_matrix_04/vlc/L05_chain_COLON.log"
+      }
+    ],
+    "evidencia_faltante": [
+      "no se repitio sobre HTTP: unsafe option medido sobre item file://"
+    ]
+  },
+  "limits": [
+    "VLC 4 no medido: sin binario",
+    "OTT/TiviMate/ExoPlayer/Kodi/hls.js no ejecutados: celdas arquitectonicas",
+    "VPS no tocado; su fila viene de medicion de produccion previa",
+    "ARA/VPP sin dispositivo: efecto en pixeles NO_VERIFICADO",
+    "unsafe option medido sobre file://, no sobre HTTP",
+    "no se midio resultado visual (sin captura de frames): cargar un modulo no es cambiar un pixel",
+    "fuente sintetica testsrc2 720p25"
+  ],
+  "artifacts": [
+    {
+      "path": "scratch/lane_matrix_04/vlc_battery_results.csv",
+      "proves": "30 arranques VLC: modulo carga si/no"
+    },
+    {
+      "path": "scratch/lane_matrix_04/vlc/",
+      "proves": "logs -vvv por caso, incluidas las 3 cadenas reales de la lista"
+    },
+    {
+      "path": "scratch/lane_matrix_04/vlc_option_strings.json",
+      "proves": "nombres de opcion por modulo (strings de los DLL)"
+    },
+    {
+      "path": "scratch/lane_matrix_04/vlc_battery_c_results.csv",
+      "proves": "que nombre de opcion resuelve VLC"
+    },
+    {
+      "path": "scratch/lane_matrix_04/vlc_battery_e_results.csv",
+      "proves": "que #EXTVLCOPT sobrevive al filtro de seguridad"
+    },
+    {
+      "path": "scratch/lane_matrix_04/vlc_bc/DBG.log",
+      "proves": "unsafe option \"video-filter\""
+    },
+    {
+      "path": "scratch/lane_matrix_04/literals/",
+      "proves": "las 3 cadenas reales extraidas con rg (277/344/348 chars)"
+    },
+    {
+      "path": "scratch/lane_matrix_04/test_720p25.ts",
+      "proves": "item de prueba TS 720p25"
+    }
+  ]
+}
