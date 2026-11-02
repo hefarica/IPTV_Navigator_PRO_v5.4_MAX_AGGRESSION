@@ -147,3 +147,12 @@ tools/validate_m3u8_json.py
 
 Valida schema, SHA-256, líneas, índice de canales, URL y atributos antes de REA/pipeline.
 
+
+## Health metadata
+
+```text
+tools/ape_health_enrich.py
+```
+
+Adjunta `status/uptime/bitrate/codec/latency` solo desde un health map real; sin datos deja `unknown`. No hace probing ni inventa disponibilidad.
+
