@@ -60,9 +60,16 @@ run "nginx -V 2>&1 | tr ' ' '\n' | grep -i lua || echo '(modulo lua no listado e
 
 sec "6 · ARBOL SERVIDO /var/www (rutas, tamano, hash, mtime)"
 run "ls -la /var/www 2>/dev/null"
-run "find /var/www -maxdepth 3 -type d 2>/dev/null | head -60"
-run "find /var/www -type f -name '*.m3u8' -printf '%TY-%Tm-%TdT%TH:%TM:%TS %10s %p\n' 2>/dev/null | sort | head -60"
-run "find /var/www -type f -name '*.php' -printf '%TY-%Tm-%TdT%TH:%TM:%TS %10s %p\n' 2>/dev/null | sort | head -60"
+run "find /var/www -maxdepth 3 -type d 2>&1 | head -60"
+# [FIX inventario 2026-11-02] `-printf` NO existe en el find del VPS (no es GNU).
+# Con `2>/dev/null` el error se tragaba y la seccion salia VACIA sin avisar: se
+# leia como «no hay listas» cuando el comando nunca llego a ejecutarse. Medido:
+# `find -maxdepth 3 -type d` devuelve rutas y con `-printf` no devuelve nada,
+# mismo binario y misma ruta. Se usa el patron portable de `stat`, el mismo que
+# ya funcionaba en la seccion 7, y se deja stderr visible en la de directorios
+# para que un fallo futuro NO vuelva a ser silencioso.
+run "find /var/www -type f -name '*.m3u8' 2>/dev/null | sort | while read -r f; do printf '%s  %s  %s\n' \"\$(stat -c '%y' \"\$f\" 2>/dev/null)\" \"\$(stat -c '%s' \"\$f\" 2>/dev/null)\" \"\$f\"; done | head -60"
+run "find /var/www -type f -name '*.php' 2>/dev/null | sort | while read -r f; do printf '%s  %s  %s\n' \"\$(stat -c '%y' \"\$f\" 2>/dev/null)\" \"\$(stat -c '%s' \"\$f\" 2>/dev/null)\" \"\$f\"; done | head -60"
 
 sec "7 · /var/www/lists — HASHES SHA-256 + MTIME (base de rollback)"
 run "ls -la /var/www/lists 2>/dev/null || echo '(no existe /var/www/lists)'"
@@ -71,7 +78,10 @@ run "find /var/www/lists -maxdepth 2 -type f 2>/dev/null | sort | while read -r 
 sec "8 · RESOLVER DESPLEGADO + EDGE (rutas, hash, cabecera)"
 run "find /var/www -type f \( -name 'resolve_quality*' -o -name '*resolver*' -o -name 'ape_gateway.lua' -o -name 'combined_body_filter.lua' -o -name 'ape_header.lua' -o -name 'ape_uri_rebase.lua' \) 2>/dev/null | sort | while read -r f; do printf '%s  %s  %s\n' \"\$(sha256sum \"\$f\" | cut -d' ' -f1)\" \"\$(stat -c '%y %s' \"\$f\")\" \"\$f\"; done"
 run "ls -la /etc/nginx/sites-enabled/ /etc/nginx/conf.d/ 2>/dev/null"
-run "find /etc/nginx -type f \( -name '*.conf' -o -name '*.lua' \) -printf '%TY-%Tm-%TdT%TH:%TM:%TS %10s %p\n' 2>/dev/null | sort | head -80"
+# [FIX inventario 2026-11-02] mismo defecto que en la seccion 6: `-printf` no
+# existe en el find del VPS y `2>/dev/null` ocultaba el fallo. Aqui se notaba
+# menos porque la linea siguiente (con `stat`) si listaba los hashes.
+run "find /etc/nginx -type f \( -name '*.conf' -o -name '*.lua' \) 2>/dev/null | sort | while read -r f; do printf '%s  %s  %s\n' \"\$(stat -c '%y' \"\$f\" 2>/dev/null)\" \"\$(stat -c '%s' \"\$f\" 2>/dev/null)\" \"\$f\"; done | head -80"
 run "find /etc/nginx -type f \( -name '*.conf' -o -name '*.lua' \) 2>/dev/null | sort | while read -r f; do printf '%s  %s\n' \"\$(sha256sum \"\$f\" | cut -d' ' -f1)\" \"\$f\"; done"
 
 sec "9 · PUERTOS EN ESCUCHA Y CONEXIONES"
