@@ -6115,6 +6115,58 @@
     instance.PM9_SEMANTIC_ALIASES = PM9_SEMANTIC_ALIASES;
     window.APE_PROFILES_CONFIG = instance;
 
+    // AUDIO SAFE POLICY — applied to live profiles and profiles loaded from
+    // localStorage. Passthrough is never forced when the source audio is bad;
+    // the compatible fallback is AAC-LC 2ch. Video is never downscaled here.
+    (function applyAudioSafePolicy(cfg) {
+        const audio = Object.freeze({
+            mode: 'passthrough_safe',
+            passthrough: 'auto',
+            fallback: 'aac_lc_2ch',
+            downmix: 'enabled',
+            priority: 'eac3,ac3,aac,mp3',
+            safeFormats: 'eac3,ac3,aac,mp3',
+            validate: 'ffprobe:channels>0;sample_rate>0',
+            earc: 'auto',
+            noDamage: 'true'
+        });
+        const profiles = cfg && cfg.profiles ? cfg.profiles : {};
+        Object.values(profiles).forEach(function (p) {
+            if (!p) return;
+            p.settings = p.settings || {};
+            p.vlcopt = p.vlcopt || {};
+            p.kodiprop = p.kodiprop || {};
+            p.headerOverrides = p.headerOverrides || {};
+            p.settings.audio_mode = audio.mode;
+            p.settings.audio_passthrough = audio.passthrough;
+            p.settings.audio_fallback = audio.fallback;
+            p.settings.audio_downmix = audio.downmix;
+            p.settings.audio_codec_priority = audio.priority;
+            p.settings.audio_validate = audio.validate;
+            p.settings.audio_earc = audio.earc;
+            p.vlcopt['audio-codec-priority'] = audio.priority;
+            p.vlcopt['audio-channels'] = '2';
+            p.vlcopt['audio-volume'] = '256';
+            p.kodiprop['inputstream.adaptive.audio_passthrough'] = audio.passthrough;
+            p.kodiprop['inputstream.adaptive.audio_passthrough_earc'] = audio.earc;
+            p.kodiprop['inputstream.adaptive.audio_codec_priority'] = audio.priority;
+            p.kodiprop['inputstream.adaptive.audio_fallback'] = audio.fallback;
+            Object.assign(p.headerOverrides, {
+                'X-Audio-Passthrough-Mode': audio.mode,
+                'X-Audio-Passthrough': audio.passthrough,
+                'X-Audio-Fallback': audio.fallback,
+                'X-Audio-Downmix': audio.downmix,
+                'X-Audio-Codec-Priority': audio.priority,
+                'X-Audio-Safe-Formats': audio.safeFormats,
+                'X-Audio-Transcode-On-Invalid': audio.fallback,
+                'X-Audio-Validation': audio.validate,
+                'X-Audio-No-Damage': audio.noDamage,
+                'X-Audio-EARC': audio.earc,
+                'X-Audio-Codecs': audio.safeFormats
+            });
+        });
+    })(instance);
+
     // C1+A4 (2026-04-30) — UA pool 2026-fresh para fallback cuando PhantomHydra no
     // está disponible. 12 UAs verificados: Chrome 119+ (Web0S), Tizen 7, Android TV
     // SHIELD/Pixel/AFTKA, macOS 14.4, Win10 Chrome 138, Firefox 134, Kodi 21,

@@ -722,6 +722,54 @@
     }
 
     // ═══════════════════════════════════════════════════════════════════════
+    // AUDIO SAFE POLICY — passthrough only when valid, AAC fallback otherwise
+    // ═══════════════════════════════════════════════════════════════════════
+    const AUDIO_SAFE = Object.freeze({
+        mode: 'passthrough_safe',
+        passthrough: 'auto',
+        fallback: 'aac_lc_2ch',
+        downmix: 'enabled',
+        priority: 'eac3,ac3,aac,mp3',
+        safe_formats: 'eac3,ac3,aac,mp3',
+        validate: 'ffprobe:channels>0;sample_rate>0',
+        earc: 'auto',
+        no_damage: 'true'
+    });
+    for (const _p of Object.values(DEFAULT_PROFILES)) {
+        _p.settings = _p.settings || {};
+        _p.vlcopt = _p.vlcopt || {};
+        _p.kodiprop = _p.kodiprop || {};
+        _p.settings.audio_mode = AUDIO_SAFE.mode;
+        _p.settings.audio_passthrough = AUDIO_SAFE.passthrough;
+        _p.settings.audio_fallback = AUDIO_SAFE.fallback;
+        _p.settings.audio_downmix = AUDIO_SAFE.downmix;
+        _p.settings.audio_codec_priority = AUDIO_SAFE.priority;
+        _p.settings.audio_validate = AUDIO_SAFE.validate;
+        _p.settings.audio_earc = AUDIO_SAFE.earc;
+        _p.vlcopt['audio-codec-priority'] = AUDIO_SAFE.priority;
+        _p.vlcopt['audio-channels'] = '2';
+        _p.vlcopt['audio-volume'] = '256';
+        _p.kodiprop['inputstream.adaptive.audio_passthrough'] = AUDIO_SAFE.passthrough;
+        _p.kodiprop['inputstream.adaptive.audio_passthrough_earc'] = AUDIO_SAFE.earc;
+        _p.kodiprop['inputstream.adaptive.audio_codec_priority'] = AUDIO_SAFE.priority;
+        _p.kodiprop['inputstream.adaptive.audio_fallback'] = AUDIO_SAFE.fallback;
+        _p.headerOverrides = _p.headerOverrides || {};
+        Object.assign(_p.headerOverrides, {
+            'X-Audio-Passthrough-Mode': AUDIO_SAFE.mode,
+            'X-Audio-Passthrough': AUDIO_SAFE.passthrough,
+            'X-Audio-Fallback': AUDIO_SAFE.fallback,
+            'X-Audio-Downmix': AUDIO_SAFE.downmix,
+            'X-Audio-Codec-Priority': AUDIO_SAFE.priority,
+            'X-Audio-Safe-Formats': AUDIO_SAFE.safe_formats,
+            'X-Audio-Transcode-On-Invalid': AUDIO_SAFE.fallback,
+            'X-Audio-Validation': AUDIO_SAFE.validate,
+            'X-Audio-No-Damage': AUDIO_SAFE.no_damage,
+            'X-Audio-EARC': AUDIO_SAFE.earc,
+            'X-Audio-Codecs': AUDIO_SAFE.safe_formats
+        });
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
     // API PÚBLICA
     // ═══════════════════════════════════════════════════════════════════════
     return {
