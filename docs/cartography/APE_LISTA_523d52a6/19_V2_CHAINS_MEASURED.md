@@ -95,3 +95,102 @@ gh run list --workflow=ape-v2-chains-proof.yml --limit 1
 
 Las cadenas están en `tools/ape-image-recipes/v2_chains.txt` y `v2_chains_fixed.txt`, sin editar las
 originales.
+
+---
+
+# 8 · Segunda pasada, en ffmpeg LOCAL (8.0.1 full build) — cuatro defectos más y tres cadenas que ya funcionan
+
+La primera pasada se quedó en `exit 222` sin diagnóstico. Se reprodujo en local en un segundo. El 222
+era `AVERROR(ERANGE)`, y detrás había **cuatro defectos más**, no uno.
+
+## 8.1 · `gradfun` exige `strength` ≥ 0,51 — los cuatro perfiles lo violaban
+
+```
+[Parsed_gradfun_7] Value 0.400000 for parameter 'strength' out of range [0.51 - 64]
+Error applying option 'strength' to filter 'gradfun': Result too large     exit -34 = 222
+```
+
+La ayuda del propio ffmpeg lo declara: `strength <float> ... (from 0.51 to 64)`.
+
+| Perfil | strengths del operador | fuera de rango |
+|---|---|---|
+| P5 | 0.4, 0.3 | **2** |
+| P4 | 0.45, 0.3 | **2** |
+| P3 | 0.55, 0.35 | **1** |
+| P2 | 0.5, 0.3 | **2** |
+
+**El deband por debajo de 0,51 no existe en este filtro.** Corregido a 0,51, que es el deband más suave
+que el filtro sabe hacer. Intentar ser más suave que el mínimo no es posible.
+
+## 8.2 · `scd` es el MÉTODO, no el umbral — y esto rompe 808 canales de la LISTA DE REFERENCIA
+
+```
+scd            <int>     scene change detection method      (from 0 to 1)    default fdiff
+scd_threshold  <double>  scene change threshold             (from 0 to 100)  default 10
+```
+
+La lista escribe un **umbral** en el campo del **método**:
+
+```
+scd=0  -> 9.765 canales  VALIDO
+scd=5  ->   808 canales  FUERA DE RANGO [0-1]
+```
+
+Prueba directa: `scd=0` → exit 0 · `scd=1` → exit 0 · **`scd=5` → exit -34**.
+
+**La cadena 3 de la lista de referencia — la de los 808 canales 4K/PQ — tiene un parámetro que ffmpeg
+rechaza al construir el grafo.** No es un valor discutible: el filtro no se instancia.
+
+Nótese que el propio JSON del operador usa `"scd_threshold": 3` como umbral — la confusión viene del
+documento de origen, que mezcla los dos nombres.
+
+## 8.3 · `zscale=transfer=linear` no produce ni un frame si la fuente no tiene metadatos de color
+
+```
+[Parsed_zscale_0] code 3074: no path between colorspaces
+```
+
+Falla **igual con `transfer=bt709`**: no es `linear`, es que zimg no puede convertir desde un espacio de
+color **desconocido**. Con `setparams=color_primaries=bt709:color_trc=bt709:colorspace=bt709` la misma
+cadena pasa. **Defecto del banco, no de la cadena** — el tercero que cometí en esta línea, tras el
+heredoc que rompía el YAML y el PNG que no admite 10-bit 4:2:0.
+
+## 8.4 · `minterpolate` a 6144×3456 no puede asignar memoria
+
+```
+[Parsed_minterpolate_8] Failed to configure input pad
+Task finished with error code: -12 (Cannot allocate memory)
+```
+
+No es un parámetro fuera de rango: es que la estimación de movimiento con `mci/aobmc/vsbmc` a esa
+resolución **no cabe**. El objetivo de P2 (6144×3456) no es alcanzable con este filtro en esta máquina.
+
+## 8.5 · Lo que ahora está medido
+
+Medición en la **salida del grafo** con `showinfo`, sin encoder de por medio:
+
+```
+P5  854x480   -> 1920x1080   declarado 1920x1080   OK
+P4  1280x720  -> 2560x1440   declarado 2560x1440   OK
+P3  1920x1080 -> 3840x2160   declarado 3840x2160   OK
+P2  3840x2160 -> 6144x3456   FALLA: minterpolate sin memoria
+```
+
+**Tres de cuatro cadenas corregidas ejecutan y producen EXACTAMENTE la resolución declarada.** Es la
+primera vez en la sesión que una cadena de vídeo de este proyecto pasa de "está escrita" a "corre y da
+lo que dice".
+
+Reproducible en local sin CI:
+
+```bash
+node tools/ape-image-recipes/v2_chains_local.js
+# exit 0 = todas ejecutan y dan su resolución · 4 = alguna falla · 5 = sin ffmpeg
+```
+
+## 8.6 · Lo que esto NO dice
+
+- **No dice que P2 sea imposible.** Dice que no cabe aquí. Un host con más RAM podría.
+- **No he medido calidad de imagen.** Que un frame salga a la resolución declarada no dice cómo se ve.
+- **No he probado P0 ni P1**, que siguen fuera por tamaño.
+- **No he tocado la lista de referencia ni el VPS.** El hallazgo de `scd=5` es sobre la lista; corregirla
+  es decisión del generador.

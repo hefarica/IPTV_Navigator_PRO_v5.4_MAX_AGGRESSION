@@ -25,7 +25,25 @@
 # Nada mas se toca: ni resoluciones, ni fps, ni npl, ni fuerza de enfoque.
 #
 # P0 y P1 siguen fuera por presupuesto de memoria (ver el workflow).
-P5|854x480|1920x1080|bwdif=mode=send_frame:parity=-1:deint=0,zscale=transfer=linear:npl=100:range=limited,format=yuv444p16le,hqdn3d=2:1.5:6:4.5,zscale=w=3840:h=2160:filter=lanczos,zscale=transfer=bt709:matrix=bt709:primaries=bt709:range=limited,unsharp=lx=5:ly=5:la=0.8:cx=3:cy=3:ca=0.25,gradfun=radius=8:strength=0.4,zscale=w=1920:h=1080:filter=lanczos:dither=error_diffusion,cas=strength=0.45,gradfun=radius=6:strength=0.3,minterpolate=fps=120:mi_mode=mci:mc_mode=aobmc:vsbmc=1:me=umh:mb_size=8:scd=5,format=yuv420p10le
-P4|1280x720|2560x1440|zscale=transfer=linear:npl=100:range=limited,format=yuv444p16le,hqdn3d=2:1.5:6:4.5,zscale=w=5120:h=2880:filter=lanczos,zscale=transfer=bt709:matrix=bt709:primaries=bt709:range=limited,unsharp=lx=5:ly=5:la=0.8:cx=3:cy=3:ca=0.25,gradfun=radius=10:strength=0.45,zscale=w=2560:h=1440:filter=lanczos:dither=error_diffusion,cas=strength=0.45,gradfun=radius=6:strength=0.3,minterpolate=fps=120:mi_mode=mci:mc_mode=aobmc:vsbmc=1:me=umh:mb_size=8:scd=5,format=yuv420p10le
-P3|1920x1080|3840x2160|zscale=transfer=linear:npl=1000:range=limited,format=yuv444p16le,hqdn3d=1:0.8:3:2.5,zscale=w=7680:h=4320:filter=lanczos,zscale=transfer=arib-std-b67:chromal=topleft:matrix=2020_ncl:primaries=2020:range=limited,unsharp=lx=3:ly=3:la=0.28,gradfun=radius=12:strength=0.55,zscale=w=3840:h=2160:filter=lanczos:dither=error_diffusion,cas=strength=0.4,gradfun=radius=8:strength=0.35,minterpolate=fps=60:mi_mode=mci:mc_mode=aobmc:vsbmc=1:me=umh:mb_size=8:scd=5,format=yuv420p10le
-P2|3840x2160|6144x3456|zscale=transfer=linear:npl=1000:range=limited,format=yuv444p16le,zscale=w=10240:h=5760:filter=lanczos,zscale=transfer=smpte2084:chromal=topleft:matrix=2020_ncl:primaries=2020:range=limited,gradfun=radius=12:strength=0.5,zscale=w=6144:h=3456:filter=lanczos:dither=error_diffusion,cas=strength=0.35,gradfun=radius=8:strength=0.3,minterpolate=fps=60:mi_mode=mci:mc_mode=aobmc:vsbmc=1:me=umh:mb_size=8:scd=5,format=yuv420p10le
+#
+#   6. `gradfun ...:strength=X` con X < 0.51  ->  X = 0.51
+#      ffmpeg: "Value 0.400000 for parameter 'strength' out of range [0.51 - 64]"
+#      y sale con exit -34 = AVERROR(ERANGE) = codigo 222. La ayuda del propio ffmpeg declara
+#      el rango: `strength <float> ... (from 0.51 to 64)`. El deband por debajo de 0.51 NO EXISTE
+#      en este filtro. Se sube al minimo, que es el deband mas suave que el filtro sabe hacer.
+#      Afectaba a los CUATRO perfiles: P5 (2), P4 (2), P3 (1), P2 (2).
+#
+#   7. `minterpolate ...:scd=X` con X > 1  ->  `scd=1:scd_threshold=X`
+#      ffmpeg: "Value 5.000000 for parameter 'scd' out of range [0 - 1]"
+#      La ayuda separa dos cosas: `scd` es el METODO de deteccion de corte (0 o 1) y
+#      `scd_threshold` es el UMBRAL (0 a 100). La lista escribe un umbral en el campo del metodo.
+#      Es el defecto mas grave de los encontrados en las V2: afectaba a los CUATRO perfiles.
+#
+#   8. La fuente de prueba necesita metadatos de color
+#      ffmpeg: "code 3074: no path between colorspaces". zimg no puede convertir desde un espacio
+#      de color DESCONOCIDO. Se etiqueta la fuente con `setparams=color_primaries=bt709:
+#      color_trc=bt709:colorspace=bt709`. Es un defecto del banco, no de la cadena.
+P5|854x480|1920x1080|bwdif=mode=send_frame:parity=-1:deint=0,zscale=transfer=linear:npl=100:range=limited,format=yuv444p16le,hqdn3d=2:1.5:6:4.5,zscale=w=3840:h=2160:filter=lanczos,zscale=transfer=bt709:matrix=bt709:primaries=bt709:range=limited,unsharp=lx=5:ly=5:la=0.8:cx=3:cy=3:ca=0.25,gradfun=radius=8:strength=0.51,zscale=w=1920:h=1080:filter=lanczos:dither=error_diffusion,cas=strength=0.45,gradfun=radius=6:strength=0.51,minterpolate=fps=120:mi_mode=mci:mc_mode=aobmc:vsbmc=1:me=umh:mb_size=8:scd=1:scd_threshold=5,format=yuv420p10le
+P4|1280x720|2560x1440|zscale=transfer=linear:npl=100:range=limited,format=yuv444p16le,hqdn3d=2:1.5:6:4.5,zscale=w=5120:h=2880:filter=lanczos,zscale=transfer=bt709:matrix=bt709:primaries=bt709:range=limited,unsharp=lx=5:ly=5:la=0.8:cx=3:cy=3:ca=0.25,gradfun=radius=10:strength=0.51,zscale=w=2560:h=1440:filter=lanczos:dither=error_diffusion,cas=strength=0.45,gradfun=radius=6:strength=0.51,minterpolate=fps=120:mi_mode=mci:mc_mode=aobmc:vsbmc=1:me=umh:mb_size=8:scd=1:scd_threshold=5,format=yuv420p10le
+P3|1920x1080|3840x2160|zscale=transfer=linear:npl=1000:range=limited,format=yuv444p16le,hqdn3d=1:0.8:3:2.5,zscale=w=7680:h=4320:filter=lanczos,zscale=transfer=arib-std-b67:chromal=topleft:matrix=2020_ncl:primaries=2020:range=limited,unsharp=lx=3:ly=3:la=0.28,gradfun=radius=12:strength=0.55,zscale=w=3840:h=2160:filter=lanczos:dither=error_diffusion,cas=strength=0.4,gradfun=radius=8:strength=0.51,minterpolate=fps=60:mi_mode=mci:mc_mode=aobmc:vsbmc=1:me=umh:mb_size=8:scd=1:scd_threshold=5,format=yuv420p10le
+P2|3840x2160|6144x3456|zscale=transfer=linear:npl=1000:range=limited,format=yuv444p16le,zscale=w=10240:h=5760:filter=lanczos,zscale=transfer=smpte2084:chromal=topleft:matrix=2020_ncl:primaries=2020:range=limited,gradfun=radius=12:strength=0.51,zscale=w=6144:h=3456:filter=lanczos:dither=error_diffusion,cas=strength=0.35,gradfun=radius=8:strength=0.51,minterpolate=fps=60:mi_mode=mci:mc_mode=aobmc:vsbmc=1:me=umh:mb_size=8:scd=1:scd_threshold=5,format=yuv420p10le
