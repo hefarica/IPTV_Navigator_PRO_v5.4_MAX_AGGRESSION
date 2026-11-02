@@ -119,3 +119,45 @@ jobs:
           # Sin esta mitad, el detector podria estar devolviendo 4 por cualquier cosa.
           [ "$code" -eq 0 ] || { echo "::error::lista coherente con exit $code, se esperaba 0"; exit 1; }
           echo "$out" | grep -q '"total": 0' || { echo '::error::reporto contradicciones en una lista limpia'; exit 1; }
+
+      - name: tag_variance distingue un tag que mide de uno constante
+        run: |
+          set -uo pipefail
+          set +e
+          out=$(node tools/ape-parse-defects/tag_variance.js tools/ape-parse-defects/fixtures/variance_varia.m3u8); code=$?
+          set -e
+          echo "$out"; echo "exit=$code"
+          [ "$code" -eq 0 ] || { echo "::error::tag_variance devolvio $code, se esperaba 0"; exit 1; }
+          # El fixture tiene 3 canales con RESOLUTION-SUPREMACY distinta y un tag que no cambia.
+          python3 - "$out" <<'PY'
+          import json, sys
+          j = json.loads(sys.argv[1])
+          clases = {f['tag']: (f['clase'], f['valores_distintos']) for f in j['constante'] + j['varia'] + j['parcial'] + j['raro']}
+          def exigir(tag, clase):
+              got = clases.get(tag)
+              if not got:
+                  sys.exit(f'::error::{tag} no aparece en el censo')
+              if got[0] != clase:
+                  sys.exit(f'::error::{tag} clasificado {got[0]} ({got[1]} valores), se esperaba {clase}')
+              print(f'  OK {tag} -> {got[0]} ({got[1]} valores)')
+          exigir('EXT-X-APE-RESOLUTION-SUPREMACY', 'VARIA')
+          exigir('EXT-X-APE-HDR-TRANSFER', 'CONSTANTE')
+          PY
+
+      - name: tag_variance no inventa varianza ni la esconde
+        run: |
+          set -uo pipefail
+          set +e
+          out=$(node tools/ape-parse-defects/tag_variance.js tools/ape-parse-defects/fixtures/variance_constante.m3u8); code=$?
+          set -e
+          echo "$out"; echo "exit=$code"
+          [ "$code" -eq 0 ] || { echo "::error::tag_variance devolvio $code, se esperaba 0"; exit 1; }
+          python3 - "$out" <<'PY'
+          import json, sys
+          j = json.loads(sys.argv[1])
+          # Si TODOS los tags son constantes, el censo debe decir exactamente eso:
+          # contar la varianza como constante es tan grave como no verla.
+          if j['resumen']['VARIA'] != 0:
+              sys.exit(f"::error::lista de 3 canales identicos reporta {j['resumen']['VARIA']} tags VARIA")
+          print(f"  OK {j['resumen']['CONSTANTE']} constantes, 0 VARIA")
+          PY

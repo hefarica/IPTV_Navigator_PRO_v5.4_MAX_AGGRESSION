@@ -134,9 +134,15 @@ declarar `DV-ENHANCEMENT: ENABLED`.
    cuando HLG. Hoy es una constante.
 3. **`DV-ENHANCEMENT: ENABLED`** solo si `DV-METADATA: EL=true`.
 
-Los tres son constantes escritas a mano donde debería haber un cálculo. Es el mismo patrón que en
+Los tres son valores escritos a mano donde debería haber un cálculo. Es el mismo patrón que en
 vídeo (`4KFALSE`, `ENGINE`) y en audio (Atmos `true`/`false`): **el bloque por canal no se deriva del
 canal**.
+
+> **Corrección (ronda 33, medida con `tag_variance.js`):** la primera versión decía que los tres eran
+> «constantes». Preciso: `HDR-TRANSFER` **sí** es constante (1 valor en los 10.573). `HDR-METADATA`
+> **no**: toma 3 valores distintos, porque el campo `PEAK` sigue al canal correctamente. Lo que es
+> constante es **el campo `AVG` dentro de ese tag** (siempre 1000). Está medio derivado, no es una
+> constante entera.
 
 ## 8 · El detalle que prueba que el generador SÍ sabe derivar
 
