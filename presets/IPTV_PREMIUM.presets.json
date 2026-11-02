@@ -1,0 +1,167 @@
+{
+  "schema": "ape.iptv.premium.presets.v1",
+  "profile": "IPTV_PREMIUM",
+  "version": "2026.1.0",
+  "presets": {
+    "suprema_4k": {
+      "label": "Suprema 4K",
+      "status": "declared",
+      "use_when": "Display 4K y fuente/cadena que permita la variante 4K; no se usa para declarar 4K real sin observación.",
+      "presentation": {
+        "width": 3840,
+        "height": 2160
+      },
+      "variant": {
+        "codec": "hvc1.2.4.L153.B0",
+        "video_range": "PQ",
+        "fps": 30
+      },
+      "image": {
+        "ai_sr": "realesrgan",
+        "ai_sr_scale": 4,
+        "ai_fi": "rife_v4",
+        "lcevc_phase": 4,
+        "vlc_filters": [
+          "hqdn3d=luma_spatial=2.0:chroma_spatial=1.5:luma_tmp=3.0:chroma_tmp=2.5",
+          "yadif=mode=1:parity=-1:deint=0",
+          "unsharp=luma_msize_x=3:luma_msize_y=3:luma_amount=0.25:chroma_amount=0.0",
+          "minterpolate=fps=120:mi_mode=mci:mc_mode=aobmc:vsbmc=1:me=epzs:scd=0"
+        ]
+      },
+      "evidence": [
+        "white paper 8/9/10",
+        "D6 AXN"
+      ],
+      "verified": false
+    },
+    "axn_159": {
+      "label": "AXN BLACK HD — canal 159",
+      "status": "declared",
+      "use_when": "Canal #159 de la lista auditada; fuente declarada 720p/1080p, perfil P4.",
+      "scope": {
+        "source": "1280x720, 30 fps, HEVC L93, SDR",
+        "ape": "1920x1080, P4, verification false",
+        "presentation": "3840x2160; 4KFALSE, 8KFAKE target display",
+        "variant": "3840x2160, PQ, hvc1.2.4.L153.B0, 30 fps"
+      },
+      "image": {
+        "vlc_filters": [
+          "hqdn3d=luma_spatial=2.0:chroma_spatial=1.5:luma_tmp=3.0:chroma_tmp=2.5",
+          "yadif=mode=1:parity=-1:deint=0",
+          "unsharp=luma_msize_x=3:luma_msize_y=3:luma_amount=0.25:chroma_amount=0.0",
+          "minterpolate=fps=120:mi_mode=mci:mc_mode=aobmc:vsbmc=1:me=epzs:scd=0"
+        ],
+        "ai_sr": "realesrgan",
+        "ai_sr_scale": 4,
+        "ai_fi": "rife_v4",
+        "lcevc_phase": 4
+      },
+      "color": {
+        "mode": "SDR",
+        "nits": 100,
+        "primaries": "BT2020",
+        "transfer": "BT1886",
+        "bit_depth": 10,
+        "tone_mapping": "HABLE"
+      },
+      "evidence": [
+        "white paper 17",
+        "D6",
+        "CHANNEL_159_ANALYSIS.md"
+      ],
+      "verified": false
+    },
+    "sports_60": {
+      "label": "Sports 60",
+      "status": "declared",
+      "use_when": "Deporte/evento con capacidad de 60 fps; receta D5 de doce capas.",
+      "target": {
+        "fps": 60,
+        "resolution": "3840x2160"
+      },
+      "image": {
+        "dnr": "bajo",
+        "memc": "sport",
+        "ai_sr": "policy-dependent",
+        "lcevc": false
+      },
+      "transport": {
+        "prefetch_segments": 20,
+        "parallel_segments": 20,
+        "concurrent_downloads": 12,
+        "buffer_ms": 8000
+      },
+      "evidence": [
+        "D5",
+        "white paper 26"
+      ],
+      "verified": false
+    },
+    "f1_velocity": {
+      "label": "F1 Velocity",
+      "status": "declared",
+      "use_when": "Señal progresiva de 50 fps; conservación temporal, sin interpolación.",
+      "target": {
+        "fps": 50,
+        "vrr_min": 48,
+        "vrr_max": 120
+      },
+      "image": {
+        "interpolation": false,
+        "dnr": false,
+        "ai_fi": false
+      },
+      "transport": {
+        "prefetch_segments": 25,
+        "parallel_segments": 25,
+        "concurrent_downloads": 16,
+        "buffer_ms": 10000
+      },
+      "evidence": [
+        "D7",
+        "white paper 27"
+      ],
+      "verified": false
+    },
+    "safe_sdr": {
+      "label": "Safe SDR",
+      "status": "safe-fallback",
+      "use_when": "Player/display SDR o fuente sin evidencia HDR; no declara PQ.",
+      "presentation": {
+        "mode": "SDR",
+        "nits": 100,
+        "primaries": "BT709",
+        "transfer": "BT1886"
+      },
+      "variant": {
+        "video_range": "SDR"
+      },
+      "image": {
+        "ai_sr": false,
+        "ai_fi": false,
+        "lcevc": false
+      },
+      "verified": false,
+      "evidence": [
+        "white paper 7/10",
+        "SDR fallback"
+      ]
+    },
+    "low_latency": {
+      "label": "Low latency (declared)",
+      "status": "unverified",
+      "use_when": "Solo cuando el manifiesto de medios tenga EXT-X-MAP/PART/SERVER-CONTROL reales.",
+      "latency": {
+        "target_s": 4.0,
+        "hold_back_s": 12.0,
+        "part_hold_back_s": 1.5,
+        "chunk_s": 0.5
+      },
+      "verified": false,
+      "evidence": [
+        "white paper 13.3",
+        "requires real EXT-X-MAP/PART/SERVER-CONTROL"
+      ]
+    }
+  }
+}

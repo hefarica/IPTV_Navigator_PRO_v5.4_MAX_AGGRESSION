@@ -15,6 +15,7 @@ Carga `profiles/IPTV_PREMIUM.json` y esta skill; muestra el perfil y su matriz d
 /suprema-2026 channel <index|name> <list>
 /suprema-2026 recipe <P0..P5>
 /suprema-2026 profile IPTV_PREMIUM
+/suprema-2026 preset <name>
 /suprema-2026 verify <evidence-path>
 ```
 
@@ -34,5 +35,8 @@ Carga `profiles/IPTV_PREMIUM.json` y esta skill; muestra el perfil y su matriz d
 /suprema-2026 recipe P4
 /suprema-2026 audit https://iptv-ape.duckdns.org/lists/APE_LISTA_1793589060441.m3u8
 ```
+
+
+
 
 

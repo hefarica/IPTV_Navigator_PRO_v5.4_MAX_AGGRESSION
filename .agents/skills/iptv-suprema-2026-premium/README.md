@@ -33,3 +33,6 @@ Cuatro ámbitos separados: fuente, clasificación APE, reconstrucción/presentac
 No se declara calidad real sin bitstream verificado.
 
 
+
+
+Presets: `presets/IPTV_PREMIUM.presets.json` (6 recetas; declaradas, no verificadas).

@@ -323,6 +323,7 @@ Never label a source FHD as 4K real. Never degrade 4K video to fix audio. Audio-
 /suprema-2026 channel <index|name> <list>
 /suprema-2026 recipe <P0..P5>
 /suprema-2026 profile IPTV_PREMIUM
+/suprema-2026 preset <name>
 /suprema-2026 verify <evidence-path>
 ```
 
@@ -374,4 +375,20 @@ python -m json.tool .agents/skills/iptv-suprema-2026-premium/fixtures/min_profil
 A profile is valid only if JSON parses, required keys exist, `based_on=creador_habilidades`, and every maturity score has an evidence note.
 
 
+
+
+
+
+## 8.1 Presets disponibles
+
+```text
+suprema_4k   4K/PQ composition
+axn_159      canal #159, 720p/1080p source -> 4K display
+sports_60    D5 sports 60 fps
+f1_velocity  D7 50 fps, interpolation off
+safe_sdr     SDR fallback
+low_latency  declared LL/CMAF
+```
+
+Todos con `verified: false` hasta recibir bitstream/recibo.
 

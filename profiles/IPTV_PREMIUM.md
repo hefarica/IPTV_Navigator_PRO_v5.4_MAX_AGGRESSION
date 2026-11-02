@@ -128,6 +128,7 @@ La variante 4K/PQ, AI-SR, RIFE y LCEVC permanecen como `declared` hasta que exis
 /suprema-2026 channel <index|name> <list>
 /suprema-2026 recipe <P0..P5>
 /suprema-2026 profile IPTV_PREMIUM
+/suprema-2026 preset <name>
 /suprema-2026 verify <evidence-path>
 ```
 
@@ -143,4 +144,22 @@ La variante 4K/PQ, AI-SR, RIFE y LCEVC permanecen como `declared` hasta que exis
 - No tocar VPS/LAB/listas de producción.
 - No emitir juicio de calidad si no se pidió.
 
+
+
+
+
+## Presets
+
+Presets incluidos en `presets/IPTV_PREMIUM.presets.json`:
+
+| Preset | Uso | Estado |
+|---|---|---|
+| `suprema_4k` | 4K/PQ, AI-SR/RIFE/LCEVC declarados | declared |
+| `axn_159` | Canal #159 AXN BLACK HD | declared |
+| `sports_60` | Deporte 60 fps, D5 | declared |
+| `f1_velocity` | F1 50 fps, sin interpolación, D7 | declared |
+| `safe_sdr` | Fallback SDR BT.709 | safe-fallback |
+| `low_latency` | LL/CMAF objetivo 4 s | unverified |
+
+Ninguno se declara `verified` sin bitstream/recibo.
 

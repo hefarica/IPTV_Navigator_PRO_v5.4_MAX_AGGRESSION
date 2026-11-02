@@ -33,3 +33,7 @@ artifacts/audit/2026-11-02_APE_LISTA_1793589060441/probe_sample/probe_summary.js
 - No se incluyen credenciales en este documento.
 
 
+
+## Presets
+
+`presets/IPTV_PREMIUM.presets.json`: suprema_4k, axn_159, sports_60, f1_velocity, safe_sdr, low_latency. Todas `declared`; ninguna `verified`.

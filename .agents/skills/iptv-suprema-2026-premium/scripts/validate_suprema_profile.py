@@ -5,7 +5,7 @@ import sys
 
 REQUIRED = ['schema', 'id', 'version', 'based_on', 'inherits', 'identity',
             'mission', 'scope_model', 'image_pipeline', 'profiles',
-            'construction_chain', 'evidence', 'maturity', 'commands', 'guardrails']
+            'construction_chain', 'evidence', 'maturity', 'commands', 'presets', 'guardrails']
 
 
 def main(path):
@@ -22,6 +22,20 @@ def main(path):
         errors.append('inherits must include creador_habilidades')
     if not isinstance(d.get('commands'), list) or not d['commands']:
         errors.append('commands must be non-empty')
+    presets = d.get('presets')
+    if not isinstance(presets, dict) or not presets:
+        errors.append('presets missing')
+    else:
+        for name, preset in presets.items():
+            if not isinstance(preset, dict):
+                errors.append(f'presets.{name} must be object')
+                continue
+            if not preset.get('status'):
+                errors.append(f'presets.{name}.status missing')
+            if not isinstance(preset.get('verified'), bool):
+                errors.append(f'presets.{name}.verified must be boolean')
+            if not preset.get('evidence'):
+                errors.append(f'presets.{name}.evidence missing')
     maturity = d.get('maturity')
     if not isinstance(maturity, dict) or not maturity:
         errors.append('maturity missing')
