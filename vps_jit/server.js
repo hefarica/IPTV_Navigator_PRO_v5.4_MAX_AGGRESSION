@@ -155,6 +155,11 @@ function stopCurrent(reason) {
 function start(id, spec, sdr, sdr720) {
   stopCurrent('switch');
   const src = probeSource(spec);
+  // Optional audio-only fallback source. Video stays on spec.url.
+  const audioSpec = spec.audioUrl ? { url: spec.audioUrl, ua: spec.audioUa || spec.ua } : null;
+  const audioSrc = audioSpec ? probeSource(audioSpec) : null;
+  const fallbackAudio = !!(audioSrc && audioSrc.audioOk);
+  const audioOk = !!src.audioOk || fallbackAudio;
   const isSdr = !!(sdr || sdr720);
   const is720 = !!sdr720;
   const av1 = process.env.APE_SCHEME === 'av1' && !isSdr;
@@ -212,17 +217,18 @@ function start(id, spec, sdr, sdr720) {
   // Some 4K provider audio is EAC3 with 0 channels / no sample rate.
   // Do not break the video MPD: if audio is invalid, emit video-only.
   const audioArgs = isSdr
-    ? (src.audioOk ? ['-c:a', 'aac', '-b:a', '128k', '-ac', '2'] : ['-an'])
+    ? (audioOk ? ['-c:a', 'aac', '-b:a', '128k', '-ac', '2'] : ['-an'])
     : copy4k
-    ? (src.audioOk ? ['-c:a', 'aac', '-b:a', '256k', '-ac', '2'] : ['-an'])
-    : ['-c:a', 'aac', '-b:a', '128k', '-ac', '2'];
-  const hasAudio = isSdr ? src.audioOk : !(copy4k && !src.audioOk);
+    ? (audioOk ? ['-c:a', 'aac', '-b:a', '256k', '-ac', '2'] : ['-an'])
+    : (audioOk ? ['-c:a', 'aac', '-b:a', '128k', '-ac', '2'] : ['-an']);
+  const hasAudio = audioOk;
   const session = Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
   const args = [
     '-hide_banner', '-nostdin', '-loglevel', 'warning',
     '-user_agent', spec.ua || 'VLC/3.0.19 LibVLC/3.0.19',
     '-i', spec.url,
-    '-map', '0:v:0', '-map', '0:a:0?',
+    ...(audioSpec ? ['-i', audioSpec.url] : []),
+    '-map', '0:v:0', '-map', (src.audioOk ? '0:a:0?' : (fallbackAudio ? '1:a:0?' : '0:a:0?')),
     ...videoArgs,
     ...audioArgs,
     '-max_muxing_queue_size', '8192',
