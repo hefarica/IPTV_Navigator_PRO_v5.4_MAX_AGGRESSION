@@ -58,6 +58,10 @@ jobs:
       sha_base: ${{ steps.compare.outputs.sha_base }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Los ficheros del parche viven en la rama de trabajo; master solo lleva este workflow
+          # porque workflow_dispatch exige que el fichero exista en la rama por defecto.
+          ref: feat/adb-generic-visual-enhancement-installer
 
       - name: Preparar SSH (llave efimera desde secretos del repo)
         run: |
@@ -119,6 +123,10 @@ jobs:
     environment: production
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Los ficheros del parche viven en la rama de trabajo; master solo lleva este workflow
+          # porque workflow_dispatch exige que el fichero exista en la rama por defecto.
+          ref: feat/adb-generic-visual-enhancement-installer
 
       - name: Estado del gate ANTES de tocar nada
         run: |
@@ -160,6 +168,10 @@ jobs:
     environment: production
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Los ficheros del parche viven en la rama de trabajo; master solo lleva este workflow
+          # porque workflow_dispatch exige que el fichero exista en la rama por defecto.
+          ref: feat/adb-generic-visual-enhancement-installer
 
       - name: Exigir la confirmacion literal
         run: |
