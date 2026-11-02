@@ -55,6 +55,9 @@ jobs:
 
       - name: Las cadenas TAL CUAL de la lista deben FALLAR
         run: |
+          # GitHub Actions invoca bash con -e, asi que un exit 4 esperado abortaria el paso.
+          # set +e lo desactiva aqui; el veredicto lo da la comprobacion de abajo, no el exit del node.
+          set +e
           set -uo pipefail
           node tools/ape-image-recipes/v2_chains_local.js \
             --chains tools/ape-image-recipes/ref_chains.txt > /tmp/orig.json 2>/tmp/orig.err
@@ -90,6 +93,9 @@ jobs:
 
       - name: Las V2 corregidas del operador deben ejecutar donde se declaro
         run: |
+          # Igual que arriba: el harness devuelve 4 porque P2 no ejecuta, y eso esta documentado.
+          # Lo que decide este paso es la comprobacion por perfil, no el exit del harness.
+          set +e
           set -uo pipefail
           # P0 y P1 no estan en el fichero (memoria). P2 no puede con minterpolate a 6144x3456 y esta
           # documentado; se comprueba que P5/P4/P3 siguen dando EXACTAMENTE su resolucion declarada.
