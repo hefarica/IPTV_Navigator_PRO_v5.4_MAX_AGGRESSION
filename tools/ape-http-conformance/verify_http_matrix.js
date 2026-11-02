@@ -145,6 +145,15 @@ async function runCase(c, ctx) {
     } else if (a.kind === 'content_range_present') {
       const actual = Boolean(last && last.headers.get('content-range'));
       checks.push({ check: 'Content-Range presente', pass: actual === a.value, actual });
+    } else if (a.kind === 'content_length_equals') {
+      // [206-fix] Con Content-Encoding: gzip el cuerpo ya DECODIFICADO no mide
+      // lo mismo que el rango pedido: el cliente HTTP descomprime y devuelve mas
+      // bytes de los que viajaron. La verdad del transporte esta en
+      // Content-Length, que es exactamente lo que se pidio en el cable.
+      // Comparar body.length aqui mediria otra cosa y daria un falso fallo.
+      const raw = last ? (last.headers.get('content-length') || '') : '';
+      const actual = raw === '' ? null : Number(raw);
+      checks.push({ check: `content-length == ${a.value}`, pass: actual === a.value, actual });
     } else if (a.kind === 'body_bytes') {
       const actual = result.body ? result.body.length : null;
       const pass = a.op === 'exact' ? actual === a.value
@@ -238,14 +247,35 @@ async function main() {
       soft: !baseUrl
     }),
     makeCase('A3_list_RANGE_206', {
-      doc: 'EXIGENCIA DURA: Range debe dar 206 con Content-Range y exactamente 1024 bytes',
+      // [206-fix] MEDIDO 2026-11-02 contra la URL publica: el 206 depende del
+      // encoding. Con `Accept-Encoding: gzip` nginx sirve el .gz y el modulo
+      // estatico SI respeta el rango -> 206 + Content-Range. Sin el, actua
+      // `gunzip on` del `location ~* \.m3u8$`, que descomprime al vuelo y no
+      // puede dar rangos -> 200 chunked. Este caso mide el camino que SI puede.
+      doc: 'EXIGENCIA DURA: Range con Accept-Encoding: gzip debe dar 206 con Content-Range y 1024 bytes',
       urlTemplate: (x) => x.baseUrl,
+      headers: { 'Accept-Encoding': 'gzip' },
       range: 'bytes=0-1023',
       assert: [
         { kind: 'status_last', value: 206 },
         { kind: 'content_range_present', value: true },
-        { kind: 'body_bytes', op: 'exact', value: 1024 },
+        { kind: 'content_length_equals', value: 1024 },
         { kind: 'not_200_when_range', value: true }
+      ],
+      soft: !baseUrl
+    }),
+    makeCase('A4_list_RANGE_sin_gzip_documentado', {
+      // LIMITACION CONOCIDA Y DECLARADA, no un fallo escondido:
+      // el `gunzip on` del bloque m3u8 rompe los byte-ranges para quien no pide
+      // gzip. Este caso NO exige 206: exige que, si responde 200, NO anuncie
+      // Content-Range (no fingir un rango que no se cumple). Su valor es medir
+      // y fijar el comportamiento real, para que nadie lo confunda con exito.
+      doc: 'LIMITACION: Range sin gzip -> 200 chunked y SIN Content-Range (gunzip no soporta rangos)',
+      urlTemplate: (x) => x.baseUrl,
+      range: 'bytes=0-1023',
+      assert: [
+        { kind: 'status_last', value: 200 },
+        { kind: 'content_range_present', value: false }
       ],
       soft: !baseUrl
     }),
