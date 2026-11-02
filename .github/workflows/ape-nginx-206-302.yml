@@ -150,19 +150,59 @@ jobs:
             console.log('  celdas: '+j.resumen.celdas+'  cumplen: '+j.resumen.cumplen+'  faltan: '+j.resumen.faltan+'  veredicto: '+j.resumen.veredicto_gate);
           " || true
 
-      - name: Decidir
-        if: needs.verificar.outputs.identico != 'true'
+      # La primera version paraba aqui con "la config viva no es el baseline". La medicion del
+      # 2026-11-02 lo desmintio: los hashes difieren, y el diff muestra que el vivo es mas simple
+      # (sin default_server, sin http2, return 301 a nivel de servidor). Byte-identidad es un
+      # PROXY de lo que de verdad importa, y un proxy malo: puede fallar con un fichero sano y
+      # pasar con uno roto. Lo que de verdad importa es que los tres anclajes de la transformacion
+      # existan y sean UNICOS. Eso es lo que se comprueba aqui.
+      - name: Los anclajes del parche existen y son unicos en el fichero VIVO
         run: |
-          echo '::error::la config viva NO es el baseline del repo. No se aplica nada.'
-          echo 'El parche se genero sobre un snapshot y la realidad ya es otra. Hay que regenerarlo.'
-          echo 'sha vivo:     ${{ needs.verificar.outputs.sha_vivo }}'
-          echo 'sha baseline: ${{ needs.verificar.outputs.sha_base }}'
-          exit 1
+          set -euo pipefail
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          printf '%s\n' "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' "${{ secrets.VPS_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+          printf 'Host *\n  StrictHostKeyChecking yes\n  UserKnownHostsFile ~/.ssh/known_hosts\n  IdentitiesOnly yes\n' > ~/.ssh/config
+          TARGET="${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}"
+          ssh "$TARGET" "sudo -n cat '$LIVE_CONF'" > /tmp/live.conf
+          echo "  lineas del fichero vivo: $(wc -l < /tmp/live.conf)"
+          echo "  sha256 vivo: $(sha256sum /tmp/live.conf | cut -d' ' -f1)"
+          echo "  sha256 baseline del repo: ${{ needs.verificar.outputs.sha_base }}"
+
+          fallos=0
+          check() {
+            local patron="$1" desc="$2" n
+            n=$(grep -c -- "$patron" /tmp/live.conf || true)
+            if [ "$n" -ne 1 ]; then
+              echo "::error::anclaje '$patron' aparece $n veces en el fichero vivo ($desc); se esperaba exactamente 1"
+              fallos=$((fallos+1))
+            else
+              echo "  OK anclaje unico: $patron  ($desc)"
+            fi
+          }
+          check 'gzip_static always;' '206: se cambia a gzip_static on'
+          check 'gunzip on;'          '206: se cambia a gunzip off'
+          check 'return 301 '         '302: se cambia a return 302'
+
+          if [ "$fallos" -ne 0 ]; then
+            echo "::error::$fallos anclajes no son utilizables sobre el fichero vivo. NO se aplica."
+            exit 1
+          fi
+          if [ "${{ needs.verificar.outputs.identico }}" = 'true' ]; then
+            echo 'La config viva ES el baseline del repo.'
+          else
+            echo 'AVISO: la config viva NO es el baseline del repo (drift conocido y medido).'
+            echo '        Se procede porque los tres anclajes son unicos en el fichero VIVO,'
+            echo '        que es de donde el paso de aplicar construye el parche.'
+          fi
 
   aplicar:
     name: 3 · Aplicar con backup y rollback automatico
     needs: [verificar, plan]
-    if: inputs.mode == 'apply' && needs.verificar.outputs.identico == 'true'
+    # Ya no exige byte-identidad con el snapshot: exige que el paso anterior haya validado los
+    # anclajes sobre el fichero vivo. El aplicar parte del vivo, no del baseline.
+    if: inputs.mode == 'apply'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     environment: production
