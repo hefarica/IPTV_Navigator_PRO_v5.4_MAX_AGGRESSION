@@ -62,9 +62,16 @@ const veredicto = (o) => {
     const sinGzip = await pedir(url, { gzip: false });
     const conGzip = await pedir(url, { gzip: true });
     const headSin = await pedir(url, { gzip: false, method: 'HEAD' });
-    const kbytes = sinGzip.content_range
-      ? sinGzip.content_range.split('/')[1]
-      : (headSin.content_length || '?');
+
+    // Tamano por representacion. Antes solo se miraba la respuesta identity y, cuando
+    // esa viene 200 chunked (gunzip al vuelo), el tamano salia "?" justo en las listas
+    // grandes, que son donde el tamano decide si conviene tocar la configuracion.
+    // El 604 MB plano y el .gz pregenerado son representaciones distintas del mismo
+    // fichero: se reportan por separado en vez de colapsarlas en una cifra.
+    const delRange = (o) => (o && o.content_range ? o.content_range.split('/')[1] : null);
+    const bytes_identity = delRange(sinGzip) || sinGzip.content_length || headSin.content_length || null;
+    const bytes_gzip = delRange(conGzip) || (conGzip.content_encoding === 'gzip' ? conGzip.content_length : null) || null;
+    const kbytes = bytes_identity || bytes_gzip || '?';
 
     filas.push({
       lista: nombre,
@@ -72,6 +79,11 @@ const veredicto = (o) => {
       'Range sin gzip': veredicto(sinGzip),
       'Range con gzip': veredicto(conGzip),
       contentType_sin: sinGzip.content_encoding || 'identity',
+      bytes_identity,
+      bytes_gzip,
+      ratio_si_ambos: bytes_identity && bytes_gzip
+        ? Number((Number(bytes_gzip) / Number(bytes_identity)).toFixed(3))
+        : null,
     });
   }
 
