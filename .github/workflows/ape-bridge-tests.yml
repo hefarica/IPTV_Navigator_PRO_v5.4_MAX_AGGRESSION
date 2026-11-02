@@ -1,0 +1,42 @@
+name: APE Isomorphic Bridge Tests
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'tools/ape_*.py'
+      - 'tools/m3u8_json_bridge.py'
+      - 'tools/validate_m3u8_json.py'
+      - 'tools/check_*.js'
+      - 'frontend/tests/url-guard-*.test.js'
+      - 'frontend/tests/lab-profile-count.test.js'
+      - 'frontend/js/ape-v9/ape-lab-v8-profiles.js'
+      - 'contracts/ape_*.json'
+      - '.github/workflows/ape-bridge-tests.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Python bridge / health / metadata tests
+        run: |
+          python3 tools/test_m3u8_bridge.py
+          python3 tools/test_health_enrich.py
+          python3 tools/test_metadata_enrich.py
+      - name: Node URL-GUARD / LAB / audio gates
+        run: |
+          node frontend/tests/url-guard-resolution.test.js
+          node frontend/tests/url-guard-generator-runtime.test.js
+          node frontend/tests/lab-profile-count.test.js
+          node tools/check_audio_safe_policy.js
+          node tools/check_omega_directives.js
