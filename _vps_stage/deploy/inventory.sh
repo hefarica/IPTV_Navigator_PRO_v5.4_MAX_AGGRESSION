@@ -68,8 +68,14 @@ run "find /var/www -maxdepth 3 -type d 2>&1 | head -60"
 # mismo binario y misma ruta. Se usa el patron portable de `stat`, el mismo que
 # ya funcionaba en la seccion 7, y se deja stderr visible en la de directorios
 # para que un fallo futuro NO vuelva a ser silencioso.
-run "find /var/www -type f -name '*.m3u8' 2>/dev/null | sort | while read -r f; do printf '%s  %s  %s\n' \"\$(stat -c '%y' \"\$f\" 2>/dev/null)\" \"\$(stat -c '%s' \"\$f\" 2>/dev/null)\" \"\$f\"; done | head -60"
-run "find /var/www -type f -name '*.php' 2>/dev/null | sort | while read -r f; do printf '%s  %s  %s\n' \"\$(stat -c '%y' \"\$f\" 2>/dev/null)\" \"\$(stat -c '%s' \"\$f\" 2>/dev/null)\" \"\$f\"; done | head -60"
+run "find /var/www -type f -name '*.m3u8' 2>&1 | sort | head -60"
+run "find /var/www -type f -name '*.php' 2>&1 | sort | head -60"
+# El `find` sobre /var/www no esta devolviendo NADA aunque las listas existen y
+# `ls -1 /var/www/html/lists/*.m3u8` si las enumera (medido en la matriz HTTP).
+# Se imprime el error real (2>&1) para verlo, y se anade el listado directo de
+# los directorios servidos conocidos, que no depende del recorrido de find.
+run "ls -la /var/www/html/lists/ 2>&1 | head -40"
+run "ls -la /var/www/html/ 2>&1 | head -30"
 
 sec "7 · /var/www/lists — HASHES SHA-256 + MTIME (base de rollback)"
 run "ls -la /var/www/lists 2>/dev/null || echo '(no existe /var/www/lists)'"
