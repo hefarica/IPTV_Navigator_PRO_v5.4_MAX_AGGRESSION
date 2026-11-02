@@ -1,0 +1,23 @@
+#EXTM3U
+# ============================================================================
+# FIXTURE SINTETICO t9 — CASO 3: los 7 candidatos a cap de video con su valor real medido
+# NO son datos de ningun proveedor. Dominio .invalid.
+# Cada linea es una de las 7 que t7 dejo sin veredicto; los valores son los MEDIDOS en la
+# lista real (no inventados). Sirve para verificar que el reporte da veredicto a las 7.
+#   Esperado: candidate_verdicts_total = 7
+#             5 x inocuo_para_vlc   (adaptive-bandwidth-factor, adaptive-maxbw,
+#                                    video-fps, video-display-fps, preferred_video_resolution)
+#             1 x cap_de_video      (chooser_bandwidth_max) -> ELIMINADA de la salida
+#             1 x indeterminado     (max_buffer_duration)   -> conservada
+# ============================================================================
+#EXT-X-VERSION:9
+#EXT-X-INDEPENDENT-SEGMENTS
+#EXTVLCOPT:adaptive-bandwidth-factor=1.0
+#EXTVLCOPT:adaptive-maxbw=999999999
+#EXTVLCOPT:video-fps=60
+#EXTVLCOPT:video-display-fps=60
+#KODIPROP:inputstream.adaptive.chooser_bandwidth_max=8000000
+#KODIPROP:inputstream.adaptive.max_buffer_duration=110
+#KODIPROP:inputstream.adaptive.preferred_video_resolution=2160
+#EXT-X-STREAM-INF:BANDWIDTH=9000000,AVERAGE-BANDWIDTH=6500000,RESOLUTION=3840x2160,FRAME-RATE=30.000,CODECS="hvc1.2.4.L153.B0,mp4a.40.2",VIDEO-RANGE=PQ,STABLE-VARIANT-ID="fx9_C3"
+https://fixtures.invalid/live/***/***/3003.m3u8

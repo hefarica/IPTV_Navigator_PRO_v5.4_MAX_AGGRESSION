@@ -105,15 +105,35 @@
  *   --audio-group-id <id>       GROUP-ID en modo master (default: "aud").
  *   --declared-source WxH@bps   Sube el listón del fail-closed (la fuente real declarada).
  *   --caps limiting|all         Qué caps quitar (default: all — ver [R3]/[R4]).
- *   --mask-credentials          Enmascara usuario/password en las URIs emitidas.
+ *   --redact-credentials        MODO REDACTED: enmascara usuario/password en TODA la salida.
+ *                               La salida NO es reproducible (para compartir/commitear).
+ *   --mask-credentials          Alias de --redact-credentials (compatibilidad de corridas).
+ *   --enable-audio-passthrough  Reactiva `inputstream.adaptive.audio_{eac3,ac3,dolby_atmos,
+ *                               dts,truehd}=false` SOLO si el códec está en la prioridad
+ *                               declarada. Sin este flag no se toca nada.
+ *   --enable-eac3               Alias de --enable-audio-passthrough.
+ *   --force                     Permite sobrescribir la salida si ya existe (si no: exit 8).
  *   --quiet                     Sin salida humana por stderr.
  *
- * CÓDIGOS DE SALIDA
+ * CÓDIGOS DE SALIDA (tabla fijada por el capitán; cada código tiene UN solo significado)
  *   0  OK                          — demuxed emitido, o muxed con --allow-muxed-passthrough
+ *   1  INTERNAL_INVARIANT          — defecto del programa (no es resultado de política)
  *   2  AUDIO_NO_COMPUTADO          — no hay audio real y no se autorizó passthrough
  *   3  VIDEO_DOWNSCALE_VIOLATION   — una variante queda por debajo de la fuente declarada
- *   4  BAD_INPUT                   — fichero ilegible, vacío, o sin #EXT-X-STREAM-INF
- *   5  AUDIO_URI_NO_VERIFICABLE    — la rendition aportada no tiene evidencia válida (anti-invención)
+ *   4  INPUT_MISSING               — falta entrada, ilegible, vacía o sin #EXT-X-STREAM-INF
+ *   5  INVALID_EVIDENCE            — rendition de audio sin evidencia válida (anti-invención)
+ *   6  OUTPUT_PATH_INSIDE_REPO     — GATE DE RUTA: destino dentro del repo git (PREFLIGHT)
+ *   7  (reservado — no usar)
+ *   8  OUTPUT_EXISTS               — el destino ya existe y no se pasó --force
+ *
+ * DOS MODOS DE CREDENCIALES (nunca un gate universal — ver SECURITY.md)
+ *   --redact-credentials : marker `# APE-SENSITIVE: redacted, NOT playable`; playable=false.
+ *                          Se enmascara cada línea; NO se hashea nada en el path.
+ *   default              : marker `# APE-SENSITIVE: contains credentials, DO NOT DISTRIBUTE`;
+ *                          playable=true, sensitive=true. El gate NO evalúa el contenido de la
+ *                          URI (hacerlo empujaría a entregar una lista rota: un hash en el path
+ *                          da 404 al arrancar el canal); el gate es de RUTA y ocurre en el
+ *                          PREFLIGHT, antes de abrir el fichero.
  *
  * ESTADOS DE EVIDENCIA (skill ape-image-pipeline-truth §13)
  *   declarado · observado · resuelto · aplicado · verificado
@@ -151,18 +171,127 @@ const VIDEO_CAP_RULES = [
 ];
 
 /**
- * Caps detectados que NO se quitan automáticamente (fuera del mandato explícito de esta tarea).
- * Se reportan para que el operador decida. No se tocan: cambiar comportamiento no pedido es riesgo.
+ * Caps detectados que NO se quitan automáticamente por el mandato de t7.
+ * t9 (HUECO 3) exige que cada uno reciba un VEREDICTO EXPLÍCITO, no que quede en el limbo.
  */
 const VIDEO_CAP_CANDIDATES = [
   { tag: '#KODIPROP', key: 'inputstream.adaptive.chooser_bandwidth_max', kind: 'bitrate' },
-  { tag: '#KODIPROP', key: 'inputstream.adaptive.preferred_video_resolution', kind: 'resolution' },
-  { tag: '#KODIPROP', key: 'inputstream.adaptive.max_buffer_duration', kind: 'other' },
+  { tag: '#KODIPROP', key: 'inputstream.adaptive.preferred_video_resolution', kind: 'preferred_resolution' },
+  { tag: '#KODIPROP', key: 'inputstream.adaptive.max_buffer_duration', kind: 'buffer' },
   { tag: '#EXTVLCOPT', key: 'adaptive-maxbw', kind: 'bitrate' },
-  { tag: '#EXTVLCOPT', key: 'adaptive-bandwidth-factor', kind: 'other' },
+  { tag: '#EXTVLCOPT', key: 'adaptive-bandwidth-factor', kind: 'factor' },
   { tag: '#EXTVLCOPT', key: 'video-fps', kind: 'fps' },
   { tag: '#EXTVLCOPT', key: 'video-display-fps', kind: 'fps' },
-  { tag: '#EXTVLCOPT', key: 'adaptive-maxbitrate-exact', kind: 'other' }, // placeholder defensivo
+];
+
+/**
+ * Carga `cap_verdicts.json` (producido por t10) y ANEXA `prohibited[]` a VIDEO_CAP_RULES.
+ *
+ * Contrato con t10: `prohibited[]` viene en la MISMA forma que VIDEO_CAP_RULES
+ * ({tag,key,kind,effect}), así que se anexa sin traducción. Este módulo NO emite veredictos
+ * propios ni re-litiga las reglas de t7: solo CONSUME el fichero.
+ *
+ * Si el fichero falta o es inválido, NO se rompe el generador: se declara NO_COMPUTADO y se
+ * sigue con las reglas de t7 (fail-honest: "sin productor" no es "sin hallazgos", pero tampoco
+ * es excusa para abortar una corrida válida).
+ *
+ * @returns {{ok:boolean, path:string|null, data:object|null, error:string|null,
+ *            prohibited_appended:number, duplicates_skipped:number, appended_keys:string[]}}
+ */
+function loadCapVerdicts() {
+  const out = {
+    ok: false, path: null, data: null, error: null,
+    prohibited_appended: 0, duplicates_skipped: 0, appended_keys: [],
+  };
+  const candidates = [
+    path.join(__dirname, 'cap_verdicts.json'),
+    path.join(process.cwd(), 'tools', 'ape-demuxed', 'cap_verdicts.json'),
+  ];
+  const found = candidates.find((p) => { try { return fs.existsSync(p); } catch { return false; } });
+  if (!found) { out.error = 'cap_verdicts.json no encontrado; se usan solo las reglas de t7'; return out; }
+  out.path = found;
+  let data;
+  try {
+    data = JSON.parse(fs.readFileSync(found, 'utf8'));
+  } catch (e) {
+    out.error = `cap_verdicts.json ilegible: ${e.message}`;
+    return out;
+  }
+  const prohibited = Array.isArray(data.prohibited) ? data.prohibited : [];
+  for (const r of prohibited) {
+    if (!r || typeof r.tag !== 'string' || typeof r.key !== 'string') continue;
+    const already = VIDEO_CAP_RULES.some((x) => x.tag === r.tag && x.key === r.key);
+    if (already) { out.duplicates_skipped++; continue; }
+    VIDEO_CAP_RULES.push({
+      tag: r.tag,
+      key: r.key,
+      kind: r.kind || 'other',
+      effect: r.effect || 'unknown',
+      source: 'cap_verdicts.json',   // trazabilidad: esta regla no viene de t7
+    });
+    out.prohibited_appended++;
+    out.appended_keys.push(`${r.tag}:${r.key}`);
+  }
+  out.ok = true;
+  out.data = data;
+  return out;
+}
+
+/** Índice (tag|key) -> registro de veredicto de t10, para reportar candidatos sin adjudicar. */
+function buildVerdictIndex(data) {
+  const idx = new Map();
+  if (!data || !Array.isArray(data.verdicts)) return idx;
+  for (const v of data.verdicts) {
+    if (!v || typeof v.tag !== 'string' || typeof v.key !== 'string') continue;
+    idx.set(`${v.tag}|${v.key}`, {
+      verdict: v.verdict || null,
+      kind: v.kind || null,
+      effect: v.effect || null,
+      note: v.note || null,
+    });
+  }
+  return idx;
+}
+
+/**
+ * Tokens `#EXTVLCOPT` que NO existen en ningún binario de VLC (t4,
+ * tools/ape-image-recipes/VLC_OPT_AUDIT.md: 80 de 138 ausentes). Un token ausente se descarta
+ * EN SILENCIO, así que no puede capar nada en VLC: veredicto `inocuo_para_vlc`.
+ * Se listan las familias completas medidas; la lista autoritativa vive en el artefacto de t4.
+ */
+const VLC_ABSENT_EXACT = new Set([
+  'adaptive-bandwidth-factor', 'adaptive-bw-factor', 'adaptive-initial-bandwidth',
+  'adaptive-livedelay', 'adaptive-livesyncplaybackrate', 'adaptive-logic',
+  'adaptive-lookahead-count', 'adaptive-maxbitrate', 'adaptive-maxbuffer', 'adaptive-maxbw',
+  'adaptive-maxheight', 'adaptive-maxwidth', 'adaptive-minbitrate', 'adaptive-minbw',
+  'adaptive-segcount-factor',
+  'hls-caching', 'hls-initial-live-wait', 'hls-live-delay', 'hls-max-buffer-duration',
+  'hls-max-buffer-size', 'hls-reconnect', 'hls-seek-sync', 'hls-segment-count',
+  'hls-segment-overlap', 'hls-use-start-time-offset',
+  'video-black-bars', 'video-bt2020', 'video-chroma-loc', 'video-dar', 'video-deinterlace',
+  'video-deinterlace-mode', 'video-display-fps', 'video-fps', 'video-frame-rate-mode',
+  'video-fullrange', 'video-hdr', 'video-hdr-mode', 'video-hdr-nits', 'video-height',
+  'video-snap-format', 'video-tone-mapping', 'video-width', 'video-zoom',
+]);
+/** Familias completas ausentes en VLC: `adaptive-reload-use-*` (23). */
+const VLC_ABSENT_PREFIX = /^adaptive-reload-use-/;
+
+const isVlcAbsentToken = (token) => VLC_ABSENT_EXACT.has(token) || VLC_ABSENT_PREFIX.test(token);
+
+/**
+ * HUECO 2 — claves `inputstream.adaptive.audio_*` que APAGAN un códec, y los tokens de la
+ * prioridad declarada que las justifican. El operador aprobó reactivarlas porque
+ * `audio_codec_priority=eac3,ac3,aac,mp3` ya las pide: apagar E-AC-3 mientras se declara
+ * preferirlo es una contradicción MEDIDA (03_HEADERS_MAP.md §8, audio_eac3=false en el 100%).
+ */
+const AUDIO_PASSTHROUGH_KEYS = [
+  { key: 'inputstream.adaptive.audio_eac3', tokens: ['eac3', 'ec-3', 'eac-3'] },
+  { key: 'inputstream.adaptive.audio_ac3', tokens: ['ac3', 'ac-3'] },
+  // Atmos viaja sobre DD+ (E-AC-3): se acepta el token `eac3` como habilitante y se reporta
+  // `matched_token` para que el mapeo quede auditable, no supuesto.
+  { key: 'inputstream.adaptive.audio_dolby_atmos', tokens: ['atmos', 'eac3', 'ec-3'] },
+  { key: 'inputstream.adaptive.audio_dts', tokens: ['dts', 'dtsc', 'dtse', 'dtsx', 'dts-x'] },
+  { key: 'inputstream.adaptive.audio_truehd', tokens: ['truehd', 'mlp'] },
 ];
 
 /** Códecs de audio reconocibles en una cadena RFC 6381 de CODECS=. */
@@ -181,10 +310,46 @@ const PLACEHOLDER_MARKERS = ['<', '>', 'REAL_', 'PLACEHOLDER', 'TODO', 'CHANGEME
 const EXIT = {
   OK: 0,
   AUDIO_NO_COMPUTADO: 2,
+  // `3` SE QUEDA como estaba: ya está documentado en la cabecera, en el README y en una corrida
+  // real. Moverlo sería una regresión silenciosa para cualquier consumidor que lo lea (t8,
+  // checklists del operador, trazabilidad de corridas). Sumar es aditivo; renumerar no.
   VIDEO_DOWNSCALE_VIOLATION: 3,
-  BAD_INPUT: 4,
-  AUDIO_URI_NO_VERIFICABLE: 5,
+  INPUT_MISSING: 4,
+  INVALID_EVIDENCE: 5,
+  // Código PROPIO para el gate de ruta: es un rechazo de política/seguridad en PREFLIGHT
+  // (antes de escribir), no una validación de contenido. Un gate automático que vea `3` debe
+  // poder afirmar "hubo downscale" sin ambigüedad; con `6` lo consigue.
+  OUTPUT_PATH_INSIDE_REPO: 6,
+  // 7 reservado por el capitán: no usar.
+  // Colisión de destino: el fichero YA existe y no se pasó --force. NO es un rechazo de
+  // política (eso es 6) y mezclarlos volvería a juntar dos causas en un código.
+  OUTPUT_EXISTS: 8,
+  // Fuera de la tabla de política: invariante interno roto (p. ej. el enmascarador deja de ser
+  // idempotente). No es un resultado de política, es un DEFECTO del programa.
+  INTERNAL_INVARIANT: 1,
 };
+
+/** Marcadores exactos de sensibilidad que se escriben en la salida (t9, instrucción del capitán). */
+const SENSITIVE_MARKER_REDACTED = '# APE-SENSITIVE: redacted, NOT playable';
+const SENSITIVE_MARKER_UNMASKED = '# APE-SENSITIVE: contains credentials, DO NOT DISTRIBUTE';
+
+/**
+ * ¿La ruta cae dentro de un repositorio git? Se sube por los directorios buscando `.git`
+ * (archivo o carpeta: en worktrees/submódulos `.git` es un archivo). Sin dependencias y sin
+ * invocar `git`, para que el gate funcione aunque git no esté en PATH.
+ */
+function isInsideGitRepo(targetPath) {
+  let dir = path.resolve(targetPath);
+  try {
+    if (fs.existsSync(dir) && fs.statSync(dir).isFile()) dir = path.dirname(dir);
+  } catch { dir = path.dirname(dir); }
+  for (;;) {
+    if (fs.existsSync(path.join(dir, '.git'))) return { inside: true, repoRoot: dir };
+    const parent = path.dirname(dir);
+    if (parent === dir) return { inside: false, repoRoot: null };
+    dir = parent;
+  }
+}
 
 function parseArgs(argv) {
   const a = { _: [] };
@@ -264,20 +429,93 @@ function serializeAttrList(list) {
   return list.map((a) => (a.quoted ? `${a.name}="${a.value}"` : `${a.name}=${a.value}`)).join(',');
 }
 
-/** Máscara de credenciales: user:pass@, rutas Xtream /user/pass/, query tokens. */
+/* ==========================================================================================
+ * 2b. Credenciales: enmascarado correcto + gate (t9, HUECO 1)
+ * ==========================================================================================
+ * BUG MEDIDO (t9) y su causa raíz — dos defectos, no uno:
+ *
+ *   [B1] `--mask-credentials` NUNCA tocaba el cuerpo emitido. `maskCredentials()` solo se
+ *        aplicaba dentro de `buildMediaLine()` (URIs de #EXT-X-MEDIA). El URI del canal se
+ *        escribía verbatim con `write(line)`. Resultado: `mask_credentials: true` en el reporte
+ *        y la credencial real intacta en el playlist. Evidencia: sample_out.m3u8 conservaba
+ *        `/live/<user>/<pass>/3.m3u8` sin cambios.
+ *
+ *   [B2] El propio enmascarador estaba mal para rutas Xtream con prefijo. Medido:
+ *          maskCredentials("http://h/live/USERX/PASSX/3.m3u8") devolvia
+ *          "http://h" + "/***" + "/***" + "/PASSX/3.m3u8"  ->  PASSX quedaba EXPUESTA.
+ *        Enmascaraba `live` + `USERX` y dejaba la contrasena. La regex cogia los dos primeros
+ *        segmentos de la ruta, no el par usuario/password.
+ *
+ *   [B1b] Mi fixture de t7 ocultó [B2]: sus URIs ya venían enmascaradas con dos segmentos
+ *        asterisco, y la guarda de idempotencia hacía skip justo cuando el bug se habría visto.
+ *        Un fixture pre-enmascarado no prueba el enmascarador. Los fixtures de t9 llevan
+ *        credencial SINTETICA real para que el enmascarado se ejerza de verdad.
+ *
+ * DISEÑO DEL FIX
+ *   - Segment-aware: se localiza el par usuario/password por la FORMA de la ruta, saltando los
+ *     prefijos estructurales conocidos (`live`, `movie`, `series`, …) y sin tocar segmentos ya
+ *     enmascarados ni palabras estructurales.
+ *   - Se aplica al CUERPO COMPLETO (cada línea escrita), no solo a #EXT-X-MEDIA.
+ *   - GATE fail-closed: si con `--mask-credentials` alguna línea emitida sigue conteniendo algo
+ *     que el enmascarador cambiaría, se ABORTA con exit 6. La salida no se entrega a medias.
+ */
+
+/** Prefijos de ruta Xtream/IPTV que son ESTRUCTURA, no credenciales. */
+const STRUCTURAL_PATH_SEGMENTS = new Set([
+  'live', 'movie', 'movies', 'series', 'vod', 'timeshift', 'catchup', 'play', 'stream',
+  'hls', 'dash', 'audio', 'video', 'subs', 'subtitles', 'chunk', 'chunks', 'init', 'index',
+  'playlist', 'master', 'manifest', 'live2', 'ts', 'm3u8', 'x', 'api',
+]);
+
+/**
+ * Enmascara credenciales de una URI o línea.
+ * Idempotente: aplicarla dos veces da el mismo resultado.
+ */
 function maskCredentials(s) {
-  if (typeof s !== 'string') return s;
+  if (typeof s !== 'string' || !s) return s;
   let v = s;
+
+  // (a) userinfo: scheme://user:pass@host
   v = v.replace(/\b([a-zA-Z][a-zA-Z0-9+.\-]*:\/\/)[^\s\/@:]+:[^\s\/@]*@/g, '$1***:***@');
-  // Xtream: scheme://host[:port]/<user>/<pass>/<rest>
-  // Idempotente: si los dos segmentos ya son '***' no se vuelve a enmascarar (evita ***/***/***).
+
+  // (b) Par usuario/password en la RUTA. Segment-aware.
   v = v.replace(
-    /\b([a-zA-Z][a-zA-Z0-9+.\-]*:\/\/[^\s\/:]+(?::\d+)?\/)([^\s\/?#]+)\/([^\s\/?#]+)(?=[\/?#])/g,
-    (m, prefix, a, b) => (a === '***' || b === '***' ? m : `${prefix}***/***`)
+    /\b([a-zA-Z][a-zA-Z0-9+.\-]*:\/\/[^\s\/?#]+)(\/[^\s?#]*)/g,
+    (full, origin, pathPart) => {
+      const trailing = (pathPart.match(/\/+$/) || [''])[0];
+      const segs = pathPart.split('/').filter((x, i) => !(i === 0 && x === ''));
+      if (segs.length === 0) return full;
+
+      // Índice donde empieza el par: tras los prefijos estructurales iniciales.
+      let i = 0;
+      while (i < segs.length && STRUCTURAL_PATH_SEGMENTS.has(segs[i].toLowerCase())) i++;
+
+      const a = segs[i];
+      const b = segs[i + 1];
+      if (a === undefined || b === undefined) return full;
+      // Ya enmascarado o placeholder -> no se toca (idempotencia).
+      if (a === '***' || b === '***') return full;
+
+      segs[i] = '***';
+      segs[i + 1] = '***';
+      return origin + '/' + segs.join('/') + trailing;
+    }
   );
-  v = v.replace(/\b(token|password|pass|pwd|secret|apikey|api_key|username|user)=([^\s&,;"']+)/gi, '$1=***');
+
+  // (c) query: token=, password=, user= …
+  v = v.replace(/\b(token|password|pass|pwd|secret|apikey|api_key|username|user|jwt)=([^\s&,;"']+)/gi, '$1=***');
   return v;
 }
+
+/**
+ * Gate de credenciales (HUECO 1). Devuelve null si la línea es segura, o la línea enmascarada
+ * si aún contiene algo que el enmascarador cambiaría.
+ */
+function residualCredential(line) {
+  const masked = maskCredentials(line);
+  return masked === line ? null : masked;
+}
+
 
 function looksLikePlaceholder(uri) {
   if (typeof uri !== 'string' || !uri) return true;
@@ -316,6 +554,8 @@ function newBlock(index, mode) {
     streamInfWritten: 0,
     capLines: [],         // { lineIndex, rule, valueText, parsed, limits }
     candidateLines: [],   // { lineIndex, rule, valueText }
+    audioDisableLines: [], // { lineIndex, key, valueText }  (t9 HUECO 2)
+    audioPriority: null,   // prioridad declarada en el propio canal, si la hay
     emittableMedia: [],   // #EXT-X-MEDIA ya declaradas con URI real en el origen
     mediaLineIndexes: [], // índices de esas líneas (se reemplazan, no se duplican)
     otherMediaNoUri: 0,
@@ -340,11 +580,11 @@ function loadAudioRenditions(file, report) {
   try {
     parsed = JSON.parse(raw);
   } catch (e) {
-    throw Object.assign(new Error(`--audio no es JSON válido: ${e.message}`), { exitCode: EXIT.BAD_INPUT });
+    throw Object.assign(new Error(`--audio no es JSON válido: ${e.message}`), { exitCode: EXIT.INPUT_MISSING });
   }
   const list = Array.isArray(parsed) ? parsed : parsed.renditions;
   if (!Array.isArray(list) || list.length === 0) {
-    throw Object.assign(new Error('--audio no contiene un array "renditions" no vacío'), { exitCode: EXIT.BAD_INPUT });
+    throw Object.assign(new Error('--audio no contiene un array "renditions" no vacío'), { exitCode: EXIT.INPUT_MISSING });
   }
 
   const accepted = [];
@@ -384,7 +624,7 @@ function loadAudioRenditions(file, report) {
     // Rechazo duro: emitir una rendition sin evidencia es exactamente inventar [R1].
     throw Object.assign(
       new Error(`${rejected.length} rendition(s) de audio no verificables; no se emite ninguna (anti-invención)`),
-      { exitCode: EXIT.AUDIO_URI_NO_VERIFICABLE, rejected }
+      { exitCode: EXIT.INVALID_EVIDENCE, rejected }
     );
   }
   return accepted;
@@ -479,6 +719,10 @@ function analyseLine(line, lineIndex, block, counters) {
     }
     const cand = VIDEO_CAP_CANDIDATES.find((r) => r.tag === '#KODIPROP' && r.key === key);
     if (cand) { block.candidateLines.push({ lineIndex, rule: cand, valueText: val }); inc(counters.candidatesFound, key); }
+    // t9 HUECO 2: apagado de códecs de audio + prioridad declarada en el propio canal.
+    const audioKey = AUDIO_PASSTHROUGH_KEYS.find((r) => r.key === key);
+    if (audioKey) block.audioDisableLines.push({ lineIndex, def: audioKey, valueText: val });
+    if (key === 'inputstream.adaptive.audio_codec_priority') block.audioPriority = val;
     return null;
   }
 
@@ -716,6 +960,9 @@ async function run(opts) {
       allow_muxed_passthrough: !!opts['allow-muxed-passthrough'],
       declared_source_override: opts['declared-source'] || null,
       report_only: !!opts['report-only'],
+      redact_credentials: !!(opts['redact-credentials'] || opts['mask-credentials']),
+      enable_audio_passthrough: !!(opts['enable-audio-passthrough'] || opts['enable-eac3']),
+      force: !!opts.force,
     },
     // Estado del audio: la pieza que decide si este master es realmente demuxed.
     audio: {
@@ -753,6 +1000,14 @@ async function run(opts) {
       codecs_no_video_codec: 0,
     },
     emission: { playlist_written: false, path: null, bytes_written: 0, lines_written: 0 },
+    // t9: sensibilidad declarada por modo (instrucción del capitán).
+    sensitivity: {
+      mode: null,          // 'redacted' | 'unmasked'
+      playable: null,      // redacted -> false ; unmasked -> true
+      sensitive: null,     // redacted -> false ; unmasked -> true
+      marker: null,        // línea exacta estampada en la salida
+      repo_path_gate: null, // { applicable, inside, repo_root, refused }
+    },
     exit: { code: 0, reason: null },
   };
 
@@ -768,6 +1023,23 @@ async function run(opts) {
     codecsNoVideoCodec: new Map(),
   };
 
+  // --- 0. Anexar los caps PROHIBIDOS que fijó t10 (cap_verdicts.json -> prohibited[]).
+  //        Contrato: misma forma que VIDEO_CAP_RULES, se anexa sin traducción. No se emiten
+  //        veredictos nuevos aquí; solo se consume el fichero y se reporta qué añadió.
+  const capVerdicts = loadCapVerdicts();
+  const verdictIndex = buildVerdictIndex(capVerdicts.data);
+  report.cap_verdicts_source = {
+    path: capVerdicts.path,
+    loaded: capVerdicts.ok,
+    error: capVerdicts.error,
+    schema_version: capVerdicts.data && capVerdicts.data.version ? capVerdicts.data.version : null,
+    prohibited_appended: capVerdicts.prohibited_appended,
+    duplicates_skipped: capVerdicts.duplicates_skipped,
+    appended_keys: capVerdicts.appended_keys,
+    rule: 'se anexa prohibited[] a VIDEO_CAP_RULES sin traduccion; inert_removable[] e indeterminado[] NO se tocan',
+    status: capVerdicts.ok ? 'OK' : 'NO_COMPUTADO',
+  };
+
   // --- 1. ¿De dónde sale el audio? (anti-invención [R1])
   let operatorRenditions = null;
   if (opts.audio) {
@@ -777,11 +1049,11 @@ async function run(opts) {
 
   // --- 2. Abrir entrada
   if (!opts.in || opts.in === true) {
-    throw Object.assign(new Error('falta --in <master.m3u8>'), { exitCode: EXIT.BAD_INPUT });
+    throw Object.assign(new Error('falta --in <master.m3u8>'), { exitCode: EXIT.INPUT_MISSING });
   }
   const stat = fs.statSync(opts.in);
   if (!stat.isFile() || stat.size === 0) {
-    throw Object.assign(new Error(`entrada vacía o no es fichero: ${opts.in}`), { exitCode: EXIT.BAD_INPUT });
+    throw Object.assign(new Error(`entrada vacía o no es fichero: ${opts.in}`), { exitCode: EXIT.INPUT_MISSING });
   }
   report.input.size_bytes = stat.size;
 
@@ -792,8 +1064,95 @@ async function run(opts) {
 
   // --- 4. Fuente de audio efectiva (se resuelve tras ver si el origen ya trae EXT-X-MEDIA)
   //        En modo master basta con mirar el primer bloque. En catálogo, cada bloque declara.
+  // --- 4. PREFLIGHT del gate de RUTA (t9, HUECO 1 modo default) — ANTES de abrir la salida.
+  //        Un archivo con credenciales NO debe tocar el disco del repo ni un instante: no se
+  //        escribe-y-borra, se rechaza antes de crear el stream. Solo aplica al modo default
+  //        (reproducible): en modo redactado la salida es segura de compartir a propósito.
+  const redactMode = !!opts['redact-credentials'] || !!opts['mask-credentials'];
   const wantPlaylist = !opts['report-only'];
-  const outStream = wantPlaylist && opts.out ? fs.createWriteStream(opts.out, { encoding: 'utf8' }) : null;
+  const toStdout = opts.out === '-';
+  report.sensitivity.mode = redactMode ? 'redacted' : 'unmasked';
+  report.sensitivity.playable = redactMode ? false : true;
+  report.sensitivity.sensitive = redactMode ? false : true;
+  report.sensitivity.marker = redactMode ? SENSITIVE_MARKER_REDACTED : SENSITIVE_MARKER_UNMASKED;
+
+  if (wantPlaylist && !toStdout && opts.out && !redactMode) {
+    const probe = isInsideGitRepo(opts.out);
+    report.sensitivity.repo_path_gate = {
+      applicable: true,
+      inside: probe.inside,
+      repo_root: probe.repoRoot,
+      refused: probe.inside,
+    };
+    if (probe.inside) {
+      throw Object.assign(
+        new Error(
+          `GATE DE RUTA (exit 6): el destino "${opts.out}" cae dentro del repositorio git ` +
+          `(${probe.repoRoot}) y el modo por defecto escribe credenciales reales. ` +
+          `No se ha creado el fichero. Usa una ruta fuera del repo, o -–redact-credentials ` +
+          `si el artefacto es para compartir.`
+        ),
+        { exitCode: EXIT.OUTPUT_PATH_INSIDE_REPO }
+      );
+    }
+  } else {
+    report.sensitivity.repo_path_gate = {
+      applicable: wantPlaylist && !toStdout && !!opts.out,
+      evaluated: false,
+      reason: redactMode
+        ? 'modo redactado: la salida no contiene credenciales, no aplica el gate de ruta'
+        : (wantPlaylist && !toStdout ? 'sin destino de fichero' : 'sin escritura de playlist'),
+    };
+  }
+
+  /* PREFLIGHT de colisión de destino (exit 8). Se comprueba ANTES de abrir el fichero, igual
+   * que el gate de ruta. Sin --force, rehusar sobrescribir es lo correcto cuando el artefacto
+   * puede contener credenciales: un re-run accidental no debe pisar una salida previa.
+   * EEXIST NO se mezcla con el 6: 6 = política de ruta, 8 = colisión. */
+  if (wantPlaylist && !toStdout && opts.out) {
+    const exists = fs.existsSync(opts.out);
+    report.output_collision_gate = {
+      applicable: true,
+      path_exists: exists,
+      force: !!opts.force,
+      refused: exists && !opts.force,
+    };
+    if (exists && !opts.force) {
+      throw Object.assign(
+        new Error(
+          `DESTINO EXISTE (exit 8): "${opts.out}" ya existe y no se pasó --force. ` +
+          `No se ha abierto ni truncado el fichero. Borra el destino, elige otra ruta, o pasa ` +
+          `--force si de verdad quieres sobrescribirlo.`
+        ),
+        { exitCode: EXIT.OUTPUT_EXISTS }
+      );
+    }
+  } else {
+    report.output_collision_gate = { applicable: false, reason: 'sin destino de fichero' };
+  }
+
+  // Segunda línea de defensa: 'wx' falla con EEXIST si alguien crea el fichero entre las dos
+  // comprobaciones. Ese EEXIST se mapea al MISMO código 8 (misma causa), nunca al 6.
+  const writeFlag = opts.force ? 'w' : 'wx';
+  let outStream = null;
+  if (!wantPlaylist) outStream = null;
+  else if (toStdout) outStream = process.stdout;
+  else if (opts.out) {
+    try {
+      outStream = fs.createWriteStream(opts.out, { encoding: 'utf8', flags: writeFlag });
+    } catch (e) {
+      if (e && e.code === 'EEXIST') {
+        throw Object.assign(new Error(`DESTINO EXISTE (exit 8): ${e.message}`), { exitCode: EXIT.OUTPUT_EXISTS });
+      }
+      throw Object.assign(new Error(`no se pudo abrir la salida: ${e.message}`), { exitCode: EXIT.INPUT_MISSING });
+    }
+    outStream.on('error', (e) => {
+      if (e && e.code === 'EEXIST') {
+        process.stderr.write(`DESTINO EXISTE (exit 8): ${e.message}\n`);
+        process.exit(EXIT.OUTPUT_EXISTS);
+      }
+    });
+  }
 
   let pendingMediaForMaster = null; // en modo master, se emiten una vez tras la cabecera
   let headerEmitted = false;
@@ -805,11 +1164,70 @@ async function run(opts) {
     crlfDelay: Infinity,
   });
 
-  const write = (line) => {
+  /* ---------------------------------------------------------------------------------------
+   * Emisión con enmascarado + MARKER de sensibilidad (t9, HUECO 1)
+   * ---------------------------------------------------------------------------------------
+   * [B1] el enmascarado no se aplicaba al cuerpo: aquí se aplica a CADA línea escrita.
+   * Los dos modos son DELIBERADAMENTE distintos y el gate NO es universal:
+   *   - redactado (`--redact-credentials`): se enmascara cada línea y un invariante interno
+   *     verifica que el enmascarado sea idempotente. Si falla, es un DEFECTO del programa
+   *     (exit 1), no un resultado de política. La salida NO es reproducible: se declara.
+   *   - default (reproducible): NO se evalúa el contenido de la URI (evaluarlo empujaría a
+   *     entregar una lista rota: un hash en el path da 404 al arrancar el canal). El gate de
+   *     este modo es de RUTA y ya ocurrió en el PREFLIGHT, antes de abrir el fichero.
+   *     Aquí solo se CUENTA la exposición para el reporte.
+   */
+  const credState = {
+    mode: redactMode ? 'redacted' : 'unmasked',
+    gate: redactMode ? 'content-invariant' : 'path-preflight',
+    lines_scanned: 0,
+    lines_masked: 0,
+    credentials_present_unmasked: 0,
+    violations: 0,
+    violation_samples: [],
+  };
+
+  let markerEmitted = false;
+  const write = (rawLine) => {
     if (!outStream) return;
+    credState.lines_scanned++;
+    let line = rawLine;
+
+    if (credState.gate === 'content-invariant') {
+      line = maskCredentials(rawLine);
+      if (line !== rawLine) credState.lines_masked++;
+      const residual = residualCredential(line);
+      if (residual !== null) {
+        credState.violations++;
+        if (credState.violation_samples.length < 5) credState.violation_samples.push(residual);
+        throw Object.assign(
+          new Error(
+            `INVARIANTE INTERNO ROTO (exit 1): el enmascarado no es idempotente; una línea seguiría ` +
+            `filtrando credenciales. Es un defecto del programa, no una decisión de política. ` +
+            `Muestra enmascarada: ${residual.slice(0, 160)}`
+          ),
+          { exitCode: EXIT.INTERNAL_INVARIANT }
+        );
+      }
+    } else {
+      // Modo por defecto: no se toca nada; se CUENTA la exposición para el reporte.
+      if (residualCredential(rawLine) !== null) credState.credentials_present_unmasked++;
+    }
+
     outStream.write(line + '\n');
     report.emission.lines_written++;
     report.emission.bytes_written += Buffer.byteLength(line, 'utf8') + 1;
+
+    // Marker de sensibilidad: se estampa INMEDIATAMENTE después de #EXTM3U, que es la primera
+    // línea obligatoria del manifiesto. Es una línea de comentario (`# `), válida en M3U/M3U8.
+    // OJO: en la lista real `#EXTM3U` lleva atributos (`x-tvg-url=…`), así que el match es
+    // `^#EXTM3U` seguido de espacio o fin de línea, NO `^#EXTM3U$`.
+    if (!markerEmitted && /^#EXTM3U(\s|$)/.test(line)) {
+      outStream.write(report.sensitivity.marker + '\n');
+      report.emission.lines_written++;
+      report.emission.bytes_written += Buffer.byteLength(report.sensitivity.marker, 'utf8') + 1;
+      markerEmitted = true;
+    }
   };
 
   /**
@@ -870,6 +1288,8 @@ async function run(opts) {
         dropLines.add(c.lineIndex);
         inc(report._capsRemoved || (report._capsRemoved = new Map()), `${c.rule.tag}:${c.rule.key}`);
         inc(report._capsEffect || (report._capsEffect = new Map()), c.rule.effect);
+        // Trazabilidad: cuántas líneas elimina cada FUENTE de regla (t7 vs cap_verdicts.json).
+        inc(report._capsBySource || (report._capsBySource = new Map()), c.rule.source || 't7-VideoCapRules');
       }
       // Desglose por clave: cuántas veces aparece, cuántas LIMITA de verdad y con qué valores.
       // Es lo que responde "cuando limiten" con datos, no con la intención de la regla.
@@ -886,7 +1306,64 @@ async function run(opts) {
       report._capsDetail.set(k, det);
     }
     for (const c of block.candidateLines) {
-      inc(report._candidates || (report._candidates = new Map()), `${c.rule.tag}:${c.rule.key}`);
+      const key = `${c.rule.tag}:${c.rule.key}`;
+      inc(report._candidates || (report._candidates = new Map()), key);
+      // t9 HUECO 3: veredicto EXPLÍCITO por candidato, consumido de cap_verdicts.json (t10).
+      // No se adjudica aquí: se reporta el veredicto de t10 y, aparte, lo que este generador
+      // hace con la línea. Si el fichero no está, el veredicto queda NO_COMPUTADO.
+      const v = verdictIndex.get(`${c.rule.tag}|${c.rule.key}`) || null;
+      const cd = (report._candidateVerdicts || (report._candidateVerdicts = new Map())).get(key) || {
+        verdict: v ? v.verdict : 'NO_COMPUTADO',
+        verdict_source: v ? 'cap_verdicts.json (t10)' : null,
+        kind: (v && v.kind) || c.rule.kind || null,
+        effect: (v && v.effect) || null,
+        t10_note: v ? v.note : null,
+        present: 0,
+        removed_by_generator: false,
+        values_observed: new Map(),
+      };
+      cd.present++;
+      if (cd.values_observed.size < 8) inc(cd.values_observed, `${c.valueText}`);
+      report._candidateVerdicts.set(key, cd);
+    }
+
+    /* ---------------------------------------------------------------------------------------
+     * t9 HUECO 2 — AUDIO PASSTHROUGH (`--enable-audio-passthrough`, alias `--enable-eac3`)
+     * ---------------------------------------------------------------------------------------
+     * Hecho medido: la lista APAGA `inputstream.adaptive.audio_eac3` en el 100% de los canales
+     * mientras su propia `audio_codec_priority=eac3,ac3,aac,mp3` declara E-AC-3 como PRIMERA
+     * preferencia (03_HEADERS_MAP.md §8; muestra live_corrected L177 vs L344). Apagar el códec
+     * que se dice preferir es una contradicción; el operador aprobó reactivarlo.
+     * Regla: solo se reactiva si el códec está en la prioridad DECLARADA. Sin flag, no se toca.
+     */
+    if (opts['enable-audio-passthrough'] || opts['enable-eac3']) {
+      const prioRaw = block.audioPriority
+        || (report._globalAudioPriority && report._globalAudioPriority.value) || null;
+      const prioSource = block.audioPriority ? 'per_channel'
+        : (report._globalAudioPriority ? 'global_header' : 'none');
+      const prioTokens = prioRaw
+        ? prioRaw.split(',').map((s) => s.trim().toLowerCase()).filter(Boolean)
+        : [];
+      if (report._audioPrioSource === undefined && prioRaw) {
+        report._audioPrioSource = prioSource;
+        report._audioPrioTokens = prioTokens;
+      }
+      for (const a of block.audioDisableLines) {
+        const val = String(a.valueText).toLowerCase();
+        if (val !== 'false') continue;   // ya está en true: nada que reactivar
+        // `audio_eac3` es BOOLEANO, no numérico: se compara con 'false', no con =/
+        const matched = a.def.tokens.find((t) => prioTokens.includes(t)) || null;
+        if (matched) {
+          dropLines.add(a.lineIndex);
+          inc(report._audioReactivated || (report._audioReactivated = new Map()), a.def.key);
+          const det = (report._audioReactivatedDetail || (report._audioReactivatedDetail = new Map())).get(a.def.key)
+            || { matched_token: matched, priority_source: prioSource, count: 0 };
+          det.count++;
+          report._audioReactivatedDetail.set(a.def.key, det);
+        } else {
+          inc(report._audioLeft || (report._audioLeft = new Map()), a.def.key);
+        }
+      }
     }
 
     // --- Audio: renditions disponibles para ESTE bloque
@@ -963,6 +1440,16 @@ async function run(opts) {
     const line = raw.endsWith('\r') ? raw.slice(0, -1) : raw;
     const thisIndex = lineIndex++;
 
+    // t9 HUECO 2: la prioridad de audio puede venir SOLO en la cabecera global
+    // (`#EXT-X-APE-AUDIO-CODEC-PRIORITY`). Se captura fuera del bloque para que el
+    // passthrough tenga una fuente de verdad cuando el canal no la repite.
+    if (!report._globalAudioPriority && /^#EXT-X-APE-AUDIO-CODEC-PRIORITY:/.test(line)) {
+      report._globalAudioPriority = {
+        value: line.slice('#EXT-X-APE-AUDIO-CODEC-PRIORITY:'.length).trim(),
+        line: thisIndex + 1,
+      };
+    }
+
     if (mode === 'catalogue') {
       if (line.startsWith(EXTINF)) {
         if (currentBlock) {
@@ -996,11 +1483,48 @@ async function run(opts) {
   if (currentBlock) { const d = flushBlock(currentBlock); blocks.push(d); }
   if (outStream) {
     if (mode === 'catalogue' && !headerEmitted) { for (const h of headerBuffer) write(h); }
-    outStream.end();
-    await new Promise((res, rej) => outStream.on('finish', res).on('error', rej));
+    // Salvaguarda: si la entrada no traía #EXTM3U, el marker se estampa al final y se declara.
+    if (!markerEmitted) {
+      outStream.write(report.sensitivity.marker + '\n');
+      report.emission.lines_written++;
+      markerEmitted = true;
+      report.sensitivity.marker_position = 'END (la entrada no traía #EXTM3U)';
+    } else {
+      report.sensitivity.marker_position = 'AFTER_EXTM3U';
+    }
+    if (!toStdout) {
+      outStream.end();
+      await new Promise((res, rej) => outStream.on('finish', res).on('error', rej));
+    }
     report.emission.playlist_written = true;
-    report.emission.path = opts.out;
+    report.emission.path = toStdout ? '(stdout)' : opts.out;
   }
+  report.credentials = {
+    mode: credState.mode,
+    gate: credState.gate,
+    // Gate por modo (instrucción del capitán): NUNCA universal.
+    gate_by_mode: {
+      redacted: 'contenido NO se evalua como gate; invariante de idempotencia del enmascarado',
+      unmasked: 'contenido NO se evalua; el gate es de RUTA y ocurre en el preflight (exit 6)',
+    },
+    reproducible: credState.mode === 'unmasked',
+    playable: report.sensitivity.playable,
+    sensitive: report.sensitivity.sensitive,
+    distribution: credState.mode === 'redacted' ? 'SAFE-TO-SHARE' : 'DO-NOT-DISTRIBUTE',
+    marker: report.sensitivity.marker,
+    lines_scanned: credState.lines_scanned,
+    lines_masked: credState.lines_masked,
+    credentials_present_unmasked: credState.credentials_present_unmasked,
+    violations: credState.violations,
+    note: credState.mode === 'redacted'
+      ? 'Modo REDACTED: la salida NO es reproducible (usuario/password sustituidos por ***). ' +
+        'Se enmascara todo par de segmentos no estructural, asi que tambien se pierden rutas que ' +
+        'no eran credenciales. Es la direccion segura: sobre-enmascarar antes que filtrar. ' +
+        'NO se hashea la credencial en el path: un hash ahi da 404 al arrancar el canal.'
+      : 'Modo por defecto: la salida ES reproducible y contiene credenciales reales en las URIs. ' +
+        'DO-NOT-DISTRIBUTE: no compartir, no commitear, no adjuntar. El destino se rechaza si cae ' +
+        'dentro del repo git (exit 6), antes de crear el fichero.',
+  };
 
   /* ---------------- cierre del reporte ---------------- */
 
@@ -1011,7 +1535,90 @@ async function run(opts) {
 
   report.video.caps_removed = sortedObj(report._capsRemoved || new Map());
   report.video.caps_by_effect = sortedObj(report._capsEffect || new Map());
+  report.video.caps_removed_by_rule_source = sortedObj(report._capsBySource || new Map());
   report.video.candidates_not_removed = sortedObj(report._candidates || new Map());
+
+  /* t9 HUECO 3: veredicto EXPLÍCITO por candidato (consumido de cap_verdicts.json, t10).
+   * Se reportan los 7 del fichero, no solo los que llegaron vivos a la fase de candidato:
+   * `chooser_bandwidth_max` ya es una VIDEO_CAP_RULE (prohibited[]), así que se contabiliza
+   * por `caps_detail_by_key` en lugar de por `candidateLines`. Ninguno queda sin veredicto. */
+  const capDetail = report._capsDetail || new Map();
+  report.candidate_verdicts = (() => {
+    const out = {};
+    const seen = new Set();
+    const emit = (key, rec) => { out[key] = rec; seen.add(key); };
+    // (1) Los que aparecieron como candidato en esta corrida.
+    for (const [k, d] of (report._candidateVerdicts || new Map()).entries()) {
+      emit(k, {
+        verdict: d.verdict,
+        verdict_source: d.verdict_source,
+        kind: d.kind,
+        effect: d.effect,
+        t10_note: d.t10_note,
+        present: d.present,
+        removed_by_generator: d.removed_by_generator,
+        values_observed: Object.fromEntries([...d.values_observed.entries()].sort((a, b) => b[1] - a[1])),
+      });
+    }
+    // (2) Los del fichero t10 que ya son cap (prohibited[]) o que no aparecieron.
+    for (const [k, v] of verdictIndex.entries()) {
+      const key = `${k.split('|')[0]}:${k.split('|')[1]}`;
+      if (seen.has(key)) continue;
+      const det = capDetail.get(key) || null;
+      emit(key, {
+        verdict: v.verdict,
+        verdict_source: 'cap_verdicts.json (t10)',
+        kind: v.kind,
+        effect: v.effect,
+        t10_note: v.note,
+        present: det ? det.present : 0,
+        removed_by_generator: det ? det.removed > 0 : false,
+        values_observed: det ? Object.fromEntries([...det.values.entries()].sort((a, b) => b[1] - a[1])) : {},
+      });
+    }
+    // (3) Candidatos vistos sin entrada en el fichero -> NO_COMPUTADO explícito, no silencio.
+    for (const [k] of (report._candidates || new Map()).entries()) {
+      if (seen.has(k)) continue;
+      emit(k, {
+        verdict: 'NO_COMPUTADO',
+        verdict_source: null,
+        kind: null, effect: null, t10_note: null,
+        present: 0, removed_by_generator: false, values_observed: {},
+      });
+    }
+    return Object.fromEntries(Object.entries(out).sort((a, b) => b[1].present - a[1].present || (a[0] < b[0] ? -1 : 1)));
+  })();
+  report.candidate_verdicts_summary = (() => {
+    const counts = {};
+    for (const d of Object.values(report.candidate_verdicts)) {
+      const v = d.verdict || 'NO_COMPUTADO';
+      counts[v] = (counts[v] || 0) + 1;
+    }
+    return counts;
+  })();
+  report.candidate_verdicts_total = Object.keys(report.candidate_verdicts).length;
+
+  /* t9 HUECO 2: resultado del audio passthrough. */
+  report.audio_passthrough = {
+    flag: !!(opts['enable-audio-passthrough'] || opts['enable-eac3']),
+    priority_source: report._audioPrioSource || (report._audioPrioTokens ? 'none' : 'NO_COMPUTADO'),
+    priority_tokens: report._audioPrioTokens || null,
+    reactivated: sortedObj(report._audioReactivated || new Map()),
+    reactivated_total: [...(report._audioReactivated || new Map()).values()].reduce((a, b) => a + b, 0),
+    reactivated_detail: Object.fromEntries(
+      [...(report._audioReactivatedDetail || new Map()).entries()].map(([k, d]) => [k, {
+        matched_token: d.matched_token, priority_source: d.priority_source, count: d.count,
+      }])
+    ),
+    left_not_in_priority: sortedObj(report._audioLeft || new Map()),
+    left_total: [...(report._audioLeft || new Map()).values()].reduce((a, b) => a + b, 0),
+    note: (opts['enable-audio-passthrough'] || opts['enable-eac3'])
+      ? 'Se elimina la clave que APAGA un codec SOLO si el codec esta en la prioridad declarada. ' +
+        'Los que no estan en la prioridad se dejan intactos y se reportan. `audio_eac3` es booleano: ' +
+        'se compara con "false", no numericamente.'
+      : 'Flag OFF: no se toco ninguna clave de audio. Los apagados siguen como estaban.',
+  };
+
   report.video.caps_detail_by_key = Object.fromEntries(
     [...(report._capsDetail || new Map()).entries()]
       .sort((a, b) => b[1].present - a[1].present || (a[0] < b[0] ? -1 : 1))
@@ -1033,6 +1640,9 @@ async function run(opts) {
   report.codecs.codecs_no_video_codec = counters.codecsNoVideoCodec.get('total') || 0;
   delete report._capsRemoved; delete report._capsEffect; delete report._candidates;
   delete report._videoCodecs; delete report._audioCodecs; delete report._capsDetail;
+  delete report._candidateVerdicts; delete report._capsBySource;
+  delete report._audioReactivated; delete report._audioLeft;
+  delete report._audioReactivatedDetail; delete report._audioPrioSource; delete report._audioPrioTokens;
 
   // --- Veredicto del audio [R1]
   if (report.audio.demuxed) {
@@ -1095,18 +1705,18 @@ async function main() {
 
   if (!opts.in) {
     process.stderr.write('ERROR: falta --in <master.m3u8>. Usa --help.\n');
-    return EXIT.BAD_INPUT;
+    return EXIT.INPUT_MISSING;
   }
   if (!opts.out && !opts['report-only']) {
     process.stderr.write('ERROR: sin --out ni --report-only no hay nada que hacer.\n');
-    return EXIT.BAD_INPUT;
+    return EXIT.INPUT_MISSING;
   }
 
   let report;
   try {
     report = await run(opts);
   } catch (e) {
-    const code = e.exitCode || EXIT.BAD_INPUT;
+    const code = e.exitCode || EXIT.INPUT_MISSING;
     const errReport = {
       tool: 'gen_demuxed_master.js',
       generated_at: new Date().toISOString(),
@@ -1140,7 +1750,7 @@ async function main() {
 if (require.main === module) {
   main().then((code) => process.exit(code)).catch((e) => {
     process.stderr.write(`FATAL: ${e && e.stack ? e.stack : e}\n`);
-    process.exit(EXIT.BAD_INPUT);
+    process.exit(EXIT.INPUT_MISSING);
   });
 }
 

@@ -1,7 +1,7 @@
 {
   "tool": "gen_demuxed_master.js",
   "version": "1.0.0",
-  "generated_at": "2026-11-02T13:30:50.588Z",
+  "generated_at": "2026-11-02T13:44:23.245Z",
   "input": {
     "path": "C:\\Users\\HFRC\\Downloads\\APE_LISTA_1793589060441.m3u8",
     "size_bytes": 604593696
@@ -12,7 +12,10 @@
     "mask_credentials": false,
     "allow_muxed_passthrough": false,
     "declared_source_override": null,
-    "report_only": true
+    "report_only": true,
+    "redact_credentials": false,
+    "enable_audio_passthrough": false,
+    "force": false
   },
   "audio": {
     "source": null,
@@ -29,27 +32,31 @@
       "#EXTVLCOPT:adaptive-maxwidth": 10573,
       "#EXTVLCOPT:video-height": 10573,
       "#EXTVLCOPT:video-width": 10573,
+      "#KODIPROP:inputstream.adaptive.chooser_bandwidth_max": 10573,
       "#KODIPROP:inputstream.adaptive.max_framerate": 10573,
       "#KODIPROP:inputstream.adaptive.max_resolution": 10573
     },
     "caps_by_effect": {
       "inert-vlc": 52865,
-      "kodi-addon-key": 21146
+      "kodi-addon-key": 31719
     },
     "caps_not_limiting": 32150,
-    "caps_limiting": 41861,
+    "caps_limiting": 52434,
     "caps_undetermined": 0,
     "candidates_not_removed": {
       "#EXTVLCOPT:adaptive-bandwidth-factor": 10573,
       "#EXTVLCOPT:adaptive-maxbw": 10573,
       "#EXTVLCOPT:video-display-fps": 10573,
       "#EXTVLCOPT:video-fps": 10573,
-      "#KODIPROP:inputstream.adaptive.chooser_bandwidth_max": 10573,
       "#KODIPROP:inputstream.adaptive.max_buffer_duration": 10573,
       "#KODIPROP:inputstream.adaptive.preferred_video_resolution": 10573
     },
     "downscale_violations": [],
     "source_resolution_missing": 0,
+    "caps_removed_by_rule_source": {
+      "t7-VideoCapRules": 74011,
+      "cap_verdicts.json": 10573
+    },
     "caps_detail_by_key": {
       "#EXTVLCOPT:adaptive-maxbitrate": {
         "effect_measured": "inert-vlc",
@@ -116,6 +123,19 @@
           "3840": 808
         }
       },
+      "#KODIPROP:inputstream.adaptive.chooser_bandwidth_max": {
+        "effect_measured": "kodi-addon-key",
+        "kind": "bitrate",
+        "present": 10573,
+        "limiting": 10573,
+        "not_limiting": 0,
+        "undetermined": 0,
+        "removed": 10573,
+        "values_observed": {
+          "8000000": 9765,
+          "19800000": 808
+        }
+      },
       "#KODIPROP:inputstream.adaptive.max_framerate": {
         "effect_measured": "kodi-addon-key",
         "kind": "fps",
@@ -170,8 +190,166 @@
     "bytes_written": 0,
     "lines_written": 0
   },
+  "sensitivity": {
+    "mode": "unmasked",
+    "playable": true,
+    "sensitive": true,
+    "marker": "# APE-SENSITIVE: contains credentials, DO NOT DISTRIBUTE",
+    "repo_path_gate": {
+      "applicable": false,
+      "evaluated": false,
+      "reason": "sin escritura de playlist"
+    }
+  },
   "exit": {
     "code": 2,
     "reason": "audio no computado y sin --allow-muxed-passthrough"
+  },
+  "cap_verdicts_source": {
+    "path": "C:\\Users\\HFRC\\Desktop\\IPTV_Navigator_PRO_v5.4_MAX_AGGRESSION\\tools\\ape-demuxed\\cap_verdicts.json",
+    "loaded": true,
+    "error": null,
+    "schema_version": "2026-11-02",
+    "prohibited_appended": 1,
+    "duplicates_skipped": 0,
+    "appended_keys": [
+      "#KODIPROP:inputstream.adaptive.chooser_bandwidth_max"
+    ],
+    "rule": "se anexa prohibited[] a VIDEO_CAP_RULES sin traduccion; inert_removable[] e indeterminado[] NO se tocan",
+    "status": "OK"
+  },
+  "output_collision_gate": {
+    "applicable": false,
+    "reason": "sin destino de fichero"
+  },
+  "_globalAudioPriority": {
+    "value": "eac3,ac3,aac,mp3",
+    "line": 172
+  },
+  "credentials": {
+    "mode": "unmasked",
+    "gate": "path-preflight",
+    "gate_by_mode": {
+      "redacted": "contenido NO se evalua como gate; invariante de idempotencia del enmascarado",
+      "unmasked": "contenido NO se evalua; el gate es de RUTA y ocurre en el preflight (exit 6)"
+    },
+    "reproducible": true,
+    "playable": true,
+    "sensitive": true,
+    "distribution": "DO-NOT-DISTRIBUTE",
+    "marker": "# APE-SENSITIVE: contains credentials, DO NOT DISTRIBUTE",
+    "lines_scanned": 0,
+    "lines_masked": 0,
+    "credentials_present_unmasked": 0,
+    "violations": 0,
+    "note": "Modo por defecto: la salida ES reproducible y contiene credenciales reales en las URIs. DO-NOT-DISTRIBUTE: no compartir, no commitear, no adjuntar. El destino se rechaza si cae dentro del repo git (exit 6), antes de crear el fichero."
+  },
+  "candidate_verdicts": {
+    "#EXTVLCOPT:adaptive-bandwidth-factor": {
+      "verdict": "inocuo_para_vlc",
+      "verdict_source": "cap_verdicts.json (t10)",
+      "kind": "other",
+      "effect": null,
+      "t10_note": null,
+      "present": 10573,
+      "removed_by_generator": false,
+      "values_observed": {
+        "1.0": 10573
+      }
+    },
+    "#EXTVLCOPT:adaptive-maxbw": {
+      "verdict": "inocuo_para_vlc",
+      "verdict_source": "cap_verdicts.json (t10)",
+      "kind": "bitrate",
+      "effect": null,
+      "t10_note": null,
+      "present": 10573,
+      "removed_by_generator": false,
+      "values_observed": {
+        "999999999": 10573
+      }
+    },
+    "#EXTVLCOPT:video-display-fps": {
+      "verdict": "inocuo_para_vlc",
+      "verdict_source": "cap_verdicts.json (t10)",
+      "kind": "fps",
+      "effect": null,
+      "t10_note": null,
+      "present": 10573,
+      "removed_by_generator": false,
+      "values_observed": {
+        "30": 7457,
+        "60": 3116
+      }
+    },
+    "#EXTVLCOPT:video-fps": {
+      "verdict": "inocuo_para_vlc",
+      "verdict_source": "cap_verdicts.json (t10)",
+      "kind": "fps",
+      "effect": null,
+      "t10_note": null,
+      "present": 10573,
+      "removed_by_generator": false,
+      "values_observed": {
+        "30": 7457,
+        "60": 3116
+      }
+    },
+    "#KODIPROP:inputstream.adaptive.chooser_bandwidth_max": {
+      "verdict": "cap_de_video",
+      "verdict_source": "cap_verdicts.json (t10)",
+      "kind": "bitrate",
+      "effect": "kodi-addon-key",
+      "t10_note": null,
+      "present": 10573,
+      "removed_by_generator": true,
+      "values_observed": {
+        "8000000": 9765,
+        "19800000": 808
+      }
+    },
+    "#KODIPROP:inputstream.adaptive.max_buffer_duration": {
+      "verdict": "indeterminado",
+      "verdict_source": "cap_verdicts.json (t10)",
+      "kind": "other",
+      "effect": null,
+      "t10_note": null,
+      "present": 10573,
+      "removed_by_generator": false,
+      "values_observed": {
+        "104": 7457,
+        "110": 2308,
+        "144": 808
+      }
+    },
+    "#KODIPROP:inputstream.adaptive.preferred_video_resolution": {
+      "verdict": "inocuo_para_vlc",
+      "verdict_source": "cap_verdicts.json (t10)",
+      "kind": "resolution",
+      "effect": null,
+      "t10_note": null,
+      "present": 10573,
+      "removed_by_generator": false,
+      "values_observed": {
+        "2160": 10573
+      }
+    }
+  },
+  "candidate_verdicts_summary": {
+    "inocuo_para_vlc": 5,
+    "cap_de_video": 1,
+    "indeterminado": 1
+  },
+  "candidate_verdicts_total": 7,
+  "audio_passthrough": {
+    "flag": false,
+    "priority_source": "NO_COMPUTADO",
+    "priority_tokens": null,
+    "reactivated": {},
+    "reactivated_total": 0,
+    "reactivated_detail": {},
+    "left_not_in_priority": {},
+    "left_total": 0,
+    "note": "Flag OFF: no se toco ninguna clave de audio. Los apagados siguen como estaban."
   }
 }

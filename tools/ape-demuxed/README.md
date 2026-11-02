@@ -5,10 +5,16 @@
 | Archivo | Rol |
 |---|---|
 | [`gen_demuxed_master.js`](gen_demuxed_master.js) | Generador. Node ≥ 18, **cero dependencias**. Cada regla documentada en el propio código con el hecho medido que la obliga. |
+| [`FIXES.md`](FIXES.md) | **t9**: hueco → fix → evidencia, para los 3 huecos (credenciales, audio passthrough, veredictos de caps). |
+| [`SECURITY.md`](SECURITY.md) | **t9**: los dos modos de credenciales, por qué el gate es dependiente del modo, y la prueba de preflight (el fichero no toca disco). |
+| [`cap_verdicts.json`](cap_verdicts.json) | Veredictos de caps de **t10**. El generador anexa `prohibited[]` a sus reglas y consume `verdicts[]` sin traducir. |
 | `examples/fixture_master_muxed.m3u8` | FIXTURE sintético: master muxed con caps prohibidos. |
 | `examples/fixture_master_demuxed_source.m3u8` | FIXTURE sintético: master que ya declara `#EXT-X-MEDIA` de audio. |
 | `examples/fixture_demuxed_master.OUTPUT.m3u8` | **Salida real del generador** sobre el fixture anterior (credenciales enmascaradas). |
 | `examples/fixture_demuxed_master.OUTPUT.report.json` | Reporte real de esa corrida. |
+| `examples/fixture_t9_credentials.m3u8` | FIXTURE t9: credencial **sintética visible** en el URI (para probar los dos modos). |
+| `examples/fixture_t9_audio_passthrough.m3u8` | FIXTURE t9: `audio_eac3=false` con prioridad `eac3,…` (la contradicción medida). |
+| `examples/fixture_t9_cap_candidates.m3u8` | FIXTURE t9: los 7 candidatos con sus valores reales medidos. |
 | `examples/audio_renditions.schema-example.json` | **Esquema** de `--audio`. URIs en dominio reservado `.invalid`: no son datos de nadie. |
 | `examples/reference_list_report.json` | **Corrida REAL** sobre `APE_LISTA_1793589060441.m3u8` (604.593.696 B, sha256 `523d52a6…5049d6`), modo catálogo, 10.573 canales. |
 
@@ -145,18 +151,29 @@ node gen_demuxed_master.js --in <master.m3u8> --out <salida.m3u8> --allow-muxed-
 | `--audio-group-id <id>` | `GROUP-ID` en modo master (default `aud`). |
 | `--declared-source WxH@bps` | **Sube** el listón del fail-closed si la fuente real es mayor que la mejor variante. |
 | `--caps limiting\|all` | `all` (default) quita siempre; `limiting` solo cuando el cap limita probadamente. |
-| `--mask-credentials` | Enmascara usuario/password en las URIs emitidas. |
+| `--redact-credentials` | **Modo REDACTED**: enmascara usuario/password en toda la salida. La salida **no es reproducible** (para compartir/commitear). Ver [`SECURITY.md`](SECURITY.md). |
+| `--mask-credentials` | Alias de `--redact-credentials` (compatibilidad con corridas previas). |
+| `--enable-audio-passthrough` | Reactiva `inputstream.adaptive.audio_{eac3,ac3,dolby_atmos,dts,truehd}=false` **solo** si el códec está en la prioridad declarada. Sin flag no toca nada. |
+| `--enable-eac3` | Alias de `--enable-audio-passthrough`. |
+| `--force` | Permite sobrescribir la salida si ya existe (si no: exit 8). |
 | `--quiet` | Sin resumen humano por stderr. |
 
 ### Códigos de salida
 
+Un código = un significado. Tabla fijada por el capitán; el razón está en [`SECURITY.md`](SECURITY.md) §4 y
+[`FIXES.md`](FIXES.md).
+
 | Código | Significado |
 |---|---|
 | `0` | Demuxed emitido, o muxed con `--allow-muxed-passthrough` |
+| `1` | `INTERNAL_INVARIANT` — defecto del programa (fuera de la tabla de política) |
 | `2` | `AUDIO_NO_COMPUTADO` — no hay audio real y no se autorizó passthrough |
 | `3` | `VIDEO_DOWNSCALE_VIOLATION` — una variante queda por debajo de la fuente declarada |
-| `4` | `BAD_INPUT` — fichero ilegible/vacío o sin `#EXT-X-STREAM-INF` |
-| `5` | `AUDIO_URI_NO_VERIFICABLE` — rendition sin evidencia válida (anti-invención) |
+| `4` | `INPUT_MISSING` — falta entrada, ilegible/vacía o sin `#EXT-X-STREAM-INF` |
+| `5` | `INVALID_EVIDENCE` — rendition sin evidencia válida (anti-invención) |
+| `6` | `OUTPUT_PATH_INSIDE_REPO` — **gate de ruta**: destino dentro del repo git (preflight, no escribe) |
+| `7` | *reservado — no usar* |
+| `8` | `OUTPUT_EXISTS` — el destino ya existe y no se pasó `--force` |
 
 ---
 
@@ -184,11 +201,13 @@ elimina, con su **efecto medido** —que no siempre es el que la línea sugiere:
 
 ### Desglose real sobre los 10.573 canales (corrida medida)
 
-**74.011 líneas de cap eliminadas** = 7 claves × 10.573. De ellas:
+**84.584 líneas de cap eliminadas** = **74.011** (8 claves de t7, una de ellas sin ocurrencias) **+ 10.573**
+de `cap_verdicts.json` (t10, `chooser_bandwidth_max`). Ver [`FIXES.md`](FIXES.md) HUECO 3.
 
 | Clave | Presente | Limita | No limita | Valores observados |
 |---|---:|---:|---:|---|
 | `#KODIPROP:inputstream.adaptive.max_resolution` | 10.573 | **10.573** | 0 | `1920x1080`×10.573 |
+| `#KODIPROP:inputstream.adaptive.chooser_bandwidth_max` | 10.573 | **10.573** | 0 | `8000000`×9.765 · `19800000`×808 |
 | `#EXTVLCOPT:adaptive-maxbitrate` | 10.573 | **10.573** | 0 | `8000000`×9.765 · `19800000`×808 |
 | `#EXTVLCOPT:video-width` | 10.573 | **9.765** | 808 | `1280`×7.457 · `1920`×2.308 · `3840`×808 |
 | `#EXTVLCOPT:video-height` | 10.573 | **9.765** | 808 | `720`×7.457 · `1080`×2.308 · `2160`×808 |
@@ -196,8 +215,13 @@ elimina, con su **efecto medido** —que no siempre es el que la línea sugiere:
 | `#EXTVLCOPT:adaptive-maxwidth` | 10.573 | **0** | 10.573 | `7680`×10.573 |
 | `#EXTVLCOPT:adaptive-maxheight` | 10.573 | **0** | 10.573 | `4320`×10.573 |
 
-Totales: **41.861 limitaban de verdad**, **32.150 no limitaban nada**, **0 indeterminados**.
-Por efecto: **52.865 inertes en VLC**, **21.146 claves reales de Kodi**.
+Totales: **52.434 limitaban de verdad**, **32.150 no limitaban nada**, **0 indeterminados**.
+Por efecto: **52.865 inertes en VLC**, **31.719 claves reales de Kodi** (21.146 + 10.573).
+Por fuente de regla: `{"t7-VideoCapRules":74011, "cap_verdicts.json":10573}`.
+
+> **Aviso de scope.** Hay dos corridas y **no** son el mismo número: la muestra
+> `scratch/…/live_corrected/sample_in.m3u8` tiene **1 bloque** (141 KB) y ahí se quitan **8** caps de vídeo;
+> las cifras de esta tabla son de la corrida **completa** sobre los **604 MB**. No mezclar ambos scopes.
 
 **Lo que esto corrige del enunciado de la tarea** (medido con `rg`, no inferido):
 
@@ -315,7 +339,8 @@ exit=2 audio no computado y sin --allow-muxed-passthrough
 | `#EXT-X-I-FRAME-STREAM-INF` | 10.573 (no cuenta como variante de reproducción) |
 | `#EXT-X-MEDIA` con URI | **0** |
 | Códecs vistos en STREAM-INF | `hvc1.2.4.L153.B0` ×10.573 · `mp4a.40.2` ×10.573 |
-| Caps eliminados | **74.011** |
+| Caps eliminados | **84.584** (74.011 t7 + 10.573 `cap_verdicts.json`) |
+| Veredictos de candidatos | **7/7** — `{cap_de_video:1, inocuo_para_vlc:5, indeterminado:1}` |
 | Violaciones de downscale | **0** (1 variante por canal ⇒ no hay escalera que baje) |
 | Veredicto | **exit 2 — `AUDIO_NO_COMPUTADO`** |
 

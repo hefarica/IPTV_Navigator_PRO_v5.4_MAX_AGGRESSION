@@ -1,0 +1,26 @@
+#EXTM3U
+# ============================================================================
+# FIXTURE SINTETICO t9 — CASO 2: audio passthrough (HUECO 2)
+# NO son datos de ningun proveedor. Dominio .invalid.
+# Reproduce la contradiccion MEDIDA en la lista real: la lista APAGA E-AC-3 mientras
+# su propia prioridad lo pone PRIMERO (eac3,ac3,aac,mp3).
+#   audio_eac3=false   -> 'eac3' SI esta en la prioridad -> reactivar (se elimina la linea)
+#   audio_dolby_atmos=false -> 'atmos' no esta; se acepta 'eac3' (Atmos sobre DD+) -> reactivar
+#   audio_dts=false    -> 'dts' NO esta en la prioridad      -> se deja y se reporta
+#   audio_truehd=false -> 'truehd' NO esta en la prioridad   -> se deja y se reporta
+#   audio_ac3=true     -> ya habilitado                      -> intacto
+#   Esperado con --enable-audio-passthrough: reactivated=2 (eac3, dolby_atmos), left=2
+#   Esperado SIN flag: no se toca ninguna clave
+# ============================================================================
+#EXT-X-VERSION:9
+#EXT-X-INDEPENDENT-SEGMENTS
+#KODIPROP:inputstream=inputstream.adaptive
+#KODIPROP:inputstream.adaptive.audio_codec_priority=eac3,ac3,aac,mp3
+#KODIPROP:inputstream.adaptive.audio_eac3=false
+#KODIPROP:inputstream.adaptive.audio_ac3=true
+#KODIPROP:inputstream.adaptive.audio_dolby_atmos=false
+#KODIPROP:inputstream.adaptive.audio_dts=false
+#KODIPROP:inputstream.adaptive.audio_truehd=false
+#KODIPROP:inputstream.adaptive.max_resolution=1920x1080
+#EXT-X-STREAM-INF:BANDWIDTH=9000000,AVERAGE-BANDWIDTH=6500000,RESOLUTION=3840x2160,FRAME-RATE=30.000,CODECS="hvc1.2.4.L153.B0,ec-3",VIDEO-RANGE=PQ,STABLE-VARIANT-ID="fx9_C2"
+https://fixtures.invalid/live/***/***/2002.m3u8

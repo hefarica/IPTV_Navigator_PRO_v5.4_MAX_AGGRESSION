@@ -1,7 +1,7 @@
 {
   "tool": "gen_demuxed_master.js",
   "version": "1.0.0",
-  "generated_at": "2026-11-02T13:32:00.412Z",
+  "generated_at": "2026-11-02T13:46:16.245Z",
   "input": {
     "path": "tools\\ape-demuxed\\examples\\fixture_master_demuxed_source.m3u8",
     "size_bytes": 1507
@@ -9,10 +9,13 @@
   "options": {
     "mode": "master",
     "caps": "all",
-    "mask_credentials": true,
-    "allow_muxed_passthrough": false,
+    "mask_credentials": false,
+    "allow_muxed_passthrough": true,
     "declared_source_override": null,
-    "report_only": false
+    "report_only": false,
+    "redact_credentials": true,
+    "enable_audio_passthrough": false,
+    "force": true
   },
   "audio": {
     "source": "in_source",
@@ -40,6 +43,9 @@
     "candidates_not_removed": {},
     "downscale_violations": [],
     "source_resolution_missing": 0,
+    "caps_removed_by_rule_source": {
+      "t7-VideoCapRules": 5
+    },
     "caps_detail_by_key": {
       "#EXTVLCOPT:adaptive-maxbitrate": {
         "effect_measured": "inert-vlc",
@@ -130,11 +136,149 @@
   "emission": {
     "playlist_written": true,
     "path": "tools\\ape-demuxed\\examples\\fixture_demuxed_master.OUTPUT.m3u8",
-    "bytes_written": 1319,
-    "lines_written": 16
+    "bytes_written": 1359,
+    "lines_written": 17
+  },
+  "sensitivity": {
+    "mode": "redacted",
+    "playable": false,
+    "sensitive": false,
+    "marker": "# APE-SENSITIVE: redacted, NOT playable",
+    "repo_path_gate": {
+      "applicable": true,
+      "evaluated": false,
+      "reason": "modo redactado: la salida no contiene credenciales, no aplica el gate de ruta"
+    },
+    "marker_position": "AFTER_EXTM3U"
   },
   "exit": {
     "code": 0,
     "reason": "demuxed emitido"
+  },
+  "cap_verdicts_source": {
+    "path": "C:\\Users\\HFRC\\Desktop\\IPTV_Navigator_PRO_v5.4_MAX_AGGRESSION\\tools\\ape-demuxed\\cap_verdicts.json",
+    "loaded": true,
+    "error": null,
+    "schema_version": "2026-11-02",
+    "prohibited_appended": 1,
+    "duplicates_skipped": 0,
+    "appended_keys": [
+      "#KODIPROP:inputstream.adaptive.chooser_bandwidth_max"
+    ],
+    "rule": "se anexa prohibited[] a VIDEO_CAP_RULES sin traduccion; inert_removable[] e indeterminado[] NO se tocan",
+    "status": "OK"
+  },
+  "output_collision_gate": {
+    "applicable": true,
+    "path_exists": true,
+    "force": true,
+    "refused": false
+  },
+  "credentials": {
+    "mode": "redacted",
+    "gate": "content-invariant",
+    "gate_by_mode": {
+      "redacted": "contenido NO se evalua como gate; invariante de idempotencia del enmascarado",
+      "unmasked": "contenido NO se evalua; el gate es de RUTA y ocurre en el preflight (exit 6)"
+    },
+    "reproducible": false,
+    "playable": false,
+    "sensitive": false,
+    "distribution": "SAFE-TO-SHARE",
+    "marker": "# APE-SENSITIVE: redacted, NOT playable",
+    "lines_scanned": 16,
+    "lines_masked": 0,
+    "credentials_present_unmasked": 0,
+    "violations": 0,
+    "note": "Modo REDACTED: la salida NO es reproducible (usuario/password sustituidos por ***). Se enmascara todo par de segmentos no estructural, asi que tambien se pierden rutas que no eran credenciales. Es la direccion segura: sobre-enmascarar antes que filtrar. NO se hashea la credencial en el path: un hash ahi da 404 al arrancar el canal."
+  },
+  "candidate_verdicts": {
+    "#EXTVLCOPT:adaptive-bandwidth-factor": {
+      "verdict": "inocuo_para_vlc",
+      "verdict_source": "cap_verdicts.json (t10)",
+      "kind": "other",
+      "effect": null,
+      "t10_note": null,
+      "present": 0,
+      "removed_by_generator": false,
+      "values_observed": {}
+    },
+    "#EXTVLCOPT:adaptive-maxbw": {
+      "verdict": "inocuo_para_vlc",
+      "verdict_source": "cap_verdicts.json (t10)",
+      "kind": "bitrate",
+      "effect": null,
+      "t10_note": null,
+      "present": 0,
+      "removed_by_generator": false,
+      "values_observed": {}
+    },
+    "#EXTVLCOPT:video-display-fps": {
+      "verdict": "inocuo_para_vlc",
+      "verdict_source": "cap_verdicts.json (t10)",
+      "kind": "fps",
+      "effect": null,
+      "t10_note": null,
+      "present": 0,
+      "removed_by_generator": false,
+      "values_observed": {}
+    },
+    "#EXTVLCOPT:video-fps": {
+      "verdict": "inocuo_para_vlc",
+      "verdict_source": "cap_verdicts.json (t10)",
+      "kind": "fps",
+      "effect": null,
+      "t10_note": null,
+      "present": 0,
+      "removed_by_generator": false,
+      "values_observed": {}
+    },
+    "#KODIPROP:inputstream.adaptive.chooser_bandwidth_max": {
+      "verdict": "cap_de_video",
+      "verdict_source": "cap_verdicts.json (t10)",
+      "kind": "bitrate",
+      "effect": "kodi-addon-key",
+      "t10_note": null,
+      "present": 0,
+      "removed_by_generator": false,
+      "values_observed": {}
+    },
+    "#KODIPROP:inputstream.adaptive.max_buffer_duration": {
+      "verdict": "indeterminado",
+      "verdict_source": "cap_verdicts.json (t10)",
+      "kind": "other",
+      "effect": null,
+      "t10_note": null,
+      "present": 0,
+      "removed_by_generator": false,
+      "values_observed": {}
+    },
+    "#KODIPROP:inputstream.adaptive.preferred_video_resolution": {
+      "verdict": "inocuo_para_vlc",
+      "verdict_source": "cap_verdicts.json (t10)",
+      "kind": "resolution",
+      "effect": null,
+      "t10_note": null,
+      "present": 0,
+      "removed_by_generator": false,
+      "values_observed": {}
+    }
+  },
+  "candidate_verdicts_summary": {
+    "inocuo_para_vlc": 5,
+    "cap_de_video": 1,
+    "indeterminado": 1
+  },
+  "candidate_verdicts_total": 7,
+  "audio_passthrough": {
+    "flag": false,
+    "priority_source": "NO_COMPUTADO",
+    "priority_tokens": null,
+    "reactivated": {},
+    "reactivated_total": 0,
+    "reactivated_detail": {},
+    "left_not_in_priority": {},
+    "left_total": 0,
+    "note": "Flag OFF: no se toco ninguna clave de audio. Los apagados siguen como estaban."
   }
 }
