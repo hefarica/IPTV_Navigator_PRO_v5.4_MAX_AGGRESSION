@@ -78,9 +78,28 @@ No es un fallo del servidor; es un catálogo de nombres que alguien consume y no
 
 - No distingue cliente por `User-Agent`: el `log_format` no lo separa por lista.
 - La ventana es el log activo + 4 rotaciones; más atrás queda fuera y no se extrapola.
-- `playlist_error.log` tiene 208 líneas con 3 menciones de `/lists/`: **no revisado aún**.
 
-## 6 · Reproducir
+## 6 · `playlist_error.log` — revisado (208 líneas, run `41475098137`)
+
+**Cero errores del plano de listas.** Ninguna entrada menciona fallos sirviendo `.m3u8`. Eso es un
+resultado positivo y medido, no una ausencia de datos.
+
+Lo que sí contiene, clasificado:
+
+| Patrón | Cuenta | Naturaleza | Acción |
+|---|---|---|---|
+| `directory index of "/var/www/html/" is forbidden` · `GET /` | mayoría | **bots** sondeando WordPress (`?rest_route=/wpadverts/v1/classifieds-types`, `?r=/getconfig`, `?static=1&order=asc`) desde decenas de IPs | ninguna urgente; **pero `/` responde 403** porque no hay página raíz publicada |
+| `upstream prematurely closed connection … /jit/live/1174213/sdr/master.m3u8` → `http://127.0.0.1:3099` | **1** | **fallo real de streaming**: el servicio JIT cerró la conexión al enviar cabeceras | el cliente recibió un manifiesto truncado; revisar `:3099` |
+| `a client request body is buffered to a temporary file … POST /upload_chunk.php` | varias | flujo de subida del propio operador (referrer `127.0.0.1:5500`) | informativo, no es error |
+
+### Lo único accionable de esta tabla
+
+- **`/` → 403.** No cuesta clientes (solo lo piden bots), pero quien abra el dominio en un navegador ve
+  un 403. Publicar un índice o redirigir a `/lists/` es decisión del operador.
+- **1 truncado en `/jit/`.** Una sola ocurrencia no permite diagnóstico; se registra como hallazgo
+  aislado, no como patrón.
+
+## 7 · Reproducir
 
 ```bash
 gh workflow run deploy-vps.yml --ref feat/adb-generic-visual-enhancement-installer -f mode=dry-run
