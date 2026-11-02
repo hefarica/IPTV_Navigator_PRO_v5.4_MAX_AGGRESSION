@@ -82,18 +82,29 @@ jobs:
             uwsgi_temp_path /tmp/ape/uwsgi;
             scgi_temp_path /tmp/ape/scgi;
             gzip on;
+            # Produccion DEVUELVE Content-Encoding: gzip en las listas pequenas, asi que el tipo
+            # m3u8 SI esta cubierto por gzip_types en algun sitio que no tenemos (nginx.conf o
+            # conf.d/). Se declara explicito aqui para reproducir el comportamiento observado.
+            gzip_types text/html application/vnd.apple.mpegurl;
             server {
               listen 8080;
               root /tmp/ape/www;
-              # --- directivas copiadas del baseline real (sites-enabled-default.conf) ---
-              sendfile on;
-              gzip_static always;
-              gunzip on;
-              gzip_vary on;
-              add_header Accept-Ranges bytes always;
-              location /lists/ {
-                alias /tmp/ape/www/;
-                try_files $uri $uri.gz =404;
+              # --- location COPIADA del baseline real, linea por linea (l.110-169) ---
+              location ~* \.m3u8$ {
+                default_type application/vnd.apple.mpegurl;
+                types { application/vnd.apple.mpegurl m3u8; }
+                gzip_static always;
+                gunzip on;
+                gzip_vary on;
+                output_buffers 32 16k;
+                sendfile on;
+                tcp_nopush on;
+                tcp_nodelay on;
+                add_header Access-Control-Allow-Origin "*" always;
+                add_header Accept-Ranges bytes always;
+                add_header Cache-Control "no-cache, no-store, must-revalidate, private, max-age=0" always;
+                add_header Vary "*" always;
+                try_files $uri =404;
               }
             }
           }
@@ -101,7 +112,7 @@ jobs:
           nginx -t -c /tmp/ape/conf/nginx.conf
           nginx -c /tmp/ape/conf/nginx.conf
           sleep 1
-          curl -s -o /dev/null -w 'sanity=%{http_code}\n' http://127.0.0.1:8080/lists/grande.m3u8
+          curl -s -o /dev/null -w 'sanity=%{http_code}\n' http://127.0.0.1:8080/grande.m3u8
 
       - name: Medir las 4 celdas del BASELINE
         run: |
@@ -111,7 +122,7 @@ jobs:
             local args=(-s -o /dev/null -w '%{http_code}')
             [ "$gz" = "gzip" ] && args+=(-H 'Accept-Encoding: gzip')
             [ "$rng" = "range" ] && args+=(-H 'Range: bytes=0-1023')
-            curl "${args[@]}" "http://127.0.0.1:8080/lists/$f"
+            curl "${args[@]}" "http://127.0.0.1:8080/$f"
           }
           {
             echo "BASELINE grande identity=$(medir grande.m3u8 identity full)"
@@ -145,7 +156,7 @@ jobs:
             local args=(-s -o /dev/null -w '%{http_code}')
             [ "$gz" = "gzip" ] && args+=(-H 'Accept-Encoding: gzip')
             [ "$rng" = "range" ] && args+=(-H 'Range: bytes=0-1023')
-            curl "${args[@]}" "http://127.0.0.1:8080/lists/$f"
+            curl "${args[@]}" "http://127.0.0.1:8080/$f"
           }
           {
             echo "PARCHE grande identity=$(medir grande.m3u8 identity full)"
