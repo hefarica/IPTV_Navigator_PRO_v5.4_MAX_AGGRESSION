@@ -169,6 +169,33 @@ jobs:
             echo "=== 206 con Accept-Encoding: gzip (el caso que hoy descomprime) ==="
             ssh "$TARGET" 'curl -sS -o /dev/null -D - -m 25 -k -H "Range: bytes=0-1023" -H "Accept-Encoding: gzip" -H "Host: iptv-ape.duckdns.org" https://127.0.0.1/lists/APE_LISTA_1793589060441.m3u8 2>&1 | grep -iE "^HTTP|content-length|content-range|accept-ranges|content-encoding|transfer-encoding" || echo SIN_DATOS' || true
           } | tee "$OUT"
+      # ── MATRIZ DE TODAS LAS LISTAS · 200 / 206 / 302 ───────────────────────
+      # El requisito es que TODAS las listas, en sus configuraciones posibles,
+      # entreguen 200, 206 y 302. Esta matriz mide CADA lista publicada, no una.
+      # `ssh -n` es obligatorio: sin el, cada ssh dentro del bucle se come el
+      # stdin del `while read` y solo se mediria la primera lista.
+      - name: Matriz HTTP de todas las listas (read-only)
+        run: |
+          set -uo pipefail
+          TARGET="${{ secrets.VPS_USER }}@$VPS_HOST"
+          OUT="$DEPLOY_DIR/out/list-matrix.txt"
+          {
+            echo "=== listas en disco ==="
+            ssh "$TARGET" 'ls -la /var/www/html/lists/ 2>&1 | head -40' || true
+            echo
+            echo "=== matriz por lista · 200 plano / 206 con gzip / bytes del 206 ==="
+            printf '%-48s %5s %5s %8s %5s\n' LISTA GET R206 BYTES206 HEAD
+            ssh "$TARGET" 'ls -1 /var/www/html/lists/*.m3u8 2>/dev/null' | tr -d '\r' | while read -r p; do
+              [ -z "$p" ] && continue
+              n=$(basename "$p")
+              u="https://127.0.0.1/lists/$n"
+              c1=$(ssh -n "$TARGET" "curl -sS -o /dev/null -m 20 -k -w '%{http_code}' -H 'Host: iptv-ape.duckdns.org' '$u'" 2>/dev/null)
+              c2=$(ssh -n "$TARGET" "curl -sS -o /dev/null -m 20 -k -w '%{http_code}' -H 'Accept-Encoding: gzip' -H 'Range: bytes=0-1023' -H 'Host: iptv-ape.duckdns.org' '$u'" 2>/dev/null)
+              ln=$(ssh -n "$TARGET" "curl -sS -o /dev/null -m 20 -k -w '%{size_download}' -H 'Accept-Encoding: gzip' -H 'Range: bytes=0-1023' -H 'Host: iptv-ape.duckdns.org' '$u'" 2>/dev/null)
+              hd=$(ssh -n "$TARGET" "curl -sS -o /dev/null -m 20 -k -w '%{http_code}' -I -H 'Host: iptv-ape.duckdns.org' '$u'" 2>/dev/null)
+              printf '%-48s %5s %5s %8s %5s\n' "$n" "${c1:-ERR}" "${c2:-ERR}" "${ln:-ERR}" "${hd:-ERR}"
+            done
+          } | tee "$OUT"
       - name: Guardar inventario como artefacto
         uses: actions/upload-artifact@v4
         with:
@@ -176,6 +203,7 @@ jobs:
           path: |
             _vps_stage/deploy/out/inventory*
             _vps_stage/deploy/out/stamp*
+_vps_stage/deploy/out/list-matrix.txt
             _vps_stage/deploy/out/gate-206.txt
             _vps_stage/deploy/out/nginx-probe.txt
             _vps_stage/deploy/out/sites-available-default.conf
