@@ -1,70 +1,109 @@
 #!/usr/bin/env python3
-"""Deterministic IPTV session/token registry (iptv-proxy concept subset).
+"""Persistent idempotent IPTV session registry.
 
-Same client+channel+secret => same token and same provider slot, independent of
-process restarts. Four TVs assigned to two provider slots deterministically.
-No network, no credentials, no stream access.
+Same client + channel + secret -> same token and slot after restarts.
+New sessions go to the least-loaded of N provider slots (4 TVs / 2 slots).
+State is a local JSON file; no network and no credentials are stored.
 
 Usage:
-  python3 tools/ape_idempotent_session.py token <secret> <client> <channel> <slots>
+  python3 tools/ape_idempotent_session.py token <secret> <client> <channel> <slots> [state]
   python3 tools/ape_idempotent_session.py self-test
 """
 import hashlib
 import hmac
 import json
+import os
 import sys
+import tempfile
 
 
-def token(secret, client, channel):
-    msg = f'{client}|{channel}'.encode('utf-8')
-    return hmac.new(secret.encode('utf-8'), msg, hashlib.sha256).hexdigest()
+def digest(secret, client, channel):
+    return hmac.new(secret.encode('utf-8'), f'{client}|{channel}'.encode('utf-8'), hashlib.sha256).hexdigest()
 
 
-def slot(secret, client, channel, slots=2):
-    if slots < 1:
-        raise ValueError('slots must be >= 1')
-    # Rendezvous (highest-random-weight) hashing: deterministic, stable and
-    # distributes clients better than a single modulo.
-    best_slot = 0
-    best_score = -1
-    for candidate in range(slots):
-        msg = f'{client}|{channel}|slot-{candidate}'.encode('utf-8')
-        score = int(hmac.new(secret.encode('utf-8'), msg, hashlib.sha256).hexdigest()[:16], 16)
-        if score > best_score:
-            best_score = score
-            best_slot = candidate
-    return best_slot
+class Registry:
+    def __init__(self, secret, slots, state):
+        self.secret = secret
+        self.slots = slots
+        self.state = state
+        self.data = {'sessions': {}, 'loads': {}}
+        if state and os.path.exists(state):
+            try:
+                loaded = json.load(open(state, encoding='utf-8'))
+                if isinstance(loaded, dict) and isinstance(loaded.get('sessions'), dict):
+                    self.data = loaded
+            except Exception:
+                pass
+        for i in range(slots):
+            self.data['loads'].setdefault(str(i), 0)
+
+    def key(self, client, channel):
+        return 'sha256:' + digest(self.secret, client, channel)[:32]
+
+    def resolve(self, client, channel):
+        key = self.key(client, channel)
+        existing = self.data['sessions'].get(key)
+        if existing:
+            return existing
+        # least-loaded slot, deterministic tie-breaker by index
+        loads = [(int(self.data['loads'].get(str(i), 0)), i) for i in range(self.slots)]
+        _, chosen = min(loads)
+        entry = {
+            'client': client,
+            'channel': channel,
+            'token': digest(self.secret, client, channel)[:24],
+            'slot': chosen,
+            'slots': self.slots,
+            'idempotent': True,
+        }
+        self.data['sessions'][key] = entry
+        self.data['loads'][str(chosen)] = int(self.data['loads'].get(str(chosen), 0)) + 1
+        self.save()
+        return entry
+
+    def save(self):
+        if not self.state:
+            return
+        directory = os.path.dirname(os.path.abspath(self.state))
+        os.makedirs(directory, exist_ok=True)
+        fd, tmp = tempfile.mkstemp(dir=directory, prefix='.sessions.', suffix='.json')
+        try:
+            with os.fdopen(fd, 'w', encoding='utf-8') as f:
+                json.dump(self.data, f, ensure_ascii=False, sort_keys=True)
+            os.replace(tmp, self.state)
+        finally:
+            if os.path.exists(tmp):
+                os.unlink(tmp)
 
 
-def resolve(secret, client, channel, slots=2):
-    return {
-        'client': client,
-        'channel': channel,
-        'token': token(secret, client, channel)[:24],
-        'slot': slot(secret, client, channel, slots),
-        'slots': slots,
-        'idempotent': True,
-    }
+def resolve(secret, client, channel, slots=2, state=None):
+    return Registry(secret, slots, state).resolve(client, channel)
 
 
 def main(argv):
     if len(argv) >= 5 and argv[1] == 'token':
-        print(json.dumps(resolve(argv[2], argv[3], argv[4], int(argv[5]) if len(argv) > 5 else 2), indent=2))
+        slots = int(argv[5]) if len(argv) > 5 and argv[5].isdigit() else 2
+        state = argv[6] if len(argv) > 6 else None
+        print(json.dumps(resolve(argv[2], argv[3], argv[4], slots, state), indent=2))
         return 0
     if len(argv) == 2 and argv[1] == 'self-test':
         secret = 'local-test-secret'
-        out = [resolve(secret, f'tv{i}', 'SKY-SPORTS-F1', 2) for i in range(1, 5)]
-        again = [resolve(secret, f'tv{i}', 'SKY-SPORTS-F1', 2) for i in range(1, 5)]
-        tokens_stable = [a['token'] for a in out] == [b['token'] for b in again]
-        slots_used = sorted(set(x['slot'] for x in out))
-        # Simulate a restart: same values must be reproduced.
-        print(json.dumps({
-            'clients': out,
-            'tokens_stable': tokens_stable,
-            'slot_distribution': {str(s): sum(1 for x in out if x['slot'] == s) for s in range(2)},
-            'note': 'Deterministic/stable; balance is best-effort HRW, not a hard 50/50 guarantee.',
-        }, indent=2))
-        return 0 if tokens_stable else 1
+        with tempfile.TemporaryDirectory() as td:
+            state = os.path.join(td, 'sessions.json')
+            r = Registry(secret, 2, state)
+            first = [r.resolve(f'tv{i}', 'SKY-SPORTS-F1') for i in range(1, 5)]
+            again = [Registry(secret, 2, state).resolve(f'tv{i}', 'SKY-SPORTS-F1') for i in range(1, 5)]
+            slots_used = sorted(set(x['slot'] for x in first))
+            tokens_stable = [x['token'] for x in first] == [x['token'] for x in again]
+            slots_stable = [x['slot'] for x in first] == [x['slot'] for x in again]
+            print(json.dumps({
+                'clients': first,
+                'tokens_stable': tokens_stable,
+                'slots_stable': slots_stable,
+                'slots_used': slots_used,
+                'four_clients_two_slots': slots_used == [0, 1],
+            }, indent=2))
+            return 0 if (tokens_stable and slots_stable and slots_used == [0, 1]) else 1
     print(__doc__, file=sys.stderr)
     return 2
 
