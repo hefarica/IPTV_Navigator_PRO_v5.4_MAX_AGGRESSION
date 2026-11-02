@@ -65,7 +65,15 @@ jobs:
         run: |
           set -euo pipefail
           chmod +x "$DEPLOY_DIR"/*.sh
-          bash "$DEPLOY_DIR/inventory.sh"
+          # [FIX 2026-11-02] ANTES: `bash "$DEPLOY_DIR/inventory.sh"`, es decir, el
+          # inventario corria EN EL RUNNER, no en el VPS. inventory.sh no contiene
+          # ni un solo `ssh`: `run(){ ...; eval "$@"; }` evalua en local. Medido:
+          # el log decia hostname=runnervmnwato, kernel azure y Runner.Worker en ps,
+          # mientras /var/www/html/lists "no existia" pese a servirse en produccion.
+          # El propio encabezado del script pide `ssh host 'bash -s' < inventory.sh`.
+          TARGET="${{ secrets.VPS_USER }}@$VPS_HOST"
+          mkdir -p "$DEPLOY_DIR/out"
+          ssh "$TARGET" 'bash -s' < "$DEPLOY_DIR/inventory.sh" | tee "$DEPLOY_DIR/out/inventory.txt"
       # ── SONDA nginx READ-ONLY (evidencia para el fix del HTTP 206) ─────────
       # Medido: `/lists/` NO lo sirve nginx. Hay `location ^~ /lists/` que hace
       # proxy_pass a 127.0.0.1:8080, y el prefijo gana sobre el regex `~* \.m3u8$`.
