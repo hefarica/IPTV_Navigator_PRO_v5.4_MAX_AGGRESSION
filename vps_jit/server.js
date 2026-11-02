@@ -33,6 +33,7 @@ function setBaseHeaders(res) {
   res.setHeader('Access-Control-Allow-Headers', 'Range, Origin, X-Requested-With, Content-Type, Accept, Accept-Encoding');
   res.setHeader('Access-Control-Expose-Headers', 'Content-Range, Accept-Ranges, Content-Length, ETag, Server-Timing');
   res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+  res.setHeader('Timing-Allow-Origin', '*');
   res.setHeader('Connection', 'keep-alive');
   res.setHeader('Keep-Alive', 'timeout=5, max=100');
   res.setHeader('X-Cache-Control', 'no-transform');
@@ -289,6 +290,13 @@ function hdrMaster(text) {
   const codec = current ? current.codecString : 'hvc1.2.4.L123.B0';
   const audio = current ? current.audioCodec : 'mp4a.40.2';
   const mode = current ? current.crystalMode : 'FHD_HDR10';
+  const id = current ? current.id : '';
+  if (id && text.indexOf('DATA-ID="com.ape.channel"') === -1) {
+    text = text.replace('#EXTM3U',
+      '#EXTM3U\n' +
+      '#EXT-X-SESSION-DATA:DATA-ID="com.ape.channel",URI="/jit/meta/' + encodeURIComponent(id) + '.json"\n' +
+      '#EXT-X-SESSION-DATA:DATA-ID="com.ape.manifest",URI="/jit/live/' + encodeURIComponent(id) + '/manifest.json"');
+  }
   if (text.indexOf('#EXT-X-APE-CRYSTAL-UHD') === -1) {
     const up = current && current.upscaled
       ? '\n#EXT-X-APE-CRYSTAL-UPSCALE:SOURCE=' + current.sourceWidth + 'x' + current.sourceHeight +
@@ -424,6 +432,39 @@ function manifestJson(req, id, sdr, sdr720) {
   };
 }
 
+function metaJson(req, id) {
+  const map = loadMap();
+  const known = !!(map[id] && map[id].url);
+  const active = !!(current && current.id === id);
+  const base = publicBase(req);
+  return {
+    $schema: 'https://iptv-ape.duckdns.org/schemas/channel-v1.json',
+    model_version: '1.0',
+    id: id,
+    generated_at: new Date().toISOString(),
+    active: active,
+    known: known,
+    representations: {
+      hls: base + '/live/' + id + '/master.m3u8',
+      dash: base + '/live/' + id + '/manifest.mpd',
+      media_json: base + '/live/' + id + '/manifest.json'
+    },
+    playback: active ? {
+      codecs: current.codecString + (current.audioCodec ? ',' + current.audioCodec : ''),
+      resolution: current.width + 'x' + current.height,
+      bandwidth: current.bandwidth,
+      hdr: !!current.hdr,
+      video_range: current.hdr ? 'PQ' : 'SDR',
+      crystal_mode: current.crystalMode
+    } : null,
+    truth_guard: {
+      supplemental_codecs: 'not emitted without measured DV',
+      video_range: 'PQ only when current.hdr is true',
+      pixels: 'VPS selects/signals; no fake 4K pixels'
+    }
+  };
+}
+
 const server = http.createServer((req, res) => {
   installTiming(req, res);
   setBaseHeaders(res);
@@ -480,6 +521,19 @@ const server = http.createServer((req, res) => {
       truth_guard: 'VPS selects/signals; device applies AI-SR/AI-PQ. No fake 4K pixels.',
     }));
   }
+  const mm = u.pathname.match(/^\/meta\/([^/]+)\.json$/);
+  if (mm) {
+    const id = safeId(mm[1]);
+    if (!id) { res.writeHead(400); return res.end('bad channel'); }
+    const map = loadMap();
+    if (!map[id] || !map[id].url) { res.writeHead(404); return res.end('unknown channel'); }
+    res.locals.cache = 'meta';
+    setNoCacheHeaders(res);
+    res.setHeader('Link', '</jit/live/' + encodeURIComponent(id) + '/master.m3u8>; rel="alternate"; type="application/vnd.apple.mpegurl"');
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    return res.end(JSON.stringify(metaJson(req, id)));
+  }
+
   if (u.pathname === '/catalog.json') {
     const map = loadMap();
     const base = publicBase(req);
@@ -568,6 +622,9 @@ const server = http.createServer((req, res) => {
         return res.end();
       }
       const txt = fs.readFileSync(file, 'utf8');
+      if (name === 'master.m3u8') {
+        res.setHeader('Link', '</jit/meta/' + encodeURIComponent(id) + '.json>; rel="describedby"; type="application/json"');
+      }
       res.writeHead(200, { 'Content-Type': type });
       return res.end(name === 'master.m3u8' ? hdrMaster(txt) : hdrMpd(txt));
     }
