@@ -120,6 +120,12 @@ jobs:
             echo
             echo "=== tamano real del listado servido (Content-Length por HEAD) ==="
             ssh "$TARGET" 'curl -sS -I -m 20 http://127.0.0.1:8080/APE_LISTA_1793589060441.m3u8 2>&1 | grep -iE "content-length|content-encoding|transfer-encoding|accept-ranges" || echo SIN_DATOS' || true
+            echo
+            echo "=== QUE BLOQUE SIRVE LA LISTA (nginx -T mergeado) ==="
+            ssh "$TARGET" 'sudo -n nginx -T 2>/dev/null | grep -n -E "^# configuration file|server_name|m3u8|/lists/|root |alias " | head -60 || echo SIN_DATOS' || true
+            echo
+            echo "=== quien escucha en 80/443 ==="
+            ssh "$TARGET" 'sudo -n ss -ltnp 2>/dev/null | grep -E ":80 |:443 " || echo SIN_DATOS' || true
           } | tee "$OUT"
       - name: Traer la config viva byte-exacta (read-only)
         run: |
@@ -128,6 +134,16 @@ jobs:
           scp -q "$TARGET:/etc/nginx/sites-available/default" "$DEPLOY_DIR/out/sites-available-default.conf"
           echo "sha256 local:"
           sha256sum "$DEPLOY_DIR/out/sites-available-default.conf"
+          # El sitio que RESPONDE no es `default` (su proxy a :8080 esta muerto y
+          # aun asi /lists/ da 200). El candidato real es coa-navigator.
+          for f in /etc/nginx/sites-enabled/coa-navigator /etc/nginx/sites-available/coa-navigator; do
+            if ssh "$TARGET" "[ -f '$f' ]"; then
+              base=$(basename "$f")
+              scp -q "$TARGET:$f" "$DEPLOY_DIR/out/live-$base.conf" && sha256sum "$DEPLOY_DIR/out/live-$base.conf"
+            fi
+          done
+          ssh "$TARGET" 'sudo -n nginx -T 2>/dev/null' > "$DEPLOY_DIR/out/nginx-T-merged.conf" || true
+          echo "nginx -T bytes: $(wc -c < "$DEPLOY_DIR/out/nginx-T-merged.conf")"
       - name: Guardar inventario como artefacto
         uses: actions/upload-artifact@v4
         with:
@@ -137,6 +153,8 @@ jobs:
             _vps_stage/deploy/out/stamp*
             _vps_stage/deploy/out/nginx-probe.txt
             _vps_stage/deploy/out/sites-available-default.conf
+            _vps_stage/deploy/out/live-*.conf
+            _vps_stage/deploy/out/nginx-T-merged.conf
           if-no-files-found: warn
           retention-days: 14
 
