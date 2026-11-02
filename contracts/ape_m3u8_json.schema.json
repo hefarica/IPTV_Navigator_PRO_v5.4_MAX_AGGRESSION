@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "ape.m3u8.json.v1",
+  "title": "APE M3U8 JSON bridge",
+  "type": "object",
+  "required": ["schema", "sha256", "line_count", "channels", "lines", "channel_index"],
+  "properties": {
+    "schema": { "const": "ape.m3u8.json.v1" },
+    "source": { "type": ["string", "null"] },
+    "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "line_count": { "type": "integer", "minimum": 1 },
+    "channels": { "type": "integer", "minimum": 0 },
+    "lines": { "type": "array", "items": { "type": "string" } },
+    "channel_index": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "url", "attributes"],
+        "properties": {
+          "name": { "type": "string" },
+          "tvg_id": { "type": ["string", "null"] },
+          "tvg_name": { "type": ["string", "null"] },
+          "tvg_logo": { "type": ["string", "null"] },
+          "group_title": { "type": ["string", "null"] },
+          "url": { "type": "string", "pattern": "^https?://" },
+          "attributes": { "type": "object" }
+        },
+        "additionalProperties": true
+      }
+    }
+  },
+  "additionalProperties": true
+}

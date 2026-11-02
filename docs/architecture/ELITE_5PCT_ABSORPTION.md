@@ -136,3 +136,14 @@ Verificado sobre FAST: 10.573 canales, 0 duplicados, mismos hashes en dos ejecuc
 
 El JSON del puente conserva `lines` y añade `channel_index` con nombre, `tvg-*`, grupo, URL y atributos. La conversión inversa sigue usando las líneas originales; el índice es aditivo.
 
+
+## Schema canónico
+
+```text
+contracts/ape_m3u8_json.schema.json
+tools/validate_m3u8_json.py
+10.573 canales, 0 errores
+```
+
+Valida schema, SHA-256, líneas, índice de canales, URL y atributos antes de REA/pipeline.
+
