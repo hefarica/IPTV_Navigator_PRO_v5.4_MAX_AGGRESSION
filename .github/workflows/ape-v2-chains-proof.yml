@@ -6,9 +6,12 @@ name: ape-v2-chains-proof
 # saber dos cosas que solo se saben ejecutandolas:
 #
 #   1. Que CADA cadena sea VALIDA: que existan los filtros y los parametros con esos nombres.
-#      Una cadena invalida no falla en la lista: falla en el reproductor, en silencio o con error.
-#   2. Que el resultado sea la RESOLUCION DECLARADA. La cadena dice "P5 · 854×480 -> 1920×1080";
+#      Una cadena invalida no falla en la lista: falla en el reproductor.
+#   2. Que el resultado sea la RESOLUCION DECLARADA. La cadena dice "P5 · 854x480 -> 1920x1080";
 #      se comprueba midiendo el frame de salida, no leyendo la intencion.
+#
+# Las cadenas viven en tools/ape-image-recipes/v2_chains.txt (versionadas, sin editar) para que este
+# workflow no tenga que llevar heredocs, que rompen la indentacion de YAML.
 #
 # Sin VPS. Sin tocar produccion. ffmpeg del runner.
 
@@ -16,6 +19,7 @@ on:
   push:
     paths:
       - '.github/workflows/ape-v2-chains-proof.yml'
+      - 'tools/ape-image-recipes/v2_chains.txt'
   workflow_dispatch:
 
 jobs:
@@ -28,36 +32,25 @@ jobs:
       - name: ffmpeg disponible y con que filtros
         run: |
           set -euo pipefail
-          ffmpeg -hide_banner -version | head -3
+          ffmpeg -hide_banner -version | head -2
           echo '--- filtros que usan las cadenas ---'
           for f in bwdif zscale format hqdn3d pp unsharp gradfun cas minterpolate; do
             if ffmpeg -hide_banner -h filter=$f >/dev/null 2>&1; then echo "  OK      $f"; else echo "  FALTA   $f"; fi
           done
-          echo '--- libplacebo (V3) ---'
+          echo '--- libplacebo (solo V3) ---'
           if ffmpeg -hide_banner -h filter=libplacebo >/dev/null 2>&1; then echo '  OK      libplacebo'; else echo '  FALTA   libplacebo'; fi
 
       - name: Medir cada cadena V2 contra su resolucion declarada
         run: |
           set -uo pipefail
           mkdir -p /tmp/out
-
-          # nombre|origen|destino_esperado|cadena
-          # Cadenas V2 tal como las entrego el operador, sin editarlas.
-          cat > /tmp/chains.txt <<'CHAINS'
-P5|854x480|1920x1080|bwdif=mode=send_frame:parity=-1:deint=0,zscale=transfer=linear:npl=100:range=limited,format=yuv444p16le,hqdn3d=2:1.5:6:4.5,zscale=w=3840:h=2160:filter=lanczos+accurate_rnd+full_chroma_int,zscale=transfer=bt1886:matrix=bt709:primaries=bt709:range=limited,pp=ac/dr/ci,unsharp=lx=5:ly=5:la=0.8:cx=3:cy=3:ca=0.25,gradfun=radius=8:strength=0.4,zscale=w=1920:h=1080:filter=lanczos+accurate_rnd+full_chroma_int:dither=blue-noise,cas=strength=0.45,gradfun=radius=6:strength=0.3,minterpolate=fps=120:mi_mode=mci:mc_mode=aobmc:vsbmc=1:me=umh:mb_size=8:scd=5,format=yuv420p10le
-P4|1280x720|2560x1440|zscale=transfer=linear:npl=100:range=limited,format=yuv444p16le,hqdn3d=2:1.5:6:4.5,zscale=w=5120:h=2880:filter=lanczos+accurate_rnd+full_chroma_int,zscale=transfer=bt1886:matrix=bt709:primaries=bt709:range=limited,pp=ac/dr/ci,unsharp=lx=5:ly=5:la=0.8:cx=3:cy=3:ca=0.25,gradfun=radius=10:strength=0.45,zscale=w=2560:h=1440:filter=lanczos+accurate_rnd+full_chroma_int:dither=blue-noise,cas=strength=0.45,gradfun=radius=6:strength=0.3,minterpolate=fps=120:mi_mode=mci:mc_mode=aobmc:vsbmc=1:me=umh:mb_size=8:scd=5,format=yuv420p10le
-P3|1920x1080|3840x2160|zscale=transfer=linear:npl=1000:range=limited,format=yuv444p16le,hqdn3d=1:0.8:3:2.5,zscale=w=7680:h=4320:filter=lanczos+accurate_rnd+full_chroma_int,zscale=transfer=arib-std-b67:chromal=topleft:matrix=2020_ncl:primaries=2020:range=limited,unsharp=lx=3:ly=3:la=0.28,gradfun=radius=12:strength=0.55,zscale=w=3840:h=2160:filter=lanczos+accurate_rnd+full_chroma_int:dither=blue-noise,cas=strength=0.4,gradfun=radius=8:strength=0.35,minterpolate=fps=60:mi_mode=mci:mc_mode=aobmc:vsbmc=1:me=umh:mb_size=8:scd=5,format=yuv420p10le
-P2|3840x2160|6144x3456|zscale=transfer=linear:npl=1000:range=limited,format=yuv444p16le,zscale=w=10240:h=5760:filter=lanczos+accurate_rnd+full_chroma_int,zscale=transfer=st2084:chromal=topleft:matrix=2020_ncl:primaries=2020:range=limited,gradfun=radius=12:strength=0.5,zscale=w=6144:h=3456:filter=lanczos+accurate_rnd+full_chroma_int:dither=blue-noise,cas=strength=0.35,gradfun=radius=8:strength=0.3,minterpolate=fps=60:mi_mode=mci:mc_mode=aobmc:vsbmc=1:me=umh:mb_size=8:scd=5,format=yuv420p10le
-CHAINS
+          CHAINS=tools/ape-image-recipes/v2_chains.txt
 
           falls=0
           : > /tmp/resultado.txt
           while IFS='|' read -r nombre origen destino cadena; do
-            [ -z "$nombre" ] && continue
-            sw=${origen%x*}; sh=${origen#*x}
+            case "$nombre" in ''|'#'*) continue;; esac
             echo "=== $nombre · $origen -> $destino ==="
-            # 1 frame, salida a PNG para poder leer las dimensiones reales.
-            # minterpolate necesita >=2 frames de entrada para producir salida, asi que se dan 8.
             set +e
             err=$(ffmpeg -hide_banner -loglevel error -nostdin \
                     -f lavfi -i "testsrc2=size=${origen}:rate=60:duration=0.2" \
@@ -79,7 +72,7 @@ CHAINS
               echo "$nombre|RESOLUCION_DISTINTA|0|$dims != $destino" >> /tmp/resultado.txt
               falls=$((falls+1))
             fi
-          done < /tmp/chains.txt
+          done < "$CHAINS"
 
           echo
           echo '=== RESUMEN ==='
@@ -92,16 +85,13 @@ CHAINS
           fi
           echo 'Todas las cadenas probadas ejecutan y producen EXACTAMENTE la resolucion declarada'
 
-      - name: Que ninguna cadena haga downscale sobre su origen
+      - name: Que ninguna cadena declarada haga downscale
         run: |
           set -uo pipefail
-          # La regla innegociable es NUNCA downscale. Se comprueba aritmeticamente sobre el resultado
-          # anterior: destino tiene que ser >= origen en ambos ejes.
+          CHAINS=tools/ape-image-recipes/v2_chains.txt
           fallos=0
-          while IFS='|' read -r nombre estado rc detalle; do
-            [ -z "$nombre" ] && continue
-            origen=$(awk -F'|' -v n="$nombre" '$1==n{print $2}' /tmp/chains.txt)
-            destino=$(awk -F'|' -v n="$nombre" '$1==n{print $3}' /tmp/chains.txt)
+          while IFS='|' read -r nombre origen destino cadena; do
+            case "$nombre" in ''|'#'*) continue;; esac
             ow=${origen%x*}; oh=${origen#*x}; dw=${destino%x*}; dh=${destino#*x}
             if [ "$dw" -lt "$ow" ] || [ "$dh" -lt "$oh" ]; then
               echo "  DOWNSCALE $nombre: $origen -> $destino"
@@ -109,17 +99,14 @@ CHAINS
             else
               echo "  OK $nombre: $origen -> $destino (factor $(awk -v a=$dw -v b=$ow 'BEGIN{printf "%.2f", a/b}')x)"
             fi
-          done < /tmp/resultado.txt
+          done < "$CHAINS"
           [ "$fallos" -eq 0 ] || { echo '::error::alguna cadena declarada hace downscale'; exit 1; }
 
-      - name: V3 depende de libplacebo — se registra, no se exige
+      - name: P0 y P1 quedan NO EVALUADAS por presupuesto de memoria
         run: |
           set -euo pipefail
-          # V3 usa el filtro `libplacebo`. El ffmpeg de Ubuntu normalmente NO lo trae. Se comprueba y
-          # se registra: si falta, V3 no es ejecutable en este entorno y eso es un dato, no un fallo.
-          if ffmpeg -hide_banner -h filter=libplacebo >/dev/null 2>&1; then
-            echo 'libplacebo PRESENTE: V3 seria ejecutable aqui'
-          else
-            echo 'libplacebo AUSENTE en el ffmpeg del runner: V3 NO es ejecutable en este entorno'
-            echo 'Esto NO invalida V3; significa que no se puede probar aqui y queda NO_EVALUADA.'
-          fi
+          # Se declara explicitamente lo que NO se prueba, para que el silencio no se lea como exito.
+          echo 'No evaluadas en este job:'
+          echo '  P1  3840x2160 -> 6144x3456 (salida 12-bit)'
+          echo '  P0  7680x4320 -> 11520x6480 (entrada 4:4:4 16-bit ~100 MB/frame + intermedio 24 MP)'
+          echo 'Motivo: memoria del runner, NO un fallo de la cadena. Quedan pendientes de un host con GPU/RAM.'
