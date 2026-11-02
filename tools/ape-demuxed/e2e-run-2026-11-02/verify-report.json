@@ -1,0 +1,185 @@
+{
+  "tool": "verify_demuxed.js",
+  "version": "1.0.0",
+  "generated_at": "2026-11-02T15:12:46.313Z",
+  "input": {
+    "path": "C:\\Users\\HFRC\\AppData\\Local\\Temp\\ape_e2e_demuxed\\master_full.m3u8",
+    "bytes": 601110504,
+    "lines": 10231079,
+    "sha256": "aa4a629ba652432e3de802e47915a03bd4e0c5aa03388e6513140774998d1c32",
+    "mode": "catalogue",
+    "extinf_blocks": 10573,
+    "uri_lines": 10573,
+    "crlf_lines": 0,
+    "first_lines": [
+      "#EXTM3U x-tvg-url=\"\" x-tvg-url-epg=\"\" x-tvg-logo=\"\" x-tvg-shift=0 catchup=\"flussonic\" catchup-days=\"7\" catchup-source=\"{MediaUrl}?utc={utc}&lutc={lutc}\" url-tvg=\"\" refresh=\"1800\"",
+      "# APE-SENSITIVE: contains credentials, DO NOT DISTRIBUTE",
+      "#EXT-X-VERSION:9",
+      "#EXT-X-INDEPENDENT-SEGMENTS",
+      "#EXT-X-APE-CHANNELS:10573",
+      "#EXT-X-APE-LAB-EXTRAS:1",
+      "#EXT-X-APE-LAB-DNA:sha256=unverified,SOURCE=LAB_CALIBRATED,EXPORTED=2026-10-26T01:31:05",
+      "#EXT-X-APE-CONTINUITY-LAW:STREAMING_CONTINUITY_LAW_V1",
+      "#EXT-X-APE-CONTINUITY-MANIFEST:no-store",
+      "#EXT-X-APE-CONTINUITY-RANGE:206",
+      "#EXT-X-APE-CONTINUITY-SEGMENTS:session-unique",
+      "#EXT-X-APE-CONTINUITY-TRANSPORT:declared"
+    ]
+  },
+  "options": {
+    "source_resolution": "3840x2160",
+    "source_framerate": null,
+    "min_video_bitrate": null,
+    "audio_segments": [],
+    "probe_renditions": [],
+    "expect_audio_codec": null,
+    "expect_sample_rate": null,
+    "expect_channels": null,
+    "allow_audio_downscale": false,
+    "ffprobe": "ffprobe",
+    "strict": false
+  },
+  "summary": {
+    "verdict": "NO_COMPUTADO",
+    "exit_code": 2,
+    "hard_gates_pass": false,
+    "all_gates_pass": false,
+    "demuxed": false,
+    "gates": [
+      {
+        "gate": "G1_structure",
+        "status": "NO_COMPUTADO",
+        "failures": 0
+      },
+      {
+        "gate": "G2_zero_video_downscale",
+        "status": "PASS",
+        "failures": 0
+      },
+      {
+        "gate": "G3_zero_video_caps",
+        "status": "PASS",
+        "failures": 0
+      },
+      {
+        "gate": "G4_audio_throughpass",
+        "status": "NO_COMPUTADO",
+        "failures": 0
+      }
+    ],
+    "scan_ms": 13975,
+    "total_ms": 13998
+  },
+  "gates": {
+    "g1_structure": {
+      "gate": "G1_structure",
+      "status": "NO_COMPUTADO",
+      "demuxed": false,
+      "audio_renditions": 0,
+      "audio_groups": [],
+      "variants": 10573,
+      "session_data_lines": 24,
+      "checks": [
+        {
+          "check": "AUDIO= / GROUP-ID",
+          "status": "PASS",
+          "detail": "el master NO declara #EXT-X-MEDIA TYPE=AUDIO: es MUXED (nada que resolver aquí; el gate de throughpass queda NO_COMPUTADO)",
+          "evidence": null
+        },
+        {
+          "check": "SESSION-DATA usa DATA-ID (no NAME)",
+          "status": "PASS",
+          "detail": "24 líneas SESSION-DATA, todas con DATA-ID",
+          "evidence": null
+        }
+      ],
+      "checks_total": 2,
+      "failures": [],
+      "failures_total": 0,
+      "reason": "el master no declara #EXT-X-MEDIA TYPE=AUDIO; no hay estructura de demuxed que verificar"
+    },
+    "g2_zero_video_downscale": {
+      "gate": "G2_zero_video_downscale",
+      "status": "PASS",
+      "source_resolution": "3840x2160",
+      "source_framerate": null,
+      "min_video_bitrate": null,
+      "variants": 10573,
+      "variants_with_resolution": 10573,
+      "worst_variant": {
+        "w": 3840,
+        "h": 2160,
+        "raw": "3840x2160",
+        "line": 1154
+      },
+      "below_bitrate": 0,
+      "below_framerate": 0,
+      "failures": [],
+      "failures_total": 0,
+      "note": "ley del operador: el VÍDEO nunca baja. Bajar AUDIO (canales/bitrate) sí está permitido y NO se evalúa aquí."
+    },
+    "g3_zero_video_caps": {
+      "gate": "G3_zero_video_caps",
+      "status": "PASS",
+      "tokens_task": [
+        "max_resolution",
+        "max_bitrate",
+        "max_framerate",
+        "video-width",
+        "video-height",
+        "adaptive-maxbitrate",
+        "adaptive-maxwidth",
+        "adaptive-maxheight"
+      ],
+      "tokens_from_cap_verdicts": [
+        "inputstream.adaptive.chooser_bandwidth_max"
+      ],
+      "tokens_checked_total": 9,
+      "cap_verdicts_source": "cap_verdicts.json v2026-11-02b",
+      "caps_lines": 0,
+      "hits_total": 0,
+      "hits_detail_kept": 0,
+      "hits_overflow": 0,
+      "by_token": [],
+      "failures": [],
+      "failures_total": 0,
+      "note": "un cap pide una salida PEOR que la fuente declarada; la ley prohíbe capar vídeo (resolución/bitrate/fps). Origen de la lista de tokens: encargo (8) + cap_verdicts.json de t10 (veredicto medido cap_de_video). hits_total cuenta pares (línea, token): una línea puede llevar dos tokens."
+    },
+    "g4_audio_throughpass": {
+      "gate": "G4_audio_throughpass",
+      "status": "NO_COMPUTADO",
+      "reason": "no se aportó --audio-segment ni --probe-rendition: el throughpass real exige un recurso de audio accesible. Este arnés NO descarga red por su cuenta y NO usa md5 de bytes (ver cabecera del script: el md5 no distingue un repackage de un transcode)",
+      "measurements": [],
+      "failures": [],
+      "checks": []
+    }
+  },
+  "evidence": {
+    "master": "C:\\Users\\HFRC\\AppData\\Local\\Temp\\ape_e2e_demuxed\\master_full.m3u8",
+    "master_sha256": "aa4a629ba652432e3de802e47915a03bd4e0c5aa03388e6513140774998d1c32",
+    "cap_tokens_task": [
+      "max_resolution",
+      "max_bitrate",
+      "max_framerate",
+      "video-width",
+      "video-height",
+      "adaptive-maxbitrate",
+      "adaptive-maxwidth",
+      "adaptive-maxheight"
+    ],
+    "cap_verdicts_source": "cap_verdicts.json v2026-11-02b",
+    "cap_tokens_checked": [
+      "max_resolution",
+      "max_bitrate",
+      "max_framerate",
+      "video-width",
+      "video-height",
+      "adaptive-maxbitrate",
+      "adaptive-maxwidth",
+      "adaptive-maxheight",
+      "inputstream.adaptive.chooser_bandwidth_max"
+    ],
+    "ffprobe": "ffprobe",
+    "generated_by": "node verify_demuxed.js C:\\Users\\HFRC\\AppData\\Local\\Temp\\ape_e2e_demuxed\\master_full.m3u8 --source-resolution 3840x2160 --json C:\\Users\\HFRC\\AppData\\Local\\Temp\\ape_e2e_demuxed\\verify.json"
+  }
+}
