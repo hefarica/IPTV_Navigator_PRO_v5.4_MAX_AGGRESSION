@@ -178,6 +178,17 @@
         "Proxy-Authorization",
         "X-Auth-Stub-Basic",
         "X-Provider-Detection",
-        "X-APE-DNR-POLICY"
+        "X-APE-DNR-POLICY",
+        "X-Audio-Passthrough-Mode",
+        "X-Audio-Passthrough",
+        "X-Audio-Fallback",
+        "X-Audio-Downmix",
+        "X-Audio-Codec-Priority",
+        "X-Audio-Safe-Formats",
+        "X-Audio-Transcode-On-Invalid",
+        "X-Audio-Validation",
+        "X-Audio-No-Damage",
+        "X-Audio-EARC",
+        "X-Audio-Codecs"
     ];
 })();
