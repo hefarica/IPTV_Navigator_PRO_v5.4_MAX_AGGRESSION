@@ -1,0 +1,268 @@
+{
+  "tool": "verify_demuxed.js",
+  "version": "1.0.0",
+  "generated_at": "2026-11-02T13:54:14.307Z",
+  "input": {
+    "path": "C:\\Users\\HFRC\\Desktop\\IPTV_Navigator_PRO_v5.4_MAX_AGGRESSION\\tools\\ape-demuxed\\fixtures\\master_ok.m3u8",
+    "bytes": 1492,
+    "lines": 18,
+    "sha256": "ece3c3af68663a57bf89bd3925727e3cfeb4e80f96c6f6283570807f0fff0fd3",
+    "mode": "master",
+    "extinf_blocks": 0,
+    "uri_lines": 1,
+    "crlf_lines": 0,
+    "first_lines": [
+      "#EXTM3U",
+      "# ============================================================================",
+      "# FIXTURE SINTETICO â NO son datos medidos de ningun proveedor.",
+      "# Dominio `.invalid` (RFC 6761) y credenciales ficticias visibles `fxuser`/`fxpass`.",
+      "# Caso: MASTER DEMUXED CORRECTO.",
+      "#   Esperado: G1 PASS, G2 PASS con --source-resolution 3840x2160, G3 PASS,",
+      "#             G4 NO_COMPUTADO si no se aporta --audio-segment.",
+      "#   -> exit 0 con verdict PASS_HARD_GATES (no PASS: el throughpass no se midio).",
+      "#   Con --audio-segment fixtures/audio/ac3_51_48k.ts --expect-audio-codec ac-3",
+      "#   --expect-sample-rate 48000 --expect-channels 6  -> G4 PASS y verdict PASS (exit 0).",
+      "# ============================================================================",
+      "#EXT-X-VERSION:9"
+    ]
+  },
+  "options": {
+    "source_resolution": "3840x2160",
+    "source_framerate": null,
+    "min_video_bitrate": null,
+    "audio_segments": [
+      "C:\\Users\\HFRC\\Desktop\\IPTV_Navigator_PRO_v5.4_MAX_AGGRESSION\\tools\\ape-demuxed\\fixtures\\audio\\ac3_51_48k.ts"
+    ],
+    "probe_renditions": [],
+    "expect_audio_codec": "ac-3",
+    "expect_sample_rate": 48000,
+    "expect_channels": 6,
+    "allow_audio_downscale": false,
+    "ffprobe": "ffprobe",
+    "strict": false
+  },
+  "summary": {
+    "verdict": "PASS",
+    "exit_code": 0,
+    "hard_gates_pass": true,
+    "all_gates_pass": true,
+    "demuxed": true,
+    "gates": [
+      {
+        "gate": "G1_structure",
+        "status": "PASS",
+        "failures": 0
+      },
+      {
+        "gate": "G2_zero_video_downscale",
+        "status": "PASS",
+        "failures": 0
+      },
+      {
+        "gate": "G3_zero_video_caps",
+        "status": "PASS",
+        "failures": 0
+      },
+      {
+        "gate": "G4_audio_throughpass",
+        "status": "PASS",
+        "failures": 0
+      }
+    ],
+    "scan_ms": 4,
+    "total_ms": 46
+  },
+  "gates": {
+    "g1_structure": {
+      "gate": "G1_structure",
+      "status": "PASS",
+      "demuxed": true,
+      "audio_renditions": 2,
+      "audio_groups": [
+        "aud"
+      ],
+      "variants": 1,
+      "session_data_lines": 1,
+      "checks": [
+        {
+          "check": "EXT-X-MEDIA[line 15] campos obligatorios",
+          "status": "PASS",
+          "detail": "GROUP-ID/NAME/LANGUAGE/CHANNELS/DEFAULT/AUTOSELECT/URI presentes",
+          "evidence": "line 15: {\"TYPE\":\"AUDIO\",\"GROUP-ID\":\"aud\",\"NAME\":\"EAC3 5.1\",\"LANGUAGE\":\"spa\",\"CHANNELS\":\"6\",\"DEFAULT\":\"YES\",\"AUTOSELECT\":\"YES\",\"CODECS\":\"ec-3\",\"URI\":\"https://fx.invalid/audio/fxuser/fxpass/1001_es_eac3.m3u8\"}"
+        },
+        {
+          "check": "EXT-X-MEDIA[line 16] campos obligatorios",
+          "status": "PASS",
+          "detail": "GROUP-ID/NAME/LANGUAGE/CHANNELS/DEFAULT/AUTOSELECT/URI presentes",
+          "evidence": "line 16: {\"TYPE\":\"AUDIO\",\"GROUP-ID\":\"aud\",\"NAME\":\"AAC estereo\",\"LANGUAGE\":\"spa\",\"CHANNELS\":\"2\",\"DEFAULT\":\"NO\",\"AUTOSELECT\":\"YES\",\"CODECS\":\"mp4a.40.2\",\"URI\":\"https://fx.invalid/audio/fxuser/fxpass/1001_es_stereo.m3u8\"}"
+        },
+        {
+          "check": "STREAM-INF AUDIO= -> GROUP-ID existente",
+          "status": "PASS",
+          "detail": "1 variantes con AUDIO=, todas resuelven a uno de 1 GROUP-ID",
+          "evidence": null
+        },
+        {
+          "check": "variantes sin AUDIO= con renditions declaradas",
+          "status": "PASS",
+          "detail": "todas las variantes enganchan el grupo",
+          "evidence": null
+        },
+        {
+          "check": "unicidad GROUP-ID+NAME+LANGUAGE",
+          "status": "PASS",
+          "detail": "2 combinaciones únicas",
+          "evidence": null
+        },
+        {
+          "check": "DEFAULT=YES como máximo uno por GROUP-ID",
+          "status": "PASS",
+          "detail": "ningún grupo con más de un DEFAULT=YES",
+          "evidence": null
+        },
+        {
+          "check": "SESSION-DATA usa DATA-ID (no NAME)",
+          "status": "PASS",
+          "detail": "1 líneas SESSION-DATA, todas con DATA-ID",
+          "evidence": null
+        }
+      ],
+      "checks_total": 7,
+      "failures": [],
+      "failures_total": 0,
+      "reason": null
+    },
+    "g2_zero_video_downscale": {
+      "gate": "G2_zero_video_downscale",
+      "status": "PASS",
+      "source_resolution": "3840x2160",
+      "source_framerate": null,
+      "min_video_bitrate": null,
+      "variants": 1,
+      "variants_with_resolution": 1,
+      "worst_variant": {
+        "w": 3840,
+        "h": 2160,
+        "raw": "3840x2160",
+        "line": 17
+      },
+      "below_bitrate": 0,
+      "below_framerate": 0,
+      "failures": [],
+      "failures_total": 0,
+      "note": "ley del operador: el VÍDEO nunca baja. Bajar AUDIO (canales/bitrate) sí está permitido y NO se evalúa aquí."
+    },
+    "g3_zero_video_caps": {
+      "gate": "G3_zero_video_caps",
+      "status": "PASS",
+      "tokens_task": [
+        "max_resolution",
+        "max_bitrate",
+        "max_framerate",
+        "video-width",
+        "video-height",
+        "adaptive-maxbitrate",
+        "adaptive-maxwidth",
+        "adaptive-maxheight"
+      ],
+      "tokens_from_cap_verdicts": [
+        "inputstream.adaptive.chooser_bandwidth_max"
+      ],
+      "tokens_checked_total": 9,
+      "cap_verdicts_source": "cap_verdicts.json v2026-11-02",
+      "caps_lines": 0,
+      "hits_total": 0,
+      "hits_detail_kept": 0,
+      "hits_overflow": 0,
+      "by_token": [],
+      "failures": [],
+      "failures_total": 0,
+      "note": "un cap pide una salida PEOR que la fuente declarada; la ley prohíbe capar vídeo (resolución/bitrate/fps). Origen de la lista de tokens: encargo (8) + cap_verdicts.json de t10 (veredicto medido cap_de_video). hits_total cuenta pares (línea, token): una línea puede llevar dos tokens."
+    },
+    "g4_audio_throughpass": {
+      "gate": "G4_audio_throughpass",
+      "status": "PASS",
+      "method": "ffprobe -show_streams -show_format (codec/sample_rate/channels/bit_rate/duration)",
+      "why_not_md5": "el md5 de bytes del segmento cambia con cualquier repackage y no dice codec/sr/canales/bitrate/duración; no distingue throughpass de transcode",
+      "audio_downscale_allowed": true,
+      "audio_downscale_flagged": false,
+      "expected": {
+        "codec": "ac-3",
+        "sample_rate": 48000,
+        "channels": 6
+      },
+      "measurements": [
+        {
+          "target": "C:\\Users\\HFRC\\Desktop\\IPTV_Navigator_PRO_v5.4_MAX_AGGRESSION\\tools\\ape-demuxed\\fixtures\\audio\\ac3_51_48k.ts",
+          "how": "segmento explícito",
+          "status": "PASS",
+          "elapsed_ms": 40,
+          "audio": {
+            "codec": "ac3",
+            "codec_rfc6381": "ac-3",
+            "profile": null,
+            "sample_rate": 48000,
+            "channels": 6,
+            "channel_layout": "5.1(side)",
+            "bit_rate": 384000,
+            "bit_rate_source": "stream",
+            "duration_s": 2.016,
+            "codec_long_name": "ATSC A/52A (AC-3)"
+          },
+          "container": "mpegts",
+          "checks": [
+            {
+              "check": "codec",
+              "expected": "ac-3",
+              "measured": "ac-3 (ac3)",
+              "status": "PASS"
+            },
+            {
+              "check": "sample_rate",
+              "expected": 48000,
+              "measured": 48000,
+              "status": "PASS"
+            },
+            {
+              "check": "channels",
+              "expected": 6,
+              "measured": 6,
+              "status": "PASS"
+            }
+          ]
+        }
+      ],
+      "failures": [],
+      "failures_total": 0,
+      "reason": null
+    }
+  },
+  "evidence": {
+    "master": "C:\\Users\\HFRC\\Desktop\\IPTV_Navigator_PRO_v5.4_MAX_AGGRESSION\\tools\\ape-demuxed\\fixtures\\master_ok.m3u8",
+    "master_sha256": "ece3c3af68663a57bf89bd3925727e3cfeb4e80f96c6f6283570807f0fff0fd3",
+    "cap_tokens_task": [
+      "max_resolution",
+      "max_bitrate",
+      "max_framerate",
+      "video-width",
+      "video-height",
+      "adaptive-maxbitrate",
+      "adaptive-maxwidth",
+      "adaptive-maxheight"
+    ],
+    "cap_verdicts_source": "cap_verdicts.json v2026-11-02",
+    "cap_tokens_checked": [
+      "max_resolution",
+      "max_bitrate",
+      "max_framerate",
+      "video-width",
+      "video-height",
+      "adaptive-maxbitrate",
+      "adaptive-maxwidth",
+      "adaptive-maxheight",
+      "inputstream.adaptive.chooser_bandwidth_max"
+    ],
+    "ffprobe": "ffprobe",
+    "generated_by": "node verify_demuxed.js C:\\Users\\HFRC\\Desktop\\IPTV_Navigator_PRO_v5.4_MAX_AGGRESSION\\tools\\ape-demuxed\\fixtures\\master_ok.m3u8 --source-resolution 3840x2160 --audio-segment C:\\Users\\HFRC\\Desktop\\IPTV_Navigator_PRO_v5.4_MAX_AGGRESSION\\tools\\ape-demuxed\\fixtures\\audio\\ac3_51_48k.ts --expect-audio-codec ac-3 --expect-sample-rate 48000 --expect-channels 6 --json C:\\Users\\HFRC\\AppData\\Local\\Temp\\ape-verify-tests-YmmS5b\\C7_audio_ac3_51_ok.json --quiet"
+  }
+}

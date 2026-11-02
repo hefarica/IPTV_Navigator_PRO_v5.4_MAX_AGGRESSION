@@ -1,0 +1,719 @@
+{
+  "tool": "verify_demuxed.js",
+  "version": "1.0.0",
+  "generated_at": "2026-11-02T13:54:34.664Z",
+  "input": {
+    "path": "C:\\Users\\HFRC\\Downloads\\APE_LISTA_1793589060441.m3u8",
+    "bytes": 604593696,
+    "lines": 10315662,
+    "sha256": "523d52a6d147f81ce5a212e47b9c55401fb409cd4a41aee96f8ba80b5b5049d6",
+    "mode": "catalogue",
+    "extinf_blocks": 10573,
+    "uri_lines": 10573,
+    "crlf_lines": 0,
+    "first_lines": [
+      "#EXTM3U x-tvg-url=\"\" x-tvg-url-epg=\"\" x-tvg-logo=\"\" x-tvg-shift=0 catchup=\"flussonic\" catchup-days=\"7\" catchup-source=\"{MediaUrl}?utc={utc}&lutc={lutc}\" url-tvg=\"\" refresh=\"1800\"",
+      "#EXT-X-VERSION:9",
+      "#EXT-X-INDEPENDENT-SEGMENTS",
+      "#EXT-X-APE-CHANNELS:10573",
+      "#EXT-X-APE-LAB-EXTRAS:1",
+      "#EXT-X-APE-LAB-DNA:sha256=unverified,SOURCE=LAB_CALIBRATED,EXPORTED=2026-10-26T01:31:05",
+      "#EXT-X-APE-CONTINUITY-LAW:STREAMING_CONTINUITY_LAW_V1",
+      "#EXT-X-APE-CONTINUITY-MANIFEST:no-store",
+      "#EXT-X-APE-CONTINUITY-RANGE:206",
+      "#EXT-X-APE-CONTINUITY-SEGMENTS:session-unique",
+      "#EXT-X-APE-CONTINUITY-TRANSPORT:declared",
+      "#EXT-X-APE-CONTINUITY-FALLBACK:HDR>SDR1080>SDR720"
+    ]
+  },
+  "options": {
+    "source_resolution": "3840x2160",
+    "source_framerate": null,
+    "min_video_bitrate": null,
+    "audio_segments": [],
+    "probe_renditions": [],
+    "expect_audio_codec": null,
+    "expect_sample_rate": null,
+    "expect_channels": null,
+    "allow_audio_downscale": false,
+    "ffprobe": "ffprobe",
+    "strict": false
+  },
+  "summary": {
+    "verdict": "FAIL",
+    "exit_code": 1,
+    "hard_gates_pass": false,
+    "all_gates_pass": false,
+    "demuxed": false,
+    "gates": [
+      {
+        "gate": "G1_structure",
+        "status": "NO_COMPUTADO",
+        "failures": 0
+      },
+      {
+        "gate": "G2_zero_video_downscale",
+        "status": "PASS",
+        "failures": 0
+      },
+      {
+        "gate": "G3_zero_video_caps",
+        "status": "FAIL",
+        "failures": 84584
+      },
+      {
+        "gate": "G4_audio_throughpass",
+        "status": "NO_COMPUTADO",
+        "failures": 0
+      }
+    ],
+    "scan_ms": 18688,
+    "total_ms": 18709
+  },
+  "gates": {
+    "g1_structure": {
+      "gate": "G1_structure",
+      "status": "NO_COMPUTADO",
+      "demuxed": false,
+      "audio_renditions": 0,
+      "audio_groups": [],
+      "variants": 10573,
+      "session_data_lines": 24,
+      "checks": [
+        {
+          "check": "AUDIO= / GROUP-ID",
+          "status": "PASS",
+          "detail": "el master NO declara #EXT-X-MEDIA TYPE=AUDIO: es MUXED (nada que resolver aquí; el gate de throughpass queda NO_COMPUTADO)",
+          "evidence": null
+        },
+        {
+          "check": "SESSION-DATA usa DATA-ID (no NAME)",
+          "status": "PASS",
+          "detail": "24 líneas SESSION-DATA, todas con DATA-ID",
+          "evidence": null
+        }
+      ],
+      "checks_total": 2,
+      "failures": [],
+      "failures_total": 0,
+      "reason": "el master no declara #EXT-X-MEDIA TYPE=AUDIO; no hay estructura de demuxed que verificar"
+    },
+    "g2_zero_video_downscale": {
+      "gate": "G2_zero_video_downscale",
+      "status": "PASS",
+      "source_resolution": "3840x2160",
+      "source_framerate": null,
+      "min_video_bitrate": null,
+      "variants": 10573,
+      "variants_with_resolution": 10573,
+      "worst_variant": {
+        "w": 3840,
+        "h": 2160,
+        "raw": "3840x2160",
+        "line": 1161
+      },
+      "below_bitrate": 0,
+      "below_framerate": 0,
+      "failures": [],
+      "failures_total": 0,
+      "note": "ley del operador: el VÍDEO nunca baja. Bajar AUDIO (canales/bitrate) sí está permitido y NO se evalúa aquí."
+    },
+    "g3_zero_video_caps": {
+      "gate": "G3_zero_video_caps",
+      "status": "FAIL",
+      "tokens_task": [
+        "max_resolution",
+        "max_bitrate",
+        "max_framerate",
+        "video-width",
+        "video-height",
+        "adaptive-maxbitrate",
+        "adaptive-maxwidth",
+        "adaptive-maxheight"
+      ],
+      "tokens_from_cap_verdicts": [
+        "inputstream.adaptive.chooser_bandwidth_max"
+      ],
+      "tokens_checked_total": 9,
+      "cap_verdicts_source": "cap_verdicts.json v2026-11-02",
+      "caps_lines": 84584,
+      "hits_total": 84584,
+      "hits_detail_kept": 500,
+      "hits_overflow": 84084,
+      "by_token": [
+        {
+          "token": "video-width",
+          "n": 10573
+        },
+        {
+          "token": "video-height",
+          "n": 10573
+        },
+        {
+          "token": "adaptive-maxwidth",
+          "n": 10573
+        },
+        {
+          "token": "adaptive-maxheight",
+          "n": 10573
+        },
+        {
+          "token": "adaptive-maxbitrate",
+          "n": 10573
+        },
+        {
+          "token": "max_resolution",
+          "n": 10573
+        },
+        {
+          "token": "max_framerate",
+          "n": 10573
+        },
+        {
+          "token": "inputstream.adaptive.chooser_bandwidth_max",
+          "n": 10573
+        }
+      ],
+      "failures": [
+        {
+          "line": 231,
+          "token": "video-width",
+          "text": "#EXTVLCOPT:video-width=1920"
+        },
+        {
+          "line": 232,
+          "token": "video-height",
+          "text": "#EXTVLCOPT:video-height=1080"
+        },
+        {
+          "line": 279,
+          "token": "adaptive-maxwidth",
+          "text": "#EXTVLCOPT:adaptive-maxwidth=7680"
+        },
+        {
+          "line": 280,
+          "token": "adaptive-maxheight",
+          "text": "#EXTVLCOPT:adaptive-maxheight=4320"
+        },
+        {
+          "line": 283,
+          "token": "adaptive-maxbitrate",
+          "text": "#EXTVLCOPT:adaptive-maxbitrate=8000000"
+        },
+        {
+          "line": 329,
+          "token": "max_resolution",
+          "text": "#KODIPROP:inputstream.adaptive.max_resolution=1920x1080"
+        },
+        {
+          "line": 330,
+          "token": "max_framerate",
+          "text": "#KODIPROP:inputstream.adaptive.max_framerate=60"
+        },
+        {
+          "line": 400,
+          "token": "inputstream.adaptive.chooser_bandwidth_max",
+          "text": "#KODIPROP:inputstream.adaptive.chooser_bandwidth_max=8000000"
+        },
+        {
+          "line": 1208,
+          "token": "video-width",
+          "text": "#EXTVLCOPT:video-width=1280"
+        },
+        {
+          "line": 1209,
+          "token": "video-height",
+          "text": "#EXTVLCOPT:video-height=720"
+        },
+        {
+          "line": 1256,
+          "token": "adaptive-maxwidth",
+          "text": "#EXTVLCOPT:adaptive-maxwidth=7680"
+        },
+        {
+          "line": 1257,
+          "token": "adaptive-maxheight",
+          "text": "#EXTVLCOPT:adaptive-maxheight=4320"
+        },
+        {
+          "line": 1260,
+          "token": "adaptive-maxbitrate",
+          "text": "#EXTVLCOPT:adaptive-maxbitrate=8000000"
+        },
+        {
+          "line": 1306,
+          "token": "max_resolution",
+          "text": "#KODIPROP:inputstream.adaptive.max_resolution=1920x1080"
+        },
+        {
+          "line": 1307,
+          "token": "max_framerate",
+          "text": "#KODIPROP:inputstream.adaptive.max_framerate=30"
+        },
+        {
+          "line": 1377,
+          "token": "inputstream.adaptive.chooser_bandwidth_max",
+          "text": "#KODIPROP:inputstream.adaptive.chooser_bandwidth_max=8000000"
+        },
+        {
+          "line": 2184,
+          "token": "video-width",
+          "text": "#EXTVLCOPT:video-width=1920"
+        },
+        {
+          "line": 2185,
+          "token": "video-height",
+          "text": "#EXTVLCOPT:video-height=1080"
+        },
+        {
+          "line": 2232,
+          "token": "adaptive-maxwidth",
+          "text": "#EXTVLCOPT:adaptive-maxwidth=7680"
+        },
+        {
+          "line": 2233,
+          "token": "adaptive-maxheight",
+          "text": "#EXTVLCOPT:adaptive-maxheight=4320"
+        },
+        {
+          "line": 2236,
+          "token": "adaptive-maxbitrate",
+          "text": "#EXTVLCOPT:adaptive-maxbitrate=8000000"
+        },
+        {
+          "line": 2282,
+          "token": "max_resolution",
+          "text": "#KODIPROP:inputstream.adaptive.max_resolution=1920x1080"
+        },
+        {
+          "line": 2283,
+          "token": "max_framerate",
+          "text": "#KODIPROP:inputstream.adaptive.max_framerate=60"
+        },
+        {
+          "line": 2353,
+          "token": "inputstream.adaptive.chooser_bandwidth_max",
+          "text": "#KODIPROP:inputstream.adaptive.chooser_bandwidth_max=8000000"
+        },
+        {
+          "line": 3161,
+          "token": "video-width",
+          "text": "#EXTVLCOPT:video-width=1280"
+        },
+        {
+          "line": 3162,
+          "token": "video-height",
+          "text": "#EXTVLCOPT:video-height=720"
+        },
+        {
+          "line": 3209,
+          "token": "adaptive-maxwidth",
+          "text": "#EXTVLCOPT:adaptive-maxwidth=7680"
+        },
+        {
+          "line": 3210,
+          "token": "adaptive-maxheight",
+          "text": "#EXTVLCOPT:adaptive-maxheight=4320"
+        },
+        {
+          "line": 3213,
+          "token": "adaptive-maxbitrate",
+          "text": "#EXTVLCOPT:adaptive-maxbitrate=8000000"
+        },
+        {
+          "line": 3259,
+          "token": "max_resolution",
+          "text": "#KODIPROP:inputstream.adaptive.max_resolution=1920x1080"
+        },
+        {
+          "line": 3260,
+          "token": "max_framerate",
+          "text": "#KODIPROP:inputstream.adaptive.max_framerate=30"
+        },
+        {
+          "line": 3330,
+          "token": "inputstream.adaptive.chooser_bandwidth_max",
+          "text": "#KODIPROP:inputstream.adaptive.chooser_bandwidth_max=8000000"
+        },
+        {
+          "line": 4137,
+          "token": "video-width",
+          "text": "#EXTVLCOPT:video-width=1920"
+        },
+        {
+          "line": 4138,
+          "token": "video-height",
+          "text": "#EXTVLCOPT:video-height=1080"
+        },
+        {
+          "line": 4185,
+          "token": "adaptive-maxwidth",
+          "text": "#EXTVLCOPT:adaptive-maxwidth=7680"
+        },
+        {
+          "line": 4186,
+          "token": "adaptive-maxheight",
+          "text": "#EXTVLCOPT:adaptive-maxheight=4320"
+        },
+        {
+          "line": 4189,
+          "token": "adaptive-maxbitrate",
+          "text": "#EXTVLCOPT:adaptive-maxbitrate=8000000"
+        },
+        {
+          "line": 4235,
+          "token": "max_resolution",
+          "text": "#KODIPROP:inputstream.adaptive.max_resolution=1920x1080"
+        },
+        {
+          "line": 4236,
+          "token": "max_framerate",
+          "text": "#KODIPROP:inputstream.adaptive.max_framerate=60"
+        },
+        {
+          "line": 4306,
+          "token": "inputstream.adaptive.chooser_bandwidth_max",
+          "text": "#KODIPROP:inputstream.adaptive.chooser_bandwidth_max=8000000"
+        },
+        {
+          "line": 5114,
+          "token": "video-width",
+          "text": "#EXTVLCOPT:video-width=1280"
+        },
+        {
+          "line": 5115,
+          "token": "video-height",
+          "text": "#EXTVLCOPT:video-height=720"
+        },
+        {
+          "line": 5162,
+          "token": "adaptive-maxwidth",
+          "text": "#EXTVLCOPT:adaptive-maxwidth=7680"
+        },
+        {
+          "line": 5163,
+          "token": "adaptive-maxheight",
+          "text": "#EXTVLCOPT:adaptive-maxheight=4320"
+        },
+        {
+          "line": 5166,
+          "token": "adaptive-maxbitrate",
+          "text": "#EXTVLCOPT:adaptive-maxbitrate=8000000"
+        },
+        {
+          "line": 5212,
+          "token": "max_resolution",
+          "text": "#KODIPROP:inputstream.adaptive.max_resolution=1920x1080"
+        },
+        {
+          "line": 5213,
+          "token": "max_framerate",
+          "text": "#KODIPROP:inputstream.adaptive.max_framerate=30"
+        },
+        {
+          "line": 5283,
+          "token": "inputstream.adaptive.chooser_bandwidth_max",
+          "text": "#KODIPROP:inputstream.adaptive.chooser_bandwidth_max=8000000"
+        },
+        {
+          "line": 6090,
+          "token": "video-width",
+          "text": "#EXTVLCOPT:video-width=1920"
+        },
+        {
+          "line": 6091,
+          "token": "video-height",
+          "text": "#EXTVLCOPT:video-height=1080"
+        },
+        {
+          "line": 6138,
+          "token": "adaptive-maxwidth",
+          "text": "#EXTVLCOPT:adaptive-maxwidth=7680"
+        },
+        {
+          "line": 6139,
+          "token": "adaptive-maxheight",
+          "text": "#EXTVLCOPT:adaptive-maxheight=4320"
+        },
+        {
+          "line": 6142,
+          "token": "adaptive-maxbitrate",
+          "text": "#EXTVLCOPT:adaptive-maxbitrate=8000000"
+        },
+        {
+          "line": 6188,
+          "token": "max_resolution",
+          "text": "#KODIPROP:inputstream.adaptive.max_resolution=1920x1080"
+        },
+        {
+          "line": 6189,
+          "token": "max_framerate",
+          "text": "#KODIPROP:inputstream.adaptive.max_framerate=60"
+        },
+        {
+          "line": 6259,
+          "token": "inputstream.adaptive.chooser_bandwidth_max",
+          "text": "#KODIPROP:inputstream.adaptive.chooser_bandwidth_max=8000000"
+        },
+        {
+          "line": 7067,
+          "token": "video-width",
+          "text": "#EXTVLCOPT:video-width=1280"
+        },
+        {
+          "line": 7068,
+          "token": "video-height",
+          "text": "#EXTVLCOPT:video-height=720"
+        },
+        {
+          "line": 7115,
+          "token": "adaptive-maxwidth",
+          "text": "#EXTVLCOPT:adaptive-maxwidth=7680"
+        },
+        {
+          "line": 7116,
+          "token": "adaptive-maxheight",
+          "text": "#EXTVLCOPT:adaptive-maxheight=4320"
+        },
+        {
+          "line": 7119,
+          "token": "adaptive-maxbitrate",
+          "text": "#EXTVLCOPT:adaptive-maxbitrate=8000000"
+        },
+        {
+          "line": 7165,
+          "token": "max_resolution",
+          "text": "#KODIPROP:inputstream.adaptive.max_resolution=1920x1080"
+        },
+        {
+          "line": 7166,
+          "token": "max_framerate",
+          "text": "#KODIPROP:inputstream.adaptive.max_framerate=30"
+        },
+        {
+          "line": 7236,
+          "token": "inputstream.adaptive.chooser_bandwidth_max",
+          "text": "#KODIPROP:inputstream.adaptive.chooser_bandwidth_max=8000000"
+        },
+        {
+          "line": 8043,
+          "token": "video-width",
+          "text": "#EXTVLCOPT:video-width=1920"
+        },
+        {
+          "line": 8044,
+          "token": "video-height",
+          "text": "#EXTVLCOPT:video-height=1080"
+        },
+        {
+          "line": 8091,
+          "token": "adaptive-maxwidth",
+          "text": "#EXTVLCOPT:adaptive-maxwidth=7680"
+        },
+        {
+          "line": 8092,
+          "token": "adaptive-maxheight",
+          "text": "#EXTVLCOPT:adaptive-maxheight=4320"
+        },
+        {
+          "line": 8095,
+          "token": "adaptive-maxbitrate",
+          "text": "#EXTVLCOPT:adaptive-maxbitrate=8000000"
+        },
+        {
+          "line": 8141,
+          "token": "max_resolution",
+          "text": "#KODIPROP:inputstream.adaptive.max_resolution=1920x1080"
+        },
+        {
+          "line": 8142,
+          "token": "max_framerate",
+          "text": "#KODIPROP:inputstream.adaptive.max_framerate=60"
+        },
+        {
+          "line": 8212,
+          "token": "inputstream.adaptive.chooser_bandwidth_max",
+          "text": "#KODIPROP:inputstream.adaptive.chooser_bandwidth_max=8000000"
+        },
+        {
+          "line": 9020,
+          "token": "video-width",
+          "text": "#EXTVLCOPT:video-width=1280"
+        },
+        {
+          "line": 9021,
+          "token": "video-height",
+          "text": "#EXTVLCOPT:video-height=720"
+        },
+        {
+          "line": 9068,
+          "token": "adaptive-maxwidth",
+          "text": "#EXTVLCOPT:adaptive-maxwidth=7680"
+        },
+        {
+          "line": 9069,
+          "token": "adaptive-maxheight",
+          "text": "#EXTVLCOPT:adaptive-maxheight=4320"
+        },
+        {
+          "line": 9072,
+          "token": "adaptive-maxbitrate",
+          "text": "#EXTVLCOPT:adaptive-maxbitrate=8000000"
+        },
+        {
+          "line": 9118,
+          "token": "max_resolution",
+          "text": "#KODIPROP:inputstream.adaptive.max_resolution=1920x1080"
+        },
+        {
+          "line": 9119,
+          "token": "max_framerate",
+          "text": "#KODIPROP:inputstream.adaptive.max_framerate=30"
+        },
+        {
+          "line": 9189,
+          "token": "inputstream.adaptive.chooser_bandwidth_max",
+          "text": "#KODIPROP:inputstream.adaptive.chooser_bandwidth_max=8000000"
+        },
+        {
+          "line": 9996,
+          "token": "video-width",
+          "text": "#EXTVLCOPT:video-width=1920"
+        },
+        {
+          "line": 9997,
+          "token": "video-height",
+          "text": "#EXTVLCOPT:video-height=1080"
+        },
+        {
+          "line": 10044,
+          "token": "adaptive-maxwidth",
+          "text": "#EXTVLCOPT:adaptive-maxwidth=7680"
+        },
+        {
+          "line": 10045,
+          "token": "adaptive-maxheight",
+          "text": "#EXTVLCOPT:adaptive-maxheight=4320"
+        },
+        {
+          "line": 10048,
+          "token": "adaptive-maxbitrate",
+          "text": "#EXTVLCOPT:adaptive-maxbitrate=8000000"
+        },
+        {
+          "line": 10094,
+          "token": "max_resolution",
+          "text": "#KODIPROP:inputstream.adaptive.max_resolution=1920x1080"
+        },
+        {
+          "line": 10095,
+          "token": "max_framerate",
+          "text": "#KODIPROP:inputstream.adaptive.max_framerate=60"
+        },
+        {
+          "line": 10165,
+          "token": "inputstream.adaptive.chooser_bandwidth_max",
+          "text": "#KODIPROP:inputstream.adaptive.chooser_bandwidth_max=8000000"
+        },
+        {
+          "line": 10973,
+          "token": "video-width",
+          "text": "#EXTVLCOPT:video-width=1280"
+        },
+        {
+          "line": 10974,
+          "token": "video-height",
+          "text": "#EXTVLCOPT:video-height=720"
+        },
+        {
+          "line": 11021,
+          "token": "adaptive-maxwidth",
+          "text": "#EXTVLCOPT:adaptive-maxwidth=7680"
+        },
+        {
+          "line": 11022,
+          "token": "adaptive-maxheight",
+          "text": "#EXTVLCOPT:adaptive-maxheight=4320"
+        },
+        {
+          "line": 11025,
+          "token": "adaptive-maxbitrate",
+          "text": "#EXTVLCOPT:adaptive-maxbitrate=8000000"
+        },
+        {
+          "line": 11071,
+          "token": "max_resolution",
+          "text": "#KODIPROP:inputstream.adaptive.max_resolution=1920x1080"
+        },
+        {
+          "line": 11072,
+          "token": "max_framerate",
+          "text": "#KODIPROP:inputstream.adaptive.max_framerate=30"
+        },
+        {
+          "line": 11142,
+          "token": "inputstream.adaptive.chooser_bandwidth_max",
+          "text": "#KODIPROP:inputstream.adaptive.chooser_bandwidth_max=8000000"
+        },
+        {
+          "line": 11949,
+          "token": "video-width",
+          "text": "#EXTVLCOPT:video-width=1920"
+        },
+        {
+          "line": 11950,
+          "token": "video-height",
+          "text": "#EXTVLCOPT:video-height=1080"
+        },
+        {
+          "line": 11997,
+          "token": "adaptive-maxwidth",
+          "text": "#EXTVLCOPT:adaptive-maxwidth=7680"
+        },
+        {
+          "line": 11998,
+          "token": "adaptive-maxheight",
+          "text": "#EXTVLCOPT:adaptive-maxheight=4320"
+        }
+      ],
+      "failures_total": 84584,
+      "note": "un cap pide una salida PEOR que la fuente declarada; la ley prohíbe capar vídeo (resolución/bitrate/fps). Origen de la lista de tokens: encargo (8) + cap_verdicts.json de t10 (veredicto medido cap_de_video). hits_total cuenta pares (línea, token): una línea puede llevar dos tokens."
+    },
+    "g4_audio_throughpass": {
+      "gate": "G4_audio_throughpass",
+      "status": "NO_COMPUTADO",
+      "reason": "no se aportó --audio-segment ni --probe-rendition: el throughpass real exige un recurso de audio accesible. Este arnés NO descarga red por su cuenta y NO usa md5 de bytes (ver cabecera del script: el md5 no distingue un repackage de un transcode)",
+      "measurements": [],
+      "failures": [],
+      "checks": []
+    }
+  },
+  "evidence": {
+    "master": "C:\\Users\\HFRC\\Downloads\\APE_LISTA_1793589060441.m3u8",
+    "master_sha256": "523d52a6d147f81ce5a212e47b9c55401fb409cd4a41aee96f8ba80b5b5049d6",
+    "cap_tokens_task": [
+      "max_resolution",
+      "max_bitrate",
+      "max_framerate",
+      "video-width",
+      "video-height",
+      "adaptive-maxbitrate",
+      "adaptive-maxwidth",
+      "adaptive-maxheight"
+    ],
+    "cap_verdicts_source": "cap_verdicts.json v2026-11-02",
+    "cap_tokens_checked": [
+      "max_resolution",
+      "max_bitrate",
+      "max_framerate",
+      "video-width",
+      "video-height",
+      "adaptive-maxbitrate",
+      "adaptive-maxwidth",
+      "adaptive-maxheight",
+      "inputstream.adaptive.chooser_bandwidth_max"
+    ],
+    "ffprobe": "ffprobe",
+    "generated_by": "node verify_demuxed.js C:\\Users\\HFRC\\Downloads\\APE_LISTA_1793589060441.m3u8 --source-resolution 3840x2160 --json C:\\Users\\HFRC\\AppData\\Local\\Temp\\ape-verify-tests-YmmS5b\\C18_lista_referencia.json --quiet"
+  }
+}

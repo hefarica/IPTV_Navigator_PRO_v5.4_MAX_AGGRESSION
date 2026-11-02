@@ -1,0 +1,14 @@
+#EXTM3U
+# ============================================================================
+# FIXTURE SINTETICO — NO son datos medidos de ningun proveedor.
+# Caso: CAP DE VIDEO. `inputstream.adaptive.max_resolution=1920x1080` sobre una
+#   variante 3840x2160: pide una salida PEOR que la fuente. Prohibido.
+#   Esperado: G3 FAIL citando la linea -> exit 1.
+# ============================================================================
+#EXT-X-VERSION:9
+#EXT-X-INDEPENDENT-SEGMENTS
+#EXT-X-SESSION-DATA:DATA-ID="com.ape.verify.fixture",VALUE="master_cap_max_resolution"
+#EXT-X-MEDIA:TYPE=AUDIO,GROUP-ID="aud",NAME="EAC3 5.1",LANGUAGE="spa",CHANNELS="6",DEFAULT=YES,AUTOSELECT=YES,CODECS="ec-3",URI="https://fx.invalid/audio/fxuser/fxpass/1003_es_eac3.m3u8"
+#KODIPROP:inputstream.adaptive.max_resolution=1920x1080
+#EXT-X-STREAM-INF:BANDWIDTH=9000000,AVERAGE-BANDWIDTH=6500000,RESOLUTION=3840x2160,FRAME-RATE=30.000,CODECS="hvc1.2.4.L153.B0,ec-3",VIDEO-RANGE=PQ,STABLE-VARIANT-ID="fx_P4",AUDIO="aud"
+https://fx.invalid/live/fxuser/fxpass/1003.m3u8
