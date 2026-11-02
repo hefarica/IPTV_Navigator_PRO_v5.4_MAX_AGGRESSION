@@ -111,8 +111,10 @@ const RE_CHUNK = /^#EXT-X-APE-LAB-METADATA:(\d+)\/(\d+):(.+)$/;
   // lista usa de verdad. Un checker que aprueba por no encontrar el campo es peor que no tener checker.
   // Las reglas de abajo se escribieron mirando el JSON real: {schema, profile, generated_at, fields},
   // y dentro de fields: vlcopt, kodiprop, hlsjs, settings, quality_levels, bounds, optimized_knobs.
+  let decisionTabla = null;
   if (json) {
     const f = (json.fields && typeof json.fields === 'object') ? json.fields : {};
+    decisionTabla = tablaDecision(f);
     const num = (v) => (typeof v === 'number' ? v : (typeof v === 'string' && v.trim() !== '' && !isNaN(+v) ? +v : null));
 
     // C1 · hls.js: abrBandWidthFactor y abrBandWidthUpFactor son RATIOS 0..1 en hls.js.
@@ -247,6 +249,7 @@ const RE_CHUNK = /^#EXT-X-APE-LAB-METADATA:(\d+)\/(\d+):(.+)$/;
     perfil: json && json.profile ? json.profile : null,
     claves: json ? Object.keys(json) : [],
     problemas,
+    decision: decisionTabla,
     estado: problemas.length ? 'CONTRADICHO' : 'COHERENTE'
   };
 
@@ -265,3 +268,108 @@ const RE_CHUNK = /^#EXT-X-APE-LAB-METADATA:(\d+)\/(\d+):(.+)$/;
   process.stderr.write(`ERROR: ${e.message}\n`);
   process.exit(3);
 });
+
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+// DECISION DE LOS 22 DUPLICADOS
+//
+// El generador aplica 10 capas en orden y todas usan upsert: gana la ULTIMA que declara el parametro.
+// Esta seccion reconstruye ese valor emitido sin ejecutar el generador, y lo compara con el optimo
+// declarado aqui. Asi la decision no vive en un documento que nadie relee: se recalcula en cada push.
+//
+// Referencias de los optimos:
+//   - 15000 ms de cache: el valor que el propio LAB escribe en vlcopt y que APE_PROFILE_MATRIX usa en P4/P5.
+//     105000 ms son 105 s de latencia respecto al directo.
+//   - hls.js: abrBandWidthFactor 0.85 (conservador, evita rebuffer), maxFragLookUpTolerance 0.25 (default),
+//     nudgeOffset 0.1 (default), maxLiveSyncPlaybackRate 1.25 (< 1.5 default, conservador).
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+// Fusiona varios sub-objetos de una misma capa. El generador hace upsert de EXTVLCOPT, KODIPROP,
+// EXTHTTP y SYS por separado en L10720-10723; mirar solo EXTVLCOPT dejaba DNT sin detectar.
+const fusion = (base, subs) => (f) => {
+  const raiz = base(f);
+  if (!raiz || typeof raiz !== 'object') return null;
+  const out = {};
+  for (const s of subs) {
+    const o = raiz[s];
+    if (o && typeof o === 'object') Object.assign(out, o);
+  }
+  return out;
+};
+const L3 = (f) => f.player_enslavement && f.player_enslavement.level_3_per_channel;
+
+const CAPAS_ORDEN = [
+  ['optimized_knobs',        (f) => f.optimized_knobs],
+  ['headers',                (f) => f.headers],
+  ['prefetch_config',        (f) => f.prefetch_config],
+  ['player_enslavement.L3',  fusion(L3, ['EXTVLCOPT', 'KODIPROP', 'EXTHTTP', 'SYS'])],
+  ['actor.player.exoplayer', (f) => f.actor_injections && f.actor_injections.player && f.actor_injections.player.exoplayer],
+  ['actor.player.hlsjs',     (f) => f.actor_injections && f.actor_injections.player && f.actor_injections.player.hlsjs],
+  ['actor.panel',            (f) => f.actor_injections && f.actor_injections.panel],
+  ['actor.player.kodi',      (f) => f.actor_injections && f.actor_injections.player && f.actor_injections.player.kodi],
+  ['actor.os',               (f) => f.actor_injections && f.actor_injections.os],
+  ['actor.network',          (f) => f.actor_injections && f.actor_injections.network],
+  ['actor.iptv_server',      (f) => f.actor_injections && f.actor_injections.iptv_server],
+  ['actor.soc_vpp_dnr',      fusion((f) => f.actor_injections && f.actor_injections.soc_vpp_dnr, ['settings', 'content_overrides'])],
+  ['actor.player.vlc',       (f) => f.actor_injections && f.actor_injections.player && f.actor_injections.player.vlc]
+];
+
+// Cada entrada: nombres aceptados por capa (se normalizan quitando _ . -), optimo y nota.
+const DECISION = [
+  { p: 'network-caching',        alias: ['networkcaching', 'networkcachingms'], opt: 15000, nota: '105 s de latencia en directo' },
+  { p: 'live-caching',           alias: ['livecaching'],                        opt: 15000, nota: 'idem' },
+  { p: 'file-caching',           alias: ['filecaching'],                        opt: 20000, nota: 'idem' },
+  { p: 'sout-mux-caching',       alias: ['soutmuxcaching'],                     opt: 20000, nota: 'idem' },
+  { p: 'buffer_seconds',         alias: ['bufferseconds'],                      opt: 15,    nota: 'KNOB: no se emite; alimenta network-caching x1000' },
+  { p: 'http-max-retries',       alias: ['httpmaxretries', 'reconnectattempts'],opt: 350,   nota: 'anti-freeze, correcto' },
+  { p: 'http-timeout',           alias: ['httptimeout'],                        opt: 30000, nota: 'correcto' },
+  { p: 'network-reconnect-count',alias: ['networkreconnectcount'],              opt: 350,   nota: 'correcto' },
+  { p: 'abrBandWidthFactor',     alias: ['abrbandwidthfactor'],                 opt: 0.85,  nota: 'ratio 0..1, correcto' },
+  { p: 'maxLiveSyncPlaybackRate',alias: ['maxlivesyncplaybackrate'],            opt: 1.25,  nota: 'correcto' },
+  { p: 'maxFragLookUpTolerance', alias: ['maxfraglookuptolerance'],             opt: 0.25,  nota: 'correcto' },
+  { p: 'nudgeOffset',            alias: ['nudgeoffset'],                        opt: 0.1,   nota: 'correcto' },
+  { p: 'nudgeMaxRetry',          alias: ['nudgemaxretry'],                      opt: 13,    nota: 'correcto' },
+  { p: 'highBufferWatchdogPeriod',alias:['highbufferwatchdogperiod'],           opt: 3,     nota: 'correcto' },
+  { p: 'maxBufferLength',        alias: ['maxbufferlength'],                    opt: 105,   nota: 'correcto' },
+  { p: 'maxMaxBufferLength',     alias: ['maxmaxbufferlength'],                 opt: 210,   nota: 'correcto' },
+  { p: 'peak_luminance_nits',    alias: ['peakluminancenits'],                  opt: 4000,  nota: 'rango HDR habitual' },
+  { p: 'prefetch_segments',      alias: ['prefetchsegments'],                   opt: 12,    nota: 'leido de prefetch_config' },
+  { p: 'DNT',                    alias: ['dnt'],                                opt: 1,     nota: 'no rastrear' },
+  { p: 'pq_ai_dnr_enable',       alias: ['pqaidnrenable'],                      opt: 1,     nota: 'global 1; override deportes 0 es legitimo' },
+  { p: 'pq_dnr_enable',          alias: ['pqdnrenable'],                        opt: 1,     nota: 'idem' }
+];
+
+const norm = (k) => String(k).toLowerCase().replace(/[._-]/g, '');
+
+/** Reconstruye el valor que el generador EMITE: la ultima capa que declare el parametro. */
+function valorEmitido(fields, item) {
+  const buscados = [norm(item.p), ...item.alias].map(norm);
+  let ganador = null;
+  for (const [capaId, get] of CAPAS_ORDEN) {
+    const obj = get(fields);
+    if (!obj || typeof obj !== 'object') continue;
+    for (const k of Object.keys(obj)) {
+      if (!buscados.includes(norm(k))) continue;
+      const v = obj[k];
+      if (v && typeof v === 'object') continue;
+      ganador = { capa: capaId, clave: k, valor: v };
+    }
+  }
+  return ganador;
+}
+
+function tablaDecision(fields) {
+  return DECISION.map((item) => {
+    const g = valorEmitido(fields, item);
+    const emitido = g ? (isNaN(Number(g.valor)) ? g.valor : Number(g.valor)) : null;
+    const difiere = emitido !== null && item.opt !== null && Number(emitido) !== Number(item.opt);
+    return {
+      parametro: item.p,
+      emitido,
+      capa_que_gana: g ? g.capa : '(ninguna)',
+      clave_emisora: g ? g.clave : '(ninguna)',
+      optimo: item.opt,
+      difiere,
+      nota: item.nota,
+      accion: emitido === null ? 'NO_EMITIDO' : (difiere ? 'CORREGIR' : 'DEJAR')
+    };
+  });
+}
