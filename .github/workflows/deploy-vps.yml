@@ -74,6 +74,17 @@ jobs:
           TARGET="${{ secrets.VPS_USER }}@$VPS_HOST"
           mkdir -p "$DEPLOY_DIR/out"
           ssh "$TARGET" 'bash -s' < "$DEPLOY_DIR/inventory.sh" | tee "$DEPLOY_DIR/out/inventory.txt"
+      # ── TELEMETRÍA DE FLUJO (read-only) ───────────────────────────────────
+      # Responde «¿fluye la información?» por lista y por código, leyendo el
+      # access.log que ya existe en el servidor. Cero escrituras en el VPS.
+      # Se ejecuta por stdin, igual que el inventario, porque el script tampoco
+      # contiene ssh: es un script para correr EN la máquina.
+      - name: Telemetría de flujo por lista y código (no escribe)
+        run: |
+          set -euo pipefail
+          TARGET="${{ secrets.VPS_USER }}@$VPS_HOST"
+          ssh "$TARGET" 'bash -s' < "$DEPLOY_DIR/flow_telemetry.sh" | tee "$DEPLOY_DIR/out/flow-telemetry.txt"
+
       # ── SONDA nginx READ-ONLY (evidencia para el fix del HTTP 206) ─────────
       # Medido: `/lists/` NO lo sirve nginx. Hay `location ^~ /lists/` que hace
       # proxy_pass a 127.0.0.1:8080, y el prefijo gana sobre el regex `~* \.m3u8$`.
