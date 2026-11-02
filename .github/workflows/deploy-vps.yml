@@ -67,10 +67,11 @@ jobs:
           chmod +x "$DEPLOY_DIR"/*.sh
           bash "$DEPLOY_DIR/inventory.sh"
       # ── SONDA nginx READ-ONLY (evidencia para el fix del HTTP 206) ─────────
-      # El 206 falla en el bloque `location ~* \.m3u8$` de sites-available/default.
-      # Medido: ese archivo NO coincide con ningún .conf del repo, así que no se
-      # puede sobrescribir a ciegas. Esta sonda solo LEE: no escribe, no recarga,
-      # no reinicia. Trae el archivo byte-exacto para parchearlo localmente.
+      # Medido: `/lists/` NO lo sirve nginx. Hay `location ^~ /lists/` que hace
+      # proxy_pass a 127.0.0.1:8080, y el prefijo gana sobre el regex `~* \.m3u8$`.
+      # Ese archivo vivo tampoco coincide con ningún .conf del repo. Esta sonda
+      # solo LEE: no escribe, no recarga, no reinicia. Trae el archivo byte-exacto
+      # y separa culpables probando Range contra el upstream y a través de nginx.
       - name: Sonda nginx read-only (206)
         run: |
           set -uo pipefail
@@ -98,6 +99,27 @@ jobs:
             echo
             echo "=== gzip_static / gunzip / Accept-Ranges ==="
             ssh "$TARGET" "grep -n -E 'gzip_static|gunzip|Accept-Ranges' /etc/nginx/sites-available/default 2>&1 || echo NINGUNO" || true
+            echo
+            echo "=== quien escucha en 8080/8081 ==="
+            ssh "$TARGET" 'sudo -n ss -ltnp 2>/dev/null | grep -E ":8080|:8081" || ss -ltn 2>/dev/null | grep -E ":8080|:8081" || echo SIN_LISTENER' || true
+            echo
+            echo "=== procesos candidatos (guardian/ape/8080) ==="
+            ssh "$TARGET" 'ps -eo pid,ppid,user,etime,cmd --sort=-etime 2>/dev/null | grep -iE "guardian|:8080|:8081|python" | grep -v grep | head -12 || echo SIN_PROCESO' || true
+            echo
+            echo "=== units systemd que huelan a guardian/lista ==="
+            ssh "$TARGET" 'systemctl list-units --type=service --all --no-pager 2>/dev/null | grep -iE "guardian|ape|list|m3u|gunicorn|flask|uvicorn" | head -15 || echo SIN_UNIT' || true
+            echo
+            echo "=== identidad del Guardian: cabeceras de un GET normal ==="
+            ssh "$TARGET" 'curl -sS -o /dev/null -D - -m 20 http://127.0.0.1:8080/APE_LISTA_1793589060441.m3u8 2>&1 | head -20' || true
+            echo
+            echo "=== RANGE DIRECTO AL GUARDIAN (sin nginx) ==="
+            ssh "$TARGET" 'curl -sS -o /dev/null -D - -m 20 -H "Range: bytes=0-1023" http://127.0.0.1:8080/APE_LISTA_1793589060441.m3u8 2>&1 | head -20' || true
+            echo
+            echo "=== RANGE A TRAVES DE NGINX (loopback TLS) ==="
+            ssh "$TARGET" 'curl -sS -o /dev/null -D - -m 20 -k -H "Range: bytes=0-1023" -H "Host: iptv-ape.duckdns.org" https://127.0.0.1/lists/APE_LISTA_1793589060441.m3u8 2>&1 | head -20' || true
+            echo
+            echo "=== tamano real del listado servido (Content-Length por HEAD) ==="
+            ssh "$TARGET" 'curl -sS -I -m 20 http://127.0.0.1:8080/APE_LISTA_1793589060441.m3u8 2>&1 | grep -iE "content-length|content-encoding|transfer-encoding|accept-ranges" || echo SIN_DATOS' || true
           } | tee "$OUT"
       - name: Traer la config viva byte-exacta (read-only)
         run: |
