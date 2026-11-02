@@ -18,6 +18,87 @@
   window.APE_OUTPUT_DELTA_PCT = DELTA_PCT;
   var VPS_BASE = (window.APE_VPS_BASE || 'https://iptv-ape.duckdns.org').replace(/\/+$/, '');
   var VPS_CONFIG_URL = VPS_BASE + '/prisma/api/ape-output-config.php';
+  var JIT_BASE = (window.APE_JIT_BASE || 'https://iptv-ape.duckdns.org').replace(/\/+$/, '');
+  var OUT_OPTS_KEY = 'ape_out_opts_v1';
+  var _jitMap = new Map();
+  var _jitLoading = null;
+
+  function loadOutOpts() {
+    try {
+      var o = JSON.parse(localStorage.getItem(OUT_OPTS_KEY) || '{}');
+      var hdr = String(o.hdr || 'auto').toLowerCase();
+      if (hdr !== 'pq' && hdr !== 'sdr') hdr = 'auto';
+      return { jit: o.jit === true, hdr: hdr };
+    } catch (_) {
+      return { jit: false, hdr: 'auto' };
+    }
+  }
+
+  function saveOutOpts(jit, hdr) {
+    try {
+      localStorage.setItem(OUT_OPTS_KEY, JSON.stringify({
+        jit: jit === true,
+        hdr: (hdr === 'pq' || hdr === 'sdr') ? hdr : 'auto'
+      }));
+    } catch (_) { }
+  }
+
+  function currentOutOpts() {
+    var oj = document.getElementById('ape-out-jit');
+    var ohdr = document.getElementById('ape-out-hdr');
+    var hdr = ohdr ? String(ohdr.value).toLowerCase() : 'auto';
+    if (hdr !== 'pq' && hdr !== 'sdr') hdr = 'auto';
+    return { jit: !!(oj && oj.checked), hdrMode: hdr };
+  }
+
+  async function ensureJitCatalog() {
+    if (_jitMap.size > 0) return true;
+    if (_jitLoading) return _jitLoading;
+
+    _jitLoading = (async function () {
+      try {
+        var r = await fetch(JIT_BASE + '/jit/catalog.json', { cache: 'no-store' });
+        if (!r.ok) throw new Error('catalog ' + r.status);
+        var j = await r.json();
+        var list = Array.isArray(j) ? j : (j.channels || []);
+        var map = new Map();
+        list.forEach(function (c) {
+          if (c && c.id && c.hls) map.set(String(c.id), c.hls);
+        });
+        _jitMap = map;
+        return map.size > 0;
+      } catch (e) {
+        _jitMap = new Map();
+        return false;
+      } finally {
+        _jitLoading = null;
+      }
+    })();
+
+    return _jitLoading;
+  }
+
+  function jitUrlForChannel(channel) {
+    if (!_jitMap || !channel) return null;
+    var id = String(
+      channel.tvg_id || channel.tvgId || channel.tvgID || channel.id || ''
+    ).trim();
+    return _jitMap.get(id) || null;
+  }
+
+  window.APE_JIT_URL_FOR_CHANNEL = jitUrlForChannel;
+
+  // Test seam: inert unless the harness opts in.
+  if (window.__APE_OUTPUT_TEST__ === true) {
+    window.APE_OUTPUT_TEST_HOOKS = {
+      loadOutOpts: loadOutOpts,
+      saveOutOpts: saveOutOpts,
+      currentOutOpts: currentOutOpts,
+      ensureJitCatalog: ensureJitCatalog,
+      jitUrlForChannel: jitUrlForChannel,
+      runDirect: runDirect
+    };
+  }
 
   function profileIds() {
     try {
@@ -285,12 +366,37 @@
       catch (e) { status('DASH/MPD: ' + e.message, '#ef4444'); toast('DASH/MPD: ' + e.message, 'error'); }
       return;
     }
+    var out = currentOutOpts();
+    if (out.jit) {
+      var jitOk = await ensureJitCatalog();
+      if (!jitOk) {
+        out.jit = false;
+        toast('JIT no disponible: fallback a DIRECTO', 'warning');
+      }
+    }
+    var prev = {
+      direct: window.APE_DIRECT_MODE,
+      jit: window.APE_USE_JIT,
+      hdr: window.APE_HDR_MODE
+    };
     try {
       status('Generando DIRECTO con delta ' + d + '%…', '#38bdf8');
       sendDeltaToVps(d);
-      await window.APEGenerationController.prepublishAndGenerate({ buffer_delta_pct: d, buffer_delta_array: getDeltaArray(d) });
+      await window.APEGenerationController.prepublishAndGenerate({
+        buffer_delta_pct: d,
+        buffer_delta_array: getDeltaArray(d),
+        jit: out.jit,
+        hdrMode: out.hdrMode
+      });
       status('DIRECTO completado · delta ' + d + '% (array por perfil)', '#22c55e');
-    } catch (e) { status('DIRECTO falló: ' + e.message, '#ef4444'); toast('DIRECTO falló: ' + e.message, 'error'); }
+    } catch (e) {
+      status('DIRECTO falló: ' + e.message, '#ef4444');
+      toast('DIRECTO falló: ' + e.message, 'error');
+    } finally {
+      window.APE_DIRECT_MODE = prev.direct;
+      window.APE_USE_JIT = prev.jit;
+      window.APE_HDR_MODE = prev.hdr;
+    }
   }
 
   // AMBAS = UNA lista híbrida: URI de canal en VPS y segmentos directos del
@@ -362,8 +468,9 @@
       '<label style="cursor:pointer;"><input type="checkbox" id="ape-out-hls" checked style="accent-color:#22c55e;"> HLS</label>' +
       '<label style="cursor:pointer;"><input type="checkbox" id="ape-out-dash" style="accent-color:#38bdf8;"> DASH</label>' +
       '<label style="cursor:pointer;"><input type="checkbox" id="ape-out-hybrid" style="accent-color:#a855f7;"> HÍBRIDA HLS+DASH</label>' +
-      '<label style="cursor:pointer;"><input type="checkbox" id="ape-out-jit" checked style="accent-color:#f59e0b;"> JIT</label>' +
-      '<label style="cursor:pointer;" title="Una sola casilla para ambas calidades"><input type="checkbox" id="ape-out-hdr" checked style="accent-color:#ef4444;"> 4K HDR / 1080 HDR</label>' +
+      '<label style="cursor:pointer;" title="Usar rutas /jit/live/ del catálogo JIT"><input type="checkbox" id="ape-out-jit" style="accent-color:#f59e0b;"> JIT</label>' +
+      '<label style="cursor:pointer;" title="Modo HDR de salida">HDR <select id="ape-out-hdr" style="accent-color:#ef4444;background:#0f172a;color:#e2e8f0;border:1px solid #334155;border-radius:5px;padding:2px 4px;font-size:.78rem;">' +
+      '<option value="auto">Auto</option><option value="pq">PQ</option><option value="sdr">SDR</option></select></label>' +
       '</div>' +
       '<div style="display:flex;gap:14px;flex-wrap:wrap;align-items:center;margin-top:8px;padding:8px 10px;border-radius:9px;background:rgba(2,6,23,.28);border:1px solid rgba(148,163,184,.22);font-size:.82rem;color:#cbd5e1;">' +
       '<strong style="color:#fbbf24;">FORMATO:</strong>' +
@@ -481,6 +588,9 @@
     var ohdr = document.getElementById('ape-out-hdr');
     var ofs = document.querySelectorAll('input[name="ape-out-format"]');
     var om = document.getElementById('ape-out-matrix-state');
+    var restored = loadOutOpts();
+    if (oj) oj.checked = restored.jit;
+    if (ohdr) ohdr.value = restored.hdr;
     function formatValue() {
       for (var i = 0; i < ofs.length; i++) if (ofs[i].checked) return ofs[i].value;
       return 'm3u8';
@@ -492,8 +602,10 @@
       else ox.checked = false;
       var f = oh.checked && od.checked ? 'hybrid' : (od.checked ? 'mpd' : 'm3u8');
       ofs.forEach(function (r) { if (r.value === f) r.checked = true; });
+      var hdrVal = ohdr ? String(ohdr.value).toLowerCase() : 'auto';
+      var hdrTxt = hdrVal === 'pq' ? 'PQ' : (hdrVal === 'sdr' ? 'SDR' : 'HDR auto');
       if (om) om.textContent = (oh.checked ? 'HLS ' : '') + (od.checked ? 'DASH ' : '') +
-        (oj && oj.checked ? 'JIT ' : '') + (ohdr && ohdr.checked ? 'HDR' : '') + ' · .' + f.toUpperCase();
+        (oj && oj.checked ? 'JIT ' : '') + hdrTxt + ' · .' + f.toUpperCase();
     }
     ofs.forEach(function (r) {
       r.addEventListener('change', function () {
@@ -504,7 +616,12 @@
       });
     });
     [oh, od, ox, oj, ohdr].forEach(function (el) {
-      if (el) el.addEventListener('change', paintOutputs);
+      if (!el) return;
+      el.addEventListener('change', function () {
+        var cur = currentOutOpts();
+        saveOutOpts(cur.jit, cur.hdrMode);
+        paintOutputs();
+      });
     });
     paintOutputs();
     var p = document.getElementById('publicationMode');

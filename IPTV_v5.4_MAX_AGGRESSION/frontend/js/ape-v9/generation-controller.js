@@ -1191,7 +1191,16 @@
         // Forzamos URLs del proveedor en la generación: el botón VPS las envuelve
         // después con apeCdnRewrap. Así el toggle global no puede convertir el
         // botón "directo" en otra cosa ni producir doble wrapper.
-        if (typeof window !== 'undefined') window.APE_DIRECT_MODE = true;
+        var _outPrev = {
+            direct: (typeof window !== 'undefined') ? window.APE_DIRECT_MODE : undefined,
+            jit: (typeof window !== 'undefined') ? window.APE_USE_JIT : undefined,
+            hdr: (typeof window !== 'undefined') ? window.APE_HDR_MODE : undefined
+        };
+        if (typeof window !== 'undefined') {
+            window.APE_USE_JIT = options.jit === true;
+            window.APE_HDR_MODE = options.hdrMode || 'auto';
+            window.APE_DIRECT_MODE = !window.APE_USE_JIT;
+        }
         if (typeof window !== 'undefined' && options && options.buffer_delta_pct != null) {
             var _bd = Number(options.buffer_delta_pct);
             if (isFinite(_bd) && _bd >= 1 && _bd <= 90) window.APE_OUTPUT_DELTA_PCT = Math.round(_bd);
@@ -1200,6 +1209,7 @@
             && typeof options.buffer_delta_array === 'object') {
             window.APE_OUTPUT_DELTA_ARRAY = options.buffer_delta_array;
         }
+        try {
         if (!window.app || typeof window.app.getFilteredChannels !== 'function') {
             throw new Error('window.app.getFilteredChannels no disponible');
         }
@@ -1329,6 +1339,9 @@
                 labFileName:        labCfg.labFileName || 'LAB_CALIBRATED'
             }
         };
+        if (window.APE_HDR_MODE && window.APE_HDR_MODE !== 'auto') {
+            merged.hdr_force = window.APE_HDR_MODE === 'pq' ? 'pq' : 'sdr';
+        }
 
         // ── [APE-SESSION · G1] modo sesión: flag OFF por defecto ────────────
         // Con el flag OFF `sessCfg.enabled` es false y NO se ejecuta nada de
@@ -1487,6 +1500,13 @@
             channels: channels.length,
             downloadResult
         };
+        } finally {
+            if (typeof window !== 'undefined') {
+                window.APE_DIRECT_MODE = _outPrev.direct;
+                window.APE_USE_JIT = _outPrev.jit;
+                window.APE_HDR_MODE = _outPrev.hdr;
+            }
+        }
     }
 
     // ── [APE-CDN] entrada pública del botón: SOLO la lista mejorada ─────────

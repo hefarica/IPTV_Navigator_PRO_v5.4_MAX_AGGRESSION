@@ -2656,6 +2656,17 @@
         // fake_uhd_assert 4.x (fake⇒true) con emitter_level 4.8 (gate⇒false).
         r.pqAllowed = (r.fakeUhd && r.fakeUhd !== '0') ? true
             : ((o.pqGate === true) ? (r.hdr === true) : true);
+        // Explicit output HDR override from the panel. This is a declaration/output
+        // override, not a claim about the upstream bitstream.
+        if (o.forceRange === 'sdr') {
+            r.hdr = false;
+            r.pqAllowed = false;
+            r.forceRange = 'SDR';
+        } else if (o.forceRange === 'pq') {
+            r.hdr = true;
+            r.pqAllowed = true;
+            r.forceRange = 'PQ';
+        }
         // [t73] GUARD Ley Cardinal 1: nivel NUNCA por debajo de la resolucion;
         // y NUNCA L153 en 8K (freeze 2026-06-08).
         if (/^hvc1|^hev1/i.test(String(r.codec || ''))) {
@@ -7785,6 +7796,13 @@ ${__apeContinuityTags().join('\n')}
         // [t61] MODO DIRECTO (sin VPS): URL del PROVEEDOR verbatim, sin reconstruir
         // ni envolver. Default false ⇒ el modo VPS no cambia. Reversible.
         const _normalizedUrl = __apePlayableChannelUrl(channel);
+        if (typeof window !== 'undefined' && window.APE_USE_JIT === true
+            && typeof window.APE_JIT_URL_FOR_CHANNEL === 'function') {
+            const _jitUrl = window.APE_JIT_URL_FOR_CHANNEL(channel);
+            if (isPlayableStreamUrl(_jitUrl)) return _jitUrl;
+            // Sin match en el catálogo JIT: caer a la URL directa del proveedor.
+            if (isPlayableStreamUrl(_normalizedUrl)) return _normalizedUrl;
+        }
         if (typeof window !== 'undefined' && window.APE_DIRECT_MODE === true) {
             if (isPlayableStreamUrl(_normalizedUrl)) return _normalizedUrl;
             // Host-only no es una URI; seguir al constructor con credenciales/stream_id.
@@ -8580,7 +8598,14 @@ ${__apeContinuityTags().join('\n')}
         const _uaApeProfile = _apeUaWithProfile(_ua796, profile, channel);
 
         // ── PERFIL DESDE ARRAY DE ORIGEN ─────────────────────────────────────
-        const cfg = getProfileConfig(profile);
+        let cfg = getProfileConfig(profile);
+        if (options && options.hdr_force) {
+            cfg = Object.assign({}, cfg, {
+                hdr_mode: options.hdr_force === 'pq' ? 'pq' : 'sdr',
+                hdr_support: options.hdr_force === 'pq',
+                video_range: options.hdr_force === 'pq' ? 'PQ' : 'SDR'
+            });
+        }
         // ═══ Main10/DV PROMOTION (2026-05-12, OMEGA-NO-DELETE, neverFakeCodec) ═══
         // Pure reorder by quality priority: DV > Main12 > Main10. When codec_chain_video
         // contains any of these, the highest-quality match moves to index 0 so it
@@ -10950,7 +10975,7 @@ ${__apeContinuityTags().join('\n')}
             const _apeTags = _R_emit.emitApeFallbackTags(_apeTruth);
             for (const _t of _apeTags) lines.push(_t);
         }
-        if (!options?.maxQualityMode && _apeTruth && _R_emit && typeof _R_emit.emitStreamInfFromTruth === 'function') {
+        if (!(options && options.hdr_force) && !options?.maxQualityMode && _apeTruth && _R_emit && typeof _R_emit.emitStreamInfFromTruth === 'function') {
             // HDCP-Adaptive: enrich truth with channelId + profile so resolver can lookup
             // window.APE_HDCP_PROFILE[channelId] and emit STABLE-VARIANT-ID="${chId}_${profile}"
             if (typeof _apeTruth.channelId === 'undefined') {
@@ -11276,6 +11301,7 @@ ${__apeContinuityTags().join('\n')}
                 codecHint: _codec796_csv,
                 fakeUhd: (typeof window !== 'undefined' && window.APE_FAKE_UHD !== undefined) ? window.APE_FAKE_UHD : undefined,
                 hdr: _isHDR === true,
+                forceRange: (options && options.hdr_force) || null,
                 perceptual4k: !!(options && options.perceptual4kMode),
                 // PQ · LOCK 2026-06-16 ON por defecto (incondicional en OMEGA/P_MAX).
                 // La puerta «sólo con HDR» se abre SÓLO por artefacto:
@@ -11293,9 +11319,11 @@ ${__apeContinuityTags().join('\n')}
             // sólo se emite con HDR probado, y HLG se respeta si el probe lo reporta.
             {
                 const _rawRange = String((_probeData && (_probeData.videoRange || _probeData.video_range)) || '').toUpperCase();
-                _videoRangePart = _streamTruth.pqAllowed
-                    ? (_rawRange === 'HLG' ? ',VIDEO-RANGE=HLG' : ',VIDEO-RANGE=PQ')
-                    : '';
+                _videoRangePart = _streamTruth.forceRange === 'SDR'
+                    ? ',VIDEO-RANGE=SDR'
+                    : (_streamTruth.pqAllowed
+                        ? (_rawRange === 'HLG' ? ',VIDEO-RANGE=HLG' : ',VIDEO-RANGE=PQ')
+                        : '');
             }
             lines.push(`#EXT-X-APE-STREAM-TRUTH:src=${_streamTruth.source},w=${_streamTruth.w},h=${_streamTruth.h},fps=${_streamTruth.fps},rawfps=${_streamTruth.fpsRaw},family=${_streamTruth.family},pq=${_streamTruth.pqAllowed ? 1 : 0}`);
             // ═══════════════════════════════════════════════════════════════════════════
