@@ -760,6 +760,7 @@
                 { id: 'prefetch_config',  icon: '🚀',  title: 'Prefetch config',              data: p.prefetch_config,  desc: 'Estrategia de prefetch + caching' },
                 { id: 'optimized_knobs',  icon: '🎚️', title: 'Optimized knobs (solver out)', data: p.optimized_knobs,  desc: 'Output del solver LHS→GA→SA→NM' },
                 { id: 'bounds',           icon: '📐',  title: 'Solver bounds',                data: p.bounds,           desc: 'Rango [lo, hi] que el solver exploró' },
+                { id: 'lab_sync',         icon: '🧪',  title: 'PRISMA LAB-SYNC',               data: p.lab_sync,         desc: 'Campos LAB v8 consumidos por ProfileVal + Guardian Daemon' },
                 { id: 'headerOverrides',  icon: '🌐',  title: 'HTTP Header Overrides',        data: p.headerOverrides,  desc: 'Headers HTTP X-APE-* + Sec-Fetch-* + Beautiful Madness 4-layer' }
             ];
             const actorInjections = p.actor_injections || {};

@@ -6115,6 +6115,32 @@
     instance.PM9_SEMANTIC_ALIASES = PM9_SEMANTIC_ALIASES;
     window.APE_PROFILES_CONFIG = instance;
 
+    // REAL LAB v8 IMPORT — values from 6_NIVEL_2_PROFILES, no synthetic fields.
+    (function mergeLabV8(cfg) {
+        const lab = (typeof window !== 'undefined') ? window.APE_LAB_V8_PROFILES : null;
+        if (!lab || !cfg || !cfg.profiles) return;
+        const sections = ['settings', 'vlcopt', 'kodiprop', 'headerOverrides',
+            'prefetch_config', 'hlsjs', 'bounds', 'optimized_knobs', 'lab_sync'];
+        Object.keys(lab).forEach(function (id) {
+            const src = lab[id] || {};
+            const dst = cfg.profiles[id];
+            if (!dst) return;
+            sections.forEach(function (key) {
+                if (src[key] && typeof src[key] === 'object') {
+                    dst[key] = Object.assign({}, dst[key] || {}, src[key]);
+                }
+            });
+            ['id', 'name', 'level', 'quality', 'description', 'color',
+             'enabledCategories', 'quality_levels', 'headers', 'resolution',
+             'calibration_version', 'buffer_aggression_policy',
+             'error_decision_tree', 'error_407_specialized_tree',
+             'multi_provider_integration', 'master_audit_unified',
+             'guarantees_10'].forEach(function (key) {
+                if (src[key] != null) dst[key] = src[key];
+            });
+        });
+    })(instance);
+
     // AUDIO SAFE POLICY — applied to live profiles and profiles loaded from
     // localStorage. Passthrough is never forced when the source audio is bad;
     // the compatible fallback is AAC-LC 2ch. Video is never downscaled here.
