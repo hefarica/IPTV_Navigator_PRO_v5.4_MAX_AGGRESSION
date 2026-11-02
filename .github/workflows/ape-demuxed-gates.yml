@@ -1,0 +1,69 @@
+name: ape-demuxed gates
+
+# El arnes de demuxed (generador + verificador G1..G5) existia pero NO corria en
+# ningun workflow: un cambio podia reintroducir downscale, caps o perdida de la cola
+# del bloque sin que nada lo bloqueara. Este workflow lo convierte en gate.
+#
+# Solo se afirman comportamientos MEDIDOS. No se inventan asertos sobre el generador
+# que no se hayan comprobado antes a mano: un CI que falla por una suposicion se
+# desactiva, y un gate desactivado no protege nada.
+
+on:
+  push:
+    paths:
+      - 'tools/ape-demuxed/**'
+      - '.github/workflows/ape-demuxed-gates.yml'
+  pull_request:
+    paths:
+      - 'tools/ape-demuxed/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  gates:
+    name: Sintaxis + G5 falsificado en fixtures
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Sintaxis de las herramientas
+        run: |
+          set -euo pipefail
+          node -c tools/ape-demuxed/gen_demuxed_master.js
+          node -c tools/ape-demuxed/verify_demuxed.js
+
+      - name: G5 PASS con la cola del bloque presente
+        run: |
+          set -uo pipefail
+          set +e
+          out=$(node tools/ape-demuxed/verify_demuxed.js tools/ape-demuxed/fixtures/master_tail_ok.m3u8 2>&1)
+          code=$?
+          set -e
+          echo "$out"
+          echo "exit=$code"
+          # El fixture no declara rendition de audio, asi que G1/G4 salen NO_COMPUTADO
+          # y el veredicto global es NO_COMPUTADO (exit 2). Lo que se afirma aqui es
+          # que el layout PASA y que el gate NO falla.
+          echo "$out" | grep -q 'G5_block_layout_tail *PASS' || { echo '::error::G5 no dio PASS con la cola presente'; exit 1; }
+          if [ "$code" -eq 1 ]; then echo '::error::el fixture correcto dio veredicto FAIL'; exit 1; fi
+
+      - name: G5 FAIL cuando el bloque se cierra en la URI (falsificacion)
+        run: |
+          set -uo pipefail
+          set +e
+          out=$(node tools/ape-demuxed/verify_demuxed.js tools/ape-demuxed/fixtures/master_tail_missing.m3u8 2>&1)
+          code=$?
+          set -e
+          echo "$out"
+          echo "exit=$code"
+          # Si este caso llegara a pasar, el gate estaria roto y dejaria de cazar la
+          # regresion que existe para cazar. Un gate que nunca falla no es un gate.
+          echo "$out" | grep -q 'G5_block_layout_tail *FAIL' || { echo '::error::G5 no fallo con la cola ausente: el gate esta roto'; exit 1; }
+          [ "$code" -eq 1 ] || { echo "::error::se esperaba exit 1 en el fixture defectuoso, se obtuvo $code"; exit 1; }
