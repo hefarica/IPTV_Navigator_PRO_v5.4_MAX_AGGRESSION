@@ -144,5 +144,25 @@ for f in $FICHEROS; do procesar "$f"; done | awk -F'"' '
     if (length(c) == 0) print "    (sin peticiones a /lists/ en la ventana leída)"
   }
 '
+
+# ── Errores reales del plano de listas ─────────────────────────────────────
+# playlist_error.log es pequeño (cientos de líneas), así que se muestra su
+# contenido reciente SIN muestrear: un recorte aquí ocultaría justo el error
+# que se busca. Si creciera, el límite se imprime.
+echo
+echo "--- errores recientes en playlist_error.log (no muestreado):"
+ERR="/var/log/nginx/playlist_error.log"
+if [ -r "$ERR" ]; then
+  n=$(wc -l < "$ERR")
+  printf '    lineas=%s\n' "$n"
+  if [ "$n" -gt 400 ]; then
+    echo "    AVISO: >400 lineas, se muestran las 400 mas recientes"
+    tail -n 400 "$ERR"
+  else
+    cat "$ERR"
+  fi
+else
+  echo "    NO_LEGIBLE: $ERR  (esto es 'no medido', no 'sin errores')"
+fi
 echo
 echo "===== FIN TELEMETRÍA ====="
