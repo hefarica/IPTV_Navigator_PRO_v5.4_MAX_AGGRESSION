@@ -281,3 +281,64 @@ jobs:
           set -e
           echo "ausente exit=$code3"
           [ "$code3" -eq 5 ] || { echo "::error::fichero ausente con exit $code3, se esperaba 5"; exit 1; }
+
+      # ─── Metadata chunked (ape-lab-metadata-v1) ───────────────────────────────────────────────
+      #
+      # El validador se equivoco tres veces antes de funcionar y las tres aprobo en silencio: buscaba
+      # claves que no existian, comparaba objetos sin nombres en comun, y marcaba una escalera como
+      # duplicado. Este bloque existe para que no vuelva a pasar sin que nadie se entere: prueba las
+      # DOS direcciones, y ademas exige que las cinco reglas disparen.
+      - name: lab_metadata_decode detecta y calla cuando debe
+        run: |
+          set +e
+          node tools/ape-parse-defects/make_lab_metadata_fixtures.js
+          set -e
+
+          # Direccion 1: fixture coherente -> 0. Si falla, el validador acusa a metadata sana.
+          set +e
+          node tools/ape-parse-defects/lab_metadata_decode.js tools/ape-parse-defects/fixtures/labmeta_ok.m3u8 >/dev/null 2>/tmp/ok.err
+          code_ok=$?
+          set -e
+          echo "coherente exit=$code_ok (se espera 0)"
+          cat /tmp/ok.err
+          [ "$code_ok" -eq 0 ] || { echo "::error::acusa a un fixture coherente (exit $code_ok)"; exit 1; }
+
+          # Direccion 2: fixture con los cinco defectos -> 4, y cada regla nombrada.
+          set +e
+          node tools/ape-parse-defects/lab_metadata_decode.js tools/ape-parse-defects/fixtures/labmeta_mal.m3u8 >/dev/null 2>/tmp/mal.err
+          code_mal=$?
+          set -e
+          echo "contradicho exit=$code_mal (se espera 4)"
+          cat /tmp/mal.err
+          [ "$code_mal" -eq 4 ] || { echo "::error::no detecta las contradicciones (exit $code_mal)"; exit 1; }
+
+          # Direccion 3: las cinco reglas tienen que disparar. Una regla muerta que nunca se prueba
+          # es una regla que no existe.
+          for regla in C1 C2 C3 C5 C7; do
+            if ! grep -q "CONTRADICCION $regla:" /tmp/mal.err; then
+              echo "::error::la regla $regla no disparo en el fixture que existe para probarla"
+              exit 1
+            fi
+            echo "  $regla dispara"
+          done
+
+          # Direccion 4: sin el tag, el veredicto es 5 (no hay metadata), no 0 (todo bien).
+          set +e
+          node tools/ape-parse-defects/lab_metadata_decode.js tools/ape-parse-defects/fixtures/parse_clean.m3u8 >/dev/null 2>&1
+          code_sin=$?
+          set -e
+          echo "sin metadata exit=$code_sin (se espera 5)"
+          [ "$code_sin" -eq 5 ] || { echo "::error::una lista sin metadata dio $code_sin, se esperaba 5"; exit 1; }
+
+      - name: vlc_filter_modules cuenta contra el inventario real de VLC
+        run: |
+          set +e
+          set -uo pipefail
+          # En el runner no hay VLC: la herramienta cae en la lista documentada con procedencia.
+          node tools/ape-image-recipes/vlc_filter_modules.js --chains tools/ape-image-recipes/ref_chains.txt >/dev/null 2>/tmp/vlc.err
+          rc=$?
+          set -e
+          cat /tmp/vlc.err
+          [ "$rc" -eq 4 ] || { echo "::error::se esperaba 4 (faltan modulos en VLC) y dio $rc"; exit 1; }
+          grep -q "bwdif" /tmp/vlc.err || { echo "::error::no nombra los modulos ausentes"; exit 1; }
+          echo 'las cadenas de la lista usan modulos que VLC no tiene'
