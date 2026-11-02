@@ -67,7 +67,7 @@ jobs:
               set +e
               err=$(ffmpeg -hide_banner -loglevel error -nostdin \
                       -f lavfi -i "testsrc2=size=${origen}:rate=60:duration=0.2" \
-                      -vf "$cadena" -frames:v 1 -y "/tmp/out/${etiqueta}_${nombre}.png" 2>&1)
+                      -vf "$cadena" -frames:v 1 -c:v png -pix_fmt rgb48be -y "/tmp/out/${etiqueta}_${nombre}.png" 2>&1)
               rc=$?
               set -e
               if [ $rc -ne 0 ]; then
