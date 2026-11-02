@@ -27,7 +27,13 @@
         "codec": "AV1",
         "headersCount": 233,
         "bufferSeconds": 25,
-        "focus": "MAXIMA_CALIDAD_8K_HDR_CARGA_ULTRARAPIDA_SIN_CORTES"
+        "focus": "MAXIMA_CALIDAD_8K_HDR_CARGA_ULTRARAPIDA_SIN_CORTES",
+        "audio_mode": "passthrough_safe",
+        "audio_passthrough": "auto",
+        "audio_fallback": "aac_lc_2ch",
+        "audio_downmix": "enabled",
+        "audio_codec_priority": "eac3,ac3,aac,mp3",
+        "audio_validate": "ffprobe"
       },
       "vlcopt": {
         "network-caching": "25000",
@@ -53,11 +59,18 @@
         "brightness": "1.0",
         "saturation": "1.06",
         "gamma": "1.0",
-        "video-filter": "nlmeans=s=3.0:p=7:r=15,bwdif=mode=1:parity=-1:deint=0,gradfun=radius=16:strength=1.0,unsharp=luma_msize_x=3:luma_msize_y=3:luma_amount=0.4:chroma_msize_x=0:chroma_msize_y=0:chroma_amount=0.0,zscale=transfer=st2084:primaries=bt2020:matrix=2020ncl:dither=error_diffusion:range=full"
+        "video-filter": "nlmeans=s=3.0:p=7:r=15,bwdif=mode=1:parity=-1:deint=0,gradfun=radius=16:strength=1.0,unsharp=luma_msize_x=3:luma_msize_y=3:luma_amount=0.4:chroma_msize_x=0:chroma_msize_y=0:chroma_amount=0.0,zscale=transfer=st2084:primaries=bt2020:matrix=2020ncl:dither=error_diffusion:range=full",
+        "audio-codec-priority": "eac3,ac3,aac,mp3",
+        "audio-channels": "2",
+        "audio-volume": "256"
       },
       "kodiprop": {
         "inputstream.adaptive.manifest_type": "hls",
-        "inputstream.adaptive.stream_headers": "[ENCODED_HEADERS]"
+        "inputstream.adaptive.stream_headers": "[ENCODED_HEADERS]",
+        "inputstream.adaptive.audio_passthrough": "auto",
+        "inputstream.adaptive.audio_passthrough_earc": "auto",
+        "inputstream.adaptive.audio_codec_priority": "eac3,ac3,aac,mp3",
+        "inputstream.adaptive.audio_fallback": "aac_lc_2ch"
       },
       "enabledCategories": [
         "identity",
@@ -205,11 +218,11 @@
         "X-Aspect-Ratio": "16:9,21:9,4:3,4:3",
         "X-Pixel-Aspect-Ratio": "1:1,1:1,1:1,1:1",
         "X-Dolby-Atmos": "TRUE,ENABLED,ADAPTIVE,AUTO",
-        "X-Audio-Channels": "7.1.4,7.1,5.1,2.0",
-        "X-Audio-Sample-Rate": "192000,96000,48000,44100",
+        "X-Audio-Channels": "2",
+        "X-Audio-Sample-Rate": "48000",
         "X-Audio-Bit-Depth": "32bit,24bit,16bit,16bit",
         "X-Spatial-Audio": "TRUE,ENABLED,ADAPTIVE,AUTO",
-        "X-Audio-Passthrough": "TRUE,ENABLED,ADAPTIVE,AUTO",
+        "X-Audio-Passthrough": "auto",
         "X-Segment-Preload": "TRUE,ENABLED,ADAPTIVE,AUTO",
         "X-Reconnect-On-Error": "true,immediate,adaptive,false",
         "X-Seamless-Failover": "true-ultra,true,adaptive,false",
@@ -314,7 +327,16 @@
         "X-TELCHEMY-TR101290": "ENABLED,PRIORITY_1=ALERT,PRIORITY_2=WARN,PRIORITY_2=WARN",
         "X-TELCHEMY-IMPAIRMENT-GUARD": "ENABLED,BLOCKINESS=DETECT,BLUR=DETECT,FREEZE=DETECT",
         "X-TELCHEMY-BUFFER-POLICY": "ADAPTIVE,MIN=30000,MIN=30000,MIN=30000",
-        "X-TELCHEMY-GOP-POLICY": "DETECT,IDEAL=2000,TOLERANCE=500,TOLERANCE=500"
+        "X-TELCHEMY-GOP-POLICY": "DETECT,IDEAL=2000,TOLERANCE=500,TOLERANCE=500",
+        "X-Audio-Passthrough-Mode": "passthrough_safe",
+        "X-Audio-Fallback": "aac_lc_2ch",
+        "X-Audio-Downmix": "enabled",
+        "X-Audio-Codec-Priority": "eac3,ac3,aac,mp3",
+        "X-Audio-Safe-Formats": "eac3,ac3,aac,mp3",
+        "X-Audio-Transcode-On-Invalid": "aac_lc_2ch",
+        "X-Audio-Validation": "ffprobe:channels>0;srate>0",
+        "X-Audio-No-Damage": "true",
+        "X-Audio-EARC": "auto"
       },
       "prefetch_config": {
         "strategy": "ULTRA_AGRESIVO",
@@ -496,11 +518,11 @@
         "X-Aspect-Ratio": "16:9,21:9,4:3,1:1",
         "X-Pixel-Aspect-Ratio": "1:1,SAR,DAR,AUTO",
         "X-Dolby-Atmos": "auto,enabled,false,off",
-        "X-Audio-Channels": "7.1.4,7.1,5.1,2.0",
-        "X-Audio-Sample-Rate": "192000,96000,48000,44100",
+        "X-Audio-Channels": "2",
+        "X-Audio-Sample-Rate": "48000",
         "X-Audio-Bit-Depth": "32bit,24bit,16bit,16bit",
         "X-Spatial-Audio": "auto,enabled,false,off",
-        "X-Audio-Passthrough": "auto,enabled,false,off",
+        "X-Audio-Passthrough": "auto",
         "X-Parallel-Segments": "8,6,4,2",
         "X-Prefetch-Segments": "12,10,8,6",
         "X-Segment-Preload": "adaptive,auto,true,false",
@@ -622,7 +644,16 @@
         "X-Seek-Tolerance-Ms": "500,1000,1500,2000",
         "X-Gap-Policy": "skip,fill,wait,error",
         "X-Credential-Lock": "none,auto,disabled,off",
-        "X-Token-Refresh": "auto,enabled,disabled,off"
+        "X-Token-Refresh": "auto,enabled,disabled,off",
+        "X-Audio-Passthrough-Mode": "passthrough_safe",
+        "X-Audio-Fallback": "aac_lc_2ch",
+        "X-Audio-Downmix": "enabled",
+        "X-Audio-Codec-Priority": "eac3,ac3,aac,mp3",
+        "X-Audio-Safe-Formats": "eac3,ac3,aac,mp3",
+        "X-Audio-Transcode-On-Invalid": "aac_lc_2ch",
+        "X-Audio-Validation": "ffprobe:channels>0;srate>0",
+        "X-Audio-No-Damage": "true",
+        "X-Audio-EARC": "auto"
       }
     },
     "P1": {
@@ -644,7 +675,13 @@
         "codec": "AV1",
         "headersCount": 233,
         "bufferSeconds": 20,
-        "focus": "MAXIMA_CALIDAD_4K_HDR10PLUS_SIN_CORTES"
+        "focus": "MAXIMA_CALIDAD_4K_HDR10PLUS_SIN_CORTES",
+        "audio_mode": "passthrough_safe",
+        "audio_passthrough": "auto",
+        "audio_fallback": "aac_lc_2ch",
+        "audio_downmix": "enabled",
+        "audio_codec_priority": "eac3,ac3,aac,mp3",
+        "audio_validate": "ffprobe"
       },
       "vlcopt": {
         "network-caching": "20000",
@@ -670,11 +707,18 @@
         "brightness": "1.0",
         "saturation": "1.05",
         "gamma": "1.0",
-        "video-filter": "nlmeans=s=3.0:p=7:r=15,bwdif=mode=1:parity=-1:deint=0,gradfun=radius=16:strength=1.0,unsharp=luma_msize_x=3:luma_msize_y=3:luma_amount=0.4:chroma_msize_x=0:chroma_msize_y=0:chroma_amount=0.0,zscale=transfer=st2084:primaries=bt2020:matrix=2020ncl:dither=error_diffusion:range=full"
+        "video-filter": "nlmeans=s=3.0:p=7:r=15,bwdif=mode=1:parity=-1:deint=0,gradfun=radius=16:strength=1.0,unsharp=luma_msize_x=3:luma_msize_y=3:luma_amount=0.4:chroma_msize_x=0:chroma_msize_y=0:chroma_amount=0.0,zscale=transfer=st2084:primaries=bt2020:matrix=2020ncl:dither=error_diffusion:range=full",
+        "audio-codec-priority": "eac3,ac3,aac,mp3",
+        "audio-channels": "2",
+        "audio-volume": "256"
       },
       "kodiprop": {
         "inputstream.adaptive.manifest_type": "hls",
-        "inputstream.adaptive.stream_headers": "[ENCODED_HEADERS]"
+        "inputstream.adaptive.stream_headers": "[ENCODED_HEADERS]",
+        "inputstream.adaptive.audio_passthrough": "auto",
+        "inputstream.adaptive.audio_passthrough_earc": "auto",
+        "inputstream.adaptive.audio_codec_priority": "eac3,ac3,aac,mp3",
+        "inputstream.adaptive.audio_fallback": "aac_lc_2ch"
       },
       "enabledCategories": [
         "identity",
@@ -828,11 +872,11 @@
         "X-Aspect-Ratio": "16:9,21:9,4:3,4:3",
         "X-Pixel-Aspect-Ratio": "1:1,1:1,1:1,1:1",
         "X-Dolby-Atmos": "TRUE,ENABLED,ADAPTIVE,AUTO",
-        "X-Audio-Channels": "7.1,5.1,2.0,2.0",
-        "X-Audio-Sample-Rate": "96000,48000,48000,44100",
+        "X-Audio-Channels": "2",
+        "X-Audio-Sample-Rate": "48000",
         "X-Audio-Bit-Depth": "24bit,24bit,16bit,16bit",
         "X-Spatial-Audio": "TRUE,ENABLED,ADAPTIVE,AUTO",
-        "X-Audio-Passthrough": "TRUE,ENABLED,ADAPTIVE,AUTO",
+        "X-Audio-Passthrough": "auto",
         "X-Segment-Preload": "TRUE,ENABLED,ADAPTIVE,AUTO",
         "X-APE-STRATEGY": "ultra-aggressive,ultra-aggressive,ultra-aggressive,ultra-aggressive",
         "X-APE-Prefetch-Segments": "40,30,20,12",
@@ -931,7 +975,16 @@
         "X-TELCHEMY-TR101290": "ENABLED,PRIORITY_1=ALERT,PRIORITY_2=WARN,PRIORITY_2=WARN",
         "X-TELCHEMY-IMPAIRMENT-GUARD": "ENABLED,BLOCKINESS=DETECT,BLUR=DETECT,FREEZE=DETECT",
         "X-TELCHEMY-BUFFER-POLICY": "ADAPTIVE,MIN=20000,MIN=20000,MIN=20000",
-        "X-TELCHEMY-GOP-POLICY": "DETECT,IDEAL=2000,TOLERANCE=500,TOLERANCE=500"
+        "X-TELCHEMY-GOP-POLICY": "DETECT,IDEAL=2000,TOLERANCE=500,TOLERANCE=500",
+        "X-Audio-Passthrough-Mode": "passthrough_safe",
+        "X-Audio-Fallback": "aac_lc_2ch",
+        "X-Audio-Downmix": "enabled",
+        "X-Audio-Codec-Priority": "eac3,ac3,aac,mp3",
+        "X-Audio-Safe-Formats": "eac3,ac3,aac,mp3",
+        "X-Audio-Transcode-On-Invalid": "aac_lc_2ch",
+        "X-Audio-Validation": "ffprobe:channels>0;srate>0",
+        "X-Audio-No-Damage": "true",
+        "X-Audio-EARC": "auto"
       },
       "prefetch_config": {
         "strategy": "ULTRA_AGRESIVO",
@@ -1113,11 +1166,11 @@
         "X-Aspect-Ratio": "16:9,21:9,4:3,1:1",
         "X-Pixel-Aspect-Ratio": "1:1,SAR,DAR,AUTO",
         "X-Dolby-Atmos": "auto,enabled,false,off",
-        "X-Audio-Channels": "7.1,5.1,2.0,2.0",
-        "X-Audio-Sample-Rate": "96000,48000,48000,44100",
+        "X-Audio-Channels": "2",
+        "X-Audio-Sample-Rate": "48000",
         "X-Audio-Bit-Depth": "24bit,24bit,16bit,16bit",
         "X-Spatial-Audio": "auto,enabled,false,off",
-        "X-Audio-Passthrough": "auto,enabled,false,off",
+        "X-Audio-Passthrough": "auto",
         "X-Parallel-Segments": "6,4,3,2",
         "X-Prefetch-Segments": "10,8,6,4",
         "X-Segment-Preload": "adaptive,auto,true,false",
@@ -1239,7 +1292,16 @@
         "X-Seek-Tolerance-Ms": "500,1000,1500,2000",
         "X-Gap-Policy": "skip,fill,wait,error",
         "X-Credential-Lock": "none,auto,disabled,off",
-        "X-Token-Refresh": "auto,enabled,disabled,off"
+        "X-Token-Refresh": "auto,enabled,disabled,off",
+        "X-Audio-Passthrough-Mode": "passthrough_safe",
+        "X-Audio-Fallback": "aac_lc_2ch",
+        "X-Audio-Downmix": "enabled",
+        "X-Audio-Codec-Priority": "eac3,ac3,aac,mp3",
+        "X-Audio-Safe-Formats": "eac3,ac3,aac,mp3",
+        "X-Audio-Transcode-On-Invalid": "aac_lc_2ch",
+        "X-Audio-Validation": "ffprobe:channels>0;srate>0",
+        "X-Audio-No-Damage": "true",
+        "X-Audio-EARC": "auto"
       }
     },
     "P2": {
@@ -1261,7 +1323,13 @@
         "codec": "HEVC",
         "headersCount": 233,
         "bufferSeconds": 15,
-        "focus": "MAXIMA_CALIDAD_8K_HDR_CARGA_ULTRARAPIDA_SIN_CORTES"
+        "focus": "MAXIMA_CALIDAD_8K_HDR_CARGA_ULTRARAPIDA_SIN_CORTES",
+        "audio_mode": "passthrough_safe",
+        "audio_passthrough": "auto",
+        "audio_fallback": "aac_lc_2ch",
+        "audio_downmix": "enabled",
+        "audio_codec_priority": "eac3,ac3,aac,mp3",
+        "audio_validate": "ffprobe"
       },
       "vlcopt": {
         "network-caching": "15000",
@@ -1286,11 +1354,18 @@
         "contrast": "1.02",
         "brightness": "1.0",
         "saturation": "1.04",
-        "gamma": "1.0"
+        "gamma": "1.0",
+        "audio-codec-priority": "eac3,ac3,aac,mp3",
+        "audio-channels": "2",
+        "audio-volume": "256"
       },
       "kodiprop": {
         "inputstream.adaptive.manifest_type": "hls",
-        "inputstream.adaptive.stream_headers": "[ENCODED_HEADERS]"
+        "inputstream.adaptive.stream_headers": "[ENCODED_HEADERS]",
+        "inputstream.adaptive.audio_passthrough": "auto",
+        "inputstream.adaptive.audio_passthrough_earc": "auto",
+        "inputstream.adaptive.audio_codec_priority": "eac3,ac3,aac,mp3",
+        "inputstream.adaptive.audio_fallback": "aac_lc_2ch"
       },
       "enabledCategories": [
         "identity",
@@ -1428,11 +1503,11 @@
         "X-Aspect-Ratio": "16:9,21:9,21:9,21:9",
         "X-Pixel-Aspect-Ratio": "1:1,1:1,1:1,1:1",
         "X-Dolby-Atmos": "TRUE,ENABLED,ADAPTIVE,AUTO",
-        "X-Audio-Channels": "5.1,5.1,2.0,2.0",
-        "X-Audio-Sample-Rate": "48000,48000,44100,44100",
+        "X-Audio-Channels": "2",
+        "X-Audio-Sample-Rate": "48000",
         "X-Audio-Bit-Depth": "24bit,16bit,16bit,16bit",
         "X-Spatial-Audio": "TRUE,ENABLED,ADAPTIVE,AUTO",
-        "X-Audio-Passthrough": "TRUE,ENABLED,ADAPTIVE,AUTO",
+        "X-Audio-Passthrough": "auto",
         "X-Segment-Preload": "TRUE,ENABLED,ADAPTIVE,AUTO",
         "X-Reconnect-On-Error": "TRUE,ENABLED,ADAPTIVE,AUTO",
         "X-Seamless-Failover": "TRUE,ENABLED,ADAPTIVE,AUTO",
@@ -1462,7 +1537,16 @@
         "X-Live-Caching": "15000,12000,8000,5000",
         "X-File-Caching": "15000,12000,8000,5000",
         "X-Sharpen-Sigma": "0.06,0.08,0.04,0.02",
-        "X-Codec-Support": "HEVC,AV1,VP9,H264"
+        "X-Codec-Support": "HEVC,AV1,VP9,H264",
+        "X-Audio-Passthrough-Mode": "passthrough_safe",
+        "X-Audio-Fallback": "aac_lc_2ch",
+        "X-Audio-Downmix": "enabled",
+        "X-Audio-Codec-Priority": "eac3,ac3,aac,mp3",
+        "X-Audio-Safe-Formats": "eac3,ac3,aac,mp3",
+        "X-Audio-Transcode-On-Invalid": "aac_lc_2ch",
+        "X-Audio-Validation": "ffprobe:channels>0;srate>0",
+        "X-Audio-No-Damage": "true",
+        "X-Audio-EARC": "auto"
       },
       "prefetch_config": {
         "strategy": "ULTRA_AGRESIVO",
@@ -1590,11 +1674,11 @@
         "X-Aspect-Ratio": "16:9,21:9,4:3,1:1",
         "X-Pixel-Aspect-Ratio": "1:1,SAR,DAR,AUTO",
         "X-Dolby-Atmos": "auto,enabled,false,off",
-        "X-Audio-Channels": "5.1,5.1,2.0,2.0",
-        "X-Audio-Sample-Rate": "48000,48000,44100,44100",
+        "X-Audio-Channels": "2",
+        "X-Audio-Sample-Rate": "48000",
         "X-Audio-Bit-Depth": "24bit,16bit,16bit,16bit",
         "X-Spatial-Audio": "auto,enabled,false,off",
-        "X-Audio-Passthrough": "auto,enabled,false,off",
+        "X-Audio-Passthrough": "auto",
         "X-Parallel-Segments": "4,3,2,1",
         "X-Prefetch-Segments": "8,6,4,3",
         "X-Segment-Preload": "adaptive,auto,true,false",
@@ -1716,7 +1800,16 @@
         "X-Seek-Tolerance-Ms": "500,1000,1500,2000",
         "X-Gap-Policy": "skip,fill,wait,error",
         "X-Credential-Lock": "none,auto,disabled,off",
-        "X-Token-Refresh": "auto,enabled,disabled,off"
+        "X-Token-Refresh": "auto,enabled,disabled,off",
+        "X-Audio-Passthrough-Mode": "passthrough_safe",
+        "X-Audio-Fallback": "aac_lc_2ch",
+        "X-Audio-Downmix": "enabled",
+        "X-Audio-Codec-Priority": "eac3,ac3,aac,mp3",
+        "X-Audio-Safe-Formats": "eac3,ac3,aac,mp3",
+        "X-Audio-Transcode-On-Invalid": "aac_lc_2ch",
+        "X-Audio-Validation": "ffprobe:channels>0;srate>0",
+        "X-Audio-No-Damage": "true",
+        "X-Audio-EARC": "auto"
       }
     },
     "P3": {
@@ -1738,7 +1831,13 @@
         "codec": "HEVC",
         "headersCount": 233,
         "bufferSeconds": 12,
-        "focus": "ULTRA_1080P_HDR10_CARGA_RAPIDA_SIN_CORTES"
+        "focus": "ULTRA_1080P_HDR10_CARGA_RAPIDA_SIN_CORTES",
+        "audio_mode": "passthrough_safe",
+        "audio_passthrough": "auto",
+        "audio_fallback": "aac_lc_2ch",
+        "audio_downmix": "enabled",
+        "audio_codec_priority": "eac3,ac3,aac,mp3",
+        "audio_validate": "ffprobe"
       },
       "vlcopt": {
         "network-caching": "12000",
@@ -1764,11 +1863,18 @@
         "brightness": "1.0",
         "saturation": "1.03",
         "gamma": "1.0",
-        "video-filter": "nlmeans=s=2.5:p=5:r=11,bwdif=mode=1:parity=-1:deint=0,gradfun=radius=12:strength=0.8,unsharp=luma_msize_x=3:luma_msize_y=3:luma_amount=0.3:chroma_msize_x=0:chroma_msize_y=0:chroma_amount=0.0,zscale=transfer=bt709:primaries=bt709:matrix=bt709:dither=error_diffusion:range=full"
+        "video-filter": "nlmeans=s=2.5:p=5:r=11,bwdif=mode=1:parity=-1:deint=0,gradfun=radius=12:strength=0.8,unsharp=luma_msize_x=3:luma_msize_y=3:luma_amount=0.3:chroma_msize_x=0:chroma_msize_y=0:chroma_amount=0.0,zscale=transfer=bt709:primaries=bt709:matrix=bt709:dither=error_diffusion:range=full",
+        "audio-codec-priority": "eac3,ac3,aac,mp3",
+        "audio-channels": "2",
+        "audio-volume": "256"
       },
       "kodiprop": {
         "inputstream.adaptive.manifest_type": "hls",
-        "inputstream.adaptive.stream_headers": "[ENCODED_HEADERS]"
+        "inputstream.adaptive.stream_headers": "[ENCODED_HEADERS]",
+        "inputstream.adaptive.audio_passthrough": "auto",
+        "inputstream.adaptive.audio_passthrough_earc": "auto",
+        "inputstream.adaptive.audio_codec_priority": "eac3,ac3,aac,mp3",
+        "inputstream.adaptive.audio_fallback": "aac_lc_2ch"
       },
       "enabledCategories": [
         "identity",
@@ -1916,11 +2022,11 @@
         "X-Aspect-Ratio": "16:9,21:9,4:3,4:3",
         "X-Pixel-Aspect-Ratio": "1:1,1:1,1:1,1:1",
         "X-Dolby-Atmos": "TRUE,ENABLED,ADAPTIVE,AUTO",
-        "X-Audio-Channels": "5.1,2.0,2.0,1.0",
-        "X-Audio-Sample-Rate": "48000,44100,44100,32000",
+        "X-Audio-Channels": "2",
+        "X-Audio-Sample-Rate": "48000",
         "X-Audio-Bit-Depth": "16bit,16bit,16bit,16bit",
         "X-Spatial-Audio": "TRUE,ENABLED,ADAPTIVE,AUTO",
-        "X-Audio-Passthrough": "TRUE,ENABLED,ADAPTIVE,AUTO",
+        "X-Audio-Passthrough": "auto",
         "X-Segment-Preload": "TRUE,ENABLED,ADAPTIVE,AUTO",
         "X-Reconnect-On-Error": "true,immediate,adaptive,false",
         "X-Seamless-Failover": "true-ultra,true,adaptive,false",
@@ -2025,7 +2131,16 @@
         "X-TELCHEMY-TR101290": "ENABLED,PRIORITY_1=ALERT,PRIORITY_2=WARN,PRIORITY_2=WARN",
         "X-TELCHEMY-IMPAIRMENT-GUARD": "ENABLED,BLOCKINESS=DETECT,BLUR=DETECT,FREEZE=DETECT",
         "X-TELCHEMY-BUFFER-POLICY": "ADAPTIVE,MIN=15000,MIN=15000,MIN=15000",
-        "X-TELCHEMY-GOP-POLICY": "DETECT,IDEAL=2000,TOLERANCE=500,TOLERANCE=500"
+        "X-TELCHEMY-GOP-POLICY": "DETECT,IDEAL=2000,TOLERANCE=500,TOLERANCE=500",
+        "X-Audio-Passthrough-Mode": "passthrough_safe",
+        "X-Audio-Fallback": "aac_lc_2ch",
+        "X-Audio-Downmix": "enabled",
+        "X-Audio-Codec-Priority": "eac3,ac3,aac,mp3",
+        "X-Audio-Safe-Formats": "eac3,ac3,aac,mp3",
+        "X-Audio-Transcode-On-Invalid": "aac_lc_2ch",
+        "X-Audio-Validation": "ffprobe:channels>0;srate>0",
+        "X-Audio-No-Damage": "true",
+        "X-Audio-EARC": "auto"
       },
       "prefetch_config": {
         "strategy": "ULTRA_AGRESIVO",
@@ -2208,11 +2323,11 @@
         "X-Aspect-Ratio": "16:9,21:9,4:3,1:1",
         "X-Pixel-Aspect-Ratio": "1:1,SAR,DAR,AUTO",
         "X-Dolby-Atmos": "auto,enabled,false,off",
-        "X-Audio-Channels": "5.1,2.0,2.0,1.0",
-        "X-Audio-Sample-Rate": "48000,44100,44100,32000",
+        "X-Audio-Channels": "2",
+        "X-Audio-Sample-Rate": "48000",
         "X-Audio-Bit-Depth": "16bit,16bit,16bit,16bit",
         "X-Spatial-Audio": "auto,enabled,false,off",
-        "X-Audio-Passthrough": "auto,enabled,false,off",
+        "X-Audio-Passthrough": "auto",
         "X-Parallel-Segments": "3,2,2,1",
         "X-Prefetch-Segments": "6,4,3,2",
         "X-Segment-Preload": "adaptive,auto,true,false",
@@ -2334,7 +2449,16 @@
         "X-Seek-Tolerance-Ms": "500,1000,1500,2000",
         "X-Gap-Policy": "skip,fill,wait,error",
         "X-Credential-Lock": "none,auto,disabled,off",
-        "X-Token-Refresh": "auto,enabled,disabled,off"
+        "X-Token-Refresh": "auto,enabled,disabled,off",
+        "X-Audio-Passthrough-Mode": "passthrough_safe",
+        "X-Audio-Fallback": "aac_lc_2ch",
+        "X-Audio-Downmix": "enabled",
+        "X-Audio-Codec-Priority": "eac3,ac3,aac,mp3",
+        "X-Audio-Safe-Formats": "eac3,ac3,aac,mp3",
+        "X-Audio-Transcode-On-Invalid": "aac_lc_2ch",
+        "X-Audio-Validation": "ffprobe:channels>0;srate>0",
+        "X-Audio-No-Damage": "true",
+        "X-Audio-EARC": "auto"
       }
     },
     "P4": {
@@ -2356,7 +2480,13 @@
         "codec": "H264",
         "headersCount": 233,
         "bufferSeconds": 10,
-        "focus": "HIGH_720P_BALANCEADO_SIN_CORTES"
+        "focus": "HIGH_720P_BALANCEADO_SIN_CORTES",
+        "audio_mode": "passthrough_safe",
+        "audio_passthrough": "auto",
+        "audio_fallback": "aac_lc_2ch",
+        "audio_downmix": "enabled",
+        "audio_codec_priority": "eac3,ac3,aac,mp3",
+        "audio_validate": "ffprobe"
       },
       "vlcopt": {
         "network-caching": "10000",
@@ -2382,10 +2512,17 @@
         "brightness": "1.0",
         "saturation": "1.02",
         "gamma": "1.0",
-        "video-filter": "hqdn3d=luma_spatial=2.0:chroma_spatial=1.5:luma_tmp=3.0:chroma_tmp=2.5,yadif=mode=1:parity=-1:deint=0,unsharp=luma_msize_x=3:luma_msize_y=3:luma_amount=0.25:chroma_msize_x=0:chroma_msize_y=0:chroma_amount=0.0"
+        "video-filter": "hqdn3d=luma_spatial=2.0:chroma_spatial=1.5:luma_tmp=3.0:chroma_tmp=2.5,yadif=mode=1:parity=-1:deint=0,unsharp=luma_msize_x=3:luma_msize_y=3:luma_amount=0.25:chroma_msize_x=0:chroma_msize_y=0:chroma_amount=0.0",
+        "audio-codec-priority": "eac3,ac3,aac,mp3",
+        "audio-channels": "2",
+        "audio-volume": "256"
       },
       "kodiprop": {
-        "inputstream.adaptive.manifest_type": "hls"
+        "inputstream.adaptive.manifest_type": "hls",
+        "inputstream.adaptive.audio_passthrough": "auto",
+        "inputstream.adaptive.audio_passthrough_earc": "auto",
+        "inputstream.adaptive.audio_codec_priority": "eac3,ac3,aac,mp3",
+        "inputstream.adaptive.audio_fallback": "aac_lc_2ch"
       },
       "enabledCategories": [
         "identity",
@@ -2534,11 +2671,11 @@
         "X-Aspect-Ratio": "16:9,21:9,4:3,4:3",
         "X-Pixel-Aspect-Ratio": "1:1,1:1,1:1,1:1",
         "X-Dolby-Atmos": "TRUE,ENABLED,ADAPTIVE,AUTO",
-        "X-Audio-Channels": "2.0,2.0,1.0,1.0",
-        "X-Audio-Sample-Rate": "44100,44100,32000,22050",
+        "X-Audio-Channels": "2",
+        "X-Audio-Sample-Rate": "48000",
         "X-Audio-Bit-Depth": "16bit,16bit,16bit,8bit",
         "X-Spatial-Audio": "TRUE,ENABLED,ADAPTIVE,AUTO",
-        "X-Audio-Passthrough": "TRUE,ENABLED,ADAPTIVE,AUTO",
+        "X-Audio-Passthrough": "auto",
         "X-Segment-Preload": "TRUE,ENABLED,ADAPTIVE,AUTO",
         "X-Reconnect-On-Error": "true,immediate,adaptive,false",
         "X-Seamless-Failover": "true-ultra,true,adaptive,false",
@@ -2642,7 +2779,16 @@
         "X-TELCHEMY-TR101290": "ENABLED,PRIORITY_1=ALERT,PRIORITY_2=WARN,PRIORITY_2=WARN",
         "X-TELCHEMY-IMPAIRMENT-GUARD": "ENABLED,BLOCKINESS=DETECT,BLUR=DETECT,FREEZE=DETECT",
         "X-TELCHEMY-BUFFER-POLICY": "ADAPTIVE,MIN=12000,MIN=12000,MIN=12000",
-        "X-TELCHEMY-GOP-POLICY": "DETECT,IDEAL=2000,TOLERANCE=500,TOLERANCE=500"
+        "X-TELCHEMY-GOP-POLICY": "DETECT,IDEAL=2000,TOLERANCE=500,TOLERANCE=500",
+        "X-Audio-Passthrough-Mode": "passthrough_safe",
+        "X-Audio-Fallback": "aac_lc_2ch",
+        "X-Audio-Downmix": "enabled",
+        "X-Audio-Codec-Priority": "eac3,ac3,aac,mp3",
+        "X-Audio-Safe-Formats": "eac3,ac3,aac,mp3",
+        "X-Audio-Transcode-On-Invalid": "aac_lc_2ch",
+        "X-Audio-Validation": "ffprobe:channels>0;srate>0",
+        "X-Audio-No-Damage": "true",
+        "X-Audio-EARC": "auto"
       },
       "prefetch_config": {
         "strategy": "ULTRA_AGRESIVO",
@@ -2826,11 +2972,11 @@
         "X-Aspect-Ratio": "16:9,21:9,4:3,1:1",
         "X-Pixel-Aspect-Ratio": "1:1,SAR,DAR,AUTO",
         "X-Dolby-Atmos": "auto,enabled,false,off",
-        "X-Audio-Channels": "2.0,2.0,1.0,1.0",
-        "X-Audio-Sample-Rate": "44100,44100,32000,22050",
+        "X-Audio-Channels": "2",
+        "X-Audio-Sample-Rate": "48000",
         "X-Audio-Bit-Depth": "16bit,16bit,16bit,8bit",
         "X-Spatial-Audio": "auto,enabled,false,off",
-        "X-Audio-Passthrough": "auto,enabled,false,off",
+        "X-Audio-Passthrough": "auto",
         "X-Parallel-Segments": "2,2,1,1",
         "X-Prefetch-Segments": "4,3,2,1",
         "X-Segment-Preload": "adaptive,auto,true,false",
@@ -2952,7 +3098,16 @@
         "X-Seek-Tolerance-Ms": "500,1000,1500,2000",
         "X-Gap-Policy": "skip,fill,wait,error",
         "X-Credential-Lock": "none,auto,disabled,off",
-        "X-Token-Refresh": "auto,enabled,disabled,off"
+        "X-Token-Refresh": "auto,enabled,disabled,off",
+        "X-Audio-Passthrough-Mode": "passthrough_safe",
+        "X-Audio-Fallback": "aac_lc_2ch",
+        "X-Audio-Downmix": "enabled",
+        "X-Audio-Codec-Priority": "eac3,ac3,aac,mp3",
+        "X-Audio-Safe-Formats": "eac3,ac3,aac,mp3",
+        "X-Audio-Transcode-On-Invalid": "aac_lc_2ch",
+        "X-Audio-Validation": "ffprobe:channels>0;srate>0",
+        "X-Audio-No-Damage": "true",
+        "X-Audio-EARC": "auto"
       }
     },
     "P5": {
@@ -2974,7 +3129,13 @@
         "codec": "H264",
         "headersCount": 233,
         "bufferSeconds": 8,
-        "focus": "MAXIMA_CALIDAD_8K_HDR_CARGA_ULTRARAPIDA_SIN_CORTES"
+        "focus": "MAXIMA_CALIDAD_8K_HDR_CARGA_ULTRARAPIDA_SIN_CORTES",
+        "audio_mode": "passthrough_safe",
+        "audio_passthrough": "auto",
+        "audio_fallback": "aac_lc_2ch",
+        "audio_downmix": "enabled",
+        "audio_codec_priority": "eac3,ac3,aac,mp3",
+        "audio_validate": "ffprobe"
       },
       "vlcopt": {
         "network-caching": "8000",
@@ -3000,9 +3161,17 @@
         "brightness": "1.0",
         "saturation": "1.00",
         "gamma": "1.0",
-        "video-filter": ""
+        "video-filter": "",
+        "audio-codec-priority": "eac3,ac3,aac,mp3",
+        "audio-channels": "2",
+        "audio-volume": "256"
       },
-      "kodiprop": {},
+      "kodiprop": {
+        "inputstream.adaptive.audio_passthrough": "auto",
+        "inputstream.adaptive.audio_passthrough_earc": "auto",
+        "inputstream.adaptive.audio_codec_priority": "eac3,ac3,aac,mp3",
+        "inputstream.adaptive.audio_fallback": "aac_lc_2ch"
+      },
       "enabledCategories": [
         "identity",
         "connection",
@@ -3146,11 +3315,11 @@
         "X-Aspect-Ratio": "16:9,21:9,4:3,4:3",
         "X-Pixel-Aspect-Ratio": "1:1,1:1,1:1,1:1",
         "X-Dolby-Atmos": "TRUE,ENABLED,ADAPTIVE,AUTO",
-        "X-Audio-Channels": "2.0,2.0,1.0,1.0",
-        "X-Audio-Sample-Rate": "44100,32000,22050,16000",
+        "X-Audio-Channels": "2",
+        "X-Audio-Sample-Rate": "48000",
         "X-Audio-Bit-Depth": "16bit,16bit,8bit,8bit",
         "X-Spatial-Audio": "TRUE,ENABLED,ADAPTIVE,AUTO",
-        "X-Audio-Passthrough": "TRUE,ENABLED,ADAPTIVE,AUTO",
+        "X-Audio-Passthrough": "auto",
         "X-Parallel-Segments": "2,1,1,1",
         "X-Prefetch-Segments": "5,3,2,1",
         "X-Segment-Preload": "TRUE,ENABLED,ADAPTIVE,AUTO",
@@ -3258,7 +3427,16 @@
         "X-TELCHEMY-TR101290": "ENABLED,PRIORITY_1=ALERT,PRIORITY_2=WARN,PRIORITY_2=WARN",
         "X-TELCHEMY-IMPAIRMENT-GUARD": "ENABLED,BLOCKINESS=DETECT,BLUR=DETECT,FREEZE=DETECT",
         "X-TELCHEMY-BUFFER-POLICY": "ADAPTIVE,MIN=8000,MIN=8000,MIN=8000",
-        "X-TELCHEMY-GOP-POLICY": "DETECT,IDEAL=2000,TOLERANCE=500,TOLERANCE=500"
+        "X-TELCHEMY-GOP-POLICY": "DETECT,IDEAL=2000,TOLERANCE=500,TOLERANCE=500",
+        "X-Audio-Passthrough-Mode": "passthrough_safe",
+        "X-Audio-Fallback": "aac_lc_2ch",
+        "X-Audio-Downmix": "enabled",
+        "X-Audio-Codec-Priority": "eac3,ac3,aac,mp3",
+        "X-Audio-Safe-Formats": "eac3,ac3,aac,mp3",
+        "X-Audio-Transcode-On-Invalid": "aac_lc_2ch",
+        "X-Audio-Validation": "ffprobe:channels>0;srate>0",
+        "X-Audio-No-Damage": "true",
+        "X-Audio-EARC": "auto"
       },
       "prefetch_config": {
         "strategy": "ULTRA_AGRESIVO",
@@ -3444,11 +3622,11 @@
         "X-Aspect-Ratio": "16:9,21:9,4:3,1:1",
         "X-Pixel-Aspect-Ratio": "1:1,SAR,DAR,AUTO",
         "X-Dolby-Atmos": "auto,enabled,false,off",
-        "X-Audio-Channels": "2.0,2.0,1.0,1.0",
-        "X-Audio-Sample-Rate": "44100,32000,22050,16000",
+        "X-Audio-Channels": "2",
+        "X-Audio-Sample-Rate": "48000",
         "X-Audio-Bit-Depth": "16bit,16bit,8bit,8bit",
         "X-Spatial-Audio": "auto,enabled,false,off",
-        "X-Audio-Passthrough": "auto,enabled,false,off",
+        "X-Audio-Passthrough": "auto",
         "X-Parallel-Segments": "2,1,1,1",
         "X-Prefetch-Segments": "3,2,1,1",
         "X-Segment-Preload": "adaptive,auto,true,false",
@@ -3570,7 +3748,16 @@
         "X-Seek-Tolerance-Ms": "500,1000,1500,2000",
         "X-Gap-Policy": "skip,fill,wait,error",
         "X-Credential-Lock": "none,auto,disabled,off",
-        "X-Token-Refresh": "auto,enabled,disabled,off"
+        "X-Token-Refresh": "auto,enabled,disabled,off",
+        "X-Audio-Passthrough-Mode": "passthrough_safe",
+        "X-Audio-Fallback": "aac_lc_2ch",
+        "X-Audio-Downmix": "enabled",
+        "X-Audio-Codec-Priority": "eac3,ac3,aac,mp3",
+        "X-Audio-Safe-Formats": "eac3,ac3,aac,mp3",
+        "X-Audio-Transcode-On-Invalid": "aac_lc_2ch",
+        "X-Audio-Validation": "ffprobe:channels>0;srate>0",
+        "X-Audio-No-Damage": "true",
+        "X-Audio-EARC": "auto"
       }
     }
   }
