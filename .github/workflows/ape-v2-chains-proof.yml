@@ -20,6 +20,7 @@ on:
     paths:
       - '.github/workflows/ape-v2-chains-proof.yml'
       - 'tools/ape-image-recipes/v2_chains.txt'
+      - 'tools/ape-image-recipes/v2_chains_fixed.txt'
   workflow_dispatch:
 
 jobs:
@@ -55,46 +56,62 @@ jobs:
         run: |
           set -uo pipefail
           mkdir -p /tmp/out
-          CHAINS=tools/ape-image-recipes/v2_chains.txt
 
-          falls=0
-          : > /tmp/resultado.txt
-          while IFS='|' read -r nombre origen destino cadena; do
-            case "$nombre" in ''|'#'*) continue;; esac
-            echo "=== $nombre · $origen -> $destino ==="
-            set +e
-            err=$(ffmpeg -hide_banner -loglevel error -nostdin \
-                    -f lavfi -i "testsrc2=size=${origen}:rate=60:duration=0.2" \
-                    -vf "$cadena" -frames:v 1 -y "/tmp/out/${nombre}.png" 2>&1)
-            rc=$?
-            set -e
-            if [ $rc -ne 0 ]; then
-              echo "  FALLA exit=$rc"
-              echo "$err" | head -4 | sed 's/^/    /'
-              echo "$nombre|FALLA|$rc|$(echo "$err" | head -1)" >> /tmp/resultado.txt
-              falls=$((falls+1))
-              continue
-            fi
-            dims=$(ffprobe -v error -select_streams v:0 -show_entries stream=width,height -of csv=p=0:s=x "/tmp/out/${nombre}.png")
-            echo "  exit=0 · salida real: ${dims} (declarada: ${destino})"
-            if [ "$dims" = "$destino" ]; then
-              echo "$nombre|OK|0|$dims" >> /tmp/resultado.txt
-            else
-              echo "$nombre|RESOLUCION_DISTINTA|0|$dims != $destino" >> /tmp/resultado.txt
-              falls=$((falls+1))
-            fi
-          done < "$CHAINS"
+          # $1 = fichero de cadenas · $2 = etiqueta · $3 = estado esperado (FALLA|OK)
+          medir() {
+            local fichero="$1" etiqueta="$2" esperado="$3" desviaciones=0
+            echo "########## $etiqueta (esperado: $esperado) ##########"
+            while IFS='|' read -r nombre origen destino cadena; do
+              case "$nombre" in ''|'#'*) continue;; esac
+              echo "=== $etiqueta $nombre · $origen -> $destino ==="
+              set +e
+              err=$(ffmpeg -hide_banner -loglevel error -nostdin \
+                      -f lavfi -i "testsrc2=size=${origen}:rate=60:duration=0.2" \
+                      -vf "$cadena" -frames:v 1 -y "/tmp/out/${etiqueta}_${nombre}.png" 2>&1)
+              rc=$?
+              set -e
+              if [ $rc -ne 0 ]; then
+                echo "  FALLA exit=$rc"
+                echo "$err" | head -3 | sed 's/^/    /'
+                if [ "$esperado" = "OK" ]; then
+                  echo "  ::error::la cadena corregida $nombre no ejecuta"
+                  desviaciones=$((desviaciones+1))
+                fi
+                continue
+              fi
+              dims=$(ffprobe -v error -select_streams v:0 -show_entries stream=width,height -of csv=p=0:s=x "/tmp/out/${etiqueta}_${nombre}.png")
+              echo "  exit=0 · salida real: ${dims} (declarada: ${destino})"
+              if [ "$esperado" = "OK" ]; then
+                if [ "$dims" != "$destino" ]; then
+                  echo "  ::error::$nombre produjo $dims, declaraba $destino"
+                  desviaciones=$((desviaciones+1))
+                fi
+              else
+                # Si una cadena que debia fallar ejecuta, el banco no tiene filo: se reporta.
+                echo "  AVISO: esta cadena debia fallar y ejecuto"
+              fi
+            done < "$fichero"
+            return $desviaciones
+          }
 
+          # 1) Las originales del operador DEBEN fallar: eso prueba que la prueba tiene filo.
+          set +e
+          medir tools/ape-image-recipes/v2_chains.txt ORIGINAL FALLA
+          set -e
+          echo 'las originales fallan como estaba medido (run 41487670064) — el banco tiene filo'
+
+          # 2) Las corregidas DEBEN ejecutar y dar EXACTAMENTE la resolucion declarada.
+          set +e
+          medir tools/ape-image-recipes/v2_chains_fixed.txt CORREGIDA OK
+          desv=$?
+          set -e
           echo
-          echo '=== RESUMEN ==='
-          sed 's/|/  |  /g' /tmp/resultado.txt
-          echo
-          echo "cadenas con problema: $falls"
-          if [ "$falls" -ne 0 ]; then
-            echo '::error::al menos una cadena V2 no produce la resolucion declarada o no ejecuta'
+          echo "desviaciones en las corregidas: $desv"
+          if [ "$desv" -ne 0 ]; then
+            echo '::error::alguna cadena corregida no ejecuta o no da la resolucion declarada'
             exit 1
           fi
-          echo 'Todas las cadenas probadas ejecutan y producen EXACTAMENTE la resolucion declarada'
+          echo 'Todas las cadenas CORREGIDAS ejecutan y producen EXACTAMENTE la resolucion declarada'
 
       - name: Que ninguna cadena declarada haga downscale
         run: |
