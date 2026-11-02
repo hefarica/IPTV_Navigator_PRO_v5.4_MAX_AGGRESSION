@@ -56,7 +56,7 @@ const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'ape-v2-'));
 const filas = [];
 
 for (const linea of fs.readFileSync(chainsPath, 'utf8').split('\n')) {
-  if (!linea.startsWith('P')) continue;
+  if (!/^[A-Z]/.test(linea)) continue;   // P5..P0, REF1.., cualquier identificador en mayuscula
   const [nombre, origen, destino, cadena] = linea.split('|');
   if (!cadena) continue;
 
@@ -87,7 +87,8 @@ for (const linea of fs.readFileSync(chainsPath, 'utf8').split('\n')) {
       fila.error = 'showinfo no imprimio dimensiones (¿la cadena no produjo ningun frame?)';
     } else {
       fila.real = `${m[1]}x${m[2]}`;
-      fila.estado = fila.real === destino ? 'OK' : 'RESOLUCION_DISTINTA';
+      // destino '-' significa: solo importa que ejecute, no que acierte la resolucion.
+      fila.estado = (destino === '-' || fila.real === destino) ? 'OK' : 'RESOLUCION_DISTINTA';
     }
   } catch (e) {
     const err = (e.stderr || '').toString().split('\n').filter(Boolean);
