@@ -32,6 +32,28 @@ if [ ! -r "$LOGS" ] && [ ! -r "${LOGS}.1" ]; then
   exit 0
 fi
 
+# ── 0 · ¿DÓNDE se registran las peticiones a /lists/? ──────────────────────
+# El primer barrido encontró UNA sola petición a /lists/ en access.log, lo cual
+# contradice el tráfico que sí responden las mediciones públicas. Antes de
+# concluir «no hay tráfico» hay que saber si el instrumento está mirando otro
+# fichero, otro vhost u otro proceso. Esto lo responde.
+echo "--- 0 · barrido de TODOS los logs de nginx (¿dónde vive /lists/?):"
+for f in /var/log/nginx/*; do
+  [ -f "$f" ] || continue
+  [ -r "$f" ] || { printf '    %-46s NO_LEGIBLE\n' "$f"; continue; }
+  case "$f" in
+    *.gz) total=$(gzip -dc -- "$f" 2>/dev/null | wc -l) ;;
+    *)    total=$(wc -l < "$f" 2>/dev/null) ;;
+  esac
+  case "$f" in
+    *.gz) lists=$(gzip -dc -- "$f" 2>/dev/null | grep -c '/lists/' ) ;;
+    *)    lists=$(grep -c '/lists/' "$f" 2>/dev/null) ;;
+  esac
+  printf '    %-46s lineas=%-9s /lists/=%-6s %s\n' \
+    "$f" "${total:-?}" "${lists:-0}" "$(stat -c '%s B' "$f" 2>/dev/null)"
+done
+echo
+
 # Ficheros a considerar: el actual y rotados comprimidos o no.
 FICHEROS=""
 for f in "$LOGS" "${LOGS}.1" "${LOGS}.2.gz"; do
