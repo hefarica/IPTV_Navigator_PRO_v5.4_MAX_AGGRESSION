@@ -6,9 +6,10 @@
 #   · Códigos de salida: 0 = todo OK · 2 = fallo de RED/curl · 3 = endpoint != 200
 #   · En DRY-RUN (APE_DRY_RUN=1) la capa lua (8088) va en SKIP: no se ha desplegado.
 #
-# Endpoints MEDIDOS (200 verificado por el capitán y por vps-edge):
-#   /lists/APE_LISTA_1793002539897_CDN.m3u8   → 200 (154 MB)
-#   /lists/APE_LISTA_4K.m3u8                  → 200 (135 MB)
+# Endpoints: ya NO se hardcodean. La lista viva se descubre en disco (la .m3u8
+# mas reciente en /var/www/html/lists), porque las dos que estaban fijadas
+# (APE_LISTA_4K.m3u8 y APE_LISTA_1793002539897_CDN.m3u8) fueron retiradas y su
+# 404 hacia fallar este job SIEMPRE, bloqueando cualquier deploy. [t120]
 # APE_LISTA_PRODUCTION.m3u8 NO EXISTE: no se usa.
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib.sh"
 c_hdr "VERIFY · smoke HTTP · $(date -u +%FT%TZ)"
@@ -51,8 +52,21 @@ check_code(){ # url  nombre
 }
 
 c_hdr "1 · listas vivas (endpoints MEDIDOS)"
-check "$BASE/lists/APE_LISTA_1793002539897_CDN.m3u8" "/lists/APE_LISTA_..._CDN.m3u8"
-check "$BASE/lists/APE_LISTA_4K.m3u8" "/lists/APE_LISTA_4K.m3u8"
+# [t120] DESCUBRIMIENTO DINAMICO.
+# Antes estaban hardcodeadas dos listas ya retiradas (APE_LISTA_4K.m3u8 y
+# APE_LISTA_1793002539897_CDN.m3u8). Ambas devuelven 404 desde que fueron
+# reemplazadas, asi que este job fallaba SIEMPRE y bloqueaba cualquier deploy:
+# el verificador miraba ficheros que ya no existen. No era una caida del VPS.
+# Ahora se prueba la lista viva: la .m3u8 mas reciente en disco.
+LIVE_LIST="$(rsh 'for d in /var/www/html/lists /var/www/lists; do if [ -d "$d" ]; then ls -1t "$d"/*.m3u8 2>/dev/null | head -1; break; fi; done' 2>/dev/null | tr -d '\r' | tail -1)"
+if [ -n "$LIVE_LIST" ]; then
+  LIVE_LIST_NAME="$(basename "$LIVE_LIST")"
+  printf '   INFO   lista viva detectada en disco: %s\n' "$LIVE_LIST_NAME"
+else
+  LIVE_LIST_NAME="APE_LISTA_1793589060441.m3u8"
+  printf '   WARN   no se pudo descubrir la lista viva; se prueba la conocida: %s\n' "$LIVE_LIST_NAME"
+fi
+check "$BASE/lists/$LIVE_LIST_NAME" "/lists/$LIVE_LIST_NAME"
 
 if [ "$DRY" = "1" ]; then
   c_hdr "2 · capa lua (8088) · SKIP en dry-run (no se ha desplegado)"
