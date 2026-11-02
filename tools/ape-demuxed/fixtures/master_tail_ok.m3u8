@@ -1,0 +1,10 @@
+#EXTM3U
+#EXTINF:-1 tvg-id="canal-a",Canal A
+http://example.test/live/u/p/1.m3u8
+#EXTVLCOPT:clock-jitter=0
+#EXT-X-APE-CRYSTAL-UHD:PROFILE=P4
+
+#EXT-X-STREAM-INF:BANDWIDTH=1000000,RESOLUTION=1920x1080
+http://example.test/live/u/p/2.m3u8
+#EXTVLCOPT:clock-jitter=0
+#EXT-X-APE-CRYSTAL-UHD:PROFILE=P4

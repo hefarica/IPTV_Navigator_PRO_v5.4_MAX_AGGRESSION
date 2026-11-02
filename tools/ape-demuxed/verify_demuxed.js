@@ -288,6 +288,13 @@ function scanMaster(file) {
     streamInfWithoutAudio: 0,
     extinf: 0,
     uriLines: 0,
+    // [G5] Cola de tags DESPUÉS de la URI de cada bloque de canal. En la lista de
+    // referencia son 2 tags (#EXTVLCOPT:clock-jitter y #EXT-X-APE-CRYSTAL-UHD) más
+    // una línea vacía (lines_after_uri=3 en 10.572 canales, 7 en el último). Un
+    // parser o un generador que cierre el bloque en la URI los pierde sin avisar.
+    blockTail: [],
+    _tail: null,
+    _tailChannel: 0,
     firstLines: []
   };
 
@@ -302,8 +309,13 @@ function scanMaster(file) {
       res.uriLines++;
       // URI que sigue a un STREAM-INF pendiente
       if (res._pendingVariant) { res._pendingVariant.uri = line; res._pendingVariant = null; }
+      // [G5] Abre la cola de este bloque: lo que venga después de la URI y antes del
+      // siguiente #EXTINF sigue siendo parte del canal.
+      if (!res._tail) { res._tail = []; res._tailChannel = res.extinf; }
       return;
     }
+    // [G5] Todo tag posterior a la URI del bloque actual pertenece a su cola.
+    if (res._tail) res._tail.push(line.slice(0, 60));
     const ci = line.indexOf(':');
     const tag = ci > 0 ? line.slice(0, ci) : line;
     const body = ci > 0 ? line.slice(ci + 1) : '';
@@ -312,6 +324,13 @@ function scanMaster(file) {
 
     switch (tag) {
       case '#EXTINF':
+        // [G5] Cierra la cola del bloque ANTERIOR antes de abrir el nuevo.
+        if (res._tail) {
+          if (res.blockTail.length < 200000) {
+            res.blockTail.push({ channel: res._tailChannel, tags: res._tail.slice(0, 12), count: res._tail.length });
+          }
+          res._tail = null;
+        }
         res.extinf++;
         res.isCatalogue = true;
         break;
@@ -499,6 +518,73 @@ function gateStructure(scan) {
     failures: failures.slice(0, 100),
     failures_total: failures.length,
     reason: muxed && !hasFail ? 'el master no declara #EXT-X-MEDIA TYPE=AUDIO; no hay estructura de demuxed que verificar' : null
+  };
+}
+
+// ---------------------------------------------------------------------------
+// G5 — layout del bloque: la cola tras la URI no se tira
+// ---------------------------------------------------------------------------
+// En la lista de referencia cada bloque de canal lleva DOS tags DESPUÉS de la URI
+// (`#EXTVLCOPT:clock-jitter` y `#EXT-X-APE-CRYSTAL-UHD`) más una línea vacía:
+// lines_after_uri=3 en 10.572 canales y 7 en el último. Un parser o un generador
+// que cierre el bloque en la URI los pierde en el 100 % de los canales y no avisa.
+//
+// El invariante es "al menos 2 tags de cola por bloque", NO los nombres literales:
+// fijar los nombres haría que un cambio legítimo de la lista rompiera el gate, y un
+// gate que rompe por evolución no se mantiene, se desactiva.
+function gateBlockLayout(scan) {
+  // El último bloque del fichero cierra con EOF, no con #EXTINF: se añade aparte.
+  const bloques = scan.blockTail.slice();
+  if (scan._tail) {
+    bloques.push({ channel: scan._tailChannel, tags: scan._tail.slice(0, 12), count: scan._tail.length });
+  }
+
+  if (!scan.isCatalogue || bloques.length === 0) {
+    return {
+      gate: 'G5_block_layout_tail',
+      status: 'NO_COMPUTADO',
+      reason: 'el master no tiene bloques de canal (#EXTINF + URI): no hay layout de bloque que verificar',
+      blocks: 0,
+      failures: [],
+      failures_total: 0
+    };
+  }
+
+  const MIN = 2;
+  const failures = [];
+  const dist = {};
+  const tagHist = new Map();
+
+  for (const b of bloques) {
+    dist[b.count] = (dist[b.count] || 0) + 1;
+    for (const t of b.tags) {
+      const ci = t.indexOf(':');
+      const name = t.startsWith('#') && ci > 0 ? t.slice(0, ci) : t;
+      tagHist.set(name, (tagHist.get(name) || 0) + 1);
+    }
+    if (b.count < MIN && failures.length < 100) {
+      failures.push({ channel: b.channel, tags_after_uri: b.count, tail: b.tags });
+    }
+  }
+
+  const malos = bloques.filter(b => b.count < MIN).length;
+
+  return {
+    gate: 'G5_block_layout_tail',
+    status: malos > 0 ? 'FAIL' : 'PASS',
+    blocks: bloques.length,
+    min_tags_required: MIN,
+    tags_after_uri_distribution: dist,
+    tail_tag_names: [...tagHist.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 12)
+      .map(([name, n]) => ({ tag: name, blocks: n })),
+    failures,
+    failures_total: malos,
+    reason: malos > 0
+      ? malos + ' de ' + bloques.length + ' bloques tienen menos de ' + MIN +
+        ' tags tras la URI: cerrar el bloque en la URI los pierde en todos esos canales'
+      : null
   };
 }
 
@@ -783,10 +869,12 @@ function main() {
   const g2 = gateDownscale(scan, opt);
   const g3 = gateCaps(scan);
   const g4 = gateThroughpass(scan, opt);
+  const g5 = gateBlockLayout(scan);
 
-  const gates = [g1, g2, g3, g4];
+  const gates = [g1, g2, g3, g4, g5];
   const fails = gates.filter(g => g.status === 'FAIL');
-  const hardGates = [g1, g2, g3];
+  // G5 es duro: tirar la cola del bloque es pérdida de datos silenciosa, no un aviso.
+  const hardGates = [g1, g2, g3, g5];
   const hardUncomputed = hardGates.filter(g => g.status === 'NO_COMPUTADO');
   const allPass = gates.every(g => g.status === 'PASS');
 
