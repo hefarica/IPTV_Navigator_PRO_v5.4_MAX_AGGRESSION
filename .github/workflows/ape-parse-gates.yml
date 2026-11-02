@@ -162,6 +162,84 @@ jobs:
           print(f"  OK {j['resumen']['CONSTANTE']} constantes, 0 VARIA")
           PY
 
+      - name: reconcile_audio cierra las dos auditorias de audio
+        run: |
+          set -uo pipefail
+          FIX=tools/ape-parse-defects/fixtures/audio_reconcile.m3u8
+          OUT=/tmp/audio_out.m3u8
+
+          echo '=== ANTES: las dos auditorias deben fallar ==='
+          set +e
+          node tools/ape-parse-defects/kodiprop_key_audit.js "$FIX" > /tmp/isa_before.json 2>/dev/null; c1=$?
+          node tools/ape-parse-defects/audio_contradictions.js "$FIX" > /tmp/ac_before.json 2>/dev/null; c2=$?
+          set -e
+          echo "kodiprop_key_audit exit=$c1 (esperado 4) · audio_contradictions exit=$c2 (esperado 4)"
+          [ "$c1" -eq 4 ] || { echo "::error::el fixture deberia tener claves inventadas"; exit 1; }
+          [ "$c2" -eq 4 ] || { echo "::error::el fixture deberia tener contradicciones de audio"; exit 1; }
+
+          echo '=== TRANSFORMACION ==='
+          node tools/ape-parse-defects/reconcile_audio.js "$FIX" "$OUT" > /tmp/rec.json 2>/tmp/rec.err
+          echo "exit=$?"; cat /tmp/rec.err
+
+          echo '=== DESPUES: las dos auditorias deben pasar ==='
+          set +e
+          node tools/ape-parse-defects/kodiprop_key_audit.js "$OUT" > /tmp/isa_after.json 2>/dev/null; c3=$?
+          node tools/ape-parse-defects/audio_contradictions.js "$OUT" > /tmp/ac_after.json 2>/dev/null; c4=$?
+          set -e
+          echo "kodiprop_key_audit exit=$c3 · audio_contradictions exit=$c4 (esperado 0 en ambos salvo deprecadas)"
+          [ "$c4" -eq 0 ] || { echo "::error::quedan contradicciones de audio tras la reconciliacion"; exit 1; }
+
+          python3 - <<'PY'
+          import json, sys
+          b = json.load(open('/tmp/isa_before.json'))['resumen']
+          a = json.load(open('/tmp/isa_after.json'))['resumen']
+          acb = json.load(open('/tmp/ac_before.json'))['resumen']
+          aca = json.load(open('/tmp/ac_after.json'))['resumen']
+          rec = json.load(open('/tmp/rec.json'))['cuentas']
+
+          fallos = []
+          # 1) Las claves inventadas deben desaparecer por completo.
+          print(f"  INVENTADA {b['INVENTADA']} -> {a['INVENTADA']}")
+          if b['INVENTADA'] == 0: fallos.append('el fixture no tenia claves inventadas: la prueba no probaria nada')
+          if a['INVENTADA'] != 0: fallos.append(f"quedan {a['INVENTADA']} claves inventadas")
+          # 2) Las contradicciones deben ir a cero.
+          print(f"  contradicciones {acb['total']} -> {aca['total']}")
+          if acb['total'] == 0: fallos.append('el fixture no tenia contradicciones: la prueba no probaria nada')
+          if aca['total'] != 0: fallos.append(f"quedan {aca['total']} contradicciones")
+          # 3) Los conteos de la transformacion deben cuadrar con las lineas.
+          for k in ['R1_passthrough_corregido','R2_kodiprop_audio_borradas','R3_extvlcopt_audio_channels_borradas']:
+              if rec[k] == 0: fallos.append(f'{k} = 0: esa regla no se ejercito')
+          lineas_ok = rec['lineas_salida'] == rec['lineas_entrada'] - rec['R2_kodiprop_audio_borradas'] - rec['R3_extvlcopt_audio_channels_borradas']
+          print(f"  lineas {rec['lineas_entrada']} -> {rec['lineas_salida']} (cuadre: {lineas_ok})")
+          if not lineas_ok: fallos.append('el conteo de lineas no cuadra con las reglas aplicadas')
+          # 4) Ninguna linea ajena debe haberse perdido: las REAL_VIGENTE/otras intactas.
+          print(f"  claves distintas {b['claves_distintas']} -> {a['claves_distintas']}")
+          for f in fallos:
+              print(f'::error::{f}')
+          sys.exit(1 if fallos else 0)
+          PY
+
+      - name: reconcile_audio es idempotente
+        run: |
+          set -uo pipefail
+          # Aplicar la reconciliacion dos veces debe dar el MISMO fichero y no cambiar nada.
+          # Si la segunda pasada cambia bytes o vuelve a contar reglas, la transformacion no converge.
+          node tools/ape-parse-defects/reconcile_audio.js tools/ape-parse-defects/fixtures/audio_reconcile.m3u8 /tmp/a1.m3u8 >/dev/null 2>&1
+          node tools/ape-parse-defects/reconcile_audio.js /tmp/a1.m3u8 /tmp/a2.m3u8 > /tmp/rec2.json 2>/dev/null
+          sha1=$(sha256sum /tmp/a1.m3u8 | cut -d' ' -f1)
+          sha2=$(sha256sum /tmp/a2.m3u8 | cut -d' ' -f1)
+          echo "  sha pasada 1: $sha1"
+          echo "  sha pasada 2: $sha2"
+          [ "$sha1" = "$sha2" ] || { echo '::error::la segunda pasada cambia el fichero: no es idempotente'; exit 1; }
+          python3 - <<'PY'
+          import json, sys
+          c = json.load(open('/tmp/rec2.json'))['cuentas']
+          total = c['R1_passthrough_corregido'] + c['R2_kodiprop_audio_borradas'] + c['R3_extvlcopt_audio_channels_borradas']
+          print(f"  reglas aplicadas en la 2a pasada: {total}")
+          if total != 0:
+              sys.exit(f'::error::la 2a pasada volvio a aplicar {total} reglas: no converge')
+          PY
+
       - name: lab_calibration_check no inventa violaciones ni las esconde
         run: |
           set -uo pipefail

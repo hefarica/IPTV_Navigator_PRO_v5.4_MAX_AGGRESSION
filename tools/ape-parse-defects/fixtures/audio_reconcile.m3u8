@@ -1,0 +1,26 @@
+#EXTM3U
+#EXT-X-VERSION:6
+#EXTINF:-1 tvg-id="c1",canal uno
+#EXTVLCOPT:network-caching=15000
+#EXTVLCOPT:audio-channels=6
+#KODIPROP:inputstream.adaptive.audio_dolby_atmos=false
+#KODIPROP:inputstream.adaptive.audio_dts=false
+#KODIPROP:inputstream.adaptive.audio_channels=7.1
+#KODIPROP:inputstream.adaptive.audio_passthrough=true
+#KODIPROP:inputstream.adaptive.manifest_type=hls
+#EXT-X-APE-AUDIO-ATMOS:ENABLED=true,CHANNELS=7.1.4,OBJECTS=128
+#EXT-X-APE-AUDIO-DTS-X:ENABLED=true,CHANNELS=7.1.4
+#EXT-X-APE-AUDIO-PASSTHROUGH:ENABLED=true
+#EXT-X-APE-RESOLUTION-SUPREMACY:1280x720
+#EXT-X-APE-HDR-TRANSFER:BT1886
+http://example.invalid/c1.ts
+#EXTINF:-1 tvg-id="c2",canal dos
+#EXTVLCOPT:audio-channels=6
+#KODIPROP:inputstream.adaptive.audio_dolby_atmos=false
+#KODIPROP:inputstream.adaptive.audio_channels=7.1
+#KODIPROP:inputstream.adaptive.audio_passthrough=true
+#EXT-X-APE-AUDIO-ATMOS:ENABLED=true,CHANNELS=7.1.4,OBJECTS=128
+#EXT-X-APE-AUDIO-PASSTHROUGH:ENABLED=true
+#EXT-X-APE-RESOLUTION-SUPREMACY:1920x1080
+#EXT-X-APE-HDR-TRANSFER:BT1886
+http://example.invalid/c2.ts
