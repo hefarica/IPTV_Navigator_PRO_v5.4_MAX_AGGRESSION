@@ -108,3 +108,50 @@ correspondiente es la deducción — sólida, pero deducción.
 **Quien autorice el parche debería saber esto.** Es un cambio de 3 líneas en un fichero de
 configuración, con copia de respaldo, reversible en un comando, y la verificación es `gate_matrix.js`
 antes y después.
+
+## 8 · La validación que faltaba: hecha en CI, sobre nginx real — run `41485054319`
+
+El párrafo anterior decía «no validado empíricamente». **Ya no.** El runner de GitHub Actions es Ubuntu
+y trae nginx, y CI sí está autorizado. El workflow `ape-206-local-proof.yml` monta un banco con la
+`location` copiada **literalmente** del baseline real (líneas 110–169) y mide ocho celdas.
+
+**Primero exige que el baseline reproduzca el fallo de producción**, porque un banco que no reproduce el
+bug no prueba nada sobre su arreglo. Reproduce los dos:
+
+```
+-- baseline vs fallo de produccion medido --
+  OK   grande  rango_identity: 200      <- gunzip on sirve el .gz descomprimido
+  OK   pequeno rango_gzip:     200      <- compresion dinamica elimina el rango
+```
+
+**Después aplica las tres directivas y mide:**
+
+```
+-- parche: las 4 celdas de 206 --
+  OK   grande  rango_identity: 206
+  OK   grande  rango_gzip:     206
+  OK   pequeno rango_identity: 206
+  OK   pequeno rango_gzip:     206
+
+-- parche: la pata 200 sigue en pie --
+  OK   grande  identity: 200 · pequeno identity: 200
+  OK   grande  gzip:     200 · pequeno gzip:     200
+
+PREDICCION CONFIRMADA
+```
+
+**Dos cosas que costó llegar aquí, y que importan para creer el resultado:**
+
+1. La primera versión del banco usaba `location /lists/` con `try_files $uri $uri.gz`. **No reproducía
+   el fallo de la lista pequeña** (daba 206 donde producción da 200). Al copiar la `location` regex real
+   —con su `types { }` explícito, `Vary "*"` y `output_buffers`— el fallo apareció. El banco no era fiel;
+   ahora lo es.
+2. La segunda versión **falló de verdad**: reportó `pequeno rango_gzip: 200` tras el parche. No era el
+   parche — era que **mi `sed` nunca aplicó `gzip off`** por exigir una indentación exacta. El volcado de
+   la config final lo delató. Corregido, y con una **aserción permanente** que falla si alguna de las tres
+   directivas no se aplicó.
+
+**Lo que sigue sin ser idéntico:** el runner trae la versión de nginx de Ubuntu, no necesariamente 1.24.0.
+El camino de código de `gzip`/`range` que esto ejercita es el mismo en 1.18–1.26, pero no afirmo
+byte-identidad de versión. La verificación final en producción sigue siendo `gate_matrix.js` antes y
+después de aplicar.
