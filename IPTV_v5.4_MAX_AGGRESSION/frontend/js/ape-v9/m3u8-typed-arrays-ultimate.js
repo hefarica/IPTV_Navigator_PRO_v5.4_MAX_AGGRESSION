@@ -2786,6 +2786,45 @@
         return tags;
     }
 
+    // OMEGA CRYSTAL compliance block. This is additive metadata: it does not
+    // re-encode, downscale, or alter the source URL. No EXT-X-KEY is emitted
+    // for clear streams; that would break playback.
+    function __omegaComplianceTags() {
+        return [
+            '#EXT-X-SERVER-CONTROL:CAN-BLOCK-RELOAD=YES,PART-HOLD-BACK=1.0,CAN-SKIP-UNTIL=12.0',
+            '#EXTVLCOPT:colorspace=all=auto:trc=auto',
+            '#EXTVLCOPT:tonemap=mobius',
+            '#EXTVLCOPT:format=yuv444p10le',
+            '#EXTVLCOPT:saturation=1.08',
+            '#EXT-X-APE-SPOOF-DEVICE-CLASS:premium-tv',
+            '#EXT-X-APE-SPOOF-DECODING-CAPABILITY:hevc-main10-level6.1',
+            '#EXT-X-APE-SPOOF-DEVICE-MODEL:SHIELD-TV-PRO',
+            '#EXT-X-APE-HTTP-HEADER-X-Device-Class:premium-tv',
+            '#EXT-X-APE-HTTP-HEADER-X-Decoding-Capability:hevc-main10-level6.1',
+            '#EXT-X-APE-QUANTUM-PIXEL:ENABLED=true,DEPTH=12,FORMAT=yuv444p10le,SATURATION=1.08',
+            '#EXT-X-APE-BUFFER-STRATEGY:ADAPTIVE_PREDICTIVE_NEURAL',
+            '#EXT-X-APE-BUFFER-PRELOAD-SEGMENTS:30',
+            '#EXT-X-APE-BUFFER-DYNAMIC-ADJUSTMENT:ENABLED',
+            '#KODIPROP:inputstream.adaptive.preferred_codec=hevc',
+            '#KODIPROP:inputstream.adaptive.video_codec_override=hevc',
+            '#EXT-X-APE-AV1-FALLBACK-CHAIN:HEVC>AV1>H264',
+            '#EXT-X-APE-CODEC-PRIORITY:HEVC>AV1>H264',
+            '#EXT-X-APE-TRANSPORT-PROTOCOL:CMAF_UNIVERSAL',
+            '#EXT-X-APE-TRANSPORT-CHUNK-SIZE:200MS',
+            '#EXT-X-APE-TRANSPORT-FALLBACK-1:HLS_FMP4',
+            '#KODIPROP:inputstream.adaptive.audio_passthrough_earc=strict',
+            '#EXT-X-APE-AUDIO-EARC:ENABLED',
+            '#EXT-X-APE-DRM-WIDEVINE:ENFORCE',
+            '#KODIPROP:inputstream.adaptive.drm_widevine_enforce=true',
+            '#EXT-X-APE-TELCHEMY-TVQM:ENABLED',
+            '#EXT-X-APE-TELCHEMY-TR101290:ENABLED',
+            '#EXT-X-APE-TELEMETRY-TVQM:ENABLED',
+            '#EXT-X-APE-TELEMETRY-TR101290:ENABLED',
+            '#EXT-X-APE-IMPAIRMENT-GUARD:BLOCKINESS=ACTIVE,JERKINESS=ACTIVE,TILING=ACTIVE',
+            '#EXT-X-APE-AUDIT-OMEGA:ENABLED'
+        ].join('\n');
+    }
+
     function generateGlobalHeader(channelsCount, options = {}) {
         const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 18) + 'Z';
         const totalChannels = typeof window !== 'undefined' && window.app && typeof window.app.getFilteredChannels === 'function' ? window.app.getFilteredChannels().length : channelsCount;
@@ -3738,6 +3777,11 @@ ${__apeContinuityTags().join('\n')}
             "X-ISP-BW-Demand": "MAX_CONTRACT",
             "X-ISP-Parallel-Streams": "4",
             "X-ISP-TCP-Window": "4194304",
+            "X-Device-Class": "premium-tv",
+            "X-Decoding-Capability": "hevc-main10-level6.1",
+            "X-Pixel-Format-Requested": "yuv444p10le",
+            "X-Buffer-Dynamic-Adjustment": "ENABLED",
+            "X-Buffer-Preload-Segments": "30",
             // ── 🌌 FUSIÓN INFINITA BWDIF: Directivas Adaptativas Polimórficas via JSON ──
             "X-Fusion-Infinita-Mode": "AGUJERO_NEGRO_HLS",
             "X-Resolution-Hierarchy": "480,720,1080,2160,4320",
@@ -11573,7 +11617,7 @@ lines.push(`#EXT-X-APE-STREAM-TRUTH:src=${_streamTruth.source},w=${_streamTruth.
 
                 // PASO 1: GLOBAL HEADER
                 if (includeHeader) {
-                    const headerText = generateGlobalHeader(channels.length, options);
+                    const headerText = generateGlobalHeader(channels.length, options) + '\n' + __omegaComplianceTags();
                     // 🛡️ M5: RFC 8216 order guard — verifica EXTM3U/VERSION/MEDIA-SEQUENCE order.
                     // Solo telemetría: registra violations en _apeAuditAcc.rfcViolations,
                     // NO aborta. Player ignora; verifier post-gen puede reportar.
