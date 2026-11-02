@@ -6884,6 +6884,33 @@ ${__apeContinuityTags().join('\n')}
         return typeof url === 'string' && /^https?:\/\/[^/]+\/.+/.test(url.trim());
     }
 
+    // Parser normalization: the ingestion/JSON parsers do not all use `.url`.
+    // Never reject a channel just because its playable URI lives in stream_url,
+    // direct_source, raw.stream_url, etc.
+    function __apePlayableChannelUrl(channel) {
+        if (!channel || typeof channel !== 'object') return '';
+        const raw = channel.raw || {};
+        const canonical = channel._apeCanonical || {};
+        const canonicalChannel = canonical.channel || {};
+        const values = [
+            channel.url, channel.src, channel.stream_url, channel.streamUrl,
+            channel.direct_source, channel.source_url, channel.URL, channel.uri,
+            channel._url, channel._provider_url, channel.playback_url, channel._direct_url,
+            canonical.url, canonical.stream_url, canonicalChannel.url, canonicalChannel.stream_url,
+            raw.url, raw.stream_url, raw.streamUrl, raw.direct_source,
+            raw.source_url, raw.server_url, raw.playback_url
+        ];
+        for (const value of values) {
+            const url = String(value == null ? '' : value).trim();
+            if (isPlayableStreamUrl(url)) return preferHttps(url);
+        }
+        for (const value of values) {
+            const url = String(value == null ? '' : value).trim();
+            if (url) return url;
+        }
+        return '';
+    }
+
     function preferHttps(url) {
         if (!url || typeof url !== 'string') return url;
         try {
@@ -7757,14 +7784,13 @@ ${__apeContinuityTags().join('\n')}
     function buildChannelUrl(channel, jwt, profile = null, index = 0, credentialsMap = {}) {
         // [t61] MODO DIRECTO (sin VPS): URL del PROVEEDOR verbatim, sin reconstruir
         // ni envolver. Default false ⇒ el modo VPS no cambia. Reversible.
+        const _normalizedUrl = __apePlayableChannelUrl(channel);
         if (typeof window !== 'undefined' && window.APE_DIRECT_MODE === true) {
-            const _directUrl = String(channel.url || channel.src || channel.raw?.server_url || '').trim();
-            if (isPlayableStreamUrl(_directUrl)) return preferHttps(_directUrl);
+            if (isPlayableStreamUrl(_normalizedUrl)) return _normalizedUrl;
             // Host-only no es una URI; seguir al constructor con credenciales/stream_id.
         }
         // [t84] PRESERVAR la URL del catalogo (verbatim); solo sintetizar si falta.
-        const _inUrl84 = String((channel && (channel.url || channel.src)) || '').trim();
-        if (_inUrl84 && /^https?:\/\//i.test(_inUrl84)) return preferHttps(_inUrl84);
+        if (_normalizedUrl && /^https?:\/\//i.test(_normalizedUrl)) return _normalizedUrl;
         let streamId = channel.stream_id;
         if (streamId == null) streamId = channel.raw?.stream_id;
         if (streamId == null) streamId = channel.id;
@@ -7810,7 +7836,7 @@ ${__apeContinuityTags().join('\n')}
         }
         if (!creds) creds = credentialsMap['__current__'];
 
-        let originalUrl = String(channel.url || channel.src || channel.raw?.server_url || '');
+        let originalUrl = __apePlayableChannelUrl(channel);
         let baseUrl = creds ? creds.baseUrl : '';
         if (!baseUrl) {
             const hostMatch = originalUrl.match(/^https?:\/\/[^\/]+/i);
@@ -8711,7 +8737,7 @@ ${__apeContinuityTags().join('\n')}
         const CLEAN_URL_MODE_LOCAL = (typeof CLEAN_URL_MODE !== 'undefined') ? CLEAN_URL_MODE : false;
         let primaryUrl = (typeof buildChannelUrl === 'function')
             ? buildChannelUrl(channel, jwt, profile, index, credentialsMap)
-            : (channel.url || channel.src || '');
+            : __apePlayableChannelUrl(channel);
         // STRICT URI: ninguna entrada puede emitirse sin URL absoluta + path.
         if (!isPlayableStreamUrl(primaryUrl)) {
             throw new Error(`[URL-GUARD] canal ${channel.name || channel.id || index} sin URI reproducible: ${primaryUrl || '(vacía)'}`);
@@ -11529,7 +11555,7 @@ lines.push(`#EXT-X-APE-STREAM-TRUTH:src=${_streamTruth.source},w=${_streamTruth.
             const _preCreds = (typeof buildCredentialsMap === 'function') ? buildCredentialsMap(options) : {};
             for (let _i = 0; _i < (channels || []).length; _i++) {
                 const _c = channels[_i] || {};
-                const _u = String(_c.url || _c.src || _c.raw?.server_url || '').trim();
+                const _u = __apePlayableChannelUrl(_c);
                 let _repaired = '';
                 if (!isPlayableStreamUrl(_u)) {
                     // Reparar tanto VPS como DIRECTO con el servidor activo/credenciales.
@@ -11891,7 +11917,7 @@ lines.push(`#EXT-X-APE-STREAM-TRUTH:src=${_streamTruth.source},w=${_streamTruth.
                     // Construcción Universal "1 URL per Channel" respetando todas las reglas del Proxy
                     const url = (typeof buildChannelUrl === 'function')
                         ? buildChannelUrl(c, null, options.profile || 'P3', i, credentialsMap)
-                        : (c.url || c.src || '');
+                        : __apePlayableChannelUrl(c);
 
                     if (url.includes('line.tivi-ott.net') || options.verifyAllHosts) {
                         channelsToVerify.push({ idx: i, url, channel: c });
@@ -12450,7 +12476,7 @@ lines.push(`#EXT-X-APE-STREAM-TRUTH:src=${_streamTruth.source},w=${_streamTruth.
         channels.forEach(ch => {
             if (deltaOnly && ch.ape_meta) return; // Delta Scan: skip already scanned
 
-            let chUrl = ch.url || ch.direct_source || ch.stream_url;
+            let chUrl = __apePlayableChannelUrl(ch);
             if (!chUrl && ch.stream_id) {
                 // Intento simple de construir URL si no está armada
                 const servers = window.app.state?.activeServers || [];
