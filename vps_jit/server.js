@@ -33,7 +33,6 @@ function setBaseHeaders(res) {
   res.setHeader('Access-Control-Allow-Headers', 'Range, Origin, X-Requested-With, Content-Type, Accept, Accept-Encoding');
   res.setHeader('Access-Control-Expose-Headers', 'Content-Range, Accept-Ranges, Content-Length, ETag, Server-Timing');
   res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
-  res.setHeader('Vary', '*');
   res.setHeader('Connection', 'keep-alive');
   res.setHeader('Keep-Alive', 'timeout=5, max=100');
   res.setHeader('X-Cache-Control', 'no-transform');
@@ -44,8 +43,66 @@ function setNoCacheHeaders(res) {
   res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate, private, max-age=0');
   res.setHeader('Pragma', 'no-cache');
   res.setHeader('Expires', '0');
-  res.setHeader('ETag', 'W/"' + Date.now() + '-' + Math.random().toString(36).slice(2) + '"');
-  res.setHeader('Server-Timing', 'cache;desc="no-store"');
+}
+
+function cachePolicy(kind) {
+  if (kind === 'master' || kind === 'mpd') {
+    return 'public, max-age=5, stale-while-revalidate=60, stale-if-error=600';
+  }
+  if (kind === 'media') {
+    return 'public, max-age=2, stale-while-revalidate=10, stale-if-error=30';
+  }
+  if (kind === 'init' || kind === 'seg') {
+    return 'public, max-age=31536000, immutable';
+  }
+  if (kind === 'redirect') {
+    return 'private, max-age=10';
+  }
+  return 'no-cache, no-store, must-revalidate, private, max-age=0';
+}
+
+function setObjectCacheHeaders(res, kind) {
+  const policy = cachePolicy(kind);
+  res.setHeader('Cache-Control', policy);
+  if (kind === 'master' || kind === 'mpd') {
+    res.setHeader('Vary', 'Accept-Encoding');
+  }
+  if (kind === 'init' || kind === 'seg') {
+    res.setHeader('CDN-Cache-Control', policy);
+  }
+}
+
+function installTiming(req, res) {
+  const t0 = process.hrtime.bigint();
+  let stamped = false;
+  res.locals = res.locals || {};
+  const stamp = () => {
+    if (stamped) return;
+    stamped = true;
+    const ttfb = Number(process.hrtime.bigint() - t0) / 1e6;
+    res.setHeader('Server-Timing',
+      'ttfb;dur=' + ttfb.toFixed(1) +
+      ', cache;desc="' + String(res.locals.cache || 'miss') + '"');
+  };
+  const origWriteHead = res.writeHead.bind(res);
+  const origEnd = res.end.bind(res);
+  res.writeHead = function () {
+    stamp();
+    return origWriteHead.apply(res, arguments);
+  };
+  res.end = function () {
+    stamp();
+    return origEnd.apply(res, arguments);
+  };
+}
+
+function fileETag(stat) {
+  return 'W/"' + stat.size + '-' + Math.floor(stat.mtimeMs) + '"';
+}
+
+function isFresh(req, etag) {
+  const inm = req.headers['if-none-match'];
+  return !!inm && String(inm).split(',').some(function (v) { return v.trim() === etag; });
 }
 function probeSource(spec) {
   try {
@@ -275,13 +332,20 @@ function hdrMpd(text) {
   return text.replace(/codecs="hvc1"/g, 'codecs="' + (current ? current.codecString : 'hvc1.2.4.L123.B0') + '"');
 }
 
-function sendStatic(req, res, file, type) {
+function sendStatic(req, res, file, type, kind) {
   const stat = fs.statSync(file);
   const size = stat.size;
-  const range = req.headers.range;
+  const etag = fileETag(stat);
+  res.locals.cache = kind || 'static';
+  setObjectCacheHeaders(res, kind || 'seg');
+  res.setHeader('ETag', etag);
   res.setHeader('Accept-Ranges', 'bytes');
   res.setHeader('Content-Type', type);
-  setNoCacheHeaders(res);
+  if (isFresh(req, etag)) {
+    res.writeHead(304);
+    return res.end();
+  }
+  const range = req.headers.range;
   if (range) {
     const m = /^bytes=(\d*)-(\d*)$/.exec(String(range).trim());
     if (!m) {
@@ -361,6 +425,7 @@ function manifestJson(req, id, sdr, sdr720) {
 }
 
 const server = http.createServer((req, res) => {
+  installTiming(req, res);
   setBaseHeaders(res);
   if (req.method === 'OPTIONS') {
     res.writeHead(204);
@@ -437,10 +502,10 @@ const server = http.createServer((req, res) => {
     if (!id) { res.writeHead(400); return res.end('bad channel'); }
     const map = loadMap();
     if (!map[id] || !map[id].url) { res.writeHead(404); return res.end('unknown channel'); }
-    setNoCacheHeaders(res);
+    res.locals.cache = 'redirect';
+    setObjectCacheHeaders(res, 'redirect');
     res.writeHead(302, {
-      'Location': publicBase(req) + '/live/' + id + '/master.m3u8',
-      'Cache-Control': 'no-store',
+      'Location': publicBase(req) + '/live/' + id + '/master.m3u8'
     });
     return res.end();
   }
@@ -486,13 +551,27 @@ const server = http.createServer((req, res) => {
     const file = path.join(OUT_ROOT, id, sdr720 ? 'sdr720' : (sdr ? 'sdr' : ''), name);
     if (!fs.existsSync(file)) { res.writeHead(404); return res.end('not ready'); }
     const type = MIME[path.extname(file)] || 'application/octet-stream';
+    const kind = name === 'master.m3u8' ? 'master'
+      : name === 'manifest.mpd' ? 'mpd'
+      : /^media_[0-9]+\.m3u8$/.test(name) ? 'media'
+      : /^init-.*\.m4s$/.test(name) ? 'init'
+      : /^chunk-.*\.m4s$/.test(name) ? 'seg'
+      : 'seg';
     if (name === 'master.m3u8' || name === 'manifest.mpd') {
+      const stat = fs.statSync(file);
+      const etag = fileETag(stat);
+      res.locals.cache = kind;
+      setObjectCacheHeaders(res, kind);
+      res.setHeader('ETag', etag);
+      if (isFresh(req, etag)) {
+        res.writeHead(304);
+        return res.end();
+      }
       const txt = fs.readFileSync(file, 'utf8');
-      setNoCacheHeaders(res);
       res.writeHead(200, { 'Content-Type': type });
       return res.end(name === 'master.m3u8' ? hdrMaster(txt) : hdrMpd(txt));
     }
-    sendStatic(req, res, file, type);
+    sendStatic(req, res, file, type, kind);
   };
   if (waitName) return waitForFile(id, waitName, (err) => {
     if (err) { res.writeHead(503, { 'Content-Type': 'text/plain' }); return res.end(err.message); }
