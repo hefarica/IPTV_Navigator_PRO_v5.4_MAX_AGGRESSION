@@ -137,10 +137,18 @@ rs.on('end', () => {
   resumen.fallos = fallos;
   resumen.veredicto = fallos.length === 0 ? 'TODOS_VALIDOS' : 'DEFECTOS';
   process.stdout.write(JSON.stringify(resumen, null, 2) + '\n');
-  process.exit(0);
+  // El exit DEBE reflejar el veredicto. Antes era `exit(0)` incondicional: el informe
+  // decia DEFECTOS y el proceso devolvia 0, asi que en CI este validador no podia fallar
+  // nunca. Un validador que no puede fallar no valida; solo escribe JSON.
+  //   0 = todos validos
+  //   4 = defectos encontrados
+  //   5 = no se pudo leer (distinto de 4 para que CI sepa que el fallo no es del fichero)
+  process.exit(fallos.length === 0 ? 0 : 4);
 });
 
 rs.on('error', (e) => {
   process.stderr.write('ERROR leyendo: ' + e.message + '\n');
-  process.exit(4);
+  // 5, no 4: "no pude leer" y "lei y tiene defectos" son causas distintas y CI debe
+  // poder distinguirlas. Con 4 en ambos, un fichero ausente parecia una lista defectuosa.
+  process.exit(5);
 });

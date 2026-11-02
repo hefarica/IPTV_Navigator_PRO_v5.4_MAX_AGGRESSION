@@ -144,10 +144,13 @@ buf.on('end', () => {
   stats.fallos = fallos;
   stats.veredicto = fallos.length === 0 ? 'LIMPIO' : 'DEFECTOS';
   process.stdout.write(JSON.stringify(stats, null, 2) + '\n');
-  process.exit(0);
+  // Mismo defecto que en validate_exthttp.js: el exit era 0 incondicional, asi que el
+  // informe podia decir DEFECTOS mientras el proceso devolvia exito. Ahora:
+  //   0 = limpio · 4 = defectos · 5 = no se pudo leer
+  process.exit(fallos.length === 0 ? 0 : 4);
 });
 
 buf.on('error', (e) => {
   process.stderr.write('ERROR leyendo: ' + e.message + '\n');
-  process.exit(4);
+  process.exit(5);
 });

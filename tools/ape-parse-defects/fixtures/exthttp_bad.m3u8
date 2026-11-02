@@ -1,0 +1,13 @@
+#EXTM3U
+
+#EXTHTTP:User-Agent=VLC/3.0.20 LibVLC/3.0.20,Referer=http://example.test/
+#EXTINF:-1 tvg-id="canal-1" tvg-name="Canal 1" tvg-logo="http://example.test/logo1.png" group-title="Pruebas",Canal 1
+#EXTVLCOPT:network-caching=1500
+http://example.test/live/u/p/1.m3u8
+#EXTVLCOPT:clock-jitter=0
+
+#EXTHTTP:User-Agent=VLC/3.0.20 LibVLC/3.0.20,Referer=http://example.test/
+#EXTINF:-1 tvg-id="canal-2" tvg-name="Canal 2" tvg-logo="http://example.test/logo2.png" group-title="Pruebas",Canal 2
+#EXTVLCOPT:network-caching=1500
+http://example.test/live/u/p/2.m3u8
+#EXTVLCOPT:clock-jitter=0

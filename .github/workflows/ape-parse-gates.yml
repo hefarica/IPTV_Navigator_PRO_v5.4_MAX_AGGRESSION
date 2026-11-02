@@ -1,0 +1,96 @@
+name: ape-parse gates
+
+# Los validadores de parseo (parse_defects.js, validate_exthttp.js) existian como
+# herramientas manuales desde hace rondas y no corrian en ningun workflow.
+#
+# Peor: sus exit codes estaban invertidos. Los dos hacian `process.exit(0)` sin mirar
+# el veredicto, asi que el informe podia decir DEFECTOS mientras el proceso devolvia
+# exito, y el unico camino a un exit distinto de cero era no poder leer el fichero.
+# Un validador que no puede fallar no valida: solo escribe JSON.
+#
+# Contrato corregido, y que este workflow ancla: 0 = limpio - 4 = defectos - 5 = no se pudo leer.
+
+on:
+  push:
+    paths:
+      - 'tools/ape-parse-defects/**'
+      - '.github/workflows/ape-parse-gates.yml'
+  pull_request:
+    paths:
+      - 'tools/ape-parse-defects/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  gates:
+    name: Exit codes reflejan el veredicto
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Sintaxis de los validadores
+        run: |
+          set -euo pipefail
+          node -c tools/ape-parse-defects/parse_defects.js
+          node -c tools/ape-parse-defects/validate_exthttp.js
+
+      - name: parse_defects devuelve 0 con la lista limpia
+        run: |
+          set -uo pipefail
+          set +e
+          out=$(node tools/ape-parse-defects/parse_defects.js tools/ape-parse-defects/fixtures/parse_clean.m3u8 2>&1); code=$?
+          set -e
+          echo "$out"; echo "exit=$code"
+          [ "$code" -eq 0 ] || { echo "::error::lista limpia con exit $code, se esperaba 0"; exit 1; }
+          echo "$out" | grep -q '"veredicto": "LIMPIO"' || { echo '::error::veredicto distinto de LIMPIO'; exit 1; }
+
+      - name: parse_defects devuelve 4 con URI duplicada (falsificacion)
+        run: |
+          set -uo pipefail
+          set +e
+          out=$(node tools/ape-parse-defects/parse_defects.js tools/ape-parse-defects/fixtures/parse_dup.m3u8 2>&1); code=$?
+          set -e
+          echo "$out"; echo "exit=$code"
+          # Si este caso devolviera 0, el validador habria vuelto a ser incapaz de fallar.
+          [ "$code" -eq 4 ] || { echo "::error::URI duplicada con exit $code, se esperaba 4"; exit 1; }
+          echo "$out" | grep -q 'URIs duplicadas' || { echo '::error::no reporto la URI duplicada'; exit 1; }
+
+      - name: validate_exthttp devuelve 0 con EXTHTTP JSON valido
+        run: |
+          set -uo pipefail
+          set +e
+          out=$(node tools/ape-parse-defects/validate_exthttp.js tools/ape-parse-defects/fixtures/exthttp_ok.m3u8 2>&1); code=$?
+          set -e
+          echo "$out"; echo "exit=$code"
+          [ "$code" -eq 0 ] || { echo "::error::EXTHTTP valido con exit $code, se esperaba 0"; exit 1; }
+          echo "$out" | grep -q '"json_invalido": 0' || { echo '::error::reporto JSON invalido en un fixture valido'; exit 1; }
+
+      - name: validate_exthttp devuelve 4 con EXTHTTP que no es JSON (falsificacion)
+        run: |
+          set -uo pipefail
+          set +e
+          out=$(node tools/ape-parse-defects/validate_exthttp.js tools/ape-parse-defects/fixtures/exthttp_bad.m3u8 2>&1); code=$?
+          set -e
+          echo "$out"; echo "exit=$code"
+          [ "$code" -eq 4 ] || { echo "::error::EXTHTTP invalido con exit $code, se esperaba 4"; exit 1; }
+          echo "$out" | grep -q '"json_invalido": 2' || { echo '::error::no conto los 2 bloques invalidos'; exit 1; }
+
+      - name: Un fichero ausente devuelve 5, no 4
+        run: |
+          set -uo pipefail
+          for tool in parse_defects validate_exthttp; do
+            set +e
+            node "tools/ape-parse-defects/$tool.js" tools/ape-parse-defects/fixtures/no_existe.m3u8 >/dev/null 2>&1; code=$?
+            set -e
+            echo "$tool -> exit=$code"
+            # 5 y 4 tienen que ser distinguibles: "no pude leer" no es "lei y tiene defectos".
+            # Con un unico codigo, un fichero ausente se reportaba como lista defectuosa.
+            [ "$code" -eq 5 ] || { echo "::error::$tool devolvio $code para un fichero ausente, se esperaba 5"; exit 1; }
+          done
