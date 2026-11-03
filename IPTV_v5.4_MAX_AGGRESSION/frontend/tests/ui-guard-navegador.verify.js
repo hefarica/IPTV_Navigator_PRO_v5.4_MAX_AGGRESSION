@@ -84,7 +84,10 @@ function servir() {
   const appUrl = 'http://127.0.0.1:' + srv.address().port + '/harness.html';
   const profile = fs.mkdtempSync(path.join(require('os').tmpdir(), 'ape-guard-'));
   const chrome = spawn(CHROME, [
-    '--headless=new', '--disable-gpu', '--no-first-run', '--no-default-browser-check',
+    // --no-sandbox y --disable-dev-shm-usage son obligatorios en el runner de Actions: sin ellos
+    // Chrome arranca y no expone CDP (el proceso muere o queda sin puerto).
+    '--headless=new', '--disable-gpu', '--no-sandbox', '--disable-dev-shm-usage',
+    '--no-first-run', '--no-default-browser-check',
     '--disable-extensions', '--mute-audio', '--window-size=1400,1000',
     '--user-data-dir=' + profile, '--remote-debugging-port=' + PORT, appUrl
   ], { stdio: 'ignore' });
@@ -104,7 +107,7 @@ function servir() {
     await sleep(250);
   }
   if (!targets || !targets.length) {
-    console.error('Chrome/CDP no respondio: no se puede verificar en navegador');
+    console.error('Chrome/CDP no respondio en ' + PORT + '. Puede que Chrome no arranque sin --no-sandbox o que el puerto este ocupado.');
     limpiar(); process.exit(2);
   }
   const page = targets.find(t => t.type === 'page') || targets[0];
