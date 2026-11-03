@@ -1,0 +1,155 @@
+name: ape-deploy-frontend
+
+# ─────────────────────────────────────────────────────────────────────────────────────────────────
+# Despliega el generador de la APP al VPS.
+#
+# POR QUÉ EXISTE: deploy-vps.yml despliega los endpoints y la capa Lua/PHP, pero su manifiesto NO incluye
+# m3u8-typed-arrays-ultimate.js. El generador es frontend de navegador y se sirve desde /var/www/html.
+# Medido el 2026-11-03: el VPS servía 840.087 bytes con pp=ac/dr/ci ×3, scd=5 ×6 y zscale=bt1886 ×5,
+# mientras el repo ya tenía esas cadenas corregidas. Las mejoras no estaban en producción.
+#
+# Verifica TRES cosas antes de declarar éxito:
+#   1. el sha256 del fichero instalado coincide con el del repo
+#   2. el fichero servido por HTTP contiene las correcciones (no solo que pese lo mismo)
+#   3. el fichero servido NO contiene los patrones defectuosos
+# ─────────────────────────────────────────────────────────────────────────────────────────────────
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'verify-only (solo lee) o apply (despliega)'
+        required: true
+        default: 'verify-only'
+        type: choice
+        options: [verify-only, apply]
+      confirm:
+        description: 'Para apply escribe exactamente: DESPLIEGO EL GENERADOR AL VPS'
+        required: false
+        default: ''
+
+concurrency:
+  group: ape-deploy-frontend
+  cancel-in-progress: false
+
+jobs:
+  desplegar:
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 15
+
+    env:
+      SRC: IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/m3u8-typed-arrays-ultimate.js
+      DEST_DIR: /var/www/html/js/ape-v9
+      DEST_FILE: /var/www/html/js/ape-v9/m3u8-typed-arrays-ultimate.js
+      URL: https://iptv-ape.duckdns.org/js/ape-v9/m3u8-typed-arrays-ultimate.js
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/adb-generic-visual-enhancement-installer
+
+      - name: Preparar SSH
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          printf '%s\n' "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' "${{ secrets.VPS_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+          printf 'Host *\n  StrictHostKeyChecking yes\n  UserKnownHostsFile ~/.ssh/known_hosts\n  IdentitiesOnly yes\n' > ~/.ssh/config
+          echo "TARGET=${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" >> "$GITHUB_ENV"
+
+      - name: El fuente del repo compila y tiene las correcciones
+        run: |
+          set -euo pipefail
+          node -c "$SRC"
+          echo 'node -c OK'
+          echo '--- correcciones presentes en el repo ---'
+          for p in 'colorspace=iall=bt709' 'strength=0.51' 'scale=w=3840:h=2160:flags=lanczos'; do
+            n=$(grep -c -- "$p" "$SRC" || true)
+            echo "  $p = $n"
+            [ "$n" -gt 0 ] || { echo "::error::el repo no tiene la correccion '$p'"; exit 1; }
+          done
+          echo '--- defectos ausentes en el repo ---'
+          for p in 'pp=ac/dr/ci' ':scd=5' 'zscale=transfer=bt1886'; do
+            n=$(grep -c -- "$p" "$SRC" || true)
+            echo "  $p = $n"
+            [ "$n" -eq 0 ] || { echo "::error::el repo aun tiene '$p'"; exit 1; }
+          done
+          sha256sum "$SRC" | tee local.sha
+
+      - name: Estado del VPS (solo lectura)
+        run: |
+          set -euo pipefail
+          echo '--- fichero en el VPS ---'
+          ssh "$TARGET" "sudo -n stat -c '%n %s bytes %y' '$DEST_FILE' 2>&1 || echo AUSENTE"
+          ssh "$TARGET" "sudo -n sha256sum '$DEST_FILE' 2>&1 || true"
+          echo '--- lo que sirve HTTP ahora ---'
+          curl -sS -o /tmp/servido.js -w '  http=%{http_code} bytes=%{size_download}\n' "$URL" || true
+          echo "  sha servido: $(sha256sum /tmp/servido.js | cut -d' ' -f1)"
+          for p in 'pp=ac/dr/ci' ':scd=5' 'zscale=transfer=bt1886'; do
+            echo "  defecto servido $p = $(grep -c -- "$p" /tmp/servido.js || true)"
+          done
+
+      - name: Exigir la confirmacion literal
+        if: inputs.mode == 'apply'
+        run: |
+          set -euo pipefail
+          if [ "${{ inputs.confirm }}" != "DESPLIEGO EL GENERADOR AL VPS" ]; then
+            echo '::error::falta la confirmacion literal. No se escribe nada.'
+            echo "  recibido: '${{ inputs.confirm }}'"
+            exit 1
+          fi
+          echo 'confirmacion literal presente'
+
+      - name: Backup y despliegue
+        if: inputs.mode == 'apply'
+        run: |
+          set -uo pipefail
+          STAMP=$(date -u +%Y%m%dT%H%M%SZ)
+          BAK="$DEST_FILE.bak_$STAMP"
+          echo "backup: $BAK"
+          if ! ssh "$TARGET" "sudo -n cp -a '$DEST_FILE' '$BAK' && sudo -n ls -l '$BAK'"; then
+            echo '::error::fallo el backup. No se toca nada.'; exit 1
+          fi
+
+          scp -q "$SRC" "$TARGET:/tmp/ape-gen-nuevo.js"
+          if ! ssh "$TARGET" "sudo -n install -m 0644 -o www-data -g www-data /tmp/ape-gen-nuevo.js '$DEST_FILE'"; then
+            echo '::error::fallo la instalacion. Restaurando.'
+            ssh "$TARGET" "sudo -n cp -a '$BAK' '$DEST_FILE'"
+            exit 1
+          fi
+
+          echo '--- sha tras instalar ---'
+          REMOTO=$(ssh "$TARGET" "sudo -n sha256sum '$DEST_FILE' | cut -d' ' -f1")
+          LOCAL=$(sha256sum "$SRC" | cut -d' ' -f1)
+          echo "  remoto: $REMOTO"
+          echo "  local : $LOCAL"
+          if [ "$REMOTO" != "$LOCAL" ]; then
+            echo '::error::el sha instalado no coincide con el del repo. RESTAURANDO.'
+            ssh "$TARGET" "sudo -n cp -a '$BAK' '$DEST_FILE'"
+            exit 1
+          fi
+          echo "DESPLEGADO. backup en $BAK"
+          echo "Para revertir: sudo cp -a $BAK $DEST_FILE"
+
+      - name: Verificar lo que sirve HTTP (contenido, no solo tamano)
+        run: |
+          set -uo pipefail
+          sleep 3
+          curl -sS -o /tmp/servido2.js -w '  http=%{http_code} bytes=%{size_download}\n' "$URL"
+          ok=1
+          echo '--- debe TENER las correcciones ---'
+          for p in 'colorspace=iall=bt709' 'strength=0.51' 'scale=w=3840:h=2160:flags=lanczos'; do
+            n=$(grep -c -- "$p" /tmp/servido2.js || true)
+            echo "  $p = $n"
+            [ "$n" -gt 0 ] || { echo "::error::lo servido no tiene '$p'"; ok=0; }
+          done
+          echo '--- NO debe tener los defectos ---'
+          for p in 'pp=ac/dr/ci' ':scd=5' 'zscale=transfer=bt1886'; do
+            n=$(grep -c -- "$p" /tmp/servido2.js || true)
+            echo "  $p = $n"
+            [ "$n" -eq 0 ] || { echo "::error::lo servido aun tiene '$p'"; ok=0; }
+          done
+          [ "$ok" = '1' ] || exit 1
+          echo 'LO SERVIDO TIENE LAS CORRECCIONES Y NO TIENE LOS DEFECTOS'
