@@ -236,6 +236,11 @@ function testB() {
   ok(metadataTag === '#EXT-X-APE-OUTPUT-METADATA:{"dictatorMode":true,"dictatorTier":"4K","maxQualityMode":false,"perceptual4kMode":false,"maxCompatMode":true}', 'B8 manifest metadata tag exact');
   const mqSdr = gen.generateChannelEntry(channel, 'P4', 0, {}, { maxQualityMode: true, hdr_force: 'sdr' });
   ok(mqSdr.indexOf('VIDEO-RANGE=SDR') !== -1, 'B9 hdr_force wins over maxQualityMode STREAM-INF');
+  const baseOnly = {
+    id: '3', name: 'Base Layer URL', base: { url: 'http://example.com/live/user/pass/123.ts' }
+  };
+  const baseEntry = gen.generateChannelEntry(baseOnly, 'P4', 0, {}, {});
+  ok(baseEntry.indexOf('http://example.com/live/user/pass/123.ts') !== -1, 'B10 base.url resolves URI');
 
   const auto2 = gen.generateChannelEntry(channel, 'P4', 0, {}, {});
   ok(stableLines(auto) === stableLines(auto2), 'C1 semantic stable with JIT off + HDR auto');

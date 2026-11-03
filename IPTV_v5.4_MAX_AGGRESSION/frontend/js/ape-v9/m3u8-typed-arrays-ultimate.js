@@ -6914,12 +6914,14 @@ ${__apeContinuityTags().join('\n')}
     function __apePlayableChannelUrl(channel) {
         if (!channel || typeof channel !== 'object') return '';
         const raw = channel.raw || {};
+        const base = channel.base || {};
         const canonical = channel._apeCanonical || {};
         const canonicalChannel = canonical.channel || {};
         const values = [
             channel.url, channel.src, channel.stream_url, channel.streamUrl,
             channel.direct_source, channel.source_url, channel.URL, channel.uri,
             channel._url, channel._provider_url, channel.playback_url, channel._direct_url,
+            base.url, base.stream_url, base.streamUrl, base.direct_source, base.source_url, base.uri,
             canonical.url, canonical.stream_url, canonicalChannel.url, canonicalChannel.stream_url,
             raw.url, raw.stream_url, raw.streamUrl, raw.direct_source,
             raw.source_url, raw.server_url, raw.playback_url
