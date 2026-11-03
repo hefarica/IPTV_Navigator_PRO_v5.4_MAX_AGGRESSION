@@ -242,6 +242,7 @@
     var di = document.getElementById('ape-delta-input');
     if (di) di.value = String(v);
     guard();
+    renderSugerencia();   // al cambiar el delta, la sugerencia se recalcula sola
     if (notify) {
       status('Delta ' + v + '% aplicado; enviando al VPS…', '#38bdf8');
       sendDeltaToVps(v).then(function (res) {
@@ -368,8 +369,148 @@
     return { inM: inM, outM: outM, floorM: floorM, has: has, ok: ok, canStart: canStart };
   }
 
+  // ── AUTO-AJUSTE TEÓRICO ────────────────────────────────────────────────────────────────────────
+  //
+  // El bloqueo sin salida era el defecto: decía "no cumple" y no ofrecía cómo cumplir. Aquí se
+  // despeja la MISMA desigualdad que decide, para devolver números accionables.
+  //
+  //   inM >= requisito × (1 + delta/100)
+  //   inM / requisito >= 1 + delta/100
+  //   delta/100 <= inM / requisito - 1
+  //   delta_max = (inM / requisito - 1) × 100        ← el delta más alto que AÚN cumple
+  //
+  // Con delta_max se responde la pregunta del operador: o se baja el delta a ese valor y el perfil
+  // entra, o ningún delta (por debajo de 1%) lo salva y hay que bajar de perfil. En ese segundo caso
+  // se busca el mejor perfil cuyo suelo sí quepa en el enlace con el delta actual.
+  function floorDePerfil(pid) {
+    try {
+      var cfg = window.APE_PROFILES_CONFIG;
+      var p = cfg && cfg.profiles ? cfg.profiles[pid] : null;
+      var f = p && p.settings ? p.settings.bandwidth_floor : 0;
+      if (Number(f) > 0) return Number(f) / 1e6;
+      return Number(FLOOR_MBPS[pid]) || 0;
+    } catch (_) { return 0; }
+  }
+
+  function sugerirAjuste() {
+    var g = guard();
+    var out = { has: g.has, bloquea: g.has && !g.canStart, delta: DELTA_PCT };
+    if (!g.has) return out;
+
+    // Mbps que pide el perfil activo con el delta vigente
+    out.reqArranque = g.floorM * (1 + DELTA_PCT / 100);
+    out.reqTecho = g.outM * (1 + DELTA_PCT / 100);
+    out.faltanArranque = Math.max(0, out.reqArranque - g.inM);
+    out.faltanTecho = Math.max(0, out.reqTecho - g.inM);
+
+    // delta máximo que despeja la desigualdad contra el SUELO
+    out.deltaMax = g.floorM > 0 ? (g.inM / g.floorM - 1) * 100 : 0;
+    out.deltaMaxEntero = Math.floor(out.deltaMax);
+    // el input admite 1..90; por debajo de 1 no hay delta que salve este perfil
+    out.deltaAplicable = out.deltaMaxEntero >= 1 && out.deltaMaxEntero <= 90;
+
+    // delta máximo contra el TECHO (para saber si además sostendría la calidad máxima)
+    out.deltaMaxTecho = g.outM > 0 ? (g.inM / g.outM - 1) * 100 : 0;
+
+    // perfiles alcanzables con el delta VIGENTE, de mejor a peor
+    out.alcanzables = [];
+    var ids = ['P0', 'P1', 'P2', 'P3', 'P4', 'P5'];
+    for (var i = 0; i < ids.length; i++) {
+      var f = floorDePerfil(ids[i]);
+      if (f > 0 && g.inM >= f * (1 + DELTA_PCT / 100)) out.alcanzables.push({ id: ids[i], floor: f });
+    }
+    out.mejorPerfil = out.alcanzables.length ? out.alcanzables[0].id : null;
+    return out;
+  }
+
+  // Pinta la sugerencia bajo la condición de buffer. Idempotente: se reescribe entera cada vez.
+  function renderSugerencia() {
+    var el = document.getElementById('ape-buf-sugerencia');
+    if (!el) return;
+    var s = sugerirAjuste();
+    if (!s.has) { el.innerHTML = ''; return; }
+    if (!s.bloquea && s.reqTecho <= (s.reqTecho - s.faltanTecho)) { el.innerHTML = ''; }
+
+    var act = (window.APE_PROFILES_CONFIG && window.APE_PROFILES_CONFIG.activeProfileId) || 'P3';
+    var html = '';
+    var linea = 'font-size:.82rem;margin-top:5px;';
+
+    if (s.bloquea) {
+      html += '<div style="' + linea + 'color:#fca5a5;">' +
+        '<b>Bloqueado</b>: el perfil ' + act + ' necesita <b>' + s.reqArranque.toFixed(1) +
+        ' Mbps</b> para arrancar (suelo ' + s.floorM + ' Mbps × ' + (1 + s.delta / 100).toFixed(2) +
+        ') y el enlace mide <b>' + s.inM.toFixed(1) + ' Mbps</b>. Faltan <b>' +
+        s.faltanArranque.toFixed(1) + ' Mbps</b>.</div>' +
+        '<div style="' + linea + 'color:#e2e8f0;"><b>Dos salidas, elige una:</b></div>';
+
+      // Salida 1: bajar el delta. Solo si el delta resultante sigue siendo >= 1%.
+      if (s.deltaAplicable) {
+        html += '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:4px;font-size:.82rem;">' +
+          '<span style="color:#94a3b8;">1) Aplicar delta</span>' +
+          '<b style="color:#86efac;">' + s.deltaMaxEntero + '%</b>' +
+          '<span style="color:#94a3b8;">(despejado de tu enlace)</span>' +
+          '<button type="button" id="ape-sug-delta" style="background:#16a34a;color:#fff;border:0;border-radius:6px;' +
+          'padding:3px 9px;font-weight:800;cursor:pointer;">Aplicar ' + s.deltaMaxEntero + '%</button>' +
+          '</div>';
+      } else {
+        html += '<div style="' + linea + 'color:#f59e0b;">1) Bajar el delta <b>no sirve</b>: ni al 1% ' +
+          'el enlace alcanza el suelo de este perfil (necesitaría ' + s.floorM + ' Mbps).</div>';
+      }
+
+      // Salida 2: bajar de perfil al mejor que sí quepa.
+      if (s.mejorPerfil) {
+        html += '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:4px;font-size:.82rem;">' +
+          '<span style="color:#94a3b8;">2) Cambiar a perfil</span>' +
+          '<b style="color:#86efac;">' + s.mejorPerfil + '</b>' +
+          '<span style="color:#94a3b8;">(suelo ' + floorDePerfil(s.mejorPerfil) +
+          ' Mbps · con tu enlace y delta ' + s.delta + '% arranca)</span>' +
+          '<button type="button" id="ape-sug-perfil" style="background:#0ea5e9;color:#fff;border:0;border-radius:6px;' +
+          'padding:3px 9px;font-weight:800;cursor:pointer;">Cambiar a ' + s.mejorPerfil + '</button>' +
+          '</div>';
+      } else {
+        html += '<div style="' + linea + 'color:#f59e0b;">2) Ningún perfil arranca con ' +
+          s.inM.toFixed(1) + ' Mbps y delta ' + s.delta + '%. Sube el enlace o baja el delta al mínimo.</div>';
+      }
+    } else if (!s.ok) {
+      html += '<div style="' + linea + 'color:#fbbf24;">' +
+        'Arranca (suelo ' + s.floorM + ' Mbps) pero no sostiene el techo de ' + s.outM + ' Mbps: ' +
+        'faltan <b>' + s.faltanTecho.toFixed(1) + ' Mbps</b>. Se genera igual y el ABR baja de variante.' +
+        '</div>';
+    }
+    el.innerHTML = html;
+
+    // Handlers: aplican de verdad, no son decorativos.
+    var bd = document.getElementById('ape-sug-delta');
+    if (bd) bd.onclick = function () {
+      var di = document.getElementById('ape-delta-input');
+      if (di) di.value = String(s.deltaMaxEntero);
+      applyDelta(true);
+      status('Delta ajustado a ' + s.deltaMaxEntero + '% para que ' + act + ' entre con ' +
+             s.inM.toFixed(1) + ' Mbps', '#22c55e');
+      renderSugerencia();
+    };
+    var bp = document.getElementById('ape-sug-perfil');
+    if (bp) bp.onclick = function () {
+      try {
+        var cfg = window.APE_PROFILES_CONFIG;
+        if (cfg) {
+          cfg.activeProfileId = s.mejorPerfil;
+          if (typeof cfg.save === 'function') cfg.save();
+          if (window.APEReactiveRules && typeof window.APEReactiveRules.refresh === 'function') {
+            window.APEReactiveRules.refresh();
+          }
+          var sel = document.getElementById('pm9-profile-select');
+          if (sel) sel.value = s.mejorPerfil;
+        }
+      } catch (_) { }
+      status('Perfil cambiado a ' + s.mejorPerfil + ': arranca con ' + s.inM.toFixed(1) + ' Mbps', '#22c55e');
+      renderSugerencia();
+    };
+  }
+
   function checkGeneration() {
     var g = guard();
+    renderSugerencia();
     if (!g.has) {
       toast('Sin medición de entrada: se permite generar, pero no se puede validar el buffer.', 'warning');
       return true;
@@ -382,9 +523,14 @@
       }
       return true;
     }
-    toast('Buffer insuficiente incluso para el suelo del perfil activo (' + g.floorM +
-          ' Mbps) con delta ' + DELTA_PCT + '%.', 'error');
-    status('BLOQUEADO: el perfil activo no cumple el delta ' + DELTA_PCT + '%', '#ef4444');
+    var s = sugerirAjuste();
+    var salida = s.deltaAplicable
+      ? 'Aplica delta ' + s.deltaMaxEntero + '% o cambia a ' + (s.mejorPerfil || 'otro perfil') + '.'
+      : (s.mejorPerfil ? 'Cambia a ' + s.mejorPerfil + '.' : 'Sube el enlace: ningún perfil entra.');
+    toast('Buffer insuficiente para el suelo del perfil ' +
+          ((window.APE_PROFILES_CONFIG && window.APE_PROFILES_CONFIG.activeProfileId) || '?') +
+          ' (' + g.floorM + ' Mbps) con delta ' + DELTA_PCT + '%. ' + salida, 'error');
+    status('BLOQUEADO: el perfil activo no cumple el delta ' + DELTA_PCT + '% · ' + salida, '#ef4444');
     return false;
   }
 
@@ -577,6 +723,7 @@
       '<span style="color:#fca5a5;border:1px solid rgba(239,68,68,.4);border-radius:999px;padding:3px 8px;">SALIDA INTACTA · imagen / bitrate del proveedor</span>' +
       '</div>' +
       '<div style="font-size:.82rem;color:#94a3b8;margin-top:6px;">Entrada requerida ≥ salida solicitada × (1 + delta). La salida NO se reduce: es la que pide la reproducción/imagen; el margen se reserva en entrada.</div></div>' +
+      '<div id="ape-buf-sugerencia" style="margin-top:7px;"></div>' +
       '<div style="background:rgba(2,6,23,.38);border:1px solid rgba(148,163,184,.25);border-radius:10px;padding:10px;font-size:.8rem;color:#94a3b8;">' +
       '<div style="font-weight:800;color:#e2e8f0;">MODO</div>' +
       '<select id="ape-gen-mode-select" style="margin-top:5px;width:100%;padding:5px 6px;border-radius:6px;background:#0f172a;color:#e2e8f0;border:1px solid #334155;font-size:.74rem;">' +
@@ -700,4 +847,3 @@
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', render);
   else setTimeout(render, 0);
 })();
-
