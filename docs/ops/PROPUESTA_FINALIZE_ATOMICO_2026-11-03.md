@@ -310,3 +310,72 @@ el fichero actual**. Es la asimetría que la propuesta advirtió: `gzip_static` 
 1. **Decidir cuál `finalize_upload.php` es la fuente**: el del repo o el del VPS con 761 bytes más.
 2. **Añadirlo a `vps_deploy_map.json`** como `type: php`, o el próximo deploy no lo llevará.
 3. **Regenerar los `.gz`** para que el invariante pase, o aceptar la divergencia y documentarla.
+
+---
+
+# Respuestas a las dos preguntas — encontradas, no consultadas
+
+**Fecha:** 2026-11-03 · run `41722339282` / `41722692239` (read-only)
+
+## P1 · ¿Cuál `finalize_upload.php` es la fuente?
+
+**Hay cuatro copias en el VPS:**
+
+| Bytes | Ruta | Rol |
+|---:|---|---|
+| **6.149** | `/var/www/html/finalize_upload.php` | **el que recibe el POST** — root de nginx |
+| 6.149 | `/var/www/iptv-ape/finalize_upload.php` | misma versión, otra ruta |
+| **5.388** | `/var/www/html/OMEGA_V5.4_PRODUCTION_UI_DO_NOT_TOUCH/vps/finalize_upload.php` | **exactamente el del repo** |
+| 3.204 | `/var/www/m3u8/finalize_upload.php` | versión antigua |
+
+**Nginx sirve el endpoint desde `sites-available/m3u8:96` y `:290`; el POST aterriza en `/var/www/html/`.**
+
+### Veredicto
+
+**La fuente es `/var/www/html/finalize_upload.php` (6.149 B).**
+
+**El del repo (5.388 B) es una copia antigua archivada dentro del directorio `DO_NOT_TOUCH`.** El repo está
+**desactualizado** respecto a lo que corre.
+
+**Consecuencia práctica:** portar el parche atómico sobre el fichero del repo habría **desplegado una versión
+761 bytes más pobre** que la que está en producción. La corrección debe partir del fichero del VPS.
+
+## P2 · ¿Hace falta regenerar los `.gz`?
+
+**No.**
+
+```
+APE_LISTA_1793558303852_CDN.m3u8
+  m3u8_bytes=606074057   gz_bytes=182548572
+  VEREDICTO=MISMO_CONTENIDO
+```
+
+**El `.gz` descomprime al mismo sha256 que el `.m3u8`.** La divergencia era **sólo de `mtime`**.
+
+Quien pida con `Accept-Encoding: gzip` recibe **exactamente el mismo contenido**, comprimido. Regenerar el `.gz`
+habría movido `mtime` sin cambiar un solo byte.
+
+### Y esto invalidaba mi propio invariante
+
+El script marcaba `ROTO m3u8_mas_nuevo_que_gz` por comparar `mtime`. **Era un falso positivo**: un `.m3u8`
+reparado queda más nuevo que un `.gz` que sigue siendo válido.
+
+**Corregido:** el invariante ahora compara **sha256 del `.m3u8` contra sha256 de `zcat .gz`**. Si coinciden
+emite `AVISO`, no `ROTO`. Sólo si el contenido difiere es un fallo real.
+
+## Lo que queda por hacer, y ya no depende de nadie
+
+| # | Acción | Estado |
+|---|---|---|
+| 1 | Partir del `finalize_upload.php` de 6.149 B, no del repo | **resuelto**: es el del VPS |
+| 2 | Regenerar los `.gz` | **descartado**: mismo contenido |
+| 3 | Sincronizar el repo con lo que corre | **pendiente**: el repo tiene una copia 761 B más corta |
+| 4 | Añadir el fichero a `vps_deploy_map.json` | **pendiente**: sin eso el deploy no lo lleva |
+| 5 | Aplicar el parche atómico | **esperando `CONFIRMED:`** |
+
+## Lo que NO se verificó
+
+- **Las 19 líneas que el VPS tiene de más** no las leí una por una: el diff con `--strip-trailing-cr` se cortó.
+  Sé que son ~19 líneas y que el fichero es funcionalmente el mismo entorno del `'wb'`, pero **no afirmo
+  conocerlas**.
+- **El de `/var/www/m3u8/` (3.204 B)** no lo inspeccioné. Podría ser el que sirve `m3u8.bak.20260114_225722`.
