@@ -92,3 +92,59 @@ curl -sS -r 0-1023 -o /dev/null -w '%{http_code} %{size_download}\n' <url>  # 20
 **Un gate que no compara el tamaño del cuerpo con el esperado no prueba que la lista llegue.** Mi matriz de 20 celdas medía códigos de estado; ninguno de los 20 comparaba bytes. Por eso un `200` con 8 bytes pasó como éxito.
 
 **Regla para adelante:** toda celda del gate debe exigir `size_download >= tamaño mínimo` además del código.
+
+---
+
+# CIERRE — reparado en las dos listas grandes
+
+**Cerrado:** 2026-11-03 · runs `41623325535` (lista principal) y `41623923948` (CDN), este último **success** en todos los pasos.
+
+## Medición final, sin gzip
+
+| Lista | Antes | **Ahora** | sha256 |
+|---|---:|---:|---|
+| `APE_LISTA_1793589060441.m3u8` | 8 B | **604.593.696 B** | `523d52a6…` |
+| `APE_LISTA_1793558303852_CDN.m3u8` | 8 B | **606.074.057 B** | `882dddf0…` |
+
+Las dos listas de prueba ya estaban bien (163.187 B cada una). **Solo las dos grandes estaban truncadas.**
+
+## Procedimiento aplicado
+
+`ape-fix-identity.yml`, por GitHub Actions, nunca SSH a mano:
+
+1. Descomprime el `.gz` a un temporal.
+2. **Verifica bytes y sha contra los valores declarados.** Si no coinciden, no escribe nada.
+3. Backup con timestamp en el mismo directorio.
+4. Instala, y si el sha del fichero instalado no coincide, **restaura el backup**.
+5. Exige que **las dos piernas** descarguen el tamaño completo, midiendo el fichero en disco.
+
+Los cuatro cambios de nginx del 2026-11-02 **se quedan**: el 206 real sigue funcionando.
+
+## El gate, endurecido
+
+`tools/ape-http-conformance/gate_matrix.js` ahora exige, en la celda `200 identity`, que el cuerpo tenga
+al menos el tamaño declarado por lista (`TAMANO_MINIMO`). Antes solo miraba el código de estado.
+
+**Y encontró un segundo incidente que mi 20/20 ocultaba:** la lista CDN también servía 8 bytes.
+Su propio comentario lo delataba: *«No se descarga el cuerpo: interesa el estado y las cabeceras, no los
+bytes.»*
+
+## Dos errores míos en el camino, para el registro
+
+| Error | Cómo se manifestó |
+|---|---|
+| Afirmar «20/20 CUMPLE» sin comparar bytes | dos listas devolvían 8 B y el gate decía verde |
+| Comparar `%{size_download}` de curl con `--compressed` | cuenta bytes de **red**, no el fichero inflado: una reparación correcta se reportó como fallo de 182 MB contra 604 MB |
+
+## Estado del gate tras el cierre
+
+```
+VEREDICTO: 20/20  faltan=0  [CUMPLE]
+
+APE_LISTA_1793589060441.m3u8     200id=200 206id=206 206gz=206 http=302
+APE_LISTA_1793558303852_CDN.m3u8 200id=200 206id=206 206gz=206 http=302
+APE_PRUEBA_ORDER_OK.m3u8         200id=200 206id=206 206gz=206 http=302
+APE_PRUEBA_PERFILES.m3u8         200id=200 206id=206 206gz=206 http=302
+```
+
+**Esta vez el 20/20 sí significa que la lista llega.**

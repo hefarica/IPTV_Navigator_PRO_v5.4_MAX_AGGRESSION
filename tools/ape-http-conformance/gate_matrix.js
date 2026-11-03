@@ -71,6 +71,15 @@ function pedir({ ruta, protocolo = 'https', method = 'GET', gzip = false, range 
   });
 }
 
+// Tamano MINIMO esperado del cuerpo identity por lista. El identity de la lista grande tiene 604593696
+// bytes; si llega menos, el gate falla aunque el codigo sea 200. Las dos de prueba son pequenas.
+const TAMANO_MINIMO = {
+  'APE_LISTA_1793589060441.m3u8': 604593696,
+  'APE_LISTA_1793558303852_CDN.m3u8': 1000000,
+  'APE_PRUEBA_ORDER_OK.m3u8': 200,
+  'APE_PRUEBA_PERFILES.m3u8': 200
+};
+
 const es3xx = (o) => !o.error && o.status >= 300 && o.status < 400;
 
 /** Evalua una lista contra las seis configuraciones y devuelve sus celdas. */
@@ -114,7 +123,23 @@ async function evaluar(nombre) {
   //   pata 302  -> HTTP plano debe dar 302 exacto
   const celdas = [];
   for (const f of filas) {
-    celdas.push({ lista: f.lista, pata: '200', perfil: 'identity', obtenido: f['200 identity'], cumple: f['200 identity'] === 200 });
+    // Un 200 con cuerpo vacio sigue siendo 200, y eso paso de verdad: el identity de la lista grande
+    // tenia 8 bytes y esta matriz daba la celda por buena porque solo miraba el codigo. Ahora la celda
+    // exige ademas que el cuerpo tenga el tamano declarado. Sin esto el gate no prueba que la lista llegue.
+    const bytesDe = (perfil) => {
+      const d = (f.detalle && f.detalle[perfil]) || {};
+      const n = Number(d.content_length);
+      return isFinite(n) ? n : 0;
+    };
+    const minDe = (nombre) => TAMANO_MINIMO[nombre] || 200;
+    const identidadOk = f['200 identity'] === 200 && bytesDe('200 identity') >= minDe(f.lista);
+    celdas.push({
+      lista: f.lista, pata: '200', perfil: 'identity',
+      obtenido: f['200 identity'],
+      bytes: bytesDe('200 identity'),
+      min_bytes: minDe(f.lista),
+      cumple: identidadOk
+    });
     celdas.push({ lista: f.lista, pata: '200', perfil: 'gzip', obtenido: f['200 gzip'], cumple: f['200 gzip'] === 200 });
     celdas.push({ lista: f.lista, pata: '206', perfil: 'identity', obtenido: f['206 identity'], cumple: f['206 identity'] === 206 });
     celdas.push({ lista: f.lista, pata: '206', perfil: 'gzip', obtenido: f['206 gzip'], cumple: f['206 gzip'] === 206 });
