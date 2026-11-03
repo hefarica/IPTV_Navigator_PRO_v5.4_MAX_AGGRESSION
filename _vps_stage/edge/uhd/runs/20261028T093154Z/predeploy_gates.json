@@ -1,0 +1,151 @@
+{
+  "task": "t30",
+  "stamp": "20261028T093154Z",
+  "ventana_utc": {
+    "desde": "2026-10-28T09:31:54Z",
+    "hasta": "2026-10-28T09:34:33Z"
+  },
+  "host": "ubuntu-2gb-ash-1 (178.156.147.234)",
+  "delta_funcional_produccion": 0,
+  "escrituras_produccion": [
+    "backup aditivo en /root/backups/edge-e1-20261028T093309Z (autorizado por t30)"
+  ],
+  "gates": [
+    {
+      "gate": "G1_backup",
+      "comando": "ssh root@178.156.147.234 'bash -s' < _vps_stage/edge/baseline/phase0_backup.sh",
+      "exit": 0,
+      "resultado": "OK",
+      "evidencia": "RESULT=OK stamp=20261028T093309Z; 3 ficheros sha256+size+cmp+restore-sim; nginx-T 36940B 0c6c0ea0; nginx -t OK",
+      "log": "G1_backup.log"
+    },
+    {
+      "gate": "G1v_verify",
+      "comando": "ssh 'STAMP=20261028T093309Z bash -s' < _vps_stage/edge/baseline/phase0_verify.sh",
+      "exit": 0,
+      "resultado": "OK",
+      "evidencia": "RESULT=OK; 3/3 re-hash OK; MainPID=3801145 NRestarts=0",
+      "log": "G1v_verify.log"
+    },
+    {
+      "gate": "G2_restore_dryrun",
+      "comando": "ssh 'bash -s' -- 20261028T093309Z < _vps_stage/edge/baseline/restore_phase0.sh",
+      "exit": 0,
+      "resultado": "OK",
+      "evidencia": "RESULT=OK; 3x DRYRUN sha OK; DRYRUN: nada escrito",
+      "log": "G2_restore_dryrun.log"
+    },
+    {
+      "gate": "G3_guard_pre",
+      "comando": "node _vps_stage/edge/uhd/uhd_doctrine_guard.mjs",
+      "exit": 1,
+      "resultado": "FAIL_ESPERADO_PRE",
+      "evidencia": "VEREDICTO FAIL blocker=1 high=2 info=1; UHD-09 7670x4320@hvc1.2.4.L153.B0 nivel insuficiente",
+      "log": "G3_guard_pre.log"
+    },
+    {
+      "gate": "G4_selftest",
+      "comando": "node _vps_stage/edge/uhd/uhd_doctrine_guard.mjs --selftest",
+      "exit": 0,
+      "resultado": "PASS_8_8",
+      "evidencia": "SELFTEST: PASS (8/8)",
+      "log": "G4_selftest.log"
+    },
+    {
+      "gate": "G6_capture_pre",
+      "comando": "node _vps_stage/edge/uhd/capture_uhd.mjs --label pre",
+      "exit": 0,
+      "resultado": "OK",
+      "evidencia": "pares=4 filas_lua=20 sondas=0; cases/20261028T093327Z.json",
+      "log": "G6_capture_pre.log"
+    },
+    {
+      "gate": "G8_lists_baseline",
+      "comando": "ssh read-only sha256sum+stat de /var/www/lists/APE_LISTA_4K.m3u8.gz y APE_LISTA_1793002539897_CDN.m3u8.gz",
+      "exit": 0,
+      "resultado": "OK",
+      "evidencia": "4K a464a0c3...081b 140555650B root:root 2026-10-26T19:55:49Z | CDN db2d034e...2ab8 160845954B www-data 2026-10-26T08:23:18Z",
+      "log": "lists_baseline.txt"
+    },
+    {
+      "gate": "Manifiesto_10_filas",
+      "comando": "bash _vps_stage/deploy/validate.sh",
+      "exit": 0,
+      "resultado": "OK",
+      "evidencia": "10 filas destino (9 lua + 1 conf); ape_uhd.lua en linea 11; OK=9 FALLOS=0 DIFERIDOS=1; ESCRITURAS EN EL VPS: 0",
+      "log": "G5_validate.log"
+    },
+    {
+      "gate": "G10_ttfb_base",
+      "comando": "lectura docs/edge/BASELINE.md:215",
+      "exit": -1,
+      "resultado": "REFERENCIA",
+      "evidencia": "delta TTFB loopback - X-APE-Upstream-Ms = 31-51 ms (referencia PRE, no re-medida)",
+      "log": ""
+    }
+  ],
+  "veredicto": "GO_CONDICIONADO",
+  "bloqueos": [
+    {
+      "id": "G3_UHD-09",
+      "estado": "rojo por diseno (estado PRE-cambio)",
+      "cierra_en": "t31 (POST) tras aplicar B-01/B-02"
+    },
+    {
+      "id": "D1_gap_snapshot_9_lua",
+      "estado": "los 9 .lua NO tienen snapshot PRE",
+      "cierra_en": "deploy.sh:55-58 dentro del deploy; aceptar o cerrar antes de desplegar"
+    },
+    {
+      "id": "D4_drift_ape_gateway_post_firma",
+      "estado": "ape_gateway.lua != hash firmado por t29",
+      "cierra_en": "decision del capitan: aceptar t32 (re-firmar 360e4097bb21) o revertir a 814165c3708a antes del deploy"
+    }
+  ],
+  "divergencias_enunciado": [
+    {
+      "id": "D1",
+      "enunciado": "G1 deja snapshot de los 10 destinos",
+      "realidad": "phase0_backup.sh copia 3 ficheros; 1 de ellos es destino del manifiesto; los 9 .lua no se respaldan en PRE"
+    },
+    {
+      "id": "D2",
+      "enunciado": "G1 escribe en /var/backups",
+      "realidad": "phase0_backup.sh:33 usa /root/backups/edge-e1-<STAMP>; /var/backups/ape-deploy es de deploy.sh"
+    },
+    {
+      "id": "D3",
+      "enunciado": "restore sin --yes -> exit 0",
+      "realidad": "el flag es --apply y exige STAMP; sin argumentos -> exit 1 (FATAL: uso)"
+    },
+    {
+      "id": "D4",
+      "enunciado": "(no previsto) los artefactos a desplegar son los que firmo t29",
+      "realidad": "ape_gateway.lua derivo a 360e4097bb21 / 21672 B / 511 L / numstat +22-5 / mtime 2026-10-28T04:31:34-05 por el cambio de t32 (can_declare_8k + qset uhd_mode_last/can8k_last); t29 declaro 814165c3708a / 504 L"
+    }
+  ],
+  "vps_estado": {
+    "nginx": "1.24.0 (Ubuntu)",
+    "MainPID": 3801145,
+    "NRestarts": 0,
+    "nginx_T_sha256": "0c6c0ea0090e7dd7defb0845763e4eb050ed21dfc70953e987cfd9d9b3813d1c",
+    "drift_conf_vivo": "IDENTICO al snapshot 26-oct"
+  },
+  "no_autoriza": [
+    "deploy",
+    "reload",
+    "systemctl",
+    "editar codigo/docs",
+    "commit",
+    "restore --apply",
+    "cambio de flags UHD"
+  ],
+  "artefactos_verificados": {
+    "ape_uhd.lua": "b02fbe28ad2b == t29 OK",
+    "ape_obs.lua": "afa003ad6e92 == t29 OK",
+    "ape_luatest.lua": "7f5be2657458 == t29 OK",
+    "meta-plane.conf": "6b3c71e76ae4 == t29 OK",
+    "manifest.tsv": "e779001e2622 == t29 OK",
+    "ape_gateway.lua": "360e4097bb21 != t29 814165c3708a (drift por t32)"
+  }
+}

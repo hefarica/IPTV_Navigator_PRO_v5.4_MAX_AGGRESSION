@@ -1,0 +1,185 @@
+{
+  "task": "t8",
+  "name": "E8 · Auditoría READ-ONLY del Resolver PHP (SSOT de URL/token) y su frontera con el edge",
+  "team": "edge-fluidez",
+  "member": "resolver-audit",
+  "date_utc": "2026-10-26T20:20:00Z",
+  "mode": "read-only (sin despliegue PHP, sin writes en VPS, sin reload nginx)",
+  "deliverable_md": "docs/edge/E8_RESOLVER_AUDIT.md",
+  "environment": {
+    "nginx": "1.24.0 (Ubuntu)",
+    "php_cli": "8.3.6 (NTS)",
+    "php_extensions_relevant": ["apcu", "Zend OPcache", "json"],
+    "php_fpm": {"pm": "dynamic", "pm.max_children": 50, "memory_limit_fpm": ["512M", "1024M"], "memory_limit_cli": "-1", "max_execution_time": 0},
+    "host_ram_mb": 3819,
+    "firewall": "sin ufw", "fail2ban": "no instalado",
+    "listeners": {"443": "0.0.0.0", "80": "0.0.0.0", "8088": "0.0.0.0"}
+  },
+  "identity": {
+    "deployed": [
+      {"path": "/var/www/html/resolve.php", "bytes": 42620, "sha256": "31e13a03ab70f02844cf9c6634718c7a656aec9e0b72e1145cd813e509e98665", "mode": "644", "owner": "www-data:www-data", "mtime": "2026-06-19T23:01:01Z", "role": "SSOT URL/token (fragmento M3U)"},
+      {"path": "/var/www/html/resolve_quality_unified.php", "bytes": 6270, "sha256": "27db7ab7a5b56f43cb815f4732124bd9009b0fc22c223211c30a78579f25d260", "mode": "644", "owner": "www-data:www-data", "mtime": "2026-05-23T05:48:53Z", "role": "wrapper JSON+cascade"},
+      {"path": "/var/www/html/resolve_quality.php", "bytes": 281, "sha256": "78c27dff701da449bc6e66628a372d8620972926776986bb86cbbc759614520c", "mode": "644", "owner": "www-data:www-data", "mtime": "2026-04-06T02:05:36Z", "role": "forwarder"},
+      {"path": "/etc/ape/origins.php", "bytes": 440, "sha256": "c574090c1c34560b7da99d0471714a502ab6fc7fc37d9edc2506f86adfa51924", "mode": "640", "owner": "root:www-data", "mtime": "2026-06-19T23:01:01Z", "role": "ORIGINS (3 parejas) fuera del webroot"},
+      {"path": "/var/www/lists/resolve.php", "bytes": 35931, "sha256": "f7e36fd7d06e7d880f4676631f2175d9566e27e57c4212739919f06785163102", "mode": "775", "owner": "www-data:www-data", "mtime": "2026-02-26T02:48:12Z", "role": "resolver legacy ejecutable en /lists/"}
+    ],
+    "repo_twins": [
+      {"path": "IPTV_v5.4_MAX_AGGRESSION/vps/resolve_quality_unified.php", "bytes": 6270, "sha256_prefix": "27DB7AB7A5B56F43", "equals_deployed": true},
+      {"path": "IPTV_v5.4_MAX_AGGRESSION/backend/resolve_quality.php", "bytes": 281, "sha256_prefix": "78C27DFF701DA449", "equals_deployed": true},
+      {"path": "IPTV_v5.4_MAX_AGGRESSION/vps/resolve.php", "bytes": 43754, "sha256_prefix": "9815C663B3516490", "equals_deployed": false},
+      {"path": "IPTV_v5.4_MAX_AGGRESSION/vps/production_mirror/resolve.php", "bytes": 43450, "sha256_prefix": "71847A970DF7B4E0", "equals_deployed": false},
+      {"path": "IPTV_v5.4_MAX_AGGRESSION/frontend/vps/resolve.php", "bytes": 40906, "sha256_prefix": "45420FC2204DAECE", "equals_deployed": false},
+      {"path": "IPTV_v5.4_MAX_AGGRESSION/backend/resolve_quality_unified.php", "bytes": 348758, "sha256_prefix": "20AC4B2631C1E877", "equals_deployed": false, "note": "candidato B de U1, nunca desplegado"},
+      {"path": "IPTV_v5.4_MAX_AGGRESSION/vps/production_mirror/resolve_quality_unified.php", "bytes": 3894, "sha256_prefix": "42154E5B888B74C5", "equals_deployed": false},
+      {"path": "resolve_quality_unified.php", "bytes": 4018, "sha256_prefix": "1E7F760FAA4C643D", "equals_deployed": false}
+    ],
+    "conclusion": "El SSOT real (resolve.php 42.620 B / 31E13A03) no tiene gemelo byte a byte en el repo; el pin U1 solo cubre el wrapper 27DB7AB7."
+  },
+  "constants_deployed_resolve": {
+    "ORIGINS_source": "/etc/ape/origins.php (require_once linea 31; 3 parejas; 0640 root:www-data)",
+    "TOKEN_TTL": 120,
+    "TOKEN_MODE": "none",
+    "TOKEN_SECRET": "placeholder publico de 33 chars (identico al del repo; valor no impreso)",
+    "CHANNEL_MAP_TTL_SECONDS": 30,
+    "REQUIRE_SIG": false,
+    "EXPECTED_SIG": "literal estatico (no es secreto)",
+    "token_effect": "token vacio => URL sin ?token=; TTL 120 inerte"
+  },
+  "decision_anchors_deployed_resolve": {
+    "cmaf_shim_require": 5,
+    "origins_require": 31,
+    "token_ttl": 38,
+    "token_mode": 42,
+    "channel_map_path": 45,
+    "require_sig": 48,
+    "expected_sig": 49,
+    "cors_acao": 176,
+    "profile_cfg": 227,
+    "profile_normalize": 332,
+    "autoProfile": 86,
+    "telemetry_res_override": 380,
+    "resolveOrigin": 426,
+    "sid_override": 450,
+    "base_url_http": 455,
+    "exthttp_section": 461,
+    "extvlcopt_tls_version": 666,
+    "extvlcopt_ssl_verify_peer": 669,
+    "extvlcopt_ssl_verify_host": 670,
+    "output_section": 816,
+    "cache_control": 821,
+    "refresh_interval": 822
+  },
+  "query_params_honored": ["ch", "p", "mode", "sig", "origin", "list", "res", "bw", "buf", "th1", "th2", "pfseg", "pfpar", "tbw", "sid"],
+  "query_params_ignored_by_deployed_resolver": ["url", "srv", "fuse", "ctx", "action"],
+  "measured_fragment": {
+    "GET /resolve.php?ch=1&p=P3": {"status": 200, "bytes": 8609, "content_type": "application/x-mpegURL", "extinf": 1, "exthttp_keys": 99, "extvlcopt": 128, "acao": "*", "cache_control": "no-store, no-cache, must-revalidate, max-age=3"},
+    "GET /resolve_quality.php?ch=1&p=P3": {"status": 200, "bytes": 222, "content_type": "application/json", "note": "MODO DEFAULT = quality => JSON; no fragmento"},
+    "GET /resolve_quality.php?ch=1&p=P3&mode=m3u": {"status": 200, "bytes": 8608, "content_type": "application/x-mpegURL", "extvlcopt": 128},
+    "GET /lists/resolve.php?ch=1&p=P3": {"status": 200, "bytes": 7434},
+    "GET /resolve_quality_v5.php?ch=1&p=P3": {"status": 200, "bytes": 6590},
+    "GET /resolve_quality_unified_LIVE.php?ch=1&p=P3": {"status": 200, "bytes": 0}
+  },
+  "latency_measured_ms": {
+    "resolve.php P0": {"http": 200, "bytes": 8661, "ttfb": 204.2, "total": 204.2},
+    "resolve.php P3": {"http": 200, "bytes": 8614, "ttfb": 212.5, "total": 212.6},
+    "resolve_quality.php mode=m3u P3": {"http": 200, "bytes": 8613, "ttfb": 192.3, "total": 192.4},
+    "map_decode": {"raw_mb": 27.0, "decode_ms": 210.2, "peak_mb": 153.0, "entries": 8366},
+    "resolver_log_global": {"lines": 23122, "mean_ms": 227.5, "max_ms": 9758.1}
+  },
+  "cascade_json_measured": {
+    "manifest": {"path": "/var/www/html/prisma/quality-manifest.json", "bytes": 28834, "sha256_prefix": "52D1A16741D60705", "tiers": 13, "tier_semantics": "tier 1 = L186 (6.2) ... tier 13 = L90 (3.0) => tier bajo = nivel alto"},
+    "results": [
+      {"requested_profile": "P0", "tier": 9, "codec": "hvc1.2.4.L120.B0"},
+      {"requested_profile": "P1", "tier": 8, "codec": "hvc1.2.4.L123.B0"},
+      {"requested_profile": "P2", "tier": 8, "codec": "hvc1.2.4.L123.B0"},
+      {"requested_profile": "P3", "tier": 6, "codec": "hvc1.2.4.L150.B0"},
+      {"requested_profile": "P4", "tier": 5, "codec": "hvc1.2.4.L153.B0"},
+      {"requested_profile": "P5", "tier": 3, "codec": "hvc1.2.4.L180.B0"}
+    ],
+    "verdict": "invertido respecto al manifiesto: 4K->L120 (subdeclara), SD->L180 (sobredeclara); NO usar para CODECS="
+  },
+  "live_lists_census": {
+    "dir": "/var/www/lists",
+    "files": [
+      {"name": "APE_LISTA_4K.m3u8.gz", "bytes": 140555650, "mtime": "2026-10-26T19:55:00Z", "resolve_quality_refs": 0, "resolve_php_refs": 0, "srv_params": 0, "extattrfromurl_http": 0},
+      {"name": "APE_LISTA_1793002539897_CDN.m3u8.gz", "bytes": 160845954, "mtime": "2026-10-26T08:23:00Z", "resolve_quality_refs": 0, "resolve_php_refs": 0, "srv_params": 0, "extattrfromurl_http": 0},
+      {"name": "APE_LISTA_1786899011456.m3u8.gz", "bytes": 323921357, "mtime": "2026-08-16T16:55:00Z", "resolve_quality_refs": 0, "srv_params": 0}
+    ],
+    "extattrfromurl_kind": "solo metadata X-APE-* (11.286 en la muestra de 4K); ninguna URL de resolver",
+    "conclusion": "El Resolver NO esta en el camino vivo de las listas servidas desde /var/www/lists; [UNKNOWN] si existe copia CDN externa."
+  },
+  "resolver_log": {
+    "path": "/var/log/iptv-ape/resolver.log",
+    "lines": 23122,
+    "date_profile": {"2026-03-15": 104, "2026-03-26": 95, "2026-03-27": 7504, "2026-03-28": 4341, "2026-03-29": 4537, "2026-03-30": 28, "2026-04-28": 4, "2026-10-26": 33},
+    "today_entries_by_ch": {"medicion": 18, "1": 9, "392200": 3, "cartridge_assert": 2, "test": 1},
+    "organic_traffic_2026-10-26": 0,
+    "log_formats": {"hit=": 501, "vlc=": 22145}
+  },
+  "edge_config_measured": {
+    "source": "audit/alignment/2026-10-25/40-vps/_raw/nginx-T.conf (dump medido) + nginx -T hoy",
+    "443_php_location": "location ~ \\.php$ generico, raiz /var/www/html, fastcgi_read_timeout 300s (linea 681)",
+    "fastcgi_cache_on_resolver": false,
+    "limit_req_on_resolver": false,
+    "auth_basic_or_allow_deny_on_resolver": false,
+    "nginx_live_current_conf_in_repo": "NO desplegado (trae fastcgi_cache resolver_cache 30s + ignore_headers Cache-Control)",
+    "video_lock": "\\.ts|\\.m4s|\\.mp4|\\.m4a|aac|vtt|key -> 404 en 8088 (l.449) y plano publico (l.847)",
+    "manifest_public_443": 200,
+    "port_80_bypass_locations": ["/prisma/api/prisma-adb-quality.php", "/prisma/quality-manifest.(json|hash)"]
+  },
+  "security_findings": [
+    {"id": "S1", "severity": "critica", "title": "Oraculo de credenciales sin auth + CORS *", "evidence": "GET /resolve.php?ch=1&p=P3 -> 200/8609 B con user:pass en el path y ACAO *"},
+    {"id": "S2", "severity": "alta", "title": "Resolvers legacy vivos con host hardcodeado", "evidence": "/lists/resolve.php 200/7434 (775 writable); /resolve_quality_v5.php 200/6590; /resolve_quality_unified_LIVE.php 200/0"},
+    {"id": "S3", "severity": "alta", "title": "Upload sin autenticacion al directorio servido", "evidence": "upload.php auth_token=''; 512MB; escribe /var/www/lists; sin comprobaciones de auth en upload/finalize/upload_chunk"},
+    {"id": "S4", "severity": "media-alta", "title": "Integridad del mapa (user/pass/stream_id override sin validar; list= selecciona mapas)", "evidence": "lineas ~443-452 + mapas 142MB www-data en webroot"},
+    {"id": "S5", "severity": "media", "title": "Cascada invertida (P0->L120, P5->L180)", "evidence": "medido en vivo §3.1"},
+    {"id": "S6", "severity": "media", "title": "DoS por memoria (50 hijos x 153MB pico, sin rate-limit)", "evidence": "map decode + pm.max_children + php ini"},
+    {"id": "S7", "severity": "media", "title": "http:// al proveedor + ssl-verify desactivado en EXTVLCOPT", "evidence": "l.455, l.666/669/670"},
+    {"id": "S8", "severity": "media", "title": "res sin validar -> inyeccion de atributos en EXTINF", "evidence": "l.380-382 + salida"},
+    {"id": "S9", "severity": "baja-media", "title": "Manifiesto publico 443/80 y :8088 en 0.0.0.0", "evidence": "curl 200; ss -lntp"},
+    {"id": "S10", "severity": "baja", "title": "TOKEN_MODE=none, secret placeholder, REQUIRE_SIG=false con literal estatico", "evidence": "l.42/43/48/49"},
+    {"id": "S11", "severity": "baja", "title": "20+ copias de resolver en webroot; symlink circular lists", "evidence": "find /var/www/html -name '*resolve*'"},
+    {"id": "S12", "severity": "info", "title": "ORIGINS 0640 root:www-data fuera del webroot (control correcto)", "evidence": "stat /etc/ape/origins.php"},
+    {"id": "S13", "severity": "info", "title": "Shim CMAF inerte (archivo inexistente) y .ts->404", "evidence": "ls cmaf_engine/ + config"}
+  ],
+  "hardening_scenarios": [
+    {"id": "H1", "name": "auth/allowlist en el edge", "php_changes": 0, "recommended": true, "rollback": "3 lineas + nginx -t + reload"},
+    {"id": "H2", "name": "retirar familia resolver (return 404)", "php_changes": 0, "recommended": "owner decision", "impact": "0 listas la referencian hoy; riesgo: listas cacheadas antiguas"},
+    {"id": "H3", "name": "URL firmada real (HMAC + exp + hash_equals + secreto en /etc/ape)", "php_changes": "candidato", "requires": "emisor de firma autenticado (no la lista)"},
+    {"id": "H4", "name": "TOKEN_MODE=hmac", "recommended": false, "reason": "provider no acepta query params desconocidos + secret placeholder => falsificable"},
+    {"id": "H5", "name": "REQUIRE_SIG=true", "recommended": false, "reason": "literal publico estatico (replay) y 403 a todos los llamantes"},
+    {"id": "H6", "name": "corregir cascada", "recommended": "candidato con rollback al pin 27DB7AB7", "guard": "L153 techo 4K@60; nunca nivel < resolucion"},
+    {"id": "H7", "name": "cachear mapa", "recommended": "solo si el resolver vuelve", "note": "APCu shm default 32MB no cabe 153MB => indice compacto"}
+  ],
+  "edge_must_not_touch": [
+    "resolve.php / resolve_quality_unified.php / resolve_quality.php / /etc/ape/origins.php / channels_map.json / /lists/resolve.php",
+    "caché de /resolve.php sin clave con query completa y sin fastcgi_ignore_headers Cache-Control",
+    "reescritura del cuerpo (#EXTHTTP JSON de 99 claves; slashes escapados)",
+    "gzip/gunzip/gzip_static del resolver (regla de listas intacta)",
+    "mover el resolver al 8088 para 'colapsar el doble hop' (el doble hop es /cdn/)",
+    "regla .ts/.m4s/.mp4/.m4a/.aac/.vtt/.key -> 404",
+    "CODECS= y metadata UHD (VIDEO-RANGE=PQ, declare_auto)",
+    "ngx.exit(503) / circuit breaker / rate-limit que frene al usuario unico",
+    "inyectar srv=/url= en las listas (el resolver desplegado los ignora y srv= filtra credenciales base64)",
+    "citar el fastcgi_cache resolver_cache del repo como activo (no lo esta)"
+  ],
+  "observability": {
+    "resolver_can_provide": ["ms", "ch", "prof", "dev", "vlc", "hdr", "tier/codec (solo JSON)"],
+    "resolver_cannot_provide": ["provider_fetch_ms (no hace fetch)", "hops (no hay proxy)", "uhd_mode (no es el perfil)", "rebase_pct (rebase es Lua body_filter)"],
+    "where_they_belong": "edge Lua (_vps_stage/lua/**, header_filter/body_filter/log)"
+  },
+  "doc_corrections": [
+    {"doc": "docs/manifestos/RESOLVER_CANONICO.md §1", "issue": "GET /resolve_quality.php?ch=1&p=P3 mide 200/222 B JSON, no 8.613 B con EXTINF; el fragmento requiere mode=m3u (8.608) o /resolve.php (8.609)"},
+    {"doc": "docs/manifestos/RESOLVER_CANONICO.md §3", "issue": "falta pin del SSOT real: resolve.php 42620 B / 31e13a03... (no existe en el repo)"},
+    {"doc": "docs/manifestos/RESOLVER_CANONICO.md §4", "issue": "'la lista viva apunta a resolve_quality.php' no se sostiene: 0 referencias en las 3 listas de /var/www/lists"},
+    {"doc": "docs/REA_EVIDENCE_AUDIT.md:121", "issue": "43.754/9815c663 corresponde a /var/www/iptv-ape/resolve.php (copia historica), no al servido (42620/31e13a03)"},
+    {"doc": "COORDENADAS_SESIONES.md §5.1", "issue": "el resolver confirma 3 parejas en /etc/ape/origins.php + las hardcodeadas en copias legacy; rotar todas las expuestas"}
+  ],
+  "limitations": [
+    "No verificado: autenticacion del escritor del manifiesto (/prisma/api/prisma-adb-quality.php) -> [UNKNOWN]",
+    "No medido: sha256 de /var/www/iptv-ape/resolve.php (solo tamano/mtime)",
+    "No verificado: existencia de otra lista servida por CDN externo -> [UNKNOWN]",
+    "Compatibilidad de players citada de auditorias REA, no medida aqui"
+  ],
+  "non_mutation_statement": "Sin POST, sin escrituras en VPS, sin reload nginx, sin tocar /var/www/lists ni PHP. Unicas escrituras indirectas: lineas de log que el propio resolver anade a resolver.log al servir 5-7 GET de esta auditoria."
+}

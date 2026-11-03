@@ -1,0 +1,372 @@
+{
+  "schema": "e5.uhd.capture/1",
+  "label": "E5-UHD-canonical",
+  "captured_at": "2026-10-26T20:41:20.885Z",
+  "captured_by": "uhd-guard",
+  "read_only": true,
+  "ssh_host_alias": "hetzner-iptv",
+  "meta": {
+    "host": "ubuntu-2gb-ash-1",
+    "date_utc": "2026-10-26T20:41:23Z",
+    "nginx_v": "nginx version: nginx/1.24.0 (Ubuntu)",
+    "nginx_T_sha256": "ddf6a267aee7fb6614d0205423c27e15e0482e6fe28fe295f51a99780c55be5f",
+    "flags": "{\"uhd_pq\":\"0\",\"uhd_auto\":\"1\",\"uhd4k\":\"1\",\"rebase\":\"1\",\"enrich\":\"0\",\"virtual4k\":\"0\",\"wake\":\"1\",\"sentinel\":\"1\",\"auth\":\"0\",\"hint\":\"0\",\"uhd8k\":\"0\"}",
+    "arpc": "3",
+    "mem_mb": "3819",
+    "ffmpeg_bin": "/usr/bin/ffmpeg",
+    "ffmpeg_procs": "0",
+    "exec_popen_modules": "",
+    "systemd_ffmpeg": "",
+    "video_404_public": "2",
+    "mainpid": "2001835",
+    "nrestarts": "0"
+  },
+  "modules": {
+    "ape_gateway.lua": {
+      "sha256": "66a2001730d7e2b566d9baa0b9ce697bd413544395a82e5d8f8b8bb6c869fdf5",
+      "bytes": 11651
+    },
+    "ape_uhd.lua": {
+      "sha256": "f1f5eb674744858ae7c5e84c73262e37545b0c84e557c6466cad20ae7b1f3b5e",
+      "bytes": 5320
+    },
+    "ape_rebase_lib.lua": {
+      "sha256": "88140fc80ece09caeb705a2fdb681485607c12f56cb4274d72132e58d7e515fc",
+      "bytes": 4646
+    },
+    "ape_obs.lua": {
+      "sha256": "f477741bcfa600bb44801d44b83a62777848d4b11e5305a7327bee09d1fdc6d0",
+      "bytes": 4030
+    }
+  },
+  "pairs": [
+    {
+      "id": "master_1080_avc",
+      "source_body": "#EXTM3U\n#EXT-X-VERSION:6\n#EXT-X-INDEPENDENT-SEGMENTS\n#EXT-X-STREAM-INF:BANDWIDTH=5000000,AVERAGE-BANDWIDTH=4000000,RESOLUTION=1920x1080,FRAME-RATE=60.000,CODECS=\"avc1.640028,mp4a.40.2\"\n1080p/index.m3u8\n#EXT-X-STREAM-INF:BANDWIDTH=9000000,AVERAGE-BANDWIDTH=6500000,RESOLUTION=1280x720,FRAME-RATE=60.000,CODECS=\"avc1.64001f,mp4a.40.2\"\n720p/index.m3u8\n",
+      "source_sha256": "627127787ba68e54d5766e42604dccb27e8752f7d833afee419c149b96088a60",
+      "served_headers_raw": "HTTP/1.1 200 OK\r\nServer: nginx\r\nDate: Mon, 26 Oct 2026 20:41:23 GMT\r\nContent-Type: application/vnd.apple.mpegurl\r\nTransfer-Encoding: chunked\r\nConnection: keep-alive\r\nVary: Accept-Encoding\r\nCache-Control: no-store\r\nX-APE-CDN: 127.0.0.1:8088\r\nX-APE-Origin: http://127.0.0.1:8088\r\nX-APE-Failover: false\r\nX-APE-Upstream-Ms: 0\r\nX-APE-URI-Rebased: 2\r\nX-APE-LL-HLS: none\r\nX-APE-UHD: 4k:1\r\nX-APE-LAB-FLOOR: 8000000\r\n\r\n",
+      "served_headers": {
+        "server": "nginx",
+        "date": "Mon, 26 Oct 2026 20:41:23 GMT",
+        "content-type": "application/vnd.apple.mpegurl",
+        "transfer-encoding": "chunked",
+        "connection": "keep-alive",
+        "vary": "Accept-Encoding",
+        "cache-control": "no-store",
+        "x-ape-cdn": "127.0.0.1:8088",
+        "x-ape-origin": "http://127.0.0.1:8088",
+        "x-ape-failover": "false",
+        "x-ape-upstream-ms": "0",
+        "x-ape-uri-rebased": "2",
+        "x-ape-ll-hls": "none",
+        "x-ape-uhd": "4k:1",
+        "x-ape-lab-floor": "8000000"
+      },
+      "served_path": "/cdn/127.0.0.1:8088/__fixture_master.m3u8",
+      "served_body": "#EXTM3U\n#EXT-X-APE-UPSCALE:declared=3840x2160;codec=truthful;mode=4k\n#EXT-X-VERSION:6\n#EXT-X-INDEPENDENT-SEGMENTS\n#EXT-X-STREAM-INF:BANDWIDTH=5000000,AVERAGE-BANDWIDTH=4000000,RESOLUTION=3840x2160,FRAME-RATE=60.000,CODECS=\"avc1.640028,mp4a.40.2\"\nhttp://127.0.0.1:8088/1080p/index.m3u8\n#EXT-X-STREAM-INF:BANDWIDTH=9000000,AVERAGE-BANDWIDTH=6500000,RESOLUTION=1280x720,FRAME-RATE=60.000,CODECS=\"avc1.64001f,mp4a.40.2\"\nhttp://127.0.0.1:8088/720p/index.m3u8\n",
+      "served_sha256": "b83e3a03546f2713a693d9374657a1a93cdcedf8d33586a4877ac3acc33533ad"
+    },
+    {
+      "id": "master_4k_hevc",
+      "source_body": "#EXTM3U\n#EXT-X-VERSION:6\n#EXT-X-INDEPENDENT-SEGMENTS\n#EXT-X-STREAM-INF:BANDWIDTH=28000000,AVERAGE-BANDWIDTH=22000000,RESOLUTION=3840x2160,FRAME-RATE=60.000,CODECS=\"hvc1.2.4.L153.B0,mp4a.40.2\",VIDEO-RANGE=PQ\n2160p/index.m3u8\n#EXT-X-STREAM-INF:BANDWIDTH=9000000,AVERAGE-BANDWIDTH=6500000,RESOLUTION=1920x1080,FRAME-RATE=60.000,CODECS=\"hvc1.1.6.L123.B0,mp4a.40.2\"\n1080p/index.m3u8\n",
+      "source_sha256": "4a96480b08b730b664e0d9691c0fd4ac05006eb1801a4774e9adc4197dc307d6",
+      "served_headers_raw": "HTTP/1.1 200 OK\r\nServer: nginx\r\nDate: Mon, 26 Oct 2026 20:41:23 GMT\r\nContent-Type: application/vnd.apple.mpegurl\r\nTransfer-Encoding: chunked\r\nConnection: keep-alive\r\nVary: Accept-Encoding\r\nCache-Control: no-store\r\nX-APE-CDN: 127.0.0.1:8088\r\nX-APE-Origin: http://127.0.0.1:8088\r\nX-APE-Failover: false\r\nX-APE-Upstream-Ms: 1\r\nX-APE-URI-Rebased: 2\r\nX-APE-LL-HLS: none\r\nX-APE-UHD: 8k:1\r\nX-APE-LAB-FLOOR: 8000000\r\n\r\n",
+      "served_headers": {
+        "server": "nginx",
+        "date": "Mon, 26 Oct 2026 20:41:23 GMT",
+        "content-type": "application/vnd.apple.mpegurl",
+        "transfer-encoding": "chunked",
+        "connection": "keep-alive",
+        "vary": "Accept-Encoding",
+        "cache-control": "no-store",
+        "x-ape-cdn": "127.0.0.1:8088",
+        "x-ape-origin": "http://127.0.0.1:8088",
+        "x-ape-failover": "false",
+        "x-ape-upstream-ms": "1",
+        "x-ape-uri-rebased": "2",
+        "x-ape-ll-hls": "none",
+        "x-ape-uhd": "8k:1",
+        "x-ape-lab-floor": "8000000"
+      },
+      "served_path": "/cdn/127.0.0.1:8088/__fixture_master4k.m3u8",
+      "served_body": "#EXTM3U\n#EXT-X-APE-UPSCALE:declared=7680x4320;codec=truthful;mode=8k\n#EXT-X-VERSION:6\n#EXT-X-INDEPENDENT-SEGMENTS\n#EXT-X-STREAM-INF:BANDWIDTH=28000000,AVERAGE-BANDWIDTH=22000000,RESOLUTION=7680x4320,FRAME-RATE=60.000,CODECS=\"hvc1.2.4.L153.B0,mp4a.40.2\",VIDEO-RANGE=PQ\nhttp://127.0.0.1:8088/2160p/index.m3u8\n#EXT-X-STREAM-INF:BANDWIDTH=9000000,AVERAGE-BANDWIDTH=6500000,RESOLUTION=1920x1080,FRAME-RATE=60.000,CODECS=\"hvc1.1.6.L123.B0,mp4a.40.2\"\nhttp://127.0.0.1:8088/1080p/index.m3u8\n",
+      "served_sha256": "87cab2a2f78363f2615008f6c17ff5a36d301b252448874194799e4cf3c2a281"
+    },
+    {
+      "id": "media_hybrid_stream_inf",
+      "source_body": "#EXTM3U\n#EXT-X-VERSION:7\n#EXT-X-KEY:METHOD=AES-128,URI=\"key.bin\"\n#EXT-X-MAP:URI=\"init.mp4\"\n#EXT-X-STREAM-INF:BANDWIDTH=1000000,RESOLUTION=1280x720\nlive/user/pass/1.m3u8\n#EXTINF:6.0,\n/live/user/pass/1.ts\n",
+      "source_sha256": "109be0e7dbefd62cdc0c8c9a1be55a53bf99374873008443790f4a1e47b98a3f",
+      "served_headers_raw": "HTTP/1.1 200 OK\r\nServer: nginx\r\nDate: Mon, 26 Oct 2026 20:41:23 GMT\r\nContent-Type: application/vnd.apple.mpegurl\r\nTransfer-Encoding: chunked\r\nConnection: keep-alive\r\nVary: Accept-Encoding\r\nCache-Control: no-store\r\nX-APE-CDN: 127.0.0.1:8088\r\nX-APE-Origin: http://127.0.0.1:8088\r\nX-APE-Failover: false\r\nX-APE-Upstream-Ms: 0\r\nX-APE-URI-Rebased: 2\r\nX-APE-LL-HLS: none\r\nX-APE-UHD: 4k:1\r\nX-APE-LAB-FLOOR: 8000000\r\n\r\n",
+      "served_headers": {
+        "server": "nginx",
+        "date": "Mon, 26 Oct 2026 20:41:23 GMT",
+        "content-type": "application/vnd.apple.mpegurl",
+        "transfer-encoding": "chunked",
+        "connection": "keep-alive",
+        "vary": "Accept-Encoding",
+        "cache-control": "no-store",
+        "x-ape-cdn": "127.0.0.1:8088",
+        "x-ape-origin": "http://127.0.0.1:8088",
+        "x-ape-failover": "false",
+        "x-ape-upstream-ms": "0",
+        "x-ape-uri-rebased": "2",
+        "x-ape-ll-hls": "none",
+        "x-ape-uhd": "4k:1",
+        "x-ape-lab-floor": "8000000"
+      },
+      "served_path": "/cdn/127.0.0.1:8088/__fixture.m3u8",
+      "served_body": "#EXTM3U\n#EXT-X-APE-UPSCALE:declared=3840x2160;codec=truthful;mode=4k\n#EXT-X-VERSION:7\n#EXT-X-KEY:METHOD=AES-128,URI=\"http://127.0.0.1:8088/key.bin\"\n#EXT-X-MAP:URI=\"http://127.0.0.1:8088/init.mp4\"\n#EXT-X-STREAM-INF:BANDWIDTH=1000000,RESOLUTION=3840x2160\nhttp://127.0.0.1:8088/live/user/pass/1.m3u8\n#EXTINF:6.0,\nhttp://127.0.0.1:8088/live/user/pass/1.ts\n",
+      "served_sha256": "b71f0c8df8e4e2f4fa269103f3387b8adef322d7c30bf3899243ed98bab32b6b"
+    },
+    {
+      "id": "media_ll_parts",
+      "source_body": "#EXTM3U\n#EXT-X-VERSION:9\n#EXT-X-TARGETDURATION:2\n#EXT-X-PART-INF:PART-TARGET=0.500\n#EXT-X-MAP:URI=\"init.mp4\"\n#EXTINF:2.000,\n#EXT-X-PART:DURATION=0.500,URI=\"part0.1.m4s\",INDEPENDENT=YES\n#EXT-X-PART:DURATION=0.500,URI=\"part0.2.m4s\"\n#EXT-X-PART:DURATION=0.500,URI=\"part0.3.m4s\"\n#EXT-X-PART:DURATION=0.500,URI=\"part0.4.m4s\"\nseg0.m4s\n#EXT-X-PRELOAD-HINT:TYPE=PART,URI=\"part1.1.m4s\"\n",
+      "source_sha256": "850b00d117d2212ff0af38dfc7f76b0daa21941eb2ef16d6fa979ee46a48d339",
+      "served_headers_raw": "HTTP/1.1 200 OK\r\nServer: nginx\r\nDate: Mon, 26 Oct 2026 20:41:23 GMT\r\nContent-Type: application/vnd.apple.mpegurl\r\nTransfer-Encoding: chunked\r\nConnection: keep-alive\r\nVary: Accept-Encoding\r\nCache-Control: no-store\r\nX-APE-CDN: 127.0.0.1:8088\r\nX-APE-Origin: http://127.0.0.1:8088\r\nX-APE-Failover: false\r\nX-APE-Upstream-Ms: 0\r\nX-APE-URI-Rebased: 1\r\nX-APE-LL-HLS: server-control-added\r\nX-APE-UHD: off\r\nX-APE-LAB-FLOOR: 8000000\r\n\r\n",
+      "served_headers": {
+        "server": "nginx",
+        "date": "Mon, 26 Oct 2026 20:41:23 GMT",
+        "content-type": "application/vnd.apple.mpegurl",
+        "transfer-encoding": "chunked",
+        "connection": "keep-alive",
+        "vary": "Accept-Encoding",
+        "cache-control": "no-store",
+        "x-ape-cdn": "127.0.0.1:8088",
+        "x-ape-origin": "http://127.0.0.1:8088",
+        "x-ape-failover": "false",
+        "x-ape-upstream-ms": "0",
+        "x-ape-uri-rebased": "1",
+        "x-ape-ll-hls": "server-control-added",
+        "x-ape-uhd": "off",
+        "x-ape-lab-floor": "8000000"
+      },
+      "served_path": "/cdn/127.0.0.1:8088/__fixture_ll.m3u8",
+      "served_body": "#EXTM3U\n#EXT-X-SERVER-CONTROL:CAN-BLOCK-RELOAD=YES,CAN-SKIP-UNTIL=9.000,PART-HOLD-BACK=1.500\n#EXT-X-VERSION:9\n#EXT-X-TARGETDURATION:2\n#EXT-X-PART-INF:PART-TARGET=0.500\n#EXT-X-MAP:URI=\"http://127.0.0.1:8088/init.mp4\"\n#EXTINF:2.000,\n#EXT-X-PART:DURATION=0.500,URI=\"http://127.0.0.1:8088/part0.1.m4s\",INDEPENDENT=YES\n#EXT-X-PART:DURATION=0.500,URI=\"http://127.0.0.1:8088/part0.2.m4s\"\n#EXT-X-PART:DURATION=0.500,URI=\"http://127.0.0.1:8088/part0.3.m4s\"\n#EXT-X-PART:DURATION=0.500,URI=\"http://127.0.0.1:8088/part0.4.m4s\"\nhttp://127.0.0.1:8088/seg0.m4s\n#EXT-X-PRELOAD-HINT:TYPE=PART,URI=\"http://127.0.0.1:8088/part1.1.m4s\"\n",
+      "served_sha256": "af91e4e02f1a8e6c71214de68c324480785d5faccc02f4cc49d65a6751e79619"
+    }
+  ],
+  "lua_matrix": [
+    {
+      "kind": "case",
+      "case": "M1_master1080",
+      "variant": "declare_auto",
+      "n": 1,
+      "uhd_mode": "4k",
+      "resolutions": "3840x2160 ; 1280x720",
+      "codecs": "avc1.640028,mp4a.40.2 ; avc1.64001f,mp4a.40.2",
+      "pq_count": 0,
+      "upscale_tags": 1,
+      "codec_truth_fields": 0
+    },
+    {
+      "kind": "top",
+      "case": "M1_master1080",
+      "value": "1920"
+    },
+    {
+      "kind": "case",
+      "case": "M2_master4k",
+      "variant": "declare_auto",
+      "n": 1,
+      "uhd_mode": "8k",
+      "resolutions": "7680x4320 ; 1920x1080",
+      "codecs": "hvc1.2.4.L153.B0,mp4a.40.2 ; hvc1.1.6.L123.B0,mp4a.40.2",
+      "pq_count": 0,
+      "upscale_tags": 1,
+      "codec_truth_fields": 0
+    },
+    {
+      "kind": "top",
+      "case": "M2_master4k",
+      "value": "3840"
+    },
+    {
+      "kind": "case",
+      "case": "M3_8k_L153",
+      "variant": "declare_auto",
+      "n": 1,
+      "uhd_mode": "8k",
+      "resolutions": "7680x4320",
+      "codecs": "hvc1.2.4.L153.B0,mp4a.40.2",
+      "pq_count": 0,
+      "upscale_tags": 1,
+      "codec_truth_fields": 0
+    },
+    {
+      "kind": "top",
+      "case": "M3_8k_L153",
+      "value": "7680"
+    },
+    {
+      "kind": "case",
+      "case": "M4_8k_L183",
+      "variant": "declare_auto",
+      "n": 1,
+      "uhd_mode": "8k",
+      "resolutions": "7680x4320",
+      "codecs": "hvc1.2.4.L183.B0,mp4a.40.2",
+      "pq_count": 0,
+      "upscale_tags": 1,
+      "codec_truth_fields": 0
+    },
+    {
+      "kind": "top",
+      "case": "M4_8k_L183",
+      "value": "7680"
+    },
+    {
+      "kind": "case",
+      "case": "M5_ascendente",
+      "variant": "declare_auto",
+      "n": 1,
+      "uhd_mode": "4k",
+      "resolutions": "3840x2160 ; 3840x2160",
+      "codecs": "hvc1.1.6.L93.B0,mp4a.40.2 ; hvc1.2.4.L153.B0,mp4a.40.2",
+      "pq_count": 0,
+      "upscale_tags": 1,
+      "codec_truth_fields": 0
+    },
+    {
+      "kind": "top",
+      "case": "M5_ascendente",
+      "value": "1280"
+    },
+    {
+      "kind": "case",
+      "case": "M6_hev1",
+      "variant": "declare_auto",
+      "n": 1,
+      "uhd_mode": "8k",
+      "resolutions": "7680x4320",
+      "codecs": "hev1.2.4.L153.B0,mp4a.40.2",
+      "pq_count": 0,
+      "upscale_tags": 1,
+      "codec_truth_fields": 1
+    },
+    {
+      "kind": "top",
+      "case": "M6_hev1",
+      "value": "3840"
+    },
+    {
+      "kind": "case",
+      "case": "M7_media",
+      "variant": "declare_auto",
+      "n": 0,
+      "uhd_mode": "nil",
+      "resolutions": "",
+      "codecs": "",
+      "pq_count": 0,
+      "upscale_tags": 0,
+      "codec_truth_fields": 0
+    },
+    {
+      "kind": "top",
+      "case": "M7_media",
+      "value": "nil"
+    },
+    {
+      "kind": "case",
+      "case": "M1_master1080",
+      "variant": "declare_auto+pq",
+      "n": 1,
+      "uhd_mode": "4k",
+      "resolutions": "3840x2160 ; 1280x720",
+      "codecs": "avc1.640028,mp4a.40.2 ; avc1.64001f,mp4a.40.2",
+      "pq_count": 1,
+      "upscale_tags": 1,
+      "codec_truth_fields": 0
+    },
+    {
+      "kind": "case",
+      "case": "M2_master4k",
+      "variant": "declare_auto+pq",
+      "n": 1,
+      "uhd_mode": "8k",
+      "resolutions": "7680x4320 ; 1920x1080",
+      "codecs": "hvc1.2.4.L153.B0,mp4a.40.2 ; hvc1.1.6.L123.B0,mp4a.40.2",
+      "pq_count": 1,
+      "upscale_tags": 1,
+      "codec_truth_fields": 0
+    },
+    {
+      "kind": "case",
+      "case": "M1_master1080",
+      "variant": "declare_8k_forzado",
+      "n": 1,
+      "uhd_mode": "8k",
+      "resolutions": "7680x4320 ; 1280x720",
+      "codecs": "avc1.640028,mp4a.40.2 ; avc1.64001f,mp4a.40.2",
+      "pq_count": 1,
+      "upscale_tags": 1,
+      "codec_truth_fields": 0
+    },
+    {
+      "kind": "case",
+      "case": "M2_master4k",
+      "variant": "declare_8k_forzado",
+      "n": 1,
+      "uhd_mode": "8k",
+      "resolutions": "7680x4320 ; 1920x1080",
+      "codecs": "hvc1.2.4.L153.B0,mp4a.40.2 ; hvc1.1.6.L123.B0,mp4a.40.2",
+      "pq_count": 1,
+      "upscale_tags": 1,
+      "codec_truth_fields": 0
+    },
+    {
+      "kind": "case",
+      "case": "M1_master1080",
+      "variant": "declare_4k_forzado",
+      "n": 1,
+      "uhd_mode": "4k",
+      "resolutions": "3840x2160 ; 1280x720",
+      "codecs": "avc1.640028,mp4a.40.2 ; avc1.64001f,mp4a.40.2",
+      "pq_count": 0,
+      "upscale_tags": 1,
+      "codec_truth_fields": 0
+    },
+    {
+      "kind": "case",
+      "case": "M2_master4k",
+      "variant": "declare_4k_forzado",
+      "n": 1,
+      "uhd_mode": "4k",
+      "resolutions": "3840x2160 ; 1920x1080",
+      "codecs": "hvc1.2.4.L153.B0,mp4a.40.2 ; hvc1.1.6.L123.B0,mp4a.40.2",
+      "pq_count": 0,
+      "upscale_tags": 1,
+      "codec_truth_fields": 0
+    }
+  ],
+  "public_probes": [
+    {
+      "id": "public_cdn_fixture_master4k",
+      "url": "https://<public-host>/cdn/127.0.0.1:8088/__fixture_master4k.m3u8",
+      "status": 200,
+      "content_type": "application/vnd.apple.mpegurl",
+      "x_ape": {
+        "x-ape-cdn": "127.0.0.1:8088",
+        "x-ape-failover": "false",
+        "x-ape-lab-floor": "8000000",
+        "x-ape-ll-hls": "none",
+        "x-ape-origin": "http://127.0.0.1:8088",
+        "x-ape-uhd": "8k:1",
+        "x-ape-upstream-ms": "1",
+        "x-ape-uri-rebased": "2"
+      },
+      "body_first_line": "#EXTM3U",
+      "body_bytes": 483,
+      "body_is_json": false
+    },
+    {
+      "id": "public_cdn_dot_ts",
+      "url": "https://<public-host>/cdn/127.0.0.1:8088/nope.ts",
+      "status": 404,
+      "content_type": "application/json",
+      "x_ape": {},
+      "body_first_line": "{\"reason\":\"http_404\",\"ms\":0,\"error\":\"all_upstreams_failed\",\"ok\":false,\"path\":\"\\/nope.ts\",\"tried\":[\"127.0.0.1:8088\"]}",
+      "body_bytes": 117,
+      "body_is_json": true
+    }
+  ]
+}

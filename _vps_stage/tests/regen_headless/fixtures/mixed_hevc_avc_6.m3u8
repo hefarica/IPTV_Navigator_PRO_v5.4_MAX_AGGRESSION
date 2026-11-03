@@ -1,0 +1,26 @@
+#EXTM3U x-tvg-url="https://example.test/epg.xml"
+#EXT-X-APE-LAB-DNA:sha256=fixture-t68,SOURCE=mixed_hevc_avc_6.m3u8,EXPORTED=2026-10-26
+#EXTINF:-1 tvg-id="hevc1" tvg-name="HEVC 1" tvg-logo="http://provider.example:8080/l/1.png" group-title="TEST/HEVC",HEVC 1
+#EXT-X-STREAM-INF:BANDWIDTH=9000000,AVERAGE-BANDWIDTH=7000000,RESOLUTION=1920x1080,CODECS="hvc1.2.4.L150.B0",FRAME-RATE=30.000
+#EXTHTTP:{"X-APE-Codec-Video":"hvc1.2.4.L150.B0","User-Agent":"VLC/3.0.20 LibVLC/3.0.20"}
+http://provider.example:8080/live/u/p/101.m3u8
+#EXTINF:-1 tvg-id="hevc2" tvg-name="HEVC 2" tvg-logo="http://provider.example:8080/l/2.png" group-title="TEST/HEVC",HEVC 2
+#EXT-X-STREAM-INF:BANDWIDTH=9000000,AVERAGE-BANDWIDTH=7000000,RESOLUTION=1920x1080,CODECS="hvc1.2.4.L150.B0",FRAME-RATE=30.000
+#EXTHTTP:{"X-APE-Codec-Video":"hvc1.2.4.L150.B0","User-Agent":"VLC/3.0.20 LibVLC/3.0.20"}
+http://provider.example:8080/live/u/p/102.m3u8
+#EXTINF:-1 tvg-id="hevc3" tvg-name="HEVC 3" tvg-logo="http://provider.example:8080/l/3.png" group-title="TEST/HEVC",HEVC 3
+#EXT-X-STREAM-INF:BANDWIDTH=9000000,AVERAGE-BANDWIDTH=7000000,RESOLUTION=1920x1080,CODECS="hvc1.2.4.L150.B0",FRAME-RATE=30.000
+#EXTHTTP:{"X-APE-Codec-Video":"hvc1.2.4.L150.B0","User-Agent":"VLC/3.0.20 LibVLC/3.0.20"}
+http://provider.example:8080/live/u/p/103.m3u8
+#EXTINF:-1 tvg-id="avc1" tvg-name="AVC 1" tvg-logo="http://provider.example:8080/l/a1.png" group-title="TEST/AVC",AVC 1
+#EXT-X-STREAM-INF:BANDWIDTH=6000000,AVERAGE-BANDWIDTH=4500000,RESOLUTION=1280x720,CODECS="avc1.640028",FRAME-RATE=30.000
+#EXTHTTP:{"X-APE-Codec-Video":"avc1.640028","User-Agent":"VLC/3.0.20 LibVLC/3.0.20"}
+http://provider.example:8080/live/u/p/201.m3u8
+#EXTINF:-1 tvg-id="avc2" tvg-name="AVC 2" tvg-logo="http://provider.example:8080/l/a2.png" group-title="TEST/AVC",AVC 2
+#EXT-X-STREAM-INF:BANDWIDTH=6000000,AVERAGE-BANDWIDTH=4500000,RESOLUTION=1280x720,CODECS="avc1.640028",FRAME-RATE=30.000
+#EXTHTTP:{"X-APE-Codec-Video":"avc1.640028","User-Agent":"VLC/3.0.20 LibVLC/3.0.20"}
+http://provider.example:8080/live/u/p/202.m3u8
+#EXTINF:-1 tvg-id="avc3" tvg-name="AVC 3" tvg-logo="http://provider.example:8080/l/a3.png" group-title="TEST/AVC",AVC 3
+#EXT-X-STREAM-INF:BANDWIDTH=6000000,AVERAGE-BANDWIDTH=4500000,RESOLUTION=1280x720,CODECS="avc1.640028",FRAME-RATE=30.000
+#EXTHTTP:{"X-APE-Codec-Video":"avc1.640028","User-Agent":"VLC/3.0.20 LibVLC/3.0.20"}
+http://provider.example:8080/live/u/p/203.m3u8

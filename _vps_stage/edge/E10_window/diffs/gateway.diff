@@ -1,0 +1,35 @@
+warning: in the working copy of '_vps_stage/edge/E11_intermittent/proposed/composed/ape_gateway.lua', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of '_vps_stage/edge/E10_window/staged/etc/nginx/lua/ape_gateway.lua', LF will be replaced by CRLF the next time Git touches it
+diff --git a/_vps_stage/edge/E11_intermittent/proposed/composed/ape_gateway.lua b/_vps_stage/edge/E10_window/staged/etc/nginx/lua/ape_gateway.lua
+index 3bb7498..bc41dc3 100644
+--- a/_vps_stage/edge/E11_intermittent/proposed/composed/ape_gateway.lua
++++ b/_vps_stage/edge/E10_window/staged/etc/nginx/lua/ape_gateway.lua
+@@ -48,7 +48,6 @@ end
+ 
+ -- ── allowlist ────────────────────────────────────────────────────────────
+ local function host_allowed(h)
+-    if ngx.var.remote_addr == "127.0.0.1" then return true end
+     local raw = HOSTS and HOSTS:get("allowlist")
+     if not raw then
+         local f = io.open(ALLOW_FILE, "r")
+@@ -259,18 +258,14 @@ if is_master then
+     if uhd.codec_truth_fields(rebased) > 0 then
+         ngx.log(ngx.WARN, "[ape-gw] hev1 en CODECS: GOLDEN RULE, UHD omitido")
+         uhd_blocked = true
+-    elseif flag("uhd8k", false) then
++    elseif flag("uhd8k", false) and uhd.can_declare_8k(rebased) then
+         rebased, uhd_n = uhd.declare(rebased, { target = uhd.TARGET_8K, mode = "8k",
+             add_pq = flag("uhd_pq", false), only_top = true })
+         if uhd_n > 0 then uhd_mode = "8k" end
+-    elseif flag("uhd_auto", true) then
++    elseif flag("uhd_auto", true) or flag("uhd8k", false) or flag("uhd4k", true) then
+         local m
+         rebased, uhd_n, m = uhd.declare_auto(rebased, { add_pq = flag("uhd_pq", false) })
+         if uhd_n > 0 then uhd_mode = m end
+-    elseif flag("uhd4k", true) then
+-        rebased, uhd_n = uhd.declare(rebased, { target = uhd.TARGET_4K, mode = "4k",
+-            add_pq = flag("uhd_pq", false), only_top = true })
+-        if uhd_n > 0 then uhd_mode = "4k" end
+     end
+ end
+ 

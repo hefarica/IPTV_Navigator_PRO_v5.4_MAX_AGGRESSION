@@ -1,0 +1,39 @@
+## Impacto en zaps (sesiones canal+cliente, gap<=20 s) — consumidor externo 146.70.86.222
+  ANTES (con breaker)        zaps= 40 con_fallo= 14 ( 35.0%) acaban_en_error=  7 ( 17.5%)
+  DESPUÉS (sin breaker)      zaps=  8 con_fallo=  0 (  0.0%) acaban_en_error=  0 (  0.0%)
+  primera/última petición externa: 2026-10-26 20:22:37 -> 2026-10-26 21:25:08
+  peticiones externas DESPUÉS: 164 · estados={200: 164}
+
+## Inflación de la métrica: publicado (fallos/éxitos) vs honesto (fallos/intentos), por era
+  log ANTES del hotfix         ok= 468 fallos=224 legacy=0.4786 honesto=0.3237 inflación=+47.9%
+  log DESPUÉS del hotfix       ok= 457 fallos= 11 legacy=0.0241 honesto=0.0235 inflación=+2.4%
+  externo ANTES                ok= 145 fallos= 57 legacy=0.3931 honesto=0.2822 inflación=+39.3%
+  externo DESPUÉS              ok= 164 fallos=  0 legacy=0.0000 honesto=0.0000 inflación=+0.0%
+
+## Ventanas de 15 s con >=5 fallos (firma breaker) y su encaje temporal
+  10-25 07:04:21 n=16 ventana=5s clientes=['101.200.132.59', '101.200.133.251', '112.126.72.180']
+  10-25 07:07:38 n=20 ventana=5s clientes=['20.99.244.160', '20.99.244.162', '20.99.244.163']
+  10-25 18:03:25 n=22 ventana=10s clientes=['101.200.132.59', '112.126.72.180', '123.57.172.44']
+  10-25 18:03:42 n=20 ventana=6s clientes=['101.200.132.59', '101.200.133.251', '112.126.72.180']
+  10-26 08:29:05 n=12 ventana=8s clientes=['101.200.132.59', '101.200.133.251', '123.57.172.44']
+  10-26 09:11:19 n=9 ventana=13s clientes=['101.200.133.251', '123.57.172.44', '123.57.243.70']
+  10-26 20:25:00 n=13 ventana=14s clientes=['146.70.86.222']
+  10-26 20:30:12 n=11 ventana=14s clientes=['146.70.86.222']
+  10-26 20:34:23 n=15 ventana=15s clientes=['127.0.0.1', '146.70.86.222']
+  10-26 20:43:00 n=28 ventana=14s clientes=['146.70.86.222', '178.156.147.234']
+  10-26 20:48:16 n=8 ventana=14s clientes=['127.0.0.1', '146.70.86.222']
+  10-26 20:48:46 n=23 ventana=15s clientes=['127.0.0.1', '146.70.86.222', '178.156.147.234']
+  total ventanas>=5 fallos/15 s: 12
+
+## Fallos DESPUÉS del hotfix (uno a uno)
+  10-26 20:50:15 127.0.0.1        513  144B /cdn/line.tivi-ott.net/live/x/y/1.m3u8 HTTP/1.1
+  10-26 20:50:15 127.0.0.1        403  146B /cdn/127.0.0.1:8088/_ape/health HTTP/1.1
+  10-26 20:50:15 127.0.0.1        404  146B /cdn/line.tivi-ott.net/live/x.ts HTTP/1.1
+  10-26 20:55:07 178.156.147.234  513  150B /cdn/line.tivi-ott.net/live/0000/0000/3.m3u8 HTTP/1.1
+  10-26 20:55:08 178.156.147.234  405  162B /cdn/line.tivi-ott.net/live/<USER>/<PASS>/999999999.m3u8 HTTP/1.1
+  10-26 20:58:35 178.156.147.234  403  146B /cdn/127.0.0.1:8088/_ape/health HTTP/2.0
+  10-26 20:58:35 178.156.147.234  404  146B /cdn/line.tivi-ott.net/x.ts HTTP/2.0
+  10-26 20:59:16 178.156.147.234  403  146B /cdn/127.0.0.1:8088/_ape/health HTTP/2.0
+  10-26 20:59:16 178.156.147.234  404  146B /cdn/line.tivi-ott.net/x.ts HTTP/2.0
+  10-26 21:00:06 127.0.0.1        403  146B /cdn/127.0.0.1:8088/_ape/health HTTP/2.0
+  10-26 21:00:06 127.0.0.1        404  146B /cdn/line.tivi-ott.net/live/x.ts HTTP/2.0

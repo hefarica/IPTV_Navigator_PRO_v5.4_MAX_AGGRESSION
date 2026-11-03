@@ -1,0 +1,13 @@
+[Unit]
+Description=APE NET TUNING — initcwnd/initrwnd segun DNA del LAB
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/local/bin/ape-net-tuning.sh
+TimeoutStartSec=20
+
+[Install]
+WantedBy=multi-user.target

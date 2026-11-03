@@ -1,0 +1,155 @@
+diff --git a/ape_gateway.lua b/ape_gateway.lua
+index ba2e5b3..9ed1ffc 100644
+--- a/ape_gateway.lua
++++ b/ape_gateway.lua
+@@ -102,35 +102,50 @@ local function safe_host(h)
+ end
+ 
+ -- ── fetch con seguimiento de 302 ─────────────────────────────────────────
++-- E7 · instrumentación de la decisión (aditiva; no cambia el contrato de éxito):
++--   devuelve un 4º valor `meta` = { n = redirects seguidos, first_ms = duración
++--   del primer hop (proveedor), last_ms = duración del último hop (CDN tras el
++--   302), exhausted = true si agotó MAX_HOPS }.
++--   Coste: 2 × ngx.now() por hop (nanosegundos, memoria del worker).
+ local function fetch_follow(h, p, q, hops)
+     hops = hops or MAX_HOPS
+     local cur_h, cur_p, cur_q = h, p, q or ""
++    local meta = { n = 0, first_ms = nil, last_ms = nil, exhausted = false }
+     for _ = 1, hops + 1 do
+-        if not (safe_host(cur_h) and safe_path(cur_p)) then return nil, cur_h end
++        if not (safe_host(cur_h) and safe_path(cur_p)) then return nil, cur_h, nil, meta end
+         local qs = (cur_q ~= "") and ("?" .. cur_q) or ""
++        local t_hop = ngx.now()
+         local okc, res = pcall(ngx.location.capture,
+             "/_ape/_fetch?h=" .. cur_h .. "&p=" .. cur_p .. "&qs=" .. qs)
+-        if not (okc and res and res.status) then return nil, cur_h, "capture_failed" end
++        local hop_ms = math.floor(((ngx.now() - t_hop) * 1000) + 0.5)
++        if meta.n == 0 then meta.first_ms = hop_ms end
++        meta.last_ms = hop_ms
++        if not (okc and res and res.status) then return nil, cur_h, "capture_failed", meta end
+ 
+         if res.status >= 300 and res.status < 400 then
+             local loc = res.header and res.header["Location"]
+             local nh, np, nq = parse_url(loc)
+-            if not nh then return nil, cur_h, "bad_location" end
++            if not nh then return nil, cur_h, "bad_location", meta end
+             if is_private_host(nh) then
+                 ngx.log(ngx.WARN, "[ape-gw] redirect a rango privado bloqueado: ", nh)
+-                return nil, cur_h, "redirect_private"
++                return nil, cur_h, "redirect_private", meta
+             end
+             if not (is_ip_literal(nh) or host_allowed(nh)) then
+                 ngx.log(ngx.WARN, "[ape-gw] redirect a host no permitido: ", nh)
+-                return nil, cur_h, "redirect_not_allowed"
++                return nil, cur_h, "redirect_not_allowed", meta
+             end
++            meta.n = meta.n + 1
+             cur_h, cur_p, cur_q = nh, np, (nq or "")
+             qinc("redirects")
+         else
+-            return res, cur_h
++            return res, cur_h, nil, meta
+         end
+     end
+-    return nil, cur_h
++    -- E7: motivo explícito al agotar MAX_HOPS (antes llegaba nil y el JSON de
++    -- error decía "capture_failed"). El status no cambia (502 por defecto):
++    -- es diagnóstico, no comportamiento.
++    meta.exhausted = true
++    return nil, cur_h, "max_hops", meta
+ end
+ 
+ -- ═══ petición ════════════════════════════════════════════════════════════
+@@ -151,6 +166,8 @@ for _, h in ipairs(candidates) do
+ end
+ if #allowed == 0 then
+     qinc("cdn_denied")
++    -- E7 · se declara el intento fallido (denegado, sin fetch)
++    ngx.ctx.ape_dec = { outcome = "denied", status = 403, hops = 0, attempts = 0 }
+     ngx.status = 403
+     ngx.header["Content-Type"] = "application/json"
+     ngx.say(cjson.encode({ ok = false, error = "host_not_allowed", host = host,
+@@ -163,11 +180,14 @@ candidates = allowed
+ local t0 = ngx.now()
+ local winner, res_ok, final_origin, last_status = nil, nil, nil, nil
+ local last_reason = nil
++local last_meta, tried = nil, 0     -- E7 · decisiones que alimentan /_ape/metrics
+ 
+ for _, h in ipairs(candidates) do
+     local dk = "down:" .. h
+     if true then -- APE 2026-10-26: breaker ELIMINADO (autopista: siempre intentar)
+-        local res, fh, why = fetch_follow(h, path, args)
++        tried = tried + 1                       -- E7 · candidatas realmente intentadas
++        local res, fh, why, meta = fetch_follow(h, path, args)
++        last_meta = meta                        -- E7
+         if res and res.status and res.status >= 200 and res.status < 300 then
+             winner, res_ok = h, res
+             final_origin = "http://" .. fh
+@@ -184,6 +204,16 @@ local elapsed_ms = math.floor(((ngx.now() - t0) * 1000) + 0.5)
+ 
+ if not res_ok then
+     qinc("all_failed")
++    -- E7 · intento fallido CON fetch: su tiempo no contamina provider_fetch_ms
++    -- (ese percentil es de decisiones exitosas), pero sí se cuenta el intento.
++    ngx.ctx.ape_dec = {
++        outcome = "fail", status = (last_status and last_status >= 400) and last_status or 502,
++        ms = elapsed_ms, hops = (last_meta and last_meta.n) or 0,
++        exhausted = (last_meta and last_meta.exhausted) or false,
++        hop1_ms = last_meta and last_meta.first_ms,
++        hoplast_ms = last_meta and last_meta.last_ms,
++        attempts = tried, kind = "unknown",
++    }
+     ngx.status = (last_status and last_status >= 400) and last_status or 502
+     ngx.header["Content-Type"] = "application/json"
+     ngx.say(cjson.encode({ ok = false, error = "all_upstreams_failed",
+@@ -197,6 +227,9 @@ local ctype = res_ok.header["Content-Type"] or "application/vnd.apple.mpegurl"
+ 
+ if lib.is_too_big(#body) then
+     qinc("too_large")
++    -- E7 · intento fallido (playlist por encima del tope del plano)
++    ngx.ctx.ape_dec = { outcome = "too_large", status = 502, ms = elapsed_ms,
++        hops = (last_meta and last_meta.n) or 0, attempts = tried, kind = "unknown" }
+     ngx.status = 502
+     ngx.header["Content-Type"] = "application/json"
+     ngx.say(cjson.encode({ ok = false, error = "playlist_too_large", bytes = #body }))
+@@ -214,9 +247,12 @@ end
+ 
+ -- UHD: 4K siempre; 4K real -> 8K declarado. CODECS intacto.
+ local uhd_mode, uhd_n = nil, 0
+-if lib.is_master(rebased) then
++local is_master = lib.is_master(rebased)      -- E7 · se calcula una vez y se reusa
++local uhd_blocked = false                     -- E7 · GOLDEN RULE ⇒ no se declara
++if is_master then
+     if uhd.codec_truth_fields(rebased) > 0 then
+         ngx.log(ngx.WARN, "[ape-gw] hev1 en CODECS: GOLDEN RULE, UHD omitido")
++        uhd_blocked = true
+     elseif flag("uhd8k", false) then
+         rebased, uhd_n = uhd.declare(rebased, { target = uhd.TARGET_8K, mode = "8k",
+             add_pq = flag("uhd_pq", false), only_top = true })
+@@ -251,6 +287,26 @@ ngx.header["X-APE-LL-HLS"]      = sc_added and "server-control-added"
+     or (lib.has_parts(rebased) and "passthrough" or "none")
+ ngx.header["X-APE-UHD"]         = uhd_mode and (uhd_mode .. ":" .. uhd_n) or "off"
+ ngx.header["X-APE-LAB-FLOOR"]   = tostring(lab.floor_for(nil))
++
++-- ── E7 · decisión observable (la registra ape_obs_rec.lua en fase log) ────
++-- Solo se deja una tabla en memoria: CERO escrituras de dict, cero I/O, cero
++-- logs. El cliente ya tiene su respuesta: el `log_by_lua` corre después.
++ngx.ctx.ape_dec = {
++    outcome    = "ok",
++    ms         = elapsed_ms,
++    hops       = (last_meta and last_meta.n) or 0,
++    exhausted  = false,
++    hop1_ms    = last_meta and last_meta.first_ms,
++    hoplast_ms = last_meta and last_meta.last_ms,
++    attempts   = tried,
++    kind       = is_master and "master" or "media",
++    uhd        = uhd_blocked and "blocked" or (uhd_mode or "off"),
++    uhd_n      = uhd_n,
++    uris       = n_uri,
++    attrs      = n_attr,
++    size       = #rebased,
++}
++
+ ngx.print(rebased)
+ 
+ -- ── QoE ──────────────────────────────────────────────────────────────────

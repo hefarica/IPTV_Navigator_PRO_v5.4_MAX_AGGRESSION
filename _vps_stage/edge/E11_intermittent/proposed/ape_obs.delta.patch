@@ -1,0 +1,68 @@
+--- a/ape_obs.lua
++++ b/ape_obs.lua
+@@ -32,12 +32,21 @@ end
+ 
+ local function qoe()
+     local snap = { metrics = {}, hosts_down = {}, flags = {} }
++    local prov_fail = 0
+     if Q then
+         for _, k in ipairs(METRICS) do snap.metrics[k] = Q:get(k) end
+         for _, k in ipairs(safe_keys(Q, 500)) do
+-            if k:sub(1, 5) == "host_" then snap.metrics[k] = Q:get(k) end
++            -- `host_` es el prefijo antiguo (host_down:<host>); `provider_fail:`
++            -- es el nuevo (E11: ya no hay host castigado, se cuenta el fallo).
++            if k:sub(1, 5) == "host_" or k:sub(1, 14) == "provider_fail:" then
++                snap.metrics[k] = Q:get(k)
++                if k:sub(1, 14) == "provider_fail:" then
++                    prov_fail = prov_fail + (tonumber(Q:get(k)) or 0)
++                end
++            end
+         end
+     end
++    snap.provider_failures_total = prov_fail
+     if H then
+         for _, k in ipairs(safe_keys(H, 200)) do
+             if k:sub(1, 5) == "down:" then snap.hosts_down[k:sub(6)] = H:get(k) end
+@@ -57,9 +66,20 @@ local function health()
+     local snap = qoe()
+     local n_down = 0
+     for _ in pairs(snap.hosts_down) do n_down = n_down + 1 end
+-    local req = tonumber(snap.metrics.req) or 0
++    local req = tonumber(snap.metrics.req) or 0          -- SOLO cuenta ÉXITOS
+     local failed = tonumber(snap.metrics.all_failed) or 0
+-    local err_ratio = req > 0 and (failed / req) or 0
++    -- ─────────────────────────────────────────────────────────────────────────
++    -- E11 (2026-10-26) · FÓRMULA HONESTA.
++    -- ANTES: err_ratio = failed / req. `req` se incrementa SOLO en el camino de
++    -- éxito de ape_gateway.lua, así que era fallos/éxitos: no es una ratio (puede
++    -- pasar de 1) y sobrevaloraba el error entre un 18 % y un 25 % (24 fallos
++    -- sobre 91 éxitos se publicaba como 0.2637 cuando falló el 20.9 % de los
++    -- intentos). AHORA: fallos / (fallos + éxitos) = fallos / intentos.
++    -- El valor viejo queda como `error_ratio_legacy_obsolete` (NO usar).
++    -- ─────────────────────────────────────────────────────────────────────────
++    local attempts = req + failed
++    local err_ratio = attempts > 0 and (failed / attempts) or 0
++    local err_ratio_legacy = req > 0 and (failed / req) or 0
+     ngx.status = 200
+     return {
+         ok = true,
+@@ -68,9 +88,17 @@ local function health()
+         checks = {
+             nginx = true,                       -- si responde, nginx vive
+             shared_dicts = (Q ~= nil and H ~= nil and F ~= nil),
++            -- OBSOLETO desde 2026-10-26: el breaker se eliminó de ape_gateway.lua,
++            -- así que `down:<host>` ya no se escribe NUNCA y esto vale 0 siempre.
++            -- Se conserva por compatibilidad; el dato vivo es provider_failures_total.
+             upstreams_down = n_down,
+-            requests = req,
+-            error_ratio = tonumber(string.format("%.4f", err_ratio)),
++            legacy_breaker_removed = true,
++            requests = req,                     -- compat: éxitos
++            attempts = attempts,                -- éxitos + fallos
++            failures = failed,
++            provider_failures_total = snap.provider_failures_total or 0,
++            error_ratio = tonumber(string.format("%.4f", err_ratio)),          -- HONESTO
++            error_ratio_legacy_obsolete = tonumber(string.format("%.4f", err_ratio_legacy)),
+             last_latency_ms = snap.metrics.last_ms,
+             last_host = snap.metrics.last_host,
+         },

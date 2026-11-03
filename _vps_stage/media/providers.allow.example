@@ -1,0 +1,34 @@
+# ═════════════════════════════════════════════════════════════════════════════
+# providers.allow.example — allowlist de proveedores del SUPERVISOR (I5)
+# ═════════════════════════════════════════════════════════════════════════════
+# Instalar como /etc/mediafanout/providers.allow  (0640 root:www-data)
+#   install -m 0640 -o root -g www-data providers.allow.example \
+#           /etc/mediafanout/providers.allow
+#
+# FORMATO
+#   Un host por línea (host canónico del proveedor, sin scheme y CON puerto
+#   sólo si no es 80/443). Se normaliza a minúsculas y se ignoran:
+#   scheme, path, puertos 80/443, punto final y espacios.
+#   Líneas vacías y comentarios con '#' se ignoran.
+#
+#   Ejemplo:  line.tivi-ott.net          (proveedor autorizado del propietario)
+#             cdn.example.net:8443       (puerto no estándar => se conserva)
+#
+# SEGURIDAD
+#   * Host FUERA de esta lista => OPEN devuelve ERR code=provider_not_allowed
+#     y NO se escribe spec ni se arranca ninguna instancia.
+#   * La lista NO contiene credenciales. Las URLs con credenciales viven en
+#     /etc/mediafanout/urls.conf (0640 root:www-data), que es el ÚNICO sitio
+#     donde el supervisor resuelve idem → URL. Jamás se loguean ni se devuelven.
+#   * Cambiar este fichero NO requiere reiniciar: se relee en cada OPEN.
+# ═════════════════════════════════════════════════════════════════════════════
+
+# Proveedor autorizado medido en W1 (cuenta del propietario, plan max_connections=1).
+line.tivi-ott.net
+
+# Ejemplos de formato (descomentar y sustituir por hosts realmente autorizados):
+# cdn.example.net
+# cdn.example.net:8443
+
+# hosts de laboratorio/staging (NUNCA públicos):
+# lab-media.local

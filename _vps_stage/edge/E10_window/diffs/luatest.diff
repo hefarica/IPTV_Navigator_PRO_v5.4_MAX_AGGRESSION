@@ -1,0 +1,17 @@
+warning: in the working copy of '_vps_stage/edge/E10_window/live/ape_luatest.lua', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of '_vps_stage/edge/E10_window/staged/etc/nginx/lua/ape_luatest.lua', LF will be replaced by CRLF the next time Git touches it
+diff --git a/_vps_stage/edge/E10_window/live/ape_luatest.lua b/_vps_stage/edge/E10_window/staged/etc/nginx/lua/ape_luatest.lua
+index 9ed17e4..f3efcdb 100644
+--- a/_vps_stage/edge/E10_window/live/ape_luatest.lua
++++ b/_vps_stage/edge/E10_window/staged/etc/nginx/lua/ape_luatest.lua
+@@ -152,8 +152,8 @@ if ok_uhd and uhd then
+     eq("uhd.auto_1080_codec_intacto", a1080:find("avc1.640028", 1, true) ~= nil, true)
+ 
+     local a4k, n4k, mode4k = uhd.declare_auto(m4k)
+-    eq("uhd.auto_4k_a_8k", a4k:find("RESOLUTION=7680x4320", 1, true) ~= nil, true)
+-    eq("uhd.auto_4k_modo", mode4k, "8k")
++    eq("uhd.auto_4k_a_8k", a4k:find("RESOLUTION=3840x2160", 1, true) ~= nil, true)
++    eq("uhd.auto_4k_modo", mode4k, "4k")
+     eq("uhd.auto_4k_codec_intacto", a4k:find("hvc1.2.4.L153.B0", 1, true) ~= nil, true)
+     eq("uhd.auto_4k_segunda_intacta", a4k:find("RESOLUTION=1920x1080", 1, true) ~= nil, true)
+ else

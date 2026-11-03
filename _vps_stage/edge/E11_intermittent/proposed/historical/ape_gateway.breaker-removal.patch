@@ -1,0 +1,71 @@
+--- a/ape_gateway.lua
++++ b/ape_gateway.lua
+@@ -160,24 +160,37 @@ end
+ candidates = allowed
+ 
+ -- failover entre candidatos
++-- ─────────────────────────────────────────────────────────────────────────────
++-- AUTOPISTA (E11, 2026-10-26): el breaker NO decide. Se intenta SIEMPRE.
++-- ANTES: `if not (HOSTS and HOSTS:get(dk))` SALTABA el fetch durante 15 s tras
++-- CUALQUIER respuesta no-2xx del proveedor. Efecto medido: 1 fallo real (p.ej.
++-- un 407 del panel) se convertía en ~15 s en los que TODOS los manifiestos de
++-- ese host devolvían 502 instantáneo (ms=0, SIN `reason`, SIN X-APE-*), incluidos
++-- los reintentos del player. El 85 % de los fallos servidos nunca llegó al
++-- proveedor: era el breaker, no el proveedor.
++-- AHORA: `down:<h>` es SOLO telemetría (sigue en /_ape/qoe como hosts_down y en
++-- host_down:<h>) para saber qué host falló, pero NO evita el intento; y se borra
++-- en cuanto un fetch va bien. No se cachea el fallo.
++-- ─────────────────────────────────────────────────────────────────────────────
+ local t0 = ngx.now()
+ local winner, res_ok, final_origin, last_status = nil, nil, nil, nil
+ local last_reason = nil
++local attempts = 0
+ 
+ for _, h in ipairs(candidates) do
+     local dk = "down:" .. h
+-    if not (HOSTS and HOSTS:get(dk)) then
+-        local res, fh, why = fetch_follow(h, path, args)
+-        if res and res.status and res.status >= 200 and res.status < 300 then
+-            winner, res_ok = h, res
+-            final_origin = "http://" .. fh
+-            break
+-        end
+-        last_status = (res and res.status) or 502
+-        last_reason = why or (res and res.status and ("http_" .. res.status)) or "capture_failed"
+-        if HOSTS then HOSTS:set(dk, 1, 15) end
+-        qinc("host_down:" .. h)
++    attempts = attempts + 1
++    local res, fh, why = fetch_follow(h, path, args)
++    if res and res.status and res.status >= 200 and res.status < 300 then
++        winner, res_ok = h, res
++        final_origin = "http://" .. fh
++        if HOSTS then HOSTS:delete(dk) end      -- responde: retirar la marca
++        break
+     end
++    last_status = (res and res.status) or 502
++    last_reason = why or (res and res.status and ("http_" .. res.status)) or "capture_failed"
++    if HOSTS then HOSTS:set(dk, 1, 15) end      -- telemetría del fallo, NO veredicto
++    qinc("host_down:" .. h)
+ end
+ 
+ local elapsed_ms = math.floor(((ngx.now() - t0) * 1000) + 0.5)
+@@ -185,9 +198,17 @@ local elapsed_ms = math.floor(((ngx.now() - t0) * 1000) + 0.5)
+ if not res_ok then
+     qinc("all_failed")
+     ngx.status = (last_status and last_status >= 400) and last_status or 502
+-    ngx.header["Content-Type"] = "application/json"
++    -- SIEMPRE `reason`: un 502 sin motivo es indistinguible de un breaker ciego.
++    last_reason = last_reason or "no_candidate_attempted"
++    ngx.header["Content-Type"]      = "application/json"
++    ngx.header["Cache-Control"]     = "no-store"
++    ngx.header["X-APE-Reason"]      = last_reason       -- clasificable por cabecera
++    ngx.header["X-APE-Upstream-Ms"] = tostring(elapsed_ms)
++    ngx.header["X-APE-Attempts"]    = tostring(attempts)
++    ngx.header["X-APE-Failover"]    = "false"
+     ngx.say(cjson.encode({ ok = false, error = "all_upstreams_failed",
+-        tried = candidates, reason = last_reason, path = path, ms = elapsed_ms }))
++        tried = candidates, reason = last_reason, attempts = attempts,
++        path = path, ms = elapsed_ms }))
+     return
+ end
+ 

@@ -1,0 +1,49 @@
+--- a/ape_gateway.lua
++++ b/ape_gateway.lua
+@@ -163,10 +163,11 @@ candidates = allowed
+ local t0 = ngx.now()
+ local winner, res_ok, final_origin, last_status = nil, nil, nil, nil
+ local last_reason = nil
++local attempts = 0                          -- E11: intentos reales de esta petición
+ 
+ for _, h in ipairs(candidates) do
+-    local dk = "down:" .. h
+     if true then -- APE 2026-10-26: breaker ELIMINADO (autopista: siempre intentar)
++        attempts = attempts + 1
+         local res, fh, why = fetch_follow(h, path, args)
+         if res and res.status and res.status >= 200 and res.status < 300 then
+             winner, res_ok = h, res
+@@ -176,7 +177,10 @@ for _, h in ipairs(candidates) do
+         last_status = (res and res.status) or 502
+         last_reason = why or (res and res.status and ("http_" .. res.status)) or "capture_failed"
+         -- APE 2026-10-26: castigo desactivado (no se persiste el fallo); telemetria qinc se mantiene
+-        qinc("host_down:" .. h)
++        -- E11: el contador deja de llamarse host_down (ya NO hay host castigado:
++        -- el breaker no existe). Se cuenta el FALLO DEL PROVEEDOR, que es el dato
++        -- que sí sirve para diagnosticar. `down:` no se escribe nunca más.
++        qinc("provider_fail:" .. h)
+     end
+ end
+ 
+@@ -185,9 +189,19 @@ local elapsed_ms = math.floor(((ngx.now() - t0) * 1000) + 0.5)
+ if not res_ok then
+     qinc("all_failed")
+     ngx.status = (last_status and last_status >= 400) and last_status or 502
+-    ngx.header["Content-Type"] = "application/json"
++    -- E11: SIEMPRE un motivo. Sin breaker, `last_reason` ya se rellena en todos
++    -- los caminos; el fallback es defensivo para que un futuro cambio no vuelva
++    -- a producir un 502 mudo (el síntoma que hacía indiagnosticable el fallo).
++    last_reason = last_reason or "no_candidate_attempted"
++    ngx.header["Content-Type"]      = "application/json"
++    ngx.header["Cache-Control"]     = "no-store"
++    ngx.header["X-APE-Reason"]      = last_reason        -- clasificable por cabecera
++    ngx.header["X-APE-Upstream-Ms"] = tostring(elapsed_ms)
++    ngx.header["X-APE-Attempts"]    = tostring(attempts)
++    ngx.header["X-APE-Failover"]    = "false"
+     ngx.say(cjson.encode({ ok = false, error = "all_upstreams_failed",
+-        tried = candidates, reason = last_reason, path = path, ms = elapsed_ms }))
++        tried = candidates, reason = last_reason, attempts = attempts,
++        path = path, ms = elapsed_ms }))
+     return
+ end
+ 

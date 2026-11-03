@@ -1,0 +1,75 @@
+#!/usr/bin/env bash
+# ara-skill — gate de skills del VPS (FASE 0).
+#
+#   ara-skill check              corpus + binarios base
+#   ara-skill check --for-canary corpus + ffmpeg/libx265/systemd y filtros
+#   ara-skill status             resumen instalado
+#
+# Sale 0 sólo si TODO pasa. El canary lo usa como ExecStartPre y en
+# ape-canaryctl start; si falla, no arranca.
+set -euo pipefail
+
+ROOT="${ARA_SKILL_ROOT:-/etc/ara/skills}"
+JSON="$ROOT/skills.json"
+MODE="check"
+for arg in "$@"; do
+  case "$arg" in
+    check) MODE="check" ;;
+    status) MODE="status" ;;
+    --for-canary) CANARY=1 ;;
+    *) echo "ara-skill: argumento desconocido: $arg" >&2; exit 2 ;;
+  esac
+done
+CANARY="${CANARY:-0}"
+
+fail() { echo "ARA-SKILL FAIL: $*" >&2; exit 1; }
+
+[ -d "$ROOT" ] || fail "falta $ROOT"
+[ -f "$JSON" ] || fail "falta $JSON"
+[ -f "$ROOT/SKILLS.md" ] || fail "falta SKILLS.md"
+command -v python3 >/dev/null 2>&1 || fail "falta python3 para validar skills.json"
+command -v sha256sum >/dev/null 2>&1 || fail "falta sha256sum"
+
+# 1 · JSON + corpus + hashes
+python3 - "$JSON" "$ROOT" <<'PY'
+import hashlib, json, os, sys
+manifest = json.load(open(sys.argv[1], encoding='utf-8'))
+root = sys.argv[2]
+skills = manifest.get('skills') or []
+if not skills:
+    print('ARA-SKILL FAIL: skills.json sin skills', file=sys.stderr); sys.exit(1)
+for item in skills:
+    rel = item.get('path', '')
+    path = os.path.join(root, rel)
+    if not os.path.isfile(path):
+        print(f'ARA-SKILL FAIL: falta {rel}', file=sys.stderr); sys.exit(1)
+    want = item.get('sha256', '')
+    got = hashlib.sha256(open(path, 'rb').read()).hexdigest()
+    if want and got != want:
+        print(f'ARA-SKILL FAIL: hash {rel} ({got[:12]} != {want[:12]})', file=sys.stderr); sys.exit(1)
+print(f'corpus_ok={len(skills)}')
+PY
+
+# 2 · binarios base
+command -v ffmpeg >/dev/null 2>&1 || fail "falta ffmpeg"
+command -v ffprobe >/dev/null 2>&1 || fail "falta ffprobe"
+ffmpeg -hide_banner -encoders 2>/dev/null | grep 'libx265' >/dev/null || fail "ffmpeg sin libx265"
+if [ "$CANARY" = "1" ]; then
+  command -v systemctl >/dev/null 2>&1 || fail "falta systemctl"
+  for f in deblock smartblur scale noise unsharp eq format; do
+    ffmpeg -hide_banner -filters 2>/dev/null | grep -E "[[:space:]]$f[[:space:]]" >/dev/null || fail "ffmpeg sin filtro $f"
+  done
+  # `dering` no existe en ffmpeg 6.1 Ubuntu; se sustituye por smartblur (declarado).
+  ffmpeg -hide_banner -filters 2>/dev/null | grep -E '[[:space:]]dering[[:space:]]' >/dev/null || \
+    echo "ARA-SKILL WARN: ffmpeg sin filtro dering; canary usa smartblur (sustituto declarado)" >&2
+fi
+
+if [ "$MODE" = "status" ]; then
+  python3 - "$JSON" <<'PY'
+import json, sys
+m = json.load(open(sys.argv[1], encoding='utf-8'))
+print(f"name={m.get('name')} version={m.get('version')} phase={m.get('phase')} skills={len(m.get('skills', []))}")
+PY
+fi
+echo "ARA-SKILL CHECK PASS (mode=$MODE canary=$CANARY root=$ROOT)"
+exit 0
