@@ -271,11 +271,29 @@ async function testE() {
   ok(text.indexOf('"maxCompatMode":true') !== -1, 'E3 metadata maxCompatMode true');
 }
 
+async function testF() {
+  const gen = global.M3U8TypedArraysGenerator;
+  const channel = {
+    id: '3', name: 'Base Layer URL',
+    base: { url: 'http://example.com/live/user/pass/123.ts' }
+  };
+  const stream = gen.generateStream([channel], { hud: false });
+  const reader = stream.getReader();
+  let text = '';
+  for (;;) {
+    const r = await reader.read();
+    if (r.done) break;
+    text += Buffer.from(r.value).toString('utf8');
+  }
+  ok(text.indexOf('http://example.com/live/user/pass/123.ts') !== -1, 'F1 URL-GUARD accepts base.url in full stream');
+}
+
 async function main() {
   try {
     await testA();
     testB();
     await testE();
+    await testF();
     await testD();
     console.log('\\ntest_out_opts: ' + passed + ' assertions OK');
   } catch (e) {
