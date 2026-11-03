@@ -371,4 +371,14 @@ function _M.hevc_aliases_csv()
     return table.concat(HEVC_ALL_ALIASES, ",")
 end
 
+-- fallback_chain(codec, resolution, fps) — same matrix as frontend and ARA.
+-- Returns {policy, primary, chain}; never changes CODECS/RESOLUTION by itself.
+local _ape_fb_ok, _ape_fb = pcall(require, "ape_fallback_matrix")
+function _M.fallback_chain(codec, resolution, fps)
+    if _ape_fb_ok and _ape_fb and type(_ape_fb.chain) == "function" then
+        return _ape_fb.chain(codec, resolution, fps)
+    end
+    return { policy = "BEST_4K_THEN_NATIVE", primary = nil, chain = {} }
+end
+
 return _M

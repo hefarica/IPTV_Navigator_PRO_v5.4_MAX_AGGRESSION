@@ -86,6 +86,18 @@ Firmas por canal (biyección firma↔perfil): **S1** hqdn3d+yadif (P4) · **S2**
 
 **Regla de oro:** nunca "arreglar" un carril escribiendo la sintaxis de otro.
 
+### 5.1 · Coste del demuxed (t7): no es gratis, y puede matar canales
+
+`#EXT-X-MEDIA` de audio multiplica peticiones: **canales × renditions de audio**. Contra un
+upstream de **1 conexión por canal**, eso es el terreno del **HTTP 509 (Bandwidth Limit Exceeded)**.
+
+Antes de recomendar demuxed hay que declarar **para qué runtime** y **con qué coste de conexiones**.
+El generador lo hace *visible* (reporta el conteo); **no puede gestionarlo**.
+
+Y el techo real a recordar: el demuxed solo es posible si existe una **rendition de audio real**.
+`#EXT-X-MEDIA` = 0 en la lista de referencia ⇒ muxed legacy ⇒ demuxed es `NO_COMPUTADO` en directo
+sin un packager en el camino (y el VPS es metadata-only).
+
 ## 6. VLC — lo que existe y lo que no (medido)
 
 **VLC 3.0.24, Windows, 365 binarios / 150 MB escaneados.**

@@ -301,8 +301,8 @@ if __name__ == "__main__":
     
     test_options = {
         "server": "http://line.tivi-ott.net",
-        "user": "3JHFTC",
-        "pass": "U56BDP",
+        "user": "***REDACTED***",
+        "pass": "***REDACTED***",
         "includeStart": True,
         "jwtExpiration": 365
     }

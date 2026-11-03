@@ -508,6 +508,76 @@
     }
 
     // ────────────────────────────────────────────────────────────────────────
+    // FALLBACK MATRIX (2026-11-01) — user CSV capacity table.
+    // Regla: si hay 4K real, intentar 4K@120 → 4K@60 → 4K@30; si ninguno
+    // reproduce, bajar a la mejor resolución NATIVA del canal. Un canal
+    // <4K nunca declara 4K: usa su cadena nativa.
+    // ────────────────────────────────────────────────────────────────────────
+    const APE_FALLBACK_ROWS = Object.freeze([
+        { id: '8k120', codec: 'hvc1.2.4.L186.B0', hev1: 'hev1.2.4.L186.B0', width: 8192, height: 4320, fps: 120, resolution: '8192x4320', native: '8K' },
+        { id: '8k60',  codec: 'hvc1.2.4.L183.B0', hev1: 'hev1.2.4.L183.B0', width: 8192, height: 4320, fps: 60,  resolution: '8192x4320', native: '8K' },
+        { id: '8k30',  codec: 'hvc1.2.4.L180.B0', hev1: 'hev1.2.4.L180.B0', width: 8192, height: 4320, fps: 30,  resolution: '8192x4320', native: '8K' },
+        { id: '4k120', codec: 'hvc1.2.4.L156.B0', hev1: 'hev1.2.4.L156.B0', width: 4096, height: 2160, fps: 120, resolution: '4096x2160', native: '4K' },
+        { id: '4k60',  codec: 'hvc1.2.4.L153.B0', hev1: 'hev1.2.4.L153.B0', width: 4096, height: 2160, fps: 60,  resolution: '4096x2160', native: '4K' },
+        { id: '4k30',  codec: 'hvc1.2.4.L150.B0', hev1: 'hev1.2.4.L150.B0', width: 4096, height: 2160, fps: 30,  resolution: '4096x2160', native: '4K' },
+        { id: 'dci60', codec: 'hvc1.2.4.L123.B0', hev1: 'hev1.2.4.L123.B0', width: 2048, height: 1080, fps: 60,  resolution: '2048x1080', native: '2K' },
+        { id: 'hd50',  codec: 'hvc1.2.4.L123.B0', hev1: 'hev1.2.4.L123.B0', width: 1920, height: 1080, fps: 50,  resolution: '1920x1080', native: 'FHD' },
+        { id: '2k30',  codec: 'hvc1.2.4.L120.B0', hev1: 'hev1.2.4.L120.B0', width: 2048, height: 1080, fps: 30,  resolution: '2048x1080', native: '2K' },
+        { id: '720p60', codec: 'hvc1.2.4.L93.B0', hev1: 'hev1.2.4.L93.B0', width: 1280, height: 720, fps: 60,  resolution: '1280x720', native: 'HD' },
+        { id: '720p33', codec: 'hvc1.2.4.L93.B0', hev1: 'hev1.2.4.L93.B0', width: 1280, height: 720, fps: 33.7, resolution: '1280x720', native: 'HD' },
+        { id: '480p16', codec: 'hvc1.2.4.L90.B0', hev1: 'hev1.2.4.L90.B0', width: 854, height: 480, fps: 30, resolution: '854x480', native: 'SD' },
+        { id: '480p43', codec: 'hvc1.2.4.L90.B0', hev1: 'hev1.2.4.L90.B0', width: 720, height: 480, fps: 30, resolution: '720x480', native: 'SD' }
+    ]);
+
+    const APE_FALLBACK_CHAINS = Object.freeze({
+        '8k120': ['4k120', '4k60', '4k30', '8k60', '8k30'],
+        '8k60':  ['4k120', '4k60', '4k30', '8k30'],
+        '8k30':  ['4k120', '4k60', '4k30'],
+        '4k120': ['4k60', '4k30', 'dci60', 'hd50', '2k30', '720p60', '720p33', '480p16', '480p43'],
+        '4k60':  ['4k30', 'dci60', 'hd50', '2k30', '720p60', '720p33', '480p16', '480p43'],
+        '4k30':  ['dci60', 'hd50', '2k30', '720p60', '720p33', '480p16', '480p43'],
+        'dci60': ['hd50', '2k30', '720p60', '720p33', '480p16', '480p43'],
+        'hd50':  ['2k30', '720p60', '720p33', '480p16', '480p43'],
+        '2k30':  ['720p60', '720p33', '480p16', '480p43'],
+        '720p60': ['720p33', '480p16', '480p43'],
+        '720p33': ['480p16', '480p43'],
+        '480p16': ['480p43'],
+        '480p43': []
+    });
+
+    const APE_FALLBACK_BY_ID = APE_FALLBACK_ROWS.reduce(function (a, r) { a[r.id] = r; return a; }, {});
+
+    function _apeNormalizeRes(value) {
+        const m = String(value || '').match(/(\d{3,5})\s*[xX]\s*(\d{3,5})/);
+        return m ? (parseInt(m[1], 10) + 'x' + parseInt(m[2], 10)) : '';
+    }
+
+    /**
+     * Devuelve la cadena de fallback real para un codec/capacidad.
+     * No cambia RESOLUTION ni la URL: solo describe el orden de intentos.
+     */
+    function fallbackChainFor(codec, resolution, fps) {
+        const wanted = String(codec || '').toLowerCase();
+        const res = _apeNormalizeRes(resolution);
+        let row = null;
+        if (wanted) {
+            const candidates = APE_FALLBACK_ROWS.filter(function (r) { return r.codec.toLowerCase() === wanted; });
+            row = candidates.find(function (r) { return res && r.resolution === res; }) || candidates[0] || null;
+        }
+        if (!row && res) {
+            const rc = APE_FALLBACK_ROWS.filter(function (r) { return r.resolution === res; });
+            row = rc.find(function (r) { return Number(fps || 0) >= r.fps; }) || rc[0] || null;
+        }
+        if (!row) return { policy: 'BEST_4K_THEN_NATIVE', primary: null, chain: [] };
+        const ids = APE_FALLBACK_CHAINS[row.id] || [];
+        return {
+            policy: 'BEST_4K_THEN_NATIVE',
+            primary: row,
+            chain: ids.map(function (id) { return APE_FALLBACK_BY_ID[id]; }).filter(Boolean)
+        };
+    }
+
+    // ────────────────────────────────────────────────────────────────────────
     // Exposición global (browser) + module.exports (Node test)
     // ────────────────────────────────────────────────────────────────────────
     const api = {
@@ -530,6 +600,10 @@
         // Per-profile cascade arrays (primary + fallback chain hvc1.2.4.*)
         generateProfileCascadeArrays: generateProfileCascadeArrays,
         PROFILE_DIMS: PROFILE_DIMS,
+        // Fallback matrix (user CSV capacity table, 2026-11-01)
+        APE_FALLBACK_ROWS: APE_FALLBACK_ROWS,
+        APE_FALLBACK_CHAINS: APE_FALLBACK_CHAINS,
+        fallbackChainFor: fallbackChainFor,
         // Override runtime (widget Quality Manifest)
         DEFAULT_CASCADE: HEVC_CASCADE_13TIER,
         setCascade: setCascade,

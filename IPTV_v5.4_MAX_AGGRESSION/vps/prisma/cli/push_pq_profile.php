@@ -41,6 +41,18 @@ $profile = isset($argv[1]) && $argv[1] !== '' ? preg_replace('/[^a-z_]/', '', st
 $device  = isset($argv[2]) && $argv[2] !== '' ? preg_replace('/[^0-9A-Za-z_.\-]/', '', $argv[2]) : null;
 $channel = isset($argv[3]) && $argv[3] !== '' ? ape_normalize_channel_id($argv[3]) : null;
 
+// ── [t41] GATE FAIL-CLOSED: no se empuja un delta VPP a un device cuyo SoC no esté
+// allowlisted (o que no haya declarado caps). Broadcast exige opt-in explícito.
+if ($device !== null && function_exists('ape_soc_allowlisted')) {
+    if (!ape_soc_allowlisted($device)) {
+        fwrite(STDERR, "skip: SoC no allowlisted o sin caps (device={$device})\n");
+        exit(2);
+    }
+} elseif ($device === null && getenv('APE_VPP_ALLOW_BROADCAST') !== '1') {
+    fwrite(STDERR, "skip: broadcast sin APE_VPP_ALLOW_BROADCAST=1 (fail-closed)\n");
+    exit(2);
+}
+
 $s = ape_pq_profile($profile);
 $id = ape_insert_delta($device, $channel, 'device-setting',
     array('settings' => $s, 'profile' => 'PQ_' . strtoupper($profile)),

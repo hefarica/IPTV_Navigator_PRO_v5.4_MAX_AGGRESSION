@@ -53,7 +53,7 @@ if (!function_exists('ape_mesh_presets')) {
      * (llegan por la lista, no por el daemon) y NO van aquí.
      * Formato: "<ns> <key> <val>" (lo valida la allowlist del SettingsApplier).
      */
-    function ape_mesh_device_settings(array $streamInfo) {
+    function ape_mesh_device_settings(array $streamInfo, $vpp = null) {
         // Doctrina MAX IMAGE FIRST — INCONDICIONAL (2026-06-16): el SDR->HDR como enhancement de
         // display on-device se aplica SIEMPRE, no solo si la fuente probo HDR. hdr_conversion_mode=1
         // (HDR_CONVERSION_SYSTEM) deja que Android convierta SDR->HDR cuando beneficia y haga
@@ -61,7 +61,23 @@ if (!function_exists('ape_mesh_presets')) {
         $ds = array(
             'global match_content_frame_rate 1', // anti-judder universal
             'global hdr_conversion_mode 1',      // SDR->HDR enhancement incondicional (display-side)
+            'global minimal_post_processing_allowed 0', // MAX IMAGE: full TV post-proc (DNR/sharpen/AI-SR), no ALLM bypass
         );
+        // [t41] VPP por canal: SOLO si el bloque viene allowlisted (gate server-side, fail-closed).
+        // Usa la MISMA allowlist y el MISMO mapa de namespace que el contrato del APK
+        // (`ape_ff_settings_ns_map`, "espeja el APK") — no se inventa ningún namespace.
+        // Sin $vpp, o con allowed=false, la salida es EXACTAMENTE la de hoy.
+        if (is_array($vpp) && !empty($vpp['allowed']) && !empty($vpp['levers']) && is_array($vpp['levers'])) {
+            $nsMap = function_exists('ape_ff_settings_ns_map') ? ape_ff_settings_ns_map() : array();
+            $seen = array();
+            foreach ($ds as $row) { $p = explode(' ', $row); if (count($p) >= 2) { $seen[$p[1]] = true; } }
+            foreach ($vpp['levers'] as $k => $v) {
+                $k = (string)$k;
+                if (!isset($nsMap[$k]) || isset($seen[$k])) { continue; }   // allowlist real + sin duplicar claves
+                if (!(is_int($v) || is_float($v) || (is_string($v) && preg_match('/^-?\d{1,4}$/', $v)))) { continue; }
+                $ds[] = $nsMap[$k] . ' ' . $k . ' ' . (string)(int)$v;
+            }
+        }
         return $ds;
     }
 
@@ -543,5 +559,235 @@ if (!function_exists('ape_ff_device_settings_from_delta')) {
         } catch (\Throwable $e) { $out = array(); }                 // silent-fail: caen los 2 globals
         $cache[$device] = $out; $cacheTs[$device] = $now;
         return $out;
+    }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * [t41] VPP por canal — AI-SR / AI-PQ por resolución de origen y contenido.
+ * Diseño: docs/rea/09_URL2_VPP_METADATA.md · docs/rea/09b_VPP_IMPLEMENTACION.md
+ * REGLAS: gate server-side fail-closed · sin caps o SoC no listado ⇒ allowed:false
+ *         y SOLO los levers actuales · nunca toca RESOLUTION/CODECS/BANDWIDTH.
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+if (!function_exists('ape_vpp_levers')) {
+    /** Levers VPP reales (claves bare; el namespace lo pone ape_ff_settings_ns_map). */
+    function ape_vpp_levers($pq_profile = 'max_image') {
+        $l = array(
+            'pq_ai_sr_enable' => 1, 'ai_sr_level' => 3,
+            'ai_pq_mode' => 3, 'aipq_enable' => 1,
+            'pq_sharpness_enable' => 1,
+            'pq_ai_dnr_enable' => 1, 'pq_dnr_enable' => 1, 'pq_nr_enable' => 1,
+            'pq_ai_fbc_enable' => 1,
+            'pq_hdr_enable' => 1, 'pq_hdr_mode' => 1,
+            'match_content_frame_rate' => 1,
+            'minimal_post_processing_allowed' => 0,   // ya va en la base; el merge no lo duplica
+        );
+        switch ((string)$pq_profile) {
+            case 'off':
+                foreach ($l as $k => $v) { $l[$k] = 0; }
+                return $l;
+            case 'sports':                            // MEMC ON + DNR bajo (preserva textura en movimiento)
+                $l['pq_ai_dnr_enable'] = 0; $l['pq_dnr_enable'] = 0;
+                $l['match_content_frame_rate'] = 1;
+                return $l;
+            case 'cinema':                            // MEMC OFF + DNR medio
+                $l['match_content_frame_rate'] = 0;
+                // `pq_sharpness_enable` es booleano (0/1): "moderado" NO es expresable ⇒ 0 y se declara.
+                $l['pq_sharpness_enable'] = 0;
+                return $l;
+            case 'max_image':
+            default:
+                return $l;
+        }
+    }
+}
+
+if (!function_exists('ape_vpp_profile_for')) {
+    /**
+     * Perfil VPP por RESOLUCIÓN DE ORIGEN + contenido (petición del propietario 2026-10-28:
+     * "un nivel superior para las 4K y 2K").
+     *   w >= 3840 (4K nativa)      → P0 · target 4k · sr_needed=false · AI-PQ fuerte
+     *   1280 <= w < 3840 (2K/1440p/1080p) → P0 · target 4k · sr_needed=true (AI-SR escala a 4K)
+     *   w < 1280                   → P1 (más agresivo en SR/DNR)
+     *   w desconocido (0)          → P1 + sr_needed=true (conservador; NO se inventa soporte)
+     * MEMC: sólo `sports` lo enciende; `cinema` lo apaga; default no lo enciende.
+     */
+    function ape_vpp_profile_for($width, $ct = 'default') {
+        $w = (int)$width;
+        if ($w >= 3840)     { $profile = 'P0'; $srNeeded = false; }
+        elseif ($w >= 1280) { $profile = 'P0'; $srNeeded = true;  }
+        else                { $profile = 'P1'; $srNeeded = true;  }
+        $ct = strtolower(trim((string)$ct));
+        switch ($ct) {
+            case 'sports': $pq = 'sports';    $memc = true;  break;
+            case 'cinema': $pq = 'cinema';    $memc = false; break;
+            default:       $pq = 'max_image'; $memc = false; break;
+        }
+        return array(
+            'profile' => $profile, 'pq_profile' => $pq, 'target' => '4k',
+            'sr_needed' => $srNeeded, 'memc' => $memc,
+        );
+    }
+}
+
+if (!function_exists('ape_caps_of_device')) {
+    /** Caps declaradas por el device en su heartbeat (ara_heartbeats.caps_json) o null. */
+    function ape_caps_of_device($device_id) {
+        $device_id = preg_replace('/[^0-9A-Za-z_.\-]/', '', (string)$device_id);
+        if ($device_id === '') { return null; }
+        try {
+            $db = ape_policy_db();
+            if (!$db) { return null; }
+            $st = $db->prepare('SELECT caps_json FROM ara_heartbeats WHERE device_id = :d LIMIT 1');
+            $st->execute(array(':d' => $device_id));
+            $row = $st->fetch(PDO::FETCH_ASSOC);
+        } catch (\Throwable $e) { return null; }
+        if (!$row || empty($row['caps_json'])) { return null; }
+        $caps = json_decode((string)$row['caps_json'], true);
+        return is_array($caps) ? $caps : null;
+    }
+}
+
+if (!function_exists('ape_soc_allowlisted')) {
+    /** Gate FAIL-CLOSED: sin caps, sin soc o soc no listado ⇒ false. */
+    function ape_soc_allowlisted($socOrDevice, array $allow = array('mt8696', 'amlogic', 's905x4', 's905x3')) {
+        $key = (string)$socOrDevice;
+        if ($key === '') { return false; }
+        $caps = ape_caps_of_device($key);
+        $soc  = $caps !== null && isset($caps['soc']) ? strtolower(trim((string)$caps['soc'])) : strtolower(trim($key));
+        if ($soc === '') { return false; }
+        foreach ($allow as $a) { if (strtolower(trim((string)$a)) === $soc) { return true; } }
+        return false;
+    }
+}
+
+if (!function_exists('ape_vpp_block')) {
+    /**
+     * Bloque `ape_vpp` de la URL-2. NUNCA lanza: cualquier fallo ⇒ allowed:false (comportamiento de hoy).
+     * $soc   = device_id (se leen sus caps) o nombre de SoC.
+     * $profile = override explícito P0..P5 (opcional); si es null se deriva de la resolución.
+     * $opts  = ['ct'=>'default|sports|cinema','target'=>'4k|8k','soc_allow'=>array(...)]
+     */
+    function ape_vpp_block($soc, $profile = null, array $streamInfo = array(), array $opts = array()) {
+        $allow = isset($opts['soc_allow']) ? (array)$opts['soc_allow'] : array('mt8696', 'amlogic', 's905x4', 's905x3');
+        $ct    = isset($opts['ct']) ? (string)$opts['ct'] : 'default';
+        $w     = isset($streamInfo['width'])  ? (int)$streamInfo['width']  : 0;
+        $h     = isset($streamInfo['height']) ? (int)$streamInfo['height'] : 0;
+        $reqTarget = isset($opts['target']) ? strtolower(trim((string)$opts['target'])) : '';
+
+        $want = ape_vpp_profile_for($w, $ct);
+        if ($profile !== null && preg_match('/^[Pp][0-5]$/', (string)$profile)) {
+            $want['profile'] = strtoupper((string)$profile);
+        }
+
+        $caps = ape_caps_of_device($soc);
+        $socName = ($caps !== null && isset($caps['soc'])) ? strtolower(trim((string)$caps['soc'])) : strtolower(trim((string)$soc));
+        $allowed = ($socName !== '');
+        if ($allowed) {
+            $allowed = false;
+            foreach ($allow as $a) { if (strtolower(trim((string)$a)) === $socName) { $allowed = true; break; } }
+        }
+        $reason = $allowed ? 'soc_allowlisted' : ($caps === null ? 'no_caps' : 'soc_not_allowlisted');
+
+        // 8K: estos equipos son HDMI 4K. 8K sólo con caps 8K REALES declaradas.
+        if ($allowed && $reqTarget === '8k') {
+            $caps8k = is_array($caps) && !empty($caps['soc_8k']);
+            if (!$caps8k) { $allowed = false; $reason = 'target_8k_sin_caps_8k'; }
+            else { $want['target'] = '8k'; }
+        }
+        if ($reqTarget === '4k' || $reqTarget === '') { $want['target'] = $allowed && $want['target'] === '8k' ? '8k' : '4k'; }
+
+        // ── [t43] Emulación 8K DISPLAY-SIDE desde 4K NATIVA (petición del propietario) ──
+        // Es SUPERSAMPLING DE INTENCIÓN: la fuente ya es 4K, el SoC hace SR interna y el panel
+        // reescala. NO es un bitstream 8K: no toca CODECS/RESOLUTION/BANDWIDTH ni `soc_8k`.
+        // `never_real:true` es la frontera explícita entre "emulado" y "8K real".
+        $aiSr = false;
+        if (is_array($caps)) {
+            if (!empty($caps['ai_sr'])) { $aiSr = true; }
+            if (!empty($caps['features']) && is_array($caps['features'])
+                && in_array('ai_sr', $caps['features'], true)) { $aiSr = true; }
+        }
+        $emul = array(
+            'enabled'    => false,
+            'mode'       => 'supersample_intent',
+            'never_real' => true,
+        );
+        if ($w < 3840) {
+            // <4K: su camino es AI-SR *a* 4K; el 8K no aplica.
+            $emul['reason'] = 'fuente_menor_4k';
+        } elseif (!$allowed) {
+            $emul['reason'] = 'soc_no_allowlisted';
+        } elseif ($want['target'] === '8k') {
+            // 8K REAL por caps: la emulación no aplica (nunca se mezclan).
+            $emul['reason'] = '8k_real_por_caps';
+        } elseif (!$aiSr) {
+            $emul['reason'] = 'soc_sin_ai_sr';
+        } else {
+            $emul['enabled']      = true;
+            $emul['src']          = ($h > 0) ? ($w . 'x' . $h) : '3840x2160';
+            $emul['declared_max'] = '7680x4320';
+            $emul['requires']     = array('ai_sr', 'ai_pq');
+            $emul['reason']       = 'supersampling_display_side';
+        }
+
+        $block = array(
+            'schema'     => 'ape.vpp.v1',
+            'allowed'    => $allowed,
+            'reason'     => $reason,
+            'profile'    => $want['profile'],
+            'pq_profile' => $want['pq_profile'],
+            'target'     => $want['target'],
+            'src'        => ($w > 0 && $h > 0) ? ($w . 'x' . $h) : null,
+            'sr_needed'  => (bool)$want['sr_needed'],
+            'memc'       => (bool)$want['memc'],
+            'soc'        => $allowed ? $socName : null,
+            'levers'     => array(),
+        );
+        // Fail-closed: sin allowlist NO se publican levers (el device mantiene los actuales).
+        if ($allowed) { $block['levers'] = ape_vpp_levers($want['pq_profile']); }
+        $block['emulate_8k'] = $emul;
+
+        // ── [t44] STACK DE EMULACIÓN DISPLAY-SIDE (ampliación del propietario) ──
+        // SÓLO claves reales del cartucho. Lo que no tiene clave de SoC verificada queda
+        // enabled:false con `reason` y se lista como NOT_RUN/NO_VERIFICADO en
+        // docs/rea/12_EMULATION_STACK.md. No se inventa ningún `settings put`.
+        $pqp = $want['pq_profile'];
+        $mk = function ($enabled, array $extra = array(), $reason = 'ok') {
+            $o = array('enabled' => (bool)$enabled, 'reason' => $reason);
+            foreach ($extra as $k => $v) { $o[$k] = $v; }
+            return $o;
+        };
+        $noSoc = 'soc_no_allowlisted';
+        $noKey = 'sin_clave_de_soc_verificada';
+        $st = array();
+        $st['supersample'] = array(                       // misma puerta que emulate_8k
+            'enabled'        => (bool)$emul['enabled'],
+            'mode'           => 'internal_8k_then_downscale',
+            'target_display' => '4k',
+            'declared_max'   => '7680x4320',
+            'never_real'     => true,
+            'reason'         => $emul['reason'],
+        );
+        $st['ai_sr'] = $mk($allowed && $aiSr, array('level' => 3, 'key' => 'pq_ai_sr_enable'),
+            ($allowed ? ($aiSr ? 'ok' : 'soc_sin_ai_sr') : $noSoc));
+        $st['ai_pq'] = $mk($allowed, array('mode' => 3, 'profile' => $pqp, 'key' => 'ai_pq_mode'),
+            ($allowed ? 'ok' : $noSoc));
+        $st['sharpness'] = $mk($allowed && $pqp !== 'cinema', array('key' => 'pq_sharpness_enable'),
+            ($allowed ? ($pqp === 'cinema' ? 'perfil_cinema_suave' : 'ok') : $noSoc));
+        $st['dnr'] = $mk($allowed && $pqp !== 'sports',
+            array('mode' => 'auto', 'keys' => array('pq_ai_dnr_enable', 'pq_dnr_enable', 'pq_nr_enable')),
+            ($allowed ? ($pqp === 'sports' ? 'perfil_sports_sin_dnr' : 'ok') : $noSoc));
+        $st['deband'] = $mk(false, array(), $noKey);               // VLC: gradfun (player-side)
+        $st['chroma_upsample'] = $mk(false, array(), $noKey);
+        $st['memc'] = $mk(false, array(
+                'intent'      => (bool)$want['memc'],               // intención por ct (sports ON)
+                'player_side' => array('vlc' => 'minterpolate'),
+            ), 'no_existe_clave_de_soc_es_filtro_de_player');
+        $st['hdr_tone'] = $mk($allowed, array('mode' => 1, 'keys' => array('pq_hdr_enable', 'pq_hdr_mode')),
+            ($allowed ? 'ok' : $noSoc));
+        $st['contrast'] = $mk(false, array(), $noKey);
+        $st['saturation'] = $mk(false, array(), $noKey);
+        $block['emulation'] = $st;
+        return $block;
     }
 }

@@ -51,7 +51,21 @@ $chId = $ch !== '' ? $ch : ($rec ? $rec['list_id'] : $device);
 $mesh = ape_mesh_presets($chId, $streamInfo, $health, $ct);
 $device_settings = ape_mesh_device_settings($streamInfo);
 
-echo json_encode(array(
+// ── [t41] VPP por canal (AI-SR/AI-PQ). SÓLO en modo device-keyed: sin device no hay
+// caps que consultar y el gate sería decorativo ⇒ la clave se OMITE (respuesta de hoy).
+$vpp = null;
+if ($device !== '' && function_exists('ape_vpp_block')) {
+    $vppProfile = isset($_GET['vpp']) ? preg_replace('/[^A-Za-z0-9]/', '', (string)$_GET['vpp']) : null;
+    $vpp = ape_vpp_block($device, $vppProfile, $streamInfo, array(
+        'ct'     => $ct,
+        'target' => isset($_GET['target']) ? (string)$_GET['target'] : '4k',
+    ));
+    if (is_array($vpp) && !empty($vpp['allowed'])) {
+        $device_settings = ape_mesh_device_settings($streamInfo, $vpp);   // fusiona SÓLO si allowed
+    }
+}
+
+$out = array(
     'activated'       => true,
     'mode'            => $rec ? 'matricula' : 'device',
     'list_id'         => $rec ? $rec['list_id'] : null,
@@ -63,4 +77,6 @@ echo json_encode(array(
     'presets'         => $mesh['presets'],
     'device_settings' => $device_settings,
     'note'            => 'presets=list-level (player via lista); device_settings=daemon aplica (allowlist). NO STREAM-INF.',
-), JSON_UNESCAPED_SLASHES);
+);
+if ($vpp !== null) { $out['ape_vpp'] = $vpp; }
+echo json_encode($out, JSON_UNESCAPED_SLASHES);

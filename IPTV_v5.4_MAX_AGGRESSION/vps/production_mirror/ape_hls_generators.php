@@ -15,6 +15,7 @@ define('APE_MODULES_COUNT', 13);
 // ─── PERFILES DE CALIDAD ─────────────────────────────────────────────────────
 $APE_PROFILES = [];
 require_once __DIR__ . '/ape_profiles.php';
+require_once __DIR__ . '/ape_fallback_matrix.php';
 
 // ─── USER AGENTS POOL ────────────────────────────────────────────────────────
 $UA_POOL = [
@@ -208,6 +209,13 @@ function generate_ape_global_header(array $channels_map, string $list_id): strin
     $header .= "#EXT-X-APE-PROFILE-{$key}-MAX-BANDWIDTH:{$p['maxbw']}\n";
     $header .= "#EXT-X-APE-PROFILE-{$key}-CODEC-PRIMARY:{$p['codec_v']}\n";
     $header .= "#EXT-X-APE-PROFILE-{$key}-CODEC-FALLBACK:{$p['codec_vf']}\n";
+    $fbChain = function_exists('ape_fallback_codecs')
+        ? ape_fallback_codecs((string) $p['codec_v'], (string) $p['res'], (float) $p['fps'])
+        : [];
+    if ($fbChain) {
+        $header .= "#EXT-X-APE-PROFILE-{$key}-CODEC-FALLBACK-CHAIN:" . implode(',', $fbChain) . "\n";
+        $header .= "#EXT-X-APE-PROFILE-{$key}-FALLBACK-POLICY:BEST_4K_THEN_NATIVE\n";
+    }
     $header .= "#EXT-X-APE-PROFILE-{$key}-AUDIO-CODEC-PRIMARY:{$p['codec_a']}\n";
     $header .= "#EXT-X-APE-PROFILE-{$key}-AUDIO-CODEC-FALLBACK:{$p['codec_af']}\n";
     $header .= "#EXT-X-APE-PROFILE-{$key}-PREFETCH-SEGMENTS:{$p['prefetch']}\n";

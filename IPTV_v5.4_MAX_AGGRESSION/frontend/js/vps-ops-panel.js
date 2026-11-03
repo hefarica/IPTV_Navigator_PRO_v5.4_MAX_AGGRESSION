@@ -10,7 +10,7 @@
 
     const VPS_BASE = 'https://iptv-ape.duckdns.org';
     const API_URL = VPS_BASE + '/api/vps-ops';
-    const OWNER_TOKEN = '2E2ETBH3'; // Your owner token
+    const OWNER_TOKEN = (typeof window !== 'undefined' && window.APE_OWNER_TOKEN) ? window.APE_OWNER_TOKEN : '***REDACTED***'; // inyectar en runtime: window.APE_OWNER_TOKEN
 
     // ── Panel categories with visual config ──
     const CATEGORIES = {

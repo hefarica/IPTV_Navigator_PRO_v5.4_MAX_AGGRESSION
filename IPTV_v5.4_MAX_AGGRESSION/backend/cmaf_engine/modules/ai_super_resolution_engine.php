@@ -33,6 +33,14 @@ class AISuperResolutionEngine
     private const DEVICE_MEMORY_FILE = '/tmp/ape_device_memory.json';
 
     // ═══════════════════════════════════════════════════════════════════
+    // ── NOTA t40 (2026-10-25): se RETIRARON los 12 headers "IA por marca"
+    //    que esta tabla emitía en #EXTHTTP. Ningún fabricante los define y el TV
+    //    no está en esa conexión: 0 píxeles + ruido. La ÚNICA ruta real de AI-SR
+    //    es on-device (ONN 4K / Amlogic S905X4: pq_ai_sr_enable, ai_sr_level,
+    //    ai_pic_mode, libpqcontrol.so + broadcasts droidlogic) y vive en
+    //    ape-pq-guardian.sh / ape-adb-hardening.sh, NO en este módulo.
+    //    En MT8696 la clave es ai_pic_mode (ai_pq_mode NO existe ahí).
+    //    Gate: _vps_stage/tests/fake_ai_headers_assert.js · reversible vía git.
     // DEVICE CAPABILITY MAP — ALL MAJOR BRANDS (2025-2026)
     // ═══════════════════════════════════════════════════════════════════
 
@@ -46,7 +54,6 @@ class AISuperResolutionEngine
             'supports_ai'      => true,
             'ai_processor'     => 'NQ8_AI_GEN3',
             'neural_networks'  => 768,
-            'ai_header'        => 'X-Samsung-Picture-Engine',
             'ai_value'         => 'AI_UPSCALING_PRO',
             'upscale_mode'     => '8K_AI_UPSCALING_PRO',
             'hdr_type'         => 'HDR10_PLUS_ADVANCED',
@@ -66,7 +73,6 @@ class AISuperResolutionEngine
             'supports_ai'      => true,
             'ai_processor'     => 'ALPHA_11_AI_4K',
             'neural_networks'  => 512,
-            'ai_header'        => 'X-LG-Picture-Master',
             'ai_value'         => 'AI_PICTURE_PRO_2',
             'upscale_mode'     => '4K_AI_UPSCALING',
             'hdr_type'         => 'DOLBY_VISION_IQ',
@@ -86,7 +92,6 @@ class AISuperResolutionEngine
             'supports_ai'      => true,
             'ai_processor'     => 'XR_BACKLIGHT_MASTER',
             'neural_networks'  => 384,
-            'ai_header'        => 'X-Sony-XR-Mode',
             'ai_value'         => 'XR_TRILUMINOS_MAX',
             'upscale_mode'     => 'XR_4K_UPSCALING',
             'hdr_type'         => 'DOLBY_VISION_HDR10',
@@ -106,7 +111,6 @@ class AISuperResolutionEngine
             'supports_ai'      => true,
             'ai_processor'     => 'HI_VIEW_ENGINE_X',
             'neural_networks'  => 128,
-            'ai_header'        => 'X-Hisense-AI-Mode',
             'ai_value'         => 'AI_PICTURE_ENGINE',
             'upscale_mode'     => 'AI_4K_UPSCALING',
             'hdr_type'         => 'HDR10_PLUS',
@@ -126,7 +130,6 @@ class AISuperResolutionEngine
             'supports_ai'      => true,
             'ai_processor'     => 'AIPQ_ENGINE_3',
             'neural_networks'  => 96,
-            'ai_header'        => 'X-TCL-AI-Mode',
             'ai_value'         => 'AIPQ_UPSCALE',
             'upscale_mode'     => 'AI_SR_4K',
             'hdr_type'         => 'HDR10_PLUS',
@@ -146,7 +149,6 @@ class AISuperResolutionEngine
             'supports_ai'      => true,
             'ai_processor'     => 'P5_AI_ENGINE',
             'neural_networks'  => 128,
-            'ai_header'        => 'X-Philips-P5-Mode',
             'ai_value'         => 'P5_PERFECT_PICTURE',
             'upscale_mode'     => 'P5_AI_UPSCALING',
             'hdr_type'         => 'DOLBY_VISION_HDR10_PLUS',
@@ -166,7 +168,6 @@ class AISuperResolutionEngine
             'supports_ai'      => true,
             'ai_processor'     => 'AI_PICTURE_QUALITY',
             'neural_networks'  => 64,
-            'ai_header'        => 'X-Xiaomi-AI-Mode',
             'ai_value'         => 'AI_MASTER_ENGINE',
             'upscale_mode'     => 'AI_UPSCALE_4K',
             'hdr_type'         => 'DOLBY_VISION_IQ',
@@ -186,7 +187,6 @@ class AISuperResolutionEngine
             'supports_ai'      => true,
             'ai_processor'     => 'IQ_ULTRA',
             'neural_networks'  => 64,
-            'ai_header'        => 'X-Vizio-IQ-Mode',
             'ai_value'         => 'IQ_ACTIVE_PRO',
             'upscale_mode'     => 'IQ_4K_UPSCALING',
             'hdr_type'         => 'DOLBY_VISION_IQ',
@@ -206,7 +206,6 @@ class AISuperResolutionEngine
             'supports_ai'      => true,
             'ai_processor'     => 'HCX_PRO_AI_MK2',
             'neural_networks'  => 256,
-            'ai_header'        => 'X-Panasonic-HCX-Mode',
             'ai_value'         => 'HCX_PRO_AI',
             'upscale_mode'     => 'AI_4K_UPSCALING_MK2',
             'hdr_type'         => 'HDR10_PLUS_DOLBY_VISION',
@@ -229,7 +228,6 @@ class AISuperResolutionEngine
             'supports_ai'        => true,
             'ai_processor'       => 'MEDIATEK_MT8696',
             'neural_networks'    => 64,
-            'ai_header'          => 'X-FireTV-Picture-Mode',
             'ai_value'           => 'AV1_HW_DECODE_4K',
             'upscale_mode'       => 'FIRE_4K_UPSCALE',
             'hdr_type'           => 'HDR10_PLUS_DOLBY_VISION',
@@ -250,7 +248,6 @@ class AISuperResolutionEngine
             'supports_ai'        => true,
             'ai_processor'       => 'A15_BIONIC',
             'neural_networks'    => 128,
-            'ai_header'          => 'X-AppleTV-Display-Mode',
             'ai_value'           => 'MATCH_CONTENT',
             'upscale_mode'       => 'APPLE_4K_UPSCALE',
             'hdr_type'           => 'DOLBY_VISION_HDR10',
@@ -271,7 +268,6 @@ class AISuperResolutionEngine
             'supports_ai'        => true,
             'ai_processor'       => 'TEGRA_X1_PLUS',
             'neural_networks'    => 96,
-            'ai_header'          => 'X-Shield-AI-Mode',
             'ai_value'           => 'AI_UPSCALING_4K',
             'upscale_mode'       => 'SHIELD_AI_4K_UPSCALE',
             'hdr_type'           => 'DOLBY_VISION_HDR10',
@@ -462,7 +458,6 @@ class AISuperResolutionEngine
             'supports_ai'      => true,
             'ai_processor'     => $bestTV['ai_processor'] ?? 'UNKNOWN',
             'neural_networks'  => max($bestTV['neural_networks'] ?? 0, $bestPlayer['neural_networks'] ?? 0),
-            'ai_header'        => $bestTV['ai_header'] ?? 'X-AI-Mode',
             'ai_value'         => $bestTV['ai_value'] ?? 'AI_UPSCALE',
             'upscale_mode'     => $bestTV['upscale_mode'] ?? 'AI_UPSCALE',
             'hdr_type'         => self::bestHDR($bestTV['hdr_type'] ?? '', $bestPlayer['hdr_type'] ?? ''),
@@ -637,8 +632,7 @@ class AISuperResolutionEngine
             $exthttp['X-HDR-MaxCLL'] = "{$nitsTarget},500";
             $exthttp['X-Transfer-Function'] = 'PQ_ADVANCED';
 
-            if ($device['supports_ai'] && isset($device['ai_header'])) {
-                $exthttp[$device['ai_header']] = $device['ai_value'];
+            if ($device['supports_ai']) {
                 $exthttp['X-Content-Resolution'] = '480p';
                 $exthttp['X-Target-Resolution'] = '2160p';
                 $exthttp['X-AI-Color-Recovery'] = $device['ai_color'] ?? 'ENHANCED';
@@ -665,8 +659,7 @@ class AISuperResolutionEngine
             $exthttp['X-AI-Upscale-Mode'] = $device['upscale_mode'] ?? '4K_UPSCALE';
             $exthttp['X-Content-Upscale-Hint'] = 'HD_TO_4K_AI';
 
-            if ($device['supports_ai'] && isset($device['ai_header'])) {
-                $exthttp[$device['ai_header']] = $device['ai_value'];
+            if ($device['supports_ai']) {
                 $exthttp['X-HDR-Mode'] = $device['hdr_type'] ?? 'HDR10_PLUS';
                 $exthttp['X-AI-Color-Engine'] = $device['ai_color'] ?? 'ENHANCED';
                 $exthttp['X-AI-Motion-Engine'] = $device['ai_motion'] ?? 'SMOOTH';
@@ -691,8 +684,7 @@ class AISuperResolutionEngine
             $exthttp['X-HDR-Simulation'] = 'HDR10_PLUS_ADVANCED';
             $exthttp['X-HDR-MaxCLL'] = "{$nitsTarget},500";
 
-            if ($device['supports_ai'] && isset($device['ai_header'])) {
-                $exthttp[$device['ai_header']] = $device['ai_value'];
+            if ($device['supports_ai']) {
                 $exthttp['X-Content-Resolution'] = '1080p';
                 $exthttp['X-Target-Resolution'] = '2160p';
                 $exthttp['X-AI-Detail-Enhancement'] = 'TEXTURE_EDGE_BOOST';
@@ -727,9 +719,6 @@ class AISuperResolutionEngine
                 $exthttp['X-AI-Detail-Enhancement'] = 'TEXTURE_PRESERVATION';
                 $exthttp['X-AI-Noise-Reduction'] = 'GRAIN_PRESERVE';
                 $exthttp['X-AI-Depth-Engine'] = $device['ai_depth'] ?? 'NATIVE';
-                if (isset($device['ai_header'])) {
-                    $exthttp[$device['ai_header']] = $device['ai_value'];
-                }
                 if (isset($device['ai_sound'])) {
                     $exthttp['X-AI-Sound-Engine'] = $device['ai_sound'];
                 }

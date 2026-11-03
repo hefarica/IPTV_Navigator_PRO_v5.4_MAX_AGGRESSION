@@ -142,3 +142,59 @@ concluí de más.
 **Refutado por:** t4: 98 avisos, pero decoder + EOF en **30/30** corridas. **No aborta.**
 
 La razón real de que solo cargara un módulo era el **separador** (C-8).
+
+---
+
+## C-11 · «`adaptive-maxbitrate=8000000` en 9.765 canales» — **CONFUNDÍ PRESENCIA CON VALOR**
+
+**Lo que dije:** la opción `adaptive-maxbitrate` existe en 9.765 canales.
+**Refutado por:** t7 (corrida real sobre los 604 MB).
+
+La **opción** está en **10.573** canales. El **valor 8.000.000** en 9.765; los otros **808** llevan
+**19.800.000**. Presencia de la opción ≠ presencia de ese valor.
+
+---
+
+## C-12 · «`video-width/height` pide salida a 720p» — **FALTABA UN TERCER VALOR**
+
+**Lo que dije:** `1280x720` en 7.457 y `1920x1080` en 2.308 ⇒ la lista pide salida reducida.
+**Refutado por:** t7.
+
+La opción está en **10.573** canales, con **tres** valores: `1280x720` (7.457), `1920x1080`
+(2.308) y **`3840x2160` (808)**, que **no** pide salida reducida. Mi afirmación era verdadera solo
+para 9.765 de 10.573.
+
+---
+
+## C-13 · «`inputstream.adaptive.max_bitrate` es un cap a quitar» — **ESA CLAVE NO EXISTE**
+
+**Lo que dije:** lo incluí en la lista de caps de la tarea t7.
+**Refutado por:** t7: **0 ocurrencias** en la lista.
+
+Extrapolé del patrón `inputstream.adaptive.*` sin medirlo. La regla del generador existe y es
+no-op. Error de invención por simetría, exactamente el que la doctrina prohíbe.
+
+---
+
+## C-14 · «Quitar los caps levanta el techo de vídeo» — **FALSO EN VLC**
+
+**Lo que implicaba:** eliminar `adaptive-maxbitrate` / `video-width` / `video-height` mejora la imagen.
+**Refutado por:** t7 + t4 + el propio `VLC_OPT_AUDIT.md`.
+
+De 138 nombres `#EXTVLCOPT`, **80 no existen en VLC** — toda la familia `adaptive-*` y
+`video-width/height`. VLC las descarta **en silencio**. Quitarlas no levanta ningún techo real:
+limpia un **techo declarado**.
+
+**El cap que sí muerde** es `inputstream.adaptive.*` (clave real del addon de Kodi). El reporte
+de t7 marca cada línea con `effect_measured`: `inert-vlc` (52.865) vs `kodi-addon-key` (21.146).
+
+**Corolario honesto:** el valor de este generador no es "mejora la imagen en VLC" — es
+**des-mentir el manifiesto** y quitar el cap donde un addon real lo lee.
+
+---
+
+## C-15 · Hallazgo nuevo (de t7, no mío): el cap de fps contradice a su propia variante
+
+`max_framerate=30` aparece en 7.457 canales, pero **1.185 de ellos declaran
+`FRAME-RATE=60.000`** en su `#EXT-X-STREAM-INF`. Ahí el cap **sí muerde** y contradice la
+declaración del propio manifiesto. Es el cap con efecto real más claro de todos.

@@ -663,6 +663,22 @@
             tags.push(`#EXT-X-APE-BANDWIDTH-VERIFIED:${truth.bandwidthVerified ? 'true' : 'false'}`);
         }
 
+        // FALLBACK CHAIN — same matrix for frontend list, VPS and ARA.
+        // BEST_4K_THEN_NATIVE: 4K@120 → 4K@60 → 4K@30 → native ladder.
+        try {
+            const _fb = (typeof window !== 'undefined' && window.APE_HEVC_CASCADE &&
+                typeof window.APE_HEVC_CASCADE.fallbackChainFor === 'function')
+                ? window.APE_HEVC_CASCADE.fallbackChainFor(truth.codec, truth.resolution, truth.frameRate)
+                : null;
+            if (_fb && Array.isArray(_fb.chain) && _fb.chain.length > 0) {
+                tags.push(`#EXT-X-APE-FALLBACK-POLICY:${_fb.policy}`);
+                _fb.chain.forEach(function (r, i) {
+                    tags.push(`#EXT-X-APE-CODEC-FALLBACK-${i + 1}:${r.codec}`);
+                    tags.push(`#EXT-X-APE-RESOLUTION-FALLBACK-${i + 1}:${r.resolution}@${r.fps}`);
+                });
+            }
+        } catch (_) { /* metadata only; never break generation */ }
+
         return tags;
     }
 

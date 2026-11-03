@@ -161,3 +161,11 @@ audit/**/labmaster_dump.json
 # artefactos de sesion: pueden contener credenciales y extractos de la lista real
 scratch/
 
+
+# ── Artefactos de sesion y ruido (2026-11-03) ───────────────────────────────────────────
+# No se versionan: son restos de herramientas, no parte de la cadena.
+/.dsh/
+/.playwright-mcp/
+/ 2
+*.backup_audio_safe_*
+*-bak_*.json

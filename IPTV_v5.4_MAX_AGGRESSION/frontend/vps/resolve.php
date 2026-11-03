@@ -29,9 +29,9 @@ $start = microtime(true);
 // ═══════════════════════════════════════════════════════════════════════════
 const ORIGINS = [
     // host                              user              pass
-    ['line.tivi-ott.net',               '3JHFTC',         'U56BDP'],
-    ['line.dndnscloud.ru',              'f828e5e261',     'e1372a7053f1'],
-    ['126958958431.4k-26com.com:80',    'ujgd4kiltx',     'p5c00kxjc7'],
+    ['line.tivi-ott.net', getenv('APE_ORIGIN_1_USER') ?: '***REDACTED***', getenv('APE_ORIGIN_1_PASS') ?: '***REDACTED***'],
+    ['line.dndnscloud.ru', getenv('APE_ORIGIN_2_USER') ?: '***REDACTED***', getenv('APE_ORIGIN_2_PASS') ?: '***REDACTED***'],
+    ['126958958431.4k-26com.com:80', getenv('APE_ORIGIN_3_USER') ?: '***REDACTED***', getenv('APE_ORIGIN_3_PASS') ?: '***REDACTED***'],
     // Add new origins below:
     // ['new.host.com:8080',            'newuser',        'newpass'],
 ];
