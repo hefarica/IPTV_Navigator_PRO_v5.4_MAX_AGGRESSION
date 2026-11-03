@@ -8890,9 +8890,9 @@ ${__apeContinuityTags().join('\n')}
         //   HDR (PQ/HLG): zscale + gradfun (deband, evita banding HDR) + unsharp sutil
         //   SDR: zscale + unsharp (sharpen +0.4) + hqdn3d (NR temporal sin blur)
         if (_isPqHdr) {
-            lines.push(`#EXTVLCOPT:video-filter=zscale=transfer=st2084:chromal=topleft:matrix=2020_ncl:primaries=2020:range=limited,gradfun=radius=12:strength=0.6,unsharp=lx=3:ly=3:la=0.3,minterpolate=fps=120:mi_mode=mci:mc_mode=aobmc:vsbmc=1:me=epzs:scd=5`); // MEMC 8K@120fps
+            lines.push(`#EXTVLCOPT:video-filter=format=yuv420p10le,gradfun=radius=12:strength=0.51,unsharp=lx=3:ly=3:la=0.3,minterpolate=fps=120:mi_mode=mci:mc_mode=aobmc:vsbmc=1:me=epzs:scd=0`); // MEMC 8K@120fps
         } else if (_isHlgHdr) {
-            lines.push(`#EXTVLCOPT:video-filter=zscale=transfer=arib-std-b67:chromal=topleft:matrix=2020_ncl:primaries=2020:range=limited,gradfun=radius=10:strength=0.5,unsharp=lx=3:ly=3:la=0.3,minterpolate=fps=120:mi_mode=mci:mc_mode=aobmc:vsbmc=1:me=epzs:scd=5`); // MEMC 8K@120fps
+            lines.push(`#EXTVLCOPT:video-filter=format=yuv420p10le,gradfun=radius=10:strength=0.51,unsharp=lx=3:ly=3:la=0.3,minterpolate=fps=120:mi_mode=mci:mc_mode=aobmc:vsbmc=1:me=epzs:scd=0`); // MEMC 8K@120fps
         } else {
             // ═══════════════════════════════════════════════════════════════════════
             // 4K FALSE SUPREMO v1.0 — 2026-05-23
@@ -8920,33 +8920,33 @@ ${__apeContinuityTags().join('\n')}
                 // unsharp alto en luma (la=0.8) para definición de rostros sin pixelamiento
                 // hqdn3d suave para piel lisa (2:1.5:6:4.5) + gradfun anti-banding
                 // zscale Lanczos 3840x2160 — upscale de mayor calidad perceptual
-                lines.push(`#EXTVLCOPT:video-filter=zscale=transfer=bt1886:matrix=bt709:primaries=bt709:range=limited:w=3840:h=2160:filter=lanczos,hqdn3d=2:1.5:6:4.5,unsharp=lx=5:ly=5:la=0.8:cx=3:cy=3:ca=0.2,gradfun=radius=8:strength=0.4,minterpolate=fps=120:mi_mode=mci:mc_mode=aobmc:vsbmc=1:me=epzs:scd=0`);
+                lines.push(`#EXTVLCOPT:video-filter=scale=w=3840:h=2160:flags=lanczos,hqdn3d=2:1.5:6:4.5,unsharp=lx=5:ly=5:la=0.8:cx=3:cy=3:ca=0.2,gradfun=radius=8:strength=0.51,minterpolate=fps=120:mi_mode=mci:mc_mode=aobmc:vsbmc=1:me=epzs:scd=0`);
             } else if (_ctSDR === 'SPORTS') {
                 // DEPORTES: MEMC agresivo (120fps) + sharpening máximo
                 // Hisense VIDAA Sport Mode: motion clarity + edge enhancement
                 // TCL AiPQ: unsharp agresivo (la=1.0) para pelota/jugadores nítidos
                 // hqdn3d=0 — sin NR para preservar detalle de movimiento rápido
                 // pp=ac/dr/ci — deblocking + deringing + color interpolation
-                lines.push(`#EXTVLCOPT:video-filter=zscale=transfer=bt1886:matrix=bt709:primaries=bt709:range=limited:w=3840:h=2160:filter=lanczos,unsharp=lx=5:ly=5:la=1.0:cx=3:cy=3:ca=0.3,pp=ac/dr/ci,minterpolate=fps=120:mi_mode=mci:mc_mode=aobmc:vsbmc=1:me=epzs:scd=5`);
+                lines.push(`#EXTVLCOPT:video-filter=scale=w=3840:h=2160:flags=lanczos,unsharp=lx=5:ly=5:la=1.0:cx=3:cy=3:ca=0.3,minterpolate=fps=120:mi_mode=mci:mc_mode=aobmc:vsbmc=1:me=epzs:scd=0`);
             } else if (_ctSDR === 'CINEMA') {
                 // CINE: grain preservation + deband + unsharp sutil
                 // TCL AiPQ Cinema Mode: preservar grano cinematográfico
                 // gradfun para eliminar banding sin destruir gradientes suaves
                 // unsharp suave (la=0.3) — no sobreafinar el grano de película
                 // NO minterpolate — el cine es 24fps por diseño artístico
-                lines.push(`#EXTVLCOPT:video-filter=zscale=transfer=bt1886:matrix=bt709:primaries=bt709:range=limited:w=3840:h=2160:filter=lanczos,gradfun=radius=12:strength=0.6,hqdn3d=1:0.8:3:2.5,unsharp=lx=3:ly=3:la=0.3:cx=3:cy=3:ca=0.1,minterpolate=fps=120:mi_mode=mci:mc_mode=aobmc:vsbmc=1:me=epzs:scd=5`);
+                lines.push(`#EXTVLCOPT:video-filter=scale=w=3840:h=2160:flags=lanczos,gradfun=radius=12:strength=0.51,hqdn3d=1:0.8:3:2.5,unsharp=lx=3:ly=3:la=0.3:cx=3:cy=3:ca=0.1,minterpolate=fps=120:mi_mode=mci:mc_mode=aobmc:vsbmc=1:me=epzs:scd=0`);
             } else if (_ctSDR === 'NEWS') {
                 // NOTICIAS: sharpen máximo + NR temporal + upscale limpio
                 // Xiaomi PatchWall News Mode: texto nítido + fondo limpio
                 // unsharp muy alto (la=1.2) para texto/gráficos legibles en 4K
                 // hqdn3d fuerte (4:3:12:9) para eliminar ruido de cámaras de estudio
-                lines.push(`#EXTVLCOPT:video-filter=zscale=transfer=bt1886:matrix=bt709:primaries=bt709:range=limited:w=3840:h=2160:filter=lanczos,hqdn3d=4:3:12:9,unsharp=lx=7:ly=7:la=1.2:cx=5:cy=5:ca=0.4,pp=ac/dr,minterpolate=fps=120:mi_mode=mci:mc_mode=aobmc:vsbmc=1:me=epzs:scd=5`);
+                lines.push(`#EXTVLCOPT:video-filter=scale=w=3840:h=2160:flags=lanczos,hqdn3d=4:3:12:9,unsharp=lx=7:ly=7:la=1.2:cx=5:cy=5:ca=0.4,minterpolate=fps=120:mi_mode=mci:mc_mode=aobmc:vsbmc=1:me=epzs:scd=0`);
             } else {
                 // GENERAL: balance óptimo — NR + sharpen + upscale 4K
                 // Hisense VIDAA AI 4K Upscaler: balance entre NR y sharpness
                 // zscale Lanczos (mejor que bilinear para upscale 2x)
                 // unsharp moderado (la=0.6) + hqdn3d equilibrado (2:1.5:6:4.5)
-                lines.push(`#EXTVLCOPT:video-filter=zscale=transfer=bt1886:matrix=bt709:primaries=bt709:range=limited:w=3840:h=2160:filter=lanczos,hqdn3d=2:1.5:6:4.5,unsharp=lx=5:ly=5:la=0.6:cx=3:cy=3:ca=0.2,gradfun=radius=8:strength=0.3,minterpolate=fps=120:mi_mode=mci:mc_mode=aobmc:vsbmc=1:me=epzs:scd=5`);
+                lines.push(`#EXTVLCOPT:video-filter=scale=w=3840:h=2160:flags=lanczos,hqdn3d=2:1.5:6:4.5,unsharp=lx=5:ly=5:la=0.6:cx=3:cy=3:ca=0.2,gradfun=radius=8:strength=0.51,minterpolate=fps=120:mi_mode=mci:mc_mode=aobmc:vsbmc=1:me=epzs:scd=0`);
             }
             // Tags informativos del modo 4K False Supremo
             lines.push(`#EXT-X-APE-4KFALSE-MODE:ACTIVE`);
