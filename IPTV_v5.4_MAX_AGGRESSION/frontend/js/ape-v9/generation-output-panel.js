@@ -122,7 +122,10 @@
       renderSugerencia: renderSugerencia,
       mejorEscenario: mejorEscenario,
       aplicarEscenario: aplicarEscenario,
-      getDeltaPct: function () { return DELTA_PCT; }
+      getDeltaPct: function () { return DELTA_PCT; },
+      // Expuesto para fijar el delta por funcion desde una prueba. Escribir en localStorage no
+      // cambia la variable en memoria, asi que un test no puede provocar un estado con ese truco.
+      applyDelta: applyDelta
     };
   }
 
