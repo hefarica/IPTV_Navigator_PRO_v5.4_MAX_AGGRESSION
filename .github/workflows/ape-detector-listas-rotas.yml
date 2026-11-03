@@ -1,0 +1,84 @@
+name: ape-detector-listas-rotas
+
+# ─────────────────────────────────────────────────────────────────────────────────────────────────
+# DETECTOR E — invariante permanente: canales registrados contra bytes servidos.
+#
+# POR QUÉ EXISTE: el 2026-11-03 `finalize_upload.php` dejó el `.m3u8` vivo en 8 bytes porque abre
+# con fopen(..., 'wb') —que trunca— antes de saber si puede terminar. El registro de upload.php
+# contó los canales desde el `.gz`, así que el conteo quedó sano mientras el `.m3u8` estaba roto.
+#
+# Este workflow contrasta el conteo registrado con el tamaño real en disco. SÓLO LEE: no repara, no
+# escribe, no toca nginx. Un fichero con canales registrados y menos de 1024 bytes es un fallo.
+# ─────────────────────────────────────────────────────────────────────────────────────────────────
+
+on:
+  workflow_dispatch:
+    inputs:
+      db:
+        description: 'Ruta de la base de datos de registro'
+        required: true
+        default: '/opt/netshield/data/ape_lists.db'
+      lists_dir:
+        description: 'Directorio de listas vivas'
+        required: true
+        default: '/var/www/html/lists'
+
+jobs:
+  detector:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/adb-generic-visual-enhancement-installer
+
+      - name: Preparar SSH
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          printf '%s\n' "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' "${{ secrets.VPS_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+          printf 'Host *\n  StrictHostKeyChecking yes\n  UserKnownHostsFile ~/.ssh/known_hosts\n  IdentitiesOnly yes\n' > ~/.ssh/config
+          echo "TARGET=${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" >> "$GITHUB_ENV"
+          echo "DB=${{ inputs.db }}" >> "$GITHUB_ENV"
+          echo "LISTS=${{ inputs.lists_dir }}" >> "$GITHUB_ENV"
+
+      - name: E.1 — la lista del incidente
+        run: |
+          set -uo pipefail
+          echo '--- fila de registro de la lista del incidente ---'
+          ssh "$TARGET" "sudo -n sqlite3 '$DB' \"select filename, channels, activated_at, updated_at from registered_lists where filename like '%1793589060441%';\" 2>&1" || echo 'SIN_DB_O_SIN_TABLA'
+          echo
+          echo '--- tamano real en disco ---'
+          ssh "$TARGET" "sudo -n stat -c '%n size=%s mtime=%y' '$LISTS/APE_LISTA_1793589060441.m3u8' '$LISTS/APE_LISTA_1793589060441.m3u8.gz' 2>&1" || true
+
+      - name: E.2 — esquema disponible (para saber que columnas hay)
+        run: |
+          set -uo pipefail
+          ssh "$TARGET" "sudo -n sqlite3 '$DB' '.schema registered_lists' 2>&1" || echo 'SIN_ESQUEMA'
+
+      - name: E.3 — BARRIDO COMPLETO: canales registrados contra bytes servidos
+        run: |
+          set -uo pipefail
+          echo '--- toda lista registrada con canales > 0 ---'
+          ssh "$TARGET" "sudo -n sqlite3 '$DB' \"select filename, channels from registered_lists where channels > 0;\" 2>/dev/null" > /tmp/reg.txt || true
+          if [ ! -s /tmp/reg.txt ]; then echo 'SIN_FILAS (o sin DB)'; exit 0; fi
+          total=0; rotos=0
+          while IFS='|' read -r f c; do
+            [ -z "$f" ] && continue
+            total=$((total+1))
+            s=$(ssh "$TARGET" "sudo -n stat -c %s '$LISTS/$f' 2>/dev/null || echo 0")
+            g=$(ssh "$TARGET" "sudo -n stat -c %s '$LISTS/$f.gz' 2>/dev/null || echo 0")
+            if [ "$s" -lt 1024 ]; then
+              rotos=$((rotos+1))
+              echo "ROTO m3u8=$s gz=$g ch=$c $f"
+            fi
+          done < /tmp/reg.txt
+          echo
+          echo "RESUMEN: registradas=$total rotas=$rotos"
+          if [ "$rotos" -gt 0 ]; then
+            echo '::error::hay listas registradas con canales pero sin contenido servible'
+            exit 1
+          fi
+          echo 'invariante OK: ninguna lista registrada esta por debajo del suelo de 1 KB'
