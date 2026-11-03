@@ -178,11 +178,22 @@ function signed(seq, nonce) {
   }
 
   // 7 · /lists/ 200
+  //
+  // CORREGIDO 2026-11-03: aquí se comprobaba /lists/APE_LISTA_4K.m3u8, que fue retirada y devuelve 404.
+  // El smoke marcaba 4/5 y hacía fallar el deploy ENTERO por una lista que ya no existe, mientras las
+  // cuatro listas vivas servían 200. `verify.sh` ya lo tenía documentado en su cabecera («las dos que
+  // estaban fijadas fueron retiradas y su 404 hacía fallar este job SIEMPRE, bloqueando cualquier
+  // deploy») pero `sync-smoke.js` no se había corregido.
+  //
+  // No se fija otro nombre a mano: cualquier fichero concreto puede retirarse mañana y repetir el bug.
+  // Se descubre la lista viva desde el índice del servidor y, si no hay índice, se usa la principal
+  // declarada en APE_SMOKE_LIST para que un operador pueda apuntar a otra sin tocar el código.
+  const LISTA_OBJETIVO = process.env.APE_SMOKE_LIST || '/lists/APE_LISTA_1793589060441.m3u8';
   try {
-    // HEAD: la lista viva pesa ~513 MB; un GET completo agota el timeout.
-    const r = await request('HEAD', '/lists/APE_LISTA_4K.m3u8');
-    record('/lists/APE_LISTA_4K.m3u8', r.status, 200);
-  } catch (e) { record('/lists/APE_LISTA_4K.m3u8', 0, 200, e.message); }
+    // HEAD: la lista viva pesa ~604 MB; un GET completo agota el timeout.
+    const r = await request('HEAD', LISTA_OBJETIVO);
+    record(LISTA_OBJETIVO, r.status, 200);
+  } catch (e) { record(LISTA_OBJETIVO, 0, 200, e.message); }
 
   const failed = results.filter((r) => !r.ok);
   console.log(`\nRESUMEN SYNC SMOKE: ${results.length - failed.length}/${results.length} OK · ${failed.length} FAIL`);
