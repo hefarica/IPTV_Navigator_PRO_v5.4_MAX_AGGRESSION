@@ -376,28 +376,30 @@ function tablaDecision(fields) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
-// HOMOLOGACION — el mismo valor dicho en el idioma de cada motor, HEREDADO del SSOT.
-//
-// El valor de cada homologo no se escribe aqui: se pide a homologacion.heredar(). Si el SSOT cambia,
-// este bloque no se toca y el resultado cambia solo. Eso es lo que el operador pidio: que al cambiar uno,
-// los homologos lo hereden.
+// HOMOLOGACION — el SSOT se LEE DEL LAB BULLETPROOF, no de una constante.
+// El panel "🛡 LAB Bulletproof Details" declara la doctrina en su propio comentario: read-only, los valores
+// los calibra el solver del LAB. Por tanto aqui no hay ningun valor: se derivan del perfil del LAB y los
+// homologos heredan.
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
-const { SSOT, HOMOLOGOS, heredar, sincronizar } = require('./homologacion');
+const homol = require('./homologacion');
 
 const CAPAS_MUERTAS = ['settings', 'hlsjs'];
+let _lab = null;
+let _labError = null;
+try { _lab = homol.cargarLab(); } catch (e) { _labError = e.message; }
 
-/** Recorre fields y devuelve [{ruta, valor, viva}] para cada clave de los homologos. */
+/** Recorre fields y devuelve cada ocurrencia de una clave homologa. */
 function ocurrencias(fields) {
-  const buscadas = new Set(HOMOLOGOS.map((h) => norm(h.clave)));
+  const buscadas = new Set(homol.homologosPlanos().map((h) => norm(h.clave)));
   const out = [];
   const walk = (obj, ruta, muerta) => {
     if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return;
     for (const k of Object.keys(obj)) {
       const v = obj[k];
-      const r = ruta ? `${ruta}.${k}` : k;
+      const r = ruta ? `${ruta}.${k}` : ruta + k;
       if (v && typeof v === 'object' && !Array.isArray(v)) { walk(v, r, muerta); continue; }
       if (Array.isArray(v)) continue;
-      if (typeof v === 'string' && v.includes(',')) continue; // valores por perfil serializados
+      if (typeof v === 'string' && v.includes(',')) continue;
       if (!buscadas.has(norm(k))) continue;
       out.push({ ruta: r, clave: k, valor: v, viva: !muerta });
     }
@@ -410,41 +412,51 @@ function ocurrencias(fields) {
 }
 
 function verificarHomologacion(fields) {
+  if (!_lab) {
+    return { error: `LAB no disponible: ${_labError}`, lab: null, familias: [], resumen: { familias: 0, rotas: 0, solo_muertas: 0, ok: 0, sin_fuente: 0 } };
+  }
+  const ssot = homol.derivarSSOT(_lab);
   const occ = ocurrencias(fields);
+  const planos = homol.homologosPlanos();
   const familias = [];
-  for (const famId of Object.keys(SSOT)) {
-    const hs = HOMOLOGOS.filter((h) => h.familia === famId);
-    const claves = new Set(hs.map((h) => norm(h.clave)));
+  for (const fam of homol.FAMILIAS) {
+    const s = ssot[fam.id];
+    const claves = new Set(fam.homologos.map((h) => norm(h.clave)));
     const mias = occ.filter((o) => claves.has(norm(o.clave)));
     const filas = mias.map((o) => {
-      const h = hs.find((x) => norm(x.clave) === norm(o.clave));
-      const exigido = heredar(h);                       // heredado, no escrito
+      const h = planos.find((x) => x.familia === fam.id && norm(x.clave) === norm(o.clave));
+      const exigido = h ? homol.heredar(h, ssot) : null;
       const num = Number(o.valor);
       return {
         ruta: o.ruta, valor_original: o.valor, exigido, viva: o.viva,
-        cumple: isFinite(num) && Number(num) === Number(exigido)
+        cumple: exigido !== null && isFinite(num) && Number(num) === Number(exigido)
       };
     });
     const vivasMal = filas.filter((f) => f.viva && !f.cumple);
     const muertasMal = filas.filter((f) => !f.viva && !f.cumple);
     familias.push({
-      id: famId, canonico: SSOT[famId].valor, unidad: SSOT[famId].unidad,
-      heredan: hs.length, ocurrencias: filas.length, vivas: filas.filter((f) => f.viva).length,
-      vivas_en_desacuerdo: vivasMal.map((f) => `${f.ruta}=${f.valor_original} (heredado ${f.exigido})`),
-      muertas_en_desacuerdo: muertasMal.map((f) => `${f.ruta}=${f.valor_original} (heredado ${f.exigido})`),
-      estado: vivasMal.length ? 'ROTO' : (muertasMal.length ? 'SINCRONIZAR_MUERTAS' : 'OK')
+      id: fam.id,
+      ssot: s.valor, unidad: s.unidad, fuente: s.fuente, fuente_encontrada: s.encontrado,
+      heredan: fam.homologos.length, ocurrencias: filas.length,
+      vivas_en_desacuerdo: vivasMal.map((f) => `${f.ruta}=${f.valor_original} (LAB dice ${f.exigido})`),
+      muertas_en_desacuerdo: muertasMal.map((f) => `${f.ruta}=${f.valor_original} (LAB dice ${f.exigido})`),
+      estado: !s.encontrado ? 'SIN_FUENTE' : (vivasMal.length ? 'ROTO' : (muertasMal.length ? 'SINCRONIZAR_MUERTAS' : 'OK'))
     });
   }
   return {
+    lab: { ruta: _lab.ruta, perfil: _lab.perfil, version: _lab.lab_version, exportado: _lab.exported_at },
     familias,
     resumen: {
       familias: familias.length,
       rotas: familias.filter((f) => f.estado === 'ROTO').length,
       solo_muertas: familias.filter((f) => f.estado === 'SINCRONIZAR_MUERTAS').length,
-      ok: familias.filter((f) => f.estado === 'OK').length
+      ok: familias.filter((f) => f.estado === 'OK').length,
+      sin_fuente: familias.filter((f) => f.estado === 'SIN_FUENTE').length
     }
   };
 }
 
-/** Devuelve los fields con TODOS los homologos puestos al valor heredado. */
-function fieldsSincronizados(fields) { return sincronizar(fields); }
+function fieldsSincronizados(fields) {
+  if (!_lab) return { fields, cambios: [], ssot: null };
+  return homol.sincronizar(fields, _lab);
+}
