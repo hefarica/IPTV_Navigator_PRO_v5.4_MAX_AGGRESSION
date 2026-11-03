@@ -28,8 +28,9 @@ const fs = require('fs');
 const path = require('path');
 
 /** LAB por defecto: el mismo certificado que el panel declara leer. */
-const LAB_POR_DEFECTO = path.join(__dirname, '..', '..',
-  'audit_teams_REA', 'evidence', 'lab_master_22.6.0.CERTIFIED-BULLETPROOF-2026-10-26.json');
+// El LAB vive en contracts/lab para que este versionado: la copia anterior estaba bajo audit_teams_REA,
+// que .gitignore:104 excluye con /audit_*/, asi que el gate en CI nunca podia leerlo y fallaba con exit 3.
+const LAB_POR_DEFECTO = path.join(__dirname, '..', '..', 'contracts', 'lab', 'APE_LAB_CANONICAL_BULLETPROOF.json');
 const PERFIL_POR_DEFECTO = 'P4';
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
