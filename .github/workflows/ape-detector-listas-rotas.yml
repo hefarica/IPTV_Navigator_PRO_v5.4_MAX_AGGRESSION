@@ -1,23 +1,27 @@
 name: ape-detector-listas-rotas
 
-# ─────────────────────────────────────────────────────────────────────────────────────────────────
-# DETECTOR E — invariante permanente: canales registrados contra bytes servidos.
+# ─────────────────────────────────────────────────────────────────────────────────────────────
+# DETECTOR E — invariante permanente: contenido registrado contra bytes servidos.
 #
 # POR QUÉ EXISTE: el 2026-11-03 `finalize_upload.php` dejó el `.m3u8` vivo en 8 bytes porque abre
-# con fopen(..., 'wb') —que trunca— antes de saber si puede terminar. El registro de upload.php
-# contó los canales desde el `.gz`, así que el conteo quedó sano mientras el `.m3u8` estaba roto.
+# con fopen(..., 'wb') —que trunca— antes de saber si puede terminar. El `.gz` sano quedó 8,3 s
+# anterior, así que nginx siguió sirviendo lo bueno y nadie lo notó hasta que se desactivó la
+# compresión en vuelo.
 #
-# Este workflow contrasta el conteo registrado con el tamaño real en disco. SÓLO LEE: no repara, no
-# escribe, no toca nginx. Un fichero con canales registrados y menos de 1024 bytes es un fallo.
-# ─────────────────────────────────────────────────────────────────────────────────────────────────
+# Este workflow SÓLO LEE. No repara, no escribe, no toca nginx.
+#
+# Hallazgo del primer barrido (2026-11-03): la tabla `registered_lists` NO EXISTE en el VPS y
+# `/opt/netshield/data/ape_lists.db` tampoco. La base real es `/var/www/html/prisma/db/ape_lists.db`.
+# Por eso el paso E.0 vuelca el esquema: el invariante necesita saber contra qué tabla medir.
+# ─────────────────────────────────────────────────────────────────────────────────────────────
 
 on:
   workflow_dispatch:
     inputs:
       db:
-        description: 'Ruta de la base de datos de registro'
+        description: 'Ruta de la base de registro'
         required: true
-        default: '/opt/netshield/data/ape_lists.db'
+        default: '/var/www/html/prisma/db/ape_lists.db'
       lists_dir:
         description: 'Directorio de listas vivas'
         required: true
@@ -44,65 +48,44 @@ jobs:
           echo "DB=${{ inputs.db }}" >> "$GITHUB_ENV"
           echo "LISTS=${{ inputs.lists_dir }}" >> "$GITHUB_ENV"
 
-      - name: E.1 — la lista del incidente
+      - name: "E.0 - esquema real de la base"
         run: |
           set -uo pipefail
-          echo '--- fila de registro de la lista del incidente ---'
-          ssh "$TARGET" "sudo -n sqlite3 '$DB' \"select filename, channels, activated_at, updated_at from registered_lists where filename like '%1793589060441%';\" 2>&1" || echo 'SIN_DB_O_SIN_TABLA'
-          echo
-          echo '--- tamano real en disco ---'
-          ssh "$TARGET" "sudo -n stat -c '%n size=%s mtime=%y' '$LISTS/APE_LISTA_1793589060441.m3u8' '$LISTS/APE_LISTA_1793589060441.m3u8.gz' 2>&1" || true
-
-      - name: E.2 — esquema disponible (para saber que columnas hay)
-        run: |
-          set -uo pipefail
-          ssh "$TARGET" "sudo -n sqlite3 '$DB' '.schema registered_lists' 2>&1" || echo 'SIN_ESQUEMA'
-
-      - name: "E.0 — donde vive la base de registro"
-        run: |
-          set -uo pipefail
-          echo '--- la ruta pedida existe? ---'
+          echo '=== existe la base? ==='
           ssh "$TARGET" "sudo -n ls -la '$DB' 2>&1 || echo AUSENTE" || true
           echo
-          echo '--- bases sqlite candidatas en el VPS ---'
-          ssh "$TARGET" "sudo -n find /opt /var/www /srv /home -maxdepth 6 -name '*.db' -o -maxdepth 6 -name '*.sqlite*' 2>/dev/null | head -30" || true
+          echo '=== TABLAS ==='
+          ssh "$TARGET" "sudo -n sqlite3 '$DB' '.tables' 2>&1 || echo SIN_TABLAS" || true
           echo
-          echo '--- quien menciona registered_lists en el VPS ---'
-          ssh "$TARGET" "sudo -n grep -RIl 'registered_lists' /var/www/html /opt 2>/dev/null | head -15" || true
+          echo '=== ESQUEMA ==='
+          ssh "$TARGET" "sudo -n sqlite3 '$DB' '.schema' 2>&1 | head -60" || true
           echo
-echo '--- TABLAS REALES de ape_lists.db ---'
-          ssh "$TARGET" "sudo -n sqlite3 /var/www/html/prisma/db/ape_lists.db '.tables' 2>&1 || echo SIN_TABLAS" || true
-          echo
-          echo '--- esquema completo ---'
-          ssh "$TARGET" "sudo -n sqlite3 /var/www/html/prisma/db/ape_lists.db '.schema' 2>&1 | head -40" || true
-          echo
-          echo '--- conteo de filas por tabla ---'
-          ssh "$TARGET" "for t in \$(sudo -n sqlite3 /var/www/html/prisma/db/ape_lists.db '.tables' 2>/dev/null); do sudo -n sqlite3 /var/www/html/prisma/db/ape_lists.db \"select '\$t=' || count(*) from '\$t;\" 2>/dev/null; done" || true
-          echo
-          echo '--- upload/finalize instalados en el VPS ---'
-          ssh "$TARGET" "sudo -n ls -la /var/www/html/finalize_upload.php /var/www/html/upload.php 2>&1 || echo AUSENTES" || true
+          echo '=== otras bases candidatas ==='
+          ssh "$TARGET" "sudo -n find /opt /var/www -maxdepth 6 -name 'ape_*.db' 2>/dev/null | head -10" || true
 
-      - name: "E.3 — BARRIDO COMPLETO: canales registrados contra bytes servidos"
+      - name: "E.1 - la lista del incidente"
         run: |
           set -uo pipefail
-          echo '--- toda lista registrada con canales > 0 ---'
-          ssh "$TARGET" "sudo -n sqlite3 '$DB' \"select filename, channels from registered_lists where channels > 0;\" 2>/dev/null" > /tmp/reg.txt || true
-          if [ ! -s /tmp/reg.txt ]; then echo 'SIN_FILAS (o sin DB)'; exit 0; fi
-          total=0; rotos=0
-          while IFS='|' read -r f c; do
-            [ -z "$f" ] && continue
-            total=$((total+1))
-            s=$(ssh "$TARGET" "sudo -n stat -c %s '$LISTS/$f' 2>/dev/null || echo 0")
-            g=$(ssh "$TARGET" "sudo -n stat -c %s '$LISTS/$f.gz' 2>/dev/null || echo 0")
-            if [ "$s" -lt 1024 ]; then
-              rotos=$((rotos+1))
-              echo "ROTO m3u8=$s gz=$g ch=$c $f"
-            fi
-          done < /tmp/reg.txt
+          echo '=== tamano real en disco ==='
+          ssh "$TARGET" "sudo -n stat -c '%n size=%s mtime=%y' '$LISTS/APE_LISTA_1793589060441.m3u8' '$LISTS/APE_LISTA_1793589060441.m3u8.gz' 2>&1" || true
           echo
-          echo "RESUMEN: registradas=$total rotas=$rotos"
-          if [ "$rotos" -gt 0 ]; then
-            echo '::error::hay listas registradas con canales pero sin contenido servible'
-            exit 1
-          fi
-          echo 'invariante OK: ninguna lista registrada esta por debajo del suelo de 1 KB'
+          echo '=== ficheros del VPS que mencionan registros de listas ==='
+          ssh "$TARGET" "sudo -n grep -RIl -E 'registered_lists|ape_lists' /var/www/html 2>/dev/null | head -10" || true
+
+      - name: "E.2 - quien escribe el m3u8 vivo"
+        run: |
+          set -uo pipefail
+          echo '=== finalize/upload instalados (tamano y fecha) ==='
+          ssh "$TARGET" "sudo -n ls -la --time-style=full-iso /var/www/html/finalize_upload.php /var/www/html/upload.php 2>&1 || echo AUSENTES" || true
+          echo
+          echo '=== el wb del VPS: abre en escritura sin atomico? ==='
+          ssh "$TARGET" "sudo -n grep -n \"fopen(\\\$outputPath\\|rename(\\|tmp\" /var/www/html/finalize_upload.php 2>&1 | head -12" || true
+
+      - name: "E.3 - barrido: toda lista por debajo del suelo de 1 KB"
+        run: |
+          set -uo pipefail
+          echo '=== listas .m3u8 en disco, con su tamano ==='
+          ssh "$TARGET" "sudo -n find '$LISTS' -maxdepth 1 -name '*.m3u8' -printf '%s %p\n' 2>/dev/null | sort -n | head -20" || true
+          echo
+          echo '=== RESUMEN ==='
+          ssh "$TARGET" "sudo -n sh -c 'tot=0; rot=0; for f in \"\$(find \"$LISTS\" -maxdepth 1 -name \"*.m3u8\" 2>/dev/null)\"; do tot=\$((tot+1)); s=\$(stat -c %s \"\$f\" 2>/dev/null || echo 0); if [ \"\$s\" -lt 1024 ]; then rot=\$((rot+1)); echo \"ROTO m3u8=\$s \$f\"; fi; done; echo \"listas=\$tot rotas=\$rot\"'" || true
