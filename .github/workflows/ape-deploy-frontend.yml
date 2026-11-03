@@ -41,7 +41,7 @@ jobs:
     env:
       # Lista de ficheros de la APP que se sirven desde /var/www/html. Se despliegan TODOS porque el
       # generador y el panel de salida son la misma app: desplegar uno sin el otro deja la UI incoherente.
-      FICHEROS: m3u8-typed-arrays-ultimate.js generation-output-panel.js ape-profiles-config.js
+      FICHEROS: m3u8-typed-arrays-ultimate.js generation-output-panel.js ape-profiles-config.js profile-manager-v9.js
       SRC_DIR: IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9
       DEST_DIR: /var/www/html/js/ape-v9
 
@@ -203,5 +203,10 @@ jobs:
           echo '--- el config servido puebla bandwidth_floor ---'
           grep -q '_ensureBandwidthFloor' "$C" || { echo '::error::el config servido no tiene _ensureBandwidthFloor'; ok=0; }
           grep -q 'bandwidth_floor' "$C" || { echo '::error::el config servido no menciona bandwidth_floor'; ok=0; }
+          # El gestor de perfiles no puede volver a recortar el piso contra un bitrate roto.
+          M=/tmp/s-profile-manager-v9.js
+          echo '--- el gestor servido no recorta contra bitrate absurdo ---'
+          grep -q 'bitrateUtil' "$M" || { echo '::error::el gestor servido no tiene bitrateUtil'; ok=0; }
+          grep -q 'Nunca 0,24' "$M" || { echo '::error::el gestor servido no tiene la correccion del 0,24'; ok=0; }
           [ "$ok" = '1' ] || exit 1
           echo 'LO SERVIDO ES EL FICHERO DEL REPO Y LLEVA LAS CORRECCIONES'
