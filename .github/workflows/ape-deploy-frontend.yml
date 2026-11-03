@@ -70,11 +70,13 @@ jobs:
             echo "  $p = $n"
             [ "$n" -gt 0 ] || { echo "::error::el repo no tiene la correccion '$p'"; exit 1; }
           done
-          echo '--- defectos ausentes en el repo ---'
+          # Los defectos se buscan SOLO en lineas de codigo: los comentarios que EXPLICAN el defecto
+          # contienen el nombre del defecto a proposito y no deben contar como si siguiera vivo.
+          echo '--- defectos ausentes en el CODIGO del repo (sin comentarios) ---'
           for p in 'pp=ac/dr/ci' ':scd=5' 'zscale=transfer=bt1886'; do
-            n=$(grep -c -- "$p" "$SRC" || true)
+            n=$(grep -v -E '^\s*(//|\*|#)' "$SRC" | grep -c -- "$p" || true)
             echo "  $p = $n"
-            [ "$n" -eq 0 ] || { echo "::error::el repo aun tiene '$p'"; exit 1; }
+            [ "$n" -eq 0 ] || { echo "::error::el repo aun tiene '$p' en codigo"; exit 1; }
           done
           sha256sum "$SRC" | tee local.sha
 
@@ -145,11 +147,11 @@ jobs:
             echo "  $p = $n"
             [ "$n" -gt 0 ] || { echo "::error::lo servido no tiene '$p'"; ok=0; }
           done
-          echo '--- NO debe tener los defectos ---'
+          echo '--- NO debe tener los defectos en codigo ---'
           for p in 'pp=ac/dr/ci' ':scd=5' 'zscale=transfer=bt1886'; do
-            n=$(grep -c -- "$p" /tmp/servido2.js || true)
+            n=$(grep -v -E '^\s*(//|\*|#)' /tmp/servido2.js | grep -c -- "$p" || true)
             echo "  $p = $n"
-            [ "$n" -eq 0 ] || { echo "::error::lo servido aun tiene '$p'"; ok=0; }
+            [ "$n" -eq 0 ] || { echo "::error::lo servido aun tiene '$p' en codigo"; ok=0; }
           done
           [ "$ok" = '1' ] || exit 1
           echo 'LO SERVIDO TIENE LAS CORRECCIONES Y NO TIENE LOS DEFECTOS'
