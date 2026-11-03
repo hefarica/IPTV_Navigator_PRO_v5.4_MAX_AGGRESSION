@@ -37,51 +37,28 @@ jobs:
           printf 'Host *\n  StrictHostKeyChecking yes\n  UserKnownHostsFile ~/.ssh/known_hosts\n  IdentitiesOnly yes\n' > ~/.ssh/config
           echo "TARGET=${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" >> "$GITHUB_ENV"
 
-      - name: "P2 - el gz descomprime al MISMO contenido que el m3u8?"
+      - name: "P1 - LEER el finalize del VPS linea por linea (sin modificar)"
         run: |
           set -uo pipefail
-          for base in APE_LISTA_1793589060441.m3u8 APE_LISTA_1793558303852_CDN.m3u8; do
-            echo "=== $base ==="
-            ssh "$TARGET" "sudo -n sh -c 'a=\$(sha256sum /var/www/html/lists/$base | cut -d\" \" -f1); b=\$(zcat /var/www/html/lists/$base.gz 2>/dev/null | sha256sum | cut -d\" \" -f1); sa=\$(stat -c %s /var/www/html/lists/$base); gz=\$(stat -c %s /var/www/html/lists/$base.gz); echo \"m3u8_sha=\$a\"; echo \"gz_decomp_sha=\$b\"; echo \"m3u8_bytes=\$sa gz_bytes=\$gz\"; [ \"\$a\" = \"\$b\" ] && echo VEREDICTO=MISMO_CONTENIDO || echo VEREDICTO=CONTENIDO_DISTINTO'" || echo "ERROR_EN_$base"
-            echo
-          done
-
-      - name: "P1 - el finalize del VPS, integro"
-        run: |
-          set -uo pipefail
-          echo '=== descarga del VPS ==='
-          ssh "$TARGET" "sudo -n cat /var/www/html/finalize_upload.php" > /tmp/vps_finalize.php 2>/dev/null || echo "ERROR_DESCARGA"
-          if [ -s /tmp/vps_finalize.php ]; then
-            echo "bytes: $(wc -c < /tmp/vps_finalize.php)"
-            echo
-            echo '=== donde escribe y donde comprime (VPS) ==='
-            grep -n -E "fopen|fwrite|gzip|rename|unlink|chmod|file_put_contents|\\\$totalSize|\\\$outputPath" /tmp/vps_finalize.php | head -30 || true
-            echo
-            echo '=== tiene ya algo de atómico? ==='
-            grep -c -E "rename\\(|tmpfile|tempnam|\\.tmp" /tmp/vps_finalize.php || true
-            echo
-            echo '=== diferencias contra el del repo ==='
-            # El repo es CRLF y el VPS LF: sin strip-trailing-cr el diff marca TODO como cambiado.
-            echo '=== lineas: repo vs VPS ==='
-            wc -l IPTV_v5.4_MAX_AGGRESSION/vps/finalize_upload.php /tmp/vps_finalize.php || true
-            echo
-            echo '=== solo las lineas que DIFIEREN de verdad ==='
-            diff -u --strip-trailing-cr IPTV_v5.4_MAX_AGGRESSION/vps/finalize_upload.php /tmp/vps_finalize.php | grep -E "^[+-]" | grep -vE "^(\+\+\+|---)" | head -60 || echo "SIN_DIFERENCIAS_REALES"
-            echo
-            echo '=== conteo de lineas distintas ==='
-            diff --strip-trailing-cr IPTV_v5.4_MAX_AGGRESSION/vps/finalize_upload.php /tmp/vps_finalize.php | grep -c "^[<>]" || echo 0
-          else
-            echo 'no se pudo descargar'
-          fi
-
-      - name: "P1b - cuantas copias de finalize hay y cual corre"
-        run: |
-          set -uo pipefail
-          echo '=== todas las copias en el VPS ==='
-          ssh "$TARGET" "sudo -n find /var/www /opt -name 'finalize_upload.php' 2>/dev/null | while read p; do printf '%s ' \"\$(stat -c '%s' \"\$p\")\"; echo \"\$p\"; done" || true
+          ssh "$TARGET" "sudo -n cat /var/www/html/finalize_upload.php" > /tmp/vps.php 2>/dev/null || { echo SIN_DESCARGA; exit 0; }
+          tr -d '\r' < /tmp/vps.php > /tmp/vps.lf.php
+          tr -d '\r' < IPTV_v5.4_MAX_AGGRESSION/vps/finalize_upload.php > /tmp/repo.lf.php
+          echo "=== lineas: repo=$(wc -l < /tmp/repo.lf.php) vps=$(wc -l < /tmp/vps.lf.php) ==="
           echo
-          echo '=== nginx: que fichero sirve /finalize_upload.php ==='
-          ssh "$TARGET" "sudo -n grep -rn 'finalize_upload' /etc/nginx/ 2>/dev/null | head -10 || echo SIN_REGLA_NGINX" || true
+          echo "=== SOLO las lineas que difieren (repo -> vps) ==="
+          diff -u /tmp/repo.lf.php /tmp/vps.lf.php | sed -n '/^@@/,$p' | head -120 || echo SIN_DIFERENCIAS
           echo
-          echo '=== quien mas menciona finalize_upload ==='
-          ssh "$TARGET" "sudo -n grep -RIl 'finalize_upload' /var/www/html 2>/dev/null | head -10" || true
+          echo "=== TODO el flujo de escritura del VPS, en orden ==="
+          grep -n -E "fopen|fwrite|fclose|shell_exec|gzip|rename|unlink|chmod|chown|file_put_contents|copy\(|filesize|file_exists|totalSize|outputPath" /tmp/vps.lf.php || true
+
+      - name: "P1b - entorno del finalize: como se invoca y con que"
+        run: |
+          set -uo pipefail
+          echo '=== nginx: la location exacta ==='
+          ssh "$TARGET" "sudo -n sed -n '90,110p;284,300p' /etc/nginx/sites-available/m3u8 2>&1" || true
+          echo
+          echo '=== upload.php: quien llama a finalize y como ==='
+          ssh "$TARGET" "sudo -n grep -n -E 'finalize|chunks|part|chunk' /var/www/html/upload.php 2>&1 | head -25" || true
+          echo
+          echo '=== el cliente: que manda gateway-manager ==='
+          grep -n -E "finalize|upload_id|chunk" IPTV_v5.4_MAX_AGGRESSION/frontend/js/gateway-manager.js 2>/dev/null | head -20 || echo SIN_LOCAL
