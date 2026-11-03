@@ -61,7 +61,15 @@ jobs:
             grep -c -E "rename\\(|tmpfile|tempnam|\\.tmp" /tmp/vps_finalize.php || true
             echo
             echo '=== diferencias contra el del repo ==='
-            diff -u IPTV_v5.4_MAX_AGGRESSION/vps/finalize_upload.php /tmp/vps_finalize.php | head -80 || true
+            # El repo es CRLF y el VPS LF: sin strip-trailing-cr el diff marca TODO como cambiado.
+            echo '=== lineas: repo vs VPS ==='
+            wc -l IPTV_v5.4_MAX_AGGRESSION/vps/finalize_upload.php /tmp/vps_finalize.php || true
+            echo
+            echo '=== solo las lineas que DIFIEREN de verdad ==='
+            diff -u --strip-trailing-cr IPTV_v5.4_MAX_AGGRESSION/vps/finalize_upload.php /tmp/vps_finalize.php | grep -E "^[+-]" | grep -vE "^(\+\+\+|---)" | head -60 || echo "SIN_DIFERENCIAS_REALES"
+            echo
+            echo '=== conteo de lineas distintas ==='
+            diff --strip-trailing-cr IPTV_v5.4_MAX_AGGRESSION/vps/finalize_upload.php /tmp/vps_finalize.php | grep -c "^[<>]" || echo 0
           else
             echo 'no se pudo descargar'
           fi
