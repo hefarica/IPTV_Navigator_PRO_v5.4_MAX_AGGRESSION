@@ -70,6 +70,15 @@ jobs:
           echo '--- quien menciona registered_lists en el VPS ---'
           ssh "$TARGET" "sudo -n grep -RIl 'registered_lists' /var/www/html /opt 2>/dev/null | head -15" || true
           echo
+echo '--- TABLAS REALES de ape_lists.db ---'
+          ssh "$TARGET" "sudo -n sqlite3 /var/www/html/prisma/db/ape_lists.db '.tables' 2>&1 || echo SIN_TABLAS" || true
+          echo
+          echo '--- esquema completo ---'
+          ssh "$TARGET" "sudo -n sqlite3 /var/www/html/prisma/db/ape_lists.db '.schema' 2>&1 | head -40" || true
+          echo
+          echo '--- conteo de filas por tabla ---'
+          ssh "$TARGET" "for t in \$(sudo -n sqlite3 /var/www/html/prisma/db/ape_lists.db '.tables' 2>/dev/null); do sudo -n sqlite3 /var/www/html/prisma/db/ape_lists.db \"select '\$t=' || count(*) from '\$t;\" 2>/dev/null; done" || true
+          echo
           echo '--- upload/finalize instalados en el VPS ---'
           ssh "$TARGET" "sudo -n ls -la /var/www/html/finalize_upload.php /var/www/html/upload.php 2>&1 || echo AUSENTES" || true
 
