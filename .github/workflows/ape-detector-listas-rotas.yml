@@ -81,11 +81,11 @@ jobs:
           echo '=== el wb del VPS: abre en escritura sin atomico? ==='
           ssh "$TARGET" "sudo -n grep -n \"fopen(\\\$outputPath\\|rename(\\|tmp\" /var/www/html/finalize_upload.php 2>&1 | head -12" || true
 
-      - name: "E.3 - barrido: toda lista por debajo del suelo de 1 KB"
+      - name: "E.3 - invariante: toda lista servible y coherencia m3u8/gz"
         run: |
           set -uo pipefail
-          echo '=== listas .m3u8 en disco, con su tamano ==='
-          ssh "$TARGET" "sudo -n find '$LISTS' -maxdepth 1 -name '*.m3u8' -printf '%s %p\n' 2>/dev/null | sort -n | head -20" || true
-          echo
-          echo '=== RESUMEN ==='
-          ssh "$TARGET" "sudo -n sh -c 'tot=0; rot=0; for f in \"\$(find \"$LISTS\" -maxdepth 1 -name \"*.m3u8\" 2>/dev/null)\"; do tot=\$((tot+1)); s=\$(stat -c %s \"\$f\" 2>/dev/null || echo 0); if [ \"\$s\" -lt 1024 ]; then rot=\$((rot+1)); echo \"ROTO m3u8=\$s \$f\"; fi; done; echo \"listas=\$tot rotas=\$rot\"'" || true
+          # Se envia el script y se ejecuta ALLI. Nada de quoting anidado: el intento anterior con
+          # sh -c dentro de ssh rompio el find y reporto un conteo falso.
+          scp -q tools/ops/check_lists_invariant.sh "$TARGET:/tmp/check_lists_invariant.sh"
+          ssh "$TARGET" "cd /tmp && sed -i 's/\r$//' check_lists_invariant.sh && sh check_lists_invariant.sh '$LISTS'" || echo "INVARIANTE_FALLA"
+          rm -f /tmp/check_lists_invariant.sh 2>/dev/null || true
