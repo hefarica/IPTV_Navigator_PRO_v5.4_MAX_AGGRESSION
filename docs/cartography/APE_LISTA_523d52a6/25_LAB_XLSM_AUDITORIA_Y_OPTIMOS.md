@@ -222,3 +222,65 @@ apertura; lo que no sobrevive es a la ejecución de `Brain_BuildUnifiedValues()`
 **No se escribió nada en el libro.** Y tras esta ronda, escribirlo en la hoja 37 habría sido un error:
 la macro la borra. La acción correcta está en las fuentes o en el generador, y eso exige saber de qué hoja
 lee exactamente cada fila — que es el paso siguiente.
+
+---
+
+# ADENDA 2 — el SSOT está BIEN; el bug es del generador VBA
+
+## B.1 · El valor real existe y es sensato
+
+`X-APE-TARGET-BITRATE` **no vive como fila de directiva** en `5_NIVEL_1_HEADER`, `6_NIVEL_2_PROFILES`,
+`7_NIVEL_3_CHANNEL` ni `8_MATRIX_3D` (0 ocurrencias por índice y por texto). Vive **dentro del JSON de
+`headerOverrides` de cada perfil**, que es lo que el LAB emite de verdad:
+
+| Perfil | `X-APE-TARGET-BITRATE` | `X-Initial-Bitrate` |
+|---|---|---|
+| P0 | `40000000,25000000,15000000,10000000` | `25000000,15000000,10000000,5000000` |
+| P1 | `20000000,12000000,8000000,5000000` | `12000000,8000000,5000000,3000000` |
+| P2 | `5000000,3000000,2000000,1500000` | `3000000,2000000,1500000,1000000` |
+| P3 | `2000000,1500000,1000000,500000` | `1500000,1000000,800000,500000` |
+
+**Estos números son correctos y coherentes con la ingeniería:**
+
+- Target P0 = 40 Mbps: holgado para 4K HEVC Main10 (el repo usa 28 Mbps como techo de 4K).
+- Target/Initial = 25/40 = **62 %** en P0, 12/20 = 60 %, 3/5 = 60 %, 1,5/2 = 75 %.
+- Escalera decreciente y monótona: 40 → 20 → 5 → 2 Mbps.
+
+**Coinciden con la escalera en Mbps** de la fila `X-APE-BITRATE` (`40,25,15,10` en P0): target = 40 Mbps =
+primer valor de la escalera × 10⁶. **La relación se sostiene.**
+
+## B.2 · Entonces, ¿de dónde salen los 2×10³³?
+
+**Del generador, no del dato.** `Brain_BuildUnifiedValues()` lee `6_NIVEL_2_PROFILES` con:
+
+```vba
+vals = CStr(wsPr.Cells(r, 2).value) & "||" & CStr(wsPr.Cells(r, 3).value) & ...
+```
+
+Ese `CStr(...)` sobre celdas que contienen **JSON con comas y números grandes** es el candidato natural:
+una coerción numérica o de locale sobre `40000000,25000000,...` puede producir exactamente la clase de
+notación científica que aparece en el artefacto.
+
+**No lo he confirmado ejecutando la macro.** Lo que sí está medido:
+
+- El literal `2E+33` aparece en `sheet40` y en **ninguna otra hoja** del libro.
+- El SSOT contiene valores correctos.
+- `X-APE-TARGET-BITRATE` no existe como fila de directiva; solo dentro de los JSON por perfil.
+
+## B.3 · Veredicto corregido
+
+| Afirmación anterior | Estado |
+|---|---|
+| «138 celdas con valores imposibles» | **CIERTO** — en la hoja generada |
+| «hay que escribir los valores óptimos en el libro» | **FALSO** — el SSOT ya los tiene correctos |
+| «la hoja 37 es la fuente» | **FALSO** — es un artefacto que se borra y regenera |
+| Acción correcta | **Arreglar la macro que parsea**, o dejar que la regeneración produzca valores limpios |
+
+**No se escribió nada en el libro**, y ahora con razón firme: **no hay valores que corregir en el SSOT.**
+El defecto está en el artefacto derivado.
+
+## B.4 · El test que lo cerraría
+
+Ejecutar `Brain_BuildUnifiedValues()` sobre una **copia** del libro (nunca el original) y volver a contar
+las celdas > 1e15. Si baja de 138 a 0, el artefacto estaba simplemente viejo. Si sigue en 138, el bug es
+del parser VBA y hay que corregir la coerción. **Ese experimento es de una sola pasada y no lo he corrido.**
