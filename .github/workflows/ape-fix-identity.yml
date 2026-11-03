@@ -1,0 +1,162 @@
+name: ape-fix-identity
+
+# ─────────────────────────────────────────────────────────────────────────────────────────────────
+# Repara el fichero identity de la lista grande, que tiene 8 bytes.
+#
+# El 2026-11-03 se detectó que un GET SIN Accept-Encoding recibe Content-Length: 8 y el cuerpo es
+# solo "#EXTM3U". El .gz hermano sí está completo (182 MB comprimido → 604 MB). El identity quedó
+# truncado en algún momento y, mientras nginx tuvo gunzip on, la descompresión en vuelo lo ocultaba.
+# Al desactivar gunzip para desbloquear el 206 real, el truncamiento quedó expuesto.
+#
+# Este workflow NO vuelve a gunzip on (eso perdería el 206). Regenera el identity desde el .gz y
+# verifica digest y tamaño ANTES de sustituir nada. Los cuatro cambios de nginx se quedan.
+#
+# Modos: verify-only (por defecto, solo lee) · apply (escribe, con confirmacion literal)
+# ─────────────────────────────────────────────────────────────────────────────────────────────────
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'verify-only (solo lectura) o apply (repara)'
+        required: true
+        default: 'verify-only'
+        type: choice
+        options: [verify-only, apply]
+      confirm:
+        description: 'Para apply escribe exactamente: REPARO EL IDENTITY DE LA LISTA'
+        required: false
+        default: ''
+      file:
+        description: 'Nombre del fichero dentro de /var/www/html/lists/'
+        required: true
+        default: 'APE_LISTA_1793589060441.m3u8'
+
+concurrency:
+  group: ape-fix-identity
+  cancel-in-progress: false
+
+jobs:
+  reparar:
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 25
+    env:
+      LISTS_DIR: /var/www/html/lists
+      ESPERADO_BYTES: '604593696'
+      ESPERADO_SHA: '523d52a6d147f81ce5a212e47b9c55401fb409cd4a41aee96f8ba80b5b5049d6'
+
+    steps:
+      - name: Preparar SSH
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          printf '%s\n' "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' "${{ secrets.VPS_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+          printf 'Host *\n  StrictHostKeyChecking yes\n  UserKnownHostsFile ~/.ssh/known_hosts\n  IdentitiesOnly yes\n' > ~/.ssh/config
+          echo "TARGET=${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" >> "$GITHUB_ENV"
+
+      - name: Estado actual (solo lectura)
+        run: |
+          set -euo pipefail
+          F="${{ inputs.file }}"
+          echo "=== ficheros en $LISTS_DIR ==="
+          ssh "$TARGET" "sudo -n ls -l '$LISTS_DIR/$F' '$LISTS_DIR/$F.gz' 2>&1 || true"
+          echo
+          echo "=== tamano del identity (NO debe ser 8) ==="
+          ssh "$TARGET" "sudo -n stat -c '%n %s bytes' '$LISTS_DIR/$F' 2>&1 || echo AUSENTE"
+          echo
+          echo "=== tamano del .gz ==="
+          ssh "$TARGET" "sudo -n stat -c '%n %s bytes' '$LISTS_DIR/$F.gz' 2>&1 || echo AUSENTE"
+
+      - name: Verificar que el .gz es integro y da el sha esperado
+        run: |
+          set -euo pipefail
+          F="${{ inputs.file }}"
+          echo "descomprimiendo el .gz a un temporal y comprobando su huella..."
+          ssh "$TARGET" "sudo -n sh -c 'gunzip -c \"$LISTS_DIR/$F.gz\" > /tmp/ape_identity_check.tmp 2>/tmp/ape_gunzip.err; echo gunzip_rc=\$?'"
+          echo "=== resultado ==="
+          ssh "$TARGET" "sudo -n stat -c 'bytes=%s' /tmp/ape_identity_check.tmp; sudo -n sha256sum /tmp/ape_identity_check.tmp"
+          B=$(ssh "$TARGET" "sudo -n stat -c '%s' /tmp/ape_identity_check.tmp")
+          S=$(ssh "$TARGET" "sudo -n sha256sum /tmp/ape_identity_check.tmp | cut -d' ' -f1")
+          echo "bytes obtenidos : $B   (esperado $ESPERADO_BYTES)"
+          echo "sha256 obtenido : $S"
+          echo "sha256 esperado : $ESPERADO_SHA"
+          if [ "$B" != "$ESPERADO_BYTES" ]; then
+            echo "::error::el .gz descomprime a $B bytes, no a $ESPERADO_BYTES. NO se sustituye nada."
+            exit 1
+          fi
+          if [ "$S" != "$ESPERADO_SHA" ]; then
+            echo "::error::el .gz descomprime con sha $S, no al esperado. NO se sustituye nada."
+            exit 1
+          fi
+          echo 'el .gz descomprime exactamente al fichero esperado'
+
+      - name: Exigir la confirmacion literal
+        if: inputs.mode == 'apply'
+        run: |
+          set -euo pipefail
+          if [ "${{ inputs.confirm }}" != "REPARO EL IDENTITY DE LA LISTA" ]; then
+            echo '::error::falta la confirmacion literal. No se escribe nada.'
+            echo "  recibido: '${{ inputs.confirm }}'"
+            exit 1
+          fi
+          echo 'confirmacion literal presente'
+
+      - name: Backup y sustitucion
+        if: inputs.mode == 'apply'
+        run: |
+          set -uo pipefail
+          F="${{ inputs.file }}"
+          STAMP=$(date -u +%Y%m%dT%H%M%SZ)
+          BAK="$LISTS_DIR/$F.bak_$STAMP"
+          echo "backup: $BAK"
+          if ! ssh "$TARGET" "sudo -n cp -a '$LISTS_DIR/$F' '$BAK' && sudo -n ls -l '$BAK'"; then
+            echo '::error::fallo el backup. No se toca el fichero.'; exit 1
+          fi
+
+          # El temporal ya esta verificado en el paso anterior.
+          if ! ssh "$TARGET" "sudo -n install -m 0644 -o www-data -g www-data /tmp/ape_identity_check.tmp '$LISTS_DIR/$F'"; then
+            echo '::error::fallo la instalacion. Restaurando.'; ssh "$TARGET" "sudo -n cp -a '$BAK' '$LISTS_DIR/$F'"; exit 1
+          fi
+
+          echo '=== comprobacion final en disco ==='
+          ssh "$TARGET" "sudo -n stat -c '%n %s bytes' '$LISTS_DIR/$F'; sudo -n sha256sum '$LISTS_DIR/$F'"
+          S=$(ssh "$TARGET" "sudo -n sha256sum '$LISTS_DIR/$F' | cut -d' ' -f1")
+          if [ "$S" != "$ESPERADO_SHA" ]; then
+            echo "::error::tras instalar, el sha es $S. RESTAURANDO el backup."
+            ssh "$TARGET" "sudo -n cp -a '$BAK' '$LISTS_DIR/$F'"
+            exit 1
+          fi
+          echo "REPARADO. backup en $BAK"
+          echo "Para revertir: sudo cp -a $BAK $LISTS_DIR/$F"
+
+      - name: Verificar la entrega HTTP (con y sin gzip, y el rango)
+        run: |
+          set -uo pipefail
+          U="https://iptv-ape.duckdns.org/lists/${{ inputs.file }}"
+          echo "URL: $U"
+          echo
+          echo '--- A) SIN Accept-Encoding (esta era la pierna rota) ---'
+          curl -sS -o /dev/null -w '  http=%{http_code} bytes=%{size_download}\n' "$U" || true
+          A=$(curl -sS -o /dev/null -w '%{size_download}' "$U" || echo 0)
+          echo
+          echo '--- B) CON gzip ---'
+          curl -sS --compressed -o /dev/null -w '  http=%{http_code} bytes=%{size_download}\n' "$U" || true
+          B=$(curl -sS --compressed -o /dev/null -w '%{size_download}' "$U" || echo 0)
+          echo
+          echo '--- C) RANGE sin gzip ---'
+          curl -sS -r 0-1023 -D /tmp/range.h -o /tmp/range.b "$U" || true
+          grep -iE '^HTTP/|content-range|content-length' /tmp/range.h || true
+          echo "  bytes del rango: $(stat -c %s /tmp/range.b 2>/dev/null || echo 0)"
+          echo
+          echo "sin-gzip=$A  con-gzip=$B  esperado=$ESPERADO_BYTES"
+          ok=1
+          [ "$A" = "$ESPERADO_BYTES" ] || { echo "::error::sin gzip llegan $A bytes, no $ESPERADO_BYTES"; ok=0; }
+          [ "$B" = "$ESPERADO_BYTES" ] || { echo "::error::con gzip llegan $B bytes, no $ESPERADO_BYTES"; ok=0; }
+          if [ "$ok" != '1' ]; then
+            echo '::error::la entrega sigue sin ser correcta en las dos piernas'
+            exit 1
+          fi
+          echo 'las dos piernas entregan el tamano completo'
