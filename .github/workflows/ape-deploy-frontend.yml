@@ -98,6 +98,24 @@ jobs:
             done
           done
 
+      - name: DIAGNOSTICO — donde vive cada copia y que ruta usa nginx
+        run: |
+          set -uo pipefail
+          echo '=== TODAS las copias del panel y del generador en el VPS ==='
+          ssh "$TARGET" "sudo -n find /var/www /usr/share /opt -name 'generation-output-panel.js' -o -name 'm3u8-typed-arrays-ultimate.js' 2>/dev/null | head -20 | while read p; do sudo -n stat -c '%n %s %y' \"\$p\"; done"
+          echo
+          echo '=== locations de nginx que mencionan ape-v9 o js ==='
+          ssh "$TARGET" "sudo -n grep -nE 'location|alias|root' /etc/nginx/sites-enabled/default | grep -iE 'js|ape-v9|/var/www' | head -20"
+          echo
+          echo '=== hay .gz hermanos? ==='
+          ssh "$TARGET" "sudo -n ls -l /var/www/html/js/ape-v9/*.gz 2>&1 || echo 'sin .gz en ape-v9'"
+          echo
+          echo '=== el fichero servido ahora mismo ==='
+          curl -sS -o /tmp/diag.js -w '  http=%{http_code} bytes=%{size_download}\n' \
+            "https://iptv-ape.duckdns.org/js/ape-v9/generation-output-panel.js"
+          echo "  sha servido: $(sha256sum /tmp/diag.js | cut -d' ' -f1)"
+          echo "  etag servido: $(curl -sSI 'https://iptv-ape.duckdns.org/js/ape-v9/generation-output-panel.js' | grep -i etag || true)"
+
       - name: Exigir la confirmacion literal
         if: inputs.mode == 'apply'
         run: |
