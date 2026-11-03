@@ -460,6 +460,29 @@
   //   1. la calidad más alta posible -> el perfil de índice más bajo (P0 > P1 > ... > P5)
   //   2. con ese perfil, el delta más alto que aún entra -> más margen en entrada
   // La calidad manda porque la salida es lo que el usuario quiere ver y el delta solo reserva margen.
+  // ── UMBRAL DE ARRANQUE ────────────────────────────────────────────────────────────────────────
+  // El SUELO del perfil y el UMBRAL DE ARRANQUE son dos numeros distintos y hasta ahora solo se
+  // usaba el primero.
+  //
+  //   suelo    = bitrate minimo SOSTENIDO para que la variante mas baja no se corte.
+  //   arranque = ancho de banda para bajar manifiesto + PRIMER SEGMENTO en t segundos.
+  //
+  // Un segmento de D segundos a B Mbps pesa B x D megabits, asi que bajarlo en t segundos exige
+  // B x D / t Mbps. Se mide contra el bitrate del perfil, no contra su suelo: el arranque descarga
+  // un segmento real de la variante que el perfil declara.
+  var SEGMENTO_S = 6;   // duracion tipica de segmento HLS
+  var ARRANQUE_S = 3;   // objetivo de time-to-first-frame
+  function umbralArranque(bitrateMbps) {
+    var b = Number(bitrateMbps) || 0;
+    if (!(b > 0)) return 0;
+    return b * SEGMENTO_S / ARRANQUE_S;
+  }
+  function segundosPrimerSegmento(bitrateMbps, inMbps) {
+    var b = Number(bitrateMbps) || 0, i = Number(inMbps) || 0;
+    if (!(b > 0) || !(i > 0)) return 0;
+    return (b * SEGMENTO_S) / i;
+  }
+
   function mejorEscenario() {
     var g = guard();
     var out = { hayMedicion: g.has, viable: null, minimo: null, porPerfil: {}, delta: DELTA_PCT };
@@ -592,6 +615,21 @@
         var yaEnMinimo = (s.delta <= 1);
         html += '<div style="' + linea + 'color:#fbbf24;"><b>Ningún perfil entra</b> con ' +
           s.inM.toFixed(1) + ' Mbps, ni al delta mínimo del 1 %.</div>';
+
+        // UMBRAL DE ARRANQUE: cuanto hace falta de verdad y cuanto tarda ahora.
+        var bitratePerfil = 0;
+        try {
+          var _pp = window.APE_PROFILES_CONFIG && window.APE_PROFILES_CONFIG.profiles;
+          bitratePerfil = Number(_pp && _pp[act] && _pp[act].settings && _pp[act].settings.bitrate) || 0;
+        } catch (_e) { }
+        if (bitratePerfil > 0) {
+          var uArranque = umbralArranque(bitratePerfil);
+          var tSeg = segundosPrimerSegmento(bitratePerfil, s.inM);
+          html += '<div style="' + linea + 'color:#c4b5fd;"><b>Umbral de arranque</b>: ' + act +
+            ' emite ' + bitratePerfil + ' Mbps, y bajar su primer segmento de ' + SEGMENTO_S +
+            ' s en ' + ARRANQUE_S + ' s exige <b>' + uArranque.toFixed(1) + ' Mbps</b>. Con ' +
+            s.inM.toFixed(1) + ' Mbps ese segmento tarda <b>' + tSeg.toFixed(1) + ' s</b>.</div>';
+        }
         if (yaEnMinimo) {
           html += '<div style="' + linea + 'color:#86efac;">El delta ya está en el <b>mínimo posible (1 %)</b>: ' +
             'no queda nada que bajar por ese lado.</div>';
