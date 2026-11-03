@@ -1,0 +1,184 @@
+{
+  "task": "t31",
+  "attempt": 5,
+  "stamp": "20261028T192412Z",
+  "host": "ubuntu-2gb-ash-1 (178.156.147.234)",
+  "modo": "solo lectura",
+  "mutaciones": 0,
+  "veredicto_global": "PASS_CON_3_DESVIACIONES_Y_1_NOT_RUN",
+  "rollback_recomendado": false,
+  "rollback_disponible": {
+    "stamp": "20261028T093843Z",
+    "ficheros": 10,
+    "incluye": "ape_uhd.lua 5320 B previo + conf 10941 B previo"
+  },
+  "gates": {
+    "deploy": {
+      "ape_uhd_lua": "b02fbe28ad2b == repo OK",
+      "lua_ok": "9/9",
+      "conf_desplegado": "6b3c71e76ae4 (11224 B)",
+      "conf_repo": "4b5f9f02a3ec (11867 B, mtime 19:19Z)",
+      "paridad": "9/10",
+      "veredicto": "PARCIAL"
+    },
+    "nginx": {
+      "test": "OK",
+      "MainPID": 3801145,
+      "NRestarts": 0,
+      "reload_sin_restart": true,
+      "config_cargada_con_ape_uhd": true,
+      "veredicto": "PASS"
+    },
+    "G3": {
+      "exit": 0,
+      "veredicto_guard": "PASS_WITH_DECLARED_RISK",
+      "blocker": 0,
+      "high": 3,
+      "info": 1,
+      "UHD09": "resuelto",
+      "veredicto": "PASS"
+    },
+    "G4": {
+      "exit": 0,
+      "selftest": "8/8",
+      "veredicto": "PASS"
+    },
+    "G5": {
+      "http": 200,
+      "expected": 88,
+      "asserts_ok": true,
+      "fail": 0,
+      "N_cambio": false,
+      "veredicto": "PASS"
+    },
+    "G6_captura": {
+      "exit": 0,
+      "pares": 4,
+      "filas_lua": 20,
+      "caso": "20261028T192457Z.json",
+      "veredicto": "PASS"
+    },
+    "G6_cuerpo_vs_pre": {
+      "estado": "NOT_RUN",
+      "causa": "PRE de t30 sirvio private_range_blocked en los 4 pares; no contiene manifests"
+    },
+    "G6_comportamiento": {
+      "M3_8k_L153": "8k->4k OK",
+      "M2_master4k": "8k->4k OK",
+      "M6_hev1": "8k->4k OK",
+      "M2_pq": "8k->4k OK",
+      "M4_8k_L183": "8k->4k FAIL_vs_enunciado",
+      "causa": "flag uhd8k=0 ⇒ allow_8k=false",
+      "veredicto": "PARCIAL"
+    },
+    "G7": {
+      "m3u8": 200,
+      "ts": 404,
+      "m4s": 404,
+      "mp4": 404,
+      "veredicto": "PASS"
+    },
+    "G8": {
+      "lista_4k": "a464a0c3 140555650 2026-10-26T19:55:49Z",
+      "lista_cdn": "db2d034e 160845954 2026-10-26T08:23:18Z",
+      "identicas_a_t30": true,
+      "veredicto": "PASS"
+    },
+    "G9": {
+      "http": 200,
+      "ok": true,
+      "shared_dicts": true,
+      "upstreams_down": 0,
+      "uhd_presente": true,
+      "orden": "ts,checks,qoe,uhd,plane,ok",
+      "uhd_ultima_clave": false,
+      "veredicto": "PASS_con_D3"
+    },
+    "endpoint_uhd": {
+      "loopback": 200,
+      "json_claves": "can8k_last,off,ts,uhd8k,uhd4k,mode_last,ok",
+      "puerto_443": 404,
+      "contadores_crecen": "off 1259->1279, uhd4k 19->25",
+      "veredicto": "PASS"
+    },
+    "G10": {
+      "n": 9,
+      "ttfb_p50_ms": 755.3,
+      "delta_p50_ms": 34.8,
+      "delta_min_ms": 32.4,
+      "delta_max_ms": 43.6,
+      "banda_pre_ms": "31-51",
+      "dentro_de_banda": true,
+      "veredicto": "PASS"
+    },
+    "G11": {
+      "bbr": "OK",
+      "fq": "OK",
+      "fastopen": 3,
+      "slow_start_after_idle": 0,
+      "rutas_con_rto_min": 0,
+      "veredicto": "PARCIAL"
+    },
+    "rollback": {
+      "stamp": "20261028T093843Z",
+      "ficheros": 10,
+      "veredicto": "PASS"
+    }
+  },
+  "desviaciones": [
+    {
+      "id": "D1",
+      "que": "paridad 9/10",
+      "causa": "drift del REPO posterior al deploy: meta-plane.conf repo 4b5f9f02 (11867 B, mtime 19:19Z) vs desplegado 6b3c71e7 (11224 B, 09:39Z, hash firmado por t29)",
+      "riesgo": "un redeploy ciego empujaria un conf no validado",
+      "accion": "ninguna (solo lectura)"
+    },
+    {
+      "id": "D2",
+      "que": "G6 8K no verificable",
+      "causa": "flag vivo uhd8k=0 ⇒ allow_8k=false ⇒ can_declare_8k siempre false; M4_8k_L183 declara 4k",
+      "riesgo": "ninguno funcional; la expectativa del enunciado asume uhd8k=1",
+      "accion": "verificar en ventana con uhd8k=1"
+    },
+    {
+      "id": "D3",
+      "que": "uhd no es la ultima clave de /_ape/health",
+      "causa": "orden real ts,checks,qoe,uhd,plane,ok",
+      "riesgo": "cosmetico/contrato",
+      "accion": "reportado"
+    },
+    {
+      "id": "D4",
+      "que": "rto_min ausente",
+      "causa": "0 rutas con rto_min en ip route show table all",
+      "riesgo": "no es consecuencia de este deploy",
+      "accion": "reportado"
+    }
+  ],
+  "flags_vivos": {
+    "rebase": 1,
+    "enrich": 0,
+    "virtual4k": 0,
+    "wake": 1,
+    "sentinel": 1,
+    "auth": 0,
+    "uhd_pq": 0,
+    "uhd_auto": 1,
+    "uhd8k": 0,
+    "uhd4k": 1,
+    "hint": 0
+  },
+  "evidencia": [
+    "state.sh",
+    "state.log",
+    "detail.sh",
+    "detail.log",
+    "g10_g11.sh",
+    "g10_g11.log",
+    "G3_guard_post.log",
+    "G4_selftest_post.log",
+    "G6_capture_post.log",
+    "cmp_g6.js",
+    "stamp.txt"
+  ]
+}

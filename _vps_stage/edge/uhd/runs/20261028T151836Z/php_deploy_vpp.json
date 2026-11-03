@@ -1,0 +1,143 @@
+{
+  "task": "t42",
+  "attempt": 2,
+  "stamp": "20261028T151836Z",
+  "host": "ubuntu-2gb-ash-1 (178.156.147.234)",
+  "ventana_deploy_utc": {
+    "backup": "2026-10-28T15:19:14Z",
+    "install": "2026-10-28T15:19:30Z",
+    "monitoring_inicio": "2026-10-28T15:19:46Z",
+    "monitoring_fin": "2026-10-28T15:24:26Z"
+  },
+  "resultado": "OK",
+  "rollback_ejecutado": false,
+  "rollback_motivo": "cero degradaciones y cero 500/timeout en verificación y monitoring (10/10 OK)",
+  "ficheros": [
+    {
+      "ruta": "lib/ape_mesh.php",
+      "before_sha256": "b9bc9a697d4665b782cad573275778bb6dc77741698fc07a90cbd60fe3e7c6ed",
+      "before_bytes": 30412,
+      "before_owner": "root:root",
+      "after_sha256": "cafe66e4508f26436d80268f373eab2595d1e5c0bc939ed6a9a13eadda586442",
+      "after_bytes": 39596,
+      "after_owner": "www-data:www-data",
+      "php_l": 0
+    },
+    {
+      "ruta": "api/ape-feedforward.php",
+      "before_sha256": "4c0668ad1539c99ca2dfb3ee71ccea19eaf23b35051ef0694decb689f8a27278",
+      "before_bytes": 3146,
+      "before_owner": "www-data:www-data",
+      "after_sha256": "9cd4e0fad875090fd720e16d267e43bd184408110dbadf7de48420182ff533b8",
+      "after_bytes": 3906,
+      "after_owner": "www-data:www-data",
+      "php_l": 0
+    },
+    {
+      "ruta": "cli/push_pq_profile.php",
+      "before_sha256": "5d1ef6e9f34960bcf312fe4ca75dc6608623f44cd2eeca9223812bbba7756f8d",
+      "before_bytes": 2844,
+      "before_owner": "root:root",
+      "after_sha256": "f0fc5e92f256d3703e0b5524aa1f18a915b501a05e1307cd29bc48843dc73ec7",
+      "after_bytes": 3406,
+      "after_owner": "www-data:www-data",
+      "php_l": 0
+    }
+  ],
+  "verificacion": {
+    "5a_ape_vpp": {
+      "esperado": "ape_vpp allowed:false, device_settings 3, presets 41, sin 500",
+      "medido": "ape_vpp PRESENTE allowed=false reason=no_caps levers=0 device_settings=3 presets=41 HTTP=200",
+      "pass": true
+    },
+    "5b_passthrough": {
+      "esperado": "file=x activated:false sin ape_vpp",
+      "medido": "200 activated=false sin ape_vpp; cmp BEFORE vs AFTER IDENTICOS",
+      "pass": true
+    },
+    "5c_levers": {
+      "esperado": 13,
+      "medido": 13,
+      "exit": 0,
+      "pass": true
+    },
+    "5d_push_pq": {
+      "esperado": "exit 2 y policy_deltas sin cambio",
+      "medido": "exit 2 (skip: SoC no allowlisted); policy_deltas=0 antes y despues",
+      "pass": true
+    },
+    "5e_luatest_cdn": {
+      "esperado": "88/88 y cdn 200",
+      "medido": "expected=88 asserts_ok=true fail=0; cdn=200",
+      "pass": true
+    }
+  },
+  "monitoring": {
+    "iteraciones": 10,
+    "intervalo_s": 30,
+    "duracion_s": 282,
+    "degradados": 0,
+    "result": "OK",
+    "muestras": [
+      "15:19:47Z OK",
+      "15:20:18Z OK",
+      "15:20:49Z OK",
+      "15:21:20Z OK",
+      "15:21:51Z OK",
+      "15:22:22Z OK",
+      "15:22:53Z OK",
+      "15:23:24Z OK",
+      "15:23:55Z OK",
+      "15:24:26Z OK"
+    ]
+  },
+  "scope": {
+    "ficheros_modificados_en_prisma": "EXACTAMENTE 3 (find -newermt 2026-10-28T15:18Z)",
+    "nginx": "no tocado; MainPID=3801145 NRestarts=0",
+    "php_fpm": "sin reload/restart; MainPID=3800678 NRestarts=0 ActiveEnterTimestamp=2026-10-28T06:30:35Z",
+    "git_add": false,
+    "commits": false,
+    "otros_cambios": false
+  },
+  "hallazgos_fuera_de_alcance": [
+    {
+      "id": "H1",
+      "desc": "50-ape-meta-plane.conf cambio desde t30: 3e29b928(10941B) -> 6b3c71e76ae4(11224B, mtime 2026-10-28T09:39:15Z) = hash firmado por t29 para _vps_stage/nginx/meta-plane.conf; otra sesion lo desplego 6 min despues de mi ventana t30",
+      "accion": "ninguna (fuera de alcance)"
+    },
+    {
+      "id": "H2",
+      "desc": "nginx -T sha256 ahora 255425a97a6f...af04 vs 0c6c0ea0090e...3d1c en t30 => hubo reload entre 09:33Z y 15:19Z (no por mi parte)",
+      "accion": "ninguna"
+    },
+    {
+      "id": "H3",
+      "desc": "/_ape/uhd ya presente en la config viva (1 ocurrencia)",
+      "accion": "ninguna"
+    },
+    {
+      "id": "H4",
+      "desc": "EFECTO COLATERAL DEL DEPLOY: el nuevo ape_mesh.php creo /opt/netshield/data/conviva.db (28672 B, mtime 15:19) con policy_deltas vacia (0 filas); antes la ruta no existia. Sin inserciones (push_pq exit 2). Un rollback de PHP NO borra ese fichero",
+      "accion": "decidir si se conserva"
+    },
+    {
+      "id": "H5",
+      "desc": "owner deliberado: ape_mesh.php y push_pq_profile.php pasaron de root:root a www-data:www-data por el mandato (-o www-data -g www-data)",
+      "accion": "rollback.sh restaura owner original si se requiere"
+    }
+  ],
+  "evidencia": [
+    "deploy.sh",
+    "deploy.log",
+    "stage.log",
+    "verify.sh",
+    "verify.log",
+    "monitor.sh",
+    "monitor.log",
+    "scope.sh",
+    "scope.log",
+    "nginx_state.sh",
+    "nginx_state.log",
+    "stamp.txt"
+  ]
+}

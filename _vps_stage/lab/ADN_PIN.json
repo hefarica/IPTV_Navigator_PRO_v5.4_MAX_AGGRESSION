@@ -1,0 +1,151 @@
+{
+  "_comment": "T33 · PIN DEL ADN CANÓNICO. Una sola fuente de verdad por sha256. Cualquier lista generada debe declarar este hash en su cabecera #EXT-X-APE-LAB-DNA.",
+  "schema": "adn-pin/1",
+  "pinned_at": "2026-10-25",
+  "pinned_by": "t33 (hls-forensics) · orden del propietario vía capitán",
+  "canonical_path": "IPTV_v5.4_MAX_AGGRESSION/frontend/lab_master_22.6.0.json",
+  "sha256": "099A1707A2F1AE692FFCFEDE01165F21CD66656B786742CE8DB518581A371FD4",
+  "size_bytes": 280065,
+  "source": "LAB_CALIBRATED_BULLETPROOF_22.6.0-CRYSTAL-4K-UHD.json",
+  "source_path": "C:\\Users\\HFRC\\Downloads\\LAB_CALIBRATED_BULLETPROOF_22.6.0-CRYSTAL-4K-UHD.json",
+  "exported_at": "2026-05-23T05:39:38",
+  "version": "22.6.0-CRYSTAL-4K-UHD",
+  "lab_version": "omega_v1",
+  "lab_schema_variant": "omega_v2_bulletproof_perprofile",
+  "redacted": false,
+  "redaction_note": "SIN redactar por decisión del propietario: el fichero debe ser EXACTAMENTE el JSON que exporta el Excel (copia byte a byte, Compare-Object de bytes = 0 diferencias). El saneado previo (07DB5563…, 22 valores a ***REDACTED***) se revirtió. Compensación exigida: rotación de las 5 parejas de credenciales + protección de la ruta.",
+
+  "provenance": {
+    "movement": "ninguno: se escribió el contenido en el MISMO path",
+    "why_same_path": "index-v4.html:4029 carga js/ape-lab-import-helper.js, cuyo DEFAULT_PATH = 'lab_master_22.6.0.json' (ape-lab-import-helper.js:36) y hace fetch() en :219 como 3ª capa de bootEnsure() (:270, auto-disparo :332). Mover o renombrar el fichero degrada el auto-import.",
+    "consumed_by": "ape-lab-import-helper.js → APE_PROFILES_CONFIG.importFromLAB (ape-profiles-config.js:4544)",
+    "not_dead_code": "CORRECCIÓN de T24: T24 midió «0 referencias» con un grep que no cubría el helper. El fetch automático SÍ existe (3ª capa de bootEnsure, 400 ms)."
+  },
+
+  "_excel_sheet": "6_NIVEL_2_PROFILES",
+  "excel_canonical_resolution": {
+    "P0": "7680x4320",
+    "P1": "3840x2160",
+    "P2": "3840x2160",
+    "P3": "1920x1080",
+    "P4": "1280x720",
+    "P5": "854x480"
+  },
+  "excel_canonical_codec": {
+    "P3": "hvc1.2.4.L123",
+    "P4": "hvc1.2.4.L93"
+  },
+
+  "known_divergences": [
+    {
+      "profile": "P1",
+      "field": "settings.resolution",
+      "excel_sheet6": "3840x2160",
+      "export_value": "7680x4320",
+      "impact": "231 canales P1 declaran 7680x4320 con CODECS hvc1.2.4.L153.B0 en la lista viva (medido en T29). L153 = 4K@60; declarar 8K con L153 viola la Ley Cardinal 1 Nivel<->Resolucion.",
+      "accepted_by": "propietario (orden de copiar el export exacto)",
+      "required_fix": "Hoja 6 del Excel o el emisor: el emisor debe ignorar settings.resolution cuando contradiga la hoja, o corregir el Excel."
+    },
+    {
+      "profile": "P3",
+      "field": "settings.resolution",
+      "excel_sheet6": "1920x1080",
+      "export_value": "3840x2160",
+      "impact": "P3 es el perfil de fallback (2.517 de 2.754 canales en T1). Declara 4K.",
+      "accepted_by": "propietario (orden de copiar el export exacto)",
+      "required_fix": "idem P1"
+    },
+    {
+      "profile": "P3",
+      "field": "settings.codec_full",
+      "excel_sheet6": "hvc1.2.4.L123",
+      "export_value": "hvc1.1.6.L120.B0",
+      "impact": "Par ilegal 4K + hvc1.1.6.L120.B0 (Main L4.0, techo 1080p): el decoder pedido no puede con 3840x2160.",
+      "accepted_by": "propietario (orden de copiar el export exacto)",
+      "required_fix": "idem P1"
+    },
+    {
+      "profile": "P4",
+      "field": "settings.resolution",
+      "excel_sheet6": "1280x720",
+      "export_value": "3840x2160",
+      "impact": "P4 declara 4K sirviendo un perfil 720p.",
+      "accepted_by": "propietario (orden de copiar el export exacto)",
+      "required_fix": "idem P1"
+    },
+    {
+      "profile": "P4",
+      "field": "settings.codec_full",
+      "excel_sheet6": "hvc1.2.4.L93",
+      "export_value": "avc1.64001f",
+      "impact": "Par ilegal 4K + avc1.64001f (AVC High L3.1, techo 720p). Ademas la familia cambia (HEVC->AVC): Ley Cardinal/doctrina de familia.",
+      "accepted_by": "propietario (orden de copiar el export exacto)",
+      "required_fix": "idem P1"
+    },
+    {
+      "profile": "P5",
+      "field": "settings.resolution",
+      "excel_sheet6": "854x480",
+      "export_value": "3840x2160",
+      "impact": "P5 (SD) declara 4K con avc1.42c01e (Baseline L3.0, techo 480p): par imposible.",
+      "accepted_by": "propietario (orden de copiar el export exacto)",
+      "required_fix": "idem P1"
+    },
+    {
+      "profile": "P1",
+      "field": "settings.codec_full",
+      "excel_sheet6": "no consta en la tabla del capitan (solo P3/P4)",
+      "export_value": "hvc1.2.4.L153.B0",
+      "impact": "Par INTRINSECAMENTE ilegal: 7680x4320 con hvc1.2.4.L153.B0 (L153 = 4K@60, techo 2160p). La ilegalidad no depende de lo que diga la hoja: el nivel declarado no puede con 8K. Es el par medido en 231 canales por T29 (8K + L153).",
+      "detected_by": "adn_pin_assert.js A3 en la primera ejecucion (no estaba declarado; el gate lo cazo)",
+      "accepted_by": "propietario (orden de copiar el export exacto)",
+      "required_fix": "idem P1 resolucion: el export debe declarar 3840x2160 (hoja 6) o el codec debe subir a L180+ si de verdad fuera 8K."
+    },
+    {
+      "profile": "P5",
+      "field": "settings.codec_full",
+      "excel_sheet6": "no consta en la tabla del capitan (solo P3/P4)",
+      "export_value": "avc1.42c01e",
+      "impact": "Par INTRINSECAMENTE ilegal: 3840x2160 con avc1.42c01e (AVC Baseline L3.0, techo 480p).",
+      "detected_by": "adn_pin_assert.js A3 en la primera ejecucion (no estaba declarado; el gate lo cazo)",
+      "accepted_by": "propietario (orden de copiar el export exacto)",
+      "required_fix": "idem P5 resolucion: con 854x480 el par seria legal."
+    },
+    {
+      "profile": "P0..P5",
+      "field": "settings.fps",
+      "excel_sheet6": "120 (en los 6, segun el capitán)",
+      "export_value": "120",
+      "impact": "fps=120 en todos, incluido P5 854x480. Coincide con el Excel pero es incoherente con 480p y con avc1.42c01e (techo 30 fps a L3.0). Se registra como anomalia conocida, NO se corrige aqui.",
+      "accepted_by": "propietario (orden de copiar el export exacto)",
+      "required_fix": "Decidir en la hoja 6 (probablemente 60/60/60/60/60/30)."
+    }
+  ],
+
+  "credentials_present": true,
+  "credentials_policy": {
+    "decision": "allowlist explicita en el escaner de secretos para ESTE path y solo para el",
+    "reason": "SSOT exacto del export del Excel, decision del propietario",
+    "compensation": "rotacion de las 5 parejas de credenciales + proteccion de la ruta",
+    "scope": "exclusivamente IPTV_v5.4_MAX_AGGRESSION/frontend/lab_master_22.6.0.json; el resto de frontend/** sigue estricto",
+    "occurrences": "22 valores en claro: servers[].username|password (4+4), placeholders_map['{server.username}']/['{server.password}'] (2), headerOverrides Proxy-Authorization / X-Auth-Stub-Basic en 6 perfiles (12)"
+  },
+
+  "gate": {
+    "file": "_vps_stage/tests/adn_pin_assert.js",
+    "command": "node _vps_stage/tests/adn_pin_assert.js",
+    "fails_if": [
+      "sha256 del fichero != pin.sha256",
+      "alguna resolucion != excel_canonical_resolution y NO esta en known_divergences",
+      "par resolucion+codec_level imposible y NO esta en known_divergences",
+      "el pin declara credentials_present=false pero el fichero las tiene",
+      "aparece una divergencia NUEVA no declarada en known_divergences"
+    ]
+  },
+
+  "header_contract": {
+    "tag": "#EXT-X-APE-LAB-DNA:sha256=<hash>,SOURCE=<source>,EXPORTED=<fecha>",
+    "emitted_by": "m3u8-typed-arrays-ultimate.js :: __apeLabDnaTag(options) en las 3 plantillas de cabecera",
+    "fallback": "sha256=unverified cuando el runtime no conoce el hash; la linea SIEMPRE se emite (la ausencia se declara, no se esconde)"
+  }
+}

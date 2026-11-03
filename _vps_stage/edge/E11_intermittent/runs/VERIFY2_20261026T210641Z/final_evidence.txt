@@ -1,0 +1,47 @@
+<stdin>:19: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+# EVIDENCIA CONSOLIDADA E11 · 2026-10-26T21:29:13Z
+# log: 1227 peticiones /cdn/ · ventana 2026-10-24 16:29:07 -> 2026-10-26 21:29:06
+# hotfix de referencia (breaker fuera): 2026-10-26T20:49:57Z
+
+## 1 · Distribución de códigos por era
+  ANTES (con breaker)    n= 692 ok= 468 fallos=224 | legacy(fallos/éxitos)=0.4786 HONESTO(fallos/intentos)=0.3237 | {200: 468, 403: 4, 404: 20, 405: 2, 407: 5, 502: 188, 504: 1, 513: 4}
+  DESPUÉS (sin breaker)  n= 535 ok= 524 fallos= 11 | legacy(fallos/éxitos)=0.0210 HONESTO(fallos/intentos)=0.0206 | {200: 524, 403: 4, 404: 4, 405: 1, 513: 2}
+
+## 2 · Los 11 fallos de después del hotfix, uno a uno (¿son tráfico real?)
+  20:50:15 127.0.0.1        513  144B /cdn/line.tivi-ott.net/live/x/y/1.m3u8 HTTP/1.1
+  20:50:15 127.0.0.1        403  146B /cdn/127.0.0.1:8088/_ape/health HTTP/1.1
+  20:50:15 127.0.0.1        404  146B /cdn/line.tivi-ott.net/live/x.ts HTTP/1.1
+  20:55:07 178.156.147.234  513  150B /cdn/line.tivi-ott.net/live/0000/0000/3.m3u8 HTTP/1.1
+  20:55:08 178.156.147.234  405  162B /cdn/line.tivi-ott.net/live/<USER>/<PASS>/999999999.m3u8 HTTP/1.
+  20:58:35 178.156.147.234  403  146B /cdn/127.0.0.1:8088/_ape/health HTTP/2.0
+  20:58:35 178.156.147.234  404  146B /cdn/line.tivi-ott.net/x.ts HTTP/2.0
+  20:59:16 178.156.147.234  403  146B /cdn/127.0.0.1:8088/_ape/health HTTP/2.0
+  20:59:16 178.156.147.234  404  146B /cdn/line.tivi-ott.net/x.ts HTTP/2.0
+  21:00:06 127.0.0.1        403  146B /cdn/127.0.0.1:8088/_ape/health HTTP/2.0
+  21:00:06 127.0.0.1        404  146B /cdn/line.tivi-ott.net/live/x.ts HTTP/2.0
+
+## 3 · 502 por era y firma de ráfaga (breaker = muchos 502 en <=15 s)
+  ANTES    502=188 · ventanas>=5 fallos/15s=12
+     10-25 07:04:21 n=15 dur=5s clientes=['101.200.132.59', '101.200.133.251']
+     10-25 07:07:38 n=19 dur=5s clientes=['20.99.244.160', '20.99.244.162']
+     10-25 18:03:27 n=23 dur=15s clientes=['101.200.132.59', '112.126.72.180']
+     10-25 18:03:43 n=17 dur=5s clientes=['101.200.132.59', '101.200.133.251']
+     10-26 08:29:05 n=11 dur=8s clientes=['101.200.132.59', '101.200.133.251']
+     10-26 09:11:21 n= 8 dur=11s clientes=['101.200.133.251', '123.57.172.44']
+     10-26 20:25:01 n=12 dur=13s clientes=['146.70.86.222']
+     10-26 20:30:14 n=10 dur=12s clientes=['146.70.86.222']
+     10-26 20:34:23 n=14 dur=15s clientes=['127.0.0.1', '146.70.86.222']
+     10-26 20:43:00 n=27 dur=14s clientes=['146.70.86.222', '178.156.147.234']
+     10-26 20:48:16 n= 7 dur=14s clientes=['127.0.0.1', '146.70.86.222']
+     10-26 20:48:46 n=17 dur=15s clientes=['127.0.0.1', '146.70.86.222']
+  DESPUÉS  502=  0 · ventanas>=5 fallos/15s=0
+
+## 4 · Contadores del plano AHORA (fuente: /_ape/qoe y /_ape/health)
+  req(éxitos)=1099 all_failed=133 cdn_denied=0 too_large=0
+  error_ratio PUBLICADO (fallos/éxitos)=0.1210  ·  HONESTO (fallos/intentos)=0.1080  ·  inflación=+12.1%
+  suma host_down:* (fallos de intentos REALES) = 22  ⇒  skips >= all_failed - suma = 111 (83.5% de los fallos NO llegaron al proveedor)
+  hosts_down (marca viva del breaker) = {} · health.checks.upstreams_down=0
+
+## 5 · Supervivencia de zaps (cliente externo 146.70.86.222, sesión = mismo canal con gap<=20 s)
+  ANTES (con breaker)    peticiones=202 zaps= 40 con_fallo= 14 acaban_en_error=  7 (17.5%)
+  DESPUÉS (sin breaker)  peticiones=181 zaps=  8 con_fallo=  0 acaban_en_error=  0 (0.0%)

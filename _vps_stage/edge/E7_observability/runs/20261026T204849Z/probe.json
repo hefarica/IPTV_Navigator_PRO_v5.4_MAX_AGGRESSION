@@ -1,0 +1,496 @@
+{
+  "schema": "ape.obs.probe/1",
+  "ts_utc": "2026-10-26T20:48:49.202Z",
+  "host": "root@178.156.147.234",
+  "base": "127.0.0.1:8088",
+  "samples": 5,
+  "split_samples": 3,
+  "channels": [
+    {
+      "id": "3",
+      "provider_host": "line.tivi-ott.net"
+    },
+    {
+      "id": "5",
+      "provider_host": "line.tivi-ott.net"
+    },
+    {
+      "id": "6",
+      "provider_host": "line.tivi-ott.net"
+    }
+  ],
+  "sample": [
+    {
+      "channel": "3",
+      "i": 1,
+      "status": 200,
+      "ttfb_ms": 819.8,
+      "bytes": 641,
+      "upstream_ms": 790,
+      "uri_rebased": 6,
+      "uhd": "off",
+      "cdn": "line.tivi-ott.net",
+      "origin_host": "185.227.34.195:80",
+      "body_uris": 6,
+      "body_relative_uris": 0
+    },
+    {
+      "channel": "3",
+      "i": 2,
+      "status": 200,
+      "ttfb_ms": 832.4,
+      "bytes": 641,
+      "upstream_ms": 799,
+      "uri_rebased": 6,
+      "uhd": "off",
+      "cdn": "line.tivi-ott.net",
+      "origin_host": "185.227.34.195:80",
+      "body_uris": 6,
+      "body_relative_uris": 0
+    },
+    {
+      "channel": "3",
+      "i": 3,
+      "status": 200,
+      "ttfb_ms": 731,
+      "bytes": 641,
+      "upstream_ms": 699,
+      "uri_rebased": 6,
+      "uhd": "off",
+      "cdn": "line.tivi-ott.net",
+      "origin_host": "185.227.34.195:80",
+      "body_uris": 6,
+      "body_relative_uris": 0
+    },
+    {
+      "channel": "3",
+      "i": 4,
+      "status": 200,
+      "ttfb_ms": 723.1,
+      "bytes": 641,
+      "upstream_ms": 692,
+      "uri_rebased": 6,
+      "uhd": "off",
+      "cdn": "line.tivi-ott.net",
+      "origin_host": "185.227.34.195:80",
+      "body_uris": 6,
+      "body_relative_uris": 0
+    },
+    {
+      "channel": "3",
+      "i": 5,
+      "status": 200,
+      "ttfb_ms": 712.1,
+      "bytes": 641,
+      "upstream_ms": 680,
+      "uri_rebased": 6,
+      "uhd": "off",
+      "cdn": "line.tivi-ott.net",
+      "origin_host": "185.227.34.195:80",
+      "body_uris": 6,
+      "body_relative_uris": 0
+    },
+    {
+      "channel": "5",
+      "i": 1,
+      "status": 200,
+      "ttfb_ms": 742.8,
+      "bytes": 636,
+      "upstream_ms": 702,
+      "uri_rebased": 6,
+      "uhd": "off",
+      "cdn": "line.tivi-ott.net",
+      "origin_host": "185.227.34.195:80",
+      "body_uris": 6,
+      "body_relative_uris": 0
+    },
+    {
+      "channel": "5",
+      "i": 2,
+      "status": 502,
+      "ttfb_ms": 33.4,
+      "bytes": 121,
+      "upstream_ms": null,
+      "uri_rebased": null,
+      "uhd": null,
+      "cdn": null,
+      "origin_host": null,
+      "body_uris": 1,
+      "body_relative_uris": 1
+    },
+    {
+      "channel": "5",
+      "i": 3,
+      "status": 502,
+      "ttfb_ms": 34.6,
+      "bytes": 121,
+      "upstream_ms": null,
+      "uri_rebased": null,
+      "uhd": null,
+      "cdn": null,
+      "origin_host": null,
+      "body_uris": 1,
+      "body_relative_uris": 1
+    },
+    {
+      "channel": "5",
+      "i": 4,
+      "status": 502,
+      "ttfb_ms": 37.5,
+      "bytes": 121,
+      "upstream_ms": null,
+      "uri_rebased": null,
+      "uhd": null,
+      "cdn": null,
+      "origin_host": null,
+      "body_uris": 1,
+      "body_relative_uris": 1
+    },
+    {
+      "channel": "5",
+      "i": 5,
+      "status": 502,
+      "ttfb_ms": 27.4,
+      "bytes": 121,
+      "upstream_ms": null,
+      "uri_rebased": null,
+      "uhd": null,
+      "cdn": null,
+      "origin_host": null,
+      "body_uris": 1,
+      "body_relative_uris": 1
+    },
+    {
+      "channel": "6",
+      "i": 1,
+      "status": 502,
+      "ttfb_ms": 30.7,
+      "bytes": 121,
+      "upstream_ms": null,
+      "uri_rebased": null,
+      "uhd": null,
+      "cdn": null,
+      "origin_host": null,
+      "body_uris": 1,
+      "body_relative_uris": 1
+    },
+    {
+      "channel": "6",
+      "i": 2,
+      "status": 502,
+      "ttfb_ms": 39.9,
+      "bytes": 121,
+      "upstream_ms": null,
+      "uri_rebased": null,
+      "uhd": null,
+      "cdn": null,
+      "origin_host": null,
+      "body_uris": 1,
+      "body_relative_uris": 1
+    },
+    {
+      "channel": "6",
+      "i": 3,
+      "status": 502,
+      "ttfb_ms": 52.1,
+      "bytes": 121,
+      "upstream_ms": null,
+      "uri_rebased": null,
+      "uhd": null,
+      "cdn": null,
+      "origin_host": null,
+      "body_uris": 1,
+      "body_relative_uris": 1
+    },
+    {
+      "channel": "6",
+      "i": 4,
+      "status": 502,
+      "ttfb_ms": 40.1,
+      "bytes": 121,
+      "upstream_ms": null,
+      "uri_rebased": null,
+      "uhd": null,
+      "cdn": null,
+      "origin_host": null,
+      "body_uris": 1,
+      "body_relative_uris": 1
+    },
+    {
+      "channel": "6",
+      "i": 5,
+      "status": 502,
+      "ttfb_ms": 47.2,
+      "bytes": 121,
+      "upstream_ms": null,
+      "uri_rebased": null,
+      "uhd": null,
+      "cdn": null,
+      "origin_host": null,
+      "body_uris": 1,
+      "body_relative_uris": 1
+    }
+  ],
+  "split": [
+    {
+      "channel": "3",
+      "i": 1,
+      "code_first": 0,
+      "first_hop_ms": 0,
+      "cdn_host": "000",
+      "code_last": 301,
+      "last_hop_ms": 0.3,
+      "bytes": 162
+    },
+    {
+      "channel": "3",
+      "i": 2,
+      "code_first": 0,
+      "first_hop_ms": 0,
+      "cdn_host": "000",
+      "code_last": 301,
+      "last_hop_ms": 0.4,
+      "bytes": 162
+    },
+    {
+      "channel": "3",
+      "i": 3,
+      "code_first": 0,
+      "first_hop_ms": 0,
+      "cdn_host": "000",
+      "code_last": 301,
+      "last_hop_ms": 0.4,
+      "bytes": 162
+    },
+    {
+      "channel": "5",
+      "i": 1,
+      "code_first": 0,
+      "first_hop_ms": 0,
+      "cdn_host": "000",
+      "code_last": 301,
+      "last_hop_ms": 0.3,
+      "bytes": 162
+    },
+    {
+      "channel": "5",
+      "i": 2,
+      "code_first": 0,
+      "first_hop_ms": 0,
+      "cdn_host": "000",
+      "code_last": 301,
+      "last_hop_ms": 0.4,
+      "bytes": 162
+    },
+    {
+      "channel": "5",
+      "i": 3,
+      "code_first": 0,
+      "first_hop_ms": 0,
+      "cdn_host": "000",
+      "code_last": 301,
+      "last_hop_ms": 0.3,
+      "bytes": 162
+    },
+    {
+      "channel": "6",
+      "i": 1,
+      "code_first": 0,
+      "first_hop_ms": 0,
+      "cdn_host": "000",
+      "code_last": 301,
+      "last_hop_ms": 0.4,
+      "bytes": 162
+    },
+    {
+      "channel": "6",
+      "i": 2,
+      "code_first": 0,
+      "first_hop_ms": 0,
+      "cdn_host": "000",
+      "code_last": 301,
+      "last_hop_ms": 0.4,
+      "bytes": 162
+    },
+    {
+      "channel": "6",
+      "i": 3,
+      "code_first": 0,
+      "first_hop_ms": 0,
+      "cdn_host": "000",
+      "code_last": 301,
+      "last_hop_ms": 0.3,
+      "bytes": 162
+    }
+  ],
+  "hops": [
+    {
+      "channel": "3",
+      "num_redirects": 0,
+      "status": null
+    },
+    {
+      "channel": "5",
+      "num_redirects": 0,
+      "status": null
+    },
+    {
+      "channel": "6",
+      "num_redirects": 0,
+      "status": null
+    }
+  ],
+  "qoe": {
+    "hosts_down": {
+      "line.tivi-ott.net": 1
+    },
+    "ts": 1793047733,
+    "flags": {},
+    "plane": "meta/v3",
+    "metrics": {
+      "all_failed": 124,
+      "last_ms": 702,
+      "last_host": "line.tivi-ott.net",
+      "host_down:line.tivi-ott.net": 10,
+      "last_ts": 1793047726,
+      "rebase_ok": 525,
+      "host_down:10.0.0.1": 1,
+      "llhls_sc": 13,
+      "host_down:169.254.169.254": 1,
+      "host_down:127.0.0.1:8088": 7,
+      "req": 527,
+      "bytes": 328852
+    }
+  },
+  "health": {
+    "plane": "meta/v3",
+    "ts": 1793047733,
+    "ok": true,
+    "qoe": {
+      "all_failed": 124,
+      "last_ms": 702,
+      "last_host": "line.tivi-ott.net",
+      "host_down:line.tivi-ott.net": 10,
+      "last_ts": 1793047726,
+      "rebase_ok": 525,
+      "host_down:10.0.0.1": 1,
+      "llhls_sc": 13,
+      "host_down:169.254.169.254": 1,
+      "host_down:127.0.0.1:8088": 7,
+      "req": 527,
+      "bytes": 328852
+    },
+    "checks": {
+      "nginx": true,
+      "shared_dicts": true,
+      "upstreams_down": 1,
+      "requests": 527,
+      "error_ratio": 0.2353,
+      "last_host": "line.tivi-ott.net",
+      "last_latency_ms": 702
+    }
+  },
+  "metrics_endpoint": "404",
+  "derived": {
+    "samples_total": 15,
+    "samples_ok": 6,
+    "samples_failed": 9,
+    "error_ratio": 0.6,
+    "provider_fetch_ms": {
+      "n": 6,
+      "min": 680,
+      "max": 799,
+      "mean": 727,
+      "p50": 700.5,
+      "p90": 794.5,
+      "p95": 796.8,
+      "p99": 798.6
+    },
+    "ttfb_client_ms": {
+      "n": 6,
+      "min": 712.1,
+      "max": 832.4,
+      "mean": 760.2,
+      "p50": 736.9,
+      "p90": 826.1,
+      "p95": 829.3,
+      "p99": 831.8
+    },
+    "handler_overhead_ms": {
+      "n": 6,
+      "min": 29.8,
+      "max": 40.8,
+      "mean": 33.2,
+      "p50": 32.1,
+      "p90": 37.1,
+      "p95": 38.9,
+      "p99": 40.4
+    },
+    "first_hop_ms": {
+      "n": 9,
+      "min": 0,
+      "max": 0,
+      "mean": 0,
+      "p50": 0,
+      "p90": 0,
+      "p95": 0,
+      "p99": 0
+    },
+    "last_hop_ms": {
+      "n": 9,
+      "min": 0.3,
+      "max": 0.4,
+      "mean": 0.4,
+      "p50": 0.4,
+      "p90": 0.4,
+      "p95": 0.4,
+      "p99": 0.4
+    },
+    "hops": [
+      0,
+      0,
+      0
+    ],
+    "hops_mean": 0,
+    "uhd": {
+      "off": 6,
+      "none": 9
+    },
+    "rebase_pct": 100,
+    "uris_rebased_total": 36,
+    "body_uris_total": 36,
+    "body_relative_uris": 0,
+    "absolute_uri_pct": 100,
+    "provider_fetch_ms_buckets": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      6,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "provider_fetch_ms_p50_from_buckets": 700,
+    "distinct_origin_hosts": [
+      "185.227.34.195:80"
+    ],
+    "distinct_cdn_hosts": [
+      "line.tivi-ott.net"
+    ]
+  },
+  "notes": [
+    "Las URLs con credenciales no se han impreso ni almacenado: solo hosts, estados y tiempos.",
+    "provider_fetch_ms viaja como X-APE-Upstream-Ms (fetch proveedor + 302) y solo se agrega en respuestas 2xx."
+  ],
+  "t_begin": "2026-10-26T20:48:38Z",
+  "t_end": "2026-10-26T20:48:53Z"
+}

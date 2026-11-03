@@ -1,0 +1,39 @@
+{
+  "generated_utc": "2026-10-26T22:06:30.506Z",
+  "sources": {
+    "composedGateway": "2bfa88f4a001c1d49ff2b750921d1031d977a6fd13c253110cbe4e0b2d785a52",
+    "composedObs": "ed7d2adf0fdaf09174306595d4ccd439140ec2b638166c1f6163395402f9ced3",
+    "uhdLive": "f1f5eb674744858ae7c5e84c73262e37545b0c84e557c6466cad20ae7b1f3b5e",
+    "luatestLive": "98a29c444f1bca0f59d4b15a7426eaf8e64e7745d12caaba54266019c37eb37d",
+    "defaultLive": "49c162a862f1e5485959350f2b2175f24eec440a10d2cd6902b2e0e03f8c59d1",
+    "metaStage": "33bbeb6b9e6dbe1d65dddeb4d1607a2313a0193580c156b110e25a94f5e8bcf4",
+    "e7Lua": {
+      "ape_log_chain.lua": "831f309e06a89355a0840c5d10e0db57189e00ff117bb3d476e1277cd5bff954",
+      "ape_obs_http.lua": "737f1700906bbc30b6c4c714d13fc82e1954a2f0f0004819b290a5f05fa3781d",
+      "ape_obs_metrics_api.lua": "eb5af49ba50d0cb9e5b5c266342b8438accdb4b8431247e31b83d7d779d63933",
+      "ape_obs_metrics.lua": "d960f23aed2a9da15910dc877b481c9c30e258e57273d51eec9eb3a520be555e",
+      "ape_obs_rec.lua": "180ca51a9d06e02bb432a9bcfd72b8eb49460b9e1857a2fbf6ce96d6c6a769c8"
+    }
+  },
+  "staged": {
+    "etc/nginx/conf.d/50-ape-meta-plane.conf": "33bbeb6b9e6dbe1d65dddeb4d1607a2313a0193580c156b110e25a94f5e8bcf4",
+    "etc/nginx/lua/ape_gateway.lua": "eadd87d1d9fa88cd607486a2c062b8927a257524ea9af585ecb0def8d3d1c9d7",
+    "etc/nginx/lua/ape_log_chain.lua": "831f309e06a89355a0840c5d10e0db57189e00ff117bb3d476e1277cd5bff954",
+    "etc/nginx/lua/ape_luatest.lua": "301f35927e8dbbe0ddd94aee09cb00b0759d02b9176eff63a3752a8789f2a72d",
+    "etc/nginx/lua/ape_obs.lua": "ed7d2adf0fdaf09174306595d4ccd439140ec2b638166c1f6163395402f9ced3",
+    "etc/nginx/lua/ape_obs_http.lua": "737f1700906bbc30b6c4c714d13fc82e1954a2f0f0004819b290a5f05fa3781d",
+    "etc/nginx/lua/ape_obs_metrics.lua": "d960f23aed2a9da15910dc877b481c9c30e258e57273d51eec9eb3a520be555e",
+    "etc/nginx/lua/ape_obs_metrics_api.lua": "eb5af49ba50d0cb9e5b5c266342b8438accdb4b8431247e31b83d7d779d63933",
+    "etc/nginx/lua/ape_obs_rec.lua": "180ca51a9d06e02bb432a9bcfd72b8eb49460b9e1857a2fbf6ce96d6c6a769c8",
+    "etc/nginx/lua/ape_uhd.lua": "88d974275653fb1c37755e7daecdd4bf5aa5d0f75d6adf0ad9d9c62ccc69d885",
+    "etc/nginx/sites-enabled/default": "2ebe7ff316baa93cfd759b01a1cd82e0012dcd4162176b7e0300eb2a70dd0135"
+  },
+  "deltas": [
+    "gateway: bypass SSRF removido (remote_addr==127.0.0.1)",
+    "gateway: guard uhd8k (can_declare_8k) + absorción uhd4k en declare_auto",
+    "ape_uhd: MIN_HEVC_LEVEL_8K=183 + max_resolution/level_supports_8k/can_declare_8k + declare_auto techo 4K",
+    "ape_luatest: asserts 155-156 esperan 3840x2160 / 4k",
+    "default: retirado add_header Accept-Ranges bytes always de /lists/",
+    "obs + meta-plane + 5 Lua E7: copia byte-exacta de los compuestos/stage"
+  ]
+}

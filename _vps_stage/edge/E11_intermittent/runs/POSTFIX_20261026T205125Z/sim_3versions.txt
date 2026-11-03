@@ -1,0 +1,28 @@
+════════ PERFIL POR VERSIÓN (4 peticiones: 1 fallo real + 3 al canal bueno) ════════
+PREFIX    #1 /live/U/P/999.m3u8   status=407 fetch=1  reason=true  hdrReason=false attempts=nil  ms=351  xape=0  down=1     | all_failed=1 req=0 provider_fail=0
+PREFIX    #2 /live/U/P/3.m3u8     status=502 fetch=0  reason=false hdrReason=false attempts=nil  ms=1    xape=0  down=1     | all_failed=2 req=0 provider_fail=0
+PREFIX    #3 /live/U/P/3.m3u8     status=502 fetch=0  reason=false hdrReason=false attempts=nil  ms=1    xape=0  down=1     | all_failed=3 req=0 provider_fail=0
+PREFIX    #4 /live/U/P/3.m3u8     status=502 fetch=0  reason=false hdrReason=false attempts=nil  ms=1    xape=0  down=1     | all_failed=4 req=0 provider_fail=0
+HOTFIX    #1 /live/U/P/999.m3u8   status=407 fetch=1  reason=true  hdrReason=false attempts=nil  ms=351  xape=0  down=nil   | all_failed=1 req=0 provider_fail=0
+HOTFIX    #2 /live/U/P/3.m3u8     status=200 fetch=1  reason=false hdrReason=false attempts=nil  ms=nil  xape=8  down=nil   | all_failed=1 req=1 provider_fail=0
+HOTFIX    #3 /live/U/P/3.m3u8     status=200 fetch=1  reason=false hdrReason=false attempts=nil  ms=nil  xape=8  down=nil   | all_failed=1 req=2 provider_fail=0
+HOTFIX    #4 /live/U/P/3.m3u8     status=200 fetch=1  reason=false hdrReason=false attempts=nil  ms=nil  xape=8  down=nil   | all_failed=1 req=3 provider_fail=0
+PROPOSED  #1 /live/U/P/999.m3u8   status=407 fetch=1  reason=true  hdrReason=true  attempts=1    ms=351  xape=4  down=nil   | all_failed=1 req=0 provider_fail=1
+PROPOSED  #2 /live/U/P/3.m3u8     status=200 fetch=1  reason=false hdrReason=false attempts=nil  ms=nil  xape=8  down=nil   | all_failed=1 req=1 provider_fail=1
+PROPOSED  #3 /live/U/P/3.m3u8     status=200 fetch=1  reason=false hdrReason=false attempts=nil  ms=nil  xape=8  down=nil   | all_failed=1 req=2 provider_fail=1
+PROPOSED  #4 /live/U/P/3.m3u8     status=200 fetch=1  reason=false hdrReason=false attempts=nil  ms=nil  xape=8  down=nil   | all_failed=1 req=3 provider_fail=1
+════════ VEREDICTO ════════
+PASS PREFIX (66a20017) reproduce el fallo ciego: 0 fetch y 502 sin reason
+PASS PREFIX contesta instantáneo (ms<=2) frente a un fetch real (>100)
+PASS HOTFIX (2dc0fad8) ya intenta siempre: fetch=1 y 200 en los 3
+PASS HOTFIX emite reason en el fallo real
+PASS PROPOSED intenta siempre igual que el hotfix
+PASS PROPOSED añade X-APE-Reason en el error (clasificable sin leer cuerpo)
+PASS PROPOSED publica attempts en el error
+PASS PROPOSED no toca el camino feliz: mismas cabeceras X-APE-*
+PASS PROPOSED cuenta el fallo del proveedor (provider_fail) y no fabrica all_failed
+PASS ninguna versión deja down: escrito (breaker muerto)
+PASS mismo nº de fallos reales contados en HOTFIX y PROPOSED
+RESULT=OK (11/11)
+
+[ssh exit=0] · sujetos: PREFIX=live/ape_gateway.lua · HOTFIX=live/postfix/ape_gateway.lua · PROPOSED=proposed/ape_gateway.lua

@@ -1,0 +1,12 @@
+{
+  "/etc/nginx/lua/ape_luatest.lua": "7f5be26574584d59ca5a59e461bd56575d5d71200b7d744482ebe50c6bb0dfa8",
+  "/etc/nginx/lua/ape_lab_api.lua": "c457267953e0d69685146bb2ee999c62ac080647035b378bb2a29f5ff58fac71",
+  "/etc/nginx/conf.d/50-ape-meta-plane.conf": "4b5f9f02a3ecf67696e42eee93fc063ff2cff779bdd9a3bc44db02d2e9dee83e",
+  "/etc/nginx/lua/ape_header.lua": "23b25b031964ca573a89eeab933a5d07bc91fb29aa5c038df22c02bff182117f",
+  "/etc/nginx/lua/ape_wake_on_manifest.lua": "d9c6b65d7626cd3630e76e185bca1ec932b4db324bbbd8337ae445630796db19",
+  "/etc/nginx/lua/ape_uhd.lua": "b02fbe28ad2bafe16314d34f9c05fe43086b4ef73915ab9f17dcfb0d1b952e56",
+  "/etc/nginx/lua/ape_uri_rebase.lua": "393635c2b2250fde9cf5678f4e9b85fe5e9359c2a65cfd00fa1adfbc85242fa8",
+  "/etc/nginx/lua/ape_obs.lua": "afa003ad6e929ad36fdedf269f748b4885ec62d13fe4f38dbae331be0f4442c7",
+  "/etc/nginx/lua/ape_gateway.lua": "360e4097bb2114d8fa6797b2fbdb10c4f870c51ffd473cfa12bfcb1e830eb853",
+  "/etc/nginx/lua/ape_rebase_lib.lua": "f813b1cc9a7da6126f97536a4c4b3fc662395e3d344619371150ee3387ddcfcb"
+}

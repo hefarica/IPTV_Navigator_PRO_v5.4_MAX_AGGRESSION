@@ -1,0 +1,1264 @@
+{
+  "facts": {
+    "PROBE_VERSION": "1.0.0",
+    "DATE_UTC": "2026-10-26T20:59:47Z",
+    "MASTER_PID": "2001835",
+    "CONF_DEFAULT_SHA": "49c162a862f1e5485959350f2b2175f24eec440a10d2cd6902b2e0e03f8c59d1",
+    "CONF_META_PLANE_SHA": "3e29b9280c05de36c4af445e8a9722573a23c865f240e2d87b2734178e60c515",
+    "CONF_META_PUBLIC_SHA": "a39e8de902cf5449553822eb1682d1a9d481390c1ce136a218d91fbe1ee4ac39",
+    "NGINX_T_SHA": "0c6c0ea0090e7dd7defb0845763e4eb050ed21dfc70953e987cfd9d9b3813d1c",
+    "H2_LISTEN_COUNT": "2",
+    "STUB": "size=8 mtime=1793044549 stub_hex=234558544d33550a",
+    "GZ": "size=140555650 mtime=1793044549",
+    "GZ_SHA256": "a464a0c325a94b3cc97bef3b3b936ccd5905496f0509b509550d0278149e081b",
+    "DECOMPRESSED_SHA256": "44f5263f78eac14cc358df39e4470c508b4f0721767acda7f4241ac301d5e080",
+    "DECOMPRESSED_BYTES": "563968332",
+    "DECOMPRESSED_LINES": "10084364",
+    "GZ_SLICE_100000000_1000_SHA256": "fe8a1469f44891c043d2b69423666c6d622a39424ebef7772484fc615257943f",
+    "GZ_SLICE_0_1024_SHA256": "fb9538dc187c3196b92a38d00efb27293e8bd893d3aa8f9bd1513ba28137cb43",
+    "STUB_SHA256": "144659b48f342d02b9298907ab32fcf0479ac9c99a0d293c7c2ebf8df313dd12",
+    "ETAG_GZIP": "\"6adfb045-860b582\"",
+    "ETAG_GUNZIP": "W/\"6adfb045-860b582\"",
+    "LAST_MODIFIED": "Mon, 26 Oct 2026 19:55:49 GMT",
+    "PROBE_RESULT": "OK"
+  },
+  "cases": [
+    {
+      "label": "A1 HEAD sin Accept-Encoding",
+      "requestArgs": "-I",
+      "status": 200,
+      "protocol": "h2",
+      "httpVersion": "2",
+      "headers": {
+        "server": "<omitido>",
+        "date": "<omitido>",
+        "content-type": "application/vnd.apple.mpegurl",
+        "last-modified": "Mon, 26 Oct 2026 19:55:49 GMT",
+        "vary": "Accept-Encoding",
+        "etag": "W/\"6adfb045-860b582\"",
+        "expires": "Mon, 26 Oct 2026 21:04:57 GMT",
+        "cache-control": "max-age=300, public, max-age=300",
+        "access-control-allow-origin": "*",
+        "access-control-allow-methods": "GET, HEAD, OPTIONS",
+        "access-control-allow-headers": "Range, DNT, User-Agent, X-Requested-With, If-Modified-Since, Cache-Control, Content-Type, Accept-Encoding",
+        "access-control-expose-headers": "Content-Length, Content-Range, ETag, Last-Modified, Content-Encoding",
+        "accept-ranges": "bytes"
+      },
+      "curl": {
+        "status": 200,
+        "httpVersion": "2",
+        "sizeDownload": 0,
+        "ttfbSec": 0.025415,
+        "totalSec": 0.025464,
+        "speedBps": 0
+      },
+      "kv": {
+        "REQ_ARGS": "-I"
+      },
+      "raw": "REQ_ARGS=-I\nHTTP/2 200 \nserver: <omitido>\ndate: <omitido>\ncontent-type: application/vnd.apple.mpegurl\nlast-modified: Mon, 26 Oct 2026 19:55:49 GMT\nvary: Accept-Encoding\netag: W/\"6adfb045-860b582\"\nexpires: Mon, 26 Oct 2026 21:04:57 GMT\ncache-control: max-age=300\naccess-control-allow-origin: *\naccess-control-allow-methods: GET, HEAD, OPTIONS\naccess-control-allow-headers: Range, DNT, User-Agent, X-Requested-With, If-Modified-Since, Cache-Control, Content-Type, Accept-Encoding\naccess-control-expose-headers: Content-Length, Content-Range, ETag, Last-Modified, Content-Encoding\naccept-ranges: bytes\ncache-control: public, max-age=300\n\nW status=200 http=2 size=0 ttfb=0.025415 total=0.025464 speed=0 redirects=0"
+    },
+    {
+      "label": "A2 HEAD Accept-Encoding: identity",
+      "requestArgs": "-I -H Accept-Encoding: identity",
+      "status": 200,
+      "protocol": "h2",
+      "httpVersion": "2",
+      "headers": {
+        "server": "<omitido>",
+        "date": "<omitido>",
+        "content-type": "application/vnd.apple.mpegurl",
+        "last-modified": "Mon, 26 Oct 2026 19:55:49 GMT",
+        "vary": "Accept-Encoding",
+        "etag": "W/\"6adfb045-860b582\"",
+        "expires": "Mon, 26 Oct 2026 21:04:57 GMT",
+        "cache-control": "max-age=300, public, max-age=300",
+        "access-control-allow-origin": "*",
+        "access-control-allow-methods": "GET, HEAD, OPTIONS",
+        "access-control-allow-headers": "Range, DNT, User-Agent, X-Requested-With, If-Modified-Since, Cache-Control, Content-Type, Accept-Encoding",
+        "access-control-expose-headers": "Content-Length, Content-Range, ETag, Last-Modified, Content-Encoding",
+        "accept-ranges": "bytes"
+      },
+      "curl": {
+        "status": 200,
+        "httpVersion": "2",
+        "sizeDownload": 0,
+        "ttfbSec": 0.024853,
+        "totalSec": 0.024902,
+        "speedBps": 0
+      },
+      "kv": {
+        "REQ_ARGS": "-I -H Accept-Encoding: identity"
+      },
+      "raw": "REQ_ARGS=-I -H Accept-Encoding: identity\nHTTP/2 200 \nserver: <omitido>\ndate: <omitido>\ncontent-type: application/vnd.apple.mpegurl\nlast-modified: Mon, 26 Oct 2026 19:55:49 GMT\nvary: Accept-Encoding\netag: W/\"6adfb045-860b582\"\nexpires: Mon, 26 Oct 2026 21:04:57 GMT\ncache-control: max-age=300\naccess-control-allow-origin: *\naccess-control-allow-methods: GET, HEAD, OPTIONS\naccess-control-allow-headers: Range, DNT, User-Agent, X-Requested-With, If-Modified-Since, Cache-Control, Content-Type, Accept-Encoding\naccess-control-expose-headers: Content-Length, Content-Range, ETag, Last-Modified, Content-Encoding\naccept-ranges: bytes\ncache-control: public, max-age=300\n\nW status=200 http=2 size=0 ttfb=0.024853 total=0.024902 speed=0 redirects=0"
+    },
+    {
+      "label": "A3 HEAD Accept-Encoding: gzip",
+      "requestArgs": "-I -H Accept-Encoding: gzip",
+      "status": 200,
+      "protocol": "h2",
+      "httpVersion": "2",
+      "headers": {
+        "server": "<omitido>",
+        "date": "<omitido>",
+        "content-type": "application/vnd.apple.mpegurl",
+        "content-length": "140555650",
+        "last-modified": "Mon, 26 Oct 2026 19:55:49 GMT",
+        "vary": "Accept-Encoding",
+        "etag": "\"6adfb045-860b582\"",
+        "content-encoding": "gzip",
+        "expires": "Mon, 26 Oct 2026 21:04:57 GMT",
+        "cache-control": "max-age=300, public, max-age=300",
+        "access-control-allow-origin": "*",
+        "access-control-allow-methods": "GET, HEAD, OPTIONS",
+        "access-control-allow-headers": "Range, DNT, User-Agent, X-Requested-With, If-Modified-Since, Cache-Control, Content-Type, Accept-Encoding",
+        "access-control-expose-headers": "Content-Length, Content-Range, ETag, Last-Modified, Content-Encoding",
+        "accept-ranges": "bytes, bytes"
+      },
+      "curl": {
+        "status": 200,
+        "httpVersion": "2",
+        "sizeDownload": 0,
+        "ttfbSec": 0.025851,
+        "totalSec": 0.025904,
+        "speedBps": 0
+      },
+      "kv": {
+        "REQ_ARGS": "-I -H Accept-Encoding: gzip"
+      },
+      "raw": "REQ_ARGS=-I -H Accept-Encoding: gzip\nHTTP/2 200 \nserver: <omitido>\ndate: <omitido>\ncontent-type: application/vnd.apple.mpegurl\ncontent-length: 140555650\nlast-modified: Mon, 26 Oct 2026 19:55:49 GMT\nvary: Accept-Encoding\netag: \"6adfb045-860b582\"\ncontent-encoding: gzip\nexpires: Mon, 26 Oct 2026 21:04:57 GMT\ncache-control: max-age=300\naccess-control-allow-origin: *\naccess-control-allow-methods: GET, HEAD, OPTIONS\naccess-control-allow-headers: Range, DNT, User-Agent, X-Requested-With, If-Modified-Since, Cache-Control, Content-Type, Accept-Encoding\naccess-control-expose-headers: Content-Length, Content-Range, ETag, Last-Modified, Content-Encoding\naccept-ranges: bytes\ncache-control: public, max-age=300\naccept-ranges: bytes\n\nW status=200 http=2 size=0 ttfb=0.025851 total=0.025904 speed=0 redirects=0"
+    },
+    {
+      "label": "A4 HEAD Accept-Encoding: gzip, deflate, br",
+      "requestArgs": "-I -H Accept-Encoding: gzip, deflate, br, zstd",
+      "status": 200,
+      "protocol": "h2",
+      "httpVersion": "2",
+      "headers": {
+        "server": "<omitido>",
+        "date": "<omitido>",
+        "content-type": "application/vnd.apple.mpegurl",
+        "content-length": "140555650",
+        "last-modified": "Mon, 26 Oct 2026 19:55:49 GMT",
+        "vary": "Accept-Encoding",
+        "etag": "\"6adfb045-860b582\"",
+        "content-encoding": "gzip",
+        "expires": "Mon, 26 Oct 2026 21:04:57 GMT",
+        "cache-control": "max-age=300, public, max-age=300",
+        "access-control-allow-origin": "*",
+        "access-control-allow-methods": "GET, HEAD, OPTIONS",
+        "access-control-allow-headers": "Range, DNT, User-Agent, X-Requested-With, If-Modified-Since, Cache-Control, Content-Type, Accept-Encoding",
+        "access-control-expose-headers": "Content-Length, Content-Range, ETag, Last-Modified, Content-Encoding",
+        "accept-ranges": "bytes, bytes"
+      },
+      "curl": {
+        "status": 200,
+        "httpVersion": "2",
+        "sizeDownload": 0,
+        "ttfbSec": 0.023824,
+        "totalSec": 0.023894,
+        "speedBps": 0
+      },
+      "kv": {
+        "REQ_ARGS": "-I -H Accept-Encoding: gzip, deflate, br, zstd"
+      },
+      "raw": "REQ_ARGS=-I -H Accept-Encoding: gzip, deflate, br, zstd\nHTTP/2 200 \nserver: <omitido>\ndate: <omitido>\ncontent-type: application/vnd.apple.mpegurl\ncontent-length: 140555650\nlast-modified: Mon, 26 Oct 2026 19:55:49 GMT\nvary: Accept-Encoding\netag: \"6adfb045-860b582\"\ncontent-encoding: gzip\nexpires: Mon, 26 Oct 2026 21:04:57 GMT\ncache-control: max-age=300\naccess-control-allow-origin: *\naccess-control-allow-methods: GET, HEAD, OPTIONS\naccess-control-allow-headers: Range, DNT, User-Agent, X-Requested-With, If-Modified-Since, Cache-Control, Content-Type, Accept-Encoding\naccess-control-expose-headers: Content-Length, Content-Range, ETag, Last-Modified, Content-Encoding\naccept-ranges: bytes\ncache-control: public, max-age=300\naccept-ranges: bytes\n\nW status=200 http=2 size=0 ttfb=0.023824 total=0.023894 speed=0 redirects=0"
+    },
+    {
+      "label": "A5 HEAD Accept-Encoding: br (solo br)",
+      "requestArgs": "-I -H Accept-Encoding: br",
+      "status": 200,
+      "protocol": "h2",
+      "httpVersion": "2",
+      "headers": {
+        "server": "<omitido>",
+        "date": "<omitido>",
+        "content-type": "application/vnd.apple.mpegurl",
+        "last-modified": "Mon, 26 Oct 2026 19:55:49 GMT",
+        "vary": "Accept-Encoding",
+        "etag": "W/\"6adfb045-860b582\"",
+        "expires": "Mon, 26 Oct 2026 21:04:57 GMT",
+        "cache-control": "max-age=300, public, max-age=300",
+        "access-control-allow-origin": "*",
+        "access-control-allow-methods": "GET, HEAD, OPTIONS",
+        "access-control-allow-headers": "Range, DNT, User-Agent, X-Requested-With, If-Modified-Since, Cache-Control, Content-Type, Accept-Encoding",
+        "access-control-expose-headers": "Content-Length, Content-Range, ETag, Last-Modified, Content-Encoding",
+        "accept-ranges": "bytes"
+      },
+      "curl": {
+        "status": 200,
+        "httpVersion": "2",
+        "sizeDownload": 0,
+        "ttfbSec": 0.027287,
+        "totalSec": 0.027474,
+        "speedBps": 0
+      },
+      "kv": {
+        "REQ_ARGS": "-I -H Accept-Encoding: br"
+      },
+      "raw": "REQ_ARGS=-I -H Accept-Encoding: br\nHTTP/2 200 \nserver: <omitido>\ndate: <omitido>\ncontent-type: application/vnd.apple.mpegurl\nlast-modified: Mon, 26 Oct 2026 19:55:49 GMT\nvary: Accept-Encoding\netag: W/\"6adfb045-860b582\"\nexpires: Mon, 26 Oct 2026 21:04:57 GMT\ncache-control: max-age=300\naccess-control-allow-origin: *\naccess-control-allow-methods: GET, HEAD, OPTIONS\naccess-control-allow-headers: Range, DNT, User-Agent, X-Requested-With, If-Modified-Since, Cache-Control, Content-Type, Accept-Encoding\naccess-control-expose-headers: Content-Length, Content-Range, ETag, Last-Modified, Content-Encoding\naccept-ranges: bytes\ncache-control: public, max-age=300\n\nW status=200 http=2 size=0 ttfb=0.027287 total=0.027474 speed=0 redirects=0"
+    },
+    {
+      "label": "A6 HEAD Accept-Encoding: gzip;q=0",
+      "requestArgs": "-I -H Accept-Encoding: gzip;q=0",
+      "status": 200,
+      "protocol": "h2",
+      "httpVersion": "2",
+      "headers": {
+        "server": "<omitido>",
+        "date": "<omitido>",
+        "content-type": "application/vnd.apple.mpegurl",
+        "last-modified": "Mon, 26 Oct 2026 19:55:49 GMT",
+        "vary": "Accept-Encoding",
+        "etag": "W/\"6adfb045-860b582\"",
+        "expires": "Mon, 26 Oct 2026 21:04:57 GMT",
+        "cache-control": "max-age=300, public, max-age=300",
+        "access-control-allow-origin": "*",
+        "access-control-allow-methods": "GET, HEAD, OPTIONS",
+        "access-control-allow-headers": "Range, DNT, User-Agent, X-Requested-With, If-Modified-Since, Cache-Control, Content-Type, Accept-Encoding",
+        "access-control-expose-headers": "Content-Length, Content-Range, ETag, Last-Modified, Content-Encoding",
+        "accept-ranges": "bytes"
+      },
+      "curl": {
+        "status": 200,
+        "httpVersion": "2",
+        "sizeDownload": 0,
+        "ttfbSec": 0.025471,
+        "totalSec": 0.025521,
+        "speedBps": 0
+      },
+      "kv": {
+        "REQ_ARGS": "-I -H Accept-Encoding: gzip;q=0"
+      },
+      "raw": "REQ_ARGS=-I -H Accept-Encoding: gzip;q=0\nHTTP/2 200 \nserver: <omitido>\ndate: <omitido>\ncontent-type: application/vnd.apple.mpegurl\nlast-modified: Mon, 26 Oct 2026 19:55:49 GMT\nvary: Accept-Encoding\netag: W/\"6adfb045-860b582\"\nexpires: Mon, 26 Oct 2026 21:04:57 GMT\ncache-control: max-age=300\naccess-control-allow-origin: *\naccess-control-allow-methods: GET, HEAD, OPTIONS\naccess-control-allow-headers: Range, DNT, User-Agent, X-Requested-With, If-Modified-Since, Cache-Control, Content-Type, Accept-Encoding\naccess-control-expose-headers: Content-Length, Content-Range, ETag, Last-Modified, Content-Encoding\naccept-ranges: bytes\ncache-control: public, max-age=300\n\nW status=200 http=2 size=0 ttfb=0.025471 total=0.025521 speed=0 redirects=0"
+    },
+    {
+      "label": "A7 HEAD Accept-Encoding: gzip;q=0, identity",
+      "requestArgs": "-I -H Accept-Encoding: gzip;q=0, identity",
+      "status": 200,
+      "protocol": "h2",
+      "httpVersion": "2",
+      "headers": {
+        "server": "<omitido>",
+        "date": "<omitido>",
+        "content-type": "application/vnd.apple.mpegurl",
+        "last-modified": "Mon, 26 Oct 2026 19:55:49 GMT",
+        "vary": "Accept-Encoding",
+        "etag": "W/\"6adfb045-860b582\"",
+        "expires": "Mon, 26 Oct 2026 21:04:57 GMT",
+        "cache-control": "max-age=300, public, max-age=300",
+        "access-control-allow-origin": "*",
+        "access-control-allow-methods": "GET, HEAD, OPTIONS",
+        "access-control-allow-headers": "Range, DNT, User-Agent, X-Requested-With, If-Modified-Since, Cache-Control, Content-Type, Accept-Encoding",
+        "access-control-expose-headers": "Content-Length, Content-Range, ETag, Last-Modified, Content-Encoding",
+        "accept-ranges": "bytes"
+      },
+      "curl": {
+        "status": 200,
+        "httpVersion": "2",
+        "sizeDownload": 0,
+        "ttfbSec": 0.025274,
+        "totalSec": 0.025323,
+        "speedBps": 0
+      },
+      "kv": {
+        "REQ_ARGS": "-I -H Accept-Encoding: gzip;q=0, identity"
+      },
+      "raw": "REQ_ARGS=-I -H Accept-Encoding: gzip;q=0, identity\nHTTP/2 200 \nserver: <omitido>\ndate: <omitido>\ncontent-type: application/vnd.apple.mpegurl\nlast-modified: Mon, 26 Oct 2026 19:55:49 GMT\nvary: Accept-Encoding\netag: W/\"6adfb045-860b582\"\nexpires: Mon, 26 Oct 2026 21:04:57 GMT\ncache-control: max-age=300\naccess-control-allow-origin: *\naccess-control-allow-methods: GET, HEAD, OPTIONS\naccess-control-allow-headers: Range, DNT, User-Agent, X-Requested-With, If-Modified-Since, Cache-Control, Content-Type, Accept-Encoding\naccess-control-expose-headers: Content-Length, Content-Range, ETag, Last-Modified, Content-Encoding\naccept-ranges: bytes\ncache-control: public, max-age=300\n\nW status=200 http=2 size=0 ttfb=0.025274 total=0.025323 speed=0 redirects=0"
+    },
+    {
+      "label": "A8 HEAD HTTP/1.0 (sin Host implícito keep-alive)",
+      "requestArgs": "-I --http1.0",
+      "status": 200,
+      "protocol": "h1.1",
+      "httpVersion": "1.1",
+      "headers": {
+        "server": "<omitido>",
+        "date": "<omitido>",
+        "content-type": "application/vnd.apple.mpegurl",
+        "last-modified": "Mon, 26 Oct 2026 19:55:49 GMT",
+        "connection": "close",
+        "vary": "Accept-Encoding",
+        "etag": "W/\"6adfb045-860b582\"",
+        "expires": "Mon, 26 Oct 2026 21:04:57 GMT",
+        "cache-control": "max-age=300, public, max-age=300",
+        "access-control-allow-origin": "*",
+        "access-control-allow-methods": "GET, HEAD, OPTIONS",
+        "access-control-allow-headers": "Range, DNT, User-Agent, X-Requested-With, If-Modified-Since, Cache-Control, Content-Type, Accept-Encoding",
+        "access-control-expose-headers": "Content-Length, Content-Range, ETag, Last-Modified, Content-Encoding",
+        "accept-ranges": "bytes"
+      },
+      "curl": {
+        "status": 200,
+        "httpVersion": "1.1",
+        "sizeDownload": 0,
+        "ttfbSec": 0.024398,
+        "totalSec": 0.024444,
+        "speedBps": 0
+      },
+      "kv": {
+        "REQ_ARGS": "-I --http1.0"
+      },
+      "raw": "REQ_ARGS=-I --http1.0\nHTTP/1.1 200 OK\nServer: <omitido>\nDate: <omitido>\nContent-Type: application/vnd.apple.mpegurl\nLast-Modified: Mon, 26 Oct 2026 19:55:49 GMT\nConnection: close\nVary: Accept-Encoding\nETag: W/\"6adfb045-860b582\"\nExpires: Mon, 26 Oct 2026 21:04:57 GMT\nCache-Control: max-age=300\nAccess-Control-Allow-Origin: *\nAccess-Control-Allow-Methods: GET, HEAD, OPTIONS\nAccess-Control-Allow-Headers: Range, DNT, User-Agent, X-Requested-With, If-Modified-Since, Cache-Control, Content-Type, Accept-Encoding\nAccess-Control-Expose-Headers: Content-Length, Content-Range, ETag, Last-Modified, Content-Encoding\nAccept-Ranges: bytes\nCache-Control: public, max-age=300\n\nW status=200 http=1.1 size=0 ttfb=0.024398 total=0.024444 speed=0 redirects=0"
+    },
+    {
+      "label": "B1 GET gzip completo (coste CPU nginx)",
+      "requestArgs": null,
+      "status": null,
+      "protocol": null,
+      "httpVersion": "2",
+      "headers": {},
+      "curl": {
+        "status": 200,
+        "httpVersion": "2",
+        "sizeDownload": 140555650,
+        "ttfbSec": 0.025422,
+        "totalSec": 0.311599,
+        "speedBps": 451078629
+      },
+      "kv": {
+        "NGINX_CPU_TICKS": "51",
+        "HZ": "100",
+        "NGINX_CPU_MS": "510",
+        "WALL_MS": "321"
+      },
+      "raw": "W status=200 http=2 size=140555650 ttfb=0.025422 total=0.311599 speed=451078629 redirects=0\nNGINX_CPU_TICKS=51 HZ=100 NGINX_CPU_MS=510 WALL_MS=321"
+    },
+    {
+      "label": "B2 GET identity completo (ruta gunzip, coste CPU nginx)",
+      "requestArgs": null,
+      "status": null,
+      "protocol": null,
+      "httpVersion": "2",
+      "headers": {},
+      "curl": {
+        "status": 200,
+        "httpVersion": "2",
+        "sizeDownload": 563968332,
+        "ttfbSec": 0.034275,
+        "totalSec": 3.084974,
+        "speedBps": 182811372
+      },
+      "kv": {
+        "NGINX_CPU_TICKS": "527",
+        "HZ": "100",
+        "NGINX_CPU_MS": "5270",
+        "WALL_MS": "3095"
+      },
+      "raw": "W status=200 http=2 size=563968332 ttfb=0.034275 total=3.084974 speed=182811372 redirects=0\nNGINX_CPU_TICKS=527 HZ=100 NGINX_CPU_MS=5270 WALL_MS=3095"
+    },
+    {
+      "label": "B3 GET sin cabecera Accept-Encoding (cliente legacy) — digest",
+      "requestArgs": null,
+      "status": null,
+      "protocol": null,
+      "httpVersion": null,
+      "headers": {},
+      "curl": null,
+      "kv": {
+        "BODY_SHA256": "44f5263f78eac14cc358df39e4470c508b4f0721767acda7f4241ac301d5e080"
+      },
+      "raw": "BODY_SHA256=44f5263f78eac14cc358df39e4470c508b4f0721767acda7f4241ac301d5e080"
+    },
+    {
+      "label": "B4 GET gzip — digest del cuerpo YA descomprimido por el cliente",
+      "requestArgs": null,
+      "status": null,
+      "protocol": null,
+      "httpVersion": null,
+      "headers": {},
+      "curl": null,
+      "kv": {
+        "BODY_SHA256": "44f5263f78eac14cc358df39e4470c508b4f0721767acda7f4241ac301d5e080"
+      },
+      "raw": "BODY_SHA256=44f5263f78eac14cc358df39e4470c508b4f0721767acda7f4241ac301d5e080"
+    },
+    {
+      "label": "C1 GET Range 0-1023 + AE gzip",
+      "requestArgs": "-r 0-1023 -H Accept-Encoding: gzip",
+      "status": 206,
+      "protocol": "h2",
+      "httpVersion": "2",
+      "headers": {
+        "server": "<omitido>",
+        "date": "<omitido>",
+        "content-type": "application/vnd.apple.mpegurl",
+        "content-length": "1024",
+        "last-modified": "Mon, 26 Oct 2026 19:55:49 GMT",
+        "vary": "Accept-Encoding",
+        "etag": "\"6adfb045-860b582\"",
+        "content-encoding": "gzip",
+        "expires": "Mon, 26 Oct 2026 21:05:09 GMT",
+        "cache-control": "max-age=300, public, max-age=300",
+        "access-control-allow-origin": "*",
+        "access-control-allow-methods": "GET, HEAD, OPTIONS",
+        "access-control-allow-headers": "Range, DNT, User-Agent, X-Requested-With, If-Modified-Since, Cache-Control, Content-Type, Accept-Encoding",
+        "access-control-expose-headers": "Content-Length, Content-Range, ETag, Last-Modified, Content-Encoding",
+        "accept-ranges": "bytes",
+        "content-range": "bytes 0-1023/140555650"
+      },
+      "curl": {
+        "status": 206,
+        "httpVersion": "2",
+        "sizeDownload": 1024,
+        "ttfbSec": 0.027295,
+        "totalSec": 0.027389,
+        "speedBps": 37387
+      },
+      "kv": {
+        "REQ_ARGS": "-r 0-1023 -H Accept-Encoding: gzip"
+      },
+      "raw": "REQ_ARGS=-r 0-1023 -H Accept-Encoding: gzip\nHTTP/2 206 \nserver: <omitido>\ndate: <omitido>\ncontent-type: application/vnd.apple.mpegurl\ncontent-length: 1024\nlast-modified: Mon, 26 Oct 2026 19:55:49 GMT\nvary: Accept-Encoding\netag: \"6adfb045-860b582\"\ncontent-encoding: gzip\nexpires: Mon, 26 Oct 2026 21:05:09 GMT\ncache-control: max-age=300\naccess-control-allow-origin: *\naccess-control-allow-methods: GET, HEAD, OPTIONS\naccess-control-allow-headers: Range, DNT, User-Agent, X-Requested-With, If-Modified-Since, Cache-Control, Content-Type, Accept-Encoding\naccess-control-expose-headers: Content-Length, Content-Range, ETag, Last-Modified, Content-Encoding\naccept-ranges: bytes\ncache-control: public, max-age=300\ncontent-range: bytes 0-1023/140555650\n\nW status=206 http=2 size=1024 ttfb=0.027295 total=0.027389 speed=37387 redirects=0"
+    },
+    {
+      "label": "C2 GET Range 0-1023 + AE identity",
+      "requestArgs": "-r 0-1023 -H Accept-Encoding: identity",
+      "status": 200,
+      "protocol": "h2",
+      "httpVersion": "2",
+      "headers": {
+        "server": "<omitido>",
+        "date": "<omitido>",
+        "content-type": "application/vnd.apple.mpegurl",
+        "last-modified": "Mon, 26 Oct 2026 19:55:49 GMT",
+        "vary": "Accept-Encoding",
+        "etag": "W/\"6adfb045-860b582\"",
+        "expires": "Mon, 26 Oct 2026 21:05:09 GMT",
+        "cache-control": "max-age=300, public, max-age=300",
+        "access-control-allow-origin": "*",
+        "access-control-allow-methods": "GET, HEAD, OPTIONS",
+        "access-control-allow-headers": "Range, DNT, User-Agent, X-Requested-With, If-Modified-Since, Cache-Control, Content-Type, Accept-Encoding",
+        "access-control-expose-headers": "Content-Length, Content-Range, ETag, Last-Modified, Content-Encoding",
+        "accept-ranges": "bytes"
+      },
+      "curl": {
+        "status": 200,
+        "httpVersion": "2",
+        "sizeDownload": 563968332,
+        "ttfbSec": 0.02865,
+        "totalSec": 3.057314,
+        "speedBps": 184465296
+      },
+      "kv": {
+        "REQ_ARGS": "-r 0-1023 -H Accept-Encoding: identity"
+      },
+      "raw": "REQ_ARGS=-r 0-1023 -H Accept-Encoding: identity\nHTTP/2 200 \nserver: <omitido>\ndate: <omitido>\ncontent-type: application/vnd.apple.mpegurl\nlast-modified: Mon, 26 Oct 2026 19:55:49 GMT\nvary: Accept-Encoding\netag: W/\"6adfb045-860b582\"\nexpires: Mon, 26 Oct 2026 21:05:09 GMT\ncache-control: max-age=300\naccess-control-allow-origin: *\naccess-control-allow-methods: GET, HEAD, OPTIONS\naccess-control-allow-headers: Range, DNT, User-Agent, X-Requested-With, If-Modified-Since, Cache-Control, Content-Type, Accept-Encoding\naccess-control-expose-headers: Content-Length, Content-Range, ETag, Last-Modified, Content-Encoding\naccept-ranges: bytes\ncache-control: public, max-age=300\n\nW status=200 http=2 size=563968332 ttfb=0.028650 total=3.057314 speed=184465296 redirects=0"
+    },
+    {
+      "label": "C3 GET Range 0-1023 sin AE",
+      "requestArgs": "-r 0-1023",
+      "status": 200,
+      "protocol": "h2",
+      "httpVersion": "2",
+      "headers": {
+        "server": "<omitido>",
+        "date": "<omitido>",
+        "content-type": "application/vnd.apple.mpegurl",
+        "last-modified": "Mon, 26 Oct 2026 19:55:49 GMT",
+        "vary": "Accept-Encoding",
+        "etag": "W/\"6adfb045-860b582\"",
+        "expires": "Mon, 26 Oct 2026 21:05:12 GMT",
+        "cache-control": "max-age=300, public, max-age=300",
+        "access-control-allow-origin": "*",
+        "access-control-allow-methods": "GET, HEAD, OPTIONS",
+        "access-control-allow-headers": "Range, DNT, User-Agent, X-Requested-With, If-Modified-Since, Cache-Control, Content-Type, Accept-Encoding",
+        "access-control-expose-headers": "Content-Length, Content-Range, ETag, Last-Modified, Content-Encoding",
+        "accept-ranges": "bytes"
+      },
+      "curl": {
+        "status": 200,
+        "httpVersion": "2",
+        "sizeDownload": 563968332,
+        "ttfbSec": 0.029251,
+        "totalSec": 3.02007,
+        "speedBps": 186740152
+      },
+      "kv": {
+        "REQ_ARGS": "-r 0-1023"
+      },
+      "raw": "REQ_ARGS=-r 0-1023\nHTTP/2 200 \nserver: <omitido>\ndate: <omitido>\ncontent-type: application/vnd.apple.mpegurl\nlast-modified: Mon, 26 Oct 2026 19:55:49 GMT\nvary: Accept-Encoding\netag: W/\"6adfb045-860b582\"\nexpires: Mon, 26 Oct 2026 21:05:12 GMT\ncache-control: max-age=300\naccess-control-allow-origin: *\naccess-control-allow-methods: GET, HEAD, OPTIONS\naccess-control-allow-headers: Range, DNT, User-Agent, X-Requested-With, If-Modified-Since, Cache-Control, Content-Type, Accept-Encoding\naccess-control-expose-headers: Content-Length, Content-Range, ETag, Last-Modified, Content-Encoding\naccept-ranges: bytes\ncache-control: public, max-age=300\n\nW status=200 http=2 size=563968332 ttfb=0.029251 total=3.020070 speed=186740152 redirects=0"
+    },
+    {
+      "label": "C4 GET Range 100000000-100000999 + AE gzip",
+      "requestArgs": "-r 100000000-100000999 -H Accept-Encoding: gzip",
+      "status": 206,
+      "protocol": "h2",
+      "httpVersion": "2",
+      "headers": {
+        "server": "<omitido>",
+        "date": "<omitido>",
+        "content-type": "application/vnd.apple.mpegurl",
+        "content-length": "1000",
+        "last-modified": "Mon, 26 Oct 2026 19:55:49 GMT",
+        "vary": "Accept-Encoding",
+        "etag": "\"6adfb045-860b582\"",
+        "content-encoding": "gzip",
+        "expires": "Mon, 26 Oct 2026 21:05:15 GMT",
+        "cache-control": "max-age=300, public, max-age=300",
+        "access-control-allow-origin": "*",
+        "access-control-allow-methods": "GET, HEAD, OPTIONS",
+        "access-control-allow-headers": "Range, DNT, User-Agent, X-Requested-With, If-Modified-Since, Cache-Control, Content-Type, Accept-Encoding",
+        "access-control-expose-headers": "Content-Length, Content-Range, ETag, Last-Modified, Content-Encoding",
+        "accept-ranges": "bytes",
+        "content-range": "bytes 100000000-100000999/140555650"
+      },
+      "curl": {
+        "status": 206,
+        "httpVersion": "2",
+        "sizeDownload": 1000,
+        "ttfbSec": 0.035407,
+        "totalSec": 0.035475,
+        "speedBps": 28188
+      },
+      "kv": {
+        "REQ_ARGS": "-r 100000000-100000999 -H Accept-Encoding: gzip"
+      },
+      "raw": "REQ_ARGS=-r 100000000-100000999 -H Accept-Encoding: gzip\nHTTP/2 206 \nserver: <omitido>\ndate: <omitido>\ncontent-type: application/vnd.apple.mpegurl\ncontent-length: 1000\nlast-modified: Mon, 26 Oct 2026 19:55:49 GMT\nvary: Accept-Encoding\netag: \"6adfb045-860b582\"\ncontent-encoding: gzip\nexpires: Mon, 26 Oct 2026 21:05:15 GMT\ncache-control: max-age=300\naccess-control-allow-origin: *\naccess-control-allow-methods: GET, HEAD, OPTIONS\naccess-control-allow-headers: Range, DNT, User-Agent, X-Requested-With, If-Modified-Since, Cache-Control, Content-Type, Accept-Encoding\naccess-control-expose-headers: Content-Length, Content-Range, ETag, Last-Modified, Content-Encoding\naccept-ranges: bytes\ncache-control: public, max-age=300\ncontent-range: bytes 100000000-100000999/140555650\n\nW status=206 http=2 size=1000 ttfb=0.035407 total=0.035475 speed=28188 redirects=0"
+    },
+    {
+      "label": "C5 GET Range -1024 (sufijo) + AE gzip",
+      "requestArgs": "-r -1024 -H Accept-Encoding: gzip",
+      "status": 206,
+      "protocol": "h2",
+      "httpVersion": "2",
+      "headers": {
+        "server": "<omitido>",
+        "date": "<omitido>",
+        "content-type": "application/vnd.apple.mpegurl",
+        "content-length": "1024",
+        "last-modified": "Mon, 26 Oct 2026 19:55:49 GMT",
+        "vary": "Accept-Encoding",
+        "etag": "\"6adfb045-860b582\"",
+        "content-encoding": "gzip",
+        "expires": "Mon, 26 Oct 2026 21:05:15 GMT",
+        "cache-control": "max-age=300, public, max-age=300",
+        "access-control-allow-origin": "*",
+        "access-control-allow-methods": "GET, HEAD, OPTIONS",
+        "access-control-allow-headers": "Range, DNT, User-Agent, X-Requested-With, If-Modified-Since, Cache-Control, Content-Type, Accept-Encoding",
+        "access-control-expose-headers": "Content-Length, Content-Range, ETag, Last-Modified, Content-Encoding",
+        "accept-ranges": "bytes",
+        "content-range": "bytes 140554626-140555649/140555650"
+      },
+      "curl": {
+        "status": 206,
+        "httpVersion": "2",
+        "sizeDownload": 1024,
+        "ttfbSec": 0.030236,
+        "totalSec": 0.030306,
+        "speedBps": 33788
+      },
+      "kv": {
+        "REQ_ARGS": "-r -1024 -H Accept-Encoding: gzip"
+      },
+      "raw": "REQ_ARGS=-r -1024 -H Accept-Encoding: gzip\nHTTP/2 206 \nserver: <omitido>\ndate: <omitido>\ncontent-type: application/vnd.apple.mpegurl\ncontent-length: 1024\nlast-modified: Mon, 26 Oct 2026 19:55:49 GMT\nvary: Accept-Encoding\netag: \"6adfb045-860b582\"\ncontent-encoding: gzip\nexpires: Mon, 26 Oct 2026 21:05:15 GMT\ncache-control: max-age=300\naccess-control-allow-origin: *\naccess-control-allow-methods: GET, HEAD, OPTIONS\naccess-control-allow-headers: Range, DNT, User-Agent, X-Requested-With, If-Modified-Since, Cache-Control, Content-Type, Accept-Encoding\naccess-control-expose-headers: Content-Length, Content-Range, ETag, Last-Modified, Content-Encoding\naccept-ranges: bytes\ncache-control: public, max-age=300\ncontent-range: bytes 140554626-140555649/140555650\n\nW status=206 http=2 size=1024 ttfb=0.030236 total=0.030306 speed=33788 redirects=0"
+    },
+    {
+      "label": "C6 GET Range multi 0-99,200-299 + AE gzip",
+      "requestArgs": "-r 0-99,200-299 -H Accept-Encoding: gzip",
+      "status": 206,
+      "protocol": "h2",
+      "httpVersion": "2",
+      "headers": {
+        "server": "<omitido>",
+        "date": "<omitido>",
+        "content-type": "multipart/byteranges; boundary=00000000000000000113",
+        "content-length": "451",
+        "last-modified": "Mon, 26 Oct 2026 19:55:49 GMT",
+        "vary": "Accept-Encoding",
+        "etag": "\"6adfb045-860b582\"",
+        "content-encoding": "gzip",
+        "expires": "Mon, 26 Oct 2026 21:05:15 GMT",
+        "cache-control": "max-age=300, public, max-age=300",
+        "access-control-allow-origin": "*",
+        "access-control-allow-methods": "GET, HEAD, OPTIONS",
+        "access-control-allow-headers": "Range, DNT, User-Agent, X-Requested-With, If-Modified-Since, Cache-Control, Content-Type, Accept-Encoding",
+        "access-control-expose-headers": "Content-Length, Content-Range, ETag, Last-Modified, Content-Encoding",
+        "accept-ranges": "bytes"
+      },
+      "curl": {
+        "status": 206,
+        "httpVersion": "2",
+        "sizeDownload": 451,
+        "ttfbSec": 0.025861,
+        "totalSec": 0.025922,
+        "speedBps": 17398
+      },
+      "kv": {
+        "REQ_ARGS": "-r 0-99,200-299 -H Accept-Encoding: gzip"
+      },
+      "raw": "REQ_ARGS=-r 0-99,200-299 -H Accept-Encoding: gzip\nHTTP/2 206 \nserver: <omitido>\ndate: <omitido>\ncontent-type: multipart/byteranges; boundary=00000000000000000113\ncontent-length: 451\nlast-modified: Mon, 26 Oct 2026 19:55:49 GMT\nvary: Accept-Encoding\netag: \"6adfb045-860b582\"\ncontent-encoding: gzip\nexpires: Mon, 26 Oct 2026 21:05:15 GMT\ncache-control: max-age=300\naccess-control-allow-origin: *\naccess-control-allow-methods: GET, HEAD, OPTIONS\naccess-control-allow-headers: Range, DNT, User-Agent, X-Requested-With, If-Modified-Since, Cache-Control, Content-Type, Accept-Encoding\naccess-control-expose-headers: Content-Length, Content-Range, ETag, Last-Modified, Content-Encoding\naccept-ranges: bytes\ncache-control: public, max-age=300\n\nW status=206 http=2 size=451 ttfb=0.025861 total=0.025922 speed=17398 redirects=0"
+    },
+    {
+      "label": "C7 GET Range 0-1023 + If-Range ETag fuerte",
+      "requestArgs": "-r 0-1023 -H Accept-Encoding: gzip -H If-Range: \"6adfb045-860b582\"",
+      "status": 206,
+      "protocol": "h2",
+      "httpVersion": "2",
+      "headers": {
+        "server": "<omitido>",
+        "date": "<omitido>",
+        "content-type": "application/vnd.apple.mpegurl",
+        "content-length": "1024",
+        "last-modified": "Mon, 26 Oct 2026 19:55:49 GMT",
+        "vary": "Accept-Encoding",
+        "etag": "\"6adfb045-860b582\"",
+        "content-encoding": "gzip",
+        "expires": "Mon, 26 Oct 2026 21:05:15 GMT",
+        "cache-control": "max-age=300, public, max-age=300",
+        "access-control-allow-origin": "*",
+        "access-control-allow-methods": "GET, HEAD, OPTIONS",
+        "access-control-allow-headers": "Range, DNT, User-Agent, X-Requested-With, If-Modified-Since, Cache-Control, Content-Type, Accept-Encoding",
+        "access-control-expose-headers": "Content-Length, Content-Range, ETag, Last-Modified, Content-Encoding",
+        "accept-ranges": "bytes",
+        "content-range": "bytes 0-1023/140555650"
+      },
+      "curl": {
+        "status": 206,
+        "httpVersion": "2",
+        "sizeDownload": 1024,
+        "ttfbSec": 0.027254,
+        "totalSec": 0.027309,
+        "speedBps": 37496
+      },
+      "kv": {
+        "REQ_ARGS": "-r 0-1023 -H Accept-Encoding: gzip -H If-Range: \"6adfb045-860b582\""
+      },
+      "raw": "REQ_ARGS=-r 0-1023 -H Accept-Encoding: gzip -H If-Range: \"6adfb045-860b582\"\nHTTP/2 206 \nserver: <omitido>\ndate: <omitido>\ncontent-type: application/vnd.apple.mpegurl\ncontent-length: 1024\nlast-modified: Mon, 26 Oct 2026 19:55:49 GMT\nvary: Accept-Encoding\netag: \"6adfb045-860b582\"\ncontent-encoding: gzip\nexpires: Mon, 26 Oct 2026 21:05:15 GMT\ncache-control: max-age=300\naccess-control-allow-origin: *\naccess-control-allow-methods: GET, HEAD, OPTIONS\naccess-control-allow-headers: Range, DNT, User-Agent, X-Requested-With, If-Modified-Since, Cache-Control, Content-Type, Accept-Encoding\naccess-control-expose-headers: Content-Length, Content-Range, ETag, Last-Modified, Content-Encoding\naccept-ranges: bytes\ncache-control: public, max-age=300\ncontent-range: bytes 0-1023/140555650\n\nW status=206 http=2 size=1024 ttfb=0.027254 total=0.027309 speed=37496 redirects=0"
+    },
+    {
+      "label": "C8 GET Range 0-1023 + If-Range ETag ajeno",
+      "requestArgs": "-r 0-1023 -H Accept-Encoding: gzip -H If-Range: \"deadbeef-1\"",
+      "status": 200,
+      "protocol": "h2",
+      "httpVersion": "2",
+      "headers": {
+        "server": "<omitido>",
+        "date": "<omitido>",
+        "content-type": "application/vnd.apple.mpegurl",
+        "content-length": "140555650",
+        "last-modified": "Mon, 26 Oct 2026 19:55:49 GMT",
+        "vary": "Accept-Encoding",
+        "etag": "\"6adfb045-860b582\"",
+        "content-encoding": "gzip",
+        "expires": "Mon, 26 Oct 2026 21:05:15 GMT",
+        "cache-control": "max-age=300, public, max-age=300",
+        "access-control-allow-origin": "*",
+        "access-control-allow-methods": "GET, HEAD, OPTIONS",
+        "access-control-allow-headers": "Range, DNT, User-Agent, X-Requested-With, If-Modified-Since, Cache-Control, Content-Type, Accept-Encoding",
+        "access-control-expose-headers": "Content-Length, Content-Range, ETag, Last-Modified, Content-Encoding",
+        "accept-ranges": "bytes, bytes"
+      },
+      "curl": {
+        "status": 200,
+        "httpVersion": "2",
+        "sizeDownload": 140555650,
+        "ttfbSec": 0.040621,
+        "totalSec": 0.320262,
+        "speedBps": 438877075
+      },
+      "kv": {
+        "REQ_ARGS": "-r 0-1023 -H Accept-Encoding: gzip -H If-Range: \"deadbeef-1\""
+      },
+      "raw": "REQ_ARGS=-r 0-1023 -H Accept-Encoding: gzip -H If-Range: \"deadbeef-1\"\nHTTP/2 200 \nserver: <omitido>\ndate: <omitido>\ncontent-type: application/vnd.apple.mpegurl\ncontent-length: 140555650\nlast-modified: Mon, 26 Oct 2026 19:55:49 GMT\nvary: Accept-Encoding\netag: \"6adfb045-860b582\"\ncontent-encoding: gzip\nexpires: Mon, 26 Oct 2026 21:05:15 GMT\ncache-control: max-age=300\naccess-control-allow-origin: *\naccess-control-allow-methods: GET, HEAD, OPTIONS\naccess-control-allow-headers: Range, DNT, User-Agent, X-Requested-With, If-Modified-Since, Cache-Control, Content-Type, Accept-Encoding\naccess-control-expose-headers: Content-Length, Content-Range, ETag, Last-Modified, Content-Encoding\naccept-ranges: bytes\ncache-control: public, max-age=300\naccept-ranges: bytes\n\nW status=200 http=2 size=140555650 ttfb=0.040621 total=0.320262 speed=438877075 redirects=0"
+    },
+    {
+      "label": "C9 HEAD Range 0-1023 + AE gzip",
+      "requestArgs": "-I -r 0-1023 -H Accept-Encoding: gzip",
+      "status": 206,
+      "protocol": "h2",
+      "httpVersion": "2",
+      "headers": {
+        "server": "<omitido>",
+        "date": "<omitido>",
+        "content-type": "application/vnd.apple.mpegurl",
+        "content-length": "1024",
+        "last-modified": "Mon, 26 Oct 2026 19:55:49 GMT",
+        "vary": "Accept-Encoding",
+        "etag": "\"6adfb045-860b582\"",
+        "content-encoding": "gzip",
+        "expires": "Mon, 26 Oct 2026 21:05:15 GMT",
+        "cache-control": "max-age=300, public, max-age=300",
+        "access-control-allow-origin": "*",
+        "access-control-allow-methods": "GET, HEAD, OPTIONS",
+        "access-control-allow-headers": "Range, DNT, User-Agent, X-Requested-With, If-Modified-Since, Cache-Control, Content-Type, Accept-Encoding",
+        "access-control-expose-headers": "Content-Length, Content-Range, ETag, Last-Modified, Content-Encoding",
+        "accept-ranges": "bytes",
+        "content-range": "bytes 0-1023/140555650"
+      },
+      "curl": {
+        "status": 206,
+        "httpVersion": "2",
+        "sizeDownload": 0,
+        "ttfbSec": 0.031129,
+        "totalSec": 0.031196,
+        "speedBps": 0
+      },
+      "kv": {
+        "REQ_ARGS": "-I -r 0-1023 -H Accept-Encoding: gzip"
+      },
+      "raw": "REQ_ARGS=-I -r 0-1023 -H Accept-Encoding: gzip\nHTTP/2 206 \nserver: <omitido>\ndate: <omitido>\ncontent-type: application/vnd.apple.mpegurl\ncontent-length: 1024\nlast-modified: Mon, 26 Oct 2026 19:55:49 GMT\nvary: Accept-Encoding\netag: \"6adfb045-860b582\"\ncontent-encoding: gzip\nexpires: Mon, 26 Oct 2026 21:05:15 GMT\ncache-control: max-age=300\naccess-control-allow-origin: *\naccess-control-allow-methods: GET, HEAD, OPTIONS\naccess-control-allow-headers: Range, DNT, User-Agent, X-Requested-With, If-Modified-Since, Cache-Control, Content-Type, Accept-Encoding\naccess-control-expose-headers: Content-Length, Content-Range, ETag, Last-Modified, Content-Encoding\naccept-ranges: bytes\ncache-control: public, max-age=300\ncontent-range: bytes 0-1023/140555650\n\nW status=206 http=2 size=0 ttfb=0.031129 total=0.031196 speed=0 redirects=0"
+    },
+    {
+      "label": "C10 cuerpo de Range 0-1023 + AE gzip",
+      "requestArgs": null,
+      "status": null,
+      "protocol": null,
+      "httpVersion": null,
+      "headers": {},
+      "curl": null,
+      "kv": {
+        "BODY_HEX_HEAD": "1f",
+        "BODY_SHA256": "fb9538dc187c3196b92a38d00efb27293e8bd893d3aa8f9bd1513ba28137cb43",
+        "BODY_BYTES": "1024"
+      },
+      "raw": "BODY_HEX_HEAD= 1f 8b 08 00 00 00 00 00 00 0a dc bd fd 72 ab 48 b2 2f fa ff 3c 85 42 3b d6 c4 cc 34 c8 80 3e 6c d3 9b be 07 a1 92 45 2f 04 34 20 79 79 4e 9c 50 60 09 59 8c 25 50 03 f2 b2 7b f7 fc 75 5e e1 3c e1 79 92 13 59 55 20 3e 25 dc f7 de 98 b9 77 76 ec d5 16 f9 cb a2 a8 ca aa ca ca ca cc fa 0f f4 cd 99 f7 17 9d 77 36 79 7b 61 4\nBODY_SHA256=fb9538dc187c3196b92a38d00efb27293e8bd893d3aa8f9bd1513ba28137cb43\nBODY_BYTES=1024"
+    },
+    {
+      "label": "C11 cuerpo de Range 100000000-100000999 + AE gzip",
+      "requestArgs": null,
+      "status": null,
+      "protocol": null,
+      "httpVersion": null,
+      "headers": {},
+      "curl": null,
+      "kv": {
+        "BODY_HEX_HEAD": "f6",
+        "BODY_SHA256": "fe8a1469f44891c043d2b69423666c6d622a39424ebef7772484fc615257943f",
+        "BODY_BYTES": "1000"
+      },
+      "raw": "BODY_HEX_HEAD= f6 6b e3 c0 c1 a2 c8 44 e6 58 31 38 35 4d 12 86 e0 ba 3a af 9b bf 3a cc 33 b2 f3 35 1d 4c 12 14 11 07 34 61 73 57 33 89 17 0a 77 3b 4d d1 d5 85 8a 73 9c 10 19 ee 0d a3 e3 c3 fe c3 37 29 0d 74 59 cd c1 c6 c7 ab fc b9 2e 15 98 e6 0f 75 19 46 0d e7 3f 8e 85 a7 0c 19 5a f8 2c ca c0 e0 58 cf 66 92 f2 75 b3 5e 29 2b 43 cd b\nBODY_SHA256=fe8a1469f44891c043d2b69423666c6d622a39424ebef7772484fc615257943f\nBODY_BYTES=1000"
+    },
+    {
+      "label": "D1 gzip + If-None-Match fuerte (el suyo)",
+      "requestArgs": "-H Accept-Encoding: gzip -H If-None-Match: \"6adfb045-860b582\"",
+      "status": 304,
+      "protocol": "h2",
+      "httpVersion": "2",
+      "headers": {
+        "server": "<omitido>",
+        "date": "<omitido>",
+        "last-modified": "Mon, 26 Oct 2026 19:55:49 GMT",
+        "etag": "\"6adfb045-860b582\"",
+        "expires": "Mon, 26 Oct 2026 21:05:16 GMT",
+        "cache-control": "max-age=300, public, max-age=300",
+        "access-control-allow-origin": "*",
+        "access-control-allow-methods": "GET, HEAD, OPTIONS",
+        "access-control-allow-headers": "Range, DNT, User-Agent, X-Requested-With, If-Modified-Since, Cache-Control, Content-Type, Accept-Encoding",
+        "access-control-expose-headers": "Content-Length, Content-Range, ETag, Last-Modified, Content-Encoding",
+        "accept-ranges": "bytes"
+      },
+      "curl": {
+        "status": 304,
+        "httpVersion": "2",
+        "sizeDownload": 0,
+        "ttfbSec": 0.025391,
+        "totalSec": 0.025444,
+        "speedBps": 0
+      },
+      "kv": {
+        "REQ_ARGS": "-H Accept-Encoding: gzip -H If-None-Match: \"6adfb045-860b582\""
+      },
+      "raw": "REQ_ARGS=-H Accept-Encoding: gzip -H If-None-Match: \"6adfb045-860b582\"\nHTTP/2 304 \nserver: <omitido>\ndate: <omitido>\nlast-modified: Mon, 26 Oct 2026 19:55:49 GMT\netag: \"6adfb045-860b582\"\nexpires: Mon, 26 Oct 2026 21:05:16 GMT\ncache-control: max-age=300\naccess-control-allow-origin: *\naccess-control-allow-methods: GET, HEAD, OPTIONS\naccess-control-allow-headers: Range, DNT, User-Agent, X-Requested-With, If-Modified-Since, Cache-Control, Content-Type, Accept-Encoding\naccess-control-expose-headers: Content-Length, Content-Range, ETag, Last-Modified, Content-Encoding\naccept-ranges: bytes\ncache-control: public, max-age=300\n\nW status=304 http=2 size=0 ttfb=0.025391 total=0.025444 speed=0 redirects=0"
+    },
+    {
+      "label": "D2 gzip + If-None-Match débil",
+      "requestArgs": "-H Accept-Encoding: gzip -H If-None-Match: W/\"6adfb045-860b582\"",
+      "status": 304,
+      "protocol": "h2",
+      "httpVersion": "2",
+      "headers": {
+        "server": "<omitido>",
+        "date": "<omitido>",
+        "last-modified": "Mon, 26 Oct 2026 19:55:49 GMT",
+        "etag": "\"6adfb045-860b582\"",
+        "expires": "Mon, 26 Oct 2026 21:05:16 GMT",
+        "cache-control": "max-age=300, public, max-age=300",
+        "access-control-allow-origin": "*",
+        "access-control-allow-methods": "GET, HEAD, OPTIONS",
+        "access-control-allow-headers": "Range, DNT, User-Agent, X-Requested-With, If-Modified-Since, Cache-Control, Content-Type, Accept-Encoding",
+        "access-control-expose-headers": "Content-Length, Content-Range, ETag, Last-Modified, Content-Encoding",
+        "accept-ranges": "bytes"
+      },
+      "curl": {
+        "status": 304,
+        "httpVersion": "2",
+        "sizeDownload": 0,
+        "ttfbSec": 0.028113,
+        "totalSec": 0.028167,
+        "speedBps": 0
+      },
+      "kv": {
+        "REQ_ARGS": "-H Accept-Encoding: gzip -H If-None-Match: W/\"6adfb045-860b582\""
+      },
+      "raw": "REQ_ARGS=-H Accept-Encoding: gzip -H If-None-Match: W/\"6adfb045-860b582\"\nHTTP/2 304 \nserver: <omitido>\ndate: <omitido>\nlast-modified: Mon, 26 Oct 2026 19:55:49 GMT\netag: \"6adfb045-860b582\"\nexpires: Mon, 26 Oct 2026 21:05:16 GMT\ncache-control: max-age=300\naccess-control-allow-origin: *\naccess-control-allow-methods: GET, HEAD, OPTIONS\naccess-control-allow-headers: Range, DNT, User-Agent, X-Requested-With, If-Modified-Since, Cache-Control, Content-Type, Accept-Encoding\naccess-control-expose-headers: Content-Length, Content-Range, ETag, Last-Modified, Content-Encoding\naccept-ranges: bytes\ncache-control: public, max-age=300\n\nW status=304 http=2 size=0 ttfb=0.028113 total=0.028167 speed=0 redirects=0"
+    },
+    {
+      "label": "D3 identity + If-None-Match débil (el suyo)",
+      "requestArgs": "-H Accept-Encoding: identity -H If-None-Match: W/\"6adfb045-860b582\"",
+      "status": 304,
+      "protocol": "h2",
+      "httpVersion": "2",
+      "headers": {
+        "server": "<omitido>",
+        "date": "<omitido>",
+        "last-modified": "Mon, 26 Oct 2026 19:55:49 GMT",
+        "etag": "\"6adfb045-860b582\"",
+        "expires": "Mon, 26 Oct 2026 21:05:16 GMT",
+        "cache-control": "max-age=300, public, max-age=300",
+        "access-control-allow-origin": "*",
+        "access-control-allow-methods": "GET, HEAD, OPTIONS",
+        "access-control-allow-headers": "Range, DNT, User-Agent, X-Requested-With, If-Modified-Since, Cache-Control, Content-Type, Accept-Encoding",
+        "access-control-expose-headers": "Content-Length, Content-Range, ETag, Last-Modified, Content-Encoding",
+        "accept-ranges": "bytes"
+      },
+      "curl": {
+        "status": 304,
+        "httpVersion": "2",
+        "sizeDownload": 0,
+        "ttfbSec": 0.027571,
+        "totalSec": 0.027613,
+        "speedBps": 0
+      },
+      "kv": {
+        "REQ_ARGS": "-H Accept-Encoding: identity -H If-None-Match: W/\"6adfb045-860b582\""
+      },
+      "raw": "REQ_ARGS=-H Accept-Encoding: identity -H If-None-Match: W/\"6adfb045-860b582\"\nHTTP/2 304 \nserver: <omitido>\ndate: <omitido>\nlast-modified: Mon, 26 Oct 2026 19:55:49 GMT\netag: \"6adfb045-860b582\"\nexpires: Mon, 26 Oct 2026 21:05:16 GMT\ncache-control: max-age=300\naccess-control-allow-origin: *\naccess-control-allow-methods: GET, HEAD, OPTIONS\naccess-control-allow-headers: Range, DNT, User-Agent, X-Requested-With, If-Modified-Since, Cache-Control, Content-Type, Accept-Encoding\naccess-control-expose-headers: Content-Length, Content-Range, ETag, Last-Modified, Content-Encoding\naccept-ranges: bytes\ncache-control: public, max-age=300\n\nW status=304 http=2 size=0 ttfb=0.027571 total=0.027613 speed=0 redirects=0"
+    },
+    {
+      "label": "D4 identity + If-None-Match fuerte (cruzado)",
+      "requestArgs": "-H Accept-Encoding: identity -H If-None-Match: \"6adfb045-860b582\"",
+      "status": 304,
+      "protocol": "h2",
+      "httpVersion": "2",
+      "headers": {
+        "server": "<omitido>",
+        "date": "<omitido>",
+        "last-modified": "Mon, 26 Oct 2026 19:55:49 GMT",
+        "etag": "\"6adfb045-860b582\"",
+        "expires": "Mon, 26 Oct 2026 21:05:16 GMT",
+        "cache-control": "max-age=300, public, max-age=300",
+        "access-control-allow-origin": "*",
+        "access-control-allow-methods": "GET, HEAD, OPTIONS",
+        "access-control-allow-headers": "Range, DNT, User-Agent, X-Requested-With, If-Modified-Since, Cache-Control, Content-Type, Accept-Encoding",
+        "access-control-expose-headers": "Content-Length, Content-Range, ETag, Last-Modified, Content-Encoding",
+        "accept-ranges": "bytes"
+      },
+      "curl": {
+        "status": 304,
+        "httpVersion": "2",
+        "sizeDownload": 0,
+        "ttfbSec": 0.027103,
+        "totalSec": 0.027142,
+        "speedBps": 0
+      },
+      "kv": {
+        "REQ_ARGS": "-H Accept-Encoding: identity -H If-None-Match: \"6adfb045-860b582\""
+      },
+      "raw": "REQ_ARGS=-H Accept-Encoding: identity -H If-None-Match: \"6adfb045-860b582\"\nHTTP/2 304 \nserver: <omitido>\ndate: <omitido>\nlast-modified: Mon, 26 Oct 2026 19:55:49 GMT\netag: \"6adfb045-860b582\"\nexpires: Mon, 26 Oct 2026 21:05:16 GMT\ncache-control: max-age=300\naccess-control-allow-origin: *\naccess-control-allow-methods: GET, HEAD, OPTIONS\naccess-control-allow-headers: Range, DNT, User-Agent, X-Requested-With, If-Modified-Since, Cache-Control, Content-Type, Accept-Encoding\naccess-control-expose-headers: Content-Length, Content-Range, ETag, Last-Modified, Content-Encoding\naccept-ranges: bytes\ncache-control: public, max-age=300\n\nW status=304 http=2 size=0 ttfb=0.027103 total=0.027142 speed=0 redirects=0"
+    },
+    {
+      "label": "D5 sin AE + If-None-Match fuerte (cruzado)",
+      "requestArgs": "-H If-None-Match: \"6adfb045-860b582\"",
+      "status": 304,
+      "protocol": "h2",
+      "httpVersion": "2",
+      "headers": {
+        "server": "<omitido>",
+        "date": "<omitido>",
+        "last-modified": "Mon, 26 Oct 2026 19:55:49 GMT",
+        "etag": "\"6adfb045-860b582\"",
+        "expires": "Mon, 26 Oct 2026 21:05:16 GMT",
+        "cache-control": "max-age=300, public, max-age=300",
+        "access-control-allow-origin": "*",
+        "access-control-allow-methods": "GET, HEAD, OPTIONS",
+        "access-control-allow-headers": "Range, DNT, User-Agent, X-Requested-With, If-Modified-Since, Cache-Control, Content-Type, Accept-Encoding",
+        "access-control-expose-headers": "Content-Length, Content-Range, ETag, Last-Modified, Content-Encoding",
+        "accept-ranges": "bytes"
+      },
+      "curl": {
+        "status": 304,
+        "httpVersion": "2",
+        "sizeDownload": 0,
+        "ttfbSec": 0.02716,
+        "totalSec": 0.027217,
+        "speedBps": 0
+      },
+      "kv": {
+        "REQ_ARGS": "-H If-None-Match: \"6adfb045-860b582\""
+      },
+      "raw": "REQ_ARGS=-H If-None-Match: \"6adfb045-860b582\"\nHTTP/2 304 \nserver: <omitido>\ndate: <omitido>\nlast-modified: Mon, 26 Oct 2026 19:55:49 GMT\netag: \"6adfb045-860b582\"\nexpires: Mon, 26 Oct 2026 21:05:16 GMT\ncache-control: max-age=300\naccess-control-allow-origin: *\naccess-control-allow-methods: GET, HEAD, OPTIONS\naccess-control-allow-headers: Range, DNT, User-Agent, X-Requested-With, If-Modified-Since, Cache-Control, Content-Type, Accept-Encoding\naccess-control-expose-headers: Content-Length, Content-Range, ETag, Last-Modified, Content-Encoding\naccept-ranges: bytes\ncache-control: public, max-age=300\n\nW status=304 http=2 size=0 ttfb=0.027160 total=0.027217 speed=0 redirects=0"
+    },
+    {
+      "label": "D6 gzip + If-None-Match: *",
+      "requestArgs": "-H Accept-Encoding: gzip -H If-None-Match: *",
+      "status": 304,
+      "protocol": "h2",
+      "httpVersion": "2",
+      "headers": {
+        "server": "<omitido>",
+        "date": "<omitido>",
+        "last-modified": "Mon, 26 Oct 2026 19:55:49 GMT",
+        "etag": "\"6adfb045-860b582\"",
+        "expires": "Mon, 26 Oct 2026 21:05:16 GMT",
+        "cache-control": "max-age=300, public, max-age=300",
+        "access-control-allow-origin": "*",
+        "access-control-allow-methods": "GET, HEAD, OPTIONS",
+        "access-control-allow-headers": "Range, DNT, User-Agent, X-Requested-With, If-Modified-Since, Cache-Control, Content-Type, Accept-Encoding",
+        "access-control-expose-headers": "Content-Length, Content-Range, ETag, Last-Modified, Content-Encoding",
+        "accept-ranges": "bytes"
+      },
+      "curl": {
+        "status": 304,
+        "httpVersion": "2",
+        "sizeDownload": 0,
+        "ttfbSec": 0.030694,
+        "totalSec": 0.030733,
+        "speedBps": 0
+      },
+      "kv": {
+        "REQ_ARGS": "-H Accept-Encoding: gzip -H If-None-Match: *"
+      },
+      "raw": "REQ_ARGS=-H Accept-Encoding: gzip -H If-None-Match: *\nHTTP/2 304 \nserver: <omitido>\ndate: <omitido>\nlast-modified: Mon, 26 Oct 2026 19:55:49 GMT\netag: \"6adfb045-860b582\"\nexpires: Mon, 26 Oct 2026 21:05:16 GMT\ncache-control: max-age=300\naccess-control-allow-origin: *\naccess-control-allow-methods: GET, HEAD, OPTIONS\naccess-control-allow-headers: Range, DNT, User-Agent, X-Requested-With, If-Modified-Since, Cache-Control, Content-Type, Accept-Encoding\naccess-control-expose-headers: Content-Length, Content-Range, ETag, Last-Modified, Content-Encoding\naccept-ranges: bytes\ncache-control: public, max-age=300\n\nW status=304 http=2 size=0 ttfb=0.030694 total=0.030733 speed=0 redirects=0"
+    },
+    {
+      "label": "D7 gzip + If-None-Match ajeno",
+      "requestArgs": "-H Accept-Encoding: gzip -H If-None-Match: \"deadbeef-1\"",
+      "status": 200,
+      "protocol": "h2",
+      "httpVersion": "2",
+      "headers": {
+        "server": "<omitido>",
+        "date": "<omitido>",
+        "content-type": "application/vnd.apple.mpegurl",
+        "content-length": "140555650",
+        "last-modified": "Mon, 26 Oct 2026 19:55:49 GMT",
+        "vary": "Accept-Encoding",
+        "etag": "\"6adfb045-860b582\"",
+        "content-encoding": "gzip",
+        "expires": "Mon, 26 Oct 2026 21:05:16 GMT",
+        "cache-control": "max-age=300, public, max-age=300",
+        "access-control-allow-origin": "*",
+        "access-control-allow-methods": "GET, HEAD, OPTIONS",
+        "access-control-allow-headers": "Range, DNT, User-Agent, X-Requested-With, If-Modified-Since, Cache-Control, Content-Type, Accept-Encoding",
+        "access-control-expose-headers": "Content-Length, Content-Range, ETag, Last-Modified, Content-Encoding",
+        "accept-ranges": "bytes, bytes"
+      },
+      "curl": {
+        "status": 200,
+        "httpVersion": "2",
+        "sizeDownload": 140555650,
+        "ttfbSec": 0.028558,
+        "totalSec": 0.301608,
+        "speedBps": 466020960
+      },
+      "kv": {
+        "REQ_ARGS": "-H Accept-Encoding: gzip -H If-None-Match: \"deadbeef-1\""
+      },
+      "raw": "REQ_ARGS=-H Accept-Encoding: gzip -H If-None-Match: \"deadbeef-1\"\nHTTP/2 200 \nserver: <omitido>\ndate: <omitido>\ncontent-type: application/vnd.apple.mpegurl\ncontent-length: 140555650\nlast-modified: Mon, 26 Oct 2026 19:55:49 GMT\nvary: Accept-Encoding\netag: \"6adfb045-860b582\"\ncontent-encoding: gzip\nexpires: Mon, 26 Oct 2026 21:05:16 GMT\ncache-control: max-age=300\naccess-control-allow-origin: *\naccess-control-allow-methods: GET, HEAD, OPTIONS\naccess-control-allow-headers: Range, DNT, User-Agent, X-Requested-With, If-Modified-Since, Cache-Control, Content-Type, Accept-Encoding\naccess-control-expose-headers: Content-Length, Content-Range, ETag, Last-Modified, Content-Encoding\naccept-ranges: bytes\ncache-control: public, max-age=300\naccept-ranges: bytes\n\nW status=200 http=2 size=140555650 ttfb=0.028558 total=0.301608 speed=466020960 redirects=0"
+    },
+    {
+      "label": "D8 sin AE + If-Modified-Since = Last-Modified",
+      "requestArgs": "-H If-Modified-Since: Mon, 26 Oct 2026 19:55:49 GMT",
+      "status": 304,
+      "protocol": "h2",
+      "httpVersion": "2",
+      "headers": {
+        "server": "<omitido>",
+        "date": "<omitido>",
+        "last-modified": "Mon, 26 Oct 2026 19:55:49 GMT",
+        "etag": "\"6adfb045-860b582\"",
+        "expires": "Mon, 26 Oct 2026 21:05:16 GMT",
+        "cache-control": "max-age=300, public, max-age=300",
+        "access-control-allow-origin": "*",
+        "access-control-allow-methods": "GET, HEAD, OPTIONS",
+        "access-control-allow-headers": "Range, DNT, User-Agent, X-Requested-With, If-Modified-Since, Cache-Control, Content-Type, Accept-Encoding",
+        "access-control-expose-headers": "Content-Length, Content-Range, ETag, Last-Modified, Content-Encoding",
+        "accept-ranges": "bytes"
+      },
+      "curl": {
+        "status": 304,
+        "httpVersion": "2",
+        "sizeDownload": 0,
+        "ttfbSec": 0.029273,
+        "totalSec": 0.029317,
+        "speedBps": 0
+      },
+      "kv": {
+        "REQ_ARGS": "-H If-Modified-Since: Mon, 26 Oct 2026 19:55:49 GMT"
+      },
+      "raw": "REQ_ARGS=-H If-Modified-Since: Mon, 26 Oct 2026 19:55:49 GMT\nHTTP/2 304 \nserver: <omitido>\ndate: <omitido>\nlast-modified: Mon, 26 Oct 2026 19:55:49 GMT\netag: \"6adfb045-860b582\"\nexpires: Mon, 26 Oct 2026 21:05:16 GMT\ncache-control: max-age=300\naccess-control-allow-origin: *\naccess-control-allow-methods: GET, HEAD, OPTIONS\naccess-control-allow-headers: Range, DNT, User-Agent, X-Requested-With, If-Modified-Since, Cache-Control, Content-Type, Accept-Encoding\naccess-control-expose-headers: Content-Length, Content-Range, ETag, Last-Modified, Content-Encoding\naccept-ranges: bytes\ncache-control: public, max-age=300\n\nW status=304 http=2 size=0 ttfb=0.029273 total=0.029317 speed=0 redirects=0"
+    },
+    {
+      "label": "D9 gzip + If-Modified-Since = Last-Modified",
+      "requestArgs": "-H Accept-Encoding: gzip -H If-Modified-Since: Mon, 26 Oct 2026 19:55:49 GMT",
+      "status": 304,
+      "protocol": "h2",
+      "httpVersion": "2",
+      "headers": {
+        "server": "<omitido>",
+        "date": "<omitido>",
+        "last-modified": "Mon, 26 Oct 2026 19:55:49 GMT",
+        "etag": "\"6adfb045-860b582\"",
+        "expires": "Mon, 26 Oct 2026 21:05:16 GMT",
+        "cache-control": "max-age=300, public, max-age=300",
+        "access-control-allow-origin": "*",
+        "access-control-allow-methods": "GET, HEAD, OPTIONS",
+        "access-control-allow-headers": "Range, DNT, User-Agent, X-Requested-With, If-Modified-Since, Cache-Control, Content-Type, Accept-Encoding",
+        "access-control-expose-headers": "Content-Length, Content-Range, ETag, Last-Modified, Content-Encoding",
+        "accept-ranges": "bytes"
+      },
+      "curl": {
+        "status": 304,
+        "httpVersion": "2",
+        "sizeDownload": 0,
+        "ttfbSec": 0.026413,
+        "totalSec": 0.026465,
+        "speedBps": 0
+      },
+      "kv": {
+        "REQ_ARGS": "-H Accept-Encoding: gzip -H If-Modified-Since: Mon, 26 Oct 2026 19:55:49 GMT"
+      },
+      "raw": "REQ_ARGS=-H Accept-Encoding: gzip -H If-Modified-Since: Mon, 26 Oct 2026 19:55:49 GMT\nHTTP/2 304 \nserver: <omitido>\ndate: <omitido>\nlast-modified: Mon, 26 Oct 2026 19:55:49 GMT\netag: \"6adfb045-860b582\"\nexpires: Mon, 26 Oct 2026 21:05:16 GMT\ncache-control: max-age=300\naccess-control-allow-origin: *\naccess-control-allow-methods: GET, HEAD, OPTIONS\naccess-control-allow-headers: Range, DNT, User-Agent, X-Requested-With, If-Modified-Since, Cache-Control, Content-Type, Accept-Encoding\naccess-control-expose-headers: Content-Length, Content-Range, ETag, Last-Modified, Content-Encoding\naccept-ranges: bytes\ncache-control: public, max-age=300\n\nW status=304 http=2 size=0 ttfb=0.026413 total=0.026465 speed=0 redirects=0"
+    },
+    {
+      "label": "D10 HEAD gzip + If-None-Match fuerte",
+      "requestArgs": "-I -H Accept-Encoding: gzip -H If-None-Match: \"6adfb045-860b582\"",
+      "status": 304,
+      "protocol": "h2",
+      "httpVersion": "2",
+      "headers": {
+        "server": "<omitido>",
+        "date": "<omitido>",
+        "last-modified": "Mon, 26 Oct 2026 19:55:49 GMT",
+        "etag": "\"6adfb045-860b582\"",
+        "expires": "Mon, 26 Oct 2026 21:05:16 GMT",
+        "cache-control": "max-age=300, public, max-age=300",
+        "access-control-allow-origin": "*",
+        "access-control-allow-methods": "GET, HEAD, OPTIONS",
+        "access-control-allow-headers": "Range, DNT, User-Agent, X-Requested-With, If-Modified-Since, Cache-Control, Content-Type, Accept-Encoding",
+        "access-control-expose-headers": "Content-Length, Content-Range, ETag, Last-Modified, Content-Encoding",
+        "accept-ranges": "bytes"
+      },
+      "curl": {
+        "status": 304,
+        "httpVersion": "2",
+        "sizeDownload": 0,
+        "ttfbSec": 0.026301,
+        "totalSec": 0.026353,
+        "speedBps": 0
+      },
+      "kv": {
+        "REQ_ARGS": "-I -H Accept-Encoding: gzip -H If-None-Match: \"6adfb045-860b582\""
+      },
+      "raw": "REQ_ARGS=-I -H Accept-Encoding: gzip -H If-None-Match: \"6adfb045-860b582\"\nHTTP/2 304 \nserver: <omitido>\ndate: <omitido>\nlast-modified: Mon, 26 Oct 2026 19:55:49 GMT\netag: \"6adfb045-860b582\"\nexpires: Mon, 26 Oct 2026 21:05:16 GMT\ncache-control: max-age=300\naccess-control-allow-origin: *\naccess-control-allow-methods: GET, HEAD, OPTIONS\naccess-control-allow-headers: Range, DNT, User-Agent, X-Requested-With, If-Modified-Since, Cache-Control, Content-Type, Accept-Encoding\naccess-control-expose-headers: Content-Length, Content-Range, ETag, Last-Modified, Content-Encoding\naccept-ranges: bytes\ncache-control: public, max-age=300\n\nW status=304 http=2 size=0 ttfb=0.026301 total=0.026353 speed=0 redirects=0"
+    },
+    {
+      "label": "D11 HEAD identity + If-None-Match débil",
+      "requestArgs": "-I -H Accept-Encoding: identity -H If-None-Match: W/\"6adfb045-860b582\"",
+      "status": 304,
+      "protocol": "h2",
+      "httpVersion": "2",
+      "headers": {
+        "server": "<omitido>",
+        "date": "<omitido>",
+        "last-modified": "Mon, 26 Oct 2026 19:55:49 GMT",
+        "etag": "\"6adfb045-860b582\"",
+        "expires": "Mon, 26 Oct 2026 21:05:16 GMT",
+        "cache-control": "max-age=300, public, max-age=300",
+        "access-control-allow-origin": "*",
+        "access-control-allow-methods": "GET, HEAD, OPTIONS",
+        "access-control-allow-headers": "Range, DNT, User-Agent, X-Requested-With, If-Modified-Since, Cache-Control, Content-Type, Accept-Encoding",
+        "access-control-expose-headers": "Content-Length, Content-Range, ETag, Last-Modified, Content-Encoding",
+        "accept-ranges": "bytes"
+      },
+      "curl": {
+        "status": 304,
+        "httpVersion": "2",
+        "sizeDownload": 0,
+        "ttfbSec": 0.027561,
+        "totalSec": 0.02761,
+        "speedBps": 0
+      },
+      "kv": {
+        "REQ_ARGS": "-I -H Accept-Encoding: identity -H If-None-Match: W/\"6adfb045-860b582\""
+      },
+      "raw": "REQ_ARGS=-I -H Accept-Encoding: identity -H If-None-Match: W/\"6adfb045-860b582\"\nHTTP/2 304 \nserver: <omitido>\ndate: <omitido>\nlast-modified: Mon, 26 Oct 2026 19:55:49 GMT\netag: \"6adfb045-860b582\"\nexpires: Mon, 26 Oct 2026 21:05:16 GMT\ncache-control: max-age=300\naccess-control-allow-origin: *\naccess-control-allow-methods: GET, HEAD, OPTIONS\naccess-control-allow-headers: Range, DNT, User-Agent, X-Requested-With, If-Modified-Since, Cache-Control, Content-Type, Accept-Encoding\naccess-control-expose-headers: Content-Length, Content-Range, ETag, Last-Modified, Content-Encoding\naccept-ranges: bytes\ncache-control: public, max-age=300\n\nW status=304 http=2 size=0 ttfb=0.027561 total=0.027610 speed=0 redirects=0"
+    },
+    {
+      "label": "D12 gzip + INM fuerte + IMS",
+      "requestArgs": "-H Accept-Encoding: gzip -H If-None-Match: \"6adfb045-860b582\" -H If-Modified-Since: Mon, 26 Oct 2026 19:55:49 GMT",
+      "status": 304,
+      "protocol": "h2",
+      "httpVersion": "2",
+      "headers": {
+        "server": "<omitido>",
+        "date": "<omitido>",
+        "last-modified": "Mon, 26 Oct 2026 19:55:49 GMT",
+        "etag": "\"6adfb045-860b582\"",
+        "expires": "Mon, 26 Oct 2026 21:05:16 GMT",
+        "cache-control": "max-age=300, public, max-age=300",
+        "access-control-allow-origin": "*",
+        "access-control-allow-methods": "GET, HEAD, OPTIONS",
+        "access-control-allow-headers": "Range, DNT, User-Agent, X-Requested-With, If-Modified-Since, Cache-Control, Content-Type, Accept-Encoding",
+        "access-control-expose-headers": "Content-Length, Content-Range, ETag, Last-Modified, Content-Encoding",
+        "accept-ranges": "bytes"
+      },
+      "curl": {
+        "status": 304,
+        "httpVersion": "2",
+        "sizeDownload": 0,
+        "ttfbSec": 0.033462,
+        "totalSec": 0.033502,
+        "speedBps": 0
+      },
+      "kv": {
+        "REQ_ARGS": "-H Accept-Encoding: gzip -H If-None-Match: \"6adfb045-860b582\" -H If-Modified-Since: Mon, 26 Oct 2026 19:55:49 GMT"
+      },
+      "raw": "REQ_ARGS=-H Accept-Encoding: gzip -H If-None-Match: \"6adfb045-860b582\" -H If-Modified-Since: Mon, 26 Oct 2026 19:55:49 GMT\nHTTP/2 304 \nserver: <omitido>\ndate: <omitido>\nlast-modified: Mon, 26 Oct 2026 19:55:49 GMT\netag: \"6adfb045-860b582\"\nexpires: Mon, 26 Oct 2026 21:05:16 GMT\ncache-control: max-age=300\naccess-control-allow-origin: *\naccess-control-allow-methods: GET, HEAD, OPTIONS\naccess-control-allow-headers: Range, DNT, User-Agent, X-Requested-With, If-Modified-Since, Cache-Control, Content-Type, Accept-Encoding\naccess-control-expose-headers: Content-Length, Content-Range, ETag, Last-Modified, Content-Encoding\naccept-ranges: bytes\ncache-control: public, max-age=300\n\nW status=304 http=2 size=0 ttfb=0.033462 total=0.033502 speed=0 redirects=0"
+    },
+    {
+      "label": "D13 Range 0-1023 + INM fuerte + If-Range",
+      "requestArgs": "-r 0-1023 -H Accept-Encoding: gzip -H If-None-Match: \"6adfb045-860b582\" -H If-Range: \"6adfb045-860b582\"",
+      "status": 304,
+      "protocol": "h2",
+      "httpVersion": "2",
+      "headers": {
+        "server": "<omitido>",
+        "date": "<omitido>",
+        "last-modified": "Mon, 26 Oct 2026 19:55:49 GMT",
+        "etag": "\"6adfb045-860b582\"",
+        "expires": "Mon, 26 Oct 2026 21:05:16 GMT",
+        "cache-control": "max-age=300, public, max-age=300",
+        "access-control-allow-origin": "*",
+        "access-control-allow-methods": "GET, HEAD, OPTIONS",
+        "access-control-allow-headers": "Range, DNT, User-Agent, X-Requested-With, If-Modified-Since, Cache-Control, Content-Type, Accept-Encoding",
+        "access-control-expose-headers": "Content-Length, Content-Range, ETag, Last-Modified, Content-Encoding",
+        "accept-ranges": "bytes"
+      },
+      "curl": {
+        "status": 304,
+        "httpVersion": "2",
+        "sizeDownload": 0,
+        "ttfbSec": 0.02441,
+        "totalSec": 0.02445,
+        "speedBps": 0
+      },
+      "kv": {
+        "REQ_ARGS": "-r 0-1023 -H Accept-Encoding: gzip -H If-None-Match: \"6adfb045-860b582\" -H If-Range: \"6adfb045-860b582\""
+      },
+      "raw": "REQ_ARGS=-r 0-1023 -H Accept-Encoding: gzip -H If-None-Match: \"6adfb045-860b582\" -H If-Range: \"6adfb045-860b582\"\nHTTP/2 304 \nserver: <omitido>\ndate: <omitido>\nlast-modified: Mon, 26 Oct 2026 19:55:49 GMT\netag: \"6adfb045-860b582\"\nexpires: Mon, 26 Oct 2026 21:05:16 GMT\ncache-control: max-age=300\naccess-control-allow-origin: *\naccess-control-allow-methods: GET, HEAD, OPTIONS\naccess-control-allow-headers: Range, DNT, User-Agent, X-Requested-With, If-Modified-Since, Cache-Control, Content-Type, Accept-Encoding\naccess-control-expose-headers: Content-Length, Content-Range, ETag, Last-Modified, Content-Encoding\naccept-ranges: bytes\ncache-control: public, max-age=300\n\nW status=304 http=2 size=0 ttfb=0.024410 total=0.024450 speed=0 redirects=0"
+    },
+    {
+      "label": "E1 ALPN ofrecido [h2,http/1.1]",
+      "requestArgs": null,
+      "status": null,
+      "protocol": null,
+      "httpVersion": null,
+      "headers": {},
+      "curl": null,
+      "kv": {},
+      "raw": "ALPN protocol: h2"
+    },
+    {
+      "label": "E2 ALPN ofrecido [h2] (estricto)",
+      "requestArgs": null,
+      "status": null,
+      "protocol": null,
+      "httpVersion": null,
+      "headers": {},
+      "curl": null,
+      "kv": {},
+      "raw": "ALPN protocol: h2"
+    },
+    {
+      "label": "E3 GET --http2 (curl del VPS)",
+      "requestArgs": "--http2 -H Accept-Encoding: gzip",
+      "status": 200,
+      "protocol": "h2",
+      "httpVersion": "2",
+      "headers": {
+        "server": "<omitido>",
+        "date": "<omitido>",
+        "content-type": "application/vnd.apple.mpegurl",
+        "content-length": "140555650",
+        "last-modified": "Mon, 26 Oct 2026 19:55:49 GMT",
+        "vary": "Accept-Encoding",
+        "etag": "\"6adfb045-860b582\"",
+        "content-encoding": "gzip",
+        "expires": "Mon, 26 Oct 2026 21:05:16 GMT",
+        "cache-control": "max-age=300, public, max-age=300",
+        "access-control-allow-origin": "*",
+        "access-control-allow-methods": "GET, HEAD, OPTIONS",
+        "access-control-allow-headers": "Range, DNT, User-Agent, X-Requested-With, If-Modified-Since, Cache-Control, Content-Type, Accept-Encoding",
+        "access-control-expose-headers": "Content-Length, Content-Range, ETag, Last-Modified, Content-Encoding",
+        "accept-ranges": "bytes, bytes"
+      },
+      "curl": {
+        "status": 200,
+        "httpVersion": "2",
+        "sizeDownload": 140555650,
+        "ttfbSec": 0.02558,
+        "totalSec": 0.284113,
+        "speedBps": 494717418
+      },
+      "kv": {
+        "REQ_ARGS": "--http2 -H Accept-Encoding: gzip"
+      },
+      "raw": "REQ_ARGS=--http2 -H Accept-Encoding: gzip\nHTTP/2 200 \nserver: <omitido>\ndate: <omitido>\ncontent-type: application/vnd.apple.mpegurl\ncontent-length: 140555650\nlast-modified: Mon, 26 Oct 2026 19:55:49 GMT\nvary: Accept-Encoding\netag: \"6adfb045-860b582\"\ncontent-encoding: gzip\nexpires: Mon, 26 Oct 2026 21:05:16 GMT\ncache-control: max-age=300\naccess-control-allow-origin: *\naccess-control-allow-methods: GET, HEAD, OPTIONS\naccess-control-allow-headers: Range, DNT, User-Agent, X-Requested-With, If-Modified-Since, Cache-Control, Content-Type, Accept-Encoding\naccess-control-expose-headers: Content-Length, Content-Range, ETag, Last-Modified, Content-Encoding\naccept-ranges: bytes\ncache-control: public, max-age=300\naccept-ranges: bytes\n\nW status=200 http=2 size=140555650 ttfb=0.025580 total=0.284113 speed=494717418 redirects=0"
+    },
+    {
+      "label": "E4 GET --http1.1",
+      "requestArgs": "--http1.1 -H Accept-Encoding: gzip",
+      "status": 200,
+      "protocol": "h1.1",
+      "httpVersion": "1.1",
+      "headers": {
+        "server": "<omitido>",
+        "date": "<omitido>",
+        "content-type": "application/vnd.apple.mpegurl",
+        "content-length": "140555650",
+        "last-modified": "Mon, 26 Oct 2026 19:55:49 GMT",
+        "connection": "keep-alive",
+        "vary": "Accept-Encoding",
+        "etag": "\"6adfb045-860b582\"",
+        "content-encoding": "gzip",
+        "expires": "Mon, 26 Oct 2026 21:05:17 GMT",
+        "cache-control": "max-age=300, public, max-age=300",
+        "access-control-allow-origin": "*",
+        "access-control-allow-methods": "GET, HEAD, OPTIONS",
+        "access-control-allow-headers": "Range, DNT, User-Agent, X-Requested-With, If-Modified-Since, Cache-Control, Content-Type, Accept-Encoding",
+        "access-control-expose-headers": "Content-Length, Content-Range, ETag, Last-Modified, Content-Encoding",
+        "accept-ranges": "bytes, bytes"
+      },
+      "curl": {
+        "status": 200,
+        "httpVersion": "1.1",
+        "sizeDownload": 140555650,
+        "ttfbSec": 0.024302,
+        "totalSec": 0.283852,
+        "speedBps": 495172308
+      },
+      "kv": {
+        "REQ_ARGS": "--http1.1 -H Accept-Encoding: gzip"
+      },
+      "raw": "REQ_ARGS=--http1.1 -H Accept-Encoding: gzip\nHTTP/1.1 200 OK\nServer: <omitido>\nDate: <omitido>\nContent-Type: application/vnd.apple.mpegurl\nContent-Length: 140555650\nLast-Modified: Mon, 26 Oct 2026 19:55:49 GMT\nConnection: keep-alive\nVary: Accept-Encoding\nETag: \"6adfb045-860b582\"\nContent-Encoding: gzip\nExpires: Mon, 26 Oct 2026 21:05:17 GMT\nCache-Control: max-age=300\nAccess-Control-Allow-Origin: *\nAccess-Control-Allow-Methods: GET, HEAD, OPTIONS\nAccess-Control-Allow-Headers: Range, DNT, User-Agent, X-Requested-With, If-Modified-Since, Cache-Control, Content-Type, Accept-Encoding\nAccess-Control-Expose-Headers: Content-Length, Content-Range, ETag, Last-Modified, Content-Encoding\nAccept-Ranges: bytes\nCache-Control: public, max-age=300\nAccept-Ranges: bytes\n\nW status=200 http=1.1 size=140555650 ttfb=0.024302 total=0.283852 speed=495172308 redirects=0"
+    },
+    {
+      "label": "E5 tamaño de las cabeceras de petición (h1) que un cliente envía",
+      "requestArgs": null,
+      "status": null,
+      "protocol": null,
+      "httpVersion": null,
+      "headers": {},
+      "curl": null,
+      "kv": {
+        "H1_REQUEST_BYTES_UA_PLAYER": "181"
+      },
+      "raw": "H1_REQUEST_BYTES_UA_PLAYER= 181"
+    }
+  ],
+  "meta": {
+    "elapsedMs": 31435,
+    "scriptSha256": "e0e3445d4cd3aa1f927d088b2504b9a496c53d8c7fb2aa1cf08388b6a9b5717a",
+    "rawBytes": 30604
+  }
+}

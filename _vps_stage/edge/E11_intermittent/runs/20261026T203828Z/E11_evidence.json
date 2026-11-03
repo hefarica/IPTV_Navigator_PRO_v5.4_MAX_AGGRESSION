@@ -1,0 +1,999 @@
+{
+  "generated_at": "2026-10-26T21:02:42.969Z",
+  "run_dir": "20261026T203828Z",
+  "source": {
+    "443_log": "playlist_access.log (vhost público)",
+    "8088_log": "access.log (plano)"
+  },
+  "public_443": {
+    "total": 499,
+    "overall": {
+      "label": "todos",
+      "total": 499,
+      "ok": 399,
+      "bad": 100,
+      "dist": {
+        "200": 399,
+        "404": 6,
+        "405": 1,
+        "407": 5,
+        "502": 86,
+        "513": 2
+      },
+      "error_ratio_official": 0.2506,
+      "error_ratio_honest": 0.2004,
+      "amplification": 6.67,
+      "breaker_windows": 15,
+      "breaker_skips_est": 85,
+      "real_attempts_est": 15,
+      "skip_share_pct": 85,
+      "clusters": [
+        {
+          "t0": "2026-10-26T04:37:27Z",
+          "host": "line.tivi-ott.net",
+          "seed_status": 513,
+          "span_s": 10,
+          "n": 2,
+          "skips": 1
+        },
+        {
+          "t0": "2026-10-26T08:29:05Z",
+          "host": "line.tivi-ott.net",
+          "seed_status": 407,
+          "span_s": 8,
+          "n": 12,
+          "skips": 11
+        },
+        {
+          "t0": "2026-10-26T09:11:19Z",
+          "host": "line.tivi-ott.net",
+          "seed_status": 407,
+          "span_s": 13,
+          "n": 9,
+          "skips": 8
+        },
+        {
+          "t0": "2026-10-26T20:23:00Z",
+          "host": "line.tivi-ott.net",
+          "seed_status": 513,
+          "span_s": 15,
+          "n": 4,
+          "skips": 3
+        },
+        {
+          "t0": "2026-10-26T20:25:00Z",
+          "host": "line.tivi-ott.net",
+          "seed_status": 407,
+          "span_s": 14,
+          "n": 13,
+          "skips": 12
+        },
+        {
+          "t0": "2026-10-26T20:30:12Z",
+          "host": "line.tivi-ott.net",
+          "seed_status": 407,
+          "span_s": 14,
+          "n": 11,
+          "skips": 10
+        },
+        {
+          "t0": "2026-10-26T20:34:23Z",
+          "host": "127.0.0.1:8088",
+          "seed_status": 502,
+          "span_s": 0,
+          "n": 2,
+          "skips": 1
+        },
+        {
+          "t0": "2026-10-26T20:34:24Z",
+          "host": "line.tivi-ott.net",
+          "seed_status": 407,
+          "span_s": 14,
+          "n": 13,
+          "skips": 12
+        },
+        {
+          "t0": "2026-10-26T20:35:42Z",
+          "host": "127.0.0.1:8088",
+          "seed_status": 404,
+          "span_s": 0,
+          "n": 1,
+          "skips": 0
+        },
+        {
+          "t0": "2026-10-26T20:38:35Z",
+          "host": "127.0.0.1:8088",
+          "seed_status": 404,
+          "span_s": 0,
+          "n": 1,
+          "skips": 0
+        },
+        {
+          "t0": "2026-10-26T20:39:04Z",
+          "host": "127.0.0.1:8088",
+          "seed_status": 404,
+          "span_s": 0,
+          "n": 1,
+          "skips": 0
+        },
+        {
+          "t0": "2026-10-26T20:39:26Z",
+          "host": "127.0.0.1:8088",
+          "seed_status": 404,
+          "span_s": 0,
+          "n": 1,
+          "skips": 0
+        },
+        {
+          "t0": "2026-10-26T20:39:46Z",
+          "host": "127.0.0.1:8088",
+          "seed_status": 404,
+          "span_s": 0,
+          "n": 1,
+          "skips": 0
+        },
+        {
+          "t0": "2026-10-26T20:41:24Z",
+          "host": "127.0.0.1:8088",
+          "seed_status": 404,
+          "span_s": 0,
+          "n": 1,
+          "skips": 0
+        },
+        {
+          "t0": "2026-10-26T20:43:00Z",
+          "host": "line.tivi-ott.net",
+          "seed_status": 405,
+          "span_s": 14,
+          "n": 28,
+          "skips": 27
+        }
+      ]
+    },
+    "by_group": {
+      "externo": {
+        "label": "externo",
+        "total": 210,
+        "ok": 158,
+        "bad": 52,
+        "dist": {
+          "200": 158,
+          "404": 6,
+          "407": 3,
+          "502": 43
+        },
+        "error_ratio_official": 0.3291,
+        "error_ratio_honest": 0.2476,
+        "amplification": 4.73,
+        "breaker_windows": 11,
+        "breaker_skips_est": 41,
+        "real_attempts_est": 11,
+        "skip_share_pct": 78.8,
+        "clusters": [
+          {
+            "t0": "2026-10-26T20:23:13Z",
+            "host": "line.tivi-ott.net",
+            "seed_status": 502,
+            "span_s": 2,
+            "n": 3,
+            "skips": 2
+          },
+          {
+            "t0": "2026-10-26T20:25:00Z",
+            "host": "line.tivi-ott.net",
+            "seed_status": 407,
+            "span_s": 14,
+            "n": 13,
+            "skips": 12
+          },
+          {
+            "t0": "2026-10-26T20:30:12Z",
+            "host": "line.tivi-ott.net",
+            "seed_status": 407,
+            "span_s": 14,
+            "n": 11,
+            "skips": 10
+          },
+          {
+            "t0": "2026-10-26T20:34:24Z",
+            "host": "line.tivi-ott.net",
+            "seed_status": 407,
+            "span_s": 14,
+            "n": 13,
+            "skips": 12
+          },
+          {
+            "t0": "2026-10-26T20:35:42Z",
+            "host": "127.0.0.1:8088",
+            "seed_status": 404,
+            "span_s": 0,
+            "n": 1,
+            "skips": 0
+          },
+          {
+            "t0": "2026-10-26T20:38:35Z",
+            "host": "127.0.0.1:8088",
+            "seed_status": 404,
+            "span_s": 0,
+            "n": 1,
+            "skips": 0
+          },
+          {
+            "t0": "2026-10-26T20:39:04Z",
+            "host": "127.0.0.1:8088",
+            "seed_status": 404,
+            "span_s": 0,
+            "n": 1,
+            "skips": 0
+          },
+          {
+            "t0": "2026-10-26T20:39:26Z",
+            "host": "127.0.0.1:8088",
+            "seed_status": 404,
+            "span_s": 0,
+            "n": 1,
+            "skips": 0
+          },
+          {
+            "t0": "2026-10-26T20:39:46Z",
+            "host": "127.0.0.1:8088",
+            "seed_status": 404,
+            "span_s": 0,
+            "n": 1,
+            "skips": 0
+          },
+          {
+            "t0": "2026-10-26T20:41:24Z",
+            "host": "127.0.0.1:8088",
+            "seed_status": 404,
+            "span_s": 0,
+            "n": 1,
+            "skips": 0
+          },
+          {
+            "t0": "2026-10-26T20:43:03Z",
+            "host": "line.tivi-ott.net",
+            "seed_status": 502,
+            "span_s": 11,
+            "n": 6,
+            "skips": 5
+          }
+        ]
+      },
+      "harness": {
+        "label": "harness",
+        "total": 218,
+        "ok": 191,
+        "bad": 27,
+        "dist": {
+          "200": 191,
+          "405": 1,
+          "502": 24,
+          "513": 2
+        },
+        "error_ratio_official": 0.1414,
+        "error_ratio_honest": 0.1239,
+        "amplification": 6.75,
+        "breaker_windows": 4,
+        "breaker_skips_est": 23,
+        "real_attempts_est": 4,
+        "skip_share_pct": 85.2,
+        "clusters": [
+          {
+            "t0": "2026-10-26T04:37:27Z",
+            "host": "line.tivi-ott.net",
+            "seed_status": 513,
+            "span_s": 10,
+            "n": 2,
+            "skips": 1
+          },
+          {
+            "t0": "2026-10-26T20:23:00Z",
+            "host": "line.tivi-ott.net",
+            "seed_status": 513,
+            "span_s": 0,
+            "n": 1,
+            "skips": 0
+          },
+          {
+            "t0": "2026-10-26T20:34:23Z",
+            "host": "127.0.0.1:8088",
+            "seed_status": 502,
+            "span_s": 0,
+            "n": 2,
+            "skips": 1
+          },
+          {
+            "t0": "2026-10-26T20:43:00Z",
+            "host": "line.tivi-ott.net",
+            "seed_status": 405,
+            "span_s": 14,
+            "n": 22,
+            "skips": 21
+          }
+        ]
+      },
+      "scanner": {
+        "label": "scanner",
+        "total": 71,
+        "ok": 50,
+        "bad": 21,
+        "dist": {
+          "200": 50,
+          "407": 2,
+          "502": 19
+        },
+        "error_ratio_official": 0.42,
+        "error_ratio_honest": 0.2958,
+        "amplification": 10.5,
+        "breaker_windows": 2,
+        "breaker_skips_est": 19,
+        "real_attempts_est": 2,
+        "skip_share_pct": 90.5,
+        "clusters": [
+          {
+            "t0": "2026-10-26T08:29:05Z",
+            "host": "line.tivi-ott.net",
+            "seed_status": 407,
+            "span_s": 8,
+            "n": 12,
+            "skips": 11
+          },
+          {
+            "t0": "2026-10-26T09:11:19Z",
+            "host": "line.tivi-ott.net",
+            "seed_status": 407,
+            "span_s": 13,
+            "n": 9,
+            "skips": 8
+          }
+        ]
+      }
+    },
+    "clients": [
+      {
+        "ip": "178.156.147.234",
+        "n": 206
+      },
+      {
+        "ip": "146.70.86.222",
+        "n": 164
+      },
+      {
+        "ip": "181.130.154.235",
+        "n": 46
+      },
+      {
+        "ip": "127.0.0.1",
+        "n": 12
+      },
+      {
+        "ip": "101.200.133.251",
+        "n": 10
+      },
+      {
+        "ip": "39.107.143.243",
+        "n": 9
+      },
+      {
+        "ip": "123.57.243.70",
+        "n": 9
+      },
+      {
+        "ip": "182.92.80.50",
+        "n": 9
+      },
+      {
+        "ip": "39.105.173.128",
+        "n": 7
+      },
+      {
+        "ip": "123.57.172.44",
+        "n": 7
+      },
+      {
+        "ip": "182.92.64.210",
+        "n": 7
+      },
+      {
+        "ip": "39.106.150.27",
+        "n": 5
+      },
+      {
+        "ip": "101.200.132.59",
+        "n": 4
+      },
+      {
+        "ip": "112.126.72.180",
+        "n": 4
+      }
+    ]
+  },
+  "plane_8088": {
+    "total": 598,
+    "overall": {
+      "label": "todos",
+      "total": 598,
+      "ok": 495,
+      "bad": 103,
+      "dist": {
+        "200": 495,
+        "404": 7,
+        "405": 1,
+        "407": 5,
+        "502": 88,
+        "513": 2
+      },
+      "error_ratio_official": 0.2081,
+      "error_ratio_honest": 0.1722,
+      "amplification": 6.87,
+      "breaker_windows": 15,
+      "breaker_skips_est": 88,
+      "real_attempts_est": 15,
+      "skip_share_pct": 85.4,
+      "clusters": [
+        {
+          "t0": "2026-10-26T04:37:27Z",
+          "host": "line.tivi-ott.net",
+          "seed_status": 513,
+          "span_s": 10,
+          "n": 3,
+          "skips": 2
+        },
+        {
+          "t0": "2026-10-26T08:29:05Z",
+          "host": "line.tivi-ott.net",
+          "seed_status": 407,
+          "span_s": 8,
+          "n": 12,
+          "skips": 11
+        },
+        {
+          "t0": "2026-10-26T09:11:19Z",
+          "host": "line.tivi-ott.net",
+          "seed_status": 407,
+          "span_s": 13,
+          "n": 9,
+          "skips": 8
+        },
+        {
+          "t0": "2026-10-26T20:23:00Z",
+          "host": "line.tivi-ott.net",
+          "seed_status": 513,
+          "span_s": 15,
+          "n": 4,
+          "skips": 3
+        },
+        {
+          "t0": "2026-10-26T20:25:00Z",
+          "host": "line.tivi-ott.net",
+          "seed_status": 407,
+          "span_s": 14,
+          "n": 13,
+          "skips": 12
+        },
+        {
+          "t0": "2026-10-26T20:30:12Z",
+          "host": "line.tivi-ott.net",
+          "seed_status": 407,
+          "span_s": 14,
+          "n": 11,
+          "skips": 10
+        },
+        {
+          "t0": "2026-10-26T20:34:23Z",
+          "host": "127.0.0.1:8088",
+          "seed_status": 404,
+          "span_s": 0,
+          "n": 4,
+          "skips": 3
+        },
+        {
+          "t0": "2026-10-26T20:34:24Z",
+          "host": "line.tivi-ott.net",
+          "seed_status": 407,
+          "span_s": 14,
+          "n": 13,
+          "skips": 12
+        },
+        {
+          "t0": "2026-10-26T20:35:42Z",
+          "host": "127.0.0.1:8088",
+          "seed_status": 404,
+          "span_s": 0,
+          "n": 1,
+          "skips": 0
+        },
+        {
+          "t0": "2026-10-26T20:38:35Z",
+          "host": "127.0.0.1:8088",
+          "seed_status": 404,
+          "span_s": 0,
+          "n": 1,
+          "skips": 0
+        },
+        {
+          "t0": "2026-10-26T20:39:04Z",
+          "host": "127.0.0.1:8088",
+          "seed_status": 404,
+          "span_s": 0,
+          "n": 1,
+          "skips": 0
+        },
+        {
+          "t0": "2026-10-26T20:39:26Z",
+          "host": "127.0.0.1:8088",
+          "seed_status": 404,
+          "span_s": 0,
+          "n": 1,
+          "skips": 0
+        },
+        {
+          "t0": "2026-10-26T20:39:46Z",
+          "host": "127.0.0.1:8088",
+          "seed_status": 404,
+          "span_s": 0,
+          "n": 1,
+          "skips": 0
+        },
+        {
+          "t0": "2026-10-26T20:41:24Z",
+          "host": "127.0.0.1:8088",
+          "seed_status": 404,
+          "span_s": 0,
+          "n": 1,
+          "skips": 0
+        },
+        {
+          "t0": "2026-10-26T20:43:00Z",
+          "host": "line.tivi-ott.net",
+          "seed_status": 405,
+          "span_s": 14,
+          "n": 28,
+          "skips": 27
+        }
+      ]
+    }
+  },
+  "clients_detail": [
+    {
+      "ip": "146.70.86.222",
+      "label": "146.70.86.222",
+      "total": 164,
+      "ok": 118,
+      "bad": 46,
+      "dist": {
+        "200": 118,
+        "407": 3,
+        "502": 43
+      },
+      "error_ratio_official": 0.3898,
+      "error_ratio_honest": 0.2805,
+      "amplification": 9.2,
+      "breaker_windows": 5,
+      "breaker_skips_est": 41,
+      "real_attempts_est": 5,
+      "skip_share_pct": 89.1,
+      "clusters": [
+        {
+          "t0": "2026-10-26T20:23:13Z",
+          "host": "line.tivi-ott.net",
+          "seed_status": 502,
+          "span_s": 2,
+          "n": 3,
+          "skips": 2
+        },
+        {
+          "t0": "2026-10-26T20:25:00Z",
+          "host": "line.tivi-ott.net",
+          "seed_status": 407,
+          "span_s": 14,
+          "n": 13,
+          "skips": 12
+        },
+        {
+          "t0": "2026-10-26T20:30:12Z",
+          "host": "line.tivi-ott.net",
+          "seed_status": 407,
+          "span_s": 14,
+          "n": 11,
+          "skips": 10
+        },
+        {
+          "t0": "2026-10-26T20:34:24Z",
+          "host": "line.tivi-ott.net",
+          "seed_status": 407,
+          "span_s": 14,
+          "n": 13,
+          "skips": 12
+        },
+        {
+          "t0": "2026-10-26T20:43:03Z",
+          "host": "line.tivi-ott.net",
+          "seed_status": 502,
+          "span_s": 11,
+          "n": 6,
+          "skips": 5
+        }
+      ]
+    },
+    {
+      "ip": "181.130.154.235",
+      "label": "181.130.154.235",
+      "total": 46,
+      "ok": 40,
+      "bad": 6,
+      "dist": {
+        "200": 40,
+        "404": 6
+      },
+      "error_ratio_official": 0.15,
+      "error_ratio_honest": 0.1304,
+      "amplification": 1,
+      "breaker_windows": 6,
+      "breaker_skips_est": 0,
+      "real_attempts_est": 6,
+      "skip_share_pct": 0,
+      "clusters": [
+        {
+          "t0": "2026-10-26T20:35:42Z",
+          "host": "127.0.0.1:8088",
+          "seed_status": 404,
+          "span_s": 0,
+          "n": 1,
+          "skips": 0
+        },
+        {
+          "t0": "2026-10-26T20:38:35Z",
+          "host": "127.0.0.1:8088",
+          "seed_status": 404,
+          "span_s": 0,
+          "n": 1,
+          "skips": 0
+        },
+        {
+          "t0": "2026-10-26T20:39:04Z",
+          "host": "127.0.0.1:8088",
+          "seed_status": 404,
+          "span_s": 0,
+          "n": 1,
+          "skips": 0
+        },
+        {
+          "t0": "2026-10-26T20:39:26Z",
+          "host": "127.0.0.1:8088",
+          "seed_status": 404,
+          "span_s": 0,
+          "n": 1,
+          "skips": 0
+        },
+        {
+          "t0": "2026-10-26T20:39:46Z",
+          "host": "127.0.0.1:8088",
+          "seed_status": 404,
+          "span_s": 0,
+          "n": 1,
+          "skips": 0
+        },
+        {
+          "t0": "2026-10-26T20:41:24Z",
+          "host": "127.0.0.1:8088",
+          "seed_status": 404,
+          "span_s": 0,
+          "n": 1,
+          "skips": 0
+        }
+      ]
+    },
+    {
+      "ip": "178.156.147.234",
+      "label": "178.156.147.234",
+      "total": 206,
+      "ok": 184,
+      "bad": 22,
+      "dist": {
+        "200": 184,
+        "405": 1,
+        "502": 21
+      },
+      "error_ratio_official": 0.1196,
+      "error_ratio_honest": 0.1068,
+      "amplification": 22,
+      "breaker_windows": 1,
+      "breaker_skips_est": 21,
+      "real_attempts_est": 1,
+      "skip_share_pct": 95.5,
+      "clusters": [
+        {
+          "t0": "2026-10-26T20:43:00Z",
+          "host": "line.tivi-ott.net",
+          "seed_status": 405,
+          "span_s": 14,
+          "n": 22,
+          "skips": 21
+        }
+      ]
+    },
+    {
+      "ip": "127.0.0.1",
+      "label": "127.0.0.1",
+      "total": 12,
+      "ok": 7,
+      "bad": 5,
+      "dist": {
+        "200": 7,
+        "502": 3,
+        "513": 2
+      },
+      "error_ratio_official": 0.7143,
+      "error_ratio_honest": 0.4167,
+      "amplification": 1.67,
+      "breaker_windows": 3,
+      "breaker_skips_est": 2,
+      "real_attempts_est": 3,
+      "skip_share_pct": 40,
+      "clusters": [
+        {
+          "t0": "2026-10-26T04:37:27Z",
+          "host": "line.tivi-ott.net",
+          "seed_status": 513,
+          "span_s": 10,
+          "n": 2,
+          "skips": 1
+        },
+        {
+          "t0": "2026-10-26T20:23:00Z",
+          "host": "line.tivi-ott.net",
+          "seed_status": 513,
+          "span_s": 0,
+          "n": 1,
+          "skips": 0
+        },
+        {
+          "t0": "2026-10-26T20:34:23Z",
+          "host": "127.0.0.1:8088",
+          "seed_status": 502,
+          "span_s": 0,
+          "n": 2,
+          "skips": 1
+        }
+      ]
+    }
+  ],
+  "campaign_controlled": {
+    "meta": {
+      "utc": "2026-10-26T20:38:34Z",
+      "channels": {
+        "3": "/cdn/line.tivi-ott.net/live/<USER>/<PASS>/3.m3u8",
+        "5": "/cdn/line.tivi-ott.net/live/<USER>/<PASS>/5.m3u8",
+        "6": "/cdn/line.tivi-ott.net/live/<USER>/<PASS>/6.m3u8"
+      },
+      "gw_host": "line.tivi-ott.net",
+      "arms": {
+        "https443": 150,
+        "loop8088": 30
+      },
+      "plane_before": {
+        "down": {},
+        "n_down": 0,
+        "breaker_gw": null,
+        "req": 229,
+        "all_failed": 70,
+        "attempts": 299,
+        "trips_gw": 7,
+        "error_ratio_official": 0.3057,
+        "error_ratio_honest": 0.2341,
+        "last_ms": 0,
+        "ts": 1793047114
+      }
+    },
+    "by_arm": {
+      "https443": {
+        "n": 150,
+        "ok": 150,
+        "bad": 0,
+        "dist": {
+          "200": 150
+        },
+        "breaker_open_at_req": 0,
+        "byChan": {
+          "3": {
+            "n": 50,
+            "ok": 50
+          },
+          "5": {
+            "n": 50,
+            "ok": 50
+          },
+          "6": {
+            "n": 50,
+            "ok": 50
+          }
+        },
+        "ttfb_p50": 762.9,
+        "ttfb_p95": 1183.7
+      },
+      "loop8088": {
+        "n": 30,
+        "ok": 30,
+        "bad": 0,
+        "dist": {
+          "200": 30
+        },
+        "breaker_open_at_req": 0,
+        "byChan": {
+          "3": {
+            "n": 10,
+            "ok": 10
+          },
+          "5": {
+            "n": 10,
+            "ok": 10
+          },
+          "6": {
+            "n": 10,
+            "ok": 10
+          }
+        },
+        "ttfb_p50": 755.3,
+        "ttfb_p95": 925.8
+      }
+    },
+    "total": {
+      "n": 180,
+      "ok": 180,
+      "bad": 0
+    },
+    "plane_after": {
+      "down": {},
+      "n_down": 0,
+      "breaker_gw": null,
+      "req": 461,
+      "all_failed": 75,
+      "attempts": 536,
+      "trips_gw": 7,
+      "error_ratio_official": 0.1627,
+      "error_ratio_honest": 0.1399,
+      "last_ms": 824,
+      "ts": 1793047304
+    },
+    "counter_delta": {
+      "req": 232,
+      "all_failed": 5,
+      "trips_gw": 0,
+      "trips_loop": 0
+    }
+  },
+  "breaker_ab": {
+    "utc": "2026-10-26T20:42:57Z",
+    "trigger": {
+      "status": 405,
+      "ms": 325,
+      "has_reason": true,
+      "reason": "http_405",
+      "ttfb_ms": 333.7,
+      "bytes": 151,
+      "breaker_after": {
+        "line.tivi-ott.net": 1
+      },
+      "trips_after": 8
+    },
+    "control_before": {
+      "gw_status": 200,
+      "gw_ttfb_ms": 807,
+      "prov": {
+        "prov_status": 302,
+        "prov_ms": 289.1,
+        "loc": "http://185.227.34.195:80/live/play/<TOKEN>/3",
+        "cdn_status": 200,
+        "cdn_ms": 403.6,
+        "cdn_bytes": 499
+      }
+    },
+    "control_after": {
+      "gw_status": 200,
+      "gw_ttfb_ms": 766.6,
+      "prov": {
+        "prov_status": 302,
+        "prov_ms": 323,
+        "loc": "http://185.227.34.195:80/live/play/<TOKEN>/3",
+        "cdn_status": 200,
+        "cdn_ms": 408.1,
+        "cdn_bytes": 499
+      },
+      "t_from_trip": 24.56
+    },
+    "window": {
+      "n": 26,
+      "fails": 21,
+      "all_502": true,
+      "all_no_xape": true,
+      "all_ms0": true,
+      "all_no_reason": true,
+      "ttfb_ms": {
+        "min": 7.3,
+        "max": 12.3
+      },
+      "bytes": [
+        121
+      ],
+      "fail_window_s": [
+        0.34,
+        14.38
+      ],
+      "recovery_at_s": 16.3,
+      "recovery_ttfb_ms": 712.4,
+      "recovery_xape_headers": 8,
+      "provider_controls_during_window": 8,
+      "provider_healthy_throughout_window": true
+    },
+    "counter_delta": {
+      "all_failed": 28,
+      "req": 8,
+      "trips_gw": 1
+    },
+    "plane_after": {
+      "down": {},
+      "n_down": 0,
+      "breaker_gw": null,
+      "req": 475,
+      "all_failed": 103,
+      "attempts": 578,
+      "trips_gw": 8,
+      "trips_loop": 7,
+      "error_ratio_official": 0.2168,
+      "error_ratio_honest": 0.1782,
+      "ts": 1793047404
+    }
+  },
+  "provider_codes": null,
+  "token_ttl": null,
+  "metric_definition_fix": {
+    "actual_formula": "error_ratio = all_failed / req   (req SOLO cuenta éxitos -> no es una ratio)",
+    "actual_published_example": "E1: 24 fallos / 91 éxitos = 0.2637 publicado; el ratio real de intentos es 0.2088",
+    "correct_formula": "error_ratio = all_failed / (all_failed + req)",
+    "note": "req se incrementa SOLO en el camino de éxito de ape_gateway.lua; all_failed en el de fallo. La suma es el nº de intentos.",
+    "historical_recomputed": [
+      {
+        "label": "E1 inicio 20:20:41 (error_ratio publicado 0.2637)",
+        "ok": 91,
+        "fail": 24,
+        "official": 0.2637,
+        "honest": 0.2087,
+        "error_pct_del_published": 20.9
+      },
+      {
+        "label": "E1 fin   (+18 req, error_ratio publicado 0.2202)",
+        "ok": 109,
+        "fail": 24,
+        "official": 0.2202,
+        "honest": 0.1805,
+        "error_pct_del_published": 18
+      },
+      {
+        "label": "Lectura 20:27:25 (137 ok / 41 fail)",
+        "ok": 137,
+        "fail": 41,
+        "official": 0.2993,
+        "honest": 0.2303,
+        "error_pct_del_published": 23.1
+      },
+      {
+        "label": "E11 20:34:29 (req=182 all_failed=60)",
+        "ok": 182,
+        "fail": 60,
+        "official": 0.3297,
+        "honest": 0.2479,
+        "error_pct_del_published": 24.8
+      }
+    ]
+  },
+  "playback_impact": {
+    "externo_requests": 210,
+    "externo_failures": 52,
+    "manifest_failure_rate": 0.2476,
+    "retry_within_15s_would_fail": 0.2476,
+    "zaps_lost_pct": 24.8,
+    "zaps_lost_pct_if_2_retries_inside_window": 43.4
+  }
+}

@@ -1,0 +1,409 @@
+| métrica | E1-FASE0-baseline | E9-AFTER-verificador-independiente | E9-ROLLBACK-OFF-verificador | E9-FINAL-ON-verificador |
+|---|---:|---:|---:|---:|
+| label | E1-FASE0-baseline | E9-AFTER-verificador-independiente | E9-ROLLBACK-OFF-verificador | E9-FINAL-ON-verificador |
+| inicio UTC | 2026-10-26T20:20:41.052Z | 2026-10-26T21:37:08.305Z | 2026-10-26T21:58:26.895Z | 2026-10-26T21:59:34.772Z |
+| nginx -T sha256 | 64482e7d9014473e | 0c6c0ea0090e7dd7 | cb02e8b7cf575593 | 0c6c0ea0090e7dd7 |
+| default sha256 | 58bee1cb7b911bc1 | 49c162a862f1e548 | e2ba46846175729b | 49c162a862f1e548 |
+| h2 en listen 443 | 0 | 2 | 0 | 2 |
+| ALPN negociado | http/1.1 | h2 | http/1.1 | h2 |
+| http2.connect estricto | NO NEGOCIADO | OK 200 | NO NEGOCIADO | OK 200 |
+| curl(VPS) --http2 | 1.1 | 2 | 1.1 | 2 |
+| curl(VPS) --http1.1 | 1.1 | 1.1 | 1.1 | 1.1 |
+| lista h1 nueva p50 ms | 427.5 | 499 | 475.8 | 535.1 |
+| lista h1 nueva p95 ms | 747.4 | 713.3 | 807.4 | 658.6 |
+| lista h1 keep-alive p50 ms | 110.6 | 122 | 101 | 113.7 |
+| lista bytes (gzip) | 140555650 | 140555650 | 140555650 | 140555650 |
+| /cdn/ ch3 cliente p50 ms | 1083.5 | 1226 | 1385.9 | 1116.9 |
+| /cdn/ ch5 cliente p50 ms | 1159.6 | 1105 | 1124.5 | 1223 |
+| /cdn/ ch6 cliente p50 ms | 1136.2 | 1120 | 1112.8 | 1114.6 |
+| /cdn/ ch3/5/6 cliente p95 ms | 1106 / 1168.9 / 1306.5 | 1230.4 / 1139.6 / 1220.7 | 1439.4 / 1328.1 / 1139.2 | 1228.3 / 1324 / 1161.1 |
+| /cdn/ ch3 loopback p50 ms | 838.1 | 726.2 | 762.6 | 837.9 |
+| /cdn/ upstream ch3/5/6 p50 | 704 / 732 / 750 | 785 / 719 / 639 | 698 / 754 / 654 | 702 / 697 / 739 |
+| /cdn/ upstream loopback p50 | 787 / 691 / 713 | 688 / 679 / 642 | 709 / 864 / 668 | 811 / 707 / 681 |
+| /cdn/ bytes ch3/5/6 | 635 / 637 / 646 | 642 / 638 / 646 | 643 / 634 / 646 | 643 / 637 / 646 |
+| /cdn/ statuses 200? | 3x200 / 3x200 / 3x200 | 3x200 / 3x200 / 3x200 | 3x200 / 3x200 / 3x200 | 3x200 / 3x200 / 3x200 |
+| X-APE-UHD | off / off / off | off / off / off | off / off / off | off / off / off |
+| X-APE-URI-Rebased | 6 / 6 / 6 | 6 / 6 / 6 | 6 / 6 / 6 | 6 / 6 / 6 |
+| hops lista / hops /cdn/ | 1 / 4 | 1 / 4 | 1 / 4 | 1 / 4 |
+| overhead 443→8088 p50 ms | 0.1 | 0 | 0 | 0.1 |
+| error_ratio publicado (viejo) | 0.2637 → 0.2202 | 0.1173 → 0.1151 | 0.0959 → 0.0945 | 0.0945 → 0.0931 |
+| error_ratio honesto fallos/(fallos+éxitos) | 0.2087 → 0.1805 | 0.105 → 0.1032 | 0.0875 → 0.0864 | 0.0863 → 0.0851 |
+| intentos acumulados (req/fallos) | 109/24 | 1164/134 | 1460/138 | 1483/138 |
+| MainPID / NRestarts | 2001835 / 0 | 2001835 / 0 | 2001835 / 0 | 2001835 / 0 |
+| ficheros de lista (bytes:mtime) | APE_LISTA_4K.m3u8:8 · APE_LISTA_4K.m3u8.gz:140555650 · APE_LISTA_1793002539897_CDN.m3u8.gz:160845954 | APE_LISTA_4K.m3u8:8 · APE_LISTA_4K.m3u8.gz:140555650 · APE_LISTA_1793002539897_CDN.m3u8.gz:160845954 | APE_LISTA_4K.m3u8:8 · APE_LISTA_4K.m3u8.gz:140555650 · APE_LISTA_1793002539897_CDN.m3u8.gz:160845954 | APE_LISTA_4K.m3u8:8 · APE_LISTA_4K.m3u8.gz:140555650 · APE_LISTA_1793002539897_CDN.m3u8.gz:160845954 |
+
+E9_TABLE_JSON_BEGIN
+{
+  "generatedUtc": "2026-10-26T22:00:34.843Z",
+  "runs": [
+    {
+      "file": "20261026T202041Z/baseline.json",
+      "label": "E1-FASE0-baseline",
+      "startedUtc": "2026-10-26T20:20:41.052Z",
+      "nginxTSha256": "64482e7d9014473e",
+      "h2ListenCount": 0,
+      "defaultSha256": "58bee1cb7b911bc1",
+      "mainPid": "2001835",
+      "nRestarts": 0,
+      "listFiles": [
+        "APE_LISTA_4K.m3u8:8:1793044549",
+        "APE_LISTA_4K.m3u8.gz:140555650:1793044549",
+        "APE_LISTA_1793002539897_CDN.m3u8.gz:160845954:1793002998"
+      ],
+      "listH1P50": 427.5,
+      "listH1P95": 747.4,
+      "listKaP50": 110.6,
+      "alpn": "http/1.1",
+      "h2StrictOk": null,
+      "h2StrictStatus": null,
+      "curlHttp2": "1.1",
+      "curlHttp11": "1.1",
+      "listBytesGz": 140555650,
+      "channels": [
+        {
+          "id": 3,
+          "clientTtfbP50": 1083.5,
+          "clientTtfbP95": 1106,
+          "clientUpstreamP50": 704,
+          "clientBytes": 635,
+          "clientStatuses": [
+            200,
+            200,
+            200
+          ],
+          "loopTtfbP50": 838.1,
+          "loopUpstreamP50": 787,
+          "loopBytes": 635,
+          "uhd": "off",
+          "rebased": "6"
+        },
+        {
+          "id": 5,
+          "clientTtfbP50": 1159.6,
+          "clientTtfbP95": 1168.9,
+          "clientUpstreamP50": 732,
+          "clientBytes": 637,
+          "clientStatuses": [
+            200,
+            200,
+            200
+          ],
+          "loopTtfbP50": 729.5,
+          "loopUpstreamP50": 691,
+          "loopBytes": 637,
+          "uhd": "off",
+          "rebased": "6"
+        },
+        {
+          "id": 6,
+          "clientTtfbP50": 1136.2,
+          "clientTtfbP95": 1306.5,
+          "clientUpstreamP50": 750,
+          "clientBytes": 646,
+          "clientStatuses": [
+            200,
+            200,
+            200
+          ],
+          "loopTtfbP50": 747.2,
+          "loopUpstreamP50": 713,
+          "loopBytes": 646,
+          "uhd": "off",
+          "rebased": "6"
+        }
+      ],
+      "healthOldBefore": 0.2637,
+      "healthOldAfter": 0.2202,
+      "countersBefore": {
+        "req": 91,
+        "allFailed": 24
+      },
+      "countersAfter": {
+        "req": 109,
+        "allFailed": 24
+      },
+      "errorRatioHonestBefore": 0.2087,
+      "errorRatioHonestAfter": 0.1805,
+      "overheadHopP50": 0.1,
+      "hopsList": 1,
+      "hopsCdn": 4
+    },
+    {
+      "file": "20261026T213708Z/baseline.json",
+      "label": "E9-AFTER-verificador-independiente",
+      "startedUtc": "2026-10-26T21:37:08.305Z",
+      "nginxTSha256": "0c6c0ea0090e7dd7",
+      "h2ListenCount": 2,
+      "defaultSha256": "49c162a862f1e548",
+      "mainPid": "2001835",
+      "nRestarts": 0,
+      "listFiles": [
+        "APE_LISTA_4K.m3u8:8:1793044549",
+        "APE_LISTA_4K.m3u8.gz:140555650:1793044549",
+        "APE_LISTA_1793002539897_CDN.m3u8.gz:160845954:1793002998"
+      ],
+      "listH1P50": 499,
+      "listH1P95": 713.3,
+      "listKaP50": 122,
+      "alpn": "h2",
+      "h2StrictOk": true,
+      "h2StrictStatus": 200,
+      "curlHttp2": "2",
+      "curlHttp11": "1.1",
+      "listBytesGz": 140555650,
+      "channels": [
+        {
+          "id": 3,
+          "clientTtfbP50": 1226,
+          "clientTtfbP95": 1230.4,
+          "clientUpstreamP50": 785,
+          "clientBytes": 642,
+          "clientStatuses": [
+            200,
+            200,
+            200
+          ],
+          "loopTtfbP50": 726.2,
+          "loopUpstreamP50": 688,
+          "loopBytes": 643,
+          "uhd": "off",
+          "rebased": "6"
+        },
+        {
+          "id": 5,
+          "clientTtfbP50": 1105,
+          "clientTtfbP95": 1139.6,
+          "clientUpstreamP50": 719,
+          "clientBytes": 638,
+          "clientStatuses": [
+            200,
+            200,
+            200
+          ],
+          "loopTtfbP50": 714,
+          "loopUpstreamP50": 679,
+          "loopBytes": 637,
+          "uhd": "off",
+          "rebased": "6"
+        },
+        {
+          "id": 6,
+          "clientTtfbP50": 1120,
+          "clientTtfbP95": 1220.7,
+          "clientUpstreamP50": 639,
+          "clientBytes": 646,
+          "clientStatuses": [
+            200,
+            200,
+            200
+          ],
+          "loopTtfbP50": 674.6,
+          "loopUpstreamP50": 642,
+          "loopBytes": 646,
+          "uhd": "off",
+          "rebased": "6"
+        }
+      ],
+      "healthOldBefore": 0.1173,
+      "healthOldAfter": 0.1151,
+      "countersBefore": {
+        "req": 1142,
+        "allFailed": 134
+      },
+      "countersAfter": {
+        "req": 1164,
+        "allFailed": 134
+      },
+      "errorRatioHonestBefore": 0.105,
+      "errorRatioHonestAfter": 0.1032,
+      "overheadHopP50": 0,
+      "hopsList": 1,
+      "hopsCdn": 4
+    },
+    {
+      "file": "20261026T215826Z/baseline.json",
+      "label": "E9-ROLLBACK-OFF-verificador",
+      "startedUtc": "2026-10-26T21:58:26.895Z",
+      "nginxTSha256": "cb02e8b7cf575593",
+      "h2ListenCount": 0,
+      "defaultSha256": "e2ba46846175729b",
+      "mainPid": "2001835",
+      "nRestarts": 0,
+      "listFiles": [
+        "APE_LISTA_4K.m3u8:8:1793044549",
+        "APE_LISTA_4K.m3u8.gz:140555650:1793044549",
+        "APE_LISTA_1793002539897_CDN.m3u8.gz:160845954:1793002998"
+      ],
+      "listH1P50": 475.8,
+      "listH1P95": 807.4,
+      "listKaP50": 101,
+      "alpn": "http/1.1",
+      "h2StrictOk": null,
+      "h2StrictStatus": null,
+      "curlHttp2": "1.1",
+      "curlHttp11": "1.1",
+      "listBytesGz": 140555650,
+      "channels": [
+        {
+          "id": 3,
+          "clientTtfbP50": 1385.9,
+          "clientTtfbP95": 1439.4,
+          "clientUpstreamP50": 698,
+          "clientBytes": 643,
+          "clientStatuses": [
+            200,
+            200,
+            200
+          ],
+          "loopTtfbP50": 762.6,
+          "loopUpstreamP50": 709,
+          "loopBytes": 643,
+          "uhd": "off",
+          "rebased": "6"
+        },
+        {
+          "id": 5,
+          "clientTtfbP50": 1124.5,
+          "clientTtfbP95": 1328.1,
+          "clientUpstreamP50": 754,
+          "clientBytes": 634,
+          "clientStatuses": [
+            200,
+            200,
+            200
+          ],
+          "loopTtfbP50": 909.6,
+          "loopUpstreamP50": 864,
+          "loopBytes": 636,
+          "uhd": "off",
+          "rebased": "6"
+        },
+        {
+          "id": 6,
+          "clientTtfbP50": 1112.8,
+          "clientTtfbP95": 1139.2,
+          "clientUpstreamP50": 654,
+          "clientBytes": 646,
+          "clientStatuses": [
+            200,
+            200,
+            200
+          ],
+          "loopTtfbP50": 702.6,
+          "loopUpstreamP50": 668,
+          "loopBytes": 646,
+          "uhd": "off",
+          "rebased": "6"
+        }
+      ],
+      "healthOldBefore": 0.0959,
+      "healthOldAfter": 0.0945,
+      "countersBefore": {
+        "req": 1439,
+        "allFailed": 138
+      },
+      "countersAfter": {
+        "req": 1460,
+        "allFailed": 138
+      },
+      "errorRatioHonestBefore": 0.0875,
+      "errorRatioHonestAfter": 0.0864,
+      "overheadHopP50": 0,
+      "hopsList": 1,
+      "hopsCdn": 4
+    },
+    {
+      "file": "20261026T215934Z/baseline.json",
+      "label": "E9-FINAL-ON-verificador",
+      "startedUtc": "2026-10-26T21:59:34.772Z",
+      "nginxTSha256": "0c6c0ea0090e7dd7",
+      "h2ListenCount": 2,
+      "defaultSha256": "49c162a862f1e548",
+      "mainPid": "2001835",
+      "nRestarts": 0,
+      "listFiles": [
+        "APE_LISTA_4K.m3u8:8:1793044549",
+        "APE_LISTA_4K.m3u8.gz:140555650:1793044549",
+        "APE_LISTA_1793002539897_CDN.m3u8.gz:160845954:1793002998"
+      ],
+      "listH1P50": 535.1,
+      "listH1P95": 658.6,
+      "listKaP50": 113.7,
+      "alpn": "h2",
+      "h2StrictOk": true,
+      "h2StrictStatus": 200,
+      "curlHttp2": "2",
+      "curlHttp11": "1.1",
+      "listBytesGz": 140555650,
+      "channels": [
+        {
+          "id": 3,
+          "clientTtfbP50": 1116.9,
+          "clientTtfbP95": 1228.3,
+          "clientUpstreamP50": 702,
+          "clientBytes": 643,
+          "clientStatuses": [
+            200,
+            200,
+            200
+          ],
+          "loopTtfbP50": 837.9,
+          "loopUpstreamP50": 811,
+          "loopBytes": 643,
+          "uhd": "off",
+          "rebased": "6"
+        },
+        {
+          "id": 5,
+          "clientTtfbP50": 1223,
+          "clientTtfbP95": 1324,
+          "clientUpstreamP50": 697,
+          "clientBytes": 637,
+          "clientStatuses": [
+            200,
+            200,
+            200
+          ],
+          "loopTtfbP50": 740,
+          "loopUpstreamP50": 707,
+          "loopBytes": 637,
+          "uhd": "off",
+          "rebased": "6"
+        },
+        {
+          "id": 6,
+          "clientTtfbP50": 1114.6,
+          "clientTtfbP95": 1161.1,
+          "clientUpstreamP50": 739,
+          "clientBytes": 646,
+          "clientStatuses": [
+            200,
+            200,
+            200
+          ],
+          "loopTtfbP50": 715.9,
+          "loopUpstreamP50": 681,
+          "loopBytes": 646,
+          "uhd": "off",
+          "rebased": "6"
+        }
+      ],
+      "healthOldBefore": 0.0945,
+      "healthOldAfter": 0.0931,
+      "countersBefore": {
+        "req": 1461,
+        "allFailed": 138
+      },
+      "countersAfter": {
+        "req": 1483,
+        "allFailed": 138
+      },
+      "errorRatioHonestBefore": 0.0863,
+      "errorRatioHonestAfter": 0.0851,
+      "overheadHopP50": 0.1,
+      "hopsList": 1,
+      "hopsCdn": 4
+    }
+  ]
+}
+E9_TABLE_JSON_END

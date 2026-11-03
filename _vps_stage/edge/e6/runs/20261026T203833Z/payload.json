@@ -1,0 +1,954 @@
+{
+  "harness": {
+    "version": "1.0.0",
+    "label": "E6-payload-pre-h2",
+    "startedUtc": "2026-10-26T20:38:33.715Z",
+    "startedBogota": "26/10/26, 3:38:33 p. m.",
+    "finishedUtc": "2026-10-26T20:39:31.294Z",
+    "ssh": "root@178.156.147.234",
+    "percentiles": "nearest-rank; N pequeño ⇒ p95 = máximo",
+    "probeScriptSha256": "e0e3445d4cd3aa1f927d088b2504b9a496c53d8c7fb2aa1cf08388b6a9b5717a",
+    "probeElapsedMs": 31358,
+    "probeRawBytes": 31718,
+    "dns": {
+      "a": [
+        "178.156.147.234"
+      ]
+    }
+  },
+  "vps": {
+    "dateUtc": "2026-10-26T20:38:41Z",
+    "masterPid": "2001835",
+    "nginxT": "ddf6a267aee7fb6614d0205423c27e15e0482e6fe28fe295f51a99780c55be5f",
+    "h2ListenCount": 0,
+    "config": {
+      "sitesEnabledDefault": "715465641c7e97ff1e48fc7829aa5370887975d6d6c0dea389c265431a61588a",
+      "metaPlane": "3e29b9280c05de36c4af445e8a9722573a23c865f240e2d87b2734178e60c515",
+      "metaPublic": "a39e8de902cf5449553822eb1682d1a9d481390c1ce136a218d91fbe1ee4ac39"
+    },
+    "stub": "size=8 mtime=1793044549 stub_hex=234558544d33550a",
+    "gz": "size=140555650 mtime=1793044549",
+    "gzBytes": 140555650,
+    "gzSha256": "a464a0c325a94b3cc97bef3b3b936ccd5905496f0509b509550d0278149e081b",
+    "decompressed": {
+      "sha256": "44f5263f78eac14cc358df39e4470c508b4f0721767acda7f4241ac301d5e080",
+      "bytes": 563968332,
+      "lines": 10084364,
+      "mb": 537.8
+    },
+    "ratio": 4.01
+  },
+  "server": {
+    "negotiation": [
+      {
+        "case": "A1 HEAD sin Accept-Encoding",
+        "acceptEncoding": "(ninguna)",
+        "status": 200,
+        "protocol": "h1.1",
+        "contentEncoding": null,
+        "contentLength": null,
+        "transferEncoding": null,
+        "etag": "W/\"6adfb045-860b582\"",
+        "vary": "Accept-Encoding",
+        "acceptRanges": "bytes",
+        "acceptRangesCount": null,
+        "ttlMs": 29.2
+      },
+      {
+        "case": "A2 HEAD Accept-Encoding: identity",
+        "acceptEncoding": "identity",
+        "status": 200,
+        "protocol": "h1.1",
+        "contentEncoding": null,
+        "contentLength": null,
+        "transferEncoding": null,
+        "etag": "W/\"6adfb045-860b582\"",
+        "vary": "Accept-Encoding",
+        "acceptRanges": "bytes",
+        "acceptRangesCount": null,
+        "ttlMs": 25.7
+      },
+      {
+        "case": "A3 HEAD Accept-Encoding: gzip",
+        "acceptEncoding": "gzip",
+        "status": 200,
+        "protocol": "h1.1",
+        "contentEncoding": "gzip",
+        "contentLength": 140555650,
+        "transferEncoding": null,
+        "etag": "\"6adfb045-860b582\"",
+        "vary": "Accept-Encoding",
+        "acceptRanges": "bytes, bytes",
+        "acceptRangesCount": null,
+        "ttlMs": 26.5
+      },
+      {
+        "case": "A4 HEAD Accept-Encoding: gzip, deflate, br",
+        "acceptEncoding": "gzip, deflate, br, zstd",
+        "status": 200,
+        "protocol": "h1.1",
+        "contentEncoding": "gzip",
+        "contentLength": 140555650,
+        "transferEncoding": null,
+        "etag": "\"6adfb045-860b582\"",
+        "vary": "Accept-Encoding",
+        "acceptRanges": "bytes, bytes",
+        "acceptRangesCount": null,
+        "ttlMs": 28.6
+      },
+      {
+        "case": "A5 HEAD Accept-Encoding: br (solo br)",
+        "acceptEncoding": "br",
+        "status": 200,
+        "protocol": "h1.1",
+        "contentEncoding": null,
+        "contentLength": null,
+        "transferEncoding": null,
+        "etag": "W/\"6adfb045-860b582\"",
+        "vary": "Accept-Encoding",
+        "acceptRanges": "bytes",
+        "acceptRangesCount": null,
+        "ttlMs": 25.2
+      },
+      {
+        "case": "A6 HEAD Accept-Encoding: gzip;q=0",
+        "acceptEncoding": "gzip;q=0",
+        "status": 200,
+        "protocol": "h1.1",
+        "contentEncoding": null,
+        "contentLength": null,
+        "transferEncoding": null,
+        "etag": "W/\"6adfb045-860b582\"",
+        "vary": "Accept-Encoding",
+        "acceptRanges": "bytes",
+        "acceptRangesCount": null,
+        "ttlMs": 31
+      },
+      {
+        "case": "A7 HEAD Accept-Encoding: gzip;q=0, identity",
+        "acceptEncoding": "gzip;q=0, identity",
+        "status": 200,
+        "protocol": "h1.1",
+        "contentEncoding": null,
+        "contentLength": null,
+        "transferEncoding": null,
+        "etag": "W/\"6adfb045-860b582\"",
+        "vary": "Accept-Encoding",
+        "acceptRanges": "bytes",
+        "acceptRangesCount": null,
+        "ttlMs": 23.9
+      },
+      {
+        "case": "A8 HEAD HTTP/1.0 (sin Host implícito keep-alive)",
+        "acceptEncoding": "(ninguna, HTTP/1.0)",
+        "status": 200,
+        "protocol": "h1.1",
+        "contentEncoding": null,
+        "contentLength": null,
+        "transferEncoding": null,
+        "etag": "W/\"6adfb045-860b582\"",
+        "vary": "Accept-Encoding",
+        "acceptRanges": "bytes",
+        "acceptRangesCount": null,
+        "ttlMs": 24
+      }
+    ],
+    "cpu": {
+      "B1 GET gzip completo (coste CPU nginx)": {
+        "nginxCpuMs": 330,
+        "wallMs": 355,
+        "bytes": 140555650,
+        "cpuMsPer100Mb": 234.8
+      },
+      "B2 GET identity completo (ruta gunzip, coste CPU nginx)": {
+        "nginxCpuMs": 2960,
+        "wallMs": 2988,
+        "bytes": 563968332,
+        "cpuMsPer100Mb": 524.9
+      }
+    },
+    "ranges": [
+      {
+        "case": "C1 GET Range 0-1023 + AE gzip",
+        "args": "-r 0-1023 -H Accept-Encoding: gzip",
+        "status": 206,
+        "protocol": "h1.1",
+        "contentRange": "bytes 0-1023/140555650",
+        "contentEncoding": "gzip",
+        "contentType": "application/vnd.apple.mpegurl",
+        "contentLength": 1024,
+        "bytes": 1024,
+        "bodySha256": null,
+        "bodyBytes": null
+      },
+      {
+        "case": "C2 GET Range 0-1023 + AE identity",
+        "args": "-r 0-1023 -H Accept-Encoding: identity",
+        "status": 200,
+        "protocol": "h1.1",
+        "contentRange": null,
+        "contentEncoding": null,
+        "contentType": "application/vnd.apple.mpegurl",
+        "contentLength": null,
+        "bytes": 563968332,
+        "bodySha256": null,
+        "bodyBytes": null
+      },
+      {
+        "case": "C3 GET Range 0-1023 sin AE",
+        "args": "-r 0-1023",
+        "status": 200,
+        "protocol": "h1.1",
+        "contentRange": null,
+        "contentEncoding": null,
+        "contentType": "application/vnd.apple.mpegurl",
+        "contentLength": null,
+        "bytes": 563968332,
+        "bodySha256": null,
+        "bodyBytes": null
+      },
+      {
+        "case": "C4 GET Range 100000000-100000999 + AE gzip",
+        "args": "-r 100000000-100000999 -H Accept-Encoding: gzip",
+        "status": 206,
+        "protocol": "h1.1",
+        "contentRange": "bytes 100000000-100000999/140555650",
+        "contentEncoding": "gzip",
+        "contentType": "application/vnd.apple.mpegurl",
+        "contentLength": 1000,
+        "bytes": 1000,
+        "bodySha256": null,
+        "bodyBytes": null
+      },
+      {
+        "case": "C5 GET Range -1024 (sufijo) + AE gzip",
+        "args": "-r -1024 -H Accept-Encoding: gzip",
+        "status": 206,
+        "protocol": "h1.1",
+        "contentRange": "bytes 140554626-140555649/140555650",
+        "contentEncoding": "gzip",
+        "contentType": "application/vnd.apple.mpegurl",
+        "contentLength": 1024,
+        "bytes": 1024,
+        "bodySha256": null,
+        "bodyBytes": null
+      },
+      {
+        "case": "C6 GET Range multi 0-99,200-299 + AE gzip",
+        "args": "-r 0-99,200-299 -H Accept-Encoding: gzip",
+        "status": 206,
+        "protocol": "h1.1",
+        "contentRange": null,
+        "contentEncoding": "gzip",
+        "contentType": "multipart/byteranges; boundary=00000000000000000109",
+        "contentLength": 451,
+        "bytes": 451,
+        "bodySha256": null,
+        "bodyBytes": null
+      },
+      {
+        "case": "C7 GET Range 0-1023 + If-Range ETag fuerte",
+        "args": "-r 0-1023 -H Accept-Encoding: gzip -H If-Range: \"6adfb045-860b582\"",
+        "status": 206,
+        "protocol": "h1.1",
+        "contentRange": "bytes 0-1023/140555650",
+        "contentEncoding": "gzip",
+        "contentType": "application/vnd.apple.mpegurl",
+        "contentLength": 1024,
+        "bytes": 1024,
+        "bodySha256": null,
+        "bodyBytes": null
+      },
+      {
+        "case": "C8 GET Range 0-1023 + If-Range ETag ajeno",
+        "args": "-r 0-1023 -H Accept-Encoding: gzip -H If-Range: \"deadbeef-1\"",
+        "status": 200,
+        "protocol": "h1.1",
+        "contentRange": null,
+        "contentEncoding": "gzip",
+        "contentType": "application/vnd.apple.mpegurl",
+        "contentLength": 140555650,
+        "bytes": 140555650,
+        "bodySha256": null,
+        "bodyBytes": null
+      },
+      {
+        "case": "C9 HEAD Range 0-1023 + AE gzip",
+        "args": "-I -r 0-1023 -H Accept-Encoding: gzip",
+        "status": 206,
+        "protocol": "h1.1",
+        "contentRange": "bytes 0-1023/140555650",
+        "contentEncoding": "gzip",
+        "contentType": "application/vnd.apple.mpegurl",
+        "contentLength": 1024,
+        "bytes": 0,
+        "bodySha256": null,
+        "bodyBytes": null
+      }
+    ],
+    "conditional": [
+      {
+        "case": "D1 gzip + If-None-Match fuerte (el suyo)",
+        "args": "-H Accept-Encoding: gzip -H If-None-Match: \"6adfb045-860b582\"",
+        "status": 304,
+        "protocol": "h1.1",
+        "etag": "\"6adfb045-860b582\"",
+        "contentLength": null,
+        "contentEncoding": null,
+        "vary": null,
+        "ttlMs": 28.9,
+        "bytes": 0
+      },
+      {
+        "case": "D2 gzip + If-None-Match débil",
+        "args": "-H Accept-Encoding: gzip -H If-None-Match: W/\"6adfb045-860b582\"",
+        "status": 304,
+        "protocol": "h1.1",
+        "etag": "\"6adfb045-860b582\"",
+        "contentLength": null,
+        "contentEncoding": null,
+        "vary": null,
+        "ttlMs": 29,
+        "bytes": 0
+      },
+      {
+        "case": "D3 identity + If-None-Match débil (el suyo)",
+        "args": "-H Accept-Encoding: identity -H If-None-Match: W/\"6adfb045-860b582\"",
+        "status": 304,
+        "protocol": "h1.1",
+        "etag": "\"6adfb045-860b582\"",
+        "contentLength": null,
+        "contentEncoding": null,
+        "vary": null,
+        "ttlMs": 27.1,
+        "bytes": 0
+      },
+      {
+        "case": "D4 identity + If-None-Match fuerte (cruzado)",
+        "args": "-H Accept-Encoding: identity -H If-None-Match: \"6adfb045-860b582\"",
+        "status": 304,
+        "protocol": "h1.1",
+        "etag": "\"6adfb045-860b582\"",
+        "contentLength": null,
+        "contentEncoding": null,
+        "vary": null,
+        "ttlMs": 29.5,
+        "bytes": 0
+      },
+      {
+        "case": "D5 sin AE + If-None-Match fuerte (cruzado)",
+        "args": "-H If-None-Match: \"6adfb045-860b582\"",
+        "status": 304,
+        "protocol": "h1.1",
+        "etag": "\"6adfb045-860b582\"",
+        "contentLength": null,
+        "contentEncoding": null,
+        "vary": null,
+        "ttlMs": 23.7,
+        "bytes": 0
+      },
+      {
+        "case": "D6 gzip + If-None-Match: *",
+        "args": "-H Accept-Encoding: gzip -H If-None-Match: *",
+        "status": 304,
+        "protocol": "h1.1",
+        "etag": "\"6adfb045-860b582\"",
+        "contentLength": null,
+        "contentEncoding": null,
+        "vary": null,
+        "ttlMs": 22.9,
+        "bytes": 0
+      },
+      {
+        "case": "D7 gzip + If-None-Match ajeno",
+        "args": "-H Accept-Encoding: gzip -H If-None-Match: \"deadbeef-1\"",
+        "status": 200,
+        "protocol": "h1.1",
+        "etag": "\"6adfb045-860b582\"",
+        "contentLength": 140555650,
+        "contentEncoding": "gzip",
+        "vary": "Accept-Encoding",
+        "ttlMs": 24.1,
+        "bytes": 140555650
+      },
+      {
+        "case": "D8 sin AE + If-Modified-Since = Last-Modified",
+        "args": "-H If-Modified-Since: Mon, 26 Oct 2026 19:55:49 GMT",
+        "status": 304,
+        "protocol": "h1.1",
+        "etag": "\"6adfb045-860b582\"",
+        "contentLength": null,
+        "contentEncoding": null,
+        "vary": null,
+        "ttlMs": 31.4,
+        "bytes": 0
+      },
+      {
+        "case": "D9 gzip + If-Modified-Since = Last-Modified",
+        "args": "-H Accept-Encoding: gzip -H If-Modified-Since: Mon, 26 Oct 2026 19:55:49 GMT",
+        "status": 304,
+        "protocol": "h1.1",
+        "etag": "\"6adfb045-860b582\"",
+        "contentLength": null,
+        "contentEncoding": null,
+        "vary": null,
+        "ttlMs": 24,
+        "bytes": 0
+      },
+      {
+        "case": "D10 HEAD gzip + If-None-Match fuerte",
+        "args": "-I -H Accept-Encoding: gzip -H If-None-Match: \"6adfb045-860b582\"",
+        "status": 304,
+        "protocol": "h1.1",
+        "etag": "\"6adfb045-860b582\"",
+        "contentLength": null,
+        "contentEncoding": null,
+        "vary": null,
+        "ttlMs": 23.1,
+        "bytes": 0
+      },
+      {
+        "case": "D11 HEAD identity + If-None-Match débil",
+        "args": "-I -H Accept-Encoding: identity -H If-None-Match: W/\"6adfb045-860b582\"",
+        "status": 304,
+        "protocol": "h1.1",
+        "etag": "\"6adfb045-860b582\"",
+        "contentLength": null,
+        "contentEncoding": null,
+        "vary": null,
+        "ttlMs": 26.5,
+        "bytes": 0
+      },
+      {
+        "case": "D12 gzip + INM fuerte + IMS",
+        "args": "-H Accept-Encoding: gzip -H If-None-Match: \"6adfb045-860b582\" -H If-Modified-Since: Mon, 26 Oct 2026 19:55:49 GMT",
+        "status": 304,
+        "protocol": "h1.1",
+        "etag": "\"6adfb045-860b582\"",
+        "contentLength": null,
+        "contentEncoding": null,
+        "vary": null,
+        "ttlMs": 27.8,
+        "bytes": 0
+      },
+      {
+        "case": "D13 Range 0-1023 + INM fuerte + If-Range",
+        "args": "-r 0-1023 -H Accept-Encoding: gzip -H If-None-Match: \"6adfb045-860b582\" -H If-Range: \"6adfb045-860b582\"",
+        "status": 304,
+        "protocol": "h1.1",
+        "etag": "\"6adfb045-860b582\"",
+        "contentLength": null,
+        "contentEncoding": null,
+        "vary": null,
+        "ttlMs": 25.6,
+        "bytes": 0
+      }
+    ],
+    "alpn": "ALPN protocol: http/1.1",
+    "h2StrictAlpn": "",
+    "h2Curl": "1.1",
+    "h1RequestBytesPlayerUa": 181,
+    "sliceChecks": {
+      "gzSlice0_1024": "fb9538dc187c3196b92a38d00efb27293e8bd893d3aa8f9bd1513ba28137cb43",
+      "gzSlice100000000_1000": "fe8a1469f44891c043d2b69423666c6d622a39424ebef7772484fc615257943f",
+      "stub": "144659b48f342d02b9298907ab32fcf0479ac9c99a0d293c7c2ebf8df313dd12",
+      "rangeBodyMatchesFile": {
+        "c10": true,
+        "c11": true,
+        "c10Sha": "fb9538dc187c3196b92a38d00efb27293e8bd893d3aa8f9bd1513ba28137cb43",
+        "c11Sha": "fe8a1469f44891c043d2b69423666c6d622a39424ebef7772484fc615257943f"
+      }
+    }
+  },
+  "client": {
+    "fresh": {
+      "gzip": {
+        "stats": {
+          "n": 3,
+          "min": 332,
+          "p50": 459.7,
+          "p95": 516.1,
+          "max": 516.1,
+          "mean": 435.9
+        },
+        "samples": [
+          {
+            "i": 1,
+            "status": 200,
+            "error": null,
+            "httpVersion": "1.1",
+            "ttfbMs": 516.1,
+            "tlsMs": 392,
+            "firstByteMs": 520.1,
+            "firstChunkBytes": 7443,
+            "contentEncoding": "gzip",
+            "contentLength": 140555650,
+            "transferEncoding": null,
+            "etag": "\"6adfb045-860b582\""
+          },
+          {
+            "i": 2,
+            "status": 200,
+            "error": null,
+            "httpVersion": "1.1",
+            "ttfbMs": 332,
+            "tlsMs": 230.5,
+            "firstByteMs": 332.5,
+            "firstChunkBytes": 7443,
+            "contentEncoding": "gzip",
+            "contentLength": 140555650,
+            "transferEncoding": null,
+            "etag": "\"6adfb045-860b582\""
+          },
+          {
+            "i": 3,
+            "status": 200,
+            "error": null,
+            "httpVersion": "1.1",
+            "ttfbMs": 459.7,
+            "tlsMs": 276.6,
+            "firstByteMs": 460.5,
+            "firstChunkBytes": 7443,
+            "contentEncoding": "gzip",
+            "contentLength": 140555650,
+            "transferEncoding": null,
+            "etag": "\"6adfb045-860b582\""
+          }
+        ]
+      },
+      "identity": {
+        "stats": {
+          "n": 3,
+          "min": 377.4,
+          "p50": 418.6,
+          "p95": 425.6,
+          "max": 425.6,
+          "mean": 407.2
+        },
+        "samples": [
+          {
+            "i": 1,
+            "status": 200,
+            "error": null,
+            "httpVersion": "1.1",
+            "ttfbMs": 377.4,
+            "tlsMs": 247.5,
+            "firstByteMs": 377.8,
+            "firstChunkBytes": 7480,
+            "contentEncoding": null,
+            "contentLength": null,
+            "transferEncoding": "chunked",
+            "etag": "W/\"6adfb045-860b582\""
+          },
+          {
+            "i": 2,
+            "status": 200,
+            "error": null,
+            "httpVersion": "1.1",
+            "ttfbMs": 418.6,
+            "tlsMs": 221.8,
+            "firstByteMs": 419.4,
+            "firstChunkBytes": 7480,
+            "contentEncoding": null,
+            "contentLength": null,
+            "transferEncoding": "chunked",
+            "etag": "W/\"6adfb045-860b582\""
+          },
+          {
+            "i": 3,
+            "status": 200,
+            "error": null,
+            "httpVersion": "1.1",
+            "ttfbMs": 425.6,
+            "tlsMs": 221.8,
+            "firstByteMs": 425.9,
+            "firstChunkBytes": 7480,
+            "contentEncoding": null,
+            "contentLength": null,
+            "transferEncoding": "chunked",
+            "etag": "W/\"6adfb045-860b582\""
+          }
+        ]
+      }
+    },
+    "keepAliveRtt": {
+      "stats": {
+        "n": 3,
+        "min": 114.4,
+        "p50": 115.5,
+        "p95": 384.9,
+        "max": 384.9,
+        "mean": 204.9
+      },
+      "samples": [
+        {
+          "i": 1,
+          "status": 200,
+          "reused": false,
+          "headersMs": 384.9
+        },
+        {
+          "i": 2,
+          "status": 200,
+          "reused": true,
+          "headersMs": 115.5
+        },
+        {
+          "i": 3,
+          "status": 200,
+          "reused": true,
+          "headersMs": 114.4
+        }
+      ]
+    },
+    "conditional304": [
+      {
+        "label": "gzip + INM propio (fuerte)",
+        "representation": "gzip",
+        "validator": "\"6adfb045-860b582\"",
+        "status": 304,
+        "bytes": 0,
+        "ttfbMs": 321.5,
+        "totalMs": 322.5,
+        "etag": "\"6adfb045-860b582\"",
+        "contentLength": null,
+        "contentEncoding": null,
+        "vary": null
+      },
+      {
+        "label": "identity + INM propio (débil)",
+        "representation": "identity",
+        "validator": "W/\"6adfb045-860b582\"",
+        "status": 304,
+        "bytes": 0,
+        "ttfbMs": 321.9,
+        "totalMs": 322.8,
+        "etag": "\"6adfb045-860b582\"",
+        "contentLength": null,
+        "contentEncoding": null,
+        "vary": null
+      },
+      {
+        "label": "identity + INM fuerte cruzado",
+        "representation": "identity",
+        "validator": "\"6adfb045-860b582\"",
+        "status": 304,
+        "bytes": 0,
+        "ttfbMs": 417.5,
+        "totalMs": 418.4,
+        "etag": "\"6adfb045-860b582\"",
+        "contentLength": null,
+        "contentEncoding": null,
+        "vary": null
+      },
+      {
+        "label": "gzip + INM débil cruzado",
+        "representation": "gzip",
+        "validator": "W/\"6adfb045-860b582\"",
+        "status": 304,
+        "bytes": 0,
+        "ttfbMs": 348.9,
+        "totalMs": 349.7,
+        "etag": "\"6adfb045-860b582\"",
+        "contentLength": null,
+        "contentEncoding": null,
+        "vary": null
+      }
+    ],
+    "range": [
+      {
+        "label": "Range 0-1023 + gzip",
+        "representation": "gzip",
+        "range": "bytes=0-1023",
+        "status": 206,
+        "bytes": 1024,
+        "contentRange": "bytes 0-1023/140555650",
+        "contentEncoding": "gzip",
+        "contentType": "application/vnd.apple.mpegurl",
+        "contentLength": 1024,
+        "ttfbMs": 475.1,
+        "firstChunkBytes": 1024
+      },
+      {
+        "label": "Range 0-1023 + identity",
+        "representation": "identity",
+        "range": "bytes=0-1023",
+        "status": 200,
+        "bytes": 7480,
+        "contentRange": null,
+        "contentEncoding": null,
+        "contentType": "application/vnd.apple.mpegurl",
+        "contentLength": null,
+        "ttfbMs": 436.4,
+        "firstChunkBytes": 7480
+      },
+      {
+        "label": "Range 100000000-100000999 + gzip",
+        "representation": "gzip",
+        "range": "bytes=100000000-100000999",
+        "status": 206,
+        "bytes": 1000,
+        "contentRange": "bytes 100000000-100000999/140555650",
+        "contentEncoding": "gzip",
+        "contentType": "application/vnd.apple.mpegurl",
+        "contentLength": 1000,
+        "ttfbMs": 378.8,
+        "firstChunkBytes": 1000
+      },
+      {
+        "label": "Range -1024 (sufijo) + gzip",
+        "representation": "gzip",
+        "range": "bytes=-1024",
+        "status": 206,
+        "bytes": 1024,
+        "contentRange": "bytes 140554626-140555649/140555650",
+        "contentEncoding": "gzip",
+        "contentType": "application/vnd.apple.mpegurl",
+        "contentLength": 1024,
+        "ttfbMs": 357.8,
+        "firstChunkBytes": 1024
+      }
+    ],
+    "throughput": {
+      "gzip": {
+        "cap": {
+          "capBytes": 33554432,
+          "capMs": 10000,
+          "reason": "bytes"
+        },
+        "bytesRead": 33561875,
+        "elapsedMs": 5473.3,
+        "ttfbMs": 445.1,
+        "firstByteMs": 445.5,
+        "avgBps": 6131896,
+        "steadyBps": 6673684,
+        "declaredBytes": 140555650,
+        "extrapolatedDownloadSec": 21.1,
+        "extrapolatedNote": "extrapolación lineal desde la muestra acotada; NO es una descarga completa"
+      },
+      "identity": {
+        "cap": {
+          "capBytes": 33554432,
+          "capMs": 10000,
+          "reason": "bytes"
+        },
+        "bytesRead": 33558415,
+        "elapsedMs": 4925,
+        "ttfbMs": 475.9,
+        "firstByteMs": 476.2,
+        "avgBps": 6813923,
+        "steadyBps": 7541608,
+        "declaredBytes": 563968332,
+        "extrapolatedDownloadSec": 74.8,
+        "extrapolatedNote": "extrapolación lineal desde la muestra acotada; NO es una descarga completa"
+      }
+    },
+    "parallel": {
+      "k1": {
+        "k": 1,
+        "wallMs": 495.9,
+        "perConnTlsMs": [
+          394.3
+        ],
+        "perConnTtfbMs": [
+          494.4
+        ],
+        "statuses": [
+          200
+        ]
+      },
+      "k4": {
+        "k": 4,
+        "wallMs": 2396.8,
+        "perConnTlsMs": [
+          2226.7,
+          2271.8,
+          229.6,
+          259.7
+        ],
+        "perConnTtfbMs": [
+          2338.4,
+          2393,
+          327.1,
+          376.2
+        ],
+        "statuses": [
+          200,
+          200,
+          200,
+          200
+        ]
+      }
+    },
+    "http2": {
+      "alpn": {
+        "alpn": "http/1.1",
+        "protocol": "TLSv1.3",
+        "cipher": "TLS_AES_256_GCM_SHA384"
+      },
+      "strict": {
+        "attempted": true,
+        "requestedAlpn": "h2",
+        "mode": "firstChunk",
+        "error": "ERR_SSL_TLSV1_ALERT_NO_APPLICATION_PROTOCOL",
+        "alpn": null
+      },
+      "cap": null
+    }
+  },
+  "findings": [
+    {
+      "id": "E6-01",
+      "claim": "la representación sin gzip pesa ×4.01 y cuesta ×9.0 CPU de nginx",
+      "gzBytes": 140555650,
+      "decompressedBytes": 563968332,
+      "ratio": 4.01,
+      "nginxCpuMsGzip": 330,
+      "nginxCpuMsIdentity": 2960,
+      "evidence": "probe_vps.sh B1/B2 + DECOMPRESSED_BYTES"
+    },
+    {
+      "id": "E6-02",
+      "claim": "6 de 8 variantes de Accept-Encoding reciben la lista DESCOMPRIMIDA (chunked, sin Content-Length)",
+      "cases": [
+        "(ninguna)",
+        "identity",
+        "br",
+        "gzip;q=0",
+        "gzip;q=0, identity",
+        "(ninguna, HTTP/1.0)"
+      ],
+      "evidence": "probe_vps.sh A1–A8"
+    },
+    {
+      "id": "E6-03",
+      "claim": "Range sobre el .gz: 6 casos 206 (trozo del stream gzip, Content-Range sobre 140555650) y 3 casos 200 (Range ignorado, cuerpo completo)",
+      "statuses": [
+        {
+          "case": "C1 GET Range 0-1023 + AE gzip",
+          "status": 206,
+          "contentRange": "bytes 0-1023/140555650",
+          "contentEncoding": "gzip"
+        },
+        {
+          "case": "C2 GET Range 0-1023 + AE identity",
+          "status": 200,
+          "contentRange": null,
+          "contentEncoding": null
+        },
+        {
+          "case": "C3 GET Range 0-1023 sin AE",
+          "status": 200,
+          "contentRange": null,
+          "contentEncoding": null
+        },
+        {
+          "case": "C4 GET Range 100000000-100000999 + AE gzip",
+          "status": 206,
+          "contentRange": "bytes 100000000-100000999/140555650",
+          "contentEncoding": "gzip"
+        },
+        {
+          "case": "C5 GET Range -1024 (sufijo) + AE gzip",
+          "status": 206,
+          "contentRange": "bytes 140554626-140555649/140555650",
+          "contentEncoding": "gzip"
+        },
+        {
+          "case": "C6 GET Range multi 0-99,200-299 + AE gzip",
+          "status": 206,
+          "contentRange": null,
+          "contentEncoding": "gzip"
+        },
+        {
+          "case": "C7 GET Range 0-1023 + If-Range ETag fuerte",
+          "status": 206,
+          "contentRange": "bytes 0-1023/140555650",
+          "contentEncoding": "gzip"
+        },
+        {
+          "case": "C8 GET Range 0-1023 + If-Range ETag ajeno",
+          "status": 200,
+          "contentRange": null,
+          "contentEncoding": "gzip"
+        },
+        {
+          "case": "C9 HEAD Range 0-1023 + AE gzip",
+          "status": 206,
+          "contentRange": "bytes 0-1023/140555650",
+          "contentEncoding": "gzip"
+        }
+      ],
+      "evidence": "probe_vps.sh C1–C11 + GZ_SLICE_*"
+    },
+    {
+      "id": "E6-04",
+      "claim": "304 en 12/12 variantes con validador propio o cruzado (fuerte/débil y al revés); con ETag ajeno → 200 (correcto)",
+      "etagOn304": [
+        "\"6adfb045-860b582\""
+      ],
+      "etagOn200Identity": [
+        "W/\"6adfb045-860b582\""
+      ],
+      "evidence": "probe_vps.sh D1–D13"
+    },
+    {
+      "id": "E6-05",
+      "claim": "descarga estimada del cliente: gzip ≈ 21.1 s vs identity ≈ 74.8 s",
+      "gzip": {
+        "cap": {
+          "capBytes": 33554432,
+          "capMs": 10000,
+          "reason": "bytes"
+        },
+        "bytesRead": 33561875,
+        "elapsedMs": 5473.3,
+        "ttfbMs": 445.1,
+        "firstByteMs": 445.5,
+        "avgBps": 6131896,
+        "steadyBps": 6673684,
+        "declaredBytes": 140555650,
+        "extrapolatedDownloadSec": 21.1,
+        "extrapolatedNote": "extrapolación lineal desde la muestra acotada; NO es una descarga completa"
+      },
+      "identity": {
+        "cap": {
+          "capBytes": 33554432,
+          "capMs": 10000,
+          "reason": "bytes"
+        },
+        "bytesRead": 33558415,
+        "elapsedMs": 4925,
+        "ttfbMs": 475.9,
+        "firstByteMs": 476.2,
+        "avgBps": 6813923,
+        "steadyBps": 7541608,
+        "declaredBytes": 563968332,
+        "extrapolatedDownloadSec": 74.8,
+        "extrapolatedNote": "extrapolación lineal desde la muestra acotada; NO es una descarga completa"
+      },
+      "evidence": "payload_edge.mjs §9 (muestra acotada, extrapolación lineal)"
+    },
+    {
+      "id": "E6-06",
+      "claim": "HTTP/2 no negociado: ALPN=http/1.1; la palanca h2 se cuantifica como coste de conexión (k conexiones nuevas)",
+      "alpn": {
+        "alpn": "http/1.1",
+        "protocol": "TLSv1.3",
+        "cipher": "TLS_AES_256_GCM_SHA384"
+      },
+      "error": "ERR_SSL_TLSV1_ALERT_NO_APPLICATION_PROTOCOL",
+      "parallelK1WallMs": 495.9,
+      "parallelK4WallMs": 2396.8,
+      "evidence": "payload_edge.mjs §10/§11"
+    }
+  ],
+  "limitations": [
+    "No se descarga la lista completa desde el cliente: el peso y el digest REALES se verifican en el loopback del VPS (B1–B4) y el cliente solo hace lecturas acotadas (primer chunk / 32 MB / 10 s).",
+    "Los tiempos del cliente incluyen DNS+TCP+TLS; se reporta tls_ms por separado.",
+    "Percentiles nearest-rank con N=3: p95 = máximo. Es una línea base, no un intervalo de confianza.",
+    "La sonda del servidor termina 4 transferencias completas en loopback (2 × 140 MB + 2 × 564 MB): es tráfico local, sin salir a Internet.",
+    "HTTP/2 no está activo en el momento de la medida (ver §11): si la fase 1 lo activa, el bloque client.http2 cambia de \"ausencia documentada\" a \"muestra real\".",
+    "La estimación de descarga extrapolada es lineal desde una muestra acotada; no modela variación de caudal ni congestión."
+  ]
+}

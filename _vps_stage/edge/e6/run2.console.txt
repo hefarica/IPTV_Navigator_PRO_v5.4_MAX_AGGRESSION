@@ -1,0 +1,99 @@
+═══════════════════════════════════════════════════════════════════════
+E6 · PESO Y ENTREGA DE LA LISTA · 20261026T204034Z · 26/10/26, 3:40:34 p. m.
+arnés=v1.0.0 label=E6-canonical-pre-h2 host=iptv-ape.duckdns.org ssh=root@178.156.147.234
+═══════════════════════════════════════════════════════════════════════
+
+── 0 · DNS iptv-ape.duckdns.org → 178.156.147.234
+
+── 1 · SONDA SERVIDOR (probe_vps.sh, read-only, por ssh) ─────────────
+sonda: 41 casos · 31.0 KB crudos · 30.7 s · script sha256=e0e3445d4cd3aa1f…
+config: default=715465641c7e… meta-plane=3e29b9280c05… h2_listen=0 nginx -T=ddf6a267aee7…
+peso: gz=140555650 B → descomprimido=563968332 B (537.8 MB) · líneas=10084364 · ratio ×4.01
+digests: gz=a464a0c325a94b3c… descomprimido=44f5263f78eac14c…
+CPU B1 GET gzip completo (coste CPU nginx): nginx_cpu_ms=270 wall_ms=294 bytes=140555650
+CPU B2 GET identity completo (ruta gunzip, coste CPU nginx): nginx_cpu_ms=2770 wall_ms=2810 bytes=563968332
+
+── 2 · NEGOCIACIÓN gzip (HEAD, loopback del VPS) ─────────────────────
+AE=(ninguna)                          → 200 CE=—     CL=—         TE=—        ETag=W/"6adfb045-860b582" ttfb=31.5ms
+AE=(ninguna)                          → 200 CE=—     CL=—         TE=—        ETag=W/"6adfb045-860b582" ttfb=31.1ms
+AE=(ninguna)                          → 200 CE=gzip  CL=140555650 TE=—        ETag="6adfb045-860b582" ttfb=28.9ms
+AE=(ninguna)                          → 200 CE=gzip  CL=140555650 TE=—        ETag="6adfb045-860b582" ttfb=24.2ms
+AE=(ninguna)                          → 200 CE=—     CL=—         TE=—        ETag=W/"6adfb045-860b582" ttfb=23.5ms
+AE=(ninguna)                          → 200 CE=—     CL=—         TE=—        ETag=W/"6adfb045-860b582" ttfb=22.8ms
+AE=(ninguna)                          → 200 CE=—     CL=—         TE=—        ETag=W/"6adfb045-860b582" ttfb=23.2ms
+AE=(ninguna)                          → 200 CE=—     CL=—         TE=—        ETag=W/"6adfb045-860b582" ttfb=32.6ms
+
+── 3 · RANGE sobre el .gz (loopback del VPS) ─────────────────────────
+C1 GET Range 0-1023 + AE gzip                  → 206 CL=1024      CR=bytes 0-1023/140555650             CE=gzip bytes=1024
+C2 GET Range 0-1023 + AE identity              → 200 CL=—         CR=—                                  CE=— bytes=563968332
+C3 GET Range 0-1023 sin AE                     → 200 CL=—         CR=—                                  CE=— bytes=563968332
+C4 GET Range 100000000-100000999 + AE gzip     → 206 CL=1000      CR=bytes 100000000-100000999/140555650 CE=gzip bytes=1000
+C5 GET Range -1024 (sufijo) + AE gzip          → 206 CL=1024      CR=bytes 140554626-140555649/140555650 CE=gzip bytes=1024
+C6 GET Range multi 0-99,200-299 + AE gzip      → 206 CL=451       CR=—                                  CE=gzip bytes=451
+C7 GET Range 0-1023 + If-Range ETag fuerte     → 206 CL=1024      CR=bytes 0-1023/140555650             CE=gzip bytes=1024
+C8 GET Range 0-1023 + If-Range ETag ajeno      → 200 CL=140555650 CR=—                                  CE=gzip bytes=140555650
+C9 HEAD Range 0-1023 + AE gzip                 → 206 CL=1024      CR=bytes 0-1023/140555650             CE=gzip bytes=0
+
+── 4 · ETag / 304 (loopback del VPS) ─────────────────────────────────
+D1 gzip + If-None-Match fuerte (el suyo)       → 304 etag="6adfb045-860b582"   CL=—         CE=— ttfb=25.7ms bytes=0
+D2 gzip + If-None-Match débil                  → 304 etag="6adfb045-860b582"   CL=—         CE=— ttfb=25.4ms bytes=0
+D3 identity + If-None-Match débil (el suyo)    → 304 etag="6adfb045-860b582"   CL=—         CE=— ttfb=26ms bytes=0
+D4 identity + If-None-Match fuerte (cruzado)   → 304 etag="6adfb045-860b582"   CL=—         CE=— ttfb=28.6ms bytes=0
+D5 sin AE + If-None-Match fuerte (cruzado)     → 304 etag="6adfb045-860b582"   CL=—         CE=— ttfb=26.7ms bytes=0
+D6 gzip + If-None-Match: *                     → 304 etag="6adfb045-860b582"   CL=—         CE=— ttfb=23.7ms bytes=0
+D7 gzip + If-None-Match ajeno                  → 200 etag="6adfb045-860b582"   CL=140555650 CE=gzip ttfb=31.5ms bytes=140555650
+D8 sin AE + If-Modified-Since = Last-Modified  → 304 etag="6adfb045-860b582"   CL=—         CE=— ttfb=24.5ms bytes=0
+D9 gzip + If-Modified-Since = Last-Modified    → 304 etag="6adfb045-860b582"   CL=—         CE=— ttfb=25.1ms bytes=0
+D10 HEAD gzip + If-None-Match fuerte           → 304 etag="6adfb045-860b582"   CL=—         CE=— ttfb=29.9ms bytes=0
+D11 HEAD identity + If-None-Match débil        → 304 etag="6adfb045-860b582"   CL=—         CE=— ttfb=25.2ms bytes=0
+D12 gzip + INM fuerte + IMS                    → 304 etag="6adfb045-860b582"   CL=—         CE=— ttfb=42.8ms bytes=0
+D13 Range 0-1023 + INM fuerte + If-Range       → 304 etag="6adfb045-860b582"   CL=—         CE=— ttfb=26.4ms bytes=0
+
+── 5 · CLIENTE · TTFB/first-chunk (conexión nueva por muestra) ───────
+gzip     #1: 200 http=1.1 tls=482.4ms ttfb=587ms 1er_chunk=7443B CE=gzip CL=140555650
+gzip     #2: 200 http=1.1 tls=225.6ms ttfb=428ms 1er_chunk=7443B CE=gzip CL=140555650
+gzip     #3: 200 http=1.1 tls=255.9ms ttfb=371.9ms 1er_chunk=7443B CE=gzip CL=140555650
+identity #1: 200 http=1.1 tls=216.7ms ttfb=407.7ms 1er_chunk=7480B CE=— CL=—
+identity #2: 200 http=1.1 tls=247.8ms ttfb=362.9ms 1er_chunk=7480B CE=— CL=—
+identity #3: 200 http=1.1 tls=261.6ms ttfb=493.1ms 1er_chunk=7480B CE=— CL=—
+
+── 6 · CLIENTE · suelo de RTT (HEAD keep-alive) ──────────────────────
+HEAD #1: 200 reused=no headers=329.2ms
+HEAD #2: 200 reused=yes headers=96.3ms
+HEAD #3: 200 reused=yes headers=100.7ms
+
+── 7 · CLIENTE · 304 condicional (bytes y tiempo reales) ──────────────
+ETag gzip="6adfb045-860b582" · identity=W/"6adfb045-860b582"
+gzip + INM propio (fuerte)           → 304 bytes=0 ttfb=344.5ms etag="6adfb045-860b582" CE=— Vary=—
+identity + INM propio (débil)        → 304 bytes=0 ttfb=437.6ms etag="6adfb045-860b582" CE=— Vary=—
+identity + INM fuerte cruzado        → 304 bytes=0 ttfb=378ms etag="6adfb045-860b582" CE=— Vary=—
+gzip + INM débil cruzado             → 304 bytes=0 ttfb=365.3ms etag="6adfb045-860b582" CE=— Vary=—
+
+── 8 · CLIENTE · Range (qué recibe un cliente real) ──────────────────
+Range 0-1023 + gzip                      → 206 CR=bytes 0-1023/140555650 CE=gzip 1er_chunk=1024B ttfb=385.4ms
+Range 0-1023 + identity                  → 200 CR=— CE=— 1er_chunk=7480B ttfb=428.9ms
+Range 100000000-100000999 + gzip         → 206 CR=bytes 100000000-100000999/140555650 CE=gzip 1er_chunk=1000B ttfb=318.7ms
+Range -1024 (sufijo) + gzip              → 206 CR=bytes 140554626-140555649/140555650 CE=gzip 1er_chunk=1024B ttfb=481.7ms
+
+── 9 · CLIENTE · caudal acotado (32 MB / 10 s) → descarga extrapolada ─
+gzip    : leídos=32.0 MB en 5195.2ms · avg=6.16 MB/s · steady=6.70 MB/s · descarga_de_134.0MB ≈ 20s
+identity: leídos=20.4 MB en 10009.6ms · avg=2.04 MB/s · steady=2.15 MB/s · descarga_de_537.8MB ≈ 250.7s
+
+── 10 · CLIENTE · 1 vs 4 conexiones nuevas (palanca de HTTP/2) ───────
+k=1: pared=372ms · tls_por_conexión=[271.2]ms · ttfb=[370.9]ms
+k=4: pared=402.9ms · tls_por_conexión=[270.8, 250.4, 279.9, 228.8]ms · ttfb=[387.7, 359.1, 394.3, 324.9]ms
+
+── 11 · HTTP/2 (ALPN + intento estricto + muestra si existe) ─────────
+ALPN [h2,http/1.1] → http/1.1 · TLSv1.3 · TLS_AES_256_GCM_SHA384
+http2.connect estricto → FALLO ERR_SSL_TLSV1_ALERT_NO_APPLICATION_PROTOCOL (alpn=none)
+h2 no disponible ⇒ el efecto de HTTP/2 se cuantifica con el coste de conexión medido en §5/§10, no con una muestra h2 (no se inventa).
+
+── 12 · RESUMEN ──────────────────────────────────────────────────────
+peso: 140555650 B gz → 563968332 B (537.8 MB, ×4.01) · 10084364 líneas
+CPU nginx por descarga: gzip=270 ms · identity=2770 ms
+cliente ttfb p50: gzip=428 ms · identity=407.7 ms · RTT keep-alive=100.7 ms
+304: 4/4 variantes devuelven 304 (bytes=0)
+Range: 6 casos 206 · 3 casos 200 (Range ignorado)
+HTTP/2: NO NEGOCIADO · ALPN=http/1.1
+salida: runs\20261026T204034Z\payload.json
+RESULT=OK
