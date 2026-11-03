@@ -189,10 +189,16 @@ function servir() {
 
   // 5 · Clic en Denegar no cambia nada
   {
-    // volver a provocar bloqueo subiendo el delta a 90 sobre un perfil alto
-    await evaluar('(function(){window.APE_PROFILES_CONFIG.activeProfileId="P0";window.APE_BW={snapshot:function(){return {mbps:16};}};var H=window.APE_OUTPUT_TEST_HOOKS;H.renderSugerencia();return true;})()');
+    // Provocar un bloqueo REAL y determinista: P0 pide 15*1.15 = 17.25 y el enlace mide 16.
+    // Se fija el delta a 15 explicitamente porque el caso anterior pudo dejarlo bajo.
+    await evaluar('(function(){window.APE_OUTPUT_TEST_HOOKS.applyDelta?0:0;var H=window.APE_OUTPUT_TEST_HOOKS;' +
+      'window.APE_PROFILES_CONFIG.activeProfileId="P0";' +
+      'window.APE_BW={snapshot:function(){return {mbps:16};}};' +
+      'try{localStorage.setItem("ape_output_delta_pct","15");}catch(e){}' +
+      'H.renderSugerencia();return true;})()');
     await sleep(300);
     const hay = await evaluar('!!document.getElementById("ape-sug-denegar")');
+    ok(hay === true, 'Denegar: existe boton bajo un bloqueo provocado a proposito');
     if (hay) {
       const antes = await evaluar('JSON.stringify({p:window.APE_PROFILES_CONFIG.activeProfileId,d:window.APE_OUTPUT_DELTA_PCT})');
       await evaluar('document.getElementById("ape-sug-denegar").click()');
@@ -200,8 +206,8 @@ function servir() {
       const despues = await evaluar('JSON.stringify({p:window.APE_PROFILES_CONFIG.activeProfileId,d:window.APE_OUTPUT_DELTA_PCT})');
       ok(antes === despues, 'Denegar no cambia ni perfil ni delta', antes + ' -> ' + despues);
       ok(await evaluar('window.__APE_SUG_DENEGADO__ === true') === true, 'Denegar marca el flag');
-    } else {
-      ok(true, 'Denegar: no habia bloqueo activo en este estado (no aplica)');
+      ok(await evaluar('(document.getElementById("ape-buf-sugerencia").innerHTML||"").indexOf("denegada") >= 0') === true,
+         'Denegar lo dice en el panel');
     }
   }
 
