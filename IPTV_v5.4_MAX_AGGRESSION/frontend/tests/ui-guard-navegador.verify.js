@@ -49,7 +49,7 @@ window.APE_PROFILES_CONFIG = {
   }, save: function(){}
 };
 window.APE_BW = { snapshot: function(){ return { mbps: 5.2 }; } };
-window.APE_OUTPUT_TEST__ = true;
+window.__APE_OUTPUT_TEST__ = true;
 try { localStorage.setItem('ape_output_delta_pct','15'); } catch(e){}
 </script>
 <script src="/generation-output-panel.js"></script>
