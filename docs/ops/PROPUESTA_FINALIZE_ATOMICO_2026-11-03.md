@@ -379,3 +379,92 @@ emite `AVISO`, no `ROTO`. Sólo si el contenido difiere es un fallo real.
   Sé que son ~19 líneas y que el fichero es funcionalmente el mismo entorno del `'wb'`, pero **no afirmo
   conocerlas**.
 - **El de `/var/www/m3u8/` (3.204 B)** no lo inspeccioné. Podría ser el que sirve `m3u8.bak.20260114_225722`.
+
+---
+
+# Lectura del `finalize_upload.php` del VPS — ingeniería inversa completa
+
+**Autorizado a leer, NO a modificar.** Este documento es análisis.
+
+## La diferencia real: dos líneas
+
+```diff
+- $gzipCmd = sprintf('gzip -9 -k -f %s 2>&1', escapeshellarg($outputPath));
++ $gzipCmd = sprintf('gzip -1 -k -f %s 2>&1', escapeshellarg($outputPath));
+
+- shell_exec(sprintf('gzip -9 -k -f %s', escapeshellarg($versionsDir . $versionFilename)));
++ shell_exec(sprintf('gzip -1 -k -f %s', escapeshellarg($versionsDir . $versionFilename)));
+```
+
+**`gzip -9` → `gzip -1`.** Nada más difiere. El `fopen($outputPath, 'wb')` (L70), el bucle de chunks (L78-88),
+el conteo (L96) y el bloque de gzip (L120-149) son idénticos al repo.
+
+**Y es una optimización con sentido:** `-9` sobre 576 MB tarda minutos; `-1` tarda segundos. El coste es un
+`.gz` algo mayor (182 MB frente a 173 MB), irrelevante frente a la latencia de la subida.
+
+## Por qué el proceso NO es el culpable
+
+```
+L78:  $totalSize = 0;
+L87:      fwrite($out, $data);
+L88:      $totalSize += strlen($data);
+```
+
+**Si el cliente sube un único chunk de 8 bytes, el script escribe 8 bytes.** No hay pérdida: hizo exactamente
+lo que le pidieron. `if (empty($parts))` sólo cubre el caso de cero chunks, y aquí hubo uno.
+
+**Evidencia del log de nginx:**
+```
+13:59:31  POST /finalize_upload.php   HTTP/2.0
+          client: 181.63.176.21
+          referrer: http://127.0.0.1:5500/
+          PHP: [GZIP-STATIC] 576.6 MB → 173.8 MB (69.9%)
+```
+
+**El referrer es el Live Server de VS Code: la subida salió de la máquina del operador.** El chunk que llegó
+contenía el header y nada más.
+
+## Por qué el deploy tampoco
+
+```
+_vps_stage/deploy/README.md:64
+"Nunca se ejecuta el mapa legacy tools/cicd (R3-R1) ni se tocan /lists/, segmentos o playback."
+```
+
+`MARKER_BYTES: 8` existe en `deploy-vps.yml:44` **y no se usa en ninguna parte del código**. Es una constante
+declarada y huérfana, no un escritor.
+
+## Lo que sí lo expuso
+
+**El `.gz` estaba sano y con el mismo contenido** (`VEREDICTO=MISMO_CONTENIDO`, 606.074.057 B de ambos lados).
+
+**Con `gzip on`, nginx comprimía en vuelo y el `.m3u8` truncado nunca llegaba al cliente.** Al pasar a `gzip off`
+—para conseguir `206` con rango real— **quedó expuesto**.
+
+**Reconocimiento:** ya lo había escrito en el informe del incidente del 2-nov («removed in-flight decompression
+that had been masking a truncated file») y **volví a hacerlo igual**. El error se repitió porque arreglé el
+síntoma y no puse el invariante que lo habría cazado.
+
+## Consecuencia para MI código
+
+| Cambio mío | Veredicto |
+|---|---|
+| `gzip off` en nginx | correcto para `Range`/206 · **obliga a que el invariante corra tras cada subida** |
+| `ape-fix-identity` (reconstruir desde `.gz`) | correcto — es la reparación buena |
+| `check_lists_invariant.sh` | **estaba mal**: comparaba `mtime`. Corregido a sha256 |
+| `ape-deploy-frontend` | correcto, no toca `/lists/` |
+
+## Lo que NO se modifica
+
+**`/var/www/html/finalize_upload.php` no se toca.** Ni el parche atómico ni nada. El proceso funciona y la
+diferencia con el repo (`gzip -1`) es una decisión del operador.
+
+**El repo debería sincronizarse con `gzip -1`** para no divergir, pero eso es un cambio del fichero del
+operador y **no lo hago sin `CONFIRMED:`**.
+
+## Lo que queda pendiente en mi lado
+
+1. **Cablear el invariante a un chequeo post-subida.** Hoy corre manual. Sin eso, un truncado vuelve a pasar
+   sin que nadie lo note hasta que alguien pida el `.m3u8` sin gzip.
+2. **El `AVISO` de mtime** sigue emitiéndose aunque el contenido coincida; es ruido útil (dice que el `.gz`
+   está atrasado) pero no es fallo.
