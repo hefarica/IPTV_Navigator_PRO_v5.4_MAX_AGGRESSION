@@ -1,0 +1,33 @@
+{
+  "schema": "ape-censo-lista/1.0",
+  "generado": "2026-11-03",
+  "origen": "https://iptv-ape.duckdns.org/lists/APE_LISTA_1793589060441.m3u8",
+  "identidad": {
+    "bytes": 604593696,
+    "sha256": "523d52a6d147f81ce5a212e47b9c55401fb409cd4a41aee96f8ba80b5b5049d6",
+    "lineas_totales": 10315662
+  },
+  "canales": 10573,
+  "lineas_globales": 188,
+  "lineas_por_canal": 975.6,
+  "perfiles": { "P4": 7457, "P3": 2308, "P1": 808 },
+  "codec_family": { "h264": 9535, "hevc": 1038 },
+  "atributos_extinf_presentes_en_todos": [
+    "ape-country","ape-lang","ape-profile","ape-transport","ape-codec-family",
+    "ape-classify-confidence","ape-build","ape-content-type","ape-region","ape-fps"
+  ],
+  "declaraciones_de_la_cabecera": {
+    "EXT-X-APE-CHANNELS": "10573",
+    "EXT-X-APE-CONTINUITY-RANGE": "206",
+    "EXT-X-APE-LAB-DNA": "sha256=unverified,SOURCE=LAB_CALIBRATED",
+    "EXT-X-VERSION": "9",
+    "catchup": "flussonic",
+    "catchup_days": "7"
+  },
+  "metodo": "una pasada de lectura linea a linea; 96.8 s",
+  "no_prueba": [
+    "que los canales reproduzcan",
+    "calidad de imagen",
+    "que el codec declarado coincida con el bitstream real"
+  ]
+}
