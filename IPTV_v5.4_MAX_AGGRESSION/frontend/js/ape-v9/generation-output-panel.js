@@ -120,6 +120,8 @@
       checkGeneration: checkGeneration,
       sugerirAjuste: sugerirAjuste,
       renderSugerencia: renderSugerencia,
+      mejorEscenario: mejorEscenario,
+      aplicarEscenario: aplicarEscenario,
       getDeltaPct: function () { return DELTA_PCT; }
     };
   }
@@ -437,15 +439,77 @@
     return out;
   }
 
+  // ── MATRIZ COMPLETA DE ESCENARIOS ─────────────────────────────────────────────────────────────
+  //
+  // La sugerencia anterior daba dos salidas parciales. El operador pidió la matriz entera: recorrer
+  // TODOS los perfiles × TODOS los deltas, quedarse con el mejor viable y, si no hay ninguno, decir
+  // cuál es el mínimo imprescindible y cuánto falta. Y dejarle aprobar o denegar la propuesta.
+  //
+  // Criterio de "mejor", en este orden:
+  //   1. la calidad más alta posible -> el perfil de índice más bajo (P0 > P1 > ... > P5)
+  //   2. con ese perfil, el delta más alto que aún entra -> más margen en entrada
+  // La calidad manda porque la salida es lo que el usuario quiere ver y el delta solo reserva margen.
+  function mejorEscenario() {
+    var g = guard();
+    var out = { hayMedicion: g.has, viable: null, minimo: null, porPerfil: {}, delta: DELTA_PCT };
+    if (!g.has) return out;
+
+    var ids = ['P0', 'P1', 'P2', 'P3', 'P4', 'P5'];
+    for (var i = 0; i < ids.length; i++) {
+      var pid = ids[i];
+      var floor = floorDePerfil(pid);
+      if (!(floor > 0)) continue;
+      // delta máximo que despeja inM >= floor * (1 + d/100)
+      var dMax = Math.floor((g.inM / floor - 1) * 100);
+      if (dMax >= 1 && dMax <= 90) {
+        out.porPerfil[pid] = { perfil: pid, delta: dMax, floor: floor, req: floor * (1 + dMax / 100) };
+      }
+    }
+
+    // el perfil más alto que tenga al menos un delta válido
+    for (var k = 0; k < ids.length; k++) {
+      if (out.porPerfil[ids[k]]) { out.viable = out.porPerfil[ids[k]]; break; }
+    }
+
+    // mínimo imprescindible: el perfil más bajo al delta mínimo del input (1%)
+    var pisoBajo = floorDePerfil('P5');
+    if (pisoBajo > 0) {
+      var req = pisoBajo * 1.01;
+      out.minimo = { perfil: 'P5', delta: 1, req: req, faltan: Math.max(0, req - g.inM) };
+    }
+    return out;
+  }
+
+  // Aplica un escenario completo (perfil + delta) de una sola vez.
+  function aplicarEscenario(perfil, delta) {
+    try {
+      var cfg = window.APE_PROFILES_CONFIG;
+      if (cfg && perfil) {
+        cfg.activeProfileId = perfil;
+        if (typeof cfg.save === 'function') cfg.save();
+        if (window.APEReactiveRules && typeof window.APEReactiveRules.refresh === 'function') {
+          window.APEReactiveRules.refresh();
+        }
+        var sel = document.getElementById('pm9-profile-select');
+        if (sel) sel.value = perfil;
+      }
+      if (delta) {
+        var di = document.getElementById('ape-delta-input');
+        if (di) di.value = String(delta);
+        applyDelta(true);
+      }
+    } catch (_) { }
+  }
+
   // Pinta la sugerencia bajo la condición de buffer. Idempotente: se reescribe entera cada vez.
   function renderSugerencia() {
     var el = document.getElementById('ape-buf-sugerencia');
     if (!el) return;
     var s = sugerirAjuste();
     if (!s.has) { el.innerHTML = ''; return; }
-    if (!s.bloquea && s.reqTecho <= (s.reqTecho - s.faltanTecho)) { el.innerHTML = ''; }
 
     var act = (window.APE_PROFILES_CONFIG && window.APE_PROFILES_CONFIG.activeProfileId) || 'P3';
+    var m = mejorEscenario();
     var html = '';
     var linea = 'font-size:.82rem;margin-top:5px;';
 
@@ -454,36 +518,41 @@
         '<b>Bloqueado</b>: el perfil ' + act + ' necesita <b>' + s.reqArranque.toFixed(1) +
         ' Mbps</b> para arrancar (suelo ' + s.floorM + ' Mbps × ' + (1 + s.delta / 100).toFixed(2) +
         ') y el enlace mide <b>' + s.inM.toFixed(1) + ' Mbps</b>. Faltan <b>' +
-        s.faltanArranque.toFixed(1) + ' Mbps</b>.</div>' +
-        '<div style="' + linea + 'color:#e2e8f0;"><b>Dos salidas, elige una:</b></div>';
+        s.faltanArranque.toFixed(1) + ' Mbps</b>.</div>';
 
-      // Salida 1: bajar el delta. Solo si el delta resultante sigue siendo >= 1%.
-      if (s.deltaAplicable) {
-        html += '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:4px;font-size:.82rem;">' +
-          '<span style="color:#94a3b8;">1) Aplicar delta</span>' +
-          '<b style="color:#86efac;">' + s.deltaMaxEntero + '%</b>' +
-          '<span style="color:#94a3b8;">(despejado de tu enlace)</span>' +
-          '<button type="button" id="ape-sug-delta" style="background:#16a34a;color:#fff;border:0;border-radius:6px;' +
-          'padding:3px 9px;font-weight:800;cursor:pointer;">Aplicar ' + s.deltaMaxEntero + '%</button>' +
+      if (m.viable) {
+        // Hay al menos un escenario que entra: se propone EL MEJOR.
+        var yaEsElActual = (m.viable.perfil === act && m.viable.delta === s.delta);
+        html += '<div style="' + linea + 'color:#e2e8f0;"><b>Mejor escenario posible con lo que mides:</b></div>' +
+          '<div style="' + linea + 'color:#86efac;">' +
+          'Perfil <b>' + m.viable.perfil + '</b> · delta <b>' + m.viable.delta + '%</b> · ' +
+          'pide <b>' + m.viable.req.toFixed(1) + ' Mbps</b> y tienes ' + s.inM.toFixed(1) +
+          ' (margen ' + (s.inM - m.viable.req).toFixed(1) + ' Mbps)' +
+          (yaEsElActual ? ' — <b>ya está aplicado</b>' : '') + '</div>' +
+          '<div style="display:flex;gap:7px;align-items:center;margin-top:6px;flex-wrap:wrap;">' +
+          '<button type="button" id="ape-sug-aprobar" style="background:#16a34a;color:#fff;border:0;border-radius:6px;' +
+          'padding:5px 12px;font-weight:800;cursor:pointer;">Aprobar y aplicar</button>' +
+          '<button type="button" id="ape-sug-denegar" style="background:#334155;color:#e2e8f0;border:1px solid #475569;' +
+          'border-radius:6px;padding:5px 12px;font-weight:700;cursor:pointer;">Denegar</button>' +
           '</div>';
       } else {
-        html += '<div style="' + linea + 'color:#f59e0b;">1) Bajar el delta <b>no sirve</b>: ni al 1% ' +
-          'el enlace alcanza el suelo de este perfil (necesitaría ' + s.floorM + ' Mbps).</div>';
-      }
-
-      // Salida 2: bajar de perfil al mejor que sí quepa.
-      if (s.mejorPerfil) {
-        html += '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:4px;font-size:.82rem;">' +
-          '<span style="color:#94a3b8;">2) Cambiar a perfil</span>' +
-          '<b style="color:#86efac;">' + s.mejorPerfil + '</b>' +
-          '<span style="color:#94a3b8;">(suelo ' + floorDePerfil(s.mejorPerfil) +
-          ' Mbps · con tu enlace y delta ' + s.delta + '% arranca)</span>' +
-          '<button type="button" id="ape-sug-perfil" style="background:#0ea5e9;color:#fff;border:0;border-radius:6px;' +
-          'padding:3px 9px;font-weight:800;cursor:pointer;">Cambiar a ' + s.mejorPerfil + '</button>' +
-          '</div>';
-      } else {
-        html += '<div style="' + linea + 'color:#f59e0b;">2) Ningún perfil arranca con ' +
-          s.inM.toFixed(1) + ' Mbps y delta ' + s.delta + '%. Sube el enlace o baja el delta al mínimo.</div>';
+        // Ninguno entra: se declara el mínimo imprescindible y se deja decidir.
+        var mn = m.minimo;
+        html += '<div style="' + linea + 'color:#fbbf24;"><b>Ningún perfil entra</b> con ' +
+          s.inM.toFixed(1) + ' Mbps, ni al delta mínimo del 1 %.</div>';
+        if (mn) {
+          html += '<div style="' + linea + 'color:#94a3b8;">El mínimo imprescindible es <b>' + mn.perfil +
+            '</b> con delta <b>1 %</b>: pide <b>' + mn.req.toFixed(2) + ' Mbps</b>. Faltan <b>' +
+            mn.faltan.toFixed(2) + ' Mbps</b>.</div>' +
+            '<div style="' + linea + 'color:#f59e0b;">No hay ajuste de perfil ni de delta que lo resuelva: ' +
+            'solo subir el enlace. Si aun así quieres generar, apruébalo y queda registrado como forzado.</div>' +
+            '<div style="display:flex;gap:7px;align-items:center;margin-top:6px;flex-wrap:wrap;">' +
+            '<button type="button" id="ape-sug-forzar" style="background:#b45309;color:#fff;border:0;border-radius:6px;' +
+            'padding:5px 12px;font-weight:800;cursor:pointer;">Forzar y generar</button>' +
+            '<button type="button" id="ape-sug-denegar" style="background:#334155;color:#e2e8f0;border:1px solid #475569;' +
+            'border-radius:6px;padding:5px 12px;font-weight:700;cursor:pointer;">Denegar</button>' +
+            '</div>';
+        }
       }
     } else if (!s.ok) {
       html += '<div style="' + linea + 'color:#fbbf24;">' +
@@ -493,32 +562,36 @@
     }
     el.innerHTML = html;
 
-    // Handlers: aplican de verdad, no son decorativos.
-    var bd = document.getElementById('ape-sug-delta');
-    if (bd) bd.onclick = function () {
-      var di = document.getElementById('ape-delta-input');
-      if (di) di.value = String(s.deltaMaxEntero);
-      applyDelta(true);
-      status('Delta ajustado a ' + s.deltaMaxEntero + '% para que ' + act + ' entre con ' +
-             s.inM.toFixed(1) + ' Mbps', '#22c55e');
+    // ── Handlers: actúan de verdad ──────────────────────────────────────────────────────────
+    var ba = document.getElementById('ape-sug-aprobar');
+    if (ba) ba.onclick = function () {
+      aplicarEscenario(m.viable.perfil, m.viable.delta);
+      window.__APE_SUG_DENEGADO__ = false;
+      status('Aprobado: perfil ' + m.viable.perfil + ' · delta ' + m.viable.delta + '% · ' +
+             s.inM.toFixed(1) + ' Mbps ≥ ' + m.viable.req.toFixed(1) + ' Mbps', '#22c55e');
       renderSugerencia();
     };
-    var bp = document.getElementById('ape-sug-perfil');
-    if (bp) bp.onclick = function () {
-      try {
-        var cfg = window.APE_PROFILES_CONFIG;
-        if (cfg) {
-          cfg.activeProfileId = s.mejorPerfil;
-          if (typeof cfg.save === 'function') cfg.save();
-          if (window.APEReactiveRules && typeof window.APEReactiveRules.refresh === 'function') {
-            window.APEReactiveRules.refresh();
-          }
-          var sel = document.getElementById('pm9-profile-select');
-          if (sel) sel.value = s.mejorPerfil;
-        }
-      } catch (_) { }
-      status('Perfil cambiado a ' + s.mejorPerfil + ': arranca con ' + s.inM.toFixed(1) + ' Mbps', '#22c55e');
+
+    var bf = document.getElementById('ape-sug-forzar');
+    if (bf) bf.onclick = function () {
+      // Aprobación explícita de un escenario que NO cumple: queda marcado para esta sesión.
+      window.__APE_SUG_FORZADO__ = true;
+      window.__APE_SUG_DENEGADO__ = false;
+      aplicarEscenario('P5', 1);
+      status('FORZADO: perfil P5 · delta 1 % con ' + s.inM.toFixed(1) + ' Mbps (el mínimo pide ' +
+             (m.minimo ? m.minimo.req.toFixed(2) : '?') + ' Mbps). Aprobado por el operador.', '#f59e0b');
       renderSugerencia();
+      toast('Aprobado. Pulsa Generar de nuevo y la comprobación pasará.', 'warning');
+    };
+
+    var bn = document.getElementById('ape-sug-denegar');
+    if (bn) bn.onclick = function () {
+      window.__APE_SUG_DENEGADO__ = true;
+      window.__APE_SUG_FORZADO__ = false;
+      el.innerHTML = '<div style="' + linea + 'color:#94a3b8;">Propuesta denegada. ' +
+        'No se cambió ni el perfil ni el delta. Sigue bloqueado hasta que ajustes el enlace, ' +
+        'el perfil o el delta a mano.</div>';
+      status('Propuesta denegada; no se aplicó ningún cambio', '#94a3b8');
     };
   }
 
@@ -537,10 +610,14 @@
       }
       return true;
     }
+    // Aprobacion explicita del operador: si forzo el escenario, se respeta y se genera.
+    if (window.__APE_SUG_FORZADO__ === true) {
+      toast('Generando con aprobacion forzada: el enlace no alcanza el suelo del perfil.', 'warning');
+      return true;
+    }
+
     var s = sugerirAjuste();
-    var salida = s.deltaAplicable
-      ? 'Aplica delta ' + s.deltaMaxEntero + '% o cambia a ' + (s.mejorPerfil || 'otro perfil') + '.'
-      : (s.mejorPerfil ? 'Cambia a ' + s.mejorPerfil + '.' : 'Sube el enlace: ningún perfil entra.');
+    var salida = (s.bloquea ? 'Abre la propuesta y apruébala.' : '');
     toast('Buffer insuficiente para el suelo del perfil ' +
           ((window.APE_PROFILES_CONFIG && window.APE_PROFILES_CONFIG.activeProfileId) || '?') +
           ' (' + g.floorM + ' Mbps) con delta ' + DELTA_PCT + '%. ' + salida, 'error');

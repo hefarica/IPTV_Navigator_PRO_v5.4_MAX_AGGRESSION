@@ -118,18 +118,16 @@ console.log('\n== AUTO-AJUSTE DEL DELTA · teoria contra implementacion ==');
   H.renderSugerencia();
   const html = nodos['ape-buf-sugerencia'].innerHTML;
   ok(html.indexOf('6%') >= 0, 'P0/16/20: el HTML muestra el delta 6%');
-  ok(html.indexOf('ape-sug-delta') >= 0, 'P0/16/20: el HTML ofrece aplicar el delta');
+  ok(html.indexOf('ape-sug-aprobar') >= 0, 'P0/16/20: el HTML ofrece APROBAR la propuesta');
   ok(html.indexOf('Faltan') >= 0, 'P0/16/20: el HTML dice cuanto falta');
 
-  // el boton debe APLICAR de verdad
-  const btn = nodos['ape-sug-delta'];
-  ok(!!btn && typeof btn.onclick === 'function', 'P0/16/20: el boton tiene handler');
+  // el boton Aprobar aplica el escenario completo (perfil + delta) y el perfil arranca
+  const btn = nodos['ape-sug-aprobar'];
+  ok(!!btn && typeof btn.onclick === 'function', 'P0/16/20: el boton Aprobar tiene handler');
   if (btn && btn.onclick) {
     btn.onclick();
-    ok(H.getDeltaPct() === 6, 'P0/16/20: el clic aplica delta 6%', 'delta=' + H.getDeltaPct());
-    ok(nodos['ape-delta-input'].value === '6', 'P0/16/20: el input refleja 6');
     const g2 = H.guard();
-    ok(g2.canStart === true, 'P0/16/20: TRAS EL CLIC el perfil arranca');
+    ok(g2.canStart === true, 'P0/16/20: TRAS APROBAR el perfil arranca');
   }
 }
 
@@ -142,14 +140,15 @@ console.log('\n== AUTO-AJUSTE DEL DELTA · teoria contra implementacion ==');
   ok(s.mejorPerfil === 'P2', 'P0/12/10: sugiere P2 (suelo 8, 12 >= 8.8)', 'mejor=' + s.mejorPerfil);
   H.renderSugerencia();
   const html = nodos['ape-buf-sugerencia'].innerHTML;
-  ok(html.indexOf('ape-sug-perfil') >= 0, 'P0/12/10: ofrece cambiar de perfil');
-  ok(html.indexOf('no sirve') >= 0, 'P0/12/10: dice que bajar el delta no sirve');
-  const bp = nodos['ape-sug-perfil'];
+  ok(html.indexOf('ape-sug-aprobar') >= 0, 'P0/12/10: ofrece APROBAR el mejor escenario');
+  const me = H.mejorEscenario();
+  ok(me.viable && me.viable.perfil === 'P2', 'P0/12/10: propone P2', 'perfil=' + (me.viable && me.viable.perfil));
+  const bp = nodos['ape-sug-aprobar'];
   if (bp && bp.onclick) {
     bp.onclick();
-    ok(windowMock.APE_PROFILES_CONFIG.activeProfileId === 'P2', 'P0/12/10: el clic cambia a P2',
+    ok(windowMock.APE_PROFILES_CONFIG.activeProfileId === 'P2', 'P0/12/10: APROBAR cambia a P2',
        'activo=' + windowMock.APE_PROFILES_CONFIG.activeProfileId);
-  } else { ok(false, 'P0/12/10: el boton de perfil tiene handler'); }
+  } else { ok(false, 'P0/12/10: el boton Aprobar tiene handler'); }
 }
 
 // ── Caso 3: ningun perfil entra ──────────────────────────────────────────────────────────────
@@ -160,7 +159,7 @@ console.log('\n== AUTO-AJUSTE DEL DELTA · teoria contra implementacion ==');
   ok(s.deltaAplicable === false, 'P0/1/10: sin delta valido');
   ok(s.mejorPerfil === null, 'P0/1/10: ningun perfil entra (P5 pide 1.65)', 'mejor=' + s.mejorPerfil);
   H.renderSugerencia();
-  ok(nodos['ape-buf-sugerencia'].innerHTML.indexOf('Ningún perfil arranca') >= 0, 'P0/1/10: lo dice explicitamente');
+  ok(nodos['ape-buf-sugerencia'].innerHTML.indexOf('Ningún perfil entra') >= 0, 'P0/1/10: lo dice explicitamente');
 }
 
 // ── Caso 4: no bloquea pero no sostiene el techo -> avisa, no bloquea ────────────────────────
