@@ -522,6 +522,45 @@
     var html = '';
     var linea = 'font-size:.82rem;margin-top:5px;';
 
+    // ── ESTADO APROBADO: manda sobre el bloqueo ────────────────────────────────────────────
+    // Tras pulsar Forzar el panel se repintaba y volvia a decir "Bloqueado", porque guard() sigue
+    // bloqueando. El operador aplicaba el ajuste y el anuncio no cambiaba: parecia que no habia
+    // hecho nada y no sabia que ya podia generar. Una vez aprobado, eso es lo que hay que decir.
+    if (window.__APE_SUG_FORZADO__ === true) {
+      el.innerHTML =
+        '<div style="' + linea + 'color:#86efac;"><b>APROBADO</b>: generación autorizada por el operador.</div>' +
+        '<div style="' + linea + 'color:#e2e8f0;">Enlace <b>' + s.inM.toFixed(1) + ' Mbps</b> · perfil <b>' +
+        act + '</b> · delta <b>' + s.delta + '%</b>. Por debajo del suelo (' + s.floorM +
+        ' Mbps), aceptado a sabiendas.</div>' +
+        '<div style="' + linea + 'color:#86efac;font-weight:800;">Ya puedes pulsar Generar: la comprobación pasará.</div>' +
+        '<div style="display:flex;gap:7px;align-items:center;margin-top:6px;">' +
+        '<button type="button" id="ape-sug-revocar" style="background:#334155;color:#e2e8f0;border:1px solid #475569;' +
+        'border-radius:6px;padding:5px 12px;font-weight:700;cursor:pointer;">Revocar aprobación</button>' +
+        '</div>';
+      var brv = document.getElementById('ape-sug-revocar');
+      if (brv) brv.onclick = function () {
+        window.__APE_SUG_FORZADO__ = false;
+        status('Aprobación revocada; vuelve a estar bloqueado', '#94a3b8');
+        renderSugerencia();
+      };
+      return;
+    }
+    if (window.__APE_SUG_DENEGADO__ === true) {
+      el.innerHTML =
+        '<div style="' + linea + 'color:#94a3b8;">Propuesta denegada. No se cambió ni el perfil ni el delta. ' +
+        'Sigue bloqueado hasta que ajustes el enlace, el perfil o el delta a mano.</div>' +
+        '<div style="display:flex;gap:7px;align-items:center;margin-top:6px;">' +
+        '<button type="button" id="ape-sug-reabrir" style="background:#0ea5e9;color:#fff;border:0;' +
+        'border-radius:6px;padding:5px 12px;font-weight:700;cursor:pointer;">Ver propuesta otra vez</button>' +
+        '</div>';
+      var bra = document.getElementById('ape-sug-reabrir');
+      if (bra) bra.onclick = function () {
+        window.__APE_SUG_DENEGADO__ = false;
+        renderSugerencia();
+      };
+      return;
+    }
+
     if (s.bloquea) {
       html += '<div style="' + linea + 'color:#fca5a5;">' +
         '<b>Bloqueado</b>: el perfil ' + act + ' necesita <b>' + s.reqArranque.toFixed(1) +
@@ -547,8 +586,16 @@
       } else {
         // Ninguno entra: se declara el mínimo imprescindible y se deja decidir.
         var mn = m.minimo;
+        // Decir además QUÉ SE HIZO YA. Si el delta ya está en el mínimo del input (1 %), no hay nada
+        // más que bajar, y hay que decirlo: si no, el operador aplica, sigue viendo el aviso y cree
+        // que el ajuste no funcionó.
+        var yaEnMinimo = (s.delta <= 1);
         html += '<div style="' + linea + 'color:#fbbf24;"><b>Ningún perfil entra</b> con ' +
           s.inM.toFixed(1) + ' Mbps, ni al delta mínimo del 1 %.</div>';
+        if (yaEnMinimo) {
+          html += '<div style="' + linea + 'color:#86efac;">El delta ya está en el <b>mínimo posible (1 %)</b>: ' +
+            'no queda nada que bajar por ese lado.</div>';
+        }
         if (mn) {
           html += '<div style="' + linea + 'color:#94a3b8;">El mínimo imprescindible es <b>' + mn.perfil +
             '</b> con delta <b>1 %</b>: pide <b>' + mn.req.toFixed(2) + ' Mbps</b>. Faltan <b>' +
@@ -557,7 +604,7 @@
             'solo subir el enlace. Si aun así quieres generar, apruébalo y queda registrado como forzado.</div>' +
             '<div style="display:flex;gap:7px;align-items:center;margin-top:6px;flex-wrap:wrap;">' +
             '<button type="button" id="ape-sug-forzar" style="background:#b45309;color:#fff;border:0;border-radius:6px;' +
-            'padding:5px 12px;font-weight:800;cursor:pointer;">Forzar y generar</button>' +
+            'padding:5px 12px;font-weight:800;cursor:pointer;">Aprobar y generar así</button>' +
             '<button type="button" id="ape-sug-denegar" style="background:#334155;color:#e2e8f0;border:1px solid #475569;' +
             'border-radius:6px;padding:5px 12px;font-weight:700;cursor:pointer;">Denegar</button>' +
             '</div>';

@@ -226,6 +226,21 @@ function servir() {
       ok(flag === true, 'P3/1.3: el clic en Forzar marca el flag en el navegador');
       const puede = await evaluar('window.APE_OUTPUT_TEST_HOOKS.checkGeneration()');
       ok(puede === true, 'P3/1.3: con el flag, la comprobacion PERMITE generar en el navegador');
+      // EL ANUNCIO DEBE CAMBIAR: antes de este arreglo, tras forzar el panel volvia a decir
+      // "Bloqueado" y el operador no sabia que ya podia generar.
+      const hForzado = await evaluar('document.getElementById("ape-buf-sugerencia").innerHTML || ""');
+      ok(hForzado.indexOf('APROBADO') >= 0, 'P3/1.3: tras forzar el panel dice APROBADO');
+      ok(hForzado.indexOf('Ya puedes pulsar Generar') >= 0, 'P3/1.3: dice que ya puede generar');
+      ok(hForzado.indexOf('Bloqueado') < 0, 'P3/1.3: DEJA de decir Bloqueado tras forzar');
+      // Revocar devuelve el bloqueo
+      const hayRev = await evaluar('!!document.getElementById("ape-sug-revocar")');
+      ok(hayRev === true, 'P3/1.3: ofrece revocar la aprobacion');
+      if (hayRev) {
+        await evaluar('document.getElementById("ape-sug-revocar").click()');
+        await sleep(200);
+        const hRev = await evaluar('document.getElementById("ape-buf-sugerencia").innerHTML || ""');
+        ok(hRev.indexOf('Ningún perfil entra') >= 0, 'P3/1.3: revocar devuelve el aviso de bloqueo');
+      }
     }
   }
 
