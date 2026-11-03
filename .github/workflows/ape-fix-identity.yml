@@ -31,6 +31,14 @@ on:
         description: 'Nombre del fichero dentro de /var/www/html/lists/'
         required: true
         default: 'APE_LISTA_1793589060441.m3u8'
+      esperado_bytes:
+        description: 'Tamano exacto que debe tener el fichero descomprimido'
+        required: true
+        default: '604593696'
+      esperado_sha:
+        description: 'sha256 exacto del fichero descomprimido'
+        required: true
+        default: '523d52a6d147f81ce5a212e47b9c55401fb409cd4a41aee96f8ba80b5b5049d6'
 
 concurrency:
   group: ape-fix-identity
@@ -43,8 +51,8 @@ jobs:
     timeout-minutes: 25
     env:
       LISTS_DIR: /var/www/html/lists
-      ESPERADO_BYTES: '604593696'
-      ESPERADO_SHA: '523d52a6d147f81ce5a212e47b9c55401fb409cd4a41aee96f8ba80b5b5049d6'
+      ESPERADO_BYTES: ${{ inputs.esperado_bytes }}
+      ESPERADO_SHA: ${{ inputs.esperado_sha }}
 
     steps:
       - name: Preparar SSH
@@ -140,11 +148,15 @@ jobs:
           echo
           echo '--- A) SIN Accept-Encoding (esta era la pierna rota) ---'
           curl -sS -o /dev/null -w '  http=%{http_code} bytes=%{size_download}\n' "$U" || true
-          A=$(curl -sS -o /dev/null -w '%{size_download}' "$U" || echo 0)
+          curl -sS -o /tmp/a.bin "$U" || true
+          A=$(stat -c %s /tmp/a.bin 2>/dev/null || echo 0)
           echo
           echo '--- B) CON gzip ---'
           curl -sS --compressed -o /dev/null -w '  http=%{http_code} bytes=%{size_download}\n' "$U" || true
-          B=$(curl -sS --compressed -o /dev/null -w '%{size_download}' "$U" || echo 0)
+          # --compressed descomprime en cliente; %{size_download} cuenta bytes de RED, asi que se
+          # mide el fichero en disco. Ese error hizo fallar la run anterior con un falso negativo.
+          curl -sS --compressed -o /tmp/b.bin "$U" || true
+          B=$(stat -c %s /tmp/b.bin 2>/dev/null || echo 0)
           echo
           echo '--- C) RANGE sin gzip ---'
           curl -sS -r 0-1023 -D /tmp/range.h -o /tmp/range.b "$U" || true
