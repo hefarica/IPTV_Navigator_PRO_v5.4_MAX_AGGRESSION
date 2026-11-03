@@ -176,3 +176,15 @@ artifacts/
 /.claude/agents/*.bak
 /privacy_*_test.png
 /regen_multilist_report.json
+
+# ── Binarios de prueba y artefactos de build (2026-11-03) ───────────────────────────────
+# Un repositorio no es un almacen de MKVs de selftest ni de APKs de distribucion.
+ara-x/app-dist/
+ara-x/evidence/
+tools/crystal-upscale/_selftest/
+tools/crystal-upscale/_bench/
+*.mkv
+*.mp4
+!_docs/**/*.mp4
+*.apk
+*.zip
