@@ -4446,10 +4446,53 @@
     // CLASE PRINCIPAL
     // ═══════════════════════════════════════════════════════════════════════
     class APEProfilesConfig {
+        /**
+         * Garantiza que cada perfil declare settings.bandwidth_floor, que es el minimo de ancho de banda
+         * con el que ese perfil ARRANCA. Sin el, el panel de salida no puede distinguir "no sostiene el
+         * techo" (genera igual, el ABR baja de variante) de "no arranca" (bloquea), y bloqueaba siempre.
+         *
+         * PRECEDENCIA, y el orden importa:
+         *   1. lo que ya traiga el perfil  -> si viene de un LAB importado, MANDA. No se toca.
+         *   2. APE_LAB_V8_PROFILES[pid]    -> el LAB embebido, que es el SSOT y se carga antes que este
+         *                                     fichero. Se copia en bps, sin reinterpretar.
+         *   3. derivado del bitrate        -> solo si no hay LAB. Se marca derived:true para que se sepa
+         *                                     que ese numero NO viene del laboratorio.
+         *
+         * No se hardcodean los seis valores aca: la fuente es el LAB. Si el LAB cambia, esto cambia solo.
+         */
+        _ensureBandwidthFloor(profiles) {
+            if (!profiles || typeof profiles !== 'object') return profiles;
+            var lab = (typeof window !== 'undefined' && window.APE_LAB_V8_PROFILES) || null;
+            for (const pid of Object.keys(profiles)) {
+                const p = profiles[pid];
+                if (!p || typeof p !== 'object') continue;
+                if (!p.settings || typeof p.settings !== 'object') p.settings = {};
+                const s = p.settings;
+                const actual = Number(s.bandwidth_floor);
+                if (isFinite(actual) && actual > 0) continue;   // 1: ya lo trae, se respeta
+
+                const labP = lab && lab[pid] && lab[pid].settings ? lab[pid].settings : null;
+                const labFloor = labP ? Number(labP.bandwidth_floor) : 0;
+                if (isFinite(labFloor) && labFloor > 0) {        // 2: del LAB embebido
+                    s.bandwidth_floor = labFloor;
+                    s.bandwidth_floor_source = 'lab_v8';
+                    continue;
+                }
+                const br = Number(s.bitrate) || 0;               // 3: derivado, y declarado como tal
+                if (br > 0) {
+                    s.bandwidth_floor = Math.max(Math.round(br * 0.10 * 1e6), 1500000);
+                    s.bandwidth_floor_source = 'derived_from_bitrate';
+                }
+            }
+            return profiles;
+        }
+
         constructor() {
             this.categories = HEADER_CATEGORIES;
             this.defaultHeaderValues = DEFAULT_HEADER_VALUES;
-            this.profiles = this._load() || JSON.parse(JSON.stringify(DEFAULT_PROFILES));
+            this.profiles = this._ensureBandwidthFloor(
+                this._load() || JSON.parse(JSON.stringify(DEFAULT_PROFILES))
+            );
             this.manifest = this._loadManifest() || JSON.parse(JSON.stringify(DEFAULT_MANIFEST));
 
             // 🔄 Auto-migration v12.0 ELITE: upgrade old multilayer to 7-layer strategy
@@ -4882,6 +4925,11 @@
                         this.profiles[pid] = JSON.parse(JSON.stringify(lpFixed));
                         result.headersAdded += Object.keys(lpFixed.headerOverrides || {}).length;
                     }
+
+                    // El LAB importado puede no traer bandwidth_floor (versiones anteriores no lo
+                    // declaraban). Se rellena DESPUES del merge: lo importado manda; si falta se toma
+                    // del LAB embebido; si tampoco, se deriva. Asi el panel siempre tiene con que decidir.
+                    this._ensureBandwidthFloor(this.profiles);
 
                     // 🛡️ ANTI-DRIFT: persistir flag per-profile que el GENERATOR consulta
                     // para decidir si emite extras (vlcopt/kodiprop/headers no-PM9).
