@@ -60,9 +60,18 @@ for f in "$DIR"/*.m3u8; do
     if [ -e "$gz" ]; then
         singz=$((singz + 1))
         gm=$(stat -c %Y "$gz" 2>/dev/null || echo 0)
+        # El mtime por si solo NO decide: el 2026-11-03 el .m3u8 reparado quedo mas nuevo que un .gz
+        # que descomprime al MISMO sha. Eso es divergencia de timestamp, no de contenido. Se compara
+        # el contenido; solo si difiere es un fallo real.
         if [ "$gm" -gt 0 ] && [ "$m" -gt "$gm" ]; then
-            desc=$((desc + 1))
-            echo "ROTO m3u8_mas_nuevo_que_gz m3u8=$m gz=$gm $base"
+            sa=$(sha256sum "$f" 2>/dev/null | cut -d' ' -f1)
+            sb=$(zcat "$gz" 2>/dev/null | sha256sum | cut -d' ' -f1)
+            if [ -n "$sa" ] && [ "$sa" = "$sb" ]; then
+                echo "AVISO m3u8_mas_nuevo_pero_mismo_contenido $base"
+            else
+                desc=$((desc + 1))
+                echo "ROTO contenido_divergente m3u8=$sa gz=$sb $base"
+            fi
         fi
         if ! gzip -t "$gz" >/dev/null 2>&1; then
             rot=$((rot + 1))
