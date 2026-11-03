@@ -37,21 +37,20 @@ jobs:
           printf 'Host *\n  StrictHostKeyChecking yes\n  UserKnownHostsFile ~/.ssh/known_hosts\n  IdentitiesOnly yes\n' > ~/.ssh/config
           echo "TARGET=${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" >> "$GITHUB_ENV"
 
-      - name: "P1 - DIFF COMPLETO sin truncar"
+      - name: "R - las DOS rutas: que hay en cada una"
         run: |
           set -uo pipefail
-          ssh "$TARGET" "sudo -n cat /var/www/html/finalize_upload.php" > /tmp/vps.php 2>/dev/null || { echo SIN_DESCARGA; exit 0; }
-          tr -d '\r' < /tmp/vps.php > /tmp/vps.lf.php
-          tr -d '\r' < IPTV_v5.4_MAX_AGGRESSION/vps/finalize_upload.php > /tmp/repo.lf.php
-          echo "=== medidas ==="
-          wc -c -l /tmp/repo.lf.php /tmp/vps.lf.php
-          echo "  sha repo: $(sha256sum /tmp/repo.lf.php | cut -d' ' -f1)"
-          echo "  sha vps : $(sha256sum /tmp/vps.lf.php | cut -d' ' -f1)"
+          echo '=== /var/www/lists  (donde ESCRIBE el finalize) ==='
+          ssh "$TARGET" "sudo -n ls -la --time-style=full-iso /var/www/lists/ 2>&1 | head -20" || true
           echo
-          echo "=== DIFF COMPLETO (todas las lineas que difieren) ==="
-          diff /tmp/repo.lf.php /tmp/vps.lf.php > /tmp/d.txt || true
-          echo "  lineas de diff: $(wc -l < /tmp/d.txt)"
-          echo "  cambios(<):  $(grep -c '^<' /tmp/d.txt || true)"
-          echo "  cambios(>):  $(grep -c '^>' /tmp/d.txt || true)"
+          echo '=== /var/www/html/lists  (donde SIRVE nginx) ==='
+          ssh "$TARGET" "sudo -n ls -la --time-style=full-iso /var/www/html/lists/ 2>&1 | head -20" || true
           echo
-          cat /tmp/d.txt
+          echo '=== son el mismo inodo? ==='
+          ssh "$TARGET" "sudo -n stat -c '%n inode=%i size=%s' /var/www/lists/APE_LISTA_1793589060441.m3u8 /var/www/html/lists/APE_LISTA_1793589060441.m3u8 2>&1" || true
+          echo
+          echo '=== hay symlink? ==='
+          ssh "$TARGET" "sudo -n ls -ld /var/www/lists /var/www/html/lists 2>&1" || true
+          echo
+          echo '=== nginx: que root/alias usa para /lists/ ==='
+          ssh "$TARGET" "sudo -n grep -n -A4 'location.*lists' /etc/nginx/sites-available/m3u8 2>&1 | head -20" || true
