@@ -1,0 +1,61 @@
+name: ape-ui-navegador
+
+# ─────────────────────────────────────────────────────────────────────────────────────────────────
+# Corre en un NAVEGADOR REAL las pruebas del guard de delta del panel de salida.
+#
+# POR QUÉ EXISTE: el resto de la lógica se prueba con DOM mockeado, que verifica la aritmética y el
+# grafo de reglas pero NO que el navegador pinte el bloque ni que un clic dispare el handler. Esa
+# verificación no se puede hacer en la máquina del operador porque el sandbox bloquea Chrome; el
+# runner de GitHub sí tiene Chrome y red loopback.
+# ─────────────────────────────────────────────────────────────────────────────────────────────────
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/generation-output-panel.js'
+      - 'IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/profile-manager-v9.js'
+      - 'IPTV_v5.4_MAX_AGGRESSION/frontend/tests/ui-*.verify.js'
+      - '.github/workflows/ape-ui-navegador.yml'
+
+jobs:
+  navegador:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/adb-generic-visual-enhancement-installer
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Localizar Chrome
+        run: |
+          set -euo pipefail
+          for p in /usr/bin/google-chrome /usr/bin/google-chrome-stable /usr/bin/chromium /usr/bin/chromium-browser; do
+            if [ -x "$p" ]; then echo "CHROME_PATH=$p" >> "$GITHUB_ENV"; echo "Chrome: $p"; break; fi
+          done
+          if [ -z "${CHROME_PATH:-}" ]; then echo '::error::no hay Chrome en el runner'; exit 1; fi
+          "$CHROME_PATH" --version
+
+      - name: Tests con DOM mockeado (aritmetica y grafo)
+        working-directory: IPTV_v5.4_MAX_AGGRESSION/frontend/tests
+        run: |
+          set -euo pipefail
+          for t in ui-escenarios-matriz.verify.js ui-campos-coherencia.verify.js ui-delta-autoajuste.verify.js; do
+            echo "--- $t ---"
+            node "$t"
+          done
+
+      - name: Test en NAVEGADOR REAL (CDP)
+        working-directory: IPTV_v5.4_MAX_AGGRESSION/frontend/tests
+        run: |
+          set -euo pipefail
+          node ui-guard-navegador.verify.js
+
+      - name: Resumen
+        if: always()
+        run: |
+          echo 'El guard del delta: calcula, propone y los botones actuan. Verificado en navegador real.'
