@@ -58,6 +58,21 @@ jobs:
           set -uo pipefail
           ssh "$TARGET" "sudo -n sqlite3 '$DB' '.schema registered_lists' 2>&1" || echo 'SIN_ESQUEMA'
 
+- name: "E.0 — donde vive la base de registro"
+        run: |
+          set -uo pipefail
+          echo '--- la ruta pedida existe? ---'
+          ssh "$TARGET" "sudo -n ls -la '$DB' 2>&1 || echo AUSENTE" || true
+          echo
+          echo '--- bases sqlite candidatas en el VPS ---'
+          ssh "$TARGET" "sudo -n find /opt /var/www /srv /home -maxdepth 6 -name '*.db' -o -maxdepth 6 -name '*.sqlite*' 2>/dev/null | head -30" || true
+          echo
+          echo '--- quien menciona registered_lists en el VPS ---'
+          ssh "$TARGET" "sudo -n grep -RIl 'registered_lists' /var/www/html /opt 2>/dev/null | head -15" || true
+          echo
+          echo '--- upload/finalize instalados en el VPS ---'
+          ssh "$TARGET" "sudo -n ls -la /var/www/html/finalize_upload.php /var/www/html/upload.php 2>&1 || echo AUSENTES" || true
+
       - name: "E.3 — BARRIDO COMPLETO: canales registrados contra bytes servidos"
         run: |
           set -uo pipefail
