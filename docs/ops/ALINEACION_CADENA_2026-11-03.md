@@ -134,3 +134,72 @@ SMOKE OK (todos 200 con #EXTM3U)
 - **`APE_LISTA_4K.m3u8` sigue devolviendo 404** y hay ~20 scripts legacy que la referencian
   (`postdeploy_remote*.sh`, `state.sh`, `e9_invariants.sh`, `probe_vps.sh`…). **El smoke del pipeline ya no
   la usa, pero esos scripts sí.** No los toqué.
+
+---
+
+# ADENDA — el frontend ya está desplegado (cierre del último hueco)
+
+**Ronda 2.** El documento anterior declaraba un hueco: *«este pipeline no despliega el generador»*. Cerrado.
+
+## El hallazgo
+
+El VPS servía **840.087 bytes** del generador con `pp=ac/dr/ci` ×3, `scd=5` ×6 y `zscale=bt1886` ×5.
+El repo tenía **827.257 bytes** ya corregidos. **Las mejoras no estaban en producción.**
+
+**Causa estructural:** `deploy-vps.yml` manifiesta endpoints y la capa Lua/PHP. Su manifiesto **no incluye**
+`m3u8-typed-arrays-ultimate.js`, que es frontend de navegador servido desde `/var/www/html`.
+
+## El deploy, y las tres trampas que hubo que resolver
+
+Workflow nuevo: `ape-deploy-frontend.yml`. Run **`41644272400` success**.
+
+| Trampa | Síntoma | Corrección |
+|---|---|---|
+| **1 · Aserción sobre comentarios** | el deploy se negaba: «el repo aún tiene `pp=ac/dr/ci`» — pero las 2 ocurrencias eran **comentarios que explican el defecto** | contar solo líneas de código, no comentarios |
+| **2 · El `.js` no es lo que se sirve** | tras instalar con sha coincidente, la URL seguía dando 840.087 B | **regenerar el `.gz` hermano** (`gzip_static` manda) |
+| **3 · Verificar solo el tamaño** | un sha coincidente no dice qué contiene el fichero | descargar la URL y **comprobar contenido**, no bytes |
+
+**La trampa 2 es la misma que dejó la lista en 8 bytes:** lo que el servidor manda no es lo que se instala.
+
+## Verificación final, independiente
+
+```
+generador servido : 827.257 B
+sha servido       : f5c387338c34871ea099763218d4f736f4cbe28068b8688d62c7a17c13c9ea74
+sha local         : f5c387338c34871ea099763218d4f736f4cbe28068b8688d62c7a17c13c9ea74   ← iguales
+
+colorspace=iall=bt709            OK x1
+strength=0.51                    OK x5
+scale=w=3840:h=2160:flags=lanczos OK x5
+
+pp=ac/dr/ci        AUSENTE (bien)
+:scd=5             AUSENTE (bien)
+zscale=transfer=bt1886  AUSENTE (bien)
+
+200 lista principal : http=200 bytes=604593696
+206 rango           : http=206 bytes=1024
+/ara-sync.php       : http=405 (exige POST, correcto)
+```
+
+## Estado de la cadena, completo
+
+| Eslabón | Producción | Estado |
+|---|---|---|
+| **EXCEL → LAB** | `omega_v1_bulletproof_20261026` · P4=587 fields | alineado |
+| **LAB → APP** | 15 familias · 0 sin fuente · 0 hardcodeo | alineado |
+| **APP → LISTAS** | 1.939 líneas · CA11 PASS · escala 4K@120 | alineado |
+| **LISTAS → VPS** | 200 = 604.593.696 B · 206 = 1.024 B | alineado |
+| **VPS → ARA** | sync smoke 7/7 · HMAC completo | alineado |
+| **APP → FRONTEND servido** | **sha idéntico al repo · correcciones presentes · defectos ausentes** | **alineado** |
+
+## Commits de esta ronda
+
+`e88bfe87` (workflow) · `f23aa548` (comentarios) · `4e0e699f` (gz)
+**Master:** PRs #18 #19 #20.
+
+## Lo que sigue sin verificarse
+
+- **Ningún reproductor abrió la lista generada.** Que el generador servido tenga las cadenas corregidas no
+  prueba que VLC las aplique: le faltan 3/4 a 5/6 de los módulos.
+- **No hay medición de calidad.** Sin VMAF, sin SSIM, sin A/B. Escalar un grafo no es mejorar una imagen.
+- **~20 scripts legacy siguen citando `APE_LISTA_4K.m3u8`** (404). El smoke del pipeline ya no la usa.
