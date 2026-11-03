@@ -112,7 +112,15 @@
       currentManifestMetadata: currentManifestMetadata,
       ensureJitCatalog: ensureJitCatalog,
       jitUrlForChannel: jitUrlForChannel,
-      runDirect: runDirect
+      runDirect: runDirect,
+      // Expuestos para poder probar la logica del guard y del auto-ajuste sin navegador.
+      // Son declaraciones de funcion (hoisted), asi que estan disponibles aqui aunque se
+      // definan mas abajo.
+      guard: guard,
+      checkGeneration: checkGeneration,
+      sugerirAjuste: sugerirAjuste,
+      renderSugerencia: renderSugerencia,
+      getDeltaPct: function () { return DELTA_PCT; }
     };
   }
 
@@ -394,7 +402,13 @@
 
   function sugerirAjuste() {
     var g = guard();
-    var out = { has: g.has, bloquea: g.has && !g.canStart, delta: DELTA_PCT };
+    var out = {
+      has: g.has, bloquea: g.has && !g.canStart, delta: DELTA_PCT,
+      // inM/outM/floorM viajan en el resultado: renderSugerencia los pinta y sin ellos el
+      // render lanzaba "Cannot read properties of undefined (reading toFixed)". Lo detecto
+      // la prueba ui-delta-autoajuste antes de que llegara a la interfaz.
+      inM: g.inM, outM: g.outM, floorM: g.floorM, ok: g.ok, canStart: g.canStart
+    };
     if (!g.has) return out;
 
     // Mbps que pide el perfil activo con el delta vigente
