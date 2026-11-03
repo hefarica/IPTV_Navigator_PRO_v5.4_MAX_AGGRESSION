@@ -285,23 +285,38 @@
             const s = profile?.settings || {};
             const q = String(profile?.quality || 'FHD').toUpperCase();
             const fallback = ProfileManagerV9.BITRATE_FLOOR_TABLE[q] || 5;
+
+            // PRIORIDAD 0 — el suelo del LAB. settings.bandwidth_floor está en bps y es el minimo
+            // con el que el perfil ARRANCA. Es dato del laboratorio, no una tabla de la UI.
+            const labFloorBps = Number(s.bandwidth_floor);
+            const labFloorMbps = (isFinite(labFloorBps) && labFloorBps > 0) ? labFloorBps / 1e6 : null;
+
             const configured = (s.bitrate_floor_mbps != null && !isNaN(s.bitrate_floor_mbps))
                 ? Number(s.bitrate_floor_mbps)
-                : fallback;
+                : (labFloorMbps != null ? labFloorMbps : fallback);
+
             const bitrate = Number(s.bitrate);
-            // El piso NUNCA puede superar el bitrate objetivo. Si el LAB trae un
-            // floor viejo (ej. 14) con un target nuevo (ej. 0.9), se recorta al
-            // 80% del target. Si el floor heredado es absurdo para la calidad,
-            // se usa la tabla de calidad como respaldo. No toca codec/res/fps.
-            if (isFinite(bitrate) && bitrate > 0) {
-                const maxFloor = Math.max(0.1, bitrate * 0.8);
+
+            // El piso NUNCA puede superar el bitrate objetivo. PERO un bitrate por debajo de 1 Mbps no
+            // es un techo: es un dato roto. Con bitrate=0.3 el recorte al 80% daba 0.24, que la UI
+            // mostraba como "BITRATE FLOOR (MBPS) 0,24" — seis veces por debajo del suelo mas bajo del
+            // LAB (P5 = 1.5 Mbps) e inservible incluso para SD. Si el bitrate no es utilizable, NO se
+            // recorta contra el: manda el suelo del LAB y, si tampoco lo hay, la tabla de calidad.
+            const bitrateUtil = (isFinite(bitrate) && bitrate >= 1) ? bitrate : null;
+
+            if (bitrateUtil) {
+                const maxFloor = Math.max(0.1, bitrateUtil * 0.8);
                 let floor = configured;
                 if (floor > maxFloor) {
                     floor = Math.min(fallback, maxFloor);
                 }
                 return Number(Math.max(0.1, Math.min(floor, maxFloor)).toFixed(2));
             }
-            return Number(configured);
+
+            // Sin bitrate utilizable: se devuelve el suelo del LAB o el de la tabla, con un minimo
+            // absoluto de 1 Mbps. Nunca 0,24.
+            const base = (labFloorMbps != null) ? labFloorMbps : fallback;
+            return Number(Math.max(1, base).toFixed(2));
         }
 
         /**
