@@ -75,7 +75,7 @@
                 qualityThreshold: 0.95,
                 switchUpThreshold: 1.2,
                 switchDownThreshold: 0.6,
-                description: 'Pre-carga máxima, prioriza calidad sobre latencia (13.4 Mbps @ 4K/60)'
+                description: 'Pre-carga máxima, prioriza calidad sobre latencia. La estrategia NO recorta bitrate: el bitrate lo fija la resolución y el codec'
             },
             'aggressive': {
                 compressionMultiplier: 0.26,
@@ -83,7 +83,7 @@
                 qualityThreshold: 0.90,
                 switchUpThreshold: 1.15,
                 switchDownThreshold: 0.65,
-                description: 'Pre-carga alta, balance calidad/latencia'
+                description: 'Pre-carga alta, balance calidad/latencia. No recorta bitrate'
             },
             'balanced': {
                 compressionMultiplier: 0.22,
@@ -91,7 +91,7 @@
                 qualityThreshold: 0.85,
                 switchUpThreshold: 1.1,
                 switchDownThreshold: 0.7,
-                description: 'Balance equilibrado'
+                description: 'Balance equilibrado. No recorta bitrate'
             },
             'adaptive': {
                 compressionMultiplier: 0.20,
@@ -2883,7 +2883,13 @@
             // SSOT: Profile Manager → Bridge → Generator (m3u8-typed-arrays-ultimate.js).
             if (key === 'resolution' || key === 'bitrate' || key === 'quality') {
                 const floorMbps = this._computeBitrateFloor(profile);
-                s.bitrate_floor_mbps = floorMbps;
+                // INVARIANTE: el suelo NUNCA puede superar el techo del perfil. La UI llegó a
+                // mostrar BITRATE 0,3 con BITRATE FLOOR 1,5: el piso estaba por encima del
+                // objetivo, que es una contradicción visible y deja el perfil sin margen
+                // aritmético. Se recorta al techo; si el techo es el que está roto, lo corrige
+                // la Regla 3 con su mínimo por resolución.
+                const techoPerfil = Number(s.bitrate) || 0;
+                s.bitrate_floor_mbps = (techoPerfil > 0) ? Math.min(floorMbps, techoPerfil) : floorMbps;
 
                 // Inyectar en headers para visibilidad/telemetría (single-value, OkHttp-compatible)
                 this.config.setHeaderOverride(profile.id, 'X-APE-BITRATE-FLOOR', String(floorMbps));
@@ -3049,7 +3055,28 @@
                 }
 
                 const bitrateBase = (pixels * fps * bpp) / 1000000;
-                const bitrateFinal = parseFloat((bitrateBase * strategy.compressionMultiplier).toFixed(1));
+
+                // ── CORREGIDO 2026-11-03 ──────────────────────────────────────────────────────
+                // Antes: bitrateFinal = bitrateBase × strategy.compressionMultiplier.
+                // Medido en la UI: P5 SD (854×480, AV1, 30fps) mostraba 0,3 Mbps y al pasar la
+                // estrategia a ultra-aggressive saltaba a 0,9. La cuenta: AV1_SD = 0.22 →
+                // 854×480×30×0.22/1e6 = 2.70 Mbps brutos, y 2.70 × 0.27 = 0.73. Insostenible
+                // para 480p y contra la ley de no degradar imagen.
+                //
+                // La causa es una DOBLE penalización: la eficiencia del códec YA está en
+                // BITS_PER_PIXEL (AV1_SD 0.22 frente a H264_SD 0.30), y el multiplicador de
+                // estrategia la aplicaba OTRA vez con un factor que no mide compresión de vídeo.
+                //
+                // La estrategia decide CÓMO se consume el buffer (prefetch, thresholds, timeouts,
+                // reconexión), no CUÁNTA calidad se emite. Esa es la doctrina MAX IMAGE FIRST.
+                //
+                // Sin el multiplicador, el cálculo por BPP se conserva intacto y se le pone un
+                // mínimo por resolución para que ningún perfil declare un bitrate que su
+                // resolución no puede sostener. El mínimo es un suelo de coherencia, no un techo:
+                // si el BPP da más, manda el BPP.
+                const MIN_BITRATE_MBPS = { '8K': 40, 'UHD': 20, 'FHD': 8, 'HD': 3.5, 'SD': 1.5 };
+                const bitrateMinimo = MIN_BITRATE_MBPS[resLabel] || 1.5;
+                const bitrateFinal = parseFloat(Math.max(bitrateMinimo, bitrateBase).toFixed(1));
 
                 // Actualizar bitrate y disparar cálculo de T1/T2 (Regla 1)
                 s.bitrate = bitrateFinal;
