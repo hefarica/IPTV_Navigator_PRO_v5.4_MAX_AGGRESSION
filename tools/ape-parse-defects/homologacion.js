@@ -152,7 +152,7 @@ const DUPLICADOS = [
   { clave: 'DNT',                      familia: 'privacidad',         rutas: ['headers.DNT', 'player_enslavement.level_3_per_channel.EXTHTTP.DNT'], conservar: 'player_enslavement.level_3_per_channel.EXTHTTP.DNT' },
   // Añadido al auditar el P4 real: settings.bit_depth y settings.bitDepth valen 8 los dos. Mismo objeto,
   // dos grafías. No es un homologo (no hay dos motores): es redundancia pura, sobra una.
-  { clave: 'bit_depth',                familia: null,                 rutas: ['settings.bit_depth', 'settings.bitDepth'], conservar: 'settings.bit_depth' },
+  { clave: 'bit_depth',                familia: null,                 rutas: ['settings.bit_depth', 'settings.bitDepth', 'actor_injections.panel.bit_depth'], conservar: 'settings.bit_depth' },
   { clave: 'bufferFloorPct',           familia: 'buffer_floor',       rutas: ['settings.bufferFloorPct', 'prefetch_config.buffer_floor_pct'], conservar: 'prefetch_config.buffer_floor_pct' }
 ];
 

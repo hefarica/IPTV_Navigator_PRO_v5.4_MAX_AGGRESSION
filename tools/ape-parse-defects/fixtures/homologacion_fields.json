@@ -1,0 +1,93 @@
+{
+  "descripcion": "fixture con los tres tipos de defecto: mismo nombre duplicado, homologos desalineados, valores por perfil serializados",
+  "fields": {
+    "settings": {
+      "bufferSeconds": 15,
+      "networkCachingMs": 15000,
+      "maxLiveSyncPlaybackRate": 15,
+      "peak_luminance_nits": 10000,
+      "peakLuminanceNits": 10000,
+      "bit_depth": 12,
+      "bitDepth": 12,
+      "prefetchSegments": 6,
+      "bufferFloorPct": 20
+    },
+    "vlcopt": {
+      "network-caching": "15000",
+      "live-caching": "15000",
+      "file-caching": "20000",
+      "sout-mux-caching": "20000",
+      "http-max-retries": "99",
+      "network-reconnect-count": "99",
+      "http-timeout": "5000"
+    },
+    "hlsjs": {
+      "abrBandWidthFactor": 95,
+      "maxLiveSyncPlaybackRate": 15,
+      "maxBufferLength": 50,
+      "maxMaxBufferLength": 50,
+      "nudgeOffset": 1,
+      "nudgeMaxRetry": 10,
+      "highBufferWatchdogPeriod": 1,
+      "maxFragLookUpTolerance": 25
+    },
+    "optimized_knobs": {
+      "buffer_seconds": "50",
+      "abrBandWidthFactor": 0.85,
+      "maxLiveSyncPlaybackRate": 1.25,
+      "nudgeMaxRetry": 13,
+      "reconnect_attempts": 350
+    },
+    "prefetch_config": {
+      "prefetch_segments": 12,
+      "buffer_floor_pct": 30
+    },
+    "headers": {
+      "DNT": "0"
+    },
+    "headerOverrides": {
+      "DNT": "1,0,0,0"
+    },
+    "player_enslavement": {
+      "level_3_per_channel": {
+        "EXTVLCOPT": {
+          "network-caching": 105000,
+          "live-caching": 105000,
+          "file-caching": 105000,
+          "sout-mux-caching": 105000,
+          "http-max-retries": 350,
+          "network-reconnect-count": 350,
+          "http-timeout": 30000
+        },
+        "EXTHTTP": {
+          "DNT": "1"
+        }
+      }
+    },
+    "actor_injections": {
+      "player": {
+        "hlsjs": {
+          "maxBufferLength": 105,
+          "maxMaxBufferLength": 210,
+          "nudgeOffset": 0.1,
+          "nudgeMaxRetry": 13,
+          "highBufferWatchdogPeriod": 3,
+          "maxFragLookUpTolerance": 0.25,
+          "maxLiveSyncPlaybackRate": 1.25
+        },
+        "exoplayer": {
+          "abrBandWidthFactor": 0.85,
+          "nudgeMaxRetry": 13,
+          "maxLiveSyncPlaybackRate": 1.25
+        },
+        "vlc": {
+          "network_caching_ms": 105000
+        }
+      },
+      "panel": {
+        "peak_luminance_nits": 4000,
+        "bit_depth": 12
+      }
+    }
+  }
+}

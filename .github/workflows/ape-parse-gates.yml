@@ -342,3 +342,63 @@ jobs:
           [ "$rc" -eq 4 ] || { echo "::error::se esperaba 4 (faltan modulos en VLC) y dio $rc"; exit 1; }
           grep -q "bwdif" /tmp/vlc.err || { echo "::error::no nombra los modulos ausentes"; exit 1; }
           echo 'las cadenas de la lista usan modulos que VLC no tiene'
+
+      # ─── Homologación: el mismo valor en el idioma de cada motor ──────────────────────────────
+      #
+      # La regla del operador: los campos con el MISMO nombre sobran hasta quedar uno; los de NOMBRE
+      # DISTINTO que miden lo mismo se quedan, y todos dicen el MISMO valor para que la configuración
+      # llegue igual a VLC, Kodi, hls.js, el panel y los knobs. El SSOT se LEE del LAB Bulletproof, no
+      # está escrito en el código.
+      #
+      # El verificador comprueba PROPIEDADES, no números: si comprobase 52000 estaría atado al LAB de hoy.
+      - name: homologacion corrige el fixture y cumple las cinco propiedades
+        run: |
+          set -uo pipefail
+          set +e
+          node tools/ape-parse-defects/homologacion_verify.js \
+            tools/ape-parse-defects/fixtures/homologacion_fields.json > /dev/null 2>/tmp/hom.err
+          rc=$?
+          set -e
+          cat /tmp/hom.err
+          if [ "$rc" -ne 0 ]; then
+            echo "::error::la homologacion no cumple las cinco propiedades (exit $rc)"
+            exit 1
+          fi
+
+          # Cada propiedad nombrada: una comprobacion que no se imprime no se sabe si corrio.
+          for p in P1 P2 P3 P4 P5; do
+            grep -q "OK    $p" /tmp/hom.err || { echo "::error::la propiedad $p no paso"; exit 1; }
+            echo "  $p verificada"
+          done
+
+          # El mapa no puede volver a hardcodear el SSOT: si aparece un numero canonico en el fuente,
+          # es que alguien reintrodujo una segunda verdad.
+          if grep -qE "valor_canonico|valor:\s*[0-9]" tools/ape-parse-defects/homologacion.js; then
+            echo "::error::homologacion.js contiene un valor canonico hardcodeado; el SSOT debe leerse del LAB"
+            exit 1
+          fi
+          echo '  el SSOT no esta escrito en el codigo: se lee del LAB'
+
+      - name: homologacion produce el array del mismo valor en cada idioma
+        run: |
+          set -uo pipefail
+          node tools/ape-parse-defects/homologacion.js --array > /tmp/hom_array.json 2>/dev/null
+          python3 - <<'PY'
+          import json, sys
+          a = json.load(open('/tmp/hom_array.json'))
+          motores = sorted({x['motor'] for x in a})
+          familias = sorted({x['familia'] for x in a})
+          sin_valor = [x for x in a if x['valor'] is None]
+          print(f"  {len(a)} entradas · {len(familias)} familias · motores: {', '.join(motores)}")
+          if sin_valor:
+              sys.exit(f"::error::{len(sin_valor)} entradas sin valor heredado del LAB")
+          if len(motores) < 4:
+              sys.exit(f"::error::solo {len(motores)} motores; se esperaban al menos 4 idiomas distintos")
+          # el mismo valor tiene que estar dicho por varios motores
+          por_fam = {}
+          for x in a: por_fam.setdefault(x['familia'], set()).add(x['motor'])
+          multi = [f for f, m in por_fam.items() if len(m) > 1]
+          print(f"  familias dichas en mas de un idioma: {len(multi)}")
+          if not multi:
+              sys.exit('::error::ninguna familia se dice en mas de un motor')
+          PY
