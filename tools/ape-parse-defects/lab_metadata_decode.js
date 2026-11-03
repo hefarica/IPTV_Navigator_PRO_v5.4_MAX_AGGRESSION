@@ -250,6 +250,7 @@ const RE_CHUNK = /^#EXT-X-APE-LAB-METADATA:(\d+)\/(\d+):(.+)$/;
     claves: json ? Object.keys(json) : [],
     problemas,
     decision: decisionTabla,
+    homologacion: decisionTabla ? verificarHomologacion((json.fields && typeof json.fields === 'object') ? json.fields : {}) : null,
     estado: problemas.length ? 'CONTRADICHO' : 'COHERENTE'
   };
 
@@ -372,4 +373,95 @@ function tablaDecision(fields) {
       accion: emitido === null ? 'NO_EMITIDO' : (difiere ? 'CORREGIR' : 'DEJAR')
     };
   });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+// HOMOLOGACION: el mismo valor dicho en el idioma de cada motor
+//
+// Regla del operador: los campos con el MISMO nombre son duplicados y sobra uno; los que NO se llaman
+// igual pero miden lo mismo son homologos y deben llevar el MISMO valor, para que la config llegue a
+// todos lados sin que un motor reciba una verdad y otro otra.
+//
+// Esto recorre TODO el objeto fields (no solo las capas vivas), recoge cada ocurrencia de cada clave de
+// cada familia, y exige que el valor convertido a la unidad de la familia sea el canonico. Distingue
+// ocurrencia VIVA (en una capa que el generador emite) de MUERTA (en settings/hlsjs, que no se leen):
+// las muertas no rompen nada hoy, pero se reportan porque son la mentira de manana.
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+const { FAMILIAS, LEGITIMOS, aUnidad } = require('./homologacion');
+
+const CAPAS_VIVAS = ['optimized_knobs', 'headers', 'prefetch_config', 'player_enslavement',
+  'actor_injections', 'vlcopt', 'kodiprop'];
+const CAPAS_MUERTAS = ['settings', 'hlsjs'];
+
+/** Recorre fields y devuelve [{ruta, valor, viva}] para cada clave normalizada buscada. */
+function ocurrencias(fields, buscadas) {
+  const out = [];
+  const walk = (obj, ruta, viva) => {
+    if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return;
+    for (const k of Object.keys(obj)) {
+      const v = obj[k];
+      const r = ruta ? `${ruta}.${k}` : k;
+      if (v && typeof v === 'object' && !Array.isArray(v)) { walk(v, r, viva); continue; }
+      // Un ARRAY no es un valor escalar: bounds.abr_bw_factor=[0.85,0.98] es un rango y
+      // headerOverrides.DNT=[1,0,0,0] son valores por perfil. Compararlos como escalares fue falso positivo mio.
+      if (Array.isArray(v)) continue;
+      // headerOverrides guarda valores POR PERFIL serializados ('1,0,0,0'); no es un escalar.
+      if (typeof v === 'string' && v.includes(',')) continue;
+      if (!buscadas.includes(norm(k))) continue;
+      out.push({ ruta: r, valor: v, viva });
+    }
+  };
+  const topViva = (k) => CAPAS_VIVAS.includes(k);
+  const topMuerta = (k) => CAPAS_MUERTAS.includes(k);
+  for (const k of Object.keys(fields)) {
+    const esViva = topViva(k);
+    const esMuerta = topMuerta(k);
+    const v = fields[k];
+    if (v && typeof v === 'object' && !Array.isArray(v)) walk(v, k, esViva || !esMuerta);
+  }
+  return out;
+}
+
+function verificarHomologacion(fields) {
+  const familias = [];
+  for (const fam of FAMILIAS) {
+    const claves = fam.homologos.map((h) => norm(h.clave));
+    const ocur = ocurrencias(fields, claves);
+    const filas = ocur.map((o) => {
+      const valor = Number(o.valor);
+      const convertido = isFinite(valor) ? aUnidad(valor, fam.unidad, fam.unidad) : null;
+      return {
+        ruta: o.ruta,
+        valor_original: o.valor,
+        valor: convertido,
+        viva: o.viva,
+        cumple: convertido !== null && Number(convertido) === Number(fam.valor_canonico)
+      };
+    });
+    const vivas = filas.filter((f) => f.viva);
+    const vivasMal = vivas.filter((f) => !f.cumple);
+    const muertasMal = filas.filter((f) => !f.viva && !f.cumple);
+    familias.push({
+      id: fam.id,
+      canonico: fam.valor_canonico,
+      unidad: fam.unidad,
+      ocurrencias: filas.length,
+      vivas: vivas.length,
+      vivas_en_desacuerdo: vivasMal.map((f) => `${f.ruta}=${f.valor_original}`),
+      muertas_en_desacuerdo: muertasMal.map((f) => `${f.ruta}=${f.valor_original}`),
+      estado: vivasMal.length ? 'ROTO' : (muertasMal.length ? 'SINCRONIZAR_MUERTAS' : 'OK')
+    });
+  }
+  const rotas = familias.filter((f) => f.estado === 'ROTO');
+  const despistadas = familias.filter((f) => f.estado === 'SINCRONIZAR_MUERTAS');
+  return {
+    familias,
+    resumen: {
+      familias: familias.length,
+      rotas: rotas.length,
+      solo_muertas: despistadas.length,
+      ok: familias.filter((f) => f.estado === 'OK').length,
+      legitimas: LEGITIMOS.length
+    }
+  };
 }
