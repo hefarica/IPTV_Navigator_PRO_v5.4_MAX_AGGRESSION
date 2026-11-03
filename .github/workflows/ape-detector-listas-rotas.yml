@@ -58,7 +58,7 @@ jobs:
           set -uo pipefail
           ssh "$TARGET" "sudo -n sqlite3 '$DB' '.schema registered_lists' 2>&1" || echo 'SIN_ESQUEMA'
 
-      - name: E.3 — BARRIDO COMPLETO: canales registrados contra bytes servidos
+      - name: "E.3 — BARRIDO COMPLETO: canales registrados contra bytes servidos"
         run: |
           set -uo pipefail
           echo '--- toda lista registrada con canales > 0 ---'
