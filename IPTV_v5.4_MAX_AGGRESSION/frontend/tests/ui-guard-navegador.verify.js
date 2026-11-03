@@ -211,7 +211,7 @@ function servir() {
 
   // 6 · EL CASO EXACTO DE LA CAPTURA: P3 con 1.3 Mbps. Ningun perfil entra -> Forzar.
   {
-    await evaluar('(function(){window.APE_PROFILES_CONFIG.activeProfileId="P3";window.APE_BW={snapshot:function(){return {mbps:1.3};}};window.__APE_SUG_FORZADO__=false;window.APE_OUTPUT_TEST_HOOKS.renderSugerencia();return true;})()');
+    await evaluar('(function(){window.APE_PROFILES_CONFIG.activeProfileId="P3";window.APE_BW={snapshot:function(){return {mbps:1.3};}};window.__APE_SUG_FORZADO__=false;window.__APE_SUG_DENEGADO__=false;window.APE_OUTPUT_TEST_HOOKS.renderSugerencia();return true;})()');
     await sleep(250);
     const h = await evaluar('document.getElementById("ape-buf-sugerencia").innerHTML || ""');
     ok(h.indexOf('Ningún perfil entra') >= 0, 'P3/1.3: el navegador dice que ningun perfil entra');
@@ -249,7 +249,7 @@ function servir() {
     // Mismo enlace (5.2 Mbps), perfiles distintos: el "mejor escenario" debe cambiar de perfil.
     const resultados = {};
     for (const pid of ['P0', 'P1', 'P3', 'P5']) {
-      await evaluar('(function(){window.APE_PROFILES_CONFIG.activeProfileId="' + pid + '";window.APE_BW={snapshot:function(){return {mbps:5.2};}};window.__APE_SUG_FORZADO__=false;window.APE_OUTPUT_TEST_HOOKS.renderSugerencia();return true;})()');
+      await evaluar('(function(){window.APE_PROFILES_CONFIG.activeProfileId="' + pid + '";window.APE_BW={snapshot:function(){return {mbps:5.2};}};window.__APE_SUG_FORZADO__=false;window.__APE_SUG_DENEGADO__=false;window.APE_OUTPUT_TEST_HOOKS.renderSugerencia();return true;})()');
       await sleep(120);
       const r = await evaluar('(function(){try{var H=window.APE_OUTPUT_TEST_HOOKS;var g=H.guard();var m=H.mejorEscenario();var s=H.sugerirAjuste();return JSON.stringify({perfilActivo:window.APE_PROFILES_CONFIG.activeProfileId,bloquea:s.bloquea,floorM:g.floorM,viable:m.viable?m.viable.perfil:null,viableDelta:m.viable?m.viable.delta:null});}catch(e){return JSON.stringify({error:String(e.message||e)});}})()');
       resultados[pid] = JSON.parse(r);
