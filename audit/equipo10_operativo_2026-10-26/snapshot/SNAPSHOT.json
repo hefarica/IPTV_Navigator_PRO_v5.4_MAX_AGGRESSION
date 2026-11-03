@@ -1,0 +1,146 @@
+{
+  "snapshot_id": "equipo10_operativo_2026-10-26",
+  "repo_head": "e38a89bb30c02cb41050f34cef43d3711a2b0644",
+  "captured_at": "2026-10-26T04:30:07.4590850-05:00",
+  "host": {
+    "os": "Microsoft Windows 10.0.26200",
+    "pwsh": "7.6.8"
+  },
+  "line_count_method": "[System.IO.File]::ReadAllLines().Length (NO Measure-Object -Line: descarta líneas vacías)",
+  "files": [
+    {
+      "path": "IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/m3u8-typed-arrays-ultimate.js",
+      "head_blob_sha": "c1277bdfdc46debfc762eb86e22f77b85b66e250",
+      "head_bytes": 707323,
+      "head_lines": 11144,
+      "wt_sha256": "da4428648094b0cac4d713aa505729e3adcee8e342a6708a83d67c112f127e0b",
+      "wt_bytes": 743883,
+      "wt_lines": 11524,
+      "git_numstat_head": "382\t2\tIPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/m3u8-typed-arrays-ultimate.js",
+      "wt_mtime": "2026-10-26T04:29:02.1192056-05:00",
+      "captured_at": "2026-10-26T04:30:07.4590850-05:00",
+      "blob_files": {
+        "head": "m3u8-typed-arrays-ultimate.js.HEAD.blob",
+        "wt": "m3u8-typed-arrays-ultimate.js.WT.da442864.blob"
+      }
+    },
+    {
+      "path": "IPTV_v5.4_MAX_AGGRESSION/frontend/index-v4.html",
+      "head_blob_sha": "c8830f58a67a5627cc536365bc871031a1a40ecc",
+      "head_bytes": 261661,
+      "head_lines": 4694,
+      "wt_sha256": "9f69a5a65845b167ec5ba7b4a56322e87e0d9492fb1f0c1db78de39be06d73df",
+      "wt_bytes": 266405,
+      "wt_lines": 4694,
+      "git_numstat_head": "8\t8\tIPTV_v5.4_MAX_AGGRESSION/frontend/index-v4.html",
+      "wt_mtime": "2026-10-26T03:07:53.4380637-05:00",
+      "captured_at": "2026-10-26T04:30:07.4590850-05:00",
+      "blob_files": {
+        "head": "index-v4.html.HEAD.blob",
+        "wt": "index-v4.html.WT.9f69a5a6.blob"
+      }
+    },
+    {
+      "path": "IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/ape-fallback-resolver.js",
+      "head_blob_sha": "228b86938d4b4ff6b77fc4af67ced23abf46e852",
+      "head_bytes": 32039,
+      "head_lines": 689,
+      "wt_sha256": "2275dc5fb1872a2fd32c3762fa31e8728ae952127fede86ba673cc7ba4887a68",
+      "wt_bytes": 32039,
+      "wt_lines": 689,
+      "git_numstat_head": "0\t0\tIPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/ape-fallback-resolver.js",
+      "wt_mtime": "2026-06-16T08:53:08.2658751-05:00",
+      "captured_at": "2026-10-26T04:30:07.4590850-05:00",
+      "blob_files": {
+        "head": "ape-fallback-resolver.js.HEAD.blob",
+        "wt": "ape-fallback-resolver.js.WT.2275dc5f.blob"
+      }
+    },
+    {
+      "path": "IPTV_v5.4_MAX_AGGRESSION/backend/resolve_quality_unified.php",
+      "head_blob_sha": "6ae9d3872e06550b727f2aa935ddc85cefcaae93",
+      "head_bytes": 327705,
+      "head_lines": 7206,
+      "wt_sha256": "20ac4b2631c1e877a3de92b4e479b6c2efa171ad1a317869f9343a99c3c5f2b5",
+      "wt_bytes": 348758,
+      "wt_lines": 7468,
+      "git_numstat_head": "300\t38\tIPTV_v5.4_MAX_AGGRESSION/backend/resolve_quality_unified.php",
+      "wt_mtime": "2026-10-25T21:35:16.1424339-05:00",
+      "captured_at": "2026-10-26T04:30:07.4590850-05:00",
+      "blob_files": {
+        "head": "resolve_quality_unified.php.HEAD.blob",
+        "wt": "resolve_quality_unified.php.WT.20ac4b26.blob"
+      }
+    },
+    {
+      "path": "IPTV_v5.4_MAX_AGGRESSION/frontend/vps/resolve.php",
+      "head_blob_sha": "6c8cc0f3429dce483f408b2641b122b8746a48ec",
+      "head_bytes": 40736,
+      "head_lines": 815,
+      "wt_sha256": "45420fc2204daecec9d1ac00ae2821a763e8e113386af25825020c260fa07b4b",
+      "wt_bytes": 40906,
+      "wt_lines": 815,
+      "git_numstat_head": "3\t3\tIPTV_v5.4_MAX_AGGRESSION/frontend/vps/resolve.php",
+      "wt_mtime": "2026-10-25T21:38:53.3137590-05:00",
+      "captured_at": "2026-10-26T04:30:07.4590850-05:00",
+      "blob_files": {
+        "head": "resolve.php.HEAD.blob",
+        "wt": "resolve.php.WT.45420fc2.blob"
+      }
+    },
+    {
+      "path": "_vps_stage/lua/ape_gateway.lua",
+      "head_blob_sha": "4a3fea1c4a094a385443d85f6a5a035dfd0ba85f",
+      "head_bytes": 11651,
+      "head_lines": 267,
+      "wt_sha256": "b9eb14061d5e2c81fdb71c69c81637abc161d081c6276aba1e71691379322710",
+      "wt_bytes": 19087,
+      "wt_lines": 439,
+      "git_numstat_head": "172\t0\t_vps_stage/lua/ape_gateway.lua",
+      "wt_mtime": "2026-10-25T21:01:57.0310709-05:00",
+      "captured_at": "2026-10-26T04:30:07.4590850-05:00",
+      "blob_files": {
+        "head": "ape_gateway.lua.HEAD.blob",
+        "wt": "ape_gateway.lua.WT.b9eb1406.blob"
+      }
+    },
+    {
+      "path": "_vps_stage/lua/ape_header.lua",
+      "head_blob_sha": "5b9953374f56ef07bb4206bb8d8a13e877d7a649",
+      "head_bytes": 2210,
+      "head_lines": 31,
+      "wt_sha256": "23b25b031964ca573a89eeab933a5d07bc91fb29aa5c038df22c02bff182117f",
+      "wt_bytes": 8088,
+      "wt_lines": 157,
+      "git_numstat_head": "128\t2\t_vps_stage/lua/ape_header.lua",
+      "wt_mtime": "2026-10-25T20:41:02.3834277-05:00",
+      "captured_at": "2026-10-26T04:30:07.4590850-05:00",
+      "blob_files": {
+        "head": "ape_header.lua.HEAD.blob",
+        "wt": "ape_header.lua.WT.23b25b03.blob"
+      }
+    },
+    {
+      "path": "_vps_stage/lua/ape_uri_rebase.lua",
+      "head_blob_sha": "3738b5ae9845f57fe57cd3be31496ad449f9021c",
+      "head_bytes": 6043,
+      "head_lines": 139,
+      "wt_sha256": "393635c2b2250fde9cf5678f4e9b85fe5e9359c2a65cfd00fa1adfbc85242fa8",
+      "wt_bytes": 9930,
+      "wt_lines": 215,
+      "git_numstat_head": "78\t2\t_vps_stage/lua/ape_uri_rebase.lua",
+      "wt_mtime": "2026-10-25T20:41:08.4161879-05:00",
+      "captured_at": "2026-10-26T04:30:07.4590850-05:00",
+      "blob_files": {
+        "head": "ape_uri_rebase.lua.HEAD.blob",
+        "wt": "ape_uri_rebase.lua.WT.393635c2.blob"
+      }
+    }
+  ],
+  "notes": [
+    "Los *.HEAD.blob se extraen con `git show HEAD:<path>` redirigido por cmd.exe (bytes exactos; verificado contra `git cat-file -s`).",
+    "Los *.WT.<sha8>.blob son copia byte a byte del worktree en el instante captured_at.",
+    "El worktree estaba siendo mutado por otra sesión durante la auditoría: estos hashes son válidos SOLO para su captured_at.",
+    "git_numstat_head es la salida literal de `git diff --numstat HEAD -- <path>` (agregados / borrados sin commitear)."
+  ]
+}

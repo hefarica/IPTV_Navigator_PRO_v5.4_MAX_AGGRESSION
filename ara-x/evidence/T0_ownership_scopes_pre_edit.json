@@ -1,0 +1,146 @@
+{
+  "schema": "iptv.ownership.v1",
+  "generated_at": "2026-10-27T00:45:00-05:00",
+  "workspace_root": "C:/Users/HFRC/Desktop/IPTV_Navigator_PRO_v5.4_MAX_AGGRESSION",
+  "snapshot_git_head": "8354803",
+  "snapshot_branch": "feat/adb-generic-visual-enhancement-installer",
+  "rules": {
+    "default_mode": "read-only",
+    "write_requires_claim": true,
+    "shared_files": ["AGENTS.md", "CLAUDE.md"],
+    "forbidden_git": ["git add -A", "git add .", "git commit -a", "git commit --all", "git stash", "git checkout -- .", "git reset --hard"],
+    "commit_policy": "solo por pathspec explicito y solo el workstream que lo posee",
+    "vps_writes": "requiere ventana + backup + nginx -t autorizados; fuera del contrato de auditoria"
+  },
+  "workstreams": [
+    {
+      "id": "equipo-enterprise-10-adn",
+      "kind": "agentteam",
+      "agent": "lead + 8 agentes (s1,s2,s3,s5,s6,s7,s8,s9)",
+      "status": "idle-deliverable",
+      "mode": "write",
+      "commits": false,
+      "write_scopes": [
+        "audit/equipo10_operativo_2026-10-26/**",
+        "audit/EQUIPO_10_OPERATIVO_*.zip",
+        "audit/EQUIPO_10_ENTREGA*.json",
+        "docs/manifestos/EQUIPO_10_ADN_CONTEXTO_2026-10-26.md",
+        ".claude/commands/equipo-10-adn.md",
+        "docs/COORDINACION_AGENTES.md",
+        "contracts/ownership_scopes.json",
+        "_coord/**",
+        "docs/rea/**"
+      ],
+      "forbidden_scopes": [
+        "_vps_stage/**",
+        "docs/edge/**",
+        "deliverables/**",
+        "audit_teams_REA/**",
+        ".github/**",
+        "IPTV_v5.4_MAX_AGGRESSION/frontend/**",
+        "IPTV_v5.4_MAX_AGGRESSION/vps/**",
+        "contracts/crystal_contracts.json",
+        "docs/manifestos/VPS_REALITY_MEASURED_2026-10-25.md",
+        ".agent-teams/**"
+      ]
+    },
+    {
+      "id": "hls-forensics",
+      "kind": "external-agent",
+      "agent": "hls-forensics (git author)",
+      "status": "active",
+      "mode": "write",
+      "commits": true,
+      "branch": "feat/adb-generic-visual-enhancement-installer",
+      "observed_write_scopes": [
+        "_vps_stage/**",
+        "docs/edge/**",
+        "audit_teams_REA/**",
+        "deliverables/**",
+        ".github/workflows/deploy-vps.yml",
+        "IPTV_v5.4_MAX_AGGRESSION/frontend/**",
+        "IPTV_v5.4_MAX_AGGRESSION/vps/**"
+      ],
+      "last_activity": "2026-10-27T00:25:21-05:00",
+      "current_task": "t114 · deploy atomico (deploy.sh/verify.sh/.gitattributes/re-pin LF 1b71d90e)",
+      "vps_window": {
+        "started": "2026-10-27T00:53:00-05:00",
+        "scope": ["/etc/nginx/lua/**", "/etc/nginx/conf.d/50-ape-meta-plane.conf"],
+        "targets": ["ape_gateway.lua 20833 B 1b71d90e", "ape_rebase_lib.lua 8674 B f813b1cc"],
+        "observer": "equipo-enterprise-10-adn (solo lectura, sin escrituras VPS)"
+      },
+      "evidence": "git log (26 commits/24h, t92-t111) + mtimes _vps_stage/edge (259 archivos/24h)"
+    },
+    {
+      "id": "auditoria-roku-universal-rea",
+      "kind": "agentteam",
+      "agent": "equipo AgentTeams concurrente",
+      "status": "active",
+      "mode": "write",
+      "commits": false,
+      "observed_write_scopes": ["audit_teams_REA/**", ".agent-teams/auditoria-roku-universal-rea/**"],
+      "last_activity": "2026-10-27T00:27:20-05:00",
+      "evidence": ".agent-teams/auditoria-roku-universal-rea/team.json (1,5 MB) + inbox mtime"
+    },
+    {
+      "id": "edge-fluidez",
+      "kind": "agentteam",
+      "agent": "equipo AgentTeams",
+      "status": "idle",
+      "mode": "unknown",
+      "commits": false,
+      "observed_write_scopes": [],
+      "last_activity": "2026-10-26T17:29:00-05:00"
+    }
+  ],
+  "shared_files": [
+    {
+      "path": "AGENTS.md",
+      "rule": "claim + mtime check + edicion aditiva",
+      "current_changes": "equipo-enterprise-10-adn: +3/-1 (alta /equipo-10-adn en tabla de comandos)"
+    },
+    {
+      "path": "CLAUDE.md",
+      "rule": "claim + mtime check + edicion aditiva",
+      "current_changes": "equipo-enterprise-10-adn: +2/-1 (8 comandos)"
+    }
+  ],
+  "uncommitted_owned_by_others": [
+    "IPTV_v5.4_MAX_AGGRESSION/backend/cmaf_engine/modules/ai_super_resolution_engine.php",
+    "IPTV_v5.4_MAX_AGGRESSION/backup_master_v5.4_phantom_engine/backend/cmaf_engine/modules/ai_super_resolution_engine.php",
+    "IPTV_v5.4_MAX_AGGRESSION/frontend/js/m3u8_ultimate_generator.py",
+    "IPTV_v5.4_MAX_AGGRESSION/frontend/js/vps-ops-panel.js",
+    "IPTV_v5.4_MAX_AGGRESSION/frontend/vps/resolve.php",
+    "IPTV_v5.4_MAX_AGGRESSION/vps/cmaf_engine/modules/ai_super_resolution_engine.php",
+    "IPTV_v5.4_MAX_AGGRESSION/vps/production_mirror/cmaf_engine/cmaf_engine/modules/ai_super_resolution_engine.php",
+    "IPTV_v5.4_MAX_AGGRESSION/vps/production_mirror/cmaf_engine/modules/ai_super_resolution_engine.php",
+    "_vps_stage/tests/regen_headless/fixtures/mini_inherit_6_4K.m3u8",
+    "IPTV_v5.4_MAX_AGGRESSION/frontend/cf_worker/src/index.js.backup (D)",
+    "IPTV_v5.4_MAX_AGGRESSION/frontend/cf_worker/src/index.js.backup.v15 (D)",
+    "IPTV_v5.4_MAX_AGGRESSION/frontend/export-module.BACKUP_LEGACY.js (D)"
+  ],
+  "uncommitted_owned_by_team": [
+    "audit/equipo10_operativo_2026-10-26/**",
+    "audit/EQUIPO_10_OPERATIVO_2026-10-26.zip",
+    "audit/EQUIPO_10_OPERATIVO_2026-10-27.zip",
+    "audit/EQUIPO_10_ENTREGA.json",
+    "audit/EQUIPO_10_ENTREGA_v2.json",
+    "docs/manifestos/EQUIPO_10_ADN_CONTEXTO_2026-10-26.md",
+    ".claude/commands/equipo-10-adn.md",
+    "_inbox_EQUIPO_ADN/** (copia de lectura del paquete ADN, 13 MB)"
+  ],
+  "claim_protocol": {
+    "dir": "_coord/claims/",
+    "filename": "<YYYYMMDDTHHMMSSZ>_<agent>.claim",
+    "fields": ["agent", "scope", "intent", "created_at", "ttl_minutes", "status"],
+    "default_ttl_minutes": 120,
+    "release": "status=released en el mismo archivo (no borrar)"
+  },
+  "known_risks": [
+    "HEAD se mueve (26 commits/24h): no citar archivos vivos; citar blob/commit.",
+    "Nunca git add -A: arrastraria audit/** y docs/** de otro agente.",
+    "Disco 13,5 GB libres: builds/deploy pueden fallar por espacio.",
+    "_vps_stage/lua/ape_rebase_lib.lua en edicion activa (backup before-t111).",
+    "Dos teams AgentTeams activos (equipo-enterprise-10-adn, auditoria-roku-universal-rea)."
+  ]
+}

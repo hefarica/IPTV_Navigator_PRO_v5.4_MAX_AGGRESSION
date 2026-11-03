@@ -1,0 +1,142 @@
+{
+  "_schema": "cierre/1.0",
+  "auditoria": "t17 / ciclo2 · cierre de los 3 HIGH",
+  "auditor": "s9-player-compat",
+  "fecha": "2026-10-27",
+  "snapshot_vigente": "d81ddb3aa4badab054db3344b2b201d0663c4566",
+  "snapshot_ciclo1": "e38a89bb30c02cb41050f34cef43d3711a2b0644",
+  "blob_generador_vigente": {
+    "git_blob": "b7b594467c6ebc2df61b01515bbc288b3a0ee570",
+    "bytes": 741881,
+    "lines": 11688,
+    "sha256_blob_file": "594b38482b714881923b2e6821469668f2fad410ab49bfea1c49506951d145d1",
+    "verificado": "git rev-parse HEAD:<path> + git cat-file -s + ReadAllLines del blob congelado; WT normalizado a LF da el mismo sha256"
+  },
+  "ratificacion_capitan": {
+    "conteo_ratificado": "49 PASS / 68 FAIL / 2 BLOCKED / 15 NOT_RUN = 134 items (S7 null fuera)",
+    "verificado_contra": "gobierno/VALIDACION_DEL_CAPITAN.md:41-58",
+    "verificacion_propia": "suma de 10 dimensiones = 49/68/2/15/134; suma de 5 grupos por blob = 49/68/2/15/134; calificados=7; declarados=144; JSON parsea; 0 discrepancias",
+    "fila_s7_s10_151": "pertenece a la seccion '## 7. S10 · Superficie de auth' (encabezado L145, tabla L147-156) => el retiro del PASS de S10 (2->1) es legitimo y no hay doble resta; base ratificada CONFIRMADA"
+  },
+  "AUD-01": {
+    "high": "AUD-01",
+    "veredicto": "CERRADO",
+    "evidencia": [
+      "7/7 citas re-ancladas y verificadas en b7b59446: :12930/:13008/:19941 no existen en 11.688 L; anclas reales 3001/3079/10005",
+      ":2701/:9634/:10147/:6538 existen con contenido ajeno en d81ddb3 (comentario / '// 8.w - CORTEX TELEMETRY' / _pqMapLeg / EXT-X-APE-AUDIO-DYNAMIC-RANGE:20dB) => re-ancladas a 3079/10005/226/6910",
+      "20 anclas muestreadas con linea y contenido exactos: 226,2664,3001,3004,3005,3006,3032,3042,3053,3079,3080,3081,6885,6890,6895,6910,7163,8026,10005,10157",
+      "conteos reproducidos con la regex declarada: #EXT-X-VERSION:9=3, I-FRAME-STREAM-INF=2 (0 con URI=), EXT-X-MEDIA-SEQUENCE=1 (findIndex), EXT-X-MAP=0, lcev.1.1.1=0, SUPPLEMENTAL-CODECS=3 (comentarios), tokens #EXT=1284 / APE=1177",
+      "F20 re-anclado verificado: 2687 _RFC_SINGLETONS, 2927 '#EXT-X-VERSION'; ape-fallback-resolver.js:612 coincide literal"
+    ],
+    "notas": "Sustancia 6/7 + 1 PARCIAL (F16), tal como declaro la correccion. No se edito council/S1. Observacion menor en CIERRE-04 (denominador de V5: 2 de 4 sitios DATERANGE sin START-DATE, no 1 de 3)."
+  },
+  "AUD-02": {
+    "high": "AUD-02",
+    "veredicto": "CERRADO",
+    "evidencia": [
+      "14 coordenadas HISTORICO_NO_REPRODUCIBLE declaradas; el comentario :7665-7667 verificado AUSENTE del blob nuevo (busqueda textual = 0)",
+      "SIN_BLOB verificado con comando propio: git cat-file -e -> exit 128 en e38a89b y en d81ddb3 para audit_bulletproof_output.m3u8, backend/lista_omega_v5.4.m3u8, m3u8-typed-arrays-ultimate.pre-admission.js y m3u8-typed-arrays-ultimate_BACKUP_PRE_USA.js",
+      "9 mediciones enumeradas (F03,F06,F07,F08,F09-10/10,F10,F15,F18,F22) coinciden en numero con los 4 archivos SIN_BLOB",
+      "artefacto re-medido en disco: Test-Path=True, 459.587 B, 9.315 L, mtime 2026-05-11, VERSION:9 x1, SUPPLEMENTAL-CODECS x10, lcev.1.1.1 x10, I-FRAME x10, EXTINF x10"
+    ],
+    "notas": "El alcance historico queda acotado y etiquetado, sin ambiguedad. El hallazgo SIN_BLOB es mas grave que AUD-02 pero esta publicado, no oculto."
+  },
+  "AUD-03": {
+    "high": "AUD-03",
+    "veredicto": "CERRADO",
+    "evidencia": [
+      "SCORECARD_v2.json parsea (ConvertFrom-Json, exit 0) y sus 10 dimensiones suman 49/68/2/15=134 con items_binarios==pass+fail+blocked+not_run en las 9 dimensiones con tabla; S7 null",
+      "la suma de los 5 grupos por blob da identico 49/68/2/15/134 y declarados=144 (134+7 calificados+3 sin veredicto)",
+      "cada dimension declara blob_medido (9/9 + S5 y S9 con blob_validado) => AUD-05 cerrado en forma",
+      "regla anti-suavizado explicita: PASS calificado/parcial/condicionado/con reserva/WARN no suma como PASS (regla_1 y regla_2 + tokens_calificados_detectados); S8 (4+2) y S10 (1+2) ya no cuentan sus calificados",
+      "denominadores 138 (53 crudo) / 136 (base 51) / 134 (ratificado) distinguidos en ERRATA:71 sin confundirlos",
+      "fila S7_S10:151 verificada dentro de la seccion S10 (L145-156): sin doble resta"
+    ],
+    "notas": "0 discrepancias contra el 49 ratificado. Objecion externa al scorecard: la documentacion obligatoria sigue publicando 51 (CIERRE-02), no el v2."
+  },
+  "VERSION:9_EN_ARTEFACTO": {
+    "high": "VERSION:9 en audit_bulletproof_output.m3u8",
+    "veredicto": "ABIERTO_ARTEFACTO_NO_VERSIONADO",
+    "evidencia": [
+      "Test-Path=True; 459.587 B; mtime 2026-05-11 01:41; 9.315 lineas; git cat-file -e -> exit 128 en e38a89b y d81ddb3 (untracked)",
+      "contenido: #EXT-X-VERSION:9 x1, SUPPLEMENTAL-CODECS x10, lcev.1.1.1 x10, #EXT-X-I-FRAME-STREAM-INF x10, #EXTINF x10",
+      "MEDICION_2026-10-27.md:71 afirma 'no existe en HEAD ni en disco' y :82 resume '2 CERRADOS' => refutado; el cierre de t14 era por premisa falsa (metodo: Get-ChildItem -Filter *bulletproof* no cubrio IPTV_v5.4_MAX_AGGRESSION/)"
+    ],
+    "notas": "Lo cerrado es SUPPLEMENTAL-CODECS/lcev EN EL EMISOR (0 ocurrencias en b7b59446). Lo del artefacto sigue abierto y no es evidencia de commit, pero si de disco mientras el archivo exista. Correccion ya emitida por el capitan (VALIDACION_DEL_CAPITAN.md, Apendice 2) y verificada aqui con comandos propios."
+  },
+  "hallazgos": [
+    {
+      "id": "CIERRE-01",
+      "control": "cierre/vigencia t14",
+      "severidad": "high",
+      "evidencia": "MEDICION_2026-10-27.md:71,82 vs Test-Path=True + conteos del artefacto (459.587 B, 9.315 L, VERSION:9 x1, lcev x10) + git cat-file -e exit 128 en ambos revs",
+      "veredicto": "ABIERTO_ARTEFACTO_NO_VERSIONADO"
+    },
+    {
+      "id": "CIERRE-02",
+      "control": "consistencia documental / ratificacion",
+      "severidad": "medium",
+      "evidencia": ".claude/commands/equipo-10-adn.md:62,107,163 y docs/manifestos/EQUIPO_10_ADN_CONTEXTO_2026-10-26.md:57,103 publican 51/136; la ratificacion (gobierno/VALIDACION_DEL_CAPITAN.md:56) y SCORECARD_v2 dicen 49/134",
+      "veredicto": "ABIERTO"
+    },
+    {
+      "id": "CIERRE-03",
+      "control": "vigencia del paquete 26-oct (X1/X2)",
+      "severidad": "medium",
+      "evidencia": "HEAD d81ddb3 _vps_stage/lua/ape_header.lua = 8.088 B sha256 23b25b03 y ape_uri_rebase.lua = 9.930 B sha256 393635c2 vs produccion 2.210 B a15e1fe3 / 6.043 B 1d456a46; ape_wake_on_manifest.lua 2.284 B d9c6b65d identico => H02/H03 y la fila 'descartado' de RIESGOS_TOP §3 son falsas en el snapshot vigente",
+      "veredicto": "ABIERTO"
+    },
+    {
+      "id": "CIERRE-04",
+      "control": "precision de la correccion AUD-01 (V5/F15)",
+      "severidad": "low",
+      "evidencia": "AUD-01_02_ANCLAS.md:33 dice '1 de 3 plantillas sin START-DATE'; medido: 3032 y 9880 sin START-DATE (2 de 4 sitios de emision), 3080-3081 con. t14:74 marca :9880 'NO VERIFICABLE', pero drAttrs (9870-9878) nunca empuja START-DATE => es determinable estaticamente",
+      "veredicto": "ABIERTO"
+    },
+    {
+      "id": "CIERRE-05",
+      "control": "coordenada de blob S6",
+      "severidad": "info",
+      "evidencia": "SCORECARD_v2.json:154 etiqueta S6 como 'WT congelado 23b25b03/393635c2'; git rev-parse + sha256 muestran que esos blobs son ahora HEAD d81ddb3 => la etiqueta debe subir a HEAD (no cambian numeros)",
+      "veredicto": "ACEPTADO"
+    },
+    {
+      "id": "CIERRE-06",
+      "control": "anclas historicas en documentacion del 26-oct",
+      "severidad": "info",
+      "evidencia": "docs/manifestos/EQUIPO_10_ADN_CONTEXTO_2026-10-26.md:62,65 y README citan anclas de e38a89b (:2764/:9617/:2355/:2690/:2740 y :5949-5950) sin marcarlas historicas; bajo d81ddb3 corresponden a 3079/10005/2664/3001/3053 y 6281/9007",
+      "veredicto": "ABIERTO"
+    }
+  ],
+  "vigencia_paquete_26oct": {
+    "sigue_valido": [
+      "los 10 veredictos por dimension (S1 FAIL, S2 FAIL, S3 WARN, S4 WARN, S5 FAIL, S6 PASS_CONDICIONADO, S7 WARN/BLOCKED, S8 WARN, S9 FAIL, S10 FAIL)",
+      "los backlogs: toxicos 72+6 y DNT 27 (C11-C13), 9 materiales secretos (C14), 2598/2574 credenciales (C15), QoE fabricada (S5), wg0.conf no desplegable (S8)",
+      "la regla 6 (PASS calificado no suma) y el conteo ratificado 49/68/2/15=134"
+    ],
+    "quedo_historico": [
+      "conteo 53 (v1) y 51 (pre-ratificacion): usar 49",
+      "H02/H03 y X1/X2 (HEAD == produccion): invertidos en d81ddb3 (2 de 3 fases divergen)",
+      "coordenadas del generador c1277bdf / 11.144 L: sustituidas por b7b59446 / 11.688 L",
+      "anclas de S1 en e38a89b: sustituidas por las de AUD-01_02_ANCLAS.md"
+    ],
+    "debe_reemitirse": [
+      "docs/manifestos/EQUIPO_10_ADN_CONTEXTO_2026-10-26.md §2 y .claude/commands/equipo-10-adn.md (51 -> 49)",
+      "CONSOLIDADO §4 H02/H03 y RIESGOS_TOP §3 fila 'descartado' (X1/X2 invertido)",
+      "etiqueta de blob de S6 en SCORECARD_v2 (WT -> HEAD d81ddb3)"
+    ]
+  },
+  "veredicto_global_cierre": {
+    "high_originales_cerrados": "3/3 (AUD-01, AUD-02, AUD-03)",
+    "high_nuevos_abiertos": 1,
+    "medio_abiertos": 2,
+    "bajo_info": 3,
+    "paquete_re_certificable_como_pass": false,
+    "motivo": "Queda 1 HIGH (artefacto no versionado con VERSION:9/lcev) y 2 MEDIUM (documentacion en 51; X1/X2 invertido). Los 3 HIGH originales estan cerrados con ancla verificable, pero el producto sigue con las violaciones RFC de S1 abiertas en el emisor vigente (VERSION:9 en 2664/3001/3053; I-FRAME sin URI= en 3079/10005; TARGETDURATION+PART-INF+SERVER-CONTROL en 3004-3006)."
+  },
+  "no_verificado": [
+    "nginx -t / VPS / systemd / adb -> NOT_RUN/BLOCKED (host Windows; iptv-vps-touch-nothing)",
+    "reproduccion real en dispositivo -> NOT_RUN (sin dispositivo)",
+    "ejecucion del generador y parseo con hls.js/ffprobe -> NOT_RUN (auditoria read-only)"
+  ]
+}

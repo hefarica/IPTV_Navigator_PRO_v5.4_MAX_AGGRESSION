@@ -1,0 +1,366 @@
+{
+  "schema": "equipo10-operativo/entrega/v1",
+  "generado_por": "s1-hls-architect (t13 / i5, integracion)",
+  "fecha_utc": "2026-10-26T15:29:09Z",
+  "snapshot_git_head": "e38a89bb30c02cb41050f34cef43d3711a2b0644",
+  "veredicto_global": {
+    "valor": "FAIL",
+    "autoridad": "auditoria/AUDITORIA_INDEPENDIENTE.md (t12, s9-player-compat, no-autor)",
+    "motivo": "3 hallazgos HIGH abiertos (AUD-01 trazabilidad S1, AUD-02 alcance historico subdeclarado, AUD-03 doble conteo PASS en S8); 0 blocker",
+    "controles": {
+      "C1": "PASS",
+      "C2": "FAIL",
+      "C3": "FAIL",
+      "C4": "PASS condicionado",
+      "C5": "PASS",
+      "C6": "PASS",
+      "C7": "PASS",
+      "C8": "PASS"
+    },
+    "severidad": {
+      "blocker": 0,
+      "high": 3,
+      "medium": 3,
+      "low": 4,
+      "info": 3
+    },
+    "certificable_como_PASS": false
+  },
+  "correcciones_declaradas": [
+    "AUD-03: SCORECARD sobrecuenta PASS en S8 (pass 6 + parcial 2 sobre 4 PASS literales + 2 calificados). Bajo regla anti-suavizado el global pasa de 53 a 51 PASS. SCORECARD.json se conserva tal cual con la errata declarada.",
+    "AUD-05: el total 138 suma dimensiones medidas en blobs distintos (S3 WT 20ac4b26, S6 WT 23b25b03/393635c2, S9 WT vivo) junto a HEAD; viola REGLA_DE_ORIGEN:17. README publica totales agrupados por blob, no una suma unica.",
+    "AUD-01/AUD-02: council/S1_hls_m3u8.md cita lineas 12.930/13.008/19.941 inexistentes en todo blob conservado. La sustancia se sostiene en HEAD (:2764 y :9617 I-FRAME sin URI; VERSION:9 en :2355/:2690/:2740; TARGETDURATION+PART-INF+SERVER-CONTROL en :2693-2695) pero la coordenada no es reproducible. CONSOLIDADO:38 subdeclara el alcance historico.",
+    "AUD-06: council/S9_player_compat.md usa una coordenada WT vivo no reproducible; validado por el capitan con 2 correcciones (SESSION-DATA emitido en HEAD:2458; Upgrade-Insecure-Requests 5/10).",
+    "S5 cerrado como FAIL validado por tercero: t12 (no autor) confirmo sus 2 CRITICAL (S5-01 metricas fabricadas en blob HEAD; S5-02 computeStubQoE consumido como QoE REAL + modulos no desplegados). Supera el PENDIENTE_VALIDACION del SCORECARD."
+  ],
+  "agentes": [
+    {
+      "member_id": "cf20a4e5-c2f8-4fc9-8acf-42a97934a4c1",
+      "agente": "s1-hls-architect",
+      "disciplinas": [
+        "S1"
+      ],
+      "tareas": [
+        "t1",
+        "t13"
+      ],
+      "runtime_declarado": {
+        "provider": "deepseek-official",
+        "model": "deepseek-flash",
+        "effort": "high",
+        "estado": "declarado por el runtime; calidad y disponibilidad NO verificadas por el miembro"
+      }
+    },
+    {
+      "member_id": "40727fab-fa65-41fd-a327-4f6b26a2c1bd",
+      "agente": "s2-llhls-cmaf",
+      "disciplinas": [
+        "S2"
+      ],
+      "tareas": [
+        "t2",
+        "t10"
+      ],
+      "runtime_declarado": {
+        "provider": "deepseek-official",
+        "model": "deepseek-flash",
+        "effort": "high",
+        "estado": "declarado por el runtime; calidad y disponibilidad NO verificadas por el miembro"
+      }
+    },
+    {
+      "member_id": "5189261f-2b3f-45ae-b42c-0cffd4d84283",
+      "agente": "s3-codec-hdr",
+      "disciplinas": [
+        "S3",
+        "S4"
+      ],
+      "tareas": [
+        "t3"
+      ],
+      "runtime_declarado": {
+        "provider": "deepseek-official",
+        "model": "deepseek-flash",
+        "effort": "high",
+        "estado": "declarado por el runtime; calidad y disponibilidad NO verificadas por el miembro"
+      }
+    },
+    {
+      "member_id": "1ed5acf7-88d4-49db-b6fe-f97b98f862c6",
+      "agente": "s5-qoe-qos",
+      "disciplinas": [
+        "S5"
+      ],
+      "tareas": [
+        "t4",
+        "t11"
+      ],
+      "runtime_declarado": {
+        "provider": "deepseek-official",
+        "model": "deepseek-flash",
+        "effort": "high",
+        "estado": "declarado por el runtime; calidad y disponibilidad NO verificadas por el miembro"
+      }
+    },
+    {
+      "member_id": "2cb509e3-6ef8-448e-950f-f50dd93fa15b",
+      "agente": "s6-nginx-lua",
+      "disciplinas": [
+        "S6"
+      ],
+      "tareas": [
+        "t5"
+      ],
+      "runtime_declarado": {
+        "provider": "deepseek-official",
+        "model": "deepseek-flash",
+        "effort": "high",
+        "estado": "declarado por el runtime; calidad y disponibilidad NO verificadas por el miembro"
+      }
+    },
+    {
+      "member_id": "c73adf1e-a1d1-4e89-ac0e-bc80d527f18d",
+      "agente": "s7-sre-secops",
+      "disciplinas": [
+        "S7",
+        "S10"
+      ],
+      "tareas": [
+        "t6",
+        "t9"
+      ],
+      "runtime_declarado": {
+        "provider": "deepseek-official",
+        "model": "deepseek-flash",
+        "effort": "high",
+        "estado": "declarado por el runtime; calidad y disponibilidad NO verificadas por el miembro"
+      }
+    },
+    {
+      "member_id": "36c9396d-d3f0-48c1-9275-b3161a0d6cae",
+      "agente": "s8-net-tcp-quic",
+      "disciplinas": [
+        "S8"
+      ],
+      "tareas": [
+        "t7"
+      ],
+      "runtime_declarado": {
+        "provider": "deepseek-official",
+        "model": "deepseek-flash",
+        "effort": "high",
+        "estado": "declarado por el runtime; calidad y disponibilidad NO verificadas por el miembro"
+      }
+    },
+    {
+      "member_id": "ddc2dcac-1752-4dae-a6b2-c53739c4a609",
+      "agente": "s9-player-compat",
+      "disciplinas": [
+        "S9"
+      ],
+      "tareas": [
+        "t8",
+        "t12"
+      ],
+      "runtime_declarado": {
+        "provider": "deepseek-official",
+        "model": "deepseek-flash",
+        "effort": "high",
+        "estado": "declarado por el runtime; calidad y disponibilidad NO verificadas por el miembro"
+      }
+    }
+  ],
+  "tareas": [
+    {
+      "id": "t1",
+      "seed": "c1",
+      "owner": "s1-hls-architect",
+      "subject": "Council S1 · HLS/M3U8: tags realmente emitidos vs RFC 8216 (solo lectura)",
+      "entregable": "council/S1_hls_m3u8.md",
+      "estado_en_adn_t10": "completed",
+      "estado_final": "completed"
+    },
+    {
+      "id": "t2",
+      "seed": "c2",
+      "owner": "s2-llhls-cmaf",
+      "subject": "Council S2 · LL-HLS y CMAF: lo declarado vs lo implementado (solo lectura)",
+      "entregable": "council/S2_llhls_cmaf.md",
+      "estado_en_adn_t10": "completed",
+      "estado_final": "completed"
+    },
+    {
+      "id": "t3",
+      "seed": "c3",
+      "owner": "s3-codec-hdr",
+      "subject": "Council S3+S4 · Codec RFC 6381, Ley Nivel<->Resolucion y senalizacion HDR/color (solo lectura)",
+      "entregable": "council/S3_S4_codec_color_hdr.md",
+      "estado_en_adn_t10": "completed",
+      "estado_final": "completed"
+    },
+    {
+      "id": "t4",
+      "seed": "c4",
+      "owner": "s5-qoe-qos",
+      "subject": "Council S5 · Telemetria QoE: metricas realmente calculadas vs declaradas (solo lectura)",
+      "entregable": "council/S5_qoe_telemetria.md",
+      "estado_en_adn_t10": "completed",
+      "estado_final": "completed"
+    },
+    {
+      "id": "t5",
+      "seed": "c5",
+      "owner": "s6-nginx-lua",
+      "subject": "Council S6 · nginx/OpenResty Lua: fases reales, autopista y deriva repo<->desplegado (solo lectura)",
+      "entregable": "council/S6_nginx_lua.md",
+      "estado_en_adn_t10": "completed",
+      "estado_final": "completed"
+    },
+    {
+      "id": "t6",
+      "seed": "c6",
+      "owner": "s7-sre-secops",
+      "subject": "Council S7+S10 · SRE (systemd/watchdogs) y seguridad (secretos, auth, headers toxicos)",
+      "entregable": "council/S7_S10_sre_seguridad.md",
+      "estado_en_adn_t10": "completed",
+      "estado_final": "completed"
+    },
+    {
+      "id": "t7",
+      "seed": "c7",
+      "owner": "s8-net-tcp-quic",
+      "subject": "Council S8 · Red: BBR/initcwnd/MTU/HTTP2-3 y cifras sin medicion (solo lectura)",
+      "entregable": "council/S8_red_tcp_quic.md",
+      "estado_en_adn_t10": "completed",
+      "estado_final": "completed"
+    },
+    {
+      "id": "t8",
+      "seed": "c8",
+      "owner": "s9-player-compat",
+      "subject": "Council S9 · Compatibilidad de player: headers, tags y matriz real (solo lectura)",
+      "entregable": "council/S9_player_compat.md",
+      "estado_en_adn_t10": "completed",
+      "estado_final": "completed"
+    },
+    {
+      "id": "t9",
+      "seed": "i1",
+      "owner": "s7-sre-secops",
+      "subject": "Implementacion · Harness ejecutable real con exit codes (PASS/FAIL/NOT_RUN)",
+      "entregable": "verificacion/HARNESS.json + verificacion/VERIFICACION.md + verificacion/run_checks.ps1 + snapshot/",
+      "estado_en_adn_t10": "in_progress",
+      "estado_final": "completed"
+    },
+    {
+      "id": "t10",
+      "seed": "i2",
+      "owner": "s2-llhls-cmaf",
+      "subject": "Implementacion · ADN operativo real: roster, contrato de orden y protocolo Council (sin ficcion)",
+      "entregable": "adn/EQUIPO_10_OPERATIVO.json + adn/CONTRATO_DE_ORDEN.md + adn/PROTOCOLO_COUNCIL.md + adn/REEMPLAZO_DE_FICCIONES.md",
+      "estado_en_adn_t10": "in_progress",
+      "estado_final": "completed"
+    },
+    {
+      "id": "t11",
+      "seed": "i3",
+      "owner": "s5-qoe-qos",
+      "subject": "Implementacion · Consolidado del Council y scorecard por dimension S1-S10",
+      "entregable": "consolidado/CONSOLIDADO.md + consolidado/SCORECARD.json",
+      "estado_en_adn_t10": "pending",
+      "estado_final": "completed"
+    },
+    {
+      "id": "t12",
+      "seed": "i4",
+      "owner": "s9-player-compat",
+      "subject": "Auditoria independiente · trazabilidad de evidencia, cero ficcion y cero secretos",
+      "entregable": "auditoria/AUDITORIA_INDEPENDIENTE.md + auditoria/HALLAZGOS.json",
+      "estado_en_adn_t10": "pending",
+      "estado_final": "completed"
+    },
+    {
+      "id": "t13",
+      "seed": "i5",
+      "owner": "s1-hls-architect",
+      "subject": "Integracion · Paquete de entrega con manifest SHA-256 reproducible",
+      "entregable": "paquete con manifest SHA-256 (ruta exacta no declarada en team.json:1128 -> no_verificado_por_el_miembro)",
+      "estado_en_adn_t10": "pending",
+      "estado_final": "completed"
+    }
+  ],
+  "veredictos_finales_por_disciplina": {
+    "S1": "FAIL",
+    "S2": "FAIL",
+    "S3": "WARN",
+    "S4": "WARN",
+    "S5": "FAIL (validado por tercero t12)",
+    "S6": "PASS_CONDICIONADO",
+    "S7": "WARN (repo) / BLOCKED (operacion 365 d)",
+    "S8": "WARN",
+    "S9": "FAIL (ratificado por el capitan)",
+    "S10": "FAIL"
+  },
+  "totales": {
+    "items_con_veredicto": 138,
+    "pass": 51,
+    "fail": 68,
+    "blocked": 2,
+    "not_run": 15,
+    "nota": "pass 53 declarado en SCORECARD.json -> 51 tras AUD-03; agrupacion por blob en README seccion 3",
+    "dimensiones_sin_tabla": "S7 (counts null, exclusion aceptada por el capitan)"
+  },
+  "entregables": {
+    "raiz": "audit/equipo10_operativo_2026-10-26/",
+    "archivos_totales": 44,
+    "bytes_totales": 3992305.0,
+    "por_directorio": {
+      "council": 8,
+      "verificacion": 3,
+      "snapshot": 21,
+      "adn": 4,
+      "consolidado": 4,
+      "auditoria": 2,
+      "gobierno": 1,
+      "raiz_paquete": "README.md + MANIFEST_SHA256.json"
+    }
+  },
+  "paquete": {
+    "zip": "audit/EQUIPO_10_OPERATIVO_2026-10-26.zip",
+    "zip_bytes": 1041315,
+    "zip_sha256": "6e7ecb24951f017af52858d7bf22fe3f1ee46c0640b896f1a612b9a2c1d0bfe0",
+    "manifest": "audit/equipo10_operativo_2026-10-26/MANIFEST_SHA256.json",
+    "manifest_sha256": "b1f020b27bc78e52c3093bf2033751130e505af2b4b971475d3016bdb9fa6329",
+    "readme_sha256": "1ae5c3f16a6218a12eb812ebc40e0c3bce05cda8e1ef5533d896ca2e56a21a1a",
+    "leeme_ubicacion": "verificacion/LEEME_UBICACION.md",
+    "leeme_sha256": "1f87d6321280557b1d2398c25e9f84654917b16a252c06d9d7e0a1694d48ea03",
+    "compresion": "Compress-Archive -CompressionLevel Optimal"
+  },
+  "verificacion_propia": {
+    "metodo": "Expand-Archive a %TEMP% + Get-FileHash por archivo, comparado contra MANIFEST_SHA256.json",
+    "archivos_en_manifest": 44,
+    "archivos_extraidos": 45,
+    "nota": "extraidos = manifest + MANIFEST_SHA256.json, que se autoexcluye y se verifico aparte",
+    "faltantes": 0,
+    "hashes_distintos": 0,
+    "sobrantes_no_declarados": 0,
+    "manifest_en_zip_igual_a_disco": true,
+    "resultado": "PASS"
+  },
+  "comando_reverificacion": "cd <raiz_repo>; pwsh -NoProfile -File audit/equipo10_operativo_2026-10-26/verificacion/run_checks.ps1; $LASTEXITCODE",
+  "comando_verificar_paquete": "cd <raiz_repo>; $m=Get-Content audit/equipo10_operativo_2026-10-26/MANIFEST_SHA256.json -Raw|ConvertFrom-Json; $m.archivos|%{ $h=(Get-FileHash (\"audit/equipo10_operativo_2026-10-26/\"+$_.path) -Algorithm SHA256).Hash.ToLower(); \"{0} {1}\" -f $_.path,($h -eq $_.sha256) }",
+  "exclusiones_declaradas": [
+    "MANIFEST_SHA256.json no se lista a si mismo; se verifica contra su hash en este archivo",
+    "EQUIPO_10_ENTREGA.json vive fuera del ZIP porque contiene el hash del ZIP",
+    "El ZIP no se contiene a si mismo"
+  ],
+  "no_verificado": [
+    "Produccion/VPS: BLOCKED por iptv-vps-touch-nothing",
+    "Reproduccion en dispositivos: NOT_RUN, sin dispositivo",
+    "nginx -t / luac -p: NOT_RUN, host Windows sin nginx ni Lua",
+    "Ejecucion del generador en navegador: NOT_RUN",
+    "Hash completo de council/S5_qoe_telemetria.md: NO VERIFICADO (solo prefijo 583C36D6)",
+    "Contenido de S9: validado por el capitan, no por t12 (recusacion por autoria)",
+    "Las 13 tareas del CONSOLIDADO son backlog: ninguna ejecutada"
+  ]
+}

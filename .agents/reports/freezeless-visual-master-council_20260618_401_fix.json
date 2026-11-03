@@ -1,0 +1,44 @@
+{
+  "council": "freezeless-visual-master-council",
+  "date": "2026-06-18",
+  "focus": "revisar errores 401 y solucionarlo",
+  "scope": "quick",
+  "mode": "generate",
+  "verdict": "PASS",
+  "root_cause": "client-side enroll secret mismatch (APK secret != VPS env[APE_ENROLL_SECRET]); 401 was auth working as designed, server healthy",
+  "evidence": {
+    "ara_enroll_bogus_secret": "401 BAD_SECRET",
+    "ara_enroll_correct_secret": "400 BAD_PUBKEY (auth passed)",
+    "ara_events_no_bearer": "401 UNAUTHORIZED",
+    "ara_events_correct_bearer": "200 SSE stream (auth passed)",
+    "nginx_includes_ara_snippets": true,
+    "env_keys_present": ["APE_ENROLL_SECRET", "ARA_TOKEN"],
+    "enroll_worker_active": true,
+    "apk_running_in_logcat": false
+  },
+  "fix": {
+    "build_gradle_kts": "buildConfig=true + buildConfigField ENROLL_SECRET from local.properties->env->placeholder",
+    "EnrollClient_kt": "use BuildConfig.ENROLL_SECRET; removed hardcoded literal",
+    "local_properties": "provisioned ape.enroll.secret (gitignored, value not printed)",
+    "ara_events_token": "no code change; clients already send Bearer; provision device token file"
+  },
+  "pillars": {
+    "freezeless": "no impact (ARA plane orthogonal to playback; no toxic headers, no URL/codec change)",
+    "visual_master": "no impact",
+    "security_s10": "secret removed from tracked source; 0 leaks repo-wide (only in gitignored local.properties)",
+    "vps_touch_nothing": "read-only diagnostics only; 0 VPS modifications"
+  },
+  "verification": {
+    "secret_only_in_local_properties": true,
+    "repo_wide_leak_scan": "0 leaks",
+    "enrollclient_uses_buildconfig": true,
+    "gradle_wiring_present": true,
+    "pending_user": ["gradlew assembleDebug", "provision device /sdcard/ape/token = ARA_TOKEN for /ara/events"]
+  },
+  "hygiene_note": "staged changes (conviva-event.php/-23, conviva_qoe_server.php/-1, visual_profiles.json/-1) are an independent content_mode_delta rollback; do NOT sweep into the 401 fix commit",
+  "files_changed": [
+    "IPTV_v5.4_MAX_AGGRESSION/android/ape-crystal-agent/app/build.gradle.kts",
+    "IPTV_v5.4_MAX_AGGRESSION/android/ape-crystal-agent/app/src/main/java/com/ape/crystalagent/EnrollClient.kt",
+    "IPTV_v5.4_MAX_AGGRESSION/android/ape-crystal-agent/local.properties (gitignored)"
+  ]
+}

@@ -1,0 +1,93 @@
+[
+  {
+    "id": "AUD-01",
+    "control": "C2-trazabilidad",
+    "severidad": "high",
+    "evidencia": "council/S1_hls_m3u8.md:38,40,43,45 cita m3u8-typed-arrays-ultimate.js:2701,9634,10147,12930,13008,19941,6538. Verificado contra snapshot/m3u8-typed-arrays-ultimate.js.HEAD.blob (707.323 B / 11.144 L): :2701=SESSION-DATA audio, :9634=EXT-X-APE-LLHLS-BLOCK-RELOAD, :10147=buildCredentialsMap, :6538=comentario; :12930/:13008/:19941 NO EXISTEN (max 11.144). Sustancia confirmada por otra via: EXT-X-I-FRAME-STREAM-INF en HEAD:2764 y :9617 sin URI=; VERSION:9 en HEAD:2355/:2690/:2740; TARGETDURATION:2+PART-INF+SERVER-CONTROL en HEAD:2693-2695.",
+    "veredicto": "ABIERTO"
+  },
+  {
+    "id": "AUD-02",
+    "control": "C2-trazabilidad",
+    "severidad": "high",
+    "evidencia": "consolidado/CONSOLIDADO.md:38 y :41 afirman que solo S1-F01/F02 provienen del WT histórico de 21.581 L no conservado. Hay >=6 citas de S1 (12930,13008,19941,9634,10147,6538) que solo caben en ese render o no coinciden con HEAD ni con el WT actual (11.644 L): el alcance 'histórico' está subdeclarado.",
+    "veredicto": "ABIERTO"
+  },
+  {
+    "id": "AUD-03",
+    "control": "C7-integridad",
+    "severidad": "high",
+    "evidencia": "consolidado/SCORECARD.json:170-178 declara S8 counts pass=6 y ademas counts_extra.parcial=2 con items_con_veredicto=9; la tabla S8_red_tcp_quic.md:27-35 tiene 9 filas = 4 PASS literales + 1 'PASS con drift' + 1 'PASS parcial' + 3 FAIL => doble conteo de los 2 calificados. Total global pass=53 deberia ser 51 con la regla anti-suavizado. Ademas CONSOLIDADO.md:54 ('PASS con reserva -> PASS + marca') y :57 ('no suma como PASS') se contradicen; S6/S9 excluyen su parcial, S8 lo incluye.",
+    "veredicto": "ABIERTO"
+  },
+  {
+    "id": "AUD-04",
+    "control": "C1-muestreo",
+    "severidad": "medium",
+    "evidencia": "CONSOLIDADO.md:96 (H07) afirma 2.574 URLs Xtream con user:pass en frontend/channels_map.json. El patron declarado en S7_S10_sre_seguridad.md:162 es https?://host:port/u/p/id: git grep -c sobre HEAD da 2.582. Pero el HEAD blob (72.839.863 B) tiene 9.293 canales, TODOS con credenciales embebidas en url_m3u8 (18.586 campos contando url_ts), 3 servidores y 3 pares user/pass. El consolidado omite el denominador y subestima 3,6x el pasivo.",
+    "veredicto": "ABIERTO"
+  },
+  {
+    "id": "AUD-05",
+    "control": "C3-snapshot",
+    "severidad": "medium",
+    "evidencia": "CONSOLIDADO.md:63-77 suma 138 items y 53 pass mezclando blobs: S6 medido sobre WT 23b25b03/393635c2, S3 sobre WT 20ac4b26, S9 sobre WT vivo, y S1/S2/S8/S10 sobre HEAD tree. snapshot/REGLA_DE_ORIGEN.md:17 prohibe sumar conteos entre blobs distintos. El aviso de CONSOLIDADO.md:164 (granularidad heterogenea) no cubre la mezcla de blobs.",
+    "veredicto": "ABIERTO"
+  },
+  {
+    "id": "AUD-06",
+    "control": "C3-snapshot",
+    "severidad": "medium",
+    "evidencia": "consolidado/SCORECARD.json:199 declara para S9 el blob 'WT vivo (S9 declara citar el worktree)', coordenada no reproducible (el WT muto a 750.884 B / 11.644 L / cc48195b). El contenido lo valida el capitan (autor recusado), pero la coordenada incumple REGLA_DE_ORIGEN:16 regla 1 y debe reanclarse a HEAD c1277bdf.",
+    "veredicto": "ABIERTO"
+  },
+  {
+    "id": "AUD-07",
+    "control": "C2-trazabilidad",
+    "severidad": "low",
+    "evidencia": "CONSOLIDADO.md:90 (H01: git rev-parse/git status), :93 (H04: git ls-tree) y :95 (H06: 'medicion de hoy') no apuntan a informe S* ni a check_id del HARNESS; :91-92 (H02/H03) apuntan a VPS_REALITY_MEASURED_2026-10-25.md:80-81 (documento de tercero). Verificados por mi cuenta (sha256 de blobs), pero la regla de trazabilidad exige puntero a informe o check_id.",
+    "veredicto": "ABIERTO"
+  },
+  {
+    "id": "AUD-08",
+    "control": "C1-muestreo",
+    "severidad": "low",
+    "evidencia": "CONSOLIDADO.md:90 (H06) y :39 declaran el WT 'actual' como 748.145 B / 11.594 L / c1301f1f / +455-5. Medido en esta auditoria: 750.884 B / 11.644 L / cc48195b6d2975fafc99f32de6eb74fc978c723251845b3349b16ce92c76cb7b / git diff --numstat +505-5. El WT siguio mutando (X10 correcto); el hecho esta redactado como actual.",
+    "veredicto": "ABIERTO"
+  },
+  {
+    "id": "AUD-09",
+    "control": "C1-muestreo",
+    "severidad": "low",
+    "evidencia": "CONSOLIDADO.md:93 (H04) dice que vps/nginx/lua/ contiene 'solo ape_wake_on_manifest.lua'. git ls-tree -r e38a89b muestra 29 archivos en ese directorio. La lectura correcta es: de las 3 fases desplegadas (ape_header, ape_uri_rebase, ape_wake_on_manifest) solo la tercera esta en vps/nginx/lua/; las otras dos solo existen en _vps_stage/lua/.",
+    "veredicto": "ABIERTO"
+  },
+  {
+    "id": "AUD-10",
+    "control": "C3-snapshot",
+    "severidad": "low",
+    "evidencia": "CONSOLIDADO.md:41 declara S1-F01 historico y superado ('sus cifras no entran en ningun total como estado vigente'), pero CONSOLIDADO.md:65 cuenta S1 con fail=12 derivado de la tabla F01-F22 que incluye F01. Verdicto de S1 no cambia (11 FAIL vs 8 PASS seguiria siendo FAIL), pero el conteo incluye un item superado.",
+    "veredicto": "ABIERTO"
+  },
+  {
+    "id": "AUD-11",
+    "control": "C4-integridad",
+    "severidad": "info",
+    "evidencia": "snapshot/REPORT_HASHES.json:39-45 declara para S5_qoe_telemetria.md solo el prefijo 583C36D6 (tipo prefijo_8); el hash real recalculado es 583c36d66ab2fdebbd1f55f732ec5269b27a8fe71e2c04e967f08ebed31c1abb y el prefijo coincide. El sufijo no es verificable desde ningun artefacto del repo => NO VERIFICADO (ni PASS ni FAIL). Los otros 7 informes coinciden 8/8 con REPORT_HASHES (bytes incluidos).",
+    "veredicto": "NO_VERIFICADO"
+  },
+  {
+    "id": "AUD-12",
+    "control": "C6-secretos",
+    "severidad": "info",
+    "evidencia": "Barrido de audit/equipo10_operativo_2026-10-26/** (45 archivos): 0 PEM, 0 PrivateKey/PresharedKey con valor, 0 credenciales Xtream copiadas (solo conteos), 1 --auth redactado en S7_S10:50. Unica constante sensible: frontend/vps/resolve.php:49 'const TOKEN_SECRET = ***' (33 caracteres, solo mayusculas, sin digitos ni minusculas) copiada en los .blob de snapshot: clasificada NO secreto (identificador simbolico; las claves WG reales son base64 mixto de 44). Valor nunca impreso.",
+    "veredicto": "ACEPTADO"
+  },
+  {
+    "id": "AUD-13",
+    "control": "C5-ficcion",
+    "severidad": "info",
+    "evidencia": "CONSOLIDADO.md:108-121 registra X1-X10 con columna 'Causa medida'; ninguna se resolvio por decreto (X2 queda como disenso abierto). Barrido de ficcion: 0 CV/persona/certificacion/experiencia/PhD/seniority en el entregable; las unicas menciones son negaciones (CONTRATO_DE_ORDEN.md:62, REEMPLAZO_DE_FICCIONES.md:65,79); 0 metricas sin fuente en el consolidado; despliegues no ejecutados declarados como NO/BLOCKED/NOT_RUN.",
+    "veredicto": "ACEPTADO"
+  }
+]

@@ -1,0 +1,13 @@
+[Unit]
+Description=APE SoC allowlist reconciler — cada 15 min y 3 min tras el arranque
+Documentation=repo:docs/rea/16_SOC_ALLOWLIST_RECONCILER.md
+
+[Timer]
+OnBootSec=3min
+OnUnitActiveSec=15min
+AccuracySec=30s
+# Sin Persistent=: es un reconciliador periódico, no una tarea con catch-up.
+Unit=ape-soc-allow.service
+
+[Install]
+WantedBy=timers.target

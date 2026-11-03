@@ -1,0 +1,88 @@
+{
+  "generated_at": "2026-10-26T04:31:18.5422743-05:00",
+  "method": "hash_real = Get-FileHash -Algorithm SHA256 del archivo en disco. hash_declarado = lo que el autor declaró al captain (única fuente disponible: NINGUN informe contiene su propio SHA-256 dentro del .md, verificado con regex [0-9a-fA-F]{64} → 0 matches en los 8).",
+  "compare_rule": "si el declarado tiene 64 hex → igualdad exacta; si es un prefijo → StartsWith sobre el hash real en minúsculas.",
+  "policy": "coincide=false NO se corrige editando el informe ajeno (prohibido): se reporta aquí para que el captain decida.",
+  "reports": [
+    {
+      "informe": "S1_hls_m3u8.md",
+      "hash_declarado": null,
+      "hash_declarado_origen": null,
+      "hash_declarado_tipo": null,
+      "hash_real": "ce5edb574414d65d31aa3f11ad4393261a13181d36c32fafdeb1de3b63f1699f",
+      "coincide": null,
+      "mtime": "2026-10-26T04:14:52.6589357-05:00",
+      "bytes": 15856
+    },
+    {
+      "informe": "S2_llhls_cmaf.md",
+      "hash_declarado": null,
+      "hash_declarado_origen": null,
+      "hash_declarado_tipo": null,
+      "hash_real": "135259231def63c01b3eada00b33788a9c7dc896890159fff09b246908b6abd6",
+      "coincide": null,
+      "mtime": "2026-10-26T04:18:25.8158154-05:00",
+      "bytes": 21886
+    },
+    {
+      "informe": "S3_S4_codec_color_hdr.md",
+      "hash_declarado": null,
+      "hash_declarado_origen": null,
+      "hash_declarado_tipo": null,
+      "hash_real": "19758f61f7c5c98375c120988c2f7f598a0c6fd815e524b38cf914317b30be78",
+      "coincide": null,
+      "mtime": "2026-10-26T04:17:56.0275094-05:00",
+      "bytes": 23240
+    },
+    {
+      "informe": "S5_qoe_telemetria.md",
+      "hash_declarado": "583C36D6",
+      "hash_declarado_origen": "resumen_al_captain (el archivo no lo contiene)",
+      "hash_declarado_tipo": "prefijo_8",
+      "hash_real": "583c36d66ab2fdebbd1f55f732ec5269b27a8fe71e2c04e967f08ebed31c1abb",
+      "coincide": true,
+      "mtime": "2026-10-26T04:18:54.8184751-05:00",
+      "bytes": 22022
+    },
+    {
+      "informe": "S6_nginx_lua.md",
+      "hash_declarado": "4888638FEA3B245395D556C7F80A37665A9F8E421B4911997AE5C002BCF0FECA",
+      "hash_declarado_origen": "resumen_al_captain (el archivo no lo contiene)",
+      "hash_declarado_tipo": "hash_completo_64",
+      "hash_real": "4888638fea3b245395d556c7f80a37665a9f8e421b4911997ae5c002bcf0feca",
+      "coincide": true,
+      "mtime": "2026-10-26T04:15:37.0997816-05:00",
+      "bytes": 19155
+    },
+    {
+      "informe": "S7_S10_sre_seguridad.md",
+      "hash_declarado": "b80402ab",
+      "hash_declarado_origen": "resumen_al_captain (el archivo no lo contiene)",
+      "hash_declarado_tipo": "prefijo_8",
+      "hash_real": "b80402abb7a22a1d569f43d501829dac3b821928e5a5405898fc47cc0e9b8b94",
+      "coincide": true,
+      "mtime": "2026-10-26T04:26:11.9235076-05:00",
+      "bytes": 27553
+    },
+    {
+      "informe": "S8_red_tcp_quic.md",
+      "hash_declarado": "d208012952ad3942296bcf9d0e3e19f3a7acdc5d854709388d0bab96650404d4",
+      "hash_declarado_origen": "resumen_al_captain (el archivo no lo contiene)",
+      "hash_declarado_tipo": "hash_completo_64",
+      "hash_real": "d208012952ad3942296bcf9d0e3e19f3a7acdc5d854709388d0bab96650404d4",
+      "coincide": true,
+      "mtime": "2026-10-26T04:15:19.9105557-05:00",
+      "bytes": 18541
+    },
+    {
+      "informe": "S9_player_compat.md",
+      "hash_declarado": null,
+      "hash_declarado_origen": null,
+      "hash_declarado_tipo": null,
+      "hash_real": "aea36c77b96673daaef3a1ea206b41bdca8caac0d6e1247f1a057a782e8cfb0f",
+      "coincide": null,
+      "mtime": "2026-10-26T04:21:19.1657091-05:00",
+      "bytes": 16532
+    }
+  ]
+}

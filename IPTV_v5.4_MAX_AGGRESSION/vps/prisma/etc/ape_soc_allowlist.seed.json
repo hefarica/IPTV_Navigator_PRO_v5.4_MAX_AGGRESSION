@@ -1,0 +1,61 @@
+{
+  "version": 2,
+  "note": "Seed de conocimiento de familias SoC. NO concede permisos: el reconciliador vuelve a aplicar las reglas y sr=1 exige >=3 dispositivos distintos observados en /var/lib/ape/soc_seen.jsonl. Los valores sr/vpp/state de aquí son el estado inicial, no una allowlist.",
+  "socs": {
+    "s905x4": {
+      "sr": 0,
+      "sr_levels": [],
+      "pq": "known",
+      "vpp": "tradicional",
+      "state": "confirmed",
+      "evidence": ["family=s905x4;aisr=no", "rule=pq_only_traditional", "seed=initial"],
+      "devices": [],
+      "first_seen": null,
+      "note": "ONN 4K / Fire TV clase S905X4 — decision del capitan (Opcion B): sr=0, vpp=tradicional. Sin AI-SR no se inventa super-resolucion."
+    },
+    "s905y4": {
+      "sr": 0,
+      "sr_levels": [],
+      "pq": "known",
+      "vpp": "tradicional",
+      "state": "confirmed",
+      "evidence": ["family=s905y4;aisr=no", "rule=pq_only_traditional", "seed=initial"],
+      "devices": [],
+      "first_seen": null,
+      "note": "ONN 4K clase S905Y4 — sr=0, vpp=tradicional (misma decision que S905X4)."
+    },
+    "s928x": {
+      "sr": 0,
+      "sr_levels": [],
+      "pq": "known",
+      "vpp": "tradicional",
+      "state": "confirmed",
+      "evidence": ["family=s928x;aisr=no", "rule=pq_only_traditional", "seed=initial"],
+      "devices": [],
+      "first_seen": null,
+      "note": "Clase S928X — PQ tradicional; sin AI-SR declarado."
+    },
+    "s905x5": {
+      "sr": 0,
+      "sr_levels": [],
+      "pq": "known",
+      "vpp": "unknown",
+      "state": "quarantine",
+      "evidence": ["family=s905x5;aisr=yes", "rule=need_more_devices", "seed=initial"],
+      "devices": [],
+      "first_seen": null,
+      "note": "AI-SR hasta 8K declarado; sr=1 solo con >=3 dispositivos distintos."
+    },
+    "s905x5m": {
+      "sr": 0,
+      "sr_levels": [],
+      "pq": "known",
+      "vpp": "unknown",
+      "state": "quarantine",
+      "evidence": ["family=s905x5m;aisr=yes", "rule=need_more_devices", "seed=initial"],
+      "devices": [],
+      "first_seen": null,
+      "note": "AI-SR 4K declarado; sr=1 solo con >=3 dispositivos distintos."
+    }
+  }
+}

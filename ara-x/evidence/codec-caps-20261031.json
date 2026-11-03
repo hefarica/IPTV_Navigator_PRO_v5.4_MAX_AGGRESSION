@@ -1,0 +1,20 @@
+{
+  "ts": "2026-10-31T07:55:00Z",
+  "host": "ubuntu-2gb-ash-1",
+  "ffmpeg": "6.1.1-3ubuntu5",
+  "bench": "lavfi_testsrc2",
+  "vvc_enc": 0,
+  "vvc_dec": 0,
+  "av1_enc": 1,
+  "x265": 1,
+  "vvc_real": 0,
+  "vvc_fps": 0,
+  "av1_1080p_fps_preset11": 40,
+  "av1_1080p_fps_preset12": 52,
+  "av1_4k_fps_preset12": 15,
+  "av1_equiv_1080p": 1,
+  "av1_equiv_4k": 0,
+  "mode": "av1_1080p",
+  "selector": ["hevc", "av1_1080p_upscaled"],
+  "warn": "av1_4k_not_realtime_no_vvc_encoder"
+}

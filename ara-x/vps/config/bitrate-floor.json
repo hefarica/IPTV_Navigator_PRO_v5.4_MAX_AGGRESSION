@@ -1,0 +1,17 @@
+{
+  "by_source": {
+    "sd480": {"floor": 7000, "ceil": 12000},
+    "sd576": {"floor": 7000, "ceil": 12000},
+    "hd720": {"floor": 8000, "ceil": 13000},
+    "fhd1080": {"floor": 8000, "ceil": 14000},
+    "2k": {"floor": 8000, "ceil": 14000},
+    "4k": {"floor": 13000, "ceil": 22000},
+    "6k": {"floor": 20000, "ceil": 34000},
+    "8k": {"floor": 28000, "ceil": 48000}
+  },
+  "upscale_demand": {"2k": 1.00, "4k": 1.15, "6k": 1.30, "8k": 1.45},
+  "alert_after_s": 8,
+  "rise_hold_s": 12,
+  "sustain_pct": 60,
+  "ceiling_pct": 100
+}

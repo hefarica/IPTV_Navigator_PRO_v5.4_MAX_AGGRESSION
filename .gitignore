@@ -169,3 +169,10 @@ scratch/
 / 2
 *.backup_audio_safe_*
 *-bak_*.json
+IPTV_v5.4_MAX_AGGRESSION/deliverables/
+deliverables/
+_vps_stage/
+artifacts/
+/.claude/agents/*.bak
+/privacy_*_test.png
+/regen_multilist_report.json

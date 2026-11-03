@@ -1,0 +1,5 @@
+x265_ultrafast|OK|HEVC Main10|0.8197|24.59|1.2
+x265_superfast|OK|HEVC Main10|0.7018|21.05|1.4
+libplacebo_x265|OK|HEVC Main10 (Vulkan)|0.4228|12.68|2.4
+x264_veryfast_AVC|OK|AVC 8-bit (NO cumple HEVC Main10)|1.1696|35.09|0.9
+qsv_hevc|OK|HEVC Main10 (QSV)|0.8511|25.53|1.2

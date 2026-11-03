@@ -1,0 +1,169 @@
+{
+  "harness": "run_checks.ps1",
+  "task": "t9 / i1 — harness ejecutable real con exit codes",
+  "repo_head": "d81ddb3aa4badab054db3344b2b201d0663c4566",
+  "expected_head": "e38a89bb30c02cb41050f34cef43d3711a2b0644",
+  "host": {
+    "os": "Microsoft Windows 10.0.26200",
+    "pwsh": "7.6.8",
+    "cwd": "C:\\Users\\HFRC\\Desktop\\IPTV_Navigator_PRO_v5.4_MAX_AGGRESSION"
+  },
+  "started_at": "2026-10-27T00:16:05.8183240-05:00",
+  "finished_at": "2026-10-27T00:16:18.1446152-05:00",
+  "exit_code": 1,
+  "totals": {
+    "checks": 21,
+    "pass": 9,
+    "fail": 11,
+    "not_run": 1
+  },
+  "checks": [
+    {
+      "check_id": "C01_node_version",
+      "comando": "node -v",
+      "exit_code": 0,
+      "status": "PASS",
+      "evidencia_tail": "v24.12.0"
+    },
+    {
+      "check_id": "C02_python_version",
+      "comando": "python -V",
+      "exit_code": 0,
+      "status": "PASS",
+      "evidencia_tail": "Python 3.12.10"
+    },
+    {
+      "check_id": "C03_nginx_version",
+      "comando": "nginx -v",
+      "exit_code": -1,
+      "status": "NOT_RUN",
+      "evidencia_tail": "nginx ausente de PATH en el host de auditoría (Windows). No hay nginx local ni WSL con nginx: `nginx -t` sobre el SSOT del VPS es NO EJECUTABLE aquí, y ejecutarlo en el VPS está prohibido (iptv-vps-touch-nothing)."
+    },
+    {
+      "check_id": "C04_git_head",
+      "comando": "git rev-parse HEAD",
+      "exit_code": 0,
+      "status": "FAIL",
+      "evidencia_tail": "HEAD=d81ddb3aa4badab054db3344b2b201d0663c4566 esperado=e38a89bb30c02cb41050f34cef43d3711a2b0644"
+    },
+    {
+      "check_id": "C05_git_status_counts",
+      "comando": "git status --porcelain",
+      "exit_code": 0,
+      "status": "PASS",
+      "evidencia_tail": "total=50 modified=11 deleted=3 untracked=36"
+    },
+    {
+      "check_id": "C06_node_check_generator",
+      "comando": "node -c <94 archivos IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/*.js>",
+      "exit_code": 0,
+      "status": "PASS",
+      "evidencia_tail": "archivos=94 ok=94 fallos=0"
+    },
+    {
+      "check_id": "C07_skills_index_json",
+      "comando": "node -e \"JSON.parse(.agents/skills_index.json)\"",
+      "exit_code": 0,
+      "status": "PASS",
+      "evidencia_tail": "JSON válido · entradas=306"
+    },
+    {
+      "check_id": "C08_skills_index_vs_disk",
+      "comando": "compare .agents/skills_index.json vs Get-ChildItem .agents/skills -Directory",
+      "exit_code": 1,
+      "status": "FAIL",
+      "evidencia_tail": "indice=306 disco=308 faltan_en_disco=0 sobran_en_disco=2 :: solo_en_disco=ape-omega-visual-loop,claude-code-repo-surgeon"
+    },
+    {
+      "check_id": "C09_claude_agents_count",
+      "comando": "Get-ChildItem .claude/agents/*.md",
+      "exit_code": 1,
+      "status": "FAIL",
+      "evidencia_tail": "medido=15 doctrina_AGENTS.md=10 · archivos=claude-code-repo-surgeon.md,color-scientist-hdr.md,data-observability-engineer.md,iptv-hls-architect.md,linux-vps-sre-engineer.md,ll-hls-cmaf-engineer-agent.md,ll-hls-cmaf-engineer.md,network-tcp-quic-engineer.md,nginx-openresty-lua-engineer.md,player-compatibility-engineer.md,qa-broadcast-validator.md,qoe-qos-researcher.md,security-auth-headers-engineer.md,security-headers-auditor.md,video-codec-engineer.md"
+    },
+    {
+      "check_id": "C10_claude_commands_count",
+      "comando": "Get-ChildItem .claude/commands/*.md",
+      "exit_code": 1,
+      "status": "FAIL",
+      "evidencia_tail": "medido=10 doctrina_AGENTS.md=7 · archivos=audit-iptv.md,build-skills.md,check-nginx-streaming.md,equipo-10-adn.md,iptv-freezeless-visual-master-council.md,player-compat.md,qoe-report.md,team-agent-debate.md,validate-m3u8.md,watchdog-status.md"
+    },
+    {
+      "check_id": "C11_toxic_in_profile_lists",
+      "comando": "git grep -n -I -E '^[[:space:]]*\"(Range|If-None-Match|If-Modified-Since|TE|Priority|Upgrade-Insecure-Requests)\"[[:space:]]*:[[:space:]]*\"[^.]' -- IPTV_v5.4_MAX_AGGRESSION/frontend/*  (excluye DEFAULT_HEADER_VALUES 3994-4050 y árboles de backup)",
+      "exit_code": 1,
+      "status": "FAIL",
+      "evidencia_tail": "emisores_vivos=72 excluidos_por_ser_backup=6 sitios=IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/APE_ALL_PROFILES_OPTIMIZED.json:130 IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/APE_ALL_PROFILES_OPTIMIZED.json:134 IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/APE_ALL_PROFILES_OPTIMIZED.json:146 IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/APE_ALL_PROFILES_OPTIMIZED.json:147 IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/APE_ALL_PROFILES_OPTIMIZED.json:148 IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/APE_ALL_PROFILES_OPTIMIZED.json:156 IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/APE_ALL_PROFILES_OPTIMIZED.json:414 IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/APE_ALL_PROFILES_OPTIMIZED.json:415 IPTV_v5. …"
+    },
+    {
+      "check_id": "C12_toxic_in_default_values",
+      "comando": "git grep -n -I -E '\"^(Range|If-None-Match|...)\"' -- ape-profiles-config.js (líneas 3994-4050)",
+      "exit_code": 1,
+      "status": "FAIL",
+      "evidencia_tail": "valores_por_defecto_toxicos=6 sitios=IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/ape-profiles-config.js:4017 IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/ape-profiles-config.js:4018 IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/ape-profiles-config.js:4023 IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/ape-profiles-config.js:4024 IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/ape-profiles-config.js:4025 IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/ape-profiles-config.js:4040"
+    },
+    {
+      "check_id": "C13_dnt_contradiction",
+      "comando": "git grep -n -I -E '\"DNT\"\\s*:\\s*\"[^.]' -- frontend/* (sin árboles de backup) + TOXIC dnt",
+      "exit_code": 1,
+      "status": "FAIL",
+      "evidencia_tail": "toxico_en_mapa=1 emisiones_vivas=27 excluidas_backup=1 sitios=IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/APE_ALL_PROFILES_OPTIMIZED.json:128 IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/APE_ALL_PROFILES_OPTIMIZED.json:412 IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/APE_ALL_PROFILES_OPTIMIZED.json:778 IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/APE_ALL_PROFILES_OPTIMIZED.json:1029 IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/APE_ALL_PROFILES_OPTIMIZED.json:1362 IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/APE_ALL_PROFILES_OPTIMIZED.json:1506 IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/APE_ALL_PROFILES_OPTIMIZED.json:1853 IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/APE_ALL_PROFILES_OPTIMIZED.jso …"
+    },
+    {
+      "check_id": "C14_secret_sweep_material",
+      "comando": "git grep -n -I -E <patrones: private-key block | WG PrivateKey | WG PresharedKey | CLI --auth user:pass> (valores NO impresos)",
+      "exit_code": 1,
+      "status": "FAIL",
+      "evidencia_tail": "hallazgos=9 · WG_PRIVATE_KEY=5[.agent/skills/firetv_wireguard_dns_immutable/SKILL.md:51 .agents/_archive_20260516_bogus_stubs/skills_bogus_stubs/firetv_wireguard_dns_immutable/SKILL.md:51 IPTV_v5.4_MAX_AGGRESSION/backend/wg-surfshark-br.conf:8 IPTV_v5.4_MAX_AGGRESSION/backend/wg-surfshark.conf:8] | WG_PRESHARED_KEY=3[.agent/skills/firetv_wireguard_dns_immutable/SKILL.md:58 .agents/_archive_20260516_bogus_stubs/skills_bogus_stubs/firetv_wireguard_dns_immutable/SKILL.md:58 IPTV_v5.4_MAX_AGGRESSION/net-shield/backups/backup_pre_stage1_20260422_045906/wg0.conf.BASELINE:31] | CLI_BASIC_AUTH=1[IPTV_v5.4_MAX_AGGRESSION/ape-uhdx/_ENTREGA_20260521/vps_live_extracted/ape-uhdx-vps-bundle/systemd/ape-uh …"
+    },
+    {
+      "check_id": "C15_secret_sweep_provider_creds",
+      "comando": "git grep -n -I -E <url Xtream con user:pass en el path> (valores NO impresos)",
+      "exit_code": 1,
+      "status": "FAIL",
+      "evidencia_tail": "sitios=2598 archivos=9 :: IPTV_v5.4_MAX_AGGRESSION/frontend/channels_map.json(2574) audit/alignment/2026-10-25/50-listas/tools/_raw_lists_audit.json(13) IPTV_v5.4_MAX_AGGRESSION/backend/omega_ecosystem_v5.1/fallback_proxy.php(2) IPTV_v5.4_MAX_AGGRESSION/backend/omega_ecosystem_v5.2/fallback_proxy.php(2) IPTV_v5.4_MAX_AGGRESSION/backup_master_v5.4_phantom_engine/backend/omega_ecosystem_v5.1/fallback_proxy.php(2)"
+    },
+    {
+      "check_id": "C16_gitignore_coverage",
+      "comando": "Get-Content .gitignore + git ls-files <*.pem|*.key|*.p12|*.pfx>",
+      "exit_code": 1,
+      "status": "FAIL",
+      "evidencia_tail": "ignora_*.conf=False ignora_channels_map=False trackeados_pem/key=0 lineas_gitignore=159"
+    },
+    {
+      "check_id": "C17_validate_imports_portable",
+      "comando": "python _inbox_EQUIPO_ADN/EQUIPO_ENTERPRISE_10_COUNCIL_ADN/validate_imports_portable.py",
+      "exit_code": 0,
+      "status": "PASS",
+      "evidencia_tail": "{ | \"valid\": true, | \"errors\": [], | \"checks\": 2469, | \"file_count\": 430, | \"agent_count\": 10, | \"legacy_entries_mapped\": 42, | \"tool_catalog_count\": 271, | \"shared_tool_scopes\": true, | \"private_runtime_history_included\": false, | \"runtime_verified\": false, | \"excel_sync_verified\": false, | \"native_export_filenames\": { | \"implementation.json\": \"agent-team-recipe-61bc1b00-c30f-53f4-9b1f-6e97298553bb.json\", | \"definitions.json\": \"agent-team-backup-2026-10-26.json\", | \"council.json\": \"agent-team-recipe-9fd1f278-175f-5afa-b8cb-f4cfa13034a9.json\", | \"export-manifest.json\": \"agent-team-export-manifest.json\" | }, | \"exported_at\": 1793004990466, | \"export_hashes_valid\": true | }"
+    },
+    {
+      "check_id": "C18_snapshot_head_blobs",
+      "comando": "compare <basename>.HEAD.blob vs git cat-file -s <sha de SNAPSHOT.json>",
+      "exit_code": 0,
+      "status": "PASS",
+      "evidencia_tail": "blobs=8 verificados_byte_a_byte=8 discrepancias=0 "
+    },
+    {
+      "check_id": "C19_wt_stable_since_freeze",
+      "comando": "Get-FileHash -Algorithm SHA256 <generador> vs SNAPSHOT.json",
+      "exit_code": 1,
+      "status": "FAIL",
+      "evidencia_tail": "sha_actual=844f654b7817af7be1f896caa6e0f4b226b24e9b0a4e9c7099c0f13a4c3888b6 sha_congelado=da4428648094b0cac4d713aa505729e3adcee8e342a6708a83d67c112f127e0b lineas_congeladas=11524"
+    },
+    {
+      "check_id": "C20_snapshot_artifacts",
+      "comando": "Test-Path snapshot/{SNAPSHOT.json,REPORT_HASHES.json,REGLA_DE_ORIGEN.md} + count *.blob",
+      "exit_code": 0,
+      "status": "PASS",
+      "evidencia_tail": "presentes=3/3 blobs=17 faltan="
+    },
+    {
+      "check_id": "C21_council_report_hashes",
+      "comando": "Get-FileHash -Algorithm SHA256 <council/*.md> vs hash declarado en REPORT_HASHES.json",
+      "exit_code": 0,
+      "status": "PASS",
+      "evidencia_tail": "informes=8 con_hash_declarado=4 coinciden=4 sin_declarar=4 informes_que_contienen_su_propio_sha=0 discrepan=0 :: "
+    }
+  ]
+}

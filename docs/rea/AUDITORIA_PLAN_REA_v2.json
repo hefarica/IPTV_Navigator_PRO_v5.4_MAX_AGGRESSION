@@ -1,0 +1,128 @@
+{
+  "_schema": "auditoria_plan_rea_v2/1.0",
+  "auditoria": "t27 · re-auditoría de la corrección t26 (AU-01..AU-08)",
+  "auditor": "s9-player-compat",
+  "fecha": "2026-10-27",
+  "snapshot": "a8ff0e946524f945f89858c9c6c620aeb5f31813",
+  "recusacion": "No se valida docs/rea/05_PLAYER_COMPAT.md (autor). Se auditan PLAN_REA.md v2, 02 v2, ERRATA_AU.md, 01/03/04 y AUDITORIA_PLAN_REA.md.",
+  "hashes_recomputados": {
+    "PLAN_REA.md": "79b32cb2a0d47731",
+    "02_EDGE_DECLARE_AUTO_API.md": "a2577d2e8d146cb5",
+    "ERRATA_AU.md": "01b8d625599b0ed5",
+    "01_CODEC_HDR_DV.md": "e6872b48c3ee",
+    "03_BUILD_SHADERS_SECURITY.md": "f8989348e5c4",
+    "04_FEASIBILITY_TRANSPORT.md": "157f32227a1c",
+    "05_PLAYER_COMPAT.md": "bdde76fe8b28",
+    "AUDITORIA_PLAN_REA.md": "70fa21cfee23"
+  },
+  "criterio_au01": "Ratificación del capitán: doctrina LOCKED 4K real→8K declarado conservada; can_declare_8k=(uhd8k=1) AND (nivel>=L183); fuente <7680 con 8K exige marcador src= real y nunca -REAL; caso «4K L183→8K (producto, marcado)» en matriz y en V-3; guard blocker sin marcador / info con marcador.",
+  "sections": [
+    {
+      "seccion": "AU-01 excepción de producto",
+      "veredicto": "FAIL",
+      "evidencia": "PASS: can_declare_8k=(uhd8k==1) AND (nivel>=L183 en todas las variantes top) en PLAN:64 y 02:43; marcador obligatorio src=<max_resolution>;declared=7680;can8k=1 y prohibición de -REAL en PLAN:65-67 / 02:44-47 / 02:73; V-3 reescrito como excepción declarada en PLAN:144; doctrina intacta en PLAN:6,61,73 y F0-2. FAIL: el caso «4K L183→8K (producto, marcado)» NO está en ninguna matriz; 02 §1.3 (35-56) solo tiene flags+fórmula+notas; la matriz real está en docs/edge/E5_UHD_DOCTRINE.md §4.8 (270-276, 5 filas) y tampoco incluye 4K L183 (su fila 4K es L153); §4.2 (M1-M7) idem; ERRATA_AU.md:14 afirma que se añadió a la matriz de 02 §1.3 (falso) y :29 admite que la fila de E5 §4.8 está pendiente.",
+      "notas": "De los 4 sub-criterios del capitán se cumplen 3 (fórmula, marcador/-REAL, V-3/doctrina) y falla 1 (matriz): AU-01b. El guard extendido UHD-10 es especificación (el .mjs no se edita; re-ejecutado exit 1 y selftest 8/8): se declara, no se cuenta como aplicado."
+    },
+    {
+      "seccion": "AU-02 recuento §1",
+      "veredicto": "PASS",
+      "evidencia": "Conteo por fila de PLAN §1 (líneas 24-55): 32 filas = 13 REAL · 8 POSIBLE · 4 IMPOSIBLE · 7 FALSO. Encabezado PLAN:20 desmiente «9 FALSO/5 IMPOSIBLE» del cierre t24.",
+      "notas": "Coincide exactamente con el recuento de la auditoría t25."
+    },
+    {
+      "seccion": "AU-03 F0-8 auth y consumidores",
+      "veredicto": "PASS",
+      "evidencia": "Los 16 enumerados en PLAN:84-88 existen y referencian /_ape/ (verificado 16/16, 0 sin referencia): 12 llamadores HTTP + 4 handlers. Orden de gates (allow 127.0.0.1 defensa → token X-APE-Token solo mutación → 403 fail-closed con api_token vacío incluso loopback → /_ape/* no proxeado en 443) y regla «sin migración de los 12 no se publica».",
+      "notas": "La discrepancia 15 vs 16 es de criterio (el auditor contó archivos con el string, incluidos configs/JS); el plan enumera el conjunto HTTP. Nueva contradicción en 02 §4.2 paso 1 se registra como AU-09."
+    },
+    {
+      "seccion": "AU-04 clave de microcaché",
+      "veredicto": "PASS",
+      "evidencia": "PLAN:92-96: clave host_normalizado|path_normalizado|args_ordenados|cred=<sha256_16>; credenciales nunca en claro (hash de segregación); bypass si no se puede aislar; nunca cachear no-200; TTL <=3 s.",
+      "notas": "Resuelve el riesgo de servir manifiesto con token ajeno."
+    },
+    {
+      "seccion": "AU-05 F0-6 STABLE-VARIANT-ID",
+      "veredicto": "PASS",
+      "evidencia": "git grep: STABLE-VARIANT-ID en frontend/js/ape-v9/parsers/** = 0; en repo = 4 archivos/13 ocurrencias (ape-fallback-resolver.js, m3u8-typed-arrays-ultimate.js, hls.light.vendor.js, tests/smoke_m3u8_honest_rules.py). PLAN:77 exige flag stable_var_id=0 por defecto y prueba en 2 players antes de activar.",
+      "notas": "Conclusión correcta; el número «7 hits» de PLAN:77 es erróneo (13 ocurrencias/4 archivos): AU-10 LOW."
+    },
+    {
+      "seccion": "AU-06 F0-10 gate de lista",
+      "veredicto": "PASS",
+      "evidencia": "PLAN:90: (a) 0 canales sin codec del probe con CODECS=hvc1*; (b) diff contra la última lista publicada; (c) node -c x3; límite honesto: listas ya cacheadas no se pueden retirar.",
+      "notas": "Se añade a G6 (paridad VPS) sin sustituirlo."
+    },
+    {
+      "seccion": "AU-07 build FFmpeg / iGPU",
+      "veredicto": "PASS",
+      "evidencia": "Etiqueta [MEDIDO-AUTOR] NO_VERIFICADO en PLAN:11 (definición), §3:111-115 y epílogo:200; texto explícito «no vale como gate». No hay binario ffmpeg en el host de auditoría.",
+      "notas": "Correcto: no se promueve a PASS ni se usa como umbral."
+    },
+    {
+      "seccion": "AU-08 G1/G8 rutas y baseline",
+      "veredicto": "PASS",
+      "evidencia": "G1 cita _vps_stage/edge/baseline/phase0_backup.sh (5.086 B) y phase0_verify.sh (2.174 B) con logs runs/<ts>/; G2 restore_phase0.sh (3.402 B). G8 exige capturar lists_baseline.txt ANTES y declara que hoy no existe (GAP).",
+      "notas": "Verificado contra disco: los 3 scripts y los logs existen."
+    },
+    {
+      "seccion": "Integridad de documentos y errata",
+      "veredicto": "PASS",
+      "evidencia": "ERRATA_AU.md §1 mapea los 8 hallazgos con doble numeración; §3 declara antes/después. Hashes recomputados coinciden: PLAN 79b32cb2 (200 L/27.830 B), 02 a2577d2e (220 L/21.791 B), ERRATA 01b8d625 (46 L/6.684 B); 01/03/04/05 y AUDITORIA_PLAN_REA intactos.",
+      "notas": "Única objeción: ERRATA:14 sobredeclara que el caso 4K-L183 se añadió a la matriz de 02 §1.3 (AU-01b)."
+    },
+    {
+      "seccion": "Coste",
+      "veredicto": "PASS",
+      "evidencia": "Fase 0 = €0 (PLAN:6). Único importe de compra: €423,00 el 1er mes (€214,00/mes + €209,00 setup) en PLAN:109, gateado por propietario (PLAN:104). €4,76/viewer-4K·mes es derivado del mismo importe.",
+      "notas": "Sin proveedor ni gasto nuevo en Fase 0/2."
+    },
+    {
+      "seccion": "declare_auto vivo y excepción documentada",
+      "veredicto": "PASS",
+      "evidencia": "PLAN:6 (se conserva), :61 (excepción de producto ratificada), :73 (F0-2 solo acota), V-4 PLAN:145; ninguna fila lo elimina ni sustituye; la excepción 8K se documenta con marcador obligatorio y V-3.",
+      "notas": "No hay cambio de doctrina de producto."
+    },
+    {
+      "seccion": "Cero ficción / secretos",
+      "veredicto": "PASS",
+      "evidencia": "Barrido de 9 archivos de docs/rea: 0 PEM, 0 PrivateKey/PresharedKey con valor, 0 user:pass@, 0 token literal, 0 CV/experiencia/PhD (los hits son patrones de este barrido y «Licencia/CM de Dolby»). NOT_RUN declarados: guard extendido, E5 §4.8, luatest, NVENC/CDN, devices.",
+      "notas": "Sin benchmarks ni costes inventados."
+    },
+    {
+      "seccion": "GLOBAL",
+      "veredicto": "FAIL",
+      "evidencia": "AU-02..AU-08 cerrados (7/7 PASS). AU-01 FAIL parcial: falta el caso en la matriz (AU-01b HIGH) y persiste la contradicción real_ip/E5-F3 en 02 §4.2 paso 1 (AU-09 MEDIUM). AU-10 LOW (7 vs 13).",
+      "notas": "Con AU-01b + AU-09 (+AU-10) corregidos, el plan pasa a PASS sin tocar declare_auto, sin coste y sin cambios de producción."
+    }
+  ],
+  "hallazgos": [
+    {
+      "id": "AU-01b",
+      "seccion": "AU-01 / 02 §1.3 / ERRATA",
+      "severidad": "high",
+      "evidencia": "02 §1.3 (líneas 35-56) no contiene matriz de casos: solo tabla de flags (25-31), bloque de fórmula (39-48) y notas (50-53). La matriz existe en docs/edge/E5_UHD_DOCTRINE.md §4.8 (270-276, 5 filas: 1080p, 4K L153, 8K L153, 8K L183, ascendente) y NO incluye 4K L183; §4.2 (M1-M7) tampoco. ERRATA_AU.md:14 afirma que el caso se añadió a la matriz de 02 §1.3 y :29 reconoce que la fila de E5 §4.8 está pendiente.",
+      "correccion": "Añadir a 02 §1.3 la tabla de 6 casos (1080p→4K, 4K L153→4K, 4K L183→8K producto marcado, 8K L153→4K, 8K L183→8K, ascendente→4Kx2) y corregir ERRATA:14; la fila de E5 §4.8 requiere tarea puente."
+    },
+    {
+      "id": "AU-09",
+      "seccion": "AU-03 / 02 §4.2",
+      "severidad": "medium",
+      "evidencia": "02 §4.2 paso 1: «Primero el fix E5-F3 (X-APE-Internal + set_real_ip_from 127.0.0.1; real_ip_header X-Forwarded-For;)» contradice PLAN:15 C-1 (la cita de E5-F3 como bypass era falsa y no se repite) y PLAN:87 F0-8 paso 5 (real_ip solo si algún día hay acceso remoto). ERRATA no declara ese texto.",
+      "correccion": "Sustituir el paso 1 por el fix real sin re-citar E5-F3; si se mantiene real_ip (127.0.0.1-only es seguro), justificarlo como hardening propio."
+    },
+    {
+      "id": "AU-10",
+      "seccion": "AU-05 / PLAN F0-6",
+      "severidad": "low",
+      "evidencia": "PLAN:77 dice «los 7 hits del repo»; medido: 13 ocurrencias en 4 archivos (2 emisores, 1 vendor, 1 test). La conclusión (no está en parsers) no cambia.",
+      "correccion": "Corregir el número a 13 ocurrencias/4 archivos."
+    }
+  ],
+  "no_verificado": [
+    "Guard extendido UHD-10: especificado, no aplicado (el .mjs no se edita; re-ejecutado exit 1 y selftest 8/8) => lo cierra B-02",
+    "E5 §4.8 y ape_luatest.lua:155-156: fuera de docs/rea => NOT_RUN por contrato",
+    "Medición en devices (05 §1): NOT_RUN sin dispositivo",
+    "Coste CDN y capacidad NVENC 4K: NOT_RUN declarado (04 §7, §2.4)"
+  ]
+}

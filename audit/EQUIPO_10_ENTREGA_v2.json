@@ -1,0 +1,274 @@
+{
+  "schema": "equipo10-operativo/entrega/v2-ciclo2",
+  "generado_por": "s1-hls-architect (t18, integracion ciclo 2)",
+  "fecha_utc": "2026-10-27T05:26:44Z",
+  "snapshot_git_head": "d81ddb3aa4badab054db3344b2b201d0663c4566",
+  "blob_generador_vigente": "b7b594467c6ebc2df61b01515bbc288b3a0ee570",
+  "snapshot_ciclo1": "e38a89b / c1277bdf / 11144 lineas",
+  "veredicto_cierre": {
+    "valor": "FAIL de cierre — 3/3 HIGH originales CERRADOS, paquete NO re-certificable como PASS, producto ABIERTO",
+    "autoridad": "ciclo2/auditoria/AUDITORIA_CIERRE.md (t17, s9-player-compat, no-autor de las correcciones)",
+    "highs_originales": {
+      "AUD-01": "CERRADO",
+      "AUD-02": "CERRADO",
+      "AUD-03": "CERRADO"
+    },
+    "hallazgos_nuevos": {
+      "CIERRE-01": "ABIERTO (HIGH) ABIERTO_ARTEFACTO_NO_VERSIONADO",
+      "CIERRE-02": "RESUELTO por el capitan (docs a 49/134, verificado)",
+      "CIERRE-03": "ABIERTO (MEDIUM) declarado historico",
+      "CIERRE-04": "ACEPTADO (LOW)",
+      "CIERRE-05": "ACEPTADO (INFO)",
+      "CIERRE-06": "ACEPTADO (INFO)"
+    },
+    "certificable_como_PASS": false
+  },
+  "numeros_ratificados": {
+    "pass": 49,
+    "fail": 68,
+    "blocked": 2,
+    "not_run": 15,
+    "total": 134,
+    "escalera": "53 -> 51 -> 50 -> 49",
+    "denominadores": "138 crudo v1 / 136 base 51 / 134 ratificado",
+    "fuente": "gobierno/VALIDACION_DEL_CAPITAN.md Apendice L41-58"
+  },
+  "producto_abierto": [
+    "VERSION:9 en emisor: b7b59446:2664, :3001, :3053",
+    "EXT-X-I-FRAME-STREAM-INF sin URI=: b7b59446:3079, :10005",
+    "TARGETDURATION:2 + PART-INF + SERVER-CONTROL en cabecera de catalogo: b7b59446:3004-3006",
+    "EXTINF:-1: b7b59446:7163, :8026",
+    "0 emisiones de EXT-X-MEDIA-SEQUENCE (solo findIndex en :226)",
+    "computeStubQoE consumido como QoE REAL; metricas fabricadas (6 sitios nuevos en d81ddb3)",
+    "wg0.conf con PostUp/PostDown concatenados",
+    "VERSION:9 en artefacto untracked audit_bulletproof_output.m3u8 (ABIERTO_ARTEFACTO_NO_VERSIONADO)"
+  ],
+  "agentes": [
+    {
+      "member_id": "cf20a4e5-c2f8-4fc9-8acf-42a97934a4c1",
+      "agente": "s1-hls-architect",
+      "disciplinas": [
+        "S1"
+      ],
+      "tareas": [
+        "t1",
+        "t13"
+      ],
+      "runtime_declarado": {
+        "provider": "deepseek-official",
+        "model": "deepseek-flash",
+        "effort": "high",
+        "estado": "declarado por el runtime; NO verificado por el miembro"
+      }
+    },
+    {
+      "member_id": "40727fab-fa65-41fd-a327-4f6b26a2c1bd",
+      "agente": "s2-llhls-cmaf",
+      "disciplinas": [
+        "S2"
+      ],
+      "tareas": [
+        "t2",
+        "t10"
+      ],
+      "runtime_declarado": {
+        "provider": "deepseek-official",
+        "model": "deepseek-flash",
+        "effort": "high",
+        "estado": "declarado por el runtime; NO verificado por el miembro"
+      }
+    },
+    {
+      "member_id": "5189261f-2b3f-45ae-b42c-0cffd4d84283",
+      "agente": "s3-codec-hdr",
+      "disciplinas": [
+        "S3",
+        "S4"
+      ],
+      "tareas": [
+        "t3"
+      ],
+      "runtime_declarado": {
+        "provider": "deepseek-official",
+        "model": "deepseek-flash",
+        "effort": "high",
+        "estado": "declarado por el runtime; NO verificado por el miembro"
+      }
+    },
+    {
+      "member_id": "1ed5acf7-88d4-49db-b6fe-f97b98f862c6",
+      "agente": "s5-qoe-qos",
+      "disciplinas": [
+        "S5"
+      ],
+      "tareas": [
+        "t4",
+        "t11"
+      ],
+      "runtime_declarado": {
+        "provider": "deepseek-official",
+        "model": "deepseek-flash",
+        "effort": "high",
+        "estado": "declarado por el runtime; NO verificado por el miembro"
+      }
+    },
+    {
+      "member_id": "2cb509e3-6ef8-448e-950f-f50dd93fa15b",
+      "agente": "s6-nginx-lua",
+      "disciplinas": [
+        "S6"
+      ],
+      "tareas": [
+        "t5"
+      ],
+      "runtime_declarado": {
+        "provider": "deepseek-official",
+        "model": "deepseek-flash",
+        "effort": "high",
+        "estado": "declarado por el runtime; NO verificado por el miembro"
+      }
+    },
+    {
+      "member_id": "c73adf1e-a1d1-4e89-ac0e-bc80d527f18d",
+      "agente": "s7-sre-secops",
+      "disciplinas": [
+        "S7",
+        "S10"
+      ],
+      "tareas": [
+        "t6",
+        "t9"
+      ],
+      "runtime_declarado": {
+        "provider": "deepseek-official",
+        "model": "deepseek-flash",
+        "effort": "high",
+        "estado": "declarado por el runtime; NO verificado por el miembro"
+      }
+    },
+    {
+      "member_id": "36c9396d-d3f0-48c1-9275-b3161a0d6cae",
+      "agente": "s8-net-tcp-quic",
+      "disciplinas": [
+        "S8"
+      ],
+      "tareas": [
+        "t7"
+      ],
+      "runtime_declarado": {
+        "provider": "deepseek-official",
+        "model": "deepseek-flash",
+        "effort": "high",
+        "estado": "declarado por el runtime; NO verificado por el miembro"
+      }
+    },
+    {
+      "member_id": "ddc2dcac-1752-4dae-a6b2-c53739c4a609",
+      "agente": "s9-player-compat",
+      "disciplinas": [
+        "S9"
+      ],
+      "tareas": [
+        "t8",
+        "t12"
+      ],
+      "runtime_declarado": {
+        "provider": "deepseek-official",
+        "model": "deepseek-flash",
+        "effort": "high",
+        "estado": "declarado por el runtime; NO verificado por el miembro"
+      }
+    }
+  ],
+  "tareas_ciclo2": [
+    {
+      "id": "t14",
+      "owner": "s7-sre-secops",
+      "intento": 2,
+      "entregable": "ciclo2/medicion/",
+      "resultado": "snapshot d81ddb3 congelado (11 blobs) + delta 19 commits + harness re-run exit 1"
+    },
+    {
+      "id": "t15",
+      "owner": "s1-hls-architect",
+      "intento": 2,
+      "entregable": "ciclo2/correcciones/AUD-01_02_ANCLAS.md",
+      "resultado": "AUD-01 y AUD-02 CERRADOS (7/7 re-ancladas, 20/20 anclas)"
+    },
+    {
+      "id": "t16",
+      "owner": "s5-qoe-qos",
+      "intento": 2,
+      "entregable": "ciclo2/correcciones/SCORECARD_v2.json + ERRATA_ARITMETICA.md",
+      "resultado": "49/68/2/15=134 con escalera 53->51->50->49"
+    },
+    {
+      "id": "t17",
+      "owner": "s9-player-compat",
+      "intento": 1,
+      "entregable": "ciclo2/auditoria/",
+      "resultado": "3/3 HIGH CERRADOS; 1 HIGH nuevo (CIERRE-01) + 2 MEDIUM + 1 LOW + 2 INFO"
+    },
+    {
+      "id": "t18",
+      "owner": "s1-hls-architect",
+      "intento": 1,
+      "entregable": "README_CICLO2.md + MANIFEST_SHA256_CICLO2.json + EQUIPO_10_ENTREGA_v2.json + ZIP",
+      "resultado": "paquete v2 sellado"
+    }
+  ],
+  "entregables": {
+    "raiz": "audit/equipo10_operativo_2026-10-26/",
+    "archivos_totales": 67,
+    "bytes_totales": 5627342.0,
+    "desglose": {
+      "paquete_26oct_incl_manifest_v1": 45,
+      "ciclo2": 21,
+      "README_CICLO2": 1,
+      "MANIFEST_SHA256_CICLO2.json (autoexcluido)": 1,
+      "total_en_zip": 68
+    }
+  },
+  "paquete": {
+    "zip": "audit/EQUIPO_10_OPERATIVO_2026-10-27.zip",
+    "zip_bytes": 1466733,
+    "zip_sha256": "c199d0e1a9305b005626eb5a236aed3d695b290b64ce936b8def381411ed2ed1",
+    "manifest": "audit/equipo10_operativo_2026-10-26/MANIFEST_SHA256_CICLO2.json",
+    "manifest_sha256": "2af83ba67669081dacfa2780a974d1c27f4f6e79a561ec26b5d2fe38b6307a1c",
+    "readme_ciclo2_sha256": "f4147d4f75f9369092cd647ba957084e37695dd0a58d28590f100e449f9b24b0",
+    "zip_ronda_anterior": {
+      "path": "audit/EQUIPO_10_OPERATIVO_2026-10-26.zip",
+      "bytes": 1041315,
+      "sha256": "6e7ecb24951f017af52858d7bf22fe3f1ee46c0640b896f1a612b9a2c1d0bfe0",
+      "nota": "conservado intacto como evidencia de la ronda anterior"
+    },
+    "compresion": "Compress-Archive -CompressionLevel Optimal"
+  },
+  "verificacion_propia": {
+    "metodo": "Expand-Archive a %TEMP% + Get-FileHash por archivo, comparado contra MANIFEST_SHA256_CICLO2.json",
+    "archivos_en_manifest": 67,
+    "archivos_extraidos": 68,
+    "nota": "extraidos = manifest + MANIFEST_SHA256_CICLO2.json autoexcluido, verificado aparte",
+    "faltantes": 0,
+    "hashes_distintos": 0,
+    "sobrantes_no_declarados": 0,
+    "manifest_en_zip_igual_a_disco": true,
+    "resultado": "PASS"
+  },
+  "comando_reverificacion": "cd <raiz_repo>; pwsh -NoProfile -File audit/equipo10_operativo_2026-10-26/verificacion/run_checks.ps1; $LASTEXITCODE",
+  "comando_verificar_paquete": "cd <raiz_repo>; $m=Get-Content audit/equipo10_operativo_2026-10-26/MANIFEST_SHA256_CICLO2.json -Raw|ConvertFrom-Json; $m.archivos|%{ $h=(Get-FileHash (\"audit/equipo10_operativo_2026-10-26/\"+$_.path) -Algorithm SHA256).Hash.ToLower(); \"{0} {1}\" -f $_.path,($h -eq $_.sha256) }",
+  "exclusiones_declaradas": [
+    "MANIFEST_SHA256_CICLO2.json no se lista a si mismo; se verifica contra su hash en este archivo",
+    "EQUIPO_10_ENTREGA_v2.json vive fuera del ZIP porque contiene el hash del ZIP",
+    "El ZIP no se contiene a si mismo",
+    "Los ZIP y el indice de la ronda anterior quedan fuera y se conservan intactos"
+  ],
+  "no_verificado": [
+    "Produccion/VPS: BLOCKED por iptv-vps-touch-nothing",
+    "Reproduccion en dispositivos: NOT_RUN",
+    "nginx -t / luac -p: NOT_RUN (host Windows)",
+    "Ejecucion del generador en navegador: NOT_RUN",
+    "Identidad byte a byte de las fases Lua contra produccion: NO RE-MEDIDA aqui (sin acceso al VPS)",
+    "Las 13 tareas del CONSOLIDADO son backlog: ninguna ejecutada"
+  ]
+}

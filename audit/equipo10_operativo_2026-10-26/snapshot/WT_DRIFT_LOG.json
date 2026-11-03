@@ -1,0 +1,92 @@
+{
+  "generated_at": "2026-10-26T04:34:38.3198991-05:00",
+  "subject": "IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/m3u8-typed-arrays-ultimate.js (generador)",
+  "head_coordinate": {
+    "blob_sha": "c1277bdfdc46debfc762eb86e22f77b85b66e250",
+    "bytes": 707323,
+    "lines": 11144,
+    "inmutable": true
+  },
+  "line_count_method": "[System.IO.File]::ReadAllLines().Length",
+  "observations": [
+    {
+      "idx": 1,
+      "hora": "~04:12",
+      "fuente": "S3 (medición reportada al council)",
+      "bytes": null,
+      "lines": 21581,
+      "sha256": null,
+      "nota": "base de medición de S1-F01 (+10447/−10); estado ya inexistente ⇒ S1-F01 SUPERADO"
+    },
+    {
+      "idx": 2,
+      "hora": "~04:15",
+      "fuente": "captain",
+      "bytes": null,
+      "lines": 11443,
+      "sha256": null,
+      "nota": "el WT se redujo de 21.581 a 11.443 líneas"
+    },
+    {
+      "idx": 3,
+      "hora": "2026-10-26T04:19:53",
+      "fuente": "captain",
+      "bytes": 739652,
+      "lines": 11459,
+      "sha256": "37ab2ca72670eda9e0be1cf904f3353888b2d66fe1666e5ebdf9d48f9d72ae82",
+      "nota": "git diff --numstat HEAD = +317/−2"
+    },
+    {
+      "idx": 4,
+      "hora": "2026-10-26T04:27:34",
+      "fuente": "t9 congelamiento #1",
+      "bytes": 743867,
+      "lines": 11524,
+      "sha256": "d29f62af",
+      "nota": "blob m3u8-typed-arrays-ultimate.js.WT.d29f62af.blob"
+    },
+    {
+      "idx": 5,
+      "hora": "2026-10-26T04:29:02",
+      "fuente": "t9 congelamiento #2 (vigente en SNAPSHOT.json)",
+      "bytes": 743883,
+      "lines": 11524,
+      "sha256": "da4428648094b0cac4d713aa505729e3adcee8e342a6708a83d67c112f127e0b",
+      "nota": "blob m3u8-typed-arrays-ultimate.js.WT.da442864.blob"
+    },
+    {
+      "idx": 6,
+      "hora": "2026-10-26T04:30:20",
+      "fuente": "medición de C19 (harness ejecutado 04:33:50)",
+      "bytes": 743637,
+      "lines": 11519,
+      "sha256": "ddce94ca917d5f84232264299649bdd96e344561e2604e88300a398e438d75f6",
+      "nota": "≠ sha congelado ⇒ C19 FAIL; el WT cambió entre el congelamiento y la ejecución del harness"
+    },
+    {
+      "idx": 7,
+      "hora": "2026-10-26T04:34:38.4542373-05:00",
+      "fuente": "re-medición al escribir este log",
+      "bytes": 743699,
+      "lines": 11520,
+      "sha256": "1841e8b61e5c4db8ea9327002847da37e6277d606e79591143ff40945f248a34",
+      "mtime": "2026-10-26T04:34:31.1204126-05:00",
+      "nota": "estado actual"
+    }
+  ],
+  "wt_blobs": [
+    {
+      "archivo": "m3u8-typed-arrays-ultimate.js.WT.d29f62af.blob",
+      "bytes": 743867,
+      "sha256": "d29f62afb6a73deb9a0589f22378a08566dc84d575bbf703188669f50e94f00a",
+      "escrito": "2026-10-26T04:27:34.0435450-05:00"
+    },
+    {
+      "archivo": "m3u8-typed-arrays-ultimate.js.WT.da442864.blob",
+      "bytes": 743883,
+      "sha256": "da4428648094b0cac4d713aa505729e3adcee8e342a6708a83d67c112f127e0b",
+      "escrito": "2026-10-26T04:29:02.1192056-05:00"
+    }
+  ],
+  "conclusion": "El WT del generador cambió al menos 5 veces durante la auditoría (21.581 → 11.443 → 11.459 → 11.524 → 11.524 → 11.519 líneas). Ninguna medición sobre WT es reproducible sin declarar el sha; la única coordenada estable es el blob HEAD c1277bdf (707.323 B / 11.144 líneas)."
+}

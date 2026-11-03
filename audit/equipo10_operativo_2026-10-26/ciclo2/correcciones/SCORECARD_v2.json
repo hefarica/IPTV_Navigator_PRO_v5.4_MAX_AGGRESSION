@@ -1,0 +1,208 @@
+{
+  "_schema": "scorecard_v2/2.0",
+  "_doc": "Scorecard v2 — recalculado desde las tablas reales de los 8 informes del Council. Cierra AUD-03 (doble conteo de PASS calificados) y AUD-05 (suma unica mezclando blobs). Sustituye como referencia a consolidado/SCORECARD.json, que queda INMUTABLE.",
+  "generated_by": "s5-qoe-qos",
+  "task": "t16 / ciclo2",
+  "generated_at": "2026-10-27T00:20:00-05:00",
+  "snapshot_vigente": "d81ddb3aa4badab054db3344b2b201d0663c4566",
+  "snapshot_medido_por_el_council": "e38a89bb30c02cb41050f34cef43d3711a2b0644",
+  "regla_aplicada": {
+    "regla_1": "un PASS calificado / parcial / WARN / condicionado / con reserva NO suma como PASS (CONSOLIDADO §2 y CONTEXTO §5 regla 6)",
+    "regla_2": "los 4 counts binarios (pass+fail+blocked+not_run) solo admiten veredictos literales; los calificados van a `calificados`",
+    "regla_3": "dimension sin tabla de veredicto => counts null (S7). Nunca PASS, nunca inventado",
+    "regla_4": "veredicto dual (PASS en A / FAIL en B) se cuenta como FAIL (mas restrictivo)",
+    "regla_5": "totales SIEMPRE agrupados por blob; no se publica suma unica como veredicto (REGLA_DE_ORIGEN:17)",
+    "regla_6": "no se suaviza FAIL: los veredictos de dimension no cambian respecto de v1",
+    "tokens_calificados_detectados": ["PASS con drift", "PASS parcial", "Parcial (SI/NO)", "PASS (con reserva)", "PASS condicionado", "WARN"]
+  },
+  "dimensiones": [
+    {
+      "dimension": "S1",
+      "informe": "council/S1_hls_m3u8.md",
+      "pass": 8, "fail": 12, "blocked": 0, "not_run": 2, "calificados": 0,
+      "items_binarios": 22, "items_declarados": 22,
+      "veredicto": "FAIL",
+      "counts_basis": "§2 hechos F01-F22 (L30-51), 22 filas contadas una por una",
+      "blob_medido": "WT historico ~04:12 (21.581 L, NO conservado) + artefactos versionados",
+      "blob_nota": "AUD-01/AUD-02: >=6 citas del informe solo caben en ese render; F01 (+10.447/-10) es historico superado",
+      "filas_calificadas": []
+    },
+    {
+      "dimension": "S2",
+      "informe": "council/S2_llhls_cmaf.md",
+      "pass": 4, "fail": 5, "blocked": 1, "not_run": 2, "calificados": 0,
+      "items_binarios": 12, "items_declarados": 12,
+      "veredicto": "FAIL",
+      "counts_basis": "§1 afirmaciones A1-A12 (L16-27)",
+      "blob_medido": "HEAD tree e38a89b (git grep -o -F) + HEAD c1277bdf para citas del generador",
+      "filas_calificadas": []
+    },
+    {
+      "dimension": "S3",
+      "informe": "council/S3_S4_codec_color_hdr.md (seccion S3)",
+      "pass": 15, "fail": 12, "blocked": 0, "not_run": 5, "calificados": 0,
+      "items_binarios": 32, "items_declarados": 34,
+      "veredicto": "WARN",
+      "counts_basis": "§'Totales por dimension' fila S3 (L207): CONFORME 15 / HALLAZGO 12 / NO-RUN 5 (mapeo CONFORME->PASS, HALLAZGO->FAIL)",
+      "blob_medido": "HEAD c1277bdf (generador) + WT congelado 20ac4b26 (resolve_quality_unified.php)",
+      "filas_calificadas": [],
+      "items_sin_veredicto": 2
+    },
+    {
+      "dimension": "S4",
+      "informe": "council/S3_S4_codec_color_hdr.md (seccion S4)",
+      "pass": 8, "fail": 11, "blocked": 0, "not_run": 4, "calificados": 0,
+      "items_binarios": 23, "items_declarados": 24,
+      "veredicto": "WARN",
+      "counts_basis": "§'Totales por dimension' fila S4 (L208): CONFORME 8 / HALLAZGO 11 / NO-RUN 4",
+      "blob_medido": "HEAD c1277bdf (generador) + WT para el resto de citas",
+      "filas_calificadas": [],
+      "items_sin_veredicto": 1
+    },
+    {
+      "dimension": "S5",
+      "informe": "council/S5_qoe_telemetria.md",
+      "pass": 0, "fail": 15, "blocked": 0, "not_run": 0, "calificados": 0,
+      "items_binarios": 15, "items_declarados": 15,
+      "veredicto": "FAIL",
+      "veredicto_nota": "capitulo propio (recusado en ciclo 1); validado por tercero t12 segun README:34. Re-verificado en d81ddb3: hallazgos ABIERTOS",
+      "counts_basis": "§6.2 hallazgos S5-01..S5-15 + §6.4 severidades (2 CRITICAL / 7 HIGH / 5 MEDIUM / 1 LOW)",
+      "blob_medido": "HEAD c1277bdf + HEAD c8830f58 (index-v4.html)",
+      "blob_validado": "d81ddb3 (blob del generador b7b59446, 741.881 B / 11.688 L) — ver bloque verificacion_s5_en_d81ddb3",
+      "filas_calificadas": []
+    },
+    {
+      "dimension": "S6",
+      "informe": "council/S6_nginx_lua.md",
+      "pass": 8, "fail": 3, "blocked": 0, "not_run": 0, "calificados": 1,
+      "items_binarios": 11, "items_declarados": 12,
+      "veredicto": "PASS_CONDICIONADO",
+      "counts_basis": "§3 invariantes autopista (L47-60), base de 12 invariantes (las 3 filas L51-53 son 1 solo invariante limit_conn)",
+      "blob_medido": "WT congelado 23b25b03 (ape_header.lua 8.088 B) / 393635c2 (ape_uri_rebase.lua 9.930 B) + configs del repo",
+      "blob_nota": "Los blobs HEAD equivalentes son byte-identicos a produccion (a15e1fe3 / 1d456a46); la divergencia es del WT",
+      "filas_calificadas": [
+        {"fila": "S6_nginx_lua.md:59", "token": "**Parcial**", "item": "proxy_pass_request_headers off (ausente en las 11 locations del intercept)"}
+      ]
+    },
+    {
+      "dimension": "S7",
+      "informe": "council/S7_S10_sre_seguridad.md (seccion S7)",
+      "pass": null, "fail": null, "blocked": null, "not_run": null, "calificados": null,
+      "items_binarios": 0, "items_declarados": 0,
+      "veredicto": "WARN (repo) + BLOCKED (operacion 365 d)",
+      "counts_basis": "NO PUBLICADA tabla de veredicto por fila => counts null. Aceptado por el capitan (VALIDACION_DEL_CAPITAN.md:29). Excluida de todos los totales",
+      "blob_medido": "HEAD tree e38a89b (git ls-files + git grep -n -I)",
+      "filas_calificadas": []
+    },
+    {
+      "dimension": "S8",
+      "informe": "council/S8_red_tcp_quic.md",
+      "pass": 4, "fail": 3, "blocked": 0, "not_run": 0, "calificados": 2,
+      "items_binarios": 7, "items_declarados": 9,
+      "veredicto": "WARN",
+      "counts_basis": "§2 declarado-vs-aplicado (L27-35), 9 filas: 4 PASS literales + 2 PASS calificados + 3 FAIL",
+      "blob_medido": "HEAD tree e38a89b + mediciones de tercero (VPS_NGINX_DUMP_ANALYSIS.md, state-snapshot.txt)",
+      "filas_calificadas": [
+        {"fila": "S8_red_tcp_quic.md:31", "token": "**PASS con drift**", "item": "tcp_notsent_lowat 131072->16384"},
+        {"fila": "S8_red_tcp_quic.md:35", "token": "**PASS parcial**", "item": "rto_min lock 40ms en 3 de 24 rutas"}
+      ]
+    },
+    {
+      "dimension": "S9",
+      "informe": "council/S9_player_compat.md",
+      "pass": 1, "fail": 3, "blocked": 1, "not_run": 1, "calificados": 2,
+      "items_binarios": 6, "items_declarados": 8,
+      "veredicto": "FAIL",
+      "counts_basis": "§8 veredicto por control C1-C8 (L96-103): C5 PASS literal; C1 'PASS (con reserva)' y C6 'PASS parcial' = calificados; C3 dual = FAIL",
+      "blob_medido": "WT vivo (coordenada NO reproducible — AUD-06)",
+      "blob_validado": "HEAD c1277bdf: el capitan re-midio C1..C8 sobre HEAD (gobierno/VALIDACION_DEL_CAPITAN.md:15-22) y ratifico FAIL",
+      "filas_calificadas": [
+        {"fila": "S9_player_compat.md:96", "token": "**PASS** (con reserva)", "item": "C1 0 toxicos en EXTHTTP de HEAD; reserva: si JSON.parse falla el bridge no sanea"},
+        {"fila": "S9_player_compat.md:101", "token": "**PASS parcial**", "item": "C6 gating por player/UA solo Sec-Fetch*/Sec-CH*"}
+      ]
+    },
+    {
+      "dimension": "S10",
+      "informe": "council/S7_S10_sre_seguridad.md (seccion S10)",
+      "pass": 1, "fail": 4, "blocked": 0, "not_run": 1, "calificados": 2,
+      "items_binarios": 6, "items_declarados": 8,
+      "veredicto": "FAIL",
+      "counts_basis": "§7 superficie de auth (L149-156), 8 filas: ape-pull PASS literal; qoe-flush 'PASS condicionado' y prisma-conviva-event WARN = calificados; 4 FAIL; 1 NOT_RUN",
+      "blob_medido": "HEAD tree e38a89b",
+      "filas_calificadas": [
+        {"fila": "S7_S10_sre_seguridad.md:151", "token": "**PASS condicionado**", "item": "qoe-flush.php: loopback-only"},
+        {"fila": "S7_S10_sre_seguridad.md:155", "token": "**WARN**", "item": "prisma-conviva-event.conf: POST publico con limit_req 10r/s"}
+      ]
+    }
+  ],
+  "totales_por_blob": [
+    {
+      "blob": "HEAD tree e38a89b / HEAD blob c1277bdf",
+      "dimensiones": ["S2", "S5", "S8", "S10"],
+      "pass": 9, "fail": 27, "blocked": 1, "not_run": 3, "calificados": 4,
+      "items_binarios": 40, "items_declarados": 44,
+      "excluida_sin_tabla": "S7 (counts null)"
+    },
+    {
+      "blob": "Mixto: HEAD c1277bdf (generador) + WT congelado 20ac4b26",
+      "dimensiones": ["S3", "S4"],
+      "pass": 23, "fail": 23, "blocked": 0, "not_run": 9, "calificados": 0,
+      "items_binarios": 55, "items_declarados": 58,
+      "nota": "3 hechos sin veredicto en las tablas del autor (S3 2 + S4 1) — no se rellenan"
+    },
+    {
+      "blob": "WT congelado 23b25b03 / 393635c2 (ape_header.lua, ape_uri_rebase.lua)",
+      "dimensiones": ["S6"],
+      "pass": 8, "fail": 3, "blocked": 0, "not_run": 0, "calificados": 1,
+      "items_binarios": 11, "items_declarados": 12
+    },
+    {
+      "blob": "WT vivo — coordenada NO reproducible (AUD-06); contenido re-anclado a HEAD por el capitan",
+      "dimensiones": ["S9"],
+      "pass": 1, "fail": 3, "blocked": 1, "not_run": 1, "calificados": 2,
+      "items_binarios": 6, "items_declarados": 8
+    },
+    {
+      "blob": "WT historico ~04:12 (21.581 L, NO conservado) + artefactos",
+      "dimensiones": ["S1"],
+      "pass": 8, "fail": 12, "blocked": 0, "not_run": 2, "calificados": 0,
+      "items_binarios": 22, "items_declarados": 22,
+      "nota": "AUD-01/AUD-02: alcance historico subdeclarado en el informe"
+    }
+  ],
+  "totales_globales": {
+    "advertencia": "NO es un veredicto. Es la suma aritmetica de los 5 grupos de blob, que NO son comparables entre si (REGLA_DE_ORIGEN:17). Se publica solo para verificar la aritmetica.",
+    "grupos": 5,
+    "dimensiones_con_tabla": 9,
+    "dimensiones_sin_tabla": ["S7"],
+    "pass": 49, "fail": 68, "blocked": 2, "not_run": 15,
+    "items_binarios": 134,
+    "calificados": 7,
+    "items_declarados_por_los_autores": 144,
+    "items_sin_veredicto_ni_calificacion": 3,
+    "cuadre": "49+68+2+15 = 134 binarios; 134 + 7 calificados + 3 sin veredicto = 144 declarados"
+  },
+  "reconciliacion_53_a_49": [
+    {"paso": 0, "valor_pass": 53, "fuente": "consolidado/SCORECARD.json v1 (inmutable)", "causa": "contaba 2 PASS calificados de S8 como literales"},
+    {"paso": 1, "valor_pass": 51, "delta": -2, "fuente": "AUD-03 (auditoria) + README:61 + CONTEXTO:57", "causa": "S8_red_tcp_quic.md:31 'PASS con drift' y :35 'PASS parcial' salen de pass"},
+    {"paso": 2, "valor_pass": 50, "delta": -1, "fuente": "este recuento (t16)", "causa": "S9_player_compat.md:96 C1 '**PASS** (con reserva)' — calificado, no literal"},
+    {"paso": 3, "valor_pass": 49, "delta": -1, "fuente": "este recuento (t16) — RESULTADO", "causa": "S7_S10_sre_seguridad.md:151 '**PASS condicionado**' (qoe-flush.php) — calificado, no literal"}
+  ],
+  "verificacion_s5_en_d81ddb3": {
+    "blob_medido": {"path": "IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/m3u8-typed-arrays-ultimate.js", "git_blob": "b7b594467c6e", "bytes": 741881, "lines": 11688, "sha256_16": "594b38482b714881"},
+    "nota_metodo": "extraido con `git show d81ddb3:<path>` (no se usa el WT vivo). Las lineas de las citas v1 (c1277bdf) NO son las de d81ddb3: el generador crecio de 11.144 a 11.688 lineas",
+    "hallazgos": [
+      {"id": "S5-02", "pieza": "vps/prisma/lib/conviva_qoe_server.php", "blob": "c6189d7213d0 (265 L)", "linea_v1_e38a89b": "210-236", "linea_d81ddb3": "210 (funcion) · llamada :168 · returns :222/:228/:231", "estado": "ABIERTO", "detalle": "computeStubQoE() sigue devolviendo constantes (40 rebuffer_start, 25 error, final_qoe??75)"},
+      {"id": "S5-02b", "pieza": "vps/prisma/lib/ape_mesh.php", "blob": "21fcf7e0de55 (547 L)", "linea_v1_e38a89b": "113-115,181", "linea_d81ddb3": "113-115 (comentario 'QoE REAL') · :181 risk = 100 - qoe_score · :132 lee rebuffer_duration_ms", "estado": "ABIERTO", "detalle": "lee como QoE real un qoe_score que es stub"},
+      {"id": "S5-01", "pieza": "generador (m3u8-typed-arrays-ultimate.js)", "blob": "b7b594467c6e (11.688 L)", "linea_v1_e38a89b": "5949-5950, 8624-8641, 8918-8919, 9248-9251", "linea_d81ddb3": "VSTQ=50 :6080 y :6281 y :9007 · MOS=4.8 :9007 y :9022 · PSNR=42 :9009 y :9022 y :9306 · SSIM=0.99 :9009 y :9022 y :9307 · LATENCY STARTUP=0ms :9011 · TR101290 en cero :6282 y :5404-5406 · CORTEX-TELEMETRY :9636 y :9639 · X-Metrics-Endpoint ajeno :6086", "estado": "ABIERTO", "detalle": "no solo persisten: aparecen 6 sitios nuevos de TR101290/Telchemy en cero (:5276, :5404-5406, :6172-6173, :7033)"}
+    ],
+    "conclusion": "Los 3 hallazgos de S5 que la tarea manda verificar siguen VIGENTES en d81ddb3. Ninguno se cerro entre e38a89b y d81ddb3."
+  },
+  "no_verificado": [
+    "S7: sin tabla de veredicto => counts null (no se inventan numeros).",
+    "S1: su coordinada (WT 21.581 L) no existe; el conteo es el de su tabla, no reproducible hoy.",
+    "S9: la coordinada del informe (WT vivo) no es reproducible; solo el contenido fue re-medido en HEAD por el capitan.",
+    "Ningun veredicto sobre el VPS: sigue siendo NOT_RUN/BLOCKED de tercero.",
+    "No se re-midio el contenido de los 8 informes: se contaron sus tablas y se verifico su identidad por sha256 (8/8 identicos a REPORT_HASHES.json)."
+  ]
+}

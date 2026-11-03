@@ -1,0 +1,147 @@
+{
+  "_schema": "auditoria_plan_rea/1.0",
+  "auditoria": "t25 · auditoría independiente de docs/rea/PLAN_REA.md",
+  "auditor": "s9-player-compat",
+  "fecha": "2026-10-27",
+  "snapshot": "a8ff0e946524f945f89858c9c6c620aeb5f31813",
+  "recusacion": "No se audita docs/rea/05_PLAYER_COMPAT.md (autor: s9-player-compat); lo valida el capitán. Se auditan 01, 02, 03, 04, PLAN_REA.md y C-1..C-4.",
+  "docs_auditados_sha256_12": {
+    "01_CODEC_HDR_DV.md": "e6872b48c3ee",
+    "02_EDGE_DECLARE_AUTO_API.md": "5fefd290eaee",
+    "03_BUILD_SHADERS_SECURITY.md": "f8989348e5c4",
+    "04_FEASIBILITY_TRANSPORT.md": "157f32227a1c",
+    "PLAN_REA.md": "aa0a82b354c7"
+  },
+  "sections": [
+    {
+      "seccion": "§1 Tabla de verdad",
+      "veredicto": "PASS",
+      "evidencia": "8/8 filas muestreadas coinciden con su fuente: tonemap!=BT2390 (01:40), libplacebo exige GPU (01:22), 1080p->4K 8-9 s/segmento (01:26,01:105; 04:327 8,9 fps => 8,4 s), transcode NO-GO 7,61 core·s/s (docs/MEDIA_FANOUT_FEASIBILITY.md:325-332), DV P5 sin base HDR10 (01:72), LEVER B apagado (vps/nginx/lua/combined_body_filter.lua:335), AI-PQ REAL (CLAUDE.md:234-236 + push_pq_profile.php:3,11,23-27)",
+      "notas": "Recuento real de la tabla: 13 REAL · 8 POSIBLE · 7 FALSO · 4 IMPOSIBLE. El '9 FALSO / 5 IMPOSIBLE' del cierre de t24 no está soportado por el plan (AU-02)."
+    },
+    {
+      "seccion": "§2 Fase 0 (coste 0, sin producción)",
+      "veredicto": "FAIL",
+      "evidencia": "F0-2 conserva declare_auto y acota 8K, pero 02:46 define can_declare_8k = (max_resolution >= 3840) AND (nivel >= L183): un master 4K con L183 cumple ambas y se declara 7680x4320 (upscale etiquetado), que V-3 (PLAN:124) y 05 §5.4 prohíben. El flag uhd8k es global (ape_flags), no por host. La matriz de 02:56 no incluye el caso '4K L183'.",
+      "notas": "F0-1..F0-11 son coherentes en lo demás; F0-8 (token) y F0-11 (microcaché) tienen riesgos de regresión no cubiertos (AU-03, AU-04)."
+    },
+    {
+      "seccion": "§3 Fase 1 (nodo GPU)",
+      "veredicto": "PASS",
+      "evidencia": "Coste y HW con fuente: 04:15 (GEX45 i5-13500/64 GB/2x512 NVMe/1 Gbit) y 04:118 (€214,00/mes + €209,00 setup = €423,00 1er mes, exento IVA; URL Hetzner). Capacidad NVENC 4K = NOT_RUN (04 §2.4) y coste CDN = NOT_RUN (04 §7) declarados. Gate de aprobación del propietario explícito (PLAN:82).",
+      "notas": "El build FFmpeg (sha256 74db6c18...ef93, 03:42) y el test iGPU 21,9 fps (03:184) son mediciones del autor no reproducibles en este host (sin binario): NO_VERIFICADO, no ficción."
+    },
+    {
+      "seccion": "§4 Fase 2 (player/VPP)",
+      "veredicto": "PASS",
+      "evidencia": "Delega AI-PQ/AI-SR al device (05 §4, CLAUDE.md:634-652, push_pq_profile.php:3,11,23-27); NO delega hdr_conversion_mode (passthrough, CLAUDE.md:220-231); declare_auto/VIDEO-RANGE = etiqueta; declara GAP de emisión por player (05 §6 R1) y 44 celdas NO_VERIFICADO de 64.",
+      "notas": "Coherente con 05 (no auditado por recusación) y con 01/04. Sin claims REAL falsos detectados en esta sección."
+    },
+    {
+      "seccion": "§5 Vetos V-1..V-10",
+      "veredicto": "PASS",
+      "evidencia": "V-1 DV/HDR falso, V-2 transcode VPS, V-3 8K sobre 4K, V-4 quitar declare_auto, V-5 proxear /_ape en 443, V-6 romper /cdn//listas, V-7 inflar BANDWIDTH, V-8 TTL>3 s, V-9 WebRTC default, V-10 EXT-X-MAP inventado: cada uno con doc § y coherente con 01/02/04/05.",
+      "notas": "V-3 es correcto, pero F0-2 lo incumple en el caso 4K L183 (AU-01): el veto no absuelve la fila de Fase 0."
+    },
+    {
+      "seccion": "§6 Gates + rollback",
+      "veredicto": "PASS",
+      "evidencia": "G3 re-ejecutado: node _vps_stage/edge/uhd/uhd_doctrine_guard.mjs -> exit 1 con blocker UHD-09 '7680x4320@hvc1.2.4.L153.B0' (esperado hoy). G4 --selftest -> 'SELFTEST: PASS (8/8)', exit 0. G2: _vps_stage/edge/baseline/runs/20261026T201548Z/restore_dryrun.log = 'DRYRUN: nada escrito' + RESULT=OK. G1 scripts existen (phase0_backup.sh 5.086 B, phase0_verify.sh 2.174 B, restore_phase0.sh 3.402 B). G10 baseline medido (docs/edge/BASELINE.md:215, Δ TTFB 31-51 ms). G8 y G12 declarados GAP (verificado: '9/9' solo aparece en PLAN_REA).",
+      "notas": "G5 (/_ape/luatest 68/68) = NOT_RUN por contrato (loopback VPS). Rollback definido con orden y criterio de aborto. G1 omite la ruta en el plan (02 §1.4 sí la trae): AU-05."
+    },
+    {
+      "seccion": "§7 Backlog",
+      "veredicto": "PASS",
+      "evidencia": "Exactamente 12 filas B-01..B-12 (conteo por regex ^\\| B-\\d\\d), cada una con dueño y criterio de aceptación; B-11 (evaluación del nodo GPU) separado y gateado por aprobación; ninguna ejecutada (declarado).",
+      "notas": "Trazabilidad indirecta: B-xx referencia F0-xx/F1/F2, no doc § (LOW, AU-05)."
+    },
+    {
+      "seccion": "declare_auto (recusación/blocker)",
+      "veredicto": "PASS",
+      "evidencia": "F0-2 lo CONSERVA y solo acota (can_declare_8k + degradación 4K); V-4 veta quitarlo; §1:47-48 lo clasifican REAL/POSIBLE; ninguna fila de §2/§3/§5 lo elimina ni sustituye. F0-4 toca solo add_pq; F0-2 el techo 8K: acotamientos, no sustitución.",
+      "notas": "No hay blocker de recusación. La objeción es de completitud del guard (AU-01), no de conservación."
+    },
+    {
+      "seccion": "Coste 0",
+      "veredicto": "PASS",
+      "evidencia": "Fase 0: solo Lua/PHP/JS del repo + flags; sin proveedor, egress ni hardware. Único importe del plan: B-11 €423,00 el 1er mes (04:118) con gate de propietario (PLAN:82). Coste CDN y NVENC declarados NOT_RUN.",
+      "notas": "Ningún otro gasto o proveedor aparece en §2/§5/§6."
+    },
+    {
+      "seccion": "Trazabilidad",
+      "veredicto": "PASS",
+      "evidencia": "Parseo por fila de §1-§6: 88/88 filas de datos con doc § o archivo:línea (5 encabezados excluidos); 0 huérfanas reales. C-1..C-4 con archivo:línea o verificación del capitán. §7 con F0-xx (indirecta).",
+      "notas": "Contradicción entre docs: solo V-3 vs F0-2 (AU-01). 01/04/05 son coherentes entre sí en DV, P5/P8.1, WebRTC y VPS."
+    },
+    {
+      "seccion": "Cero ficción / cero secretos",
+      "veredicto": "PASS",
+      "evidencia": "Barrido de docs/rea/* (6 archivos): 0 PEM, 0 PrivateKey/PresharedKey con valor, 0 user:pass@, 0 token literal, 0 CV/curriculum/certificación/experiencia/PhD. Fase 0 declara 'no ejecutado'; NVENC, CDN, mpv, luatest, build sandbox, Real-ESRGAN vídeo y matriz de devices = NOT_RUN. Único MEDIDO no reproducible: build FFmpeg e iGPU (AU-07).",
+      "notas": "Los 2 hits de 'certificación' son 'Licencia/CM de Dolby' (01:77) y una URL; no son credenciales."
+    },
+    {
+      "seccion": "GLOBAL",
+      "veredicto": "FAIL",
+      "evidencia": "1 FAIL abierto de severidad HIGH (AU-01): el endurecimiento de declare_auto admite 8K sobre fuente 4K con L183, contradiciendo V-3/05 §5.4. 3 ejes del encargo cumplidos: declare_auto conservado (PASS), coste 0 en Fase 0 (PASS), gates ejecutables con rollback (PASS, G3/G4 re-ejecutados).",
+      "notas": "Para pasar a PASS: umbral de fuente >=7680 (o marcar -PREFERRED) + caso '4K L183' en la matriz y en el guard + resolver AU-03/AU-04. Sin tocar declare_auto ni añadir coste."
+    }
+  ],
+  "hallazgos": [
+    {
+      "id": "AU-01",
+      "seccion": "§2 Fase 0 / §5 V-3",
+      "severidad": "high",
+      "evidencia": "02:46 can_declare_8k = (max_resolution >= 3840) AND (nivel >= L183). Un master 4K (3840) con L183 cumple => RESOLUTION=7680x4320 declarado (no -PREFERRED). V-3 (PLAN:124) y 05 §5.4 lo prohíben. 02:56 no incluye el caso '4K L183'. uhd8k es flag global en ape_flags (ape_gateway.lua:36).",
+      "correccion": "Exigir max_resolution >= 7680 para la rama 8K (o emitir 8K solo como -PREFERRED); añadir el caso a la matriz E5 §4.8 y al uhd_doctrine_guard."
+    },
+    {
+      "id": "AU-02",
+      "seccion": "§1 Tabla de verdad",
+      "severidad": "medium",
+      "evidencia": "Recuento por columna de nivel en PLAN:21-54: 13 REAL, 8 POSIBLE, 7 FALSO, 4 IMPOSIBLE. El cierre de t24 afirma '9 FALSO y 5 IMPOSIBLE'; PLAN_REA no contiene esa cifra (grep sin coincidencias).",
+      "correccion": "Corregir el conteo en el reporte de t24; el plan no requiere cambio."
+    },
+    {
+      "id": "AU-03",
+      "seccion": "§2 F0-8 (auth API)",
+      "severidad": "medium",
+      "evidencia": "15 archivos del repo referencian /_ape/* (ape_gateway.lua, ape_lab_api.lua, ape_luatest.lua, _vps_stage/deploy/verify.sh, frontend/js/ape-v9/generation-controller.js, meta-plane.conf). F0-8 exige 403 sin token pero no migra llamadores ni define el orden token vs allow 127.0.0.1.",
+      "correccion": "Enumerar consumidores y orden de gates; exigir token solo en mutaciones (?v=) y eximir loopback explícitamente."
+    },
+    {
+      "id": "AU-04",
+      "seccion": "§2 F0-11 (microcaché)",
+      "severidad": "medium",
+      "evidencia": "F0-11/V-8 fijan TTL <=3 s pero no la clave de caché; sin token/UA en la clave se puede servir un manifiesto con token de otro cliente.",
+      "correccion": "Clave = host + path + hash(token) + UA; test de dos clientes con tokens distintos."
+    },
+    {
+      "id": "AU-05",
+      "seccion": "§6 G1 / §7",
+      "severidad": "low",
+      "evidencia": "El plan cita phase0_backup.sh/phase0_verify.sh/restore_phase0.sh sin ruta; existen en _vps_stage/edge/baseline/ (5.086 / 2.174 / 3.402 B). §7 B-xx no cita doc §. F0-1 no enumera consumidores de /_ape/health.",
+      "correccion": "Añadir rutas y consumidores al plan."
+    },
+    {
+      "id": "AU-06",
+      "seccion": "§2 F0-6",
+      "severidad": "low",
+      "evidencia": "STABLE-VARIANT-ID se añade a STREAM-INF; RFC permite ignorar atributos desconocidos, pero TiviMate/OTT/VLC son NO_VERIFICADO en 05 §1 y el plan no incluye prueba en player.",
+      "correccion": "Marcar el atributo como opcional y validar en 2 players antes de fijarlo como default."
+    },
+    {
+      "id": "AU-07",
+      "seccion": "§3 / §1",
+      "severidad": "info",
+      "evidencia": "Build FFmpeg (sha256 74db6c18...ef93, 03:42) e iGPU libplacebo 21,9 fps (03:184) son MEDIDO por el autor; no hay binario ffmpeg en este host => no reproducibles aquí.",
+      "correccion": "Etiquetar [MEDIDO-AUTOR] y no usarlos como gate de aceptación."
+    },
+    {
+      "id": "AU-08",
+      "seccion": "§2 F0-10",
+      "severidad": "info",
+      "evidencia": "F0-10 cambia el generador (quita CODECS por defecto sin probe); G8 mide hashes de listas servidas del VPS, no del generador. F0-10 declara su propia medida ('canales sin probe: 0 con CODECS=hvc1*') pero no está en la lista G.",
+      "correccion": "Añadir la medida de F0-10 como gate G13 y advertir que listas ya cacheadas por clientes no se pueden retirar."
+    }
+  ]
+}

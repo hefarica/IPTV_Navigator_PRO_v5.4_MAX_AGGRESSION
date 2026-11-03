@@ -1,0 +1,219 @@
+{
+  "schema": "equipo10-operativo-real/1.0",
+  "generado_por": "s2-llhls-cmaf",
+  "task": "t10",
+  "profile_seed": "i2",
+  "attempt_id": "d49283d8-e0be-46c1-9df0-296a477a02ff",
+  "fecha": "2026-10-26",
+  "fuentes_de_verdad": {
+    "roster_y_tareas": ".agent-teams/equipo-enterprise-10-adn/team.json (1141 lineas; members 8-233, tasks 234-1140)",
+    "snapshot_repo": "git HEAD e38a89bb30c02cb41050f34cef43d3711a2b0644; working tree con 57 rutas sucias (git status --porcelain | Measure-Object -> 57)",
+    "paquete_ficticio": "_inbox_EQUIPO_ADN/EQUIPO_ENTERPRISE_10_COUNCIL_ADN/ (430 archivos, 29 directorios, 13243619 bytes)",
+    "doctrina_repo": "AGENTS.md, CLAUDE.md, docs/manifestos/VPS_REALITY_MEASURED_2026-10-25.md",
+    "protocolo_usado": "audit/equipo10_operativo_2026-10-26/adn/PROTOCOLO_COUNCIL.md"
+  },
+  "nota_importacion_dsh": "El paquete NO se importo a DSH. Evidencia: 06_VERIFICACION_DEL_PAQUETE.txt:9 ('NO VERIFICADO por generar este ZIP: importacion real DSH...'); validate_imports_portable.py -> runtime_verified=false, excel_sync_verified=false (exit 0). Ningun artefacto de este team proviene de la importacion del paquete.",
+  "reglas_duras": [
+    "R1 Toda afirmacion lleva archivo:linea o comando+exit (team.json:46 (executionPrompt) y :48 (runtimeSetup) de cada miembro)",
+    "R2 Prohibido inventar cifras, personas, titulos, experiencia o resultados de pruebas no ejecutadas (team.json:46,48; RESUMEN_EQUIPO_ENTERPRISE_10.txt:23)",
+    "R3 Nunca se imprimen secretos: solo archivo:linea + *** (team.json:46,48)",
+    "R4 Escritura SOLO en la ruta de entregable propia; el resto es read-only (team.json:46,48)",
+    "R5 No se despliega ni se toca produccion/VPS (team.json:46,48; CLAUDE.md:19 'PROHIBIDO: desplegar para alinear')",
+    "R6 Lo no verificable es NOT_RUN/BLOCKED, nunca PASS (team.json:46,48)"
+  ],
+  "validacion_paquete": {
+    "zip_presente_en_workspace": false,
+    "zip_buscado": "Get-ChildItem -Recurse -File -Include *.zip (excluye .git/node_modules) -> 11 ZIPs, ninguno EQUIPO_ENTERPRISE_10_COUNCIL_ADN",
+    "sha256_declarado": "ad40f159be1d8fefbe11bc65c80152411e4a1d19b83df9e04d3e46675f0bb408",
+    "sha256_declarado_fuente": ".agent-teams/equipo-enterprise-10-adn/team.json:1068",
+    "get_filehash_del_zip": "NOT_RUN (no existe el archivo ZIP; el hash solo consta como afirmacion en la descripcion de la tarea)",
+    "entradas": { "archivos": 430, "directorios": 29, "rutas_totales": 459 },
+    "entradas_declaradas": 430,
+    "entradas_coincide": true,
+    "sustituto_de_identidad_verificado": {
+      "metodo": "MANIFIESTO_SHA256.txt del propio paquete (cubre todos los archivos salvo el manifiesto, 06_VERIFICACION_DEL_PAQUETE.txt:7)",
+      "entradas_manifiesto": 429,
+      "archivos_ok": 429,
+      "mismatch": 0,
+      "missing": 0,
+      "sha256_del_manifiesto": "AB6CD0DF860E7D3EAEA8A66E5D613E5BBAAE3FA519ADDDF9F6BBFEB7B058E7B6",
+      "comando": "Get-FileHash -Algorithm SHA256 por cada linea '<hash>  <ruta>' de MANIFIESTO_SHA256.txt"
+    },
+    "validador_del_paquete": {
+      "comando": "python validate_imports_portable.py",
+      "python": "3.12.10",
+      "exit": 0,
+      "salida_clave": { "valid": true, "errors": [], "checks": 2469, "file_count": 430, "agent_count": 10, "tool_catalog_count": 271, "runtime_verified": false, "export_hashes_valid": true },
+      "lectura": "El paquete es internamente coherente; NO acredita importacion, runtime, ACL ni modelos disponibles"
+    }
+  },
+  "validacion_rutas": [
+    { "ruta": "audit/equipo10_operativo_2026-10-26/adn/", "existe": true, "escrito_por": "s2-llhls-cmaf (esta orden)", "probado_escritura": "write probe .write_probe.tmp creado y borrado (TRUE/TRUE)", "escribible": true },
+    { "ruta": "audit/equipo10_operativo_2026-10-26/council/", "existe": true, "archivos": 8, "escrito_por": "los 8 autores del Council", "escribible": "verificado por escritura efectiva (8 archivos con SHA-256 en council_deliverables)" },
+    { "ruta": "audit/equipo10_operativo_2026-10-26/verificacion/", "existe": true, "archivos": ["run_checks.ps1 (33668 B)"], "escrito_por": "s7-sre-secops (t9 en curso)", "escribible": "verificado por escritura efectiva" },
+    { "ruta": "audit/equipo10_operativo_2026-10-26/snapshot/", "existe": true, "archivos": ["SNAPSHOT.json", "REPORT_HASHES.json", "REGLA_DE_ORIGEN.md", "14 blobs HEAD/WT"], "escrito_por": "s7-sre-secops (t9 en curso)", "escribible": "verificado por escritura efectiva" },
+    { "ruta": "audit/equipo10_operativo_2026-10-26/consolidado/", "existe": false, "escrito_por": "s5-qoe-qos (t11 pendiente)", "escribible": "padre verificado escribible (probe en adn/); creacion pendiente del dueno" },
+    { "ruta": "audit/equipo10_operativo_2026-10-26/auditoria/", "existe": false, "escrito_por": "s9-player-compat (t12 pendiente)", "escribible": "padre verificado escribible; creacion pendiente del dueno" },
+    { "ruta": "paquete de entrega (t13)", "existe": false, "escrito_por": "s1-hls-architect (t13 pendiente)", "escribible": "no_verificado_por_el_miembro: team.json:1128 no declara ruta exacta del paquete, solo 'manifest SHA-256 reproducible'" }
+  ],
+  "authority_model": {
+    "owner": "propietario del sistema (autoriza; fuera del team)",
+    "supervisor_de_los_8": "capitan del team (fuera de los 8 miembros; identidad de sesion no consta en team.json -> no_verificado_por_el_miembro para los otros 7; el miembro s2-llhls-cmaf declara parent session-45c9b49b-932a-4ac7-b404-6848de9e6a87 en su propio prompt de asignacion)",
+    "enforcement_real": "instruccion de alcance + contrato de tarea; NO se declara ACL (el paquete lo advierte: 08_PERMISOS_Y_HERRAMIENTAS.md:19 'No afirmar que la separacion de fases impone read-only mediante ACL')"
+  },
+  "agentes": [
+    {
+      "member_id": "cf20a4e5-c2f8-4fc9-8acf-42a97934a4c1",
+      "name": "s1-hls-architect",
+      "fuente": "team.json:10-15",
+      "disciplinas": ["S1"],
+      "dominio": "HLS/M3U8 RFC 8216, M3U Plus, dedupe, Anti-509",
+      "tasks": ["t1", "t13"],
+      "entregables": ["audit/equipo10_operativo_2026-10-26/council/S1_hls_m3u8.md", "paquete de entrega t13 (ruta no declarada -> no_verificado_por_el_miembro)"],
+      "write_scope": ["council/S1_hls_m3u8.md", "t13: paquete de entrega"],
+      "evidencia_exigida": ["6 secciones Council", "archivo:linea o comando+exit por afirmacion", "PASS/FAIL/BLOCKED/NOT_RUN"],
+      "runtime_declarado": { "provider": "deepseek-official", "model": "deepseek-flash", "reasoning_effort": "high", "fuente": "team.json:13-15", "verificacion": "declarado por el runtime; calidad/disponibilidad no_verificado_por_el_miembro (00_DIRECTRIZ_COMUN.txt:11 'un nombre de rol no acredita disponibilidad ni calidad de un modelo')" }
+    },
+    {
+      "member_id": "40727fab-fa65-41fd-a327-4f6b26a2c1bd",
+      "name": "s2-llhls-cmaf",
+      "fuente": "team.json:38-43",
+      "disciplinas": ["S2"],
+      "dominio": "LL-HLS/CMAF-fMP4: EXT-X-PART, EXT-X-MAP, alineacion de chunks; dueno del ADN operativo real",
+      "tasks": ["t2", "t10"],
+      "entregables": ["audit/equipo10_operativo_2026-10-26/council/S2_llhls_cmaf.md", "audit/equipo10_operativo_2026-10-26/adn/EQUIPO_10_OPERATIVO.json", "audit/equipo10_operativo_2026-10-26/adn/CONTRATO_DE_ORDEN.md", "audit/equipo10_operativo_2026-10-26/adn/PROTOCOLO_COUNCIL.md", "audit/equipo10_operativo_2026-10-26/adn/REEMPLAZO_DE_FICCIONES.md"],
+      "write_scope": ["council/S2_llhls_cmaf.md", "adn/"],
+      "evidencia_exigida": ["conteo por archivo, no estimacion", "no_verificado_por_el_miembro en lugar de placeholders", "prohibido afirmar importacion a DSH"],
+      "runtime_declarado": { "provider": "deepseek-official", "model": "deepseek-flash", "reasoning_effort": "high", "fuente": "team.json:41-43", "verificacion": "declarado por el runtime; no_verificado_por_el_miembro" }
+    },
+    {
+      "member_id": "5189261f-2b3f-45ae-b42c-0cffd4d84283",
+      "name": "s3-codec-hdr",
+      "fuente": "team.json:66-71",
+      "disciplinas": ["S3", "S4"],
+      "dominio": "Codec engineer + color scientist HDR (RFC 6381, escalera F0-F5, Ley Nivel<->Resolucion, PQ/HLG/BT.2020/DV)",
+      "tasks": ["t3"],
+      "entregables": ["audit/equipo10_operativo_2026-10-26/council/S3_S4_codec_color_hdr.md"],
+      "write_scope": ["council/S3_S4_codec_color_hdr.md"],
+      "evidencia_exigida": ["34 hechos con archivo:linea", "veredicto WARN por disciplina"],
+      "runtime_declarado": { "provider": "deepseek-official", "model": "deepseek-flash", "reasoning_effort": "high", "fuente": "team.json:69-71", "verificacion": "declarado por el runtime; no_verificado_por_el_miembro" }
+    },
+    {
+      "member_id": "1ed5acf7-88d4-49db-b6fe-f97b98f862c6",
+      "name": "s5-qoe-qos",
+      "fuente": "team.json:94-99",
+      "disciplinas": ["S5"],
+      "dominio": "QoE/QoS researcher (telemetria real vs declarada, VST, rebuffer, VMAF/SSIM/MOS); consolidador del Council",
+      "tasks": ["t4", "t11"],
+      "entregables": ["audit/equipo10_operativo_2026-10-26/council/S5_qoe_telemetria.md", "audit/equipo10_operativo_2026-10-26/consolidado/CONSOLIDADO.md", "audit/equipo10_operativo_2026-10-26/consolidado/SCORECARD.json"],
+      "write_scope": ["council/S5_qoe_telemetria.md", "consolidado/"],
+      "conflicto_declarado": "t11 es consolidacion por NO-autor, pero s5-qoe-qos es autor de c4 -> debe abstenerse de calificar su propio capitulo (ver PROTOCOLO_COUNCIL.md §5)",
+      "evidencia_exigida": ["17 metricas con formula y archivo:linea", "PASS/FAIL/BLOCKED/NOT_RUN por metrica"],
+      "runtime_declarado": { "provider": "deepseek-official", "model": "deepseek-flash", "reasoning_effort": "high", "fuente": "team.json:97-99", "verificacion": "declarado por el runtime; no_verificado_por_el_miembro" }
+    },
+    {
+      "member_id": "2cb509e3-6ef8-448e-950f-f50dd93fa15b",
+      "name": "s6-nginx-lua",
+      "fuente": "team.json:122-127",
+      "disciplinas": ["S6"],
+      "dominio": "nginx / OpenResty Lua (fases, autopista, deriva repo<->desplegado)",
+      "tasks": ["t5"],
+      "entregables": ["audit/equipo10_operativo_2026-10-26/council/S6_nginx_lua.md"],
+      "write_scope": ["council/S6_nginx_lua.md"],
+      "evidencia_exigida": ["52 .lua en alcance", "44 invariantes medidas", "deriva por SHA-256, no por nombre"],
+      "runtime_declarado": { "provider": "deepseek-official", "model": "deepseek-flash", "reasoning_effort": "high", "fuente": "team.json:125-127", "verificacion": "declarado por el runtime; no_verificado_por_el_miembro" }
+    },
+    {
+      "member_id": "c73adf1e-a1d1-4e89-ac0e-bc80d527f18d",
+      "name": "s7-sre-secops",
+      "fuente": "team.json:150-155",
+      "disciplinas": ["S7", "S10"],
+      "dominio": "SRE (systemd, watchdogs, 365 dias) + seguridad (headers toxicos, secretos, auth); dueno del harness ejecutable",
+      "tasks": ["t6", "t9"],
+      "entregables": ["audit/equipo10_operativo_2026-10-26/council/S7_S10_sre_seguridad.md", "audit/equipo10_operativo_2026-10-26/verificacion/HARNESS.json", "audit/equipo10_operativo_2026-10-26/verificacion/VERIFICACION.md", "audit/equipo10_operativo_2026-10-26/verificacion/run_checks.ps1", "audit/equipo10_operativo_2026-10-26/snapshot/"],
+      "write_scope": ["council/S7_S10_sre_seguridad.md", "verificacion/", "snapshot/"],
+      "evidencia_exigida": ["exit codes reales", "no convertir NOT_RUN en PASS", "secretos solo archivo:linea + ***"],
+      "runtime_declarado": { "provider": "deepseek-official", "model": "deepseek-flash", "reasoning_effort": "high", "fuente": "team.json:153-155", "verificacion": "declarado por el runtime; no_verificado_por_el_miembro" }
+    },
+    {
+      "member_id": "36c9396d-d3f0-48c1-9275-b3161a0d6cae",
+      "name": "s8-net-tcp-quic",
+      "fuente": "team.json:178-183",
+      "disciplinas": ["S8"],
+      "dominio": "Network/TCP/QUIC (BBR, initcwnd, MTU anidado, HTTP/2-3, WireGuard)",
+      "tasks": ["t7"],
+      "entregables": ["audit/equipo10_operativo_2026-10-26/council/S8_red_tcp_quic.md"],
+      "write_scope": ["council/S8_red_tcp_quic.md"],
+      "evidencia_exigida": ["22 hallazgos con severidad", "cifras sin medicion marcadas"],
+      "runtime_declarado": { "provider": "deepseek-official", "model": "deepseek-flash", "reasoning_effort": "high", "fuente": "team.json:181-183", "verificacion": "declarado por el runtime; no_verificado_por_el_miembro" }
+    },
+    {
+      "member_id": "ddc2dcac-1752-4dae-a6b2-c53739c4a609",
+      "name": "s9-player-compat",
+      "fuente": "team.json:206-211",
+      "disciplinas": ["S9"],
+      "dominio": "Player compatibility (hls.js, ExoPlayer, TiviMate, OTT Navigator, Smart TV); auditor independiente final",
+      "tasks": ["t8", "t12"],
+      "entregables": ["audit/equipo10_operativo_2026-10-26/council/S9_player_compat.md", "audit/equipo10_operativo_2026-10-26/auditoria/AUDITORIA_INDEPENDIENTE.md", "audit/equipo10_operativo_2026-10-26/auditoria/HALLAZGOS.json"],
+      "write_scope": ["council/S9_player_compat.md", "auditoria/"],
+      "conflicto_declarado": "t12 es auditoria independiente, pero s9-player-compat es autor de c8 -> no puede auditar su propio informe ni ser el unico revisor de afirmaciones S9 (ver PROTOCOLO_COUNCIL.md §6)",
+      "evidencia_exigida": ["muestreo 8-12 afirmaciones re-ejecutadas", "declaracion de conflicto de interes"],
+      "runtime_declarado": { "provider": "deepseek-official", "model": "deepseek-flash", "reasoning_effort": "high", "fuente": "team.json:209-211", "verificacion": "declarado por el runtime; no_verificado_por_el_miembro" }
+    }
+  ],
+  "mapa_tareas": [
+    { "task_id": "t1", "profile_seed": "c1", "estado": "completed", "owner": "s1-hls-architect", "dependencias": [], "subject": "Council S1 · HLS/M3U8: tags realmente emitidos vs RFC 8216 (solo lectura)", "entregable": "council/S1_hls_m3u8.md", "fase": "council" },
+    { "task_id": "t2", "profile_seed": "c2", "estado": "completed", "owner": "s2-llhls-cmaf", "dependencias": [], "subject": "Council S2 · LL-HLS y CMAF: lo declarado vs lo implementado (solo lectura)", "entregable": "council/S2_llhls_cmaf.md", "fase": "council" },
+    { "task_id": "t3", "profile_seed": "c3", "estado": "completed", "owner": "s3-codec-hdr", "dependencias": [], "subject": "Council S3+S4 · Codec RFC 6381, Ley Nivel<->Resolucion y senalizacion HDR/color (solo lectura)", "entregable": "council/S3_S4_codec_color_hdr.md", "fase": "council" },
+    { "task_id": "t4", "profile_seed": "c4", "estado": "completed", "owner": "s5-qoe-qos", "dependencias": [], "subject": "Council S5 · Telemetria QoE: metricas realmente calculadas vs declaradas (solo lectura)", "entregable": "council/S5_qoe_telemetria.md", "fase": "council" },
+    { "task_id": "t5", "profile_seed": "c5", "estado": "completed", "owner": "s6-nginx-lua", "dependencias": [], "subject": "Council S6 · nginx/OpenResty Lua: fases reales, autopista y deriva repo<->desplegado (solo lectura)", "entregable": "council/S6_nginx_lua.md", "fase": "council" },
+    { "task_id": "t6", "profile_seed": "c6", "estado": "completed", "owner": "s7-sre-secops", "dependencias": [], "subject": "Council S7+S10 · SRE (systemd/watchdogs) y seguridad (secretos, auth, headers toxicos)", "entregable": "council/S7_S10_sre_seguridad.md", "fase": "council" },
+    { "task_id": "t7", "profile_seed": "c7", "estado": "completed", "owner": "s8-net-tcp-quic", "dependencias": [], "subject": "Council S8 · Red: BBR/initcwnd/MTU/HTTP2-3 y cifras sin medicion (solo lectura)", "entregable": "council/S8_red_tcp_quic.md", "fase": "council" },
+    { "task_id": "t8", "profile_seed": "c8", "estado": "completed", "owner": "s9-player-compat", "dependencias": [], "subject": "Council S9 · Compatibilidad de player: headers, tags y matriz real (solo lectura)", "entregable": "council/S9_player_compat.md", "fase": "council" },
+    { "task_id": "t9", "profile_seed": "i1", "estado": "in_progress", "owner": "s7-sre-secops", "dependencias": ["t1", "t2", "t3", "t4", "t5", "t6", "t7", "t8"], "subject": "Implementacion · Harness ejecutable real con exit codes (PASS/FAIL/NOT_RUN)", "entregable": "verificacion/HARNESS.json + verificacion/VERIFICACION.md + verificacion/run_checks.ps1 + snapshot/", "fase": "implementacion" },
+    { "task_id": "t10", "profile_seed": "i2", "estado": "in_progress", "owner": "s2-llhls-cmaf", "dependencias": [], "subject": "Implementacion · ADN operativo real: roster, contrato de orden y protocolo Council (sin ficcion)", "entregable": "adn/EQUIPO_10_OPERATIVO.json + adn/CONTRATO_DE_ORDEN.md + adn/PROTOCOLO_COUNCIL.md + adn/REEMPLAZO_DE_FICCIONES.md", "fase": "implementacion" },
+    { "task_id": "t11", "profile_seed": "i3", "estado": "pending", "owner": "s5-qoe-qos", "dependencias": ["t1", "t2", "t3", "t4", "t5", "t6", "t7", "t8", "t9", "t10"], "subject": "Implementacion · Consolidado del Council y scorecard por dimension S1-S10", "entregable": "consolidado/CONSOLIDADO.md + consolidado/SCORECARD.json", "fase": "implementacion" },
+    { "task_id": "t12", "profile_seed": "i4", "estado": "pending", "owner": "s9-player-compat", "dependencias": ["t11"], "subject": "Auditoria independiente · trazabilidad de evidencia, cero ficcion y cero secretos", "entregable": "auditoria/AUDITORIA_INDEPENDIENTE.md + auditoria/HALLAZGOS.json", "fase": "auditoria" },
+    { "task_id": "t13", "profile_seed": "i5", "estado": "pending", "owner": "s1-hls-architect", "dependencias": ["t12"], "subject": "Integracion · Paquete de entrega con manifest SHA-256 reproducible", "entregable": "paquete con manifest SHA-256 (ruta exacta no declarada en team.json:1128 -> no_verificado_por_el_miembro)", "fase": "integracion" }
+  ],
+  "council_deliverables": [
+    { "file": "council/S1_hls_m3u8.md", "author": "s1-hls-architect", "bytes": 15856, "sha256": "CE5EDB574414D65D31AA3F11AD4393261A13181D36C32FAFDEB1DE3B63F1699F" },
+    { "file": "council/S2_llhls_cmaf.md", "author": "s2-llhls-cmaf", "bytes": 21886, "sha256": "135259231DEF63C01B3EADA00B33788A9C7DC896890159FFF09B246908B6ABD6" },
+    { "file": "council/S3_S4_codec_color_hdr.md", "author": "s3-codec-hdr", "bytes": 23240, "sha256": "19758F61F7C5C98375C120988C2F7F598A0C6FD815E524B38CF914317B30BE78" },
+    { "file": "council/S5_qoe_telemetria.md", "author": "s5-qoe-qos", "bytes": 22022, "sha256": "583C36D66AB2FDEBBD1F55F732EC5269B27A8FE71E2C04E967F08EBED31C1ABB" },
+    { "file": "council/S6_nginx_lua.md", "author": "s6-nginx-lua", "bytes": 19155, "sha256": "4888638FEA3B245395D556C7F80A37665A9F8E421B4911997AE5C002BCF0FECA" },
+    { "file": "council/S7_S10_sre_seguridad.md", "author": "s7-sre-secops", "bytes": 27553, "sha256": "B80402ABB7A22A1D569F43D501829DAC3B821928E5A5405898FC47CC0E9B8B94" },
+    { "file": "council/S8_red_tcp_quic.md", "author": "s8-net-tcp-quic", "bytes": 18541, "sha256": "D208012952AD3942296BCF9D0E3E19F3A7ACDC5D854709388D0BAB96650404D4" },
+    { "file": "council/S9_player_compat.md", "author": "s9-player-compat", "bytes": 16532, "sha256": "AEA36C77B96673DAAEF3A1EA206B41BDCA8CAAC0D6E1247F1A057A782E8CFB0F" }
+  ],
+  "cobertura_disciplinas": {
+    "S1": ["s1-hls-architect"],
+    "S2": ["s2-llhls-cmaf"],
+    "S3": ["s3-codec-hdr"],
+    "S4": ["s3-codec-hdr"],
+    "S5": ["s5-qoe-qos"],
+    "S6": ["s6-nginx-lua"],
+    "S7": ["s7-sre-secops"],
+    "S8": ["s8-net-tcp-quic"],
+    "S9": ["s9-player-compat"],
+    "S10": ["s7-sre-secops"],
+    "nota": "10 disciplinas cubiertas por 8 agentes porque el runtime limita el team a 8 miembros (team.json:68 'S3+S4', :152 'S7+S10'); ninguna disciplina queda sin dueno declarado"
+  },
+  "no_verificado_por_el_miembro": [
+    "SHA-256 del ZIP del paquete (archivo ausente; solo existe como afirmacion en team.json:1068)",
+    "disponibilidad/calidad real de los modelos declarados (team.json:14 etc.); solo se registra lo que el runtime declara",
+    "enforcement de permisos por agente: el team no declara toolScope verificado ni ACL; la contencion es contractual, no tecnica",
+    "importacion del paquete a DSH (explicitamente NO ocurrida; 06_VERIFICACION_DEL_PAQUETE.txt:9)",
+    "identidad de sesion del supervisor/capitan de los otros 7 miembros",
+    "ruta exacta del paquete de entrega de t13",
+    "contenido de la hoja ADN_Organizacional.xlsx (no abierta: requiere Excel/COM; ver 06_VERIFICACION_DEL_PAQUETE.txt:9 'macros/COM de Excel' NO VERIFICADO)",
+    "estado de las herramientas del catalogo de 271 nombres: 'Su presencia en el catalogo no demuestra que este instalada o visible' (08_PERMISOS_Y_HERRAMIENTAS.md:3)"
+  ],
+  "prohibiciones_operativas": [
+    "No crear ni borrar teams, ni reasignar tareas, ni agregar/quitar miembros (solo el capitan)",
+    "No iniciar tareas asignadas a otro miembro",
+    "No mutar .agent-teams/ directamente; solo via agent_teams_*",
+    "No escribir fuera de la ruta de entregable propia",
+    "No desplegar, no SSH, no tocar produccion/VPS"
+  ]
+}
