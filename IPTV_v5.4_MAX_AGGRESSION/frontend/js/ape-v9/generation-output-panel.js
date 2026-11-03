@@ -241,8 +241,16 @@
     return { ok: false, confirmed: false, error: lastErr && lastErr.message };
   }
 
-  function applyDelta(notify) {
-    var v = currentDelta();
+  function applyDelta(notify, valorExplicito) {
+    // valorExplicito permite aplicar un delta calculado sin depender del input del DOM.
+    // Sin esto, aplicarEscenario escribia el input y llamaba aqui; si el input no existia
+    // (por ejemplo antes del render completo) se aplicaba el valor VIEJO y el clic no hacia
+    // nada. Lo encontro la prueba en navegador real, no la del DOM mockeado.
+    var v = (valorExplicito != null) ? Number(valorExplicito) : currentDelta();
+    if (!isFinite(v)) v = currentDelta();
+    v = Math.round(v);
+    if (v < 1) v = 1;
+    if (v > 90) v = 90;
     DELTA_PCT = v;
     window.APE_OUTPUT_DELTA_PCT = v;
     window.APE_BUFFER_DELTA_PCT = v;
@@ -494,9 +502,7 @@
         if (sel) sel.value = perfil;
       }
       if (delta) {
-        var di = document.getElementById('ape-delta-input');
-        if (di) di.value = String(delta);
-        applyDelta(true);
+        applyDelta(true, delta);   // el valor viaja por parametro, no por el DOM
       }
     } catch (_) { }
   }
