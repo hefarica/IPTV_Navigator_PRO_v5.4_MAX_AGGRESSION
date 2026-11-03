@@ -118,3 +118,71 @@ multiplicadores— y verifica:
   el origen del valor persistido no lo investigué.
 - **Queda una brecha sin tocar (B8):** conviven `bandwidth_floor` (bps) y `bitrate_floor_mbps` (Mbps) en el
   mismo `settings`. Funciona con el invariante, pero sigue siendo una trampa para el próximo que lea el objeto.
+
+---
+
+# ADENDA — las tres brechas que faltaban (B8, B9, B10)
+
+**Ronda 2.** Al auditar el grafo de reglas —no el síntoma reportado— aparecieron tres cabos sueltos más.
+
+## B9 · El códec no recalculaba el bitrate
+
+El `BITS_PER_PIXEL` **depende del códec**: `AV1_SD` es **0.22** y `H264_SD` es **0.30** — un **36 %  de diferencia**.
+
+**REGLA 5 (codec) sólo escribía headers.** Cambiar de AV1 a H264 dejaba el bitrate calculado con el BPP del códec anterior: **el campo quedaba descolgado de su propia premisa**.
+
+`fps` (REGLA 2.3) y `strategy` (REGLA 4) ya reentraban en REGLA 3. **Codec no lo hacía.** Corregido.
+
+## B10 · Las reglas corrían ANTES de que el valor existiera
+
+```js
+this._applyReactiveRules(profile, key, value);   // motor corre
+profile.settings[key] = value;                    // valor se escribe después
+```
+
+**Cambiar 30 → 60 fps recalculaba el bitrate con 30**, porque REGLA 3 lee `parseInt(s.fps)` y `s.fps` todavía era el viejo.
+
+**Corregido:** el valor se escribe primero; las reglas derivan de él.
+
+**Verificado en producción:** `valor@151625 < reglas@151733`.
+
+## B8 · Los dos suelos ya se sincronizan
+
+Conviven en el mismo `settings`:
+
+| Campo | Unidad | Origen |
+|---|---|---|
+| `bandwidth_floor` | **bps** | LAB canónico |
+| `bitrate_floor_mbps` | **Mbps** | PM9 |
+
+**Nada garantizaba que coincidieran.** El panel mostraba 1,5 mientras el motor escribía 0,15.
+
+**Corregido:** el valor del LAB se propaga al campo del gestor en cada escritura (`s.bitrate_floor_mbps = labFloorBps / 1e6`), y el recorte al techo se aplica después.
+
+## Efecto acumulado
+
+| Resolución | Original | Tras B1-B7 | Tras B8-B10 |
+|---|---:|---:|---:|
+| SD · AV1 · 30 | 0,7 | 2,7 | **2,7** |
+| HD · AV1 · 30 | 1,3 | 5,0 | **5,0** |
+| FHD · H265 · 60 | 5,0 | 18,7 | **18,7** |
+| 4K · AV1 · 60 | 10,7 | 39,8 | **39,8** |
+
+**Los bitrates no cambian con B8-B10: lo que cambia es que ahora son CONSECUENTES.** Antes, mover el códec o el fps dejaba el bitrate calculado con la premisa anterior.
+
+## Test del grafo de dependencias
+
+`ui-campos-coherencia.verify.js` → **24 PASS**. Ahora verifica el grafo mismo:
+
+- `resolution` **escribe** el bitrate (es el motor, no reentra)
+- `fps`, `codec` y `strategy` **reentran** en la regla
+- **el valor precede a las reglas**
+- los dos suelos **se sincronizan**
+- el recorte al techo **sigue aplicándose**
+
+**Y se ejecutó contra el fichero servido: funciona en producción.**
+
+## Lo que sigue sin cerrarse
+
+- **No se abrió en un navegador real.** El grafo se verifica por estructura del código y la aritmética por simulación; el render y el clic no se ejercitaron.
+- **La estrategia sigue reentrando en REGLA 3** aunque ya no multiplique el bitrate. Es innecesario pero inofensivo: refresca t1/t2. Quitarlo sería más limpio; no lo hice para no tocar el flujo.
