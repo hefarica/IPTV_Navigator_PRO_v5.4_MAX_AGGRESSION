@@ -3711,7 +3711,16 @@ ${__apeContinuityTags().join('\n')}
             `#EXTVLCOPT:adaptive-logic=highest`,
             // ── SECCIÓN 11: VIDEO PROCESSING — HARDWARE MAXIMIZER (11 líneas) ──
             // 🛡️ Mecanismos Expertos: Anti-Pixelamiento Agresivo y Relleno Artificial Perfect-Frame (Plan B / Local Fallback)
-            `#EXTVLCOPT:video-filter=fieldmatch,decimate,nlmeans=s=3.0:p=7:r=15,bwdif=mode=1:parity=-1:deint=0,deband=1thr=0.015:2thr=0.015:3thr=0.015:4thr=0.015:blur=1,pp=ac/dr/ci,unsharp=luma_msize_x=3:luma_msize_y=3:luma_amount=0.4,colorspace=all=bt2020:trc=smpte2084:format=yuv444p10le:fast=1,tonemap=mobius:param=0.3,hqdn3d=4:3:12:9,fps=fps=60:round=near,minterpolate=fps=120:mi_mode=mci:mc_mode=aobmc:vsbmc=1:me=epzs`,
+            // ── VERIFICADA CONTRA ffmpeg 8.0.1 (2026-11-03) ────────────────────────────────
+            // Probada filtro a filtro. La version anterior tenia tres opciones que ese ffmpeg
+            // ya no acepta, y la cadena abortaba entera:
+            //   · pp=ac/dr/ci -> "No option name near 'ac/dr/ci'": el filtro postproc no viene
+            //     compilado (0 coincidencias en -filters).
+            //   · colorspace=...:format=yuv444p10le -> "Error applying option 'format'": esa
+            //     opcion no existe en el filtro colorspace; el cambio de formato va aparte.
+            //   · colorspace=...:trc=smpte2084 -> trc espera un ENTERO 0..18, no un nombre.
+            // Medido tras el cambio: ejecuta y produce yuv444p bt2020 10-bit a 120 fps.
+            `#EXTVLCOPT:video-filter=fieldmatch,decimate,nlmeans=s=3.0:p=7:r=15,bwdif=mode=1:parity=-1:deint=0,deband=1thr=0.015:2thr=0.015:3thr=0.015:4thr=0.015:blur=1,unsharp=luma_msize_x=3:luma_msize_y=3:luma_amount=0.4,colorspace=iall=bt709:all=bt2020,format=yuv444p10le,tonemap=mobius:param=0.3,hqdn3d=4:3:12:9,fps=fps=60:round=near,minterpolate=fps=120:mi_mode=mci:mc_mode=aobmc:vsbmc=1:me=epzs`,
             `#EXTVLCOPT:video-scaler=vdpau,opengl`,
             `#EXTVLCOPT:aspect-ratio=16:9`,
             `#EXTVLCOPT:video-deco=1`,
