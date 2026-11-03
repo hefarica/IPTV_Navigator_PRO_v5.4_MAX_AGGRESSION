@@ -376,92 +376,75 @@ function tablaDecision(fields) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
-// HOMOLOGACION: el mismo valor dicho en el idioma de cada motor
+// HOMOLOGACION — el mismo valor dicho en el idioma de cada motor, HEREDADO del SSOT.
 //
-// Regla del operador: los campos con el MISMO nombre son duplicados y sobra uno; los que NO se llaman
-// igual pero miden lo mismo son homologos y deben llevar el MISMO valor, para que la config llegue a
-// todos lados sin que un motor reciba una verdad y otro otra.
-//
-// Esto recorre TODO el objeto fields (no solo las capas vivas), recoge cada ocurrencia de cada clave de
-// cada familia, y exige que el valor convertido a la unidad de la familia sea el canonico. Distingue
-// ocurrencia VIVA (en una capa que el generador emite) de MUERTA (en settings/hlsjs, que no se leen):
-// las muertas no rompen nada hoy, pero se reportan porque son la mentira de manana.
+// El valor de cada homologo no se escribe aqui: se pide a homologacion.heredar(). Si el SSOT cambia,
+// este bloque no se toca y el resultado cambia solo. Eso es lo que el operador pidio: que al cambiar uno,
+// los homologos lo hereden.
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
-const { FAMILIAS, LEGITIMOS, aUnidad } = require('./homologacion');
+const { SSOT, HOMOLOGOS, heredar, sincronizar } = require('./homologacion');
 
-const CAPAS_VIVAS = ['optimized_knobs', 'headers', 'prefetch_config', 'player_enslavement',
-  'actor_injections', 'vlcopt', 'kodiprop'];
 const CAPAS_MUERTAS = ['settings', 'hlsjs'];
 
-/** Recorre fields y devuelve [{ruta, valor, viva}] para cada clave normalizada buscada. */
-function ocurrencias(fields, buscadas) {
+/** Recorre fields y devuelve [{ruta, valor, viva}] para cada clave de los homologos. */
+function ocurrencias(fields) {
+  const buscadas = new Set(HOMOLOGOS.map((h) => norm(h.clave)));
   const out = [];
-  const walk = (obj, ruta, viva) => {
+  const walk = (obj, ruta, muerta) => {
     if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return;
     for (const k of Object.keys(obj)) {
       const v = obj[k];
       const r = ruta ? `${ruta}.${k}` : k;
-      if (v && typeof v === 'object' && !Array.isArray(v)) { walk(v, r, viva); continue; }
-      // Un ARRAY no es un valor escalar: bounds.abr_bw_factor=[0.85,0.98] es un rango y
-      // headerOverrides.DNT=[1,0,0,0] son valores por perfil. Compararlos como escalares fue falso positivo mio.
+      if (v && typeof v === 'object' && !Array.isArray(v)) { walk(v, r, muerta); continue; }
       if (Array.isArray(v)) continue;
-      // headerOverrides guarda valores POR PERFIL serializados ('1,0,0,0'); no es un escalar.
-      if (typeof v === 'string' && v.includes(',')) continue;
-      if (!buscadas.includes(norm(k))) continue;
-      out.push({ ruta: r, valor: v, viva });
+      if (typeof v === 'string' && v.includes(',')) continue; // valores por perfil serializados
+      if (!buscadas.has(norm(k))) continue;
+      out.push({ ruta: r, clave: k, valor: v, viva: !muerta });
     }
   };
-  const topViva = (k) => CAPAS_VIVAS.includes(k);
-  const topMuerta = (k) => CAPAS_MUERTAS.includes(k);
   for (const k of Object.keys(fields)) {
-    const esViva = topViva(k);
-    const esMuerta = topMuerta(k);
     const v = fields[k];
-    if (v && typeof v === 'object' && !Array.isArray(v)) walk(v, k, esViva || !esMuerta);
+    if (v && typeof v === 'object' && !Array.isArray(v)) walk(v, k, CAPAS_MUERTAS.includes(k));
   }
   return out;
 }
 
 function verificarHomologacion(fields) {
+  const occ = ocurrencias(fields);
   const familias = [];
-  for (const fam of FAMILIAS) {
-    const claves = fam.homologos.map((h) => norm(h.clave));
-    const ocur = ocurrencias(fields, claves);
-    const filas = ocur.map((o) => {
-      const valor = Number(o.valor);
-      const convertido = isFinite(valor) ? aUnidad(valor, fam.unidad, fam.unidad) : null;
+  for (const famId of Object.keys(SSOT)) {
+    const hs = HOMOLOGOS.filter((h) => h.familia === famId);
+    const claves = new Set(hs.map((h) => norm(h.clave)));
+    const mias = occ.filter((o) => claves.has(norm(o.clave)));
+    const filas = mias.map((o) => {
+      const h = hs.find((x) => norm(x.clave) === norm(o.clave));
+      const exigido = heredar(h);                       // heredado, no escrito
+      const num = Number(o.valor);
       return {
-        ruta: o.ruta,
-        valor_original: o.valor,
-        valor: convertido,
-        viva: o.viva,
-        cumple: convertido !== null && Number(convertido) === Number(fam.valor_canonico)
+        ruta: o.ruta, valor_original: o.valor, exigido, viva: o.viva,
+        cumple: isFinite(num) && Number(num) === Number(exigido)
       };
     });
-    const vivas = filas.filter((f) => f.viva);
-    const vivasMal = vivas.filter((f) => !f.cumple);
+    const vivasMal = filas.filter((f) => f.viva && !f.cumple);
     const muertasMal = filas.filter((f) => !f.viva && !f.cumple);
     familias.push({
-      id: fam.id,
-      canonico: fam.valor_canonico,
-      unidad: fam.unidad,
-      ocurrencias: filas.length,
-      vivas: vivas.length,
-      vivas_en_desacuerdo: vivasMal.map((f) => `${f.ruta}=${f.valor_original}`),
-      muertas_en_desacuerdo: muertasMal.map((f) => `${f.ruta}=${f.valor_original}`),
+      id: famId, canonico: SSOT[famId].valor, unidad: SSOT[famId].unidad,
+      heredan: hs.length, ocurrencias: filas.length, vivas: filas.filter((f) => f.viva).length,
+      vivas_en_desacuerdo: vivasMal.map((f) => `${f.ruta}=${f.valor_original} (heredado ${f.exigido})`),
+      muertas_en_desacuerdo: muertasMal.map((f) => `${f.ruta}=${f.valor_original} (heredado ${f.exigido})`),
       estado: vivasMal.length ? 'ROTO' : (muertasMal.length ? 'SINCRONIZAR_MUERTAS' : 'OK')
     });
   }
-  const rotas = familias.filter((f) => f.estado === 'ROTO');
-  const despistadas = familias.filter((f) => f.estado === 'SINCRONIZAR_MUERTAS');
   return {
     familias,
     resumen: {
       familias: familias.length,
-      rotas: rotas.length,
-      solo_muertas: despistadas.length,
-      ok: familias.filter((f) => f.estado === 'OK').length,
-      legitimas: LEGITIMOS.length
+      rotas: familias.filter((f) => f.estado === 'ROTO').length,
+      solo_muertas: familias.filter((f) => f.estado === 'SINCRONIZAR_MUERTAS').length,
+      ok: familias.filter((f) => f.estado === 'OK').length
     }
   };
 }
+
+/** Devuelve los fields con TODOS los homologos puestos al valor heredado. */
+function fieldsSincronizados(fields) { return sincronizar(fields); }

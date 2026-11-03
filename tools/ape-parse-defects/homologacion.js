@@ -1,249 +1,197 @@
 #!/usr/bin/env node
 /**
- * homologacion.js — el mapa canónico de la metadata `ape-lab-metadata-v1`.
+ * homologacion.js — SSOT + herencia. Ningún valor se escribe dos veces.
  *
- * LA IDEA, en las palabras del operador: los campos que se llamen IGUAL son duplicados y sobran; los que
- * NO se llamen igual pero sean la misma magnitud son HOMÓLOGOS — el mismo valor escrito en el idioma de
- * cada motor (VLC, Kodi/ISA, hls.js, ExoPlayer, panel HDR, VPP del SoC) — y hay que dejarlos todos con
- * EL MISMO VALOR, para que el sistema diga lo mismo en cinco idiomas distintos y la configuración llegue
- * a todos lados sin que un motor reciba una verdad y otro otra.
+ * REGLA DEL OPERADOR, que este fichero implementa al pie de la letra:
+ *   - Los campos que se llaman IGUAL son duplicados: sobra el que no se lee.
+ *   - Los que NO se llaman igual pero miden lo mismo son HOMÓLOGOS: el mismo número escrito en el idioma
+ *     de cada motor (VLC, Kodi/ISA, hls.js, ExoPlayer, panel HDR, VPP del SoC).
+ *   - Los homólogos NO llevan valor propio: lo HEREDAN del SSOT de su familia. Si mañana se cambia
+ *     SSOT.cache_red.valor, los seis homólogos cambian solos. No hay un segundo sitio donde tocarlo.
  *
- * Por qué existe: hoy `network-caching` vale 105000 en VLC y `network_caching_ms` vale 105000 en el
- * actor, pero `settings.networkCachingMs` vale 15000 y `optimized_knobs.buffer_seconds` vale 50. Eso no
- * son tres opiniones: es UNA magnitud partida en tres verdades. Este mapa declara cuál es la canónica y
- * exige que todos los homólogos la digan.
+ * Por qué importa: antes esto era un mapa con el número repetido en cada fila. Cambiar el canónico
+ * obligaba a acordarse de reescribir a mano los homólogos, y ese es exactamente el fallo que produjo la
+ * lista: network-caching a 105000 en un sitio y a 15000 en otro porque alguien tocó uno solo.
  *
- * Formato por familia:
- *   id            identificador estable
- *   magnitud      qué se está midiendo
- *   unidad        unidad de valor_canonico ('ms', 's', 'ratio', 'nits', 'bool', 'count')
- *   valor_canonico el único valor admisible para toda la familia
- *   homologos[]   {clave, motor, unidad, nota} — NO se borran: se sincronizan
- *   duplicados[]  {clave, motivo} — nombre idéntico: sobre el que no se lee
- *   legitimo[]    {clave, nota} — discrepancia intencional (overrides por categoría)
+ * Uso:
+ *   node homologacion.js                          mapa completo (SSOT + quién hereda + qué sobra)
+ *   node homologacion.js --json                   el artefacto, para que lo consuma otro proceso
+ *   node homologacion.js --set cache_red=30000    cambia el SSOT y muestra el efecto en TODOS los herederos
  */
 'use strict';
 
-const FAMILIAS = [
-  {
-    id: 'cache_red',
-    magnitud: 'colchón de red antes de tocar el stream',
-    unidad: 'ms',
-    // 15 s cubre un bache de red de 15 s sin cortar imagen y no se percibe como ir por detrás del directo.
-    // 105 s (el valor vigente en la lista) son 105 s de latencia. Este es el número a decidir.
-    valor_canonico: 15000,
-    homologos: [
-      { clave: 'network-caching',        motor: 'vlc',   unidad: 'ms', nota: 'caché principal de VLC' },
-      { clave: 'live-caching',           motor: 'vlc',   unidad: 'ms', nota: 'caché para fuentes en directo' },
-      { clave: 'file-caching',           motor: 'vlc',   unidad: 'ms', nota: 'caché de fichero/local' },
-      { clave: 'sout-mux-caching',       motor: 'vlc',   unidad: 'ms', nota: 'mux de salida' },
-      { clave: 'network_caching_ms',     motor: 'actor', unidad: 'ms', nota: 'inyección del actor de player' },
-      { clave: 'networkCachingMs',       motor: 'lab',   unidad: 'ms', nota: 'declaración del LAB' }
-    ],
-    duplicados: [
-      { clave: 'network-caching', motivo: 'aparece en vlcopt y en player_enslavement.L3; sólo L3 se emite' }
-    ]
-  },
-  {
-    id: 'buffer_tiempo',
-    magnitud: 'el mismo colchón expresado en segundos',
-    unidad: 's',
-    valor_canonico: 15,
-    homologos: [
-      { clave: 'buffer_seconds',  motor: 'lab',     unidad: 's', nota: 'knob del solver; el generador lo multiplica por 1000' },
-      { clave: 'bufferSeconds',   motor: 'lab',     unidad: 's', nota: 'declaración; hoy muerta' }
-    ],
-    duplicados: [],
-    nota: 'buffer_seconds x1000 debe dar exactamente valor_canonico de cache_red'
-  },
-  {
-    id: 'reintentos_http',
-    magnitud: 'cuántas veces se reintenta antes de rendirse',
-    unidad: 'count',
-    valor_canonico: 350,
-    homologos: [
-      { clave: 'http-max-retries',         motor: 'vlc',     unidad: 'count', nota: 'reintentos HTTP de VLC' },
-      { clave: 'network-reconnect-count',  motor: 'vlc',     unidad: 'count', nota: 'reconexiones de red' },
-      { clave: 'reconnect_attempts',       motor: 'knob',    unidad: 'count', nota: 'knob del solver' }
-    ],
-    duplicados: []
-  },
-  {
-    id: 'timeout_http',
-    magnitud: 'espera máxima por respuesta',
-    unidad: 'ms',
-    valor_canonico: 30000,
-    homologos: [
-      { clave: 'http-timeout', motor: 'vlc', unidad: 'ms', nota: 'timeout de VLC' }
-    ],
-    duplicados: []
-  },
-  {
-    id: 'abr_factor',
-    magnitud: 'fracción de ancho de banda exigida para subir de nivel',
-    unidad: 'ratio',
-    valor_canonico: 0.85,
-    homologos: [
-      { clave: 'abrBandWidthFactor',  motor: 'hls.js',   unidad: 'ratio', nota: 'ratio 0..1' },
-      { clave: 'abr_bw_factor',       motor: 'bounds',   unidad: 'ratio', nota: 'límite declarado' }
-    ],
-    duplicados: [
-      { clave: 'abrBandWidthFactor', motivo: 'declarado en hlsjs (95, inválido), optimized_knobs (0.85) y actor.exoplayer (0.85)' }
-    ]
-  },
-  {
-    id: 'livesync_rate',
-    magnitud: 'velocidad de reproducción para alcanzar el directo',
-    unidad: 'ratio',
-    valor_canonico: 1.25,
-    homologos: [
-      { clave: 'maxLiveSyncPlaybackRate', motor: 'hls.js', unidad: 'ratio', nota: '1.0 = tiempo real; >1 acelera' }
-    ],
-    duplicados: [
-      { clave: 'maxLiveSyncPlaybackRate', motivo: 'declarado en settings, hlsjs, optimized_knobs y dos actores' }
-    ]
-  },
-  // CUIDADO, y esto lo aprendi equivocandome: maxBufferLength y maxMaxBufferLength tienen nombres
-  // distintos Y magnitudes distintas (objetivo y techo). NO son homologos. Meterlos en una familia con
-  // un solo canonico habria pedido techo 105 cuando el objetivo ya es 105 — incoherencia creada por mi.
-  // Cada uno es su propia familia; lo que comparten es que estan declarados en dos capas.
-  {
-    id: 'max_buffer_length',
-    magnitud: 'buffer objetivo de hls.js',
-    unidad: 'count',
-    tipo: 'unico',
-    valor_canonico: 105,
-    homologos: [{ clave: 'maxBufferLength', motor: 'hls.js', unidad: 'count', nota: 'segundos objetivo' }],
-    duplicados: [{ clave: 'maxBufferLength', motivo: 'declarado en hlsjs (50, muerto) y actor.hlsjs (105, emitido)' }]
-  },
-  {
-    id: 'max_max_buffer_length',
-    magnitud: 'techo del buffer de hls.js',
-    unidad: 'count',
-    tipo: 'unico',
-    valor_canonico: 210,
-    homologos: [{ clave: 'maxMaxBufferLength', motor: 'hls.js', unidad: 'count', nota: 'techo; debe ser > maxBufferLength' }],
-    duplicados: [{ clave: 'maxMaxBufferLength', motivo: 'declarado en hlsjs (50, muerto) y actor.hlsjs (210, emitido)' }]
-  },
-  {
-    id: 'nudge_offset',
-    magnitud: 'desplazamiento por corrección de desfase',
-    unidad: 'ratio',
-    tipo: 'unico',
-    valor_canonico: 0.1,
-    homologos: [{ clave: 'nudgeOffset', motor: 'hls.js', unidad: 'ratio', nota: 'segundos' }],
-    duplicados: [{ clave: 'nudgeOffset', motivo: 'declarado en hlsjs (1, muerto) y actor.hlsjs (0.1, emitido)' }]
-  },
-  {
-    id: 'nudge_max_retry',
-    magnitud: 'número máximo de correcciones de desfase',
-    unidad: 'count',
-    tipo: 'unico',
-    valor_canonico: 13,
-    homologos: [{ clave: 'nudgeMaxRetry', motor: 'hls.js', unidad: 'count', nota: 'default hls.js = 3; el LAB usa 13' }],
-    duplicados: [{ clave: 'nudgeMaxRetry', motivo: 'declarado en hlsjs, optimized_knobs y dos actores' }]
-  },
-  {
-    id: 'watchdog',
-    magnitud: 'periodo del vigilante de buffer alto',
-    unidad: 'ratio',
-    valor_canonico: 3,
-    homologos: [
-      { clave: 'highBufferWatchdogPeriod', motor: 'hls.js', unidad: 'count', nota: 'segundos' }
-    ],
-    duplicados: [{ clave: 'highBufferWatchdogPeriod', motivo: 'hlsjs (1) vs actor.hlsjs (3)' }]
-  },
-  {
-    id: 'frag_tolerance',
-    magnitud: 'tolerancia al buscar fragmento',
-    unidad: 'ratio',
-    valor_canonico: 0.25,
-    homologos: [
-      { clave: 'maxFragLookUpTolerance', motor: 'hls.js', unidad: 'ratio', nota: 'segundos' }
-    ],
-    duplicados: [{ clave: 'maxFragLookUpTolerance', motivo: 'hlsjs (25) vs actor.hlsjs (0.25)' }]
-  },
-  {
-    id: 'luminancia_hdr',
-    magnitud: 'pico de luminancia declarado al panel',
-    unidad: 'nits',
-    valor_canonico: 4000,
-    homologos: [
-      { clave: 'peak_luminance_nits', motor: 'panel', unidad: 'nits', nota: 'atributo X-HDR-PEAK-LUMINANCE' },
-      { clave: 'peakLuminanceNits',   motor: 'lab',   unidad: 'nits', nota: 'declaración; hoy muerta' }
-    ],
-    duplicados: [{ clave: 'peak_luminance_nits', motivo: 'declarado en settings x2 y actor.panel' }]
-  },
-  {
-    id: 'prefetch',
-    magnitud: 'segmentos precargados',
-    unidad: 'count',
-    valor_canonico: 12,
-    homologos: [
-      { clave: 'prefetch_segments',  motor: 'prefetch', unidad: 'count', nota: 'el que se lee (L1634)' },
-      { clave: 'prefetchSegments',   motor: 'lab',      unidad: 'count', nota: 'declaración; hoy muerta' }
-    ],
-    duplicados: []
-  },
-  {
-    id: 'privacidad',
-    magnitud: 'cabecera Do-Not-Track',
-    unidad: 'bool',
-    valor_canonico: 1,
-    homologos: [
-      { clave: 'DNT', motor: 'exthttp', unidad: 'bool', nota: 'cabecera HTTP' }
-    ],
-    duplicados: [{ clave: 'DNT', motivo: 'headers (0) vs player_enslavement.L3.EXTHTTP (1)' }]
-  }
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+// SSOT — la ÚNICA declaración de valor. Todo lo demás hereda de aquí.
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+const SSOT = {
+  cache_red:          { valor: 15000, unidad: 'ms',    magnitud: 'colchón de red antes de tocar el stream' },
+  reintentos_http:    { valor: 350,   unidad: 'count', magnitud: 'reintentos antes de rendirse' },
+  timeout_http:       { valor: 30000, unidad: 'ms',    magnitud: 'espera máxima por respuesta' },
+  abr_factor:         { valor: 0.85,  unidad: 'ratio', magnitud: 'fracción de ancho de banda para subir de nivel' },
+  livesync_rate:      { valor: 1.25,  unidad: 'ratio', magnitud: 'velocidad para alcanzar el directo' },
+  max_buffer_length:  { valor: 105,   unidad: 'count', magnitud: 'buffer objetivo de hls.js' },
+  max_max_buffer_len: { valor: 210,   unidad: 'count', magnitud: 'techo del buffer de hls.js' },
+  nudge_offset:       { valor: 0.1,   unidad: 'ratio', magnitud: 'desplazamiento por corrección de desfase' },
+  nudge_max_retry:    { valor: 13,    unidad: 'count', magnitud: 'correcciones de desfase máximas' },
+  watchdog:           { valor: 3,     unidad: 'count', magnitud: 'periodo del vigilante de buffer alto' },
+  frag_tolerance:     { valor: 0.25,  unidad: 'ratio', magnitud: 'tolerancia al buscar fragmento' },
+  luminancia_hdr:     { valor: 4000,  unidad: 'nits',  magnitud: 'pico de luminancia declarado al panel' },
+  prefetch:           { valor: 12,    unidad: 'count', magnitud: 'segmentos precargados' },
+  privacidad:         { valor: 1,     unidad: 'bool',  magnitud: 'cabecera Do-Not-Track' }
+};
+
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+// HOMÓLOGOS — cada uno declara DE QUIÉN hereda. Cero valores aquí.
+// `unidad` es la del motor; si difiere del SSOT, la herencia convierte.
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+const HOMOLOGOS = [
+  // caché de red — seis formas de decir el mismo colchón
+  { clave: 'network-caching',         familia: 'cache_red',      motor: 'vlc',      unidad: 'ms' },
+  { clave: 'live-caching',            familia: 'cache_red',      motor: 'vlc',      unidad: 'ms' },
+  { clave: 'file-caching',            familia: 'cache_red',      motor: 'vlc',      unidad: 'ms' },
+  { clave: 'sout-mux-caching',        familia: 'cache_red',      motor: 'vlc',      unidad: 'ms' },
+  { clave: 'network_caching_ms',      familia: 'cache_red',      motor: 'actor',    unidad: 'ms' },
+  { clave: 'networkCachingMs',        familia: 'cache_red',      motor: 'lab',      unidad: 'ms' },
+  // el mismo colchón en segundos: hereda de cache_red y se convierte
+  { clave: 'buffer_seconds',          familia: 'cache_red',      motor: 'knob',     unidad: 's' },
+  { clave: 'bufferSeconds',           familia: 'cache_red',      motor: 'lab',      unidad: 's' },
+  { clave: 'reconnect_attempts',      familia: 'reintentos_http', motor: 'knob',    unidad: 'count' },
+  { clave: 'http-max-retries',        familia: 'reintentos_http', motor: 'vlc',     unidad: 'count' },
+  { clave: 'network-reconnect-count', familia: 'reintentos_http', motor: 'vlc',     unidad: 'count' },
+  { clave: 'http-timeout',            familia: 'timeout_http',   motor: 'vlc',      unidad: 'ms' },
+  { clave: 'abrBandWidthFactor',      familia: 'abr_factor',     motor: 'hls.js',   unidad: 'ratio' },
+  { clave: 'maxLiveSyncPlaybackRate', familia: 'livesync_rate',  motor: 'hls.js',   unidad: 'ratio' },
+  { clave: 'maxBufferLength',         familia: 'max_buffer_length', motor: 'hls.js', unidad: 'count' },
+  { clave: 'maxMaxBufferLength',      familia: 'max_max_buffer_len', motor: 'hls.js', unidad: 'count' },
+  { clave: 'nudgeOffset',             familia: 'nudge_offset',   motor: 'hls.js',   unidad: 'ratio' },
+  { clave: 'nudgeMaxRetry',           familia: 'nudge_max_retry', motor: 'hls.js',  unidad: 'count' },
+  { clave: 'highBufferWatchdogPeriod', familia: 'watchdog',      motor: 'hls.js',   unidad: 'count' },
+  { clave: 'maxFragLookUpTolerance',  familia: 'frag_tolerance', motor: 'hls.js',   unidad: 'ratio' },
+  { clave: 'peak_luminance_nits',     familia: 'luminancia_hdr', motor: 'panel',    unidad: 'nits' },
+  { clave: 'peakLuminanceNits',       familia: 'luminancia_hdr', motor: 'lab',      unidad: 'nits' },
+  { clave: 'prefetch_segments',       familia: 'prefetch',       motor: 'prefetch', unidad: 'count' },
+  { clave: 'prefetchSegments',        familia: 'prefetch',       motor: 'lab',      unidad: 'count' },
+  { clave: 'DNT',                     familia: 'privacidad',     motor: 'exthttp',  unidad: 'bool' }
 ];
 
-// Discrepancias INTENCIONALES: no son contradicciones y no se tocan.
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+// DUPLICADOS EXACTOS — mismo nombre en varias capas. Se conserva el que se emite; el resto sobra.
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+const DUPLICADOS = [
+  { clave: 'network-caching',          familia: 'cache_red',            motivo: 'vlcopt (15000) y player_enslavement.L3 (105000); sólo L3 se emite' },
+  { clave: 'abrBandWidthFactor',       familia: 'abr_factor',           motivo: 'hlsjs (95, inválido) · optimized_knobs (0.85) · actor.exoplayer (0.85)' },
+  { clave: 'maxLiveSyncPlaybackRate',  familia: 'livesync_rate',        motivo: 'settings (15) · hlsjs (15) · optimized_knobs (1.25) · dos actores (1.25)' },
+  { clave: 'maxBufferLength',          familia: 'max_buffer_length',    motivo: 'hlsjs (50, muerto) · actor.hlsjs (105, emitido)' },
+  { clave: 'maxMaxBufferLength',       familia: 'max_max_buffer_len',   motivo: 'hlsjs (50, muerto) · actor.hlsjs (210, emitido)' },
+  { clave: 'nudgeOffset',              familia: 'nudge_offset',         motivo: 'hlsjs (1, muerto) · actor.hlsjs (0.1, emitido)' },
+  { clave: 'nudgeMaxRetry',            familia: 'nudge_max_retry',      motivo: 'hlsjs (10) · optimized_knobs (13) · dos actores (13)' },
+  { clave: 'highBufferWatchdogPeriod', familia: 'watchdog',             motivo: 'hlsjs (1, muerto) · actor.hlsjs (3, emitido)' },
+  { clave: 'maxFragLookUpTolerance',   familia: 'frag_tolerance',       motivo: 'hlsjs (25, muerto) · actor.hlsjs (0.25, emitido)' },
+  { clave: 'peak_luminance_nits',      familia: 'luminancia_hdr',       motivo: 'settings x2 (10000, muertas) · actor.panel (4000, emitido)' },
+  { clave: 'DNT',                      familia: 'privacidad',           motivo: 'headers (0) · player_enslavement.L3.EXTHTTP (1, emitido)' }
+];
+
+// Discrepancias INTENCIONALES: overrides por categoría. No son conflictos.
 const LEGITIMOS = [
-  {
-    clave: 'pq_ai_dnr_enable',
-    motivo: 'global 1 y 0 en content_overrides.deportes: apagar DNR en deportes es una decisión de contenido, no un conflicto',
-    valor_global: 1,
-    overrides: { deportes: 0 }
-  },
-  {
-    clave: 'pq_dnr_enable',
-    motivo: 'idem',
-    valor_global: 1,
-    overrides: { deportes: 0 }
-  }
+  { clave: 'pq_ai_dnr_enable', motivo: 'global 1; 0 en content_overrides.deportes es decisión de contenido', global: 1, overrides: { deportes: 0 } },
+  { clave: 'pq_dnr_enable',    motivo: 'idem', global: 1, overrides: { deportes: 0 } }
 ];
 
-/** Convierte un valor a la unidad de la familia. Devuelve null si no es numérico. */
-function aUnidad(valor, desde, hacia) {
+/** Convierte entre unidades de la misma magnitud. */
+function convertir(valor, desde, hacia) {
   const n = Number(valor);
-  if (!isFinite(n)) return null;
-  if (desde === hacia) return n;
+  if (!isFinite(n)) return valor;
+  if (!desde || !hacia || desde === hacia) return n;
   if (desde === 's' && hacia === 'ms') return n * 1000;
   if (desde === 'ms' && hacia === 's') return n / 1000;
   return n;
 }
 
-module.exports = { FAMILIAS, LEGITIMOS, aUnidad };
+/** EL VALOR DE UN HOMÓLOGO NO SE ESCRIBE: SE HEREDA. Única función que lo produce. */
+function heredar(homologo, ssot = SSOT) {
+  const fam = ssot[homologo.familia];
+  if (!fam) throw new Error(`homólogo ${homologo.clave} apunta a familia inexistente: ${homologo.familia}`);
+  return convertir(fam.valor, fam.unidad, homologo.unidad);
+}
 
-// Ejecutado directo: imprime el mapa y los pares que HOY estarian en desacuerdo.
-if (require.main === module) {
-  const pad = (s, n) => String(s).padEnd(n);
-  let totalHomologos = 0;
-  let totalDuplicados = 0;
-  for (const f of FAMILIAS) {
-    const can = f.valor_canonico;
-    const enMs = f.unidad === 'ms' ? can : (f.unidad === 's' ? can * 1000 : can);
-    console.log(`\n${f.id}  [${f.unidad}]  canonico = ${can}${f.unidad === 's' ? `  (= ${enMs} ms)` : ''}`);
-    console.log(`  ${f.magnitud}`);
-    for (const h of f.homologos) {
-      totalHomologos++;
-      const equival = aUnidad(can, f.unidad, h.unidad);
-      console.log(`    DEJAR      ${pad(h.clave, 26)} ${pad(h.motor, 10)} valor exigido = ${equival}`);
-    }
-    for (const d of f.duplicados || []) {
-      totalDuplicados++;
-      console.log(`    QUITAR 1   ${pad(d.clave, 26)} ${d.motivo}`);
-    }
+/** Tabla para consumo humano: quién manda, quién hereda cuánto, quién sobra. */
+function tabla(ssot = SSOT) {
+  return Object.keys(ssot).map((id) => {
+    const fam = ssot[id];
+    const here = HOMOLOGOS.filter((h) => h.familia === id).map((h) => ({
+      clave: h.clave, motor: h.motor, unidad: h.unidad, valor_heredado: heredar(h, ssot)
+    }));
+    const dbl = DUPLICADOS.filter((d) => d.familia === id).map((d) => ({ clave: d.clave, motivo: d.motivo }));
+    return { familia: id, ssot: fam.valor, unidad: fam.unidad, magnitud: fam.magnitud, heredan: here, duplicados: dbl };
+  });
+}
+
+const norm = (k) => String(k).toLowerCase().replace(/[._-]/g, '');
+
+/**
+ * SINCRONIZAR: aplica el SSOT a todos los homólogos de un objeto fields.
+ * Devuelve una COPIA con los valores heredados y la lista de cambios. No muta el original.
+ * Esto es lo que hace que cambiar el SSOT se propague solo.
+ */
+function sincronizar(fields, ssot = SSOT) {
+  const porClave = new Map();
+  for (const h of HOMOLOGOS) {
+    const n = norm(h.clave);
+    if (!porClave.has(n)) porClave.set(n, []);
+    porClave.get(n).push(h);
   }
-  console.log(`\nFAMILIAS=${FAMILIAS.length}  HOMOLOGOS=${totalHomologos}  DUPLICADOS_EXACTOS=${totalDuplicados}  LEGITIMOS=${LEGITIMOS.length}`);
+  const cambios = [];
+  const clon = JSON.parse(JSON.stringify(fields));
+  const walk = (obj, ruta) => {
+    if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return;
+    for (const k of Object.keys(obj)) {
+      const v = obj[k];
+      const r = ruta ? `${ruta}.${k}` : k;
+      if (v && typeof v === 'object' && !Array.isArray(v)) { walk(v, r); continue; }
+      if (Array.isArray(v)) continue;                        // rangos y listas por perfil
+      if (typeof v === 'string' && v.includes(',')) continue; // valores por perfil serializados
+      const hs = porClave.get(norm(k));
+      if (!hs) continue;
+      const h = hs[0];
+      const nuevo = heredar(h, ssot);
+      if (String(v) === String(nuevo)) continue;
+      cambios.push({ ruta: r, antes: v, despues: nuevo, familia: h.familia });
+      obj[k] = nuevo;
+    }
+  };
+  walk(clon, '');
+  return { fields: clon, cambios };
+}
+
+module.exports = { SSOT, HOMOLOGOS, DUPLICADOS, LEGITIMOS, heredar, tabla, sincronizar, convertir };
+
+if (require.main === module) {
+  const args = process.argv.slice(2);
+
+  if (args[0] === '--json') {
+    process.stdout.write(JSON.stringify({ ssot: SSOT, homologos: HOMOLOGOS, duplicados: DUPLICADOS, legitimas: LEGITIMOS, tabla: tabla() }, null, 2) + '\n');
+    process.exit(0);
+  }
+
+  if (args[0] === '--set') {
+    const [id, val] = String(args[1] || '').split('=');
+    if (!SSOT[id]) { process.stderr.write(`familia desconocida: ${id}\n`); process.exit(3); }
+    const antes = SSOT[id].valor;
+    SSOT[id].valor = Number(val);
+    process.stderr.write(`SSOT.${id}: ${antes} -> ${SSOT[id].valor} ${SSOT[id].unidad}\n`);
+    process.stderr.write('efecto heredado (sin tocar nada mas):\n');
+    for (const h of HOMOLOGOS.filter((x) => x.familia === id)) {
+      process.stderr.write(`  ${h.clave.padEnd(26)} ${h.motor.padEnd(10)} = ${heredar(h)}\n`);
+    }
+    process.exit(0);
+  }
+
+  let totalH = 0, totalD = 0;
+  for (const f of tabla()) {
+    process.stdout.write(`\n${f.familia}  SSOT=${f.ssot} ${f.unidad}\n  ${f.magnitud}\n`);
+    for (const h of f.heredan) { totalH++; process.stdout.write(`    HEREDA  ${h.clave.padEnd(26)} ${h.motor.padEnd(10)} = ${h.valor_heredado} ${h.unidad}\n`); }
+    for (const d of f.duplicados) { totalD++; process.stdout.write(`    QUITAR  ${d.clave.padEnd(26)} ${d.motivo}\n`); }
+  }
+  process.stdout.write(`\nFAMILIAS=${Object.keys(SSOT).length}  HOMOLOGOS=${totalH}  DUPLICADOS=${totalD}  LEGITIMOS=${LEGITIMOS.length}\n`);
+  process.stdout.write('Ningun valor esta escrito dos veces: todo hereda de SSOT.\n');
 }
