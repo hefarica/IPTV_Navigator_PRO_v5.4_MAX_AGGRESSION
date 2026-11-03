@@ -40,7 +40,7 @@ env:
   APE_SSH_KEY: /home/runner/.ssh/id_ed25519
   DEPLOY_DIR: _vps_stage/deploy
   # Ruta de la lista viva en el VPS y el marcador de 8 bytes que la acompaña.
-  LISTS_DIR: /var/www/lists
+  LISTS_DIR: /var/www/html/lists
   MARKER_BYTES: 8
 
 jobs:
@@ -304,7 +304,7 @@ jobs:
       url: https://iptv-ape.duckdns.org
     env:
       CANARY_ID: canary-${{ github.run_id }}
-      CANARY_LIST: /var/www/lists/APE_LISTA_1793397700248_CDN.m3u8.gz
+      CANARY_LIST: /var/www/html/lists/APE_LISTA_1793397700248_CDN.m3u8.gz
       CANARY_SECONDS: '6'
     steps:
       - uses: actions/checkout@v4
@@ -322,7 +322,7 @@ jobs:
         run: |
           set -euo pipefail
           TARGET="${{ secrets.VPS_USER }}@$VPS_HOST"
-          ssh "$TARGET" 'sha256sum /var/www/lists/APE_LISTA_4K.m3u8 /var/www/lists/APE_LISTA_1793397700248_CDN.m3u8.gz; echo ---; find /etc/nginx/snippets -maxdepth 1 -type f -printf "%f %s\n" | sort; echo ---; sha256sum /var/www/html/prisma/api/ara-sync.php 2>/dev/null || echo AUSENTE-sync' | tee baseline-before.txt
+          ssh "$TARGET" 'sha256sum /var/www/html/lists/APE_LISTA_4K.m3u8 /var/www/html/lists/APE_LISTA_1793397700248_CDN.m3u8.gz; echo ---; find /etc/nginx/snippets -maxdepth 1 -type f -printf "%f %s\n" | sort; echo ---; sha256sum /var/www/html/prisma/api/ara-sync.php 2>/dev/null || echo AUSENTE-sync' | tee baseline-before.txt
       - name: Staging FASE0/1 en el VPS (sin destino productivo)
         run: |
           set -euo pipefail
@@ -378,7 +378,7 @@ jobs:
         run: |
           set -euo pipefail
           TARGET="${{ secrets.VPS_USER }}@$VPS_HOST"
-          ssh "$TARGET" 'sha256sum /var/www/lists/APE_LISTA_4K.m3u8 /var/www/lists/APE_LISTA_1793397700248_CDN.m3u8.gz; echo ---; find /etc/nginx/snippets -maxdepth 1 -type f -printf "%f %s\n" | sort; echo ---; sha256sum /var/www/html/prisma/api/ara-sync.php 2>/dev/null || echo AUSENTE-sync' | tee baseline-after.txt
+          ssh "$TARGET" 'sha256sum /var/www/html/lists/APE_LISTA_4K.m3u8 /var/www/html/lists/APE_LISTA_1793397700248_CDN.m3u8.gz; echo ---; find /etc/nginx/snippets -maxdepth 1 -type f -printf "%f %s\n" | sort; echo ---; sha256sum /var/www/html/prisma/api/ara-sync.php 2>/dev/null || echo AUSENTE-sync' | tee baseline-after.txt
           diff -u baseline-before.txt baseline-after.txt | tee isolation.diff
       - uses: actions/upload-artifact@v4
         if: always()
