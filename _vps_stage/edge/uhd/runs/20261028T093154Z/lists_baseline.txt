@@ -1,0 +1,16 @@
+=== G8 LISTS BASELINE (read-only) ===
+utc=2026-10-28T09:33:01Z host=ubuntu-2gb-ash-1
+--- /var/www/lists/APE_LISTA_4K.m3u8.gz
+a464a0c325a94b3cc97bef3b3b936ccd5905496f0509b509550d0278149e081b  /var/www/lists/APE_LISTA_4K.m3u8.gz
+/var/www/lists/APE_LISTA_4K.m3u8.gz|140555650|644|root:root|2026-10-26 19:55:49.550252018 +0000
+--- /var/www/lists/APE_LISTA_1793002539897_CDN.m3u8.gz
+db2d034ea0aa8f4825a77fe9142043224381448669a54b62f3e60a15a0f72ab8  /var/www/lists/APE_LISTA_1793002539897_CDN.m3u8.gz
+/var/www/lists/APE_LISTA_1793002539897_CDN.m3u8.gz|160845954|644|www-data:www-data|2026-10-26 08:23:18.613526484 +0000
+=== ls -lt /var/www/lists (top 5) ===
+total 987108
+-rw-r--r-- 1 root     root             8 Oct 26 19:55 APE_LISTA_4K.m3u8
+-rw-r--r-- 1 root     root     140555650 Oct 26 19:55 APE_LISTA_4K.m3u8.gz
+-rw-r--r-- 1 www-data www-data         8 Oct 26 08:23 APE_LISTA_1793002539897_CDN.m3u8
+-rw-r--r-- 1 www-data www-data 160845954 Oct 26 08:23 APE_LISTA_1793002539897_CDN.m3u8.gz
+-rw-r--r-- 1 www-data www-data         8 Aug 16 16:56 APE_LISTA_1786899011456.m3u8
+RESULT=OK

@@ -1,0 +1,37 @@
+#EXTM3U x-tvg-url=""
+#EXT-X-APE-PROFILE:P2
+#EXT-X-APE-LAB-EXTRAS:1
+#EXT-X-APE-CHANNELS:6
+
+#EXTINF:-1 tvg-id="9001" tvg-name="Canal Propio A" tvg-logo="http://logo/a.png" tvg-shift="+1" tvg-chno="101" group-title="PROPIO/DEPORTES/ULTRA HD" ape-profile="P1" ape-fps="60",Canal Propio A
+#EXTHTTP:{"User-Agent":"PropioUA/1.0","X-Propio-A":"A1"}
+#EXTVLCOPT:http-referrer=http://propio.example/ref
+#EXTVLCOPT:network-caching=15000
+#KODIPROP:inputstream.adaptive.manifest_type=hls
+#KODIPROP:propio.custom.key=VALOR_A
+#EXT-X-APE-CUSTOM-A:1
+http://propio.example/live/a/master.m3u8
+
+#EXTINF:-1 tvg-id="9002" tvg-name="Canal Propio B" tvg-logo="http://logo/b.png" tvg-shift="0" group-title="PROPIO/DEPORTES/FULL HD" ape-profile="P3",Canal Propio B
+#EXTHTTP:{"User-Agent":"PropioUA/2.0","X-Propio-B":"B2"}
+#EXTVLCOPT:http-user-agent=PropioUA/2.0
+#KODIPROP:propio.custom.key=VALOR_B
+#EXT-X-APE-CUSTOM-B:2
+http://propio.example/live/b/master.m3u8
+
+#EXTINF:-1 tvg-id="9003" tvg-name="Canal Propio C" group-title="PROPIO/CINE/FULL HD",Canal Propio C
+#EXTHTTP:{"X-Propio-C":"C3"}
+#KODIPROP:propio.custom.key=VALOR_C
+http://propio.example/live/c/master.m3u8
+
+#EXTINF:-1 tvg-id="9004" tvg-name="Canal Propio D" group-title="PROPIO/NOTICIAS/FULL HD",Canal Propio D
+#EXTVLCOPT:http-referrer=http://propio.example/d
+http://propio.example/live/d/master.m3u8
+
+#EXTINF:-1 tvg-id="9005" tvg-name="Canal Propio E" group-title="PROPIO/INFANTIL/FULL HD",Canal Propio E
+#EXT-X-APE-CUSTOM-E:5
+http://propio.example/live/e/master.m3u8
+
+#EXTINF:-1 tvg-id="9006" tvg-name="Canal Propio F" group-title="PROPIO/MUSICA/FULL HD",Canal Propio F
+http://propio.example/live/f/master.m3u8
+

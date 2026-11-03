@@ -1,0 +1,390 @@
+{
+  "schema": "e5.uhd.guard/1",
+  "cases": "C:\\Users\\HFRC\\Desktop\\IPTV_Navigator_PRO_v5.4_MAX_AGGRESSION\\_vps_stage\\edge\\uhd\\cases\\latest.json",
+  "label": "E5-UHD-canonical",
+  "captured_at": "2026-10-26T20:41:20.885Z",
+  "meta": {
+    "host": "ubuntu-2gb-ash-1",
+    "date_utc": "2026-10-26T20:41:23Z",
+    "nginx_v": "nginx version: nginx/1.24.0 (Ubuntu)",
+    "nginx_T_sha256": "ddf6a267aee7fb6614d0205423c27e15e0482e6fe28fe295f51a99780c55be5f",
+    "flags": "{\"uhd_pq\":\"0\",\"uhd_auto\":\"1\",\"uhd4k\":\"1\",\"rebase\":\"1\",\"enrich\":\"0\",\"virtual4k\":\"0\",\"wake\":\"1\",\"sentinel\":\"1\",\"auth\":\"0\",\"hint\":\"0\",\"uhd8k\":\"0\"}",
+    "arpc": "3",
+    "mem_mb": "3819",
+    "ffmpeg_bin": "/usr/bin/ffmpeg",
+    "ffmpeg_procs": "0",
+    "exec_popen_modules": "",
+    "systemd_ffmpeg": "",
+    "video_404_public": "2",
+    "mainpid": "2001835",
+    "nrestarts": "0",
+    "flags_json": {
+      "uhd_pq": "0",
+      "uhd_auto": "1",
+      "uhd4k": "1",
+      "rebase": "1",
+      "enrich": "0",
+      "virtual4k": "0",
+      "wake": "1",
+      "sentinel": "1",
+      "auth": "0",
+      "hint": "0",
+      "uhd8k": "0"
+    }
+  },
+  "checks": [
+    {
+      "id": "UHD-01",
+      "name": "CODECS inmutable (GOLDEN RULE / FZ-01)",
+      "severity": "blocker",
+      "suite": "live"
+    },
+    {
+      "id": "UHD-02",
+      "name": "sin hev1 dentro de EXT-X-STREAM-INF",
+      "severity": "blocker",
+      "suite": "live"
+    },
+    {
+      "id": "UHD-03",
+      "name": "8K declarado solo si la fuente es >=4K",
+      "severity": "blocker",
+      "suite": "live"
+    },
+    {
+      "id": "UHD-04",
+      "name": "marca #EXT-X-APE-UPSCALE coherente y unica",
+      "severity": "high",
+      "suite": "live"
+    },
+    {
+      "id": "UHD-05",
+      "name": "VIDEO-RANGE=PQ sin duplicar ni inventar",
+      "severity": "high",
+      "suite": "live"
+    },
+    {
+      "id": "UHD-06",
+      "name": "el VPS no reempaqueta video (MAP/m4s/PART)",
+      "severity": "blocker",
+      "suite": "live"
+    },
+    {
+      "id": "UHD-07",
+      "name": "lo servido es manifiesto (texto), no video",
+      "severity": "blocker",
+      "suite": "live"
+    },
+    {
+      "id": "UHD-08",
+      "name": "nivel >= capacidad de la resolucion declarada (4K)",
+      "severity": "info",
+      "suite": "live"
+    },
+    {
+      "id": "UHD-09",
+      "name": "8K declarado exige nivel >= L183 (Ley Cardinal 1)",
+      "severity": "blocker",
+      "suite": "live"
+    },
+    {
+      "id": "UHD-10",
+      "name": "flag uhd8k no declara 8K sobre fuente <4K",
+      "severity": "high",
+      "suite": "latent"
+    },
+    {
+      "id": "UHD-11",
+      "name": "flag uhd8k no declara 8K con nivel <L183",
+      "severity": "high",
+      "suite": "latent"
+    },
+    {
+      "id": "UHD-12",
+      "name": "flag uhd_pq enciende exactamente un PQ",
+      "severity": "info",
+      "suite": "latent"
+    }
+  ],
+  "verdict": "FAIL",
+  "counts": {
+    "blockers": 1,
+    "high": 2,
+    "info": 1
+  },
+  "results": [
+    {
+      "id": "UHD-01",
+      "ok": true,
+      "detail": "2 variante(s), CODECS identico",
+      "severity": "blocker",
+      "pair": "master_1080_avc"
+    },
+    {
+      "id": "UHD-02",
+      "ok": true,
+      "detail": "0 hev1 en STREAM-INF",
+      "severity": "blocker",
+      "pair": "master_1080_avc"
+    },
+    {
+      "id": "UHD-03",
+      "ok": true,
+      "detail": "sin 8K declarado (fuente max 1920px)",
+      "severity": "blocker",
+      "pair": "master_1080_avc"
+    },
+    {
+      "id": "UHD-04",
+      "ok": true,
+      "detail": "marca=\"#EXT-X-APE-UPSCALE:declared=3840x2160;codec=truthful;mode=4k\" top_servido=3840x2160",
+      "severity": "high",
+      "pair": "master_1080_avc"
+    },
+    {
+      "id": "UHD-05",
+      "ok": true,
+      "detail": "dup=0 valores_invalidos=0 perdido=0 pq_total_servido=0",
+      "severity": "high",
+      "pair": "master_1080_avc"
+    },
+    {
+      "id": "UHD-06",
+      "ok": true,
+      "detail": "map+=false m4s+=false part+=false",
+      "severity": "blocker",
+      "pair": "master_1080_avc"
+    },
+    {
+      "id": "UHD-07",
+      "ok": true,
+      "detail": "empieza por #EXTM3U",
+      "severity": "blocker",
+      "pair": "master_1080_avc"
+    },
+    {
+      "id": "UHD-08",
+      "ok": false,
+      "detail": "declarativo 4K por encima del nivel: #1 3840x2160@avc1.640028 (max 2097152px)",
+      "severity": "info",
+      "pair": "master_1080_avc"
+    },
+    {
+      "id": "UHD-09",
+      "ok": true,
+      "detail": "todo 8K declarado lleva nivel >= L183",
+      "severity": "blocker",
+      "pair": "master_1080_avc"
+    },
+    {
+      "id": "UHD-01",
+      "ok": true,
+      "detail": "2 variante(s), CODECS identico",
+      "severity": "blocker",
+      "pair": "master_4k_hevc"
+    },
+    {
+      "id": "UHD-02",
+      "ok": true,
+      "detail": "0 hev1 en STREAM-INF",
+      "severity": "blocker",
+      "pair": "master_4k_hevc"
+    },
+    {
+      "id": "UHD-03",
+      "ok": true,
+      "detail": "8K declarado; fuente max 3840px -> permitido",
+      "severity": "blocker",
+      "pair": "master_4k_hevc"
+    },
+    {
+      "id": "UHD-04",
+      "ok": true,
+      "detail": "marca=\"#EXT-X-APE-UPSCALE:declared=7680x4320;codec=truthful;mode=8k\" top_servido=7680x4320",
+      "severity": "high",
+      "pair": "master_4k_hevc"
+    },
+    {
+      "id": "UHD-05",
+      "ok": true,
+      "detail": "dup=0 valores_invalidos=0 perdido=0 pq_total_servido=1",
+      "severity": "high",
+      "pair": "master_4k_hevc"
+    },
+    {
+      "id": "UHD-06",
+      "ok": true,
+      "detail": "map+=false m4s+=false part+=false",
+      "severity": "blocker",
+      "pair": "master_4k_hevc"
+    },
+    {
+      "id": "UHD-07",
+      "ok": true,
+      "detail": "empieza por #EXTM3U",
+      "severity": "blocker",
+      "pair": "master_4k_hevc"
+    },
+    {
+      "id": "UHD-08",
+      "ok": true,
+      "detail": "todas las variantes 4K caben en su nivel",
+      "severity": "info",
+      "pair": "master_4k_hevc"
+    },
+    {
+      "id": "UHD-09",
+      "ok": false,
+      "detail": "1 variante(s) declaran 8K con nivel insuficiente: #1 7680x4320@hvc1.2.4.L153.B0",
+      "severity": "blocker",
+      "pair": "master_4k_hevc"
+    },
+    {
+      "id": "UHD-01",
+      "ok": true,
+      "detail": "1 variante(s), CODECS identico",
+      "severity": "blocker",
+      "pair": "media_hybrid_stream_inf"
+    },
+    {
+      "id": "UHD-02",
+      "ok": true,
+      "detail": "0 hev1 en STREAM-INF",
+      "severity": "blocker",
+      "pair": "media_hybrid_stream_inf"
+    },
+    {
+      "id": "UHD-03",
+      "ok": true,
+      "detail": "sin 8K declarado (fuente max 1280px)",
+      "severity": "blocker",
+      "pair": "media_hybrid_stream_inf"
+    },
+    {
+      "id": "UHD-04",
+      "ok": true,
+      "detail": "marca=\"#EXT-X-APE-UPSCALE:declared=3840x2160;codec=truthful;mode=4k\" top_servido=3840x2160",
+      "severity": "high",
+      "pair": "media_hybrid_stream_inf"
+    },
+    {
+      "id": "UHD-05",
+      "ok": true,
+      "detail": "dup=0 valores_invalidos=0 perdido=0 pq_total_servido=0",
+      "severity": "high",
+      "pair": "media_hybrid_stream_inf"
+    },
+    {
+      "id": "UHD-06",
+      "ok": true,
+      "detail": "map+=false m4s+=false part+=false",
+      "severity": "blocker",
+      "pair": "media_hybrid_stream_inf"
+    },
+    {
+      "id": "UHD-07",
+      "ok": true,
+      "detail": "empieza por #EXTM3U",
+      "severity": "blocker",
+      "pair": "media_hybrid_stream_inf"
+    },
+    {
+      "id": "UHD-08",
+      "ok": true,
+      "detail": "todas las variantes 4K caben en su nivel",
+      "severity": "info",
+      "pair": "media_hybrid_stream_inf"
+    },
+    {
+      "id": "UHD-09",
+      "ok": true,
+      "detail": "todo 8K declarado lleva nivel >= L183",
+      "severity": "blocker",
+      "pair": "media_hybrid_stream_inf"
+    },
+    {
+      "id": "UHD-01",
+      "ok": true,
+      "detail": "0 variante(s), CODECS identico",
+      "severity": "blocker",
+      "pair": "media_ll_parts"
+    },
+    {
+      "id": "UHD-02",
+      "ok": true,
+      "detail": "0 hev1 en STREAM-INF",
+      "severity": "blocker",
+      "pair": "media_ll_parts"
+    },
+    {
+      "id": "UHD-03",
+      "ok": true,
+      "detail": "sin 8K declarado (fuente max 0px)",
+      "severity": "blocker",
+      "pair": "media_ll_parts"
+    },
+    {
+      "id": "UHD-04",
+      "ok": true,
+      "detail": "sin cambios: sin marca (ok)",
+      "severity": "high",
+      "pair": "media_ll_parts"
+    },
+    {
+      "id": "UHD-05",
+      "ok": true,
+      "detail": "dup=0 valores_invalidos=0 perdido=0 pq_total_servido=0",
+      "severity": "high",
+      "pair": "media_ll_parts"
+    },
+    {
+      "id": "UHD-06",
+      "ok": true,
+      "detail": "map+=false m4s+=false part+=false",
+      "severity": "blocker",
+      "pair": "media_ll_parts"
+    },
+    {
+      "id": "UHD-07",
+      "ok": true,
+      "detail": "empieza por #EXTM3U",
+      "severity": "blocker",
+      "pair": "media_ll_parts"
+    },
+    {
+      "id": "UHD-08",
+      "ok": true,
+      "detail": "todas las variantes 4K caben en su nivel",
+      "severity": "info",
+      "pair": "media_ll_parts"
+    },
+    {
+      "id": "UHD-09",
+      "ok": true,
+      "detail": "todo 8K declarado lleva nivel >= L183",
+      "severity": "blocker",
+      "pair": "media_ll_parts"
+    },
+    {
+      "id": "UHD-10",
+      "severity": "high",
+      "ok": false,
+      "detail": "M1_master1080/declare_8k_forzado: 8K con top=1920px",
+      "pair": "lua_matrix"
+    },
+    {
+      "id": "UHD-11",
+      "severity": "high",
+      "ok": false,
+      "detail": "M2_master4k/declare_auto: 8K con hvc1.2.4.L153.B0,mp4a.40.2 ; hvc1.1.6.L123.B0,mp4a.40.2 · M3_8k_L153/declare_auto: 8K con hvc1.2.4.L153.B0,mp4a.40.2 · M6_hev1/declare_auto: 8K con hev1.2.4.L153.B0,mp4a.40.2 · M2_master4k/declare_auto+pq: 8K con hvc1.2.4.L153.B0,mp4a.40.2 ; hvc1.1.6.L123.B0,mp4a.40.2 · M1_master1080/declare_8k_forzado: 8K con avc1.640028,mp4a.40.2 ; avc1.64001f,mp4a.40.2 · M2_master4k/declare_8k_forzado: 8K con hvc1.2.4.L153.B0,mp4a.40.2 ; hvc1.1.6.L123.B0,mp4a.40.2",
+      "pair": "lua_matrix"
+    },
+    {
+      "id": "UHD-12",
+      "severity": "info",
+      "ok": true,
+      "detail": "+pq=2 fila(s) con 1 PQ · base=7 fila(s) con 0",
+      "pair": "lua_matrix"
+    }
+  ]
+}

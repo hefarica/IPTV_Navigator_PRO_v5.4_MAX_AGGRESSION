@@ -1,0 +1,72 @@
+warning: in the working copy of '_vps_stage/edge/uhd/live/ape_uhd.lua.live', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of '_vps_stage/edge/E10_window/staged/etc/nginx/lua/ape_uhd.lua', LF will be replaced by CRLF the next time Git touches it
+diff --git a/_vps_stage/edge/uhd/live/ape_uhd.lua.live b/_vps_stage/edge/E10_window/staged/etc/nginx/lua/ape_uhd.lua
+index 24fdb7e..bc21246 100644
+--- a/_vps_stage/edge/uhd/live/ape_uhd.lua.live
++++ b/_vps_stage/edge/E10_window/staged/etc/nginx/lua/ape_uhd.lua
+@@ -82,6 +82,41 @@ function M.top_resolution(body)
+     return nil
+ end
+ 
++-- E5 (2026-10-26): techo real. 8K SOLO si (a) la fuente es >=4K y (b) el nivel
++-- declarado sostiene 8K (HEVC Level 6.1 = L183). CODECS no se toca nunca.
++M.MIN_HEVC_LEVEL_8K = 183
++
++-- Mayor RESOLUTION= declarada por CUALQUIER variante (no solo la 1.ª).
++function M.max_resolution(body)
++    local mx = 0
++    for line in (body .. "\n"):gmatch("(.-)\r?\n") do
++        if line:find("#EXT-X-STREAM-INF", 1, true) then
++            local w = tonumber(line:match("RESOLUTION=(%d+)x%d+") or 0) or 0
++            if w > mx then mx = w end
++        end
++    end
++    return mx
++end
++
++-- ¿el primer codec de vídeo declarado soporta 8K? (hevc L>=183; AVC nunca)
++function M.level_supports_8k(body)
++    for line in (body .. "\n"):gmatch("(.-)\r?\n") do
++        if line:find("#EXT-X-STREAM-INF", 1, true) then
++            local codecs = line:match('CODECS="([^"]*)"') or ""
++            for tok in codecs:gmatch("[^,]+") do
++                local lv = tok:match("^hv[ce][1e]%.%d+%.%w+%.L(%d+)")
++                if lv then return (tonumber(lv) or 0) >= M.MIN_HEVC_LEVEL_8K end
++                if tok:match("^avc[13]%.") then return false end
++            end
++        end
++    end
++    return false
++end
++
++function M.can_declare_8k(body)
++    return M.max_resolution(body) >= 3840 and M.level_supports_8k(body)
++end
++
+ -- DECISIÓN DEL PROPIETARIO 2026-10-24 (segunda iteración):
+ --   "SIEMPRE RESOLUTION=3840x2160 sobre bytes 1920x1080;
+ --    si es 1080p o menor se upscala a 4K; y las 4K se llevan a 8K fake."
+@@ -91,19 +126,10 @@ end
+ -- CODECS nunca se toca (freeze FZ-01 si se toca).
+ function M.declare_auto(body, opts)
+     opts = opts or {}
+-    local w = M.top_resolution(body)
+-    if w == nil then return body, 0, nil end          -- no es master
+-    local target, mode
+-    if w >= 3840 then
+-        target, mode = M.TARGET_8K, "8k"
+-    else
+-        target, mode = M.TARGET_4K, "4k"
+-    end
+-    local nb, n = M.declare(body, {
+-        target = target, mode = mode,
+-        add_pq = opts.add_pq, only_top = true,
+-    })
+-    return nb, n, mode
++    if M.top_resolution(body) == nil then return body, 0, nil end   -- no es master
++    local nb, n = M.declare(body, { target = M.TARGET_4K, mode = "4k",
++        add_pq = opts.add_pq, only_top = true })
++    return nb, n, "4k"
+ end
+ 
+ -- Guardia de coherencia: devuelve true si TODAS las variantes declaran un codec

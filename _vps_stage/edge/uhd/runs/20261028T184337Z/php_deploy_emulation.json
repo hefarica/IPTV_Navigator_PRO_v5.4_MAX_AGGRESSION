@@ -1,0 +1,132 @@
+{
+  "task": "t45",
+  "attempt": 2,
+  "stamp": "20261028T184337Z",
+  "host": "ubuntu-2gb-ash-1 (178.156.147.234)",
+  "ventana": {
+    "backup": "2026-10-28T18:44:19Z",
+    "install": "2026-10-28T18:44:19Z",
+    "monitoring_inicio": "2026-10-28T18:44:45Z",
+    "monitoring_fin": "2026-10-28T18:49:24Z",
+    "duracion_monitor_s": 282
+  },
+  "resultado": "OK",
+  "rollback_ejecutado": false,
+  "rollback_motivo": "5a/5b/5d/5e PASS y monitoring 10/10 sin degradacion; 5c es discrepancia de expectativa (D2), no regresion",
+  "archivo": {
+    "ruta": "/var/www/html/prisma/lib/ape_mesh.php",
+    "before_sha256": "cafe66e4508f26436d80268f373eab2595d1e5c0bc939ed6a9a13eadda586442",
+    "before_bytes": 39596,
+    "before_owner": "www-data:www-data",
+    "after_sha256": "37f043b8e8339dad7ebc25e3e9445d3741e7a96e6069f184ef3a127ceee44ace",
+    "after_bytes": 43822,
+    "after_owner": "root:root",
+    "php_l": 0,
+    "stage_sha_ok": true,
+    "install_sha_ok": true
+  },
+  "untouched": [
+    {
+      "ruta": "/var/www/html/prisma/api/ape-feedforward.php",
+      "sha256": "9cd4e0fad875090fd720e16d267e43bd184408110dbadf7de48420182ff533b8"
+    },
+    {
+      "ruta": "/var/www/html/prisma/cli/push_pq_profile.php",
+      "sha256": "f0fc5e92f256d3703e0b5524aa1f18a915b501a05e1307cd29bc48843dc73ec7"
+    }
+  ],
+  "verificacion": {
+    "5a": {
+      "http": 200,
+      "bytes": 3791,
+      "emulation_subbocks": 11,
+      "faltan": "ninguno",
+      "sobran": "ninguno",
+      "allowed": false,
+      "reason": "no_caps",
+      "device_settings": 3,
+      "presets": 41,
+      "emulate_8k_equals_supersample": true,
+      "pass": true
+    },
+    "5b": {
+      "cmp_before_after": "IDENTICOS",
+      "ape_vpp": "AUSENTE",
+      "activated": false,
+      "http": 200,
+      "bytes": 109,
+      "pass": true
+    },
+    "5c": {
+      "levers": 13,
+      "profile_3840": "P0",
+      "profile_1920": "P0",
+      "profile_1280": "P0",
+      "esperado_enunciado": "P0/P0/P1",
+      "frontera": "P1 solo con w<1280 (1279->P1, 1024->P1, 854->P1)",
+      "evidencia": "ape_mesh.php:617-619",
+      "pass": false,
+      "causa": "D2 expectativa del enunciado, no regresion"
+    },
+    "5d": {
+      "push_pq_exit": 2,
+      "mensaje": "skip: SoC no allowlisted o sin caps (device=test-device)",
+      "policy_deltas_antes": 0,
+      "policy_deltas_despues": 0,
+      "pass": true
+    },
+    "5e": {
+      "luatest": "expected=88 asserts_ok=true fail=0",
+      "cdn": 200,
+      "ape_uhd": 200,
+      "nginx_t": "OK",
+      "nginx_MainPID": 3801145,
+      "nginx_NRestarts": 0,
+      "pass": true
+    }
+  },
+  "monitoring": {
+    "iteraciones": 10,
+    "intervalo_s": 30,
+    "degradados": 0,
+    "result": "OK",
+    "emulation_subbocks_por_iteracion": 11
+  },
+  "scope": {
+    "ficheros_modificados_en_prisma": 1,
+    "nginx": "intacto MainPID=3801145 NRestarts=0",
+    "php_fpm": "sin reload MainPID=3800678 NRestarts=0 ActiveEnterTimestamp=2026-10-28T06:30:35Z",
+    "git_add": false,
+    "commits": false
+  },
+  "divergencias": [
+    {
+      "id": "D1",
+      "enunciado": "desplegado cafe66e4508f, 41232 B",
+      "medido": "cafe66e4508f con 39596 B (mtime 2026-10-28T15:19:16Z, www-data) = lo que instalo t42"
+    },
+    {
+      "id": "D2",
+      "enunciado": "profile_for(3840)/(1920)/(1280) = P0/P0/P1",
+      "medido": "P0/P0/P0; P1 solo con w<1280 (1279/1024/854)",
+      "evidencia": "ape_mesh.php:617-619"
+    },
+    {
+      "id": "D3",
+      "enunciado": "owner original root:root; rollback con -o root -g root",
+      "medido": "owner previo real www-data:www-data (cambio de t42); instale root:root por mandato y rollback.sh restaura www-data"
+    }
+  ],
+  "defecto_propio": "deploy.sh imprimio RESULT=OK sin incluir la asercion 5c en el contador FAIL; el veredicto valido es el del log",
+  "evidencia": [
+    "preflight.sh",
+    "preflight.log",
+    "deploy.sh",
+    "deploy.log",
+    "monitor.sh",
+    "monitor.log",
+    "scope.sh",
+    "scope.log",
+    "stamp.txt"
+  ]
+}

@@ -1,0 +1,11 @@
+[Unit]
+Description=APE NET TUNING — re-aplicar initcwnd cada hora (renovaciones DHCP)
+
+[Timer]
+OnBootSec=3min
+OnUnitActiveSec=1h
+AccuracySec=30s
+Unit=ape-net-tuning.service
+
+[Install]
+WantedBy=timers.target

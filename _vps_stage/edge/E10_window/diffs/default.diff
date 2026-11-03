@@ -1,0 +1,14 @@
+warning: in the working copy of '_vps_stage/edge/E10_window/live/default', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of '_vps_stage/edge/E10_window/staged/etc/nginx/sites-enabled/default', LF will be replaced by CRLF the next time Git touches it
+diff --git a/_vps_stage/edge/E10_window/live/default b/_vps_stage/edge/E10_window/staged/etc/nginx/sites-enabled/default
+index d768082..c71d2a5 100644
+--- a/_vps_stage/edge/E10_window/live/default
++++ b/_vps_stage/edge/E10_window/staged/etc/nginx/sites-enabled/default
+@@ -147,7 +147,6 @@ server {
+         }
+ 
+         # Range requests
+-        add_header Accept-Ranges bytes always;
+ 
+         # Cache control — 5 min para que los players re-descarguen periódicamente
+         add_header Cache-Control "public, max-age=300" always;

@@ -1,0 +1,12 @@
+[Unit]
+Description=APE META WATCHDOG — health check + auto-reparacion del plano de metadata
+Documentation=file:///root/ape-meta-plane-20261024/README.md
+After=network-online.target nginx.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=root
+ExecStart=/usr/local/bin/ape-meta-watchdog.sh
+TimeoutStartSec=30
+Nice=10

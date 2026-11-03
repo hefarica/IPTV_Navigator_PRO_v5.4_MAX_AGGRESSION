@@ -1,0 +1,78 @@
+--- a/ape_gateway.lua
++++ b/ape_gateway.lua
+@@ -101,10 +101,57 @@ local function safe_host(h)
+     return type(h) == "string" and h:match("^[%w%.%-%:]+$") ~= nil
+ end
+ 
++-- ══ E4 · caché del destino del 302 (hop-cache) ═══════════════════════════
++-- MIDE: saltarse el primer salto (proveedor 302) ahorra el 42,7 % del p50 del
++-- camino completo (295,6 ms de 692 ms), pero SOLO vale si el token del destino
++-- sigue vivo. Medido: el token vive 3,5-6,5 s (6/6 ensayos) y el CDN contesta
++-- 509 cuando caduca. Con un player que refresca cada ~12 s, la tasa de acierto
++-- ÚTIL (con token vivo) es ~20 % ⇒ ahorro esperado ~75 ms (−9,8 %), no −40 %.
++-- TTL > 5 s NO sirve: añade solo aciertos con token muerto y EMBORRONA la
++-- latencia (medido: TTL 30 s ⇒ +20 % de latencia y 59 % de 509).
++-- Diseño: TTL corto (3 s por defecto, sintonizable en caliente con el flag
++-- `hop_ttl`) + REVALIDACIÓN POR STATUS: si el destino cacheado devuelve
++-- no-2xx (típicamente 509) se DESCARTA y se hace la cadena normal. Así el 509
++-- nunca llega al player y el peor caso es un hop de más, nunca un fallo.
++local HOPC = ngx.shared.ape_hops            -- nil si falta la directiva (cache off)
++local HOP_TTL = math.max(1, math.min(10, tonumber((FLAGS and FLAGS:get("hop_ttl")) or "") or 3))
++local hop_state = "miss"                    -- miss | hit | stale (se publica como X-APE-Hop-Cache)
++
++local function hop_key(h, p, q) return h .. "\n" .. p .. "\n" .. (q or "") end
++
++-- Devuelve res, host_final si el destino cacheado responde 2xx; nil si no hay
++-- entrada o si la entrada está muerta (y la borra).
++local function hop_try(ck)
++    local cached = HOPC:get(ck)
++    if not cached then return nil end
++    local ch, cp, cq = cached:match("^([^\n]*)\n([^\n]*)\n([^\n]*)$")
++    if not (ch and safe_host(ch) and safe_path(cp)) then HOPC:delete(ck); return nil end
++    local qs = (cq ~= "" and ("?" .. cq) or "")
++    local okc, res = pcall(ngx.location.capture, "/_ape/_fetch?h=" .. ch .. "&p=" .. cp .. "&qs=" .. qs)
++    if okc and res and res.status then
++        if res.status >= 200 and res.status < 300 then
++            qinc("hop_hit")
++            return res, ch
++        end
++        -- REVALIDACIÓN POR STATUS: token caducado (509) o lo que sea ⇒ a la basura
++        HOPC:delete(ck)
++        qinc("hop_stale_" .. tostring(res.status))
++        hop_state = "stale"
++        return nil
++    end
++    HOPC:delete(ck)
++    return nil
++end
++
+ -- ── fetch con seguimiento de 302 ─────────────────────────────────────────
+ local function fetch_follow(h, p, q, hops)
+     hops = hops or MAX_HOPS
+     local cur_h, cur_p, cur_q = h, p, q or ""
++    local ck = HOPC and hop_key(h, p, (q or "")) or nil
++    if ck then
++        local res, fh = hop_try(ck)
++        if res then hop_state = "hit"; return res, fh end
++    end
+     for _ = 1, hops + 1 do
+         if not (safe_host(cur_h) and safe_path(cur_p)) then return nil, cur_h end
+         local qs = (cur_q ~= "") and ("?" .. cur_q) or ""
+@@ -125,6 +172,8 @@ local function fetch_follow(h, p, q, hops)
+                 return nil, cur_h, "redirect_not_allowed"
+             end
+             cur_h, cur_p, cur_q = nh, np, (nq or "")
++            -- se cachea el destino FINAL ya validado (anti-SSRF aplicado arriba)
++            if ck then HOPC:set(ck, hop_key(nh, np, (nq or "")), HOP_TTL) end
+             qinc("redirects")
+         else
+             return res, cur_h
+@@ -251,6 +300,8 @@ ngx.header["X-APE-LL-HLS"]      = sc_added and "server-control-added"
+     or (lib.has_parts(rebased) and "passthrough" or "none")
+ ngx.header["X-APE-UHD"]         = uhd_mode and (uhd_mode .. ":" .. uhd_n) or "off"
+ ngx.header["X-APE-LAB-FLOOR"]   = tostring(lab.floor_for(nil))
++-- E4: estado de la caché del 302 (observabilidad del TTL, sin tocar el cuerpo)
++ngx.header["X-APE-Hop-Cache"]   = HOPC and (hop_state .. ":" .. tostring(HOP_TTL) .. "s") or "off"
+ ngx.print(rebased)
+ 
+ -- ── QoE ──────────────────────────────────────────────────────────────────

@@ -1,0 +1,1125 @@
+{
+  "harness": {
+    "version": "1.0.1",
+    "label": "E1-FASE0-baseline",
+    "startedUtc": "2026-10-26T20:20:41.052Z",
+    "startedBogota": "26/10/26, 3:20:41 p. m.",
+    "finishedUtc": "2026-10-26T20:21:29.230Z",
+    "ssh": "root@178.156.147.234",
+    "params": {
+      "HOST": "iptv-ape.duckdns.org",
+      "BASE": "https://iptv-ape.duckdns.org",
+      "LIST_PATH": "/lists/APE_LISTA_4K.m3u8",
+      "CDN_IDS": [
+        "3",
+        "5",
+        "6"
+      ],
+      "N": {
+        "LIST_FRESH": 5,
+        "LIST_KEEPALIVE": 5,
+        "CDN_CLIENT": 3,
+        "CDN_LOOPBACK": 3,
+        "HOP": 7
+      },
+      "TIMEOUT_MS": 20000
+    },
+    "percentiles": "nearest-rank; N pequeño ⇒ p95 = máximo"
+  },
+  "vps": {
+    "dateUtc": "2026-10-26T20:20:46Z",
+    "host": "ubuntu-2gb-ash-1",
+    "kernel": "6.8.0-124-generic",
+    "nginx": "nginx version: nginx/1.24.0 (Ubuntu)",
+    "nginxTOk": true,
+    "nginxT": "nginx: the configuration file /etc/nginx/nginx.conf syntax is ok|nginx: configuration file /etc/nginx/nginx.conf test is successful|",
+    "mainPid": "2001835",
+    "nRestarts": 0,
+    "activeSince": "Sun 2026-10-25 23:35:04 UTC",
+    "nginxTSha256": "64482e7d9014473ea9228253bbe7fbe81d431df97787c81940dc745c25e15404",
+    "h2ListenCount": 0,
+    "configs": [
+      {
+        "path": "/etc/nginx/conf.d/50-ape-meta-plane.conf",
+        "size": 10941,
+        "sha256": "3e29b9280c05de36c4af445e8a9722573a23c865f240e2d87b2734178e60c515"
+      },
+      {
+        "path": "/etc/nginx/snippets/ape-meta-public.conf",
+        "size": 2509,
+        "sha256": "a39e8de902cf5449553822eb1682d1a9d481390c1ce136a218d91fbe1ee4ac39"
+      },
+      {
+        "path": "/etc/nginx/sites-enabled/default",
+        "size": 6862,
+        "sha256": "58bee1cb7b911bc1b40ebab65003d1cdfcfa8a7c6f03dc5e0acbdd77b38a4f96"
+      }
+    ],
+    "listFiles": [
+      {
+        "path": "/var/www/html/lists/APE_LISTA_4K.m3u8",
+        "size": 8,
+        "mtimeEpoch": 1793044549
+      },
+      {
+        "path": "/var/www/html/lists/APE_LISTA_4K.m3u8.gz",
+        "size": 140555650,
+        "mtimeEpoch": 1793044549
+      },
+      {
+        "path": "/var/www/html/lists/APE_LISTA_1793002539897_CDN.m3u8.gz",
+        "size": 160845954,
+        "mtimeEpoch": 1793002998
+      }
+    ],
+    "raw": "DATE_UTC=2026-10-26T20:20:46Z\nHOST=ubuntu-2gb-ash-1\nKERNEL=6.8.0-124-generic\nNGINX=nginx version: nginx/1.24.0 (Ubuntu)\nNGINX_T=nginx: the configuration file /etc/nginx/nginx.conf syntax is ok|nginx: configuration file /etc/nginx/nginx.conf test is successful|\nMAINPID=2001835\nNRESTARTS=0\nACTIVE_ENTER=Sun 2026-10-25 23:35:04 UTC\nNGINX_T_SHA=64482e7d9014473ea9228253bbe7fbe81d431df97787c81940dc745c25e15404\nH2_LISTEN_COUNT=0\nCONF=3e29b9280c05de36c4af445e8a9722573a23c865f240e2d87b2734178e60c515|10941|/etc/nginx/conf.d/50-ape-meta-plane.conf\nCONF=a39e8de902cf5449553822eb1682d1a9d481390c1ce136a218d91fbe1ee4ac39|2509|/etc/nginx/snippets/ape-meta-public.conf\nCONF=58bee1cb7b911bc1b40ebab65003d1cdfcfa8a7c6f03dc5e0acbdd77b38a4f96|6862|/etc/nginx/sites-enabled/default\nLISTFILE=8|1793044549|/var/www/html/lists/APE_LISTA_4K.m3u8\nLISTFILE=140555650|1793044549|/var/www/html/lists/APE_LISTA_4K.m3u8.gz\nLISTFILE=160845954|1793002998|/var/www/html/lists/APE_LISTA_1793002539897_CDN.m3u8.gz\n"
+  },
+  "health": {
+    "before": {
+      "checks": {
+        "last_latency_ms": 668,
+        "nginx": true,
+        "shared_dicts": true,
+        "upstreams_down": 0,
+        "requests": 91,
+        "error_ratio": 0.2637,
+        "last_host": "line.tivi-ott.net"
+      },
+      "plane": "meta/v3",
+      "ts": 1793046048,
+      "qoe": {
+        "host_down:line.tivi-ott.net": 3,
+        "last_ms": 668,
+        "bytes": 57660,
+        "last_ts": 1793045938,
+        "req": 91,
+        "all_failed": 24,
+        "rebase_ok": 91,
+        "last_host": "line.tivi-ott.net"
+      },
+      "ok": true
+    },
+    "after": {
+      "checks": {
+        "last_latency_ms": 752,
+        "nginx": true,
+        "shared_dicts": true,
+        "upstreams_down": 0,
+        "requests": 109,
+        "error_ratio": 0.2202,
+        "last_host": "line.tivi-ott.net"
+      },
+      "plane": "meta/v3",
+      "ts": 1793046093,
+      "qoe": {
+        "host_down:line.tivi-ott.net": 3,
+        "last_ms": 752,
+        "bytes": 69169,
+        "last_ts": 1793046088,
+        "req": 109,
+        "all_failed": 24,
+        "rebase_ok": 109,
+        "last_host": "line.tivi-ott.net"
+      },
+      "ok": true
+    },
+    "harnessRequests": 18,
+    "harnessFailures": 0,
+    "errorRatioBefore": 0.2637,
+    "errorRatioAfter": 0.2202,
+    "errorRatioDelta": -0.0435,
+    "note": "las muestras del arnés incrementan req/all_failed; el delta es atribuible a este run"
+  },
+  "list": {
+    "path": "/lists/APE_LISTA_4K.m3u8",
+    "http1Fresh": {
+      "stats": {
+        "n": 5,
+        "min": 405.9,
+        "p50": 427.5,
+        "p95": 747.4,
+        "max": 747.4,
+        "mean": 494.7,
+        "stdev": 128.1
+      },
+      "samples": [
+        {
+          "status": 200,
+          "error": null,
+          "httpVersion": "1.1",
+          "headersMs": 747.4,
+          "tlsMs": 507.9,
+          "firstByteMs": 751.4,
+          "firstChunkBytes": 7443
+        },
+        {
+          "status": 200,
+          "error": null,
+          "httpVersion": "1.1",
+          "headersMs": 422.9,
+          "tlsMs": 225.5,
+          "firstByteMs": 423.6,
+          "firstChunkBytes": 7443
+        },
+        {
+          "status": 200,
+          "error": null,
+          "httpVersion": "1.1",
+          "headersMs": 405.9,
+          "tlsMs": 211.4,
+          "firstByteMs": 406.3,
+          "firstChunkBytes": 7443
+        },
+        {
+          "status": 200,
+          "error": null,
+          "httpVersion": "1.1",
+          "headersMs": 470,
+          "tlsMs": 248.5,
+          "firstByteMs": 470.4,
+          "firstChunkBytes": 7443
+        },
+        {
+          "status": 200,
+          "error": null,
+          "httpVersion": "1.1",
+          "headersMs": 427.5,
+          "tlsMs": 228.1,
+          "firstByteMs": 428.5,
+          "firstChunkBytes": 7443
+        }
+      ]
+    },
+    "http1KeepAlive": {
+      "stats": {
+        "n": 5,
+        "min": 108.7,
+        "p50": 110.6,
+        "p95": 363.9,
+        "max": 363.9,
+        "mean": 161.4,
+        "stdev": 101.3
+      },
+      "samples": [
+        {
+          "status": 200,
+          "error": null,
+          "method": "HEAD",
+          "reusedSocket": false,
+          "headersMs": 363.9
+        },
+        {
+          "status": 200,
+          "error": null,
+          "method": "HEAD",
+          "reusedSocket": true,
+          "headersMs": 113.7
+        },
+        {
+          "status": 200,
+          "error": null,
+          "method": "HEAD",
+          "reusedSocket": true,
+          "headersMs": 110.6
+        },
+        {
+          "status": 200,
+          "error": null,
+          "method": "HEAD",
+          "reusedSocket": true,
+          "headersMs": 110.2
+        },
+        {
+          "status": 200,
+          "error": null,
+          "method": "HEAD",
+          "reusedSocket": true,
+          "headersMs": 108.7
+        }
+      ]
+    },
+    "http2": {
+      "alpnProbe": {
+        "alpn": "http/1.1",
+        "protocol": "TLSv1.3",
+        "cipher": "TLS_AES_256_GCM_SHA384"
+      },
+      "strictConnect": {
+        "attempted": true,
+        "requestedAlpn": "h2",
+        "error": "ERR_SSL_TLSV1_ALERT_NO_APPLICATION_PROTOCOL",
+        "alpn": null
+      },
+      "vpsCurlHttp2": {
+        "sshStatus": 0,
+        "stderr": "",
+        "httpVersion": "1.1",
+        "status": 200,
+        "ttfbMs": 25.9
+      },
+      "vpsCurlHttp11": {
+        "sshStatus": 0,
+        "stderr": "",
+        "httpVersion": "1.1",
+        "status": 200,
+        "ttfbMs": 32
+      },
+      "vpsCurlVersion": "curl 8.5.0 (x86_64-pc-linux-gnu) libcurl/8.5.0 OpenSSL/3.0.13 zlib/1.3 brotli/1.1.0 zstd/1.5.5 libidn2/2.3.7 libpsl/0.21.2 (+libidn2/2.3.7) libssh/0.10.6/openssl/zlib nghttp2/1.59.0 librtmp/2.3 OpenLDAP/2.6.7",
+      "localCurlVersion": "curl 8.16.0 (Windows) libcurl/8.16.0 Schannel zlib/1.3.1 WinIDN\r",
+      "localCurlHasHttp2": false
+    },
+    "headers": {
+      "status": 200,
+      "httpVersion": "1.1",
+      "contentLength": 140555650,
+      "contentEncoding": "gzip",
+      "etag": "\"6adfb045-860b582\"",
+      "lastModified": "Mon, 26 Oct 2026 19:55:49 GMT",
+      "cacheControl": "max-age=300, public, max-age=300",
+      "vary": "Accept-Encoding",
+      "server": "nginx"
+    },
+    "bytes": {
+      "declaredGzip": 140555650,
+      "firstChunk": 7443,
+      "onDisk": [
+        {
+          "path": "/var/www/html/lists/APE_LISTA_4K.m3u8",
+          "size": 8,
+          "mtimeEpoch": 1793044549
+        },
+        {
+          "path": "/var/www/html/lists/APE_LISTA_4K.m3u8.gz",
+          "size": 140555650,
+          "mtimeEpoch": 1793044549
+        },
+        {
+          "path": "/var/www/html/lists/APE_LISTA_1793002539897_CDN.m3u8.gz",
+          "size": 160845954,
+          "mtimeEpoch": 1793002998
+        }
+      ]
+    }
+  },
+  "cdn": {
+    "discovery": [
+      {
+        "id": "3",
+        "urlRedacted": "https://iptv-ape.duckdns.org/cdn/line.tivi-ott.net/live/<USER>/<PASS>/3.m3u8"
+      },
+      {
+        "id": "5",
+        "urlRedacted": "https://iptv-ape.duckdns.org/cdn/line.tivi-ott.net/live/<USER>/<PASS>/5.m3u8"
+      },
+      {
+        "id": "6",
+        "urlRedacted": "https://iptv-ape.duckdns.org/cdn/line.tivi-ott.net/live/<USER>/<PASS>/6.m3u8"
+      }
+    ],
+    "client": [
+      {
+        "id": "3",
+        "urlRedacted": "https://iptv-ape.duckdns.org/cdn/line.tivi-ott.net/live/<USER>/<PASS>/3.m3u8",
+        "samples": [
+          {
+            "i": 1,
+            "status": 200,
+            "error": null,
+            "ttfbMs": 1106,
+            "tlsMs": 289.7,
+            "firstByteMs": 1106.8,
+            "totalMs": 1109.2,
+            "bytes": 635,
+            "bodySha256": "65617734b7d18fa146ae9a582385a8d8e5243ff79da5acd02528f1e6d240653a",
+            "headers": {
+              "x-ape-cdn": "line.tivi-ott.net",
+              "x-ape-origin": "http://185.227.34.195:80",
+              "x-ape-failover": "false",
+              "x-ape-upstream-ms": "704",
+              "x-ape-uri-rebased": "6",
+              "x-ape-ll-hls": "none",
+              "x-ape-uhd": "off",
+              "x-ape-lab-floor": "8000000"
+            }
+          },
+          {
+            "i": 2,
+            "status": 200,
+            "error": null,
+            "ttfbMs": 1022,
+            "tlsMs": 220.1,
+            "firstByteMs": 1022.5,
+            "totalMs": 1023.1,
+            "bytes": 635,
+            "bodySha256": "65617734b7d18fa146ae9a582385a8d8e5243ff79da5acd02528f1e6d240653a",
+            "headers": {
+              "x-ape-cdn": "line.tivi-ott.net",
+              "x-ape-origin": "http://185.227.34.195:80",
+              "x-ape-failover": "false",
+              "x-ape-upstream-ms": "702",
+              "x-ape-uri-rebased": "6",
+              "x-ape-ll-hls": "none",
+              "x-ape-uhd": "off",
+              "x-ape-lab-floor": "8000000"
+            }
+          },
+          {
+            "i": 3,
+            "status": 200,
+            "error": null,
+            "ttfbMs": 1083.5,
+            "tlsMs": 266.8,
+            "firstByteMs": 1083.7,
+            "totalMs": 1084,
+            "bytes": 635,
+            "bodySha256": "65617734b7d18fa146ae9a582385a8d8e5243ff79da5acd02528f1e6d240653a",
+            "headers": {
+              "x-ape-cdn": "line.tivi-ott.net",
+              "x-ape-origin": "http://185.227.34.195:80",
+              "x-ape-failover": "false",
+              "x-ape-upstream-ms": "704",
+              "x-ape-uri-rebased": "6",
+              "x-ape-ll-hls": "none",
+              "x-ape-uhd": "off",
+              "x-ape-lab-floor": "8000000"
+            }
+          }
+        ],
+        "stats": {
+          "ttfbMs": {
+            "n": 3,
+            "min": 1022,
+            "p50": 1083.5,
+            "p95": 1106,
+            "max": 1106,
+            "mean": 1070.5,
+            "stdev": 35.5
+          },
+          "tlsMs": {
+            "n": 3,
+            "min": 220.1,
+            "p50": 266.8,
+            "p95": 289.7,
+            "max": 289.7,
+            "mean": 258.9,
+            "stdev": 29
+          },
+          "ttfbMinusTlsMs": {
+            "n": 3,
+            "min": 801.9,
+            "p50": 816.3,
+            "p95": 816.7,
+            "max": 816.7,
+            "mean": 811.6,
+            "stdev": 6.9
+          },
+          "upstreamMs": {
+            "n": 3,
+            "min": 702,
+            "p50": 704,
+            "p95": 704,
+            "max": 704,
+            "mean": 703.3,
+            "stdev": 0.9
+          },
+          "bytes": {
+            "n": 3,
+            "min": 635,
+            "p50": 635,
+            "p95": 635,
+            "max": 635,
+            "mean": 635,
+            "stdev": 0
+          },
+          "statuses": [
+            200,
+            200,
+            200
+          ],
+          "bodiesSha256": [
+            "65617734b7d18fa146ae9a582385a8d8e5243ff79da5acd02528f1e6d240653a",
+            "65617734b7d18fa146ae9a582385a8d8e5243ff79da5acd02528f1e6d240653a",
+            "65617734b7d18fa146ae9a582385a8d8e5243ff79da5acd02528f1e6d240653a"
+          ],
+          "headersLast": {
+            "x-ape-cdn": "line.tivi-ott.net",
+            "x-ape-origin": "http://185.227.34.195:80",
+            "x-ape-failover": "false",
+            "x-ape-upstream-ms": "704",
+            "x-ape-uri-rebased": "6",
+            "x-ape-ll-hls": "none",
+            "x-ape-uhd": "off",
+            "x-ape-lab-floor": "8000000"
+          }
+        }
+      },
+      {
+        "id": "5",
+        "urlRedacted": "https://iptv-ape.duckdns.org/cdn/line.tivi-ott.net/live/<USER>/<PASS>/5.m3u8",
+        "samples": [
+          {
+            "i": 1,
+            "status": 200,
+            "error": null,
+            "ttfbMs": 1159.6,
+            "tlsMs": 247.1,
+            "firstByteMs": 1160.1,
+            "totalMs": 1160.7,
+            "bytes": 637,
+            "bodySha256": "2d943e40017abb55ef4d2a1f7c78396e5f38096aa9a67791b85bed0309e00959",
+            "headers": {
+              "x-ape-cdn": "line.tivi-ott.net",
+              "x-ape-origin": "http://185.227.34.195:80",
+              "x-ape-failover": "false",
+              "x-ape-upstream-ms": "802",
+              "x-ape-uri-rebased": "6",
+              "x-ape-ll-hls": "none",
+              "x-ape-uhd": "off",
+              "x-ape-lab-floor": "8000000"
+            }
+          },
+          {
+            "i": 2,
+            "status": 200,
+            "error": null,
+            "ttfbMs": 1168.9,
+            "tlsMs": 364,
+            "firstByteMs": 1169.4,
+            "totalMs": 1170.6,
+            "bytes": 637,
+            "bodySha256": "2d943e40017abb55ef4d2a1f7c78396e5f38096aa9a67791b85bed0309e00959",
+            "headers": {
+              "x-ape-cdn": "line.tivi-ott.net",
+              "x-ape-origin": "http://185.227.34.195:80",
+              "x-ape-failover": "false",
+              "x-ape-upstream-ms": "688",
+              "x-ape-uri-rebased": "6",
+              "x-ape-ll-hls": "none",
+              "x-ape-uhd": "off",
+              "x-ape-lab-floor": "8000000"
+            }
+          },
+          {
+            "i": 3,
+            "status": 200,
+            "error": null,
+            "ttfbMs": 1123.5,
+            "tlsMs": 277.8,
+            "firstByteMs": 1123.8,
+            "totalMs": 1124.2,
+            "bytes": 638,
+            "bodySha256": "dec4018b0893fe9eee4bfbc8a3bdf8f3ae9dae473c5419ba072121edd56d9ab9",
+            "headers": {
+              "x-ape-cdn": "line.tivi-ott.net",
+              "x-ape-origin": "http://185.227.34.195:80",
+              "x-ape-failover": "false",
+              "x-ape-upstream-ms": "732",
+              "x-ape-uri-rebased": "6",
+              "x-ape-ll-hls": "none",
+              "x-ape-uhd": "off",
+              "x-ape-lab-floor": "8000000"
+            }
+          }
+        ],
+        "stats": {
+          "ttfbMs": {
+            "n": 3,
+            "min": 1123.5,
+            "p50": 1159.6,
+            "p95": 1168.9,
+            "max": 1168.9,
+            "mean": 1150.7,
+            "stdev": 19.6
+          },
+          "tlsMs": {
+            "n": 3,
+            "min": 247.1,
+            "p50": 277.8,
+            "p95": 364,
+            "max": 364,
+            "mean": 296.3,
+            "stdev": 49.5
+          },
+          "ttfbMinusTlsMs": {
+            "n": 3,
+            "min": 804.9,
+            "p50": 845.7,
+            "p95": 912.5,
+            "max": 912.5,
+            "mean": 854.4,
+            "stdev": 44.4
+          },
+          "upstreamMs": {
+            "n": 3,
+            "min": 688,
+            "p50": 732,
+            "p95": 802,
+            "max": 802,
+            "mean": 740.7,
+            "stdev": 46.9
+          },
+          "bytes": {
+            "n": 3,
+            "min": 637,
+            "p50": 637,
+            "p95": 638,
+            "max": 638,
+            "mean": 637.3,
+            "stdev": 0.5
+          },
+          "statuses": [
+            200,
+            200,
+            200
+          ],
+          "bodiesSha256": [
+            "2d943e40017abb55ef4d2a1f7c78396e5f38096aa9a67791b85bed0309e00959",
+            "2d943e40017abb55ef4d2a1f7c78396e5f38096aa9a67791b85bed0309e00959",
+            "dec4018b0893fe9eee4bfbc8a3bdf8f3ae9dae473c5419ba072121edd56d9ab9"
+          ],
+          "headersLast": {
+            "x-ape-cdn": "line.tivi-ott.net",
+            "x-ape-origin": "http://185.227.34.195:80",
+            "x-ape-failover": "false",
+            "x-ape-upstream-ms": "732",
+            "x-ape-uri-rebased": "6",
+            "x-ape-ll-hls": "none",
+            "x-ape-uhd": "off",
+            "x-ape-lab-floor": "8000000"
+          }
+        }
+      },
+      {
+        "id": "6",
+        "urlRedacted": "https://iptv-ape.duckdns.org/cdn/line.tivi-ott.net/live/<USER>/<PASS>/6.m3u8",
+        "samples": [
+          {
+            "i": 1,
+            "status": 200,
+            "error": null,
+            "ttfbMs": 1136.2,
+            "tlsMs": 217.1,
+            "firstByteMs": 1136.4,
+            "totalMs": 1136.7,
+            "bytes": 646,
+            "bodySha256": "eca7ddefbab56b581a4485f0ee9946595b5fb7e1cc9fee9e2762abf2a705c7fe",
+            "headers": {
+              "x-ape-cdn": "line.tivi-ott.net",
+              "x-ape-origin": "http://185.227.34.195:80",
+              "x-ape-failover": "false",
+              "x-ape-upstream-ms": "749",
+              "x-ape-uri-rebased": "6",
+              "x-ape-ll-hls": "none",
+              "x-ape-uhd": "off",
+              "x-ape-lab-floor": "8000000"
+            }
+          },
+          {
+            "i": 2,
+            "status": 200,
+            "error": null,
+            "ttfbMs": 1306.5,
+            "tlsMs": 417.7,
+            "firstByteMs": 1306.7,
+            "totalMs": 1307.1,
+            "bytes": 646,
+            "bodySha256": "eca7ddefbab56b581a4485f0ee9946595b5fb7e1cc9fee9e2762abf2a705c7fe",
+            "headers": {
+              "x-ape-cdn": "line.tivi-ott.net",
+              "x-ape-origin": "http://185.227.34.195:80",
+              "x-ape-failover": "false",
+              "x-ape-upstream-ms": "774",
+              "x-ape-uri-rebased": "6",
+              "x-ape-ll-hls": "none",
+              "x-ape-uhd": "off",
+              "x-ape-lab-floor": "8000000"
+            }
+          },
+          {
+            "i": 3,
+            "status": 200,
+            "error": null,
+            "ttfbMs": 1098.8,
+            "tlsMs": 235.8,
+            "firstByteMs": 1099,
+            "totalMs": 1099.4,
+            "bytes": 646,
+            "bodySha256": "eca7ddefbab56b581a4485f0ee9946595b5fb7e1cc9fee9e2762abf2a705c7fe",
+            "headers": {
+              "x-ape-cdn": "line.tivi-ott.net",
+              "x-ape-origin": "http://185.227.34.195:80",
+              "x-ape-failover": "false",
+              "x-ape-upstream-ms": "750",
+              "x-ape-uri-rebased": "6",
+              "x-ape-ll-hls": "none",
+              "x-ape-uhd": "off",
+              "x-ape-lab-floor": "8000000"
+            }
+          }
+        ],
+        "stats": {
+          "ttfbMs": {
+            "n": 3,
+            "min": 1098.8,
+            "p50": 1136.2,
+            "p95": 1306.5,
+            "max": 1306.5,
+            "mean": 1180.5,
+            "stdev": 90.4
+          },
+          "tlsMs": {
+            "n": 3,
+            "min": 217.1,
+            "p50": 235.8,
+            "p95": 417.7,
+            "max": 417.7,
+            "mean": 290.2,
+            "stdev": 90.5
+          },
+          "ttfbMinusTlsMs": {
+            "n": 3,
+            "min": 863,
+            "p50": 888.8,
+            "p95": 919.1,
+            "max": 919.1,
+            "mean": 890.3,
+            "stdev": 22.9
+          },
+          "upstreamMs": {
+            "n": 3,
+            "min": 749,
+            "p50": 750,
+            "p95": 774,
+            "max": 774,
+            "mean": 757.7,
+            "stdev": 11.6
+          },
+          "bytes": {
+            "n": 3,
+            "min": 646,
+            "p50": 646,
+            "p95": 646,
+            "max": 646,
+            "mean": 646,
+            "stdev": 0
+          },
+          "statuses": [
+            200,
+            200,
+            200
+          ],
+          "bodiesSha256": [
+            "eca7ddefbab56b581a4485f0ee9946595b5fb7e1cc9fee9e2762abf2a705c7fe",
+            "eca7ddefbab56b581a4485f0ee9946595b5fb7e1cc9fee9e2762abf2a705c7fe",
+            "eca7ddefbab56b581a4485f0ee9946595b5fb7e1cc9fee9e2762abf2a705c7fe"
+          ],
+          "headersLast": {
+            "x-ape-cdn": "line.tivi-ott.net",
+            "x-ape-origin": "http://185.227.34.195:80",
+            "x-ape-failover": "false",
+            "x-ape-upstream-ms": "750",
+            "x-ape-uri-rebased": "6",
+            "x-ape-ll-hls": "none",
+            "x-ape-uhd": "off",
+            "x-ape-lab-floor": "8000000"
+          }
+        }
+      }
+    ],
+    "loopback": [
+      {
+        "id": "3",
+        "samples": [
+          {
+            "i": 1,
+            "status": 200,
+            "ttfbMs": 838.1,
+            "totalMs": 838.3,
+            "bytes": 635,
+            "upstreamMs": 787,
+            "cdn": "line.tivi-ott.net",
+            "origin": {
+              "host": "185.227.34.195:80",
+              "sha256_16": "4270f00902f79487"
+            },
+            "bodySha256": "68f23542e9c8c88c1192733b925f92a53ff7fab7c0c3ea5f7f7fe6e68aa82543"
+          },
+          {
+            "i": 2,
+            "status": 200,
+            "ttfbMs": 755.9,
+            "totalMs": 756,
+            "bytes": 635,
+            "upstreamMs": 722,
+            "cdn": "line.tivi-ott.net",
+            "origin": {
+              "host": "185.227.34.195:80",
+              "sha256_16": "4270f00902f79487"
+            },
+            "bodySha256": "68f23542e9c8c88c1192733b925f92a53ff7fab7c0c3ea5f7f7fe6e68aa82543"
+          },
+          {
+            "i": 3,
+            "status": 200,
+            "ttfbMs": 844.3,
+            "totalMs": 844.5,
+            "bytes": 635,
+            "upstreamMs": 812,
+            "cdn": "line.tivi-ott.net",
+            "origin": {
+              "host": "185.227.34.195:80",
+              "sha256_16": "4270f00902f79487"
+            },
+            "bodySha256": "68f23542e9c8c88c1192733b925f92a53ff7fab7c0c3ea5f7f7fe6e68aa82543"
+          }
+        ],
+        "stats": {
+          "ttfbMs": {
+            "n": 3,
+            "min": 755.9,
+            "p50": 838.1,
+            "p95": 844.3,
+            "max": 844.3,
+            "mean": 812.8,
+            "stdev": 40.3
+          },
+          "upstreamMs": {
+            "n": 3,
+            "min": 722,
+            "p50": 787,
+            "p95": 812,
+            "max": 812,
+            "mean": 773.7,
+            "stdev": 37.9
+          },
+          "bytes": {
+            "n": 3,
+            "min": 635,
+            "p50": 635,
+            "p95": 635,
+            "max": 635,
+            "mean": 635,
+            "stdev": 0
+          },
+          "statuses": [
+            200,
+            200,
+            200
+          ],
+          "bodiesSha256": [
+            "68f23542e9c8c88c1192733b925f92a53ff7fab7c0c3ea5f7f7fe6e68aa82543",
+            "68f23542e9c8c88c1192733b925f92a53ff7fab7c0c3ea5f7f7fe6e68aa82543",
+            "68f23542e9c8c88c1192733b925f92a53ff7fab7c0c3ea5f7f7fe6e68aa82543"
+          ],
+          "originHosts": [
+            "185.227.34.195:80"
+          ]
+        },
+        "error": null
+      },
+      {
+        "id": "5",
+        "samples": [
+          {
+            "i": 1,
+            "status": 200,
+            "ttfbMs": 825.3,
+            "totalMs": 825.4,
+            "bytes": 637,
+            "upstreamMs": 794,
+            "cdn": "line.tivi-ott.net",
+            "origin": {
+              "host": "185.227.34.195:80",
+              "sha256_16": "4270f00902f79487"
+            },
+            "bodySha256": "88bb99540e3f27ab751f3cbdf6cf3c43b2d5751e44306b3222856cc989150a5d"
+          },
+          {
+            "i": 2,
+            "status": 200,
+            "ttfbMs": 725.6,
+            "totalMs": 726,
+            "bytes": 637,
+            "upstreamMs": 691,
+            "cdn": "line.tivi-ott.net",
+            "origin": {
+              "host": "185.227.34.195:80",
+              "sha256_16": "4270f00902f79487"
+            },
+            "bodySha256": "88bb99540e3f27ab751f3cbdf6cf3c43b2d5751e44306b3222856cc989150a5d"
+          },
+          {
+            "i": 3,
+            "status": 200,
+            "ttfbMs": 729.5,
+            "totalMs": 729.6,
+            "bytes": 637,
+            "upstreamMs": 686,
+            "cdn": "line.tivi-ott.net",
+            "origin": {
+              "host": "185.227.34.195:80",
+              "sha256_16": "4270f00902f79487"
+            },
+            "bodySha256": "88bb99540e3f27ab751f3cbdf6cf3c43b2d5751e44306b3222856cc989150a5d"
+          }
+        ],
+        "stats": {
+          "ttfbMs": {
+            "n": 3,
+            "min": 725.6,
+            "p50": 729.5,
+            "p95": 825.3,
+            "max": 825.3,
+            "mean": 760.1,
+            "stdev": 46.1
+          },
+          "upstreamMs": {
+            "n": 3,
+            "min": 686,
+            "p50": 691,
+            "p95": 794,
+            "max": 794,
+            "mean": 723.7,
+            "stdev": 49.8
+          },
+          "bytes": {
+            "n": 3,
+            "min": 637,
+            "p50": 637,
+            "p95": 637,
+            "max": 637,
+            "mean": 637,
+            "stdev": 0
+          },
+          "statuses": [
+            200,
+            200,
+            200
+          ],
+          "bodiesSha256": [
+            "88bb99540e3f27ab751f3cbdf6cf3c43b2d5751e44306b3222856cc989150a5d",
+            "88bb99540e3f27ab751f3cbdf6cf3c43b2d5751e44306b3222856cc989150a5d",
+            "88bb99540e3f27ab751f3cbdf6cf3c43b2d5751e44306b3222856cc989150a5d"
+          ],
+          "originHosts": [
+            "185.227.34.195:80"
+          ]
+        },
+        "error": null
+      },
+      {
+        "id": "6",
+        "samples": [
+          {
+            "i": 1,
+            "status": 200,
+            "ttfbMs": 747.2,
+            "totalMs": 747.3,
+            "bytes": 646,
+            "upstreamMs": 713,
+            "cdn": "line.tivi-ott.net",
+            "origin": {
+              "host": "185.227.34.195:80",
+              "sha256_16": "4270f00902f79487"
+            },
+            "bodySha256": "9cd01e09dfcc2ef177944c9ed9fabaf0a2a85864d82e01d49a5ca15bde27f138"
+          },
+          {
+            "i": 2,
+            "status": 200,
+            "ttfbMs": 679.8,
+            "totalMs": 679.9,
+            "bytes": 646,
+            "upstreamMs": 649,
+            "cdn": "line.tivi-ott.net",
+            "origin": {
+              "host": "185.227.34.195:80",
+              "sha256_16": "4270f00902f79487"
+            },
+            "bodySha256": "9ebba54beb4639b90fde2ae9cd2f4086a5f4c543799b3c9c281a5e894ef78c16"
+          },
+          {
+            "i": 3,
+            "status": 200,
+            "ttfbMs": 794.6,
+            "totalMs": 794.8,
+            "bytes": 646,
+            "upstreamMs": 752,
+            "cdn": "line.tivi-ott.net",
+            "origin": {
+              "host": "185.227.34.195:80",
+              "sha256_16": "4270f00902f79487"
+            },
+            "bodySha256": "9ebba54beb4639b90fde2ae9cd2f4086a5f4c543799b3c9c281a5e894ef78c16"
+          }
+        ],
+        "stats": {
+          "ttfbMs": {
+            "n": 3,
+            "min": 679.8,
+            "p50": 747.2,
+            "p95": 794.6,
+            "max": 794.6,
+            "mean": 740.5,
+            "stdev": 47.1
+          },
+          "upstreamMs": {
+            "n": 3,
+            "min": 649,
+            "p50": 713,
+            "p95": 752,
+            "max": 752,
+            "mean": 704.7,
+            "stdev": 42.5
+          },
+          "bytes": {
+            "n": 3,
+            "min": 646,
+            "p50": 646,
+            "p95": 646,
+            "max": 646,
+            "mean": 646,
+            "stdev": 0
+          },
+          "statuses": [
+            200,
+            200,
+            200
+          ],
+          "bodiesSha256": [
+            "9cd01e09dfcc2ef177944c9ed9fabaf0a2a85864d82e01d49a5ca15bde27f138",
+            "9ebba54beb4639b90fde2ae9cd2f4086a5f4c543799b3c9c281a5e894ef78c16",
+            "9ebba54beb4639b90fde2ae9cd2f4086a5f4c543799b3c9c281a5e894ef78c16"
+          ],
+          "originHosts": [
+            "185.227.34.195:80"
+          ]
+        },
+        "error": null
+      }
+    ]
+  },
+  "doubleHop": {
+    "samples": 7,
+    "edge443Warm": {
+      "n": 7,
+      "min": 0.2,
+      "p50": 0.2,
+      "p95": 0.2,
+      "max": 0.2,
+      "mean": 0.2,
+      "stdev": 0
+    },
+    "direct8088Warm": {
+      "n": 7,
+      "min": 0.1,
+      "p50": 0.1,
+      "p95": 0.2,
+      "max": 0.2,
+      "mean": 0.1,
+      "stdev": 0
+    },
+    "overheadWarmP50Ms": 0.1,
+    "note": "cada muestra es la 2ª transferencia de una misma invocación curl (keep-alive): aísla el hop 443→8088 sin handshake TLS. La 1ª transferencia (fría, con TLS) está en list.http2.vpsCurlHttp11",
+    "raw": {
+      "edge": [
+        {
+          "status": 200,
+          "ttfbMs": 0.2
+        },
+        {
+          "status": 200,
+          "ttfbMs": 0.2
+        },
+        {
+          "status": 200,
+          "ttfbMs": 0.2
+        },
+        {
+          "status": 200,
+          "ttfbMs": 0.2
+        },
+        {
+          "status": 200,
+          "ttfbMs": 0.2
+        },
+        {
+          "status": 200,
+          "ttfbMs": 0.2
+        },
+        {
+          "status": 200,
+          "ttfbMs": 0.2
+        }
+      ],
+      "direct": [
+        {
+          "status": 200,
+          "ttfbMs": 0.2
+        },
+        {
+          "status": 200,
+          "ttfbMs": 0.1
+        },
+        {
+          "status": 200,
+          "ttfbMs": 0.1
+        },
+        {
+          "status": 200,
+          "ttfbMs": 0.1
+        },
+        {
+          "status": 200,
+          "ttfbMs": 0.1
+        },
+        {
+          "status": 200,
+          "ttfbMs": 0.1
+        },
+        {
+          "status": 200,
+          "ttfbMs": 0.2
+        }
+      ]
+    }
+  },
+  "hops": {
+    "definition": "intercambios HTTP demostrables en la cadena de servicio (no hops IP)",
+    "list": {
+      "total": 1,
+      "chain": [
+        "cliente",
+        "443 nginx estático (gzip_static+gunzip)"
+      ],
+      "evidence": "la respuesta de la lista no trae cabeceras X-APE-* (no pasa por Lua ni por 8088)"
+    },
+    "cdn": {
+      "clientToEdge": 1,
+      "edge443ToMeta8088": 1,
+      "metaToProvider": 1,
+      "upstreamRedirectsObserved": ">=1",
+      "upstreamRedirectMaxConfigured": 3,
+      "totalProven": 4,
+      "totalMin": 3,
+      "chain": [
+        "cliente",
+        "443 (proxy)",
+        "8088 (gateway Lua)",
+        "proveedor",
+        "302 → CDN (origen final)"
+      ],
+      "evidence": "X-APE-CDN presente en la respuesta del cliente ⇒ sirvió el gateway del 8088; X-APE-Origin host ≠ host pedido ⇒ ≥1 redirect seguido"
+    },
+    "doubleHopCollapseTarget": "fase 2: 443 → gateway sin hop 8088 (totalProven - 1)"
+  },
+  "limitations": [
+    "HTTP/2 no negociado ⇒ la muestra \"HTTP/2\" documenta la ausencia, no un TTFB h2.",
+    "Los canales /cdn/ se descubren de la lista viva; las credenciales se redactan en JSON/log.",
+    "El arnés incrementa los contadores de /_ape/health (req/all_failed): se registra el delta.",
+    "Percentiles nearest-rank con N=3/5: p95 = máximo. Es una línea base, no un intervalo de confianza.",
+    "No se miden hops IP (traceroute): \"hops\" = intercambios HTTP demostrables en la cadena.",
+    "El 302 del proveedor se sigue dentro del gateway; X-APE-Origin expone el origen final (host), no el número exacto de saltos.",
+    "TTFB del cliente incluye el handshake TLS (se reporta aparte tls_ms y ttfb-tls)."
+  ]
+}

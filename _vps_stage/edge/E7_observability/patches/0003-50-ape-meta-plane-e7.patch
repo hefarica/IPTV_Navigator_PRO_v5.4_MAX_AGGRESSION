@@ -1,0 +1,51 @@
+diff --git a/50-ape-meta-plane.conf b/50-ape-meta-plane.conf
+index 972bf40..2743530 100644
+--- a/50-ape-meta-plane.conf
++++ b/50-ape-meta-plane.conf
+@@ -85,8 +85,11 @@ server {
+         # Rebase de URIs a absolutas del proveedor (corazón del plano)
+         body_filter_by_lua_file /etc/nginx/lua/ape_uri_rebase.lua;
+ 
+-        # Wake-on-manifest: post-respuesta, no afecta TTFB ni reproducción
+-        log_by_lua_file /etc/nginx/lua/ape_wake_on_manifest.lua;
++        # Wake-on-manifest + telemetría de borde (E7). nginx admite UN solo
++        # *_by_lua por fase: ape_log_chain.lua ejecuta el wake EXISTENTE (mismo
++        # comportamiento) y después registra la familia `e:` (request_time,
++        # upstream_response_time, status, h1/h2). Ambas en fase log y bajo pcall.
++        log_by_lua_file /etc/nginx/lua/ape_log_chain.lua;
+ 
+         add_header X-APE-Mode "metadata-only" always;
+         add_header X-APE-Meta-Mode "rebase-only" always;
+@@ -181,6 +184,11 @@ server {
+     # El handler hace failover real, rebase, LL-HLS server-control y QoE.
+     location ~ ^/cdn/(?<ape_host>[^/]+)(?<ape_path>/.*)$ {
+         content_by_lua_file /etc/nginx/lua/ape_gateway.lua;
++
++        # E7 · la decisión se registra AQUÍ, en fase log: después de que el
++        # cliente recibió el último byte. Cero coste en TTFB/TTLB. El gateway
++        # solo deja ngx.ctx.ape_dec (memoria del worker, sin I/O).
++        log_by_lua_file /etc/nginx/lua/ape_obs_rec.lua;
+     }
+ 
+     # fetch interno usado por el gateway (subrequest). No expuesto.
+@@ -214,6 +222,20 @@ server {
+         content_by_lua_file /etc/nginx/lua/ape_obs.lua;
+     }
+ 
++    # ── E7 · métricas de la DECISIÓN (ventana deslizante, solo loopback) ────
++    # GET /_ape/metrics                  → ventana 300 s
++    # GET /_ape/metrics?window=900       → 900 s   (300..1800)
++    # GET /_ape/metrics?cumulative=0     → sin el bloque de contadores acumulados
++    # Publica: provider_fetch_ms (p50/p90/p95/p99), split primer/último hop,
++    # hops, uhd_mode, rebase y error_ratio (fallos/INTENTOS).
++    # NO sustituye a /_ape/qoe: ese endpoint sigue igual porque la lista emitida
++    # lleva el ancla `#EXT-X-APE-CDN-QOE:/_ape/qoe`.
++    location = /_ape/metrics {
++        allow 127.0.0.1;
++        deny all;
++        content_by_lua_file /etc/nginx/lua/ape_obs_metrics_api.lua;
++    }
++
+     # Puente LAB (Excel → JSON → plano). Solo loopback: es el ADN de config.
+     location = /_ape/lab {
+         allow 127.0.0.1;

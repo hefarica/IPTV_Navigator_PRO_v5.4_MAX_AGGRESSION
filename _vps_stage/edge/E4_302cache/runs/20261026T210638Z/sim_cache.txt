@@ -1,0 +1,27 @@
+════════ 4 peticiones al mismo canal · subrequests = coste de latencia ════════
+VIVO       #1 miss    status=200 subrequests=2  hop_cache=nil        qoe.hop_hit=0 qoe.hop_stale_509=0
+VIVO       #2 hit     status=200 subrequests=2  hop_cache=nil        qoe.hop_hit=0 qoe.hop_stale_509=0
+VIVO       #3 stale   status=509 subrequests=2  hop_cache=nil        qoe.hop_hit=0 qoe.hop_stale_509=0
+VIVO       #4 miss2   status=200 subrequests=2  hop_cache=nil        qoe.hop_hit=0 qoe.hop_stale_509=0
+PROTOTIPO  #1 miss    status=200 subrequests=2  hop_cache=miss:3s    qoe.hop_hit=0 qoe.hop_stale_509=0
+PROTOTIPO  #2 hit     status=200 subrequests=1  hop_cache=hit:3s     qoe.hop_hit=1 qoe.hop_stale_509=0
+PROTOTIPO  #3 stale   status=200 subrequests=3  hop_cache=stale:3s   qoe.hop_hit=1 qoe.hop_stale_509=1
+PROTOTIPO  #4 miss2   status=200 subrequests=1  hop_cache=hit:3s     qoe.hop_hit=2 qoe.hop_stale_509=1
+════════ VEREDICTO ════════
+PASS VIVO no tiene caché: las 4 peticiones cuestan 2 subrequests (302+CDN)
+PASS VIVO no publica X-APE-Hop-Cache
+PASS PROTOTIPO #1 (miss) acuña y paga hop1+hop2
+PASS PROTOTIPO #2 (hit) se salta el 302: 1 subrequest
+PASS PROTOTIPO #2 sirve el playlist (no un cuerpo vacío)
+PASS PROTOTIPO #3 (stale) NO expone el 509 al cliente: 200
+PASS PROTOTIPO #3 re-acuña: 3 subrequests (509 + 302 + CDN)
+PASS PROTOTIPO #3 marca hop_cache=stale
+PASS PROTOTIPO #3 cuenta el 509 para observar la caducidad
+PASS PROTOTIPO #4 el fallback RE-ARMA la caché: vuelve a servir con 1 subrequest
+PASS PROTOTIPO #4 hop_hit=2 (el hit del #2 y el del #4)
+PASS VIVO expone el 509 al cliente cuando el CDN lo devuelve (sin revalidación)
+PASS PROTOTIPO nunca devuelve 509 al cliente en las 4 fases
+PASS el estado va en la cabecera con su TTL (observable)
+RESULT=OK (14/14)
+
+[ssh exit=0]

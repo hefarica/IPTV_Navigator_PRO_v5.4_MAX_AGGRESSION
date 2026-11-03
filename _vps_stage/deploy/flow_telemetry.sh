@@ -1,0 +1,168 @@
+#!/usr/bin/env bash
+# ════════════════════════════════════════════════════════════════════════════
+# TELEMETRÍA DE FLUJO — SOLO LECTURA
+# ----------------------------------------------------------------------------
+# Responde una sola pregunta: ¿fluye la información? Por lista y por código.
+#
+# Entrada: los access.log de nginx que YA existen en el servidor.
+# Salida:  agregados por (lista, código HTTP): peticiones, bytes, primera y
+#          última marca de tiempo vista.
+#
+# NO ESCRIBE NADA. No crea ficheros. No reinicia nada. No rota logs.
+# Se ejecuta por stdin:  ssh host 'bash -s' < flow_telemetry.sh
+#
+# Límite: procesa como máximo las últimas $LINEAS líneas por fichero para no
+# bloquear el servidor en logs de gigabytes. El límite SE IMPRIME, porque un
+# recorte no es el total y no debe leerse como tal.
+# ════════════════════════════════════════════════════════════════════════════
+set -u
+export LC_ALL=C
+
+LINEAS="${APE_FLOW_LINES:-400000}"
+LOGS="/var/log/nginx/access.log"
+
+echo "===== TELEMETRÍA DE FLUJO (read-only) ====="
+echo "log_lines_budget_per_file: $LINEAS"
+echo
+
+if [ ! -r "$LOGS" ] && [ ! -r "${LOGS}.1" ]; then
+  echo "SIN_DATOS: no hay access.log legible para el usuario actual"
+  echo "nota: si el usuario no es root, el log puede existir y no ser legible."
+  echo "esto es 'no medido', no 'sin tráfico'."
+  exit 0
+fi
+
+# ── 0 · ¿DÓNDE se registran las peticiones a /lists/? ──────────────────────
+# El primer barrido encontró UNA sola petición a /lists/ en access.log, lo cual
+# contradice el tráfico que sí responden las mediciones públicas. Antes de
+# concluir «no hay tráfico» hay que saber si el instrumento está mirando otro
+# fichero, otro vhost u otro proceso. Esto lo responde.
+echo "--- 0 · barrido de TODOS los logs de nginx (¿dónde vive /lists/?):"
+for f in /var/log/nginx/*; do
+  [ -f "$f" ] || continue
+  [ -r "$f" ] || { printf '    %-46s NO_LEGIBLE\n' "$f"; continue; }
+  case "$f" in
+    *.gz) total=$(gzip -dc -- "$f" 2>/dev/null | wc -l) ;;
+    *)    total=$(wc -l < "$f" 2>/dev/null) ;;
+  esac
+  case "$f" in
+    *.gz) lists=$(gzip -dc -- "$f" 2>/dev/null | grep -c '/lists/' ) ;;
+    *)    lists=$(grep -c '/lists/' "$f" 2>/dev/null) ;;
+  esac
+  printf '    %-46s lineas=%-9s /lists/=%-6s %s\n' \
+    "$f" "${total:-?}" "${lists:-0}" "$(stat -c '%s B' "$f" 2>/dev/null)"
+done
+echo
+
+# ── Fuente correcta ────────────────────────────────────────────────────────
+# La config viva (sites-enabled/default, sha256 6c8e507f…, línea 55) declara:
+#     access_log /var/log/nginx/playlist_access.log;
+# para el server que atiende /lists/. Por eso access.log tiene 0 entradas de
+# /lists/ aunque haya tráfico: NO es el fichero que lo registra. Leer access.log
+# y concluir «no hay tráfico» es medir el fichero equivocado.
+#
+# Se agregan los playlist_access.log (actual + rotados), acotados en número y en
+# líneas por fichero. playlist_error.log NO entra aquí: es el log de errores.
+PL_BASE="/var/log/nginx/playlist_access.log"
+
+FICHEROS=""
+[ -r "$PL_BASE" ] && FICHEROS="$FICHEROS $PL_BASE"
+for f in "$PL_BASE".1 "$PL_BASE".2.gz "$PL_BASE".3.gz "$PL_BASE".4.gz; do
+  [ -r "$f" ] && FICHEROS="$FICHEROS $f"
+done
+# Si no existe ninguno, se cae a access.log para no reportar vacío por una ruta
+# distinta a la esperada, y se dice que se está usando el sustituto.
+FUENTE="playlist_access.log"
+if [ -z "$FICHEROS" ]; then
+  FUENTE="access.log (SUSTITUTO: no existe playlist_access.log)"
+  for f in "$LOGS" "${LOGS}.1" "${LOGS}.2.gz"; do
+    [ -r "$f" ] && FICHEROS="$FICHEROS $f"
+  done
+fi
+echo "fuente_de_agregacion: $FUENTE"
+echo
+
+echo "--- ficheros leídos:"
+for f in $FICHEROS; do
+  printf '    %s  (%s)\n' "$f" "$(stat -c '%s bytes, mtime %y' "$f" 2>/dev/null | cut -c1-40)"
+done
+echo
+
+# Extrae las peticiones a /lists/ y agrega por (ruta, estado).
+# Formato combined:  IP - - [fecha] "GET /ruta HTTP/1.1" ESTADO BYTES "ref" "ua"
+# Se parte por comillas para no depender de la posición de los campos, así
+# funciona aunque cambie el log_format mientras conserve la petición citada.
+procesar() {
+  case "$1" in
+    *.gz) gzip -dc -- "$1" 2>/dev/null ;;
+    *)    cat -- "$1" 2>/dev/null ;;
+  esac | tail -n "$LINEAS"
+}
+
+for f in $FICHEROS; do
+  procesar "$f"
+done | awk -F'"' '
+  $2 ~ /\/lists\// {
+    req = $2
+    # ruta sin query
+    n = split(req, p, " ")
+    ruta = p[2]
+    sub(/\?.*$/, "", ruta)
+
+    split($3, s, " ")
+    estado = s[1]
+    bytes  = s[2] + 0
+
+    key = ruta SUBSEP estado
+    if (!(key in cnt)) {
+      orden[++nkeys] = key
+      rutas[ruta] = 1
+    }
+    cnt[key]++
+    sum[key] += bytes
+  }
+  END {
+    printf "%-46s %-6s %10s %14s\n", "LISTA", "COD", "PETICIONES", "BYTES"
+    printf "%-46s %-6s %10s %14s\n", "-----", "---", "----------", "-----"
+    for (i = 1; i <= nkeys; i++) {
+      k = orden[i]
+      split(k, a, SUBSEP)
+      printf "%-46s %-6s %10d %14d\n", a[1], a[2], cnt[k], sum[k]
+    }
+  }
+'
+
+echo
+echo "--- resumen por código (todas las listas):"
+for f in $FICHEROS; do procesar "$f"; done | awk -F'"' '
+  $2 ~ /\/lists\// {
+    split($3, s, " ")
+    c[s[1]]++
+  }
+  END {
+    for (k in c) printf "    %s  %d\n", k, c[k]
+    if (length(c) == 0) print "    (sin peticiones a /lists/ en la ventana leída)"
+  }
+'
+
+# ── Errores reales del plano de listas ─────────────────────────────────────
+# playlist_error.log es pequeño (cientos de líneas), así que se muestra su
+# contenido reciente SIN muestrear: un recorte aquí ocultaría justo el error
+# que se busca. Si creciera, el límite se imprime.
+echo
+echo "--- errores recientes en playlist_error.log (no muestreado):"
+ERR="/var/log/nginx/playlist_error.log"
+if [ -r "$ERR" ]; then
+  n=$(wc -l < "$ERR")
+  printf '    lineas=%s\n' "$n"
+  if [ "$n" -gt 400 ]; then
+    echo "    AVISO: >400 lineas, se muestran las 400 mas recientes"
+    tail -n 400 "$ERR"
+  else
+    cat "$ERR"
+  fi
+else
+  echo "    NO_LEGIBLE: $ERR  (esto es 'no medido', no 'sin errores')"
+fi
+echo
+echo "===== FIN TELEMETRÍA ====="
