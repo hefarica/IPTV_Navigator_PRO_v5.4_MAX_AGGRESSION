@@ -213,6 +213,12 @@ jobs:
           echo '--- el panel servido lleva el guard corregido ---'
           grep -q 'activeFloorMbps' "$P" || { echo '::error::el panel servido no tiene activeFloorMbps'; ok=0; }
           grep -q 'canStart' "$P" || { echo '::error::el panel servido no distingue canStart'; ok=0; }
+          # El bloqueo debe ofrecer auto-ajuste con la teoria despejada, no solo negarse.
+          grep -q 'sugerirAjuste'    "$P" || { echo '::error::el panel servido no tiene sugerirAjuste'; ok=0; }
+          grep -q 'ape-buf-sugerencia' "$P" || { echo '::error::el panel servido no tiene el bloque de sugerencia'; ok=0; }
+          grep -q 'deltaMax'         "$P" || { echo '::error::el panel servido no calcula deltaMax'; ok=0; }
+          grep -q 'ape-sug-delta'    "$P" || { echo '::error::el panel servido no ofrece aplicar el delta'; ok=0; }
+          grep -q 'ape-sug-perfil'   "$P" || { echo '::error::el panel servido no ofrece cambiar de perfil'; ok=0; }
           # El config debe poblar el suelo desde el LAB: sin esto el panel vuelve a la tabla de respaldo.
           C=/tmp/s-ape-profiles-config.js
           echo '--- el config servido puebla bandwidth_floor ---'
