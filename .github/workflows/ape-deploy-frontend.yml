@@ -167,6 +167,21 @@ jobs:
           done
           echo 'TODOS LOS FICHEROS DESPLEGADOS'
 
+          # ── RELOAD, no restart ──────────────────────────────────────────────────────────────
+          # Medido el 2026-11-03: instalar el .js con sha correcto no cambia lo que nginx sirve.
+          # nginx mantiene descriptores de fichero abiertos (open_file_cache) y sigue entregando la
+          # generacion anterior con su Last-Modified viejo hasta que la cache expira o el worker se
+          # recarga. Un reload NO reinicia el servicio y NO corta conexiones: relee config y descarta
+          # esos descriptores. Un restart si cortaria, y no se usa.
+          echo '--- nginx -t antes de recargar ---'
+          if ! ssh "$TARGET" 'sudo -n nginx -t'; then
+            echo '::error::nginx -t falla. NO se recarga. Los ficheros quedan instalados pero sin servir.'
+            exit 1
+          fi
+          ssh "$TARGET" 'sudo -n nginx -s reload'
+          sleep 3
+          echo 'reload hecho; descriptores de fichero descartados'
+
       - name: Verificar lo que sirve HTTP (contenido, no solo tamano)
         run: |
           set -uo pipefail
