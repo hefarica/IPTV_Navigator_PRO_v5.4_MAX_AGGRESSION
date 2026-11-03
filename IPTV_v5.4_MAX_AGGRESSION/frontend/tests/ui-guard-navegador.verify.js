@@ -191,11 +191,9 @@ function servir() {
   {
     // Provocar un bloqueo REAL y determinista: P0 pide 15*1.15 = 17.25 y el enlace mide 16.
     // Se fija el delta a 15 explicitamente porque el caso anterior pudo dejarlo bajo.
-    await evaluar('(function(){window.APE_OUTPUT_TEST_HOOKS.applyDelta?0:0;var H=window.APE_OUTPUT_TEST_HOOKS;' +
-      'window.APE_PROFILES_CONFIG.activeProfileId="P0";' +
-      'window.APE_BW={snapshot:function(){return {mbps:16};}};' +
-      'try{localStorage.setItem("ape_output_delta_pct","15");}catch(e){}' +
-      'H.renderSugerencia();return true;})()');
+    // El delta se fija por la FUNCION: escribir en localStorage no cambia la variable en memoria,
+    // y con el delta que dejo el caso anterior (bajo) este perfil ya no bloqueaba.
+    await evaluar('(function(){var H=window.APE_OUTPUT_TEST_HOOKS;window.APE_PROFILES_CONFIG.activeProfileId="P0";window.APE_BW={snapshot:function(){return {mbps:16};}};H.applyDelta(false,15);H.renderSugerencia();return true;})()');;
     await sleep(300);
     const hay = await evaluar('!!document.getElementById("ape-sug-denegar")');
     ok(hay === true, 'Denegar: existe boton bajo un bloqueo provocado a proposito');
