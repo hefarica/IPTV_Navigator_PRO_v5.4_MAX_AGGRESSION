@@ -2794,11 +2794,15 @@
             // USER REQUEST: Handle Buffer Total conversion (Total = Base * 2.25)
             // if (key === 'bufferTotal') { ... } // Reverted
 
+            // ── ORDEN CORREGIDO 2026-11-03 ──────────────────────────────────────────────
+            // Antes el motor reactivo corría ANTES de escribir el valor nuevo, así que la
+            // Regla 3 leía s.fps (viejo) al cambiar fps y s.resolution (viejo) en cascadas.
+            // Medido: cambiar 30 -> 60 fps recalculaba el bitrate con 30. El valor se
+            // escribe primero y las reglas derivan de él.
+            profile.settings[key] = value;
+
             // Motor de Reglas Reactivas (Reactive Engine v9.0)
             this._applyReactiveRules(profile, key, value);
-
-            // Actualización estándar
-            profile.settings[key] = value;
             this.config.updateProfile(this.activeProfileId, {
                 settings: profile.settings,
                 vlcopt: profile.vlcopt,
@@ -2882,6 +2886,15 @@
             // Distinto de bitrate_range_mbps.min (calidad óptima del rango).
             // SSOT: Profile Manager → Bridge → Generator (m3u8-typed-arrays-ultimate.js).
             if (key === 'resolution' || key === 'bitrate' || key === 'quality') {
+                // B8 CERRADO: el perfil puede traer DOS suelos — bandwidth_floor en bps (LAB)
+                // y bitrate_floor_mbps en Mbps (este gestor). El LAB manda cuando existe, y se
+                // convierte a Mbps aqui para que ambos campos digan LO MISMO. Antes se leian por
+                // separado y nada garantizaba que coincidieran: el panel mostraba 1,5 mientras el
+                // motor escribia 0,15.
+                const labFloorBps = Number(s.bandwidth_floor);
+                if (isFinite(labFloorBps) && labFloorBps > 0) {
+                    s.bitrate_floor_mbps = labFloorBps / 1e6;
+                }
                 const floorMbps = this._computeBitrateFloor(profile);
                 // INVARIANTE: el suelo NUNCA puede superar el techo del perfil. La UI llegó a
                 // mostrar BITRATE 0,3 con BITRATE FLOOR 1,5: el piso estaba por encima del
@@ -3261,6 +3274,14 @@
                 this.config.setHeaderOverride(profile.id, 'X-Color-Depth', colorDepth);
 
                 console.log(`🧠 Reactive [v13.1]: Codec ${value} → primary:${primaryName}, priority:[${priorityChain.join(',')}], fallback:${fallbackName}, quality_levels.primary.codec:${primaryName.toUpperCase()}, color:${colorDepth}`);
+
+                // ── CORREGIDO 2026-11-03 ──────────────────────────────────────────────────────
+                // El BITS_PER_PIXEL depende del códec: AV1_SD es 0.22 y H264_SD es 0.30, un 36 % de
+                // diferencia. La Regla 5 sólo tocaba headers, así que cambiar de AV1 a H264 dejaba
+                // el bitrate calculado con el BPP del códec anterior: el campo quedaba descolgado de
+                // su propia premisa. Se dispara la Regla 3, igual que ya hacen fps (Regla 2.3) y
+                // strategy (Regla 4).
+                this._applyReactiveRules(profile, 'resolution', s.resolution);
             }
         }
 

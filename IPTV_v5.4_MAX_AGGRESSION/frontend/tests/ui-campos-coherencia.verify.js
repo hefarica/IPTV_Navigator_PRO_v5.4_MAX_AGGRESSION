@@ -154,6 +154,42 @@ console.log('\n== COHERENCIA DE CAMPOS DERIVADOS ==');
   ok(/NO recorta bitrate/i.test(d), 'la descripción dice que la estrategia no recorta bitrate');
 }
 
-console.log('\n== RESULTADO: ' + pass + ' PASS · ' + fail + ' FAIL ==');
+// ── 7 · GRAFO DE DEPENDENCIAS: cada variable que afecta al bitrate debe dispararlo ────────
+{
+  // El bitrate depende de resolución, fps y CÓDEC (vía BPP). Las tres deben reentrar en la
+  // regla que lo calcula; si una no lo hace, el campo queda descolgado de su premisa.
+  const disparaRegla3 = (nombre) =>
+    new RegExp("key === '" + nombre + "'[\\s\\S]{0,900}?_applyReactiveRules\\(profile, ['\"]res(olution)?['\"]").test(src);
+
+// `resolution` no reentra: la Regla 3 ES la que calcula y escribe s.bitrate directamente.
+  ok(new RegExp("if \\(key === 'resolution'\\)[\\s\\S]{0,9000}?s\\.bitrate = bitrateFinal").test(src),
+     'resolution escribe el bitrate (Regla 3 es el motor, no reentra en si misma)');
+  ok(/if \(key === 'fps'\)[\s\S]{0,200}?_applyReactiveRules\(profile, 'resolution'/.test(src),
+     'fps recalcula el bitrate (Regla 2.3)');
+  ok(new RegExp("if \\(key === 'codec'\\)[\\s\\S]{0,9000}?_applyReactiveRules\\(profile, ['\"]res(olution)?['\"]").test(src),
+     'codec recalcula el bitrate (el BPP depende del códec)');
+  ok(/if \(key === 'strategy'\)[\s\S]{0,3000}?_applyReactiveRules\(profile, 'resolution'/.test(src),
+     'strategy reentra en la regla (para t1/t2, no para degradar bitrate)');
+}
+
+// ── 8 · ORDEN: el valor debe escribirse ANTES de aplicar las reglas ───────────────────────
+{
+  const iValor = src.indexOf('profile.settings[key] = value;');
+  const iReglas = src.indexOf('this._applyReactiveRules(profile, key, value);');
+  ok(iValor > 0 && iReglas > 0, 'se localizan la escritura y la aplicacion');
+  ok(iValor < iReglas,
+     'el valor se escribe ANTES de las reglas (si no, fps lee el valor viejo)',
+     'valor@' + iValor + ' reglas@' + iReglas);
+}
+
+// ── 9 · B8: los dos suelos se sincronizan ─────────────────────────────────────────────────
+{
+  ok(/s\.bitrate_floor_mbps = labFloorBps \/ 1e6/.test(src),
+     'bitrate_floor_mbps se sincroniza desde bandwidth_floor (bps -> Mbps)');
+  // y el invariante sigue recortando al techo
+  ok(/Math\.min\(floorMbps, techoPerfil\)/.test(src), 'y sigue recortandose al techo del perfil');
+}
+
+console.log('\n== RESULTADO: '  + pass + ' PASS · ' + fail + ' FAIL ==');
 if (fail) { console.log('FALLOS:'); fallos.forEach(f => console.log('  - ' + f)); process.exit(1); }
 process.exit(0);
