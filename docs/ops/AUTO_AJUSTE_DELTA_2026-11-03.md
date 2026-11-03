@@ -100,3 +100,60 @@ RESULTADO: 33 PASS · 0 FAIL
   render visual y el clic físico no se ejercitaron.
 - **No hay delta mínimo doctrinal documentado.** El código respeta el rango del input (1–90 %) y no baja de 1,
   pero no encontré una regla que fije un suelo de margen. Si debe existir, no está escrita.
+
+---
+
+# Adenda — verificación en navegador real y el bug que sólo ella encontró
+
+**Rondas 2-3.** Se cerró el hueco declarado cuatro veces: nunca se había probado en un navegador de verdad.
+
+## El bug que el DOM mockeado no podía ver
+
+```
+FAIL  TRAS EL CLIC el perfil arranca :: {p:"P3", d:15, canStart:false}
+```
+
+**El botón Aprobar no hacía nada en un navegador real.** El test mockeado lo daba por bueno.
+
+```js
+if (di) di.value = String(delta);   // si el input no existe, no escribe nada
+applyDelta(true);                    // applyDelta LEE el delta del DOM → valor viejo
+```
+
+**Dependencia de un control que puede no existir todavía.** Si `#ape-delta-input` no está en el DOM, se aplicaba el delta viejo al perfil nuevo.
+
+**Corregido:** `applyDelta(notify, valorExplicito)` recibe el valor por parámetro; sólo lee el DOM si no se le da.
+
+## La suite de navegador
+
+`ui-guard-navegador.verify.js` — sirve un harness y el panel real por loopback, lanza Chrome con
+`--remote-debugging-port`, lo maneja por CDP y **pulsa los botones de verdad**.
+
+**Si falta Chrome sale con código 2 (SKIP), no finge un PASS.**
+
+`ape-ui-navegador.yml` corre en cada push que toque el panel:
+1. Los 3 suites mockeados (**82 PASS**)
+2. La suite de navegador real (**32 PASS**)
+
+## Cobertura en navegador real
+
+| Caso | Verifica |
+|---|---|
+| Bloqueo P3 · 5,2 Mbps · 15 % | bloquea, requisito 5,75, propone P3 con delta menor |
+| **Clic en Aprobar** | **el perfil arranca tras el clic** |
+| **Clic en Denegar** | **no cambia perfil ni delta** (bajo bloqueo provocado) |
+| **Clic en Forzar** (caso de la captura: P3 · 1,3 Mbps) | marca el flag y **checkGeneration permite generar** |
+| **Perfiles conflictivos** | P0 y P1 bloquean con 5,2; P3 y P5 arrancan; **cada uno usa SU suelo del LAB** |
+
+## Cuatro correcciones del CI, y una del código
+
+1. Chrome no estaba en `/usr/bin` → `browser-actions/setup-chrome@v1`
+2. Chrome arrancaba sin CDP → `--no-sandbox --disable-dev-shm-usage`
+3. Seam cerrado: `APE_OUTPUT_TEST__` sin el prefijo `__` → corregido
+4. `localStorage` no cambia la variable en memoria → se fija por `applyDelta`
+5. **Bug real del panel** → `applyDelta(notify, valorExplicito)`
+
+## Lo que sigue sin cubrir
+
+- **No cubre la generación completa de una lista desde el navegador.** Verifica el guard y sus botones, no el pipeline entero.
+- **No cubre el render visual** (colores, layout). Verifica comportamiento, no estética.
