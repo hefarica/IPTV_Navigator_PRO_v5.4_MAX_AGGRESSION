@@ -205,6 +205,50 @@ function servir() {
     }
   }
 
+  // 6 · EL CASO EXACTO DE LA CAPTURA: P3 con 1.3 Mbps. Ningun perfil entra -> Forzar.
+  {
+    await evaluar('(function(){window.APE_PROFILES_CONFIG.activeProfileId="P3";window.APE_BW={snapshot:function(){return {mbps:1.3};}};window.__APE_SUG_FORZADO__=false;window.APE_OUTPUT_TEST_HOOKS.renderSugerencia();return true;})()');
+    await sleep(250);
+    const h = await evaluar('document.getElementById("ape-buf-sugerencia").innerHTML || ""');
+    ok(h.indexOf('Ningún perfil entra') >= 0, 'P3/1.3: el navegador dice que ningun perfil entra');
+    ok(h.indexOf('ape-sug-forzar') >= 0, 'P3/1.3: el navegador ofrece FORZAR');
+    ok(h.indexOf('1.52') >= 0 || h.indexOf('1.51') >= 0, 'P3/1.3: nombra el minimo imprescindible', h.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').slice(0, 160));
+    const hayBoton = await evaluar('!!document.getElementById("ape-sug-forzar")');
+    ok(hayBoton === true, 'P3/1.3: el boton Forzar existe en el DOM');
+    if (hayBoton) {
+      await evaluar('document.getElementById("ape-sug-forzar").click()');
+      await sleep(250);
+      const flag = await evaluar('window.__APE_SUG_FORZADO__ === true');
+      ok(flag === true, 'P3/1.3: el clic en Forzar marca el flag en el navegador');
+      const puede = await evaluar('window.APE_OUTPUT_TEST_HOOKS.checkGeneration()');
+      ok(puede === true, 'P3/1.3: con el flag, la comprobacion PERMITE generar en el navegador');
+    }
+  }
+
+  // 7 · PERFILES CONFLICTIVOS: la propuesta se adapta a cada perfil, no es fija
+  {
+    // Mismo enlace (5.2 Mbps), perfiles distintos: el "mejor escenario" debe cambiar de perfil.
+    const resultados = {};
+    for (const pid of ['P0', 'P1', 'P3', 'P5']) {
+      await evaluar('(function(){window.APE_PROFILES_CONFIG.activeProfileId="' + pid + '";window.APE_BW={snapshot:function(){return {mbps:5.2};}};window.__APE_SUG_FORZADO__=false;window.APE_OUTPUT_TEST_HOOKS.renderSugerencia();return true;})()');
+      await sleep(120);
+      const r = await evaluar('(function(){try{var H=window.APE_OUTPUT_TEST_HOOKS;var g=H.guard();var m=H.mejorEscenario();var s=H.sugerirAjuste();return JSON.stringify({perfilActivo:window.APE_PROFILES_CONFIG.activeProfileId,bloquea:s.bloquea,floorM:g.floorM,viable:m.viable?m.viable.perfil:null,viableDelta:m.viable?m.viable.delta:null});}catch(e){return JSON.stringify({error:String(e.message||e)});}})()');
+      resultados[pid] = JSON.parse(r);
+    }
+    // Con 5.2 Mbps: P0 y P1 no entran (suelos 15 y 12); P3 si (suelo 5); P5 si (suelo 1.5)
+    ok(resultados.P0.bloquea === true, 'perfiles conflictivos: P0 bloquea con 5.2 Mbps');
+    ok(resultados.P1.bloquea === true, 'perfiles conflictivos: P1 bloquea con 5.2 Mbps');
+    ok(resultados.P3.bloquea === false, 'perfiles conflictivos: P3 arranca con 5.2 Mbps');
+    ok(resultados.P5.bloquea === false, 'perfiles conflictivos: P5 arranca con 5.2 Mbps');
+    // Y el "mejor escenario" es el mismo para todos: el de mayor calidad que entra (P3).
+    ok(resultados.P0.viable === 'P3', 'perfiles conflictivos: desde P0 propone P3', 'viable=' + resultados.P0.viable);
+    ok(resultados.P1.viable === 'P3', 'perfiles conflictivos: desde P1 propone P3', 'viable=' + resultados.P1.viable);
+    // Los suelos son los del LAB, distintos por perfil.
+    ok(resultados.P0.floorM === 15 && resultados.P3.floorM === 5 && resultados.P5.floorM === 1.5,
+       'perfiles conflictivos: cada perfil usa SU suelo del LAB',
+       'P0=' + resultados.P0.floorM + ' P3=' + resultados.P3.floorM + ' P5=' + resultados.P5.floorM);
+  }
+
   ws.close();
   limpiar();
 
