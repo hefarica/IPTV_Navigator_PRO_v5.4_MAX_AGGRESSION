@@ -221,3 +221,92 @@ está vacía (`SIN_TABLAS`). **`SIN_TABLAS` no es verde: es no computado.**
 - **No sé qué subida exacta falló** a las 13:59:31. Sé que fue `POST /finalize_upload.php`, no cuál chunk falló.
 - **El barrido de 1 KB dio un resultado no confiable** por un error de quoting mío en el `sh -c` anidado:
   reportó `listas=1 rotas=1` con nombre vacío. **No lo doy por bueno.**
+
+---
+
+# Adenda — E corrido, invariante implementado, y lo que encontró
+
+**Ronda 2.** E se ejecutó, la propuesta está escrita y el invariante quedó operativo. **Nada aplicado.**
+
+## E · los resultados reales
+
+### La tabla no existe
+
+```
+/opt/netshield/data/ape_lists.db           → AUSENTE
+/var/www/html/prisma/db/ape_lists.db       → existe, 53.248 B, 2026-11-01
+  .tables                                  → SIN_TABLAS
+  .schema                                  → (vacío)
+grep registered_lists en /var/www/html     → sin resultados
+```
+
+**`registered_lists` no existe en ninguna parte.** El invariante «canales registrados contra bytes servidos»
+**no se puede implementar** sobre una tabla que no está. `SIN_TABLAS` **no es verde: es no computado.**
+
+### El bug, confirmado en el código desplegado
+
+```
+/var/www/html/finalize_upload.php   6149 B   2026-04-11
+L70: $out = fopen($outputPath, 'wb');
+```
+
+**El VPS tiene el mismo `'wb'` que el repo.** No era teoría.
+
+### Dos correcciones a los supuestos de la propuesta
+
+**`$totalSize` no sirve como referencia.** Se inicializa a 0 y se incrementa **dentro del mismo bucle** que
+`fwrite` (L63, L73). `$written !== $totalSize` **nunca dispara**. La comparación útil es
+`filesize($tmpRaw) === $written` tras cerrar.
+
+**`gzip_static` es `on`, no `always`** (`sites-enabled-default.PATCHED-206-dual.conf:134`). Sirve el `.gz`
+sólo con `Accept-Encoding: gzip` — por eso el `curl` sin gzip vio 8 bytes, y por eso el orden «`.gz` primero»
+es el correcto: en la ventana ambos caminos entregan algo válido.
+
+## El invariante, implementado sin la tabla
+
+`tools/ops/check_lists_invariant.sh` mide contra el propio fichero:
+
+1. todo `.m3u8` pesa al menos 1 KB
+2. empieza por `#EXTM3U`
+3. si tiene `.gz`, descomprime sin error
+4. **si tiene `.gz`, el `mtime` del `.m3u8` no puede ser más nuevo** — ésa es la firma exacta del incidente
+   (m3u8 13:59:31, gz 13:59:22)
+
+### Lo que encontró en la primera corrida
+
+```
+ROTO m3u8_mas_nuevo_que_gz  APE_LISTA_1793589060441.m3u8
+ROTO m3u8_mas_nuevo_que_gz  APE_LISTA_1793558303852_CDN.m3u8
+RESUMEN listas=4 rotas=0 con_gz=2 m3u8_mas_nuevo=2
+VEREDICTO: FALLA
+```
+
+**`rotas=0`** — ninguna por debajo del suelo: las dos rotas ya están reparadas.
+
+**`m3u8_mas_nuevo=2`** — **las dos listas tienen el `.m3u8` más nuevo que su `.gz`.** La causa soy yo: reparé
+los `.m3u8` a las 17:32 **sin regenerar los `.gz`**, que siguen de las 13:59.
+
+**Con `gzip_static on`, un cliente con `Accept-Encoding: gzip` recibe el `.gz` viejo.** Está sano, pero **no es
+el fichero actual**. Es la asimetría que la propuesta advirtió: `gzip_static` enmascara.
+
+## Lo que NO se hizo
+
+- **El parche no se aplicó.** `fopen($outputPath, 'wb')` sigue en el repo, 1 ocurrencia, sin tocar.
+- **Los `.gz` no se regeneraron.** Alinear un `.gz` con su `.m3u8` es escribir en producción y eso necesita
+  tu palabra; además el operador pidió expresamente dejar de reparar para no mover más `ctime`.
+- **El invariante no se cableó a `list-activate`.** Primero hay que decidir si el gate lo ejecuta o si corre
+  como workflow programado.
+
+## Fricciones del despliegue, confirmadas
+
+| # | Hallazgo |
+|---|---|
+| 1 | `finalize_upload.php` **no está** en `tools/cicd/vps_deploy_map.json` (`targets` no lo incluye) |
+| 2 | El fichero del VPS (6.149 B) **difiere del repo** (5.388 B) en 761 bytes |
+| 3 | La DB de registro está **vacía**: el invariante por canales necesita una fuente que no existe |
+
+## Qué falta para aplicar el parche
+
+1. **Decidir cuál `finalize_upload.php` es la fuente**: el del repo o el del VPS con 761 bytes más.
+2. **Añadirlo a `vps_deploy_map.json`** como `type: php`, o el próximo deploy no lo llevará.
+3. **Regenerar los `.gz`** para que el invariante pase, o aceptar la divergencia y documentarla.
