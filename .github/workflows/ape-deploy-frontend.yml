@@ -39,10 +39,11 @@ jobs:
     timeout-minutes: 15
 
     env:
-      SRC: IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/m3u8-typed-arrays-ultimate.js
+      # Lista de ficheros de la APP que se sirven desde /var/www/html. Se despliegan TODOS porque el
+      # generador y el panel de salida son la misma app: desplegar uno sin el otro deja la UI incoherente.
+      FICHEROS: m3u8-typed-arrays-ultimate.js generation-output-panel.js
+      SRC_DIR: IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9
       DEST_DIR: /var/www/html/js/ape-v9
-      DEST_FILE: /var/www/html/js/ape-v9/m3u8-typed-arrays-ultimate.js
-      URL: https://iptv-ape.duckdns.org/js/ape-v9/m3u8-typed-arrays-ultimate.js
 
     steps:
       - uses: actions/checkout@v4
@@ -59,11 +60,12 @@ jobs:
           printf 'Host *\n  StrictHostKeyChecking yes\n  UserKnownHostsFile ~/.ssh/known_hosts\n  IdentitiesOnly yes\n' > ~/.ssh/config
           echo "TARGET=${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" >> "$GITHUB_ENV"
 
-      - name: El fuente del repo compila y tiene las correcciones
+      - name: Los fuentes del repo compilan y tienen las correcciones
         run: |
           set -euo pipefail
-          node -c "$SRC"
-          echo 'node -c OK'
+          for f in $FICHEROS; do node -c "$SRC_DIR/$f"; echo "  node -c OK  $f"; done
+          SRC="$SRC_DIR/m3u8-typed-arrays-ultimate.js"
+          echo "SRC=$SRC" >> "$GITHUB_ENV"
           echo '--- correcciones presentes en el repo ---'
           for p in 'colorspace=iall=bt709' 'strength=0.51' 'scale=w=3840:h=2160:flags=lanczos'; do
             n=$(grep -c -- "$p" "$SRC" || true)

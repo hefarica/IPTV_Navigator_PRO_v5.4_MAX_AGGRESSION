@@ -325,6 +325,24 @@
     } catch (_) { return 0; }
   }
 
+  // Suelo del perfil, en Mbps. Es el mínimo con el que el perfil ARRANCA; `bitrate` es el techo de su
+  // escalera, o sea la calidad máxima que puede alcanzar, no el requisito para emitir la lista.
+  //
+  // El LAB lo declara en bps: P0=15M, P1=12M, P2=8M, P3=5M, P4=3M, P5=1.5M. La tabla repite esos
+  // valores como respaldo para cuando el perfil cargado no traiga el campo, que es el caso hoy en
+  // APE_PROFILES_CONFIG.
+  var FLOOR_MBPS = { P0: 15, P1: 12, P2: 8, P3: 5, P4: 3, P5: 1.5 };
+  function activeFloorMbps() {
+    try {
+      var cfg = window.APE_PROFILES_CONFIG;
+      var id = (cfg && cfg.activeProfileId) || 'P3';
+      var p = cfg && cfg.profiles ? cfg.profiles[id] : null;
+      var f = p && p.settings ? p.settings.bandwidth_floor : 0;
+      if (Number(f) > 0) return Number(f) / 1e6;   // bps -> Mbps
+      return Number(FLOOR_MBPS[id]) || 5;
+    } catch (_) { return 5; }
+  }
+
   function inputMbps() {
     try {
       var s = window.APE_BW && typeof window.APE_BW.snapshot === 'function' ? window.APE_BW.snapshot() : null;
@@ -333,15 +351,21 @@
   }
 
   function guard() {
-    var inM = inputMbps(), outM = activeBitrate();
+    var inM = inputMbps(), outM = activeBitrate(), floorM = activeFloorMbps();
     var has = inM > 0 && outM > 0;
+    // Dos preguntas distintas, y hasta hoy solo se hacía la primera:
+    //   ok       = ¿el enlace puede SOSTENER el techo de la escalera?  -> calidad máxima
+    //   canStart = ¿el enlace alcanza el SUELO del perfil?             -> puede arrancar
+    // Generar la lista no exige lo primero: la lista lleva escalera y el ABR elige variante. Exige lo
+    // segundo, porque por debajo del suelo el perfil no arranca ni en su variante más baja.
     var ok = has && inM >= outM * (1 + DELTA_PCT / 100);
+    var canStart = has && inM >= floorM * (1 + DELTA_PCT / 100);
     var b = $('#ape-buf-state');
     if (b) {
-      b.textContent = has ? (ok ? 'BUFFER OK' : 'BUFFER RIESGO') : 'SIN DATO';
-      b.style.color = has ? (ok ? '#22c55e' : '#ef4444') : '#f59e0b';
+      b.textContent = has ? (ok ? 'BUFFER OK' : (canStart ? 'BUFFER RIESGO' : 'BUFFER INSUFICIENTE')) : 'SIN DATO';
+      b.style.color = has ? (ok ? '#22c55e' : (canStart ? '#f59e0b' : '#ef4444')) : '#f59e0b';
     }
-    return { inM: inM, outM: outM, has: has, ok: ok };
+    return { inM: inM, outM: outM, floorM: floorM, has: has, ok: ok, canStart: canStart };
   }
 
   function checkGeneration() {
@@ -350,12 +374,18 @@
       toast('Sin medición de entrada: se permite generar, pero no se puede validar el buffer.', 'warning');
       return true;
     }
-    if (!g.ok) {
-      toast('Buffer insuficiente para el perfil activo con delta ' + DELTA_PCT + '%.', 'error');
-      status('BLOQUEADO: el perfil activo no cumple el delta ' + DELTA_PCT + '%', '#ef4444');
-      return false;
+    if (g.canStart) {
+      // Arranca, aunque no sostenga el techo. Se genera y se avisa; no se bloquea.
+      if (!g.ok) {
+        toast('El enlace (' + g.inM.toFixed(1) + ' Mbps) sostiene el perfil pero no su techo de ' +
+              g.outM + ' Mbps: la lista se genera y el ABR elegirá variante.', 'warning');
+      }
+      return true;
     }
-    return true;
+    toast('Buffer insuficiente incluso para el suelo del perfil activo (' + g.floorM +
+          ' Mbps) con delta ' + DELTA_PCT + '%.', 'error');
+    status('BLOQUEADO: el perfil activo no cumple el delta ' + DELTA_PCT + '%', '#ef4444');
+    return false;
   }
 
   async function runVps() {
