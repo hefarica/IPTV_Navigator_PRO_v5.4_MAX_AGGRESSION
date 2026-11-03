@@ -188,3 +188,9 @@ tools/crystal-upscale/_bench/
 !_docs/**/*.mp4
 *.apk
 *.zip
+_backups/
+_coord/
+_inbox_EQUIPO_ADN/
+_incoming/
+_t16tmp/
+/_map_lua_modules.py
