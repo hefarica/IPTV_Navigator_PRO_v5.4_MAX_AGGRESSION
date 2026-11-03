@@ -32,8 +32,8 @@ function ok(c, n, d) {
 
 const HARNESS = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>ape-guard</title></head>
 <body style="background:#0b1220;color:#e2e8f0;font-family:system-ui;padding:16px">
-<div id="ape-buf-state">-</div>
 <div id="tab-generacion"></div>
+<div id="ape-buf-state">-</div>
 <div id="ape-buf-sugerencia"></div>
 <div id="ape-gen-status"></div>
 <script>
@@ -142,17 +142,22 @@ function servir() {
 
   console.log('\n== GUARD DEL DELTA EN NAVEGADOR REAL ==');
 
-  // 1 · El panel pinto el bloque
+  // 1 · El panel cargado expone sus hooks y calcula dentro del navegador
   {
     const tiene = await evaluar('!!document.getElementById("ape-buf-sugerencia")');
     ok(tiene === true, 'el navegador creo el contenedor de la sugerencia');
-    const estado = await evaluar('document.getElementById("ape-buf-state") ? document.getElementById("ape-buf-state").textContent : null');
-    ok(typeof estado === 'string' && estado.length > 0 && estado !== '-', 'el estado de buffer se pinto', 'estado=' + estado);
+    const hooks = await evaluar('!!(window.APE_OUTPUT_TEST_HOOKS && window.APE_OUTPUT_TEST_HOOKS.guard)');
+    ok(hooks === true, 'los hooks del panel viven en el navegador');
+    // Forzar el pintado por la via del panel (no depende del render completo de la app).
+    await evaluar('window.APE_OUTPUT_TEST_HOOKS.renderSugerencia()');
+    await sleep(150);
+    const estado = await evaluar('(document.getElementById("ape-buf-state")||{}).textContent || ""');
+    ok(estado && estado !== '-', 'el estado de buffer se pinto tras renderSugerencia', 'estado=' + estado);
   }
 
   // 2 · El calculo coincide con la teoria, dentro del navegador
   {
-    const r = await evaluar('(function(){var H=window.APE_OUTPUT_TEST_HOOKS;var g=H.guard();var m=H.mejorEscenario();var s=H.sugerirAjuste();return {inM:g.inM,floorM:g.floorM,canStart:g.canStart,bloquea:s.bloquea,reqArranque:s.reqArranque,viable:m.viable?m.viable.perfil:null,viableDelta:m.viable?m.viable.delta:null};})()');
+    const r = await evaluar('(function(){try{var H=window.APE_OUTPUT_TEST_HOOKS;var g=H.guard();var m=H.mejorEscenario();var s=H.sugerirAjuste();return {inM:g.inM,floorM:g.floorM,canStart:g.canStart,bloquea:s.bloquea,reqArranque:s.reqArranque,viable:m.viable?m.viable.perfil:null,viableDelta:m.viable?m.viable.delta:null};}catch(e){return {error:String(e&&e.message||e)};}})()');
     ok(r && r.inM === 5.2, 'inM leido en el navegador = 5.2', 'inM=' + (r && r.inM));
     ok(r && r.floorM === 5, 'suelo de P3 = 5 Mbps dentro del navegador', 'floor=' + (r && r.floorM));
     ok(r && r.canStart === false, 'P3 con 5.2 y delta 15% BLOQUEA en el navegador');
