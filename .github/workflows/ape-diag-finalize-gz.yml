@@ -1,0 +1,79 @@
+name: ape-diag-finalize-gz
+
+# ─────────────────────────────────────────────────────────────────────────────────────────────────
+# Diagnóstico read-only para responder dos preguntas sin consultar al operador:
+#
+#   P1 · ¿cuál `finalize_upload.php` es la fuente de verdad: el del repo (5388 B) o el del VPS (6149 B)?
+#   P2 · ¿la divergencia `.m3u8`/`.gz` es cosmética o de contenido?
+#
+# P1 se responde descargando el del VPS y diffenando contra el del repo.
+# P2 se responde comparando el sha256 del `.m3u8` contra el sha256 de `zcat .gz`.
+#     Si coinciden, el `.gz` sólo es otra compresión del MISMO contenido: la divergencia es de mtime,
+#     no de bytes, y regenerarlo es opcional. Si no coinciden, el `.gz` sirve contenido viejo y hay
+#     que regenerar.
+#
+# SÓLO LEE: no escribe, no repara, no toca nginx.
+# ─────────────────────────────────────────────────────────────────────────────────────────────────
+
+on:
+  workflow_dispatch:
+
+jobs:
+  diag:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/adb-generic-visual-enhancement-installer
+
+      - name: Preparar SSH
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          printf '%s\n' "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' "${{ secrets.VPS_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+          printf 'Host *\n  StrictHostKeyChecking yes\n  UserKnownHostsFile ~/.ssh/known_hosts\n  IdentitiesOnly yes\n' > ~/.ssh/config
+          echo "TARGET=${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" >> "$GITHUB_ENV"
+
+      - name: "P2 - el gz descomprime al MISMO contenido que el m3u8?"
+        run: |
+          set -uo pipefail
+          for base in APE_LISTA_1793589060441.m3u8 APE_LISTA_1793558303852_CDN.m3u8; do
+            echo "=== $base ==="
+            ssh "$TARGET" "sudo -n sh -c 'a=\$(sha256sum /var/www/html/lists/$base | cut -d\" \" -f1); b=\$(zcat /var/www/html/lists/$base.gz 2>/dev/null | sha256sum | cut -d\" \" -f1); sa=\$(stat -c %s /var/www/html/lists/$base); gz=\$(stat -c %s /var/www/html/lists/$base.gz); echo \"m3u8_sha=\$a\"; echo \"gz_decomp_sha=\$b\"; echo \"m3u8_bytes=\$sa gz_bytes=\$gz\"; [ \"\$a\" = \"\$b\" ] && echo VEREDICTO=MISMO_CONTENIDO || echo VEREDICTO=CONTENIDO_DISTINTO'" || echo "ERROR_EN_$base"
+            echo
+          done
+
+      - name: "P1 - el finalize del VPS, integro"
+        run: |
+          set -uo pipefail
+          echo '=== descarga del VPS ==='
+          ssh "$TARGET" "sudo -n cat /var/www/html/finalize_upload.php" > /tmp/vps_finalize.php 2>/dev/null || echo "ERROR_DESCARGA"
+          if [ -s /tmp/vps_finalize.php ]; then
+            echo "bytes: $(wc -c < /tmp/vps_finalize.php)"
+            echo
+            echo '=== donde escribe y donde comprime (VPS) ==='
+            grep -n -E "fopen|fwrite|gzip|rename|unlink|chmod|file_put_contents|\\\$totalSize|\\\$outputPath" /tmp/vps_finalize.php | head -30 || true
+            echo
+            echo '=== tiene ya algo de atómico? ==='
+            grep -c -E "rename\\(|tmpfile|tempnam|\\.tmp" /tmp/vps_finalize.php || true
+            echo
+            echo '=== diferencias contra el del repo ==='
+            diff -u IPTV_v5.4_MAX_AGGRESSION/vps/finalize_upload.php /tmp/vps_finalize.php | head -80 || true
+          else
+            echo 'no se pudo descargar'
+          fi
+
+      - name: "P1b - cuantas copias de finalize hay y cual corre"
+        run: |
+          set -uo pipefail
+          echo '=== todas las copias en el VPS ==='
+          ssh "$TARGET" "sudo -n find /var/www /opt -name 'finalize_upload.php' 2>/dev/null | while read p; do printf '%s ' \"\$(stat -c '%s' \"\$p\")\"; echo \"\$p\"; done" || true
+          echo
+          echo '=== nginx: que fichero sirve /finalize_upload.php ==='
+          ssh "$TARGET" "sudo -n grep -rn 'finalize_upload' /etc/nginx/ 2>/dev/null | head -10 || echo SIN_REGLA_NGINX" || true
+          echo
+          echo '=== quien mas menciona finalize_upload ==='
+          ssh "$TARGET" "sudo -n grep -RIl 'finalize_upload' /var/www/html 2>/dev/null | head -10" || true
