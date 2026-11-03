@@ -1,0 +1,662 @@
+# ═══════════════════════════════════════════════════════════════════════════
+# deploy-vps.yml · [t90] CI/CD del VPS — TODO despliegue pasa por aquí
+#
+# POR QUÉ EXISTE: la lista 4K se subió A MANO y está viva. Nadie revisó el VPS
+# antes, no hubo backup y no hubo vuelta atrás posible. Esto lo sustituye.
+#
+# REGLA: disparo MANUAL. `dry-run` es el DEFAULT. `deploy` exige la aprobación
+# del Environment `production` (required reviewers), que se configura en GitHub.
+#
+# Orquesta el pipeline ya existente en `_vps_stage/deploy/`:
+#   inventory → preflight → dry-run → validate → deploy → verify → rollback
+# ═══════════════════════════════════════════════════════════════════════════
+name: Deploy VPS
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'dry-run = solo revisa (por defecto). staging = 8089. deploy = aplica. canary = FASE0/1 aislado.'
+        type: choice
+        options: [dry-run, staging, deploy, canary]
+        default: dry-run
+        required: true
+
+# Un despliegue a la vez. Nunca dos contra el mismo VPS.
+concurrency:
+  group: deploy-vps-production
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  VPS_HOST: ${{ secrets.VPS_HOST }}
+  VPS_USER: ${{ secrets.VPS_USER }}
+  # [t92] dry-run y staging/canary NO ejecutan el smoke completo de /sync
+  # (solo el deploy real escribe el endpoint). `deploy` es el único no-dry.
+  APE_DRY_RUN: ${{ inputs.mode == 'deploy' && '0' || '1' }}
+  # [t92] clave efímera del CI (lib.sh la usa si existe)
+  APE_SSH_KEY: /home/runner/.ssh/id_ed25519
+  DEPLOY_DIR: _vps_stage/deploy
+  # Ruta de la lista viva en el VPS y el marcador de 8 bytes que la acompaña.
+  LISTS_DIR: /var/www/html/lists
+  MARKER_BYTES: 8
+
+jobs:
+  # ── 1 · INVENTARIO (read-only) ───────────────────────────────────────────
+  inventory:
+    name: 1 · inventory (read-only)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Preparar SSH (llave efímera desde secretos)
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          printf '%s\n' "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' "${{ secrets.VPS_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+          chmod 644 ~/.ssh/known_hosts
+          printf 'Host *\n  StrictHostKeyChecking yes\n  UserKnownHostsFile ~/.ssh/known_hosts\n  IdentitiesOnly yes\n' > ~/.ssh/config
+          chmod 600 ~/.ssh/config
+      - name: Inventario del VPS (no escribe)
+        run: |
+          set -euo pipefail
+          chmod +x "$DEPLOY_DIR"/*.sh
+          # [FIX 2026-11-02] ANTES: `bash "$DEPLOY_DIR/inventory.sh"`, es decir, el
+          # inventario corria EN EL RUNNER, no en el VPS. inventory.sh no contiene
+          # ni un solo `ssh`: `run(){ ...; eval "$@"; }` evalua en local. Medido:
+          # el log decia hostname=runnervmnwato, kernel azure y Runner.Worker en ps,
+          # mientras /var/www/html/lists "no existia" pese a servirse en produccion.
+          # El propio encabezado del script pide `ssh host 'bash -s' < inventory.sh`.
+          TARGET="${{ secrets.VPS_USER }}@$VPS_HOST"
+          mkdir -p "$DEPLOY_DIR/out"
+          ssh "$TARGET" 'bash -s' < "$DEPLOY_DIR/inventory.sh" | tee "$DEPLOY_DIR/out/inventory.txt"
+      # ── TELEMETRÍA DE FLUJO (read-only) ───────────────────────────────────
+      # Responde «¿fluye la información?» por lista y por código, leyendo el
+      # access.log que ya existe en el servidor. Cero escrituras en el VPS.
+      # Se ejecuta por stdin, igual que el inventario, porque el script tampoco
+      # contiene ssh: es un script para correr EN la máquina.
+      - name: Telemetría de flujo por lista y código (no escribe)
+        run: |
+          set -euo pipefail
+          TARGET="${{ secrets.VPS_USER }}@$VPS_HOST"
+          ssh "$TARGET" 'bash -s' < "$DEPLOY_DIR/flow_telemetry.sh" | tee "$DEPLOY_DIR/out/flow-telemetry.txt"
+
+      # ── SONDA nginx READ-ONLY (evidencia para el fix del HTTP 206) ─────────
+      # Medido: `/lists/` NO lo sirve nginx. Hay `location ^~ /lists/` que hace
+      # proxy_pass a 127.0.0.1:8080, y el prefijo gana sobre el regex `~* \.m3u8$`.
+      # Ese archivo vivo tampoco coincide con ningún .conf del repo. Esta sonda
+      # solo LEE: no escribe, no recarga, no reinicia. Trae el archivo byte-exacto
+      # y separa culpables probando Range contra el upstream y a través de nginx.
+      - name: Sonda nginx read-only (206)
+        run: |
+          set -uo pipefail
+          TARGET="${{ secrets.VPS_USER }}@$VPS_HOST"
+          mkdir -p "$DEPLOY_DIR/out"
+          OUT="$DEPLOY_DIR/out/nginx-probe.txt"
+          {
+            echo "=== nginx -t SIN sudo ==="
+            ssh "$TARGET" 'nginx -t 2>&1; echo EXIT_SIN_SUDO=$?' || true
+            echo
+            echo "=== nginx -t CON sudo -n ==="
+            ssh "$TARGET" 'sudo -n nginx -t 2>&1; echo EXIT_CON_SUDO=$?' || true
+            echo
+            echo "=== hashes ==="
+            ssh "$TARGET" 'sha256sum /etc/nginx/sites-available/default /etc/nginx/nginx.conf 2>&1' || true
+            echo
+            echo "=== conf.d ==="
+            ssh "$TARGET" 'ls -la /etc/nginx/conf.d/ 2>&1' || true
+            echo
+            echo "=== sites-enabled ==="
+            ssh "$TARGET" 'ls -la /etc/nginx/sites-enabled/ 2>&1' || true
+            echo
+            echo "=== locations m3u8 / lists ==="
+            ssh "$TARGET" "grep -n -E 'location[[:space:]]+.*(m3u8|lists)' /etc/nginx/sites-available/default 2>&1 || echo SIN_MATCH" || true
+            echo
+            echo "=== gzip_static / gunzip / Accept-Ranges ==="
+            ssh "$TARGET" "grep -n -E 'gzip_static|gunzip|Accept-Ranges' /etc/nginx/sites-available/default 2>&1 || echo NINGUNO" || true
+            echo
+            echo "=== quien escucha en 8080/8081 ==="
+            ssh "$TARGET" 'sudo -n ss -ltnp 2>/dev/null | grep -E ":8080|:8081" || ss -ltn 2>/dev/null | grep -E ":8080|:8081" || echo SIN_LISTENER' || true
+            echo
+            echo "=== procesos candidatos (guardian/ape/8080) ==="
+            ssh "$TARGET" 'ps -eo pid,ppid,user,etime,cmd --sort=-etime 2>/dev/null | grep -iE "guardian|:8080|:8081|python" | grep -v grep | head -12 || echo SIN_PROCESO' || true
+            echo
+            echo "=== units systemd que huelan a guardian/lista ==="
+            ssh "$TARGET" 'systemctl list-units --type=service --all --no-pager 2>/dev/null | grep -iE "guardian|ape|list|m3u|gunicorn|flask|uvicorn" | head -15 || echo SIN_UNIT' || true
+            echo
+            echo "=== identidad del Guardian: cabeceras de un GET normal ==="
+            ssh "$TARGET" 'curl -sS -o /dev/null -D - -m 20 http://127.0.0.1:8080/APE_LISTA_1793589060441.m3u8 2>&1 | head -20' || true
+            echo
+            echo "=== RANGE DIRECTO AL GUARDIAN (sin nginx) ==="
+            ssh "$TARGET" 'curl -sS -o /dev/null -D - -m 20 -H "Range: bytes=0-1023" http://127.0.0.1:8080/APE_LISTA_1793589060441.m3u8 2>&1 | head -20' || true
+            echo
+            echo "=== RANGE A TRAVES DE NGINX (loopback TLS) ==="
+            ssh "$TARGET" 'curl -sS -o /dev/null -D - -m 20 -k -H "Range: bytes=0-1023" -H "Host: iptv-ape.duckdns.org" https://127.0.0.1/lists/APE_LISTA_1793589060441.m3u8 2>&1 | head -20' || true
+            echo
+            echo "=== tamano real del listado servido (Content-Length por HEAD) ==="
+            ssh "$TARGET" 'curl -sS -I -m 20 http://127.0.0.1:8080/APE_LISTA_1793589060441.m3u8 2>&1 | grep -iE "content-length|content-encoding|transfer-encoding|accept-ranges" || echo SIN_DATOS' || true
+            echo
+            echo "=== QUE BLOQUE SIRVE LA LISTA (nginx -T mergeado) ==="
+            ssh "$TARGET" 'sudo -n nginx -T 2>/dev/null | grep -n -E "^# configuration file|server_name|m3u8|/lists/|root |alias " | head -60 || echo SIN_DATOS' || true
+            echo
+            echo "=== quien escucha en 80/443 ==="
+            ssh "$TARGET" 'sudo -n ss -ltnp 2>/dev/null | grep -E ":80 |:443 " || echo SIN_DATOS' || true
+          } | tee "$OUT"
+      - name: Traer la config viva byte-exacta (read-only)
+        run: |
+          set -euo pipefail
+          TARGET="${{ secrets.VPS_USER }}@$VPS_HOST"
+          scp -q "$TARGET:/etc/nginx/sites-available/default" "$DEPLOY_DIR/out/sites-available-default.conf"
+          echo "sha256 local:"
+          sha256sum "$DEPLOY_DIR/out/sites-available-default.conf"
+          # El sitio que RESPONDE no es `default` (su proxy a :8080 esta muerto y
+          # aun asi /lists/ da 200). El candidato real es coa-navigator.
+          for f in /etc/nginx/sites-enabled/coa-navigator /etc/nginx/sites-available/coa-navigator; do
+            if ssh "$TARGET" "[ -f '$f' ]"; then
+              base=$(basename "$f")
+              scp -q "$TARGET:$f" "$DEPLOY_DIR/out/live-$base.conf" && sha256sum "$DEPLOY_DIR/out/live-$base.conf"
+            fi
+          done
+          ssh "$TARGET" 'sudo -n nginx -T 2>/dev/null' > "$DEPLOY_DIR/out/nginx-T-merged.conf" || true
+          echo "nginx -T bytes: $(wc -c < "$DEPLOY_DIR/out/nginx-T-merged.conf")"
+      # ── GATE del parche 206: el archivo que CORRE y la existencia del .m3u8 plano
+      # `gunzip off` solo es seguro si el listado sin comprimir existe en disco.
+      # Sin esto, try_files $uri =404 devolveria 404 y romperia la lista.
+      - name: Gate del parche 206 (read-only)
+        run: |
+          set -uo pipefail
+          TARGET="${{ secrets.VPS_USER }}@$VPS_HOST"
+          OUT="$DEPLOY_DIR/out/gate-206.txt"
+          {
+            echo "=== sha256 del archivo QUE CORRE ==="
+            ssh "$TARGET" 'sha256sum /etc/nginx/sites-enabled/default 2>&1; wc -c < /etc/nginx/sites-enabled/default 2>&1' || true
+            echo "esperado repo: 6c8e507f4bf555089b581ddf5a261bfbb1c27dacb84c676d60ccc227dcd7764f  8071 B"
+            echo
+            echo "=== el .m3u8 PLANO existe? (prerrequisito de gunzip off) ==="
+            ssh "$TARGET" 'ls -l /var/www/html/lists/APE_LISTA_1793589060441.m3u8 /var/www/html/lists/APE_LISTA_1793589060441.m3u8.gz /var/www/lists/APE_LISTA_1793589060441.m3u8 /var/www/lists/APE_LISTA_1793589060441.m3u8.gz 2>&1' || true
+            echo
+            echo "=== que directorio usa el bloque m3u8 (root del server) ==="
+            ssh "$TARGET" "grep -n -E '^\s*root\s|^\s*alias\s' /etc/nginx/sites-enabled/default 2>&1 || echo SIN_ROOT" || true
+            echo
+            echo "=== 206 REAL contra la URL publica, como la pide un player ==="
+            ssh "$TARGET" 'curl -sS -o /dev/null -D - -m 25 -k -H "Range: bytes=0-1023" -H "Host: iptv-ape.duckdns.org" https://127.0.0.1/lists/APE_LISTA_1793589060441.m3u8 2>&1 | grep -iE "^HTTP|content-length|content-range|accept-ranges|transfer-encoding" || echo SIN_DATOS' || true
+            echo
+            echo "=== 206 con Accept-Encoding: gzip (el caso que hoy descomprime) ==="
+            ssh "$TARGET" 'curl -sS -o /dev/null -D - -m 25 -k -H "Range: bytes=0-1023" -H "Accept-Encoding: gzip" -H "Host: iptv-ape.duckdns.org" https://127.0.0.1/lists/APE_LISTA_1793589060441.m3u8 2>&1 | grep -iE "^HTTP|content-length|content-range|accept-ranges|content-encoding|transfer-encoding" || echo SIN_DATOS' || true
+          } | tee "$OUT"
+      # ── MATRIZ DE TODAS LAS LISTAS · 200 / 206 / 302 ───────────────────────
+      # El requisito es que TODAS las listas, en sus configuraciones posibles,
+      # entreguen 200, 206 y 302. Esta matriz mide CADA lista publicada, no una.
+      # `ssh -n` es obligatorio: sin el, cada ssh dentro del bucle se come el
+      # stdin del `while read` y solo se mediria la primera lista.
+      - name: Matriz HTTP de todas las listas (read-only)
+        run: |
+          set -uo pipefail
+          TARGET="${{ secrets.VPS_USER }}@$VPS_HOST"
+          OUT="$DEPLOY_DIR/out/list-matrix.txt"
+          {
+            echo "=== listas en disco ==="
+            ssh "$TARGET" 'ls -la /var/www/html/lists/ 2>&1 | head -40' || true
+            echo
+            echo "=== matriz por lista · 200 plano / 206 con gzip / bytes del 206 ==="
+            printf '%-48s %5s %5s %8s %5s\n' LISTA GET R206 BYTES206 HEAD
+            ssh "$TARGET" 'ls -1 /var/www/html/lists/*.m3u8 2>/dev/null' | tr -d '\r' | while read -r p; do
+              [ -z "$p" ] && continue
+              n=$(basename "$p")
+              u="https://127.0.0.1/lists/$n"
+              c1=$(ssh -n "$TARGET" "curl -sS -o /dev/null -m 20 -k -w '%{http_code}' -H 'Host: iptv-ape.duckdns.org' '$u'" 2>/dev/null)
+              c2=$(ssh -n "$TARGET" "curl -sS -o /dev/null -m 20 -k -w '%{http_code}' -H 'Accept-Encoding: gzip' -H 'Range: bytes=0-1023' -H 'Host: iptv-ape.duckdns.org' '$u'" 2>/dev/null)
+              ln=$(ssh -n "$TARGET" "curl -sS -o /dev/null -m 20 -k -w '%{size_download}' -H 'Accept-Encoding: gzip' -H 'Range: bytes=0-1023' -H 'Host: iptv-ape.duckdns.org' '$u'" 2>/dev/null)
+              hd=$(ssh -n "$TARGET" "curl -sS -o /dev/null -m 20 -k -w '%{http_code}' -I -H 'Host: iptv-ape.duckdns.org' '$u'" 2>/dev/null)
+              printf '%-48s %5s %5s %8s %5s\n' "$n" "${c1:-ERR}" "${c2:-ERR}" "${ln:-ERR}" "${hd:-ERR}"
+            done
+          } | tee "$OUT"
+      - name: Guardar inventario como artefacto
+        uses: actions/upload-artifact@v4
+        with:
+          name: inventory
+          path: |
+            _vps_stage/deploy/out/inventory*
+            _vps_stage/deploy/out/stamp*
+            _vps_stage/deploy/out/list-matrix.txt
+            _vps_stage/deploy/out/gate-206.txt
+            _vps_stage/deploy/out/nginx-probe.txt
+            _vps_stage/deploy/out/sites-available-default.conf
+            _vps_stage/deploy/out/live-*.conf
+            _vps_stage/deploy/out/nginx-T-merged.conf
+          if-no-files-found: warn
+          retention-days: 14
+
+  # ── 2 · PREFLIGHT + DRY-RUN (read-only) ──────────────────────────────────
+  dry-run:
+    name: 2 · preflight + dry-run (read-only)
+    needs: inventory
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Preparar SSH (llave efímera desde secretos)
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          printf '%s\n' "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' "${{ secrets.VPS_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+          chmod 644 ~/.ssh/known_hosts
+          printf 'Host *\n  StrictHostKeyChecking yes\n  UserKnownHostsFile ~/.ssh/known_hosts\n  IdentitiesOnly yes\n' > ~/.ssh/config
+          chmod 600 ~/.ssh/config
+      - name: Comprobaciones previas
+        run: |
+          set -euo pipefail
+          chmod +x "$DEPLOY_DIR"/*.sh
+          bash "$DEPLOY_DIR/preflight.sh"
+      - name: Diff exacto repo ↔ VPS
+        run: |
+          set -euo pipefail
+          bash "$DEPLOY_DIR/dry-run.sh"
+      - name: Publicar el diff para revisión
+        uses: actions/upload-artifact@v4
+        with:
+          name: dry-run-diff
+          path: _vps_stage/deploy/out/
+          if-no-files-found: warn
+          retention-days: 14
+
+  # ── 3 · VALIDACIÓN SINTÁCTICA (read-only) ────────────────────────────────
+  validate:
+    name: 3 · validate (luac -p / php -l / nginx -t)
+    needs: dry-run
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Preparar SSH (llave efímera desde secretos)
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          printf '%s\n' "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' "${{ secrets.VPS_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+          chmod 644 ~/.ssh/known_hosts
+          printf 'Host *\n  StrictHostKeyChecking yes\n  UserKnownHostsFile ~/.ssh/known_hosts\n  IdentitiesOnly yes\n' > ~/.ssh/config
+          chmod 600 ~/.ssh/config
+      - name: Validar sintaxis en el VPS (sin escribir destino)
+        run: |
+          set -euo pipefail
+          chmod +x "$DEPLOY_DIR"/*.sh
+          bash "$DEPLOY_DIR/validate.sh"
+
+  # ── 3c · FASE0/1 · skills gate + canary 4K aislado (APROBACIÓN REQUERIDA) ──
+  # No usa deploy.sh/manifest: instala sólo /etc/ara, /usr/local/bin y la unit.
+  # NO toca /lists/, /sync, /ara ni el catálogo; rollback del canal al final.
+  canary:
+    name: 3c · FASE0/1 skills + canary 4K (APROBACIÓN REQUERIDA)
+    needs: validate
+    if: ${{ inputs.mode == 'canary' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment:
+      name: production
+      url: https://iptv-ape.duckdns.org
+    env:
+      CANARY_ID: canary-${{ github.run_id }}
+      CANARY_LIST: /var/www/html/lists/APE_LISTA_1793397700248_CDN.m3u8.gz
+      CANARY_SECONDS: '6'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Preparar SSH (llave efímera desde secretos)
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          printf '%s\n' "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' "${{ secrets.VPS_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+          chmod 644 ~/.ssh/known_hosts
+          printf 'Host *\n  StrictHostKeyChecking yes\n  UserKnownHostsFile ~/.ssh/known_hosts\n  IdentitiesOnly yes\n' > ~/.ssh/config
+          chmod 600 ~/.ssh/config
+      - name: Baseline de listas y auth (para probar aislamiento)
+        run: |
+          set -euo pipefail
+          TARGET="${{ secrets.VPS_USER }}@$VPS_HOST"
+          ssh "$TARGET" 'sha256sum /var/www/html/lists/APE_LISTA_4K.m3u8 /var/www/html/lists/APE_LISTA_1793397700248_CDN.m3u8.gz; echo ---; find /etc/nginx/snippets -maxdepth 1 -type f -printf "%f %s\n" | sort; echo ---; sha256sum /var/www/html/prisma/api/ara-sync.php 2>/dev/null || echo AUSENTE-sync' | tee baseline-before.txt
+      - name: Staging FASE0/1 en el VPS (sin destino productivo)
+        run: |
+          set -euo pipefail
+          TARGET="${{ secrets.VPS_USER }}@$VPS_HOST"
+          ssh "$TARGET" 'rm -rf /tmp/ape-fase01 && mkdir -p /tmp/ape-fase01'
+          scp -r _vps_stage/skills _vps_stage/canary "$TARGET:/tmp/ape-fase01/"
+      - name: Instalar skills + canary (backup/stamp propios)
+        run: |
+          set -euo pipefail
+          TARGET="${{ secrets.VPS_USER }}@$VPS_HOST"
+          ssh "$TARGET" 'bash /tmp/ape-fase01/canary/install.sh' | tee fase01-install.log
+      - name: Gate ara-skill check
+        run: |
+          set -euo pipefail
+          TARGET="${{ secrets.VPS_USER }}@$VPS_HOST"
+          ssh "$TARGET" 'ara-skill check; ara-skill check --for-canary' | tee fase01-gate.log
+      - name: Canary de UN canal (6 s muestreados, 5 fps)
+        run: |
+          set -euo pipefail
+          TARGET="${{ secrets.VPS_USER }}@$VPS_HOST"
+          START="$(date +%s)"
+          ssh "$TARGET" "ape-canaryctl start '$CANARY_ID' --from-list '$CANARY_LIST' --seconds '$CANARY_SECONDS'" | tee canary-start.log
+          state="active"
+          for _ in $(seq 1 60); do
+            sleep 5
+            state="$(ssh "$TARGET" "systemctl is-active 'ape-canary@$CANARY_ID.service'" 2>/dev/null || true)"
+            [ "$state" != "active" ] && break
+          done
+          END="$(date +%s)"
+          echo "wall_seconds=$((END-START))" | tee canary-wall.txt
+          [ "$state" != "active" ] || { echo "::error::canary excedió 300s"; exit 1; }
+      - name: Evidencia ffprobe + CPU + resultado systemd
+        run: |
+          set -euo pipefail
+          TARGET="${{ secrets.VPS_USER }}@$VPS_HOST"
+          ssh "$TARGET" "set -euo pipefail; ID='$CANARY_ID'; D=/var/lib/ara/canary/\$ID; cat \$D/status.json; SEG=\$(ls -1t \$D/*.ts | head -1); ffprobe -v error -select_streams v:0 -show_entries stream=width,height,r_frame_rate -of default=nw=1 \"\$SEG\"; systemctl show -p Result --value 'ape-canary@'\$ID'.service'; journalctl -u 'ape-canary@'\$ID'.service' --no-pager | sed -E 's#https?://[^ ]+#<redacted>#g' | grep -E 'Consumed .* CPU time|encoded [0-9]+ frames' | tail -3" | tee canary-evidence.log
+          ffprobe_log="$(grep -E 'width=|height=' canary-evidence.log || true)"
+          echo "$ffprobe_log" | grep -q 'width=3840' || { echo "::error::canary no es 4K"; exit 1; }
+          echo "$ffprobe_log" | grep -q 'height=2160' || { echo "::error::canary no es 4K"; exit 1; }
+          cpu_pct="$(grep -oE '"cpu_pct_avg":[0-9.]+' canary-evidence.log | head -1 | cut -d: -f2 || true)"
+          if [ -n "$cpu_pct" ]; then
+            echo "cpu_pct_avg=$cpu_pct (CPUQuota=40%%)" | tee cpu-check.txt
+            awk -v p="$cpu_pct" 'BEGIN{exit (p<40.0)?0:1}' || { echo "::error::CPU ${cpu_pct}% >= 40%"; exit 1; }
+          else
+            echo "cpu_pct_avg=unavailable (CPUQuota=40% aplicada por systemd)" | tee cpu-check.txt
+          fi
+      - name: Rollback del canary (canal vuelve al origen)
+        run: |
+          set -euo pipefail
+          TARGET="${{ secrets.VPS_USER }}@$VPS_HOST"
+          ssh "$TARGET" "ape-canaryctl rollback '$CANARY_ID'" | tee canary-rollback.log
+      - name: Verificar aislamiento (listas y auth sin cambios)
+        run: |
+          set -euo pipefail
+          TARGET="${{ secrets.VPS_USER }}@$VPS_HOST"
+          ssh "$TARGET" 'sha256sum /var/www/html/lists/APE_LISTA_4K.m3u8 /var/www/html/lists/APE_LISTA_1793397700248_CDN.m3u8.gz; echo ---; find /etc/nginx/snippets -maxdepth 1 -type f -printf "%f %s\n" | sort; echo ---; sha256sum /var/www/html/prisma/api/ara-sync.php 2>/dev/null || echo AUSENTE-sync' | tee baseline-after.txt
+          diff -u baseline-before.txt baseline-after.txt | tee isolation.diff
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: fase01-canary-evidence
+          path: |
+            fase01-install.log
+            fase01-gate.log
+            canary-start.log
+            canary-wall.txt
+            canary-evidence.log
+            cpu-check.txt
+            canary-rollback.log
+            baseline-before.txt
+            baseline-after.txt
+            isolation.diff
+          if-no-files-found: warn
+          retention-days: 14
+
+  # ── 4 · DEPLOY (solo con mode=deploy + aprobación del Environment) ───────
+  # ── 3b · STAGING (8089) · NO toca produccion ─────────────────────────────
+  staging:
+    name: 3b · staging 8089 (APROBACIÓN REQUERIDA)
+    needs: validate
+    if: ${{ inputs.mode == 'staging' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment:
+      name: production
+      url: https://iptv-ape.duckdns.org
+    steps:
+      - uses: actions/checkout@v4
+      - name: Preparar SSH (llave efímera desde secretos)
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          printf '%s\n' "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' "${{ secrets.VPS_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+          chmod 644 ~/.ssh/known_hosts
+          printf 'Host *\n  StrictHostKeyChecking yes\n  UserKnownHostsFile ~/.ssh/known_hosts\n  IdentitiesOnly yes\n' > ~/.ssh/config
+          chmod 600 ~/.ssh/config
+      - name: Fotografiar produccion ANTES (sha256 intocable)
+        run: |
+          set -euo pipefail
+          ssh "${{ secrets.VPS_USER }}@$VPS_HOST" "bash -s" <<'EOF' | tee before.sha
+          set -euo pipefail
+          sha256sum /etc/nginx/conf.d/50-ape-meta-plane.conf 2>/dev/null || echo "AUSENTE  50-ape-meta-plane.conf"
+          sha256sum /etc/nginx/lua/ape_gateway.lua 2>/dev/null || echo "AUSENTE  ape_gateway.lua"
+          EOF
+          cat before.sha
+      - name: Instalar conf de staging (nombre DISTINTO) + nginx -t + reload
+        run: |
+          set -euo pipefail
+          CONF=_vps_stage/nginx/ape-meta-staging.conf
+          [ -f "$CONF" ] || { echo "::error::falta $CONF"; exit 1; }
+          scp "$CONF" "${{ secrets.VPS_USER }}@$VPS_HOST:/tmp/ape-meta-staging.conf"
+          ssh "${{ secrets.VPS_USER }}@$VPS_HOST" "bash -s" <<'EOF'
+          set -euo pipefail
+          sudo install -m 644 /tmp/ape-meta-staging.conf /etc/nginx/conf.d/99-ape-meta-staging.conf
+          sudo nginx -t
+          sudo nginx -s reload
+          EOF
+      - name: Health del 8089
+        run: |
+          set -euo pipefail
+          ssh "${{ secrets.VPS_USER }}@$VPS_HOST" "bash -s" <<'EOF'
+          set -euo pipefail
+          for i in 1 2 3 4 5; do
+            code=$(curl -s -o /dev/null -m 5 -w '%{http_code}' http://127.0.0.1:8089/staging/health || true)
+            [ "$code" = "200" ] && { echo "staging health=200"; exit 0; }
+            sleep 2
+          done
+          echo "::error::el 8089 no responde su health"
+          exit 1
+          EOF
+      - name: MUESTRA 10 canales 8088 vs 8089 (SECUENCIAL, 1 conexion)
+        run: |
+          set -euo pipefail
+          ssh "${{ secrets.VPS_USER }}@$VPS_HOST" "bash -s" <<'EOF'
+          set -euo pipefail
+          CH="177683 177690 177691 177692 177693 177694 177695 177696 177697 177698"
+          printf '%-8s %-6s %-10s %-6s %-10s %s\n' CH 8088 lat 8089 lat manifiesto
+          for c in $CH; do
+            t0=$(date +%s%N)
+            a=$(curl -s -o /tmp/a.$$ -m 12 -w '%{http_code}' "http://127.0.0.1:8088/cdn/line.tivi-ott.net/live/3JHFTC/U56BDP/$c.m3u8" || echo ERR)
+            t1=$(date +%s%N)
+            b_man=$(head -c 7 /tmp/a.$$ 2>/dev/null | grep -c '#EXTM3U' || true)
+            rm -f /tmp/a.$$
+            t2=$(date +%s%N)
+            b=$(curl -s -o /tmp/b.$$ -m 12 -w '%{http_code}' "http://127.0.0.1:8089/cdn/line.tivi-ott.net/live/3JHFTC/U56BDP/$c.m3u8" || echo ERR)
+            t3=$(date +%s%N)
+            b_man2=$(head -c 7 /tmp/b.$$ 2>/dev/null | grep -c '#EXTM3U' || true)
+            rm -f /tmp/b.$$
+            printf '%-8s %-6s %-10s %-6s %-10s %s\n' "$c" "$a" "$(( (t1-t0)/1000000 ))ms" "$b" "$(( (t3-t2)/1000000 ))ms" "$b_man2"
+            sleep 1.5
+          done
+          EOF
+      - name: Verificar que produccion NO cambio (aborta si cambia)
+        run: |
+          set -euo pipefail
+          ssh "${{ secrets.VPS_USER }}@$VPS_HOST" "bash -s" <<'EOF' | tee after.sha
+          set -euo pipefail
+          sha256sum /etc/nginx/conf.d/50-ape-meta-plane.conf 2>/dev/null || echo "AUSENTE  50-ape-meta-plane.conf"
+          sha256sum /etc/nginx/lua/ape_gateway.lua 2>/dev/null || echo "AUSENTE  ape_gateway.lua"
+          EOF
+          echo "--- comparacion antes/despues:"
+          diff before.sha after.sha && echo "PRODUCCION INTACTA" || { echo "::error::produccion cambio; abortando"; exit 1; }
+      - name: ROLLBACK del staging (siempre)
+        if: always()
+        run: |
+          set -euo pipefail
+          ssh "${{ secrets.VPS_USER }}@$VPS_HOST" "bash -s" <<'EOF'
+          set -euo pipefail
+          if [ -f /etc/nginx/conf.d/99-ape-meta-staging.conf ]; then
+            sudo rm -f /etc/nginx/conf.d/99-ape-meta-staging.conf
+            sudo nginx -t && sudo nginx -s reload
+            echo "staging retirado; nginx recargado (sin restart)"
+          else
+            echo "no habia conf de staging (nada que retirar)"
+          fi
+          EOF
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: staging-evidence
+          path: |
+            before.sha
+            after.sha
+          if-no-files-found: warn
+          retention-days: 14
+
+  deploy:
+    name: 4 · deploy (APROBACIÓN REQUERIDA)
+    needs: validate
+    if: ${{ inputs.mode == 'deploy' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment:
+      name: production          # required reviewers se configuran en GitHub
+      url: https://iptv-ape.duckdns.org
+    env:
+      ARA_SYNC_KEY: ${{ secrets.ARA_SYNC_KEY }}
+      ARA_SYNC_KEY_ID: ${{ vars.ARA_SYNC_KEY_ID }}
+      ARA_SYNC_DEVICE_IDS: ${{ vars.ARA_SYNC_DEVICE_IDS }}
+      ARA_SYNC_ARTIFACT_SHA256: ${{ vars.ARA_SYNC_ARTIFACT_SHA256 }}
+      ARA_SYNC_GENERATION_ID: ${{ vars.ARA_SYNC_GENERATION_ID }}
+      ARA_SYNC_LIST_VERSION: ${{ vars.ARA_SYNC_LIST_VERSION }}
+      ARA_SYNC_LAB_EXPORTED_AT: ${{ vars.ARA_SYNC_LAB_EXPORTED_AT }}
+    outputs:
+      stamp: ${{ steps.stamp.outputs.value }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Preparar SSH (llave efímera desde secretos)
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          printf '%s\n' "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' "${{ secrets.VPS_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+          chmod 644 ~/.ssh/known_hosts
+          printf 'Host *\n  StrictHostKeyChecking yes\n  UserKnownHostsFile ~/.ssh/known_hosts\n  IdentitiesOnly yes\n' > ~/.ssh/config
+          chmod 600 ~/.ssh/config
+      - name: Deploy atómico con backup
+        run: |
+          set -euo pipefail
+          chmod +x "$DEPLOY_DIR"/*.sh
+          bash "$DEPLOY_DIR/deploy.sh" --apply --yes | tee deploy.log
+      - name: Recordar el stamp del backup
+        id: stamp
+        run: |
+          set -euo pipefail
+          STAMP="$(grep -oE '[0-9]{8}T[0-9]{6}Z' deploy.log | tail -1 || true)"
+          if [ -z "$STAMP" ]; then
+            echo "::error::deploy.sh no reportó stamp; el rollback no podrá apuntar a esta corrida"
+            exit 1
+          fi
+          echo "value=${STAMP}" >> "$GITHUB_OUTPUT"      # <- lo consume el job rollback
+          echo "DEPLOY_STAMP=${STAMP}" >> "$GITHUB_ENV"  # <- pasos siguientes de este job
+          printf '%s\n' "$STAMP" > deploy-stamp.txt      # <- artefacto para revisiones
+          echo "backup stamp = ${STAMP}"
+      - name: Publicar el stamp (por si el job pierde el contexto)
+        uses: actions/upload-artifact@v4
+        with:
+          name: deploy-stamp
+          path: deploy-stamp.txt
+          retention-days: 30
+      - uses: actions/upload-artifact@v4
+        with:
+          name: deploy-log
+          path: deploy.log
+          retention-days: 30
+
+  # ── 5 · VERIFY (smoke, solo GET) ─────────────────────────────────────────
+  verify:
+    name: 5 · verify (smoke read-only)
+    needs: deploy
+    # t91: corre TAMBIÉN en dry-run (línea base del VPS antes de tocar nada).
+    # Con `always()` no se salta porque `deploy` esté skipped; solo se abstiene
+    # si el deploy falló, porque entonces manda el rollback.
+    if: always() && inputs.mode != 'canary' && needs.deploy.result != 'failure'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      ARA_SYNC_VERIFY_KEY: ${{ secrets.ARA_SYNC_KEY }}
+      ARA_SYNC_KEY_ID: ${{ vars.ARA_SYNC_KEY_ID }}
+      ARA_SYNC_DEVICE_ID: deploy-verify-${{ github.run_id }}
+      ARA_SYNC_ARTIFACT_SHA256: ${{ vars.ARA_SYNC_ARTIFACT_SHA256 }}
+      ARA_VERIFY_TOKEN: ${{ secrets.ARA_VERIFY_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      # [t113] GATE DE PARIDAD sha256 — tras el checkout (necesita el árbol del repo).
+      - name: PARIDAD sha256 repo vs manifiesto (deploy_parity_assert)
+        run: |
+          set -euo pipefail
+          node _vps_stage/tests/deploy_parity_assert.js
+      - name: Preparar SSH (llave efímera desde secretos)
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          printf '%s\n' "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' "${{ secrets.VPS_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+          chmod 644 ~/.ssh/known_hosts
+          printf 'Host *\n  StrictHostKeyChecking yes\n  UserKnownHostsFile ~/.ssh/known_hosts\n  IdentitiesOnly yes\n' > ~/.ssh/config
+          chmod 600 ~/.ssh/config
+      - name: Smoke del VPS
+        run: |
+          set -euo pipefail
+          chmod +x "$DEPLOY_DIR"/*.sh
+          bash "$DEPLOY_DIR/verify.sh"
+
+  # ── 6 · ROLLBACK (solo si deploy o verify fallan, en mode=deploy) ────────
+  # t91: este job había perdido su id al eliminar el antiguo job de publicación
+  # de lista (quedaba una cabecera `name:` huérfana en el nivel de `jobs`).
+  # Recupera id y comentario. Las listas se publican desde la APP, no aquí.
+  rollback:
+    name: 6 · rollback (automático si deploy/verify fallan)
+    needs: [deploy, verify]
+    if: always() && inputs.mode == 'deploy' && (needs.deploy.result == 'failure' || needs.verify.result == 'failure')
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      # [t113] GATE DE PARIDAD sha256 (tras checkout: necesita el árbol del repo).
+      # El deploy no puede declarar success si lo instalado no es lo del repo.
+      - name: PARIDAD sha256 repo vs manifiesto (deploy_parity_assert)
+        run: |
+          set -euo pipefail
+          node _vps_stage/tests/deploy_parity_assert.js
+      - name: Preparar SSH (llave efímera desde secretos)
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          printf '%s\n' "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' "${{ secrets.VPS_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+          chmod 644 ~/.ssh/known_hosts
+          printf 'Host *\n  StrictHostKeyChecking yes\n  UserKnownHostsFile ~/.ssh/known_hosts\n  IdentitiesOnly yes\n' > ~/.ssh/config
+          chmod 600 ~/.ssh/config
+      - name: Revertir al backup
+        run: |
+          set -euo pipefail
+          chmod +x "$DEPLOY_DIR"/*.sh
+          # t91: el stamp llega del job `deploy` (output + artefacto). Si no
+          # llega, NO se adivina el "backup más reciente": se avisa y se para.
+          STAMP="${{ needs.deploy.outputs.stamp }}"
+          if [ -z "$STAMP" ]; then
+            echo "::warning::sin stamp de esta corrida; se intenta el artefacto deploy-stamp"
+            if gh run download "$GITHUB_RUN_ID" -n deploy-stamp -D /tmp/dt >/dev/null 2>&1; then
+              STAMP="$(tr -d '[:space:]' < /tmp/dt/deploy-stamp.txt || true)"
+            fi
+          fi
+          if [ -z "$STAMP" ]; then
+            echo "::error::NO se revierte a ciegas: falta el stamp de esta corrida."
+            echo "Backups disponibles en el VPS (elige uno y lanza rollback.sh a mano):"
+            ssh "${{ secrets.VPS_USER }}@$VPS_HOST" 'ls -1d /var/backups/ape-deploy/*/ 2>/dev/null | xargs -r -n1 basename | sed "s/^/  - /"' || true
+            exit 1
+          fi
+          echo "revirtiendo al stamp $STAMP (el de ESTA corrida)"
+          bash "$DEPLOY_DIR/rollback.sh" "$STAMP" --yes
