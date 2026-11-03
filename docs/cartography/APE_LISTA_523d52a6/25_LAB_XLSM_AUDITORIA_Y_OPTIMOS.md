@@ -137,3 +137,88 @@ Del certificado `LAB_CALIBRATED_BULLETPROOF` (sha `345783e3…`, idéntico al qu
 - **No leí las macros (`vbaProject.bin`, 1.675 KB).** No sé si el libro *recalcula* esos valores al abrir o al ejecutar el solver, ni si mi escritura sería sobrescrita. **Esto es crítico antes de escribir.**
 - **No sé qué columnas son realmente P0..P5**: la cabecera dice `F=P0` pero el conteo de celdas sugiere que G..L son los seis perfiles. Confirmarlo es el primer paso de la escritura.
 - **Los "óptimos" de §4.3 son criterio técnico documentable, no medición.** No cronometré arranque ni rebuffering con ningún valor.
+
+---
+
+# ADENDA — corrección del análisis y localización exacta (ronda siguiente)
+
+## A.1 · Corrección de un error propio
+
+En §3 dije «fila 9» y «fila 12», contando por **filas con contenido**. El libro tiene filas vacías, así
+que ese conteo está desplazado. Las coordenadas reales, obtenidas por celda (`A<n>`), son:
+
+| Directiva | Capa | **Fila real** | Columnas con valor | Score |
+|---|---|---:|---|---:|
+| `headerOverrides.X-APE-TARGET-BITRATE` | `HTT` | **10** | G..L | 99.4 |
+| `headerOverrides.X-APE-TARGET-BITRATE` | `COK` | **584** | G..L | 94.4 |
+| `headerOverrides.X-Initial-Bitrate` | `HTT` | **13** | G..L | 99.4 |
+| `headerOverrides.X-Initial-Bitrate` | `COK` | **587** | G..L | 94.4 |
+
+`G=P0, H=P1, I=P2, J=P3, K=P4, L=P5, M=Score_ref`.
+
+**Cada directiva aparece dos veces**, en las capas HTTP y COOKIE, con los mismos seis valores imposibles.
+Son **4 filas × 6 celdas = 24 celdas** de las 138 detectadas solo en estas dos directivas.
+
+## A.2 · El hallazgo que cambia la acción
+
+**La hoja `37_VALORES_UNIFICADOS` es un ARTEFACTO GENERADO.** En `Brain_BuildUnifiedValues()` (VBA L1639):
+
+```vba
+If wsUV Is Nothing Then
+    Set wsUV = ThisWorkbook.sheets.Add(...)
+Else
+    wsUV.Cells.Clear          ' <-- borra TODA la hoja antes de reescribirla
+End If
+```
+
+Y se alimenta de cuatro hojas:
+
+| Variable VBA | Hoja origen | Línea |
+|---|---|---|
+| `wsMx` | `8_MATRIX_3D` | 1645 |
+| `wsPr` | `6_NIVEL_2_PROFILES` | 1646 |
+| `wsN1` | `5_NIVEL_1_HEADER` | 1647 |
+| `wsN3` | `7_NIVEL_3_CHANNEL` | 1648 |
+| `wsSc` | `34_BRAIN_SCORING` (solo los scores) | 1692 |
+
+**Escribir a mano en la hoja 37 es trabajo perdido: la macro borra y regenera.** El valor óptimo hay que
+ponerlo en la **hoja fuente**, o corregir el generador.
+
+## A.3 · Dónde NO está el valor
+
+Búsqueda del literal `2E+33` sobre todas las hojas del libro:
+
+```
+sheet40.xml  (37_VALORES_UNIFICADOS)  ->  1 ocurrencia
+todas las demás hojas                 ->  0
+```
+
+**El artefacto está STALE.** Las cuatro hojas fuente ya no contienen esos números; la hoja 37 conserva una
+generación antigua. Correr `Brain_BuildUnifiedValues()` la regeneraría — y la pregunta abierta es si las
+filas de bitrate reaparecen con valores correctos, reaparecen con el mismo defecto, o **desaparecen**.
+
+## A.4 · `Workbook_Open` es inofensivo
+
+```vba
+Private Sub Workbook_Open()
+    Application.StatusBar = "APE M3U8 LAB v8.2 cargado - 32 hojas - 1761 directivas - 50 macros"
+End Sub
+```
+
+Solo escribe en la barra de estado. **No recalcula nada al abrir.** Una escritura a mano sobreviviría a la
+apertura; lo que no sobrevive es a la ejecución de `Brain_BuildUnifiedValues()`.
+
+## A.5 · Lo que queda por determinar antes de escribir
+
+1. **De qué hoja concreta lee `Brain_BuildUnifiedValues` la fila de `X-APE-TARGET-BITRATE`.** El texto de la
+   directiva no aparece en `5/6/7/8` por búsqueda directa; las hojas guardan índices a `sharedStrings`, así
+   que hay que resolver por índice igual que se hizo aquí.
+2. **Si `X-APE-TARGET-BITRATE` existe en las fuentes.** Si no existe, la fila es residuo y la acción
+   correcta no es escribirla sino **dejar que la regeneración la elimine**.
+3. **El inventario de las 138 celdas por directiva**, no solo por total.
+
+## A.6 · Veredicto
+
+**No se escribió nada en el libro.** Y tras esta ronda, escribirlo en la hoja 37 habría sido un error:
+la macro la borra. La acción correcta está en las fuentes o en el generador, y eso exige saber de qué hoja
+lee exactamente cada fila — que es el paso siguiente.
