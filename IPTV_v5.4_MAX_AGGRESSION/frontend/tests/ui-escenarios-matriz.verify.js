@@ -107,10 +107,21 @@ console.log('\n== MATRIZ DE ESCENARIOS + APROBAR / DENEGAR ==');
   nd('ape-sug-forzar').onclick();
   ok(w.__APE_SUG_FORZADO__ === true, 'A) forzar marca el flag');
   ok(w.APE_PROFILES_CONFIG.activeProfileId === 'P5', 'A) forzar activa el perfil P5');
-  ok(H.getDeltaPct() === 1, 'A) forzar fija el delta global en 1%');
-  ok(nd('ape-delta-input').value === '1', 'A) forzar sincroniza el input del delta');
-  ok(!!w.APE_OUTPUT_DELTA_ARRAY && Number(w.APE_OUTPUT_DELTA_ARRAY.P5) === 1, 'A) forzar sincroniza el array por perfil');
+  ok(H.getDeltaPct() === 15, 'A) forzar respeta el delta del campo (15%)');
+  ok(nd('ape-delta-input').value === '15', 'A) forzar sincroniza el input con 15%');
+  ok(!!w.APE_OUTPUT_DELTA_ARRAY && Number(w.APE_OUTPUT_DELTA_ARRAY.P5) === 15, 'A) forzar sincroniza P5=15%');
+  ok(!!w.APE_OUTPUT_DELTA_ARRAY && Number(w.APE_OUTPUT_DELTA_ARRAY.P0) === 15, 'A) forzar sincroniza P0=15%');
   ok(H.checkGeneration() === true, 'A) con el flag, la comprobación PERMITE generar');
+}
+
+// A2) El campo variable también funciona con 20%.
+{
+  const H = montar('P3', 1.3, 20);
+  H.renderSugerencia();
+  nd('ape-sug-forzar').onclick();
+  ok(H.getDeltaPct() === 20, 'A2) forzar respeta el delta del campo (20%)');
+  ok(Number(w.APE_OUTPUT_DELTA_ARRAY.P0) === 20 && Number(w.APE_OUTPUT_DELTA_ARRAY.P5) === 20,
+    'A2) forzar propaga 20% a P0 y P5');
 }
 
 // B) Bloqueo con salida: P3 con 5.2 Mbps necesita 5.75; entra con un delta menor.

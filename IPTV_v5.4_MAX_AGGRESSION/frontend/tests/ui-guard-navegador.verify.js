@@ -246,7 +246,10 @@ function servir() {
 
   // 7 · PERFILES CONFLICTIVOS: la propuesta se adapta a cada perfil, no es fija
   {
-    // Mismo enlace (5.2 Mbps), perfiles distintos: el "mejor escenario" debe cambiar de perfil.
+    // Este escenario compara suelos, no el delta. El test anterior (Forzar) deja el delta
+    // del campo en 15 %; con ese delta P3 a 5.2 Mbps no arranca (5 × 1.15 = 5.75).
+    // Se fija 1 % explícitamente para aislar la variable que este bloque mide.
+    await evaluar('window.APE_OUTPUT_TEST_HOOKS.applyDelta(false,1)');
     const resultados = {};
     for (const pid of ['P0', 'P1', 'P3', 'P5']) {
       await evaluar('(function(){window.APE_PROFILES_CONFIG.activeProfileId="' + pid + '";window.APE_BW={snapshot:function(){return {mbps:5.2};}};window.__APE_SUG_FORZADO__=false;window.__APE_SUG_DENEGADO__=false;window.APE_OUTPUT_TEST_HOOKS.renderSugerencia();return true;})()');

@@ -539,15 +539,17 @@
   function aplicarForzadoP5() {
     var g0 = guard();
     var profile = 'P5';
-    var delta = 1;
+    // El delta NO es fijo: sale del campo. Hoy puede ser 1, 15 o 20.
+    var delta = currentDelta();
 
     // 1) perfil activo + selector visible
     aplicarEscenario(profile, delta);
 
     // 2) el array por perfil manda en #EXT-X-APE-BUFFER-DELTA-ARRAY y en el POST al VPS.
-    //    Solo se fija P5; los demás perfiles conservan su homologo.
+    //    El mismo porcentaje se escribe en TODOS los perfiles, porque el campo es la base
+    //    global del escenario y cada perfil aplica ese % sobre SU propio valor de entrada.
     var arr = getDeltaArray(delta);
-    arr[profile] = delta;
+    profileIds().forEach(function (id) { arr[id] = delta; });
     setDeltaArray(arr);
 
     // 3) delta global + input + localStorage + render
