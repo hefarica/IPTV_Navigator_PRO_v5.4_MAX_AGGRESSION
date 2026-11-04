@@ -4082,28 +4082,25 @@ ${__apeContinuityTags().join('\n')}
             "X-Transport-Telemetry-Learn": "true",
             "X-Transport-Stability-First": "true"
         });
-        const isSupreme = (profile === 'P0' || profile === 'P1');
-        const isHigh = (profile === 'P2' || profile === 'P3');
-        const isMid = (profile === 'P4');
-
-        const selectionProps = isSupreme ? [
+        // ── [2026-11-04 mandato operador] MAXIMA CALIDAD, MAXIMO BITRATE. SIEMPRE. ──────────────
+        // Antes el selector degradaba por perfil: P4 pedia 720p y P5 pedia 480p con fixed-res.
+        // Eso es degradacion por diseno y viola la Ley ANTI-DEGRADACION del repo: el techo de
+        // calidad lo pone la FUENTE, no el perfil. Un canal que el proveedor sirve en 4K debe
+        // poder verse en 4K aunque el operador haya elegido P4 para otra cosa.
+        //
+        // Ahora TODOS los perfiles declaran el mismo techo: adaptive (elige la mejor variante
+        // disponible), bandwidth maximo sin tope, resolucion 4K y sin limite por tamano de
+        // pantalla. Si el canal solo tiene 720p, adaptive sirve 720p; lo que se elimina es el
+        // LIMITE, no la fuente.
+        const selectionProps = [
             '#KODIPROP:inputstream.adaptive.stream_selection_type=adaptive',
             '#KODIPROP:inputstream.adaptive.chooser_bandwidth_max=2147483647',
             '#KODIPROP:inputstream.adaptive.chooser_resolution_max=4K',
             '#KODIPROP:inputstream.adaptive.chooser_resolution_secure_max=4K',
-            '#KODIPROP:inputstream.adaptive.ignore_screen_resolution=true'
-        ] : isHigh ? [
-            '#KODIPROP:inputstream.adaptive.stream_selection_type=fixed-res',
-            '#KODIPROP:inputstream.adaptive.chooser_resolution_max=4K',
-            '#KODIPROP:inputstream.adaptive.chooser_resolution_secure_max=4K'
-        ] : isMid ? [
-            '#KODIPROP:inputstream.adaptive.stream_selection_type=fixed-res',
-            '#KODIPROP:inputstream.adaptive.chooser_resolution_max=720p',
-            '#KODIPROP:inputstream.adaptive.chooser_resolution_secure_max=720p'
-        ] : [
-            '#KODIPROP:inputstream.adaptive.stream_selection_type=fixed-res',
-            '#KODIPROP:inputstream.adaptive.chooser_resolution_max=480p',
-            '#KODIPROP:inputstream.adaptive.chooser_resolution_secure_max=480p'
+            '#KODIPROP:inputstream.adaptive.ignore_screen_resolution=true',
+            // Refuerzo explicito del techo, para que ningun default del player lo baje:
+            '#KODIPROP:inputstream.adaptive.chooser_bandwidth_min=0',
+            '#KODIPROP:inputstream.adaptive.adaptive-logic=highest',
         ];
 
         const _baseKodiProps = [
