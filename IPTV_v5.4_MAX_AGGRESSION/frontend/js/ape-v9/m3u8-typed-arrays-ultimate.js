@@ -9846,6 +9846,25 @@ ${__apeContinuityTags().join('\n')}
             if (!(_k in _finalPrimary)) delete _httpPayload[_k];
         }
         const _overflowKeys = Object.keys(_finalOverflow);
+        // ── [2026-11-04 mandato operador] EXO TUNNELED PLAYBACK — flag opt-in ────────────────────
+        // Tunneled Playback enlaza el decodificador de video al subsistema HDMI sin pasar por
+        // SurfaceFlinger: -3 frames de latencia, sync A/V en el SoC, -30% de trafico en el bus de
+        // memoria y requisito de Dolby Vision / passthrough Atmos en varios SoC.
+        //
+        // Va como FLAG OPT-IN del lado del player, no como header al upstream: el servidor no lo
+        // necesita y el player que no lo entiende lo ignora. Se inyecta DESPUES del cap de 200
+        // headers para no desplazar un header real del servidor, y ANTES del JSON.stringify para
+        // que viaje en el mismo #EXTHTTP.
+        //
+        // Por que opt-in y no forzado: tunneling exige FEATURE_TunneledPlayback del SoC. En un
+        // device que no lo tiene, forzarlo CORTA la reproduccion (no degrada: corta). Este flag
+        // solo lo activa el player que sabe que su hardware lo soporta.
+        try {
+            if (_httpPayload && typeof _httpPayload === 'object') {
+                _httpPayload['exo_tunneled_playback'] = 'true';
+                _httpPayload['exo_tunneled_fallback'] = 'safe';   // si el SoC no soporta, el player sigue
+            }
+        } catch (_eTun) { /* nunca rompe la generacion */ }
         let _exthttpJson = JSON.stringify(_httpPayload);
         for (const [ph, val] of Object.entries(_phResolve)) {
             if (typeof val !== 'string' && typeof val !== 'number') continue;
