@@ -34,46 +34,63 @@ header('X-APE-Canary-Resolve: v1');
 header('Cache-Control: no-store, no-cache, must-revalidate');
 
 // ── Diagnóstico (?diag=1): qué piezas del canary existen de verdad ───────────
-// Defensivo a proposito: si una comprobacion falla se reporta el fallo, no un 500.
 if (isset($_GET['diag'])) {
-    $safe = function (callable $fn, $dflt = null) {
-        try { return $fn(); } catch (Throwable $e) { return $dflt; }
-    };
-    $chk = function (string $p): bool { return $safe(fn() => is_file($p), false); };
-    $exe = function (string $p): bool { return $safe(fn() => is_file($p) && is_executable($p), false); };
-    $glob = function (string $pat): array { return $safe(fn() => glob($pat) ?: [], []); };
-    $units = [];
-    foreach ($glob("/etc/systemd/system/ape-canary@*") as $f) { $units[] = basename($f); }
-    $envs = [];
-    foreach ($glob("/etc/ara/canary/*.env") as $f) { $envs[] = basename($f); }
+    $ctlOk  = is_file(CTL);
+    $ctlEx  = $ctlOk && is_executable(CTL);
+    $emu    = '/usr/local/bin/ape-visual-emulate.sh';
+    $skill  = '/usr/local/bin/ara-skill';
+    $units  = [];
+    foreach (glob('/etc/systemd/system/ape-canary@*') ?: [] as $f) { $units[] = basename($f); }
     $runs = [];
-    foreach ($glob(CANARY_ROOT . "/*") as $d) {
-        if ($safe(fn() => is_dir($d), false)) {
-            $runs[] = ["id" => basename($d), "has_status" => $chk($d . "/status.json"), "files" => count($glob($d . "/*"))];
-        }
+    foreach (glob(CANARY_ROOT . '/*', GLOB_ONLYDIR) ?: [] as $d) {
+        $runs[] = ['id' => basename($d), 'has_status' => is_file($d . '/status.json'), 'files' => count(glob($d . '/*') ?: [])];
     }
-    $out = [
-        "ok" => true,
-        "diag" => true,
-        "php_version" => PHP_VERSION,
-        "canaryctl_path" => CTL,
-        "canaryctl_exists" => $chk(CTL),
-        "canaryctl_executable" => $exe(CTL),
-        "ape_visual_emulate" => $chk("/usr/local/bin/ape-visual-emulate.sh"),
-        "ara_skill" => $chk("/usr/local/bin/ara-skill"),
-        "skills_md" => $chk("/etc/ara/skills/SKILLS.md"),
-        "canary_units" => $units,
-        "canary_env_files" => $envs,
-        "canary_runs" => $runs,
-        "canary_root_exists" => $safe(fn() => is_dir(CANARY_ROOT), false),
-        "canary_root_writable" => $safe(fn() => is_writable(CANARY_ROOT), false),
-        "cache_root_writable" => $safe(fn() => is_writable(CACHE_ROOT), false),
-        "exec_enabled" => $safe(fn() => function_exists("proc_open"), false),
-        "disable_functions" => (string)ini_get("disable_functions"),
-    ];
-    header("Content-Type: application/json; charset=utf-8");
-    http_response_code(200);
-    echo json_encode($out, JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT);
+    $envs = [];
+    foreach (glob('/etc/ara/canary/*.env') ?: [] as $f) { $envs[] = basename($f); }
+    cr_json(200, [
+        'ok' => true,
+        'diag' => true,
+        'canaryctl_path' => CTL,
+        'canaryctl_exists' => $ctlOk,
+        'canaryctl_executable' => $ctlEx,
+        'ape_visual_emulate' => is_file($emu),
+        'ara_skill' => is_file($skill),
+        'skills_md' => is_file('/etc/ara/skills/SKILLS.md'),
+        'canary_units' => $units,
+        'canary_env_files' => $envs,
+        'canary_runs' => $runs,
+        'canary_root_writable' => is_writable(CANARY_ROOT),
+        'cache_root_writable' => is_writable(CACHE_ROOT),
+        'php_user' => function_exists('posix_getpwuid') ? (posix_getpwuid(posix_geteuid())['name'] ?? '?') : (get_current_user() ?: '?'),
+        'exec_enabled' => function_exists('proc_open') && !in_array('proc_open', array_map('trim', explode(',', (string)ini_get('disable_functions'))), true),
+    ]);
+}
+
+
+
+const CANARY_ROOT   = '/var/lib/ara/canary';
+const CACHE_ROOT    = '/var/cache/ara/resolve';
+const CTL           = '/usr/local/bin/ape-canaryctl';
+const CANARY_SECS   = 6;
+const CANARY_WAIT   = 12;
+const CACHE_TTL     = 300;
+const RATE_DIR      = '/var/cache/ara/resolve/rl';
+const RATE_MAX      = 20;
+const RATE_WINDOW   = 60;
+
+function cr_fail(int $code, string $why, string $detail = ''): void
+{
+    http_response_code($code);
+    header('Content-Type: text/plain; charset=utf-8');
+    echo "#EXTM3U\n## canary-resolve: " . $why . ($detail !== '' ? ' (' . $detail . ')' : '') . "\n";
+    exit;
+}
+
+function cr_json(int $code, array $payload): void
+{
+    http_response_code($code);
+    header('Content-Type: application/json; charset=utf-8');
+    echo json_encode($payload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
     exit;
 }
 
