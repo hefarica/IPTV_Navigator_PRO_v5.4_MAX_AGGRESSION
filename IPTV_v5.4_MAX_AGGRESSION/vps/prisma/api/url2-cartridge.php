@@ -5847,7 +5847,6 @@ if ($apeObsBps > 0) {
     else                            { $apeNivelRealce = 0; }
 }
 
-$apeNivelRealce = 0;
 // El device sólo impone su techo si NO hubo observación. Si la hubo, manda la observación:
 // es lo que la red acaba de entregar de verdad, no lo que el panel declara.
 if ($apeObsBps <= 0) {
