@@ -253,6 +253,22 @@ jobs:
           php -l "$SRC" >/dev/null 2>&1 && echo "  php -l OK" || echo "  (php -l no disponible en el runner)"
           echo "  endpoint: https://iptv-ape.duckdns.org/prisma/api/ape-parity-tags.php"
 
+      - name: Limpiar endpoints retirados del VPS
+        if: inputs.mode == 'apply'
+        run: |
+          set -uo pipefail
+          # El deploy COPIA ficheros; no borra los que salieron del repo. Un endpoint retirado
+          # se queda huerfano en el VPS y responde 500 si alguien lo llama. Esta lista los borra.
+          # Solo rutas explicitas: nunca globs, para no tocar nada que no este declarado.
+          for f in \
+            /var/www/html/prisma/api/canary-resolve.php \
+            ; do
+            if ssh "$TARGET" "sudo -n test -f '$f'"; then
+              ssh "$TARGET" "sudo -n rm -f '$f'" && echo "  retirado: $f" || echo "  no se pudo retirar: $f"
+            fi
+          done
+          echo "  limpieza completada"
+
       - name: Verificar lo que sirve HTTP (contenido, no solo tamano)
         run: |
           set -uo pipefail
