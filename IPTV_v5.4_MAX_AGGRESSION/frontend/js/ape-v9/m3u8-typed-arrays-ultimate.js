@@ -2718,7 +2718,7 @@
         }
         // [t73] GUARD Ley Cardinal 1: nivel NUNCA por debajo de la resolucion;
         // y NUNCA L153 en 8K (freeze 2026-06-08).
-        if (/^hvc1|^hev1/i.test(String(r.codec || ''))) {
+        if (/^(dvh1|dvhe|hvc1|hev1)/i.test(String(r.codec || ''))) {
             const _f = Number(r.fps) || 30;
             const _req = (r.h >= 4320) ? ((_f >= 50) ? 183 : 180)
                 : (r.h >= 2160) ? ((_f >= 50) ? 153 : 150)
@@ -8499,7 +8499,7 @@ ${__apeContinuityTags().join('\n')}
         const cdc = String(s.codec || '').toLowerCase();
         if (cdc) {
             let depth = 0;
-            if (/^hvc1\.2|^hev1\.2/.test(cdc)) depth = 10;
+            if (/^(dvh1|dvhe|hvc1\.2|hev1\.2)/i.test(cdc)) depth = 10;   // dvh1/dvhe = Dolby Vision, siempre 10-bit
             else if (/^hvc1\.4|^hev1\.4/.test(cdc)) depth = 12;
             else if (/^hvc1\.1|^hev1\.1/.test(cdc)) depth = 8;
             else if (/^av01/.test(cdc)) depth = /\.10(\.|$)/.test(cdc) ? 10 : 8;
@@ -9296,7 +9296,7 @@ ${__apeContinuityTags().join('\n')}
             } catch (_qe) { /* fallback silente al legacy — no rompe generación */ }
         }
         const _qTransfer = _isPqHdr ? 'ST2084' : (_isHlgHdr ? 'arib-std-b67' : 'BT1886');
-        const _qCodecFamily = /^hvc1|^hev1/.test(_qCodec) ? 'hevc' : (/^av01/.test(_qCodec) ? 'av1' : 'h264');
+        const _qCodecFamily = /^(dvh1|dvhe|hvc1|hev1)/i.test(_qCodec) ? 'hevc' : (/^av01/i.test(_qCodec) ? 'av1' : 'h264');
         const _qMaxFall = Math.round((_hdrNits || 100) * 0.25);
         const _qCicp = _isAnyHdr ? `9/${_isPqHdr ? 16 : (_isHlgHdr ? 18 : 1)}/9` : '1/1/1';
 
@@ -11420,12 +11420,12 @@ ${__apeContinuityTags().join('\n')}
                         // del canal (leccion del incidente de 0 canales en t70).
                         let _evCodec = '';
                         try { _evCodec = String((channel && (channel.codecHint || channel.codec_hint)) || ''); } catch (_ee) { _evCodec = ''; }
-                        if (/^hvc1|^hev1/i.test(_evCodec)) {
+                        if (/^(dvh1|dvhe|hvc1|hev1)/i.test(_evCodec)) {
                             _codecSource = 'channel-evidence-hevc';
                         } else if (/^avc1|^avc3/i.test(_evCodec)) {
                             _codec796_csv = _avcSafe;   // AVC solo si el origen es AVC
                             _codecSource = 'channel-evidence-avc';
-                        } else if (/^hvc1|^hev1/i.test(String(_codec796_csv || ''))) {
+                        } else if (/^(dvh1|dvhe|hvc1|hev1|av01)/i.test(String(_codec796_csv || ''))) {
                             _codecSource = 'cascade-hevc';
                         } else {
                             _codec796_csv = _avcSafe;
@@ -11433,9 +11433,9 @@ ${__apeContinuityTags().join('\n')}
                         }
                         // NO se degrada a AVC. Solo se usa la escalera AVC cuando el
                         // codec en curso es AVC o no hay evidencia alguna.
-                        if (/^hvc1|^hev1/i.test(String(_codec796_csv || ''))) {
+                        if (/^(dvh1|dvhe|hvc1|hev1|av01)/i.test(String(_codec796_csv || ''))) {
                             _codecSource = 'channel-evidence-hevc';
-                        } else if (/^avc1|^avc3/i.test(String(_codec796_csv || ''))) {
+                        } else if (/^(av01|avc1|avc3)/i.test(String(_codec796_csv || ''))) {
                             _codecSource = 'channel-evidence-avc';
                         } else {
                             _codec796_csv = _avcSafe;
