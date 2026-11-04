@@ -160,6 +160,69 @@ time curl ... → tiempo total. Debe ser < 15 s (6 de captura + margen)
 
 ---
 
+---
+
+## El procesamiento completo del VPS — inventario de capas
+
+El canary es el productor, pero no es todo el VPS. Estas son las capas que el cartucho debe
+llevar juntas, y el estado medido de cada una:
+
+| # | Capa | Origen | Volumen | Estado |
+|---|---|---|---|---|
+| 1 | **Cartucho base** | `url2-cartridge.php` | 369 KB de plantilla | ✅ 200 en producción |
+| 2 | **Tags de paridad** | `APE_VPS_PARITY_TAGS` | 186 tags, 0 dinámicos | ✅ desplegado y verificado |
+| 3 | **Paquete de prioridades** | `APE_PRIORITY_PACKAGE` | 18 directivas | ✅ desplegado |
+| 4 | **Perfil por device** | `url2-cartridge.php` dinámico | P0/P3/P5 medidos | ✅ desplegado |
+| 5 | **CMAF enriquecido** | `#EXT-X-CMAF-*` en el cartucho | 24 directivas | 🟡 estático hoy |
+| 6 | **Datos medidos** | `status.json` del canary | 3 campos mínimo | ⏳ esta implementación |
+
+### Por qué el CMAF importa aquí
+
+El cartucho ya declara 24 directivas CMAF:
+
+```
+#EXT-X-CMAF-LATENCY  #EXT-X-CMAF-CHUNK-DURATION  #EXT-X-CMAF-PART-TARGET
+#EXT-X-CMAF-PART-HOLD-BACK  #EXT-X-CMAF-CONTAINER  #EXT-X-CMAF-INIT-SEGMENT
+#EXT-X-CMAF-CODEC-FALLBACK  #EXT-X-CMAF-AUDIO-FALLBACK  #EXT-X-CMAF-HDR
+#EXT-X-CMAF-HDR-METADATA  #EXT-X-CMAF-LCEVC  #EXT-X-CMAF-AI-SR
+#EXT-X-CMAF-AI-FI  #EXT-X-CMAF-VRR  (+10 más)
+```
+
+**Hoy son estáticas.** Con el canary midiendo, tres de ellas pueden derivarse del dato real:
+
+| Directiva | Hoy | Con medición |
+|---|---|---|
+| `#EXT-X-CMAF-CHUNK-DURATION` | valor fijo | `GOP / fps_medido` |
+| `#EXT-X-CMAF-HDR` | declarado | el `video_range` que devolvió el canary |
+| `#EXT-X-CMAF-CODEC-FALLBACK` | cadena fija | derivado del códec que el canary detectó |
+
+**No se derivan más porque no hay más dato medido.** Derivar una directiva de una suposición
+es exactamente lo que la Regla Canónica prohíbe.
+
+### Por qué `manifest-4k.php` no entra en este plan
+
+`manifest-4k.php` (2.783 B) sirve un master 4K desde el SSOT `/etc/ape-uhdx/ape_4k_manifest.json`.
+**No consume el canary y no tiene perfiles P0-P5**: es un endpoint de un solo manifiesto.
+
+**Decisión:** no se toca en esta implementación. Mezclarlo con el resolve por device añadiría
+dos caminos que declaran 4K con criterios distintos, y el jugador no sabría cuál gana.
+
+### Orden de composición del cartucho final
+
+```
+1. plantilla por perfil        (url2-cartridge.php, P0-P5)
+2. + tags de paridad           (186, del resolver PHP)
+3. + paquete de prioridades    (18, del panel)
+4. + overrides por device      (caché, perfil, codec)
+5. + overrides por medición    (CMAF chunk, HDR real, fallback real)   ← cuando el canary midió
+6. + idempotencia              (SEED = hash(u + device))
+7. → manifiesto
+```
+
+**Cada capa es aditiva y verificable por separado.** Si la capa 5 no tiene medición, se omite
+y el manifiesto lo declara con `#EXT-X-APE-CANARY-VERIFIED:NO`, no se rellena con un valor inventado.
+
+
 ## Fase 5 · Integración con el cartucho completo
 
 **Objetivo:** que el cartucho lleve **lo medido + todo el procesamiento del VPS**.
