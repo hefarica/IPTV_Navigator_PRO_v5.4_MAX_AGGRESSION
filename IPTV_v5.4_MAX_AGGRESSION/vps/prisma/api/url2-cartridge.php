@@ -5712,6 +5712,45 @@ echo '#EXT-X-APE-URL2-DEVICE:SOURCE=' . $device['source']
    . ';FPS=' . (int)$device['fps']
    . ';HDR=' . ($device['hdr'] !== '' ? $device['hdr'] : 'none')
    . ";SEED=" . $seed . "\n";
+// ══════════════════════════════════════════════════════════════════════════════════════════════
+// PARÁMETROS DE MEJORA DE IMAGEN — añadidos 2026-11-04
+//
+// MANDATO: la calidad base YA ESTÁ ESTABLECIDA y NO SE TOCA. Este bloque sólo AÑADE realce.
+// Nada de degradar: no cambia RESOLUTION, ni CODECS, ni BANDWIDTH, ni VIDEO-RANGE.
+// Sólo agrega las directivas que mejoran la imagen que el decoder ya va a producir.
+//
+// POR QUÉ AQUÍ Y NO EN LA PLANTILLA: el generador del navegador ya emite estos seis
+// parámetros y el cartucho del VPS no los tenía. Se añaden al render para que el VPS
+// entregue el mismo realce que la lista, sin reescribir 369 KB de plantilla.
+//
+// CINCO NIVELES, NINGUNO APAGA: el nivel más bajo sigue mejorando (upscale mínimo 2x,
+// denoise HQDN3D, sharpen STANDARD, interpolación RIFE). La LEY CRYSTAL exige mejorar
+// siempre; apagar el realce es degradar.
+//
+// QUIÉN LO APLICA (honesto): #EXT-X-APE-* lo lee el daemon on-device o el player
+// consciente. OTT/TiviMate/ExoPlayer lo ignoran (RFC 8216 §4.2: tags desconocidos se
+// descartan). El realce real lo ejecuta el SoC del device, no el VPS.
+// ══════════════════════════════════════════════════════════════════════════════════════════════
+$APE_MEJORA_REALCE = [
+    // etiqueta => 5 niveles del mejor caso al mínimo SIEMPRE ACTIVO
+    'X-APE-AI-SR-ENABLED'         => ['TRUE', 'TRUE', 'ADAPTIVE', 'ADAPTIVE', 'ADAPTIVE'],
+    'X-APE-AI-SR-SCALE'           => ['4', '4', '2', '2', '2'],
+    'X-APE-AI-DENOISING'          => ['NLMEANS_HQDN3D_TEMPORAL', 'NLMEANS_HQDN3D_TEMPORAL', 'NLMEANS', 'NLMEANS', 'HQDN3D'],
+    'X-APE-AI-SHARPENING'         => ['UNSHARP_MASK_ADAPTIVE', 'UNSHARP_MASK_ADAPTIVE', 'UNSHARP_MASK', 'UNSHARP_MASK', 'STANDARD'],
+    'X-APE-AI-FRAME-INTERPOLATION'=> ['OPTICAL_FLOW_SVFI', 'OPTICAL_FLOW_SVFI', 'RIFE', 'RIFE', 'RIFE'],
+    'X-APE-AI-HDR-UPCONVERT'      => ['AUTO', 'AUTO', 'ENABLED', 'ENABLED', 'TONEMAP'],
+    'X-APE-NR-MODE'               => ['NLMEANS_HQDN3D_TEMPORAL', 'NLMEANS', 'NLMEANS', 'HQDN3D', 'HQDN3D'],
+    'X-APE-SUPER-RES-MODEL'       => ['REALESRGAN_X4PLUS', 'REALESRGAN_X4PLUS', 'REALESRGAN_X4PLUS', 'ESRGAN', 'ESRGAN'],
+];
+
+// Nivel derivado de lo OBSERVADO, no de una tabla fija.
+// Si el device reportó una pantalla chica o poca RAM, se usa el nivel mínimo — que sigue
+// mejorando. Nunca se apaga: eso sería degradar, y está prohibido.
+$apeNivelRealce = 0;
+if ((int)$device['max_h'] > 0 && (int)$device['max_h'] <= 1080) { $apeNivelRealce = 3; }
+else if ((int)$device['ram_mb'] > 0 && (int)$device['ram_mb'] <= 2048) { $apeNivelRealce = 2; }
+
+
 foreach ($lines as $line) {
     if (!$withExtinf && strncmp($line, '#EXTINF:', 8) === 0) { continue; }
     $out = strtr($line, $map);
@@ -5720,4 +5759,12 @@ foreach ($lines as $line) {
     if ($out === '') { continue; }
     echo $out . "\n";
 }
+// ── EMISIÓN DEL REALCE (después del cartucho, antes de la URL verbatim) ──────────────────────
+// Se emite SIEMPRE: el nivel mínimo sigue mejorando. No hay rama que lo apague.
+foreach ($APE_MEJORA_REALCE as $apeTag => $apeNiveles) {
+    $apeVal = $apeNiveles[min($apeNivelRealce, count($apeNiveles) - 1)];
+    echo '#' . $apeTag . ':' . $apeVal . "\n";
+}
+echo '#EXT-X-APE-CRYSTAL-ENHANCEMENT:ENFORCED;NIVEL=' . $apeNivelRealce . ";DEGRADE=FORBIDDEN\n";
+
 echo $u . "\n";
