@@ -7835,6 +7835,43 @@ ${__apeContinuityTags().join('\n')}
     }
 
     // El Orquestador Raíz (Adapter al Math Parser)
+    // [URL-GUARD-RESILIENCE] Normaliza un servidor de la app (activos/biblioteca) a
+    // credenciales utilizables. Garantiza ESQUEMA en baseUrl: `composeUrl()` compone
+    // scheme+host+port y una base sin `http(s)://` producía una URI no absoluta que
+    // el guard descartaba en silencio ("URI no absoluta descartada").
+    function __apeCredsFromServer(srv) {
+        if (!srv || typeof srv !== 'object') return null;
+        let base = String(srv.baseUrl || srv.url || srv.server_url || srv.host || '')
+            .replace(/\/player_api\.php.*$/, '').replace(/\/$/, '');
+        if (!base) return null;
+        if (!/^https?:\/\//i.test(base)) base = 'http://' + base;
+        const username = sanitizeCredential(srv._lockedUsername || srv.username || srv.user || '');
+        const password = sanitizeCredential(srv._lockedPassword || srv.password || srv.pass || '');
+        if (!username || !password) return null;
+        return { baseUrl: base, username, password };
+    }
+
+    // [URL-GUARD-RESILIENCE] Entradas de credenciales realmente utilizables, sin
+    // duplicados (id / name: / host: apuntan al MISMO servidor) y sin `__current__`.
+    // Sirve para el último recurso: si solo hay UN servidor posible, no hay
+    // ambigüedad y se puede reconstruir la URI de un canal Xtream que no trae host.
+    function __apeUniqueCredentialEntries(credentialsMap) {
+        const seen = new Set();
+        const out = [];
+        const map = credentialsMap || {};
+        for (const key of Object.keys(map)) {
+            if (key === '__current__') continue;
+            const entry = map[key];
+            if (!entry || typeof entry !== 'object') continue;
+            if (!_notEmpty(entry.baseUrl) || !_notEmpty(entry.username) || !_notEmpty(entry.password)) continue;
+            const sig = String(entry.baseUrl) + '|' + String(entry.username) + '|' + String(entry.password);
+            if (seen.has(sig)) continue;
+            seen.add(sig);
+            out.push(entry);
+        }
+        return out;
+    }
+
     function buildChannelUrl(channel, jwt, profile = null, index = 0, credentialsMap = {}) {
         // [t61] MODO DIRECTO (sin VPS): URL del PROVEEDOR verbatim, sin reconstruir
         // ni envolver. Default false ⇒ el modo VPS no cambia. Reversible.
@@ -7861,7 +7898,7 @@ ${__apeContinuityTags().join('\n')}
         let creds = null;
         if (sid && credentialsMap[sid]) creds = credentialsMap[sid];
         if (!creds) {
-            const rawHost = String(channel.raw?.server_url || channel.server_url || channel.url || '').replace(/^https?:\/\//, '').replace(/\/.*$/, '').replace(/:\d+$/, '').toLowerCase();
+            const rawHost = String(channel.raw?.server_url || channel.server_url || (channel.base && channel.base.url) || channel.url || '').replace(/^https?:\/\//, '').replace(/\/.*$/, '').replace(/:\d+$/, '').toLowerCase();
             if (rawHost && credentialsMap[`host:${rawHost}`]) creds = credentialsMap[`host:${rawHost}`];
             // Fuente host-only: emparejar el host con el servidor activo de la app.
             if (!creds && rawHost) {
@@ -7871,29 +7908,38 @@ ${__apeContinuityTags().join('\n')}
                         const h = String(s.baseUrl || s.url || '').replace(/^https?:\/\//, '').replace(/\/.*$/, '').split(':')[0].toLowerCase();
                         return h && (h === rawHost || h.includes(rawHost) || rawHost.includes(h));
                     });
-                    if (srv) {
-                        creds = {
-                            baseUrl: String(srv.baseUrl || srv.url || '').replace(/\/player_api\.php.*$/, '').replace(/\/$/, ''),
-                            username: sanitizeCredential(srv._lockedUsername || srv.username || srv.user || ''),
-                            password: sanitizeCredential(srv._lockedPassword || srv.password || srv.pass || '')
-                        };
-                    }
+                    if (srv) creds = __apeCredsFromServer(srv);
                 } catch (_e) { /* noop */ }
             }
+        }
+        // [URL-GUARD-RESILIENCE] Cascada por NOMBRE de servidor. El `serverId`
+        // persistido en IndexedDB puede quedar desalineado con la biblioteca viva
+        // (reconexión, recarga, servidor re-agregado con otro id) y un canal Xtream
+        // no trae host (url y direct_source vacíos en el 100% medido). Sin esta
+        // cascada esos canales quedan sin URI y el preflight aborta la lista entera.
+        if (!creds) {
+            const sname = String(channel.serverName || channel.server_name || '').trim().toLowerCase();
+            if (sname && credentialsMap['name:' + sname]) creds = credentialsMap['name:' + sname];
         }
         if (!creds && sid) {
             try {
                 const servers = window.app?.state?.activeServers;
                 if (servers && servers.length > 0) {
-                    const srv = servers.find(s => s.id === sid);
-                    if (srv) {
-                        const base = (srv.baseUrl || srv.url || '').replace(/\/player_api\.php.*$/, '').replace(/\/$/, '');
-                        const user = sanitizeCredential(srv._lockedUsername || srv.username || srv.user || '');
-                        const pass = sanitizeCredential(srv._lockedPassword || srv.password || srv.pass || '');
-                        if (base && user && pass) creds = { baseUrl: base, username: user, password: pass };
-                    }
+                    const srv = servers.find(s => s.id === sid)
+                        || servers.find(s => {
+                            const n = String(channel.serverName || '').trim().toLowerCase();
+                            return n && String(s.name || '').trim().toLowerCase() === n;
+                        });
+                    if (srv) creds = __apeCredsFromServer(srv);
                 }
             } catch (e) { }
+        }
+        // [URL-GUARD-RESILIENCE] Último recurso SIN ambigüedad: si la biblioteca
+        // resuelve a UN solo servidor utilizable, es ese. Con dos o más NO se
+        // adivina: firmar la URI con el proveedor equivocado da 401 y es peor.
+        if (!creds) {
+            const uniq = __apeUniqueCredentialEntries(credentialsMap);
+            if (uniq.length === 1) creds = uniq[0];
         }
         if (!creds) creds = credentialsMap['__current__'];
 
@@ -11634,13 +11680,29 @@ lines.push(`#EXT-X-APE-STREAM-TRUTH:src=${_streamTruth.source},w=${_streamTruth.
     }
 
     if (typeof window !== 'undefined') window.APE_GEN = generateM3U8Stream; // [t53/t72] export headless (hoisting)
+
+    // [URL-GUARD-DIAG] Resolvedores expuestos para prueba y diagnóstico en consola.
+    // Permiten verificar, con los módulos REALES cargados, qué URL resuelve cada
+    // canal sin tener que generar una lista de 600 MB. Solo lectura.
+    if (typeof window !== 'undefined') {
+        window.APE_URL_RESOLVE = {
+            playable: __apePlayableChannelUrl,
+            build: buildChannelUrl,
+            creds: buildCredentialsMap,
+            isPlayable: isPlayableStreamUrl
+        };
+    }
     function generateM3U8Stream(channels, options = {}) {
         // PREFLIGHT: DIRECTO y VPS deben tener URI completa antes de abrir el stream.
         // No se permite generar una lista que luego el decoder no pueda abrir.
+        // [URL-GUARD-DIAG] Si falla, el mensaje dice la CAUSA y el REMEDIO, no solo
+        // "N canales sin URI": un aborto masivo sin causa obliga a adivinar.
         if (window.APE_STRICT_URI !== false) {
             const bad = [];
+            const badInfo = [];
+            const _total = (channels || []).length;
             const _preCreds = (typeof buildCredentialsMap === 'function') ? buildCredentialsMap(options) : {};
-            for (let _i = 0; _i < (channels || []).length; _i++) {
+            for (let _i = 0; _i < _total; _i++) {
                 const _c = channels[_i] || {};
                 const _u = __apePlayableChannelUrl(_c);
                 let _repaired = '';
@@ -11650,11 +11712,42 @@ lines.push(`#EXT-X-APE-STREAM-TRUTH:src=${_streamTruth.source},w=${_streamTruth.
                 }
                 if (!isPlayableStreamUrl(_u) && !isPlayableStreamUrl(_repaired)) {
                     bad.push(_c.name || _c.id || ('#' + _i));
+                    if (badInfo.length < 5) {
+                        badInfo.push({
+                            name: _c.name || ('#' + _i),
+                            stream_id: (_c.stream_id != null ? _c.stream_id : (_c.raw && _c.raw.stream_id)) || '',
+                            serverId: _c.serverId || _c.server_id || '',
+                            hasBase: !!(_c.base && (_c.base.url || _c.base.stream_url)),
+                            hasUrl: !!(_c.url || _c.stream_url || _c.direct_source)
+                        });
+                    }
                 }
             }
             if (bad.length) {
-                const msg = `[URL-GUARD] ${bad.length} canal(es) sin URI completa; NO se genera la lista. Ejemplos: ${bad.slice(0, 5).join(' | ')}`;
-                console.error(msg);
+                let _uniqCreds = 0;
+                try { _uniqCreds = __apeUniqueCredentialEntries(_preCreds).length; } catch (_e) { _uniqCreds = 0; }
+                const _c0 = badInfo[0] || {};
+                const _hasStreamId = !!_c0.stream_id;
+                const _hasUrlField = !!(_c0.hasUrl || _c0.hasBase);
+                let _causa, _remedio;
+                if (_uniqCreds === 0) {
+                    _causa = 'no hay credenciales de servidor utilizables (activeServers/currentServer/biblioteca vacíos)';
+                    _remedio = 'reconecta el servidor para que la app cargue base+usuario+password; sin ellas un canal Xtream no tiene URI';
+                } else if (!_hasStreamId) {
+                    _causa = 'los canales no traen stream_id ni URI propia';
+                    _remedio = 'recarga el catálogo del servidor (get_live_streams) para recuperar stream_id';
+                } else {
+                    _causa = `ningún servidor de los ${_uniqCreds} disponibles empareja con estos canales (serverId/host sin coincidencia)`;
+                    _remedio = 'reconecta el servidor para realinear serverId con la biblioteca';
+                }
+                const _detalle = badInfo.map(b =>
+                    `${b.name} [stream_id=${b.stream_id || '-'} serverId=${b.serverId || '-'} url=${b.hasUrl ? 'sí' : 'no'}]`
+                ).join(' | ');
+                const msg = `[URL-GUARD] ${bad.length}/${_total} canal(es) sin URI reproducible; NO se genera la lista. ` +
+                    `CAUSA: ${_causa}. REMEDIO: ${_remedio}. ` +
+                    `Credenciales utilizables: ${_uniqCreds}. Ejemplos: ${_detalle}. ` +
+                    `Para generar a sabiendas (no recomendado): window.APE_STRICT_URI=false`;
+                console.error('[URL-GUARD] unrepairable=%d/%d causa=%s', bad.length, _total, _causa);
                 throw new Error(msg);
             }
         }

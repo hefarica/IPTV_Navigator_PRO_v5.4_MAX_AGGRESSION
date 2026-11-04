@@ -114,7 +114,28 @@
          */
         translate(channel) {
             const name = channel.name || channel.Name || channel.tvg_name || 'Sin Nombre';
-            const url  = channel.url || channel.URL || channel.stream_url || '';
+            // [URL-CONTRACT] El canal normalizado por la app guarda la URI en
+            // `base.url` (app.js normalizeChannel L7120) mientras el nivel superior
+            // puede quedar vacío. Si el traductor descarta `base`, el preflight
+            // [URL-GUARD] del generador ve el canal "sin URI" y aborta la lista
+            // completa (10.573 canales). Se acepta cualquier campo de URL real y se
+            // conserva `base` hacia el generador.
+            const _urlFields = [
+                channel.url, channel.URL, channel.stream_url, channel.streamUrl,
+                channel.direct_source, channel.source_url, channel.playback_url,
+                channel._provider_url, channel._direct_url, channel.uri,
+                channel.base && channel.base.url,
+                channel.base && channel.base.stream_url,
+                channel.raw && channel.raw.url,
+                channel.raw && channel.raw.stream_url
+            ];
+            let url = '';
+            for (const cand of _urlFields) {
+                const s = String(cand == null ? '' : cand).trim();
+                if (!s) continue;
+                if (/^https?:\/\//i.test(s)) { url = s; break; }
+                if (!url) url = s;
+            }
             const group = channel.group || channel.groupTitle || channel['group-title']
                         || channel.category_name || channel.Group || 'General';
 
@@ -158,6 +179,7 @@
 
                 // ✅ v9.2 FIX: MULTI-SERVER PASSTHROUGH — preserve fields for credential resolution
                 serverId: channel.serverId,
+                serverName: channel.serverName,
                 server_id: channel.server_id,
                 _source: channel._source,
                 id: channel.id,
@@ -166,6 +188,12 @@
                 server_port: channel.server_port,
                 direct_source: channel.direct_source,
                 stream_url: channel.stream_url,
+
+                // [URL-CONTRACT] Capas donde la app persiste la URI real. Se pasan
+                // tal cual para que __apePlayableChannelUrl()/buildChannelUrl()
+                // resuelvan después del gate.
+                base: channel.base,
+                _apeCanonical: channel._apeCanonical,
 
                 // Classification passthrough
                 _classification: channel._classification || null,
