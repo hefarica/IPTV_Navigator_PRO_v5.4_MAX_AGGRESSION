@@ -5794,9 +5794,66 @@ $APE_REALCE_IMG = [
 // Nivel derivado de lo OBSERVADO, no de una tabla fija.
 // Si el device reportó una pantalla chica o poca RAM, se usa el nivel mínimo — que sigue
 // mejorando. Nunca se apaga: eso sería degradar, y está prohibido.
+// ── OBSERVACIÓN EN TIEMPO REAL ────────────────────────────────────────────────────────────────
+//
+// Tres fuentes, en orden de frescura. La primera que traiga un valor manda:
+//
+//   1. ?obs=<bps>  — el daemon/player reporta lo que ACABA de medir. Latencia: 0.
+//                    Es la vía más rápida y la única verdaderamente por-zapping.
+//   2. ?ape_ch=    — se busca en el último flush del VPS (qoe-flush lo publica cada 60 s).
+//                    Latencia: hasta 60 s. Es la observación del servidor, más lenta pero
+//                    sin depender de que el device colabore.
+//   3. device      — max_h y ram_mb reportados por el cliente. Latencia: la del request.
+//
+// NO se lee ngx.shared.qoe_metrics directamente: es memoria de nginx, PHP no la alcanza.
+// Fingir que se lee sería mentir. El observer escribe ahí con claves 'bps:<canal>', y sólo
+// el flush_worker (Lua, cada 60 s) la saca a PHP.
+//
+$apeObsBps = 0; $apeObsFuente = 'device';
+if (isset($_GET['obs']) && is_numeric($_GET['obs'])) {
+    $o = (float)$_GET['obs'];
+    if ($o > 0 && $o < 500000000) { $apeObsBps = $o; $apeObsFuente = 'player-observed'; }
+}
+if ($apeObsBps <= 0) {
+    // Último flush del VPS, si el endpoint lo dejó en disco.
+    foreach (['/var/cache/ara/qoe-last-flush.json', '/dev/shm/ape_qoe_last.json'] as $apeF) {
+        if (!is_file($apeF)) { continue; }
+        $apeJ = json_decode((string)@file_get_contents($apeF), true);
+        if (!is_array($apeJ)) { continue; }
+        $apeCh = isset($_GET['ape_ch']) ? (string)$_GET['ape_ch'] : '';
+        if ($apeCh !== '' && isset($apeJ['channels'][$apeCh]['bps'])) {
+            $apeObsBps = (float)$apeJ['channels'][$apeCh]['bps'];
+            $apeObsFuente = 'vps-flush';
+            break;
+        }
+        if (isset($apeJ['bps']) && is_numeric($apeJ['bps'])) {
+            $apeObsBps = (float)$apeJ['bps'];
+            $apeObsFuente = 'vps-flush';
+            break;
+        }
+    }
+}
+
+// Nivel de realce derivado de la observación cuando la hay; del device cuando no.
+// NUNCA se sube por encima de lo que el device puede sostener, y NUNCA se apaga.
 $apeNivelRealce = 0;
-if ((int)$device['max_h'] > 0 && (int)$device['max_h'] <= 1080) { $apeNivelRealce = 3; }
-else if ((int)$device['ram_mb'] > 0 && (int)$device['ram_mb'] <= 2048) { $apeNivelRealce = 2; }
+if ($apeObsBps > 0) {
+    // Con bitrate observado: más bitrate = fuente mejor = realce más suave pero más fino.
+    // Menos bitrate = fuente más comprimida = realce más agresivo para recuperar detalle.
+    if ($apeObsBps < 3000000)       { $apeNivelRealce = 4; }
+    else if ($apeObsBps < 8000000)  { $apeNivelRealce = 3; }
+    else if ($apeObsBps < 20000000) { $apeNivelRealce = 2; }
+    else if ($apeObsBps < 45000000) { $apeNivelRealce = 1; }
+    else                            { $apeNivelRealce = 0; }
+}
+
+$apeNivelRealce = 0;
+// El device sólo impone su techo si NO hubo observación. Si la hubo, manda la observación:
+// es lo que la red acaba de entregar de verdad, no lo que el panel declara.
+if ($apeObsBps <= 0) {
+    if ((int)$device['max_h'] > 0 && (int)$device['max_h'] <= 1080) { $apeNivelRealce = 3; }
+    else if ((int)$device['ram_mb'] > 0 && (int)$device['ram_mb'] <= 2048) { $apeNivelRealce = 2; }
+}
 
 
 foreach ($lines as $line) {
@@ -5819,5 +5876,6 @@ foreach ($APE_REALCE_IMG as $apeTag2 => $apeVal2) {
 }
 
 echo '#EXT-X-APE-CRYSTAL-ENHANCEMENT:ENFORCED;NIVEL=' . $apeNivelRealce . ";DEGRADE=FORBIDDEN\n";
+echo '#EXT-X-APE-REALCE-SOURCE:' . $apeObsFuente . ';OBS_BPS=' . (int)$apeObsBps . ";NIVEL=" . $apeNivelRealce . "\n";
 
 echo $u . "\n";
