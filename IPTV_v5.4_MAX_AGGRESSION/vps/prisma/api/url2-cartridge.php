@@ -5743,6 +5743,54 @@ $APE_MEJORA_REALCE = [
     'EXT-X-APE-SUPER-RES-MODEL'       => ['REALESRGAN_X4PLUS', 'REALESRGAN_X4PLUS', 'REALESRGAN_X4PLUS', 'ESRGAN', 'ESRGAN'],
 ];
 
+// ── FAMILIAS DE IMAGEN ADICIONALES (extraídas del generador, 2026-11-04) ─────────────────────
+//
+// El generador declara 236 tags de calidad de imagen; el cartucho tenía 83. Se añaden las
+// familias que tienen valor CONCRETO y son derivables sin inventar: anti-ruido, HDR, LCEVC,
+// upscaling y CORTEX. Las que dependen de variables JS internas del generador NO se copian.
+//
+// VALORES DERIVADOS DE LA ALTURA Y DEL PEAK NITS — igual que hace el generador:
+//   a 2160p el nlmeans usa h=3 (menos agresivo, la fuente es buena)
+//   a 1080p el nlmeans usa h=6 (más agresivo, la fuente tiene más ruido relativo)
+// Eso NO es degradar: es aplicar la dosis correcta a cada resolución.
+//
+$apeAltura = (int)$device['max_h'] > 0 ? (int)$device['max_h'] : 2160;
+$apePeak   = 8000;   // nits objetivo del perfil; el device puede sobreescribir con ?nits=
+if (isset($_GET['nits']) && is_numeric($_GET['nits'])) {
+    $p2 = (int)$_GET['nits'];
+    if ($p2 >= 400 && $p2 <= 12000) { $apePeak = $p2; }
+}
+
+$APE_REALCE_IMG = [
+    // anti-ruido: dosis por resolución (2160p suave, 1080p firme)
+    'EXT-X-APE-ANTI-NOISE-ENGINE'      => 'v1.0-bilateral+nlmeans',
+    'EXT-X-APE-ANTI-NOISE-RESOLUTION'  => $apeAltura . 'p',
+    'EXT-X-APE-ANTI-NOISE-FILTERS'     => '14',
+    'EXT-X-APE-ANTI-NOISE-FILTER-CHAIN'=> $apeAltura >= 2160
+        ? 'hqdn3d,afftdn,nlmeans,unsharp'
+        : 'hqdn3d,afftdn,nlmeans,unsharp,deblock',
+    'EXT-X-APE-ANTI-NOISE-NLMEANS'     => 'h=' . ($apeAltura >= 2160 ? '3' : '6') . '|s=3.0|p=7|r=15',
+    'EXT-X-APE-ANTI-NOISE-HQDN3D'      => 'luma-spatial=' . ($apeAltura >= 2160 ? '2' : '4') . '|chroma=3|temporal=6',
+    'EXT-X-APE-ANTI-NOISE-AFFTDN'      => 'nf=-25|tn=1|rf=-50',
+    'EXT-X-APE-ANTI-NOISE-PRESERVE'    => 'EDGES=true|DETAIL=true|GRAIN=cinematic',
+    // HDR: derivado del peak nits, sin declarar un rango que la fuente no tenga
+    'EXT-X-APE-HDR-PEAK-NIT-ENGINE'    => 'v1.0-' . $apePeak . 'cd',
+    'EXT-X-APE-HDR-MASTERING-DISPLAY'  => 'P3-D65|PEAK=' . $apePeak . '|MIN=0.0001|MaxCLL=' . $apePeak . '|MaxFALL=' . (int)round($apePeak * 0.5),
+    'EXT-X-APE-HDR-PQ-EOTF'            => 'ST2084|TARGET=' . $apePeak . '|CODE=3765|DEPTH=10bit',
+    'EXT-X-APE-HDR-DISPLAY'            => 'PEAK=' . $apePeak . '|LOCAL-DIMMING=AGGRESSIVE-FULL-ARRAY',
+    'EXT-X-APE-HDR-GPU-TONEMAP'        => 'libplacebo+vulkan|BT2446a|BT2390|DESAT=0|PEAK=' . $apePeak,
+    'EXT-X-APE-HDR-FILM-GRAIN'         => 'NEURAL-MPEG|TYPE=analog-cinematic|ADDBACK=post-tonemap',
+    // LCEVC: fase 4 con algoritmo coherente al nivel de realce
+    'EXT-X-APE-LCEVC-STANDARD'         => 'MPEG-5-PART-2',
+    'EXT-X-APE-LCEVC-PLAYER-REQUIRED'  => '0',
+    'EXT-X-APE-LCEVC-ENHANCEMENT'      => 'mpeg5-part2',
+    // CORTEX: los cuatro motores de reconstrucción
+    'EXT-X-APE-CORTEX-AI-SUPER-RESOLUTION'     => 'ENABLED|ENGINE=ESRGAN-LITE|FALLBACK=LANCZOS',
+    'EXT-X-APE-CORTEX-AI-SPATIAL-DENOISE'      => 'ENABLED|ENGINE=CAR-CNN|STRENGTH=adaptive',
+    'EXT-X-APE-CORTEX-LCEVC'                   => 'PHASE=4,ENABLED=true,ENHANCEMENT=ULTRA,SHARPNESS=1.0',
+    'EXT-X-APE-CORTEX-TEMPORAL-ARTIFACT-REPAIR'=> 'ENABLED|ENGINE=RIFE|MODE=detect-repair',
+];
+
 // Nivel derivado de lo OBSERVADO, no de una tabla fija.
 // Si el device reportó una pantalla chica o poca RAM, se usa el nivel mínimo — que sigue
 // mejorando. Nunca se apaga: eso sería degradar, y está prohibido.
@@ -5765,6 +5813,11 @@ foreach ($APE_MEJORA_REALCE as $apeTag => $apeNiveles) {
     $apeVal = $apeNiveles[min($apeNivelRealce, count($apeNiveles) - 1)];
     echo '#' . $apeTag . ':' . $apeVal . "\n";
 }
+// Familias adicionales de imagen: valores derivados de altura y peak nits.
+foreach ($APE_REALCE_IMG as $apeTag2 => $apeVal2) {
+    echo '#' . $apeTag2 . ':' . $apeVal2 . "\n";
+}
+
 echo '#EXT-X-APE-CRYSTAL-ENHANCEMENT:ENFORCED;NIVEL=' . $apeNivelRealce . ";DEGRADE=FORBIDDEN\n";
 
 echo $u . "\n";
