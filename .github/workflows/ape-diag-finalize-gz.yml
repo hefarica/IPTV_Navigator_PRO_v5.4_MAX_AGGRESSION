@@ -37,23 +37,26 @@ jobs:
           printf 'Host *\n  StrictHostKeyChecking yes\n  UserKnownHostsFile ~/.ssh/known_hosts\n  IdentitiesOnly yes\n' > ~/.ssh/config
           echo "TARGET=${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" >> "$GITHUB_ENV"
 
-      - name: "I - invariante por maquina de estados contra produccion"
+      - name: "R - se puede reproducir la URL hoy? end to end real"
         run: |
           set -uo pipefail
-          scp -q tools/ops/check_lists_invariant.sh "$TARGET:/tmp/cli.sh"
-          ssh "$TARGET" "cd /tmp && sed -i 's/\r$//' cli.sh && sh cli.sh /var/www/html/lists" || echo "INVARIANTE_EXIT=$?"
-          echo
-          echo '=== el .gz esta mas viejo que el m3u8? (decide si gzip_static lo ignora) ==='
-          ssh "$TARGET" "m=\$(stat -c %Y /var/www/html/lists/APE_LISTA_1793589060441.m3u8); g=\$(stat -c %Y /var/www/html/lists/APE_LISTA_1793589060441.m3u8.gz); echo \"m3u8=\$m gz=\$g\"; [ \$g -ge \$m ] && echo 'gz>=m3u8: nginx SIRVE el .gz' || echo 'gz<m3u8: nginx IGNORA el .gz'"
-          echo
-          echo '=== extremo a extremo por HTTPS (el http redirige 302) ==='
           H='-H Host:iptv-ape.duckdns.org'
-          a=$(ssh "$TARGET" "curl -sSk $H --compressed https://127.0.0.1/lists/APE_LISTA_1793589060441.m3u8 | wc -c")
-          b=$(ssh "$TARGET" "curl -sSk $H https://127.0.0.1/lists/APE_LISTA_1793589060441.m3u8 | wc -c")
-          echo "  con --compressed : $a  (esperado 604593696)"
-          echo "  sin compresion   : $b"
+          U=https://127.0.0.1/lists/APE_LISTA_1793589060441.m3u8
+          echo '=== A · como lo ve un player CON gzip (lo que hacen VLC/Exo/TiviMate) ==='
+          ssh "$TARGET" "curl -sSk $H --compressed $U | head -3" || true
           echo
-          echo '=== cabeceras por HTTPS ==='
-          ssh "$TARGET" "curl -sSkI $H -H 'Accept-Encoding: gzip' https://127.0.0.1/lists/APE_LISTA_1793589060441.m3u8 | grep -iE '^(HTTP|vary|content-length|content-encoding)'" || true
-          echo '--- sin gzip ---'
-          ssh "$TARGET" "curl -sSkI $H https://127.0.0.1/lists/APE_LISTA_1793589060441.m3u8 | grep -iE '^(HTTP|vary|content-length|content-encoding)'" || true
+          echo '=== B · cuantas lineas y cuantos canales entrega ==="
+          n=$(ssh "$TARGET" "curl -sSk $H --compressed $U | wc -l")
+          c=$(ssh "$TARGET" "curl -sSk $H --compressed $U | grep -c '^#EXTINF'")
+          echo "  lineas=$n  #EXTINF=$c"
+          echo
+          echo '=== C · la primera URL de canal (para probar reproduccion) ==='
+          ssh "$TARGET" "curl -sSk $H --compressed $U | grep -m1 '^http' | cut -c1-160" || true
+          echo
+          echo '=== D · Range/206 sobre la URL con gzip (rompe o no?) ==='
+          ssh "$TARGET" "curl -sSk $H -H 'Accept-Encoding: gzip' -r 0-1023 -o /dev/null -D - $U 2>&1 | grep -iE '^(HTTP|content-range|content-length|content-encoding)'" || true
+          echo '--- y sin gzip ---'
+          ssh "$TARGET" "curl -sSk $H -r 0-1023 -o /dev/null -D - $U 2>&1 | grep -iE '^(HTTP|content-range|content-length|content-encoding)'" || true
+          echo
+          echo '=== E · las 4 listas y su tamanio servido (con gzip) ==='
+          ssh "$TARGET" "for f in /var/www/html/lists/*.m3u8; do b=\$(basename \$f); s=\$(stat -c %s \$f); g=0; [ -e \$f.gz ] && g=\$(stat -c %s \$f.gz); echo \"\$b m3u8=\$s gz=\$g\"; done" || true
