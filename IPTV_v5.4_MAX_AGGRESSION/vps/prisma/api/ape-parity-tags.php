@@ -122,6 +122,37 @@ foreach (preg_split("/\r\n|\n|\r/", $raw) as $line) {
     }
 }
 
+// ── MODO DIAGNOSTICO (?diag=1) ────────────────────────────────────────────────
+// Devuelve TODOS los resolve_quality_unified.php encontrados con su tamano y cuantos
+// tags $d[] expone cada uno. Sirve para saber cual es el correcto cuando hay varias copias.
+if (isset($_GET['diag'])) {
+    $out = [];
+    foreach (['/var/www/html', '/var/www', '/opt'] as $raiz) {
+        if (!is_dir($raiz)) { continue; }
+        try {
+            $it = new RecursiveIteratorIterator(
+                new RecursiveDirectoryIterator($raiz, FilesystemIterator::SKIP_DOTS),
+                RecursiveIteratorIterator::SELF_FIRST
+            );
+            $it->setMaxDepth(5);
+            foreach ($it as $f) {
+                if (!$f->isFile() || $f->getFilename() !== 'resolve_quality_unified.php') { continue; }
+                $c = @file_get_contents($f->getPathname());
+                $cnt = $c === false ? -1 : preg_match_all('/\$d\[\]\s*=\s*[\'\\"]#EXT-X-APE-/ ', $c);
+                $out[] = [
+                    'path' => $f->getPathname(),
+                    'bytes' => $f->getSize(),
+                    'ape_lines' => $c === false ? -1 : substr_count($c, '#EXT-X-APE-'),
+                    'readable' => $f->isReadable(),
+                ];
+            }
+        } catch (Throwable $e) { continue; }
+    }
+    header('Content-Type: application/json; charset=utf-8');
+    echo json_encode(['ok' => true, 'diag' => true, 'dir' => __DIR__, 'files' => $out], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+    exit;
+}
+
 if ($total === 0) {
     fail('no_tags_found', 'El resolver no expuso ninguna linea $d[] = \'#EXT-X-APE-...\'');
 }
