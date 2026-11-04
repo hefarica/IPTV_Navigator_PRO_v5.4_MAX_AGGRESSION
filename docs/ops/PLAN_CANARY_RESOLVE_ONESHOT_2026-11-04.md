@@ -6,6 +6,65 @@
 
 ---
 
+## La arquitectura correcta — EL DEVICE ORIGINA, EL CANARY CONSUME
+
+**Corrección del operador (2026-11-04):**
+
+> *«nada tiene que pedir al proveedor, eso lo hace a través del zapping el device y es consumido por el canary cuando este llega, pues siempre está esta información servida, por eso este despierta al llamado del zapping, ni antes ni cuando él quiera, solo al zapping»*
+
+**El canary NO va al proveedor.** No descarga segmentos. No abre ffmpeg contra la fuente.
+**No hay riesgo de que el CDN bloquee la IP del VPS por volumen de peticiones, porque el VPS no hace ninguna.**
+
+### El mecanismo ya existe en el repositorio
+
+```
+device hace zapping
+   │
+   ├─ GET /lists/<lista>.m3u8?ape_wake=<dev>&ape_ch=<canal>   ← el device pide SU lista
+   │     │
+   │     └─ nginx log_by_lua: ape_wake_on_manifest.lua        (DESPUÉS de responder)
+   │           → append a /dev/shm/ape_wake_queue
+   │             formato: ts<TAB>dev<TAB>ch<TAB>list<TAB>cip
+   │
+   ├─ GET <canal>.m3u8  (al proveedor, DIRECTO desde el device)
+   │     └─ nginx log_by_lua: qoe_server_side_observer.lua
+   │           → ngx.shared.qoe_metrics:  VST_proxy, rebuffer_proxy, bitrate_proxy
+   │
+   └─ el canary DESPIERTA de esa cola y LEE lo que ya está servido
+         → no pide nada al proveedor
+         → no hay ventana de bloqueo
+         → DESPIERTA AL ZAPPING: ni antes, ni cuando él quiera
+```
+
+| Fichero | Qué hace | Fase nginx |
+|---|---|---|
+| `ape_wake_on_manifest.lua` | encola la señal de zapping | `log_by_lua` (post-respuesta) |
+| `qoe_server_side_observer.lua` | mide VST/rebuffer/bitrate de lo pedido | `log_by_lua` |
+| `ape_device_state_writer.lua` | escribe el estado del device | `log_by_lua` |
+| `bandwidth_reactor.lua` | reacciona al throughput medido | `log_by_lua` |
+
+**Todos en `log_by_lua`: corren DESPUÉS de que la respuesta salió. Cero impacto en TTFB.**
+Ninguno hace `ngx.exit`, ninguno bloquea, todos bajo `pcall`.
+
+### Consecuencia sobre `ape-visual-emulate.sh`
+
+**Ese script NO sirve para esta arquitectura.** Hace ffmpeg contra `CANARY_SOURCE_URL`, es decir,
+**sí pide al proveedor**. Por eso mi Fase 1 anterior estaba mal: ponía al canary a descargar lo que
+el VPS no debe descargar.
+
+**El producto que el resolve consume no es un vídeo muestreado: es la observación del zapping real.**
+
+Campos disponibles en `ngx.shared.qoe_metrics`, según el observer:
+
+| Campo | Origen | Sirve para |
+|---|---|---|
+| `VST_proxy` | primer segmento − manifiesto | detectar arranque lento |
+| `rebuffer_proxy` | gaps entre segmentos > 2× duración | detectar cortes reales |
+| `bitrate_proxy` | body_bytes_sent / upstream_response_time | **derivar el perfil** |
+| `error_rate` | 4xx/5xx sobre el total | detectar bloqueo del proveedor |
+
+---
+
 ## El gate que no se salta
 
 ```
@@ -14,75 +73,75 @@ NO SE PASA A LA FASE SIGUIENTE SI EL GATE NO DA PASS.
 SI UN GATE FALLA, SE ARREGLA ESA FASE. NO SE SALTEA.
 ```
 
-**Un gate es un comando con salida verificable.** No es "parece que funciona".
+**Un gate es un comando con salida verificable.** No es «parece que funciona».
 
 ---
 
 ## Fase 0 · Inventario real (sólo lectura)
 
-**Objetivo:** saber qué existe antes de escribir una línea.
-
 | Comprobación | Comando | Esperado |
 |---|---|---|
-| El controlador existe | `test -x /usr/local/bin/ape-canaryctl` | exit 0 |
-| El script existe | `test -x /usr/local/bin/ape-visual-emulate.sh` | exit 0 |
-| El gate de skills pasa | `/usr/local/bin/ara-skill check --for-canary` | `ARA-SKILL CHECK PASS (canary=1)` |
-| Directorios | `ls -la /etc/ara/canary /var/lib/ara/canary /var/log/ara` | existen |
-| ffmpeg + libx265 | `ffmpeg -version \| head -1` | versión con libx265 |
-| El unit existe | `systemctl list-unit-files 'ape-canary@*'` | template presente |
+| La cola de wake existe | `ls -la /dev/shm/ape_wake_queue` | existe o se crea al primer zapping |
+| El wake está activo en nginx | `grep -r wake_on_manifest /etc/nginx/` | al menos 1 location |
+| El observer está activo | `grep -r qoe_server_side_observer /etc/nginx/` | al menos 1 location |
+| El shared dict existe | `grep -r qoe_metrics /etc/nginx/nginx.conf` | `lua_shared_dict qoe_metrics` |
+| El flush worker corre | `grep -r qoe_flush_worker /etc/nginx/` | `init_worker_by_lua` |
+| nginx responde | `nginx -t` | syntax is ok |
 
-**GATE 0:** los seis pasan. Si `ara-skill check --for-canary` no da PASS, **nada más se intenta**: el unit ni siquiera llega a ejecutar el script (`ape-visual-emulate.sh:38`).
+**GATE 0:** los seis pasan. Si el shared dict no está declarado, el observer **retorna silenciosamente**
+(`if not dict then return end`) y no hay medición: nada más se intenta hasta declararlo.
 
 **Rollback:** ninguno. Sólo lectura.
 
 ---
 
-## Fase 1 · El productor arranca (una vez, a mano)
+## Fase 1 · Verificar que el zapping real ya produce señal
 
-**Objetivo:** que el canary ejecute y muera limpiamente, produciendo su salida.
+**Objetivo:** confirmar que el device, al hacer zapping, deja rastro en la cola del VPS.
 
-```bash
-ID="test$(date +%s)"
-cp /etc/ara/canary/env.template /etc/ara/canary/$ID.env
-sed -i "s|^CANARY_SOURCE_URL=.*|CANARY_SOURCE_URL=<URL_REAL_DE_PRUEBA>|" /etc/ara/canary/$ID.env
-chown root:www-data /etc/ara/canary/$ID.env
-chmod 640 /etc/ara/canary/$ID.env
-
-ape-canaryctl start "$ID" --source-url "<URL_REAL_DE_PRUEBA>" --seconds 6
-ape-canaryctl status "$ID"
-```
-
-**GATE 1:** existe `/var/lib/ara/canary/<ID>/status.json`.
+**No se arranca ningún canary. No se pide nada al proveedor.** Se comprueba que la señal llega.
 
 ```bash
-test -f /var/lib/ara/canary/$ID/status.json && echo "GATE 1 PASS"
+# Reproducir UN canal en el device, o simular la petición que el device hace al VPS:
+curl -s -o /dev/null "https://iptv-ape.duckdns.org/lists/<lista>.m3u8?ape_wake=dev_test&ape_ch=3"
+
+# Ver la cola
+tail -5 /dev/shm/ape_wake_queue
 ```
 
-**Si falla:** leer `/var/log/ara/` y `journalctl -u ape-canary@$ID`. **No se continúa.** Sin esta salida no hay nada que consumir.
+**GATE 1:** aparece una línea con formato `ts<TAB>dev<TAB>ch<TAB>list<TAB>cip` y el `dev` es el enviado.
 
-**Rollback:** `ape-canaryctl stop "$ID"` y borrar `/etc/ara/canary/$ID.env`.
+**Esa línea ES el zapping.** El canary despierta de ella.
+
+**Si `/dev/shm/ape_wake_queue` no existe:** el `log_by_lua` no está activo en ese location.
+**No se continúa.**
+
+**Rollback:** ninguno. Sólo lectura de `/dev/shm`.
 
 ---
 
-## Fase 2 · El productor produce un dato utilizable
+## Fase 2 · Verificar que la observación tiene los campos que el resolve necesita
 
-**Objetivo:** confirmar que el `status.json` tiene los campos que el resolve necesita, **con valores reales**.
+**Objetivo:** confirmar que `ngx.shared.qoe_metrics` contiene datos reales de lo que el device pidió.
 
 ```bash
-cat /var/lib/ara/canary/$ID/status.json | python3 -m json.tool
+# El observer escribe al shared dict; el flush worker publica cada 60 s.
+curl -s https://iptv-ape.duckdns.org/prisma/api/qoe-flush.php 2>/dev/null | head -c 400
+tail -50 /var/log/nginx/access.log | grep -E "m3u8|m4s|\.ts" | head -5
 ```
 
-**Campos que el resolve necesita, como mínimo:**
+**Campos mínimos que el resolve necesita:**
 
-| Campo | Ejemplo aceptable | Ejemplo inaceptable |
-|---|---|---|
-| resolución | `"3840x2160"` | `"unknown"`, `null`, ausente |
-| bitrate | `41.2` (Mbps) | `0`, ausente |
-| fps | `60` | `0`, ausente |
+| Campo | Fuente | Aceptable | Inaceptable |
+|---|---|---|---|
+| bitrate | `bitrate_proxy` | > 0 y estable | `0`, ausente |
+| resolución | del manifiesto que el device pidió | `3840x2160` | `unknown` |
+| fps | del manifiesto | > 0 | ausente |
 
-**GATE 2:** los tres campos presentes y no vacíos.
+**GATE 2:** los tres campos existen con valores reales de una sesión de zapping verificable.
 
-**Si el `status.json` usa otros nombres de campo**, esta fase **falla honestamente**: hay que mapear los nombres reales antes de escribir el consumidor. **No se adivinan.**
+**Si `bitrate_proxy` es 0 o no existe:** la observación no captura. Se corrige el `log_by_lua`
+antes de escribir el consumidor. **No se adivina un bitrate.**
 
 **Rollback:** ninguno. Sólo lectura.
 
@@ -90,157 +149,117 @@ cat /var/lib/ara/canary/$ID/status.json | python3 -m json.tool
 
 ## Fase 3 · El consumidor, probado contra el dato real
 
-**Objetivo:** escribir el endpoint **sólo ahora**, y probarlo contra el `status.json` de la Fase 2.
+**Objetivo:** escribir el endpoint **sólo ahora**, y probarlo contra la observación de la Fase 2.
 
-**Regla de esta fase:** el endpoint **primero lee un `status.json` que ya existe**. No invoca el canary todavía. Eso aísla el PHP del canary: si falla, falla una sola pieza.
+**Regla de esta fase:** el endpoint **primero lee un dato que ya existe**. No dispara nada.
+Eso aísla el PHP de la captura: si falla, falla una sola pieza.
 
 ```php
 // v1 del endpoint: SÓLO lee. No invoca nada.
-$status = json_decode(file_get_contents("/var/lib/ara/canary/$id/status.json"), true);
-if (!is_array($status)) { header('Location: ' . $u, true, 302); exit; }
-// componer cartucho con $status
+$obs = leer_observacion($canal);          // de ngx.shared via qoe-flush.php o cache
+if (!is_array($obs) || empty($obs['bitrate'])) {
+    header('Location: ' . $u, true, 302);  // sin dato → fallback honesto
+    exit;
+}
+// componer cartucho con $obs
 ```
 
-**GATE 3:** con el `status.json` de la Fase 2 en disco:
+**GATE 3:** con la observación de la Fase 2 disponible:
 
 ```
 GET /prisma/api/canary-resolve.php?u=<url>&d=<device>
 → 200
-→ #EXT-X-APE-CANARY-REAL-RES:3840x2160     (coincide con el status.json)
-→ #EXT-X-APE-CANARY-BITRATE:41.2           (coincide con el status.json)
+→ #EXT-X-APE-CANARY-BITRATE:<mismo número que la observación>
+→ #EXT-X-APE-CANARY-REAL-RES:<misma resolución que la observación>
 ```
 
-**La prueba es la coincidencia:** el valor del manifiesto debe ser **el mismo número** que hay en el `status.json`. Si no coincide, el consumidor inventa.
+**La prueba es la coincidencia.** Si el manifiesto dice un número distinto al observado, el consumidor inventa.
 
-**Si `status.json` no existe:** el endpoint debe dar **302**, no 200.
+**GATE 3b:** sin dato disponible, el endpoint debe dar **302**, no 200.
 
-```bash
-mv /var/lib/ara/canary/$ID/status.json /tmp/x.json
-curl ... → debe dar 302
-mv /tmp/x.json /var/lib/ara/canary/$ID/status.json
-```
-
-**GATE 3b:** el 302 aparece cuando falta el dato. **Ese es el fallback correcto, y hay que verificarlo explícitamente.**
-
-**Rollback:** retirar el fichero del VPS (ya existe el step de limpieza en el workflow).
+**Rollback:** retirar el fichero del VPS (el step de limpieza del workflow ya lo hace).
 
 ---
 
-## Fase 4 · El consumidor invoca al productor
+## Fase 4 · Conectar el one-shot real por zapping
 
-**Objetivo:** conectar el one-shot por zapping. **Sólo ahora**, con las dos piezas ya verificadas por separado.
+**Objetivo:** que el canary despierte **de la cola de zapping**, ni antes ni cuando quiera.
 
 ```php
-// v2: si no hay status fresco, invoca el canary UNA vez
-if (!status_fresco($id)) {
-    exec(escapeshellcmd(CTL) . ' start ' . escapeshellarg($id)
-       . ' --source-url ' . escapeshellarg($u)
-       . ' --seconds 6 2>&1', $out, $rc);
-    esperar_status($id, 12);   // polling con deadline
+// v2: si no hay observación fresca, se espera la señal del zapping
+if (!observacion_fresca($canal)) {
+    esperar_wake_queue($canal, 8);   // polling con deadline, NO descarga nada
 }
 ```
 
-**GATE 4:** borrar el `status.json`, pedir el endpoint, y comprobar:
+**Lo que NO hace:** no descarga, no abre ffmpeg, no pide al proveedor.
+
+**GATE 4:** reproducir el canal en el device y comprobar:
 
 ```
 → 200
-→ el status.json se creó durante la petición (fecha de mtime dentro de la ventana)
-→ el valor del manifiesto coincide con el status.json recién creado
+→ el manifiesto lleva el bitrate que el device acaba de generar
+→ el tiempo total es < 3 s (no hay captura que esperar)
 ```
 
-**Y medir el coste real:**
-
-```bash
-time curl ... → tiempo total. Debe ser < 15 s (6 de captura + margen)
-```
-
-**Si supera 15 s**, el canary es demasiado lento para servir síncrono. **Eso cambia el diseño:** habría que servir 302 en la primera petición y medir en background. **Es una decisión, no un parche.**
+**Si supera 3 s**, la espera está mal dimensionada. El dato ya existe cuando el device lo pidió:
+la latencia debe ser de milisegundos, no de segundos.
 
 **Rollback:** volver a la v1 (sólo lectura).
 
 ---
 
----
+## Fase 5 · Integración con el cartucho completo
 
-## El procesamiento completo del VPS — inventario de capas
-
-El canary es el productor, pero no es todo el VPS. Estas son las capas que el cartucho debe
-llevar juntas, y el estado medido de cada una:
+**Objetivo:** que el cartucho lleve **lo observado + todo el procesamiento del VPS**.
 
 | # | Capa | Origen | Volumen | Estado |
 |---|---|---|---|---|
-| 1 | **Cartucho base** | `url2-cartridge.php` | 369 KB de plantilla | ✅ 200 en producción |
-| 2 | **Tags de paridad** | `APE_VPS_PARITY_TAGS` | 186 tags, 0 dinámicos | ✅ desplegado y verificado |
+| 1 | **Cartucho base** | `url2-cartridge.php` | 369 KB | ✅ 200 en producción |
+| 2 | **Tags de paridad** | `APE_VPS_PARITY_TAGS` | 186 tags | ✅ desplegado |
 | 3 | **Paquete de prioridades** | `APE_PRIORITY_PACKAGE` | 18 directivas | ✅ desplegado |
-| 4 | **Perfil por device** | `url2-cartridge.php` dinámico | P0/P3/P5 medidos | ✅ desplegado |
-| 5 | **CMAF enriquecido** | `#EXT-X-CMAF-*` en el cartucho | 24 directivas | 🟡 estático hoy |
-| 6 | **Datos medidos** | `status.json` del canary | 3 campos mínimo | ⏳ esta implementación |
+| 4 | **Perfil por device** | `url2-cartridge.php` dinámico | P0/P3/P5 | ✅ verificado |
+| 5 | **CMAF enriquecido** | `#EXT-X-CMAF-*` | 24 directivas | 🟡 estático |
+| 6 | **Observación del zapping** | `qoe_metrics` | 4 campos | ⏳ esta implementación |
 
-### Por qué el CMAF importa aquí
-
-El cartucho ya declara 24 directivas CMAF:
-
-```
-#EXT-X-CMAF-LATENCY  #EXT-X-CMAF-CHUNK-DURATION  #EXT-X-CMAF-PART-TARGET
-#EXT-X-CMAF-PART-HOLD-BACK  #EXT-X-CMAF-CONTAINER  #EXT-X-CMAF-INIT-SEGMENT
-#EXT-X-CMAF-CODEC-FALLBACK  #EXT-X-CMAF-AUDIO-FALLBACK  #EXT-X-CMAF-HDR
-#EXT-X-CMAF-HDR-METADATA  #EXT-X-CMAF-LCEVC  #EXT-X-CMAF-AI-SR
-#EXT-X-CMAF-AI-FI  #EXT-X-CMAF-VRR  (+10 más)
-```
-
-**Hoy son estáticas.** Con el canary midiendo, tres de ellas pueden derivarse del dato real:
-
-| Directiva | Hoy | Con medición |
-|---|---|---|
-| `#EXT-X-CMAF-CHUNK-DURATION` | valor fijo | `GOP / fps_medido` |
-| `#EXT-X-CMAF-HDR` | declarado | el `video_range` que devolvió el canary |
-| `#EXT-X-CMAF-CODEC-FALLBACK` | cadena fija | derivado del códec que el canary detectó |
-
-**No se derivan más porque no hay más dato medido.** Derivar una directiva de una suposición
-es exactamente lo que la Regla Canónica prohíbe.
-
-### Por qué `manifest-4k.php` no entra en este plan
-
-`manifest-4k.php` (2.783 B) sirve un master 4K desde el SSOT `/etc/ape-uhdx/ape_4k_manifest.json`.
-**No consume el canary y no tiene perfiles P0-P5**: es un endpoint de un solo manifiesto.
-
-**Decisión:** no se toca en esta implementación. Mezclarlo con el resolve por device añadiría
-dos caminos que declaran 4K con criterios distintos, y el jugador no sabría cuál gana.
-
-### Orden de composición del cartucho final
+### Orden de composición
 
 ```
 1. plantilla por perfil        (url2-cartridge.php, P0-P5)
-2. + tags de paridad           (186, del resolver PHP)
-3. + paquete de prioridades    (18, del panel)
+2. + tags de paridad           (186)
+3. + paquete de prioridades    (18)
 4. + overrides por device      (caché, perfil, codec)
-5. + overrides por medición    (CMAF chunk, HDR real, fallback real)   ← cuando el canary midió
+5. + overrides por observación (CMAF chunk, HDR real, fallback real)   ← cuando hay dato
 6. + idempotencia              (SEED = hash(u + device))
 7. → manifiesto
 ```
 
-**Cada capa es aditiva y verificable por separado.** Si la capa 5 no tiene medición, se omite
-y el manifiesto lo declara con `#EXT-X-APE-CANARY-VERIFIED:NO`, no se rellena con un valor inventado.
+**Cada capa es aditiva y verificable por separado.** Si la capa 5 no tiene observación, se omite y el
+manifiesto lo declara con `#EXT-X-APE-CANARY-VERIFIED:NO`. **No se rellena con un valor inventado.**
 
+### CMAF: qué puede enriquecerse y qué no
 
-## Fase 5 · Integración con el cartucho completo
+De las 24 directivas CMAF del cartucho, **3 pueden derivarse de la observación real**:
 
-**Objetivo:** que el cartucho lleve **lo medido + todo el procesamiento del VPS**.
-
-Las tres capas que ya existen y funcionan:
-
-| Capa | Origen | Estado |
+| Directiva | Hoy | Con observación |
 |---|---|---|
-| **186 tags de paridad** | `APE_VPS_PARITY_TAGS` en el generador | ✅ desplegado |
-| **18 directivas del paquete** | `APE_PRIORITY_PACKAGE` | ✅ desplegado |
-| **Datos medidos** | `status.json` del canary | ⏳ esta implementación |
-| **Perfil por device** | `url2-cartridge.php` dinámico | ✅ desplegado (P0/P3/P5 medidos) |
+| `#EXT-X-CMAF-CHUNK-DURATION` | valor fijo | `GOP / fps observado` |
+| `#EXT-X-CMAF-HDR` | declarado | el `video_range` del manifiesto pedido |
+| `#EXT-X-CMAF-CODEC-FALLBACK` | cadena fija | derivado del códec detectado |
 
-**GATE 5:** el manifiesto contiene las cuatro:
+**Las otras 21 no se tocan** porque no hay dato que las respalde. Derivarlas sería inventar.
+
+### Por qué `manifest-4k.php` queda fuera
+
+Sirve un master 4K desde el SSOT `/etc/ape-uhdx/ape_4k_manifest.json`, **no consume la observación**
+y no tiene P0-P5. Mezclarlo crearía dos caminos declarando 4K con criterios distintos y sin regla
+de cuál gana.
+
+**GATE 5:** el manifiesto contiene las cuatro capas:
 
 ```
-#EXT-X-APE-URL2-CARTRIDGE         (cartucho base)
-#EXT-X-APE-CANARY-REAL-RES        (medición)
+#EXT-X-APE-URL2-CARTRIDGE         (base)
+#EXT-X-APE-CANARY-REAL-RES        (observación)
 #EXT-X-APE-PROFILE                (device)
 #EXT-X-APE-IDEMPOTENCIA:SEED      (reproducibilidad)
 ```
@@ -253,15 +272,15 @@ Las tres capas que ya existen y funcionan:
 
 **Sólo si las cinco fases anteriores dieron PASS.**
 
-1. `php -l` en el CI (ya existe el gate en el workflow)
+1. `php -l` en el CI (el gate ya existe en el workflow)
 2. Deploy con `mode=apply` + `confirm="DESPLIEGO EL GENERADOR AL VPS"`
 3. **Comparar sha local contra servido** — nunca el estado del run
 4. Verificar los cuatro códigos:
 
 ```
-200  con status.json fresco
-302  sin status.json
-429  tras 21 peticiones en 60 s (rate limit)
+200  con observación fresca
+302  sin observación
+429  tras 21 peticiones en 60 s
 400  sin parámetro u
 ```
 
@@ -271,32 +290,32 @@ Las tres capas que ya existen y funcionan:
 
 ---
 
-## Lo que este plan NO hace
-
-- **No crea el `<id>.env` del VPS.** Requiere una URL real y credenciales que decide el operador.
-- **No ejecuta el canary.** Eso es la Fase 1, y es manual y supervisada.
-- **No toca `iptables`, no instala `fail2ban`, no usa secretos por defecto.** El diseño original los pedía; este plan los elimina.
-- **No sirve `206`** sobre el manifiesto: es imposible y el plan no promete imposibles.
-- **No despliega nada hoy.**
-
----
-
-## Riesgos conocidos y sin resolver
+## Riesgos, corregidos
 
 | Riesgo | Impacto | Mitigación |
 |---|---|---|
-| El canary tarda >15 s | El endpoint síncrono no sirve | Servir 302 en la 1ª petición y medir en background |
-| `status.json` con nombres de campo distintos | El consumidor lee `null` | Fase 2 lo detecta antes de escribir el consumidor |
-| 3 vCPU saturadas con zapping rápido | Los canary se encolan | Rate limit + cache por canal; medir en Fase 4 |
-| El proveedor bloquea la IP del VPS por las peticiones del canary | Pérdida de servicio | **No resuelto.** El canary hace peticiones reales a la fuente |
-| `ape-visual-emulate.sh` no produce los campos esperados | Fase 2 falla | Se mapean los nombres reales, no se adivinan |
+| ~~El canary satura el CDN del proveedor~~ | ~~Pérdida de servicio~~ | **ELIMINADO.** El canary no hace peticiones al proveedor |
+| La cola `/dev/shm` se llena | `io.open` falla | `ape_wake_on_manifest.lua` ya corre bajo `pcall` y sólo loguea WARN |
+| El shared dict no está declarado | El observer retorna en silencio | GATE 0 lo detecta antes de seguir |
+| `bitrate_proxy` no refleja la calidad real | Perfil mal asignado | Derivar de `body_bytes/upstream_time` es una estimación, no una medición del códec |
+| nginx reinicia y pierde `/dev/shm` | Se pierde la cola | Es una cola de señales, no de datos: se regenera con el siguiente zapping |
+
+---
+
+## Lo que este plan NO hace
+
+- **No descarga nada del proveedor.** Ni el canary, ni el VPS.
+- **No usa `ape-visual-emulate.sh`**, que sí hace ffmpeg contra la fuente.
+- **No toca `iptables`, no instala `fail2ban`, no usa secretos por defecto.**
+- **No sirve `206`** sobre el manifiesto: es imposible y el plan no promete imposibles.
+- **No despliega nada hoy.**
 
 ---
 
 ## Orden de ejecución, en una línea
 
 ```
-0 inventario → 1 arranca → 2 produce dato → 3 consumidor lee → 4 consumidor invoca → 5 integra → 6 despliega
+0 inventario → 1 zapping produce señal → 2 observación tiene datos → 3 consumidor LEE → 4 despierta del zapping → 5 integra → 6 despliega
 ```
 
 **Cada flecha es un gate. Ninguna se salta.**
