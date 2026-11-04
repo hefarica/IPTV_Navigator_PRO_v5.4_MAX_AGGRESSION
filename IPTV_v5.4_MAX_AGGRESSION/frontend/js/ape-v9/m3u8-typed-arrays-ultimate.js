@@ -2505,12 +2505,18 @@
     // mismo input => misma denominacion, SIEMPRE. Precedencia FIJA, de arriba
     // abajo; la primera que casa gana. NUNCA por debajo de 4K: lo que no llega
     // se declara 4K-FAKE (nunca 1080p/720p, que un player filtraria a negro).
+    // [2026-11-04 mandato operador] El BANDWIDTH del STREAM-INF es el bitrate que cada perfil lleva en
+    // el Gestor de Perfiles APE v9.0 (P0 80 · P1 40 · P2 20 · P3 14,9 · P4 5 · P5 2 Mbps, este último
+    // variable según estrategia). Los rangos de 4K-UPSCALING y 4K-FAKE se AMPLIARON para cubrir ese
+    // espectro completo: antes topaban en 16 Mbps y habrían recortado P0/P1/P2 a 16, y el piso de 6
+    // habría subido P5/P4. El clamp SIGUE existiendo (es la especificación [t85] del propietario):
+    // solo protege contra valores absurdos, no contra los bitrates legítimos de los perfiles.
     const APE_QUALITY_RANGES = {
         '8K-FAKE':      { min: 14000000, max: 35000000 },
         '4K-TRUE':      { min: 20000000, max: 45000000 },
         '4K-REMUX':     { min: 25000000, max: 60000000 },
-        '4K-UPSCALING': { min:  6000000, max: 16000000 },
-        '4K-FAKE':      { min:  6000000, max: 16000000 },
+        '4K-UPSCALING': { min:  2000000, max: 200000000 },
+        '4K-FAKE':      { min:  2000000, max: 200000000 },
     };
     function __apeQualityDenomination(input) {
         const o = input || {};
@@ -2531,7 +2537,10 @@
             denom = '4K-FAKE';                       // 5. resto (480p/720p/desconocido)
         }
         const rg = APE_QUALITY_RANGES[denom];
-        // Clamp del bitrate REAL dentro del rango de su denominacion.
+        // Clamp del bitrate REAL dentro del rango de su denominacion (especificación [t85]).
+        // [2026-11-04] Los rangos de 4K-UPSCALING y 4K-FAKE se ampliaron a [2 Mbps, 200 Mbps] para
+        // que ningún perfil del Gestor (P5 2 Mbps … P0 80 Mbps) quede recortado. El clamp protege
+        // contra valores absurdos, no contra bitrates legítimos.
         const bitrate = Math.min(rg.max, Math.max(rg.min, realBps || rg.min));
         return {
             denom: denom,
@@ -11395,10 +11404,19 @@ if (_streamTruth.fakeUhd === '8k') {
 }
 lines.push(`#EXT-X-APE-STREAM-TRUTH:src=${_streamTruth.source},w=${_streamTruth.w},h=${_streamTruth.h},fps=${_streamTruth.fps},fake=${_streamTruth.fakeUhd || 0},real8k=${_streamTruth.resolutionReal8k ? 1 : 0}`);
             // ── [t85] DENOMINACION DETERMINISTA + RANGOS en el STREAM-INF ──
+            // [2026-11-04 mandato operador] El BANDWIDTH debe ser el bitrate que el perfil lleva en el
+            // Gestor de Perfiles APE v9.0. Antes se usaba `_bw796_final`, que cae a defaults hardcodeados
+            // (9 Mbps / 22 Mbps) cuando APE_IMAGE_PROFILE no trae `bw_observed` — y el valor del panel
+            // nunca llegaba al manifest. cfg.bitrate viene en kbps desde el SSOT bridge (L1583:
+            // s.bitrate Mbps × 1000), así que ×1000 lo deja en bps.
+            // La RESOLUTION se mantiene en 3840x2160 para todos los perfiles (mandato del operador).
+            const _bwPerfilBps = (Number(cfg && cfg.bitrate) > 0)
+                ? Math.round(Number(cfg.bitrate) * 1000)
+                : 0;
             const _qd85 = __apeQualityDenomination({
                 height: Number((_streamTruth && (_streamTruth.rawH || _streamTruth.h)) || 0),
                 codec: _codec796_csv,
-                bitrate: Number(_bw796_final) || 0,
+                bitrate: _bwPerfilBps || Number(_bw796_final) || 0,
                 fps: Number(_fps796_csv) || 30,
                 fakeUhd: (_streamTruth && _streamTruth.fakeUhd) || false,
                 channelId: String(_hdcpChId || _stableVariantId || ''),

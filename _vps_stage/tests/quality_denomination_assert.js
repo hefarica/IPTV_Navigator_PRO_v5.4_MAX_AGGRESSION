@@ -115,8 +115,13 @@ section('[3] RANGOS por denominación + clamp del bitrate real');
 {
     eq('3.1 rangos 4K-TRUE', [RANGES['4K-TRUE'].min, RANGES['4K-TRUE'].max], [20000000, 45000000]);
     eq('3.2 rangos 4K-REMUX', [RANGES['4K-REMUX'].min, RANGES['4K-REMUX'].max], [25000000, 60000000]);
-    eq('3.3 rangos 4K-UPSCALING', [RANGES['4K-UPSCALING'].min, RANGES['4K-UPSCALING'].max], [6000000, 16000000]);
-    eq('3.4 rangos 4K-FAKE', [RANGES['4K-FAKE'].min, RANGES['4K-FAKE'].max], [6000000, 16000000]);
+    // [2026-11-04 mandato operador] El BANDWIDTH del STREAM-INF debe ser el bitrate que cada perfil
+    // lleva en el Gestor de Perfiles APE v9.0 (P5 2 Mbps … P0 80 Mbps). Los rangos de las
+    // denominaciones que aplican a perfiles no-4K-real se ampliaron a [2 Mbps, 200 Mbps] para que el
+    // clamp NO recorte ningún bitrate legítimo de perfil. El clamp sigue vigente como protección
+    // contra valores absurdos (ver 3.6/3.7), que es lo que la especificación [t85] exige.
+    eq('3.3 rangos 4K-UPSCALING', [RANGES['4K-UPSCALING'].min, RANGES['4K-UPSCALING'].max], [2000000, 200000000]);
+    eq('3.4 rangos 4K-FAKE', [RANGES['4K-FAKE'].min, RANGES['4K-FAKE'].max], [2000000, 200000000]);
     eq('3.5 rangos 8K-FAKE', [RANGES['8K-FAKE'].min, RANGES['8K-FAKE'].max], [14000000, 35000000]);
     // Clamp por abajo y por arriba.
     eq('3.6 clamp inferior (bitrate 1 Mbps en 4K-TRUE ⇒ min)',
