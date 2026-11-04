@@ -2652,7 +2652,14 @@
             if (cas && typeof cas.resolveTierByResolution === 'function') {
                 const tier = cas.resolveTierByResolution(r.w, r.h, r.fps, {});
                 if (tier && tier.codec) { r.codec = tier.codec; r.level = tier.level || null; }
-                if (r.h >= 2160) { r.codec = 'hvc1.2.4.L123.B0'; r.level = 123; } // MUTACION T31
+                // [2026-11-04] MUTACION T31 corregida. Declaraba hvc1.2.4.L123.B0 (Level 4.1, techo
+        // 1920x1080@60) sobre cualquier r.h >= 2160, es decir 4K con nivel de FHD. Eso viola la
+        // Ley Cardinal 1 (Nivel<->Resolucion) y puede provocar el freeze por decoder-reject.
+        // L153 = Level 5.1 = 3840x2160@60, el techo real de 4K; L156 cubriria 120fps.
+        if (r.h >= 2160) {
+            r.codec = (Number(r.fps) >= 100) ? 'hvc1.2.4.L156.B0' : 'hvc1.2.4.L153.B0';
+            r.level = (Number(r.fps) >= 100) ? 156 : 153;
+        }
             } else if (!r.codec) {
                 r.codec = 'hvc1.2.4.L120.B0';     // último recurso si no hay cascada NI hint
             }
@@ -9115,6 +9122,52 @@ ${__apeContinuityTags().join('\n')}
         // B3 sanity check (2026-04-30): rechaza valores >7680 px del LAB (lista emitía
         // 60000×60000 — sin display real). NO es clamp de calibración LAB; es guard
         // contra LAB corrupto. Cap = 7680/4320 (8K límite real).
+        // ═══════════════════════════════════════════════════════════════════════════════════
+        // [2026-11-04 mandato operador] CABLEADO DE LOS 8 CAMPOS HUERFANOS DEL PERFIL
+        // El Gestor APE v9.0 los guarda y el generador los ignoraba por completo. Se emiten
+        // como metadata propia (#EXT-X-APE-*) para que viajen al manifest sin romper RFC 8216
+        // (los players conformes ignoran tags desconocidos) y para que el VPS/device los lea.
+        // ═══════════════════════════════════════════════════════════════════════════════════
+        if (cfg) {
+            // codec_priority: orden de preferencia declarado por el operador (hvc1,avc1,av01)
+            if (cfg.codec_priority) {
+                lines.push(`#EXT-X-APE-CODEC-PRIORITY:${cfg.codec_priority}`);
+            }
+            // bit_depth: 8/10/12. Gobierna el perfil del codec y la coherencia HDR.
+            if (cfg.bit_depth != null) {
+                lines.push(`#EXT-X-APE-BIT-DEPTH:${cfg.bit_depth}`);
+            }
+            // hdr_canonical: dolby-vision / hdr10+ / hdr10 / hlg / sdr
+            if (cfg.hdr_canonical) {
+                lines.push(`#EXT-X-APE-HDR-CANONICAL:${cfg.hdr_canonical}`);
+            }
+            // nits_target -> metadata HDR10 (MaxCLL / MaxFALL). MaxFALL se estima al 25% del
+            // pico: es la convención conservadora cuando el perfil solo declara el pico.
+            if (cfg.nits_target != null && Number(cfg.nits_target) > 0) {
+                const _nits = Math.round(Number(cfg.nits_target));
+                lines.push(`#EXT-X-APE-NITS-TARGET:${_nits}`);
+                lines.push(`#EXT-X-APE-MAX-CLL:${_nits}`);
+                lines.push(`#EXT-X-APE-MAX-FALL:${Math.round(_nits * 0.25)}`);
+                lines.push(`#EXTVLCOPT:video-hdr-nits=${_nits}`);
+            }
+            // focus: intención declarada del perfil (diagnóstico y trazabilidad)
+            if (cfg.focus) {
+                lines.push(`#EXT-X-APE-FOCUS:${cfg.focus}`);
+            }
+            // headersCount: cuántos headers declara el perfil. Informativo (orden del operador:
+            // no recortar #EXTHTTP con este valor).
+            if (cfg.headersCount != null) {
+                lines.push(`#EXT-X-APE-HEADERS-COUNT:${cfg.headersCount}`);
+            }
+            // bufferSeconds: el buffer en segundos que el panel muestra como 'Buffer Base (s)'
+            if (cfg.bufferSeconds != null) {
+                lines.push(`#EXT-X-APE-BUFFER-SECONDS:${cfg.bufferSeconds}`);
+            }
+            // codec_full: cadena RFC 6381 completa declarada por el perfil
+            if (cfg.codec_full) {
+                lines.push(`#EXT-X-APE-CODEC-FULL:${cfg.codec_full}`);
+            }
+        }
         const _resW796_raw = parseInt((_res796 || '0x0').split('x')[0], 10);
         const _resH796_raw = parseInt((_res796 || '0x0').split('x')[1], 10);
         const _resW796_safe = (_resW796_raw > 0 && _resW796_raw <= 7680) ? _resW796_raw : 7680;
