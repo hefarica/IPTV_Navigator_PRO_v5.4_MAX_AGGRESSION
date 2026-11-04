@@ -280,23 +280,23 @@ jobs:
           php -l "$SRC" >/dev/null 2>&1 && echo "  php -l OK" || echo "  (php -l no disponible en el runner)"
           echo "  endpoint: https://iptv-ape.duckdns.org/prisma/api/ape-parity-tags.php"
 
-      - name: Leer la observacion del VPS (peek por loopback)
-        if: inputs.mode == 'apply'
+      - name: Leer registro de zapping
+        # Minimal a proposito: un solo comando por bloque, sin pipes que puedan enmascarar
+        # la salida. Si algo no existe, se ve el error tal cual.
         run: |
-          set -uo pipefail
-          # El peek exige token o loopback. Se llama desde el propio VPS para no repartir token.
-          echo '--- nginx: observer / flush / wake / dicts ---'
-          ssh "$TARGET" "curl -sS 'http://127.0.0.1/prisma/api/qoe-peek.php' | head -c 4000" || true
+          set +e
+          echo '=== /var/cache/ara ==='
+          ssh "$TARGET" 'ls -la /var/cache/ara/ 2>&1'
+          echo '=== ape-last-served.json ==='
+          ssh "$TARGET" 'cat /var/cache/ara/ape-last-served.json 2>&1'
           echo ''
-          echo '--- cola de zapping ---'
-          ssh "$TARGET" "ls -la /dev/shm/ape_wake_queue 2>/dev/null; tail -5 /dev/shm/ape_wake_queue 2>/dev/null" || true
+          echo '=== historial (ultimas 10) ==='
+          ssh "$TARGET" 'tail -10 /var/cache/ara/ape-served-history.jsonl 2>&1'
+          echo '=== qoe-last-flush.json ==='
+          ssh "$TARGET" 'cat /var/cache/ara/qoe-last-flush.json 2>&1'
           echo ''
-          echo '--- ultimo servido por el cartucho ---'
-          ssh "$TARGET" "cat /var/cache/ara/ape-last-served.json 2>/dev/null; echo; tail -6 /var/cache/ara/ape-served-history.jsonl 2>/dev/null" || true
-          echo ''
-          echo '--- ultimo flush ---'
-          ssh "$TARGET" "ls -la /var/cache/ara/ 2>/dev/null; head -c 600 /var/cache/ara/qoe-last-flush.json 2>/dev/null" || true
-          echo ''
+          echo '=== cola de wake ==='
+          ssh "$TARGET" 'ls -la /dev/shm/ape_wake_queue 2>&1; tail -5 /dev/shm/ape_wake_queue 2>&1'
 
       - name: Limpiar endpoints retirados del VPS
         if: inputs.mode == 'apply'
