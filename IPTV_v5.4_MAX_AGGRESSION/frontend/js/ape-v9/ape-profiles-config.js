@@ -394,7 +394,30 @@
             'X-Buffer-Strategy':          'adaptive-predictive,adaptive-predictive,adaptive,balanced,conservative',
             'X-Buffer-Underrun-Strategy': 'aggressive-refill,aggressive-refill,adaptive-refill,balanced-refill,conservative-refill',
             'X-Min-Buffer-Time':          '1,2,4,6,8',
-            'X-Max-Buffer-Time':          '60,45,30,20,20'
+            'X-Max-Buffer-Time':          '60,45,30,20,20',
+            // ── BUFFERS ABSOLUTOS — unidad MILISEGUNDOS, NO bits, NO kbits ──────────────────
+            //
+            // La unidad se verificó con cuatro fuentes del propio sistema, no por parecido:
+            //   ape-field-homologator.js:93        -> qoe.buffer_target_ms
+            //   m3u8-typed-arrays-ultimate.js:4190 -> Math.floor(labNetMs / 1000)  (ms a s)
+            //   backend/.../neuro_buffer_controller.php:408 -> buffer_target_ms: 45000  // 45s
+            //   backend/resolve_quality_unified.php:6919    -> 'buffer_target_ms'
+            //
+            // LECTURA: P0 250000 ms = 250 s de buffer objetivo. NO es un error de escala.
+            // El neuro_buffer_controller documenta el propósito: '180s buffer — survives 30s
+            // outage'. Son buffers de SUPERVIVENCIA: acumulan minutos para que un corte de red
+            // no rompa la reproducción. Un vivo normal usa 5-30s; este sistema apunta a
+            // aguantar caídas, y por eso los valores son grandes a propósito.
+            //
+            // Por qué NO se convierten a bits: el backend PHP compara estos números contra
+            // umbrales en ms. Cambiar la unidad rompería neuro_buffer_controller y
+            // resolve_quality_unified, los dos en producción.
+            //
+            // FÓRMULA de lectura: segundos = valor_ms / 1000. No hay otra conversión.
+            'X-Buffer-Unit':              'ms',
+            'X-Buffer-Max':               '1000000,750000,500000,250000',
+            'X-Buffer-Target':            '250000,180000,120000,80000',
+            'X-Buffer-Min':               '60000,45000,30000,20000'
         })
     });
     try { if (typeof window !== 'undefined') window.APE_PRIORITY_PACKAGE = APE_PRIORITY_PACKAGE; } catch (_ePkg) {}
