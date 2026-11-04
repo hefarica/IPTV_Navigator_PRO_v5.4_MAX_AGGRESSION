@@ -33,41 +33,6 @@ declare(strict_types=1);
 header('X-APE-Canary-Resolve: v1');
 header('Cache-Control: no-store, no-cache, must-revalidate');
 
-// ── Diagnóstico (?diag=1): qué piezas del canary existen de verdad ───────────
-if (isset($_GET['diag'])) {
-    $ctlOk  = is_file(CTL);
-    $ctlEx  = $ctlOk && is_executable(CTL);
-    $emu    = '/usr/local/bin/ape-visual-emulate.sh';
-    $skill  = '/usr/local/bin/ara-skill';
-    $units  = [];
-    foreach (glob('/etc/systemd/system/ape-canary@*') ?: [] as $f) { $units[] = basename($f); }
-    $runs = [];
-    foreach (glob(CANARY_ROOT . '/*', GLOB_ONLYDIR) ?: [] as $d) {
-        $runs[] = ['id' => basename($d), 'has_status' => is_file($d . '/status.json'), 'files' => count(glob($d . '/*') ?: [])];
-    }
-    $envs = [];
-    foreach (glob('/etc/ara/canary/*.env') ?: [] as $f) { $envs[] = basename($f); }
-    cr_json(200, [
-        'ok' => true,
-        'diag' => true,
-        'canaryctl_path' => CTL,
-        'canaryctl_exists' => $ctlOk,
-        'canaryctl_executable' => $ctlEx,
-        'ape_visual_emulate' => is_file($emu),
-        'ara_skill' => is_file($skill),
-        'skills_md' => is_file('/etc/ara/skills/SKILLS.md'),
-        'canary_units' => $units,
-        'canary_env_files' => $envs,
-        'canary_runs' => $runs,
-        'canary_root_writable' => is_writable(CANARY_ROOT),
-        'cache_root_writable' => is_writable(CACHE_ROOT),
-        'php_user' => function_exists('posix_getpwuid') ? (posix_getpwuid(posix_geteuid())['name'] ?? '?') : (get_current_user() ?: '?'),
-        'exec_enabled' => function_exists('proc_open') && !in_array('proc_open', array_map('trim', explode(',', (string)ini_get('disable_functions'))), true),
-    ]);
-}
-
-
-
 const CANARY_ROOT   = '/var/lib/ara/canary';
 const CACHE_ROOT    = '/var/cache/ara/resolve';
 const CTL           = '/usr/local/bin/ape-canaryctl';
@@ -339,6 +304,39 @@ function cr_canary_probe(string $u): array
     }
     $j['canary_source'] = 'status.json (fresh probe)';
     return $j;
+}
+
+// ── Diagnóstico (?diag=1): qué piezas del canary existen de verdad ───────────
+if (isset($_GET['diag'])) {
+    $ctlOk  = is_file(CTL);
+    $ctlEx  = $ctlOk && is_executable(CTL);
+    $emu    = '/usr/local/bin/ape-visual-emulate.sh';
+    $skill  = '/usr/local/bin/ara-skill';
+    $units  = [];
+    foreach (glob('/etc/systemd/system/ape-canary@*') ?: [] as $f) { $units[] = basename($f); }
+    $runs = [];
+    foreach (glob(CANARY_ROOT . '/*', GLOB_ONLYDIR) ?: [] as $d) {
+        $runs[] = ['id' => basename($d), 'has_status' => is_file($d . '/status.json'), 'files' => count(glob($d . '/*') ?: [])];
+    }
+    $envs = [];
+    foreach (glob('/etc/ara/canary/*.env') ?: [] as $f) { $envs[] = basename($f); }
+    cr_json(200, [
+        'ok' => true,
+        'diag' => true,
+        'canaryctl_path' => CTL,
+        'canaryctl_exists' => $ctlOk,
+        'canaryctl_executable' => $ctlEx,
+        'ape_visual_emulate' => is_file($emu),
+        'ara_skill' => is_file($skill),
+        'skills_md' => is_file('/etc/ara/skills/SKILLS.md'),
+        'canary_units' => $units,
+        'canary_env_files' => $envs,
+        'canary_runs' => $runs,
+        'canary_root_writable' => is_writable(CANARY_ROOT),
+        'cache_root_writable' => is_writable(CACHE_ROOT),
+        'php_user' => function_exists('posix_getpwuid') ? (posix_getpwuid(posix_geteuid())['name'] ?? '?') : (get_current_user() ?: '?'),
+        'exec_enabled' => function_exists('proc_open') && !in_array('proc_open', array_map('trim', explode(',', (string)ini_get('disable_functions'))), true),
+    ]);
 }
 
 // ── Ejecución ────────────────────────────────────────────────────────────────
