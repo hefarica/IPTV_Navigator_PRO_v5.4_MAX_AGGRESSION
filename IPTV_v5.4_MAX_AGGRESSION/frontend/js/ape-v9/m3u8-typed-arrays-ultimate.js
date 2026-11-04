@@ -8768,7 +8768,9 @@ ${__apeContinuityTags().join('\n')}
         // y un probe que devuelva 8K no debe sobrescribir un perfil FHD. Se mantiene el orden
         // perfil -> probe -> default.
         const _res796 = cfg.resolution || _probeData?.resolution || '3840x2160';
-        const _fps796 = _probeData?.frameRate || cfg.fps || 60;
+        // [2026-11-04] El perfil manda: P3 tiene fps=60 y la lista emitia 30. El probe solo
+        // aporta si el perfil no declara fps.
+        const _fps796 = cfg.fps || _probeData?.frameRate || 60;
         // [HEVC-FIRST CODEC LADDER] LAB SSOT primary del chain → fallback legacy switch.
         // codec_chain_video[0] = codec real declarado en STREAM-INF (RFC 8216 byte-identical to bytestream).
         // codec_chain_audio[0] = codec real audio (mp4a.40.2 P0-P4, mp4a.40.5 P5). ec-3/Atmos eliminado 2026-05-20 (passthrough problemático).
@@ -9117,8 +9119,23 @@ ${__apeContinuityTags().join('\n')}
         const _resH796_raw = parseInt((_res796 || '0x0').split('x')[1], 10);
         const _resW796_safe = (_resW796_raw > 0 && _resW796_raw <= 7680) ? _resW796_raw : 7680;
         const _resH796_safe = (_resH796_raw > 0 && _resH796_raw <= 4320) ? _resH796_raw : 4320;
+        // [2026-11-04 mandato operador] THROUGHPUT T1/T2 del perfil no se emitia en ninguna
+        // directiva. P3 declara t1=19.4 y t2=23.8 en el Gestor; ahora viajan al manifest.
+        if (cfg && cfg.throughput_t1 != null) {
+            lines.push(`#EXT-X-APE-THROUGHPUT-T1:${cfg.throughput_t1}`);
+            lines.push(`#EXTVLCOPT:adaptive-throughput-t1=${Math.round(Number(cfg.throughput_t1) * 1000000)}`);
+        }
+        if (cfg && cfg.throughput_t2 != null) {
+            lines.push(`#EXT-X-APE-THROUGHPUT-T2:${cfg.throughput_t2}`);
+            lines.push(`#EXTVLCOPT:adaptive-throughput-t2=${Math.round(Number(cfg.throughput_t2) * 1000000)}`);
+        }
         lines.push(`#EXTVLCOPT:adaptive-maxwidth=${_resW796_safe}`);
         lines.push(`#EXTVLCOPT:adaptive-maxheight=${_resH796_safe}`);
+        // [2026-11-04] La estrategia del perfil (adaptive) no se emitia; la lista mostraba el
+        // DEVICE_TIER AGGRESSIVE, que es otra cosa. Se declara la del perfil.
+        if (cfg && cfg.strategy) {
+            lines.push(`#EXT-X-APE-STRATEGY:${String(cfg.strategy).toUpperCase()}`);
+        }
         lines.push(`#EXTVLCOPT:adaptive-bw-factor=1.0`);
         lines.push(`#EXTVLCOPT:adaptive-logic=highest`);
         // [2026-11-04 mandato operador] maxbitrate/minbitrate deben reflejar el perfil, no el
@@ -10754,7 +10771,11 @@ ${__apeContinuityTags().join('\n')}
             // 1) optimized_knobs → override buffer_ms, reconnect_attempts, live_delay
             const opt = labProfile.optimized_knobs;
             if (opt) {
-                const bufMs = (opt.buffer_seconds || 0) * 1000;
+                // [2026-11-04 mandato operador] El buffer debe ser el del perfil del Gestor APE v9.0
+                // (P3 = 8000 ms), no el `optimized_knobs.buffer_seconds` del LAB, que traia 55 s y
+                // sobrescribia los cuatro cachés. El LAB solo manda si el perfil no trae buffer.
+                const _bufPerfilMs = (Number(cfg && cfg.buffer) > 0) ? Math.round(Number(cfg.buffer)) : 0;
+                const bufMs = _bufPerfilMs > 0 ? _bufPerfilMs : (opt.buffer_seconds || 0) * 1000;
                 if (bufMs > 0) {
                     upsertVlcopt(lines, 'network-caching', bufMs);
                     upsertVlcopt(lines, 'live-caching', bufMs);
