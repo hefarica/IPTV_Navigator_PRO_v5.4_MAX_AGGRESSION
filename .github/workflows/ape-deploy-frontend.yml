@@ -204,6 +204,21 @@ jobs:
           APE=$(ssh "$TARGET" "sudo -n grep -c '#EXT-X-APE-' '$DEST' || true")
           echo "  lineas con #EXT-X-APE-: $APE"
 
+      - name: Gate anti pisado de variable de estado
+        # Dos veces seguidas (a2a798a2, dc983153) el nivel de realce salio 0 en produccion
+        # porque una asignacion posterior borraba el calculo. php -l no lo ve: la sintaxis es
+        # valida y el programa corre. Este gate lee el codigo y falla ANTES de desplegar.
+        run: |
+          set -uo pipefail
+          echo '=== url2-cartridge.php: ninguna variable de decision puede pisarse ==='
+          node tools/check_single_assignment.js IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/url2-cartridge.php
+          echo '=== canary-resolve: idem si existe ==='
+          if [ -f IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/canary-resolve.php ]; then
+            node tools/check_single_assignment.js IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/canary-resolve.php
+          else
+            echo '  (no existe, se omite)'
+          fi
+
       - name: Instalar PHP (para php -l)
         uses: shivammathur/setup-php@v2
         with:
