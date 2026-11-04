@@ -253,6 +253,17 @@ jobs:
           if [ "$R4" != "$L4" ]; then echo "::error::sha de qoe-peek no coincide"; exit 1; fi
           echo "  qoe-peek OK ($L4)"
 
+          # ape-last.php: devuelve que cartucho se sirvio, para leerlo con un curl.
+          # No expone URLs de canal (solo id, nombre, perfil, nivel, bps, seed).
+          SRC5="IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/ape-last.php"
+          DEST5="/var/www/html/prisma/api/ape-last.php"
+          php -l "$SRC5" || { echo "::error::ape-last.php no pasa php -l"; exit 1; }
+          scp -q "$SRC5" "$TARGET:/tmp/ape-last.php"
+          ssh "$TARGET" "sudo -n install -m 0644 -o www-data -g www-data /tmp/ape-last.php '$DEST5'"
+          # garantir que www-data puede escribir el registro
+          ssh "$TARGET" "sudo -n mkdir -p /var/cache/ara && sudo -n chown -R www-data:www-data /var/cache/ara && sudo -n chmod 775 /var/cache/ara"
+          echo "  ape-last instalado"
+
           scp -q "$SRC2" "$TARGET:/tmp/ape-url2-cart.php"
           ssh "$TARGET" "sudo -n install -m 0644 -o www-data -g www-data /tmp/ape-url2-cart.php '$DEST2'"
           R2=$(ssh "$TARGET" "sudo -n sha256sum '$DEST2' | cut -d' ' -f1")
