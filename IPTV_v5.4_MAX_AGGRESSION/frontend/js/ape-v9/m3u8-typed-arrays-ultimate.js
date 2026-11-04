@@ -2903,6 +2903,29 @@
             '#KODIPROP:inputstream.adaptive.video_codec_override=hevc',
             '#EXT-X-APE-AV1-FALLBACK-CHAIN:HEVC>AV1>H264',
             `#EXT-X-APE-CODEC-PRIORITY:${APE_CODEC_CSV}`,
+        // ═══ GAP 11 — AI RECONSTRUCTION (peso 9 en la auditoria) ═══════════════════════════════
+        // La lista declaraba solo LCEVC. Estos cuatro cierran la dimension. Son declaraciones de
+        // INTENCION para el pipeline de imagen: el VPS/device decide si las materializa. No alteran
+        // CODECS, RESOLUTION ni el bitstream, asi que no pueden provocar decoder-reject.
+        // Etiquetas RFC 8216 §6.3.1: un player conforme las ignora; el daemon las lee.
+        '#EXT-X-APE-CORTEX-AI-SUPER-RESOLUTION:ENABLED|ENGINE=ESRGAN-LITE|FALLBACK=LANCZOS',
+        '#EXT-X-APE-CORTEX-AI-SPATIAL-DENOISE:ENABLED|ENGINE=CAR-CNN|STRENGTH=adaptive',
+        '#EXT-X-APE-CORTEX-LCEVC:PHASE=4,ENABLED=true,ENHANCEMENT=ULTRA,SHARPNESS=1.0',
+        '#EXT-X-APE-CORTEX-TEMPORAL-ARTIFACT-REPAIR:ENABLED|ENGINE=RIFE|MODE=detect-repair',
+        // ═══ GAP 3 — BITRATE ANARCHY: el resto YA EXISTE, no se duplica ════════════════════════
+        // ANTI-CUT-ISP-STRANGLE se emite desde L5082 (per-channel, con DETECT+EVADE+ESCALATE),
+        // y bandwidth_ramp / bandwidth_ramp_peak desde L4110-L4113 como KODIPROP de
+        // inputstream.adaptive. Duplicarlos aqui metia el MISMO tag dos veces con valores
+        // distintos y el player se quedaba con el ultimo. Solo falta el monitor de motor:
+        '#EXT-X-APE-OMEGA-ENGINE-BANDWIDTH-MONITOR:ENABLED|WINDOW=2000ms|EMIT=per-segment',
+        // ═══ GAP 17 — ZAPPING SUB-SEGUNDO ══════════════════════════════════════════════════════
+        // OJO: NO se emite `#KODIPROP:inputstream.adaptive.stream_selection_type=ask-quality`.
+        // En inputstream.adaptive `ask-quality` abre un DIÁLOGO al usuario por cada canal: es lo
+        // contrario del zapping sub-segundo. El tipo real ya lo elige el ternario de perfil
+        // (adaptive para isUltra, fixed-res para isHigh/isMid) y el global dice `auto`.
+        // Se declara la INTENCIÓN como metadata APE que el daemon puede leer, sin tocar el
+        // comportamiento del player:
+        '#EXT-X-APE-STREAM-SELECTION-PREFER:ask-quality|POLICY=fast-zap|NOTE=metadata-not-kodiprop',
             '#EXT-X-APE-TRANSPORT-PROTOCOL:CMAF_UNIVERSAL',
             '#EXT-X-APE-TRANSPORT-CHUNK-SIZE:200MS',
             '#EXT-X-APE-TRANSPORT-FALLBACK-1:HLS_FMP4',
