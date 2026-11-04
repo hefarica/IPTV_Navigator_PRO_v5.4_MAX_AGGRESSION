@@ -326,12 +326,77 @@ function serve() {
         return { ok:true, pedidos: slot.length, extinf:extinf, urls:urls, malas:malas, ejemplo:ejemplo, bytes:txt.length };
       } catch (err) { return { ok:false, error:String(err && err.message || err).slice(0,300) }; }
     })()`);
-    ok(e && e.ok === true, 'el generador emite sin abortar', e && e.error);
+    ok(e && e.ok === true, 'el generador emite sin abortar', JSON.stringify(e).slice(0,400));
     ok(e && e.extinf === e.pedidos && e.pedidos > 0, 'un #EXTINF por canal emitido',
-      'extinf=' + (e && e.extinf) + ' pedidos=' + (e && e.pedidos));
+      'extinf=' + (e && e.extinf) + ' pedidos=' + (e && e.pedidos) + ' bytes=' + (e && e.bytes) + ' urls=' + (e && e.urls) + ' ' + JSON.stringify(e).slice(0,400));
     ok(e && e.urls === e.extinf, 'una URI por canal emitido', 'urls=' + (e && e.urls) + ' extinf=' + (e && e.extinf));
     ok(e && e.malas === 0, 'TODAS las URIs son del proveedor y reproducibles',
       'malas=' + (e && e.malas) + ' ejemplo=' + (e && e.ejemplo));
+  }
+
+  // 11 · REGRESIÓN EXACTA DEL FALLO REPORTADO EN EL PANEL
+  //      El Protocol-Enforcer del Schema Gate convertía un host suelto
+  //      (`line.tivi-ott.net`) en `http://line.tivi-ott.net` SIN PATH; el generador
+  //      lo aceptaba como "URL del catálogo" y el preflight abortaba 10.573 canales
+  //      con "sin URI reproducible" aunque las credenciales estuvieran presentes.
+  {
+    const t = await evaluar(`(function(){
+      var V = window.GENERATION_VALIDATOR_V9;
+      function probe(u){ try { return V._processUrl(u); } catch(e){ return { error:String(e && e.message || e) }; } }
+      return JSON.stringify({
+        hostOnly : probe('line.tivi-ott.net'),
+        abs      : probe('http://line.tivi-ott.net/live/3JHFTC/U56BDP/3.m3u8'),
+        sinEsq   : probe('line.tivi-ott.net/live/3JHFTC/U56BDP/3.m3u8'),
+        basura   : probe('::::')
+      });
+    })()`);
+    const o = JSON.parse(t);
+    ok(o.hostOnly && o.hostOnly.critical === false && o.hostOnly.url === '',
+      'gate: el host suelto YA NO se convierte en http://host sin path', JSON.stringify(o.hostOnly));
+    ok(o.abs && o.abs.url === 'http://line.tivi-ott.net/live/3JHFTC/U56BDP/3.m3u8',
+      'gate: URL absoluta con path se conserva verbatim', JSON.stringify(o.abs));
+    ok(o.sinEsq && /^http:\/\/line\.tivi-ott\.net\/live\//.test(o.sinEsq.url || ''),
+      'gate: URL sin esquema CON path se repara (sin regresión)', JSON.stringify(o.sinEsq));
+    ok(o.basura && o.basura.critical === true,
+      'gate: una cadena que no es URL sigue siendo crítica', JSON.stringify(o.basura));
+  }
+
+  // 12 · Pipeline completo del caso reportado: catálogo con host suelto,
+  //      serverId desalineado de la biblioteca y UNA sola credencial utilizable.
+  {
+    const t = await evaluar(`(function(){
+      var V = window.GENERATION_VALIDATOR_V9;
+      var srv = { id:'srv_OTRO', name:'Tivi', baseUrl:'http://line.tivi-ott.net',
+                  username:'3JHFTC', password:'U56BDP', active:true };
+      window.app = { state: { activeServers:[srv], currentServer:null } };
+      try { localStorage.setItem('iptv_server_library', JSON.stringify([srv])); } catch(e){}
+      var chs = [];
+      for (var i = 0; i < 10; i++) {
+        chs.push({ name:'|AL| TOP CHANNEL ' + i, stream_id: 3 + i * 2, serverId:'srv_c616f2a539',
+                   serverName:'Tivi', type:'live', url:'line.tivi-ott.net' });
+      }
+      var res = V.validateAndTranslate(chs);
+      var safe = res.valid ? res.cleanChannels : chs;
+      var options = { _activeServers:[srv], _currentServer:null, profile:'P3' };
+      var creds = window.APE_URL_RESOLVE.creds(options);
+      var malos = 0, ejemplo = '', hosts = {};
+      for (var j = 0; j < safe.length; j++) {
+        var u = '';
+        try { u = window.APE_URL_RESOLVE.build(safe[j], null, 'P3', j, creds) || ''; } catch(e){ u = ''; }
+        if (!window.APE_URL_RESOLVE.isPlayable(u)) malos++;
+        else { if (!ejemplo) ejemplo = u; try { hosts[new URL(u).host] = 1; } catch(e){} }
+      }
+      var gErr = '';
+      try { window.APE_GEN(safe, options); } catch (e) { gErr = String(e && e.message || e); }
+      return JSON.stringify({ n: safe.length, malos: malos, ejemplo: ejemplo,
+                              hosts: Object.keys(hosts), aborta: /URL-GUARD/.test(gErr) });
+    })()`);
+    const o = JSON.parse(t);
+    ok(o.n === 10 && o.malos === 0, 'caso reportado: TODOS resuelven URI reproducible',
+      'malos=' + o.malos + '/' + o.n + ' ' + JSON.stringify(o));
+    ok(/^http:\/\/line\.tivi-ott\.net\/live\/3JHFTC\/U56BDP\/\d+\.m3u8$/.test(o.ejemplo || ''),
+      'caso reportado: la URI es la canónica Xtream', o.ejemplo);
+    ok(o.aborta === false, 'caso reportado: el generador NO aborta por URL-GUARD', JSON.stringify(o));
   }
 
   console.log('\n== RESULTADO: ' + pass + ' PASS · ' + fail + ' FAIL ==');
@@ -339,3 +404,4 @@ function serve() {
   cleanup();
   process.exit(fail ? 1 : 0);
 })().catch((e) => { console.error('ERROR FATAL:', e); process.exit(1); });
+

@@ -7569,15 +7569,22 @@ ${__apeContinuityTags().join('\n')}
         // Helper: normalize and add server to map
         const addServer = (s, sourceName) => {
             if (!s || typeof s !== 'object') return;
-            const baseUrl = (s.baseUrl || s.url || s.server_url || s.host || '')
-                .replace(/\/player_api\.php.*$/, '').replace(/\/$/, '');
+            // [URL-GUARD-RESILIENCE] Base normalizada de una sola vez:
+            //  - quita /player_api.php
+            //  - trim + sin espacios internos + sin query/fragmento + sin barra final
+            //  - esquema a minúsculas y SIEMPRE presente
+            // El antiguo `baseUrl.startsWith('http')` era case-sensitive: una base
+            // `HTTP://host` o `" http://host"` producía `http://HTTP://host` y el
+            // host quedaba en `http` ⇒ canal con URI inservible.
+            const baseUrl = __apeNormalizeBase(
+                String(s.baseUrl || s.url || s.server_url || s.host || '').replace(/\/player_api\.php.*$/, '')
+            );
             const username = sanitizeCredential(s._lockedUsername || s.username || s.user || '');
             const password = sanitizeCredential(s._lockedPassword || s.password || s.pass || '');
             if (!baseUrl || !username || !password) {
                 return;
             }
-            // Add http:// if missing
-            const fullBase = baseUrl.startsWith('http') ? baseUrl : `http://${baseUrl}`;
+            const fullBase = baseUrl;
             const entry = { baseUrl: fullBase, username, password };
             if (s.id && !map[s.id]) map[s.id] = entry;
             if (s.name && !map['name:' + s.name.toLowerCase()]) map['name:' + s.name.toLowerCase()] = entry;
@@ -7623,12 +7630,11 @@ ${__apeContinuityTags().join('\n')}
                     addServer(st.currentServer, 'CURRENT_SERVER');
                     const cs = st.currentServer;
                     const csEntry = {
-                        baseUrl: (cs.baseUrl || cs.url || '').replace(/\/player_api\.php.*$/, '').replace(/\/$/, ''),
-                        username: cs.username || cs.user || '',
-                        password: cs.password || cs.pass || ''
+                        baseUrl: __apeNormalizeBase(String(cs.baseUrl || cs.url || '').replace(/\/player_api\.php.*$/, '')),
+                        username: sanitizeCredential(cs._lockedUsername || cs.username || cs.user || ''),
+                        password: sanitizeCredential(cs._lockedPassword || cs.password || cs.pass || '')
                     };
                     if (csEntry.baseUrl && csEntry.username && csEntry.password) {
-                        if (!csEntry.baseUrl.startsWith('http')) csEntry.baseUrl = 'http://' + csEntry.baseUrl;
                         map['__current__'] = csEntry;
                     }
                 }
@@ -7919,6 +7925,54 @@ ${__apeContinuityTags().join('\n')}
         return out;
     }
 
+    // [URL-GUARD-LAST-RESORT] Base de servidor normalizada:
+    //  quita espacios/salto, query y fragmento, baja el esquema a minúsculas y
+    //  elimina barras finales. Una base con esquema en mayúsculas o con espacios
+    //  hacía que el parser matemático devolviera una URI inservible
+    //  (`http://http/...`) o vacía, y el canal quedaba sin URL.
+    function __apeNormalizeBase(baseUrl) {
+        let base = String(baseUrl == null ? '' : baseUrl).trim().replace(/\s+/g, '');
+        if (!base) return '';
+        base = base.split('#')[0].split('?')[0];
+        const m = base.match(/^([a-z][a-z0-9+.-]*):\/\//i);
+        if (m) base = m[1].toLowerCase() + '://' + base.slice(m[0].length);
+        else base = 'http://' + base.replace(/^\/+/, '');
+        return base.replace(/\/+$/, '');
+    }
+
+    // [URL-GUARD-LAST-RESORT] URI canónica Xtream construida por concatenación
+    // directa: `{base}/{live|movie|series}/{usuario}/{password}/{stream_id}.{ext}`.
+    // Con credenciales + stream_id la URI es determinista, así que no debe depender
+    // de la estrictez de `_buildPerfectUrl` ni de `normalizeBaseUrl`. Devuelve ''
+    // sólo si faltan datos reales (nunca inventa host ni credenciales).
+    function __apeBuildXtreamUrl(baseUrl, username, password, streamId, typePath, ext) {
+        const base = __apeNormalizeBase(baseUrl);
+        if (!base) return '';
+        const user = String(username == null ? '' : username).trim();
+        const pass = String(password == null ? '' : password).trim();
+        const sid = String(streamId == null ? '' : streamId).trim();
+        if (!user || !pass || !sid) return '';
+        let origin = '', basePath = '';
+        try {
+            const parsed = new URL(base);
+            origin = parsed.origin;
+            basePath = String(parsed.pathname || '').replace(/\/+$/, '');
+            if (basePath === '/') basePath = '';
+        } catch (_e) { return ''; }
+        if (!origin || origin === 'null') return '';
+        const type = String(typePath || 'live').replace(/^\/+|\/+$/g, '') || 'live';
+        const e = String(ext || 'm3u8').trim().replace(/^\./, '') || 'm3u8';
+        const segments = [basePath, type, encodeURIComponent(user), encodeURIComponent(pass), encodeURIComponent(sid) + '.' + e]
+            .filter(function (s) { return s !== '' && s != null; })
+            .map(function (s) { return String(s).replace(/^\/+|\/+$/g, ''); })
+            .filter(function (s) { return s !== ''; });
+        const out = origin + '/' + segments.join('/');
+        return isPlayableStreamUrl(out) ? out : '';
+    }
+
+    // Último error de construcción de URI (diagnóstico del preflight).
+    let __apeLastUrlBuildError = '';
+
     function buildChannelUrl(channel, jwt, profile = null, index = 0, credentialsMap = {}) {
         // [t61] MODO DIRECTO (sin VPS): URL del PROVEEDOR verbatim, sin reconstruir
         // ni envolver. Default false ⇒ el modo VPS no cambia. Reversible.
@@ -7935,7 +7989,11 @@ ${__apeContinuityTags().join('\n')}
             // Host-only no es una URI; seguir al constructor con credenciales/stream_id.
         }
         // [t84] PRESERVAR la URL del catalogo (verbatim); solo sintetizar si falta.
-        if (_normalizedUrl && /^https?:\/\//i.test(_normalizedUrl)) return _normalizedUrl;
+        // [URL-GUARD-RESILIENCE] Aceptar la URL del catálogo SÓLO si es reproducible
+        // (absoluta + path). Un `http://host` sin path venía del Protocol-Enforcer del
+        // validador y se devolvía tal cual ⇒ el preflight lo rechazaba para los 10.573
+        // canales. Ahora cae a la construcción con credenciales/stream_id.
+        if (isPlayableStreamUrl(_normalizedUrl)) return _normalizedUrl;
         let streamId = channel.stream_id;
         if (streamId == null) streamId = channel.raw?.stream_id;
         if (streamId == null) streamId = channel.id;
@@ -8053,19 +8111,52 @@ ${__apeContinuityTags().join('\n')}
             typePath: typePath, extraParams: extra, forceHttps: false, preservePort: true
         };
 
+        // [URL-GUARD-LAST-RESORT] Con credenciales reales + stream_id sobre un
+        // servidor Xtream la URI canónica es DETERMINISTA:
+        //   {base}/{live|movie|series}/{usuario}/{password}/{stream_id}.{ext}
+        // Se construye por concatenación directa (base normalizada) en vez de
+        // depender de la estrictez del parser matemático, que devolvía '' si la
+        // base traía esquema en mayúsculas, espacios, query o barra final. Sin
+        // esta vía, un catálogo entero quedaba "sin URI reproducible".
+        // No aplica a `query_hls` (credenciales en query: forma distinta).
+        if (srvType === 'xtream') {
+            const _canonical = __apeBuildXtreamUrl(
+                baseUrl,
+                username || channel._username || '',
+                password || channel._password || '',
+                streamId, typePath, ext
+            );
+            if (_canonical) {
+                const _canonHttps = preferHttps(_canonical);
+                if (isPlayableStreamUrl(_canonHttps)) return _canonHttps;
+                if (isPlayableStreamUrl(_canonical)) return _canonical;
+            }
+        }
+
         try {
             const pUrl = preferHttps(_buildPerfectUrl(input));
             if (isPlayableStreamUrl(pUrl)) return pUrl;
+            __apeLastUrlBuildError = 'URI no absoluta: ' + String(pUrl).slice(0, 160);
             console.warn('[URL-GUARD] URI no absoluta descartada:', pUrl);
-            return '';
         } catch (err) {
+            __apeLastUrlBuildError = (err && err.message) || String(err);
             console.warn('[Mathematical URL Constructor Error] Fallback triggered:', err.message);
-            let fbUrl = `${baseUrl}/${typePath}/${username}/${password}/${streamId}.${ext}`;
-            fbUrl = preferHttps(fbUrl.replace(/\s+/g, '').replace(/([^:]\/)\/+/g, "$1"));
-            if (isPlayableStreamUrl(fbUrl)) return fbUrl;
-            console.warn('[URL-GUARD] fallback no reproducible:', fbUrl);
-            return '';
         }
+
+        // Último recurso: misma concatenación canónica (idempotente), por si el
+        // tipo detectado no fuese xtream pero sí hubiese credenciales válidas.
+        const _fbCanonical = __apeBuildXtreamUrl(
+            baseUrl,
+            username || channel._username || '',
+            password || channel._password || '',
+            streamId, typePath, ext
+        );
+        if (_fbCanonical) {
+            const _fbHttps = preferHttps(_fbCanonical);
+            if (isPlayableStreamUrl(_fbHttps)) return _fbHttps;
+        }
+        console.warn('[URL-GUARD] fallback no reproducible:', baseUrl, '| user:', !!username, '| streamId:', streamId);
+        return '';
     }
 
 
@@ -9200,7 +9291,16 @@ ${__apeContinuityTags().join('\n')}
             if (cfg.codec_full) {
                 // [2026-11-04] El nivel declarado se eleva al que la resolucion exige. Un perfil con
                 // L123 (techo 1080p) emitiendo 3840x2160 pasa a declarar L153.
-                const _cfCoherente = _nivelHevcCoherente(cfg.codec_full, _resH796_safe, _fps796_csv);
+                // [FIX 2026-11-04 · BREAKING] Aquí se usaban `_resH796_safe` (declarada 10 líneas
+                // MÁS ABAJO → TDZ) y `_fps796_csv` (declarada en otro bloque, línea ~11388 →
+                // ReferenceError). El resultado era `ReferenceError: _codec796_csv is not defined`
+                // en CADA canal: el stream los descartaba en silencio y la lista salía con 0 canales.
+                // Se derivan altura/fps locales desde variables ya en scope.
+                const _cfHsafe = (function () {
+                    const h = parseInt(String(_res796 || '0x0').split('x')[1], 10);
+                    return (h > 0 && h <= 4320) ? h : 4320;
+                })();
+                const _cfCoherente = _nivelHevcCoherente(cfg.codec_full, _cfHsafe, _fps796);
                 lines.push(`#EXT-X-APE-CODEC-FULL:${_cfCoherente}`);
             }
         }
@@ -9234,9 +9334,11 @@ ${__apeContinuityTags().join('\n')}
             ? Math.round(Number(cfg.bitrate) * 1000) : _bw796;
         const _floorPerfilBps796 = (cfg && cfg.bitrate_floor_mbps != null && !isNaN(cfg.bitrate_floor_mbps))
             ? Math.round(Number(cfg.bitrate_floor_mbps) * 1000000) : _minBw796;
-        // [2026-11-04] El CODECS del STREAM-INF tambien se normaliza: si la cascada o el probe
-        // entregan un nivel por debajo de la resolucion declarada, se eleva al minimo coherente.
-        _codec796_csv = _nivelHevcCoherente(_codec796_csv, _resH796_safe, _fps796_csv);
+        // [FIX 2026-11-04 · BREAKING] Aquí había `_codec796_csv = _nivelHevcCoherente(...)`, pero
+        // `_codec796_csv` se declara con `let` MÁS ABAJO (~11386) y fuera de este scope: lanzaba
+        // `ReferenceError: _codec796_csv is not defined` en CADA canal y el stream los descartaba
+        // en silencio (lista de 0 canales). La normalización se movió justo antes del
+        // #EXT-X-STREAM-INF, que es donde se usa.
         lines.push(`#EXTVLCOPT:adaptive-maxbitrate=${_bwPerfilBps796}`);
         lines.push(`#EXTVLCOPT:adaptive-minbitrate=${_floorPerfilBps796}`);
         lines.push(`#EXTVLCOPT:adaptive-use-access=true`);
@@ -11606,6 +11708,10 @@ lines.push(`#EXT-X-APE-STREAM-TRUTH:src=${_streamTruth.source},w=${_streamTruth.
             });
             lines.push(_qd85.qualityTag);
             lines.push(_qd85.rangeTag);
+            // [2026-11-04] El CODECS del STREAM-INF se normaliza aquí (mismo scope que
+            // `_codec796_csv`): si la cascada/probe entregan un nivel por debajo de la
+            // resolución declarada, se eleva al mínimo coherente (Ley Cardinal 1).
+            _codec796_csv = _nivelHevcCoherente(_codec796_csv, _resH796_safe, _fps796_csv);
             const _bw796_denom = _qd85.bandwidth;
             const _avgBw_denom = _qd85.average;
             const _sid_denom = _qd85.stableVariantId;
@@ -11854,6 +11960,19 @@ lines.push(`#EXT-X-APE-STREAM-TRUTH:src=${_streamTruth.source},w=${_streamTruth.
                 if (!isPlayableStreamUrl(_u)) {
                     // Reparar tanto VPS como DIRECTO con el servidor activo/credenciales.
                     try { _repaired = buildChannelUrl(_c, null, 'P3', _i, _preCreds) || ''; } catch (_e) { _repaired = ''; }
+                    // [URL-GUARD-LAST-RESORT] Reintento forzando la ÚNICA credencial
+                    // disponible como `__current__` (sin ambigüedad). Cubre maps donde
+                    // el serverId del canal no coincide con la clave de la biblioteca.
+                    if (!isPlayableStreamUrl(_repaired)) {
+                        try {
+                            const _uniqCreds0 = __apeUniqueCredentialEntries(_preCreds);
+                            if (_uniqCreds0.length === 1) {
+                                const _map2 = Object.assign({}, _preCreds, { __current__: _uniqCreds0[0] });
+                                const _r2 = buildChannelUrl(_c, null, 'P3', _i, _map2) || '';
+                                if (isPlayableStreamUrl(_r2)) _repaired = _r2;
+                            }
+                        } catch (_e) { /* noop */ }
+                    }
                 }
                 if (!isPlayableStreamUrl(_u) && !isPlayableStreamUrl(_repaired)) {
                     bad.push(_c.name || _c.id || ('#' + _i));
@@ -11888,9 +12007,11 @@ lines.push(`#EXT-X-APE-STREAM-TRUTH:src=${_streamTruth.source},w=${_streamTruth.
                 const _detalle = badInfo.map(b =>
                     `${b.name} [stream_id=${b.stream_id || '-'} serverId=${b.serverId || '-'} url=${b.hasUrl ? 'sí' : 'no'}]`
                 ).join(' | ');
+                const _buildErr = (typeof __apeLastUrlBuildError === 'string' && __apeLastUrlBuildError)
+                    ? ` Último error de construcción: ${__apeLastUrlBuildError}.` : '';
                 const msg = `[URL-GUARD] ${bad.length}/${_total} canal(es) sin URI reproducible; NO se genera la lista. ` +
                     `CAUSA: ${_causa}. REMEDIO: ${_remedio}. ` +
-                    `Credenciales utilizables: ${_uniqCreds}. Ejemplos: ${_detalle}. ` +
+                    `Credenciales utilizables: ${_uniqCreds}.${_buildErr} Ejemplos: ${_detalle}. ` +
                     `Para generar a sabiendas (no recomendado): window.APE_STRICT_URI=false`;
                 console.error('[URL-GUARD] unrepairable=%d/%d causa=%s', bad.length, _total, _causa);
                 throw new Error(msg);

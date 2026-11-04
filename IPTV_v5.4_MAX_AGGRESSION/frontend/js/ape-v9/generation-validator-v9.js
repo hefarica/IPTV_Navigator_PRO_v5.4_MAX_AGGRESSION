@@ -429,10 +429,22 @@
             }
 
             // Validación de formato URL básica
+            let parsedUrl = null;
             try {
-                new URL(url);
+                parsedUrl = new URL(url);
             } catch {
                 return { critical: true, reason: 'malformed_url' };
+            }
+
+            // [URL-CONTRACT] Host sin path NO es una URI reproducible.
+            // El Protocol-Enforcer convertía `line.tivi-ott.net` en
+            // `http://line.tivi-ott.net`, que pasa `new URL()` pero no tiene path:
+            // el generador lo aceptaba como URL del catálogo y el preflight
+            // [URL-GUARD] abortaba los 10.573 canales por "sin URI reproducible".
+            // Devolver '' deja que el generador construya la URI Xtream real
+            // (base+usuario+password+stream_id) sin perder el canal.
+            if (!parsedUrl.pathname || parsedUrl.pathname === '/' || parsedUrl.pathname === '') {
+                return { critical: false, url: '', repaired: false, hostOnly: true };
             }
 
             return { critical: false, url, repaired };
