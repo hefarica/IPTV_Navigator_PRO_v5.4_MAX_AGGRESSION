@@ -258,6 +258,20 @@ jobs:
           SRC5="IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/ape-last.php"
           DEST5="/var/www/html/prisma/api/ape-last.php"
           php -l "$SRC5" || { echo "::error::ape-last.php no pasa php -l"; exit 1; }
+          # qoe-flush.php: escribe qoe-last-flush.json (via 2 del realce). NUNCA estuvo en el
+          # workflow, asi que el cambio que publica el JSON jamas llego a produccion.
+          SRC6="IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/qoe-flush.php"
+          DEST6="/var/www/html/prisma/api/qoe-flush.php"
+          if [ -f "$SRC6" ]; then
+            php -l "$SRC6" || { echo "::error::qoe-flush.php no pasa php -l"; exit 1; }
+            if ssh "$TARGET" "sudo -n test -f '$DEST6'"; then
+              ssh "$TARGET" "sudo -n cp -a '$DEST6' '$DEST6.bak_$STAMP'"
+            fi
+            scp -q "$SRC6" "$TARGET:/tmp/ape-qoe-flush.php"
+            ssh "$TARGET" "sudo -n install -m 0644 -o www-data -g www-data /tmp/ape-qoe-flush.php '$DEST6'"
+            echo "  qoe-flush instalado"
+          fi
+
           scp -q "$SRC5" "$TARGET:/tmp/ape-last.php"
           ssh "$TARGET" "sudo -n install -m 0644 -o www-data -g www-data /tmp/ape-last.php '$DEST5'"
           # garantir que www-data puede escribir el registro
