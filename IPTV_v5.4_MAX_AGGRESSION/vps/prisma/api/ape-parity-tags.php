@@ -38,6 +38,9 @@ header('X-Content-Type-Options: nosniff');
 
 // El resolver vive junto al backend. Se prueban las rutas conocidas en orden.
 const RESOLVER_CANDIDATES = [
+    // Fuente publicada por el deploy como .txt (inerte, solo lectura). Es la que manda:
+    // el resolver real nunca se desplego al VPS, solo habia un stub de 6 KB y un backup.
+    __DIR__ . '/_resolver-source.php.txt',
     __DIR__ . '/../../../backend/resolve_quality_unified.php',
     __DIR__ . '/../../backend/resolve_quality_unified.php',
     '/var/www/html/backend/resolve_quality_unified.php',

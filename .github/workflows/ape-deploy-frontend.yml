@@ -182,6 +182,28 @@ jobs:
           sleep 3
           echo 'reload hecho; descriptores de fichero descartados'
 
+      - name: Publicar fuente del resolver (solo lectura, NO ejecutable)
+        if: inputs.mode == 'apply'
+        run: |
+          set -uo pipefail
+          # El endpoint de paridad necesita LEER el resolver para extraer sus tags. En el VPS
+          # solo habia un stub de 6 KB (0 tags) y un backup de mayo (218 tags): el resolver real
+          # nunca se desplego. Se publica como .txt para que sea INERTE - nginx no lo ejecuta,
+          # solo se lee. No sustituye al resolver de produccion ni cambia comportamiento.
+          SRC="IPTV_v5.4_MAX_AGGRESSION/backend/resolve_quality_unified.php"
+          DEST="/var/www/html/prisma/api/_resolver-source.php.txt"
+          echo "=== fuente del resolver (solo lectura) ==="
+          scp -q "$SRC" "$TARGET:/tmp/ape-resolver-src"
+          ssh "$TARGET" "sudo -n install -m 0644 -o www-data -g www-data /tmp/ape-resolver-src '$DEST'"
+          REMOTO=$(ssh "$TARGET" "sudo -n sha256sum '$DEST' | cut -d' ' -f1")
+          LOCAL=$(sha256sum "$SRC" | cut -d' ' -f1)
+          if [ "$REMOTO" != "$LOCAL" ]; then
+            echo "::error::sha de la fuente del resolver no coincide"; exit 1
+          fi
+          echo "  sha OK ($LOCAL)"
+          APE=$(ssh "$TARGET" "sudo -n grep -c '#EXT-X-APE-' '$DEST' || true")
+          echo "  lineas con #EXT-X-APE-: $APE"
+
       - name: Desplegar endpoint de paridad (PHP)
         if: inputs.mode == 'apply'
         run: |
