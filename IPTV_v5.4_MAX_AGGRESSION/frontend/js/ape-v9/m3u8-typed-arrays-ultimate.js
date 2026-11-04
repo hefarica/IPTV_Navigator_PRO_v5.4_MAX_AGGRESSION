@@ -29,6 +29,30 @@
     // REGLA DE ORO: NUNCA cruzar. hev1 en STREAM-INF rompe Tizen/webOS.
     //               hvc1 en KODIPROP video_codec_override es ignorado por ISA.
     // ═══════════════════════════════════════════════════════════════════════════
+    // ═══════════════════════════════════════════════════════════════════════════════════════════════
+    // APE_CODEC_SSOT — ÚNICA FUENTE DE VERDAD DE CÓDECS (2026-11-04 mandato operador)
+    //
+    // Cambia SOLO `PRIORITY` y todos los tags/headers heredan el nuevo orden. Ningún sitio de abajo
+    // vuelve a escribir una cadena de códecs a mano: todos leen de aquí.
+    //
+    //   PRIORITY  → orden de preferencia. Se usa en codec_priority, APE-CODEC-PRIORITY,
+    //               SESSION-DATA player_pref, SYS-VIDEO-CODEC-PRIORITY y EXTVLCOPT codec-priority.
+    //   PRIMARY   → el códec que se declara cuando un tag pide 'el principal' y no hay probe.
+    //   HEVC_TIER → primer nivel HEVC de la escalera cuando un perfil no trae codec_chain_video.
+    //
+    // Dolby Vision (dvh1/dvhe) va primero por orden del propietario; hvc1 es el PRIMARY porque es
+    // el que decodifican todos los SoC y el que llevan los headers que piden un códec concreto.
+    // ═══════════════════════════════════════════════════════════════════════════════════════════════
+    const APE_CODEC_SSOT = Object.freeze({
+        PRIORITY:  Object.freeze(['dvh1', 'dvhe', 'hvc1', 'hev1', 'av01', 'vp09', 'avc1', 'h264']),
+        PRIMARY:   'hvc1',
+        HEVC_TIER: 'hvc1.2.4.L153.B0'
+    });
+    // Derivados: todo lo que necesite una cadena, la pide aquí.
+    const APE_CODEC_CSV        = APE_CODEC_SSOT.PRIORITY.join(',');
+    const APE_CODEC_CSV_H265   = APE_CODEC_SSOT.PRIORITY.concat(['h265','H265','h.265','H.265','mpeg2']).join(',');
+    const APE_CODEC_PRIMARY    = APE_CODEC_SSOT.PRIMARY;
+    const APE_CODEC_HEVC_TIER  = APE_CODEC_SSOT.HEVC_TIER;
     const HEVC_CASCADE_HVC1 = 'hvc1.2.4.L186.B0,hvc1.2.4.L183.B0,hvc1.2.4.L180.B0,hvc1.2.4.L156.B0,hvc1.2.4.L153.B0,hvc1.2.4.L150.B0,hvc1.2.4.L123.B0,hvc1.2.4.L120.B0,hvc1.2.4.L93.B0,hvc1.2.4.L90.B0,avc1.640028';
     const HEVC_CASCADE_HEV1 = 'hev1.2.4.L186.B0,hev1.2.4.L183.B0,hev1.2.4.L180.B0,hev1.2.4.L156.B0,hev1.2.4.L153.B0,hev1.2.4.L150.B0,hev1.2.4.L123.B0,hev1.2.4.L120.B0,hev1.2.4.L93.B0,hev1.2.4.L90.B0,avc1.640028';
     // Helper: obtiene codec hev1 del tier activo para un canal dado (KODIPROP/EXTVLCOPT)
@@ -2052,7 +2076,7 @@
             bandwidth_guarantee: 500,
             codec_primary: 'HEVC',
             codec_fallback: 'AVC',
-            codec_priority: 'dvh1,dvhe,hevc,hev1,hvc1,h265,H265,h.265,H.265,av1,h264',
+            codec_priority: APE_CODEC_CSV_H265,
             hdr_support: ['hdr10', 'dolby_vision', 'hlg'],
             color_depth: 12,
             audio_channels: 8,
@@ -2103,7 +2127,7 @@
             bandwidth_guarantee: 400,
             codec_primary: 'HEVC',
             codec_fallback: 'H264',
-            codec_priority: 'dvh1,dvhe,hevc,hev1,hvc1,h265,H265,h.265,H.265,av1,vp9,h264,mpeg2',
+            codec_priority: APE_CODEC_CSV_H265,
             hdr_support: ['hdr10', 'hlg'],
             color_depth: 10,
             audio_channels: 6,
@@ -2150,7 +2174,7 @@
             bandwidth_guarantee: 350,
             codec_primary: 'HEVC',
             codec_fallback: 'H264',
-            codec_priority: 'dvh1,dvhe,hevc,hev1,hvc1,h265,H265,h.265,H.265,av1,vp9,h264,mpeg2',
+            codec_priority: APE_CODEC_CSV_H265,
             hdr_support: ['hdr10'],
             color_depth: 10,
             audio_channels: 6,
@@ -2197,7 +2221,7 @@
             bandwidth_guarantee: 300,
             codec_primary: 'HEVC',
             codec_fallback: 'H264',
-            codec_priority: 'dvh1,dvhe,hevc,hev1,hvc1,h265,H265,h.265,H.265,av1,vp9,h264,mpeg2',
+            codec_priority: APE_CODEC_CSV_H265,
             hdr_support: ['hdr10', 'hlg'],
             color_depth: 10,
             audio_channels: 2,
@@ -2244,7 +2268,7 @@
             bandwidth_guarantee: 250,
             codec_primary: 'HEVC',
             codec_fallback: 'H264',
-            codec_priority: 'dvh1,dvhe,hevc,hev1,hvc1,h265,H265,h.265,H.265,av1,vp9,h264,mpeg2',
+            codec_priority: APE_CODEC_CSV_H265,
             hdr_support: ['hdr10', 'hlg'],
             color_depth: 10,
             audio_channels: 2,
@@ -2291,7 +2315,7 @@
             bandwidth_guarantee: 200,
             codec_primary: 'HEVC',
             codec_fallback: 'H264',
-            codec_priority: 'dvh1,dvhe,hevc,hev1,hvc1,h265,H265,h.265,H.265,av1,vp9,h264,mpeg2',
+            codec_priority: APE_CODEC_CSV_H265,
             hdr_support: ['hdr10', 'hlg'],
             color_depth: 10,
             audio_channels: 2,
@@ -2878,7 +2902,7 @@
             '#KODIPROP:inputstream.adaptive.preferred_codec=hevc',
             '#KODIPROP:inputstream.adaptive.video_codec_override=hevc',
             '#EXT-X-APE-AV1-FALLBACK-CHAIN:HEVC>AV1>H264',
-            '#EXT-X-APE-CODEC-PRIORITY:HEVC>AV1>H264',
+            `#EXT-X-APE-CODEC-PRIORITY:${APE_CODEC_CSV}`,
             '#EXT-X-APE-TRANSPORT-PROTOCOL:CMAF_UNIVERSAL',
             '#EXT-X-APE-TRANSPORT-CHUNK-SIZE:200MS',
             '#EXT-X-APE-TRANSPORT-FALLBACK-1:HLS_FMP4',
@@ -3277,7 +3301,7 @@ ${__apeContinuityTags().join('\n')}
 #EXT-X-SESSION-DATA:DATA-ID="exoplayer.track_selection",VALUE="{\\"maxDurationForQualityDecreaseMs\\":500,\\"minDurationForQualityIncreaseMs\\":3000,\\"bandwidthFraction\\":0.95}"
 #EXT-X-SESSION-DATA:DATA-ID="exoplayer.bandwidth_meter",VALUE="{\\"resetOnNetworkTypeChange\\":false,\\"slidingWindowMaxWeight\\":2000,\\"initialBitrateEstimate\\":120000000}"
 #EXT-X-SESSION-DATA:DATA-ID="hls.js.config",VALUE="{\\"maxBufferLength\\":130,\\"maxMaxBufferLength\\":600,\\"abrBandWidthFactor\\":0.95,\\"abrBandWidthUpFactor\\":0.95,\\"lowLatencyMode\\":true}"
-#EXT-X-SESSION-DATA:DATA-ID="com.ape.codec.chain.player_pref",VALUE="dvh1,hvc1,av01,avc1,h265,h264"
+#EXT-X-SESSION-DATA:DATA-ID="com.ape.codec.chain.player_pref",VALUE="${APE_CODEC_CSV}"
 #EXT-X-SESSION-DATA:DATA-ID="com.ape.codec.chain.audio",VALUE="ac-3,mp4a.40.2,mp4a.40.5" // [FIX-AUDIO 2026-05-23] ec-3 removido — ac-3+mp4a.40.2 en todos los modos
 #EXT-X-SESSION-DATA:DATA-ID="com.ape.codec.chain.hdr",VALUE="dv,hdr10plus,hdr10,hlg,sdr"
 #EXT-X-SESSION-DATA:DATA-ID="com.ape.build",VALUE="v5.4-MAX-QUALITY-OVERRIDE"
@@ -3291,7 +3315,7 @@ ${__apeContinuityTags().join('\n')}
 #EXT-X-APE-DOLBY-VISION:ENABLED=true,PROFILE=8,LEVEL=6,CROSS_COMPATIBLE=true
 #EXT-X-SYS-LAYERS:EXTVLCOPT,KODIPROP,EXT-X-APE,EXT-X-START,LL-HLS,LCEVC,DV,ATMOS
 #EXT-X-SYS-AUDIO-CODEC-PRIORITY:ac-3,mp4a.40.2 // [FIX-AUDIO 2026-05-23] ec-3 removido — passthrough universal
-#EXT-X-SYS-VIDEO-CODEC-PRIORITY:dvh1,hvc1,av01,avc1
+#EXT-X-SYS-VIDEO-CODEC-PRIORITY:${APE_CODEC_CSV}
 #EXT-X-CONTENT-STEERING:SERVER-URI="https://iptv-ape.duckdns.org/prisma/api/content-steering.php",PATHWAY-ID="omega-maxq"
 #EXT-X-APE-INSTALLER:URL="https://iptv-ape.duckdns.org/prisma/install/ape-daemon.sh",VERSION="2026.06-universal-1",RUN="host-with-adb"
 #EXT-X-APE-WAKE:BEACON="https://iptv-ape.duckdns.org/prisma/api/ape-wake.php",MODE="on-manifest",NOTE="VPS wakes on-device daemon in ms on playback"
