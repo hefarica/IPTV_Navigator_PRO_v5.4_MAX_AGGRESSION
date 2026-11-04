@@ -1788,13 +1788,10 @@
             else if (_VP9_CODEC_RE.test(p)) vp9.push(p);
             else rest.push(p);
         }
-        // [2026-11-04 mandato operador] HVC1 PRIMERO SIEMPRE: es el codec que mas leen los players.
-        // Dentro del grupo HEVC se fuerza hvc1 delante de dvh1/dvhe/hev1. Dolby Vision y hev1
-        // siguen en la cadena como fallback de calidad, pero nunca por delante de hvc1.
-        const _hvc1 = hevc.filter(x => /^hvc1/i.test(x));
-        const _dvh  = hevc.filter(x => /^(dvh1|dvhe)/i.test(x));
-        const _other = hevc.filter(x => !/^hvc1/i.test(x) && !/^(dvh1|dvhe)/i.test(x));
-        return [..._hvc1, ..._dvh, ..._other, ...avc, ...av1, ...vp9, ...rest].join(',');
+        // [2026-11-04 owner] Orden del GRUPO HEVC preservado tal cual: Dolby Vision (dvh1/dvhe)
+        // va delante cuando el perfil lo declara asi. Solo se agrupa por familia
+        // (HEVC > AVC > AV1 > VP9), que es el proposito original del normalizador.
+        return [...hevc, ...avc, ...av1, ...vp9, ...rest].join(',');
     }
 
     function _normalizeXQPrefHEVCFirst(raw) {
@@ -3280,7 +3277,7 @@ ${__apeContinuityTags().join('\n')}
 #EXT-X-SESSION-DATA:DATA-ID="exoplayer.track_selection",VALUE="{\\"maxDurationForQualityDecreaseMs\\":500,\\"minDurationForQualityIncreaseMs\\":3000,\\"bandwidthFraction\\":0.95}"
 #EXT-X-SESSION-DATA:DATA-ID="exoplayer.bandwidth_meter",VALUE="{\\"resetOnNetworkTypeChange\\":false,\\"slidingWindowMaxWeight\\":2000,\\"initialBitrateEstimate\\":120000000}"
 #EXT-X-SESSION-DATA:DATA-ID="hls.js.config",VALUE="{\\"maxBufferLength\\":130,\\"maxMaxBufferLength\\":600,\\"abrBandWidthFactor\\":0.95,\\"abrBandWidthUpFactor\\":0.95,\\"lowLatencyMode\\":true}"
-#EXT-X-SESSION-DATA:DATA-ID="com.ape.codec.chain.player_pref",VALUE="hvc1,dvh1,av01,avc1,h265,h264"
+#EXT-X-SESSION-DATA:DATA-ID="com.ape.codec.chain.player_pref",VALUE="dvh1,hvc1,av01,avc1,h265,h264"
 #EXT-X-SESSION-DATA:DATA-ID="com.ape.codec.chain.audio",VALUE="ac-3,mp4a.40.2,mp4a.40.5" // [FIX-AUDIO 2026-05-23] ec-3 removido — ac-3+mp4a.40.2 en todos los modos
 #EXT-X-SESSION-DATA:DATA-ID="com.ape.codec.chain.hdr",VALUE="dv,hdr10plus,hdr10,hlg,sdr"
 #EXT-X-SESSION-DATA:DATA-ID="com.ape.build",VALUE="v5.4-MAX-QUALITY-OVERRIDE"
@@ -3294,7 +3291,7 @@ ${__apeContinuityTags().join('\n')}
 #EXT-X-APE-DOLBY-VISION:ENABLED=true,PROFILE=8,LEVEL=6,CROSS_COMPATIBLE=true
 #EXT-X-SYS-LAYERS:EXTVLCOPT,KODIPROP,EXT-X-APE,EXT-X-START,LL-HLS,LCEVC,DV,ATMOS
 #EXT-X-SYS-AUDIO-CODEC-PRIORITY:ac-3,mp4a.40.2 // [FIX-AUDIO 2026-05-23] ec-3 removido — passthrough universal
-#EXT-X-SYS-VIDEO-CODEC-PRIORITY:hvc1,dvh1,av01,avc1
+#EXT-X-SYS-VIDEO-CODEC-PRIORITY:dvh1,hvc1,av01,avc1
 #EXT-X-CONTENT-STEERING:SERVER-URI="https://iptv-ape.duckdns.org/prisma/api/content-steering.php",PATHWAY-ID="omega-maxq"
 #EXT-X-APE-INSTALLER:URL="https://iptv-ape.duckdns.org/prisma/install/ape-daemon.sh",VERSION="2026.06-universal-1",RUN="host-with-adb"
 #EXT-X-APE-WAKE:BEACON="https://iptv-ape.duckdns.org/prisma/api/ape-wake.php",MODE="on-manifest",NOTE="VPS wakes on-device daemon in ms on playback"
@@ -9868,7 +9865,7 @@ ${__apeContinuityTags().join('\n')}
             // [2026-11-04 mandato operador] HVC1 PRIMERO SIEMPRE. Dolby Vision queda como mejora
         // opcional detras de HEVC Main10: un TV sin licencia DV rechaza o tone-mapea mal dvh1,
         // mientras hvc1.2.4.L* lo decodifica cualquier SoC. dvh1 se conserva en la cadena.
-        const _mqVChain = 'hvc1.2.4.L186.B0,hvc1.2.4.L153.B0,dvh1.08.06,dvh1.05.09,hvc1.2.4.L183.B0,hvc1.2.4.L180.B0,hvc1.2.4.L156.B0,hvc1.2.4.L150.B0,hvc1.2.4.L123.B0,hvc1.2.4.L120.B0,hvc1.2.4.L93.B0,hvc1.2.4.L90.B0,av01.0.13M.10.0.110.09.16.09.0,av01.0.09M.10.0.110.09.16.09.0,avc1.640033,avc1.640028';
+        const _mqVChain = 'dvh1.08.06,dvh1.05.09,hvc1.2.4.L186.B0,hvc1.2.4.L153.B0,hvc1.2.4.L183.B0,hvc1.2.4.L180.B0,hvc1.2.4.L156.B0,hvc1.2.4.L150.B0,hvc1.2.4.L123.B0,hvc1.2.4.L120.B0,hvc1.2.4.L93.B0,hvc1.2.4.L90.B0,av01.0.13M.10.0.110.09.16.09.0,av01.0.09M.10.0.110.09.16.09.0,avc1.640033,avc1.640028';
             lines.push(`#KODIPROP:inputstream.adaptive.audio_dolby_atmos=false`);
             lines.push(`#KODIPROP:inputstream.adaptive.audio_eac3=true`);
             lines.push(`#KODIPROP:inputstream.adaptive.live_delay=1`);
@@ -11170,8 +11167,8 @@ ${__apeContinuityTags().join('\n')}
         // hev1 NUNCA en STREAM-INF. ec-3 en CODECS= es RFC-válido para audio DDP.
         if (options && options.maxQualityMode) {
             // [2026-11-04] HVC1 PRIMERO SIEMPRE (ver comentario de _mqVChain).
-        const _mqVideoChain = 'hvc1.2.4.L186.B0,hvc1.2.4.L153.B0,dvh1.08.06,dvh1.05.09,hvc1.2.4.L183.B0,hvc1.2.4.L180.B0,hvc1.2.4.L156.B0,hvc1.2.4.L150.B0,hvc1.2.4.L123.B0,hvc1.2.4.L120.B0,hvc1.2.4.L93.B0,hvc1.2.4.L90.B0,av01.0.13M.10.0.110.09.16.09.0,av01.0.09M.10.0.110.09.16.09.0,avc1.640033,avc1.640028';
-            const _mqCodecFirst = _mqVideoChain.split(',')[0]; // hvc1.2.4.L186.B0 (HVC1 PRIMERO SIEMPRE)
+        const _mqVideoChain = 'dvh1.08.06,dvh1.05.09,hvc1.2.4.L186.B0,hvc1.2.4.L153.B0,hvc1.2.4.L183.B0,hvc1.2.4.L180.B0,hvc1.2.4.L156.B0,hvc1.2.4.L150.B0,hvc1.2.4.L123.B0,hvc1.2.4.L120.B0,hvc1.2.4.L93.B0,hvc1.2.4.L90.B0,av01.0.13M.10.0.110.09.16.09.0,av01.0.09M.10.0.110.09.16.09.0,avc1.640033,avc1.640028';
+            const _mqCodecFirst = _mqVideoChain.split(',')[0]; // dvh1.08.06
             const _mqBwMap = { 'P0': 120000000, 'P1': 80000000, 'P2': 50000000, 'P3': 25000000, 'P4': 15000000, 'P5': 8000000 };
             const _mqBw = _mqBwMap[String(profile || 'P3').toUpperCase()] || 25000000;
             const _mqResMap = { 'P0': '7680x4320', 'P1': '3840x2160', 'P2': '3840x2160', 'P3': '1920x1080', 'P4': '1280x720', 'P5': '854x480' };
