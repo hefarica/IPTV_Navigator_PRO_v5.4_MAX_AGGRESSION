@@ -163,6 +163,47 @@ try {
         }
     }
 
+    // ── VÍA 2 del realce: publicar el último flush para url2-cartridge ────────────────────
+    //
+    // El observer escribe en ngx.shared.qoe_metrics, que es memoria de worker de nginx y PHP
+    // no puede alcanzar. Este endpoint es el único punto donde esas métricas cruzan a PHP.
+    // Sin este fichero, url2-cartridge.php no tiene de dónde leer la vía 2 y sólo le quedan
+    // ?obs= (que reporta el player) y el perfil del device.
+    //
+    // Se escribe SIEMPRE, aunque no haya métricas: un fichero vacío con ts es información
+    // (dice 'el flush corrió y no vio nada'), mientras que un fichero ausente no dice nada.
+    try {
+        $apeFlush = [
+            'ts'       => time(),
+            'bucket'   => $bucket,
+            'channels' => [],
+        ];
+        if (isset($payload['metrics']) && is_array($payload['metrics'])) {
+            foreach ($payload['metrics'] as $m) {
+                if (!isset($m['channel_id'])) { continue; }
+                $cid = (string)$m['channel_id'];
+                if ($cid === '') { continue; }
+                $bps = (int)($m['bitrate_avg_bps'] ?? 0);
+                if ($bps <= 0) { continue; }   // sin bitrate no sirve para decidir realce
+                $apeFlush['channels'][$cid] = [
+                    'bps'       => $bps,
+                    'vst_avg'   => (int)($m['vst_proxy_avg'] ?? 0),
+                    'vst_max'   => (int)($m['vst_proxy_max'] ?? 0),
+                    'rebuffer'  => (int)($m['rebuffer_count'] ?? 0),
+                    'errors'    => (int)($m['error_count'] ?? 0),
+                    'requests'  => (int)($m['request_count'] ?? 0),
+                    'profile'   => (string)($m['profile'] ?? ''),
+                ];
+            }
+        }
+        $apeDir = '/var/cache/ara';
+        if (!is_dir($apeDir)) { @mkdir($apeDir, 0770, true); }
+        @file_put_contents($apeDir . '/qoe-last-flush.json', json_encode($apeFlush), LOCK_EX);
+    } catch (Throwable $e) {
+        // Nunca rompe el flush por no poder publicar: la persistencia SQLite ya se hizo.
+        error_log('[qoe-flush] no se pudo publicar qoe-last-flush.json: ' . $e->getMessage());
+    }
+
     echo json_encode([
         'ok'                    => true,
         'metrics_written'       => $metricsWritten,

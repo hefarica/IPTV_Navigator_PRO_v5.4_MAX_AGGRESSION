@@ -5836,22 +5836,55 @@ if ($apeObsBps <= 0) {
 
 // Nivel de realce derivado de la observación cuando la hay; del device cuando no.
 // NUNCA se sube por encima de lo que el device puede sostener, y NUNCA se apaga.
+// ── NIVEL BASE POR PERFIL ────────────────────────────────────────────────────────────────────
+//
+// Cada perfil P0-P5 tiene su propia dosis de realce. NO es el mismo para todos:
+//
+//   P0  GOD_TIER 8K/4K   -> nivel 0  el más agresivo (upscale 4x, SVFI, REALESRGAN_X4PLUS)
+//   P1  SUPREME 4K       -> nivel 0  igual de agresivo: es la referencia 4K del catálogo
+//   P2  ELITE 4K         -> nivel 1  agresivo pero con margen
+//   P3  ULTRA FHD        -> nivel 2  medio: la fuente ya es 1080p, menos que recuperar
+//   P4  HIGH HD          -> nivel 3  conservador
+//   P5  SD FAILSAFE      -> nivel 4  el mínimo que SIGUE mejorando (nunca apaga)
+//
+// La observación y el device sólo pueden MOVER este valor dentro de su rango, no sustituirlo
+// por el de otro perfil. Así P0 nunca recibe el realce de P5 ni al revés.
+$apeNivelPerfil = [
+    'P0' => 0,
+    'P1' => 0,
+    'P2' => 1,
+    'P3' => 2,
+    'P4' => 3,
+    'P5' => 4,
+];
+$apeNivelRealce = $apeNivelPerfil[$p] ?? 2;
+// Techo por perfil: el realce no puede ser más suave que el nivel del perfil+1.
+// Un P0 con observación de 2 Mbps sube hasta 1 (más agresivo que 0), pero un P5 nunca baja de 4.
+$apeNivelMax = ['P0' => 1, 'P1' => 1, 'P2' => 2, 'P3' => 3, 'P4' => 4, 'P5' => 4][$p] ?? 4;
+
 $apeNivelRealce = 0;
 if ($apeObsBps > 0) {
     // Con bitrate observado: más bitrate = fuente mejor = realce más suave pero más fino.
     // Menos bitrate = fuente más comprimida = realce más agresivo para recuperar detalle.
-    if ($apeObsBps < 3000000)       { $apeNivelRealce = 4; }
-    else if ($apeObsBps < 8000000)  { $apeNivelRealce = 3; }
-    else if ($apeObsBps < 20000000) { $apeNivelRealce = 2; }
-    else if ($apeObsBps < 45000000) { $apeNivelRealce = 1; }
-    else                            { $apeNivelRealce = 0; }
+    // La observación empuja HACIA ARRIBA (más agresivo) si el bitrate es bajo, pero nunca
+    // por encima del techo del perfil ni por debajo del nivel base.
+    $apePorObs = 0;
+    if ($apeObsBps < 3000000)       { $apePorObs = 4; }
+    else if ($apeObsBps < 8000000)  { $apePorObs = 3; }
+    else if ($apeObsBps < 20000000) { $apePorObs = 2; }
+    else if ($apeObsBps < 45000000) { $apePorObs = 1; }
+    // Piso = nivel del perfil (no se hace más suave de lo que el perfil pide).
+    // Techo = nivel maximo del perfil (no se sube por encima de lo que soporta).
+    $apeNivelRealce = max($apeNivelRealce, min($apePorObs, $apeNivelMax));
 }
 
 // El device sólo impone su techo si NO hubo observación. Si la hubo, manda la observación:
 // es lo que la red acaba de entregar de verdad, no lo que el panel declara.
 if ($apeObsBps <= 0) {
-    if ((int)$device['max_h'] > 0 && (int)$device['max_h'] <= 1080) { $apeNivelRealce = 3; }
-    else if ((int)$device['ram_mb'] > 0 && (int)$device['ram_mb'] <= 2048) { $apeNivelRealce = 2; }
+    $apePorDev = 0;
+    if ((int)$device['max_h'] > 0 && (int)$device['max_h'] <= 1080) { $apePorDev = 3; }
+    else if ((int)$device['ram_mb'] > 0 && (int)$device['ram_mb'] <= 2048) { $apePorDev = 2; }
+    $apeNivelRealce = max($apeNivelRealce, min($apePorDev, $apeNivelMax));
 }
 
 
@@ -5875,6 +5908,6 @@ foreach ($APE_REALCE_IMG as $apeTag2 => $apeVal2) {
 }
 
 echo '#EXT-X-APE-CRYSTAL-ENHANCEMENT:ENFORCED;NIVEL=' . $apeNivelRealce . ";DEGRADE=FORBIDDEN\n";
-echo '#EXT-X-APE-REALCE-SOURCE:' . $apeObsFuente . ';OBS_BPS=' . (int)$apeObsBps . ";NIVEL=" . $apeNivelRealce . "\n";
+echo '#EXT-X-APE-REALCE-SOURCE:' . $apeObsFuente . ';OBS_BPS=' . (int)$apeObsBps . ';NIVEL=' . $apeNivelRealce . ';PERFIL=' . $p . ';NIVEL_MAX=' . $apeNivelMax . ";DEGRADE=FORBIDDEN\n";
 
 echo $u . "\n";
