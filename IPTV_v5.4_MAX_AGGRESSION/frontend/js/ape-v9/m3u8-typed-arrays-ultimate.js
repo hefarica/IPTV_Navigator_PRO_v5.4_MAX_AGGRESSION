@@ -2906,6 +2906,8 @@
     // re-encode, downscale, or alter the source URL. No EXT-X-KEY is emitted
     // for clear streams; that would break playback.
     function __omegaComplianceTags() {
+        // [2026-11-04] Lee un valor Crystal del perfil con fallback al NIVEL 1 de la escalera.
+        // El fallback NUNCA apaga el enhancement: la LEY CRYSTAL 4K UHD exige mejorar siempre.
         return [
             '#EXT-X-SERVER-CONTROL:CAN-BLOCK-RELOAD=YES,PART-HOLD-BACK=1.0,CAN-SKIP-UNTIL=12.0',
             '#EXTVLCOPT:colorspace=all=auto:trc=auto',
@@ -5575,14 +5577,14 @@ ${__apeContinuityTags().join('\n')}
             "X-Color-Primaries": "bt2020",
             "X-Matrix-Coefficients": "bt2020nc",
             "X-Chroma-Subsampling": cfg.chroma_subsampling || '4:2:0',
-            "X-Tone-Mapping": "bt2390-optimized",
+            "X-Tone-Mapping": "passthrough,passthrough,auto,auto,hdr-to-sdr",
             "X-Tone-Mapping-Mode": "auto",
             "X-Tone-Mapping-Target-Luminance": "1000",
             "X-Tone-Mapping-Knee-Point": "0.5",
             "X-Tone-Mapping-Desaturation": "enabled",
             "X-Tone-Mapping-Curve": "smooth",
             "X-Tone-Mapping-Preserve-Highlights": "true",
-            "X-HDR-Output-Mode": "auto",
+            "X-HDR-Output-Mode": "hdr,hdr,hdr,auto,auto",
             // ── Advanced Color Management ──
             "X-Color-Management": "full",
             "X-Color-Input-Primaries": "bt2020",
@@ -6535,6 +6537,26 @@ ${__apeContinuityTags().join('\n')}
         const lcevcBaseCodec = 'HEVC';
 
 
+        // [2026-11-04] Crystal UHD HDR: lee el valor del perfil con fallback al NIVEL 1.
+        // Nunca apaga el enhancement (LEY CRYSTAL 4K UHD: mejorar siempre).
+        const _crystal = function (slug, dflt) {
+            const _SLUG = {
+                ai_sr_enabled: 'X-APE-AI-SR-ENABLED', ai_sr_model: 'X-APE-AI-SR-MODEL',
+                ai_sr_scale: 'X-APE-AI-SR-SCALE', ai_denoising: 'X-APE-AI-DENOISING',
+                ai_sharpening: 'X-APE-AI-SHARPENING', ai_frame_interpolation: 'X-APE-AI-FRAME-INTERPOLATION',
+                ai_hdr_upconvert: 'X-APE-AI-HDR-UPCONVERT', lcevc_enabled: 'X-APE-LCEVC-ENABLED',
+                lcevc_phase: 'X-APE-LCEVC-PHASE', lcevc_upscale_algorithm: 'X-APE-LCEVC-UPSCALE-ALGORITHM',
+                lcevc_compute_precision: 'X-APE-LCEVC-COMPUTE-PRECISION'
+            };
+            let v;
+            if (typeof cfg !== 'undefined' && cfg && cfg[slug] !== undefined && cfg[slug] !== null && cfg[slug] !== '') v = cfg[slug];
+            if (v === undefined && typeof window !== 'undefined' && window.APE_PROFILES_CONFIG
+                && typeof window.APE_PROFILES_CONFIG.getHeaderValue === 'function') {
+                try { v = window.APE_PROFILES_CONFIG.getHeaderValue(profile, _SLUG[slug] || slug); } catch (_e) {}
+            }
+            if (v === undefined || v === null || v === '') return dflt;
+            return String(v).split(',')[0].trim() || dflt;
+        };
         return [
             // ── SECTION 1 — Identity (8 tags) ──────────────────────────────
             `#EXT-X-APE-VERSION:18.2`,
@@ -6542,20 +6564,40 @@ ${__apeContinuityTags().join('\n')}
             `#EXT-X-APE-CHANNEL-KEY:${index}`,
             `#EXT-X-APE-STREAM-ID:${index}`,
             `#EXT-X-APE-CODEC:${codecStr}`,
+            // [2026-11-04] Lee un valor Crystal del perfil con fallback al NIVEL 1 de la escalera.
+            // El fallback NUNCA apaga el enhancement: la LEY CRYSTAL 4K UHD exige mejorar siempre.
+            // Acepta el nombre del header completo (X-APE-AI-SR-ENABLED) o el slug (ai_sr_enabled).
             `#EXT-X-APE-RESOLUTION:${cfg.resolution || '1920x1080'}`,
             `#EXT-X-APE-FRAME-RATE:${cfg.fps || 30}`,
             `#EXT-X-APE-BITRATE:${cfg.bitrate || 5000}kbps`,
 
             // ── SECTION 2 — LCEVC Identity (6 tags) ────────────────────────
             `#EXT-X-APE-HDR-PROFILE:${(Array.isArray(cfg.hdr_support) ? cfg.hdr_support.join(',') : (typeof cfg.hdr_support === 'string' ? cfg.hdr_support : '')) || 'none'}`,
-            `#EXT-X-APE-LCEVC-ENABLED:true`,
+            `#EXT-X-APE-LCEVC-ENABLED:${_crystal('lcevc_enabled', 'TRUE')}`,
+            `#EXT-X-APE-LCEVC-PHASE:${_crystal('lcevc_phase', '4')}`,
+            `#EXT-X-APE-LCEVC-UPSCALE-ALGORITHM:${_crystal('lcevc_upscale_algorithm', 'LANCZOS4')}`,
+            `#EXT-X-APE-LCEVC-COMPUTE-PRECISION:${_crystal('lcevc_compute_precision', 'FP32')}`,
             `#EXT-X-APE-LCEVC-STATE:${lcevcState}`,
             `#EXT-X-APE-LCEVC-BASE-CODEC:${lcevcBaseCodec}`,
             `#EXT-X-APE-LCEVC-ENHANCEMENT:mpeg5-part2`,
             `#EXT-X-APE-LCEVC-SCALE-FACTOR:${(LCEVC_LAYER_CONFIG[profile] || LCEVC_LAYER_CONFIG['P3']).scale_factor}`,
 
             // ── SECTION 3 — QoS/QoE (6 tags) ──────────────────────────────
-            `#EXT-X-APE-AI-SR-ENABLED:true`,
+            // ── CRYSTAL UHD HDR + UPSCALING (cableado desde perfil, 2026-11-04) ──────────
+            // Antes este tag era 'true' fijo y los demas Crystal no existian como tag.
+            // Ahora el valor viene del perfil; si el perfil no lo define, cae al NIVEL 1
+            // de la escalera Crystal, nunca a un valor que apague el enhancement.
+            `#EXT-X-APE-AI-SR-ENABLED:${_crystal('ai_sr_enabled', 'TRUE')}`,
+            `#EXT-X-APE-AI-SR-MODEL:${_crystal('ai_sr_model', 'REALESRGAN_X4PLUS')}`,
+            `#EXT-X-APE-AI-SR-SCALE:${_crystal('ai_sr_scale', '4')}`,
+            `#EXT-X-APE-AI-DENOISING:${_crystal('ai_denoising', 'NLMEANS_HQDN3D_TEMPORAL')}`,
+            `#EXT-X-APE-AI-SHARPENING:${_crystal('ai_sharpening', 'UNSHARP_MASK_ADAPTIVE')}`,
+            `#EXT-X-APE-AI-FRAME-INTERPOLATION:${_crystal('ai_frame_interpolation', 'OPTICAL_FLOW_SVFI')}`,
+            `#EXT-X-APE-AI-HDR-UPCONVERT:${_crystal('ai_hdr_upconvert', 'AUTO')}`,
+            `#EXT-X-APE-UPSCALE-MIN-SCALE:2`,
+            `#EXT-X-APE-CRYSTAL-LAW:4K-ENHANCEMENT-ENFORCED`,
+            `#EXT-X-APE-CRYSTAL-6K:OPT-IN-APE_6K`,
+            `#EXT-X-APE-CRYSTAL-DOWNSCALE:FORBIDDEN`,
             `#EXT-X-APE-QOE-SCORE:5.0`,
             `#EXT-X-APE-QOS-DSCP:EF`,
             `#EXT-X-APE-QOS-BITRATE:${cfg.bitrate || 5000}kbps`,
