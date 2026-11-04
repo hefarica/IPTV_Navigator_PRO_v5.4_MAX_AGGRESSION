@@ -9865,7 +9865,10 @@ ${__apeContinuityTags().join('\n')}
         // Override audio_dolby_atmos=false y eac3=false del bloque base.
         // Kodi ISA toma el ÚLTIMO valor para keys duplicadas.
         if (options && options.maxQualityMode) {
-            const _mqVChain = 'dvh1.08.06,dvh1.05.09,hvc1.2.4.L186.B0,hvc1.2.4.L183.B0,hvc1.2.4.L180.B0,hvc1.2.4.L156.B0,hvc1.2.4.L153.B0,hvc1.2.4.L150.B0,hvc1.2.4.L123.B0,hvc1.2.4.L120.B0,hvc1.2.4.L153.B0,hvc1.2.4.L120.B0,hvc1.2.4.L93.B0,hvc1.2.4.L90.B0,av01.0.13M.10.0.110.09.16.09.0,av01.0.09M.10.0.110.09.16.09.0,avc1.640033,avc1.640028';
+            // [2026-11-04 mandato operador] HVC1 PRIMERO SIEMPRE. Dolby Vision queda como mejora
+        // opcional detras de HEVC Main10: un TV sin licencia DV rechaza o tone-mapea mal dvh1,
+        // mientras hvc1.2.4.L* lo decodifica cualquier SoC. dvh1 se conserva en la cadena.
+        const _mqVChain = 'hvc1.2.4.L186.B0,hvc1.2.4.L153.B0,dvh1.08.06,dvh1.05.09,hvc1.2.4.L183.B0,hvc1.2.4.L180.B0,hvc1.2.4.L156.B0,hvc1.2.4.L150.B0,hvc1.2.4.L123.B0,hvc1.2.4.L120.B0,hvc1.2.4.L93.B0,hvc1.2.4.L90.B0,av01.0.13M.10.0.110.09.16.09.0,av01.0.09M.10.0.110.09.16.09.0,avc1.640033,avc1.640028';
             lines.push(`#KODIPROP:inputstream.adaptive.audio_dolby_atmos=false`);
             lines.push(`#KODIPROP:inputstream.adaptive.audio_eac3=true`);
             lines.push(`#KODIPROP:inputstream.adaptive.live_delay=1`);
@@ -11166,8 +11169,9 @@ ${__apeContinuityTags().join('\n')}
         // GOLDEN RULE respetada: dvh1/hvc1/avc1 en CODECS= (manifest parser safe).
         // hev1 NUNCA en STREAM-INF. ec-3 en CODECS= es RFC-válido para audio DDP.
         if (options && options.maxQualityMode) {
-            const _mqVideoChain = 'dvh1.08.06,dvh1.05.09,hvc1.2.4.L186.B0,hvc1.2.4.L183.B0,hvc1.2.4.L180.B0,hvc1.2.4.L156.B0,hvc1.2.4.L153.B0,hvc1.2.4.L150.B0,hvc1.2.4.L123.B0,hvc1.2.4.L120.B0,hvc1.2.4.L153.B0,hvc1.2.4.L120.B0,hvc1.2.4.L93.B0,hvc1.2.4.L90.B0,av01.0.13M.10.0.110.09.16.09.0,av01.0.09M.10.0.110.09.16.09.0,avc1.640033,avc1.640028';
-            const _mqCodecFirst = _mqVideoChain.split(',')[0]; // dvh1.08.06
+            // [2026-11-04] HVC1 PRIMERO SIEMPRE (ver comentario de _mqVChain).
+        const _mqVideoChain = 'hvc1.2.4.L186.B0,hvc1.2.4.L153.B0,dvh1.08.06,dvh1.05.09,hvc1.2.4.L183.B0,hvc1.2.4.L180.B0,hvc1.2.4.L156.B0,hvc1.2.4.L150.B0,hvc1.2.4.L123.B0,hvc1.2.4.L120.B0,hvc1.2.4.L93.B0,hvc1.2.4.L90.B0,av01.0.13M.10.0.110.09.16.09.0,av01.0.09M.10.0.110.09.16.09.0,avc1.640033,avc1.640028';
+            const _mqCodecFirst = _mqVideoChain.split(',')[0]; // hvc1.2.4.L186.B0 (HVC1 PRIMERO SIEMPRE)
             const _mqBwMap = { 'P0': 120000000, 'P1': 80000000, 'P2': 50000000, 'P3': 25000000, 'P4': 15000000, 'P5': 8000000 };
             const _mqBw = _mqBwMap[String(profile || 'P3').toUpperCase()] || 25000000;
             const _mqResMap = { 'P0': '7680x4320', 'P1': '3840x2160', 'P2': '3840x2160', 'P3': '1920x1080', 'P4': '1280x720', 'P5': '854x480' };
@@ -11764,7 +11768,7 @@ lines.push(`#EXT-X-APE-STREAM-TRUTH:src=${_streamTruth.source},w=${_streamTruth.
             // [HEVC-FIRST CODEC LADDER GUARDRAIL] Si Excel template no resuelve codec_chain_*,
             // sustituye al valor de cfg (LAB SSOT) o al fallback hardcoded HEVC-first.
             // Cumple NO-CLAMP: codec strings son texto, no se coercionan.
-            const _cgVideo  = cfg.codec_chain_video        || 'hvc1.2.4.L183.B0,hvc1.2.4.L180.B0,hvc1.2.4.L156.B0,hvc1.2.4.L153.B0,hvc1.2.4.L150.B0,hvc1.2.4.L123.B0,hvc1.2.4.L120.B0,hvc1.2.4.L153.B0,hvc1.2.4.L120.B0,avc1.640028';
+            const _cgVideo  = cfg.codec_chain_video        || 'hvc1.2.4.L183.B0,hvc1.2.4.L180.B0,hvc1.2.4.L156.B0,hvc1.2.4.L153.B0,hvc1.2.4.L150.B0,hvc1.2.4.L123.B0,hvc1.2.4.L120.B0,avc1.640028';
             const _cgAudio  = cfg.codec_chain_audio        || 'mp4a.40.2,ac-3,mp4a.40.5';
             const _cgHdr    = cfg.codec_chain_hdr          || 'hdr10,hlg,sdr';
             const _cgPref   = cfg.codec_chain_player_pref  || 'hvc1,hev1,h265,avc1,h264';
