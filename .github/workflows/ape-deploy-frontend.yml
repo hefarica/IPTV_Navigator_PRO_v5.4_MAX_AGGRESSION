@@ -204,11 +204,33 @@ jobs:
           APE=$(ssh "$TARGET" "sudo -n grep -c '#EXT-X-APE-' '$DEST' || true")
           echo "  lineas con #EXT-X-APE-: $APE"
 
-      - name: Desplegar endpoint de paridad (PHP)
+      - name: Instalar PHP (para php -l)
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          coverage: none
+
+      - name: Desplegar endpoints PHP (paridad + url2 dinamico)
         if: inputs.mode == 'apply'
         run: |
           set -uo pipefail
           SRC="IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/ape-parity-tags.php"
+          # url2-cartridge.php: el cartucho dinamico por device. Se valida con php -l antes
+          # de instalar; si el lint falla NO se despliega (mejor un 500 claro que un PHP roto).
+          SRC2="IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/url2-cartridge.php"
+          DEST2="/var/www/html/prisma/api/url2-cartridge.php"
+          echo "=== url2-cartridge.php (lint) ==="
+          php -l "$SRC2" || { echo "::error::url2-cartridge.php no pasa php -l"; exit 1; }
+          if ssh "$TARGET" "sudo -n test -f '$DEST2'"; then
+            ssh "$TARGET" "sudo -n cp -a '$DEST2' '$DEST2.bak_$STAMP'"
+            echo "  backup: $DEST2.bak_$STAMP"
+          fi
+          scp -q "$SRC2" "$TARGET:/tmp/ape-url2-cart.php"
+          ssh "$TARGET" "sudo -n install -m 0644 -o www-data -g www-data /tmp/ape-url2-cart.php '$DEST2'"
+          R2=$(ssh "$TARGET" "sudo -n sha256sum '$DEST2' | cut -d' ' -f1")
+          L2=$(sha256sum "$SRC2" | cut -d' ' -f1)
+          if [ "$R2" != "$L2" ]; then echo "::error::sha de url2-cartridge no coincide"; exit 1; fi
+          echo "  sha OK ($L2)"
           DEST="/var/www/html/prisma/api/ape-parity-tags.php"
           STAMP=$(date -u +%Y%m%dT%H%M%SZ)
           echo "=== ape-parity-tags.php ==="

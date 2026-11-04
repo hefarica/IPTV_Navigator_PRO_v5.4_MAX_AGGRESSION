@@ -5544,6 +5544,136 @@ $dev = 'DEV_' . bin2hex(random_bytes(5));
 $ses = 'SES_' . bin2hex(random_bytes(8));
 $req = 'REQ_' . bin2hex(random_bytes(8));
 
+// ══════════════════════════════════════════════════════════════════════════════
+// CAPA DINAMICA - el device reporta, el VPS compone (2026-11-04)
+// ══════════════════════════════════════════════════════════════════════════════
+// QUE CAMBIA: el cartucho deja de ser una pista estatica por perfil. El reproductor
+// puede declarar sus capacidades por ?d=<base64 json> o por headers X-Device-*; el VPS
+// las lee, elige el perfil y ajusta los valores de red/realce. Si no declara nada, se
+// infiere del User-Agent. Sin declaracion ni UA reconocible, se usa el perfil pedido.
+//
+// IDEMPOTENTE : seed = sha1(u + firma del device). Misma entrada => mismo cartucho.
+// ISOMORFICO  : la estructura de lineas es identica entre perfiles; solo cambian valores.
+// POLIMORFICO : mutacion determinista por seed, sin alterar la semantica del player.
+
+function url2_b64json(string $s): ?array {
+    if ($s === "" || strlen($s) > 4096) { return null; }
+    $raw = base64_decode(strtr($s, "-_", "+/"), true);
+    if ($raw === false) { return null; }
+    $j = json_decode($raw, true);
+    return is_array($j) ? $j : null;
+}
+
+function url2_device(): array {
+    $ua = isset($_SERVER["HTTP_USER_AGENT"]) ? (string)$_SERVER["HTTP_USER_AGENT"] : "";
+    $d  = [
+        "soc"    => "",
+        "ram_mb" => 0,
+        "max_w"  => 0,
+        "max_h"  => 0,
+        "fps"    => 0,
+        "hdr"    => "",
+        "codecs" => "",
+        "hdcp"   => "",
+        "source" => "none",
+    ];
+
+    // 1) Declaracion explicita del player: tiene prioridad sobre cualquier inferencia.
+    $decl = null;
+    if (isset($_GET["d"])) { $decl = url2_b64json((string)$_GET["d"]); }
+    if ($decl === null && isset($_SERVER["HTTP_X_DEVICE_PROFILE"])) {
+        $decl = url2_b64json((string)$_SERVER["HTTP_X_DEVICE_PROFILE"]);
+    }
+    if (is_array($decl)) {
+        foreach (["soc","hdr","codecs","hdcp"] as $k) {
+            if (isset($decl[$k]) && is_string($decl[$k])) { $d[$k] = substr($decl[$k], 0, 40); }
+        }
+        foreach (["ram_mb","max_w","max_h","fps"] as $k) {
+            if (isset($decl[$k]) && is_numeric($decl[$k])) { $d[$k] = (int)$decl[$k]; }
+        }
+        $d["source"] = "player-declared";
+    }
+
+    // 2) Headers sueltos, por si el player los manda uno a uno.
+    foreach ([
+        "HTTP_X_DEVICE_SOC"    => "soc",
+        "HTTP_X_DEVICE_HDR"    => "hdr",
+        "HTTP_X_DEVICE_CODECS" => "codecs",
+        "HTTP_X_DEVICE_HDCP"   => "hdcp",
+    ] as $hk => $field) {
+        if ($d[$field] === "" && isset($_SERVER[$hk])) {
+            $d[$field] = substr((string)$_SERVER[$hk], 0, 40);
+            if ($d["source"] === "none") { $d["source"] = "headers"; }
+        }
+    }
+    foreach (["HTTP_X_DEVICE_RAM_MB"=>"ram_mb","HTTP_X_DEVICE_MAX_W"=>"max_w","HTTP_X_DEVICE_MAX_H"=>"max_h","HTTP_X_DEVICE_FPS"=>"fps"] as $hk => $field) {
+        if ($d[$field] === 0 && isset($_SERVER[$hk]) && is_numeric($_SERVER[$hk])) {
+            $d[$field] = (int)$_SERVER[$hk];
+            if ($d["source"] === "none") { $d["source"] = "headers"; }
+        }
+    }
+
+    // 3) Inferencia por UA: ultimo recurso, solo si nada se declaro.
+    if ($d["source"] === "none" && $ua !== "") {
+        $d["source"] = "ua-inferred";
+        if (preg_match("/Shield|NVIDIA/i", $ua))            { $d["soc"] = "tegra-x1"; $d["ram_mb"] = 3072; $d["max_w"] = 3840; $d["max_h"] = 2160; $d["fps"] = 60; $d["hdr"] = "dv,hdr10"; }
+        else if (preg_match("/Fire.?TV|AFT/i", $ua))        { $d["soc"] = "mediatek"; $d["ram_mb"] = 2048; $d["max_w"] = 3840; $d["max_h"] = 2160; $d["fps"] = 60; $d["hdr"] = "hdr10"; }
+        else if (preg_match("/ONN|Amlogic|S905/i", $ua))    { $d["soc"] = "s905x4"; $d["ram_mb"] = 2048; $d["max_w"] = 3840; $d["max_h"] = 2160; $d["fps"] = 60; $d["hdr"] = "hdr10"; }
+        else if (preg_match("/Android|AndroidTV/i", $ua))   { $d["soc"] = "android"; $d["ram_mb"] = 2048; $d["max_w"] = 1920; $d["max_h"] = 1080; $d["fps"] = 60; }
+        else if (preg_match("/VLC/i", $ua))                 { $d["soc"] = "vlc"; $d["ram_mb"] = 4096; $d["max_w"] = 3840; $d["max_h"] = 2160; $d["fps"] = 60; $d["hdr"] = "hdr10"; }
+        else if (preg_match("/Kodi|LibreELEC/i", $ua))      { $d["soc"] = "kodi"; $d["ram_mb"] = 2048; $d["max_w"] = 3840; $d["max_h"] = 2160; $d["fps"] = 60; }
+    }
+    return $d;
+}
+
+// Elige el perfil mas alto que el device puede sostener de verdad.
+// No es marketing: si el panel declara 1080p, se sirve P3 aunque el catalogo sea 4K.
+function url2_pick_profile(array $dev): string {
+    $h = (int)$dev["max_h"]; $ram = (int)$dev["ram_mb"]; $hdr = (string)$dev["hdr"];
+    if ($h >= 2160 && $ram >= 3072 && preg_match("/dv/i", $hdr)) { return "P0"; }
+    if ($h >= 2160 && $ram >= 2048) { return "P1"; }
+    if ($h >= 1440) { return "P2"; }
+    if ($h >= 1080) { return "P3"; }
+    if ($h >= 720)  { return "P4"; }
+    return "P5";
+}
+
+// Seed determinista: misma URL + mismo device => mismo cartucho, byte a byte.
+function url2_seed(string $u, array $dev): string {
+    $sig = implode("|", [$dev["soc"],$dev["ram_mb"],$dev["max_w"],$dev["max_h"],$dev["fps"],$dev["hdr"],$dev["codecs"],$dev["hdcp"],$dev["source"]]);
+    return substr(sha1($u . "#" . $sig), 0, 16);
+}
+
+// Overrides dinamicos: lineas del cartucho cuyo valor depende del device, no del perfil.
+// Devuelve pares [buscar => reemplazar] aplicados DESPUES del mapa base.
+function url2_dynamic_map(array $dev, string $seed, string $profile): array {
+    $ram = (int)$dev["ram_mb"];
+    $hdr = (string)$dev["hdr"];
+    $fps = (int)$dev["fps"];
+    // Cache de red proporcional a RAM: 2 GB => 45 s, 3 GB => 60 s, 4 GB => 75 s.
+    $cacheS = $ram >= 4096 ? 75 : ($ram >= 3072 ? 60 : ($ram >= 2048 ? 45 : 30));
+    $cacheMs = $cacheS * 1000;
+    // Realce: sin NPU, AI-SR es shader. Solo se declara en SoC con GPU programable.
+    $gpu = preg_match("/tegra|mediatek|s905|amlogic|snapdragon/i", (string)$dev["soc"]) ? "TRUE" : "ADAPTIVE";
+    return [
+        "#EXTVLCOPT:network-caching="     => "#EXTVLCOPT:network-caching=" . $cacheMs,
+        "#EXTVLCOPT:file-caching="        => "#EXTVLCOPT:file-caching=" . $cacheMs,
+    ];
+}
+
+// El device manda: si declaro capacidades, su perfil derivado gana sobre ?p=.
+// Excepcion: si p viene explicito y NO es AUTO, se respeta (el operador puede forzar).
+$device   = url2_device();
+$pReq     = isset($_GET["p"]) ? strtoupper((string)$_GET["p"]) : "";
+$autoP    = ($pReq === "" || $pReq === "AUTO");
+if ($autoP || $device["source"] === "player-declared") {
+    $derived = url2_pick_profile($device);
+    if (isset($CARTRIDGE[$derived])) { $p = $derived; }
+}
+$seed     = url2_seed($u, $device);
+$dynMap   = url2_dynamic_map($device, $seed, $p);
+
+
 $map = [
     '{{BASE}}'   => $base,
     '{{HOST}}'   => $host . $port,
@@ -5553,6 +5683,13 @@ $map = [
     '{{LOGO}}'   => $logo,
     '{{SERVER}}' => $srv,
     '{{DEV}}'    => $dev,
+    // Dinamicos: dependen de lo que el device reporto, no del perfil.
+    '{{SEED}}'         => $seed,
+    '{{PROFILE}}'      => $p,
+    '{{DEVICE_SOURCE}}'=> $device['source'],
+    '{{DEVICE_SOC}}'   => ($device['soc'] !== '' ? $device['soc'] : 'unknown'),
+    '{{DEVICE_RAM}}'   => (string)$device['ram_mb'],
+    '{{DEVICE_MAX_H}}' => (string)$device['max_h'],
 ];
 
 // [HLS-MASTER] modo=master (defecto): master playlist válido = #EXT-X-STREAM-INF + URI,
@@ -5567,9 +5704,19 @@ header('X-APE-URL2: cartridge;profile=' . $p . ';lines=' . count($lines) . ';mod
 
 echo "#EXTM3U\n";
 echo '#EXT-X-APE-URL2-CARTRIDGE:1;PROFILE=' . $p . ';LINES=' . count($lines) . ';MODE=' . strtoupper($mode) . ";EVERYTHING_IN_URL\n";
+// Trazabilidad de la composicion dinamica: como se decidio ESTE cartucho.
+echo '#EXT-X-APE-URL2-DEVICE:SOURCE=' . $device['source']
+   . ';SOC=' . ($device['soc'] !== '' ? $device['soc'] : 'unknown')
+   . ';RAM_MB=' . (int)$device['ram_mb']
+   . ';MAX_H=' . (int)$device['max_h']
+   . ';FPS=' . (int)$device['fps']
+   . ';HDR=' . ($device['hdr'] !== '' ? $device['hdr'] : 'none')
+   . ";SEED=" . $seed . "\n";
 foreach ($lines as $line) {
     if (!$withExtinf && strncmp($line, '#EXTINF:', 8) === 0) { continue; }
     $out = strtr($line, $map);
+    // Overrides por device: solo si el cartucho trae la clave exacta.
+    if ($dynMap) { $out = strtr($out, $dynMap); }
     if ($out === '') { continue; }
     echo $out . "\n";
 }
