@@ -106,6 +106,10 @@ console.log('\n== MATRIZ DE ESCENARIOS + APROBAR / DENEGAR ==');
   ok(h.indexOf('ape-sug-denegar') >= 0, 'A) ofrece DENEGAR');
   nd('ape-sug-forzar').onclick();
   ok(w.__APE_SUG_FORZADO__ === true, 'A) forzar marca el flag');
+  ok(w.APE_PROFILES_CONFIG.activeProfileId === 'P5', 'A) forzar activa el perfil P5');
+  ok(H.getDeltaPct() === 1, 'A) forzar fija el delta global en 1%');
+  ok(nd('ape-delta-input').value === '1', 'A) forzar sincroniza el input del delta');
+  ok(!!w.APE_OUTPUT_DELTA_ARRAY && Number(w.APE_OUTPUT_DELTA_ARRAY.P5) === 1, 'A) forzar sincroniza el array por perfil');
   ok(H.checkGeneration() === true, 'A) con el flag, la comprobación PERMITE generar');
 }
 

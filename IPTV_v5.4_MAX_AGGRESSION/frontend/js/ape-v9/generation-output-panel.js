@@ -533,6 +533,68 @@
     } catch (_) { }
   }
 
+  // El botón FORZAR no solo autoriza: debe dejar el perfil, el delta, el array por
+  // perfil, el contrato y el payload del VPS en el MISMO escenario que se aprueba.
+  function aplicarForzadoP5() {
+    var g0 = guard();
+    var profile = 'P5';
+    var delta = 1;
+
+    // 1) perfil activo + selector visible
+    aplicarEscenario(profile, delta);
+
+    // 2) el array por perfil manda en #EXT-X-APE-BUFFER-DELTA-ARRAY y en el POST al VPS.
+    //    Solo se fija P5; los demás perfiles conservan su homologo.
+    var arr = getDeltaArray(delta);
+    arr[profile] = delta;
+    setDeltaArray(arr);
+
+    // 3) delta global + input + localStorage + render
+    applyDelta(false, delta);
+
+    // 4) contrato delta para el generador (OUT fijo, IN medido).
+    try {
+      var cfg = window.APE_PROFILES_CONFIG;
+      var p = cfg && cfg.profiles ? cfg.profiles[profile] : null;
+      var s = p && p.settings ? p.settings : {};
+      var outMbps = Number(s.bitrate) || Number(g0.outM) || 0;
+      var targetBufferSec = Number(s.bufferTargetSec || s.buffer) || 105;
+      var fillTimeSec = Number(s.fillTimeSec) || 300;
+      if (window.DeltaContractV9 && typeof window.DeltaContractV9.compute === 'function' && outMbps > 0) {
+        window.APE_DELTA_CONTRACT = window.DeltaContractV9.compute({
+          outMbps: outMbps,
+          deltaPct: delta,
+          targetBufferSec: targetBufferSec,
+          fillTimeSec: fillTimeSec,
+          measuredInputMbps: g0.inM > 0 ? g0.inM : null
+        });
+      }
+    } catch (_e) { window.APE_DELTA_CONTRACT = null; }
+
+    // 5) publicar el array corregido, no el viejo.
+    sendDeltaToVps(delta);
+    return { profile: profile, delta: delta, array: arr, contract: window.APE_DELTA_CONTRACT || null };
+  }
+
+  function hasGeneratableChannels() {
+    try {
+      return !!(window.app && typeof window.app.getFilteredChannels === 'function'
+        && (window.app.getFilteredChannels() || []).length > 0);
+    } catch (_) { return false; }
+  }
+
+  function runSelectedOutput() {
+    try {
+      var sb = document.getElementById('ape-sel-both');
+      var sv = document.getElementById('ape-sel-vps');
+      var sd = document.getElementById('ape-sel-direct');
+      if (sb && sb.checked) return runBoth();
+      if (sv && sv.checked) return runVps();
+      if (sd && sd.checked) return runDirect();
+      return runDirect();
+    } catch (_) { return runDirect(); }
+  }
+
   // Pinta la sugerencia bajo la condición de buffer. Idempotente: se reescribe entera cada vez.
   function renderSugerencia() {
     var el = document.getElementById('ape-buf-sugerencia');
@@ -671,11 +733,18 @@
       // Aprobación explícita de un escenario que NO cumple: queda marcado para esta sesión.
       window.__APE_SUG_FORZADO__ = true;
       window.__APE_SUG_DENEGADO__ = false;
-      aplicarEscenario('P5', 1);
-      status('FORZADO: perfil P5 · delta 1 % con ' + s.inM.toFixed(1) + ' Mbps (el mínimo pide ' +
+      var forced = aplicarForzadoP5();
+      status('FORZADO: perfil ' + forced.profile + ' · delta ' + forced.delta + ' % con ' +
+             s.inM.toFixed(1) + ' Mbps (el mínimo pide ' +
              (m.minimo ? m.minimo.req.toFixed(2) : '?') + ' Mbps). Aprobado por el operador.', '#f59e0b');
       renderSugerencia();
-      toast('Aprobado. Pulsa Generar de nuevo y la comprobación pasará.', 'warning');
+      toast('Aprobado: perfil ' + forced.profile + ' · delta ' + forced.delta +
+            ' %. Generando con la salida seleccionada…', 'warning');
+      // El botón dice "Aprobar y generar así": genera de verdad. En tests no hay canales
+      // ni app real, así que el clic queda como aprobación sin descargar nada.
+      if (window.__APE_OUTPUT_TEST__ !== true && hasGeneratableChannels()) {
+        setTimeout(function () { runSelectedOutput(); }, 0);
+      }
     };
 
     var bn = document.getElementById('ape-sug-denegar');
