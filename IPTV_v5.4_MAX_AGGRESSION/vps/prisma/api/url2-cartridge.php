@@ -5862,7 +5862,6 @@ $apeNivelRealce = $apeNivelPerfil[$p] ?? 2;
 // Un P0 con observación de 2 Mbps sube hasta 1 (más agresivo que 0), pero un P5 nunca baja de 4.
 $apeNivelMax = ['P0' => 1, 'P1' => 1, 'P2' => 2, 'P3' => 3, 'P4' => 4, 'P5' => 4][$p] ?? 4;
 
-$apeNivelRealce = 0;
 if ($apeObsBps > 0) {
     // Con bitrate observado: más bitrate = fuente mejor = realce más suave pero más fino.
     // Menos bitrate = fuente más comprimida = realce más agresivo para recuperar detalle.
