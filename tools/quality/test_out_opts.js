@@ -13,6 +13,7 @@ const assert = require('assert');
 const fs = require('fs');
 const path = require('path');
 const vm = require('vm');
+const DeltaContractV9 = require('../../IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/streaming/delta-contract-v9.js');
 
 const ROOT = path.resolve(__dirname, '..', '..');
 const PANEL = path.join(ROOT, 'IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/generation-output-panel.js');
@@ -241,6 +242,14 @@ function testB() {
   };
   const baseEntry = gen.generateChannelEntry(baseOnly, 'P4', 0, {}, {});
   ok(baseEntry.indexOf('http://example.com/live/user/pass/123.ts') !== -1, 'B10 base.url resolves URI');
+  global.DeltaContractV9 = DeltaContractV9;
+  global.APE_DELTA_CONTRACT = DeltaContractV9.compute({
+    outMbps: 9, deltaPct: 35, targetBufferSec: 105, fillTimeSec: 300, measuredInputMbps: 14.2
+  });
+  const gh = gen._generateGlobalHeader(1, {});
+  ok(gh.indexOf('#EXT-X-APE-DELTA-CONTRACT:') !== -1, 'B11 generator emits delta contract tag');
+  ok(gh.indexOf('IN_MIN_MBPS=12.15') !== -1, 'B12 delta tag carries IN_MIN');
+  delete global.APE_DELTA_CONTRACT;
 
   const auto2 = gen.generateChannelEntry(channel, 'P4', 0, {}, {});
   ok(stableLines(auto) === stableLines(auto2), 'C1 semantic stable with JIT off + HDR auto');

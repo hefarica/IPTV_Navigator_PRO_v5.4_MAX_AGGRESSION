@@ -2794,6 +2794,16 @@
             tags.push('#EXT-X-APE-BUFFER-DELTA-PCT:' + _delta);
             tags.push('#EXT-X-APE-BUFFER-DELTA-RULE:IN>=OUT*(1+' + (_delta / 100) + ')');
         }
+        var _dc = (typeof window !== 'undefined') ? window.APE_DELTA_CONTRACT : null;
+        if (_dc && typeof window !== 'undefined' && window.DeltaContractV9
+            && typeof window.DeltaContractV9.toM3u8Tag === 'function') {
+            tags.push(window.DeltaContractV9.toM3u8Tag(_dc));
+            tags.push('#EXT-X-APE-BUFFER-TARGET:SEC=' + Number(_dc.targetBufferSec) + ',SOURCE=QOE');
+            try {
+                tags.push('#EXT-X-APE-DELTA-METADATA:' +
+                    JSON.stringify(window.DeltaContractV9.toJsonMetadata(_dc, null)));
+            } catch (_e) { /* metadata is optional */ }
+        }
         return tags;
     }
 

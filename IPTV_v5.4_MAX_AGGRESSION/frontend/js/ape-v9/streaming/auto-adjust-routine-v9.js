@@ -121,13 +121,18 @@
         };
     }
 
-    async function publishDelta(array) {
+    async function publishDelta(array, contract) {
         try {
             var r = await fetch(VPS_CONFIG_URL, {
                 method: 'POST', mode: 'cors', credentials: 'omit',
                 headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
                 cache: 'no-store',
-                body: JSON.stringify({ delta_array: array, delta_pct: array[activeId()], source: 'auto-adjust' })
+                body: JSON.stringify({
+                    delta_array: array,
+                    delta_pct: array[activeId()],
+                    delta_contract: contract || null,
+                    source: 'auto-adjust'
+                })
             });
             var j = await r.json().catch(function () { return {}; });
             return r.ok && j.ok === true;
@@ -151,6 +156,18 @@
             var input = m.mbps;
             var enough = input + 1e-9 >= required;
             var arr = ensureArray(delta);
+            var targetBufferSec = Number(p && p.settings && (p.settings.bufferTargetSec || p.settings.buffer)) || 105;
+            var fillTimeSec = Number(p && p.settings && p.settings.fillTimeSec) || 300;
+            var contract = (global.DeltaContractV9 && typeof global.DeltaContractV9.compute === 'function')
+                ? global.DeltaContractV9.compute({
+                    outMbps: outMbps,
+                    deltaPct: delta,
+                    targetBufferSec: targetBufferSec,
+                    fillTimeSec: fillTimeSec,
+                    measuredInputMbps: input
+                })
+                : null;
+            global.APE_DELTA_CONTRACT = contract;
 
             // Salida intacta: se prohíbe el fit de bitrate del solver.
             global.APE_SOLVER_PRESERVE_OUTPUT = true;
@@ -175,7 +192,7 @@
             status(decision + ' · ' + cls.band + ' → ' + cls.action,
                 enough && outputIntact ? '#22c55e' : '#f59e0b');
 
-            var vpsOk = await publishDelta(arr);
+            var vpsOk = await publishDelta(arr, contract);
             status(decision + ' · ' + cls.band + ' → ' + cls.action +
                 ' · VPS=' + (vpsOk ? 'confirmado' : 'sin confirmar'),
                 enough && outputIntact ? '#22c55e' : '#f59e0b');
@@ -184,6 +201,7 @@
                 ok: enough && outputIntact, enough: enough, outputIntact: outputIntact,
                 R: R, mbps: input, requiredMbps: required, outputMbps: afterBr,
                 deltaPct: delta, deltaArray: arr, rec: rec, vps: vpsOk,
+                deltaContract: contract,
                 decision: decision
             };
         } catch (e) {
