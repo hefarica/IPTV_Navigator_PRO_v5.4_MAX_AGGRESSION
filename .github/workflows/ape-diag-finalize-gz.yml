@@ -37,25 +37,23 @@ jobs:
           printf 'Host *\n  StrictHostKeyChecking yes\n  UserKnownHostsFile ~/.ssh/known_hosts\n  IdentitiesOnly yes\n' > ~/.ssh/config
           echo "TARGET=${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" >> "$GITHUB_ENV"
 
-      - name: "C - contrato HTTP CORREGIDO (con Host, el anterior medía el 404 del vhost por defecto)"
+      - name: "I - invariante por maquina de estados contra produccion"
         run: |
           set -uo pipefail
-          U=/lists/APE_LISTA_1793589060441.m3u8
+          scp -q tools/ops/check_lists_invariant.sh "$TARGET:/tmp/cli.sh"
+          ssh "$TARGET" "cd /tmp && sed -i 's/\r$//' cli.sh && sh cli.sh /var/www/html/lists" || echo "INVARIANTE_EXIT=$?"
+          echo
+          echo '=== el .gz esta mas viejo que el m3u8? (decide si gzip_static lo ignora) ==='
+          ssh "$TARGET" "m=\$(stat -c %Y /var/www/html/lists/APE_LISTA_1793589060441.m3u8); g=\$(stat -c %Y /var/www/html/lists/APE_LISTA_1793589060441.m3u8.gz); echo \"m3u8=\$m gz=\$g\"; [ \$g -ge \$m ] && echo 'gz>=m3u8: nginx SIRVE el .gz' || echo 'gz<m3u8: nginx IGNORA el .gz'"
+          echo
+          echo '=== extremo a extremo por HTTPS (el http redirige 302) ==='
           H='-H Host:iptv-ape.duckdns.org'
-          echo '=== 1 · cabeceras CON Accept-Encoding: gzip ==='
-          ssh "$TARGET" "curl -sSI $H -H 'Accept-Encoding: gzip' http://127.0.0.1$U | grep -iE '^(HTTP|vary|content-length|content-encoding)'" || true
-          echo
-          echo '=== 1b · cabeceras SIN Accept-Encoding ==='
-          ssh "$TARGET" "curl -sSI $H http://127.0.0.1$U | grep -iE '^(HTTP|vary|content-length|content-encoding)'" || true
-          echo
-          echo '=== 3 · extremo a extremo CON Host ==='
-          a=$(ssh "$TARGET" "curl -sS $H --compressed http://127.0.0.1$U | wc -c")
-          b=$(ssh "$TARGET" "curl -sS $H http://127.0.0.1$U | wc -c")
-          echo "  con --compressed : $a   (esperado 604593696)"
+          a=$(ssh "$TARGET" "curl -sSk $H --compressed https://127.0.0.1/lists/APE_LISTA_1793589060441.m3u8 | wc -c")
+          b=$(ssh "$TARGET" "curl -sSk $H https://127.0.0.1/lists/APE_LISTA_1793589060441.m3u8 | wc -c")
+          echo "  con --compressed : $a  (esperado 604593696)"
           echo "  sin compresion   : $b"
           echo
-          echo '=== 3b · el placeholder original: que serviria sin gzip si fuera 8 bytes ==='
-          echo '  (hoy el m3u8 mide 604593696 por la reparacion, no 8)'
-          echo
-          echo '=== 7 · el .gz mas viejo que el .m3u8? (decide si gzip_static lo ignora) ==='
-          ssh "$TARGET" "sudo -n stat -c '%n mtime=%Y' /var/www/html/lists/APE_LISTA_1793589060441.m3u8 /var/www/html/lists/APE_LISTA_1793589060441.m3u8.gz; m=\$(stat -c %Y /var/www/html/lists/APE_LISTA_1793589060441.m3u8); g=\$(stat -c %Y /var/www/html/lists/APE_LISTA_1793589060441.m3u8.gz); if [ \$g -ge \$m ]; then echo 'VEREDICTO gz>=m3u8 (nginx usaria el .gz)'; else echo 'VEREDICTO gz<m3u8 (nginx IGNORA el .gz y sirve el m3u8)'; fi" || true
+          echo '=== cabeceras por HTTPS ==='
+          ssh "$TARGET" "curl -sSkI $H -H 'Accept-Encoding: gzip' https://127.0.0.1/lists/APE_LISTA_1793589060441.m3u8 | grep -iE '^(HTTP|vary|content-length|content-encoding)'" || true
+          echo '--- sin gzip ---'
+          ssh "$TARGET" "curl -sSkI $H https://127.0.0.1/lists/APE_LISTA_1793589060441.m3u8 | grep -iE '^(HTTP|vary|content-length|content-encoding)'" || true
