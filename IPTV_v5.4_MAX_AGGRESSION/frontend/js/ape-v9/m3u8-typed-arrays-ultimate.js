@@ -1788,7 +1788,13 @@
             else if (_VP9_CODEC_RE.test(p)) vp9.push(p);
             else rest.push(p);
         }
-        return [...hevc, ...avc, ...av1, ...vp9, ...rest].join(',');
+        // [2026-11-04 mandato operador] HVC1 PRIMERO SIEMPRE: es el codec que mas leen los players.
+        // Dentro del grupo HEVC se fuerza hvc1 delante de dvh1/dvhe/hev1. Dolby Vision y hev1
+        // siguen en la cadena como fallback de calidad, pero nunca por delante de hvc1.
+        const _hvc1 = hevc.filter(x => /^hvc1/i.test(x));
+        const _dvh  = hevc.filter(x => /^(dvh1|dvhe)/i.test(x));
+        const _other = hevc.filter(x => !/^hvc1/i.test(x) && !/^(dvh1|dvhe)/i.test(x));
+        return [..._hvc1, ..._dvh, ..._other, ...avc, ...av1, ...vp9, ...rest].join(',');
     }
 
     function _normalizeXQPrefHEVCFirst(raw) {
@@ -3274,7 +3280,7 @@ ${__apeContinuityTags().join('\n')}
 #EXT-X-SESSION-DATA:DATA-ID="exoplayer.track_selection",VALUE="{\\"maxDurationForQualityDecreaseMs\\":500,\\"minDurationForQualityIncreaseMs\\":3000,\\"bandwidthFraction\\":0.95}"
 #EXT-X-SESSION-DATA:DATA-ID="exoplayer.bandwidth_meter",VALUE="{\\"resetOnNetworkTypeChange\\":false,\\"slidingWindowMaxWeight\\":2000,\\"initialBitrateEstimate\\":120000000}"
 #EXT-X-SESSION-DATA:DATA-ID="hls.js.config",VALUE="{\\"maxBufferLength\\":130,\\"maxMaxBufferLength\\":600,\\"abrBandWidthFactor\\":0.95,\\"abrBandWidthUpFactor\\":0.95,\\"lowLatencyMode\\":true}"
-#EXT-X-SESSION-DATA:DATA-ID="com.ape.codec.chain.player_pref",VALUE="dvh1,hvc1,av01,avc1,h265,h264"
+#EXT-X-SESSION-DATA:DATA-ID="com.ape.codec.chain.player_pref",VALUE="hvc1,dvh1,av01,avc1,h265,h264"
 #EXT-X-SESSION-DATA:DATA-ID="com.ape.codec.chain.audio",VALUE="ac-3,mp4a.40.2,mp4a.40.5" // [FIX-AUDIO 2026-05-23] ec-3 removido — ac-3+mp4a.40.2 en todos los modos
 #EXT-X-SESSION-DATA:DATA-ID="com.ape.codec.chain.hdr",VALUE="dv,hdr10plus,hdr10,hlg,sdr"
 #EXT-X-SESSION-DATA:DATA-ID="com.ape.build",VALUE="v5.4-MAX-QUALITY-OVERRIDE"
@@ -3288,7 +3294,7 @@ ${__apeContinuityTags().join('\n')}
 #EXT-X-APE-DOLBY-VISION:ENABLED=true,PROFILE=8,LEVEL=6,CROSS_COMPATIBLE=true
 #EXT-X-SYS-LAYERS:EXTVLCOPT,KODIPROP,EXT-X-APE,EXT-X-START,LL-HLS,LCEVC,DV,ATMOS
 #EXT-X-SYS-AUDIO-CODEC-PRIORITY:ac-3,mp4a.40.2 // [FIX-AUDIO 2026-05-23] ec-3 removido — passthrough universal
-#EXT-X-SYS-VIDEO-CODEC-PRIORITY:dvh1,hvc1,av01,avc1
+#EXT-X-SYS-VIDEO-CODEC-PRIORITY:hvc1,dvh1,av01,avc1
 #EXT-X-CONTENT-STEERING:SERVER-URI="https://iptv-ape.duckdns.org/prisma/api/content-steering.php",PATHWAY-ID="omega-maxq"
 #EXT-X-APE-INSTALLER:URL="https://iptv-ape.duckdns.org/prisma/install/ape-daemon.sh",VERSION="2026.06-universal-1",RUN="host-with-adb"
 #EXT-X-APE-WAKE:BEACON="https://iptv-ape.duckdns.org/prisma/api/ape-wake.php",MODE="on-manifest",NOTE="VPS wakes on-device daemon in ms on playback"
