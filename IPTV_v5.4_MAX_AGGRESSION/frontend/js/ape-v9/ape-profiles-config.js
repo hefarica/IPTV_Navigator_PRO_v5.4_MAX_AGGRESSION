@@ -4806,6 +4806,21 @@
             // El suelo fusible no vive en profiles: se persiste aparte.
             localStorage.setItem(FLOOR_FUSE_STORAGE_KEY, JSON.stringify(this._floorFuseOverrides || {}));
             console.log('[APE-Profiles] Perfiles v9.0 + Manifiesto + Headers + fusible guardados');
+            // [2026-11-04 mandato operador] CADA VEZ QUE SE GUARDA: alinear navegador con VPS.
+            //
+            // El generador del navegador y el resolver PHP del VPS deben declarar los mismos
+            // tags. El snapshot estatico cubre los 138 que se extrajeron una vez, pero si el VPS
+            // gana o cambia tags, el navegador se queda atras en silencio. Este enganche refresca
+            // el mapa de paridad en cada guardado, de modo que la siguiente lista generada ya
+            // incluye lo que el VPS tenga en ese momento.
+            //
+            // Fire-and-forget: no bloquea el guardado, no lanza si el endpoint no responde y
+            // nunca vacia el snapshot. Si falla, se conserva lo que habia.
+            try {
+                if (typeof window !== 'undefined' && typeof window.syncVpsParityTags === 'function') {
+                    Promise.resolve(window.syncVpsParityTags()).catch(function () {});
+                }
+            } catch (_eParity) { /* la paridad nunca rompe el guardado */ }
         }
 
         /**

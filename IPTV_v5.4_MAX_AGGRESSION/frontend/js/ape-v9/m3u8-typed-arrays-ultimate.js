@@ -6569,7 +6569,7 @@ ${__apeContinuityTags().join('\n')}
         // Los valores son los del PHP, congelados aquí. Si el PHP cambia, este array se regenera
         // con:  node scratch/extraer.js  (extrae $d[] = '#EXT-X-APE-...' del resolver)
         // ═══════════════════════════════════════════════════════════════════════════════════════════
-        const APE_VPS_PARITY_TAGS = Object.freeze({
+        const APE_VPS_PARITY_TAGS = ({
             '#EXT-X-APE-ABR-ENABLED': "FALSE",
             '#EXT-X-APE-ABR-FORCE-MAX': "TRUE",
             '#EXT-X-APE-ABR-LADDER-FORCE-TOP': "TRUE",
@@ -6709,6 +6709,51 @@ ${__apeContinuityTags().join('\n')}
             '#EXT-X-APE-VMAF-MODEL': "VMAF_V0.6.1",
             '#EXT-X-APE-VMAF-PHONE-MODEL': "FALSE"
         });
+        // ── SINCRONIZACION AUTOMATICA VPS → navegador (2026-11-04) ─────────────────────────
+        // El objeto de arriba es el SNAPSHOT estatico (extraido del resolver PHP, 138 tags).
+        // syncVpsParityTags() lo refresca contra el endpoint del VPS, de modo que si el
+        // resolver gana o cambia tags, el navegador los adopta sin tocar codigo.
+        //
+        // Politica: el VPS MANDA. Si el fetch falla, se conserva el snapshot y se registra
+        // el fallo; nunca se vacia el objeto ni se rompe la generacion.
+        const APE_VPS_PARITY_META = { synced: false, count: 0, sourceSha256: null, error: null, at: null };
+        function syncVpsParityTags() {
+            try {
+                if (typeof fetch !== 'function') return Promise.resolve(false);
+                const url = (typeof window !== 'undefined' && window.APE_PARITY_URL)
+                    ? window.APE_PARITY_URL
+                    : '/prisma/api/ape-parity-tags.php';
+                return fetch(url, { cache: 'no-store', credentials: 'same-origin' })
+                    .then(function (r) { return r.ok ? r.json() : null; })
+                    .then(function (j) {
+                        if (!j || j.ok !== true || !j.tags) {
+                            APE_VPS_PARITY_META.error = (j && j.error) || 'bad_payload';
+                            return false;
+                        }
+                        let added = 0, changed = 0;
+                        for (const k of Object.keys(j.tags)) {
+                            if (!(k in APE_VPS_PARITY_TAGS)) { APE_VPS_PARITY_TAGS[k] = j.tags[k]; added++; }
+                            else if (APE_VPS_PARITY_TAGS[k] !== j.tags[k]) { APE_VPS_PARITY_TAGS[k] = j.tags[k]; changed++; }
+                        }
+                        APE_VPS_PARITY_META.synced = true;
+                        APE_VPS_PARITY_META.count = Object.keys(APE_VPS_PARITY_TAGS).length;
+                        APE_VPS_PARITY_META.sourceSha256 = j.source_sha256 || null;
+                        APE_VPS_PARITY_META.at = j.generated_at || null;
+                        APE_VPS_PARITY_META.error = null;
+                        if (typeof window !== 'undefined') window.APE_VPS_PARITY_META = APE_VPS_PARITY_META;
+                        console.log('[APE-PARITY] VPS sync OK  total=' + APE_VPS_PARITY_META.count + '  nuevos=' + added + '  cambiados=' + changed);
+                        return true;
+                    })
+                    .catch(function (e) {
+                        APE_VPS_PARITY_META.error = String(e && e.message || e);
+                        console.warn('[APE-PARITY] VPS sync fallo, se conserva el snapshot: ' + APE_VPS_PARITY_META.error);
+                        return false;
+                    });
+            } catch (_e) { return Promise.resolve(false); }
+        }
+        // Se expone para que el panel la llame al guardar y para diagnostico manual.
+        try { if (typeof window !== 'undefined') { window.syncVpsParityTags = syncVpsParityTags; window.APE_VPS_PARITY_TAGS = APE_VPS_PARITY_TAGS; } } catch (_e) {}
+        try { setTimeout(function () { syncVpsParityTags(); }, 1500); } catch (_e) {}
         return [
             // ── SECTION 1 — Identity (8 tags) ──────────────────────────────
             `#EXT-X-APE-VERSION:18.2`,
