@@ -28,8 +28,12 @@
  *   - Sin auth (un player nativo no puede mandar token); sólo lectura, sin estado.
  *
  * USO
- *   GET /prisma/api/url2-cartridge.php?u=<URL_playback_verbatim>[&p=P3][&n=Nombre]
- *       [&id=123][&g=Grupo][&logo=https://...][&srv=Line]
+ *   GET /url2/<nombre>.m3u8?u=<URL_playback_verbatim>[&p=P3][&n=][&g=][&id=][&logo=][&srv=][&mode=master|m3u]
+ *   GET /prisma/api/url2-cartridge.php?...   (misma cosa; la ruta /url2/ existe
+ *        porque VLC elige el demux por EXTENSION: con .php => "MOD validation
+ *        failed (ext=php)" y no reproduce; con .m3u8 => demux HLS.)
+ *   mode=master (defecto): master playlist valido (#EXT-X-STREAM-INF + URI, sin #EXTINF).
+ *   mode=m3u: conserva #EXTINF para players que tratan el fichero como lista M3U.
  *   200 playlist · 400 si falta/!valida u
  *
  * Generado desde el generador REAL (m3u8-typed-arrays-ultimate.js) — no se
@@ -5551,13 +5555,20 @@ $map = [
     '{{DEV}}'    => $dev,
 ];
 
+// [HLS-MASTER] modo=master (defecto): master playlist válido = #EXT-X-STREAM-INF + URI,
+// SIN #EXTINF (con #EXTINF el demux HLS de VLC falla). modo=m3u conserva #EXTINF para
+// players que tratan el fichero como lista M3U clásica.
+$mode = strtolower((string)($_GET['mode'] ?? 'master'));
+if ($mode !== 'm3u' && $mode !== 'master') { $mode = 'master'; }
+$withExtinf = ($mode === 'm3u');
 $lines = $CARTRIDGE[$p];
 
-header('X-APE-URL2: cartridge;profile=' . $p . ';lines=' . count($lines));
+header('X-APE-URL2: cartridge;profile=' . $p . ';lines=' . count($lines) . ';mode=' . $mode);
 
 echo "#EXTM3U\n";
-echo '#EXT-X-APE-URL2-CARTRIDGE:1;PROFILE=' . $p . ';LINES=' . count($lines) . ";MODE=EVERYTHING_IN_URL\n";
+echo '#EXT-X-APE-URL2-CARTRIDGE:1;PROFILE=' . $p . ';LINES=' . count($lines) . ';MODE=' . strtoupper($mode) . ";EVERYTHING_IN_URL\n";
 foreach ($lines as $line) {
+    if (!$withExtinf && strncmp($line, '#EXTINF:', 8) === 0) { continue; }
     $out = strtr($line, $map);
     if ($out === '') { continue; }
     echo $out . "\n";

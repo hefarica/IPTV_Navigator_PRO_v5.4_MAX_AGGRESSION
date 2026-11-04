@@ -125,6 +125,15 @@
       "note": "URL-2 TODO EMBEBIDO EN UNA URL: devuelve el cartucho REAL por perfil (904 directivas P0-P5 generadas por el generador) + #EXT-X-STREAM-INF + la URL de playback verbatim de ?u= (SHIELDED). Segunda via sin ADB ni instalacion. Regenerar con tools/url2/build_url2_cartridge.js."
     },
     {
+      "id": "nginx-snippet-url2-cartridge",
+      "src": "IPTV_v5.4_MAX_AGGRESSION/vps/nginx/snippets/url2-cartridge.conf",
+      "dest": "/etc/nginx/snippets/url2-cartridge.conf",
+      "type": "nginx-conf",
+      "post": "nginx-reload",
+      "enabled": true,
+      "note": "location ^~ /url2/ -> rewrite a url2-cartridge.php. La extension .m3u8 es obligatoria: VLC elige el demux por extension (con .php => MOD validation failed y no reproduce). Requiere el include una vez en el server-block 443."
+    },
+    {
       "id": "lua-combined-body-filter",
       "src": "IPTV_v5.4_MAX_AGGRESSION/vps/nginx/lua/combined_body_filter.lua",
       "dest": "/etc/nginx/lua/combined_body_filter.lua",
