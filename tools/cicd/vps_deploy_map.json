@@ -116,6 +116,15 @@
       "note": "Plano A: endpoint URL-2 que renderiza master M3U8 4K envolviendo ?u= verbatim (SHIELDED). Inerte hasta routing por VPS."
     },
     {
+      "id": "php-prisma-url2-cartridge",
+      "src": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/url2-cartridge.php",
+      "dest": "/var/www/html/prisma/api/url2-cartridge.php",
+      "type": "php",
+      "post": "none",
+      "enabled": true,
+      "note": "URL-2 TODO EMBEBIDO EN UNA URL: devuelve el cartucho REAL por perfil (904 directivas P0-P5 generadas por el generador) + #EXT-X-STREAM-INF + la URL de playback verbatim de ?u= (SHIELDED). Segunda via sin ADB ni instalacion. Regenerar con tools/url2/build_url2_cartridge.js."
+    },
+    {
       "id": "lua-combined-body-filter",
       "src": "IPTV_v5.4_MAX_AGGRESSION/vps/nginx/lua/combined_body_filter.lua",
       "dest": "/etc/nginx/lua/combined_body_filter.lua",
