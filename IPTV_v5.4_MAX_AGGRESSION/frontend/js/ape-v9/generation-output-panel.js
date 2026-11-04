@@ -198,6 +198,7 @@
     var payload = {
       delta_pct: v,
       delta_array: arr,
+      delta_contract: window.APE_DELTA_CONTRACT || null,
       rule: 'IN >= OUT * (1 + delta)',
       source: 'generation-output-panel',
       generated_at: new Date().toISOString()
