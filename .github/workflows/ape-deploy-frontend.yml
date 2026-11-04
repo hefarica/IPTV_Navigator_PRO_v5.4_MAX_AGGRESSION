@@ -214,6 +214,7 @@ jobs:
         if: inputs.mode == 'apply'
         run: |
           set -uo pipefail
+          STAMP=$(date -u +%Y%m%dT%H%M%SZ)   # cada run: es un shell distinto
           SRC="IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/ape-parity-tags.php"
           # url2-cartridge.php: el cartucho dinamico por device. Se valida con php -l antes
           # de instalar; si el lint falla NO se despliega (mejor un 500 claro que un PHP roto).
