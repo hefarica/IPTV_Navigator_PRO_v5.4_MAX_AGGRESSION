@@ -2551,6 +2551,13 @@
             average: Math.round(bitrate * 0.80),
             resolution: (denom === '8K-FAKE') ? '7680x4320' : '3840x2160',
             fps: Math.min(60, Number(o.fps) || 30),
+            // [2026-11-04] Techo 4K: bit depth, chroma y metadata HDR10 viajan tambien aqui para
+            // que el STREAM-INF los declare. Por defecto 10-bit 4:2:0 (Main10/HDR10 es siempre
+            // 4:2:0); el perfil puede sobreescribirlo via o.bitDepth / o.chroma.
+            bitDepth: Number(o.bitDepth) > 0 ? Number(o.bitDepth) : 10,
+            chroma: o.chroma || '4:2:0',
+            maxCLL: Number(o.nitsTarget) > 0 ? Math.round(Number(o.nitsTarget)) : 0,
+            maxFALL: Number(o.nitsTarget) > 0 ? Math.round(Number(o.nitsTarget) * 0.25) : 0,
             stableVariantId: String(o.channelId || '') + '_' + denom,
             qualityTag: '#EXT-X-APE-QUALITY:' + denom,
             rangeTag: '#EXT-X-APE-QUALITY-RANGE:min=' + rg.min + ',max=' + rg.max + ',bitrate=' + bitrate,
@@ -11557,13 +11564,24 @@ lines.push(`#EXT-X-APE-STREAM-TRUTH:src=${_streamTruth.source},w=${_streamTruth.
                 fps: Number(_fps796_csv) || 30,
                 fakeUhd: (_streamTruth && _streamTruth.fakeUhd) || false,
                 channelId: String(_hdcpChId || _stableVariantId || ''),
+                bitDepth: (cfg && cfg.bit_depth != null) ? Number(cfg.bit_depth) : 10,
+                chroma: (cfg && cfg.chroma_subsampling) ? String(cfg.chroma_subsampling) : '4:2:0',
+                nitsTarget: (cfg && cfg.nits_target != null) ? Number(cfg.nits_target) : 0,
             });
             lines.push(_qd85.qualityTag);
             lines.push(_qd85.rangeTag);
             const _bw796_denom = _qd85.bandwidth;
             const _avgBw_denom = _qd85.average;
             const _sid_denom = _qd85.stableVariantId;
-            lines.push(`#EXT-X-STREAM-INF:BANDWIDTH=${_bw796_denom},AVERAGE-BANDWIDTH=${_avgBw_denom},CODECS="${_codec796_csv}${_codecAudio ? ',' + _codecAudio : ''}",RESOLUTION=${_res796_csv},FRAME-RATE=${Number(_fps796_csv).toFixed(3)}${_videoRangePart},HDCP-LEVEL=${_hdcpLevel},STABLE-VARIANT-ID="${_sid_denom}"`);
+            // [2026-11-04 mandato operador] TECHO 4K: ademas de VIDEO-RANGE=PQ, el STREAM-INF
+            // declara BIT-DEPTH, CHROMA-SUBSAMPLING y la metadata HDR10 (MaxCLL/MaxFALL).
+            // Son atributos no listados en RFC 8216 4.3.4.2: un player conforme los ignora y el
+            // que los entiende gana la declaracion completa. No alteran CODECS ni RESOLUTION,
+            // asi que no pueden provocar decoder-reject (Ley Cardinal 1 intacta).
+            const _depthPart   = `,BIT-DEPTH=${_qd85.bitDepth || 10}`;
+            const _chromaPart  = `,CHROMA-SUBSAMPLING=${_qd85.chroma || '4:2:0'}`;
+            const _cllPart     = (_qd85.maxCLL > 0) ? `,MaxCLL=${_qd85.maxCLL},MaxFALL=${_qd85.maxFALL}` : '';
+            lines.push(`#EXT-X-STREAM-INF:BANDWIDTH=${_bw796_denom},AVERAGE-BANDWIDTH=${_avgBw_denom},CODECS="${_codec796_csv}${_codecAudio ? ',' + _codecAudio : ''}",RESOLUTION=${_res796_csv},FRAME-RATE=${Number(_fps796_csv).toFixed(3)}${_videoRangePart}${_depthPart}${_chromaPart}${_cllPart},HDCP-LEVEL=${_hdcpLevel},STABLE-VARIANT-ID="${_sid_denom}"`);
             if (_fpsSource) {
                 lines.push(`#EXT-X-APE-FPS-SOURCE:${_fpsSource}`);
             }
