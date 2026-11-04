@@ -64,6 +64,29 @@ foreach (RESOLVER_CANDIDATES as $candidate) {
     }
 }
 
+// Fallback: busqueda acotada. El resolver puede vivir bajo otra raiz y fijar rutas a mano
+// nos dejo en resolver_not_found. Se limita a pocas raices y poca profundidad para no
+// barrer el disco entero en cada peticion.
+if ($path === null) {
+    $raices = ['/var/www/html', '/var/www', '/opt'];
+    foreach ($raices as $raiz) {
+        if (!is_dir($raiz)) { continue; }
+        try {
+            $it = new RecursiveIteratorIterator(
+                new RecursiveDirectoryIterator($raiz, FilesystemIterator::SKIP_DOTS),
+                RecursiveIteratorIterator::SELF_FIRST
+            );
+            $it->setMaxDepth(4);
+            foreach ($it as $f) {
+                if ($f->isFile() && $f->getFilename() === 'resolve_quality_unified.php' && $f->isReadable()) {
+                    $path = $f->getPathname();
+                    break 2;
+                }
+            }
+        } catch (Throwable $e) { continue; }
+    }
+}
+
 if ($path === null) {
     fail('resolver_not_found', 'Ninguna ruta candidata contiene resolve_quality_unified.php');
 }
