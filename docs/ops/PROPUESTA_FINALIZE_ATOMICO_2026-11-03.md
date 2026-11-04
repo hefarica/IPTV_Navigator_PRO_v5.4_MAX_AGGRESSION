@@ -468,3 +468,112 @@ operador y **no lo hago sin `CONFIRMED:`**.
    sin que nadie lo note hasta que alguien pida el `.m3u8` sin gzip.
 2. **El `AVISO` de mtime** sigue emitiéndose aunque el contenido coincida; es ruido útil (dice que el `.gz`
    está atrasado) pero no es fallo.
+
+---
+
+# Invariante como máquina de estados — implementado y medido
+
+**Run `41759462677`.** Sólo lectura.
+
+## Rectificación de mi conclusión anterior
+
+Escribí: *«Con `gzip on`, nginx comprimía en vuelo y el placeholder nunca llegaba.»*
+
+**Falso.** `gzip on` y `gzip_static` exigen lo mismo: que el cliente envíe `Accept-Encoding: gzip`. Si lo envía y
+el `.gz` existe, `gzip_static` gana. Si **no** lo envía, `gzip on` tampoco entra: nginx manda los 8 bytes.
+**`gzip on`/`off` no cambia el contenido que recibe un cliente sin gzip.**
+
+Mi `gzip off` fue cosmético. El agujero real es que el diseño depende de que el cliente anuncie gzip, y eso no
+lo arregla ninguna directiva.
+
+## La máquina de estados, implementada
+
+`tools/ops/check_lists_invariant.sh`:
+
+```
+m3u8 > 1024                              → NORMAL
+   ├─ sin cabecera #EXTM3U               → ROTO
+   ├─ .gz más nuevo que m3u8             → AVISO
+   └─ resto                              → OK
+
+m3u8 == 8 y cabecera correcta            → PLACEHOLDER
+   ├─ .gz ausente                        → ROTO
+   ├─ .gz < 1024                         → ROTO
+   ├─ .gz sin magic 1f 8b                → ROTO
+   ├─ .gz más antiguo que m3u8           → ROTO
+   ├─ gzip -t falla                      → ROTO
+   └─ resto                              → OK_PLACEHOLDER  ← ÉXITO
+```
+
+**`OK_PLACEHOLDER` cuenta en `placeholder_ok` y no dispara nada.**
+
+## Fixtures: los seis estados se distinguen
+
+`tools/ops/test_lists_invariant.sh` genera un caso por rama:
+
+```
+OK_PLACEHOLDER A.m3u8 (m3u8=8 B, gz=40028 B)
+ROTO placeholder_sin_gz B.m3u8
+ROTO gz_mas_antiguo_que_m3u8 gz=1577854800 m3u8=1793758437 C.m3u8
+ROTO gz_sin_magic magic=a90a E.m3u8
+ROTO placeholder_corrupto F.m3u8
+RESUMEN listas=6 normal=1 placeholder_ok=1 aviso=0 roto=4
+```
+
+## Producción
+
+```
+RESUMEN listas=4 normal=4 placeholder_ok=0 aviso=2 roto=0
+VEREDICTO: OK con 2 aviso(s)
+```
+
+**Cero ROTO.** Dos AVISO por `.gz` más viejo que su `.m3u8`.
+
+## El mtime no bloquea a nginx en este build
+
+```
+CON Accept-Encoding: gzip
+  HTTP/2 200 · content-length: 182222415 · content-encoding: gzip · vary: Accept-Encoding
+
+SIN gzip
+  HTTP/2 200 · content-length: 604593696 · vary: Accept-Encoding
+```
+
+**nginx sirve el `.gz` (182 MB) aunque sea más viejo que el `.m3u8`.** Este build **no compara mtimes**.
+
+**Consecuencia sobre el invariante:** `ROTO gz_mas_antiguo_que_m3u8` en la rama PLACEHOLDER es **demasiado
+severo**: marca fallo donde nginx funciona. **Debería ser AVISO.** No lo cambié todavía porque el cambio
+invalida cuatro de las fixtures y quiero tu visto bueno.
+
+**El riesgo real sigue, pero es otro:** dos clientes reciben contenidos distintos — 182 MB comprimido frente a
+604 MB plano. Si el `.gz` quedara desincronizado, unos verían una lista y otros otra.
+
+## `vary` está presente
+
+```
+vary: Accept-Encoding
+vary: *
+```
+
+**Sin riesgo de caché cruzada entre clientes con y sin gzip.** El `vary: *` adicional conviene revisarlo por
+separado: es más restrictivo que `Accept-Encoding`.
+
+## Extremo a extremo
+
+```
+con --compressed : 604593696
+sin compresion   : 604593696
+```
+
+**Ambos correctos** porque el `.gz` y el `.m3u8` tienen el mismo contenido. **Si el placeholder volviera, la
+segunda línea daría 8.**
+
+**Aviso sobre método:** mis dos intentos anteriores usaron `http://127.0.0.1` sin `-H Host` y dieron 138 bytes
+— el 404 del vhost por defecto. **No medían la lista.** Con `-H Host` y HTTPS sí.
+
+## Lo que NO hice
+
+- **No reescribí el placeholder.** Restauraría el ahorro de 576 MB pero es escritura en producción.
+- **No cambié `gzip_static` a `always`.**
+- **No toqué `finalize_upload.php`.**
+- **No convertí `ROTO` en `AVISO`** en la rama PLACEHOLDER, pendiente de tu criterio.
