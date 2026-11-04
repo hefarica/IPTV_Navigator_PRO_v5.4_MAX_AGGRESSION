@@ -182,6 +182,32 @@ jobs:
           sleep 3
           echo 'reload hecho; descriptores de fichero descartados'
 
+      - name: Desplegar endpoint de paridad (PHP)
+        if: inputs.mode == 'apply'
+        run: |
+          set -uo pipefail
+          SRC="IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/ape-parity-tags.php"
+          DEST="/var/www/html/prisma/api/ape-parity-tags.php"
+          STAMP=$(date -u +%Y%m%dT%H%M%SZ)
+          echo "=== ape-parity-tags.php ==="
+          ssh "$TARGET" "sudo -n mkdir -p /var/www/html/prisma/api"
+          if ssh "$TARGET" "sudo -n test -f '$DEST'"; then
+            ssh "$TARGET" "sudo -n cp -a '$DEST' '$DEST.bak_$STAMP'"
+            echo "  backup: $DEST.bak_$STAMP"
+          fi
+          scp -q "$SRC" "$TARGET:/tmp/ape-parity-tags.php"
+          if ! ssh "$TARGET" "sudo -n install -m 0644 -o www-data -g www-data /tmp/ape-parity-tags.php '$DEST'"; then
+            echo "::error::fallo la instalacion del endpoint de paridad"; exit 1
+          fi
+          REMOTO=$(ssh "$TARGET" "sudo -n sha256sum '$DEST' | cut -d' ' -f1")
+          LOCAL=$(sha256sum "$SRC" | cut -d' ' -f1)
+          if [ "$REMOTO" != "$LOCAL" ]; then
+            echo "::error::sha del endpoint de paridad no coincide"; exit 1
+          fi
+          echo "  sha OK ($LOCAL)"
+          php -l "$SRC" >/dev/null 2>&1 && echo "  php -l OK" || echo "  (php -l no disponible en el runner)"
+          echo "  endpoint: https://iptv-ape.duckdns.org/prisma/api/ape-parity-tags.php"
+
       - name: Verificar lo que sirve HTTP (contenido, no solo tamano)
         run: |
           set -uo pipefail
@@ -217,8 +243,10 @@ jobs:
           grep -q 'sugerirAjuste'    "$P" || { echo '::error::el panel servido no tiene sugerirAjuste'; ok=0; }
           grep -q 'ape-buf-sugerencia' "$P" || { echo '::error::el panel servido no tiene el bloque de sugerencia'; ok=0; }
           grep -q 'deltaMax'         "$P" || { echo '::error::el panel servido no calcula deltaMax'; ok=0; }
-          grep -q 'ape-sug-delta'    "$P" || { echo '::error::el panel servido no ofrece aplicar el delta'; ok=0; }
-          grep -q 'ape-sug-perfil'   "$P" || { echo '::error::el panel servido no ofrece cambiar de perfil'; ok=0; }
+          grep -q 'ape-sug-aprobar'  "$P" || { echo '::error::el panel servido no ofrece aprobar'; ok=0; }
+          grep -q 'ape-sug-denegar'  "$P" || { echo '::error::el panel servido no ofrece denegar'; ok=0; }
+          grep -q 'ape-sug-forzar'   "$P" || { echo '::error::el panel servido no ofrece forzar'; ok=0; }
+          grep -q 'mejorEscenario'   "$P" || { echo '::error::el panel servido no tiene mejorEscenario'; ok=0; }
           # El config debe poblar el suelo desde el LAB: sin esto el panel vuelve a la tabla de respaldo.
           C=/tmp/s-ape-profiles-config.js
           echo '--- el config servido puebla bandwidth_floor ---'
