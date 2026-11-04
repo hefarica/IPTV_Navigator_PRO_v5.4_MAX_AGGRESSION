@@ -417,7 +417,30 @@
             'X-Buffer-Unit':              'ms',
             'X-Buffer-Max':               '1000000,750000,500000,250000',
             'X-Buffer-Target':            '250000,180000,120000,80000',
-            'X-Buffer-Min':               '60000,45000,30000,20000'
+            'X-Buffer-Min':               '60000,45000,30000,20000',
+            // ── HOMOLOGACIÓN segundos ↔ Mbps (mandato operador: la red pide MEGAS) ──────────
+            //
+            // Un buffer no se le pide a la red: se reserva en RAM del player (hls.js lo hace
+            // en el SourceBuffer, ExoPlayer en su Allocator). Pero lo que SÍ se le pide a la red
+            // es el ancho de banda para llenarlo, y eso se mide en Mbps/Mbit.
+            //
+            // Las dos vistas son la misma cosa vista desde dos lados:
+            //     Mbit_del_buffer = segundos_del_buffer × Mbps_del_perfil
+            //     segundos        = valor_ms / 1000
+            //
+            // A 80 Mbps ningún buffer de minutos cabe en hardware: P0 con 250 s son 20.000 Mbit
+            // (2,5 GB). Eso no se arregla cambiando unidades; es la consecuencia de un bitrate de
+            // 8K. Los valores quedan como están y la fórmula queda declarada aquí para que nadie
+            // tenga que inferirla otra vez.
+            //
+            // Nivel 1 por perfil, en las dos vistas (Mbps del perfil entre paréntesis):
+            //   P0 80Mbps  60s/250s/1000s  =  4800/20000/80000 Mbit
+            //   P1 40Mbps  50s/200s/800s   =  2000/8000/32000  Mbit
+            //   P2 20Mbps  40s/150s/600s   =   800/3000/12000  Mbit
+            //   P3 10Mbps  30s/100s/400s   =   300/1000/4000   Mbit
+            //   P4  5Mbps  20s/60s/250s    =   100/300/1250    Mbit
+            //   P5  2Mbps   3s/30s/60s     =     6/60/120      Mbit   (failsafe, bajo su escalera)
+            'X-Buffer-Formula':           'Mbit=segundos*Mbps;segundos=ms/1000'
         })
     });
     try { if (typeof window !== 'undefined') window.APE_PRIORITY_PACKAGE = APE_PRIORITY_PACKAGE; } catch (_ePkg) {}
@@ -764,9 +787,9 @@
                 "X-Congestion-Detect": "enabled,aggressive-extreme,enabled,aggressive,enabled,adaptive,enabled,adaptive,enabled,balanced",
                 "X-Tone-Mapping": "auto,hdr-to-sdr,sdr-to-hdr,passthrough",
                 "X-HDR-Output-Mode": "hdr,auto,tonemap,sdr",
-                "X-Buffer-Target": "34000",
-                "X-Buffer-Max": "216000",
-                "X-Buffer-Min": "10000",
+                "X-Buffer-Target": "250000",
+                "X-Buffer-Max": "1000000",
+                "X-Buffer-Min": "60000",
                 "X-Network-Caching": "10000",
                 "X-Live-Caching": "10000",
                 "X-File-Caching": "34000",
@@ -1398,9 +1421,9 @@
                 "X-APE-Quality-Threshold": "0.99",
                 "X-Tone-Mapping": "auto,hdr-to-sdr,sdr-to-hdr,passthrough",
                 "X-HDR-Output-Mode": "hdr,auto,tonemap,sdr",
-                "X-Buffer-Target": "34000",
-                "X-Buffer-Max": "216000",
-                "X-Buffer-Min": "10000",
+                "X-Buffer-Target": "200000",
+                "X-Buffer-Max": "800000",
+                "X-Buffer-Min": "50000",
                 "X-Network-Caching": "10000",
                 "X-Live-Caching": "10000",
                 "X-File-Caching": "34000",
@@ -2031,9 +2054,9 @@
                 "X-APE-THROUGHPUT-T2": "34.4",
                 "X-Tone-Mapping": "auto",
                 "X-HDR-Output-Mode": "auto",
-                "X-Buffer-Target": "34000",
-                "X-Buffer-Max": "216000",
-                "X-Buffer-Min": "10000",
+                "X-Buffer-Target": "150000",
+                "X-Buffer-Max": "600000",
+                "X-Buffer-Min": "40000",
                 "X-Network-Caching": "10000",
                 "X-Live-Caching": "10000",
                 "X-File-Caching": "34000",
@@ -2525,9 +2548,9 @@
                 "X-Congestion-Detect": "enabled,aggressive-extreme,enabled,aggressive,enabled,adaptive,enabled,adaptive,enabled,balanced",
                 "X-Tone-Mapping": "auto,hdr-to-sdr,sdr-to-hdr,passthrough",
                 "X-HDR-Output-Mode": "hdr,auto,tonemap,sdr",
-                "X-Buffer-Target": "34000",
-                "X-Buffer-Max": "216000",
-                "X-Buffer-Min": "10000",
+                "X-Buffer-Target": "100000",
+                "X-Buffer-Max": "400000",
+                "X-Buffer-Min": "30000",
                 "X-Network-Caching": "10000",
                 "X-Live-Caching": "10000",
                 "X-File-Caching": "34000",
@@ -3158,9 +3181,9 @@
                 "X-Congestion-Detect": "enabled,aggressive-extreme,enabled,aggressive,enabled,adaptive,enabled,adaptive,enabled,balanced",
                 "X-Tone-Mapping": "auto,hdr-to-sdr,sdr-to-hdr,passthrough",
                 "X-HDR-Output-Mode": "hdr,auto,tonemap,sdr",
-                "X-Buffer-Target": "34000",
-                "X-Buffer-Max": "216000",
-                "X-Buffer-Min": "10000",
+                "X-Buffer-Target": "60000",
+                "X-Buffer-Max": "250000",
+                "X-Buffer-Min": "20000",
                 "X-Network-Caching": "10000",
                 "X-Live-Caching": "10000",
                 "X-File-Caching": "34000",
@@ -3792,9 +3815,9 @@
                 "X-Congestion-Detect": "enabled,aggressive-extreme,enabled,aggressive,enabled,adaptive,enabled,adaptive,enabled,balanced",
                 "X-Tone-Mapping": "auto,hdr-to-sdr,sdr-to-hdr,passthrough",
                 "X-HDR-Output-Mode": "hdr,auto,tonemap,sdr",
-                "X-Buffer-Max": "216000",
-                "X-Buffer-Target": "34000",
-                "X-Buffer-Min": "10000",
+                "X-Buffer-Max": "60000",
+                "X-Buffer-Target": "30000",
+                "X-Buffer-Min": "3000",
                 "X-Network-Caching": "10000",
                 "X-Live-Caching": "10000",
                 "X-File-Caching": "34000",
