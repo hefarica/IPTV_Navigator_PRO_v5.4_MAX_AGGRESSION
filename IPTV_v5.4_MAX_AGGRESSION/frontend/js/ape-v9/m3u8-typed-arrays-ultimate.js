@@ -2518,6 +2518,29 @@
         '4K-UPSCALING': { min:  2000000, max: 200000000 },
         '4K-FAKE':      { min:  2000000, max: 200000000 },
     };
+    // ── LEY CARDINAL 1: Nivel<->Resolucion ────────────────────────────────────────────────────────
+    // [2026-11-04 mandato operador] El perfil puede declarar un codec_full con un nivel por debajo de
+    // la resolucion que la lista emite (p.ej. hvc1.2.4.L123.B0 = Level 4.1, techo 1920x1080@60, sobre
+    // un STREAM-INF que declara 3840x2160). Declarar un nivel inferior al necesario es exactamente el
+    // decoder-reject que la doctrina prohibe. Esta funcion ELEVA el nivel al minimo coherente y NUNCA
+    // lo baja: si el perfil ya declara un nivel igual o superior, se respeta tal cual.
+    // Tabla de techos reales (RFC 6381 / ITU-T H.265 Annex A):
+    //   L90  -> 480p@30   L93  -> 720p@30   L120 -> 1080p@30
+    //   L123 -> 1080p@60  L150 -> 2160p@30  L153 -> 2160p@60  L156 -> 2160p@120
+    function _nivelHevcCoherente(codec, height, fps) {
+        const c = String(codec || '');
+        const m = c.match(/^(hvc1|hev1)\.(\d+)\.(\d+)\.L(\d+)(\.B\d+)?/i);
+        if (!m) return c;                       // av01/avc1/vp09: no aplica esta tabla
+        const actual = Number(m[4]);
+        const h = Number(height) || 0, f = Number(fps) || 0;
+        let minimo;
+        if (h >= 2160)      minimo = (f >= 100) ? 156 : 153;
+        else if (h >= 1080) minimo = (f >= 50)  ? 123 : 120;
+        else if (h >= 720)  minimo = 93;
+        else                minimo = 90;
+        if (actual >= minimo) return c;          // ya es coherente: no se toca
+        return c.replace(/\.L\d+/, '.L' + minimo);
+    }
     function __apeQualityDenomination(input) {
         const o = input || {};
         const h = Number(o.height) || 0;
@@ -9172,7 +9195,10 @@ ${__apeContinuityTags().join('\n')}
             }
             // codec_full: cadena RFC 6381 completa declarada por el perfil
             if (cfg.codec_full) {
-                lines.push(`#EXT-X-APE-CODEC-FULL:${cfg.codec_full}`);
+                // [2026-11-04] El nivel declarado se eleva al que la resolucion exige. Un perfil con
+                // L123 (techo 1080p) emitiendo 3840x2160 pasa a declarar L153.
+                const _cfCoherente = _nivelHevcCoherente(cfg.codec_full, _resH796_safe, _fps796_csv);
+                lines.push(`#EXT-X-APE-CODEC-FULL:${_cfCoherente}`);
             }
         }
         const _resW796_raw = parseInt((_res796 || '0x0').split('x')[0], 10);
@@ -9205,6 +9231,9 @@ ${__apeContinuityTags().join('\n')}
             ? Math.round(Number(cfg.bitrate) * 1000) : _bw796;
         const _floorPerfilBps796 = (cfg && cfg.bitrate_floor_mbps != null && !isNaN(cfg.bitrate_floor_mbps))
             ? Math.round(Number(cfg.bitrate_floor_mbps) * 1000000) : _minBw796;
+        // [2026-11-04] El CODECS del STREAM-INF tambien se normaliza: si la cascada o el probe
+        // entregan un nivel por debajo de la resolucion declarada, se eleva al minimo coherente.
+        _codec796_csv = _nivelHevcCoherente(_codec796_csv, _resH796_safe, _fps796_csv);
         lines.push(`#EXTVLCOPT:adaptive-maxbitrate=${_bwPerfilBps796}`);
         lines.push(`#EXTVLCOPT:adaptive-minbitrate=${_floorPerfilBps796}`);
         lines.push(`#EXTVLCOPT:adaptive-use-access=true`);
