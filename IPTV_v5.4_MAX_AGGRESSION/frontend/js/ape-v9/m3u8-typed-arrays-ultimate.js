@@ -3647,15 +3647,22 @@ ${__apeContinuityTags().join('\n')}
 
         } else {
             // Fallback Genérico si no hay vlcopt dict en el JSON
-            const clampFallback = (val) => Math.max(30000, Math.min(val || 30000, 60000));
+            // [2026-11-04 mandato operador] El piso de 30 s IGNORABA el perfil: un perfil con
+            // buffer de 8 s emitia 30000 y el panel mostraba 8. Ahora se respeta el valor del
+            // perfil; el clamp solo impide 0/negativo y valores absurdos (>600 s).
+            const clampFallback = (val) => {
+                const n = Number(val);
+                if (!isFinite(n) || n <= 0) return 30000;
+                return Math.max(1000, Math.min(Math.round(n), 600000));
+            };
             vlcopts.push(`#EXTVLCOPT:network-caching=${clampFallback(cfg.network_cache_ms)}`);
             vlcopts.push(`#EXTVLCOPT:live-caching=${clampFallback(cfg.live_cache_ms)}`);
             vlcopts.push(`#EXTVLCOPT:file-caching=${clampFallback(cfg.file_cache_ms)}`);
             vlcopts.push(`#EXTVLCOPT:disc-caching=${clampFallback(cfg.network_cache_ms)}`);
             vlcopts.push(`#EXTVLCOPT:tcp-caching=${clampFallback(cfg.network_cache_ms)}`);
             vlcopts.push(`#EXTVLCOPT:sout-mux-caching=${clampFallback(cfg.live_cache_ms)}`);
-            vlcopts.push(`#EXTVLCOPT:clock-jitter=${cfg.clock_jitter || 1500}`);
-            vlcopts.push(`#EXTVLCOPT:clock-synchro=1`);
+            vlcopts.push(`#EXTVLCOPT:clock-jitter=${Number(cfg.clock_jitter ?? cfg.clockJitter ?? 1500)}`);
+            vlcopts.push(`#EXTVLCOPT:clock-synchro=${Number(cfg.clock_synchro ?? cfg.clockSynchro ?? 1)}`);
             vlcopts.push(`#EXTVLCOPT:http-reconnect=true`);
             vlcopts.push(`#EXTVLCOPT:http-continuous=true`);
             vlcopts.push(`#EXTVLCOPT:http-forward-cookies=true`);
@@ -8757,7 +8764,10 @@ ${__apeContinuityTags().join('\n')}
             } catch (_) { /* no bloqueante */ }
             return null;
         })();
-        const _res796 = _probeData?.resolution || cfg.resolution || '3840x2160';
+        // [2026-11-04] El perfil manda sobre el probe: el operador fija la resolucion en el panel
+        // y un probe que devuelva 8K no debe sobrescribir un perfil FHD. Se mantiene el orden
+        // perfil -> probe -> default.
+        const _res796 = cfg.resolution || _probeData?.resolution || '3840x2160';
         const _fps796 = _probeData?.frameRate || cfg.fps || 60;
         // [HEVC-FIRST CODEC LADDER] LAB SSOT primary del chain → fallback legacy switch.
         // codec_chain_video[0] = codec real declarado en STREAM-INF (RFC 8216 byte-identical to bytestream).
@@ -9111,10 +9121,17 @@ ${__apeContinuityTags().join('\n')}
         lines.push(`#EXTVLCOPT:adaptive-maxheight=${_resH796_safe}`);
         lines.push(`#EXTVLCOPT:adaptive-bw-factor=1.0`);
         lines.push(`#EXTVLCOPT:adaptive-logic=highest`);
-        lines.push(`#EXTVLCOPT:adaptive-maxbitrate=${_bw796}`);
-        lines.push(`#EXTVLCOPT:adaptive-minbitrate=${_minBw796}`);
+        // [2026-11-04 mandato operador] maxbitrate/minbitrate deben reflejar el perfil, no el
+        // fallback interno. cfg.bitrate viene en kbps (SSOT bridge L1583) y
+        // cfg.bitrate_floor_mbps en Mbps; ambos se emiten en bps como espera inputstream.adaptive.
+        const _bwPerfilBps796 = (Number(cfg && cfg.bitrate) > 0)
+            ? Math.round(Number(cfg.bitrate) * 1000) : _bw796;
+        const _floorPerfilBps796 = (cfg && cfg.bitrate_floor_mbps != null && !isNaN(cfg.bitrate_floor_mbps))
+            ? Math.round(Number(cfg.bitrate_floor_mbps) * 1000000) : _minBw796;
+        lines.push(`#EXTVLCOPT:adaptive-maxbitrate=${_bwPerfilBps796}`);
+        lines.push(`#EXTVLCOPT:adaptive-minbitrate=${_floorPerfilBps796}`);
         lines.push(`#EXTVLCOPT:adaptive-use-access=true`);
-        lines.push(`#EXTVLCOPT:adaptive-initial-bandwidth=${_bw796}`);
+        lines.push(`#EXTVLCOPT:adaptive-initial-bandwidth=${_bwPerfilBps796}`);
         lines.push(`#EXTVLCOPT:adaptive-bandwidth-factor=1.0`);
         lines.push(`#EXTVLCOPT:adaptive-lookahead-count=3`);
         lines.push(`#EXTVLCOPT:adaptive-segcount-factor=1.0`);
