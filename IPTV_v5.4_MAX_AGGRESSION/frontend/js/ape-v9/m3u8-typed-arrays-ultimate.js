@@ -53,6 +53,28 @@
     const APE_CODEC_CSV_H265   = APE_CODEC_SSOT.PRIORITY.concat(['h265','H265','h.265','H.265','mpeg2']).join(',');
     const APE_CODEC_PRIMARY    = APE_CODEC_SSOT.PRIMARY;
     const APE_CODEC_HEVC_TIER  = APE_CODEC_SSOT.HEVC_TIER;
+    // [2026-11-04] El SSOT era privado del IIFE: `typeof APE_CODEC_SSOT` en consola daba
+    // 'undefined' aunque el codigo nuevo estuviera cargado, lo que hacia imposible verificar
+    // desde el navegador que build corria. Se publica en window con un id de build y el
+    // inventario de capacidades de esta version.
+    const APE_BUILD_ID = '20261104-ssot-maxq-hdr-tunnel';
+    try {
+        if (typeof window !== 'undefined') {
+            window.APE_CODEC_SSOT = APE_CODEC_SSOT;
+            window.APE_CODEC_CSV  = APE_CODEC_CSV;
+            window.APE_CODEC_PRIMARY = APE_CODEC_PRIMARY;
+            window.APE_BUILD_ID = APE_BUILD_ID;
+            window.__APE_FEATURES__ = Object.freeze({
+                codecSSOT:        true,
+                cortexAI:         true,
+                bandwidthMonitor: true,
+                tunneledOptIn:    true,
+                maxQualityAlways: true,
+                hdr10Metadata:    true,
+                cardinalLaw1:     true
+            });
+        }
+    } catch (_ePub) { /* nunca rompe la generacion */ }
     const HEVC_CASCADE_HVC1 = 'hvc1.2.4.L186.B0,hvc1.2.4.L183.B0,hvc1.2.4.L180.B0,hvc1.2.4.L156.B0,hvc1.2.4.L153.B0,hvc1.2.4.L150.B0,hvc1.2.4.L123.B0,hvc1.2.4.L120.B0,hvc1.2.4.L93.B0,hvc1.2.4.L90.B0,avc1.640028';
     const HEVC_CASCADE_HEV1 = 'hev1.2.4.L186.B0,hev1.2.4.L183.B0,hev1.2.4.L180.B0,hev1.2.4.L156.B0,hev1.2.4.L153.B0,hev1.2.4.L150.B0,hev1.2.4.L123.B0,hev1.2.4.L120.B0,hev1.2.4.L93.B0,hev1.2.4.L90.B0,avc1.640028';
     // Helper: obtiene codec hev1 del tier activo para un canal dado (KODIPROP/EXTVLCOPT)
