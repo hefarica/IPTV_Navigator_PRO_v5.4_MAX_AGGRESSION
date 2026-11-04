@@ -5544,12 +5544,17 @@ ${__apeContinuityTags().join('\n')}
             "X-Subtitle-Track-Selection": "off",
             "X-EPG-Sync": "enabled",
             "X-Catchup-Support": "flussonic-ultra",
-            "X-Bandwidth-Estimation": "adaptive,balanced,conservative",
+                        // [2026-11-04] Misma escalera que ape-profiles-config.js: 5 niveles validados
+            // de STRATEGY_CONFIG (ultra-aggressive 0.95 > aggressive 0.90 > balanced 0.85
+            // > adaptive 0.80 > conservative 0.75). Antes tenia 3 niveles y ninguno agresivo.
+            // STRATEGY_CONFIG (ultra-aggressive 0.95 > aggressive 0.90 > balanced 0.85 >
+            // adaptive 0.80 > conservative 0.75). Antes tenia 3 niveles y ninguno agresivo.
+            "X-Bandwidth-Estimation": "ultra-aggressive,aggressive,balanced,adaptive,conservative",
             "X-Initial-Bitrate": String((cfg.bitrate || 5000) * 1000),
-            "X-Bandwidth-Preference": "unlimited",
-            "X-BW-Estimation-Window": "10",
-            "X-BW-Confidence-Threshold": "0.95",
-            "X-BW-Smooth-Factor": "0.05",
+            "X-Bandwidth-Preference": "unlimited,high,balanced,adaptive,conservative",
+            "X-BW-Estimation-Window": "10,15,20,25,30",
+            "X-BW-Confidence-Threshold": "0.95,0.90,0.85,0.80,0.75",
+            "X-BW-Smooth-Factor": "0.05,0.10,0.15,0.20,0.25",
             "X-Retry-Count": "10,12,15",
             "X-Retry-Delay-Ms": "120,200,350",
             "X-Connection-Timeout-Ms": "2500,3500,6000",
