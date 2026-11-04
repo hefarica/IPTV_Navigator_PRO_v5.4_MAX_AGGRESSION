@@ -291,6 +291,9 @@ jobs:
           echo '--- cola de zapping ---'
           ssh "$TARGET" "ls -la /dev/shm/ape_wake_queue 2>/dev/null; tail -5 /dev/shm/ape_wake_queue 2>/dev/null" || true
           echo ''
+          echo '--- ultimo servido por el cartucho ---'
+          ssh "$TARGET" "cat /var/cache/ara/ape-last-served.json 2>/dev/null; echo; tail -6 /var/cache/ara/ape-served-history.jsonl 2>/dev/null" || true
+          echo ''
           echo '--- ultimo flush ---'
           ssh "$TARGET" "ls -la /var/cache/ara/ 2>/dev/null; head -c 600 /var/cache/ara/qoe-last-flush.json 2>/dev/null" || true
           echo ''

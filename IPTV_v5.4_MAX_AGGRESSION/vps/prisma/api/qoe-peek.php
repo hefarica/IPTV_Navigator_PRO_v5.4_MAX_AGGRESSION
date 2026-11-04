@@ -148,6 +148,27 @@ if (is_file($qPath)) {
 }
 $out['wake_queue'] = $q;
 
+// ── 3b. Lo último que sirvió el cartucho (para prueba en vivo) ──────────────
+$apeLast = '/var/cache/ara/ape-last-served.json';
+$apeHist = '/var/cache/ara/ape-served-history.jsonl';
+$out['cartridge'] = [
+    'last_file_exists' => is_file($apeLast),
+];
+if (is_file($apeLast)) {
+    $lr = @file_get_contents($apeLast);
+    $lj = $lr !== false ? json_decode($lr, true) : null;
+    $out['cartridge']['last'] = is_array($lj) ? $lj : ['error' => 'json invalido'];
+    $out['cartridge']['age_s'] = time() - (int)@filemtime($apeLast);
+}
+if (is_file($apeHist)) {
+    $hl = @file($apeHist, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) ?: [];
+    $out['cartridge']['history'] = [];
+    foreach (array_slice($hl, -12) as $ln) {
+        $j = json_decode($ln, true);
+        if (is_array($j)) { $out['cartridge']['history'][] = $j; }
+    }
+}
+
 // ── 4. Últimas peticiones .m3u8 en el access log (redactadas) ───────────────
 $logCandidates = [
     '/var/log/nginx/access.log',

@@ -5909,4 +5909,38 @@ foreach ($APE_REALCE_IMG as $apeTag2 => $apeVal2) {
 echo '#EXT-X-APE-CRYSTAL-ENHANCEMENT:ENFORCED;NIVEL=' . $apeNivelRealce . ";DEGRADE=FORBIDDEN\n";
 echo '#EXT-X-APE-REALCE-SOURCE:' . $apeObsFuente . ';OBS_BPS=' . (int)$apeObsBps . ';NIVEL=' . $apeNivelRealce . ';PERFIL=' . $p . ';NIVEL_MAX=' . $apeNivelMax . ";DEGRADE=FORBIDDEN\n";
 
+// ── REGISTRO DE LO SERVIDO (diagnóstico en vivo) ─────────────────────────────────────────────
+// Deja constancia de ESTE request para poder leer después, sin SSH, qué recibió el player.
+// Ligero y no bloqueante: si falla, el manifiesto ya está completo y no se rompe nada.
+try {
+    $apeServed = [
+        'ts'      => time(),
+        'when'    => gmdate('c'),
+        'channel' => $id,
+        'name'    => $name,
+        'profile' => $p,
+        'nivel'   => $apeNivelRealce,
+        'nivel_max' => $apeNivelMax,
+        'obs_bps' => (int)$apeObsBps,
+        'source'  => $apeObsFuente,
+        'device_source' => $device['source'],
+        'soc'     => $device['soc'],
+        'max_h'   => (int)$device['max_h'],
+        'ram_mb'  => (int)$device['ram_mb'],
+        'seed'    => $seed,
+        'accept'  => substr((string)($_SERVER['HTTP_USER_AGENT'] ?? ''), 0, 80),
+        'ip'      => (string)($_SERVER['REMOTE_ADDR'] ?? ''),
+    ];
+    @file_put_contents('/var/cache/ara/ape-last-served.json', json_encode($apeServed), LOCK_EX);
+    // Historial corto: append con rotación a 40 líneas.
+    $apeHist = '/var/cache/ara/ape-served-history.jsonl';
+    @file_put_contents($apeHist, json_encode($apeServed) . "\n", FILE_APPEND | LOCK_EX);
+    if (@filesize($apeHist) > 60000) {
+        $apeLines = @file($apeHist, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) ?: [];
+        @file_put_contents($apeHist, implode("\n", array_slice($apeLines, -40)) . "\n", LOCK_EX);
+    }
+} catch (Throwable $e) {
+    // Nunca rompe el manifiesto por un fallo de telemetría.
+}
+
 echo $u . "\n";
