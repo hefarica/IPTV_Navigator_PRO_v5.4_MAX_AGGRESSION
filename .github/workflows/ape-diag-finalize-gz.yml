@@ -45,7 +45,7 @@ jobs:
           echo '=== A · como lo ve un player CON gzip (lo que hacen VLC/Exo/TiviMate) ==='
           ssh "$TARGET" "curl -sSk $H --compressed $U | head -3" || true
           echo
-          echo '=== B · cuantas lineas y cuantos canales entrega ==="
+          echo '=== B · cuantas lineas y canales ==='
           n=$(ssh "$TARGET" "curl -sSk $H --compressed $U | wc -l")
           c=$(ssh "$TARGET" "curl -sSk $H --compressed $U | grep -c '^#EXTINF'")
           echo "  lineas=$n  #EXTINF=$c"
