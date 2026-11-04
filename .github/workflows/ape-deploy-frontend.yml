@@ -241,6 +241,18 @@ jobs:
             ssh "$TARGET" "sudo -n cp -a '$DEST2' '$DEST2.bak_$STAMP'"
             echo "  backup: $DEST2.bak_$STAMP"
           fi
+          # qoe-peek.php: ventana de lectura para la prueba de zapping en vivo.
+          SRC4="IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/qoe-peek.php"
+          DEST4="/var/www/html/prisma/api/qoe-peek.php"
+          echo "=== qoe-peek.php (lint) ==="
+          php -l "$SRC4" || { echo "::error::qoe-peek.php no pasa php -l"; exit 1; }
+          scp -q "$SRC4" "$TARGET:/tmp/ape-qoe-peek.php"
+          ssh "$TARGET" "sudo -n install -m 0644 -o www-data -g www-data /tmp/ape-qoe-peek.php '$DEST4'"
+          R4=$(ssh "$TARGET" "sudo -n sha256sum '$DEST4' | cut -d' ' -f1")
+          L4=$(sha256sum "$SRC4" | cut -d' ' -f1)
+          if [ "$R4" != "$L4" ]; then echo "::error::sha de qoe-peek no coincide"; exit 1; fi
+          echo "  qoe-peek OK ($L4)"
+
           scp -q "$SRC2" "$TARGET:/tmp/ape-url2-cart.php"
           ssh "$TARGET" "sudo -n install -m 0644 -o www-data -g www-data /tmp/ape-url2-cart.php '$DEST2'"
           R2=$(ssh "$TARGET" "sudo -n sha256sum '$DEST2' | cut -d' ' -f1")
