@@ -313,6 +313,53 @@
         'X-Fragment-TTFB-Max-Ms': ['hlsjs', 'fragLoadPolicy_maxTimeToFirstByteMs']
     });
 
+    // ═══════════════════════════════════════════════════════════════════════════════════════════
+    // [2026-11-04 mandato operador] X-APE-CODEC declara el códec en su NOMBRE RFC 6381 BASE
+    // (hvc1 / avc1 / av01 / vp09), nunca la FAMILIA (AV1 / HEVC / H264 / VP9).
+    //
+    // Por qué importa: X-APE-CODEC está en AUTO_SYNCED_HEADERS, así que el input del panel es
+    // readonly. Si el override quedó escrito con una familia, el operador NO puede corregirlo
+    // desde la UI: el valor se congela y el campo muestra 'AUTO' con un valor que no es el que
+    // corresponde. Medido: el panel mostraba AV1 mientras la doctrina pide hvc1.
+    //
+    // El array manda: cambiar CODEC_RFC_BASE propaga a getHeaderValue, a los dos setters del
+    // panel y al inventario de defaults.
+    // ═══════════════════════════════════════════════════════════════════════════════════════════
+    const CODEC_RFC_BASE = Object.freeze({
+        H265: 'hvc1', HEVC: 'hvc1', HEVC1: 'hvc1', HVC1: 'hvc1', HEV1: 'hvc1',
+        H264: 'avc1', AVC: 'avc1', AVC1: 'avc1',
+        AV1: 'av01', AV01: 'av01',
+        VP9: 'vp09', VP09: 'vp09',
+        MPEG2: 'mpeg2', H262: 'mpeg2'
+    });
+    // Normaliza cualquier valor de códec al nombre RFC base. Nunca inventa: si ya es RFC lo
+    // respeta, si es familia lo traduce, y si no se reconoce devuelve hvc1 (el PRIMARY del
+    // SSOT de códecs del generador, que es el que decodifican todos los SoC).
+    // [2026-11-04 mandato operador] X-APE-CODEC declara SIEMPRE hvc1.
+    //
+    // Qué es y qué NO es: es un HINT de preferencia de códec en la cabecera HTTP al upstream.
+    // NO es la declaración del bitstream — esa vive en CODECS= del STREAM-INF y la controla
+    // APE_CODEC_SSOT del generador (PRIORITY con dvh1 delante, PRIMARY hvc1).
+    //
+    // Por qué hvc1 y no la familia elegida: hvc1 (HEVC Main10) es el códec que decodifican
+    // todos los SoC modernos y el que el SSOT marca como PRIMARY. La familia realmente
+    // preferida no se pierde: viaja en X-Video-Codecs, que sí conserva la cadena completa.
+    //
+    // Medido antes del fix: el panel mostraba AV1 y, por ser AUTO_SYNCED + readonly, el
+    // operador no podía corregirlo desde la UI.
+    const APE_CODEC_HINT = 'hvc1';
+
+    function codecRfcBase(value) {
+        const raw = String(value == null ? '' : value).trim();
+        if (!raw) return 'hvc1';
+        const first = raw.split(',')[0].trim();
+        if (/^(hvc1|hev1)/i.test(first)) return 'hvc1';
+        if (/^(avc1|avc3)/i.test(first)) return 'avc1';
+        if (/^av01/i.test(first))        return 'av01';
+        if (/^vp09|^vp9/i.test(first))   return 'vp09';
+        return CODEC_RFC_BASE[first.toUpperCase()] || 'hvc1';
+    }
+
     function getAliasValue(profile, headerName) {
         const path = PM9_SEMANTIC_ALIASES[headerName];
         if (!path || !profile) return undefined;
@@ -477,7 +524,7 @@
                 "X-APE-Quality-Threshold": "0.99",
                 "X-Segment-Duration": "1,2,4,6",
                 "X-Prefetch-Enabled": "true,adaptive,auto,false",
-                "X-APE-CODEC": "HEVC",
+                "X-APE-CODEC": "hvc1",
                 "X-APE-RESOLUTION": "7680x4320",
                 "X-APE-FPS": "120",
                 "X-Screen-Resolution": "7680x4320",
@@ -976,7 +1023,7 @@
                 "X-TELCHEMY-IMPAIRMENT-GUARD": "ENABLED,BLOCKINESS=DETECT,BLUR=DETECT,RINGING=DETECT,MOSQUITO=DETECT",
                 "X-TELCHEMY-BUFFER-POLICY": "ADAPTIVE,MIN=5000,MAX=30000,TARGET=15000",
                 "X-TELCHEMY-GOP-POLICY": "DETECT,IDEAL=2000,TOLERANCE=500,KEYFRAME_FORCE=FALSE",
-                "X-APE-CODEC": "HEVC,AV1,VP9,H264",
+                "X-APE-CODEC": "hvc1",
                 "X-ExoPlayer-Buffer-Min": "60000,45000,30000,20000",
                 "X-Manifest-Refresh": "10000,15000,20000,30000",
                 "X-KODI-LIVE-DELAY": "60,45,30,20",
@@ -1118,7 +1165,7 @@
                 "X-Color-Depth": "12bit",
                 "X-Video-Codecs": "av1,hevc,vp9,h264,mpeg2",
                 "X-Quality-Preference": "codec-hevc,profile-main-12,main-10,tier-high;codec-hev1,profile-main-10,tier-high;codec-hev2,profile-main-10,tier-high;codec-hvc1,profile-main-10,tier-high;codec-hvc2,profile-main-10,tier-high;codec-h265,profile-main-10,tier-high;codec-H265,profile-main-10,tier-high;codec-h.265,profile-main-10,tier-high;codec-H.265,profile-main-10,tier-high;codec-MPEG-H,profile-main-10,tier-high;codec-mpegh,profile-main-10,tier-high;codec-x265,profile-main-10,tier-high;codec-h264,profile-high,tier-high;codec-H264,profile-high,tier-high;codec-h.264,profile-high,tier-high;codec-H.264,profile-high,tier-high;codec-avc,profile-high,tier-high;codec-AVC,profile-high,tier-high;codec-avc1,profile-high,tier-high;codec-av1,profile-main-12,main-10,main,tier-high;codec-av01,profile-main-10,tier-high",
-                "X-APE-CODEC": "H265",
+                "X-APE-CODEC": "hvc1",
                 "X-APE-RESOLUTION": "3840x2160",
                 "X-APE-FPS": "120",
                 "X-APE-BITRATE": "26.9",
@@ -1610,7 +1657,7 @@
                 "X-TELCHEMY-IMPAIRMENT-GUARD": "ENABLED,BLOCKINESS=DETECT,BLUR=DETECT,RINGING=DETECT,MOSQUITO=DETECT",
                 "X-TELCHEMY-BUFFER-POLICY": "ADAPTIVE,MIN=5000,MAX=30000,TARGET=15000",
                 "X-TELCHEMY-GOP-POLICY": "DETECT,IDEAL=2000,TOLERANCE=500,KEYFRAME_FORCE=FALSE",
-                "X-APE-CODEC": "HEVC,AV1,VP9,H264",
+                "X-APE-CODEC": "hvc1",
                 "X-ExoPlayer-Buffer-Min": "50000,35000,25000,15000",
                 "X-Manifest-Refresh": "12000,18000,25000,35000",
                 "X-KODI-LIVE-DELAY": "50,35,25,15",
@@ -1854,7 +1901,7 @@
                 "X-APE-STRATEGY": "ultra-aggressive",
                 "X-APE-Prefetch-Segments": "20",
                 "X-APE-Quality-Threshold": "0.99",
-                "X-APE-CODEC": "HEVC",
+                "X-APE-CODEC": "hvc1",
                 "X-APE-RESOLUTION": "3840x2160",
                 "X-APE-FPS": "120",
                 "X-APE-BITRATE": "21.5",
@@ -2104,7 +2151,7 @@
                 "X-TELCHEMY-IMPAIRMENT-GUARD": "ENABLED,BLOCKINESS=DETECT,BLUR=DETECT,RINGING=DETECT,MOSQUITO=DETECT",
                 "X-TELCHEMY-BUFFER-POLICY": "ADAPTIVE,MIN=5000,MAX=30000,TARGET=15000",
                 "X-TELCHEMY-GOP-POLICY": "DETECT,IDEAL=2000,TOLERANCE=500,KEYFRAME_FORCE=FALSE",
-                "X-APE-CODEC": "HEVC,AV1,VP9,H264",
+                "X-APE-CODEC": "hvc1",
                 "X-ExoPlayer-Buffer-Min": "40000,30000,20000,15000",
                 "X-Manifest-Refresh": "15000,20000,30000,40000",
                 "X-KODI-LIVE-DELAY": "40,30,20,15",
@@ -2229,7 +2276,7 @@
                 "omega_qos"
             ],
             "headerOverrides": {
-                "X-APE-CODEC": "H264",
+                "X-APE-CODEC": "hvc1",
                 "X-APE-RESOLUTION": "1920x1080",
                 "X-APE-FPS": "60",
                 "X-Screen-Resolution": "1920x1080",
@@ -2738,7 +2785,7 @@
                 "X-TELCHEMY-IMPAIRMENT-GUARD": "ENABLED,BLOCKINESS=DETECT,BLUR=DETECT,RINGING=DETECT,MOSQUITO=DETECT",
                 "X-TELCHEMY-BUFFER-POLICY": "ADAPTIVE,MIN=5000,MAX=30000,TARGET=15000",
                 "X-TELCHEMY-GOP-POLICY": "DETECT,IDEAL=2000,TOLERANCE=500,KEYFRAME_FORCE=FALSE",
-                "X-APE-CODEC": "HEVC,H264,VP9,AV1",
+                "X-APE-CODEC": "hvc1",
                 "X-ExoPlayer-Buffer-Min": "30000,20000,15000,10000",
                 "X-Manifest-Refresh": "15000,20000,30000,45000",
                 "X-KODI-LIVE-DELAY": "30,20,15,10",
@@ -2865,7 +2912,7 @@
                 "X-ExoPlayer-Buffer-Min": "34000",
                 "X-Manifest-Refresh": "34000",
                 "X-KODI-LIVE-DELAY": "34",
-                "X-APE-CODEC": "VP9",
+                "X-APE-CODEC": "hvc1",
                 "X-APE-RESOLUTION": "1280x720",
                 "X-APE-FPS": "60",
                 "X-Screen-Resolution": "1280x720",
@@ -3372,7 +3419,7 @@
                 "X-TELCHEMY-IMPAIRMENT-GUARD": "ENABLED,BLOCKINESS=DETECT,BLUR=DETECT,RINGING=DETECT,MOSQUITO=DETECT",
                 "X-TELCHEMY-BUFFER-POLICY": "ADAPTIVE,MIN=5000,MAX=30000,TARGET=15000",
                 "X-TELCHEMY-GOP-POLICY": "DETECT,IDEAL=2000,TOLERANCE=500,KEYFRAME_FORCE=FALSE",
-                "X-APE-CODEC": "H264,HEVC,VP9,MPEG2",
+                "X-APE-CODEC": "hvc1",
                 "X-ExoPlayer-Buffer-Min": "20000,15000,12000,8000",
                 "X-Manifest-Refresh": "20000,25000,35000,50000",
                 "X-KODI-LIVE-DELAY": "20,15,10,8",
@@ -3496,7 +3543,7 @@
                 "omega_qos"
             ],
             "headerOverrides": {
-                "X-APE-CODEC": "H265",
+                "X-APE-CODEC": "hvc1",
                 "X-APE-RESOLUTION": "854x480",
                 "X-APE-FPS": "60",
                 "X-Screen-Resolution": "854x480",
@@ -4008,7 +4055,7 @@
                 "X-TELCHEMY-IMPAIRMENT-GUARD": "ENABLED,BLOCKINESS=DETECT,BLUR=DETECT,RINGING=DETECT,MOSQUITO=DETECT",
                 "X-TELCHEMY-BUFFER-POLICY": "ADAPTIVE,MIN=5000,MAX=30000,TARGET=15000",
                 "X-TELCHEMY-GOP-POLICY": "DETECT,IDEAL=2000,TOLERANCE=500,KEYFRAME_FORCE=FALSE",
-                "X-APE-CODEC": "H264,MPEG2,HEVC,VP9",
+                "X-APE-CODEC": "hvc1",
                 "X-ExoPlayer-Buffer-Min": "15000,12000,8000,5000",
                 "X-Manifest-Refresh": "20000,30000,40000,60000",
                 "X-KODI-LIVE-DELAY": "15,12,8,5",
@@ -5648,7 +5695,17 @@
          */
         getHeaderValue(profileId, headerName) {
             const profile = this.profiles[profileId];
-            if (!profile) return this.defaultHeaderValues[headerName] || '';
+            // [2026-11-04 mandato operador] X-APE-CODEC se entrega SIEMPRE en su nombre RFC 6381
+            // base (hvc1 / avc1 / av01 / vp09), nunca en la familia (AV1 / HEVC / H264 / VP9).
+            //
+            // El campo está en AUTO_SYNCED_HEADERS, así que el input del panel es readonly: si el
+            // override guardado trae una familia, el operador NO puede corregirlo desde la UI — el
+            // valor se queda congelado y el campo muestra "AUTO" con un valor que no toca. Medido:
+            // el panel pintaba AV1 mientras la doctrina y el SSOT del generador dicen hvc1.
+            //
+            // Se normaliza en la SALIDA y no se toca el dato guardado: leer nunca muta el perfil.
+            const _out = (v) => (/^x-ape-codec$/i.test(headerName) ? APE_CODEC_HINT : v);
+            if (!profile) return _out(this.defaultHeaderValues[headerName] || '');
 
             const canonical = (typeof findPm9CanonicalName === 'function')
                 ? (findPm9CanonicalName(headerName) || headerName)
@@ -5657,23 +5714,23 @@
             // Check override first. Accept canonical PM9 names and case/separator drift.
             if (profile.headerOverrides) {
                 if (profile.headerOverrides[canonical] !== undefined) {
-                    return profile.headerOverrides[canonical];
+                    return _out(profile.headerOverrides[canonical]);
                 }
                 if (profile.headerOverrides[headerName] !== undefined) {
-                    return profile.headerOverrides[headerName];
+                    return _out(profile.headerOverrides[headerName]);
                 }
                 if (typeof _normalizeHeaderKey === 'function') {
                     const want = _normalizeHeaderKey(headerName);
                     for (const k of Object.keys(profile.headerOverrides)) {
-                        if (_normalizeHeaderKey(k) === want) return profile.headerOverrides[k];
+                        if (_normalizeHeaderKey(k) === want) return _out(profile.headerOverrides[k]);
                     }
                 }
             }
             const aliasValue = getAliasValue(profile, canonical);
             if (aliasValue !== undefined && aliasValue !== null && aliasValue !== '') {
-                return aliasValue;
+                return _out(aliasValue);
             }
-            return this.defaultHeaderValues[headerName] || '';
+            return _out(this.defaultHeaderValues[headerName] || '');
         }
 
         /**

@@ -3095,7 +3095,11 @@
                 s.bitrate = bitrateFinal;
 
                 // Inyectar headers de codec y resolución
-                this.config.setHeaderOverride(profile.id, 'X-APE-CODEC', codec);
+                // [2026-11-04] X-APE-CODEC declara SIEMPRE hvc1 (hint de preferencia al upstream).
+                // Antes escribia la FAMILIA elegida (AV1/HEVC/H264) y, al ser el campo
+                // AUTO_SYNCED + readonly, el operador no podia corregirlo desde la UI.
+                // La familia real no se pierde: viaja en X-Video-Codecs.
+                this.config.setHeaderOverride(profile.id, 'X-APE-CODEC', 'hvc1');
                 this.config.setHeaderOverride(profile.id, 'X-APE-RESOLUTION', res);
                 this.config.setHeaderOverride(profile.id, 'X-APE-FPS', String(fps));
                 this.config.setHeaderOverride(profile.id, 'X-Screen-Resolution', res);
@@ -3241,7 +3245,7 @@
                 }
 
                 // ✅ Actualizar TODOS los headers de codec
-                this.config.setHeaderOverride(profile.id, 'X-APE-CODEC', primaryName.toUpperCase());
+                this.config.setHeaderOverride(profile.id, 'X-APE-CODEC', 'hvc1');
                 this.config.setHeaderOverride(profile.id, 'X-Video-Codecs', priorityChain.join(','));
                 this.config.setHeaderOverride(profile.id, 'X-Quality-Preference', qualityParts.join(';'));
 
