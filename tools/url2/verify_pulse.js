@@ -43,6 +43,11 @@ const stripDev = (s) => s.replace(/DEV_[0-9A-Za-z]+/g, 'DEV_X');
     ok('TV estricta: Location == u VERBATIM', (rTv.headers.get('location') || '') === U);
     ok('VLC -> 200 cartridge', rVlc.status === 200, 'status ' + rVlc.status);
     ok('sin UA -> 200 cartridge', rNone.status === 200, 'status ' + rNone.status);
+    // URL antigua con m=cartridge servida a una TV estricta: debe degradar a 302
+    const rForce = await fetch(base + '&m=cartridge', { redirect: 'manual', cache: 'no-store', headers: { 'user-agent': tvUa } });
+    ok('TV estricta + m=cartridge (lista cacheada) -> 302 forzado', rForce.status === 302 && (rForce.headers.get('x-ape-pulse') || '').includes('forced=strict-tv'), 'status ' + rForce.status + ' ' + (rForce.headers.get('x-ape-pulse') || ''));
+    const rVlcForce = await fetch(base + '&m=cartridge', { redirect: 'manual', cache: 'no-store', headers: { 'user-agent': 'VLC/3.0.20 LibVLC/3.0.20' } });
+    ok('VLC + m=cartridge sigue 200', rVlcForce.status === 200, 'status ' + rVlcForce.status);
   }
   // 2 · cartridge: 200 con cartucho completo (misma máquina que /url2/)
   {
@@ -98,4 +103,5 @@ const stripDev = (s) => s.replace(/DEV_[0-9A-Za-z]+/g, 'DEV_X');
   if (fail) { console.log('Fallos:'); fallos.forEach(f => console.log('  - ' + f)); }
   process.exit(fail ? 1 : 0);
 })().catch(e => { console.error('ERROR:', e && e.message); process.exit(1); });
+
 

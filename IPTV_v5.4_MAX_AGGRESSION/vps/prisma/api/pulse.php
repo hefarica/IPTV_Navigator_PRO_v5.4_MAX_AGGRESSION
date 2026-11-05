@@ -93,6 +93,14 @@ $strictTv = (bool)preg_match('/(SMART-TV|SmartTV|Tizen|WebOS|webOS|Philips|HbbTV
 $defaultMode = $strictTv ? 'redirect' : 'cartridge';
 $mode = strtolower((string)($_GET['m'] ?? $defaultMode));
 if ($mode !== 'redirect' && $mode !== 'cartridge') { $mode = $defaultMode; }
+// [COMPAT] En una TV estricta NO se sirve master aunque la URL traiga
+// m=cartridge: medido 2026-11-05 08:00Z — el player seguia con una lista
+// cacheada que llevaba m=cartridge y volvia a fallar. En esa clase de cliente el
+// cartucho es inservible por definicion, asi que se degrada a 302 (el player
+// recibe la media playlist real del proveedor). El resto de clientes conserva
+// cartridge. Se anuncia en la cabecera con forced=strict-tv.
+$forcedStrict = ($strictTv && $mode === 'cartridge');
+if ($forcedStrict) { $mode = 'redirect'; }
 
 if ($u === '') { pulse_fail(400, 'falta u'); }
 if (strlen($u) > 2000) { pulse_fail(400, 'u demasiado larga'); }
@@ -170,7 +178,8 @@ if ($zap && is_file(PULSE_CANARY_FLAG)) {
 
 // ── 5 · Responder ─────────────────────────────────────────────────────────────
 if ($mode === 'redirect') {
-    header('X-APE-Pulse: logged;mode=redirect;zapping=' . ($zap ? '1' : '0'));
+    header('X-APE-Pulse: logged;mode=redirect;zapping=' . ($zap ? '1' : '0')
+        . (!empty($forcedStrict) ? ';forced=strict-tv' : ''));
     header('Cache-Control: no-store, no-cache, must-revalidate');
     header('Location: ' . $u, true, 302);
     exit;
