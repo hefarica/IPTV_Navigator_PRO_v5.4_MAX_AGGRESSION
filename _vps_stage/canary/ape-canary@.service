@@ -19,6 +19,10 @@ Restart=no
 KillMode=control-group
 CPUQuota=40%
 MemoryMax=1G
+IOWeight=10
+Nice=10
+IOSchedulingClass=best-effort
+IOSchedulingPriority=6
 NoNewPrivileges=yes
 PrivateTmp=yes
 ProtectSystem=strict
@@ -29,3 +33,4 @@ StandardError=journal
 
 [Install]
 WantedBy=multi-user.target
+

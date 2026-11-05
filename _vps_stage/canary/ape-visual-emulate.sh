@@ -57,8 +57,9 @@ timeout "$TIMEOUT" ffmpeg -hide_banner -nostdin -loglevel error \
   -t "$SECONDS_OUT" -r "$FPS" -an \
   -vf "$FILTERS" \
   -c:v libx265 -preset ultrafast -tune zerolatency \
-  -x265-params pools=1:frame-threads=1 \
-  -g 5 -keyint_min 5 -sc_threshold 0 \
+  -x265-params pools=1:frame-threads=1:keyint=48:min-keyint=48:scenecut=0:bframes=0:rc-lookahead=0 \
+  -b:v 25M -maxrate 32M -bufsize 64M \
+  -g 48 -keyint_min 48 -sc_threshold 0 \
   -f hls -hls_time 3 -hls_list_size 20 \
   -hls_flags independent_segments+delete_segments \
   "$OUT/out.m3u8" || { echo "CANARY_FAIL: ffmpeg" >&2; exit 4; }

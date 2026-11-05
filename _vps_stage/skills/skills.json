@@ -23,8 +23,24 @@
       "id": "s905x4-limits",
       "path": "corpus/s905x4-limits.md",
       "sha256": "5152bedb1fc66d970404105632437faabe26ca3bfac880ca154c526f805a32a2"
+    },
+    {
+      "id": "sources",
+      "path": "corpus/sources.txt",
+      "sha256": "f328376c9dfd60630ca616309bfc4454ceac45b2a9aa120d60a1751acce82c7e"
     }
   ],
+  "hardware": {
+    "soc": "s905x4",
+    "npu": false,
+    "npu_note": "S905X4 no tiene NPU: 'AI-SR' es shader/filtro clasico, nunca ML.",
+    "max_decode": "3840x2160",
+    "max_decode_fps": 60,
+    "max_decode_codec": "hevc-main10",
+    "hdr": ["hdr10", "hlg"],
+    "presentation_8k": true,
+    "decode_8k": false
+  },
   "gate": {
     "command": "ara-skill check --for-canary",
     "requires": ["ffmpeg", "ffprobe", "libx265", "systemctl"],
@@ -33,3 +49,4 @@
     "note": "ffmpeg 6.1 Ubuntu no incluye el filtro literal dering; la etapa dering se implementa con smartblur (edge-aware) y se declara como limitación."
   }
 }
+

@@ -16,8 +16,11 @@ for arg in "$@"; do
   case "$arg" in
     check) MODE="check" ;;
     status) MODE="status" ;;
+    list) MODE="list" ;;
+    corpus) MODE="corpus" ;;
+    show) MODE="show" ;;
     --for-canary) CANARY=1 ;;
-    *) echo "ara-skill: argumento desconocido: $arg" >&2; exit 2 ;;
+    *) if [ "$MODE" = "show" ]; then SHOW_ID="$arg"; else echo "ara-skill: argumento desconocido: $arg" >&2; exit 2; fi ;;
   esac
 done
 CANARY="${CANARY:-0}"
@@ -28,6 +31,52 @@ fail() { echo "ARA-SKILL FAIL: $*" >&2; exit 1; }
 [ -f "$JSON" ] || fail "falta $JSON"
 [ -f "$ROOT/SKILLS.md" ] || fail "falta SKILLS.md"
 command -v python3 >/dev/null 2>&1 || fail "falta python3 para validar skills.json"
+
+# ── Subcomandos de consulta (no gate): list / show <id> / corpus ──────────────
+if [ "$MODE" = "list" ] || [ "$MODE" = "show" ] || [ "$MODE" = "corpus" ]; then
+  command -v sha256sum >/dev/null 2>&1 || fail "falta sha256sum"
+  python3 - "$JSON" "$ROOT" "$MODE" "${SHOW_ID:-}" <<'PY'
+import hashlib, json, os, sys
+manifest = json.load(open(sys.argv[1], encoding='utf-8'))
+root, mode, want = sys.argv[2], sys.argv[3], (sys.argv[4] if len(sys.argv) > 4 else '')
+skills = manifest.get('skills') or []
+def h(p):
+    try:
+        return hashlib.sha256(open(p, 'rb').read()).hexdigest()
+    except OSError:
+        return ''
+if mode == 'list':
+    print(f"{'ID':<20} {'OK':<3} {'SHA256':<12} PATH")
+    for s in skills:
+        p = os.path.join(root, s.get('path', ''))
+        got = h(p)
+        ok = 'si' if got and (not s.get('sha256') or got == s['sha256']) else 'NO'
+        print(f"{s.get('id',''):<20} {ok:<3} {got[:12] or '-':<12} {s.get('path','')}")
+    hw = manifest.get('hardware') or {}
+    print(f"hardware: soc={hw.get('soc','?')} npu={hw.get('npu','?')} max_decode={hw.get('max_decode','?')}")
+    sys.exit(0)
+if mode == 'corpus':
+    print('corpus:')
+    for s in skills:
+        if str(s.get('path', '')).startswith('corpus/'):
+            p = os.path.join(root, s['path'])
+            print(f"  {'OK ' if h(p) else 'FALTA'} {s['path']} {os.path.getsize(p) if os.path.isfile(p) else 0} B")
+    sys.exit(0)
+# show <id>
+hit = [s for s in skills if s.get('id') == want]
+if not hit:
+    print(f"ara-skill: no existe la skill '{want}'", file=sys.stderr); sys.exit(2)
+s = hit[0]
+p = os.path.join(root, s['path'])
+print(f"id: {s['id']}")
+print(f"path: {s['path']}")
+print(f"sha256_manifest: {s.get('sha256','-')}")
+print(f"sha256_real: {h(p) or '-'}")
+print('---')
+print(open(p, encoding='utf-8', errors='replace').read() if os.path.isfile(p) else '(fichero ausente)')
+PY
+  exit $?
+fi
 command -v sha256sum >/dev/null 2>&1 || fail "falta sha256sum"
 
 # 1 · JSON + corpus + hashes
@@ -73,3 +122,4 @@ PY
 fi
 echo "ARA-SKILL CHECK PASS (mode=$MODE canary=$CANARY root=$ROOT)"
 exit 0
+

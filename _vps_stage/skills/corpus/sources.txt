@@ -1,0 +1,57 @@
+# sources.txt — fuentes del compendio de emulación visual (FASE 0)
+
+Documentación primaria usada para las skills S1–S9. Toda afirmación técnica de
+`SKILLS.md` y `corpus/*.md` debe poder rastrearse hasta una de estas fuentes.
+No se copia texto de ellas: se citan para trazabilidad.
+
+## HLS / playlists
+- RFC 8216 — HTTP Live Streaming (Apple). §4.2 tags desconocidos se ignoran;
+  §4.3.4.2 URI obligatoria en EXT-X-STREAM-INF; §4.3.4.3 EXT-X-I-FRAME-STREAM-INF
+  EXIGE URI="..."; §4.4.6.2 EXT-X-SESSION-DATA.
+- draft-pantos-hls-rfc8216bis — LL-HLS: EXT-X-PART, EXT-X-PRELOAD-HINT,
+  EXT-X-SERVER-CONTROL, EXT-X-PART-INF, _HLS_msn/_HLS_part.
+
+## Códec / HDR
+- ITU-T H.265 (HEVC) — profiles/levels, `hvc1.*` vs `hev1.*` (ISO/IEC 14496-15).
+- ITU-T H.273 — codec-independent code points (CICP: primaries/transfer/matrix).
+- SMPTE ST 2084 — PQ (transfer_characteristics=16).
+- SMPTE ST 2086 / MaxCLL-MaxFALL — mastering display metadata.
+- ARIB STD-B67 — HLG.
+- Dolby Vision: `dvh1` (single-layer) / `dvhe`, RPU, profiles 5/8/7.
+- RFC 6381 — codec strings (avc1/hvc1/av01/vvc1).
+
+## Encoding
+- x265 documentation (x265.readthedocs.io) — presets, keyint, scenecut,
+  rc-lookahead, bframes, pools, frame-threads, VBV (bitrate/maxrate/bufsize).
+- ffmpeg filters documentation — deblock, smartblur, scale (lanczos,
+  accurate_rnd, full_chroma_int), noise, unsharp, eq, format, gradfun,
+  minterpolate; yuv444p 4:4:4 como paso de procesado.
+- ffmpeg 6.1/8.x changelog — retirada del filtro `dering` (se usa smartblur
+  edge-aware y se declara la sustitución).
+
+## VPS / aislamiento
+- cgroup v2 documentation (kernel.org) — cpu.max / CPUQuota, memory.max /
+  MemoryMax, io.weight / IOWeight, pids.max.
+- systemd.service(5) — CPUQuota, MemoryMax, IOWeight, Nice, RuntimeMaxSec,
+  EnvironmentFile, ExecStartPre.
+- systemd.resource-control(5).
+- exec/IO scheduling: ionice(1), nice(1).
+
+## Reproductores
+- ExoPlayer / Media3 (developer.android.com/media/media3) — HLS, CMAF, load
+  control, track selection, DefaultHttpDataSource, setForceHighestSupportedBitrate.
+- VLC 3.x — `#EXTVLCOPT` (opciones por item), `video-filter` como cadena de
+  módulos separados por `:`; módulos `sharpen` (sigma), `gradfun` (radius,
+  strength), `adjust` (contrast, brightness, saturation, hue, gamma).
+- Kodi — `#KODIPROP` e inputstream.adaptive (manifest_type, manifest_update_parameter).
+- OTT Navigator / TiviMate / IPTV Smarters — lectura de `#EXTHTTP` como headers
+  de stream; sin soporte de `#EXTVLCOPT`/`#KODIPROP`.
+
+## Hardware
+- Amlogic S905X4 datasheet (Amlogic) — decoder HEVC Main10 hasta 4Kp60,
+  4 GB RAM típicos, **sin NPU** declarada.
+- TV Box S905X4: VPP/post-proceso de display (sharpen/denoise/contrast) por
+  shader/hardware, no por red neuronal.
+
+## Regla
+Si una afirmación no se puede rastrear aquí, no se escribe en la skill.
