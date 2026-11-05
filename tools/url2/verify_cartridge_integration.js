@@ -21,6 +21,10 @@ const { ApeUrlBuilder } = require(path.join(__dirname, 'ape-url-builder.js'));
 
 const U = 'http://line.tivi-ott.net/live/3JHFTC/U56BDP/3.m3u8';
 const BASE_URL2 = process.env.APE_URL2 || 'https://iptv-ape.duckdns.org/url2/canal.m3u8';
+// El cartucho solo se sirve a clientes capaces (allowlist de /pulse). Para verificar
+// el contrato del cartucho hablamos como VLC; un Fire TV recibe 302 (lo cubre verify_pulse).
+const CAPABLE_UA = 'VLC/3.0.20 LibVLC/3.0.20';
+const H = { headers: { 'user-agent': CAPABLE_UA } };
 const BASE_M4K = process.env.APE_M4K || 'https://iptv-ape.duckdns.org/prisma/api/manifest-4k.php';
 const EXPECTED_BW = { P0: 45000000, P1: 26900000, P2: 20000000, P3: 8000000, P4: 4000000, P5: 2000000 };
 const TOXIC = /"(Range|If-Range|If-None-Match|If-Modified-Since|TE|Priority|Upgrade-Insecure-Requests)"\s*:/i;
@@ -88,7 +92,7 @@ function assertCartridge(label, body, expectedProfile) {
   console.log('== 1 · /url2/canal.m3u8 por perfil P0..P5 ==');
   for (const p of Object.keys(EXPECTED_BW)) {
     const url = BASE_URL2 + '?' + q({ u: U, p, id: '3' });
-    const res = await fetch(url, { cache: 'no-store' });
+    const res = await fetch(url, { cache: 'no-store', ...H });
     const body = await res.text();
     console.log(`\n── ${p} · HTTP ${res.status} · ${body.length} B`);
     ok(`${p}: HTTP 200 m3u8`, res.status === 200 && /mpegurl/i.test(res.headers.get('content-type') || ''), res.status + ' ' + res.headers.get('content-type'));
@@ -106,10 +110,10 @@ function assertCartridge(label, body, expectedProfile) {
     const pu = new URL(row.url);
     const pParam = (pu.searchParams.get('p') || '').toUpperCase();
     const verbatim = pu.searchParams.get('u') || '';
-    const res = await fetch(row.url, { cache: 'no-store' });
+    const res = await fetch(row.url, { cache: 'no-store', ...H });
     const body = await res.text();
     console.log(`\n── ${row.list} · p=${pParam} · HTTP ${res.status} · ${body.length} B`);
-    ok(`${row.list}: URL de lista identifica la lista (l=) y no fuerza modo`, /[?&]l=/.test(row.url) && !/[?&]m=/.test(row.url), row.url.slice(0, 80));
+    ok(`${row.list}: URL de lista lleva l=<lista> y m=cartridge (el servidor filtra por UA)`, /[?&]l=/.test(row.url) && /[?&]m=cartridge/.test(row.url), row.url.slice(0, 80));
     ok(`${row.list}: HTTP 200 m3u8`, res.status === 200 && /mpegurl/i.test(res.headers.get('content-type') || ''), res.status);
     const r = assertCartridge(row.list, body, pParam);
     ok(`${row.list}: URL final == u (verbatim, SHIELDED)`, r.urls[0] === verbatim, `${String(r.urls[0]).slice(0, 60)} vs ${verbatim.slice(0, 60)}`);
@@ -119,7 +123,7 @@ function assertCartridge(label, body, expectedProfile) {
 
   console.log('\n== 3 · manifest-4k.php (master 4K, antes 503) ==');
   {
-    const res = await fetch(BASE_M4K + '?u=' + encodeURIComponent(U), { cache: 'no-store' });
+    const res = await fetch(BASE_M4K + '?u=' + encodeURIComponent(U), { cache: 'no-store', ...H });
     const body = await res.text();
     ok('manifest-4k: HTTP 200', res.status === 200, 'status ' + res.status);
     ok('manifest-4k: STREAM-INF 4K + hvc1 + PQ', /RESOLUTION=3840x2160/.test(body) && /hvc1\.2\.4\.L153\.B0/.test(body) && /VIDEO-RANGE=PQ/.test(body), body.slice(0, 200));
@@ -130,6 +134,7 @@ function assertCartridge(label, body, expectedProfile) {
   if (fail) { console.log('Fallos:'); fallos.forEach(f => console.log('  - ' + f)); }
   process.exit(fail ? 1 : 0);
 })().catch(e => { console.error('ERROR:', e && e.message); process.exit(1); });
+
 
 
 
