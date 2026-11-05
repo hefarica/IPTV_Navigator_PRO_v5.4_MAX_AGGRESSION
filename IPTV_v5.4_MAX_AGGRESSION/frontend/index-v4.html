@@ -2753,7 +2753,7 @@
                 style="background: linear-gradient(135deg, #fbbf24, #f59e0b, #dc2626); box-shadow: 0 10px 25px rgba(245,158,11,0.5); margin-left: 10px; font-weight: bold; font-size: 1rem; padding: 14px 22px; border: 2px solid #fff;"><span
                   class="icon">⭐</span><span>OMEGA 5 — GENERAR .m3u8 COMPLETA</span></button><button
                 id="btnGenerateAudited" class="btn" data-ape-generate-audited data-ape-prepublish
-                onclick="if(window.GenerationHUD)window.GenerationHUD.show(); if(window.APEGenerationController && typeof window.APEGenerationController.prepublishAndGenerate === 'function') { window.APEGenerationController.prepublishAndGenerate().catch(e=>console.error('[APE-PREPUBLISH]',e)); } else if(window.APEGenerationController && typeof window.APEGenerationController.generateListWithGate === 'function') { window.APEGenerationController.generateListWithGate().catch(e=>console.error('[APE-AUDIT]',e)); } else { if(window.GenerationHUD)window.GenerationHUD.hide(); alert('APEGenerationController aún cargando. Espera un segundo.'); }"
+                onclick="if(window.GenerationHUD)window.GenerationHUD.show(); if(window.APEGenerationController && typeof window.APEGenerationController.prepublishAndGenerateGuarded === 'function') { window.APEGenerationController.prepublishAndGenerateGuarded().catch(e=>console.error('[APE-PREPUBLISH]',e)); } else if(window.APEGenerationController && typeof window.APEGenerationController.generateListWithGate === 'function') { window.APEGenerationController.generateListWithGate().catch(e=>console.error('[APE-AUDIT]',e)); } else { if(window.GenerationHUD)window.GenerationHUD.hide(); alert('APEGenerationController aún cargando. Espera un segundo.'); }"
                 style="background: linear-gradient(135deg, #0ea5e9, #0284c7); box-shadow: 0 10px 25px rgba(14,165,233,0.4); margin-left: 10px; font-weight: bold; font-size: 1rem; padding: 14px 22px; border: 2px solid rgba(255,255,255,0.5);"><span
                   class="icon">🩺</span><span>GENERAR + PREPUBLISH + AUDITAR</span></button><button
                 id="btnGenerateDual" class="btn"
@@ -3987,15 +3987,15 @@
 <!-- [DIALECTOS 2026-11-05] SSOT del recetario de imagen: una receta (recipes.json)
      compilada a proyecciones por idioma de player (VLC módulos / ffmpeg / mpv / Exo / Kodi).
      DEBE cargar antes del generador. Regenerar: node tools/ape-image-recipes/compile.js --emit bundle -->
-<script src="js/ape-v9/ape-image-recipes-bundle.js?v=20261105-dialects"></script>
+<script src="js/ape-v9/ape-image-recipes-bundle.js?v=20261105-owner"></script>
 
-<script src="js/ape-v9/m3u8-typed-arrays-ultimate.js?v=20261105-dialects"></script>
+<script src="js/ape-v9/m3u8-typed-arrays-ultimate.js?v=20261105-owner"></script>
   <!-- 🪦 OMEGA SLOT REAPER — Pre-flight liberation of Xtream max_connections slots -->
   <script src="js/ape-v9/slot-reaper.js?v=1.0.0-omega-20260409"></script>
   <script src="js/ape-v9/m3u8-quality-upgrader-v2.js?v=2.0"></script>
   <script src="js/ape-v9/hud-typed-arrays.js?v=16.1-tickprofile-20260417"></script>
   <!-- 🩺 APE GENERATION CONTROLLER — engancha botón health-check + generateHealthyList -->
-  <script src="js/ape-v9/generation-controller.js?v=20261102-jit-hdr-v1"></script>
+  <script src="js/ape-v9/generation-controller.js?v=20261105-guard"></script>
   <!-- 🩺 GENERATION HUD OVERLAY — panel discreto top-right que muestra fases del pipeline.
        Solo observa console.log (no toca el flow). window.GenerationHUD.show()/hide() -->
   <script src="js/ape-v9/generation-hud-overlay.js?v=1.2-auto-close-inactivity"></script>
@@ -4725,6 +4725,8 @@
 </body>
 
 </html>
+
+
 
 
 

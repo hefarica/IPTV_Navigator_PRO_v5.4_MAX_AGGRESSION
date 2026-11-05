@@ -1521,6 +1521,24 @@
         }
     }
 
+    // ── [FIX 2026-11-05] Anti doble-generación ───────────────────────────────
+    // MEDIDO: un clic produjo DOS listas completas (SYS-GENERATED 18:27:55.190Z
+    // y 18:29:38.877Z, 103,7 s de diferencia, nombres a 43,7 s → dos ejecuciones
+    // SOLAPADAS). El botón arrastra `data-ape-prepublish` y además tiene onclick
+    // inline, y el panel puede volver a invocar el pipeline: sin lock, dos runs.
+    let __APE_GEN_BUSY = false;
+    async function prepublishAndGenerateGuarded(options = {}) {
+        if (__APE_GEN_BUSY) {
+            console.warn('[APE-GATE] generación ya en curso — invocación duplicada IGNORADA');
+            return { decision: 'skipped_already_running', channels: 0 };
+        }
+        __APE_GEN_BUSY = true;
+        try {
+            return await prepublishAndGenerate(options);
+        } finally {
+            __APE_GEN_BUSY = false;
+        }
+    }
     // ── [APE-CDN] entrada pública del botón: SOLO la lista mejorada ─────────
     // IMPORTANTE: el destino se elige AQUÍ, como primera operación asíncrona del
     // clic, para conservar el "user gesture" que exige showSaveFilePicker.
@@ -1539,7 +1557,7 @@
         }
 
         try {
-            return await prepublishAndGenerate(Object.assign({}, options, {
+            return await prepublishAndGenerateGuarded(Object.assign({}, options, {
                 dual: 'cdn',
                 filename: stamp + '.m3u8',
                 preTarget: pre
@@ -1593,6 +1611,7 @@
         prepublishAndGenerate,
         // [APE-DUAL 2026-10-24] misma pasada → 2 archivos (_DIRECTA + _CDN)
         prepublishAndGenerateDual,
+        prepublishAndGenerateGuarded,
         probePrepublishServer,
         callPrepublish,
         attachPrepublishButton,
@@ -1755,3 +1774,4 @@ try {
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', attach);
     else attach();
 })();
+
