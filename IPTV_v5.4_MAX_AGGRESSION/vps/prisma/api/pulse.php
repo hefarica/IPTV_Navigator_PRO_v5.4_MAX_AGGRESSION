@@ -77,6 +77,9 @@ if ($id === '' && isset($_GET['id'])) { $id = (string)$_GET['id']; }
 // [CHAN] Nombre del canal: las listas envueltas ya lo mandan en `n=`. Sin esto el log
 // sólo tenía un id LOCAL de lista y no se podía decir QUÉ canal se estaba zapeando.
 $chan = pulse_clean((string)($_GET['n'] ?? ''), 60);
+// [LISTA] Nombre de la lista que el player cargo (el envoltorio la manda en l=).
+// Sin esto el log decia canal pero no LISTA, y era imposible saber que se reproducia.
+$list = pulse_clean((string)($_GET['l'] ?? ''), 64);
 $dB = isset($_GET['d']) ? (string)$_GET['d'] : '';
 $zap = (isset($_GET['z']) && (string)$_GET['z'] === '1');
 $mode = strtolower((string)($_GET['m'] ?? 'redirect'));
@@ -113,6 +116,7 @@ $pulse = [
     'ts'        => round(microtime(true), 3),
     'id'        => $id,
     'chan'      => $chan,
+    'list'      => $list,
     'host'      => $host,
     'url_sha'   => substr(hash('sha256', $u), 0, 16),
     'zapping'   => $zap,
@@ -172,5 +176,6 @@ if (!isset($_GET['c'])) { $_GET['c'] = $id; }
 if (!isset($_GET['id']) || $_GET['id'] === '') { $_GET['id'] = $id; }
 header('X-APE-Pulse: logged;mode=cartridge;zapping=' . ($zap ? '1' : '0') . ';canary=' . ($canaryId !== '' ? '1' : '0'));
 require __DIR__ . '/url2-cartridge.php';
+
 
 

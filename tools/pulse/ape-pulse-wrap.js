@@ -40,7 +40,7 @@ const crypto = require('crypto');
 const { ApeUrlBuilder } = require(process.env.APE_URL_BUILDER || '/opt/ape-pulse/ape-url-builder.js');
 
 const POLICY_VERSION = '1';
-const WRAPPER_VERSION = '1.0.0';
+const WRAPPER_VERSION = '1.1.0';
 const PULSE_BASE_DEFAULT = 'https://iptv-ape.duckdns.org/pulse';
 const ALREADY = /\/(pulse|url2)\//i;
 
@@ -65,6 +65,9 @@ const mode = (args.mode === 'redirect') ? 'redirect' : 'cartridge';
 const pulseBase = String(args.base || PULSE_BASE_DEFAULT).replace(/\/+$/, '');
 const policy = String(args.policy || POLICY_VERSION);
 const statePath = args.state || '';
+// [LISTA] Nombre de la lista que se envuelve: viaja en l= para que el pulso diga
+// QUE LISTA se esta reproduciendo (antes solo habia canal, no lista).
+const listName = path.basename(inPath).replace(/\.gz$/i, '').replace(/\.(m3u8|m3u)$/i, '');
 
 function profileForChannel(name, group) {
   const s = (String(name || '') + ' ' + String(group || '')).toUpperCase();
@@ -136,7 +139,7 @@ function transformUrl(url) {
     return url;
   }
   counters.wrapped++;
-  return built + '&m=' + mode;
+  return built + '&m=' + mode + '&l=' + encodeURIComponent(listName);
 }
 
 let pending = '';
@@ -208,5 +211,6 @@ stream.on('end', () => {
     process.exit(counters.errors ? 1 : 0);
   });
 });
+
 
 

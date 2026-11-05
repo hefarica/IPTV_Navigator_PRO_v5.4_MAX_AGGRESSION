@@ -23,7 +23,7 @@ BUILDER=/opt/ape-pulse/ape-url-builder.js
 LOG=/var/log/ara/pulse-sync.log
 LOCK=/run/ape-pulse-sync.lock
 POLICY_VERSION=1
-WRAPPER_VERSION=1.0.0
+WRAPPER_VERSION=1.1.0   # 1.1.0: URLs llevan l=<lista> para atribucion en /pulse
 MODE="${APE_PULSE_MODE:-cartridge}"          # cartridge | redirect
 MAX_MB="${APE_PULSE_MAX_MB:-700}"
 MIN_FREE_MB="${APE_PULSE_MIN_FREE_MB:-1500}"
@@ -171,6 +171,7 @@ done
 log "resumen processed=$processed skipped=$skipped failed=$failed mode=$MODE"
 if [ "$failed" -gt 0 ]; then exit 1; fi
 exit 0
+
 
 
 
