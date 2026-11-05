@@ -168,7 +168,29 @@ function transformUrl(url) {
   return built + '&m=cartridge&l=' + encodeURIComponent(listName);
 }
 
+/**
+ * [OWNER OVERRIDE 2026-11-05] Bloque de DECLARACIÓN de mejora extrema.
+ *
+ * Autorizado expresamente por el propietario ("el santo grial de una excepcional
+ * imagen"). Se emite como METADATA del manifiesto, una vez por canal, para que
+ * TODOS los reproductores (VLC, Kodi, OTT, TiviMate, Exo, Fire TV) la vean en la
+ * lista — no sólo el cartucho. Son declaraciones: NO cambian STREAM-INF,
+ * CODECS ni RESOLUTION, y NO declaran SUPPLEMENTAL-CODECS (eso sí rompería el
+ * decoder). Una sola etiqueta dice el estado honesto: DECLARED.
+ */
+const OWNER_DECLARATIONS = [
+  '#EXT-X-APE-LCEVC-PHASE:4',
+  '#EXT-X-APE-LCEVC-ENABLED:true',
+  '#EXT-X-APE-HDR10-PLUS:ENABLED;MAX_NITS=5000;MIN_NITS=0.0005;L1=per-scene',
+  '#EXT-X-APE-DOLBY-VISION:ENABLED=true,PROFILE=8.1,RPU=DECLARED,CROSS_COMPATIBLE=true',
+  '#EXT-X-APE-HDR-DV:MODE=PQ,NITS=5000,BT2020=true',
+  '#EXT-X-APE-AI-SR:MODEL=realesrgan,SCALE=4,ENABLED=true',
+  '#EXT-X-APE-MINTERPOLATE:FPS=120;ME=epzs;MI_MODE=mci',
+  '#EXT-X-APE-ENHANCE-STATE:DECLARED;OWNER=1;AUTHORIZED=2026-11-05;EXECUTION=engine_dependent',
+];
+
 let pending = '';
+let curHasDecl = false;
 function onLine(line) {
   counters.lines++;
   if (line.startsWith('#EXTINF')) {
@@ -189,6 +211,7 @@ function onLine(line) {
     counters.dropped_iframe = (counters.dropped_iframe || 0) + 1;
     return;
   }
+  if (line.startsWith('#EXT-X-APE-ENHANCE-STATE')) { curHasDecl = true; write(line); return; }
   if (line && !line.startsWith('#') && /^https?:\/\//i.test(line.trim())) {
     counters.urls++;
     if (!cur.name && !cur.id) counters.skipped_no_inf++;
@@ -199,6 +222,8 @@ function onLine(line) {
     const m = line.match(/^(\s*)(https?:\/\/[^\s|"'<>\\]+)([\s\S]*)$/i);
     const clean = m ? m[2] : line.trim();
     if (m && m[3] && m[3].trim() !== '') { counters.sanitized = (counters.sanitized || 0) + 1; }
+    // [OWNER OVERRIDE] declaraciones de mejora extrema, una vez por canal
+    if (!curHasDecl) { for (const _d of OWNER_DECLARATIONS) write(_d + '\n'); counters.declared = (counters.declared || 0) + 1; }
     write(transformUrl(clean));
     return;
   }
@@ -245,6 +270,8 @@ stream.on('end', () => {
     process.exit(counters.errors ? 1 : 0);
   });
 });
+
+
 
 
 

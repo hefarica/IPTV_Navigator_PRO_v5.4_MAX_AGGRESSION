@@ -57,10 +57,20 @@ const textA = fs.readFileSync(path.join(tmp, 'a.m3u8'), 'utf8');
   ok('mismo número de #EXTINF', count(srcLines, x => x.startsWith('#EXTINF')) === count(outLines, x => x.startsWith('#EXTINF')),
     count(srcLines, x => x.startsWith('#EXTINF')) + ' vs ' + count(outLines, x => x.startsWith('#EXTINF')));
   // Excepción deliberada y documentada: #EXT-X-I-FRAME-STREAM-INF sin URI se descarta.
-  const dirs = (arr) => arr.filter(x => x.startsWith('#') && !x.startsWith('#EXT-X-I-FRAME-STREAM-INF'));
+  // Excepción deliberada y documentada #2: el bloque del propietario
+  // (#EXT-X-APE-ENHANCE-STATE + sus declaraciones) se inyecta 1 vez por canal.
+  const OWNER_PREFIXES = [
+    '#EXT-X-APE-LCEVC-PHASE:', '#EXT-X-APE-LCEVC-ENABLED:', '#EXT-X-APE-HDR10-PLUS:',
+    '#EXT-X-APE-DOLBY-VISION:', '#EXT-X-APE-HDR-DV:', '#EXT-X-APE-AI-SR:',
+    '#EXT-X-APE-MINTERPOLATE:', '#EXT-X-APE-ENHANCE-STATE:'
+  ];
+  const isOwnerBlock = (x) => OWNER_PREFIXES.some(p => x.startsWith(p));
+  const dirs = (arr) => arr.filter(x => x.startsWith('#') && !x.startsWith('#EXT-X-I-FRAME-STREAM-INF') && !isOwnerBlock(x));
   ok('mismas directivas no-URL (byte a byte, salvo I-FRAME sin URI)',
     JSON.stringify(dirs(srcLines)) === JSON.stringify(dirs(outLines)));
   ok('una sola URL por canal', count(outLines, x => /^https?:\/\//.test(x)) === 4);
+  ok('bloque del propietario: 8 lineas x 4 canales', count(outLines, isOwnerBlock) === 32, String(count(outLines, isOwnerBlock)));
+  ok('bloque del propietario: 1 marca de estado por canal', count(outLines, x => x.startsWith('#EXT-X-APE-ENHANCE-STATE')) === 4);
   ok('cabecera intacta', outLines[0] === '#EXTM3U');
 }
 
@@ -96,6 +106,7 @@ console.log(`\n== RESULTADO: ${pass} PASS · ${fail} FAIL ==`);
 if (fail) { console.log('Fallos:'); fallos.forEach(f => console.log('  - ' + f)); }
 try { fs.rmSync(tmp, { recursive: true, force: true }); } catch (_) { }
 process.exit(fail ? 1 : 0);
+
 
 
 

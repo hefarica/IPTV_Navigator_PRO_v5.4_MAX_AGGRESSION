@@ -216,6 +216,18 @@ Regla: **bitrate real > fallback agresivo > no emitir STREAM-INF**.
 
 ## Reglas Honestas (NO PLAYER-BREAKING LIES)
 
+### ⚖️ OWNER OVERRIDE 2026-11-05 — declaraciones de mejora extrema AUTORIZADAS
+
+El propietario autorizó expresamente emitir, como **metadata por canal**, el bloque
+de declaración de mejora extrema (`LCEVC Phase 4`, `HDR10+ 5000 nits`,
+`Dolby Vision 8.1 RPU=DECLARED`, `AI-SR RealESRGAN x4`, `minterpolate 120`,
+`#EXT-X-APE-ENHANCE-STATE:DECLARED`). Ver
+[`docs/policies/OWNER_OVERRIDE_2026-11-05.md`](docs/policies/OWNER_OVERRIDE_2026-11-05.md).
+
+Sigue prohibido: cambiar `CODECS=`/`RESOLUTION=`/`SUPPLEMENTAL-CODECS` sin bitstream
+real, declarar `#EXT-X-MAP`/`#EXT-X-PART` sin init fMP4/partes reales, y afirmar
+`applied` sin recibo del motor. La declaración autorizada **no** es una mentira: va
+etiquetada como `DECLARED`, no como ejecutada.
 ### NUNCA emitir sin evidencia
 
 | Campo | Solo emitir si... |
@@ -680,6 +692,7 @@ Nivel↔Resolución). Sin transcode en el VPS. FREEZELESS intacto. El realce rea
 
 **Conciencia universal:** cada acción de cada comando/skill lleva esta búsqueda de imagen extrema como
 prioridad. Si una decisión puede subir el tier de codec sin romper FREEZELESS → **SE SUBE, SIEMPRE.**
+
 
 
 

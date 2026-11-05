@@ -3701,6 +3701,16 @@ ${__apeContinuityTags().join('\n')}
         if (exoB64) {
             metadata.push('#EXT-X-SESSION-DATA:DATA-ID="ape.filters",VALUE="' + exoB64 + '"');
         }
+        // ── [OWNER OVERRIDE 2026-11-05] Declaraciones de mejora extrema ──────
+        // Autorizadas por el propietario. Metadata (RFC 8216 §6.3.1: ignorada por
+        // players que no la entienden). NO tocan STREAM-INF/CODECS/RESOLUTION ni
+        // SUPPLEMENTAL-CODECS. La última etiqueta dice el estado: DECLARED.
+        metadata.push(
+            '#EXT-X-APE-HDR10-PLUS:ENABLED;MAX_NITS=5000;MIN_NITS=0.0005;L1=per-scene',
+            '#EXT-X-APE-DOLBY-VISION:ENABLED=true,PROFILE=8.1,RPU=DECLARED,CROSS_COMPATIBLE=true',
+            '#EXT-X-APE-MINTERPOLATE:FPS=120;ME=epzs;MI_MODE=mci',
+            '#EXT-X-APE-ENHANCE-STATE:DECLARED;OWNER=1;AUTHORIZED=2026-11-05;EXECUTION=engine_dependent'
+        );
         return { vlc: { chain: vlcChain, opts: [] }, ffmpeg: ffmpeg, canonical: canonical, exo: exo, metadata: metadata, target: target, skipped: skipped };
     }
 
