@@ -1318,6 +1318,27 @@ if (is_array($replay) && hash_equals((string) $replay['body_hash'], $bodyHash) &
     exit;
 }
 
+// [DIAG 2026-11-05] Qué reporta el APK que aplicó: permite saber si TIENE
+// WRITE_SECURE_SETTINGS y si está escribiendo de verdad (sin pedir logcat).
+try {
+    $ap = $payload['state']['apply'] ?? null;
+    if (is_array($ap)) {
+        $line = json_encode([
+            'ts' => time(),
+            'device' => substr((string) $payload['device_id'], 0, 48),
+            'st' => (string) ($ap['st'] ?? ''),
+            'applied' => is_array($ap['ap'] ?? null) ? count($ap['ap']) : 0,
+            'unchanged' => $ap['un'] ?? null,
+            'reason' => $ap['rs'] ?? null,
+            'sample' => is_array($ap['ap'] ?? null) ? array_slice(array_map(function ($r) {
+                return is_string($r) ? $r : (is_array($r) ? (($r['k'] ?? '?') . ' ' . ($r['r'] ?? '?')) : '?');
+            }, $ap['ap']), 0, 4) : [],
+        ], JSON_UNESCAPED_SLASHES) . "\n";
+        $f = '/var/log/ara/sync-apply.log';
+        if (@filesize($f) > 131072) { @file_put_contents($f, ''); }
+        @file_put_contents($f, $line, FILE_APPEND | LOCK_EX);
+    }
+} catch (Throwable $e) { /* nunca rompe */ }
 $nonceHash = hash('sha256', (string) $payload['nonce']);
 $stmt = $pdo->prepare('SELECT created_at FROM ara_sync_nonce WHERE device_id = :d AND nonce_hash = :n');
 $stmt->execute([':d' => $payload['device_id'], ':n' => $nonceHash]);
@@ -1377,6 +1398,7 @@ http_response_code(200);
 header('X-ARA-Sig: ' . $respSig);
 header('X-ARA-Policy-Etag: ' . $policy['policy_etag']);
 echo $rawResponse;
+
 
 
 
