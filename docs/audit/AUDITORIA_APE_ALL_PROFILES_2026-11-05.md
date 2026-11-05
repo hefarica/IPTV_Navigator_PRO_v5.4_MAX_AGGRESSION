@@ -254,3 +254,51 @@ Un consumidor que haga `buffer + 10` obtiene `"5010"`. **Riesgo real de bug sile
 
 **Artefacto:** este documento. **Fichero auditado sin modificar** (sha256 `60e3cf07…`).
 **Método:** lectura del JSON, comparación de bloques, verificación de bounds y Ley Cardinal 1.
+
+---
+
+## 6 · CONJUNCION CON EL LAB FUSIONADO (ronda 2)
+
+El LAB final (`artifacts/LAB_CALIBRATED_FINAL_v23.0.0-FUSED.json`) aporta la calibracion que el
+export de perfiles no tiene. Resuelve **7 de los 8 defectos** de la seccion 2:
+
+| Defecto | Estado con el LAB | Evidencia |
+|---|---|---|
+| D2 buffer unico y dentro de bounds | **RESUELTO** | 105/72/58/55/52/30, todos dentro de sus bounds y numericos |
+| D3 P0 12-bit con cadena Main10 | **RESUELTO** | `bit_depth=10`, coherente con `dvh1.08.06` (DV P8.1 es 10 bits) |
+| D4 tres violaciones de bounds | **RESUELTO** | cero violaciones |
+| D5 cascadas de 1 nivel en P2-P5 | **RESUELTO** | 4,4,4,4,4,4 |
+| D6 sin `transfer_characteristics` | **RESUELTO** | derivado de `color_primaries`: 16/9 si es 9, 1/1 si es BT.709 |
+| D7 P0 chroma 4:2:0 vs 4:2:2 | **RESUELTO** | unificado a 4:2:0 en ambos bloques |
+| D8 knobs como string | **RESUELTO** | `buffer_seconds` es numero |
+| **D1 seis campos a 203 B** | **PENDIENTE** | no esta en el LAB: es el exportador del panel |
+
+Ademas el LAB recupera `atadenoise` en los 6 perfiles (solo lo tenia el CRYSTAL).
+
+### Nota recalculada por criterio
+
+| Criterio | Antes | Con el LAB | Con el export arreglado |
+|---|---|---|---|
+| Maxima calidad 4K | 8.0 | **9.0** | 9.2 |
+| 0 cortes | 6.0 | **7.5** | 8.5 |
+| 0 lags | 7.0 | **7.0** | 7.5 |
+| 0 freeze | 5.0 | **6.0** | 8.5 |
+| 24/7 365 | 4.5 | **5.5** | 9.0 |
+| **GLOBAL** | **6.1** | **7.0** | **8.5** |
+
+**El 9.5 no se alcanza solo con estos dos ficheros.** Lo que falta no es codigo:
+
+1. **Validacion contra un player real.** El fichero declara intenciones; no contiene una sola
+   sesion medida. `vmaf_target: 95` es un objetivo configurado, no un VMAF observado.
+2. **Un solo valor de buffer en toda la cadena.** Hoy conviven `vlcopt.network-caching` (15 s),
+   `optimized_knobs.buffer_seconds` (105 s) y `actor_injections.player.vlc` (105 s). Hasta que
+   el player use uno, "0 cortes" seguira siendo una declaracion.
+3. **`abrBandWidthFactor` 0.55/0.50 en P4/P5**, que fuerza calidad baja contra la ley
+   anti-degradacion.
+
+### Correccion de mi propio calculo
+
+En un primer calculo sume los deltas de la tabla de la seccion 4 de forma lineal sobre 6.1 y
+obtuve 10.8/10. **Era imposible**: la nota esta acotada a 10 y los deltas no son independientes.
+Se rehizo por criterio, que es como se midio originalmente. El resultado honesto es **7.0 con el
+LAB y 8.5 con el export ademas arreglado**.
