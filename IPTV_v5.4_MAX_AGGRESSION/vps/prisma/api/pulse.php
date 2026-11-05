@@ -69,7 +69,14 @@ function pulse_clean(string $s, int $max): string
 
 // ── 1 · Recibir (el autobús llegó) ────────────────────────────────────────────
 $u  = isset($_GET['u']) ? (string)$_GET['u'] : '';
+// [ID] Las listas envueltas mandan `id=<canal>`; los tests/curl mandan `c=<canal>`.
+// Antes se leía sólo `c`, así que el 100% de los zaps reales (que vienen de una
+// lista) caían al hash derivado y NO se podía decir qué canal se estaba zappeando.
 $id = isset($_GET['c']) ? (string)$_GET['c'] : '';
+if ($id === '' && isset($_GET['id'])) { $id = (string)$_GET['id']; }
+// [CHAN] Nombre del canal: las listas envueltas ya lo mandan en `n=`. Sin esto el log
+// sólo tenía un id LOCAL de lista y no se podía decir QUÉ canal se estaba zapeando.
+$chan = pulse_clean((string)($_GET['n'] ?? ''), 60);
 $dB = isset($_GET['d']) ? (string)$_GET['d'] : '';
 $zap = (isset($_GET['z']) && (string)$_GET['z'] === '1');
 $mode = strtolower((string)($_GET['m'] ?? 'redirect'));
@@ -105,6 +112,7 @@ $host = strtolower((string)$parts['host']);
 $pulse = [
     'ts'        => round(microtime(true), 3),
     'id'        => $id,
+    'chan'      => $chan,
     'host'      => $host,
     'url_sha'   => substr(hash('sha256', $u), 0, 16),
     'zapping'   => $zap,
@@ -164,3 +172,5 @@ if (!isset($_GET['c'])) { $_GET['c'] = $id; }
 if (!isset($_GET['id']) || $_GET['id'] === '') { $_GET['id'] = $id; }
 header('X-APE-Pulse: logged;mode=cartridge;zapping=' . ($zap ? '1' : '0') . ';canary=' . ($canaryId !== '' ? '1' : '0'));
 require __DIR__ . '/url2-cartridge.php';
+
+
