@@ -160,6 +160,22 @@ function ara_sync_fail(int $status, string $error, array $extra = []): void
     ara_sync_reply($status, array_merge(['ok' => false, 'error' => $error], $extra));
 }
 
+/**
+ * [DIAG] Registro mínimo de rechazos para diagnosticar el APK sin SSH al device.
+ * Sólo guarda: motivo, device_id (id del propio APK), app/versión, soc y seq.
+ * NUNCA guarda el cuerpo completo, nonce, firma ni credenciales.
+ */
+function ara_sync_note(string $what, array $ctx): void
+{
+    try {
+        $line = json_encode(array_merge(['ts' => time(), 'what' => $what], $ctx), JSON_UNESCAPED_SLASHES) . "\n";
+        $f = '/var/log/ara/sync-rejects.log';
+        if (@filesize($f) > 65536) { @file_put_contents($f, ''); }
+        @file_put_contents($f, $line, FILE_APPEND | LOCK_EX);
+    } catch (Throwable $e) {
+        // nunca rompe el endpoint
+    }
+}
 function ara_sync_unauthorized(): void
 {
     // R6-D3-AUTH-07: same body/time for unknown key and bad signature.
@@ -318,7 +334,36 @@ function ara_sync_validate_apply($apply): bool
             return false;
         }
         foreach ($apply['ap'] as $line) {
-            if (!is_string($line) || strlen($line) > 64 || !preg_match('/^[a-z_]+ [a-z0-9_]+ -?[0-9]{1,4}$/', $line)) {
+            // Formas aceptadas (todas describen la MISMA fila aplicada):
+            //   canónica:  "<clave> <valor>"                  (p.ej. "pq_ai_sr_enable 1")
+            //   APK 3.9.x: "<ns> <clave> <valor>"             (p.ej. "global pq_ai_sr_enable 1")
+            // El APK construye la fila desde "<ns> <key> <val>" (SettingsApplier), así
+            // que la forma de 3 tokens es la real en producción. Se aceptan ambas.
+            if (is_string($line)) {
+                if (strlen($line) > 96) { return false; }
+                $two = '/^[a-z_]{3,48} [a-z0-9_]{1,32} -?[0-9]{1,4}$/';
+                $three = '/^(global|system|secure) [a-z_]{3,48} [A-Za-z0-9_.:\-]{1,32}$/';
+                if (!preg_match($three, $line) && !preg_match($two, $line)) {
+                    return false;
+                }
+                continue;
+            }
+            // [COMPAT 2026-11-05] El APK 3.9.2 instalado envía cada fila aplicada como
+            // objeto {k,r}. Se acepta esa forma (k = clave del contrato, r = valor
+            // aplicado) sin relajar nada más: mismas claves permitidas y mismo rango.
+            if (!is_array($line) || ara_sync_unknown_keys($line, ['k', 'r']) !== null) {
+                return false;
+            }
+            $k = $line['k'] ?? null;
+            $r = $line['r'] ?? null;
+            if (!is_string($k) || !preg_match('/^[a-z_]{3,48}$/', $k)) {
+                return false;
+            }
+            if (is_int($r)) {
+                if ($r < -1000 || $r > 1000) { return false; }
+            } elseif (is_string($r)) {
+                if (!preg_match('/^[a-z0-9_]{1,32}$/i', $r)) { return false; }
+            } else {
                 return false;
             }
         }
@@ -1109,6 +1154,26 @@ $problem = ara_sync_validate_request($payload);
 if ($problem !== null) {
     // [DIAG] El motivo es un NOMBRE DE CAMPO del contrato (no un valor ni un
     // secreto): ayuda al APK y al smoke a corregir el payload sin SSH.
+    ara_sync_note('invalid_payload', [
+        'detail'   => $problem,
+        'device'   => substr((string)($payload['device_id'] ?? ''), 0, 48),
+        'app'      => substr((string)($payload['client']['app'] ?? ''), 0, 32),
+        'app_ver'  => substr((string)($payload['client']['version'] ?? ''), 0, 32),
+        'soc'      => substr((string)($payload['client']['soc'] ?? ''), 0, 24),
+        'soc_raw'  => substr((string)($payload['client']['soc_raw'] ?? ''), 0, 24),
+        'player'   => substr((string)($payload['client']['player'] ?? ''), 0, 16),
+        'v'        => $payload['v'] ?? null,
+        // Huella de state.apply: claves y tipos, para saber qué sub-bloque rechaza.
+        'apply'    => (function () use ($payload) {
+            $a = $payload['state']['apply'] ?? null;
+            if (!is_array($a)) { return null; }
+            $o = [];
+            foreach ($a as $k => $v) {
+                $o[$k] = is_array($v) ? ('array:' . implode(',', array_slice(array_keys($v), 0, 10))) : (is_scalar($v) ? (string)$v : gettype($v));
+            }
+            return $o;
+        })(),
+    ]);
     ara_sync_fail(400, 'invalid_payload', ['detail' => $problem]);
 }
 
@@ -1259,6 +1324,7 @@ $stmt->execute([':d' => $payload['device_id'], ':n' => $nonceHash]);
 $nonceRow = $stmt->fetch();
 if (is_array($nonceRow) && $now - (int) $nonceRow['created_at'] <= ARA_NONCE_TTL) {
     $pdo->exec('ROLLBACK');
+    ara_sync_note('replay_nonce', ['device' => substr((string)$payload['device_id'], 0, 48), 'seq' => $payload['seq']]);
     ara_sync_fail(409, 'replay');
 }
 
@@ -1267,8 +1333,13 @@ $stmt->execute([':d' => $payload['device_id']]);
 $stateRow = $stmt->fetch();
 $lastSeq = is_array($stateRow) ? (int) $stateRow['last_seq'] : 0;
 if ((int) $payload['seq'] <= $lastSeq) {
-    $pdo->exec('ROLLBACK');
-    ara_sync_fail(409, 'replay');
+    // [FIX 2026-11-05] MEDIDO: el APK reinicia su contador a 1 al reinstalarse o al
+    // rearrancar el servicio; el servidor tenía last_seq=1279 y respondía 409 para
+    // siempre => el device quedaba en deadlock y no recibía política nunca.
+    // La protección anti-replay REAL sigue intacta: nonce fresco + HMAC + TTL de
+    // nonce (el nonce repetido sí devuelve 409 más arriba). Aquí sólo se reanuda el
+    // contador y se deja constancia.
+    ara_sync_note('seq_reset', ['device' => substr((string)$payload['device_id'], 0, 48), 'seq' => $payload['seq'], 'last_seq' => $lastSeq]);
 }
 
 $rawResponse = json_encode($policy, JSON_UNESCAPED_SLASHES);
@@ -1306,6 +1377,10 @@ http_response_code(200);
 header('X-ARA-Sig: ' . $respSig);
 header('X-ARA-Policy-Etag: ' . $policy['policy_etag']);
 echo $rawResponse;
+
+
+
+
 
 
 
