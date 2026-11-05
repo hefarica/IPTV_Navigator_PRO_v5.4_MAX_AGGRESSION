@@ -156,7 +156,14 @@ function onLine(line) {
   if (line && !line.startsWith('#') && /^https?:\/\//i.test(line.trim())) {
     counters.urls++;
     if (!cur.name && !cur.id) counters.skipped_no_inf++;
-    write(transformUrl(line.trim()));
+    // [SANITIZE] Algunas listas usan `URL|Header=valor&Header2=valor` (cabeceras inline).
+    // El token URL termina en el primer espacio, pipe, comilla o barra invertida. Si se
+    // toma la linea entera, /pulse la rechaza con 400 ("u con caracteres invalidos") y el
+    // canal queda muerto. Aqui se aisla la URL real y se cuenta el saneo.
+    const m = line.match(/^(\s*)(https?:\/\/[^\s|"'<>\\]+)([\s\S]*)$/i);
+    const clean = m ? m[2] : line.trim();
+    if (m && m[3] && m[3].trim() !== '') { counters.sanitized = (counters.sanitized || 0) + 1; }
+    write(transformUrl(clean));
     return;
   }
   write(line);
@@ -191,7 +198,7 @@ stream.on('end', () => {
       sha256: sha.digest('hex'),
       bytes: fs.statSync(outPath).size,
       channels: counters.extinf, urls: counters.urls,
-      wrapped: counters.wrapped, already: counters.already,
+      wrapped: counters.wrapped, already: counters.already, sanitized: counters.sanitized || 0,
       profiles: counters.profiles, errors: counters.errors,
     };
     if (statePath) {
@@ -201,3 +208,5 @@ stream.on('end', () => {
     process.exit(counters.errors ? 1 : 0);
   });
 });
+
+

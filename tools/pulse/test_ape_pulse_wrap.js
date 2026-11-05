@@ -27,7 +27,8 @@ const SRC = [
   'http://line.tivi-ott.net/live/U/P/3.m3u8',
   '#EXTINF:-1 tvg-id="9" tvg-chno="9" tvg-name="KLAN 4K" group-title="4K PREMIUM",KLAN 4K',
   'http://line.tivi-ott.net/live/U/P/9.m3u8',
-  '#EXTINF:-1 tvg-id="12" tvg-chno="12" tvg-name="SD CHANNEL" group-title="SD",SD CHANNEL',
+  '#EXTINF:-1 tvg-id="77" tvg-chno="77" tvg-name="CANAL CON HEADERS INLINE" group-title="TEST",CANAL CON HEADERS INLINE',
+  'http://line.tivi-ott.net/live/U/P/77.m3u8|User-Agent=Kodi/20.5&Cache-Control=no-cache',  '#EXTINF:-1 tvg-id="12" tvg-chno="12" tvg-name="SD CHANNEL" group-title="SD",SD CHANNEL',
   'http://line.tivi-ott.net/live/U/P/12.m3u8',
   '',
 ].join('\n');
@@ -56,22 +57,23 @@ const textA = fs.readFileSync(path.join(tmp, 'a.m3u8'), 'utf8');
     count(srcLines, x => x.startsWith('#EXTINF')) + ' vs ' + count(outLines, x => x.startsWith('#EXTINF')));
   ok('mismas directivas no-URL (byte a byte)',
     JSON.stringify(srcLines.filter(x => x.startsWith('#'))) === JSON.stringify(outLines.filter(x => x.startsWith('#'))));
-  ok('una sola URL por canal', count(outLines, x => /^https?:\/\//.test(x)) === 3);
+  ok('una sola URL por canal', count(outLines, x => /^https?:\/\//.test(x)) === 4);
   ok('cabecera intacta', outLines[0] === '#EXTM3U');
 }
 
 // POLIMÓRFICO: perfil por clase de canal
 {
-  ok('3 canales envueltos', a.wrapped === 3, JSON.stringify(a));
+  ok('4 canales envueltos (uno con headers inline)', a.wrapped === 4, JSON.stringify(a));
+  ok('saneo de URL con |headers contado', a.sanitized === 1, JSON.stringify(a));
   ok('perfiles distintos por clase (P0 4K / P3 FHD / P5 SD)',
-    a.profiles.P0 === 1 && a.profiles.P3 === 1 && a.profiles.P5 === 1, JSON.stringify(a.profiles));
+    a.profiles.P0 === 1 && a.profiles.P3 === 2 && a.profiles.P5 === 1, JSON.stringify(a.profiles));
   const urls = textA.split('\n').filter(x => /^https?:\/\//.test(x));
   const parsed = urls.map(u => ApeUrlBuilder.parse(u));
   ok('todas las URLs portan fingerprint válido (isomorfismo inverso)', parsed.every(p => p.valid));
   ok('la URL es /pulse/<id>.m3u8', urls.every(u => /\/pulse\/\d+\.m3u8\?/.test(u)), urls[0]);
   ok('modo cartridge declarado en la URL', urls.every(u => /[?&]m=cartridge/.test(u)));
   ok('el perfil viaja en la URL y coincide con la clase',
-    parsed[0].state.profile === 'P3' && parsed[1].state.profile === 'P0' && parsed[2].state.profile === 'P5',
+    parsed[0].state.profile === 'P3' && parsed[1].state.profile === 'P0' && parsed[2].state.profile === 'P3' && parsed[3].state.profile === 'P5',
     parsed.map(p => p.state.profile).join(','));
 }
 
@@ -82,7 +84,7 @@ const textA = fs.readFileSync(path.join(tmp, 'a.m3u8'), 'utf8');
   const c = JSON.parse(execFileSync(process.execPath, [WRAP, '--in', path.join(tmp, 'a.m3u8'), '--out', path.join(tmp, 'c.m3u8'), '--mode', 'cartridge'], {
     env: { ...process.env, APE_URL_BUILDER: BUILDER }, encoding: 'utf8',
   }).trim());
-  ok('re-envolver una lista ya envuelta NO duplica', c.already === 3 && c.wrapped === 0, JSON.stringify(c));
+  ok('re-envolver una lista ya envuelta NO duplica', c.already === 4 && c.wrapped === 0, JSON.stringify(c));
   ok('salida de re-envolver == salida original', c.sha256 === a.sha256);
 }
 
@@ -90,3 +92,5 @@ console.log(`\n== RESULTADO: ${pass} PASS · ${fail} FAIL ==`);
 if (fail) { console.log('Fallos:'); fallos.forEach(f => console.log('  - ' + f)); }
 try { fs.rmSync(tmp, { recursive: true, force: true }); } catch (_) { }
 process.exit(fail ? 1 : 0);
+
+
