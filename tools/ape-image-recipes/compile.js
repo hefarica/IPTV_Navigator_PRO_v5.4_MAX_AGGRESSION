@@ -167,6 +167,55 @@ function main(argv) {
   const data = loadRecipes();
   const profiles = data.profiles;
 
+  // ── --emit bundle ────────────────────────────────────────────────────────
+  // Empaqueta TODAS las recetas para el navegador: una sola verdad
+  // (recipes.json) → un global `window.APE_IMAGE_RECIPES` que consume el
+  // generador. Sin esto el generador tendría que duplicar las cadenas.
+  if (args.emit === 'bundle' || args.bundle) {
+    const bundle = {
+      schema: 'ape.image-recipes-bundle/1',
+      source: 'tools/ape-image-recipes/recipes.json',
+      recipe_version: data.version,
+      generated_at: new Date().toISOString(),
+      profiles: {}
+    };
+    for (const key of Object.keys(profiles)) {
+      const profile = profiles[key];
+      const vlc = buildVlcChain(profile);
+      const ffmpeg = buildFfmpegChain(profile);
+      bundle.profiles[key] = {
+        source_resolution: profile.source_resolution,
+        target_resolution: profile.target_resolution,
+        vlc: vlc.chain,
+        vlc_skipped: vlc.skipped,
+        ffmpeg: ffmpeg.chain,
+        ffmpeg_skipped: ffmpeg.skipped,
+        manifest: buildManifestObject(key, profile, vlc)
+      };
+    }
+    const js =
+      '/* AUTO-GENERADO — no editar a mano.\n' +
+      ' * Fuente: tools/ape-image-recipes/recipes.json\n' +
+      ' * Regenerar: node tools/ape-image-recipes/compile.js --emit bundle\n' +
+      ' * Una sola verdad (settings) → proyecciones por idioma de player:\n' +
+      ' *   vlc    = cadena de MÓDULOS VLC (verificados: gradfun/deinterlace/sharpen/hqdn3d)\n' +
+      ' *   ffmpeg = filtergraph -lavfi REAL (rangos ffmpeg 8.0.1)\n' +
+      ' *   manifest = objeto JSON declarativo\n' +
+      ' */\n' +
+      '(function (root, R) {\n' +
+      '  if (typeof window !== "undefined") window.APE_IMAGE_RECIPES = R;\n' +
+      '  if (root && typeof root === "object") root.APE_IMAGE_RECIPES = R;\n' +
+      '  if (typeof module !== "undefined" && module.exports) module.exports = R;\n' +
+      '})(typeof globalThis !== "undefined" ? globalThis : this, ' + JSON.stringify(bundle) + ');\n';
+    const defaultOut = path.join(
+      __dirname, '..', '..', 'IPTV_v5.4_MAX_AGGRESSION', 'frontend', 'js', 'ape-v9', 'ape-image-recipes-bundle.js'
+    );
+    const outPath = typeof args.out === 'string' ? args.out : defaultOut;
+    fs.writeFileSync(outPath, js, 'utf8');
+    process.stderr.write(`bundle escrito: ${outPath} (${js.length} B, ${Object.keys(bundle.profiles).length} perfiles)\n`);
+    return 0;
+  }
+
   if (args.all || Object.keys(args).length === 0) {
     const out = [];
     for (const key of Object.keys(profiles)) {

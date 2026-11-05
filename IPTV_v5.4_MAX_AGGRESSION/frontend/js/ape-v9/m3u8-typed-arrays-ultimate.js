@@ -3599,6 +3599,111 @@ ${__apeContinuityTags().join('\n')}
         };
     }
 
+    /**
+     * apeFilterDialects — "SAME SETTINGS, every player's language".
+     *
+     * PROBLEMA MEDIDO (2026-11-05): la cadena de realce viajaba SIEMPRE en sintaxis
+     * ffmpeg dentro de `#EXTVLCOPT:video-filter=`. VLC no conoce esos módulos
+     * (nlmeans/deband/hqdn3d/minterpolate) — sus filtros son `sharpen`, `gradfun`,
+     * `adjust` — así que VLC descartaba la cadena. Y Kodi/ExoPlayer no leen
+     * `#EXTVLCOPT` en absoluto.
+     *
+     * REGLA: se define UNA sola verdad (P, parámetros canónicos) y de ella se derivan
+     * todas las proyecciones. Así no hay dos listas con "el mismo filtro" distinto.
+     *
+     *   · VLC        -> cadena de MÓDULOS VLC + sus opciones  (`#EXTVLCOPT:*`)
+     *   · ffmpeg     -> cadena ffmpeg REAL                 (`#EXT-X-APE-FFMPEG-FILTERS`)
+     *   · mpv        -> `--vf=<ffmpeg>`                    (`#EXT-X-APE-MPV-FILTERS`)
+     *   · ExoPlayer  -> JSON de intención                  (`#EXT-X-APE-EXO-FILTERS`)
+     *                  + `#EXT-X-SESSION-DATA` (RFC 8216 §4.4.6.2, media3 lo parsea)
+     *   · Kodi       -> NO tiene DSL de filtros en playlist (se declara, no se finge)
+     *   · canónico   -> `clave=valor;…` reconstruible por cualquier cliente
+     *
+     * HONESTO: sólo VLC aplica los filtros por sí mismo; el resto son declaraciones
+     * que el reproductor/daemon puede consumir. No se inventa soporte.
+     */
+    function apeFilterDialects(profile, cfg) {
+        // ── FUENTE ÚNICA: tools/ape-image-recipes/recipes.json ──────────────
+        // El bundle `ape-image-recipes-bundle.js` publica window.APE_IMAGE_RECIPES
+        // (generado por: node tools/ape-image-recipes/compile.js --emit bundle).
+        // De la MISMA receta salen todas las proyecciones: no hay dos verdades.
+        const c = cfg || {};
+        const W = (c.width > 0 && c.width <= 7680) ? c.width : 3840;
+        const H = (c.height > 0 && c.height <= 4320) ? c.height : 2160;
+        const R = (typeof window !== 'undefined' && window.APE_IMAGE_RECIPES) ? window.APE_IMAGE_RECIPES : null;
+        const rec = (R && R.profiles && R.profiles[profile]) ? R.profiles[profile] : null;
+
+        // Fail-closed: si el bundle no está, se usa la receta P3 documentada
+        // (módulos VLC verificados + ffmpeg dentro de rango). Nunca una cadena
+        // con módulos que VLC/ffmpeg no resuelven.
+        const vlcChain = (rec && rec.vlc)
+            ? rec.vlc
+            : 'hqdn3d:gradfun{strength=1.6,radius=12}:sharpen{sigma=0.4}';
+        const ffmpeg = (rec && rec.ffmpeg)
+            ? rec.ffmpeg
+            : 'hqdn3d=1:0.8:3:2.5,zscale=w=3840:h=2160:filter=lanczos,gradfun=radius=12:strength=1.6,unsharp=lx=3:ly=3:la=0.28,format=yuv420p10le';
+        const target = (rec && rec.target_resolution) ? rec.target_resolution : (W + 'x' + H);
+        const skipped = (rec && Array.isArray(rec.vlc_skipped))
+            ? rec.vlc_skipped.map(function (s) { return s.id; }).join(',')
+            : 'upscale,output';
+        const bundleOk = !!rec;
+
+        const exo = {
+            schema: 'ape.image-recipe/1',
+            profile: profile,
+            target: target,
+            vlc: vlcChain,
+            ffmpeg: ffmpeg,
+            lane: 'manifest',
+            apply: 'device',
+            vlc_policy: 'playlist-video-filter-inert-in-vlc-3.0.24',
+            kodi: 'no_playlist_filter_dsl',
+            source: bundleOk ? 'recipes.json' : 'fallback-P3'
+        };
+        const exoJson = JSON.stringify(exo);
+        let exoB64 = '';
+        try {
+            if (typeof btoa === 'function') {
+                exoB64 = btoa(exoJson).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+            } else if (typeof Buffer !== 'undefined') {
+                exoB64 = Buffer.from(exoJson, 'utf8').toString('base64')
+                    .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+            }
+        } catch (e) { exoB64 = ''; }
+
+        const canonical = [
+            'SCHEMA=ape.image-recipe/1',
+            'PROFILE=' + profile,
+            'TARGET=' + target,
+            'VLC=' + vlcChain,
+            'FFMPEG=' + ffmpeg,
+            'VLC_SKIPPED=' + (skipped || 'none'),
+            'SOURCE=' + (bundleOk ? 'recipes.json' : 'fallback-P3')
+        ].join(';');
+
+        const metadata = [
+            '#EXT-X-APE-FILTERS:' + canonical,
+            // Carril VLC: módulos REALES verificados (gradfun/deinterlace/sharpen/hqdn3d).
+            // OJO MEDIDO: VLC 3.0.24 IGNORA video-filter venido de playlist por política
+            // (`unsafe option ... ignored for security reasons`). Se emite igual porque es
+            // el carril canónico de la receta y otros motores/CLI sí lo usan; la verdad
+            // va declarada en el tag siguiente.
+            '#EXT-X-APE-VLC-FILTERS:' + vlcChain,
+            '#EXT-X-APE-VLC-POLICY:MEASURED=VLC-3.0.24;PLAYLIST_VIDEO_FILTER=INERT_UNSAFE_OPTION;EXECUTES_ONLY_VIA_CLI=1',
+            // Carril ffmpeg/mpv: filtergraph ejecutable (rangos ffmpeg 8.0.1, chroma 3:3).
+            '#EXT-X-APE-FFMPEG-FILTERS:' + ffmpeg,
+            '#EXT-X-APE-MPV-FILTERS:--vf=' + ffmpeg,
+            // Carril manifest: ExoPlayer/Media3 no tiene DSL de filtros → intención declarada.
+            '#EXT-X-APE-EXO-FILTERS:' + exoJson,
+            // Kodi no tiene DSL de filtros por playlist: se declara el límite, no se finge.
+            '#EXT-X-APE-KODI-FILTERS:NONE;REASON=kodi_no_playlist_filter_dsl'
+        ];
+        if (exoB64) {
+            metadata.push('#EXT-X-SESSION-DATA:DATA-ID="ape.filters",VALUE="' + exoB64 + '"');
+        }
+        return { vlc: { chain: vlcChain, opts: [] }, ffmpeg: ffmpeg, canonical: canonical, exo: exo, metadata: metadata, target: target, skipped: skipped };
+    }
+
     function generateEXTVLCOPT(profile) {
         const cfg = getProfileConfig(profile);
         let vlcopts = [];
@@ -3650,7 +3755,15 @@ ${__apeContinuityTags().join('\n')}
             if (vo['http-continuous']) vlcopts.push(`#EXTVLCOPT:http-continuous=true`);
 
             // ── V6.2 VISUAL SUPREMACY (Filters & Color Matrix) ──
-            if (vo['video-filter']) vlcopts.push(`#EXTVLCOPT:video-filter=${vo['video-filter']}`);
+            // ── [DIALECTOS 2026-11-05] Mismas mejoras, en el idioma de CADA player ──
+            // El LAB trae la cadena en sintaxis ffmpeg; VLC NO la entiende (sus módulos
+            // son sharpen/gradfun/adjust) y por eso la descartaba. Aquí se emite la cadena
+            // VLC-NATIVA + sus opciones; las demás proyecciones van como METADATA.
+            if (vo['video-filter']) {
+                const _fd = apeFilterDialects(profile, cfg);
+                vlcopts.push(`#EXTVLCOPT:video-filter=${_fd.vlc.chain}`);
+                for (const _o of _fd.vlc.opts) vlcopts.push(_o);
+            }
             if (vo['video-color-space']) vlcopts.push(`#EXTVLCOPT:video-color-space=${vo['video-color-space']}`);
             // video-transfer-function: soporta clave nativa VLC y alias LAB 'video-color-transfer'
             const _vtf = vo['video-transfer-function'] || vo['video-color-transfer'];
@@ -3857,7 +3970,9 @@ ${__apeContinuityTags().join('\n')}
             //     opcion no existe en el filtro colorspace; el cambio de formato va aparte.
             //   · colorspace=...:trc=smpte2084 -> trc espera un ENTERO 0..18, no un nombre.
             // Medido tras el cambio: ejecuta y produce yuv444p bt2020 10-bit a 120 fps.
-            `#EXTVLCOPT:video-filter=fieldmatch,decimate,nlmeans=s=3.0:p=7:r=15,bwdif=mode=1:parity=-1:deint=0,deband=1thr=0.015:2thr=0.015:3thr=0.015:4thr=0.015:blur=1,unsharp=luma_msize_x=3:luma_msize_y=3:luma_amount=0.4,colorspace=iall=bt709:all=bt2020,format=yuv444p10le,tonemap=mobius:param=0.3,hqdn3d=4:3:12:9,fps=fps=60:round=near,minterpolate=fps=120:mi_mode=mci:mc_mode=aobmc:vsbmc=1:me=epzs`,
+                        // ── [DIALECTOS] Cadena VLC-NATIVA (antes: sintaxis ffmpeg que VLC descartaba).
+            // Misma verdad que los metadatos #EXT-X-APE-FFMPEG/MPV/EXO de este canal.
+            `#EXTVLCOPT:video-filter=${apeFilterDialects(profile, cfg).vlc.chain}`,
             `#EXTVLCOPT:video-scaler=vdpau,opengl`,
             `#EXTVLCOPT:aspect-ratio=16:9`,
             `#EXTVLCOPT:video-deco=1`,
@@ -3905,7 +4020,10 @@ ${__apeContinuityTags().join('\n')}
             `#EXTVLCOPT:no-http-reconnect=0`
         ];
 
-        return [...vlcopts, ...standard];
+        // ── METADATOS MULTI-DIALECTO (una sola vez por canal) ────────────────────
+        // El MISMO ajuste declarado en ffmpeg, mpv, ExoPlayer, canónico y el límite de
+        // Kodi. Sólo VLC aplica por sí mismo; el resto lo consume el player/daemon.
+        return [...vlcopts, ...standard, ...apeFilterDialects(profile, cfg).metadata];
     }
 
     function build_kodiprop(cfg, profile, index) {
@@ -13920,3 +14038,6 @@ window.APE_SanityCheck = function(sampleExthttp, profile, ua) {
     }
     return { pass: _failed.length === 0, results };
 };
+
+
+
