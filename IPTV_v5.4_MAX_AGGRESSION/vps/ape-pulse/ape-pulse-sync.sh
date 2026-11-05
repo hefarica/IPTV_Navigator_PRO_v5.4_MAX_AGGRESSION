@@ -23,7 +23,7 @@ BUILDER=/opt/ape-pulse/ape-url-builder.js
 LOG=/var/log/ara/pulse-sync.log
 LOCK=/run/ape-pulse-sync.lock
 POLICY_VERSION=1
-WRAPPER_VERSION=1.4.0   # 1.4.0: m=cartridge + filtro de UA en /pulse
+WRAPPER_VERSION=1.5.0   # 1.5.0: normaliza /cdn/ -> proveedor + .m3u8
 MODE="${APE_PULSE_MODE:-cartridge}"          # cartridge | redirect
 MAX_MB="${APE_PULSE_MAX_MB:-700}"
 MIN_FREE_MB="${APE_PULSE_MIN_FREE_MB:-1500}"

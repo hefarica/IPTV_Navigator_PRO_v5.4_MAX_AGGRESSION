@@ -179,6 +179,132 @@ if ($zap && is_file(PULSE_CANARY_FLAG)) {
     }
 }
 
+
+// ── [ROOT-FIX 2026-11-05] Barandilla del modo proxy ─────────────────────────
+// "Loaded playlist has unexpected type." venía de servir al player (a) un master
+// del proveedor, o (b) un 302 hacia una URL rota. Estas funciones lo cierran.
+
+/** ¿La URL apunta a nuestro propio host (evita fetch recursivo)? */
+function ape_pulse_is_self(string $u): bool
+{
+    $host = strtolower((string) parse_url($u, PHP_URL_HOST));
+    return $host === 'iptv-ape.duckdns.org' || $host === 'localhost' || $host === '127.0.0.1';
+}
+
+/**
+ * Normaliza el upstream:
+ *   https://iptv-ape.duckdns.org/cdn/<proveedor>/<resto>  ->  http://<proveedor>/<resto>
+ * Devuelve '' si la URL es inservible (self sin patrón /cdn/, vacía, esquema raro).
+ */
+function ape_pulse_norm_upstream(string $u): string
+{
+    $u = trim($u);
+    if ($u === '' || !preg_match('#^https?://#i', $u)) { return ''; }
+    if (ape_pulse_is_self($u)) {
+        $path = (string) parse_url($u, PHP_URL_PATH);
+        if (preg_match('#^/cdn/([A-Za-z0-9.-]+)/(.*)$#', $path, $m)) {
+            $p = ltrim($m[2], '/');
+            // MEDIDO: el proveedor responde 513/461 a la ruta SIN extensión y 200
+            // a `<ruta>.m3u8`. Se añade la extensión cuando falta.
+            if (!preg_match('/\.[A-Za-z0-9]{1,5}$/', $p)) {
+                $p .= '.m3u8';
+            }
+            return 'http://' . $m[1] . '/' . $p;
+        }
+        return ''; // self sin patrón conocido: no se persigue (evita bucles)
+    }
+    return $u;
+}
+
+/** Absolutiza las URIs de una playlist (segmentos y variantes) contra su URL efectiva. */
+function ape_pulse_absolutize(string $raw, string $eff): string
+{
+    $pu = parse_url($eff);
+    $origin = (($pu['scheme'] ?? 'http') . '://' . ($pu['host'] ?? ''));
+    if (!empty($pu['port'])) { $origin .= ':' . $pu['port']; }
+    $dir = rtrim(dirname($pu['path'] ?? '/'), '/');
+    $lines = preg_split('/\r?\n/', $raw);
+    $n = count($lines);
+    for ($i = 0; $i < $n; $i++) {
+        $t = trim($lines[$i]);
+        if ($t === '' || $t[0] === '#' || preg_match('#^[a-z][a-z0-9+.-]*://#i', $t) || strpos($t, 'data:') === 0) {
+            continue;
+        }
+        $lines[$i] = ($t[0] === '/') ? $origin . $t : $origin . $dir . '/' . $t;
+    }
+    return implode("\n", $lines) . "\n";
+}
+
+/** Clasifica el cuerpo: 'media' | 'master' | 'noplaylist'. */
+function ape_pulse_kind(string $body): string
+{
+    if ($body === '' || stripos($body, '#EXTM3U') === false) { return 'noplaylist'; }
+    if (preg_match('/#EXT-X-STREAM-INF\s*:/i', $body)) { return 'master'; }
+    if (preg_match('/^#EXTINF\s*:/im', $body)) { return 'media'; }
+    // #EXTM3U con #EXT-X-MAP / segmentos pero sin EXTINF (fMP4): tratarlo como media.
+    if (preg_match('/\.(m4s|mp4|ts|aac)(\?|$)/im', $body)) { return 'media'; }
+    return 'noplaylist';
+}
+
+/** Elige la variante con mayor área (RESOLUTION) y, en empate, mayor BANDWIDTH. */
+function ape_pulse_pick_variant(string $master, string $masterUrl): string
+{
+    $lines = preg_split('/\r?\n/', $master);
+    $pu = parse_url($masterUrl);
+    $origin = (($pu['scheme'] ?? 'http') . '://' . ($pu['host'] ?? ''));
+    if (!empty($pu['port'])) { $origin .= ':' . $pu['port']; }
+    $dir = rtrim(dirname($pu['path'] ?? '/'), '/');
+    $best = '';
+    $bestScore = -1;
+    $n = count($lines);
+    for ($i = 0; $i < $n; $i++) {
+        $t = trim($lines[$i]);
+        if (stripos($t, '#EXT-X-STREAM-INF:') !== 0) { continue; }
+        $bw = 0;
+        if (preg_match('/BANDWIDTH=(\d+)/i', $t, $m)) { $bw = (int) $m[1]; }
+        $area = 0;
+        if (preg_match('/RESOLUTION=(\d+)x(\d+)/i', $t, $m)) { $area = (int) $m[1] * (int) $m[2]; }
+        $uri = '';
+        for ($j = $i + 1; $j < $n; $j++) {
+            $c = trim($lines[$j]);
+            if ($c === '' || $c[0] === '#') { continue; }
+            $uri = $c;
+            break;
+        }
+        if ($uri === '') { continue; }
+        if (stripos($uri, '#EXT-X-I-FRAME') !== false) { continue; }
+        $score = $area > 0 ? $area : $bw;
+        if ($score > $bestScore) {
+            $bestScore = $score;
+            $best = ($uri[0] === '/') ? $origin . $uri : (preg_match('#^https?://#i', $uri) ? $uri : $origin . $dir . '/' . $uri);
+        }
+    }
+    return $best;
+}
+
+/** Fetch de una playlist con el UA del player. Devuelve [body, code, effective]. */
+function ape_pulse_fetch(string $u, string $ua): array
+{
+    $ch = curl_init($u);
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_FOLLOWLOCATION => true,
+        CURLOPT_MAXREDIRS      => 4,
+        CURLOPT_CONNECTTIMEOUT => 4,
+        CURLOPT_TIMEOUT        => 6,
+        CURLOPT_ENCODING       => '',
+        CURLOPT_USERAGENT      => $ua !== '' ? $ua : 'IPTVSmartersPro',
+        CURLOPT_HTTPHEADER     => ['Accept: */*'],
+        CURLOPT_SSL_VERIFYPEER => false,
+        CURLOPT_SSL_VERIFYHOST => 0,
+    ]);
+    $body = (string) curl_exec($ch);
+    $code = (int) curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
+    $eff  = (string) curl_getinfo($ch, CURLINFO_EFFECTIVE_URL);
+    curl_close($ch);
+    return [$body, $code, $eff];
+}
+
 // ── 4c · Modo PROXY: la media playlist la sirve el VPS (una sola conexión) ────
 // MOTIVO MEDIDO (2026-11-05): en modo redirect, el player del operador (Fire TV)
 // abre DOS peticiones simultáneas del mismo manifest en cada recarga; el
@@ -190,57 +316,104 @@ if ($zap && is_file(PULSE_CANARY_FLAG)) {
 // recarga obtiene token fresco. Si el proveedor falla, se cae a 302 (el player
 // habla directo, como antes).
 if ($mode === 'proxy') {
-    $plKey = 'ape_pulse_pl_' . sha1($u);
+    // [ROOT-FIX 2026-11-05] Normalizar primero: /cdn/<prov>/<ruta> -> proveedor.
+    $uNorm = ape_pulse_norm_upstream($u);
+    if ($uNorm === '') {
+        header('Content-Type: application/json; charset=utf-8');
+        header('X-APE-Pulse: logged;mode=proxy;upstream=self_or_invalid');
+        http_response_code(502);
+        echo '{"ok":false,"error":"upstream_self_reference","hint":"url /cdn/<host>/<path> no normalizable"}';
+        exit;
+    }
+    $h = sha1($uNorm);
+    $plKey   = 'ape_pulse_pl_' . $h;      // 2 s  : recargas simultáneas (anti-509)
+    $goodKey = 'ape_pulse_good_' . $h;    // 60 s : última playlist válida (stale)
+    $lockKey = 'ape_pulse_lock_' . $h;    // 3 s  : single-flight
+
+    // 1) cache corta
     $cached = function_exists('apcu_fetch') ? apcu_fetch($plKey) : false;
-    $body = is_array($cached) && !empty($cached['body']) ? (string)$cached['body'] : '';
+    $body = is_array($cached) && !empty($cached['body']) ? (string) $cached['body'] : '';
+    $kind = is_array($cached) && !empty($cached['kind']) ? (string) $cached['kind'] : 'media';
     $fromCache = ($body !== '');
+
     if (!$fromCache) {
-        $ch = curl_init($u);
-        $uaReq = $uaPulse !== '' ? $uaPulse : 'IPTVSmartersPro';
-        curl_setopt_array($ch, [
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_FOLLOWLOCATION => true,
-            CURLOPT_MAXREDIRS      => 4,
-            CURLOPT_CONNECTTIMEOUT => 4,
-            CURLOPT_TIMEOUT        => 6,
-            CURLOPT_ENCODING       => '',
-            CURLOPT_USERAGENT      => $uaReq,
-            CURLOPT_HTTPHEADER     => ['Accept: */*'],
-            CURLOPT_SSL_VERIFYPEER => false,
-            CURLOPT_SSL_VERIFYHOST => 0,
-        ]);
-        $raw  = (string)curl_exec($ch);
-        $code = (int)curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
-        $eff  = (string)curl_getinfo($ch, CURLINFO_EFFECTIVE_URL);
-        curl_close($ch);
-        if ($code === 200 && strpos($raw, '#EXTM3U') !== false) {
-            $pu = parse_url($eff);
-            $origin = (($pu['scheme'] ?? 'http') . '://' . ($pu['host'] ?? ''));
-            if (!empty($pu['port'])) { $origin .= ':' . $pu['port']; }
-            $dir = rtrim(dirname($pu['path'] ?? '/'), '/');
-            $lines = preg_split('/\r?\n/', $raw);
-            $n = count($lines);
-            for ($i = 0; $i < $n; $i++) {
-                $t = trim($lines[$i]);
-                if ($t === '' || $t[0] === '#' || preg_match('#^[a-z][a-z0-9+.-]*://#i', $t) || strpos($t, 'data:') === 0) {
-                    continue;
+        // 2) single-flight: si otro worker ya está pidiendo este canal, esperar su cache
+        $gotLock = true;
+        if (function_exists('apcu_add')) {
+            $gotLock = (bool) apcu_add($lockKey, 1, 3);
+        }
+        if (!$gotLock) {
+            for ($w = 0; $w < 12; $w++) {
+                usleep(150000);
+                $c2 = function_exists('apcu_fetch') ? apcu_fetch($plKey) : false;
+                if (is_array($c2) && !empty($c2['body'])) {
+                    $body = (string) $c2['body'];
+                    $kind = (string) ($c2['kind'] ?? 'media');
+                    $fromCache = true;
+                    break;
                 }
-                $lines[$i] = ($t[0] === '/') ? $origin . $t : $origin . $dir . '/' . $t;
             }
-            $body = implode("\n", $lines) . "\n";
-            if (function_exists('apcu_store')) { apcu_store($plKey, ['body' => $body], 2); }
-        } else {
-            // Fallback: que el player hable con el proveedor como antes.
-            header('X-APE-Pulse: logged;mode=redirect;proxy_fallback=' . $code);
-            header('Cache-Control: no-store, no-cache, must-revalidate');
-            header('Location: ' . $u, true, 302);
-            exit;
+        }
+        if (!$fromCache) {
+            list($raw, $code, $eff) = ape_pulse_fetch($uNorm, $uaPulse);
+            // 3) retry único para 5xx / 513 / 0
+            if (($code === 0 || $code >= 500 || $code === 513)) {
+                usleep(250000);
+                list($raw, $code, $eff) = ape_pulse_fetch($uNorm, $uaPulse);
+            }
+            $kind = ape_pulse_kind($raw);
+            $ok = ($code === 200 && $kind !== 'noplaylist');
+            if ($ok && $kind === 'master') {
+                $variant = ape_pulse_pick_variant($raw, $eff);
+                if ($variant !== '') {
+                    list($mraw, $mcode, $meff) = ape_pulse_fetch($variant, $uaPulse);
+                    if ($mcode === 200 && ape_pulse_kind($mraw) === 'media') {
+                        $body = ape_pulse_absolutize($mraw, $meff);
+                        $kind = 'media';
+                    } else {
+                        $ok = false;
+                        $code = $mcode;
+                    }
+                } else {
+                    $ok = false;
+                    $code = 502;
+                }
+            } elseif ($ok) {
+                $body = ape_pulse_absolutize($raw, $eff);
+            }
+
+            if ($ok) {
+                if (function_exists('apcu_store')) {
+                    apcu_store($plKey, ['body' => $body, 'kind' => $kind], 2);
+                    apcu_store($goodKey, ['body' => $body], 60);
+                }
+            } else {
+                // 4) stale-while-error: última playlist buena (60 s) antes que un error
+                $good = function_exists('apcu_fetch') ? apcu_fetch($goodKey) : false;
+                if (is_array($good) && !empty($good['body'])) {
+                    header('Content-Type: application/x-mpegURL');
+                    header('Cache-Control: no-cache, no-store, must-revalidate');
+                    header('X-APE-Pulse: logged;mode=proxy;stale=1;upstream_code=' . $code
+                        . ';zapping=' . ($zap ? '1' : '0'));
+                    echo (string) $good['body'];
+                    exit;
+                }
+                // [HARDENING] NUNCA 302: un 302 a un upstream roto hacía que el
+                // player parseara JSON/HTML y abortara con "unexpected type".
+                // Al player sólo le llega un manifest o un 502 con motivo.
+                header('Content-Type: application/json; charset=utf-8');
+                header('X-APE-Pulse: logged;mode=proxy;upstream_not_playlist;kind=' . $kind . ';code=' . $code);
+                header('Cache-Control: no-store, no-cache, must-revalidate');
+                http_response_code(502);
+                echo '{"ok":false,"error":"upstream_not_playlist","kind":"' . $kind . '","code":' . $code . '}';
+                exit;
+            }
         }
     }
     header('Content-Type: application/x-mpegURL');
     header('Cache-Control: no-cache, no-store, must-revalidate');
     header('X-APE-Pulse: logged;mode=proxy;zapping=' . ($zap ? '1' : '0')
-        . ';cache=' . ($fromCache ? 'hit' : 'miss'));
+        . ';cache=' . ($fromCache ? 'hit' : 'miss') . ';kind=' . $kind);
     echo $body;
     exit;
 }
@@ -255,14 +428,32 @@ if ($mode === 'redirect') {
 }
 
 // cartridge: reutiliza EXACTAMENTE el mismo generador que /url2/ (sin duplicar 904 líneas)
+// POLIMORFISMO: el mismo canal se entrega con el vocabulario de CADA player.
+//   VLC             -> vlc     (EXTVLCOPT + cadena de filtros NATIVA de VLC)
+//   Kodi/LibreELEC  -> kodi    (KODIPROP / inputstream.adaptive)
+//   ExoPlayer/OTT/TiviMate/Smarters -> android (solo #EXT-X-* + #EXTHTTP)
+//   resto           -> full    (compatibilidad total)
+// Determinista por UA: mismo cliente => mismo dialecto (idempotente).
+$dialect = 'full';
+if (preg_match('/(VLC|LibVLC)/i', $uaPulse)) {
+    $dialect = 'vlc';
+} elseif (preg_match('/(Kodi|LibreELEC)/i', $uaPulse)) {
+    $dialect = 'kodi';
+} elseif (preg_match('/(ExoPlayer)/i', $uaPulse)) {
+    $dialect = 'exo';   // ExoPlayer/Media3: CMaf/HLS estandar + sin ruido VLC/Kodi
+} elseif (preg_match('/(OTT\s*Navigator|TiviMate|IPTVSmarters|Smarters|Perfect\s*Player)/i', $uaPulse)) {
+    $dialect = 'android';
+}
+$_GET['dialect'] = $dialect;
 $_GET['u']    = $u;
 $_GET['p']    = strtoupper((string)($_GET['p'] ?? 'P3'));
 $_GET['mode'] = 'master';
 if (!isset($_GET['n']) || $_GET['n'] === '') { $_GET['n'] = $id; }
 if (!isset($_GET['c'])) { $_GET['c'] = $id; }
 if (!isset($_GET['id']) || $_GET['id'] === '') { $_GET['id'] = $id; }
-header('X-APE-Pulse: logged;mode=cartridge;zapping=' . ($zap ? '1' : '0') . ';canary=' . ($canaryId !== '' ? '1' : '0'));
+header('X-APE-Pulse: logged;mode=cartridge;dialect=' . $dialect . ';zapping=' . ($zap ? '1' : '0') . ';canary=' . ($canaryId !== '' ? '1' : '0'));
 require __DIR__ . '/url2-cartridge.php';
+
 
 
 

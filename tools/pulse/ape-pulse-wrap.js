@@ -40,7 +40,7 @@ const crypto = require('crypto');
 const { ApeUrlBuilder } = require(process.env.APE_URL_BUILDER || '/opt/ape-pulse/ape-url-builder.js');
 
 const POLICY_VERSION = '1';
-const WRAPPER_VERSION = '1.4.0';
+const WRAPPER_VERSION = '1.5.0';
 const PULSE_BASE_DEFAULT = 'https://iptv-ape.duckdns.org/pulse';
 const ALREADY = /\/(pulse|url2)\//i;
 
@@ -114,7 +114,29 @@ function write(line) {
   out.write(line);
 }
 
+/**
+ * [NORMALIZACIÓN 2026-11-05] Listas CDN: las URLs vienen autoreferentes
+ *   https://iptv-ape.duckdns.org/cdn/<proveedor>/<ruta>
+ * y el proveedor responde 513/461 a la ruta SIN extensión (y 200 a `.m3u8`).
+ * Se normaliza ANTES de envolver para que el `u=` del pulso apunte directo al
+ * proveedor y con extensión. El pulso también normaliza en tiempo de petición
+ * (defensa en profundidad), pero así la lista nace limpia.
+ */
+function normalizeUpstream(u) {
+  try {
+    const m = /^https?:\/\/iptv-ape\.duckdns\.org\/cdn\/([^/]+)\/(.*)$/i.exec(u);
+    if (!m) return u;
+    let p = m[2].replace(/^\/+/, '');
+    if (!/\.[A-Za-z0-9]{1,5}$/.test(p)) p += '.m3u8';
+    counters.normalized = (counters.normalized || 0) + 1;
+    return 'http://' + m[1] + '/' + p;
+  } catch (e) {
+    return u;
+  }
+}
+
 function transformUrl(url) {
+  url = normalizeUpstream(url);
   if (ALREADY.test(url)) { counters.already++; return url; }
   if (!/^https?:\/\//i.test(url)) return url;
   seq++;
@@ -223,6 +245,7 @@ stream.on('end', () => {
     process.exit(counters.errors ? 1 : 0);
   });
 });
+
 
 
 
