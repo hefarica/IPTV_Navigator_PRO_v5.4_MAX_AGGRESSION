@@ -153,9 +153,11 @@ function ara_sync_reply(int $status, array $body, array $headers = []): void
     exit;
 }
 
-function ara_sync_fail(int $status, string $error): void
+function ara_sync_fail(int $status, string $error, array $extra = []): void
 {
-    ara_sync_reply($status, ['ok' => false, 'error' => $error]);
+    // `extra` sólo lo usa el 400 de validación para devolver el NOMBRE del campo
+    // inválido (`detail`), nunca un valor. Auth/503/413 no lo pasan.
+    ara_sync_reply($status, array_merge(['ok' => false, 'error' => $error], $extra));
 }
 
 function ara_sync_unauthorized(): void
@@ -565,7 +567,8 @@ function ara_sync_validate_request(array $p): ?string
     }
     foreach ($features as $name => $entry) {
         if (!ara_sync_validate_feature((string) $name, $entry)) {
-            return 'bad_feature';
+            // [DIAG] sólo el NOMBRE del campo (contrato), nunca su valor.
+            return 'bad_feature:' . preg_replace('/[^A-Za-z0-9_.-]/', '', (string) $name);
         }
     }
     $source = $metrics['source'] ?? null;
@@ -735,6 +738,17 @@ function ara_sync_unmapped_policy(array $payload, array $artifact, int $now): ar
         'profile' => ['active' => 'P2', 'blend' => ['P2' => 1], 'reason' => 'offline_safe_default'],
         'player' => [
             'buffer_s' => 45,
+            // [FASE3] objetivo de buffer del plan (120 s) y reintento sin degradar
+            'buffer_target_s' => 120,
+            // Reintento declarado para que el player no baje resolución ante
+            // 429/5xx: backoff corto, redirects siempre y sin degradar.
+            'retry_policy' => [
+                'max_attempts' => 4,
+                'backoff_ms' => [400, 1200, 3000, 6000],
+                'retry_on' => [429, 500, 502, 503, 504],
+                'follow_redirects' => true,
+                'never_degrade' => true,
+            ],
             'abr_bw_factor' => 0.78,
             'reconnect_attempts' => 156,
             'live_delay_s' => 10,
@@ -747,6 +761,7 @@ function ara_sync_unmapped_policy(array $payload, array $artifact, int $now): ar
             'wire_resolution' => '1920x1080',
             'min_resolution' => '1920x1080',
             'never_downscale' => true,
+            'never_drop_resolution' => true,
             'eight_k' => 'disabled',
             'hdr_hint' => 'SDR',
         ],
@@ -841,6 +856,18 @@ function ara_sync_build_policy(array $payload, array $artifact, ?array $content,
     $profile = ['active' => $active, 'blend' => $blend, 'reason' => $reason];
     $player = [
         'buffer_s' => ($thermalGuard || $stabilityGuard) ? 60 : 45,
+        // [FASE3 2026-11-05] Plan FASE 0-1: buffer objetivo 120 s + reintento sin
+        // degradar resolucion. buffer_s se conserva por compatibilidad con el APK
+        // actual; buffer_target_s es el nuevo objetivo.
+        'buffer_target_s' => 120,
+        // Reintento declarado: backoff corto, redirects siempre, sin degradar.
+        'retry_policy' => [
+            'max_attempts' => 4,
+            'backoff_ms' => [400, 1200, 3000, 6000],
+            'retry_on' => [429, 500, 502, 503, 504],
+            'follow_redirects' => true,
+            'never_degrade' => true,
+        ],
         'abr_bw_factor' => $stabilityGuard ? 0.7 : 0.78,
         'reconnect_attempts' => 156,
         'live_delay_s' => 10,
@@ -852,6 +879,8 @@ function ara_sync_build_policy(array $payload, array $artifact, ?array $content,
         'wire_resolution' => $minRes,
         'min_resolution' => $minRes,
         'never_downscale' => true,
+        // [FASE3] La resolución no se toca nunca: el orden de degradación no la incluye.
+        'never_drop_resolution' => true,
         'eight_k' => 'presentation_only',
         'hdr_hint' => $hdrHint,
     ];
@@ -861,7 +890,9 @@ function ara_sync_build_policy(array $payload, array $artifact, ?array $content,
         'limits' => ['light_c' => 60, 'moderate_c' => 66, 'severe_c' => 72, 'critical_c' => 78],
     ];
     $processing = ['tier' => $thermalGuard ? 'minimal' : ($stabilityGuard ? 'balanced' : 'quality')];
-    $degrade = ['order' => in_array($soc, ara_sync_no_wire_8k(), true) ? ['fps', 'processing'] : ['fps', 'processing', 'resolution']];
+    // [FASE3] never_drop_resolution=true => la resolucion NUNCA entra en el orden de
+    // degradacion. Solo fps y processing (plan FASE 3: degrade_order=['fps','processing']).
+    $degrade = ['order' => ['fps', 'processing']];
     $controls = ['sync_next_s' => 30, 'flags' => $flags, 'degrade_mask' => 0];
     $ref = [
         'artifact_sha256' => $artifact['artifact_sha256'],
@@ -1076,7 +1107,9 @@ if (!is_array($payload)) {
 
 $problem = ara_sync_validate_request($payload);
 if ($problem !== null) {
-    ara_sync_fail(400, 'invalid_payload');
+    // [DIAG] El motivo es un NOMBRE DE CAMPO del contrato (no un valor ni un
+    // secreto): ayuda al APK y al smoke a corregir el payload sin SSH.
+    ara_sync_fail(400, 'invalid_payload', ['detail' => $problem]);
 }
 
 // Auth: store de claves por dispositivo (R6-D3-AUTH-01/05/08). Sin store => 503.
@@ -1273,3 +1306,7 @@ http_response_code(200);
 header('X-ARA-Sig: ' . $respSig);
 header('X-ARA-Policy-Etag: ' . $policy['policy_etag']);
 echo $rawResponse;
+
+
+
+

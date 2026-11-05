@@ -61,6 +61,13 @@ async function request(method, path, body, headers = {}) {
   };
 }
 
+/** Diagnóstico: cuando una respuesta no es la esperada, imprime el cuerpo (sin secretos). */
+function explain(path, r) {
+  if (r.status >= 400 && r.body) {
+    console.error(`     ${path} -> ${r.status}: ${String(r.body).slice(0, 240)}`);
+  }
+}
+
 function payload(seq, nonce) {
   const now = Math.floor(Date.now() / 1000);
   return {
@@ -144,6 +151,7 @@ function signed(seq, nonce) {
       const seq = Math.floor(Date.now() / 1000);
       const s = signed(seq, (tag + 'a').padEnd(16, '0').slice(0, 16));
       const r = await request('POST', '/sync', s.raw, s.headers);
+      explain('/sync', r);
       const ok = record('200 HMAC válido', r.status, 200);
       if (ok) {
         const sig = r.headers['x-ara-sig'] || '';
@@ -151,6 +159,23 @@ function signed(seq, nonce) {
         const canonical = ['ARA-X-SYNC-RESP-V1', DEVICE, String(seq), String(JSON.parse(r.body).ts), bodyHash].join('\n');
         const want = crypto.createHmac('sha256', KEY).update(canonical).digest('hex');
         record('200 firma de respuesta', sig === want ? 200 : 0, 200);
+        // [FASE3] Inspección de los campos nuevos: buffer_target_s, retry_policy,
+        // never_drop_resolution y degrade.order sin 'resolution'.
+        try {
+          const p = JSON.parse(r.body);
+          const pl = p.player || {};
+          const dp = p.display || {};
+          const dg = (p.degrade && p.degrade.order) || [];
+          const rp = pl.retry_policy || {};
+          console.log(`     buffer_s=${pl.buffer_s} buffer_target_s=${pl.buffer_target_s}`);
+          console.log(`     retry_policy=${JSON.stringify(rp)}`);
+          console.log(`     never_downscale=${dp.never_downscale} never_drop_resolution=${dp.never_drop_resolution}`);
+          console.log(`     degrade.order=${JSON.stringify(dg)}`);
+          record('buffer_target_s=120', pl.buffer_target_s === 120 ? 200 : 0, 200);
+          record('never_drop_resolution=true', dp.never_drop_resolution === true ? 200 : 0, 200);
+          record('retry_policy presente', (rp.max_attempts | 0) >= 1 && Array.isArray(rp.retry_on) ? 200 : 0, 200);
+          record('degrade.order sin resolution', dg.includes('resolution') ? 0 : 200, 200);
+        } catch (e) { record('campos FASE3', 0, 200, e.message); }
       }
     } catch (e) { record('200 HMAC válido', 0, 200, e.message); }
   } else {
@@ -202,3 +227,4 @@ function signed(seq, nonce) {
   console.error('SYNC SMOKE ERROR:', e.message);
   process.exit(2);
 });
+
