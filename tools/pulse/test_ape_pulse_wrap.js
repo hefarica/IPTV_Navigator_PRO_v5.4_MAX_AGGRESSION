@@ -27,6 +27,7 @@ const SRC = [
   'http://line.tivi-ott.net/live/U/P/3.m3u8',
   '#EXTINF:-1 tvg-id="9" tvg-chno="9" tvg-name="KLAN 4K" group-title="4K PREMIUM",KLAN 4K',
   'http://line.tivi-ott.net/live/U/P/9.m3u8',
+  '#EXT-X-I-FRAME-STREAM-INF:BANDWIDTH=672500,CODECS="hvc1.2.4.L153.B0"',
   '#EXTINF:-1 tvg-id="77" tvg-chno="77" tvg-name="CANAL CON HEADERS INLINE" group-title="TEST",CANAL CON HEADERS INLINE',
   'http://line.tivi-ott.net/live/U/P/77.m3u8|User-Agent=Kodi/20.5&Cache-Control=no-cache',  '#EXTINF:-1 tvg-id="12" tvg-chno="12" tvg-name="SD CHANNEL" group-title="SD",SD CHANNEL',
   'http://line.tivi-ott.net/live/U/P/12.m3u8',
@@ -55,8 +56,10 @@ const textA = fs.readFileSync(path.join(tmp, 'a.m3u8'), 'utf8');
   const count = (arr, p) => arr.filter(x => p(x)).length;
   ok('mismo número de #EXTINF', count(srcLines, x => x.startsWith('#EXTINF')) === count(outLines, x => x.startsWith('#EXTINF')),
     count(srcLines, x => x.startsWith('#EXTINF')) + ' vs ' + count(outLines, x => x.startsWith('#EXTINF')));
-  ok('mismas directivas no-URL (byte a byte)',
-    JSON.stringify(srcLines.filter(x => x.startsWith('#'))) === JSON.stringify(outLines.filter(x => x.startsWith('#'))));
+  // Excepción deliberada y documentada: #EXT-X-I-FRAME-STREAM-INF sin URI se descarta.
+  const dirs = (arr) => arr.filter(x => x.startsWith('#') && !x.startsWith('#EXT-X-I-FRAME-STREAM-INF'));
+  ok('mismas directivas no-URL (byte a byte, salvo I-FRAME sin URI)',
+    JSON.stringify(dirs(srcLines)) === JSON.stringify(dirs(outLines)));
   ok('una sola URL por canal', count(outLines, x => /^https?:\/\//.test(x)) === 4);
   ok('cabecera intacta', outLines[0] === '#EXTM3U');
 }
@@ -65,6 +68,7 @@ const textA = fs.readFileSync(path.join(tmp, 'a.m3u8'), 'utf8');
 {
   ok('4 canales envueltos (uno con headers inline)', a.wrapped === 4, JSON.stringify(a));
   ok('saneo de URL con |headers contado', a.sanitized === 1, JSON.stringify(a));
+  ok('I-FRAME-STREAM-INF sin URI descartado (rompía players estrictos)', a.dropped_iframe === 1 && !/I-FRAME-STREAM-INF/.test(textA), JSON.stringify({d:a.dropped_iframe}));
   ok('perfiles distintos por clase (P0 4K / P3 FHD / P5 SD)',
     a.profiles.P0 === 1 && a.profiles.P3 === 2 && a.profiles.P5 === 1, JSON.stringify(a.profiles));
   const urls = textA.split('\n').filter(x => /^https?:\/\//.test(x));
@@ -92,5 +96,7 @@ console.log(`\n== RESULTADO: ${pass} PASS · ${fail} FAIL ==`);
 if (fail) { console.log('Fallos:'); fallos.forEach(f => console.log('  - ' + f)); }
 try { fs.rmSync(tmp, { recursive: true, force: true }); } catch (_) { }
 process.exit(fail ? 1 : 0);
+
+
 
 

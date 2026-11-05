@@ -5918,6 +5918,12 @@ if ($apeObsBps <= 0) {
 
 foreach ($lines as $line) {
     if (!$withExtinf && strncmp($line, '#EXTINF:', 8) === 0) { continue; }
+    // [STRICT-PARSER 2026-11-05] `#EXT-X-I-FRAME-STREAM-INF` EXIGE URI="..." (RFC 8216
+    // §4.3.4.3). El cartucho lo traía como METADATA sin URI y el player del operador
+    // aborta el canal con "Couldn't match URI=\"(.+?)\" in #EXT-X-I-FRAME-STREAM-INF".
+    // Como se sirve UNA sola URL por canal y no hay trick-play, el tag no aporta nada:
+    // se omite. No se toca nada más (ni codec, ni resolución, ni BANDWIDTH).
+    if (strncasecmp($line, '#EXT-X-I-FRAME-STREAM-INF', 25) === 0) { continue; }
     $out = strtr($line, $map);
     // Overrides por device: solo si el cartucho trae la clave exacta.
     // [FIX 2026-11-05 · REGRESIÓN MEDIDA] Las claves de $dynMap son PREFIJOS de línea
@@ -5985,3 +5991,4 @@ try {
 }
 
 echo $u . "\n";
+

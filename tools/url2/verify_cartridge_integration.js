@@ -53,6 +53,7 @@ function inspect(body) {
     attr: lines.filter(l => l.startsWith('#EXTATTRFROMURL:')).length,
     cmf: lines.filter(l => l.startsWith('#EXT-X-CMAF-')).length,
     device: lines.find(l => l.startsWith('#EXT-X-APE-URL2-DEVICE:')) || '',
+    iframe: lines.filter(l => l.startsWith('#EXT-X-I-FRAME-STREAM-INF')).length,
     header: lines.find(l => l.startsWith('#EXT-X-APE-URL2-CARTRIDGE:')) || '',
     toxic: TOXIC.test(exthttp),
     hvInVlc: lines.some(l => /^#EXTVLCOPT:.*hvc1\./i.test(l)) || lines.some(l => /^#KODIPROP:.*hvc1\./i.test(l)),
@@ -70,6 +71,7 @@ function assertCartridge(label, body, expectedProfile) {
   ok(`${label}: EXTHTTP JSON válido y ≤8192 B`, r.jsonOk && r.exthttpBytes > 0 && r.exthttpBytes <= 8192, `${r.exthttpBytes} B json=${r.jsonOk}`);
   ok(`${label}: 0 headers tóxicos`, r.toxic === false);
   ok(`${label}: GOLDEN RULE (hvc1 sólo en STREAM-INF)`, r.hvInVlc === false && r.hevInSi === false);
+  ok(`${label}: sin #EXT-X-I-FRAME-STREAM-INF sin URI (rompe players estrictos)`, r.iframe === 0, 'iframe=' + r.iframe);
   ok(`${label}: EXTVLCOPT/KODIPROP/APE/EXTATTR presentes`, r.vlcopt >= 100 && r.kodiprop >= 80 && r.ape >= 500 && r.attr >= 40,
     `vlc=${r.vlcopt} kodi=${r.kodiprop} ape=${r.ape} attr=${r.attr}`);
   ok(`${label}: exactamente UNA URL`, r.urls.length === 1, 'urls ' + r.urls.length);
@@ -128,4 +130,5 @@ function assertCartridge(label, body, expectedProfile) {
   if (fail) { console.log('Fallos:'); fallos.forEach(f => console.log('  - ' + f)); }
   process.exit(fail ? 1 : 0);
 })().catch(e => { console.error('ERROR:', e && e.message); process.exit(1); });
+
 

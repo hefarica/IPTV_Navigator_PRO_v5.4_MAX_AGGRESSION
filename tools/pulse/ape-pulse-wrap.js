@@ -40,7 +40,7 @@ const crypto = require('crypto');
 const { ApeUrlBuilder } = require(process.env.APE_URL_BUILDER || '/opt/ape-pulse/ape-url-builder.js');
 
 const POLICY_VERSION = '1';
-const WRAPPER_VERSION = '1.1.0';
+const WRAPPER_VERSION = '1.2.0';
 const PULSE_BASE_DEFAULT = 'https://iptv-ape.duckdns.org/pulse';
 const ALREADY = /\/(pulse|url2)\//i;
 
@@ -156,6 +156,13 @@ function onLine(line) {
     write(line);
     return;
   }
+  // [STRICT-PARSER] `#EXT-X-I-FRAME-STREAM-INF` sin URI= rompe players estrictos
+  // (medido: "Couldn't match URI=\"(.+?)\"" en Fire Stick). Se descarta del listado
+  // servido; es metadata inútil aquí (una sola URL por canal, sin trick-play).
+  if (line.startsWith('#EXT-X-I-FRAME-STREAM-INF')) {
+    counters.dropped_iframe = (counters.dropped_iframe || 0) + 1;
+    return;
+  }
   if (line && !line.startsWith('#') && /^https?:\/\//i.test(line.trim())) {
     counters.urls++;
     if (!cur.name && !cur.id) counters.skipped_no_inf++;
@@ -202,6 +209,7 @@ stream.on('end', () => {
       bytes: fs.statSync(outPath).size,
       channels: counters.extinf, urls: counters.urls,
       wrapped: counters.wrapped, already: counters.already, sanitized: counters.sanitized || 0,
+      dropped_iframe: counters.dropped_iframe || 0,
       profiles: counters.profiles, errors: counters.errors,
     };
     if (statePath) {
@@ -211,6 +219,7 @@ stream.on('end', () => {
     process.exit(counters.errors ? 1 : 0);
   });
 });
+
 
 
 
