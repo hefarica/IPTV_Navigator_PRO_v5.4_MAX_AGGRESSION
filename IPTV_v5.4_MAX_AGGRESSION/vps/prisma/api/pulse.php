@@ -89,17 +89,20 @@ $zap = (isset($_GET['z']) && (string)$_GET['z'] === '1');
 // VLC, ExoPlayer de Android TV, Kodi y OTT sí aceptan el master y usan el
 // cartucho. Por eso el DEFAULT depende del cliente; `m=` explícito manda.
 $uaPulse = (string)($_SERVER['HTTP_USER_AGENT'] ?? '');
-$strictTv = (bool)preg_match('/(SMART-TV|SmartTV|Tizen|WebOS|webOS|Philips|HbbTV|Roku|CrKey|BRAVIA|NetCast|Vizio|Opera TV)/i', $uaPulse);
-$defaultMode = $strictTv ? 'redirect' : 'cartridge';
+// ── Política de modo (medida, no heurística de TV) ────────────────────────────
+// El master-con-cartucho SOLO se sirve a clientes que han demostrado aceptarlo:
+// VLC/LibVLC, Kodi/LibreELEC, ExoPlayer, OTT Navigator, TiviMate, Smarters.
+// A TODOS los demás se les da 302 a la URL verbatim del proveedor (media
+// playlist real). Motivo medido 2026-11-05: el player real del operador es un
+// Fire TV (UA "Xtream-Codes/2.5 IPTV" y "Dalvik/2.1.0 ... AFTWMST22"): recibe
+// 200 con el cartucho (gzip ~15,9 KB) y aborta con "Loaded playlist has
+// unexpected type." porque espera media playlist. La compatibilidad manda.
+$cartridgeCapable = (bool)preg_match('/(VLC|LibVLC|Kodi|LibreELEC|ExoPlayer|OTT\s*Navigator|TiviMate|IPTVSmarters|Smarters|Perfect\s*Player)/i', $uaPulse);
+$defaultMode = 'redirect';
 $mode = strtolower((string)($_GET['m'] ?? $defaultMode));
 if ($mode !== 'redirect' && $mode !== 'cartridge') { $mode = $defaultMode; }
-// [COMPAT] En una TV estricta NO se sirve master aunque la URL traiga
-// m=cartridge: medido 2026-11-05 08:00Z — el player seguia con una lista
-// cacheada que llevaba m=cartridge y volvia a fallar. En esa clase de cliente el
-// cartucho es inservible por definicion, asi que se degrada a 302 (el player
-// recibe la media playlist real del proveedor). El resto de clientes conserva
-// cartridge. Se anuncia en la cabecera con forced=strict-tv.
-$forcedStrict = ($strictTv && $mode === 'cartridge');
+// Forzado a redirect si el cliente no está en la allowlist, aunque pida cartridge.
+$forcedStrict = ($mode === 'cartridge' && !$cartridgeCapable);
 if ($forcedStrict) { $mode = 'redirect'; }
 
 if ($u === '') { pulse_fail(400, 'falta u'); }
@@ -179,7 +182,7 @@ if ($zap && is_file(PULSE_CANARY_FLAG)) {
 // ── 5 · Responder ─────────────────────────────────────────────────────────────
 if ($mode === 'redirect') {
     header('X-APE-Pulse: logged;mode=redirect;zapping=' . ($zap ? '1' : '0')
-        . (!empty($forcedStrict) ? ';forced=strict-tv' : ''));
+        . (!empty($forcedStrict) ? ';forced=ua-not-capable' : ''));
     header('Cache-Control: no-store, no-cache, must-revalidate');
     header('Location: ' . $u, true, 302);
     exit;
@@ -194,6 +197,7 @@ if (!isset($_GET['c'])) { $_GET['c'] = $id; }
 if (!isset($_GET['id']) || $_GET['id'] === '') { $_GET['id'] = $id; }
 header('X-APE-Pulse: logged;mode=cartridge;zapping=' . ($zap ? '1' : '0') . ';canary=' . ($canaryId !== '' ? '1' : '0'));
 require __DIR__ . '/url2-cartridge.php';
+
 
 
 

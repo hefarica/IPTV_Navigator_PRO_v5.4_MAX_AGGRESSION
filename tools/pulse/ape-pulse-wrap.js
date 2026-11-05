@@ -40,7 +40,7 @@ const crypto = require('crypto');
 const { ApeUrlBuilder } = require(process.env.APE_URL_BUILDER || '/opt/ape-pulse/ape-url-builder.js');
 
 const POLICY_VERSION = '1';
-const WRAPPER_VERSION = '1.3.0';
+const WRAPPER_VERSION = '1.4.0';
 const PULSE_BASE_DEFAULT = 'https://iptv-ape.duckdns.org/pulse';
 const ALREADY = /\/(pulse|url2)\//i;
 
@@ -139,10 +139,11 @@ function transformUrl(url) {
     return url;
   }
   counters.wrapped++;
-  // [MODO] No se fuerza m=cartridge: /pulse decide por UA. Los TVs estrictos
-  // (Philips/Tizen/webOS) no aceptan un MASTER donde esperan MEDIA playlist y
-  // necesitan 302; VLC/ExoPlayer/Kodi/OTT si aceptan el master con el cartucho.
-  return built + '&l=' + encodeURIComponent(listName);
+  // [MODO] Se pide cartridge, pero /pulse lo sirve SOLO a clientes capaces
+  // (VLC/Kodi/ExoPlayer/OTT/TiviMate/Smarters). Al resto le da 302 a la URL del
+  // proveedor: medido 2026-11-05 en Fire TV (UA Xtream-Codes/Dalvik), recibe el
+  // master y aborta con "Loaded playlist has unexpected type.".
+  return built + '&m=cartridge&l=' + encodeURIComponent(listName);
 }
 
 let pending = '';
@@ -222,6 +223,7 @@ stream.on('end', () => {
     process.exit(counters.errors ? 1 : 0);
   });
 });
+
 
 
 

@@ -36,23 +36,29 @@ const stripDev = (s) => s.replace(/DEV_[0-9A-Za-z]+/g, 'DEV_X');
     const base = BASE + '/canal.m3u8?' + q({ u: U, c: 'ch5_001' });
     const tvUa = 'Mozilla/5.0 (SMART-TV; PHILIPS; 65PUS9206/12) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Safari/537.36';
     const rTv = await fetch(base, { redirect: 'manual', cache: 'no-store', headers: { 'user-agent': tvUa } });
-    const rVlc = await fetch(base, { redirect: 'manual', cache: 'no-store', headers: { 'user-agent': 'VLC/3.0.20 LibVLC/3.0.20' } });
+    const rVlc = await fetch(base + '&m=cartridge', { redirect: 'manual', cache: 'no-store', headers: { 'user-agent': 'VLC/3.0.20 LibVLC/3.0.20' } });
     const rNone = await fetch(base, { redirect: 'manual', cache: 'no-store' });
     console.log('\n── modo por UA');
     ok('TV estricta (Philips) -> 302 redirect', rTv.status === 302, 'status ' + rTv.status);
     ok('TV estricta: Location == u VERBATIM', (rTv.headers.get('location') || '') === U);
-    ok('VLC -> 200 cartridge', rVlc.status === 200, 'status ' + rVlc.status);
-    ok('sin UA -> 200 cartridge', rNone.status === 200, 'status ' + rNone.status);
+    ok('VLC + m=cartridge -> 200 cartridge', rVlc.status === 200, 'status ' + rVlc.status);
+    ok('sin UA -> 302 (default seguro: solo allowlist recibe cartridge)', rNone.status === 302, 'status ' + rNone.status);
+    const rFire = await fetch(base, { redirect: 'manual', cache: 'no-store', headers: { 'user-agent': 'Dalvik/2.1.0 (Linux; U; Android 11; AFTWMST22 Build/PS7484)' } });
+    ok('Fire TV (Dalvik AFTWMST22) -> 302', rFire.status === 302, 'status ' + rFire.status);
+    const rXtr = await fetch(base, { redirect: 'manual', cache: 'no-store', headers: { 'user-agent': 'Xtream-Codes/2.5 IPTV' } });
+    ok('Fire TV (Xtream-Codes) -> 302', rXtr.status === 302, 'status ' + rXtr.status);
+    const rExo = await fetch(base + '&m=cartridge', { redirect: 'manual', cache: 'no-store', headers: { 'user-agent': 'ExoPlayerLib/2.19.1' } });
+    ok('ExoPlayer + m=cartridge -> 200 cartridge', rExo.status === 200, 'status ' + rExo.status);
     // URL antigua con m=cartridge servida a una TV estricta: debe degradar a 302
     const rForce = await fetch(base + '&m=cartridge', { redirect: 'manual', cache: 'no-store', headers: { 'user-agent': tvUa } });
-    ok('TV estricta + m=cartridge (lista cacheada) -> 302 forzado', rForce.status === 302 && (rForce.headers.get('x-ape-pulse') || '').includes('forced=strict-tv'), 'status ' + rForce.status + ' ' + (rForce.headers.get('x-ape-pulse') || ''));
+    ok('TV estricta + m=cartridge (lista cacheada) -> 302 forzado', rForce.status === 302 && (rForce.headers.get('x-ape-pulse') || '').includes('forced='), 'status ' + rForce.status + ' ' + (rForce.headers.get('x-ape-pulse') || ''));
     const rVlcForce = await fetch(base + '&m=cartridge', { redirect: 'manual', cache: 'no-store', headers: { 'user-agent': 'VLC/3.0.20 LibVLC/3.0.20' } });
     ok('VLC + m=cartridge sigue 200', rVlcForce.status === 200, 'status ' + rVlcForce.status);
   }
   // 2 · cartridge: 200 con cartucho completo (misma máquina que /url2/)
   {
     const url = BASE + '/canal.m3u8?' + q({ u: U, p: 'P1', m: 'cartridge', c: 'ch5_001', id: '3' });
-    const r = await fetch(url, { cache: 'no-store' });
+    const r = await fetch(url, { cache: 'no-store', headers: { 'user-agent': 'VLC/3.0.20 LibVLC/3.0.20' } });
     const body = await r.text();
     const lines = body.split('\n');
     console.log('\n── cartridge');
@@ -69,8 +75,9 @@ const stripDev = (s) => s.replace(/DEV_[0-9A-Za-z]+/g, 'DEV_X');
   // 3 · idempotencia (mismos parámetros -> mismo cuerpo salvo token DEV)
   {
     const url = BASE + '/canal.m3u8?' + q({ u: U, p: 'P3', m: 'cartridge', c: 'ch5_001', id: '3' });
-    const a = await (await fetch(url, { cache: 'no-store' })).text();
-    const b = await (await fetch(url, { cache: 'no-store' })).text();
+    const vlcHdr = { 'user-agent': 'VLC/3.0.20 LibVLC/3.0.20' };
+    const a = await (await fetch(url, { cache: 'no-store', headers: vlcHdr })).text();
+    const b = await (await fetch(url, { cache: 'no-store', headers: vlcHdr })).text();
     console.log('\n── idempotencia');
     ok('mismo parámetro => misma respuesta (DEV rota)', stripDev(a) === stripDev(b));
     ok('el token DEV sí rota (anti-fingerprint)', stripDev(a) === stripDev(b) && a !== b);
@@ -92,7 +99,7 @@ const stripDev = (s) => s.replace(/DEV_[0-9A-Za-z]+/g, 'DEV_X');
   // 5 · el cartucho de /url2/ sigue igual (no regresión al compartir generador)
   {
     const url = CARTRIDGE_BASE + '/canal.m3u8?' + q({ u: U, p: 'P2', id: '3' });
-    const r = await fetch(url, { cache: 'no-store' });
+    const r = await fetch(url, { cache: 'no-store', headers: { 'user-agent': 'VLC/3.0.20 LibVLC/3.0.20' } });
     const t = await r.text();
     console.log('\n── no regresión /url2/');
     ok('/url2/ sigue 200', r.status === 200, 'status ' + r.status);
@@ -103,5 +110,8 @@ const stripDev = (s) => s.replace(/DEV_[0-9A-Za-z]+/g, 'DEV_X');
   if (fail) { console.log('Fallos:'); fallos.forEach(f => console.log('  - ' + f)); }
   process.exit(fail ? 1 : 0);
 })().catch(e => { console.error('ERROR:', e && e.message); process.exit(1); });
+
+
+
 
 
