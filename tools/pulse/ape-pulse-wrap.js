@@ -40,7 +40,7 @@ const crypto = require('crypto');
 const { ApeUrlBuilder } = require(process.env.APE_URL_BUILDER || '/opt/ape-pulse/ape-url-builder.js');
 
 const POLICY_VERSION = '1';
-const WRAPPER_VERSION = '1.2.0';
+const WRAPPER_VERSION = '1.3.0';
 const PULSE_BASE_DEFAULT = 'https://iptv-ape.duckdns.org/pulse';
 const ALREADY = /\/(pulse|url2)\//i;
 
@@ -139,7 +139,10 @@ function transformUrl(url) {
     return url;
   }
   counters.wrapped++;
-  return built + '&m=' + mode + '&l=' + encodeURIComponent(listName);
+  // [MODO] No se fuerza m=cartridge: /pulse decide por UA. Los TVs estrictos
+  // (Philips/Tizen/webOS) no aceptan un MASTER donde esperan MEDIA playlist y
+  // necesitan 302; VLC/ExoPlayer/Kodi/OTT si aceptan el master con el cartucho.
+  return built + '&l=' + encodeURIComponent(listName);
 }
 
 let pending = '';

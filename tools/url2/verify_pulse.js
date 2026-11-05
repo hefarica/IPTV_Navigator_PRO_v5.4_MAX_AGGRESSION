@@ -21,7 +21,7 @@ const stripDev = (s) => s.replace(/DEV_[0-9A-Za-z]+/g, 'DEV_X');
 
   // 1 · redirect (defecto): 302 verbatim, sin seguir
   {
-    const url = BASE + '/canal.m3u8?' + q({ u: U, c: 'ch5_001', d: dev, z: '1' });
+    const url = BASE + '/canal.m3u8?' + q({ u: U, m: 'redirect', c: 'ch5_001', d: dev, z: '1' });
     const r = await fetch(url, { redirect: 'manual', cache: 'no-store' });
     const loc = r.headers.get('location') || '';
     console.log('\n── redirect');
@@ -31,6 +31,19 @@ const stripDev = (s) => s.replace(/DEV_[0-9A-Za-z]+/g, 'DEV_X');
     ok('no-store', (r.headers.get('cache-control') || '').includes('no-store'));
   }
 
+  // 1b · MODO POR UA (medido en Philips 65PUS9206: "Loaded playlist has unexpected type.")
+  {
+    const base = BASE + '/canal.m3u8?' + q({ u: U, c: 'ch5_001' });
+    const tvUa = 'Mozilla/5.0 (SMART-TV; PHILIPS; 65PUS9206/12) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Safari/537.36';
+    const rTv = await fetch(base, { redirect: 'manual', cache: 'no-store', headers: { 'user-agent': tvUa } });
+    const rVlc = await fetch(base, { redirect: 'manual', cache: 'no-store', headers: { 'user-agent': 'VLC/3.0.20 LibVLC/3.0.20' } });
+    const rNone = await fetch(base, { redirect: 'manual', cache: 'no-store' });
+    console.log('\n── modo por UA');
+    ok('TV estricta (Philips) -> 302 redirect', rTv.status === 302, 'status ' + rTv.status);
+    ok('TV estricta: Location == u VERBATIM', (rTv.headers.get('location') || '') === U);
+    ok('VLC -> 200 cartridge', rVlc.status === 200, 'status ' + rVlc.status);
+    ok('sin UA -> 200 cartridge', rNone.status === 200, 'status ' + rNone.status);
+  }
   // 2 · cartridge: 200 con cartucho completo (misma máquina que /url2/)
   {
     const url = BASE + '/canal.m3u8?' + q({ u: U, p: 'P1', m: 'cartridge', c: 'ch5_001', id: '3' });
@@ -67,7 +80,7 @@ const stripDev = (s) => s.replace(/DEV_[0-9A-Za-z]+/g, 'DEV_X');
     ok('file:// -> 400', r2.status === 400, 'status ' + r2.status);
     const r3 = await fetch(BASE + '/canal.m3u8?u=' + encodeURIComponent(U + '\r\nX-Evil: 1'), { redirect: 'manual', cache: 'no-store' });
     ok('CRLF en u -> 400', r3.status === 400, 'status ' + r3.status);
-    const r4 = await fetch(BASE + '/canal.m3u8?' + q({ u: U, d: 'no-es-base64url!!' }), { redirect: 'manual', cache: 'no-store' });
+    const r4 = await fetch(BASE + '/canal.m3u8?' + q({ u: U, m: 'redirect', d: 'no-es-base64url!!' }), { redirect: 'manual', cache: 'no-store' });
     ok('device basura -> se ignora (302 igual)', r4.status === 302, 'status ' + r4.status);
   }
 
@@ -85,3 +98,4 @@ const stripDev = (s) => s.replace(/DEV_[0-9A-Za-z]+/g, 'DEV_X');
   if (fail) { console.log('Fallos:'); fallos.forEach(f => console.log('  - ' + f)); }
   process.exit(fail ? 1 : 0);
 })().catch(e => { console.error('ERROR:', e && e.message); process.exit(1); });
+

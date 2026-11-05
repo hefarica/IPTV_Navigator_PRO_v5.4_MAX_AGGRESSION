@@ -109,7 +109,7 @@ function assertCartridge(label, body, expectedProfile) {
     const res = await fetch(row.url, { cache: 'no-store' });
     const body = await res.text();
     console.log(`\n── ${row.list} · p=${pParam} · HTTP ${res.status} · ${body.length} B`);
-    ok(`${row.list}: URL de lista lleva m=cartridge`, /[?&]m=cartridge/.test(row.url), row.url.slice(0, 80));
+    ok(`${row.list}: URL de lista identifica la lista (l=) y no fuerza modo`, /[?&]l=/.test(row.url) && !/[?&]m=/.test(row.url), row.url.slice(0, 80));
     ok(`${row.list}: HTTP 200 m3u8`, res.status === 200 && /mpegurl/i.test(res.headers.get('content-type') || ''), res.status);
     const r = assertCartridge(row.list, body, pParam);
     ok(`${row.list}: URL final == u (verbatim, SHIELDED)`, r.urls[0] === verbatim, `${String(r.urls[0]).slice(0, 60)} vs ${verbatim.slice(0, 60)}`);

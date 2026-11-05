@@ -82,8 +82,17 @@ $chan = pulse_clean((string)($_GET['n'] ?? ''), 60);
 $list = pulse_clean((string)($_GET['l'] ?? ''), 64);
 $dB = isset($_GET['d']) ? (string)$_GET['d'] : '';
 $zap = (isset($_GET['z']) && (string)$_GET['z'] === '1');
-$mode = strtolower((string)($_GET['m'] ?? 'redirect'));
-if ($mode !== 'redirect' && $mode !== 'cartridge') { $mode = 'redirect'; }
+// ── Modo: cartridge (master con el cartucho) o redirect (302 al proveedor) ────
+// MEDIDO 2026-11-05 en Philips 65PUS9206: al recibir un MASTER playlist
+// (STREAM-INF) donde el player espera un MEDIA playlist, aborta con
+// "Loaded playlist has unexpected type." (4 reintentos en 15 s, log real).
+// VLC, ExoPlayer de Android TV, Kodi y OTT sí aceptan el master y usan el
+// cartucho. Por eso el DEFAULT depende del cliente; `m=` explícito manda.
+$uaPulse = (string)($_SERVER['HTTP_USER_AGENT'] ?? '');
+$strictTv = (bool)preg_match('/(SMART-TV|SmartTV|Tizen|WebOS|webOS|Philips|HbbTV|Roku|CrKey|BRAVIA|NetCast|Vizio|Opera TV)/i', $uaPulse);
+$defaultMode = $strictTv ? 'redirect' : 'cartridge';
+$mode = strtolower((string)($_GET['m'] ?? $defaultMode));
+if ($mode !== 'redirect' && $mode !== 'cartridge') { $mode = $defaultMode; }
 
 if ($u === '') { pulse_fail(400, 'falta u'); }
 if (strlen($u) > 2000) { pulse_fail(400, 'u demasiado larga'); }
