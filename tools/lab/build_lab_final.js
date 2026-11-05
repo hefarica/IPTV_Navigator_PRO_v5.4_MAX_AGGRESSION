@@ -166,6 +166,63 @@ console.log('');
 console.log('=== RESCATE 2 · clock-synchro = 1 ===');
 console.log('  perfiles recuperados: ' + rescatadosClock + '/6');
 
+// ── Correcciones de coherencia interna (no de diseño) ───────────────────────
+//
+// Tres incoherencias que el LAB arrastra igual que los perfiles. Se corrigen porque son
+// contradicciones verificables contra la norma, no decisiones de calidad:
+//
+//  C1 · P0 declara bit_depth=12 pero su cadena es dvh1.08.06, que es Dolby Vision Profile
+//       8.1 sobre HEVC Main10. El perfil 8.1 es de 10 bits por especificación; el de 12 bits
+//       es el 5 (IPT). Declarar 12 y servir 10 hace que el tone-mapper del display espere más
+//       rango del que hay. Se alinea a 10, que es lo que la norma y la cadena dicen.
+//       Esto NO degrada: el perfil nunca sirvió 12 bits. Corrige una etiqueta falsa.
+//
+//  C2 · P3/P4/P5 no declaran transfer_characteristics ni matrix_coefficients en settings,
+//       aunque lab_sync sí los tiene. Un consumidor que lea settings no sabe el color space.
+//       Se rellenan con los valores de lab_sync: 16 (PQ / ST 2084) y 9 (BT.2020nc).
+//
+//  C3 · P0 declara chroma 4:2:0 en settings y 4:2:2 en actor_injections.panel. Su cadena es
+//       HEVC Main10 en un flujo OTT, donde 4:2:0 es lo real. Se unifica en 4:2:0 en los dos.
+
+let c1=0,c2=0,c3=0;
+for (const key of Object.keys(final.profiles_calibrated || {})) {
+    const p = final.profiles_calibrated[key];
+    const s = p.settings || {};
+    const panel = (p.actor_injections || {}).panel || {};
+
+    // C1: DV Profile 8.x es 10 bits
+    const cadena = String(s.codec_chain_video || '');
+    const esDV8 = /dvh1\.0[5-9]/.test(cadena) || /dvh1\.0[5-9]/.test(String(s.codec_full || ''));
+    if (esDV8 && Number(s.bit_depth) !== 10) {
+        s.bit_depth = 10;
+        if (panel.bit_depth !== undefined) panel.bit_depth = 10;
+        c1++;
+    }
+
+    // C2: transfer_characteristics y matrix_coefficients DERIVADOS del color_primaries,
+    // no copiados de otro perfil. Copiar 16/9 a P3/P4/P5 seria tan falso como dejarlo vacio:
+    // esos tres son SDR con color_primaries=1 (BT.709), y para BT.709 el transfer es 1 y la
+    // matriz 1. El 16 (PQ / ST 2084) y el 9 (BT.2020nc) solo valen si el primario es 9.
+    if (s.transfer_characteristics === undefined) {
+        s.transfer_characteristics = (Number(s.color_primaries) === 9) ? 16 : 1; c2++;
+    }
+    if (s.matrix_coefficients === undefined) {
+        s.matrix_coefficients = (Number(s.color_primaries) === 9) ? 9 : 1; c2++;
+    }
+
+    // C3: un solo chroma en el perfil
+    if (panel.chroma_subsampling !== undefined && s.chroma_subsampling !== undefined
+        && String(panel.chroma_subsampling) !== String(s.chroma_subsampling)) {
+        panel.chroma_subsampling = s.chroma_subsampling;
+        c3++;
+    }
+}
+console.log('');
+console.log('=== CORRECCIONES DE COHERENCIA ===');
+console.log('  C1 DV8 bit_depth -> 10 : ' + c1 + ' perfiles');
+console.log('  C2 color space rellenado: ' + c2 + ' campos');
+console.log('  C3 chroma unificado    : ' + c3 + ' perfiles');
+
 // ── Sello de procedencia ────────────────────────────────────────────────────
 final.provenance_lab_final = {
     built_at: new Date().toISOString(),
@@ -188,6 +245,11 @@ final.provenance_lab_final = {
             profiles: rescatadosClock,
             why: 'con 1 el player resincroniza el reloj en directo: menos drift en sesiones largas',
         },
+    },
+    corrections_not_rescues: {
+        c1_dv8_bit_depth_10: c1 + ' perfiles: dvh1.08.06 es DV Profile 8.1, que es 10 bits por norma; declarar 12 era una etiqueta falsa, no una calidad perdida',
+        c2_color_space_derivado: c2 + ' campos rellenados en P3/P4/P5 derivados de color_primaries=1 (BT.709): transfer 1, matrix 1. NO se les puso 16/9, que seria declarar PQ sobre una fuente SDR',
+        c3_chroma_unificado: c3 + ' perfiles: settings y actor_injections ahora dicen lo mismo',
     },
     refused: {
         fps_120: 'CRYSTAL y MEMC declaran fps=120 en los 6 perfiles: imposible, y contradice el fps real de cada uno. El CERTIFIED lo corrigio a [30,60,30,60,30,30]',
