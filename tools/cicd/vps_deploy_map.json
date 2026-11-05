@@ -125,6 +125,15 @@
       "note": "URL-2 TODO EMBEBIDO EN UNA URL: devuelve el cartucho REAL por perfil (904 directivas P0-P5 generadas por el generador) + #EXT-X-STREAM-INF + la URL de playback verbatim de ?u= (SHIELDED). Segunda via sin ADB ni instalacion. Regenerar con tools/url2/build_url2_cartridge.js."
     },
     {
+      "id": "php-prisma-pulse",
+      "src": "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/pulse.php",
+      "dest": "/var/www/html/prisma/api/pulse.php",
+      "type": "php",
+      "post": "none",
+      "enabled": true,
+      "note": "URL-2 pulse: la URL del canal transporta device/zapping/canal (query string). m=redirect -> 302 Location verbatim; m=cartridge -> 200 cartucho completo (require url2-cartridge.php). Log redactado en /var/log/ara/pulses.jsonl (host + sha256, nunca credenciales). Canary one-shot OFF por defecto (flag /etc/ara/pulse/canary.enabled + lock 300s)."
+    },
+    {
       "id": "nginx-snippet-url2-cartridge",
       "src": "IPTV_v5.4_MAX_AGGRESSION/vps/nginx/snippets/url2-cartridge.conf",
       "dest": "/etc/nginx/snippets/url2-cartridge.conf",
