@@ -59,17 +59,42 @@ class AdbSelfGrantManager(private val ctx: Context) {
         } catch (e: Exception) { Log.w(TAG, "selfGrant: ${e.message}"); false }
     }
 
-    /** Puerto de Wireless Debugging (si el SO lo expone en settings). 0 si no se puede leer. */
-    fun wirelessDebugPort(): Int = try {
-        Settings.Global.getInt(ctx.contentResolver, "adb_wifi_port", 0)
-    } catch (e: Exception) { 0 }
+    /**
+     * Puerto ADB del device.
+     *
+     * ORDEN MEDIDO (Fire OS ≠ Android 11 stock):
+     *  1) `adb_wifi_port` (Android 11+ "Depuración inalámbrica"). En Fire OS NO existe.
+     *  2) `service.adb.tcp.port` (lo fija Fire OS cuando activas "ADB Debugging").
+     *  3) **5555** (default de Fire OS / cajas Android TV). Sin esto el botón fallaba
+     *     siempre en Fire TV porque el puerto salía 0 y Dadb.create(puerto=0) revienta.
+     */
+    fun wirelessDebugPort(): Int {
+        try {
+            val p1 = Settings.Global.getInt(ctx.contentResolver, "adb_wifi_port", 0)
+            if (p1 > 0) return p1
+        } catch (e: Exception) { /* sigue */ }
+        try {
+            val c = Class.forName("android.os.SystemProperties")
+            val m = c.getMethod("get", String::class.java)
+            val v = (m.invoke(null, "service.adb.tcp.port") as? String)?.trim().orEmpty()
+            val p2 = v.toIntOrNull() ?: 0
+            if (p2 > 0) return p2
+        } catch (e: Exception) { /* sigue */ }
+        return 5555
+    }
 
-    /** Texto-guía para la UI (los pasos que SÍ hace el usuario en pantalla). */
+    /**
+     * Texto-guía para la UI. Fire OS NO tiene "Depuración inalámbrica" (eso es Android 11
+     * stock): tiene **"ADB Debugging"**, que abre el puerto 5555 en LAN y en localhost.
+     * No hay código de emparejamiento: al conectar aparece un diálogo en pantalla que el
+     * usuario acepta UNA vez (el APK guarda su keypair en filesDir/adbkey).
+     */
     fun guide(): String = buildString {
-        appendLine("1. Ajustes → Mi Fire TV → Opciones de desarrollador → ACTIVAR")
-        appendLine("2. Depuración inalámbrica → ACTIVAR")
-        appendLine("3. 'Asociar dispositivo con código' → anota PUERTO + CÓDIGO")
-        appendLine("4. Vuelve al APK y pulsa 'Conceder' → acepta el diálogo en pantalla")
+        appendLine("1. Ajustes → Mi Fire TV → Información → pulsa el nombre 7 veces (activa Opciones de desarrollador)")
+        appendLine("2. Ajustes → Mi Fire TV → Opciones de desarrollador → 'ADB Debugging' → ACTIVAR")
+        appendLine("3. Vuelve al APK y pulsa 'Conceder': conecta a 127.0.0.1:5555")
+        appendLine("4. Acepta en pantalla el diálogo 'Permitir depuración' (una sola vez)")
+        appendLine("Si el diálogo no sale, el puerto está cerrado: vuelve a activar ADB Debugging.")
     }
 
     companion object {
@@ -78,3 +103,4 @@ class AdbSelfGrantManager(private val ctx: Context) {
         private const val PROBE_KEY = "_ape_perm_probe_"
     }
 }
+
