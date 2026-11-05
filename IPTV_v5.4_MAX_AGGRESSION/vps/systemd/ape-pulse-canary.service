@@ -1,0 +1,18 @@
+[Unit]
+Description=APE pulse canary worker — dispara el canary one-shot desde la cola de zapping
+Documentation=file:/opt/ape-pulse/ape-pulse-canary-worker.sh
+ConditionPathExists=/opt/ape-pulse/ape-pulse-canary-worker.sh
+
+[Service]
+Type=oneshot
+User=root
+Group=root
+ExecStart=/opt/ape-pulse/ape-pulse-canary-worker.sh
+TimeoutStartSec=340
+Nice=5
+IOSchedulingClass=best-effort
+IOSchedulingPriority=6
+PrivateTmp=yes
+NoNewPrivileges=no
+StandardOutput=journal
+StandardError=journal

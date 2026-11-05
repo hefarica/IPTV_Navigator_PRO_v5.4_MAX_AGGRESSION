@@ -161,6 +161,24 @@
       "note": "Sincroniza TODA lista de /var/www/lists con /pulse. Estado por lista (tamano+mtime+policy+mode+sha): si nada cambio no reescribe. flock, tope de tamano, guarda de disco y poda de huerfanas."
     },
     {
+      "id": "pulse-canary-worker",
+      "src": "IPTV_v5.4_MAX_AGGRESSION/vps/ape-pulse/ape-pulse-canary-worker.sh",
+      "dest": "/opt/ape-pulse/ape-pulse-canary-worker.sh",
+      "type": "config",
+      "post": "none",
+      "enabled": true,
+      "note": "Worker ROOT del canary one-shot: consume /var/lib/ara/canary/queue (tickets que deja /pulse), valida host contra /etc/ara/canary/allowed_hosts.txt (fail-closed, evita SSRF), un solo slot y TTL 120s. Existe porque php-fpm (www-data) no puede escribir /etc/ara/canary ni systemctl start: medido Permission denied."
+    },
+    {
+      "id": "pulse-canary-systemd",
+      "src": "IPTV_v5.4_MAX_AGGRESSION/vps/systemd/ape-pulse-canary.service",
+      "dest": "/etc/systemd/system/ape-pulse-canary.service",
+      "type": "config",
+      "post": "none",
+      "enabled": true,
+      "note": "Oneshot root del worker cada 20s (ape-pulse-canary.timer). Ver tambien ape-canary@.service (canal unico, CPUQuota=40%, RuntimeMaxSec=300)."
+    },
+    {
       "id": "pulse-systemd",
       "src": "IPTV_v5.4_MAX_AGGRESSION/vps/systemd/ape-pulse-sync.service",
       "dest": "/etc/systemd/system/ape-pulse-sync.service",

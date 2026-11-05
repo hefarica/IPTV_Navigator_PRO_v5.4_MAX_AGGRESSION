@@ -124,19 +124,26 @@ try {
 }
 
 // ── 4 · Canary one-shot (APAGADO por defecto; jamás bloquea) ──────────────────
+// MEDIDO 2026-11-05: llamar a `ape-canaryctl` directamente desde php-fpm FALLA
+// ("/etc/ara/canary/<id>.env: Permission denied") porque php corre como www-data y
+// canaryctl escribe en /etc/ara y hace systemctl start. Darle sudo a www-data
+// permitiría lanzar ffmpeg contra URLs arbitrarias (SSRF desde root). Por eso el
+// endpoint sólo deja un TICKET en la cola y el worker root (ape-pulse-canary.timer)
+// valida el host contra allowlist y lanza el canary.
 $canaryId = '';
 if ($zap && is_file(PULSE_CANARY_FLAG)) {
     $canaryId = substr(hash('sha256', $u), 0, 16);
     $lock = rtrim(PULSE_CANARY_DIR, '/') . '/' . $canaryId . '.lock';
     $fresh = is_file($lock) && (time() - (int)@filemtime($lock)) < PULSE_CANARY_LOCK_TTL;
-    if (!$fresh && is_dir('/usr/local/bin') && is_executable('/usr/local/bin/ape-canaryctl')) {
+    $queueDir = rtrim(PULSE_CANARY_DIR, '/') . '/queue';
+    if (!$fresh && is_dir($queueDir) && !is_file($queueDir . '/' . $canaryId . '.json')) {
         @touch($lock);
-        $cmd = sprintf(
-            'nohup /usr/local/bin/ape-canaryctl start %s --source-url %s --seconds 6 >>/var/log/ara/canary.log 2>&1 &',
-            escapeshellarg($canaryId),
-            escapeshellarg($u)
+        $ticket = ['id' => $canaryId, 'url' => $u, 'seconds' => 6, 'ts' => time()];
+        @file_put_contents(
+            $queueDir . '/' . $canaryId . '.json',
+            json_encode($ticket, JSON_UNESCAPED_SLASHES),
+            LOCK_EX
         );
-        @shell_exec($cmd);
     }
 }
 
