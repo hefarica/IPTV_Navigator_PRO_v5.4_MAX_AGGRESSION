@@ -5591,6 +5591,32 @@ function url2_device(): array {
         foreach (["ram_mb","max_w","max_h","fps"] as $k) {
             if (isset($decl[$k]) && is_numeric($decl[$k])) { $d[$k] = (int)$decl[$k]; }
         }
+        // ── COMPATIBILIDAD CON EL BUILDER (ApeUrlBuilder) ──────────────────────────
+        // El builder envia el device con claves CORTAS {t,s,r,w,h,f,hdr,p} y este
+        // decoder solo entendia las largas {soc,ram_mb,max_w,max_h,fps}. Resultado medido:
+        // con d=<payload corto> todos los campos quedaban en 0, url2_pick_profile devolvia
+        // P5 y el perfil pedido se ignoraba. Aceptamos los dos formatos: el consumidor se
+        // adapta al productor, no al reves.
+        $apeAlias = [
+            's'   => 'soc',
+            'r'   => 'ram_mb',
+            'w'   => 'max_w',
+            'h'   => 'max_h',
+            'f'   => 'fps',
+        ];
+        foreach ($apeAlias as $apeCorto => $apeLargo) {
+            if (isset($decl[$apeCorto]) && !isset($decl[$apeLargo])) {
+                if (in_array($apeLargo, ['ram_mb','max_w','max_h','fps'], true) && is_numeric($decl[$apeCorto])) {
+                    $d[$apeLargo] = (int)$decl[$apeCorto];
+                } elseif (is_string($decl[$apeCorto]) && $apeLargo === 'soc') {
+                    $d[$apeLargo] = substr($decl[$apeCorto], 0, 40);
+                }
+            }
+        }
+        // El builder manda tambien un tipo de device en 't'; si no hay soc, sirve de pista.
+        if ($d['soc'] === '' && isset($decl['t']) && is_string($decl['t'])) {
+            $d['soc'] = substr($decl['t'], 0, 40);
+        }
         $d["source"] = "player-declared";
     }
 
@@ -5666,7 +5692,10 @@ function url2_dynamic_map(array $dev, string $seed, string $profile): array {
 $device   = url2_device();
 $pReq     = isset($_GET["p"]) ? strtoupper((string)$_GET["p"]) : "";
 $autoP    = ($pReq === "" || $pReq === "AUTO");
-if ($autoP || $device["source"] === "player-declared") {
+// Si el llamador pidio un perfil EXPLICITO, ese manda. Solo se deriva cuando p falta o es AUTO.
+// Antes, venir con device declarado forzaba la derivacion y se ignoraba el p= pedido: medido,
+// pedir P0/P1/P4 con d=<payload> servia siempre P5.
+if ($autoP) {
     $derived = url2_pick_profile($device);
     if (isset($CARTRIDGE[$derived])) { $p = $derived; }
 }
