@@ -22,7 +22,7 @@ const q = (o) => Object.entries(o).map(([k, v]) => k + '=' + encodeURIComponent(
   const profiles = ['P0', 'P1', 'P2', 'P3', 'P4', 'P5'];
   const seen = {};
   for (const p of profiles) {
-    const url = BASE + '?' + q({ u: U, p, n: 'TOP CHANNEL FHD', g: 'ALBANIA', id: '3', logo: 'http://picon.tivi-ott.net/p.png' });
+    const url = BASE + '?' + q({ u: U, p, mode: 'm3u', n: 'TOP CHANNEL FHD', g: 'ALBANIA', id: '3', logo: 'http://picon.tivi-ott.net/p.png' });
     const r = await fetch(url, { cache: 'no-store' });
     const body = await r.text();
     const lines = body.split('\n');
@@ -87,3 +87,4 @@ const q = (o) => Object.entries(o).map(([k, v]) => k + '=' + encodeURIComponent(
   if (fail) { console.log('Fallos:'); fallos.forEach(f => console.log('  - ' + f)); }
   process.exit(fail ? 1 : 0);
 })().catch(e => { console.error('ERROR:', e && e.message); process.exit(1); });
+

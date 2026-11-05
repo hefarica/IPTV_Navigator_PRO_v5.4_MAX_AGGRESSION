@@ -1,0 +1,23 @@
+[Unit]
+Description=APE pulse sync — envuelve toda lista servida con /pulse (idempotente)
+Documentation=file:/opt/ape-pulse/ape-pulse-sync.sh
+After=network-online.target
+Wants=network-online.target
+ConditionPathExists=/opt/ape-pulse/ape-pulse-sync.sh
+
+[Service]
+Type=oneshot
+User=www-data
+Group=www-data
+Nice=10
+IOSchedulingClass=idle
+IOSchedulingPriority=7
+ExecStart=/opt/ape-pulse/ape-pulse-sync.sh
+TimeoutStartSec=900
+PrivateTmp=yes
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/var/www/lists /var/log/ara /run
+StandardOutput=journal
+StandardError=journal

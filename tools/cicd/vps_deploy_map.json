@@ -134,6 +134,42 @@
       "note": "URL-2 pulse: la URL del canal transporta device/zapping/canal (query string). m=redirect -> 302 Location verbatim; m=cartridge -> 200 cartucho completo (require url2-cartridge.php). Log redactado en /var/log/ara/pulses.jsonl (host + sha256, nunca credenciales). Canary one-shot OFF por defecto (flag /etc/ara/pulse/canary.enabled + lock 300s)."
     },
     {
+      "id": "pulse-wrap-engine",
+      "src": "tools/pulse/ape-pulse-wrap.js",
+      "dest": "/opt/ape-pulse/ape-pulse-wrap.js",
+      "type": "config",
+      "post": "none",
+      "enabled": true,
+      "note": "Envoltorio idempotente/isomorfico/polimorfico: sustituye la URL de cada canal por /pulse/<id>.m3u8 (ApeUrlBuilder). No envuelve dos veces; perfil por clase de canal (8K P0 / 4K P1 / FHD P3 / HD P4 / SD P5, premium +1)."
+    },
+    {
+      "id": "pulse-url-builder",
+      "src": "tools/url2/ape-url-builder.js",
+      "dest": "/opt/ape-pulse/ape-url-builder.js",
+      "type": "config",
+      "post": "none",
+      "enabled": true,
+      "note": "Builder de URL idempotente/isomorfico/polimorfico (v9.3.0 + override profile/endpoint). Fuente unica para /url2 y para las listas envueltas."
+    },
+    {
+      "id": "pulse-sync",
+      "src": "IPTV_v5.4_MAX_AGGRESSION/vps/ape-pulse/ape-pulse-sync.sh",
+      "dest": "/opt/ape-pulse/ape-pulse-sync.sh",
+      "type": "config",
+      "post": "none",
+      "enabled": true,
+      "note": "Sincroniza TODA lista de /var/www/lists con /pulse. Estado por lista (tamano+mtime+policy+mode+sha): si nada cambio no reescribe. flock, tope de tamano, guarda de disco y poda de huerfanas."
+    },
+    {
+      "id": "pulse-systemd",
+      "src": "IPTV_v5.4_MAX_AGGRESSION/vps/systemd/ape-pulse-sync.service",
+      "dest": "/etc/systemd/system/ape-pulse-sync.service",
+      "type": "config",
+      "post": "none",
+      "enabled": true,
+      "note": "Unit oneshot que ejecuta pulse-sync (User=www-data, IO idle). El .timer corre cada 5 min y al arrancar."
+    },
+    {
       "id": "nginx-snippet-url2-cartridge",
       "src": "IPTV_v5.4_MAX_AGGRESSION/vps/nginx/snippets/url2-cartridge.conf",
       "dest": "/etc/nginx/snippets/url2-cartridge.conf",

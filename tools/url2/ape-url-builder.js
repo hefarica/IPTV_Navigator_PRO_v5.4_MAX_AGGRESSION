@@ -95,7 +95,7 @@ class ApeUrlBuilder {
         const norm = this._normalize(params);
         const profile = this._selectProfile(norm);
         const state = this._encodeState(norm, profile);
-        const url = this._constructUrl(state);
+        const url = this._constructUrl(state, norm.endpoint);
         return new ApeUrl(url, state, profile);
     }
 
@@ -162,6 +162,12 @@ class ApeUrlBuilder {
             logo: /^https?:\/\//i.test(String(p.logo || '')) ? String(p.logo) : '',
             // Sin `salt` la URL es determinista. Con `salt`, el llamador pide variación.
             salt: p.salt ? String(p.salt).slice(0, 32) : '',
+            // [PULSE-WRAP] Override explícito de perfil por CLASE DE CANAL (no por device).
+            // Necesario para envolver listas: el perfil lo dicta la calidad del canal.
+            profile: /^P[0-5]$/.test(String(p.profile || '')) ? String(p.profile) : '',
+            // [PULSE-WRAP] Endpoint destino. `{id}` se sustituye por el id del canal.
+            // Sin endpoint se usa ENDPOINT (comportamiento previo intacto).
+            endpoint: p.endpoint ? String(p.endpoint) : '',
         };
     }
 
@@ -180,6 +186,11 @@ class ApeUrlBuilder {
         const base = this.PROFILES[n.deviceType] || this.PROFILES.generic;
         const pref = base.preferred;
         const order = this.ORDER;
+
+        // Perfil explícito (wrap de listas por calidad de canal) manda sobre todo.
+        if (n.profile) {
+            return Object.assign({}, base, { selected: n.profile, reason: 'explicit' });
+        }
 
         if (n.forceProfile) {
             return Object.assign({}, base, { selected: pref, reason: 'forced' });
@@ -235,8 +246,10 @@ class ApeUrlBuilder {
         };
     }
 
-    static _constructUrl(state) {
+    static _constructUrl(state, endpoint) {
         // Orden determinístico: mismo estado ⇒ misma cadena de query.
+        let base = String(endpoint || this.ENDPOINT);
+        base = base.replace(/\{id\}/g, encodeURIComponent(String(state.id || 0)));
         const q = new URLSearchParams();
         q.set('u', state.url);
         q.set('d', state.deviceB64);
@@ -247,7 +260,7 @@ class ApeUrlBuilder {
         q.set('v', state.version);
         if (state.logo) q.set('logo', state.logo);
         q.set('fp', this._fingerprint(state));
-        return this.ENDPOINT + '?' + q.toString();
+        return base + '?' + q.toString();
     }
 
     static _decodeDevice(b64) {
@@ -364,3 +377,4 @@ class ApeUrl {
 }
 
 module.exports = { ApeUrlBuilder, ApeUrl };
+

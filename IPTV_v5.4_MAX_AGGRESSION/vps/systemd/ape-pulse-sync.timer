@@ -1,0 +1,11 @@
+[Unit]
+Description=APE pulse sync cada 5 min (conecta listas nuevas con /pulse)
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=5min
+AccuracySec=30s
+Unit=ape-pulse-sync.service
+
+[Install]
+WantedBy=timers.target

@@ -5920,7 +5920,19 @@ foreach ($lines as $line) {
     if (!$withExtinf && strncmp($line, '#EXTINF:', 8) === 0) { continue; }
     $out = strtr($line, $map);
     // Overrides por device: solo si el cartucho trae la clave exacta.
-    if ($dynMap) { $out = strtr($out, $dynMap); }
+    // [FIX 2026-11-05 · REGRESIÓN MEDIDA] Las claves de $dynMap son PREFIJOS de línea
+    // ("#EXTVLCOPT:network-caching="). Con strtr() se sustituía SOLO el prefijo y el
+    // valor original quedaba pegado detrás:
+    //   "#EXTVLCOPT:network-caching=60000" -> "...=45000" . "60000" = "4500060000"
+    //   (52 días de caché: valor imposible). Ahora se reemplaza la LÍNEA COMPLETA.
+    if ($dynMap) {
+        foreach ($dynMap as $needle => $repl) {
+            if ($needle !== '' && strncmp($out, $needle, strlen($needle)) === 0) {
+                $out = $repl;
+                break;
+            }
+        }
+    }
     if ($out === '') { continue; }
     echo $out . "\n";
 }
