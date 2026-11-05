@@ -75,7 +75,7 @@ const textA = fs.readFileSync(path.join(tmp, 'a.m3u8'), 'utf8');
   const parsed = urls.map(u => ApeUrlBuilder.parse(u));
   ok('todas las URLs portan fingerprint válido (isomorfismo inverso)', parsed.every(p => p.valid));
   ok('la URL es /pulse/<id>.m3u8', urls.every(u => /\/pulse\/\d+\.m3u8\?/.test(u)), urls[0]);
-  ok('sin modo forzado: /pulse decide cartridge/redirect por UA', urls.every(u => !/[?&]m=/.test(u)));
+  ok('pide cartridge + lista (el servidor filtra por UA)', urls.every(u => /[?&]m=cartridge/.test(u) && /[?&]l=/.test(u)));
   ok('el perfil viaja en la URL y coincide con la clase',
     parsed[0].state.profile === 'P3' && parsed[1].state.profile === 'P0' && parsed[2].state.profile === 'P3' && parsed[3].state.profile === 'P5',
     parsed.map(p => p.state.profile).join(','));
@@ -96,6 +96,7 @@ console.log(`\n== RESULTADO: ${pass} PASS · ${fail} FAIL ==`);
 if (fail) { console.log('Fallos:'); fallos.forEach(f => console.log('  - ' + f)); }
 try { fs.rmSync(tmp, { recursive: true, force: true }); } catch (_) { }
 process.exit(fail ? 1 : 0);
+
 
 
 
