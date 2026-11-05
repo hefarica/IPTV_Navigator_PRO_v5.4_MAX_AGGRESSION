@@ -86,8 +86,12 @@ $zap = (isset($_GET['z']) && (string)$_GET['z'] === '1');
 // MEDIDO 2026-11-05 en Philips 65PUS9206: al recibir un MASTER playlist
 // (STREAM-INF) donde el player espera un MEDIA playlist, aborta con
 // "Loaded playlist has unexpected type." (4 reintentos en 15 s, log real).
-// VLC, ExoPlayer de Android TV, Kodi y OTT sí aceptan el master y usan el
-// cartucho. Por eso el DEFAULT depende del cliente; `m=` explícito manda.
+// SOLO VLC y Kodi han demostrado aceptar el master. MEDIDO 2026-11-05: OTT
+// Navigator añade " ExoPlayer" a su UA ("OTT Navigator/1.7.0.0 ... ExoPlayer")
+// y su parser aborta igual con "Loaded playlist has unexpected type." al recibir
+// el cartucho (master). Por eso la allowlist se reduce a VLC/Kodi/LibreELEC:
+// el resto recibe SIEMPRE media playlist por proxy. `m=` ya no puede forzar
+// cartridge en un cliente no verificado.
 $uaPulse = (string)($_SERVER['HTTP_USER_AGENT'] ?? '');
 // ── Política de modo (medida, no heurística de TV) ────────────────────────────
 // El master-con-cartucho SOLO se sirve a clientes que han demostrado aceptarlo:
@@ -97,7 +101,7 @@ $uaPulse = (string)($_SERVER['HTTP_USER_AGENT'] ?? '');
 // Fire TV (UA "Xtream-Codes/2.5 IPTV" y "Dalvik/2.1.0 ... AFTWMST22"): recibe
 // 200 con el cartucho (gzip ~15,9 KB) y aborta con "Loaded playlist has
 // unexpected type." porque espera media playlist. La compatibilidad manda.
-$cartridgeCapable = (bool)preg_match('/(VLC|LibVLC|Kodi|LibreELEC|ExoPlayer|OTT\s*Navigator|TiviMate|IPTVSmarters|Smarters|Perfect\s*Player)/i', $uaPulse);
+$cartridgeCapable = (bool)preg_match('/(^|\s|\/)(VLC|LibVLC|Kodi|LibreELEC)(\s|\/|$)/i', $uaPulse);
 $defaultMode = $cartridgeCapable ? 'cartridge' : 'proxy';
 $mode = strtolower((string)($_GET['m'] ?? $defaultMode));
 if (!in_array($mode, ['redirect', 'cartridge', 'proxy'], true)) { $mode = $defaultMode; }
@@ -453,6 +457,7 @@ if (!isset($_GET['c'])) { $_GET['c'] = $id; }
 if (!isset($_GET['id']) || $_GET['id'] === '') { $_GET['id'] = $id; }
 header('X-APE-Pulse: logged;mode=cartridge;dialect=' . $dialect . ';zapping=' . ($zap ? '1' : '0') . ';canary=' . ($canaryId !== '' ? '1' : '0'));
 require __DIR__ . '/url2-cartridge.php';
+
 
 
 
