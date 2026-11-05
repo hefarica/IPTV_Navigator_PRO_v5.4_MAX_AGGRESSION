@@ -98,12 +98,12 @@ $uaPulse = (string)($_SERVER['HTTP_USER_AGENT'] ?? '');
 // 200 con el cartucho (gzip ~15,9 KB) y aborta con "Loaded playlist has
 // unexpected type." porque espera media playlist. La compatibilidad manda.
 $cartridgeCapable = (bool)preg_match('/(VLC|LibVLC|Kodi|LibreELEC|ExoPlayer|OTT\s*Navigator|TiviMate|IPTVSmarters|Smarters|Perfect\s*Player)/i', $uaPulse);
-$defaultMode = 'redirect';
+$defaultMode = $cartridgeCapable ? 'cartridge' : 'proxy';
 $mode = strtolower((string)($_GET['m'] ?? $defaultMode));
-if ($mode !== 'redirect' && $mode !== 'cartridge') { $mode = $defaultMode; }
+if (!in_array($mode, ['redirect', 'cartridge', 'proxy'], true)) { $mode = $defaultMode; }
 // Forzado a redirect si el cliente no está en la allowlist, aunque pida cartridge.
 $forcedStrict = ($mode === 'cartridge' && !$cartridgeCapable);
-if ($forcedStrict) { $mode = 'redirect'; }
+if ($forcedStrict) { $mode = 'proxy'; }
 
 if ($u === '') { pulse_fail(400, 'falta u'); }
 if (strlen($u) > 2000) { pulse_fail(400, 'u demasiado larga'); }
@@ -179,6 +179,72 @@ if ($zap && is_file(PULSE_CANARY_FLAG)) {
     }
 }
 
+// ── 4c · Modo PROXY: la media playlist la sirve el VPS (una sola conexión) ────
+// MOTIVO MEDIDO (2026-11-05): en modo redirect, el player del operador (Fire TV)
+// abre DOS peticiones simultáneas del mismo manifest en cada recarga; el
+// proveedor limita a 1 conexión por cuenta → HTTP 509 intermitente. Además el
+// token del 302 caduca y a los ~15 s el canal caía.
+// Aquí el VPS pide la playlist al proveedor (siguiendo 302), la devuelve tal cual
+// con las URIs de segmento ABSOLUTAS (el vídeo NO pasa por el VPS) y la cachea 2 s
+// en APCu: dos recargas simultáneas = UNA sola conexión al proveedor. Cada
+// recarga obtiene token fresco. Si el proveedor falla, se cae a 302 (el player
+// habla directo, como antes).
+if ($mode === 'proxy') {
+    $plKey = 'ape_pulse_pl_' . sha1($u);
+    $cached = function_exists('apcu_fetch') ? apcu_fetch($plKey) : false;
+    $body = is_array($cached) && !empty($cached['body']) ? (string)$cached['body'] : '';
+    $fromCache = ($body !== '');
+    if (!$fromCache) {
+        $ch = curl_init($u);
+        $uaReq = $uaPulse !== '' ? $uaPulse : 'IPTVSmartersPro';
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_FOLLOWLOCATION => true,
+            CURLOPT_MAXREDIRS      => 4,
+            CURLOPT_CONNECTTIMEOUT => 4,
+            CURLOPT_TIMEOUT        => 6,
+            CURLOPT_ENCODING       => '',
+            CURLOPT_USERAGENT      => $uaReq,
+            CURLOPT_HTTPHEADER     => ['Accept: */*'],
+            CURLOPT_SSL_VERIFYPEER => false,
+            CURLOPT_SSL_VERIFYHOST => 0,
+        ]);
+        $raw  = (string)curl_exec($ch);
+        $code = (int)curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
+        $eff  = (string)curl_getinfo($ch, CURLINFO_EFFECTIVE_URL);
+        curl_close($ch);
+        if ($code === 200 && strpos($raw, '#EXTM3U') !== false) {
+            $pu = parse_url($eff);
+            $origin = (($pu['scheme'] ?? 'http') . '://' . ($pu['host'] ?? ''));
+            if (!empty($pu['port'])) { $origin .= ':' . $pu['port']; }
+            $dir = rtrim(dirname($pu['path'] ?? '/'), '/');
+            $lines = preg_split('/\r?\n/', $raw);
+            $n = count($lines);
+            for ($i = 0; $i < $n; $i++) {
+                $t = trim($lines[$i]);
+                if ($t === '' || $t[0] === '#' || preg_match('#^[a-z][a-z0-9+.-]*://#i', $t) || strpos($t, 'data:') === 0) {
+                    continue;
+                }
+                $lines[$i] = ($t[0] === '/') ? $origin . $t : $origin . $dir . '/' . $t;
+            }
+            $body = implode("\n", $lines) . "\n";
+            if (function_exists('apcu_store')) { apcu_store($plKey, ['body' => $body], 2); }
+        } else {
+            // Fallback: que el player hable con el proveedor como antes.
+            header('X-APE-Pulse: logged;mode=redirect;proxy_fallback=' . $code);
+            header('Cache-Control: no-store, no-cache, must-revalidate');
+            header('Location: ' . $u, true, 302);
+            exit;
+        }
+    }
+    header('Content-Type: application/x-mpegURL');
+    header('Cache-Control: no-cache, no-store, must-revalidate');
+    header('X-APE-Pulse: logged;mode=proxy;zapping=' . ($zap ? '1' : '0')
+        . ';cache=' . ($fromCache ? 'hit' : 'miss'));
+    echo $body;
+    exit;
+}
+
 // ── 5 · Responder ─────────────────────────────────────────────────────────────
 if ($mode === 'redirect') {
     header('X-APE-Pulse: logged;mode=redirect;zapping=' . ($zap ? '1' : '0')
@@ -197,6 +263,7 @@ if (!isset($_GET['c'])) { $_GET['c'] = $id; }
 if (!isset($_GET['id']) || $_GET['id'] === '') { $_GET['id'] = $id; }
 header('X-APE-Pulse: logged;mode=cartridge;zapping=' . ($zap ? '1' : '0') . ';canary=' . ($canaryId !== '' ? '1' : '0'));
 require __DIR__ . '/url2-cartridge.php';
+
 
 
 

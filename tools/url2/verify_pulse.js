@@ -39,19 +39,23 @@ const stripDev = (s) => s.replace(/DEV_[0-9A-Za-z]+/g, 'DEV_X');
     const rVlc = await fetch(base + '&m=cartridge', { redirect: 'manual', cache: 'no-store', headers: { 'user-agent': 'VLC/3.0.20 LibVLC/3.0.20' } });
     const rNone = await fetch(base, { redirect: 'manual', cache: 'no-store' });
     console.log('\n── modo por UA');
-    ok('TV estricta (Philips) -> 302 redirect', rTv.status === 302, 'status ' + rTv.status);
-    ok('TV estricta: Location == u VERBATIM', (rTv.headers.get('location') || '') === U);
+    ok('TV estricta (Philips) -> 200 PROXY (media playlist)', rTv.status === 200, 'status ' + rTv.status);
+    ok('TV estricta: sin redirect (playlist servida por el VPS)', (rTv.headers.get('location') || '') === '', rTv.headers.get('location'));
     ok('VLC + m=cartridge -> 200 cartridge', rVlc.status === 200, 'status ' + rVlc.status);
-    ok('sin UA -> 302 (default seguro: solo allowlist recibe cartridge)', rNone.status === 302, 'status ' + rNone.status);
+    ok('sin UA -> 200 PROXY (default seguro)', rNone.status === 200, 'status ' + rNone.status);
     const rFire = await fetch(base, { redirect: 'manual', cache: 'no-store', headers: { 'user-agent': 'Dalvik/2.1.0 (Linux; U; Android 11; AFTWMST22 Build/PS7484)' } });
-    ok('Fire TV (Dalvik AFTWMST22) -> 302', rFire.status === 302, 'status ' + rFire.status);
+    ok('Fire TV (Dalvik AFTWMST22) -> 200 PROXY', rFire.status === 200, 'status ' + rFire.status);
     const rXtr = await fetch(base, { redirect: 'manual', cache: 'no-store', headers: { 'user-agent': 'Xtream-Codes/2.5 IPTV' } });
-    ok('Fire TV (Xtream-Codes) -> 302', rXtr.status === 302, 'status ' + rXtr.status);
+    ok('Fire TV (Xtream-Codes) -> 200 PROXY', rXtr.status === 200, 'status ' + rXtr.status);
+    const bodyProxy = await rXtr.text();
+    ok('PROXY entrega media playlist (#EXTM3U + EXTINF)', bodyProxy.startsWith('#EXTM3U') && /^#EXTINF:/m.test(bodyProxy), bodyProxy.slice(0, 40));
+    ok('PROXY: segmentos ABSOLUTOS (el video no pasa por el VPS)', /^https?:\/\/[^\n]+\.(ts|m4s|mp4)/m.test(bodyProxy));
+    ok('PROXY: sin master ni cartucho', !/#EXT-X-STREAM-INF/.test(bodyProxy) && !/#EXTHTTP/.test(bodyProxy));
     const rExo = await fetch(base + '&m=cartridge', { redirect: 'manual', cache: 'no-store', headers: { 'user-agent': 'ExoPlayerLib/2.19.1' } });
     ok('ExoPlayer + m=cartridge -> 200 cartridge', rExo.status === 200, 'status ' + rExo.status);
-    // URL antigua con m=cartridge servida a una TV estricta: debe degradar a 302
+    // URL antigua con m=cartridge servida a un cliente no capaz: degrada a PROXY
     const rForce = await fetch(base + '&m=cartridge', { redirect: 'manual', cache: 'no-store', headers: { 'user-agent': tvUa } });
-    ok('TV estricta + m=cartridge (lista cacheada) -> 302 forzado', rForce.status === 302 && (rForce.headers.get('x-ape-pulse') || '').includes('forced='), 'status ' + rForce.status + ' ' + (rForce.headers.get('x-ape-pulse') || ''));
+    ok('TV estricta + m=cartridge (lista cacheada) -> 200 PROXY', rForce.status === 200 && (rForce.headers.get('x-ape-pulse') || '').includes('mode=proxy'), 'status ' + rForce.status + ' ' + (rForce.headers.get('x-ape-pulse') || ''));
     const rVlcForce = await fetch(base + '&m=cartridge', { redirect: 'manual', cache: 'no-store', headers: { 'user-agent': 'VLC/3.0.20 LibVLC/3.0.20' } });
     ok('VLC + m=cartridge sigue 200', rVlcForce.status === 200, 'status ' + rVlcForce.status);
   }
@@ -110,6 +114,8 @@ const stripDev = (s) => s.replace(/DEV_[0-9A-Za-z]+/g, 'DEV_X');
   if (fail) { console.log('Fallos:'); fallos.forEach(f => console.log('  - ' + f)); }
   process.exit(fail ? 1 : 0);
 })().catch(e => { console.error('ERROR:', e && e.message); process.exit(1); });
+
+
 
 
 
