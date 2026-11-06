@@ -616,11 +616,16 @@
     // hecho nada y no sabia que ya podia generar. Una vez aprobado, eso es lo que hay que decir.
     if (window.__APE_SUG_FORZADO__ === true) {
       el.innerHTML =
-        '<div style="' + linea + 'color:#86efac;"><b>APROBADO</b>: generación autorizada por el operador.</div>' +
+        '<div style="' + linea + 'color:#86efac;"><b>APROBADO</b>: ajustes aplicados por el operador.</div>' +
         '<div style="' + linea + 'color:#e2e8f0;">Enlace <b>' + s.inM.toFixed(1) + ' Mbps</b> · perfil <b>' +
         act + '</b> · delta <b>' + s.delta + '%</b>. Por debajo del suelo (' + s.floorM +
         ' Mbps), aceptado a sabiendas.</div>' +
-        '<div style="' + linea + 'color:#86efac;font-weight:800;">Ya puedes pulsar Generar: la comprobación pasará.</div>' +
+        // El botón que aprueba NO genera: aplica y confirma. Quien elige la forma de
+        // salida (VPS / DIRECTO / AMBAS) es el operador, con su botón. Mezclar ambos
+        // actos produjo listas duplicadas: se aprobaba, se leía "pulsa Generar" y se
+        // generaba una segunda vez.
+        '<div style="' + linea + 'color:#86efac;font-weight:800;">Ajustes aplicados. La comprobación pasará cuando pulses generar.</div>' +
+        '<div style="' + linea + 'color:#94a3b8;">Elige la salida: <b>Generar VPS</b>, <b>Generar DIRECTO</b> o <b>Generar AMBAS</b>. No se generó nada todavía.</div>' +
         '<div style="display:flex;gap:7px;align-items:center;margin-top:6px;">' +
         '<button type="button" id="ape-sug-revocar" style="background:#334155;color:#e2e8f0;border:1px solid #475569;' +
         'border-radius:6px;padding:5px 12px;font-weight:700;cursor:pointer;">Revocar aprobación</button>' +
@@ -741,13 +746,13 @@
              s.inM.toFixed(1) + ' Mbps (el mínimo pide ' +
              (m.minimo ? m.minimo.req.toFixed(2) : '?') + ' Mbps). Aprobado por el operador.', '#f59e0b');
       renderSugerencia();
-      toast('Aprobado: perfil ' + forced.profile + ' · delta ' + forced.delta +
-            ' %. Generando con la salida seleccionada…', 'warning');
-      // El botón dice "Aprobar y generar así": genera de verdad. En tests no hay canales
-      // ni app real, así que el clic queda como aprobación sin descargar nada.
-      if (window.__APE_OUTPUT_TEST__ !== true && hasGeneratableChannels()) {
-        setTimeout(function () { runSelectedOutput(); }, 0);
-      }
+      // AQUÍ NO SE GENERA. Este botón hace dos cosas y solo dos: fijar el modo forzado
+      // y escribir perfil + delta. Quien genera es el botón de salida que elija el
+      // operador (VPS / DIRECTO / AMBAS), porque es él quien sabe qué lista quiere.
+      // Antes esta función llamaba a runSelectedOutput() por su cuenta: el operador
+      // aprobaba, leía "ya puedes pulsar Generar" y generaba una segunda vez.
+      toast('Ajustes aplicados: perfil ' + forced.profile + ' · delta ' + forced.delta +
+            ' %. Elige la salida y pulsa su botón (VPS / DIRECTO / AMBAS).', 'success');
     };
 
     var bn = document.getElementById('ape-sug-denegar');

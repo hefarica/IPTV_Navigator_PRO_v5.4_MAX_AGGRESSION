@@ -79,7 +79,34 @@
         return lines.join('\n');
     }
 
+    // ── Cerrojo de generación ────────────────────────────────────────────────────
+    // Va AQUÍ, antes de la primera función que lo usa, no junto a la última.
+    // `let` tiene zona muerta temporal: declararlo más abajo hacía que
+    // generateListWithGate (línea 82) lo leyera antes de existir. En la práctica
+    // funcionaba porque el módulo entero se evalúa antes de cualquier clic, pero
+    // era fragilidad gratuita y el test lo marcó.
+    //
+    // Un solo cerrojo para los siete invocadores. Antes vivía dentro de
+    // prepublishAndGenerateGuarded y solo protegía ese camino: los otros seis
+    // llamaban a prepublishAndGenerate o generaban por su cuenta. Un clic podía
+    // producir dos listas de 21.224 canales, cada una con su probe de 200 URLs
+    // y sus cinco minutos.
+    let __APE_GEN_BUSY = false;
+
     async function generateListWithGate(options = {}) {
+        // [FIX 2026-11-06] Mismo cerrojo que prepublishAndGenerate. Este camino genera
+        // por su cuenta (no pasa por el pipeline) y era el séptimo invocador sin lock.
+        // El botón audited arrastra data-ape-generate-audited Y data-ape-prepublish, así
+        // que un clic podía entrar por aquí y por el otro a la vez.
+        if (__APE_GEN_BUSY) {
+            console.warn('[APE-GATE] generación ya en curso — invocación duplicada IGNORADA');
+            if (window.app && typeof window.app.showToast === 'function') {
+                window.app.showToast('Ya hay una generación en curso. Espera a que termine.', 'warning');
+            }
+            return { decision: 'skipped_already_running', channels: 0 };
+        }
+        __APE_GEN_BUSY = true;
+        try {
         const gateUrl = options.gateUrl || DEFAULT_GATE_URL;
         if (window.app && typeof window.app.showToast === 'function') {
             window.app.showToast('Generando lista completa (4,557 canales)…', 'info');
@@ -212,6 +239,10 @@
         }
 
         return { m3u8Text, verdict };
+        } finally {
+            // liberar SIEMPRE el lock, salga como salga de esta función.
+            __APE_GEN_BUSY = false;
+        }
     }
 
     function attachHealthButton(buttonSelector = '[data-ape-health-check]') {
@@ -1187,6 +1218,23 @@
     }
 
     async function prepublishAndGenerate(options = {}) {
+        // ── [FIX 2026-11-06] Lock ÚNICO para todos los caminos ─────────────────────
+        // MEDIDO: el lock vivía solo en prepublishAndGenerateGuarded, y ese lo usa
+        // exclusivamente prepublishAndGenerateDual. Los otros dos caminos —runDirect del
+        // panel y attachPrepublishButton del botón audited— llamaban aquí directo y
+        // bypaseaban el lock. Resultado: el operador aprobaba el buffer (un camino) y
+        // luego pulsaba Generar (otro camino) y salían DOS listas de 21.224 canales,
+        // cada una con su propio probe de 200 URLs y sus 5 minutos.
+        // El lock se mueve AQUÍ, en la función que de verdad genera, para que ningún
+        // invocador pueda saltárselo, venga del botón que venga.
+        if (__APE_GEN_BUSY) {
+            console.warn('[APE-GATE] generación ya en curso — invocación duplicada IGNORADA');
+            if (window.app && typeof window.app.showToast === 'function') {
+                window.app.showToast('Ya hay una generación en curso. Espera a que termine.', 'warning');
+            }
+            return { decision: 'skipped_already_running', channels: 0 };
+        }
+        __APE_GEN_BUSY = true;
         // Ambos botones (DIRECTO y VPS) comparten el mismo motor de mejor lista.
         // Forzamos URLs del proveedor en la generación: el botón VPS las envuelve
         // después con apeCdnRewrap. Así el toggle global no puede convertir el
@@ -1518,26 +1566,25 @@
                 window.APE_USE_JIT = _outPrev.jit;
                 window.APE_HDR_MODE = _outPrev.hdr;
             }
+            // liberar SIEMPRE el lock, salga como salga (éxito, cancelación, excepción).
+            __APE_GEN_BUSY = false;
         }
     }
 
-    // ── [FIX 2026-11-05] Anti doble-generación ───────────────────────────────
+    // ── [FIX 2026-11-05 · ampliado 2026-11-06] Anti doble-generación ─────────
     // MEDIDO: un clic produjo DOS listas completas (SYS-GENERATED 18:27:55.190Z
     // y 18:29:38.877Z, 103,7 s de diferencia, nombres a 43,7 s → dos ejecuciones
     // SOLAPADAS). El botón arrastra `data-ape-prepublish` y además tiene onclick
     // inline, y el panel puede volver a invocar el pipeline: sin lock, dos runs.
-    let __APE_GEN_BUSY = false;
+    // El lock real vive ahora DENTRO de prepublishAndGenerate (arriba), no aquí:
+    // dejarlo solo en esta envoltura protegía un camino de siete.
+    //
+    // OJO: esta envoltura NO debe tomar el lock. Si lo tomara y luego llamara a
+    // prepublishAndGenerate, la función vería el cerrojo cerrado y abortaría con
+    // skipped_already_running — se anularía a sí misma. El nombre se conserva por
+    // compatibilidad con los invocadores existentes; el cerrojo lo pone el destino.
     async function prepublishAndGenerateGuarded(options = {}) {
-        if (__APE_GEN_BUSY) {
-            console.warn('[APE-GATE] generación ya en curso — invocación duplicada IGNORADA');
-            return { decision: 'skipped_already_running', channels: 0 };
-        }
-        __APE_GEN_BUSY = true;
-        try {
-            return await prepublishAndGenerate(options);
-        } finally {
-            __APE_GEN_BUSY = false;
-        }
+        return await prepublishAndGenerate(options);
     }
     // ── [APE-CDN] entrada pública del botón: SOLO la lista mejorada ─────────
     // IMPORTANTE: el destino se elige AQUÍ, como primera operación asíncrona del
