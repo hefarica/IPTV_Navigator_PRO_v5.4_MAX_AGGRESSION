@@ -5751,17 +5751,22 @@ $APE_6K_CFG = [
 ];
 
 function ape6k_soporta(array $dev): bool {
-    // El spec exige panel de al menos 6K de salida y SoC con potencia de escalado.
-    if ((int)($dev['max_w'] ?? 0) < 5760 || (int)($dev['max_h'] ?? 0) < 3240) { return false; }
-    $soc = strtolower((string)($dev['soc'] ?? ''));
-    foreach (['s905x4', 't982', 'g12b', 's928x', 'tegra-x1', 'tegra-orin', 'shield', 'nvidia'] as $c) {
-        if ($soc !== '' && strpos($soc, $c) !== false) { return true; }
-    }
-    return false;
+    // 6K EMULADO = se declara para TODOS los devices, sin importar su resolucion ni su SoC.
+    //
+    // El manifiesto declara 5760x3240; el escalado real lo hace el panel o el VPP del SoC.
+    // Condicionar esto a max_w>=5760 dejaba el 6K sin servir en casi todo el parque, que es
+    // exactamente lo contrario de lo que pide la emulacion.
+    //
+    // Por que es seguro declararlo: el manifiesto lleva la marca
+    // X-APE-CRYSTAL-6K-TRUTH:DECLARED_ENHANCEMENT;NOT_SOURCE, asi que ningun consumidor
+    // puede leerlo como fuente 6K real. Un device que no pueda escalar simplemente muestra
+    // la fuente en su resolucion: el DECLARADO no rompe nada, el 4K sigue intacto debajo.
+    return true;
 }
 
-$ape6kForzado = (isset($_GET['ape6k']) && (string)$_GET['ape6k'] === '1');
-$ape6kCfg = ($ape6kForzado || ape6k_soporta($device)) && isset($APE_6K_CFG[$p])
+// Activo por defecto en TODOS los perfiles. Solo se apaga con ?ape6k=0 explicito.
+$ape6kOff = (isset($_GET['ape6k']) && (string)$_GET['ape6k'] === '0');
+$ape6kCfg = (!$ape6kOff && ape6k_soporta($device) && isset($APE_6K_CFG[$p]))
     ? $APE_6K_CFG[$p] : null;
 
 $lines = $CARTRIDGE[$p];

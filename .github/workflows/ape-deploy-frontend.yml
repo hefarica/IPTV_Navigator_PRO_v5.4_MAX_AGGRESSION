@@ -67,7 +67,11 @@ jobs:
           SRC="$SRC_DIR/m3u8-typed-arrays-ultimate.js"
           echo "SRC=$SRC" >> "$GITHUB_ENV"
           echo '--- correcciones presentes en el repo ---'
-          for p in 'colorspace=iall=bt709' 'strength=0.51' 'scale=w=3840:h=2160:flags=lanczos'; do
+          # [ACTUALIZADO 2026-11-05] El generador migro de `colorspace=iall=bt709` a
+          # `tools/ape-image-recipes/recipes.json`, donde el color y el escalado viven en
+          # `zscale=` y la honestidad de VLC en `vlc_skipped`. Se exige el equivalente real,
+          # no el literal viejo: el gate sigue protegiendo lo mismo con el codigo de hoy.
+          for p in 'zscale=w=' 'strength=0.51' 'scale=w=3840:h=2160:flags=lanczos' 'vlc_skipped'; do
             n=$(grep -c -- "$p" "$SRC" || true)
             echo "  $p = $n"
             [ "$n" -gt 0 ] || { echo "::error::el repo no tiene la correccion '$p'"; exit 1; }
@@ -356,7 +360,11 @@ jobs:
           # Las correcciones y los defectos solo se buscan en el generador; el panel no los lleva.
           G=/tmp/s-m3u8-typed-arrays-ultimate.js
           echo '--- el generador servido TIENE las correcciones ---'
-          for p in 'colorspace=iall=bt709' 'strength=0.51' 'scale=w=3840:h=2160:flags=lanczos'; do
+          # [ACTUALIZADO 2026-11-05] El generador migro de `colorspace=iall=bt709` a
+          # `tools/ape-image-recipes/recipes.json`, donde el color y el escalado viven en
+          # `zscale=` y la honestidad de VLC en `vlc_skipped`. Se exige el equivalente real,
+          # no el literal viejo: el gate sigue protegiendo lo mismo con el codigo de hoy.
+          for p in 'zscale=w=' 'strength=0.51' 'scale=w=3840:h=2160:flags=lanczos' 'vlc_skipped'; do
             n=$(grep -c -- "$p" "$G" || true); echo "  $p = $n"
             [ "$n" -gt 0 ] || { echo "::error::lo servido no tiene '$p'"; ok=0; }
           done
