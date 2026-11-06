@@ -3303,6 +3303,36 @@
                     _seenServerHost.add(host);
                     return true;
                 });
+                // ── GR-2b (2026-11-06) · pool: hosts declarados == hosts reales ────
+                // GR-2 solo SUSTITUYE el EXT-X-SERVER-1 que el LAB declare; nunca
+                // agrega SERVER-2/3. Con LAB declarando POOL-SIZE:3 y un unico
+                // SERVER-1, la lista anunciaba round_robin sobre 3 servidores con 1
+                // declarado — y ese 1 era el nodo caido. Aqui se declara UN
+                // EXT-X-SERVER-N por host real distinto y POOL-SIZE se ajusta al
+                // numero real, asi el pool declarado casa con la lista. Solo actua
+                // si activeServers trae hosts: sin activeServers no se toca nada.
+                if (_realHosts.length > 0) {
+                    const _uniqHosts = [...new Set(_realHosts)];
+                    const _hadServerTag = dynamicHeaders.some(l => typeof l === 'string' && /^#EXT-X-SERVER-\d+:/.test(l));
+                    if (_hadServerTag) {
+                        // reemitir SERVER-N completo y en orden
+                        dynamicHeaders = dynamicHeaders.filter(l => !(typeof l === 'string' && /^#EXT-X-SERVER-\d+:/.test(l)));
+                        const _poolLine = `#EXT-X-SYS-SERVER-POOL-SIZE:${_uniqHosts.length}`;
+                        let _poolIdx = -1;
+                        for (let i = 0; i < dynamicHeaders.length; i++) {
+                            if (typeof dynamicHeaders[i] === 'string' && /^#EXT-X-SYS-SERVER-POOL-SIZE:/.test(dynamicHeaders[i])) { _poolIdx = i; break; }
+                        }
+                        if (_poolIdx >= 0) dynamicHeaders[_poolIdx] = _poolLine;
+                        // punto de insercion: justo despues del ultimo SYS-SERVER-*
+                        let _insAt = dynamicHeaders.length;
+                        for (let i = dynamicHeaders.length - 1; i >= 0; i--) {
+                            if (typeof dynamicHeaders[i] === 'string' && /^#EXT-X-SYS-SERVER-/.test(dynamicHeaders[i])) { _insAt = i + 1; break; }
+                        }
+                        if (_poolIdx < 0) { dynamicHeaders.splice(_insAt, 0, _poolLine); _insAt++; }
+                        dynamicHeaders.splice(_insAt, 0, ..._uniqHosts.map((h, i) => `#EXT-X-SERVER-${i + 1}:${h}`));
+                        console.log('[GENERATOR] GR-2b pool: ' + _uniqHosts.length + ' host(s) reales -> ' + _uniqHosts.join(', '));
+                    }
+                }
             } catch (e) {
                 console.warn('[GENERATOR] Master header drift sanitizer failed:', e?.message || e);
             }
@@ -12478,7 +12508,15 @@ lines.push(`#EXT-X-APE-STREAM-TRUTH:src=${_streamTruth.source},w=${_streamTruth.
                 : 'hevc,hev1,h265,h.265,H265,H.265,h264,h.264,H264,H.264,avc,AVC';
             lines.push(`#EXT-X-APE-CODEC-FALLBACK-CHAIN:${_ccAll}`);
         }
-        let finalUrl = options.dictatorMode ? `${primaryUrl}|User-Agent=${_ua796}&Cache-Control=no-cache&Connection=keep-alive&Referer=${typeof window !== "undefined" ? encodeURIComponent(window.location.origin) : ""}` : primaryUrl;
+        // [FIX 2026-11-06 · Referer del pipe] Antes el pipe tomaba
+        // encodeURIComponent(window.location.origin): generando desde Live Server
+        // eso metia `Referer=http%3A%2F%2F127.0.0.1%3A5500` en las 21.224 URLs, y
+        // encima URL-encoded, asi que el player mandaba el literal. Ahora usa el
+        // host REAL del proveedor — el mismo _refererCanonical796 que ya emite el
+        // KODIPROP (L10737) — sin encodear. Si la URL no es parseable no se emite
+        // la clave, en vez de emitir un Referer vacio.
+        const _pipeReferer796 = _refererCanonical796 ? `&Referer=${_refererCanonical796}` : '';
+        let finalUrl = options.dictatorMode ? `${primaryUrl}|User-Agent=${_ua796}&Cache-Control=no-cache&Connection=keep-alive${_pipeReferer796}` : primaryUrl;
         if (options.dictatorMode) {
             const simulated_rtt = Math.floor(Math.random() * 50) + 100; // 100-150ms
             const L_srt = simulated_rtt * 3; // L_srt >= 3 x RTT rule

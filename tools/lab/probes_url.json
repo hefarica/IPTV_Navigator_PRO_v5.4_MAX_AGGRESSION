@@ -1,0 +1,11 @@
+[
+  { "tag": "MEGA player_api  (auth real)", "url": "http://nfqdeuxu.x1megaott.store/player_api.php?username=2E2ETBH3&password=HZHXPBUD", "ms": 12000 },
+  { "tag": "MEGA live/1.m3u8  (sin follow)", "url": "http://nfqdeuxu.x1megaott.store/live/2E2ETBH3/HZHXPBUD/1.m3u8", "ms": 12000 },
+  { "tag": "MEGA live/1.m3u8  (follow)", "url": "http://nfqdeuxu.x1megaott.store/live/2E2ETBH3/HZHXPBUD/1.m3u8", "ms": 15000, "follow": true },
+  { "tag": "LINE player_api  (timeout conectando)", "url": "http://line.tivi-ott.net/player_api.php?username=3JHFTC&password=U56BDP", "ms": 10000 },
+  { "tag": "LINE live/115.m3u8", "url": "http://line.tivi-ott.net/live/3JHFTC/U56BDP/115.m3u8", "ms": 10000 },
+  { "tag": "PICON:25461 player_api (404)", "url": "http://picon.tivi-ott.net:25461/player_api.php?username=3JHFTC&password=U56BDP", "ms": 10000 },
+  { "tag": "PICON:25461 live/115.m3u8 (200 con 0 bytes)", "url": "http://picon.tivi-ott.net:25461/live/3JHFTC/U56BDP/115.m3u8", "ms": 10000 },
+  { "tag": "PICON:25461 raiz", "url": "http://picon.tivi-ott.net:25461/", "ms": 10000 },
+  { "tag": "PICON:443 live/115.m3u8 (TLS)", "url": "https://picon.tivi-ott.net:443/live/3JHFTC/U56BDP/115.m3u8", "ms": 10000 }
+]

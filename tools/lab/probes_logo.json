@@ -1,0 +1,7 @@
+[
+  { "tag": "logo CON espacio (crudo, como va en la lista)", "url": "https://lo1.in/bss/BEIN SPORTS 07.png", "ms": 9000 },
+  { "tag": "logo CON espacio ENCODEADO %20 (control)", "url": "https://lo1.in/bss/BEIN%20SPORTS%2007.png", "ms": 9000 },
+  { "tag": "logo sin espacio (control sano)", "url": "https://lo1.in/bss/bs.png", "ms": 9000 },
+  { "tag": "picon tivi-ott (proveedor line, con streaming caido)", "url": "http://picon.tivi-ott.net:25461/picon/MIX3/ALARTKINO.png", "ms": 9000 },
+  { "tag": "picon tele-go (3er proveedor, 35 logos)", "url": "http://picon.tele-go.net/picon/x.png", "ms": 9000 }
+]
