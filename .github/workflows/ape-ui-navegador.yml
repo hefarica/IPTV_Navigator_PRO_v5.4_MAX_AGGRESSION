@@ -31,14 +31,17 @@ jobs:
         with:
           node-version: '22'
 
-      - name: Localizar Chrome
+      - name: Instalar Chrome
+        id: chrome
+        uses: browser-actions/setup-chrome@v1
+        with:
+          chrome-version: stable
+
+      - name: Exportar CHROME_PATH
         run: |
           set -euo pipefail
-          for p in /usr/bin/google-chrome /usr/bin/google-chrome-stable /usr/bin/chromium /usr/bin/chromium-browser; do
-            if [ -x "$p" ]; then echo "CHROME_PATH=$p" >> "$GITHUB_ENV"; echo "Chrome: $p"; break; fi
-          done
-          if [ -z "${CHROME_PATH:-}" ]; then echo '::error::no hay Chrome en el runner'; exit 1; fi
-          "$CHROME_PATH" --version
+          echo "CHROME_PATH=${{ steps.chrome.outputs.chrome-path }}" >> "$GITHUB_ENV"
+          "${{ steps.chrome.outputs.chrome-path }}" --version
 
       - name: Tests con DOM mockeado (aritmetica y grafo)
         working-directory: IPTV_v5.4_MAX_AGGRESSION/frontend/tests

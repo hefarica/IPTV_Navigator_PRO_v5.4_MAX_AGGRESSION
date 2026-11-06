@@ -128,7 +128,11 @@ const URL_B = HOST_B + '/live/3JHFTC/U56BDP/115.m3u8';
         process.exit(1);
     }
 
-    const outPath = path.join(__dirname, '..', '..', '..', 'tools', 'lab', 'out_regression_url.m3u8');
+    // El nombre de salida lleva sufijo segun la fuente: antes el control contra
+    // HEAD sobrescribia la salida del codigo con fix en el mismo path, y luego
+    // se auditaba el fichero equivocado.
+    const _tag = process.env.APE_GEN_PATH ? 'head' : 'actual';
+    const outPath = path.join(__dirname, '..', '..', '..', 'tools', 'lab', 'out_regression_url_' + _tag + '.m3u8');
     try { fs.writeFileSync(outPath, m3u8, 'utf8'); } catch { /* opcional */ }
     console.log('  Salida: ' + m3u8.length + ' bytes\n');
 
