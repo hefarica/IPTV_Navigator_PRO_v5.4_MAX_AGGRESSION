@@ -239,15 +239,116 @@ function ape_pulse_absolutize(string $raw, string $eff): string
     return implode("\n", $lines) . "\n";
 }
 
-/** Clasifica el cuerpo: 'media' | 'master' | 'noplaylist'. */
+/**
+ * Normaliza el cuerpo para clasificarlo: BOM fuera, CRLF->LF y lineas en blanco
+ * iniciales descartadas. Devuelve [texto normalizado, lineas].
+ */
+function ape_pulse_norm_body(string $body): array
+{
+    if (strncmp($body, "\xEF\xBB\xBF", 3) === 0) { $body = substr($body, 3); }
+    $body = str_replace("\r\n", "\n", str_replace("\r", "\n", $body));
+    $lines = explode("\n", $body);
+    $i = 0; $n = count($lines);
+    while ($i < $n && trim($lines[$i]) === '') { $i++; }
+    $out = array_slice($lines, $i);
+    return [implode("\n", $out), $out];
+}
+
+/**
+ * Clasificacion MULTIFACETICA del cuerpo que devuelve el upstream.
+ *
+ * POR QUE EXISTE: la version anterior preguntaba `stripos($body,'#EXTM3U')` en
+ * CUALQUIER parte del cuerpo y con 3 ramas. Una pagina HTML de error que mencione
+ * el texto, o un JSON con esa cadena, pasaba como playlist y llegaba al player
+ * como 200 + Content-Type m3u8 -> ExoPlayer aborta con
+ * "Loaded playlist has unexpected type." (medido 2026-11-05, Philips 65PUS9206).
+ *
+ * FACETAS (en orden, RFC 8216 4.3.1.1: #EXTM3U DEBE ser la primera linea):
+ *   1. forma      -> BOM/CRLF/blancos iniciales, primera linea real
+ *   2. marcado    -> HTML / XML
+ *   3. JSON       -> primer caracter { o [ y json_decode valido
+ *   4. contenedor -> TS (sync 0x47 cada 188) o fMP4 (ftyp/styp/moof)
+ *   5. entropia   -> proporcion de bytes no imprimibles (>10% = binario)
+ *   6. tags HLS   -> master (STREAM-INF) / media (TARGETDURATION|EXTINF|MAP|ENDLIST|MEDIA-SEQUENCE)
+ *
+ * Devuelve: kind (media|master|empty|html|xml|json|mpegts|fmp4|binary|text|noplaylist),
+ * format (familia detectada), first (primera linea, recortada) y why (motivo legible).
+ */
+function ape_pulse_classify(string $body, string $ctype = ''): array
+{
+    list($norm, $lines) = ape_pulse_norm_body($body);
+    $first = isset($lines[0]) ? $lines[0] : '';
+    $res = [
+        'kind'   => 'noplaylist',
+        'format' => 'unknown',
+        'first'  => substr(trim($first), 0, 90),
+        'why'    => '',
+        'lines'  => count($lines),
+        'ctype'  => substr($ctype, 0, 40),
+    ];
+    if ($norm === '') { $res['format'] = 'empty'; $res['why'] = 'cuerpo vacio'; return $res; }
+
+    // 6a. Playlist HLS legitima: #EXTM3U como PRIMERA linea no vacia.
+    if (strncasecmp(ltrim($first), '#EXTM3U', 7) === 0) {
+        $res['format'] = 'm3u8';
+        if (preg_match('/^[ \t]*#EXT-X-STREAM-INF[ \t]*:/im', $norm)) {
+            $res['kind'] = 'master'; $res['why'] = 'EXT-X-STREAM-INF'; return $res;
+        }
+        if (preg_match('/^[ \t]*#EXT-X-(TARGETDURATION|MEDIA-SEQUENCE|MAP|ENDLIST|DISCONTINUITY-SEQUENCE|PLAYLIST-TYPE)[ \t]*:/im', $norm)
+            || preg_match('/^[ \t]*#EXTINF[ \t]*:/im', $norm)) {
+            $res['kind'] = 'media'; $res['why'] = 'tag de media'; return $res;
+        }
+        $res['kind'] = 'empty'; $res['why'] = '#EXTM3U sin tags de variante ni de segmento'; return $res;
+    }
+
+    $head = strtolower(substr($norm, 0, 2048));
+
+    // 2. marcado
+    $isXml = (strpos($head, '<?xml') !== false);
+    if ($isXml || strpos($head, '<!doctype') !== false || strpos($head, '<html') !== false
+        || strpos($head, '<head') !== false || strpos($head, '<body') !== false) {
+        $res['format'] = $isXml ? 'xml' : 'html';
+        $res['why'] = 'documento de marcado, no es playlist';
+        return $res;
+    }
+
+    // 3. JSON
+    $t = ltrim($norm);
+    if ($t !== '' && ($t[0] === '{' || $t[0] === '[')) {
+        json_decode($t, true);
+        if (json_last_error() === JSON_ERROR_NONE) {
+            $res['format'] = 'json'; $res['why'] = 'JSON valido, no es playlist'; return $res;
+        }
+    }
+
+    // 4. contenedor
+    if (strlen($body) > 376 && ord($body[0]) === 0x47 && ord($body[188]) === 0x47 && ord($body[376]) === 0x47) {
+        $res['format'] = 'mpegts'; $res['why'] = 'sync 0x47/188 (segmento TS)'; return $res;
+    }
+    $head64 = substr($body, 0, 64);
+    if (strpos($head64, 'ftyp') !== false || strpos($head64, 'styp') !== false || strpos($head64, 'moof') !== false) {
+        $res['format'] = 'fmp4'; $res['why'] = 'caja fMP4 (segmento)'; return $res;
+    }
+
+    // 5. entropia de bytes
+    $sample = substr($body, 0, 512);
+    $n = strlen($sample); $bad = 0;
+    for ($i = 0; $i < $n; $i++) {
+        $o = ord($sample[$i]);
+        if ($o < 9 || ($o > 13 && $o < 32) || $o === 127) { $bad++; }
+    }
+    if ($n > 32 && ($bad / $n) > 0.10) { $res['format'] = 'binary'; $res['why'] = 'bytes no imprimibles'; return $res; }
+
+    $res['format'] = 'text';
+    $res['why'] = 'texto sin #EXTM3U en la primera linea';
+    return $res;
+}
+
+/** Compatibilidad: kind simple derivado de la clasificacion multifacetica. */
 function ape_pulse_kind(string $body): string
 {
-    if ($body === '' || stripos($body, '#EXTM3U') === false) { return 'noplaylist'; }
-    if (preg_match('/#EXT-X-STREAM-INF\s*:/i', $body)) { return 'master'; }
-    if (preg_match('/^#EXTINF\s*:/im', $body)) { return 'media'; }
-    // #EXTM3U con #EXT-X-MAP / segmentos pero sin EXTINF (fMP4): tratarlo como media.
-    if (preg_match('/\.(m4s|mp4|ts|aac)(\?|$)/im', $body)) { return 'media'; }
-    return 'noplaylist';
+    $c = ape_pulse_classify($body);
+    return ($c['kind'] === 'master' || $c['kind'] === 'media') ? $c['kind'] : 'noplaylist';
 }
 
 /** Elige la variante con mayor área (RESOLUTION) y, en empate, mayor BANDWIDTH. */
@@ -365,13 +466,15 @@ if ($mode === 'proxy') {
                 usleep(250000);
                 list($raw, $code, $eff) = ape_pulse_fetch($uNorm, $uaPulse);
             }
-            $kind = ape_pulse_kind($raw);
+            $cls  = ape_pulse_classify($raw);
+            $kind = ($cls['kind'] === 'master' || $cls['kind'] === 'media') ? $cls['kind'] : 'noplaylist';
             $ok = ($code === 200 && $kind !== 'noplaylist');
             if ($ok && $kind === 'master') {
                 $variant = ape_pulse_pick_variant($raw, $eff);
                 if ($variant !== '') {
                     list($mraw, $mcode, $meff) = ape_pulse_fetch($variant, $uaPulse);
-                    if ($mcode === 200 && ape_pulse_kind($mraw) === 'media') {
+                    $mcls = ape_pulse_classify($mraw);
+                    if ($mcode === 200 && $mcls['kind'] === 'media') {
                         $body = ape_pulse_absolutize($mraw, $meff);
                         $kind = 'media';
                     } else {
@@ -409,7 +512,15 @@ if ($mode === 'proxy') {
                 header('X-APE-Pulse: logged;mode=proxy;upstream_not_playlist;kind=' . $kind . ';code=' . $code);
                 header('Cache-Control: no-store, no-cache, must-revalidate');
                 http_response_code(502);
-                echo '{"ok":false,"error":"upstream_not_playlist","kind":"' . $kind . '","code":' . $code . '}';
+                echo json_encode([
+                    'ok'     => false,
+                    'error'  => 'upstream_not_playlist',
+                    'kind'   => $kind,
+                    'format' => isset($cls['format']) ? $cls['format'] : 'unknown',
+                    'first'  => isset($cls['first']) ? $cls['first'] : '',
+                    'why'    => isset($cls['why']) ? $cls['why'] : '',
+                    'code'   => $code,
+                ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
                 exit;
             }
         }
