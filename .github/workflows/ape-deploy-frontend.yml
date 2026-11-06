@@ -313,6 +313,53 @@ jobs:
           L2=$(sha256sum "$SRC2" | cut -d' ' -f1)
           if [ "$R2" != "$L2" ]; then echo "::error::sha de url2-cartridge no coincide"; exit 1; fi
           echo "  sha OK ($L2)"
+
+          # ── pulse.php: clasificador multifacetico del upstream ───────────────────────
+          # MOTIVO: pulse.php estaba en tools/cicd/vps_deploy_map.json pero NINGUN workflow
+          # lo desplegaba, asi que los arreglos del proxy de canal (incluido el
+          # "Loaded playlist has unexpected type") no llegaban nunca a produccion.
+          # Es el fichero mas critico de esta lista: si el proxy de canal se rompe, no se ve
+          # nada. Por eso: php -l + backup + sha verificada + smoke REAL + rollback automatico.
+          SRC7="IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/pulse.php"
+          DEST7="/var/www/html/prisma/api/pulse.php"
+          BAK7="$DEST7.bak_$STAMP"
+          echo "=== pulse.php (lint) ==="
+          php -l "$SRC7" || { echo "::error::pulse.php no pasa php -l"; exit 1; }
+          if ssh "$TARGET" "sudo -n test -f '$DEST7'"; then
+            ssh "$TARGET" "sudo -n cp -a '$DEST7' '$BAK7'"
+            echo "  backup: $BAK7"
+          fi
+          scp -q "$SRC7" "$TARGET:/tmp/ape-pulse.php"
+          ssh "$TARGET" "sudo -n install -m 0644 -o www-data -g www-data /tmp/ape-pulse.php '$DEST7'"
+          R7=$(ssh "$TARGET" "sudo -n sha256sum '$DEST7' | cut -d' ' -f1")
+          L7=$(sha256sum "$SRC7" | cut -d' ' -f1)
+          if [ "$R7" != "$L7" ]; then echo "::error::sha de pulse.php no coincide"; exit 1; fi
+          echo "  pulse OK ($L7)"
+
+          # SMOKE A (positivo, independiente del proveedor): master publico -> el proxy debe
+          # resolver la mejor variante y devolver MEDIA playlist. Prueba master->media.
+          # SMOKE B (negativo): upstream inexistente -> 502 JSON que CONSTRUYE el clasificador
+          # nuevo. Si no aparece "format", el fichero instalado NO es el nuevo.
+          sleep 2
+          SHA_MASTER="https%3A%2F%2Fstorage.googleapis.com%2Fshaka-demo-assets%2Fbbb-dark-truths-hls%2Fhls.m3u8"
+          SM_A=$(curl -s --max-time 15 "https://iptv-ape.duckdns.org/pulse/9001.m3u8?u=$SHA_MASTER&p=P0&id=9001&m=proxy" || true)
+          SM_B=$(curl -s --max-time 15 "https://iptv-ape.duckdns.org/pulse/9002.m3u8?u=http%3A%2F%2Fupstream.invalid%2Fx.m3u8&p=P0&id=9002&m=proxy" || true)
+          OK_A=0; OK_B=0
+          printf '%s' "$SM_A" | head -c 7 | grep -q '#EXTM3U' && OK_A=1
+          printf '%s' "$SM_A" | grep -q '#EXTINF' && OK_A=1
+          printf '%s' "$SM_B" | grep -q '"format"' && OK_B=1
+          echo "  SMOKE A (master publico -> media): OK_A=$OK_A"
+          echo "  SMOKE B (502 con clasificacion):   OK_B=$OK_B"
+          echo "  SMOKE B body: $SM_B"
+          if [ "$OK_A" != "1" ] || [ "$OK_B" != "1" ]; then
+            echo "::error::smoke de pulse.php fallo — restaurando backup"
+            if ssh "$TARGET" "sudo -n test -f '$BAK7'"; then
+              ssh "$TARGET" "sudo -n install -m 0644 -o www-data -g www-data '$BAK7' '$DEST7'"
+              echo "  ROLLBACK aplicado desde $BAK7"
+            fi
+            exit 1
+          fi
+          echo "  smoke OK: media 200 + clasificador nuevo visible en el 502"
           DEST="/var/www/html/prisma/api/ape-parity-tags.php"
           STAMP=$(date -u +%Y%m%dT%H%M%SZ)
           echo "=== ape-parity-tags.php ==="
