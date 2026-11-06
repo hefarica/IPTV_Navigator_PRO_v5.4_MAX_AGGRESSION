@@ -68,7 +68,11 @@ const stripDev = (s) => s.replace(/DEV_[0-9A-Za-z]+/g, 'DEV_X');
     console.log('\n── cartridge');
     ok('200', r.status === 200, 'status ' + r.status);
     ok('content-type m3u8', /mpegurl/i.test(r.headers.get('content-type') || ''));
-    ok('>= 900 directivas', lines.length >= 895, 'lineas ' + lines.length);
+    ok('>= 780 directivas (dialecto vlc)', lines.length >= 780, 'lineas ' + lines.length);
+    ok('dialecto declarado', /#EXT-X-APE-URL2-DIALECT:vlc/.test(body), (body.match(/#EXT-X-APE-URL2-DIALECT:[^\n]*/) || [''])[0]);
+    { const vo = body.split('\n').filter(l => l.startsWith('#EXTVLCOPT:'));
+      ok('VLC: EXTVLCOPT con cadena nativa y sin sintaxis ffmpeg', vo.some(l => l.includes('video-filter=sharpen:gradfun:adjust')) && !vo.some(l => /hqdn3d|minterpolate|scale=w=/.test(l))); }
+    ok('VLC: 0 KODIPROP', !/^#KODIPROP:/m.test(body));
     ok('master válido: 1 STREAM-INF', (body.match(/#EXT-X-STREAM-INF:/g) || []).length === 1);
     ok('sin #EXTINF en master', !/^#EXTINF:/m.test(body));
     ok('EXTHTTP JSON válido', (() => { const l = lines.find(x => x.startsWith('#EXTHTTP:')) || ''; try { JSON.parse(l.slice(9)); return true; } catch (_) { return false; } })());
@@ -114,6 +118,8 @@ const stripDev = (s) => s.replace(/DEV_[0-9A-Za-z]+/g, 'DEV_X');
   if (fail) { console.log('Fallos:'); fallos.forEach(f => console.log('  - ' + f)); }
   process.exit(fail ? 1 : 0);
 })().catch(e => { console.error('ERROR:', e && e.message); process.exit(1); });
+
+
 
 
 
