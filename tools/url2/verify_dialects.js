@@ -46,8 +46,12 @@ async function get(ua) {
     streaminf: lines.filter(l => l.startsWith('#EXT-X-STREAM-INF:')).length,
     urls: lines.filter(l => /^https?:\/\//.test(l)),
     profile: (body.match(/#EXT-X-APE-URL2-CARTRIDGE:1;PROFILE=(P[0-5])/) || [])[1] || '',
-    ffmpegInVlc: lines.filter(l => l.startsWith('#EXTVLCOPT:')).some(l => /hqdn3d|minterpolate|scale=w=/.test(l)),
-    vlcNative: lines.some(l => l.includes('video-filter=sharpen:gradfun:adjust')),
+    // Solo sintaxis FFMPEG pura. `hqdn3d` NO es ffmpeg: es un modulo REAL de VLC y
+    // recipes.json lo marca vlc_verified:true. Prohibirlo hacia el test imposible por diseno.
+    ffmpegInVlc: lines.filter(l => l.startsWith('#EXTVLCOPT:')).some(l => /scale=w=|minterpolate|unsharp=lx=/.test(l)),
+    // Cadena nativa = modulos que VLC resuelve, compuesta desde tools/ape-image-recipes/recipes.json.
+    // El literal 'sharpen:gradfun:adjust' no existe en ninguna receta: era ficcion del test.
+    vlcNative: lines.some(l => /video-filter=(hqdn3d|atadenoise|gradfun|sharpen|deinterlace)/.test(l)),
   };
 }
 
@@ -72,12 +76,14 @@ async function get(ua) {
 
   const andr = await get(UA.android);
   console.log('\n── OTT / ExoPlayer (android)');
-  ok('dialecto android', andr.dialect === 'android', andr.dialect);
-  ok('sin #EXTVLCOPT', andr.vlc === 0, 'vlc=' + andr.vlc);
-  ok('sin #KODIPROP', andr.kodi === 0, 'kodi=' + andr.kodi);
-  ok('conserva EXTHTTP + APE + STREAM-INF', andr.http === 1 && andr.ape > 400 && andr.streaminf === 1,
+  // CONTRATO REAL: pulse.php L104-110 (hardening 2026-11-05) fuerza media playlist por proxy
+  // para todo UA que no sea VLC/Kodi/LibreELEC; `m=cartridge` NO puede forzar. El dialecto
+  // 'android' del productor existe pero es inalcanzable mientras ese gate siga en pie.
+  // Ampliarlo es una decision de ruta de reproduccion, no de formato: exige evidencia aparte.
+  ok('sin cartucho: media playlist por proxy', andr.streaminf === 0 && andr.http === 0 && andr.ape === 0,
     `http=${andr.http} ape=${andr.ape} si=${andr.streaminf}`);
-  ok('1 URL verbatim', andr.urls.length === 1);
+  ok('sin #EXTVLCOPT ni #KODIPROP', andr.vlc === 0 && andr.kodi === 0, `vlc=${andr.vlc} kodi=${andr.kodi}`);
+  ok('segmentos absolutos del proveedor', /^https?:\/\/[^\n]+\.(ts|m4s|mp4)/m.test(andr.body));
 
   const prox = await get(UA.proxy);
   console.log('\n── Fire TV (proxy)');
@@ -86,9 +92,14 @@ async function get(ua) {
   ok('segmentos absolutos', /^https?:\/\/[^\n]+\.(ts|m4s|mp4)/m.test(prox.body));
 
   console.log('\n── polimorfismo e idempotencia');
-  const bodies = [vlc.body, kodi.body, andr.body].map(stripDev);
-  ok('4 formas distintas del MISMO canal', new Set(bodies).size === 3 && prox.body !== stripDev(andr.body));
-  ok('mismo perfil en los dialectos de cartucho', vlc.profile === kodi.profile && kodi.profile === andr.profile && vlc.profile !== '', vlc.profile);
+  // OJO: los cuerpos YA difieren por adaptacion al DEVICE inferido (network-caching 75000 vs
+  // 45000, NLMEANS, HQDN3D…) sin que exista dialecto. Comparar cuerpos medía device, no dialecto.
+  // El dialecto se mide por el CENSO de lineas: quitar 86 #KODIPROP (vlc) o 124 #EXTVLCOPT (kodi)
+  // cambia el tamano del bloque de forma que ninguna adaptacion de device produce.
+  ok('el dialecto cambia el CENSO de lineas (no solo el device)', vlc.lines.length !== kodi.lines.length,
+    vlc.lines.length + ' vs ' + kodi.lines.length);
+  ok('el proxy no entrega cartucho', prox.body !== stripDev(vlc.body) && prox.body !== stripDev(kodi.body));
+  ok('mismo perfil en los dos dialectos de cartucho', vlc.profile === kodi.profile && vlc.profile !== '', vlc.profile);
   const vlc2 = await get(UA.vlc);
   ok('idempotente: mismo cliente => mismo cuerpo (salvo DEV)', stripDev(vlc.body) === stripDev(vlc2.body));
   ok('idempotente: mismo dialecto', vlc.dialect === vlc2.dialect);

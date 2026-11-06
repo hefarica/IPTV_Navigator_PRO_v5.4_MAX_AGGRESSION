@@ -444,7 +444,10 @@ if (preg_match('/(VLC|LibVLC)/i', $uaPulse)) {
 } elseif (preg_match('/(Kodi|LibreELEC)/i', $uaPulse)) {
     $dialect = 'kodi';
 } elseif (preg_match('/(ExoPlayer)/i', $uaPulse)) {
-    $dialect = 'exo';   // ExoPlayer/Media3: CMaf/HLS estandar + sin ruido VLC/Kodi
+    // ExoPlayer/Media3 comparte dialecto con OTT/TiviMate: solo #EXT-X-* + #EXTHTTP.
+    // Antes devolvia 'exo', que el contrato de tools/url2/verify_dialects.js no reconoce
+    // (espera 'android' para el UA ExoPlayerLib). 'exo' sigue aceptado como alias en el filtro.
+    $dialect = 'android';
 } elseif (preg_match('/(OTT\s*Navigator|TiviMate|IPTVSmarters|Smarters|Perfect\s*Player)/i', $uaPulse)) {
     $dialect = 'android';
 }

@@ -41,6 +41,47 @@
  */
 declare(strict_types=1);
 
+// ══════════════════════════════════════════════════════════════════════════════════════════════
+// DIALECTO POR REPRODUCTOR — 2026-11-06
+//
+// DEFECTO MEDIDO: pulse.php calculaba el dialecto (L441-451) y este productor lo ignoraba
+// ($_GET['dialect'] no se leia en ninguna de las 6067 lineas). Resultado: VLC y Kodi recibian
+// el MISMO cuerpo (124 #EXTVLCOPT + 86 #KODIPROP) y cada player descartaba en silencio la mitad.
+//
+// QUE HACE: filtra familias AL SERVIR. No borra nada del array fuente (filtro en lectura), asi
+// que el mismo $CARTRIDGE sirve para todos los dialectos sin duplicar 369 KB.
+//   vlc     -> sin #KODIPROP (VLC lo ignora) ; conserva #EXTVLCOPT
+//   kodi    -> sin #EXTVLCOPT (Kodi lo ignora); conserva #KODIPROP
+//   android -> sin ninguna de las dos (ExoPlayer/OTT: solo #EXT-X-* + #EXTHTTP)
+//   exo     -> alias de android
+//   full    -> sin filtrar (compatibilidad con clientes desconocidos)
+//
+// HONESTO: quitar #KODIPROP a VLC no mejora la imagen; evita ruido y rechazos de parseo.
+// El realce real lo aplica el SoC/daemon del device, no el VPS.
+// ══════════════════════════════════════════════════════════════════════════════════════════════
+function url2_apply_dialect(array $lines, string $d): array
+{
+    if ($d === '' || $d === 'full') {
+        return $lines;
+    }
+    $dropVlc  = ($d === 'kodi' || $d === 'android' || $d === 'exo');
+    $dropKodi = ($d === 'vlc'  || $d === 'android' || $d === 'exo');
+    if (!$dropVlc && !$dropKodi) {
+        return $lines;
+    }
+    $out = [];
+    foreach ($lines as $l) {
+        if ($dropVlc && strncmp($l, '#EXTVLCOPT:', 11) === 0) {
+            continue;
+        }
+        if ($dropKodi && strncmp($l, '#KODIPROP:', 10) === 0) {
+            continue;
+        }
+        $out[] = $l;
+    }
+    return $out;
+}
+
 $CARTRIDGE = [
   'P0' => [
     '#EXTINF:-1 tvg-id="{{ID}}" tvg-name="{{NAME}} [{{SERVER}}]" tvg-logo="{{LOGO}}" tvg-chno="{{ID}}" tvg-shift="0" group-title="{{GROUP}}" ape-profile="P0" ape-build="v5.4-MAX-AGGRESSION" ape-region="XX" ape-content-type="GENERALISTA" ape-lang="es" ape-country="Desconocido" ape-classify-confidence="16" ape-fps="30" ape-transport="HLS" ape-codec-family="hevc",{{NAME}} [{{SERVER}}]',
@@ -68,7 +109,7 @@ $CARTRIDGE = [
     '#EXTVLCOPT:avcodec-corrupted=1',
     '#EXTVLCOPT:avcodec-hurry-up=0',
     '#EXTVLCOPT:avcodec-error-resilience=1',
-    '#EXTVLCOPT:video-filter=scale=w=3840:h=2160:flags=lanczos,hqdn3d=2:1.5:6:4.5,unsharp=lx=5:ly=5:la=0.6:cx=3:cy=3:ca=0.2,gradfun=radius=8:strength=0.51,minterpolate=fps=120:mi_mode=mci:mc_mode=aobmc:vsbmc=1:me=epzs:scd=0',
+    '#EXTVLCOPT:video-filter=hqdn3d:atadenoise{s=4:p=7:r=15}:gradfun{strength=1.5,radius=14}:sharpen{sigma=0.2}',
     '#EXT-X-APE-4KFALSE-MODE:ACTIVE',
     '#EXT-X-APE-4KFALSE-CONTENT-TYPE:GENERAL',
     '#EXT-X-APE-4KFALSE-TARGET-RES:3840x2160',
@@ -974,7 +1015,7 @@ $CARTRIDGE = [
     '#EXTVLCOPT:avcodec-corrupted=1',
     '#EXTVLCOPT:avcodec-hurry-up=0',
     '#EXTVLCOPT:avcodec-error-resilience=1',
-    '#EXTVLCOPT:video-filter=scale=w=3840:h=2160:flags=lanczos,hqdn3d=2:1.5:6:4.5,unsharp=lx=5:ly=5:la=0.6:cx=3:cy=3:ca=0.2,gradfun=radius=8:strength=0.51,minterpolate=fps=120:mi_mode=mci:mc_mode=aobmc:vsbmc=1:me=epzs:scd=0',
+    '#EXTVLCOPT:video-filter=hqdn3d:atadenoise{s=3:p=7:r=15}:gradfun{strength=1.5,radius=12}:sharpen{sigma=0.3}',
     '#EXT-X-APE-4KFALSE-MODE:ACTIVE',
     '#EXT-X-APE-4KFALSE-CONTENT-TYPE:GENERAL',
     '#EXT-X-APE-4KFALSE-TARGET-RES:3840x2160',
@@ -1880,7 +1921,7 @@ $CARTRIDGE = [
     '#EXTVLCOPT:avcodec-corrupted=1',
     '#EXTVLCOPT:avcodec-hurry-up=0',
     '#EXTVLCOPT:avcodec-error-resilience=1',
-    '#EXTVLCOPT:video-filter=scale=w=3840:h=2160:flags=lanczos,hqdn3d=2:1.5:6:4.5,unsharp=lx=5:ly=5:la=0.6:cx=3:cy=3:ca=0.2,gradfun=radius=8:strength=0.51,minterpolate=fps=120:mi_mode=mci:mc_mode=aobmc:vsbmc=1:me=epzs:scd=0',
+    '#EXTVLCOPT:video-filter=hqdn3d:atadenoise{s=3:p=5:r=13}:gradfun{strength=1.5,radius=12}:sharpen{sigma=0.35}',
     '#EXT-X-APE-4KFALSE-MODE:ACTIVE',
     '#EXT-X-APE-4KFALSE-CONTENT-TYPE:GENERAL',
     '#EXT-X-APE-4KFALSE-TARGET-RES:3840x2160',
@@ -2786,7 +2827,7 @@ $CARTRIDGE = [
     '#EXTVLCOPT:avcodec-corrupted=1',
     '#EXTVLCOPT:avcodec-hurry-up=0',
     '#EXTVLCOPT:avcodec-error-resilience=1',
-    '#EXTVLCOPT:video-filter=scale=w=3840:h=2160:flags=lanczos,hqdn3d=2:1.5:6:4.5,unsharp=lx=5:ly=5:la=0.6:cx=3:cy=3:ca=0.2,gradfun=radius=8:strength=0.51,minterpolate=fps=120:mi_mode=mci:mc_mode=aobmc:vsbmc=1:me=epzs:scd=0',
+    '#EXTVLCOPT:video-filter=hqdn3d:atadenoise{s=2.5:p=5:r=11}:gradfun{strength=1.6,radius=12}:sharpen{sigma=0.4}',
     '#EXT-X-APE-4KFALSE-MODE:ACTIVE',
     '#EXT-X-APE-4KFALSE-CONTENT-TYPE:GENERAL',
     '#EXT-X-APE-4KFALSE-TARGET-RES:3840x2160',
@@ -3692,7 +3733,7 @@ $CARTRIDGE = [
     '#EXTVLCOPT:avcodec-corrupted=1',
     '#EXTVLCOPT:avcodec-hurry-up=0',
     '#EXTVLCOPT:avcodec-error-resilience=1',
-    '#EXTVLCOPT:video-filter=scale=w=3840:h=2160:flags=lanczos,hqdn3d=2:1.5:6:4.5,unsharp=lx=5:ly=5:la=0.6:cx=3:cy=3:ca=0.2,gradfun=radius=8:strength=0.51,minterpolate=fps=120:mi_mode=mci:mc_mode=aobmc:vsbmc=1:me=epzs:scd=0',
+    '#EXTVLCOPT:video-filter=hqdn3d:atadenoise{s=2:p=5:r=9}:gradfun{strength=1.5,radius=10}:sharpen{sigma=0.5}',
     '#EXT-X-APE-4KFALSE-MODE:ACTIVE',
     '#EXT-X-APE-4KFALSE-CONTENT-TYPE:GENERAL',
     '#EXT-X-APE-4KFALSE-TARGET-RES:3840x2160',
@@ -4598,7 +4639,7 @@ $CARTRIDGE = [
     '#EXTVLCOPT:avcodec-corrupted=1',
     '#EXTVLCOPT:avcodec-hurry-up=0',
     '#EXTVLCOPT:avcodec-error-resilience=1',
-    '#EXTVLCOPT:video-filter=scale=w=3840:h=2160:flags=lanczos,hqdn3d=2:1.5:6:4.5,unsharp=lx=5:ly=5:la=0.6:cx=3:cy=3:ca=0.2,gradfun=radius=8:strength=0.51,minterpolate=fps=120:mi_mode=mci:mc_mode=aobmc:vsbmc=1:me=epzs:scd=0',
+    '#EXTVLCOPT:video-filter=deinterlace{mode=yadif2x}:hqdn3d:atadenoise{s=2:p=3:r=7}:gradfun{strength=1.5,radius=8}:sharpen{sigma=0.5}',
     '#EXT-X-APE-4KFALSE-MODE:ACTIVE',
     '#EXT-X-APE-4KFALSE-CONTENT-TYPE:GENERAL',
     '#EXT-X-APE-4KFALSE-TARGET-RES:3840x2160',
@@ -5769,12 +5810,15 @@ $ape6kOff = (isset($_GET['ape6k']) && (string)$_GET['ape6k'] === '0');
 $ape6kCfg = (!$ape6kOff && ape6k_soporta($device) && isset($APE_6K_CFG[$p]))
     ? $APE_6K_CFG[$p] : null;
 
-$lines = $CARTRIDGE[$p];
+$dialectOut = strtolower(trim((string)($_GET['dialect'] ?? 'full')));
+$lines = url2_apply_dialect($CARTRIDGE[$p], $dialectOut);
 
 header('X-APE-URL2: cartridge;profile=' . $p . ';lines=' . count($lines) . ';mode=' . $mode);
 
 echo "#EXTM3U\n";
 echo '#EXT-X-APE-URL2-CARTRIDGE:1;PROFILE=' . $p . ';LINES=' . count($lines) . ';MODE=' . strtoupper($mode) . ";EVERYTHING_IN_URL\n";
+// Dialecto servido: trazabilidad de que vocabulario recibio ESTE cliente.
+echo '#EXT-X-APE-URL2-DIALECT:' . $dialectOut . "\n";
 // Trazabilidad de la composicion dinamica: como se decidio ESTE cartucho.
 echo '#EXT-X-APE-URL2-DEVICE:SOURCE=' . $device['source']
    . ';SOC=' . ($device['soc'] !== '' ? $device['soc'] : 'unknown')

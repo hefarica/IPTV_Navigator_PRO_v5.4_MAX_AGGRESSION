@@ -71,7 +71,7 @@ const stripDev = (s) => s.replace(/DEV_[0-9A-Za-z]+/g, 'DEV_X');
     ok('>= 780 directivas (dialecto vlc)', lines.length >= 780, 'lineas ' + lines.length);
     ok('dialecto declarado', /#EXT-X-APE-URL2-DIALECT:vlc/.test(body), (body.match(/#EXT-X-APE-URL2-DIALECT:[^\n]*/) || [''])[0]);
     { const vo = body.split('\n').filter(l => l.startsWith('#EXTVLCOPT:'));
-      ok('VLC: EXTVLCOPT con cadena nativa y sin sintaxis ffmpeg', vo.some(l => l.includes('video-filter=sharpen:gradfun:adjust')) && !vo.some(l => /hqdn3d|minterpolate|scale=w=/.test(l))); }
+      ok('VLC: EXTVLCOPT con cadena nativa (modulos VLC) y sin sintaxis ffmpeg', vo.some(l => /video-filter=(hqdn3d|atadenoise|gradfun|sharpen|deinterlace)/.test(l)) && !vo.some(l => /scale=w=|minterpolate|unsharp=lx=/.test(l))); }
     ok('VLC: 0 KODIPROP', !/^#KODIPROP:/m.test(body));
     ok('master válido: 1 STREAM-INF', (body.match(/#EXT-X-STREAM-INF:/g) || []).length === 1);
     ok('sin #EXTINF en master', !/^#EXTINF:/m.test(body));
