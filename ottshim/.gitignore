@@ -1,0 +1,10 @@
+# Artefactos de build — NO se versionan.
+# El APK se reconstruye con: gradlew :app:assembleDebug
+# Pin reproducible medido: ver BG14_VERIFICATION.md §7 (sha256 del APK y de las fuentes).
+app/build/
+build/
+.gradle/
+local.properties
+*.iml
+.idea/
+captures/
