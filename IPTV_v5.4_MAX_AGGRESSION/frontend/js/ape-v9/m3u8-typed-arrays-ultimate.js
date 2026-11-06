@@ -9367,7 +9367,77 @@ ${__apeContinuityTags().join('\n')}
             lines.unshift(..._APE_MOTOR40);
         }
 
-        return lines.join('\n');
+        
+        // (7) [2026-11-06] CAPACIDAD DECLARADA — los 38 tags que el VPS emitia y la lista no tenia.
+        // El VPS los servia en el cartucho pero la lista generada por el panel salia sin ellos, asi
+        // que el player recibia menos informacion que la que el sistema sabe de ese canal.
+        //
+        // NO van los dos del VPS (#EXT-X-APE-URL2-CARTRIDGE y URL2-DEVICE): describen el cartucho al
+        // vuelo y el device que lo pide, no el canal. Meterlos en una lista seria declarar como canal
+        // algo que es de la peticion.
+        //
+        // #EXT-X-APE-CRYSTAL-6K-BITRATE tampoco: ya lo emite (6) con el Mbps del perfil.
+        //
+        // Todos son metadata inerte (RFC 8216 6.3.1 ignora los tags desconocidos): declarar capacidad
+        // no cambia el bitstream. Se emiten delante del STREAM-INF para no romper 4.3.4.2.
+        {
+            const _cap = [
+                // --- identidad de la variante servida ---
+                '#EXT-X-APE-STREAM-TRUTH:src=fake-4k,w=3840,h=2160,fps=60,rawfps=60,family=HEVC,pq=1',
+                '#EXT-X-APE-UPSCALE:fake4k',
+                '#EXT-X-APE-QUALITY:4K-UPSCALING',
+                '#EXT-X-APE-QUALITY-RANGE:min=2000000,max=200000000,bitrate=8000000',
+                '#EXT-X-APE-CODEC-FALLBACK-CHAIN:hevc,hev1,h265,h.265,H265,H.265,h264,h.264,H264,H.264,avc,AVC',
+                // --- AI-SR / AI-PQ declarados ---
+                '#EXT-X-APE-AI-SR-ENABLED:ADAPTIVE',
+                '#EXT-X-APE-AI-SR-SCALE:2',
+                '#EXT-X-APE-AI-DENOISING:NLMEANS',
+                '#EXT-X-APE-AI-SHARPENING:UNSHARP_MASK',
+                '#EXT-X-APE-AI-FRAME-INTERPOLATION:RIFE',
+                '#EXT-X-APE-AI-HDR-UPCONVERT:ENABLED',
+                // --- anti-ruido: motor, cadena y parametros reales ---
+                '#EXT-X-APE-NR-MODE:NLMEANS',
+                '#EXT-X-APE-SUPER-RES-MODEL:REALESRGAN_X4PLUS',
+                '#EXT-X-APE-ANTI-NOISE-ENGINE:v1.0-bilateral+nlmeans',
+                '#EXT-X-APE-ANTI-NOISE-RESOLUTION:2160p',
+                '#EXT-X-APE-ANTI-NOISE-FILTERS:14',
+                '#EXT-X-APE-ANTI-NOISE-FILTER-CHAIN:hqdn3d,afftdn,nlmeans,unsharp',
+                '#EXT-X-APE-ANTI-NOISE-NLMEANS:h=3|s=3.0|p=7|r=15',
+                '#EXT-X-APE-ANTI-NOISE-HQDN3D:luma-spatial=2|chroma=3|temporal=6',
+                '#EXT-X-APE-ANTI-NOISE-AFFTDN:nf=-25|tn=1|rf=-50',
+                '#EXT-X-APE-ANTI-NOISE-PRESERVE:EDGES=true|DETAIL=true|GRAIN=cinematic',
+                // --- HDR de display: el techo declarado, no el del bitstream ---
+                '#EXT-X-APE-HDR-PEAK-NIT-ENGINE:v1.0-8000cd',
+                '#EXT-X-APE-HDR-MASTERING-DISPLAY:P3-D65|PEAK=8000|MIN=0.0001|MaxCLL=8000|MaxFALL=4000',
+                '#EXT-X-APE-HDR-PQ-EOTF:ST2084|TARGET=8000|CODE=3765|DEPTH=10bit',
+                '#EXT-X-APE-HDR-DISPLAY:PEAK=8000|LOCAL-DIMMING=AGGRESSIVE-FULL-ARRAY',
+                '#EXT-X-APE-HDR-GPU-TONEMAP:libplacebo+vulkan|BT2446a|BT2390|DESAT=0|PEAK=8000',
+                '#EXT-X-APE-HDR-FILM-GRAIN:NEURAL-MPEG|TYPE=analog-cinematic|ADDBACK=post-tonemap',
+                // --- LCEVC: declarado como estandar, player NO requerido (0) para no romper compatibilidad ---
+                '#EXT-X-APE-LCEVC-STANDARD:MPEG-5-PART-2',
+                '#EXT-X-APE-LCEVC-PLAYER-REQUIRED:0',
+                '#EXT-X-APE-LCEVC-ENHANCEMENT:mpeg5-part2',
+                // --- Cortex: motores declarados con su fallback ---
+                '#EXT-X-APE-CORTEX-AI-SUPER-RESOLUTION:ENABLED|ENGINE=ESRGAN-LITE|FALLBACK=LANCZOS',
+                '#EXT-X-APE-CORTEX-AI-SPATIAL-DENOISE:ENABLED|ENGINE=CAR-CNN|STRENGTH=adaptive',
+                '#EXT-X-APE-CORTEX-LCEVC:PHASE=4,ENABLED=true,ENHANCEMENT=ULTRA,SHARPNESS=1.0',
+                '#EXT-X-APE-CORTEX-TEMPORAL-ARTIFACT-REPAIR:ENABLED|ENGINE=RIFE|MODE=detect-repair',
+                // --- estado de realce: ENFORCED, degradar prohibido ---
+                '#EXT-X-APE-CRYSTAL-ENHANCEMENT:ENFORCED;NIVEL=2;DEGRADE=FORBIDDEN',
+                '#EXT-X-APE-REALCE-SOURCE:device;OBS_BPS=0;NIVEL=2;PERFIL=P3;NIVEL_MAX=3;DEGRADE=FORBIDDEN'
+            ];
+            const preSi = lines.findIndex(l => l.startsWith('#EXT-X-STREAM-INF:'));
+            if (preSi !== -1) {
+                // idempotencia por prefijo de tag: no duplicar lo que ya este
+                const faltan = _cap.filter(tag => {
+                    const pref = tag.split(':')[0] + ':';
+                    return !lines.some(l => l.startsWith(pref));
+                });
+                if (faltan.length) lines.splice(preSi, 0, ...faltan);
+            }
+        }
+
+return lines.join('\n');
     }
 
     function generateChannelEntry(channel, profile = 'P3', index = 0, credentialsMap = {}, options = {}) {
