@@ -241,8 +241,11 @@ for (const id of ['P0', 'P1', 'P2', 'P3', 'P4', 'P5']) {
 out.profiles_calibrated = ordenados;
 
 // metadatos del fichero
+// VERSION DEL FICHERO. `lab_version` es el SCHEMA y NO se toca: la app valida
+// /^omega_/ sobre ese campo (ape-profiles-config.js:5022) y cambiarlo por 'v24-6K'
+// hacia que el import rechazara el fichero con 'Schema no soportado'. Se hereda del base.
 out.version = '23.1.0-6K-EMULATED';
-out.lab_version = 'v24-6K';
+out.six_k_version = '6K-EMULATED-v1';
 out.synthesized_at = new Date().toISOString();
 out.emulated_6k = {
     enabled: true,
@@ -292,6 +295,17 @@ for (const id of Object.keys(V6K)) {
     console.log('    ' + id + '  ' + (ok ? 'OK ' : 'MAL') + '  ' + s.resolution + '  ' + s.bitrate + ' Mbps  ' + s.codec_full);
     if (!ok) { console.error('  ABORTA'); process.exit(1); }
 }
+
+// ── COMPATIBILIDAD DE SCHEMA CON LA APP ──────────────────────────────────────
+// ape-profiles-config.js acepta lab_version que empiece por omega_ o este en
+// supportedSchemas. Si no, el import del LAB se rechaza. Se verifica aqui para que
+// el fichero no salga roto.
+if (!/^omega_/i.test(String(out.lab_version || ''))) {
+    console.error('  ABORTA: lab_version="' + out.lab_version + '" no empieza por omega_');
+    console.error('  la app lo rechazaria con "Schema no soportado"');
+    process.exit(1);
+}
+console.log('  schema lab_version: ' + out.lab_version + '  (compatible con la app)');
 
 // nivel HEVC verificado
 const samples = PIXELS * 60;

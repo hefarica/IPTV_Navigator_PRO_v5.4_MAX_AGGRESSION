@@ -4032,7 +4032,10 @@
             ]);
 
             const labProfiles = data.profiles_calibrated || {};
-            for (const pid of ['P0','P1','P2','P3','P4','P5']) {
+            // [6K 2026-11-05] El LAB v24 trae P0.5..P5.5 ademas de P0..P5. El diff del import
+            // debe contarlos o el panel reporta menos cambios de los que realmente aplica.
+            const APE_6K_IDS = ['P0.5','P1.5','P2.5','P3.5','P4.5','P5.5'];
+            for (const pid of ['P0','P1','P2','P3','P4','P5'].concat(APE_6K_IDS)) {
                 const lp = labProfiles[pid];
                 if (!lp) continue;
                 diff.profiles.updated++;

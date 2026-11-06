@@ -673,7 +673,13 @@
             bitrateMbps: real.bitrateMbps,
         }) || 'P5';
 
-        const rank = p => ['P0','P1','P2','P3','P4','P5'].indexOf(p);
+        // [6K 2026-11-05] Tolerar los ids con sufijo .5 del LAB v24: P1.5 se evalua como P1,
+        // porque el 6K es la misma familia escalada, no un tier distinto. Sin esto indexOf
+        // devolvia -1 y delta salia NaN, marcando FAKE un canal correcto.
+        const rank = p => {
+            const base = String(p || '').split('.')[0];
+            return ['P0','P1','P2','P3','P4','P5'].indexOf(base);
+        };
         const delta = rank(promised) - rank(realProfile);
         let tier;
         if (delta >= 2)       tier = 'ORO';
