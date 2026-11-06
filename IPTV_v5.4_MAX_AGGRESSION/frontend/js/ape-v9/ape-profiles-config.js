@@ -4711,6 +4711,8 @@
             this.configGlobal = {};
             this.labExportedAt = null;
             this.omegaGapPlan = null;
+            // Capacidad byte-range medida por host (206). Ver byterange_capability del LAB.
+            this.byterangeCapability = null;
             try { this.loadLABFromStorage && this.loadLABFromStorage(); } catch (e) {}
         }
 
@@ -5231,6 +5233,16 @@
                 this.labServers = data.servers || [];
                 result.serversCount = this.labServers.length;
 
+                // === 5a. BYTE-RANGE CAPABILITY (2026-11-06) ===
+                // Medido: ninguno de los dos origenes honra Range (MEGA devuelve el
+                // segmento entero con 200; line declara Accept-Ranges y tambien lo
+                // ignora). El generador lee esto para emitir #EXT-X-BYTERANGE SOLO
+                // si honors_range_206 es true, y declarar la capacidad como metadata
+                // en el resto de casos.
+                this.byterangeCapability = data.byterange_capability || null;
+                result.byterangeHosts = this.byterangeCapability
+                    ? Object.keys(this.byterangeCapability.hosts || {}).length : 0;
+
                 // === 5b. OMEGA_GAP_PLAN — policy de injection cocinada por el LAB Excel ===
                 // 50 items con canonical_template_by_level por nivel (NIVEL_1/NIVEL_2/NIVEL_3/PLAYER_CONFIG)
                 // + action (REPLICAR|IMPLEMENTAR|QUITAR) + injection_order + already_present_in_lab.
@@ -5270,6 +5282,7 @@
                 localStorage.setItem('ape_lab_evasion', JSON.stringify(this.evasionPool));
                 localStorage.setItem('ape_lab_config_global', JSON.stringify(this.configGlobal));
                 localStorage.setItem('ape_lab_servers', JSON.stringify(this.labServers));
+                localStorage.setItem('ape_lab_byterange', JSON.stringify(this.byterangeCapability || null));
                 localStorage.setItem('ape_lab_omega_gap_plan', JSON.stringify(this.omegaGapPlan || null));
                 localStorage.setItem('ape_lab_metadata', JSON.stringify({
                     metadata: this.labMetadata,
@@ -5382,6 +5395,7 @@
                         detail: {
                             ...result,
                             labServers: this.labServers,
+                            byterangeCapability: this.byterangeCapability,
                             omegaGapPlan: this.omegaGapPlan
                         }
                     }));
@@ -5412,6 +5426,8 @@
                 if (cg) this.configGlobal = JSON.parse(cg);
                 const sv = localStorage.getItem('ape_lab_servers');
                 if (sv) this.labServers = JSON.parse(sv);
+                const br = localStorage.getItem('ape_lab_byterange');
+                if (br) { try { this.byterangeCapability = JSON.parse(br); } catch (_) {} }
                 const md = localStorage.getItem('ape_lab_metadata');
                 if (md) {
                     const o = JSON.parse(md);

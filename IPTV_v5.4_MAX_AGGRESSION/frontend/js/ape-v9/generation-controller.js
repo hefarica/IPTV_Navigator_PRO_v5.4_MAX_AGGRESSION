@@ -153,6 +153,9 @@
             bulletproof_placeholders:  labCfg?.placeholdersMap || {},
             bulletproof_gap_plan:      labCfg?.omegaGapPlan || null,
             bulletproof_servers:       labCfg?.labServers || [],
+            // Capacidad byte-range por host (206). El generador emite #EXT-X-BYTERANGE
+            // solo si honors_range_206 es true; si no, declara la capacidad como metadata.
+            byterange_capability:      labCfg?.byterangeCapability || null,
             bulletproof_loaded:   labLoaded,
             is_bulletproof:       isBulletproof,
             bulletproof_meta: {
@@ -1373,6 +1376,7 @@
             bulletproof_placeholders:  labCfg.placeholdersMap || {},
             bulletproof_gap_plan:      labCfg.omegaGapPlan || null,
             bulletproof_servers:       labCfg.labServers || [],
+            byterange_capability:      labCfg.byterangeCapability || null,
             bulletproof_loaded:   true,
             is_bulletproof:       isBulletproof,
             bulletproof_meta: {

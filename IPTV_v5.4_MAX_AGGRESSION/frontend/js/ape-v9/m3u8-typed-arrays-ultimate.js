@@ -10771,6 +10771,29 @@ return lines.join('\n');
             } catch { return ''; }
         })();
         const _originCanonical796 = _refererCanonical796 ? _refererCanonical796.replace(/\/$/, '') : '';
+        // ── BYTE-RANGE CAPABILITY (2026-11-06) · 206 por metadata, no por mentira ──
+        // Mandato del operador: aplicar el 206 via JSON metadata, no servir segmentos
+        // completos a ciegas. La verdad MEDIDA (probe sobre un canal servible de cada uno):
+        //   nfqdeuxu.x1megaott.store  Accept-Ranges AUSENTE · Range bytes=0-1023 -> 200 entero (300.870 B)
+        //   line.tivi-ott.net         Accept-Ranges bytes   · Range bytes=0-1023 -> 200 entero (302.412 B)
+        // Ninguno honra Range. Emitir #EXT-X-BYTERANGE sobre un origen asi NO es premium:
+        // hls.js aborta con NETWORK_ERROR "range header was ignored" y ExoPlayer decodifica
+        // el objeto entero como si fuera el trozo. Por eso aqui se emite la CAPACIDAD como
+        // metadata (RFC 8216 6.3.1: un player conforme ignora el tag desconocido) y el
+        // BYTERANGE real solo cuando el probe confirmo 206. El dia que el borde honre
+        // Range, basta cambiar honors_range_206 en el LAB y el troceo se activa solo.
+        const _brAll = (options && options.byterange_capability && options.byterange_capability.hosts) || {};
+        const _brHost = (function() { try { return new URL(primaryUrl).hostname; } catch { return ''; } })();
+        const _br = _brAll[_brHost] || null;
+        const _brHonors = !!(_br && _br.honors_range_206);
+        const _brAccepts = !!(_br && _br.accept_ranges_header);
+        const _brState = _br ? (_brHonors ? 'VERIFIED-206' : 'MEASURED-NO-206') : 'UNMEASURED';
+        lines.push(`#EXT-X-APE-RANGE-CAPABILITY:HOST=${_brHost},ACCEPT_RANGES=${_brAccepts},HONORS_206=${_brHonors},EMIT_BYTERANGE=${_brHonors},STATE=${_brState},POLICY=EMIT-X-BYTERANGE-SOLO-CON-HONORS-206`);
+        lines.push(`#EXT-X-APE-RANGE-MODE:${_brHonors ? 'BYTERANGE-ELIGIBLE' : 'FULL-OBJECT'}`);
+        if (_brHonors) {
+            // 206 probado: se declara el rango abierto y el player trocea con Range.
+            lines.push('#EXT-X-APE-RANGE-OPEN:true');
+        }
         const _kodiManifestHdrs = [
             `User-Agent=${_ua796}`,
             _refererCanonical796 ? `Referer=${_refererCanonical796}` : '',
