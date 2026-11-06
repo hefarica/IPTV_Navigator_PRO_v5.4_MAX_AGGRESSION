@@ -387,6 +387,62 @@ jobs:
           echo "  timer habilitado (arranca en <=5 min)"
           ssh "$TARGET" "systemctl list-timers ape-quality-sync.timer --no-pager 2>/dev/null | head -3"
 
+      - name: Desplegar ape_mesh.php (amazon levers) con rollback automatico
+        # EL FICHERO MAS DELICADO DEL DESPLIEGUE. 45 KB compartidos por seis endpoints:
+        # url2-cartridge, ape-parity-tags, ape-last, qoe-flush, events-sse, feedforward.
+        # Un error de sintaxis los tumba TODOS. Por eso esta secuencia y no otra:
+        #   1. php -l en el runner ANTES de tocar nada
+        #   2. backup con stamp en /var/backups/ape-deploy/
+        #   3. install
+        #   4. php -l EN EL DESTINO (no basta el del runner)
+        #   5. curl a los SEIS endpoints: si cualquiera no da 200 y no es 403, RESTORE
+        #   6. el restore usa el backup de ESTE step, no uno viejo
+        if: inputs.mode == 'apply'
+        run: |
+          set -uo pipefail
+          STAMP=$(date -u +%Y%m%dT%H%M%SZ)
+          SRC="IPTV_v5.4_MAX_AGGRESSION/vps/prisma/lib/ape_mesh.php"
+          DST="/var/www/html/prisma/lib/ape_mesh.php"
+          BK="/var/backups/ape-deploy/$STAMP"
+          echo "=== 1. lint en el runner ==="
+          php -l "$SRC" || { echo "::error::ape_mesh.php no pasa php -l en el runner"; exit 1; }
+          echo "=== 2. backup en el VPS ==="
+          ssh "$TARGET" "sudo -n mkdir -p '$BK' && sudo -n cp -a '$DST' '$BK/ape_mesh.php' && echo '  backup: $BK/ape_mesh.php'"
+          HASH_ANTES=$(ssh "$TARGET" "sudo -n sha256sum '$DST' | cut -d\" \"  -f1")
+          echo "  hash antes: $HASH_ANTES"
+          echo "=== 3. install ==="
+          scp -q "$SRC" "$TARGET:/tmp/ape-mesh-new.php" || { echo "::error::scp fallo"; exit 1; }
+          ssh "$TARGET" "sudo -n install -m 0644 -o root -g root /tmp/ape-mesh-new.php '$DST'" || { echo "::error::install fallo"; exit 1; }
+          echo "=== 4. lint en el DESTINO ==="
+          if ! ssh "$TARGET" "php -l '$DST'" ; then
+            echo "::error::el fichero instalado NO compila — RESTAURANDO"
+            ssh "$TARGET" "sudo -n cp -a '$BK/ape_mesh.php' '$DST'"
+            exit 1
+          fi
+          echo "=== 5. los SEIS endpoints ==="
+          FALLO=0
+          U="http%3A%2F%2Fline.tivi-ott.net%2Flive%2F3JHFTC%2FU56BDP%2F3.m3u8"
+          for E in "url2-cartridge.php?u=$U&p=P3&n=T&id=3" "ape-parity-tags.php" "ape-last.php" "qoe-flush.php" "ape-feedforward-stream.php?device=probe&iv=3&dur=1" "qoe-peek.php"; do
+            N="${E%%\?*}"
+            C=$(curl -sS -o /dev/null -w "%{http_code}" --max-time 20 "https://iptv-ape.duckdns.org/prisma/api/$E" || echo "000")
+            echo "  $N -> HTTP $C"
+            # 403 es correcto para qoe-peek (sin token). 000 = no responde = roto.
+            if [ "$C" != "200" ] && [ "$C" != "403" ]; then FALLO=1; fi
+          done
+          if [ "$FALLO" -ne 0 ]; then
+            echo "::error::un endpoint no responde — RESTAURANDO ape_mesh.php"
+            ssh "$TARGET" "sudo -n cp -a '$BK/ape_mesh.php' '$DST'"
+            ssh "$TARGET" "php -l '$DST'"
+            echo "  restaurado. La rama queda como antes de este step."
+            exit 1
+          fi
+          HASH_DESPUES=$(ssh "$TARGET" "sudo -n sha256sum '$DST' | cut -d\" \"  -f1")
+          LHASH=$(sha256sum "$SRC" | cut -d\" \"  -f1)
+          echo "=== 6. veredicto ==="
+          [ "$HASH_DESPUES" = "$LHASH" ] && echo "  sha OK ($LHASH)" || { echo "::error::sha no coincide — RESTAURANDO"; ssh "$TARGET" "sudo -n cp -a '$BK/ape_mesh.php' '$DST'"; exit 1; }
+          echo "  los seis endpoints responden y el fichero compila."
+          echo "  rollback manual: ssh TARGET sudo cp -a $BK/ape_mesh.php $DST"
+
       - name: Leer registro de zapping
         # Minimal a proposito: un solo comando por bloque, sin pipes que puedan enmascarar
         # la salida. Si algo no existe, se ve el error tal cual.

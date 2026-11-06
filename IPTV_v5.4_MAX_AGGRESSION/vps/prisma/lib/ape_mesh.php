@@ -524,6 +524,18 @@ if (!function_exists('ape_ff_settings_ns_map')) {
             'pq_ai_dnr_enable' => 'global', 'pq_dnr_enable' => 'global', 'pq_nr_enable' => 'global',
             'pq_ai_fbc_enable' => 'global', 'pq_hdr_enable' => 'global', 'pq_hdr_mode' => 'global',
             'ai_pq_mode' => 'global', 'ai_pic_mode' => 'global',
+            // ── FIRE TV / AMAZON (MT8696) — 2026-11-05 ──────────────────────────────────────
+            // El lever REAL de imagen del Fire TV 4K Max. Viven en `system`.
+            // Sin estas 6, el device solo las tiene si se las puso ADB a mano, y se pierden
+            // en un reset o al reinstalar. Medido en AFTKRT: motion_smoothness=2 (MEMC HW),
+            // picture_sharpness=65, dynamic_contrast=high, picture_mode=movie,
+            // noise_reduction=auto, color_temperature=cool.
+            'com.amazon.tv.motion_smoothness' => 'system',
+            'com.amazon.tv.picture_sharpness' => 'system',
+            'com.amazon.tv.dynamic_contrast'  => 'system',
+            'com.amazon.tv.picture_mode'      => 'system',
+            'com.amazon.tv.noise_reduction'   => 'system',
+            'com.amazon.tv.color_temperature' => 'system',
         );
     }
 }
@@ -551,6 +563,16 @@ if (!function_exists('ape_ff_device_settings_from_delta')) {
                 foreach ($s as $k => $v) {
                     $k = (string)$k;
                     if (!isset($nsMap[$k])) continue;               // allowlist por key (espeja el APK)
+                    // [2026-11-05] Amazon expone valores de TEXTO (high/movie/auto/cool). Pasarlos
+                    // por (int) los volveria 0, que en su vocabulario significa "off": se aplicaria
+                    // lo CONTRARIO de lo pedido. Se validan con permite-lista de palabras, no con
+                    // cast. Rama separada: la numerica de abajo queda byte a byte igual.
+                    if (strpos($k, 'com.amazon.tv.') === 0) {
+                        $vs = strtolower(trim((string)$v));
+                        if (!preg_match('/^(off|low|medium|high|auto|cool|normal|warm|standard|movie|dynamic|vivid|game|[0-9]{1,3})$/', $vs)) continue;
+                        $out[] = $nsMap[$k] . ' ' . $k . ' ' . $vs;
+                        continue;
+                    }
                     if (!(is_int($v) || is_float($v) || (is_string($v) && preg_match('/^-?\d{1,4}$/', $v)))) continue;
                     $out[] = $nsMap[$k] . ' ' . $k . ' ' . (string)(int)$v;
                     if ($k === 'ai_pq_mode') $out[] = 'global ai_pic_mode ' . (string)(int)$v; // nombre real MT8696
