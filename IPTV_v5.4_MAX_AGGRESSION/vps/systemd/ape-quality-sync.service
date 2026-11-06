@@ -1,0 +1,22 @@
+[Unit]
+Description=APE quality sync — empuja los levers homologados por SoC a los ARA con heartbeat
+Documentation=file:/var/www/html/prisma/lib/ape_device_quality.php
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=www-data
+Group=www-data
+ExecStart=/usr/bin/php /var/www/html/prisma/cli/ape-quality-sync.php
+# Si el sync falla (base ocupada, PDO, etc.) no se reintenta en bucle: el timer ya vuelve en 5 min.
+TimeoutStartSec=60
+Nice=10
+IOSchedulingClass=best-effort
+IOSchedulingPriority=6
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/opt/netshield/data
+StandardOutput=journal
+StandardError=journal

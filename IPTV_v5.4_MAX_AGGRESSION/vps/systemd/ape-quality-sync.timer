@@ -1,0 +1,11 @@
+[Unit]
+Description=APE quality sync cada 5 min (heartbeat -> levers homologados)
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=5min
+AccuracySec=30s
+Unit=ape-quality-sync.service
+
+[Install]
+WantedBy=timers.target

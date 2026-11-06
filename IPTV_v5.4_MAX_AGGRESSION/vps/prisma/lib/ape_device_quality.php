@@ -43,10 +43,24 @@ if (!function_exists('ape_quality_soc_family')) {
     {
         $s = strtolower(trim((string)$socOrDevice));
         if ($s === '') { return null; }
-        // Amlogic: S905X2/X3/X4, S922, g12a/b, aml, droidlogic
-        if (preg_match('/amlogic|s905|s922|g12[ab]|aml|droidlogic/', $s) === 1) { return 'amlogic'; }
-        // MediaTek: MT8696, MT8695, mt8, fire tv (AFTKA/AFTKRT)
-        if (preg_match('/mt86|mediatek|mtk|aftk/', $s) === 1) { return 'mtk'; }
+
+        // ── PRIMERO EL NOMBRE DEL DEVICE, PORQUE EL APK MIENTE SOBRE EL SOC ──────────
+        // Medido 2026-11-05: el Fire TV 4K Max (AFTKRT, MT8696 real) manda
+        // caps.soc = 'AMLS905Y4' en su heartbeat. Si se confiara en ese campo, se le
+        // escribirian aisr_enable / aipq_enable, claves que el MediaTek no tiene, y el
+        // chip las ignoraria. El repo ya lo tenia documentado en
+        // android/ape-crystal-agent/FIRETV_APPLIED_2026-11-05.md ("el APK reporta
+        // soc=amlogic / soc_raw=AMLS905Y4, que NO coincide con el hardware real").
+        // El device_id es lo mas fiable que tenemos, asi que manda.
+        if (preg_match('/firestick|firetv|fire-tv|aftk|aft[kmrs]|karat/', $s) === 1) { return 'mtk'; }
+        if (preg_match('/onn|buga|walmart/', $s) === 1) { return 'amlogic'; }
+
+        // ── Si el nombre no dice nada, el SoC declarado ──────────────────────────────
+        // AMLS905Y4 es el valor erroneo conocido: si aparece solo (sin device_id de Fire
+        // TV), no se puede decidir, asi que se trata como amlogic por su prefijo AML.
+        // mt86/mediatek gana siempre.
+        if (preg_match('/mt86|mediatek|mtk/', $s) === 1) { return 'mtk'; }
+        if (preg_match('/amlogic|amls9|s905|s922|g12[ab]|droidlogic/', $s) === 1) { return 'amlogic'; }
         return null;
     }
 }

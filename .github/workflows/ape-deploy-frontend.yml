@@ -345,6 +345,48 @@ jobs:
           [ "$L2" = "$R2" ] && echo "  cli sha OK ($L2)" || { echo "::error::sha cli no coincide"; exit 1; }
           echo "  el CLI NO se ejecuta aqui: es manual y sin trafico."
 
+      - name: Desplegar el sincronizador de calidad (CLI + timer)
+        # Conecta el heartbeat del ARA con la matriz homologada. Riesgo contenido:
+        #   - el CLI es NUEVO: no modifica endpoints, ni el SSE, ni ape_mesh.php
+        #   - la PRIMERA ejecucion de este deploy es con --dry: si el dry falla, el timer
+        #     no se habilita y no se escribe ni un delta
+        #   - el timer solo arranca si el dry devuelve exit 0
+        #   - desactivarlo es `systemctl disable --now ape-quality-sync.timer`
+        if: inputs.mode == 'apply'
+        run: |
+          set -uo pipefail
+          STAMP=$(date -u +%Y%m%dT%H%M%SZ)
+          CLI_SRC="IPTV_v5.4_MAX_AGGRESSION/vps/prisma/cli/ape-quality-sync.php"
+          CLI_DST="/var/www/html/prisma/cli/ape-quality-sync.php"
+          SVC_SRC="IPTV_v5.4_MAX_AGGRESSION/vps/systemd/ape-quality-sync.service"
+          TMR_SRC="IPTV_v5.4_MAX_AGGRESSION/vps/systemd/ape-quality-sync.timer"
+          echo "=== lint ==="
+          php -l "$CLI_SRC" || { echo "::error::ape-quality-sync.php no pasa php -l"; exit 1; }
+          echo "=== instalacion del CLI ==="
+          ssh "$TARGET" "sudo -n cp -a '$CLI_DST' '$CLI_DST.bak_$STAMP' 2>/dev/null && echo '  backup cli ok' || echo '  cli no existia'"
+          scp -q "$CLI_SRC" "$TARGET:/tmp/ape-qsync.php"
+          ssh "$TARGET" "sudo -n install -m 0755 -o www-data -g www-data /tmp/ape-qsync.php '$CLI_DST'"
+          LC=$(sha256sum "$CLI_SRC" | cut -d' ' -f1)
+          RC=$(ssh "$TARGET" "sudo -n sha256sum '$CLI_DST' | cut -d' ' -f1")
+          [ "$LC" = "$RC" ] && echo "  cli sha OK ($LC)" || { echo "::error::sha cli no coincide"; exit 1; }
+          echo "=== DRY RUN antes de habilitar nada ==="
+          ssh "$TARGET" "sudo -n -u www-data php '$CLI_DST' --dry"
+          DRY=$?
+          if [ "$DRY" -ne 0 ]; then
+            echo "::error::el dry run fallo (exit $DRY) — NO se habilita el timer"
+            exit 1
+          fi
+          echo "  dry OK: no se habilita nada que no haya pasado el dry"
+          echo "=== unidades systemd ==="
+          scp -q "$SVC_SRC" "$TARGET:/tmp/ape-qsync.service"
+          scp -q "$TMR_SRC" "$TARGET:/tmp/ape-qsync.timer"
+          ssh "$TARGET" "sudo -n install -m 0644 -o root -g root /tmp/ape-qsync.service /etc/systemd/system/ape-quality-sync.service"
+          ssh "$TARGET" "sudo -n install -m 0644 -o root -g root /tmp/ape-qsync.timer /etc/systemd/system/ape-quality-sync.timer"
+          ssh "$TARGET" "sudo -n systemctl daemon-reload"
+          ssh "$TARGET" "sudo -n systemctl enable ape-quality-sync.timer"
+          echo "  timer habilitado (arranca en <=5 min)"
+          ssh "$TARGET" "systemctl list-timers ape-quality-sync.timer --no-pager 2>/dev/null | head -3"
+
       - name: Leer registro de zapping
         # Minimal a proposito: un solo comando por bloque, sin pipes que puedan enmascarar
         # la salida. Si algo no existe, se ve el error tal cual.
