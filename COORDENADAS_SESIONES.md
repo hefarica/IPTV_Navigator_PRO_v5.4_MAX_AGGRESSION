@@ -582,3 +582,58 @@ Motivo: que quede registro de lo hecho y que nada entre sin trazabilidad ni roll
 **Guard**: `node _vps_stage/tests/edge_doctrine_assert.js` → debe dar **0**. Si falla, no es un test roto: es que **la doctrina y el código se han separado**.
 
 **Pendiente (no verificado)**: el recuento de 200/4xx/5xx de `/cdn/` en 24 h exige el `access.log` del VPS — **[UNKNOWN]** hasta entonces. Los comandos exactos están en §7 del documento.
+
+---
+
+## §17 · ANOTACIÓN DE VENCIMIENTO — locks t44/t47 liberados — 2026-11-06T10:41:18-05:00
+
+> Anotación **al pie**, como manda `.agent/COORDINATION.md` ("las entradas que quedaron falsas se anotan debajo con fecha, no se editan"). **No se editó ninguna línea anterior**: §3 (tabla L54-55) y §7 (L137) siguen intactas como registro histórico del 2026-10-25. Lo que sigue corrige su **vigencia**.
+
+### Los 3 locks de `.session/locks.json` quedaron liberados por vencimiento
+
+No por cierre del trabajo. Por **ausencia del dueño**.
+
+| Lock | Dueño | Declarado | Estado |
+|---|---|---|---|
+| `IPTV_v5.4_MAX_AGGRESSION/frontend/js/**` (L-001, t44) | `dsh-lead` | 2026-10-25 22:12 | **LIBERADO** — aviso E-0042 |
+| `IPTV_v5.4_MAX_AGGRESSION/vps/production_mirror/**` (L-002, t44) | `dsh-lead` | 2026-10-25 22:12 | **LIBERADO** — aviso E-0043 |
+| `tools/crystal-upscale/**` (L-003, t47) | `dsh-lead` | 2026-10-25 22:21 | **LIBERADO** — aviso E-0043 |
+
+`.session/locks.json` → `{"locks": []}`. `node tools/session-guard.js status` → `(ninguno)`.
+
+### Por qué vencidos (medido, no supuesto)
+
+1. **El dueño nunca emitió heartbeat.** No existe `.session/dsh-lead.json`. El guard descarta heartbeats de más de 15 min (`tools/session-guard.js:94`); este llevaba **11,5 días**.
+2. **El dueño no está vivo en ningún registro.** `active_member_sessions.observed_at` = 2026-10-25T22:59; `dsh-lead` no figura, y **todas** las sesiones de ese board están en `.agent-teams/retired-members.json`.
+3. **El mecanismo no tenía expiración.** `session-guard.js` no tiene TTL para locks (el `ttl_minutes: 120` existe solo en los *claims* del board) y `release` exige `l.owner === OWNER` (L117): sin la bandera `--owner dsh-lead` era **no-op**. Deadlock por diseño.
+4. **La justificación caducó.** El board decía `why: "L-001 t44 (dsh-lead) + 4 archivos con cambios sin commitear"`. Hoy `git status`: 3 modificados y **0 bajo `frontend/js/`**.
+5. **Nadie lo tocó.** `.session/locks.json` mtime 2026-10-25 22:40, sha `A2C6E484…`.
+
+### Cadena de evidencia
+
+```
+PRE   A2C6E4841107F07C864146A07F95FA954015AB2651439171444DB1380AC35D64   3 locks
+  ↓ E-0042  frontend/js/**
+      AAA8982DC71F76E3AF317BD1274062256FA40C58B01E6C53CF0BA0A4BD0955D1   2 locks
+  ↓ E-0043  production_mirror/** + crystal-upscale/**
+POST  8344BC4756C212BC9388A864730287DD6DE8A225FE234AF4310DE1A7164440B2   0 locks
+```
+
+Avisos en `docs/ops/session-coordination/notices.jsonl` (41 → 43 eventos). Verificación con **ficheros reales** dentro de cada árbol (`production_mirror/ape_codec_cascade.php`, `tools/crystal-upscale/_bench_run.log`): `check OK`, EXIT=0. Probar el directorio a secas habría dado un falso OK, porque `covered()` compara contra `base + '/'`.
+
+Autoridad: **arbitraje del operador (HFRC)**, regla 5 del `COORDINATION_PROTOCOL`. Reversible con `node tools/session-guard.js claim <path> --owner <id-real> --task ... --reason ...`.
+
+### Lo que esto NO significa
+
+**No** que t44/t47 estén terminados. El generador conserva **63** ocurrencias de `X-APE-AI-*` y **10** de las funciones de saneo EXTHTTP (`_sanitizePayloadSize`, `EXTHTTP_PRIORITY_KEYS`, `_priorityOrderKeys`): presencia, no cierre. La liberación dice "el dueño no está", no "el trabajo acabó".
+
+### Precedencia (para la siguiente sesión)
+
+`.session/locks.json` es el estado máquina y hoy tiene **0 locks**: manda. Esta anotación existe para que §3 y §7 no engañen. El board `no_touch[]` y sus `claims` siguen `certified-closed` desde 2026-10-25T23:58 y **no se editaron**: son snapshot histórico.
+
+### LO QUE SIGUE (abierto al `2026-11-06T10:41:18-05:00`)
+
+1. **FAIL de copy** en `IPTV_v5.4_MAX_AGGRESSION/frontend/tests/ui-guard-navegador.verify.js:233` — el test exigía `Ya puedes pulsar Generar`, texto que `ad3f79c6` **eliminó a propósito** (producía listas duplicadas). Se alinea el test al contrato vigente, con asserts añadidos, no relajados.
+2. **3 archivos modificados sin commitear**: `.github/workflows/ape-ui-navegador.yml`, `IPTV_v5.4_MAX_AGGRESSION/frontend/tests/test-url-construction-regression.js`, `tools/url2/verify_pulse.js`.
+3. **`/pulse` server-side sirve dialecto mixto**: VLC y Kodi reciben el mismo cuerpo (124 `#EXTVLCOPT` + 86 `#KODIPROP`), sin `#EXT-X-APE-URL2-DIALECT`. `tools/url2/verify_dialects.js` da 12 PASS / 11 FAIL. Falta el sha del `pulse.php` servido para saber si el VPS está atrás del repo.
+4. **Rama vs master**: HEAD `086a9a00` tiene **612 commits** que no están en `origin/master`, y `origin/master` **no es ancestro**. El deploy sale de esta rama (`ape-deploy-frontend.yml:54`), así que producción no está rota — pero el repo sí está divergido.

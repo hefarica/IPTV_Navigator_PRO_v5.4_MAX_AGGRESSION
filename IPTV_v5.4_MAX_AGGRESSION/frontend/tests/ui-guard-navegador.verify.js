@@ -230,7 +230,14 @@ function servir() {
       // "Bloqueado" y el operador no sabia que ya podia generar.
       const hForzado = await evaluar('document.getElementById("ape-buf-sugerencia").innerHTML || ""');
       ok(hForzado.indexOf('APROBADO') >= 0, 'P3/1.3: tras forzar el panel dice APROBADO');
-      ok(hForzado.indexOf('Ya puedes pulsar Generar') >= 0, 'P3/1.3: dice que ya puede generar');
+      // CONTRATO VIGENTE (commit ad3f79c6): aprobar NO genera. El panel debe nombrar las tres
+      // salidas y decir que no se genero nada; si no, el operador vuelve a pulsar Generar y salen
+      // dos listas. Este bloque SUSTITUYE al viejo assert "Ya puedes pulsar Generar", que ese
+      // commit elimino a proposito por ese motivo: se anaden asserts, no se relajan.
+      ok(hForzado.indexOf('La comprobación pasará cuando pulses generar') >= 0, 'P3/1.3: dice que puede generar tras aprobar');
+      ok(hForzado.indexOf('Generar VPS') >= 0 && hForzado.indexOf('Generar DIRECTO') >= 0 && hForzado.indexOf('Generar AMBAS') >= 0, 'P3/1.3: nombra las tres salidas (VPS/DIRECTO/AMBAS)');
+      ok(hForzado.indexOf('No se generó nada todavía') >= 0, 'P3/1.3: aclara que aprobar no genero nada');
+      ok(hForzado.indexOf('Ya puedes pulsar Generar') < 0, 'P3/1.3: NO reincide en el texto que producia listas duplicadas');
       ok(hForzado.indexOf('Bloqueado') < 0, 'P3/1.3: DEJA de decir Bloqueado tras forzar');
       // Revocar devuelve el bloqueo
       const hayRev = await evaluar('!!document.getElementById("ape-sug-revocar")');
