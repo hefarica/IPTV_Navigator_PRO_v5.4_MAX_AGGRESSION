@@ -1,22 +1,45 @@
 {
   "schema": "ape.image-recipe/1",
-  "version": "2026-11-02",
+  "version": "2026-11-06",
   "purpose": "Fuente unica de verdad del recetario de imagen. Una receta por perfil se compila a tres proyecciones: (1) video-filter nativo de VLC para #EXTVLCOPT, (2) cadena -lavfi para ffmpeg en VPS/LAB, (3) objeto JSON que viaja en el manifiesto como metadata dinamica.",
   "evidence": {
     "measured_on": "2026-11-02 America/Bogota",
     "ffmpeg": "8.0.1-full_build-www.gyan.dev",
     "vlc": "C:\\Program Files\\VideoLAN\\VLC (plugins\\video_filter inventariado)",
-    "vlc_verified_modules": ["gradfun", "deinterlace", "sharpen", "hqdn3d", "postproc", "antiflicker"],
+    "vlc_verified_modules": [
+      "gradfun",
+      "deinterlace",
+      "sharpen",
+      "hqdn3d",
+      "postproc",
+      "antiflicker"
+    ],
     "vlc_accepted_options": {
       "gradfun": "strength, radius",
       "deinterlace": "mode",
       "sharpen": "sigma",
       "hqdn3d": "ninguna (el modulo carga pero rechaza luma_spatial/luma-spatial y chroma_*)"
     },
-    "vlc_rejected_option_spellings": ["luma_spatial", "chroma_spatial", "deinterlace-mode"],
-    "not_vlc_modules": ["nlmeans", "bwdif", "yadif", "zscale", "minterpolate", "unsharp", "cas", "libplacebo", "pp"],
+    "vlc_rejected_option_spellings": [
+      "luma_spatial",
+      "chroma_spatial",
+      "deinterlace-mode"
+    ],
+    "not_vlc_modules": [
+      "nlmeans",
+      "bwdif",
+      "yadif",
+      "zscale",
+      "minterpolate",
+      "unsharp",
+      "cas",
+      "libplacebo",
+      "pp"
+    ],
     "vlc_has_no_avfilter_plugin": true,
-    "ffmpeg8_removed_filters": ["pp"],
+    "ffmpeg8_removed_filters": [
+      "pp"
+    ],
     "ffmpeg8_ranges": {
       "gradfun.strength": "[0.51, 64]",
       "gradfun.radius": "[4, 32]",
@@ -56,6 +79,13 @@
           "note": "VLC carga hqdn3d pero no acepta sus opciones en este build: corre con defaults"
         },
         {
+          "id": "atadenoise",
+          "ffmpeg": "atadenoise=s=2:p=3:r=7",
+          "vlc": "atadenoise{s=2:p=3:r=7}",
+          "vlc_verified": true,
+          "nota": "denoise temporal: quita el parpadeo del grano entre cuadros. Complementa al espacial, no lo sustituye."
+        },
+        {
           "id": "upscale",
           "ffmpeg": "zscale=w=1920:h=1080:filter=lanczos",
           "vlc": null,
@@ -87,11 +117,41 @@
       "fps": 60,
       "hdr": "SDR",
       "stages": [
-        { "id": "denoise", "ffmpeg": "hqdn3d=2:1.5:6:4.5", "vlc": "hqdn3d", "vlc_verified": true },
-        { "id": "upscale", "ffmpeg": "zscale=w=2560:h=1440:filter=lanczos", "vlc": null },
-        { "id": "deband", "ffmpeg": "gradfun=radius=10:strength=1.5", "vlc": "gradfun{strength=1.5,radius=10}", "vlc_verified": true },
-        { "id": "sharpen", "ffmpeg": "unsharp=lx=5:ly=5:la=0.8", "vlc": "sharpen{sigma=0.5}", "vlc_verified": true },
-        { "id": "output", "ffmpeg": "format=yuv420p10le", "vlc": null }
+        {
+          "id": "denoise",
+          "ffmpeg": "hqdn3d=2:1.5:6:4.5",
+          "vlc": "hqdn3d",
+          "vlc_verified": true
+        },
+        {
+          "id": "atadenoise",
+          "ffmpeg": "atadenoise=s=2:p=5:r=9",
+          "vlc": "atadenoise{s=2:p=5:r=9}",
+          "vlc_verified": true,
+          "nota": "denoise temporal: quita el parpadeo del grano entre cuadros. Complementa al espacial, no lo sustituye."
+        },
+        {
+          "id": "upscale",
+          "ffmpeg": "zscale=w=2560:h=1440:filter=lanczos",
+          "vlc": null
+        },
+        {
+          "id": "deband",
+          "ffmpeg": "gradfun=radius=10:strength=1.5",
+          "vlc": "gradfun{strength=1.5,radius=10}",
+          "vlc_verified": true
+        },
+        {
+          "id": "sharpen",
+          "ffmpeg": "unsharp=lx=5:ly=5:la=0.8",
+          "vlc": "sharpen{sigma=0.5}",
+          "vlc_verified": true
+        },
+        {
+          "id": "output",
+          "ffmpeg": "format=yuv420p10le",
+          "vlc": null
+        }
       ]
     },
     "P3": {
@@ -101,11 +161,41 @@
       "fps": 60,
       "hdr": "HLG",
       "stages": [
-        { "id": "denoise", "ffmpeg": "hqdn3d=1:0.8:3:2.5", "vlc": "hqdn3d", "vlc_verified": true },
-        { "id": "upscale", "ffmpeg": "zscale=w=3840:h=2160:filter=lanczos", "vlc": null },
-        { "id": "deband", "ffmpeg": "gradfun=radius=12:strength=1.6", "vlc": "gradfun{strength=1.6,radius=12}", "vlc_verified": true },
-        { "id": "sharpen", "ffmpeg": "unsharp=lx=3:ly=3:la=0.28", "vlc": "sharpen{sigma=0.4}", "vlc_verified": true },
-        { "id": "output", "ffmpeg": "format=yuv420p10le", "vlc": null }
+        {
+          "id": "denoise",
+          "ffmpeg": "hqdn3d=1:0.8:3:2.5",
+          "vlc": "hqdn3d",
+          "vlc_verified": true
+        },
+        {
+          "id": "atadenoise",
+          "ffmpeg": "atadenoise=s=2.5:p=5:r=11",
+          "vlc": "atadenoise{s=2.5:p=5:r=11}",
+          "vlc_verified": true,
+          "nota": "denoise temporal: quita el parpadeo del grano entre cuadros. Complementa al espacial, no lo sustituye."
+        },
+        {
+          "id": "upscale",
+          "ffmpeg": "zscale=w=3840:h=2160:filter=lanczos",
+          "vlc": null
+        },
+        {
+          "id": "deband",
+          "ffmpeg": "gradfun=radius=12:strength=1.6",
+          "vlc": "gradfun{strength=1.6,radius=12}",
+          "vlc_verified": true
+        },
+        {
+          "id": "sharpen",
+          "ffmpeg": "unsharp=lx=3:ly=3:la=0.28",
+          "vlc": "sharpen{sigma=0.4}",
+          "vlc_verified": true
+        },
+        {
+          "id": "output",
+          "ffmpeg": "format=yuv420p10le",
+          "vlc": null
+        }
       ]
     },
     "P2": {
@@ -115,11 +205,41 @@
       "fps": 60,
       "hdr": "PQ",
       "stages": [
-        { "id": "denoise", "ffmpeg": "hqdn3d=1:0.8:3:2.5", "vlc": "hqdn3d", "vlc_verified": true },
-        { "id": "upscale", "ffmpeg": "zscale=w=6144:h=3456:filter=lanczos", "vlc": null },
-        { "id": "deband", "ffmpeg": "gradfun=radius=12:strength=1.5", "vlc": "gradfun{strength=1.5,radius=12}", "vlc_verified": true },
-        { "id": "sharpen", "ffmpeg": "unsharp=lx=3:ly=3:la=0.25", "vlc": "sharpen{sigma=0.35}", "vlc_verified": true },
-        { "id": "output", "ffmpeg": "format=yuv420p10le", "vlc": null }
+        {
+          "id": "denoise",
+          "ffmpeg": "hqdn3d=1:0.8:3:2.5",
+          "vlc": "hqdn3d",
+          "vlc_verified": true
+        },
+        {
+          "id": "atadenoise",
+          "ffmpeg": "atadenoise=s=3:p=5:r=13",
+          "vlc": "atadenoise{s=3:p=5:r=13}",
+          "vlc_verified": true,
+          "nota": "denoise temporal: quita el parpadeo del grano entre cuadros. Complementa al espacial, no lo sustituye."
+        },
+        {
+          "id": "upscale",
+          "ffmpeg": "zscale=w=6144:h=3456:filter=lanczos",
+          "vlc": null
+        },
+        {
+          "id": "deband",
+          "ffmpeg": "gradfun=radius=12:strength=1.5",
+          "vlc": "gradfun{strength=1.5,radius=12}",
+          "vlc_verified": true
+        },
+        {
+          "id": "sharpen",
+          "ffmpeg": "unsharp=lx=3:ly=3:la=0.25",
+          "vlc": "sharpen{sigma=0.35}",
+          "vlc_verified": true
+        },
+        {
+          "id": "output",
+          "ffmpeg": "format=yuv420p10le",
+          "vlc": null
+        }
       ]
     },
     "P1": {
@@ -129,11 +249,41 @@
       "fps": 60,
       "hdr": "PQ-DV",
       "stages": [
-        { "id": "denoise", "ffmpeg": "hqdn3d=1:0.8:3:2.5", "vlc": "hqdn3d", "vlc_verified": true },
-        { "id": "upscale", "ffmpeg": "zscale=w=6144:h=3456:filter=lanczos", "vlc": null },
-        { "id": "deband", "ffmpeg": "gradfun=radius=12:strength=1.5", "vlc": "gradfun{strength=1.5,radius=12}", "vlc_verified": true },
-        { "id": "sharpen", "ffmpeg": "unsharp=lx=3:ly=3:la=0.22", "vlc": "sharpen{sigma=0.3}", "vlc_verified": true },
-        { "id": "output", "ffmpeg": "format=yuv420p12le", "vlc": null }
+        {
+          "id": "denoise",
+          "ffmpeg": "hqdn3d=1:0.8:3:2.5",
+          "vlc": "hqdn3d",
+          "vlc_verified": true
+        },
+        {
+          "id": "atadenoise",
+          "ffmpeg": "atadenoise=s=3:p=7:r=15",
+          "vlc": "atadenoise{s=3:p=7:r=15}",
+          "vlc_verified": true,
+          "nota": "denoise temporal: quita el parpadeo del grano entre cuadros. Complementa al espacial, no lo sustituye."
+        },
+        {
+          "id": "upscale",
+          "ffmpeg": "zscale=w=6144:h=3456:filter=lanczos",
+          "vlc": null
+        },
+        {
+          "id": "deband",
+          "ffmpeg": "gradfun=radius=12:strength=1.5",
+          "vlc": "gradfun{strength=1.5,radius=12}",
+          "vlc_verified": true
+        },
+        {
+          "id": "sharpen",
+          "ffmpeg": "unsharp=lx=3:ly=3:la=0.22",
+          "vlc": "sharpen{sigma=0.3}",
+          "vlc_verified": true
+        },
+        {
+          "id": "output",
+          "ffmpeg": "format=yuv420p12le",
+          "vlc": null
+        }
       ]
     },
     "P0": {
@@ -143,12 +293,48 @@
       "fps": 60,
       "hdr": "PQ-DV-FEL",
       "stages": [
-        { "id": "denoise", "ffmpeg": "hqdn3d=1:0.8:3:2.5", "vlc": "hqdn3d", "vlc_verified": true },
-        { "id": "upscale", "ffmpeg": "zscale=w=11520:h=6480:filter=lanczos", "vlc": null },
-        { "id": "deband", "ffmpeg": "gradfun=radius=14:strength=1.5", "vlc": "gradfun{strength=1.5,radius=14}", "vlc_verified": true },
-        { "id": "sharpen", "ffmpeg": "unsharp=lx=3:ly=3:la=0.18", "vlc": "sharpen{sigma=0.2}", "vlc_verified": true },
-        { "id": "output", "ffmpeg": "format=yuv420p12le", "vlc": null }
+        {
+          "id": "denoise",
+          "ffmpeg": "hqdn3d=1:0.8:3:2.5",
+          "vlc": "hqdn3d",
+          "vlc_verified": true
+        },
+        {
+          "id": "atadenoise",
+          "ffmpeg": "atadenoise=s=4:p=7:r=15",
+          "vlc": "atadenoise{s=4:p=7:r=15}",
+          "vlc_verified": true,
+          "nota": "denoise temporal: quita el parpadeo del grano entre cuadros. Complementa al espacial, no lo sustituye."
+        },
+        {
+          "id": "upscale",
+          "ffmpeg": "zscale=w=11520:h=6480:filter=lanczos",
+          "vlc": null
+        },
+        {
+          "id": "deband",
+          "ffmpeg": "gradfun=radius=14:strength=1.5",
+          "vlc": "gradfun{strength=1.5,radius=14}",
+          "vlc_verified": true
+        },
+        {
+          "id": "sharpen",
+          "ffmpeg": "unsharp=lx=3:ly=3:la=0.18",
+          "vlc": "sharpen{sigma=0.2}",
+          "vlc_verified": true
+        },
+        {
+          "id": "output",
+          "ffmpeg": "format=yuv420p12le",
+          "vlc": null
+        }
       ]
     }
-  }
+  },
+  "changelog": [
+    {
+      "fecha": "2026-11-06",
+      "cambio": "atadenoise anadido a los 6 perfiles tras el denoise espacial"
+    }
+  ]
 }

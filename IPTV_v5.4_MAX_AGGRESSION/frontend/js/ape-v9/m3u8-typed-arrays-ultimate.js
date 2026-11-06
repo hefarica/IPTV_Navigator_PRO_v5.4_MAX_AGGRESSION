@@ -9253,6 +9253,51 @@ ${__apeContinuityTags().join('\n')}
             else lines.unshift(mk);
         }
 
+        // (6) [2026-11-06] 6K EMULADO — variante P*.5 para TODOS los perfiles.
+        // Va AQUI, despues de (3), porque (3) ya garantizo que el STREAM-INF esta seguido de su URI.
+        // Los tags se insertan ANTES del STREAM-INF: si fueran entre el y la URI, RFC 8216 4.3.4.2
+        // se rompe y OTT Navigator aborta el canal con "Loaded playlist has unexpected type".
+        // Tabla identica a la del VPS (url2-cartridge.php) y a la del LAB v24.
+        const _APE_6K_TABLE = {
+            P0: { id: 'P0.5', mbps: 80, tec: '8k_downsample_lanczos_0.75', src: '7680x4320', ratio: '0.75x' },
+            P1: { id: 'P1.5', mbps: 60, tec: '4k_upscale_ai_sr_1.5x', src: '3840x2160', ratio: '1.50x' },
+            P2: { id: 'P2.5', mbps: 45, tec: '4k_upscale_shader_lanczos_1.5x', src: '3840x2160', ratio: '1.50x' },
+            P3: { id: 'P3.5', mbps: 35, tec: 'fhd_upscale_ai_sr_3x', src: '1920x1080', ratio: '3.00x' },
+            P4: { id: 'P4.5', mbps: 30, tec: 'hd_upscale_ai_sr_4.5x', src: '1280x720', ratio: '4.50x' },
+            P5: { id: 'P5.5', mbps: 25, tec: 'sd_upscale_ai_sr_6.75x', src: '854x480', ratio: '6.75x' }
+        };
+        const _6kBase = Object.prototype.hasOwnProperty.call(_APE_6K_TABLE, String(c.profile || '')) ? String(c.profile) : null;
+        const _6k = _6kBase ? _APE_6K_TABLE[_6kBase] : null;
+        if (_6k) {
+            // los tags primero, delante del STREAM-INF
+            const t6 = [
+                '#EXT-X-APE-CRYSTAL-6K:OPT-IN-ACTIVE;PROFILE=' + _6k.id + ';BASE=' + _6kBase
+                    + ';RES=5760x3240;PIXELS=18662400;CODEC=hvc1.2.4.L183.B0',
+                '#EXT-X-APE-CRYSTAL-6K-MODE:EMULATED;SOURCE=' + _6k.src + ';TECHNIQUE=' + _6k.tec
+                    + ';RATIO=' + _6k.ratio + ';ENHANCEMENT=DISPLAY_DECLARED',
+                '#EXT-X-APE-CRYSTAL-6K-BITRATE:' + _6k.mbps + ';MAX=' + (_6k.mbps + 20) + ';UNIT=Mbps',
+                '#EXT-X-APE-CRYSTAL-6K-TRUTH:DECLARED_ENHANCEMENT;NOT_SOURCE;DOWNSCALE_FORBIDDEN'
+            ];
+            const preSi = lines.findIndex(l => l.startsWith('#EXT-X-STREAM-INF:'));
+            if (preSi !== -1) {
+                // idempotencia: no duplicar si el bloque ya los trae
+                const yaEste = lines.some(l => l.startsWith('#EXT-X-APE-CRYSTAL-6K:'));
+                if (!yaEste) lines.splice(preSi, 0, ...t6);
+                // y reescribir la variante declarada a 6K
+                for (let k = 0; k < lines.length; k++) {
+                    if (!lines[k].startsWith('#EXT-X-STREAM-INF:')) continue;
+                    let l = lines[k];
+                    l = l.replace(/RESOLUTION=[0-9]+x[0-9]+/, 'RESOLUTION=5760x3240');
+                    if (!/RESOLUTION=/.test(l)) l = l + ',RESOLUTION=5760x3240';
+                    l = l.replace(/CODECS="[^"]*"/, 'CODECS="hvc1.2.4.L183.B0,mp4a.40.2"');
+                    if (!/CODECS=/.test(l)) l = l + ',CODECS="hvc1.2.4.L183.B0,mp4a.40.2"';
+                    l = l.replace(/BANDWIDTH=[0-9]+/, 'BANDWIDTH=' + (_6k.mbps * 1000000));
+                    l = l.replace(/AVERAGE-BANDWIDTH=[0-9]+/, 'AVERAGE-BANDWIDTH=' + Math.round(_6k.mbps * 1000000 * 0.8));
+                    lines[k] = l;
+                }
+            }
+        }
+
         return lines.join('\n');
     }
 
