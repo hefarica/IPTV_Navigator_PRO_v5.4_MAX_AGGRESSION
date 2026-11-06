@@ -502,6 +502,35 @@
         } catch { return emptyStore(); }
     }
 
+    // ── 6b. PERSISTENCIA (isomorfica: localStorage en navegador, sin-op en Node) ──
+
+    const STORAGE_KEY = 'ape_server_profiles';
+
+    /** Guarda el store. En Node no hay localStorage: devuelve null sin fallar. */
+    function saveToStorage(store, key) {
+        const ls = (typeof localStorage !== 'undefined') ? localStorage : null;
+        if (!ls) return null;
+        const k = key || STORAGE_KEY;
+        try { ls.setItem(k, toJSON(store)); return k; } catch (_) { return null; }
+    }
+
+    /** Carga el store. Sin dato o corrupto devuelve un store vacio (fail-safe). */
+    function loadFromStorage(key) {
+        const ls = (typeof localStorage !== 'undefined') ? localStorage : null;
+        if (!ls) return emptyStore();
+        const k = key || STORAGE_KEY;
+        try {
+            const raw = ls.getItem(k);
+            return raw ? fromJSON(raw) : emptyStore();
+        } catch (_) { return emptyStore(); }
+    }
+
+    function clearStorage(key) {
+        const ls = (typeof localStorage !== 'undefined') ? localStorage : null;
+        if (!ls) return false;
+        try { ls.removeItem(key || STORAGE_KEY); return true; } catch (_) { return false; }
+    }
+
     // ── 7. DESCUBRIMIENTO (multifuente, dedup, determinista) ─────────────────
 
     /**
@@ -590,6 +619,7 @@
         detectShape, classify, profileKey, inputHash, hash32, sortedStringify,
         resolveTransport, measure,
         emptyStore, needsMeasure, upsert, sortStore, toJSON, fromJSON, ageMs,
+        saveToStorage, loadFromStorage, clearStorage, STORAGE_KEY,
         discover, getProfile, shouldEmitByterange, capabilityTag, modeTag, directiveOverrides
     });
 });

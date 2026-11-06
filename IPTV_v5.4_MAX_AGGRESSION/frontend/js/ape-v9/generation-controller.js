@@ -141,10 +141,25 @@
         const labCfg = window.APE_PROFILES_CONFIG;
         const labLoaded = !!(labCfg && labCfg.labExportedAt);
         const isBulletproof = labCfg?.labBulletproof === true;
+        // Store de perfiles medidos por APE_SERVER_PROFILE. Se persiste en
+        // localStorage['ape_server_profiles'] (lo escribe profile_run.js o el propio
+        // modulo desde el navegador). Si no hay store, el generador cae al LAB y
+        // declara UNMEASURED: no se inventa la capacidad de ningun servidor.
+        const serverProfileStore = (function () {
+            try {
+                if (window.APE_SERVER_PROFILES_STORE) return window.APE_SERVER_PROFILES_STORE;
+                const raw = (typeof localStorage !== 'undefined') ? localStorage.getItem('ape_server_profiles') : null;
+                if (!raw) return null;
+                return (window.APE_SERVER_PROFILE && typeof window.APE_SERVER_PROFILE.fromJSON === 'function')
+                    ? window.APE_SERVER_PROFILE.fromJSON(raw)
+                    : JSON.parse(raw);
+            } catch (_) { return null; }
+        })();
         const merged = {
             ...options,
             useAdmission: true,
             admissionUrl: options.admissionUrl || (window.APEHealthRuntime && window.APEHealthRuntime.config.admissionUrl),
+            server_profile:        options.server_profile || serverProfileStore,
             bulletproof_profiles: labCfg?.profiles || null,
             bulletproof_nivel1:   labCfg?.nivel1Directives || null,
             bulletproof_nivel3:   labCfg?.nivel3PerLayer || null,
@@ -1364,10 +1379,23 @@
         // Sin esto, el generador no resuelve {config.X}/{evasion.X}/{server.X} ni inyecta gap_plan.
         // Match exacto con el payload de generateListWithGate para SSOT consistency.
         const isBulletproof = labCfg?.labBulletproof === true;
+        // Mismo store de perfiles medidos que en el otro camino: sin esto el generador
+        // cae al LAB y declara UNMEASURED aunque haya perfiles medidos disponibles.
+        const serverProfileStore2 = (function () {
+            try {
+                if (window.APE_SERVER_PROFILES_STORE) return window.APE_SERVER_PROFILES_STORE;
+                const raw = (typeof localStorage !== 'undefined') ? localStorage.getItem('ape_server_profiles') : null;
+                if (!raw) return null;
+                return (window.APE_SERVER_PROFILE && typeof window.APE_SERVER_PROFILE.fromJSON === 'function')
+                    ? window.APE_SERVER_PROFILE.fromJSON(raw)
+                    : JSON.parse(raw);
+            } catch (_) { return null; }
+        })();
         const merged = {
             ...options,
             useAdmission: true,
             admissionUrl: options.admissionUrl || (window.APEHealthRuntime && window.APEHealthRuntime.config.admissionUrl),
+            server_profile:        options.server_profile || serverProfileStore2,
             bulletproof_profiles: labCfg.profiles,
             bulletproof_nivel1:   labCfg.nivel1Directives || [],
             bulletproof_nivel3:   labCfg.nivel3PerLayer || {},
