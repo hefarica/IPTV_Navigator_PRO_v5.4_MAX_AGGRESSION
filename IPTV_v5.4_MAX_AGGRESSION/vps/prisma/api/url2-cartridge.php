@@ -5727,6 +5727,43 @@ $map = [
 $mode = strtolower((string)($_GET['mode'] ?? 'master'));
 if ($mode !== 'm3u' && $mode !== 'master') { $mode = 'master'; }
 $withExtinf = ($mode === 'm3u');
+// ══════════════════════════════════════════════════════════════════════════════════════════════
+// 6K EMULADO — variante P*.5 para TODOS los perfiles base
+//
+// Spec del operador, respetada al valor:
+//   resolucion  5760x3240  (18.662.400 px; 2.25x de 4K, 0.5625x de 8K)
+//   codec       hvc1.2.4.L183.B0  (HEVC Main10 Level 6.1)
+//               verificado: 5760x3240@60 = 1.12 G samples/s; el techo de L183 es 2.14 G
+//   bitrates    P0.5=80  P1.5=60  P2.5=45  P3.5=35 (del spec)
+//               P4.5=30  P5.5=25 Mbps (el spec no los fija; se declara la progresion)
+//   mapeo       P0->P0.5 P1->P1.5 P2->P2.5 P3->P3.5 P4->P4.5 P5->P5.5
+//
+// ACTIVACION: automatica si el device declara >=5760x3240 y un SoC de la lista, o forzada
+// con ?ape6k=1. Si no se cumple, no se ejecuta ni una linea y el perfil base se sirve igual
+// que antes. CERO REGRESION: todo el bloque vive detras de $ape6kCfg !== null.
+$APE_6K_CFG = [
+    'P0' => ['id' => 'P0.5', 'mbps' => 80, 'mode' => '8k_downsample_lanczos_0.75',      'src' => '7680x4320', 'ratio' => '0.75x'],
+    'P1' => ['id' => 'P1.5', 'mbps' => 60, 'mode' => '4k_upscale_ai_sr_1.5x',           'src' => '3840x2160', 'ratio' => '1.50x'],
+    'P2' => ['id' => 'P2.5', 'mbps' => 45, 'mode' => '4k_upscale_shader_lanczos_1.5x',   'src' => '3840x2160', 'ratio' => '1.50x'],
+    'P3' => ['id' => 'P3.5', 'mbps' => 35, 'mode' => 'fhd_upscale_ai_sr_3x',             'src' => '1920x1080', 'ratio' => '3.00x'],
+    'P4' => ['id' => 'P4.5', 'mbps' => 30, 'mode' => 'hd_upscale_ai_sr_4.5x',            'src' => '1280x720',  'ratio' => '4.50x'],
+    'P5' => ['id' => 'P5.5', 'mbps' => 25, 'mode' => 'sd_upscale_ai_sr_6.75x',           'src' => '854x480',   'ratio' => '6.75x'],
+];
+
+function ape6k_soporta(array $dev): bool {
+    // El spec exige panel de al menos 6K de salida y SoC con potencia de escalado.
+    if ((int)($dev['max_w'] ?? 0) < 5760 || (int)($dev['max_h'] ?? 0) < 3240) { return false; }
+    $soc = strtolower((string)($dev['soc'] ?? ''));
+    foreach (['s905x4', 't982', 'g12b', 's928x', 'tegra-x1', 'tegra-orin', 'shield', 'nvidia'] as $c) {
+        if ($soc !== '' && strpos($soc, $c) !== false) { return true; }
+    }
+    return false;
+}
+
+$ape6kForzado = (isset($_GET['ape6k']) && (string)$_GET['ape6k'] === '1');
+$ape6kCfg = ($ape6kForzado || ape6k_soporta($device)) && isset($APE_6K_CFG[$p])
+    ? $APE_6K_CFG[$p] : null;
+
 $lines = $CARTRIDGE[$p];
 
 header('X-APE-URL2: cartridge;profile=' . $p . ';lines=' . count($lines) . ';mode=' . $mode);
@@ -5939,6 +5976,20 @@ foreach ($lines as $line) {
             }
         }
     }
+    // ── 6K EMULADO: sustituye SOLO la linea STREAM-INF de esta variante ──────────────────
+    // El resto del cartucho (filtros, HDR, CMAF, paridad, realce) queda intacto: el 6K
+    // cambia la variante declarada, no el resto del bloque.
+    if ($ape6kCfg !== null && strncmp($out, '#EXT-X-STREAM-INF:', 18) === 0) {
+        $out = '#EXT-X-STREAM-INF:BANDWIDTH=' . ($ape6kCfg['mbps'] * 1000000)
+             . ',AVERAGE-BANDWIDTH=' . (int)round($ape6kCfg['mbps'] * 1000000 * 0.8)
+             . ',CODECS="hvc1.2.4.L183.B0,mp4a.40.2"'
+             . ',RESOLUTION=5760x3240'
+             . ',FRAME-RATE=60.000'
+             . ',VIDEO-RANGE=PQ'
+             . ',BIT-DEPTH=10'
+             . ',CHROMA-SUBSAMPLING=4:2:0'
+             . ',STABLE-VARIANT-ID="' . $ape6kCfg['id'] . '_6K_EMULATED"';
+    }
     if ($out === '') { continue; }
     echo $out . "\n";
 }
@@ -5988,6 +6039,20 @@ try {
     }
 } catch (Throwable $e) {
     // Nunca rompe el manifiesto por un fallo de telemetría.
+}
+
+// ── 6K EMULADO: trazabilidad de la variante servida ──────────────────────────────────────────
+if ($ape6kCfg !== null) {
+    echo '#EXT-X-APE-CRYSTAL-6K:OPT-IN-ACTIVE;PROFILE=' . $ape6kCfg['id'] . ';BASE=' . $p
+       . ';RES=5760x3240;PIXELS=18662400;CODEC=hvc1.2.4.L183.B0' . "\n";
+    echo '#EXT-X-APE-CRYSTAL-6K-MODE:EMULATED;SOURCE=' . $ape6kCfg['src']
+       . ';TECHNIQUE=' . $ape6kCfg['mode'] . ';RATIO=' . $ape6kCfg['ratio']
+       . ";ENHANCEMENT=DISPLAY_DECLARED\n";
+    echo '#EXT-X-APE-CRYSTAL-6K-BITRATE:' . $ape6kCfg['mbps']
+       . ';MAX=' . ($ape6kCfg['mbps'] + 20) . ";UNIT=Mbps\n";
+    echo '#EXT-X-APE-CRYSTAL-6K-TRUTH:DECLARED_ENHANCEMENT;NOT_SOURCE;DOWNSCALE_FORBIDDEN' . "\n";
+} else {
+    echo '#EXT-X-APE-CRYSTAL-6K:OPT-IN-APE_6K' . "\n";
 }
 
 echo $u . "\n";
