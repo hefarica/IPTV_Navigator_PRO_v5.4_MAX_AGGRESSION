@@ -9424,7 +9424,20 @@ ${__apeContinuityTags().join('\n')}
                 '#EXT-X-APE-CORTEX-TEMPORAL-ARTIFACT-REPAIR:ENABLED|ENGINE=RIFE|MODE=detect-repair',
                 // --- estado de realce: ENFORCED, degradar prohibido ---
                 '#EXT-X-APE-CRYSTAL-ENHANCEMENT:ENFORCED;NIVEL=2;DEGRADE=FORBIDDEN',
-                '#EXT-X-APE-REALCE-SOURCE:device;OBS_BPS=0;NIVEL=2;PERFIL=P3;NIVEL_MAX=3;DEGRADE=FORBIDDEN'
+                '#EXT-X-APE-REALCE-SOURCE:device;OBS_BPS=0;NIVEL=2;PERFIL=P3;NIVEL_MAX=3;DEGRADE=FORBIDDEN',
+                // --- los dos del cartucho (pedido explicito del propietario) ---
+                // URL2-CARTRIDGE describe el bloque que el VPS serviria para este canal: perfil, numero
+                // de lineas y modo. En la lista tiene sentido porque la lista ES un cartucho estatico.
+                '#EXT-X-APE-URL2-CARTRIDGE:1;PROFILE=' + String(c.profile || 'P3') + ';LINES=' + (lines.length + 8) + ';MODE=MASTER;EVERYTHING_IN_URL',
+                // URL2-DEVICE: quien pide. En una lista no hay device concreto, asi que se declara la
+                // inferencia por UA y un SEED derivado del nombre del canal. SEED estable por canal:
+                // la misma lista da el mismo seed, y no rompe la idempotencia.
+                '#EXT-X-APE-URL2-DEVICE:SOURCE=ua-inferred;SOC=unknown;RAM_MB=0;MAX_H=0;FPS=0;HDR=none;SEED=' + (function () {
+                    let h = 0x811c9dc5;                       // FNV-1a 32
+                    const s = String(c.name || '') + '|' + String(c.profile || 'P3');
+                    for (let q = 0; q < s.length; q++) { h ^= s.charCodeAt(q); h = (h * 0x01000193) >>> 0; }
+                    return ('0000000000000000' + h.toString(16)).slice(-16);
+                })()
             ];
             const preSi = lines.findIndex(l => l.startsWith('#EXT-X-STREAM-INF:'));
             if (preSi !== -1) {
