@@ -365,6 +365,39 @@ jobs:
             exit 1
           fi
           echo "  smoke OK: media 200 + clasificador nuevo visible en el 502"
+
+          # ── index-v4.html: cache-buster ?v= ──────────────────────────────────────────
+          # MOTIVO: generation-output-panel.js y generation-controller.js cambiaron el
+          # 2026-11-06 pero su ?v= seguia en 20261103 / 20261105. Con ?v= viejo el navegador
+          # del operador ejecuta el panel ANTERIOR (el del doble disparo) aunque el disco
+          # tenga el nuevo. Ningun workflow desplegaba el indice: se tocaba a mano.
+          SRC8="IPTV_v5.4_MAX_AGGRESSION/frontend/index-v4.html"
+          DEST8="/var/www/html/index-v4.html"
+          BAK8="$DEST8.bak_$STAMP"
+          if ssh "$TARGET" "sudo -n test -f '$DEST8'"; then
+            ssh "$TARGET" "sudo -n cp -a '$DEST8' '$BAK8'"
+            echo "  backup index: $BAK8"
+          fi
+          scp -q "$SRC8" "$TARGET:/tmp/ape-index.html"
+          ssh "$TARGET" "sudo -n install -m 0644 -o www-data -g www-data /tmp/ape-index.html '$DEST8'"
+          R8=$(ssh "$TARGET" "sudo -n sha256sum '$DEST8' | cut -d' ' -f1")
+          L8=$(sha256sum "$SRC8" | cut -d' ' -f1)
+          if [ "$R8" != "$L8" ]; then echo "::error::sha de index-v4 no coincide"; exit 1; fi
+          echo "  index OK ($L8)"
+          IDX=$(curl -s --max-time 25 "https://iptv-ape.duckdns.org/index-v4.html" || true)
+          OK_I=0
+          printf '%s' "$IDX" | grep -q 'generation-output-panel.js?v=20261106-ready' && OK_I=1
+          printf '%s' "$IDX" | grep -q 'generation-controller.js?v=20261106-ready' && OK_I=1
+          printf '%s' "$IDX" | grep -q '</html>' && OK_I=1
+          echo "  SMOKE index (sirve el ?v= nuevo): OK_I=$OK_I"
+          if [ "$OK_I" != "1" ]; then
+            echo "::error::el index servido no trae el cache-buster nuevo — restaurando"
+            if ssh "$TARGET" "sudo -n test -f '$BAK8'"; then
+              ssh "$TARGET" "sudo -n install -m 0644 -o www-data -g www-data '$BAK8' '$DEST8'"
+              echo "  ROLLBACK index desde $BAK8"
+            fi
+            exit 1
+          fi
           DEST="/var/www/html/prisma/api/ape-parity-tags.php"
           STAMP=$(date -u +%Y%m%dT%H%M%SZ)
           echo "=== ape-parity-tags.php ==="

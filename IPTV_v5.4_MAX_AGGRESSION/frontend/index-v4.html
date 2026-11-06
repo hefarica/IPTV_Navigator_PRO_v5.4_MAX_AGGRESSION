@@ -3916,7 +3916,7 @@
   <!-- 🎚️ APE v9 PROFILE SYSTEM - MUST load BEFORE app.js -->
   <script src="js/ape-v9/lab-extra-headers.js?v=20261102-audio-safe-v1"></script>
 <script src="js/ape-v9/ape-lab-v8-profiles.js?v=20261102-lab-v8"></script>
-<script src="js/ape-v9/ape-profiles-config.js?v=20261106-gen6k-atad"></script>
+<script src="js/ape-v9/ape-profiles-config.js?v=20261106-ready"></script>
   <!-- profile-manager-v9.js loaded later at v9.0.3 (line ~3171) -->
   <script src="js/ape-v9/profile-bridge-v9.js?v=1.1"></script>
   <script src="js/ape-v9/ape-xtream-atomic-probe.js?v=20261106-gen6k-atad"></script>
@@ -3987,24 +3987,24 @@
 <!-- [DIALECTOS 2026-11-05] SSOT del recetario de imagen: una receta (recipes.json)
      compilada a proyecciones por idioma de player (VLC módulos / ffmpeg / mpv / Exo / Kodi).
      DEBE cargar antes del generador. Regenerar: node tools/ape-image-recipes/compile.js --emit bundle -->
-<script src="js/ape-v9/ape-image-recipes-bundle.js?v=20261106-lock-gen"></script>
+<script src="js/ape-v9/ape-image-recipes-bundle.js?v=20261106-ready"></script>
 
 <!-- APE_SERVER_PROFILE: modulo multiservidor idempotente/polimorfico/isomorfico.
      DEBE cargarse ANTES del generador: el generador lo consume para emitir la
      capacidad por servidor (tipo USA, uaSensitive, acceptRanges, honors206). -->
-<script src="js/ape-v9/ape-server-profile.js?v=20261106-srvprofile"></script>
+<script src="js/ape-v9/ape-server-profile.js?v=20261106-ready"></script>
 <!-- Perfiles MEDIDOS (generado por tools/lab/profile_to_data_js.js). Deja el store
      en window.APE_SERVER_PROFILES_STORE para que el controller lo pase al
      generador. Es un snapshot con fecha: si el TTL paso, re-medir y regenerar. -->
-<script src="js/ape-v9/ape-server-profiles-data.js?v=20261106-srvprofile"></script>
+<script src="js/ape-v9/ape-server-profiles-data.js?v=20261106-ready"></script>
 
-<script src="js/ape-v9/m3u8-typed-arrays-ultimate.js?v=20261106-srvprofile"></script>
+<script src="js/ape-v9/m3u8-typed-arrays-ultimate.js?v=20261106-ready"></script>
   <!-- 🪦 OMEGA SLOT REAPER — Pre-flight liberation of Xtream max_connections slots -->
   <script src="js/ape-v9/slot-reaper.js?v=1.0.0-omega-20260409"></script>
   <script src="js/ape-v9/m3u8-quality-upgrader-v2.js?v=2.0"></script>
   <script src="js/ape-v9/hud-typed-arrays.js?v=16.1-tickprofile-20260417"></script>
   <!-- 🩺 APE GENERATION CONTROLLER — engancha botón health-check + generateHealthyList -->
-  <script src="js/ape-v9/generation-controller.js?v=20261105-guard"></script>
+  <script src="js/ape-v9/generation-controller.js?v=20261106-ready"></script>
   <!-- 🩺 GENERATION HUD OVERLAY — panel discreto top-right que muestra fases del pipeline.
        Solo observa console.log (no toca el flow). window.GenerationHUD.show()/hide() -->
   <script src="js/ape-v9/generation-hud-overlay.js?v=1.2-auto-close-inactivity"></script>
@@ -4289,7 +4289,7 @@
   <script src="js/ape-v9/vpn-integration-supremo.js"></script>
   <!-- Latency Rayo Supremo v1.0 (23 metadatos por canal) -->
   <script src="js/ape-v9/latency-rayo-supremo.js"></script>
-  <script src="js/ape-v9/profile-manager-v9.js?v=20261106-gen6k-atad"></script>
+  <script src="js/ape-v9/profile-manager-v9.js?v=20261106-ready"></script>
   <!-- Profile Manager - Custom Headers Extension -->
   <script src="js/profile-manager-custom-headers.js"></script>
   <script src="js/m3u8-custom-headers-integration.js"></script>
@@ -4726,7 +4726,7 @@
     })();
   </script>
 
-  <script src="js/ape-v9/generation-output-panel.js?v=20261103-force-sync-v3" defer></script>
+  <script src="js/ape-v9/generation-output-panel.js?v=20261106-ready" defer></script>
 <script src="js/ape-v9/output-status-panel.js?v=20261101-outputs" defer></script>
 
   <!-- ═══════════════════════════════════════════════════════════════════════ -->
