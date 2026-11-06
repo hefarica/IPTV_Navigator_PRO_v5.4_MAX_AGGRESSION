@@ -461,9 +461,13 @@ if ($mode === 'proxy') {
         }
         if (!$fromCache) {
             list($raw, $code, $eff) = ape_pulse_fetch($uNorm, $uaPulse);
-            // 3) retry único para 5xx / 513 / 0
-            if (($code === 0 || $code >= 500 || $code === 513)) {
-                usleep(250000);
+            // 3) retry unico para 5xx / 513 / 0 y para los codigos de THROTTLE medidos.
+            // MEDIDO 2026-11-06: el CDN del proveedor (`CDN PROXY SERVICE`) devuelve 461
+            // cuando limita el ritmo del egress; se recupera en segundos. El codigo no estaba
+            // en la lista, asi que un hipo de 2 s se servia al player como 502 permanente.
+            // 429 y 408 son el mismo fenomeno con otro nombre.
+            if (($code === 0 || $code >= 500 || $code === 513 || $code === 461 || $code === 429 || $code === 408)) {
+                usleep($code === 461 ? 400000 : 250000);
                 list($raw, $code, $eff) = ape_pulse_fetch($uNorm, $uaPulse);
             }
             $cls  = ape_pulse_classify($raw);
