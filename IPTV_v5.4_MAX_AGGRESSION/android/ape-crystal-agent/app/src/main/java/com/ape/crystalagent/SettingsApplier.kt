@@ -211,7 +211,19 @@ class SettingsApplier(ctx: Context) {
             "are_user_disabled_hdr_formats_allowed" to "global",
             "user_disabled_hdr_formats" to "global",
             "db_id_audio_drc_mode" to "global",
-            "db_id_droidlogic_audio_digital_mode" to "global"
+            "db_id_droidlogic_audio_digital_mode" to "global",
+            // [2026-11-05] Fire TV (MT8696): los com.amazon.tv.* son el lever REAL de imagen de
+            // ese SoC — MEMC, sharpness, contraste dinamico, modo de imagen, reduccion de ruido y
+            // temperatura de color. Viven en `system` y getString NO los expone como settings
+            // normales, asi que sin este hint putSetting no los encontraria. Medido en AFTKRT:
+            // las 6 existen con valor puesto (motion_smoothness=2, picture_sharpness=65,
+            // dynamic_contrast=high, picture_mode=movie, noise_reduction=auto, color_temperature=cool).
+            "com.amazon.tv.motion_smoothness" to "system",
+            "com.amazon.tv.picture_sharpness" to "system",
+            "com.amazon.tv.dynamic_contrast"  to "system",
+            "com.amazon.tv.picture_mode"      to "system",
+            "com.amazon.tv.noise_reduction"   to "system",
+            "com.amazon.tv.color_temperature" to "system"
         )
         // ALLOWLIST doctrinal: "ns/key" -> regex del valor permitido. NADA fuera de aquí se aplica.
         // Expandido 2026-06-18: set COMPLETO del VPP MediaTek MT8696 (AI-SR + AI-PQ + sharpness/denoise +
@@ -264,7 +276,23 @@ class SettingsApplier(ctx: Context) {
             "color_mode_ycbcr422"             to Regex("^[01]$"),
             "hdr_bit_depth"                   to Regex("^(8|10|12)$"),
             "user_preferred_resolution_height" to Regex("^\\d{3,4}$"),
-            "user_preferred_resolution_width"  to Regex("^\\d{3,4}$")
+            "user_preferred_resolution_width"  to Regex("^\\d{3,4}$"),
+            // ── FIRE TV / AMAZON (MT8696) — el lever REAL de imagen de ese SoC ──────────────
+            // [2026-11-05] Sin estas 6, el Fire TV solo recibia los levers MediaTek genéricos
+            // (que parcialmente ignora) y se quedaba sin MEMC, sin sharpness de panel y sin modo
+            // de imagen. El AISR/AIPQ de Amlogic NO se puede pedir a este chip: su homologo son
+            // estas claves. Verificado en AFTKRT / ro.board.platform=mt8696:
+            //   motion_smoothness=2 (MEMC HW)  picture_sharpness=65  dynamic_contrast=high
+            //   picture_mode=movie  noise_reduction=auto  color_temperature=cool
+            // Los valores son los de Fire OS, no inventados. Sigue siendo allowlist estricta:
+            // regex por clave, el VPS no puede escribir nada fuera de estos rangos.
+            // OJO: son strings, no enteros — el puente del VPS las trata por separado.
+            "com.amazon.tv.motion_smoothness" to Regex("^[0-3]$"),                    // 0 off · 1 low · 2 med · 3 high
+            "com.amazon.tv.picture_sharpness" to Regex("^\\d{1,3}$"),                 // 0..100, sweet spot 50-70
+            "com.amazon.tv.dynamic_contrast"  to Regex("^(off|low|medium|high)$"),
+            "com.amazon.tv.picture_mode"      to Regex("^(standard|movie|dynamic|vivid|game|auto)$"),
+            "com.amazon.tv.noise_reduction"   to Regex("^(off|low|medium|high|auto)$"),
+            "com.amazon.tv.color_temperature" to Regex("^(cool|normal|warm)$")
         )
     }
 }
