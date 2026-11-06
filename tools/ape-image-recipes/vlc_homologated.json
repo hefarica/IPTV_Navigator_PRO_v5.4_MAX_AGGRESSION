@@ -1,0 +1,577 @@
+{
+  "schema": "ape.vlc-homologation/1",
+  "generado": "2026-11-06T02:02:42.266Z",
+  "fuente": "tools/ape-image-recipes/recipes.json",
+  "separador": ":",
+  "nota_separador": "VLC usa \":\" entre modulos. Con \",\" cada key=value se vuelve un pseudo-modulo y la cadena entera falla.",
+  "verdad_politica": "En VLC 3.0.24, #EXTVLCOPT:video-filter esta cerrado por politica (\"unsafe option video-filter has been ignored for security reasons\"). Esta cadena sirve para el carril CLI (vlc --video-filter=...) y para parsers de modulos VLC; en la playlist sigue inerte.",
+  "perfiles": {
+    "P0": {
+      "target_resolution": "11520x6480",
+      "source_resolution": "7680x4320",
+      "fps": 60,
+      "hdr": "PQ-DV-FEL",
+      "cadena_vlc": "hqdn3d:gradfun{radius=14,strength=1.5}:sharpen{sigma=0.18}",
+      "por_etapa": {
+        "denoise": {
+          "cadena_vlc": "hqdn3d",
+          "modulos": [
+            "hqdn3d"
+          ],
+          "viables": [
+            {
+              "etapa": "hqdn3d=1:0.8:3:2.5",
+              "filtro": "hqdn3d",
+              "vlc": "hqdn3d"
+            }
+          ],
+          "no_viables": []
+        },
+        "upscale": {
+          "cadena_vlc": "",
+          "modulos": [],
+          "viables": [],
+          "no_viables": [
+            {
+              "etapa": "zscale=w=11520:h=6480:filter=lanczos",
+              "filtro": "zscale",
+              "razon": "no existe como modulo VLC"
+            }
+          ]
+        },
+        "deband": {
+          "cadena_vlc": "gradfun{radius=14,strength=1.5}",
+          "modulos": [
+            "gradfun{radius=14,strength=1.5}"
+          ],
+          "viables": [
+            {
+              "etapa": "gradfun=radius=14:strength=1.5",
+              "filtro": "gradfun",
+              "vlc": "gradfun{radius=14,strength=1.5}"
+            }
+          ],
+          "no_viables": []
+        },
+        "sharpen": {
+          "cadena_vlc": "sharpen{sigma=0.18}",
+          "modulos": [
+            "sharpen{sigma=0.18}"
+          ],
+          "viables": [
+            {
+              "etapa": "unsharp=lx=3:ly=3:la=0.18",
+              "filtro": "unsharp",
+              "vlc": "sharpen{sigma=0.18}"
+            }
+          ],
+          "no_viables": []
+        },
+        "output": {
+          "cadena_vlc": "",
+          "modulos": [],
+          "viables": [],
+          "no_viables": [
+            {
+              "etapa": "format=yuv420p12le",
+              "filtro": "format",
+              "razon": "no existe como modulo VLC"
+            }
+          ]
+        }
+      },
+      "no_viables": [
+        {
+          "etapa": "zscale=w=11520:h=6480:filter=lanczos",
+          "filtro": "zscale",
+          "razon": "no existe como modulo VLC"
+        },
+        {
+          "etapa": "format=yuv420p12le",
+          "filtro": "format",
+          "razon": "no existe como modulo VLC"
+        }
+      ],
+      "modulos_finales": [
+        "hqdn3d",
+        "gradfun",
+        "sharpen"
+      ]
+    },
+    "P1": {
+      "target_resolution": "6144x3456",
+      "source_resolution": "3840x2160",
+      "fps": 60,
+      "hdr": "PQ-DV",
+      "cadena_vlc": "hqdn3d:gradfun{radius=12,strength=1.5}:sharpen{sigma=0.22}",
+      "por_etapa": {
+        "denoise": {
+          "cadena_vlc": "hqdn3d",
+          "modulos": [
+            "hqdn3d"
+          ],
+          "viables": [
+            {
+              "etapa": "hqdn3d=1:0.8:3:2.5",
+              "filtro": "hqdn3d",
+              "vlc": "hqdn3d"
+            }
+          ],
+          "no_viables": []
+        },
+        "upscale": {
+          "cadena_vlc": "",
+          "modulos": [],
+          "viables": [],
+          "no_viables": [
+            {
+              "etapa": "zscale=w=6144:h=3456:filter=lanczos",
+              "filtro": "zscale",
+              "razon": "no existe como modulo VLC"
+            }
+          ]
+        },
+        "deband": {
+          "cadena_vlc": "gradfun{radius=12,strength=1.5}",
+          "modulos": [
+            "gradfun{radius=12,strength=1.5}"
+          ],
+          "viables": [
+            {
+              "etapa": "gradfun=radius=12:strength=1.5",
+              "filtro": "gradfun",
+              "vlc": "gradfun{radius=12,strength=1.5}"
+            }
+          ],
+          "no_viables": []
+        },
+        "sharpen": {
+          "cadena_vlc": "sharpen{sigma=0.22}",
+          "modulos": [
+            "sharpen{sigma=0.22}"
+          ],
+          "viables": [
+            {
+              "etapa": "unsharp=lx=3:ly=3:la=0.22",
+              "filtro": "unsharp",
+              "vlc": "sharpen{sigma=0.22}"
+            }
+          ],
+          "no_viables": []
+        },
+        "output": {
+          "cadena_vlc": "",
+          "modulos": [],
+          "viables": [],
+          "no_viables": [
+            {
+              "etapa": "format=yuv420p12le",
+              "filtro": "format",
+              "razon": "no existe como modulo VLC"
+            }
+          ]
+        }
+      },
+      "no_viables": [
+        {
+          "etapa": "zscale=w=6144:h=3456:filter=lanczos",
+          "filtro": "zscale",
+          "razon": "no existe como modulo VLC"
+        },
+        {
+          "etapa": "format=yuv420p12le",
+          "filtro": "format",
+          "razon": "no existe como modulo VLC"
+        }
+      ],
+      "modulos_finales": [
+        "hqdn3d",
+        "gradfun",
+        "sharpen"
+      ]
+    },
+    "P2": {
+      "target_resolution": "6144x3456",
+      "source_resolution": "3840x2160",
+      "fps": 60,
+      "hdr": "PQ",
+      "cadena_vlc": "hqdn3d:gradfun{radius=12,strength=1.5}:sharpen{sigma=0.25}",
+      "por_etapa": {
+        "denoise": {
+          "cadena_vlc": "hqdn3d",
+          "modulos": [
+            "hqdn3d"
+          ],
+          "viables": [
+            {
+              "etapa": "hqdn3d=1:0.8:3:2.5",
+              "filtro": "hqdn3d",
+              "vlc": "hqdn3d"
+            }
+          ],
+          "no_viables": []
+        },
+        "upscale": {
+          "cadena_vlc": "",
+          "modulos": [],
+          "viables": [],
+          "no_viables": [
+            {
+              "etapa": "zscale=w=6144:h=3456:filter=lanczos",
+              "filtro": "zscale",
+              "razon": "no existe como modulo VLC"
+            }
+          ]
+        },
+        "deband": {
+          "cadena_vlc": "gradfun{radius=12,strength=1.5}",
+          "modulos": [
+            "gradfun{radius=12,strength=1.5}"
+          ],
+          "viables": [
+            {
+              "etapa": "gradfun=radius=12:strength=1.5",
+              "filtro": "gradfun",
+              "vlc": "gradfun{radius=12,strength=1.5}"
+            }
+          ],
+          "no_viables": []
+        },
+        "sharpen": {
+          "cadena_vlc": "sharpen{sigma=0.25}",
+          "modulos": [
+            "sharpen{sigma=0.25}"
+          ],
+          "viables": [
+            {
+              "etapa": "unsharp=lx=3:ly=3:la=0.25",
+              "filtro": "unsharp",
+              "vlc": "sharpen{sigma=0.25}"
+            }
+          ],
+          "no_viables": []
+        },
+        "output": {
+          "cadena_vlc": "",
+          "modulos": [],
+          "viables": [],
+          "no_viables": [
+            {
+              "etapa": "format=yuv420p10le",
+              "filtro": "format",
+              "razon": "no existe como modulo VLC"
+            }
+          ]
+        }
+      },
+      "no_viables": [
+        {
+          "etapa": "zscale=w=6144:h=3456:filter=lanczos",
+          "filtro": "zscale",
+          "razon": "no existe como modulo VLC"
+        },
+        {
+          "etapa": "format=yuv420p10le",
+          "filtro": "format",
+          "razon": "no existe como modulo VLC"
+        }
+      ],
+      "modulos_finales": [
+        "hqdn3d",
+        "gradfun",
+        "sharpen"
+      ]
+    },
+    "P3": {
+      "target_resolution": "3840x2160",
+      "source_resolution": "1920x1080",
+      "fps": 60,
+      "hdr": "HLG",
+      "cadena_vlc": "hqdn3d:gradfun{radius=12,strength=1.6}:sharpen{sigma=0.28}",
+      "por_etapa": {
+        "denoise": {
+          "cadena_vlc": "hqdn3d",
+          "modulos": [
+            "hqdn3d"
+          ],
+          "viables": [
+            {
+              "etapa": "hqdn3d=1:0.8:3:2.5",
+              "filtro": "hqdn3d",
+              "vlc": "hqdn3d"
+            }
+          ],
+          "no_viables": []
+        },
+        "upscale": {
+          "cadena_vlc": "",
+          "modulos": [],
+          "viables": [],
+          "no_viables": [
+            {
+              "etapa": "zscale=w=3840:h=2160:filter=lanczos",
+              "filtro": "zscale",
+              "razon": "no existe como modulo VLC"
+            }
+          ]
+        },
+        "deband": {
+          "cadena_vlc": "gradfun{radius=12,strength=1.6}",
+          "modulos": [
+            "gradfun{radius=12,strength=1.6}"
+          ],
+          "viables": [
+            {
+              "etapa": "gradfun=radius=12:strength=1.6",
+              "filtro": "gradfun",
+              "vlc": "gradfun{radius=12,strength=1.6}"
+            }
+          ],
+          "no_viables": []
+        },
+        "sharpen": {
+          "cadena_vlc": "sharpen{sigma=0.28}",
+          "modulos": [
+            "sharpen{sigma=0.28}"
+          ],
+          "viables": [
+            {
+              "etapa": "unsharp=lx=3:ly=3:la=0.28",
+              "filtro": "unsharp",
+              "vlc": "sharpen{sigma=0.28}"
+            }
+          ],
+          "no_viables": []
+        },
+        "output": {
+          "cadena_vlc": "",
+          "modulos": [],
+          "viables": [],
+          "no_viables": [
+            {
+              "etapa": "format=yuv420p10le",
+              "filtro": "format",
+              "razon": "no existe como modulo VLC"
+            }
+          ]
+        }
+      },
+      "no_viables": [
+        {
+          "etapa": "zscale=w=3840:h=2160:filter=lanczos",
+          "filtro": "zscale",
+          "razon": "no existe como modulo VLC"
+        },
+        {
+          "etapa": "format=yuv420p10le",
+          "filtro": "format",
+          "razon": "no existe como modulo VLC"
+        }
+      ],
+      "modulos_finales": [
+        "hqdn3d",
+        "gradfun",
+        "sharpen"
+      ]
+    },
+    "P4": {
+      "target_resolution": "2560x1440",
+      "source_resolution": "1280x720",
+      "fps": 60,
+      "hdr": "SDR",
+      "cadena_vlc": "hqdn3d:gradfun{radius=10,strength=1.5}:sharpen{sigma=0.80}",
+      "por_etapa": {
+        "denoise": {
+          "cadena_vlc": "hqdn3d",
+          "modulos": [
+            "hqdn3d"
+          ],
+          "viables": [
+            {
+              "etapa": "hqdn3d=2:1.5:6:4.5",
+              "filtro": "hqdn3d",
+              "vlc": "hqdn3d"
+            }
+          ],
+          "no_viables": []
+        },
+        "upscale": {
+          "cadena_vlc": "",
+          "modulos": [],
+          "viables": [],
+          "no_viables": [
+            {
+              "etapa": "zscale=w=2560:h=1440:filter=lanczos",
+              "filtro": "zscale",
+              "razon": "no existe como modulo VLC"
+            }
+          ]
+        },
+        "deband": {
+          "cadena_vlc": "gradfun{radius=10,strength=1.5}",
+          "modulos": [
+            "gradfun{radius=10,strength=1.5}"
+          ],
+          "viables": [
+            {
+              "etapa": "gradfun=radius=10:strength=1.5",
+              "filtro": "gradfun",
+              "vlc": "gradfun{radius=10,strength=1.5}"
+            }
+          ],
+          "no_viables": []
+        },
+        "sharpen": {
+          "cadena_vlc": "sharpen{sigma=0.80}",
+          "modulos": [
+            "sharpen{sigma=0.80}"
+          ],
+          "viables": [
+            {
+              "etapa": "unsharp=lx=5:ly=5:la=0.8",
+              "filtro": "unsharp",
+              "vlc": "sharpen{sigma=0.80}"
+            }
+          ],
+          "no_viables": []
+        },
+        "output": {
+          "cadena_vlc": "",
+          "modulos": [],
+          "viables": [],
+          "no_viables": [
+            {
+              "etapa": "format=yuv420p10le",
+              "filtro": "format",
+              "razon": "no existe como modulo VLC"
+            }
+          ]
+        }
+      },
+      "no_viables": [
+        {
+          "etapa": "zscale=w=2560:h=1440:filter=lanczos",
+          "filtro": "zscale",
+          "razon": "no existe como modulo VLC"
+        },
+        {
+          "etapa": "format=yuv420p10le",
+          "filtro": "format",
+          "razon": "no existe como modulo VLC"
+        }
+      ],
+      "modulos_finales": [
+        "hqdn3d",
+        "gradfun",
+        "sharpen"
+      ]
+    },
+    "P5": {
+      "target_resolution": "1920x1080",
+      "source_resolution": "854x480",
+      "fps": 60,
+      "hdr": "SDR",
+      "cadena_vlc": "deinterlace{mode=yadif2x}:hqdn3d:gradfun{radius=8,strength=1.5}:sharpen{sigma=0.80}",
+      "por_etapa": {
+        "deinterlace": {
+          "cadena_vlc": "deinterlace{mode=yadif2x}",
+          "modulos": [
+            "deinterlace{mode=yadif2x}"
+          ],
+          "viables": [
+            {
+              "etapa": "bwdif=mode=send_frame:parity=-1:deint=0",
+              "filtro": "bwdif",
+              "vlc": "deinterlace{mode=yadif2x}"
+            }
+          ],
+          "no_viables": []
+        },
+        "denoise": {
+          "cadena_vlc": "hqdn3d",
+          "modulos": [
+            "hqdn3d"
+          ],
+          "viables": [
+            {
+              "etapa": "hqdn3d=2:1.5:6:4.5",
+              "filtro": "hqdn3d",
+              "vlc": "hqdn3d"
+            }
+          ],
+          "no_viables": []
+        },
+        "upscale": {
+          "cadena_vlc": "",
+          "modulos": [],
+          "viables": [],
+          "no_viables": [
+            {
+              "etapa": "zscale=w=1920:h=1080:filter=lanczos",
+              "filtro": "zscale",
+              "razon": "no existe como modulo VLC"
+            }
+          ]
+        },
+        "deband": {
+          "cadena_vlc": "gradfun{radius=8,strength=1.5}",
+          "modulos": [
+            "gradfun{radius=8,strength=1.5}"
+          ],
+          "viables": [
+            {
+              "etapa": "gradfun=radius=8:strength=1.5",
+              "filtro": "gradfun",
+              "vlc": "gradfun{radius=8,strength=1.5}"
+            }
+          ],
+          "no_viables": []
+        },
+        "sharpen": {
+          "cadena_vlc": "sharpen{sigma=0.80}",
+          "modulos": [
+            "sharpen{sigma=0.80}"
+          ],
+          "viables": [
+            {
+              "etapa": "unsharp=lx=5:ly=5:la=0.8:cx=3:cy=3:ca=0.25",
+              "filtro": "unsharp",
+              "vlc": "sharpen{sigma=0.80}"
+            }
+          ],
+          "no_viables": []
+        },
+        "output": {
+          "cadena_vlc": "",
+          "modulos": [],
+          "viables": [],
+          "no_viables": [
+            {
+              "etapa": "format=yuv420p10le",
+              "filtro": "format",
+              "razon": "no existe como modulo VLC"
+            }
+          ]
+        }
+      },
+      "no_viables": [
+        {
+          "etapa": "zscale=w=1920:h=1080:filter=lanczos",
+          "filtro": "zscale",
+          "razon": "no existe como modulo VLC"
+        },
+        {
+          "etapa": "format=yuv420p10le",
+          "filtro": "format",
+          "razon": "no existe como modulo VLC"
+        }
+      ],
+      "modulos_finales": [
+        "deinterlace",
+        "hqdn3d",
+        "gradfun",
+        "sharpen"
+      ]
+    }
+  }
+}
