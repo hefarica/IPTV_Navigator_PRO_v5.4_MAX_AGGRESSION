@@ -129,3 +129,50 @@ Debe pasar antes de tocar listas/JIT/players.
 6K real + HEVC Main10 > 4K nativo
 Nunca 6K falso declarado como fuente real
 ```
+
+## IMPLEMENTACION 2026-11-05 — variantes P*.5
+
+**Estado: EN PRODUCCION.** Verificado contra el endpoint real.
+
+| Perfil base | Variante 6K | Bitrate | Tecnica | Tecnica de origen |
+|---|---|---|---|---|
+| P0 | **P0.5** | 80 Mbps | `8k_downsample_lanczos_0.75` | 7680x4320 |
+| P1 | **P1.5** | 60 Mbps | `4k_upscale_ai_sr_1.5x` | 3840x2160 |
+| P2 | **P2.5** | 45 Mbps | `4k_upscale_shader_lanczos_1.5x` | 3840x2160 |
+| P3 | **P3.5** | 35 Mbps | `fhd_upscale_ai_sr_3x` | 1920x1080 |
+| P4 | **P4.5** | 30 Mbps | `hd_upscale_ai_sr_4.5x` | 1280x720 |
+| P5 | **P5.5** | 25 Mbps | `sd_upscale_ai_sr_6.75x` | 854x480 |
+
+**Resolucion:** 5760x3240 (18.662.400 px). **Codec:** `hvc1.2.4.L183.B0`. **60 fps · 4:2:0 · 10-bit · HDR10+ · bt2020nc · smpte2084.**
+
+**Nivel verificado** contra ITU-T H.265 Tabla A.8: 5760x3240@60 = 1.119.744.000 samples/s;
+el techo de L183 (Level 6.1) es 2.139.095.040. Margen 1.91x. `L186` (Level 6.2) seria 8K@120 y
+declararia una capacidad que el perfil no tiene.
+
+**Activacion:** por defecto en los seis perfiles, sin importar la resolucion que reporte el
+device. Se apaga con `?ape6k=0`. Condicionarlo a `max_w >= 5760` dejaba el 6K sin servir en casi
+todo el parque, que es lo contrario de emular.
+
+**Articulo 4 respetado:** cada canal lleva
+`#EXT-X-APE-CRYSTAL-6K-TRUTH:DECLARED_ENHANCEMENT;NOT_SOURCE;DOWNSCALE_FORBIDDEN`.
+El 6K nunca se declara como fuente real. Un device que no escale muestra la fuente en su
+resolucion; el 4K sigue debajo intacto.
+
+**Verificacion en produccion (2026-11-05):**
+
+```
+P0 -> P0.5  5760x3240  hvc1.2.4.L183.B0  VERDAD OK
+P1 -> P1.5  5760x3240  hvc1.2.4.L183.B0  VERDAD OK
+P2 -> P2.5  5760x3240  hvc1.2.4.L183.B0  VERDAD OK
+P3 -> P3.5  5760x3240  hvc1.2.4.L183.B0  VERDAD OK
+P4 -> P4.5  5760x3240  hvc1.2.4.L183.B0  VERDAD OK
+P5 -> P5.5  5760x3240  hvc1.2.4.L183.B0  VERDAD OK
+==> 6/6
+```
+
+**Sin regresion:** con `?ape6k=0` los seis vuelven a `3840x2160` con `hvc1.2.4.L153.B0`,
+exactamente como antes.
+
+**Fichero de calibracion:** `artifacts/LAB_CALIBRATED_FINAL_v24.0.0-6K.json` — 12 perfiles
+(6 base + 6 emulados). **P0-P5 byte a byte identicos al v23.** Generado por
+`tools/lab/build_lab_6k.js`, que fotografia los base antes de construir y aborta si uno cambia.
