@@ -105,6 +105,9 @@ dependencies {
     implementation("org.tensorflow:tensorflow-lite:2.14.0")
     implementation("org.tensorflow:tensorflow-lite-gpu:2.14.0")
     implementation("org.tensorflow:tensorflow-lite-gpu-api:2.14.0")
+    // ottshim empaquetado: proxy loopback + pin de variante + QoE, dentro del MISMO APK.
+    // Se instala y actualiza con ARA; no hay segundo APK ni icono duplicado.
+    implementation(project(":shim"))
 }
 
 

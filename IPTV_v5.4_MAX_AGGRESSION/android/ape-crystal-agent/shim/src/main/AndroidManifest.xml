@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Manifest del modulo :shim — SOLO los services del motor.
+
+  Deliberadamente NO se declaran aqui:
+    · <activity .MainActivity>            -> ARA ya tiene su interfaz; un segundo
+                                             launcher duplicaria el icono en Fire TV.
+    · android:label / android:icon / theme -> pisarian los de ARA al mergear.
+    · usesCleartextTraffic                -> es atributo de <application> de ARA.
+
+  Los permisos (INTERNET, FOREGROUND_SERVICE, POST_NOTIFICATIONS, BIND_NOTIFICATION_
+  LISTENER_SERVICE) se declaran en el manifest de ARA: en un AAR el merger los
+  combina, y asi queda en un unico sitio auditable.
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <application>
+        <!-- Proxy loopback: dueño del socket + watchdog de 5 s. Foreground dataSync. -->
+        <service
+            android:name="dev.venice.ottshim.ProxyService"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
+
+        <!-- Lee la posicion de la MediaSession de OTT Navigator para QoE real. -->
+        <service
+            android:name="dev.venice.ottshim.SessionTap"
+            android:exported="true"
+            android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
+            <intent-filter>
+                <action android:name="android.service.notification.NotificationListenerService" />
+            </intent-filter>
+        </service>
+    </application>
+</manifest>

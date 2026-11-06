@@ -32,6 +32,7 @@ class MainActivity : Activity() {
     private lateinit var uhd: TextView
     private lateinit var vps: TextView
     private lateinit var playback: TextView
+    private lateinit var shim: TextView
     private var ticker: Runnable? = null
 
     private val bg = Color.rgb(245, 247, 250)
@@ -175,6 +176,35 @@ class MainActivity : Activity() {
         }
         content.addView(url)
         content.addView(play)
+
+        // ── OTTSHIM · motor de empuje (proxy loopback + pin de variante + QoE) ────────
+        // Va DENTRO de este APK (módulo :shim): se instala y actualiza con ARA
+        // (SelfUpdateManager valida sha256 + pin de firma). Arranque MANUAL a propósito:
+        // un update de ARA no debe tocar la reproducción sin que el operador lo pida.
+        content.addView(sectionTitle("OTTSHIM · MOTOR DE EMPUJE"))
+        shim = body(); content.addView(cardView(shim))
+        val shimStart = Button(this).apply {
+            text = "Arrancar shim con la URL de arriba"
+            setTextColor(ink); background = round(Color.rgb(226, 232, 240))
+            setOnClickListener {
+                val u = url.text.toString().trim()
+                if (!u.startsWith("http://") && !u.startsWith("https://")) {
+                    toastText("pon una URL fuente arriba"); return@setOnClickListener
+                }
+                ShimBridge.start(this@MainActivity, u, null, 0)
+                refresh.postDelayed({ toastText(ShimBridge.line()) }, 900)
+            }
+        }
+        val shimStop = Button(this).apply {
+            text = "Parar shim"
+            setTextColor(ink); background = round(Color.rgb(226, 232, 240))
+            setOnClickListener {
+                ShimBridge.stop(this@MainActivity)
+                toastText("shim parado")
+            }
+        }
+        content.addView(shimStart)
+        content.addView(shimStop)
         setContentView(root)
 
         ticker = object : Runnable {
@@ -184,6 +214,18 @@ class MainActivity : Activity() {
             }
         }
         refresh.post(ticker!!)
+        // Estado del shim: lectura de /health en hilo aparte (no bloquea la UI) cada 2 s.
+        val shimTicker = object : Runnable {
+            override fun run() {
+                Thread {
+                    ShimBridge.refresh()
+                    val txt = ShimBridge.line()
+                    runOnUiThread { if (this@MainActivity::shim.isInitialized) shim.text = txt }
+                }.start()
+                refresh.postDelayed(this, 2000L)
+            }
+        }
+        refresh.post(shimTicker)
         // Prueba/automatización: cargar metadata de una lista sin pasar por la UI.
         intent?.getStringExtra("list_url")?.trim()?.takeIf { it.startsWith("http") }?.let { lu ->
             Thread {
