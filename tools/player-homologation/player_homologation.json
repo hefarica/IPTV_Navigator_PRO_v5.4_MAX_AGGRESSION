@@ -1,0 +1,231 @@
+{
+  "schema": "ape.player-homologation/1",
+  "generado": "2026-11-06T02:25:11.657Z",
+  "directivas": {
+    "AISR": {
+      "nombre": "AI Super Resolution",
+      "ejecutor": "hardware",
+      "donde": "VPP del SoC, sobre el frame ya decodificado",
+      "ffmpeg": {
+        "viable": false,
+        "razon": "ffmpeg escala con zscale/scale, no con AI-SR del chip. En directo a 4K no es tiempo real."
+      },
+      "vlc": {
+        "viable": false,
+        "razon": "VLC no tiene AI super-resolution. No existe modulo."
+      },
+      "exoplayer": {
+        "viable": false,
+        "razon": "ExoPlayer decodifica y entrega; no hace AI-SR. Delega en el SoC."
+      },
+      "device": {
+        "s905x4": {
+          "tiene": true,
+          "peticion": "aisr_enable=1 + ai_sr_mode=3 + ai_sr_level=3 (libpqcontrol.so)"
+        },
+        "mt8696": {
+          "tiene": false,
+          "homologo": "com.amazon.tv.picture_sharpness=65 + com.amazon.tv.dynamic_contrast=high"
+        }
+      }
+    },
+    "AIPQ": {
+      "nombre": "AI Picture Quality",
+      "ejecutor": "hardware",
+      "donde": "VPP del SoC, ajuste por escena",
+      "ffmpeg": {
+        "viable": false,
+        "razon": "ffmpeg aplica curvas fijas (eq/curves), no AI-PQ por escena."
+      },
+      "vlc": {
+        "viable": false,
+        "razon": "VLC no tiene AI-PQ. adjust es estatico, no por escena."
+      },
+      "exoplayer": {
+        "viable": false,
+        "razon": "ExoPlayer no toca color/contraste; entrega el frame tal cual."
+      },
+      "device": {
+        "s905x4": {
+          "tiene": true,
+          "peticion": "aipq_enable=1 + ai_pq_mode=3 + ai_pic_mode=3"
+        },
+        "mt8696": {
+          "tiene": "parcial",
+          "homologo": "com.amazon.tv.dynamic_contrast=high + picture_mode=movie + noise_reduction=auto"
+        }
+      }
+    },
+    "MEMC": {
+      "nombre": "Motion Estimation / Motion Compensation",
+      "ejecutor": "hardware (cuando existe)",
+      "donde": "VPP del SoC entre el decode y el panel",
+      "ffmpeg": {
+        "viable": "solo offline",
+        "razon": "minterpolate existe pero mide 23.4x tiempo real en solitario y 46.9x en la cadena P3. No sirve en directo."
+      },
+      "vlc": {
+        "viable": false,
+        "razon": "VLC no interpola frames. No hay modulo minterpolate."
+      },
+      "exoplayer": {
+        "viable": false,
+        "razon": "ExoPlayer no interpola. Puede respetar el fps de la fuente (frame rate matching)."
+      },
+      "device": {
+        "s905x4": {
+          "tiene": false,
+          "homologo": "match_content_frame_rate=1 (respeta el fps real de la fuente, no inventa frames)"
+        },
+        "mt8696": {
+          "tiene": true,
+          "peticion": "com.amazon.tv.motion_smoothness=2 (MEMC por HW)"
+        }
+      }
+    }
+  },
+  "buffer_homologos": [
+    {
+      "exoplayer": "minBufferMs=45000",
+      "vlc": "network-caching=45000",
+      "vlc_existe": true,
+      "ffmpeg": "-max_delay 45000000",
+      "nota": "buffer de red objetivo. VLC lo acepta (network-caching esta entre las 58 opciones reales)."
+    },
+    {
+      "exoplayer": "maxBufferMs=130000",
+      "vlc": "live-caching=130000",
+      "vlc_existe": true,
+      "ffmpeg": "-buffer_size 130000000",
+      "nota": "techo de buffer. live-caching existe en VLC."
+    },
+    {
+      "exoplayer": "bufferForPlaybackMs=500",
+      "vlc": "file-caching=500",
+      "vlc_existe": true,
+      "ffmpeg": "-analyzeduration 500",
+      "nota": "buffer minimo para arrancar. file-caching existe en VLC."
+    },
+    {
+      "exoplayer": "bufferForPlaybackAfterRebufferMs=1000",
+      "vlc": "sout-mux-caching=1000",
+      "vlc_existe": true,
+      "ffmpeg": "-reorder_queue_size 1000",
+      "nota": "buffer tras un rebuffer. sout-mux-caching existe en VLC."
+    },
+    {
+      "exoplayer": "bandwidthFraction=0.95",
+      "vlc": null,
+      "vlc_existe": false,
+      "ffmpeg": null,
+      "nota": "NO_VIABLE en VLC: las 36 opciones adaptive-* no existen en ningun binario. VLC no tiene ABR configurable."
+    },
+    {
+      "exoplayer": "initialBitrateEstimate=120000000",
+      "vlc": null,
+      "vlc_existe": false,
+      "ffmpeg": null,
+      "nota": "NO_VIABLE en VLC: no hay estimador de bitrate inicial configurable. adaptive-initial-bandwidth no existe."
+    },
+    {
+      "exoplayer": "slidingWindowMaxWeight=2000",
+      "vlc": null,
+      "vlc_existe": false,
+      "ffmpeg": null,
+      "nota": "NO_VIABLE en VLC: sin ventana deslizante de ancho de banda configurable."
+    }
+  ],
+  "devices": {
+    "s905x4": {
+      "nombre": "ONN 4K / Amlogic S905X4",
+      "familia": "amlogic",
+      "renderer_gpu": "skiavk",
+      "hdr_conversion_mode": 3,
+      "dolby_vision": false,
+      "deep_color": "12-bit 4:2:2",
+      "directivas": {
+        "AISR": {
+          "aplica": true,
+          "claves": {
+            "aisr_enable": 1,
+            "ai_sr_mode": 3,
+            "ai_sr_level": 3,
+            "ai_pic_mode": 3
+          }
+        },
+        "AIPQ": {
+          "aplica": true,
+          "claves": {
+            "aipq_enable": 1,
+            "ai_pq_mode": 3
+          }
+        },
+        "MEMC": {
+          "aplica": false,
+          "homologo": {
+            "match_content_frame_rate": 1
+          }
+        }
+      },
+      "player_recomendado": "VLC (motor nativo) o ExoPlayer",
+      "vlc_carril": "solo via CLI (--video-filter); la playlist esta cerrada por politica"
+    },
+    "mt8696": {
+      "nombre": "Fire TV 4K Max / MediaTek MT8696",
+      "familia": "mtk",
+      "renderer_gpu": "skiagl",
+      "hdr_conversion_mode": 2,
+      "dolby_vision": true,
+      "deep_color": "8-bit",
+      "directivas": {
+        "AISR": {
+          "aplica": false,
+          "homologo": {
+            "com.amazon.tv.picture_sharpness": 65,
+            "com.amazon.tv.dynamic_contrast": "high"
+          }
+        },
+        "AIPQ": {
+          "aplica": "parcial",
+          "claves": {
+            "com.amazon.tv.dynamic_contrast": "high",
+            "com.amazon.tv.picture_mode": "movie",
+            "com.amazon.tv.noise_reduction": "auto"
+          }
+        },
+        "MEMC": {
+          "aplica": true,
+          "claves": {
+            "com.amazon.tv.motion_smoothness": 2
+          }
+        }
+      },
+      "player_recomendado": "ExoPlayer (nativo Android TV)",
+      "vlc_carril": "solo via CLI; el motor VLC embebido de OTT Navigator tambien ignora el video-filter de playlist"
+    }
+  },
+  "exoplayer_emitido_por_el_generador": {
+    "load_control": {
+      "minBufferMs": 45000,
+      "bufferForPlaybackMs": 500,
+      "bufferForPlaybackAfterRebufferMs": 1000,
+      "maxBufferMs": 130000
+    },
+    "track_selection": {
+      "maxDurationForQualityDecreaseMs": 500,
+      "minDurationForQualityIncreaseMs": 3000,
+      "bandwidthFraction": 0.95
+    },
+    "bandwidth_meter": {
+      "resetOnNetworkTypeChange": false,
+      "slidingWindowMaxWeight": 2000,
+      "initialBitrateEstimate": 120000000
+    }
+  },
+  "verdad": {
+    "aisr_aipq_memc": "son HARDWARE del SoC. Ningun player las ejecuta; solo las piden. El VPS no transcodifica.",
+    "vlc_playlist": "En VLC 3.0.24, #EXTVLCOPT:video-filter esta cerrado por politica. La cadena homologada sirve al carril CLI.",
+    "abr_en_vlc": "Las 36 opciones adaptive-* no existen en VLC. bandwidthFraction y initialBitrateEstimate son NO_VIABLE ahi.",
+    "minterpolate": "Existe en ffmpeg pero mide 23.4x tiempo real solo. En directo 4K no se sostiene. Declararlo como aplicado seria mentir."
+  }
+}

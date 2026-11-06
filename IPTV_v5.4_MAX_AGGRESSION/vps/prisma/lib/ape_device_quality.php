@@ -190,6 +190,50 @@ if (!function_exists('ape_quality_levers')) {
     }
 }
 
+if (!function_exists('ape_player_recommendation')) {
+    /**
+     * Player recomendado y carril VLC para ese SoC, con la verdad de cada superficie.
+     *
+     * AISR y AIPQ son HARDWARE: ningun player las ejecuta, solo las piden. MEMC es hardware
+     * cuando existe (MT8696). Por eso el VLC de playlist no es la via de mejora: la cadena de
+     * filtros esta cerrada por politica en 3.0.24. Lo que si cambia por device es que claves
+     * del SoC se escriben, y eso lo resuelve ape_quality_levers().
+     */
+    function ape_player_recommendation(?string $socOrDevice): array
+    {
+        $family = ape_quality_soc_family($socOrDevice);
+        if ($family === 'amlogic') {
+            return array(
+                'family' => 'amlogic',
+                'soc' => 'S905X4 (ONN 4K)',
+                'player' => 'VLC (motor nativo) o ExoPlayer',
+                'gpu_renderer' => 'skiavk',
+                'hdr_conversion_mode' => 3,
+                'dolby_vision' => false,
+                'vlc_lane' => 'solo via CLI (--video-filter); la playlist esta cerrada por politica',
+                'aisr' => 'nativo (aisr_enable + ai_sr_mode/ai_sr_level)',
+                'aipq' => 'nativo (aipq_enable + ai_pq_mode + ai_pic_mode)',
+                'memc' => 'no_disponible -- match_content_frame_rate=1 respeta el fps real',
+            );
+        }
+        if ($family === 'mtk') {
+            return array(
+                'family' => 'mtk',
+                'soc' => 'MT8696 (Fire TV 4K Max)',
+                'player' => 'ExoPlayer (nativo Android TV)',
+                'gpu_renderer' => 'skiagl',
+                'hdr_conversion_mode' => 2,
+                'dolby_vision' => true,
+                'vlc_lane' => 'solo via CLI; el motor VLC embebido de OTT Navigator tambien ignora el video-filter de playlist',
+                'aisr' => 'no_disponible -- homologo: picture_sharpness=65 + dynamic_contrast=high',
+                'aipq' => 'parcial -- dynamic_contrast + picture_mode=movie + noise_reduction=auto',
+                'memc' => 'nativo (com.amazon.tv.motion_smoothness=2)',
+            );
+        }
+        return array('family' => null, 'player' => null, 'reason' => 'soc_desconocido');
+    }
+}
+
 if (!function_exists('ape_quality_plan')) {
     /**
      * Plan completo para un device: familia detectada, levers a escribir y homologacion declarada.
