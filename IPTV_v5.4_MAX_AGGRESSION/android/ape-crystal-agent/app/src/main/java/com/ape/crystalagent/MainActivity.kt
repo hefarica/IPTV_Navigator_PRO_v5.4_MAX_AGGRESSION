@@ -233,6 +233,16 @@ class MainActivity : Activity() {
                     .onFailure { android.util.Log.w("ApeListLoader", "metadata/list: ${it.message}") }
             }.start()
         }
+        // [ARASHIM] Hook de arranque del shim por intent (mismo patrón que "list_url").
+        // Sirve para diagnóstico/automatización desde adb sin tocar la UI y sin abrir el
+        // service: ProxyService sigue sin exportar. La fuente se pasa explícita.
+        intent?.getStringExtra("shim_src")?.trim()
+            ?.takeIf { it.startsWith("http://") || it.startsWith("https://") }
+            ?.let { shimSrc ->
+                val kbps = intent?.getIntExtra("shim_kbps", 0) ?: 0
+                ShimBridge.start(this, shimSrc, null, kbps)
+                refresh.postDelayed({ toastText(ShimBridge.line()) }, 900)
+            }
         beginOnboarding()
     }
 
