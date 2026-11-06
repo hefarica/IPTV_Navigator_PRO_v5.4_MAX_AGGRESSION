@@ -1,0 +1,21 @@
+<!doctype html><meta charset="utf-8"><title>phase2</title>
+<script src="ape-ui-persistence.js"></script>
+<input type="checkbox" id="chk1"><input type="checkbox" id="chk2">
+<select id="sel1"><option value="a">A</option><option value="b">B</option></select>
+<input type="text" id="txt1">
+<pre id="out">PHASE2_START</pre>
+<script>
+  const log = (s) => { document.getElementById('out').textContent += '\n' + s; };
+  // "volver a abrir la app": restauración forzada (como en un arranque nuevo)
+  const r = APE_UI_PERSIST.restoreNow(true);
+  log('PHASE2_RESTORE ' + JSON.stringify(r));
+  log('PHASE2_VALUES chk1=' + document.getElementById('chk1').checked +
+      ' chk2=' + document.getElementById('chk2').checked +
+      ' sel1=' + document.getElementById('sel1').value +
+      ' txt1=' + document.getElementById('txt1').value);
+  const okAll = document.getElementById('chk1').checked === true &&
+                document.getElementById('chk2').checked === false &&
+                document.getElementById('sel1').value === 'b' &&
+                document.getElementById('txt1').value === 'hola';
+  log('PHASE2_RESULT ' + (okAll ? 'PERSIST_OK' : 'PERSIST_FAIL'));
+</script>

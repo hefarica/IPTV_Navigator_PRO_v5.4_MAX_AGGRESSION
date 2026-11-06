@@ -1,0 +1,25 @@
+<!doctype html><meta charset="utf-8"><title>phase4</title>
+<script src="ape-lab-import-helper.js"></script>
+<pre id="out">PHASE4_START</pre>
+<script>
+const log=(s)=>{document.getElementById('out').textContent+='\n'+s;};
+window.__GOT = null;
+window.APE_PROFILES_CONFIG = { labExportedAt:null, labVersion:null, labBulletproof:false, profiles:{},
+  importFromLABData: async function(data){ window.__GOT = data; return {ok:true}; } };
+(async()=>{
+  try {
+    const r = await apeLabSnapshotRestore();
+    const got = window.__GOT;
+    const keys = got ? Object.keys(got).sort() : [];
+    const h = got ? await crypto.subtle.digest('SHA-256', new TextEncoder().encode(JSON.stringify(got))).then(x=>Array.from(new Uint8Array(x)).map(b=>b.toString(16).padStart(2,'0')).join('')) : null;
+    const req = ['profiles_calibrated','nivel1_directives','nivel3_per_layer','placeholders_map','evasion_pool','config_global','servers','scoring_metadata','omega_gap_plan','meta_per_profile'];
+    const missing = req.filter(k=>!got || !(k in got));
+    const has_extras = !!(got && got.dnr_calibration && got.prisma_lab_sync_v20 && got.synthesized_at);
+    window.__LAB_RESTORE_RESULT = { ok: !!(got && missing.length===0), keys: keys.length, hash: h, missing: missing, has_extras: has_extras };
+    log('PHASE4_RESTORE ' + JSON.stringify(r));
+    log('PHASE4_KEYS ' + keys.length + ':' + keys.join(','));
+    log('PHASE4_HASH ' + h);
+    log('PHASE4_RESULT ' + (window.__LAB_RESTORE_RESULT.ok ? 'LAB_ALL_DATA_OK' : 'LAB_RESTORE_FAIL missing=' + missing.join(',')));
+  } catch (e) { window.__LAB_RESTORE_RESULT = {error:e.message}; log('PHASE4_ERR '+e.message); }
+})();
+</script>

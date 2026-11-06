@@ -1,0 +1,16 @@
+<!doctype html><meta charset="utf-8"><title>phase1</title>
+<script src="ape-ui-persistence.js"></script>
+<input type="checkbox" id="chk1"><input type="checkbox" id="chk2">
+<select id="sel1"><option value="a">A</option><option value="b">B</option></select>
+<input type="text" id="txt1">
+<pre id="out">PHASE1_START</pre>
+<script>
+  const log = (s) => { document.getElementById('out').textContent += '\n' + s; };
+  document.getElementById('chk1').checked = true;
+  document.getElementById('chk2').checked = false;
+  document.getElementById('sel1').value = 'b';
+  document.getElementById('txt1').value = 'hola';
+  const st = APE_UI_PERSIST.saveNow();
+  log('PHASE1_SAVED controls=' + Object.keys(st.controls).length);
+  log('PHASE1_STATUS ' + JSON.stringify(APE_UI_PERSIST.status()));
+</script>

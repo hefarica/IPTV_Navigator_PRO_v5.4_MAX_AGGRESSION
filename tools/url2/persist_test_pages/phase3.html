@@ -1,0 +1,30 @@
+<!doctype html><meta charset="utf-8"><title>phase3</title>
+<script src="ape-lab-import-helper.js"></script>
+<pre id="out">PHASE3_START</pre>
+<script>
+const log=(s)=>{document.getElementById('out').textContent+='\n'+s;};
+const LAB = {
+  lab_version:'24.0.0-6K', lab_schema_variant:'omega_v24', bulletproof:true,
+  exported_at:'2026-11-05T18:27:55.188Z', version:'24.0.0',
+  profiles_calibrated:{P0:{id:'P0',name:'8K Master',settings:{resolution:'7680x4320',fps:'30'}},P1:{id:'P1',name:'4K UHD Pro',settings:{resolution:'3840x2160',fps:'60'}},P3:{id:'P3',name:'FHD',settings:{resolution:'1920x1080',fps:'60'}}},
+  nivel1_directives:['#EXTVLCOPT:network-caching=5000','#EXTVLCOPT:live-caching=5000'],
+  nivel3_per_layer:{P0:['#EXTVLCOPT:avcodec-hw=any'],P1:['#EXTVLCOPT:deinterlace=1'],P3:['#EXTVLCOPT:clock-jitter=0']},
+  placeholders_map:{'{ns.key}':'valor'}, evasion_pool:{uas:['Mozilla/5.0'],referers:['https://www.google.com/']},
+  config_global:{bitrate:'40',buffer:'12000',fps:'60',hdr:'hdr10plus'},
+  servers:[{id:'s1',host:'line.tivi-ott.net',user:'u',pass:'p'}],
+  scoring_metadata:{score:99}, omega_gap_plan:{items:['REPLICAR','IMPLEMENTAR']},
+  meta_per_profile:{source_file:'LAB_CALIBRATED_FINAL_v24.0.0-6K.json'},
+  dnr_calibration:{level:3,strength:0.7}, prisma_lab_sync_v20:{synced:true},
+  synthesized_at:'2026-11-05T00:00:00Z'
+};
+window.APE_PROFILES_CONFIG = { labExportedAt:null, labVersion:null, labBulletproof:false, profiles:{}, importFromLABData: async function(){ return {ok:true}; } };
+(async()=>{
+  try {
+    const r = await apeLabSnapshotSave(LAB);
+    const h = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(JSON.stringify(LAB))).then(x=>Array.from(new Uint8Array(x)).map(b=>b.toString(16).padStart(2,'0')).join(''));
+    window.__LAB_SAVE_RESULT = r; window.__LAB_HASH = h;
+    log('PHASE3_SAVE ' + JSON.stringify(r));
+    log('PHASE3_HASH ' + h);
+  } catch (e) { window.__LAB_SAVE_RESULT = {error:e.message}; log('PHASE3_ERR '+e.message); }
+})();
+</script>
