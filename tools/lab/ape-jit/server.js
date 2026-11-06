@@ -420,11 +420,28 @@ function hdrMaster(text) {
       ? '\n#EXT-X-APE-CRYSTAL-UPSCALE:SOURCE=' + current.sourceWidth + 'x' + current.sourceHeight +
         ';TARGET=' + current.width + 'x' + current.height + ';FILTER=LANCZOS'
       : '\n#EXT-X-APE-CRYSTAL-UPSCALE:NATIVE';
-    const enhance = (current && !current.upscaled)
-      ? '\n#EXT-X-APE-CRYSTAL-ENHANCE:4K_PLUS' +
-        '\n#EXT-X-APE-CRYSTAL-VPP:DEVICE_DISPLAY;POLICY=MAX_IMAGE_FIRST' +
-        '\n#EXT-X-APE-CRYSTAL-TARGET:' + current.width + 'x' + current.height
-      : '\n#EXT-X-APE-CRYSTAL-ENHANCE:UPSCALE_4K';
+    // HARDENING 2026-11-06 — la etiqueta ENHANCE mentia y el VPP se perdia.
+    //
+    // Medido antes del cambio:
+    //   canal 1080p  -> ENHANCE=4K_PLUS  TARGET=1920x1080  (dice 4K, es 1080p)
+    //   canal 720p   -> ENHANCE=UPSCALE_4K  y SIN VPP ni TARGET
+    //
+    // Causa: ENHANCE derivaba de `upscaled`, que es false en DOS casos distintos:
+    // (a) la fuente YA es 4K (correcto) y (b) el target es 1080 y la fuente 1080
+    // (el mismo tamano, que no es 4K). Y el ramal `upscaled` solo emitia la
+    // etiqueta, sin VPP ni TARGET: justo los canales 720p/480p —los que MAS
+    // necesitan el post-proceso del SoC— eran los unicos que no lo declaraban.
+    //
+    // Ahora ENHANCE deriva del tamano REAL de salida y VPP+TARGET se emiten SIEMPRE.
+    const outW = current ? current.width : 1920;
+    const outH = current ? current.height : 1080;
+    const enhTag = outH >= 2160 ? '4K_PLUS'
+      : (outH >= 1080 && outW >= 2048) ? '2K_PLUS'
+        : outH >= 1080 ? 'FHD_PLUS'
+          : 'UPSCALE';
+    const enhance = '\n#EXT-X-APE-CRYSTAL-ENHANCE:' + enhTag +
+      '\n#EXT-X-APE-CRYSTAL-VPP:DEVICE_DISPLAY;POLICY=MAX_IMAGE_FIRST' +
+      '\n#EXT-X-APE-CRYSTAL-TARGET:' + outW + 'x' + outH;
     const sixKTag = (current && current.sixK)
       ? '\n#EXT-X-APE-CRYSTAL-6K:ENABLED=true' +
         '\n#EXT-X-APE-CRYSTAL-6K-TARGET:6144x3456'
