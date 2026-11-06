@@ -408,7 +408,7 @@ jobs:
           php -l "$SRC" || { echo "::error::ape_mesh.php no pasa php -l en el runner"; exit 1; }
           echo "=== 2. backup en el VPS ==="
           ssh "$TARGET" "sudo -n mkdir -p '$BK' && sudo -n cp -a '$DST' '$BK/ape_mesh.php' && echo '  backup: $BK/ape_mesh.php'"
-          HASH_ANTES=$(ssh "$TARGET" "sudo -n sha256sum '$DST' | cut -d\" \"  -f1")
+          HASH_ANTES=$(ssh "$TARGET" "sudo -n sha256sum '$DST' | awk '{print $1}'")
           echo "  hash antes: $HASH_ANTES"
           echo "=== 3. install ==="
           scp -q "$SRC" "$TARGET:/tmp/ape-mesh-new.php" || { echo "::error::scp fallo"; exit 1; }
@@ -436,12 +436,46 @@ jobs:
             echo "  restaurado. La rama queda como antes de este step."
             exit 1
           fi
-          HASH_DESPUES=$(ssh "$TARGET" "sudo -n sha256sum '$DST' | cut -d\" \"  -f1")
-          LHASH=$(sha256sum "$SRC" | cut -d\" \"  -f1)
+          HASH_DESPUES=$(ssh "$TARGET" "sudo -n sha256sum '$DST' | awk '{print $1}'")
+          LHASH=$(sha256sum "$SRC" | awk '{print $1}')
           echo "=== 6. veredicto ==="
           [ "$HASH_DESPUES" = "$LHASH" ] && echo "  sha OK ($LHASH)" || { echo "::error::sha no coincide — RESTAURANDO"; ssh "$TARGET" "sudo -n cp -a '$BK/ape_mesh.php' '$DST'"; exit 1; }
           echo "  los seis endpoints responden y el fichero compila."
           echo "  rollback manual: ssh TARGET sudo cp -a $BK/ape_mesh.php $DST"
+
+      - name: Activar el puente de deltas (APE_4K_BRIDGE_ENABLED=1)
+        # El feedforward emitia solo 3 device_settings porque este flag estaba OFF (default seguro).
+        # Con el encendido, ape_ff_device_settings_from_delta() suma el ultimo delta del VPS -
+        # que ya incluye los 6 levers de Amazon - sobre los 3 base, con dedup por clave.
+        # Reversible: quitar la linea de www.conf y recargar fpm. Vuelve a 3.
+        if: inputs.mode == 'apply'
+        run: |
+          set -uo pipefail
+          STAMP=$(date -u +%Y%m%dT%H%M%SZ)
+          CONF=/etc/php/8.3/fpm/pool.d/www.conf
+          echo "=== backup de www.conf ==="
+          ssh "$TARGET" "sudo -n cp -a '$CONF' '$CONF.bak_$STAMP' && echo '  backup: $CONF.bak_$STAMP'"
+          echo "=== ya esta el flag? ==="
+          TIENE=$(ssh "$TARGET" "grep -c APE_4K_BRIDGE_ENABLED '$CONF' || true")
+          if [ "$TIENE" = "0" ]; then
+            echo "  añadiendo env[APE_4K_BRIDGE_ENABLED] = 1"
+            ssh "$TARGET" "echo 'env[APE_4K_BRIDGE_ENABLED] = 1' | sudo -n tee -a '$CONF' >/dev/null"
+          else
+            echo "  ya presente, no se duplica"
+          fi
+          echo "=== php-fpm -t y reload ==="
+          ssh "$TARGET" "sudo -n php-fpm8.3 -t" || { echo "::error::la config de fpm no valida — restaurando"; ssh "$TARGET" "sudo -n cp -a '$CONF.bak_$STAMP' '$CONF'"; exit 1; }
+          ssh "$TARGET" "sudo -n systemctl reload php8.3-fpm"
+          sleep 4
+          echo "=== el feedforward ahora emite mas de 3? ==="
+          N=$(curl -sS --max-time 15 "https://iptv-ape.duckdns.org/prisma/api/ape-feedforward-stream.php?device=firestick-cali&iv=3&dur=2" | grep -o "device_settings" | wc -l)
+          echo "  bloques con device_settings: $N"
+          if [ "$N" -lt 1 ]; then
+            echo "::error::el feedforward no responde — restaurando el flag"
+            ssh "$TARGET" "sudo -n cp -a '$CONF.bak_$STAMP' '$CONF' && sudo -n systemctl reload php8.3-fpm"
+            exit 1
+          fi
+          echo "  puente activo."
 
       - name: Leer registro de zapping
         # Minimal a proposito: un solo comando por bloque, sin pipes que puedan enmascarar
