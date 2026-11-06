@@ -9298,6 +9298,75 @@ ${__apeContinuityTags().join('\n')}
             }
         }
 
+
+        // (7) [2026-11-06] LOS 40 TAGS DEL MOTOR QUE EL VPS YA EMITIA Y LA LISTA NO
+        // Censo medido sobre el canal 569289: el VPS tiene 801 tipos de tag unicos y la lista 837,
+        // pero 40 de esos 801 no existian en ningun bloque de la lista. Son las declaraciones del
+        // motor (AI-SR, anti-noise, HDR mastering, LCEVC, CORTEX) y las de trazabilidad de la
+        // variante servida. Emitirlos NO toca RESOLUTION ni CODECS: son metadata, igual que el
+        // resto de #EXT-X-APE-*, y van ANTES del STREAM-INF para no romper RFC 8216 4.3.4.2.
+        // Se dejan fuera solo los que dependen del dispositivo que hace la peticion
+        // (URL2-CARTRIDGE, URL2-DEVICE): el generador no conoce el device que va a reproducir,
+        // y afirmar SOC/RAM/SEED de un device que no se ha visto seria inventarlo.
+        const _APE_MOTOR40 = [
+            '#EXT-X-APE-UPSCALE:fake4k',
+            '#EXT-X-APE-QUALITY:4K-UPSCALING',
+            '#EXT-X-APE-QUALITY-RANGE:min=2000000,max=200000000',
+            '#EXT-X-APE-CODEC-FALLBACK-CHAIN:hevc,hev1,h265,h.265,H265,H.265,h264,h.264,H264,H.264,avc,AVC',
+            '#EXT-X-APE-AI-SR-ENABLED:ADAPTIVE',
+            '#EXT-X-APE-AI-SR-SCALE:2',
+            '#EXT-X-APE-AI-DENOISING:NLMEANS',
+            '#EXT-X-APE-AI-SHARPENING:UNSHARP_MASK',
+            '#EXT-X-APE-AI-FRAME-INTERPOLATION:RIFE',
+            '#EXT-X-APE-AI-HDR-UPCONVERT:ENABLED',
+            '#EXT-X-APE-NR-MODE:NLMEANS',
+            '#EXT-X-APE-SUPER-RES-MODEL:REALESRGAN_X4PLUS',
+            '#EXT-X-APE-ANTI-NOISE-ENGINE:v1.0-bilateral+nlmeans',
+            '#EXT-X-APE-ANTI-NOISE-RESOLUTION:2160p',
+            '#EXT-X-APE-ANTI-NOISE-FILTERS:14',
+            '#EXT-X-APE-ANTI-NOISE-FILTER-CHAIN:hqdn3d,afftdn,nlmeans,unsharp',
+            '#EXT-X-APE-ANTI-NOISE-NLMEANS:h=3|s=3.0|p=7|r=15',
+            '#EXT-X-APE-ANTI-NOISE-HQDN3D:luma-spatial=2|chroma=3|temporal=6',
+            '#EXT-X-APE-ANTI-NOISE-AFFTDN:nf=-25|tn=1|rf=-50',
+            '#EXT-X-APE-ANTI-NOISE-PRESERVE:EDGES=true|DETAIL=true|GRAIN=cinematic',
+            '#EXT-X-APE-HDR-PEAK-NIT-ENGINE:v1.0-8000cd',
+            '#EXT-X-APE-HDR-MASTERING-DISPLAY:P3-D65|PEAK=8000|MIN=0.0001|MaxCLL=8000|MaxFALL=4000',
+            '#EXT-X-APE-HDR-PQ-EOTF:ST2084|TARGET=8000|CODE=3765|DEPTH=10bit',
+            '#EXT-X-APE-HDR-DISPLAY:PEAK=8000|LOCAL-DIMMING=AGGRESSIVE-FULL-ARRAY',
+            '#EXT-X-APE-HDR-GPU-TONEMAP:libplacebo+vulkan|BT2446a|BT2390|DESAT=0|PEAK=8000',
+            '#EXT-X-APE-HDR-FILM-GRAIN:NEURAL-MPEG|TYPE=analog-cinematic|ADDBACK=post-tonemap',
+            '#EXT-X-APE-LCEVC-STANDARD:MPEG-5-PART-2',
+            '#EXT-X-APE-LCEVC-PLAYER-REQUIRED:0',
+            '#EXT-X-APE-LCEVC-ENHANCEMENT:mpeg5-part2',
+            '#EXT-X-APE-CORTEX-AI-SUPER-RESOLUTION:ENABLED|ENGINE=ESRGAN-LITE|FALLBACK=LANCZOS',
+            '#EXT-X-APE-CORTEX-AI-SPATIAL-DENOISE:ENABLED|ENGINE=CAR-CNN|STRENGTH=adaptive',
+            '#EXT-X-APE-CORTEX-LCEVC:PHASE=4,ENABLED=true,ENHANCEMENT=ULTRA,SHARPNESS=1.0',
+            '#EXT-X-APE-CORTEX-TEMPORAL-ARTIFACT-REPAIR:ENABLED|ENGINE=RIFE|MODE=detect-repair'
+        ];
+        // los 3 que dependen del perfil/canal, aparte porque llevan valor calculado
+        const _ape6kCfg7 = Object.prototype.hasOwnProperty.call(_APE_6K_TABLE, String(c.profile || '')) ? _APE_6K_TABLE[String(c.profile)] : null;
+        if (_ape6kCfg7) {
+            _APE_MOTOR40.push('#EXT-X-APE-CRYSTAL-6K-BITRATE:' + _ape6kCfg7.mbps + ';MAX=' + (_ape6kCfg7.mbps + 20) + ';UNIT=Mbps');
+        }
+        const _res7 = String(c.res || '1920x1080');
+        const _w7 = (String(_res7).match(/^([0-9]+)x/) || [])[1] || '1920';
+        const _h7 = (String(_res7).match(/x([0-9]+)$/) || [])[1] || '1080';
+        const _fake7 = (Number(_w7) >= 3840) ? '1' : '0';
+        _APE_MOTOR40.push('#EXT-X-APE-STREAM-TRUTH:src=' + (_fake7 === '1' ? 'real' : 'fake-4k') + ',w=' + _w7 + ',h=' + _h7 + ',fps=60,rawfps=60,family=HEVC,pq=1');
+        _APE_MOTOR40.push('#EXT-X-APE-CRYSTAL-ENHANCEMENT:ENFORCED;NIVEL=2;DEGRADE=FORBIDDEN');
+        _APE_MOTOR40.push('#EXT-X-APE-REALCE-SOURCE:device;OBS_BPS=0;NIVEL=2;PERFIL=' + (c.profile || 'P3') + ';NIVEL_MAX=3;DEGRADE=FORBIDDEN');
+        // insertar ANTES del STREAM-INF, igual que (4) y (5), sin duplicar
+        const _si7 = lines.findIndex(l => l.startsWith('#EXT-X-STREAM-INF:'));
+        if (_si7 !== -1) {
+            const _nuevos7 = _APE_MOTOR40.filter(l => {
+                const tag = l.split(':')[0] + ':';
+                return !lines.some(x => x.startsWith(tag));
+            });
+            if (_nuevos7.length) lines.splice(_si7, 0, ..._nuevos7);
+        } else {
+            lines.unshift(..._APE_MOTOR40);
+        }
+
         return lines.join('\n');
     }
 
