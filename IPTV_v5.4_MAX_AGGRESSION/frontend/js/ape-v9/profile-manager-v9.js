@@ -826,6 +826,35 @@
          * Añade botón de cerrar para volver al estado colapsado
          */
         render() {
+            // ══ GUARDIA ANTI-BUCLE (2026-11-06) ═══════════════════════════════
+            // Medido: al recargar, la persistencia de UI restauraba los controles
+            // disparando input/change, esos eventos entraban en updateSetting() →
+            // motor reactivo → render() → DOM nuevo → observador → restaurar…
+            // bucle infinito, porque cada render crea nodos NUEVOS que siempre
+            // están "en su valor por defecto".
+            // Aquí: render() reentrante se coalesce (el de fuera ya repinta el
+            // estado más reciente) y un techo de 20 repintados/s aborta cualquier
+            // eco que quede vivo. No cambia lo que se pinta, sólo cuántas veces.
+            if (this._renderBusy) { this._renderAgain = true; return; }
+            const _rn = Date.now();
+            if (!this._renderWin || _rn - this._renderWin.t > 1000) this._renderWin = { t: _rn, n: 0, warned: false };
+            this._renderWin.n++;
+            if (this._renderWin.n > 20) {
+                if (!this._renderWin.warned) {
+                    this._renderWin.warned = true;
+                    console.warn(`[pm9] ${this._renderWin.n} renders/s → coalesciendo (protección anti-bucle)`);
+                }
+                return;
+            }
+            this._renderBusy = true;
+            // Se libera en el microtask, DESPUÉS de que el render síncrono y sus
+            // cascadas terminen; si alguien pidió repintar mientras tanto, se
+            // atiende UNA sola vez.
+            Promise.resolve().then(() => {
+                this._renderBusy = false;
+                if (this._renderAgain) { this._renderAgain = false; this.render(); }
+            });
+
             this.container = document.getElementById(this.containerId);
             if (!this.container) {
                 console.warn(`Container ${this.containerId} no encontrado`);
@@ -842,7 +871,12 @@
             const categories = this.config.getCategories();
 
             this.container.innerHTML = `
-                <div class="pm9-panel">
+                <!-- data-ape-nopersist: los controles de este panel son POR PERFIL y su
+                     SSOT es APE_PROFILES_CONFIG (persistido en localStorage). Dejar que
+                     ape-ui-persistence los reponga por id contaminaba un perfil con los
+                     valores de otro, porque el id (pm9_fps, pm9_buffer_sec…) es el mismo
+                     en los 12 perfiles. Los valores sobreviven igual: los guarda el modelo. -->
+                <div class="pm9-panel" data-ape-nopersist="1">
                     <!-- Header con botón de cerrar -->
                     <div class="pm9-header">
                         <div class="pm9-title">
@@ -2785,6 +2819,36 @@
                 return;
             }
 
+            if (!profile.settings) profile.settings = {};
+
+            // ══ ANTI-BUCLE (2026-11-06) 1/2 · IDEMPOTENCIA ═══════════════════
+            // Si el perfil ya tiene ese valor no hay nada que recalcular ni que
+            // repintar. Sin esta guarda, un evento que repitiese el valor actual
+            // volvía a lanzar motor reactivo + render() + guardado: el eco.
+            if (Object.prototype.hasOwnProperty.call(profile.settings, key) &&
+                String(profile.settings[key]) === String(value)) return;
+
+            // ══ ANTI-BUCLE (2026-11-06) 2/2 · PRESUPUESTO DE ESCRITURAS ══════
+            // Un pico de >25 escrituras/s no es humano: es un bucle. Se descarta
+            // la cascada y se avisa UNA vez. Inspección: window.ProfileManagerV9._writeWin
+            const _wn = Date.now();
+            if (!this._writeWin || _wn - this._writeWin.t > 1000) this._writeWin = { t: _wn, n: 0, warned: false };
+            this._writeWin.n++;
+            if (this._writeWin.n > 25) {
+                if (!this._writeWin.warned) {
+                    this._writeWin.warned = true;
+                    console.warn(`[pm9] ${this._writeWin.n} escrituras/s → cascada descartada (protección anti-bucle)`);
+                }
+                return;
+            }
+
+            // Rangos físicos: un buffer ≤ 0 no existe (y era el origen de los
+            // Network(C1):-13000ms). No se recorta el LAB: se ignora la escritura.
+            if ((key === 'bufferSeconds' || key === 'buffer') && !(Number(value) > 0)) {
+                console.warn(`[pm9] updateSetting(${key}): ${value} no es un buffer válido (>0), preservando LAB`);
+                return;
+            }
+
             // T6b: marcar override del usuario solo si el valor difiere del LAB
             const labValue = profile.settings ? profile.settings[key] : undefined;
             if (this.config.labBulletproof && String(value) !== String(labValue)) {
@@ -2849,6 +2913,22 @@
         _applyReactiveRules(profile, key, value) {
             const s = profile.settings;
             if (!profile.vlcopt) profile.vlcopt = {};
+
+            // ══ ANTI-BUCLE (2026-11-06): PROFUNDIDAD DE CASCADA ═══════════════
+            // Las reglas se llaman entre sí (fps→resolución→bitrate,
+            // codec→resolución→bitrate, strategy→resolución→bitrate). El diseño
+            // es acíclico y termina en 3 niveles; este tope de 8 garantiza que
+            // ninguna regla futura pueda autoalimentarse en silencio.
+            this._rxDepth = (this._rxDepth || 0) + 1;
+            if (this._rxDepth > 8) {
+                this._rxDepth--;
+                if (!this._rxDepthWarned) {
+                    this._rxDepthWarned = true;
+                    console.warn('[pm9] cascada reactiva >8 niveles → abortada (protección anti-bucle)');
+                }
+                return;
+            }
+            try {
 
 
 
@@ -3286,6 +3366,9 @@
                 // su propia premisa. Se dispara la Regla 3, igual que ya hacen fps (Regla 2.3) y
                 // strategy (Regla 4).
                 this._applyReactiveRules(profile, 'resolution', s.resolution);
+            }
+            } finally {
+                this._rxDepth--;
             }
         }
 

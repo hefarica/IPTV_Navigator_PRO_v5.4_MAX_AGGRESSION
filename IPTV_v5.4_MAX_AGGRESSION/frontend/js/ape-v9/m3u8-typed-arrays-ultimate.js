@@ -323,6 +323,23 @@
             try { return new URL(url, window.location.href).host; }
             catch { return null; }
         };
+        // (2026-11-06) Tope de espera del pre-gate. Antes se esperaba el cooldown
+        // COMPLETO: con la curva exhausta eso bloqueaba la petición hasta 13,7 min
+        // (medido: delay=820819ms) y colgaba a quien la hiciera. Se respeta como
+        // máximo _STEALTH_MAX_GATE_MS; si el cooldown es mayor, la petición sale
+        // ya (fail-fast) y el estado del host se sigue gobernando en el post-handler.
+        const _STEALTH_MAX_GATE_MS = 8000;
+        const _stealthGateWarned = new Set();
+        const _cortexWarnAt = new Map();
+        // (2026-11-06) Hosts propios / loopback: no hay nada que evadir contra
+        // nosotros mismos. Ni gate ni pausa humana (era latencia gratis en la UI).
+        const _stealthSameOrigin = (host) => {
+            try {
+                if (!host) return true;
+                if (window.location && host === window.location.host) return true;
+                return /^(127\.0\.0\.1|localhost|\[::1\])(:\d+)?$/i.test(host);
+            } catch { return false; }
+        };
         // Micro-random human pattern: rompe detectabilidad estadística
         const _humanPause = () => {
             const patterns = [
@@ -338,9 +355,16 @@
         // En flujo OK (host sin entry o cooldownUntil expirado) retorna inmediato.
         const _stealthGate = async (host) => {
             if (!host) return;
+            if (_stealthSameOrigin(host)) return;
             const state = window._apeStealthState.get(host);
             if (state && state.cooldownUntil > Date.now()) {
-                await _stealthSleep(state.cooldownUntil - Date.now());
+                const wait = state.cooldownUntil - Date.now();
+                if (wait > 0 && wait <= _STEALTH_MAX_GATE_MS) {
+                    await _stealthSleep(wait);
+                } else if (wait > _STEALTH_MAX_GATE_MS && !_stealthGateWarned.has(host)) {
+                    _stealthGateWarned.add(host);
+                    console.warn(`⚠️ [CÓRTEX STEALTH] ${host} en cooldown largo (${Math.round(wait)}ms) → espera omitida (fail-fast, no se cuelga la petición)`);
+                }
             }
         };
 
@@ -352,7 +376,16 @@
             // 2xx → reset, vuelve modo DICTATOR para este host
             if (status >= 200 && status < 300) {
                 const s = window._apeStealthState.get(host);
-                if (s) { s.retryAttempt = 0; s.cooldownUntil = 0; }
+                if (s) {
+                    const wasDown = s.retryAttempt > 0 || s.cooldownUntil > Date.now() || s.lastError;
+                    s.retryAttempt = 0; s.cooldownUntil = 0; s.lastError = 0;
+                    _cortexWarnAt.delete(host);
+                    _stealthGateWarned.delete(host);
+                    if (wasDown && !s._recoveredLogged) {
+                        s._recoveredLogged = true;
+                        console.log(`🟢 [CÓRTEX STEALTH] host=${host} recuperado → modo DICTATOR (sin delay)`);
+                    }
+                }
                 return;
             }
 
@@ -365,19 +398,28 @@
                 state = { retryAttempt: 0, cooldownUntil: 0, lastError: 0 };
                 window._apeStealthState.set(host, state);
             }
+            if (status !== 0) state._recoveredLogged = false;
 
             state.retryAttempt += 1;
             state.lastError = status;
             const now = Date.now();
             let appliedDelay;
+            // (2026-11-06) status 0 = host inalcanzable (ERR_CONNECTION_REFUSED /
+            // RST / timeout). NO es un ban del proveedor: no merece 5-15 min de
+            // castigo ni un aviso por intento. Se distingue del 4xx real, que
+            // conserva intacta la curva anti-ban 1→2→4→8s + 5-15 min.
+            const hostDown = (status === 0);
 
             if (state.retryAttempt <= 4) {
-                // Backoff exponencial: 1s, 2s, 4s, 8s + jitter aditivo
-                appliedDelay = (Math.pow(2, state.retryAttempt - 1) * 1000) + _jitter(80, 400);
+                // Backoff exponencial + jitter aditivo
+                appliedDelay = hostDown
+                    ? Math.min(30000, (Math.pow(2, state.retryAttempt - 1) * 2000) + _jitter(80, 400))  // 2s,4s,8s,16s
+                    : (Math.pow(2, state.retryAttempt - 1) * 1000) + _jitter(80, 400);                   // 1s,2s,4s,8s
                 state.cooldownUntil = now + appliedDelay;
             } else {
-                // Curva exhausta → cooldown humano largo, reset contador
-                appliedDelay = _randInt(5 * 60_000, 15 * 60_000);
+                // Curva exhausta → cooldown; corto si el host está caído, humano
+                // (anti-ban) si el proveedor nos está rechazando de verdad.
+                appliedDelay = hostDown ? _randInt(20_000, 30_000) : _randInt(5 * 60_000, 15 * 60_000);
                 state.cooldownUntil = now + appliedDelay;
                 state.retryAttempt = 0;
             }
@@ -385,9 +427,16 @@
             // Rotación UA + bust hash (comportamiento existente conservado)
             _cortexTempBanHash = Date.now().toString(36) + Math.random().toString(36).substring(2, 6);
 
-            console.warn(
-                `🔴 [CÓRTEX STEALTH] host=${host} status=${status} retry=${state.retryAttempt} delay=${Math.round(appliedDelay)}ms`
-            );
+            // Aviso throttled 1×/host/10 s: la tormenta de consola no aportaba
+            // información nueva (el mismo host muerto, el mismo status).
+            const _warnNow = Date.now();
+            const _lastWarn = _cortexWarnAt.get(host) || 0;
+            if (_warnNow - _lastWarn > 10_000) {
+                _cortexWarnAt.set(host, _warnNow);
+                console.warn(
+                    `🔴 [CÓRTEX STEALTH] host=${host} status=${status}${hostDown ? ' (inalcanzable)' : ''} retry=${state.retryAttempt} delay=${Math.round(appliedDelay)}ms`
+                );
+            }
         };
 
         // ── fetch wrapper: pre-gate + human pause + post-handler ───────────────
@@ -399,8 +448,10 @@
             // Pre-gate: respeta cooldownUntil acumulado por errores previos
             await _stealthGate(host);
 
-            // Micro-random human pattern: 25% de las requests añaden pausa humana
-            if (Math.random() < 0.25) {
+            // Micro-random human pattern: 25% de las requests añaden pausa humana.
+            // (2026-11-06) Nunca en same-origin/loopback: ahí no hay ISP ni proveedor
+            // que engañar, sólo latencia añadida a la propia UI/API.
+            if (!_stealthSameOrigin(host) && Math.random() < 0.25) {
                 await _stealthSleep(_humanPause());
             }
 

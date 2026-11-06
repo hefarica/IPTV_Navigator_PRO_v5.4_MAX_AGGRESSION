@@ -4805,7 +4805,14 @@
             localStorage.setItem(STRATEGIC_HEADERS_STORAGE_KEY, JSON.stringify(this.strategicHeaders));
             // El suelo fusible no vive en profiles: se persiste aparte.
             localStorage.setItem(FLOOR_FUSE_STORAGE_KEY, JSON.stringify(this._floorFuseOverrides || {}));
-            console.log('[APE-Profiles] Perfiles v9.0 + Manifiesto + Headers + fusible guardados');
+            // Aviso throttled (2026-11-06): este método se llamaba en cada
+            // micro-paso del motor reactivo y su log era parte de la tormenta
+            // en consola. La escritura sigue ocurriendo igual; sólo se avisa 1×/s.
+            const _nowLog = Date.now();
+            if (!this._lastPersistLogAt || _nowLog - this._lastPersistLogAt > 1000) {
+                this._lastPersistLogAt = _nowLog;
+                console.log('[APE-Profiles] Perfiles v9.0 + Manifiesto + Headers + fusible guardados');
+            }
             // [2026-11-04 mandato operador] CADA VEZ QUE SE GUARDA: alinear navegador con VPS.
             //
             // El generador del navegador y el resolver PHP del VPS deben declarar los mismos
@@ -4817,8 +4824,17 @@
             // Fire-and-forget: no bloquea el guardado, no lanza si el endpoint no responde y
             // nunca vacia el snapshot. Si falla, se conserva lo que habia.
             try {
-                if (typeof window !== 'undefined' && typeof window.syncVpsParityTags === 'function') {
-                    Promise.resolve(window.syncVpsParityTags()).catch(function () {});
+                // Cooldown 30 s (2026-11-06): antes CADA guardado disparaba la
+                // sincronización. Durante una cascada del motor reactivo eso era
+                // una petición de red por micro-paso. Sigue sincronizando en el
+                // primer guardado de cada ventana de 30 s: la paridad no se pierde.
+                const _nowParity = Date.now();
+                const _PARITY_MIN_MS = 30000;
+                if (!this._lastParitySyncAt || _nowParity - this._lastParitySyncAt > _PARITY_MIN_MS) {
+                    if (typeof window !== 'undefined' && typeof window.syncVpsParityTags === 'function') {
+                        this._lastParitySyncAt = _nowParity;
+                        Promise.resolve(window.syncVpsParityTags()).catch(function () {});
+                    }
                 }
             } catch (_eParity) { /* la paridad nunca rompe el guardado */ }
         }
@@ -4969,8 +4985,19 @@
             }
 
             if (filled.length > 0) {
+                // [RUIDO DE ARRANQUE 2026-11-06] El detalle son ~17 líneas por
+                // perfil; con 12 perfiles eso se leía como una tormenta en consola
+                // al recargar. No se pierde nada: el resumen queda visible y el
+                // detalle se pliega en un grupo colapsado (un clic para abrirlo).
                 console.log(`[LAB SEMANTIC FILL] ${profile.id || '?'}: ${filled.length}/17 headers homologados desde LAB calibrated`);
-                filled.forEach(f => console.log(`  ✓ ${f.pm9} ← ${f.source} = ${typeof f.value === 'object' ? JSON.stringify(f.value).slice(0,60) : f.value}`));
+                const _detail = () => filled.forEach(f => console.log(`  ✓ ${f.pm9} ← ${f.source} = ${typeof f.value === 'object' ? JSON.stringify(f.value).slice(0,60) : f.value}`));
+                if (typeof console.groupCollapsed === 'function') {
+                    console.groupCollapsed(`  detalle ${profile.id || '?'} · ${filled.length} headers homologados`);
+                    _detail();
+                    console.groupEnd();
+                } else {
+                    _detail();
+                }
             }
 
             return { count: filled.length, filled };
@@ -6065,10 +6092,41 @@
             const profile = this.profiles[profileId];
             if (!profile) return false;
 
+            // ── VALIDACIÓN ANTI-BUCLE (2026-11-06) ─────────────────────────────
+            // El motor reactivo del Gestor escribe aquí en cascada (Regla 1 →
+            // min_bandwidth_mbps, Regla 2.2 → buffer_target_seconds). Se llegó a
+            // ver `buffer_target_seconds: -5…-70` y `Network(C1):-13000ms` en
+            // consola. Un valor no finito o negativo no es configurable: se
+            // rechaza la escritura y se conserva el valor anterior, con un solo
+            // aviso por clave. NO es un clamp del LAB (doctrina
+            // iptv-lab-ssot-no-clamp): sólo se rechaza lo imposible.
+            const NUMERIC_RULES = {
+                prefetch_segments: { min: 0, max: 300 },
+                parallel_downloads: { min: 0, max: 64 },
+                buffer_target_seconds: { min: 0, max: 3600 },
+                min_bandwidth_mbps: { min: 0, max: 10000 }
+            };
+            const rule = NUMERIC_RULES[key];
+            if (rule) {
+                const num = Number(value);
+                if (!isFinite(num) || num < rule.min || num > rule.max) {
+                    if (!this._prefetchRejectWarned) this._prefetchRejectWarned = {};
+                    if (!this._prefetchRejectWarned[key]) {
+                        this._prefetchRejectWarned[key] = true;
+                        console.warn(`[APE-Profiles] updatePrefetchSetting(${key}=${value}) rechazado: fuera de [${rule.min}, ${rule.max}] — se conserva el valor anterior`);
+                    }
+                    return false;
+                }
+                value = Math.round(num);
+            }
+
             // Inicializar prefetch_config si no existe
             if (!profile.prefetch_config) {
                 profile.prefetch_config = this._getDefaultPrefetchConfig(profileId);
             }
+
+            // Nada que hacer si el valor ya es el mismo (evita guardados en eco).
+            if (profile.prefetch_config[key] === value) return true;
 
             // Actualizar el valor
             profile.prefetch_config[key] = value;
