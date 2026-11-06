@@ -95,20 +95,32 @@ jobs:
           echo "  PASS"
 
       - name: 3. el feedforward emite mas de 3 device_settings (prueba de efecto)
+        # OJO: probar con device=probe da un FALSO NEGATIVO, porque el feedforward solo suma el
+        # delta de ESE device y probe no tiene ninguno -> devuelve las 3 filas base y el guard se
+        # pondria en rojo con el puente funcionando. Se busca un device que SI tenga delta, y si no
+        # hay ninguno se usa el heartbeat mas reciente como aproximacion.
         run: |
           set -uo pipefail
-          URL="https://iptv-ape.duckdns.org/prisma/api/ape-feedforward-stream.php?device=probe&iv=3&dur=1"
+          # sqlite3 NO esta instalado en el VPS; php si. Se consulta por php.
+          DEV=$(ssh "$TARGET" "sudo -n -u www-data php -r 'require \"/var/www/html/prisma/lib/ape_mesh.php\"; \$d=ape_policy_db(); foreach(\$d->query(\"SELECT target_device_id FROM policy_deltas WHERE source=\\\"pq-profile-sync\\\" AND target_device_id IS NOT NULL AND expires_at > strftime(\x27%s\x27,\x27now\x27) ORDER BY id DESC LIMIT 1\") as \$r){ echo \$r[0]; }' 2>/dev/null" || true)
+          if [ -z "$DEV" ]; then
+            DEV=$(ssh "$TARGET" "sudo -n -u www-data php -r 'require \"/var/www/html/prisma/lib/ape_mesh.php\"; \$d=ape_policy_db(); foreach(\$d->query(\"SELECT device_id FROM ara_heartbeats ORDER BY last_seen DESC LIMIT 1\") as \$r){ echo \$r[0]; }' 2>/dev/null" || true)
+          fi
+          if [ -z "$DEV" ]; then DEV=probe; fi
+          echo "  probando con device=$DEV"
+          URL="https://iptv-ape.duckdns.org/prisma/api/ape-feedforward-stream.php?device=$DEV&iv=3&dur=1"
           BODY=$(curl -sS -m 20 "$URL" || true)
           if [ -z "$BODY" ]; then echo "::error::el feedforward no responde"; exit 1; fi
           LINEA=$(echo "$BODY" | grep -m1 '"device_settings"' || true)
           if [ -z "$LINEA" ]; then echo "::error::sin device_settings en la respuesta"; exit 1; fi
           N=$(echo "$LINEA" | grep -o '"global\|"system\|"secure' | wc -l)
           echo "  device_settings detectados: $N"
+          if echo "$LINEA" | grep -q "com.amazon.tv"; then echo "  incluye claves com.amazon.tv.*"; fi
           # 3 = solo la base -> el puente NO suma. 4+ = suma.
           if [ "$N" -ge 4 ]; then
             echo "  PASS el puente suma"
           else
-            echo "::error::solo $N device_settings — el puente NO esta sumando (esperado >= 4)"
+            echo "::error::solo $N device_settings con device=$DEV — el puente NO esta sumando (esperado >= 4)"
             exit 1
           fi
 
