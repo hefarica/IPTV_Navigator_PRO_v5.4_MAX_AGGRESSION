@@ -160,7 +160,7 @@ jobs:
             # Es el mismo mecanismo que dejo la lista en 8 bytes.
             if ssh "$TARGET" "sudo -n test -f '$DEST.gz'"; then
               ssh "$TARGET" "sudo -n sh -c 'gzip -9 -c \"$DEST\" > /tmp/ape-gz && chown www-data:www-data /tmp/ape-gz && install -m 0644 -o www-data -g www-data /tmp/ape-gz \"$DEST.gz\"'"
-              GZOK=$(ssh "$TARGET" "sudo -n sh -c 'zcat \"$DEST.gz\" | sha256sum | cut -d\" \" -f1'")
+              GZOK=$(ssh "$TARGET" "sudo -n sh -c 'zcat \"$DEST.gz\" | sha256sum | head -c 64'")
               if [ "$GZOK" != "$LOCAL" ]; then
                 echo "::error::el .gz de $f descomprime a otro contenido. RESTAURANDO."
                 ssh "$TARGET" "sudo -n cp -a '$BAK' '$DEST'"; exit 1
@@ -408,7 +408,7 @@ jobs:
           php -l "$SRC" || { echo "::error::ape_mesh.php no pasa php -l en el runner"; exit 1; }
           echo "=== 2. backup en el VPS ==="
           ssh "$TARGET" "sudo -n mkdir -p '$BK' && sudo -n cp -a '$DST' '$BK/ape_mesh.php' && echo '  backup: $BK/ape_mesh.php'"
-          HASH_ANTES=$(ssh "$TARGET" "sudo -n sha256sum '$DST' | awk '{print $1}'")
+          HASH_ANTES=$(ssh "$TARGET" "sudo -n sha256sum '$DST' | head -c 64")
           echo "  hash antes: $HASH_ANTES"
           echo "=== 3. install ==="
           scp -q "$SRC" "$TARGET:/tmp/ape-mesh-new.php" || { echo "::error::scp fallo"; exit 1; }
@@ -436,8 +436,8 @@ jobs:
             echo "  restaurado. La rama queda como antes de este step."
             exit 1
           fi
-          HASH_DESPUES=$(ssh "$TARGET" "sudo -n sha256sum '$DST' | awk '{print $1}'")
-          LHASH=$(sha256sum "$SRC" | awk '{print $1}')
+          HASH_DESPUES=$(ssh "$TARGET" "sudo -n sha256sum '$DST' | head -c 64")
+          LHASH=$(sha256sum "$SRC" | head -c 64)
           echo "=== 6. veredicto ==="
           [ "$HASH_DESPUES" = "$LHASH" ] && echo "  sha OK ($LHASH)" || { echo "::error::sha no coincide — RESTAURANDO"; ssh "$TARGET" "sudo -n cp -a '$BK/ape_mesh.php' '$DST'"; exit 1; }
           echo "  los seis endpoints responden y el fichero compila."
