@@ -60,7 +60,12 @@ jobs:
           printf '%s\n' "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
           printf '%s\n' "${{ secrets.VPS_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
-          printf 'Host *\n  StrictHostKeyChecking yes\n  UserKnownHostsFile ~/.ssh/known_hosts\n  IdentitiesOnly yes\n' > ~/.ssh/config
+          # [FIX 2026-11-06] El job abre ~50 ssh/scp. Sin reutilizar la conexion, sshd corta
+          # por MaxStartups y el run muere con "kex_exchange_identification: read:
+          # Connection reset by peer" ANTES de desplegar (paso el 2026-11-06 17:11).
+          # ControlMaster + ControlPersist = UNA sola conexion TCP para todo el job.
+          # Los % de ControlPath van escapados (%%r) porque esto es un printf.
+          printf 'Host *\n  StrictHostKeyChecking yes\n  UserKnownHostsFile ~/.ssh/known_hosts\n  IdentitiesOnly yes\n  ControlMaster auto\n  ControlPath ~/.ssh/cm-%%r@%%h:%%p\n  ControlPersist 300s\n  ServerAliveInterval 15\n  ServerAliveCountMax 4\n  ConnectTimeout 20\n  TCPKeepAlive yes\n' > ~/.ssh/config
           echo "TARGET=${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" >> "$GITHUB_ENV"
 
       - name: Los fuentes del repo compilan y tienen las correcciones
