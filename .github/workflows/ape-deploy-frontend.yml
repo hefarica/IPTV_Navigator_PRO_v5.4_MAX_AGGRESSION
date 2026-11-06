@@ -138,23 +138,41 @@ jobs:
         run: |
           set -uo pipefail
           STAMP=$(date -u +%Y%m%dT%H%M%SZ)
+          # Un fichero NUEVO no tiene nada que respaldar: `cp -a $DEST $BAK` falla y
+          # abortaba el deploy ENTERO (paso el 2026-11-06 al anadir ape-server-profile.js:
+          # los 6 existentes se instalaron y el 7o mato el run). Ahora el backup es
+          # condicional y el rollback BORRA lo nuevo en vez de restaurar un backup que
+          # no existe. Asi el workflow soporta crear ficheros, no solo actualizarlos.
+          rollback_f() {
+            if [ "${NUEVO:-0}" = "1" ]; then
+              ssh "$TARGET" "sudo -n rm -f '$DEST'" && echo "  rollback: BORRADO $f (era nuevo)"
+            else
+              ssh "$TARGET" "sudo -n cp -a '$BAK' '$DEST'" && echo "  rollback: restaurado $f desde $BAK"
+            fi
+          }
           for f in $FICHEROS; do
             SRC="$SRC_DIR/$f"; DEST="$DEST_DIR/$f"; BAK="$DEST.bak_$STAMP"
             echo "=== $f ==="
-            if ! ssh "$TARGET" "sudo -n cp -a '$DEST' '$BAK'"; then
-              echo "::error::fallo el backup de $f. No se toca nada."; exit 1
+            NUEVO=0
+            if ssh "$TARGET" "sudo -n test -f '$DEST'"; then
+              if ! ssh "$TARGET" "sudo -n cp -a '$DEST' '$BAK'"; then
+                echo "::error::fallo el backup de $f. No se toca nada."; exit 1
+              fi
+              echo "  backup: $BAK"
+            else
+              NUEVO=1
+              echo "  fichero NUEVO (sin backup: el rollback lo borra)"
             fi
-            echo "  backup: $BAK"
             scp -q "$SRC" "$TARGET:/tmp/ape-new.js"
             if ! ssh "$TARGET" "sudo -n install -m 0644 -o www-data -g www-data /tmp/ape-new.js '$DEST'"; then
               echo "::error::fallo la instalacion de $f. Restaurando."
-              ssh "$TARGET" "sudo -n cp -a '$BAK' '$DEST'"; exit 1
+              rollback_f; exit 1
             fi
             REMOTO=$(ssh "$TARGET" "sudo -n sha256sum '$DEST' | cut -d' ' -f1")
             LOCAL=$(sha256sum "$SRC" | cut -d' ' -f1)
             if [ "$REMOTO" != "$LOCAL" ]; then
               echo "::error::el sha instalado de $f no coincide. RESTAURANDO."
-              ssh "$TARGET" "sudo -n cp -a '$BAK' '$DEST'"; exit 1
+              rollback_f; exit 1
             fi
             echo "  sha OK ($LOCAL)"
             # EL .gz MANDA: gzip_static sirve el hermano comprimido si existe, y ese .gz puede ser la
@@ -165,11 +183,15 @@ jobs:
               GZOK=$(ssh "$TARGET" "sudo -n sh -c 'zcat \"$DEST.gz\" | sha256sum | head -c 64'")
               if [ "$GZOK" != "$LOCAL" ]; then
                 echo "::error::el .gz de $f descomprime a otro contenido. RESTAURANDO."
-                ssh "$TARGET" "sudo -n cp -a '$BAK' '$DEST'"; exit 1
+                rollback_f; exit 1
               fi
               echo "  .gz OK (descomprime al mismo contenido)"
             fi
-            echo "PARA REVERTIR $f: sudo cp -a $BAK $DEST"
+            if [ "$NUEVO" = "1" ]; then
+              echo "PARA REVERTIR $f (nuevo): sudo rm -f $DEST"
+            else
+              echo "PARA REVERTIR $f: sudo cp -a $BAK $DEST"
+            fi
           done
           echo 'TODOS LOS FICHEROS DESPLEGADOS'
 
