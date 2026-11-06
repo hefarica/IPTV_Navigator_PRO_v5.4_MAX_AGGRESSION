@@ -192,11 +192,15 @@ function procesarBloque(buffer, ctx, out) {
         salida.push(l);
     }
 
+    // [FIX 2026-11-05 · REGRESION MEDIDA] Los tags 6K NO pueden ir entre el #EXT-X-STREAM-INF y
+    // su URI. RFC 8216 §4.3.4.2: "the URI line... MUST follow the EXT-X-STREAM-INF tag". Ponerlos
+    // ahi hacia que OTT Navigator abortara el canal con "Loaded playlist has unexpected type".
+    // Van ANTES del STREAM-INF: mismo efecto declarativo, sin romper el parser.
     if (v) {
-        const iUrl = salida.findIndex((l) => RE_URL.test(l));
         const t6 = tags6K(v, perfil);
-        if (iUrl >= 0) { salida.splice(iUrl, 0, ...t6); }
-        else { salida.push(...t6); }
+        const iStream = salida.findIndex((l) => l.startsWith('#EXT-X-STREAM-INF'));
+        if (iStream >= 0) { salida.splice(iStream, 0, ...t6); }
+        else { salida.unshift(...t6); }
     }
 
     if (out) { out.write(salida.join('\n') + '\n'); }
