@@ -5958,6 +5958,23 @@ if ($apeObsBps <= 0) {
 }
 
 
+// ── 6K EMULADO: LOS TAGS 6K VAN ANTES DEL FOREACH, NO ANTES DE LA URI ───────────────────────
+// [FIX 2026-11-05 · REGRESION MEDIDA EN DEVICE] RFC 8216 §4.3.4.2: la URI de un item de master
+// playlist DEBE seguir INMEDIATAMENTE al #EXT-X-STREAM-INF. Cuando estos tags se emitían al
+// final del bloque (justo antes de echo $u), quedaban entre la declaración y su URI, y OTT
+// Navigator abortaba el canal con "Loaded playlist has unexpected type".
+// Emitirlos aqui los deja antes de la declaración: mismo valor informativo, parser feliz.
+if ($ape6kCfg !== null) {
+    echo '#EXT-X-APE-CRYSTAL-6K:OPT-IN-ACTIVE;PROFILE=' . $ape6kCfg['id'] . ';BASE=' . $p
+       . ';RES=5760x3240;PIXELS=18662400;CODEC=hvc1.2.4.L183.B0' . "\n";
+    echo '#EXT-X-APE-CRYSTAL-6K-MODE:EMULATED;SOURCE=' . $ape6kCfg['src']
+       . ';TECHNIQUE=' . $ape6kCfg['mode'] . ';RATIO=' . $ape6kCfg['ratio']
+       . ";ENHANCEMENT=DISPLAY_DECLARED\n";
+    echo '#EXT-X-APE-CRYSTAL-6K-BITRATE:' . $ape6kCfg['mbps']
+       . ';MAX=' . ($ape6kCfg['mbps'] + 20) . ";UNIT=Mbps\n";
+    echo '#EXT-X-APE-CRYSTAL-6K-TRUTH:DECLARED_ENHANCEMENT;NOT_SOURCE;DOWNSCALE_FORBIDDEN' . "\n";
+}
+
 foreach ($lines as $line) {
     if (!$withExtinf && strncmp($line, '#EXTINF:', 8) === 0) { continue; }
     // [STRICT-PARSER 2026-11-05] `#EXT-X-I-FRAME-STREAM-INF` EXIGE URI="..." (RFC 8216
@@ -6044,20 +6061,6 @@ try {
     }
 } catch (Throwable $e) {
     // Nunca rompe el manifiesto por un fallo de telemetría.
-}
-
-// ── 6K EMULADO: trazabilidad de la variante servida ──────────────────────────────────────────
-if ($ape6kCfg !== null) {
-    echo '#EXT-X-APE-CRYSTAL-6K:OPT-IN-ACTIVE;PROFILE=' . $ape6kCfg['id'] . ';BASE=' . $p
-       . ';RES=5760x3240;PIXELS=18662400;CODEC=hvc1.2.4.L183.B0' . "\n";
-    echo '#EXT-X-APE-CRYSTAL-6K-MODE:EMULATED;SOURCE=' . $ape6kCfg['src']
-       . ';TECHNIQUE=' . $ape6kCfg['mode'] . ';RATIO=' . $ape6kCfg['ratio']
-       . ";ENHANCEMENT=DISPLAY_DECLARED\n";
-    echo '#EXT-X-APE-CRYSTAL-6K-BITRATE:' . $ape6kCfg['mbps']
-       . ';MAX=' . ($ape6kCfg['mbps'] + 20) . ";UNIT=Mbps\n";
-    echo '#EXT-X-APE-CRYSTAL-6K-TRUTH:DECLARED_ENHANCEMENT;NOT_SOURCE;DOWNSCALE_FORBIDDEN' . "\n";
-} else {
-    echo '#EXT-X-APE-CRYSTAL-6K:OPT-IN-APE_6K' . "\n";
 }
 
 echo $u . "\n";
