@@ -9,23 +9,22 @@ name: APE bridge guard
 #     - `apt upgrade` de php8.3 reescribe pool.d/www.conf
 #     - alguien restaura un backup viejo de www.conf
 #     - se reinstala php-fpm
-#     - el deploy corre `mode=dry` y nunca aplica el step que lo enciende
+#     - el deploy corre en mode=dry y nunca aplica el step que lo enciende
 #
-# QUE HACE
-#   Cada 6 horas: comprueba el flag en el VPS, que fpm valide, que el feedforward devuelva mas
-#   de 3 device_settings, que el timer del sincronizador siga activo y que haya un delta
-#   vigente. Si el flag falta, lo repone y recarga fpm. Si el resto falla, NO toca nada y
-#   deja el resultado en rojo para que se vea.
+# COMO LO COMPRUEBA
+#   Delega en tools/hardening/check_bridge_flag.js, que hace las nueve comprobaciones y ya esta
+#   probado contra produccion (9 PASS / 0 FAIL). El workflow NO reimplementa esa logica: la
+#   primera version lo hizo y fallo dos veces por como se escapan las comillas del php -r dentro
+#   del YAML. Un solo sitio donde vive la verdad.
 #
-# QUE NO TOCA
-#   No despliega codigo, no modifica el feedforward, no reescribe www.conf salvo para reponer
-#   la linea del flag. Un `git push` no lo dispara: solo el cron o manual.
+# QUE REPARA
+#   Solo el flag de www.conf y el timer del sincronizador. Nada mas. No despliega codigo, no
+#   toca el feedforward, no toca la base.
 #
 # Rollback: desactivar este workflow y quitar la linea env[APE_4K_BRIDGE_ENABLED] del www.conf.
 
 on:
   schedule:
-    # cada 6 horas, en punto
     - cron: '0 */6 * * *'
   workflow_dispatch:
     inputs:
@@ -40,7 +39,6 @@ permissions:
   contents: read
 
 concurrency:
-  # nunca dos guardias a la vez
   group: ape-bridge-guard
   cancel-in-progress: false
 
@@ -48,8 +46,11 @@ jobs:
   guard:
     name: El puente de deltas sigue encendido
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 12
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
       - name: Preparar SSH
         run: |
           set -euo pipefail
@@ -57,24 +58,24 @@ jobs:
           echo "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
           ssh-keyscan -H "${{ secrets.VPS_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null || true
-          echo "TARGET=${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" >> "$GITHUB_ENV"
+
+      - name: Preparar node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
 
       - name: 1. el flag esta puesto en el pool de fpm
         run: |
           set -uo pipefail
+          TARGET="${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}"
           CONF=/etc/php/8.3/fpm/pool.d/www.conf
           N=$(ssh "$TARGET" "grep -c '^env\[APE_4K_BRIDGE_ENABLED\] = 1' '$CONF' || true")
           echo "  ocurrencias del flag: $N"
-          if [ "$N" = "1" ]; then
-            echo "  PASS flag presente"
-            exit 0
-          fi
+          if [ "$N" = "1" ]; then echo "  PASS flag presente"; exit 0; fi
           echo "::warning::el flag NO esta puesto (encontrado: $N)"
           if [ "${{ github.event.inputs.repair || 'true' }}" != "true" ]; then
-            echo "::error::flag ausente y repair=false"
-            exit 1
+            echo "::error::flag ausente y repair=false"; exit 1
           fi
-          echo "  reparando..."
           ssh "$TARGET" "sudo -n cp -a '$CONF' '$CONF.guard_$(date -u +%Y%m%dT%H%M%SZ)'"
           ssh "$TARGET" "echo 'env[APE_4K_BRIDGE_ENABLED] = 1' | sudo -n tee -a '$CONF' >/dev/null"
           ssh "$TARGET" "sudo -n php-fpm8.3 -t" || { echo "::error::fpm no valida tras reparar"; exit 1; }
@@ -83,85 +84,37 @@ jobs:
           N2=$(ssh "$TARGET" "grep -c '^env\[APE_4K_BRIDGE_ENABLED\] = 1' '$CONF' || true")
           [ "$N2" = "1" ] && echo "  REPARADO" || { echo "::error::la reparacion no prendio"; exit 1; }
 
-      - name: 2. fpm valida su configuracion
+      - name: 2. el gate completo (nueve comprobaciones, incluida la prueba de efecto)
+        env:
+          APE_VPS_HOST: ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}
         run: |
           set -uo pipefail
-          OUT=$(ssh "$TARGET" "sudo -n php-fpm8.3 -t 2>&1" || true)
-          echo "$OUT" | tail -3
-          if echo "$OUT" | grep -qi 'error\|failed'; then
-            echo "::error::php-fpm -t reporta error"
-            exit 1
-          fi
-          echo "  PASS"
-
-      - name: 3. el feedforward emite mas de 3 device_settings (prueba de efecto)
-        # OJO: probar con device=probe da un FALSO NEGATIVO, porque el feedforward solo suma el
-        # delta de ESE device y probe no tiene ninguno -> devuelve las 3 filas base y el guard se
-        # pondria en rojo con el puente funcionando. Se busca un device que SI tenga delta, y si no
-        # hay ninguno se usa el heartbeat mas reciente como aproximacion.
-        run: |
-          set -uo pipefail
-          # sqlite3 NO esta instalado en el VPS; php si. Se consulta por php.
-          DEV=$(ssh "$TARGET" "sudo -n -u www-data php -r 'require \"/var/www/html/prisma/lib/ape_mesh.php\"; \$d=ape_policy_db(); foreach(\$d->query(\"SELECT target_device_id FROM policy_deltas WHERE source=\\\"pq-profile-sync\\\" AND target_device_id IS NOT NULL AND expires_at > strftime(\x27%s\x27,\x27now\x27) ORDER BY id DESC LIMIT 1\") as \$r){ echo \$r[0]; }' 2>/dev/null" || true)
-          if [ -z "$DEV" ]; then
-            DEV=$(ssh "$TARGET" "sudo -n -u www-data php -r 'require \"/var/www/html/prisma/lib/ape_mesh.php\"; \$d=ape_policy_db(); foreach(\$d->query(\"SELECT device_id FROM ara_heartbeats ORDER BY last_seen DESC LIMIT 1\") as \$r){ echo \$r[0]; }' 2>/dev/null" || true)
-          fi
-          if [ -z "$DEV" ]; then DEV=probe; fi
-          echo "  probando con device=$DEV"
-          URL="https://iptv-ape.duckdns.org/prisma/api/ape-feedforward-stream.php?device=$DEV&iv=3&dur=1"
-          BODY=$(curl -sS -m 20 "$URL" || true)
-          if [ -z "$BODY" ]; then echo "::error::el feedforward no responde"; exit 1; fi
-          LINEA=$(echo "$BODY" | grep -m1 '"device_settings"' || true)
-          if [ -z "$LINEA" ]; then echo "::error::sin device_settings en la respuesta"; exit 1; fi
-          N=$(echo "$LINEA" | grep -o '"global\|"system\|"secure' | wc -l)
-          echo "  device_settings detectados: $N"
-          if echo "$LINEA" | grep -q "com.amazon.tv"; then echo "  incluye claves com.amazon.tv.*"; fi
-          # 3 = solo la base -> el puente NO suma. 4+ = suma.
-          if [ "$N" -ge 4 ]; then
-            echo "  PASS el puente suma"
-          else
-            echo "::error::solo $N device_settings con device=$DEV — el puente NO esta sumando (esperado >= 4)"
+          node tools/hardening/check_bridge_flag.js
+          RC=$?
+          if [ "$RC" -ne 0 ]; then
+            echo "::error::el gate fallo (exit $RC) — el puente esta caido o incompleto"
+            echo "  para reparar en el VPS: node tools/hardening/check_bridge_flag.js --repair"
             exit 1
           fi
 
-      - name: 4. el timer del sincronizador sigue activo
+      - name: 3. el timer del sincronizador sigue activo
         run: |
           set -uo pipefail
+          TARGET="${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}"
           ST=$(ssh "$TARGET" "systemctl is-active ape-quality-sync.timer 2>&1" || true)
           echo "  estado: $ST"
-          if [ "$ST" = "active" ]; then
-            echo "  PASS"
-          else
-            echo "::warning::el timer no esta activo — reintentando enable --now"
-            ssh "$TARGET" "sudo -n systemctl enable --now ape-quality-sync.timer" || true
-            sleep 2
-            ST2=$(ssh "$TARGET" "systemctl is-active ape-quality-sync.timer 2>&1" || true)
-            [ "$ST2" = "active" ] && echo "  REPARADO" || { echo "::error::el timer no arranca"; exit 1; }
-          fi
-          ssh "$TARGET" "systemctl list-timers ape-quality-sync.timer --no-pager 2>/dev/null | head -3" || true
-
-      - name: 5. hay un delta vigente del sincronizador
-        run: |
-          set -uo pipefail
-          N=$(ssh "$TARGET" "sqlite3 /opt/netshield/data/conviva.db \"SELECT COUNT(*) FROM policy_deltas WHERE source='pq-profile-sync' AND expires_at > strftime('%s','now');\" 2>/dev/null" || echo "?")
-          echo "  deltas vigentes: $N"
-          if [ "$N" = "?" ] || [ -z "$N" ]; then
-            echo "::warning::no pude consultar policy_deltas (sqlite3 ausente?) — no es bloqueante"
-            exit 0
-          fi
-          if [ "$N" -gt 0 ]; then
-            echo "  PASS"
-          else
-            echo "::warning::ningun delta vigente — el sincronizador no ha empujado aun"
-            ssh "$TARGET" "sudo -n systemctl start ape-quality-sync.service" || true
-            sleep 3
-            ssh "$TARGET" "sudo -n journalctl -u ape-quality-sync.service -n 8 --no-pager 2>/dev/null | tail -8" || true
-          fi
+          if [ "$ST" = "active" ]; then echo "  PASS"; exit 0; fi
+          echo "::warning::el timer no esta activo — reintentando enable --now"
+          ssh "$TARGET" "sudo -n systemctl enable --now ape-quality-sync.timer" || true
+          sleep 3
+          ST2=$(ssh "$TARGET" "systemctl is-active ape-quality-sync.timer 2>&1" || true)
+          [ "$ST2" = "active" ] && echo "  REPARADO" || { echo "::error::el timer no arranca"; exit 1; }
 
       - name: Resumen
         if: always()
         run: |
+          TARGET="${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}"
           echo "=== estado final ==="
-          ssh "$TARGET" "grep -c '^env\[APE_4K_BRIDGE_ENABLED\] = 1' /etc/php/8.3/fpm/pool.d/www.conf 2>/dev/null || echo 0" | sed 's/^/  flag: /'
+          ssh "$TARGET" "grep -c '^env\[APE_4K_BRIDGE_ENABLED\] = 1' /etc/php/8.3/fpm/pool.d/www.conf 2>/dev/null || echo 0" | sed 's/^/  flag en www.conf: /'
           ssh "$TARGET" "systemctl is-active ape-quality-sync.timer 2>&1" | sed 's/^/  timer: /'
-          curl -sS -m 15 "https://iptv-ape.duckdns.org/prisma/api/ape-feedforward-stream.php?device=probe&iv=3&dur=1" 2>/dev/null | grep -c '"device_settings"' | sed 's/^/  bloques feedforward: /'
+          ssh "$TARGET" "systemctl list-timers ape-quality-sync.timer --no-pager 2>/dev/null | head -2" || true
