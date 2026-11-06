@@ -1,0 +1,126 @@
+[
+  {
+    "schema": "ara.qoe.reference_policy.v2",
+    "generated_at": "2026-10-31T18:39:53.578909+00:00",
+    "reference_url": "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8",
+    "selection_mode": "DUAL_CBR_METADATA",
+    "requested_cbr_bps": 14000000,
+    "selected": {
+      "bandwidth_bps": 6221600,
+      "average_bandwidth_bps": 0,
+      "resolution": "1920x1080",
+      "codecs": "mp4a.40.2,avc1.640028",
+      "frame_rate": "",
+      "uri": "https://test-streams.mux.dev/x36xhzz/url_8/193039199_mp4_h264_aac_fhd_7.m3u8",
+      "exact_requested_cbr": false
+    },
+    "source_layer": {
+      "mode": "DEGRADED_SOURCE",
+      "actual_bps": 6221600,
+      "authority": "measured_variant_declaration"
+    },
+    "metadata_layer": {
+      "requested_bps": 14000000,
+      "declared_bps": 14000000,
+      "authority": "declared_only",
+      "enabled": true,
+      "warning": "source_below_requested_cbr"
+    },
+    "degradation": {
+      "degraded": true,
+      "reason": "source_has_no_exact_cbr",
+      "fallback_order": [
+        "source_exact_cbr",
+        "source_highest_below_requested",
+        "metadata_declared_only",
+        "safe_lowest_variant"
+      ],
+      "policy": "If source is below requested, play the selected source; keep the 14 Mbps declaration only as declared_only, never as verified CBR."
+    },
+    "manifest_policy": {
+      "one_stream_inf_only": true,
+      "declared_bandwidth_must_equal_real_cbr": false,
+      "metadata_declared_bps": 14000000,
+      "target_duration_source": "measured",
+      "buffer_floor_pct": 60,
+      "buffer_ceiling_pct": null
+    },
+    "telemetry_contract": {
+      "fields": [
+        "timestamp",
+        "frame_gap_ms",
+        "buffer_pct",
+        "bitrate_bps",
+        "media_sequence",
+        "stall_ms"
+      ],
+      "result_schema": "ara.qoe.result.v1"
+    },
+    "source_variant_count": 5,
+    "source_media_count": 0,
+    "source_iframe_count": 0,
+    "status": "ok"
+  },
+  {
+    "schema": "ara.qoe.reference_policy.v2",
+    "generated_at": "2026-10-31T18:39:53.940592+00:00",
+    "reference_url": "https://devstreaming-cdn.apple.com/videos/streaming/examples/img_bipbop_adv_example_ts/master.m3u8",
+    "selection_mode": "DUAL_CBR_METADATA",
+    "requested_cbr_bps": 14000000,
+    "selected": {
+      "bandwidth_bps": 8399417,
+      "average_bandwidth_bps": 8366033,
+      "resolution": "1920x1080",
+      "codecs": "avc1.64002a,ac-3",
+      "frame_rate": "60.000",
+      "uri": "https://devstreaming-cdn.apple.com/videos/streaming/examples/img_bipbop_adv_example_ts/v9/prog_index.m3u8",
+      "exact_requested_cbr": false
+    },
+    "source_layer": {
+      "mode": "DEGRADED_SOURCE",
+      "actual_bps": 8399417,
+      "authority": "measured_variant_declaration"
+    },
+    "metadata_layer": {
+      "requested_bps": 14000000,
+      "declared_bps": 14000000,
+      "authority": "declared_only",
+      "enabled": true,
+      "warning": "source_below_requested_cbr"
+    },
+    "degradation": {
+      "degraded": true,
+      "reason": "source_has_no_exact_cbr",
+      "fallback_order": [
+        "source_exact_cbr",
+        "source_highest_below_requested",
+        "metadata_declared_only",
+        "safe_lowest_variant"
+      ],
+      "policy": "If source is below requested, play the selected source; keep the 14 Mbps declaration only as declared_only, never as verified CBR."
+    },
+    "manifest_policy": {
+      "one_stream_inf_only": true,
+      "declared_bandwidth_must_equal_real_cbr": false,
+      "metadata_declared_bps": 14000000,
+      "target_duration_source": "measured",
+      "buffer_floor_pct": 60,
+      "buffer_ceiling_pct": null
+    },
+    "telemetry_contract": {
+      "fields": [
+        "timestamp",
+        "frame_gap_ms",
+        "buffer_pct",
+        "bitrate_bps",
+        "media_sequence",
+        "stall_ms"
+      ],
+      "result_schema": "ara.qoe.result.v1"
+    },
+    "source_variant_count": 24,
+    "source_media_count": 5,
+    "source_iframe_count": 6,
+    "status": "ok"
+  }
+]

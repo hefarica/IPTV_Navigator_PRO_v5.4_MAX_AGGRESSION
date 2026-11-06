@@ -1,0 +1,20 @@
+[Unit]
+Description=ARA wake watchdog (stale state -> SSE wake only)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/ara-wake-watchdog.py --stale-seconds 60 --cooldown-seconds 300 --zap-cooldown-seconds 15
+Nice=10
+IOSchedulingClass=idle
+TimeoutStartSec=20
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/opt/netshield/data /var/lib/ara-x /var/log
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes

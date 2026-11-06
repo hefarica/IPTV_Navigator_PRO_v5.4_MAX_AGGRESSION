@@ -1,0 +1,12 @@
+[Unit]
+Description=Run ARA wake watchdog every 30 seconds
+
+[Timer]
+OnBootSec=10s
+OnUnitActiveSec=5s
+AccuracySec=1s
+Persistent=false
+Unit=ara-wake-watchdog.service
+
+[Install]
+WantedBy=timers.target

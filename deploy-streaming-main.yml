@@ -1,0 +1,97 @@
+name: deploy-streaming-contract-main
+
+# Manual only. Production environment approval is required.
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Write APPLY to authorize the JIT + headers deployment'
+        required: true
+        type: string
+      patch_lists_cache:
+        description: 'Also force /lists/*.m3u8 to no-store in nginx'
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-streaming-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: ${{ inputs.confirm == 'APPLY' }}
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: https://iptv-ape.duckdns.org
+    timeout-minutes: 15
+    env:
+      VPS_HOST: ${{ secrets.VPS_HOST }}
+      VPS_USER: ${{ secrets.VPS_USER }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/adb-generic-visual-enhancement-installer
+
+      - name: Prepare ephemeral SSH
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          printf '%s\n' "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' "${{ secrets.VPS_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+          chmod 644 ~/.ssh/known_hosts
+          printf 'Host *\n  StrictHostKeyChecking yes\n  UserKnownHostsFile ~/.ssh/known_hosts\n  IdentitiesOnly yes\n' > ~/.ssh/config
+          chmod 600 ~/.ssh/config
+
+      - name: Upload JIT server
+        run: |
+          set -euo pipefail
+          TARGET="$VPS_USER@$VPS_HOST"
+          scp vps_jit/server.js "$TARGET:/tmp/ape-jit-server.js"
+          ssh "$TARGET" 'set -euo pipefail; cp -a /opt/ape-jit/server.js /root/ape-jit-server.$(date -u +%Y%m%dT%H%M%SZ).bak; install -m 0644 /tmp/ape-jit-server.js /opt/ape-jit/server.js; systemctl restart ape-jit; sleep 2; curl -fsS http://127.0.0.1:3099/health'
+
+      - name: Patch nginx streaming headers
+        run: |
+          set -euo pipefail
+          TARGET="$VPS_USER@$VPS_HOST"
+          ssh "$TARGET" "PATCH_LISTS='${{ inputs.patch_lists_cache }}' bash -s" <<'REMOTE'
+          set -euo pipefail
+          stamp=$(date -u +%Y%m%dT%H%M%SZ)
+          cp -a /etc/nginx/snippets/ape-jit.conf "/root/ape-jit.conf.$stamp.bak"
+          if ! grep -q 'add_header Keep-Alive' /etc/nginx/snippets/ape-jit.conf; then
+            python3 - <<'PY'
+          p='/etc/nginx/snippets/ape-jit.conf'
+          s=open(p).read()
+          s=s.replace('    add_header Cache-Control "no-store" always;', '    add_header Cache-Control "no-store" always;\n    add_header Keep-Alive "timeout=5, max=100" always;')
+          open(p,'w').write(s)
+          PY
+          fi
+          if [ "$PATCH_LISTS" = "true" ]; then
+            cp -a /etc/nginx/sites-enabled/default "/root/nginx-default.$stamp.bak"
+            python3 - <<'PY'
+          p='/etc/nginx/sites-enabled/default'
+          s=open(p).read()
+          old='        add_header Cache-Control "public, max-age=300" always;\n        expires 5m;'
+          new='        add_header Cache-Control "no-cache, no-store, must-revalidate, private, max-age=0" always;\n        add_header Pragma "no-cache" always;\n        add_header Expires "0" always;\n        add_header Vary "*" always;'
+          if old in s:
+              s=s.replace(old,new)
+              open(p,'w').write(s)
+          PY
+          fi
+          nginx -t
+          systemctl reload nginx
+          REMOTE
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Verify 200/206/302 and headers
+        run: |
+          node tools/certify_http_200_206_302.js
+          node tools/verify_streaming_headers.js
+
