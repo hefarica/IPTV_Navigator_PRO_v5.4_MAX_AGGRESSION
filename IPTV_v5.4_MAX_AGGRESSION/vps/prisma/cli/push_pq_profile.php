@@ -15,6 +15,10 @@
  */
 declare(strict_types=1);
 require_once __DIR__ . '/../lib/ape_mesh.php';
+// [2026-11-05] Las 3 directivas (AISR / AIPQ / MEMC) homologadas por SoC. Si el chip no
+// tiene una capacidad, se le aplica el mejor sustituto que SI tiene, en vez de escribirle
+// claves que ignora. Ver ape_device_quality.php para la matriz y la evidencia por device.
+require_once __DIR__ . '/../lib/ape_device_quality.php';
 
 if (!function_exists('ape_pq_profile')) {
     function ape_pq_profile(string $name): array {
@@ -53,9 +57,33 @@ if ($device !== null && function_exists('ape_soc_allowlisted')) {
     exit(2);
 }
 
-$s = ape_pq_profile($profile);
+// ── SELECTOR POR SOC (ADITIVO, con fallback) ────────────────────────────────
+// Si hay device concreto y su SoC se reconoce, se usa la matriz homologada: el Fire TV
+// (MT8696) recibe com.amazon.tv.* y el ONN (S905X4) recibe aisr/aipq. Si el SoC no se
+// reconoce, se cae al comportamiento anterior sin cambiar nada (fail-open al pasado).
+$s = null;
+$homologacion = array();
+if ($device !== null && function_exists('ape_quality_plan')) {
+    $plan = ape_quality_plan($device, $profile);
+    if (!empty($plan['ok'])) {
+        $s = array();
+        foreach ($plan['levers'] as $ns => $kv) {
+            foreach ($kv as $k => $v) { $s[$k] = $v; }
+        }
+        $homologacion = isset($plan['homologacion']) ? $plan['homologacion'] : array();
+        fwrite(STDERR, "soc=" . $plan['family'] . " levers=" . count($s) . "\n");
+        foreach ($homologacion as $cap => $estado) {
+            fwrite(STDERR, "  " . $cap . " -> " . $estado . "\n");
+        }
+    }
+}
+if ($s === null) {
+    // Broadcast o SoC no reconocido: perfil base de siempre. No se inventan claves.
+    $s = ape_pq_profile($profile);
+}
+
 $id = ape_insert_delta($device, $channel, 'device-setting',
-    array('settings' => $s, 'profile' => 'PQ_' . strtoupper($profile)),
+    array('settings' => $s, 'profile' => 'PQ_' . strtoupper($profile), 'homologacion' => $homologacion),
     array('source' => 'pq-profile', 'ttl_seconds' => 1800, 'priority' => 80));
 
 echo "pushed PQ profile '{$profile}' -> policy_delta id={$id} (" . count($s) . " levers, device=" . ($device ?: 'broadcast') . ", channel=" . ($channel ?: 'any') . ")\n";

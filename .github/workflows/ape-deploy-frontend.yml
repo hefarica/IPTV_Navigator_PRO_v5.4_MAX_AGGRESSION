@@ -309,6 +309,42 @@ jobs:
           php -l "$SRC" >/dev/null 2>&1 && echo "  php -l OK" || echo "  (php -l no disponible en el runner)"
           echo "  endpoint: https://iptv-ape.duckdns.org/prisma/api/ape-parity-tags.php"
 
+      - name: Desplegar la matriz de calidad por device (lib + cli)
+        # Las 3 directivas (AISR / AIPQ / MEMC) homologadas por SoC viven en lib/. El CLI
+        # push_pq_profile.php las consume con fallback: si el SoC no se reconoce, sigue
+        # usando el perfil anterior. Riesgo contenido a proposito:
+        #   - php -l de los DOS ficheros antes de instalar; si uno falla, no se toca nada
+        #   - backup del destino con stamp antes de sobrescribir
+        #   - lectura posterior del hash para confirmar que quedo lo que se subio
+        #   - el CLI no lo llama nada del pipeline: es una herramienta manual, sin trafico
+        if: inputs.mode == 'apply'
+        run: |
+          set -uo pipefail
+          STAMP=$(date -u +%Y%m%dT%H%M%SZ)
+          LIB_SRC="IPTV_v5.4_MAX_AGGRESSION/vps/prisma/lib/ape_device_quality.php"
+          LIB_DST="/var/www/html/prisma/lib/ape_device_quality.php"
+          CLI_SRC="IPTV_v5.4_MAX_AGGRESSION/vps/prisma/cli/push_pq_profile.php"
+          CLI_DST="/var/www/html/prisma/cli/push_pq_profile.php"
+          echo "=== lint de los dos ficheros ==="
+          php -l "$LIB_SRC" || { echo "::error::ape_device_quality.php no pasa php -l"; exit 1; }
+          php -l "$CLI_SRC" || { echo "::error::push_pq_profile.php no pasa php -l"; exit 1; }
+          echo "=== backup previo ==="
+          ssh "$TARGET" "sudo -n cp -a '$LIB_DST' '$LIB_DST.bak_$STAMP' 2>/dev/null && echo '  backup lib ok' || echo '  lib no existia'"
+          ssh "$TARGET" "sudo -n cp -a '$CLI_DST' '$CLI_DST.bak_$STAMP' 2>/dev/null && echo '  backup cli ok' || echo '  cli no existia'"
+          echo "=== instalacion ==="
+          scp -q "$LIB_SRC" "$TARGET:/tmp/ape-adeq.php"
+          ssh "$TARGET" "sudo -n install -m 0644 -o www-data -g www-data /tmp/ape-adeq.php '$LIB_DST'"
+          scp -q "$CLI_SRC" "$TARGET:/tmp/ape-ppq.php"
+          ssh "$TARGET" "sudo -n install -m 0644 -o www-data -g www-data /tmp/ape-ppq.php '$CLI_DST'"
+          echo "=== verificacion de lo instalado ==="
+          L1=$(sha256sum "$LIB_SRC" | cut -d' ' -f1)
+          R1=$(ssh "$TARGET" "sudo -n sha256sum '$LIB_DST' | cut -d' ' -f1")
+          [ "$L1" = "$R1" ] && echo "  lib sha OK ($L1)" || { echo "::error::sha lib no coincide"; exit 1; }
+          L2=$(sha256sum "$CLI_SRC" | cut -d' ' -f1)
+          R2=$(ssh "$TARGET" "sudo -n sha256sum '$CLI_DST' | cut -d' ' -f1")
+          [ "$L2" = "$R2" ] && echo "  cli sha OK ($L2)" || { echo "::error::sha cli no coincide"; exit 1; }
+          echo "  el CLI NO se ejecuta aqui: es manual y sin trafico."
+
       - name: Leer registro de zapping
         # Minimal a proposito: un solo comando por bloque, sin pipes que puedan enmascarar
         # la salida. Si algo no existe, se ve el error tal cual.
