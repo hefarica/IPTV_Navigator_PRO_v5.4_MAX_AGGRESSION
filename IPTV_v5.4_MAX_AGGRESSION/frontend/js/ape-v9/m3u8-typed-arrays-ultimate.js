@@ -10771,28 +10771,44 @@ return lines.join('\n');
             } catch { return ''; }
         })();
         const _originCanonical796 = _refererCanonical796 ? _refererCanonical796.replace(/\/$/, '') : '';
-        // ── BYTE-RANGE CAPABILITY (2026-11-06) · 206 por metadata, no por mentira ──
-        // Mandato del operador: aplicar el 206 via JSON metadata, no servir segmentos
-        // completos a ciegas. La verdad MEDIDA (probe sobre un canal servible de cada uno):
-        //   nfqdeuxu.x1megaott.store  Accept-Ranges AUSENTE · Range bytes=0-1023 -> 200 entero (300.870 B)
-        //   line.tivi-ott.net         Accept-Ranges bytes   · Range bytes=0-1023 -> 200 entero (302.412 B)
-        // Ninguno honra Range. Emitir #EXT-X-BYTERANGE sobre un origen asi NO es premium:
-        // hls.js aborta con NETWORK_ERROR "range header was ignored" y ExoPlayer decodifica
-        // el objeto entero como si fuera el trozo. Por eso aqui se emite la CAPACIDAD como
-        // metadata (RFC 8216 6.3.1: un player conforme ignora el tag desconocido) y el
-        // BYTERANGE real solo cuando el probe confirmo 206. El dia que el borde honre
-        // Range, basta cambiar honors_range_206 en el LAB y el troceo se activa solo.
-        const _brAll = (options && options.byterange_capability && options.byterange_capability.hosts) || {};
+        // ── CAPACIDAD DEL SERVIDOR (2026-11-06) · via APE_SERVER_PROFILE ──────────
+        // El modulo multiservidor (ape-server-profile.js) mide cada host UNA vez y
+        // guarda un perfil idempotente: tipo USA, auth, uaSensitive, refererTolerant,
+        // acceptRanges y honors206. Aqui solo se CONSUME. Orden de precedencia:
+        //   1. options.server_profile  (store medido por el modulo)
+        //   2. options.byterange_capability (seccion del LAB, compatible)
+        //   3. sin dato -> UNMEASURED (nunca se inventa la capacidad)
+        // Emitir #EXT-X-BYTERANGE sobre un origen que ignora Range no es premium:
+        // hls.js aborta con NETWORK_ERROR "range header was ignored" y ExoPlayer
+        // decodifica el objeto entero como si fuera el trozo.
         const _brHost = (function() { try { return new URL(primaryUrl).hostname; } catch { return ''; } })();
-        const _br = _brAll[_brHost] || null;
-        const _brHonors = !!(_br && _br.honors_range_206);
-        const _brAccepts = !!(_br && _br.accept_ranges_header);
-        const _brState = _br ? (_brHonors ? 'VERIFIED-206' : 'MEASURED-NO-206') : 'UNMEASURED';
-        lines.push(`#EXT-X-APE-RANGE-CAPABILITY:HOST=${_brHost},ACCEPT_RANGES=${_brAccepts},HONORS_206=${_brHonors},EMIT_BYTERANGE=${_brHonors},STATE=${_brState},POLICY=EMIT-X-BYTERANGE-SOLO-CON-HONORS-206`);
-        lines.push(`#EXT-X-APE-RANGE-MODE:${_brHonors ? 'BYTERANGE-ELIGIBLE' : 'FULL-OBJECT'}`);
-        if (_brHonors) {
-            // 206 probado: se declara el rango abierto y el player trocea con Range.
-            lines.push('#EXT-X-APE-RANGE-OPEN:true');
+        const _spMod = (typeof window !== 'undefined' && window.APE_SERVER_PROFILE) || null;
+        const _spStore = (options && options.server_profile) || null;
+        const _spProfile = (_spMod && _spStore) ? _spMod.getProfile(_spStore, primaryUrl) : null;
+
+        if (_spMod && _spStore) {
+            // camino nuevo: el modulo decide, y el tag lo construye el modulo
+            lines.push(_spMod.capabilityTag(_spProfile, _brHost));
+            lines.push(_spMod.modeTag(_spProfile));
+            if (_spMod.shouldEmitByterange(_spProfile)) lines.push('#EXT-X-APE-RANGE-OPEN:true');
+            if (_spProfile && _spProfile.type) {
+                lines.push(`#EXT-X-APE-SERVER-TYPE:${_spProfile.type}`);
+            }
+            if (_spProfile && _spProfile.uaSensitive === true) {
+                // el CDN bloquea UA de herramienta: se declara para que el player no
+                // reintente con otro UA y para que la telemetria lo vea.
+                lines.push('#EXT-X-APE-UA-REQUIRED:player');
+            }
+        } else {
+            // camino compatible: seccion del LAB (o UNMEASURED)
+            const _brAll = (options && options.byterange_capability && options.byterange_capability.hosts) || {};
+            const _br = _brAll[_brHost] || null;
+            const _brHonors = !!(_br && _br.honors_range_206);
+            const _brAccepts = !!(_br && _br.accept_ranges_header);
+            const _brState = _br ? (_brHonors ? 'VERIFIED-206' : 'MEASURED-NO-206') : 'UNMEASURED';
+            lines.push(`#EXT-X-APE-RANGE-CAPABILITY:HOST=${_brHost},ACCEPT_RANGES=${_brAccepts},HONORS_206=${_brHonors},EMIT_BYTERANGE=${_brHonors},STATE=${_brState},POLICY=EMIT-X-BYTERANGE-SOLO-CON-HONORS-206`);
+            lines.push(`#EXT-X-APE-RANGE-MODE:${_brHonors ? 'BYTERANGE-ELIGIBLE' : 'FULL-OBJECT'}`);
+            if (_brHonors) lines.push('#EXT-X-APE-RANGE-OPEN:true');
         }
         const _kodiManifestHdrs = [
             `User-Agent=${_ua796}`,

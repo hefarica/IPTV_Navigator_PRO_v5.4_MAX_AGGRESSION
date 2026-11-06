@@ -3989,7 +3989,12 @@
      DEBE cargar antes del generador. Regenerar: node tools/ape-image-recipes/compile.js --emit bundle -->
 <script src="js/ape-v9/ape-image-recipes-bundle.js?v=20261106-lock-gen"></script>
 
-<script src="js/ape-v9/m3u8-typed-arrays-ultimate.js?v=20261106-lock-gen"></script>
+<!-- APE_SERVER_PROFILE: modulo multiservidor idempotente/polimorfico/isomorfico.
+     DEBE cargarse ANTES del generador: el generador lo consume para emitir la
+     capacidad por servidor (tipo USA, uaSensitive, acceptRanges, honors206). -->
+<script src="js/ape-v9/ape-server-profile.js?v=20261106-srvprofile"></script>
+
+<script src="js/ape-v9/m3u8-typed-arrays-ultimate.js?v=20261106-srvprofile"></script>
   <!-- 🪦 OMEGA SLOT REAPER — Pre-flight liberation of Xtream max_connections slots -->
   <script src="js/ape-v9/slot-reaper.js?v=1.0.0-omega-20260409"></script>
   <script src="js/ape-v9/m3u8-quality-upgrader-v2.js?v=2.0"></script>
