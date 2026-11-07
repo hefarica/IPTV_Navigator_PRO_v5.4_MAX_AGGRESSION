@@ -1,0 +1,25 @@
+[Unit]
+Description=APE JIT CMAF single-active-channel service
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStartPre=/bin/mkdir -p /dev/shm/ape-jit
+ExecStart=/usr/bin/node /opt/ape-jit/server.js
+Restart=always
+RestartSec=5
+Environment=PORT=3099
+Environment=BIND=127.0.0.1
+Environment=MAP_FILE=/opt/ape-jit/channels.json
+Environment=OUT_ROOT=/dev/shm/ape-jit
+Environment=IDLE_MS=20000
+Environment=APE_2K=1
+LimitNOFILE=65536
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ReadWritePaths=/dev/shm/ape-jit
+
+[Install]
+WantedBy=multi-user.target
