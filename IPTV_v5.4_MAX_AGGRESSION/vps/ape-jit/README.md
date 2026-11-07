@@ -257,12 +257,49 @@ ahora:  copy4k=true  crystal=NATIVE_4K_HDR src=3840x2160/smpte2084->3840x2160
 
 El bitrate sale del `ffprobe` (`bit_rate` añadido al probe); si no lo trae, cae a `20000k`.
 
-## Pendiente, por decisión del operador
+## Escalera de modos — 2K HDR va ANTES que cualquier SDR (2026-11-07)
 
-**La escalera de fallback degrada.** `FHD_SDR` (1920x1080 H.264 SDR) y `SDR720_STABLE`
-(1280x720) se activan solos cuando el modo superior falla. Sobre 4K HDR eso es
-resolución + rango + códec: `docs/policies/ANTI_DEGRADATION_LAW.md` solo lo admite con
-autorización escrita por `canal_id, device_id`. **No se tocó.**
+Orden publicado en `/jit/crystal.json`:
+
+```
+NATIVE_4K_HDR                    3840x2160 passthrough (copy)
+CRYSTAL_2K_HDR_DOWNSCALE         2048x1080 HEVC Main10 HDR10 (x265, PQ)   ← antes de SDR
+FHD_HDR10                        1920x1080 HEVC Main10 HDR10
+FHD_SDR (solo con autorización)  1920x1080 H.264 SDR
+SDR720_STABLE                    1280x720 H.264 SDR
+```
+
+**Automático:** si el 4K nativo muere **sin producir salida** (`code !== 0` y ningún
+`.m4s`/`master.m3u8` en el directorio del run), el servidor **reintenta en 2K HDR** en un
+directorio nuevo y lo registra como `LADDER_2K`. Nunca cae a SDR por su cuenta.
+
+**Explícito:** `/jit/live/<id>/master.m3u8?force=2k` fuerza el escalón 2K HDR.
+
+Medido sobre el canal 4K `1174213` (fuente `3840x2160/smpte2084`):
+
+```
+normal      → NATIVE_4K_HDR              RESOLUTION=3840x2160 hvc1.2.4.L153.B0 VIDEO-RANGE=PQ
+?force=2k   → CRYSTAL_2K_HDR_DOWNSCALE   RESOLUTION=2048x1080 hvc1.2.4.L153.B0 VIDEO-RANGE=PQ
+/sdr/       → FHD_SDR                    RESOLUTION=1920x1080 avc1.640028     (compatibilidad)
+```
+
+`/sdr/` y `/sdr720/` siguen existiendo para players que no decodifican HEVC/HDR: la
+escalera automática nunca los usa, pero un cliente que los pide los obtiene.
+
+## Degradación: acotada, ya no automática
+
+El riesgo anterior era que `FHD_SDR` (1920x1080 H.264 SDR) y `SDR720_STABLE` (1280x720)
+se activaran solos ante un fallo del modo superior. **Desde 2026-11-07 no ocurre:**
+
+- el fallo del 4K nativo reintenta **2K HDR** (`CRYSTAL_2K_HDR_DOWNSCALE`), nunca SDR;
+- si el 2K HDR también falla, el servidor **no degrada**: no sirve, y el intento queda
+  en el journal (`LADDER_2K`, `EXIT`);
+- `FHD_SDR` y `SDR720_STABLE` solo se producen si el cliente pide **explícitamente**
+  `/sdr/` o `/sdr720/`, que siguen existiendo por compatibilidad con players que no
+  decodifican HEVC/HDR.
+
+Queda por tanto **una sola vía** por la que un 4K HDR puede acabar en SDR: que el player
+lo pida. Eso no es una degradación automática, es una petición del cliente.
 
 ## Despliegue (manual, hoy)
 

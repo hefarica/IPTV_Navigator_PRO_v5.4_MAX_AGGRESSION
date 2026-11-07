@@ -305,7 +305,7 @@ function stopCurrent(reason) {
 }
 
 /* async: debe poder ESPERAR a que el slot unico quede libre antes de spawnear. */
-async function start(id, spec, sdr, sdr720) {
+async function start(id, spec, sdr, sdr720, opts) {
   stopCurrent('switch');
   const src = probeSource(spec);
   // Optional audio-only fallback source. Video stays on spec.url.
@@ -315,10 +315,13 @@ async function start(id, spec, sdr, sdr720) {
   const audioOk = !!src.audioOk || fallbackAudio;
   const isSdr = !!(sdr || sdr720);
   const is720 = !!sdr720;
+  // ESCALERA 2K HDR: ladderStep 2 = 'antes que cualquier SDR, 2K HDR'.
+  const ladderStep = (opts && opts.ladderStep) || 1;
+  const force2k = ladderStep >= 2;
   const av1 = process.env.APE_SCHEME === 'av1' && !isSdr;
   const sixK = av1 && process.env.APE_6K === '1';
   const is4kSource = src.width >= 3840 && src.height >= 2160;
-  const copy4k = !isSdr && is4kSource && (!av1 || !sixK) &&
+  const copy4k = !force2k && !isSdr && is4kSource && (!av1 || !sixK) &&
     (src.transfer === 'smpte2084' || src.transfer === 'arib-std-b67') &&
     (src.codec === 'hevc' || src.codec === 'h264');
     // ERRADICACION de la carrera (2026-11-07): el dir era un path FIJO compartido por
@@ -446,7 +449,7 @@ async function start(id, spec, sdr, sdr720) {
     use2k,
     av1,
     sixK,
-    crystalMode: copy4k ? 'NATIVE_4K_HDR' : (av1 ? (sixK ? 'CRYSTAL_6K_AV1' : 'CRYSTAL_2K_AV1') : (upscaled ? (use2k ? 'CRYSTAL_2K_HDR_UPSCALE' : 'CRYSTAL_UHD_UPSCALE') : (is720 ? 'SDR720_STABLE' : (isSdr ? 'FHD_SDR' : 'FHD_HDR10')))),
+    crystalMode: force2k ? 'CRYSTAL_2K_HDR_DOWNSCALE' : (copy4k ? 'NATIVE_4K_HDR' : (av1 ? (sixK ? 'CRYSTAL_6K_AV1' : 'CRYSTAL_2K_AV1') : (upscaled ? (use2k ? 'CRYSTAL_2K_HDR_UPSCALE' : 'CRYSTAL_UHD_UPSCALE') : (is720 ? 'SDR720_STABLE' : (isSdr ? 'FHD_SDR' : 'FHD_HDR10'))))),
   };
   log('START', id, 'pid=' + child.pid, 'sdr=' + isSdr, 'sdr720=' + is720, 'copy4k=' + copy4k, 'crystal=' + current.crystalMode, 'src=' + src.width + 'x' + src.height + '/' + src.transfer + '->' + outWidth + 'x' + outHeight);
   child.stderr.on('data', d => {
@@ -457,6 +460,16 @@ async function start(id, spec, sdr, sdr720) {
     liveKids.delete(child);
     log('EXIT', id, code, sig || '');
     if (current && current.child === child) current = null;
+    // ESCALERA (2026-11-07): si el 4K nativo muere SIN producir salida, el siguiente
+    // escalon es 2K HDR (2048x1080 HEVC Main10 HDR10), NUNCA SDR directo.
+    if (!is720 && !isSdr && copy4k && code !== 0 && ladderStep === 1) {
+      let produced = false;
+      try { produced = fs.readdirSync(dir).some(function (f) { return f.endsWith('.m4s') || f === 'master.m3u8'; }); } catch (_) {}
+      if (!produced) {
+        log('LADDER_2K', id, 'el 4K nativo no produjo salida; se reintenta en 2K HDR antes de cualquier SDR');
+        setTimeout(function () { start(id, spec, sdr, sdr720, { ladderStep: 2 }); }, 200);
+      }
+    }
     // HARDENING (bug C): solo se borra si este dir esta PENDIENTE de reaping.
     // Si no lo esta, el dir pertenece a un stream vivo (uno nuevo que arranco
     // mientras este moria): borrarlo lo mataria. Ese era el tercer ENOENT.
@@ -750,6 +763,9 @@ const server = http.createServer((req, res) => {
         SDR720_STABLE: 'H.264 1280x720 SDR continuity fallback',
       },
       truth_guard: 'VPS selects/signals; device applies AI-SR/AI-PQ. No fake 4K pixels.',
+      // Orden obligatorio: antes de 1080p SDR va 2K HDR.
+      ladder: ['NATIVE_4K_HDR', 'CRYSTAL_2K_HDR_DOWNSCALE', 'FHD_HDR10',
+               'FHD_SDR (solo con autorizacion escrita)', 'SDR720_STABLE'],
     }));
   }
   const mm = u.pathname.match(/^\/meta\/([^/]+)\.json$/);
@@ -830,7 +846,7 @@ const server = http.createServer((req, res) => {
       // start() es async (espera el slot unico). El guard de abajo evita el
       // TypeError que habia en `current.lastAccess` cuando el arranque no dejaba
       // current seteado. La marca booting caduca sola para no enmascarar muertes.
-      start(id, ent, sdr, sdr720)
+      start(id, ent, sdr, sdr720, (u.searchParams.get('force') === '2k') ? { ladderStep: 2 } : undefined)
         .catch((e) => log('START_FAIL', id, e && e.message ? e.message : String(e)))
         .finally(() => setTimeout(() => booting.delete(_k), BOOT_GRACE_MS));
     }
@@ -850,7 +866,7 @@ const server = http.createServer((req, res) => {
   if (!current || current.id !== id || !!current.sdr !== sdr || !!current.sdr720 !== sdr720) {
     const _k = chKey(id, sdr, sdr720);
     booting.add(_k);
-    start(id, ent, sdr, sdr720)
+    start(id, ent, sdr, sdr720, (u.searchParams.get('force') === '2k') ? { ladderStep: 2 } : undefined)
       .catch((e) => log('START_FAIL', id, e && e.message ? e.message : String(e)))
       .finally(() => setTimeout(() => booting.delete(_k), BOOT_GRACE_MS));
   }
