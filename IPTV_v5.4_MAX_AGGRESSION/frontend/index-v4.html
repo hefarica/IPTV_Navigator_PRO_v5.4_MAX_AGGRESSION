@@ -3570,7 +3570,17 @@
             <script>
               (function () {
                 'use strict';
-                var API = '/prisma/api/ara-device.php';
+                // El endpoint vive en el VPS. Si la pagina se sirve desde ahi, mismo
+                // origen (sin CORS). Si se abre desde el preview local / GUI
+                // (127.0.0.1:3090, localhost, file://) una ruta RELATIVA caeria en
+                // ese servidor local y daria 404 — que fue exactamente el fallo del
+                // 2026-11-07. En ese caso se apunta a produccion de forma absoluta.
+                var API = (function () {
+                  var PROD = 'https://iptv-ape.duckdns.org';
+                  var h = String(location.hostname || '');
+                  if (/(^|\.)iptv-ape\.duckdns\.org$/i.test(h)) return '/prisma/api/ara-device.php';
+                  return PROD + '/prisma/api/ara-device.php';
+                })();
                 var POLL_MS = 1800, POLL_MAX = 90000;
                 var busy = {};      // device_id -> job_id en curso
                 var loadedOnce = false;
@@ -3758,7 +3768,10 @@
                         var j = null;
                         try { j = JSON.parse(t); } catch (e) { j = null; }
                         if (!r.ok || !j) {
-                          throw new Error('HTTP ' + r.status + ' — ' + (j && j.message ? j.message : t.slice(0, 160)));
+                          // Un 404 devuelve HTML: se limpia para que el mensaje sea legible
+                          // en vez de volcar una pagina entera en la caja de error.
+                          var plain = String(t || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 180);
+                          throw new Error('HTTP ' + r.status + ' en ' + API + ' — ' + (j && j.message ? j.message : plain));
                         }
                         return j;
                       });

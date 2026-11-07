@@ -87,7 +87,17 @@ $allowOrigins = [
     'http://127.0.0.1:3090',
     'http://localhost:3090',
 ];
-$originAllowed = ($origin !== '' && in_array($origin, $allowOrigins, true));
+// El panel tambien se abre desde el preview local / GUI (127.0.0.1:PUERTO,
+// localhost:PUERTO, o incluso file:// con Origin null). Cualquier loopback es
+// el mismo operador: se permite leer. Las acciones que MUTAN el dispositivo
+// siguen exigiendo un origen de la lista exacta o X-APE-Key (abajo).
+$isLoopbackOrigin = ($origin !== '' && preg_match('~^http://(127\.0\.0\.1|localhost)(:\d+)?$~', $origin) === 1);
+// file:// manda "Origin: null" y el navegador lo trata como opaco. Se permite
+// LEER desde ahi (para que el panel funcione al abrir el HTML local), pero NO
+// mutar: authorize_mutation() usa la lista estricta, no esta.
+$isOpaqueOrigin = ($origin === 'null');
+$originStrict   = ($origin !== '' && in_array($origin, $allowOrigins, true)) || $isLoopbackOrigin;
+$originAllowed  = $originStrict || $isOpaqueOrigin;
 if ($originAllowed) {
     header('Access-Control-Allow-Origin: ' . $origin);
     header('Vary: Origin');
@@ -389,11 +399,12 @@ function authorize_mutation(): void
         return;
     }
 
-    // Sin clave: solo mismo origen (allowlist) o loopback.
-    global $originAllowed;
+    // Sin clave: solo mismo origen (allowlist estricta) o loopback.
+    // NO se acepta Origin: null (file://): leer si, instalar no.
+    global $originStrict;
     $remote = (string)($_SERVER['REMOTE_ADDR'] ?? '');
     $loop   = in_array($remote, ['127.0.0.1', '::1'], true);
-    if (!$originAllowed && !$loop) {
+    if (!$originStrict && !$loop) {
         fail(
             'FORBIDDEN',
             'Accion de dispositivo no autorizada. Define APE_DEVICE_KEY y envia X-APE-Key, o llama desde el origen propio.',
