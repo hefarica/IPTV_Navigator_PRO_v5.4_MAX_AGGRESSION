@@ -1,0 +1,22 @@
+[Unit]
+Description=APE ARA Device Worker — cola de instalacion/actualizacion ADB (ONN 4K / Fire TV / cualquier Android)
+Documentation=https://github.com/hefarica/IPTV_Navigator_PRO_v5.4_MAX_AGGRESSION
+After=network-online.target wg-quick@wg0.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/opt/prisma-adb/ara-device-worker.sh
+# ROOT es deliberado: la clave RSA ya autorizada por los dispositivos es
+# /root/.android/adbkey. www-data tiene otra clave y el "allow debugging"
+# del dispositivo no la cubriria.
+Restart=always
+RestartSec=10
+StandardOutput=null
+StandardError=journal
+# Sin privilegios extra: no necesita nginx, ni red propia, ni escritura fuera
+# de /dev/shm/ape_device_jobs, /var/log y el propio adb.
+NoNewPrivileges=yes
+
+[Install]
+WantedBy=multi-user.target

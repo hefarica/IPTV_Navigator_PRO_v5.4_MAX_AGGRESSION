@@ -676,3 +676,175 @@ jobs:
           grep -q 'Nunca 0,24' "$M" || { echo '::error::el gestor servido no tiene la correccion del 0,24'; ok=0; }
           [ "$ok" = '1' ] || exit 1
           echo 'LO SERVIDO ES EL FICHERO DEL REPO Y LLEVA LAS CORRECCIONES'
+
+  # ═════════════════════════════════════════════════════════════════════════════════════════════════
+  # PLANO DE CONTROL DE DISPOSITIVOS
+  #
+  # Publica el endpoint + el worker ADB + su unidad systemd + el manifiesto de version corregido.
+  # Permite reconocer e instalar/actualizar/reinstalar/desinstalar ONN 4K, Fire TV Stick 4K y
+  # CUALQUIER otro Android desde la UI.
+  #
+  # POR QUE ES UN JOB APARTE: no toca los ficheros de la APP. Si el plano de control falla, el
+  # despliegue del generador ya esta hecho y no se revierte por un fallo ajeno.
+  #
+  # POR QUE EL WORKER ES ROOT: la clave RSA que los dispositivos ya autorizaron es
+  # /root/.android/adbkey. www-data tiene otra y su "allow debugging" no la cubre.
+  # ═════════════════════════════════════════════════════════════════════════════════════════════════
+  plano-control-dispositivos:
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 12
+    needs: desplegar
+
+    env:
+      EP_SRC: IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/ara-device.php
+      EP_DEST: /var/www/html/prisma/api/ara-device.php
+      WK_SRC: IPTV_v5.4_MAX_AGGRESSION/vps/prisma/adb/ara-device-worker.sh
+      WK_DEST: /opt/prisma-adb/ara-device-worker.sh
+      SV_SRC: IPTV_v5.4_MAX_AGGRESSION/vps/prisma/adb/ara-device-worker.service
+      SV_DEST: /etc/systemd/system/ara-device-worker.service
+      VJ_SRC: IPTV_v5.4_MAX_AGGRESSION/vps/ara/version.json
+      VJ_DEST: /var/www/html/ara/version.json
+      GATE_SRC: tools/ara/check_ara_dist_coherence.js
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/adb-generic-visual-enhancement-installer
+
+      - name: Preparar SSH
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          printf '%s\n' "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' "${{ secrets.VPS_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+          printf 'Host *\n  StrictHostKeyChecking yes\n  UserKnownHostsFile ~/.ssh/known_hosts\n  IdentitiesOnly yes\n  ControlMaster auto\n  ControlPath ~/.ssh/cm-%%r@%%h:%%p\n  ControlPersist 300s\n  ServerAliveInterval 15\n  ServerAliveCountMax 4\n  ConnectTimeout 20\n  TCPKeepAlive yes\n' > ~/.ssh/config
+          echo "TARGET=${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" >> "$GITHUB_ENV"
+
+      - name: Exigir la confirmacion literal
+        if: inputs.mode == 'apply'
+        run: |
+          set -euo pipefail
+          if [ "${{ inputs.confirm }}" != "DESPLIEGO EL GENERADOR AL VPS" ]; then
+            echo '::error::falta la confirmacion literal. No se escribe nada.'
+            echo "  recibido: '${{ inputs.confirm }}'"
+            exit 1
+          fi
+          echo 'confirmacion literal presente'
+
+      - name: GATES de sintaxis EN EL VPS antes de tocar nada
+        run: |
+          set -uo pipefail
+          # Se valida con el toolchain REAL del destino (PHP 8.3.6 / bash / node 20),
+          # no con el del runner: un `php -l` verde en otra version no prueba nada.
+          scp -q "$EP_SRC" "$TARGET:/tmp/ara-device.php.new"
+          scp -q "$WK_SRC" "$TARGET:/tmp/ara-device-worker.sh.new"
+          scp -q "$VJ_SRC" "$TARGET:/tmp/ara-version.json.new"
+          scp -q "$GATE_SRC" "$TARGET:/tmp/check_ara_dist_coherence.js"
+
+          fail=0
+          echo '--- php -l ---'
+          ssh "$TARGET" "php -l /tmp/ara-device.php.new" || fail=1
+          echo '--- bash -n ---'
+          ssh "$TARGET" "bash -n /tmp/ara-device-worker.sh.new && echo BASH_SYNTAX_OK" || fail=1
+          echo '--- JSON del manifiesto ---'
+          ssh "$TARGET" "node -e 'JSON.parse(require(\"fs\").readFileSync(\"/tmp/ara-version.json.new\",\"utf8\"));console.log(\"JSON_OK\")'" || fail=1
+
+          if [ "$fail" != '0' ]; then
+            echo '::error::alguna validacion de sintaxis fallo. NO se despliega nada.'
+            ssh "$TARGET" 'rm -f /tmp/ara-device.php.new /tmp/ara-device-worker.sh.new /tmp/ara-version.json.new /tmp/check_ara_dist_coherence.js' || true
+            exit 1
+          fi
+          echo 'GATES DE SINTAXIS OK'
+
+      - name: Desplegar el plano de control (rollback automatico)
+        if: inputs.mode == 'apply'
+        run: |
+          set -uo pipefail
+          STAMP=$(date -u +%Y%m%dT%H%M%SZ)
+
+          install_one() { # <tmp_src> <dest> <perm> <owner_spec> <label>
+            local tmp="$1" dest="$2" perm="$3" owner="$4" label="$5" bak nuevo=0
+            bak="$dest.bak_$STAMP"
+            echo "=== $label -> $dest ==="
+            if ssh "$TARGET" "sudo -n test -f '$dest'"; then
+              ssh "$TARGET" "sudo -n cp -a '$dest' '$bak'" || { echo "::error::backup fallo en $label"; return 1; }
+              echo "  backup: $bak"
+            else
+              nuevo=1
+              echo "  fichero NUEVO (el rollback lo borra)"
+            fi
+            if ! ssh "$TARGET" "sudo -n mkdir -p '$(dirname "$dest")' && sudo -n install -m $perm -o ${owner%%:*} -g ${owner##*:} '$tmp' '$dest'"; then
+              echo "::error::instalacion fallo en $label"
+              [ "$nuevo" = "1" ] && ssh "$TARGET" "sudo -n rm -f '$dest'" || ssh "$TARGET" "sudo -n cp -a '$bak' '$dest'"
+              return 1
+            fi
+            local rem loc
+            rem=$(ssh "$TARGET" "sudo -n sha256sum '$dest' | cut -d' ' -f1")
+            loc=$(sha256sum "$tmp" | cut -d' ' -f1)
+            if [ "$rem" != "$loc" ]; then
+              echo "::error::sha instalado no coincide en $label"
+              [ "$nuevo" = "1" ] && ssh "$TARGET" "sudo -n rm -f '$dest'" || ssh "$TARGET" "sudo -n cp -a '$bak' '$dest'"
+              return 1
+            fi
+            echo "  sha OK ($loc)"
+            return 0
+          }
+
+          rc=0
+          install_one /tmp/ara-device.php.new        "$EP_DEST" 0644 "www-data:www-data" "endpoint PHP"   || rc=1
+          install_one /tmp/ara-device-worker.sh.new  "$WK_DEST" 0755 "root:root"         "worker ADB"     || rc=1
+          install_one /tmp/ara-version.json.new      "$VJ_DEST" 0644 "www-data:www-data" "manifiesto"     || rc=1
+          install_one /tmp/ara-device-worker.service "$SV_DEST" 0644 "root:root"         "unidad systemd" || rc=1
+
+          if [ "$rc" != '0' ]; then
+            echo '::error::despliegue del plano de control fallo. Revisa los backups arriba.'
+            exit 1
+          fi
+          echo 'FICHEROS DEL PLANO DE CONTROL INSTALADOS'
+
+          # ── Servicio ────────────────────────────────────────────────────────────────────────
+          echo '--- systemd ---'
+          ssh "$TARGET" 'sudo -n systemctl daemon-reload'
+          ssh "$TARGET" 'sudo -n systemctl enable ara-device-worker.service' || true
+          # `restart` no `start`: en un redeploy el proceso viejo sigue con el codigo anterior.
+          ssh "$TARGET" 'sudo -n systemctl restart ara-device-worker.service'
+          sleep 4
+          echo -n 'is-active: '
+          ssh "$TARGET" 'sudo -n systemctl is-active ara-device-worker.service' || true
+          ssh "$TARGET" 'sudo -n journalctl -u ara-device-worker -n 15 --no-pager' || true
+          # El directorio de cola debe pertenecer a www-data o php-fpm no puede encolar.
+          ssh "$TARGET" 'sudo -n chown www-data:www-data /dev/shm/ape_device_jobs 2>/dev/null; sudo -n chmod 0775 /dev/shm/ape_device_jobs 2>/dev/null; sudo -n ls -ld /dev/shm/ape_device_jobs' || true
+
+          ssh "$TARGET" 'rm -f /tmp/ara-device.php.new /tmp/ara-device-worker.sh.new /tmp/ara-version.json.new' || true
+
+      - name: Smoke real por HTTPS + coherencia del manifiesto
+        run: |
+          set -uo pipefail
+          ok=1
+          echo '--- /prisma/api/ara-device.php?action=version ---'
+          curl -sS -m 15 -o /tmp/dv.json -w 'http=%{http_code}\n' \
+            'https://iptv-ape.duckdns.org/prisma/api/ara-device.php?action=version' || ok=0
+          cat /tmp/dv.json || true
+          grep -q '"ok":true' /tmp/dv.json || { echo '::error::action=version no devuelve ok:true'; ok=0; }
+          grep -q '"coherent":true' /tmp/dv.json || { echo '::error::el manifiesto NO es coherente con el APK servido'; ok=0; }
+
+          echo '--- /prisma/api/ara-device.php?action=devices ---'
+          curl -sS -m 15 -o /tmp/dd.json -w 'http=%{http_code}\n' \
+            'https://iptv-ape.duckdns.org/prisma/api/ara-device.php?action=devices' || ok=0
+          cat /tmp/dd.json || true
+          grep -q '"ok":true' /tmp/dd.json || { echo '::error::action=devices no devuelve ok:true'; ok=0; }
+          grep -q '"devices"' /tmp/dd.json || { echo '::error::action=devices no trae la lista'; ok=0; }
+
+          echo '--- gate de coherencia contra el APK REAL del VPS ---'
+          ssh "$TARGET" 'node /tmp/check_ara_dist_coherence.js --manifest /var/www/html/ara/version.json --apk /var/www/html/ara/agent.apk' || ok=0
+          ssh "$TARGET" 'rm -f /tmp/check_ara_dist_coherence.js' || true
+
+          echo '--- el index servido lleva el panel DISPOSITIVO ---'
+          curl -sS -m 20 'https://iptv-ape.duckdns.org/index-v4.html' -o /tmp/idx.html || ok=0
+          grep -q 'apeDeviceCard' /tmp/idx.html || { echo '::error::el index servido no tiene el panel DISPOSITIVO'; ok=0; }
+          grep -q 'ara-device.php' /tmp/idx.html || { echo '::error::el index servido no apunta al endpoint'; ok=0; }
+
+          [ "$ok" = '1' ] || { echo '::error::SMOKE DEL PLANO DE CONTROL FALLO'; exit 1; }
+          echo 'PLANO DE CONTROL DESPLEGADO Y VERIFICADO EN VIVO'

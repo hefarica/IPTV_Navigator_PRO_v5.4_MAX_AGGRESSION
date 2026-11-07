@@ -3514,6 +3514,367 @@
               </details>
             </div>
 
+            <!-- ═══════════════════════════════════════════════════════════════
+                 DISPOSITIVO — plano de control ADB genérico
+                 Reconoce ONN 4K, Fire TV Stick 4K y cualquier Android/AndroidTV
+                 y lo instala / actualiza / reinstala / desinstala.
+                 Backend: /prisma/api/ara-device.php (encola) + ara-device-worker.sh
+                 (ejecuta adb como root). Fail-honest: si no es alcanzable, lo dice.
+                 ═══════════════════════════════════════════════════════════════ -->
+            <div id="apeDeviceCard"
+              style="margin-bottom:18px;padding:16px;border:1px solid rgba(0,136,255,0.28);border-radius:8px;background:rgba(0,136,255,0.04);">
+              <div
+                style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px;flex-wrap:wrap;">
+                <div
+                  style="font-size:0.7rem;font-weight:700;color:#60a5fa;text-transform:uppercase;letter-spacing:.08em;">
+                  🖥 Dispositivo · instalar / actualizar / reinstalar</div>
+                <button id="apeDevRefresh" class="btn secondary sm" type="button"
+                  style="padding:5px 12px;font-size:0.74rem;">↻ Detectar</button>
+              </div>
+
+              <p style="font-size:0.78rem;color:var(--text-muted);margin:0 0 12px 0;">
+                Reconoce el dispositivo Android/AndroidTV/Fire OS conectado y lo <strong
+                  style="color:#e2e8f0;">instala, actualiza, reinstala o desinstala</strong> desde aquí.
+                El APK publicado es universal (arm64-v8a / armeabi-v7a / x86 / x86_64), así que sirve para
+                <strong style="color:#e2e8f0;">ONN 4K, Fire TV Stick 4K y cualquier otro</strong>.
+              </p>
+
+              <div id="apeDevControl"
+                style="font-size:0.72rem;color:#94a3b8;margin-bottom:10px;font-family:monospace;padding:8px 10px;background:rgba(0,0,0,0.35);border-radius:6px;line-height:1.7;">
+                Sin datos todavía — pulsa «Detectar».
+              </div>
+
+              <div id="apeDevVersion" style="display:none;font-size:0.72rem;margin-bottom:10px;padding:8px 10px;border-radius:6px;"></div>
+
+              <div id="apeDevList" style="display:flex;flex-direction:column;gap:10px;"></div>
+
+              <details style="font-size:0.72rem;color:var(--text-muted);margin-top:12px;">
+                <summary style="cursor:pointer;color:#94a3b8;">¿Cómo funciona? — sin mentiras</summary>
+                <div style="margin-top:8px;padding:10px;background:rgba(0,0,0,0.3);border-radius:6px;line-height:1.75;">
+                  <p style="margin:0 0 8px 0;">El navegador <strong>no</strong> habla ADB: no puede. La cadena real es
+                    <code style="background:#0a0a0a;padding:1px 5px;border-radius:4px;color:#bfe0ff;">UI → ara-device.php → cola → ara-device-worker.sh (root) → adb → dispositivo</code>.
+                  </p>
+                  <p style="margin:0 0 8px 0;">El worker corre como <strong>root</strong> porque la clave RSA que los
+                    dispositivos ya autorizaron es la de <code style="background:#0a0a0a;padding:1px 5px;border-radius:4px;color:#bfe0ff;">/root/.android/adbkey</code>;
+                    la de www-data no está autorizada.</p>
+                  <p style="margin:0 0 8px 0;">ADB <strong>no se activa remotamente</strong>: el dispositivo debe tener ya
+                    la depuración habilitada y este host autorizado. Si no está alcanzable, el trabajo falla y aquí se
+                    muestra el motivo medido — nunca un éxito falso.</p>
+                  <p style="margin:0;">Primera instalación sin ADB (o en un TV sin depuración): usa el Setup Kit de
+                    arriba o <a href="https://iptv-ape.duckdns.org/ara/install" target="_blank"
+                      style="color:#60a5fa;">/ara/install</a>.</p>
+                </div>
+              </details>
+            </div>
+
+            <script>
+              (function () {
+                'use strict';
+                var API = '/prisma/api/ara-device.php';
+                var POLL_MS = 1800, POLL_MAX = 90000;
+                var busy = {};      // device_id -> job_id en curso
+                var loadedOnce = false;
+
+                function $(id) { return document.getElementById(id); }
+                function esc(s) {
+                  return String(s === null || s === undefined ? '' : s)
+                    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+                }
+
+                function badge(text, color, bg) {
+                  return '<span style="display:inline-block;padding:2px 8px;border-radius:10px;font-size:0.68rem;' +
+                    'font-weight:700;letter-spacing:.03em;color:' + color + ';background:' + bg + ';">' + esc(text) + '</span>';
+                }
+
+                function stateOf(d) {
+                  var t = d.target || null;
+                  var i = d.installed || null;
+                  if (!d.online) return { text: 'OFFLINE', color: '#fca5a5', bg: 'rgba(239,68,68,0.15)' };
+                  if (!i || !i.present) return { text: 'NO INSTALADO', color: '#fcd34d', bg: 'rgba(245,158,11,0.15)' };
+                  if (t && t.versionCode != null && i.versionCode != null) {
+                    if (String(i.versionCode) === String(t.versionCode))
+                      return { text: 'AL DÍA', color: '#86efac', bg: 'rgba(34,197,94,0.15)' };
+                    if (Number(i.versionCode) < Number(t.versionCode))
+                      return { text: 'ACTUALIZABLE', color: '#93c5fd', bg: 'rgba(59,130,246,0.15)' };
+                    return { text: 'MÁS NUEVO QUE EL PUBLICADO', color: '#c084fc', bg: 'rgba(168,85,247,0.15)' };
+                  }
+                  return { text: 'DESCONOCIDO', color: '#94a3b8', bg: 'rgba(148,163,184,0.15)' };
+                }
+
+                function btnStyle(kind) {
+                  var map = {
+                    install: 'background:rgba(34,197,94,0.12);border:1px solid rgba(34,197,94,0.45);color:#86efac;',
+                    update: 'background:rgba(59,130,246,0.12);border:1px solid rgba(59,130,246,0.45);color:#93c5fd;',
+                    reinstall: 'background:rgba(245,158,11,0.12);border:1px solid rgba(245,158,11,0.45);color:#fcd34d;',
+                    uninstall: 'background:rgba(239,68,68,0.12);border:1px solid rgba(239,68,68,0.45);color:#fca5a5;'
+                  };
+                  return (map[kind] || '') +
+                    'padding:6px 13px;border-radius:6px;font-size:0.74rem;font-weight:600;cursor:pointer;white-space:nowrap;';
+                }
+
+                function renderControl(c) {
+                  var el = $('apeDevControl');
+                  if (!el) return;
+                  if (!c) { el.textContent = 'Sin respuesta de control.'; return; }
+                  var adb = c.adb || {}, w = c.worker || {}, q = c.queue || {};
+                  var workerTxt = w.active
+                    ? 'ACTIVO (latido ' + esc(w.age_s) + 's)'
+                    : (w.present ? 'CAÍDO (último latido ' + esc(w.age_s) + 's)' : 'AUSENTE');
+                  var workerColor = w.active ? '#86efac' : '#fca5a5';
+                  el.innerHTML =
+                    'adb: ' + (adb.present ? '<span style="color:#86efac;">presente</span>' : '<span style="color:#fca5a5;">ausente</span>') +
+                    ' ' + esc(adb.version || '') +
+                    ' · worker: <span style="color:' + workerColor + ';">' + workerTxt + '</span>' +
+                    ' · cola: ' + esc(q.pending == null ? '?' : q.pending) + ' pendiente(s)';
+                }
+
+                function renderVersion(v) {
+                  var el = $('apeDevVersion');
+                  if (!el) return;
+                  if (!v) { el.style.display = 'none'; return; }
+                  el.style.display = 'block';
+                  if (v.coherent === false) {
+                    el.style.background = 'rgba(239,68,68,0.12)';
+                    el.style.border = '1px solid rgba(239,68,68,0.45)';
+                    el.style.color = '#fca5a5';
+                    el.innerHTML = '⚠ <strong>Manifiesto desincronizado</strong> con el APK servido (campos: ' +
+                      esc((v.drift || []).join(', ')) + '). No se instalará nada hasta corregirlo: el worker verifica el sha256 antes de tocar el dispositivo.';
+                    return;
+                  }
+                  el.style.background = 'rgba(0,255,136,0.06)';
+                  el.style.border = '1px solid rgba(0,255,136,0.28)';
+                  el.style.color = '#86efac';
+                  var txt = 'Publicado: <strong>' + esc(v.versionName || '?') + '</strong> (versionCode ' +
+                    esc(v.versionCode == null ? '?' : v.versionCode) + ')';
+                  if (v.repo_build && v.repo_build.published === false) {
+                    txt += ' · <span style="color:#fcd34d;">el repo puede construir versionCode ' +
+                      esc(v.repo_build.versionCode) + ' (' + esc(v.repo_build.versionName) + '), aún no publicado</span>';
+                  }
+                  el.innerHTML = txt;
+                }
+
+                function renderDevices(payload) {
+                  var list = $('apeDevList');
+                  if (!list) return;
+                  renderControl(payload.control);
+                  renderVersion(payload.version);
+
+                  var devs = payload.devices || [];
+                  if (!devs.length) {
+                    list.innerHTML =
+                      '<div style="padding:12px;border:1px dashed rgba(255,255,255,0.18);border-radius:6px;' +
+                      'font-size:0.76rem;color:#94a3b8;line-height:1.7;">' +
+                      '<strong style="color:#e2e8f0;">Ningún dispositivo registrado ni alcanzable por ADB.</strong><br>' +
+                      'El registro está vacío y ningún transporte (WireGuard, LAN o serial USB) respondió. ' +
+                      'Conecta el dispositivo y pulsa «Detectar», o instálalo la primera vez con el Setup Kit / <a href="https://iptv-ape.duckdns.org/ara/install" target="_blank" style="color:#60a5fa;">/ara/install</a>.' +
+                      '</div>';
+                    return;
+                  }
+
+                  var html = '';
+                  for (var n = 0; n < devs.length; n++) {
+                    var d = devs[n];
+                    var st = stateOf(d);
+                    var inst = d.installed && d.installed.present
+                      ? ('instalado ' + esc(d.installed.versionName || '?') + ' (' + esc(d.installed.versionCode) + ')')
+                      : 'no instalado';
+                    var tgt = d.target
+                      ? ('objetivo ' + esc(d.target.versionName || '?') + ' (' + esc(d.target.versionCode) + ')')
+                      : 'objetivo desconocido';
+
+                    html += '<div style="padding:12px;border:1px solid rgba(255,255,255,0.12);border-radius:8px;background:rgba(0,0,0,0.28);">';
+                    html += '<div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:6px;">' +
+                      '<div style="font-size:0.84rem;font-weight:700;color:#e2e8f0;">' +
+                      esc(d.model || d.device_id || 'dispositivo sin modelo') +
+                      (d.manufacturer ? ' <span style="font-weight:400;color:#94a3b8;font-size:0.74rem;">· ' + esc(d.manufacturer) + '</span>' : '') +
+                      '</div>' +
+                      badge(st.text, st.color, st.bg) + '</div>';
+
+                    var meta = [];
+                    if (d.device_id) meta.push('id ' + esc(d.device_id));
+                    if (d.device_ip) meta.push('ip ' + esc(d.device_ip));
+                    if (d.platform) meta.push(esc(d.platform));
+                    if (d.android_version) meta.push('Android ' + esc(d.android_version) + (d.sdk ? ' (SDK ' + esc(d.sdk) + ')' : ''));
+                    if (d.abi) meta.push(esc(d.abi));
+                    if (d.soc) meta.push('SoC ' + esc(d.soc));
+                    if (d.transport) meta.push('vía ' + esc(d.transport));
+
+                    html += '<div style="font-size:0.71rem;color:#94a3b8;line-height:1.7;">' + meta.join(' · ') + '</div>';
+                    html += '<div style="font-size:0.71rem;color:#cbd5e1;margin-top:4px;">' + inst + ' → ' + tgt + '</div>';
+
+                    if (!d.online && d.reachable_reason) {
+                      html += '<div style="font-size:0.71rem;color:#fca5a5;margin-top:4px;line-height:1.6;">motivo: ' + esc(d.reachable_reason) + '</div>';
+                    }
+
+                    html += '<div style="display:flex;gap:7px;flex-wrap:wrap;margin-top:10px;">';
+                    var acts = [['install', 'Instalar'], ['update', 'Actualizar'], ['reinstall', 'Reinstalar'], ['uninstall', 'Desinstalar']];
+                    var disabled = (busy[d.device_id] ? ' disabled' : '') + (d.online ? '' : ' disabled');
+                    for (var k = 0; k < acts.length; k++) {
+                      html += '<button type="button" class="btn" data-ape-act="' + acts[k][0] + '" data-ape-dev="' + esc(d.device_id) + '"' +
+                        ' style="' + btnStyle(acts[k][0]) + '"' + disabled + '>' + acts[k][1] + '</button>';
+                    }
+                    html += '</div>';
+
+                    html += '<div id="apeJob-' + esc(String(d.device_id).replace(/[^0-9A-Za-z]/g, '_')) + '"' +
+                      ' style="display:none;margin-top:9px;padding:8px 10px;background:#05070c;border:1px solid rgba(255,255,255,0.1);border-radius:6px;' +
+                      'font-family:monospace;font-size:0.69rem;color:#cbd5e1;max-height:190px;overflow:auto;white-space:pre-wrap;line-height:1.65;"></div>';
+
+                    html += '</div>';
+                  }
+                  list.innerHTML = html;
+                }
+
+                function jobBox(deviceId) {
+                  return $('apeJob-' + String(deviceId).replace(/[^0-9A-Za-z]/g, '_'));
+                }
+
+                function paintJob(deviceId, job) {
+                  var box = jobBox(deviceId);
+                  if (!box) return;
+                  box.style.display = 'block';
+                  var lines = ['[' + (job.state || '?') + '] ' + (job.action || '') + ' · job ' + (job.id || '')];
+                  var steps = job.steps || [];
+                  for (var i = 0; i < steps.length; i++) {
+                    lines.push((steps[i].ok ? '  OK   ' : '  FAIL ') + steps[i].step + ' — ' + (steps[i].detail || ''));
+                  }
+                  if (job.result) {
+                    lines.push('→ ' + (job.result.ok ? 'ÉXITO: ' : 'FALLO: ') + (job.result.message || ''));
+                  }
+                  box.textContent = lines.join('\n');
+                  if (job.state === 'failed' || (job.result && job.result.ok === false)) {
+                    box.style.borderColor = 'rgba(239,68,68,0.5)'; box.style.color = '#fca5a5';
+                  } else if (job.state === 'done' && job.result && job.result.ok) {
+                    box.style.borderColor = 'rgba(34,197,94,0.5)'; box.style.color = '#86efac';
+                  }
+                  box.scrollTop = box.scrollHeight;
+                }
+
+                function load() {
+                  $('apeDevControl').textContent = 'Consultando…';
+                  fetch(API + '?action=devices', { cache: 'no-store', credentials: 'same-origin' })
+                    .then(function (r) {
+                      return r.text().then(function (t) {
+                        var j = null;
+                        try { j = JSON.parse(t); } catch (e) { j = null; }
+                        if (!r.ok || !j) {
+                          throw new Error('HTTP ' + r.status + ' — ' + (j && j.message ? j.message : t.slice(0, 160)));
+                        }
+                        return j;
+                      });
+                    })
+                    .then(function (j) { loadedOnce = true; renderDevices(j); })
+                    .catch(function (e) {
+                      $('apeDevControl').innerHTML = '<span style="color:#fca5a5;">No se pudo consultar el endpoint: ' +
+                        esc(e.message) + '</span>';
+                      var list = $('apeDevList');
+                      if (list && !loadedOnce) {
+                        list.innerHTML = '<div style="padding:12px;border:1px dashed rgba(239,68,68,0.4);border-radius:6px;' +
+                          'font-size:0.76rem;color:#fca5a5;line-height:1.7;">' +
+                          'El plano de control no responde todavía. Si acabas de desplegarlo, espera al smoke del CI/CD. ' +
+                          'Mientras tanto, la vía de primera instalación es el Setup Kit de arriba o ' +
+                          '<a href="https://iptv-ape.duckdns.org/ara/install" target="_blank" style="color:#60a5fa;">/ara/install</a>.</div>';
+                      }
+                    });
+                }
+
+                function poll(deviceId, jobId, startedAt) {
+                  fetch(API + '?action=job&id=' + encodeURIComponent(jobId), { cache: 'no-store', credentials: 'same-origin' })
+                    .then(function (r) { return r.json(); })
+                    .then(function (j) {
+                      if (!j || !j.ok || !j.job) throw new Error((j && j.message) || 'trabajo no encontrado');
+                      var job = j.job;
+                      paintJob(deviceId, job);
+                      if (job.state === 'done' || job.state === 'failed') {
+                        delete busy[deviceId];
+                        load();
+                        return;
+                      }
+                      if (Date.now() - startedAt > POLL_MAX) {
+                        delete busy[deviceId];
+                        var box = jobBox(deviceId);
+                        if (box) {
+                          box.textContent += '\n[timeout] el trabajo sigue en ' + job.state +
+                            ' tras ' + Math.round(POLL_MAX / 1000) + 's — revisa el worker en el VPS.';
+                        }
+                        load();
+                        return;
+                      }
+                      setTimeout(function () { poll(deviceId, jobId, startedAt); }, POLL_MS);
+                    })
+                    .catch(function (e) {
+                      delete busy[deviceId];
+                      var box = jobBox(deviceId);
+                      if (box) { box.style.display = 'block'; box.textContent = '[error] ' + e.message; }
+                      load();
+                    });
+                }
+
+                function act(deviceId, action) {
+                  if (action === 'reinstall' || action === 'uninstall') {
+                    var msg = action === 'uninstall'
+                      ? '¿Desinstalar de ' + deviceId + '? Se borrarán sus datos en el dispositivo.'
+                      : '¿Reinstalar en ' + deviceId + '? Se reinstalará el APK publicado (permite bajar de versión).';
+                    if (!window.confirm(msg)) return;
+                  }
+                  busy[deviceId] = true;
+                  var box = jobBox(deviceId);
+                  if (box) { box.style.display = 'block'; box.textContent = 'encolando ' + action + '…'; }
+
+                  fetch(API + '?action=' + encodeURIComponent(action), {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'same-origin',
+                    body: JSON.stringify({ device_id: deviceId })
+                  })
+                    .then(function (r) {
+                      return r.json().then(function (j) { return { status: r.status, j: j }; });
+                    })
+                    .then(function (res) {
+                      var j = res.j || {};
+                      if (res.status === 409 && j.job_id) {
+                        if (box) box.textContent = 'ya hay un trabajo en curso — sigo ese: ' + j.job_id;
+                        poll(deviceId, j.job_id, Date.now());
+                        return;
+                      }
+                      if (!j.ok || !j.job_id) {
+                        throw new Error(j.message || ('HTTP ' + res.status));
+                      }
+                      if (box) box.textContent = 'job ' + j.job_id + ' encolado — esperando al worker…';
+                      poll(deviceId, j.job_id, Date.now());
+                    })
+                    .catch(function (e) {
+                      delete busy[deviceId];
+                      if (box) { box.style.display = 'block'; box.style.color = '#fca5a5'; box.textContent = '[error] ' + e.message; }
+                    });
+                }
+
+                // Delegación: sirve para los botones recién pintados.
+                document.addEventListener('click', function (ev) {
+                  var t = ev.target;
+                  if (!t || !t.getAttribute) return;
+                  var a = t.getAttribute('data-ape-act');
+                  var d = t.getAttribute('data-ape-dev');
+                  if (a && d) { act(d, a); return; }
+                  if (t.id === 'apeDevRefresh') { load(); }
+                });
+
+                // Carga perezosa al abrir la pestaña Compartir por primera vez.
+                document.addEventListener('click', function (ev) {
+                  var t = ev.target;
+                  if (!t || !t.closest) return;
+                  var tabBtn = t.closest('[data-tab="share"]');
+                  if (tabBtn && !loadedOnce) setTimeout(load, 60);
+                });
+
+                if (document.readyState === 'loading') {
+                  document.addEventListener('DOMContentLoaded', function () { setTimeout(load, 400); });
+                } else {
+                  setTimeout(load, 400);
+                }
+              })();
+            </script>
+
             <div class="panel-header" style="margin-bottom:10px;">
               <div class="panel-title">Compartir · Código QR</div>
             </div>

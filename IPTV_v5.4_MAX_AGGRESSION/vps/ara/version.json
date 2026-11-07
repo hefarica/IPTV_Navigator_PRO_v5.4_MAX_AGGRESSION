@@ -1,9 +1,20 @@
 {
-  "versionCode": 1,
-  "versionName": "2.0.0",
-  "sha256": "91cde550462090fb1b3931b3acdbeee8d39875d01fb1ab88c833f4d56b6c67aa",
-  "size": 34192621,
+  "versionCode": 6,
+  "versionName": "2.3.0-noWG",
+  "sha256": "e1d47129a4122dad72bc3969cd4263d30eb3fd07e1d72ba81a2d1fd790dd0e24",
+  "size": 27625887,
   "apk": "/ara/agent.apk",
   "min_android": 22,
-  "note": "Sincronizado con el VPS (fuente de verdad, APK 34MB publicado). Se actualiza al publicar nuevo APK: sha256=sha256sum agent.apk; versionCode=build.gradle.kts."
+  "package": "com.ape.crystalagent",
+  "abis": ["arm64-v8a", "armeabi-v7a", "x86", "x86_64"],
+  "published_at": "2026-10-30T03:27:49Z",
+  "repo_build": {
+    "versionCode": 52,
+    "versionName": "3.9.5-adb-firetv-shim",
+    "source": "android/ape-crystal-agent/app/build.gradle.kts",
+    "published": false,
+    "note": "El repo puede construir un versionCode MAYOR (52) que el APK publicado (6). Publicarlo es decision del operador; hasta entonces el objetivo real de auto-update es 6."
+  },
+  "note": "Manifiesto del APK SERVIDO en /ara/agent.apk. Medido: sha256=sha256sum agent.apk, size=stat -c %s. Corregido 2026-11-07: la copia del repo estaba en versionCode 1 / 2.0.0 / sha 91cde550 / size 34192621, que NO correspondia al APK desplegado (6 / 2.3.0-noWG / e1d47129 / 27625887) y habria roto el self-update. Gate: node tools/ara/check_ara_dist_coherence.js",
+  "generated_at": "2026-11-07T15:00:00Z"
 }
