@@ -256,6 +256,11 @@ function chKey(id, sdr, sdr720) { return id + '|' + (sdr720 ? 'h' : sdr ? 's' : 
 
 function reapDir(dir) {
   if (!dir) return;
+  // INSTRUMENTACION de la erradicacion: si esto imprime LIVE_MATCH, el reaping
+  // intento borrar el directorio de un hijo VIVO (la carrera original). Con
+  // directorios por run no puede ocurrir: los paths son distintos por construccion.
+  const _live = !!(current && current.dir === dir);
+  log('REAP', dir, _live ? 'LIVE_MATCH(bloqueado)' : 'ok');
   // ERRADICACION 2026-11-07: con directorios POR RUN este guardia es redundante,
   // pero si algun dia vuelve un path compartido impide borrar el dir vivo.
   if (current && current.dir === dir) return;
@@ -410,6 +415,9 @@ async function start(id, spec, sdr, sdr720) {
   const slotOk = await slotAcquire();
   if (!slotOk) {
     log('START_ABORT', id, 'slot ocupado, no se abre una segunda conexion');
+    // El mkdir de arriba ya creo el dir del run: si se aborta hay que recogerlo
+    // o queda huerfano en /dev/shm (fuga detectada en el stress de 2026-11-07).
+    reapDir(dir);
     return;
   }
   fs.mkdirSync(dir, { recursive: true });

@@ -213,9 +213,31 @@ SPAWN_ERROR -> 0 · SLOT_TIMEOUT -> 0
 runs en disco: 1 (solo el vivo, no se acumulan)
 ```
 
+**Invariante instrumentado.** `reapDir()` registra `REAP <dir> ok|LIVE_MATCH(bloqueado)`.
+Si alguna vez el reaping apuntara al directorio de un hijo **vivo**, saldría `LIVE_MATCH`.
+Medido tras la erradicación: **119 `REAP`, 0 `LIVE_MATCH`**.
+
+**Fuga cerrada.** El `mkdir` ocurre antes de `slotAcquire()`; si el arranque se abortaba
+por slot ocupado, el directorio quedaba huérfano (3 huérfanos vistos en el stress).
+Ahora ese camino llama a `reapDir(dir)` antes de salir. Verificado: con 0 hijos vivos
+quedan **0 run dirs**.
+
+**Reparto temporal de los síntomas** (el journal completo incluye días anteriores):
+
+```
+desde 2026-11-06 23:00 -> Could-not-write-header=1  encoded-0-frames=1   (el incidente 05:21:02)
+desde 2026-11-07 06:14 -> Could-not-write-header=0  encoded-0-frames=0   (tras la erradicación)
+```
+
 > **Honesto:** el baseline previo (16 peticiones) tampoco reprodujo el fallo — es una
 > carrera temporal. Lo que sostiene la erradicación es el mecanismo (path compartido +
-> reaping sin guarda) eliminado por diseño, más 40/40 sin errores después.
+> reaping sin guarda) eliminado por diseño, el invariante `LIVE_MATCH=0` sobre 119 reaps,
+> y 0 síntomas después del cambio.
+>
+> **No confundir** los 503 concurrentes con esta carrera: peticiones simultáneas a canales
+> distintos dan `SLOT_TIMEOUT hijos vivos=1` + `START_ABORT slot ocupado`. Es el diseño de
+> **un solo canal** (`concurrent_channels: 1`, el proveedor acepta `max_connections=1`),
+> no el reaping.
 
 ## Arreglos del 2026-11-07 (transcode)
 
