@@ -3617,6 +3617,7 @@
                     install: 'background:rgba(34,197,94,0.12);border:1px solid rgba(34,197,94,0.45);color:#86efac;',
                     update: 'background:rgba(59,130,246,0.12);border:1px solid rgba(59,130,246,0.45);color:#93c5fd;',
                     reinstall: 'background:rgba(245,158,11,0.12);border:1px solid rgba(245,158,11,0.45);color:#fcd34d;',
+                    repair: 'background:rgba(139,92,246,0.12);border:1px solid rgba(139,92,246,0.45);color:#c084fc;',
                     uninstall: 'background:rgba(239,68,68,0.12);border:1px solid rgba(239,68,68,0.45);color:#fca5a5;'
                   };
                   return (map[kind] || '') +
@@ -3718,7 +3719,7 @@
                     }
 
                     html += '<div style="display:flex;gap:7px;flex-wrap:wrap;margin-top:10px;">';
-                    var acts = [['install', 'Instalar'], ['update', 'Actualizar'], ['reinstall', 'Reinstalar'], ['uninstall', 'Desinstalar']];
+                    var acts = [['install', 'Instalar'], ['update', 'Actualizar'], ['reinstall', 'Reinstalar'], ['repair', 'Reparar'], ['uninstall', 'Desinstalar']];
                     var disabled = (busy[d.device_id] ? ' disabled' : '') + (d.online ? '' : ' disabled');
                     for (var k = 0; k < acts.length; k++) {
                       html += '<button type="button" class="btn" data-ape-act="' + acts[k][0] + '" data-ape-dev="' + esc(d.device_id) + '"' +
@@ -3824,10 +3825,12 @@
                 }
 
                 function act(deviceId, action) {
-                  if (action === 'reinstall' || action === 'uninstall') {
+                  if (action === 'reinstall' || action === 'uninstall' || action === 'repair') {
                     var msg = action === 'uninstall'
                       ? '¿Desinstalar de ' + deviceId + '? Se borrarán sus datos en el dispositivo.'
-                      : '¿Reinstalar en ' + deviceId + '? Se reinstalará el APK publicado (permite bajar de versión).';
+                      : (action === 'repair'
+                        ? '¿Reparar en ' + deviceId + '? Se desinstalará y se reinstalará limpio (útil si la app no abre o quedó corrupta).'
+                        : '¿Reinstalar en ' + deviceId + '? Se reinstalará el APK publicado (permite bajar de versión).');
                     if (!window.confirm(msg)) return;
                   }
                   busy[deviceId] = true;

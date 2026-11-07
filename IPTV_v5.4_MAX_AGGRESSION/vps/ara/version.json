@@ -1,20 +1,28 @@
 {
-  "versionCode": 6,
+  "versionCode": 600,
   "versionName": "2.3.0-noWG",
-  "sha256": "e1d47129a4122dad72bc3969cd4263d30eb3fd07e1d72ba81a2d1fd790dd0e24",
-  "size": 27625887,
+  "sha256": "c3dac8a76792f205b0e87936ceb68ec38aae8d5a59a2e8acce73970d3957b121",
+  "size": 25440531,
   "apk": "/ara/agent.apk",
   "min_android": 22,
   "package": "com.ape.crystalagent",
   "abis": ["arm64-v8a", "armeabi-v7a", "x86", "x86_64"],
-  "published_at": "2026-10-30T03:27:49Z",
+  "published_at": "2026-11-07T17:20:00Z",
+  "repaired": {
+    "why": "El APK original NO se podia instalar en ningun dispositivo: Android respondia 'No se instalo la app porque parece que el paquete no es valido'.",
+    "defecto": "android:icon y android:banner apuntaban a @android:drawable/ic_media_play (id 0x01080024), un recurso del FRAMEWORK que no resuelve en el dispositivo. Medido con aapt: rc=1 y \"ERROR getting 'android:icon' attribute\" en los 19 APK del repo.",
+    "arreglo": "Se eliminaron ambos atributos del AndroidManifest BINARIO (la app no tiene icono propio; el sistema pone el de por defecto). Manifest 7668 -> 7628 bytes. Realineado con zipalign -p 4 y re-firmado con apksigner v1+v2+v3.",
+    "verificacion": "aapt dump badging: rc=0, 0 errores de icono, application: presente, launchable-activity: com.ape.crystalagent.MainActivity, native-code: las 4 ABIs.",
+    "herramienta": "tools/ara/repair_apk_manifest.py",
+    "versionCode": "6 -> 600 para que REEMPLACE cualquier version instalada (downgrade cubierto igualmente con adb install -d)."
+  },
   "repo_build": {
     "versionCode": 52,
     "versionName": "3.9.5-adb-firetv-shim",
     "source": "android/ape-crystal-agent/app/build.gradle.kts",
     "published": false,
-    "note": "El repo puede construir un versionCode MAYOR (52) que el APK publicado (6). Publicarlo es decision del operador; hasta entonces el objetivo real de auto-update es 6."
+    "note": "La FUENTE ya esta corregida (icon/banner eliminados del AndroidManifest.xml), asi que un build nuevo con Gradle saldra valido. Cuando se publique, subir versionCode por encima de 600."
   },
-  "note": "Manifiesto del APK SERVIDO en /ara/agent.apk. Medido: sha256=sha256sum agent.apk, size=stat -c %s. Corregido 2026-11-07: la copia del repo estaba en versionCode 1 / 2.0.0 / sha 91cde550 / size 34192621, que NO correspondia al APK desplegado (6 / 2.3.0-noWG / e1d47129 / 27625887) y habria roto el self-update. Gate: node tools/ara/check_ara_dist_coherence.js",
-  "generated_at": "2026-11-07T15:00:00Z"
+  "note": "Manifiesto del APK SERVIDO en /ara/agent.apk. Medido: sha256=sha256sum, size=stat -c %s. Gate: node tools/ara/check_ara_dist_coherence.js. Historial: la copia del repo estaba en versionCode 1/2.0.0/sha 91cde550 (corregido 2026-11-07); ese APK v6 tenia el manifest invalido y se reemplazo por el reparado v600.",
+  "generated_at": "2026-11-07T17:20:00Z"
 }

@@ -5,6 +5,56 @@
 | Fichero | Rol |
 |---|---|
 | `check_ara_dist_coherence.js` | Gate: verifica que `version.json` describe **realmente** al APK servido (sha256, tamaño, versionCode/Name, ZIP válido y ABIs). |
+| `repair_apk_manifest.py` | Repara el `AndroidManifest.xml` **binario** de un APK compilado (sin Gradle), realinea y re-firma. |
+
+## Reparar un APK que Android rechaza
+
+**Síntoma:** el instalador del TV dice *"No se instaló la app porque parece que el paquete no es válido"* (`INSTALL_FAILED_INVALID_APK`).
+
+**Causa medida el 2026-11-07:** el manifest declaraba
+
+```xml
+android:icon="@android:drawable/ic_media_play"
+android:banner="@android:drawable/ic_media_play"
+```
+
+`@android:drawable/*` es un recurso del **framework**. El id `0x01080024` no resuelve en el framework del dispositivo y PackageManager rechaza el paquete entero. Afectaba a **los 19 APK** de `ara-x/app-dist` (`aapt` → `rc=1`, `ERROR getting 'android:icon' attribute`).
+
+```bash
+python tools/ara/repair_apk_manifest.py \
+  --in agent.apk --out agent_fixed.apk \
+  --version-code 600 \
+  --zipalign  "$ANDROID_HOME/build-tools/34.0.0/zipalign.exe" \
+  --apksigner "$ANDROID_HOME/build-tools/34.0.0/apksigner.bat" \
+  --keystore ~/.android/debug.keystore --ks-pass android --ks-key-alias androiddebugkey
+```
+
+El script **elimina** los atributos (neutralizarlos a `TYPE_NULL` no basta: aapt sigue intentando resolverlos), corrige los tamaños del chunk, realinea y firma v1+v2+v3.
+
+**Verificación obligatoria del resultado:**
+
+```bash
+aapt dump badging agent_fixed.apk -I "$ANDROID_HOME/platforms/android-34/android.jar"
+# debe salir rc=0, sin errores, con 'application:' y 'launchable-activity:'
+```
+
+La fuente también quedó corregida (`android/ape-crystal-agent/app/src/main/AndroidManifest.xml`): si algún día se quiere icono propio, usar `@mipmap/ic_launcher`, **nunca** `@android:drawable/*`.
+
+## Instalación universal (idempotente)
+
+El worker no pregunta marca ni modelo. Cascada en `smart_install()`:
+
+| Estado previo | Acción |
+|---|---|
+| no instalado | `install -d` |
+| misma versión | **no-op** (idempotente) |
+| versión anterior | `install -r -d` |
+| versión posterior | `install -r -d` (downgrade permitido) |
+| firma distinta / estado corrupto | `uninstall` + `install` |
+| acción **Reparar** | `uninstall` + `install` aunque la versión coincida |
+
+El éxito **no** se cree al `adb`: se comprueba el `versionCode` realmente instalado con `dumpsys package`.
+
 
 ## El gate de coherencia
 

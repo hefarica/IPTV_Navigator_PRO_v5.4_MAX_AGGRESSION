@@ -288,7 +288,72 @@ cast_state() { # <serial> <device_id> <online:0|1> <transport> <reason>
     fi
 }
 
-# ── Ejecucion de un trabajo ──────────────────────────────────────────────────
+# ── Instalacion UNIVERSAL, IDEMPOTENTE y REPARADORA ──────────────────────────
+# Cubre los seis casos sin preguntar marca, modelo ni version instalada:
+#   no instalado      -> install
+#   misma version     -> no-op (idempotente: repetir no cambia nada)
+#   version anterior  -> install -r
+#   version posterior -> install -r -d (downgrade permitido: "reemplaza cualquier version")
+#   firma distinta    -> uninstall + install (INSTALL_FAILED_UPDATE_INCOMPATIBLE)
+#   estado corrupto   -> uninstall + install (reparacion)
+# El veredicto NO se cree al adb: se comprueba el versionCode realmente instalado.
+smart_install() { # <serial> <pkg> <target_code> <sfile> [force_clean]
+    local serial="$1" pkg="$2" target_code="$3" sfile="$4" force_clean="${5:-0}"
+    local before out rc after code="" attempt
+
+    before="$(pkg_installed "$serial" "$pkg")"
+
+    # 0) REPARACION explicita: se borra el estado y se instala limpio, aunque la
+    #    version coincida. Es el caso "esta instalada pero rota / no abre".
+    if [ "$force_clean" = "1" ]; then
+        step "$sfile" "repair-mode" 1 \
+            "reparacion solicitada: se desinstala y se instala limpio (antes: ${before:-no instalado})"
+        adb -s "$serial" uninstall "$pkg" >/dev/null 2>&1 || true
+        out="$(adb -s "$serial" install -d "$APK_FILE" 2>&1 | tr -d '\r')"
+        rc=$?
+        step "$sfile" "install-clean" "$([ $rc -eq 0 ] && echo 1 || echo 0)" "$out"
+        after="$(pkg_installed "$serial" "$pkg")"
+        echo "$after"
+        return 0
+    fi
+
+    # 1) Idempotencia: si ya esta en la version objetivo, no se toca el dispositivo.
+    if [ -n "$before" ] && [ -n "$target_code" ] && [ "${before%%|*}" = "$target_code" ]; then
+        step "$sfile" "already-at-target" 1 \
+            "versionCode ${target_code} ya instalado — sin cambios (idempotente)"
+        echo "$before"
+        return 0
+    fi
+
+    # 2) Intento limpio con reemplazo y downgrade permitidos.
+    out="$(adb -s "$serial" install -r -d "$APK_FILE" 2>&1 | tr -d '\r')"
+    rc=$?
+    step "$sfile" "install -r -d" "$([ $rc -eq 0 ] && echo 1 || echo 0)" "$out"
+
+    # 3) APK test-only
+    if [ $rc -ne 0 ] && printf '%s' "$out" | grep -qi "TEST_ONLY"; then
+        out="$(adb -s "$serial" install -r -d -t "$APK_FILE" 2>&1 | tr -d '\r')"
+        rc=$?
+        step "$sfile" "install -t" "$([ $rc -eq 0 ] && echo 1 || echo 0)" "$out"
+    fi
+
+    # 4) Reemplazo forzado: firma distinta, downgrade no permitido, estado roto.
+    if [ $rc -ne 0 ]; then
+        if printf '%s' "$out" | grep -qiE "UPDATE_INCOMPATIBLE|INCONSISTENT_CERTIFICATES|SIGNATURE|VERSION_DOWNGRADE|ALREADY_EXISTS|INVALID_APK|FAILED_INSTALL"; then
+            step "$sfile" "forced-replace" 1 \
+                "el install directo fallo ($out) — se desinstala y se reinstala limpio (reparacion)"
+            adb -s "$serial" uninstall "$pkg" >/dev/null 2>&1 || true
+            out="$(adb -s "$serial" install -d "$APK_FILE" 2>&1 | tr -d '\r')"
+            rc=$?
+            step "$sfile" "install-clean" "$([ $rc -eq 0 ] && echo 1 || echo 0)" "$out"
+        fi
+    fi
+
+    after="$(pkg_installed "$serial" "$pkg")"
+    echo "$after"
+    return 0
+}
+
 step() { # <jobstate_file> <step> <ok:0|1> <detail>  (append atomico al s- file)
     local f="$1" s="$2" ok="$3" d="$4"
     php -r '
@@ -413,34 +478,11 @@ process_job() { # <q-file>
     fi
     step "$sfile" "verify-apk" 1 "sha256=$sha_real size=$(stat -c %s "$APK_FILE")"
 
-    local flags="-r"
-    case "$action" in
-        install)   flags="-r" ;;      # limpio: desinstala primero, luego instala
-        update)    flags="-r" ;;
-        reinstall) flags="-r -d" ;;
-    esac
-
-    if [ "$action" = "install" ] && [ -n "$before" ]; then
-        local uout
-        uout="$(adb -s "$serial" uninstall "$pkg" 2>&1 | tr -d '\r')"
-        step "$sfile" "uninstall-prev" 1 "$uout"
-    fi
-
-    local iout irc
-    # shellcheck disable=SC2086
-    iout="$(adb -s "$serial" install $flags "$APK_FILE" 2>&1 | tr -d '\r')"
-    irc=$?
-    step "$sfile" "install" "$([ $irc -eq 0 ] && echo 1 || echo 0)" "$iout"
-
-    # Reintento con -t si el APK es test-only (honesto y documentado)
-    if [ $irc -ne 0 ] && printf '%s' "$iout" | grep -qi "test.*only\|INSTALL_FAILED_TEST_ONLY"; then
-        # shellcheck disable=SC2086
-        iout="$(adb -s "$serial" install $flags -t "$APK_FILE" 2>&1 | tr -d '\r')"
-        irc=$?
-        step "$sfile" "install-retry-testonly" "$([ $irc -eq 0 ] && echo 1 || echo 0)" "$iout"
-    fi
-
-    after="$(pkg_installed "$serial" "$pkg")"
+    # Cascada universal: cubre instalar / actualizar / reinstalar / reparar y
+    # reemplazar cualquier version, sea cual sea la marca y el estado previo.
+    local fclean=0
+    [ "$action" = "repair" ] && fclean=1
+    after="$(smart_install "$serial" "$pkg" "$target_code" "$sfile" "$fclean")"
     code="${after%%|*}"
 
     local before_json after_json

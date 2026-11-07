@@ -21,12 +21,20 @@
     <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
     <uses-feature android:name="android.software.leanback" android:required="false" />
 
+    <!-- ⚠ ICONO/BANNER: NO usar @android:drawable/* aqui.
+         Estaba puesto android:icon="@android:drawable/ic_media_play" (y banner igual),
+         que es un recurso del FRAMEWORK. Ese id (0x01080024) no resuelve en el
+         framework del dispositivo, y PackageManager rechaza el paquete entero con
+         "No se instaló la app porque parece que el paquete no es válido".
+         Medido el 2026-11-07: los 19 APK del repo fallaban por esto (aapt rc=1,
+         "ERROR getting 'android:icon' attribute"). Sin android:icon el sistema usa
+         el icono por defecto y el APK instala en cualquier dispositivo.
+         Si algun dia se quiere icono propio, anadir res/mipmap-*/ic_launcher y
+         referenciar "@mipmap/ic_launcher" — NUNCA "@android:drawable/...". -->
     <application
         android:allowBackup="false"
         android:usesCleartextTraffic="true"
-        android:label="APE Crystal Agent"
-        android:icon="@android:drawable/ic_media_play"
-        android:banner="@android:drawable/ic_media_play">
+        android:label="APE Crystal Agent">
 
         <activity
             android:name=".MainActivity"

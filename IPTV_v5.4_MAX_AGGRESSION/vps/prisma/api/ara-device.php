@@ -57,7 +57,7 @@ const JOB_TTL        = 86400;                    // 24 h
 const WORKER_STALE   = 30;                       // s sin latido => worker caido
 const MAX_BODY       = 4096;
 
-const ACTIONS_MUT = ['probe', 'install', 'update', 'reinstall', 'uninstall'];
+const ACTIONS_MUT = ['probe', 'install', 'update', 'reinstall', 'uninstall', 'repair'];
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Salida
