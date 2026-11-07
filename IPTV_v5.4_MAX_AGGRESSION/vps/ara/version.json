@@ -1,27 +1,28 @@
 {
-  "versionCode": 650,
+  "versionCode": 651,
   "versionName": "3.9.5-adb-firetv-shim",
-  "sha256": "7f3f75e103cc0e1ca87cd81b9b4679590c69b7c940b597c7e0872d13db2d3ca0",
+  "sha256": "8d3b145811c0bab3a10952329a81cadc477b08bd365b70f173cfe34ff52aa6e4",
   "size": 25678434,
   "apk": "/ara/agent.apk",
   "min_android": 22,
   "package": "com.ape.crystalagent",
   "abis": ["arm64-v8a", "armeabi-v7a", "x86", "x86_64"],
   "features": ["ottshim"],
-  "published_at": "2026-11-07T18:05:00Z",
+  "published_at": "2026-11-07T18:55:00Z",
   "repaired": {
-    "base": "android/ape-crystal-agent/app/build/outputs/apk/debug/app-debug.apk (era versionCode 52 / 3.9.5-adb-firetv-shim) — la build CON ottshim",
-    "why": "El APK no se podia instalar en ningun dispositivo: Android respondia 'No se instalo la app porque parece que el paquete no es valido'.",
-    "defecto": "android:icon y android:banner apuntaban a @android:drawable/ic_media_play (id 0x01080024), recurso del FRAMEWORK que no resuelve en el dispositivo. aapt daba rc=1 y \"ERROR getting 'android:icon' attribute\" en las 19 builds de ara-x/app-dist y en esta.",
-    "arreglo": "Se eliminaron ambos atributos del AndroidManifest BINARIO. Manifest 11604 -> 11564 bytes. zipalign -p 4 + apksigner v1+v2+v3.",
-    "verificacion": "aapt: rc=0, 0 errores de icono, application: presente, launchable-activity com.ape.crystalagent.MainActivity, native-code 4 ABIs. ottshim verificado dentro: dev/venice/ottshim presente en classes2.dex, classes3.dex y classes4.dex.",
-    "herramienta": "tools/ara/repair_apk_manifest.py"
+    "base": "android/ape-crystal-agent/app/build/outputs/apk/debug/app-debug.apk (52 / 3.9.5-adb-firetv-shim) — la build CON ottshim",
+    "why": "El APK no se podia instalar: Android respondia 'paquete no valido'.",
+    "defecto": "android:icon y android:banner apuntaban a @android:drawable/ic_media_play (0x01080024), recurso del FRAMEWORK que no resuelve en el dispositivo.",
+    "arreglo": "AHORA SE REEMPLAZA, NO SE ELIMINA: icon y banner apuntan a 0x7f050005 = drawable/exo_ic_default_album_image, un recurso PROPIO del APK. Motivo: esta app declara LEANBACK_LAUNCHER (es Android TV) y Android TV espera android:banner; quitarlo puede dejar al launcher sin que dibujar. El manifest conserva su tamano exacto (11604 -> 11604 bytes, +0): solo cambian 3 valores, sin cirugia de chunks.",
+    "verificacion": "aapt rc=0, 0 errores, application: icon='res/drawable-anydpi-v21/exo_ic_default_album_image.xml' banner=igual. Diff del xmltree vs original: SOLO versionCode 52->651, icon 0x01080024->0x7f050005, banner 0x01080024->0x7f050005. Nada mas cambio. ottshim verificado dentro (87/15/77/1).",
+    "herramienta": "tools/ara/repair_apk_manifest.py --icon-ref"
   },
   "versionCode_history": {
-    "6": "APK viejo 2.3.0-noWG, SIN ottshim, manifest invalido. Reemplazado.",
-    "600": "Repare ese APK viejo subiendole el codigo — ERROR: dejo la UI sin ottshim. Reemplazado por 650.",
-    "650": "Build 3.9.5-adb-firetv-shim (ott+shim) reparada. Es la vigente."
+    "6": "2.3.0-noWG SIN ottshim, manifest invalido.",
+    "600": "Repare ese APK viejo subiendole el codigo — ERROR: UI sin ottshim.",
+    "650": "3.9.5 con ottshim, pero con icon/banner ELIMINADOS. En una app leanback eso es riesgoso; el operador reporto bloqueo.",
+    "651": "3.9.5 con ottshim y icon/banner apuntando a un recurso PROPIO. Es la vigente."
   },
-  "note": "Manifiesto del APK SERVIDO en /ara/agent.apk. Medido: sha256=sha256sum, size=stat -c %s. Gate: node tools/ara/check_ara_dist_coherence.js. El versionCode 650 es MAYOR que el 600 publicado antes, asi que reemplaza la instalacion previa sin ser downgrade. Un build futuro con Gradle debe superar 650.",
-  "generated_at": "2026-11-07T18:05:00Z"
+  "note": "Manifiesto del APK SERVIDO en /ara/agent.apk. sha256=sha256sum, size=stat -c %s. Gate: node tools/ara/check_ara_dist_coherence.js. 651 > 650 > 600: reemplaza cualquier instalacion previa sin ser downgrade.",
+  "generated_at": "2026-11-07T18:55:00Z"
 }

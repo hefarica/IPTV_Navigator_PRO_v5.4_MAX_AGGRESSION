@@ -152,18 +152,25 @@ def find_patch_sites(manifest: bytes):
     return icon_sites, version_site, strings
 
 
-def repair_manifest_bytes(manifest: bytes, new_version_code=None):
+def repair_manifest_bytes(manifest: bytes, new_version_code=None, icon_ref=None):
     """
-    Elimina android:icon / android:banner del elemento <application> y, si se pide,
-    sube android:versionCode.
+    Arregla android:icon / android:banner del <application>.
 
-    NEUTRALIZAR NO BASTA: poner el atributo en TYPE_NULL deja el atributo PRESENTE y
-    aapt (y el parser) siguen intentando resolverlo -> sigue el error
-    "ERROR getting 'android:icon' attribute". Medido el 2026-11-07. Hay que
-    quitarlo del chunk de atributos y corregir los tamanos.
+    DOS MODOS:
+      - icon_ref = 0x7f...  -> REEMPLAZA la referencia rota por ese recurso PROPIO
+        del APK. Es el modo recomendado en apps Android TV (leanback): quitar el
+        banner de una app leanback puede dejar al launcher sin que dibujar.
+      - icon_ref = None     -> ELIMINA los atributos (el sistema pone el icono por
+        defecto). Valido para apps sin LEANBACK_LAUNCHER.
+
+    Y si se pide, sube android:versionCode.
+
+    NEUTRALIZAR a TYPE_NULL no basta: el atributo sigue presente y aapt sigue
+    intentando resolverlo (medido 2026-11-07).
     """
     strings = []
-    patch_plan = {}   # chunk_offset -> (set(indices a borrar), [(data_off, valor) ...])
+    removals = {}     # chunk_offset -> (set(indices), attr_start, attr_size, attr_count)
+    replacements = []  # (data_off, ref)
     version_site = None
 
     off = 8
@@ -194,23 +201,34 @@ def repair_manifest_bytes(manifest: bytes, new_version_code=None):
                     data_val = struct.unpack_from("<I", manifest, a + 16)[0]
 
                     if elem == "application" and aname in ("icon", "banner"):
-                        # Se borra SIEMPRE (referencia rota o no): la app no tiene icono
-                        # propio, y el sistema pone el de por defecto.
-                        drop.add(i)
-                        print(f"[repair] {aname}: atributo ELIMINADO (era dtype=0x{dtype:02x} 0x{data_val:08x})")
+                        if icon_ref is not None:
+                            replacements.append((a + 15, a + 16, int(icon_ref)))
+                            print(
+                                f"[repair] {aname}: referencia 0x{data_val:08x} -> "
+                                f"0x{int(icon_ref):08x} (recurso PROPIO del APK)"
+                            )
+                        else:
+                            drop.add(i)
+                            print(f"[repair] {aname}: atributo ELIMINADO (era dtype=0x{dtype:02x} 0x{data_val:08x})")
                     if elem == "manifest" and aname == "versionCode" and dtype == TYPE_INT_DEC:
                         version_site = (a + 16, data_val)
                 if drop:
-                    patch_plan[off] = (drop, attr_start, attr_size, attr_count)
+                    removals[off] = (drop, attr_start, attr_size, attr_count)
         off += csize
 
-    if not patch_plan:
+    if not removals and not replacements:
         print("[repair] no hay android:icon/banner en <application> (ya estaba limpio)")
 
-    # ── Reescribir los chunks afectados ──────────────────────────────────────
     out = bytearray(manifest)
-    for chunk_off in sorted(patch_plan.keys(), reverse=True):
-        drop, attr_start, attr_size, attr_count = patch_plan[chunk_off]
+
+    # 1) Reemplazos de referencia: mismo tamano, no mueven offsets.
+    for dtype_off, data_off, ref in replacements:
+        out[dtype_off] = TYPE_REFERENCE
+        struct.pack_into("<I", out, data_off, ref)
+
+    # 2) Eliminaciones: reescribir el chunk (de atras hacia adelante).
+    for chunk_off in sorted(removals.keys(), reverse=True):
+        drop, attr_start, attr_size, attr_count = removals[chunk_off]
         csize = struct.unpack_from("<I", out, chunk_off + 4)[0]
         chunk = bytes(out[chunk_off : chunk_off + csize])
         local_attr_start = 16 + attr_start
@@ -222,11 +240,17 @@ def repair_manifest_bytes(manifest: bytes, new_version_code=None):
         keep = [a for i, a in enumerate(attrs) if i not in drop]
         new_count = len(keep)
         struct.pack_into("<H", header, 28, new_count)  # attributeCount
-        # idIndex/classIndex/styleIndex son 1-based (0 = ninguno): se acotan.
+        # idIndex/classIndex/styleIndex son 1-based (0 = ninguno): remapear bien.
         for field in (30, 32, 34):
             idx = struct.unpack_from("<H", header, field)[0]
-            if idx > new_count:
-                struct.pack_into("<H", header, field, new_count)
+            if idx == 0:
+                continue
+            target = idx - 1
+            if target in drop:
+                struct.pack_into("<H", header, field, 0)
+            else:
+                shift = sum(1 for d in drop if d < target)
+                struct.pack_into("<H", header, field, idx - shift)
         new_chunk = bytearray(header) + b"".join(keep)
         struct.pack_into("<I", new_chunk, 4, len(new_chunk))  # chunk size
         out[chunk_off : chunk_off + csize] = new_chunk
@@ -236,9 +260,6 @@ def repair_manifest_bytes(manifest: bytes, new_version_code=None):
             print("[repair] AVISO: no se encontro android:versionCode; no se sube")
         else:
             data_off, old = version_site
-            # version_site apunta a offsets del manifiesto ORIGINAL; si un chunk anterior
-            # cambio de tamano, hay que reubicar. Como <manifest> es el primer elemento,
-            # no hay chunks de elementos antes, asi que el offset se mantiene.
             struct.pack_into("<I", out, data_off, int(new_version_code))
             print(f"[repair] versionCode: {old} -> {int(new_version_code)}")
 
@@ -280,6 +301,12 @@ def main():
     ap.add_argument("--in", dest="src", required=True)
     ap.add_argument("--out", dest="dst", required=True)
     ap.add_argument("--version-code", type=int, default=None)
+    ap.add_argument(
+        "--icon-ref",
+        default=None,
+        help="Reemplaza android:icon/banner por este recurso PROPIO (p.ej. 0x7f050005) "
+             "en vez de eliminarlos. RECOMENDADO en apps Android TV (leanback).",
+    )
     ap.add_argument("--zipalign", default=None)
     ap.add_argument("--apksigner", default=None)
     ap.add_argument("--keystore", default=None)
@@ -296,7 +323,8 @@ def main():
         manifest = z.read("AndroidManifest.xml")
 
     print(f"[repair] manifiesto original: {len(manifest)} bytes")
-    patched = repair_manifest_bytes(manifest, args.version_code)
+    icon_ref = int(args.icon_ref, 0) if args.icon_ref else None
+    patched = repair_manifest_bytes(manifest, args.version_code, icon_ref)
     print(f"[repair] manifiesto reparado: {len(patched)} bytes ({len(patched) - len(manifest):+d})")
 
     tmp_unsigned = args.dst + ".unsigned"
