@@ -738,12 +738,24 @@ jobs:
           set -uo pipefail
           # Se valida con el toolchain REAL del destino (PHP 8.3.6 / bash / node 20),
           # no con el del runner: un `php -l` verde en otra version no prueba nada.
-          scp -q "$EP_SRC" "$TARGET:/tmp/ara-device.php.new"
-          scp -q "$WK_SRC" "$TARGET:/tmp/ara-device-worker.sh.new"
-          scp -q "$VJ_SRC" "$TARGET:/tmp/ara-version.json.new"
-          scp -q "$GATE_SRC" "$TARGET:/tmp/check_ara_dist_coherence.js"
-
+          # OJO: el origen es el fichero del REPO y el destino es el VPS. NO existe
+          # copia local en /tmp del runner — confundir ambos lados produjo un falso
+          # "sha no coincide" el 2026-11-07 que disparo el rollback sin motivo.
           fail=0
+          for pair in "$EP_SRC:/tmp/ara-device.php.new" \
+                      "$WK_SRC:/tmp/ara-device-worker.sh.new" \
+                      "$SV_SRC:/tmp/ara-device-worker.service.new" \
+                      "$VJ_SRC:/tmp/ara-version.json.new" \
+                      "$GATE_SRC:/tmp/check_ara_dist_coherence.js"; do
+            src="${pair%%:*}"; dst="${pair##*:}"
+            if scp -q "$src" "$TARGET:$dst"; then
+              echo "  copiado  $src -> $dst"
+            else
+              echo "::error::no se pudo copiar $src al VPS"
+              fail=1
+            fi
+          done
+
           echo '--- php -l ---'
           ssh "$TARGET" "php -l /tmp/ara-device.php.new" || fail=1
           echo '--- bash -n ---'
@@ -753,7 +765,7 @@ jobs:
 
           if [ "$fail" != '0' ]; then
             echo '::error::alguna validacion de sintaxis fallo. NO se despliega nada.'
-            ssh "$TARGET" 'rm -f /tmp/ara-device.php.new /tmp/ara-device-worker.sh.new /tmp/ara-version.json.new /tmp/check_ara_dist_coherence.js' || true
+            ssh "$TARGET" 'rm -f /tmp/ara-device.php.new /tmp/ara-device-worker.sh.new /tmp/ara-device-worker.service.new /tmp/ara-version.json.new /tmp/check_ara_dist_coherence.js' || true
             exit 1
           fi
           echo 'GATES DE SINTAXIS OK'
@@ -764,8 +776,11 @@ jobs:
           set -uo pipefail
           STAMP=$(date -u +%Y%m%dT%H%M%SZ)
 
-          install_one() { # <tmp_src> <dest> <perm> <owner_spec> <label>
-            local tmp="$1" dest="$2" perm="$3" owner="$4" label="$5" bak nuevo=0
+          # install_one <local_src_repo> <remote_tmp_vps> <dest> <perm> <owner> <label>
+          # El sha local se calcula sobre el fichero del REPO; el remoto sobre el
+          # fichero ya instalado. Comparar dos espacios distintos fue el bug previo.
+          install_one() {
+            local src="$1" rtmp="$2" dest="$3" perm="$4" owner="$5" label="$6" bak nuevo=0 rem loc
             bak="$dest.bak_$STAMP"
             echo "=== $label -> $dest ==="
             if ssh "$TARGET" "sudo -n test -f '$dest'"; then
@@ -775,17 +790,16 @@ jobs:
               nuevo=1
               echo "  fichero NUEVO (el rollback lo borra)"
             fi
-            if ! ssh "$TARGET" "sudo -n mkdir -p '$(dirname "$dest")' && sudo -n install -m $perm -o ${owner%%:*} -g ${owner##*:} '$tmp' '$dest'"; then
+            if ! ssh "$TARGET" "sudo -n mkdir -p '$(dirname "$dest")' && sudo -n install -m $perm -o ${owner%%:*} -g ${owner##*:} '$rtmp' '$dest'"; then
               echo "::error::instalacion fallo en $label"
-              [ "$nuevo" = "1" ] && ssh "$TARGET" "sudo -n rm -f '$dest'" || ssh "$TARGET" "sudo -n cp -a '$bak' '$dest'"
+              if [ "$nuevo" = "1" ]; then ssh "$TARGET" "sudo -n rm -f '$dest'" || true; else ssh "$TARGET" "sudo -n cp -a '$bak' '$dest'" || true; fi
               return 1
             fi
-            local rem loc
             rem=$(ssh "$TARGET" "sudo -n sha256sum '$dest' | cut -d' ' -f1")
-            loc=$(sha256sum "$tmp" | cut -d' ' -f1)
+            loc=$(sha256sum "$src" | cut -d' ' -f1)
             if [ "$rem" != "$loc" ]; then
-              echo "::error::sha instalado no coincide en $label"
-              [ "$nuevo" = "1" ] && ssh "$TARGET" "sudo -n rm -f '$dest'" || ssh "$TARGET" "sudo -n cp -a '$bak' '$dest'"
+              echo "::error::sha instalado no coincide en $label (repo=$loc instalado=$rem)"
+              if [ "$nuevo" = "1" ]; then ssh "$TARGET" "sudo -n rm -f '$dest'" || true; else ssh "$TARGET" "sudo -n cp -a '$bak' '$dest'" || true; fi
               return 1
             fi
             echo "  sha OK ($loc)"
@@ -793,10 +807,10 @@ jobs:
           }
 
           rc=0
-          install_one /tmp/ara-device.php.new        "$EP_DEST" 0644 "www-data:www-data" "endpoint PHP"   || rc=1
-          install_one /tmp/ara-device-worker.sh.new  "$WK_DEST" 0755 "root:root"         "worker ADB"     || rc=1
-          install_one /tmp/ara-version.json.new      "$VJ_DEST" 0644 "www-data:www-data" "manifiesto"     || rc=1
-          install_one /tmp/ara-device-worker.service "$SV_DEST" 0644 "root:root"         "unidad systemd" || rc=1
+          install_one "$EP_SRC" /tmp/ara-device.php.new          "$EP_DEST" 0644 "www-data:www-data" "endpoint PHP"   || rc=1
+          install_one "$WK_SRC" /tmp/ara-device-worker.sh.new    "$WK_DEST" 0755 "root:root"         "worker ADB"     || rc=1
+          install_one "$VJ_SRC" /tmp/ara-version.json.new        "$VJ_DEST" 0644 "www-data:www-data" "manifiesto"     || rc=1
+          install_one "$SV_SRC" /tmp/ara-device-worker.service.new "$SV_DEST" 0644 "root:root"       "unidad systemd" || rc=1
 
           if [ "$rc" != '0' ]; then
             echo '::error::despliegue del plano de control fallo. Revisa los backups arriba.'
@@ -817,7 +831,7 @@ jobs:
           # El directorio de cola debe pertenecer a www-data o php-fpm no puede encolar.
           ssh "$TARGET" 'sudo -n chown www-data:www-data /dev/shm/ape_device_jobs 2>/dev/null; sudo -n chmod 0775 /dev/shm/ape_device_jobs 2>/dev/null; sudo -n ls -ld /dev/shm/ape_device_jobs' || true
 
-          ssh "$TARGET" 'rm -f /tmp/ara-device.php.new /tmp/ara-device-worker.sh.new /tmp/ara-version.json.new' || true
+          ssh "$TARGET" 'rm -f /tmp/ara-device.php.new /tmp/ara-device-worker.sh.new /tmp/ara-device-worker.service.new /tmp/ara-version.json.new' || true
 
       - name: Smoke real por HTTPS + coherencia del manifiesto
         run: |
