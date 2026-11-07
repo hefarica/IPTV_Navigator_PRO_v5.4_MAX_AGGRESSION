@@ -314,11 +314,13 @@ function job_status(string $id): ?array
         return null;
     }
     $q = read_json_file($f['q']);
-    if ($q === null) {
-        return null;
-    }
     $s = read_json_file($f['s']);
     $r = read_json_file($f['r']);
+    // Si el q- ya no esta (limpieza), el trabajo sigue siendo consultable por su
+    // resultado. Solo es 404 cuando no existe NADA de ese id.
+    if ($q === null && $s === null && $r === null) {
+        return null;
+    }
 
     $state = 'queued';
     $steps = [];

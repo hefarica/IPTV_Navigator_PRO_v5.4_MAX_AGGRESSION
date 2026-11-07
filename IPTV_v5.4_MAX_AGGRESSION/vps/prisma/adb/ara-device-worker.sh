@@ -44,7 +44,8 @@ chmod 0775 "$JOBS_DIR" 2>/dev/null || true
 log() {
     local line
     line="$(date -u +%Y-%m-%dT%H:%M:%SZ) $*"
-    echo "$line"
+    # A stderr para que journalctl lo capture (StandardOutput=null descarta stdout).
+    echo "$line" >&2
     if [ -f "$LOG" ] && [ "$(stat -c %s "$LOG" 2>/dev/null || echo 0)" -gt "$LOG_MAX_BYTES" ]; then
         tail -c 1048576 "$LOG" > "${LOG}.tmp" 2>/dev/null && mv "${LOG}.tmp" "$LOG" 2>/dev/null || true
     fi
@@ -62,7 +63,10 @@ fi
 
 # ── Utilidades JSON (php esta garantizado; jq NO) ────────────────────────────
 json_get() { # <fichero> <clave>
-    php -r '$f=@file_get_contents($argv[1]); if($f===false){exit(1);} $j=json_decode($f,true); if(!is_array($j)){exit(1);} $v=$j[$argv[2]]??null; if(is_array($v)){echo json_encode($v);} elseif(is_bool($v)){echo $v?"1":"0";} else {echo (string)$v;}'
+    # OJO: el php -r NO hereda los argumentos de la funcion. Sin "$1" "$2" aqui,
+    # $argv[1] queda indefinido, la funcion devuelve vacio y el bucle borraba el
+    # trabajo sin procesarlo (bug real medido el 2026-11-07).
+    php -r '$f=@file_get_contents($argv[1]); if($f===false){exit(1);} $j=json_decode($f,true); if(!is_array($j)){exit(1);} $v=$j[$argv[2]]??null; if(is_array($v)){echo json_encode($v);} elseif(is_bool($v)){echo $v?"1":"0";} else {echo (string)$v;}' "$1" "$2"
 }
 
 json_write() { # <fichero> <json>
@@ -515,8 +519,16 @@ while true; do
         [ -z "$q" ] && continue
         [ -f "$q" ] || continue
         id="$(json_get "$q" id)"
-        [ -z "$id" ] && { rm -f "$q"; continue; }
-        [ -f "${JOBS_DIR}/r-${id}.json" ] && { rm -f "$q"; continue; }
+        if [ -z "$id" ]; then
+            # NUNCA borrar en silencio un trabajo que no se pudo leer: se aparta y se
+            # registra para poder diagnosticarlo. Borrarlo era el bug del 2026-11-07.
+            log "AVISO: $q sin 'id' legible — se aparta como .bad (no se borra)"
+            mv "$q" "${q}.bad" 2>/dev/null || true
+            continue
+        fi
+        # Si ya hay resultado, se salta pero NO se borra el q-: el endpoint lo usa
+        # para responder ?action=job. El gc de PHP lo limpia a las 24 h.
+        [ -f "${JOBS_DIR}/r-${id}.json" ] && continue
         process_job "$q" || log "ERROR procesando $q"
         processed=$((processed+1))
         touch "$BEAT_FILE" 2>/dev/null || true
