@@ -183,7 +183,9 @@ function atomicWrite(file, content) {
   const ids = Object.keys(map);
   log('PARSE', 'lineas=' + lines, 'canales=' + ids.length, 'sin_url=' + (skipped + noUrl), 'allowlist_previa=' + prevCount);
 
-  const floor = Math.floor(prevCount * MIN_RATIO);
+  // ceil, no floor: con floor una lista de 2 canales dejaba pasar 1 (floor(1.9)=1),
+// es decir un 50 % de caida. Con ceil el minimo es el 95 % real redondeado ARRIBA.
+  const floor = Math.ceil(prevCount * MIN_RATIO);
   if (prevCount > 0 && ids.length < floor) {
     log('ABORT', `solo ${ids.length} canales (< ${floor} = 95 % de ${prevCount}). No publico: el mapa actual queda intacto.`);
     process.exit(2);
