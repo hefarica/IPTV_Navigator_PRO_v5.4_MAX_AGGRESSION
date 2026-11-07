@@ -14,11 +14,13 @@
  *   2. De cada bloque saca: id, nombre, logo, grupo, UA (de #EXTHTTP) y la URL del
  *      proveedor desde `?u=` de la línea /pulse/ → la reescribe como /cdn/<host><ruta>
  *      (el mismo formato que ya usa channels.json).
- *   3. Escribe channels.json + APE_JIT_LIST.m3u8 en .tmp y hace rename() atómico.
- *      rename(2) en el mismo filesystem es atómico: el servidor nunca ve un fichero
- *      a medias. server.js relee el mapa en cada request, así que el cambio entra
- *      SIN reiniciar y sin cortar la reproducción.
- *   4. Guarda el anterior como .prev para rollback de un comando.
+ *   3. Escribe una RELEASE completa en `releases/<version>/` (channels.json +
+ *      APE_JIT_LIST.m3u8 + meta.json) y la publica con UN SOLO rename() del symlink
+ *      `current`. Dos rename() seguidos NO serían atómicos como conjunto: un lector
+ *      podría ver el mapa nuevo con la lista vieja. Con el flip del symlink ambos
+ *      cambian a la vez, o ninguno. server.js lee vía `current/`, así que el cambio
+ *      entra SIN reiniciar y sin cortar la reproducción.
+ *   4. Las 5 releases anteriores se conservan: rollback = reapuntar `current`.
  *
  * FAIL-CLOSED
  *   Si el parseo da menos del 95 % de los canales que ya tenía la allowlist, NO
@@ -40,10 +42,12 @@ const arg = (n, d) => { const i = args.indexOf('--' + n); return i >= 0 && args[
 const flag = (n) => args.includes('--' + n);
 
 const OUT_DIR = arg('out', '/opt/ape-jit');
-const MAP_FILE = path.join(OUT_DIR, 'channels.json');
-const JIT_LIST = path.join(OUT_DIR, 'APE_JIT_LIST.m3u8');
-const MISSES = path.join(OUT_DIR, 'misses.log');
-const STAMP = path.join(OUT_DIR, '.reconciled');
+const CURRENT = path.join(OUT_DIR, 'current');            // symlink -> releases/<v>
+const RELEASES = path.join(OUT_DIR, 'releases');
+const MAP_FILE = path.join(CURRENT, 'channels.json');     // se lee vía el symlink
+const JIT_LIST = path.join(CURRENT, 'APE_JIT_LIST.m3u8');
+const MISSES = path.join(OUT_DIR, 'misses.log');          // ruta fija: sobrevive a los flips
+const STAMP = path.join(OUT_DIR, '.reconciled');          // ruta fija
 const LIST_DIR = '/var/www/lists/pulse';
 const BASE = 'https://iptv-ape.duckdns.org';
 const DEFAULT_UA = 'VLC/3.0.19 LibVLC/3.0.19';
@@ -195,20 +199,56 @@ function atomicWrite(file, content) {
     return;
   }
 
-  // backup del anterior antes de pisar
-  for (const f of [MAP_FILE, JIT_LIST]) {
-    if (fs.existsSync(f)) { try { fs.copyFileSync(f, f + '.prev'); } catch (_) {} }
-  }
-  atomicWrite(MAP_FILE, JSON.stringify(map));
-  atomicWrite(JIT_LIST, jitList);
-  atomicWrite(STAMP, JSON.stringify({ path: list, size: st.size, mtimeMs: st.mtimeMs, at: Date.now() }));
+  // ── PUBLICACIÓN ATÓMICA COMO UNIDAD ──────────────────────────────────────────
+  // Dos rename() seguidos NO son atómicos como conjunto: un lector podía ver el
+  // channels.json nuevo con el APE_JIT_LIST.m3u8 viejo. Aquí se escribe una release
+  // completa en su propio directorio y se publica con UN solo rename() de symlink:
+  // `current` apunta a la release nueva y los DOS ficheros cambian a la vez.
+  const version = new Date().toISOString().replace(/[-:.TZ]/g, '').slice(0, 14) +
+    '-' + Math.random().toString(36).slice(2, 6);
+  const vdir = path.join(RELEASES, version);
+  fs.mkdirSync(vdir, { recursive: true });
+  atomicWrite(path.join(vdir, 'channels.json'), JSON.stringify(map));
+  atomicWrite(path.join(vdir, 'APE_JIT_LIST.m3u8'), jitList);
+  atomicWrite(path.join(vdir, 'meta.json'), JSON.stringify({
+    version, source: list, size: st.size, mtimeMs: st.mtimeMs,
+    channels: ids.length, at: Date.now(),
+  }));
 
-  // observabilidad de huecos: que ids pidieron los players y no estaban
+  // flip atómico: symlink temporal + rename()
+  const linkTmp = path.join(OUT_DIR, '.current.tmp');
+  try { fs.unlinkSync(linkTmp); } catch (_) {}
+  fs.symlinkSync(path.relative(OUT_DIR, vdir), linkTmp);
+  fs.renameSync(linkTmp, CURRENT);
+
+  atomicWrite(STAMP, JSON.stringify({
+    path: list, size: st.size, mtimeMs: st.mtimeMs, at: Date.now(), release: version,
+  }));
+
+  // verificación post-flip: lo publicado se lee vía `current/` y cuadra
+  const check = JSON.parse(fs.readFileSync(MAP_FILE, 'utf8'));
+  const checkList = fs.readFileSync(JIT_LIST, 'utf8');
+  const nCheck = Object.keys(check).length;
+  const nList = (checkList.match(/^#EXTINF/gm) || []).length;
+  if (nCheck !== ids.length || nList !== ids.length) {
+    log('FATAL', 'verificacion post-flip: mapa=' + nCheck + ' lista=' + nList + ' esperado=' + ids.length);
+    process.exit(3);
+  }
+
+  // purga: se conservan las 5 releases más recientes (las demás son rollback)
+  try {
+    const all = fs.readdirSync(RELEASES).sort();
+    while (all.length > 5) {
+      const old = all.shift();
+      fs.rmSync(path.join(RELEASES, old), { recursive: true, force: true });
+      log('  release purgada', old);
+    }
+  } catch (_) {}
+
   let missCount = 0;
   try { missCount = fs.readFileSync(MISSES, 'utf8').split('\n').filter(Boolean).length; } catch (_) {}
 
-  log('PUBLISH', 'channels=' + ids.length, 'jit_list_bytes=' + jitList.length,
-    'prev=' + (fs.existsSync(MAP_FILE + '.prev') ? 'ok' : '-'),
-    'misses_pendientes=' + missCount);
-  log('  swap atómico: rename() sobre ' + MAP_FILE + ' y ' + JIT_LIST);
+  log('PUBLISH', 'release=' + version, 'channels=' + ids.length, 'jit_list_bytes=' + jitList.length,
+    'verificado=' + nCheck + '/' + nList, 'misses_pendientes=' + missCount);
+  log('  flip atómico: current -> releases/' + version + ' (1 solo rename)');
 })().catch(e => { log('FATAL', e && e.message); process.exit(1); });

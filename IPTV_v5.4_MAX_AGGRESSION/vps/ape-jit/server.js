@@ -13,7 +13,8 @@ const { spawn, execFileSync } = require('child_process');
 
 const PORT = Number(process.env.PORT || 3099);
 const BIND = process.env.BIND || '127.0.0.1';
-const MAP_FILE = process.env.MAP_FILE || '/opt/ape-jit/channels.json';
+const MAP_FILE = process.env.MAP_FILE || '/opt/ape-jit/current/channels.json';
+const STATE_DIR = path.resolve(path.dirname(MAP_FILE), '..');
 const OUT_ROOT = process.env.OUT_ROOT || '/dev/shm/ape-jit';
 const IDLE_MS = Number(process.env.IDLE_MS || 20000);
 // HARDENING: 15 s no siempre alcanza para el primer chunk (probe + ffmpeg +
@@ -160,7 +161,7 @@ function loadMap() {
 // Un id que el player pide y no esta en el espejo es un hueco de reconciliacion:
 // se registra para que reconcile.js lo reporte en vez de quedar invisible.
 function markMiss(id) {
-  try { fs.appendFileSync(path.join(path.dirname(MAP_FILE), 'misses.log'), Date.now() + ',' + id + '\n'); } catch (_) {}
+  try { fs.appendFileSync(path.join(STATE_DIR, 'misses.log'), Date.now() + ',' + id + '\n'); } catch (_) {}
 }
 // -- Replicacion AL VUELO (polimorfica) ----------------------------------------
 // Si un player pide un id que el espejo todavia no tiene, y la lista fuente es
@@ -168,7 +169,7 @@ function markMiss(id) {
 // y se reintenta. Asi el JIT se adapta a cualquier lista sin esperar al timer y
 // sin aceptar nunca una URL del cliente (solo ids).
 const RECONCILE = path.join(__dirname, 'reconcile.js');
-const STAMP_FILE = path.join(path.dirname(MAP_FILE), '.reconciled');
+const STAMP_FILE = path.join(STATE_DIR, '.reconciled');
 let _reconRunning = false, _reconLast = 0;
 
 function mapIsStale() {

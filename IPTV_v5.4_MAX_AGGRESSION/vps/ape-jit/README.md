@@ -50,24 +50,49 @@ regenera; esos dos ficheros se quedaban viejos y **un canal nuevo daba
    │  publica (firma de lista truncada). El mapa vive intacto.     │
    └───────────────────────────┬──────────────────────────────────┘
                                ▼
-          channels.json.tmp ──rename()──► channels.json     ┐ rename(2)
-       APE_JIT_LIST.m3u8.tmp ─rename()──► APE_JIT_LIST.m3u8 ┘ es ATÓMICO
+        releases/<version>/channels.json        ← se escribe COMPLETO
+        releases/<version>/APE_JIT_LIST.m3u8    ← antes de publicar
+        releases/<version>/meta.json
+                               │
+                               │  UN SOLO rename() del symlink
+                               ▼
+              current ────────────────────────►  releases/<version>
                                │
                                │  server.js: loadMap() cachea por (size:mtimeMs)
                                ▼
               /jit/live/<id>/…  se sirve SIN reiniciar el proceso
 ```
 
+**Por qué NO dos `rename` seguidos.** Publicar `channels.json` y `APE_JIT_LIST.m3u8`
+por separado deja una ventana en la que un lector ve el mapa nuevo con la lista vieja.
+Por eso se escribe una **release completa** en su propio directorio y se publica con
+**un único `rename()` de symlink**: `current` apunta a la release y los dos ficheros
+cambian a la vez — o ninguno.
+
+### Prueba de atomicidad (medida)
+
+Lector concurrente leyendo los dos ficheros vía `current/` mientras se publica una
+versión nueva (2 → 3 canales):
+
+```
+lecturas = 405.622     inconsistentes = 0
+  par (mapa,lista) = 2,2  -> 82.171
+  par (mapa,lista) = 3,3  -> 323.451
+```
+
+Nunca apareció `(2,3)` ni `(3,2)`: los dos ficheros son siempre de la misma release.
+
 Propiedades medidas:
 
 | Propiedad | Evidencia |
 |---|---|
-| **Swap atómico** | `rename()` en el mismo filesystem: el servidor nunca ve el fichero a medias |
+| **Atómico como unidad** | 405.622 lecturas concurrentes, **0 inconsistentes** |
 | **Sin reinicio** | tras publicar, `ExecMainPID` no cambia y `/jit/live/3/master.m3u8` sigue en 200 |
 | **Fail-closed** | con <95 % de canales: `ABORT`, no publica, `exit 2` |
-| **Rollback de un comando** | `.prev` de ambos ficheros queda escrito antes del swap |
+| **Verificación post-flip** | relee por `current/`; si `mapa != lista != esperado` → `exit 3` |
+| **Rollback** | las 5 releases previas se conservan: `ln -sfn releases/<v> current` |
 | **Idempotente y barato** | sello `.reconciled` (path+size+mtime): si la lista no cambió, `SKIP` sin re-parsear 596 MB |
-| **Huecos visibles** | `markMiss()` en los 4 puntos de 404 → `/opt/ape-jit/misses.log` |
+| **Huecos visibles** | `markMiss()` en los 4 puntos de 404 → `/opt/ape-jit/misses.log` (ruta fija) |
 | **Caché de mapa** | `loadMap()` por `size:mtimeMs`: 3 requests = **1** `MAP_LOAD` (antes: 1 por request) |
 
 ### Prueba de hot-add (medida)
