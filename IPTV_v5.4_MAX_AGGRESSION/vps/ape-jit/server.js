@@ -145,9 +145,22 @@ function probeSource(spec) {
     return { width: 0, height: 0, codec: '', transfer: '', primaries: '', audioOk: false, audioCodec: '' };
   }
 }
+let _mapCache = null, _mapKey = '';
 function loadMap() {
-  try { return JSON.parse(fs.readFileSync(MAP_FILE, 'utf8')); }
-  catch (e) { log('MAP_ERROR', e.message); return {}; }
+  try {
+    const st = fs.statSync(MAP_FILE);
+    const key = st.size + ':' + st.mtimeMs;
+    if (_mapCache && _mapKey === key) return _mapCache;
+    const m = JSON.parse(fs.readFileSync(MAP_FILE, 'utf8'));
+    _mapCache = m; _mapKey = key;
+    log('MAP_LOAD', Object.keys(m).length + ' canales', 'size=' + st.size);
+    return m;
+  } catch (e) { log('MAP_ERROR', e.message); return _mapCache || {}; }
+}
+// Un id que el player pide y no esta en el espejo es un hueco de reconciliacion:
+// se registra para que reconcile.js lo reporte en vez de quedar invisible.
+function markMiss(id) {
+  try { fs.appendFileSync(path.join(path.dirname(MAP_FILE), 'misses.log'), Date.now() + ',' + id + '\n'); } catch (_) {}
 }
 function safeId(id) { return /^[A-Za-z0-9_.-]{1,80}$/.test(id) ? id : null; }
 
@@ -669,7 +682,7 @@ const server = http.createServer((req, res) => {
     const id = safeId(mm[1]);
     if (!id) { res.writeHead(400); return res.end('bad channel'); }
     const map = loadMap();
-    if (!map[id] || !map[id].url) { res.writeHead(404); return res.end('unknown channel'); }
+    if (!map[id] || !map[id].url) { markMiss(id); res.writeHead(404); return res.end('unknown channel'); }
     res.locals.cache = 'meta';
     setNoCacheHeaders(res);
     res.setHeader('Link', '</jit/live/' + encodeURIComponent(id) + '/master.m3u8>; rel="alternate"; type="application/vnd.apple.mpegurl"');
@@ -698,7 +711,7 @@ const server = http.createServer((req, res) => {
     const id = safeId(gm[1]);
     if (!id) { res.writeHead(400); return res.end('bad channel'); }
     const map = loadMap();
-    if (!map[id] || !map[id].url) { res.writeHead(404); return res.end('unknown channel'); }
+    if (!map[id] || !map[id].url) { markMiss(id); res.writeHead(404); return res.end('unknown channel'); }
     res.locals.cache = 'redirect';
     setObjectCacheHeaders(res, 'redirect');
     res.writeHead(302, {
@@ -723,7 +736,7 @@ const server = http.createServer((req, res) => {
     const sdr = !sdr720 && jm[2] === 'sdr/';
     // Start on manifest request so a player that asks JSON first also warms.
     const map = loadMap();
-    if (!map[id] || !map[id].url) { res.writeHead(404); return res.end('unknown channel'); }
+    if (!map[id] || !map[id].url) { markMiss(id); res.writeHead(404); return res.end('unknown channel'); }
     if (!current || current.id !== id || !!current.sdr !== sdr || !!current.sdr720 !== sdr720) {
       const _k = chKey(id, sdr, sdr720);
       booting.add(_k);
@@ -746,7 +759,7 @@ const server = http.createServer((req, res) => {
   const sdr720 = m[2] === 'sdr720/';
   const sdr = !sdr720 && m[2] === 'sdr/';
   const map = loadMap();
-  if (!map[id] || !map[id].url) { res.writeHead(404); return res.end('unknown channel'); }
+  if (!map[id] || !map[id].url) { markMiss(id); res.writeHead(404); return res.end('unknown channel'); }
   if (!current || current.id !== id || !!current.sdr !== sdr || !!current.sdr720 !== sdr720) {
     const _k = chKey(id, sdr, sdr720);
     booting.add(_k);

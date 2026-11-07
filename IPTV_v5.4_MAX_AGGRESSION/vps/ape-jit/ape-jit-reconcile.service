@@ -1,0 +1,8 @@
+[Unit]
+Description=APE JIT - espejo atomico lista servida -> allowlist JIT
+After=ape-jit.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/node /opt/ape-jit/reconcile.js
+Nice=19
