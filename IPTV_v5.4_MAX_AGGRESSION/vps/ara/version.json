@@ -1,28 +1,27 @@
 {
-  "versionCode": 600,
-  "versionName": "2.3.0-noWG",
-  "sha256": "c3dac8a76792f205b0e87936ceb68ec38aae8d5a59a2e8acce73970d3957b121",
-  "size": 25440531,
+  "versionCode": 650,
+  "versionName": "3.9.5-adb-firetv-shim",
+  "sha256": "7f3f75e103cc0e1ca87cd81b9b4679590c69b7c940b597c7e0872d13db2d3ca0",
+  "size": 25678434,
   "apk": "/ara/agent.apk",
   "min_android": 22,
   "package": "com.ape.crystalagent",
   "abis": ["arm64-v8a", "armeabi-v7a", "x86", "x86_64"],
-  "published_at": "2026-11-07T17:20:00Z",
+  "features": ["ottshim"],
+  "published_at": "2026-11-07T18:05:00Z",
   "repaired": {
-    "why": "El APK original NO se podia instalar en ningun dispositivo: Android respondia 'No se instalo la app porque parece que el paquete no es valido'.",
-    "defecto": "android:icon y android:banner apuntaban a @android:drawable/ic_media_play (id 0x01080024), un recurso del FRAMEWORK que no resuelve en el dispositivo. Medido con aapt: rc=1 y \"ERROR getting 'android:icon' attribute\" en los 19 APK del repo.",
-    "arreglo": "Se eliminaron ambos atributos del AndroidManifest BINARIO (la app no tiene icono propio; el sistema pone el de por defecto). Manifest 7668 -> 7628 bytes. Realineado con zipalign -p 4 y re-firmado con apksigner v1+v2+v3.",
-    "verificacion": "aapt dump badging: rc=0, 0 errores de icono, application: presente, launchable-activity: com.ape.crystalagent.MainActivity, native-code: las 4 ABIs.",
-    "herramienta": "tools/ara/repair_apk_manifest.py",
-    "versionCode": "6 -> 600 para que REEMPLACE cualquier version instalada (downgrade cubierto igualmente con adb install -d)."
+    "base": "android/ape-crystal-agent/app/build/outputs/apk/debug/app-debug.apk (era versionCode 52 / 3.9.5-adb-firetv-shim) — la build CON ottshim",
+    "why": "El APK no se podia instalar en ningun dispositivo: Android respondia 'No se instalo la app porque parece que el paquete no es valido'.",
+    "defecto": "android:icon y android:banner apuntaban a @android:drawable/ic_media_play (id 0x01080024), recurso del FRAMEWORK que no resuelve en el dispositivo. aapt daba rc=1 y \"ERROR getting 'android:icon' attribute\" en las 19 builds de ara-x/app-dist y en esta.",
+    "arreglo": "Se eliminaron ambos atributos del AndroidManifest BINARIO. Manifest 11604 -> 11564 bytes. zipalign -p 4 + apksigner v1+v2+v3.",
+    "verificacion": "aapt: rc=0, 0 errores de icono, application: presente, launchable-activity com.ape.crystalagent.MainActivity, native-code 4 ABIs. ottshim verificado dentro: dev/venice/ottshim presente en classes2.dex, classes3.dex y classes4.dex.",
+    "herramienta": "tools/ara/repair_apk_manifest.py"
   },
-  "repo_build": {
-    "versionCode": 52,
-    "versionName": "3.9.5-adb-firetv-shim",
-    "source": "android/ape-crystal-agent/app/build.gradle.kts",
-    "published": false,
-    "note": "La FUENTE ya esta corregida (icon/banner eliminados del AndroidManifest.xml), asi que un build nuevo con Gradle saldra valido. Cuando se publique, subir versionCode por encima de 600."
+  "versionCode_history": {
+    "6": "APK viejo 2.3.0-noWG, SIN ottshim, manifest invalido. Reemplazado.",
+    "600": "Repare ese APK viejo subiendole el codigo — ERROR: dejo la UI sin ottshim. Reemplazado por 650.",
+    "650": "Build 3.9.5-adb-firetv-shim (ott+shim) reparada. Es la vigente."
   },
-  "note": "Manifiesto del APK SERVIDO en /ara/agent.apk. Medido: sha256=sha256sum, size=stat -c %s. Gate: node tools/ara/check_ara_dist_coherence.js. Historial: la copia del repo estaba en versionCode 1/2.0.0/sha 91cde550 (corregido 2026-11-07); ese APK v6 tenia el manifest invalido y se reemplazo por el reparado v600.",
-  "generated_at": "2026-11-07T17:20:00Z"
+  "note": "Manifiesto del APK SERVIDO en /ara/agent.apk. Medido: sha256=sha256sum, size=stat -c %s. Gate: node tools/ara/check_ara_dist_coherence.js. El versionCode 650 es MAYOR que el 600 publicado antes, asi que reemplaza la instalacion previa sin ser downgrade. Un build futuro con Gradle debe superar 650.",
+  "generated_at": "2026-11-07T18:05:00Z"
 }
