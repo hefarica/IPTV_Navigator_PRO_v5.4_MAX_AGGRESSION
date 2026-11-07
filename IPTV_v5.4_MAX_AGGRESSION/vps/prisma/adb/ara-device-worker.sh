@@ -478,6 +478,28 @@ process_job() { # <q-file>
     return 0
 }
 
+# ── Descubrimiento: anunciar CUALQUIER dispositivo alcanzable ────────────────
+# Sin esto el panel solo veria los device_id que ya estuvieran en el registro, y
+# un dispositivo recien tuneleado no apareceria nunca por si solo: "Detectar" no
+# detectaria nada nuevo. Recorre los candidatos, conecta y publica su estado
+# usando el SERIAL como identidad estable (la IP cambia con DHCP).
+discover_live_devices() {
+    local t serial did st
+    while IFS= read -r t; do
+        [ -z "$t" ] && continue
+        st="$(adb -s "$t" get-state 2>/dev/null)"
+        if [ "$st" != "device" ]; then
+            timeout "$ADB_CONNECT_TIMEOUT" adb connect "$t" >/dev/null 2>&1 || true
+            sleep 1
+            st="$(adb -s "$t" get-state 2>/dev/null)"
+        fi
+        [ "$st" = "device" ] || continue
+        serial="$(adb_getprop "$t" ro.serialno)"
+        did="${serial:-$t}"
+        cast_state "$t" "$did" 1 "adb-live" "detectado automaticamente en $t"
+    done <<< "$(candidate_transports)"
+}
+
 # ── Refresco periodico: mantener state-*.json al dia aunque no haya trabajos ─
 refresh_known_devices() {
     local did t serial
@@ -510,8 +532,18 @@ log "worker arrancado (pid $$) dir=$JOBS_DIR apk=$APK_FILE"
 adb start-server >/dev/null 2>&1 || true
 
 LAST_CAST=0
+KICK_FILE="${JOBS_DIR}/.kick"
 while true; do
     touch "$BEAT_FILE" 2>/dev/null || true
+
+    # "Detectar" del panel: fuerza un descubrimiento inmediato sin esperar el ciclo.
+    if [ -f "$KICK_FILE" ]; then
+        rm -f "$KICK_FILE" 2>/dev/null || true
+        discover_live_devices || true
+        refresh_known_devices || true
+        LAST_CAST=$(date +%s)
+        touch "$BEAT_FILE" 2>/dev/null || true
+    fi
 
     processed=0
     # Orden FIFO por mtime
@@ -536,6 +568,7 @@ while true; do
 
     now=$(date +%s)
     if [ $((now - LAST_CAST)) -ge "$CAST_INTERVAL" ]; then
+        discover_live_devices || true
         refresh_known_devices || true
         LAST_CAST=$now
         touch "$BEAT_FILE" 2>/dev/null || true

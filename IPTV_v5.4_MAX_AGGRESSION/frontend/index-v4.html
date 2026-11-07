@@ -3862,6 +3862,15 @@
                     });
                 }
 
+                // "Detectar": pide al worker un descubrimiento inmediato y luego recarga.
+                function discover() {
+                  var ctl = $('apeDevControl');
+                  if (ctl) ctl.textContent = 'Pidiendo al worker un descubrimiento…';
+                  fetch(API + '?action=discover', { cache: 'no-store', credentials: 'same-origin' })
+                    .catch(function () { /* si falla, igual recargamos: load() muestra el error real */ })
+                    .then(function () { setTimeout(load, 3000); });
+                }
+
                 // Delegación: sirve para los botones recién pintados.
                 document.addEventListener('click', function (ev) {
                   var t = ev.target;
@@ -3869,7 +3878,7 @@
                   var a = t.getAttribute('data-ape-act');
                   var d = t.getAttribute('data-ape-dev');
                   if (a && d) { act(d, a); return; }
-                  if (t.id === 'apeDevRefresh') { load(); }
+                  if (t.id === 'apeDevRefresh') { discover(); }
                 });
 
                 // Carga perezosa al abrir la pestaña Compartir por primera vez.

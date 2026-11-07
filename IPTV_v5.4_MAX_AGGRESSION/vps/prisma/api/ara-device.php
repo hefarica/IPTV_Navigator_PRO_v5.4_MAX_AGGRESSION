@@ -427,6 +427,23 @@ if ($action === '') {
 // ── GET ──────────────────────────────────────────────────────────────────────
 if ($method === 'GET') {
     switch ($action) {
+        case 'discover': {
+            // Boton "Detectar": pide al worker un descubrimiento INMEDIATO en vez de
+            // esperar su ciclo de refresco. Solo escribe un fichero centinela: este
+            // endpoint sigue sin ejecutar adb.
+            ensure_jobs_dir();
+            $kick = JOBS_DIR . '/.kick';
+            $kicked = @touch($kick);
+            respond([
+                'ok'      => true,
+                'kicked'  => (bool)$kicked,
+                'worker'  => worker_alive(),
+                'message' => $kicked
+                    ? 'Descubrimiento solicitado al worker; vuelve a consultar en 2-5 s.'
+                    : 'No se pudo señalar al worker (permisos del directorio de cola).',
+            ]);
+        }
+
         case 'version': {
             $v = load_version(true);
             respond([
