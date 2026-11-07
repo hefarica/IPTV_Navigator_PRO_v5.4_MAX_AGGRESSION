@@ -162,6 +162,48 @@ function loadMap() {
 function markMiss(id) {
   try { fs.appendFileSync(path.join(path.dirname(MAP_FILE), 'misses.log'), Date.now() + ',' + id + '\n'); } catch (_) {}
 }
+// -- Replicacion AL VUELO (polimorfica) ----------------------------------------
+// Si un player pide un id que el espejo todavia no tiene, y la lista fuente es
+// mas nueva que el espejo, se reconcilia UNA vez (single-flight + cooldown 30 s)
+// y se reintenta. Asi el JIT se adapta a cualquier lista sin esperar al timer y
+// sin aceptar nunca una URL del cliente (solo ids).
+const RECONCILE = path.join(__dirname, 'reconcile.js');
+const STAMP_FILE = path.join(path.dirname(MAP_FILE), '.reconciled');
+let _reconRunning = false, _reconLast = 0;
+
+function mapIsStale() {
+  try {
+    const q = JSON.parse(fs.readFileSync(STAMP_FILE, 'utf8'));
+    const st = fs.statSync(q.path);
+    return st.mtimeMs !== q.mtimeMs || st.size !== q.size;
+  } catch (_) { return true; }
+}
+
+function resolveOnDemand(id) {
+  if (_reconRunning) return false;
+  if (Date.now() - _reconLast < 30000) return false;
+  if (!mapIsStale()) return false;
+  _reconRunning = true; _reconLast = Date.now();
+  try {
+    log('RECONCILE_ON_DEMAND', id, 'la lista fuente es mas nueva que el espejo');
+    execFileSync(process.execPath, [RECONCILE], { timeout: 90000, stdio: 'ignore' });
+    return true;
+  } catch (e) {
+    log('RECONCILE_ON_DEMAND_FAIL', id, (e && e.message) || String(e));
+    return false;
+  } finally { _reconRunning = false; }
+}
+
+function getChannel(id) {
+  const map = loadMap();
+  const ent = map[id];
+  if (ent && ent.url) return ent;
+  if (resolveOnDemand(id)) {
+    const again = loadMap()[id];
+    if (again && again.url) return again;
+  }
+  return null;
+}
 function safeId(id) { return /^[A-Za-z0-9_.-]{1,80}$/.test(id) ? id : null; }
 
 /* ────────────────────────────────────────────────────────────────────────────
@@ -681,8 +723,8 @@ const server = http.createServer((req, res) => {
   if (mm) {
     const id = safeId(mm[1]);
     if (!id) { res.writeHead(400); return res.end('bad channel'); }
-    const map = loadMap();
-    if (!map[id] || !map[id].url) { markMiss(id); res.writeHead(404); return res.end('unknown channel'); }
+    const ent = getChannel(id);
+    if (!ent) { markMiss(id); res.writeHead(404); return res.end('unknown channel'); }
     res.locals.cache = 'meta';
     setNoCacheHeaders(res);
     res.setHeader('Link', '</jit/live/' + encodeURIComponent(id) + '/master.m3u8>; rel="alternate"; type="application/vnd.apple.mpegurl"');
@@ -710,14 +752,26 @@ const server = http.createServer((req, res) => {
   if (gm) {
     const id = safeId(gm[1]);
     if (!id) { res.writeHead(400); return res.end('bad channel'); }
-    const map = loadMap();
-    if (!map[id] || !map[id].url) { markMiss(id); res.writeHead(404); return res.end('unknown channel'); }
+    const ent = getChannel(id);
+    if (!ent) { markMiss(id); res.writeHead(404); return res.end('unknown channel'); }
     res.locals.cache = 'redirect';
     setObjectCacheHeaders(res, 'redirect');
     res.writeHead(302, {
       'Location': publicBase(req) + '/live/' + id + '/master.m3u8'
     });
     return res.end();
+  }
+  if (u.pathname === '/source.json') {
+    setNoCacheHeaders(res);
+    let src;
+    try {
+      const q = JSON.parse(fs.readFileSync(STAMP_FILE, 'utf8'));
+      const stt = fs.statSync(q.path);
+      src = { path: q.path, mtime: new Date(stt.mtimeMs).toISOString(), size: stt.size,
+              channels: Object.keys(loadMap()).length, stale: mapIsStale() };
+    } catch (e) { src = { path: null, error: (e && e.message) || 'sin sello' }; }
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    return res.end(JSON.stringify({ service: 'ape-jit-mirror', source: src }));
   }
   if (u.pathname === '/health') {
     setNoCacheHeaders(res);
@@ -735,15 +789,15 @@ const server = http.createServer((req, res) => {
     const sdr720 = jm[2] === 'sdr720/';
     const sdr = !sdr720 && jm[2] === 'sdr/';
     // Start on manifest request so a player that asks JSON first also warms.
-    const map = loadMap();
-    if (!map[id] || !map[id].url) { markMiss(id); res.writeHead(404); return res.end('unknown channel'); }
+    const ent = getChannel(id);
+    if (!ent) { markMiss(id); res.writeHead(404); return res.end('unknown channel'); }
     if (!current || current.id !== id || !!current.sdr !== sdr || !!current.sdr720 !== sdr720) {
       const _k = chKey(id, sdr, sdr720);
       booting.add(_k);
       // start() es async (espera el slot unico). El guard de abajo evita el
       // TypeError que habia en `current.lastAccess` cuando el arranque no dejaba
       // current seteado. La marca booting caduca sola para no enmascarar muertes.
-      start(id, map[id], sdr, sdr720)
+      start(id, ent, sdr, sdr720)
         .catch((e) => log('START_FAIL', id, e && e.message ? e.message : String(e)))
         .finally(() => setTimeout(() => booting.delete(_k), BOOT_GRACE_MS));
     }
@@ -758,12 +812,12 @@ const server = http.createServer((req, res) => {
   if (!id) { res.writeHead(400); return res.end('bad channel'); }
   const sdr720 = m[2] === 'sdr720/';
   const sdr = !sdr720 && m[2] === 'sdr/';
-  const map = loadMap();
-  if (!map[id] || !map[id].url) { markMiss(id); res.writeHead(404); return res.end('unknown channel'); }
+  const ent = getChannel(id);
+  if (!ent) { markMiss(id); res.writeHead(404); return res.end('unknown channel'); }
   if (!current || current.id !== id || !!current.sdr !== sdr || !!current.sdr720 !== sdr720) {
     const _k = chKey(id, sdr, sdr720);
     booting.add(_k);
-    start(id, map[id], sdr, sdr720)
+    start(id, ent, sdr, sdr720)
       .catch((e) => log('START_FAIL', id, e && e.message ? e.message : String(e)))
       .finally(() => setTimeout(() => booting.delete(_k), BOOT_GRACE_MS));
   }

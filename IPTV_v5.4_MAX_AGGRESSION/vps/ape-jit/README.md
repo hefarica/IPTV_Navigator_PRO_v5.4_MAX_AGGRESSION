@@ -80,6 +80,42 @@ id 999999999 → HTTP 200 en 7,78 s · health active:"999999999" · PID 55549 (e
 id 999999999 → 404                                    (el espejo lo retiró)
 ```
 
+### Resolución al vuelo (polimórfica)
+
+Si un player pide un id que el espejo **todavía no tiene**, `server.js` no se limita a
+devolver 404: comprueba si la lista fuente es más nueva que el espejo y, si lo es, lanza
+**una** reconciliación (single-flight + cooldown 30 s), recarga el mapa y sirve la
+petición. Medido en producción:
+
+```
+MAP_LOAD 10572 canales           ← el canal faltaba en el espejo
+RECONCILE_ON_DEMAND 1312005      ← la lista fuente es mas nueva que el espejo
+MAP_LOAD 10573 canales           ← replicado en el acto
+HTTP 200 en 11,34 s              ← servido en la MISMA petición
+```
+
+**Polimórfico**: el parser entiende el envoltorio `/pulse/?u=` de APE **y** una URL
+directa, así que se adapta a cualquier lista ajena. Verificado con una lista externa:
+
+```
+#EXTINF:-1 tvg-id="111" tvg-name="Canal Ajeno 1" group-title="PRUEBA",Canal Ajeno 1
+#EXTHTTP:{"User-Agent":"SmartTV-9.0","X-Otra":"1"}
+http://provider-ajeno.example:8080/live/usuario/clave/111.m3u8
+   → {"111":{"url":"http://provider-ajeno.example:8080/live/usuario/clave/111.m3u8",
+             "ua":"SmartTV-9.0"}}
+```
+
+Sigue sin aceptar URLs del cliente: solo ids, resueltos contra la lista fuente.
+
+`/jit/source.json` declara el estado del espejo:
+
+```json
+{"service":"ape-jit-mirror","source":{
+  "path":"/var/www/lists/pulse/APE_LISTA_1793926685925.m3u8",
+  "mtime":"2026-11-07T04:58:20.828Z","size":624693667,
+  "channels":10573,"stale":false}}
+```
+
 ### Automatización — dos disparadores, ventana ~1 s
 
 **`ape-jit-reconcile.path`** — `PathChanged=/var/www/lists/pulse` (`IN_CLOSE_WRITE`: dispara
@@ -103,6 +139,11 @@ node /opt/ape-jit/reconcile.js --force               # ignorar el sello
 node /opt/ape-jit/reconcile.js --list <ruta>         # forzar una lista concreta
 ```
 
+> **Criterio de selección: `mtime` (fecha de modificación)**, por decisión del operador.
+> El sello `.reconciled` guarda `path + size + mtimeMs`. Ojo: un `touch` cambia el mtime
+> sin cambiar el contenido, así que puede provocar un re-parseo inútil (el fail-closed y
+> el swap idempotente lo hacen inofensivo, pero cuesta ~6 s de CPU).
+>
 > **Ojo con el default**: sin `--list` se toma la lista **más reciente por mtime** de
 > `lists/pulse/`. Si en un momento conviven dos listas y el player usa la vieja, hay
 > que pasar `--list` explícita.

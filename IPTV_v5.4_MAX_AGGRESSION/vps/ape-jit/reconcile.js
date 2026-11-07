@@ -113,17 +113,18 @@ async function parseList(file) {
     }
     if (t.startsWith('#')) continue;
 
-    // línea de URL del bloque
+    // línea de URL del bloque — POLIMÓRFICO: entiende el envoltorio /pulse/?u= de APE
+    // y también una URL directa, que es como vienen las listas ajenas. Sin esto el
+    // espejo solo sabría leer las listas de este generador.
+    let resolved = '';
     if (t.includes('/pulse/')) {
       const u = t.match(/[?&]u=([^&\s]+)/);
-      if (u) {
-        let dec = '';
-        try { dec = decodeURIComponent(u[1]); } catch (_) { dec = ''; }
-        const cdn = dec ? toCdn(dec) : '';
-        if (cdn && cur.id) { cur.url = cdn; cur.ua = ua || DEFAULT_UA; }
-        else if (cur.id) skipped++;
-      }
+      if (u) { try { resolved = toCdn(decodeURIComponent(u[1])); } catch (_) { resolved = ''; } }
+    } else if (/^https?:\/\//i.test(t)) {
+      resolved = t;                         // lista ajena: se usa su URL tal cual
     }
+    if (resolved && cur.id) { cur.url = resolved; cur.ua = ua || DEFAULT_UA; }
+    else if (cur.id) skipped++;
   }
   if (cur && cur.url) { map[cur.id] = { url: cur.url, ua: cur.ua }; rows.push(cur); }
   else if (cur) noUrl++;
