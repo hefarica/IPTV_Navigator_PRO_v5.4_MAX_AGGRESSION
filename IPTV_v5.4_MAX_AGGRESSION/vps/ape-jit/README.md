@@ -10,6 +10,7 @@ sha256 raw, transferencia base64):
 | `ape-jit.service` | `/etc/systemd/system/ape-jit.service` |
 | `ape-jit-reconcile.service` | `/etc/systemd/system/ape-jit-reconcile.service` |
 | `ape-jit-reconcile.timer` | `/etc/systemd/system/ape-jit-reconcile.timer` |
+| `ape-jit-reconcile.path` | `/etc/systemd/system/ape-jit-reconcile.path` |
 
 **Ningún workflow despliega esto.** No está en `tools/cicd/vps_deploy_map.json` ni en
 ningún `.github/workflows/*.yml`. Se sube a mano; ver "Despliegue" al final.
@@ -79,13 +80,23 @@ id 999999999 → HTTP 200 en 7,78 s · health active:"999999999" · PID 55549 (e
 id 999999999 → 404                                    (el espejo lo retiró)
 ```
 
-### Automatización
+### Automatización — dos disparadores, ventana ~1 s
 
-`ape-jit-reconcile.timer` (`OnBootSec=3min`, `OnUnitActiveSec=5min`) ejecuta el
-espejo. Si la lista no cambió, cuesta ~0,2 s (SKIP). Si cambió, ~6 s de CPU con `nice 19`.
+**`ape-jit-reconcile.path`** — `PathChanged=/var/www/lists/pulse` (`IN_CLOSE_WRITE`: dispara
+cuando el fichero se **cierra** tras escribir, no en cada bloque). Medido: la lista cambia
+→ el espejo arranca **en 1 segundo** → publica en ~6 s. Esta es la pieza que elimina la
+ventana de minutos.
+
+**`ape-jit-reconcile.timer`** — red de seguridad cada 5 min (`OnBootSec=3min`). Si el
+path unit no dispara (p. ej. subida por scp a otra ruta), esto lo recoge.
+
+Si la lista no cambió, cuesta ~0,2 s (SKIP). Si cambió, ~6 s de CPU con `nice 19`.
+Una lista a medio escribir no puede publicar mal: el gate fail-closed del 95 % aborta
+y el mapa anterior sigue sirviendo hasta la corrida siguiente.
 
 ```bash
 systemctl list-timers ape-jit-reconcile.timer
+systemctl status ape-jit-reconcile.path
 journalctl -u ape-jit-reconcile -n 20
 node /opt/ape-jit/reconcile.js --dry-run --verbose   # ver sin escribir
 node /opt/ape-jit/reconcile.js --force               # ignorar el sello

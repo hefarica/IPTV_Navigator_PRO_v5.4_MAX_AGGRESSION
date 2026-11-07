@@ -1,0 +1,11 @@
+[Unit]
+Description=Vigila lists/pulse y dispara el espejo JIT al instante
+
+[Path]
+# PathChanged = IN_CLOSE_WRITE: dispara cuando el fichero se CIERRA tras escribir,
+# no en cada bloque. Evita reconciliar una lista a medio subir.
+PathChanged=/var/www/lists/pulse
+Unit=ape-jit-reconcile.service
+
+[Install]
+WantedBy=paths.target
