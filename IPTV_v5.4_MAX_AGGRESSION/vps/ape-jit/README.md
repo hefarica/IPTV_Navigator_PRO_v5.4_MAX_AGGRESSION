@@ -175,6 +175,48 @@ node /opt/ape-jit/reconcile.js --list <ruta>         # forzar una lista concreta
 
 ---
 
+## La carrera del reaping — erradicada (2026-11-07)
+
+**Síntoma medido** (una vez, 05:21:02):
+
+```
+FFMPEG [out#0/dash] Could not write header (incorrect parameters)
+Error while filtering: No such file or directory
+FFMPEG encoded 0 frames
+EXIT 3 254            → el player recibió 503
+```
+
+**Mecanismo.** El directorio de salida era un **path fijo compartido** por todos los
+arranques del mismo canal (`OUT_ROOT/<id>/<variante>`). `stopCurrent()` deja un **timer
+de seguridad** (`STOP_GRACE_MS=6 s`) que llama a `reapDir()`, y `reapDir()` hacía
+`rm -rf` **sin comprobar si un hijo nuevo ya estaba escribiendo ahí**. Si el arranque
+nuevo caía dentro de esa ventana, ffmpeg se quedaba sin directorio a mitad de escritura.
+
+**Erradicación estructural** (no un parche de tiempo):
+
+1. **Directorio por run**: `OUT_ROOT/<id>/<variante>/run-<ts>-<rand>`. Dos arranques no
+   comparten path nunca, así que el reaping de uno anterior **no puede** tocar al vivo.
+2. **`reapDir()` con guarda**: `if (current && current.dir === dir) return;` más limpieza
+   del directorio padre si queda vacío (no se acumulan carpetas).
+3. **`baseDirFor()` como resolución única** del directorio de salida, usada por
+   `waitForFile()` y por el servidor de ficheros. Antes `waitForFile()` construía el path
+   por su cuenta con el layout viejo y no veía el fichero del run.
+4. **`runDirs`** (Map) registra el directorio en el `mkdir`, **antes** del `spawn`, para
+   que el handler pueda servirlo sin esperar a que `current` esté seteado.
+
+**Verificación.** Stress de 20 cambios de canal seguidos (40 peticiones):
+
+```
+total=40  fallos=0
+Could not write header -> 0 · encoded 0 frames -> 0 · EXIT 254 -> 0
+SPAWN_ERROR -> 0 · SLOT_TIMEOUT -> 0
+runs en disco: 1 (solo el vivo, no se acumulan)
+```
+
+> **Honesto:** el baseline previo (16 peticiones) tampoco reprodujo el fallo — es una
+> carrera temporal. Lo que sostiene la erradicación es el mecanismo (path compartido +
+> reaping sin guarda) eliminado por diseño, más 40/40 sin errores después.
+
 ## Arreglos del 2026-11-07 (transcode)
 
 **1 · `spawn('nice', …)` fallaba con ENOENT sin decir qué faltaba.** Ahora usa rutas

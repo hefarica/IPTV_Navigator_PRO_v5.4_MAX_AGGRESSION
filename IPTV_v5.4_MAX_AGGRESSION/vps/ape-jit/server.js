@@ -243,6 +243,9 @@ const SLOT_WAIT_MS = Number(process.env.SLOT_WAIT_MS || 12000);
 const BOOT_GRACE_MS = Number(process.env.BOOT_GRACE_MS || 45000);
 // Dirs cuyo hijo esta muriendo: no se pueden borrar ni reutilizar hasta el reaping.
 const pendingDirs = new Set();
+// dir del ultimo run por (canal|variante): se fija en el mkdir, ANTES del spawn,
+// para que el handler pueda servir sin esperar a que `current` este seteado.
+const runDirs = new Map();
 // Hijos realmente vivos ahora mismo. slotAcquire espera a que este en 0.
 const liveKids = new Set();
 // Arranques en curso (clave canal|variante). start() es async ahora, asi que
@@ -253,8 +256,13 @@ function chKey(id, sdr, sdr720) { return id + '|' + (sdr720 ? 'h' : sdr ? 's' : 
 
 function reapDir(dir) {
   if (!dir) return;
+  // ERRADICACION 2026-11-07: con directorios POR RUN este guardia es redundante,
+  // pero si algun dia vuelve un path compartido impide borrar el dir vivo.
+  if (current && current.dir === dir) return;
   pendingDirs.delete(dir);
   try { fs.rmSync(dir, { recursive: true, force: true }); } catch (_) {}
+  // El padre (OUT_ROOT/<id>/<variante>) se limpia si quedo vacio.
+  try { fs.rmdirSync(path.dirname(dir)); } catch (_) {}
 }
 
 /* Espera a que NO haya ningun hijo vivo: el slot unico del proveedor. */
@@ -308,8 +316,15 @@ async function start(id, spec, sdr, sdr720) {
   const copy4k = !isSdr && is4kSource && (!av1 || !sixK) &&
     (src.transfer === 'smpte2084' || src.transfer === 'arib-std-b67') &&
     (src.codec === 'hevc' || src.codec === 'h264');
-  const dir = path.join(OUT_ROOT, id, is720 ? 'sdr720' : (isSdr ? 'sdr' : ''));
+    // ERRADICACION de la carrera (2026-11-07): el dir era un path FIJO compartido por
+  // todos los arranques del mismo canal. stopCurrent() dejaba un timer de seguridad
+  // (STOP_GRACE_MS=6 s) que llamaba reapDir() y podia borrar el dir que el hijo NUEVO
+  // ya estaba escribiendo -> 'Could not write header' + 'encoded 0 frames' + EXIT 254.
+  // Con un dir por run, el reaping de un arranque anterior no puede tocar al vivo.
+  const runId = Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 6);
+  const dir = path.join(OUT_ROOT, id, is720 ? 'sdr720' : (isSdr ? 'sdr' : ''), 'run-' + runId);
   fs.mkdirSync(dir, { recursive: true });
+  runDirs.set(chKey(id, isSdr, is720), dir);
   // HARDENING (bug B): no limpiar un dir que un hijo anterior aun esta soltando.
   // Si esta pendiente de reaping, el mkdir ya lo reclamo; borrar aqui mataria al
   // proceso que todavia escribe su ultimo .tmp. Se espera al reaping.
@@ -449,8 +464,17 @@ async function start(id, spec, sdr, sdr720) {
   });
 }
 
+// Resolucion UNICA del directorio de salida. Con dirs por run hay que usar SIEMPRE
+// el del run registrado en el mkdir; el path plano queda solo como fallback legacy.
+function baseDirFor(id, sdr, sdr720) {
+  const d = runDirs.get(chKey(id, sdr, sdr720));
+  if (d) return d;
+  if (current && current.id === id && !!current.sdr === !!sdr && !!current.sdr720 === !!sdr720) return current.dir;
+  return path.join(OUT_ROOT, id, sdr720 ? 'sdr720' : (sdr ? 'sdr' : ''));
+}
+
 function waitForFile(id, name, cb, sdr, sdr720) {
-  const file = path.join(OUT_ROOT, id, sdr720 ? 'sdr720' : (sdr ? 'sdr' : ''), name);
+  const file = path.join(baseDirFor(id, sdr, sdr720), name);
   const key = chKey(id, sdr, sdr720);
   const t0 = Date.now();
   const tick = () => {
@@ -828,7 +852,10 @@ const server = http.createServer((req, res) => {
   if (name === 'index.m3u8') name = 'media_0.m3u8';
   const waitName = (name === 'master.m3u8' || name === 'manifest.mpd' || name === 'media_0.m3u8') ? name : null;
   const serve = () => {
-    const file = path.join(OUT_ROOT, id, sdr720 ? 'sdr720' : (sdr ? 'sdr' : ''), name);
+    // Servir desde el dir del run ACTUAL cuando coincida; si no, fallback al path
+    // plano antiguo (ficheros de antes de la migracion a dirs por run).
+    const base = baseDirFor(id, sdr, sdr720);
+    const file = path.join(base, name);
     if (!fs.existsSync(file)) { res.writeHead(404); return res.end('not ready'); }
     const type = MIME[path.extname(file)] || 'application/octet-stream';
     const kind = name === 'master.m3u8' ? 'master'
