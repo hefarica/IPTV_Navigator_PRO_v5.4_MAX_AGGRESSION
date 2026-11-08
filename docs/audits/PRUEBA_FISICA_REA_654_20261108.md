@@ -947,3 +947,69 @@ medicion de 25 s. Alternativa sin subir version: `RenderersFactory` propio que c
 `MediaCodecVideoRenderer` con la factory sincrona — mas codigo y mas riesgo.
 
 **Nada de esto se ha aplicado.**
+
+---
+
+# 18 · Cuatro builds medidos: el crash del decoder NO era la causa de la pantalla negra
+
+## 18.1 · Lo que se construyo y se midio
+
+| Build | Cambio | Resultado medido |
+|---|---|---|
+| **651** publicada | (ninguno) | negro |
+| **654** REA | (ninguno) | negro |
+| **vc652** `lockfix` | `lockApplied`: lock idempotente, no re-mutar el selector en cada `onTracksChanged` | **negro** |
+| **vc653** `syncdec` | media3 **1.3.1 -> 1.4.1** + adaptador **SINCRONO** inyectado por reflexion en `codecAdapterFactory` | **negro** |
+
+Los cuatro compilados e instalados en el dispositivo, medidos con el mismo procedimiento (25 s, misma URL).
+
+## 18.2 · El adaptador sincrono SI elimino el crash, pero NO la pantalla negra
+
+Log del vc653:
+
+```
+I ApePlayer: decoder-adapter: SINCRONO forzado (anti client-does-not-own-the-buffer)
+'client does not own' = 0     <- el crash DESAPARECIO
+'Playback error'      = 0
+tracks_sin_video      = 2
+captura               = 22.559 B -> NEGRO con "Recuperacion: reintentando la fuente actual"
+```
+
+**El `MediaCodec.CodecException: client does not own the buffer` pasa de 1 ocurrencia a 0.** El arreglo
+funciona para lo que dice. **Y la pantalla sigue negra igual.**
+
+## 18.3 · Conclusion: son DOS problemas independientes
+
+| Problema | Estado |
+|---|---|
+| **A. Crash del decoder** `client does not own the buffer` en el adaptador asincrono | **CAUSA IDENTIFICADA y NEUTRALIZADA** con el adaptador sincrono (medido: 1 -> 0) |
+| **B. Pantalla negra con "Recuperacion: reintentando la fuente actual"** | **SIGUE SIN CAUSA**. Persiste en los 4 builds, incluso sin crash |
+
+Arreglar A no arregla B. **Decir lo contrario seria falso.**
+
+## 18.4 · Lo que el descarte deja como sospechoso
+
+De la cadena del §17, si el decoder ya no crashea y la pantalla sigue negra, el fallo esta **aguas arriba o
+aguas abajo** del decoder:
+
+- **Aguas abajo**: el pipeline de efectos **`media3-effect`** (`UltraEnhance`) o `FluidBridge`. La prueba
+  `-e effects off` **no sirvio para descartarlo**: el log mostro `shader effects applied = 1` **tambien con
+  `effects off`**, es decir el flag no llego a desactivar nada.
+- **Aguas arriba**: `FluidBridge.dataSource(ctx, http)` (cache propia) devolviendo datos incompletos.
+
+**Ninguna de las dos esta medida.** Son las siguientes a instrumentar.
+
+## 18.5 · Y una observacion sobre el propio metodo
+
+Cuatro builds, cuatro hipotesis, tres descartadas por medicion. El valor de esta seccion no es el arreglo:
+es que **el crash del decoder queda aislado como causa secundaria**, para que nadie lo persiga como si fuera
+la pantalla negra.
+
+## 18.6 · Estado del arbol
+
+**Los dos parches fueron revertidos.** `ApePlayer.kt` y `app/build.gradle.kts` vuelven a su estado del
+repositorio: `git status` limpio y `compileDebugKotlin` en **exit 0**. El dispositivo queda con el **vc653
+`syncdec`** instalado (util para seguir midiendo) y la **651 original preservada** en `/ara/agent.apk`.
+
+El parche del adaptador sincrono queda **documentado como candidato** en este documento, no aplicado:
+requiere reflexion sobre un campo privado de Media3 y **no arregla el sintoma visible**.
