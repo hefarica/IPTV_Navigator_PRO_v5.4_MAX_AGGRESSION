@@ -675,3 +675,58 @@ pistas** en vez de solo reprogramar el latido.
 
 **Criterio de exito:** 60 s de un canal en directo con `state=PLAYING`, `since_publish` acotado y sin
 `NO_TRACKS`.
+
+---
+
+# 15 · Exoneracion: el fallo NO lo introdujo el despliegue del JIT
+
+## 15.1 · La duda que habia que descartar
+
+Al desplegar el parche REA, `/jit/source.json` paso a **404**. Si el `global_beat` publicara su latido a un
+endpoint del VPS que ya no existe, el bucle `REARM -> NO_TRACKS` seria **consecuencia de ese despliegue** y no
+un defecto del producto. Habia que medirlo, no suponerlo.
+
+## 15.2 · Medido: la app no hace ni una peticion al VPS
+
+Sesion de 14 s con la 654, buscando en logcat del proceso (`pid 16495`):
+
+```
+duckdns        -> 0 ocurrencias
+/jit/          -> 0
+/sync          -> 0
+/ara/          -> 0
+SocketTimeout  -> 0
+UnknownHost    -> 0
+ConnectException -> 0
+404            -> 0
+```
+
+**El `global_beat` es interno.** No publica a ningun endpoint: el literal `global_beat start` sale de
+`ApePlayer` y el guard que falla es un guard **local** (publicacion del latido dentro del propio reproductor,
+probablemente a `MediaSession`). No hay trafico de red implicado.
+
+## 15.3 · Segundo argumento: la 651 es anterior
+
+La **651** se publico el **2026-11-07T18:55:00Z** (campo `published_at` de `/ara/version`). El despliegue del
+JIT y todas las mediciones de esta sesion son del **2026-11-08**. La 651 ya existia antes y **tambien se
+atasca** (§12).
+
+## 15.4 · Conclusion
+
+| Afirmacion | Estado |
+|---|---|
+| El despliegue del JIT causo el atasco | **REFUTADO** - la app no hace peticiones al VPS durante la reproduccion |
+| El fallo es de red | **REFUTADO** - 0 errores de socket, host o conexion |
+| El fallo depende del `source.json` ausente | **REFUTADO** - 0 peticiones a `/jit/` |
+| El fallo esta en el reproductor | **SOSTENIDO** - unica explicacion compatible con todo lo medido |
+
+## 15.5 · Pista adicional aparecida en esta sesion
+
+```
+ApePlayer: reintento AVC sameUrl 1/1 (sin cambiar codec)
+```
+
+El reproductor **intenta recuperarse** reintentando la misma URL sin cambiar de codec, una sola vez. Ese
+reintento no restaura las pistas porque el estado ya es `NO_TRACKS`: vuelve a pedir el mismo manifiesto a un
+player que se quedo sin pistas seleccionadas. Es coherente con la cadena del §14 y anade el detalle de que el
+mecanismo de recuperacion **no toca el estado de pistas**.
