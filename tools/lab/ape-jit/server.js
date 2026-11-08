@@ -150,6 +150,442 @@ const LAB_PROFILE_FALLBACK = {
 };
 
 // Dimensiones por destino. DCI_2K es cine (1,90:1) y NO sustituye a QHD.
+/* ═══════════════════════════════════════════════════════════════════════════
+ * MATRIZ DE 12 PERFILES — resolucion de ENTRADA -> resolucion de SALIDA
+ *
+ * Cada perfil declara que resolucion de salida produce, con que modo de escala,
+ * flags, SAR, bandas y dither. TODOS los campos son EDITABLES en caliente por
+ * HTTP y por SSH: un 720p puede salir como 6K si el perfil lo pide.
+ *
+ * El motor NO asume que la entrada coincida con la salida. Calcula el escalado
+ * real respetando el aspecto (o no, segun scale_mode) y devuelve la cadena de
+ * filtros lista para ffmpeg, con sus metricas.
+ *
+ * NOTA HONESTA: esto es el CALCULO y la CADENA. Que el host pueda sostener 6K en
+ * tiempo real es otra cosa y se reporta aparte con la capacidad medida. Un 720p
+ * -> 6K es un upscale real de 9x en area: se calcula, se declara como upscale y
+ * NO se presenta como detalle recuperado.
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+// formato de salida por perfil, con TODOS los campos editables
+const PROFILE_MATRIX = {
+  'P0':   { outW: 7680, outH: 4320, scaleMode: 'fit', flags: 'lanczos+accurate_rnd', sar: '1:1', pad: 'black', dither: 'error_diffusion', label: '8K UHD' },
+  'P0.5': { outW: 5760, outH: 3240, scaleMode: 'fit', flags: 'lanczos+accurate_rnd', sar: '1:1', pad: 'black', dither: 'error_diffusion', label: '6K' },
+  'P1':   { outW: 3840, outH: 2160, scaleMode: 'fit', flags: 'lanczos+accurate_rnd', sar: '1:1', pad: 'black', dither: 'ordered',        label: '4K UHD' },
+  'P1.5': { outW: 5760, outH: 3240, scaleMode: 'fit', flags: 'lanczos+accurate_rnd', sar: '1:1', pad: 'black', dither: 'error_diffusion', label: '6K desde 4K' },
+  'P2':   { outW: 3840, outH: 2160, scaleMode: 'fit', flags: 'lanczos+accurate_rnd', sar: '1:1', pad: 'black', dither: 'ordered',        label: '4K' },
+  'P2.5': { outW: 5760, outH: 3240, scaleMode: 'fit', flags: 'lanczos+accurate_rnd', sar: '1:1', pad: 'black', dither: 'error_diffusion', label: '6K' },
+  'P3':   { outW: 1920, outH: 1080, scaleMode: 'fit', flags: 'lanczos+accurate_rnd', sar: '1:1', pad: 'black', dither: 'ordered',        label: '1080p' },
+  'P3.5': { outW: 5760, outH: 3240, scaleMode: 'fit', flags: 'lanczos+accurate_rnd', sar: '1:1', pad: 'black', dither: 'error_diffusion', label: '6K desde 1080p' },
+  'P4':   { outW: 1280, outH: 720,  scaleMode: 'fit', flags: 'lanczos+accurate_rnd', sar: '1:1', pad: 'black', dither: 'ordered',        label: '720p' },
+  'P4.5': { outW: 5760, outH: 3240, scaleMode: 'fit', flags: 'lanczos+accurate_rnd', sar: '1:1', pad: 'black', dither: 'error_diffusion', label: '6K desde 720p' },
+  'P5':   { outW: 854,  outH: 480,  scaleMode: 'fit', flags: 'lanczos+accurate_rnd', sar: '1:1', pad: 'black', dither: 'ordered',        label: '480p' },
+  'P5.5': { outW: 5760, outH: 3240, scaleMode: 'fit', flags: 'lanczos+accurate_rnd', sar: '1:1', pad: 'black', dither: 'error_diffusion', label: '6K desde 480p' }
+};
+
+// valores permitidos: el motor falla cerrado si llega otra cosa
+const MATRIX_ALLOWED = {
+  scaleMode: ['fit', 'fill', 'stretch'],
+  flags: ['lanczos+accurate_rnd', 'lanczos', 'bicubic', 'bilinear', 'neighbor', 'spline16', 'spline36'],
+  pad: ['black', 'none', 'copy'],
+  dither: ['none', 'ordered', 'error_diffusion', 'random'],
+  sar: ['1:1', 'preserve']
+};
+
+const MATRIX_LIMITS = {
+  outW: { min: 256, max: 7680 },
+  outH: { min: 144, max: 4320 }
+};
+
+const MATRIX_FILE = process.env.PROFILE_MATRIX_FILE || '/opt/ape-jit/profile-matrix.json';
+
+function cloneMatrix() {
+  const o = {};
+  for (const k of Object.keys(PROFILE_MATRIX)) o[k] = Object.assign({}, PROFILE_MATRIX[k]);
+  return o;
+}
+
+let profileMatrix = cloneMatrix();
+
+function loadProfileMatrix() {
+  try {
+    if (!fs.existsSync(MATRIX_FILE)) return;
+    const raw = JSON.parse(fs.readFileSync(MATRIX_FILE, 'utf8'));
+    for (const k of Object.keys(raw)) {
+      if (profileMatrix[k]) Object.assign(profileMatrix[k], raw[k]);
+    }
+  } catch (_) { /* si el fichero esta corrupto se queda el default: fail-open en lectura */ }
+}
+
+function saveProfileMatrix() {
+  try {
+    fs.writeFileSync(MATRIX_FILE, JSON.stringify(profileMatrix, null, 2));
+    return true;
+  } catch (_) { return false; }
+}
+
+/* Aplica un parche a un perfil. Fail-CLOSED: un valor fuera de rango o no
+ * permitido se rechaza con el motivo, no se corrige en silencio. */
+function patchProfile(id, patch) {
+  if (!profileMatrix[id]) return { ok: false, error: 'perfil inexistente: ' + id };
+  const cur = profileMatrix[id];
+  const next = Object.assign({}, cur);
+  const errors = [];
+
+  for (const [k, v] of Object.entries(patch || {})) {
+    if (k === 'label') { next.label = String(v).slice(0, 40); continue; }
+    if (k === 'outW' || k === 'outH') {
+      const n = Math.round(Number(v));
+      if (!Number.isFinite(n)) { errors.push(k + ': no numerico'); continue; }
+      const lim = MATRIX_LIMITS[k];
+      if (n < lim.min || n > lim.max) { errors.push(k + ' fuera de [' + lim.min + ',' + lim.max + ']: ' + n); continue; }
+      // par obligatorio: los codecs 4:2:0 exigen dimensiones pares
+      next[k] = (n % 2 === 0) ? n : n + 1;
+      continue;
+    }
+    if (MATRIX_ALLOWED[k]) {
+      if (!MATRIX_ALLOWED[k].includes(String(v))) {
+        errors.push(k + ' no permitido: ' + v + ' (validos: ' + MATRIX_ALLOWED[k].join(',') + ')');
+        continue;
+      }
+      next[k] = String(v);
+      continue;
+    }
+    errors.push('campo desconocido: ' + k);
+  }
+
+  if (errors.length) return { ok: false, errors, unchanged: cur };
+  profileMatrix[id] = next;
+  const saved = saveProfileMatrix();
+  return { ok: true, profile: next, persisted: saved };
+}
+
+/* ── MOTOR DE CALCULO ──────────────────────────────────────────────────────
+ * Dada una ENTRADA real (WxH, DAR) y un perfil, calcula el plan de escalado:
+ * dimensiones escaladas, bandas, cadena de filtros y metricas.
+ *
+ * Respeta DAR salvo en scale_mode=stretch. En fit mete bandas; en fill recorta.
+ * Las dimensiones se fuerzan a par porque 4:2:0 no admite impares.
+ */
+function gcd(a, b) { while (b) { const t = a % b; a = b; b = t; } return a || 1; }
+
+// dimension minima 2: los codecs 4:2:0 no admiten impares ni cero
+function evenFloor(n) { const v = Math.floor(Number(n) / 2) * 2; return v < 2 ? 2 : v; }
+
+// desplazamiento par que SI puede ser 0 (bandas, offsets de recorte). Usar
+// evenFloor aqui metia un pad de 2 px cuando el escalado ya ocupaba el lienzo,
+// y el margen derecho salia NEGATIVO. Medido: 720p->6K daba L=2 R=-2.
+function evenOffset(n) { const v = Math.round(Number(n) / 2) * 2; return v < 0 ? 0 : v; }
+
+function computePlan(profileId, input) {
+  const p = profileMatrix[profileId];
+  if (!p) return { ok: false, error: 'perfil inexistente: ' + profileId };
+
+  const inW = Math.max(2, Math.round(Number(input && input.width) || 0));
+  const inH = Math.max(2, Math.round(Number(input && input.height) || 0));
+  if (!Number.isFinite(inW) || !Number.isFinite(inH) || inW < 16 || inH < 16) {
+    return { ok: false, error: 'entrada invalida: se requiere width/height >= 16' };
+  }
+
+  const outW = p.outW, outH = p.outH;
+  const dar = (input && input.dar) ? Number(input.dar) : (inW / inH);
+  if (!Number.isFinite(dar) || dar <= 0) return { ok: false, error: 'DAR invalido' };
+
+  let scaledW, scaledH, padX = 0, padY = 0, cropped = false;
+
+  if (p.scaleMode === 'stretch') {
+    // deforma: ocupa todo el lienzo, ignora DAR
+    scaledW = outW; scaledH = outH;
+  } else {
+    const outDar = outW / outH;
+    if (p.scaleMode === 'fit') {
+      // cabe entero: el lado limitante manda, el otro se rellena con bandas
+      if (dar > outDar) { scaledW = outW; scaledH = evenFloor(outW / dar); }
+      else { scaledH = outH; scaledW = evenFloor(outH * dar); }
+      scaledW = evenFloor(scaledW); scaledH = evenFloor(scaledH);
+      // el pad se calcula como offset (puede ser 0) y se emite al doble
+      padX = evenOffset(outW - scaledW) / 2;
+      padY = evenOffset(outH - scaledH) / 2;
+    } else {
+      // fill: cubre todo y recorta el sobrante
+      if (dar > outDar) { scaledH = outH; scaledW = evenFloor(outH * dar); }
+      else { scaledW = outW; scaledH = evenFloor(outW / dar); }
+      scaledW = evenFloor(scaledW); scaledH = evenFloor(scaledH);
+      cropped = true;
+    }
+  }
+
+  const cropX = cropped ? evenOffset(scaledW - outW) / 2 : 0;
+  const cropY = cropped ? evenOffset(scaledH - outH) / 2 : 0;
+
+  // cadena de filtros REAL: solo se emiten las etapas que hacen falta
+  const chain = [];
+  chain.push('format=yuv420p10le');
+  chain.push('scale=' + scaledW + ':' + scaledH + ':flags=' + p.flags);
+  if (p.sar === '1:1') chain.push('setsar=1');
+  if (cropped && (cropX > 0 || cropY > 0)) {
+    chain.push('crop=' + outW + ':' + outH + ':' + cropX + ':' + cropY);
+  }
+  if (!cropped && p.pad === 'black' && ((outW - scaledW) > 0 || (outH - scaledH) > 0)) {
+    chain.push('pad=' + outW + ':' + outH + ':((ow-iw)/2):((oh-ih)/2):color=black');
+  }
+  /* DITHER: el filtro `format` de ffmpeg NO tiene opcion dither (solo pix_fmts).
+   * Medido: 'format=yuv420p10le:dither=error_diffusion' falla con
+   *   Error applying option 'dither' to filter 'format': Option not found
+   * El dither real vive en zscale (dither 0..3: none/ordered/random/error_diffusion).
+   * zscale puede abortar con 'no path between colorspaces' si la fuente no trae
+   * tags, asi que se emite sin forzar transferencia: solo el dither. */
+  if (p.dither && p.dither !== 'none') {
+    const map = { none: 0, ordered: 1, random: 2, error_diffusion: 3 };
+    chain.push('zscale=dither=' + (map[p.dither] != null ? map[p.dither] : 1));
+  }
+  chain.push('format=yuv420p10le');
+
+  const inPx = inW * inH;
+  const outPx = outW * outH;
+  const scaledPx = scaledW * scaledH;
+
+  return {
+    ok: true,
+    profile: profileId,
+    label: p.label,
+    input: { width: inW, height: inH, dar: Number(dar.toFixed(4)), pixels: inPx },
+    output: { width: outW, height: outH, pixels: outPx, aspect: Number((outW / outH).toFixed(4)) },
+    scaled: { width: scaledW, height: scaledH, pixels: scaledPx },
+    // padX/padY ya son el OFFSET en pixeles (la mitad de la banda). El filtro
+    // emite ((ow-iw)/2), asi que left == padX y right == total - padX. Multiplicar
+    // por 2 daba L=570 R=0 para una banda de 570 (285+285). Medido y corregido.
+    pad: (() => {
+      const bandX = Math.max(0, outW - scaledW), bandY = Math.max(0, outH - scaledH);
+      const l = Math.min(Math.max(0, padX), bandX), t = Math.min(Math.max(0, padY), bandY);
+      return { left: l, right: Math.max(0, bandX - l), top: t, bottom: Math.max(0, bandY - t), totalX: bandX, totalY: bandY };
+    })(),
+    crop: cropped ? { x: cropX, y: cropY, w: outW, h: outH } : null,
+    mode: p.scaleMode,
+    flags: p.flags,
+    sar: p.sar,
+    dither: p.dither,
+    filter: chain.join(','),
+    metrics: {
+      areaRatio: Number((outPx / inPx).toFixed(4)),
+      linearRatio: Number((outW / inW).toFixed(4)),
+      upscale: outPx > inPx,
+      // coste relativo: los pixeles de salida mandan, el escalado suma
+      relativeCost: Number(((outPx / (1920 * 1080)) * (outPx > inPx ? 1.35 : 1)).toFixed(3))
+    },
+    // declaracion honesta: un upscale NO recupera detalle
+    honesty: outPx > inPx
+      ? 'UPSCALE: ' + inW + 'x' + inH + ' -> ' + outW + 'x' + outH + ' (' + (outPx / inPx).toFixed(1) + 'x en area). Se interpola; NO se recupera detalle que la fuente no tiene.'
+      : 'DOWNSCALE/DOWN: ' + inW + 'x' + inH + ' -> ' + outW + 'x' + outH
+  };
+}
+
+/* ── GENERADOR DE COMBINACIONES ────────────────────────────────────────────
+ * Enumera el espacio de calculos: perfiles x entradas x modos x flags x dither
+ * x pad. Supera las 10.000 combinaciones distintas.
+ */
+const COMMON_INPUTS = [
+  { name: '480p',  width: 854,  height: 480,  dar: 16 / 9 },
+  { name: '480p4:3', width: 640, height: 480, dar: 4 / 3 },
+  { name: '576p',  width: 1024, height: 576,  dar: 16 / 9 },
+  { name: '576p4:3', width: 720, height: 576, dar: 4 / 3 },
+  { name: '720p',  width: 1280, height: 720,  dar: 16 / 9 },
+  { name: '1080p', width: 1920, height: 1080, dar: 16 / 9 },
+  { name: '1080p2.39', width: 1920, height: 804, dar: 1920 / 804 },
+  { name: '1440p', width: 2560, height: 1440, dar: 16 / 9 },
+  { name: '4K',    width: 3840, height: 2160, dar: 16 / 9 },
+  { name: '8K',    width: 7680, height: 4320, dar: 16 / 9 }
+];
+
+function enumeratePlans(opts) {
+  const o = opts || {};
+  const profiles = o.profiles && o.profiles.length ? o.profiles : Object.keys(profileMatrix);
+  const inputs = o.inputs && o.inputs.length
+    ? COMMON_INPUTS.filter((i) => o.inputs.includes(i.name))
+    : COMMON_INPUTS;
+  const modes = o.modes || MATRIX_ALLOWED.scaleMode;
+  const flagsList = o.flags || MATRIX_ALLOWED.flags;
+  const dithers = o.dither || MATRIX_ALLOWED.dither;
+  const max = Math.min(Number(o.limit) || 10000, 10000);
+  const offset = Math.max(0, Number(o.offset) || 0);
+
+  const rows = [];
+  let total = 0;
+  let idx = 0;
+  outer:
+  for (const pid of profiles) {
+    if (!profileMatrix[pid]) continue;
+    for (const inp of inputs) {
+      for (const mode of modes) {
+        for (const fl of flagsList) {
+          for (const dt of dithers) {
+            total++;
+            if (total <= offset) continue;
+            if (rows.length >= max) continue outer;
+            // se aplica una copia temporal del perfil para calcular sin mutar
+            const backup = Object.assign({}, profileMatrix[pid]);
+            profileMatrix[pid] = Object.assign({}, backup, { scaleMode: mode, flags: fl, dither: dt });
+            const plan = computePlan(pid, inp);
+            profileMatrix[pid] = backup;
+            if (plan.ok) {
+              plan.inputName = inp.name;
+              plan.variant = { scaleMode: mode, flags: fl, dither: dt };
+              plan.index = total;
+              rows.push(plan);
+            }
+            idx++;
+          }
+        }
+      }
+    }
+  }
+  return {
+    ok: true,
+    // total del espacio completo, contado hasta donde se pidio
+    totalEnumerated: total,
+    returned: rows.length,
+    offset,
+    limit: max,
+    // espacio completo teorico
+    spaceSize: profiles.length * inputs.length * modes.length * flagsList.length * dithers.length,
+    rows
+  };
+}
+
+loadProfileMatrix();
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * GOBIERNO VPS -> PLAYER
+ *
+ * El panel de IPTV Navigator configura la matriz; el VPS GENERA la lista que
+ * consumen los players (OTT Navigator, VLC, Kodi, TiviMate, la APK). Cada canal
+ * de esa lista apunta a /jit/go/{id} con el perfil resuelto, asi que el player
+ * reproduce la salida YA PROCESADA. No se le pide al player que filtre.
+ *
+ * VERDAD MEDIDA que manda sobre el diseno (skill ape-image-pipeline-truth):
+ *   - `#EXTVLCOPT:video-filter=` es INERTE por POLITICA de VLC
+ *     ("unsafe option ... ignored for security reasons"). No es sintaxis.
+ *   - Los filtros de pixel los ejecuta el worker FFmpeg del JIT.
+ *   - El VPP del SoC (AI-SR/AI-PQ) es el unico lever de pixeles en el device,
+ *     y no se gobierna desde aqui.
+ *
+ * Por eso la lista NO emite video-filter: emite el perfil dentro de la URL y
+ * solo las directivas que cada motor SI lee.
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Capacidad por motor: que directiva lee de verdad y que NO se le puede pedir. */
+const PLAYER_ENGINES = {
+  vlc: {
+    label: 'VLC / libVLC',
+    reads: ['network-caching', 'http-user-agent', 'http-referrer', 'clock-jitter'],
+    ignores: ['video-filter (unsafe option por politica)', 'kodi *', 'adaptive-*']
+  },
+  kodi: {
+    label: 'Kodi (inputstream.adaptive)',
+    reads: ['inputstream.adaptive.*', 'network-caching'],
+    ignores: ['EXTVLCOPT exclusivas', 'video-filter']
+  },
+  tivimate: {
+    label: 'TiviMate',
+    reads: ['EXTHTTP de un solo valor', 'tvg-*', 'group-title'],
+    ignores: ['EXTHTTP multi-valor con comas', 'EXTVLCOPT', 'KODIPROP']
+  },
+  ott: {
+    label: 'OTT Navigator',
+    reads: ['EXTVLCOPT http-user-agent/http-referrer', 'KODIPROP', 'EXTATTRFROMURL'],
+    ignores: ['video-filter (no documentado en su changelog)']
+  },
+  apk: {
+    label: 'APK ape-crystal-agent (Media3)',
+    reads: ['la URL y sus cabeceras', 'HLS via HlsMediaSource', 'DASH via DashMediaSource'],
+    ignores: ['EXTVLCOPT', 'KODIPROP', 'video-filter en la lista']
+  }
+};
+
+/* Estado de gobierno: que perfil se aplica a cada canal y con que receta.
+ * Se persiste aparte de la config global para poder tener canales con perfiles
+ * distintos conviviendo. */
+const GOVERNANCE_FILE = process.env.GOVERNANCE_FILE || '/opt/ape-jit/governance.json';
+
+let governance = { defaultProfile: 'P4.5', channels: {} };
+
+// ultimo perfil aplicado por la ruta /go (gobierno desde la lista)
+let governorApplied = null;
+
+function loadGovernance() {
+  try {
+    if (!fs.existsSync(GOVERNANCE_FILE)) return;
+    const raw = JSON.parse(fs.readFileSync(GOVERNANCE_FILE, 'utf8'));
+    if (raw && typeof raw === 'object') governance = Object.assign({}, governance, raw);
+  } catch (_) { /* corrupto -> defaults */ }
+}
+
+function saveGovernance() {
+  try { fs.writeFileSync(GOVERNANCE_FILE, JSON.stringify(governance, null, 2)); return true; }
+  catch (_) { return false; }
+}
+
+loadGovernance();
+
+function profileForChannel(id) {
+  const ch = String(id);
+  const row = governance.channels && governance.channels[ch];
+  const p = (row && row.profile) || governance.defaultProfile;
+  return profileMatrix[p] ? p : 'P4.5';
+}
+
+/* Directivas que SI se pueden emitir, por motor. Se derivan de PLAYER_ENGINES:
+ * nada que el motor ignore llega a la lista. */
+function engineDirectives(engine, profile) {
+  const p = profileMatrix[profile] || profileMatrix['P4.5'];
+  const out = [];
+  out.push('#EXT-X-APE-PROFILE:' + profile);
+  out.push('#EXT-X-APE-TARGET:' + p.outW + 'x' + p.outH + ';MODE=' + p.scaleMode + ';DITHER=' + p.dither);
+  // declaracion honesta del responsable del procesamiento
+  out.push('#EXT-X-APE-PROCESSING:DOMAIN=vps_jit;PLAYER_FILTERS=0;REASON=video-filter-es-inerte-en-playlist');
+  if (engine === 'vlc' || engine === 'kodi' || engine === 'ott') {
+    // network-caching SI lo lee VLC (medido); el resto no se emite
+    out.push('#EXTVLCOPT:network-caching=3000');
+    out.push('#EXTVLCOPT:clock-jitter=0');
+  }
+  if (engine === 'kodi') {
+    out.push('#KODIPROP:inputstream.adaptive.stream_selection_type=manual-osd');
+  }
+  return out;
+}
+
+/* Genera la lista M3U8 de gobierno. Cada canal apunta a /jit/go/{id} con su
+ * perfil; el JIT resuelve a la ejecucion con esa matriz aplicada. */
+function buildGovernedLineup(opts) {
+  const o = opts || {};
+  const engine = String(o.engine || 'ott');
+  const base = String(o.base || 'https://iptv-ape.duckdns.org');
+  const map = loadMap();
+  const ids = Object.keys(map).filter((id) => map[id] && map[id].url);
+  const lines = [
+    '#EXTM3U',
+    '#EXT-X-APE-GOVERNANCE:VERSION=1;DEFAULT_PROFILE=' + governance.defaultProfile +
+      ';ENGINE=' + engine + ';CHANNELS=' + ids.length,
+    '#EXT-X-APE-ENGINE:' + engine + ';READS=' + PLAYER_ENGINES[engine].reads.join('|') +
+      ';IGNORES=' + PLAYER_ENGINES[engine].ignores.join('|')
+  ];
+  let emitted = 0;
+  for (const id of ids) {
+    const prof = profileForChannel(id);
+    const ch = map[id];
+    const name = (ch && ch.name) ? String(ch.name).replace(/[,]/g, ' ') : ('Canal ' + id);
+    const grp = (ch && ch.group) ? String(ch.group).replace(/[,]/g, ' ') : 'APE';
+    lines.push('#EXTINF:-1 tvg-id="' + id + '" tvg-chno="' + id + '" group-title="' + grp + '",' + name);
+    for (const d of engineDirectives(engine, prof)) lines.push(d);
+    lines.push(base + '/jit/go/' + encodeURIComponent(id) + '?p=' + encodeURIComponent(prof) + '&e=' + encodeURIComponent(engine));
+    lines.push('');
+    emitted++;
+  }
+  return { text: lines.join('\n'), emitted, engine, ids };
+}
+
+
+
 const IMAGE_TARGETS = {
   source: null,
   FHD_1080: { w: 1920, h: 1080 },
@@ -493,7 +929,11 @@ function buildEncodingPlan(src, options = {}) {
   const labProfile = cfg.profile && LAB_PROFILES[cfg.profile] ? cfg.profile : null;
   const derivedTarget = labProfile ? LAB_PROFILES[labProfile].target : null;
   const effectiveTarget = derivedTarget || cfg.target;
-  const requestedTarget = IMAGE_TARGETS[effectiveTarget] || null;
+  // La MATRIZ del perfil manda si trae resolucion propia: un canal gobernado con
+  // ?p=P4.5 debe producir 5760x3240 aunque IMAGE_TARGETS no conozca ese tamano.
+  const matrixRow = (cfg.profile && profileMatrix[cfg.profile]) ? profileMatrix[cfg.profile] : null;
+  const matrixTarget = matrixRow ? { w: matrixRow.outW, h: matrixRow.outH } : null;
+  const requestedTarget = matrixTarget || IMAGE_TARGETS[effectiveTarget] || null;
   // Una receta de filtros o un destino explicito NO pueden servirse con -c:v copy:
   // copy no ejecuta -vf. Si se pide procesamiento, se procesa.
   const wantsProcessing = cfg.force_transcode !== false
@@ -1331,14 +1771,231 @@ const server = http.createServer((req, res) => {
     if (!id) { res.writeHead(400); return res.end('bad channel'); }
     const map = loadMap();
     if (!map[id] || !map[id].url) { res.writeHead(404); return res.end('unknown channel'); }
+
+    /* GOBIERNO: ?p=Px fija el perfil de ESTA peticion.
+     *
+     * Antes /go/{id} redirigia siempre sin mirar el perfil, asi que la lista
+     * gobernada decia P4.5 pero el motor producia lo que tuviera en su config
+     * global. Medido: pedir ?p=P0 dejaba config.target=FHD_1080.
+     *
+     * Ahora el perfil de la URL se aplica al trabajo en curso: se copia al
+     * imageConfig como profile (del que buildEncodingPlan deriva la resolucion
+     * de la matriz) antes de redirigir. Es single-slot por diseno: el ultimo
+     * perfil pedido manda, y se declara en el manifiesto. */
+    const qp = String(u.searchParams.get('p') || '');
+    if (qp && profileMatrix[qp]) {
+      /* El perfil cambia la RESOLUCION de salida, y eso solo se aplica si el
+       * transcode ARRANCA DE NUEVO: cambiar imageConfig con un job vivo no toca
+       * el ffmpeg que ya esta corriendo.
+       *
+       * MEDIDO: pedir ?p=P4.5 (5760x3240) con un job en P1 dejaba la salida en
+       * 3840x2160, con el MISMO session id en el init. El perfil se registraba
+       * pero el video no cambiaba: la etiqueta mentia.
+       *
+       * Se para el trabajo cuando el perfil pedido no es el que esta produciendo. */
+      if (imageConfig.profile !== qp) {
+        imageConfig.profile = qp;
+        imageConfigSource = 'governance:' + qp;
+        imageConfig.force_transcode = true;
+        try { fs.writeFileSync(IMAGE_CONFIG_FILE, JSON.stringify(imageConfig, null, 2)); } catch (_) {}
+        if (current) {
+          try { stopCurrent('governance-profile-change'); } catch (_) {}
+        }
+      }
+    }
+    // se registra SIEMPRE que la peticion traiga un perfil valido, no solo cuando
+    // cambia la config: el recibo debe reflejar lo que pidio el player.
+    if (qp && profileMatrix[qp]) {
+      governorApplied = { profile: qp, channel: id, at: new Date().toISOString() };
+    }
+
     res.locals.cache = 'redirect';
     setObjectCacheHeaders(res, 'redirect');
+    const qs = qp && profileMatrix[qp] ? ('?p=' + encodeURIComponent(qp)) : '';
     res.writeHead(302, {
-      'Location': publicBase(req) + '/live/' + id + '/master.m3u8'
+      'Location': publicBase(req) + '/live/' + id + '/master.m3u8' + qs
     });
     return res.end();
   }
   /* ── MODULO DE IMAGEN: control remoto desde la UI ───────────────────────── */
+  /* \u2500\u2500 MATRIZ EDITABLE de los 12 perfiles: entrada -> salida \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */
+  if (u.pathname === '/image/governance' && req.method === 'GET') {
+    setBaseHeaders(res);
+    setNoCacheHeaders(res);
+    const map = loadMap();
+    const rows = Object.keys(map).filter((id) => map[id] && map[id].url).map((id) => ({
+      channel: id,
+      name: (map[id].name || '').slice(0, 60),
+      group: (map[id].group || '').slice(0, 30),
+      profile: profileForChannel(id),
+      target: ((profileMatrix[profileForChannel(id)] || {}).outW || 0) + 'x' + ((profileMatrix[profileForChannel(id)] || {}).outH || 0),
+      overridden: !!(governance.channels && governance.channels[id])
+    }));
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    return res.end(JSON.stringify({
+      ok: true,
+      defaultProfile: governance.defaultProfile,
+      channels: rows,
+      count: rows.length,
+      engines: PLAYER_ENGINES,
+      mechanism: 'El VPS entrega una URL con el perfil resuelto y el JIT produce esa salida. El player solo reproduce. video-filter en playlist es inerte por politica de VLC.'
+    }));
+  }
+
+  if (u.pathname === '/image/governance' && req.method === 'POST') {
+    let body = '';
+    let tooBig = false;
+    req.on('data', (c) => { body += c; if (body.length > 32768) { tooBig = true; req.destroy(); } });
+    req.on('end', () => {
+      if (tooBig) { res.writeHead(413, { 'Content-Type': 'application/json' }); return res.end(JSON.stringify({ ok: false, error: 'body grande' })); }
+      let pl;
+      try { pl = JSON.parse(body || '{}'); } catch (_) {
+        res.writeHead(400, { 'Content-Type': 'application/json' }); return res.end(JSON.stringify({ ok: false, error: 'JSON invalido' }));
+      }
+      const errs = [];
+      if (pl.defaultProfile != null) {
+        if (!profileMatrix[String(pl.defaultProfile)]) errs.push('perfil inexistente: ' + pl.defaultProfile);
+        else governance.defaultProfile = String(pl.defaultProfile);
+      }
+      if (pl.channel != null) {
+        const ch = String(pl.channel);
+        if (pl.profile === null || pl.profile === '') delete governance.channels[ch];
+        else if (!profileMatrix[String(pl.profile)]) errs.push('perfil inexistente: ' + pl.profile);
+        else governance.channels[ch] = { profile: String(pl.profile), at: new Date().toISOString() };
+      }
+      if (errs.length) { res.writeHead(400, { 'Content-Type': 'application/json' }); return res.end(JSON.stringify({ ok: false, errors: errs })); }
+      const saved = saveGovernance();
+      setBaseHeaders(res); setNoCacheHeaders(res);
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      return res.end(JSON.stringify({ ok: true, persisted: saved, defaultProfile: governance.defaultProfile, overrides: Object.keys(governance.channels).length }));
+    });
+    return;
+  }
+
+  if (u.pathname === '/image/lineup') {
+    const engine = String(u.searchParams.get('engine') || 'ott');
+    if (!PLAYER_ENGINES[engine]) {
+      setBaseHeaders(res); setNoCacheHeaders(res);
+      res.writeHead(400, { 'Content-Type': 'application/json' });
+      return res.end(JSON.stringify({ ok: false, error: 'motor desconocido: ' + engine + '. validos: ' + Object.keys(PLAYER_ENGINES).join(',') }));
+    }
+    const base = String(u.searchParams.get('base') || ((req.headers['x-forwarded-proto'] || 'https') + '://' + (req.headers.host || 'iptv-ape.duckdns.org')));
+    const lin = buildGovernedLineup({ engine, base });
+    setBaseHeaders(res);
+    setNoCacheHeaders(res);
+    res.writeHead(200, { 'Content-Type': 'audio/x-mpegurl; charset=utf-8' });
+    return res.end(lin.text);
+  }
+
+  if (u.pathname === '/image/matrix' && req.method === 'GET') {
+    setBaseHeaders(res);
+    setNoCacheHeaders(res);
+    const rows = Object.keys(profileMatrix).map((id) => {
+      const p = profileMatrix[id];
+      const lab = LAB_PROFILES[id] || {};
+      return {
+        profile: id,
+        label: p.label,
+        labDeclared: lab.declared || null,
+        outW: p.outW, outH: p.outH,
+        scaleMode: p.scaleMode, flags: p.flags, sar: p.sar, pad: p.pad, dither: p.dither,
+        editable: ['outW', 'outH', 'scaleMode', 'flags', 'sar', 'pad', 'dither', 'label']
+      };
+    });
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    return res.end(JSON.stringify({
+      ok: true,
+      count: rows.length,
+      rows,
+      allowed: MATRIX_ALLOWED,
+      limits: MATRIX_LIMITS,
+      // espacio de calculos que el motor puede generar
+      spaceSize: Object.keys(profileMatrix).length * COMMON_INPUTS.length *
+        MATRIX_ALLOWED.scaleMode.length * MATRIX_ALLOWED.flags.length * MATRIX_ALLOWED.dither.length,
+      inputs: COMMON_INPUTS.map((i) => ({ name: i.name, width: i.width, height: i.height }))
+    }));
+  }
+
+  /* \u2500\u2500 EDITAR un perfil de la matriz \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */
+  if (u.pathname === '/image/matrix' && req.method === 'POST') {
+    let body = '';
+    let tooBig = false;
+    req.on('data', (chunk) => { body += chunk; if (body.length > 32768) { tooBig = true; req.destroy(); } });
+    req.on('end', () => {
+      if (tooBig) {
+        res.writeHead(413, { 'Content-Type': 'application/json' });
+        return res.end(JSON.stringify({ ok: false, error: 'body demasiado grande' }));
+      }
+      let payload;
+      try { payload = JSON.parse(body || '{}'); }
+      catch (e) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        return res.end(JSON.stringify({ ok: false, error: 'JSON invalido' }));
+      }
+      const r = patchProfile(String(payload.profile || ''), payload.patch || {});
+      setBaseHeaders(res);
+      setNoCacheHeaders(res);
+      res.writeHead(r.ok ? 200 : 400, { 'Content-Type': 'application/json' });
+      return res.end(JSON.stringify(r));
+    });
+    return;
+  }
+
+  /* \u2500\u2500 CALCULAR el plan: entrada real -> salida del perfil \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */
+  if (u.pathname === '/image/plan' && req.method === 'POST') {
+    let body = '';
+    let tooBig = false;
+    req.on('data', (chunk) => { body += chunk; if (body.length > 32768) { tooBig = true; req.destroy(); } });
+    req.on('end', () => {
+      if (tooBig) {
+        res.writeHead(413, { 'Content-Type': 'application/json' });
+        return res.end(JSON.stringify({ ok: false, error: 'body demasiado grande' }));
+      }
+      let payload;
+      try { payload = JSON.parse(body || '{}'); }
+      catch (e) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        return res.end(JSON.stringify({ ok: false, error: 'JSON invalido' }));
+      }
+      const plan = computePlan(String(payload.profile || ''), payload.input || {});
+      setBaseHeaders(res);
+      setNoCacheHeaders(res);
+      res.writeHead(plan.ok ? 200 : 400, { 'Content-Type': 'application/json' });
+      return res.end(JSON.stringify(plan));
+    });
+    return;
+  }
+
+  /* \u2500\u2500 ENUMERAR miles de calculos por perfil \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */
+  if (u.pathname === '/image/plans') {
+    const q = u.searchParams;
+    const qlist = (k) => (q.get(k) ? String(q.get(k)).split(',').map((x) => x.trim()).filter(Boolean) : null);
+    const out = enumeratePlans({
+      profiles: qlist('profiles'),
+      inputs: qlist('inputs'),
+      modes: qlist('modes'),
+      flags: qlist('flags'),
+      dither: qlist('dither'),
+      limit: q.get('limit'),
+      offset: q.get('offset')
+    });
+    setBaseHeaders(res);
+    setNoCacheHeaders(res);
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    // resumen + primera pagina de filas para no devolver megabytes
+    const rows = out.rows.slice(0, Math.min(out.rows.length, 40));
+    return res.end(JSON.stringify({
+      ok: true,
+      totalEnumerated: out.totalEnumerated,
+      returned: out.returned,
+      shown: rows.length,
+      offset: out.offset,
+      limit: out.limit,
+      spaceSize: out.spaceSize,
+      rows
+    }));
+  }
+
   /* ── PERFILES DEL LAB: los 12, con su destino y su viabilidad medida ─────── */
   if (u.pathname === '/image/profiles') {
     setBaseHeaders(res);
@@ -1416,6 +2073,7 @@ const server = http.createServer((req, res) => {
         audio: imageConfig.audio, force_transcode: imageConfig.force_transcode,
         profile: imageConfig.profile || null,
         idle_stop_s: Math.round(IDLE_MS / 1000),
+        governor_applied: governorApplied,
         derived_target: (imageConfig.profile && LAB_PROFILES[imageConfig.profile])
           ? LAB_PROFILES[imageConfig.profile].target : null
       },

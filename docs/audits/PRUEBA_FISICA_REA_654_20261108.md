@@ -3341,3 +3341,145 @@ No se declara verificado. Se declara **listo para probar**.
 
 **Decisiones que quedan al operador:** subir QHD sabiendo que no llega, pushear los 724 commits, y
 elegir transporte por defecto.
+
+---
+
+# 51 · MATRIZ EDITABLE DE 12 PERFILES + GOBIERNO VPS -> PLAYER
+
+## 51.1 · La matriz
+
+`GET /jit/image/matrix` devuelve los 12 perfiles con su resolucion de SALIDA y
+todos los campos editables. `POST /jit/image/matrix` con `{profile, patch}` los
+cambia en caliente y persiste en `/opt/ape-jit/profile-matrix.json`.
+
+| Perfil | LAB declara | SALIDA (editable) | modo | flags | dither |
+|---|---|---|---|---|---|
+| P0 | 7680x4320 | 7680x4320 | fit | lanczos+accurate_rnd | error_diffusion |
+| P0.5 | 5760x3240 | 5760x3240 | fit | lanczos+accurate_rnd | error_diffusion |
+| P1 | 3840x2160 | 3840x2160 | fit | lanczos+accurate_rnd | ordered |
+| P1.5 | 5760x3240 | 5760x3240 | fit | lanczos+accurate_rnd | error_diffusion |
+| P2 | 3840x2160 | 3840x2160 | fit | lanczos+accurate_rnd | ordered |
+| P2.5 | 5760x3240 | 5760x3240 | fit | lanczos+accurate_rnd | error_diffusion |
+| P3 | 1920x1080 | 1920x1080 | fit | lanczos+accurate_rnd | ordered |
+| P3.5 | 5760x3240 | 5760x3240 | fit | lanczos+accurate_rnd | error_diffusion |
+| P4 | 1280x720 | 1280x720 | fit | lanczos+accurate_rnd | ordered |
+| P4.5 | 5760x3240 | 5760x3240 | fit | lanczos+accurate_rnd | error_diffusion |
+| P5 | 854x480 | 854x480 | fit | lanczos+accurate_rnd | ordered |
+| P5.5 | 5760x3240 | 5760x3240 | fit | lanczos+accurate_rnd | error_diffusion |
+
+**Editables**: `outW`, `outH`, `scaleMode` (fit/fill/stretch), `flags`,
+`sar`, `pad`, `dither`, `label`. Un valor fuera de rango se **rechaza con el
+motivo** (fail-closed), no se corrige en silencio.
+
+## 51.2 · El motor de calculo
+
+`POST /jit/image/plan` con `{profile, input:{width,height,dar?}}` calcula el
+escalado real y devuelve la cadena ffmpeg con sus metricas.
+
+**720p -> 6K medido:**
+
+```
+ENTRADA : 1280x720   (921.600 px)
+SALIDA  : 5760x3240  (18.662.400 px)
+escalado: 5760x3240
+bandas  : L=0 R=0 T=0 B=0
+ratio   : 20,25x area, 4,50x lineal, coste 12,15x
+cadena  : format=yuv420p10le,scale=5760:3240:flags=lanczos+accurate_rnd,
+          setsar=1,zscale=dither=3,format=yuv420p10le
+honesty : UPSCALE: se interpola; NO se recupera detalle que la fuente no tiene
+```
+
+**4:3 -> 16:9 medido (720x576 -> 1080p):**
+
+```
+escalado: 1350x1080   bandas L=285 R=285 T=0 B=0   (simetricas)
+cadena  : scale=1350:1080,pad=1920:1080:((ow-iw)/2):((oh-ih)/2)
+```
+
+## 51.3 · Tres defectos que la validacion contra ffmpeg real destapo
+
+**a) `dither` en el filtro equivocado.** Emitia
+`format=yuv420p10le:dither=error_diffusion` y ffmpeg respondia:
+
+```
+Error applying option 'dither' to filter 'format': Option not found
+```
+
+`format` **solo** tiene `pix_fmts`. El dither vive en **`zscale`** (0..3). Corregido:
+`zscale=dither=N`. Las 4 cadenas probadas pasan ahora.
+
+**b) `evenFloor(0)` devolvia 2.** Usado para bandas, metia un pad de 2 px cuando el
+escalado ya ocupaba el lienzo y el margen derecho salia **negativo** (`L=2 R=-2`).
+Se separo `evenOffset` (puede ser 0) de `evenFloor` (minimo 2, para dimensiones).
+
+**c) El pad reportado multiplicaba por 2.** Decia `L=570 R=0` para una banda de 570
+(285+285). `padX` ya era el offset. Corregido: `left == padX`.
+
+## 51.4 · Mas de 10.000 calculos
+
+`GET /jit/image/plans` enumera el espacio:
+
+```
+12 perfiles x 10 entradas x 3 modos x 7 flags x 4 dither = 10.080
+?limit=10000 -> 10.000 devueltos en 0 s
+?profiles=P4.5&inputs=720p -> 84 combinaciones
+```
+
+Entradas: 480p, 480p4:3, 576p, 576p4:3, 720p, 1080p, 1080p2.39, 1440p, 4K, 8K.
+
+## 51.5 · Gobierno VPS -> PLAYER
+
+El panel configura; el VPS **genera la lista que consumen los players**. Cada canal
+apunta a `/jit/go/{id}?p={perfil}`, asi que el player reproduce la salida ya procesada.
+
+```
+GET /jit/image/governance          -> estado maestro (21.224 canales, 5 motores)
+POST /jit/image/governance         -> {defaultProfile} o {channel, profile}
+GET /jit/image/lineup?engine=X     -> lista M3U8 para ese motor
+```
+
+**Motores y lo que cada uno lee de verdad:**
+
+| Motor | Lee | Ignora |
+|---|---|---|
+| VLC/libVLC | network-caching, http-user-agent, http-referrer | **video-filter (unsafe option por politica)** |
+| Kodi | inputstream.adaptive.*, network-caching | EXTVLCOPT exclusivas |
+| TiviMate | EXTHTTP de un solo valor, tvg-* | EXTHTTP multi-valor, KODIPROP |
+| OTT Navigator | EXTVLCOPT user-agent/referrer, KODIPROP | video-filter (no documentado) |
+| APK Media3 | la URL y sus cabeceras, HLS/DASH | EXTVLCOPT, KODIPROP |
+
+**La lista NO emite `video-filter`**: 0 directivas. Es inerte por politica de VLC y
+pedirlo seria mentir al parser. El procesamiento es del JIT; el player solo reproduce.
+
+## 51.6 · El gobierno aplica el perfil DE VERDAD
+
+`/jit/go/{id}?p=Px` no solo redirigia: **aplica el perfil a la matriz y reinicia el
+transcode**. Medido end-to-end, canal 2, fuente 1920x1080:
+
+**Con `?p=P1` (4K):**
+```
+master : RESOLUTION=3840x2160  CODECS="hvc1.2.4.L150.B0"
+init   : ffprobe -> hevc Main 10 3840x2160  level=150
+```
+
+**Con `?p=P4.5` (6K):**
+```
+master : RESOLUTION=5760x3240  CODECS="hvc1.2.4.L180.B0"  BANDWIDTH=63,4 Mbps
+init   : ffprobe -> hevc Main 10 5760x3240  level=180
+state  : observado 5760x3240  codecString hvc1.2.4.L180.B0
+```
+
+**El bitstream REAL cambia de 1080p a 6K gobernado por la URL.** El codec string se
+recalcula solo (L120 -> L150 -> L180) porque se deriva del bitstream, no se declara.
+
+**Dos defectos corregidos en este camino:**
+1. `/go/` no leia `?p=` en absoluto.
+2. Cambiar `imageConfig` con un job vivo **no tocaba el ffmpeg en marcha**: medido,
+   pedir P4.5 dejaba la salida en 3840x2160 con el **mismo session id**. Ahora se para
+   el trabajo y arranca con la resolucion nueva.
+
+## 51.7 · Coste honesto
+
+Un 720p -> 6K son **20,25x en area, coste relativo 12,15x**. En este host (3 vCPU) el
+sostenido real de 6K **no cabe**: se calcula, se produce el init a 5760x3240 y se
+declara como UPSCALE. **No se presenta como detalle recuperado ni como tiempo real.**

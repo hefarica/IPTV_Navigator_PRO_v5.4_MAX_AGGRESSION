@@ -29,6 +29,8 @@
     lastError: null,
     live: null,
     profiles: null,
+    matrix: null,
+    plan: null,
     log: []
   };
 
@@ -103,6 +105,27 @@
     'white-space:pre-wrap;max-height:320px;overflow:auto;line-height:1.55}',
     '.aip .warn{border-radius:10px;padding:10px;font-size:.76rem;line-height:1.55;margin-top:10px}'
   ].join('');
+
+  function saveMatrixRow(profile) {
+    var g = function (k) { var e = document.getElementById('mx-' + profile + '-' + k); return e ? e.value : null; };
+    var patch = {
+      outW: Number(g('outW')), outH: Number(g('outH')),
+      scaleMode: g('scaleMode'), flags: g('flags'), dither: g('dither')
+    };
+    post('/image/matrix', { profile: profile, patch: patch }).then(function (r) {
+      if (r && r.ok) { S.notice = profile + ' guardado'; reload(); }
+      else { S.notice = 'ERROR: ' + ((r && r.errors) || ['fallo']).join('; '); render(document.getElementById('ape-image-panel')); }
+    });
+  }
+
+  function runPlan() {
+    var p = document.getElementById('mx-test-profile');
+    var w = document.getElementById('mx-test-w');
+    var h = document.getElementById('mx-test-h');
+    if (!p || !w || !h) return;
+    post('/image/plan', { profile: p.value, input: { width: Number(w.value), height: Number(h.value) } })
+      .then(function (r) { S.plan = r; render(document.getElementById('ape-image-panel')); });
+  }
 
   function render(root) {
     var cfg = S.config || {};
@@ -189,6 +212,72 @@
       root.appendChild(el('div', { class: 'out' }, ['estado no consultado']));
     }
 
+    // ── MATRIZ EDITABLE: entrada -> salida por perfil ──
+    if (S.matrix && S.matrix.rows) {
+      root.appendChild(el('div', { class: 'sec', style: 'color:#22d3ee' },
+        ['🎛️ Matriz editable — entrada → salida (' + S.matrix.count + ' perfiles, ' +
+         Number(S.matrix.spaceSize).toLocaleString('es') + ' calculos)']));
+
+      var mtb = el('tbody', {});
+      S.matrix.rows.forEach(function (r) {
+        var row = el('tr', {}, [
+          el('td', { style: 'font-weight:600' }, [r.profile]),
+          el('td', { style: 'font-size:.7rem;color:#94a3b8' }, [r.labDeclared || '—'])
+        ]);
+        // outW / outH editables
+        ['outW', 'outH'].forEach(function (k) {
+          row.appendChild(el('td', {}, [inp('mx-' + r.profile + '-' + k, r[k], 'number')]));
+        });
+        ['scaleMode', 'flags', 'dither'].forEach(function (k) {
+          var opts = (S.matrix.allowed && S.matrix.allowed[k]) || [r[k]];
+          row.appendChild(el('td', {}, [sel('mx-' + r.profile + '-' + k, opts, r[k])]));
+        });
+        var btn = el('button', { class: 'btn', id: 'mx-save-' + r.profile }, ['Guardar']);
+        btn.addEventListener('click', function () { saveMatrixRow(r.profile); });
+        row.appendChild(el('td', {}, [btn]));
+        mtb.appendChild(row);
+      });
+      root.appendChild(el('table', {}, [
+        el('thead', {}, [el('tr', {}, [
+          el('th', {}, ['Perfil']), el('th', {}, ['LAB']), el('th', {}, ['Ancho']),
+          el('th', {}, ['Alto']), el('th', {}, ['Modo']), el('th', {}, ['Flags']),
+          el('th', {}, ['Dither']), el('th', {}, [''])
+        ])]),
+        mtb
+      ]));
+
+      // probador de entrada -> salida
+      var pr = el('div', { class: 'row', style: 'margin-top:10px' }, [
+        el('span', { style: 'font-size:.75rem;color:#94a3b8' }, ['Probar:']),
+        sel('mx-test-profile', S.matrix.rows.map(function (x) { return x.profile; }), 'P4.5'),
+        inp('mx-test-w', 1280, 'number'),
+        inp('mx-test-h', 720, 'number'),
+        (function () {
+          var b = el('button', { class: 'btn', id: 'mx-plan' }, ['Calcular plan']);
+          b.addEventListener('click', function () { runPlan(); });
+          return b;
+        })()
+      ]);
+      root.appendChild(pr);
+
+      if (S.plan) {
+        var p = S.plan;
+        if (p.ok) {
+          root.appendChild(el('div', { class: 'out', style: 'margin-top:8px' }, [
+            'entrada ' + p.input.width + 'x' + p.input.height + ' -> salida ' +
+            p.output.width + 'x' + p.output.height +
+            '  |  escalado ' + p.scaled.width + 'x' + p.scaled.height +
+            '  |  bandas L' + p.pad.left + ' R' + p.pad.right + ' T' + p.pad.top + ' B' + p.pad.bottom +
+            '  |  ' + p.metrics.areaRatio + 'x area  |  coste ' + p.metrics.relativeCost + 'x',
+            el('div', { style: 'margin-top:4px;color:#7dd3fc;word-break:break-all;font-size:.72rem' }, [p.filter]),
+            el('div', { style: 'margin-top:4px;color:#fbbf24;font-size:.72rem' }, [p.honesty])
+          ]));
+        } else {
+          root.appendChild(el('div', { class: 'warn' }, ['plan: ' + (p.error || 'error')]));
+        }
+      }
+    }
+
     // ── PERFILES DEL LAB (los 12) ──
     if (S.profiles && S.profiles.rows) {
       root.appendChild(el('div', { class: 'sec', style: 'color:#f472b6' },
@@ -223,6 +312,18 @@
 
     root.appendChild(el('div', { class: 'sec', style: 'color:#3b82f6' }, ['🎯 Destino y receta']));
     function fld(label, node) { return el('div', { class: 'fld' }, [el('label', {}, [label]), node]); }
+  function inp(id, val, type) {
+    return el('input', { id: id, type: type || 'text', value: String(val == null ? '' : val) }, []);
+  }
+  // POST JSON al motor. Devuelve el JSON parseado o {ok:false}.
+  function post(path, body) {
+    return api(path, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    }).catch(function (e) { return { ok: false, error: String(e && e.message || e) }; });
+  }
+  function reload() { S.plan = null; load(); }
     function sel(id, opts, cur) {
       var s = el('select', { id: id });
       opts.forEach(function (o) {
@@ -373,13 +474,15 @@
       api('/image/config'),
       api('/image/capacity').catch(function () { return null; }),
       api('/image/state').catch(function () { return null; }),
-      api('/image/profiles').catch(function () { return null; })
+      api('/image/profiles').catch(function () { return null; }),
+      api('/image/matrix').catch(function () { return null; })
     ]).then(function (r) {
       S.config = r[0].config;
       S.effectiveFilter = r[0].effective_filter || '';
       S.capacity = r[1];
       S.live = r[2];
       S.profiles = r[3];
+      S.matrix = r[4];
       S.busy = false;
       logLine('estado cargado');
       render(root);
