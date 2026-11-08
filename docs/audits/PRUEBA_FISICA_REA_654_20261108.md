@@ -1695,3 +1695,56 @@ falsa dentro del fuente. Corregido en el repo (`tools/lab/ape-jit/server.js`) co
 - **Slot unico**: el barrido es serial. Dos clientes concurrentes no se han medido.
 - **Los 2 intermitentes** (1 y 14): sin causa determinada.
 - **El lado APK** sigue pendiente de la depuracion inalambrica del TV.
+
+---
+
+# 28 · AMBOS transportes con imagen real de un canal en directo
+
+## 28.1 · El experimento
+
+Con un reproductor real (ffmpeg) desde otra maquina, pedidos **el mismo canal** por los **dos**
+transportes del JIT y extraidos tres frames de cada uno:
+
+```bash
+ffmpeg -i https://.../jit/live/2/master.m3u8   -frames:v 3 -vsync 0 frame_hls_%d.png
+ffmpeg -i https://.../jit/live/2/manifest.mpd  -frames:v 3 -vsync 0 frame_dash_%d.png
+```
+
+Resultado: **3 frames de 1,4-1,6 MB por HLS y 3 de 1,9-2,0 MB por DASH.** Imagen real, no negro.
+
+## 28.2 · Es el mismo canal, y el directo avanza
+
+| | HLS | DASH |
+|---|---|---|
+| Cadena | beIN Sports | beIN Sports |
+| Partido | MSFC 1-3 USMA | MSFC 1-3 USMA |
+| **Reloj de emision** | **54:46** | **55:05** |
+| Escena | jugadores celebrando | la aficion en la grada |
+
+**9 segundos de diferencia entre las dos extracciones.** No es un bucle ni un frame congelado: el
+transcode esta vivo y el contenido avanza.
+
+Evidencia guardada:
+
+```
+docs/audits/evidencia_jit_hls_dash/canal2_HLS_beIN_54m46s.png
+docs/audits/evidencia_jit_hls_dash/canal2_DASH_beIN_55m05s.png
+```
+
+## 28.3 · Que demuestra esto
+
+1. **El JIT sirve HLS y DASH con video real**, decodificable por un player estandar, de un canal del
+   catalogo del operador (id 2).
+2. **Los dos transportes son el mismo contenido**, no dos pipelines distintos.
+3. El `-tag:a mp4a` que se aplico al muxer DASH **no basta solo con devolver 200**: el bitstream que sale
+   es decodificable y se ve.
+4. Se ven los artefactos del **upscale 848x480 -> 1920x1080** (rayado fino en las zonas planas). El motor
+   no finge un 4K: declara `SOURCE=848x480;TARGET=1920x1080;FILTER=LANCZOS`.
+
+## 28.4 · Lo que NO demuestra
+
+- **No demuestra nada sobre el APK.** Este experimento usa ffmpeg, no el `ApePlayer`. El lado APK sigue
+  pendiente de la depuracion inalambrica del TV.
+- **No demuestra nada sobre OTT Navigator.** No se ha podido lanzar OTT contra el JIT (ADB caido).
+- **No es 4K**: la fuente es 480p escalada. La calidad final esta limitada por la fuente.
+- **Un canal** (id 2) de 40 probados, en un momento concreto.
