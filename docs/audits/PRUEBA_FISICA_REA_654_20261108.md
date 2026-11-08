@@ -4075,3 +4075,84 @@ Asi se puede declarar 5760x3240 a mano sin depender de que el catalogo lo liste.
 `vps-image-panel.js` **43.509 -> 47.504 B**. Verificado: `loadProfile` presente 1 vez,
 `aip-b-outW` 3 veces (render, lectura y escritura). Local e HTTPS sirven los 47.504 B.
 **Test de integracion: OK.**
+
+---
+
+# 59 · Recálculo automático al cambiar resolucion o entrada + selectores de entrada
+
+## 59.1 · Lo que pidio el operador
+
+> *"cuando ya dentro cambie la resolucion, los valores internos que sean los optimos
+> para cada campo tambien lo hagan, queda editable por si quiero modificar alguno y que
+> tambien haya un campo con lista desplegable para seleccionar la resolucion y fps de
+> entrada de las senales del perfil asignado"*
+
+> *"recuerda que cada perfil P1, P2, no esta amarado a resoluciones, esta amarrado a sus
+> propios campos y valores como arrays y objetos"*
+
+## 59.2 · Los tres cambios
+
+**a) ENTRADA con desplegables.** Dos selectores nuevos:
+- `ENTRADA res (señal)`: 480p, 576p, 720p, 1080p, 1440p, 4K, 8K
+- `ENTRADA fps (señal)`: 24, 25, 30, 50, 60, 120
+
+Cambiar cualquiera **dispara el recálculo**.
+
+**b) SALIDA libre, con recálculo al cambiar.** El ancho, el alto y el TARGET del catalogo
+disparan `recalcOptimos()`, que pide los valores optimos al motor y los **escribe en las
+cajas**. Siguen editables: nada se bloquea.
+
+**c) El perfil NO amarra la resolucion.** Es un contenedor de campos (codec, receta,
+encoder, filtros, empaquetado). La resolucion es **un campo mas**, libre.
+
+## 59.3 · Medido: los optimos cambian con la resolucion
+
+Misma entrada **720p@60**, cuatro salidas distintas:
+
+| Salida | codec | receta | fps | Por que |
+|---|---|---|---|---|
+| 1080p | hvc1 | **light** | 60 preserve | upscale 2,25x: unsharp basta |
+| 1440p | hvc1 | **balanced** | 60 preserve | upscale 4,00x: el ruido se amplifica |
+| 4K | hvc1 | **balanced** | 60 preserve | upscale 9,00x |
+| 6K | hvc1 | **temporal** | **30 DECIMATE** | upscale 20,25x + el host no sostiene 60 a 6K |
+
+**Y cambian con el fps de entrada**, misma salida 1440p:
+
+| Entrada | fps optimo |
+|---|---|
+| 720p@24 | preserve |
+| 720p@30 | preserve |
+| 720p@60 | 60 preserve |
+
+**Y con el escalado**, mismo 4K de salida:
+
+| Entrada | receta |
+|---|---|
+| 480p@30 -> 1080p | balanced |
+| 1080p@30 -> 4K | balanced |
+| **4K@60 -> 4K** | **none** (sin escalado, filtrar solo anadiria artefactos) |
+
+## 59.4 · Nada se aplica solo
+
+El recálculo **escribe en las cajas, no en el motor**. La configuracion del JIT no cambia
+hasta pulsar **«Aplicar al JIT»**. El panel lo dice en cada resultado:
+
+> *"Todo sigue EDITABLE. Cambiar aquí no aplica nada hasta pulsar «Aplicar al JIT»."*
+
+## 59.5 · Un falso positivo de despliegue
+
+`curl --max-time 15` **cortaba la descarga** y devolvia 47.504 B de un archivo de 53.077 B,
+lo que parecia un despliegue fallido. La verificacion correcta:
+
+```
+http=200  bytes=53.077  md5 servido == md5 en disco (f6dabdfb227a5d0411fe8c45659d1ff2)
+etag "6af0f03b-cf55"  ->  cf55 hex = 53.077 decimal
+```
+
+**El ETag es la prueba**: su sufijo es el tamano en hex. Con el, no hace falta descargar.
+
+## 59.6 · Desplegado
+
+`vps-image-panel.js` **47.504 -> 53.077 B**. Cache-buster del index actualizado a
+`?v=20261108-recalc` (backup del index en `/var/backups/ape-deploy/`).
+**Test de integracion: 27/27.**

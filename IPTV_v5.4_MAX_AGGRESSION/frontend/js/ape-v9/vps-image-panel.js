@@ -23,7 +23,8 @@
     busy: false, lastError: null, log: [],
     build: { profile: 'P4.5', w: 1280, h: 720, target: 'UHD_4K', codec: 'hvc1',
              player: 'onn-4k', recipe: 'balanced', fps: 25,
-             outW: 3840, outH: 2160, outFps: '', dither: 'error_diffusion', mode: 'real' }
+             outW: 3840, outH: 2160, outFps: '', dither: 'error_diffusion', mode: 'real',
+             inband: '720p', inFps: 30 }
   };
 
   function el(tag, attrs, children) {
@@ -154,16 +155,38 @@
         sl.addEventListener('change', function () { loadProfile(sl.value); });
         return sl;
       })()),
-      fld('ENTRADA ancho (recibida)', inp('aip-b-w', b.w, 'number')),
-      fld('ENTRADA alto (recibida)', inp('aip-b-h', b.h, 'number')),
-      fld('FPS', sel('aip-b-fps', [{ id: '25', label: '25' }, { id: '30', label: '30' },
-        { id: '50', label: '50' }, { id: '60', label: '60' }], String(b.fps)))
+      fld('ENTRADA res (señal)', (function () {
+        var e = sel('aip-b-inband', [
+          { id: '480p', label: '480p (854x480)' }, { id: '576p', label: '576p (1024x576)' },
+          { id: '720p', label: '720p (1280x720)' }, { id: '1080p', label: '1080p (1920x1080)' },
+          { id: '1440p', label: '1440p (2560x1440)' }, { id: '4K', label: '4K (3840x2160)' },
+          { id: '8K', label: '8K (7680x4320)' }
+        ], b.inband || '720p');
+        e.addEventListener('change', function () { applyBand(); recalcOptimos('entrada'); });
+        return e;
+      })()),
+      fld('ENTRADA fps (señal)', (function () {
+        var e = sel('aip-b-infps', [
+          { id: '24', label: '24' }, { id: '25', label: '25' }, { id: '30', label: '30' },
+          { id: '50', label: '50' }, { id: '60', label: '60' }, { id: '120', label: '120' }
+        ], String(b.inFps || 30));
+        e.addEventListener('change', function () { recalcOptimos('entrada'); });
+        return e;
+      })())
     ]));
 
     // salida explicita: CUALQUIER resolucion, no solo la del catalogo
     root.appendChild(el('div', { class: 'grid' }, [
-      fld('SALIDA ancho (al TV)', inp('aip-b-outW', b.outW || 3840, 'number')),
-      fld('SALIDA alto (al TV)', inp('aip-b-outH', b.outH || 2160, 'number')),
+      fld('SALIDA ancho (al TV)', (function () {
+        var e = inp('aip-b-outW', b.outW || 3840, 'number');
+        e.addEventListener('change', function () { recalcOptimos('salida'); });
+        return e;
+      })()),
+      fld('SALIDA alto (al TV)', (function () {
+        var e = inp('aip-b-outH', b.outH || 2160, 'number');
+        e.addEventListener('change', function () { recalcOptimos('salida'); });
+        return e;
+      })()),
       fld('SALIDA fps', inp('aip-b-outFps', b.outFps || '', 'number')),
       fld('Modo', sel('aip-b-mode', [{ id: 'real', label: 'REAL (decoder exigido)' },
         { id: 'emulado', label: 'EMULADO (se declara igual)' }], b.mode || 'real')),
@@ -171,9 +194,18 @@
     ]));
 
     root.appendChild(el('div', { class: 'grid' }, [
-      fld('SALIDA al TV (target)', sel('aip-b-target', cat.targets.map(function (t) {
-        return { id: t.id, label: t.label + '  ' + t.width + 'x' + t.height };
-      }), b.target)),
+      fld('TARGET del catálogo (o escribe ancho/alto a mano)', (function () {
+        var e = sel('aip-b-target', cat.targets.map(function (t) {
+          return { id: t.id, label: t.label + '  ' + t.width + 'x' + t.height };
+        }), b.target);
+        e.addEventListener('change', function () {
+          // el target rellena ancho y alto, y RECALCULA los optimos
+          var t = cat.targets.filter(function (x) { return x.id === e.value; })[0];
+          if (t) { setVal('aip-b-outW', t.width); setVal('aip-b-outH', t.height); }
+          recalcOptimos('target');
+        });
+        return e;
+      })()),
       fld('CODEC', sel('aip-b-codec', cat.codecs.map(function (c) {
         return { id: c.id, label: c.label };
       }), b.codec)),
@@ -242,7 +274,40 @@
     bDef.addEventListener('click', applyDefaults);
     root.appendChild(el('div', { class: 'row', style: 'margin-top:14px' }, [bDecl, bApply, bRec, bRel, bDef]));
 
+    if (S.autoRow && S.autoRow.ok) renderAutoRow(root);
     if (S.declared) renderDeclaration(root);
+  }
+
+  /* Resultado del recalculo automatico: se ve en el constructor, con el porque
+   * de cada campo y lo que no se puede. */
+  function renderAutoRow(root) {
+    var a = S.autoRow;
+    var box = el('div', { class: 'decl' }, [
+      el('div', { style: 'font-weight:700;color:#60a5fa;margin-bottom:6px' }, [
+        (a.mode === 'emulado' ? 'EMULADO — ' : 'REAL — ') + 'ÓPTIMO calculado para ' +
+        a.input.band + '@' + (a.input.fps || '?') + ' → ' +
+        a.output.width + 'x' + a.output.height + '  (' + a.areaRatio + 'x área)'
+      ])
+    ]);
+    ['codec', 'recipe', 'outFps', 'dither'].forEach(function (k) {
+      var f = a.fields[k];
+      box.appendChild(el('div', { style: 'font-size:.73rem;margin-top:2px' }, [
+        '· ' + k + ' = ' + String(f.value) + (f.op ? ' (' + f.op + ')' : '') + ' — ' + f.reason
+      ]));
+    });
+    if (a.hostCost) {
+      box.appendChild(el('div', { style: 'font-size:.73rem;margin-top:4px;color:' +
+        (a.hostCost.viable ? '#6ee7b7' : '#fca5a5') }, [
+        '· coste ' + a.hostCost.relative + 'x → ' + a.hostCost.estimatedRatio +
+        'x tiempo real' + (a.hostCost.viable ? '' : ' (NO VIABLE en este host)')
+      ]));
+    }
+    (a.impossible || []).forEach(function (i) { box.appendChild(warn('IMPOSIBLE: ' + i)); });
+    (a.warnings || []).forEach(function (w) { box.appendChild(warn('AVISO: ' + w, '#f59e0b')); });
+    box.appendChild(el('div', { style: 'font-size:.7rem;color:#94a3b8;margin-top:4px' }, [
+      'Todo sigue EDITABLE. Cambiar aquí no aplica nada hasta pulsar «Aplicar al JIT».'
+    ]));
+    root.appendChild(box);
   }
 
   function renderDeclaration(root) {
@@ -276,8 +341,13 @@
   function readBuild() {
     function v(id) { var e = document.getElementById(id); return e ? e.value : ''; }
     S.build.profile = v('aip-b-profile');
-    S.build.w = Number(v('aip-b-w')) || 1280;
-    S.build.h = Number(v('aip-b-h')) || 720;
+    S.build.inband = v('aip-b-inband') || '720p';
+    S.build.inFps = Number(v('aip-b-infps')) || 30;
+    var B2 = { '480p': [854, 480], '576p': [1024, 576], '720p': [1280, 720],
+               '1080p': [1920, 1080], '1440p': [2560, 1440], '4K': [3840, 2160], '8K': [7680, 4320] };
+    var bb = B2[S.build.inband] || [1280, 720];
+    S.build.w = bb[0];
+    S.build.h = bb[1];
     S.build.target = v('aip-b-target');
     S.build.codec = v('aip-b-codec');
     S.build.player = v('aip-b-player');
@@ -360,6 +430,50 @@
    * su receta, su encoder completo, sus seis filtros y su empaquetado.
    * Antes el select solo cambiaba de nombre: los valores seguian siendo los del
    * perfil anterior. */
+  var BANDS = { '480p': [854, 480], '576p': [1024, 576], '720p': [1280, 720],
+                '1080p': [1920, 1080], '1440p': [2560, 1440], '4K': [3840, 2160], '8K': [7680, 4320] };
+
+  function applyBand() {
+    var e = document.getElementById('aip-b-inband');
+    if (!e) return;
+    var b = BANDS[e.value];
+    if (b) { /* la banda se lee en readBuild; aqui solo se declara */ }
+  }
+
+  /* RECALCULO DE OPTIMOS al cambiar la salida o la entrada.
+   *
+   * El operador: "cuando ya dentro cambie la resolucion, los valores internos que
+   * sean los optimos para cada campo tambien lo hagan, queda editable por si quiero
+   * modificar alguno".
+   *
+   * Se piden los optimos al motor y se ESCRIBEN en las cajas. Siguen siendo
+   * editables: nada se bloquea. Y no se guarda nada: cambiar la resolucion no
+   * altera la configuracion del motor hasta que se pulse Aplicar. */
+  function recalcOptimos(origen) {
+    var b = readBuild();
+    var band = BANDS[b.inband] || [1280, 720];
+    post('/image/rules/auto', {
+      inW: band[0], inH: band[1], inFps: b.inFps,
+      outW: b.outW, outH: b.outH,
+      player: b.player, mode: b.mode
+    }).then(function (r) {
+      if (!r || !r.ok) { logLine('auto tras ' + origen + ': ' + (r && r.error)); return; }
+      // los campos se reescriben con el optimo; el operador puede cambiarlos luego
+      setVal('aip-b-codec', r.fields.codec.value);
+      setVal('aip-b-recipe', r.fields.recipe.value);
+      setVal('aip-b-dither', r.fields.dither.value);
+      if (r.fields.outFps.value && r.fields.outFps.value !== 'preserve') {
+        setVal('aip-b-outFps', r.fields.outFps.value);
+      }
+      S.autoRow = r;
+      logLine('optimos recalculados por ' + origen + ': codec=' + r.fields.codec.value +
+              ' receta=' + r.fields.recipe.value +
+              (r.impossible.length ? ' | ' + r.impossible.length + ' imposible(s)' : ''));
+      var root = document.getElementById('ape-image-panel');
+      if (root) render(root);
+    });
+  }
+
   function setVal(id, v) {
     var e = document.getElementById(id);
     if (e && v != null && v !== '') e.value = String(v);
@@ -529,6 +643,9 @@
           'x tiempo real en este host' + (a.hostCost.viable ? '' : ' (NO VIABLE)')
         ]));
       }
+      box.appendChild(el('div', { style: 'font-size:.7rem;color:#94a3b8;margin-top:4px' }, [
+        'Los valores de arriba son el ÓPTIMO para esta combinación. Todos siguen editables.'
+      ]));
       (a.warnings || []).forEach(function (w) { box.appendChild(warn('AVISO: ' + w, '#f59e0b')); });
       (a.impossible || []).forEach(function (i) { box.appendChild(warn('IMPOSIBLE: ' + i)); });
       root.appendChild(box);

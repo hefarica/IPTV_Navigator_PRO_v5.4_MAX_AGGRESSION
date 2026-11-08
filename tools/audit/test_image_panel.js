@@ -225,8 +225,8 @@ setTimeout(() => {
                 walk(stage).map(n => n.id || '').join(' ');
     check('renderizo el titulo', all.includes('MÓDULO DE IMAGEN'));
     check('seccion constructor de perfil', all.includes('Constructor de perfil'));
-    check('etiqueta ENTRADA recibida', all.includes('ENTRADA ancho'));
-    check('etiqueta SALIDA al TV', all.includes('SALIDA al TV'));
+    check('etiqueta ENTRADA senal', all.includes('ENTRADA res'));
+    check('etiqueta SALIDA al TV', all.includes('SALIDA ancho') && all.includes('SALIDA alto'));
     check('seccion matriz editable', all.includes('Matriz editable'));
     check('seccion gobierno', all.includes('Gobierno'));
     check('seccion encoder', all.includes('Encoder'));
@@ -234,6 +234,9 @@ setTimeout(() => {
     check('boton Aplicar al JIT', !!walk(stage).find(n => n.id === 'aip-apply-build'));
     check('boton Recomendada', !!walk(stage).find(n => n.id === 'aip-rec'));
     check('selector de target', !!walk(stage).find(n => n.id === 'aip-b-target'));
+    check('selector de banda de entrada', !!walk(stage).find(n => n.id === 'aip-b-inband'));
+    check('selector de fps de entrada', !!walk(stage).find(n => n.id === 'aip-b-infps'));
+    check('selector de modo', !!walk(stage).find(n => n.id === 'aip-b-mode'));
     check('selector de codec', !!walk(stage).find(n => n.id === 'aip-b-codec'));
     check('selector de player', !!walk(stage).find(n => n.id === 'aip-b-player'));
     check('renderizo la capacidad', all.includes('Capacidad medida') || all.includes('VIABLE'));
