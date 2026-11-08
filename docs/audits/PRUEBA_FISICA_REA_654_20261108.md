@@ -601,3 +601,77 @@ experimento**. El unico hecho que queda es el medido en §10:
 
 Eso ocurre en la **651 publicada** y en la **654**, con AVC y HEVC, con WAN y con LAN, con contenido corto
 y largo. **Es un defecto del reproductor, no del entorno ni de los datos.**
+
+---
+
+# 14 · CAUSA RAIZ NOMBRADA POR LA PROPIA APP: `state=NO_TRACKS reason=rearm`
+
+## 14.1 · Ultimo experimento: directo real, no VOD
+
+Todas las pruebas anteriores usaron VOD. La television en directo es una playlist **en vivo con ventana
+deslizante**, y ese es el caso de uso real. Se levanto un stream vivo de verdad:
+
+```bash
+ffmpeg -re -f lavfi -i "testsrc2=size=1920x1080:rate=30" -f lavfi -i "sine=frequency=440" \
+  -c:v libx264 -preset ultrafast -g 60 -b:v 3000k -c:a aac -b:a 128k \
+  -f hls -hls_time 2 -hls_list_size 6 -hls_flags delete_segments \
+  -hls_segment_filename "seg%03d.ts" "live.m3u8"
+```
+
+Playlist resultante: `EXT-X-TARGETDURATION:2`, `EXT-X-MEDIA-SEQUENCE:0`, ventana de **6 segmentos**,
+`delete_segments` activo. Servido desde `192.168.1.9:8123` en LAN.
+
+## 14.2 · Resultado: falla igual, y la app lo nombra
+
+```
+t+5s  -> 23.920 B (negro)
+t+12s -> 17.631 B (negro)
+t+20s -> 17.631 B (negro)
+
+PLAYING=4  BUFFERING=12
+ApePlayer: REARM global_beat: guard sin publicar 13368ms (tick=9)
+ApePlayer: REARM global_beat: guard sin publicar 15369ms (tick=10)
+ApePlayer: REARM global_beat: guard sin publicar 17372ms (tick=11)
+
+*** state=NO_TRACKS reason=rearm bitrate=0kbps samples=763 age=19790ms since_publish=17373ms locked=0kbps floor=0 ***
+    state=BUFFERING(6), position=0, buffered position=0, speed=0.0
+```
+
+## 14.3 · Por que esto es la causa raiz
+
+**`NO_TRACKS` es el nombre que la propia app da a su estado, y `reason=rearm` dice quien lo provoco.**
+
+La cadena queda cerrada y sin interpretacion:
+
+```
+1. El guard del global_beat no logra publicar
+2.   -> REARM global_beat  (el watchdog se rearma)
+3.   -> el rearme deja el player en  state=NO_TRACKS  reason=rearm
+4.   -> sin pistas de video:  tracks sin video (groups=0)
+5.   -> buffer cae a la posicion actual y no vuelve
+6.   -> BUFFERING(6) permanente + "Recuperacion: reintentando la fuente actual"
+```
+
+`since_publish=17373ms` y subiendo confirma que el guard **no publica nunca** tras el rearme. `bitrate=0kbps`
+y `locked=0kbps` confirman que no queda ninguna pista seleccionada. `samples=763` demuestra que **si hubo
+decodificacion** antes del rearme: no es que no llegaran datos.
+
+## 14.4 · Lo que esto cierra definitivamente
+
+| Pregunta | Respuesta medida |
+|---|---|
+| ¿Afecta al directo (caso real)? | **SI** - el stream en vivo con ventana deslizante falla igual |
+| ¿Es un artefacto del VOD? | **NO** - se probo VOD de 30 s, VOD de 200 s y directo |
+| ¿Es falta de datos? | **NO** - `samples=763`, y el buffer llego a 150 s |
+| ¿Quien deja al player sin pistas? | **El propio `REARM` del `global_beat`** - lo dice `reason=rearm` |
+
+## 14.5 · Para el que tenga el fuente: el nombre exacto
+
+**Buscar en `ApePlayer.kt` el literal `NO_TRACKS` y el `reason` con valor `rearm`.**
+
+Ese es el punto donde el guard del `global_beat`, al rearmarse, marca el player como sin pistas. La pregunta
+concreta es: **por que el guard no publica** (lo que dispara el rearme) y **por que el rearme invalida las
+pistas** en vez de solo reprogramar el latido.
+
+**Criterio de exito:** 60 s de un canal en directo con `state=PLAYING`, `since_publish` acotado y sin
+`NO_TRACKS`.
