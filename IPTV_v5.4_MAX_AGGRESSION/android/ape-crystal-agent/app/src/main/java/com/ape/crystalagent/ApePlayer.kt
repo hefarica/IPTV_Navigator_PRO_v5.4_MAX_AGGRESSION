@@ -19,6 +19,7 @@ import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.analytics.AnalyticsListener
 import androidx.media3.exoplayer.hls.HlsMediaSource
+import androidx.media3.exoplayer.dash.DashMediaSource
 import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
 import com.ape.fluid.FluidBridge
 import com.ape.fluid.FluidStore
@@ -151,7 +152,14 @@ class ApePlayer(private val ctx: Context) {
         }.getOrDefault(http)
         // Mide bytes REALES que entran (red o caché), no el bitrate declarado del manifest.
         val ds = StatsDataSource.Factory(base, meter)
-        val src = HlsMediaSource.Factory(ds).createMediaSource(MediaItem.fromUri(url))
+        // HLS **y** DASH desde la misma ruta de codigo: el .mpd se sirve con DashMediaSource.
+        // Sin esto, un manifest DASH moria con UnrecognizedInputFormat y solo habia HLS.
+        val isDash = url.substringBefore('?').lowercase().endsWith(".mpd")
+        val src = if (isDash)
+            DashMediaSource.Factory(ds).createMediaSource(MediaItem.fromUri(url))
+        else
+            HlsMediaSource.Factory(ds).createMediaSource(MediaItem.fromUri(url))
+        Log.i(TAG, "media source: " + (if (isDash) "DASH" else "HLS") + " -> $url")
         player.setMediaSource(src)
         player.prepare()
         player.playWhenReady = true

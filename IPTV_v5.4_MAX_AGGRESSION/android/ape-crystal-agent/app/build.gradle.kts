@@ -26,8 +26,8 @@ android {
         applicationId = "com.ape.crystalagent"
         minSdk = 22            // Fire OS 5 (Android 5.1) en adelante
         targetSdk = 28         // <29: conserva libertad de servicio en background en Fire OS
-        versionCode = 655
-        versionName = "3.9.5-adb-firetv-shim-selfheal"
+        versionCode = 656
+        versionName = "3.9.5-adb-firetv-shim-hlsdash"
         buildConfigField("String", "ENROLL_SECRET", "\"$apeEnrollSecret\"")
         // Contrato /sync (D3 v2). El endpoint en el VPS sigue STAGED: la app funciona local-first.
         buildConfigField("String", "SYNC_PROTOCOL_VERSION", "\"2\"")
@@ -93,6 +93,9 @@ dependencies {
     // F3 — player propio (ExoPlayer media3) con track-selection HEVC-first + ListLoader streaming
     implementation("androidx.media3:media3-exoplayer:1.3.1")
     implementation("androidx.media3:media3-exoplayer-hls:1.3.1")
+    // DASH: el objetivo exige HLS **y** DASH en el mismo reproductor. Sin este modulo
+    // el APK solo podia HLS y cualquier .mpd moria con "UnrecognizedInputFormat".
+    implementation("androidx.media3:media3-exoplayer-dash:1.3.1")
     implementation("androidx.media3:media3-ui:1.3.1")
     // F3+F6 — frame-feed real: media3-effect (GlShaderProgram GPU-directo) = UltraEnhance sobre cada frame
     implementation("androidx.media3:media3-effect:1.3.1")

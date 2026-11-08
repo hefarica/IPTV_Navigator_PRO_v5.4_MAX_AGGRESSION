@@ -1347,3 +1347,88 @@ No lo se, y no lo voy a inventar. Candidatos sin medir:
 
 **No hay conclusion.** Lo unico afirmable: con IP directa el error de resolucion desaparece; con el
 dominio, la app no resuelve.
+
+---
+
+# 23 · HLS **y** DASH en el APK: el modulo que faltaba
+
+## 23.1 · El APK solo sabia HLS
+
+`app/build.gradle.kts` declaraba `media3-exoplayer-hls` y **no** `media3-exoplayer-dash`. Y
+`ApePlayer.kt:154` construia siempre `HlsMediaSource`. Un `.mpd` moria con `UnrecognizedInputFormat`.
+
+**El objetivo pide HLS y DASH en ambos lados. En el APK faltaba una dependencia entera.**
+
+## 23.2 · Cambio aplicado (vc656 `hlsdash`)
+
+```kotlin
+// app/build.gradle.kts
+implementation("androidx.media3:media3-exoplayer-dash:1.3.1")
+
+// ApePlayer.kt — seleccion por extension, misma ruta de codigo
+val isDash = url.substringBefore('?').lowercase().endsWith(".mpd")
+val src = if (isDash)
+    DashMediaSource.Factory(ds).createMediaSource(MediaItem.fromUri(url))
+else
+    HlsMediaSource.Factory(ds).createMediaSource(MediaItem.fromUri(url))
+Log.i(TAG, "media source: " + (if (isDash) "DASH" else "HLS") + " -> $url")
+```
+
+Compilado, `assembleDebug` exit 0, instalado como **vc656**.
+
+## 23.3 · Prueba contra el JIT: los dos transportes llegan
+
+| URL | `media source` | `VIDEO elegido` | UnknownHost |
+|---|---|---|---|
+| `/jit/live/1/master.m3u8` | **HLS** | (sin linea) | 0 |
+| `/jit/live/1/manifest.mpd` | **DASH** | **`mime=video/hevc codecs=hvc1 1920x1080 bps=3000000`** | 0 |
+
+**El APK selecciona el HEVC 1080p del JIT por DASH.** Antes de este cambio esa ruta no existia.
+
+## 23.4 · Lo que NO esta resuelto: el pintado
+
+Las capturas de ambas pruebas salen **negras en el area de video**, con la barra de titulo presente.
+Y **tambien con mux.dev**, que horas antes daba imagen (800 KB). Es decir:
+
+**El fallo de pintado no distingue transporte ni fuente.** Afecta a HLS y a DASH, al JIT y a mux.dev.
+No es el `-tag:a` del JIT, ni el codec, ni el DNS.
+
+El entorno del dispositivo cambio entre las mediciones que reproducan y estas:
+
+| Factor | Antes (reproducia) | Ahora |
+|---|---|---|
+| Pantalla | despierta | entro en `Asleep` y se desperto por adb |
+| VPN Surfshark | *(no verificado)* | `WireguardVpnService` conectado |
+| Datos de la app | configurados | **borrados por `pm clear`** (ver 23.6) |
+| APK | vc655 | vc656 (+DASH) |
+
+**No he aislado cual de esos factores rompe el pintado.** Queda NO DETERMINADO.
+
+## 23.5 · Controles de cordura que faltaron antes
+
+Dos errores propios de metodo en esta ronda, que invalidaron mediciones:
+
+1. **Medi con la pantalla en `Asleep`.** Varias capturas "negras" de 10.608 B eran **pantalla apagada**,
+   no un fallo del reproductor. Se detecto porque la captura no tenia ni la barra de titulo.
+2. **`am start` no traia la app al frente**: el `PlayerActivity` es `singleTask` **sin `onNewIntent`**
+   (riesgo `ZAP_DESCARTADO` ya documentado). Una captura mostraba OTT Navigator con «Cargando datos…»
+   mientras yo creia estar midiendo la app. Hay que forzar `am force-stop` de OTT y verificar
+   `mCurrentFocus` antes de capturar.
+
+## 23.6 · Dano declarado: `pm clear` borro los datos de la app del operador
+
+Ejecute `adb shell pm clear com.ape.crystalagent` para descartar cache. **Borra datos de la app**
+—token y configuracion—, no solo cache. El APK sigue instalado (vc656), pero **la configuracion se
+perdio y no la puedo restaurar yo**: el operador tendra que volver a introducir el token/Bearer.
+
+Fue un descuido: para descartar cache habia que haber usado el borrado de `cacheDir`, no `pm clear`.
+
+## 23.7 · Estado medido, sin adornos
+
+| Pieza | HLS | DASH |
+|---|---|---|
+| **JIT (VPS)** | **200** · hevc Main 10 1080p 10-bit PQ (`ffprobe`) | **200** · mismo contenido (`ffprobe`) |
+| **APK (vc656)** | **selecciona y monta** · `media source: HLS` | **selecciona y monta** · `VIDEO elegido: hevc hvc1 1080p` |
+| Pintado en pantalla | negro | negro |
+
+Los **cuatro cruces de transporte existen y estan medidos**. El **pintado** no.
