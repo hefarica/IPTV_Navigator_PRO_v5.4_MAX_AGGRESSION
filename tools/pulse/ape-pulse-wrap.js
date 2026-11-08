@@ -86,6 +86,43 @@ function profileForChannel(name, group) {
   return p;
 }
 
+/* Perfil EXPLICITO declarado en el bloque del canal.
+ *
+ * El informe de arquitectura (pag. 9 y 12) senala que este wrapper RECALCULABA el
+ * perfil por heuristicas de nombre/grupo y perdia el que la lista ya traia. Eso
+ * rompe el recorrido "APK solicita -> JIT filtra": el canal declara P3 y el
+ * wrapper pide P1 (o al reves) y la etiqueta deja de corresponder al video.
+ *
+ * Se reconocen las formas en que el perfil viaja de verdad en estas listas:
+ *   #EXT-X-APE-CRYSTAL-UHD:PROFILE=P3;VPP_INTENSITY=55;SCOPE=DISPLAY;PIXELS=0
+ *   #EXT-X-APE-PROFILE:P3
+ *   #EXT-X-APE-LAB-PROFILE:P3
+ *   ... y en el propio EXTINF como atributo ape-profile="P3" / profile="P3"
+ *
+ * Devuelve null si no hay declaracion explicita: en ese caso SI se usa la
+ * heuristica, que es el comportamiento correcto cuando la lista no declara nada. */
+const PROFILE_TOKEN = /\bP([0-5])(?:\.5)?\b/;
+
+function normProfile(tok) {
+  if (!tok) return null;
+  const m = String(tok).toUpperCase().match(/\bP([0-5](\.5)?)\b/);
+  return m ? ('P' + m[1]) : null;
+}
+
+function profileFromDirective(line) {
+  // solo directivas APE que transportan perfil
+  if (!/^#EXT-X-APE-(CRYSTAL-UHD|PROFILE|LAB-PROFILE)\b/i.test(line)) return null;
+  const m = line.match(/PROFILE\s*=\s*\"?P([0-5](?:\.5)?)\"?/i);
+  if (m) return 'P' + m[1];
+  const t = line.match(PROFILE_TOKEN);
+  return t ? normProfile(t[0]) : null;
+}
+
+function profileFromExtinf(line) {
+  const m = line.match(/(?:ape-profile|profile)\s*=\s*\"?P([0-5](?:\.5)?)\"?/i);
+  return m ? ('P' + m[1]) : null;
+}
+
 function attr(line, key) {
   const m = line.match(new RegExp(key + '="([^"]*)"'));
   return m ? m[1] : '';
@@ -140,8 +177,23 @@ function transformUrl(url) {
   if (ALREADY.test(url)) { counters.already++; return url; }
   if (!/^https?:\/\//i.test(url)) return url;
   seq++;
-  const prof = profileForChannel(cur.name, cur.group);
+  // EXPLICITO manda; heuristica solo cuando la lista no declara perfil.
+  const explicit = cur.profile || null;
+  const heuristic = profileForChannel(cur.name, cur.group);
+  const prof = explicit || heuristic;
   counters.profiles[prof] = (counters.profiles[prof] || 0) + 1;
+  if (explicit) {
+    counters.profileExplicit = (counters.profileExplicit || 0) + 1;
+    if (explicit !== heuristic) {
+      counters.profileOverrides = (counters.profileOverrides || 0) + 1;
+      if (!counters.profileOverrideSample || counters.profileOverrideSample.length < 8) {
+        counters.profileOverrideSample = counters.profileOverrideSample || [];
+        counters.profileOverrideSample.push(cur.name + ': heuristica=' + heuristic + ' declarado=' + explicit);
+      }
+    }
+  } else {
+    counters.profileHeuristic = (counters.profileHeuristic || 0) + 1;
+  }
   let idNum = parseInt(String(cur.id || '').replace(/[^0-9]/g, ''), 10);
   if (!Number.isFinite(idNum) || idNum <= 0) idNum = seq;
   let built;
@@ -200,6 +252,9 @@ function onLine(line) {
       group: attr(line, 'group-title'),
       id: attr(line, 'tvg-chno') || attr(line, 'tvg-id'),
       logo: attr(line, 'tvg-logo'),
+      // declaracion explicita en el propio EXTINF (si la hay, manda)
+      profile: profileFromExtinf(line),
+      profileSource: profileFromExtinf(line) ? 'extinf' : null,
     };
     write(line);
     return;
@@ -212,6 +267,12 @@ function onLine(line) {
     return;
   }
   if (line.startsWith('#EXT-X-APE-ENHANCE-STATE')) { curHasDecl = true; write(line); return; }
+  // [PERFIL EXPLICITO] una directiva APE con PROFILE= fija el perfil del canal y
+  // GANA sobre la heuristica. Se conserva el primer valor declarado del bloque.
+  {
+    const pf = profileFromDirective(line);
+    if (pf && cur && !cur.profile) { cur.profile = pf; cur.profileSource = 'directive'; }
+  }
   if (line && !line.startsWith('#') && /^https?:\/\//i.test(line.trim())) {
     counters.urls++;
     if (!cur.name && !cur.id) counters.skipped_no_inf++;

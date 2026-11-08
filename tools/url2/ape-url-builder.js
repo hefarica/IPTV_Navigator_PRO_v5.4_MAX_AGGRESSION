@@ -38,7 +38,15 @@ class ApeUrlBuilder {
     static ENDPOINT = 'https://iptv-ape.duckdns.org/url2/canal.m3u8';
 
     /** Orden canónico de perfiles, de mínimo a máximo. */
-    static ORDER = ['P5', 'P4', 'P3', 'P2', 'P1', 'P0'];
+    // Escalera COMPLETA con las variantes 6K del LAB. El orden va de peor a mejor.
+    // Las variantes .5 se situan por ENCIMA de su base (P3.5 > P3), que es lo que
+    // el LAB declara (5760x3240 frente a 1920x1080).
+    static ORDER = ['P5', 'P5.5', 'P4', 'P4.5', 'P3', 'P3.5', 'P2', 'P2.5', 'P1', 'P1.5', 'P0', 'P0.5'];
+
+    // Escalera SOLO de perfiles base. `network-excellent` sube por aqui, no por
+    // ORDER: subir de P4 a P4.5 significaria saltar de 720p a 6K por tener buena
+    // red, que no es lo que el LAB declara. Las variantes .5 se eligen a mano.
+    static BASE_ORDER = ['P5', 'P4', 'P3', 'P2', 'P1', 'P0'];
 
     /**
      * Perfiles por device. `preferred` es la forma óptima; `fallback`, la que se usa
@@ -164,7 +172,11 @@ class ApeUrlBuilder {
             salt: p.salt ? String(p.salt).slice(0, 32) : '',
             // [PULSE-WRAP] Override explícito de perfil por CLASE DE CANAL (no por device).
             // Necesario para envolver listas: el perfil lo dicta la calidad del canal.
-            profile: /^P[0-5]$/.test(String(p.profile || '')) ? String(p.profile) : '',
+            // Se aceptan las variantes .5 del LAB (P0.5/P1.5/P2.5/P3.5/P4.5/P5.5).
+            // Antes solo pasaba /^P[0-5]$/, asi que P0.5 caia a '' y el perfil se
+            // recalculaba por device: medido, P0.5 (6K) salia como P4 (720p). Eso es
+            // una degradacion silenciosa y la Ley Anti-Degradacion la prohibe.
+            profile: /^P[0-5](\.5)?$/.test(String(p.profile || '')) ? String(p.profile) : '',
             // [PULSE-WRAP] Endpoint destino. `{id}` se sustituye por el id del canal.
             // Sin endpoint se usa ENDPOINT (comportamiento previo intacto).
             endpoint: p.endpoint ? String(p.endpoint) : '',
@@ -199,12 +211,14 @@ class ApeUrlBuilder {
             return Object.assign({}, base, { selected: base.fallback, reason: 'network-poor' });
         }
         if (n.networkTier === 'excellent') {
-            const i = order.indexOf(pref);
-            // i===0 es P0, el techo: no se sube más. i<0 (perfil desconocido) no se toca.
-            // ORDER va de P5 (peor) a P0 (mejor): subir es i+1, no i-1.
-            // El bug anterior hacia i-1, que BAJABA la calidad con la excusa de mejorarla.
-            if (i >= 0 && i < order.length - 1) {
-                return Object.assign({}, base, { selected: order[i + 1], reason: 'network-excellent' });
+            // Se sube por BASE_ORDER (escalera de resoluciones), no por ORDER: si se
+            // usara ORDER, P4 -> P4.5 seria saltar de 720p a 6K por buena red.
+            const bases = this.BASE_ORDER;
+            const bare = String(pref).replace(/\.5$/, '');
+            const i = bases.indexOf(bare);
+            // i===0 es P5; el techo es P0 (ultimo). i<0 (perfil desconocido) no se toca.
+            if (i >= 0 && i < bases.length - 1) {
+                return Object.assign({}, base, { selected: bases[i + 1], reason: 'network-excellent' });
             }
         }
         return Object.assign({}, base, { selected: pref, reason: 'device-preferred' });

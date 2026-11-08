@@ -2954,3 +2954,84 @@ volver a pedir     -> pid al retomar:         1855174
 Con `IDLE_MS=20000` ese silencio de 25 s **mataba el trabajo**. Con 90000 aguanta. 90 s cubre el hueco
 entre peticiones de cualquier reproductor con buffer de 30-120 s sin mantener el proceso vivo
 indefinidamente.
+
+---
+
+# 46 · El perfil llega intacto: wrapper y builder corregidos
+
+## 46.1 · Los dos defectos que rompian el punto 1 del recorrido
+
+El informe de arquitectura lo advirtio: *"el perfil no atraviesa todavia todo ese recorrido intacto: el
+wrapper puede recalcularlo"*. Eran **dos** defectos encadenados.
+
+**a) El wrapper recalculaba siempre.** `ape-pulse-wrap.js` L143 llamaba `profileForChannel(name, group)`
+sin mirar si el bloque del canal ya declaraba un perfil. Un canal con
+`#EXT-X-APE-CRYSTAL-UHD:PROFILE=P3` se servia con la heuristica del nombre.
+
+**b) El builder colapsaba las variantes .5.** Medido **en produccion**:
+
+```
+P3   -> P3
+P3.5 -> P4      <- colapsado
+P0.5 -> P4      <- 6K servido como 720p
+P5.5 -> P4      <- colapsado
+```
+
+Aceptaba solo `/^P[0-5]$/`, asi que `P0.5` caia a cadena vacia y el perfil se recalculaba por device.
+**Un canal que declara 6K se servia como 720p, en silencio.** Viola la Ley Anti-Degradacion.
+
+## 46.2 · Correccion
+
+**Wrapper**: el perfil explicito **gana** sobre la heuristica. Se reconocen las formas reales en que
+viaja:
+
+```
+#EXT-X-APE-CRYSTAL-UHD:PROFILE=P3;VPP_INTENSITY=55;SCOPE=DISPLAY;PIXELS=0
+#EXT-X-APE-PROFILE:P3
+#EXT-X-APE-LAB-PROFILE:P3.5
+#EXTINF:-1 ... ape-profile="P5",Nombre
+```
+
+La heuristica **sigue aplicandose cuando la lista no declara nada** — que es lo correcto.
+Se cuentan `profileExplicit`, `profileHeuristic` y `profileOverrides` con hasta 8 ejemplos.
+
+**Builder**: `/^P[0-5](\.5)?$/` y una escalera `ORDER` de 12 niveles con las variantes situadas por
+encima de su base (P3.5 > P3), tal como el LAB declara (5760x3240 frente a 1920x1080).
+
+## 46.3 · Una regresion que introduje y corregi
+
+Al meter las variantes en `ORDER`, `network-excellent` empezo a saltar de **P4 a P4.5**: de 720p a 6K
+por tener buena red. Eso no es lo que el LAB declara. Se añadio `BASE_ORDER` (solo resoluciones base) y
+`network-excellent` sube por ahi.
+
+## 46.4 · Verificado
+
+**Test del wrapper (`tools/audit/test_wrapper_profile.js`) — 6/6:**
+
+| Caso | Esperado | Obtenido |
+|---|---|---|
+| canal 4K con perfil declarado P3 | P3 | **P3** (gana sobre 4K->P1) |
+| canal 4K sin declaracion | P1 | **P1** (heuristica intacta) |
+| perfil en el propio EXTINF | P5 | **P5** |
+| canal SD con perfil declarado P0 | P0 | **P0** |
+| perfil .5 declarado | P3.5 | **P3.5** |
+| canal premium 1080p sin declaracion | P2 | **P2** |
+
+**Regresion en produccion tras desplegar — 7/7:**
+
+```
+generic -> P4   generic+poor -> P5   generic+excellent -> P3
+onn-4k -> P1    shield-tv -> P0      firestick-lite -> P4
+explicito P0.5 -> P0.5
+```
+
+**Los 12 perfiles en produccion:**
+
+```
+P3 -> P3    P3.5 -> P3.5    P0.5 -> P0.5    P5.5 -> P5.5
+```
+
+## 46.5 · Despliegue
+
+Backups en `/opt/ape-pulse/*.bak_profiles_20261108T182938Z`. Sintaxis validada **antes** de instalar.
+Builder 15.671 -> 16.685 B; wrapper 11.090 -> 13.595 B.
