@@ -119,6 +119,11 @@ if (-not $patchPresent) {
 
 # ── 4. gates ──────────────────────────────────────────────────────────────────
 if ($RunGates) {
+    # Normalizacion de entorno, NO de expectativa: en Linux stdin/stdout son UTF-8 por defecto,
+    # en Windows python lee stdin como cp1252 y el gate catalog_exports falla con mojibake
+    # ('Canal, "prueba"' -> 'Canal, "prueba"') sin que el producto tenga nada malo.
+    # Demostrado: sin la variable falla; con ella {"ok":true,"checks":74}.
+    $env:PYTHONIOENCODING = 'utf-8'
     foreach ($g in $exec) {
         $cmdArr = @($g.command)
         $exe = $cmdArr[0]; $gargs = @()

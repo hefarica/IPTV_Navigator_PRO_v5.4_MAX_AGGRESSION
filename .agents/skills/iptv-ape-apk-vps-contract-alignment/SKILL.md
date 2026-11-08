@@ -450,3 +450,62 @@ aplicarse de forma verificable.
 > el merge y el despliegue quedarian pendientes.»
 
 **Una excepcion para el PR no autoriza merge ni despliegue.** El propio informe lo declara.
+
+---
+
+## PARTE 9 — Las dos trampas de Windows que rompen gates sin romper el producto
+
+Medido el 2026-11-08 al aplicar y validar `REA_ALIGNMENT_20261108.patch` sobre Windows. **Ninguna de
+las dos es un defecto del codigo auditado: las dos son el entorno.**
+
+### 9.1 · `*.json` sin `eol=lf` en `.gitattributes` -> todo hash de contrato diverge
+
+El bloque `[t114]` del `.gitattributes` pinea `.lua/.sh/.ts/.m3u8/.tsv/.md/.js/.yml/.php`
+**pero no `.json`**. Con `core.autocrlf=true`, los `.json` llegan a disco con CRLF:
+
+```
+contracts/rea/rea-processing-v1.json  ->  74 CRLF en disco
+  sha256 crudo (CRLF) = c8e93eb4120bb56fc05837c2e868daf60f40dbab7a1407a303fd8fe85f5797a6
+  sha256 LF           = 2a974a6452609049a7f7790cd3a62633f2b06090c6e548fcaa1be3115e7d2a06
+```
+
+El generador embebio el hash **LF**; el gate hashea el fichero **en disco**. En Linux coinciden; en
+Windows no. Gate afectado: `processing_policy`. **Corregido** anadiendo `*.json text eol=lf` y
+`*.yaml text eol=lf`.
+
+**Importante:** `git add --renormalize .` devolvio *«nothing to commit»* -> **los blobs en git ya
+estaban en LF**. Lo unico desalineado era el ARBOL DE TRABAJO. Para materializarlo hay que forzar un
+re-checkout (`git checkout-index -a -f` NO basta; sirve `rm` + `git checkout -- .`).
+
+### 9.2 · `python3` hijo lee stdin como cp1252 -> gates con CSV fallan con mojibake
+
+`catalog_exports` canaliza un CSV por stdin a `python3`. En Windows ese stdin se decodifica cp1252 y
+`Línea` llega como `LÃ­nea`:
+
+```
+sin PYTHONIOENCODING  ->  AssertionError: 'Canal, "prueba"\nLÃ­nea 2' !== 'Canal, "prueba"\nLínea 2'
+con PYTHONIOENCODING=utf-8  ->  {"ok":true,"checks":74}   EXIT=0
+```
+
+**No es el producto.** El verificador ahora exporta `PYTHONIOENCODING=utf-8` antes de los gates:
+normaliza el ENTORNO a lo que Linux ya tiene por defecto, no la expectativa.
+
+### 9.3 · Los otros gates que fallan en Windows y por que
+
+| Gate | Causa | Es del producto? |
+|---|---|---|
+| `deploy_regressions` | `awk` recibe `$i` vacio por quoting distinto del shell | **No** |
+| `deploy_confirmation_security` | `read_text()` sin `encoding='utf-8'` -> `UnicodeDecodeError` cp1252 | **No** (es un bug de portabilidad del TEST) |
+| `workflow_yaml_and_bash_syntax` | necesita `bash` + `python-yaml` | **No** |
+| `jit_real_ffmpeg_evidence` | exige `artifacts/rea-jit-output-truth.json`, artefacto **privado** no incluido en el parche | **No** — es `NO_COMPUTADO`, no un fallo |
+
+### 9.4 · INCIDENTE OPERATIVO (registrado para que no se repita)
+
+Al forzar el re-checkout se ejecuto `git checkout HEAD -- <918 rutas>` y **fallo por limite de longitud
+de linea de comandos en Windows**, dejando 918 ficheros borrados del arbol durante unos segundos.
+Recuperado con `git checkout -- .` (sin lista de argumentos). Verificacion posterior:
+`git status` = 0 entradas y **`git diff HEAD` vacio** -> cero perdida de contenido.
+
+**Regla:** nunca pasar una lista de rutas de tamano no acotado a un comando de git en Windows. Usar
+`git checkout -- .`, `git restore .` o `xargs`. Y **commitear antes** de cualquier renombrado masivo:
+fue lo que hizo el incidente recuperable en un comando.
