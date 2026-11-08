@@ -9366,6 +9366,11 @@ ${__apeContinuityTags().join('\n')}
                 const _fb = _APE_6K_FALLBACK[_baseId];
                 const _lb = _getter ? _getter(_fb.id) : null;
                 const _st = (_lb && _lb.settings) ? _lb.settings : null;
+                // [2026-11-08] FIX: el SOURCE debe ser la resolucion del perfil BASE, no la del .5.
+                // El .5 declara el OBJETIVO (5760x3240); usarlo como SOURCE reintroduce exactamente
+                // la mentira que se esta corrigiendo: declarar la mejora como si fuera la fuente.
+                const _bp = _getter ? _getter(_baseId) : null;
+                const _bst = (_bp && _bp.settings) ? _bp.settings : null;
                 const _rawMbps = (_bt && _bt[_fb.id] != null)
                     ? _bt[_fb.id]
                     : ((_st && _st.bitrate != null) ? _st.bitrate : null);
@@ -9375,7 +9380,7 @@ ${__apeContinuityTags().join('\n')}
                     id: _fb.id,
                     mbps: _mbps,
                     tec: _fb.tec,
-                    src: (_st && _st.resolution) ? String(_st.resolution) : _fb.src,
+                    src: (_bst && _bst.resolution) ? String(_bst.resolution) : _fb.src,
                     ratio: _fb.ratio
                 };
             }
