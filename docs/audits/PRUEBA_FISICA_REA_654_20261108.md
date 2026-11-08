@@ -1084,3 +1084,49 @@ Coincide con `DECLARED_ENHANCEMENT`: nunca se declara aplicado lo que no se apli
 
 **Corregir el pipeline GL** (`ApeUltraEnhanceGlEffect` / `FluidBridge.effects`) para que entregue frames al
 surface en `c2.amlogic` + media3 1.3.1. Hasta entonces, el efectivo es reproducir nativo y declararlo.
+
+---
+
+# 20 · Verificacion final: 5 de 5, incluido DIRECTO
+
+## 20.1 · VOD y directo
+
+| Escenario | Sesiones | Imagen |
+|---|---:|---:|
+| VOD (mux, 1080p AVC) | 3 | **3/3** |
+| **Directo** (ventana deslizante, 6 segmentos de 2 s, `delete_segments`) | 2 | **2/2** |
+| **Total con el arreglo** | **5** | **5/5** |
+| Antes del arreglo (secciones 9-18) | todas | **0/N** |
+
+Capturas del directo: 384.393 B y 393.506 B. Umbral de "imagen" usado: >200.000 B; el negro mide ~22.000 B.
+
+**El caso real del operador — television en directo — queda cubierto.**
+
+## 20.2 · Que se entrega
+
+APK compilado y verificado:
+
+```
+artifacts/APE_REA_655_EFFECTS_FIX_20261108.apk
+package com.ape.crystalagent  versionCode 655
+versionName 3.9.5-adb-firetv-shim-selfheal
+```
+
+Instalado y medido en `onn. 4K Streaming Box` (Amlogic s4, Android 14).
+
+## 20.3 · Que hace el arreglo, en una frase
+
+**No engancha el pipeline GL de efectos** (que en este equipo deja la pantalla negra), reproduce nativo, y
+**declara** `NATIVE_NO_EFFECTS` en `AraStatus` y en el log. Se puede reactivar con `-e effects on` cuando el
+shader este corregido.
+
+## 20.4 · Que NO hace
+
+- **No arregla el pipeline GL.** El `ApeUltraEnhanceGlEffect` sigue sin poder entregar frames a
+  `c2.amlogic` en media3 1.3.1. Simplemente no se engancha.
+- **No restaura el enhancement.** Se pierde la mejora de imagen hasta que el shader se corrija.
+- **No se ha probado con un canal real del proveedor** (requiere credenciales). Las fuentes probadas son un
+  HLS local en LAN y un VOD publico.
+
+**Honestidad sobre el balance:** se gana reproduccion, se pierde enhancement. Eso es exactamente lo que la
+doctrina exige cuando el motor no esta disponible: **reproducir y declarar la verdad**, no fingir mejora.
