@@ -11,3 +11,10 @@
 *.js      text eol=lf
 *.yml     text eol=lf
 *.php     text eol=lf
+# [2026-11-08] Faltaban .json y .yaml. Sintoma medido: contracts/rea/rea-processing-v1.json
+# llegaba a disco con 74 CRLF, su sha256 crudo daba c8e93eb4... mientras el generador habia
+# embebido 2a974a64... (hash del mismo contenido en LF). Gate processing_policy fallaba en
+# Windows y pasaba en Linux por el fin de linea, no por el contenido. Mismo patron que el
+# bloque [t114] de arriba; simplemente no cubria .json.
+*.json    text eol=lf
+*.yaml    text eol=lf
