@@ -19,7 +19,7 @@
     base: (window.APE_JIT_BASE || 'https://iptv-ape.duckdns.org') + '/jit',
     config: null, effectiveFilter: '', capacity: null, live: null,
     profiles: null, matrix: null, plan: null, catalog: null,
-    declared: null, gov: null, cascade: null, fallback: null,
+    declared: null, gov: null, cascade: null, fallback: null, rules: null, autoRow: null,
     busy: false, lastError: null, log: [],
     build: { profile: 'P4.5', w: 1280, h: 720, target: 'UHD_4K', codec: 'hvc1',
              player: 'onn-4k', recipe: 'balanced', fps: 25 }
@@ -334,6 +334,155 @@
 
   /* ── 2. MATRIZ EDITABLE ───────────────────────────────────────────────── */
 
+  /* ── TABLA DE REGLAS: ENTRADA -> SALIDA (manual + auto por campo) ─────── */
+
+  function rulesSection(root) {
+    var R = S.rules;
+    root.appendChild(sec('📐 Tabla de reglas — ENTRADA → SALIDA' +
+      (R ? ' (' + R.count + ' reglas)' : ''), '#f472b6'));
+    if (!R || !R.rules) {
+      root.appendChild(el('div', { class: 'stat' }, ['reglas no disponibles']));
+      return;
+    }
+
+    root.appendChild(el('div', { class: 'stat', style: 'margin-bottom:8px' }, [
+      'Cada fila es manual. (A) = auto de ESE campo. [ ★ ] = auto de TODA la fila. ' +
+      'El auto no propone configuraciones imposibles.'
+    ]));
+
+    var tb = el('tbody', {});
+    R.rules.forEach(function (r) {
+      var tr = el('tr', {}, [
+        el('td', {}, [inp('rl-' + r.id + '-input', r.input, 'text')]),
+        el('td', {}, [inp('rl-' + r.id + '-inFps', r.inFps || '', 'number')]),
+        el('td', {}, [inp('rl-' + r.id + '-outW', r.outW, 'number')]),
+        el('td', {}, [inp('rl-' + r.id + '-outH', r.outH, 'number')]),
+        el('td', {}, [inp('rl-' + r.id + '-outFps', r.outFps || '', 'number')]),
+        el('td', {}, [sel('rl-' + r.id + '-codec', ['hvc1', 'hvc1_8', 'avc1', 'av01'], r.codec)]),
+        el('td', {}, [sel('rl-' + r.id + '-recipe', ['none', 'light', 'balanced', 'temporal', 'custom'], r.recipe)]),
+        el('td', {}, [sel('rl-' + r.id + '-dither', ['none', 'ordered', 'error_diffusion', 'random'], r.dither || 'ordered')])
+      ]);
+      // botones: guardar, auto de fila, borrar
+      var bSave = el('button', { style: 'padding:4px 8px;font-size:.7rem' }, ['💾']);
+      bSave.title = 'Guardar esta fila';
+      bSave.addEventListener('click', function () { saveRule(r.id); });
+      var bAuto = el('button', { class: 'go', style: 'padding:4px 8px;font-size:.7rem' }, ['★']);
+      bAuto.title = 'Configuracion optima para esta fila';
+      bAuto.addEventListener('click', function () { autoFillRow(r.id); });
+      var bDel = el('button', { style: 'padding:4px 8px;font-size:.7rem;color:#f87171' }, ['✕']);
+      bDel.title = 'Borrar esta regla';
+      bDel.addEventListener('click', function () { deleteRule(r.id); });
+      tr.appendChild(el('td', { style: 'white-space:nowrap' }, [bSave, bAuto, bDel]));
+      tb.appendChild(tr);
+    });
+
+    root.appendChild(el('table', {}, [
+      el('thead', {}, [el('tr', {}, [
+        el('th', {}, ['Entrada res']), el('th', {}, ['in fps']),
+        el('th', {}, ['Ancho']), el('th', {}, ['Alto']), el('th', {}, ['out fps']),
+        el('th', {}, ['Codec (A)']), el('th', {}, ['Receta (A)']),
+        el('th', {}, ['Dither (A)']), el('th', {}, [''])
+      ])]), tb
+    ]));
+
+    // nueva regla
+    var bNew = el('button', { class: 'pri', style: 'margin-top:10px' }, ['+ Añadir regla']);
+    bNew.addEventListener('click', function () {
+      var id = 'r-' + Date.now().toString(36);
+      post('/image/rules', {
+        id: id, input: '720p', inFps: 30, outW: 3840, outH: 2160, outFps: 30,
+        codec: 'hvc1', recipe: 'balanced', dither: 'ordered'
+      }).then(function (res) {
+        logLine(res && res.ok ? ('regla ' + id + ' creada') : 'fallo al crear regla');
+        load();
+      });
+    });
+    root.appendChild(el('div', { class: 'row' }, [bNew]));
+
+    // resultado del auto de la ultima fila pulsada
+    if (S.autoRow && S.autoRow.ok) {
+      var a = S.autoRow;
+      var box = el('div', { class: 'decl' }, [
+        el('div', { style: 'font-weight:700;color:#60a5fa;margin-bottom:6px' }, [
+          'ÓPTIMO para ' + a.input.band + (a.input.fps ? '@' + a.input.fps : '') +
+          ' → ' + a.output.width + 'x' + a.output.height + '  (' + a.areaRatio + 'x area)'
+        ])
+      ]);
+      ['codec', 'recipe', 'outFps', 'dither'].forEach(function (k) {
+        var f = a.fields[k];
+        box.appendChild(el('div', { style: 'font-size:.74rem;margin-top:3px' }, [
+          k + ' = ' + String(f.value) + (f.op ? ' (' + f.op + ')' : '') + '  — ' + f.reason
+        ]));
+      });
+      if (a.hostCost) {
+        box.appendChild(el('div', { style: 'font-size:.74rem;margin-top:5px;color:' +
+          (a.hostCost.viable ? '#6ee7b7' : '#fca5a5') }, [
+          'coste ' + a.hostCost.relative + 'x → ' + a.hostCost.estimatedRatio +
+          'x tiempo real en este host' + (a.hostCost.viable ? '' : ' (NO VIABLE)')
+        ]));
+      }
+      (a.warnings || []).forEach(function (w) { box.appendChild(warn('AVISO: ' + w, '#f59e0b')); });
+      (a.impossible || []).forEach(function (i) { box.appendChild(warn('IMPOSIBLE: ' + i)); });
+      root.appendChild(box);
+    }
+  }
+
+  function ruleVal(id, k) {
+    var e = document.getElementById('rl-' + id + '-' + k);
+    return e ? e.value : '';
+  }
+
+  function saveRule(id) {
+    post('/image/rules', {
+      id: id,
+      input: ruleVal(id, 'input'),
+      inFps: Number(ruleVal(id, 'inFps')) || 0,
+      outW: Number(ruleVal(id, 'outW')),
+      outH: Number(ruleVal(id, 'outH')),
+      outFps: Number(ruleVal(id, 'outFps')) || 0,
+      codec: ruleVal(id, 'codec'),
+      recipe: ruleVal(id, 'recipe'),
+      dither: ruleVal(id, 'dither')
+    }).then(function (r) {
+      logLine(r && r.ok ? ('regla ' + id + ' guardada') : ('fallo: ' + String((r && r.errors) || '?')));
+      load();
+    });
+  }
+
+  function autoFillRow(id) {
+    var w = Number(ruleVal(id, 'outW')) || 3840;
+    var h = Number(ruleVal(id, 'outH')) || 2160;
+    var band = ruleVal(id, 'input') || '720p';
+    var BANDS = { '480p': [854, 480], '576p': [1024, 576], '720p': [1280, 720],
+                  '1080p': [1920, 1080], '1440p': [2560, 1440], '4K': [3840, 2160], '8K': [7680, 4320] };
+    var bi = BANDS[band] || [1280, 720];
+    post('/image/rules/auto', {
+      inW: bi[0], inH: bi[1], inFps: Number(ruleVal(id, 'inFps')) || 0,
+      outW: w, outH: h, player: S.build.player
+    }).then(function (r) {
+      S.autoRow = r;
+      if (!r.ok) { logLine('auto fallo: ' + r.error); render(document.getElementById('ape-image-panel')); return; }
+      // se rellenan los campos con la sugerencia, SIN guardar: el operador decide
+      var setv = function (k, v) {
+        var e = document.getElementById('rl-' + id + '-' + k);
+        if (e) e.value = v;
+      };
+      setv('codec', r.fields.codec.value);
+      setv('recipe', r.fields.recipe.value);
+      setv('dither', r.fields.dither.value);
+      if (r.fields.outFps.value && r.fields.outFps.value !== 'preserve') setv('outFps', r.fields.outFps.value);
+      logLine('auto aplicado a ' + id + ' (sin guardar)');
+      render(document.getElementById('ape-image-panel'));
+    });
+  }
+
+  function deleteRule(id) {
+    api('/image/rules/' + encodeURIComponent(id), { method: 'DELETE' }).then(function () {
+      logLine('regla ' + id + ' borrada');
+      load();
+    }).catch(function (e) { logLine('fallo al borrar: ' + e.message); });
+  }
+
   /* ── CASCADA DE CODECS + FALLBACK ARMABLE ─────────────────────────────── */
 
   function cascadeSection(root) {
@@ -634,6 +783,7 @@
     ]));
 
     buildSection(nodes);
+    rulesSection(nodes);
     cascadeSection(nodes);
     matrixSection(nodes);
     governSection(nodes);
@@ -662,7 +812,8 @@
       api('/image/matrix').catch(function () { return null; }),
       api('/image/catalog').catch(function () { return null; }),
       api('/image/governance').catch(function () { return null; }),
-      api('/image/cascade').catch(function () { return null; })
+      api('/image/cascade').catch(function () { return null; }),
+      api('/image/rules').catch(function () { return null; })
     ]).then(function (r) {
       S.config = r[0] ? r[0].config : null;
       S.effectiveFilter = (r[0] && r[0].effective_filter) || '';
@@ -672,6 +823,7 @@
       S.catalog = r[4];
       S.gov = r[5];
       S.cascade = r[6];
+      S.rules = r[7];
       if (S.config && S.config.profile) S.build.profile = S.config.profile;
       render(root);
     }).catch(function (e) {

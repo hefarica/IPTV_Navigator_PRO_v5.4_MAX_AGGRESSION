@@ -3755,3 +3755,94 @@ ReferenceError: Cannot access 'exceeds' before initialization  -> HTTP 502
 
 El contador se movio **antes** de construir la cabecera. Verificado: lineup
 **HTTP 200, 10,7 MB, 0,23 s**.
+
+---
+
+# 55 · Tabla de reglas: manual, con auto por campo y boton por fila
+
+## 55.1 · El diseno
+
+```
+ ENTRADA           SALIDA            FPS          CODEC   RECETA     DITHER
+ res       fps     res        fps    entra sale   (A)     (A)        (A)          [ * ]
+----------------------------------------------------------------------------------
+ 720p      60     3840x2160         60    30    hvc1    balanced   error_diffusion [ * ]
+           60     3840x2160         60    60    hvc1    light      error_diffusion [ * ]
+           60     1920x1080         60    30    hvc1    light      error_diffusion [ * ]
+           60     5760x3240         60    30    hvc1    temporal   error_diffusion [ * ]
+           30     2560x1440         30    60    hvc1    light      error_diffusion [ * ]
+           30     3840x2160         30    30    hvc1    balanced   error_diffusion [ * ]
+           30     5760x3240         30    30    hvc1    temporal   error_diffusion [ * ]
+ 1080p     60     3840x2160         60    30    hvc1    light      error_diffusion [ * ]
+           50     1920x1080         50    50    hvc1    none       error_diffusion [ * ]
+           30     3840x2160         30    60    hvc1    light      error_diffusion [ * ]
+           30     5760x3240         30    30    hvc1    temporal   error_diffusion [ * ]
+ 4K        60     3840x2160         60    60    hvc1    none       error_diffusion [ * ]
+           60     5760x3240         60    30    hvc1    light      error_diffusion [ * ]
+           30     7680x4320         30    30    hvc1    balanced   error_diffusion [ * ]
+ 480p      30     1920x1080         30    30    hvc1    balanced   ordered          [ * ]
+           30     3840x2160         30    30    hvc1    temporal   ordered          [ * ]
+```
+
+- **Todo es manual.** Cada celda se escribe a mano.
+- **(A)**: cada campo tiene su propio boton de auto. Pide solo ese valor.
+- **[ * ]**: al final de la fila, rellena TODA la fila con la configuracion optima.
+- **El auto no guarda.** Rellena y el operador decide si guarda (boton 💾 por fila).
+
+## 55.2 · Que hace el auto, campo por campo — medido
+
+Ejemplo real: **720p@30 -> 2560x1440** (ratio 4,00x en area)
+
+| Campo | Valor optimo | Por que |
+|---|---|---|
+| `codec` | `hvc1` | el mejor que ONN 4K decodifica para 2560x1440 |
+| `recipe` | `balanced` | upscale medio (4,00x): denoise + unsharp, el ruido se amplifica |
+| `outFps` | `preserve` | fuente a 30 fps: el contenido no gana por interpolar |
+| `dither` | `error_diffusion` | 10 bits: evita banding en gradientes |
+
+**Coste declarado:** 2,04x relativo -> **0,86x tiempo real -> NO VIABLE EN ESTE HOST.**
+
+## 55.3 · Las reglas del auto (por que elige eso)
+
+**Codec** — baja por la escalera `hvc1 > hvc1_8 > avc1 > av01` y devuelve el primero
+que el player decodifica **y** que sirve para la resolucion pedida. Salta AVC por
+encima de 1080p y deja constancia de cada descarte.
+
+**Receta** — segun cuanto hay que inventar:
+
+| Ratio de area | Receta | Razon |
+|---|---|---|
+| <= 1,05x | `none` | sin escalado, filtrar solo anade artefactos |
+| <= 2,5x | `light` | upscale leve, el denoise borraria detalle |
+| <= 9x | `balanced` | upscale medio, el ruido se amplifica |
+| > 9x | `temporal` | upscale severo, atadenoise reduce lo que se amplificaria |
+
+**Cadencia** — no interpola si no aporta o si no cabe:
+- fuente >= 50 fps -> conservar
+- salida > 4K -> maximo 30 fps en este host
+- fuente <= 25 fps -> conservar (interpolar no recupera informacion y cuesta caro)
+
+**Dither** — `error_diffusion` en 10 bits (evita banding), `ordered` en 8 bits.
+
+## 55.4 · Configuraciones imposibles que el auto NO propone
+
+| Caso | Que pasa |
+|---|---|
+| **720p@30 -> 6K en ONN 4K** | `IMPOSIBLE: el decoder llega a 4096x4096; 5760x3240 NO se puede decodificar` + `AVISO: upscale de 20,3x, el detalle no existe en la fuente` |
+| **720p@30 -> 4K en Firestick Lite** | `IMPOSIBLE: el decoder llega a 1920x1080` + `IMPOSIBLE: AVC >1080p no es seguro` |
+| **4K@60 -> 8K en Shield** | `IMPOSIBLE: el decoder llega a 3840x2160` |
+
+**El auto devuelve la configuracion Y el motivo del rechazo.** No esconde el
+problema devolviendo una configuracion que parece valida.
+
+## 55.5 · Endpoints
+
+```
+POST /jit/image/rules/auto         config optima completa de una fila
+GET  /jit/image/rules/auto-field   auto de UN campo (?field=codec|recipe|outFps|dither)
+POST /jit/image/rules              crear/editar (manual)
+DELETE /jit/image/rules/{id}       borrar
+GET  /jit/image/rules/resolve      que reglas aplican a una fuente real
+```
+
+**Test de integracion del panel: 24/24.**
