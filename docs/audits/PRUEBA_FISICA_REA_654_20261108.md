@@ -2193,3 +2193,106 @@ explicita**, con el ratio medido y el motivo.
   operador, **sin tocar el TV** en esta fase.
 - **FHD_1080 con filtros no se ha medido**: es el dato que falta para saber si hay una combinacion
   viable en este host (la intuicion dice que si, por ser 2,25x menos pixeles que 1440p).
+
+---
+
+# 35 · El JIT FILTRA DE VERDAD — cadena verificada en el proceso
+
+## 35.1 · Capacidad: el fps decide, no la receta
+
+11 mediciones en el host real (3 vCPU AMD EPYC-Rome), 20 s de testsrc2, libx265 ultrafast, escala lanczos:
+
+| Destino | FPS | Receta | 20 s → | Ritmo | |
+|---|---:|---|---:|---:|---|
+| FHD_1080 | 25 | none | 11,4 s | **1,76x** | VIABLE |
+| FHD_1080 | 25 | light | 13,5 s | **1,48x** | VIABLE |
+| FHD_1080 | 25 | balanced | 14,0 s | **1,43x** | VIABLE |
+| FHD_1080 | 25 | temporal | 14,6 s | **1,37x** | VIABLE |
+| FHD_1080 | 50 | light | 25,6 s | 0,78x | no |
+| FHD_1080 | 50 | balanced | 26,8 s | 0,75x | no |
+| QHD_1440 | 25 | none | 16,8 s | 1,19x | al limite |
+| QHD_1440 | 25 | light | 19,0 s | 1,05x | al limite |
+| QHD_1440 | 25 | temporal | 18,6 s | 1,07x | al limite |
+| QHD_1440 | 50 | balanced | 46,94 s | 0,43x | no |
+| UHD_4K | 50 | balanced | 80,95 s | 0,25x | no |
+
+**Lectura:** FHD a 25 fps sostiene **cualquier** receta. Subir el fps cuesta mas que subir la receta:
+FHD 50fps balanced (0,75x) es **peor** que QHD 25fps light (1,05x). UHD no cabe de ninguna forma.
+
+## 35.2 · Tres defectos que impedian que el filtro se ejecutara
+
+Instrumentar no bastaba: el motor no aplicaba la receta por tres motivos encadenados.
+
+### a) `-c:v copy` con receta pedida
+
+El canal 2 tiene **color desconocido**, y la proteccion de color ponia `copyNative = true` → `-c:v copy`
+→ **`-vf` no se ejecuta**. Corregido con `force_transcode`: si hay receta o destino explicito, se
+codifica. El color de la fuente **no se relabela**.
+
+### b) `zscale` sin ruta de color
+
+```
+[Parsed_zscale_5] code 3074: no path between colorspaces
+Error while filtering · EXIT 2
+```
+
+El motor aplicaba **siempre** la conversion a PQ (`zscale=p=bt2020:t=smpte2084`) aunque el color de
+entrada fuera desconocido. Corregido: zscale **solo con color conocido**.
+
+### c) PQ inyectado en el bitstream
+
+Los `x265-params` hardcodeaban `colorprim=bt2020:transfer=smpte2084:colormatrix=bt2020nc`, asi que
+ffprobe leia PQ del output y el manifiesto declaraba `VIDEO-RANGE=PQ` — una etiqueta **inyectada**, no
+una propiedad del contenido. Corregido: solo se escriben con HDR conocido.
+
+## 35.3 · La cadena real, leida del proceso en ejecucion
+
+```
+ffmpeg ... -vf format=yuv420p10le,hqdn3d=0.6:0.45:0.9:0.7,unsharp=5:5:0.2:5:5:0,
+              scale=w=1920:h=1080:force_original_aspect_ratio=decrease:force_divisible_by=2:flags=lanczos,
+              pad=1920:1080:(ow-iw)/2:(oh-ih)/2,format=yuv420p10le
+        -c:v libx265 -preset ultrafast -crf 20
+        -x265-params keyint=60:scenecut=0:open-gop=0:pools=3:frame-threads=1
+        -c:a copy
+```
+
+Es **la receta Balanced del informe**, ejecutandose en el JIT.
+
+## 35.4 · La salida, medida con ffprobe
+
+```
+hevc | Main 10 | 1920x1080 | yuv420p10le | color_transfer=unknown | r_frame_rate=25/1
+```
+
+Y el manifiesto declara:
+
+```
+#EXT-X-APE-CRYSTAL-MODE:FILTERED_BALANCED
+#EXT-X-APE-CRYSTAL-TARGET:1920x1080;STATUS=OUTPUT_OBSERVED
+```
+
+**`FILTERED_BALANCED` no es una promesa: es el modo que el motor aplico, y el bitstream lo respalda.**
+`color_transfer=unknown` es correcto: no se invento HDR sobre una fuente de color no declarado.
+
+## 35.5 · Control remoto desde la UI
+
+- `GET /jit/image/config` — config efectiva, defaults, capacidades
+- `POST /jit/image/config` — aplica en caliente (persiste atomico, detiene el job, proximo arranque)
+- `GET /jit/image/capacity` — las 11 mediciones con veredicto
+
+Panel `vps-image-panel.js` + `image-panel.html` + montaje en `index-v4.html`: tabla de capacidad con
+chip VIABLE / AL LIMITE / NO VIABLE, los 5 destinos, las 5 recetas, parametros vivos de
+hqdn3d/unsharp/atadenoise, encoder, empaquetado, y **aviso con el numero medido antes de aplicar algo
+que no cabe**.
+
+Verificado: `OPTIONS 204` con `Access-Control-Allow-Origin: *`; cada receta genera su cadena; valuos
+invalidos rechazados con 400; vuelta a defaults deja `(sin filtros)`; prueba de humo 14/14.
+
+## 35.6 · Lo que sigue sin demostrar
+
+- **La reproduccion de ESTA salida filtrada en la APK**: pendiente por indicacion del operador de no
+  tocar el TV. Lo que si esta probado es que la APK reproduce el HLS del JIT a 1080p (seccion 33).
+- **QHD/UHD certificados**: QHD queda al limite (1,05x) y UHD no cabe (0,25x).
+- **El `fps` de la config no se aplica al comando**: la salida da 25/1 porque la fuente ya es 25 fps;
+  falta emitir `-r`/`-fps_mode cfr` cuando el operador elija otro valor.
+- **`BANDWIDTH=2234` en el STREAM-INF** es un valor sospechosamente bajo: revisar como se calcula.

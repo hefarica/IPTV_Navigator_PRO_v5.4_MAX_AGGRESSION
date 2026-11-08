@@ -70,6 +70,10 @@ const IMAGE_DEFAULTS = {
 
   // ── color ──
   color: 'preserve',           // preserve | sdr | pq
+  // Si se pide una receta o un destino concreto, el motor DEBE transcodificar:
+  // con -c:v copy los filtros no se ejecutan. true = la receta manda sobre la
+  // proteccion de color; el color de la fuente se conserva sin relabelar.
+  force_transcode: true,
   ten_bit: true,
 
   // ── audio ──
@@ -183,6 +187,7 @@ function normalizeImageConfig(patch) {
   if (p.gop_seconds !== undefined) c.gop_seconds = clampInt(p.gop_seconds, 1, 10, c.gop_seconds);
   if (p.x265_threads !== undefined) c.x265_threads = clampInt(p.x265_threads, 1, 8, c.x265_threads);
   if (p.allow_downscale !== undefined) c.allow_downscale = !!p.allow_downscale;
+  if (p.force_transcode !== undefined) c.force_transcode = !!p.force_transcode;
   if (p.ten_bit !== undefined) c.ten_bit = !!p.ten_bit;
   if (p.closed_gop !== undefined) c.closed_gop = !!p.closed_gop;
   if (p.filter_order !== undefined) {
@@ -254,14 +259,30 @@ function buildImageFilterChain(cfg) {
 const IMAGE_MEASURED_CAPACITY = {
   measured_at: '2026-11-08',
   host: '3 vCPU AMD EPYC-Rome, 3 GB',
-  source: 'testsrc2 20 s, libx265 ultrafast, hqdn3d+unsharp, -an',
+  source: 'testsrc2 20 s, libx265 ultrafast, -an; escala lanczos; fps segun fila',
+  margin_required: 1.2,
+  // MATRIZ COMPLETA, 11 mediciones. El fps es el factor decisivo, no la receta.
   rows: [
-    { target: 'FHD_1080', recipe: 'balanced', seconds_for_20s: null, realtime_ratio: null, note: 'no medido' },
-    { target: 'QHD_1440', recipe: 'balanced', seconds_for_20s: 46.94, realtime_ratio: 0.43, viable: false },
-    { target: 'UHD_4K',   recipe: 'balanced', seconds_for_20s: 80.95, realtime_ratio: 0.25, viable: false }
+    { target: 'FHD_1080', fps: 25, recipe: 'none',     seconds_for_20s: 11.4, realtime_ratio: 1.76, viable: true  },
+    { target: 'FHD_1080', fps: 25, recipe: 'light',    seconds_for_20s: 13.5, realtime_ratio: 1.48, viable: true  },
+    { target: 'FHD_1080', fps: 25, recipe: 'balanced', seconds_for_20s: 14.0, realtime_ratio: 1.43, viable: true  },
+    { target: 'FHD_1080', fps: 25, recipe: 'temporal', seconds_for_20s: 14.6, realtime_ratio: 1.37, viable: true  },
+    { target: 'FHD_1080', fps: 50, recipe: 'light',    seconds_for_20s: 25.6, realtime_ratio: 0.78, viable: false },
+    { target: 'FHD_1080', fps: 50, recipe: 'balanced', seconds_for_20s: 26.8, realtime_ratio: 0.75, viable: false },
+    { target: 'QHD_1440', fps: 25, recipe: 'none',     seconds_for_20s: 16.8, realtime_ratio: 1.19, viable: false, note: 'al limite' },
+    { target: 'QHD_1440', fps: 25, recipe: 'light',    seconds_for_20s: 19.0, realtime_ratio: 1.05, viable: false, note: 'al limite' },
+    { target: 'QHD_1440', fps: 25, recipe: 'temporal', seconds_for_20s: 18.6, realtime_ratio: 1.07, viable: false, note: 'al limite' },
+    { target: 'QHD_1440', fps: 50, recipe: 'balanced', seconds_for_20s: 46.94, realtime_ratio: 0.43, viable: false },
+    { target: 'UHD_4K',   fps: 50, recipe: 'balanced', seconds_for_20s: 80.95, realtime_ratio: 0.25, viable: false }
   ],
-  verdict: 'QHD y UHD NO son viables en directo con filtros en CPU en este host. '
-         + 'Margen exigido 1,2x tiempo real; medido 0,43x a 1440p y 0,25x a 2160p.'
+  viable_combinations: [
+    { target: 'FHD_1080', fps: 25, recipes: ['none','light','balanced','temporal'], min_ratio: 1.37 },
+    { target: 'QHD_1440', fps: 25, recipes: [], min_ratio: 1.05, status: 'al limite, no certificar' }
+  ],
+  verdict: 'VIABLE: FHD_1080 a 25 fps con cualquier receta (1,37x-1,76x). '
+         + 'AL LIMITE: QHD_1440 a 25 fps (1,05x-1,19x, por debajo del 1,2x exigido). '
+         + 'NO VIABLE: cualquier destino a 50 fps (0,75x-0,78x) y UHD_4K (0,25x). '
+         + 'El fps decide mas que la receta: FHD 25fps balanced (1,43x) supera a FHD 50fps none (0,78x).'
 };
 
 loadImageConfig();
@@ -420,6 +441,10 @@ function buildEncodingPlan(src, options = {}) {
   // comportamiento historico (1280/1920/2048 x 720/1080) para no romper nada.
   const cfg = options.imageConfig || imageConfig;
   const requestedTarget = IMAGE_TARGETS[cfg.target] || null;
+  // Una receta de filtros o un destino explicito NO pueden servirse con -c:v copy:
+  // copy no ejecuta -vf. Si se pide procesamiento, se procesa.
+  const wantsProcessing = cfg.force_transcode !== false
+    && ((cfg.recipe && cfg.recipe !== 'none') || (cfg.target && cfg.target !== 'source'));
   let targetW, targetH;
   if (requestedTarget) {
     targetW = requestedTarget.w; targetH = requestedTarget.h;
@@ -437,8 +462,10 @@ function buildEncodingPlan(src, options = {}) {
   }
   // Native HDR is retained even below 4K. Unknown color is never assumed BT.709.
   // 4K SDR and dimensions larger than the legacy target must not fall to FHD.
-  const copyNative = !isSdr && !sixK && (is4kSource || sourceRange === 'PQ' || sourceRange === 'HLG'
+  const copyNativeRaw = !isSdr && !sixK && (is4kSource || sourceRange === 'PQ' || sourceRange === 'HLG'
     || !known709 || src.width > targetW || src.height > targetH);
+  // wantsProcessing vence a la proteccion de color: si hay receta, se codifica.
+  const copyNative = copyNativeRaw && !wantsProcessing;
   if (copyNative && !['hevc', 'h264', 'av1', 'vp9'].includes(src.codec)) {
     throw new Error('UNSUPPORTED_NATIVE_CMAF_CODEC: source retained; use provider-direct');
   }
@@ -446,18 +473,37 @@ function buildEncodingPlan(src, options = {}) {
   const width = copyNative ? src.width : (sixK ? 6144 : targetW);
   const height = copyNative ? src.height : (sixK ? 3456 : targetH);
   const hdrPreserved = sixK && knownHdr;
-  const outputColorIntent = copyNative || hdrPreserved
+  // Con color no conocido y transcode forzado, la salida NO se inventa: se hereda
+  // lo que declare la fuente y, si no declara nada, no se etiqueta color.
+  const colorUnknown = !known709 && !knownHdr;
+  const outputColorIntent = (copyNative || hdrPreserved || (wantsProcessing && colorUnknown))
     ? { transfer: src.transfer, primaries: src.primaries, matrix: src.matrix, range: src.range }
     : isSdr ? { transfer: 'bt709', primaries: 'bt709', matrix: 'bt709', range: 'tv' }
       : { transfer: 'smpte2084', primaries: 'bt2020', matrix: 'bt2020nc', range: 'tv' };
-  const colorArgs = ['-color_primaries', outputColorIntent.primaries, '-color_trc', outputColorIntent.transfer,
-    '-colorspace', outputColorIntent.matrix, '-color_range', outputColorIntent.range];
+  const colorArgs = [];
+  if (outputColorIntent.primaries && outputColorIntent.primaries !== 'unknown') {
+    colorArgs.push('-color_primaries', outputColorIntent.primaries);
+  }
+  if (outputColorIntent.transfer && outputColorIntent.transfer !== 'unknown') {
+    colorArgs.push('-color_trc', outputColorIntent.transfer);
+  }
+  if (outputColorIntent.matrix && outputColorIntent.matrix !== 'unknown') {
+    colorArgs.push('-colorspace', outputColorIntent.matrix);
+  }
+  if (outputColorIntent.range && ['tv', 'pc'].includes(outputColorIntent.range)) {
+    colorArgs.push('-color_range', outputColorIntent.range);
+  }
   const imageFilters = buildImageFilterChain(cfg);
   const pixelFmt = cfg.ten_bit ? 'format=yuv420p10le' : 'format=yuv420p';
   const head = imageFilters ? (pixelFmt + ',' + imageFilters + ',') : '';
   const geometry = head + `scale=w=${width}:h=${height}:force_original_aspect_ratio=decrease:force_divisible_by=2:flags=lanczos,pad=${width}:${height}:(ow-iw)/2:(oh-ih)/2`;
   // setparams only relabels pixels. zscale performs the actual known-SDR -> PQ conversion.
-  const hdrFilter = geometry + (hdrPreserved ? ',format=yuv420p10le'
+  // zscale SOLO si el color de entrada es conocido. Con color desconocido,
+  // convertir a PQ falla con "no path between colorspaces" (code 3074) y el
+  // filtro entero se cae: nada se escribe y el cliente recibe 503.
+  // Medido en el canal 2: colorUnknown=true -> zscale rompia la cadena.
+  const hdrFilter = geometry + ((hdrPreserved || colorUnknown)
+    ? ',format=yuv420p10le'
     : ',zscale=t=linear:npl=100,format=gbrpf32le,zscale=p=bt2020:t=smpte2084:m=bt2020nc:r=limited,format=yuv420p10le');
   let videoArgs;
   if (copyNative) {
@@ -482,7 +528,14 @@ function buildEncodingPlan(src, options = {}) {
     videoArgs = ['-vf', hdrFilter, '-pix_fmt', cfg.ten_bit ? 'yuv420p10le' : 'yuv420p', ...colorArgs,
       '-c:v', cfg.codec === 'libx265' ? 'libx265' : cfg.codec,
       '-preset', cfg.preset, '-tune', 'zerolatency', '-threads', String(cfg.x265_threads), '-tag:v', 'hvc1',
-      '-x265-params', gop + 'pools=' + cfg.x265_threads + ':frame-threads=1:colorprim=bt2020:transfer=smpte2084:colormatrix=bt2020nc',
+      // Los metadatos de color del bitstream SOLO se escriben si la salida es HDR
+      // conocida. Antes estaban hardcodeados a bt2020/smpte2084 y eso metia PQ en el
+      // flujo aunque la fuente tuviera color desconocido o fuera SDR: el manifiesto
+      // acababa declarando VIDEO-RANGE=PQ leido de ffprobe, pero era una etiqueta
+      // inyectada, no una propiedad del contenido.
+      '-x265-params', gop + 'pools=' + cfg.x265_threads + ':frame-threads=1'
+        + (['PQ', 'HLG'].includes(outputColorIntent.transfer) && outputColorIntent.primaries === 'bt2020'
+            ? ':colorprim=bt2020:transfer=smpte2084:colormatrix=bt2020nc' : ''),
       ...rateArgs];
   }
   const audioSource = src.audioOk ? src : (options.audioSrc && options.audioSrc.audioOk ? options.audioSrc : null);
@@ -493,6 +546,7 @@ function buildEncodingPlan(src, options = {}) {
     throw new Error('UNSUPPORTED_CMAF_AUDIO: no downmix or audio removal; use provider-direct');
   }
   return { isSdr, is720, use2k, av1, sixK, copyNative, copy4k: copyNative && is4kSource,
+    wantsProcessing, colorUnknown,
     width, height, videoArgs,
     // FIX 2026-11-08, aislado con 7 experimentos A-G sobre el ffmpeg real:
     //   -f mp4  -> funciona sin tocar nada
