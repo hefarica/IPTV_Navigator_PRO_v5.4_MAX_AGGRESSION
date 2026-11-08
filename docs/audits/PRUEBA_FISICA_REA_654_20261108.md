@@ -2707,3 +2707,76 @@ QHD_1440   25    temporal      18.6s      1.07x  AL LIMITE
 QHD_1440   50    balanced     46.94s      0.43x  NO VIABLE
 UHD_4K     50    balanced     80.95s      0.25x  NO VIABLE
 ```
+
+---
+
+# 42 · Sostenido 30 minutos: resultado y los DOS reinicios
+
+## 42.1 · Cabecera del test
+
+```
+host                : 3 vCPU, 3819 MB
+duracion            : 1835 s (30 min 35 s)
+muestras            : 30, una cada 60 s
+receta              : FHD_1080 + balanced + 25 fps
+consumidor          : media_0.m3u8 cada 2 s (como un reproductor)
+fallos HTTP         : 0 de 30
+CPU media           : 79%
+MEM maxima          : 1233 MB
+ventana             : 6 -> 84 segmentos
+```
+
+**Cero fallos HTTP en 30 minutos.** El motor siguio sirviendo durante todo el test.
+
+## 42.2 · El hallazgo que importa: DOS reinicios del transcode
+
+```
+t=   0s -> 807s   pid=1819646   (13 min 27 s vivo, 84 segmentos)
+t= 868s -> 1170s  pid=1834948   (reinicio 1)
+t=1230s -> 1775s  pid=1840156   (reinicio 2)
+```
+
+Al reiniciar, la ventana **cae de 84 a 9 y a 28 segmentos** y vuelve a llenarse. Eso son **~18 s de
+ventana perdidos** en la reproduccion cada vez.
+
+**Causa: `IDLE_MS=20000`.** Si el consumidor deja un hueco de mas de 20 s (por un bache de red o porque
+una peticion tarda mas de lo que aguanta el cliente), el motor apaga ffmpeg y la siguiente peticion
+arranca un trabajo nuevo. En este test el consumidor pedia cada 2 s, y aun asi hubo dos huecos.
+
+**No es un fallo del modulo ni del filtro**: es la politica de inactividad del motor. Un reproductor real
+con buffer de 30-120 s pide mucho mas seguido, pero **un solo bache de 20 s ya tira el trabajo**.
+
+**Correccion propuesta, no aplicada:** subir `IDLE_MS` a 60-120 s. Reduce reinicios a costa de mantener
+ffmpeg vivo un poco mas despues del ultimo cliente. No lo he cambiado porque altera la politica de
+recursos del servicio y esa decision es del operador.
+
+## 42.3 · Estabilidad de lo que si depende del modulo
+
+| Medida | Resultado |
+|---|---|
+| Fallos HTTP | **0 / 30** |
+| Modo | `FILTERED_BALANCED` en **todas** las muestras |
+| `copy` | `false` en todas: nunca cayo a copiar sin filtrar |
+| Resolucion | constante (observado 1920x1080 hevc yuv420p10le) |
+| CPU media | **79%** (picos de 100% y un valle de 6% durante un reinicio) |
+| Load con 3 vCPU | hasta **2,97** |
+| Memoria | estabilizada en ~1,2 GB, sin crecimiento sostenido |
+| Ventana | llena a 84 y **no crece** (no hay fuga de segmentos) |
+
+**El modulo no degrada, no fuga memoria y no pierde el modo filtrado en 30 minutos.** Lo unico que se
+cae es el trabajo cuando el cliente calla mas de 20 s.
+
+## 42.4 · Capacidad sostenida contra el criterio del informe
+
+El informe pide **margen >= 1,2x tiempo real** para certificar. Medido aislado: **1,43x** para
+FHD 1080 balanced 25 fps. En sostenido, con la CPU al 79% y el load a 2,5-2,97 sobre 3 vCPU:
+
+- **Cabe un unico flujo.** No hay holgura para un segundo consumidor concurrente.
+- CPU al 100% en dos muestras: el margen de 1,43x es de codificacion, **no de sistema**.
+- **FHD 1080 @ 25 fps es lo certificable.** QHD (1,05x medido en aislado) no aguanta esta carga real.
+
+## 42.5 · Lo que este test NO demuestra
+
+- **La reproduccion en el dispositivo**: por indicacion del operador, sin tocar el TV.
+- **La calidad visual**: no se hizo A/B perceptual ni VMAF. El bitrate oscila con el contenido.
+- **Concurrencia**: un solo consumidor durante todo el test.
