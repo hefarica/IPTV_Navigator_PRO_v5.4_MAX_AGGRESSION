@@ -21,12 +21,12 @@ veredicto, y cada veredicto cita el artefacto del que sale. Lo que no se pudo me
 
 | Afirmación del informe | Veredicto | Evidencia |
 |---|---|---|
-| M3U8 HTTP 200, **1.311.381.927 bytes**, **21.224 canales** | **CORREGIDO** | El fichero auditado localmente es **1.298.722.596 B**, sha256 `5f08f4e6…`, 21.224 canales. La diferencia de **12.659.331 B** es la reescritura de URLs del envoltorio. Son dos representaciones distintas y ambas correctas sobre su objeto |
+| M3U8 HTTP 200, **1.311.381.927 bytes**, **21.224 canales** | **CONFIRMADO** | `HEAD` devuelve `Content-Length: 1311381927` exacto. El fichero auditado localmente mide **1.298.722.596 B**; la diferencia de **12.659.331 B** es la reescritura de URLs del envoltorio. Ambas representaciones son correctas sobre su objeto |
 | 21.224 entradas con exactamente 1 URI | **CONFIRMADO** | `canales=21224 uris=21224 1-uri=SI` |
 | `EXTHTTP` con JSON válido en todos | **CONFIRMADO** | `exthttp_ok=21224 mal=0` |
 | 0 `tvg-id` duplicados | **CONFIRMADO** | `tvg_id_dup=0` |
 | Sin cruce de cabeceras entre canales | **CONFIRMADO** | Cabeceras entre `EXTINF` y su URI, 21.224/21.224 |
-| `X-APE-List-Source: pulse-wrapped-if-present` | **NO COMPROBADO** | No se repitió la consulta HTTP a la cabecera |
+| `X-APE-List-Source: pulse-wrapped-if-present` | **CONFIRMADO (medido 2026-11-08)** | `HEAD /lists/APE_LISTA_1794100720046.m3u8` -> la cabecera devuelve **exactamente** ese valor |
 | 8 KB de presupuesto en `EXTHTTP` | **NO COMPROBADO** | No se re-midió el rango 7.113–7.935 B |
 | 202 claves por `EXTHTTP` | **NO COMPROBADO** | No se re-contaron |
 
@@ -210,3 +210,54 @@ adb -s $S logcat | grep -E "ApePlayer|tracks sin video|buffered position"
 ya no degrada; el dispositivo no puede ejecutar 6K y no lo pretende; y el reproductor de la APK se
 congela porque vacía su propio buffer tras una enumeración de pistas fallida — un defecto concreto de
 código, no de datos ni de red.
+
+---
+
+## 12 · El manifiesto `/ara/version` cierra el caso de la APK instalada
+
+Consultado el **2026-11-08**:
+
+```json
+{"versionCode":651,"versionName":"3.9.5-adb-firetv-shim",
+ "sha256":"8d3b145811c0bab3a10952329a81cadc477b08bd365b70f173cfe34ff52aa6e4",
+ "size":25678434,"package":"com.ape.crystalagent","features":["ottshim"],
+ "published_at":"2026-11-07T18:55:00Z"}
+```
+
+**Y el propio manifiesto documenta su historia de versiones**, que resuelve el §6:
+
+| versionCode | Lo que dice el propio manifiesto |
+|---:|---|
+| **6** | `2.3.0-noWG SIN ottshim, manifest invalido.` |
+| **600** | **`Repare ese APK viejo subiendole el codigo — ERROR: UI sin ottshim.`** |
+| **650** | `3.9.5 con ottshim, pero con icon/banner ELIMINADOS. En una app leanback eso es riesgoso; el operador reporto bloqueo.` |
+| **651** | `3.9.5 con ottshim y icon/banner apuntando a un recurso PROPIO. Es la vigente.` |
+
+**El dispositivo corre exactamente el `600`**, que el manifiesto publicado califica de **ERROR**. No es una
+inferencia mia: es la declaracion del propio servicio.
+
+### El defecto que obligo a reparar el APK
+
+El manifiesto lo detalla: `android:icon` y `android:banner` apuntaban a
+`@android:drawable/ic_media_play` (`0x01080024`), **un recurso del FRAMEWORK** que no resuelve en el
+dispositivo -> Android respondia «paquete no valido». La reparacion **reemplaza, no elimina** (la app declara
+`LEANBACK_LAUNCHER` y Android TV espera `banner`), y conserva el tamano exacto del manifest
+(11604 -> 11604 bytes). Verificacion declarada: `aapt rc=0`, y el diff del xmltree **solo** cambia
+`versionCode 52->651` y las dos referencias de icono.
+
+### Cabeceras de la lista, medidas
+
+```
+HEAD /lists/APE_LISTA_1794100720046.m3u8            HEAD /lists/pulse/APE_LISTA_1794100720046.m3u8
+  Content-Length   1311381927                        Content-Length   1311381927
+  Content-Type     application/vnd.apple.mpegurl     Content-Type     application/vnd.apple.mpegurl
+  X-APE-List-Source pulse-wrapped-if-present         (ausente)
+  ETag             "6aefd56f-4e2a19a7"               ETag             "6aefd56f-4e2a19a7"
+  Last-Modified    08 Nov 2026 01:50:39 GMT          Cache-Control    no-store, must-revalidate...
+  Cache-Control    no-store                          Access-Control-Allow-Origin *
+  Accept-Ranges    bytes                             Accept-Ranges    bytes, bytes
+```
+
+**Ambas rutas sirven el mismo cuerpo** (mismo `Content-Length` y `ETag`). La cabecera
+`X-APE-List-Source` solo aparece en la ruta sin `/pulse/`. El `Last-Modified 01:50:39` coincide con el
+sello del release JIT `20261108015052`, es decir, el mismo ciclo de sincronizacion.
