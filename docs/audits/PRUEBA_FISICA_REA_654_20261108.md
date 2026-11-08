@@ -3936,3 +3936,72 @@ Access-Control-Max-Age: 600
 ```
 
 **Verificado:** `OPTIONS` permite POST y DELETE; POST con Origin local devuelve **200**.
+
+---
+
+# 57 · La tabla lleva TODOS los campos del panel
+
+## 57.1 · Lo que faltaba
+
+El operador mostro el panel previo y senalo que la tabla de reglas no tenia sus campos.
+Se anadieron **por regla** (antes solo existian en la configuracion global):
+
+| Grupo | Campos |
+|---|---|
+| **Encoder** | `preset` x265 · `crf` · `audio` · `x265_threads` |
+| **Filtros** | `hqdn3d.luma_spatial` · `chroma_spatial` · `luma_tmp` · `chroma_tmp` · `unsharp.luma_amount` · `luma_msize` · `atadenoise.s` |
+| **Empaquetado** | `seg_duration` · `window_size` · `extra_window_size` · `gop_seconds` |
+
+**Cada fila puede tener su propio encoder, sus filtros y su empaquetado.** Antes eran
+globales: cambiar el CRF afectaba a todos los canales.
+
+## 57.2 · La tabla completa, medida
+
+```
+ 1. RESOLUCION Y CODEC
+ REGLA              ENTRADA  fps  SALIDA     fps  CODEC  RECETA    DITHER           MODO
+ r-720-60-4k-30     720p     60   3840x2160  30   hvc1   balanced  error_diffusion  REAL
+ r-720-60-4k-60     720p     60   3840x2160  60   hvc1   light     error_diffusion  REAL
+ r-720-60-1080-30   720p     60   1920x1080  30   hvc1   light     error_diffusion  REAL
+ r-720-60-6k-30     720p     60   5760x3240  30   hvc1   temporal  error_diffusion  EMULADO
+ r-720-30-1440-60   720p     30   2560x1440  60   hvc1   light     error_diffusion  REAL
+ r-720-30-4k-30     720p     30   3840x2160  30   hvc1   balanced  error_diffusion  REAL
+ r-720-30-6k-30     720p     30   5760x3240  30   hvc1   temporal  error_diffusion  EMULADO
+ r-1080-60-4k-30    1080p    60   3840x2160  30   hvc1   light     error_diffusion  REAL
+ r-1080-50-1080-50  1080p    50   1920x1080  50   hvc1   none      error_diffusion  REAL
+ r-1080-30-4k-60    1080p    30   3840x2160  60   hvc1   light     error_diffusion  REAL
+ r-1080-30-6k-30    1080p    30   5760x3240  30   hvc1   temporal  error_diffusion  EMULADO
+ r-4k-60-4k-60      4K       60   3840x2160  60   hvc1   none      error_diffusion  REAL
+ r-4k-60-6k-30      4K       60   5760x3240  30   hvc1   light     error_diffusion  EMULADO
+ r-4k-30-8k-30      4K       30   7680x4320  30   hvc1   balanced  error_diffusion  EMULADO
+ r-480-30-1080-30   480p     30   1920x1080  30   hvc1   balanced  ordered          REAL
+ r-480-30-4k-30     480p     30   3840x2160  30   hvc1   temporal  ordered          REAL
+
+ 2. ENCODER          3. FILTROS VIVOS                              4. EMPAQUETADO
+ REGLA           PRESET CRF AUDIO | hq_ls hq_cs hq_lt hq_ct us_amt us_msz at_s | SEG WIN EXT GOP
+ todas           ultra  20  preser| 0.6   0.45  0.9   0.7   0.2    5      5    | 2   30  10  2
+```
+
+## 57.3 · Validacion fail-closed con los rangos REALES
+
+`RULE_LIMITS` usa los rangos de ffmpeg/x265 medidos, no los que parecen razonables:
+
+| Intento | Resultado |
+|---|---|
+| `unsharp.luma_msize=4` | **RECHAZA** `debe ser impar (4:2:0 y el filtro lo exigen)` |
+| `unsharp.luma_msize=0` | **RECHAZA** `fuera de [3,23]` — **0 rompe la cadena** (defecto de la skill) |
+| `crf=60` | **RECHAZA** `fuera de [0,51]` |
+| `preset=bogus` | **RECHAZA** `no permitido (validos: ultrafast,...,slow)` |
+| `crf=22, msize=7, seg=4` | **OK** |
+
+## 57.4 · Persistencia
+
+`/opt/ape-jit/transform-rules.json`. `withRuleDefaults()` completa cualquier regla
+guardada que venga sin los campos nuevos: una fila antigua nunca queda a medias en la
+tabla. Verificado: las 16 reglas devuelven los 11 campos.
+
+## 57.5 · Panel desplegado
+
+`vps-image-panel.js` **41.086 -> 43.509 B** con las 15 columnas nuevas.
+Verificado en local (`127.0.0.1:5500`) y por HTTPS: 200, 43.509 B, referencias a
+`preset`, `hqls` y `seg` presentes. **Test de integracion: OK.**

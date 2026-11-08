@@ -364,7 +364,24 @@
         // REAL: exige que el decoder lo decodifique. EMULADO: se declara igual.
         el('td', {}, [sel('rl-' + r.id + '-mode', [
           { id: 'real', label: 'REAL' }, { id: 'emulado', label: 'EMULADO' }
-        ], r.mode || 'real')])
+        ], r.mode || 'real')]),
+        // ENCODER
+        el('td', {}, [sel('rl-' + r.id + '-preset', ['ultrafast', 'superfast', 'veryfast', 'faster', 'fast', 'medium', 'slow'], r.preset || 'ultrafast')]),
+        el('td', {}, [inp('rl-' + r.id + '-crf', r.crf != null ? r.crf : 20, 'number')]),
+        el('td', {}, [sel('rl-' + r.id + '-audio', ['preserve', 'aac', 'drop'], r.audio || 'preserve')]),
+        // FILTROS
+        el('td', {}, [inp('rl-' + r.id + '-hqls', (r.hqdn3d || {}).luma_spatial, 'number')]),
+        el('td', {}, [inp('rl-' + r.id + '-hqcs', (r.hqdn3d || {}).chroma_spatial, 'number')]),
+        el('td', {}, [inp('rl-' + r.id + '-hqlt', (r.hqdn3d || {}).luma_tmp, 'number')]),
+        el('td', {}, [inp('rl-' + r.id + '-hqct', (r.hqdn3d || {}).chroma_tmp, 'number')]),
+        el('td', {}, [inp('rl-' + r.id + '-usam', (r.unsharp || {}).luma_amount, 'number')]),
+        el('td', {}, [inp('rl-' + r.id + '-usms', (r.unsharp || {}).luma_msize, 'number')]),
+        el('td', {}, [inp('rl-' + r.id + '-ats', (r.atadenoise || {}).s, 'number')]),
+        // EMPAQUETADO
+        el('td', {}, [inp('rl-' + r.id + '-seg', r.seg_duration, 'number')]),
+        el('td', {}, [inp('rl-' + r.id + '-win', r.window_size, 'number')]),
+        el('td', {}, [inp('rl-' + r.id + '-exw', r.extra_window_size, 'number')]),
+        el('td', {}, [inp('rl-' + r.id + '-gop', r.gop_seconds, 'number')])
       ]);
       // botones: guardar, auto de fila, borrar
       var bSave = el('button', { style: 'padding:4px 8px;font-size:.7rem' }, ['💾']);
@@ -385,7 +402,12 @@
         el('th', {}, ['Entrada res']), el('th', {}, ['in fps']),
         el('th', {}, ['Ancho']), el('th', {}, ['Alto']), el('th', {}, ['out fps']),
         el('th', {}, ['Codec (A)']), el('th', {}, ['Receta (A)']),
-        el('th', {}, ['Dither (A)']), el('th', {}, ['Modo']), el('th', {}, [''])
+        el('th', {}, ['Dither (A)']), el('th', {}, ['Modo']),
+        el('th', {}, ['Preset']), el('th', {}, ['CRF']), el('th', {}, ['Audio']),
+        el('th', {}, ['hq_ls']), el('th', {}, ['hq_cs']), el('th', {}, ['hq_lt']), el('th', {}, ['hq_ct']),
+        el('th', {}, ['us_amt']), el('th', {}, ['us_msz']), el('th', {}, ['at_s']),
+        el('th', {}, ['seg(s)']), el('th', {}, ['window']), el('th', {}, ['extra']), el('th', {}, ['GOP(s)']),
+        el('th', {}, [''])
       ])]), tb
     ]));
 
@@ -449,7 +471,18 @@
       codec: ruleVal(id, 'codec'),
       recipe: ruleVal(id, 'recipe'),
       dither: ruleVal(id, 'dither'),
-      mode: ruleVal(id, 'mode')
+      mode: ruleVal(id, 'mode'),
+      preset: ruleVal(id, 'preset'),
+      crf: Number(ruleVal(id, 'crf')),
+      audio: ruleVal(id, 'audio'),
+      hqdn3d: {
+        luma_spatial: Number(ruleVal(id, 'hqls')), chroma_spatial: Number(ruleVal(id, 'hqcs')),
+        luma_tmp: Number(ruleVal(id, 'hqlt')), chroma_tmp: Number(ruleVal(id, 'hqct'))
+      },
+      unsharp: { luma_amount: Number(ruleVal(id, 'usam')), luma_msize: Number(ruleVal(id, 'usms')) },
+      atadenoise: { s: Number(ruleVal(id, 'ats')) },
+      seg_duration: Number(ruleVal(id, 'seg')), window_size: Number(ruleVal(id, 'win')),
+      extra_window_size: Number(ruleVal(id, 'exw')), gop_seconds: Number(ruleVal(id, 'gop'))
     }).then(function (r) {
       logLine(r && r.ok ? ('regla ' + id + ' guardada') : ('fallo: ' + String((r && r.errors) || '?')));
       load();

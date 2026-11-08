@@ -546,6 +546,74 @@ loadGovernance();
 
 const RULES_FILE = process.env.RULES_FILE || '/opt/ape-jit/transform-rules.json';
 
+/* Parametros por defecto de una regla. Son los mismos campos que ya vivian en la
+ * configuracion global del modulo de imagen, pero AHORA por regla: cada fila
+ * puede tener su encoder, sus filtros y su empaquetado.
+ * Valores por defecto = los medidos como seguros en este host. */
+const RULE_DEFAULTS = {
+  preset: 'ultrafast',          // x265: el mas rapido; subir cuesta capacidad
+  crf: 20,                      // 20 = buena calidad sin inflar bitrate
+  audio: 'preserve',            // NO -ac 2 universal: eso degrada 5.1 a estereo
+  hqdn3d: { luma_spatial: 0.6, chroma_spatial: 0.45, luma_tmp: 0.9, chroma_tmp: 0.7 },
+  unsharp: { luma_amount: 0.2, luma_msize: 5, chroma_amount: 0, chroma_msize: 3 },
+  atadenoise: { s: 5, a: 0.010, b: 0.020 },
+  seg_duration: 2,
+  window_size: 30,
+  extra_window_size: 10,
+  gop_seconds: 2,
+  x265_threads: 1
+};
+
+/* Limites duros de cada parametro (los mismos rangos REALES de ffmpeg/x265). */
+const RULE_LIMITS = {
+  preset: ['ultrafast', 'superfast', 'veryfast', 'faster', 'fast', 'medium', 'slow'],
+  crf: { min: 0, max: 51 },
+  audio: ['preserve', 'aac', 'drop'],
+  'hqdn3d.luma_spatial': { min: 0, max: 20 },
+  'hqdn3d.chroma_spatial': { min: 0, max: 20 },
+  'hqdn3d.luma_tmp': { min: 0, max: 20 },
+  'hqdn3d.chroma_tmp': { min: 0, max: 20 },
+  'unsharp.luma_amount': { min: -2, max: 5 },
+  // msize IMPAR en [3,23]: 0 rompe la cadena (defecto documentado en la skill)
+  'unsharp.luma_msize': { min: 3, max: 23, odd: true },
+  'unsharp.chroma_amount': { min: -2, max: 5 },
+  'unsharp.chroma_msize': { min: 3, max: 23, odd: true },
+  'atadenoise.s': { min: 0, max: 15 },
+  'atadenoise.a': { min: 0, max: 1 },
+  'atadenoise.b': { min: 0, max: 1 },
+  seg_duration: { min: 1, max: 10 },
+  window_size: { min: 3, max: 120 },
+  extra_window_size: { min: 0, max: 60 },
+  gop_seconds: { min: 1, max: 10 },
+  x265_threads: { min: 1, max: 32 }
+};
+
+/* Valida un parametro plano tipo 'hqdn3d.luma_spatial'. Fail-closed. */
+function validateRuleParam(key, value) {
+  const lim = RULE_LIMITS[key];
+  if (!lim) return 'campo desconocido: ' + key;
+  if (Array.isArray(lim)) {
+    return lim.includes(String(value)) ? null : (key + ' no permitido: ' + value + ' (validos: ' + lim.join(',') + ')');
+  }
+  const n = Number(value);
+  if (!Number.isFinite(n)) return key + ': no numerico';
+  if (n < lim.min || n > lim.max) return key + ' fuera de [' + lim.min + ',' + lim.max + ']: ' + n;
+  if (lim.odd && n % 2 === 0) return key + ' debe ser impar (4:2:0 y el filtro lo exigen): ' + n;
+  return null;
+}
+
+/* Aplica los parametros de una regla a un objeto plano de patch. */
+function ruleParams(rule) {
+  const o = Object.assign({}, RULE_DEFAULTS);
+  for (const k of ['preset', 'crf', 'audio', 'seg_duration', 'window_size', 'extra_window_size', 'gop_seconds', 'x265_threads']) {
+    if (rule[k] != null) o[k] = rule[k];
+  }
+  for (const grp of ['hqdn3d', 'unsharp', 'atadenoise']) {
+    if (rule[grp]) o[grp] = Object.assign({}, RULE_DEFAULTS[grp], rule[grp]);
+  }
+  return o;
+}
+
 /* Bandas de entrada conocidas. `minPx`/`maxPx` acotan que fuente casa. */
 const INPUT_BANDS = {
   '480p': { w: 854, h: 480, minPx: 200000, maxPx: 600000 },
@@ -585,14 +653,33 @@ const RULES_SEED = [
 
 let transformRules = [];
 
+/* Completa una regla con los defaults de encoder/filtros/empaquetado si le
+ * faltan. Las semillas solo declaran lo esencial; esto les pone el resto para
+ * que la tabla muestre TODOS los campos desde el primer arranque. */
+function withRuleDefaults(r) {
+  const p = ruleParams(r);
+  return Object.assign({
+    preset: p.preset, crf: p.crf, audio: p.audio,
+    hqdn3d: p.hqdn3d, unsharp: p.unsharp, atadenoise: p.atadenoise,
+    seg_duration: p.seg_duration, window_size: p.window_size,
+    extra_window_size: p.extra_window_size, gop_seconds: p.gop_seconds,
+    x265_threads: p.x265_threads
+  }, r);
+}
+
 function loadRules() {
   try {
     if (fs.existsSync(RULES_FILE)) {
       const raw = JSON.parse(fs.readFileSync(RULES_FILE, 'utf8'));
-      if (Array.isArray(raw) && raw.length) { transformRules = raw; return; }
+      if (Array.isArray(raw) && raw.length) {
+        // las reglas guardadas tambien se completan: una vieja sin params no
+        // puede quedar a medias en la tabla
+        transformRules = raw.map(withRuleDefaults);
+        return;
+      }
     }
   } catch (_) { /* corrupto -> seed */ }
-  transformRules = RULES_SEED.map((r) => Object.assign({}, r));
+  transformRules = RULES_SEED.map((r) => withRuleDefaults(Object.assign({}, r)));
   saveRules();
 }
 
@@ -712,7 +799,40 @@ function upsertRule(patch) {
   if (!Number.isFinite(outH) || outH < 144 || outH > 4320) errs.push('outH fuera de [144,4320]');
   if (patch.codec && !CODEC_CATALOG[patch.codec]) errs.push('codec desconocido: ' + patch.codec);
   if (patch.recipe && !RECIPE_PRESETS[patch.recipe]) errs.push('recipe desconocida: ' + patch.recipe);
+
+  /* ENCODER + FILTROS + EMPAQUETADO: cada regla los lleva. Se validan con los
+   * rangos REALES de ffmpeg/x265, no con lo que parezca razonable. */
+  const flat = {};
+  for (const k of ['preset', 'crf', 'audio', 'seg_duration', 'window_size', 'extra_window_size', 'gop_seconds', 'x265_threads']) {
+    if (patch[k] != null && patch[k] !== '') flat[k] = patch[k];
+  }
+  for (const grp of ['hqdn3d', 'unsharp', 'atadenoise']) {
+    if (patch[grp] && typeof patch[grp] === 'object') {
+      for (const kk of Object.keys(patch[grp])) {
+        if (patch[grp][kk] === '' || patch[grp][kk] == null) continue;
+        flat[grp + '.' + kk] = patch[grp][kk];
+      }
+    }
+  }
+  for (const [k, v] of Object.entries(flat)) {
+    const e = validateRuleParam(k, v);
+    if (e) errs.push(e);
+  }
   if (errs.length) return { ok: false, errors: errs };
+
+  // se materializan los grupos con sus defaults + lo aportado
+  const merged = ruleParams(Object.assign({}, patch, {}));
+  for (const [k, v] of Object.entries(flat)) {
+    if (k.indexOf('.') > 0) {
+      const [g, kk] = k.split('.');
+      if (!merged[g]) merged[g] = {};
+      merged[g][kk] = Number(v);
+    } else if (['crf', 'seg_duration', 'window_size', 'extra_window_size', 'gop_seconds', 'x265_threads'].includes(k)) {
+      merged[k] = Number(v);
+    } else {
+      merged[k] = String(v);
+    }
+  }
 
   const mode = String(patch.mode || 'real');
   if (mode !== 'real' && mode !== 'emulado') errs.push('mode debe ser real o emulado: ' + mode);
@@ -722,6 +842,14 @@ function upsertRule(patch) {
     // REAL = el device lo decodifica de verdad. EMULADO = se declara la
     // resolucion aunque el decoder no la alcance; se marca como emulada.
     mode,
+    // encoder
+    preset: merged.preset, crf: merged.crf, audio: merged.audio,
+    // filtros vivos, por regla
+    hqdn3d: merged.hqdn3d, unsharp: merged.unsharp, atadenoise: merged.atadenoise,
+    // empaquetado
+    seg_duration: merged.seg_duration, window_size: merged.window_size,
+    extra_window_size: merged.extra_window_size, gop_seconds: merged.gop_seconds,
+    x265_threads: merged.x265_threads,
     inFps: inFps || 0,      // 0 = cualquier cadencia
     outFps: outFps || 0,
     outW: outW % 2 === 0 ? outW : outW + 1,
