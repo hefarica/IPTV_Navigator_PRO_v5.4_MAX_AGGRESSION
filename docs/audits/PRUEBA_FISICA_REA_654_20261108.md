@@ -2115,3 +2115,81 @@ principal. **Era la ventana del motor.** El VPN sigue UP (`tun1`, 10.14.0.2/16) 
 reproduce: **el VPN no era la causa**.
 
 Se deja constancia porque el diagnostico anterior, con esa hipotesis al frente, estaba equivocado.
+
+---
+
+# 34 · MODULO DE IMAGEN INSTRUMENTADO — control remoto del JIT desde la UI
+
+## 34.1 · La capacidad medida, primero
+
+Antes de instrumentar nada se midio lo que el host puede sostener. **3 vCPU AMD EPYC-Rome, 3 GB.**
+
+| Destino | Receta | 20 s de video | Ritmo | Veredicto |
+|---|---|---:|---:|---|
+| QHD_1440 | balanced (hqdn3d+unsharp) | **46,94 s** | **0,43x** | **NO VIABLE** |
+| UHD_4K | balanced (hqdn3d+unsharp) | **80,95 s** | **0,25x** | **NO VIABLE** |
+
+Margen exigido por el diseno: **>=1,2x tiempo real**. Medido: **0,43x y 0,25x**.
+
+**Conclusion que el panel hace visible: en este host, QHD y UHD con filtros en CPU no sostienen un
+directo.** Lo que sigue se instrumenta igual — pero el panel se niega a aplicar en silencio un destino
+que no cabe, y dice por que.
+
+## 34.2 · Que se instrumento (backend, en produccion)
+
+`tools/lab/ape-jit/server.js` — desplegado, sha256 `81a3dc10…`, `node --check` OK, servicio `active`.
+Backup previo: `/opt/ape-jit/server.js.bak_20261124T…`.
+
+| Pieza | Que hace |
+|---|---|
+| `IMAGE_DEFAULTS` | 30+ parametros con defaults = comportamiento anterior (no rompe nada) |
+| `IMAGE_LIMITS` | allowlists y rangos por parametro |
+| `IMAGE_TARGETS` | `source`, `FHD_1080` 1920x1080, `QHD_1440` 2560x1440, `UHD_4K` 3840x2160, `DCI_2K` 2048x1080 |
+| `normalizeImageConfig()` | valida, corrige y **rechaza** (HTTP 400) lo que no pasa |
+| `buildImageFilterChain()` | construye la cadena -vf real por receta |
+| `buildEncodingPlan()` | lee target/recipe/preset/crf/hilos/GOP/audio de la config viva |
+| `GET /jit/image/config` | config efectiva + defaults + capacidades |
+| `POST /jit/image/config` | aplica en caliente: persiste, loguea y detiene el job en curso |
+| `GET /jit/image/capacity` | capacidad medida + veredicto |
+
+## 34.3 · Cadenas que genera el motor (medido contra produccion)
+
+```
+none      -> (sin filtros)
+light     -> unsharp=5:5:0.2:5:5:0
+balanced  -> hqdn3d=0.6:0.45:0.9:0.7,unsharp=5:5:0.2:5:5:0
+temporal  -> atadenoise=0a=0.01:0b=0.02:1a=0.015:1b=0.03:2a=0.015:2b=0.03:s=5,unsharp=5:5:0.2:5:5:0
+custom    -> parametros vivos: hqdn3d=1.8:1.2:3.5:2.5,unsharp=7:7:0.75:7:7:0
+```
+
+Son **las recetas del informe** (Light / Balanced / Temporal), ejecutadas por FFmpeg en el JIT.
+
+## 34.4 · Seguridad y honestidad del cambio
+
+- **Persistencia atomica**: escribe a `.tmp` y renombra. Si el disco falla, **no se aplica**.
+- **Aplicacion al siguiente arranque**: `POST` detiene el job vivo para que la proxima peticion
+  construya el plan con la receta nueva. **Nunca se mezclan dos recetas en la misma salida.**
+- **Default = comportamiento anterior** (`target=source`, `recipe=none`): el plan sin tocar es el
+  historico. Verificado que volver a defaults deja `(sin filtros)`.
+- **Los topes son duros**: `crf` 0-51, `window_size` 3-120, `msize` impar, allowlists de codec/preset/fps.
+- **CORS abierto** (`OPTIONS 204`, `Access-Control-Allow-Origin: *`) para que la UI hable desde el
+  navegador. El preflight del POST con JSON pasa.
+
+## 34.5 · El panel de UI
+
+- `IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/vps-image-panel.js` (366 lineas, sintaxis OK)
+- `IPTV_v5.4_MAX_AGGRESSION/frontend/image-panel.html` — pagina standalone
+- montado en `index-v4.html` con `<div id="ape-image-panel">`
+
+Muestra: tabla de capacidad medida con veredicto por destino, los 5 destinos, las 5 recetas, preset,
+CRF, FPS, audio, parametros finos de hqdn3d/unsharp/atadenoise y empaquetado (seg_duration,
+window_size, extra_window_size, GOP). **Antes de aplicar un destino no viable pregunta de forma
+explicita**, con el ratio medido y el motivo.
+
+## 34.6 · Lo que sigue sin demostrar
+
+- **Rendimiento sostenido en directo** con la receta aplicada: solo se midio el encode aislado.
+- **La reproduccion de esas salidas filtradas en el dispositivo**: pendiente y, por indicacion del
+  operador, **sin tocar el TV** en esta fase.
+- **FHD_1080 con filtros no se ha medido**: es el dato que falta para saber si hay una combinacion
+  viable en este host (la intuicion dice que si, por ser 2,25x menos pixeles que 1440p).

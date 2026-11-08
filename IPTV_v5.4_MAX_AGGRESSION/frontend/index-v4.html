@@ -5119,6 +5119,22 @@
 <script src="js/ape-v9/output-status-panel.js?v=20261101-outputs" defer></script>
 
   <!-- ═══════════════════════════════════════════════════════════════════════ -->
+  <!-- 🎛️ MÓDULO DE IMAGEN — control remoto del JIT por HTTP                  -->
+  <!--                                                                        -->
+  <!-- Aplica en caliente: destino (source/FHD/QHD/UHD/DCI_2K), receta de     -->
+  <!-- filtros (none/light/balanced/temporal/custom), preset x265, CRF, FPS,  -->
+  <!-- audio, y empaquetado (seg_duration/window_size/GOP).                   -->
+  <!--                                                                        -->
+  <!-- Muestra la capacidad MEDIDA del host (0,43x a 1440p, 0,25x a 2160p)   -->
+  <!-- y avisa ANTES de aplicar un destino que el VPS no puede sostener:      -->
+  <!-- un JIT más lento que la emisión deja al player sin segmentos.          -->
+  <!--                                                                        -->
+  <!-- Habla con https://iptv-ape.duckdns.org/jit/{image/config,image/capacity}-->
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+  <div id="ape-image-panel" style="max-width:1400px;margin:24px auto;padding:0 16px;"></div>
+  <script src="js/ape-v9/vps-image-panel.js?v=20261108-image" defer></script>
+
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
   <!-- 🧪 TESTS - Proxy Auth & User Agent (Dev Mode Only)                     -->
   <!-- ═══════════════════════════════════════════════════════════════════════ -->
   <script src="tests/proxy-auth.test.js" defer></script>

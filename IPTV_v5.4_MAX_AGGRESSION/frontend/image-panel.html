@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>APE · Módulo de Imagen — control remoto del JIT</title>
+<style>
+  :root { color-scheme: dark; }
+  body {
+    margin: 0; padding: 24px 16px 64px;
+    background: #0b1220;
+    color: #e2e8f0;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  header { max-width: 1400px; margin: 0 auto 8px; }
+  h1 { font-size: 1.15rem; margin: 0 0 4px; }
+  .lead { font-size: .82rem; color: #94a3b8; line-height: 1.6; max-width: 900px; }
+  .lead code { background: rgba(148,163,184,.14); padding: 1px 5px; border-radius: 4px; font-size: .78rem; }
+  .banner {
+    max-width: 1400px; margin: 16px auto;
+    background: rgba(239,68,68,.08); border: 1px solid rgba(239,68,68,.3);
+    border-radius: 12px; padding: 12px 14px; font-size: .8rem; color: #fca5a5; line-height: 1.6;
+  }
+  .banner b { color: #fecaca; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🎛️ APE · Módulo de Imagen — control remoto del JIT</h1>
+  <p class="lead">
+    Cambia destino, receta de filtros, encoder y empaquetado del JIT <b>en caliente</b>, sin desplegar.
+    Cada cambio se persiste en <code>/opt/ape-jit/image-config.json</code> y se aplica en el siguiente
+    arranque del trabajo: el JIT detiene el job en curso para que la próxima petición construya el plan
+    con la receta nueva. Así nunca se mezclan dos recetas dentro de la misma salida.
+  </p>
+</header>
+
+<div class="banner">
+  <b>La capacidad medida manda.</b> Este host (3 vCPU AMD EPYC-Rome) tarda
+  <b>46,94 s</b> en codificar 20 s de vídeo a 2560×1440 con filtros → <b>0,43× tiempo real</b>,
+  y <b>80,95 s</b> a 3840×2160 → <b>0,25× tiempo real</b>. El margen exigido es ≥1,2×.
+  Si el motor produce más lento que la emisión, el player se queda sin segmentos.
+  El panel te avisa antes de aplicar un destino que no cabe.
+</div>
+
+<!-- el panel se monta aquí -->
+<div id="ape-image-panel" style="max-width:1400px;margin:0 auto;"></div>
+
+<script src="../js/ape-v9/vps-image-panel.js?v=20261108-image"></script>
+<script>
+  // Si el script cargó antes de que existiera el div, lo montamos explícitamente.
+  window.addEventListener('load', function () {
+    if (window.APE_IMAGE_PANEL) window.APE_IMAGE_PANEL.mount('#ape-image-panel');
+  });
+</script>
+
+</body>
+</html>
