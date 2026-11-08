@@ -3035,3 +3035,87 @@ P3 -> P3    P3.5 -> P3.5    P0.5 -> P0.5    P5.5 -> P5.5
 
 Backups en `/opt/ape-pulse/*.bak_profiles_20261108T182938Z`. Sintaxis validada **antes** de instalar.
 Builder 15.671 -> 16.685 B; wrapper 11.090 -> 13.595 B.
+
+---
+
+# 47 · DASH: tres defectos de conformidad cerrados
+
+## 47.1 · Contexto
+
+La APK no reproducia el DASH del JIT (overlay de 16-22 KB) aunque **ffprobe si lee el MPD** y da frames.
+El informe pide "DASH como alternativa cuando el cliente lo admita". Diagnosticado el manifiesto **sin
+tocar el televisor**, aparecieron tres defectos reales.
+
+## 47.2 · Defecto 1 — elementos vacios que el esquema no admite
+
+El muxer DASH de ffmpeg 6.1.1 escribe:
+
+```xml
+<ProgramInformation></ProgramInformation>          <- el esquema exige al menos un <Title>
+<ServiceDescription id="0"></ServiceDescription>   <- el esquema exige al menos un <Scope>
+```
+
+`ffprobe` los tolera; **un parser estricto puede rechazar el manifiesto entero**. Se eliminan solo cuando
+estan vacios (`sanitizeMpd`): si algun dia traen contenido, se conservan.
+
+```
+antes : 2.218 B con ambos elementos vacios
+ahora : 2.139 B, ProgramInformation vacio=0, ServiceDescription vacio=0
+```
+
+## 47.3 · Defecto 2 — `codecs="hvc1"` sin perfil ni nivel
+
+**Este es el candidato mas fuerte para que el DASH no arranque.**
+
+```
+bitstream real : hevc, Main 10, level 120, yuv420p10le, 1920x1080
+declaraba      : codecs="hvc1"
+correcto       : hvc1.2.4.L120.B0
+```
+
+`DashMediaSource` y `HlsMediaSource` usan `codecs` para resolver el decoder. Un `"hvc1"` pelado no dice
+perfil ni nivel y un player estricto puede no encontrar decoder compatible.
+
+Se deriva del bitstream (`hevcCodecString`), con tabla de perfiles:
+
+| Perfil ffprobe | idc | compat | Ejemplo |
+|---|---|---|---|
+| Main | 1 | 6 | `hvc1.1.6.L120.B0` |
+| **Main 10** | **2** | **4** | **`hvc1.2.4.L120.B0`** |
+| Main Still Picture | 3 | 4 | `hvc1.3.4.L120.B0` |
+| Main 12 | 4 | 8 | `hvc1.4.8.L150.B0` |
+
+**Si el perfil no se reconoce devuelve `null` y NO se inventa un string**: se deja el de ffmpeg. Mejor un
+codec incompleto que uno falso.
+
+Aplicado a **los dos transportes**, que es lo que exige la GOLDEN RULE del repo (`hvc1.*` en STREAM-INF):
+
+```
+HLS antes  : CODECS="hvc1,mp4a.40.2"
+HLS ahora  : CODECS="hvc1.2.4.L120.B0,mp4a.40.2"
+MPD antes  : codecs="hvc1"
+MPD ahora  : codecs="hvc1.2.4.L120.B0"
+```
+
+## 47.4 · Defecto 3 — indentacion del bloque propio
+
+Los `SupplementalProperty` con `urn:ape:` se insertaban pegados al inicio de linea. Cosmetico, pero
+dificultaba leer el manifiesto. Ahora van indentados dentro del `AdaptationSet`.
+
+## 47.5 · Verificado tras desplegar
+
+```
+ffprobe HLS  : hevc, Main 10, 1920x1080, level 120    (lee)
+ffprobe DASH : hevc, Main 10, 1920x1080, level 120    (lee)
+MPD          : 2.139 B, 0 elementos vacios
+codecs video : hvc1.2.4.L120.B0  y  mp4a.40.2
+segmento DASH: chunk-...-0-2.m4s = 3.700.631 B descargado
+```
+
+## 47.6 · Lo que NO puedo afirmar
+
+**No he verificado que esto haga arrancar el DASH en la APK.** El defecto del `codecs` es el candidato
+mas fuerte, y los elementos vacios son un riesgo real de rechazo por parser estricto, pero **la prueba
+definitiva exige el dispositivo**, y el operador indico no tocar el televisor.
+
+Queda como **corregido y listo para probar**, no como resuelto.

@@ -630,20 +630,60 @@ function buildEncodingPlan(src, options = {}) {
         : (imageFilters ? 'FILTERED_' + String(cfg.recipe).toUpperCase() : 'FHD_SDR')) };
 }
 
+/* Codec string RFC 6381 REAL, construido desde el bitstream.
+ *
+ * MEDIDO: el DASH declaraba codecs="hvc1" y el HLS CODECS="hvc1,mp4a.40.2", sin
+ * perfil ni nivel. El bitstream real es Main 10 / level 120 / yuv420p10le, cuyo
+ * string correcto es hvc1.2.4.L120.B0.
+ *
+ * Por que importa: DashMediaSource y HlsMediaSource usan `codecs` para resolver
+ * el decoder. Un "hvc1" pelado no dice perfil ni nivel, y un player estricto
+ * puede no encontrar un decoder compatible — es el candidato mas fuerte para que
+ * el DASH del JIT no arranque en la APK aunque ffprobe lo lea.
+ *
+ * Formato HEVC: hvc1.<profile_idc>.<compat_flags>.L<level>.<constraints>
+ *   Main    (profile 1) -> 1.6.L<level>.B0
+ *   Main 10 (profile 2) -> 2.4.L<level>.B0
+ *   Main Still (3)      -> 3.4.L<level>.B0
+ *   Main 12 (4)         -> 4.8.L<level>.B0
+ * Si el perfil no se reconoce se devuelve null y NO se inventa un string: el
+ * llamador deja el que traia ffmpeg. */
+const HEVC_PROFILE_MAP = {
+  'Main':         { idc: 1, compat: 6 },
+  'Main 10':      { idc: 2, compat: 4 },
+  'Main Still Picture': { idc: 3, compat: 4 },
+  'Main 12':      { idc: 4, compat: 8 },
+  'Rext':         { idc: 5, compat: 8 }
+};
+
+function hevcCodecString(truth) {
+  if (!truth) return null;
+  if (!truth.codec || String(truth.codec).toLowerCase() !== 'hevc') return null;
+  const pm = HEVC_PROFILE_MAP[String(truth.profile || '')];
+  if (!pm) return null;
+  const level = Number(truth.level);
+  if (!Number.isFinite(level) || level <= 0) return null;
+  return 'hvc1.' + pm.idc + '.' + pm.compat + '.L' + level + '.B0';
+}
+
 function probeOutputFile(filename) {
   return new Promise((resolve, reject) => {
     execFile('ffprobe', ['-v', 'error', '-select_streams', 'v:0', '-show_entries',
-      'stream=codec_name,codec_tag_string,width,height,color_transfer,color_primaries,color_space,color_range,pix_fmt',
+      'stream=codec_name,profile,level,codec_tag_string,width,height,color_transfer,color_primaries,color_space,color_range,pix_fmt',
       '-of', 'json', filename], { encoding: 'utf8', timeout: 4000, maxBuffer: 1024 * 1024 }, (error, stdout) => {
       if (error) return reject(new Error('OUTPUT_PROBE_FAILED'));
       try {
         const stream = (JSON.parse(stdout).streams || [])[0];
         if (!stream || !stream.width || !stream.height) throw new Error('OUTPUT_PROBE_INCOMPLETE');
-        resolve({ status: 'observed_output_init', width: stream.width, height: stream.height,
-          codec: stream.codec_name || null, sampleEntry: stream.codec_tag_string || null,
+        const truthObj = { status: 'observed_output_init', width: stream.width, height: stream.height,
+          codec: stream.codec_name || null, profile: stream.profile || null, level: stream.level || null,
+          sampleEntry: stream.codec_tag_string || null,
           transfer: stream.color_transfer || null, primaries: stream.color_primaries || null,
           matrix: stream.color_space || null, range: stream.color_range || null,
-          pixelFormat: stream.pix_fmt || null, videoRange: videoRange(stream.color_transfer) });
+          pixelFormat: stream.pix_fmt || null, videoRange: videoRange(stream.color_transfer) };
+        // codec string RFC 6381 derivado del bitstream; null si no se reconoce
+        truthObj.codecString = hevcCodecString(truthObj);
+        resolve(truthObj);
       } catch (_) { reject(new Error('OUTPUT_PROBE_INCOMPLETE')); }
     });
   });
@@ -975,8 +1015,46 @@ function hdrMaster(text, state = current) {
     } else if (!state.outputTruth) {
       out = out.replace(/,?BANDWIDTH=\d+/g, '');
     }
+    // CODECS: ffmpeg escribe "hvc1" pelado; se sustituye por el RFC 6381 real.
+    const cs = state.outputTruth && state.outputTruth.codecString;
+    if (cs) {
+      out = out.replace(/CODECS="([^"]*)"/g, (all, list) =>
+        'CODECS="' + list.split(',').map((c) => (c.trim().toLowerCase() === 'hvc1' ? cs : c.trim())).join(',') + '"');
+    }
     return out;
   }).join('\n');
+}
+
+/* Limpieza de CONFORMIDAD del MPD que emite ffmpeg.
+ *
+ * MEDIDO: el muxer DASH de ffmpeg 6.1.1 escribe dos elementos VACIOS que el
+ * esquema MPD no admite:
+ *     <ProgramInformation></ProgramInformation>        -> exige al menos un <Title>
+ *     <ServiceDescription id="0"></ServiceDescription> -> exige al menos un <Scope>
+ * ffprobe los tolera (por eso el DASH "se lee"), pero un parser estricto puede
+ * rechazar el manifiesto entero. Se eliminan SOLO cuando estan vacios: si algun
+ * dia traen contenido, se conservan tal cual.
+ *
+ * Tambien se indenta el SupplementalProperty propio, que ffmpeg deja pegado al
+ * inicio de linea dentro del AdaptationSet. */
+function sanitizeMpd(text) {
+  let out = String(text);
+  out = out.replace(/[ \t]*<ProgramInformation\b[^>]*>\s*<\/ProgramInformation>\s*\n?/g, '');
+  out = out.replace(/[ \t]*<ServiceDescription\b[^>]*>\s*<\/ServiceDescription>\s*\n?/g, '');
+  out = out.replace(/\n(<SupplementalProperty schemeIdUri="urn:ape:)/g, '\n\t\t\t$1');
+  return out;
+}
+
+/* Sustituye codecs="hvc1" (sin perfil ni nivel) por el string RFC 6381 REAL
+ * derivado del bitstream. Solo actua sobre el AdaptationSet de video; el audio
+ * (mp4a.40.2) ya viene completo. Si no hay codecString medido, no se toca: mejor
+ * dejar el de ffmpeg que inventar un perfil. */
+function fixMpdCodecs(text, state) {
+  const cs = state && state.outputTruth && state.outputTruth.codecString;
+  if (!cs) return text;
+  return text
+    .replace(/(<AdaptationSet\b[^>]*contentType="video"[^>]*>[\s\S]*?)codecs="hvc1"/g, '$1codecs="' + cs + '"')
+    .replace(/(<Representation\b[^>]*mimeType="video\/[^"]*"[^>]*)codecs="hvc1"/g, '$1codecs="' + cs + '"');
 }
 
 function hdrMpd(text, state = current) {
@@ -1003,6 +1081,12 @@ function hdrMpd(text, state = current) {
     if (!result.includes('urn:ape:processing:domain')) result = '\n<SupplementalProperty schemeIdUri="urn:ape:processing:domain" value="' + PROCESSING_DOMAIN + '"/>' + result;
     return open + '\n' + props.join('\n') + result + close;
   });
+}
+
+/* Se aplica el saneo de conformidad como ULTIMO paso, tanto si hubo
+ * outputTruth (se inyectaron propiedades) como si no. */
+function hdrMpdSanitized(text, state = current) {
+  return fixMpdCodecs(sanitizeMpd(hdrMpd(text, state)), state);
 }
 
 function sendStatic(req, res, file, type, kind) {
@@ -1491,7 +1575,7 @@ const server = http.createServer((req, res) => {
         res.setHeader('Link', '</jit/meta/' + encodeURIComponent(id) + '.json>; rel="describedby"; type="application/json"');
       }
       res.writeHead(200, { 'Content-Type': type });
-      return res.end(name === 'master.m3u8' ? hdrMaster(txt, state) : hdrMpd(txt, state));
+      return res.end(name === 'master.m3u8' ? hdrMaster(txt, state) : hdrMpdSanitized(txt, state));
     }
     sendStatic(req, res, file, type, kind);
   };
