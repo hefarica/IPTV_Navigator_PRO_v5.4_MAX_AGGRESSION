@@ -54,7 +54,8 @@ function zeroCounters() {
         metaChunks: {},             // idx -> {total, payload}
         xstreamTriples: 0,
         tvgIds: {},
-        streamInf: 0
+        streamInf: 0,
+        extattr: 0, extattrWithUrl: 0
     };
 }
 
@@ -109,6 +110,12 @@ async function scanList(file) {
             if (bytes < c.extHttpBytes.min) c.extHttpBytes.min = bytes;
             if (bytes > c.extHttpBytes.max) c.extHttpBytes.max = bytes;
             try { JSON.parse(body); } catch (_e) { c.extHttpBadJson++; }
+            return;
+        }
+        if (line.startsWith('#EXTATTRFROMURL')) {
+            c.extattr++;
+            const body = line.indexOf(':') >= 0 ? line.slice(line.indexOf(':') + 1) : '';
+            if (/^https?:\/\//.test(body)) c.extattrWithUrl++;
             return;
         }
         if (line.startsWith('#EXT-X-STREAM-INF:')) { c.streamInf++; return; }
@@ -191,6 +198,7 @@ function main() {
                     bytes: Buffer.from(b64, 'base64').length,
                     schema: meta.schema || null,
                     chunks: idx.length,
+                    declared_profile: meta.profile || null,
                     quality_levels: Object.keys(ql).length,
                     atadenoise_in_meta: JSON.stringify(meta).indexOf('atadenoise') >= 0
                 };
@@ -235,7 +243,25 @@ function main() {
             },
             dna: { values: c.extDna, lab_sha256: labSha, matches_lab: Object.prototype.hasOwnProperty.call(c.extDna, labSha) },
             rea_contract: { ext_x_ape_rea: c.extRea, ext_x_ape_source: c.extSource },
-            credentials: { xtream_uris_matched: c.xstreamTriples, note: 'solo conteo; no se imprimen valores' }
+            credentials: { xtream_uris_matched: c.xstreamTriples, note: 'solo conteo; no se imprimen valores' },
+            global_vs_dominant_profile: (() => {
+                const entries = Object.entries(c.profiles).sort((a, b) => b[1] - a[1]);
+                const dominant = entries.length ? entries[0][0] : null;
+                const declared = embeddedMeta && embeddedMeta.declared_profile ? embeddedMeta.declared_profile : null;
+                return {
+                    declared_in_metadata: declared,
+                    dominant_in_catalog: dominant,
+                    dominant_channels: entries.length ? entries[0][1] : 0,
+                    match: declared != null && dominant != null ? declared === dominant : null,
+                    note: 'si no coinciden, el sobre global describe un perfil que el catalogo no usa'
+                };
+            })(),
+            extattrfromurl: {
+                tags: c.extattr,
+                with_url: c.extattrWithUrl,
+                inert: c.extattr > 0 && c.extattrWithUrl === 0,
+                note: 'el mecanismo de OTT Navigator exige una URL que se consulta al iniciar el canal; sin URL no hay consulta'
+            }
         };
 
         if (JSONOUT) fs.writeFileSync(JSONOUT, JSON.stringify(report, null, 2) + '\n', 'utf8');
@@ -257,6 +283,14 @@ function main() {
             + (disagreeing.length ? '  -> ' + disagreeing.join(',') : ''));
         console.log('DNA             ' + JSON.stringify(c.extDna) + '  coincide_con_el_LAB=' + ok(report.dna.matches_lab));
         console.log('REA             APE-REA=' + c.extRea + '  APE-SOURCE=' + c.extSource);
+        {
+            const g = report.global_vs_dominant_profile;
+            console.log('SOBRE GLOBAL    declara=' + (g.declared_in_metadata || '?')
+                + '  dominante=' + (g.dominant_in_catalog || '?') + ' (' + g.dominant_channels + ' canales)'
+                + '  coinciden=' + (g.match === null ? 'NO COMPUTADO' : ok(g.match)));
+        }
+        console.log('EXTATTRFROMURL  tags=' + c.extattr + '  con_url=' + c.extattrWithUrl
+            + (report.extattrfromurl.inert ? '  -> INERTES (sin URL no hay consulta)' : ''));
         console.log('CREDENCIALES    uris_con_firma_Xtream=' + c.xstreamTriples + ' (no se imprimen valores)');
         console.log('');
         if (JSONOUT) console.log('JSON -> ' + JSONOUT);

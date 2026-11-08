@@ -1,7 +1,7 @@
 {
   "schema": "ape.audit/alignment-with-lab/1",
-  "measured_at": "2026-11-08T03:58:11.747Z",
-  "elapsed_ms": 48570,
+  "measured_at": "2026-11-08T04:09:36.932Z",
+  "elapsed_ms": 78899,
   "list": {
     "path": "C:\\Users\\HFRC\\AppData\\Local\\DSH_HERRAMIENTAS\\DSH_BLUEGREEN_021\\home\\attachments\\v1\\files\\5f\\5f08f4e6a0bf626dcd4955bba030c2700c6151420ed08e338d65bba9cc46a930\\APE_LISTA_1794100720046.m3u8",
     "sha256": "5f08f4e6a0bf626dcd4955bba030c2700c6151420ed08e338d65bba9cc46a930",
@@ -121,6 +121,7 @@
     "bytes": 56366,
     "schema": "ape-lab-metadata-v1",
     "chunks": 22,
+    "declared_profile": "P0",
     "quality_levels": 8,
     "atadenoise_in_meta": false
   },
@@ -224,5 +225,18 @@
   "credentials": {
     "xtream_uris_matched": 21224,
     "note": "solo conteo; no se imprimen valores"
+  },
+  "global_vs_dominant_profile": {
+    "declared_in_metadata": "P0",
+    "dominant_in_catalog": "P3",
+    "dominant_channels": 20222,
+    "match": false,
+    "note": "si no coinciden, el sobre global describe un perfil que el catalogo no usa"
+  },
+  "extattrfromurl": {
+    "tags": 1146096,
+    "with_url": 0,
+    "inert": true,
+    "note": "el mecanismo de OTT Navigator exige una URL que se consulta al iniciar el canal; sin URL no hay consulta"
   }
 }
