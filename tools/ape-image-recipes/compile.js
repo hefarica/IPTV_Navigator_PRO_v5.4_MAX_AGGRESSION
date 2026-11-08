@@ -101,6 +101,14 @@ function buildFfmpegChain(profile) {
       throw new Error(`gradfun strength fuera de rango [0.51,64]: ${strength}`);
     }
   }
+  const temporal = /atadenoise=([^,]+)/g;
+  while ((m = temporal.exec(chain)) !== null) {
+    const options = Object.fromEntries(m[1].split(':').map(pair => pair.split('=')));
+    const frames = Number(options.s);
+    if (!Number.isInteger(frames) || frames < 5 || frames > 129 || frames % 2 !== 1 || 'r' in options) {
+      throw new Error('atadenoise requiere s entero impar en [5,129]; r no es una opción');
+    }
+  }
   return { chain, skipped };
 }
 
@@ -113,6 +121,15 @@ function buildManifestObject(profileKey, profile, vlc) {
     dst: profile.target_resolution,
     fps: profile.fps,
     hdr: profile.hdr,
+    execution_domain: 'legacy_cli_recipe',
+    execution_status: 'not_verified',
+    src_status: 'profile_hint_not_observed',
+    dst_status: 'legacy_recipe_target',
+    hdr_status: 'recipe_intent_not_observed_output',
+    fps_status: 'recipe_intent_not_observed_source',
+    rea_device_policy_ref: 'contracts/rea/rea-processing-v1.json',
+    rea_device_policy_id: 'rea-adaptive-v1',
+    overrides_rea_device_policy: false,
     vlc: vlc.emitted,
     vlc_separator: ':',
     executed_by: 'vlc-cli-only',
@@ -176,6 +193,9 @@ function main(argv) {
       schema: 'ape.image-recipes-bundle/1',
       source: 'tools/ape-image-recipes/recipes.json',
       recipe_version: data.version,
+      execution_domain: data.execution_domain,
+      metadata_semantics: data.metadata_semantics,
+      rea_device_policy_ref: data.rea_device_policy_ref,
       generated_at: new Date().toISOString(),
       profiles: {}
     };

@@ -1,7 +1,9 @@
 name: ape-deploy-frontend
 
 # ─────────────────────────────────────────────────────────────────────────────────────────────────
-# Despliega el generador de la APP al VPS.
+# Despliega frontend, endpoints PHP, sincronizadores y plano de control ADB.
+# No es una publicación REA estática aislada; alcance/rollback pendientes:
+# docs/audits/REA_ALIGNMENT_20261108.md
 #
 # POR QUÉ EXISTE: deploy-vps.yml despliega los endpoints y la capa Lua/PHP, pero su manifiesto NO incluye
 # m3u8-typed-arrays-ultimate.js. El generador es frontend de navegador y se sirve desde /var/www/html.
@@ -18,7 +20,7 @@ on:
   workflow_dispatch:
     inputs:
       mode:
-        description: 'verify-only (solo lee) o apply (despliega)'
+        description: 'verify-only (sin instalar; usa temporales remotos) o apply (frontend, PHP y servicios)'
         required: true
         default: 'verify-only'
         type: choice
@@ -44,14 +46,25 @@ jobs:
       # ape-server-profile.js es el modulo multiservidor y ape-server-profiles-data.js
       # son los perfiles MEDIDOS que ese modulo consume: si viaja el generador sin
       # ellos la capacidad por servidor cae a UNMEASURED.
-      FICHEROS: m3u8-typed-arrays-ultimate.js generation-output-panel.js ape-profiles-config.js profile-manager-v9.js ape-image-recipes-bundle.js generation-controller.js ape-server-profile.js ape-server-profiles-data.js
-      SRC_DIR: IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9
-      DEST_DIR: /var/www/html/js/ape-v9
+      # Rutas relativas al frontend: incluye emisores legacy, worker, app y LAB.
+      # El mismo inventario gobierna sintaxis, backup, instalación y hash HTTP.
+      FICHEROS: >-
+        js/ape-v9/m3u8-typed-arrays-ultimate.js js/ape-v9/generation-output-panel.js
+        js/ape-v9/ape-profiles-config.js js/ape-v9/profile-manager-v9.js
+        js/ape-v9/ape-image-recipes-bundle.js js/ape-v9/generation-controller.js
+        js/ape-v9/ape-server-profile.js js/ape-v9/ape-server-profiles-data.js
+        js/ape-v9/rea-processing-policy.js js/ape-v9/rea-export-finalizer.js
+        js/ape-v9/rea-catalog-export.js js/ape-v9/ape-quality-prober.js
+        js/ape-v9/unified-generator-integration.js js/ape-v9/m3u8-api-wrapper-integrated.js
+        js/ape-lab-import-helper.js js/ape-worker.js js/m3u8-world-class-generator.js
+        js/m3u8-generator-v16-elite.js export-module.js app.js
+      SRC_DIR: IPTV_v5.4_MAX_AGGRESSION/frontend
+      DEST_DIR: /var/www/html
 
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: feat/adb-generic-visual-enhancement-installer
+          ref: ${{ github.sha }}
 
       - name: Preparar SSH
         run: |
@@ -72,7 +85,7 @@ jobs:
         run: |
           set -euo pipefail
           for f in $FICHEROS; do node -c "$SRC_DIR/$f"; echo "  node -c OK  $f"; done
-          SRC="$SRC_DIR/m3u8-typed-arrays-ultimate.js"
+          SRC="$SRC_DIR/js/ape-v9/m3u8-typed-arrays-ultimate.js"
           echo "SRC=$SRC" >> "$GITHUB_ENV"
           echo '--- correcciones presentes en el repo ---'
           # [ACTUALIZADO 2026-11-05] El generador migro de `colorspace=iall=bt709` a
@@ -98,15 +111,16 @@ jobs:
         run: |
           set -euo pipefail
           for f in $FICHEROS; do
+            SAFE_F=${f//\//_}
             echo "--- $f en el VPS ---"
             ssh "$TARGET" "sudo -n stat -c '%n %s bytes %y' '$DEST_DIR/$f' 2>&1 || echo AUSENTE"
             ssh "$TARGET" "sudo -n sha256sum '$DEST_DIR/$f' 2>&1 || true"
             echo "--- $f por HTTP ---"
-            curl -sS -o "/tmp/servido-$f" -w '  http=%{http_code} bytes=%{size_download}\n' \
-              "https://iptv-ape.duckdns.org/js/ape-v9/$f" || true
-            echo "  sha servido: $(sha256sum "/tmp/servido-$f" 2>/dev/null | cut -d' ' -f1)"
+            curl -sS -o "/tmp/servido-$SAFE_F" -w '  http=%{http_code} bytes=%{size_download}\n' \
+              "https://iptv-ape.duckdns.org/$f" || true
+            echo "  sha servido: $(sha256sum "/tmp/servido-$SAFE_F" 2>/dev/null | cut -d' ' -f1)"
             for p in 'pp=ac/dr/ci' ':scd=5' 'zscale=transfer=bt1886'; do
-              echo "  defecto servido $p = $(grep -v -E '^\s*(//|\*|#)' "/tmp/servido-$f" 2>/dev/null | grep -c -- "$p" || true)"
+              echo "  defecto servido $p = $(grep -v -E '^\s*(//|\*|#)' "/tmp/servido-$SAFE_F" 2>/dev/null | grep -c -- "$p" || true)"
             done
           done
 
@@ -130,11 +144,13 @@ jobs:
 
       - name: Exigir la confirmacion literal
         if: inputs.mode == 'apply'
+        env:
+          DEPLOY_CONFIRMATION: ${{ inputs.confirm }}
         run: |
           set -euo pipefail
-          if [ "${{ inputs.confirm }}" != "DESPLIEGO EL GENERADOR AL VPS" ]; then
+          if [ "$DEPLOY_CONFIRMATION" != "DESPLIEGO EL GENERADOR AL VPS" ]; then
             echo '::error::falta la confirmacion literal. No se escribe nada.'
-            echo "  recibido: '${{ inputs.confirm }}'"
+            printf '  recibido: %s\n' "$DEPLOY_CONFIRMATION"
             exit 1
           fi
           echo 'confirmacion literal presente'
@@ -347,12 +363,27 @@ jobs:
           # nuevo. Si no aparece "format", el fichero instalado NO es el nuevo.
           sleep 2
           SHA_MASTER="https%3A%2F%2Fstorage.googleapis.com%2Fshaka-demo-assets%2Fbbb-dark-truths-hls%2Fhls.m3u8"
-          SM_A=$(curl -s --max-time 15 "https://iptv-ape.duckdns.org/pulse/9001.m3u8?u=$SHA_MASTER&p=P0&id=9001&m=proxy" || true)
-          SM_B=$(curl -s --max-time 15 "https://iptv-ape.duckdns.org/pulse/9002.m3u8?u=http%3A%2F%2Fupstream.invalid%2Fx.m3u8&p=P0&id=9002&m=proxy" || true)
+          SM_A_FILE=$(mktemp)
+          SM_B_FILE=$(mktemp)
+          SM_A_STATUS=$(curl -sS --max-time 15 -o "$SM_A_FILE" -w '%{http_code}' "https://iptv-ape.duckdns.org/pulse/9001.m3u8?u=$SHA_MASTER&p=P0&id=9001&m=proxy" || true)
+          SM_B_STATUS=$(curl -sS --max-time 15 -o "$SM_B_FILE" -w '%{http_code}' "https://iptv-ape.duckdns.org/pulse/9002.m3u8?u=http%3A%2F%2Fupstream.invalid%2Fx.m3u8&p=P0&id=9002&m=proxy" || true)
+          SM_A=$(cat "$SM_A_FILE")
+          SM_B=$(cat "$SM_B_FILE")
+          rm -f "$SM_A_FILE" "$SM_B_FILE"
           OK_A=0; OK_B=0
-          printf '%s' "$SM_A" | head -c 7 | grep -q '#EXTM3U' && OK_A=1
-          printf '%s' "$SM_A" | grep -q '#EXTINF' && OK_A=1
-          printf '%s' "$SM_B" | grep -q '"format"' && OK_B=1
+          # Todas las condiciones son obligatorias: un master tambien empieza por EXTM3U.
+          if [ "$SM_A_STATUS" = "200" ] \
+            && [[ "$SM_A" == '#EXTM3U'$'\n'* || "$SM_A" == '#EXTM3U'$'\r\n'* ]] \
+            && grep -Eq '^#EXT-X-TARGETDURATION:[1-9][0-9]*[[:space:]]*$' <<< "$SM_A" \
+            && grep -Eq '^#EXTINF:[0-9]+([.][0-9]+)?,' <<< "$SM_A" \
+            && grep -Eq '^[^#[:space:]][^[:space:]]*[[:space:]]*$' <<< "$SM_A" \
+            && ! grep -Eq '^#EXT-X-(STREAM-INF|I-FRAME-STREAM-INF):' <<< "$SM_A"; then
+            OK_A=1
+          fi
+          if [ "$SM_B_STATUS" = "502" ] \
+            && python3 -c 'import json,sys; p=json.load(sys.stdin); sys.exit(not (isinstance(p,dict) and p.get("ok") is False and isinstance(p.get("format"),str)))' <<< "$SM_B" 2>/dev/null; then
+            OK_B=1
+          fi
           echo "  SMOKE A (master publico -> media): OK_A=$OK_A"
           echo "  SMOKE B (502 con clasificacion):   OK_B=$OK_B"
           echo "  SMOKE B body: $SM_B"
@@ -384,14 +415,22 @@ jobs:
           L8=$(sha256sum "$SRC8" | cut -d' ' -f1)
           if [ "$R8" != "$L8" ]; then echo "::error::sha de index-v4 no coincide"; exit 1; fi
           echo "  index OK ($L8)"
-          IDX=$(curl -s --max-time 25 "https://iptv-ape.duckdns.org/index-v4.html" || true)
+          # El hash se calcula sobre el archivo HTTP: command substitution perderia
+          # los saltos de linea finales y no permitiria comparar bytes con el repo.
+          IDX_FILE=$(mktemp)
+          IDX_STATUS=$(curl -sS --max-time 25 -o "$IDX_FILE" -w '%{http_code}' "https://iptv-ape.duckdns.org/index-v4.html" || true)
           OK_I=0
-          printf '%s' "$IDX" | grep -q 'generation-output-panel.js?v=20261106-ready' && OK_I=1
-          printf '%s' "$IDX" | grep -q 'generation-controller.js?v=20261106-ready' && OK_I=1
-          printf '%s' "$IDX" | grep -q '</html>' && OK_I=1
-          echo "  SMOKE index (sirve el ?v= nuevo): OK_I=$OK_I"
+          if [ "$IDX_STATUS" = "200" ] \
+            && grep -Fq 'generation-output-panel.js?v=' "$IDX_FILE" \
+            && grep -Fq 'generation-controller.js?v=' "$IDX_FILE" \
+            && grep -Fq '</html>' "$IDX_FILE" \
+            && [ "$(sha256sum "$IDX_FILE" | cut -d' ' -f1)" = "$L8" ]; then
+            OK_I=1
+          fi
+          rm -f "$IDX_FILE"
+          echo "  SMOKE index (HTTP 200, scripts y sha del repo): OK_I=$OK_I"
           if [ "$OK_I" != "1" ]; then
-            echo "::error::el index servido no trae el cache-buster nuevo — restaurando"
+            echo "::error::el index servido no coincide con el repo o esta incompleto — restaurando"
             if ssh "$TARGET" "sudo -n test -f '$BAK8'"; then
               ssh "$TARGET" "sudo -n install -m 0644 -o www-data -g www-data '$BAK8' '$DEST8'"
               echo "  ROLLBACK index desde $BAK8"
@@ -627,16 +666,17 @@ jobs:
           sleep 3
           ok=1
           for f in $FICHEROS; do
-            curl -sS -o "/tmp/s-$f" -w "  $f http=%{http_code} bytes=%{size_download}\n" \
-              "https://iptv-ape.duckdns.org/js/ape-v9/$f"
+            SAFE_F=${f//\//_}
+            curl -f -sS -o "/tmp/s-$SAFE_F" -w "  $f http=%{http_code} bytes=%{size_download}\n" \
+              "https://iptv-ape.duckdns.org/$f" || ok=0
             L=$(sha256sum "$SRC_DIR/$f" | cut -d' ' -f1)
-            R=$(sha256sum "/tmp/s-$f" | cut -d' ' -f1)
+            R=$(sha256sum "/tmp/s-$SAFE_F" | cut -d' ' -f1)
             echo "    local=$L"
             echo "    servido=$R"
             [ "$L" = "$R" ] || { echo "::error::lo servido de $f no es el fichero del repo"; ok=0; }
           done
           # Las correcciones y los defectos solo se buscan en el generador; el panel no los lleva.
-          G=/tmp/s-m3u8-typed-arrays-ultimate.js
+          G=/tmp/s-js_ape-v9_m3u8-typed-arrays-ultimate.js
           echo '--- el generador servido TIENE las correcciones ---'
           # [ACTUALIZADO 2026-11-05] El generador migro de `colorspace=iall=bt709` a
           # `tools/ape-image-recipes/recipes.json`, donde el color y el escalado viven en
@@ -652,7 +692,7 @@ jobs:
             [ "$n" -eq 0 ] || { echo "::error::lo servido aun tiene '$p'"; ok=0; }
           done
           # El guard del delta: debe preguntar por el SUELO, no solo por el techo.
-          P=/tmp/s-generation-output-panel.js
+          P=/tmp/s-js_ape-v9_generation-output-panel.js
           echo '--- el panel servido lleva el guard corregido ---'
           grep -q 'activeFloorMbps' "$P" || { echo '::error::el panel servido no tiene activeFloorMbps'; ok=0; }
           grep -q 'canStart' "$P" || { echo '::error::el panel servido no distingue canStart'; ok=0; }
@@ -665,12 +705,12 @@ jobs:
           grep -q 'ape-sug-forzar'   "$P" || { echo '::error::el panel servido no ofrece forzar'; ok=0; }
           grep -q 'mejorEscenario'   "$P" || { echo '::error::el panel servido no tiene mejorEscenario'; ok=0; }
           # El config debe poblar el suelo desde el LAB: sin esto el panel vuelve a la tabla de respaldo.
-          C=/tmp/s-ape-profiles-config.js
+          C=/tmp/s-js_ape-v9_ape-profiles-config.js
           echo '--- el config servido puebla bandwidth_floor ---'
           grep -q '_ensureBandwidthFloor' "$C" || { echo '::error::el config servido no tiene _ensureBandwidthFloor'; ok=0; }
           grep -q 'bandwidth_floor' "$C" || { echo '::error::el config servido no menciona bandwidth_floor'; ok=0; }
           # El gestor de perfiles no puede volver a recortar el piso contra un bitrate roto.
-          M=/tmp/s-profile-manager-v9.js
+          M=/tmp/s-js_ape-v9_profile-manager-v9.js
           echo '--- el gestor servido no recorta contra bitrate absurdo ---'
           grep -q 'bitrateUtil' "$M" || { echo '::error::el gestor servido no tiene bitrateUtil'; ok=0; }
           grep -q 'Nunca 0,24' "$M" || { echo '::error::el gestor servido no tiene la correccion del 0,24'; ok=0; }
@@ -710,7 +750,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: feat/adb-generic-visual-enhancement-installer
+          ref: ${{ github.sha }}
 
       - name: Preparar SSH
         run: |
@@ -724,11 +764,13 @@ jobs:
 
       - name: Exigir la confirmacion literal
         if: inputs.mode == 'apply'
+        env:
+          DEPLOY_CONFIRMATION: ${{ inputs.confirm }}
         run: |
           set -euo pipefail
-          if [ "${{ inputs.confirm }}" != "DESPLIEGO EL GENERADOR AL VPS" ]; then
+          if [ "$DEPLOY_CONFIRMATION" != "DESPLIEGO EL GENERADOR AL VPS" ]; then
             echo '::error::falta la confirmacion literal. No se escribe nada.'
-            echo "  recibido: '${{ inputs.confirm }}'"
+            printf '  recibido: %s\n' "$DEPLOY_CONFIRMATION"
             exit 1
           fi
           echo 'confirmacion literal presente'

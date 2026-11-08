@@ -3,7 +3,7 @@
  * Test A/B/C/D — JIT + HDR output options.
  *
  * A: panel state -> controller options (VM, no jsdom dependency).
- * B: real generator entry -> VIDEO-RANGE PQ/SDR and JIT URL.
+ * B: real generator entry -> observed VIDEO-RANGE, requested HDR and JIT URL.
  * C: semantic regression for JIT off + HDR auto.
  * D: JIT catalog id -> hls + fallback.
  */
@@ -165,6 +165,8 @@ function loadGenerator() {
   global.CLEAN_URL_MODE = false;
   global.APE_USE_JIT = false;
   global.APE_DIRECT_MODE = true;
+  global.APE_REA_POLICY = require('../../IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/rea-processing-policy.js');
+  global.APE_REA_EXPORT = require('../../IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/rea-export-finalizer.js')(global);
 
   eval(fs.readFileSync(GENERATOR, 'utf8'));
   return global.M3U8TypedArraysGenerator;
@@ -185,16 +187,26 @@ function testB() {
     id: '3',
     tvg_id: '3',
     name: 'Test Channel',
-    url: 'http://example.com/live/user/pass/123.ts'
+    url: 'http://example.com/live/user/pass/123.ts',
+    _probeData: {
+      source: 'PROBED_MASTER', resolution: '1920x1080', videoCodec: 'avc1.640028',
+      videoRange: 'SDR', frameRate: 30, bandwidth: 5000000,
+      provenance: {
+        schema: 'ape.probe-provenance/1', scope: 'channel_url',
+        requestedUrl: 'http://example.com/live/user/pass/123.ts',
+        responseUrl: 'http://example.com/live/user/pass/123.ts',
+        observedFields: ['resolution', 'videoCodec', 'videoRange', 'frameRate', 'bandwidth']
+      }
+    }
   };
 
   const auto = gen.generateChannelEntry(channel, 'P4', 0, {}, {});
-  ok(auto.indexOf('VIDEO-RANGE=PQ') !== -1, 'B1 auto keeps profile PQ');
+  ok(auto.indexOf('VIDEO-RANGE=SDR') !== -1, 'B1 auto preserves observed SDR source');
   const pq = gen.generateChannelEntry(channel, 'P4', 0, {}, { hdr_force: 'pq' });
-  ok(pq.indexOf('VIDEO-RANGE=PQ') !== -1, 'B2 hdr_force=pq -> VIDEO-RANGE=PQ');
+  ok(pq.indexOf('VIDEO-RANGE=SDR') !== -1 && pq.indexOf('"outputPreference":"pq"') !== -1, 'B2 hdr_force=pq requests conversion without relabeling SDR');
   const sdr = gen.generateChannelEntry(channel, 'P4', 0, {}, { hdr_force: 'sdr' });
   ok(sdr.indexOf('VIDEO-RANGE=SDR') !== -1, 'B3 hdr_force=sdr -> VIDEO-RANGE=SDR');
-  ok(sdr.indexOf('#EXT-X-APE-4KFALSE') !== -1, 'B4 SDR emits 4KFALSE');
+  ok(sdr.indexOf('#EXT-X-APE-4KFALSE-MODE:DISABLED') !== -1, 'B4 fake source declarations are disabled');
 
   global.APE_JIT_URL_FOR_CHANNEL = function (c) {
     return c && String(c.tvg_id) === '3'
@@ -211,7 +223,7 @@ function testB() {
   global.APE_USE_JIT = false;
   global.APE_DIRECT_MODE = true;
 
-  // With a resolver loaded, hdr_force must bypass the truth-driven PQ emitter.
+  // Observed source evidence must survive a resolver's incompatible PQ hint.
   global.APEFallbackResolver = {
     resolveMaxQualityFallback: function () {
       return { tier: 'F2_HEVC_PREMIUM_HINT', resolution: '3840x2160', videoRange: 'PQ', hdr: 'HDR10_PQ', hdrVerified: true, frameRate: 30 };
@@ -222,7 +234,7 @@ function testB() {
     }
   };
   const sdrWithResolver = gen.generateChannelEntry(channel, 'P4', 0, {}, { hdr_force: 'sdr' });
-  ok(sdrWithResolver.indexOf('VIDEO-RANGE=SDR') !== -1, 'B7 resolver cannot override forced SDR');
+  ok(sdrWithResolver.indexOf('VIDEO-RANGE=SDR') !== -1, 'B7 resolver cannot override observed SDR');
   delete global.APEFallbackResolver;
 
   const metadataTag = gen._outputMetadataTag({
@@ -236,7 +248,7 @@ function testB() {
   });
   ok(metadataTag === '#EXT-X-APE-OUTPUT-METADATA:{"dictatorMode":true,"dictatorTier":"4K","maxQualityMode":false,"perceptual4kMode":false,"maxCompatMode":true}', 'B8 manifest metadata tag exact');
   const mqSdr = gen.generateChannelEntry(channel, 'P4', 0, {}, { maxQualityMode: true, hdr_force: 'sdr' });
-  ok(mqSdr.indexOf('VIDEO-RANGE=SDR') !== -1, 'B9 hdr_force wins over maxQualityMode STREAM-INF');
+  ok(mqSdr.indexOf('VIDEO-RANGE=SDR') !== -1, 'B9 source evidence wins over maxQualityMode STREAM-INF');
   const baseOnly = {
     id: '3', name: 'Base Layer URL', base: { url: 'http://example.com/live/user/pass/123.ts' }
   };

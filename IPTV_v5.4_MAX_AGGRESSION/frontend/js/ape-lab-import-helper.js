@@ -53,7 +53,8 @@
             nivel1: Array.isArray(c.nivel1Directives) ? c.nivel1Directives.length : 0,
             nivel3: c.nivel3PerLayer ? Object.keys(c.nivel3PerLayer).length : 0,
             placeholders: c.placeholdersMap ? Object.keys(c.placeholdersMap).length : 0,
-            servers: Array.isArray(c.labServers) ? c.labServers.length : 0
+            servers: Array.isArray(c.labServers) ? c.labServers.length : 0,
+            reaProcessingPolicyId: c.reaProcessing ? c.reaProcessing.policy_id : null
         };
     }
 
@@ -163,6 +164,8 @@
             omega_gap_plan: c.omegaGapPlan || null,
             meta_per_profile: c.labMetaPerProfile || null,
             scoring_metadata: c.labMetadata || {},
+            rea_processing: c.reaProcessing || null,
+            rea_provenance: c.reaProvenance || null,
             _rebuilt_by: 'ape-lab-import-helper/v2'
         };
     }

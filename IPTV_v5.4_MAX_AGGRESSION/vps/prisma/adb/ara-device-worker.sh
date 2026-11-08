@@ -209,9 +209,12 @@ adb_getprop() { # <serial> <prop>
 }
 
 pkg_version_code() { # <serial> <pkg>
+    # dumpsys agrega minSdk/targetSdk en la misma linea; conservar solo el entero.
     adb -s "$1" shell dumpsys package "$2" 2>/dev/null \
         | tr -d '\r' \
-        | awk -F= '/versionCode=/ {gsub(/ /,"",$2); print $2; exit}'
+        | awk '{for (i=1; i<=NF; i++) if ($i ~ /^versionCode=[0-9]+$/) {
+            sub(/^versionCode=/,"",$i); print $i; exit
+        }}'
 }
 
 pkg_version_name() { # <serial> <pkg>
@@ -502,7 +505,7 @@ process_job() { # <q-file>
     # ── Veredicto: exito SOLO si el versionCode instalado == objetivo ────────
     if [ -z "$after" ]; then
         finish_job "$id" "$sfile" "failed" 0 \
-            "adb install no dejo el paquete instalado: $iout" "$before_json" "$after_json"
+            "adb install no dejo el paquete instalado; revisa los pasos install del trabajo" "$before_json" "$after_json"
         return 0
     fi
     if [ -n "$target_code" ] && [ "$code" != "$target_code" ]; then

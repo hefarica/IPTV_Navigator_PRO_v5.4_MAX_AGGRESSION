@@ -2417,6 +2417,7 @@ class IPTVNavigatorPro {
         if ($('btnDownloadM3U8')) $('btnDownloadM3U8').onclick = () => this.downloadM3U8();
         if ($('btnExportExcel')) $('btnExportExcel').onclick = () => this.exportToExcel();
         if ($('btnExportCSV')) $('btnExportCSV').onclick = () => this.exportToCSV();
+        if ($('btnCopyJSON')) $('btnCopyJSON').onclick = () => this.copyCatalogJSON();
 
         window.showTab = (id) => this.showTab(id);
 
@@ -7228,21 +7229,8 @@ El servidor analizará 26,000+ canales en ~10 minutos.
 
     buildStreamUrl(raw) {
         if (raw.url) return raw.url;
-        const s = this.state.currentServer;
-        const id = raw.stream_id || raw.epg_channel_id;
-
-        let typePath = 'live';
-        let ext = this.state.streamFormat || 'ts';
-
-        if (raw.stream_type === 'movie') {
-            typePath = 'movie';
-            ext = raw.container_extension || 'mp4';
-        } else if (raw.stream_type === 'series') {
-            typePath = 'series';
-            ext = 'mp4';
-        }
-
-        return `${s.baseUrl} /${typePath}/${encodeURIComponent(s.username)} /${encodeURIComponent(s.password)}/${id}.${ext} `;
+        if (!window.APE_REA_CATALOG) return raw.base?.url || raw.direct_source || raw.stream_url || '';
+        return window.APE_REA_CATALOG.sourceUrl({ ...raw, stream_id: raw.stream_id ?? raw.epg_channel_id }, { app: this });
     }
 
     enrichChannel(ch) {
@@ -9203,9 +9191,14 @@ El servidor analizará 26,000+ canales en ~10 minutos.
     }
 
     downloadM3U8() {
+        const format = document.getElementById('genExportFormat')?.value || 'm3u8';
+        if (format === 'json') return this.exportToJSON();
         if (!this.state.generatedM3U8) return;
         const b = new Blob([this.state.generatedM3U8], { type: 'application/vnd.apple.mpegurl' });
-        const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = 'list.m3u8'; a.click();
+        const a = document.createElement('a'); a.href = URL.createObjectURL(b);
+        a.download = format === 'm3u_plus' ? 'list.m3u' : 'list.m3u8'; a.click();
+        const objectUrl = a.href;
+        setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
     }
 
     getDefaultHeaderPresets() {
@@ -9218,19 +9211,51 @@ El servidor analizará 26,000+ canales en ~10 minutos.
     }
     loadPreset(n) { }
 
-    exportToExcel() {
+    exportToExcel(channels, options = {}) {
         if (typeof XLSX === 'undefined') return alert('XLSX lib missing');
-        const data = this.getFilteredChannels().map(ch => ({ ID: ch.stream_id, Name: ch.name, URL: ch.url }));
+        const list = Array.isArray(channels) ? channels : this.getFilteredChannels();
+        const api = window.APE_REA_CATALOG;
+        if (!api) return alert('Falta el exportador REA. Recarga la aplicación.');
+        const data = api.toRows(list, { ...options, app: this });
         const ws = XLSX.utils.json_to_sheet(data);
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, "Channels");
+        const policy = window.APE_PROFILES_CONFIG?.reaProcessing || window.APE_REA_POLICY?.policy || null;
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet([
+            { Field: 'schema', Value: 'ape.rea-catalog/1' },
+            { Field: 'execution', Value: 'not_verified' },
+            { Field: 'delivery', Value: 'source_urls' },
+            { Field: 'rea_processing', Value: JSON.stringify(policy) }
+        ]), 'REA_Contract');
         XLSX.writeFile(wb, `export_${Date.now()}.xlsx`);
     }
-    exportToCSV() {
-        const d = this.getFilteredChannels();
-        let csv = 'ID,Name,URL\n' + d.map(c => `${c.stream_id},"${c.name}",${c.url}`).join('\n');
-        const b = new Blob([csv], { type: 'text/csv' });
-        const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = 'export.csv'; a.click();
+    async exportToCSV(channels, options = {}) {
+        try {
+            const list = Array.isArray(channels) ? channels : this.getFilteredChannels();
+            if (!window.APE_REA_CATALOG) throw new Error('Falta el exportador REA. Recarga la aplicación.');
+            return await window.APE_REA_CATALOG.downloadCSV(list, { ...options, app: this, filename: 'APE_REA_CATALOG.csv' });
+        } catch (error) {
+            if (error?.name !== 'AbortError') alert('Error exportando CSV: ' + error.message);
+        }
+    }
+    async exportToJSON(channels, options = {}) {
+        try {
+            const list = Array.isArray(channels) ? channels : this.getFilteredChannels();
+            if (!window.APE_REA_CATALOG) throw new Error('Falta el exportador REA. Recarga la aplicación.');
+            return await window.APE_REA_CATALOG.downloadJSON(list, { ...options, app: this, filename: 'APE_REA_CATALOG.json' });
+        } catch (error) {
+            if (error?.name !== 'AbortError') alert('Error exportando JSON: ' + error.message);
+        }
+    }
+    async copyCatalogJSON() {
+        try {
+            if (!window.APE_REA_CATALOG) throw new Error('Falta el exportador REA. Recarga la aplicación.');
+            const content = window.APE_REA_CATALOG.toJSON(this.getFilteredChannels(), { app: this });
+            await navigator.clipboard.writeText(content);
+            if (typeof this.showToast === 'function') this.showToast('JSON de metadatos copiado', 'success');
+        } catch (error) {
+            alert('No se pudo copiar el JSON: ' + error.message);
+        }
     }
 
     // ==================== 🧪 EXPORT A LAB EXCEL (Bridge v1.1 MULTI-SERVER) ====================
@@ -9359,9 +9384,13 @@ El servidor analizará 26,000+ canales en ~10 minutos.
                     || 'P3',
                 profiles_hash: profilesHash,
                 profiles_snapshot: profilesSnapshot,
+                rea_processing: window.APE_PROFILES_CONFIG?.reaProcessing || window.APE_REA_POLICY?.policy || null,
+                rea_provenance: window.APE_PROFILES_CONFIG?.reaProvenance || null,
                 channels: channels.map(ch => {
                     const sid = ch.serverId || null;
                     const srvForCh = sid ? (srvLibById[sid] || srvById[sid] || null) : null;
+                    const url = buildUrlFor(ch, srvForCh);
+                    const rea = window.APE_REA_CATALOG?.channelRecord({ ...ch, url }, { app: this });
                     return {
                         stream_id: ch.stream_id ?? null,
                         name: ch.name || '',
@@ -9382,7 +9411,11 @@ El servidor analizará 26,000+ canales en ~10 minutos.
                         is_uhd: !!ch.isUHD, is_hd: !!ch.isHD, is_sd: !!ch.isSD,
                         is_sports: !!ch.isSports, is_movie: !!ch.isMovie, is_series: !!ch.isSeries,
                         server_id: sid,
-                        url: buildUrlFor(ch, srvForCh)
+                        url,
+                        catalog_metadata_status: 'unverified_catalog_metadata',
+                        source: rea?.source || null,
+                        processing: rea?.processing || null,
+                        request_headers: rea?.requestHeaders || {}
                     };
                 }),
                 channel_count: channels.length
@@ -12455,7 +12488,8 @@ window.generateOmega5 = async function () {
             includeAll: true,
             labBridge: true
         };
-        const content = await window.WorldClassM3U8Generator.generateWorldClassM3U8(channels, options);
+        const generated = await window.WorldClassM3U8Generator.generateWorldClassM3U8(channels, options);
+        const content = typeof generated === 'string' ? generated : generated?.content;
         const ms = (performance.now() - t0).toFixed(0);
 
         if (!content || typeof content !== 'string' || content.length < 100) {

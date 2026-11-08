@@ -9,7 +9,7 @@
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
-const { spawn, execFileSync } = require('child_process');
+const { spawn, execFile, execFileSync } = require('child_process');
 
 const PORT = Number(process.env.PORT || 3099);
 const BIND = process.env.BIND || '127.0.0.1';
@@ -19,6 +19,8 @@ const IDLE_MS = Number(process.env.IDLE_MS || 20000);
 // HARDENING: 15 s no siempre alcanza para el primer chunk (probe + ffmpeg +
 // primer GOP). El 503 'startup timeout' se veia como canal caido. 30 s.
 const WAIT_MS = Number(process.env.WAIT_MS || 30000);
+const PROCESSING_DOMAIN = 'vps_jit_legacy';
+const REA_POLICY_REF = 'contracts/rea/rea-processing-v1.json';
 
 let current = null;
 const MIME = {
@@ -28,6 +30,7 @@ const MIME = {
   '.mp4': 'video/mp4',
 };
 function log(...a) { console.log(new Date().toISOString(), ...a); }
+function redactUpstreamUrls(message) { return String(message).replace(/https?:\/\/[^\s"'<>]+/gi, '[upstream-url]'); }
 
 function setBaseHeaders(res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -112,7 +115,7 @@ function probeSource(spec) {
     const out = execFileSync('ffprobe', [
       '-v', 'error', '-user_agent', spec.ua || 'VLC/3.0.19 LibVLC/3.0.19',
       '-select_streams', 'v:0',
-      '-show_entries', 'stream=width,height,codec_name,color_transfer,color_primaries',
+      '-show_entries', 'stream=width,height,codec_name,color_transfer,color_primaries,color_space,color_range',
       '-of', 'json', spec.url,
     ], { encoding: 'utf8', timeout: 15000 });
     const s = (JSON.parse(out).streams || [])[0] || {};
@@ -131,13 +134,126 @@ function probeSource(spec) {
     return {
       width: Number(s.width) || 0, height: Number(s.height) || 0,
       codec: s.codec_name || '', transfer: s.color_transfer || '',
-      primaries: s.color_primaries || '',
+      primaries: s.color_primaries || '', matrix: s.color_space || '', range: s.color_range || '',
       audioOk: audioOk, audioCodec: audioCodec,
     };
   } catch (e) {
-    log('PROBE_ERROR', e.message);
+    // execFileSync errors contain the full command, including provider tokens.
+    log('PROBE_ERROR', e.code || 'probe_failed');
     return { width: 0, height: 0, codec: '', transfer: '', primaries: '', audioOk: false, audioCodec: '' };
   }
+}
+
+function videoRange(transfer) {
+  if (transfer === 'smpte2084') return 'PQ';
+  if (transfer === 'arib-std-b67') return 'HLG';
+  return ['bt709', 'smpte170m', 'smpte240m', 'gamma22', 'gamma28', 'iec61966-2-1',
+    'iec61966-2-4', 'bt1361e', 'bt2020-10', 'bt2020-12'].includes(transfer) ? 'SDR' : null;
+}
+
+/** The real encoder argument plan; no inferred source codec strings or levels. */
+function buildEncodingPlan(src, options = {}) {
+  const env = options.env || process.env;
+  const isSdr = !!(options.sdr || options.sdr720), is720 = !!options.sdr720;
+  const use2k = env.APE_2K === '1', av1Requested = env.APE_SCHEME === 'av1' && !isSdr;
+  const is4kSource = src.width >= 3840 && src.height >= 2160;
+  const sourceRange = videoRange(src.transfer);
+  const known709 = sourceRange === 'SDR' && src.primaries === 'bt709'
+    && src.transfer === 'bt709' && src.matrix === 'bt709' && ['tv', 'pc'].includes(src.range);
+  const knownHdr = ['PQ', 'HLG'].includes(sourceRange) && src.primaries === 'bt2020'
+    && src.matrix === 'bt2020nc' && ['tv', 'pc'].includes(src.range);
+  const sixK = av1Requested && env.APE_6K === '1' && is4kSource
+    && src.width <= 6144 && src.height <= 3456 && (src.width < 6144 || src.height < 3456)
+    && (known709 || knownHdr);
+  const targetW = is720 ? 1280 : (isSdr ? 1920 : (av1Requested || use2k ? 2048 : 1920));
+  const targetH = is720 ? 720 : 1080;
+  if (isSdr && (sourceRange !== 'SDR' || !known709 || src.width > targetW || src.height > targetH)) {
+    throw new Error('SOURCE_PRESERVATION_REQUIRED: SDR route would reduce or relabel the source; use native/provider-direct');
+  }
+  // Native HDR is retained even below 4K. Unknown color is never assumed BT.709.
+  // 4K SDR and dimensions larger than the legacy target must not fall to FHD.
+  const copyNative = !isSdr && !sixK && (is4kSource || sourceRange === 'PQ' || sourceRange === 'HLG'
+    || !known709 || src.width > targetW || src.height > targetH);
+  if (copyNative && !['hevc', 'h264', 'av1', 'vp9'].includes(src.codec)) {
+    throw new Error('UNSUPPORTED_NATIVE_CMAF_CODEC: source retained; use provider-direct');
+  }
+  const av1 = av1Requested && !copyNative;
+  const width = copyNative ? src.width : (sixK ? 6144 : targetW);
+  const height = copyNative ? src.height : (sixK ? 3456 : targetH);
+  const hdrPreserved = sixK && knownHdr;
+  const outputColorIntent = copyNative || hdrPreserved
+    ? { transfer: src.transfer, primaries: src.primaries, matrix: src.matrix, range: src.range }
+    : isSdr ? { transfer: 'bt709', primaries: 'bt709', matrix: 'bt709', range: 'tv' }
+      : { transfer: 'smpte2084', primaries: 'bt2020', matrix: 'bt2020nc', range: 'tv' };
+  const colorArgs = ['-color_primaries', outputColorIntent.primaries, '-color_trc', outputColorIntent.transfer,
+    '-colorspace', outputColorIntent.matrix, '-color_range', outputColorIntent.range];
+  const geometry = `scale=w=${width}:h=${height}:force_original_aspect_ratio=decrease:force_divisible_by=2:flags=lanczos,pad=${width}:${height}:(ow-iw)/2:(oh-ih)/2`;
+  // setparams only relabels pixels. zscale performs the actual known-SDR -> PQ conversion.
+  const hdrFilter = geometry + (hdrPreserved ? ',format=yuv420p10le'
+    : ',zscale=t=linear:npl=100,format=gbrpf32le,zscale=p=bt2020:t=smpte2084:m=bt2020nc:r=limited,format=yuv420p10le');
+  let videoArgs;
+  if (copyNative) {
+    videoArgs = ['-c:v', 'copy'];
+    if (src.codec === 'hevc') videoArgs.push('-tag:v', 'hvc1');
+    else if (src.codec === 'h264') videoArgs.push('-tag:v', 'avc1');
+  } else if (isSdr) {
+    videoArgs = ['-vf', geometry + ',format=yuv420p', '-pix_fmt', 'yuv420p', ...colorArgs,
+      '-c:v', 'libx264', '-preset', 'veryfast', '-tune', 'zerolatency', '-profile:v', 'high', '-tag:v', 'avc1',
+      '-b:v', is720 ? '2200k' : '4000k', '-maxrate', is720 ? '2400k' : '4400k', '-bufsize', is720 ? '4400k' : '8000k'];
+  } else if (av1) {
+    videoArgs = ['-vf', hdrFilter, '-pix_fmt', 'yuv420p10le', ...colorArgs,
+      '-c:v', 'libsvtav1', '-preset', '13', '-crf', '30', '-g', '48', '-svtav1-params', 'lp=3'];
+  } else {
+    videoArgs = ['-vf', hdrFilter, '-pix_fmt', 'yuv420p10le', ...colorArgs,
+      '-c:v', 'libx265', '-preset', 'ultrafast', '-tune', 'zerolatency', '-threads', '3', '-tag:v', 'hvc1',
+      '-x265-params', 'pools=3:frame-threads=1:colorprim=bt2020:transfer=smpte2084:colormatrix=bt2020nc',
+      '-b:v', use2k ? '5000k' : '3000k', '-maxrate', use2k ? '5500k' : '3300k', '-bufsize', use2k ? '10000k' : '6000k'];
+  }
+  const audioSource = src.audioOk ? src : (options.audioSrc && options.audioSrc.audioOk ? options.audioSrc : null);
+  if (!audioSource && (src.audioCodec || options.audioSrc && options.audioSrc.audioCodec)) {
+    throw new Error('AUDIO_PROBE_INCOMPLETE: audio retained at source; use provider-direct');
+  }
+  if (audioSource && !['aac', 'ac3', 'eac3'].includes(audioSource.audioCodec)) {
+    throw new Error('UNSUPPORTED_CMAF_AUDIO: no downmix or audio removal; use provider-direct');
+  }
+  return { isSdr, is720, use2k, av1, sixK, copyNative, copy4k: copyNative && is4kSource,
+    width, height, videoArgs, audioArgs: audioSource ? ['-c:a', 'copy'] : ['-an'],
+    hasAudio: !!audioSource, outputColorIntent,
+    upscaled: src.width > 0 && src.height > 0 && (width > src.width || height > src.height),
+    crystalMode: copyNative ? (is4kSource ? 'NATIVE_4K_' : 'NATIVE_') + (sourceRange || 'COLOR_UNKNOWN')
+      : (sixK ? 'CRYSTAL_6K_AV1' : av1 ? 'CRYSTAL_2K_AV1' : is720 ? 'SDR720_STABLE' : isSdr ? 'FHD_SDR' : use2k ? 'CRYSTAL_2K_HDR_UPSCALE' : 'FHD_HDR10') };
+}
+
+function probeOutputFile(filename) {
+  return new Promise((resolve, reject) => {
+    execFile('ffprobe', ['-v', 'error', '-select_streams', 'v:0', '-show_entries',
+      'stream=codec_name,codec_tag_string,width,height,color_transfer,color_primaries,color_space,color_range,pix_fmt',
+      '-of', 'json', filename], { encoding: 'utf8', timeout: 4000, maxBuffer: 1024 * 1024 }, (error, stdout) => {
+      if (error) return reject(new Error('OUTPUT_PROBE_FAILED'));
+      try {
+        const stream = (JSON.parse(stdout).streams || [])[0];
+        if (!stream || !stream.width || !stream.height) throw new Error('OUTPUT_PROBE_INCOMPLETE');
+        resolve({ status: 'observed_output_init', width: stream.width, height: stream.height,
+          codec: stream.codec_name || null, sampleEntry: stream.codec_tag_string || null,
+          transfer: stream.color_transfer || null, primaries: stream.color_primaries || null,
+          matrix: stream.color_space || null, range: stream.color_range || null,
+          pixelFormat: stream.pix_fmt || null, videoRange: videoRange(stream.color_transfer) });
+      } catch (_) { reject(new Error('OUTPUT_PROBE_INCOMPLETE')); }
+    });
+  });
+}
+
+async function ensureOutputTruth(state) {
+  if (!state) return null;
+  if (state.outputTruth) return state.outputTruth;
+  if (state.outputProbePromise) return state.outputProbePromise;
+  const init = path.join(state.dir, 'init-' + state.session + '-0.m4s');
+  if (!fs.existsSync(init)) return null;
+  state.outputProbePromise = probeOutputFile(init).then(truth => {
+    state.outputTruth = truth;
+    return truth;
+  }).catch(() => null).finally(() => { state.outputProbePromise = null; });
+  return state.outputProbePromise;
 }
 function loadMap() {
   try { return JSON.parse(fs.readFileSync(MAP_FILE, 'utf8')); }
@@ -187,7 +303,20 @@ const liveKids = new Set();
 // entre la peticion y el spawn hay una espera: waitForFile NO debe interpretar
 // esa espera como 'stream stopped' o el handler devuelve 503 en cada arranque.
 const booting = new Set();
+const startFailures = new Map();
 function chKey(id, sdr, sdr720) { return id + '|' + (sdr720 ? 'h' : sdr ? 's' : 'n'); }
+
+function safeStartFailure(error) {
+  const code = String(error && error.message || '').split(':', 1)[0];
+  return ['SOURCE_PRESERVATION_REQUIRED', 'UNSUPPORTED_NATIVE_CMAF_CODEC',
+    'AUDIO_PROBE_INCOMPLETE', 'UNSUPPORTED_CMAF_AUDIO'].includes(code) ? code : 'JIT_START_FAILED';
+}
+function recordStartFailure(id, sdr, sdr720, error) {
+  const key = chKey(id, sdr, sdr720), code = safeStartFailure(error);
+  startFailures.set(key, code);
+  booting.delete(key);
+  log('START_FAIL', id, code, 'source retained; use provider-direct');
+}
 
 function reapDir(dir) {
   if (!dir) return;
@@ -231,6 +360,7 @@ function stopCurrent(reason) {
 
 /* async: debe poder ESPERAR a que el slot unico quede libre antes de spawnear. */
 async function start(id, spec, sdr, sdr720) {
+  startFailures.delete(chKey(id, sdr, sdr720));
   stopCurrent('switch');
   const src = probeSource(spec);
   // Optional audio-only fallback source. Video stays on spec.url.
@@ -238,14 +368,8 @@ async function start(id, spec, sdr, sdr720) {
   const audioSrc = audioSpec ? probeSource(audioSpec) : null;
   const fallbackAudio = !!(audioSrc && audioSrc.audioOk);
   const audioOk = !!src.audioOk || fallbackAudio;
-  const isSdr = !!(sdr || sdr720);
-  const is720 = !!sdr720;
-  const av1 = process.env.APE_SCHEME === 'av1' && !isSdr;
-  const sixK = av1 && process.env.APE_6K === '1';
-  const is4kSource = src.width >= 3840 && src.height >= 2160;
-  const copy4k = !isSdr && is4kSource && (!av1 || !sixK) &&
-    (src.transfer === 'smpte2084' || src.transfer === 'arib-std-b67') &&
-    (src.codec === 'hevc' || src.codec === 'h264');
+  const plan = buildEncodingPlan(src, { sdr, sdr720, audioSrc });
+  const { isSdr, is720, use2k, av1, sixK, copy4k, copyNative, videoArgs, audioArgs, hasAudio } = plan;
   const dir = path.join(OUT_ROOT, id, is720 ? 'sdr720' : (isSdr ? 'sdr' : ''));
   fs.mkdirSync(dir, { recursive: true });
   // HARDENING (bug B): no limpiar un dir que un hijo anterior aun esta soltando.
@@ -257,56 +381,6 @@ async function start(id, spec, sdr, sdr720) {
     log('DEFER_CLEAN', id, 'dir pendiente de reaping, no se borra');
   }
 
-  const use2k = process.env.APE_2K === '1';
-  const targetW = use2k ? 2048 : 1920;
-  const targetH = 1080;
-  const av1TargetW = is4kSource ? (sixK ? 6144 : 3840) : 2048;
-  const av1TargetH = is4kSource ? (sixK ? 3456 : 2160) : 1080;
-  const videoArgs = is720
-    ? [
-      '-vf', "scale=w=1280:h=720:force_original_aspect_ratio=decrease:force_divisible_by=2:flags=lanczos,pad=1280:720:(ow-iw)/2:(oh-ih)/2,setparams=color_primaries=bt709:color_trc=bt709:colorspace=bt709:range=limited,format=yuv420p",
-      '-pix_fmt', 'yuv420p',
-      '-color_primaries', 'bt709', '-color_trc', 'bt709', '-colorspace', 'bt709',
-      '-c:v', 'libx264', '-preset', 'veryfast', '-tune', 'zerolatency',
-      '-profile:v', 'high', '-level:v', '4.0', '-tag:v', 'avc1',
-      '-b:v', '2200k', '-maxrate', '2400k', '-bufsize', '4400k',
-    ]
-    : isSdr
-    ? [
-      '-vf', "scale=w=1920:h=1080:force_original_aspect_ratio=decrease:force_divisible_by=2:flags=lanczos,pad=1920:1080:(ow-iw)/2:(oh-ih)/2,setparams=color_primaries=bt709:color_trc=bt709:colorspace=bt709:range=limited,format=yuv420p",
-      '-pix_fmt', 'yuv420p',
-      '-color_primaries', 'bt709', '-color_trc', 'bt709', '-colorspace', 'bt709',
-      '-c:v', 'libx264', '-preset', 'veryfast', '-tune', 'zerolatency',
-      '-profile:v', 'high', '-level:v', '4.2', '-tag:v', 'avc1',
-      '-b:v', '4000k', '-maxrate', '4400k', '-bufsize', '8000k',
-    ]
-    : copy4k
-    ? ['-c:v', 'copy', '-tag:v', 'hvc1']
-    : av1
-    ? [
-      '-vf', `fps=30,scale=w=${av1TargetW}:h=${av1TargetH}:force_original_aspect_ratio=decrease:force_divisible_by=2:flags=lanczos,pad=${av1TargetW}:${av1TargetH}:(ow-iw)/2:(oh-ih)/2,setparams=color_primaries=bt709:color_trc=bt709:colorspace=bt709:range=limited,zscale=t=smpte2084:p=bt2020:m=bt2020nc:r=limited,format=yuv420p10le`,
-      '-pix_fmt', 'yuv420p10le',
-      '-color_primaries', 'bt2020', '-color_trc', 'smpte2084', '-colorspace', 'bt2020nc',
-      '-c:v', 'libsvtav1', '-preset', '13', '-crf', '30', '-g', '48',
-      '-pix_fmt', 'yuv420p10le',
-    ]
-    : [
-      '-vf', (use2k ? 'fps=30,' : '') + `scale=w=${targetW}:h=${targetH}:force_original_aspect_ratio=decrease:force_divisible_by=2:flags=lanczos,pad=${targetW}:${targetH}:(ow-iw)/2:(oh-ih)/2,setparams=color_primaries=bt709:color_trc=bt709:colorspace=bt709:range=limited,zscale=t=linear:npl=100,format=gbrpf32le,zscale=p=bt2020:transfer=smpte2084:matrix=bt2020nc:primaries=bt2020,format=yuv420p10le`,
-      '-pix_fmt', 'yuv420p10le',
-      '-color_primaries', 'bt2020', '-color_trc', 'smpte2084', '-colorspace', 'bt2020nc',
-      '-c:v', 'libx265', '-preset', 'ultrafast', '-tune', 'zerolatency',
-      '-threads', '3', '-tag:v', 'hvc1',
-      '-x265-params', 'pools=3:frame-threads=1:hdr10=1:colorprim=bt2020:transfer=smpte2084:colormatrix=bt2020nc:master-display=G(13250,34500)B(7500,3000)R(34000,16000)WP(15635,16450)L(10000000,1):max-cll=100,100',
-      '-b:v', use2k ? '5000k' : '3000k', '-maxrate', use2k ? '5500k' : '3300k', '-bufsize', use2k ? '10000k' : '6000k',
-    ];
-  // Some 4K provider audio is EAC3 with 0 channels / no sample rate.
-  // Do not break the video MPD: if audio is invalid, emit video-only.
-  const audioArgs = isSdr
-    ? (audioOk ? ['-c:a', 'aac', '-b:a', '128k', '-ac', '2'] : ['-an'])
-    : copy4k
-    ? (audioOk ? ['-c:a', 'aac', '-b:a', '256k', '-ac', '2'] : ['-an'])
-    : (audioOk ? ['-c:a', 'aac', '-b:a', '128k', '-ac', '2'] : ['-an']);
-  const hasAudio = audioOk;
   const session = Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
   const args = [
     '-hide_banner', '-nostdin', '-loglevel', 'warning',
@@ -341,31 +415,21 @@ async function start(id, spec, sdr, sdr720) {
     stdio: ['ignore', 'ignore', 'pipe'],
   });
   liveKids.add(child);
-  const outWidth = is720 ? 1280 : (isSdr ? 1920 : (copy4k ? src.width : (av1 ? av1TargetW : targetW)));
-  const outHeight = is720 ? 720 : (isSdr ? 1080 : (copy4k ? src.height : (av1 ? av1TargetH : targetH)));
-  const upscaled = !copy4k && ((src.width || 0) < outWidth || (src.height || 0) < outHeight);
+  const outWidth = plan.width, outHeight = plan.height;
   current = {
-    id, sdr: isSdr, sdr720: is720, child, dir, lastAccess: Date.now(), started: Date.now(),
-    copy4k,
-    hdr: !isSdr && (copy4k || src.transfer === 'smpte2084' || src.transfer === 'arib-std-b67'),
-    sourceWidth: src.width || 0,
-    sourceHeight: src.height || 0,
-    width: outWidth,
-    height: outHeight,
-    upscaled,
-    codecString: isSdr ? 'avc1.640028' : (av1 ? (sixK ? 'av01.0.16M.10' : 'av01.0.08M.10') : (use2k ? 'hvc1.2.4.L153.B0' : 'hvc1.2.4.L123.B0')),
-    audioCodec: hasAudio ? 'mp4a.40.2' : '',
-    bandwidth: is720 ? 2400000 : (isSdr ? 4500000 : (copy4k ? 20000000 : (av1 ? (sixK ? 25000000 : 5500000) : (use2k ? 5500000 : 3000000)))),
-    crystal: true,
-    use2k,
-    av1,
-    sixK,
-    crystalMode: copy4k ? 'NATIVE_4K_HDR' : (av1 ? (sixK ? 'CRYSTAL_6K_AV1' : 'CRYSTAL_2K_AV1') : (upscaled ? (use2k ? 'CRYSTAL_2K_HDR_UPSCALE' : 'CRYSTAL_UHD_UPSCALE') : (is720 ? 'SDR720_STABLE' : (isSdr ? 'FHD_SDR' : 'FHD_HDR10')))),
+    id, sdr: !!sdr, sdr720: is720, child, dir, session,
+    lastAccess: Date.now(), started: Date.now(),
+    copy4k, copyNative, sourceWidth: src.width || 0, sourceHeight: src.height || 0,
+    width: outWidth, height: outHeight, upscaled: plan.upscaled,
+    outputColorIntent: plan.outputColorIntent,
+    outputTruth: null, outputProbePromise: null,
+    crystal: true, use2k, av1, sixK, crystalMode: plan.crystalMode,
+    processingDomain: PROCESSING_DOMAIN,
   };
   log('START', id, 'pid=' + child.pid, 'sdr=' + isSdr, 'sdr720=' + is720, 'copy4k=' + copy4k, 'crystal=' + current.crystalMode, 'src=' + src.width + 'x' + src.height + '/' + src.transfer + '->' + outWidth + 'x' + outHeight);
   child.stderr.on('data', d => {
     const s = String(d).trim();
-    if (s) log('FFMPEG', s.slice(0, 300));
+    if (s) log('FFMPEG', redactUpstreamUrls(s).slice(0, 300));
   });
   child.on('exit', (code, sig) => {
     liveKids.delete(child);
@@ -390,6 +454,7 @@ function waitForFile(id, name, cb, sdr, sdr720) {
   const key = chKey(id, sdr, sdr720);
   const t0 = Date.now();
   const tick = () => {
+    if (startFailures.has(key)) return cb(new Error(startFailures.get(key) + ': use provider-direct; source unchanged'));
     if (fs.existsSync(file)) return cb(null, file);
     // HARDENING: si este canal esta arrancando (start async esperando el slot
     // unico), no es 'stream stopped'. Antes de este guard el handler devolvia 503
@@ -404,11 +469,10 @@ function waitForFile(id, name, cb, sdr, sdr720) {
   tick();
 }
 
-function hdrMaster(text) {
-  const codec = current ? current.codecString : 'hvc1.2.4.L123.B0';
-  const audio = current ? current.audioCodec : 'mp4a.40.2';
-  const mode = current ? current.crystalMode : 'FHD_HDR10';
-  const id = current ? current.id : '';
+function hdrMaster(text, state = current) {
+  if (!state) return text;
+  const mode = state.crystalMode;
+  const id = state.id;
   if (id && text.indexOf('DATA-ID="com.ape.channel"') === -1) {
     text = text.replace('#EXTM3U',
       '#EXTM3U\n' +
@@ -416,9 +480,9 @@ function hdrMaster(text) {
       '#EXT-X-SESSION-DATA:DATA-ID="com.ape.manifest",URI="/jit/live/' + encodeURIComponent(id) + '/manifest.json"');
   }
   if (text.indexOf('#EXT-X-APE-CRYSTAL-UHD') === -1) {
-    const up = current && current.upscaled
-      ? '\n#EXT-X-APE-CRYSTAL-UPSCALE:SOURCE=' + current.sourceWidth + 'x' + current.sourceHeight +
-        ';TARGET=' + current.width + 'x' + current.height + ';FILTER=LANCZOS'
+    const up = state.upscaled
+      ? '\n#EXT-X-APE-CRYSTAL-UPSCALE:SOURCE=' + state.sourceWidth + 'x' + state.sourceHeight +
+        ';TARGET=' + state.width + 'x' + state.height + ';FILTER=LANCZOS'
       : '\n#EXT-X-APE-CRYSTAL-UPSCALE:NATIVE';
     // HARDENING 2026-11-06 — la etiqueta ENHANCE mentia y el VPP se perdia.
     //
@@ -433,46 +497,61 @@ function hdrMaster(text) {
     // necesitan el post-proceso del SoC— eran los unicos que no lo declaraban.
     //
     // Ahora ENHANCE deriva del tamano REAL de salida y VPP+TARGET se emiten SIEMPRE.
-    const outW = current ? current.width : 1920;
-    const outH = current ? current.height : 1080;
+    const outW = state.outputTruth ? state.outputTruth.width : state.width;
+    const outH = state.outputTruth ? state.outputTruth.height : state.height;
     const enhTag = outH >= 2160 ? '4K_PLUS'
       : (outH >= 1080 && outW >= 2048) ? '2K_PLUS'
         : outH >= 1080 ? 'FHD_PLUS'
           : 'UPSCALE';
     const enhance = '\n#EXT-X-APE-CRYSTAL-ENHANCE:' + enhTag +
-      '\n#EXT-X-APE-CRYSTAL-VPP:DEVICE_DISPLAY;POLICY=MAX_IMAGE_FIRST' +
-      '\n#EXT-X-APE-CRYSTAL-TARGET:' + outW + 'x' + outH;
-    const sixKTag = (current && current.sixK)
-      ? '\n#EXT-X-APE-CRYSTAL-6K:ENABLED=true' +
+      '\n#EXT-X-APE-CRYSTAL-VPP:DEVICE_DISPLAY;POLICY=MAX_IMAGE_FIRST;EXECUTED=0' +
+      '\n#EXT-X-APE-CRYSTAL-TARGET:' + outW + 'x' + outH + ';STATUS=' + (state.outputTruth ? 'OUTPUT_OBSERVED' : 'REQUESTED');
+    const sixKTag = state.sixK
+      ? '\n#EXT-X-APE-CRYSTAL-6K:REQUESTED=true;OUTPUT_VERIFIED=' + !!state.outputTruth +
         '\n#EXT-X-APE-CRYSTAL-6K-TARGET:6144x3456'
       : '\n#EXT-X-APE-CRYSTAL-6K:AVAILABLE=OPT_IN;ENV=APE_6K';
     text = text.replace('#EXTM3U',
       '#EXTM3U\n' +
       '#EXT-X-APE-CRYSTAL-UHD:ENABLED=true\n' +
       '#EXT-X-APE-CRYSTAL-MODE:' + mode + up + enhance + sixKTag + '\n' +
-      '#EXT-X-APE-CRYSTAL-POLICY:MAX_IMAGE_FIRST');
+      '#EXT-X-APE-CRYSTAL-POLICY:MAX_IMAGE_FIRST\n' +
+      '#EXT-X-APE-PROCESSING-DOMAIN:' + PROCESSING_DOMAIN + ';REA_POLICY_REF=' + REA_POLICY_REF + ';REA_EXECUTED=0');
   }
-  return text
-    .replace(/CODECS="[^"]*"/, 'CODECS="' + codec + (audio ? ',' + audio : '') + '"')
-    .replace(/BANDWIDTH=\d+/, 'BANDWIDTH=' + (current ? current.bandwidth : 3000000))
-    .replace(/\bAUDIO="/, current && current.hdr ? 'VIDEO-RANGE=PQ,AUDIO="' : 'AUDIO="');
+  // CODECS, BANDWIDTH and RESOLUTION come from FFmpeg's actual muxed output.
+  // They must not be overwritten with a scheme, profile or input estimate.
+  const range = state.outputTruth && state.outputTruth.videoRange;
+  if (!range) return text;
+  return text.split('\n').map(line => {
+    if (!line.startsWith('#EXT-X-STREAM-INF:')) return line;
+    const clean = line.replace(/,?VIDEO-RANGE=[^,\r\n]*/g, '');
+    return clean.replace(/\r?$/, ',VIDEO-RANGE=' + range);
+  }).join('\n');
 }
 
-function hdrMpd(text) {
-  if (current && current.hdr && text.indexOf('cicp:ColourPrimaries') === -1) {
-    const props = [
-      '<SupplementalProperty schemeIdUri="urn:mpeg:mpegB:cicp:ColourPrimaries" value="9"/>',
-      '<SupplementalProperty schemeIdUri="urn:mpeg:mpegB:cicp:TransferCharacteristics" value="16"/>',
-      '<SupplementalProperty schemeIdUri="urn:mpeg:mpegB:cicp:MatrixCoefficients" value="9"/>',
-    ].join('\n');
-    text = text.replace(/(<AdaptationSet[^>]*contentType="video"[^>]*>)/, '$1\n' + props);
+function hdrMpd(text, state = current) {
+  if (!state) return text;
+  const truth = state.outputTruth;
+  const props = [];
+  const codes = truth ? {
+    ColourPrimaries: { bt709: 1, bt2020: 9 }[truth.primaries],
+    TransferCharacteristics: { bt709: 1, smpte2084: 16, 'arib-std-b67': 18 }[truth.transfer],
+    MatrixCoefficients: { bt709: 1, bt2020nc: 9 }[truth.matrix]
+  } : {};
+  for (const [name, value] of Object.entries(codes)) {
+    if (value != null) props.push('<SupplementalProperty schemeIdUri="urn:mpeg:mpegB:cicp:' + name + '" value="' + value + '"/>');
   }
-  if (current && text.indexOf('urn:ape:crystal:uhd') === -1) {
-    const crystal = '<SupplementalProperty schemeIdUri="urn:ape:crystal:uhd" value="' +
-      (current.crystalMode || 'FHD_HDR10') + '"/>';
-    text = text.replace(/(<AdaptationSet[^>]*contentType="video"[^>]*>)/, '$1\n' + crystal);
-  }
-  return text.replace(/codecs="hvc1"/g, 'codecs="' + (current ? current.codecString : 'hvc1.2.4.L123.B0') + '"');
+  return text.replace(/(<AdaptationSet\b[^>]*>)([\s\S]*?)(<\/AdaptationSet>)/g, (all, open, body, close) => {
+    if (!/\bcontentType="video"|\bmimeType="video\//.test(open + body)) return all;
+    let result = body;
+    for (const name of Object.keys(codes)) {
+      if (codes[name] == null) continue;
+      const existing = new RegExp('<(?:SupplementalProperty|EssentialProperty)\\b[^>]*schemeIdUri="urn:mpeg:mpegB:cicp:' + name + '"[^>]*\\/>', 'g');
+      result = result.replace(existing, '');
+    }
+    if (!result.includes('urn:ape:crystal:uhd')) result = '\n<SupplementalProperty schemeIdUri="urn:ape:crystal:uhd" value="' + state.crystalMode + '"/>' + result;
+    if (!result.includes('urn:ape:processing:domain')) result = '\n<SupplementalProperty schemeIdUri="urn:ape:processing:domain" value="' + PROCESSING_DOMAIN + '"/>' + result;
+    return open + '\n' + props.join('\n') + result + close;
+  });
 }
 
 function sendStatic(req, res, file, type, kind) {
@@ -524,45 +603,54 @@ function publicBase(req) {
   return proto + '://' + (req.headers.host || 'iptv-ape.duckdns.org') + '/jit';
 }
 
-function manifestJson(req, id, sdr, sdr720) {
+function outputDescriptor(state) {
+  const truth = state && state.outputTruth;
+  if (!truth) return null;
+  let master = '';
+  try { master = fs.readFileSync(path.join(state.dir, 'master.m3u8'), 'utf8'); } catch (_) { }
+  const line = master.split('\n').find(value => value.startsWith('#EXT-X-STREAM-INF:')) || '';
+  const codec = (line.match(/\bCODECS="([^"]+)"/) || [])[1] || null;
+  const numeric = name => { const match = line.match(new RegExp('(?:^#EXT-X-STREAM-INF:|,)' + name + '=(\\d+(?:\\.\\d+)?)')); return match ? Number(match[1]) : null; };
+  return {
+    evidence: truth.status, bandwidth: numeric('BANDWIDTH'), average_bandwidth: numeric('AVERAGE-BANDWIDTH'),
+    bandwidth_source: 'ffmpeg_manifest', resolution: truth.width + 'x' + truth.height,
+    codecs: codec, uri: 'media_0.m3u8', frame_rate: numeric('FRAME-RATE'),
+    hdr: truth.videoRange, video_range: truth.videoRange, color_primaries: truth.primaries,
+    transfer: truth.transfer, matrix: truth.matrix, pixel_format: truth.pixelFormat,
+    master_display: null, max_cll: null, max_fall: null
+  };
+}
+
+function manifestJson(req, id, sdr, sdr720, state = current) {
   const base = publicBase(req);
   const prefix = '/live/' + id + (sdr720 ? '/sdr720' : (sdr ? '/sdr' : ''));
-  const active = !!(current && current.id === id && !!current.sdr === !!sdr && !!current.sdr720 === !!sdr720);
+  const active = !!(state && state.id === id && !!state.sdr === !!sdr && !!state.sdr720 === !!sdr720);
+  const selected = active ? state : null, stream = outputDescriptor(selected);
   return {
-    version: '1.0', channel: id, status: active ? 'active' : 'inactive', variant: sdr720 ? 'sdr720' : (sdr ? 'sdr' : 'hdr'),
+    version: '1.1', channel: id, status: active ? 'active' : 'inactive', variant: sdr720 ? 'sdr720' : (sdr ? 'sdr' : 'hdr'),
+    variant_semantics: 'route_name_not_color_evidence',
+    processing_domain: PROCESSING_DOMAIN, rea_policy_ref: REA_POLICY_REF, rea_executed: false,
+    output_status: stream ? 'observed_output_init' : 'pending_output',
     crystal_uhd: {
       enabled: true,
-      mode: current ? current.crystalMode : 'FHD_HDR10',
+      mode: selected ? selected.crystalMode : null,
       policy: 'MAX_IMAGE_FIRST',
-      source_resolution: current ? current.sourceWidth + 'x' + current.sourceHeight : null,
-      output_resolution: current ? current.width + 'x' + current.height : null,
-      upscaled: !!(current && current.upscaled),
-      upscale_filter: current && current.upscaled ? 'LANCZOS' : null,
-      note: 'metadata/profile; 4K pixels only on native 4K HDR passthrough',
+      source_resolution: selected && selected.sourceWidth > 0 && selected.sourceHeight > 0 ? selected.sourceWidth + 'x' + selected.sourceHeight : null,
+      requested_resolution: selected && selected.width > 0 && selected.height > 0 ? selected.width + 'x' + selected.height : null,
+      output_resolution: stream ? stream.resolution : null,
+      upscaled: stream && selected ? selected.upscaled : null,
+      upscale_filter: selected && selected.upscaled ? 'LANCZOS' : null,
+      note: 'Legacy VPS processing; output init verification does not prove physical HDR, REA execution or real-time playback',
     },
     formats: {
       hls: { url: base + prefix + '/master.m3u8', protocol: 'HLS', container: 'CMAF/fMP4' },
       dash: { url: base + prefix + '/manifest.mpd', protocol: 'DASH', container: 'CMAF/fMP4' },
     },
-    streams: [{
-      bandwidth: current ? current.bandwidth : 3000000,
-      average_bandwidth: current ? Math.round(current.bandwidth * 0.9) : 2700000,
-      resolution: current ? current.width + 'x' + current.height : '1920x1080',
-      codecs: (current ? current.codecString : 'hvc1.2.4.L123.B0') +
-        (current && current.audioCodec ? ',' + current.audioCodec : ''),
-      uri: 'media_0.m3u8',
-      hdr: current && current.hdr ? 'HDR10' : 'SDR',
-      video_range: current && current.hdr ? 'PQ' : 'SDR',
-      color_primaries: current && current.hdr ? 'BT.2020' : 'BT.709',
-      transfer: current && current.hdr ? 'SMPTE ST 2084' : 'BT.709',
-      matrix: current && current.hdr ? 'BT.2020 non-constant' : 'BT.709',
-      master_display: current && current.hdr
-        ? 'G(13250,34500)B(7500,3000)R(34000,16000)WP(15635,16450)L(10000000,1)' : null,
-      max_cll: current && current.hdr ? 1000 : null,
-      max_fall: current && current.hdr ? 400 : null,
-    }],
-    clients_connected: active ? 1 : 0,
-    active_since: active ? new Date(current.started).toISOString() : null,
+    streams: stream ? [stream] : [],
+    error: active ? null : (startFailures.get(chKey(id, sdr, sdr720)) || null),
+    clients_connected: null,
+    active_pipeline_count: active ? 1 : 0,
+    active_since: active ? new Date(selected.started).toISOString() : null,
     generated_at: new Date().toISOString(),
   };
 }
@@ -572,6 +660,7 @@ function metaJson(req, id) {
   const known = !!(map[id] && map[id].url);
   const active = !!(current && current.id === id);
   const base = publicBase(req);
+  const descriptor = active ? outputDescriptor(current) : null;
   return {
     $schema: 'https://iptv-ape.duckdns.org/schemas/channel-v1.json',
     model_version: '1.0',
@@ -584,18 +673,15 @@ function metaJson(req, id) {
       dash: base + '/live/' + id + '/manifest.mpd',
       media_json: base + '/live/' + id + '/manifest.json'
     },
-    playback: active ? {
-      codecs: current.codecString + (current.audioCodec ? ',' + current.audioCodec : ''),
-      resolution: current.width + 'x' + current.height,
-      bandwidth: current.bandwidth,
-      hdr: !!current.hdr,
-      video_range: current.hdr ? 'PQ' : 'SDR',
-      crystal_mode: current.crystalMode
-    } : null,
+    playback: descriptor ? { ...descriptor,
+      hdr: descriptor.video_range ? ['PQ', 'HLG'].includes(descriptor.video_range) : null,
+      crystal_mode: current.crystalMode } : null,
+    processing_domain: PROCESSING_DOMAIN, rea_policy_ref: REA_POLICY_REF, rea_executed: false,
     truth_guard: {
       supplemental_codecs: 'not emitted without measured DV',
-      video_range: 'PQ only when current.hdr is true',
-      pixels: 'VPS selects/signals; no fake 4K pixels'
+      video_range: 'PQ/HLG/SDR only from the observed output init segment',
+      codecs: 'FFmpeg output manifest; never synthesized from the selected encoder scheme',
+      pixels: 'Output metadata is not a physical HDR or device playback verification'
     }
   };
 }
@@ -622,14 +708,18 @@ const server = http.createServer((req, res) => {
       service: 'ape-jit-cmaf',
       transports: ['vps-list', 'provider-direct'],
       formats: ['HLS', 'DASH', 'CMAF/fMP4'],
-      codecs: ['HEVC Main10', 'AAC'],
-      hdr: ['SDR', 'HDR10 (BT.2020/PQ)'],
-      resolutions: { '4k': '3840x2160 passthrough', 'hd': '1920x1080 HDR10' },
+      codecs: ['AVC/HEVC/AV1/VP9 native copy where supported', 'HEVC Main10', 'AV1 opt-in', 'AAC/AC-3/E-AC-3 native audio'],
+      hdr: ['SDR', 'PQ', 'HLG'],
+      processing_domain: PROCESSING_DOMAIN, rea_policy_ref: REA_POLICY_REF, rea_executed: false,
+      resolutions: { native: 'Preserve source dimensions', legacy_hdr: '1920x1080 or 2048x1080 from known BT.709 SDR',
+        legacy_6k: '6144x3456 opt-in, capacity not certified', rea_device: 'Separate REA policy; not executed by this service' },
       crystal_uhd: {
         enabled: true,
         applies_to: 'all JIT channels',
-        modes: ['NATIVE_4K_HDR', 'CRYSTAL_2K_HDR_UPSCALE', 'CRYSTAL_2K_AV1', 'CRYSTAL_6K_AV1', 'FHD_HDR10', 'FHD_SDR', 'SDR720_STABLE'],
-        note: 'policy/metadata; no fake 4K pixels',
+        modes: ['NATIVE_4K_PQ', 'NATIVE_4K_HLG', 'NATIVE_4K_SDR', 'NATIVE_4K_COLOR_UNKNOWN',
+          'NATIVE_PQ', 'NATIVE_HLG', 'NATIVE_SDR', 'NATIVE_COLOR_UNKNOWN', 'CRYSTAL_2K_HDR_UPSCALE',
+          'CRYSTAL_2K_AV1', 'CRYSTAL_6K_AV1', 'FHD_HDR10', 'FHD_SDR', 'SDR720_STABLE'],
+        note: 'Capabilities are conditional; output is verified from its init segment. Physical HDR and realtime performance are not certified.',
       },
       limits: { concurrent_channels: 1, idle_stop_s: Math.round(IDLE_MS / 1000) },
       active: current ? current.id : null,
@@ -640,20 +730,21 @@ const server = http.createServer((req, res) => {
     res.writeHead(200, { 'Content-Type': 'application/json' });
     return res.end(JSON.stringify({
       policy: 'APE_CRYSTAL_UHD',
+      processing_domain: PROCESSING_DOMAIN, rea_policy_ref: REA_POLICY_REF, rea_executed: false,
       enabled: true,
       applies_to: 'all JIT channels',
       active_channel: current ? current.id : null,
       active_mode: current ? current.crystalMode : null,
       modes: {
-        NATIVE_4K_HDR: 'native 3840x2160 HEVC Main10 HDR10 passthrough',
+        NATIVE_4K_HDR: 'compatibility label; actual native codec, resolution and PQ/HLG/SDR come from output',
         CRYSTAL_2K_HDR_UPSCALE: 'HEVC Main10 2048x1080 HDR10, Lanczos upscale from <=1080p',
         CRYSTAL_2K_AV1: 'SVT-AV1 2048x1080 HDR10, opt-in APE_SCHEME=av1',
-        CRYSTAL_6K_AV1: 'SVT-AV1 6144x3456 HDR10, opt-in APE_6K=1; not real-time on 3 vCPU',
+        CRYSTAL_6K_AV1: 'SVT-AV1 6144x3456, native PQ/HLG preserved or known SDR converted to PQ; opt-in APE_6K=1; not real-time on 3 vCPU',
         FHD_HDR10: 'HEVC Main10 1920x1080 HDR10, zscale SDR->PQ',
         FHD_SDR: 'H.264 1920x1080 SDR fallback for incompatible decoders',
         SDR720_STABLE: 'H.264 1280x720 SDR continuity fallback',
       },
-      truth_guard: 'VPS selects/signals; device applies AI-SR/AI-PQ. No fake 4K pixels.',
+      truth_guard: 'This legacy FFmpeg service does not execute the REA device engine. Output metadata does not certify physical display HDR.',
     }));
   }
   const mm = u.pathname.match(/^\/meta\/([^/]+)\.json$/);
@@ -723,13 +814,15 @@ const server = http.createServer((req, res) => {
       // TypeError que habia en `current.lastAccess` cuando el arranque no dejaba
       // current seteado. La marca booting caduca sola para no enmascarar muertes.
       start(id, map[id], sdr, sdr720)
-        .catch((e) => log('START_FAIL', id, e && e.message ? e.message : String(e)))
+        .catch((e) => recordStartFailure(id, sdr, sdr720, e))
         .finally(() => setTimeout(() => booting.delete(_k), BOOT_GRACE_MS));
     }
     if (current) current.lastAccess = Date.now();
-    setNoCacheHeaders(res);
-    res.writeHead(200, { 'Content-Type': 'application/json' });
-    return res.end(JSON.stringify(manifestJson(req, id, sdr, sdr720)));
+    return ensureOutputTruth(current && current.id === id ? current : null).then(() => {
+      setNoCacheHeaders(res);
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(manifestJson(req, id, sdr, sdr720)));
+    });
   }
   const m = u.pathname.match(/^\/live\/([^/]+)\/(sdr720\/|sdr\/)?(master\.m3u8|index\.m3u8|manifest\.mpd|media_[0-9]+\.m3u8|init-[A-Za-z0-9_-]+\.m4s|chunk-[A-Za-z0-9_-]+\.m4s)$/);
   if (!m) { res.writeHead(404); return res.end('not found'); }
@@ -743,7 +836,7 @@ const server = http.createServer((req, res) => {
     const _k = chKey(id, sdr, sdr720);
     booting.add(_k);
     start(id, map[id], sdr, sdr720)
-      .catch((e) => log('START_FAIL', id, e && e.message ? e.message : String(e)))
+      .catch((e) => recordStartFailure(id, sdr, sdr720, e))
       .finally(() => setTimeout(() => booting.delete(_k), BOOT_GRACE_MS));
   }
   if (current) current.lastAccess = Date.now();
@@ -751,7 +844,7 @@ const server = http.createServer((req, res) => {
   let name = m[3];
   if (name === 'index.m3u8') name = 'media_0.m3u8';
   const waitName = (name === 'master.m3u8' || name === 'manifest.mpd' || name === 'media_0.m3u8') ? name : null;
-  const serve = () => {
+  const serve = async () => {
     const file = path.join(OUT_ROOT, id, sdr720 ? 'sdr720' : (sdr ? 'sdr' : ''), name);
     if (!fs.existsSync(file)) { res.writeHead(404); return res.end('not ready'); }
     const type = MIME[path.extname(file)] || 'application/octet-stream';
@@ -762,6 +855,8 @@ const server = http.createServer((req, res) => {
       : /^chunk-.*\.m4s$/.test(name) ? 'seg'
       : 'seg';
     if (name === 'master.m3u8' || name === 'manifest.mpd') {
+      const state = current && current.id === id && !!current.sdr === sdr && !!current.sdr720 === sdr720 ? current : null;
+      await ensureOutputTruth(state);
       const stat = fs.statSync(file);
       const etag = fileETag(stat);
       res.locals.cache = kind;
@@ -776,15 +871,19 @@ const server = http.createServer((req, res) => {
         res.setHeader('Link', '</jit/meta/' + encodeURIComponent(id) + '.json>; rel="describedby"; type="application/json"');
       }
       res.writeHead(200, { 'Content-Type': type });
-      return res.end(name === 'master.m3u8' ? hdrMaster(txt) : hdrMpd(txt));
+      return res.end(name === 'master.m3u8' ? hdrMaster(txt, state) : hdrMpd(txt, state));
     }
     sendStatic(req, res, file, type, kind);
   };
+  const serveError = () => {
+    if (!res.headersSent) res.writeHead(503, { 'Content-Type': 'text/plain' });
+    if (!res.writableEnded) res.end('output unavailable');
+  };
   if (waitName) return waitForFile(id, waitName, (err) => {
     if (err) { res.writeHead(503, { 'Content-Type': 'text/plain' }); return res.end(err.message); }
-    serve();
+    serve().catch(serveError);
   }, sdr, sdr720);
-  serve();
+  serve().catch(serveError);
 });
 
 /* HARDENING (bug D) — el idle mataba el stream antes de nacer.
@@ -804,6 +903,7 @@ function dirHasOutput(dir) {
     return fs.readdirSync(dir).some((f) => f.endsWith('.m4s') || f.endsWith('.mpd') || f.endsWith('.m3u8'));
   } catch (_) { return false; }
 }
+if (require.main === module) {
 setInterval(() => {
   if (!current) return;
   const now = Date.now();
@@ -821,6 +921,10 @@ process.on('SIGINT', () => { stopCurrent('signal'); process.exit(0); });
 
 fs.mkdirSync(OUT_ROOT, { recursive: true });
 server.listen(PORT, BIND, () => log('LISTEN', BIND + ':' + PORT, 'map=' + MAP_FILE));
+}
+
+module.exports = { buildEncodingPlan, probeOutputFile, ensureOutputTruth, outputDescriptor,
+  hdrMaster, hdrMpd, manifestJson, videoRange, safeStartFailure, redactUpstreamUrls, PROCESSING_DOMAIN, REA_POLICY_REF };
 
 
 

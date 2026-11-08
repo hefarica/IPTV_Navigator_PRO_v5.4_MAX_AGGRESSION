@@ -258,6 +258,8 @@
      * @returns {string} URL de stream
      */
     function buildStreamUrl(channel, profile) {
+        const original = channel.url || channel.base?.url || channel.direct_source || channel.stream_url;
+        if (typeof original === 'string' && original && original !== '#') return original;
         // Si el canal tiene una URL de stream disponible, usarla directamente
         if (channel.stream_url) {
             return channel.stream_url;
@@ -271,12 +273,12 @@
         const channelServerId = channel._source || channel.serverId || channel.server_id;
 
         if (channelServerId && window.app?.state?.activeServers) {
-            server = window.app.state.activeServers.find(s => s.id === channelServerId);
+            server = window.app.state.activeServers.find(s => String(s.id) === String(channelServerId));
         }
-        if (!server && window.app?.state?.currentServer) {
+        if (!server && !channelServerId && window.app?.state?.currentServer) {
             server = window.app.state.currentServer;
         }
-        if (!server && window.app?.state?.activeServers?.length > 0) {
+        if (!server && !channelServerId && window.app?.state?.activeServers?.length === 1) {
             server = window.app.state.activeServers[0];
         }
 
@@ -287,8 +289,9 @@
             return `${cleanBase}/live/${server.username}/${server.password}/${channel.stream_id}.${ext}`;
         }
 
-        // Fallback: URL relativa
-        return `stream_${channel.stream_id || channel.num || 0}_${profile.id}.m3u8`;
+        // No rendition file is generated here. Preserve an unresolved entry
+        // explicitly instead of inventing a relative stream_<id>_<profile>.m3u8.
+        return '';
     }
 
     // ═══════════════════════════════════════════════════════════════════════════
@@ -326,8 +329,8 @@
             return null;
         }
 
-        const profileKeys = Object.keys(profiles).sort(); // P0, P1, P2, P3, P4, P5
-        const totalVariants = channels.length * profileKeys.length;
+        const profileKeys = Object.keys(profiles).filter(key => profiles[key] && profiles[key].settings).sort();
+        const totalVariants = channels.length; // one real source, profiles are requested settings
 
         console.log(`🏆 [ELITE] Generando Manifiesto HLS Inteligente...`);
         console.log(`   📊 Canales: ${channels.length} | Perfiles: ${profileKeys.length} | Variantes: ${totalVariants}`);
@@ -356,15 +359,16 @@
 
         // ── Grupos de Audio Avanzado (#EXT-X-MEDIA) ──
         lines.push('# ── Grupos de Audio Avanzado ──');
-        lines.push('#EXT-X-MEDIA:TYPE=AUDIO,GROUP-ID="atmos",NAME="Dolby Atmos",LANGUAGE="und",CHANNELS="16/JOC",DEFAULT=YES,AUTOSELECT=YES');
-        lines.push('#EXT-X-MEDIA:TYPE=AUDIO,GROUP-ID="surround",NAME="Surround 5.1",LANGUAGE="und",CHANNELS="6",DEFAULT=YES,AUTOSELECT=YES');
-        lines.push('#EXT-X-MEDIA:TYPE=AUDIO,GROUP-ID="stereo",NAME="Stereo",LANGUAGE="und",CHANNELS="2",DEFAULT=YES,AUTOSELECT=YES');
+        lines.push('#EXT-X-APE-AUDIO-INTENT:TYPE=AUDIO,GROUP-ID="atmos",NAME="Dolby Atmos",CHANNELS="16/JOC",STATUS=REQUESTED_ONLY');
+        lines.push('#EXT-X-APE-AUDIO-INTENT:TYPE=AUDIO,GROUP-ID="surround",NAME="Surround 5.1",CHANNELS="6",STATUS=REQUESTED_ONLY');
+        lines.push('#EXT-X-APE-AUDIO-INTENT:TYPE=AUDIO,GROUP-ID="stereo",NAME="Stereo",CHANNELS="2",STATUS=REQUESTED_ONLY');
         lines.push('');
 
         // ── Procesamiento de Canales ──
         let processedCount = 0;
 
         channels.forEach((channel, index) => {
+            const reaBlockStart = lines.length;
             const channelName = channel.name || channel.title || `Channel_${index + 1}`;
             const channelId = channel.stream_id || channel.id || channel.num || index;
 
@@ -388,7 +392,7 @@
                 lines.push('#EXTVLCOPT:http-reconnect=true');
             }
 
-            // Generar una variante por cada perfil
+            // Preserve every profile as requested settings, not an encoded rendition.
             profileKeys.forEach(profileKey => {
                 const profile = profiles[profileKey];
                 if (!profile || !profile.settings) return;
@@ -399,20 +403,27 @@
                 // 1. Traducir el perfil APE a atributos HLS avanzados
                 const streamInfAttributes = translateProfileToStreamInf(profile, channel);
 
-                // 2. Formatear la directiva #EXT-X-STREAM-INF
-                const attributesString = formatAttributes(streamInfAttributes);
-
                 // 3. Comentario del perfil (solo para el primer perfil del canal, info completa)
                 if (profileKey === profileKeys[0]) {
                     lines.push(`# PIR: ${renderIntent.intent} — ${renderIntent.description}`);
                 }
 
-                lines.push(`#EXT-X-STREAM-INF:${attributesString}`);
-
-                // 4. URL del stream
-                const url = buildStreamUrl(channel, profile);
-                lines.push(url);
+                // Every calibrated profile remains reviewable without pretending
+                // that a new HLS rendition/codec was encoded for the same URI.
+                lines.push('#EXT-X-APE-PROFILE-INTENT:' + JSON.stringify({
+                    profile: profileKey, intent: renderIntent.intent,
+                    requestedAttributes: streamInfAttributes, status: 'requested_only', execution: 'not_verified'
+                }));
             });
+
+            const sourceProfile = profiles[channel.profile] || profiles[profileKeys[0]] || { settings: {} };
+            const sourceUrl = buildStreamUrl(channel, sourceProfile);
+            if (!sourceUrl) lines.push('#EXT-X-APE-CHANNEL-STATUS:UNRESOLVED_URL;REASON=missing_own_source');
+            lines.push(sourceUrl);
+            const reaBlock = lines.splice(reaBlockStart).join('\n');
+            lines.push(window.APE_REA_EXPORT
+                ? window.APE_REA_EXPORT.finalizeChannelBlock(reaBlock, { channel, playbackUrl: sourceUrl, options: {} })
+                : reaBlock + '\n#EXT-X-APE-REA:{"status":"finalizer_unavailable"}');
 
             processedCount++;
         });
@@ -420,7 +431,7 @@
         // ── Footer ──
         lines.push('');
         lines.push('# ═══════════════════════════════════════════════════════════════════════════');
-        lines.push(`# 🏁 FIN DEL MANIFIESTO — ${processedCount} canales × ${profileKeys.length} perfiles = ${processedCount * profileKeys.length} variantes`);
+        lines.push(`# 🏁 FIN DEL MANIFIESTO — ${processedCount} canales · ${profileKeys.length} perfiles como intención · una fuente por canal`);
         lines.push(`# ⏱️ Generado en ${((Date.now() - startTime) / 1000).toFixed(2)}s`);
         lines.push('# ═══════════════════════════════════════════════════════════════════════════');
 
@@ -429,7 +440,7 @@
 
         console.log(`✅ [ELITE] Manifiesto generado exitosamente:`);
         console.log(`   📄 Líneas: ${lines.length}`);
-        console.log(`   📊 Variantes: ${processedCount * profileKeys.length}`);
+        console.log(`   📊 Fuentes: ${processedCount} · perfiles de intención: ${profileKeys.length}`);
         console.log(`   ⏱️ Tiempo: ${elapsed}s`);
         console.log(`   📐 Tamaño: ${(content.length / 1024).toFixed(1)} KB`);
 

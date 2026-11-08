@@ -1,0 +1,105 @@
+{
+  "schema": "ape.rea-formats/1",
+  "policy_id": "rea-adaptive-v1",
+  "processing_declarations_are_measurements": false,
+  "formats": {
+    "m3u8_catalog": {
+      "extensions": [
+        ".m3u8",
+        ".m3u8.gz"
+      ],
+      "modes": [
+        "direct",
+        "cdn",
+        "both",
+        "sess"
+      ],
+      "source_evidence": "exact_uri_probe",
+      "processing_metadata": "EXT-X-APE-REA",
+      "both_output_files": 2,
+      "gzip": "stream_before_destination"
+    },
+    "m3u_plus_catalog": {
+      "extensions": [
+        ".m3u",
+        ".m3u.gz"
+      ],
+      "encoding": "UTF-8",
+      "same_source_and_processing_contract_as": "m3u8_catalog"
+    },
+    "upstream_hls_media": {
+      "processing": "unchanged_by_catalog_finalizer",
+      "segment_timeline_and_keys": "preserved"
+    },
+    "dash_mpd": {
+      "extension": ".mpd",
+      "mime": "application/dash+xml",
+      "server_execution_domain": "vps_jit_legacy",
+      "catalog_export": false,
+      "panel_behavior": "single_channel_m3u_with_absolute_served_mpd_url",
+      "playback_export_extension": ".m3u",
+      "mpd_file_download": "explicit_diagnostic_snapshot_not_standalone_live_presentation",
+      "rea_player_module": "androidx.media3:media3-exoplayer-dash:1.3.1",
+      "drm_license_configuration": "not_provided"
+    },
+    "json_catalog": {
+      "extensions": [
+        ".json",
+        ".json.gz"
+      ],
+      "schema": "ape.rea-catalog/1",
+      "source": "observed_or_unknown",
+      "processing": "requested_only",
+      "urls": "source_verbatim",
+      "cdn_rewrite": false,
+      "output_files": 1
+    },
+    "csv_catalog": {
+      "extension": ".csv",
+      "source_and_processing_columns": "separate",
+      "request_headers": "JSON_cell",
+      "text_formula_neutralization": true,
+      "urls": "source_verbatim"
+    },
+    "xlsx_channel_report": {
+      "extension": ".xlsx",
+      "sheets": [
+        "Channels",
+        "REA_Contract"
+      ],
+      "source_and_processing_columns": "separate",
+      "replaces_macro_lab_workbook": false
+    },
+    "lab_json": {
+      "base": "contracts/lab/APE_LAB_CANONICAL_BULLETPROOF.json",
+      "overlay": "contracts/lab/APE_LAB_REA_PROCESSING_OVERLAY_v1.json",
+      "materialize_command": "node tools/rea/build_processing_policy.js --lab-output artifacts/LAB_CALIBRATED_REA_v1.json",
+      "base_fields_preserved": true,
+      "rea_extension_survives_import_export_reload": true
+    },
+    "canonical_lab_xlsm": {
+      "filename": "APE_M3U8_LAB_v8_FIXED.xlsm",
+      "modified_by_this_change": false,
+      "macros_export_rea_extension": false,
+      "known_config_drift": "settings.fps row32 differs from the later certified JSON; not evidence of actual source FPS",
+      "alignment_route": "certified_JSON_plus_additive_REA_overlay"
+    },
+    "txt": {
+      "active_playlist_export": false,
+      "usage": "diagnostics_or_telemetry"
+    }
+  },
+  "historical_exports": {
+    "modified": false,
+    "regeneration_required_to_gain_new_contract": true,
+    "all_historical_files_individually_verified": false
+  },
+  "verification_limits": [
+    "No physical Android or TV playback is certified by metadata or desktop tests.",
+    "Blob fallback still retains output bytes in memory when File System Access is unavailable.",
+    "The presence of MPD, M3U or HDR tags does not prove pixel processing.",
+    "Structured provider Authorization/Cookie/Referer preservation is verified for catalog/external-player transport, not the legacy JIT ffprobe/FFmpeg source path.",
+    "Preserving LL-HLS input tags does not certify LL-HLS generation or sub-two-second latency.",
+    "A catalog is distinct from an HLS media playlist or one DASH presentation."
+  ]
+}

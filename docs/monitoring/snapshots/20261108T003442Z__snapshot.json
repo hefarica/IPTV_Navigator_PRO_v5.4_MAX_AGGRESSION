@@ -1,0 +1,167 @@
+{
+  "measured_at_utc": "2026-11-08T00:34:44.1611507Z",
+  "verdict": "NO_HACE_TRABAJO_DE_APK",
+  "apk_ratio_pct": 0.0,
+  "sources": {
+    "claude_tool_call.log": {
+      "state": "present",
+      "bytes": 6168431,
+      "modified": "2026-11-07T18:51:38.4501506-05:00"
+    },
+    "tool-history.jsonl": {
+      "state": "present",
+      "bytes": 2720594,
+      "modified": "2026-11-07T18:51:44.3751931-05:00"
+    }
+  },
+  "history_total": 2594,
+  "apk_hits": 0,
+  "by_tool": [
+    {
+      "tool": "start_process",
+      "count": 783
+    },
+    {
+      "tool": "start_search",
+      "count": 602
+    },
+    {
+      "tool": "read_process_output",
+      "count": 458
+    },
+    {
+      "tool": "read_file",
+      "count": 220
+    },
+    {
+      "tool": "get_more_search_results",
+      "count": 149
+    },
+    {
+      "tool": "read_multiple_files",
+      "count": 79
+    },
+    {
+      "tool": "list_sessions",
+      "count": 72
+    },
+    {
+      "tool": "list_directory",
+      "count": 57
+    },
+    {
+      "tool": "write_file",
+      "count": 52
+    },
+    {
+      "tool": "list_processes",
+      "count": 31
+    },
+    {
+      "tool": "edit_block",
+      "count": 26
+    },
+    {
+      "tool": "get_config",
+      "count": 23
+    },
+    {
+      "tool": "get_file_info",
+      "count": 23
+    },
+    {
+      "tool": "kill_process",
+      "count": 18
+    },
+    {
+      "tool": "create_directory",
+      "count": 1
+    }
+  ],
+  "today_local": "2026-11-07 local (-05:00)",
+  "today_calls": 1276,
+  "today_tools": {
+    "edit_block": 13,
+    "get_recent_tool_calls": 87,
+    "list_processes": 11,
+    "read_file": 129,
+    "read_multiple_files": 35,
+    "kill_process": 5,
+    "write_file": 22,
+    "create_directory": 1,
+    "read_process_output": 257,
+    "get_file_info": 7,
+    "start_search": 281,
+    "list_directory": 25,
+    "list_sessions": 26,
+    "get_more_search_results": 90,
+    "get_config": 8,
+    "start_process": 279
+  },
+  "relay": [
+    {
+      "file": "remote-fri.log",
+      "bytes": 75783,
+      "modified": "2026-11-06T18:58:37.7959474-05:00",
+      "tool_calls": 71,
+      "successes": 69,
+      "channel_error": 21,
+      "token_refresh": 28
+    },
+    {
+      "file": "remote-mon.log",
+      "bytes": 47790,
+      "modified": "2026-11-02T18:56:58.7102309-05:00",
+      "tool_calls": 0,
+      "successes": 0,
+      "channel_error": 21,
+      "token_refresh": 33
+    },
+    {
+      "file": "remote-sat.log",
+      "bytes": 601012,
+      "modified": "2026-11-07T18:51:43.8369348-05:00",
+      "tool_calls": 1276,
+      "successes": 1275,
+      "channel_error": 5,
+      "token_refresh": 28
+    },
+    {
+      "file": "remote-sun.log",
+      "bytes": 25376,
+      "modified": "2026-11-01T18:58:30.5437684-05:00",
+      "tool_calls": 0,
+      "successes": 0,
+      "channel_error": 0,
+      "token_refresh": 32
+    },
+    {
+      "file": "remote-thu.log",
+      "bytes": 36349,
+      "modified": "2026-11-05T18:57:11.5287994-05:00",
+      "tool_calls": 0,
+      "successes": 0,
+      "channel_error": 10,
+      "token_refresh": 33
+    },
+    {
+      "file": "remote-tue.log",
+      "bytes": 54464,
+      "modified": "2026-11-03T18:56:27.1606309-05:00",
+      "tool_calls": 0,
+      "successes": 0,
+      "channel_error": 24,
+      "token_refresh": 29
+    },
+    {
+      "file": "remote-wed.log",
+      "bytes": 375655,
+      "modified": "2026-11-04T16:42:19.3166676-05:00",
+      "tool_calls": 0,
+      "successes": 0,
+      "channel_error": 120,
+      "token_refresh": 25
+    }
+  ],
+  "archived_to": null
+}

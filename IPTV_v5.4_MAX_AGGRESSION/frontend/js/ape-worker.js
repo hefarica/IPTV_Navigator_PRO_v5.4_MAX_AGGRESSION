@@ -4,6 +4,12 @@
  * Capacidad: 100,000+ canales con autolimpieza de memoria
  */
 
+// The same pure finalizer used in the browser; no DOM and no full generator.
+if (!self.APE_REA_EXPORT && typeof importScripts === 'function') {
+    try { importScripts('ape-v9/rea-processing-policy.js', 'ape-v9/rea-export-finalizer.js'); }
+    catch (_) { console.warn('[REA] Worker finalizer unavailable; exports carry a diagnostic.'); }
+}
+
 self.onmessage = async function (e) {
     const { type, channels, config } = e.data;
 
@@ -91,8 +97,11 @@ self.onmessage = async function (e) {
 
             // Construcción de línea final con Categorización Xtream y Metadata de Calidad
             const qualityTier = level === 5 ? "ULTRA-4K" : level === 4 ? "FHD-PRO" : "SD-STABLE";
-            outputM3U += `${advancedTags}#EXTINF:-1 group-title="${ch.group || "GENERAL"}" tvg-logo="${ch.logo || ''}" quality="${qualityTier}" opt-level="${level}",${ch.name}\n`;
-            outputM3U += url + "|" + hStr + protocol + "\n";
+            const playbackUrl = url + "|" + hStr + protocol;
+            const reaBlock = `${advancedTags}#EXTINF:-1 group-title="${ch.group || "GENERAL"}" tvg-logo="${ch.logo || ''}" quality="${qualityTier}" opt-level="${level}",${ch.name}\n${playbackUrl}\n`;
+            outputM3U += self.APE_REA_EXPORT
+                ? self.APE_REA_EXPORT.finalizeChannelBlock(reaBlock, { channel: ch, playbackUrl, options: config })
+                : reaBlock + '#EXT-X-APE-REA:{"status":"finalizer_unavailable"}\n';
         });
 
         // Limpieza de memoria proactiva

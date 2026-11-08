@@ -4031,7 +4031,7 @@
   <!-- Módulos complementarios -->
   <script src="connection-module-v2-adaptado.js"></script>
   <script src="enrichment-module.js"></script>
-  <script src="export-module.js"></script>
+  <script src="export-module.js?v=20261107-rea"></script>
 
   <!-- ═══════════════════════════════════════════════════════════════════
        🎛️ MODAL: GESTOR DE HEADERS AVANZADO
@@ -4302,7 +4302,10 @@
   <!-- 🎚️ APE v9 PROFILE SYSTEM - MUST load BEFORE app.js -->
   <script src="js/ape-v9/lab-extra-headers.js?v=20261102-audio-safe-v1"></script>
 <script src="js/ape-v9/ape-lab-v8-profiles.js?v=20261102-lab-v8"></script>
-<script src="js/ape-v9/ape-profiles-config.js?v=20261106-ready"></script>
+<script src="js/ape-v9/rea-processing-policy.js?v=20261107-rea"></script>
+<script src="js/ape-v9/rea-export-finalizer.js?v=20261107-rea"></script>
+<script src="js/ape-v9/rea-catalog-export.js?v=20261107-rea"></script>
+<script src="js/ape-v9/ape-profiles-config.js?v=20261107-rea"></script>
   <!-- profile-manager-v9.js loaded later at v9.0.3 (line ~3171) -->
   <script src="js/ape-v9/profile-bridge-v9.js?v=1.1"></script>
   <script src="js/ape-v9/ape-xtream-atomic-probe.js?v=20261106-gen6k-atad"></script>
@@ -4326,7 +4329,7 @@
   <!-- ⚡ APE LL-HLS ANALYZER v1.0 — Low-Latency HLS detection via hls.js headless -->
   <script src="js/ape-v9/ape-llhls-analyzer.js?v=1.0"></script>
   <!-- 🔬 APE QUALITY PROBER v1.0 — Per-profile HLS manifest + binary probing (anti-509) -->
-  <script src="js/ape-v9/ape-quality-prober.js?v=20260519-cicp-extract"></script>
+  <script src="js/ape-v9/ape-quality-prober.js?v=20261107-rea"></script>
   <!-- 📐 M3U8 PARSER STRICT ULTIMATE — RFC 8216 READ-only companion to the generator -->
   <script src="js/ape-v9/m3u8-parser-strict-ultimate.js?v=1.0-20260501"></script>
   <!-- ═══════════════════════════════════════════════════════════════════════════
@@ -4373,7 +4376,7 @@
 <!-- [DIALECTOS 2026-11-05] SSOT del recetario de imagen: una receta (recipes.json)
      compilada a proyecciones por idioma de player (VLC módulos / ffmpeg / mpv / Exo / Kodi).
      DEBE cargar antes del generador. Regenerar: node tools/ape-image-recipes/compile.js --emit bundle -->
-<script src="js/ape-v9/ape-image-recipes-bundle.js?v=20261106-ready"></script>
+<script src="js/ape-v9/ape-image-recipes-bundle.js?v=20261107-rea"></script>
 
 <!-- APE_SERVER_PROFILE: modulo multiservidor idempotente/polimorfico/isomorfico.
      DEBE cargarse ANTES del generador: el generador lo consume para emitir la
@@ -4384,13 +4387,13 @@
      generador. Es un snapshot con fecha: si el TTL paso, re-medir y regenerar. -->
 <script src="js/ape-v9/ape-server-profiles-data.js?v=20261106-ready"></script>
 
-<script src="js/ape-v9/m3u8-typed-arrays-ultimate.js?v=20261106-ready"></script>
+<script src="js/ape-v9/m3u8-typed-arrays-ultimate.js?v=20261107-rea"></script>
   <!-- 🪦 OMEGA SLOT REAPER — Pre-flight liberation of Xtream max_connections slots -->
   <script src="js/ape-v9/slot-reaper.js?v=1.0.0-omega-20260409"></script>
   <script src="js/ape-v9/m3u8-quality-upgrader-v2.js?v=2.0"></script>
   <script src="js/ape-v9/hud-typed-arrays.js?v=16.1-tickprofile-20260417"></script>
   <!-- 🩺 APE GENERATION CONTROLLER — engancha botón health-check + generateHealthyList -->
-  <script src="js/ape-v9/generation-controller.js?v=20261106-ready"></script>
+  <script src="js/ape-v9/generation-controller.js?v=20261107-rea"></script>
   <!-- 🩺 GENERATION HUD OVERLAY — panel discreto top-right que muestra fases del pipeline.
        Solo observa console.log (no toca el flow). window.GenerationHUD.show()/hide() -->
   <script src="js/ape-v9/generation-hud-overlay.js?v=1.2-auto-close-inactivity"></script>
@@ -4427,7 +4430,7 @@
      IndexedDB por ape-lab-import-helper.js. Debe cargar ANTES de app.js. -->
 <script src="js/ape-ui-persistence.js?v=20261106-persist2"></script>
 
-<script src="app.js?v=20260420-oropuro-gold-omega-v2"></script>
+<script src="app.js?v=20261107-rea"></script>
   <script src="js/ape-headers-preview-fix.js?v=1.0"></script>
 
   <!-- 🔒 PERSISTENCIA: mantiene la biblioteca de servidores sincronizada
@@ -4446,7 +4449,7 @@
        La DNA contiene credenciales de proveedor → se sirve solo desde el
        servidor local (mismo origen), nunca desde internet.
        Uso en consola:  await apeImportLabLocal()   |   apeLabStatus() -->
-  <script src="js/ape-lab-import-helper.js?v=2.0"></script>
+  <script src="js/ape-lab-import-helper.js?v=20261107-rea"></script>
 
   <!-- 🔧 Transform línea a línea BYTE-EXACTO (solo reescribe líneas ^http://)
        Usado por la lista CDN. Probado contra la lista real de 1.118 GB:
@@ -4816,10 +4819,10 @@
   <script src="js/ape-v9/xtream-exploit-engine-v9.js?v=9.0"></script>
 
   <!-- 👑 APE v13.1 ULTIMATE WORLD-CLASS GENERATOR -->
-  <script src="js/m3u8-world-class-generator.js"></script>
+  <script src="js/m3u8-world-class-generator.js?v=20261107-rea"></script>
 
   <!-- 🏆 M3U8 GENERATOR v16 ELITE — Manifiesto HLS Inteligente con RFC 8216 Avanzado -->
-  <script src="js/m3u8-generator-v16-elite.js?v=16.1"></script>
+  <script src="js/m3u8-generator-v16-elite.js?v=20261107-rea"></script>
 
   <!-- 🎬 VideoFormatPrioritizationModule v1.0 SUPREMO UNLIMITED -->
   <script src="js/ape-v9/video-format-prioritization.js"></script>
@@ -4856,7 +4859,7 @@
   <script src="js/ape-v9/no-proxy/direct-url-validator.js"></script>
 
   <!-- 📦 M3U8APIWrapper v2.0 INTEGRATED SUPREMO (250+ headers, priorización formatos) -->
-  <script src="js/ape-v9/m3u8-api-wrapper-integrated.js"></script>
+  <script src="js/ape-v9/m3u8-api-wrapper-integrated.js?v=20261107-rea"></script>
 
   <!-- ═══════════════════════════════════════════════════════════════════════ -->
   <!-- 🔧 INTEGRACIÓN MODULAR v16.0 + v14 + v1.0 (Frontend Adapters)           -->
@@ -4875,7 +4878,7 @@
   <script src="js/ape-v9/frontend-orchestrator.js"></script>
 
   <!-- 🔗 UNIFIED GENERATOR v1.0: Fusiona Architecture1 + M3U8APIWrapper + APE_ENGINE_V9 -->
-  <script src="js/ape-v9/unified-generator-integration.js"></script>
+  <script src="js/ape-v9/unified-generator-integration.js?v=20261107-rea"></script>
 
   <!-- 🛡️ APE GUARDIAN ENGINE v16: Telemetría Frontend -->
   <script src="js/ape-v9/guardian-exchange-v16.js"></script>
@@ -5112,7 +5115,7 @@
     })();
   </script>
 
-  <script src="js/ape-v9/generation-output-panel.js?v=20261106-ready" defer></script>
+  <script src="js/ape-v9/generation-output-panel.js?v=20261107-rea" defer></script>
 <script src="js/ape-v9/output-status-panel.js?v=20261101-outputs" defer></script>
 
   <!-- ═══════════════════════════════════════════════════════════════════════ -->

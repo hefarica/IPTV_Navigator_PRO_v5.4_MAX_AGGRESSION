@@ -1,0 +1,65 @@
+{
+  "schema": "ape.rea-alignment-audit/1",
+  "scope": "VPS, frontend, generated formats, calibrated LAB, macro workbook and REA APK",
+  "baseline_commit": "272f417e88468183404569f8ae4d3ce8001abd05",
+  "baseline_branch": "feat/adb-generic-visual-enhancement-installer",
+  "default_master_commit_at_start": "d2c27293b36ee331480d56dc91d08c0981cd3c50",
+  "audit_branch": "audit/rea-alignment-20261107",
+  "production_mutated_by_audit": false,
+  "public_vps_rechecked_utc_date": "2026-11-08",
+  "public_vps": {
+    "version_endpoint": "https://iptv-ape.duckdns.org/ara/version",
+    "http_status": 200,
+    "package": "com.ape.crystalagent",
+    "version_code": 651,
+    "version_name": "3.9.5-adb-firetv-shim",
+    "apk_sha256": "8d3b145811c0bab3a10952329a81cadc477b08bd365b70f173cfe34ff52aa6e4",
+    "version_json_sha256": "e02fddbce8bce5dd8d31b8caab79936c5692817fd13ab137fe93cf2683955438",
+    "index_bytes": 289704,
+    "index_sha256": "30a36943284b48f325fdecedfab121727e4d04b56b057ac45534b46bc8a2d32c",
+    "typed_arrays_bytes_at_initial_probe": 909496,
+    "typed_arrays_sha256_at_initial_probe": "e4fea0aa737f7316200f65a27c12cb4f96ac0b9396623f5803f381772df7ca8d",
+    "frontend_matches_baseline_commit": true,
+    "last_observed_deploy_run": 42397757753,
+    "last_observed_deploy_result": "success",
+    "video_upscaling_proven_by_http_checks": false
+  },
+  "canonical_lab": {
+    "local_filename": "LAB_CALIBRATED_BULLETPROOF_20261026_015604.json",
+    "repository_path": "contracts/lab/APE_LAB_CANONICAL_BULLETPROOF.json",
+    "bytes": 362871,
+    "sha256": "345783e33142791b23b4662d396c0c83c8051d77cd7c166dc21ef4990c093094",
+    "local_and_repo_match": true,
+    "profile_settings_fps_P0_to_P5": [30, 60, 30, 60, 30, 30],
+    "modified": false
+  },
+  "macro_workbook": {
+    "filename": "APE_M3U8_LAB_v8_FIXED.xlsm",
+    "bytes": 3582019,
+    "sha256": "663ef44e2d69521eb0e77dda7b64a32ea4f942992f8f2c80614eaee8ec52806a",
+    "sheet_count": 55,
+    "vba_project_bytes": 1715712,
+    "read_range": "6_NIVEL_2_PROFILES!A28:G38",
+    "settings_fps_cells": "6_NIVEL_2_PROFILES!B32:G32",
+    "settings_fps_P0_to_P5": [120, 120, 120, 120, 120, 120],
+    "semantics": "legacy configuration field mixing intended capacity and source declarations; not a measurement of a channel",
+    "rea_processing_sheet_present": false,
+    "macros_modified": false,
+    "book_modified": false,
+    "additional_range_reads_completed": false
+  },
+  "historical_lists_inventory": {
+    "matching_files": 475,
+    "newest_two_m3u8_sizes_bytes": [1295571888, 1295568939],
+    "scope": "names, sizes and modification times; not a complete scan of contents",
+    "all_files_regenerated": false,
+    "original_files_modified": false
+  },
+  "device_and_access": {
+    "adb_connected_devices": 0,
+    "ssh_batch_authentication_available": false,
+    "physical_android_playback_tested": false,
+    "physical_hdr_output_measured": false,
+    "vps_realtime_6k_benchmark_performed": false
+  }
+}

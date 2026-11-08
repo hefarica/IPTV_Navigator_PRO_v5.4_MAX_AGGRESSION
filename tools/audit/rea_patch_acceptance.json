@@ -1,0 +1,443 @@
+{
+  "schema": "ape.rea-patch-acceptance/1",
+  "derived_from": {
+    "REA_VALIDATION_20261108.json": "dbc60123cba5e2c732e5413e828577ff1e588c62d4fefa6808db23bc44e51d6c",
+    "REA_APK_653_VERIFICATION.json": "80bfb26de21e2cd9f807aae03deaca83627e06c979dfd392ff6c1a6d2d25b3f5",
+    "REA_ALIGNMENT_BASELINE_20261107.json": "02ca943b06dc58ccc3685a9017b934b3b4059c8e43e59e4fcae673deb6d29de3"
+  },
+  "base_commit": "272f417e88468183404569f8ae4d3ce8001abd05",
+  "audit_branch": "audit/rea-alignment-20261107",
+  "overall_status_expected": "BLOCKED_ENVIRONMENT_FOR_COMMIT",
+  "gate_summary_expected": {
+    "total": 23,
+    "passed": 20,
+    "reused_pass": 1,
+    "blocked_environment": 2,
+    "current_product_test_failures": 0
+  },
+  "allowed_blocked_gates": [
+    "prefetch_ui",
+    "prefetch_public_ui"
+  ],
+  "blocked_reason": "Chrome process_singleton socket() failed with EPERM; CDP unavailable",
+  "gates": [
+    {
+      "id": "processing_policy",
+      "command": [
+        "node",
+        "IPTV_v5.4_MAX_AGGRESSION/frontend/tests/rea-processing-policy.test.js"
+      ],
+      "expected_status": "PASS",
+      "expected_exit_code": 0,
+      "counts": {
+        "passed": 26
+      },
+      "known_baseline_failure": false
+    },
+    {
+      "id": "catalog_exports",
+      "command": [
+        "node",
+        "tools/quality/test_rea_catalog_exports.js"
+      ],
+      "expected_status": "PASS",
+      "expected_exit_code": 0,
+      "counts": {
+        "checks": 74,
+        "ok": true
+      },
+      "known_baseline_failure": false
+    },
+    {
+      "id": "source_alignment",
+      "command": [
+        "node",
+        "tools/quality/test_rea_source_alignment.js"
+      ],
+      "expected_status": "PASS",
+      "expected_exit_code": 0,
+      "counts": {
+        "checks": 473
+      },
+      "known_baseline_failure": false
+    },
+    {
+      "id": "http_boundary",
+      "command": [
+        "node",
+        "tools/quality/test_rea_http_boundary.js"
+      ],
+      "expected_status": "PASS",
+      "expected_exit_code": 0,
+      "counts": {
+        "checks": 204,
+        "ok": true
+      },
+      "known_baseline_failure": false
+    },
+    {
+      "id": "generation_dispatch",
+      "command": [
+        "node",
+        "IPTV_v5.4_MAX_AGGRESSION/frontend/tests/rea-generation-dispatch.test.js"
+      ],
+      "expected_status": "PASS",
+      "expected_exit_code": 0,
+      "counts": {
+        "passed": 36
+      },
+      "known_baseline_failure": false
+    },
+    {
+      "id": "output_options",
+      "command": [
+        "node",
+        "tools/quality/test_out_opts.js"
+      ],
+      "expected_status": "PASS",
+      "expected_exit_code": 0,
+      "counts": {
+        "assertions": 32,
+        "passed": 32,
+        "failed": 0,
+        "expected_missing_credentials_diagnostics": 4
+      },
+      "known_baseline_failure": false
+    },
+    {
+      "id": "lab_profile_count",
+      "command": [
+        "node",
+        "frontend/tests/lab-profile-count.test.js"
+      ],
+      "expected_status": "PASS",
+      "expected_exit_code": 0,
+      "counts": {
+        "total": 654,
+        "ok": true
+      },
+      "known_baseline_failure": false
+    },
+    {
+      "id": "deploy_regressions",
+      "command": [
+        "python3",
+        "tools/ara/test_deploy_regressions.py"
+      ],
+      "expected_status": "PASS",
+      "expected_exit_code": 0,
+      "counts": {
+        "test_methods": 5
+      },
+      "known_baseline_failure": false
+    },
+    {
+      "id": "deploy_confirmation_security",
+      "command": [
+        "python3",
+        "tools/ara/test_deploy_confirmation_security.py"
+      ],
+      "expected_status": "PASS",
+      "expected_exit_code": 0,
+      "counts": {
+        "test_methods": 4
+      },
+      "known_baseline_failure": false
+    },
+    {
+      "id": "filter_dialects",
+      "command": [
+        "node",
+        "tools/ape-image-recipes/test_filter_dialects.js"
+      ],
+      "expected_status": "PASS",
+      "expected_exit_code": 0,
+      "counts": {
+        "pass_lines": 82,
+        "fail_lines": 0
+      },
+      "known_baseline_failure": false
+    },
+    {
+      "id": "atadenoise_runtime",
+      "command": [
+        "python3",
+        "tools/ape-image-recipes/test_atadenoise_runtime.py"
+      ],
+      "expected_status": "PASS",
+      "expected_exit_code": 0,
+      "counts": {
+        "cases": 6,
+        "cases_passed": 6,
+        "passed": true
+      },
+      "known_baseline_failure": false
+    },
+    {
+      "id": "crystal_6k_law",
+      "command": [
+        "node",
+        "tools/check_crystal_6k_law.js"
+      ],
+      "expected_status": "PASS",
+      "expected_exit_code": 0,
+      "counts": {
+        "total": 6,
+        "passed": 6,
+        "failed": 0
+      },
+      "known_baseline_failure": false
+    },
+    {
+      "id": "anti_degradation_law",
+      "command": [
+        "node",
+        "tools/check_anti_degradation_policy.js"
+      ],
+      "expected_status": "PASS",
+      "expected_exit_code": 0,
+      "counts": {
+        "total": 6,
+        "passed": 6,
+        "failed": 0
+      },
+      "known_baseline_failure": false
+    },
+    {
+      "id": "tools_exit_contract",
+      "command": [
+        "node",
+        "tools/check-exit-contract.js",
+        "tools"
+      ],
+      "expected_status": "PASS",
+      "expected_exit_code": 0,
+      "counts": {
+        "candidatos_total": 0,
+        "archivos_revisados": 121
+      },
+      "known_baseline_failure": false
+    },
+    {
+      "id": "bulletproof_e2e",
+      "command": [
+        "node",
+        "IPTV_v5.4_MAX_AGGRESSION/frontend/tests/e2e-bulletproof-full-audit.js"
+      ],
+      "expected_status": "PASS",
+      "expected_exit_code": 0,
+      "counts": {
+        "passed": 28,
+        "failed": 0,
+        "total": 28,
+        "original_lab_assertions_preserved": 25,
+        "added_dictator_assertions": 3
+      },
+      "known_baseline_failure": false
+    },
+    {
+      "id": "frontend_asset_syntax",
+      "command": null,
+      "expected_status": "PASS",
+      "expected_exit_code": null,
+      "counts": {
+        "assets": 20,
+        "passed": 20
+      },
+      "known_baseline_failure": false
+    },
+    {
+      "id": "workflow_yaml_and_bash_syntax",
+      "command": [
+        "python3",
+        "PyYAML.safe_load; bash -n per run step"
+      ],
+      "expected_status": "PASS",
+      "expected_exit_code": null,
+      "counts": {
+        "yaml_files": 1,
+        "shell_steps": 21,
+        "passed": 21
+      },
+      "known_baseline_failure": false
+    },
+    {
+      "id": "diff_whitespace",
+      "command": [
+        "git",
+        "diff",
+        "--check"
+      ],
+      "expected_status": "PASS",
+      "expected_exit_code": 0,
+      "counts": {
+        "reported_lines": 0
+      },
+      "known_baseline_failure": false
+    },
+    {
+      "id": "jit_real_ffmpeg_evidence",
+      "command": [
+        "node",
+        "tools/quality/test_jit_output_truth.js",
+        "--report",
+        "artifacts/rea-jit-output-truth.json"
+      ],
+      "expected_status": "PASS_REUSED_UNCHANGED_INPUTS",
+      "expected_exit_code": null,
+      "counts": {
+        "assertions": 213,
+        "cases": 6
+      },
+      "known_baseline_failure": false
+    },
+    {
+      "id": "prefetch_unit",
+      "command": [
+        "node",
+        "IPTV_v5.4_MAX_AGGRESSION/frontend/tests/ape-predictive-prefetch.test.js"
+      ],
+      "expected_status": "PASS",
+      "expected_exit_code": 0,
+      "counts": {
+        "passed": 43,
+        "failed": 0
+      },
+      "known_baseline_failure": false
+    },
+    {
+      "id": "prefetch_loopback",
+      "command": [
+        "node",
+        "IPTV_v5.4_MAX_AGGRESSION/frontend/tests/predictive-prefetch-live.js"
+      ],
+      "expected_status": "PASS",
+      "expected_exit_code": 0,
+      "counts": {
+        "passed": 11,
+        "failed": 0
+      },
+      "known_baseline_failure": false
+    },
+    {
+      "id": "prefetch_ui",
+      "command": [
+        "node",
+        "IPTV_v5.4_MAX_AGGRESSION/frontend/tests/ui-predictive-prefetch.verify.js"
+      ],
+      "expected_status": "BLOCKED_ENVIRONMENT",
+      "expected_exit_code": 2,
+      "counts": {
+        "passed": null,
+        "failed": null
+      },
+      "known_baseline_failure": false
+    },
+    {
+      "id": "prefetch_public_ui",
+      "command": [
+        "node",
+        "IPTV_v5.4_MAX_AGGRESSION/frontend/tests/deploy-live-predictive-prefetch.verify.js"
+      ],
+      "expected_status": "BLOCKED_ENVIRONMENT",
+      "expected_exit_code": 2,
+      "counts": {
+        "passed": null,
+        "failed": null
+      },
+      "known_baseline_failure": false
+    }
+  ],
+  "expected_source_sha256": {
+    "README.md": "29468814f66670f92528ff13029a200432aba3326240cf0e95b7ee3d2b187bf9",
+    "apply_hdr_patch.py": "e0764caaad4ae984fb45fabcf29fbae165958dc971e08507e266fa8cb16361f1",
+    "apply_host_ott_patch.py": "765c1f77f9bababf4a198a9de3a1386254a3ddaf60ddc26b1743ddc8efac10dc",
+    "assets/shaders/rea_adaptive.glsl": "4739e528bb653a25f37cdf116fa7b4b873bea5e9781899e58cdb3a14534b5322",
+    "assets/shaders/rea_vertex.glsl": "dcaa67dc9a36c891a02858d4fa8a963dd502cc9c7ab7b649374fb96dc3308b34",
+    "build-inputs.json": "939c57764e75ede6e7fb5d81527b29c6b47a35a2dad0a5f881fd6fc16e502314",
+    "build_java.py": "76ed24a3d98b248b2b982c04401939c97163192112bdbe6657317bc544293348",
+    "clone_identity.py": "fb31e8c5fff1c31fb61e9200d90118ee2c72df86a8d93a0a5a85fee764ddc044",
+    "java/com/ape/rea/ReaHdrBridge.java": "f7fb15ed04d8c6216a3159b0aa01261dec55e017b7cb7d3e895a9c6f5d4f2f62",
+    "package_apk.py": "64a7c14e420a9308ba7e462d4e88ae8740f272e72a79e714ebfc1810bc0471a1",
+    "shaders/rea_sdr_to_hdr_external.glsl": "e6f8a14e2061575dc1156e17a0c2062d8690b4cdb8578e17f1b3a2e5f831ebd7",
+    "src/com/ape/rea/ReaAdaptiveEffect.java": "db595c213e102abd61a54934675dbbba66433fccd6765363e6a370ab421675e5",
+    "src/com/ape/rea/ReaBridge.java": "1866f417ec64de745b96a1387c0871e162f74b15afd083c237b59fab211875a7",
+    "src/com/ape/rea/ReaExternalPlayerActivity.java": "53d3b3e86160289b70af1f033bbf4b1cbeb96962610556a2e46efd97ca546c3f",
+    "src/com/ape/rea/ReaExternalRequest.java": "99cf70d9aab18dc24ed69e6343a2f4094002c42909d840b1c2ed48428d817ae9",
+    "src/com/ape/rea/ReaLoadGovernor.java": "bd6aef64e8e80a5472bdf99e68c0ae27dd4dac9747f7fbc81727b4722880d644",
+    "src/com/ape/rea/ReaMediaSources.java": "415296501cc9b2ee6dcca292b688791cd1ae75647d4678e956083acb2b654259",
+    "src/com/ape/rea/ReaOttBridge.java": "649dce7c6a6050b068e2252bc58104fd3442117a8d1581b88a180ac98dfbe30c",
+    "src/com/ape/rea/ReaPlaybackSession.java": "7bf782a6989629be0df158fef39e27dafab0667f809411e3c3b81305cd99ab71",
+    "src/com/ape/rea/ReaState.java": "e1dbdcb8a8d335b9d7ab1a041f2754ed870d082af9712c69b5fffd23584121f7",
+    "src/com/ape/rea/ReaUi.java": "685765c05aa37fe117b9a670537ba82b4523d1f62a759b5f6247ada7da9dc53e",
+    "tests/ReaDashFactoryTest.java": "5b82bfdc826ee02d840d104cb4391b9e81b2393630513847e67a0a3f891d8641",
+    "tests/ReaExternalHeadersContainerTest.java": "fea15bf79dd2e396b35f05d7aa5a1ec71113786b4f931e86ef2aed2871ae8285",
+    "tests/ReaExternalRequestTest.java": "24afdc03fb6e900498829de7fb7cf4c6219833153dd54b5146abddcf7e82bbbd",
+    "tests/ReaLoadGovernorTest.java": "85ff9b4441c9d9c63187eded26378eec4d7efeb1ab544527d7dca61dc8764cd8",
+    "tests/ReaMediaSourcesTest.java": "27bd9fc2cc661e0414a7be67f47ac3bf297f9a217666c5fadca21945064a49cb",
+    "tests/ReaNativeRecoveryTest.java": "c514f0aaacbb334bf716c096bc7951f7d689568ce3233355ed0689c3462865c3",
+    "tests/check_final_dex.py": "269fc167e4991576fd45519198cc96a428808d1b9544d76d3f24d57c0c49b3e1",
+    "tests/run_external_interop.py": "e8dc07fb1bcc7a10983ee643e976076268f6b63fd9eb0d806fa83fafcbb244c6",
+    "tests/run_native_recovery.py": "f7528b85486f5a3b7bbb69abe4328154608e0fe0a0955f5d61c8b62cfd30ab4f"
+  },
+  "apk_653": {
+    "sha256": "4b0c4ef397a6ea7066b5f51951d4fefb94820b0e94aeaf07f3f879ca6674d341",
+    "bytes": 24362980,
+    "package": "com.ape.crystalagent.rea",
+    "version_code": 653,
+    "version_name": "3.9.7-rea-interop-test",
+    "original_sha256": "8d3b145811c0bab3a10952329a81cadc477b08bd365b70f173cfe34ff52aa6e4",
+    "dex_files": 9,
+    "unique_classes": 14685,
+    "injected_methods": 16,
+    "injected_callsites": 19,
+    "native_libraries_preserved": 20,
+    "android_playback_tested": false,
+    "physical_hdr_tested": false
+  },
+  "canonical_lab": {
+    "repository_path": "contracts/lab/APE_LAB_CANONICAL_BULLETPROOF.json",
+    "bytes": 362871,
+    "sha256": "345783e33142791b23b4662d396c0c83c8051d77cd7c166dc21ef4990c093094",
+    "profile_settings_fps_P0_to_P5": [
+      30,
+      60,
+      30,
+      60,
+      30,
+      30
+    ]
+  },
+  "macro_workbook": {
+    "bytes": 3582019,
+    "sha256": "663ef44e2d69521eb0e77dda7b64a32ea4f942992f8f2c80614eaee8ec52806a",
+    "sheet_count": 55,
+    "settings_fps_P0_to_P5": [
+      120,
+      120,
+      120,
+      120,
+      120,
+      120
+    ],
+    "rea_processing_sheet_present": false
+  },
+  "commit_gate": {
+    "source": "AGENTS.md: Verificación obligatoria (todo verde antes de commit)",
+    "status": "blocked",
+    "commit_created": false,
+    "pull_request_created": false,
+    "merge_performed": false,
+    "deployment_performed": false,
+    "remaining": [
+      "ui-predictive-prefetch.verify.js",
+      "deploy-live-predictive-prefetch.verify.js"
+    ],
+    "user_exception_already_given": false
+  },
+  "invariants": {
+    "no_commit_until_all_green": true,
+    "exception_for_PR_does_not_authorize_merge_or_deploy": true,
+    "blocked_is_not_passed": true
+  }
+}

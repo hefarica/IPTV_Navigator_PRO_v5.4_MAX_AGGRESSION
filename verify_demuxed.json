@@ -1,0 +1,228 @@
+{
+  "tool": "verify_demuxed.js",
+  "version": "1.0.0",
+  "generated_at": "2026-11-02T16:02:53.931Z",
+  "input": {
+    "path": "tools\\ape-demuxed\\fixtures\\master_lab_meta_missing_chunk.m3u8",
+    "bytes": 423,
+    "lines": 12,
+    "sha256": "c14b2055db4001b3533266330bff5d08a3d7601981ba8cc575ec8b89d50c8a93",
+    "mode": "catalogue",
+    "extinf_blocks": 1,
+    "uri_lines": 2,
+    "crlf_lines": 0,
+    "first_lines": [
+      "#EXTM3U",
+      "#EXT-X-APE-LAB-METADATA:2/2:ZXJhdGVkX2F0IjoiMjAyNi0xMS0wMlQwMDowMDowMC4wMDBaIiwiY2hhbm5lbHMiOjJ9",
+      "#EXTINF:-1 tvg-id=\"canal-a\",Canal A",
+      "#EXTVLCOPT:network-caching=1000",
+      "#EXTVLCOPT:clock-jitter=0",
+      "#EXT-X-APE-CRYSTAL-UHD:PROFILE=P4",
+      "#EXT-X-STREAM-INF:BANDWIDTH=1000000,RESOLUTION=1920x1080",
+      "#EXTVLCOPT:clock-jitter=0",
+      "#EXT-X-APE-CRYSTAL-UHD:PROFILE=P4"
+    ]
+  },
+  "options": {
+    "source_resolution": null,
+    "source_framerate": null,
+    "min_video_bitrate": null,
+    "audio_segments": [],
+    "probe_renditions": [],
+    "expect_audio_codec": null,
+    "expect_sample_rate": null,
+    "expect_channels": null,
+    "allow_audio_downscale": false,
+    "ffprobe": "ffprobe",
+    "strict": false
+  },
+  "summary": {
+    "verdict": "FAIL",
+    "exit_code": 1,
+    "hard_gates_pass": false,
+    "all_gates_pass": false,
+    "demuxed": false,
+    "gates": [
+      {
+        "gate": "G1_structure",
+        "status": "NO_COMPUTADO",
+        "failures": 0
+      },
+      {
+        "gate": "G2_zero_video_downscale",
+        "status": "NO_COMPUTADO",
+        "failures": 0
+      },
+      {
+        "gate": "G3_zero_video_caps",
+        "status": "PASS",
+        "failures": 0
+      },
+      {
+        "gate": "G4_audio_throughpass",
+        "status": "NO_COMPUTADO",
+        "failures": 0
+      },
+      {
+        "gate": "G5_block_layout_tail",
+        "status": "PASS",
+        "failures": 0
+      },
+      {
+        "gate": "G6_lab_metadata_chunks",
+        "status": "FAIL",
+        "failures": 1
+      }
+    ],
+    "scan_ms": 3,
+    "total_ms": 5
+  },
+  "gates": {
+    "g1_structure": {
+      "gate": "G1_structure",
+      "status": "NO_COMPUTADO",
+      "demuxed": false,
+      "audio_renditions": 0,
+      "audio_groups": [],
+      "variants": 1,
+      "session_data_lines": 0,
+      "checks": [
+        {
+          "check": "AUDIO= / GROUP-ID",
+          "status": "PASS",
+          "detail": "el master NO declara #EXT-X-MEDIA TYPE=AUDIO: es MUXED (nada que resolver aquí; el gate de throughpass queda NO_COMPUTADO)",
+          "evidence": null
+        },
+        {
+          "check": "SESSION-DATA usa DATA-ID (no NAME)",
+          "status": "PASS",
+          "detail": "0 líneas SESSION-DATA, todas con DATA-ID",
+          "evidence": null
+        }
+      ],
+      "checks_total": 2,
+      "failures": [],
+      "failures_total": 0,
+      "reason": "el master no declara #EXT-X-MEDIA TYPE=AUDIO; no hay estructura de demuxed que verificar"
+    },
+    "g2_zero_video_downscale": {
+      "gate": "G2_zero_video_downscale",
+      "status": "NO_COMPUTADO",
+      "reason": "sin --source-resolution no se puede comparar: la resolución nativa la declara el operador, no se infiere del master (inferirla haría el gate vacuo)",
+      "variants": 1,
+      "failures": [],
+      "failures_total": 0
+    },
+    "g3_zero_video_caps": {
+      "gate": "G3_zero_video_caps",
+      "status": "PASS",
+      "tokens_task": [
+        "max_resolution",
+        "max_bitrate",
+        "max_framerate",
+        "video-width",
+        "video-height",
+        "adaptive-maxbitrate",
+        "adaptive-maxwidth",
+        "adaptive-maxheight"
+      ],
+      "tokens_from_cap_verdicts": [
+        "inputstream.adaptive.chooser_bandwidth_max"
+      ],
+      "tokens_checked_total": 9,
+      "cap_verdicts_source": "cap_verdicts.json v2026-11-02b",
+      "caps_lines": 0,
+      "hits_total": 0,
+      "hits_detail_kept": 0,
+      "hits_overflow": 0,
+      "by_token": [],
+      "failures": [],
+      "failures_total": 0,
+      "note": "un cap pide una salida PEOR que la fuente declarada; la ley prohíbe capar vídeo (resolución/bitrate/fps). Origen de la lista de tokens: encargo (8) + cap_verdicts.json de t10 (veredicto medido cap_de_video). hits_total cuenta pares (línea, token): una línea puede llevar dos tokens."
+    },
+    "g4_audio_throughpass": {
+      "gate": "G4_audio_throughpass",
+      "status": "NO_COMPUTADO",
+      "reason": "no se aportó --audio-segment ni --probe-rendition: el throughpass real exige un recurso de audio accesible. Este arnés NO descarga red por su cuenta y NO usa md5 de bytes (ver cabecera del script: el md5 no distingue un repackage de un transcode)",
+      "measurements": [],
+      "failures": [],
+      "checks": []
+    },
+    "g5_block_layout_tail": {
+      "gate": "G5_block_layout_tail",
+      "status": "PASS",
+      "blocks": 1,
+      "min_tags_required": 2,
+      "tags_after_uri_distribution": {
+        "5": 1
+      },
+      "tail_tag_names": [
+        {
+          "tag": "#EXTVLCOPT",
+          "blocks": 2
+        },
+        {
+          "tag": "#EXT-X-APE-CRYSTAL-UHD",
+          "blocks": 2
+        },
+        {
+          "tag": "#EXT-X-STREAM-INF",
+          "blocks": 1
+        }
+      ],
+      "failures": [],
+      "failures_total": 0,
+      "reason": null
+    },
+    "g6_lab_metadata_chunks": {
+      "gate": "G6_lab_metadata_chunks",
+      "status": "FAIL",
+      "chunks": 1,
+      "declared_total": 2,
+      "base64_chars": null,
+      "base64_roundtrip_ok": null,
+      "decoded_bytes": null,
+      "json_valid": null,
+      "json_root_keys": null,
+      "failures": [
+        {
+          "kind": "chunks_faltantes",
+          "indices": [
+            1
+          ],
+          "total_faltan": 1
+        }
+      ],
+      "failures_total": 1,
+      "reason": "la metadata chunked del LAB esta declarada pero no es integra: chunks_faltantes"
+    }
+  },
+  "evidence": {
+    "master": "tools\\ape-demuxed\\fixtures\\master_lab_meta_missing_chunk.m3u8",
+    "master_sha256": "c14b2055db4001b3533266330bff5d08a3d7601981ba8cc575ec8b89d50c8a93",
+    "cap_tokens_task": [
+      "max_resolution",
+      "max_bitrate",
+      "max_framerate",
+      "video-width",
+      "video-height",
+      "adaptive-maxbitrate",
+      "adaptive-maxwidth",
+      "adaptive-maxheight"
+    ],
+    "cap_verdicts_source": "cap_verdicts.json v2026-11-02b",
+    "cap_tokens_checked": [
+      "max_resolution",
+      "max_bitrate",
+      "max_framerate",
+      "video-width",
+      "video-height",
+      "adaptive-maxbitrate",
+      "adaptive-maxwidth",
+      "adaptive-maxheight",
+      "inputstream.adaptive.chooser_bandwidth_max"
+    ],
+    "ffprobe": "ffprobe",
+    "generated_by": "node verify_demuxed.js tools\\ape-demuxed\\fixtures\\master_lab_meta_missing_chunk.m3u8"
+  }
+}

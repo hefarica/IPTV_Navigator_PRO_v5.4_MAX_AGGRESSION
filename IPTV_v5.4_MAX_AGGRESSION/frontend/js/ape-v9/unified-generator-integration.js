@@ -306,7 +306,7 @@
     // ENTRADA DE CANAL UNIFICADA
     // ═══════════════════════════════════════════════════════════════════════
 
-    function generateUnifiedChannelEntry(channel, index, globalProfile = 'P3') {
+    function generateUnifiedChannelEntry(channel, index, globalProfile = 'P3', options = {}) {
         const profile = detectChannelProfile(channel, globalProfile);
         const cfg = PROFILES[profile] || PROFILES['P3'];
 
@@ -330,8 +330,11 @@
 #EXTINF:-1 tvg-id="${tvgId}" tvg-name="${tvgName}" tvg-logo="${tvgLogo}" group-title="${groupTitle}" ape-profile="${profile}" ape-level="${cfg.level}" ape-jwt-fields="68+" catchup="xc" catchup-days="7" catchup-source="?utc={utc}&lutc={lutc}",${tvgName}
 ${url}
 `;
+        if (!url) entry += '#EXT-X-APE-CHANNEL-STATUS:UNRESOLVED_URL;REASON=missing_own_source\n';
 
-        return entry;
+        return window.APE_REA_EXPORT
+            ? window.APE_REA_EXPORT.finalizeChannelBlock(entry, { channel, playbackUrl: url, options })
+            : entry + '#EXT-X-APE-REA:{"status":"finalizer_unavailable"}\n';
     }
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -364,15 +367,14 @@ ${url}
 
     function buildChannelUrl(channel, jwt) {
         let baseUrl = '';
-
-        if (channel.url && channel.url.startsWith('http')) {
-            baseUrl = channel.url.split('?')[0];
-        } else if (channel.direct_source && channel.direct_source.startsWith('http')) {
-            baseUrl = channel.direct_source.split('?')[0];
-        } else if (window.app?.state) {
+        const original = channel.url || channel.base?.url || channel.direct_source || channel.stream_url;
+        if (typeof original === 'string' && original && original !== '#') return original;
+        if (window.app?.state) {
             const state = window.app.state;
-            const channelServerId = channel._source || channel.serverId;
-            let server = state.activeServers?.find(s => s.id === channelServerId) || state.currentServer;
+            const channelServerId = channel._source || channel.serverId || channel.server_id;
+            let server = channelServerId
+                ? state.activeServers?.find(s => String(s.id) === String(channelServerId))
+                : state.currentServer;
 
             if (server?.baseUrl && server.username && server.password && channel.stream_id) {
                 const cleanBase = server.baseUrl.replace(/\/player_api\.php$/, '').replace(/\/$/, '');
@@ -381,9 +383,7 @@ ${url}
             }
         }
 
-        if (!baseUrl) {
-            baseUrl = channel.url || '#';
-        }
+        if (!baseUrl) return '';
 
         const separator = baseUrl.includes('?') ? '&' : '?';
         return `${baseUrl}${separator}ape_jwt=${jwt}`;
@@ -404,7 +404,7 @@ ${url}
         let output = generateUnifiedGlobalHeader();
 
         channels.forEach((channel, index) => {
-            output += generateUnifiedChannelEntry(channel, index, profile);
+            output += generateUnifiedChannelEntry(channel, index, profile, options);
         });
 
         const elapsed = ((Date.now() - startTime) / 1000).toFixed(2);

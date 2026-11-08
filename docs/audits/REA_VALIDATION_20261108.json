@@ -1,0 +1,991 @@
+{
+  "schema": "ape.rea-repo-validation/1",
+  "started_at_utc": "2026-11-08T00:34:06.040931+00:00",
+  "finished_at_utc": "2026-11-08T00:42:15.932913+00:00",
+  "branch": "audit/rea-alignment-20261107",
+  "base_commit": "272f417e88468183404569f8ae4d3ce8001abd05",
+  "all_gates_passed": false,
+  "overall_status": "BLOCKED_ENVIRONMENT_FOR_COMMIT",
+  "known_baseline_failures": [],
+  "unexpected_failures": [],
+  "inputs_changed_during_run": [],
+  "gate_summary": {
+    "total": 23,
+    "passed": 20,
+    "reused_pass": 1,
+    "blocked_environment": 2,
+    "current_product_test_failures": 0
+  },
+  "results": [
+    {
+      "id": "processing_policy",
+      "command": [
+        "node",
+        "IPTV_v5.4_MAX_AGGRESSION/frontend/tests/rea-processing-policy.test.js"
+      ],
+      "cwd": ".",
+      "environment_overrides": {},
+      "exit_code": 0,
+      "status": "PASS",
+      "counts": {
+        "passed": 26
+      },
+      "duration_seconds": 0.215,
+      "summary": "Local command completed successfully.",
+      "log_sha256": "3d6db7c16c744a179d4ba611243f440c34f293176c8520be4b7ad4b66d4f668b",
+      "private_log": "artifacts/rea-final-validation-logs/processing_policy.log",
+      "known_baseline_failure": false
+    },
+    {
+      "id": "catalog_exports",
+      "command": [
+        "node",
+        "tools/quality/test_rea_catalog_exports.js"
+      ],
+      "cwd": ".",
+      "environment_overrides": {},
+      "exit_code": 0,
+      "status": "PASS",
+      "counts": {
+        "checks": 74,
+        "ok": true
+      },
+      "duration_seconds": 0.14,
+      "summary": "Local command completed successfully.",
+      "log_sha256": "61d9baee08bdae6a96072368b417fc8ae80331cf61eaec4ed075dff2562c20b8",
+      "private_log": "artifacts/rea-final-validation-logs/catalog_exports.log",
+      "known_baseline_failure": false
+    },
+    {
+      "id": "source_alignment",
+      "command": [
+        "node",
+        "tools/quality/test_rea_source_alignment.js"
+      ],
+      "cwd": ".",
+      "environment_overrides": {},
+      "exit_code": 0,
+      "status": "PASS",
+      "counts": {
+        "checks": 473
+      },
+      "duration_seconds": 10.43,
+      "summary": "Local command completed successfully.",
+      "log_sha256": "13ff8202eece91508f76a7bf08799e1c574794a536c079cda4d980e03271aafa",
+      "private_log": "artifacts/rea-final-validation-logs/source_alignment.log",
+      "known_baseline_failure": false
+    },
+    {
+      "id": "http_boundary",
+      "command": [
+        "node",
+        "tools/quality/test_rea_http_boundary.js"
+      ],
+      "cwd": ".",
+      "environment_overrides": {},
+      "exit_code": 0,
+      "status": "PASS",
+      "counts": {
+        "checks": 204,
+        "ok": true
+      },
+      "duration_seconds": 0.297,
+      "summary": "Local command completed successfully.",
+      "log_sha256": "110a107d0d7b0e4924db5710f9e7685ae2f7d96c4c8df27fcab205a7f1afad8b",
+      "private_log": "artifacts/rea-final-validation-logs/http_boundary.log",
+      "known_baseline_failure": false
+    },
+    {
+      "id": "generation_dispatch",
+      "command": [
+        "node",
+        "IPTV_v5.4_MAX_AGGRESSION/frontend/tests/rea-generation-dispatch.test.js"
+      ],
+      "cwd": ".",
+      "environment_overrides": {},
+      "exit_code": 0,
+      "status": "PASS",
+      "counts": {
+        "passed": 36
+      },
+      "duration_seconds": 1.285,
+      "summary": "Local command completed successfully.",
+      "log_sha256": "facfc2346b2907e47c9adf87eddeea6c218ee91ac170fa2d9f8551ebf40a03db",
+      "private_log": "artifacts/rea-final-validation-logs/generation_dispatch.log",
+      "known_baseline_failure": false
+    },
+    {
+      "id": "output_options",
+      "command": [
+        "node",
+        "tools/quality/test_out_opts.js"
+      ],
+      "cwd": ".",
+      "environment_overrides": {},
+      "exit_code": 0,
+      "status": "PASS",
+      "counts": {
+        "assertions": 32,
+        "passed": 32,
+        "failed": 0,
+        "expected_missing_credentials_diagnostics": 4
+      },
+      "duration_seconds": 9.95,
+      "summary": "Suite-owned summary: 32 assertions OK; 32 anchored PASS assertion lines and zero FAIL assertion lines. Four missing-credentials diagnostics originate in synthetic contexts without credential sources and are not assertion failures. No test rerun was required to correct this count.",
+      "log_sha256": "cceafb5ca301384da794b1cb19e364487bacd505dd03d1e1cea86ee8e2aff613",
+      "private_log": "artifacts/rea-final-validation-logs/output_options.log",
+      "known_baseline_failure": false
+    },
+    {
+      "id": "lab_profile_count",
+      "command": [
+        "node",
+        "frontend/tests/lab-profile-count.test.js"
+      ],
+      "cwd": ".",
+      "environment_overrides": {},
+      "exit_code": 0,
+      "status": "PASS",
+      "counts": {
+        "total": 654,
+        "ok": true
+      },
+      "duration_seconds": 0.097,
+      "summary": "Local command completed successfully.",
+      "log_sha256": "bf195ad9dc76a34e79849091898e53cfe639ee22b0d11639dd7d4f40d6efae42",
+      "private_log": "artifacts/rea-final-validation-logs/lab_profile_count.log",
+      "known_baseline_failure": false
+    },
+    {
+      "id": "deploy_regressions",
+      "command": [
+        "python3",
+        "tools/ara/test_deploy_regressions.py"
+      ],
+      "cwd": ".",
+      "environment_overrides": {},
+      "exit_code": 0,
+      "status": "PASS",
+      "counts": {
+        "test_methods": 5
+      },
+      "duration_seconds": 0.528,
+      "summary": "Re-executed after the workflow comment/description update; unittest summary reports all methods OK.",
+      "log_sha256": "9ecf15c951046d1b5a961353321032ee3ee3949f1376c8947729de7b67fce9e0",
+      "private_log": "artifacts/rea-final-validation-logs/deploy_regressions.log",
+      "known_baseline_failure": false,
+      "refreshed_at_utc": "2026-11-08T00:36:16.807789+00:00"
+    },
+    {
+      "id": "deploy_confirmation_security",
+      "command": [
+        "python3",
+        "tools/ara/test_deploy_confirmation_security.py"
+      ],
+      "cwd": ".",
+      "environment_overrides": {},
+      "exit_code": 0,
+      "status": "PASS",
+      "counts": {
+        "test_methods": 4
+      },
+      "duration_seconds": 0.128,
+      "summary": "Re-executed after the workflow comment/description update; unittest summary reports all methods OK.",
+      "log_sha256": "9a2882ecef5916f725e9e04a49ef95801b5f54799f6e54a27f3d643ff290ee68",
+      "private_log": "artifacts/rea-final-validation-logs/deploy_confirmation_security.log",
+      "known_baseline_failure": false,
+      "refreshed_at_utc": "2026-11-08T00:36:16.407300+00:00"
+    },
+    {
+      "id": "filter_dialects",
+      "command": [
+        "node",
+        "tools/ape-image-recipes/test_filter_dialects.js"
+      ],
+      "cwd": ".",
+      "environment_overrides": {},
+      "exit_code": 0,
+      "status": "PASS",
+      "counts": {
+        "pass_lines": 82,
+        "fail_lines": 0
+      },
+      "duration_seconds": 0.069,
+      "summary": "Local command completed successfully.",
+      "log_sha256": "b8cedb91f198b556cbcf563775562c9fac0afd3030b48f2d77fe9714875f0658",
+      "private_log": "artifacts/rea-final-validation-logs/filter_dialects.log",
+      "known_baseline_failure": false
+    },
+    {
+      "id": "atadenoise_runtime",
+      "command": [
+        "python3",
+        "tools/ape-image-recipes/test_atadenoise_runtime.py"
+      ],
+      "cwd": ".",
+      "environment_overrides": {},
+      "exit_code": 0,
+      "status": "PASS",
+      "counts": {
+        "cases": 6,
+        "cases_passed": 6,
+        "passed": true
+      },
+      "duration_seconds": 0.653,
+      "summary": "Local command completed successfully.",
+      "log_sha256": "1272f36096ad814044346742861ef67bf9fe76a80bb1f3f6c9d717cb6fce3b83",
+      "private_log": "artifacts/rea-final-validation-logs/atadenoise_runtime.log",
+      "known_baseline_failure": false
+    },
+    {
+      "id": "crystal_6k_law",
+      "command": [
+        "node",
+        "tools/check_crystal_6k_law.js"
+      ],
+      "cwd": ".",
+      "environment_overrides": {},
+      "exit_code": 0,
+      "status": "PASS",
+      "counts": {
+        "total": 6,
+        "passed": 6,
+        "failed": 0
+      },
+      "duration_seconds": 0.067,
+      "summary": "Local command completed successfully.",
+      "log_sha256": "ddb38935ec100b9ecf10979b3d9e0dabec5fafea694c2078c7da6ac078a59eee",
+      "private_log": "artifacts/rea-final-validation-logs/crystal_6k_law.log",
+      "known_baseline_failure": false
+    },
+    {
+      "id": "anti_degradation_law",
+      "command": [
+        "node",
+        "tools/check_anti_degradation_policy.js"
+      ],
+      "cwd": ".",
+      "environment_overrides": {},
+      "exit_code": 0,
+      "status": "PASS",
+      "counts": {
+        "total": 6,
+        "passed": 6,
+        "failed": 0
+      },
+      "duration_seconds": 0.056,
+      "summary": "Local command completed successfully.",
+      "log_sha256": "25491d48f8dbed55240b11382d07d8700ec79047e1241b6de5bfed19abcbad4d",
+      "private_log": "artifacts/rea-final-validation-logs/anti_degradation_law.log",
+      "known_baseline_failure": false
+    },
+    {
+      "id": "tools_exit_contract",
+      "command": [
+        "node",
+        "tools/check-exit-contract.js",
+        "tools"
+      ],
+      "cwd": ".",
+      "environment_overrides": {},
+      "exit_code": 0,
+      "status": "PASS",
+      "counts": {
+        "candidatos_total": 0,
+        "archivos_revisados": 121
+      },
+      "duration_seconds": 0.085,
+      "summary": "Local command completed successfully.",
+      "log_sha256": "04ea59c70079d505927b80d7bbfa3f0e2d922ee2f1edb1bf77eb06a25534c6a5",
+      "private_log": "artifacts/rea-final-validation-logs/tools_exit_contract.log",
+      "known_baseline_failure": false
+    },
+    {
+      "id": "bulletproof_e2e",
+      "command": [
+        "node",
+        "IPTV_v5.4_MAX_AGGRESSION/frontend/tests/e2e-bulletproof-full-audit.js"
+      ],
+      "cwd": ".",
+      "environment_overrides": {
+        "APE_LAB_JSON_PATH": "contracts/lab/APE_LAB_CANONICAL_BULLETPROOF.json"
+      },
+      "exit_code": 0,
+      "status": "PASS",
+      "counts": {
+        "passed": 28,
+        "failed": 0,
+        "total": 28,
+        "original_lab_assertions_preserved": 25,
+        "added_dictator_assertions": 3
+      },
+      "duration_seconds": 9.907,
+      "summary": "28/28: 25 original LAB assertions run with dictatorMode=false; a separate dictatorMode=true generation verifies one channel block, exactly one 500 ms network-caching directive, and absence of the 105000 ms LAB directive. The previous 24/1 result remains preserved in historical_validation_runs.",
+      "log_sha256": "5df41f21fdc85931a894d35595442b670d6316f4d0f7e15fcb467d83c90eec0c",
+      "private_log": "artifacts/rea-final-validation-logs/bulletproof_e2e_scenarios.log",
+      "known_baseline_failure": false,
+      "historical_baseline_failure": true,
+      "refreshed_at_utc": "2026-11-08T00:39:41.880359+00:00",
+      "scenarios": [
+        {
+          "name": "calibrated_lab",
+          "dictator_mode": false,
+          "assertions": 25,
+          "passed": 25,
+          "channels": 10,
+          "observed_network_caching_ms": 105000,
+          "observed_network_caching_hits": 10
+        },
+        {
+          "name": "dictator_override",
+          "dictator_mode": true,
+          "assertions": 3,
+          "passed": 3,
+          "channels": 1,
+          "observed_network_caching_ms": 500,
+          "observed_network_caching_hits": 1,
+          "lab_network_caching_absent": true
+        }
+      ],
+      "diagnostics": {
+        "missing_credentials_messages_in_synthetic_contexts": 6,
+        "assertion_failures": 0
+      },
+      "test_syntax": {
+        "command": [
+          "node",
+          "--check",
+          "IPTV_v5.4_MAX_AGGRESSION/frontend/tests/e2e-bulletproof-full-audit.js"
+        ],
+        "exit_code": 0
+      }
+    },
+    {
+      "id": "frontend_asset_syntax",
+      "status": "PASS",
+      "counts": {
+        "assets": 20,
+        "passed": 20
+      },
+      "commands": [
+        {
+          "file": "IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/m3u8-typed-arrays-ultimate.js",
+          "command": [
+            "node",
+            "--check",
+            "IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/m3u8-typed-arrays-ultimate.js"
+          ],
+          "exit_code": 0
+        },
+        {
+          "file": "IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/generation-output-panel.js",
+          "command": [
+            "node",
+            "--check",
+            "IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/generation-output-panel.js"
+          ],
+          "exit_code": 0
+        },
+        {
+          "file": "IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/ape-profiles-config.js",
+          "command": [
+            "node",
+            "--check",
+            "IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/ape-profiles-config.js"
+          ],
+          "exit_code": 0
+        },
+        {
+          "file": "IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/profile-manager-v9.js",
+          "command": [
+            "node",
+            "--check",
+            "IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/profile-manager-v9.js"
+          ],
+          "exit_code": 0
+        },
+        {
+          "file": "IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/ape-image-recipes-bundle.js",
+          "command": [
+            "node",
+            "--check",
+            "IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/ape-image-recipes-bundle.js"
+          ],
+          "exit_code": 0
+        },
+        {
+          "file": "IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/generation-controller.js",
+          "command": [
+            "node",
+            "--check",
+            "IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/generation-controller.js"
+          ],
+          "exit_code": 0
+        },
+        {
+          "file": "IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/ape-server-profile.js",
+          "command": [
+            "node",
+            "--check",
+            "IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/ape-server-profile.js"
+          ],
+          "exit_code": 0
+        },
+        {
+          "file": "IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/ape-server-profiles-data.js",
+          "command": [
+            "node",
+            "--check",
+            "IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/ape-server-profiles-data.js"
+          ],
+          "exit_code": 0
+        },
+        {
+          "file": "IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/rea-processing-policy.js",
+          "command": [
+            "node",
+            "--check",
+            "IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/rea-processing-policy.js"
+          ],
+          "exit_code": 0
+        },
+        {
+          "file": "IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/rea-export-finalizer.js",
+          "command": [
+            "node",
+            "--check",
+            "IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/rea-export-finalizer.js"
+          ],
+          "exit_code": 0
+        },
+        {
+          "file": "IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/rea-catalog-export.js",
+          "command": [
+            "node",
+            "--check",
+            "IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/rea-catalog-export.js"
+          ],
+          "exit_code": 0
+        },
+        {
+          "file": "IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/ape-quality-prober.js",
+          "command": [
+            "node",
+            "--check",
+            "IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/ape-quality-prober.js"
+          ],
+          "exit_code": 0
+        },
+        {
+          "file": "IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/unified-generator-integration.js",
+          "command": [
+            "node",
+            "--check",
+            "IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/unified-generator-integration.js"
+          ],
+          "exit_code": 0
+        },
+        {
+          "file": "IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/m3u8-api-wrapper-integrated.js",
+          "command": [
+            "node",
+            "--check",
+            "IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/m3u8-api-wrapper-integrated.js"
+          ],
+          "exit_code": 0
+        },
+        {
+          "file": "IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-lab-import-helper.js",
+          "command": [
+            "node",
+            "--check",
+            "IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-lab-import-helper.js"
+          ],
+          "exit_code": 0
+        },
+        {
+          "file": "IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-worker.js",
+          "command": [
+            "node",
+            "--check",
+            "IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-worker.js"
+          ],
+          "exit_code": 0
+        },
+        {
+          "file": "IPTV_v5.4_MAX_AGGRESSION/frontend/js/m3u8-world-class-generator.js",
+          "command": [
+            "node",
+            "--check",
+            "IPTV_v5.4_MAX_AGGRESSION/frontend/js/m3u8-world-class-generator.js"
+          ],
+          "exit_code": 0
+        },
+        {
+          "file": "IPTV_v5.4_MAX_AGGRESSION/frontend/js/m3u8-generator-v16-elite.js",
+          "command": [
+            "node",
+            "--check",
+            "IPTV_v5.4_MAX_AGGRESSION/frontend/js/m3u8-generator-v16-elite.js"
+          ],
+          "exit_code": 0
+        },
+        {
+          "file": "IPTV_v5.4_MAX_AGGRESSION/frontend/export-module.js",
+          "command": [
+            "node",
+            "--check",
+            "IPTV_v5.4_MAX_AGGRESSION/frontend/export-module.js"
+          ],
+          "exit_code": 0
+        },
+        {
+          "file": "IPTV_v5.4_MAX_AGGRESSION/frontend/app.js",
+          "command": [
+            "node",
+            "--check",
+            "IPTV_v5.4_MAX_AGGRESSION/frontend/app.js"
+          ],
+          "exit_code": 0
+        }
+      ],
+      "summary": "Syntax of every JavaScript asset in the deployment inventory; no browser or deployment executed."
+    },
+    {
+      "id": "workflow_yaml_and_bash_syntax",
+      "status": "PASS",
+      "counts": {
+        "yaml_files": 1,
+        "shell_steps": 21,
+        "passed": 21
+      },
+      "command": [
+        "python3",
+        "PyYAML.safe_load; bash -n per run step"
+      ],
+      "steps": [
+        {
+          "job": "desplegar",
+          "step_index": 1,
+          "step_name": "Preparar SSH",
+          "exit_code": 0,
+          "source_script_sha256": "fe22cff991962a9f60f9b3ca36f11e7500a579c9b91a065dc911a2a885a9ac9d"
+        },
+        {
+          "job": "desplegar",
+          "step_index": 2,
+          "step_name": "Los fuentes del repo compilan y tienen las correcciones",
+          "exit_code": 0,
+          "source_script_sha256": "87b95f2d397905bdd63548104ae40e511384b3e2a4fb0de58dc46142c6f09071"
+        },
+        {
+          "job": "desplegar",
+          "step_index": 3,
+          "step_name": "Estado del VPS (solo lectura)",
+          "exit_code": 0,
+          "source_script_sha256": "0405e42e8d4d6baed35e15fba33697edea91349cbbebf5798e81cd9897a0a272"
+        },
+        {
+          "job": "desplegar",
+          "step_index": 4,
+          "step_name": "DIAGNOSTICO — donde vive cada copia y que ruta usa nginx",
+          "exit_code": 0,
+          "source_script_sha256": "b9f208eee8be4e1b1dcf6cc9d66fdc62178e50e42f224ee1f4da6ea74712c127"
+        },
+        {
+          "job": "desplegar",
+          "step_index": 5,
+          "step_name": "Exigir la confirmacion literal",
+          "exit_code": 0,
+          "source_script_sha256": "093ff9248bb1a1c0db9c680e654e71d7e5d8f54e65b25b8f8615dcbe0667a9c9"
+        },
+        {
+          "job": "desplegar",
+          "step_index": 6,
+          "step_name": "Backup y despliegue",
+          "exit_code": 0,
+          "source_script_sha256": "711e7bf2422b99a0032b5bcfa6c734f5e83d004bc2c082437c92c2364506786c"
+        },
+        {
+          "job": "desplegar",
+          "step_index": 7,
+          "step_name": "Publicar fuente del resolver (solo lectura, NO ejecutable)",
+          "exit_code": 0,
+          "source_script_sha256": "4c6eccc7a3288411822c1379ffc7c30bc3e23b3931b417229832d9a466167955"
+        },
+        {
+          "job": "desplegar",
+          "step_index": 8,
+          "step_name": "Gate anti pisado de variable de estado",
+          "exit_code": 0,
+          "source_script_sha256": "a9bb13936d551eebb8b54f99b1fd0c645d87182b0b8e47e32f7a6cfeefd53d59"
+        },
+        {
+          "job": "desplegar",
+          "step_index": 10,
+          "step_name": "Desplegar endpoints PHP (paridad + url2 dinamico)",
+          "exit_code": 0,
+          "source_script_sha256": "62fdaf65836f09a0366b8bf171909d75690e62d0cce3422c18180211da71ca76"
+        },
+        {
+          "job": "desplegar",
+          "step_index": 11,
+          "step_name": "Desplegar la matriz de calidad por device (lib + cli)",
+          "exit_code": 0,
+          "source_script_sha256": "36140290cff1ab6efb199e29f05cd7266b6ad2c699c2346d78dcefd88da7968d"
+        },
+        {
+          "job": "desplegar",
+          "step_index": 12,
+          "step_name": "Desplegar el sincronizador de calidad (CLI + timer)",
+          "exit_code": 0,
+          "source_script_sha256": "fd8196a435f10184e8e478aadae82cb6d5d6c2d04c975643c2d5ec2ec638a5e1"
+        },
+        {
+          "job": "desplegar",
+          "step_index": 13,
+          "step_name": "Desplegar ape_mesh.php (amazon levers) con rollback automatico",
+          "exit_code": 0,
+          "source_script_sha256": "b9b8eaa17dbf297882f8671ba1f05f8bc0ea7d9b7f33e88eb6759bd8186848e0"
+        },
+        {
+          "job": "desplegar",
+          "step_index": 14,
+          "step_name": "Activar el puente de deltas (APE_4K_BRIDGE_ENABLED=1)",
+          "exit_code": 0,
+          "source_script_sha256": "b1072fb6d5300f0d17672a1e5c863a5ca8e6fedeca4179489a6477809734540c"
+        },
+        {
+          "job": "desplegar",
+          "step_index": 15,
+          "step_name": "Leer registro de zapping",
+          "exit_code": 0,
+          "source_script_sha256": "970b1bd1cf4a4d6143e7d2241871ca7b404c343823fc8f6136284135ed7c18fb"
+        },
+        {
+          "job": "desplegar",
+          "step_index": 16,
+          "step_name": "Limpiar endpoints retirados del VPS",
+          "exit_code": 0,
+          "source_script_sha256": "a5a528cd1507ec6f3ff622a48a02149785b9507c36c4324328eec77d7120c09e"
+        },
+        {
+          "job": "desplegar",
+          "step_index": 17,
+          "step_name": "Verificar lo que sirve HTTP (contenido, no solo tamano)",
+          "exit_code": 0,
+          "source_script_sha256": "e7fef0dfa7e6526507d02777681d59361c6631e167c89df7cccef0c9d1737b9a"
+        },
+        {
+          "job": "plano-control-dispositivos",
+          "step_index": 1,
+          "step_name": "Preparar SSH",
+          "exit_code": 0,
+          "source_script_sha256": "48a2bdbc70c82f82aa19988c3ca91ca1bed384e17fd011157c9f93b3866307ff"
+        },
+        {
+          "job": "plano-control-dispositivos",
+          "step_index": 2,
+          "step_name": "Exigir la confirmacion literal",
+          "exit_code": 0,
+          "source_script_sha256": "093ff9248bb1a1c0db9c680e654e71d7e5d8f54e65b25b8f8615dcbe0667a9c9"
+        },
+        {
+          "job": "plano-control-dispositivos",
+          "step_index": 3,
+          "step_name": "GATES de sintaxis EN EL VPS antes de tocar nada",
+          "exit_code": 0,
+          "source_script_sha256": "c77810700b1384c7fdeb1994b1827ccbed832a40fd6a33d90862bdd8c1ab86c7"
+        },
+        {
+          "job": "plano-control-dispositivos",
+          "step_index": 4,
+          "step_name": "Desplegar el plano de control (rollback automatico)",
+          "exit_code": 0,
+          "source_script_sha256": "1e3a12884cad01ad726372ace48920ec9f3ee8a703de1120dbe0796dabb3d82f"
+        },
+        {
+          "job": "plano-control-dispositivos",
+          "step_index": 5,
+          "step_name": "Smoke real por HTTPS + coherencia del manifiesto",
+          "exit_code": 0,
+          "source_script_sha256": "2b5ca3088fc105d8719a2fe182335cfb3ada7352c0db1c72bd5bac8510f15ac3"
+        }
+      ],
+      "summary": "Parsed YAML and syntax-checked run blocks with GitHub expressions replaced by inert tokens. No run block, SSH command or deployment executed.",
+      "refreshed_at_utc": "2026-11-08T00:36:16.349596+00:00",
+      "run_script_hashes_unchanged": true
+    },
+    {
+      "id": "diff_whitespace",
+      "command": [
+        "git",
+        "diff",
+        "--check"
+      ],
+      "exit_code": 0,
+      "status": "PASS",
+      "counts": {
+        "reported_lines": 0
+      },
+      "summary": "Tracked working-tree diff whitespace validation.",
+      "log_sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+      "refreshed_at_utc": "2026-11-08T00:39:41.880359+00:00"
+    },
+    {
+      "id": "jit_real_ffmpeg_evidence",
+      "status": "PASS_REUSED_UNCHANGED_INPUTS",
+      "command": [
+        "node",
+        "tools/quality/test_jit_output_truth.js",
+        "--report",
+        "artifacts/rea-jit-output-truth.json"
+      ],
+      "executed_this_run": false,
+      "counts": {
+        "assertions": 213,
+        "cases": 6
+      },
+      "evidence_file": "artifacts/rea-jit-output-truth.json",
+      "evidence_sha256": "a5fddb408aa93585e84a38e1abb1e0720f8f7f2c056f9cd2080543b9c59ad7bd",
+      "input_sha256": {
+        "tools/lab/ape-jit/server.js": "09a804e5a9f0acfb3c80577b500e0586a295b7965ce4e3d14de4cc8d1d81884b",
+        "contracts/crystal_6k_enhancement_contract.json": "b09ad67124ee57b3c94ee38b442e423a67df506852fe8c9ebcc7b9528a6fc097",
+        "tools/quality/test_jit_output_truth.js": "11d63ea453899c70c1ecde51d5ef72abe057a39bce68a1df94cd27cec4196663"
+      },
+      "summary": "Reused 213 assertions across six actual FFmpeg/ffprobe synthetic media cases because all three tested inputs are byte-identical. No VPS, device playback or physical HDR certification."
+    },
+    {
+      "id": "prefetch_unit",
+      "command": [
+        "node",
+        "IPTV_v5.4_MAX_AGGRESSION/frontend/tests/ape-predictive-prefetch.test.js"
+      ],
+      "status": "PASS",
+      "exit_code": 0,
+      "counts": {
+        "passed": 43,
+        "failed": 0
+      },
+      "log_sha256": "d846bd37ab630364d78c6575c788fd8b2b3d18b3e7dea213fb387b73b983717c",
+      "source_sha256": "b33812462ecd3b899ecfe1e81bb06235ee7cc6ccf3ad84341da22ae9707a3d34",
+      "scope": "synthetic unit cases"
+    },
+    {
+      "id": "prefetch_loopback",
+      "command": [
+        "node",
+        "IPTV_v5.4_MAX_AGGRESSION/frontend/tests/predictive-prefetch-live.js"
+      ],
+      "status": "PASS",
+      "exit_code": 0,
+      "counts": {
+        "passed": 11,
+        "failed": 0
+      },
+      "log_sha256": "972f62038d5e3fa747bd31c9d9a1d5c3e5018da5b969b61163d7bf52394952ed",
+      "source_sha256": "3a90f1e03f3a04a6468bbed01613f83dd1fd5c5a253c691ec1f41a9b89acf975",
+      "scope": "real loopback measurements"
+    },
+    {
+      "id": "prefetch_ui",
+      "command": [
+        "node",
+        "IPTV_v5.4_MAX_AGGRESSION/frontend/tests/ui-predictive-prefetch.verify.js"
+      ],
+      "status": "BLOCKED_ENVIRONMENT",
+      "exit_code": 2,
+      "counts": {
+        "passed": null,
+        "failed": null
+      },
+      "log_sha256": "b4da6c77650f427212f7bc36746ff723a21fc37fa8146c8143a49050611500af",
+      "source_sha256": "2109c7c4256e908354f9a0aea7c8072c441857dd970967a63938bc13f66eb82f",
+      "scope": "Chrome could not start; no UI assertions executed",
+      "reason": "Chrome process_singleton socket() failed with EPERM; CDP unavailable. Authorized remote desktop device was offline."
+    },
+    {
+      "id": "prefetch_public_ui",
+      "command": [
+        "node",
+        "IPTV_v5.4_MAX_AGGRESSION/frontend/tests/deploy-live-predictive-prefetch.verify.js"
+      ],
+      "status": "BLOCKED_ENVIRONMENT",
+      "exit_code": 2,
+      "counts": {
+        "passed": null,
+        "failed": null
+      },
+      "log_sha256": "7a282626bc6b0819cce04a4735f836cf794296358d09503c6de2a413b2d96c03",
+      "source_sha256": "86a7aa4899a60f2c37feb19875f860fa234d779566df8a63a83b4c1c7df427af",
+      "scope": "Chrome could not start; no UI assertions executed",
+      "reason": "Chrome process_singleton socket() failed with EPERM; CDP unavailable. Authorized remote desktop device was offline."
+    }
+  ],
+  "input_sha256": {
+    ".github/workflows/ape-deploy-frontend.yml": "1ba321e11a721bbc9b07356a9a57c3fd58dc7a0c8bbab4974adf2addc3053ce6",
+    "IPTV_v5.4_MAX_AGGRESSION/frontend/app.js": "9055473db86c2a8f7160655a517f1a260a8aaa8e1d59277e7ff778989931bbc2",
+    "IPTV_v5.4_MAX_AGGRESSION/frontend/export-module.js": "644a3055c20431ed9b774a7a6357923a0b64325932928df364db5c7ce98660a3",
+    "IPTV_v5.4_MAX_AGGRESSION/frontend/index-v4.html": "eb0829017967b991b97a6f41ab5d469e30226e215d4f99875cee7ab3a4aac18c",
+    "IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-lab-import-helper.js": "4afd76f33504f30e60627357ffc646f8b2e3ec814cf4f300635dfce956eb8edb",
+    "IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/ape-image-recipes-bundle.js": "ae0799e78104096e66a85eceb37dee515c1ef87b9f91e247cac811c7c13ffcc8",
+    "IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/ape-lab-v8-profiles.js": "c675988a75f27d2c49b394de8736680df5102eb424ba19947bf59e9e5c0f5ebb",
+    "IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/ape-profiles-config.js": "04bfe6c8b3b0abe4cd3dca04dcfd23fcc01c54bc4aa43b6b1713b27792095e41",
+    "IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/ape-quality-prober.js": "aa2a6a07c7441fa4ee096e1e8eb0504c9dc7ec6862af96e1d8f813aac7e58175",
+    "IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/ape-server-profile.js": "740dffa971ad2f880145ed1943f6eafe7d0b62e724f0e7ca65cf763a0f109b75",
+    "IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/ape-server-profiles-data.js": "fe0030b5a6ad7b0355cffd9bdb7c6678567cc392079e6edcccc8728d00de3a8d",
+    "IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/generation-controller.js": "4aefbba1e48cf92e0bd6def7913c943c45a0cd96de361dbf673b4e8673e016ca",
+    "IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/generation-output-panel.js": "d30bfe5a17f8b2762801f398d9293722525908b144457582ae751414199bd60a",
+    "IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/m3u8-api-wrapper-integrated.js": "6f9e9631801920ff94d82bd5df585e1cb6dcf80203d219d1efd6e2847490889f",
+    "IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/m3u8-typed-arrays-ultimate.js": "3432cf3c1614123d8d689d814148737e4f81227b5be6ef38d23917698039c7d1",
+    "IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/profile-manager-v9.js": "a49de8be74e0915e0fc9dcacd659f009334ba4afb2faeceb45f59da5c11d1773",
+    "IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/rea-catalog-export.js": "e94bec02fd6e7be1e391f38d2c9ae8363a44515edc0576f30ab048a2690b1c61",
+    "IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/rea-export-finalizer.js": "507a2617c6b578ba905409d0027d078ecbff4847ba39cfb5b19e5aa03266491a",
+    "IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/rea-processing-policy.js": "9685c3d308bea91fadf20f73787e8b94c67cd3c7dd2dc901805d2b1708c35583",
+    "IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/unified-generator-integration.js": "4401e67631320a79c57457f3af7c544fc88c8459c34139cd3c3bb086c79159fb",
+    "IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-worker.js": "323b1bc4fbcba1bf35ce657793a6b2b446975426525984378dc6406077184e65",
+    "IPTV_v5.4_MAX_AGGRESSION/frontend/js/m3u8-generator-v16-elite.js": "c2ef2eb65f6fe01a1f155bfd400c23493fc2706136ba80d321d42f7a60772f85",
+    "IPTV_v5.4_MAX_AGGRESSION/frontend/js/m3u8-world-class-generator.js": "28c37b70d4ab00bbed9ff16f7399fdaf4a87fe29b79fef6f4112f2653fd2a822",
+    "IPTV_v5.4_MAX_AGGRESSION/frontend/tests/e2e-bulletproof-full-audit.js": "dccdb0afb298dad198ecf02d053819d165936afdd1ea656d69274f7309eb5f7f",
+    "IPTV_v5.4_MAX_AGGRESSION/frontend/tests/rea-generation-dispatch.test.js": "216132ae416b43e446b74e002379a39a4b673a1a8e1755e9835d16c756867dd2",
+    "IPTV_v5.4_MAX_AGGRESSION/frontend/tests/rea-processing-policy.test.js": "43dab86b6e15a435a95e0763daa9f8517b82760783e88ce675acfaabdb207612",
+    "IPTV_v5.4_MAX_AGGRESSION/vps/prisma/adb/ara-device-worker.sh": "16c96dedfa6b45079cc3866e041c5c437bdf8e1e7e6831e5a9056095a44433bf",
+    "contracts/crystal_6k_enhancement_contract.json": "b09ad67124ee57b3c94ee38b442e423a67df506852fe8c9ebcc7b9528a6fc097",
+    "contracts/lab/APE_LAB_CANONICAL_BULLETPROOF.json": "345783e33142791b23b4662d396c0c83c8051d77cd7c166dc21ef4990c093094",
+    "contracts/lab/APE_LAB_REA_PROCESSING_OVERLAY_v1.json": "41b61e569cac24036f14dcf8081b3aae38b4bfff005f69dab8eb2f50829ced02",
+    "contracts/rea/rea-processing-v1.json": "2a974a6452609049a7f7790cd3a62633f2b06090c6e548fcaa1be3115e7d2a06",
+    "frontend/tests/lab-profile-count.test.js": "0f5e363f6025df6c97f624e9d61a6019c3fecf3730775bea49fa599fb42237ba",
+    "tools/ape-image-recipes/compile.js": "7243947e9fe186e539599fbcc27d9d49b3046c1cb52a910f52f41e44c375dedc",
+    "tools/ape-image-recipes/recipes.json": "fa46cbf164d0b23cc5b87033cc33890bf359a901f255c9b6bf88fa9a88369f59",
+    "tools/ape-image-recipes/test_atadenoise_runtime.py": "28f3bd5667f9d9d4775635cf415d5d5130f6ce006e66d382389bba9d3fe08c44",
+    "tools/ape-image-recipes/test_filter_dialects.js": "4857defa51d063a954db4edc823b5759fa4fb9653daa765e9e610d86d7c7d022",
+    "tools/ara/test_deploy_confirmation_security.py": "50ce9135b8ee57112329812431fbefd6e770ae6a320d67319781f349edab744c",
+    "tools/ara/test_deploy_regressions.py": "a3d9c81cc6c1e1aa93fb949fd76a99fd1de2e971dd1379019d842aa1d327fea8",
+    "tools/check-exit-contract.js": "7a645480dc659f43817de5542b8999cced737d80c99fd346302a20c31417a63f",
+    "tools/check_anti_degradation_policy.js": "d16787f1324227e0328deddbef6e645965294ab69598835d9914a27bc1b40aff",
+    "tools/check_crystal_6k_law.js": "be663936c4194d527e28fc9e7a2c5c96d745507b6a420412fc48e0eb4d7b00ed",
+    "tools/lab/ape-jit/server.js": "09a804e5a9f0acfb3c80577b500e0586a295b7965ce4e3d14de4cc8d1d81884b",
+    "tools/quality/test_jit_output_truth.js": "11d63ea453899c70c1ecde51d5ef72abe057a39bce68a1df94cd27cec4196663",
+    "tools/quality/test_out_opts.js": "ea04737622ce0bcc3b50128a7eccb47e3dfc90f0a81758828b40e36f4a94a851",
+    "tools/quality/test_rea_catalog_exports.js": "fff2162482b003346196c0ce433487899f2d4575725760d54f94e5ac0d34fbbc",
+    "tools/quality/test_rea_http_boundary.js": "bb5339a9b40c255df7efe93e38a17c58220a8470f7568af2375d77f7abea7e05",
+    "tools/quality/test_rea_source_alignment.js": "b7a54b54078c6b980980d7ef0a8365f0ba2acdc50539d66d65b492b3e68ea2ee",
+    "tools/rea/build_processing_policy.js": "9b73a08247623ed7fc903b038354f253faef01f8e4e7be8a7bc69009b5fc6a61"
+  },
+  "scope": {
+    "new_network_requests_performed_by_orchestrator": false,
+    "vps_deployed": false,
+    "android_device_tested": false,
+    "physical_hdr_verified": false,
+    "generated_playlist_from_user_scanned": false
+  },
+  "privacy": "Receipt contains commands, statuses, numeric counts and SHA-256 digests only. Detailed logs remain private local artifacts; no provider credentials or signed stream URLs are included.",
+  "initial_finished_at_utc": "2026-11-08T00:34:17.873818+00:00",
+  "workflow_comment_refresh": {
+    "started_at_utc": "2026-11-08T00:36:16.274308+00:00",
+    "finished_at_utc": "2026-11-08T00:36:16.811952+00:00",
+    "reason": "Parent updated workflow comments and mode description after the initial verification; no executable run-block content changed.",
+    "file": ".github/workflows/ape-deploy-frontend.yml",
+    "previous_sha256": "1e7c2d5f9f9cac0ad0aa4789bf3302c803e8b4309784b1be4a4b974790953299",
+    "current_sha256": "1ba321e11a721bbc9b07356a9a57c3fd58dc7a0c8bbab4974adf2addc3053ce6",
+    "changed_inputs_since_initial_run": [
+      ".github/workflows/ape-deploy-frontend.yml"
+    ],
+    "inputs_changed_during_refresh": [],
+    "other_changed_inputs": [],
+    "reexecuted_gates": [
+      "deploy_regressions",
+      "deploy_confirmation_security",
+      "workflow_yaml_and_bash_syntax"
+    ]
+  },
+  "historical_validation_runs": [
+    {
+      "receipt": "artifacts/rea-final-repo-validation-before-e2e-correction.json",
+      "sha256": "ececb1afb2278cd62f19212603cf0846fbd8eb3372a45893cc699b41bd657ca1",
+      "overall_status": "NOT_ALL_GATES_PASS",
+      "gate_summary": {
+        "total": 19,
+        "passed": 17,
+        "reused_pass": 1,
+        "known_failures": 1,
+        "unexpected_failures": 0
+      },
+      "failed_gate_record": {
+        "id": "bulletproof_e2e",
+        "command": [
+          "node",
+          "IPTV_v5.4_MAX_AGGRESSION/frontend/tests/e2e-bulletproof-full-audit.js"
+        ],
+        "cwd": ".",
+        "environment_overrides": {
+          "APE_LAB_JSON_PATH": "contracts/lab/APE_LAB_CANONICAL_BULLETPROOF.json"
+        },
+        "exit_code": 1,
+        "status": "KNOWN_BASELINE_FAILURE",
+        "counts": {
+          "passed": 24,
+          "failed": 1
+        },
+        "duration_seconds": 0.276,
+        "summary": "24 passed / 1 failed: dictatorMode emits network-caching=500 while the historical test expects 105000; reproduced on base 272f417. This is not an overall PASS.",
+        "log_sha256": "4ea66035ae486902d43c4bebd889ebea33c0e3a4fc144c4f9b971d214295bf61",
+        "private_log": "artifacts/rea-final-validation-logs/bulletproof_e2e.log",
+        "known_baseline_failure": true
+      },
+      "resolution_at_utc": "2026-11-08T00:39:41.880359+00:00",
+      "resolution": "Corrected contradictory test setup: retain all 25 LAB checks under dictatorMode=false and add three independent checks for the existing dictatorMode=true buffer override. Production buffer logic was not changed."
+    }
+  ],
+  "e2e_scenario_correction": {
+    "finished_at_utc": "2026-11-08T00:39:41.880359+00:00",
+    "file": "IPTV_v5.4_MAX_AGGRESSION/frontend/tests/e2e-bulletproof-full-audit.js",
+    "previous_sha256": "23154d6435f9097c9c66b6e05e3d0c72f95c689850eb83bd8e6bfa2678adb8cd",
+    "current_sha256": "dccdb0afb298dad198ecf02d053819d165936afdd1ea656d69274f7309eb5f7f",
+    "original_assertion_block_byte_preserved": true,
+    "changed_inputs": [
+      "IPTV_v5.4_MAX_AGGRESSION/frontend/tests/e2e-bulletproof-full-audit.js"
+    ],
+    "production_inputs_unchanged": true,
+    "lab_source": "contracts/lab/APE_LAB_CANONICAL_BULLETPROOF.json",
+    "lab_selection_method": "APE_LAB_JSON_PATH environment override",
+    "network_or_vps_access_performed": false
+  },
+  "historical_baseline_failures": [
+    "bulletproof_e2e"
+  ],
+  "repository_suites_summary_before_additional_required_gates": {
+    "total": 19,
+    "passed": 18,
+    "reused_pass": 1,
+    "known_failures": 0,
+    "unexpected_failures": 0
+  },
+  "repository_suites_all_passed": true,
+  "commit_gate": {
+    "source": "AGENTS.md: Verificación obligatoria (todo verde antes de commit)",
+    "status": "blocked",
+    "commit_created": false,
+    "pull_request_created": false,
+    "merge_performed": false,
+    "deployment_performed": false,
+    "remaining": [
+      "ui-predictive-prefetch.verify.js",
+      "deploy-live-predictive-prefetch.verify.js"
+    ],
+    "user_exception_already_given": false
+  },
+  "browser_dependency": {
+    "version": "157.0.8103.38",
+    "origin": "https://storage.googleapis.com/chrome-for-testing-public/157.0.8103.38/linux64/chrome-linux64.zip",
+    "download_sha256": "8cdeb344e9b2cefe59f4aea8d1d93d5d93054c03cde217665c16fc1f62e72a66",
+    "binary_version_command_passed": true,
+    "browser_start_passed": false,
+    "environment_restrictions_modified": false,
+    "privilege_escalation_requested": false,
+    "isolated_ci_launch_flags_added": [
+      "--no-sandbox",
+      "--disable-dev-shm-usage"
+    ]
+  }
+}

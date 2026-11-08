@@ -363,7 +363,11 @@
             }
         }
 
-        return header.join('\n');
+        // Profile recipes without rendition URIs are requested settings, not
+        // source variants. Preserve them as private metadata in the catalog.
+        return header.map(line => line.startsWith('#EXT-X-STREAM-INF:')
+            ? line.replace('#EXT-X-STREAM-INF:', '#EXT-X-APE-PROFILE-STREAM-INF:') + ';STATUS=REQUESTED_ONLY'
+            : line).join('\n');
     }
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -1020,6 +1024,8 @@
     // ═══════════════════════════════════════════════════════════════════════
 
     function generateURL(channel, jwt, options = {}) {
+        const original = channel.url || channel.base?.url || channel.stream_url || channel.direct_source;
+        if (typeof original === 'string' && original && original !== '#') return original;
         const id = channel.id || channel.stream_id || '0';
         const format = options.streamFormat || channel.streamFormat || 'm3u8';
 
@@ -1038,7 +1044,7 @@
         if (!server && typeof window !== 'undefined' && window.app?.state?.activeServers) {
             const chServerId = channel._source || channel.serverId || channel.server_id;
             if (chServerId) {
-                server = window.app.state.activeServers.find(s => s.id === chServerId);
+                server = window.app.state.activeServers.find(s => String(s.id) === String(chServerId));
             }
         }
 
@@ -1050,22 +1056,17 @@
         }
 
         // 4. Fallback to options (global credentials)
-        if (!serverUrl) serverUrl = options.server || channel.serverUrl || '';
-        if (!user) user = options.user || channel.username || '';
-        if (!pass) pass = options.pass || channel.password || '';
+        const sourceServerId = channel._source || channel.serverId || channel.server_id;
+        if (!serverUrl) serverUrl = channel.serverUrl || (!sourceServerId ? options.server : '') || '';
+        if (!user) user = channel.username || (!sourceServerId ? options.user : '') || '';
+        if (!pass) pass = channel.password || (!sourceServerId ? options.pass : '') || '';
 
         if (serverUrl && user && pass) {
             return preferHttps(`${serverUrl}/live/${user}/${pass}/${id}.${format}?ape_jwt=${jwt}`);
         }
 
-        // Fallback: usar URL existente del canal
-        let url = channel.url || channel.stream_url || channel.direct_source || '';
-        if (url) {
-            const separator = url.includes('?') ? '&' : '?';
-            return preferHttps(`${url}${separator}ape_jwt=${jwt}`);
-        }
-
-        return `http://localhost/live/user/pass/${id}.${format}?ape_jwt=${jwt}`;
+        // Keep the catalog entry but never invent localhost/provider credentials.
+        return '';
     }
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -1189,10 +1190,14 @@
 
         // PASO 7: URL (1 línea)
         const url = generateURL(channel, jwt, options);
+        if (!url) lines.push('#EXT-X-APE-CHANNEL-STATUS:UNRESOLVED_URL;REASON=missing_own_source');
         lines.push(url);
 
         // Unir con \n y agregar salto final
-        return lines.join('\n') + '\n';
+        const reaBlock = lines.join('\n') + '\n';
+        return window.APE_REA_EXPORT
+            ? window.APE_REA_EXPORT.finalizeChannelBlock(reaBlock, { channel, playbackUrl: url, options })
+            : reaBlock + '#EXT-X-APE-REA:{"status":"finalizer_unavailable"}\n';
     }
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -1208,7 +1213,7 @@
         const startTime = performance.now();
 
         // PASO 1: Generar GLOBAL_HEADER (1 sola vez)
-        let m3u8Content = generateGlobalHeader(options);
+        let m3u8Content = generateGlobalHeader(options) + '\n';
 
         // PASO 2: Generar cada canal (133 líneas c/u)
         for (let i = 0; i < channels.length; i++) {
@@ -1255,6 +1260,7 @@
     window.WorldClassM3U8Generator = {
         // Funciones principales
         generate: generateWorldClassM3U8,
+        generateWorldClassM3U8: generateWorldClassM3U8,
         generateChannel: generateChannel,
         generateGlobalHeader: generateGlobalHeader,
 

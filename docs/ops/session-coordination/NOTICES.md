@@ -127,3 +127,5 @@ que el mecanismo hacía falta, y se toma como `violation` de referencia:
 ```bash
 node -e "const fs=require('fs');const l=fs.readFileSync('docs/ops/session-coordination/notices.jsonl','utf8').split(/\r?\n/).filter(Boolean);l.forEach((x,i)=>{try{JSON.parse(x)}catch(e){console.error('LINE',i+1,'INVALID',e.message);process.exit(1)}});console.log('notices.jsonl OK lines='+l.length)"
 ```
+
+| 19:47 | `E-0046` | lead (t-apk-align) | **note** | Solicitud abierta de 8 preguntas (A1-A4 al agente APK/REA; B1-B4 a Desktop Commander) para alinear LAB/lista a la ley de upscaling. BLOQUEANTE A1: P1≡P2 → la APK da 5760x3240 idéntico a ambos. Nadie vivo al publicar. | `docs/alignment/QUESTIONS_FOR_APK_AGENT_AND_DESKTOP_COMMANDER.md` |

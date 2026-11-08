@@ -4681,8 +4681,10 @@
         constructor() {
             this.categories = HEADER_CATEGORIES;
             this.defaultHeaderValues = DEFAULT_HEADER_VALUES;
+            const persistedProfiles = this._load();
+            this._hasPersistedProfiles = !!(persistedProfiles && typeof persistedProfiles === 'object' && !Array.isArray(persistedProfiles));
             this.profiles = this._ensureBandwidthFloor(
-                this._load() || JSON.parse(JSON.stringify(DEFAULT_PROFILES))
+                persistedProfiles || JSON.parse(JSON.stringify(DEFAULT_PROFILES))
             );
             this.manifest = this._loadManifest() || JSON.parse(JSON.stringify(DEFAULT_MANIFEST));
 
@@ -4711,6 +4713,10 @@
             this.configGlobal = {};
             this.labExportedAt = null;
             this.omegaGapPlan = null;
+            // REA is an additive processing request, independent of calibrated
+            // source resolution/CODECS/HDR. No workbook export is implied.
+            this.reaProcessing = null;
+            this.reaProvenance = null;
             // Capacidad byte-range medida por host (206). Ver byterange_capability del LAB.
             this.byterangeCapability = null;
             try { this.loadLABFromStorage && this.loadLABFromStorage(); } catch (e) {}
@@ -4727,6 +4733,17 @@
                 console.error('⚠️ Error cargando perfiles, usando defaults:', e);
                 return null;
             }
+        }
+
+        _validatedREAProcessing(candidate) {
+            if (candidate === null || candidate === undefined) return null;
+            const api = typeof window !== 'undefined' ? window.APE_REA_POLICY : null;
+            if (!api || typeof api.validatePolicy !== 'function') {
+                throw new Error('REA processing contract requires rea-processing-policy.js before LAB import');
+            }
+            const check = api.validatePolicy(candidate);
+            if (!check.valid) throw new Error('Unsupported REA processing contract: ' + check.errors.join('; '));
+            return JSON.parse(JSON.stringify(candidate));
         }
 
         /**
@@ -4807,6 +4824,8 @@
             localStorage.setItem(STRATEGIC_HEADERS_STORAGE_KEY, JSON.stringify(this.strategicHeaders));
             // El suelo fusible no vive en profiles: se persiste aparte.
             localStorage.setItem(FLOOR_FUSE_STORAGE_KEY, JSON.stringify(this._floorFuseOverrides || {}));
+            localStorage.setItem('ape_lab_rea_processing', JSON.stringify(this.reaProcessing));
+            localStorage.setItem('ape_lab_rea_provenance', JSON.stringify(this.reaProvenance));
             // Aviso throttled (2026-11-06): este método se llamaba en cada
             // micro-paso del motor reactivo y su log era parte de la tormenta
             // en consola. La escritura sigue ocurriendo igual; sólo se avisa 1×/s.
@@ -4856,6 +4875,8 @@
                 profiles: JSON.parse(JSON.stringify(this.profiles)),
                 manifest: JSON.parse(JSON.stringify(this.manifest)),
                 strategicHeaders: JSON.parse(JSON.stringify(this.strategicHeaders)),
+                rea_processing: this.reaProcessing ? JSON.parse(JSON.stringify(this.reaProcessing)) : null,
+                rea_provenance: this.reaProvenance ? JSON.parse(JSON.stringify(this.reaProvenance)) : null,
             };
         }
 
@@ -4873,6 +4894,8 @@
                 // Validar que tenga P0-P5 al menos
                 const pids = Object.keys(imported).filter(k => /^P[0-5]$/.test(k));
                 if (pids.length === 0) throw new Error('No P0-P5 profiles found in JSON');
+                const hasREA = Object.prototype.hasOwnProperty.call(obj, 'rea_processing');
+                const importedREA = hasREA ? this._validatedREAProcessing(obj.rea_processing) : this.reaProcessing;
                 // Merge con DEFAULT_PROFILES para garantizar estructura completa
                 const merged = JSON.parse(JSON.stringify(DEFAULT_PROFILES));
                 for (const pid of pids) {
@@ -4884,12 +4907,16 @@
                     }
                 }
                 this.profiles = merged;
+                this.reaProcessing = importedREA;
+                if (hasREA) this.reaProvenance = obj.rea_provenance ? JSON.parse(JSON.stringify(obj.rea_provenance)) : null;
                 if (obj.manifest) this.manifest = obj.manifest;
                 if (obj.strategicHeaders) this.strategicHeaders = obj.strategicHeaders;
                 // Persistir inmediato (skip debounce para import manual)
                 localStorage.setItem(STORAGE_KEY, JSON.stringify(this.profiles));
                 localStorage.setItem(MANIFEST_STORAGE_KEY, JSON.stringify(this.manifest));
                 localStorage.setItem(STRATEGIC_HEADERS_STORAGE_KEY, JSON.stringify(this.strategicHeaders));
+                localStorage.setItem('ape_lab_rea_processing', JSON.stringify(this.reaProcessing));
+                localStorage.setItem('ape_lab_rea_provenance', JSON.stringify(this.reaProvenance));
                 console.log(`[APE-Profiles] IMPORTADOS ${pids.length} perfiles: ${pids.join(', ')}`);
                 return true;
             } catch (e) {
@@ -5054,6 +5081,9 @@
                 if (!data || !isVersionSupported) {
                     throw new Error(`Schema invalido: lab_version='${data && data.lab_version}', schema_variant='${data && data.lab_schema_variant}' (esperado omega_* o bulletproof:true)`);
                 }
+                // Validate the extension before changing profiles or storage.
+                // Legacy LABs remain valid and explicitly carry no REA overlay.
+                const importedREA = this._validatedREAProcessing(data.rea_processing);
                 if (isBulletproof) console.log('[LAB-CONSUMER] 🛡 Bulletproof JSON detectado — consumiendo 100% de los campos.');
                 // [HARDENING 2026-06-07] playlist_format: warn + asumir m3u8 si difiere/falta,
                 // en vez de throw duro. El LAB es 100% m3u8; un campo cosmético no debe tumbar el upload.
@@ -5265,6 +5295,9 @@
                 // === 6. SCORING METADATA ===
                 this.labMetadata = data.scoring_metadata || {};
                 this.labExportedAt = data.exported_at || null;
+                this.reaProcessing = importedREA;
+                this.reaProvenance = data.rea_provenance ? JSON.parse(JSON.stringify(data.rea_provenance)) : null;
+                result.reaProcessingPolicyId = this.reaProcessing ? this.reaProcessing.policy_id : null;
                 // Anotar scorecard del gap_plan en result para la UI
                 result.gapPlanScorecard = this.omegaGapPlan?.scorecard_total || null;
                 result.gapPlanGrade = this.omegaGapPlan?.scorecard_grade || null;
@@ -5284,6 +5317,8 @@
                 localStorage.setItem('ape_lab_servers', JSON.stringify(this.labServers));
                 localStorage.setItem('ape_lab_byterange', JSON.stringify(this.byterangeCapability || null));
                 localStorage.setItem('ape_lab_omega_gap_plan', JSON.stringify(this.omegaGapPlan || null));
+                localStorage.setItem('ape_lab_rea_processing', JSON.stringify(this.reaProcessing));
+                localStorage.setItem('ape_lab_rea_provenance', JSON.stringify(this.reaProvenance));
                 localStorage.setItem('ape_lab_metadata', JSON.stringify({
                     metadata: this.labMetadata,
                     exported_at: this.labExportedAt,
@@ -5428,6 +5463,20 @@
                 if (sv) this.labServers = JSON.parse(sv);
                 const br = localStorage.getItem('ape_lab_byterange');
                 if (br) { try { this.byterangeCapability = JSON.parse(br); } catch (_) {} }
+                const rea = localStorage.getItem('ape_lab_rea_processing');
+                if (rea) {
+                    try {
+                        this.reaProcessing = this._validatedREAProcessing(JSON.parse(rea));
+                        const provenance = localStorage.getItem('ape_lab_rea_provenance');
+                        this.reaProvenance = this.reaProcessing && provenance ? JSON.parse(provenance) : null;
+                    } catch (_) {
+                        // Corrupt/unsupported extension must not discard the LAB
+                        // or pretend that a processing request was verified.
+                        this.reaProcessing = null;
+                        this.reaProvenance = null;
+                        console.warn('[LAB] REA extension unavailable or unsupported; native LAB remains loaded');
+                    }
+                }
                 const md = localStorage.getItem('ape_lab_metadata');
                 if (md) {
                     const o = JSON.parse(md);
@@ -5440,6 +5489,8 @@
                     this.labSchemaVariant = o.lab_schema_variant;
                     this.labBulletproof = o.bulletproof;
                     this.labMetaPerProfile = o.meta_per_profile;
+                    this.labVersion = o.labVersion || null;
+                    this.labFileName = o.labFileName || null;
                 }
                 const gp = localStorage.getItem('ape_lab_omega_gap_plan');
                 if (gp) this.omegaGapPlan = JSON.parse(gp);
@@ -6463,6 +6514,9 @@
     (function mergeLabV8(cfg) {
         const lab = (typeof window !== 'undefined') ? window.APE_LAB_V8_PROFILES : null;
         if (!lab || !cfg || !cfg.profiles) return;
+        // A stored/imported calibration wins on reload. Embedded Excel values
+        // still supply missing defaults, but never overwrite persisted values.
+        const preserveStored = cfg._hasPersistedProfiles === true;
         const sections = ['settings', 'vlcopt', 'kodiprop', 'headerOverrides',
             'prefetch_config', 'hlsjs', 'bounds', 'optimized_knobs', 'lab_sync'];
         Object.keys(lab).forEach(function (id) {
@@ -6471,7 +6525,9 @@
             if (!dst) return;
             sections.forEach(function (key) {
                 if (src[key] && typeof src[key] === 'object') {
-                    dst[key] = Object.assign({}, dst[key] || {}, src[key]);
+                    dst[key] = preserveStored
+                        ? Object.assign({}, src[key], dst[key] || {})
+                        : Object.assign({}, dst[key] || {}, src[key]);
                 }
             });
             ['id', 'name', 'level', 'quality', 'description', 'color',
@@ -6480,7 +6536,7 @@
              'error_decision_tree', 'error_407_specialized_tree',
              'multi_provider_integration', 'master_audit_unified',
              'guarantees_10'].forEach(function (key) {
-                if (src[key] != null) dst[key] = src[key];
+                if (src[key] != null && (!preserveStored || !Object.prototype.hasOwnProperty.call(dst, key))) dst[key] = src[key];
             });
         });
     })(instance);

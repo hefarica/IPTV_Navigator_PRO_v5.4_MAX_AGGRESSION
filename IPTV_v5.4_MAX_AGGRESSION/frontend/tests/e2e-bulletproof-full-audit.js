@@ -45,6 +45,8 @@ async function main() {
     global.ReadableStream = require('stream/web').ReadableStream;
     global.Blob = (await import('buffer')).Blob;
     global.APE_PROFILE_MATRIX = {};
+    window.APE_REA_POLICY = require('../js/ape-v9/rea-processing-policy.js');
+    window.APE_REA_EXPORT = require('../js/ape-v9/rea-export-finalizer.js')(window);
 
     // 3) Eval generator
     let code = fs.readFileSync(GEN_PATH, 'utf8');
@@ -86,32 +88,34 @@ async function main() {
         bulletproof_profiles: bulletproof_profiles,
         bulletproof_nivel1: lab.nivel1_directives || [],
         forceProfile: 'P0',  // Force P0 to validate knobs injection (determineProfile needs browser)
-        dictatorMode: true,
+        // Calibrated LAB values are tested without the explicit dictator override.
+        dictatorMode: false,
         hud: false
     };
 
-    // 6) Generate
-    console.log(`🚀 Generating M3U8 with ${channels.length} channels...\n`);
-    let m3u8Text = '';
-    try {
-        const result = await gen.generate(channels, options);
-        if (result instanceof Blob) {
-            m3u8Text = await result.text();
-        } else if (typeof result === 'string') {
-            m3u8Text = result;
-        } else if (result && typeof result.getReader === 'function') {
-            // ReadableStream
+    async function generateText(testChannels, testOptions) {
+        const result = await gen.generate(testChannels, testOptions);
+        if (result instanceof Blob) return result.text();
+        if (typeof result === 'string') return result;
+        if (result && typeof result.getReader === 'function') {
             const reader = result.getReader();
             const decoder = new TextDecoder();
+            let text = '';
             while (true) {
                 const { done, value } = await reader.read();
                 if (done) break;
-                m3u8Text += decoder.decode(value, { stream: true });
+                text += decoder.decode(value, { stream: true });
             }
-        } else {
-            console.error('❌ Unknown return type from generate:', typeof result);
-            process.exit(1);
+            return text + decoder.decode();
         }
+        throw new Error(`Unknown return type from generate: ${typeof result}`);
+    }
+
+    // 6) Generate the calibrated LAB scenario (dictatorMode=false).
+    console.log(`🚀 Generating M3U8 with ${channels.length} channels (calibrated LAB)...\n`);
+    let m3u8Text = '';
+    try {
+        m3u8Text = await generateText(channels, options);
     } catch(e) {
         console.error(`❌ Generation FAILED: ${e.message}`);
         console.error(e.stack);
@@ -228,6 +232,20 @@ async function main() {
     console.log('\n--- G. SYS Layer ---');
     const sysCount = countOccurrences(m3u8Text, /^#EXT-X-APE-SYS-/gm);
     assert(sysCount >= 1, `SYS tags present: ${sysCount}`);
+
+    // H) Dictator is an explicit override, audited independently of LAB calibration.
+    console.log('\n--- H. Dictator Buffer Override (separate generation) ---');
+    const dictatorText = await generateText(channels.slice(0, 1), {
+        ...options,
+        dictatorMode: true
+    });
+    const dictatorBlocks = dictatorText.split(/(?=^#EXTINF:)/m).slice(1);
+    assert(dictatorBlocks.length === 1, 'Dictator scenario generates one channel block');
+    const dictatorBlock = dictatorBlocks[0] || '';
+    assert(countOccurrences(dictatorBlock, /^#EXTVLCOPT:network-caching=500\r?$/gm) === 1,
+        'Dictator channel has exactly one network-caching=500 override');
+    assert(countOccurrences(dictatorBlock, `#EXTVLCOPT:network-caching=${bufMs}`) === 0,
+        `Dictator channel does not retain the LAB network-caching=${bufMs}`);
 
     // Summary
     console.log('\n══════════════════════════════════════════════════════════');

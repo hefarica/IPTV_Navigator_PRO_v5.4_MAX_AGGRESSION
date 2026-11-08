@@ -1,0 +1,162 @@
+{
+  "schema": "ape.rea-apk-verification/1",
+  "build_date_utc": "2026-11-08",
+  "clean_rebuild_from_pinned_original": true,
+  "decode_mode": "--no-debug-info",
+  "original_byte_guards_preserved": true,
+  "build": {
+    "apk": "APE_REA_653_OTT_DASH_2K_4K_6K_TEST_20261108.apk",
+    "bytes": 24362980,
+    "sha256": "4b0c4ef397a6ea7066b5f51951d4fefb94820b0e94aeaf07f3f879ca6674d341",
+    "original_sha256": "8d3b145811c0bab3a10952329a81cadc477b08bd365b70f173cfe34ff52aa6e4",
+    "identity": {
+      "package": "com.ape.crystalagent.rea",
+      "version_code": 653,
+      "version_name": "3.9.7-rea-interop-test",
+      "label": "APE Crystal REA (Prueba)",
+      "install": "separate package",
+      "signing": "development identity; not original publisher certificate",
+      "modified_smali": [
+        "smali_classes4/com/ape/crystalagent/AbTestReceiver$onReceive$1.smali",
+        "smali_classes4/com/ape/crystalagent/ZapReceiver.smali",
+        "smali_classes4/com/ape/crystalagent/BuildConfig.smali",
+        "smali_classes4/com/ape/crystalagent/AbTestReceiver.smali",
+        "smali_classes4/com/ape/crystalagent/SettingsApplier.smali",
+        "smali_classes4/com/ape/crystalagent/BuildId.smali",
+        "smali_classes4/com/ape/crystalagent/AdbSelfGrantManager.smali",
+        "smali_classes2/dev/venice/ottshim/SessionTap.smali"
+      ]
+    },
+    "dex_files": 9,
+    "native_libraries_preserved": 20,
+    "signature_verified": true,
+    "zip_alignment_verified": true,
+    "android_playback_tested": false,
+    "physical_hdr_tested": false
+  },
+  "signing_certificate_sha256": "3caf7cafd6f962b09cca6d02af13986b0ba756e0d489567f141cb6ef2fc29d84",
+  "dex": {
+    "passed": true,
+    "apk_sha256": "4b0c4ef397a6ea7066b5f51951d4fefb94820b0e94aeaf07f3f879ca6674d341",
+    "apk_bytes": 24362980,
+    "dex_count": 9,
+    "unique_class_definitions": 14685,
+    "injected_method_count": 16,
+    "injected_callsite_count": 19,
+    "final_original_dex_rea_reference_count": 16,
+    "manifest_package": "com.ape.crystalagent.rea",
+    "manifest_component_count": 17,
+    "blockers": []
+  },
+  "external_interop": {
+    "passed": true,
+    "assertions": 253,
+    "android_runtime_tested": false,
+    "network_playback_tested": false,
+    "physical_hdr_tested": false,
+    "uses_test_doubles": false,
+    "coverage": "Real production parser and MIME helper; real Android Java Bundle/JSONObject; pinned official DASH and HTTP factory objects.",
+    "suites": [
+      {
+        "suite": "external_request",
+        "assertions": 65,
+        "passed": true,
+        "android_runtime_tested": false
+      },
+      {
+        "suite": "external_header_containers",
+        "assertions": 121,
+        "passed": true,
+        "formats": [
+          "Map",
+          "Bundle",
+          "JSON",
+          "String[]",
+          "List"
+        ],
+        "android_runtime_tested": false,
+        "uses_test_doubles": false
+      },
+      {
+        "suite": "media_source_routing",
+        "assertions": 53,
+        "passed": true,
+        "android_runtime_tested": false,
+        "network_playback_tested": false
+      },
+      {
+        "suite": "dash_factory_auth",
+        "assertions": 14,
+        "passed": true,
+        "android_runtime_tested": false,
+        "network_playback_tested": false,
+        "uses_test_doubles": false
+      }
+    ],
+    "source_sha256": {
+      "src/com/ape/rea/ReaExternalRequest.java": "99cf70d9aab18dc24ed69e6343a2f4094002c42909d840b1c2ed48428d817ae9",
+      "src/com/ape/rea/ReaExternalPlayerActivity.java": "53d3b3e86160289b70af1f033bbf4b1cbeb96962610556a2e46efd97ca546c3f",
+      "src/com/ape/rea/ReaMediaSources.java": "415296501cc9b2ee6dcca292b688791cd1ae75647d4678e956083acb2b654259"
+    },
+    "dash_jar_sha256": "a7d38e6b5a7192843d1726892fba7ee042a3aa68f7d5be2665f16762b41cf25b"
+  },
+  "native_recovery": {
+    "passed": true,
+    "scope": "Production recovery state, governor and real Android Java Intent on JVM; API34 compilation",
+    "android_activity_tested": false,
+    "physical_hdr_tested": false,
+    "uses_test_doubles": false,
+    "source_sha256": "1866f417ec64de745b96a1387c0871e162f74b15afd083c237b59fab211875a7",
+    "suites": [
+      {
+        "suite": "native_recovery",
+        "assertions": 103,
+        "passed": true,
+        "android_activity_tested": false,
+        "uses_test_doubles": false
+      },
+      {
+        "governor_assertions": 35,
+        "status": "passed"
+      }
+    ]
+  },
+  "source_overlay_sha256": {
+    "README.md": "29468814f66670f92528ff13029a200432aba3326240cf0e95b7ee3d2b187bf9",
+    "apply_hdr_patch.py": "e0764caaad4ae984fb45fabcf29fbae165958dc971e08507e266fa8cb16361f1",
+    "apply_host_ott_patch.py": "765c1f77f9bababf4a198a9de3a1386254a3ddaf60ddc26b1743ddc8efac10dc",
+    "assets/shaders/rea_adaptive.glsl": "4739e528bb653a25f37cdf116fa7b4b873bea5e9781899e58cdb3a14534b5322",
+    "assets/shaders/rea_vertex.glsl": "dcaa67dc9a36c891a02858d4fa8a963dd502cc9c7ab7b649374fb96dc3308b34",
+    "build-inputs.json": "939c57764e75ede6e7fb5d81527b29c6b47a35a2dad0a5f881fd6fc16e502314",
+    "build_java.py": "76ed24a3d98b248b2b982c04401939c97163192112bdbe6657317bc544293348",
+    "clone_identity.py": "fb31e8c5fff1c31fb61e9200d90118ee2c72df86a8d93a0a5a85fee764ddc044",
+    "java/com/ape/rea/ReaHdrBridge.java": "f7fb15ed04d8c6216a3159b0aa01261dec55e017b7cb7d3e895a9c6f5d4f2f62",
+    "package_apk.py": "64a7c14e420a9308ba7e462d4e88ae8740f272e72a79e714ebfc1810bc0471a1",
+    "shaders/rea_sdr_to_hdr_external.glsl": "e6f8a14e2061575dc1156e17a0c2062d8690b4cdb8578e17f1b3a2e5f831ebd7",
+    "src/com/ape/rea/ReaAdaptiveEffect.java": "db595c213e102abd61a54934675dbbba66433fccd6765363e6a370ab421675e5",
+    "src/com/ape/rea/ReaBridge.java": "1866f417ec64de745b96a1387c0871e162f74b15afd083c237b59fab211875a7",
+    "src/com/ape/rea/ReaExternalPlayerActivity.java": "53d3b3e86160289b70af1f033bbf4b1cbeb96962610556a2e46efd97ca546c3f",
+    "src/com/ape/rea/ReaExternalRequest.java": "99cf70d9aab18dc24ed69e6343a2f4094002c42909d840b1c2ed48428d817ae9",
+    "src/com/ape/rea/ReaLoadGovernor.java": "bd6aef64e8e80a5472bdf99e68c0ae27dd4dac9747f7fbc81727b4722880d644",
+    "src/com/ape/rea/ReaMediaSources.java": "415296501cc9b2ee6dcca292b688791cd1ae75647d4678e956083acb2b654259",
+    "src/com/ape/rea/ReaOttBridge.java": "649dce7c6a6050b068e2252bc58104fd3442117a8d1581b88a180ac98dfbe30c",
+    "src/com/ape/rea/ReaPlaybackSession.java": "7bf782a6989629be0df158fef39e27dafab0667f809411e3c3b81305cd99ab71",
+    "src/com/ape/rea/ReaState.java": "e1dbdcb8a8d335b9d7ab1a041f2754ed870d082af9712c69b5fffd23584121f7",
+    "src/com/ape/rea/ReaUi.java": "685765c05aa37fe117b9a670537ba82b4523d1f62a759b5f6247ada7da9dc53e",
+    "tests/ReaDashFactoryTest.java": "5b82bfdc826ee02d840d104cb4391b9e81b2393630513847e67a0a3f891d8641",
+    "tests/ReaExternalHeadersContainerTest.java": "fea15bf79dd2e396b35f05d7aa5a1ec71113786b4f931e86ef2aed2871ae8285",
+    "tests/ReaExternalRequestTest.java": "24afdc03fb6e900498829de7fb7cf4c6219833153dd54b5146abddcf7e82bbbd",
+    "tests/ReaLoadGovernorTest.java": "85ff9b4441c9d9c63187eded26378eec4d7efeb1ab544527d7dca61dc8764cd8",
+    "tests/ReaMediaSourcesTest.java": "27bd9fc2cc661e0414a7be67f47ac3bf297f9a217666c5fadca21945064a49cb",
+    "tests/ReaNativeRecoveryTest.java": "c514f0aaacbb334bf716c096bc7951f7d689568ce3233355ed0689c3462865c3",
+    "tests/check_final_dex.py": "269fc167e4991576fd45519198cc96a428808d1b9544d76d3f24d57c0c49b3e1",
+    "tests/run_external_interop.py": "e8dc07fb1bcc7a10983ee643e976076268f6b63fd9eb0d806fa83fafcbb244c6",
+    "tests/run_native_recovery.py": "f7528b85486f5a3b7bbb69abe4328154608e0fe0a0955f5d61c8b62cfd30ab4f"
+  },
+  "limits": {
+    "android_device_playback": false,
+    "physical_hdr": false,
+    "vps_deployed": false,
+    "ott_on_device_tested": false
+  }
+}

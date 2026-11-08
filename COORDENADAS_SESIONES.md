@@ -303,7 +303,8 @@ un ADN corregido, debe: (a) dejarlo como archivo candidato con nombre distinto, 
 
 ⇒ **Regla obligatoria:**
 1. **NUNCA publicar downloaded_list.m3u8** ni ningún .m3u8 con el #EXTHTTP de 200 claves sin pasar por el emisor actual (que sí scrubeará, t64).
-2. Publicar **siempre desde el emisor actual** (egen_headless.js o el botón de la app).
+2. Publicar **siempre desde el emisor actual** (
+egen_headless.js o el botón de la app).
 3. **NUNCA** «limpiar» el .gz ni editar el .m3u8 en el VPS: el contenido servido sale del .gz con gzip_static always + gunzip on.
 4. El #EXTHTTP desplegado (55 claves, todas X-APE-*, cero headers estándar) es de otra generación de emisor: no lo emite el repo, y no hay que cambiarlo.
 
@@ -380,10 +381,13 @@ Read-only + backups; **cero cambios funcionales**. Evidencia: `docs/edge/BASELIN
 |---|---|---|---|
 | 2026-10-26T20:22Z | DSH sesión VPS (edge-fluidez) | HOTFIX seguridad: location = /upload.php { return 403; } en sites-enabled/default | cp -a /root/backups/default.bak_20261026T202256Z /etc/nginx/sites-enabled/default && nginx -t && systemctl reload nginx |
 
-**Por qué sin ventana:** endpoint sin auth con escritura a /var/www/lists (envenenamiento de la lista servida) y **0 peticiones en 7 días**. Corrección de seguridad de una línea, reversible, con 
+**Por qué sin ventana:** endpoint sin auth con escritura a /var/www/lists (envenenamiento de la lista servida) y **0 peticiones en 7 días**. Corrección de seguridad de una línea, reversible, con
 ginx -t y reload (no restart). Registro completo en docs/edge/DEPLOY_LOG.md.
 
-**NO se tocó (decisión con evidencia):** esolve.php / esolve_quality*.php — **el frontend los llama** (pe-monitor-panel-v15.js:31, m3u8-api-wrapper-integrated.js:1230); bloquearlos rompería el panel y el wrapper. S1 (oráculo de credenciales + CORS *) queda como **deuda de diseño**: exige auth/firma y CORS acotado en esolve.php + frontend, no un bloqueo nginx.
+**NO se tocó (decisión con evidencia):**
+esolve.php /
+esolve_quality*.php — **el frontend los llama** (pe-monitor-panel-v15.js:31, m3u8-api-wrapper-integrated.js:1230); bloquearlos rompería el panel y el wrapper. S1 (oráculo de credenciales + CORS *) queda como **deuda de diseño**: exige auth/firma y CORS acotado en
+esolve.php + frontend, no un bloqueo nginx.
 
 
 ---
@@ -553,7 +557,8 @@ micro-caché **no** · HTTP/2 **se conserva** (riesgo de caudal con ventana pequ
 - **Prohibido** editar /etc/nginx/** o subir ficheros por scp/ssh a mano (las listas son la excepción: se publican desde la **APP**, no por GitHub).
 - El workflow ya está en verde en dry-run (run 40419273722, 6/6) con secrets VPS_HOST/VPS_USER/VPS_SSH_KEY/VPS_KNOWN_HOSTS y Environment production (reviewer: propietario).
 - Antes de pedir aprobación: dry-run verde y manifest.tsv con los ficheros que se despliegan.
-- Un rollback también se ejecuta por el pipeline (ollback.sh <stamp>), no a mano.
+- Un rollback también se ejecuta por el pipeline (
+ollback.sh <stamp>), no a mano.
 
 Motivo: que quede registro de lo hecho y que nada entre sin trazabilidad ni rollback.
 
@@ -637,3 +642,134 @@ Autoridad: **arbitraje del operador (HFRC)**, regla 5 del `COORDINATION_PROTOCOL
 2. **3 archivos modificados sin commitear**: `.github/workflows/ape-ui-navegador.yml`, `IPTV_v5.4_MAX_AGGRESSION/frontend/tests/test-url-construction-regression.js`, `tools/url2/verify_pulse.js`.
 3. **`/pulse` server-side sirve dialecto mixto**: VLC y Kodi reciben el mismo cuerpo (124 `#EXTVLCOPT` + 86 `#KODIPROP`), sin `#EXT-X-APE-URL2-DIALECT`. `tools/url2/verify_dialects.js` da 12 PASS / 11 FAIL. Falta el sha del `pulse.php` servido para saber si el VPS está atrás del repo.
 4. **Rama vs master**: HEAD `086a9a00` tiene **612 commits** que no están en `origin/master`, y `origin/master` **no es ancestro**. El deploy sale de esta rama (`ape-deploy-frontend.yml:54`), así que producción no está rota — pero el repo sí está divergido.
+
+---
+
+## §98 · SESIÓN 2026-11-07/08 — ALINEACIÓN APK <-> VPS y COORDINACIÓN DE RECURSOS EXTERNOS
+
+> Añadido al final del ledger (append-only) para no cirujear §2/§3 en medio del documento.
+
+### §98.1 · Escrituras de esta sesión (regla 2 de §1)
+
+| Hora (America/Bogota) | Sesión | Archivo | SHA-256 (16) | Bytes | Estado |
+|---|---|---|---|---|---|
+| 2026-11-07 ~18:40 | lead (dsh) | `.agents/skills/iptv-ape-apk-vps-contract-alignment/SKILL.md` | `8881E38F3FF63951` | 14.267 | nuevo · cerrado |
+| 2026-11-07 ~18:55 | lead (dsh) | `tools/audit/verify_apk_vps_contract.ps1` | `027687CA9BB7935D` | 8.694 | nuevo · corre 18/18 verde |
+| 2026-11-07 ~19:15 | lead (dsh) | `docs/monitoring/DESKTOP_COMMANDER_ACTIVITY.md` | `B0C7F644BE49E31E` | 10.524 | nuevo · cerrado |
+| 2026-11-07 ~19:32 | lead (dsh) | `tools/monitor/desktop_commander_watch.ps1` | `ED09D28E865E9B1E` | 9.888 | nuevo · corre verde |
+| 2026-11-07 ~19:37 | lead (dsh) | `tools/coord/external-claim.js` | `56E32BE447F571B5` | 10.725 | nuevo · cerrado |
+| 2026-11-07 ~19:10 | lead (dsh) | `docs/monitoring/snapshots/**` (7 `remote-*.log` + 1 snapshot JSON) | — | 1.206.429 B | nuevo · evidencia archivada |
+
+Ninguna escritura tocó `frontend/js/**`, `IPTV_v5.4_MAX_AGGRESSION/vps/production_mirror/**` ni
+`_vps_stage/tests/emitter_level_assert.js`. **Cero escrituras al VPS** (solo `ssh` de lectura).
+
+### §98.2 · Reconciliación de §3 (locks que no existen en la máquina)
+
+`COORDENADAS_SESIONES.md` §3 listaba 3 locks de **2026-10-25/26**. El estado real medido el 2026-11-07:
+
+```
+.session/locks.json -> {"locks": [], "sessions": {}, "updatedAt": "2026-11-06T15:41:49.923Z"}
+node tools/session-guard.js status -> LOCKS: (ninguno) · CONFLICTOS: (ninguno)
+heartbeats -> 698.957 s (~8,1 d) y 1.110.796 s (~12,9 d) de antigüedad
+```
+
+| Lock listado en §3 | Dueño | Veredicto medido |
+|---|---|---|
+| `_vps_stage/tests/emitter_level_assert.js` | t45 | **EXPIRADO** — no está en `locks.json`, heartbeat >8 d |
+| `frontend/js/**` (censo `X-APE-AI-*`) | t44 | **EXPIRADO** — idem |
+| `IPTV_v5.4_MAX_AGGRESSION/vps/production_mirror/**` | t44 | **EXPIRADO** — idem |
+
+**Esto NO autoriza a cualquiera a escribir ahí.** Significa que el lock cooperativo **no está tomado**;
+si t44/t45 siguen vivas, **deben re-reclamar antes de escribir** con
+`node tools/session-guard.js claim <path> --task t4X --reason "..."`. Mientras no lo hagan, el siguiente
+que reclame gana y el otro debe parar. La discrepancia entre §3 y `locks.json` es en sí un riesgo de
+colisión: §3 es prosa que envejece, `locks.json` es el estado que el tool consulta.
+
+### §98.3 · HUECO CERRADO: recursos FUERA del repo
+
+`tools/session-guard.js` resuelve rutas contra el `cwd` del repo. El trabajo de Desktop Commander del
+2026-11-07 ocurre en **`C:\Users\HFRC\Downloads`** (LAB `.xlsm`, ~300 `APE_LISTA_*.m3u8`) y sobre el
+**device ADB**. Ninguno vive en el repo ⇒ `session-guard.js` **no los ve** ⇒ dos sesiones pueden abrir
+el mismo `.xlsm`. **Excel abre el libro en EXCLUSIVA**: el segundo que llegue corrompe el primero
+(skill `iptv-excel-safe-mode`, regla 1).
+
+Nuevo instrumento: `tools/coord/external-claim.js` (mismo modelo cooperativo + TTL, no kernel-lock).
+
+```
+node tools/coord/external-claim.js status
+node tools/coord/external-claim.js claim lab   --task <t> --reason "<por que>" [--ttl 90]
+node tools/coord/external-claim.js claim lists --task <t> --reason "<por que>"
+node tools/coord/external-claim.js claim adb   --task <t> --reason "<por que>"
+node tools/coord/external-claim.js release lab
+node tools/coord/external-claim.js check lab lists adb     # exit 1 si ajeno o STALE
+```
+
+Estado de los claims al cierre de esta sesión (persistido en `.session/external-claims.json`):
+
+| Recurso | Estado | Dueño | Motivo |
+|---|---|---|---|
+| `lab` | **TOMADO** (TTL 240 min) | `desktop-commander@observed` | leyó hoja `6_NIVEL_2_PROFILES` (A1:A65, A28:G38) |
+| `lists` | **TOMADO** (TTL 240 min) | `desktop-commander@observed` | escaneó `APE_LISTA_*.m3u8` (23:47Z y 23:51Z) |
+| `adb` | LIBRE | — | `adb devices` = **0 dispositivos** el 2026-11-07 |
+
+**Un TTL vencido NO se renueva solo:** pasa a `STALE` y el tool exige `--force --reason` para
+reclamarlo. `writes:false` significa que reclamar **no autoriza a escribir**; solo declara intención de
+lectura y avisa a los demás.
+
+### §98.4 · LIMITACIÓN HONESTA del marcador físico
+
+`external-claim.js` intenta dejar un fichero `<recurso>.APE_LOCK` junto al recurso (capa 2 de señal).
+**El sandbox de la sesión deniega la escritura fuera del workspace:**
+
+```
+EPERM: operation not permitted, open 'C:\Users\HFRC\Downloads\APE_M3U8_LAB_v8_FIXED.xlsm.APE_LOCK'
+```
+
+⇒ **la capa 2 no está operativa hoy**. Las capas que sí funcionan son la 1
+(`.session/external-claims.json`), la 3 (este ledger) y la 4 (`docs/coordination/README.md`). Si el
+operador quiere la marca física, debe crearla él o correr el tool con escritura sobre `Downloads`.
+Un hueco declarado, no tapado.
+
+### §98.5 · Bloqueo de fondo del desarrollo de la APK, medido
+
+| Hecho | Medida | Consecuencia |
+|---|---|---|
+| `adb devices` | **0 dispositivos** | la APK **no se puede validar en device ahora mismo** |
+| `/ara/version.json` (VPS) | `versionCode 651` / `com.ape.crystalagent` | la v652 en mano del operador **no está publicada** |
+| APK servido sha256 | `8d3b1458…` | es la **base** exacta de la que se derivó la 652 |
+| Divergencia git | `642` commits sobre `master`, `116` detrás | el trabajo del APK **nunca llegó a la rama de deploy** |
+
+Nada de esto se resuelve escribiendo en `Downloads`: es decisión de publicación + merge.
+
+### §98.6 · ALINEACIÓN A LA LEY DE UPSCALING DE LA APK (orden del propietario 2026-11-07)
+
+**Orden:** «DEBES ALINEARTE A LA UPSCALING QUE ESTÁ GOBERNANDO LA APK, NOS ALINEAMOS A LA APK.»
+
+| Hora (America/Bogota) | Sesión | Archivo | SHA-256 | Bytes | Estado |
+|---|---|---|---|---|---|
+| 2026-11-07 ~19:47 | lead (dsh) | `docs/alignment/REA_UPSCALING_LAW.md` | `922DA42D1AC36DDB05A5BE377557CC6333EEE8400876CDE882E65B1C1A70E3CE` | 10,941 | nuevo · cerrado |
+
+Fuente de verdad: `integration/src/com/ape/rea/ReaAdaptiveEffect.java:109-122` del ZIP
+`APE_REA_FUENTES_Y_FIRMA_PRIVADA_20261107.zip` (sha256 `df20e712…`). **La ley se transcribe del
+código que compila al DEX, no de la documentación.**
+
+Ley (por `shortSide`, no por perfil):
+`≤720 → 2560×1440` · `721..2159 → 3840×2160` · `=2160 → 5760×3240` · `>2160 → nativo sin upscale`.
+`scaleLevel` 0/1/2 = nativo / mitad del salto / salto completo (default 2).
+
+Derivados sobre la hoja `6_NIVEL_2_PROFILES`:
+
+| Hecho | Veredicto |
+|---|---|
+| **P1 ≡ P2 en imagen** (`3840×2160` ambos) → APK da `5760×3240` a los dos | **COLAPSO** — el motor no puede distinguirlos |
+| P5 `854×480` escala 2.998 → `2560×1438`, no `2560×1440` | corrección de redondeo |
+| P0 `7680×4320` necesita **443,1 MiB**; sólo cabe en el tier 448 MiB (≥6 GB RAM) | **bypass REA** en todo device menor |
+| Gobernador baja **calidad antes que resolución** y restaura a los 40 s estables | alineado con Anti-Degradación; **no tocar** |
+
+**No se modificó el LAB** (SSOT, claim `lab` activo, `writes:false`, Excel safe-mode regla 1). El
+documento propone campos (`rea_target_l2`, `rea_scale_max`, `rea_min_ram_mb`, …) y el tag
+`#EXT-X-APE-REA-TARGET:…;STATE=DECLARED`. **`RESOLUTION=` del STREAM-INF sigue declarando la
+FUENTE**: escribir `5760x3240` sobre un stream `3840x2160` sería mentira al parser.
+
+Decisiones abiertas para el propietario: (1) qué hacer con el colapso P1/P2; (2) si P0 se declara
+passthrough o se baja la huella de textura; (3) si se emite el tag REA en la lista.

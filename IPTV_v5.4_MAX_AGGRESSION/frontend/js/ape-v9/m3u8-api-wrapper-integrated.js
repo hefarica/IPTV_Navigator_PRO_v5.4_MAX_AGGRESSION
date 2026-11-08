@@ -468,7 +468,7 @@
                 });
 
                 // Generar M3U8
-                const m3u8Content = this._generateM3U8Content(optimizedChannels, profile);
+                const m3u8Content = this._generateM3U8Content(optimizedChannels, profile, options);
 
                 // Actualizar estadísticas
                 this.stats.totalGenerations++;
@@ -922,12 +922,12 @@
             return 2; // Default: STABLE (HD)
         }
 
-        _generateM3U8Content(channels, profile) {
+        _generateM3U8Content(channels, profile, options = {}) {
             const profileConfig = PROFILES[profile] || PROFILES['P2'];
             let output = this._generateGlobalHeader();
 
             channels.forEach((channel, index) => {
-                const entry = this._generateChannelEntry(channel, index, profile);
+                const entry = this._generateChannelEntry(channel, index, profile, options);
                 output += `\n${entry}`;
             });
 
@@ -1163,7 +1163,7 @@
 `;
         }
 
-        _generateChannelEntry(channel, index, globalProfile) {
+        _generateChannelEntry(channel, index, globalProfile, options = {}) {
             const channelId = channel.stream_id || channel.id || index;
             const channelName = channel.name || channel.stream_display_name || `Canal ${index}`;
 
@@ -1245,7 +1245,9 @@
                 let srvParam = '';
                 if (window.app && window.app.state) {
                     const channelServerId = channel._source || channel.serverId || channel.server_id;
-                    const server = window.app.state.activeServers?.find(s => s.id === channelServerId) || window.app.state.currentServer;
+                    const server = channelServerId
+                        ? window.app.state.activeServers?.find(s => String(s.id) === String(channelServerId))
+                        : window.app.state.currentServer;
                     if (server && server.baseUrl && server.username && server.password) {
                         const cleanHost = server.baseUrl.replace(/\/player_api\.php$/, '').replace(/\/$/, '').replace(/^https?:\/\//, '');
                         const srvToken = btoa(`${cleanHost}|${server.username}|${server.password}`);
@@ -1257,8 +1259,9 @@
                 // El resolver recibe la URL upstream tal cual; t28 (derivación desde
                 // srv/sid) queda como defensa en profundidad. `ape_jwt=` NO viaja:
                 // es credencial del catálogo, no del upstream.
-                const _providerUrlRaw = String(channel.url || channel.direct_source || url || '');
-                const providerUrl = _providerUrlRaw.split('ape_jwt=')[0].replace(/[?&]+$/, '');
+                const _suppliedProviderUrl = channel.url || channel.base?.url || channel.direct_source || channel.stream_url || '';
+                const _providerUrlRaw = String(_suppliedProviderUrl || url || '');
+                const providerUrl = _suppliedProviderUrl ? _providerUrlRaw : _providerUrlRaw.split('ape_jwt=')[0].replace(/[?&]+$/, '');
                 const urlParam = providerUrl ? `&url=${encodeURIComponent(providerUrl)}` : '';
                 // #endregion t35-urlparam
 
@@ -1267,9 +1270,12 @@
             }
 
             // Línea URL con JWT
+            if (!url) entry += '#EXT-X-APE-CHANNEL-STATUS:UNRESOLVED_URL;REASON=missing_own_source\n';
             entry += `${url}`;
 
-            return entry;
+            return window.APE_REA_EXPORT
+                ? window.APE_REA_EXPORT.finalizeChannelBlock(entry, { channel, playbackUrl: url, options: Object.assign({}, this.config, options) })
+                : entry + '\n#EXT-X-APE-REA:{"status":"finalizer_unavailable"}';
         }
 
         // Helper: Obtener perfil inteligente para un canal
@@ -1507,6 +1513,8 @@
 
         _buildChannelUrl(channel, jwt) {
             let baseUrl = '';
+            const original = channel && (channel.url || channel.base?.url || channel.direct_source || channel.stream_url || channel.direct_url);
+            if (typeof original === 'string' && original && original !== '#') return original;
             // [t61] MODO DIRECTO: devolver la URL del PROVEEDOR sin tocar nada.
             // Se respeta el esquema original (no se fuerza https) y la query se
             // conserva (el camino VPS la recortaba con split('?')).
@@ -1518,14 +1526,12 @@
                 // sin URL propia no hay directo posible: sigue el camino normal
             }
 
-            if (channel.url && channel.url.startsWith('http')) {
-                baseUrl = channel.url.split('?')[0];
-            } else if (channel.direct_source && channel.direct_source.startsWith('http')) {
-                baseUrl = channel.direct_source.split('?')[0];
-            } else if (window.app && window.app.state) {
+            if (window.app && window.app.state) {
                 const state = window.app.state;
                 const channelServerId = channel._source || channel.serverId || channel.server_id;
-                let server = state.activeServers?.find(s => s.id === channelServerId) || state.currentServer;
+                let server = channelServerId
+                    ? state.activeServers?.find(s => String(s.id) === String(channelServerId))
+                    : state.currentServer;
 
                 if (server && server.baseUrl && server.username && server.password && channel.stream_id) {
                     const cleanBase = server.baseUrl.replace(/\/player_api\.php$/, '').replace(/\/$/, '');
@@ -1534,16 +1540,14 @@
                     // --- INYECCIÓN QUIRÚRGICA: VIP QUALITY OVERLAY ---
                     const useQualityOverlay = window.ApeModuleManager?.isEnabled('quality-overlay-vip') || false;
                     if (useQualityOverlay && cleanBase.includes('iptv-ape.duckdns.org')) {
-                        baseUrl = `https://iptv-ape.duckdns.org/resolve_quality_unified.php?ch=${channel.stream_id}&p=${profile}`;
+                        baseUrl = `https://iptv-ape.duckdns.org/resolve_quality_unified.php?ch=${channel.stream_id}&p=${channel._suggestedProfile || this.config.defaultProfile || 'P3'}`;
                     } else {
                         baseUrl = `${cleanBase}/live/${server.username}/${server.password}/${channel.stream_id}.${ext}`;
                     }
                 }
             }
 
-            if (!baseUrl) {
-                baseUrl = channel.url || channel.direct_source || '';
-            }
+            if (!baseUrl) return '';
 
             const separator = baseUrl.includes('?') ? '&' : '?';
             return `${baseUrl}${separator}ape_jwt=${jwt}`;

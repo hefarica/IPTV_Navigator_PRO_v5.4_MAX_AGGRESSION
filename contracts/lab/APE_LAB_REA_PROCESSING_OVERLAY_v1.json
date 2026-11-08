@@ -1,0 +1,139 @@
+{
+  "overlay_schema": "ape_lab_additive_overlay_v1",
+  "base_lab": {
+    "path": "contracts/lab/APE_LAB_CANONICAL_BULLETPROOF.json",
+    "sha256": "345783e33142791b23b4662d396c0c83c8051d77cd7c166dc21ef4990c093094"
+  },
+  "rea_processing": {
+    "schema_version": 1,
+    "policy_id": "rea-adaptive-v1",
+    "revision": "2026-11-07",
+    "authority": "user_requested_processing_extension",
+    "source_lab": {
+      "path": "contracts/lab/APE_LAB_CANONICAL_BULLETPROOF.json",
+      "sha256": "345783e33142791b23b4662d396c0c83c8051d77cd7c166dc21ef4990c093094",
+      "lab_version": "omega_v1_bulletproof_20261026",
+      "original_workbook_modified": false,
+      "exported_by_original_workbook": false
+    },
+    "activation": "external_player",
+    "player_package": "com.ape.crystalagent.rea",
+    "source_metadata": "preserve",
+    "source_dimensions": "decoded_stream",
+    "declaration_semantics": "requested_processing",
+    "resolution": {
+      "dimension_basis": "short_side",
+      "preserve_aspect_ratio": true,
+      "preserve_orientation": true,
+      "forbid_source_downscale": true,
+      "rounding": "floor_with_epsilon",
+      "rounding_epsilon": 1e-7,
+      "rules": [
+        {
+          "min_short_side": 1,
+          "max_short_side": 720,
+          "box_width": 2560,
+          "box_height": 1440
+        },
+        {
+          "min_short_side": 721,
+          "max_short_side": 2159,
+          "box_width": 3840,
+          "box_height": 2160
+        },
+        {
+          "min_short_side": 2160,
+          "max_short_side": 2160,
+          "box_width": 5760,
+          "box_height": 3240
+        }
+      ],
+      "above_max_source": "native"
+    },
+    "tier_selection": "runtime_capacity",
+    "tiers": [
+      "lite",
+      "balanced",
+      "detail"
+    ],
+    "capacity": {
+      "selection_owner": "player",
+      "required_observations": [
+        "source_decoder_support",
+        "max_texture_size",
+        "memory_budget",
+        "hdr_surface_support",
+        "playback_load",
+        "thermal_state"
+      ],
+      "adaptation_order": [
+        "reduce_effect_cost",
+        "reduce_processing_target_without_source_downscale",
+        "native_playback"
+      ],
+      "preserve_source_frame_rate": true,
+      "sustained_performance_verified_by_metadata": false
+    },
+    "hdr": {
+      "mode": "preserve_native_or_convert_verified_sdr",
+      "sdr_to_pq": {
+        "minimum_android_api": 33,
+        "require_known_bt709_sdr": true,
+        "require_display_hdr10": true,
+        "require_compatible_egl_pq_output": true,
+        "require_10bit_output": true
+      },
+      "native_pq": "preserve_when_processing_supported",
+      "unsupported_native_hdr": "native_playback",
+      "unknown_source_color": "no_sdr_to_hdr_conversion",
+      "metadata_alone_verifies_hdr": false
+    },
+    "transport": {
+      "playback_formats": {
+        "hls": "supported",
+        "dash": "mpd_extension_or_application_dash_xml_mime",
+        "dash_module_version": "1.3.1",
+        "progressive": "subject_to_device_codec_support",
+        "drm_license_configuration": "not_provided"
+      },
+      "headers": {
+        "producer": {
+          "max_count": 200,
+          "max_total_json_utf8_bytes": 8192
+        },
+        "consumer_contract": {
+          "max_count": 256,
+          "max_total_utf8_bytes": 16384,
+          "max_individual_utf8_bytes": 8192
+        },
+        "consumer_deployment_status": "requires_matching_apk_verification"
+      },
+      "media_session_role": "controls_and_metadata",
+      "media_session_exposes_ott_frames": false
+    },
+    "runtime_result_fields": [
+      "source_dimensions",
+      "requested_dimensions",
+      "applied_dimensions",
+      "requested_tier",
+      "applied_tier",
+      "hdr_applied",
+      "fallback_reason",
+      "dropped_frames",
+      "rebuffer_duration_ms"
+    ],
+    "runtime_result_fields_semantics": "required_for_device_certification_not_claimed_as_measured_results",
+    "runtime_verification": "required_on_physical_device"
+  },
+  "rea_provenance": {
+    "authority": "user_requested_processing_extension",
+    "source_lab_path": "contracts/lab/APE_LAB_CANONICAL_BULLETPROOF.json",
+    "source_lab_sha256": "345783e33142791b23b4662d396c0c83c8051d77cd7c166dc21ef4990c093094",
+    "processing_contract_path": "contracts/rea/rea-processing-v1.json",
+    "processing_contract_sha256": "2a974a6452609049a7f7790cd3a62633f2b06090c6e548fcaa1be3115e7d2a06",
+    "source_profiles_unchanged": true,
+    "original_workbook_modified": false,
+    "exported_by_original_workbook": false,
+    "generated_by": "tools/rea/build_processing_policy.js"
+  }
+}

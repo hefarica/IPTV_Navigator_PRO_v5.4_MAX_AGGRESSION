@@ -182,7 +182,7 @@ function finalizar() {
     `  CONSTANTE ${resumen.CONSTANTE} · VARIA ${resumen.VARIA} · ` +
     `PARCIAL ${resumen.PARCIAL} · RARO ${resumen.RARO}\n`
   );
-  process.exit(0);
+  process.exit(0); // exit-ok: censo emitido según contrato; CONSTANTE es una clasificación, no un fallo del comando.
 }
 
 const rs = fs.createReadStream(path, { highWaterMark: 1 << 20 });

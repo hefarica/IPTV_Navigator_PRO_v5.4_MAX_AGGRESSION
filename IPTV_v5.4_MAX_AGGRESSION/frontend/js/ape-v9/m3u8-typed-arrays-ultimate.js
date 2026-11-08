@@ -3501,7 +3501,7 @@ ${options.dictatorMode ? `#` + Array.from({ length: 64 }).map(() => Math.random(
 #EXT-X-DEFINE:NAME="OMEGA_COMPLIANCE",VALUE="HLS-RFC8216BIS+CMAF-LL+HDR10+DV-P81-P10+LCEVC-P4"
 #EXT-X-KEY:METHOD=NONE
 #EXT-X-SESSION-KEY:METHOD=NONE
-#EXT-X-I-FRAME-STREAM-INF:BANDWIDTH=450000,AVERAGE-BANDWIDTH=400000,CODECS="hvc1.2.4.L153.B0",RESOLUTION=1920x1080
+#EXT-X-APE-DECLARED-I-FRAME-STREAM-INF:BANDWIDTH=450000,AVERAGE-BANDWIDTH=400000,CODECS="hvc1.2.4.L153.B0",RESOLUTION=1920x1080;STATUS=UNVERIFIED
 #EXT-X-DATERANGE:ID="omega-live-${timestamp}",START-DATE="${new Date().toISOString()}",DURATION=86400,X-OMEGA-TYPE="LIVE-CATCHUP",X-OMEGA-SCOPE="CHANNEL-SESSION",X-OMEGA-BUILD="v5.4-MAX-AGGRESSION"
 #EXT-X-DATERANGE:ID="omega-hdr-window",START-DATE="${new Date().toISOString()}",PLANNED-DURATION=86400,X-HDR-TYPE="HDR10+DV-P81-P10",X-HDR-MAX-CLL=5000,X-HDR-MAX-FALL=800
 #KODIPROP:inputstream.adaptive.manifest_type=hls
@@ -9206,14 +9206,11 @@ ${__apeContinuityTags().join('\n')}
         return '#EXT-X-APE-CRYSTAL-UHD:PROFILE=' + p + ';VPP_INTENSITY=' + n + ';SCOPE=DISPLAY;PIXELS=0';
     }
 
-    function _apeApply4kFake(m3u, ctx) {
+    // [REA 2026-11-07] Preserve the historical enhancement declarations as
+    // requested metadata. Source attributes are finalized from URL-bound probe
+    // evidence by _apeFinalizeReaChannel below; these tables never prove pixels.
+    function _apeAppendLegacyEnhancementMetadata(m3u, ctx) {
         const c = ctx || {};
-        const declare8k = (typeof window !== 'undefined' && window.APE_8K_DECLARE === true);
-        const targetRes = declare8k ? '7680x4320' : '3840x2160';
-        const targetCodecs = 'hvc1.2.4.L153.B0,mp4a.40.2';
-        const FIXED_SI = '#EXT-X-STREAM-INF:BANDWIDTH=28000000,AVERAGE-BANDWIDTH=22000000,RESOLUTION='
-            + targetRes + ',FRAME-RATE=30.000,CODECS="' + targetCodecs + '",VIDEO-RANGE=PQ';
-
         let lines = String(m3u == null ? '' : m3u).split('\n');
 
         // índice de la URI del bloque = última línea no vacía que no es tag
@@ -9225,25 +9222,8 @@ ${__apeContinuityTags().join('\n')}
             return -1;
         };
 
-        // (1) t61 — todo bloque DEBE declarar variante. Canal sin STREAM-INF (caso de los
-        // 45 de la lista publicada, p.ej. tvg-id 904505/904507): se inserta la línea fija
-        // INMEDIATAMENTE ANTES de la URI, conservando todo lo demás.
-        if (!lines.some(l => l.startsWith('#EXT-X-STREAM-INF:'))) {
-            const u0 = uriIdxOf(lines);
-            if (u0 !== -1) lines.splice(u0, 0, FIXED_SI);
-            else lines.push(FIXED_SI);
-        }
-
-        // (2) Reescribir RESOLUTION/CODECS de cada variante.
-        for (let i = 0; i < lines.length; i++) {
-            if (!lines[i].startsWith('#EXT-X-STREAM-INF:')) continue;
-            let l = lines[i];
-            if (/RESOLUTION=\d+x\d+/.test(l)) l = l.replace(/RESOLUTION=\d+x\d+/, 'RESOLUTION=' + targetRes);
-            else l = l + ',RESOLUTION=' + targetRes;
-            if (/CODECS="[^"]*"/.test(l)) l = l.replace(/CODECS="[^"]*"/, 'CODECS="' + targetCodecs + '"');
-            else l = l + ',CODECS="' + targetCodecs + '"';
-            lines[i] = l;
-        }
+        // (1)/(2) t61 superseded by REA: do not invent a variant or replace its
+        // resolution/codec. An unprobed catalog entry remains EXTINF + URI.
 
         // (3) ORDEN ESTRUCTURAL (t61) — el STREAM-INF debe ir INMEDIATAMENTE seguido de la URI.
         // Lo que quede entre medias (tags #EXT-X-APE-*, #EXTHTTP, etc.) se MUEVE a antes del
@@ -9313,18 +9293,7 @@ ${__apeContinuityTags().join('\n')}
                 // idempotencia: no duplicar si el bloque ya los trae
                 const yaEste = lines.some(l => l.startsWith('#EXT-X-APE-CRYSTAL-6K:'));
                 if (!yaEste) lines.splice(preSi, 0, ...t6);
-                // y reescribir la variante declarada a 6K
-                for (let k = 0; k < lines.length; k++) {
-                    if (!lines[k].startsWith('#EXT-X-STREAM-INF:')) continue;
-                    let l = lines[k];
-                    l = l.replace(/RESOLUTION=[0-9]+x[0-9]+/, 'RESOLUTION=5760x3240');
-                    if (!/RESOLUTION=/.test(l)) l = l + ',RESOLUTION=5760x3240';
-                    l = l.replace(/CODECS="[^"]*"/, 'CODECS="hvc1.2.4.L183.B0,mp4a.40.2"');
-                    if (!/CODECS=/.test(l)) l = l + ',CODECS="hvc1.2.4.L183.B0,mp4a.40.2"';
-                    l = l.replace(/BANDWIDTH=[0-9]+/, 'BANDWIDTH=' + (_6k.mbps * 1000000));
-                    l = l.replace(/AVERAGE-BANDWIDTH=[0-9]+/, 'AVERAGE-BANDWIDTH=' + Math.round(_6k.mbps * 1000000 * 0.8));
-                    lines[k] = l;
-                }
+                // REA: a 6K request is metadata, never a source STREAM-INF rewrite.
             }
         }
 
@@ -9481,6 +9450,17 @@ ${__apeContinuityTags().join('\n')}
         }
 
 return lines.join('\n');
+    }
+
+    function _apeFinalizeReaChannel(text, context) {
+        const api = (typeof window !== 'undefined') ? window.APE_REA_EXPORT : null;
+        if (api && typeof api.finalizeChannelBlock === 'function') return api.finalizeChannelBlock(text, context);
+        // A stale page missing the shared module still keeps every channel/URI.
+        // It cannot certify source attributes or claim REA alignment.
+        return String(text).split('\n').filter(line => !line.startsWith('#EXT-X-STREAM-INF:'))
+            .map(line => line.startsWith('#EXT-X-I-FRAME-STREAM-INF:')
+                ? line.replace('#EXT-X-I-FRAME-STREAM-INF:', '#EXT-X-APE-DECLARED-I-FRAME-STREAM-INF:') + ';STATUS=UNVERIFIED' : line)
+            .join('\n') + '\n#EXT-X-APE-REA:{"status":"finalizer_unavailable","sourceStatus":"unknown","execution":"not_verified"}';
     }
 
     function generateChannelEntry(channel, profile = 'P3', index = 0, credentialsMap = {}, options = {}) {
@@ -12733,15 +12713,22 @@ lines.push(`#EXT-X-APE-STREAM-TRUTH:src=${_streamTruth.source},w=${_streamTruth.
                 'SERVER-URI="https://iptv-ape.duckdns.org/prisma/api/content-steering.php"');
         }
 
-        // ═══ t60 — 4K FAKE UNIVERSAL (orden del propietario) ═══
-        // Reescribe atributos de los STREAM-INF + añade marcas. No elimina ninguna línea.
-        _finalM3U = _apeApply4kFake(_finalM3U, {
+        // ═══ REA: processing intent and observed source remain separate ═══
+        // Keep legacy recipe/transport tags, then finalize every emission branch
+        // against the exact URI. No profile/fake/PQ flag can relabel source bytes.
+        _finalM3U = _apeAppendLegacyEnhancementMetadata(_finalM3U, {
             profile: profile,
             res: _res796,
             name: (channel && channel.name) || ''
         });
-
-        return _finalM3U;
+        return _apeFinalizeReaChannel(_finalM3U, {
+            channel: channel,
+            probe: _probeData,
+            sourceUrl: primaryUrl,
+            playbackUrl: finalUrl,
+            options: options,
+            profile: profile
+        });
     }
 
     if (typeof window !== 'undefined') window.APE_GEN = generateM3U8Stream; // [t53/t72] export headless (hoisting)
@@ -12758,6 +12745,13 @@ lines.push(`#EXT-X-APE-STREAM-TRUTH:src=${_streamTruth.source},w=${_streamTruth.
         };
     }
     function generateM3U8Stream(channels, options = {}) {
+        // Validate supplied authentication before opening/emitting the stream.
+        // Final serialized budgets are enforced again by the shared finalizer.
+        if (window.APE_REA_EXPORT && typeof window.APE_REA_EXPORT.validateRequiredHeaders === 'function') {
+            for (const channel of channels || []) {
+                window.APE_REA_EXPORT.validateRequiredHeaders(channel, options, __apePlayableChannelUrl(channel));
+            }
+        }
         // PREFLIGHT: DIRECTO y VPS deben tener URI completa antes de abrir el stream.
         // No se permite generar una lista que luego el decoder no pueda abrir.
         // [URL-GUARD-DIAG] Si falla, el mensaje dice la CAUSA y el REMEDIO, no solo
@@ -12896,8 +12890,8 @@ lines.push(`#EXT-X-APE-STREAM-TRUTH:src=${_streamTruth.source},w=${_streamTruth.
         // ✅ v10.1: Pre-build credentials map ONCE — uses injected servers from options
         const credentialsMap = buildCredentialsMap(options);
 
-        const stream = new ReadableStream({
-            async start(controller) {
+        let reaStreamCancelled = false;
+        async function* produceChunks() {
                 const startTime = Date.now();
 
                 console.log(`🌊 [STREAM] Generando M3U8 ULTIMATE para ${channels.length} canales...`);
@@ -12932,7 +12926,7 @@ lines.push(`#EXT-X-APE-STREAM-TRUTH:src=${_streamTruth.source},w=${_streamTruth.
                     const headerChunk = headerText + '\n\n';
                     const encoded = encoder.encode(headerChunk);
                     totalBytes += encoded.byteLength;
-                    controller.enqueue(encoded);
+                    yield encoded;
                     if (useHUD) {
                         window.HUD_TYPED_ARRAYS.log('📋 Header global streamed', '#06b6d4');
                     }
@@ -12942,12 +12936,12 @@ lines.push(`#EXT-X-APE-STREAM-TRUTH:src=${_streamTruth.source},w=${_streamTruth.
                 }
                 // PASO 2: STREAM cada canal
                 for (let index = 0; index < channels.length; index++) {
+                    if (reaStreamCancelled) return;
                     const channel = channels[index];
 
                     // Check abort
                     if (useHUD && window.HUD_TYPED_ARRAYS.isAborted()) {
-                        controller.error(new Error('ABORTED_BY_USER'));
-                        return;
+                        throw new Error('ABORTED_BY_USER');
                     }
 
                     try {
@@ -12959,7 +12953,7 @@ lines.push(`#EXT-X-APE-STREAM-TRUTH:src=${_streamTruth.source},w=${_streamTruth.
                         const chunk = entry + '\n\n';
                         const encoded = encoder.encode(chunk);
                         totalBytes += encoded.byteLength;
-                        controller.enqueue(encoded);
+                        yield encoded;
 
                         // Actualizar HUD
                         if (useHUD && (index % 50 === 0 || index === channels.length - 1)) {
@@ -12975,8 +12969,7 @@ lines.push(`#EXT-X-APE-STREAM-TRUTH:src=${_streamTruth.source},w=${_streamTruth.
                         }
                     } catch (error) {
                         if (error && error.message === 'ABORTED_BY_USER') {
-                            controller.error(error);
-                            return;
+                            throw error;
                         }
                         // ── DEBUG 2026-04-08: verbose error diagnostics ──
                         // Bug post-pmProfile-fix: errores con message vacio.
@@ -13008,7 +13001,7 @@ lines.push(`#EXT-X-APE-STREAM-TRUTH:src=${_streamTruth.source},w=${_streamTruth.
                         const scorecardChunk = '\n' + scorecard + '\n';
                         const encodedSC = encoder.encode(scorecardChunk);
                         totalBytes += encodedSC.byteLength;
-                        controller.enqueue(encodedSC);
+                        yield encodedSC;
                         if (useHUD) {
                             const acc = _apeAuditAcc || {};
                             const totalExtras = (acc.extras?.vlcopt || 0) + (acc.extras?.kodiprop || 0) + (acc.extras?.headerOverrides || 0);
@@ -13041,7 +13034,7 @@ lines.push(`#EXT-X-APE-STREAM-TRUTH:src=${_streamTruth.source},w=${_streamTruth.
                         ',timestamp="' + new Date().toISOString() + '"\n';
                     const valEncoded = encoder.encode(valTag);
                     totalBytes += valEncoded.byteLength;
-                    controller.enqueue(valEncoded);
+                    yield valEncoded;
                     if (errors === 0) {
                         console.log('%c✅ [CA11 VALIDATOR] PASS · ' + s.channels +
                             ' canales · 0 errors · ' + ca11Elapsed + 'ms · marker embebido',
@@ -13058,8 +13051,7 @@ lines.push(`#EXT-X-APE-STREAM-TRUTH:src=${_streamTruth.source},w=${_streamTruth.
                     console.warn('[CA11 VALIDATOR] Emission failed:', e?.message || e);
                 }
 
-                // Cerrar stream
-                controller.close();
+                // The pull adapter closes after the final yielded chunk.
 
                 const elapsed = ((Date.now() - startTime) / 1000).toFixed(2);
                 const sizeMB = (totalBytes / 1024 / 1024).toFixed(2);
@@ -13080,8 +13072,26 @@ lines.push(`#EXT-X-APE-STREAM-TRUTH:src=${_streamTruth.source},w=${_streamTruth.
                         filesize: `${sizeMB} MB`
                     });
                 }
+        }
+        // Backpressure follows the slowest reader/disk: at most one queued chunk,
+        // instead of eagerly enqueuing an entire 805 MB catalog from start().
+        const producer = produceChunks();
+        const stream = new ReadableStream({
+            async pull(controller) {
+                try {
+                    const next = await producer.next();
+                    if (reaStreamCancelled) return;
+                    if (next.done) controller.close();
+                    else controller.enqueue(next.value);
+                } catch (error) {
+                    if (!reaStreamCancelled) controller.error(error);
+                }
+            },
+            async cancel() {
+                reaStreamCancelled = true;
+                await producer.return();
             }
-        });
+        }, { highWaterMark: 1 });
 
         return stream;
     }

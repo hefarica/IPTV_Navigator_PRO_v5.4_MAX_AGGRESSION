@@ -20,6 +20,7 @@ const HARNESS = '<!DOCTYPE html><html><head><meta charset="utf-8"></head><body>\
   'P2:{quality:"4K",settings:{bitrate:25}},P3:{quality:"FHD",settings:{bitrate:15}},' +
   'P4:{quality:"HD",settings:{bitrate:10}},P5:{quality:"SD",settings:{bitrate:2}}},save:function(){}};' +
   'try{localStorage.clear()}catch(e){}</script>\n' +
+  '<script src="/rea-processing-policy.js"></script><script src="/rea-export-finalizer.js"></script>' +
   '<script src="/generation-validator-v9.js"></script><script src="/m3u8-typed-arrays-ultimate.js"></script></body></html>';
 
 (async () => {
@@ -28,6 +29,9 @@ const HARNESS = '<!DOCTYPE html><html><head><meta charset="utf-8"></head><body>\
     const u = req.url.split('?')[0];
     const send = (c, t, b) => { res.writeHead(c, { 'Content-Type': t }); res.end(b); };
     if (u === '/harness.html') return send(200, 'text/html', HARNESS);
+    if (u === '/rea-processing-policy.js' || u === '/rea-export-finalizer.js') {
+      return send(200, 'application/javascript', fs.readFileSync(path.join(ROOT, 'js/ape-v9', u.slice(1))));
+    }
     if (u === '/generation-validator-v9.js') return send(200, 'application/javascript', fs.readFileSync(path.join(ROOT, 'js/ape-v9/generation-validator-v9.js')));
     if (u === '/m3u8-typed-arrays-ultimate.js') return send(200, 'application/javascript', fs.readFileSync(path.join(ROOT, 'js/ape-v9/m3u8-typed-arrays-ultimate.js')));
     return send(404, 'text/plain', 'nf');
@@ -88,5 +92,5 @@ const HARNESS = '<!DOCTYPE html><html><head><meta charset="utf-8"></head><body>\
   fs.writeFileSync(path.join(OUT, 'blocks.json'), JSON.stringify(result, null, 1));
   console.log('escrito:', path.join(OUT, 'blocks.json'));
   cleanup();
-  process.exit(0);
+  process.exit(['P0', 'P1', 'P2', 'P3', 'P4', 'P5'].every(p => result[p] && result[p].ok === true) ? 0 : 1);
 })().catch(e => { console.error('ERR', e); process.exit(1); });

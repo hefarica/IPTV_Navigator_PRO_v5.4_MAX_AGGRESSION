@@ -129,6 +129,7 @@ class ExportModule {
         const len = chs.length;
         for (let i = 0; i < len; i++) {
             const ch = chs[i];
+            const reaBlockStart = lines.length;
 
             // Extracción de datos
             const final = this._getFinalView(ch);
@@ -296,7 +297,12 @@ class ExportModule {
 
             // Escritura final (SIEMPRE)
             lines.push(`#EXTINF:-1 ${tags},${name}`);
+            if (!streamUrl) lines.push('#EXT-X-APE-CHANNEL-STATUS:UNRESOLVED_URL;REASON=missing_own_source');
             lines.push(streamUrl);
+            const reaBlock = lines.splice(reaBlockStart).join('\n');
+            lines.push(window.APE_REA_EXPORT
+                ? window.APE_REA_EXPORT.finalizeChannelBlock(reaBlock, { channel: ch, playbackUrl: streamUrl, options })
+                : reaBlock + '\n#EXT-X-APE-REA:{"status":"finalizer_unavailable"}');
         }
 
         console.timeEnd("GenerateM3U8_Process");
@@ -331,9 +337,18 @@ class ExportModule {
 
     _buildStreamUrl(ch) {
         const app = this.app;
-        if (app?.state?.currentServer?.baseUrl && ch.stream_id) {
-            const { baseUrl, username, password } = app.state.currentServer;
-            const cleanBase = baseUrl.replace(/\/player_api\.php$/, "");
+        // An existing source may be signed. Preserve its scheme, query and bytes.
+        const existing = ch.url || ch.base?.url || ch.direct_source || ch.stream_url;
+        if (typeof existing === 'string' && existing.length && existing !== '#') return existing;
+        const state = app?.state || {};
+        const serverId = ch._source || ch.serverId || ch.server_id;
+        let server = serverId
+            ? (state.activeServers || []).find(s => String(s.id) === String(serverId))
+            : state.currentServer;
+        if (!server && serverId && state.currentServer && String(state.currentServer.id) === String(serverId)) server = state.currentServer;
+        if (server?.baseUrl && server.username != null && server.password != null && ch.stream_id != null) {
+            const { baseUrl, username, password } = server;
+            const cleanBase = baseUrl.replace(/\/player_api\.php$/, "").replace(/\/$/, '');
             let ext = app.state.streamFormat || "ts";
             let typePath = "live";
             if (ch.type === "movie" || ch.stream_type === "movie") { typePath = "movie"; ext = ch.container_extension || "mp4"; }
@@ -350,7 +365,7 @@ class ExportModule {
 
             return `${cleanBase}/${typePath}/${username}/${password}/${ch.stream_id}.${ext}`;
         }
-        return ch.url || ch.base?.url || "#";
+        return '';
     }
 
     _getFinalView(ch) {

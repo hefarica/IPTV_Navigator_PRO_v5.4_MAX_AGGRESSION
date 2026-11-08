@@ -1,6 +1,11 @@
 {
   "schema": "ape.image-recipe/1",
   "version": "2026-11-06",
+  "execution_domain": "legacy_cli_recipe",
+  "rea_device_policy_ref": "contracts/rea/rea-processing-v1.json",
+  "rea_device_policy_id": "rea-adaptive-v1",
+  "metadata_semantics": "profile_recipe_intent_not_observed_source_or_executed_enhancement",
+  "device_policy_override": false,
   "purpose": "Fuente unica de verdad del recetario de imagen. Una receta por perfil se compila a tres proyecciones: (1) video-filter nativo de VLC para #EXTVLCOPT, (2) cadena -lavfi para ffmpeg en VPS/LAB, (3) objeto JSON que viaja en el manifiesto como metadata dinamica.",
   "evidence": {
     "measured_on": "2026-11-02 America/Bogota",
@@ -80,10 +85,13 @@
         },
         {
           "id": "atadenoise",
-          "ffmpeg": "atadenoise=s=2:p=3:r=7",
-          "vlc": "atadenoise{s=2:p=3:r=7}",
-          "vlc_verified": true,
-          "nota": "denoise temporal: quita el parpadeo del grano entre cuadros. Complementa al espacial, no lo sustituye."
+          "ffmpeg": "atadenoise=s=7:p=3",
+          "vlc": null,
+          "vlc_verified": false,
+          "nota": "denoise temporal: quita el parpadeo del grano entre cuadros. Complementa al espacial, no lo sustituye.",
+          "legacy_invalid_ffmpeg": "atadenoise=s=2:p=3:r=7",
+          "note": "FFmpeg: ventana impar s entre5y129, p conserva máscara deplanos. Se usa la antigua intención r como ventana; r no es una opción. Umbrales A/B predeterminados. Sin homologación del módulo en VLC auditado.",
+          "parameter_validation_source": "https://ffmpeg.org/ffmpeg-filters.html#atadenoise"
         },
         {
           "id": "upscale",
@@ -125,10 +133,13 @@
         },
         {
           "id": "atadenoise",
-          "ffmpeg": "atadenoise=s=2:p=5:r=9",
-          "vlc": "atadenoise{s=2:p=5:r=9}",
-          "vlc_verified": true,
-          "nota": "denoise temporal: quita el parpadeo del grano entre cuadros. Complementa al espacial, no lo sustituye."
+          "ffmpeg": "atadenoise=s=9:p=5",
+          "vlc": null,
+          "vlc_verified": false,
+          "nota": "denoise temporal: quita el parpadeo del grano entre cuadros. Complementa al espacial, no lo sustituye.",
+          "legacy_invalid_ffmpeg": "atadenoise=s=2:p=5:r=9",
+          "note": "FFmpeg: ventana impar s entre5y129, p conserva máscara deplanos. Se usa la antigua intención r como ventana; r no es una opción. Umbrales A/B predeterminados. Sin homologación del módulo en VLC auditado.",
+          "parameter_validation_source": "https://ffmpeg.org/ffmpeg-filters.html#atadenoise"
         },
         {
           "id": "upscale",
@@ -169,10 +180,13 @@
         },
         {
           "id": "atadenoise",
-          "ffmpeg": "atadenoise=s=2.5:p=5:r=11",
-          "vlc": "atadenoise{s=2.5:p=5:r=11}",
-          "vlc_verified": true,
-          "nota": "denoise temporal: quita el parpadeo del grano entre cuadros. Complementa al espacial, no lo sustituye."
+          "ffmpeg": "atadenoise=s=11:p=5",
+          "vlc": null,
+          "vlc_verified": false,
+          "nota": "denoise temporal: quita el parpadeo del grano entre cuadros. Complementa al espacial, no lo sustituye.",
+          "legacy_invalid_ffmpeg": "atadenoise=s=2.5:p=5:r=11",
+          "note": "FFmpeg: ventana impar s entre5y129, p conserva máscara deplanos. Se usa la antigua intención r como ventana; r no es una opción. Umbrales A/B predeterminados. Sin homologación del módulo en VLC auditado.",
+          "parameter_validation_source": "https://ffmpeg.org/ffmpeg-filters.html#atadenoise"
         },
         {
           "id": "upscale",
@@ -213,10 +227,13 @@
         },
         {
           "id": "atadenoise",
-          "ffmpeg": "atadenoise=s=3:p=5:r=13",
-          "vlc": "atadenoise{s=3:p=5:r=13}",
-          "vlc_verified": true,
-          "nota": "denoise temporal: quita el parpadeo del grano entre cuadros. Complementa al espacial, no lo sustituye."
+          "ffmpeg": "atadenoise=s=13:p=5",
+          "vlc": null,
+          "vlc_verified": false,
+          "nota": "denoise temporal: quita el parpadeo del grano entre cuadros. Complementa al espacial, no lo sustituye.",
+          "legacy_invalid_ffmpeg": "atadenoise=s=3:p=5:r=13",
+          "note": "FFmpeg: ventana impar s entre5y129, p conserva máscara deplanos. Se usa la antigua intención r como ventana; r no es una opción. Umbrales A/B predeterminados. Sin homologación del módulo en VLC auditado.",
+          "parameter_validation_source": "https://ffmpeg.org/ffmpeg-filters.html#atadenoise"
         },
         {
           "id": "upscale",
@@ -257,10 +274,13 @@
         },
         {
           "id": "atadenoise",
-          "ffmpeg": "atadenoise=s=3:p=7:r=15",
-          "vlc": "atadenoise{s=3:p=7:r=15}",
-          "vlc_verified": true,
-          "nota": "denoise temporal: quita el parpadeo del grano entre cuadros. Complementa al espacial, no lo sustituye."
+          "ffmpeg": "atadenoise=s=15:p=7",
+          "vlc": null,
+          "vlc_verified": false,
+          "nota": "denoise temporal: quita el parpadeo del grano entre cuadros. Complementa al espacial, no lo sustituye.",
+          "legacy_invalid_ffmpeg": "atadenoise=s=3:p=7:r=15",
+          "note": "FFmpeg: ventana impar s entre5y129, p conserva máscara deplanos. Se usa la antigua intención r como ventana; r no es una opción. Umbrales A/B predeterminados. Sin homologación del módulo en VLC auditado.",
+          "parameter_validation_source": "https://ffmpeg.org/ffmpeg-filters.html#atadenoise"
         },
         {
           "id": "upscale",
@@ -301,10 +321,13 @@
         },
         {
           "id": "atadenoise",
-          "ffmpeg": "atadenoise=s=4:p=7:r=15",
-          "vlc": "atadenoise{s=4:p=7:r=15}",
-          "vlc_verified": true,
-          "nota": "denoise temporal: quita el parpadeo del grano entre cuadros. Complementa al espacial, no lo sustituye."
+          "ffmpeg": "atadenoise=s=15:p=7",
+          "vlc": null,
+          "vlc_verified": false,
+          "nota": "denoise temporal: quita el parpadeo del grano entre cuadros. Complementa al espacial, no lo sustituye.",
+          "legacy_invalid_ffmpeg": "atadenoise=s=4:p=7:r=15",
+          "note": "FFmpeg: ventana impar s entre5y129, p conserva máscara deplanos. Se usa la antigua intención r como ventana; r no es una opción. Umbrales A/B predeterminados. Sin homologación del módulo en VLC auditado.",
+          "parameter_validation_source": "https://ffmpeg.org/ffmpeg-filters.html#atadenoise"
         },
         {
           "id": "upscale",

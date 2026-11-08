@@ -1,0 +1,1585 @@
+--------- beginning of main
+06-18 10:56:01.331   667   802 W BestClock: java.time.DateTimeException: Missing NTP fix
+06-18 10:56:01.335   330 18246 I netd    : trafficSwapActiveStatsMap() <0.20ms>
+06-18 10:56:01.418   330 18246 I netd    : tetherGetStats() <7.55ms>
+06-18 10:56:01.453   667   802 W BestClock: java.time.DateTimeException: Missing NTP fix
+06-18 10:56:01.466   330 18246 I netd    : bandwidthSetGlobalAlert(2097152) <0.13ms>
+06-18 10:56:01.470   667   803 W BestClock: java.time.DateTimeException: Missing NTP fix
+06-18 10:56:01.471   667   803 W BestClock: java.time.DateTimeException: Missing NTP fix
+06-18 10:56:01.539 11537 11539 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:01.589 27032 27049 I um.ottnavigato: Background young concurrent copying GC freed 778168(24MB) AllocSpace objects, 1(20KB) LOS objects, 10% free, 199MB/223MB, paused 169us total 150.542ms
+06-18 10:56:01.647 11546 11546 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:01.761 11550 11552 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:01.979 11563 11563 W curl    : type=1400 audit(0.0:503220): avc: denied { ioctl } for path="/data/local/tmp/ape-qoe-queue.ndjson.snd" dev="dm-6" ino=229393 ioctlcmd=0x5413 scontext=u:r:shell:s0 tcontext=u:object_r:shell_data_file:s0 tclass=file permissive=0
+06-18 10:56:02.289 11583 11585 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:02.329   388   388 I WifiHAL : Creating message to get link statistics; iface = 15
+06-18 10:56:02.329   388   388 E WifiHAL : Incorrect number of channels = 4
+06-18 10:56:02.331   667   806 E WifiVendorHal: getWifiLinkLayerStats_1_3_Internal(l.973) failed {.code = ERROR_UNKNOWN, .description = unknown}
+06-18 10:56:02.339 11588 11588 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:02.355 28820 11593 I chatty  : uid=2000(shell) /apex/com.android.adbd/bin/adbd expire 3 lines
+06-18 10:56:02.703 11618 11618 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:02.897 11629 11631 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:03.055 11642 11642 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:03.371 11667 11667 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:03.402 28820 11670 I chatty  : uid=2000(shell) /apex/com.android.adbd/bin/adbd expire 3 lines
+06-18 10:56:03.480 11674 11676 I chatty  : uid=2000(shell) com.amazon.tv.livetv expire 1 line
+06-18 10:56:03.755 11697 11697 I chatty  : uid=2000(shell) app_process expire 1 line
+06-18 10:56:03.779 12895 13030 I ApeSettingsApplier: device_settings aplicados=2 rechazados=0
+06-18 10:56:04.030 27032 27049 I um.ottnavigato: Background young concurrent copying GC freed 784584(24MB) AllocSpace objects, 0(0B) LOS objects, 10% free, 199MB/223MB, paused 167us total 141.322ms
+06-18 10:56:04.075 11721 11721 W curl    : type=1400 audit(0.0:503226): avc: denied { ioctl } for path="/data/local/tmp/ape-qoe-queue.ndjson.snd" dev="dm-6" ino=229393 ioctlcmd=0x5413 scontext=u:r:shell:s0 tcontext=u:object_r:shell_data_file:s0 tclass=file permissive=0
+06-18 10:56:04.256 11735 11737 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:04.387 11746 11746 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:04.453 28820 11753 I chatty  : uid=2000(shell) /apex/com.android.adbd/bin/adbd expire 3 lines
+06-18 10:56:04.763 11767 11767 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:04.805 11769 11771 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:04.866 27032  4168 I MediaCodecLogger: 27032.4K.HW.omx.video.avc.bitrateInKbps = 2918
+06-18 10:56:04.963 11778 11780 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:05.119 11788 11788 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:05.294   631   631 E integrity_module: --- integrity_module file read error /sys/class/power_supply/battery/device/gm30_bat_cycle ---
+06-18 10:56:05.295   631   631 E integrity_module: --- integrity_module file read error  ---
+06-18 10:56:05.295   631   631 E integrity_module: --- integrity_module file read error /sys/devices/platform/charger/ADC_Charger_Voltage ---
+06-18 10:56:05.295   631   631 E integrity_module: --- integrity_module file read error /sys/devices/platform/charger/chr_type ---
+06-18 10:56:05.295   631   631 E integrity_module: --- integrity_module file read error ---
+06-18 10:56:05.340   388   388 I WifiHAL : Creating message to get link statistics; iface = 15
+06-18 10:56:05.340   388   388 E WifiHAL : Incorrect number of channels = 4
+06-18 10:56:05.342   667   806 E WifiVendorHal: getWifiLinkLayerStats_1_3_Internal(l.973) failed {.code = ERROR_UNKNOWN, .description = unknown}
+06-18 10:56:05.423 11806 11807 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:05.515 28820 11812 I chatty  : uid=2000(shell) /apex/com.android.adbd/bin/adbd expire 3 lines
+06-18 10:56:05.559 11810 11810 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:05.943 11829 11829 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:06.150 11835 11837 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:06.241 27032  4180 I MediaCodecLogger: 27032.SW.c2.audio.mp4a.bitrateInKbps = 93
+06-18 10:56:06.339 11842 11842 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:06.455 11844 11846 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:06.568 28820 11853 I chatty  : uid=2000(shell) /apex/com.android.adbd/bin/adbd expire 3 lines
+06-18 10:56:06.603   667   802 W BestClock: java.time.DateTimeException: Missing NTP fix
+06-18 10:56:06.605   330 18246 I netd    : trafficSwapActiveStatsMap() <0.35ms>
+06-18 10:56:06.687 11856 11856 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:06.738   330 18246 I netd    : tetherGetStats() <1.77ms>
+06-18 10:56:06.738  8113  8129 I yer.runtime.ft: Background concurrent copying GC freed 20653(781KB) AllocSpace objects, 0(0B) LOS objects, 49% free, 4473KB/8947KB, paused 190us total 252.875ms
+06-18 10:56:06.739  8113  8129 W yer.runtime.ft: Reducing the number of considered missed Gc histogram windows from 3162 to 100
+06-18 10:56:06.783 12895 13030 I ApeSettingsApplier: device_settings aplicados=2 rechazados=0
+06-18 10:56:06.785   667   802 W BestClock: java.time.DateTimeException: Missing NTP fix
+06-18 10:56:06.808   330 18246 I netd    : bandwidthSetGlobalAlert(2097152) <0.33ms>
+06-18 10:56:06.809 11858 11862 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:06.814   667   803 W BestClock: java.time.DateTimeException: Missing NTP fix
+06-18 10:56:06.816   667   803 W BestClock: java.time.DateTimeException: Missing NTP fix
+06-18 10:56:07.015 11873 11873 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:07.022 27032 27049 I um.ottnavigato: Background young concurrent copying GC freed 777654(24MB) AllocSpace objects, 1(20KB) LOS objects, 10% free, 199MB/223MB, paused 3.189ms total 136.351ms
+06-18 10:56:07.286 11889 11891 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:07.355 11896 11896 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:07.630 28820 11913 I chatty  : uid=2000(shell) /apex/com.android.adbd/bin/adbd expire 3 lines
+06-18 10:56:07.707 11919 11919 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:07.734 11920 11922 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:08.047 11939 11939 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:08.197 11948 11950 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:08.270   435   461 I libPowerHal: perfUserScnCheckAll
+06-18 10:56:08.274   435   461 I libPowerHal: perfScnDumpAll cmd:0
+06-18 10:56:08.274   435   461 I libPowerHal: ========================
+06-18 10:56:08.274   435   461 I libPowerHal: ========================
+06-18 10:56:08.352   388   388 I WifiHAL : Creating message to get link statistics; iface = 15
+06-18 10:56:08.352   388   388 E WifiHAL : Incorrect number of channels = 4
+06-18 10:56:08.352   667   806 E WifiVendorHal: getWifiLinkLayerStats_1_3_Internal(l.973) failed {.code = ERROR_UNKNOWN, .description = unknown}
+06-18 10:56:08.455 11968 11968 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:08.596 11977 11979 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:08.700 28820 11986 I chatty  : uid=2000(shell) /apex/com.android.adbd/bin/adbd expire 2 lines
+06-18 10:56:08.792 11992 11994 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:08.823 11997 11997 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:09.195 12020 12020 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:09.376 12026 12028 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:09.591 12033 12033 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:09.625 27032 27049 I um.ottnavigato: Background young concurrent copying GC freed 755279(23MB) AllocSpace objects, 0(0B) LOS objects, 9% free, 201MB/223MB, paused 216us total 293.743ms
+06-18 10:56:09.701 28820 11986 I chatty  : uid=2000(shell) /apex/com.android.adbd/bin/adbd expire 1 line
+06-18 10:56:09.701 28820 28820 I chatty  : uid=2000(shell) /apex/com.android.adbd/bin/adbd expire 36 lines
+06-18 10:56:09.744 28820 28823 I chatty  : uid=2000(shell) usb ffs open expire 20 lines
+06-18 10:56:09.756 28820 12043 I chatty  : uid=2000(shell) /apex/com.android.adbd/bin/adbd expire 3 lines
+06-18 10:56:09.788 12895 13030 I ApeSettingsApplier: device_settings aplicados=2 rechazados=0
+06-18 10:56:09.914 27032  4168 I MediaCodecLogger: 27032.4K.HW.omx.video.avc.bitrateInKbps = 3349
+06-18 10:56:09.971 12052 12052 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:10.054 12054 12056 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:10.141 12059 12060 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:10.278  2011 12067 I SPCH-Cont_HealthLogger: Current State = {"AlexaCaptionsEnabled":"false","Account":"valid","ProfileValidated":"true","ProfileType":"ADULT","AlexaCaptionsSupported":"true","memoryTotalPss":"23687","DeviceFamily":"SMP","memoryTotalSharedDirty":"3308","ActiveSpeechUI":"Classic","ReleaseVersion":"661.0.0","AlexaLegalTermsAccepted":"true","AppVersion":"3.0.21302.0","AlexaExperience":"FULL","SupportsFarField":"false","short_press_overlay_state":"{\"enabled\": true, \"hintsEnabled\": false, \"isChild\": false, \"override\": 0}","memoryAvailable":"289132544","Gateway":"avs-alexa-18-na.amazon.com:443","memoryLow":"false","RemoteSettingsStrategy":"VizArcus","ConnectionState":"CONNECTED","OOBECompleted":"true","memoryTotalPrivateDirty":"16207","str.auto_wake_up_always":"0"}
+06-18 10:56:10.326   667   802 W BestClock: java.time.DateTimeException: Missing NTP fix
+06-18 10:56:10.335   330 18246 I netd    : trafficSwapActiveStatsMap() <4.18ms>
+06-18 10:56:10.431 12070 12070 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:10.508 12072 12073 I chatty  : uid=2000(shell) com.amazon.whisperlink.core.android expire 1 line
+06-18 10:56:10.525   330 18246 I netd    : tetherGetStats() <1.70ms>
+06-18 10:56:10.572   667   802 W BestClock: java.time.DateTimeException: Missing NTP fix
+06-18 10:56:10.587   330 18246 I netd    : bandwidthSetGlobalAlert(2097152) <0.16ms>
+06-18 10:56:10.589   667   803 W BestClock: java.time.DateTimeException: Missing NTP fix
+06-18 10:56:10.590   667   803 W BestClock: java.time.DateTimeException: Missing NTP fix
+06-18 10:56:10.698 12076 12077 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:10.819 12083 12083 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:10.840 28820 12084 I chatty  : uid=2000(shell) /apex/com.android.adbd/bin/adbd expire 3 lines
+06-18 10:56:10.932   667   677 I system_server: Background young concurrent copying GC freed 65078(10096KB) AllocSpace objects, 680(13MB) LOS objects, 46% free, 27MB/50MB, paused 333us total 326.991ms
+06-18 10:56:11.147 12096 12096 W curl    : type=1400 audit(0.0:503245): avc: denied { ioctl } for path="/data/local/tmp/ape-qoe-queue.ndjson.snd" dev="dm-6" ino=229393 ioctlcmd=0x5413 scontext=u:r:shell:s0 tcontext=u:object_r:shell_data_file:s0 tclass=file permissive=0 app=com.amazon.firebat
+06-18 10:56:11.296 27032  4180 I MediaCodecLogger: 27032.SW.c2.audio.mp4a.bitrateInKbps = 93
+06-18 10:56:11.330 12103 12105 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:11.360   388   388 I WifiHAL : Creating message to get link statistics; iface = 15
+06-18 10:56:11.360   388   388 E WifiHAL : Incorrect number of channels = 4
+06-18 10:56:11.361   667   806 E WifiVendorHal: getWifiLinkLayerStats_1_3_Internal(l.973) failed {.code = ERROR_UNKNOWN, .description = unknown}
+06-18 10:56:11.491 12116 12116 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:11.753  1681  1931 I HandlerScheduler: Executing job - jobId: 10, currentTime: 1781798171752
+06-18 10:56:11.753  1681  1931 I MinervaServiceManager: flushAllBatches - Flushing all pending batches;
+06-18 10:56:11.753  1681  1931 I BatchCreatorManager: flushAllBatches - Flushing all pending batches for transmission;
+06-18 10:56:11.753  1681  1931 I BatchCreator: enqueueBatchForTransmission - enqueueBatchForTransmission;
+06-18 10:56:11.778  1681  1931 I BoundedBatchFileQueue: batch file added: 1781798171776_us-east-1_0001
+06-18 10:56:11.778  1681  1931 I BatchCreator: enqueueBatchForTransmission - enqueueBatchForTransmission;
+06-18 10:56:11.785  1681  1931 I BoundedBatchFileQueue: batch file added: 1781798171782_us-east-1_0001
+06-18 10:56:11.807  1681  1931 I MetricsTransmissionManager: loadMetricBatches, number of KPI batch file loaded: 1
+06-18 10:56:11.807  1681  1931 I MetricsTransmissionManager: transmitMetricBatches, storageManager(before execute): com.amazon.minerva.service.storage.BatchRootDirectory@f0d7b5
+06-18 10:56:11.807  1681  1931 I MetricsTransmissionManager: com.amazon.minerva.service.storage.BatchRootDirectory@3432e4a
+06-18 10:56:11.808  1681  9996 I MetricsTransmissionManager: transmitKPIMetricBatch started
+06-18 10:56:11.809  1681  9996 I BoundedBatchFileQueue: batch file removed from queue: KPIBATCH_us-east-1_0001
+06-18 10:56:11.811   667 23339 I WifiService: acquireWifiLock uid=10100 lockMode=3
+06-18 10:56:11.835  1681  1931 I MetricsTransmissionManager: loadMetricBatches, number of metrics batch file loaded: 5
+06-18 10:56:11.835  1681  1931 I HandlerScheduler: Scheduling next run - jobId: 10, nextRunTime: 1781798651835
+06-18 10:56:11.863 12136 12136 W curl    : type=1400 audit(0.0:503247): avc: denied { ioctl } for path="/data/local/tmp/ape-qoe-queue.ndjson.snd" dev="dm-6" ino=229393 ioctlcmd=0x5413 scontext=u:r:shell:s0 tcontext=u:object_r:shell_data_file:s0 tclass=file permissive=0 app=com.amazon.tv.settings.v2
+06-18 10:56:11.867  1460 12139 I com.amazon.imp/TokenJobQueue[0]: Begin executing task GetToken:com.amazon.client.metrics/com.amazon.dcp.sso.token.oauth.amazon.access_token
+06-18 10:56:11.867  1460 12139 I com.amazon.imp/TokenJobQueue[0]: Scheduled running concurrent job GetToken:com.amazon.client.metrics/com.amazon.dcp.sso.token.oauth.amazon.access_token.
+06-18 10:56:11.868  1460 12140 I com.amazon.imp/MAPApplicationInformationQueryer[0]: Populate change for remote MAP info.
+06-18 10:56:11.869  1460 12140 I com.amazon.imp/MAPApplicationInformationQueryer[0]: CacheContainsPartialResults? true
+06-18 10:56:11.870  1460 12140 I com.amazon.imp/TokenJobQueue[0]: Finish executing task GetToken:com.amazon.client.metrics/com.amazon.dcp.sso.token.oauth.amazon.access_token.
+06-18 10:56:11.876   330 12141 I resolv  : res_tls_send: performing query over TLS
+06-18 10:56:11.880   667   802 W BestClock: java.time.DateTimeException: Missing NTP fix
+06-18 10:56:11.884   330 18246 I netd    : trafficSwapActiveStatsMap() <0.55ms>
+06-18 10:56:11.902 27032 27049 I um.ottnavigato: Background young concurrent copying GC freed 512017(15MB) AllocSpace objects, 0(0B) LOS objects, 6% free, 208MB/223MB, paused 175us total 192.752ms
+06-18 10:56:11.907 28820 12145 I chatty  : uid=2000(shell) /apex/com.android.adbd/bin/adbd expire 3 lines
+06-18 10:56:11.983   330 18246 I netd    : tetherGetStats() <1.80ms>
+06-18 10:56:12.015   667   802 W BestClock: java.time.DateTimeException: Missing NTP fix
+06-18 10:56:12.022   330 18246 I netd    : bandwidthSetGlobalAlert(2097152) <0.21ms>
+06-18 10:56:12.025   667   803 W BestClock: java.time.DateTimeException: Missing NTP fix
+06-18 10:56:12.026   667   803 W BestClock: java.time.DateTimeException: Missing NTP fix
+06-18 10:56:12.033   330 12141 I resolv  : res_tls_send: TLS query result: 0
+06-18 10:56:12.034   330 12141 I resolv  : res_tls_send: performing query over TLS
+06-18 10:56:12.057   330 12141 I resolv  : res_tls_send: TLS query result: 0
+06-18 10:56:12.084 12152 12154 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:12.223 12163 12163 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:12.290  2847  3245 W SCRIPT  : [SCRIPT:MegablastLog] [DctrEndpointConfigPoller#pollConfig] attempted to poll in background (true) or while DCTR is not ON (ON) or while polling is explicitly disabled: (enabled=true).
+06-18 10:56:12.296  1681  9996 I TrustManagerImpl: TRACE Starting certificate trust
+06-18 10:56:12.503 12179 12181 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:12.539 12184 12184 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:12.543  1681  9996 I MetricsTransporter: MetricsTransporter - Successfully uploaded metrics; code: 200, message: OK;
+06-18 10:56:12.548   667  1281 I WifiService: releaseWifiLock uid=10100
+06-18 10:56:12.551  1681  9996 I BoundedBatchFileQueue: batch file deleted from disk: KPIBATCH_us-east-1_0001
+06-18 10:56:12.551  1681  9996 I MetricsTransmissionManager: Transmission succeeded.
+06-18 10:56:12.552  1681  9996 I MetricsTransmissionManager: transmitKPIMetricBatch finished
+06-18 10:56:12.552  1681  9996 I MetricsTransmissionManager: transmitMetricBatches started
+06-18 10:56:12.554  1681  9996 I BoundedBatchFileQueue: batch file removed from queue: 1781797881760_us-east-1_0001
+06-18 10:56:12.558   667 23339 I WifiService: acquireWifiLock uid=10100 lockMode=3
+06-18 10:56:12.568  1460 12139 I com.amazon.imp/TokenJobQueue[0]: Begin executing task GetToken:com.amazon.client.metrics/com.amazon.dcp.sso.token.oauth.amazon.access_token
+06-18 10:56:12.568  1460 12139 I com.amazon.imp/TokenJobQueue[0]: Scheduled running concurrent job GetToken:com.amazon.client.metrics/com.amazon.dcp.sso.token.oauth.amazon.access_token.
+06-18 10:56:12.568  1460 12140 I com.amazon.imp/MAPApplicationInformationQueryer[0]: Populate change for remote MAP info.
+06-18 10:56:12.568  1460 12140 I com.amazon.imp/MAPApplicationInformationQueryer[0]: CacheContainsPartialResults? true
+06-18 10:56:12.569  1460 12140 I com.amazon.imp/TokenJobQueue[0]: Finish executing task GetToken:com.amazon.client.metrics/com.amazon.dcp.sso.token.oauth.amazon.access_token.
+06-18 10:56:12.696  1681  9996 I MetricsTransporter: MetricsTransporter - Successfully uploaded metrics; code: 200, message: OK;
+06-18 10:56:12.699   667 23339 I WifiService: releaseWifiLock uid=10100
+06-18 10:56:12.701  1681  9996 I BoundedBatchFileQueue: batch file deleted from disk: 1781797881760_us-east-1_0001
+06-18 10:56:12.701  1681  9996 I MetricsTransmissionManager: Transmission succeeded.
+06-18 10:56:12.702  1681  9996 I BoundedBatchFileQueue: batch file removed from queue: 1781798171782_us-east-1_0001
+06-18 10:56:12.704   667 23339 I WifiService: acquireWifiLock uid=10100 lockMode=3
+06-18 10:56:12.713  1460 12139 I com.amazon.imp/TokenJobQueue[0]: Begin executing task GetToken:com.amazon.client.metrics/com.amazon.dcp.sso.token.oauth.amazon.access_token
+06-18 10:56:12.713  1460 12139 I com.amazon.imp/TokenJobQueue[0]: Scheduled running concurrent job GetToken:com.amazon.client.metrics/com.amazon.dcp.sso.token.oauth.amazon.access_token.
+06-18 10:56:12.713  1460 12140 I com.amazon.imp/MAPApplicationInformationQueryer[0]: Populate change for remote MAP info.
+06-18 10:56:12.714  1460 12140 I com.amazon.imp/MAPApplicationInformationQueryer[0]: CacheContainsPartialResults? true
+06-18 10:56:12.714  1460 12140 I com.amazon.imp/TokenJobQueue[0]: Finish executing task GetToken:com.amazon.client.metrics/com.amazon.dcp.sso.token.oauth.amazon.access_token.
+06-18 10:56:12.722 12192 12195 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:12.777 12197 12199 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:12.785 12895 13030 I ApeSettingsApplier: device_settings aplicados=2 rechazados=0
+06-18 10:56:12.836  1681  9996 I MetricsTransporter: MetricsTransporter - Successfully uploaded metrics; code: 200, message: OK;
+06-18 10:56:12.838   667 23339 I WifiService: releaseWifiLock uid=10100
+06-18 10:56:12.849  1681  9996 I BoundedBatchFileQueue: batch file deleted from disk: 1781798171782_us-east-1_0001
+06-18 10:56:12.849  1681  9996 I MetricsTransmissionManager: Transmission succeeded.
+06-18 10:56:12.850  1681  9996 I BoundedBatchFileQueue: batch file removed from queue: 1781798082993_us-east-1_0001
+06-18 10:56:12.852   667 23339 I WifiService: acquireWifiLock uid=10100 lockMode=3
+06-18 10:56:12.860  1460 12139 I com.amazon.imp/TokenJobQueue[0]: Begin executing task GetToken:com.amazon.client.metrics/com.amazon.dcp.sso.token.oauth.amazon.access_token
+06-18 10:56:12.860  1460 12139 I com.amazon.imp/TokenJobQueue[0]: Scheduled running concurrent job GetToken:com.amazon.client.metrics/com.amazon.dcp.sso.token.oauth.amazon.access_token.
+06-18 10:56:12.861  1460 12140 I com.amazon.imp/MAPApplicationInformationQueryer[0]: Populate change for remote MAP info.
+06-18 10:56:12.861  1460 12140 I com.amazon.imp/MAPApplicationInformationQueryer[0]: CacheContainsPartialResults? true
+06-18 10:56:12.861  1460 12140 I com.amazon.imp/TokenJobQueue[0]: Finish executing task GetToken:com.amazon.client.metrics/com.amazon.dcp.sso.token.oauth.amazon.access_token.
+06-18 10:56:12.863 12207 12207 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:12.943 12209 12211 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:12.978 28820 12214 I chatty  : uid=2000(shell) /apex/com.android.adbd/bin/adbd expire 3 lines
+06-18 10:56:12.986  1681  9996 I MetricsTransporter: MetricsTransporter - Successfully uploaded metrics; code: 200, message: OK;
+06-18 10:56:12.990   667 23339 I WifiService: releaseWifiLock uid=10100
+06-18 10:56:12.995  1681  9996 I BoundedBatchFileQueue: batch file deleted from disk: 1781798082993_us-east-1_0001
+06-18 10:56:12.995  1681  9996 I MetricsTransmissionManager: Transmission succeeded.
+06-18 10:56:12.998  1681  9996 I BoundedBatchFileQueue: batch file removed from queue: 1781798058140_us-east-1_0001
+06-18 10:56:13.001   667 23339 I WifiService: acquireWifiLock uid=10100 lockMode=3
+06-18 10:56:13.020  1460 12139 I com.amazon.imp/TokenJobQueue[0]: Begin executing task GetToken:com.amazon.client.metrics/com.amazon.dcp.sso.token.oauth.amazon.access_token
+06-18 10:56:13.020  1460 12139 I com.amazon.imp/TokenJobQueue[0]: Scheduled running concurrent job GetToken:com.amazon.client.metrics/com.amazon.dcp.sso.token.oauth.amazon.access_token.
+06-18 10:56:13.020  1460 12140 I com.amazon.imp/MAPApplicationInformationQueryer[0]: Populate change for remote MAP info.
+06-18 10:56:13.020  1460 12140 I com.amazon.imp/MAPApplicationInformationQueryer[0]: CacheContainsPartialResults? true
+06-18 10:56:13.021  1460 12140 I com.amazon.imp/TokenJobQueue[0]: Finish executing task GetToken:com.amazon.client.metrics/com.amazon.dcp.sso.token.oauth.amazon.access_token.
+06-18 10:56:13.159  1681  9996 I MetricsTransporter: MetricsTransporter - Successfully uploaded metrics; code: 200, message: OK;
+06-18 10:56:13.161   667 23339 I WifiService: releaseWifiLock uid=10100
+06-18 10:56:13.164  1681  9996 I BoundedBatchFileQueue: batch file deleted from disk: 1781798058140_us-east-1_0001
+06-18 10:56:13.164  1681  9996 I MetricsTransmissionManager: Transmission succeeded.
+06-18 10:56:13.166  1681  9996 I BoundedBatchFileQueue: batch file removed from queue: 1781798171776_us-east-1_0001
+06-18 10:56:13.167   667 23339 I WifiService: acquireWifiLock uid=10100 lockMode=3
+06-18 10:56:13.182  1460 12139 I com.amazon.imp/TokenJobQueue[0]: Begin executing task GetToken:com.amazon.client.metrics/com.amazon.dcp.sso.token.oauth.amazon.access_token
+06-18 10:56:13.185  1460 12140 I com.amazon.imp/MAPApplicationInformationQueryer[0]: Populate change for remote MAP info.
+06-18 10:56:13.185  1460 12140 I com.amazon.imp/MAPApplicationInformationQueryer[0]: CacheContainsPartialResults? true
+06-18 10:56:13.185  1460 12140 I com.amazon.imp/TokenJobQueue[0]: Finish executing task GetToken:com.amazon.client.metrics/com.amazon.dcp.sso.token.oauth.amazon.access_token.
+06-18 10:56:13.188  1460 12139 I com.amazon.imp/TokenJobQueue[0]: Scheduled running concurrent job GetToken:com.amazon.client.metrics/com.amazon.dcp.sso.token.oauth.amazon.access_token.
+06-18 10:56:13.235 12229 12229 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:13.300  1681  9996 I MetricsTransporter: MetricsTransporter - Successfully uploaded metrics; code: 200, message: OK;
+06-18 10:56:13.303   667 23339 I WifiService: releaseWifiLock uid=10100
+06-18 10:56:13.306  1681  9996 I BoundedBatchFileQueue: batch file deleted from disk: 1781798171776_us-east-1_0001
+06-18 10:56:13.306  1681  9996 I MetricsTransmissionManager: Transmission succeeded.
+06-18 10:56:13.307  1681  9996 I MetricsTransmissionManager: transmitMetricBatches finished
+06-18 10:56:13.308  1681  9996 I MetricsTransmissionManager: transmitMetricBatches, storageManager(after execute): com.amazon.minerva.service.storage.BatchRootDirectory@f0d7b5
+06-18 10:56:13.308  1681  9996 I MetricsTransmissionManager: com.amazon.minerva.service.storage.BatchRootDirectory@3432e4a
+06-18 10:56:13.595 12247 12250 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:13.599 12248 12248 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:13.641 27032 27049 I um.ottnavigato: Background young concurrent copying GC freed 516573(15MB) AllocSpace objects, 0(0B) LOS objects, 7% free, 208MB/223MB, paused 331us total 136.475ms
+06-18 10:56:13.850 12264 12266 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:13.931 12271 12271 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:14.005 12273 12275 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:14.033 28820 12278 I chatty  : uid=2000(shell) /apex/com.android.adbd/bin/adbd expire 3 lines
+06-18 10:56:14.274 12290 12292 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:14.283 12293 12293 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:14.368   388   388 I WifiHAL : Creating message to get link statistics; iface = 15
+06-18 10:56:14.368   388   388 E WifiHAL : Incorrect number of channels = 4
+06-18 10:56:14.369   667   806 E WifiVendorHal: getWifiLinkLayerStats_1_3_Internal(l.973) failed {.code = ERROR_UNKNOWN, .description = unknown}
+06-18 10:56:14.549 12307 12309 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:14.627 12314 12314 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:14.785 12323 12325 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:14.959 12338 12338 W curl    : type=1400 audit(0.0:503256): avc: denied { ioctl } for path="/data/local/tmp/ape-qoe-queue.ndjson.snd" dev="dm-6" ino=229393 ioctlcmd=0x5413 scontext=u:r:shell:s0 tcontext=u:object_r:shell_data_file:s0 tclass=file permissive=0 app=com.amazon.firetv.youtube
+06-18 10:56:14.956 27032  4168 I MediaCodecLogger: 27032.4K.HW.omx.video.avc.bitrateInKbps = 2989
+06-18 10:56:15.083 28820 12349 I chatty  : uid=2000(shell) /apex/com.android.adbd/bin/adbd expire 3 lines
+06-18 10:56:15.296   631   631 E integrity_module: --- integrity_module file read error /sys/class/power_supply/battery/device/gm30_bat_cycle ---
+06-18 10:56:15.296   631   631 E integrity_module: --- integrity_module file read error  ---
+06-18 10:56:15.296   631   631 E integrity_module: --- integrity_module file read error /sys/devices/platform/charger/ADC_Charger_Voltage ---
+06-18 10:56:15.296   631   631 E integrity_module: --- integrity_module file read error /sys/devices/platform/charger/chr_type ---
+06-18 10:56:15.296   631   631 E integrity_module: --- integrity_module file read error ---
+06-18 10:56:15.316 27032 27049 I um.ottnavigato: Background young concurrent copying GC freed 514638(15MB) AllocSpace objects, 0(0B) LOS objects, 7% free, 208MB/223MB, paused 166us total 138.885ms
+06-18 10:56:15.323 12366 12366 W curl    : type=1400 audit(0.0:503257): avc: denied { ioctl } for path="/data/local/tmp/ape-qoe-queue.ndjson.snd" dev="dm-6" ino=229393 ioctlcmd=0x5413 scontext=u:r:shell:s0 tcontext=u:object_r:shell_data_file:s0 tclass=file permissive=0 app=com.amazon.perfcollection
+06-18 10:56:15.564 12382 12384 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:15.614 12386 12388 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:15.667 12391 12391 W curl    : type=1400 audit(0.0:503258): avc: denied { ioctl } for path="/data/local/tmp/ape-qoe-queue.ndjson.snd" dev="dm-6" ino=229393 ioctlcmd=0x5413 scontext=u:r:shell:s0 tcontext=u:object_r:shell_data_file:s0 tclass=file permissive=0 app=com.amazon.prism.android.service
+06-18 10:56:15.762 12397 12399 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:15.789 12895 13030 I ApeSettingsApplier: device_settings aplicados=2 rechazados=0
+06-18 10:56:15.808 12401 12403 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:15.957 12411 12413 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:15.975 12415 12415 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:16.138 28820 12427 I chatty  : uid=2000(shell) /apex/com.android.adbd/bin/adbd expire 3 lines
+06-18 10:56:16.347 12444 12444 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:16.389 27032  4180 I MediaCodecLogger: 27032.SW.c2.audio.mp4a.bitrateInKbps = 93
+06-18 10:56:16.703 12470 12470 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:16.884 27032 27049 I um.ottnavigato: Background young concurrent copying GC freed 514812(15MB) AllocSpace objects, 0(0B) LOS objects, 7% free, 208MB/223MB, paused 159us total 135.239ms
+06-18 10:56:17.063 12494 12494 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:17.150   993  1006 I droid.bluetoot: Background concurrent copying GC freed 35634(1397KB) AllocSpace objects, 6(312KB) LOS objects, 49% free, 2120KB/4241KB, paused 210us total 118.468ms
+06-18 10:56:17.150   993  1006 W droid.bluetoot: Reducing the number of considered missed Gc histogram windows from 3165 to 100
+06-18 10:56:17.220 28820 12502 I chatty  : uid=2000(shell) /apex/com.android.adbd/bin/adbd expire 3 lines
+06-18 10:56:17.293 12504 12506 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:17.377   388   388 I WifiHAL : Creating message to get link statistics; iface = 15
+06-18 10:56:17.377   388   388 E WifiHAL : Incorrect number of channels = 4
+06-18 10:56:17.378   667   806 E WifiVendorHal: getWifiLinkLayerStats_1_3_Internal(l.973) failed {.code = ERROR_UNKNOWN, .description = unknown}
+06-18 10:56:17.415 12512 12512 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:17.645 12525 12527 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:17.771 12536 12536 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:17.857 12538 12540 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:17.909 12542 12544 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:18.122 12554 12556 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:18.143 12559 12559 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:18.305 28820 12573 I chatty  : uid=2000(shell) /apex/com.android.adbd/bin/adbd expire 3 lines
+06-18 10:56:18.345 12578 12581 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:18.373 12579 12584 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:18.467 12593 12593 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:18.481 12594 12596 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:18.583 12608 12610 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:18.592 27032 27049 I um.ottnavigato: Background young concurrent copying GC freed 514914(15MB) AllocSpace objects, 0(0B) LOS objects, 7% free, 208MB/223MB, paused 162us total 166.880ms
+06-18 10:56:18.700 12623 12625 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:18.793 12895 13030 I ApeSettingsApplier: device_settings aplicados=2 rechazados=0
+06-18 10:56:18.799 12637 12637 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:18.845 12644 12649 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:18.982 12661 12663 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:19.035 12665 12667 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:19.143 12672 12672 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:19.193 12674 12676 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:19.354 28820 12685 I chatty  : uid=2000(shell) /apex/com.android.adbd/bin/adbd expire 3 lines
+06-18 10:56:19.495 12696 12696 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:19.714 28820 12712 I chatty  : uid=2000(shell) /apex/com.android.adbd/bin/adbd expire 3 lines
+06-18 10:56:19.715 28820 12713 I chatty  : uid=2000(shell) /apex/com.android.adbd/bin/adbd expire 1 line
+06-18 10:56:19.811 12718 12718 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:19.993 27032  4168 I MediaCodecLogger: 27032.4K.HW.omx.video.avc.bitrateInKbps = 3130
+06-18 10:56:20.131 12719 12719 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 13 lines
+06-18 10:56:20.357 28820 28820 I chatty  : uid=2000(shell) /apex/com.android.adbd/bin/adbd expire 6 lines
+06-18 10:56:20.390 27032 27049 I um.ottnavigato: Background young concurrent copying GC freed 516447(15MB) AllocSpace objects, 0(0B) LOS objects, 7% free, 208MB/223MB, paused 162us total 199.031ms
+06-18 10:56:20.394   388   388 I WifiHAL : Creating message to get link statistics; iface = 15
+06-18 10:56:20.394   388   388 E WifiHAL : Incorrect number of channels = 4
+06-18 10:56:20.395   667   806 E WifiVendorHal: getWifiLinkLayerStats_1_3_Internal(l.973) failed {.code = ERROR_UNKNOWN, .description = unknown}
+06-18 10:56:20.407 28820 28823 I chatty  : uid=2000(shell) usb ffs open expire 4 lines
+06-18 10:56:20.424 28820 12751 I chatty  : uid=2000(shell) /apex/com.android.adbd/bin/adbd expire 3 lines
+06-18 10:56:20.502 12719 12760 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:20.527 12755 12755 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+--------- beginning of system
+06-18 10:55:59.088   667 19224 I AmazonProfileService: Event is not filtered because it is not in filter key list.
+06-18 10:56:20.622   667  7565 I AmazonProfileService: Event is not filtered because it is not in filter key list.
+06-18 10:56:20.622   667  7565 I KeyMapManagerUtil: Unknown remote sku id 0. Fetch remote sku id from system property
+06-18 10:56:20.627   667  7565 I KeyMapManagerUtil: Unknown remote sku id 0. Fetch remote sku id from system property
+06-18 10:56:20.673 12775 12777 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:20.899 12793 12793 W curl    : type=1400 audit(0.0:503277): avc: denied { ioctl } for path="/data/local/tmp/ape-qoe-queue.ndjson.snd" dev="dm-6" ino=229393 ioctlcmd=0x5413 scontext=u:r:shell:s0 tcontext=u:object_r:shell_data_file:s0 tclass=file permissive=0 app=com.amazon.adep
+06-18 10:56:21.271 12822 12822 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:21.410 27032  4180 I MediaCodecLogger: 27032.SW.c2.audio.mp4a.bitrateInKbps = 93
+06-18 10:56:21.426 12832 12834 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:21.474 12836 12838 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:21.476 28820 12839 I chatty  : uid=2000(shell) /apex/com.android.adbd/bin/adbd expire 1 line
+06-18 10:56:21.595 12847 12847 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:21.617 12848 12850 I chatty  : uid=2000(shell) app_process expire 1 line
+06-18 10:56:21.794 12895 13030 I ApeSettingsApplier: device_settings aplicados=2 rechazados=0
+06-18 10:56:21.805 12862 12864 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:21.927 12873 12873 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:22.012 12877 12879 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:22.114 27032 27049 I um.ottnavigato: Background young concurrent copying GC freed 515558(15MB) AllocSpace objects, 0(0B) LOS objects, 7% free, 208MB/223MB, paused 300us total 146.108ms
+06-18 10:56:22.214 12891 12893 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:22.247 12896 12896 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:22.263 12897 12899 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:22.449 12911 12922 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:22.478 28820 12839 I chatty  : uid=2000(shell) /apex/com.android.adbd/bin/adbd expire 2 lines
+06-18 10:56:22.478 28820 28820 I chatty  : uid=2000(shell) /apex/com.android.adbd/bin/adbd expire 30 lines
+06-18 10:56:22.532 28820 28823 I chatty  : uid=2000(shell) usb ffs open expire 20 lines
+06-18 10:56:22.538 28820 12929 I chatty  : uid=2000(shell) /apex/com.android.adbd/bin/adbd expire 3 lines
+06-18 10:56:22.615 12934 12934 I chatty  : uid=2000(shell) app_process expire 1 line
+06-18 10:56:22.930 12949 12951 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:22.959 12954 12954 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:23.080 12960 12963 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:23.299 12978 12978 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:23.405   388   388 I WifiHAL : Creating message to get link statistics; iface = 15
+06-18 10:56:23.405   388   388 E WifiHAL : Incorrect number of channels = 4
+06-18 10:56:23.405   667   806 E WifiVendorHal: getWifiLinkLayerStats_1_3_Internal(l.973) failed {.code = ERROR_UNKNOWN, .description = unknown}
+06-18 10:56:23.544 12993 12997 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:23.593 28820 13001 I chatty  : uid=2000(shell) /apex/com.android.adbd/bin/adbd expire 3 lines
+06-18 10:56:23.679 13004 13004 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:23.741 27032 27049 I um.ottnavigato: Background young concurrent copying GC freed 516716(15MB) AllocSpace objects, 0(0B) LOS objects, 7% free, 208MB/223MB, paused 168us total 140.507ms
+06-18 10:56:23.785 13011 13013 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:23.826  7076  7076 W Choreographer: Frame time is 0.095597 ms in the future!  Check that graphics HAL is generating vsync timestamps using the correct timebase.
+06-18 10:56:24.027 13028 13028 W curl    : type=1400 audit(0.0:503286): avc: denied { ioctl } for path="/data/local/tmp/ape-qoe-queue.ndjson.snd" dev="dm-6" ino=229393 ioctlcmd=0x5413 scontext=u:r:shell:s0 tcontext=u:object_r:shell_data_file:s0 tclass=file permissive=0 app=com.amazon.firetv.youtube
+06-18 10:56:24.375 13050 13050 W curl    : type=1400 audit(0.0:503287): avc: denied { ioctl } for path="/data/local/tmp/ape-qoe-queue.ndjson.snd" dev="dm-6" ino=229393 ioctlcmd=0x5413 scontext=u:r:shell:s0 tcontext=u:object_r:shell_data_file:s0 tclass=file permissive=0
+06-18 10:56:24.643 28820 13071 I chatty  : uid=2000(shell) /apex/com.android.adbd/bin/adbd expire 3 lines
+06-18 10:56:24.767 13076 13076 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:24.800 12895 13030 I ApeSettingsApplier: device_settings aplicados=2 rechazados=0
+06-18 10:56:24.833 13083 13085 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:25.046 27032  4168 I MediaCodecLogger: 27032.4K.HW.omx.video.avc.bitrateInKbps = 3070
+06-18 10:56:25.179 13108 13112 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:25.188 27032 27049 I um.ottnavigato: Background young concurrent copying GC freed 516178(15MB) AllocSpace objects, 0(0B) LOS objects, 7% free, 208MB/223MB, paused 140us total 116.799ms
+06-18 10:56:25.300   631   631 E integrity_module: --- integrity_module file read error /sys/class/power_supply/battery/device/gm30_bat_cycle ---
+06-18 10:56:25.300   631   631 E integrity_module: --- integrity_module file read error  ---
+06-18 10:56:25.300   631   631 E integrity_module: --- integrity_module file read error /sys/devices/platform/charger/ADC_Charger_Voltage ---
+06-18 10:56:25.300   631   631 E integrity_module: --- integrity_module file read error /sys/devices/platform/charger/chr_type ---
+06-18 10:56:25.300   631   631 E integrity_module: --- integrity_module file read error ---
+06-18 10:56:25.323 13133 13133 W curl    : type=1400 audit(0.0:503289): avc: denied { ioctl } for path="/data/local/tmp/ape-qoe-queue.ndjson.snd" dev="dm-6" ino=229392 ioctlcmd=0x5413 scontext=u:r:shell:s0 tcontext=u:object_r:shell_data_file:s0 tclass=file permissive=0 app=com.amazon.ceviche
+06-18 10:56:25.653 13158 13160 I chatty  : uid=2000(shell) com.amazon.firebat expire 1 line
+06-18 10:56:25.679 13162 13162 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:25.695 28820 13164 I chatty  : uid=2000(shell) /apex/com.android.adbd/bin/adbd expire 3 lines
+06-18 10:56:25.956 13184 13186 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:26.007 13193 13193 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:26.375 13225 13225 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:26.424   388   388 I WifiHAL : Creating message to get link statistics; iface = 15
+06-18 10:56:26.424   388   388 E WifiHAL : Incorrect number of channels = 4
+06-18 10:56:26.426   667   806 E WifiVendorHal: getWifiLinkLayerStats_1_3_Internal(l.973) failed {.code = ERROR_UNKNOWN, .description = unknown}
+06-18 10:56:26.431 13229 13230 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:26.477 13233 13235 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:26.488 27032 27049 I um.ottnavigato: Background young concurrent copying GC freed 516259(15MB) AllocSpace objects, 0(0B) LOS objects, 7% free, 208MB/223MB, paused 145us total 110.286ms
+06-18 10:56:26.498 27032  4180 I MediaCodecLogger: 27032.SW.c2.audio.mp4a.bitrateInKbps = 93
+06-18 10:56:26.731 13256 13256 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:26.745 28820 13258 I chatty  : uid=2000(shell) /apex/com.android.adbd/bin/adbd expire 3 lines
+06-18 10:56:26.973 13277 13279 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:27.059 13286 13286 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:27.156 13293 13296 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:27.299 13304 13306 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:27.439 13317 13317 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:27.498 24330 24346 I nclient.androi: Background concurrent copying GC freed 71391(3407KB) AllocSpace objects, 24(480KB) LOS objects, 49% free, 8466KB/16MB, paused 189us total 402.018ms
+06-18 10:56:27.498 24330 24346 W nclient.androi: Reducing the number of considered missed Gc histogram windows from 116 to 100
+06-18 10:56:27.755 13337 13337 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:27.801 12895 13030 I ApeSettingsApplier: device_settings aplicados=2 rechazados=0
+06-18 10:56:27.817 28820 13344 I chatty  : uid=2000(shell) /apex/com.android.adbd/bin/adbd expire 3 lines
+06-18 10:56:27.837 27032 27049 I um.ottnavigato: Background young concurrent copying GC freed 516004(15MB) AllocSpace objects, 0(0B) LOS objects, 7% free, 208MB/223MB, paused 247us total 102.416ms
+06-18 10:56:27.904 13348 13350 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:28.099 13363 13363 W curl    : type=1400 audit(0.0:503297): avc: denied { ioctl } for path="/data/local/tmp/ape-qoe-queue.ndjson.snd" dev="dm-6" ino=229392 ioctlcmd=0x5413 scontext=u:r:shell:s0 tcontext=u:object_r:shell_data_file:s0 tclass=file permissive=0
+06-18 10:56:28.408 13376 13377 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:28.455 13381 13381 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:28.632 13386 13388 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:28.670   330 13391 I ResolverController: No valid NAT64 prefix (114, <unspecified>/0)
+06-18 10:56:28.851 13399 13399 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:28.869 28820 13401 I chatty  : uid=2000(shell) /apex/com.android.adbd/bin/adbd expire 3 lines
+06-18 10:56:28.920 13402 13403 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:29.171   667   802 W BestClock: java.time.DateTimeException: Missing NTP fix
+06-18 10:56:29.175   330 18246 I netd    : trafficSwapActiveStatsMap() <0.20ms>
+06-18 10:56:29.199 13414 13414 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:29.237 13415 13416 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:29.299 27032 27049 I um.ottnavigato: Background young concurrent copying GC freed 365923(11MB) AllocSpace objects, 0(0B) LOS objects, 4% free, 214MB/223MB, paused 784us total 296.684ms
+06-18 10:56:29.306   330 18246 I netd    : tetherGetStats() <1.84ms>
+06-18 10:56:29.339   667   802 W BestClock: java.time.DateTimeException: Missing NTP fix
+06-18 10:56:29.345   330 18246 I netd    : bandwidthSetGlobalAlert(2097152) <0.35ms>
+06-18 10:56:29.350   667   803 W BestClock: java.time.DateTimeException: Missing NTP fix
+06-18 10:56:29.351   667   803 W BestClock: java.time.DateTimeException: Missing NTP fix
+06-18 10:56:29.444   388   388 I WifiHAL : Creating message to get link statistics; iface = 15
+06-18 10:56:29.444   388   388 E WifiHAL : Incorrect number of channels = 4
+06-18 10:56:29.445   667   806 E WifiVendorHal: getWifiLinkLayerStats_1_3_Internal(l.973) failed {.code = ERROR_UNKNOWN, .description = unknown}
+06-18 10:56:29.536 13427 13429 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:29.575 13432 13432 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:29.920 28820 13453 I chatty  : uid=2000(shell) /apex/com.android.adbd/bin/adbd expire 3 lines
+06-18 10:56:29.935 13452 13452 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:30.114 27032  4168 I MediaCodecLogger: 27032.4K.HW.omx.video.avc.bitrateInKbps = 3250
+06-18 10:56:30.218 13471 13473 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:30.311 13478 13478 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:30.540 13484 13485 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:30.648   667   802 W BestClock: java.time.DateTimeException: Missing NTP fix
+06-18 10:56:30.655   330 18246 I netd    : trafficSwapActiveStatsMap() <0.74ms>
+06-18 10:56:30.683 13495 13495 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:30.803 12895 13030 I ApeSettingsApplier: device_settings aplicados=2 rechazados=0
+06-18 10:56:30.999   330 18246 I netd    : tetherGetStats() <3.46ms>
+06-18 10:56:31.004 28820 13499 I chatty  : uid=2000(shell) /apex/com.android.adbd/bin/adbd expire 3 lines
+06-18 10:56:31.071 13500 13500 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:31.112   667   802 W BestClock: java.time.DateTimeException: Missing NTP fix
+06-18 10:56:31.148   330 18246 I netd    : bandwidthSetGlobalAlert(2097152) <0.29ms>
+06-18 10:56:31.151   667   803 W BestClock: java.time.DateTimeException: Missing NTP fix
+06-18 10:56:31.152   667   803 W BestClock: java.time.DateTimeException: Missing NTP fix
+06-18 10:56:31.431 13510 13510 I chatty  : uid=2000(shell) app_process expire 1 line
+06-18 10:56:31.554 27032  4180 I MediaCodecLogger: 27032.SW.c2.audio.mp4a.bitrateInKbps = 93
+06-18 10:56:31.703 13522 13524 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:31.741 13526 13528 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:31.768  7076  7076 W Choreographer: Frame time is 0.127622 ms in the future!  Check that graphics HAL is generating vsync timestamps using the correct timebase.
+06-18 10:56:31.779 13530 13530 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:32.068 28820 13542 I chatty  : uid=2000(shell) /apex/com.android.adbd/bin/adbd expire 3 lines
+06-18 10:56:32.115 13547 13547 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:32.178 27032 27049 I um.ottnavigato: Background concurrent copying GC freed 674770(36MB) AllocSpace objects, 1(20KB) LOS objects, 10% free, 202MB/226MB, paused 164us total 2.226s
+06-18 10:56:32.349   667   802 W BestClock: java.time.DateTimeException: Missing NTP fix
+06-18 10:56:32.349 13560 13562 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:32.354   330 18246 I netd    : trafficSwapActiveStatsMap() <0.91ms>
+06-18 10:56:32.458   388   388 I WifiHAL : Creating message to get link statistics; iface = 15
+06-18 10:56:32.459   388   388 E WifiHAL : Incorrect number of channels = 4
+06-18 10:56:32.460   667   806 E WifiVendorHal: getWifiLinkLayerStats_1_3_Internal(l.973) failed {.code = ERROR_UNKNOWN, .description = unknown}
+06-18 10:56:32.475 13567 13567 W curl    : type=1400 audit(0.0:503309): avc: denied { ioctl } for path="/data/local/tmp/ape-qoe-queue.ndjson.snd" dev="dm-6" ino=229392 ioctlcmd=0x5413 scontext=u:r:shell:s0 tcontext=u:object_r:shell_data_file:s0 tclass=file permissive=0
+06-18 10:56:32.507   330 18246 I netd    : tetherGetStats() <2.18ms>
+06-18 10:56:32.572   667   802 W BestClock: java.time.DateTimeException: Missing NTP fix
+06-18 10:56:32.601   330 18246 I netd    : bandwidthSetGlobalAlert(2097152) <0.28ms>
+06-18 10:56:32.606   667   803 W BestClock: java.time.DateTimeException: Missing NTP fix
+06-18 10:56:32.607   667   803 W BestClock: java.time.DateTimeException: Missing NTP fix
+06-18 10:56:32.688 13576 13577 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:32.843 13592 13592 W curl    : type=1400 audit(0.0:503310): avc: denied { ioctl } for path="/data/local/tmp/ape-qoe-queue.ndjson.snd" dev="dm-6" ino=229392 ioctlcmd=0x5413 scontext=u:r:shell:s0 tcontext=u:object_r:shell_data_file:s0 tclass=file permissive=0 app=com.amazon.bueller.photos
+06-18 10:56:32.982 13603 13605 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:33.069 28820 28820 I chatty  : uid=2000(shell) /apex/com.android.adbd/bin/adbd expire 9 lines
+06-18 10:56:33.119 28820 28823 I chatty  : uid=2000(shell) usb ffs open expire 6 lines
+06-18 10:56:33.122 28820 13621 I chatty  : uid=2000(shell) /apex/com.android.adbd/bin/adbd expire 3 lines
+06-18 10:56:33.146 13620 13623 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:33.187 13625 13628 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:33.187 13627 13627 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:33.202  7076  7076 W Choreographer: Frame time is 0.030454 ms in the future!  Check that graphics HAL is generating vsync timestamps using the correct timebase.
+06-18 10:56:33.495 13656 13656 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:33.871 13690 13690 W curl    : type=1400 audit(0.0:503313): avc: denied { ioctl } for path="/data/local/tmp/ape-qoe-queue.ndjson.snd" dev="dm-6" ino=229392 ioctlcmd=0x5413 scontext=u:r:shell:s0 tcontext=u:object_r:shell_data_file:s0 tclass=file permissive=0 app=com.amazon.tv.livetv
+06-18 10:56:34.180 28820 13714 I chatty  : uid=2000(shell) /apex/com.android.adbd/bin/adbd expire 3 lines
+06-18 10:56:34.207 13716 13716 W curl    : type=1400 audit(0.0:503314): avc: denied { ioctl } for path="/data/local/tmp/ape-qoe-queue.ndjson.snd" dev="dm-6" ino=229392 ioctlcmd=0x5413 scontext=u:r:shell:s0 tcontext=u:object_r:shell_data_file:s0 tclass=file permissive=0 app=com.amazon.firebat
+06-18 10:56:34.249 27032 27049 I um.ottnavigato: Background young concurrent copying GC freed 854873(26MB) AllocSpace objects, 0(0B) LOS objects, 10% free, 200MB/224MB, paused 154us total 124.780ms
+06-18 10:56:34.493 13736 13738 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:34.579 13745 13745 W curl    : type=1400 audit(0.0:503315): avc: denied { ioctl } for path="/data/local/tmp/ape-qoe-queue.ndjson.snd" dev="dm-6" ino=229392 ioctlcmd=0x5413 scontext=u:r:shell:s0 tcontext=u:object_r:shell_data_file:s0 tclass=file permissive=0
+06-18 10:56:34.942 13761 13763 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:34.951 13764 13764 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:35.195 27032  4168 I MediaCodecLogger: 27032.4K.HW.omx.video.avc.bitrateInKbps = 3335
+06-18 10:56:35.228 28820 13776 I chatty  : uid=2000(shell) /apex/com.android.adbd/bin/adbd expire 1 line
+06-18 10:56:35.306   631   631 E integrity_module: --- integrity_module file read error /sys/class/power_supply/battery/device/gm30_bat_cycle ---
+06-18 10:56:35.308   631   631 E integrity_module: --- integrity_module file read error  ---
+06-18 10:56:35.308   631   631 E integrity_module: --- integrity_module file read error /sys/devices/platform/charger/ADC_Charger_Voltage ---
+06-18 10:56:35.308   631   631 E integrity_module: --- integrity_module file read error /sys/devices/platform/charger/chr_type ---
+06-18 10:56:35.308   631   631 E integrity_module: --- integrity_module file read error ---
+06-18 10:56:35.331 13783 13783 W curl    : type=1400 audit(0.0:503317): avc: denied { ioctl } for path="/data/local/tmp/ape-qoe-queue.ndjson.snd" dev="dm-6" ino=229392 ioctlcmd=0x5413 scontext=u:r:shell:s0 tcontext=u:object_r:shell_data_file:s0 tclass=file permissive=0
+06-18 10:56:35.468   388   388 I WifiHAL : Creating message to get link statistics; iface = 15
+06-18 10:56:35.468   388   388 E WifiHAL : Incorrect number of channels = 4
+06-18 10:56:35.470   667   806 E WifiVendorHal: getWifiLinkLayerStats_1_3_Internal(l.973) failed {.code = ERROR_UNKNOWN, .description = unknown}
+06-18 10:56:35.495 12895 13030 I ApeSettingsApplier: device_settings aplicados=2 rechazados=0
+06-18 10:56:35.679 13803 13803 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:35.837   667   802 W BestClock: java.time.DateTimeException: Missing NTP fix
+06-18 10:56:35.839   330 18246 I netd    : trafficSwapActiveStatsMap() <0.20ms>
+06-18 10:56:35.891 13818 13820 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:35.907   330 18246 I netd    : tetherGetStats() <1.24ms>
+06-18 10:56:35.937   667   802 W BestClock: java.time.DateTimeException: Missing NTP fix
+06-18 10:56:35.942 13822 13824 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:35.944   330 18246 I netd    : bandwidthSetGlobalAlert(2097152) <0.15ms>
+06-18 10:56:35.947   667   803 W BestClock: java.time.DateTimeException: Missing NTP fix
+06-18 10:56:35.948   667   803 W BestClock: java.time.DateTimeException: Missing NTP fix
+06-18 10:56:35.983 13827 13827 W curl    : type=1400 audit(0.0:503319): avc: denied { ioctl } for path="/data/local/tmp/ape-qoe-queue.ndjson.snd" dev="dm-6" ino=229392 ioctlcmd=0x5413 scontext=u:r:shell:s0 tcontext=u:object_r:shell_data_file:s0 tclass=file permissive=0
+06-18 10:56:36.229 28820 13776 I chatty  : uid=2000(shell) /apex/com.android.adbd/bin/adbd expire 2 lines
+06-18 10:56:36.229 28820 28820 I chatty  : uid=2000(shell) /apex/com.android.adbd/bin/adbd expire 36 lines
+06-18 10:56:36.265 13843 13845 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:36.288 28820 28823 I chatty  : uid=2000(shell) usb ffs open expire 20 lines
+06-18 10:56:36.292 28820 13848 I chatty  : uid=2000(shell) /apex/com.android.adbd/bin/adbd expire 3 lines
+06-18 10:56:36.319 13851 13851 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:36.387   667   677 I system_server: Background concurrent copying GC freed 83600(10MB) AllocSpace objects, 704(13MB) LOS objects, 47% free, 26MB/50MB, paused 307us total 435.579ms
+06-18 10:56:36.458 27032 27049 I um.ottnavigato: Background young concurrent copying GC freed 778764(24MB) AllocSpace objects, 1(20KB) LOS objects, 10% free, 200MB/224MB, paused 190us total 122.366ms
+06-18 10:56:36.571 27032  4180 I MediaCodecLogger: 27032.SW.c2.audio.mp4a.bitrateInKbps = 93
+06-18 10:56:36.679 13873 13873 W curl    : type=1400 audit(0.0:503321): avc: denied { ioctl } for path="/data/local/tmp/ape-qoe-queue.ndjson.snd" dev="dm-6" ino=229392 ioctlcmd=0x5413 scontext=u:r:shell:s0 tcontext=u:object_r:shell_data_file:s0 tclass=file permissive=0
+06-18 10:56:36.991 13902 13902 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:37.088 13909 13911 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:37.125 13913 13915 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:37.331 13935 13935 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:37.356 28820 13938 I chatty  : uid=2000(shell) /apex/com.android.adbd/bin/adbd expire 3 lines
+06-18 10:56:37.431 13944 13946 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:37.671 13967 13967 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:38.015 13999 13999 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:38.174 14014 14016 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:38.214 14018 14020 I chatty  : uid=2000(shell) app_process expire 1 line
+06-18 10:56:38.319 27032 27049 I um.ottnavigato: Background young concurrent copying GC freed 782725(24MB) AllocSpace objects, 0(0B) LOS objects, 10% free, 200MB/224MB, paused 139us total 108.750ms
+06-18 10:56:38.323 14028 14028 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:38.415 28820 14038 I chatty  : uid=2000(shell) /apex/com.android.adbd/bin/adbd expire 3 lines
+06-18 10:56:38.480   388   388 I WifiHAL : Creating message to get link statistics; iface = 15
+06-18 10:56:38.480   388   388 E WifiHAL : Incorrect number of channels = 4
+06-18 10:56:38.481   667   806 E WifiVendorHal: getWifiLinkLayerStats_1_3_Internal(l.973) failed {.code = ERROR_UNKNOWN, .description = unknown}
+06-18 10:56:38.495 12895 13030 I ApeSettingsApplier: device_settings aplicados=2 rechazados=0
+06-18 10:56:38.695 14065 14065 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:39.037 14086 14088 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:39.063 14091 14091 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:39.179 14098 14100 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:39.455 14121 14121 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:39.465 28820 14122 I chatty  : uid=2000(shell) /apex/com.android.adbd/bin/adbd expire 3 lines
+06-18 10:56:39.522 14124 14126 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:39.562 14128 14130 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:39.779 14148 14148 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:39.907 14154 14156 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:40.107 14171 14171 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:40.192 27032 27049 I um.ottnavigato: Background young concurrent copying GC freed 783275(24MB) AllocSpace objects, 0(0B) LOS objects, 10% free, 200MB/224MB, paused 139us total 113.656ms
+06-18 10:56:40.242 27032  4168 I MediaCodecLogger: 27032.4K.HW.omx.video.avc.bitrateInKbps = 3028
+06-18 10:56:40.471 14198 14198 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:40.522 28820 14204 I chatty  : uid=2000(shell) /apex/com.android.adbd/bin/adbd expire 3 lines
+06-18 10:56:40.795 14226 14226 W curl    : type=1400 audit(0.0:503333): avc: denied { ioctl } for path="/data/local/tmp/ape-qoe-queue.ndjson.snd" dev="dm-6" ino=229392 ioctlcmd=0x5413 scontext=u:r:shell:s0 tcontext=u:object_r:shell_data_file:s0 tclass=file permissive=0
+06-18 10:56:41.107 14249 14249 W curl    : type=1400 audit(0.0:503334): avc: denied { ioctl } for path="/data/local/tmp/ape-qoe-queue.ndjson.snd" dev="dm-6" ino=229392 ioctlcmd=0x5413 scontext=u:r:shell:s0 tcontext=u:object_r:shell_data_file:s0 tclass=file permissive=0 app=com.amazon.prism.android.service
+06-18 10:56:41.295 28820 14269 I chatty  : uid=2000(shell) /apex/com.android.adbd/bin/adbd expire 1 line
+06-18 10:56:41.295 28820 14268 I chatty  : uid=2000(shell) /apex/com.android.adbd/bin/adbd expire 3 lines
+06-18 10:56:41.296 14265 14267 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:41.455 14284 14284 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:41.493   388   388 I WifiHAL : Creating message to get link statistics; iface = 15
+06-18 10:56:41.493   388   388 E WifiHAL : Incorrect number of channels = 4
+06-18 10:56:41.496   667   806 E WifiVendorHal: getWifiLinkLayerStats_1_3_Internal(l.973) failed {.code = ERROR_UNKNOWN, .description = unknown}
+06-18 10:56:41.504 12895 13030 I ApeSettingsApplier: device_settings aplicados=2 rechazados=0
+06-18 10:56:41.581 28820 14298 I chatty  : uid=2000(shell) /apex/com.android.adbd/bin/adbd expire 3 lines
+06-18 10:56:41.638 27032  4180 I MediaCodecLogger: 27032.SW.c2.audio.mp4a.bitrateInKbps = 93
+06-18 10:56:41.649 14279 14279 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 14 lines
+06-18 10:56:41.654 14302 14303 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:41.783 14317 14317 W curl    : type=1400 audit(0.0:503340): avc: denied { ioctl } for path="/data/local/tmp/ape-qoe-queue.ndjson.snd" dev="dm-6" ino=229392 ioctlcmd=0x5413 scontext=u:r:shell:s0 tcontext=u:object_r:shell_data_file:s0 tclass=file permissive=0
+06-18 10:56:41.829 14319 14321 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:41.870 14323 14324 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:41.923 14279 14338 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:20.627   667  7565 I AmazonProfileService: Event is not filtered because it is not in filter key list.
+06-18 10:56:42.010   667  1281 I AmazonProfileService: Event is not filtered because it is not in filter key list.
+06-18 10:56:42.010   667  1281 I KeyMapManagerUtil: Unknown remote sku id 0. Fetch remote sku id from system property
+06-18 10:56:42.012   667  1281 I KeyMapManagerUtil: Unknown remote sku id 0. Fetch remote sku id from system property
+06-18 10:56:42.168 27032 27049 I um.ottnavigato: Background young concurrent copying GC freed 781887(24MB) AllocSpace objects, 0(0B) LOS objects, 10% free, 200MB/224MB, paused 145us total 109.342ms
+06-18 10:56:42.501 14395 14397 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:42.628 28820 14412 I chatty  : uid=2000(shell) /apex/com.android.adbd/bin/adbd expire 3 lines
+06-18 10:56:42.823 14428 14428 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:42.881 14433 14435 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:43.187 14459 14459 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:43.379 14470 14472 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:43.495 14480 14480 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:43.665 28820 14495 I chatty  : uid=2000(shell) /apex/com.android.adbd/bin/adbd expire 3 lines
+06-18 10:56:43.707 14497 14499 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:43.835 14509 14509 W curl    : type=1400 audit(0.0:503346): avc: denied { ioctl } for path="/data/local/tmp/ape-qoe-queue.ndjson.snd" dev="dm-6" ino=229392 ioctlcmd=0x5413 scontext=u:r:shell:s0 tcontext=u:object_r:shell_data_file:s0 tclass=file permissive=0 app=com.amazon.firetv.youtube
+06-18 10:56:43.873 14511 14513 I chatty  : uid=2000(shell) com.amazon.firebat expire 1 line
+06-18 10:56:44.049 14524 14526 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:44.050 27032 27049 I um.ottnavigato: Background young concurrent copying GC freed 782930(24MB) AllocSpace objects, 0(0B) LOS objects, 10% free, 200MB/224MB, paused 143us total 102.733ms
+06-18 10:56:44.155 14535 14535 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:44.200  3301  3301 I wlan_stats: HostAPd is not running or there is a permission issue in retrieving hostapd status
+06-18 10:56:44.207  3301  3301 E wlan_stats: Cannot connect to hostapd at /data/vendor/wifi/hostapd/ctrl/ap0, errno=2 (No such file or directory)
+06-18 10:56:44.207  3301  3301 I wlan_stats: No SoftAP clients connected, returning SUCCESS
+06-18 10:56:44.207  3301  3301 I main.wlan_stats: wlan0:rssi=-62;rssi2=-60;noise=-87;noise2=-92;s_channel=44;txframes=16557274;txfails=2988232;txper=18%;txaggr=21551 2543 12 0 0 0 0 ;rxframes=266880299;rxcrc=25944831;rxper=8.8%;rxdrop=3411290;phymod=AC;phyrate=702;lasttxrate=24M_BW20_OFDM;lastrxrate=NSS2_MCS4_BW80_SGI;
+06-18 10:56:44.207  3301  3301 I main.wlan_stats: RxBmcCipherMismatch=0;RxBmcIcvError=0;RxBmcPkt=0;SKIP_RX_BMC_RUN_COUNTER=30;
+06-18 10:56:44.207  3301  3301 I main.wlan_stats: tx_packets=16095428;tx_bytes=2972950853;tx_errors=0;tx_dropped=0;rx_packets=87523588;rx_bytes=116980995736;rx_errors=0;rx_dropped=0;
+06-18 10:56:44.207  3301  3301 I main.wlan_stats: max_rssi=-20;min_rssi=-85;max_noise=-84;min_noise=-92;noise histogram=0 0 0 0 0 0 2 50950 59026 47 2245;
+06-18 10:56:44.210  3301  3301 I main.wlan_stats: ch_busy=103%;ch_idle=253%;ch_tx=0%;ch_rx=0%;total=1014100;busy=0;my_tx=8479;my_rx=2979;tx_ok=55%;tx_fail=45%;tx_retry=0%;rx_ok=100%;rx_fcs=0%;tx_ok=85;tx_fail=68;txretry=0;rx_ok=40;rx_fcs=0;cck_false=0;cck_crc=0;ofdm_false=117;ofdm_crc=0;
+06-18 10:56:44.210  3301  3301 I main.wlan_stats: TXRATE=NSS2_MCS8, BW80, LGI, VHT, LDPC ; PER=0; PERCNT=60%;TXRATE=NSS2_MCS9, BW80, LGI, VHT, LDPC ; PER=0; PERCNT=40%;RXRATE=NSS2_MCS4, BW80, LGI, VHT, LDPC; PERCNT=50%;RXRATE=NSS2_MCS5, BW80, SGI, VHT, LDPC; PERCNT=50%;
+06-18 10:56:44.210  3301  3301 I main.wlan_stats: ap0: No clients connected
+06-18 10:56:44.210  3301  3301 I main.wlan_stats: process metric stats: num of samples19; beacon rssi: ins=-57, avg=-57; data rssi: ins=-62, avg=-62; data rssi2: ins=-60, avg=-60; noise:  ins=-87, avg=-87; noise2:  ins=-92, avg=-92; idle per: ins=253, sum=2390; max idle per: 253; min idle per: 25; 
+06-18 10:56:44.265 14541 14542 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:44.483 14559 14559 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:44.499 12895 13030 I ApeSettingsApplier: device_settings aplicados=2 rechazados=0
+06-18 10:56:44.508   388   388 I WifiHAL : Creating message to get link statistics; iface = 15
+06-18 10:56:44.509   388   388 E WifiHAL : Incorrect number of channels = 4
+06-18 10:56:44.510   667   806 E WifiVendorHal: getWifiLinkLayerStats_1_3_Internal(l.973) failed {.code = ERROR_UNKNOWN, .description = unknown}
+06-18 10:56:44.713 28820 14576 I chatty  : uid=2000(shell) /apex/com.android.adbd/bin/adbd expire 3 lines
+06-18 10:56:44.756 14578 14580 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:44.835 14587 14587 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:44.925 14591 14593 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:45.179 14609 14609 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:45.313   631   631 E integrity_module: --- integrity_module file read error /sys/class/power_supply/battery/device/gm30_bat_cycle ---
+06-18 10:56:45.313   631   631 E integrity_module: --- integrity_module file read error  ---
+06-18 10:56:45.313   631   631 E integrity_module: --- integrity_module file read error /sys/devices/platform/charger/ADC_Charger_Voltage ---
+06-18 10:56:45.313   631   631 E integrity_module: --- integrity_module file read error /sys/devices/platform/charger/chr_type ---
+06-18 10:56:45.313   631   631 E integrity_module: --- integrity_module file read error ---
+06-18 10:56:45.318 27032  4168 I MediaCodecLogger: 27032.4K.HW.omx.video.avc.bitrateInKbps = 3734
+06-18 10:56:45.531 14622 14622 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:45.785 28820 14636 I chatty  : uid=2000(shell) /apex/com.android.adbd/bin/adbd expire 3 lines
+06-18 10:56:45.895 14641 14641 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:45.913 27032 27049 I um.ottnavigato: Background young concurrent copying GC freed 692036(21MB) AllocSpace objects, 0(0B) LOS objects, 9% free, 203MB/224MB, paused 244us total 219.790ms
+06-18 10:56:46.239 14661 14663 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:46.269   667   802 W BestClock: java.time.DateTimeException: Missing NTP fix
+06-18 10:56:46.271   330 18246 I netd    : trafficSwapActiveStatsMap() <0.26ms>
+06-18 10:56:46.275 14665 14665 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:46.437   330 18246 I netd    : tetherGetStats() <1.49ms>
+06-18 10:56:46.479   667   802 W BestClock: java.time.DateTimeException: Missing NTP fix
+06-18 10:56:46.493   330 18246 I netd    : bandwidthSetGlobalAlert(2097152) <0.31ms>
+06-18 10:56:46.496   667   803 W BestClock: java.time.DateTimeException: Missing NTP fix
+06-18 10:56:46.497   667   803 W BestClock: java.time.DateTimeException: Missing NTP fix
+06-18 10:56:46.574 14672 14674 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:46.619 14676 14676 I chatty  : uid=2000(shell) app_process expire 1 line
+06-18 10:56:46.722 27032  4180 I MediaCodecLogger: 27032.SW.c2.audio.mp4a.bitrateInKbps = 93
+06-18 10:56:46.786 28820 28820 I chatty  : uid=2000(shell) /apex/com.android.adbd/bin/adbd expire 3 lines
+06-18 10:56:46.847 28820 28823 I chatty  : uid=2000(shell) usb ffs open expire 2 lines
+06-18 10:56:46.855 28820 14687 I chatty  : uid=2000(shell) /apex/com.android.adbd/bin/adbd expire 1 line
+06-18 10:56:46.967 14697 14697 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:47.039 14703 14705 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:47.081 14707 14709 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:47.299 14728 14728 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:47.503 12895 13030 I ApeSettingsApplier: device_settings aplicados=2 rechazados=0
+06-18 10:56:47.516   388   388 I WifiHAL : Creating message to get link statistics; iface = 15
+06-18 10:56:47.517   388   388 E WifiHAL : Incorrect number of channels = 4
+06-18 10:56:47.518   667   806 E WifiVendorHal: getWifiLinkLayerStats_1_3_Internal(l.973) failed {.code = ERROR_UNKNOWN, .description = unknown}
+06-18 10:56:47.531 27032 27049 I um.ottnavigato: Background young concurrent copying GC freed 516071(15MB) AllocSpace objects, 0(0B) LOS objects, 7% free, 208MB/224MB, paused 137us total 122.094ms
+06-18 10:56:47.532 14746 14747 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:47.631 14759 14759 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:47.665   667   802 W BestClock: java.time.DateTimeException: Missing NTP fix
+06-18 10:56:47.667   330 18246 I netd    : trafficSwapActiveStatsMap() <0.27ms>
+06-18 10:56:47.688 14763 14764 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:47.744   330 18246 I netd    : tetherGetStats() <3.25ms>
+06-18 10:56:47.776   667   802 W BestClock: java.time.DateTimeException: Missing NTP fix
+06-18 10:56:47.784   330 18246 I netd    : bandwidthSetGlobalAlert(2097152) <0.14ms>
+06-18 10:56:47.786   667   803 W BestClock: java.time.DateTimeException: Missing NTP fix
+06-18 10:56:47.787   667   803 W BestClock: java.time.DateTimeException: Missing NTP fix
+06-18 10:56:47.854 14777 14779 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:47.857 28820 14687 I chatty  : uid=2000(shell) /apex/com.android.adbd/bin/adbd expire 2 lines
+06-18 10:56:47.857 28820 28820 I chatty  : uid=2000(shell) /apex/com.android.adbd/bin/adbd expire 21 lines
+06-18 10:56:47.907 28820 28823 I chatty  : uid=2000(shell) usb ffs open expire 13 lines
+06-18 10:56:47.910 28820 14785 I chatty  : uid=2000(shell) /apex/com.android.adbd/bin/adbd expire 3 lines
+06-18 10:56:47.975 14791 14791 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:48.303 14822 14822 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:48.443 14827 14829 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:48.667 14846 14846 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:48.793 27032 27049 I um.ottnavigato: Background young concurrent copying GC freed 518014(15MB) AllocSpace objects, 0(0B) LOS objects, 7% free, 208MB/224MB, paused 139us total 104.723ms
+06-18 10:56:48.966 28820 14872 I chatty  : uid=2000(shell) /apex/com.android.adbd/bin/adbd expire 3 lines
+06-18 10:56:49.007 14874 14876 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:49.027 14880 14880 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:49.097 14886 14889 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:49.168 14899 14904 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:49.187 14901 14908 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:49.315 14922 14925 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:49.362 14931 14932 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:49.371 14935 14935 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:49.507 14955 14960 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:49.683 14974 14974 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:50.012 28820 14998 I chatty  : uid=2000(shell) /apex/com.android.adbd/bin/adbd expire 3 lines
+06-18 10:56:50.013 14995 14997 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:50.039 15000 15000 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:50.049 27032 27049 I um.ottnavigato: Background young concurrent copying GC freed 518868(15MB) AllocSpace objects, 0(0B) LOS objects, 7% free, 208MB/224MB, paused 146us total 109.924ms
+06-18 10:56:50.055 15001 15003 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:50.347 15024 15024 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:50.357 27032  4168 I MediaCodecLogger: 27032.4K.HW.omx.video.avc.bitrateInKbps = 3575
+06-18 10:56:50.505 12895 13030 I ApeSettingsApplier: device_settings aplicados=2 rechazados=0
+06-18 10:56:50.532   388   388 I WifiHAL : Creating message to get link statistics; iface = 15
+06-18 10:56:50.534   388   388 E WifiHAL : Incorrect number of channels = 4
+06-18 10:56:50.535   667   806 E WifiVendorHal: getWifiLinkLayerStats_1_3_Internal(l.973) failed {.code = ERROR_UNKNOWN, .description = unknown}
+06-18 10:56:50.612 15044 15046 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:50.683 15051 15051 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:51.011 15082 15082 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:51.069 28820 15088 I chatty  : uid=2000(shell) /apex/com.android.adbd/bin/adbd expire 3 lines
+06-18 10:56:51.290 15104 15106 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:51.308 27032 27049 I um.ottnavigato: Background young concurrent copying GC freed 518550(15MB) AllocSpace objects, 0(0B) LOS objects, 7% free, 208MB/224MB, paused 146us total 101.639ms
+06-18 10:56:51.332 15108 15110 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:51.355 15112 15112 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:51.494 15123 15125 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:51.657 15137 15139 I chatty  : uid=2000(shell) com.amazon.whisperlink.core.android expire 1 line
+06-18 10:56:51.703 15142 15142 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:51.807 27032  4180 I MediaCodecLogger: 27032.SW.c2.audio.mp4a.bitrateInKbps = 93
+06-18 10:56:51.816 15152 15154 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:51.938 15162 15164 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:52.043 15173 15173 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:52.130 28820 15182 I chatty  : uid=2000(shell) /apex/com.android.adbd/bin/adbd expire 3 lines
+06-18 10:56:52.339 27032 28346 W Choreographer: Frame time is 0.013528 ms in the future!  Check that graphics HAL is generating vsync timestamps using the correct timebase.
+06-18 10:56:52.411 15209 15209 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:52.759 15239 15239 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:52.827  2300  2318 W ryconfigservic: Reducing the number of considered missed Gc histogram windows from 3160 to 100
+06-18 10:56:52.833 15243 15245 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:52.953 15252 15254 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:53.127 15267 15267 W curl    : type=1400 audit(0.0:503373): avc: denied { ioctl } for path="/data/local/tmp/ape-qoe-queue.ndjson.snd" dev="dm-6" ino=229392 ioctlcmd=0x5413 scontext=u:r:shell:s0 tcontext=u:object_r:shell_data_file:s0 tclass=file permissive=0
+06-18 10:56:53.174 28820 15273 I chatty  : uid=2000(shell) /apex/com.android.adbd/bin/adbd expire 3 lines
+06-18 10:56:53.475 15293 15293 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:53.504 15294 15296 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:53.511 12895 13030 I ApeSettingsApplier: device_settings aplicados=2 rechazados=0
+06-18 10:56:53.544   388   388 I WifiHAL : Creating message to get link statistics; iface = 15
+06-18 10:56:53.544   388   388 E WifiHAL : Incorrect number of channels = 4
+06-18 10:56:53.546   667   806 E WifiVendorHal: getWifiLinkLayerStats_1_3_Internal(l.973) failed {.code = ERROR_UNKNOWN, .description = unknown}
+06-18 10:56:53.746 27032 27049 I um.ottnavigato: Background young concurrent copying GC freed 518918(15MB) AllocSpace objects, 0(0B) LOS objects, 7% free, 208MB/224MB, paused 219us total 109.338ms
+06-18 10:56:53.827 15321 15321 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:53.850 15322 15324 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:54.159 15344 15344 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:54.233 28820 28823 I chatty  : uid=2000(shell) usb ffs open expire 19 lines
+06-18 10:56:54.235 28820 15354 I chatty  : uid=2000(shell) /apex/com.android.adbd/bin/adbd expire 3 lines
+06-18 10:56:54.527 15376 15376 W curl    : type=1400 audit(0.0:503377): avc: denied { ioctl } for path="/data/local/tmp/ape-qoe-queue.ndjson.snd" dev="dm-6" ino=229392 ioctlcmd=0x5413 scontext=u:r:shell:s0 tcontext=u:object_r:shell_data_file:s0 tclass=file permissive=0 app=com.amazon.firebat
+06-18 10:56:54.887 15406 15406 W curl    : type=1400 audit(0.0:503378): avc: denied { ioctl } for path="/data/local/tmp/ape-qoe-queue.ndjson.snd" dev="dm-6" ino=229392 ioctlcmd=0x5413 scontext=u:r:shell:s0 tcontext=u:object_r:shell_data_file:s0 tclass=file permissive=0 app=com.android.providers.tv
+06-18 10:56:55.020 27032 27049 I um.ottnavigato: Background young concurrent copying GC freed 518208(15MB) AllocSpace objects, 0(0B) LOS objects, 7% free, 208MB/224MB, paused 138us total 108.611ms
+06-18 10:56:55.106 15421 15423 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:55.237 28820 28820 I chatty  : uid=2000(shell) /apex/com.android.adbd/bin/adbd expire 36 lines
+06-18 10:56:55.255 15435 15435 W curl    : type=1400 audit(0.0:503379): avc: denied { ioctl } for path="/data/local/tmp/ape-qoe-queue.ndjson.snd" dev="dm-6" ino=229392 ioctlcmd=0x5413 scontext=u:r:shell:s0 tcontext=u:object_r:shell_data_file:s0 tclass=file permissive=0 app=com.amazon.tv.livetv
+06-18 10:56:55.294 28820 15441 I chatty  : uid=2000(shell) /apex/com.android.adbd/bin/adbd expire 3 lines
+06-18 10:56:55.313 15440 15443 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:55.318   631   631 E integrity_module: --- integrity_module file read error /sys/class/power_supply/battery/device/gm30_bat_cycle ---
+06-18 10:56:55.318   631   631 E integrity_module: --- integrity_module file read error  ---
+06-18 10:56:55.318   631   631 E integrity_module: --- integrity_module file read error /sys/devices/platform/charger/ADC_Charger_Voltage ---
+06-18 10:56:55.318   631   631 E integrity_module: --- integrity_module file read error /sys/devices/platform/charger/chr_type ---
+06-18 10:56:55.318   631   631 E integrity_module: --- integrity_module file read error ---
+06-18 10:56:55.415 27032  4168 I MediaCodecLogger: 27032.4K.HW.omx.video.avc.bitrateInKbps = 3448
+06-18 10:56:55.623 15470 15470 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:55.633 15469 15472 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:55.967 15502 15502 W curl    : type=1400 audit(0.0:503381): avc: denied { ioctl } for path="/data/local/tmp/ape-qoe-queue.ndjson.snd" dev="dm-6" ino=229392 ioctlcmd=0x5413 scontext=u:r:shell:s0 tcontext=u:object_r:shell_data_file:s0 tclass=file permissive=0 app=com.fireos.arcus.proxy
+06-18 10:56:56.052 15509 15511 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:56.228 27032 27049 I um.ottnavigato: Background young concurrent copying GC freed 518264(15MB) AllocSpace objects, 0(0B) LOS objects, 7% free, 208MB/224MB, paused 142us total 112.928ms
+06-18 10:56:56.311 15534 15534 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:56.356 28820 15539 I chatty  : uid=2000(shell) /apex/com.android.adbd/bin/adbd expire 3 lines
+06-18 10:56:56.368 15538 15541 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:56.413 15543 15545 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:56.512 12895 13030 I ApeSettingsApplier: device_settings aplicados=2 rechazados=0
+06-18 10:56:56.528 15553 15555 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:56.555   388   388 I WifiHAL : Creating message to get link statistics; iface = 15
+06-18 10:56:56.555   388   388 E WifiHAL : Incorrect number of channels = 4
+06-18 10:56:56.556   667   806 E WifiVendorHal: getWifiLinkLayerStats_1_3_Internal(l.973) failed {.code = ERROR_UNKNOWN, .description = unknown}
+06-18 10:56:56.631 15564 15564 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:56.812 27032  4180 I MediaCodecLogger: 27032.SW.c2.audio.mp4a.bitrateInKbps = 94
+06-18 10:56:56.939 15591 15591 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:57.112 15600 15602 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:57.240 15609 15611 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:57.283 15615 15615 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:57.430 28820 15626 I chatty  : uid=2000(shell) /apex/com.android.adbd/bin/adbd expire 3 lines
+06-18 10:56:57.527  7076  7076 W Choreographer: Frame time is 0.219556 ms in the future!  Check that graphics HAL is generating vsync timestamps using the correct timebase.
+06-18 10:56:57.610 27032 27049 I um.ottnavigato: Background young concurrent copying GC freed 518965(15MB) AllocSpace objects, 0(0B) LOS objects, 7% free, 208MB/224MB, paused 138us total 104.285ms
+06-18 10:56:57.611 15639 15639 W curl    : type=1400 audit(0.0:503386): avc: denied { ioctl } for path="/data/local/tmp/ape-qoe-queue.ndjson.snd" dev="dm-6" ino=229392 ioctlcmd=0x5413 scontext=u:r:shell:s0 tcontext=u:object_r:shell_data_file:s0 tclass=file permissive=0 app=com.amazon.firebat
+06-18 10:56:57.925  1637  1652 I evice.messagin: Background concurrent copying GC freed 33495(1566KB) AllocSpace objects, 21(804KB) LOS objects, 49% free, 3321KB/6643KB, paused 171us total 125.130ms
+06-18 10:56:57.925  1637  1652 W evice.messagin: Reducing the number of considered missed Gc histogram windows from 585 to 100
+06-18 10:56:57.945 15660 15662 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:57.963 15664 15664 W curl    : type=1400 audit(0.0:503387): avc: denied { ioctl } for path="/data/local/tmp/ape-qoe-queue.ndjson.snd" dev="dm-6" ino=229392 ioctlcmd=0x5413 scontext=u:r:shell:s0 tcontext=u:object_r:shell_data_file:s0 tclass=file permissive=0 app=com.amazon.diode
+06-18 10:56:58.113 15673 15675 I chatty  : uid=2000(shell) com.amazon.firebat expire 1 line
+06-18 10:56:58.149 15677 15679 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:58.271 15685 15685 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:58.325 15690 15692 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:58.498 15702 15704 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:58.499 28820 15703 I chatty  : uid=2000(shell) /apex/com.android.adbd/bin/adbd expire 3 lines
+06-18 10:56:58.595 15710 15710 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:58.672 15716 15719 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:58.798 15725 15727 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:58.838   330 15717 I ResolverController: No valid NAT64 prefix (114, <unspecified>/0)
+06-18 10:56:58.860 27032 27049 I um.ottnavigato: Background young concurrent copying GC freed 517161(15MB) AllocSpace objects, 0(0B) LOS objects, 7% free, 208MB/224MB, paused 136us total 110.147ms
+06-18 10:56:58.895 15735 15735 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:59.009 15742 15744 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:59.235 15762 15762 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:59.454 15778 15781 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:59.523 12895 13030 I ApeSettingsApplier: device_settings aplicados=2 rechazados=0
+06-18 10:56:59.562 28820 15792 I chatty  : uid=2000(shell) /apex/com.android.adbd/bin/adbd expire 3 lines
+06-18 10:56:59.566   388   388 I WifiHAL : Creating message to get link statistics; iface = 15
+06-18 10:56:59.566   388   388 E WifiHAL : Incorrect number of channels = 4
+06-18 10:56:59.567   667   806 E WifiVendorHal: getWifiLinkLayerStats_1_3_Internal(l.973) failed {.code = ERROR_UNKNOWN, .description = unknown}
+06-18 10:56:59.587 15793 15793 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:59.622 15797 15799 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:59.750 15807 15809 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:59.947 15824 15824 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:57:00.136 27032 27049 I um.ottnavigato: Background young concurrent copying GC freed 516201(15MB) AllocSpace objects, 1(20KB) LOS objects, 7% free, 208MB/224MB, paused 151us total 125.882ms
+06-18 10:57:00.162 15836 15838 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:57:00.311 15847 15847 W curl    : type=1400 audit(0.0:503394): avc: denied { ioctl } for path="/data/local/tmp/ape-qoe-queue.ndjson.snd" dev="dm-6" ino=229392 ioctlcmd=0x5413 scontext=u:r:shell:s0 tcontext=u:object_r:shell_data_file:s0 tclass=file permissive=0 app=com.amazon.diode
+06-18 10:57:00.450 27032  4168 I MediaCodecLogger: 27032.4K.HW.omx.video.avc.bitrateInKbps = 3241
+06-18 10:57:00.618 28820 15862 I chatty  : uid=2000(shell) /apex/com.android.adbd/bin/adbd expire 3 lines
+06-18 10:57:00.643 15863 15863 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:57:01.079 15876 15876 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:57:01.423 15896 15896 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:57:01.532   667   802 W BestClock: java.time.DateTimeException: Missing NTP fix
+06-18 10:57:01.537   330 18246 I netd    : trafficSwapActiveStatsMap() <0.24ms>
+06-18 10:57:01.625   330 18246 I netd    : tetherGetStats() <5.37ms>
+06-18 10:57:01.674 15902 15904 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:57:01.678 28820 15903 I chatty  : uid=2000(shell) /apex/com.android.adbd/bin/adbd expire 3 lines
+06-18 10:57:01.737   667   802 W BestClock: java.time.DateTimeException: Missing NTP fix
+06-18 10:57:01.760   330 18246 I netd    : bandwidthSetGlobalAlert(2097152) <0.31ms>
+06-18 10:57:01.767 15907 15907 W curl    : type=1400 audit(0.0:503398): avc: denied { ioctl } for path="/data/local/tmp/ape-qoe-queue.ndjson.snd" dev="dm-6" ino=229392 ioctlcmd=0x5413 scontext=u:r:shell:s0 tcontext=u:object_r:shell_data_file:s0 tclass=file permissive=0 app=com.amazon.logan
+06-18 10:57:01.801   667   803 W BestClock: java.time.DateTimeException: Missing NTP fix
+06-18 10:57:01.802   667   803 W BestClock: java.time.DateTimeException: Missing NTP fix
+06-18 10:57:01.924 27032  4180 I MediaCodecLogger: 27032.SW.c2.audio.mp4a.bitrateInKbps = 92
+06-18 10:57:02.130 27032 27049 I um.ottnavigato: Background young concurrent copying GC freed 435481(13MB) AllocSpace objects, 0(0B) LOS objects, 5% free, 212MB/224MB, paused 582us total 231.602ms
+06-18 10:57:02.127 15923 15923 W curl    : type=1400 audit(0.0:503399): avc: denied { ioctl } for path="/data/local/tmp/ape-qoe-queue.ndjson.snd" dev="dm-6" ino=229392 ioctlcmd=0x5413 scontext=u:r:shell:s0 tcontext=u:object_r:shell_data_file:s0 tclass=file permissive=0 app=com.amazon.firetv.youtube
+06-18 10:57:02.308 15929 15930 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:57:02.507 15939 15939 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:57:02.514 12895 13030 I ApeSettingsApplier: device_settings aplicados=2 rechazados=0
+06-18 10:57:02.576   388   388 I WifiHAL : Creating message to get link statistics; iface = 15
+06-18 10:57:02.577   388   388 E WifiHAL : Incorrect number of channels = 4
+06-18 10:57:02.578   667   806 E WifiVendorHal: getWifiLinkLayerStats_1_3_Internal(l.973) failed {.code = ERROR_UNKNOWN, .description = unknown}
+06-18 10:57:02.662 28820 15946 I chatty  : uid=2000(shell) /apex/com.android.adbd/bin/adbd expire 3 lines
+06-18 10:57:02.689 28820 15947 I chatty  : uid=2000(shell) /apex/com.android.adbd/bin/adbd expire 1 line
+06-18 10:57:02.760 28820 15954 I chatty  : uid=2000(shell) /apex/com.android.adbd/bin/adbd expire 3 lines
+06-18 10:57:02.831 15957 15957 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:57:03.033   667   802 W BestClock: java.time.DateTimeException: Missing NTP fix
+06-18 10:57:03.035   330 18246 I netd    : trafficSwapActiveStatsMap() <0.18ms>
+06-18 10:57:03.127   330 18246 I netd    : tetherGetStats() <1.35ms>
+06-18 10:57:03.174   667   802 W BestClock: java.time.DateTimeException: Missing NTP fix
+06-18 10:57:03.182   330 18246 I netd    : bandwidthSetGlobalAlert(2097152) <0.30ms>
+06-18 10:57:03.186   667   803 W BestClock: java.time.DateTimeException: Missing NTP fix
+06-18 10:57:03.187   667   803 W BestClock: java.time.DateTimeException: Missing NTP fix
+06-18 10:57:03.195 15965 15965 W curl    : type=1400 audit(0.0:503402): avc: denied { ioctl } for path="/data/local/tmp/ape-qoe-queue.ndjson.snd" dev="dm-6" ino=229392 ioctlcmd=0x5413 scontext=u:r:shell:s0 tcontext=u:object_r:shell_data_file:s0 tclass=file permissive=0 app=com.amazon.whisperlink.core.android
+06-18 10:57:03.451 15952 15952 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 14 lines
+06-18 10:57:03.482   667   677 I system_server: Background young concurrent copying GC freed 55479(9000KB) AllocSpace objects, 712(14MB) LOS objects, 44% free, 28MB/50MB, paused 379us total 349.993ms
+06-18 10:57:03.543 15970 15970 W curl    : type=1400 audit(0.0:503407): avc: denied { ioctl } for path="/data/local/tmp/ape-qoe-queue.ndjson.snd" dev="dm-6" ino=229392 ioctlcmd=0x5413 scontext=u:r:shell:s0 tcontext=u:object_r:shell_data_file:s0 tclass=file permissive=0
+06-18 10:57:03.626 15969 15973 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:57:03.767  7076  7076 W Choreographer: Frame time is 0.069491 ms in the future!  Check that graphics HAL is generating vsync timestamps using the correct timebase.
+06-18 10:57:03.822 28820 15990 I chatty  : uid=2000(shell) /apex/com.android.adbd/bin/adbd expire 3 lines
+06-18 10:57:03.823 15952 15984 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:56:42.012   667  1281 I AmazonProfileService: Event is not filtered because it is not in filter key list.
+06-18 10:57:04.031   667  4455 I AmazonProfileService: Event is not filtered because it is not in filter key list.
+06-18 10:57:04.031   667  4455 I KeyMapManagerUtil: Unknown remote sku id 0. Fetch remote sku id from system property
+06-18 10:57:04.033   667  4455 I KeyMapManagerUtil: Unknown remote sku id 0. Fetch remote sku id from system property
+06-18 10:57:04.086 27032 27049 I um.ottnavigato: Background young concurrent copying GC freed 246203(7946KB) AllocSpace objects, 0(0B) LOS objects, 3% free, 217MB/224MB, paused 3.905ms total 303.403ms
+06-18 10:57:04.333 16020 16021 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:57:04.478   667   802 W BestClock: java.time.DateTimeException: Missing NTP fix
+06-18 10:57:04.481   330 18246 I netd    : trafficSwapActiveStatsMap() <0.51ms>
+06-18 10:57:04.527 16033 16033 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:57:04.548   330 18246 I netd    : tetherGetStats() <1.33ms>
+06-18 10:57:04.576   667   802 W BestClock: java.time.DateTimeException: Missing NTP fix
+06-18 10:57:04.583   330 18246 I netd    : bandwidthSetGlobalAlert(2097152) <0.28ms>
+06-18 10:57:04.588   667   803 W BestClock: java.time.DateTimeException: Missing NTP fix
+06-18 10:57:04.589   667   803 W BestClock: java.time.DateTimeException: Missing NTP fix
+06-18 10:57:04.772 16055 16056 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:57:04.884 28820 28823 I chatty  : uid=2000(shell) usb ffs open expire 10 lines
+06-18 10:57:04.895 28820 16063 I chatty  : uid=2000(shell) /apex/com.android.adbd/bin/adbd expire 3 lines
+06-18 10:57:04.899 16062 16062 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:57:05.263 16077 16077 W curl    : type=1400 audit(0.0:503412): avc: denied { ioctl } for path="/data/local/tmp/ape-qoe-queue.ndjson.snd" dev="dm-6" ino=229392 ioctlcmd=0x5413 scontext=u:r:shell:s0 tcontext=u:object_r:shell_data_file:s0 tclass=file permissive=0 app=com.amazon.prism.android.service
+06-18 10:57:05.322   631   631 E integrity_module: --- integrity_module file read error /sys/class/power_supply/battery/device/gm30_bat_cycle ---
+06-18 10:57:05.322   631   631 E integrity_module: --- integrity_module file read error  ---
+06-18 10:57:05.322   631   631 E integrity_module: --- integrity_module file read error /sys/devices/platform/charger/ADC_Charger_Voltage ---
+06-18 10:57:05.322   631   631 E integrity_module: --- integrity_module file read error /sys/devices/platform/charger/chr_type ---
+06-18 10:57:05.322   631   631 E integrity_module: --- integrity_module file read error ---
+06-18 10:57:05.488 27032  4168 I MediaCodecLogger: 27032.4K.HW.omx.video.avc.bitrateInKbps = 3298
+06-18 10:57:05.521 12895 13030 I ApeSettingsApplier: device_settings aplicados=2 rechazados=0
+06-18 10:57:05.592   388   388 I WifiHAL : Creating message to get link statistics; iface = 15
+06-18 10:57:05.592   388   388 E WifiHAL : Incorrect number of channels = 4
+06-18 10:57:05.593   667   806 E WifiVendorHal: getWifiLinkLayerStats_1_3_Internal(l.973) failed {.code = ERROR_UNKNOWN, .description = unknown}
+06-18 10:57:05.623 16090 16090 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:57:05.858 16094 16096 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:57:05.896 28820 28820 I chatty  : uid=2000(shell) /apex/com.android.adbd/bin/adbd expire 12 lines
+06-18 10:57:05.966 28820 16100 I chatty  : uid=2000(shell) /apex/com.android.adbd/bin/adbd expire 3 lines
+06-18 10:57:05.967 16099 16099 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:57:06.063   667   802 W BestClock: java.time.DateTimeException: Missing NTP fix
+06-18 10:57:06.066   330 18246 I netd    : trafficSwapActiveStatsMap() <0.98ms>
+06-18 10:57:06.140   330 18246 I netd    : tetherGetStats() <1.38ms>
+06-18 10:57:06.169   667   802 W BestClock: java.time.DateTimeException: Missing NTP fix
+06-18 10:57:06.176   330 18246 I netd    : bandwidthSetGlobalAlert(2097152) <0.12ms>
+06-18 10:57:06.181   667   803 W BestClock: java.time.DateTimeException: Missing NTP fix
+06-18 10:57:06.182   667   803 W BestClock: java.time.DateTimeException: Missing NTP fix
+06-18 10:57:06.309 16121 16123 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:57:06.315 16124 16124 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:57:06.412 27032 27049 I um.ottnavigato: Background concurrent copying GC freed 609352(35MB) AllocSpace objects, 1(20KB) LOS objects, 10% free, 201MB/225MB, paused 207us total 1.784s
+06-18 10:57:06.655 16149 16149 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:57:06.737 16156 16158 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:57:07.015 27032  4180 I MediaCodecLogger: 27032.SW.c2.audio.mp4a.bitrateInKbps = 93
+06-18 10:57:07.019 16180 16180 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:57:07.037 28820 16183 I chatty  : uid=2000(shell) /apex/com.android.adbd/bin/adbd expire 3 lines
+06-18 10:57:07.351 16212 16212 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:57:07.449 16220 16221 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:57:07.575 16230 16232 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:57:07.655 16239 16239 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:57:08.019 16273 16273 W curl    : type=1400 audit(0.0:503420): avc: denied { ioctl } for path="/data/local/tmp/ape-qoe-queue.ndjson.snd" dev="dm-6" ino=229392 ioctlcmd=0x5413 scontext=u:r:shell:s0 tcontext=u:object_r:shell_data_file:s0 tclass=file permissive=0 app=com.amazon.tv.livetv
+06-18 10:57:08.091 28820 16282 I chatty  : uid=2000(shell) /apex/com.android.adbd/bin/adbd expire 3 lines
+06-18 10:57:08.367 16304 16304 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:57:08.392 27032 27049 I um.ottnavigato: Background young concurrent copying GC freed 840712(25MB) AllocSpace objects, 0(0B) LOS objects, 10% free, 200MB/224MB, paused 189us total 112.002ms
+06-18 10:57:08.405 16308 16310 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:57:08.519 12895 13030 I ApeSettingsApplier: device_settings aplicados=2 rechazados=0
+06-18 10:57:08.524 16318 16320 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:57:08.600   388   388 I WifiHAL : Creating message to get link statistics; iface = 15
+06-18 10:57:08.601   388   388 E WifiHAL : Incorrect number of channels = 4
+06-18 10:57:08.601   667   806 E WifiVendorHal: getWifiLinkLayerStats_1_3_Internal(l.973) failed {.code = ERROR_UNKNOWN, .description = unknown}
+06-18 10:57:08.679 16335 16335 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:57:09.031 16359 16359 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:57:09.162 28820 16371 I chatty  : uid=2000(shell) /apex/com.android.adbd/bin/adbd expire 1 line
+06-18 10:57:09.355 16384 16384 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:57:09.585 16402 16404 I chatty  : uid=2000(shell) /data/local/tmp/curl expire 1 line
+06-18 10:57:09.679 16410 16410 W curl    : type=1400 audit(0.0:503425): avc: denied { ioctl } for path="/data/local/tmp/ape-qoe-queue.ndjson.snd" dev="dm-6" ino=229392 ioctlcmd=0x5413 scontext=u:r:shell:s0 tcontext=u:object_r:shell_data_file:s0 tclass=file permissive=0
+06-18 10:57:09.750 16416 16418 I cmd     : oneway function results will be dropped but finished with status OK and parcel size 4
+06-18 10:57:10.007 16435 16435 W curl    : type=1400 audit(0.0:503426): avc: denied { ioctl } for path="/data/local/tmp/ape-qoe-queue.ndjson.snd" dev="dm-6" ino=229392 ioctlcmd=0x5413 scontext=u:r:shell:s0 tcontext=u:object_r:shell_data_file:s0 tclass=file permissive=0
+06-18 10:57:10.043 16437 16439 I cmd     : oneway function results will be dropped but finished with status OK and parcel size 4
+06-18 10:57:10.163 28820 16371 W adbd    : timed out while waiting for FUNCTIONFS_BIND, trying again
+06-18 10:57:10.163 28820 16371 I adbd    : UsbFfs: connection terminated: monitor thread finished
+06-18 10:57:10.164 28820 28820 I adbd    : UsbFfs: already offline
+06-18 10:57:10.164 28820 28820 I adbd    : destroying transport UsbFfs
+06-18 10:57:10.164 28820 28820 I adbd    : UsbFfsConnection being destroyed
+06-18 10:57:10.215 28820 28823 I adbd    : opening control endpoint /dev/usb-ffs/adb/ep0
+06-18 10:57:10.220 28820 28823 I adbd    : UsbFfsConnection constructed
+06-18 10:57:10.221 28820 16452 I adbd    : UsbFfs-monitor thread spawned
+06-18 10:57:10.227 16449 16451 I cmd     : oneway function results will be dropped but finished with status OK and parcel size 4
+06-18 10:57:10.309 27032 27049 I um.ottnavigato: Background young concurrent copying GC freed 783037(24MB) AllocSpace objects, 0(0B) LOS objects, 10% free, 200MB/224MB, paused 142us total 111.235ms
+06-18 10:57:10.333  2011 16462 I SPCH-Cont_HealthLogger: Current State = {"AlexaCaptionsEnabled":"false","Account":"valid","ProfileValidated":"true","ProfileType":"ADULT","AlexaCaptionsSupported":"true","memoryTotalPss":"23687","DeviceFamily":"SMP","memoryTotalSharedDirty":"3308","ActiveSpeechUI":"Classic","ReleaseVersion":"661.0.0","AlexaLegalTermsAccepted":"true","AppVersion":"3.0.21302.0","AlexaExperience":"FULL","SupportsFarField":"false","short_press_overlay_state":"{\"enabled\": true, \"hintsEnabled\": false, \"isChild\": false, \"override\": 0}","memoryAvailable":"289132544","Gateway":"avs-alexa-18-na.amazon.com:443","memoryLow":"false","RemoteSettingsStrategy":"VizArcus","ConnectionState":"CONNECTED","OOBECompleted":"true","memoryTotalPrivateDirty":"16207","str.auto_wake_up_always":"0"}
+06-18 10:57:10.355 16463 16463 W curl    : type=1400 audit(0.0:503427): avc: denied { ioctl } for path="/data/local/tmp/ape-qoe-queue.ndjson.snd" dev="dm-6" ino=229392 ioctlcmd=0x5413 scontext=u:r:shell:s0 tcontext=u:object_r:shell_data_file:s0 tclass=file permissive=0
+06-18 10:57:10.522 27032  4168 I MediaCodecLogger: 27032.4K.HW.omx.video.avc.bitrateInKbps = 2874
+06-18 10:57:10.719 16492 16492 W curl    : type=1400 audit(0.0:503428): avc: denied { ioctl } for path="/data/local/tmp/ape-qoe-queue.ndjson.snd" dev="dm-6" ino=229392 ioctlcmd=0x5413 scontext=u:r:shell:s0 tcontext=u:object_r:shell_data_file:s0 tclass=file permissive=0
+06-18 10:57:10.943 16506 16508 I cmd     : oneway function results will be dropped but finished with status OK and parcel size 4
+06-18 10:57:11.031 16515 16515 W curl    : type=1400 audit(0.0:503429): avc: denied { ioctl } for path="/data/local/tmp/ape-qoe-queue.ndjson.snd" dev="dm-6" ino=229392 ioctlcmd=0x5413 scontext=u:r:shell:s0 tcontext=u:object_r:shell_data_file:s0 tclass=file permissive=0
+06-18 10:57:11.222 28820 16452 W adbd    : timed out while waiting for FUNCTIONFS_BIND, trying again
+06-18 10:57:11.222 28820 16452 I adbd    : UsbFfs: connection terminated: monitor thread finished
+06-18 10:57:11.222 28820 28820 I adbd    : UsbFfs: already offline
+06-18 10:57:11.223 28820 28820 I adbd    : destroying transport UsbFfs
+06-18 10:57:11.223 28820 28820 I adbd    : UsbFfsConnection being destroyed
+06-18 10:57:11.271 28820 28823 I adbd    : opening control endpoint /dev/usb-ffs/adb/ep0
+06-18 10:57:11.276 28820 28823 I adbd    : UsbFfsConnection constructed
+06-18 10:57:11.277 28820 16537 I adbd    : UsbFfs-monitor thread spawned
+06-18 10:57:11.379 16545 16545 W curl    : type=1400 audit(0.0:503430): avc: denied { ioctl } for path="/data/local/tmp/ape-qoe-queue.ndjson.snd" dev="dm-6" ino=229392 ioctlcmd=0x5413 scontext=u:r:shell:s0 tcontext=u:object_r:shell_data_file:s0 tclass=file permissive=0
+06-18 10:57:11.401 16546 16548 I cmd     : oneway function results will be dropped but finished with status OK and parcel size 4
+06-18 10:57:11.522 12895 13030 I ApeSettingsApplier: device_settings aplicados=2 rechazados=0
+06-18 10:57:11.609   388   388 I WifiHAL : Creating message to get link statistics; iface = 15
+06-18 10:57:11.609   388   388 E WifiHAL : Incorrect number of channels = 4
+06-18 10:57:11.610   667   806 E WifiVendorHal: getWifiLinkLayerStats_1_3_Internal(l.973) failed {.code = ERROR_UNKNOWN, .description = unknown}
+06-18 10:57:11.683 16572 16572 W curl    : type=1400 audit(0.0:503431): avc: denied { ioctl } for path="/data/local/tmp/ape-qoe-queue.ndjson.snd" dev="dm-6" ino=229392 ioctlcmd=0x5413 scontext=u:r:shell:s0 tcontext=u:object_r:shell_data_file:s0 tclass=file permissive=0
+06-18 10:57:11.712 16573 16574 I cmd     : oneway function results will be dropped but finished with status OK and parcel size 4
+06-18 10:57:11.894 16587 16589 I cmd     : oneway function results will be dropped but finished with status OK and parcel size 4
+06-18 10:57:12.055 16601 16601 W curl    : type=1400 audit(0.0:503432): avc: denied { ioctl } for path="/data/local/tmp/ape-qoe-queue.ndjson.snd" dev="dm-6" ino=229392 ioctlcmd=0x5413 scontext=u:r:shell:s0 tcontext=u:object_r:shell_data_file:s0 tclass=file permissive=0
+06-18 10:57:12.068 16602 16604 I cmd     : oneway function results will be dropped but finished with status OK and parcel size 4
+06-18 10:57:12.088 27032  4180 I MediaCodecLogger: 27032.SW.c2.audio.mp4a.bitrateInKbps = 93
+06-18 10:57:12.240 16616 16618 I cmd     : oneway function results will be dropped but finished with status OK and parcel size 4
+06-18 10:57:12.278 28820 16537 W adbd    : timed out while waiting for FUNCTIONFS_BIND, trying again
+06-18 10:57:12.278 28820 16537 I adbd    : UsbFfs: connection terminated: monitor thread finished
+06-18 10:57:12.279 28820 28820 I adbd    : UsbFfs: already offline
+06-18 10:57:12.279 28820 28820 I adbd    : destroying transport UsbFfs
+06-18 10:57:12.279 28820 28820 I adbd    : UsbFfsConnection being destroyed
+06-18 10:57:12.328 28820 28823 I adbd    : opening control endpoint /dev/usb-ffs/adb/ep0
+06-18 10:57:12.335 28820 28823 I adbd    : UsbFfsConnection constructed
+06-18 10:57:12.345 28820 16627 I adbd    : UsbFfs-monitor thread spawned
+06-18 10:57:12.383 16631 16631 W curl    : type=1400 audit(0.0:503433): avc: denied { ioctl } for path="/data/local/tmp/ape-qoe-queue.ndjson.snd" dev="dm-6" ino=229392 ioctlcmd=0x5413 scontext=u:r:shell:s0 tcontext=u:object_r:shell_data_file:s0 tclass=file permissive=0
+06-18 10:57:12.424 27032 27049 I um.ottnavigato: Background concurrent copying GC freed 697357(24MB) AllocSpace objects, 0(0B) LOS objects, 10% free, 198MB/222MB, paused 148us total 1.216s
+06-18 10:57:12.751 16665 16665 W curl    : type=1400 audit(0.0:503434): avc: denied { ioctl } for path="/data/local/tmp/ape-qoe-queue.ndjson.snd" dev="dm-6" ino=229392 ioctlcmd=0x5413 scontext=u:r:shell:s0 tcontext=u:object_r:shell_data_file:s0 tclass=file permissive=0
+06-18 10:57:13.119 16700 16700 W curl    : type=1400 audit(0.0:503435): avc: denied { ioctl } for path="/data/local/tmp/ape-qoe-queue.ndjson.snd" dev="dm-6" ino=229392 ioctlcmd=0x5413 scontext=u:r:shell:s0 tcontext=u:object_r:shell_data_file:s0 tclass=file permissive=0
+06-18 10:57:13.345 28820 16627 W adbd    : timed out while waiting for FUNCTIONFS_BIND, trying again
+06-18 10:57:13.345 28820 16627 I adbd    : UsbFfs: connection terminated: monitor thread finished
+06-18 10:57:13.345 28820 28820 I adbd    : UsbFfs: already offline
+06-18 10:57:13.345 28820 28820 I adbd    : destroying transport UsbFfs
+06-18 10:57:13.345 28820 28820 I adbd    : UsbFfsConnection being destroyed
+06-18 10:57:13.408 28820 28823 I adbd    : opening control endpoint /dev/usb-ffs/adb/ep0
+06-18 10:57:13.409 28820 28823 I adbd    : UsbFfsConnection constructed
+06-18 10:57:13.410 28820 16722 I adbd    : UsbFfs-monitor thread spawned
+06-18 10:57:13.427 16723 16723 W curl    : type=1400 audit(0.0:503436): avc: denied { ioctl } for path="/data/local/tmp/ape-qoe-queue.ndjson.snd" dev="dm-6" ino=229392 ioctlcmd=0x5413 scontext=u:r:shell:s0 tcontext=u:object_r:shell_data_file:s0 tclass=file permissive=0 app=com.amazon.firebat
+06-18 10:57:13.751 16747 16747 W curl    : type=1400 audit(0.0:503437): avc: denied { ioctl } for path="/data/local/tmp/ape-qoe-queue.ndjson.snd" dev="dm-6" ino=229392 ioctlcmd=0x5413 scontext=u:r:shell:s0 tcontext=u:object_r:shell_data_file:s0 tclass=file permissive=0
+06-18 10:57:13.932 16759 16761 I cmd     : oneway function results will be dropped but finished with status OK and parcel size 4
+06-18 10:57:14.119 16773 16773 W curl    : type=1400 audit(0.0:503438): avc: denied { ioctl } for path="/data/local/tmp/ape-qoe-queue.ndjson.snd" dev="dm-6" ino=229392 ioctlcmd=0x5413 scontext=u:r:shell:s0 tcontext=u:object_r:shell_data_file:s0 tclass=file permissive=0
+06-18 10:57:14.204 27032 27049 I um.ottnavigato: Background young concurrent copying GC freed 832657(25MB) AllocSpace objects, 0(0B) LOS objects, 10% free, 197MB/221MB, paused 143us total 111.752ms
+06-18 10:57:14.411 28820 16722 W adbd    : timed out while waiting for FUNCTIONFS_BIND, trying again
+06-18 10:57:14.411 28820 16722 I adbd    : UsbFfs: connection terminated: monitor thread finished
+06-18 10:57:14.411 28820 28820 I adbd    : UsbFfs: already offline
+06-18 10:57:14.411 28820 28820 I adbd    : destroying transport UsbFfs
+06-18 10:57:14.412 28820 28820 I adbd    : UsbFfsConnection being destroyed
+06-18 10:57:14.463 28820 28823 I adbd    : opening control endpoint /dev/usb-ffs/adb/ep0
+06-18 10:57:14.465 28820 28823 I adbd    : UsbFfsConnection constructed
+06-18 10:57:14.466 28820 16802 I adbd    : UsbFfs-monitor thread spawned
+06-18 10:57:14.487 16804 16804 W curl    : type=1400 audit(0.0:503439): avc: denied { ioctl } for path="/data/local/tmp/ape-qoe-queue.ndjson.snd" dev="dm-6" ino=229392 ioctlcmd=0x5413 scontext=u:r:shell:s0 tcontext=u:object_r:shell_data_file:s0 tclass=file permissive=0
+06-18 10:57:14.524 12895 13030 I ApeSettingsApplier: device_settings aplicados=2 rechazados=0
+06-18 10:57:14.582 16810 16812 I cmd     : oneway function results will be dropped but finished with status OK and parcel size 4
+06-18 10:57:14.617   388   388 I WifiHAL : Creating message to get link statistics; iface = 15
+06-18 10:57:14.617   388   388 E WifiHAL : Incorrect number of channels = 4
+06-18 10:57:14.618   667   806 E WifiVendorHal: getWifiLinkLayerStats_1_3_Internal(l.973) failed {.code = ERROR_UNKNOWN, .description = unknown}
+06-18 10:57:14.843 16833 16833 W curl    : type=1400 audit(0.0:503440): avc: denied { ioctl } for path="/data/local/tmp/ape-qoe-queue.ndjson.snd" dev="dm-6" ino=229392 ioctlcmd=0x5413 scontext=u:r:shell:s0 tcontext=u:object_r:shell_data_file:s0 tclass=file permissive=0
+06-18 10:57:14.956 16839 16841 I cmd     : oneway function results will be dropped but finished with status OK and parcel size 4
+06-18 10:57:15.167 16856 16856 W curl    : type=1400 audit(0.0:503441): avc: denied { ioctl } for path="/data/local/tmp/ape-qoe-queue.ndjson.snd" dev="dm-6" ino=229392 ioctlcmd=0x5413 scontext=u:r:shell:s0 tcontext=u:object_r:shell_data_file:s0 tclass=file permissive=0
+06-18 10:57:15.316 16864 16866 I cmd     : oneway function results will be dropped but finished with status OK and parcel size 4
+06-18 10:57:15.326   631   631 E integrity_module: --- integrity_module file read error /sys/class/power_supply/battery/device/gm30_bat_cycle ---
+06-18 10:57:15.326   631   631 E integrity_module: --- integrity_module file read error  ---
+06-18 10:57:15.326   631   631 E integrity_module: --- integrity_module file read error /sys/devices/platform/charger/ADC_Charger_Voltage ---
+06-18 10:57:15.326   631   631 E integrity_module: --- integrity_module file read error /sys/devices/platform/charger/chr_type ---
+06-18 10:57:15.326   631   631 E integrity_module: --- integrity_module file read error ---
+06-18 10:57:15.467 28820 16802 W adbd    : timed out while waiting for FUNCTIONFS_BIND, trying again
+06-18 10:57:15.467 28820 16802 I adbd    : UsbFfs: connection terminated: monitor thread finished
+06-18 10:57:15.467 28820 28820 I adbd    : UsbFfs: already offline
+06-18 10:57:15.467 28820 28820 I adbd    : destroying transport UsbFfs
+06-18 10:57:15.467 28820 28820 I adbd    : UsbFfsConnection being destroyed
+06-18 10:57:15.507 16882 16882 W curl    : type=1400 audit(0.0:503442): avc: denied { ioctl } for path="/data/local/tmp/ape-qoe-queue.ndjson.snd" dev="dm-6" ino=229392 ioctlcmd=0x5413 scontext=u:r:shell:s0 tcontext=u:object_r:shell_data_file:s0 tclass=file permissive=0
+06-18 10:57:15.519 28820 28823 I adbd    : opening control endpoint /dev/usb-ffs/adb/ep0
+06-18 10:57:15.521 28820 28823 I adbd    : UsbFfsConnection constructed
+06-18 10:57:15.524 28820 16884 I adbd    : UsbFfs-monitor thread spawned
+06-18 10:57:15.586 27032  4168 I MediaCodecLogger: 27032.4K.HW.omx.video.avc.bitrateInKbps = 3372
+06-18 10:57:15.705 16899 16901 I cmd     : oneway function results will be dropped but finished with status OK and parcel size 4
+06-18 10:57:15.815 16910 16910 W curl    : type=1400 audit(0.0:503443): avc: denied { ioctl } for path="/data/local/tmp/ape-qoe-queue.ndjson.snd" dev="dm-6" ino=229392 ioctlcmd=0x5413 scontext=u:r:shell:s0 tcontext=u:object_r:shell_data_file:s0 tclass=file permissive=0
+06-18 10:57:15.873 16914 16916 I cmd     : oneway function results will be dropped but finished with status OK and parcel size 4
+06-18 10:57:15.920 16918 16919 I cmd     : oneway function results will be dropped but finished with status OK and parcel size 4
+06-18 10:57:16.006 27032 27049 I um.ottnavigato: Background young concurrent copying GC freed 788283(24MB) AllocSpace objects, 0(0B) LOS objects, 10% free, 196MB/220MB, paused 146us total 112.049ms
+06-18 10:57:16.175 16942 16942 W curl    : type=1400 audit(0.0:503444): avc: denied { ioctl } for path="/data/local/tmp/ape-qoe-queue.ndjson.snd" dev="dm-6" ino=229392 ioctlcmd=0x5413 scontext=u:r:shell:s0 tcontext=u:object_r:shell_data_file:s0 tclass=file permissive=0
+06-18 10:57:16.230 16947 16949 I cmd     : oneway function results will be dropped but finished with status OK and parcel size 4
+06-18 10:57:16.385 16961 16963 I cmd     : oneway function results will be dropped but finished with status OK and parcel size 4
+06-18 10:57:16.525 28820 16884 W adbd    : timed out while waiting for FUNCTIONFS_BIND, trying again
+06-18 10:57:16.525 28820 16884 I adbd    : UsbFfs: connection terminated: monitor thread finished
+06-18 10:57:16.525 28820 28820 I adbd    : UsbFfs: already offline
+06-18 10:57:16.525 28820 28820 I adbd    : destroying transport UsbFfs
+06-18 10:57:16.525 28820 28820 I adbd    : UsbFfsConnection being destroyed
+06-18 10:57:16.535 16976 16976 W curl    : type=1400 audit(0.0:503445): avc: denied { ioctl } for path="/data/local/tmp/ape-qoe-queue.ndjson.snd" dev="dm-6" ino=229392 ioctlcmd=0x5413 scontext=u:r:shell:s0 tcontext=u:object_r:shell_data_file:s0 tclass=file permissive=0
+06-18 10:57:16.567 28820 28823 I adbd    : opening control endpoint /dev/usb-ffs/adb/ep0
+06-18 10:57:16.568 28820 28823 I adbd    : UsbFfsConnection constructed
+06-18 10:57:16.573 28820 16982 I adbd    : UsbFfs-monitor thread spawned
+06-18 10:57:16.883 17010 17010 W curl    : type=1400 audit(0.0:503446): avc: denied { ioctl } for path="/data/local/tmp/ape-qoe-queue.ndjson.snd" dev="dm-6" ino=229392 ioctlcmd=0x5413 scontext=u:r:shell:s0 tcontext=u:object_r:shell_data_file:s0 tclass=file permissive=0
+06-18 10:57:16.978 17017 17019 I cmd     : oneway function results will be dropped but finished with status OK and parcel size 4
+06-18 10:57:17.161 27032  4180 I MediaCodecLogger: 27032.SW.c2.audio.mp4a.bitrateInKbps = 93
+06-18 10:57:17.227 17040 17040 W curl    : type=1400 audit(0.0:503447): avc: denied { ioctl } for path="/data/local/tmp/ape-qoe-queue.ndjson.snd" dev="dm-6" ino=229392 ioctlcmd=0x5413 scontext=u:r:shell:s0 tcontext=u:object_r:shell_data_file:s0 tclass=file permissive=0
+06-18 10:57:17.530 12895 13030 I ApeSettingsApplier: device_settings aplicados=2 rechazados=0
+06-18 10:57:17.543 17064 17064 W curl    : type=1400 audit(0.0:503448): avc: denied { ioctl } for path="/data/local/tmp/ape-qoe-queue.ndjson.snd" dev="dm-6" ino=229392 ioctlcmd=0x5413 scontext=u:r:shell:s0 tcontext=u:object_r:shell_data_file:s0 tclass=file permissive=0
+06-18 10:57:17.574 28820 16982 W adbd    : timed out while waiting for FUNCTIONFS_BIND, trying again
+06-18 10:57:17.574 28820 16982 I adbd    : UsbFfs: connection terminated: monitor thread finished
+06-18 10:57:17.574 28820 28820 I adbd    : UsbFfs: already offline
+06-18 10:57:17.574 28820 28820 I adbd    : destroying transport UsbFfs
+06-18 10:57:17.574 28820 28820 I adbd    : UsbFfsConnection being destroyed
+06-18 10:57:17.624 28820 28823 I adbd    : opening control endpoint /dev/usb-ffs/adb/ep0
+06-18 10:57:17.625   388   388 I WifiHAL : Creating message to get link statistics; iface = 15
+06-18 10:57:17.625   388   388 E WifiHAL : Incorrect number of channels = 4
+06-18 10:57:17.626   667   806 E WifiVendorHal: getWifiLinkLayerStats_1_3_Internal(l.973) failed {.code = ERROR_UNKNOWN, .description = unknown}
+06-18 10:57:17.628 28820 28823 I adbd    : UsbFfsConnection constructed
+06-18 10:57:17.629 28820 17073 I adbd    : UsbFfs-monitor thread spawned
+06-18 10:57:17.676 17075 17077 I cmd     : oneway function results will be dropped but finished with status OK and parcel size 4
+06-18 10:57:17.809 29550 29788 I DiebusMetrics: Starting reporting metrics
+06-18 10:57:17.809 29550 29788 I DiebusMetrics: End reporting metrics
+06-18 10:57:17.833 17086 17088 I cmd     : oneway function results will be dropped but finished with status OK and parcel size 4
+06-18 10:57:17.873 27032 27049 I um.ottnavigato: Background young concurrent copying GC freed 781167(24MB) AllocSpace objects, 0(0B) LOS objects, 10% free, 196MB/220MB, paused 167us total 111.158ms
+06-18 10:57:17.877 17090 17092 I cmd     : oneway function results will be dropped but finished with status OK and parcel size 4
+06-18 10:57:17.915 17095 17095 W curl    : type=1400 audit(0.0:503449): avc: denied { ioctl } for path="/data/local/tmp/ape-qoe-queue.ndjson.snd" dev="dm-6" ino=229392 ioctlcmd=0x5413 scontext=u:r:shell:s0 tcontext=u:object_r:shell_data_file:s0 tclass=file permissive=0 app=com.amazon.firetv.youtube
+06-18 10:57:18.048 17103 17105 I cmd     : oneway function results will be dropped but finished with status OK and parcel size 4
+06-18 10:57:18.182 17111 17113 I cmd     : oneway function results will be dropped but finished with status OK and parcel size 4
+06-18 10:57:18.221 17115 17117 I cmd     : oneway function results will be dropped but finished with status OK and parcel size 4
+06-18 10:57:18.263 17121 17121 W curl    : type=1400 audit(0.0:503450): avc: denied { ioctl } for path="/data/local/tmp/ape-qoe-queue.ndjson.snd" dev="dm-6" ino=229392 ioctlcmd=0x5413 scontext=u:r:shell:s0 tcontext=u:object_r:shell_data_file:s0 tclass=file permissive=0
+06-18 10:57:18.309 29550 29750 I DiebusMetrics: Starting reporting metrics
+06-18 10:57:18.310 29550 29750 I DiebusMetrics: End reporting metrics
+06-18 10:57:18.615 17142 17142 W curl    : type=1400 audit(0.0:503451): avc: denied { ioctl } for path="/data/local/tmp/ape-qoe-queue.ndjson.snd" dev="dm-6" ino=229392 ioctlcmd=0x5413 scontext=u:r:shell:s0 tcontext=u:object_r:shell_data_file:s0 tclass=file permissive=0
+06-18 10:57:18.631 28820 17073 W adbd    : timed out while waiting for FUNCTIONFS_BIND, trying again
+06-18 10:57:18.631 28820 17073 I adbd    : UsbFfs: connection terminated: monitor thread finished
+06-18 10:57:18.631 28820 28820 I adbd    : UsbFfs: already offline
+06-18 10:57:18.633 28820 28820 I adbd    : destroying transport UsbFfs
+06-18 10:57:18.633 28820 28820 I adbd    : UsbFfsConnection being destroyed
+06-18 10:57:18.696 28820 28823 I adbd    : opening control endpoint /dev/usb-ffs/adb/ep0
+06-18 10:57:18.700 28820 28823 I adbd    : UsbFfsConnection constructed
+06-18 10:57:18.704 28820 17147 I adbd    : UsbFfs-monitor thread spawned
+06-18 10:57:18.923 17155 17157 I cmd     : oneway function results will be dropped but finished with status OK and parcel size 4
+06-18 10:57:18.927 17158 17158 W curl    : type=1400 audit(0.0:503452): avc: denied { ioctl } for path="/data/local/tmp/ape-qoe-queue.ndjson.snd" dev="dm-6" ino=229392 ioctlcmd=0x5413 scontext=u:r:shell:s0 tcontext=u:object_r:shell_data_file:s0 tclass=file permissive=0
+06-18 10:57:19.291 17185 17185 W curl    : type=1400 audit(0.0:503453): avc: denied { ioctl } for path="/data/local/tmp/ape-qoe-queue.ndjson.snd" dev="dm-6" ino=229392 ioctlcmd=0x5413 scontext=u:r:shell:s0 tcontext=u:object_r:shell_data_file:s0 tclass=file permissive=0
+06-18 10:57:19.569 17205 17206 I cmd     : oneway function results will be dropped but finished with status OK and parcel size 4
+06-18 10:57:19.610 17210 17213 I cmd     : oneway function results will be dropped but finished with status OK and parcel size 4
+06-18 10:57:19.652 27032 27049 I um.ottnavigato: Background young concurrent copying GC freed 718870(22MB) AllocSpace objects, 0(0B) LOS objects, 10% free, 198MB/220MB, paused 157us total 140.547ms
+06-18 10:57:19.654 17218 17222 I cmd     : oneway function results will be dropped but finished with status OK and parcel size 4
+06-18 10:57:19.659 17221 17221 W curl    : type=1400 audit(0.0:503454): avc: denied { ioctl } for path="/data/local/tmp/ape-qoe-queue.ndjson.snd" dev="dm-6" ino=229392 ioctlcmd=0x5413 scontext=u:r:shell:s0 tcontext=u:object_r:shell_data_file:s0 tclass=file permissive=0
+06-18 10:57:19.669   667   802 W BestClock: java.time.DateTimeException: Missing NTP fix
+06-18 10:57:19.672   330 18246 I netd    : trafficSwapActiveStatsMap() <0.23ms>
+06-18 10:57:19.704 28820 17147 W adbd    : timed out while waiting for FUNCTIONFS_BIND, trying again
+06-18 10:57:19.704 28820 17147 I adbd    : UsbFfs: connection terminated: monitor thread finished
+06-18 10:57:19.704 28820 28820 I adbd    : UsbFfs: already offline
+06-18 10:57:19.704 28820 28820 I adbd    : destroying transport UsbFfs
+06-18 10:57:19.704 28820 28820 I adbd    : UsbFfsConnection being destroyed
+06-18 10:57:19.741   330 18246 I netd    : tetherGetStats() <1.30ms>
+06-18 10:57:19.760 17230 17232 I cmd     : oneway function results will be dropped but finished with status OK and parcel size 4
+06-18 10:57:19.772   667   802 W BestClock: java.time.DateTimeException: Missing NTP fix
+06-18 10:57:19.777   330 18246 I netd    : bandwidthSetGlobalAlert(2097152) <0.15ms>
+06-18 10:57:19.779   667   803 W BestClock: java.time.DateTimeException: Missing NTP fix
+06-18 10:57:19.780   667   803 W BestClock: java.time.DateTimeException: Missing NTP fix
+06-18 10:57:19.787 28820 28823 I adbd    : opening control endpoint /dev/usb-ffs/adb/ep0
+06-18 10:57:19.792 28820 28823 I adbd    : UsbFfsConnection constructed
+06-18 10:57:19.796 28820 17237 I adbd    : UsbFfs-monitor thread spawned
+06-18 10:57:19.814 17235 17238 I cmd     : oneway function results will be dropped but finished with status OK and parcel size 4
+06-18 10:57:19.871 17245 17251 I cmd     : oneway function results will be dropped but finished with status OK and parcel size 4
+06-18 10:57:19.963 17263 17263 W curl    : type=1400 audit(0.0:503455): avc: denied { ioctl } for path="/data/local/tmp/ape-qoe-queue.ndjson.snd" dev="dm-6" ino=229392 ioctlcmd=0x5413 scontext=u:r:shell:s0 tcontext=u:object_r:shell_data_file:s0 tclass=file permissive=0
+06-18 10:57:20.026 17272 17275 I cmd     : oneway function results will be dropped but finished with status OK and parcel size 4
+06-18 10:57:20.064 17280 17282 I cmd     : oneway function results will be dropped but finished with status OK and parcel size 4
+06-18 10:57:20.098 17284 17288 I cmd     : oneway function results will be dropped but finished with status OK and parcel size 4
+06-18 10:57:20.137 17292 17296 I cmd     : oneway function results will be dropped but finished with status OK and parcel size 4
+06-18 10:57:20.264 17307 17309 I cmd     : oneway function results will be dropped but finished with status OK and parcel size 4
+06-18 10:57:20.304 17311 17314 I cmd     : oneway function results will be dropped but finished with status OK and parcel size 4
+06-18 10:57:20.307 17312 17312 W curl    : type=1400 audit(0.0:503456): avc: denied { ioctl } for path="/data/local/tmp/ape-qoe-queue.ndjson.snd" dev="dm-6" ino=229392 ioctlcmd=0x5413 scontext=u:r:shell:s0 tcontext=u:object_r:shell_data_file:s0 tclass=file permissive=0
+06-18 10:57:20.356   667   936 I WifiDiagsUtil: event=RUN_TEST_CONTINUOUSLY
+06-18 10:57:20.357   667   936 I WifiDiagsUtil: event=logPacketStats, if_name=wlan0, rx_bytes=673148625, rx_packets=538714, tx_bytes=14830560, tx_packets=117186
+06-18 10:57:20.358   667   936 I WifiDiagsUtil: event=logPacketStats, daily_rx_bytes=10627714540, daily_rx_packets=8538507, daily_tx_bytes=247426419, daily_tx_packets=1881748
+06-18 10:57:20.378   667   936 I WifiDiagsUtil: event=runPingTest, IpStack=Dual Stack IPv4/IPv6
+06-18 10:57:20.382   667   936 I WifiDiagsUtil: action=IPv6 Pingtest
+06-18 10:57:20.382   667   936 I WifiDiagsUtil: event=pingTest, TARGET_TYPE=LOCALHOST, IP=XXX
+06-18 10:57:20.388   667   936 I WifiDiagsUtil: event=pingsComplete, TARGET_TYPE=LOCALHOST, IP=XXX, PKTS_TX=5, PKTS_RX=5, PKT_LOSS=0.0%, AVG_TIME=1.03
+06-18 10:57:20.388   667   936 I WifiDiagsUtil: event=pingTest, TARGET_TYPE=GATEWAY, IP=XXX, isIpv6=true
+06-18 10:57:20.418   667   936 I WifiDiagsUtil: event=pingsComplete, TARGET_TYPE=GATEWAY, IP=XXX, PKTS_TX=5, PKTS_RX=5, PKT_LOSS=0.0%, AVG_TIME=5.51
+06-18 10:57:20.418   667   936 I WifiDiagsUtil: event=IPv6DNSDetectedWhenHttpEnabled,action=skipDNSPingTest, nameserver=2800:e0::ac1d:f00d:8, isPublicAddress=true
+06-18 10:57:20.418   667   936 I WifiDiagsUtil: event=IPv6DNSDetectedWhenHttpEnabled,action=skipDNSPingTest, nameserver=2800:e0::ac1d:f00d:9, isPublicAddress=true
+06-18 10:57:20.418   667   936 I WifiDiagsUtil: event=runHttpConnectionTestStarted, host=http://firetvcaptiveportal.com/generate_204
+06-18 10:57:20.423   330 17323 I resolv  : res_tls_send: performing query over TLS
+06-18 10:57:20.528 12895 13030 I ApeSettingsApplier: device_settings aplicados=2 rechazados=0
+06-18 10:57:20.615 17343 17343 W curl    : type=1400 audit(0.0:503457): avc: denied { ioctl } for path="/data/local/tmp/ape-qoe-queue.ndjson.snd" dev="dm-6" ino=229392 ioctlcmd=0x5413 scontext=u:r:shell:s0 tcontext=u:object_r:shell_data_file:s0 tclass=file permissive=0
+06-18 10:57:20.622 27032  4168 I MediaCodecLogger: 27032.4K.HW.omx.video.avc.bitrateInKbps = 3521
+06-18 10:57:20.632   388   388 I WifiHAL : Creating message to get link statistics; iface = 15
+06-18 10:57:20.632   388   388 E WifiHAL : Incorrect number of channels = 4
+06-18 10:57:20.633   667   806 E WifiVendorHal: getWifiLinkLayerStats_1_3_Internal(l.973) failed {.code = ERROR_UNKNOWN, .description = unknown}
+06-18 10:57:20.666   330 17323 I resolv  : res_tls_send: TLS query result: 0
+06-18 10:57:20.667   330 17323 I resolv  : res_tls_send: performing query over TLS
+06-18 10:57:20.760   330 17323 I resolv  : res_tls_send: TLS query result: 0
+06-18 10:57:20.797 28820 17237 W adbd    : timed out while waiting for FUNCTIONFS_BIND, trying again
+06-18 10:57:20.797 28820 17237 I adbd    : UsbFfs: connection terminated: monitor thread finished
+06-18 10:57:20.797 28820 28820 I adbd    : UsbFfs: already offline
+06-18 10:57:20.797 28820 28820 I adbd    : destroying transport UsbFfs
+06-18 10:57:20.797 28820 28820 I adbd    : UsbFfsConnection being destroyed
+06-18 10:57:20.840 28820 28823 I adbd    : opening control endpoint /dev/usb-ffs/adb/ep0
+06-18 10:57:20.844 28820 28823 I adbd    : UsbFfsConnection constructed
+06-18 10:57:20.845 28820 17366 I adbd    : UsbFfs-monitor thread spawned
+06-18 10:57:20.945   667   936 I WifiDiagsUtil: event=runHttpConnectionTestSuccess, host=http://firetvcaptiveportal.com/generate_204, httpCode=204, latency=525
+06-18 10:57:20.945   667   936 I WifiDiagsUtil: event=reportNetworkStatistics, action=reportNetworkConnectivity, hasConnectivity=true
+06-18 10:57:20.945   667   936 I WifiDiagsUtil: event=GOOD_CONNECTION
+06-18 10:57:20.946   667   936 I WifiDiagsUtil: broadcastDiagsResults
+06-18 10:57:20.976   667   936 I WifiDiagsUtil: event=stateDuration, duration=20196756
+06-18 10:57:20.976   667   936 I WifiDiagsUtil: event=recordDataInTestEndpointStatistics, isEmitmetric=false
+06-18 10:57:20.975 17378 17378 W curl    : type=1400 audit(0.0:503458): avc: denied { ioctl } for path="/data/local/tmp/ape-qoe-queue.ndjson.snd" dev="dm-6" ino=229392 ioctlcmd=0x5413 scontext=u:r:shell:s0 tcontext=u:object_r:shell_data_file:s0 tclass=file permissive=0
+06-18 10:57:04.033   667  4455 I AmazonProfileService: Event is not filtered because it is not in filter key list.
+06-18 10:57:20.999   667   737 I ActivityManager: Start proc 17380:com.amazon.diode/u0a143 for broadcast {com.amazon.diode/com.amazon.diode.events.ExternalEventReceiver}
+06-18 10:57:21.019 17380 17380 W main    : type=1400 audit(0.0:503459): avc: denied { write } for name="tasks" dev="tmpfs" ino=669 scontext=u:r:zygote:s0 tcontext=u:object_r:device:s0 tclass=file permissive=0
+06-18 10:57:21.034 17380 17392 I om.amazon.diod: Bumping SignalCatcher priority from 10 to 10
+06-18 10:57:21.036 17380 17380 E om.amazon.diod: Not starting debugger since process cannot load the jdwp agent.
+06-18 10:57:21.093 17380 17380 I om.amazon.diod: The ClassLoaderContext is a special shared library.
+06-18 10:57:21.116 17380 17380 I om.amazon.diod: The ClassLoaderContext is a special shared library.
+06-18 10:57:21.126 17404 17406 I cmd     : oneway function results will be dropped but finished with status OK and parcel size 4
+06-18 10:57:21.245 17380 17380 I om.amazon.diod: The ClassLoaderContext is a special shared library.
+06-18 10:57:21.252 17380 17380 W om.amazon.diod: ClassLoaderContext shared library size mismatch. Expected=3, found=0 (PCL[]{PCL[/system/framework/android.test.base.jar*4088083201]#PCL[/system/framework/android.hidl.manager-V1.0-java.jar*3371465570]{PCL[/system/framework/android.hidl.base-V1.0-java.jar*3060351659]}#PCL[/system/framework/android.hidl.base-V1.0-java.jar*3060351659]} | PCL[])
+06-18 10:57:21.257 17380 17380 W om.amazon.diod: ClassLoaderContext shared library size mismatch. Expected=5, found=1 (PCL[]{PCL[/system/framework/android.test.base.jar*4088083201]#PCL[/system/framework/android.hidl.manager-V1.0-java.jar*3371465570]{PCL[/system/framework/android.hidl.base-V1.0-java.jar*3060351659]}#PCL[/system/framework/android.hidl.base-V1.0-java.jar*3060351659]#PCL[/system/framework/org.apache.http.legacy.jar*2888470757]#PCL[/system/system_ext/priv-app/MetricsApi/MetricsApi.apk*3997826149]} | PCL[]{PCL[/system/system_ext/priv-app/MetricsApi/MetricsApi.apk*3997826149]})
+06-18 10:57:21.264 17380 17380 W om.amazon.diod: ClassLoaderContext shared library size mismatch. Expected=4, found=1 (PCL[]{PCL[/system/framework/android.test.base.jar*4088083201]#PCL[/system/framework/android.hidl.manager-V1.0-java.jar*3371465570]{PCL[/system/framework/android.hidl.base-V1.0-java.jar*3060351659]}#PCL[/system/framework/android.hidl.base-V1.0-java.jar*3060351659]#PCL[/system/system_ext/priv-app/DeviceClientPlatformContractsFramework/DeviceClientPlatformContractsFramework.apk*3338463845]{PCL[/system/system_ext/priv-app/MetricsApi/MetricsApi.apk*3997826149]}} | PCL[]{PCL[/system/system_ext/priv-app/DeviceClientPlatformContractsFramework/DeviceClientPlatformContractsFramework.apk*3338463845]{PCL[/system/system_ext/priv-app/MetricsApi/MetricsApi.apk*3997826149]}})
+06-18 10:57:21.277 17380 17380 I om.amazon.diod: The ClassLoaderContext is a special shared library.
+06-18 10:57:21.282 17380 17380 I om.amazon.diod: The ClassLoaderContext is a special shared library.
+06-18 10:57:21.287 17415 17415 W curl    : type=1400 audit(0.0:503460): avc: denied { ioctl } for path="/data/local/tmp/ape-qoe-queue.ndjson.snd" dev="dm-6" ino=229392 ioctlcmd=0x5413 scontext=u:r:shell:s0 tcontext=u:object_r:shell_data_file:s0 tclass=file permissive=0
+06-18 10:57:21.295 17380 17380 I om.amazon.diod: The ClassLoaderContext is a special shared library.
+06-18 10:57:21.310 17380 17380 W om.amazon.diod: ClassLoaderContext classpath size mismatch. expected=0, found=3 (PCL[]{PCL[/system_ext/framework/com.amazon.identity.auth.device.jar*2558637550]#PCL[/system_ext/priv-app/DeviceSoftwareOTAContracts/DeviceSoftwareOTAContracts.apk*73896695]{PCL[/system_ext/framework/com.amazon.identity.auth.device.jar*2558637550]#PCL[/system_ext/priv-app/MetricsApi/MetricsApi.apk*3997826149]}#PCL[/system_ext/priv-app/com.amazon.communication/com.amazon.communication.apk*3743820206]{PCL[/system/framework/org.apache.http.legacy.jar*2888470757]#PCL[/system_ext/priv-app/com.amazon.dp.logger/com.amazon.dp.logger.apk*3998154313]#PCL[/system_ext/framework/com.amazon.identity.auth.device.jar*2558637550]#PCL[/system_ext/priv-app/com.amazon.tcomm.jackson/com.amazon.tcomm.jackson.apk*2725334889]#PCL[/system_ext/priv-app/MetricsApi/MetricsApi.apk*3997826149]}#PCL[/system_ext/priv-app/DeviceMessagingAndroidInternalSDK/DeviceMessagingAndroidInternalSDK.apk*3840329360]{PCL[/system_ext/framework/com.amazon.identity.auth.device.jar*2558637550]}#PCL[/system_ext/framework/com.amazon.identity.auth.device.jar*2558637550]#PCL[/system_ext/priv-app/MinervaApi/MinervaApi.apk*4010258548]#PCL[/system_ext/framework/connectivity_manager_api.jar*1373605877]#PCL[/system/system_ext/priv-app/DeviceSoftwareOTAContracts/DeviceSoftwareOTAContracts.apk*73896695]{PCL[/system/system_ext/priv-app/DeviceClientPlatformContractsFramework/DeviceClientPlatformContractsFramework.apk*3338463845]{PCL[/system/system_ext/priv-app/MetricsApi/MetricsApi.apk*3997826149]}}#PCL[/system_ext/priv-app/MinervaApi/MinervaApi.apk*4010258548]} | PCL[/system/framework/android.test.base.jar*4088083201:/system/framework/android.hidl.manager-V1.0-java.jar*3371465570:/system/framework/android.hidl.base-V1.0-java.jar*3060351659]{PCL[/system/system_ext/framework/com.amazon.identity.auth.device.jar*2558637550]#PCL[/system_ext/priv-app/DeviceSoftwareOTAContracts/DeviceSoftwareOTAContracts.apk*73896695]{PCL[/system/system_ext/framework/com.amazon.identity.auth.device.jar*2558637550]#PCL[/system_ext/priv-app/MetricsApi/MetricsApi.apk*3997826149]}#PCL[/system_ext/priv-app/com.amazon.communication/com.amazon.communication.apk*3743820206]{PCL[/system/framework/org.apache.http.legacy.jar*2888470757]#PCL[/system_ext/priv-app/com.amazon.dp.logger/com.amazon.dp.logger.apk*3998154313]#PCL[/system/system_ext/framework/com.amazon.identity.auth.device.jar*2558637550]#PCL[/system_ext/priv-app/com.amazon.tcomm.jackson/com.amazon.tcomm.jackson.apk*2725334889]#PCL[/system_ext/priv-app/MetricsApi/MetricsApi.apk*3997826149]}#PCL[/system_ext/priv-app/DeviceMessagingAndroidInternalSDK/DeviceMessagingAndroidInternalSDK.apk*3840329360]{PCL[/system/system_ext/framework/com.amazon.identity.auth.device.jar*2558637550]}#PCL[/system/system_ext/framework/com.amazon.identity.auth.device.jar*2558637550]#PCL[/system_ext/priv-app/MinervaApi/MinervaApi.apk*4010258548]#PCL[/system/system_ext/framework/connectivity_manager_api.jar*1373605877]#PCL[/system/system_ext/priv-app/DeviceSoftwareOTAContracts/DeviceSoftwareOTAContracts.apk*73896695]{PCL[/system/system_ext/priv-app/DeviceClientPlatformContractsFramework/DeviceClientPlatformContractsFramework.apk*3338463845]{PCL[/system/system_ext/priv-app/MetricsApi/MetricsApi.apk*3997826149]}}#PCL[/system_ext/priv-app/MinervaApi/MinervaApi.apk*4010258548]})
+06-18 10:57:21.376 17380 17380 I com.amazon.diode/MAPInit: Initializing MAP (130050002 / MAPAndroidLib-1.3.52235.0) for app com.amazon.diode. MAP release version: 20260228N
+06-18 10:57:21.382 17380 17380 W com.amazon.diode/MetricsHelper: FireOS Minerva metrics not supported
+06-18 10:57:21.387 17380 17380 I com.amazon.diode/ClientToCentralTrustLogicImpl: Current package is: com.amazon.diode. Directly trust central package: com.amazon.imp, since it is system MAP library
+06-18 10:57:21.392 17380 17380 I chatty  : uid=10143(com.amazon.diode) identical 2 lines
+06-18 10:57:21.393 17380 17380 I com.amazon.diode/ClientToCentralTrustLogicImpl: Current package is: com.amazon.diode. Directly trust central package: com.amazon.imp, since it is system MAP library
+06-18 10:57:21.394 17380 17380 I com.amazon.diode/IsolatedModeSwitcher: App does not support client driven runtime isolation.
+06-18 10:57:21.395 17380 17380 I com.amazon.diode/ClientToCentralTrustLogicImpl: Current package is: com.amazon.diode. Directly trust central package: com.amazon.imp, since it is system MAP library
+06-18 10:57:21.399 17380 17380 I com.amazon.diode/ClientToCentralTrustLogicImpl: Current package is: com.amazon.diode. Directly trust central package: com.amazon.imp, since it is system MAP library
+06-18 10:57:21.399 17380 17380 I com.amazon.diode/FeatureSetCache: Caching feature IsolateApplication as false
+06-18 10:57:21.402 17380 17380 I com.amazon.diode/ClientToCentralTrustLogicImpl: Current package is: com.amazon.diode. Directly trust central package: com.amazon.imp, since it is system MAP library
+06-18 10:57:21.403 17380 17380 W com.amazon.diode/MetricsHelper: FireOS Metrics component is not integrated. Please integrate with latest metrics component.
+06-18 10:57:21.404 17380 17380 W com.amazon.diode/MetricsHelper: ThirdParty DCP metrics not supported
+06-18 10:57:21.406 17380 17380 I com.amazon.diode/MAPInit: Running MAPInit on main thread: true
+06-18 10:57:21.416 17424 17426 I cmd     : oneway function results will be dropped but finished with status OK and parcel size 4
+06-18 10:57:21.416 17380 17425 E com.amazon.diode/PlatformUtils: Could not initialize FidoAuthenticatorJSBridge because Fido client could not be initialized
+06-18 10:57:21.420 17380 17380 I com.amazon.diode/LocalKeyValueStore: Create DE shared preference, OS supports direct boot.
+06-18 10:57:21.431 17380 17425 W com.amazon.diode/WhatsAppAutoreadPluginHelper: WhatsAppAutoreadPlugin is not supported for this package: com.amazon.diode
+06-18 10:57:21.438 17380 17380 I com.amazon.diode/TrustedPackageManager: Trying to use default signature based package trust logic. This should be on 3P device
+06-18 10:57:21.438 17380 17380 I com.amazon.diode/TrustedPackageManager: Setting package trust logic as: signature based package trust logic
+06-18 10:57:21.439 17380 17380 W om.amazon.diod: Class com.amazon.identity.auth.device.framework.AmazonDeviceInfo failed lock verification and will run slower.
+06-18 10:57:21.439 17380 17380 W om.amazon.diod: Common causes for lock verification issues are non-optimized dex code
+06-18 10:57:21.439 17380 17380 W om.amazon.diod: and incorrect proguard optimizations.
+06-18 10:57:21.450 17380 17431 I com.amazon.diode/DataStorageFactoryImpl: Creating new DataStorageFactoryImpl
+06-18 10:57:21.450 17380 17431 I com.amazon.diode/MAPInitTasks: Get DataStorage instance for initialization
+06-18 10:57:21.450 17380 17431 I com.amazon.diode/DataStorageFactoryImpl: Initializing new DataStorage
+06-18 10:57:21.454 17380 17431 I com.amazon.diode/ClientToCentralTrustLogicImpl: Current package is: com.amazon.diode. Directly trust central package: com.amazon.imp, since it is system MAP library
+06-18 10:57:21.458 17380 17431 I com.amazon.diode/ClientToCentralTrustLogicImpl: Current package is: com.amazon.diode. Directly trust central package: com.amazon.imp, since it is system MAP library
+06-18 10:57:21.458 17380 17431 I com.amazon.diode/IsolatedModeSwitcher: App does not support client driven runtime isolation.
+06-18 10:57:21.462 17380 17431 I com.amazon.diode/ClientToCentralTrustLogicImpl: Current package is: com.amazon.diode. Directly trust central package: com.amazon.imp, since it is system MAP library
+06-18 10:57:21.464 17380 17431 I com.amazon.diode/ClientToCentralTrustLogicImpl: Current package is: com.amazon.diode. Directly trust central package: com.amazon.imp, since it is system MAP library
+06-18 10:57:21.465 17380 17431 I com.amazon.diode/DeviceAttributeCache: Setting device attribute CentralAPK to true
+06-18 10:57:21.467 17380 17431 I com.amazon.diode/DataStorageFactoryImpl: Creating and using new CentralAccountManagerDataStorage
+06-18 10:57:21.467 17380 17431 I com.amazon.diode/LocalKeyValueStore: Create DE shared preference, OS supports direct boot.
+06-18 10:57:21.470 17380 17431 I com.amazon.diode/LocalKeyValueStore: Create DE shared preference, OS supports direct boot.
+06-18 10:57:21.471  1460  1528 I com.amazon.imp/LocalKeyValueStore[0]: Create DE shared preference, OS supports direct boot.
+06-18 10:57:21.471 17380 17431 I com.amazon.diode/MAPInitTasks: Initialize DataStorage instance
+06-18 10:57:21.471 17380 17431 I com.amazon.diode/MAPInitTasks: Setup DataStorage instance
+06-18 10:57:21.473 17380 17431 I com.amazon.diode/ClientToCentralTrustLogicImpl: Current package is: com.amazon.diode. Directly trust central package: com.amazon.imp, since it is system MAP library
+06-18 10:57:21.475 17380 17431 I chatty  : uid=10143(com.amazon.diode) MAPCommonThread identical 1 line
+06-18 10:57:21.477 17380 17431 I com.amazon.diode/ClientToCentralTrustLogicImpl: Current package is: com.amazon.diode. Directly trust central package: com.amazon.imp, since it is system MAP library
+06-18 10:57:21.478 17380 17380 I com.amazon.diode.DiodeApplication: Registered receiver: com.amazon.diode.receivers.IdentifyReceiver@d13fa4d with filter: android.content.IntentFilter@c533902 for intent : com.amazon.diode.intent.IDENTIFY
+06-18 10:57:21.483 17380 17380 I com.amazon.diode.DiodeApplication: Registered receiver: com.amazon.diode.receivers.ActionReceiver@98dac50 with filter: android.content.IntentFilter@1b2ee49 for intent : com.amazon.diode.intent.ACTION
+06-18 10:57:21.488 17380 17380 I com.amazon.diode.registration.Analyzers: Registered receiver: com.amazon.diode.events.ConnectivityChangeEventReceiver@b332605 with filter: android.content.IntentFilter@73ae65a for intent : Intent { act=android.net.conn.CONNECTIVITY_CHANGE flg=0x4200010 (has extras) }
+06-18 10:57:21.489 17380 17431 I com.amazon.diode/ClientToCentralTrustLogicImpl: Current package is: com.amazon.diode. Directly trust central package: com.amazon.imp, since it is system MAP library
+06-18 10:57:21.491 17380 17380 I TetheringManager: registerTetheringEventCallback:com.amazon.diode
+06-18 10:57:21.501 17380 17431 I com.amazon.diode/ClientToCentralTrustLogicImpl: Current package is: com.amazon.diode. Directly trust central package: com.amazon.imp, since it is system MAP library
+06-18 10:57:21.503 17380 17431 I com.amazon.diode/IsolatedModeSwitcher: App does not support client driven runtime isolation.
+06-18 10:57:21.527 17380 17431 I com.amazon.diode/AmazonSerialNumber: MAP Client side on FireOS 7+ calls IPC to get the DSN.
+06-18 10:57:21.532 17380 17380 I com.amazon.diode.events.CaptivePortalEventManager: Registered Captive Portal check for FireOS 6
+06-18 10:57:21.561  1460  1528 I com.amazon.imp/SSODeviceInfo[0]: Amazon Device Info will try to get central device serial
+06-18 10:57:21.561  1460  1528 I com.amazon.imp/AmazonDeviceSecurityFactoryImpl[0]: Use device hardware auth.
+06-18 10:57:21.563 17380 17380 I com.amazon.diode.events.ConnectivityChangeEventReceiver: Got external Connectivity event
+06-18 10:57:21.569   371   371 W IMGMemtrackHAL: hal_get_memory: memtrack cache rebuild was required
+06-18 10:57:21.571 17380 17431 I com.amazon.diode/LocalKeyValueStore: Create DE shared preference, OS supports direct boot.
+06-18 10:57:21.597 17380 17431 I chatty  : uid=10143(com.amazon.diode) MAPCommonThread identical 4 lines
+06-18 10:57:21.598 17380 17431 I com.amazon.diode/LocalKeyValueStore: Create DE shared preference, OS supports direct boot.
+06-18 10:57:21.608 17380 17443 I com.amazon.diode.events.EventSaverService: Got external event for client CaptivePortalEventStore
+06-18 10:57:21.614 17380 17431 I com.amazon.diode/LocalKeyValueStore: Create DE shared preference, OS supports direct boot.
+06-18 10:57:21.617 17380 17431 I com.amazon.diode/LocalKeyValueStore: Create DE shared preference, OS supports direct boot.
+06-18 10:57:21.663 17448 17448 W curl    : type=1400 audit(0.0:503461): avc: denied { ioctl } for path="/data/local/tmp/ape-qoe-queue.ndjson.snd" dev="dm-6" ino=229392 ioctlcmd=0x5413 scontext=u:r:shell:s0 tcontext=u:object_r:shell_data_file:s0 tclass=file permissive=0
+06-18 10:57:21.677 27032 27049 I um.ottnavigato: Background young concurrent copying GC freed 721572(22MB) AllocSpace objects, 0(0B) LOS objects, 9% free, 198MB/220MB, paused 145us total 247.168ms
+06-18 10:57:21.679 17447 17449 I cmd     : oneway function results will be dropped but finished with status OK and parcel size 4
+06-18 10:57:21.684 17380 17437 I com.amazonaws.mobileconnectors.remoteconfiguration.clientcontextdecorator.RemoteConfigurationAAugmenting ARCUS client context with system attributes
+06-18 10:57:21.687 17380 17431 I com.amazon.diode/ClientToCentralTrustLogicImpl: Current package is: com.amazon.diode. Directly trust central package: com.amazon.imp, since it is system MAP library
+06-18 10:57:21.694 17380 17431 I com.amazon.diode/ClientToCentralTrustLogicImpl: Current package is: com.amazon.diode. Directly trust central package: com.amazon.imp, since it is system MAP library
+06-18 10:57:21.695 17380 17431 I com.amazon.diode/MAPInitTasks: Start update legacy authportal domain in database if needed
+06-18 10:57:21.696 17380 17431 W com.amazon.diode/WhatsAppAutoreadPluginHelper: WhatsAppAutoreadPlugin is not supported for this package: com.amazon.diode
+06-18 10:57:21.731   371   371 W IMGMemtrackHAL: hal_get_memory: memtrack cache rebuild was required
+06-18 10:57:21.817 17380 17443 I com.amazon.diode.events.EventSaverService: Got external event for client WifiDiagsUtil
+06-18 10:57:21.846 28820 17366 W adbd    : timed out while waiting for FUNCTIONFS_BIND, trying again
+06-18 10:57:21.846 28820 17366 I adbd    : UsbFfs: connection terminated: monitor thread finished
+06-18 10:57:21.846 28820 28820 I adbd    : UsbFfs: already offline
+06-18 10:57:21.846 28820 28820 I adbd    : destroying transport UsbFfs
+06-18 10:57:21.847 28820 28820 I adbd    : UsbFfsConnection being destroyed
+06-18 10:57:21.887 28820 28823 I adbd    : opening control endpoint /dev/usb-ffs/adb/ep0
+06-18 10:57:21.891 28820 28823 I adbd    : UsbFfsConnection constructed
+06-18 10:57:21.893 28820 17471 I adbd    : UsbFfs-monitor thread spawned
+06-18 10:57:22.031 17486 17486 W curl    : type=1400 audit(0.0:503462): avc: denied { ioctl } for path="/data/local/tmp/ape-qoe-queue.ndjson.snd" dev="dm-6" ino=229392 ioctlcmd=0x5413 scontext=u:r:shell:s0 tcontext=u:object_r:shell_data_file:s0 tclass=file permissive=0
+06-18 10:57:22.136  7076  7076 W Choreographer: Frame time is 0.153991 ms in the future!  Check that graphics HAL is generating vsync timestamps using the correct timebase.
+06-18 10:57:22.247 27032  4180 I MediaCodecLogger: 27032.SW.c2.audio.mp4a.bitrateInKbps = 93
+06-18 10:57:22.375 17513 17513 W curl    : type=1400 audit(0.0:503463): avc: denied { ioctl } for path="/data/local/tmp/ape-qoe-queue.ndjson.snd" dev="dm-6" ino=229392 ioctlcmd=0x5413 scontext=u:r:shell:s0 tcontext=u:object_r:shell_data_file:s0 tclass=file permissive=0
+06-18 10:57:22.426 17515 17517 I cmd     : oneway function results will be dropped but finished with status OK and parcel size 4
+06-18 10:57:22.552 17524 17526 I cmd     : oneway function results will be dropped but finished with status OK and parcel size 4
+06-18 10:57:22.763 17544 17544 W curl    : type=1400 audit(0.0:503464): avc: denied { ioctl } for path="/data/local/tmp/ape-qoe-queue.ndjson.snd" dev="dm-6" ino=229392 ioctlcmd=0x5413 scontext=u:r:shell:s0 tcontext=u:object_r:shell_data_file:s0 tclass=file permissive=0
+06-18 10:57:22.769  7076  7076 W Choreographer: Frame time is 0.206378 ms in the future!  Check that graphics HAL is generating vsync timestamps using the correct timebase.
+06-18 10:57:22.774 17543 17545 I cmd     : oneway function results will be dropped but finished with status OK and parcel size 4
+06-18 10:57:22.894 28820 17471 W adbd    : timed out while waiting for FUNCTIONFS_BIND, trying again
+06-18 10:57:22.895 28820 17471 I adbd    : UsbFfs: connection terminated: monitor thread finished
+06-18 10:57:22.895 28820 28820 I adbd    : UsbFfs: already offline
+06-18 10:57:22.895 28820 28820 I adbd    : destroying transport UsbFfs
+06-18 10:57:22.895 28820 28820 I adbd    : UsbFfsConnection being destroyed
+06-18 10:57:22.940 28820 28823 I adbd    : opening control endpoint /dev/usb-ffs/adb/ep0
+06-18 10:57:22.943 28820 28823 I adbd    : UsbFfsConnection constructed
+06-18 10:57:22.945 28820 17561 I adbd    : UsbFfs-monitor thread spawned
+06-18 10:57:23.094 17571 17573 I cmd     : oneway function results will be dropped but finished with status OK and parcel size 4
+06-18 10:57:23.123 17576 17576 W curl    : type=1400 audit(0.0:503465): avc: denied { ioctl } for path="/data/local/tmp/ape-qoe-queue.ndjson.snd" dev="dm-6" ino=229392 ioctlcmd=0x5413 scontext=u:r:shell:s0 tcontext=u:object_r:shell_data_file:s0 tclass=file permissive=0 app=com.amazon.firebat
+06-18 10:57:23.295 17587 17589 I cmd     : oneway function results will be dropped but finished with status OK and parcel size 4
+06-18 10:57:23.353 17591 17594 I cmd     : oneway function results will be dropped but finished with status OK and parcel size 4
+06-18 10:57:23.396 27032 27049 I um.ottnavigato: Background young concurrent copying GC freed 720451(22MB) AllocSpace objects, 0(0B) LOS objects, 9% free, 199MB/220MB, paused 145us total 126.115ms
+06-18 10:57:23.439 17599 17599 W curl    : type=1400 audit(0.0:503466): avc: denied { ioctl } for path="/data/local/tmp/ape-qoe-queue.ndjson.snd" dev="dm-6" ino=229392 ioctlcmd=0x5413 scontext=u:r:shell:s0 tcontext=u:object_r:shell_data_file:s0 tclass=file permissive=0 app=com.amazon.diode
+06-18 10:57:23.535 12895 13030 I ApeSettingsApplier: device_settings aplicados=2 rechazados=0
+06-18 10:57:23.640   388   388 I WifiHAL : Creating message to get link statistics; iface = 15
+06-18 10:57:23.640   388   388 E WifiHAL : Incorrect number of channels = 4
+06-18 10:57:23.641   667   806 E WifiVendorHal: getWifiLinkLayerStats_1_3_Internal(l.973) failed {.code = ERROR_UNKNOWN, .description = unknown}
+06-18 10:57:23.704 17621 17622 I cmd     : oneway function results will be dropped but finished with status OK and parcel size 4
+06-18 10:57:23.779 17630 17630 W curl    : type=1400 audit(0.0:503467): avc: denied { ioctl } for path="/data/local/tmp/ape-qoe-queue.ndjson.snd" dev="dm-6" ino=229392 ioctlcmd=0x5413 scontext=u:r:shell:s0 tcontext=u:object_r:shell_data_file:s0 tclass=file permissive=0
+06-18 10:57:23.946 28820 17561 W adbd    : timed out while waiting for FUNCTIONFS_BIND, trying again
+06-18 10:57:23.946 28820 17561 I adbd    : UsbFfs: connection terminated: monitor thread finished
+06-18 10:57:23.946 28820 28820 I adbd    : UsbFfs: already offline
+06-18 10:57:23.946 28820 28820 I adbd    : destroying transport UsbFfs
+06-18 10:57:23.946 28820 28820 I adbd    : UsbFfsConnection being destroyed
+06-18 10:57:23.988 28820 28823 I adbd    : opening control endpoint /dev/usb-ffs/adb/ep0
+06-18 10:57:23.990 28820 28823 I adbd    : UsbFfsConnection constructed
+06-18 10:57:23.997 28820 17646 I adbd    : UsbFfs-monitor thread spawned
+06-18 10:57:24.147 17657 17657 W curl    : type=1400 audit(0.0:503468): avc: denied { ioctl } for path="/data/local/tmp/ape-qoe-queue.ndjson.snd" dev="dm-6" ino=229392 ioctlcmd=0x5413 scontext=u:r:shell:s0 tcontext=u:object_r:shell_data_file:s0 tclass=file permissive=0
+06-18 10:57:24.475 17678 17678 W curl    : type=1400 audit(0.0:503469): avc: denied { ioctl } for path="/data/local/tmp/ape-qoe-queue.ndjson.snd" dev="dm-6" ino=229392 ioctlcmd=0x5413 scontext=u:r:shell:s0 tcontext=u:object_r:shell_data_file:s0 tclass=file permissive=0
+06-18 10:57:24.544 17683 17685 I cmd     : oneway function results will be dropped but finished with status OK and parcel size 4
+06-18 10:57:24.648 28820 17691 I adbd    : host-40: write thread spawning
+06-18 10:57:24.653 28820 17690 I adbd    : host-40: read thread spawning
+06-18 10:57:24.653 28820 17690 I adbd    : host-40: read failed: Success
+06-18 10:57:24.653 28820 17690 I adbd    : host-40: connection terminated: read failed
+06-18 10:57:24.653 28820 28820 I adbd    : host-40: already offline
+06-18 10:57:24.653 28820 28820 I adbd    : destroying transport host-40
+06-18 10:57:24.653 28820 28820 I adbd    : BlockingConnectionAdapter(host-40): stopping
+06-18 10:57:24.655 28820 28820 I adbd    : BlockingConnectionAdapter(host-40): stopped
+06-18 10:57:24.655 28820 28820 I adbd    : BlockingConnectionAdapter(host-40): destructing
+06-18 10:57:24.655 28820 28820 I adbd    : BlockingConnectionAdapter(host-40): already stopped
+06-18 10:57:24.689   667   677 I system_server: Background concurrent copying GC freed 103819(11MB) AllocSpace objects, 631(12MB) LOS objects, 47% free, 26MB/50MB, paused 317us total 448.057ms
+06-18 10:57:24.704 17693 17695 I cmd     : oneway function results will be dropped but finished with status OK and parcel size 4
+06-18 10:57:24.742 17698 17701 I cmd     : oneway function results will be dropped but finished with status OK and parcel size 4
+06-18 10:57:24.787 17704 17704 W curl    : type=1400 audit(0.0:503470): avc: denied { ioctl } for path="/data/local/tmp/ape-qoe-queue.ndjson.snd" dev="dm-6" ino=229392 ioctlcmd=0x5413 scontext=u:r:shell:s0 tcontext=u:object_r:shell_data_file:s0 tclass=file permissive=0 app=com.android.providers.tv
+06-18 10:57:24.958 17716 17718 I cmd     : oneway function results will be dropped but finished with status OK and parcel size 4
+06-18 10:57:24.967 17697 17697 W app_process: type=1400 audit(0.0:503471): avc: denied { read } for name="u:object_r:device_config_runtime_native_boot_prop:s0" dev="tmpfs" ino=112 scontext=u:r:shell:s0 tcontext=u:object_r:device_config_runtime_native_boot_prop:s0 tclass=file permissive=0
+06-18 10:57:24.967 17697 17697 I chatty  : uid=2000(shell) /data/local/tmp/curl identical 2 lines
+06-18 10:57:24.967 17697 17697 W app_process: type=1400 audit(0.0:503474): avc: denied { read } for name="u:object_r:device_config_runtime_native_boot_prop:s0" dev="tmpfs" ino=112 scontext=u:r:shell:s0 tcontext=u:object_r:device_config_runtime_native_boot_prop:s0 tclass=file permissive=0
+06-18 10:57:24.968 17697 17697 E libc    : Access denied finding property "persist.device_config.runtime_native_boot.profilebootclasspath"
+06-18 10:57:24.968 17697 17697 E libc    : Access denied finding property "persist.device_config.runtime_native_boot.enable_apex_image"
+06-18 10:57:24.968 17697 17697 I AndroidRuntime: Using default boot image
+06-18 10:57:24.968 17697 17697 E libc    : Access denied finding property "persist.device_config.runtime_native_boot.disable_lock_profiling"
+06-18 10:57:24.968 17697 17697 I AndroidRuntime: Leaving lock profiling enabled
+06-18 10:57:24.968 17697 17697 E libc    : Access denied finding property "persist.device_config.runtime_native_boot.enable_generational_cc"
+06-18 10:57:24.999 28820 17646 W adbd    : timed out while waiting for FUNCTIONFS_BIND, trying again
+06-18 10:57:24.999 28820 17646 I adbd    : UsbFfs: connection terminated: monitor thread finished
+06-18 10:57:24.999 28820 28820 I adbd    : UsbFfs: already offline
+06-18 10:57:24.999 28820 28820 I adbd    : destroying transport UsbFfs
+06-18 10:57:24.999 28820 28820 I adbd    : UsbFfsConnection being destroyed
+06-18 10:57:25.056 28820 28823 I adbd    : opening control endpoint /dev/usb-ffs/adb/ep0
+06-18 10:57:25.062 28820 28823 I adbd    : UsbFfsConnection constructed
+06-18 10:57:25.067 28820 17727 I adbd    : UsbFfs-monitor thread spawned
+06-18 10:57:25.225 17697 17697 E app_process: Couldn't initialize ICU (udata_setCommonData): U_INVALID_FORMAT_ERROR (/apex/com.android.tzdata/etc/icu/icu_tzdata.dat)
+06-18 10:57:25.225 17697 17697 W app_process: TZ module override file /apex/com.android.tzdata/etc/icu/icu_tzdata.dat exists but could not be loaded. Skipping.
+06-18 10:57:25.247 17697 17697 I app_process: The ClassLoaderContext is a special shared library.
+06-18 10:57:25.254 17697 17742 I app_process: Bumping SignalCatcher priority from 5 to 10
+06-18 10:57:25.279 27032 27049 I um.ottnavigato: Background young concurrent copying GC freed 721477(22MB) AllocSpace objects, 0(0B) LOS objects, 10% free, 198MB/220MB, paused 149us total 149.175ms
+06-18 10:57:25.331   631   631 E integrity_module: --- integrity_module file read error /sys/class/power_supply/battery/device/gm30_bat_cycle ---
+06-18 10:57:25.332   631   631 E integrity_module: --- integrity_module file read error  ---
+06-18 10:57:25.332   631   631 E integrity_module: --- integrity_module file read error /sys/devices/platform/charger/ADC_Charger_Voltage ---
+06-18 10:57:25.332   631   631 E integrity_module: --- integrity_module file read error /sys/devices/platform/charger/chr_type ---
+06-18 10:57:25.332   631   631 E integrity_module: --- integrity_module file read error ---
+06-18 10:57:25.337 17697 17697 W app_process: JNI RegisterNativeMethods: attempt to register 0 native methods for android.media.AudioAttributes
+06-18 10:57:25.357   667 24249 I AmazonProfileService: Event is not filtered because it is not in filter key list.
+06-18 10:57:25.357   667 24249 I KeyMapManagerUtil: Unknown remote sku id 0. Fetch remote sku id from system property
+06-18 10:57:25.361   667 24249 I KeyMapManagerUtil: Unknown remote sku id 0. Fetch remote sku id from system property
+06-18 10:57:25.656 27032  4168 I MediaCodecLogger: 27032.4K.HW.omx.video.avc.bitrateInKbps = 3637
+06-18 10:57:25.829 28820 17805 I adbd    : host-36: read thread spawning
+06-18 10:57:25.829 28820 17806 I adbd    : host-36: write thread spawning
+06-18 10:57:25.829 28820 17805 I adbd    : host-36: read failed: Success
+06-18 10:57:25.829 28820 17805 I adbd    : host-36: connection terminated: read failed
+06-18 10:57:25.829 28820 28820 I adbd    : host-36: already offline
+06-18 10:57:25.829 28820 28820 I adbd    : destroying transport host-36
+06-18 10:57:25.829 28820 28820 I adbd    : BlockingConnectionAdapter(host-36): stopping
+06-18 10:57:25.830 28820 28820 I adbd    : BlockingConnectionAdapter(host-36): stopped
+06-18 10:57:25.830 28820 28820 I adbd    : BlockingConnectionAdapter(host-36): destructing
+06-18 10:57:25.830 28820 28820 I adbd    : BlockingConnectionAdapter(host-36): already stopped
+06-18 10:57:25.899 17814 17816 I cmd     : oneway function results will be dropped but finished with status OK and parcel size 4
+06-18 10:57:26.013 17824 17826 I cmd     : oneway function results will be dropped but finished with status OK and parcel size 4
+06-18 10:57:26.067 28820 17727 W adbd    : timed out while waiting for FUNCTIONFS_BIND, trying again
+06-18 10:57:26.067 28820 17727 I adbd    : UsbFfs: connection terminated: monitor thread finished
+06-18 10:57:26.068 28820 28820 I adbd    : UsbFfs: already offline
+06-18 10:57:26.068 28820 28820 I adbd    : destroying transport UsbFfs
+06-18 10:57:26.068 28820 28820 I adbd    : UsbFfsConnection being destroyed
+06-18 10:57:26.112 28820 28823 I adbd    : opening control endpoint /dev/usb-ffs/adb/ep0
+06-18 10:57:26.116 28820 28823 I adbd    : UsbFfsConnection constructed
+06-18 10:57:26.122 28820 17837 I adbd    : UsbFfs-monitor thread spawned
+06-18 10:57:26.123 17836 17836 W curl    : type=1400 audit(0.0:503478): avc: denied { ioctl } for path="/data/local/tmp/ape-qoe-queue.ndjson.snd" dev="dm-6" ino=229392 ioctlcmd=0x5413 scontext=u:r:shell:s0 tcontext=u:object_r:shell_data_file:s0 tclass=file permissive=0
+06-18 10:57:26.399 17380 17394 I om.amazon.diod: WaitForGcToComplete blocked RunEmptyCheckpoint on ProfileSaver for 7.806ms
+06-18 10:57:26.443 17865 17865 W curl    : type=1400 audit(0.0:503479): avc: denied { ioctl } for path="/data/local/tmp/ape-qoe-queue.ndjson.snd" dev="dm-6" ino=229392 ioctlcmd=0x5413 scontext=u:r:shell:s0 tcontext=u:object_r:shell_data_file:s0 tclass=file permissive=0
+06-18 10:57:26.533 12895 13030 I ApeSettingsApplier: device_settings aplicados=2 rechazados=0
+06-18 10:57:26.634 29550 29550 I MediaBrowseServiceImpl: Received notice that MediaBrowseServiceImpl is onLowMemory.
+06-18 10:57:26.649   388   388 I WifiHAL : Creating message to get link statistics; iface = 15
+06-18 10:57:26.649   388   388 E WifiHAL : Incorrect number of channels = 4
+06-18 10:57:26.650   667   806 E WifiVendorHal: getWifiLinkLayerStats_1_3_Internal(l.973) failed {.code = ERROR_UNKNOWN, .description = unknown}
+06-18 10:57:26.708 17889 17891 I cmd     : oneway function results will be dropped but finished with status OK and parcel size 4
+06-18 10:57:26.783 17896 17896 W curl    : type=1400 audit(0.0:503480): avc: denied { ioctl } for path="/data/local/tmp/ape-qoe-queue.ndjson.snd" dev="dm-6" ino=229392 ioctlcmd=0x5413 scontext=u:r:shell:s0 tcontext=u:object_r:shell_data_file:s0 tclass=file permissive=0
+06-18 10:57:27.119 27032 27049 I um.ottnavigato: Background young concurrent copying GC freed 721585(22MB) AllocSpace objects, 0(0B) LOS objects, 9% free, 198MB/220MB, paused 144us total 132.388ms
+06-18 10:57:27.123 28820 17837 W adbd    : timed out while waiting for FUNCTIONFS_BIND, trying again
+06-18 10:57:27.123 28820 17837 I adbd    : UsbFfs: connection terminated: monitor thread finished
+06-18 10:57:27.124 28820 28820 I adbd    : UsbFfs: already offline
+06-18 10:57:27.124 28820 28820 I adbd    : destroying transport UsbFfs
+06-18 10:57:27.124 28820 28820 I adbd    : UsbFfsConnection being destroyed
+06-18 10:57:27.143 17918 17918 W curl    : type=1400 audit(0.0:503481): avc: denied { ioctl } for path="/data/local/tmp/ape-qoe-queue.ndjson.snd" dev="dm-6" ino=229392 ioctlcmd=0x5413 scontext=u:r:shell:s0 tcontext=u:object_r:shell_data_file:s0 tclass=file permissive=0
+06-18 10:57:27.168 17919 17921 I cmd     : oneway function results will be dropped but finished with status OK and parcel size 4
+06-18 10:57:27.193 28820 28823 I adbd    : opening control endpoint /dev/usb-ffs/adb/ep0
+06-18 10:57:27.200 28820 28823 I adbd    : UsbFfsConnection constructed
+06-18 10:57:27.200 28820 17925 I adbd    : UsbFfs-monitor thread spawned
+06-18 10:57:27.298 27032  4180 I MediaCodecLogger: 27032.SW.c2.audio.mp4a.bitrateInKbps = 93
+06-18 10:57:27.471 17940 17940 W curl    : type=1400 audit(0.0:503482): avc: denied { ioctl } for path="/data/local/tmp/ape-qoe-queue.ndjson.snd" dev="dm-6" ino=229392 ioctlcmd=0x5413 scontext=u:r:shell:s0 tcontext=u:object_r:shell_data_file:s0 tclass=file permissive=0
+06-18 10:57:27.663 17953 17955 I cmd     : oneway function results will be dropped but finished with status OK and parcel size 4
+06-18 10:57:27.835 17968 17968 W curl    : type=1400 audit(0.0:503483): avc: denied { ioctl } for path="/data/local/tmp/ape-qoe-queue.ndjson.snd" dev="dm-6" ino=229392 ioctlcmd=0x5413 scontext=u:r:shell:s0 tcontext=u:object_r:shell_data_file:s0 tclass=file permissive=0
+06-18 10:57:28.147 17992 17992 W curl    : type=1400 audit(0.0:503484): avc: denied { ioctl } for path="/data/local/tmp/ape-qoe-queue.ndjson.snd" dev="dm-6" ino=229392 ioctlcmd=0x5413 scontext=u:r:shell:s0 tcontext=u:object_r:shell_data_file:s0 tclass=file permissive=0
+06-18 10:57:28.201 28820 17925 W adbd    : timed out while waiting for FUNCTIONFS_BIND, trying again
+06-18 10:57:28.202 28820 17925 I adbd    : UsbFfs: connection terminated: monitor thread finished
+06-18 10:57:28.202 28820 28820 I adbd    : UsbFfs: already offline
+06-18 10:57:28.202 28820 28820 I adbd    : destroying transport UsbFfs
+06-18 10:57:28.202 28820 28820 I adbd    : UsbFfsConnection being destroyed
+06-18 10:57:28.251 28820 28823 I adbd    : opening control endpoint /dev/usb-ffs/adb/ep0
+06-18 10:57:28.252 28820 28823 I adbd    : UsbFfsConnection constructed
+06-18 10:57:28.253 28820 18003 I adbd    : UsbFfs-monitor thread spawned
+06-18 10:57:28.483 18017 18017 W curl    : type=1400 audit(0.0:503485): avc: denied { ioctl } for path="/data/local/tmp/ape-qoe-queue.ndjson.snd" dev="dm-6" ino=229392 ioctlcmd=0x5413 scontext=u:r:shell:s0 tcontext=u:object_r:shell_data_file:s0 tclass=file permissive=0 app=com.amazon.tv.parentalcontrols
+06-18 10:57:28.649   330 18031 I ResolverController: No valid NAT64 prefix (114, <unspecified>/0)
+06-18 10:57:28.825 27032 27049 I um.ottnavigato: Background young concurrent copying GC freed 720201(22MB) AllocSpace objects, 0(0B) LOS objects, 9% free, 199MB/220MB, paused 149us total 118.238ms
+06-18 10:57:28.823 18045 18045 W curl    : type=1400 audit(0.0:503486): avc: denied { ioctl } for path="/data/local/tmp/ape-qoe-queue.ndjson.snd" dev="dm-6" ino=229392 ioctlcmd=0x5413 scontext=u:r:shell:s0 tcontext=u:object_r:shell_data_file:s0 tclass=file permissive=0
+06-18 10:57:28.870 18049 18051 I cmd     : oneway function results will be dropped but finished with status OK and parcel size 4
+06-18 10:57:29.046 18061 18063 I cmd     : oneway function results will be dropped but finished with status OK and parcel size 4
+06-18 10:57:29.183 18074 18076 I cmd     : oneway function results will be dropped but finished with status OK and parcel size 4
+06-18 10:57:29.254 28820 18003 W adbd    : timed out while waiting for FUNCTIONFS_BIND, trying again
+06-18 10:57:29.254 28820 18003 I adbd    : UsbFfs: connection terminated: monitor thread finished
+06-18 10:57:29.254 28820 28820 I adbd    : UsbFfs: already offline
+06-18 10:57:29.254 28820 28820 I adbd    : destroying transport UsbFfs
+06-18 10:57:29.254 28820 28820 I adbd    : UsbFfsConnection being destroyed
+06-18 10:57:29.316 28820 28823 I adbd    : opening control endpoint /dev/usb-ffs/adb/ep0
+06-18 10:57:29.321 28820 28823 I adbd    : UsbFfsConnection constructed
+06-18 10:57:29.328 28820 18099 I adbd    : UsbFfs-monitor thread spawned
+06-18 10:57:29.339 18100 18100 W curl    : type=1400 audit(0.0:503487): avc: denied { ioctl } for path="/data/local/tmp/ape-qoe-queue.ndjson.snd" dev="dm-6" ino=229393 ioctlcmd=0x5413 scontext=u:r:shell:s0 tcontext=u:object_r:shell_data_file:s0 tclass=file permissive=0
+06-18 10:57:29.457 18109 18111 I cmd     : oneway function results will be dropped but finished with status OK and parcel size 4
+06-18 10:57:29.553 12895 13030 I ApeSettingsApplier: device_settings aplicados=2 rechazados=0
+06-18 10:57:29.660   388   388 I WifiHAL : Creating message to get link statistics; iface = 15
+06-18 10:57:29.661   388   388 E WifiHAL : Incorrect number of channels = 4
+06-18 10:57:29.661   667   806 E WifiVendorHal: getWifiLinkLayerStats_1_3_Internal(l.973) failed {.code = ERROR_UNKNOWN, .description = unknown}
+06-18 10:57:29.663 18129 18129 W curl    : type=1400 audit(0.0:503488): avc: denied { ioctl } for path="/data/local/tmp/ape-qoe-queue.ndjson.snd" dev="dm-6" ino=229393 ioctlcmd=0x5413 scontext=u:r:shell:s0 tcontext=u:object_r:shell_data_file:s0 tclass=file permissive=0
+06-18 10:57:30.003 18154 18154 W curl    : type=1400 audit(0.0:503489): avc: denied { ioctl } for path="/data/local/tmp/ape-qoe-queue.ndjson.snd" dev="dm-6" ino=229393 ioctlcmd=0x5413 scontext=u:r:shell:s0 tcontext=u:object_r:shell_data_file:s0 tclass=file permissive=0 app=com.android.providers.downloads
+06-18 10:57:30.330 28820 18099 W adbd    : timed out while waiting for FUNCTIONFS_BIND, trying again
+06-18 10:57:30.330 28820 18099 I adbd    : UsbFfs: connection terminated: monitor thread finished
+06-18 10:57:30.330 28820 28820 I adbd    : UsbFfs: already offline
+06-18 10:57:30.330 28820 28820 I adbd    : destroying transport UsbFfs
+06-18 10:57:30.330 28820 28820 I adbd    : UsbFfsConnection being destroyed
+06-18 10:57:30.359 18172 18172 W curl    : type=1400 audit(0.0:503490): avc: denied { ioctl } for path="/data/local/tmp/ape-qoe-queue.ndjson.snd" dev="dm-6" ino=229393 ioctlcmd=0x5413 scontext=u:r:shell:s0 tcontext=u:object_r:shell_data_file:s0 tclass=file permissive=0
+06-18 10:57:30.396 28820 28823 I adbd    : opening control endpoint /dev/usb-ffs/adb/ep0
+06-18 10:57:30.399 28820 28823 I adbd    : UsbFfsConnection constructed
+06-18 10:57:30.400 28820 18177 I adbd    : UsbFfs-monitor thread spawned
+06-18 10:57:30.652 18187 18188 I cmd     : oneway function results will be dropped but finished with status OK and parcel size 4
+06-18 10:57:30.723 18192 18192 W curl    : type=1400 audit(0.0:503491): avc: denied { ioctl } for path="/data/local/tmp/ape-qoe-queue.ndjson.snd" dev="dm-6" ino=229393 ioctlcmd=0x5413 scontext=u:r:shell:s0 tcontext=u:object_r:shell_data_file:s0 tclass=file permissive=0
+06-18 10:57:30.735 27032  4168 I MediaCodecLogger: 27032.4K.HW.omx.video.avc.bitrateInKbps = 3242
+06-18 10:57:30.747 18191 18194 I cmd     : oneway function results will be dropped but finished with status OK and parcel size 4
+06-18 10:57:30.878 27032 27049 I um.ottnavigato: Background young concurrent copying GC freed 721218(22MB) AllocSpace objects, 1(20KB) LOS objects, 9% free, 199MB/220MB, paused 147us total 264.141ms
+06-18 10:57:31.123 18220 18220 W curl    : type=1400 audit(0.0:503492): avc: denied { ioctl } for path="/data/local/tmp/ape-qoe-queue.ndjson.snd" dev="dm-6" ino=229393 ioctlcmd=0x5413 scontext=u:r:shell:s0 tcontext=u:object_r:shell_data_file:s0 tclass=file permissive=0
+06-18 10:57:31.152 18222 18224 I cmd     : oneway function results will be dropped but finished with status OK and parcel size 4
+06-18 10:57:31.188 18226 18228 I cmd     : oneway function results will be dropped but finished with status OK and parcel size 4
+06-18 10:57:31.282   667   802 W BestClock: java.time.DateTimeException: Missing NTP fix
+06-18 10:57:31.285   330 18246 I netd    : trafficSwapActiveStatsMap() <0.21ms>
+06-18 10:57:31.338 18236 18237 I cmd     : oneway function results will be dropped but finished with status OK and parcel size 4
+06-18 10:57:31.401 28820 18177 W adbd    : timed out while waiting for FUNCTIONFS_BIND, trying again
+06-18 10:57:31.401 28820 18177 I adbd    : UsbFfs: connection terminated: monitor thread finished
+06-18 10:57:31.402 28820 28820 I adbd    : UsbFfs: already offline
+06-18 10:57:31.402 28820 28820 I adbd    : destroying transport UsbFfs
+06-18 10:57:31.402 28820 28820 I adbd    : UsbFfsConnection being destroyed
+06-18 10:57:31.449   330 18246 I netd    : tetherGetStats() <1.41ms>
+06-18 10:57:31.455 28820 28823 I adbd    : opening control endpoint /dev/usb-ffs/adb/ep0
+06-18 10:57:31.456 28820 28823 I adbd    : UsbFfsConnection constructed
+06-18 10:57:31.457 28820 18244 I adbd    : UsbFfs-monitor thread spawned
+06-18 10:57:31.491   667   802 W BestClock: java.time.DateTimeException: Missing NTP fix
+06-18 10:57:31.491 18247 18247 W curl    : type=1400 audit(0.0:503493): avc: denied { ioctl } for path="/data/local/tmp/ape-qoe-queue.ndjson.snd" dev="dm-6" ino=229393 ioctlcmd=0x5413 scontext=u:r:shell:s0 tcontext=u:object_r:shell_data_file:s0 tclass=file permissive=0
+06-18 10:57:31.507   330 18246 I netd    : bandwidthSetGlobalAlert(2097152) <0.40ms>
+06-18 10:57:31.512   667   803 W BestClock: java.time.DateTimeException: Missing NTP fix
+06-18 10:57:31.514   667   803 W BestClock: java.time.DateTimeException: Missing NTP fix
+06-18 10:57:31.903 18266 18266 W curl    : type=1400 audit(0.0:503494): avc: denied { ioctl } for path="/data/local/tmp/ape-qoe-queue.ndjson.snd" dev="dm-6" ino=229393 ioctlcmd=0x5413 scontext=u:r:shell:s0 tcontext=u:object_r:shell_data_file:s0 tclass=file permissive=0
+06-18 10:57:31.963 18268 18270 I cmd     : oneway function results will be dropped but finished with status OK and parcel size 4
+06-18 10:57:32.287 18288 18288 W curl    : type=1400 audit(0.0:503495): avc: denied { ioctl } for path="/data/local/tmp/ape-qoe-queue.ndjson.snd" dev="dm-6" ino=229393 ioctlcmd=0x5413 scontext=u:r:shell:s0 tcontext=u:object_r:shell_data_file:s0 tclass=file permissive=0 app=com.amazon.aca
+06-18 10:57:32.355 27032  4180 I MediaCodecLogger: 27032.SW.c2.audio.mp4a.bitrateInKbps = 93
+06-18 10:57:32.458 28820 18244 W adbd    : timed out while waiting for FUNCTIONFS_BIND, trying again
+06-18 10:57:32.458 28820 18244 I adbd    : UsbFfs: connection terminated: monitor thread finished
+06-18 10:57:32.459 28820 28820 I adbd    : UsbFfs: already offline
+06-18 10:57:32.459 28820 28820 I adbd    : destroying transport UsbFfs
+06-18 10:57:32.459 28820 28820 I adbd    : UsbFfsConnection being destroyed
+06-18 10:57:32.511 28820 28823 I adbd    : opening control endpoint /dev/usb-ffs/adb/ep0
+06-18 10:57:32.513 28820 28823 I adbd    : UsbFfsConnection constructed
+06-18 10:57:32.513 28820 18302 I adbd    : UsbFfs-monitor thread spawned
+06-18 10:57:32.545 12895 13030 I ApeSettingsApplier: device_settings aplicados=2 rechazados=0
+06-18 10:57:32.607 18311 18311 W curl    : type=1400 audit(0.0:503496): avc: denied { ioctl } for path="/data/local/tmp/ape-qoe-queue.ndjson.snd" dev="dm-6" ino=229393 ioctlcmd=0x5413 scontext=u:r:shell:s0 tcontext=u:object_r:shell_data_file:s0 tclass=file permissive=0
+06-18 10:57:32.642   667   802 W BestClock: java.time.DateTimeException: Missing NTP fix
+06-18 10:57:32.644   330 18246 I netd    : trafficSwapActiveStatsMap() <0.29ms>
+06-18 10:57:32.669   388   388 I WifiHAL : Creating message to get link statistics; iface = 15
+06-18 10:57:32.669 18313 18314 I cmd     : oneway function results will be dropped but finished with status OK and parcel size 4
+06-18 10:57:32.669   388   388 E WifiHAL : Incorrect number of channels = 4
+06-18 10:57:32.670   667   806 E WifiVendorHal: getWifiLinkLayerStats_1_3_Internal(l.973) failed {.code = ERROR_UNKNOWN, .description = unknown}
+06-18 10:57:32.736   330 18246 I netd    : tetherGetStats() <1.47ms>
+06-18 10:57:32.774   667   802 W BestClock: java.time.DateTimeException: Missing NTP fix
+06-18 10:57:32.791   330 18246 I netd    : bandwidthSetGlobalAlert(2097152) <0.31ms>
+06-18 10:57:32.793   667   803 W BestClock: java.time.DateTimeException: Missing NTP fix
+06-18 10:57:32.794   667   803 W BestClock: java.time.DateTimeException: Missing NTP fix
+06-18 10:57:32.863 18324 18326 I cmd     : oneway function results will be dropped but finished with status OK and parcel size 4
+06-18 10:57:32.923 18331 18331 W curl    : type=1400 audit(0.0:503497): avc: denied { ioctl } for path="/data/local/tmp/ape-qoe-queue.ndjson.snd" dev="dm-6" ino=229393 ioctlcmd=0x5413 scontext=u:r:shell:s0 tcontext=u:object_r:shell_data_file:s0 tclass=file permissive=0 app=com.amazon.bueller.photos
+06-18 10:57:33.069 27032 27049 I um.ottnavigato: Background young concurrent copying GC freed 715463(22MB) AllocSpace objects, 0(0B) LOS objects, 9% free, 198MB/220MB, paused 187us total 111.444ms
+06-18 10:57:33.283 18358 18358 W curl    : type=1400 audit(0.0:503498): avc: denied { ioctl } for path="/data/local/tmp/ape-qoe-queue.ndjson.snd" dev="dm-6" ino=229393 ioctlcmd=0x5413 scontext=u:r:shell:s0 tcontext=u:object_r:shell_data_file:s0 tclass=file permissive=0
+06-18 10:57:33.514 28820 18302 W adbd    : timed out while waiting for FUNCTIONFS_BIND, trying again
+06-18 10:57:33.514 28820 18302 I adbd    : UsbFfs: connection terminated: monitor thread finished
+06-18 10:57:33.515 28820 28820 I adbd    : UsbFfs: already offline
+06-18 10:57:33.515 28820 28820 I adbd    : destroying transport UsbFfs
+06-18 10:57:33.515 28820 28820 I adbd    : UsbFfsConnection being destroyed
+06-18 10:57:33.563 28820 28823 I adbd    : opening control endpoint /dev/usb-ffs/adb/ep0
+06-18 10:57:33.564 28820 28823 I adbd    : UsbFfsConnection constructed
+06-18 10:57:33.568 28820 18379 I adbd    : UsbFfs-monitor thread spawned
+06-18 10:57:33.576 18378 18380 I cmd     : oneway function results will be dropped but finished with status OK and parcel size 4
+06-18 10:57:33.591 18382 18382 W curl    : type=1400 audit(0.0:503499): avc: denied { ioctl } for path="/data/local/tmp/ape-qoe-queue.ndjson.snd" dev="dm-6" ino=229393 ioctlcmd=0x5413 scontext=u:r:shell:s0 tcontext=u:object_r:shell_data_file:s0 tclass=file permissive=0
+06-18 10:57:33.642 18384 18386 I cmd     : oneway function results will be dropped but finished with status OK and parcel size 4
+06-18 10:57:33.955 18408 18408 W curl    : type=1400 audit(0.0:503500): avc: denied { ioctl } for path="/data/local/tmp/ape-qoe-queue.ndjson.snd" dev="dm-6" ino=229393 ioctlcmd=0x5413 scontext=u:r:shell:s0 tcontext=u:object_r:shell_data_file:s0 tclass=file permissive=0
+06-18 10:57:33.977 18409 18411 I cmd     : oneway function results will be dropped but finished with status OK and parcel size 4
+06-18 10:57:34.311 18439 18439 W curl    : type=1400 audit(0.0:503501): avc: denied { ioctl } for path="/data/local/tmp/ape-qoe-queue.ndjson.snd" dev="dm-6" ino=229393 ioctlcmd=0x5413 scontext=u:r:shell:s0 tcontext=u:object_r:shell_data_file:s0 tclass=file permissive=0
+06-18 10:57:34.562 18452 18454 I cmd     : oneway function results will be dropped but finished with status OK and parcel size 4
+06-18 10:57:34.569 28820 18379 W adbd    : timed out while waiting for FUNCTIONFS_BIND, trying again
+06-18 10:57:34.569 28820 18379 I adbd    : UsbFfs: connection terminated: monitor thread finished
+06-18 10:57:34.569 28820 28820 I adbd    : UsbFfs: already offline
+06-18 10:57:34.569 28820 28820 I adbd    : destroying transport UsbFfs
+06-18 10:57:34.569 28820 28820 I adbd    : UsbFfsConnection being destroyed
+06-18 10:57:34.596 27032 27049 I um.ottnavigato: Background young concurrent copying GC freed 710943(22MB) AllocSpace objects, 0(0B) LOS objects, 9% free, 199MB/220MB, paused 159us total 147.584ms
+06-18 10:57:34.617 28820 28823 I adbd    : opening control endpoint /dev/usb-ffs/adb/ep0
+06-18 10:57:34.622 28820 28823 I adbd    : UsbFfsConnection constructed
+06-18 10:57:34.624 28820 18460 I adbd    : UsbFfs-monitor thread spawned
+06-18 10:57:34.643 18461 18461 W curl    : type=1400 audit(0.0:503502): avc: denied { ioctl } for path="/data/local/tmp/ape-qoe-queue.ndjson.snd" dev="dm-6" ino=229393 ioctlcmd=0x5413 scontext=u:r:shell:s0 tcontext=u:object_r:shell_data_file:s0 tclass=file permissive=0
+06-18 10:57:34.824 18470 18472 I cmd     : oneway function results will be dropped but finished with status OK and parcel size 4
+06-18 10:57:35.015 18482 18482 W curl    : type=1400 audit(0.0:503503): avc: denied { ioctl } for path="/data/local/tmp/ape-qoe-queue.ndjson.snd" dev="dm-6" ino=229393 ioctlcmd=0x5413 scontext=u:r:shell:s0 tcontext=u:object_r:shell_data_file:s0 tclass=file permissive=0
+06-18 10:57:35.334   631   631 E integrity_module: --- integrity_module file read error /sys/class/power_supply/battery/device/gm30_bat_cycle ---
+06-18 10:57:35.335   631   631 E integrity_module: --- integrity_module file read error  ---
+06-18 10:57:35.335   631   631 E integrity_module: --- integrity_module file read error /sys/devices/platform/charger/ADC_Charger_Voltage ---
+06-18 10:57:35.335   631   631 E integrity_module: --- integrity_module file read error /sys/devices/platform/charger/chr_type ---
+06-18 10:57:35.335   631   631 E integrity_module: --- integrity_module file read error ---
+06-18 10:57:35.335 18509 18509 W curl    : type=1400 audit(0.0:503504): avc: denied { ioctl } for path="/data/local/tmp/ape-qoe-queue.ndjson.snd" dev="dm-6" ino=229393 ioctlcmd=0x5413 scontext=u:r:shell:s0 tcontext=u:object_r:shell_data_file:s0 tclass=file permissive=0
+06-18 10:57:35.510 18520 18522 I cmd     : oneway function results will be dropped but finished with status OK and parcel size 4
+06-18 10:57:35.551 12895 13030 I ApeSettingsApplier: device_settings aplicados=2 rechazados=0
+06-18 10:57:35.626 28820 18460 W adbd    : timed out while waiting for FUNCTIONFS_BIND, trying again
+06-18 10:57:35.626 28820 18460 I adbd    : UsbFfs: connection terminated: monitor thread finished
+06-18 10:57:35.626 28820 28820 I adbd    : UsbFfs: already offline
+06-18 10:57:35.626 28820 28820 I adbd    : destroying transport UsbFfs
+06-18 10:57:35.626 28820 28820 I adbd    : UsbFfsConnection being destroyed
+06-18 10:57:35.667 28820 28823 I adbd    : opening control endpoint /dev/usb-ffs/adb/ep0
+06-18 10:57:35.673 28820 28823 I adbd    : UsbFfsConnection constructed
+06-18 10:57:35.674 28820 18535 I adbd    : UsbFfs-monitor thread spawned
+06-18 10:57:35.677   388   388 I WifiHAL : Creating message to get link statistics; iface = 15
+06-18 10:57:35.677   388   388 E WifiHAL : Incorrect number of channels = 4
+06-18 10:57:35.678   667   806 E WifiVendorHal: getWifiLinkLayerStats_1_3_Internal(l.973) failed {.code = ERROR_UNKNOWN, .description = unknown}
+06-18 10:57:35.703 18537 18537 W curl    : type=1400 audit(0.0:503505): avc: denied { ioctl } for path="/data/local/tmp/ape-qoe-queue.ndjson.snd" dev="dm-6" ino=229393 ioctlcmd=0x5413 scontext=u:r:shell:s0 tcontext=u:object_r:shell_data_file:s0 tclass=file permissive=0
+06-18 10:57:35.746 27032  4168 I MediaCodecLogger: 27032.4K.HW.omx.video.avc.bitrateInKbps = 3636
+06-18 10:57:35.851 18547 18549 I cmd     : oneway function results will be dropped but finished with status OK and parcel size 4
+06-18 10:57:35.902 18551 18555 I cmd     : oneway function results will be dropped but finished with status OK and parcel size 4
+06-18 10:57:36.067 18567 18567 W curl    : type=1400 audit(0.0:503506): avc: denied { ioctl } for path="/data/local/tmp/ape-qoe-queue.ndjson.snd" dev="dm-6" ino=229393 ioctlcmd=0x5413 scontext=u:r:shell:s0 tcontext=u:object_r:shell_data_file:s0 tclass=file permissive=0
+06-18 10:57:36.128 18571 18572 I cmd     : oneway function results will be dropped but finished with status OK and parcel size 4
+06-18 10:57:36.216 27032 27049 I um.ottnavigato: Background young concurrent copying GC freed 712901(22MB) AllocSpace objects, 0(0B) LOS objects, 9% free, 199MB/220MB, paused 877us total 147.511ms
+06-18 10:57:36.443 18595 18595 W curl    : type=1400 audit(0.0:503507): avc: denied { ioctl } for path="/data/local/tmp/ape-qoe-queue.ndjson.snd" dev="dm-6" ino=229393 ioctlcmd=0x5413 scontext=u:r:shell:s0 tcontext=u:object_r:shell_data_file:s0 tclass=file permissive=0
+06-18 10:57:36.675 28820 18535 W adbd    : timed out while waiting for FUNCTIONFS_BIND, trying again
+06-18 10:57:36.675 28820 18535 I adbd    : UsbFfs: connection terminated: monitor thread finished
+06-18 10:57:36.676 28820 28820 I adbd    : UsbFfs: already offline
+06-18 10:57:36.676 28820 28820 I adbd    : destroying transport UsbFfs
+06-18 10:57:36.676 28820 28820 I adbd    : UsbFfsConnection being destroyed
+06-18 10:57:36.731 28820 28823 I adbd    : opening control endpoint /dev/usb-ffs/adb/ep0
+06-18 10:57:36.733 28820 28823 I adbd    : UsbFfsConnection constructed
+06-18 10:57:36.733 28820 18615 I adbd    : UsbFfs-monitor thread spawned
+06-18 10:57:36.745 18614 18617 I cmd     : oneway function results will be dropped but finished with status OK and parcel size 4
+06-18 10:57:36.783 18619 18619 W curl    : type=1400 audit(0.0:503508): avc: denied { ioctl } for path="/data/local/tmp/ape-qoe-queue.ndjson.snd" dev="dm-6" ino=229393 ioctlcmd=0x5413 scontext=u:r:shell:s0 tcontext=u:object_r:shell_data_file:s0 tclass=file permissive=0
+06-18 10:57:36.895 18626 18628 I cmd     : oneway function results will be dropped but finished with status OK and parcel size 4
+06-18 10:57:37.115 18644 18644 W curl    : type=1400 audit(0.0:503509): avc: denied { ioctl } for path="/data/local/tmp/ape-qoe-queue.ndjson.snd" dev="dm-6" ino=229393 ioctlcmd=0x5413 scontext=u:r:shell:s0 tcontext=u:object_r:shell_data_file:s0 tclass=file permissive=0
+06-18 10:57:37.369 27032  4180 I MediaCodecLogger: 27032.SW.c2.audio.mp4a.bitrateInKbps = 93
+06-18 10:57:37.435 18666 18666 W curl    : type=1400 audit(0.0:503510): avc: denied { ioctl } for path="/data/local/tmp/ape-qoe-queue.ndjson.snd" dev="dm-6" ino=229393 ioctlcmd=0x5413 scontext=u:r:shell:s0 tcontext=u:object_r:shell_data_file:s0 tclass=file permissive=0
+06-18 10:57:37.733 28820 18615 W adbd    : timed out while waiting for FUNCTIONFS_BIND, trying again
+06-18 10:57:37.734 28820 18615 I adbd    : UsbFfs: connection terminated: monitor thread finished
+06-18 10:57:37.734 28820 28820 I adbd    : UsbFfs: already offline
+06-18 10:57:37.734 28820 28820 I adbd    : destroying transport UsbFfs
+06-18 10:57:37.734 28820 28820 I adbd    : UsbFfsConnection being destroyed
+06-18 10:57:37.771 18682 18682 W curl    : type=1400 audit(0.0:503511): avc: denied { ioctl } for path="/data/local/tmp/ape-qoe-queue.ndjson.snd" dev="dm-6" ino=229393 ioctlcmd=0x5413 scontext=u:r:shell:s0 tcontext=u:object_r:shell_data_file:s0 tclass=file permissive=0
+06-18 10:57:37.784 28820 28823 I adbd    : opening control endpoint /dev/usb-ffs/adb/ep0
+06-18 10:57:37.786 28820 28823 I adbd    : UsbFfsConnection constructed
+06-18 10:57:37.788 28820 18684 I adbd    : UsbFfs-monitor thread spawned
+06-18 10:57:37.805 18683 18686 I cmd     : oneway function results will be dropped but finished with status OK and parcel size 4
+06-18 10:57:37.837 27032 27049 I um.ottnavigato: Background young concurrent copying GC freed 715659(22MB) AllocSpace objects, 0(0B) LOS objects, 9% free, 198MB/220MB, paused 171us total 134.077ms
+06-18 10:57:38.042 18700 18703 I cmd     : oneway function results will be dropped but finished with status OK and parcel size 4
+06-18 10:57:38.135 18708 18708 W curl    : type=1400 audit(0.0:503512): avc: denied { ioctl } for path="/data/local/tmp/ape-qoe-queue.ndjson.snd" dev="dm-6" ino=229393 ioctlcmd=0x5413 scontext=u:r:shell:s0 tcontext=u:object_r:shell_data_file:s0 tclass=file permissive=0
+06-18 10:57:38.402 18722 18724 I cmd     : oneway function results will be dropped but finished with status OK and parcel size 4
+06-18 10:57:38.459 18726 18729 I cmd     : oneway function results will be dropped but finished with status OK and parcel size 4
+06-18 10:57:38.455 18727 18727 W curl    : type=1400 audit(0.0:503513): avc: denied { ioctl } for path="/data/local/tmp/ape-qoe-queue.ndjson.snd" dev="dm-6" ino=229393 ioctlcmd=0x5413 scontext=u:r:shell:s0 tcontext=u:object_r:shell_data_file:s0 tclass=file permissive=0
+06-18 10:57:38.546 12895 13030 I ApeSettingsApplier: device_settings aplicados=2 rechazados=0
+06-18 10:57:38.689   388   388 I WifiHAL : Creating message to get link statistics; iface = 15
+06-18 10:57:38.689   388   388 E WifiHAL : Incorrect number of channels = 4
+06-18 10:57:38.690   667   806 E WifiVendorHal: getWifiLinkLayerStats_1_3_Internal(l.973) failed {.code = ERROR_UNKNOWN, .description = unknown}
+06-18 10:57:38.789 28820 18684 W adbd    : timed out while waiting for FUNCTIONFS_BIND, trying again
+06-18 10:57:38.789 28820 18684 I adbd    : UsbFfs: connection terminated: monitor thread finished
+06-18 10:57:38.789 28820 28820 I adbd    : UsbFfs: already offline
+06-18 10:57:38.789 28820 28820 I adbd    : destroying transport UsbFfs
+06-18 10:57:38.789 28820 28820 I adbd    : UsbFfsConnection being destroyed
+06-18 10:57:38.819 18750 18750 W curl    : type=1400 audit(0.0:503514): avc: denied { ioctl } for path="/data/local/tmp/ape-qoe-queue.ndjson.snd" dev="dm-6" ino=229393 ioctlcmd=0x5413 scontext=u:r:shell:s0 tcontext=u:object_r:shell_data_file:s0 tclass=file permissive=0 app=com.amazon.tv.launcher
+06-18 10:57:38.840 28820 28823 I adbd    : opening control endpoint /dev/usb-ffs/adb/ep0
+06-18 10:57:38.844 28820 28823 I adbd    : UsbFfsConnection constructed
+06-18 10:57:38.846 28820 18752 I adbd    : UsbFfs-monitor thread spawned
+06-18 10:57:39.062 18764 18766 I cmd     : oneway function results will be dropped but finished with status OK and parcel size 4
+06-18 10:57:39.131 18772 18772 W curl    : type=1400 audit(0.0:503515): avc: denied { ioctl } for path="/data/local/tmp/ape-qoe-queue.ndjson.snd" dev="dm-6" ino=229393 ioctlcmd=0x5413 scontext=u:r:shell:s0 tcontext=u:object_r:shell_data_file:s0 tclass=file permissive=0
+06-18 10:57:39.268 18777 18779 I cmd     : oneway function results will be dropped but finished with status OK and parcel size 4
+06-18 10:57:39.313 18781 18783 I cmd     : oneway function results will be dropped but finished with status OK and parcel size 4
+06-18 10:57:39.479 18792 18792 W curl    : type=1400 audit(0.0:503516): avc: denied { ioctl } for path="/data/local/tmp/ape-qoe-queue.ndjson.snd" dev="dm-6" ino=229393 ioctlcmd=0x5413 scontext=u:r:shell:s0 tcontext=u:object_r:shell_data_file:s0 tclass=file permissive=0
+06-18 10:57:39.843 18816 18816 W curl    : type=1400 audit(0.0:503517): avc: denied { ioctl } for path="/data/local/tmp/ape-qoe-queue.ndjson.snd" dev="dm-6" ino=229393 ioctlcmd=0x5413 scontext=u:r:shell:s0 tcontext=u:object_r:shell_data_file:s0 tclass=file permissive=0
+06-18 10:57:39.848 28820 18752 W adbd    : timed out while waiting for FUNCTIONFS_BIND, trying again
+06-18 10:57:39.848 28820 18752 I adbd    : UsbFfs: connection terminated: monitor thread finished
+06-18 10:57:39.849 28820 28820 I adbd    : UsbFfs: already offline
+06-18 10:57:39.849 28820 28820 I adbd    : destroying transport UsbFfs
+06-18 10:57:39.849 28820 28820 I adbd    : UsbFfsConnection being destroyed
+06-18 10:57:39.911 28820 28823 I adbd    : opening control endpoint /dev/usb-ffs/adb/ep0
+06-18 10:57:39.913 28820 28823 I adbd    : UsbFfsConnection constructed
+06-18 10:57:39.916 28820 18819 I adbd    : UsbFfs-monitor thread spawned
+06-18 10:57:39.926 27032 27049 I um.ottnavigato: Background young concurrent copying GC freed 708764(22MB) AllocSpace objects, 0(0B) LOS objects, 9% free, 198MB/220MB, paused 162us total 157.175ms
+06-18 10:57:40.175 18835 18835 W curl    : type=1400 audit(0.0:503518): avc: denied { ioctl } for path="/data/local/tmp/ape-qoe-queue.ndjson.snd" dev="dm-6" ino=229393 ioctlcmd=0x5413 scontext=u:r:shell:s0 tcontext=u:object_r:shell_data_file:s0 tclass=file permissive=0 app=com.amazon.aca
+06-18 10:57:40.225 18839 18841 I cmd     : oneway function results will be dropped but finished with status OK and parcel size 4
+06-18 10:57:40.512 18858 18860 I cmd     : oneway function results will be dropped but finished with status OK and parcel size 4
+06-18 10:57:40.543 18862 18862 W curl    : type=1400 audit(0.0:503519): avc: denied { ioctl } for path="/data/local/tmp/ape-qoe-queue.ndjson.snd" dev="dm-6" ino=229393 ioctlcmd=0x5413 scontext=u:r:shell:s0 tcontext=u:object_r:shell_data_file:s0 tclass=file permissive=0
+06-18 10:57:40.705 18873 18875 I cmd     : oneway function results will be dropped but finished with status OK and parcel size 4
+06-18 10:57:40.829 27032  4168 I MediaCodecLogger: 27032.4K.HW.omx.video.avc.bitrateInKbps = 3382
+06-18 10:57:40.859 18887 18887 W curl    : type=1400 audit(0.0:503520): avc: denied { ioctl } for path="/data/local/tmp/ape-qoe-queue.ndjson.snd" dev="dm-6" ino=229393 ioctlcmd=0x5413 scontext=u:r:shell:s0 tcontext=u:object_r:shell_data_file:s0 tclass=file permissive=0
+06-18 10:57:40.917 28820 18819 W adbd    : timed out while waiting for FUNCTIONFS_BIND, trying again
+06-18 10:57:40.918 28820 18819 I adbd    : UsbFfs: connection terminated: monitor thread finished
+06-18 10:57:40.918 28820 28820 I adbd    : UsbFfs: already offline
+06-18 10:57:40.918 28820 28820 I adbd    : destroying transport UsbFfs
+06-18 10:57:40.918 28820 28820 I adbd    : UsbFfsConnection being destroyed
+06-18 10:57:40.960 28820 28823 I adbd    : opening control endpoint /dev/usb-ffs/adb/ep0
+06-18 10:57:40.964 28820 28823 I adbd    : UsbFfsConnection constructed
+06-18 10:57:40.965 28820 18896 I adbd    : UsbFfs-monitor thread spawned
+06-18 10:57:41.040 18900 18901 I cmd     : oneway function results will be dropped but finished with status OK and parcel size 4
+06-18 10:57:41.231 18915 18915 W curl    : type=1400 audit(0.0:503521): avc: denied { ioctl } for path="/data/local/tmp/ape-qoe-queue.ndjson.snd" dev="dm-6" ino=229393 ioctlcmd=0x5413 scontext=u:r:shell:s0 tcontext=u:object_r:shell_data_file:s0 tclass=file permissive=0
+06-18 10:57:41.233 18914 18916 I cmd     : oneway function results will be dropped but finished with status OK and parcel size 4
+06-18 10:57:41.416 18929 18931 I cmd     : oneway function results will be dropped but finished with status OK and parcel size 4
+06-18 10:57:41.548 12895 13030 I ApeSettingsApplier: device_settings aplicados=2 rechazados=0
+06-18 10:57:41.583 18946 18946 W curl    : type=1400 audit(0.0:503522): avc: denied { ioctl } for path="/data/local/tmp/ape-qoe-queue.ndjson.snd" dev="dm-6" ino=229393 ioctlcmd=0x5413 scontext=u:r:shell:s0 tcontext=u:object_r:shell_data_file:s0 tclass=file permissive=0 app=com.amazon.alexamediaplayer.runtime.ftv
+06-18 10:57:41.634 18951 18953 I cmd     : oneway function results will be dropped but finished with status OK and parcel size 4
+06-18 10:57:41.706   388   388 I WifiHAL : Creating message to get link statistics; iface = 15
+06-18 10:57:41.707   388   388 E WifiHAL : Incorrect number of channels = 4
+06-18 10:57:41.707   667   806 E WifiVendorHal: getWifiLinkLayerStats_1_3_Internal(l.973) failed {.code = ERROR_UNKNOWN, .description = unknown}
+06-18 10:57:41.895 18972 18972 W curl    : type=1400 audit(0.0:503523): avc: denied { ioctl } for path="/data/local/tmp/ape-qoe-queue.ndjson.snd" dev="dm-6" ino=229393 ioctlcmd=0x5413 scontext=u:r:shell:s0 tcontext=u:object_r:shell_data_file:s0 tclass=file permissive=0
+06-18 10:57:41.966 28820 18896 W adbd    : timed out while waiting for FUNCTIONFS_BIND, trying again
+06-18 10:57:41.966 28820 18896 I adbd    : UsbFfs: connection terminated: monitor thread finished
+06-18 10:57:41.966 28820 28820 I adbd    : UsbFfs: already offline
+06-18 10:57:41.966 28820 28820 I adbd    : destroying transport UsbFfs
+06-18 10:57:41.966 28820 28820 I adbd    : UsbFfsConnection being destroyed

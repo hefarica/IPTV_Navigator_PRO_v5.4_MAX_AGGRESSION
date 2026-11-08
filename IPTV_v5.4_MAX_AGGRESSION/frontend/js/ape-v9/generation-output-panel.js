@@ -113,6 +113,9 @@
       ensureJitCatalog: ensureJitCatalog,
       jitUrlForChannel: jitUrlForChannel,
       runDirect: runDirect,
+      runVps: runVps,
+      runBoth: runBoth,
+      downloadActiveJitMpd: downloadActiveJitMpd,
       // Expuestos para poder probar la logica del guard y del auto-ajuste sin navegador.
       // Son declaraciones de funcion (hoisted), asi que estan disponibles aqui aunque se
       // definan mas abajo.
@@ -287,16 +290,32 @@
     if (el) { el.textContent = msg; el.style.color = color || '#94a3b8'; }
   }
 
+  function generationResultStatus(result, success) {
+    var decision = result && result.decision || '';
+    if (decision.indexOf('cancelled') === 0) { status('Generación cancelada.', '#f59e0b'); return; }
+    if (decision === 'skipped_already_running') { status('Ya hay una generación en curso.', '#f59e0b'); return; }
+    status(result && result.notice ? result.notice : success, '#22c55e');
+  }
+
   function selectedFormat() {
     var r = document.querySelector('input[name="ape-out-format"]:checked');
     return r ? r.value : 'm3u8';
   }
 
+  function isJsonMetadataOutput() {
+    var selected = document.getElementById('genExportFormat');
+    return !!(selected && selected.value === 'json');
+  }
+
   function formatGuard() {
+    if (isJsonMetadataOutput()) {
+      status('JSON de metadatos: conserva las URL de origen; DIRECTA/CDN/AMBAS se aplican a M3U.', '#38bdf8');
+      return true;
+    }
     var f = selectedFormat();
     if (f === 'mpd') {
-      toast('DASH/MPD: se descargará el MPD real del canal JIT activo.', 'info');
-      status('DASH/MPD: preparando descarga del canal JIT activo', '#38bdf8');
+      toast('DASH: se descargará una M3U con la URL del MPD servido del canal JIT activo.', 'info');
+      status('DASH: preparando lista de un canal JIT activo', '#38bdf8');
       return true;
     }
     if (f === 'hybrid') {
@@ -306,8 +325,8 @@
     return true;
   }
 
-  async function downloadActiveJitMpd() {
-    var base = 'https://iptv-ape.duckdns.org';
+  async function downloadActiveJitMpd(diagnosticSnapshot) {
+    var base = JIT_BASE;
     status('DASH/MPD: consultando canal JIT activo…', '#38bdf8');
     var catRes = await fetch(base + '/jit/catalog.json', { cache: 'no-store' });
     if (!catRes.ok) throw new Error('catálogo JIT HTTP ' + catRes.status);
@@ -320,21 +339,35 @@
     if (!active) {
       throw new Error('no hay canal JIT activo; abre primero su salida HLS/JIT');
     }
-    var dash = active.dash || (base + '/jit/live/' + encodeURIComponent(active.id) + '/manifest.mpd');
+    var dash = String(active.dash || (base + '/jit/live/' + encodeURIComponent(active.id) + '/manifest.mpd'));
+    if (/[\u0000-\u0020\u007f]/.test(dash)) throw new Error('URL DASH inválida');
+    var absoluteDash = new URL(dash, catRes.url || base + '/jit/catalog.json');
+    if (!/^https?:$/.test(absoluteDash.protocol)) throw new Error('URL DASH debe usar HTTP(S)');
+    // Preserve already absolute signed URLs byte for byte, including query
+    // ordering, duplicate parameters, percent escapes and authorization.
+    if (!/^https?:\/\//i.test(dash)) dash = absoluteDash.href;
     var r = await fetch(dash, { cache: 'no-store' });
     if (!r.ok) throw new Error('MPD HTTP ' + r.status);
     var text = await r.text();
-    if (text.indexOf('<MPD') === -1) throw new Error('el JIT no devolvió un MPD válido');
-    var blob = new Blob([text], { type: 'application/dash+xml' });
+    if (!/<MPD\b/.test(text)) throw new Error('el JIT no devolvió un MPD válido');
+    var snapshot = diagnosticSnapshot === true;
+    var name = String(active.name || active.id || 'JIT').replace(/[\u0000-\u001f\u007f]/g, ' ');
+    var fileId = String(active.id || 'JIT').replace(/[^a-zA-Z0-9_.-]/g, '_');
+    // A local live MPD loses the HTTP base for relative segments and refresh.
+    // Playback retains the served URL; a separate diagnostic snapshot stays exact.
+    var contents = snapshot ? text : '#EXTM3U\n#EXTINF:-1,' + name + ' · DASH JIT\n' + dash + '\n';
+    var blob = new Blob([contents], { type: snapshot ? 'application/dash+xml' : 'audio/x-mpegurl;charset=utf-8' });
     var url = URL.createObjectURL(blob);
     var a = document.createElement('a');
     a.href = url;
-    a.download = 'APE_' + active.id + '_manifest.mpd';
+    a.download = 'APE_' + fileId + (snapshot ? '_diagnostic_snapshot.mpd' : '_DASH.m3u');
+    a._gzipProcessing = true;
     document.body.appendChild(a);
     a.click();
     a.remove();
     setTimeout(function () { URL.revokeObjectURL(url); }, 3000);
-    status('DASH/MPD descargado · canal JIT ' + active.id, '#22c55e');
+    status(snapshot ? 'MPD diagnóstico descargado · instantánea; reproducción mediante la M3U DASH.'
+      : 'M3U DASH descargada · un canal JIT; segmentos y actualizaciones desde el MPD servido.', '#22c55e');
     return true;
   }
 
@@ -799,28 +832,29 @@
   async function runVps() {
     var d = applyDelta(false);
     if (!checkGeneration() || !formatGuard()) return;
-    if (selectedFormat() === 'mpd') {
+    if (!isJsonMetadataOutput() && selectedFormat() === 'mpd') {
       try { await downloadActiveJitMpd(); }
       catch (e) { status('DASH/MPD: ' + e.message, '#ef4444'); toast('DASH/MPD: ' + e.message, 'error'); }
       return;
     }
     try {
       status('Generando VPS con delta ' + d + '%…', '#38bdf8');
-      sendDeltaToVps(d);
-      await window.APEGenerationController.prepublishAndGenerateDual({ buffer_delta_pct: d, buffer_delta_array: getDeltaArray(d) });
-      status('VPS completado · delta ' + d + '% (array por perfil)', '#22c55e');
+      if (!isJsonMetadataOutput()) sendDeltaToVps(d);
+      var result = await window.APEGenerationController.prepublishAndGenerateDual({ buffer_delta_pct: d, buffer_delta_array: getDeltaArray(d) });
+      generationResultStatus(result, 'VPS completado · delta ' + d + '% (array por perfil)');
     } catch (e) { status('VPS falló: ' + e.message, '#ef4444'); toast('VPS falló: ' + e.message, 'error'); }
   }
 
   async function runDirect() {
     var d = applyDelta(false);
     if (!checkGeneration() || !formatGuard()) return;
-    if (selectedFormat() === 'mpd') {
+    if (!isJsonMetadataOutput() && selectedFormat() === 'mpd') {
       try { await downloadActiveJitMpd(); }
       catch (e) { status('DASH/MPD: ' + e.message, '#ef4444'); toast('DASH/MPD: ' + e.message, 'error'); }
       return;
     }
     var out = currentOutOpts();
+    if (isJsonMetadataOutput()) out.jit = false;
     if (out.jit) {
       var jitOk = await ensureJitCatalog();
       if (!jitOk) {
@@ -835,15 +869,17 @@
     };
     try {
       status('Generando DIRECTO con delta ' + d + '%…', '#38bdf8');
-      sendDeltaToVps(d);
-      await window.APEGenerationController.prepublishAndGenerate({
+      if (!isJsonMetadataOutput()) sendDeltaToVps(d);
+      var controller = window.APEGenerationController;
+      var generateDirect = controller.prepublishAndGenerateDirect || controller.prepublishAndGenerate;
+      var result = await generateDirect.call(controller, {
         buffer_delta_pct: d,
         buffer_delta_array: getDeltaArray(d),
         jit: out.jit,
         hdrMode: out.hdrMode,
         manifestMetadata: currentManifestMetadata()
       });
-      status('DIRECTO completado · delta ' + d + '% (array por perfil)', '#22c55e');
+      generationResultStatus(result, 'DIRECTO completado · delta ' + d + '% (array por perfil)');
     } catch (e) {
       status('DIRECTO falló: ' + e.message, '#ef4444');
       toast('DIRECTO falló: ' + e.message, 'error');
@@ -854,22 +890,20 @@
     }
   }
 
-  // AMBAS = UNA lista híbrida: URI de canal en VPS y segmentos directos del
-  // proveedor (comprobado en APE_LISTA_..._CDN: playlist VPS -> media playlist
-  // con segmentos en host del proveedor). Se usa el generador CDN existente.
+  // AMBAS = dos archivos desde una generación: DIRECTA y CDN.
   async function runBoth() {
     var d = applyDelta(false);
     if (!checkGeneration() || !formatGuard()) return;
-    if (selectedFormat() === 'mpd') {
+    if (!isJsonMetadataOutput() && selectedFormat() === 'mpd') {
       try { await downloadActiveJitMpd(); }
       catch (e) { status('DASH/MPD: ' + e.message, '#ef4444'); toast('DASH/MPD: ' + e.message, 'error'); }
       return;
     }
     try {
-      status('Generando AMBAS (URI VPS + vídeo directo) · delta ' + d + '%…', '#38bdf8');
-      sendDeltaToVps(d);
-      await window.APEGenerationController.prepublishAndGenerateDual({ buffer_delta_pct: d, buffer_delta_array: getDeltaArray(d) });
-      status('AMBAS completado · delta ' + d + '% (array por perfil)', '#22c55e');
+      status('Generando AMBAS: DIRECTA + CDN · delta ' + d + '%…', '#38bdf8');
+      if (!isJsonMetadataOutput()) sendDeltaToVps(d);
+      var result = await window.APEGenerationController.prepublishAndGenerateDual({ dual: 'both', buffer_delta_pct: d, buffer_delta_array: getDeltaArray(d) });
+      generationResultStatus(result, 'AMBAS completado: DIRECTA + CDN · delta ' + d + '%');
     } catch (e) { status('AMBAS falló: ' + e.message, '#ef4444'); toast('AMBAS falló: ' + e.message, 'error'); }
   }
 
@@ -930,10 +964,11 @@
       '<div style="display:flex;gap:14px;flex-wrap:wrap;align-items:center;margin-top:8px;padding:8px 10px;border-radius:9px;background:rgba(2,6,23,.28);border:1px solid rgba(148,163,184,.22);font-size:.82rem;color:#cbd5e1;">' +
       '<strong style="color:#fbbf24;">FORMATO:</strong>' +
       '<label style="cursor:pointer;"><input type="radio" name="ape-out-format" value="m3u8" checked style="accent-color:#22c55e;"> .M3U8</label>' +
-      '<label style="cursor:pointer;"><input type="radio" name="ape-out-format" value="mpd" style="accent-color:#38bdf8;"> .MPD</label>' +
+      '<label style="cursor:pointer;"><input type="radio" name="ape-out-format" value="mpd" style="accent-color:#38bdf8;"> DASH (M3U)</label>' +
       '<label style="cursor:pointer;"><input type="radio" name="ape-out-format" value="hybrid" style="accent-color:#a855f7;"> HÍBRIDA</label>' +
       '<span id="ape-out-matrix-state" style="color:#94a3b8;font-size:.74rem;">HLS · .M3U8</span>' +
-      '<span style="font-size:.82rem;color:#64748b;flex-basis:100%;">.M3U8 genera la lista HLS. .MPD descarga el manifiesto DASH del canal JIT activo; no se fabrica un MPD falso.</span>' +
+      '<button type="button" id="ape-mpd-snapshot" style="cursor:pointer;background:#1e293b;color:#cbd5e1;border:1px solid #475569;border-radius:5px;padding:3px 7px;">MPD diagnóstico</button>' +
+      '<span style="font-size:.82rem;color:#64748b;flex-basis:100%;">DASH (M3U) enlaza el MPD servido de un canal JIT activo. MPD diagnóstico guarda una instantánea para inspección; usa la M3U DASH para reproducir.</span>' +
       '</div>' +
       '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:9px;margin-top:12px;">' +
       // VPS
@@ -950,10 +985,10 @@
       '<span style="font-size:.84rem;color:#64748b;margin-left:7px;">sin VPS</span></div>' +
       // AMBAS
       '<div style="background:rgba(2,6,23,.38);border:1px solid rgba(34,211,238,.45);border-radius:11px;padding:11px;">' +
-      '<div style="font-weight:800;color:#67e8f9;font-size:1.05rem;">AMBAS · lista híbrida</div>' +
-      '<div style="font-size:.8rem;color:#94a3b8;margin:4px 0 7px;">URI del canal en VPS · segmentos directos del proveedor</div>' +
+      '<div style="font-weight:800;color:#67e8f9;font-size:1.05rem;">AMBAS · dos listas</div>' +
+      '<div style="font-size:.8rem;color:#94a3b8;margin:4px 0 7px;">Un archivo DIRECTA y otro CDN, con los mismos canales</div>' +
       '<button data-ape-run="both" style="background:linear-gradient(135deg,#0891b2,#22d3ee);color:#06240f;border:0;border-radius:7px;padding:7px 12px;font-size:.82rem;font-weight:800;cursor:pointer;">Generar AMBAS</button>' +
-      '<span style="font-size:.84rem;color:#64748b;margin-left:7px;">una sola lista</span></div>' +
+      '<span style="font-size:.84rem;color:#64748b;margin-left:7px;">dos archivos M3U</span></div>' +
       '</div>' +
       // Options
       '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:9px;margin-top:9px;">' +
@@ -995,6 +1030,12 @@
       '</select><div id="ape-gen-mode" style="margin-top:3px;color:#c4b5fd;font-size:.82rem;">—</div></div>' +
       '</div>';
     tab.insertBefore(panel, tab.firstChild);
+
+    var snapshotButton = document.getElementById('ape-mpd-snapshot');
+    if (snapshotButton) snapshotButton.addEventListener('click', async function () {
+      try { await downloadActiveJitMpd(true); }
+      catch (e) { status('MPD diagnóstico: ' + e.message, '#ef4444'); toast('MPD diagnóstico: ' + e.message, 'error'); }
+    });
 
     panel.querySelectorAll('[data-ape-run]').forEach(function (b) {
       b.addEventListener('click', function () {
@@ -1061,7 +1102,7 @@
       var hdrVal = ohdr ? String(ohdr.value).toLowerCase() : 'auto';
       var hdrTxt = hdrVal === 'pq' ? 'PQ' : (hdrVal === 'sdr' ? 'SDR' : 'HDR auto');
       if (om) om.textContent = (oh.checked ? 'HLS ' : '') + (od.checked ? 'DASH ' : '') +
-        (oj && oj.checked ? 'JIT ' : '') + hdrTxt + ' · .' + f.toUpperCase();
+        (oj && oj.checked ? 'JIT ' : '') + hdrTxt + ' · ' + (f === 'mpd' ? 'M3U → MPD servido' : '.' + f.toUpperCase());
     }
     ofs.forEach(function (r) {
       r.addEventListener('change', function () {

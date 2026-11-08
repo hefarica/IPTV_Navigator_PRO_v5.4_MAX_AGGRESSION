@@ -185,7 +185,7 @@ function contarMedia() {
       ` · R3 audio-channels borradas: ${cuenta.R3_extvlcopt_audio_channels_borradas}\n` +
       `lineas ${cuenta.lineas_entrada} -> ${cuenta.lineas_salida}\n`
     );
-    process.exit(0);
+    process.exit(0); // exit-ok: transformación escrita; este comando no certifica la calidad de reproducción.
   });
 
   ws.on('error', (e) => {

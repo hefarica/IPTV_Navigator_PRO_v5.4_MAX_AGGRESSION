@@ -26,8 +26,10 @@
 (function (global) {
     'use strict';
 
-    const VERSION = '1.1.0';
-    const CACHE_KEY = 'ape_quality_probe_cache_v1';
+    const VERSION = '1.2.0';
+    // Old host/profile entries have no URL provenance and cannot prove another
+    // channel's source attributes. Leave the old cache untouched, but do not use it.
+    const CACHE_KEY = 'ape_quality_probe_cache_v2_url_provenance';
     const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
     const PROBE_TIMEOUT_MS = 3000; // 3s — reduced from 5s
     const MAX_CONCURRENCY = 6;
@@ -65,6 +67,41 @@
         return `${host.toLowerCase()}|${profile}`;
     }
 
+    function probeUri(value) {
+        return String(value || '').trim().split(/\|(?=[A-Za-z][A-Za-z0-9_-]*=)/)[0];
+    }
+
+    function observedFields(data) {
+        return ['bandwidth', 'avgBandwidth', 'videoCodec', 'audioCodec', 'codecsFull',
+            'resolution', 'frameRate', 'videoRange', 'hdcpLevel', 'supplementalCodecs',
+            'colorPrimaries', 'transferCharacteristics', 'matrixCoefficients']
+            .filter(key => data[key] !== '' && data[key] !== null && data[key] !== undefined && data[key] !== 0);
+    }
+
+    function probeMatchesChannel(data, channel) {
+        const provenance = data && data.provenance;
+        const uri = probeUri(channel && channel.url);
+        return !!(uri && provenance && provenance.schema === 'ape.probe-provenance/1'
+            && provenance.scope === 'channel_url' && probeUri(provenance.requestedUrl) === uri);
+    }
+
+    function applyProbeData(channel, data) {
+        if (!data || data.error) return false;
+        if (probeMatchesChannel(data, channel)) {
+            channel._probeData = data;
+            delete channel._probeEstimate;
+            return true;
+        }
+        // Preserve useful group estimates without certifying codecs/HDR for an
+        // unprobed neighbor. Sampling frequency and provider load stay unchanged.
+        channel._probeEstimate = Object.assign({}, data, {
+            source: 'ESTIMATED_HOST_PROFILE',
+            provenance: Object.assign({}, data.provenance || {}, { scope: 'host_profile_estimate' })
+        });
+        if (channel._probeData && !probeMatchesChannel(channel._probeData, channel)) delete channel._probeData;
+        return false;
+    }
+
     // ─────────────────────────────────────────────────────────────
     // CHANNEL GROUPING: Per (Host, Profile)
     // ─────────────────────────────────────────────────────────────
@@ -97,7 +134,7 @@
     // ─────────────────────────────────────────────────────────────
 
     async function probeOne(channel) {
-        const url = channel.url || '';
+        const url = probeUri(channel.url);
         if (!url) return null;
 
         const controller = new AbortController();
@@ -142,12 +179,19 @@
 
             // C8 (2026-05-12) — pass manifest text to extractors for container detection
             // Is it a Master Playlist? (has playlists/variants)
-            if (manifest.playlists && manifest.playlists.length > 0) {
-                return extractFromMaster(manifest, text);
-            }
-
-            // It's a Media Playlist (segments only) — extract what we can
-            return extractFromMedia(manifest, resp, text);
+            const result = manifest.playlists && manifest.playlists.length > 0
+                ? extractFromMaster(manifest, text)
+                : extractFromMedia(manifest, resp, text);
+            // Never emit these URLs into playlist metadata or diagnostic logs.
+            // They bind the observed fields to the exact requested resource.
+            result.provenance = {
+                schema: 'ape.probe-provenance/1',
+                scope: 'channel_url',
+                requestedUrl: url,
+                responseUrl: resp.url || url,
+                observedFields: observedFields(result)
+            };
+            return result;
         } catch (e) {
             clearTimeout(timer);
             if (e.name === 'AbortError') {
@@ -247,7 +291,7 @@
         const audioCodec = codecParts.find(c =>
             c.startsWith('mp4a') || c.startsWith('ec-3') ||
             c.startsWith('ac-3') || c.startsWith('opus')
-        ) || 'mp4a.40.2';
+        ) || '';
 
         // Resolution string
         const resStr = (resObj.width && resObj.height)
@@ -268,7 +312,7 @@
 
         return {
             bandwidth: best.BANDWIDTH || 0,
-            avgBandwidth: best['AVERAGE-BANDWIDTH'] || Math.round((best.BANDWIDTH || 0) * 0.85),
+            avgBandwidth: best['AVERAGE-BANDWIDTH'] || 0,
             videoCodec: videoCodec,
             audioCodec: audioCodec,
             codecsFull: codecsFull,
@@ -427,10 +471,7 @@
                         const profile = ch._quickProfile || ch._profileDebug?.profile || 'P3';
                         const key = cacheKey(host, profile);
                         const data = cache[key];
-                        if (data && data.bandwidth > 0) {
-                            ch._probeData = data;
-                            enriched++;
-                        }
+                        if (applyProbeData(ch, data)) enriched++;
                     }
                     return { probed: 0, cached: Object.keys(cache).length, failed: 0, enriched, totalCombos: total, timeMs, channelsTotal: channels.length, skipped: 'CORS_BLOCKED' };
                 }
@@ -443,7 +484,7 @@
 
         for (const group of groups) {
             const existing = cache[group.key];
-            if (existing && existing.source) {
+            if (existing && existing.source && probeMatchesChannel(existing, group.sample)) {
                 cachedResults[group.key] = existing;
                 cached++;
             } else {
@@ -460,7 +501,7 @@
             const tasks = toProbe.map((group, idx) => () =>
                 probeOne(group.sample).then(async (result) => {
                     const key = group.key;
-                    const manifestSucceeded = result && !result.error && result.bandwidth > 0;
+                    const manifestSucceeded = result && !result.error && result.provenance;
 
                     if (manifestSucceeded) {
                         // ═══ PHASE 2: Binary Segment Analysis (Ground Truth) ═══
@@ -507,6 +548,7 @@
                                         }
                                         if (segResult.audioCodec) {
                                             result.audioCodecBinary = segResult.audioCodec;
+                                            result.audioCodec = segResult.audioCodec;
                                         }
                                         result.source = 'PROBED_MASTER+BINARY';
                                     }
@@ -538,6 +580,7 @@
                             }
                         }
 
+                        result.provenance.observedFields = observedFields(result);
                         result._cachedAt = Date.now();
                         cache[key] = result;
                         cachedResults[key] = result;
@@ -562,7 +605,8 @@
         // Save updated cache
         saveCache(cache);
 
-        // Apply probe data to ALL channels matching each (host, profile)
+        // Only the sampled URI receives observed data. Group neighbors receive
+        // estimates in _probeEstimate, never the sample's codec/HDR as _probeData.
         let enriched = 0;
         for (const ch of channels) {
             let host = ch._host || '';
@@ -573,10 +617,7 @@
             const key = cacheKey(host, profile);
             const data = cachedResults[key];
 
-            if (data && data.bandwidth > 0) {
-                ch._probeData = data;
-                enriched++;
-            }
+            if (applyProbeData(ch, data)) enriched++;
         }
 
         const timeMs = Math.round(performance.now() - t0);
@@ -626,7 +667,8 @@
         quickProbe: quickProbe,
         probeOne: probeOne,
         clearCache: clearCache,
-        groupChannelsByHostProfile: groupChannelsByHostProfile
+        groupChannelsByHostProfile: groupChannelsByHostProfile,
+        probeMatchesChannel: probeMatchesChannel
     };
 
     if (typeof global !== 'undefined') {
