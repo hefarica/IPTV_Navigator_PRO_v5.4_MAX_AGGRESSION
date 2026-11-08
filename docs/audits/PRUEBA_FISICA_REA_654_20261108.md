@@ -219,3 +219,83 @@ comportamiento identico del camino sin overlay lo desmiente como causa unica.
 
 La cadena APK -> efectos REA no esta «rota en la presentacion». **Presenta, y despues se cae.** Son dos
 problemas distintos y el segundo es el que hay que resolver.
+
+---
+
+# 9 · CAUSA CERRADA: es el jugador, no la red
+
+## 9.1 · El experimento que faltaba
+
+Se sirvio un **HLS local en la LAN**, elimininando la WAN por completo:
+
+```bash
+ffmpeg -f lavfi -i "testsrc2=size=1920x1080:rate=30" -f lavfi -i "sine=frequency=440" \
+  -t 30 -c:v libx264 -preset ultrafast -g 60 -b:v 4000k -c:a aac -b:a 128k \
+  -f hls -hls_time 4 -hls_playlist_type vod -hls_segment_filename "seg%03d.ts" "master.m3u8"
+python -m http.server 8123 --bind 0.0.0.0 -d <dir>
+```
+
+Resultado: 9 ficheros, 15,38 MB, **segmentos de 4 s**, 1080p AVC.
+Alcanzable desde el TV, verificado antes de reproducir:
+
+```
+adb shell 'echo -e "GET /master.m3u8 HTTP/1.0\r\n\r\n" | toybox nc -w 4 192.168.1.9 8123'
+  -> HTTP/1.0 200 OK · Content-Length: 337 · #EXTM3U
+```
+
+## 9.2 · Se atasca IGUAL, sin red de por medio
+
+```
+t+3s  -> 302.261 B   <- VIDEO (patron testsrc2 visible)
+t+7s  ->  17.631 B   <- negro
+t+12s ->  23.852 B   <- negro
+t+18s ->  23.781 B   <- negro
+
+BUFFERING=13   tracks_sin_video=2   PLAYING=4
+```
+
+Captura a t+3s: la pantalla muestra el patron de barras de color con el **timestamp
+`00:00:00.260`**. Es decir: **a los 3 segundos de reloj el video va por 0,26 s de contenido.**
+Pinta el arranque y se congela casi de inmediato.
+
+## 9.3 · La pista concreta: `global_beat` deja de publicar
+
+```
+ApePlayer: REARM global_beat: guard sin publicar 13376ms (tick=9)
+ApePlayer: REARM global_beat: guard sin publicar 15377ms (tick=10)
+ApePlayer: REARM global_beat: guard sin publicar 17377ms (tick=11)
+ApePlayer: REARM global_beat: guard sin publicar 19378ms (tick=12)
+```
+
+El propio watchdog de la app advierte de que su latido **no se esta publicando**, y el contador sube
+sin recuperarse. El player entonces se queda en `BUFFERING` y pierde la pista de video.
+
+## 9.4 · Tabla de descartes
+
+| Hipotesis | Como se probo | Resultado |
+|---|---|---|
+| Es la red / el WAN | HLS local en LAN, 15 MB, segmentos 4 s | **DESCARTADA** - atasca igual |
+| Es el overlay REA (`ReaBridge`/`ReaAdaptiveEffect`) | `PlayerActivity` estandar de la misma APK, clave `-e url` | **DESCARTADA** - falla identico |
+| Es el codec | AVC 1080p y HEVC | **DESCARTADA** - ambos fallan |
+| Es el manifiesto | 4 fuentes distintas (mux, akamai, hevc, local ffmpeg) | **DESCARTADA** - todas fallan |
+| Es SELinux `dmabuf` | El camino sin overlay no usa el efecto y falla igual | **DESCARTADA como causa unica** |
+| **El `ApePlayer` se atasca** | Todo lo anterior + `global_beat` sin publicar | **CONSISTENTE con toda la evidencia** |
+
+## 9.5 · Veredicto final de esta frontera
+
+| Frontera | Estado |
+|---|---|
+| APK REA instalada y ejecutable | **SI** (vc654) |
+| Declara con honestidad | **SI** (`wire intacto`, `neverDownscale=true`) |
+| Decodifica con hardware | **SI** (AVC 1080p, `c2.amlogic.avc.decoder`) |
+| **Presenta imagen** | **SI, el arranque** (patron visible, timestamp 0.26 s) |
+| **Sostiene la reproduccion** | **NO** - se congela a los ~0,26 s de contenido |
+| Causa | **El `ApePlayer` deja de publicar su `global_beat` y se queda en BUFFERING** |
+| Red, overlay REA, codec, manifiesto | **Los cuatro, descartados con medicion** |
+
+**Esto no es un problema de la lista, ni del LAB, ni del VPS, ni del JIT.** Es un defecto del
+reproductor de la APK, reproducible con un HLS generado por ffmpeg en la misma LAN.
+
+**Siguiente paso tecnico (necesita el fuente):** revisar el ciclo `global_beat` / `REARM` en
+`ApePlayer.kt` — el guard no publica y nadie lo rescata. Sin el fuente solo puedo seguir midiendo
+sintomas.
