@@ -2505,3 +2505,56 @@ L1860 tab-generator  L2733 tab-export     L3077 tab-telemetry L3491 tab-share
 ```
 
 (`tab-connection` abre en L1130 y es el activo por defecto.)
+
+---
+
+# 39 · El panel, verificado con un DOM real (no solo ubicado)
+
+## 39.1 · Por que un test de integracion y no una captura
+
+Ni `file://` (origen `null` rompe el fetch) ni Chrome headless funcionaron en este entorno. Un test que
+solo mira "el archivo existe y esta en la pestaña correcta" **no prueba que el panel funcione**. Se
+escribio `tools/audit/test_image_panel.js`: un DOM minimo en Node, `fetch` interceptado y 13
+comprobaciones sobre lo que el panel realmente hace.
+
+## 39.2 · Lo que comprueba
+
+```
+OK  expone APE_IMAGE_PANEL
+OK  getState devuelve config
+OK  se pidieron config+capacity+state
+OK  renderizo el titulo
+OK  renderizo la capacidad
+OK  renderizo el estado vivo
+OK  creo el selector de destino
+OK  creo el boton aplicar
+OK  no inyecto HTML desde la respuesta
+OK  el boton Aplicar hace POST
+OK  el POST lleva target
+OK  el POST lleva receta
+OK  el POST lleva parametros vivos
+```
+
+## 39.3 · Los tres fallos que destapo, y de quien eran
+
+La primera pasada dio **3 FALLAN**. Los tres eran **del test, no del panel**:
+
+| Fallo | Causa real |
+|---|---|
+| "se pidieron config+capacity+state" | el test buscaba `c.init` ausente; `api()` **siempre** pasa un init con `cache:'no-store'`. Se corrigio a "metodo distinto de POST" |
+| "el POST lleva target" | el DOM de prueba no implementaba `select.value`. El panel hace `document.getElementById('aip-target').value`, que en un navegador devuelve el `<option selected>` |
+| "el POST lleva receta" | igual |
+
+Se implemento `value`/`selected` en el DOM de prueba y el POST pasa a llevar `target`, `recipe` y los
+parametros vivos. **El panel estaba bien; el instrumento estaba mal.**
+
+## 39.4 · Lo que este test NO prueba
+
+- **CSS ni layout**: el DOM de prueba no calcula estilos. Que el panel se vea bien en la pestaña
+  Telemetria solo se confirma a ojo en el navegador.
+- **El `fetch` real contra el VPS**: se intercepta. La conectividad ya se verifico aparte
+  (`OPTIONS 204`, `ACAO: *`, GET/POST 200).
+- **El polling cada 3 s**: en el test `setInterval` es un stub.
+
+Queda declarado: el panel **se monta, renderiza y envia el POST correcto**; su aspecto visual no esta
+verificado por mi.
