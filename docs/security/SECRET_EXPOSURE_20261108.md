@@ -74,3 +74,38 @@ que es lo que ya hacen los tests nuevos (`rea-v24-e2e-playlist.js`, `rea-6k-lab-
 - No afirma que las credenciales no se hayan usado por terceros: eso no es medible desde aquí.
 - No afirma el número de personas con acceso al remoto: no es medible desde aquí.
 - Las cifras de ficheros y URIs salen de `git ls-files` + parseo de URL por segmentos, y son reproducibles.
+
+## 6 · Prevención: gate de trinquete (implementado)
+
+`tools/security/provider_credential_scan.js` detecta la firma Xtream (`host/usuario/clave/<id>`) en los
+ficheros **trackeados**, la compara con `tools/security/provider_credential_baseline.json` y **falla si
+aparece un fichero nuevo**.
+
+```
+node tools/security/provider_credential_scan.js            # verifica  (exit 0 = sin fuga nueva)
+node tools/security/provider_credential_scan.js --update   # regenera la linea base tras limpiar
+```
+
+Es un **trinquete**, no un censo: no exige que los históricos desaparezcan de golpe (eso depende de la
+rotación), exige que **ninguno nuevo entre**. Probado en cuatro pasos: base 22 ficheros -> verde;
+fuga ficticia -> `FUGA_NUEVA (1)` exit 1; limpieza -> verde.
+
+### 6.1 · Dos números distintos, y por qué
+
+| Método | Ficheros | URIs |
+|---|---:|---:|
+| Censo por parseo de URL (sección 1) | 19 | ~640 |
+| Gate por regex Xtream | **22** | **71** |
+
+No se contradicen: el censo parsea todas las URLs y cuenta ocurrencias; el gate aplica una firma más
+estrecha (4 segmentos con id numérico) y compara por **fichero**, no por ocurrencia. El gate detecta
+**más ficheros** (22 > 19) y cuenta **menos URIs** (71 < 640, porque `muestra.json` concentra la mayoría
+y su estructura no encaja segmento a segmento). Para su función — detectar entradas nuevas — es
+suficiente y conservador.
+
+### 6.2 · Pendiente de decisión del operador
+
+El gate **no está cableado** en `tools/audit/verify_rea_patch.ps1` porque eso cambiaría el recibo de
+aceptación de 23 a 24 gates, y ese recibo es un contrato que la auditoría externa referencia. Cablearlo
+requiere actualizar `tools/audit/rea_patch_acceptance.json` y su conteo esperado: **decisión del
+operador**, no un cambio silencioso.
