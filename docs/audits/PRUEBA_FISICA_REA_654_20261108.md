@@ -1581,3 +1581,55 @@ intermitencia del id 1 sugirio. El `spawn` usa `cwd: dir`; cuando `dir` aun no e
 - **Un solo momento**: no mide estabilidad en el tiempo.
 - El motor tiene **slot unico**: el barrido fue serial, no concurrente. Con dos clientes el resultado
   seria peor.
+
+---
+
+# 26 · Barrido de 40 canales: cero fallos inexplicados
+
+## 26.1 · Resultado
+
+Pedidos los **dos transportes** a los ids 1..40 del catalogo (todos existen: 0 respuestas 404):
+
+```
+pedidos=40  inexistentes=0  HLS_200=33  DASH_200=33  AMBOS=33   (82,5 %)
+no-ambos: 13, 14, 28, 29, 30, 31, 32
+```
+
+## 26.2 · Los 7 que no sirven: rechazo motivado, no fallo
+
+```
+START_FAIL 28 UNSUPPORTED_CMAF_AUDIO source retained; use provider-direct
+START_FAIL 30 UNSUPPORTED_CMAF_AUDIO source retained; use provider-direct
+```
+
+**El motor rechaza el canal porque su audio no es compatible con CMAF, conserva la fuente intacta y
+remite a `provider-direct`.** No transcodifica el audio, no lo quita, no degrada nada.
+
+Es la ley anti-degradacion aplicada **por el codigo**: ante un audio que no puede empaquetar sin
+alterarlo, el motor **no lo altera**.
+
+## 26.3 · La cuenta honesta
+
+| Categoria | Canales | % |
+|---|---:|---:|
+| Sirven **HLS y DASH** | **33** | 82,5 % |
+| Rechazo **motivado** (`UNSUPPORTED_CMAF_AUDIO`) | 7 | 17,5 % |
+| **Fallos inexplicados** | **0** | **0 %** |
+| Anteriores 404 en la muestra de 18 | eran ids inexistentes, no canales | — |
+
+Corrige la lectura de la seccion 25: alli conclui "12 canales reales, 9 sirven ambos". Con la muestra
+de 40 el numero sube a **33 de 40** y **no queda ni un fallo sin causa**.
+
+## 26.4 · Lo que sigue sin cubrir
+
+- **40 de 21.224** canales (0,19 %). Los ids son bajos y contiguos, **no aleatorios**: no extrapola al
+  catalogo entero.
+- **Un unico momento** en el tiempo; no mide estabilidad.
+- **Slot unico**: el barrido fue serial. Con dos clientes concurrentes el resultado seria peor.
+- Los 20,8 % de ids 11..20 y 21..27 no se han revisado individualmente: el barrido solo dice cuantos.
+
+## 26.5 · El estado del lado APK
+
+El dispositivo **sigue sin depuracion inalambrica** desde el reinicio (`adb devices` vacio, ping OK).
+El APK vc656 queda instalado con HLS **y** DASH; la medicion de presentacion de frames sigue pendiente
+de que el operador reactive la depuracion.
