@@ -3274,3 +3274,70 @@ lista .m3u8  -> wrapper conserva el perfil declarado      [49: 8/8]
 ```
 
 **Solo queda el ultimo salto: que la APK presente esos frames en pantalla.**
+
+---
+
+# 50 · Balance de la sesion y el unico eslabon que falta
+
+## 50.1 · Verificado en el APK 656 (sin tocar el dispositivo)
+
+El binario `artifacts/APE_REA_656_HLS_DASH_20261108.apk` (26,66 MB, sha256 `4bb5a7a1…`) **contiene** las
+clases necesarias, comprobado leyendo los 8 dex:
+
+```
+OK    media3/exoplayer/dash/DashMediaSource
+OK    media3/exoplayer/dash/DashMediaSource$Factory
+OK    media3/exoplayer/hls/HlsMediaSource
+OK    media3/exoplayer/hls/HlsMediaSource$Factory
+```
+
+Y `build.gradle.kts` L98 declara `androidx.media3:media3-exoplayer-dash:1.3.1`.
+
+El codigo de `ApePlayer.openMedia` detecta el transporte por extension:
+
+```kotlin
+val isDash = url.substringBefore('?').lowercase().endsWith(".mpd")
+DashMediaSource.Factory(ds).createMediaSource(MediaItem.fromUri(url))
+```
+
+Usa `substringBefore('?')`, asi que una query no rompe la deteccion. **El binario y el codigo estan
+listos**; lo que faltaba era el manifiesto, y eso se corrigio en la seccion 47.
+
+## 50.2 · Lo que queda verificado de punta a punta (servidor)
+
+| Eslabon | Evidencia |
+|---|---|
+| lista .m3u8 conserva el perfil | 8/8 (§49) |
+| /pulse resuelve al JIT | verificado en sesiones previas |
+| GET master arranca el job | job vivo es condicion previa (§48) |
+| ffmpeg aplica la receta | framemd5: 0/50 frames iguales (§44) |
+| master declara codec/bitrate reales | hvc1.2.4.L120.B0, 10,8 Mbps (§48) |
+| MPD conforme | 0 vacios, XML valido, codecs completo (§47) |
+| segmentos CMAF se decodifican | styp/sidx/moof/mdat, 60 frames (§48) |
+| el APK puede abrir DASH | clases presentes en el dex (§50) |
+
+## 50.3 · El unico eslabon que falta
+
+**Que la APK presente los frames en pantalla.** Exige el dispositivo, y el operador indico
+explicitamente que no se toque el televisor porque lo esta usando.
+
+No se declara verificado. Se declara **listo para probar**.
+
+## 50.4 · Balance honesto de la sesion
+
+**45 defectos corregidos y verificados**, entre ellos tres que llevaban toda la sesion sin explicacion:
+
+1. **La carrera de fichero obsoleto** (§48): el master se servia 200 con los segmentos de un trabajo
+   muerto. Es el sintoma exacto de "player sin imagen".
+2. **`IDLE_MS=20000`** (§45): dos reinicios y ~18 s de ventana perdidos por cada hueco del cliente.
+3. **Las variantes `.5` colapsadas a P4** (§46): un canal que declara 6K servido como 720p, en
+   silencio, en produccion.
+
+**Lo que NO se logro:**
+
+- QHD en este host: 1,05-1,19x contra el 1,2x exigido. **No es un defecto, es capacidad.**
+- UHD: 0,25x. Inviable sin mas vCPU o GPU.
+- La presentacion en pantalla.
+
+**Decisiones que quedan al operador:** subir QHD sabiendo que no llega, pushear los 724 commits, y
+elegir transporte por defecto.
