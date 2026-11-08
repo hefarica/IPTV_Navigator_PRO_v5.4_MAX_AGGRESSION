@@ -193,3 +193,8 @@ _inbox_EQUIPO_ADN/
 _incoming/
 _t16tmp/
 /_map_lua_modules.py
+
+# [2026-11-08] salidas regenerables con credenciales reales (ver docs/security/SECRET_EXPOSURE_20261108.md)
+tools/lab/out_regression_url*.m3u8
+tools/lab/muestra.json
+tools/lab/probes_url.json
