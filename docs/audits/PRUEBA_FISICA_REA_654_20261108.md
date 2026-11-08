@@ -1110,6 +1110,7 @@ APK compilado y verificado:
 artifacts/APE_REA_655_EFFECTS_FIX_20261108.apk
 package com.ape.crystalagent  versionCode 655
 versionName 3.9.5-adb-firetv-shim-selfheal
+bytes   sha256 
 ```
 
 Instalado y medido en `onn. 4K Streaming Box` (Amlogic s4, Android 14).
@@ -1130,3 +1131,5 @@ shader este corregido.
 
 **Honestidad sobre el balance:** se gana reproduccion, se pierde enhancement. Eso es exactamente lo que la
 doctrina exige cuando el motor no esta disponible: **reproducir y declarar la verdad**, no fingir mejora.
+
+**Re-verificacion tras corregir la version (vc655):** 2/2 sesiones con imagen (667.885 B y 843.816 B). El primer empaquetado salio con versionCode 654 por un `replace` que no aplico — se detecto al comprobar la identidad con `aapt2` antes de entregar, se corrigio y se volvio a verificar. Queda registrado.
