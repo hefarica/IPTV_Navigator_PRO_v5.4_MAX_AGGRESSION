@@ -3846,3 +3846,93 @@ GET  /jit/image/rules/resolve      que reglas aplican a una fuente real
 ```
 
 **Test de integracion del panel: 24/24.**
+
+---
+
+# 56 · Modo REAL vs EMULADO — la resolucion siempre se puede colocar
+
+## 56.1 · La salvedad del operador
+
+> *"Pero con una salvedad, que si se puede colocar esa resolucion y hay una pestaña
+> que se debe seleccionar Resolucion Salida emulado/real"*
+
+**El bloqueo por decoder era demasiado duro.** Ahora cada regla declara su `mode`:
+
+| Modo | Que hace |
+|---|---|
+| **REAL** | Exige que el decoder del device decodifique la resolucion. Si no llega, se bloquea con el motivo. |
+| **EMULADO** | **La resolucion se acepta igual.** Se avisa de que el device no la decodifica de forma nativa y se declara como emulada. |
+
+**Coincide con la regla ya vigente del repo:** *"CON SOLO 4K Activacion declarada PARA
+Los 6 perfiles 6K EMULADOS (la capa .5), ES UNA REGLA"*. Los cinco emulados de la
+tabla son justo los perfiles `.5`: **P4.5, P4.5, P3.5, P1.5, P0.5**.
+
+## 56.2 · Medido — el mismo caso, dos modos
+
+**720p@30 -> 6K en ONN 4K, modo REAL:**
+```
+modo     : REAL (excede decoder: True)
+IMPOSIBLE: el decoder de ONN 4K (Amlogic s4) llega a 4096x4096;
+           5760x3240 NO se puede decodificar en ese device.
+           Cambia la regla a EMULADO si quieres declararla igual.
+```
+
+**La MISMA regla, modo EMULADO:**
+```
+modo     : EMULADO (excede decoder: True)
+AVISO    : EMULADO: 5760x3240 supera el decoder de ONN 4K (4096x4096).
+           Se declara como resolucion emulada; el device recibe lo que puede
+           y la etiqueta NO miente sobre el bitstream.
+IMPOSIBLE: ninguno -> la regla SE PUEDE COLOCAR
+```
+
+Y **4K@60 -> 8K en Shield EMULADO**: `IMPOSIBLE: ninguno`, se puede colocar.
+
+## 56.3 · La tabla con su columna MODO
+
+```
+ ENTRADA          SALIDA           FPS         CODEC  RECETA    DITHER          MODO
+ res       fps    res       fps    in   out    (A)    (A)       (A)             REAL/EMU
+----------------------------------------------------------------------------------------
+ 720p      60    3840x2160       60   30    hvc1   balanced  error_diffusion REAL
+           60    3840x2160       60   60    hvc1   light     error_diffusion REAL
+           60    1920x1080       60   30    hvc1   light     error_diffusion REAL
+           60    5760x3240       60   30    hvc1   temporal  error_diffusion EMULADO << 
+           30    2560x1440       30   60    hvc1   light     error_diffusion REAL
+           30    3840x2160       30   30    hvc1   balanced  error_diffusion REAL
+           30    5760x3240       30   30    hvc1   temporal  error_diffusion EMULADO << 
+ 1080p     60    3840x2160       60   30    hvc1   light     error_diffusion REAL
+           50    1920x1080       50   50    hvc1   none      error_diffusion REAL
+           30    3840x2160       30   60    hvc1   light     error_diffusion REAL
+           30    5760x3240       30   30    hvc1   temporal  error_diffusion EMULADO << 
+ 4K        60    3840x2160       60   60    hvc1   none      error_diffusion REAL
+           60    5760x3240       60   30    hvc1   light     error_diffusion EMULADO << 
+           30    7680x4320       30   30    hvc1   balanced  error_diffusion EMULADO << 
+ 480p      30    1920x1080       30   30    hvc1   balanced  ordered         REAL
+           30    3840x2160       30   30    hvc1   temporal  ordered         REAL
+```
+
+**REAL: 10 · EMULADO: 5 · total: 15** (mas los que el operador anada a mano).
+
+## 56.4 · Despliegue del panel
+
+- `/var/www/html/js/ape-v9/vps-image-panel.js` — **40.562 -> 41.086 B** con la columna MODO
+- `/var/www/html/index-v4.html` — div en `#tab-telemetry` + script; **289.704 -> 289.833 B**
+- Backup: `/var/backups/ape-deploy/20261108T211310Z/index-v4.html`
+
+Revertir: `cp -a /var/backups/ape-deploy/20261108T211310Z/index-v4.html /var/www/html/index-v4.html`
+
+## 56.5 · CORS: un defecto que habria roto TODOS los botones
+
+`Access-Control-Allow-Methods` decia solo `GET, HEAD, OPTIONS`. El panel vive en otro
+origen (`127.0.0.1:5500` en local, el VPS en produccion), asi que el navegador habria
+rechazado **todos** los POST: declarar, auto, guardar reglas, gobernanza.
+
+Corregido en `server.js` (no en nginx, para no tocar la capa protegida):
+
+```
+Access-Control-Allow-Methods: GET, HEAD, POST, DELETE, OPTIONS
+Access-Control-Max-Age: 600
+```
+
+**Verificado:** `OPTIONS` permite POST y DELETE; POST con Origin local devuelve **200**.

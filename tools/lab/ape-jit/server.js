@@ -561,26 +561,26 @@ const INPUT_BANDS = {
  * Es exactamente el caso que el operador pidio. Se pueden editar y borrar. */
 const RULES_SEED = [
   // === 720p @60 -> distintas salidas y CADENCIAS ==
-  { id: 'r-720-60-4k-30',  input: '720p', inFps: 60, outW: 3840, outH: 2160, outFps: 30, codec: 'hvc1', recipe: 'balanced', dither: 'error_diffusion', profile: 'P4', label: '720p60 -> 4K30' },
-  { id: 'r-720-60-4k-60',  input: '720p', inFps: 60, outW: 3840, outH: 2160, outFps: 60, codec: 'hvc1', recipe: 'light', dither: 'error_diffusion', profile: 'P4', label: '720p60 -> 4K60' },
-  { id: 'r-720-60-1080-30', input: '720p', inFps: 60, outW: 1920, outH: 1080, outFps: 30, codec: 'hvc1', recipe: 'light', dither: 'error_diffusion', profile: 'P4', label: '720p60 -> 1080p30' },
-  { id: 'r-720-60-6k-30',  input: '720p', inFps: 60, outW: 5760, outH: 3240, outFps: 30, codec: 'hvc1', recipe: 'temporal', dither: 'error_diffusion', profile: 'P4', label: '720p60 -> 6K30' },
+  { id: 'r-720-60-4k-30',  input: '720p', inFps: 60, outW: 3840, outH: 2160, outFps: 30, codec: 'hvc1', recipe: 'balanced', dither: 'error_diffusion', mode: 'real', profile: 'P4', label: '720p60 -> 4K30' },
+  { id: 'r-720-60-4k-60',  input: '720p', inFps: 60, outW: 3840, outH: 2160, outFps: 60, codec: 'hvc1', recipe: 'light', dither: 'error_diffusion', mode: 'real', profile: 'P4', label: '720p60 -> 4K60' },
+  { id: 'r-720-60-1080-30', input: '720p', inFps: 60, outW: 1920, outH: 1080, outFps: 30, codec: 'hvc1', recipe: 'light', dither: 'error_diffusion', mode: 'real', profile: 'P4', label: '720p60 -> 1080p30' },
+  { id: 'r-720-60-6k-30',  input: '720p', inFps: 60, outW: 5760, outH: 3240, outFps: 30, codec: 'hvc1', recipe: 'temporal', dither: 'error_diffusion', mode: 'emulado', profile: 'P4.5', label: '720p60 -> 6K30 EMULADO' },
   // === 720p @30 -> salidas y cadencias, INCLUIDA SUBIDA a 60 ==
-  { id: 'r-720-30-1440-60', input: '720p', inFps: 30, outW: 2560, outH: 1440, outFps: 60, codec: 'hvc1', recipe: 'light', dither: 'error_diffusion', profile: 'P4', label: '720p30 -> 2K60' },
-  { id: 'r-720-30-4k-30',  input: '720p', inFps: 30, outW: 3840, outH: 2160, outFps: 30, codec: 'hvc1', recipe: 'balanced', dither: 'error_diffusion', profile: 'P4', label: '720p30 -> 4K30' },
-  { id: 'r-720-30-6k-30',  input: '720p', inFps: 30, outW: 5760, outH: 3240, outFps: 30, codec: 'hvc1', recipe: 'temporal', dither: 'error_diffusion', profile: 'P4', label: '720p30 -> 6K30' },
+  { id: 'r-720-30-1440-60', input: '720p', inFps: 30, outW: 2560, outH: 1440, outFps: 60, codec: 'hvc1', recipe: 'light', dither: 'error_diffusion', mode: 'real', profile: 'P4', label: '720p30 -> 2K60' },
+  { id: 'r-720-30-4k-30',  input: '720p', inFps: 30, outW: 3840, outH: 2160, outFps: 30, codec: 'hvc1', recipe: 'balanced', dither: 'error_diffusion', mode: 'real', profile: 'P4', label: '720p30 -> 4K30' },
+  { id: 'r-720-30-6k-30',  input: '720p', inFps: 30, outW: 5760, outH: 3240, outFps: 30, codec: 'hvc1', recipe: 'temporal', dither: 'error_diffusion', mode: 'emulado', profile: 'P4.5', label: '720p30 -> 6K30 EMULADO' },
   // === 1080p @50/60 ===
-  { id: 'r-1080-60-4k-30', input: '1080p', inFps: 60, outW: 3840, outH: 2160, outFps: 30, codec: 'hvc1', recipe: 'light', dither: 'error_diffusion', profile: 'P3', label: '1080p60 -> 4K30' },
-  { id: 'r-1080-50-1080-50', input: '1080p', inFps: 50, outW: 1920, outH: 1080, outFps: 50, codec: 'hvc1', recipe: 'none', dither: 'error_diffusion', profile: 'P3', label: '1080p50 -> 1080p50' },
-  { id: 'r-1080-30-4k-60', input: '1080p', inFps: 30, outW: 3840, outH: 2160, outFps: 60, codec: 'hvc1', recipe: 'light', dither: 'error_diffusion', profile: 'P3', label: '1080p30 -> 4K60' },
-  { id: 'r-1080-30-6k-30', input: '1080p', inFps: 30, outW: 5760, outH: 3240, outFps: 30, codec: 'hvc1', recipe: 'temporal', dither: 'error_diffusion', profile: 'P3', label: '1080p30 -> 6K30' },
+  { id: 'r-1080-60-4k-30', input: '1080p', inFps: 60, outW: 3840, outH: 2160, outFps: 30, codec: 'hvc1', recipe: 'light', dither: 'error_diffusion', mode: 'real', profile: 'P3', label: '1080p60 -> 4K30' },
+  { id: 'r-1080-50-1080-50', input: '1080p', inFps: 50, outW: 1920, outH: 1080, outFps: 50, codec: 'hvc1', recipe: 'none', dither: 'error_diffusion', mode: 'real', profile: 'P3', label: '1080p50 -> 1080p50' },
+  { id: 'r-1080-30-4k-60', input: '1080p', inFps: 30, outW: 3840, outH: 2160, outFps: 60, codec: 'hvc1', recipe: 'light', dither: 'error_diffusion', mode: 'real', profile: 'P3', label: '1080p30 -> 4K60' },
+  { id: 'r-1080-30-6k-30', input: '1080p', inFps: 30, outW: 5760, outH: 3240, outFps: 30, codec: 'hvc1', recipe: 'temporal', dither: 'error_diffusion', mode: 'emulado', profile: 'P3.5', label: '1080p30 -> 6K30 EMULADO' },
   // === 4K: conservar y subir ===
-  { id: 'r-4k-60-4k-60', input: '4K', inFps: 60, outW: 3840, outH: 2160, outFps: 60, codec: 'hvc1', recipe: 'none', dither: 'error_diffusion', profile: 'P1', label: '4K60 -> 4K60' },
-  { id: 'r-4k-60-6k-30', input: '4K', inFps: 60, outW: 5760, outH: 3240, outFps: 30, codec: 'hvc1', recipe: 'light', dither: 'error_diffusion', profile: 'P1', label: '4K60 -> 6K30' },
-  { id: 'r-4k-30-8k-30', input: '4K', inFps: 30, outW: 7680, outH: 4320, outFps: 30, codec: 'hvc1', recipe: 'balanced', dither: 'error_diffusion', profile: 'P1', label: '4K30 -> 8K30' },
+  { id: 'r-4k-60-4k-60', input: '4K', inFps: 60, outW: 3840, outH: 2160, outFps: 60, codec: 'hvc1', recipe: 'none', dither: 'error_diffusion', mode: 'real', profile: 'P1', label: '4K60 -> 4K60' },
+  { id: 'r-4k-60-6k-30', input: '4K', inFps: 60, outW: 5760, outH: 3240, outFps: 30, codec: 'hvc1', recipe: 'light', dither: 'error_diffusion', mode: 'emulado', profile: 'P1.5', label: '4K60 -> 6K30 EMULADO' },
+  { id: 'r-4k-30-8k-30', input: '4K', inFps: 30, outW: 7680, outH: 4320, outFps: 30, codec: 'hvc1', recipe: 'balanced', dither: 'error_diffusion', mode: 'emulado', profile: 'P0.5', label: '4K30 -> 8K30 EMULADO' },
   // === 480p ===
-  { id: 'r-480-30-1080-30', input: '480p', inFps: 30, outW: 1920, outH: 1080, outFps: 30, codec: 'hvc1', recipe: 'balanced', dither: 'ordered', profile: 'P5', label: '480p30 -> 1080p30' },
-  { id: 'r-480-30-4k-30', input: '480p', inFps: 30, outW: 3840, outH: 2160, outFps: 30, codec: 'hvc1', recipe: 'temporal', dither: 'ordered', profile: 'P5', label: '480p30 -> 4K30' }
+  { id: 'r-480-30-1080-30', input: '480p', inFps: 30, outW: 1920, outH: 1080, outFps: 30, codec: 'hvc1', recipe: 'balanced', dither: 'ordered', mode: 'real', profile: 'P5', label: '480p30 -> 1080p30' },
+  { id: 'r-480-30-4k-30', input: '480p', inFps: 30, outW: 3840, outH: 2160, outFps: 30, codec: 'hvc1', recipe: 'temporal', dither: 'ordered', mode: 'real', profile: 'P5', label: '480p30 -> 4K30' }
 ];
 
 let transformRules = [];
@@ -643,6 +643,7 @@ function rulesForInput(w, h, fps) {
       // que hace con la cadencia: subir interpola, bajar decima, igual conserva
       filter: ruleFilterChain(m.rule, srcFps).filter,
       fpsCostNote: ruleFilterChain(m.rule, srcFps).fpsCostNote,
+      mode: m.rule.mode || 'real',
       fpsOp: !m.rule.outFps ? 'preserve'
         : (!srcFps ? 'declared'
           : (m.rule.outFps > srcFps ? 'INTERPOLATE (' + srcFps + '->' + m.rule.outFps + ')'
@@ -713,9 +714,14 @@ function upsertRule(patch) {
   if (patch.recipe && !RECIPE_PRESETS[patch.recipe]) errs.push('recipe desconocida: ' + patch.recipe);
   if (errs.length) return { ok: false, errors: errs };
 
+  const mode = String(patch.mode || 'real');
+  if (mode !== 'real' && mode !== 'emulado') errs.push('mode debe ser real o emulado: ' + mode);
   const row = {
     id,
     input,
+    // REAL = el device lo decodifica de verdad. EMULADO = se declara la
+    // resolucion aunque el decoder no la alcance; se marca como emulada.
+    mode,
     inFps: inFps || 0,      // 0 = cualquier cadencia
     outFps: outFps || 0,
     outW: outW % 2 === 0 ? outW : outW + 1,
@@ -809,6 +815,11 @@ function autoConfig(opts) {
   const outW = Math.max(16, Math.round(Number(o.outW) || 3840));
   const outH = Math.max(16, Math.round(Number(o.outH) || 2160));
   const inFps = Number(o.inFps) || 0;
+  /* MODO: si el operador declara la regla como EMULADA, la resolucion se acepta
+   * aunque el decoder no la alcance. No se bloquea: se declara.
+   * La regla del operador: "si se puede colocar esa resolucion; hay una pestaña
+   * que se debe seleccionar Resolucion Salida emulado/real". */
+  const mode = String(o.mode || 'real') === 'emulado' ? 'emulado' : 'real';
   const playerId = String(o.player || 'onn-4k');
   const caps = PLAYER_CAPS[playerId];
   if (!caps) return { ok: false, error: 'player desconocido: ' + playerId };
@@ -825,13 +836,24 @@ function autoConfig(opts) {
   const impossible = [];
   const warnings = [];
 
-  if (outW > caps.maxW || outH > caps.maxH) {
-    impossible.push('el decoder de ' + caps.label + ' llega a ' + caps.maxW + 'x' + caps.maxH
-      + '; ' + outW + 'x' + outH + ' NO se puede decodificar en ese device');
+  /* El limite del decoder SOLO es bloqueante en modo REAL. En EMULADO se acepta
+   * la resolucion y se declara que el device no la decodifica de forma nativa. */
+  const exceedsDecoder = (outW > caps.maxW || outH > caps.maxH);
+  if (exceedsDecoder) {
+    if (mode === 'real') {
+      impossible.push('el decoder de ' + caps.label + ' llega a ' + caps.maxW + 'x' + caps.maxH
+        + '; ' + outW + 'x' + outH + ' NO se puede decodificar en ese device. '
+        + 'Cambia la regla a EMULADO si quieres declararla igual.');
+    } else {
+      warnings.push('EMULADO: ' + outW + 'x' + outH + ' supera el decoder de ' + caps.label
+        + ' (' + caps.maxW + 'x' + caps.maxH + '). Se declara como resolucion emulada; '
+        + 'el device recibe lo que puede y la etiqueta NO miente sobre el bitstream.');
+    }
   }
   const codecCat = CODEC_CATALOG[codec.id];
   if (codecCat && codecCat.family === 'avc' && outPx > 1920 * 1080) {
-    impossible.push('AVC por encima de 1080p no es seguro en decoders Android');
+    const msg = 'AVC por encima de 1080p no es seguro en decoders Android';
+    if (mode === 'real') impossible.push(msg); else warnings.push('EMULADO: ' + msg);
   }
   if (fps.op === 'INTERPOLATE') {
     warnings.push('interpolar ' + inFps + '->' + fps.outFps + ' usa minterpolate: NO recupera informacion y cuesta ~46x tiempo real a 1080p');
@@ -861,6 +883,12 @@ function autoConfig(opts) {
 
   return {
     ok: true,
+    mode,
+    // que significa REAL vs EMULADO, en una linea, para que el panel lo muestre
+    modeMeaning: mode === 'real'
+      ? 'REAL: se exige que el decoder del device decodifique la resolucion. Si no llega, se bloquea.'
+      : 'EMULADO: se declara la resolucion aunque el decoder no la alcance. Se avisa y la etiqueta no miente.',
+    exceedsDecoder,
     input: { band, width: inW, height: inH, fps: inFps || null, pixels: inPx },
     output: { width: outW, height: outH, pixels: outPx },
     areaRatio: Number(areaRatio.toFixed(2)),
@@ -877,6 +905,7 @@ function autoConfig(opts) {
     hostCost,
     // resumen para el boton de la fila
     suggestion: {
+      mode,
       input: band, inFps: inFps || null,
       outW, outH, outFps: fps.outFps || null,
       codec: codec.id, recipe: recipe.id, dither: dither.id,
@@ -1730,7 +1759,12 @@ function redactUpstreamUrls(message) { return String(message).replace(/https?:\/
 
 function setBaseHeaders(res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
+  /* POST y DELETE estaban fuera de la lista, asi que el navegador rechazaba
+   * con preflight CORS TODOS los botones del panel: declarar, auto, guardar
+   * reglas, gobernanza. Medido: OPTIONS devolvia "GET, HEAD, OPTIONS".
+   * El panel vive en otro origen (127.0.0.1:5500 en local, el VPS en prod). */
+  res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, POST, DELETE, OPTIONS');
+  res.setHeader('Access-Control-Max-Age', '600');
   res.setHeader('Access-Control-Allow-Headers', 'Range, Origin, X-Requested-With, Content-Type, Accept, Accept-Encoding');
   res.setHeader('Access-Control-Expose-Headers', 'Content-Range, Accept-Ranges, Content-Length, ETag, Server-Timing');
   res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
@@ -2896,7 +2930,8 @@ const server = http.createServer((req, res) => {
     const r = autoConfig({
       inW: u.searchParams.get('inW'), inH: u.searchParams.get('inH'),
       inFps: u.searchParams.get('inFps'), outW: u.searchParams.get('outW'),
-      outH: u.searchParams.get('outH'), player: u.searchParams.get('player') || 'onn-4k'
+      outH: u.searchParams.get('outH'), player: u.searchParams.get('player') || 'onn-4k',
+      mode: u.searchParams.get('mode') || 'real'
     });
     setBaseHeaders(res); setNoCacheHeaders(res);
     if (!r.ok) { res.writeHead(400, { 'Content-Type': 'application/json' }); return res.end(JSON.stringify(r)); }

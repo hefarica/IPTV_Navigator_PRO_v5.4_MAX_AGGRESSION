@@ -360,7 +360,11 @@
         el('td', {}, [inp('rl-' + r.id + '-outFps', r.outFps || '', 'number')]),
         el('td', {}, [sel('rl-' + r.id + '-codec', ['hvc1', 'hvc1_8', 'avc1', 'av01'], r.codec)]),
         el('td', {}, [sel('rl-' + r.id + '-recipe', ['none', 'light', 'balanced', 'temporal', 'custom'], r.recipe)]),
-        el('td', {}, [sel('rl-' + r.id + '-dither', ['none', 'ordered', 'error_diffusion', 'random'], r.dither || 'ordered')])
+        el('td', {}, [sel('rl-' + r.id + '-dither', ['none', 'ordered', 'error_diffusion', 'random'], r.dither || 'ordered')]),
+        // REAL: exige que el decoder lo decodifique. EMULADO: se declara igual.
+        el('td', {}, [sel('rl-' + r.id + '-mode', [
+          { id: 'real', label: 'REAL' }, { id: 'emulado', label: 'EMULADO' }
+        ], r.mode || 'real')])
       ]);
       // botones: guardar, auto de fila, borrar
       var bSave = el('button', { style: 'padding:4px 8px;font-size:.7rem' }, ['💾']);
@@ -381,7 +385,7 @@
         el('th', {}, ['Entrada res']), el('th', {}, ['in fps']),
         el('th', {}, ['Ancho']), el('th', {}, ['Alto']), el('th', {}, ['out fps']),
         el('th', {}, ['Codec (A)']), el('th', {}, ['Receta (A)']),
-        el('th', {}, ['Dither (A)']), el('th', {}, [''])
+        el('th', {}, ['Dither (A)']), el('th', {}, ['Modo']), el('th', {}, [''])
       ])]), tb
     ]));
 
@@ -391,7 +395,7 @@
       var id = 'r-' + Date.now().toString(36);
       post('/image/rules', {
         id: id, input: '720p', inFps: 30, outW: 3840, outH: 2160, outFps: 30,
-        codec: 'hvc1', recipe: 'balanced', dither: 'ordered'
+        codec: 'hvc1', recipe: 'balanced', dither: 'ordered', mode: 'real'
       }).then(function (res) {
         logLine(res && res.ok ? ('regla ' + id + ' creada') : 'fallo al crear regla');
         load();
@@ -404,9 +408,11 @@
       var a = S.autoRow;
       var box = el('div', { class: 'decl' }, [
         el('div', { style: 'font-weight:700;color:#60a5fa;margin-bottom:6px' }, [
-          'ÓPTIMO para ' + a.input.band + (a.input.fps ? '@' + a.input.fps : '') +
+          (a.mode === 'emulado' ? 'EMULADO — ' : 'REAL — ') + 'ÓPTIMO para ' +
+          a.input.band + (a.input.fps ? '@' + a.input.fps : '') +
           ' → ' + a.output.width + 'x' + a.output.height + '  (' + a.areaRatio + 'x area)'
-        ])
+        ]),
+        el('div', { style: 'font-size:.72rem;color:#94a3b8;margin-top:2px' }, [a.modeMeaning || ''])
       ]);
       ['codec', 'recipe', 'outFps', 'dither'].forEach(function (k) {
         var f = a.fields[k];
@@ -442,7 +448,8 @@
       outFps: Number(ruleVal(id, 'outFps')) || 0,
       codec: ruleVal(id, 'codec'),
       recipe: ruleVal(id, 'recipe'),
-      dither: ruleVal(id, 'dither')
+      dither: ruleVal(id, 'dither'),
+      mode: ruleVal(id, 'mode')
     }).then(function (r) {
       logLine(r && r.ok ? ('regla ' + id + ' guardada') : ('fallo: ' + String((r && r.errors) || '?')));
       load();
@@ -458,7 +465,8 @@
     var bi = BANDS[band] || [1280, 720];
     post('/image/rules/auto', {
       inW: bi[0], inH: bi[1], inFps: Number(ruleVal(id, 'inFps')) || 0,
-      outW: w, outH: h, player: S.build.player
+      outW: w, outH: h, player: S.build.player,
+      mode: ruleVal(id, 'mode') || 'real'
     }).then(function (r) {
       S.autoRow = r;
       if (!r.ok) { logLine('auto fallo: ' + r.error); render(document.getElementById('ape-image-panel')); return; }
