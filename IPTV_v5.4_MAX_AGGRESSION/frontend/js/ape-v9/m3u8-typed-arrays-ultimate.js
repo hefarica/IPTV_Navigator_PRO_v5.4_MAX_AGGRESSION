@@ -2868,7 +2868,52 @@
             const sha = pick(lm.dna_sha256, cfg2 && cfg2.labDnaSha256, 'unverified');
             const src = pick(lm.labFileName, cfg2 && cfg2.labFileName, 'unknown');
             const exp = pick(lm.exported_at, cfg2 && cfg2.labExportedAt, 'unknown');
-            return `#EXT-X-APE-LAB-DNA:sha256=${sha},SOURCE=${src},EXPORTED=${exp}`;
+
+            // [2026-11-08] CONDICION 3 — DECLARAR las precedencias en vez de aplicarlas en silencio.
+            // Medido sobre el LAB v24: hay DOS valores de network-caching por perfil, distintos:
+            //   vlcopt['network-caching']                                = 5000
+            //   player_enslavement.level_3_per_channel.EXTVLCOPT[...]    = 72000 (P1) / 55000 (P3) / ...
+            //   actor_injections.player.vlc.network_caching_ms           = 72000 (P1)
+            // y la lista emite 500 cuando dictatorMode esta activo. Son TRES valores; sin declararlos,
+            // cualquiera puede leerse como el bueno. No se corrige el LAB: se publica la discrepancia.
+            const _prec = [];
+            try {
+                // El flag no siempre viaja en `options`: medido en el codigo, llega por
+                // options.dictatorMode (13635), options.manifestMetadata.dictatorMode (generation-
+                // controller 1541) o cfg.dictatorMode. Se leen las tres; si ninguna existe, se
+                // declara 'undetermined' en vez de suponer.
+                const _flags = [
+                    opt && opt.dictatorMode, opt && opt.dictator_mode,
+                    opt && opt.manifestMetadata && opt.manifestMetadata.dictatorMode,
+                    opt && opt.cfg && opt.cfg.dictatorMode
+                ];
+                const _known = _flags.filter(v => v === true || v === false);
+                const _dm = _known.length ? (_known[0] === true) : null;
+                const _cfgP = (typeof window !== 'undefined') ? window.APE_PROFILES_CONFIG : null;
+                const _ids = ['P0', 'P1', 'P2', 'P3', 'P4', 'P5', 'P0.5', 'P1.5', 'P2.5', 'P3.5', 'P4.5', 'P5.5'];
+                const _num = (v) => { const n = Number(v); return isFinite(n) && n > 0 ? n : null; };
+                for (const _pf of _ids) {
+                    const _p = (_cfgP && typeof _cfgP.getProfile === 'function') ? _cfgP.getProfile(_pf) : null;
+                    if (!_p) continue;
+                    const _vlcopt = _num((_p.vlcopt || {})['network-caching']);
+                    const _l3 = _num((((_p.player_enslavement || {}).level_3_per_channel || {}).EXTVLCOPT || {})['network-caching']);
+                    const _actor = _num(((((_p.actor_injections || {}).player || {}).vlc) || {}).network_caching_ms);
+                    if (_vlcopt === null && _l3 === null && _actor === null) continue;
+                    const _emitted = _dm === null ? 'unknown' : (_dm ? 500 : (_vlcopt || _l3 || _actor));
+                    _prec.push('#EXT-X-APE-CACHING-PRECEDENCE:PROFILE=' + _pf
+                        + ';EMITTED=' + _emitted
+                        + ';LAB_VLCOPT=' + (_vlcopt === null ? 'unknown' : _vlcopt)
+                        + ';LAB_L3=' + (_l3 === null ? 'unknown' : _l3)
+                        + ';LAB_ACTOR=' + (_actor === null ? 'unknown' : _actor)
+                        + ';GOVERNED_BY=' + (_dm === null ? 'undetermined' : (_dm ? 'dictatorMode' : 'lab')));
+                }
+                // Invariante documentado en el codigo (linea 10494: "se fija a 8, 200 saturaba la red").
+                _prec.push('#EXT-X-APE-OVERRIDE:X-Concurrent-Downloads=8;LAB=ignored;REASON=invariante_200_saturaba;DECLARED=1');
+                // Precedencia de alias MEDIDA en _firstDef(bit_depth, bitDepth) (linea ~1782).
+                _prec.push('#EXT-X-APE-OVERRIDE:bit_depth;GOVERNS=bit_depth;ALIAS_IGNORED=bitDepth;EVIDENCE=_firstDef_order;DECLARED=1');
+            } catch (_pe) { /* la lista no se cae por no poder declarar; el DNA sigue saliendo */ }
+            const _tail = _prec.length ? ('\n' + _prec.join('\n')) : '';
+            return `#EXT-X-APE-LAB-DNA:sha256=${sha},SOURCE=${src},EXPORTED=${exp}` + _tail;
         } catch (_e) {
             return '#EXT-X-APE-LAB-DNA:sha256=unverified,SOURCE=unknown,EXPORTED=unknown';
         }

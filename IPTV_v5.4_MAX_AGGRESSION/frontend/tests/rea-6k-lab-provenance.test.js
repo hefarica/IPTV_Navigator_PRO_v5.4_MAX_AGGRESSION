@@ -24,7 +24,7 @@ const FRONT = path.resolve(__dirname, '..');
 const quiet = { log() {}, warn() {}, error() {}, debug() {}, info() {}, table() {}, group() {}, groupCollapsed() {}, groupEnd() {}, time() {}, timeEnd() {} };
 let passed = 0;
 
-function environment({ labEmulated6k = null, getProfile = null, labDnaSha256 = null } = {}) {
+function environment({ labEmulated6k = null, getProfile = null, labDnaSha256 = null, profiles = null } = {}) {
     const store = new Map();
     const blobs = new Map();
     const channels = [{ id: '1', name: 'Canal uno', url: 'https://audit.invalid/live/u/p/1.m3u8', profile: 'P3' }];
@@ -47,12 +47,14 @@ function environment({ labEmulated6k = null, getProfile = null, labDnaSha256 = n
         body: { appendChild() {}, removeChild() {} }
     };
     const cfg = {
-        profiles: {}, labExportedAt: '2026-10-26T01:31:05',
+        profiles: profiles || {}, labExportedAt: '2026-10-26T01:31:05',
         labVersion: 'omega_v1_bulletproof_20261026', labBulletproof: true,
         labEmulated6k, labSixKVersion: labEmulated6k ? '6K-EMULATED-v1' : null,
         labDnaSha256, labFileName: 'LAB_CALIBRATED_FINAL_v24.0.0-6K.json'
     };
     if (typeof getProfile === 'function') cfg.getProfile = getProfile;
+    // el generador consulta siempre getProfile(): si el test solo pasa `profiles`, se expone igual
+    else cfg.getProfile = function (id) { return this.profiles[id] || null; };
     const ctx = {
         console: quiet, document, HTMLAnchorElement: Anchor, URL: TestURL, URLSearchParams,
         TextEncoder, TextDecoder, ReadableStream, WritableStream, TransformStream, CompressionStream,
@@ -173,6 +175,43 @@ async function emitted(ctx, channels) {
         assert.match(dna2, /sha256=unverified/, 'sin huella debe declarar unverified, no inventar');
         passed += 1;
         console.log('PASS 3 (sin hash -> unverified)');
+    }
+
+
+    // ── Escenario 4: las PRECEDENCIAS se declaran, no se aplican en silencio ──────────
+    {
+        const LAB24 = JSON.parse(fs.readFileSync(process.env.LABV24, 'utf8'));
+        const hdr = (opts) => {
+            const g = environment({ profiles: LAB24.profiles_calibrated });
+            const G = g.ctx.M3U8TypedArraysGenerator;
+            const merged = Object.assign({ bulletproof_loaded: true, bulletproof_profiles: LAB24.profiles_calibrated }, opts);
+            try { return G._generateGlobalHeader(1, merged) || ''; } catch (e) { return ''; }
+        };
+        // sin regex: se corta por salto de linea (evita el infierno de escapes)
+        const pick = (h, pf) => {
+            const k = '#EXT-X-APE-CACHING-PRECEDENCE:PROFILE=' + pf + ';';
+            const i = h.indexOf(k);
+            if (i < 0) return '';
+            const j = h.indexOf('\n', i);
+            return h.slice(i, j < 0 ? h.length : j);
+        };
+        const on = hdr({ dictatorMode: true });
+        const off = hdr({ dictatorMode: false });
+        const unk = hdr({});
+
+        assert.match(pick(on, 'P1'), /EMITTED=500;/, 'con dictatorMode EMITTED debe ser 500 -> ' + pick(on, 'P1'));
+        assert.match(pick(on, 'P1'), /GOVERNED_BY=dictatorMode/, 'debe declarar quien manda -> ' + pick(on, 'P1'));
+        assert.match(pick(on, 'P1'), /LAB_VLCOPT=5000;/, 'debe publicar vlcopt -> ' + pick(on, 'P1'));
+        assert.match(pick(on, 'P1'), /LAB_L3=72000;/, 'debe publicar level_3 -> ' + pick(on, 'P1'));
+        assert.match(pick(off, 'P1'), /EMITTED=5000;/, 'sin dictatorMode EMITTED debe ser 5000 -> ' + pick(off, 'P1'));
+        assert.match(pick(off, 'P1'), /GOVERNED_BY=lab/, 'debe declarar que manda el LAB -> ' + pick(off, 'P1'));
+        assert.match(pick(unk, 'P1'), /GOVERNED_BY=undetermined/, 'sin flag debe ser undetermined -> ' + pick(unk, 'P1'));
+        assert.match(on, /#EXT-X-APE-OVERRIDE:X-Concurrent-Downloads=8;/, 'X-Concurrent-Downloads debe declararse');
+        assert.match(on, /#EXT-X-APE-OVERRIDE:bit_depth;GOVERNS=bit_depth;ALIAS_IGNORED=bitDepth/, 'alias debe declararse');
+        passed += 9;
+        console.log('PASS 4 (dictatorMode) :', pick(on, 'P1'));
+        console.log('PASS 4 (LAB manda)    :', pick(off, 'P1'));
+        console.log('PASS 4 (undetermined) :', pick(unk, 'P1'));
     }
 
     console.log('\nresultado: ' + passed + ' aserciones pasadas');
