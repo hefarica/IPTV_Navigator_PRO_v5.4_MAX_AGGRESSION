@@ -115,24 +115,43 @@ function Test-Transport {
   Say "  Playback error=$err  UnknownHost=$unh"
 
   # 3b · frames presentados: la prueba real
-  $cap = (adb -s $Serial shell 'dumpsys SurfaceFlinger --list 2>/dev/null | grep -oE "SurfaceView\[com.ape.crystalagent[^]]*\]#[0-9]+" | head -1' 2>&1).Trim()
+  #
+  # DOS TRAMPAS medidas en este dispositivo, ambas dan falso negativo:
+  #
+  #  1) --latency devuelve SIEMPRE un buffer circular de 127 filas. Contar filas da 127
+  #     en cualquier capa, incluidas las del sistema. Lo que importa es cuantas tienen
+  #     actualPresentTime != 0.
+  #  2) El video va a la capa "SurfaceView[...](BLAST)#N", NO a "SurfaceView[...]#N".
+  #     La capa sin sufijo puede quedarse con frames historicos congelados (delta 0)
+  #     mientras la BLAST es la que recibe. Se prefiere BLAST y se cae a la otra.
+  #  3) Un acumulado > 0 NO prueba reproduccion: puede ser residuo de una sesion
+  #     anterior. Lo que prueba es el DELTA entre dos muestras separadas en el tiempo.
+  function Count-Presented([string]$layer) {
+    $raw = @(adb -s $Serial shell "dumpsys SurfaceFlinger --latency `"$layer`" 2>/dev/null" 2>&1)
+    return ($raw | Where-Object { $_ -match '^\d+\s+\d+\s+\d+' } |
+            Where-Object { [long](($_ -split '\s+')[1]) -ne 0 }).Count
+  }
+
+  $cap = (adb -s $Serial shell 'dumpsys SurfaceFlinger --list 2>/dev/null | grep -oE "SurfaceView\[com.ape.crystalagent[^]]*\]\(BLAST\)#[0-9]+" | head -1' 2>&1).Trim()
+  if (-not $cap) {
+    $cap = (adb -s $Serial shell 'dumpsys SurfaceFlinger --list 2>/dev/null | grep -oE "SurfaceView\[com.ape.crystalagent[^]]*\]#[0-9]+" | head -1' 2>&1).Trim()
+  }
   if (-not $cap) {
     Say "  FALLA: no hay SurfaceView del player en SurfaceFlinger." "Red"; return $false
   }
   Say "  capa: $cap"
-  $lat1 = @(adb -s $Serial shell "dumpsys SurfaceFlinger --latency `"$cap`" 2>/dev/null" 2>&1)
-  Start-Sleep -Seconds 2
-  $lat2 = @(adb -s $Serial shell "dumpsys SurfaceFlinger --latency `"$cap`" 2>/dev/null" 2>&1)
 
-  $f1 = ($lat1 | Where-Object { $_ -match '^\d+\s+\d+' } | Measure-Object).Count
-  $f2 = ($lat2 | Where-Object { $_ -match '^\d+\s+\d+' } | Measure-Object).Count
-  Say "  filas de frame t1=$f1  t2=$f2 (refresco: $((($lat1 | Select-Object -First 1)).Trim()))"
-  if ($f1 -eq 0 -and $f2 -eq 0) {
-    Say "  FALLA: CERO frames presentados. El vídeo no llega a la superficie." "Red"
-    Say "         (no es la captura: es la presentación)" "Yellow"
+  $f1 = Count-Presented $cap
+  Start-Sleep -Seconds 4
+  $f2 = Count-Presented $cap
+  $delta = $f2 - $f1
+  Say "  frames presentados: $f1 -> $f2  (delta $delta en 4 s)"
+  if ($delta -le 0) {
+    Say "  FALLA: no se presentan frames NUEVOS (delta $delta)." "Red"
+    Say "         Un acumulado > 0 puede ser residuo congelado: lo que prueba es el delta." "Yellow"
     return $false
   }
-  Say "  presentación: OK ($f2 frames)" "Green"
+  Say "  presentación: OK ($delta frames en 4 s)" "Green"
 
   $png = Join-Path $OutDir ("apk_{0}.png" -f ($ExpectKind.ToLower()))
   adb -s $Serial shell "screencap -p /sdcard/_v.png" 2>&1 | Out-Null

@@ -1814,3 +1814,88 @@ Entre la medicion que daba 5/5 y esta cambiaron: standby de pantalla, VPN Surfsh
 - Depuracion inalambrica **operativa** por mDNS/TLS (el operador la reactivo).
 - Nota: el serial util ahora es `adb-GUSA2441015311-RXlL4A._adb-tls-connect._tcp`; el `:33363` fijo ya no
   responde.
+
+---
+
+# 30 · Correccion de mi propio test: tres trampas que daban falso negativo
+
+La verificacion de presentacion que escribi en la seccion 29 **estaba mal medida**. Al depurarla
+aparecieron tres trampas del dispositivo, y las tres afectan a como se lee `SurfaceFlinger`:
+
+## 30.1 · Trampa 1: `--latency` devuelve SIEMPRE 127 filas
+
+Contar filas da **127 en cualquier capa**, incluidas las del sistema:
+
+```
+HomeActivity      : filas=127  presentados=0
+Wallpaper         : filas=127  presentados=0
+Settings Activity : filas=127  presentados=0
+```
+
+127 es el tamano del buffer circular, no un recuento de frames. **Lo que cuenta es cuantas filas
+tienen `actualPresentTime != 0`.**
+
+## 30.2 · Trampa 2: el video NO va a la capa `SurfaceView[N]#`
+
+Va a la variante **BLAST**:
+
+```
+SurfaceView[...PlayerActivity]#328        : presentados = 0
+SurfaceView[...PlayerActivity](BLAST)#329 : presentados = 76   <- aqui
+HomeActivity ...                          : presentados = 0
+```
+
+Mi primera version tomaba la capa sin sufijo (la primera que casaba el grep) y medía **cero** por
+estar mirando la capa equivocada.
+
+## 30.3 · Trampa 3: el acumulado NO prueba reproduccion
+
+Los 76 de la capa BLAST **eran residuo de una sesion anterior**. Entre dos muestras separadas 4 s:
+
+```
+t1 = 76   t2 = 76   delta = 0
+```
+
+**Un contador congelado.** Lo que prueba que se presenta video es el **delta** entre dos muestras, no el
+total. Con el script ya corregido:
+
+| Caso | frames | delta | |
+|---|---|---|---|
+| DASH · JIT | 0 -> 0 | **0** | no presenta |
+| HLS · mux.dev | 76 -> 76 | **0** | no presenta |
+
+## 30.4 · El script corregido
+
+`tools/audit/verify_apk_hls_dash.ps1` ahora:
+
+1. Prefiere la capa `(BLAST)` y solo cae a la otra si no existe.
+2. Cuenta filas con `actualPresentTime != 0`.
+3. Exige **delta > 0 en 4 s**, no un total.
+4. Exige foco en `PlayerActivity` antes de medir (una pasada fallo solo por eso: OTT estava encima).
+
+## 30.5 · Que cambia y que no con esta correccion
+
+**No cambia el veredicto**: el APK **no presenta frames nuevos** ni con HLS ni con DASH, medido ahora
+con el metodo correcto.
+
+**Cambia la confianza**: antes habia dos explicaciones posibles (no pinta / mido mal). Ahora la medicion
+distingue las dos y **descarta** el error de medicion.
+
+```
+DASH -> 0 -> 0   delta 0     NO presenta
+HLS  -> 76 -> 76 delta 0     NO presenta
+```
+
+## 30.6 · Lo que sigue NO DETERMINADO
+
+Por que el mismo binario presentaba frames en la seccion 20 y no ahora. Descartados por medicion:
+
+| Candidato | Como se descarto |
+|---|---|
+| Mi cambio del vc656 | el vc655 tambien da delta 0 |
+| El transporte (HLS vs DASH) | los dos fallan igual |
+| La fuente (JIT vs mux.dev) | las dos fallan igual |
+| Error de medicion | trampas 1-3 corregidas; el delta sigue 0 |
+| El decoder no se crea | `CCodec: Created component [c2.amlogic.avc.decoder]` |
+
+**Sin descartar**: standby de pantalla, VPN Surfshark conectado, `pm clear` de los datos.
