@@ -299,3 +299,95 @@ reproductor de la APK, reproducible con un HLS generado por ffmpeg en la misma L
 **Siguiente paso tecnico (necesita el fuente):** revisar el ciclo `global_beat` / `REARM` en
 `ApePlayer.kt` — el guard no publica y nadie lo rescata. Sin el fuente solo puedo seguir midiendo
 sintomas.
+
+---
+
+# 10 · MECANISMO MEDIDO: el jugador VUELCA el buffer tras fallar la enumeracion de pistas
+
+## 10.1 · La secuencia exacta (una sola sesion, timestamps reales)
+
+```
+04:00:52.489  policy target=3840x2160 max=3840x2160 neverDownscale=true buffer=45/180s cache=256MiB
+04:00:52.568  global_beat start
+04:00:52.620  shader effects applied n=1
+04:00:52.899  LOCK resolucion 1920x1080 (neverDownscale=true, min_resolution=3840x2160)
+04:00:52.899  VIDEO elegido: mime=video/avc codecs=avc1.640028 1920x1080 bps=6221600
+04:00:54.622  PLAYING   position=1238   buffered=65083     actions=775
+04:00:56.632  PLAYING   position=3235   buffered=140016    actions=775
+04:00:58.629  PLAYING   position=4675   buffered=150000    actions=775   <- BUFFER LLENO
+04:00:59.679  tracks sin video (groups=0) - se conserva el ultimo snapshot valido
+04:01:00.632  BUFFERING position=4675   buffered=4675      actions=519   <- COLAPSO
+04:01:02.633  BUFFERING position=4675   buffered=4675      actions=519
+```
+
+## 10.2 · Lo que esto descarta definitivamente
+
+**A las 04:00:58.629 el jugador tenia 150.000 ms (150 s) de buffer.** Cuatro segundos despues tiene
+4.675 ms, exactamente su posicion. **El buffer no se agoto: se vacio.**
+
+Eso cierra la ultima explicacion de red:
+
+| Explicacion | Estado |
+|---|---|
+| La red no da abasto | **IMPOSIBLE** - 150 s ya descargados y en memoria |
+| El source es lento | **IMPOSIBLE** - mismo resultado con HLS local en LAN |
+| El buffer minimo (45 s) no se alcanza | **IMPOSIBLE** - llego a 150 s, tres veces el minimo |
+
+## 10.3 · El orden importa: falla la enumeracion, luego colapsa
+
+1. `04:00:59.679` - la enumeracion de pistas devuelve **`groups=0`** (cero grupos de video).
+2. `04:01:00.632` - **un segundo despues**, `buffered` pasa de 150.000 a 4.675 y el estado cae a
+   `BUFFERING`. `actions` baja de 775 a 519 (pierde capacidades de control).
+
+**La correlacion es de 1 segundo y el orden es inequivoco.** El volcado ocurre DESPUES del fallo de
+enumeracion, no antes.
+
+La propia app lo reconoce en su mensaje: *«se conserva el ultimo snapshot valido»* - sabe que la
+enumeracion fallo y preserva el dato anterior para la telemetria. Pero **el dano ya esta hecho**: el
+player se ha quedado sin buffer y sin pista de video.
+
+## 10.4 · Por que falla la enumeracion
+
+No determinado desde el artefacto. Lo que si se puede afirmar con lo medido:
+
+- No depende del codec (falla en AVC y en HEVC).
+- No depende de la red (falla con LAN local).
+- No depende del overlay REA (falla con `PlayerActivity` estandar).
+- **Ocurre una sola vez, ~7 s despues del arranque, coincidiendo con el ciclo del `global_beat`.**
+
+Candidato principal, por orden temporal: **la rutina que captura el snapshot de pistas para el latido
+(`global_beat`) consulta el player en un momento en que este no puede resolver los grupos de video, y
+la reaccion a `groups=0` reinicia el media source.**
+
+## 10.5 · Defecto secundario confirmado en el codigo del APK
+
+Las cadenas del dex confirman que la APK **escribe el setting en el formato invalido**:
+
+```
+global display_size_forced 3840x2160          <- forma WxH (Android espera "3840,2160")
+global hdr_conversion_mode 1
+global user_preferred_refresh_rate 60.000004
+global user_preferred_resolution_width 3840
+global user_preferred_resolution_height 2160
+global are_user_disabled_hdr_formats_allowed 1
+global db_id_audio_drc_mode 2
+global db_id_droidlogic_audio_digital_mode 1
+```
+
+Es la confirmacion, dentro del artefacto, del defecto de formato descrito en
+`docs/audits/CONDICION_4_MEDICION_ONN4K_20261108.md` §3.1: la ruta `settings put global
+display_size_forced` sale de aqui con `x` en vez de coma.
+
+## 10.6 · Informe para quien tenga el fuente
+
+**Sintoma:** la reproduccion se congela a los ~4,6 s de contenido; pantalla negra; `Recomendacion:
+reintentando la fuente actual` en bucle.
+
+**Evidencia:** buffer a 150 s -> `tracks sin video (groups=0)` -> buffer a 4,7 s en 1 segundo.
+
+**Donde mirar, en este orden:**
+1. El manejador de `global_beat` / `REARM` y su captura de snapshot de pistas.
+2. Que hace `ApePlayer` al recibir `groups=0` en la enumeracion: si reinicia el `MediaSource`.
+3. Por que la enumeracion devuelve 0 grupos ~7 s despues del arranque.
+
+**Criterio de exito:** reproducir 60 s seguidos sin que `buffered` caiga por debajo de la posicion.
