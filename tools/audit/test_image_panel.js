@@ -33,7 +33,18 @@ class Node {
   addEventListener(t, fn) { (this.listeners[t] = this.listeners[t] || []).push(fn); }
   appendChild(c) { c.parentNode = this; this.children.push(c); return c; }
   removeChild(c) { this.children = this.children.filter(x => x !== c); return c; }
-  replaceChildren() { this.children.forEach(c => c.parentNode = null); this.children = []; }
+  // replaceChildren(...nodes): el panel lo usa para volcar el arbol de una vez.
+  // La version anterior ignoraba los argumentos y el panel parecia no renderizar.
+  replaceChildren() {
+    this.children.forEach(c => c.parentNode = null);
+    this.children = [];
+    for (let i = 0; i < arguments.length; i++) {
+      const c = arguments[i];
+      if (c == null) continue;
+      c.parentNode = this;
+      this.children.push(c);
+    }
+  }
   get firstChild() { return this.children[0] || null; }
   get textContent() {
     if (this.children.length === 0) return this._text;
@@ -131,6 +142,37 @@ global.fetch = (url, init) => {
       }, patch),
       effective_filter: 'hqdn3d=0.6:0.45:0.9:0.7,unsharp=5:5:0.2:5:5:0'
     };
+  } else if (url.includes('/image/matrix')) {
+    body = {
+      ok: true, count: 2, spaceSize: 10080,
+      allowed: { scaleMode: ['fit','fill','stretch'], dither: ['none','ordered','error_diffusion','random'] },
+      rows: [
+        { profile: 'P4', outW: 1280, outH: 720, scaleMode: 'fit', dither: 'ordered', labDeclared: '1280x720', label: '720p' },
+        { profile: 'P4.5', outW: 5760, outH: 3240, scaleMode: 'fit', dither: 'error_diffusion', labDeclared: '5760x3240', label: '6K' }
+      ]
+    };
+  } else if (url.includes('/image/catalog')) {
+    body = {
+      ok: true, profiles: ['P3','P4','P4.5'],
+      targets: [{ id: 'UHD_4K', label: '4K UHD SDR', width: 3840, height: 2160, hdr: false, tier: 'UHD' },
+                { id: 'K6_PQ', label: '6K UHD PQ', width: 5760, height: 3240, hdr: true, tier: '6K' }],
+      codecs: [{ id: 'hvc1', label: 'HEVC Main10', family: 'hevc', profile: 'main10', encoder: 'libx265' },
+               { id: 'avc1', label: 'AVC High', family: 'avc', profile: 'high', encoder: 'libx264' }],
+      players: [{ id: 'onn-4k', label: 'ONN 4K', maxW: 4096, maxH: 4096, codecs: ['hvc1'], hdr: true, main10: true },
+                { id: 'firestick-lite', label: 'Firestick Lite', maxW: 1920, maxH: 1080, codecs: ['avc1'], hdr: false, main10: false }],
+      recipes: [{ id: 'balanced', label: 'Balanced', chain: 'hqdn3d=0.6', params: { hq_ls: 0.6, unsharp_amount: 0.2 } }],
+      counts: { targets: 2, codecs: 2, players: 2, recipes: 1 }
+    };
+  } else if (url.includes('/image/governance')) {
+    body = {
+      ok: true, defaultProfile: 'P4.5', count: 2,
+      engines: { vlc: {}, kodi: {}, tivimate: {}, ott: {}, apk: {} },
+      mechanism: 'El VPS entrega una URL con el perfil resuelto.',
+      channels: [
+        { channel: '1', name: 'Canal 1', profile: 'P4.5', target: '5760x3240', overridden: false },
+        { channel: '2', name: 'Canal 2', profile: 'P4', target: '1280x720', overridden: true }
+      ]
+    };
   } else {
     body = {
       ok: true, source: '/opt/ape-jit/image-config.json',
@@ -161,6 +203,16 @@ const check = (name, ok, extra) => results.push({ name, ok, extra });
 setTimeout(() => {
   try {
     const A = global.window.APE_IMAGE_PANEL;
+    // DIAGNOSTICO: por que no renderizo
+    const st = A && A.getState ? A.getState() : null;
+    if (st) {
+      console.log('    [debug] lastError =', st.lastError);
+      console.log('    [debug] config =', st.config ? 'si' : 'no',
+                  '| catalog =', st.catalog ? 'si' : 'no',
+                  '| matrix =', st.matrix ? 'si' : 'no',
+                  '| gov =', st.gov ? 'si' : 'no');
+      console.log('    [debug] hijos del stage =', stage.children.length);
+    } else { console.log('    [debug] APE_IMAGE_PANEL sin getState'); }
     check('expone APE_IMAGE_PANEL', !!A);
     check('getState devuelve config', !!(A && A.getState().config));
     const isGet = (c) => !c.init || !c.init.method || c.init.method === 'GET';
@@ -172,14 +224,24 @@ setTimeout(() => {
     const all = walk(stage).map(n => n.textContent).join(' ') + ' ' +
                 walk(stage).map(n => n.id || '').join(' ');
     check('renderizo el titulo', all.includes('MÓDULO DE IMAGEN'));
+    check('seccion constructor de perfil', all.includes('Constructor de perfil'));
+    check('etiqueta ENTRADA recibida', all.includes('ENTRADA ancho'));
+    check('etiqueta SALIDA al TV', all.includes('SALIDA al TV'));
+    check('seccion matriz editable', all.includes('Matriz editable'));
+    check('seccion gobierno', all.includes('Gobierno'));
+    check('seccion encoder', all.includes('Encoder'));
+    check('boton Declarar automatico', !!walk(stage).find(n => n.id === 'aip-declare'));
+    check('boton Aplicar al JIT', !!walk(stage).find(n => n.id === 'aip-apply-build'));
+    check('boton Recomendada', !!walk(stage).find(n => n.id === 'aip-rec'));
+    check('selector de target', !!walk(stage).find(n => n.id === 'aip-b-target'));
+    check('selector de codec', !!walk(stage).find(n => n.id === 'aip-b-codec'));
+    check('selector de player', !!walk(stage).find(n => n.id === 'aip-b-player'));
     check('renderizo la capacidad', all.includes('Capacidad medida') || all.includes('VIABLE'));
     check('renderizo el estado vivo', all.includes('Estado vivo') || all.includes('canal'));
-    check('creo el selector de destino', !!walk(stage).find(n => n.id === 'aip-target'));
-    check('creo el boton aplicar', !!walk(stage).find(n => n.id === 'aip-apply'));
     check('no inyecto HTML desde la respuesta', !walk(stage).some(n => (n._text || '').includes('<script')));
 
     // cambio de receta -> POST
-    const apply = walk(stage).find(n => n.id === 'aip-apply');
+    const apply = walk(stage).find(n => n.id === 'aip-apply-build');
     if (apply) {
       apply.click();
       setTimeout(() => {
@@ -187,9 +249,10 @@ setTimeout(() => {
         check('el boton Aplicar hace POST', !!post);
         if (post) {
           const body = JSON.parse(post.init.body);
-          check('el POST lleva target', typeof body.target === 'string');
+          check('el POST lleva perfil', 'profile' in body);
           check('el POST lleva receta', typeof body.recipe === 'string');
-          check('el POST lleva parametros vivos', !!(body.hqdn3d && body.unsharp));
+          check('el POST lleva parametros vivos', !!(body.hqdn3d && body.unsharp || body.atadenoise));
+          check('el POST lleva paquete (seg/window/gop)', 'seg_duration' in body && 'window_size' in body || 'gop_seconds' in body);
         }
         report();
       }, 50);

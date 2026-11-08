@@ -3483,3 +3483,86 @@ recalcula solo (L120 -> L150 -> L180) porque se deriva del bitstream, no se decl
 Un 720p -> 6K son **20,25x en area, coste relativo 12,15x**. En este host (3 vCPU) el
 sostenido real de 6K **no cabe**: se calcula, se produce el init a 5760x3240 y se
 declara como UPSCALE. **No se presenta como detalle recuperado ni como tiempo real.**
+
+---
+
+# 52 · Panel único: constructor de perfil + matriz + gobierno
+
+## 52.1 · Semántica que el operador fijo
+
+- **ENTRADA** = resolucion **recibida** del proveedor.
+- **SALIDA** = resolucion que **entrega el player al TV** (la que produce el JIT).
+
+El panel las etiqueta asi de forma explicita: `ENTRADA ancho (recibida)` y
+`SALIDA al TV (target)`.
+
+## 52.2 · Lo que unifica
+
+| Seccion | Que hace |
+|---|---|
+| **Constructor de perfil** | Perfil → ENTRADA → SALIDA al TV → CODEC → PLAYER → RECETA, con **Declarar automático** |
+| **Encoder** | preset, CRF, audio, GOP — editable a mano |
+| **Filtros** | hqdn3d (4 parametros), unsharp (2), atadenoise (1) — todos editables |
+| **Empaquetado** | seg_duration, window_size, extra_window_size, x265_threads |
+| **Matriz editable** | los 12 perfiles con su salida |
+| **Gobierno** | perfil global + motor + descarga de la lista por player |
+| **Capacidad / estado vivo** | medicion del host y trabajo en curso |
+| **Botones** | Declarar automatico · Aplicar al JIT · Recomendada · Recargar · Defaults |
+
+## 52.3 · El catalogo que hace posible el combo
+
+```
+13 SALIDAS  480p SD · 720p HD · 1080p FHD SDR/HDR · 2K DCI · 2K QHD SDR/HDR
+            4K UHD SDR/HDR · 4K DCI · 6K UHD SDR/PQ · 8K UHD
+ 4 CODECS   HEVC Main10 · HEVC Main (8-bit) · AVC High · AV1 Main10
+ 5 PLAYERS  ONN 4K · Firestick 4K Max · Firestick Lite · Shield TV · Generico
+ 5 RECETAS  none · light · balanced · temporal · custom
+```
+
+## 52.4 · El motor declara, no finge — 5 casos medidos
+
+| Caso | Pedido | Declarado | Aviso |
+|---|---|---|---|
+| 720p → **6K PQ** en ONN 4K | 5760x3240 | **4096x2160** | `DEGRADADO: decoder limita a 4096x4096` + host 0,25x **NO VIABLE** |
+| 720p → 4K en ONN 4K | 3840x2160 | 3840x2160 | limpio, `hvc1.2.4.L153.B0` |
+| 4K en **AVC** | 3840x2160 | `avc1.640028` libx264 | **`AVC >1080p no es seguro`** |
+| 4K en **HEVC 8-bit** | 3840x2160 | `hvc1.1.6.L153.B0` yuv420p | perfil main |
+| 6K en **Firestick Lite** | 5760x3240 | **1920x1080** | `DEGRADADO` + `codec hvc1 no soportado, se declara avc1` |
+
+**Es exactamente lo que el operador pide:** *"lo que tiene el ONN 4K no lo tiene el
+Firestick 4K"*. El motor lo sabe porque cada player declara su limite con evidencia:
+
+- ONN 4K: `c2.amlogic.hevc.decoder max="4096x4096"` (medido por dumpsys)
+- Firestick Lite: solo H.264, sin HEVC ni HDR
+- Firestick 4K Max y Shield: 4K60 HEVC Main10 + HDR
+
+## 52.5 · El codec cambia el recurso, no solo la etiqueta
+
+Mismo 4K, distinto codec:
+
+```
+HEVC Main10 : hvc1.2.4.L153.B0  libx265  yuv420p10le  → permite HDR/PQ
+HEVC Main   : hvc1.1.6.L153.B0  libx265  yuv420p      → pierde gradiente HDR
+AVC High    : avc1.640028       libx264  yuv420p      → AVISO: no seguro >1080p
+```
+
+**9 de 9 combinaciones (3 codecs x 3 targets) validadas contra ffmpeg real.** Y la
+cadena se alinea al pixFmt del codec: con AVC emite `format=yuv420p`, no `10le`
+(era incoherente: declaraba 8 bits y forzaba 10 en los pixeles).
+
+## 52.6 · Dos defectos que el test de integracion destapo
+
+1. **`render()` pasaba un array** donde las secciones esperaban un nodo:
+   `TypeError: root.appendChild is not a function`. Se construye en un contenedor
+   temporal y se vuelca al root.
+2. **`replaceChildren` del DOM de prueba ignoraba los argumentos**, asi que el panel
+   parecia no renderizar (0 hijos con `lastError = null`). Era el instrumento, no el
+   panel.
+
+**Test final: 24/24.**
+
+## 52.7 · Cero innerHTML
+
+El DOM se construye con `createElement` + `textContent` + `replaceChildren`. La unica
+aparicion de la palabra `innerHTML` esta en un comentario que explica que no se usa.
+Ninguna respuesta del motor puede inyectar HTML en la pagina.
