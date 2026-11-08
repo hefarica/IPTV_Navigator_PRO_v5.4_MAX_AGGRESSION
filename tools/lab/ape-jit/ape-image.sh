@@ -110,7 +110,12 @@ if j:
             (b.get("total") or 0)/1e6,(b.get("video") or 0)/1e6,(b.get("audio") or 0)/1e6,b.get("window_s")))
     print("  ficheros   : %s segmentos" % f.get("segments"))
 else:
-    print("  sin trabajo activo (IDLE_MS=20000 apaga el motor entre peticiones)")
+    # idle_stop_s vive en config, no en engine. Si falta se declara NO COMPUTADO.
+    idle = c.get("idle_stop_s")
+    if idle in (None, "?", 0):
+        print("  sin trabajo activo (IDLE_MS no reportado por el motor: NO COMPUTADO)")
+    else:
+        print("  sin trabajo activo (el motor apaga ffmpeg tras %ss sin peticiones)" % idle)
 print("  config     : target=%s recipe=%s fps=%s codec=%s preset=%s crf=%s audio=%s" % (
     c.get("target"),c.get("recipe"),c.get("fps"),c.get("codec"),c.get("preset"),c.get("crf"),c.get("audio")))
 print("  filtro     : %s" % (d.get("effective_filter") or "(sin filtros)"))

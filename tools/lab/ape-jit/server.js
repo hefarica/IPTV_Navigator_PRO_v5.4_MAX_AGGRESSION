@@ -1415,6 +1415,7 @@ const server = http.createServer((req, res) => {
         codec: imageConfig.codec, preset: imageConfig.preset, crf: imageConfig.crf,
         audio: imageConfig.audio, force_transcode: imageConfig.force_transcode,
         profile: imageConfig.profile || null,
+        idle_stop_s: Math.round(IDLE_MS / 1000),
         derived_target: (imageConfig.profile && LAB_PROFILES[imageConfig.profile])
           ? LAB_PROFILES[imageConfig.profile].target : null
       },
