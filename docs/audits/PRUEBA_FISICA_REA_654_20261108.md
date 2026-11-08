@@ -1255,3 +1255,95 @@ una playlist. Y viajan por HLS y por DASH, asi que llegan a **cualquier player**
 4. **3 vCPU**: el techo medido en la skill es ~29,6 fps para 4K/60. A 1080p sobra; a 4K no.
 5. El aviso `No bit rate set for stream 1` **sigue en el log** aunque la salida funcione: `-b:a` no esta
    declarado. No bloquea, pero es una imprecision pendiente.
+
+---
+
+# 22 · HLS y DASH, los dos: estado medido del JIT
+
+## 22.1 · Ambos transportes, validados con ffprobe (no con un codigo HTTP)
+
+| Transporte | URL | HTTP | ffprobe (lo que ve un player) |
+|---|---|---|---|
+| **HLS** | `/jit/live/1/master.m3u8` | 200 | `hevc Main 10 1920x1080 yuv420p10le` + `aac LC` |
+| **DASH** | `/jit/live/1/manifest.mpd` | 200 | `hevc Main 10 1920x1080 yuv420p10le` + `aac LC` |
+| **HLS SDR** | `/jit/live/1/sdr/master.m3u8` | 200 | `h264 High 1920x1080 yuv420p bt709` + `aac LC` |
+
+El MPD es `type="dynamic"`, `profiles="urn:mpeg:dash:profile:isoff-live:2011"`, con
+`timeShiftBufferDepth="PT49.9S"`, `minBufferTime="PT16.6S"`, `suggestedPresentationDelay="PT8S"`,
+dos `AdaptationSet` (video `hvc1` 1920x1080 / audio `mp4a.40.2` 48 kHz) y `SegmentTemplate`
+`$RepresentationID$`/`$Number$`.
+
+> **Correccion de una lectura propia:** en la primera consulta vi `timeShiftBufferDepth="PT0.0S"` y
+> `minBufferTime="PT0.0S"` y lo di por roto. Eran valores de un MPD **recien arrancado**. Con el
+> pipeline en marcha son 49,9 s y 16,6 s. Leer un manifiesto de arranque como si fuera estable fue
+> precipitado.
+
+Segmentos servidos: `init` 3.352 B · `chunk` 2.543.536 B (HDR) y `chunk` 3.564.126 B (SDR).
+
+## 22.2 · Latencia real del motor
+
+| Peticion | Tiempo |
+|---|---|
+| `master.m3u8` en frio (arranca ffmpeg) | **6,38 – 6,78 s** |
+| `media_N.m3u8` ya caliente | **0,068 s** |
+| `init` / `chunk` | **0,04 – 0,08 s** |
+| `manifest.mpd` ya caliente | **0,065 s** |
+
+`IDLE_MS=20000`: el motor se apaga a los 20 s sin trafico. Cada arranque cuesta ~6-7 s.
+
+## 22.3 · Dos defectos del motor, medidos
+
+### a) `SPAWN_ERROR spawn nice ENOENT`
+
+```
+START 1 pid=undefined sdr=true ... crystal=FHD_SDR
+SPAWN_ERROR 1 spawn nice ENOENT
+```
+
+`server.js:424` lanza `spawn('nice', ['-n','19','ffmpeg', ...], { cwd: dir })`. `nice` **si existe**
+(`/usr/bin/nice`, y el PATH de systemd lo incluye). El `ENOENT` con `pid=undefined` apunta al **cwd**
+(`dir`) todavia no creado. Falla de forma intermitente y explica parte del arranque de 6-7 s.
+
+### b) Slot unico global
+
+`slotAcquire()` serializa: **una sola variante viva a la vez**. Pedir `/sdr/` mientras corre el HDR
+obliga a matar el HDR primero. Dos clientes simultaneos se pisan.
+
+## 22.4 · El cruce APK ⇄ JIT: bloqueado por DNS de la app
+
+El APK apuntado al JIT falla con:
+
+```
+E ExoPlayerImplInternal: Playback error
+E ExoPlayerImplInternal:   UnknownHostException (no network)
+```
+
+Y **el mismo dispositivo SI resuelve el dominio** desde el shell:
+
+```
+PING iptv-ape.duckdns.org (178.156.147.234)  ttl=46  time=99.3 ms   <- desde shell
+```
+
+Con **IP directa** el `UnknownHost` desaparece (`UnknownHost=0`, `Playback error=0`).
+
+### Lo que se descarto, con medicion
+
+| Hipotesis | Verificacion | Veredicto |
+|---|---|---|
+| El JIT esta caido | `/jit/health` 200, `master` 200 | **DESCARTADA** |
+| El UA del APK esta bloqueado | mismos 200 con el UA del APK | **DESCARTADA** |
+| Latencia de arranque | 6,8 s < connect 15 s / read 30 s del APK | **DESCARTADA** |
+| El codec no lo decodifica | `/sdr/` es `avc1.640028` 1080p, que el APK ya reprodujo | **DESCARTADA** |
+| El VPN captura la app | app = **uid 10124**; el tunel rutea **10013/10086/20013/20086** | **DESCARTADA** |
+
+## 22.5 · Lo que queda NO DETERMINADO
+
+**Por que la app no resuelve `iptv-ape.duckdns.org` mientras el shell del mismo dispositivo si.**
+No lo se, y no lo voy a inventar. Candidatos sin medir:
+
+- Politica de DNS distinta para apps (Private DNS / `netd` por UID).
+- Cache de `FluidBridge` devolviendo el fallo anterior (`FLAG_IGNORE_CACHE_ON_ERROR` existe pero no
+  se ha verificado si aplica aqui).
+
+**No hay conclusion.** Lo unico afirmable: con IP directa el error de resolucion desaparece; con el
+dominio, la app no resuelve.
