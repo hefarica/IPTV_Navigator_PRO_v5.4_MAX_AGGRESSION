@@ -1899,3 +1899,85 @@ Por que el mismo binario presentaba frames en la seccion 20 y no ahora. Descarta
 | El decoder no se crea | `CCodec: Created component [c2.amlogic.avc.decoder]` |
 
 **Sin descartar**: standby de pantalla, VPN Surfshark conectado, `pm clear` de los datos.
+
+---
+
+# 31 · EL APK REPRODUCE — con fuente local. El fallo es de RED.
+
+## 31.1 · La prueba que aisla
+
+Se sirvio un HLS generado con ffmpeg (`testsrc2` 1280x720 + tono 440 Hz) desde la propia LAN en
+`http://192.168.1.9:8124/test.m3u8` y se apunto el APK ahi. **Sin internet de por medio.**
+
+```
+media source: HLS -> http://192.168.1.9:8124/test.m3u8
+VIDEO elegido: mime=video/avc codecs=avc1.42C01F 1280x720
+foco: com.ape.crystalagent/.PlayerActivity
+```
+
+**En pantalla aparece el test pattern de ffmpeg** con su barra de colores y su contador de tiempo.
+Evidencia en `docs/audits/evidencia_apk/`.
+
+## 31.2 · Y el video AVANZA
+
+Dos capturas separadas 4 s:
+
+```
+APK_reproduciendo_testsrc2_local.png : 414.525 B  sha256 6D6C8BF3...
+APK_testsrc2_4s_despues.png          : 348.348 B  sha256 657F839A...
+=> hash distinto y ambas muy por encima del negro
+```
+
+Corroboracion independiente, el reloj de audio del sistema:
+
+```
+audio_hw_hal_stream: cur_position:251129 ms -> 256145 ms   position_gap:16 ms (thr:100 ms)
+```
+
+## 31.3 · Lo que NO reproduce, con el mismo binario
+
+| Fuente | Transporte | Capturas | Veredicto |
+|---|---|---|---|
+| **LAN `192.168.1.9:8124`** | HLS | 414.525 / 348.348 B | **REPRODUCE** |
+| JIT `/jit/live/2/master.m3u8` | HLS | 16.280 / 22.491 B | **NO** — overlay de error |
+| JIT `/jit/live/2/manifest.mpd` | DASH | 16.280 / 22.491 B | **NO** — overlay de error |
+| mux.dev | HLS | 22.491 / 22.491 B | **NO** — identicas |
+
+**El APK monta los tres transportes y selecciona video en los tres.** La diferencia es **la red**: LAN
+funciona, internet no.
+
+## 31.4 · El candidato que queda
+
+```
+tun1: UP  mtu 1280
+com.surfshark.vpnclient.android (pid 2230)
+com.nordvpn.android            (pid 4273)
+```
+
+**Dos VPN activos.** Las reglas por uid del tunel son `10013 / 10086 / 20013 / 20086`; la app es
+**10124**, no capturada por esas reglas — pero `tun1` esta UP y hay regla por fwmark
+(`13000: from all fwmark 0xc0065/0xcffff lookup 1018`).
+
+**No he apagado el VPN del operador:** la causa queda **NO DETERMINADA** con el VPN como candidato
+principal, porque es el unico elemento entre la app y el video que no es LAN.
+
+## 31.5 · Cuarta correccion de mi instrumento
+
+Mi verificacion conto frames con `SurfaceFlinger --latency` y reporto "0 frames" **cuando el video SÍ
+reproducia**. Dos motivos medidos:
+
+1. El buffer circular tiene 127 entradas y **deja de rotar** aunque el video avance: `127 -> 127 -> 127`
+   con el test pattern en marcha.
+2. Las capturas negras **cambian de hash** cuando aparece el texto del overlay de error (16.280 ->
+   22.491 B): "hash distinto" por si solo **no** prueba video.
+
+**Criterio final del script: hash distinto Y captura > 60.000 B.**
+
+## 31.6 · El veredicto del objetivo
+
+| Pregunta | Respuesta final |
+|---|---|
+| ¿Que hace el APK? | Media3 ExoPlayer; monta HLS **y** DASH; elige pista; **reproduce** (medido con fuente LAN) |
+| ¿Aplica video filter? | **No desde la lista.** `EXTVLCOPT -> DECLARED_ONLY`. Los `.tflite` no existen en el arbol |
+| ¿MediaSession interactua con OTT? | **No.** El APK no instancia MediaSession; solo lo menciona en un comentario |
+| ¿HLS y DASH para ambos? | **Montados y seleccionando en ambos lados.** Reproduccion de LAN demostrada; internet bloqueada por red |
