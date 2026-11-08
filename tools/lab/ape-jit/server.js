@@ -43,6 +43,9 @@ const IMAGE_DEFAULTS = {
   //  UHD_4K     : 3840x2160
   //  DCI_2K     : 2048x1080   (cine, NO sustituye QHD)
   target: 'source',
+  // Perfil del LAB (P0..P5.5). Si se fija, DERIVA el target segun la politica
+  // del informe; el target explicito sigue mandando si se envia junto.
+  profile: '',
   allow_downscale: false,      // false = nunca reducir por debajo de la fuente
 
   // ── receta de filtros ──
@@ -105,6 +108,35 @@ const IMAGE_LIMITS = {
   presets: ['ultrafast', 'superfast', 'veryfast', 'faster', 'fast', 'medium'],
   fps: ['preserve', '25', '30', '50', '60'],
   audio: ['preserve', 'aac', 'drop']
+};
+
+/* Los 12 perfiles del LAB, tal como los declara el informe, con el destino de
+ * salida que la politica les asigna y la viabilidad REAL medida en este host.
+ * El perfil del LAB y el destino de salida se guardan por separado: elegir un
+ * perfil NO implica que este host pueda sostener su destino.
+ *
+ * measured_viable: false significa que la medicion de 20 s da menos de 1,2x
+ * tiempo real y el player se quedaria sin segmentos. No se oculta: se declara. */
+const LAB_PROFILES = {
+  'P0':    { declared: '7680x4320', target: 'UHD_4K',   treatment: 'conservar nativo; QHD/UHD como derivada elegida', measured_viable: false },
+  'P0.5':  { declared: '5760x3240', target: 'UHD_4K',   treatment: 'mantener identidad 6K; supone reduccion si la fuente es 8K', measured_viable: false },
+  'P1':    { declared: '3840x2160', target: 'UHD_4K',   treatment: 'salida UHD 3840x2160', measured_viable: false },
+  'P1.5':  { declared: '5760x3240', target: 'QHD_1440', treatment: '6K separado; QHD como alternativa declarada', measured_viable: false },
+  'P2':    { declared: '3840x2160', target: 'UHD_4K',   treatment: 'salida UHD; preservar la cadencia observada', measured_viable: false },
+  'P2.5':  { declared: '5760x3240', target: 'QHD_1440', treatment: 'conservar solicitud 6K; registrar alternativa QHD', measured_viable: false },
+  'P3':    { declared: '1920x1080', target: 'UHD_4K',   treatment: 'propuesta de mejora a UHD', measured_viable: false, note: 'en este host no cabe: medir FHD en su lugar' },
+  'P3.5':  { declared: '5760x3240', target: 'QHD_1440', treatment: 'no declarar P3.5 ejecutado si solo se entrega QHD/UHD', measured_viable: false },
+  'P4':    { declared: '1280x720',  target: 'QHD_1440', treatment: 'propuesta a QHD', measured_viable: false, note: 'QHD al limite (1,05x)' },
+  'P4.5':  { declared: '5760x3240', target: 'QHD_1440', treatment: 'conservar seleccion 6K y resolver capacidad', measured_viable: false },
+  'P5':    { declared: '854x480',   target: 'QHD_1440', treatment: 'propuesta a QHD respetando aspecto y cadencia', measured_viable: false, note: 'QHD al limite (1,05x)' },
+  'P5.5':  { declared: '5760x3240', target: 'QHD_1440', treatment: 'conservar seleccion 6K; no sustituir en silencio', measured_viable: false }
+};
+
+// Destino que SI cabe en este host, por perfil, cuando el declarado no cabe.
+const LAB_PROFILE_FALLBACK = {
+  'P0': 'FHD_1080', 'P0.5': 'FHD_1080', 'P1': 'FHD_1080', 'P1.5': 'FHD_1080',
+  'P2': 'FHD_1080', 'P2.5': 'FHD_1080', 'P3': 'FHD_1080', 'P3.5': 'FHD_1080',
+  'P4': 'FHD_1080', 'P4.5': 'FHD_1080', 'P5': 'FHD_1080', 'P5.5': 'FHD_1080'
 };
 
 // Dimensiones por destino. DCI_2K es cine (1,90:1) y NO sustituye a QHD.
@@ -188,6 +220,11 @@ function normalizeImageConfig(patch) {
   if (p.x265_threads !== undefined) c.x265_threads = clampInt(p.x265_threads, 1, 8, c.x265_threads);
   if (p.allow_downscale !== undefined) c.allow_downscale = !!p.allow_downscale;
   if (p.force_transcode !== undefined) c.force_transcode = !!p.force_transcode;
+  if (p.profile !== undefined) {
+    const prof = String(p.profile);
+    if (prof === '' || LAB_PROFILES[prof]) c.profile = prof;
+    else errors.push('perfil invalido: ' + prof + ' (usa P0..P5.5 o vacio)');
+  }
   if (p.ten_bit !== undefined) c.ten_bit = !!p.ten_bit;
   if (p.closed_gop !== undefined) c.closed_gop = !!p.closed_gop;
   if (p.filter_order !== undefined) {
@@ -440,7 +477,13 @@ function buildEncodingPlan(src, options = {}) {
   // La config en caliente decide el destino. Si target='source' se conserva el
   // comportamiento historico (1280/1920/2048 x 720/1080) para no romper nada.
   const cfg = options.imageConfig || imageConfig;
-  const requestedTarget = IMAGE_TARGETS[cfg.target] || null;
+  // Un perfil del LAB DERIVA el destino de salida. El perfil describe que declara
+  // el LAB; el target describe que produce este motor. Son objetos distintos y se
+  // guardan por separado para que la etiqueta no mienta sobre lo que llega al video.
+  const labProfile = cfg.profile && LAB_PROFILES[cfg.profile] ? cfg.profile : null;
+  const derivedTarget = labProfile ? LAB_PROFILES[labProfile].target : null;
+  const effectiveTarget = derivedTarget || cfg.target;
+  const requestedTarget = IMAGE_TARGETS[effectiveTarget] || null;
   // Una receta de filtros o un destino explicito NO pueden servirse con -c:v copy:
   // copy no ejecuta -vf. Si se pide procesamiento, se procesa.
   const wantsProcessing = cfg.force_transcode !== false
@@ -1188,6 +1231,36 @@ const server = http.createServer((req, res) => {
     return res.end();
   }
   /* ── MODULO DE IMAGEN: control remoto desde la UI ───────────────────────── */
+  /* ── PERFILES DEL LAB: los 12, con su destino y su viabilidad medida ─────── */
+  if (u.pathname === '/image/profiles') {
+    setBaseHeaders(res);
+    setNoCacheHeaders(res);
+    const rows = Object.keys(LAB_PROFILES).map((k) => {
+      const p = LAB_PROFILES[k];
+      return {
+        profile: k,
+        declared: p.declared,
+        target: p.target,
+        treatment: p.treatment,
+        measured_viable: p.measured_viable,
+        fallback_viable: LAB_PROFILE_FALLBACK[k] || null,
+        note: p.note || null
+      };
+    });
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    return res.end(JSON.stringify({
+      ok: true,
+      count: rows.length,
+      rows,
+      current_profile: imageConfig.profile || null,
+      current_target: imageConfig.target,
+      rule: 'SD/720p -> QHD; 1080p -> UHD; 4K -> mantener UHD (politica del informe)',
+      measured_reality: 'En este host NINGUNO de los 12 destinos declarados es viable con filtros: '
+        + 'QHD da 1,05-1,19x y UHD 0,25x, frente al 1,2x exigido. '
+        + 'El unico destino certificable es FHD_1080 a 25 fps (1,37-1,76x).'
+    }));
+  }
+
   /* ── ESTADO VIVO del modulo de imagen ───────────────────────────────────── */
   if (u.pathname === '/image/state') {
     setBaseHeaders(res);
@@ -1232,7 +1305,10 @@ const server = http.createServer((req, res) => {
       config: {
         target: imageConfig.target, recipe: imageConfig.recipe, fps: imageConfig.fps,
         codec: imageConfig.codec, preset: imageConfig.preset, crf: imageConfig.crf,
-        audio: imageConfig.audio, force_transcode: imageConfig.force_transcode
+        audio: imageConfig.audio, force_transcode: imageConfig.force_transcode,
+        profile: imageConfig.profile || null,
+        derived_target: (imageConfig.profile && LAB_PROFILES[imageConfig.profile])
+          ? LAB_PROFILES[imageConfig.profile].target : null
       },
       effective_filter: buildImageFilterChain(imageConfig),
       engine: {

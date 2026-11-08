@@ -2780,3 +2780,86 @@ FHD 1080 balanced 25 fps. En sostenido, con la CPU al 79% y el load a 2,5-2,97 s
 - **La reproduccion en el dispositivo**: por indicacion del operador, sin tocar el TV.
 - **La calidad visual**: no se hizo A/B perceptual ni VMAF. El bitrate oscila con el contenido.
 - **Concurrencia**: un solo consumidor durante todo el test.
+
+---
+
+# 43 · Los 12 perfiles del LAB, instrumentados
+
+## 43.1 · Lo que faltaba
+
+El modulo de imagen solo conocia 5 destinos genericos (`source/FHD_1080/QHD_1440/UHD_4K/DCI_2K`).
+**No conocia los 12 perfiles del LAB** que el informe declara. Se añadieron.
+
+## 43.2 · `GET /jit/image/profiles`
+
+```
+count: 12
+
+perfil  LAB declara  target     viable  alternativa
+P0      7680x4320    UHD_4K     False   FHD_1080
+P0.5    5760x3240    UHD_4K     False   FHD_1080
+P1      3840x2160    UHD_4K     False   FHD_1080
+P1.5    5760x3240    QHD_1440   False   FHD_1080
+P2      3840x2160    UHD_4K     False   FHD_1080
+P2.5    5760x3240    QHD_1440   False   FHD_1080
+P3      1920x1080    UHD_4K     False   FHD_1080
+P3.5    5760x3240    QHD_1440   False   FHD_1080
+P4      1280x720     QHD_1440   False   FHD_1080
+P4.5    5760x3240    QHD_1440   False   FHD_1080
+P5      854x480      QHD_1440   False   FHD_1080
+P5.5    5760x3240    QHD_1440   False   FHD_1080
+```
+
+`measured_viable: false` en los 12 **no es un fallo del modulo**: es la medicion de capacidad
+enfrentada a la politica del informe. **QHD da 1,05-1,19x y UHD 0,25x frente al 1,2x exigido.**
+
+## 43.3 · El perfil DERIVA el destino, y se ven los dos
+
+`profile` y `target` son objetos distintos y se guardan por separado:
+
+```
+POST {"profile":"P4"}
+-> config.profile      = "P4"
+   config.target       = "FHD_1080"     <- lo que este host puede
+   config.derived_target = "QHD_1440"   <- lo que el LAB declara
+```
+
+Asi la etiqueta nunca miente sobre lo que llega al video: se ve lo declarado y lo ejecutado.
+
+Un perfil invalido se rechaza con **400** (`{"profile":"P9"}`).
+
+## 43.4 · En el panel
+
+Selector `Perfil LAB` con los 12, mas una tabla que muestra por fila: perfil, lo que el LAB declara,
+el target, si es viable **en este host**, la alternativa y una nota. Debajo, el aviso en rojo con la
+realidad medida.
+
+Prueba de integracion: **13/13 OK** (se añadieron las comprobaciones del selector y la tabla).
+
+## 43.5 · Verificacion de la cadena contra ffmpeg REAL
+
+La skill `ape-image-pipeline-truth` documenta el defecto que rompe las 10.573 cadenas de la lista
+de referencia: `unsharp.chroma_msize = 0` esta fuera del rango `[3, 23]`. Comprobado en el VPS:
+
+```
+OK     balanced del informe: hqdn3d=0.6:0.45:0.9:0.7,unsharp=5:5:0.2:5:5:0
+FALLA  chroma_msize=0  -> Value 0.000000 for parameter 'chroma_msize_x' out of range
+FALLA  chroma_msize=2  -> Value 2.000000 ... out of range
+OK     light
+OK     temporal
+OK     luma_amount=5
+OK     hqdn3d alto
+```
+
+**El motor no puede emitirlo**: `clampInt(unsharp.luma_msize, 3, 13)` fuerza minimo 3, el valor de
+chroma reutiliza el mismo (`server.js` L270) y ademas se ajusta a impar (L252). El defecto universal
+esta cerrado por construccion.
+
+## 43.6 · Lo que la skill obliga a declarar
+
+- **`#EXTVLCOPT:video-filter` es inerte por politica de VLC** (`unsafe option`), no por sintaxis.
+  Por eso este modulo usa el **carril FFmpeg del JIT**, que si ejecuta.
+- **El techo real medido por la skill**: P1 4K = 29,6 fps. "120 fps" es decorativo. Coincide con
+  nuestra medicion de este host: UHD no es viable.
+- **Estados de evidencia**: lo que este documento reporta como `aplicado` tiene recibo del motor
+  (`output_observed`, filtro efectivo); lo que es solo declaracion del LAB va marcado como tal.

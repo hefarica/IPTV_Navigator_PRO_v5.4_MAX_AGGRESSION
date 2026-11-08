@@ -28,6 +28,7 @@
     busy: false,
     lastError: null,
     live: null,
+    profiles: null,
     log: []
   };
 
@@ -188,6 +189,38 @@
       root.appendChild(el('div', { class: 'out' }, ['estado no consultado']));
     }
 
+    // ── PERFILES DEL LAB (los 12) ──
+    if (S.profiles && S.profiles.rows) {
+      root.appendChild(el('div', { class: 'sec', style: 'color:#f472b6' },
+        ['🧬 Perfiles del LAB (' + S.profiles.count + ') — declarado vs viable']));
+      var ptb = el('tbody', {});
+      S.profiles.rows.forEach(function (r) {
+        var vc = r.measured_viable ? '#10b981' : '#ef4444';
+        ptb.appendChild(el('tr', {}, [
+          el('td', {}, [r.profile]),
+          el('td', {}, [r.declared]),
+          el('td', {}, [r.target]),
+          el('td', {}, [el('span', { class: 'chip', style: 'background:' + vc + '22;color:' + vc },
+            [r.measured_viable ? 'VIABLE' : 'NO VIABLE'])]),
+          el('td', {}, [r.fallback_viable || '—']),
+          el('td', { style: 'font-size:.7rem;color:#94a3b8' }, [r.note || ''])
+        ]));
+      });
+      root.appendChild(el('table', {}, [
+        el('thead', {}, [el('tr', {}, [
+          el('th', {}, ['Perfil']), el('th', {}, ['LAB declara']), el('th', {}, ['Target']),
+          el('th', {}, ['En este host']), el('th', {}, ['Alternativa']), el('th', {}, [''])
+        ])]),
+        ptb
+      ]));
+      if (S.profiles.measured_reality) {
+        root.appendChild(el('div', {
+          class: 'warn',
+          style: 'background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.35);color:#fca5a5'
+        }, [S.profiles.measured_reality]));
+      }
+    }
+
     root.appendChild(el('div', { class: 'sec', style: 'color:#3b82f6' }, ['🎯 Destino y receta']));
     function fld(label, node) { return el('div', { class: 'fld' }, [el('label', {}, [label]), node]); }
     function sel(id, opts, cur) {
@@ -200,6 +233,7 @@
       return s;
     }
     root.appendChild(el('div', { class: 'grid' }, [
+      fld('Perfil LAB', sel('aip-profile', ['', 'P0', 'P0.5', 'P1', 'P1.5', 'P2', 'P2.5', 'P3', 'P3.5', 'P4', 'P4.5', 'P5', 'P5.5'], cfg.profile)),
       fld('Destino', sel('aip-target', ['source', 'FHD_1080', 'QHD_1440', 'UHD_4K', 'DCI_2K'], cfg.target)),
       fld('Receta', sel('aip-recipe', ['none', 'light', 'balanced', 'temporal', 'custom'], cfg.recipe)),
       fld('FPS', sel('aip-fps', ['preserve', '25', '30', '50', '60'], cfg.fps)),
@@ -241,6 +275,7 @@
       lines.push('filtro efectivo: ' + (S.effectiveFilter || '(sin filtros)'));
     }
     if (cfg.target !== undefined) {
+      lines.push('perfil LAB: ' + (cfg.profile || '(ninguno)'));
       lines.push('config: target=' + cfg.target + '  recipe=' + cfg.recipe + '  fps=' + cfg.fps
         + '  codec=' + cfg.codec + '  preset=' + cfg.preset + '  crf=' + cfg.crf + '  audio=' + cfg.audio);
       lines.push('pack: seg=' + cfg.seg_duration + 's  window=' + cfg.window_size + '  extra=' + cfg.extra_window_size + '  gop=' + cfg.gop_seconds + 's');
@@ -251,6 +286,7 @@
 
     function collect() {
       return {
+        profile: document.getElementById('aip-profile').value,
         target: document.getElementById('aip-target').value,
         recipe: document.getElementById('aip-recipe').value,
         fps: document.getElementById('aip-fps').value,
@@ -336,12 +372,14 @@
     Promise.all([
       api('/image/config'),
       api('/image/capacity').catch(function () { return null; }),
-      api('/image/state').catch(function () { return null; })
+      api('/image/state').catch(function () { return null; }),
+      api('/image/profiles').catch(function () { return null; })
     ]).then(function (r) {
       S.config = r[0].config;
       S.effectiveFilter = r[0].effective_filter || '';
       S.capacity = r[1];
       S.live = r[2];
+      S.profiles = r[3];
       S.busy = false;
       logLine('estado cargado');
       render(root);
