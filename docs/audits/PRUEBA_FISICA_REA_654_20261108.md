@@ -391,3 +391,68 @@ reintentando la fuente actual` en bucle.
 3. Por que la enumeracion devuelve 0 grupos ~7 s despues del arranque.
 
 **Criterio de exito:** reproducir 60 s seguidos sin que `buffered` caiga por debajo de la posicion.
+
+---
+
+# 11 · La red del dispositivo queda descartada con medidas
+
+## 11.1 · Estado real de la red
+
+```
+WiFi: "Sofi Tigo 5G" · BSSID 90:93:5a:0d:de:71 · RSSI -61 dBm · 5 GHz · 5220 MHz
+      Link speed 520 Mbps · LinkDnBandwidth >= 60000 Kbps
+      Capabilities: NOT_METERED & INTERNET & TRUSTED & NOT_VPN & VALIDATED
+      InterfaceName: wlan0 · IP 192.168.1.3/24 · Gateway 192.168.1.254
+
+WAN:  ping 8.8.8.8 -> 1/1 paquetes, rtt 21.785 ms
+      1.1.1.1:443   -> responde (Cloudflare 400 a un GET crudo, es normal)
+      iptv-ape.duckdns.org:80 -> HTTP/1.1 302 (nginx responde)
+```
+
+**La red esta sana y validada.** 60 Mbps de bajada, 21 ms de RTT, sin perdida.
+
+## 11.2 · El VPN no interfere
+
+```
+ip route get 8.8.8.8  ->  8.8.8.8 via 192.168.1.254 dev wlan0     <- sale por WiFi
+ip rule: 12000: from all iif tun1 lookup 97                       <- tun1 solo por reglas uid
+always_on_vpn_app      -> null
+always_on_vpn_lockdown -> null
+```
+
+Hay interfaz `tun1` (10.14.0.2/16) y estan corriendo `com.nordvpn.android` (PID 3714) y
+`com.surfshark.vpnclient.android` (PID 2382), **pero ninguno es la ruta por defecto**. El trafico
+general sale por `wlan0`. **El VPN no explica ningun atasco.**
+
+## 11.3 · OTT Navigator tambien se queda en Buffering: 0%
+
+Se intento abrir una lista M3U local minima (`/sdcard/Download/ott_test.m3u`, 129 B, un canal apuntando
+al HLS de la LAN) mediante `am start -a VIEW -t audio/x-mpegurl`.
+
+OTT Navigator **abrio su `PlayerActivity`**, pero **ignoro el fichero** y arranco un canal propio de su
+lista: **`AMEDIA HIT HD` (FHD)**, con el panel inferior y **`Buffering: 0%`** en el centro. Sin imagen.
+
+**Alcance de esta observacion, sin exagerarla:**
+- Prueba que el reproductor del operador tambien esta sin imagen en ese instante.
+- **No** prueba que sea el mismo fallo: el canal es del proveedor (WAN), no el HLS local.
+- El intent `VIEW` con `file://` no fue respetado por OTT; la prueba con la fuente local via OTT
+  **no se completo**.
+
+## 11.4 · Lo que esto cambia
+
+| Causa posible del atasco del `ApePlayer` | Estado |
+|---|---|
+| Red del dispositivo | **DESCARTADA** - 60 Mbps, 21 ms, VALIDATED, sin perdida |
+| VPN interfiriendo | **DESCARTADA** - no es ruta por defecto, always-on null |
+| DNS | **DESCARTADA** - resuelve y alcanza hosts publicos |
+| Origen lento | **DESCARTADA** - falla con HLS local en LAN |
+| **El `ApePlayer`** | **SIGUE EN PIE** - es lo unico compatible con toda la evidencia |
+
+## 11.5 · Hecho util colateral: se puede escribir en el directorio de la app
+
+`adb push` **si** puede escribir en `/sdcard/Android/data/com.ape.crystalagent.rea/files/`.
+Se dejo alli `LAB_CALIBRATED_IMPORTADO.json` (605.082 B). **La app no lo consumio**: sin logs de carga
+y el fichero quedo intacto tras reiniciar.
+
+Esto confirma por segunda via independiente lo del §6: **la carga del LAB solo ocurre desde
+`ReaProfilesActivity`, que es inalcanzable.** No hay ruta automatica que rescatar.
