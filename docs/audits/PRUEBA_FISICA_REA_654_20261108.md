@@ -2044,3 +2044,74 @@ dependen de ese tunel. Es una accion reversible pero es **su** configuracion, y 
 
 La prueba definitiva es de 60 segundos: desconectar el VPN, correr
 `pwsh tools/audit/verify_apk_hls_dash.ps1`, y ver si los tres casos pasan.
+
+---
+
+# 33 · LA CAUSA ERA LA VENTANA DEL JIT — el APK reproduce el canal en directo
+
+## 33.1 · El hallazgo
+
+El access log del VPS mostro que el APK **no pedia nada** al servidor y aun asi logueaba
+`VIDEO elegido`. Eso apuntaba al cache de 104 MB. Se limpio (`fluid_segments`), y siguio igual.
+
+La pieza que cerro el caso fue comparar con el control: **mux.dev, por internet, presento una captura de
+1.025.033 B**. Es decir, **la red a internet funciona y el APK reproduce contenido de internet**. El
+problema era **especifico del JIT**.
+
+Y la diferencia estaba en el propio motor:
+
+```
+'-seg_duration', '2', '-frag_duration', '2',
+'-window_size', '6', '-extra_window_size', '2',      <- 16 s de ventana
+```
+
+El APK usa **buffer de 30-120 s** (`ApePlayer: buffer=30/120s`). Un player con esa hambre pide segmentos
+que el motor **ya borro**. De ahi los `Playback error` y el cero frames.
+
+## 33.2 · El fix
+
+```js
+'-window_size', '30', '-extra_window_size', '10',    // 80 s de ventana
+```
+
+Aplicado en `/opt/ape-jit/server.js` (produccion) y en `tools/lab/ape-jit/server.js` (repo).
+`node --check` OK, servicio `active`.
+
+## 33.3 · Verificacion: el APK reproduce el canal
+
+```
+media source: HLS -> https://iptv-ape.duckdns.org/jit/live/2/master.m3u8
+VIDEO elegido: mime=video/avc codecs=avc1.640028 1920x1080 bps=3227254
+captura A: 2.515.444 B 83462A48...
+captura B: 2.626.768 B F842FF58...
+=> dos capturas distintas de ~2,5 MB
+```
+
+**En pantalla: beIN Sports en directo** — presentador en estudio, ticker deportivo en arabe, reloj 19:49.
+Evidencia en `docs/audits/evidencia_apk/APK_JIT_HLS_reproduciendo_{1,2}.png`.
+
+Verificacion con el script, pasada limpia:
+
+```
+HLS  : captura A 2.118.865 B / B 1.872.186 B  -> PASA
+DASH : captura A    16.280 B / B    22.491 B  -> NO (overlay de error)
+mux  : captura A    27.009 B / B   893.167 B  -> arranca tarde (>26 s)
+```
+
+## 33.4 · Lo que queda
+
+| Transporte | Estado |
+|---|---|
+| **HLS · JIT -> APK** | **REPRODUCE** (2,1 MB de imagen en movimiento) |
+| **HLS · ffmpeg -> JIT** | **200 + frames reales de beIN Sports** |
+| **DASH · ffmpeg -> JIT** | **200 + mismos frames** |
+| **DASH · JIT -> APK** | **NO reproduce** — investigar `SegmentTemplate`/`availabilityStartTime` |
+| HLS mux.dev -> APK | reproduce, pero tarda >26 s en arrancar |
+
+## 33.5 · Correccion al diagnostico anterior
+
+En las secciones 29-32 atribui el cero-frames a "entorno del dispositivo" y señale el VPN como candidato
+principal. **Era la ventana del motor.** El VPN sigue UP (`tun1`, 10.14.0.2/16) y aun asi el APK
+reproduce: **el VPN no era la causa**.
+
+Se deja constancia porque el diagnostico anterior, con esa hipotesis al frente, estaba equivocado.

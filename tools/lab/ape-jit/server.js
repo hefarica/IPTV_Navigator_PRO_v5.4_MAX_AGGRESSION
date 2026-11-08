@@ -402,7 +402,7 @@ async function start(id, spec, sdr, sdr720) {
     // One FFmpeg -> shared fMP4 for DASH + HLS.
     '-f', 'dash',
     '-seg_duration', '2', '-frag_duration', '2',
-    '-window_size', '6', '-extra_window_size', '2',
+    '-window_size', '30', '-extra_window_size', '10',
     '-remove_at_exit', '0',
     '-hls_playlist', '1', '-hls_master_name', 'master.m3u8',
     '-init_seg_name', 'init-' + session + '-$RepresentationID$.m4s',
