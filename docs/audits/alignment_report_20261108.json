@@ -1,0 +1,228 @@
+{
+  "schema": "ape.audit/alignment-with-lab/1",
+  "measured_at": "2026-11-08T03:58:11.747Z",
+  "elapsed_ms": 48570,
+  "list": {
+    "path": "C:\\Users\\HFRC\\AppData\\Local\\DSH_HERRAMIENTAS\\DSH_BLUEGREEN_021\\home\\attachments\\v1\\files\\5f\\5f08f4e6a0bf626dcd4955bba030c2700c6151420ed08e338d65bba9cc46a930\\APE_LISTA_1794100720046.m3u8",
+    "sha256": "5f08f4e6a0bf626dcd4955bba030c2700c6151420ed08e338d65bba9cc46a930",
+    "bytes": 1298722596
+  },
+  "lab": {
+    "path": "C:\\Users\\HFRC\\AppData\\Local\\DSH_HERRAMIENTAS\\DSH_BLUEGREEN_021\\home\\attachments\\v1\\files\\14\\14ee67b55fc50fd8ccc607ff74a9870ec21327626d0028a7ce1629313d8507ac\\LAB_CALIBRATED_FINAL_v24.0.0-6K.json",
+    "sha256": "14ee67b55fc50fd8ccc607ff74a9870ec21327626d0028a7ce1629313d8507ac",
+    "bytes": 585107,
+    "version": "23.1.0-6K-EMULATED",
+    "lab_version": "omega_v1_bulletproof_20261026"
+  },
+  "structure": {
+    "channels": 21224,
+    "uris": 21224,
+    "one_uri_per_channel": true,
+    "pipe_headers": 21224,
+    "stream_inf": 21224,
+    "duplicate_tvg_id": 0,
+    "ext_http_valid": 21224,
+    "ext_http_invalid": 0,
+    "ext_http_bytes_min": 7113,
+    "ext_http_bytes_max": 7935
+  },
+  "layer_6k": {
+    "tags": 21224,
+    "mode_tags": 21224,
+    "truth_tags": 21224,
+    "provenance": {},
+    "activation_gated_declared": null
+  },
+  "filter_chains": {
+    "P3": [
+      {
+        "len": 344,
+        "modules": [
+          "nlmeans",
+          "bwdif",
+          "gradfun",
+          "unsharp",
+          "zscale",
+          "minterpolate"
+        ],
+        "vlc_modules": [
+          "gradfun"
+        ],
+        "no_vlc_module": [
+          "nlmeans",
+          "bwdif",
+          "unsharp",
+          "zscale",
+          "minterpolate"
+        ],
+        "has_atadenoise": false
+      }
+    ],
+    "P1": [
+      {
+        "len": 348,
+        "modules": [
+          "nlmeans",
+          "bwdif",
+          "gradfun",
+          "unsharp",
+          "zscale",
+          "minterpolate"
+        ],
+        "vlc_modules": [
+          "gradfun"
+        ],
+        "no_vlc_module": [
+          "nlmeans",
+          "bwdif",
+          "unsharp",
+          "zscale",
+          "minterpolate"
+        ],
+        "has_atadenoise": false
+      }
+    ],
+    "P5": [
+      {
+        "len": 68,
+        "modules": [
+          "minterpolate"
+        ],
+        "vlc_modules": [],
+        "no_vlc_module": [
+          "minterpolate"
+        ],
+        "has_atadenoise": false
+      }
+    ],
+    "P4": [
+      {
+        "len": 277,
+        "modules": [
+          "hqdn3d",
+          "yadif",
+          "unsharp",
+          "minterpolate"
+        ],
+        "vlc_modules": [
+          "hqdn3d"
+        ],
+        "no_vlc_module": [
+          "yadif",
+          "unsharp",
+          "minterpolate"
+        ],
+        "has_atadenoise": false
+      }
+    ]
+  },
+  "atadenoise_in_emitted_chains": 0,
+  "embedded_metadata": {
+    "bytes": 56366,
+    "schema": "ape-lab-metadata-v1",
+    "chunks": 22,
+    "quality_levels": 8,
+    "atadenoise_in_meta": false
+  },
+  "bit_depth_precedence": {
+    "governs": "bit_depth",
+    "evidence": "_firstDef(s.bit_depth, s.bitDepth, ...)",
+    "per_profile": {
+      "P0": {
+        "bit_depth": "10",
+        "alias_bitDepth": "12",
+        "governs": "10",
+        "disagree": true
+      },
+      "P0.5": {
+        "bit_depth": "10",
+        "alias_bitDepth": "12",
+        "governs": "10",
+        "disagree": true
+      },
+      "P1": {
+        "bit_depth": "10",
+        "alias_bitDepth": "10",
+        "governs": "10",
+        "disagree": false
+      },
+      "P1.5": {
+        "bit_depth": "10",
+        "alias_bitDepth": "10",
+        "governs": "10",
+        "disagree": false
+      },
+      "P2": {
+        "bit_depth": "10",
+        "alias_bitDepth": "10",
+        "governs": "10",
+        "disagree": false
+      },
+      "P2.5": {
+        "bit_depth": "10",
+        "alias_bitDepth": "10",
+        "governs": "10",
+        "disagree": false
+      },
+      "P3": {
+        "bit_depth": "10",
+        "alias_bitDepth": "8",
+        "governs": "10",
+        "disagree": true
+      },
+      "P3.5": {
+        "bit_depth": "10",
+        "alias_bitDepth": "8",
+        "governs": "10",
+        "disagree": true
+      },
+      "P4": {
+        "bit_depth": "8",
+        "alias_bitDepth": "8",
+        "governs": "8",
+        "disagree": false
+      },
+      "P4.5": {
+        "bit_depth": "10",
+        "alias_bitDepth": "8",
+        "governs": "10",
+        "disagree": true
+      },
+      "P5": {
+        "bit_depth": "8",
+        "alias_bitDepth": "8",
+        "governs": "8",
+        "disagree": false
+      },
+      "P5.5": {
+        "bit_depth": "10",
+        "alias_bitDepth": "8",
+        "governs": "10",
+        "disagree": true
+      }
+    },
+    "disagreeing_profiles": [
+      "P0",
+      "P0.5",
+      "P3",
+      "P3.5",
+      "P4.5",
+      "P5.5"
+    ]
+  },
+  "dna": {
+    "values": {
+      "unverified": 1
+    },
+    "lab_sha256": "14ee67b55fc50fd8ccc607ff74a9870ec21327626d0028a7ce1629313d8507ac",
+    "matches_lab": false
+  },
+  "rea_contract": {
+    "ext_x_ape_rea": 0,
+    "ext_x_ape_source": 0
+  },
+  "credentials": {
+    "xtream_uris_matched": 21224,
+    "note": "solo conteo; no se imprimen valores"
+  }
+}
