@@ -19,7 +19,7 @@
     base: (window.APE_JIT_BASE || 'https://iptv-ape.duckdns.org') + '/jit',
     config: null, effectiveFilter: '', capacity: null, live: null,
     profiles: null, matrix: null, plan: null, catalog: null,
-    declared: null, gov: null, cascade: null, fallback: null, rules: null, autoRow: null,
+    declared: null, gov: null, cascade: null, fallback: null, rules: null, autoRow: null, optimized: null,
     busy: false, lastError: null, log: [],
     build: { profile: 'P4.5', w: 1280, h: 720, target: 'UHD_4K', codec: 'hvc1',
              player: 'onn-4k', recipe: 'balanced', fps: 25,
@@ -262,6 +262,10 @@
       fld('x265_threads', inp('aip-thr', cfg0.x265_threads != null ? cfg0.x265_threads : 1, 'number'))
     ]));
 
+    var bOpt = el('button', { class: 'go', id: 'aip-optimize', style: 'background:#8b5cf622;border-color:#8b5cf655;color:#c4b5fd;font-weight:600' },
+      ['⚡ Optimizar (función objetivo)']);
+    bOpt.title = 'Calcula TODOS los campos para la entrada/salida/modo actual. Usa el LLM si esta configurado; si no, el motor deterministico.';
+    bOpt.addEventListener('click', doOptimize);
     var bDecl = el('button', { class: 'go', id: 'aip-declare' }, ['🎯 Declarar automático']);
     bDecl.addEventListener('click', doDeclare);
     var bApply = el('button', { class: 'pri', id: 'aip-apply-build' }, ['▶ Aplicar al JIT']);
@@ -272,14 +276,63 @@
     bRel.addEventListener('click', load);
     var bDef = el('button', { id: 'aip-def' }, ['⟲ Defaults']);
     bDef.addEventListener('click', applyDefaults);
-    root.appendChild(el('div', { class: 'row', style: 'margin-top:14px' }, [bDecl, bApply, bRec, bRel, bDef]));
+    root.appendChild(el('div', { class: 'row', style: 'margin-top:14px' }, [bOpt, bDecl, bApply, bRec, bRel, bDef]));
 
+    if (S.optimized && S.optimized.ok) renderOptimized(root);
     if (S.autoRow && S.autoRow.ok) renderAutoRow(root);
     if (S.declared) renderDeclaration(root);
   }
 
   /* Resultado del recalculo automatico: se ve en el constructor, con el porque
    * de cada campo y lo que no se puede. */
+  /* Resultado de OPTIMIZAR: cada campo con su valor y su razon, la cadena, el
+   * coste y el origen (LLM o deterministico). */
+  function renderOptimized(root) {
+    var o = S.optimized;
+    var src = (o.llm && o.llm.used) ? ('LLM ' + (o.llm.ms ? '(' + o.llm.ms + ' ms)' : '')) : 'determinístico';
+    var box = el('div', { class: 'decl', style: 'border-color:rgba(139,92,246,.5);background:rgba(139,92,246,.08)' }, [
+      el('div', { style: 'font-weight:700;color:#c4b5fd;margin-bottom:6px' }, [
+        '⚡ OPTIMIZADO [' + src + '] — ' + o.mode.toUpperCase() +
+        ' · ' + o.areaRatio + 'x área · coste ' + o.cost.relative + 'x (' + o.cost.estimatedRatio + 'x rt)'
+      ]),
+      el('div', { style: 'font-size:.73rem;color:#a5b4fc;margin-bottom:6px' }, [o.modeMeaning])
+    ]);
+    // cada campo con su razon
+    ['codec', 'preset', 'crf', 'audio', 'seg_duration', 'window_size', 'x265_threads'].forEach(function (k) {
+      var f = o.fields[k];
+      box.appendChild(el('div', { style: 'font-size:.72rem;margin-top:1px' }, [
+        '· ' + k + ' = ' + f.value + ' — ' + f.reason
+      ]));
+    });
+    // filtros activos
+    var F = o.filters;
+    var act = [];
+    if (F.nlmeans.enabled) act.push('nlmeans s=' + F.nlmeans.s);
+    if (F.minterpolate.enabled) act.push('minterpolate ' + F.minterpolate.outFps + 'fps');
+    if (F.cas.enabled) act.push('cas ' + F.cas.strength);
+    if (F.gradfun.enabled) act.push('gradfun ' + F.gradfun.strength);
+    if (F.hqdn3d.luma_spatial > 0) act.push('hqdn3d ' + F.hqdn3d.luma_spatial);
+    if (F.atadenoise.s > 0) act.push('atadenoise s=' + F.atadenoise.s);
+    if (F.unsharp.luma_amount > 0) act.push('unsharp ' + F.unsharp.luma_amount);
+    box.appendChild(el('div', { style: 'font-size:.72rem;margin-top:5px;color:#7dd3fc' }, [
+      'filtros activos: ' + (act.length ? act.join(' · ') : 'ninguno')
+    ]));
+    box.appendChild(el('div', { class: 'out', style: 'margin-top:6px' }, [o.chain]));
+    if (o.llm && o.llm.used) {
+      if (o.llm.razon) box.appendChild(el('div', { style: 'font-size:.72rem;color:#c4b5fd;margin-top:4px' }, ['LLM: ' + o.llm.razon]));
+      if (o.llm.rejected && o.llm.rejected.length) {
+        box.appendChild(warn('LLM descartado en ' + o.llm.rejected.length + ' campo(s): ' + o.llm.rejected.join('; '), '#f59e0b'));
+      }
+    } else if (o.llm && o.llm.error) {
+      box.appendChild(el('div', { style: 'font-size:.7rem;color:#94a3b8;margin-top:4px' }, [
+        'LLM no usado: ' + o.llm.error
+      ]));
+    }
+    (o.impossible || []).forEach(function (i) { box.appendChild(warn('IMPOSIBLE: ' + i)); });
+    (o.warnings || []).slice(0, 3).forEach(function (w) { box.appendChild(warn('AVISO: ' + w, '#f59e0b')); });
+    root.appendChild(box);
+  }
+
   function renderAutoRow(root) {
     var a = S.autoRow;
     var box = el('div', { class: 'decl' }, [
@@ -395,6 +448,47 @@
   function applyDefaults() {
     post('/image/config', { target: 'source', recipe: 'none', fps: 'preserve', profile: '' })
       .then(function () { logLine('defaults aplicados'); load(); });
+  }
+
+  /* OPTIMIZAR: llama a la funcion objetivo completa y escribe TODOS los campos.
+   * Con LLM configurado, el LLM propone y la validacion por rangos decide. Sin
+   * LLM, responde el motor deterministico. En ambos casos se declara cual fue. */
+  function doOptimize() {
+    var b = readBuild();
+    S.busy = true;
+    post('/image/optimize-llm', {
+      inW: b.w, inH: b.h, inFps: b.inFps,
+      outW: b.outW, outH: b.outH,
+      player: b.player, mode: b.mode
+    }).then(function (r) {
+      S.busy = false;
+      if (!r || !r.ok) { logLine('optimizar: ' + ((r && r.error) || 'fallo')); return; }
+      // se rellenan TODOS los campos con el resultado
+      var f = r.fields, F = r.filters;
+      setVal('aip-b-codec', f.codec.value);
+      setVal('aip-b-preset', f.preset.value);
+      setVal('aip-b-crf', f.crf.value);
+      setVal('aip-b-audio', f.audio.value);
+      setVal('aip-b-gop', f.gop_seconds.value);
+      setVal('aip-seg', f.seg_duration.value);
+      setVal('aip-win', f.window_size.value);
+      setVal('aip-exw', f.extra_window_size.value);
+      setVal('aip-thr', f.x265_threads.value);
+      setVal('aip-hq-ls', F.hqdn3d.luma_spatial);
+      setVal('aip-hq-cs', F.hqdn3d.chroma_spatial);
+      setVal('aip-hq-lt', F.hqdn3d.luma_tmp);
+      setVal('aip-hq-ct', F.hqdn3d.chroma_tmp);
+      setVal('aip-us-am', F.unsharp.luma_amount);
+      setVal('aip-us-ms', F.unsharp.luma_msize);
+      setVal('aip-at-s', F.atadenoise.s);
+      // dither segun codec
+      setVal('aip-b-dither', (f.codec.value === 'hvc1' || f.codec.value === 'hvc1_8') ? 'error_diffusion' : 'ordered');
+      S.optimized = r;
+      var src = (r.llm && r.llm.used) ? 'LLM' : 'deterministico';
+      logLine('OPTIMIZADO [' + src + '] ' + r.mode + ': preset=' + f.preset.value +
+              ' crf=' + f.crf.value + ' coste=' + r.cost.relative + 'x');
+      render(document.getElementById('ape-image-panel'));
+    });
   }
 
   function doDeclare() {

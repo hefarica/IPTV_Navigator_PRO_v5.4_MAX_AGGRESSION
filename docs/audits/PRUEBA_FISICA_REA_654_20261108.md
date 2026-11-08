@@ -4156,3 +4156,108 @@ etag "6af0f03b-cf55"  ->  cf55 hex = 53.077 decimal
 `vps-image-panel.js` **47.504 -> 53.077 B**. Cache-buster del index actualizado a
 `?v=20261108-recalc` (backup del index en `/var/backups/ape-deploy/`).
 **Test de integracion: 27/27.**
+
+---
+
+# 60 · Funcion objetivo REAL vs EMULADO + optimizador con LLM
+
+## 60.1 · Tecnicas de sintesis: que existe de verdad en este FFmpeg
+
+Medido antes de disenar nada:
+
+| Filtro | Estado | Nota |
+|---|---|---|
+| `minterpolate` | **OK** | mi_mode mci / mc_mode aobmc — interpolacion de movimiento |
+| `nlmeans` | **OK** | denoise de alta calidad, caro |
+| `atadenoise` | **OK** | denoise temporal |
+| `hqdn3d` | **OK** | denoise rapido |
+| `gradfun` | **OK** | debanding, rango [0.51,64] y radius [4,32] |
+| `cas` | **OK** | contraste adaptativo, rango [0,1] |
+| `unsharp` | **OK** | msize IMPAR 3..23 |
+| `zscale` | **OK** | HDR sintetico y dither |
+| `tblend`, `smartblur`, `libplacebo` | **OK** | disponibles |
+| **`sr` (DNN super-resolution)** | **NO DISPONIBLE** | exige `model=` con un `.pb`. **No existe en el VPS.** Es el mismo bloqueo que los `.tflite` del APK |
+
+**Sin modelo DNN no hay super-resolucion neuronal.** La sintesis se hace por
+interpolacion: Lanczos + cas + unsharp. Se declara en cada respuesta.
+
+## 60.2 · La funcion objetivo
+
+`objective()` devuelve **todos** los campos con su valor y su razon. Y cambia segun el
+modo. Medido, **720p@30 -> 4K en ONN 4K**:
+
+| Campo | REAL | EMULADO |
+|---|---|---|
+| preset | ultrafast | **superfast** |
+| crf | 21 | **17** |
+| window_size | 30 | **20** |
+| extra_window_size | 10 | **6** |
+| x265_threads | 1 | **2** |
+| nlmeans | OFF | **ON s=1.75** |
+| minterpolate | OFF | **ON 60 fps** |
+| cas | OFF | **ON 0.39** |
+| gradfun | OFF | **ON 1.35** |
+| hqdn3d | 0.6 | **0** (lo sustituye nlmeans) |
+| unsharp | 0.20 | 0.24 |
+
+**11 campos cambian.** Y en el caso **4K@60 -> 4K sin escalado**:
+
+- **REAL**: `scale` + `setsar` + `dither`. **Ningun filtro** — sin escalado, filtrar
+  solo anadiria artefactos.
+- **EMULADO**: hqdn3d + unsharp + cas + gradfun. Sintesis aunque no haya escalado.
+
+## 60.3 · La logica de cada modo
+
+**REAL** — solo lo sostenido y sin sintesis que pueda empeorar:
+- ratio <= 1,05: **nada**
+- ratio <= 2,5: unsharp 0.15
+- ratio <= 9: hqdn3d moderado + unsharp 0.2
+- ratio > 9: atadenoise temporal + unsharp 0.2
+- **nunca** minterpolate, nlmeans, cas ni gradfun
+
+**EMULADO** — sintesis maxima:
+- denoise **proporcional al upscale** (nlmeans si ratio > 2,5, hqdn3d si no)
+- debanding **siempre** (gradfun crece con el ratio)
+- CAS **siempre** (contraste adaptativo, mejor que unsharp en detalle fino)
+- unsharp de bordes **siempre**
+- interpolacion **si la fuente no trae ya 50+ fps** y la salida no pasa de 4K
+- **nlmeans y atadenoise NO se apilan**: son alternativas
+
+## 60.4 · El optimizador con LLM
+
+`POST /jit/image/optimize-llm` — **tres capas**:
+
+1. **El motor determinista calcula SIEMPRE primero.** Es la red: el panel nunca se
+   queda sin respuesta.
+2. **Si hay `DEEPSEEK_API_KEY`**, el LLM recibe la base + el contexto de rangos y puede
+   **mejorarla**. El prompt lleva los rangos reales de cada filtro y las 7 reglas de la
+   casa, para que no invente parametros que ffmpeg rechace.
+3. **La respuesta se valida campo a campo.** Lo invalido se **descarta** y queda el
+   determinista. La cadena ffmpeg **se reconstruye desde los valores validados** — el
+   LLM no puede inyectar texto arbitrario en el filtro.
+
+**Sin key, medido:**
+```json
+"llm": { "used": false, "error": "sin DEEPSEEK_API_KEY en el entorno del motor",
+         "ms": 0, "source": "deterministico" }
+```
+El panel funciona. Solo no consulta al modelo.
+
+`GET /jit/image/llm-status` dice si esta configurado, sin exponer la clave.
+
+## 60.5 · Por que la API y no el Harness
+
+**La API basta y es lo correcto.** El Harness es el entorno del agente; montar otro
+dentro del VPS seria un runtime completo para una llamada HTTP, con su propio riesgo de
+romper algo. La key vive **solo en el proceso del motor** (variable de entorno), la
+llamada **sale del VPS** y el navegador nunca la ve.
+
+## 60.6 · Validacion contra ffmpeg real
+
+**12 de 12 cadenas aceptadas** (6 combinaciones x 2 modos), sin rechazos:
+720p30->1080p, 720p30->4K, 720p60->1080p, 1080p30->4K, 4K60->4K, 480p30->1080p.
+
+## 60.7 · Desplegado
+
+`vps-image-panel.js` **53.077 -> 58.204 B**, boton **«⚡ Optimizar (función objetivo)»**.
+Cache-buster a `?v=20261108-llm`. md5 servido == md5 en disco. Test 27/27.
