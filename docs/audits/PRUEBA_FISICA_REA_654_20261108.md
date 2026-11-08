@@ -537,3 +537,67 @@ con fuentes que la 654 si decodifica.
 - **No** se probo un canal real del proveedor con la 651 (exigiria credenciales en el intent).
 - La 651 no publica `PlaybackState` en logcat (`PLAYING=0`, `BUFFERING=0`): su observabilidad es menor que
   la de la 654, asi que la comparacion de estado se apoya en capturas y en `ApePlayer`, no en MediaSession.
+
+---
+
+# 13 · Refutada la ultima hipotesis externa: no es el contenido corto
+
+## 13.1 · La hipotesis que quedaba
+
+El player declara `buffer=45/180s`: **minimo 45 segundos de buffer**. Los HLS de prueba anteriores duraban
+**30 s de contenido total** — menos que el minimo exigido. Era razonable sospechar que el player esperara
+eternamente un buffer que **no puede existir** en un VOD corto, y que el atasco fuera un artefacto de la
+prueba y no del producto.
+
+## 13.2 · El experimento
+
+Se genero un HLS de **200 segundos** (6,6x el minimo de buffer), 51 ficheros, **77,5 MB**, servido en LAN
+(instantaneo, sin WAN):
+
+```bash
+ffmpeg -f lavfi -i "testsrc2=size=1920x1080:rate=30" -f lavfi -i "sine=frequency=440" \
+  -t 200 -c:v libx264 -preset ultrafast -g 60 -b:v 3000k -c:a aac -b:a 128k \
+  -f hls -hls_time 4 -hls_playlist_type vod -hls_segment_filename "seg%03d.ts" "master.m3u8"
+```
+
+Resultado con la **654**:
+
+```
+t+5s  -> 23.818 B   (negro)
+t+12s -> 23.852 B   (negro)
+t+20s -> 17.631 B   (negro)
+t+28s -> 27.876 B   (negro)
+
+BUFFERING = 18
+ApePlayer: REARM global_beat: guard sin publicar 23374ms (tick=14)
+ApePlayer: REARM global_beat: guard sin publicar 29379ms (tick=17)
+```
+
+**Se atasca igual.** Con 200 s disponibles, en LAN, sin WAN, con un buffer minimo de 45 s tres veces
+satisfecho.
+
+## 13.3 · Tabla final de descartes
+
+| Hipotesis | Como se probo | Resultado |
+|---|---|---|
+| Red / WAN | HLS local en LAN | **DESCARTADA** |
+| VPN interfiriendo | `ip route get` -> wlan0; always-on null | **DESCARTADA** |
+| Codec | AVC 1080p y HEVC | **DESCARTADA** |
+| Manifiesto | 5 fuentes distintas | **DESCARTADA** |
+| Overlay REA | `PlayerActivity` estandar | **DESCARTADA** |
+| Build / version | **651 publicada Y 654 REA** | **DESCARTADA** - ambas fallan |
+| SELinux `dmabuf` | el camino sin overlay usa otro pipeline | **DESCARTADA como causa unica** |
+| **Contenido mas corto que el buffer minimo** | HLS de 200 s (6,6x el minimo) | **DESCARTADA** |
+| **El `ApePlayer` se atasca** | toda la evidencia | **UNICA COMPATIBLE** |
+
+## 13.4 · Estado de la conclusion
+
+Tras 13 secciones de medicion, **todas las explicaciones externas al reproductor estan descartadas con
+experimento**. El unico hecho que queda es el medido en §10:
+
+> El `ApePlayer` llega a tener **150 s de buffer**, falla la enumeracion de pistas (`groups=0`), y en **un
+> segundo** su buffer cae a la posicion actual y la reproduccion no se recupera; su propio watchdog
+> (`REARM global_beat: guard sin publicar`) sube sin techo.
+
+Eso ocurre en la **651 publicada** y en la **654**, con AVC y HEVC, con WAN y con LAN, con contenido corto
+y largo. **Es un defecto del reproductor, no del entorno ni de los datos.**
