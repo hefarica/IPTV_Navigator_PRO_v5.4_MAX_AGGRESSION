@@ -528,6 +528,214 @@ function saveGovernance() {
 loadGovernance();
 
 /* ═══════════════════════════════════════════════════════════════════════════
+ * CASCADA DE CODECS CON SERIALES + FALLBACK ARMABLE
+ *
+ * Fuente: codec-cascade-actual.csv (13 tiers, Main 10, L3.0 -> L6.2).
+ * El SERIAL de un tier es su codec string completo (RFC 6381), que es unico:
+ *   hvc1.2.4.L153.B0  ==  Main10 / Level 5.1 / 4096x2160 @ 60
+ *
+ * GOLDEN RULE del repo que aqui se respeta: `hvc1.*` va en STREAM-INF y
+ * `hev1.*` en KODIPROP/EXTVLCOPT. NUNCA cruzados. Cada tier guarda los dos
+ * seriales y se elige el que corresponde al destino.
+ *
+ * FALLBACK: si el decoder del player no soporta el tier elegido, se baja por la
+ * cascada hasta el primero que SI cabe. Cada salto se declara con su motivo. Un
+ * fallback silencioso es una degradacion invisible; aqui se ve.
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+const CODEC_CASCADE = [
+  { tier: 1,  hvc1: 'hvc1.2.4.L186.B0', hev1: 'hev1.2.4.L186.B0', profile: 'Main 10', level: '6.2', maxW: 8192, maxH: 4320, maxFps: 120, role: 'CORONA ABSOLUTA - 8K@120 HDR' },
+  { tier: 2,  hvc1: 'hvc1.2.4.L183.B0', hev1: 'hev1.2.4.L183.B0', profile: 'Main 10', level: '6.1', maxW: 8192, maxH: 4320, maxFps: 60,  role: '8K@60 HDR' },
+  { tier: 3,  hvc1: 'hvc1.2.4.L180.B0', hev1: 'hev1.2.4.L180.B0', profile: 'Main 10', level: '6',   maxW: 8192, maxH: 4320, maxFps: 30,  role: '8K@30 HDR' },
+  { tier: 4,  hvc1: 'hvc1.2.4.L156.B0', hev1: 'hev1.2.4.L156.B0', profile: 'Main 10', level: '5.2', maxW: 4096, maxH: 2160, maxFps: 120, role: '4K@120 HDR' },
+  { tier: 5,  hvc1: 'hvc1.2.4.L153.B0', hev1: 'hev1.2.4.L153.B0', profile: 'Main 10', level: '5.1', maxW: 4096, maxH: 2160, maxFps: 60,  role: '4K@60 HDR' },
+  { tier: 6,  hvc1: 'hvc1.2.4.L150.B0', hev1: 'hev1.2.4.L150.B0', profile: 'Main 10', level: '5',   maxW: 4096, maxH: 2160, maxFps: 30,  role: '4K@30 HDR' },
+  { tier: 7,  hvc1: 'hvc1.2.4.L123.B0', hev1: 'hev1.2.4.L123.B0', profile: 'Main 10', level: '4.1', maxW: 2048, maxH: 1080, maxFps: 60,  role: '1080p@60 HDR' },
+  { tier: 8,  hvc1: 'hvc1.2.4.L123.B0', hev1: 'hev1.2.4.L123.B0', profile: 'Main 10', level: '4.1', maxW: 1920, maxH: 1080, maxFps: 50,  role: '1080p@50 HDR broadcast EU' },
+  { tier: 9,  hvc1: 'hvc1.2.4.L120.B0', hev1: 'hev1.2.4.L120.B0', profile: 'Main 10', level: '4',   maxW: 2048, maxH: 1080, maxFps: 30,  role: '1080p@30 10-bit' },
+  { tier: 10, hvc1: 'hvc1.2.4.L93.B0',  hev1: 'hev1.2.4.L93.B0',  profile: 'Main 10', level: '3.1', maxW: 1280, maxH: 720,  maxFps: 60,  role: '720p@60 HDR alto framerate' },
+  { tier: 11, hvc1: 'hvc1.2.4.L93.B0',  hev1: 'hev1.2.4.L93.B0',  profile: 'Main 10', level: '3.1', maxW: 1280, maxH: 720,  maxFps: 34,  role: '720p HDR 10-bit' },
+  { tier: 12, hvc1: 'hvc1.2.4.L90.B0',  hev1: 'hev1.2.4.L90.B0',  profile: 'Main 10', level: '3',   maxW: 854,  maxH: 480,  maxFps: 30,  role: '480p HDR (16:9 SD-wide)' },
+  { tier: 13, hvc1: 'hvc1.2.4.L90.B0',  hev1: 'hev1.2.4.L90.B0',  profile: 'Main 10', level: '3',   maxW: 720,  maxH: 480,  maxFps: 30,  role: '480p HDR (NTSC 4:3)' }
+];
+
+function cascadeByTier(t) { return CODEC_CASCADE.filter((c) => c.tier === Number(t))[0] || null; }
+function cascadeBySerial(s) { return CODEC_CASCADE.filter((c) => c.hvc1 === String(s) || c.hev1 === String(s))[0] || null; }
+
+/* Elige el serial segun el destino. GOLDEN RULE: hvc1 en STREAM-INF,
+ * hev1 en KODIPROP/EXTVLCOPT. Nunca cruzados. */
+function serialFor(tier, where) {
+  const c = cascadeByTier(tier);
+  if (!c) return null;
+  return where === 'kodiprop' || where === 'extvlcopt' ? c.hev1 : c.hvc1;
+}
+
+/* ── FALLBACK ARMABLE ──────────────────────────────────────────────────────
+ * Dada una lista de tiers pedida (o un serial), un player y un target, baja por
+ * la cascada hasta el primer tier que el decoder soporta Y que cubre el target.
+ * Devuelve la traza COMPLETA: cada tier con su veredicto y su motivo.
+ */
+function resolveFallback(opts) {
+  const o = opts || {};
+  const playerId = String(o.player || 'onn-4k');
+  const caps = PLAYER_CAPS[playerId];
+  if (!caps) return { ok: false, error: 'player desconocido: ' + playerId };
+
+  const targetId = String(o.target || 'UHD_4K');
+  const target = OUTPUT_TARGETS[targetId];
+  if (!target) return { ok: false, error: 'target desconocido: ' + targetId };
+
+  const fps = Number(o.fps) || 25;
+
+  /* Cadena pedida: o un tier concreto, o una lista custom del operador, o la
+   * cascada entera como fallback por defecto. */
+  /* La cadena que se recorre.
+   *
+   * Si el operador da una LISTA explicita, se respeta al pie de la letra: es SU
+   * fallback armado a mano.
+   *
+   * Si da un TIER o un SERIAL suelto, la cadena es ESE tier y TODOS los
+   * siguientes de la cascada: pedir el tier 1 (8K) y no poder no debe terminar en
+   * AVC, debe bajar al mejor que si cabe. Medido: antes devolvia AVC porque la
+   * cadena era [1] y no habia a donde bajar. */
+  let chain = [];
+  if (Array.isArray(o.tiers) && o.tiers.length) {
+    chain = o.tiers.map(Number).filter((t) => cascadeByTier(t));
+  } else {
+    let start = null;
+    if (o.tier != null) start = Number(o.tier);
+    else if (o.serial) { const c = cascadeBySerial(o.serial); start = c ? c.tier : null; }
+    if (start != null && cascadeByTier(start)) {
+      chain = CODEC_CASCADE.filter((c) => c.tier >= start).map((c) => c.tier);
+    }
+  }
+  if (!chain.length) {
+    /* SIN tier explicito: se recorre de MAS AJUSTADO a MAS HOLGADO, no al reves.
+     *
+     * Medido: recorriendo la cascada de arriba abajo, un target de 1080p elegia el
+     * tier 1 y declaraba hvc1.2.4.L186.B0 (nivel 6.2, 8K@120) para un video de
+     * 1080p. Eso es sobre-declarar el nivel y viola la Ley Cardinal 1 (nunca por
+     * debajo, pero tampoco muy por encima: el decoder reserva de mas y puede
+     * rechazar).
+     *
+     * El orden correcto es por AREA del tier ascendente: el primero que cubra el
+     * target sera el mas ajustado que sirve. */
+    chain = CODEC_CASCADE.slice()
+      .sort((x, y) => {
+        const ax = x.maxW * x.maxH, ay = y.maxW * y.maxH;
+        if (ax !== ay) return ax - ay;      // primero el area mas ajustada
+        return x.maxFps - y.maxFps;         // a igual area, la cadencia mas baja
+      })
+      .map((c) => c.tier);
+  }
+
+  // el player solo decodifica HEVC si lo declara
+  const playerHevc = caps.codecs.some((c) => c === 'hvc1' || c === 'hvc1_8');
+
+  const trace = [];
+  let chosen = null;
+
+  for (const t of chain) {
+    const c = cascadeByTier(t);
+    if (!c) continue;
+    const diag = { tier: c.tier, serial: c.hvc1, level: c.level, role: c.role, verdict: null, reason: null };
+
+    // 1. el player tiene decoder HEVC?
+    if (!playerHevc) {
+      diag.verdict = 'SKIP';
+      diag.reason = caps.label + ' no declara decoder HEVC (codecs: ' + caps.codecs.join(',') + ')';
+      trace.push(diag); continue;
+    }
+    // 2. el nivel cubre el target?
+    if (c.maxW < target.w || c.maxH < target.h) {
+      diag.verdict = 'SKIP';
+      diag.reason = 'tier ' + c.tier + ' llega a ' + c.maxW + 'x' + c.maxH + ', el target es ' + target.w + 'x' + target.h;
+      trace.push(diag); continue;
+    }
+    /* 3. el DECODER cubre el TARGET.
+     *
+     * El error anterior comparaba el maximo del TIER con el maximo del DECODER:
+     *   tier 5 llega a 4096x2160, Shield limita a 3840x2160 -> SKIP
+     * Eso es falso: un tier que alcanza 4096x2160 PUEDE producir 3840x2160, que
+     * es menor. Medido: con esa regla el Shield y el Firestick 4K Max NUNCA
+     * podian usar 4K, caian a AVC siempre.
+     *
+     * Lo correcto: lo que importa es la resolucion REAL de salida (el target).
+     * El decoder debe cubrir el target, y el tier debe cubrirlo tambien (punto 2). */
+    if (target.w > caps.maxW || target.h > caps.maxH) {
+      diag.verdict = 'SKIP';
+      diag.reason = 'el target ' + target.w + 'x' + target.h + ' supera el decoder de '
+        + caps.label + ' (' + caps.maxW + 'x' + caps.maxH + ')';
+      trace.push(diag); continue;
+    }
+    /* 4. fps: manda el MENOR entre lo que aguanta el tier y lo que aguanta el
+     * decoder del player. El ONN declara 4K@60; un tier de 4K@120 no sirve ahi
+     * aunque su nivel lo permita. */
+    const effFps = Math.min(c.maxFps, caps.maxFps4K > 0 ? caps.maxFps4K : c.maxFps);
+    if (effFps < fps) {
+      diag.verdict = 'SKIP';
+      diag.reason = 'tier ' + c.tier + ' y ' + caps.label + ' aguantan ' + effFps
+        + ' fps como maximo, se piden ' + fps;
+      trace.push(diag); continue;
+    }
+    // 5. HDR pide Main10 (todos los tiers lo son) y el player debe soportarlo
+    if (target.hdr && !caps.main10) {
+      diag.verdict = 'SKIP';
+      diag.reason = caps.label + ' no tiene Main10: no puede sostener HDR';
+      trace.push(diag); continue;
+    }
+
+    diag.verdict = 'USADO';
+    diag.reason = 'primer tier que el decoder acepta y que cubre ' + target.w + 'x' + target.h + ' @ ' + fps + 'fps';
+    trace.push(diag);
+    chosen = c;
+    break;
+  }
+
+  // si ninguno sirve: AVC seguro a 1080p como ultimo recurso, declarado
+  if (!chosen) {
+    return {
+      ok: true,
+      player: { id: playerId, label: caps.label, maxW: caps.maxW, maxH: caps.maxH },
+      target: { id: targetId, label: target.label, w: target.w, h: target.h, hdr: target.hdr },
+      fps,
+      chosen: null,
+      fallbackToAvc: {
+        serial: 'avc1.640028',
+        reason: 'ningun tier de la cascada cabe en ' + caps.label + '; se declara AVC High 1080p como ultimo recurso',
+        safe: true
+      },
+      trace,
+      impossible: ['ningun tier HEVC de los ' + CODEC_CASCADE.length + ' sirve para este player+target']
+    };
+  }
+
+  return {
+    ok: true,
+    player: { id: playerId, label: caps.label, maxW: caps.maxW, maxH: caps.maxH },
+    target: { id: targetId, label: target.label, w: target.w, h: target.h, hdr: target.hdr },
+    fps,
+    chosen: {
+      tier: chosen.tier,
+      serial: chosen.hvc1,
+      serialKodiprop: chosen.hev1,
+      level: chosen.level,
+      role: chosen.role,
+      profile: chosen.profile
+    },
+    // cuantos se saltaron y por que (contados sobre la traza real)
+    skipped: trace.filter((t) => t.verdict === 'SKIP').length,
+    chainLength: trace.length,
+    trace,
+    // la cadena que el operador puede armar a mano, ya resuelta
+    chainResolved: trace.map((t) => t.tier + ':' + t.verdict),
+    impossible: []
+  };
+}
+
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
  * CATALOGO DE SALIDAS, CODECS Y PLAYERS + MOTOR DE DECLARACION
  *
  * El operador elige PERFIL + ENTRADA + TARGET (con etiqueta comercial) + CODEC +
@@ -2185,6 +2393,57 @@ const server = http.createServer((req, res) => {
     setBaseHeaders(res); setNoCacheHeaders(res);
     res.writeHead(200, { 'Content-Type': 'application/json' });
     return res.end(JSON.stringify({ ok: true, matrix: row, resolved: r }));
+  }
+
+  /* CASCADA: los 13 tiers con su serial, seleccionables */
+  if (u.pathname === '/image/cascade') {
+    setBaseHeaders(res); setNoCacheHeaders(res);
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    return res.end(JSON.stringify({
+      ok: true,
+      count: CODEC_CASCADE.length,
+      goldenRule: 'hvc1.* en STREAM-INF, hev1.* en KODIPROP/EXTVLCOPT. Nunca cruzados.',
+      tiers: CODEC_CASCADE,
+      players: Object.keys(PLAYER_CAPS)
+    }));
+  }
+
+  /* FALLBACK: resuelve el tier efectivo y devuelve la traza completa */
+  if (u.pathname === '/image/fallback' && req.method === 'POST') {
+    let body = '';
+    let tooBig = false;
+    req.on('data', (c) => { body += c; if (body.length > 32768) { tooBig = true; req.destroy(); } });
+    req.on('end', () => {
+      if (tooBig) { res.writeHead(413, { 'Content-Type': 'application/json' }); return res.end(JSON.stringify({ ok: false, error: 'body grande' })); }
+      let pl;
+      try { pl = JSON.parse(body || '{}'); } catch (_) {
+        res.writeHead(400, { 'Content-Type': 'application/json' }); return res.end(JSON.stringify({ ok: false, error: 'JSON invalido' }));
+      }
+      const r = resolveFallback(pl);
+      setBaseHeaders(res); setNoCacheHeaders(res);
+      res.writeHead(r.ok ? 200 : 400, { 'Content-Type': 'application/json' });
+      return res.end(JSON.stringify(r));
+    });
+    return;
+  }
+
+  /* SERIAL por tier para el lugar correcto (golden rule) */
+  if (u.pathname === '/image/serial') {
+    const t = u.searchParams.get('tier');
+    const where = u.searchParams.get('where') || 'stream-inf';
+    const c = cascadeByTier(t);
+    setBaseHeaders(res); setNoCacheHeaders(res);
+    if (!c) {
+      res.writeHead(404, { 'Content-Type': 'application/json' });
+      return res.end(JSON.stringify({ ok: false, error: 'tier inexistente: ' + t }));
+    }
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    return res.end(JSON.stringify({
+      ok: true, tier: c.tier, where,
+      serial: serialFor(c.tier, where),
+      both: { hvc1: c.hvc1, hev1: c.hev1 },
+      note: where === 'stream-inf' ? 'hvc1 va en CODECS= del STREAM-INF' : 'hev1 va en KODIPROP/EXTVLCOPT'
+    }));
   }
 
   if (u.pathname === '/image/governance' && req.method === 'GET') {

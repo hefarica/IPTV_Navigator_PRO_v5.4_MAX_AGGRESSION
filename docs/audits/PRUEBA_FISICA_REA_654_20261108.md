@@ -3566,3 +3566,88 @@ cadena se alinea al pixFmt del codec: con AVC emite `format=yuv420p`, no `10le`
 El DOM se construye con `createElement` + `textContent` + `replaceChildren`. La unica
 aparicion de la palabra `innerHTML` esta en un comentario que explica que no se usa.
 Ninguna respuesta del motor puede inyectar HTML en la pagina.
+
+---
+
+# 53 · Cascada de codecs con seriales + fallback armable
+
+## 53.1 · La fuente
+
+`codec-cascade-actual.csv`: 13 tiers, todos Main 10, de L3.0 a L6.2. El **serial** de
+un tier es su codec string RFC 6381 completo, que es unico:
+
+```
+hvc1.2.4.L153.B0  ==  Main10 / Level 5.1 / 4096x2160 @ 60
+```
+
+`GET /jit/image/cascade` los devuelve, con la GOLDEN RULE declarada:
+
+```
+hvc1.* en STREAM-INF, hev1.* en KODIPROP/EXTVLCOPT. Nunca cruzados.
+```
+
+Cada tier guarda **los dos** seriales y se elige el que corresponde al destino:
+
+```
+GET /jit/image/serial?tier=5&where=stream-inf  -> hvc1.2.4.L153.B0
+GET /jit/image/serial?tier=5&where=kodiprop    -> hev1.2.4.L153.B0
+```
+
+## 53.2 · El fallback armable
+
+`POST /jit/image/fallback` acepta `{tier}` , `{serial}` o `{tiers:[...]}` a mano, mas
+`player`, `target` y `fps`. Baja por la cascada y devuelve la **traza completa**: cada
+tier con su veredicto y su motivo. **Un fallback silencioso es una degradacion
+invisible.**
+
+**Matriz medida (5 players x 3 targets @ 25 fps):**
+
+| Player | 1080p | 4K | 6K |
+|---|---|---|---|
+| ONN 4K | T8 `L123` | T6 `L150` | AVC |
+| Firestick 4K Max | T8 `L123` | T6 `L150` | AVC |
+| **Firestick Lite** | **AVC** | **AVC** | **AVC** |
+| Shield TV | T8 `L123` | T6 `L150` | AVC |
+| Generico | T8 `L123` | AVC | AVC |
+
+Y el fps manda: ONN a 4K con 120 fps → **ningun tier** (el ONN aguanta 60).
+
+## 53.3 · Tres defectos de logica que la matriz destapo
+
+**a) `tier` suelto no continuaba la cascada.** Pedir el tier 1 (8K) en un ONN devolvia
+**AVC** porque la cadena era `[1]` y no habia a donde bajar. Ahora un tier o serial
+suelto implica **ese tier y todos los siguientes**.
+
+**b) El Shield y el Firestick 4K Max NUNCA podian usar 4K.** Comparaba el maximo del
+TIER (4096x2160) con el maximo del DECODER (3840x2160) y saltaba:
+
+```
+tier 5 llega a 4096x2160, Shield limita a 3840x2160 -> SKIP   (FALSO)
+```
+
+Un tier que alcanza 4096 **puede producir 3840**, que es menor. Lo correcto es que el
+**decoder cubra el TARGET** y que el tier lo cubra tambien.
+
+**c) Elegia el tier MAS ALTO, no el mas ajustado.** Sin tier explicito, un target de
+1080p elegia el **tier 1** y declaraba `hvc1.2.4.L186.B0` (nivel 6.2, 8K@120) **para un
+video de 1080p**. Sobre-declarar el nivel viola la Ley Cardinal 1 igual que declararlo
+por debajo: el decoder reserva de mas y puede rechazar.
+
+Orden corregido: **area del tier ascendente, y a igual area la cadencia mas baja**.
+Resultado medido: 1080p → **T8** (nivel 4.1), 4K → **T6** (nivel 5). Los mas ajustados
+que sirven.
+
+## 53.4 · Lo que la matriz deja claro
+
+**Ningun player de la lista decodifica 6K.** El ONN llega a 4096, el Firestick 4K Max y
+el Shield a 3840, el Lite a 1920. El JIT **si produce** 5760x3240 (verificado con
+ffprobe en la seccion 51), pero **no hay device que lo muestre** en el catalogo actual.
+Se declara AVC como ultimo recurso en vez de fingir que se entrega 6K.
+
+## 53.5 · En el panel
+
+Nueva seccion **Cascada de codecs**: selector de tier/serial, campo para **armar la
+cadena a mano**, boton `🔀 Resolver fallback`, tabla de los 13 tiers y el resultado con
+la traza de saltos y los dos seriales (STREAM-INF y KODIPROP).
+
+**Test de integracion: 25/25.**

@@ -19,7 +19,7 @@
     base: (window.APE_JIT_BASE || 'https://iptv-ape.duckdns.org') + '/jit',
     config: null, effectiveFilter: '', capacity: null, live: null,
     profiles: null, matrix: null, plan: null, catalog: null,
-    declared: null, gov: null,
+    declared: null, gov: null, cascade: null, fallback: null,
     busy: false, lastError: null, log: [],
     build: { profile: 'P4.5', w: 1280, h: 720, target: 'UHD_4K', codec: 'hvc1',
              player: 'onn-4k', recipe: 'balanced', fps: 25 }
@@ -334,6 +334,99 @@
 
   /* ── 2. MATRIZ EDITABLE ───────────────────────────────────────────────── */
 
+  /* ── CASCADA DE CODECS + FALLBACK ARMABLE ─────────────────────────────── */
+
+  function cascadeSection(root) {
+    var cas = S.cascade;
+    if (!cas || !cas.tiers) return;
+    root.appendChild(sec('🧬 Cascada de codecs — ' + cas.count + ' tiers con serial RFC 6381', '#22d3ee'));
+
+    // selector de tier + boton de fallback
+    var tierOpts = cas.tiers.map(function (t) {
+      return { id: String(t.tier), label: 'T' + t.tier + '  ' + t.hvc1 + '  (' + t.role.slice(0, 26) + ')' };
+    });
+    root.appendChild(el('div', { class: 'grid' }, [
+      fld('Tier / serial', sel('aip-c-tier', tierOpts, S.build.tier || '5')),
+      fld('Cadena a mano (tiers, coma)', inp('aip-c-chain', S.build.chain || '', 'text'))
+    ]));
+
+    var bFb = el('button', { class: 'go', id: 'aip-fallback' }, ['🔀 Resolver fallback']);
+    bFb.addEventListener('click', doFallback);
+    root.appendChild(el('div', { class: 'row', style: 'margin-top:10px' }, [bFb]));
+
+    // tabla de la cascada
+    var tb = el('tbody', {});
+    cas.tiers.forEach(function (t) {
+      tb.appendChild(el('tr', {}, [
+        el('td', { style: 'font-weight:600' }, ['T' + t.tier]),
+        el('td', { style: 'font-family:ui-monospace,monospace;font-size:.72rem' }, [t.hvc1]),
+        el('td', { style: 'font-size:.7rem;color:#94a3b8' }, [t.level]),
+        el('td', { style: 'font-size:.7rem' }, [t.maxW + 'x' + t.maxH + '@' + t.maxFps]),
+        el('td', { style: 'font-size:.68rem;color:#94a3b8' }, [t.role])
+      ]));
+    });
+    root.appendChild(el('table', {}, [
+      el('thead', {}, [el('tr', {}, [
+        el('th', {}, ['Tier']), el('th', {}, ['Serial hvc1']), el('th', {}, ['Nivel']),
+        el('th', {}, ['Capacidad']), el('th', {}, ['Rol'])
+      ])]), tb
+    ]));
+    root.appendChild(el('div', { class: 'stat', style: 'margin-top:6px' }, [cas.goldenRule || '']));
+
+    // resultado del fallback
+    if (S.fallback && S.fallback.ok) {
+      var f = S.fallback;
+      var r = f.chosen
+        ? ('ELEGIDO tier ' + f.chosen.tier + ' → ' + f.chosen.serial + ' (nivel ' + f.chosen.level + ')')
+        : ('NINGÚN TIER → ' + (f.fallbackToAvc ? f.fallbackToAvc.serial : '?'));
+      var box = el('div', { class: 'decl' }, [
+        el('div', { style: 'font-weight:700;color:#60a5fa;margin-bottom:6px' }, ['RESOLUCIÓN DEL FALLBACK']),
+        el('div', {}, [f.player.label + ' · target ' + f.target.label +
+          ' ' + f.target.w + 'x' + f.target.h + ' @ ' + f.fps + 'fps']),
+        el('div', { style: 'margin-top:6px' }, [r]),
+        el('div', { style: 'margin-top:6px;font-size:.72rem;color:#94a3b8' }, [
+          'saltados ' + (f.skipped || 0) + ' de ' + (f.trace ? f.trace.length : 0)
+        ])
+      ]);
+      if (f.chosen) {
+        box.appendChild(el('div', { style: 'margin-top:6px;display:flex;gap:6px;flex-wrap:wrap' }, [
+          chip('KODIPROP ' + f.chosen.serialKodiprop, '#8b5cf6'),
+          chip('STREAM-INF ' + f.chosen.serial, '#22d3ee')
+        ]));
+      }
+      (f.trace || []).forEach(function (t) {
+        if (t.verdict !== 'USADO') {
+          box.appendChild(el('div', { style: 'font-size:.7rem;color:#f87171;margin-top:2px' }, [
+            'T' + t.tier + ' saltado: ' + (t.reason || '')
+          ]));
+        }
+      });
+      root.appendChild(box);
+    } else if (S.fallback) {
+      root.appendChild(warn('fallback: ' + (S.fallback.error || 'error')));
+    }
+  }
+
+  function doFallback() {
+    var t = document.getElementById('aip-c-tier');
+    var ch = document.getElementById('aip-c-chain');
+    var payload = {
+      player: S.build.player, target: S.build.target, fps: S.build.fps
+    };
+    var chainTxt = ch ? String(ch.value || '').trim() : '';
+    if (chainTxt) {
+      payload.tiers = chainTxt.split(',').map(function (x) { return Number(x.trim()); })
+        .filter(function (n) { return Number.isFinite(n) && n > 0; });
+    } else if (t && t.value) {
+      payload.tier = Number(t.value);
+    }
+    post('/image/fallback', payload).then(function (r) {
+      S.fallback = r;
+      logLine('FALLBACK ' + (r.ok ? (r.chosen ? ('tier ' + r.chosen.tier) : 'AVC') : ('FALLO ' + r.error)));
+      render(document.getElementById('ape-image-panel'));
+    });
+  }
+
   function matrixSection(root) {
     var m = S.matrix;
     if (!m || !m.rows) return;
@@ -541,6 +634,7 @@
     ]));
 
     buildSection(nodes);
+    cascadeSection(nodes);
     matrixSection(nodes);
     governSection(nodes);
     capacitySection(nodes);
@@ -567,7 +661,8 @@
       api('/image/state').catch(function () { return null; }),
       api('/image/matrix').catch(function () { return null; }),
       api('/image/catalog').catch(function () { return null; }),
-      api('/image/governance').catch(function () { return null; })
+      api('/image/governance').catch(function () { return null; }),
+      api('/image/cascade').catch(function () { return null; })
     ]).then(function (r) {
       S.config = r[0] ? r[0].config : null;
       S.effectiveFilter = (r[0] && r[0].effective_filter) || '';
@@ -576,6 +671,7 @@
       S.matrix = r[3];
       S.catalog = r[4];
       S.gov = r[5];
+      S.cascade = r[6];
       if (S.config && S.config.profile) S.build.profile = S.config.profile;
       render(root);
     }).catch(function (e) {
