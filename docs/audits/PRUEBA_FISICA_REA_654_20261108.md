@@ -2863,3 +2863,94 @@ esta cerrado por construccion.
   nuestra medicion de este host: UHD no es viable.
 - **Estados de evidencia**: lo que este documento reporta como `aplicado` tiene recibo del motor
   (`output_observed`, filtro efectivo); lo que es solo declaracion del LAB va marcado como tal.
+
+---
+
+# 44 · A/B de pixeles: el filtro CAMBIA los fotogramas
+
+## 44.1 · El gate que faltaba
+
+Se habia verificado que la cadena esta en el comando de ffmpeg y en `/image/state`. **Eso es
+declaracion, no ejecucion.** Faltaba demostrar que los pixeles cambian.
+
+`tools/lab/ape-jit/ab_pixels.sh`: input FIJO (no un stream en vivo, que cambia entre tomas), la
+cadena **que el propio motor declara** (`effective_filter`), dos codificaciones x265 identicas salvo
+el filtro, y `framemd5` frame a frame.
+
+## 44.2 · Resultado
+
+```
+input fijo         : 4.091.417 B (testsrc2 1280x720 25fps 2s + 6% de ruido)
+cadena del motor   : hqdn3d=0.6:0.45:0.9:0.7,unsharp=5:5:0.2:5:5:0
+
+A sin filtro       :   960.888 B   50 frames   md5 409d2e3750636780b013c9979295700b
+B con filtro       : 1.124.732 B   50 frames   md5 52323e5c4efe59286076fb0cfe8b9ce5
+
+bytes              : +163.844 (+17,1%)
+frames identicos   : 0 de 50
+```
+
+**Cero frames de 50 identicos.** La cadena altera **todos** los fotogramas.
+
+El **+17,1 %** de bytes tiene sentido: `unsharp` añade alta frecuencia (comprime peor) y `hqdn3d` quita
+ruido (comprime mejor); el neto en este patron sintetico con grano es positivo.
+
+## 44.3 · Que cambia el estado de evidencia
+
+| Antes | Ahora |
+|---|---|
+| `video-filter` **declarado** en un comando | cadena **aplicada** al bitstream, con recibo |
+| "el JIT filtra" como afirmacion | `framemd5` de 50 frames, 0 identicos |
+
+Artefactos en `/opt/ape-jit/ab_pixels/`: `sin_filtro.png`, `con_filtro.png`, `A.framemd5`, `B.framemd5`.
+
+## 44.4 · Límite honesto
+
+El A/B usa **patron sintetico con ruido**, no contenido real de un canal: es el caso donde `hqdn3d`
+y `unsharp` tienen algo que hacer. Con una fuente ya limpia el delta seria menor. **Lo que prueba es
+que la cadena se ejecuta**, no cuanto mejora la imagen.
+
+---
+
+# 45 · IDLE_MS: 20 s causaba reinicios, 90 s los evita
+
+## 45.1 · El defecto, medido
+
+En el sostenido de 30 minutos (seccion 42) hubo **dos reinicios** del transcode:
+
+```
+t=   0s -> 807s   pid=1819646
+t= 868s -> 1170s  pid=1834948   reinicio 1
+t=1230s -> 1775s  pid=1840156   reinicio 2
+```
+
+Cada reinicio tiraba la ventana de 84 segmentos a 9 y a 28: **~18 s de reproduccion perdidos**.
+
+## 45.2 · La causa y donde vivia
+
+`Environment=IDLE_MS=20000` en `/etc/systemd/system/ape-jit.service` (linea 16). **El entorno gana
+sobre el default del codigo**, asi que cambiar solo `server.js` no hacia nada. Verificado: tras
+desplegar el cambio en el codigo, `systemctl show` seguia reportando `IDLE_MS=20000`.
+
+## 45.3 · La correccion
+
+| Donde | Antes | Ahora |
+|---|---|---|
+| `server.js` L18 (default) | 20000 | **90000** |
+| `ape-jit.service` L16 (entorno) | 20000 | **90000** |
+
+Ambos, porque el entorno pisa al codigo. Backup del unit en `ape-jit.service.bak_idle_*`.
+Sigue configurable: `IDLE_MS=30000` devuelve el comportamiento anterior.
+
+## 45.4 · Verificado con una prueba de silencio real
+
+```
+pedir media_0      -> pid inicial:            1855174
+esperar 25 s sin peticiones
+                   -> pid tras 25 s callado:  1855174   (SOBREVIVE)
+volver a pedir     -> pid al retomar:         1855174
+```
+
+Con `IDLE_MS=20000` ese silencio de 25 s **mataba el trabajo**. Con 90000 aguanta. 90 s cubre el hueco
+entre peticiones de cualquier reproductor con buffer de 30-120 s sin mantener el proceso vivo
+indefinidamente.

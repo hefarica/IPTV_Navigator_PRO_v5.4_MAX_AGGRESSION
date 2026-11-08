@@ -15,7 +15,17 @@ const PORT = Number(process.env.PORT || 3099);
 const BIND = process.env.BIND || '127.0.0.1';
 const MAP_FILE = process.env.MAP_FILE || '/opt/ape-jit/channels.json';
 const OUT_ROOT = process.env.OUT_ROOT || '/dev/shm/ape-jit';
-const IDLE_MS = Number(process.env.IDLE_MS || 20000);
+/* IDLE_MS: cuando no llega ninguna peticion durante este tiempo, se apaga el
+ * transcode y la siguiente peticion arranca un trabajo NUEVO.
+ *
+ * MEDIDO en el sostenido de 30 min (1835 s, consumidor pidiendo cada 2 s):
+ *   con IDLE_MS=20000 hubo DOS reinicios del pid y cada uno tiro la ventana de
+ *   84 segmentos a 9 y a 28 => ~18 s de reproduccion perdidos por reinicio.
+ *
+ * 90000 (90 s) cubre el hueco entre peticiones de cualquier reproductor con
+ * buffer de 30-120 s sin mantener el proceso vivo indefinidamente. Sigue siendo
+ * configurable por entorno: IDLE_MS=30000 lo devuelve al comportamiento anterior. */
+const IDLE_MS = Number(process.env.IDLE_MS || 90000);
 
 /* ═══════════════════════════════════════════════════════════════════════════
  * MODULO DE IMAGEN — configuracion en caliente
