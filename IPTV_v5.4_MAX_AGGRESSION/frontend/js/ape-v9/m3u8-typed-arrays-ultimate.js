@@ -9267,8 +9267,15 @@ ${__apeContinuityTags().join('\n')}
         // Va AQUI, despues de (3), porque (3) ya garantizo que el STREAM-INF esta seguido de su URI.
         // Los tags se insertan ANTES del STREAM-INF: si fueran entre el y la URI, RFC 8216 4.3.4.2
         // se rompe y OTT Navigator aborta el canal con "Loaded playlist has unexpected type".
-        // Tabla identica a la del VPS (url2-cartridge.php) y a la del LAB v24.
-        const _APE_6K_TABLE = {
+        // [2026-11-08] OPCION B — el LAB subido por el boton "Import LAB" MANDA.
+        // Antes esta tabla era un literal: coincidia con el LAB v24 por COPIA, no por LECTURA,
+        // asi que subir otro LAB (o uno con otros bitrates 6K) no tenia efecto en lo emitido.
+        // Ahora se DERIVA de lo importado: emulated_6k.bitrates_mbps + settings de los Px.5.
+        // Si el LAB no declara la capa 6K se conserva el literal, pero el tag DECLARA la
+        // procedencia (PROVENANCE=GENERATOR_DEFAULT) en vez de fingir que viene del LAB.
+        // Doctrina: ape-image-pipeline-truth §15 — cero mentira al parser; un valor sin origen
+        // se declara como default, no como si fuera del SSOT.
+        const _APE_6K_FALLBACK = {
             P0: { id: 'P0.5', mbps: 80, tec: '8k_downsample_lanczos_0.75', src: '7680x4320', ratio: '0.75x' },
             P1: { id: 'P1.5', mbps: 60, tec: '4k_upscale_ai_sr_1.5x', src: '3840x2160', ratio: '1.50x' },
             P2: { id: 'P2.5', mbps: 45, tec: '4k_upscale_shader_lanczos_1.5x', src: '3840x2160', ratio: '1.50x' },
@@ -9276,13 +9283,44 @@ ${__apeContinuityTags().join('\n')}
             P4: { id: 'P4.5', mbps: 30, tec: 'hd_upscale_ai_sr_4.5x', src: '1280x720', ratio: '4.50x' },
             P5: { id: 'P5.5', mbps: 25, tec: 'sd_upscale_ai_sr_6.75x', src: '854x480', ratio: '6.75x' }
         };
+        const _ape6kResolve = () => {
+            const _cfg6 = (typeof window !== 'undefined') ? window.APE_PROFILES_CONFIG : null;
+            const _e6k = (_cfg6 && _cfg6.labEmulated6k) ? _cfg6.labEmulated6k : null;
+            const _getter = (_cfg6 && typeof _cfg6.getProfile === 'function') ? _cfg6.getProfile.bind(_cfg6) : null;
+            const _bt = (_e6k && _e6k.bitrates_mbps) ? _e6k.bitrates_mbps : null;
+            if (!_getter && !_bt) return { table: _APE_6K_FALLBACK, source: 'GENERATOR_DEFAULT' };
+            const _table = {};
+            for (const _baseId of Object.keys(_APE_6K_FALLBACK)) {
+                const _fb = _APE_6K_FALLBACK[_baseId];
+                const _lb = _getter ? _getter(_fb.id) : null;
+                const _st = (_lb && _lb.settings) ? _lb.settings : null;
+                const _rawMbps = (_bt && _bt[_fb.id] != null)
+                    ? _bt[_fb.id]
+                    : ((_st && _st.bitrate != null) ? _st.bitrate : null);
+                const _mbps = Number(_rawMbps);
+                if (!isFinite(_mbps) || _mbps <= 0) continue; // el LAB no declara este tier: no se inventa
+                _table[_baseId] = {
+                    id: _fb.id,
+                    mbps: _mbps,
+                    tec: _fb.tec,
+                    src: (_st && _st.resolution) ? String(_st.resolution) : _fb.src,
+                    ratio: _fb.ratio
+                };
+            }
+            if (!Object.keys(_table).length) return { table: _APE_6K_FALLBACK, source: 'GENERATOR_DEFAULT' };
+            return { table: _table, source: (_bt ? 'LAB' : 'LAB_PROFILES') };
+        };
+        const _APE_6K_RES = _ape6kResolve();
+        const _APE_6K_TABLE = _APE_6K_RES.table;
+        const _APE_6K_SOURCE = _APE_6K_RES.source;
         const _6kBase = Object.prototype.hasOwnProperty.call(_APE_6K_TABLE, String(c.profile || '')) ? String(c.profile) : null;
         const _6k = _6kBase ? _APE_6K_TABLE[_6kBase] : null;
         if (_6k) {
             // los tags primero, delante del STREAM-INF
             const t6 = [
                 '#EXT-X-APE-CRYSTAL-6K:OPT-IN-ACTIVE;PROFILE=' + _6k.id + ';BASE=' + _6kBase
-                    + ';RES=5760x3240;PIXELS=18662400;CODEC=hvc1.2.4.L183.B0',
+                    + ';RES=5760x3240;PIXELS=18662400;CODEC=hvc1.2.4.L183.B0'
+                    + ';PROVENANCE=' + _APE_6K_SOURCE,
                 '#EXT-X-APE-CRYSTAL-6K-MODE:EMULATED;SOURCE=' + _6k.src + ';TECHNIQUE=' + _6k.tec
                     + ';RATIO=' + _6k.ratio + ';ENHANCEMENT=DISPLAY_DECLARED',
                 '#EXT-X-APE-CRYSTAL-6K-BITRATE:' + _6k.mbps + ';MAX=' + (_6k.mbps + 20) + ';UNIT=Mbps',

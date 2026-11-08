@@ -3896,7 +3896,13 @@
                     // Validar schema
                     const supportedSchemas = ['omega_v1', 'omega_v1_bulletproof_20260520'];
                     const isBulletproof = data.lab_schema_variant === 'omega_v2_bulletproof_perprofile' || data.bulletproof === true;
-                    const isVersionSupported = supportedSchemas.includes(data.lab_version) || (data.lab_version && data.lab_version.startsWith('omega_v1'));
+                    // [2026-11-08] Endurecido para NO divergir del motor (ape-profiles-config.js
+                    // importFromLABData). Antes esta capa solo aceptaba omega_v1*: un LAB con
+                    // lab_version='omega_v2...' y sin bulletproof:true lo ACEPTABA el motor y lo
+                    // RECHAZABA este boton ("Schema no soportado"). Mismo criterio en ambas capas.
+                    const isVersionSupported = (data && data.lab_version && /^omega_/i.test(String(data.lab_version)))
+                        || supportedSchemas.includes(data && data.lab_version)
+                        || isBulletproof;
                     if (!isVersionSupported) {
                         alert(`⚠️ Schema no soportado: ${data.lab_version}\nSoportados: ${supportedSchemas.join(', ')}`);
                         return;

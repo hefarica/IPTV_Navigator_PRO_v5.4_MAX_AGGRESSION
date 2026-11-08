@@ -4713,6 +4713,11 @@
             this.configGlobal = {};
             this.labExportedAt = null;
             this.omegaGapPlan = null;
+            // [2026-11-08] Capa 6K declarada por el LAB (emulated_6k / six_k_version).
+            // El generador la usa como SSOT cuando existe; si no, cae a su tabla y DECLARA
+            // PROVENANCE=GENERATOR_DEFAULT en vez de fingir que vino del fichero.
+            this.labEmulated6k = null;
+            this.labSixKVersion = null;
             // REA is an additive processing request, independent of calibrated
             // source resolution/CODECS/HDR. No workbook export is implied.
             this.reaProcessing = null;
@@ -5334,12 +5339,20 @@
                 this.bulletproof = data.bulletproof === true;
                 this.labFileName = data.labFileName || data.meta_per_profile?.source_file || 'LAB_CALIBRATED';
                 this.bulletproofVersion = data.lab_schema_variant || '';
+                // [2026-11-08] Capturar la capa 6K del LAB importado. Sin esto el generador no
+                // tiene de donde leerla y su tabla literal gana siempre (coincidencia por copia,
+                // no por lectura). Ausente = el LAB no declara 6K; NO se inventa.
+                this.labEmulated6k = (data.emulated_6k && typeof data.emulated_6k === 'object')
+                    ? data.emulated_6k : null;
+                this.labSixKVersion = data.six_k_version || null;
                 localStorage.setItem('ape_lab_bulletproof_meta', JSON.stringify({
                     lab_schema_variant: this.labSchemaVariant,
                     bulletproof: this.labBulletproof,
                     labVersion: this.labVersion,
                     labFileName: this.labFileName,
                     meta_per_profile: this.labMetaPerProfile,
+                    emulated_6k: this.labEmulated6k,
+                    six_k_version: this.labSixKVersion,
                     imported_at: new Date().toISOString()
                 }));
 
@@ -5491,6 +5504,10 @@
                     this.labMetaPerProfile = o.meta_per_profile;
                     this.labVersion = o.labVersion || null;
                     this.labFileName = o.labFileName || null;
+                    // [2026-11-08] rehidratar la capa 6K para que sobreviva a una recarga
+                    this.labEmulated6k = (o.emulated_6k && typeof o.emulated_6k === 'object')
+                        ? o.emulated_6k : null;
+                    this.labSixKVersion = o.six_k_version || null;
                 }
                 const gp = localStorage.getItem('ape_lab_omega_gap_plan');
                 if (gp) this.omegaGapPlan = JSON.parse(gp);
