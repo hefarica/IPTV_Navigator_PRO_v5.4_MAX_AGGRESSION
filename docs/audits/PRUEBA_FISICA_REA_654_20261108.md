@@ -2296,3 +2296,100 @@ invalidos rechazados con 400; vuelta a defaults deja `(sin filtros)`; prueba de 
 - **El `fps` de la config no se aplica al comando**: la salida da 25/1 porque la fuente ya es 25 fps;
   falta emitir `-r`/`-fps_mode cfr` cuando el operador elija otro valor.
 - **`BANDWIDTH=2234` en el STREAM-INF** es un valor sospechosamente bajo: revisar como se calcula.
+
+---
+
+# 36 · El módulo de imagen, COMPLETO e instrumentado
+
+## 36.1 · Cuatro endpoints, uno de ellos de estado vivo
+
+| Endpoint | Devuelve |
+|---|---|
+| `GET /jit/image/config` | config efectiva + defaults + allowlists |
+| `GET /jit/image/capacity` | 11 mediciones con veredicto por fila |
+| `GET /jit/image/state` | **estado VIVO**: job, canal, modo, copy, salida/fuente, segmentos, slot y el `output_observed` de ffprobe |
+| `POST /jit/image/config` | aplica en caliente |
+
+Estado real capturado con el canal 3 en marcha:
+
+```json
+{
+  "job": { "channel": 3, "variant": "hdr", "mode": "FILTERED_LIGHT", "copy": false,
+           "source_width": 1280, "source_height": 720, "age_s": 31 },
+  "files": { "segments": 40 },
+  "engine": { "slot": 1, "rea_executed": false },
+  "output_observed": { "width": 1920, "height": 1080, "codec": "hevc",
+                       "transfer": "smpte2084", "primaries": "bt2020",
+                       "pixelFormat": "yuv420p10le", "videoRange": "PQ" }
+}
+```
+
+**`copy: false` es el campo que importa:** dice si el motor está transcodificando (y por tanto
+aplicando la receta) o copiando el stream sin tocarlo.
+
+## 36.2 · El fps y el deinterlace, instrumentados
+
+Verificado leyendo el proceso real:
+
+```
+-r 25                    <- el fps de la UI llega al comando
+-fps_mode cfr
+-c:v libx265 -preset ultrafast -crf 20
+-c:a copy
+-x265-params keyint=60:scenecut=0:open-gop=0:pools=3:frame-threads=1
+```
+
+`bwdif` **no se aplica por defecto**: solo si la fuente declara entrelazado. En progresivo alteraba la
+cadencia senalizada (hallazgo del informe que se respeta aqui).
+
+## 36.3 · Cadena completa verificada en el canal 3
+
+```
+format=yuv420p10le, unsharp=5:5:0.2:5:5:0,          <- receta Light
+scale=w=1920:h=1080:...:flags=lanczos,              <- 720p -> 1080p
+pad=1920:1080:(ow-iw)/2:(oh-ih)/2,                  <- bandas, aspecto
+zscale=t=linear:npl=100, ... zscale=p=bt2020:t=smpte2084,  <- SDR -> PQ (color conocido)
+format=yuv420p10le
+```
+
+Manifiesto:
+
+```
+#EXT-X-APE-CRYSTAL-MODE:FILTERED_LIGHT
+#EXT-X-APE-CRYSTAL-UPSCALE:SOURCE=1280x720;TARGET=1920x1080;FILTER=LANCZOS
+#EXT-X-APE-CRYSTAL-TARGET:1920x1080;STATUS=OUTPUT_OBSERVED
+```
+
+ffprobe: `hevc Main 10 1920x1080 yuv420p10le 25/1`.
+
+## 36.4 · Las dos vias de control
+
+**HTTP (UI):** el panel hace `GET`/`POST` contra `/jit/image/*` con CORS abierto. Es la via del navegador.
+
+**SSH (CLI):** `tools/lab/ape-jit/verify_image_module.sh` aplica una receta, pide el canal, consulta el
+estado, lee el comando ffmpeg real, el manifiesto y la salida por ffprobe. Sirve para operar y para
+verificar sin navegador.
+
+## 36.5 · El panel de UI
+
+`vps-image-panel.js` (396 lineas) + `image-panel.html` + montaje en `index-v4.html`:
+
+- **Estado vivo** con polling de 3 s: canal, variante, modo, `copy`, salida/fuente, edad, segmentos, slot
+  y el `output_observed`.
+- **Tabla de capacidad** con chip VIABLE / AL LÍMITE / NO VIABLE por fila.
+- Destino, receta, fps, preset, CRF, audio.
+- Parámetros vivos de `hqdn3d` (luma/chroma/temporal), `unsharp` (amount/msize) y `atadenoise` (s).
+- Empaquetado: `seg_duration`, `window_size`, `extra_window_size`, GOP.
+- Botón "Recomendada (FHD 25 fps)" y aviso **con el número medido** antes de aplicar algo que no cabe.
+- CERO `innerHTML`: todo el texto entra como nodo de texto.
+
+Prueba de humo: **14/14 OK**, `node --check` OK.
+
+## 36.6 · Lo que sigue pendiente, con precision
+
+- **Reproduccion de esta salida filtrada en el APK**: por indicacion del operador, sin tocar el TV en
+  esta fase. Lo probado antes (seccion 33) es que la APK reproduce el HLS del JIT a 1080p.
+- **`BANDWIDTH` del STREAM-INF** llega como `3484` y `2234`: es un valor que no coresponde a un bitrate
+  real de 1080p. Falta revisar como se calcula.
+- **QHD/UHD**: QHD queda al limite (1,05x-1,19x) y UHD no cabe (0,25x). No se certifican.
+- **Carga sostenida**: las 11 mediciones son de 20 s cada una, no de 30 minutos.

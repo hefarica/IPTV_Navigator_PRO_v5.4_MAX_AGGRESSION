@@ -27,6 +27,7 @@
     effectiveFilter: '',
     busy: false,
     lastError: null,
+    live: null,
     log: []
   };
 
@@ -152,6 +153,39 @@
       }
     } else {
       root.appendChild(el('div', { class: 'out' }, ['capacidad no disponible']));
+    }
+
+    // ── ESTADO VIVO del modulo ──
+    root.appendChild(el('div', { class: 'sec', style: 'color:#22d3ee' }, ['📡 Estado vivo del módulo']));
+    var L = S.live;
+    if (L && L.job) {
+      var J = L.job;
+      var O = L.output_observed || {};
+      root.appendChild(el('div', { class: 'grid' }, [
+        el('div', { class: 'fld' }, [el('label', {}, ['canal / variante']),
+          el('div', { style: 'font-size:.85rem' }, [String(J.channel) + ' · ' + String(J.variant)])]),
+        el('div', { class: 'fld' }, [el('label', {}, ['modo']),
+          el('div', { style: 'font-size:.85rem;color:#6ee7b7' }, [String(J.mode || '—')])]),
+        el('div', { class: 'fld' }, [el('label', {}, ['copia sin filtrar']),
+          el('div', { style: 'font-size:.85rem;color:' + (J.copy ? '#ef4444' : '#10b981') },
+            [J.copy ? 'SÍ (-c:v copy)' : 'NO (transcode)']) ]),
+        el('div', { class: 'fld' }, [el('label', {}, ['salida / fuente']),
+          el('div', { style: 'font-size:.85rem' }, [String(J.output_width) + 'x' + String(J.output_height)
+            + ' ← ' + String(J.source_width) + 'x' + String(J.source_height)])]),
+        el('div', { class: 'fld' }, [el('label', {}, ['vivo desde']),
+          el('div', { style: 'font-size:.85rem' }, [String(J.age_s) + ' s']) ]),
+        el('div', { class: 'fld' }, [el('label', {}, ['segmentos / slot']),
+          el('div', { style: 'font-size:.85rem' }, [String((L.files || {}).segments || 0)
+            + ' · slot ' + String((L.engine || {}).slot)]) ])
+      ]));
+      if (O && Object.keys(O).length) {
+        root.appendChild(el('div', { style: 'font-size:.74rem;color:#94a3b8;margin-top:8px' },
+          ['observado por ffprobe: ' + JSON.stringify(O)]));
+      }
+    } else if (L) {
+      root.appendChild(el('div', { class: 'out' }, ['sin trabajo activo · el motor arranca al pedir un canal']));
+    } else {
+      root.appendChild(el('div', { class: 'out' }, ['estado no consultado']));
     }
 
     root.appendChild(el('div', { class: 'sec', style: 'color:#3b82f6' }, ['🎯 Destino y receta']));
@@ -297,11 +331,13 @@
     render(root);
     Promise.all([
       api('/image/config'),
-      api('/image/capacity').catch(function () { return null; })
+      api('/image/capacity').catch(function () { return null; }),
+      api('/image/state').catch(function () { return null; })
     ]).then(function (r) {
       S.config = r[0].config;
       S.effectiveFilter = r[0].effective_filter || '';
       S.capacity = r[1];
+      S.live = r[2];
       S.busy = false;
       logLine('estado cargado');
       render(root);
@@ -316,6 +352,21 @@
     document.head.appendChild(st);
   }
 
+  // refresco del estado vivo: solo si el panel esta montado
+  var liveTimer = null;
+  function startLive() {
+    if (liveTimer) return;
+    liveTimer = setInterval(function () {
+      if (!document.getElementById('ape-image-panel')) return;
+      if (S.busy) return;
+      api('/image/state').then(function (j) {
+        S.live = j;
+        var root = document.getElementById('ape-image-panel');
+        if (root && !S.busy) render(root);
+      }).catch(function () { /* silencioso: el polling no debe romper la UI */ });
+    }, 3000);
+  }
+
   window.APE_IMAGE_PANEL = {
     load: load,
     mount: function (sel) {
@@ -323,6 +374,7 @@
       if (!root) return false;
       root.id = 'ape-image-panel';
       load();
+      startLive();
       return true;
     },
     setBase: function (b) { S.base = String(b).replace(/\/+$/, ''); load(); },

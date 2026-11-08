@@ -493,9 +493,13 @@ function buildEncodingPlan(src, options = {}) {
   if (outputColorIntent.range && ['tv', 'pc'].includes(outputColorIntent.range)) {
     colorArgs.push('-color_range', outputColorIntent.range);
   }
+  // bwdif SOLO si la fuente es entrelazada. Ponerlo por defecto altera la cadencia
+  // senalizada de una fuente progresiva (medido en el ensayo del informe).
+  const needsDeint = !!src.interlaced;
+  const deint = needsDeint ? 'bwdif=mode=send_field:parity=auto:deint=interlaced,' : '';
   const imageFilters = buildImageFilterChain(cfg);
   const pixelFmt = cfg.ten_bit ? 'format=yuv420p10le' : 'format=yuv420p';
-  const head = imageFilters ? (pixelFmt + ',' + imageFilters + ',') : '';
+  const head = (deint || imageFilters) ? (pixelFmt + ',' + deint + imageFilters + ',') : '';
   const geometry = head + `scale=w=${width}:h=${height}:force_original_aspect_ratio=decrease:force_divisible_by=2:flags=lanczos,pad=${width}:${height}:(ow-iw)/2:(oh-ih)/2`;
   // setparams only relabels pixels. zscale performs the actual known-SDR -> PQ conversion.
   // zscale SOLO si el color de entrada es conocido. Con color desconocido,
@@ -525,7 +529,13 @@ function buildEncodingPlan(src, options = {}) {
     const rateArgs = cfg.bitrate_mode === 'abr'
       ? ['-b:v', cfg.bitrate, '-maxrate', cfg.maxrate, '-bufsize', cfg.bufsize]
       : ['-crf', String(cfg.crf), '-b:v', '0'];
+    // fps: 'preserve' no toca la cadencia. Cualquier otro valor la fija de verdad
+    // (-r) y con -fps_mode cfr, para que la salida declare lo que se pidio.
+    const fpsArgs = (cfg.fps && cfg.fps !== 'preserve')
+      ? ['-r', String(cfg.fps), '-fps_mode', 'cfr']
+      : ['-fps_mode', cfg.fps_mode || 'passthrough'];
     videoArgs = ['-vf', hdrFilter, '-pix_fmt', cfg.ten_bit ? 'yuv420p10le' : 'yuv420p', ...colorArgs,
+      ...fpsArgs,
       '-c:v', cfg.codec === 'libx265' ? 'libx265' : cfg.codec,
       '-preset', cfg.preset, '-tune', 'zerolatency', '-threads', String(cfg.x265_threads), '-tag:v', 'hvc1',
       // Los metadatos de color del bitstream SOLO se escriben si la salida es HDR
@@ -1133,6 +1143,61 @@ const server = http.createServer((req, res) => {
     return res.end();
   }
   /* ── MODULO DE IMAGEN: control remoto desde la UI ───────────────────────── */
+  /* ── ESTADO VIVO del modulo de imagen ───────────────────────────────────── */
+  if (u.pathname === '/image/state') {
+    setBaseHeaders(res);
+    setNoCacheHeaders(res);
+    const cur = current;
+    let output = null;
+    let segs = 0;
+    let mediaList = [];
+    try {
+      const dir = cur && cur.dir;
+      if (dir && fs.existsSync(dir)) {
+        for (const name of fs.readdirSync(dir)) {
+          if (name.startsWith('init-') || name.startsWith('chunk-')) segs++;
+          if (name.endsWith('.m3u8')) mediaList.push(name);
+        }
+        const mpd = path.join(dir, 'manifest.mpd');
+        if (fs.existsSync(mpd)) mediaList.push('manifest.mpd');
+      }
+    } catch (e) { /* noop */ }
+    if (cur && cur.outputTruth) output = cur.outputTruth;
+    const started = cur && cur.started ? cur.started : null;
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    return res.end(JSON.stringify({
+      ok: true,
+      job: cur ? {
+        channel: cur.id,
+        variant: cur.sdr720 ? 'sdr720' : (cur.sdr ? 'sdr' : 'hdr'),
+        pid: cur.child && cur.child.pid ? cur.child.pid : null,
+        started_at: started ? new Date(started).toISOString() : null,
+        age_s: started ? Math.round((Date.now() - started) / 1000) : null,
+        mode: cur.crystalMode || null,
+        copy: !!cur.copyNative,
+        sdr: !!cur.sdr,
+        output_width: cur.outWidth || null,
+        output_height: cur.outHeight || null,
+        source_width: cur.sourceWidth || null,
+        source_height: cur.sourceHeight || null
+      } : null,
+      output_observed: output,
+      files: { segments: segs, playlists: mediaList.slice(0, 8) },
+      config: {
+        target: imageConfig.target, recipe: imageConfig.recipe, fps: imageConfig.fps,
+        codec: imageConfig.codec, preset: imageConfig.preset, crf: imageConfig.crf,
+        audio: imageConfig.audio, force_transcode: imageConfig.force_transcode
+      },
+      effective_filter: buildImageFilterChain(imageConfig),
+      engine: {
+        processing_domain: PROCESSING_DOMAIN,
+        rea_executed: false,
+        slot: liveKids.size,
+        source: imageConfigSource
+      }
+    }));
+  }
+
   if (u.pathname === '/image/config' || u.pathname === '/image/capacity') {
     setBaseHeaders(res);
     setNoCacheHeaders(res);
