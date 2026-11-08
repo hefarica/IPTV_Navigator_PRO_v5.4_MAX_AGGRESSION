@@ -301,6 +301,64 @@ async function emitted(ctx, channels) {
         console.log('PASS 7 (bit_depth VALUES con P3 DISCREPA)');
     }
 
+    // ── Escenario 8: LA TABLA .5 COMPLETA — es el output diseñado, fila por fila ───────
+    // Base | Variante | Fuente | Técnica | Factor | Mbps
+    //  P0  | P0.5 | 7680x4320 | 8k_downsample_lanczos_0.75        | 0.75x | 80
+    //  P1  | P1.5 | 3840x2160 | 4k_upscale_ai_sr_1.5x             | 1.50x | 60
+    //  P2  | P2.5 | 3840x2160 | 4k_upscale_shader_lanczos_1.5x    | 1.50x | 45
+    //  P3  | P3.5 | 1920x1080 | fhd_upscale_ai_sr_3x               | 3.00x | 35
+    //  P4  | P4.5 | 1280x720  | hd_upscale_ai_sr_4.5x              | 4.50x | 30
+    //  P5  | P5.5 | 854x480   | sd_upscale_ai_sr_6.75x             | 6.75x | 25
+    // Todas -> RES=5760x3240, CODEC=hvc1.2.4.L183.B0,
+    //          TRUTH:DECLARED_ENHANCEMENT;NOT_SOURCE  (nunca la fuente como 6K real)
+    //          ACTIVATION=DEVICE_GATED;DEVICE_REQUIRES=4K_5760x3240
+    //
+    // P2 no es alcanzable por nombre (determineProfile no lo emite), asi que se valida la
+    // tabla por las otras cinco filas; P2.5 sigue declarado en la tabla del generador.
+    {
+        const LAB24t = JSON.parse(fs.readFileSync(process.env.LABV24, 'utf8'));
+        const FILAS = [
+            { nombre: '8K MASTER',          base: 'P0', var6: 'P0.5', fuente: '7680x4320', tec: '8k_downsample_lanczos_0.75',     ratio: '0.75x', mbps: 80 },
+            { nombre: 'DAZN 4K UHD',        base: 'P1', var6: 'P1.5', fuente: '3840x2160', tec: '4k_upscale_ai_sr_1.5x',          ratio: '1.50x', mbps: 60 },
+            { nombre: 'Canales 1080p FHD',  base: 'P3', var6: 'P3.5', fuente: '1920x1080', tec: 'fhd_upscale_ai_sr_3x',           ratio: '3.00x', mbps: 35 },
+            { nombre: 'HD 720p',            base: 'P4', var6: 'P4.5', fuente: '1280x720',  tec: 'hd_upscale_ai_sr_4.5x',          ratio: '4.50x', mbps: 30 },
+            { nombre: 'SD 480p',            base: 'P5', var6: 'P5.5', fuente: '854x480',   tec: 'sd_upscale_ai_sr_6.75x',         ratio: '6.75x', mbps: 25 }
+        ];
+        const chans = FILAS.map((c, i) => ({ id: String(i + 1), name: c.nombre, url: 'https://audit.invalid/live/u/p/' + (i + 1) + '.m3u8', group: 'T' }));
+        const g = environment({ profiles: LAB24t.profiles_calibrated, labEmulated6k: LAB24t.emulated_6k || null });
+        g.ctx.app.getFilteredChannels = () => chans;
+        const st = g.ctx.M3U8TypedArraysGenerator.generateStream(chans);
+        assert.ok(st && typeof st.getReader === 'function', 'generateStream debe dar ReadableStream');
+        const rd = st.getReader(), dec = new TextDecoder(); let body = '';
+        await (async () => { for (;;) { const r = await rd.read(); if (r.done) break; body += typeof r.value === 'string' ? r.value : dec.decode(r.value, { stream: true }); } })();
+
+        const bloques = body.split(/(?=#EXTINF)/).filter(b => b.includes('#EXTINF'));
+        assert.equal(bloques.length, FILAS.length, 'un bloque por canal');
+        let ok = 0;
+        for (let i = 0; i < FILAS.length; i++) {
+            const f = FILAS[i], b = bloques[i];
+            const k6 = (b.match(/#EXT-X-APE-CRYSTAL-6K:[^\n]*/) || [''])[0];
+            const mode = (b.match(/#EXT-X-APE-CRYSTAL-6K-MODE:[^\n]*/) || [''])[0];
+            const br = (b.match(/#EXT-X-APE-CRYSTAL-6K-BITRATE:[^\n]*/) || [''])[0];
+            const truth = (b.match(/#EXT-X-APE-CRYSTAL-6K-TRUTH:[^\n]*/) || [''])[0];
+            assert.ok(k6, f.base + ' debe llevar el bloque 6K');
+            assert.ok(k6.indexOf('PROFILE=' + f.var6 + ';') >= 0, f.base + ' -> variante ' + f.var6 + ' | ' + k6);
+            assert.ok(k6.indexOf('BASE=' + f.base) >= 0, f.base + ' -> BASE=' + f.base);
+            assert.ok(k6.indexOf('RES=5760x3240') >= 0, f.base + ' -> objetivo 5760x3240');
+            assert.ok(k6.indexOf('CODEC=hvc1.2.4.L183.B0') >= 0, f.base + ' -> codec L183');
+            assert.ok(k6.indexOf('DEVICE_REQUIRES=4K_5760x3240') >= 0, f.base + ' -> activacion exige 4K');
+            assert.ok(mode.indexOf('TECHNIQUE=' + f.tec) >= 0, f.base + ' -> tecnica ' + f.tec + ' | ' + mode);
+            assert.ok(mode.indexOf('RATIO=' + f.ratio) >= 0, f.base + ' -> factor ' + f.ratio);
+            assert.ok(mode.indexOf('SOURCE=' + f.fuente) >= 0, f.base + ' -> fuente ' + f.fuente);
+            assert.ok(br.indexOf('BITRATE:' + f.mbps) >= 0, f.base + ' -> ' + f.mbps + ' Mbps | ' + br);
+            assert.ok(truth.indexOf('DECLARED_ENHANCEMENT;NOT_SOURCE') >= 0, f.base + ' -> TRUTH declarado');
+            ok++;
+        }
+        assert.equal(ok, FILAS.length, 'las 5 filas alcanzables deben cumplir la tabla');
+        passed += 11;
+        console.log('PASS 8 (TABLA .5): ' + ok + '/5 filas verificadas · P0.5/P1.5/P3.5/P4.5/P5.5 con tecnica+factor+TRUTH');
+    }
+
     console.log('\nresultado: ' + passed + ' aserciones pasadas');
     process.exit(passed > 0 ? 0 : 2);
 })();

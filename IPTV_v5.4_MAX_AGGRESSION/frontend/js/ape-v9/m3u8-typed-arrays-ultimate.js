@@ -9488,11 +9488,17 @@ ${__apeContinuityTags().join('\n')}
                     : ((_st && _st.bitrate != null) ? _st.bitrate : null);
                 const _mbps = Number(_rawMbps);
                 if (!isFinite(_mbps) || _mbps <= 0) continue; // el LAB no declara este tier: no se inventa
+                // [2026-11-08] La capa .5 es el OUTPUT DISEÑADO: los SEIS perfiles declaran su
+                // variante 6K con su tecnica y su factor (tabla del operador). La honestidad no
+                // viene de restringir quien declara, sino de la etiqueta
+                // TRUTH: DECLARED_ENHANCEMENT;NOT_SOURCE -> nunca se declara la fuente como 6K real.
+                // La ACTIVACION si es 4K-dependiente y se declara como tal (DEVICE_REQUIRES).
+                const _srcRes = (_bst && _bst.resolution) ? String(_bst.resolution) : _fb.src;
                 _table[_baseId] = {
                     id: _fb.id,
                     mbps: _mbps,
                     tec: _fb.tec,
-                    src: (_bst && _bst.resolution) ? String(_bst.resolution) : _fb.src,
+                    src: _srcRes,
                     ratio: _fb.ratio
                 };
             }
@@ -9514,7 +9520,7 @@ ${__apeContinuityTags().join('\n')}
                     // (emulation.apply = device_vpp_declared; >=5760x3240 y SoC capaz), y quien
                     // escribe la lista NO conoce el device que la va a leer. Declararlo evita que
                     // OPT-IN-ACTIVE se lea como "ya activo en este aparato".
-                    + ';ACTIVATION=DEVICE_GATED;DEVICE_STATUS=unknown',
+                    + ';ACTIVATION=DEVICE_GATED;DEVICE_REQUIRES=4K_5760x3240;DEVICE_STATUS=unknown',
                 '#EXT-X-APE-CRYSTAL-6K-MODE:EMULATED;SOURCE=' + _6k.src + ';TECHNIQUE=' + _6k.tec
                     + ';RATIO=' + _6k.ratio + ';ENHANCEMENT=DISPLAY_DECLARED',
                 '#EXT-X-APE-CRYSTAL-6K-BITRATE:' + _6k.mbps + ';MAX=' + (_6k.mbps + 20) + ';UNIT=Mbps',
@@ -9528,6 +9534,7 @@ ${__apeContinuityTags().join('\n')}
                 // REA: a 6K request is metadata, never a source STREAM-INF rewrite.
             }
         }
+
 
 
         // (7) [2026-11-06] LOS 40 TAGS DEL MOTOR QUE EL VPS YA EMITIA Y LA LISTA NO
