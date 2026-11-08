@@ -1,0 +1,31 @@
+{
+  "schema": "ape.anti-degradation/jit-baseline/1",
+  "note": "Violaciones conocidas en las implementaciones JIT. Ratchet: ninguna nueva. Regenerar tras corregir.",
+  "measured_at": "2026-11-08T04:05:40.462Z",
+  "files": {
+    "vps_jit/server.js": {
+      "fps_locked": 2,
+      "stereo_locked": 3,
+      "downscale_2k": 0,
+      "scale_small": 2,
+      "audio_passthrough": 0,
+      "degrading": true
+    },
+    "IPTV_v5.4_MAX_AGGRESSION/vps/ape-jit/server.js": {
+      "fps_locked": 2,
+      "stereo_locked": 3,
+      "downscale_2k": 2,
+      "scale_small": 2,
+      "audio_passthrough": 0,
+      "degrading": true
+    },
+    "tools/lab/ape-jit/server.js": {
+      "fps_locked": 0,
+      "stereo_locked": 0,
+      "downscale_2k": 0,
+      "scale_small": 0,
+      "audio_passthrough": 1,
+      "degrading": false
+    }
+  }
+}
