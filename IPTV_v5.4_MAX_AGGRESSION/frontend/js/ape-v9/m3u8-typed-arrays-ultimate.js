@@ -11553,7 +11553,10 @@ return lines.join('\n');
         lines.push(`#EXT-X-APE-POLIMORFISMO-SID:${_sid796}`);
         lines.push(`#EXT-X-APE-POLIMORFISMO-LIST-HASH:${_listHash}`);
         lines.push(`#EXT-X-APE-POLIMORFISMO-TIMESTAMP:${_ts}`);
-        lines.push(`#EXT-X-APE-POLIMORFISMO-UA:${_ua796.substring(0, 40)}`);
+        // [2026-11-08] .trim(): el substring(0,40) puede caer en un espacio y dejar el UA con
+        // espacio final. Un field value con espacio final viola RFC 7230 y rompe comparaciones
+        // byte-exactas (lo detecto el gate diff_whitespace sobre la playlist de muestra).
+        lines.push(`#EXT-X-APE-POLIMORFISMO-UA:${_ua796.substring(0, 40).trim()}`);
         lines.push(`#EXT-X-APE-POLIMORFISMO-IP:${_randomIp}`);
         lines.push(`#EXT-X-APE-POLIMORFISMO-SESSION:${sessionId}`);
         lines.push(`#EXT-X-APE-POLIMORFISMO-REQUEST:${reqId}`);
