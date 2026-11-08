@@ -4,60 +4,68 @@
   Verificación reproducible del LADO APK para HLS y DASH.
 
 .DESCRIPTION
-  Mide con evidencia objetiva, no con "parece que se ve":
+  Mide con evidencia objetiva. Tres condiciones por transporte:
 
-    1. Que el APK monta el transporte correcto (HLS o DASH) leyendo
-       "media source:" del log.
-    2. Que selecciona una pista de vídeo ("VIDEO elegido:").
-    3. Que PRESENTA frames, midiendo los timestamps de la superficie:
-       `dumpsys SurfaceFlinger --latency` sobre la SurfaceView del player.
-       Cero frames = no presenta, aunque la captura salga negra por otra razón.
-    4. La captura, como apoyo (no como prueba: screencap puede no incluir
-       el overlay de vídeo de hardware).
+    1. MONTA el transporte correcto  -> lee "media source:" del log
+    2. SELECCIONA pista de vídeo     -> lee "VIDEO elegido:" del log
+    3. PRESENTA imagen en movimiento -> compara DOS capturas separadas en el tiempo:
+         a) hash distinto      => algo cambia en pantalla
+         b) ambas > 60.000 B   => lo que cambia es IMAGEN, no el texto de un overlay
 
-  Exit 0 sólo si TODOS los pasos pasan. Cero frames => exit 1.
+  Exit 0 sólo si los tres casos pasan.
 
-  Antes de medir exige:
-    - dispositivo conectado (adb devices)
+  ── Por qué NO se usa SurfaceFlinger --latency ────────────────────────────────
+  Se probó y dio falsos negativos, por dos motivos medidos en este dispositivo:
+    1. El buffer circular tiene SIEMPRE 127 entradas y deja de rotar aunque el
+       vídeo avance: 127 -> 127 -> 127 con el test pattern en marcha.
+    2. Las capturas negras CAMBIAN de hash cuando aparece el texto del overlay
+       de error (16.280 -> 22.491 B), así que "hash distinto" por sí solo no
+       prueba que haya vídeo.
+  El criterio de tamaño es el que separa las dos cosas. Calibrado aquí:
+      negro con barra de título  ~16.280 B
+      negro con overlay de error ~22.491 B
+      test pattern 720p real     ~348.000-414.000 B
+      contenido real 1080p       ~1.400.000-2.000.000 B
+
+  ── Precondiciones que el script exige ────────────────────────────────────────
+    - dispositivo en `adb devices`
     - pantalla despierta (mWakefulness=Awake)
-    - PlayerActivity realmente en primer plano (mCurrentFocus)
-
-  Si OTT Navigator está encima, el `am start` no trae la app al frente:
-  PlayerActivity es singleTask SIN onNewIntent, así que un zap a una
-  instancia viva se descarta. Por eso se hace force-stop de OTT primero
-  y se verifica el foco ANTES de capturar.
+    - PlayerActivity en primer plano: se hace force-stop de OTT Navigator porque
+      PlayerActivity es singleTask SIN onNewIntent (un zap a una instancia viva
+      se descarta) y se verifica mCurrentFocus ANTES de capturar.
 
 .EXAMPLE
-  ./tools/audit/verify_apk_hls_dash.ps1
-  ./tools/audit/verify_apk_hls_dash.ps1 -Serial 192.168.1.3:33363
-  ./tools/audit/verify_apk_hls_dash.ps1 -Dwell 25
+  pwsh tools/audit/verify_apk_hls_dash.ps1
+  pwsh tools/audit/verify_apk_hls_dash.ps1 -Serial "adb-XXXX._adb-tls-connect._tcp"
+  pwsh tools/audit/verify_apk_hls_dash.ps1 -HlsUrl "http://192.168.1.9:8124/test.m3u8"
 #>
 param(
-  [string]$Serial   = "192.168.1.3:33363",
-  [string]$HlsUrl   = "https://iptv-ape.duckdns.org/jit/live/2/master.m3u8",
-  [string]$DashUrl  = "https://iptv-ape.duckdns.org/jit/live/2/manifest.mpd",
-  [string]$AltUrl   = "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8",
-  [int]$Dwell       = 20,
-  [string]$OutDir   = "docs/audits/frames"
+  [string]$Serial = "adb-GUSA2441015311-RXlL4A._adb-tls-connect._tcp",
+  [string]$HlsUrl = "https://iptv-ape.duckdns.org/jit/live/2/master.m3u8",
+  [string]$DashUrl = "https://iptv-ape.duckdns.org/jit/live/2/manifest.mpd",
+  [string]$AltUrl = "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8",
+  [int]$Dwell = 16,
+  [int]$MinBytes = 60000,
+  [string]$OutDir = "docs/audits/frames"
 )
 
 $ErrorActionPreference = "Continue"
-$Pkg    = "com.ape.crystalagent"
-$Act    = "$Pkg/com.ape.crystalagent.PlayerActivity"
+$Pkg = "com.ape.crystalagent"
+$Act = "$Pkg/com.ape.crystalagent.PlayerActivity"
 $OttPkg = "studio.scillarium.ottnavigator"
-$fail   = 0
+$fail = 0
 
-function Say($m, $c = "Gray") { Write-Host $m -ForegroundColor $c }
+function Say($m = "", $c = "Gray") { Write-Host $m -ForegroundColor $c }
 function Step($m) { Say "`n=== $m ===" "Cyan" }
 
 if (-not (Test-Path $OutDir)) { New-Item -ItemType Directory -Path $OutDir -Force | Out-Null }
 
-# ── precondiciones ────────────────────────────────────────────────────────────
+# ── precondiciones ───────────────────────────────────────────────────────────
 Step "0 · precondiciones"
 $dev = (adb devices 2>&1) -join "`n"
 if ($dev -notmatch [regex]::Escape($Serial)) {
   Say "  FALLA: '$Serial' no aparece en adb devices." "Red"
-  Say "  El TV perdió la depuración inalámbrica (pasa tras un reboot)." "Yellow"
+  Say "  Si el TV se reinició, perdió la depuración inalámbrica." "Yellow"
   Say "  Reactívela en: Ajustes > Opciones de desarrollador > Depuración inalámbrica" "Yellow"
   Say $dev
   exit 2
@@ -68,18 +76,21 @@ adb -s $Serial shell 'input keyevent KEYCODE_WAKEUP' 2>&1 | Out-Null
 Start-Sleep -Seconds 2
 $wake = (adb -s $Serial shell 'dumpsys power 2>/dev/null | grep -oE "mWakefulness=[A-Za-z]+" | head -1' 2>&1).Trim()
 Say "  pantalla: $wake"
-if ($wake -notmatch "Awake") { Say "  AVISO: pantalla no despierta; las capturas saldrán negras por standby." "Yellow" }
+if ($wake -notmatch "Awake") {
+  Say "  FALLA: pantalla dormida; cualquier captura saldrá negra por standby." "Red"
+  exit 2
+}
 
 $ver = (adb -s $Serial shell "dumpsys package $Pkg | grep -oE 'versionName=[^ ]+' | head -1" 2>&1).Trim()
 Say "  version: $ver"
 
-# ── una pasada por transporte ─────────────────────────────────────────────────
+# ── una pasada por transporte ────────────────────────────────────────────────
 function Test-Transport {
   param([string]$Label, [string]$Url, [string]$ExpectKind)
 
   Step "transporte $Label"
-  adb -s $Serial shell "am force-stop $OttPkg"  2>&1 | Out-Null
-  adb -s $Serial shell "am force-stop $Pkg"     2>&1 | Out-Null
+  adb -s $Serial shell "am force-stop $OttPkg" 2>&1 | Out-Null
+  adb -s $Serial shell "am force-stop $Pkg" 2>&1 | Out-Null
   Start-Sleep -Seconds 3
   adb -s $Serial logcat -c 2>&1 | Out-Null
 
@@ -88,7 +99,7 @@ function Test-Transport {
 
   Start-Sleep -Seconds $Dwell
 
-  # 3a · foco: si no está la Activity, no estamos midiendo el player
+  # 1 · foco: si no es la app, no estamos midiendo el player
   $focus = (adb -s $Serial shell 'dumpsys window 2>/dev/null | grep -oE "mCurrentFocus=Window\{[^}]*" | head -1' 2>&1).Trim()
   Say "  foco: $focus"
   if ($focus -notmatch [regex]::Escape($Pkg)) {
@@ -98,6 +109,7 @@ function Test-Transport {
 
   $log = adb -s $Serial logcat -d 2>/dev/null
 
+  # 2 · transporte montado
   $src = ($log | Select-String -Pattern "media source:" | Select-Object -First 1).Line
   Say "  $src"
   if ($src -notmatch "media source: $ExpectKind") {
@@ -105,77 +117,71 @@ function Test-Transport {
   }
   Say "  transporte: OK ($ExpectKind)" "Green"
 
+  # 3 · pista de vídeo
   $sel = ($log | Select-String -Pattern "VIDEO elegido" | Select-Object -First 1).Line
   Say "  $sel"
   if (-not $sel) { Say "  FALLA: ninguna pista de vídeo seleccionada." "Red"; return $false }
   Say "  selección: OK" "Green"
 
-  $err = ($log | Select-String -Pattern "Playback error").Count
+  $perr = ($log | Select-String -Pattern "Playback error").Count
   $unh = ($log | Select-String -Pattern "UnknownHost").Count
-  Say "  Playback error=$err  UnknownHost=$unh"
+  Say "  Playback error=$perr  UnknownHost=$unh"
 
-  # 3b · frames presentados: la prueba real
-  #
-  # DOS TRAMPAS medidas en este dispositivo, ambas dan falso negativo:
-  #
-  #  1) --latency devuelve SIEMPRE un buffer circular de 127 filas. Contar filas da 127
-  #     en cualquier capa, incluidas las del sistema. Lo que importa es cuantas tienen
-  #     actualPresentTime != 0.
-  #  2) El video va a la capa "SurfaceView[...](BLAST)#N", NO a "SurfaceView[...]#N".
-  #     La capa sin sufijo puede quedarse con frames historicos congelados (delta 0)
-  #     mientras la BLAST es la que recibe. Se prefiere BLAST y se cae a la otra.
-  #  3) Un acumulado > 0 NO prueba reproduccion: puede ser residuo de una sesion
-  #     anterior. Lo que prueba es el DELTA entre dos muestras separadas en el tiempo.
-  function Count-Presented([string]$layer) {
-    $raw = @(adb -s $Serial shell "dumpsys SurfaceFlinger --latency `"$layer`" 2>/dev/null" 2>&1)
-    return ($raw | Where-Object { $_ -match '^\d+\s+\d+\s+\d+' } |
-            Where-Object { [long](($_ -split '\s+')[1]) -ne 0 }).Count
-  }
-
-  $cap = (adb -s $Serial shell 'dumpsys SurfaceFlinger --list 2>/dev/null | grep -oE "SurfaceView\[com.ape.crystalagent[^]]*\]\(BLAST\)#[0-9]+" | head -1' 2>&1).Trim()
-  if (-not $cap) {
-    $cap = (adb -s $Serial shell 'dumpsys SurfaceFlinger --list 2>/dev/null | grep -oE "SurfaceView\[com.ape.crystalagent[^]]*\]#[0-9]+" | head -1' 2>&1).Trim()
-  }
-  if (-not $cap) {
-    Say "  FALLA: no hay SurfaceView del player en SurfaceFlinger." "Red"; return $false
-  }
-  Say "  capa: $cap"
-
-  $f1 = Count-Presented $cap
+  # 4 · imagen en movimiento: dos capturas, hash distinto Y tamaño sobre umbral
+  $p1 = Join-Path $OutDir ("_p1_{0}.png" -f ($ExpectKind.ToLower()))
+  $p2 = Join-Path $OutDir ("_p2_{0}.png" -f ($ExpectKind.ToLower()))
+  adb -s $Serial shell "screencap -p /sdcard/_p1.png" 2>&1 | Out-Null
+  adb -s $Serial pull /sdcard/_p1.png $p1 2>&1 | Out-Null
   Start-Sleep -Seconds 4
-  $f2 = Count-Presented $cap
-  $delta = $f2 - $f1
-  Say "  frames presentados: $f1 -> $f2  (delta $delta en 4 s)"
-  if ($delta -le 0) {
-    Say "  FALLA: no se presentan frames NUEVOS (delta $delta)." "Red"
-    Say "         Un acumulado > 0 puede ser residuo congelado: lo que prueba es el delta." "Yellow"
+  adb -s $Serial shell "screencap -p /sdcard/_p2.png" 2>&1 | Out-Null
+  adb -s $Serial pull /sdcard/_p2.png $p2 2>&1 | Out-Null
+  adb -s $Serial shell "rm -f /sdcard/_p1.png /sdcard/_p2.png" 2>&1 | Out-Null
+
+  if (-not (Test-Path $p1) -or -not (Test-Path $p2)) {
+    Say "  FALLA: no se pudo capturar la pantalla." "Red"; return $false
+  }
+  $h1 = (Get-FileHash $p1 -Algorithm SHA256).Hash
+  $h2 = (Get-FileHash $p2 -Algorithm SHA256).Hash
+  $s1 = (Get-Item $p1).Length
+  $s2 = (Get-Item $p2).Length
+  Say "  captura A: $s1 B  $($h1.Substring(0,12))"
+  Say "  captura B: $s2 B  $($h2.Substring(0,12))"
+
+  $keep = Join-Path $OutDir ("apk_{0}.png" -f ($ExpectKind.ToLower()))
+  Copy-Item $p1 $keep -Force -ErrorAction SilentlyContinue
+  Remove-Item $p1, $p2 -Force -ErrorAction SilentlyContinue
+
+  if ($h1 -eq $h2) {
+    Say "  FALLA: las dos capturas son idénticas; el vídeo no avanza." "Red"
     return $false
   }
-  Say "  presentación: OK ($delta frames en 4 s)" "Green"
-
-  $png = Join-Path $OutDir ("apk_{0}.png" -f ($ExpectKind.ToLower()))
-  adb -s $Serial shell "screencap -p /sdcard/_v.png" 2>&1 | Out-Null
-  adb -s $Serial pull /sdcard/_v.png $png 2>&1 | Out-Null
-  adb -s $Serial shell "rm -f /sdcard/_v.png" 2>&1 | Out-Null
-  if (Test-Path $png) {
-    $sz = (Get-Item $png).Length
-    Say "  captura: $png ($sz B) — apoyo, no prueba"
+  if ($s1 -lt $MinBytes -or $s2 -lt $MinBytes) {
+    Say "  FALLA: cambian pero pesan $s1/$s2 B (< $MinBytes): overlay de error, NO vídeo." "Red"
+    return $false
   }
+  Say "  presentación: OK — $s1/$s2 B, distintas y sobre el umbral" "Green"
   return $true
 }
 
-# ── las tres fuentes ──────────────────────────────────────────────────────────
-if (-not (Test-Transport "HLS · JIT"  $HlsUrl  "HLS"))  { $fail++ }
-if (-not (Test-Transport "DASH · JIT" $DashUrl "DASH")) { $fail++ }
-if (-not (Test-Transport "HLS · control mux.dev" $AltUrl "HLS")) { $fail++ }
+# ── los tres casos ──────────────────────────────────────────────────────────
+$r1 = Test-Transport "HLS" $HlsUrl "HLS"
+if (-not $r1) { $fail++ }
+$r2 = Test-Transport "DASH" $DashUrl "DASH"
+if (-not $r2) { $fail++ }
+$r3 = Test-Transport "HLS control mux.dev" $AltUrl "HLS"
+if (-not $r3) { $fail++ }
 
 Step "RESULTADO"
+Say "  HLS  : $(if($r1){'PASA'}else{'NO PASA'})"
+Say "  DASH : $(if($r2){'PASA'}else{'NO PASA'})"
+Say "  mux  : $(if($r3){'PASA'}else{'NO PASA'})"
 if ($fail -eq 0) {
-  Say "  Los tres casos: montan, seleccionan y PRESENTAN frames." "Green"
-  Say "  HLS y DASH funcionan en el APK." "Green"
+  Say ""
+  Say "  Los tres casos: montan, seleccionan y PRESENTAN imagen en movimiento." "Green"
   exit 0
 } else {
-  Say "  $fail de 3 casos NO pasan." "Red"
-  Say "  Revisar arriba qué paso falló: transporte, selección o presentación." "Yellow"
+  Say ""
+  Say "  $fail de 3 casos NO pasan. Ver arriba qué paso falló." "Red"
+  Say "  Si el control mux.dev también falla: el problema es RED, no el transporte." "Yellow"
   exit 1
 }

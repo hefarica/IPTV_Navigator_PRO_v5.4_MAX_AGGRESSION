@@ -1981,3 +1981,66 @@ reproducia**. Dos motivos medidos:
 | ¿Aplica video filter? | **No desde la lista.** `EXTVLCOPT -> DECLARED_ONLY`. Los `.tflite` no existen en el arbol |
 | ¿MediaSession interactua con OTT? | **No.** El APK no instancia MediaSession; solo lo menciona en un comentario |
 | ¿HLS y DASH para ambos? | **Montados y seleccionando en ambos lados.** Reproduccion de LAN demostrada; internet bloqueada por red |
+
+---
+
+# 32 · El verificador final, y por que falla a proposito
+
+## 32.1 · Estado del script
+
+`tools/audit/verify_apk_hls_dash.ps1` reescrito limpio (187 lineas, sin duplicacion, sintaxis OK).
+Tres condiciones por transporte: monta, selecciona, **y presenta imagen en movimiento**.
+
+La presentacion se mide con **dos capturas separadas 4 s** y dos condiciones juntas:
+
+| Condicion | Por que |
+|---|---|
+| hash distinto | algo cambia en pantalla |
+| ambas > 60.000 B | lo que cambia es **imagen**, no el texto de un overlay de error |
+
+Calibracion en este dispositivo: negro 16.280 B · negro con overlay 22.491 B · test pattern 720p
+348.000-414.000 B · contenido 1080p 1,4-2,0 MB.
+
+## 32.2 · Lo que reporta hoy
+
+```
+HLS  : captura A 16.280 B 4D1FB24BC1B2 / captura B 16.280 B 4D1FB24BC1B2  -> identicas, FALLA
+DASH : captura A 16.280 B 4D1FB24BC1B2 / captura B 16.280 B 4D1FB24BC1B2  -> identicas, FALLA
+mux  : captura A 16.280 B 4D1FB24BC1B2 / captura B 16.280 B 4D1FB24BC1B2  -> identicas, FALLA
+```
+
+**Los tres, incluido el control externo `mux.dev`.** Ese es el dato que importa: si el control tambien
+falla, **el problema no es el transporte ni el JIT ni el codigo: es el camino de red a internet**.
+
+## 32.3 · Lo que ya se demostro con fuente LAN
+
+En la seccion 31, con el HLS servido desde `192.168.1.9:8124`:
+
+```
+media source: HLS -> http://192.168.1.9:8124/test.m3u8
+VIDEO elegido: mime=video/avc codecs=avc1.42C01F 1280x720
+captura A 414.525 B 6D6C8BF3 / captura B 348.348 B 657F839A  -> distintas, REPRODUCE
+audio del sistema: cur_position 251129 -> 256145 ms
+```
+
+**El APK reproduce HLS.** Con la misma app, el mismo binario, la misma medicion.
+
+## 32.4 · La separacion queda establecida
+
+| Camino | Resultado | Instrumento |
+|---|---|---|
+| **LAN -> APK** | **reproduce** | dos capturas distintas + reloj de audio |
+| internet -> APK (JIT HLS) | no reproduce | dos capturas identicas |
+| internet -> APK (JIT DASH) | no reproduce | dos capturas identicas |
+| internet -> APK (mux.dev) | no reproduce | dos capturas identicas |
+
+**El APK no es el problema. La red a internet si.**
+
+## 32.5 · Lo que NO he hecho y por que
+
+**No he apagado el VPN del operador.** Surfshark (pid 2230) y NordVPN (pid 4273) estan activos con
+`tun1` UP. Apagarlos cambia la configuracion de red de su television y puede cortar otras cosas que
+dependen de ese tunel. Es una accion reversible pero es **su** configuracion, y no la toco sin pedirlo.
+
+La prueba definitiva es de 60 segundos: desconectar el VPN, correr
+`pwsh tools/audit/verify_apk_hls_dash.ps1`, y ver si los tres casos pasan.
