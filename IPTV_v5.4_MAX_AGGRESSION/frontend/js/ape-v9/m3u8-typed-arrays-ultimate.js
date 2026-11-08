@@ -2958,11 +2958,69 @@
             const pid = (window.ProfileManagerV9 && window.ProfileManagerV9.activeProfileId) || 'P3';
             const p = (typeof cfg.getProfile === 'function') ? cfg.getProfile(pid) : null;
             if (!p) return null;
+
+            // [2026-11-08] REPARTO DE CARRILES en quality_levels, igual que ya hace
+            // ape-image-recipes-bundle.js. Medido contra la skill ape-image-pipeline-truth §6:
+            //   - modulos que VLC SI carga: gradfun, hqdn3d, deinterlace, sharpen
+            //   - NO son modulo VLC: nlmeans, bwdif, yadif, zscale, minterpolate, unsharp, cas,
+            //     libplacebo, pp, ffmpeg
+            //   - y ademas EXTVLCOPT video-filter esta cerrado por POLITICA: "unsafe option
+            //     ignored for security reasons" => 0 filtros instanciados.
+            // Por eso quality_levels.video_filter es una cadena de carril ffmpeg guardada bajo un
+            // nombre que sugiere VLC. Se DECLARA el reparto en la propia metadata; no se toca la
+            // cadena emitida (seria inerte) ni se reescribe el LAB.
+            const _VLC_REAL_MODULES = ['gradfun', 'hqdn3d', 'deinterlace', 'sharpen'];
+            const _chainModules = (chain) => String(chain || '')
+                .split(',')
+                .map(t => {
+                    const m = t.trim().match(/^([A-Za-z0-9_]+)/);
+                    return m ? m[1].toLowerCase() : null;
+                })
+                .filter(Boolean);
+            const _splitLanes = (qlevels) => {
+                if (!qlevels || typeof qlevels !== 'object') return qlevels;
+                const out = {};
+                for (const lv of Object.keys(qlevels)) {
+                    const cur = qlevels[lv];
+                    if (!cur || typeof cur !== 'object') { out[lv] = cur; continue; }
+                    const chain = String(cur.video_filter || '');
+                    const mods = _chainModules(chain);
+                    const vlc = mods.filter(m => _VLC_REAL_MODULES.indexOf(m) >= 0);
+                    const noVlc = mods.filter(m => _VLC_REAL_MODULES.indexOf(m) < 0);
+                    out[lv] = Object.assign({}, cur, {
+                        lane_split: {
+                            vlc_modules: vlc,
+                            no_vlc_module: noVlc,
+                            ffmpeg_filtergraph: chain,
+                            declared_lane: 'ffmpeg',
+                            vlc_playlist_executable: false,
+                            reason: 'EXTVLCOPT video-filter es ignorado por politica de seguridad de VLC; '
+                                + 'los modulos en no_vlc_module no existen como modulo VLC'
+                        }
+                    });
+                }
+                return out;
+            };
+            let _fields = p;
+            try {
+                const _qlTop = p && p.quality_levels;
+                const _qlNested = p && p.settings && p.settings.quality_levels;
+                if (_qlTop || _qlNested) {
+                    _fields = Object.assign({}, p);
+                    if (_qlTop) _fields.quality_levels = _splitLanes(_qlTop);
+                    if (_qlNested) {
+                        _fields.settings = Object.assign({}, p.settings, {
+                            quality_levels: _splitLanes(_qlNested)
+                        });
+                    }
+                }
+            } catch (_e) { _fields = p; }
+
             const pack = {
                 schema: 'ape-lab-metadata-v1',
                 profile: pid,
                 generated_at: new Date().toISOString(),
-                fields: p
+                fields: _fields
             };
             const utf8 = unescape(encodeURIComponent(JSON.stringify(pack)));
             const b64 = (typeof btoa === 'function') ? btoa(utf8) : null;

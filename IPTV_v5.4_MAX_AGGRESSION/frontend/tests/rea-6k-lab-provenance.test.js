@@ -248,6 +248,38 @@ async function emitted(ctx, channels) {
         console.log('PASS 5 (sin bundle -> DECLARED=0)');
     }
 
+    // ── Escenario 6: quality_levels declara el reparto de carriles ────────────────────
+    // La cadena de quality_levels.video_filter es de carril ffmpeg guardada bajo un nombre que
+    // sugiere VLC. Se DECLARA el reparto en la metadata (skill ape-image-pipeline-truth §6).
+    {
+        const qLevels = {
+            L3: { resolution: '1920x1080', hdr: 'hdr10',
+                  video_filter: 'nlmeans=s=2.5:p=5:r=11,bwdif=mode=1:parity=-1:deint=0,gradfun=radius=12:strength=0.8,unsharp=luma_msize_x=3:luma_msize_y=3:luma_amount=0.3,zscale=transfer=bt709:primaries=bt709:matrix=bt709' },
+            L4: { resolution: '1280x720', hdr: 'hlg',
+                  video_filter: 'hqdn3d=luma_spatial=2.0:chroma_spatial=1.5,yadif=mode=1:parity=-1:deint=0,unsharp=luma_msize_x=3:luma_msize_y=3:luma_amount=0.25' },
+            L5: { resolution: '854x480', hdr: 'sdr', video_filter: 'yadif=mode=0:parity=-1:deint=0' }
+        };
+        const g = environment({ profiles: { P3: { id: 'P3', quality_levels: qLevels, settings: { buffer: 8000 } } } });
+        const G = g.ctx.M3U8TypedArraysGenerator;
+        const h = G._generateGlobalHeader(1, { bulletproof_loaded: true, bulletproof_profiles: { P3: { id: 'P3', quality_levels: qLevels } }, dictatorMode: true }) || '';
+        const parts = [...h.matchAll(/#EXT-X-APE-LAB-METADATA:(\d+)\/(\d+):(.*)/g)].map(m => [Number(m[1]), m[3]]).sort((a, b) => a[0] - b[0]);
+        assert.ok(parts.length > 0, 'debe emitir la metadata embebida');
+        const meta = JSON.parse(Buffer.from(parts.map(p => p[1]).join(''), 'base64').toString('utf8'));
+        const ql = (meta.fields && meta.fields.quality_levels) || {};
+        assert.equal(Object.keys(ql).length, 3, 'debe llevar los 3 niveles');
+        assert.deepEqual(ql.L3.lane_split.vlc_modules, ['gradfun'], 'L3: solo gradfun es modulo VLC -> ' + JSON.stringify(ql.L3.lane_split.vlc_modules));
+        for (const m of ['nlmeans', 'bwdif', 'unsharp', 'zscale']) {
+            assert.ok(ql.L3.lane_split.no_vlc_module.includes(m), 'L3: ' + m + ' debe estar en no_vlc_module');
+        }
+        assert.deepEqual(ql.L4.lane_split.vlc_modules, ['hqdn3d'], 'L4: solo hqdn3d -> ' + JSON.stringify(ql.L4.lane_split.vlc_modules));
+        assert.deepEqual(ql.L5.lane_split.vlc_modules, [], 'L5: ningun modulo VLC');
+        assert.equal(ql.L3.lane_split.declared_lane, 'ffmpeg', 'el carril declarado es ffmpeg');
+        assert.equal(ql.L3.lane_split.vlc_playlist_executable, false, 'NO se declara ejecutable en VLC (politica)');
+        assert.ok(ql.L3.lane_split.ffmpeg_filtergraph.includes('nlmeans'), 'se conserva la cadena completa como filtergraph');
+        passed += 8;
+        console.log('PASS 6 (L3 vlc=' + JSON.stringify(ql.L3.lane_split.vlc_modules) + ' no_vlc=' + ql.L3.lane_split.no_vlc_module.length + ' ejecutable=' + ql.L3.lane_split.vlc_playlist_executable + ')');
+    }
+
     console.log('\nresultado: ' + passed + ' aserciones pasadas');
     process.exit(passed > 0 ? 0 : 2);
 })();
