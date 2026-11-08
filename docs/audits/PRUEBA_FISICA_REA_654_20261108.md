@@ -4005,3 +4005,73 @@ tabla. Verificado: las 16 reglas devuelven los 11 campos.
 `vps-image-panel.js` **41.086 -> 43.509 B** con las 15 columnas nuevas.
 Verificado en local (`127.0.0.1:5500`) y por HTTPS: 200, 43.509 B, referencias a
 `preset`, `hqls` y `seg` presentes. **Test de integracion: OK.**
+
+---
+
+# 58 · Al elegir un perfil, el constructor trae TODO lo cargado
+
+## 58.1 · El defecto
+
+Al cambiar el selector de perfil, **solo cambiaba el nombre**: las cajas seguian con los
+valores del perfil anterior. El operador lo pidio explicito: *"cuando seleccione el perfil
+que traiga la resolucion y todos sus valores actuamente cargados"*.
+
+## 58.2 · Lo que trae ahora
+
+`GET /jit/image/profile/{id}/full` devuelve un bloque `load` con **todo lo cargado**:
+
+```json
+{
+  "profile": "P4.5",
+  "ruleCount": 2,
+  "matrix": { "outW": 5760, "outH": 3240 },
+  "load": {
+    "input": "720p", "inFps": 60,
+    "outW": 5760, "outH": 3240, "outFps": 30,
+    "codec": "hvc1", "recipe": "temporal", "dither": "error_diffusion", "mode": "emulado",
+    "preset": "ultrafast", "crf": 20, "audio": "preserve",
+    "hqdn3d": { "luma_spatial": 0.6, "chroma_spatial": 0.45, "luma_tmp": 0.9, "chroma_tmp": 0.7 },
+    "unsharp": { "luma_amount": 0.2, "luma_msize": 5, "chroma_amount": 0, "chroma_msize": 3 },
+    "atadenoise": { "s": 5, "a": 0.01, "b": 0.02 },
+    "seg_duration": 2, "window_size": 30, "extra_window_size": 10,
+    "gop_seconds": 2, "x265_threads": 1
+  }
+}
+```
+
+**Medido, tres perfiles distintos devuelven tres configuraciones distintas:**
+
+| Perfil | Matriz | Reglas | codec | receta | modo |
+|---|---|---|---|---|---|
+| **P4.5** | 5760x3240 | 2 | hvc1 | temporal | **emulado** |
+| P3 | 1920x1080 | 3 | hvc1 | light | real |
+| P1 | 3840x2160 | 1 | hvc1 | none | real |
+
+## 58.3 · Lo que se rellena al cambiar de perfil
+
+Un solo `change` en el selector dispara `loadProfile()` y rellena **21 campos**:
+
+- **Entrada**: ancho, alto (de la banda de la regla), fps de entrada
+- **Salida**: ancho, alto, fps de salida
+- **Codec, receta, dither, modo**
+- **Encoder**: preset, CRF, audio, GOP
+- **Los 6 filtros**: hq_ls, hq_cs, hq_lt, hq_ct, unsharp amount, unsharp msize, atadenoise s
+- **Empaquetado**: seg_duration, window_size, extra_window_size, x265_threads
+
+## 58.4 · Campos nuevos en el constructor
+
+Se anadieron las cajas que faltaban para que la salida sea **libre**, no solo la del
+catalogo:
+
+- `SALIDA ancho (al TV)` y `SALIDA alto (al TV)` — cualquier resolucion
+- `SALIDA fps`
+- `Modo` — REAL / EMULADO
+- `Dither`
+
+Asi se puede declarar 5760x3240 a mano sin depender de que el catalogo lo liste.
+
+## 58.5 · Desplegado
+
+`vps-image-panel.js` **43.509 -> 47.504 B**. Verificado: `loadProfile` presente 1 vez,
+`aip-b-outW` 3 veces (render, lectura y escritura). Local e HTTPS sirven los 47.504 B.
+**Test de integracion: OK.**

@@ -2968,17 +2968,49 @@ const server = http.createServer((req, res) => {
       return res.end(JSON.stringify({ ok: false, error: 'perfil inexistente: ' + pid }));
     }
     const q = u.searchParams;
+    /* Las REGLAS de este perfil, con todos sus campos ya cargados. Es lo que el
+     * panel necesita para rellenar el constructor al cambiar de perfil: sin esto
+     * el select cambiaba de nombre pero los valores seguian siendo los del perfil
+     * anterior. */
+    const myRules = transformRules.filter((x) => String(x.profile) === String(pid));
+    // la primera regla es la que se usa como plantilla (la mas ajustada)
+    const tpl = myRules.length ? myRules[0] : null;
+    const tplParams = tpl ? ruleParams(tpl) : ruleParams({});
     const r = declareProfile({
       profile: pid,
       input: { width: Number(q.get('w')) || 1280, height: Number(q.get('h')) || 720 },
       player: q.get('player') || 'onn-4k',
-      codec: q.get('codec') || 'hvc1',
-      recipe: q.get('recipe') || 'balanced',
-      fps: q.get('fps') || 25
+      codec: q.get('codec') || (tpl ? tpl.codec : 'hvc1'),
+      recipe: q.get('recipe') || (tpl ? tpl.recipe : 'balanced'),
+      target: q.get('target') || undefined,
+      fps: q.get('fps') || (tpl && tpl.inFps ? tpl.inFps : 25)
     });
     setBaseHeaders(res); setNoCacheHeaders(res);
     res.writeHead(200, { 'Content-Type': 'application/json' });
-    return res.end(JSON.stringify({ ok: true, matrix: row, resolved: r }));
+    return res.end(JSON.stringify({
+      ok: true,
+      profile: pid,
+      matrix: row,
+      rules: myRules,
+      ruleCount: myRules.length,
+      // TODO lo que el panel debe rellenar, ya resuelto
+      load: {
+        input: tpl ? tpl.input : null,
+        inFps: tpl ? tpl.inFps : null,
+        outW: row.outW, outH: row.outH,
+        outFps: tpl ? tpl.outFps : null,
+        codec: tpl ? tpl.codec : 'hvc1',
+        recipe: tpl ? tpl.recipe : 'balanced',
+        dither: tpl ? (tpl.dither || row.dither) : row.dither,
+        mode: tpl ? (tpl.mode || 'real') : 'real',
+        preset: tplParams.preset, crf: tplParams.crf, audio: tplParams.audio,
+        hqdn3d: tplParams.hqdn3d, unsharp: tplParams.unsharp, atadenoise: tplParams.atadenoise,
+        seg_duration: tplParams.seg_duration, window_size: tplParams.window_size,
+        extra_window_size: tplParams.extra_window_size, gop_seconds: tplParams.gop_seconds,
+        x265_threads: tplParams.x265_threads
+      },
+      resolved: r
+    }));
   }
 
   /* CASCADA: los 13 tiers con su serial, seleccionables */

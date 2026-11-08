@@ -22,7 +22,8 @@
     declared: null, gov: null, cascade: null, fallback: null, rules: null, autoRow: null,
     busy: false, lastError: null, log: [],
     build: { profile: 'P4.5', w: 1280, h: 720, target: 'UHD_4K', codec: 'hvc1',
-             player: 'onn-4k', recipe: 'balanced', fps: 25 }
+             player: 'onn-4k', recipe: 'balanced', fps: 25,
+             outW: 3840, outH: 2160, outFps: '', dither: 'error_diffusion', mode: 'real' }
   };
 
   function el(tag, attrs, children) {
@@ -147,11 +148,26 @@
     var b = S.build;
 
     root.appendChild(el('div', { class: 'grid' }, [
-      fld('Perfil', sel('aip-b-profile', cat.profiles.map(function (p) { return { id: p, label: p }; }), b.profile)),
+      fld('Perfil', (function () {
+        var sl = sel('aip-b-profile', cat.profiles.map(function (p) { return { id: p, label: p }; }), b.profile);
+        // al cambiar de perfil se TRAE todo lo que ese perfil tiene cargado
+        sl.addEventListener('change', function () { loadProfile(sl.value); });
+        return sl;
+      })()),
       fld('ENTRADA ancho (recibida)', inp('aip-b-w', b.w, 'number')),
       fld('ENTRADA alto (recibida)', inp('aip-b-h', b.h, 'number')),
       fld('FPS', sel('aip-b-fps', [{ id: '25', label: '25' }, { id: '30', label: '30' },
         { id: '50', label: '50' }, { id: '60', label: '60' }], String(b.fps)))
+    ]));
+
+    // salida explicita: CUALQUIER resolucion, no solo la del catalogo
+    root.appendChild(el('div', { class: 'grid' }, [
+      fld('SALIDA ancho (al TV)', inp('aip-b-outW', b.outW || 3840, 'number')),
+      fld('SALIDA alto (al TV)', inp('aip-b-outH', b.outH || 2160, 'number')),
+      fld('SALIDA fps', inp('aip-b-outFps', b.outFps || '', 'number')),
+      fld('Modo', sel('aip-b-mode', [{ id: 'real', label: 'REAL (decoder exigido)' },
+        { id: 'emulado', label: 'EMULADO (se declara igual)' }], b.mode || 'real')),
+      fld('Dither', sel('aip-b-dither', ['none', 'ordered', 'error_diffusion', 'random'], b.dither || 'error_diffusion'))
     ]));
 
     root.appendChild(el('div', { class: 'grid' }, [
@@ -267,6 +283,11 @@
     S.build.player = v('aip-b-player');
     S.build.recipe = v('aip-b-recipe');
     S.build.fps = v('aip-b-fps');
+    S.build.outW = Number(v('aip-b-outW')) || 3840;
+    S.build.outH = Number(v('aip-b-outH')) || 2160;
+    S.build.outFps = v('aip-b-outFps');
+    S.build.dither = v('aip-b-dither');
+    S.build.mode = v('aip-b-mode');
     S.build.preset = v('aip-b-preset');
     S.build.crf = Number(v('aip-b-crf'));
     S.build.audio = v('aip-b-audio');
@@ -333,6 +354,65 @@
   }
 
   /* ── 2. MATRIZ EDITABLE ───────────────────────────────────────────────── */
+
+  /* ── CARGAR TODO LO QUE TIENE UN PERFIL ──────────────────────────────────
+   * Al elegir un perfil se traen su resolucion de entrada y salida, su codec,
+   * su receta, su encoder completo, sus seis filtros y su empaquetado.
+   * Antes el select solo cambiaba de nombre: los valores seguian siendo los del
+   * perfil anterior. */
+  function setVal(id, v) {
+    var e = document.getElementById(id);
+    if (e && v != null && v !== '') e.value = String(v);
+  }
+
+  function loadProfile(pid) {
+    if (!pid) return;
+    S.build.profile = pid;
+    api('/image/profile/' + encodeURIComponent(pid) + '/full?player=' +
+        encodeURIComponent(S.build.player) + '&w=' + S.build.w + '&h=' + S.build.h)
+      .then(function (r) {
+        if (!r || !r.ok || !r.load) { logLine('perfil ' + pid + ': sin datos'); return; }
+        var L = r.load;
+        var bands = { '480p': [854, 480], '576p': [1024, 576], '720p': [1280, 720],
+                      '1080p': [1920, 1080], '1440p': [2560, 1440], '4K': [3840, 2160], '8K': [7680, 4320] };
+        // ENTRADA
+        if (L.input && bands[L.input]) {
+          setVal('aip-b-w', bands[L.input][0]);
+          setVal('aip-b-h', bands[L.input][1]);
+        }
+        // SALIDA
+        setVal('aip-b-outW', L.outW);
+        setVal('aip-b-outH', L.outH);
+        setVal('aip-b-outFps', L.outFps || '');
+        setVal('aip-b-codec', L.codec);
+        setVal('aip-b-recipe', L.recipe);
+        setVal('aip-b-dither', L.dither);
+        setVal('aip-b-mode', L.mode);
+        // ENCODER
+        setVal('aip-b-preset', L.preset);
+        setVal('aip-b-crf', L.crf);
+        setVal('aip-b-audio', L.audio);
+        setVal('aip-b-gop', L.gop_seconds);
+        // FILTROS (los seis)
+        setVal('aip-hq-ls', (L.hqdn3d || {}).luma_spatial);
+        setVal('aip-hq-cs', (L.hqdn3d || {}).chroma_spatial);
+        setVal('aip-hq-lt', (L.hqdn3d || {}).luma_tmp);
+        setVal('aip-hq-ct', (L.hqdn3d || {}).chroma_tmp);
+        setVal('aip-us-am', (L.unsharp || {}).luma_amount);
+        setVal('aip-us-ms', (L.unsharp || {}).luma_msize);
+        setVal('aip-at-s', (L.atadenoise || {}).s);
+        // EMPAQUETADO
+        setVal('aip-seg', L.seg_duration);
+        setVal('aip-win', L.window_size);
+        setVal('aip-exw', L.extra_window_size);
+        setVal('aip-thr', L.x265_threads);
+        logLine('perfil ' + pid + ' cargado (' + (r.ruleCount || 0) + ' reglas, ' +
+                (r.matrix ? r.matrix.outW + 'x' + r.matrix.outH : 'sin matriz') + ')');
+        var root = document.getElementById('ape-image-panel');
+        if (root) render(root);
+      })
+      .catch(function (e) { logLine('perfil ' + pid + ': ' + e.message); });
+  }
 
   /* ── TABLA DE REGLAS: ENTRADA -> SALIDA (manual + auto por campo) ─────── */
 
@@ -867,6 +947,7 @@
       S.rules = r[7];
       if (S.config && S.config.profile) S.build.profile = S.config.profile;
       render(root);
+      if (S.build.profile) loadProfile(S.build.profile);
     }).catch(function (e) {
       S.lastError = String((e && e.message) || e);
       render(root);
