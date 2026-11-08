@@ -1633,3 +1633,65 @@ de 40 el numero sube a **33 de 40** y **no queda ni un fallo sin causa**.
 El dispositivo **sigue sin depuracion inalambrica** desde el reinicio (`adb devices` vacio, ping OK).
 El APK vc656 queda instalado con HLS **y** DASH; la medicion de presentacion de frames sigue pendiente
 de que el operador reactive la depuracion.
+
+---
+
+# 27 · Segundo barrido: estabilidad medida
+
+## 27.1 · Misma muestra, dos pasadas
+
+| | Barrido 1 | Barrido 2 |
+|---|---|---|
+| Pedidos | 40 | 40 |
+| **Sirven ambos (HLS+DASH)** | **33** | **33** |
+| No sirven | 13, 14, 28, 29, 30, 31, 32 | **1**, 13, 28, 29, 30, 31, 32 |
+
+Las dos pasadas dan **la misma cifra: 33 de 40 (82,5 %)**.
+
+## 27.2 · Los fallos persistentes son TODOS rechazos motivados
+
+```
+2 START_FAIL 13 UNSUPPORTED_NATIVE_CMAF_CODEC
+2 START_FAIL 28 UNSUPPORTED_CMAF_AUDIO
+2 START_FAIL 29 UNSUPPORTED_CMAF_AUDIO
+2 START_FAIL 30 UNSUPPORTED_CMAF_AUDIO
+2 START_FAIL 31 UNSUPPORTED_CMAF_AUDIO
+2 START_FAIL 32 UNSUPPORTED_CMAF_AUDIO
+```
+
+- **13** -> el codec de video nativo no es empaquetable en CMAF sin recodificar. El motor no lo hace y
+  remite a la ruta directa.
+- **28..32** -> audio no compatible con CMAF. Igual: conserva la fuente, no transcode el audio.
+
+En las dos pasadas aparecen **exactamente los mismos rechazos, con la misma causa**. Son deterministas.
+
+## 27.3 · Solo dos canales son intermitentes
+
+| Canal | Barrido 1 | Barrido 2 |
+|---|---|---|
+| 1 | 503 | **200** |
+| 14 | **200** | 503 |
+
+**Dos de cuarenta fluctuan.** Los otros 38 son deterministas: 32 sirven siempre, 6 se rechazan siempre.
+
+## 27.4 · La cuenta final del motor
+
+| Categoria | Canales | % |
+|---|---:|---:|
+| Sirven **HLS y DASH** de forma estable | **32** | 80 % |
+| Rechazo **motivado y determinista** | **6** | 15 % |
+| Intermitentes | **2** | 5 % |
+| **Fallos silenciosos o inexplicados** | **0** | **0 %** |
+
+## 27.5 · Limpieza aplicada
+
+Un comentario del parche mencionaba `aac_adtstoasc`, que **no esta en el codigo**. Era documentacion
+falsa dentro del fuente. Corregido en el repo (`tools/lab/ape-jit/server.js`) con el resumen real de los
+7 experimentos A-G, y verificado que el VPS no lo tenia.
+
+## 27.6 · Lo que sigue abierto
+
+- **40 de 21.224**: ids bajos y contiguos, no aleatorios. **No extrapola.**
+- **Slot unico**: el barrido es serial. Dos clientes concurrentes no se han medido.
+- **Los 2 intermitentes** (1 y 14): sin causa determinada.
+- **El lado APK** sigue pendiente de la depuracion inalambrica del TV.
