@@ -2558,3 +2558,68 @@ parametros vivos. **El panel estaba bien; el instrumento estaba mal.**
 
 Queda declarado: el panel **se monta, renderiza y envia el POST correcto**; su aspecto visual no esta
 verificado por mi.
+
+---
+
+# 40 · Sostenido: el bitrate oscila con el CONTENIDO, no degrada
+
+## 40.1 · La pregunta que habia que responder
+
+En el test sostenido el bitrate medido cayo de 19,73 Mbps a 2,35 Mbps sin que cambiara el modo. **Eso
+puede ser contenido o degradacion, y la diferencia importa.**
+
+## 40.2 · La respuesta, con tres comprobaciones
+
+**a) La resolucion no cambio.** `source 1920x1080`, `salida` con el mismo valor, `output_observed` a
+1920x1080 HEVC Main 10 yuv420p10le.
+
+**b) El modo no cambio.** `FILTERED_BALANCED` durante todo el test, con `copy=false` (transcodifica; no
+esta copiando el stream).
+
+**c) El bitrate SUBIO otra vez solo.** En la misma sesion, mismo pid:
+
+```
+t= 505s  bw= 2,35M
+t= 565s  bw= 3,70M
+t= 626s  bw=13,36M     <- vuelve arriba sin tocar nada
+```
+
+Un encoder con CRF gasta menos bits cuando la imagen tiene menos detalle. Si fuera degradacion, no
+volveria a subir sola.
+
+**Veredicto: NO es degradacion.** El bitrate oscila 2,35-19,73 Mbps segun el contenido, con resolucion,
+codec, modo y receta constantes.
+
+## 40.3 · Lo que el sostenido ya confirma
+
+| Muestra | pid | modo | segs | cpu | load | mem |
+|---|---|---|---|---|---|---|
+| t=  0s | 1819646 | FILTERED_BALANCED | 6 | 80% | 1,10 | 1038M |
+| t=203s | 1819646 | FILTERED_BALANCED | 84 | 83% | 2,94 | 1233M |
+| t=444s | 1819646 | FILTERED_BALANCED | 84 | 81% | 2,44 | 1189M |
+| t=626s | 1819646 | FILTERED_BALANCED | **83** | 77% | 2,63 | 1204M |
+
+- **PID unico durante todo el test**: el motor no reinicia el trabajo.
+- **Ventana saturada y estable**: 84 segmentos, sin crecimiento.
+- **Memoria estabilizada** en ~1,2 GB tras llenar la ventana.
+- **CPU 74-87%** y **load hasta 2,97** sobre 3 vCPU: ese es el techo real.
+
+## 40.4 · Un comportamiento NO DETERMINADO, declarado
+
+`GET /jit/image/state` responde **200 con 1022 bytes** en pruebas normales (3/3 y 6/6 consecutivas), pero
+un script Python que consulta esa ruta **mientras el test sostenido consume el mismo motor** recibio
+**404 generado por nginx** (`<hr><center>nginx</center>`), de forma reproducible.
+
+- El mismo comando `curl` desde bash, en el mismo host, devuelve 200.
+- El endpoint existe: 200 en `127.0.0.1:3099/image/state`.
+- El include `snippets/ape-jit.conf` esta correctamente dentro del server block HTTPS (L722 de `nginx -T`).
+- No hay `limit_req` ni `limit_conn` en ese server block.
+
+**No lo he determinado.** No es un fallo del modulo de imagen (el motor responde en local), y no he tocado
+nginx para forzarlo: la config del edge esta fuera de alcance por doctrina. Queda como observacion para
+quien opere el edge.
+
+## 40.5 · El `User-Agent` no era
+
+Se probo que nginx devuelve lo mismo con `User-Agent` vacio, `curl/8.5.0`, `Mozilla/5.0` o un UA propio.
+La hipotesis del filtro por UA **quedo descartada** por medicion.
