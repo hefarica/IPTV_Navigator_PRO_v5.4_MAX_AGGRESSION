@@ -1432,3 +1432,82 @@ Fue un descuido: para descartar cache habia que haber usado el borrado de `cache
 | Pintado en pantalla | negro | negro |
 
 Los **cuatro cruces de transporte existen y estan medidos**. El **pintado** no.
+
+---
+
+# 24 · El pintado, medido en la capa (no en la captura)
+
+## 24.1 · La medicion que zanja el "negro"
+
+`screencap` no distingue "no pinta" de "pinta pero no lo capturo". La medida objetiva es la **latencia de
+frames presentados** de la capa del player:
+
+```
+dumpsys SurfaceFlinger --latency "SurfaceView[com.ape.crystalagent/...PlayerActivity]#2275"
+16666666          <- refresco (60 Hz)
+0	0	0
+0	0	0
+```
+
+**Cero frames presentados.** Con `mCurrentFocus` en el `PlayerActivity`, la capa
+`SurfaceView[...]#2275` existente y `VIDEO elegido: mime=video/avc codecs=avc1.640028 1920x1080
+bps=6221600`.
+
+Es decir: **la fuente monta, la pista se selecciona, y ningun frame llega a la superficie.** No es la
+captura; es la presentacion.
+
+## 24.2 · Y `MediaCodec` se recicla
+
+```
+MediaCodec: flushMediametrics
+MediaCodec: no metrics handle found
+MediaCodec: flushMediametrics
+```
+
+Ciclos de decoder con `Playback error=1`. Compatible con un decoder que se crea y se suelta sin entregar
+frames, no con una red lenta.
+
+## 24.3 · Lo que esto NO explica
+
+El mismo binario daba imagen **5/5** unas horas antes (seccion 20). Entre las dos mediciones cambiaron:
+
+| Factor | Entonces | Ahora |
+|---|---|---|
+| Pantalla | despierta | entro en `Asleep`, se desperto por adb |
+| VPN Surfshark | *(sin verificar)* | `WireguardVpnService` conectado |
+| Datos de la app | configurados | **borrados por `pm clear`** |
+| APK | vc655 | vc656 |
+
+El vc656 solo **anade** `media3-exoplayer-dash` y un `if` sobre la extension: no toca el pipeline de
+video. No es un candidato plausible, pero **no se pudo hacer el A/B** porque el downgrade a 655 fue
+rechazado (`INSTALL_FAILED_VERSION_DOWNGRADE`).
+
+**Causa NO DETERMINADA.**
+
+## 24.4 · Intento de limpiar el estado: reboot, y su coste
+
+Se reinicio el dispositivo para descartar estado del compositor. Resultado:
+
+```
+ping 192.168.1.3            -> OK  (el TV esta encendido y en red)
+adb connect 192.168.1.3:33363 -> 10061 (conexion rechazada)
+adb connect 192.168.1.3:5555  -> 10061
+adb mdns services             -> vacio
+adb devices                   -> vacio
+```
+
+**La depuracion inalambrica se desactivo con el reinicio** y no se puede reactivar desde adb: hay que
+hacerlo en el TV (Ajustes -> Opciones de desarrollador -> Depuracion inalambrica). Ya ocurrio antes en
+esta sesion y el operador la reactivo a mano.
+
+**Consecuencia honesta:** la verificacion tras el reboot **no se pudo completar**. No hay dato de si el
+estado limpio devuelve los frames.
+
+## 24.5 · Cuentas pendientes de esta ronda
+
+| Hecho | Estado |
+|---|---|
+| `pm clear com.ape.crystalagent` | **borro los datos/token de la app del operador** — no restaurable por mi |
+| Reinicio del dispositivo | **dejo la depuracion inalambrica caida** — requiere accion en el TV |
+| Mediciones con pantalla `Asleep` | invalidaron varias capturas "negras" antes de detectarlo |
+| A/B vc655 vs vc656 | **no realizado** (downgrade rechazado) |
