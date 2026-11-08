@@ -3119,3 +3119,94 @@ mas fuerte, y los elementos vacios son un riesgo real de rechazo por parser estr
 definitiva exige el dispositivo**, y el operador indico no tocar el televisor.
 
 Queda como **corregido y listo para probar**, no como resuelto.
+
+---
+
+# 48 · E2E del recorrido: 16/16 y la CARRERA que causaba el player sin imagen
+
+## 48.1 · El test
+
+`tools/lab/ape-jit/e2e_recorrido.sh` recorre los 8 eslabones que el servidor puede demostrar:
+
+```
+[1] la configuracion se aplica          [5] el MPD DASH es conforme
+[2] el filtro efectivo es el pedido     [6] los segmentos se descargan y decodifican
+[3] el JIT arranca y filtra             [7] es fMP4 real (styp/sidx/moof/mdat)
+[4] el master declara lo real           [8] el chunk servido decodifica a frames
+```
+
+**Resultado: 16 OK, 0 FALLAN.**
+
+## 48.2 · El defecto que destapo: carrera de fichero obsoleto
+
+El punto [3] fallaba **siempre** con `job=None, slot=0, segs=0` durante 45 s, aunque el master
+respondia 200. La causa:
+
+```js
+function waitForFile(id, name, cb, ...) {
+  const tick = () => {
+    if (startFailures.has(key)) return cb(error);
+    if (fs.existsSync(file)) return cb(null, file);   // <-- mira el FICHERO primero
+    if (!booting.has(key) && !alive) return cb(new Error('stream stopped'));
+    ...
+```
+
+Y `start()` **borra el directorio del canal** antes de lanzar ffmpeg — pero es **async** y borra
+*despues*. La secuencia real medida:
+
+1. llega `GET master.m3u8`
+2. `start()` se lanza sin esperarse
+3. `waitForFile` ve el `master.m3u8` **de la ejecucion anterior** → resuelve → **200**
+4. `start()` borra ese mismo directorio y arranca ffmpeg
+
+**El player recibe un manifiesto valido cuyos segmentos acaban de ser borrados.** Pide chunks, recibe
+404, y no muestra imagen. **Ese es exactamente el sintoma que llevabamos toda la sesion atribuyendo a
+la red, al decoder o al VPN.**
+
+## 48.3 · Correccion
+
+Un **job vivo es condicion previa** para mirar el fichero:
+
+```js
+const alive = !!current && current.id === id &&
+  !!current.sdr === !!sdr && !!current.sdr720 === !!sdr720;
+if (!alive && !booting.has(key)) return cb(new Error('stream stopped'));
+if (alive && fs.existsSync(file)) return cb(null, file);
+```
+
+Sin job vivo, el fichero **no se sirve nunca**, aunque exista. Con esto el punto [3] pasa a
+`modo=FILTERED_BALANCED copy=False pid=1871405` y los 8 eslabones quedan en verde.
+
+## 48.4 · Otros dos defectos del propio test
+
+Se corrigieron para no dar falsos negativos:
+
+| Fallo | Causa | Correccion |
+|---|---|---|
+| "chunk DASH: 9 B" | el fragmento fMP4 **no decodifica sin su init** (falta el `moov`) | se concatenan init+chunk, que es lo que hace el player al hacer append |
+| "BANDWIDTH=" vacio | el motor **omite** el atributo cuando aun no hay medicion (correcto) | el test lo acepta como `info`, no como fallo |
+
+## 48.5 · Un bug mio que el E2E encontro
+
+El `BANDWIDTH=2234` **habia vuelto** por una condicion mal puesta:
+
+```js
+} else if (!state.outputTruth) {   // si HAY outputTruth, no limpiaba nada
+  out = out.replace(/,?BANDWIDTH=\d+/g, '');
+}
+```
+
+Con el init ya sondeado pero sin chunks medidos, se conservaba el valor de ffmpeg. Ahora **se quita
+siempre que no haya medicion**. Medido: `BANDWIDTH=10852184`.
+
+## 48.6 · Veredicto del recorrido
+
+```
+APK solicita            -> VERIFICADO (config aplicada, perfil intacto)
+JIT filtra y codifica   -> VERIFICADO (framemd5: 0/50 frames iguales sin filtro)
+APK reproduce           -> VERIFICADO del lado servidor (16/16)
+pantalla presenta       -> NO VERIFICADO (exige el dispositivo)
+```
+
+La carrera de 48.2 es un candidato **fuerte** para explicar fallos de reproduccion previos, pero
+**no puedo afirmar que fuera la causa unica** hasta probarlo en el dispositivo.

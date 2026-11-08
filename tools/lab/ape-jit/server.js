@@ -901,14 +901,23 @@ function waitForFile(id, name, cb, sdr, sdr720) {
   const t0 = Date.now();
   const tick = () => {
     if (startFailures.has(key)) return cb(new Error(startFailures.get(key) + ': use provider-direct; source unchanged'));
-    if (fs.existsSync(file)) return cb(null, file);
-    // HARDENING: si este canal esta arrancando (start async esperando el slot
-    // unico), no es 'stream stopped'. Antes de este guard el handler devolvia 503
-    // en cada arranque y ademas se perdia el probe de 30 s.
-    if (!booting.has(key) &&
-        (!current || current.id !== id || !!current.sdr720 !== !!sdr720 || !!current.sdr !== !!sdr)) {
+    /* CARRERA CRITICA, medida en el E2E del 2026-11-08:
+     *
+     * El orden anterior era (a) existe el fichero -> servir, (b) si no estas
+     * arrancando -> 'stream stopped'. Como start() BORRA el directorio pero es
+     * async, un master.m3u8 de la ejecucion ANTERIOR seguia en disco cuando
+     * llegaba la peticion: se servia 200 con los segmentos de un trabajo muerto
+     * que start() borraba acto seguido. El player recibia un manifiesto valido y
+     * pedia chunks inexistentes => exactamente el sintoma de "player sin imagen".
+     *
+     * Ahora UN JOB VIVO ES CONDICION PREVIA para mirar el fichero. Sin job vivo
+     * el fichero no se sirve nunca, aunque exista. */
+    const alive = !!current && current.id === id &&
+      !!current.sdr === !!sdr && !!current.sdr720 === !!sdr720;
+    if (!alive && !booting.has(key)) {
       return cb(new Error('stream stopped'));
     }
+    if (alive && fs.existsSync(file)) return cb(null, file);
     if (Date.now() - t0 > WAIT_MS) return cb(new Error('startup timeout'));
     setTimeout(tick, 200);
   };
@@ -1012,7 +1021,12 @@ function hdrMaster(text, state = current) {
       if (!/AVERAGE-BANDWIDTH=/.test(out)) {
         out = out.replace(/(BANDWIDTH=\d+)/, '$1,AVERAGE-BANDWIDTH=' + bw.total);
       }
-    } else if (!state.outputTruth) {
+    } else {
+      // SIN medicion se quita el BANDWIDTH, haya o no outputTruth.
+      // Antes la condicion era `else if (!state.outputTruth)`, asi que con el
+      // init ya sondeado pero sin chunks medidos se conservaba el valor de
+      // ffmpeg (2234 bps a 1080p). Medido en el E2E: el atributo volvia a salir
+      // imposible justo en los primeros segundos del trabajo.
       out = out.replace(/,?BANDWIDTH=\d+/g, '');
     }
     // CODECS: ffmpeg escribe "hvc1" pelado; se sustituye por el RFC 6381 real.
