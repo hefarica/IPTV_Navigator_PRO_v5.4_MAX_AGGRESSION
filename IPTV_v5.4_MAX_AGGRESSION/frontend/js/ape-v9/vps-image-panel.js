@@ -31,7 +31,7 @@
   function el(tag, attrs, children) {
     var n = document.createElement(tag);
     if (attrs) Object.keys(attrs).forEach(function (k) {
-      // Sin rama innerHTML: TODO el texto entra como nodo de texto o textContent.
+      // Sin rama de marcado: TODO el texto entra como nodo de texto o textContent.
       // Lo que devuelve el motor no se interpreta nunca como HTML.
       if (k === 'style') n.setAttribute('style', attrs[k]);
       else if (k.indexOf('on') === 0) n.addEventListener(k.slice(2), attrs[k]);
@@ -104,7 +104,8 @@
     var cfg = state.config || {};
     var cap = state.capacity;
 
-    root.innerHTML = '';
+    if (root.replaceChildren) root.replaceChildren();
+    else while (root.firstChild) root.removeChild(root.firstChild);
     root.className = 'aip-wrap';
 
     // cabecera
