@@ -202,3 +202,58 @@ adb shell wm density reset
 
 El reinicio desactivo la depuracion inalambrica (comportamiento normal de Android), asi que **el estado
 post-reinicio no esta medido**. No se declara corregido.
+
+---
+
+## 3.2 · Cierre: device restaurado y salida 4K probada
+
+### Restauracion (ejecutada y verificada)
+
+```bash
+adb shell settings delete global display_density_forced   # Deleted 1 rows
+adb shell settings delete global display_size_forced      # Deleted 1 rows
+adb shell wm size reset
+adb shell wm density reset
+```
+
+Estado tras revertir — **identico al de la primera medicion**:
+
+```
+Physical size: 3840x2160
+Override size: 1920x1080
+Physical density: 320
+display_size_forced    = null
+display_density_forced = null
+dumpsys window: init=3840x2160 640dpi ... base=1920x1080 320dpi
+```
+
+El riesgo de UI gigante **no se materializo**: los settings se guardaban pero DisplayManager nunca los
+aplicaba, igual que antes. No hubo dano.
+
+### Prueba de que la salida es 4K — SurfaceFlinger
+
+```
+orientedDisplaySpace = ProjectionSpace{bounds=Rect(0, 0, 3840, 2160), ...}
+displaySpace         = ProjectionSpace{bounds=Rect(0, 0, 3840, 2160), ...}
+forceClientComposition=false  displayFrame=[0 0 3840 2160]  sourceCrop=[0 0 1920 1080]
+activeMode = 59.94 Hz      refresh-rate = 59.94 Hz      dataspace = V0_SRGB
+mActiveModeId=3  mDefaultModeId=3  isForceSdr false
+```
+
+**El display pinta 3840x2160.** La capa de app (1920x1080) se escala al displayFrame 4K. El 4K no estaba
+bloqueado en ningun momento.
+
+**Limite honesto de esta medicion:** esto prueba la **capa de composicion de la UI**. No prueba por si solo
+que el plano de video del reproductor use un overlay nativo 4K en lugar de pasar por la capa 1080p
+escalada. Eso exige medir `dumpsys SurfaceFlinger` **durante reproduccion real** con un canal 4K. **No
+medido.**
+
+### Veredicto sobre el "arreglo" del override
+
+**No hay nada que arreglar en el device.** El techo de composicion a 1080p es el diseno estandar de Android
+TV: la UI se compone a 1080p y el SoC escala al panel. Forzar `display_size_forced` a 3840x2160 haria que la
+UI se componga a 4K — **mas carga de GPU para cero ganancia visual** en un panel que ya recibe 4K.
+
+**Por tanto: NO se debe "arreglar" el formato para que aplique.** Lo que procede es reconocer que la
+directiva es **codigo muerto** (nunca aplica) y decidir entre eliminarla o documentarla como inerte. Un
+"fix" que la hiciera funcionar seria una optimizacion negativa.
