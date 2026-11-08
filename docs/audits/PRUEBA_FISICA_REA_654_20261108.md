@@ -1748,3 +1748,69 @@ docs/audits/evidencia_jit_hls_dash/canal2_DASH_beIN_55m05s.png
 - **No demuestra nada sobre OTT Navigator.** No se ha podido lanzar OTT contra el JIT (ADB caido).
 - **No es 4K**: la fuente es 480p escalada. La calidad final esta limitada por la fuente.
 - **Un canal** (id 2) de 40 probados, en un momento concreto.
+
+---
+
+# 29 · A/B vc655 vs vc656: mi cambio NO es la causa del cero-frames
+
+## 29.1 · La verificacion, automatizada
+
+Se escribio `tools/audit/verify_apk_hls_dash.ps1`: comprueba, por transporte, que (1) la app monta el
+tipo correcto, (2) selecciona pista de video, y (3) **presenta frames** midiendo
+`dumpsys SurfaceFlinger --latency`. Exige foco en `PlayerActivity` antes de medir. Exit 0 solo si los
+tres casos pasan.
+
+Resultado con **vc656**:
+
+| Caso | `media source` | `VIDEO elegido` | Frames |
+|---|---|---|---|
+| HLS · JIT | **HLS** | `avc1.640028 1920x1080 bps=3307229` | **0** |
+| DASH · JIT | **DASH** | `avc1.640028 1920x1080 bps=3445168` | **0** |
+| HLS · mux.dev | **HLS** | `avc1.640028 1920x1080 bps=6221600` | **0** |
+
+## 29.2 · El A/B
+
+Instalado el **vc655** (el mismo binario que daba imagen 5/5 en la seccion 20) con `install -r -d`:
+
+```
+versionName=3.9.5-adb-firetv-shim-selfheal
+VIDEO elegido: mime=video/avc codecs=avc1.640028 1920x1080 bps=6221600
+frames: 0
+```
+
+**El vc655 tambien presenta CERO frames.** El cambio del vc656 (anadir `media3-exoplayer-dash` y un `if`
+sobre la extension) **queda descartado como causa**: el fallo aparece identico sin el.
+
+## 29.3 · Lo que si se ve en el log
+
+```
+CCodec  : allocate(c2.amlogic.avc.decoder)
+CCodec  : Created component [c2.amlogic.avc.decoder]
+Codec2Client: query -- param skipped: index = 2684356613.
+```
+
+El decoder **se crea**. No hay `ExoPlaybackException` en el filtro, no hay `MediaCodecVideoRenderer`
+emitiendo. El formato se negocia y la pista se elige, pero **no se presenta ningun frame**.
+
+`Playback error=1` aparece en todos los casos, tambien en el control.
+
+## 29.4 · Conclusion honesta
+
+| Pregunta | Respuesta medida |
+|---|---|
+| ¿El APK monta HLS? | **Si** (`media source: HLS`) |
+| ¿El APK monta DASH? | **Si** (`media source: DASH`) |
+| ¿Selecciona video en ambos? | **Si**, `avc1.640028 1920x1080` / `hevc hvc1 1920x1080` |
+| ¿Presenta frames? | **No. Cero.** Con los dos binarios y las tres fuentes |
+| ¿Es mi cambio del vc656? | **No** — el vc655 falla igual |
+
+**El fallo de presentacion es del entorno del dispositivo, no del codigo del APK ni del transporte.**
+Entre la medicion que daba 5/5 y esta cambiaron: standby de pantalla, VPN Surfshark conectado y
+`pm clear` (datos). **Cual de los tres, no lo se.** Queda NO DETERMINADO.
+
+## 29.5 · Estado del dispositivo tras estas pruebas
+
+- Instalado de nuevo **vc656** (`3.9.5-adb-firetv-shim-hlsdash`).
+- Depuracion inalambrica **operativa** por mDNS/TLS (el operador la reactivo).
+- Nota: el serial util ahora es `adb-GUSA2441015311-RXlL4A._adb-tls-connect._tcp`; el `:33363` fijo ya no
+  responde.
