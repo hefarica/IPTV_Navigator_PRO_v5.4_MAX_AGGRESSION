@@ -2455,3 +2455,53 @@ t=  14s  http=200  modo=FILTERED_BALANCED  segs=9    bw=26.18M cpu= 84%  load=0.
 tiempo real de codificacion, no a holgura de sistema. Un segundo consumidor concurrente no cabria.
 
 **El resultado de los 30 minutos queda pendiente de lectura** en `/tmp/sustained.log`.
+
+---
+
+# 38 · El panel de imagen, SOLO en la pestaña de Telemetría
+
+## 38.1 · El defecto
+
+Se monto el panel al final del `<body>` (`<div id="ape-image-panel">` en L5134, fuera de
+cualquier `.tab-content`). Con la UI por pestañas, un div fuera de ellas **se ve en todas** o no se ve
+en ninguna segun el CSS. El operador lo detecto.
+
+## 38.2 · Correccion
+
+| Antes | Ahora |
+|---|---|
+| div en L5134, al final del body | div en **L3088**, dentro de `#tab-telemetry` (abre en L3077, el siguiente tab es L3491) |
+| `load()` creaba el div en `document.body` si no lo encontraba | `if (!root) return;` — **nunca** crea el panel fuera de su sitio |
+| polling cada 3 s repintaba aunque la pestaña estuviera oculta | solo refresca si `root.offsetParent` existe (pestaña visible) |
+
+Verificado:
+
+```
+instancias del div      : 1   (debe ser 1)
+cargas del script       : 1   (debe ser 1)
+tab-telemetry abre      : L3077
+siguiente tab           : L3491 (tab-share)
+panel imagen            : L3088
+=> DENTRO del rango de tab-telemetry
+```
+
+## 38.3 · Prueba de humo del panel
+
+```
+OK  no crea el div en body
+OK  load() sale si no hay div
+OK  polling exige pestaña visible
+OK  CERO innerHTML
+OK  config+capacity+state
+OK  5 destinos y 5 recetas
+OK  avisa no viable
+```
+
+## 38.4 · Los 8 tabs reales de la UI
+
+```
+L1222 tab-analysis   L1364 tab-filters    L1386 tab-ranking   L1814 tab-sources
+L1860 tab-generator  L2733 tab-export     L3077 tab-telemetry L3491 tab-share
+```
+
+(`tab-connection` abre en L1130 y es el activo por defecto.)

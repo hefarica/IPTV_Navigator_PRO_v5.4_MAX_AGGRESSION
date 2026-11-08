@@ -16,6 +16,21 @@ curl -s -X POST -H 'Content-Type: application/json' \
 echo "    receta: FHD_1080 + balanced + 25fps"
 echo ""
 
+# CONSUMIDOR REAL: un reproductor pide la media playlist cada 2 s. Sin esto el
+# motor aplica IDLE_MS=20000 y apaga ffmpeg entre muestras de 60 s, asi que el
+# test mediria el ciclo arranque/muerte y no la sostenibilidad. Medido: el pid de
+# ffmpeg cambiaba cada ~65 s con segs congelado en 5.
+consume() {
+  while true; do
+    curl -s -o /dev/null --max-time 8 "$B/jit/live/2/media_0.m3u8"
+    sleep 2
+  done
+}
+consume &
+CONSUMER_PID=$!
+echo "    consumidor: pid=$CONSUMER_PID (media_0 cada 2s)"
+trap 'kill $CONSUMER_PID 2>/dev/null' EXIT
+
 T0=$(date +%s)
 N=0
 FAIL=0
@@ -29,7 +44,7 @@ while [ $(( $(date +%s) - T0 )) -lt "$DUR" ]; do
   T=$(( $(date +%s) - T0 ))
 
   # un consumidor: pedir el master (arranca/reanuda el job)
-  CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 40 "$B/jit/live/2/master.m3u8")
+  CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 40 "$B/jit/live/2/media_0.m3u8")
 
   # estado del motor
   ST=$(curl -s --max-time 15 "$B/jit/image/state")

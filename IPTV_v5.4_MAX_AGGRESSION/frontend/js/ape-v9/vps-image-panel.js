@@ -325,8 +325,12 @@
   }
 
   function load() {
+    // NUNCA crear el div fuera de su sitio: el panel vive SOLO dentro de la
+    // pestana Telemetria (#tab-telemetry). Si no existe, no se monta nada.
+    // Antes habia un fallback que lo anadia al body y eso lo hacia visible
+    // en todas las pestanas.
     var root = document.getElementById('ape-image-panel');
-    if (!root) { root = el('div', { id: 'ape-image-panel' }); document.body.appendChild(root); }
+    if (!root) return;
     S.busy = true; S.lastError = null;
     render(root);
     Promise.all([
@@ -357,12 +361,17 @@
   function startLive() {
     if (liveTimer) return;
     liveTimer = setInterval(function () {
-      if (!document.getElementById('ape-image-panel')) return;
+      var r0 = document.getElementById('ape-image-panel');
+      if (!r0) return;
       if (S.busy) return;
+      // Solo refrescar si la pestana Telemetria esta visible: no gastar
+      // peticiones ni repintar un panel que el usuario no esta mirando.
+      var r1 = document.getElementById('ape-image-panel');
+      if (!r1 || !r1.offsetParent) return;
       api('/image/state').then(function (j) {
         S.live = j;
-        var root = document.getElementById('ape-image-panel');
-        if (root && !S.busy) render(root);
+        var r2 = document.getElementById('ape-image-panel');
+        if (r2 && !S.busy && r2.offsetParent) render(r2);
       }).catch(function () { /* silencioso: el polling no debe romper la UI */ });
     }, 3000);
   }

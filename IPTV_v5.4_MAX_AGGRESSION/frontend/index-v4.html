@@ -3078,6 +3078,14 @@
             <div class="panel-header" style="margin-bottom:10px;">
               <div class="panel-title">APE Guardian Engine v16 - Telemetría Exchange</div>
             </div>
+
+            <!-- ═══════════════════════════════════════════════════════════════ -->
+            <!-- 🎛️ MÓDULO DE IMAGEN — vive SOLO en esta pestaña.               -->
+            <!-- Aplica en caliente destino, receta de filtros, encoder y       -->
+            <!-- empaquetado al JIT, y muestra su estado vivo y su capacidad    -->
+            <!-- medida. Habla con /jit/image/{config,capacity,state}.          -->
+            <!-- ═══════════════════════════════════════════════════════════════ -->
+            <div id="ape-image-panel"></div>
             <!-- Panel Interactivo UI Guardian -->
             <div class="ape-v16-exchange-panel" style="background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(139, 92, 246, 0.05)); border: 1px solid rgba(139, 92, 246, 0.3); border-radius: 16px; padding: 20px; margin-top: 16px; margin-bottom: 16px;">
                 <!-- Header -->
@@ -5118,20 +5126,9 @@
   <script src="js/ape-v9/generation-output-panel.js?v=20261107-rea" defer></script>
 <script src="js/ape-v9/output-status-panel.js?v=20261101-outputs" defer></script>
 
-  <!-- ═══════════════════════════════════════════════════════════════════════ -->
-  <!-- 🎛️ MÓDULO DE IMAGEN — control remoto del JIT por HTTP                  -->
-  <!--                                                                        -->
-  <!-- Aplica en caliente: destino (source/FHD/QHD/UHD/DCI_2K), receta de     -->
-  <!-- filtros (none/light/balanced/temporal/custom), preset x265, CRF, FPS,  -->
-  <!-- audio, y empaquetado (seg_duration/window_size/GOP).                   -->
-  <!--                                                                        -->
-  <!-- Muestra la capacidad MEDIDA del host (0,43x a 1440p, 0,25x a 2160p)   -->
-  <!-- y avisa ANTES de aplicar un destino que el VPS no puede sostener:      -->
-  <!-- un JIT más lento que la emisión deja al player sin segmentos.          -->
-  <!--                                                                        -->
-  <!-- Habla con https://iptv-ape.duckdns.org/jit/{image/config,image/capacity}-->
-  <!-- ═══════════════════════════════════════════════════════════════════════ -->
-  <div id="ape-image-panel" style="max-width:1400px;margin:24px auto;padding:0 16px;"></div>
+  <!-- 🎛️ MÓDULO DE IMAGEN — el panel vive DENTRO de la pestaña Telemetría.
+       El script se carga aquí (una sola vez, global) y el div está en
+       #tab-telemetry. Si se deja el div fuera de la pestaña, se vería en todas. -->
   <script src="js/ape-v9/vps-image-panel.js?v=20261108-image" defer></script>
 
   <!-- ═══════════════════════════════════════════════════════════════════════ -->
