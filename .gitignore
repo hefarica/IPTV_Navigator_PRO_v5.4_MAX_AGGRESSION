@@ -198,3 +198,6 @@ _t16tmp/
 tools/lab/out_regression_url*.m3u8
 tools/lab/muestra.json
 tools/lab/probes_url.json
+
+# [2026-11-08] artefacto E2E con timestamp/nonce: se regenera con rea-v24-e2e-playlist.js
+docs/audits/playlist_rea_v24_sample.m3u8

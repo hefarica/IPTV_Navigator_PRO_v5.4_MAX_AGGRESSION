@@ -90,7 +90,7 @@ function main() {
             files: hits
         }, null, 2) + '\n', 'utf8');
         console.log('linea base escrita: ' + names.length + ' ficheros, ' + totalHits + ' URIs');
-        process.exit(0);
+        process.exit(0); // exit-ok: linea base escrita y verificable en disco
     }
 
     let baseline = { files: {} };
@@ -113,7 +113,7 @@ function main() {
     if (nuevos.length === 0) {
         console.log('\nVEREDICTO: SIN_FUGA_NUEVA');
         console.log('  conocidos que siguen: ' + conocidosQueSiguen.length + ' (pendientes de rotacion del operador)');
-        process.exit(0);
+        process.exit(0); // exit-ok: no aparece ningun fichero nuevo respecto a la linea base
     }
 
     console.log('\nVEREDICTO: FUGA_NUEVA (' + nuevos.length + ')');
