@@ -2,6 +2,7 @@ package com.ape.crystalagent
 
 import android.content.Context
 import android.os.Handler
+import android.os.SystemClock
 import android.os.Looper
 import android.util.Log
 import androidx.media3.common.C
@@ -338,6 +339,44 @@ class ApePlayer(private val ctx: Context) {
         else -> "SDR"
     }
 
+    // WATCHDOG de estancamiento: si la posicion no avanza con el player en play y el efecto GL
+    // activo, es el pipeline de efectos el que no entrega frames (medido en este device:
+    // efectos ON -> negro; OFF -> imagen). Se auto-degrada y SE DECLARA. No finge: lo escribe.
+    @Volatile private var wdPos: Long = -1L
+    @Volatile private var wdAt: Long = 0L
+    @Volatile private var wdReinit: Boolean = false
+    fun checkStallWatchdog() {
+        val q = exo ?: return
+        if (suppressVideoEffects) return
+        // OJO: al atascarse el player pasa a STATE_BUFFERING, no se queda en READY.
+        // Exigir READY hacia que el watchdog NUNCA disparara (medido: 0 disparos).
+        val active = runCatching {
+            q.playWhenReady && q.playbackState != Player.STATE_IDLE && q.playbackState != Player.STATE_ENDED
+        }.getOrDefault(false)
+        if (!active) return
+        val pos = runCatching { q.currentPosition }.getOrDefault(-1L)
+        val now = SystemClock.elapsedRealtime()
+        if (pos != wdPos) { wdPos = pos; wdAt = now; return }
+        if (wdAt == 0L) { wdAt = now; return }
+        val stuck = now - wdAt
+        if (stuck > 3_500L) {
+            suppressVideoEffects = true
+            AraStatus.bitrateState = "NATIVE_NO_EFFECTS"
+            Log.w(TAG, "watchdog: pos=$pos estancada ${stuck}ms con efectos ON -> SE DESACTIVAN " +
+                "(enhancement NO aplicado, reproduccion nativa)")
+            refreshEffects()
+            // Quitar el efecto a mitad NO recupera el surface (medido). El A/B demostro que
+            // lo que si funciona es ARRANCAR sin efecto: se re-prepara el mismo canal una vez.
+            if (!wdReinit && currentUrl.isNotEmpty()) {
+                wdReinit = true
+                Log.w(TAG, "watchdog: re-preparando SIN efectos para recuperar imagen")
+                runCatching { openMedia(q, currentUrl, currentUa, currentHeaders) }
+                    .onFailure { Log.w(TAG, "watchdog reinit fallo: ${it.message}") }
+            }
+            wdAt = now
+        }
+    }
+
     /** Buffer del PLAYER (nunca el `buffer_health_pct` del daemon) + contadores de decoder. */
     private fun peekRuntime() {
         val p = exo ?: return
@@ -378,6 +417,13 @@ class ApePlayer(private val ctx: Context) {
             return
         }
         val p = exo ?: return
+        // BUGFIX: refreshEffects no respetaba suppressVideoEffects, asi que -e effects off
+        // no desactivaba nada (openMedia llama aqui DESPUES del build). Ahora si.
+        if (suppressVideoEffects) {
+            runCatching { p.setVideoEffects(emptyList()) }
+            Log.i(TAG, "shader effects SUPPRESSED (suppressVideoEffects=true)")
+            return
+        }
         runCatching {
             val effects = FluidBridge.effects(ctx).map { it as Effect }
             p.setVideoEffects(effects)
@@ -402,7 +448,12 @@ class ApePlayer(private val ctx: Context) {
     }
 
     companion object {
-        @Volatile var suppressVideoEffects: Boolean = false
+        // MEDIDO en este device (onn. 4K / Amlogic s4 / media3 1.3.1): con el efecto GL enganchado
+    // la pantalla queda NEGRA; sin engancharlo reproduce. Y quitarlo a mitad NO recupera:
+    // el pipeline del ExoPlayer ya quedo roto. Por eso el default es NO engancharlo, y se
+    // DECLARA que el enhancement no esta aplicado (nunca se finge). Se puede reactivar con
+    // -e effects on cuando el pipeline GL este corregido.
+    @Volatile var suppressVideoEffects: Boolean = true
         @Volatile var current: ApePlayer? = null
         const val TAG = "ApePlayer"
         /** Periodo del ÚNICO latido global (buffer + guard). */
@@ -428,6 +479,7 @@ class ApePlayer(private val ctx: Context) {
                     val p = current
                     if (p != null) {
                         p.peekRuntime()
+                        runCatching { p.checkStallWatchdog() }
                         val g = p.bitrateGuard
                         val t = p.lastTracks
                         if (g != null) {

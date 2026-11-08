@@ -29,7 +29,7 @@ class PlayerActivity : Activity() {
         val url = intent.getStringExtra("url")
         if (url.isNullOrEmpty()) { finish(); return }
         val ua = intent.getStringExtra("ua")
-        ApePlayer.suppressVideoEffects = intent.getStringExtra("effects") == "off"
+        ApePlayer.suppressVideoEffects = intent.getStringExtra("effects") != "on"   // default OFF (ver ApePlayer)
 
         val a = ApePlayer(this); ape = a
         val p = a.build(); player = p

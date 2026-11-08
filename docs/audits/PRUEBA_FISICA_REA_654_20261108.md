@@ -1013,3 +1013,74 @@ repositorio: `git status` limpio y `compileDebugKotlin` en **exit 0**. El dispos
 
 El parche del adaptador sincrono queda **documentado como candidato** en este documento, no aplicado:
 requiere reflexion sobre un campo privado de Media3 y **no arregla el sintoma visible**.
+
+---
+
+# 19 · ARREGLADO Y MEDIDO: el pipeline de efectos GL era la causa
+
+## 19.1 · El A/B decisivo
+
+El flag `-e effects off` **nunca funcionaba** porque `refreshEffects()` no comprobaba
+`suppressVideoEffects`. Corregido eso, el A/B es concluyente:
+
+| | `shader effects applied` | `SUPPRESSED` | Captura | |
+|---|---:|---:|---:|---|
+| **A** efectos ON | 1 | 0 | 22.491 B | **negro** |
+| **B** efectos OFF | 0 | 1 | **874.908 B** | **imagen real** |
+
+**El pipeline de efectos `media3-effect` / UltraEnhance es lo que deja la pantalla en negro.**
+
+## 19.2 · Intentos de recuperacion en caliente: NO funcionan
+
+| Intento | Resultado medido |
+|---|---|
+| Quitar el efecto a mitad (`setVideoEffects(emptyList())`) | **no recupera** - el surface ya quedo roto |
+| Re-preparar el mismo canal sin efecto (`openMedia`) | **no recupera** - el `ExoPlayer` sigue con el pipeline GL roto |
+
+Prueba: watchdog disparo (`pos=4476 estancada 4010ms`), re-preparo (`reinit=1`), y la captura siguio en
+16.280 B (negro).
+
+**Conclusion: el efecto no debe engancharse NUNCA en este equipo.** No hay recuperacion posible dentro de
+la misma sesion.
+
+## 19.3 · El arreglo aplicado
+
+Tres cambios en `ApePlayer.kt`, todos verificados:
+
+1. **`refreshEffects()` respeta `suppressVideoEffects`** (bug real: `openMedia` la llamaba despues del
+   `build()` y reactivaba los efectos siempre).
+2. **Default `suppressVideoEffects = true`**: no se engancha el efecto. Se puede reactivar con
+   `-e effects on` cuando el pipeline GL este corregido.
+3. **Watchdog de estancamiento** en el latido (3,5 s sin avanzar posicion con el player activo): desactiva
+   efectos, escribe `AraStatus.bitrateState = "NATIVE_NO_EFFECTS"` y lo declara en el log. **No finge: lo
+   escribe.**
+
+## 19.4 · Medicion final: 3 de 3
+
+Mismo build, misma URL, 14 s por sesion:
+
+```
+sesion 1 : 822.567 B -> IMAGEN
+sesion 2 : 843.816 B -> IMAGEN
+sesion 3 : 832.939 B -> IMAGEN
+imagen = 3/3 · negro = 0/3
+```
+
+Antes del arreglo: **0/N** imagenes en todas las mediciones de las secciones 9 a 18.
+
+Una sesion intermedia dio negro con el arreglo ya aplicado (22.491 B) - queda registrado como **rareza no
+explicada**, no se oculta.
+
+## 19.5 · Lo que esto significa para la doctrina
+
+El UltraEnhance **no funciona en este dispositivo** (onn. 4K, Amlogic s4, media3 1.3.1): engancharlo deja la
+pantalla en negro. El arreglo **no degrada la fuente** — el stream se entrega intacto, el decoder decodifica
+lo que el proveedor sirve — y **declara** que el enhancement no esta aplicado (`NATIVE_NO_EFFECTS`).
+
+Coincide con `DECLARED_ENHANCEMENT`: nunca se declara aplicado lo que no se aplico. Aqui, ademas, se
+**reproduce**, que antes no ocurria.
+
+## 19.6 · Pendiente real
+
+**Corregir el pipeline GL** (`ApeUltraEnhanceGlEffect` / `FluidBridge.effects`) para que entregue frames al
+surface en `c2.amlogic` + media3 1.3.1. Hasta entonces, el efectivo es reproducir nativo y declararlo.
