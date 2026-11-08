@@ -1511,3 +1511,73 @@ estado limpio devuelve los frames.
 | Reinicio del dispositivo | **dejo la depuracion inalambrica caida** — requiere accion en el TV |
 | Mediciones con pantalla `Asleep` | invalidaron varias capturas "negras" antes de detectarlo |
 | A/B vc655 vs vc656 | **no realizado** (downgrade rechazado) |
+
+---
+
+# 25 · Barrido real del JIT: 18 canales, HLS y DASH
+
+## 25.1 · El barrido
+
+Ejecutado contra produccion, 18 ids del catalogo, pidiendo **los dos transportes** a cada uno:
+
+| id | HLS | DASH | codec/resolucion de salida |
+|---|---:|---:|---|
+| 1 | 503* | **200** | — |
+| 2 | **200** | **200** | `avc1.640028` 1920x1080 |
+| 3 | **200** | **200** | `hvc1` 1920x1080 |
+| 5 | **200** | **200** | `avc1.640028` 1920x1080 |
+| 8 | **200** | **200** | `avc1.640028` 1920x1080 |
+| 13 | 503 | 503 | — |
+| 21 | **200** | **200** | `avc1.4d401f` 1280x720 |
+| 34 | **200** | **200** | `avc1.64002a` 1920x1080 |
+| 55 | 503 | 503 | — |
+| 89 | **200** | **200** | `hvc1` 1920x1080 |
+| 144, 610, 987, 1597, 2584, 4181 | 404 | 404 | ids inexistentes |
+| 233 | **200** | **200** | `hvc1` 1920x1080 |
+| 377 | **200** | **200** | `hvc1` 1920x1080 |
+
+\* el id 1 dio 503 en el barrido y **200 al reintentar**: intermitente.
+
+## 25.2 · Cobertura, con el denominador correcto
+
+Los 6 **404 no son fallos del motor**: son ids que no existen en el mapa. Descontandolos:
+
+| | |
+|---|---|
+| Canales reales probados | **12** |
+| Sirven **DASH** | **10** (83 %) |
+| Sirven **HLS** | **9** (75 %) |
+| Sirven **ambos** | **9** (75 %) |
+
+## 25.3 · Los 503, con su causa medida
+
+```
+id 13 -> START 13 pid=1720284 crystal=NATIVE_COLOR_UNKNOWN src=19...   -> EXIT 13 255
+id 55 -> START_FAIL 55 UNSUPPORTED_NATIVE_CMAF_CODEC
+         "source retained; use provider-direct"
+```
+
+- **id 55 es un rechazo correcto**: el audio del canal no es `aac/ac3/eac3` y el motor **se niega a
+  transcodificarlo o quitarlo**. Remite a `provider-direct`. **No degrada.** Eso es la ley
+  anti-degradacion aplicada por el codigo, no un fallo.
+- **id 13**: el ffmpeg arranca y muere con 255. Causa no determinada.
+- **id 1**: intermitente (503 y despues 200).
+
+## 25.4 · Y un defecto de declaracion que el barrido expone
+
+Los canales 3, 89, 233 y 377 salen con `CODECS="hvc1"` — **sin perfil ni nivel**. Es un codec string
+incompleto segun RFC 6381 (deberia ser del tipo `hvc1.2.4.L120.B0`). No impide decodificar, pero es una
+declaracion imprecisa en la salida del motor.
+
+## 25.5 · `SPAWN_ERROR nice ENOENT`: alcance real
+
+Hay **10 ocurrencias en todo el historico** del servicio. Es menos frecuente de lo que la
+intermitencia del id 1 sugirio. El `spawn` usa `cwd: dir`; cuando `dir` aun no existe, Node devuelve
+`ENOENT` nombrando el binario (`nice`) aunque el que falta sea el directorio.
+
+## 25.6 · Lo que este barrido no cubre
+
+- **12 canales de 21.224**: no es una muestra aleatoria; son ids bajos y potencias. **No se extrapola.**
+- **Un solo momento**: no mide estabilidad en el tiempo.
+- El motor tiene **slot unico**: el barrido fue serial, no concurrente. Con dos clientes el resultado
+  seria peor.
