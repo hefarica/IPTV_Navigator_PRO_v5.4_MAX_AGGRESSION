@@ -4718,6 +4718,9 @@
             // PROVENANCE=GENERATOR_DEFAULT en vez de fingir que vino del fichero.
             this.labEmulated6k = null;
             this.labSixKVersion = null;
+            // [2026-11-08] sha256 real del LAB importado. Lo calcula la UI sobre los bytes del
+            // fichero y el generador lo emite en #EXT-X-APE-LAB-DNA en lugar de 'unverified'.
+            this.labDnaSha256 = null;
             // REA is an additive processing request, independent of calibrated
             // source resolution/CODECS/HDR. No workbook export is implied.
             this.reaProcessing = null;
@@ -5345,6 +5348,12 @@
                 this.labEmulated6k = (data.emulated_6k && typeof data.emulated_6k === 'object')
                     ? data.emulated_6k : null;
                 this.labSixKVersion = data.six_k_version || null;
+                // [2026-11-08] Huella criptografica del fichero subido por el operador.
+                // Sin esto el DNA de la lista solo puede decir 'unverified': nombra el LAB
+                // pero no prueba QUE fichero exacto se importo.
+                if (options && options.labSha256) {
+                    this.labDnaSha256 = String(options.labSha256).toLowerCase();
+                }
                 localStorage.setItem('ape_lab_bulletproof_meta', JSON.stringify({
                     lab_schema_variant: this.labSchemaVariant,
                     bulletproof: this.labBulletproof,
@@ -5353,6 +5362,7 @@
                     meta_per_profile: this.labMetaPerProfile,
                     emulated_6k: this.labEmulated6k,
                     six_k_version: this.labSixKVersion,
+                    dna_sha256: this.labDnaSha256,
                     imported_at: new Date().toISOString()
                 }));
 
@@ -5508,6 +5518,7 @@
                     this.labEmulated6k = (o.emulated_6k && typeof o.emulated_6k === 'object')
                         ? o.emulated_6k : null;
                     this.labSixKVersion = o.six_k_version || null;
+                    this.labDnaSha256 = o.dna_sha256 || null;
                 }
                 const gp = localStorage.getItem('ape_lab_omega_gap_plan');
                 if (gp) this.omegaGapPlan = JSON.parse(gp);

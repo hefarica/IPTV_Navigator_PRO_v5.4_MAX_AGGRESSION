@@ -24,7 +24,7 @@ const FRONT = path.resolve(__dirname, '..');
 const quiet = { log() {}, warn() {}, error() {}, debug() {}, info() {}, table() {}, group() {}, groupCollapsed() {}, groupEnd() {}, time() {}, timeEnd() {} };
 let passed = 0;
 
-function environment({ labEmulated6k = null, getProfile = null } = {}) {
+function environment({ labEmulated6k = null, getProfile = null, labDnaSha256 = null } = {}) {
     const store = new Map();
     const blobs = new Map();
     const channels = [{ id: '1', name: 'Canal uno', url: 'https://audit.invalid/live/u/p/1.m3u8', profile: 'P3' }];
@@ -49,7 +49,8 @@ function environment({ labEmulated6k = null, getProfile = null } = {}) {
     const cfg = {
         profiles: {}, labExportedAt: '2026-10-26T01:31:05',
         labVersion: 'omega_v1_bulletproof_20261026', labBulletproof: true,
-        labEmulated6k, labSixKVersion: labEmulated6k ? '6K-EMULATED-v1' : null
+        labEmulated6k, labSixKVersion: labEmulated6k ? '6K-EMULATED-v1' : null,
+        labDnaSha256, labFileName: 'LAB_CALIBRATED_FINAL_v24.0.0-6K.json'
     };
     if (typeof getProfile === 'function') cfg.getProfile = getProfile;
     const ctx = {
@@ -146,6 +147,32 @@ async function emitted(ctx, channels) {
             console.log('PASS 2 (default declarado):', tag.slice(0, 150));
             console.log('PASS 2 (literal 35)       :', br);
         }
+    }
+
+
+    // ── Escenario 3: la cabecera declara el SHA-256 REAL del LAB importado ────────────
+    {
+        const crypto = require('node:crypto');
+        const raw = fs.readFileSync(process.env.LABV24);
+        const expected = crypto.createHash('sha256').update(raw).digest('hex');
+        const g = environment({ labEmulated6k: null, labDnaSha256: expected });
+        const G = g.ctx.M3U8TypedArraysGenerator;
+        let dna = '';
+        for (const call of [() => G._generateGlobalHeader(), () => G._generateGlobalHeader({}),
+                            () => G._generateGlobalHeader({ lab_metadata: {} }), () => G._generateGlobalHeader('P3')]) {
+            try { const r = call(); if (typeof r === 'string' && r.includes('APE-LAB-DNA')) { dna = r; break; } } catch (e) {}
+        }
+        assert.match(dna, new RegExp('sha256=' + expected), 'el DNA debe llevar el hash real del fichero -> ' + dna);
+        passed += 1;
+        console.log('PASS 3 (DNA con hash real):', (dna.match(/#EXT-X-APE-LAB-DNA:[^\n]*/) || [dna])[0].slice(0, 150));
+
+        const g2 = environment({ labEmulated6k: null, labDnaSha256: null });
+        const G2 = g2.ctx.M3U8TypedArraysGenerator;
+        let dna2 = '';
+        try { dna2 = G2._generateGlobalHeader() || ''; } catch (e) {}
+        assert.match(dna2, /sha256=unverified/, 'sin huella debe declarar unverified, no inventar');
+        passed += 1;
+        console.log('PASS 3 (sin hash -> unverified)');
     }
 
     console.log('\nresultado: ' + passed + ' aserciones pasadas');

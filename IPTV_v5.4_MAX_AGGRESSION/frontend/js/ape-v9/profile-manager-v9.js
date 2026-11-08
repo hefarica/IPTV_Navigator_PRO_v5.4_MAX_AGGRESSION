@@ -3893,6 +3893,18 @@
                     const text = await file.text();
                     const data = JSON.parse(text);
 
+                    // [2026-11-08] Huella criptografica del fichero importado. Cierra la carencia
+                    // 'sha256=unverified': el DNA de la lista podia nombrar el LAB pero no probar
+                    // QUE fichero exacto se importo. Se calcula sobre los bytes reales del upload.
+                    let labSha256 = null;
+                    try {
+                        if (typeof crypto !== 'undefined' && crypto.subtle && typeof TextEncoder !== 'undefined') {
+                            const _buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
+                            labSha256 = Array.from(new Uint8Array(_buf))
+                                .map(b => b.toString(16).padStart(2, '0')).join('');
+                        }
+                    } catch (_shaErr) { labSha256 = null; }
+
                     // Validar schema
                     const supportedSchemas = ['omega_v1', 'omega_v1_bulletproof_20260520'];
                     const isBulletproof = data.lab_schema_variant === 'omega_v2_bulletproof_perprofile' || data.bulletproof === true;
@@ -4023,7 +4035,10 @@
                     const result = await this.config.importFromLABData(data, {
                         includeExtrasByProfile,
                         collisionResolutions,
-                        renameCollisions: diff.labRenameCollisions
+                        renameCollisions: diff.labRenameCollisions,
+                        // [2026-11-08] la huella viaja con el import y se persiste; el generador
+                        // la emite en #EXT-X-APE-LAB-DNA en lugar de 'unverified'.
+                        labSha256
                     });
 
                     // Re-render
