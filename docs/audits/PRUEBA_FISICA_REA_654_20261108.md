@@ -456,3 +456,84 @@ y el fichero quedo intacto tras reiniciar.
 
 Esto confirma por segunda via independiente lo del §6: **la carga del LAB solo ocurre desde
 `ReaProfilesActivity`, que es inalcanzable.** No hay ruta automatica que rescatar.
+
+---
+
+# 12 · La 651 PUBLICADA falla igual: el defecto no es de las REA
+
+## 12.1 · Instalacion de la 651 (bloqueada primero por Play Protect)
+
+El APK servido en `/ara/agent.apk` se descargo y **se verifico antes de instalar**:
+
+```
+bytes : 25678434         (esperado 25678434)
+sha256: 8d3b145811c0bab3a10952329a81cadc477b08bd365b70f173cfe34ff52aa6e4
+versionCode 651 · versionName 3.9.5-adb-firetv-shim · package com.ape.crystalagent
+```
+
+**Primer intento de `adb install -r`: colgado.** La causa estaba en pantalla, no en la red:
+
+```
+mCurrentFocus = com.android.vending/.../PlayProtectDialogsActivity
+"Google Play Protect — Se bloqueo la app no segura — APE Crystal Agent"
+```
+
+Desactivada la verificacion de instalaciones por ADB (`settings put global verifier_verify_adb_installs 0`),
+el reintento fue inmediato:
+
+```
+Performing Streamed Install
+Success
+  versionCode=651  versionName=3.9.5-adb-firetv-shim     (antes: 600 / 2.3.0-noWG)
+```
+
+## 12.2 · Y reproduce EL MISMO fallo
+
+Mismo HLS local en LAN, `PlayerActivity` de la 651 con `-e url`:
+
+```
+04:21:44  ApePlayer: fallback BEST_4K_THEN_NATIVE: ...
+04:21:44  ApePlayer: tracks sin video (groups=4) - se conserva el ultimo snapshot valido
+04:21:49  ApePlayer: tracks sin video (groups=0) - se conserva el ultimo snapshot valido
+04:21:57  ApePlayer: REARM global_beat: guard sin publicar 7468ms (tick=7)
+04:21:59  ApePlayer: REARM global_beat: guard sin publicar 9470ms (tick=8)
+04:22:01  ApePlayer: REARM global_beat: guard sin publicar 11472ms (tick=9)
+```
+
+Captura a t+9s **con la 651**:
+
+```
+[ titulo: APE Crystal Agent ]        <- es la 651
+[ pantalla NEGRA ]
+"Se redujo el filtro de imagen para priorizar la fluidez de esta sesion."
+"Recuperacion: reintentando la fuente actual"
+```
+
+Dos cosas nuevas respecto a la 654:
+
+1. **`groups=4` primero y luego `groups=0`**: la enumeracion **si ve 4 grupos** al principio y los pierde
+   despues. El conteo no esta roto desde el arranque: se rompe en el tiempo.
+2. **«Se redujo el filtro de imagen…»**: el **LoadGovernor esta degradando los filtros** para intentar
+   salvar la fluidez. Es exactamente la respuesta que el diseno describe, pero llega tarde: la pantalla
+   ya esta negra.
+
+## 12.3 · Consecuencia: no es una regresion de las REA
+
+| Build | Resultado con el mismo HLS local |
+|---|---|
+| **654** `3.9.8-rea-12profiles-test` | negro + `Recuperacion: reintentando la fuente actual` |
+| **651** `3.9.5-adb-firetv-shim` **(publicada)** | negro + `Recuperacion` + `Se redujo el filtro de imagen` |
+
+**El defecto esta en el `ApePlayer` compartido y esta presente en la version publicada.** Actualizar a la
+651 **no lo arregla**.
+
+Esto cambia el marco del problema: no se trata de «el candidato REA no funciona», sino de que **el
+reproductor de la app que el operador publica hoy ya no sostiene la reproduccion** en este dispositivo y
+con fuentes que la 654 si decodifica.
+
+## 12.4 · Alcance honesto de esta comparacion
+
+- Usa **un solo tipo de fuente**: HLS VOD generado por ffmpeg (1080p AVC, segmentos de 4 s) en la LAN.
+- **No** se probo un canal real del proveedor con la 651 (exigiria credenciales en el intent).
+- La 651 no publica `PlaybackState` en logcat (`PLAYING=0`, `BUFFERING=0`): su observabilidad es menor que
+  la de la 654, asi que la comparacion de estado se apoya en capturas y en `ApePlayer`, no en MediaSession.
