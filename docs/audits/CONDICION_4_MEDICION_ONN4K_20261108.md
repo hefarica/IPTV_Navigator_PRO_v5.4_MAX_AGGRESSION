@@ -72,11 +72,11 @@ settings get global display_size_forced  ->  3840x2160      (persistido)
 mOverrideDisplayInfo                     ->  real 1920x1080 (ACTIVO)
 ```
 
-El valor **persistido** es 4K; el **override activo** es 1080p. Hay un `wm size 1920x1080` aplicado en
-runtime que no coincide con el ajuste persistido. Origen: no determinado desde aquí.
-
-**Consecuencia:** mientras ese override esté activo, **nada** — ni la lista ni la APK ni el VPP — puede
-producir salida 4K real, porque la capa de app ya está siendo compuesta a 1920×1080.
+**CORRECCION 2026-11-08 — esta conclusion era FALSA.** El `mode` es **694 = 3840x2160 @ 60 Hz** tanto en
+`mBaseDisplayInfo` como en `mOverrideDisplayInfo`. El `real 1920x1080` describe el tamano de **composicion
+de la UI**, no la salida de video: Android TV compone la capa de app a 1080p y el escalador del SoC la lleva
+al panel 4K. **La salida de display ya era 4K60 y nunca estuvo bloqueada.** Se reinicio el equipo sobre esta
+premisa falsa. Traza completa y riesgo residual: ver seccion 3.1.
 
 ---
 
@@ -143,3 +143,62 @@ adb -s $S shell "dumpsys package com.ape.crystalagent | grep -cE 'ReaProfile|Rea
 ```
 
 **Nada de esto se dedujo. Todo salió del dispositivo.**
+
+---
+
+## 3.1 · Correccion de un diagnostico propio falso — y el bug real que aparecio
+
+### Lo que dije y por que estaba mal
+
+Lei `Override size: 1920x1080` como "el 4K esta siendo robado" y reinicie el equipo. **Falso.** La evidencia
+que lo refuta esta en la misma captura:
+
+```
+mBaseDisplayInfo     ... real 3840 x 2160 ... mode 694, 60.000004 fps ... app 3840x2160 density 640
+mOverrideDisplayInfo ... real 1920 x 1080 ... mode 694, 60.000004 fps ... app 1920x1080 density 320
+```
+
+`mode 694` = **3840x2160 @ 60 Hz** en ambos. El display **ya salia en 4K60**.
+
+### El bug real: el formato de `display_size_forced` es invalido en todo el ecosistema
+
+| Fichero | Linea | Contenido | Problema |
+|---|---|---:|---|
+| `android/ape-crystal-agent/.../SettingsApplier.kt` | 241 | `"display_size_forced" to Regex("^[0-9]{3,5}x[0-9]{3,5}$")` | **valida la forma `WxH`** |
+| `android/ape-crystal-agent/.../SyncStore.kt` | 110 | `"global display_size_forced 3840x2160"` | **emite la forma `WxH`** |
+| `backend/onn_settings_global_pq.txt` | 32 | `display_size_forced=3840x2160` | forma `WxH` |
+| `ara-x/vps/crystal/profiles/*.json` (12) | 39 | `"display_size_forced": "5760x3240"` etc. | forma `WxH` |
+
+**Android espera `ANCHO,ALTO` (coma).** Medido:
+
+```
+wm size 1280x720   -> settings global display_size_forced = 1280,720   -> override 1280x720   APLICA
+wm size 3840x2160  -> settings global display_size_forced = (vacio)    -> override 1920x1080  NO APLICA
+```
+
+El validador de la APK acepta una forma que el sistema **no puede parsear**. Es un bug de formato, no de
+permisos ni de plataforma. `FIRETV_APPLIED_2026-11-05.md:16` atribuye el fallo a que "Fire OS reafirma el
+override"; la medicion dice otra cosa: **el valor esta malformado desde el origen**.
+
+### Riesgo residual que deje
+
+Antes de detectar el error escribi, y luego reinicie:
+
+```
+settings put global display_size_forced  3840,2160
+settings put global display_density_forced 640
+```
+
+Si el sistema aplica ambas, la UI se compone a 3840x2160 con densidad 640 — equivalente fisico a lo
+anterior. Si aplica **solo la densidad**, la UI a 1080p con densidad 640 quedaria **al doble de tamano**.
+**Reversion inmediata:**
+
+```bash
+adb shell settings delete global display_density_forced
+adb shell settings delete global display_size_forced
+adb shell wm size reset
+adb shell wm density reset
+```
+
+El reinicio desactivo la depuracion inalambrica (comportamiento normal de Android), asi que **el estado
+post-reinicio no esta medido**. No se declara corregido.
