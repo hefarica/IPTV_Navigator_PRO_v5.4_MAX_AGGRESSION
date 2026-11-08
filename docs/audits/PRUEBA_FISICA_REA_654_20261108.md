@@ -730,3 +730,119 @@ El reproductor **intenta recuperarse** reintentando la misma URL sin cambiar de 
 reintento no restaura las pistas porque el estado ya es `NO_TRACKS`: vuelve a pedir el mismo manifiesto a un
 player que se quedo sin pistas seleccionadas. Es coherente con la cadena del §14 y anade el detalle de que el
 mecanismo de recuperacion **no toca el estado de pistas**.
+
+---
+
+# 16 · CORRECCION CON EL FUENTE DELANTE: `NO_TRACKS` era sintoma, no causa
+
+## 16.1 · Antes de nada: el fuente SI estaba en el repo
+
+Durante varias rondas afirme que necesitaba el fuente de la 654 para cerrar el diagnostico. **Era falso:**
+el fuente esta en el propio repositorio.
+
+```
+IPTV_v5.4_MAX_AGGRESSION/android/ape-crystal-agent/app/src/main/java/com/ape/crystalagent/
+  ApePlayer.kt        22.973 B   <- incluye el latido y el error handler
+  BitrateGuard.kt                <- evaluate(), heartbeat(), lockTo()
+  PlaybackPolicy.kt     3.857 B  <- target/max 3840x2160, neverDownscale
+```
+
+Los artefactos compilados lo confirman: `ApePlayer$Companion$beat$1.class`,
+`ApePlayer$Companion$beatHandler$2.class`. **No habia bloqueo de fuente; habia una busqueda incompleta.**
+
+## 16.2 · Correccion: el `global_beat` es SOLO telemetria
+
+El §14 de este documento atribuyo el fallo al `REARM` del `global_beat`. **Leido el codigo, es falso.**
+
+`ApePlayer.kt:418-456` (`beat.run()`), cada `TICK_MS` = 2.000 ms:
+
+```kotlin
+val t = p.lastTracks
+if (t != null) runCatching { g.evaluate(t) }        // solo publica estado
+g.heartbeat(if (t == null) "no_tracks" else "tick") // solo escribe un log
+if (g.isStale()) { log REARM; g.heartbeat("rearm") } // solo reescribe el log
+```
+
+Y `BitrateGuard.kt:119-129`, la rama que produce `NO_TRACKS`:
+
+```kotlin
+if (variants.isEmpty()) {
+    state = "NO_TRACKS"
+    AraStatus.bitrateState = state
+    ...
+    return            // NO toca el selector, NO toca el lock
+}
+```
+
+**El latido no llama a `prepare()`, ni a `seekTo()`, ni cambia el `MediaSource`, ni modifica la seleccion de
+pistas.** Escribe cadenas en `AraStatus` y logs. **No puede dejar la pantalla en negro.**
+
+`state=NO_TRACKS reason=rearm` significa: *«al latido le llego un `Tracks` sin variantes de video
+utilizables»*. Es la **descripcion del sintoma en el instante del latido**, no su causa.
+
+## 16.3 · Tampoco es `lockHighest`
+
+`ApePlayer.kt:238-277` fija `min = max = bestW x bestH` en el selector. Parecia el culpable, pero
+`bestW/bestH` se calcula **recorriendo las pistas reales** (L245-258) y **capando al maximo de la politica**
+(L250-252), no al target. Con una fuente 1080p, el lock es 1920x1080 — y el log lo confirma:
+
+```
+LOCK resolucion 1920x1080 (neverDownscale=true, min_resolution=3840x2160)
+```
+
+Bloqueo **correcto**. `min_resolution=3840x2160` en ese log es informativo (`policy.minWidth/minHeight`), no
+lo que se aplica.
+
+## 16.4 · Lo que si muestra la medicion
+
+Sesion de 25 s, misma fuente, repetida:
+
+```
+PLAYING=6   BUFFERING=12   tracks_sin_video=1   reintentos=0
+player error -> NINGUNO (0 ocurrencias de PlaybackException / ERROR_CODE)
+
+BUFFERING   pos=4655   buf=4655
+BUFFERING   pos=4655   buf=4655
+BUFFERING   pos=4655   buf=4655
+```
+
+**Se detiene siempre en la misma posicion (4.655 ms) y `buffered == position`.** No hay error, no hay
+reintento, no hay caida de red. El buffer queda **exactamente** en la posicion: se descarto todo lo que
+habia por delante.
+
+Un buffer que se vacia sin error de reproduccion corresponde a un **re-inicio del `MediaSource`** (o a un
+cambio de seleccion que invalida el pipeline). En `ApePlayer` el unico punto que reescribe el `MediaSource`
+es:
+
+```
+ApePlayer.kt:154-155   player.setMediaSource(src); player.prepare()
+                        (dentro de openMedia, llamada por playChannel y por attemptDecoderFallback)
+```
+
+y el unico punto que **reescribe la ventana del selector en caliente** es `lockHighest`, invocado en el
+listener de pistas (`logSelected`, L317 y siguientes).
+
+## 16.5 · Hipotesis tecnica viva (a verificar con build)
+
+**`lockHighest` vuelve a aplicarse en un cambio de pistas posterior al arranque y fija un `min = max`
+exacto. Si el nuevo `bestW x bestH` difiere del anterior aunque sea en un pixel (p. ej. altura reportada
+1088 por padding de macrobloque frente a 1080 declarada), la seleccion vigente queda fuera de la ventana,
+ExoPlayer la invalida, el buffer se descarta y el player queda en `BUFFERING` sin recuperarse.**
+
+Encaja con todo lo medido: inicio correcto, parada a los 4,6 s, `buffered == position`, cero errores y
+`tracks sin video (groups=0)` justo antes.
+
+**Es una hipotesis, no un hecho.** Para confirmarla hace falta instrumentar `lockHighest` (loguear cada
+`bestW x bestH` aplicado y si ya habia un lock previo) y reconstruir el APK.
+
+## 16.6 · Arreglo candidato (surgical, sin tocar doctrina)
+
+1. **Aplicar el lock UNA sola vez por media**: un flag que se resetea en `playChannel`/`openMedia` y que
+   impide re-aplicar `setMinVideoSize`/`setMaxVideoSize` en cambios de pistas posteriores.
+2. **O** dejar `setMinVideoSize(0, 0)` y conservar solo el techo (`setMaxVideoSize`), apoyandose en
+   `setForceHighestSupportedBitrate(true)` — que ya esta (L267) — para seguir eligiendo la mejor variante.
+
+Ninguna de las dos baja la calidad: la variante elegida sigue siendo la mejor disponible (`forceHighest`).
+La diferencia es que un cambio de resolucion en vuelo ya no invalida la seleccion.
+
+**Nada de esto se ha aplicado.** Requiere compilar el APK y repetir la medicion.
