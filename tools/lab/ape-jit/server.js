@@ -217,7 +217,13 @@ function buildEncodingPlan(src, options = {}) {
     throw new Error('UNSUPPORTED_CMAF_AUDIO: no downmix or audio removal; use provider-direct');
   }
   return { isSdr, is720, use2k, av1, sixK, copyNative, copy4k: copyNative && is4kSource,
-    width, height, videoArgs, audioArgs: audioSource ? ['-c:a', 'copy'] : ['-an'],
+    width, height, videoArgs,
+    // FIX 2026-11-08 (medido en produccion): el demuxer HLS propaga codec_tag 0x0F al
+    // muxer DASH y este lo rechaza -> 'Tag [15][0][0][0] incompatible with output codec
+    // id 86018 (mp4a)' -> ffmpeg aborta sin escribir nada -> 503 al cliente y
+    // /jit/health con uptime_s:0. Forzar el tag MP4 del audio lo resuelve.
+    // NO degrada: sigue siendo -c:a copy; solo corrige el empaquetado.
+    audioArgs: audioSource ? ['-c:a', 'copy', '-tag:a', 'mp4a'] : ['-an'],
     hasAudio: !!audioSource, outputColorIntent,
     upscaled: src.width > 0 && src.height > 0 && (width > src.width || height > src.height),
     crystalMode: copyNative ? (is4kSource ? 'NATIVE_4K_' : 'NATIVE_') + (sourceRange || 'COLOR_UNKNOWN')

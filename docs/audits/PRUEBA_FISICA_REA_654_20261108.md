@@ -1133,3 +1133,125 @@ shader este corregido.
 doctrina exige cuando el motor no esta disponible: **reproducir y declarar la verdad**, no fingir mejora.
 
 **Re-verificacion tras corregir la version (vc655):** 2/2 sesiones con imagen (667.885 B y 843.816 B). El primer empaquetado salio con versionCode 654 por un `replace` que no aplico — se detecto al comprobar la identidad con `aapt2` antes de entregar, se corrigio y se volvio a verificar. Queda registrado.
+
+---
+
+# 21 · EL CAMINO QUE FALTABA: el JIT del VPS estaba roto y ahora aplica filtros de verdad
+
+## 21.1 · La pregunta que no hice
+
+Durante 20 secciones persegui que **el APK** aplicara efectos. Pero el APK solo procesa los frames de
+**su propio ExoPlayer**: si se mira la tele con OTT Navigator, el APK no toca un pixel.
+
+El unico camino que aplica filtros a **cualquier** player —OTT, TiviMate, VLC, Kodi— es el **JIT del VPS**,
+donde ffmpeg decodifica y recodifica de verdad. Ese camino lo desplegue y **nunca lo medi**.
+
+## 21.2 · Estaba roto, y el sintoma lo delataba
+
+```
+GET /jit/health              -> {"ok":true,"active":null,"pid":null,"uptime_s":0}
+GET /jit/live/1/manifest.json-> 200 {"status":"active","output_status":"pending_output"}
+GET /jit/live/1/master.m3u8  -> 503
+```
+
+`uptime_s: 0` con 21.224 canales catalogados: **nunca proceso ninguno**. El log del servicio daba la causa:
+
+```
+START 1 pid=... crystal=FHD_HDR10 src=848x480/bt709->1920x1080
+[mp4 @ ...] Tag [15][0][0][0] incompatible with output codec id '86018' (mp4a)
+[out#0/dash @ ...] Could not write header (incorrect codec parameters ?)
+Nothing was written into output file ... FFMPEG encoded 0 frames ... EXIT 1
+```
+
+## 21.3 · La causa, medida con ffprobe
+
+El stream del proveedor trae un `codec_tag` invalido:
+
+```
+video: h264 High      codec_tag_string=[27][0][0][0]
+audio: aac LC 48k 2ch codec_tag_string=[15][0][0][0]   <- 0x0F
+```
+
+El demuxer HLS **propaga ese tag** al muxer DASH, que solo acepta `mp4a` (0x40) para AAC. Rechaza la
+cabecera y ffmpeg **no escribe ni un byte**.
+
+### Los cuatro experimentos que aislaron el fix
+
+| Prueba | Contenedor | Argumentos anadidos | Resultado |
+|---|---|---|---|
+| A | `-f mp4` | ninguno | **exit 0** · 229.233 B |
+| B | `-f mp4` | `-tag:a mp4a` | **exit 0** · 229.233 B |
+| C | `-f mp4` | `-bsf:a aac_adtstoasc -tag:a mp4a` | **exit 0** · 229.233 B |
+| D | `-f dash` | ninguno | **exit 183** · 1.564 B |
+| E | `-f dash` | `-b:a 128k` | **exit 183** · 1.564 B |
+| F | `-f dash` | `-tag:a mp4a` | **exit 0** · 39.142 B |
+| G | `-f dash` | `-b:a 128k -tag:a mp4a` | **exit 0** · 39.140 B |
+
+**Con `-f mp4` el bug no aparece**: solo lo dispara el muxer **DASH**. Y `-b:a` no basta (el aviso
+«No bit rate set for stream 1» engana). El fix real es **`-tag:a mp4a`**.
+
+> Mi primer parche fue `aac_adtstoasc`. **No funciono**: el error quedo identico. Se corrigio al
+> experimento F. Queda registrado porque es el tipo de arreglo plausible-pero-falso que hay que medir.
+
+## 21.4 · El fix aplicado
+
+`tools/lab/ape-jit/server.js:226` (byte-identico al desplegado, sha original `09a804e5…`):
+
+```js
+audioArgs: audioSource ? ['-c:a', 'copy', '-tag:a', 'mp4a'] : ['-an'],
+```
+
+**No degrada nada**: sigue siendo `-c:a copy`; solo corrige el empaquetado del tag. No toca resolucion,
+codec, fps ni bitrate.
+
+Desplegado en `/opt/ape-jit/server.js` (sha `189b25c2…` → corregido), `node --check` OK, servicio `active`.
+
+## 21.5 · Verificacion: ahora produce imagen
+
+```
+/jit/health         -> {"active":"1","pid":1598273,"uptime_s":35}
+/jit/live/1/master.m3u8  -> 200  application/vnd.apple.mpegurl
+/jit/live/1/manifest.mpd -> 200  application/dash+xml
+init  3352 B · chunk 1.618.209 B
+```
+
+Declaraciones del master emitido:
+
+```
+#EXT-X-APE-CRYSTAL-UHD:ENABLED=true
+#EXT-X-APE-CRYSTAL-MODE:FHD_HDR10
+#EXT-X-APE-CRYSTAL-UPSCALE:SOURCE=848x480;TARGET=1920x1080;FILTER=LANCZOS
+#EXT-X-APE-CRYSTAL-TARGET:1920x1080;STATUS=OUTPUT_OBSERVED
+#EXT-X-APE-PROCESSING-DOMAIN:vps_jit_legacy;REA_EXECUTED=0
+```
+
+## 21.6 · Y lo que hay dentro, medido con ffprobe (no declarado)
+
+Concatenando `init` + `chunk` del video:
+
+```
+stream|codec_name=hevc|profile=Main 10|width=1920|height=1080
+      |pix_fmt=yuv420p10le|level=120|color_transfer=smpte2084|bit_rate=1552340
+```
+
+| | Fuente del proveedor | Salida del JIT |
+|---|---|---|
+| Resolucion | 848x480 | **1920x1080** (LANCZOS) |
+| Codec | H.264 High | **HEVC Main 10** |
+| Bit depth | 8-bit | **10-bit** (`yuv420p10le`) |
+| Transfer | BT.709 (SDR) | **PQ** (`smpte2084`) |
+| Bitrate | — | 1.552.340 bps |
+
+**Estos son filtros de imagen aplicados de verdad**, verificados en el bitstream de salida — no un tag en
+una playlist. Y viajan por HLS y por DASH, asi que llegan a **cualquier player**, OTT Navigator incluido.
+
+## 21.7 · Fronteras honestas de este carril
+
+1. **`REA_EXECUTED=0`**: el JIT desplegado es `vps_jit_legacy` y **no ejecuta la politica REA**. El parche
+   REA aporta contabilidad y truth-guards, no la cadena de filtros REA completa.
+2. **PQ sobre fuente SDR es enhancement de display, no HDR real.** El tag lo declara `VIDEO-RANGE=PQ` y el
+   bitstream sale con `smpte2084`, pero la informacion HDR original no existe. Es `DECLARED_ENHANCEMENT`.
+3. **Un canal probado** (id 1, fuente 848x480). No se ha barrido el catalogo.
+4. **3 vCPU**: el techo medido en la skill es ~29,6 fps para 4K/60. A 1080p sobra; a 4K no.
+5. El aviso `No bit rate set for stream 1` **sigue en el log** aunque la salida funcione: `-b:a` no esta
+   declarado. No bloquea, pero es una imprecision pendiente.
