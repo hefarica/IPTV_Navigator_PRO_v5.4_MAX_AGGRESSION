@@ -3651,3 +3651,107 @@ cadena a mano**, boton `🔀 Resolver fallback`, tabla de los 13 tiers y el resu
 la traza de saltos y los dos seriales (STREAM-INF y KODIPROP).
 
 **Test de integracion: 25/25.**
+
+---
+
+# 54 · Reglas entrada->salida: la resolucion la elige el operador
+
+## 54.1 · Correccion del operador que cambio el modelo
+
+> *"CADA PERFIL PUEDE TENER CUALQUIER RESOLUCION, ESO LO ELIJO YO, POR ESO ES CONFIGURABLE"*
+> *"LA TABLA DE ENTRADA PUEDE TENER VARIOS PERFILES 720P, PERO DIFERENTES RESOLUCIONES DE SALIDA"*
+> *"PUEDE SER UN 720P 60fps >> 4K 30fps · un 720p 30fps >> 2k 60fps"*
+
+**Defecto de diseno corregido:** `bestProfileForEngine` reescribia el perfil para que
+cupiera en el decoder del device. Eso convertia una advertencia en una **degradacion
+automatica** y violaba dos reglas del repo:
+
+- LEY ANTI-DEGRADACION: prohibido bajar 4K/6K "para que funcione".
+- Regla de oro 6 de `ape-image-pipeline-truth`: no degradar resolucion, codec, HDR,
+  fps ni bitrate.
+
+**Ahora:** el perfil es la eleccion del operador. El decoder del device se consulta
+solo para **declarar** el aviso:
+
+```
+#EXT-X-APE-WARNING:PROFILE_EXCEEDS_DECODER;PROFILE=P4.5;NEEDS=5760x3240;
+  DECODER_MAX=4096x4096;SUGGESTED=P1;ACTION=keep_operator_choice
+```
+
+`BEST_FOR_DECODER` es **informativo**. `EXCEEDS_DECODER` cuenta cuantos canales
+superan el decoder. **El perfil no se toca.**
+
+## 54.2 · El modelo de reglas
+
+Una regla es una fila: **entrada (resolucion + fps) -> salida (resolucion + fps)**.
+Varias reglas comparten la misma entrada con salidas distintas.
+
+```
+GET    /jit/image/rules                  lista agrupada por entrada
+POST   /jit/image/rules                  crear o editar
+DELETE /jit/image/rules/{id}             borrar
+GET    /jit/image/rules/resolve?w&h&fps  que reglas aplican a una fuente real
+```
+
+**Las 16 reglas sembradas, con sus dos casos:**
+
+| Regla | Entrada | Salida | FPS | Cadencia |
+|---|---|---|---|---|
+| r-720-60-4k-30 | 720p@60 | 3840x2160 | 60 -> 30 | **DECIMATE** |
+| r-720-60-4k-60 | 720p@60 | 3840x2160 | 60 -> 60 | preserve |
+| r-720-60-6k-30 | 720p@60 | 5760x3240 | 60 -> 30 | **DECIMATE** |
+| r-720-30-1440-60 | 720p@30 | 2560x1440 | 30 -> 60 | **INTERPOLATE** |
+| r-720-30-4k-30 | 720p@30 | 3840x2160 | 30 -> 30 | preserve |
+| r-1080-30-4k-60 | 1080p@30 | 3840x2160 | 30 -> 60 | **INTERPOLATE** |
+| r-4k-60-6k-30 | 4K@60 | 5760x3240 | 60 -> 30 | **DECIMATE** |
+
+**La misma entrada 720p da reglas DISTINTAS segun la cadencia de la fuente:**
+
+```
+1280x720 @60fps -> 4 reglas (2 decimaciones, 2 preserve)
+1280x720 @30fps -> 3 reglas (1 interpolacion, 2 preserve)
+```
+
+## 54.3 · La cadena real por regla
+
+Subir fps usa **interpolacion de movimiento real**, no repeticion de fotogramas:
+
+```
+minterpolate=fps=60:mi_mode=mci:mc_mode=aobmc:me_mode=bidir:vsbmc=1
+```
+
+Bajar fps usa `fps=N` (decimacion). Igual no emite nada.
+
+**10 de 10 cadenas validadas contra ffmpeg real** (6,1, sin rechazos).
+
+## 54.4 · Honestidad sobre interpolar
+
+`minterpolate` **no crea informacion que la fuente no tiene**: inventa fotogramas
+intermedios por estimacion de movimiento. Y cuesta: la skill
+`ape-image-pipeline-truth` mide **46,9x tiempo real a 1080p** con el filtro
+(23,4x solo `minterpolate`). En un host de 3 vCPU **no es sostenido**.
+
+Cada regla que interpola lo declara en su respuesta:
+
+```
+fpsCostNote: "minterpolate interpola movimiento; NO recupera informacion.
+              Coste alto: no sostenido en este host."
+```
+
+## 54.5 · Bandas de entrada
+
+`480p 576p 720p 1080p 1440p 4K 8K`, cada una con su rango de pixeles. Una fuente
+de 960x540 casa por area con la banda mas cercana y se declara. Una regla con
+`inFps=0` casa con cualquier cadencia.
+
+## 54.6 · Un bug de TDZ que costo un 502
+
+La cabecera de la lista gobernada usa `exceeds`, y `let exceeds = 0` estaba
+**despues** del array que lo leia:
+
+```
+ReferenceError: Cannot access 'exceeds' before initialization  -> HTTP 502
+```
+
+El contador se movio **antes** de construir la cabecera. Verificado: lineup
+**HTTP 200, 10,7 MB, 0,23 s**.

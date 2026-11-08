@@ -528,6 +528,221 @@ function saveGovernance() {
 loadGovernance();
 
 /* ═══════════════════════════════════════════════════════════════════════════
+ * REGLAS DE TRANSFORMACION: ENTRADA -> SALIDA
+ *
+ * Una regla es una fila de la tabla: "si llega ESTA entrada, entrega ESA salida".
+ * Varias reglas pueden compartir la MISMA entrada con salidas distintas:
+ *
+ *   720p -> 1080p
+ *   720p -> 1440p
+ *   720p -> 4K
+ *   720p -> 6K
+ *   720p -> 8K
+ *
+ * El operador elige. La regla NO se deduce de nada: se declara.
+ * La resolucion de entrada puede ser exacta (1280x720) o una ETIQUETA de banda
+ * (720p) que casa cualquier fuente dentro del rango.
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+const RULES_FILE = process.env.RULES_FILE || '/opt/ape-jit/transform-rules.json';
+
+/* Bandas de entrada conocidas. `minPx`/`maxPx` acotan que fuente casa. */
+const INPUT_BANDS = {
+  '480p': { w: 854, h: 480, minPx: 200000, maxPx: 600000 },
+  '576p': { w: 1024, h: 576, minPx: 350000, maxPx: 800000 },
+  '720p': { w: 1280, h: 720, minPx: 800000, maxPx: 1500000 },
+  '1080p': { w: 1920, h: 1080, minPx: 1500000, maxPx: 3000000 },
+  '1440p': { w: 2560, h: 1440, minPx: 3000000, maxPx: 5000000 },
+  '4K': { w: 3840, h: 2160, minPx: 5000000, maxPx: 10000000 },
+  '8K': { w: 7680, h: 4320, minPx: 20000000, maxPx: 40000000 }
+};
+
+/* Reglas iniciales: 720p con CINCO salidas distintas, mas las bandas base.
+ * Es exactamente el caso que el operador pidio. Se pueden editar y borrar. */
+const RULES_SEED = [
+  // === 720p @60 -> distintas salidas y CADENCIAS ==
+  { id: 'r-720-60-4k-30',  input: '720p', inFps: 60, outW: 3840, outH: 2160, outFps: 30, codec: 'hvc1', recipe: 'balanced', profile: 'P4', label: '720p60 -> 4K30' },
+  { id: 'r-720-60-4k-60',  input: '720p', inFps: 60, outW: 3840, outH: 2160, outFps: 60, codec: 'hvc1', recipe: 'light', profile: 'P4', label: '720p60 -> 4K60' },
+  { id: 'r-720-60-1080-30', input: '720p', inFps: 60, outW: 1920, outH: 1080, outFps: 30, codec: 'hvc1', recipe: 'light', profile: 'P4', label: '720p60 -> 1080p30' },
+  { id: 'r-720-60-6k-30',  input: '720p', inFps: 60, outW: 5760, outH: 3240, outFps: 30, codec: 'hvc1', recipe: 'temporal', profile: 'P4', label: '720p60 -> 6K30' },
+  // === 720p @30 -> salidas y cadencias, INCLUIDA SUBIDA a 60 ==
+  { id: 'r-720-30-1440-60', input: '720p', inFps: 30, outW: 2560, outH: 1440, outFps: 60, codec: 'hvc1', recipe: 'light', profile: 'P4', label: '720p30 -> 2K60' },
+  { id: 'r-720-30-4k-30',  input: '720p', inFps: 30, outW: 3840, outH: 2160, outFps: 30, codec: 'hvc1', recipe: 'balanced', profile: 'P4', label: '720p30 -> 4K30' },
+  { id: 'r-720-30-6k-30',  input: '720p', inFps: 30, outW: 5760, outH: 3240, outFps: 30, codec: 'hvc1', recipe: 'temporal', profile: 'P4', label: '720p30 -> 6K30' },
+  // === 1080p @50/60 ===
+  { id: 'r-1080-60-4k-30', input: '1080p', inFps: 60, outW: 3840, outH: 2160, outFps: 30, codec: 'hvc1', recipe: 'light', profile: 'P3', label: '1080p60 -> 4K30' },
+  { id: 'r-1080-50-1080-50', input: '1080p', inFps: 50, outW: 1920, outH: 1080, outFps: 50, codec: 'hvc1', recipe: 'none', profile: 'P3', label: '1080p50 -> 1080p50' },
+  { id: 'r-1080-30-4k-60', input: '1080p', inFps: 30, outW: 3840, outH: 2160, outFps: 60, codec: 'hvc1', recipe: 'light', profile: 'P3', label: '1080p30 -> 4K60' },
+  { id: 'r-1080-30-6k-30', input: '1080p', inFps: 30, outW: 5760, outH: 3240, outFps: 30, codec: 'hvc1', recipe: 'temporal', profile: 'P3', label: '1080p30 -> 6K30' },
+  // === 4K: conservar y subir ===
+  { id: 'r-4k-60-4k-60', input: '4K', inFps: 60, outW: 3840, outH: 2160, outFps: 60, codec: 'hvc1', recipe: 'none', profile: 'P1', label: '4K60 -> 4K60' },
+  { id: 'r-4k-60-6k-30', input: '4K', inFps: 60, outW: 5760, outH: 3240, outFps: 30, codec: 'hvc1', recipe: 'light', profile: 'P1', label: '4K60 -> 6K30' },
+  { id: 'r-4k-30-8k-30', input: '4K', inFps: 30, outW: 7680, outH: 4320, outFps: 30, codec: 'hvc1', recipe: 'balanced', profile: 'P1', label: '4K30 -> 8K30' },
+  // === 480p ===
+  { id: 'r-480-30-1080-30', input: '480p', inFps: 30, outW: 1920, outH: 1080, outFps: 30, codec: 'hvc1', recipe: 'balanced', profile: 'P5', label: '480p30 -> 1080p30' },
+  { id: 'r-480-30-4k-30', input: '480p', inFps: 30, outW: 3840, outH: 2160, outFps: 30, codec: 'hvc1', recipe: 'temporal', profile: 'P5', label: '480p30 -> 4K30' }
+];
+
+let transformRules = [];
+
+function loadRules() {
+  try {
+    if (fs.existsSync(RULES_FILE)) {
+      const raw = JSON.parse(fs.readFileSync(RULES_FILE, 'utf8'));
+      if (Array.isArray(raw) && raw.length) { transformRules = raw; return; }
+    }
+  } catch (_) { /* corrupto -> seed */ }
+  transformRules = RULES_SEED.map((r) => Object.assign({}, r));
+  saveRules();
+}
+
+function saveRules() {
+  try { fs.writeFileSync(RULES_FILE, JSON.stringify(transformRules, null, 2)); return true; }
+  catch (_) { return false; }
+}
+
+/* Que reglas aplican a una ENTRADA real. Una fuente 1280x720 casa con la banda
+ * '720p'. Una fuente rara (960x540) casa por area con la banda mas cercana y se
+ * declara. Devuelve TODAS las salidas disponibles para esa entrada. */
+function rulesForInput(w, h, fps) {
+  const px = w * h;
+  const inRatio = w / h;
+  const srcFps = Number(fps) || 0;
+  const matches = [];
+  for (const r of transformRules) {
+    const band = INPUT_BANDS[r.input];
+    let hit = null;
+    if (band) {
+      // exacta si coincide la resolucion, o por area dentro de la banda
+      if ((w === band.w && h === band.h) || (px >= band.minPx && px <= band.maxPx)) hit = r.input;
+      else if (r.input === String(w) + 'x' + String(h)) hit = r.input;
+    } else if (r.input === String(w) + 'x' + String(h)) {
+      hit = r.input;   // regla con resolucion exacta literal
+    }
+    if (!hit) continue;
+    /* Cadencia: una regla con inFps=0 casa siempre; con inFps=N exige que la
+     * fuente traiga esa cadencia (tolerancia para 29.97 vs 30, 59.94 vs 60). */
+    if (r.inFps && srcFps) {
+      const tol = Math.max(0.6, r.inFps * 0.02);
+      if (Math.abs(srcFps - r.inFps) > tol) continue;
+    }
+    matches.push({ rule: r, matchedBand: hit });
+  }
+  return {
+    input: { width: w, height: h, pixels: px, aspect: Number(inRatio.toFixed(4)) },
+    matches: matches.map((m) => ({
+      id: m.rule.id,
+      label: m.rule.label,
+      matchedBand: m.matchedBand,
+      output: { width: m.rule.outW, height: m.rule.outH, pixels: m.rule.outW * m.rule.outH },
+      codec: m.rule.codec,
+      recipe: m.rule.recipe,
+      profile: m.rule.profile,
+      inFps: m.rule.inFps || null,
+      outFps: m.rule.outFps || null,
+      // que hace con la cadencia: subir interpola, bajar decima, igual conserva
+      filter: ruleFilterChain(m.rule, srcFps).filter,
+      fpsCostNote: ruleFilterChain(m.rule, srcFps).fpsCostNote,
+      fpsOp: !m.rule.outFps ? 'preserve'
+        : (!srcFps ? 'declared'
+          : (m.rule.outFps > srcFps ? 'INTERPOLATE (' + srcFps + '->' + m.rule.outFps + ')'
+            : (m.rule.outFps < srcFps ? 'DECIMATE (' + srcFps + '->' + m.rule.outFps + ')'
+              : 'preserve'))),
+      areaRatio: Number(((m.rule.outW * m.rule.outH) / px).toFixed(2))
+    }))
+  };
+}
+
+/* Cadena ffmpeg de una REGLA, con el cambio de cadencia resuelto.
+ *
+ * Subir fps: `minterpolate` interpola movimiento REAL, no repite fotogramas.
+ * Bajar fps: `fps=N` decima. Igual: no se emite nada.
+ *
+ * HONESTIDAD: minterpolate NO crea informacion que la fuente no tiene; inventa
+ * fotogramas intermedios. Y cuesta: medido en la skill ape-image-pipeline-truth,
+ * 46,9x tiempo real a 1080p y 23,4x solo el filtro. En un host de 3 vCPU eso no
+ * es sostenido. Se declara. */
+function ruleFilterChain(rule, inFps) {
+  const parts = [];
+  const rec = RECIPE_PRESETS[rule.recipe];
+  if (rec && rec.chain) parts.push(rec.chain);
+  const srcFps = Number(inFps) || Number(rule.inFps) || 0;
+  const dstFps = Number(rule.outFps) || 0;
+  if (dstFps && srcFps && Math.abs(dstFps - srcFps) > 0.6) {
+    if (dstFps > srcFps) {
+      // interpolacion de movimiento (no repetition de frames)
+      parts.push('minterpolate=fps=' + dstFps + ':mi_mode=mci:mc_mode=aobmc:me_mode=bidir:vsbmc=1');
+    } else {
+      parts.push('fps=' + dstFps);
+    }
+  } else if (dstFps && !srcFps) {
+    parts.push('fps=' + dstFps);
+  }
+  parts.push('format=yuv420p10le');
+  parts.push('scale=' + rule.outW + ':' + rule.outH + ':flags=lanczos+accurate_rnd');
+  parts.push('setsar=1');
+  if (rule.dither !== 'none') parts.push('zscale=dither=3');
+  parts.push('format=yuv420p10le');
+  return {
+    filter: parts.join(','),
+    fpsOp: !dstFps ? 'preserve'
+      : (!srcFps ? 'set'
+        : (dstFps > srcFps ? 'INTERPOLATE' : (dstFps < srcFps ? 'DECIMATE' : 'preserve'))),
+    interpolated: !!(dstFps && srcFps && dstFps > srcFps),
+    fpsCostNote: (dstFps && srcFps && dstFps > srcFps)
+      ? 'minterpolate interpola movimiento; NO recupera informacion. Coste alto: no sostenido en este host.'
+      : null
+  };
+}
+
+function upsertRule(patch) {
+  const errs = [];
+  const id = String(patch.id || '').trim();
+  if (!id) errs.push('falta id');
+  const input = String(patch.input || '').trim();
+  if (!input) errs.push('falta input');
+  const outW = Math.round(Number(patch.outW));
+  const outH = Math.round(Number(patch.outH));
+  const inFps = Number(patch.inFps) || 0;
+  const outFps = Number(patch.outFps) || 0;
+  if (inFps && (inFps < 1 || inFps > 240)) errs.push('inFps fuera de [1,240]');
+  if (outFps && (outFps < 1 || outFps > 240)) errs.push('outFps fuera de [1,240]');
+  if (!Number.isFinite(outW) || outW < 256 || outW > 7680) errs.push('outW fuera de [256,7680]');
+  if (!Number.isFinite(outH) || outH < 144 || outH > 4320) errs.push('outH fuera de [144,4320]');
+  if (patch.codec && !CODEC_CATALOG[patch.codec]) errs.push('codec desconocido: ' + patch.codec);
+  if (patch.recipe && !RECIPE_PRESETS[patch.recipe]) errs.push('recipe desconocida: ' + patch.recipe);
+  if (errs.length) return { ok: false, errors: errs };
+
+  const row = {
+    id,
+    input,
+    inFps: inFps || 0,      // 0 = cualquier cadencia
+    outFps: outFps || 0,
+    outW: outW % 2 === 0 ? outW : outW + 1,
+    outH: outH % 2 === 0 ? outH : outH + 1,
+    codec: patch.codec || 'hvc1',
+    recipe: patch.recipe || 'balanced',
+    profile: patch.profile || 'P3',
+    label: patch.label || (input + (inFps ? '@' + inFps : '') + ' -> ' + outW + 'x' + outH + (outFps ? '@' + outFps : ''))
+  };
+  const i = transformRules.findIndex((r) => r.id === id);
+  if (i >= 0) transformRules[i] = row; else transformRules.push(row);
+  const persisted = saveRules();
+  return { ok: true, rule: row, created: i < 0, persisted };
+}
+
+function deleteRule(id) {
+  const i = transformRules.findIndex((r) => r.id === String(id));
+  if (i < 0) return { ok: false, error: 'regla inexistente: ' + id };
+  const removed = transformRules.splice(i, 1)[0];
+  return { ok: true, removed, persisted: saveRules() };
+}
+
+loadRules();
+
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
  * CASCADA DE CODECS CON SERIALES + FALLBACK ARMABLE
  *
  * Fuente: codec-cascade-actual.csv (13 tiers, Main 10, L3.0 -> L6.2).
@@ -1045,6 +1260,41 @@ function declareProfile(opts) {
 
 
 
+/* Mapeo motor -> caps del player que lo ejecuta. Sirve para que la lista
+ * gobernada NO entregue un perfil que ese device no puede decodificar.
+ *
+ * MEDIDO en el tablero: el default estaba en P4.5 (5760x3240 = 6K) y NINGUN
+ * player del catalogo decodifica 6K (ONN 4096, Firestick/Shield 3840, Lite 1920).
+ * Una lista gobernada con P4.5 daba pantalla negra en todos. */
+const ENGINE_PLAYER = {
+  vlc: 'generic', kodi: 'generic', tivimate: 'generic',
+  ott: 'onn-4k', apk: 'onn-4k'
+};
+
+/* CONSULTA, no decision.
+ *
+ * Devuelve el mejor perfil de la matriz que ese decoder soporta. Sirve para que
+ * el OPERADOR decida con el dato a la vista, NO para que el motor sustituya su
+ * eleccion.
+ *
+ * Antes esta funcion reescribia el perfil en la lista gobernada. Eso convertia
+ * una advertencia en una degradacion automatica y violaba dos leyes del repo:
+ *   - ANTI-DEGRADACION: prohibido bajar 6K/4K para "que funcione".
+ *   - Regla de oro 6 de ape-image-pipeline-truth: no degradar resolucion,
+ *     codec, HDR, fps ni bitrate.
+ * El perfil es del operador. El decoder es un aviso que se declara. */
+function bestProfileForEngine(engine) {
+  const pid = ENGINE_PLAYER[engine] || 'generic';
+  const caps = PLAYER_CAPS[pid] || PLAYER_CAPS.generic;
+  const ids = Object.keys(profileMatrix)
+    .map((k) => ({ k, w: profileMatrix[k].outW, h: profileMatrix[k].outH }))
+    .sort((x, y) => (y.w * y.h) - (x.w * x.h));
+  for (const it of ids) {
+    if (it.w <= caps.maxW && it.h <= caps.maxH) return { profile: it.k, player: pid, caps };
+  }
+  return { profile: 'P3', player: pid, caps };
+}
+
 function profileForChannel(id) {
   const ch = String(id);
   const row = governance.channels && governance.channels[ch];
@@ -1080,21 +1330,48 @@ function buildGovernedLineup(opts) {
   const base = String(o.base || 'https://iptv-ape.duckdns.org');
   const map = loadMap();
   const ids = Object.keys(map).filter((id) => map[id] && map[id].url);
+  /* EL PERFIL ES DEL OPERADOR. Se usa governance.defaultProfile (o el override
+   * del canal) tal cual. El decoder del device se consulta solo para DECLARAR
+   * si no puede; nunca para cambiar lo que el operador eligio. */
+  const engineBest = bestProfileForEngine(engine);
+  /* Se cuenta ANTES de construir la cabecera, que ya usa `exceeds`. Tener el
+   * `let` despues del array es TDZ: ReferenceError en la primera peticion y 502. */
+  let exceeds = 0;
+  for (const id0 of ids) {
+    const ov0 = governance.channels && governance.channels[id0];
+    const p0 = profileMatrix[(ov0 && ov0.profile && profileMatrix[ov0.profile]) ? ov0.profile : governance.defaultProfile] || {};
+    if (p0.outW > engineBest.caps.maxW || p0.outH > engineBest.caps.maxH) exceeds++;
+  }
   const lines = [
     '#EXTM3U',
     '#EXT-X-APE-GOVERNANCE:VERSION=1;DEFAULT_PROFILE=' + governance.defaultProfile +
-      ';ENGINE=' + engine + ';CHANNELS=' + ids.length,
+      ';ENGINE=' + engine + ';PLAYER=' + engineBest.player +
+      ';DECODER_MAX=' + engineBest.caps.maxW + 'x' + engineBest.caps.maxH +
+      ';BEST_FOR_DECODER=' + engineBest.profile +
+      ';EXCEEDS_DECODER=' + exceeds + ';CHANNELS=' + ids.length,
     '#EXT-X-APE-ENGINE:' + engine + ';READS=' + PLAYER_ENGINES[engine].reads.join('|') +
       ';IGNORES=' + PLAYER_ENGINES[engine].ignores.join('|')
   ];
   let emitted = 0;
   for (const id of ids) {
-    const prof = profileForChannel(id);
+    const ov = governance.channels && governance.channels[id];
+    const prof = (ov && ov.profile && profileMatrix[ov.profile]) ? ov.profile : governance.defaultProfile;
+    const prow = profileMatrix[prof] || {};
+    const over = (prow.outW > engineBest.caps.maxW || prow.outH > engineBest.caps.maxH);
     const ch = map[id];
     const name = (ch && ch.name) ? String(ch.name).replace(/[,]/g, ' ') : ('Canal ' + id);
     const grp = (ch && ch.group) ? String(ch.group).replace(/[,]/g, ' ') : 'APE';
     lines.push('#EXTINF:-1 tvg-id="' + id + '" tvg-chno="' + id + '" group-title="' + grp + '",' + name);
     for (const d of engineDirectives(engine, prof)) lines.push(d);
+    if (over) {
+      // ADVERTENCIA explicita: el perfil pedido supera el decoder. Se entrega
+      // igual (es la eleccion del operador) y se declara el riesgo.
+      lines.push('#EXT-X-APE-WARNING:PROFILE_EXCEEDS_DECODER;PROFILE=' + prof
+        + ';NEEDS=' + (prow.outW || 0) + 'x' + (prow.outH || 0)
+        + ';DECODER_MAX=' + engineBest.caps.maxW + 'x' + engineBest.caps.maxH
+        + ';SUGGESTED=' + engineBest.profile
+        + ';ACTION=keep_operator_choice');
+    }
     lines.push(base + '/jit/go/' + encodeURIComponent(id) + '?p=' + encodeURIComponent(prof) + '&e=' + encodeURIComponent(engine));
     lines.push('');
     emitted++;
@@ -2446,22 +2723,104 @@ const server = http.createServer((req, res) => {
     }));
   }
 
+  /* REGLAS: la tabla entrada -> salida, con varias salidas por entrada */
+  if (u.pathname === '/image/rules' && req.method === 'GET') {
+    setBaseHeaders(res); setNoCacheHeaders(res);
+    // agrupadas por entrada para que se vea que 720p tiene N salidas
+    const byInput = {};
+    for (const r of transformRules) {
+      if (!byInput[r.input]) byInput[r.input] = [];
+      byInput[r.input].push(r);
+    }
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    return res.end(JSON.stringify({
+      ok: true,
+      count: transformRules.length,
+      bands: Object.keys(INPUT_BANDS),
+      // esto es lo que el operador pidio: una entrada, varias salidas
+      byInput,
+      rules: transformRules,
+      model: 'Una regla es entrada -> salida. Varias reglas pueden compartir la misma entrada con salidas distintas.'
+    }));
+  }
+
+  if (u.pathname === '/image/rules' && req.method === 'POST') {
+    let body = '';
+    let tooBig = false;
+    req.on('data', (c) => { body += c; if (body.length > 32768) { tooBig = true; req.destroy(); } });
+    req.on('end', () => {
+      if (tooBig) { res.writeHead(413, { 'Content-Type': 'application/json' }); return res.end(JSON.stringify({ ok: false, error: 'body grande' })); }
+      let pl;
+      try { pl = JSON.parse(body || '{}'); } catch (_) {
+        res.writeHead(400, { 'Content-Type': 'application/json' }); return res.end(JSON.stringify({ ok: false, error: 'JSON invalido' }));
+      }
+      const r = upsertRule(pl);
+      setBaseHeaders(res); setNoCacheHeaders(res);
+      res.writeHead(r.ok ? 200 : 400, { 'Content-Type': 'application/json' });
+      return res.end(JSON.stringify(r));
+    });
+    return;
+  }
+
+  if (u.pathname.match(/^\/image\/rules\/[^/]+$/) && req.method === 'DELETE') {
+    const id = decodeURIComponent(u.pathname.split('/')[3] || '');
+    const r = deleteRule(id);
+    setBaseHeaders(res); setNoCacheHeaders(res);
+    res.writeHead(r.ok ? 200 : 404, { 'Content-Type': 'application/json' });
+    return res.end(JSON.stringify(r));
+  }
+
+  /* Que reglas aplican a una entrada REAL concreta */
+  if (u.pathname === '/image/rules/resolve') {
+    const w = Math.round(Number(u.searchParams.get('w')) || 0);
+    const h = Math.round(Number(u.searchParams.get('h')) || 0);
+    setBaseHeaders(res); setNoCacheHeaders(res);
+    if (!w || !h) {
+      res.writeHead(400, { 'Content-Type': 'application/json' });
+      return res.end(JSON.stringify({ ok: false, error: 'se requieren w y h' }));
+    }
+    const fps = Number(u.searchParams.get('fps')) || 0;
+    const r = rulesForInput(w, h, fps);
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    return res.end(JSON.stringify({ ok: true, ...r, count: r.matches.length }));
+  }
+
   if (u.pathname === '/image/governance' && req.method === 'GET') {
     setBaseHeaders(res);
     setNoCacheHeaders(res);
     const map = loadMap();
-    const rows = Object.keys(map).filter((id) => map[id] && map[id].url).map((id) => ({
-      channel: id,
-      name: (map[id].name || '').slice(0, 60),
-      group: (map[id].group || '').slice(0, 30),
-      profile: profileForChannel(id),
-      target: ((profileMatrix[profileForChannel(id)] || {}).outW || 0) + 'x' + ((profileMatrix[profileForChannel(id)] || {}).outH || 0),
-      overridden: !!(governance.channels && governance.channels[id])
-    }));
+    /* El perfil de cada canal se resuelve IGUAL que en la lista: override del
+     * canal si lo hay, y si no el mejor que el motor pueda decodificar. Antes
+     * mostraba governance.defaultProfile a pelo, asi que la tabla decia P4.5
+     * (6K) mientras la lista entregaba P1. La etiqueta mentia. */
+    const eng = String(u.searchParams.get('engine') || 'ott');
+    const engineBest = bestProfileForEngine(eng);
+    const rows = Object.keys(map).filter((id) => map[id] && map[id].url).map((id) => {
+      const ov = governance.channels && governance.channels[id];
+      // el perfil del operador manda; el decoder solo marca si no puede
+      const pid = (ov && ov.profile && profileMatrix[ov.profile]) ? ov.profile : governance.defaultProfile;
+      const p = profileMatrix[pid] || {};
+      const over = (p.outW > engineBest.caps.maxW || p.outH > engineBest.caps.maxH);
+      return {
+        channel: id,
+        name: (map[id].name || '').slice(0, 60),
+        group: (map[id].group || '').slice(0, 30),
+        profile: pid,
+        target: (p.outW || 0) + 'x' + (p.outH || 0),
+        overridden: !!ov,
+        decodable: !over
+      };
+    });
     res.writeHead(200, { 'Content-Type': 'application/json' });
     return res.end(JSON.stringify({
       ok: true,
       defaultProfile: governance.defaultProfile,
+      engine: eng,
+      decoderPlayer: engineBest.player,
+      decoderMax: engineBest.caps.maxW + 'x' + engineBest.caps.maxH,
+      bestForDecoder: engineBest.profile,
+      exceedsDecoder: rows.filter((r) => !r.decodable).length,
+      rule: 'El perfil es la eleccion del operador. Si supera el decoder se declara como aviso, no se cambia.',
       channels: rows,
       count: rows.length,
       engines: PLAYER_ENGINES,
