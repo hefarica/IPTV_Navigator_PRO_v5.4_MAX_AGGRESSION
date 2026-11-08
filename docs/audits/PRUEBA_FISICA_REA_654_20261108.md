@@ -3210,3 +3210,67 @@ pantalla presenta       -> NO VERIFICADO (exige el dispositivo)
 
 La carrera de 48.2 es un candidato **fuerte** para explicar fallos de reproduccion previos, pero
 **no puedo afirmar que fuera la causa unica** hasta probarlo en el dispositivo.
+
+---
+
+# 49 · Cadena completa: lista M3U -> wrapper -> /pulse -> JIT
+
+## 49.1 · El eslabon que faltaba verificar
+
+El recorrido empieza antes de la APK: **la lista .m3u8 que se le entrega**. Si el wrapper pierde el
+perfil ahi, todo lo demas da igual. Probado con una lista que usa las formas REALES de declaracion.
+
+## 49.2 · Salida real del wrapper
+
+Entrada (3 canales, 3 formas distintas de declarar perfil):
+
+```
+#EXTINF ... beIN Sports 4K UHD
+#EXT-X-APE-CRYSTAL-UHD:PROFILE=P3;VPP_INTENSITY=55;SCOPE=DISPLAY;PIXELS=0
+http://prov.example/live/u/p/1.m3u8
+
+#EXTINF ... DAZN FHD 1080
+#EXT-X-APE-PROFILE:P1
+http://prov.example/live/u/p/2.m3u8
+
+#EXTINF ... Canal SD viejo
+http://prov.example/live/u/p/3.m3u8
+```
+
+Salida:
+
+```
+https://iptv-ape.duckdns.org/pulse/1.m3u8?u=http%3A%2F%2Fprov.example...&m=cartridge&l=...
+https://iptv-ape.duckdns.org/pulse/2.m3u8?u=...&m=cartridge&l=...
+https://iptv-ape.duckdns.org/pulse/3.m3u8?u=...&m=cartridge&l=...
+```
+
+## 49.3 · Comprobaciones — 8/8
+
+| Comprobacion | Resultado |
+|---|---|
+| 3 canales envueltos | OK |
+| canal 4K declarado P3 -> **P3** (no 4K->P1) | OK |
+| canal FHD declarado P1 -> **P1** (no FHD->P3) | OK |
+| canal SD sin declarar -> **P5** (heuristica) | OK |
+| pide `m=cartridge` | OK |
+| lleva el nombre de la lista en `l=` | OK |
+| conserva la URL del proveedor en `u=` | OK |
+| **NO inventa URLs del JIT** | OK |
+
+El ultimo es importante: el wrapper apunta a `/pulse`, y es **`/pulse` quien resuelve al JIT**. El
+wrapper no hardcodea rutas de ejecucion, asi que un cambio de `run_id` no rompe la lista.
+
+## 49.4 · Cadena verificada de punta a punta (lado servidor)
+
+```
+lista .m3u8  -> wrapper conserva el perfil declarado      [49: 8/8]
+             -> /pulse resuelve al JIT                    [verificado en sesiones previas]
+             -> GET master arranca el job                 [48: job vivo es condicion previa]
+             -> ffmpeg aplica la receta                   [44: framemd5 0/50 iguales]
+             -> master declara codec/bw REALES            [48: hvc1.2.4.L120.B0, 10,8 Mbps]
+             -> MPD conforme                              [47: 0 vacios, XML valido]
+             -> segmentos CMAF se descargan y decodifican  [48: styp/sidx/moof/mdat, 60 frames]
+```
+
+**Solo queda el ultimo salto: que la APK presente esos frames en pantalla.**
