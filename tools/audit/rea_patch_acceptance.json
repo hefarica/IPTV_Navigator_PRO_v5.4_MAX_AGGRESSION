@@ -9,8 +9,8 @@
   "audit_branch": "audit/rea-alignment-20261107",
   "overall_status_expected": "BLOCKED_ENVIRONMENT_FOR_COMMIT",
   "gate_summary_expected": {
-    "total": 23,
-    "passed": 20,
+    "total": 24,
+    "passed": 21,
     "reused_pass": 1,
     "blocked_environment": 2,
     "current_product_test_failures": 0
@@ -197,8 +197,8 @@
       "expected_status": "PASS",
       "expected_exit_code": 0,
       "counts": {
-        "total": 6,
-        "passed": 6,
+        "total": 8,
+        "passed": 8,
         "failed": 0
       },
       "known_baseline_failure": false
@@ -344,6 +344,20 @@
       "counts": {
         "passed": null,
         "failed": null
+      },
+      "known_baseline_failure": false
+    },
+    {
+      "id": "provider_credential_ratchet",
+      "command": [
+        "node",
+        "tools/security/provider_credential_scan.js"
+      ],
+      "expected_status": "PASS",
+      "expected_exit_code": 0,
+      "counts": {
+        "files_known_baseline": 22,
+        "new_files": 0
       },
       "known_baseline_failure": false
     }

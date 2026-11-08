@@ -2972,7 +2972,40 @@
         try {
             if (typeof window === 'undefined' || !window.APE_PROFILES_CONFIG) return null;
             const cfg = window.APE_PROFILES_CONFIG;
-            const pid = (window.ProfileManagerV9 && window.ProfileManagerV9.activeProfileId) || 'P3';
+            // [2026-11-08] El sobre global describia un perfil que el catalogo NO usa.
+            // Medido sobre la lista de 21.224 canales: declaraba P0 (8K, hdr10plus, nlmeans s3.0)
+            // mientras el 95,3 % de los canales corria P3 (1080p). Un consumidor que leyera este
+            // sobre (canonicalizador del VPS, LabMetadataStore del APK) recibia recetas de 8K
+            // para un catalogo 1080p.
+            // Ahora el perfil del sobre es el DOMINANTE de los canales que se estan exportando,
+            // y se declara de donde salio. Si no hay canales legibles, se cae al comportamiento
+            // anterior (activeProfileId) en vez de inventar.
+            let _profileCounts = null;
+            let _profileBasis = 'active_profile';
+            let pid = null;
+            try {
+                const _chans = (typeof window !== 'undefined' && window.app
+                    && typeof window.app.getFilteredChannels === 'function')
+                    ? window.app.getFilteredChannels() : null;
+                if (Array.isArray(_chans) && _chans.length) {
+                    const _c = Object.create(null);
+                    for (const _ch of _chans) {
+                        if (!_ch) continue;
+                        const _pf = _ch.profile || _ch.ape_profile || _ch.apeProfile;
+                        if (_pf == null) continue;
+                        const _k = String(_pf);
+                        _c[_k] = (_c[_k] || 0) + 1;
+                    }
+                    const _entries = Object.keys(_c).map(k => [k, _c[k]]).sort((a, b) => b[1] - a[1]);
+                    if (_entries.length) {
+                        _profileCounts = {};
+                        for (const [k, v] of _entries) _profileCounts[k] = v;
+                        pid = _entries[0][0];
+                        _profileBasis = 'dominant_of_channels';
+                    }
+                }
+            } catch (_pe) { /* si no se puede leer el catalogo, no se inventa: se usa el activo */ }
+            if (!pid) pid = (window.ProfileManagerV9 && window.ProfileManagerV9.activeProfileId) || 'P3';
             const p = (typeof cfg.getProfile === 'function') ? cfg.getProfile(pid) : null;
             if (!p) return null;
 
@@ -3036,6 +3069,10 @@
             const pack = {
                 schema: 'ape-lab-metadata-v1',
                 profile: pid,
+                // [2026-11-08] Procedencia del perfil del sobre, para que nadie tenga que
+                // adivinar si salio de la UI o del catalogo real.
+                profile_basis: _profileBasis,
+                profile_counts: _profileCounts,
                 generated_at: new Date().toISOString(),
                 fields: _fields
             };
