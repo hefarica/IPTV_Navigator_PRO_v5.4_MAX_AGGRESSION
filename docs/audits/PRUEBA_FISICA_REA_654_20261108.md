@@ -2623,3 +2623,87 @@ quien opere el edge.
 
 Se probo que nginx devuelve lo mismo con `User-Agent` vacio, `curl/8.5.0`, `Mozilla/5.0` o un UA propio.
 La hipotesis del filtro por UA **quedo descartada** por medicion.
+
+---
+
+# 41 · Las DOS vias de control, operativas
+
+## 41.1 · HTTP (la UI)
+
+El panel de la pestaña Telemetria habla con `/jit/image/{config,capacity,state}`. CORS abierto
+(`OPTIONS 204`, `ACAO: *`). Verificado en la seccion 39 con DOM real: 13/13.
+
+## 41.2 · SSH (el CLI) — lo que faltaba
+
+`/opt/ape-jit/ape-image.sh` en el VPS, `tools/lab/ape-jit/ape-image.sh` en el repo. Sintaxis OK.
+
+```bash
+bash ape-image.sh get      # config efectiva
+bash ape-image.sh state    # estado VIVO del motor
+bash ape-image.sh cap      # capacidad medida + veredicto por fila
+bash ape-image.sh rec      # aplicar la recomendada (FHD 1080 25fps balanced)
+bash ape-image.sh off      # volver a defaults (source / none)
+bash ape-image.sh set target=FHD_1080 recipe=balanced fps=25
+bash ape-image.sh set hqdn3d.luma_spatial=0.8 unsharp.luma_amount=0.25
+```
+
+Acepta claves anidadas con punto (`hqdn3d.luma_spatial=...`, `unsharp.luma_amount=...`,
+`atadenoise.s=...`) y las convierte a JSON antes de enviarlas.
+
+## 41.3 · Verificado por SSH, con salida real
+
+**Estado vivo:**
+
+```
+trabajo    : canal=2 variante=hdr pid=1819646 edad=808s
+modo       : FILTERED_BALANCED   copy=False (transcodifica)
+fuente     : 1920x1080
+observado  : 1920x1080 hevc yuv420p10le
+bitrate    : 2.31 Mbps (video 2.24 + audio 0.07) en 2s
+ficheros   : 84 segmentos
+config     : target=FHD_1080 recipe=balanced fps=25 codec=libx265 preset=ultrafast crf=20
+filtro     : hqdn3d=0.6:0.45:0.9:0.7,unsharp=5:5:0.2:5:5:0
+motor      : domain=vps_jit_legacy rea_executed=False slot=1
+```
+
+**Cambio de parametros finos, aplicado y leido de vuelta:**
+
+```
+set hqdn3d.luma_spatial=0.8 unsharp.luma_amount=0.25
+-> filtro: hqdn3d=0.8:0.45:0.9:0.7,unsharp=5:5:0.25:5:5:0
+```
+
+**Y vuelta a la receta exacta del informe:**
+
+```
+-> effective_filter: hqdn3d=0.6:0.45:0.9:0.7,unsharp=5:5:0.2:5:5:0
+```
+
+**`off` y `rec`:**
+
+```
+off -> target=source  recipe=none
+rec -> target=FHD_1080 recipe=balanced  effective_filter=hqdn3d=0.6:0.45:0.9:0.7,unsharp=5:5:0.2:5:5:0
+```
+
+## 41.4 · El pid 1819646 con 808 s
+
+Ese es el dato que importa del sostenido: **el proceso de ffmpeg lleva 13 minutos y medio vivo y es el
+mismo**, con la misma receta, sin reiniciarse. El motor no esta reintentando el trabajo una y otra vez.
+
+## 41.5 · Capacidad, tal como la imprime el CLI en el VPS
+
+```
+destino    fps   receta       20s->      ritmo
+FHD_1080   25    none          11.4s      1.76x  VIABLE
+FHD_1080   25    light         13.5s      1.48x  VIABLE
+FHD_1080   25    balanced        14s      1.43x  VIABLE
+FHD_1080   25    temporal      14.6s      1.37x  VIABLE
+FHD_1080   50    light         25.6s      0.78x  NO VIABLE
+FHD_1080   50    balanced      26.8s      0.75x  NO VIABLE
+QHD_1440   25    none          16.8s      1.19x  AL LIMITE
+QHD_1440   25    light           19s      1.05x  AL LIMITE
+QHD_1440   25    temporal      18.6s      1.07x  AL LIMITE
+QHD_1440   50    balanced     46.94s      0.43x  NO VIABLE
+UHD_4K     50    balanced     80.95s      0.25x  NO VIABLE
+```
