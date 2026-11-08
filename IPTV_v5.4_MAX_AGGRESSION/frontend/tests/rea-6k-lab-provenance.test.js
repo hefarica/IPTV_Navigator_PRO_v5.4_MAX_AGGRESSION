@@ -280,6 +280,27 @@ async function emitted(ctx, channels) {
         console.log('PASS 6 (L3 vlc=' + JSON.stringify(ql.L3.lane_split.vlc_modules) + ' no_vlc=' + ql.L3.lane_split.no_vlc_module.length + ' ejecutable=' + ql.L3.lane_split.vlc_playlist_executable + ')');
     }
 
+    // ── Escenario 7: H14 (activacion conditional) + bit_depth con VALORES medidos ─────
+    {
+        const LAB24 = JSON.parse(fs.readFileSync(process.env.LABV24, 'utf8'));
+        const g = environment({ profiles: LAB24.profiles_calibrated });
+        const G = g.ctx.M3U8TypedArraysGenerator;
+        const one = G.generateChannelEntry({ id: '1', name: 'Canal', url: 'https://audit.invalid/live/u/p/1.m3u8', profile: 'P3' });
+        const body = Array.isArray(one) ? one.join('\n') : (typeof one === 'string' ? one : '');
+        const k6 = (body.match(/#EXT-X-APE-CRYSTAL-6K:[^\n]*/) || [''])[0];
+        assert.match(k6, /ACTIVATION=DEVICE_GATED/, 'el 6K debe declarar que la activacion depende del device -> ' + k6);
+        assert.match(k6, /DEVICE_STATUS=unknown/, 'no conocemos el device que leera la lista');
+
+        const h = G._generateGlobalHeader(1, Object.assign({ bulletproof_loaded: true, bulletproof_profiles: LAB24.profiles_calibrated }, { dictatorMode: true })) || '';
+        const ov = (h.match(/#EXT-X-APE-OVERRIDE:bit_depth;[^\n]*/) || [''])[0];
+        assert.match(ov, /VALUES=/, 'debe publicar los valores, no solo la regla -> ' + ov);
+        assert.match(ov, /P3:10\/alias=8\/DISCREPA/, 'P3 (20.222 canales) discrepa: bit_depth=10 vs alias=8 -> ' + ov);
+        assert.match(ov, /P0:10\/alias=12\/DISCREPA/, 'P0 discrepa: 10 vs 12');
+        passed += 4;
+        console.log('PASS 7 (6K activacion gated):', k6.slice(0, 130));
+        console.log('PASS 7 (bit_depth VALUES con P3 DISCREPA)');
+    }
+
     console.log('\nresultado: ' + passed + ' aserciones pasadas');
     process.exit(passed > 0 ? 0 : 2);
 })();

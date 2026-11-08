@@ -2910,7 +2910,24 @@
                 // Invariante documentado en el codigo (linea 10494: "se fija a 8, 200 saturaba la red").
                 _prec.push('#EXT-X-APE-OVERRIDE:X-Concurrent-Downloads=8;LAB=ignored;REASON=invariante_200_saturaba;DECLARED=1');
                 // Precedencia de alias MEDIDA en _firstDef(bit_depth, bitDepth) (linea ~1782).
-                _prec.push('#EXT-X-APE-OVERRIDE:bit_depth;GOVERNS=bit_depth;ALIAS_IGNORED=bitDepth;EVIDENCE=_firstDef_order;DECLARED=1');
+                // [2026-11-08] Se publican los VALORES de cada alias, no solo la regla: asi el
+                // lector ve donde discrepan (v24 P0: bit_depth=10 vs bitDepth=12) en vez de
+                // tener que confiar en la afirmacion.
+                const _bdPairs = [];
+                for (const _pf2 of _ids) {
+                    const _p2 = (_cfgP && typeof _cfgP.getProfile === 'function') ? _cfgP.getProfile(_pf2) : null;
+                    if (!_p2) continue;
+                    const _s2 = _p2.settings || {};
+                    const _bd = _s2.bit_depth;
+                    const _alias = _s2.bitDepth;
+                    if (_bd == null && _alias == null) continue;
+                    const _disagree = (_bd != null && _alias != null && String(_bd) !== String(_alias));
+                    _bdPairs.push(_pf2 + ':' + (_bd == null ? '?' : String(_bd)) + '/alias='
+                        + (_alias == null ? '?' : String(_alias)) + (_disagree ? '/DISCREPA' : ''));
+                }
+                _prec.push('#EXT-X-APE-OVERRIDE:bit_depth;GOVERNS=bit_depth;ALIAS_IGNORED=bitDepth'
+                    + ';VALUES=' + (_bdPairs.length ? _bdPairs.join(',') : 'none')
+                    + ';EVIDENCE=_firstDef_order;DECLARED=1');
 
                 // [2026-11-08] CONDICION 1 — la AUSENCIA de atadenoise deja de ser silenciosa.
                 // El bundle (ape-image-recipes-bundle.js, cargado en index-v4.html:4379) declara
@@ -9455,7 +9472,12 @@ ${__apeContinuityTags().join('\n')}
             const t6 = [
                 '#EXT-X-APE-CRYSTAL-6K:OPT-IN-ACTIVE;PROFILE=' + _6k.id + ';BASE=' + _6kBase
                     + ';RES=5760x3240;PIXELS=18662400;CODEC=hvc1.2.4.L183.B0'
-                    + ';PROVENANCE=' + _APE_6K_SOURCE,
+                    + ';PROVENANCE=' + _APE_6K_SOURCE
+                    // [2026-11-08] H14 — el LAB dice que la activacion es condicional al device
+                    // (emulation.apply = device_vpp_declared; >=5760x3240 y SoC capaz), y quien
+                    // escribe la lista NO conoce el device que la va a leer. Declararlo evita que
+                    // OPT-IN-ACTIVE se lea como "ya activo en este aparato".
+                    + ';ACTIVATION=DEVICE_GATED;DEVICE_STATUS=unknown',
                 '#EXT-X-APE-CRYSTAL-6K-MODE:EMULATED;SOURCE=' + _6k.src + ';TECHNIQUE=' + _6k.tec
                     + ';RATIO=' + _6k.ratio + ';ENHANCEMENT=DISPLAY_DECLARED',
                 '#EXT-X-APE-CRYSTAL-6K-BITRATE:' + _6k.mbps + ';MAX=' + (_6k.mbps + 20) + ';UNIT=Mbps',
