@@ -2911,6 +2911,33 @@
                 _prec.push('#EXT-X-APE-OVERRIDE:X-Concurrent-Downloads=8;LAB=ignored;REASON=invariante_200_saturaba;DECLARED=1');
                 // Precedencia de alias MEDIDA en _firstDef(bit_depth, bitDepth) (linea ~1782).
                 _prec.push('#EXT-X-APE-OVERRIDE:bit_depth;GOVERNS=bit_depth;ALIAS_IGNORED=bitDepth;EVIDENCE=_firstDef_order;DECLARED=1');
+
+                // [2026-11-08] CONDICION 1 — la AUSENCIA de atadenoise deja de ser silenciosa.
+                // El bundle (ape-image-recipes-bundle.js, cargado en index-v4.html:4379) declara
+                // atadenoise/upscale/output en 'vlc_skipped' con motivo "sin modulo VLC equivalente",
+                // y los mantiene en el carril ffmpeg. NO se inyecta en #EXTVLCOPT: seria sintaxis
+                // ffmpeg dentro de una opcion de VLC. Se DECLARA que se omite y donde SI corre.
+                const _RCP = (typeof window !== 'undefined' && window.APE_IMAGE_RECIPES)
+                    ? window.APE_IMAGE_RECIPES : null;
+                if (_RCP && _RCP.profiles) {
+                    for (const _pf of ['P0', 'P1', 'P2', 'P3', 'P4', 'P5']) {
+                        const _rp = _RCP.profiles[_pf];
+                        if (!_rp) continue;
+                        const _sk = (_rp.vlc_skipped || []).map(x => (x && x.id) ? String(x.id) : null).filter(Boolean);
+                        if (!_sk.length) continue;
+                        const _ff = String(_rp.ffmpeg || '');
+                        const _ffHit = _sk.filter(id => _ff.indexOf(id) >= 0);
+                        _prec.push('#EXT-X-APE-VLC-FILTER-SKIPPED:PROFILE=' + _pf
+                            + ';SKIPPED=' + _sk.join(',')
+                            + ';FFMPEG_LANE=' + (_ffHit.length ? _ffHit.join(',') : 'none')
+                            + ';REASON=sin_modulo_VLC_equivalente'
+                            + ';VLC_CHAIN_IS_EXECUTABLE=1'
+                            + ';DECLARED=1');
+                    }
+                } else {
+                    _prec.push('#EXT-X-APE-VLC-FILTER-SKIPPED:PROFILE=*;SKIPPED=unknown'
+                        + ';REASON=bundle_APE_IMAGE_RECIPES_no_cargado;DECLARED=0');
+                }
             } catch (_pe) { /* la lista no se cae por no poder declarar; el DNA sigue saliendo */ }
             const _tail = _prec.length ? ('\n' + _prec.join('\n')) : '';
             return `#EXT-X-APE-LAB-DNA:sha256=${sha},SOURCE=${src},EXPORTED=${exp}` + _tail;

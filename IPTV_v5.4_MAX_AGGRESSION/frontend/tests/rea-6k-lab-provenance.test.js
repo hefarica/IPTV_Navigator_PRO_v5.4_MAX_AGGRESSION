@@ -214,6 +214,40 @@ async function emitted(ctx, channels) {
         console.log('PASS 4 (undetermined) :', pick(unk, 'P1'));
     }
 
+    // ── Escenario 5: la omision de atadenoise en VLC se DECLARA (no se inyecta) ───────
+    {
+        const LAB24 = JSON.parse(fs.readFileSync(process.env.LABV24, 'utf8'));
+        const g = environment({ profiles: LAB24.profiles_calibrated, labDnaSha256: null });
+        // el bundle se carga en index-v4.html:4379 ANTES de generar; aqui se replica
+        vm.runInContext(fs.readFileSync(process.env.BUNDLE, 'utf8'), g.ctx, { filename: 'ape-image-recipes-bundle.js' });
+        const G = g.ctx.M3U8TypedArraysGenerator;
+        const merged = Object.assign({ bulletproof_loaded: true, bulletproof_profiles: LAB24.profiles_calibrated }, { dictatorMode: true });
+        const h = G._generateGlobalHeader(1, merged) || '';
+
+        const line = (pf) => {
+            const k = '#EXT-X-APE-VLC-FILTER-SKIPPED:PROFILE=' + pf + ';';
+            const i = h.indexOf(k);
+            if (i < 0) return '';
+            const j = h.indexOf('\n', i);
+            return h.slice(i, j < 0 ? h.length : j);
+        };
+        assert.match(line('P3'), /SKIPPED=atadenoise,upscale,output;/, 'debe declarar los 3 modulos omitidos -> ' + line('P3'));
+        assert.match(line('P3'), /FFMPEG_LANE=atadenoise/, 'debe declarar donde SI corre -> ' + line('P3'));
+        assert.match(line('P3'), /REASON=sin_modulo_VLC_equivalente/, 'debe dar el motivo');
+        assert.match(line('P3'), /VLC_CHAIN_IS_EXECUTABLE=1/, 'debe afirmar que la cadena VLC es ejecutable');
+        assert.match(line('P0'), /SKIPPED=atadenoise/, 'P0 tambien debe declararlo');
+        passed += 5;
+        console.log('PASS 5 (VLC skipped declarado):', line('P3'));
+
+        // sin bundle: no se inventa, se declara DECLARED=0
+        const g2 = environment({ profiles: LAB24.profiles_calibrated, labDnaSha256: null });
+        const h2 = g2.ctx.M3U8TypedArraysGenerator._generateGlobalHeader(1, merged) || '';
+        assert.match(h2, /#EXT-X-APE-VLC-FILTER-SKIPPED:PROFILE=\*;SKIPPED=unknown;REASON=bundle_APE_IMAGE_RECIPES_no_cargado;DECLARED=0/,
+            'sin bundle debe declararse como no computado');
+        passed += 1;
+        console.log('PASS 5 (sin bundle -> DECLARED=0)');
+    }
+
     console.log('\nresultado: ' + passed + ' aserciones pasadas');
     process.exit(passed > 0 ? 0 : 2);
 })();
