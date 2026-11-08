@@ -822,6 +822,36 @@ function waitForFile(id, name, cb, sdr, sdr720) {
   tick();
 }
 
+/* Bitrate REAL medido del ultimo segmento de video.
+ * Por que existe: ffmpeg con -crf no conoce el bitrate objetivo y escribe en el
+ * master un BANDWIDTH estimado del primer fragmento parcial. Medido: 2234 y 3481
+ * bps para 1080p, que es imposible. Aqui se recalcula con el tamano real del
+ * ultimo chunk de video dividido por su duracion.
+ * Si no hay datos suficientes devuelve null y el atributo se OMITE: mejor no
+ * declarar que declarar una cifra falsa. */
+function measuredBandwidth(state) {
+  try {
+    if (!state || !state.dir) return null;
+    const dir = state.dir;
+    const seg = Number(state.segDuration || 2);
+    const files = fs.readdirSync(dir)
+      .filter(n => n.startsWith('chunk-') && n.endsWith('.m4s'))
+      .map(n => ({ n, p: path.join(dir, n), st: fs.statSync(path.join(dir, n)) }))
+      .sort((a, b) => b.st.mtimeMs - a.st.mtimeMs);
+    // el RepresentationID 0 es video; 1 es audio
+    const video = files.filter(x => /-0-\d+\.m4s$/.test(x.n));
+    const audio = files.filter(x => /-1-\d+\.m4s$/.test(x.n));
+    if (!video.length) return null;
+    const vBps = Math.round((video[0].st.size * 8) / seg);
+    const aBps = audio.length ? Math.round((audio[0].st.size * 8) / seg) : 0;
+    if (vBps <= 0) return null;
+    return { video: vBps, audio: aBps, total: vBps + aBps,
+             samples: { video: video.length, audio: audio.length }, window_s: seg };
+  } catch (e) {
+    return null;
+  }
+}
+
 function hdrMaster(text, state = current) {
   if (!state) return text;
   const mode = state.crystalMode;
@@ -873,11 +903,26 @@ function hdrMaster(text, state = current) {
   // CODECS, BANDWIDTH and RESOLUTION come from FFmpeg's actual muxed output.
   // They must not be overwritten with a scheme, profile or input estimate.
   const range = state.outputTruth && state.outputTruth.videoRange;
-  if (!range) return text;
+  const bw = measuredBandwidth(state);
   return text.split('\n').map(line => {
     if (!line.startsWith('#EXT-X-STREAM-INF:')) return line;
-    const clean = line.replace(/,?VIDEO-RANGE=[^,\r\n]*/g, '');
-    return clean.replace(/\r?$/, ',VIDEO-RANGE=' + range);
+    let out = line;
+    // VIDEO-RANGE solo si ffmpeg lo observo en el bitstream
+    if (range) {
+      out = out.replace(/,?VIDEO-RANGE=[^,\r\n]*/g, '').replace(/\r?$/, ',VIDEO-RANGE=' + range);
+    }
+    // BANDWIDTH: se sustituye por el bitrate MEDIDO de los segmentos reales.
+    // Si no hay medicion, se quita el atributo en vez de dejar el valor de ffmpeg,
+    // que con -crf es una estimacion del primer fragmento parcial (2234 bps a 1080p).
+    if (bw) {
+      out = out.replace(/BANDWIDTH=\d+/g, 'BANDWIDTH=' + bw.total);
+      if (!/AVERAGE-BANDWIDTH=/.test(out)) {
+        out = out.replace(/(BANDWIDTH=\d+)/, '$1,AVERAGE-BANDWIDTH=' + bw.total);
+      }
+    } else if (!state.outputTruth) {
+      out = out.replace(/,?BANDWIDTH=\d+/g, '');
+    }
+    return out;
   }).join('\n');
 }
 
@@ -1182,6 +1227,7 @@ const server = http.createServer((req, res) => {
         source_height: cur.sourceHeight || null
       } : null,
       output_observed: output,
+      measured_bandwidth: measuredBandwidth(cur),
       files: { segments: segs, playlists: mediaList.slice(0, 8) },
       config: {
         target: imageConfig.target, recipe: imageConfig.recipe, fps: imageConfig.fps,

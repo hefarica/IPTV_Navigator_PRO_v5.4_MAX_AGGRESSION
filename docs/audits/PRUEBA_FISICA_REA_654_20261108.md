@@ -2393,3 +2393,65 @@ Prueba de humo: **14/14 OK**, `node --check` OK.
   real de 1080p. Falta revisar como se calcula.
 - **QHD/UHD**: QHD queda al limite (1,05x-1,19x) y UHD no cabe (0,25x). No se certifican.
 - **Carga sostenida**: las 11 mediciones son de 20 s cada una, no de 30 minutos.
+
+---
+
+# 37 · BANDWIDTH corregido: del valor inventado al byte real
+
+## 37.1 · El defecto
+
+El master declaraba, para 1080p:
+
+```
+#EXT-X-STREAM-INF:BANDWIDTH=2234,RESOLUTION=1920x1080,CODECS="hvc1,mp4a.40.2"
+#EXT-X-STREAM-INF:BANDWIDTH=3481,RESOLUTION=1920x1080,...
+```
+
+**2234 bps para 1080p es fisicamente imposible.** El motor tomaba el valor de `ffmpeg_manifest`
+(`bandwidth_source: 'ffmpeg_manifest'`), y ffmpeg con `-crf` **no conoce el bitrate objetivo**: estima
+un valor del primer fragmento parcial, que en ese momento pesa casi nada.
+
+## 37.2 · El fix
+
+`measuredBandwidth(state)` calcula el bitrate **del ultimo segmento real**:
+
+```js
+video = (bytes_ultimo_chunk_video * 8) / seg_duration
+audio = (bytes_ultimo_chunk_audio * 8) / seg_duration
+total = video + audio
+```
+
+- Se sustituye `BANDWIDTH` y se anade `AVERAGE-BANDWIDTH`.
+- **Si no hay medicion, el atributo se OMITE** en vez de dejar la cifra de ffmpeg.
+- La medicion se expone en `GET /image/state` como `measured_bandwidth`.
+
+## 37.3 · Verificacion cruzada
+
+```
+medido : video=14.19 Mbps  audio=0.07 Mbps  total=14.26 Mbps  (8 muestras video, 9 audio)
+master : BANDWIDTH=14260664,AVERAGE-BANDWIDTH=14260664,RESOLUTION=1920x1080
+
+chunk real: 3.548.418 B
+3.548.418 x 8 / 2 s = 14.193.672 bps = 14.19 Mbps   <- coincide exacto
+```
+
+**El numero del manifiesto ahora se puede comprobar dividiendo el byte del segmento entre su duracion.**
+Antes no habia forma de que 2234 bps cuadrara con nada.
+
+## 37.4 · Medicion sostenida en marcha
+
+`sustained_test.sh` corre 30 minutos con muestreo cada 60 s midiendo: HTTP, modo del motor, segmentos,
+bitrate medido, CPU del host, CPU de ffmpeg, load average, memoria y pid.
+
+Prueba corta de 20 s (para validar el instrumento):
+
+```
+t=   0s  http=200  modo=FILTERED_BALANCED  segs=5    bw=0.0M  cpu= 83%  load=0.50  mem=1050M
+t=  14s  http=200  modo=FILTERED_BALANCED  segs=9    bw=26.18M cpu= 84%  load=0.96  mem=1060M
+=> CPU media 83%, MEM 1060 MB, 0 fallos HTTP
+```
+
+**CPU al 83% con FHD 1080p + balanced + 25 fps.** Eso deja margen escaso: el 1,2x medido aplica a
+tiempo real de codificacion, no a holgura de sistema. Un segundo consumidor concurrente no cabria.
+
+**El resultado de los 30 minutos queda pendiente de lectura** en `/tmp/sustained.log`.
