@@ -846,3 +846,104 @@ Ninguna de las dos baja la calidad: la variante elegida sigue siendo la mejor di
 La diferencia es que un cambio de resolucion en vuelo ya no invalida la seleccion.
 
 **Nada de esto se ha aplicado.** Requiere compilar el APK y repetir la medicion.
+
+---
+
+# 17 · CAUSA REAL: el decoder HARDWARE crashea. Con la excepcion exacta
+
+## 17.1 · La traza que cierra el caso
+
+Capturada de logcat **sin filtrar por tag** (el error no lo emite `ApePlayer`, por eso no aparecia antes):
+
+```
+E MediaCodecVideoRenderer: Video codec error
+E MediaCodecVideoRenderer:   android.media.MediaCodec$CodecException: client does not own the buffer #5
+E MediaCodecVideoRenderer:       at android.media.MediaCodec.releaseOutputBuffer(Native Method)
+E MediaCodecVideoRenderer:       at android.media.MediaCodec.releaseOutputBufferInternal(MediaCodec.java:3857)
+E MediaCodecVideoRenderer:       at androidx.media3.exoplayer.mediacodec.AsynchronousMediaCodecAdapter.releaseOutputBuffer(...)
+E MediaCodecVideoRenderer:       at androidx.media3.exoplayer.video.MediaCodecVideoRenderer.renderOutputBufferV21(...:1666)
+E MediaCodecVideoRenderer:       at androidx.media3.exoplayer.mediacodec.MediaCodecRenderer.drainOutputBuffer(...:2010)
+E MediaCodecVideoRenderer:       at androidx.media3.exoplayer.mediacodec.MediaCodecRenderer.render(...:827)
+
+E ExoPlayerImplInternal: Playback error
+E ExoPlayerImplInternal:   androidx.media3.exoplayer.ExoPlaybackException: MediaCodecVideoRenderer error, index=0
+E ExoPlayerImplInternal:   Caused by: MediaCodecVideoDecoderException: Decoder failed: c2.amlogic.avc.decoder
+```
+
+Y la confirmacion de que se usa el adaptador asincrono:
+
+```
+D DMCodecAdapterFactory: Creating an asynchronous MediaCodec adapter for track type video
+```
+
+## 17.2 · Que significa
+
+`client does not own the buffer #5` es una **race del adaptador asincrono** de `MediaCodec`: la app libera un
+buffer de salida que el codec ya no le reconoce como suyo. Es un fallo **del par (decoder del fabricante +
+adaptador async)**, no de la logica del reproductor.
+
+Consecuencia en cadena, y ahora todo encaja:
+
+```
+el decoder crashea (~6 s tras arrancar)
+  -> ExoPlaybackException: MediaCodecVideoRenderer error
+  -> el MediaSource se invalida  -> Tracks vacio  -> "tracks sin video (groups=0)"
+  -> el buffer se descarta       -> buffered == position
+  -> PlayerView muestra "Recuperacion: reintentando la fuente actual"
+  -> el fallback reintenta la MISMA URL con el MISMO decoder -> vuelve a fallar
+```
+
+## 17.3 · Por que el fallback de la app no lo salva
+
+`ApePlayer.kt:196-210` esta pensado para **codec**, no para **decoder**:
+
+```kotlin
+if (srcCodec.startsWith("avc") || srcCodec.startsWith("h264")) {
+    if (fallbackAttempt < 1) { fallbackAttempt++; openMedia(player, currentUrl, ...) }
+    else Log.w(TAG, "fallback omitido: fuente AVC real; no se declara HEVC sameUrl")
+    return
+}
+```
+
+Y `setEnableDecoderFallback(true)` **ya esta** en `ApePlayer.kt:87`, pero ese mecanismo de Media3 solo cubre
+fallos de **inicializacion** del decoder, no una `CodecException` en `releaseOutputBuffer` durante el render.
+
+## 17.4 · Es INTERMITENTE (medido)
+
+Dos sesiones identicas, 14 s cada una, mismo build y misma URL:
+
+| Sesion | `client does not own` | `Playback error` | Imagen |
+|---|---:|---:|---|
+| 1 | **1** | **1** | negro + recuperacion |
+| 2 | **0** | **0** | **negro igual** |
+
+**El crash del decoder no ocurre en todas las sesiones, pero la pantalla queda negra en las dos.** Es decir:
+hay **al menos dos causas**; el crash del decoder explica las sesiones que fallan con excepcion, y **no
+explica** las que no la tienen.
+
+## 17.5 · Intentos de arreglo: dos, compilados, medidos y REVERTIDOS
+
+| Parche | Idea | Resultado medido |
+|---|---|---|
+| **A** `lockApplied` (idempotencia del lock) | Mutar `selector.parameters` dentro de `onTracksChanged` re-dispara `onTracksChanged` -> bucle | **NO arregla** - compilado (vc652), instalado, sigue negro |
+| **B** forzar adaptador **sincrono** | `DefaultMediaCodecAdapterFactory().forceDisableAsynchronous()` | **NO COMPILA** en Media3 **1.3.1**: `setMediaCodecAdapterFactory` no existe en `DefaultRenderersFactory` de esa version (solo `forceDisableAsynchronous`/`forceEnableAsynchronous` en la factory, sin punto de inyeccion) |
+
+**Ambos parches fueron revertidos.** El fuente del repo queda **identico** al publicado: `git status` limpio y
+`compileDebugKotlin` en **exit 0**. No se deja codigo no verificado en el arbol.
+
+## 17.6 · Lo que si queda demostrado
+
+1. El **decoder hardware `c2.amlogic.avc.decoder`** crashea con `client does not own the buffer`.
+2. El adaptador en uso es el **asincrono** (`DMCodecAdapterFactory`).
+3. El fallback de la app **no cambia de decoder** para AVC: reintenta la misma URL.
+4. Media3 **1.3.1** no expone en `DefaultRenderersFactory` el punto de inyeccion del adaptador.
+5. El fallo es **intermitente** y hay **mas de una causa**.
+
+## 17.7 · Siguiente paso tecnico (necesita decision)
+
+Subir **media3 a 1.4+**, donde `DefaultRenderersFactory.setMediaCodecAdapterFactory(...)` existe, y forzar
+`forceDisableAsynchronous()`. Es un cambio de **dependencia**, no de logica, y debe ir acompanado de la
+medicion de 25 s. Alternativa sin subir version: `RenderersFactory` propio que construya
+`MediaCodecVideoRenderer` con la factory sincrona — mas codigo y mas riesgo.
+
+**Nada de esto se ha aplicado.**
