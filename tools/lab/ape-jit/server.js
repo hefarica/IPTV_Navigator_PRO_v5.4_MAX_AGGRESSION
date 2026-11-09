@@ -7783,6 +7783,192 @@ function loadFromGestorProfile(gp) {
    * GET  /jit/signal            -> todas las senales conocidas
    * GET  /jit/signal?channel=N  -> una
    * ═══════════════════════════════════════════════════════════════════════════ */
+/* ═══════════════════════════════════════════════════════════════════════════════
+ * SCORE DE CALIDAD -> AGRESIVIDAD DE BUFFER (bucle infinito, nunca se relaja)
+ *
+ * PEDIDO: "en tiempo real el nivel de calidad que se implemente o reporte por el
+ * canary, el JIT lo traduzca en un score que hara que el bucle sea mas agresivo.
+ * Si la senal es de mayor calidad no significa que con una senal de baja calidad
+ * el buffer se relaje, pero al menos no estara igual de agresivo que si va a una
+ * senal 4K maravillosa que pide unas Mbps importantes para mantenerse. En ese
+ * preciso momento <5ms al buffer se le dara la instruccion justo luego del
+ * zappeO, que tiene que ir agresivo, porque tuvo un cambio no solo de canal sino
+ * tambien de resolucion, y debera ser supremamente agresivo, con todos los campos
+ * y headers que vayan en funcion de esto, para que el bucle nunca se acabe."
+ *
+ * TRES DECISIONES QUE ESTE BLOQUE TOMA
+ *   1. SCORE 0-100 = cuanto EXIGE la senal (resolucion de entrada, fps, area de
+ *      salida, bitrate medido, peso de la receta). No es "calidad percibida":
+ *      es COSTE DE MANTENIMIENTO. Un 4K@60 a 22 Mbps puntua alto; un 480p a
+ *      800 kbps puntua bajo.
+ *   2. MODO DE BUFFER = como se responde a ese coste SEGUN EL ZAPEO:
+ *        cambio de canal Y de resolucion -> 'post-zap-resolution-burst' (el tope)
+ *        solo cambio de canal          -> 'post-zap-burst'
+ *        sostenimiento con score alto  -> 'sustain-4k'
+ *        sostenimiento normal          -> 'sustain-normal'
+ *        senal pobre                   -> 'sustain-guarded'   <- PISO, nunca 0
+ *      El piso no se baja NUNCA: una senal mala no relaja el buffer, solo deja
+ *      de subirlo. 'never_relax: true' viaja en la respuesta y en los headers.
+ *   3. HEADERS = lo que el player consume: VLC (network-caching), ExoPlayer
+ *      (min/max/playback buffer) y hls.js (maxBufferLength). Se emiten como
+ *      X-APE-* y ademas se inyectan en la playlist como EXTVLCOPT / SESSION-DATA.
+ *
+ * BUCLE INFINITO: cada zapeo y cada recarga de playlist vuelven a entrar aqui y
+ * recalculan. No hay estado que "termine": el estado es la medida.
+ * ═════════════════════════════════════════════════════════════════════════════ */
+const BUFFER_MODES = {
+  'post-zap-resolution-burst': {
+    rank: 5,
+    por_que: 'cambio de canal Y de resolucion: el decoder renegocia y el buffer ' +
+             'arranca vacio. Es el momento mas fragil de todo el ciclo.',
+    vlc_network_caching: 9000,
+    exo_min_buffer: 4000, exo_max_buffer: 20000, exo_playback: 1500, exo_rebuffer: 3000,
+    hls_max_buffer_len: 90, hls_max_max_buffer_len: 180,
+    aggression: 1.0,
+  },
+  'post-zap-burst': {
+    rank: 4,
+    por_que: 'cambio de canal sin cambio de resolucion: el decoder no renegocia, ' +
+             'pero el buffer si arranca vacio.',
+    vlc_network_caching: 7000,
+    exo_min_buffer: 3000, exo_max_buffer: 16000, exo_playback: 1200, exo_rebuffer: 2500,
+    hls_max_buffer_len: 70, hls_max_max_buffer_len: 140,
+    aggression: 0.85,
+  },
+  'sustain-4k': {
+    rank: 3,
+    por_que: 'senal de coste alto ya estabilizada: hay que sostener Mbps, no apretar mas.',
+    vlc_network_caching: 6000,
+    exo_min_buffer: 2500, exo_max_buffer: 14000, exo_playback: 1000, exo_rebuffer: 2000,
+    hls_max_buffer_len: 60, hls_max_max_buffer_len: 120,
+    aggression: 0.7,
+  },
+  'sustain-normal': {
+    rank: 2,
+    por_que: 'senal de coste medio estabilizada.',
+    vlc_network_caching: 4000,
+    exo_min_buffer: 2000, exo_max_buffer: 10000, exo_playback: 800, exo_rebuffer: 1600,
+    hls_max_buffer_len: 45, hls_max_max_buffer_len: 90,
+    aggression: 0.5,
+  },
+  'sustain-guarded': {
+    rank: 1,
+    por_que: 'senal de coste bajo: NO se relaja. Este es el PISO del sistema; ' +
+             'bajar de aqui es lo que provoca cortes en cuanto la red oscila.',
+    vlc_network_caching: 2500,
+    exo_min_buffer: 1200, exo_max_buffer: 8000, exo_playback: 600, exo_rebuffer: 1200,
+    hls_max_buffer_len: 30, hls_max_max_buffer_len: 60,
+    aggression: 0.35,
+  },
+};
+
+/* Score 0-100 = COSTE DE MANTENIMIENTO de la senal (no "calidad percibida"). */
+function qualityScore(sig, regla) {
+  const m = (sig && sig.measured) || {};
+  let s = 0;
+  // 1. resolucion de ENTRADA (0-35)
+  const ptsBanda = { '480p': 6, '720p': 14, '1080p': 24, '4K': 35 };
+  s += ptsBanda[sig && sig.band] || 0;
+  // 2. fps de ENTRADA (0-15): 60 fps pesa el maximo
+  s += Math.min(15, ((Number(m.fps) || 0) / 60) * 15);
+  // 3. AREA de SALIDA que pide la regla (0-25)
+  const areaOut = ((Number(regla && regla.outW) || 0) * (Number(regla && regla.outH) || 0)) / (3840 * 2160);
+  s += Math.min(25, areaOut * 25);
+  // 4. bitrate medido (0-15): 25 Mbps o mas = tope
+  if (m.bitrate_kbps) s += Math.min(15, (Number(m.bitrate_kbps) / 25000) * 15);
+  // 5. peso de la RECETA (0-10): mas filtros = mas CPU por frame
+  const ptsReceta = { none: 2, light: 6, balanced: 10, temporal: 8, custom: 8 };
+  s += ptsReceta[(regla && regla.recipe) || 'balanced'] || 0;
+  return Math.max(0, Math.min(100, Math.round(s)));
+}
+
+/* Modo de buffer: el zapeo MANDA sobre el score. Si acaba de haber cambio de
+ * canal y de resolucion, se va al tope aunque el score sea bajo: el coste de un
+ * arranque en frio no lo paga la senal, lo paga el decoder. */
+function bufferModeFor(score, zap) {
+  const z = zap || {};
+  const cambioCanal = z.channelChanged === true;
+  const cambioRes = z.resolutionChanged === true;
+  if (cambioCanal && cambioRes) return 'post-zap-resolution-burst';
+  if (cambioCanal || cambioRes) return 'post-zap-burst';
+  if (score >= 75) return 'sustain-4k';
+  if (score >= 45) return 'sustain-normal';
+  return 'sustain-guarded';   // piso: nunca se relaja por debajo
+}
+
+function buildBufferDirective(score, zap, sig) {
+  const modo = bufferModeFor(score, zap);
+  const b = BUFFER_MODES[modo];
+  const z = zap || {};
+  return {
+    mode: modo,
+    rank: b.rank,
+    why: b.por_que,
+    score,
+    zap: {
+      channel_changed: z.channelChanged === true,
+      resolution_changed: z.resolutionChanged === true,
+      prev: z.prev || null,
+      now: z.now || null,
+    },
+    measured: {
+      band: (sig && sig.band) || null,
+      width: (sig && sig.measured && sig.measured.width) || null,
+      height: (sig && sig.measured && sig.measured.height) || null,
+      fps: (sig && sig.measured && sig.measured.fps) || null,
+      bitrate_kbps: (sig && sig.measured && sig.measured.bitrate_kbps) || null,
+    },
+    player: {
+      vlc_network_caching: b.vlc_network_caching,
+      exo_min_buffer_ms: b.exo_min_buffer,
+      exo_max_buffer_ms: b.exo_max_buffer,
+      exo_buffer_for_playback_ms: b.exo_playback,
+      exo_buffer_for_playback_after_rebuffer_ms: b.exo_rebuffer,
+      hls_max_buffer_length: b.hls_max_buffer_len,
+      hls_max_max_buffer_length: b.hls_max_max_buffer_len,
+      aggression: b.aggression,
+    },
+    never_relax: true,
+    floor_mode: 'sustain-guarded',
+    loop: 'infinito: cada zapeo y cada recarga recalculan; el estado ES la medida',
+    headers: {
+      'X-APE-Quality-Score': String(score),
+      'X-APE-Buffer-Mode': modo,
+      'X-APE-Buffer-Rank': String(b.rank),
+      'X-APE-Buffer-Aggression': String(b.aggression),
+      'X-APE-VLC-Network-Caching': String(b.vlc_network_caching),
+      'X-APE-Exo-Min-Buffer': String(b.exo_min_buffer),
+      'X-APE-Exo-Max-Buffer': String(b.exo_max_buffer),
+      'X-APE-Exo-Playback': String(b.exo_playback),
+      'X-APE-Hls-Max-Buffer': String(b.hls_max_buffer_len),
+      'X-APE-Never-Relax': '1',
+    },
+  };
+}
+
+/* Directivas de playlist segun el modo: lo mismo, pero SIN pasar por headers,
+ * porque OTT/TiviMate/VLC leen la lista, no las cabeceras.
+ *   VLC/Kodi  -> #EXTVLCOPT:network-caching=<ms>
+ *   ExoPlayer -> #EXT-X-SESSION-DATA exoplayer.load_control
+ *   hls.js    -> #EXT-X-SESSION-DATA hlsjs.buffer */
+function playlistBufferLines(buffer) {
+  if (!buffer) return [];
+  const p = buffer.player;
+  const out = [];
+  out.push('#EXTVLCOPT:network-caching=' + p.vlc_network_caching);
+  out.push('#EXT-X-SESSION-DATA:DATA-ID="exoplayer.load_control",VALUE="' +
+    'minBufferMs=' + p.exo_min_buffer_ms +
+    ',maxBufferMs=' + p.exo_max_buffer_ms +
+    ',bufferForPlaybackMs=' + p.exo_buffer_for_playback_ms +
+    ',bufferForPlaybackAfterRebufferMs=' + p.exo_buffer_for_playback_after_rebuffer_ms + '"');
+  out.push('#EXT-X-SESSION-DATA:DATA-ID="hlsjs.buffer",VALUE="' +
+    'maxBufferLength=' + p.hls_max_buffer_length +
+    ',maxMaxBufferLength=' + p.hls_max_max_buffer_length + '"');
+  out.push('#EXT-X-APE-QUALITY-SCORE:' + buffer.score + '/' + buffer.mode +
+    ' rank=' + buffer.rank + ' aggression=' + p.aggression + ' never_relax=1');
+  return out;
+}
+
   if (u.pathname === '/jit/signal') {
     setBaseHeaders(res); setNoCacheHeaders(res);
 
@@ -7900,6 +8086,15 @@ function loadFromGestorProfile(gp) {
       }
       const outW = Number(regla.outW) || 1920;
       const outH = Number(regla.outH) || 1080;
+      /* CONTEXTO DE ZAPEO: el player/canary dice si cambio canal y/o resolucion.
+       * Sin esto el buffer no puede ir "supremamente agresivo" justo tras el
+       * zapeo, que es el momento mas fragil (decoder renegocia + buffer vacio). */
+      const zapCtx = pl.zap && typeof pl.zap === 'object' ? {
+        channelChanged: pl.zap.channelChanged === true,
+        resolutionChanged: pl.zap.resolutionChanged === true,
+        prev: pl.zap.prev || null,
+        now: pl.zap.now || null,
+      } : { channelChanged: true, resolutionChanged: true, prev: null, now: null };
       const pqOk = colorAPq(pl.color);
       const cadena = cadenaDeRegla(regla, outW, outH, pqOk);
 
@@ -7928,6 +8123,13 @@ function loadFromGestorProfile(gp) {
           extra_window_size: regla.extra_window_size, gop_seconds: regla.gop_seconds,
         },
         chain_out: cadena,
+        score: qualityScore({ band: bnd, measured: { width: w, height: h, fps: fpsIn, bitrate_kbps: pl.bitrate_kbps } }, regla),
+        buffer: buildBufferDirective(
+          qualityScore({ band: bnd, measured: { width: w, height: h, fps: fpsIn, bitrate_kbps: pl.bitrate_kbps } }, regla),
+          zapCtx,
+          { band: bnd, measured: { width: w, height: h, fps: fpsIn, bitrate_kbps: pl.bitrate_kbps } }
+        ),
+        playlist_buffer_lines: null,
         chain_4k_test: cadenaDeRegla(regla, 3840, 2160, pqOk),
         pq_applied: pqOk,
         pq_reason: pqOk
@@ -7935,10 +8137,13 @@ function loadFromGestorProfile(gp) {
           : 'sin camino a PQ (' + ((pl.color && pl.color.transfer) || 'color desconocido') +
             '): se mantiene 10-bit real y NO se finge HDR',
       };
+      registro.playlist_buffer_lines = playlistBufferLines(registro.buffer);
       const all = loadChannelSignals();
       all[ch] = registro;
       saveChannelSignals(all);
-      log('SIGNAL', ch, bnd + '@' + fpsIn, '-> regla', regla.id, exacto ? 'exacta' : 'declarada');
+      log('SIGNAL', ch, bnd + '@' + fpsIn, '-> regla', regla.id, exacto ? 'exacta' : 'declarada',
+        '| score=' + registro.score, '| buffer=' + registro.buffer.mode,
+        '| zap(ch=' + (zapCtx.channelChanged ? 1 : 0) + ',res=' + (zapCtx.resolutionChanged ? 1 : 0) + ')');
 
       res.writeHead(200, { 'Content-Type': 'application/json' });
       return res.end(JSON.stringify(Object.assign({ ok: true }, registro)));
