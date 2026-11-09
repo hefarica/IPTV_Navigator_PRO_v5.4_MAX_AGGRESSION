@@ -64,17 +64,17 @@
              OTT. NO registra el proveedor en OTT (eso es alta de UI: Ajustes ->
              Proveedor -> Anadir proveedor). Llamarlo "importar automaticamente"
              seria mentir; por eso se llama "Abrir OTT". -->
+        <!-- Pantalla DENTRO de APE Crystal Agent. SIN icono propio: un segundo
+             LAUNCHER la haria parecer otra APK y el operador pidio expresamente
+             que TODO viva dentro de com.ape.crystalagent. Se abre desde
+             MainActivity (boton) o por Intent explicito. -->
         <activity
             android:name="com.ape.crystalagent.JitLinkActivity"
             android:exported="true"
             android:label="REA · Catalogo JIT"
+            android:parentActivityName="com.ape.crystalagent.MainActivity"
             android:configChanges="keyboard|keyboardHidden|orientation|screenSize|screenLayout|smallestScreenSize|uiMode"
-            android:launchMode="singleTask">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-        </activity>
+            android:launchMode="singleTop" />
 
         <activity
             android:name="com.ape.rea.ReaExternalPlayerActivity"

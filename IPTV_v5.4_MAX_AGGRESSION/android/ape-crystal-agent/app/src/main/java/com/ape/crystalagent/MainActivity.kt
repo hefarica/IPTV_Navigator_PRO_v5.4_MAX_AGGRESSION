@@ -159,6 +159,20 @@ class MainActivity : Activity() {
             setSingleLine(true); setTextColor(ink); setHintTextColor(muted)
             setBackgroundColor(Color.WHITE); setPadding(dp(12), dp(10), dp(12), dp(10))
         }
+        // ── REA · Catalogo JIT ────────────────────────────────────────────────
+        // Pantalla interna: muestra las URLs que CONFIRMA el VPS y abre OTT.
+        // Vive aqui DENTRO (sin icono propio) porque el operador pidio que todo
+        // quede en APE Crystal Agent: un segundo LAUNCHER la haria parecer otra APK.
+        val jitLink = Button(this).apply {
+            text = "REA · Catalogo JIT"
+            textSize = 13f
+            isAllCaps = false
+            setOnClickListener {
+                runCatching { startActivity(android.content.Intent(this@MainActivity, JitLinkActivity::class.java)) }
+            }
+        }
+        content.addView(jitLink)
+
         val play = Button(this).apply {
             text = "Reproducir en ARA · Crystal UHD"
             setTextColor(Color.WHITE); background = round(accent)
