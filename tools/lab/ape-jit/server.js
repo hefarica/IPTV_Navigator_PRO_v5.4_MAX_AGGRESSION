@@ -6128,8 +6128,18 @@ const server = http.createServer((req, res) => {
     res.locals.cache = 'redirect';
     setObjectCacheHeaders(res, 'redirect');
     const qs = qp && profileMatrix[qp] ? ('?p=' + encodeURIComponent(qp)) : '';
+    /* POLIMORFISMO MEDIDO: OTT Navigator, TiviMate y ExoPlayer ABORTAN con
+     * "Loaded playlist has unexpected type." al recibir un MASTER playlist
+     * donde esperan MEDIA (MEDIDO 2026-11-05, codigo de pulse.php; Philips
+     * 65PUS9206, 4 reintentos en 15 s). Solo VLC y Kodi aceptan el master.
+     * Antes /go/ mandaba master a TODOS: OTT no podia reproducir NINGUN
+     * canal del catalogo del JIT. */
+    const uaGo = String(req.headers['user-agent'] || '');
+    const goMaster = /(^|\s|\/)(VLC|LibVLC|Kodi|LibreELEC)(\s|\/|$)/i.test(uaGo);
+    const goPlaylist = goMaster ? '/master.m3u8' : '/media_0.m3u8';
     res.writeHead(302, {
-      'Location': publicBase(req) + '/live/' + id + '/master.m3u8' + qs
+      'Location': publicBase(req) + '/live/' + id + goPlaylist + qs,
+      'X-APE-Player-Class': goMaster ? 'master-capable' : 'media-only'
     });
     return res.end();
   }

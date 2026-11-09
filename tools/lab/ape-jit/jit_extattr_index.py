@@ -62,9 +62,13 @@ def main():
         if ultimo_id:
             out.append("#EXTATTRFROMURL:" + PUBLIC + ultimo_id)
             con_directiva += 1
+            # El FALLBACK tambien va al resolver, NO a master.m3u8: master hace
+            # abortar a OTT/TiviMate/ExoPlayer (medido 2026-11-05). El resolver
+            # decide master (VLC/Kodi) o media (el resto) leyendo el UA.
+            out.append(PUBLIC + ultimo_id)
         else:
             sin_id += 1
-        out.append(line)
+            out.append(line)
         ultimo_id = None
 
     texto = "\n".join(out)
