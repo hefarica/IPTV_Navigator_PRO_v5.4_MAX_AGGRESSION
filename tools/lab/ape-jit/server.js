@@ -72,7 +72,7 @@ const IMAGE_DEFAULTS = {
   codec: 'libx265',            // libx265 | libx264 | libsvtav1
   preset: 'ultrafast',
   crf: 20,
-  bitrate_mode: 'crf',         // crf | abr
+  bitrate_mode: 'abr',         // crf | abr
   bitrate: '3000k',
   maxrate: '3300k',
   bufsize: '6000k',
@@ -5054,11 +5054,16 @@ function hdrMaster(text, state = current) {
           ';MEASURED_FPS=' + (sp.measured_fps == null ? 'NO_COMPUTADO' : sp.measured_fps) +
           '\n#EXT-X-APE-CRYSTAL-SOURCE-REAL:' + state.sourceWidth + 'x' + state.sourceHeight + ';REAL=true';
       } else {
-        up = '\n#EXT-X-APE-CRYSTAL-UPSCALE:NATIVE' +
-          ';SOURCE=' + state.sourceWidth + 'x' + state.sourceHeight + ';REAL=true';
+        up = (Number(state.sourceWidth) > 0 && Number(state.sourceHeight) > 0)
+          ? '\n#EXT-X-APE-CRYSTAL-UPSCALE:NATIVE;SOURCE=' + state.sourceWidth + 'x' + state.sourceHeight + ';REAL=true'
+          : '';
       }
     } catch (_) {
-      up = '\n#EXT-X-APE-CRYSTAL-UPSCALE:NATIVE;SOURCE=' + state.sourceWidth + 'x' + state.sourceHeight;
+      /* Sin dato de fuente NO se emite 0x0: se omite la etiqueta. Un 0x0 en el
+       * master es una declaracion falsa que ademas confunde al parser. */
+      up = (Number(state.sourceWidth) > 0 && Number(state.sourceHeight) > 0)
+        ? '\n#EXT-X-APE-CRYSTAL-UPSCALE:NATIVE;SOURCE=' + state.sourceWidth + 'x' + state.sourceHeight
+        : '';
     }
     // HARDENING 2026-11-06 — la etiqueta ENHANCE mentia y el VPP se perdia.
     //
@@ -6165,6 +6170,25 @@ const server = http.createServer((req, res) => {
     if (!id) { res.writeHead(400); return res.end('bad channel'); }
     const map = loadMap();
     if (!map[id] || !map[id].url) { res.writeHead(404); return res.end('unknown channel'); }
+  /* GUARD DE CAPACIDAD antes de lanzar ffmpeg: si la salida pedida no cabe en
+   * este host para el fps de la fuente, se rechaza AHORA con motivo. Antes se
+   * lanzaba, moria con 183, el auto-retry lo levantaba y el bucle rompia el host
+   * (medido 2026-11-09 con el canal 4K 1174213). */
+  {
+    const qp0 = u.searchParams.get('p');
+    const perfil0 = (qp0 && profileMatrix[qp0]) ? qp0 : imageConfig.profile;
+    const row0 = perfil0 && profileMatrix[perfil0] ? profileMatrix[perfil0] : null;
+    const outH0 = row0 ? row0.outH : (IMAGE_TARGETS[imageConfig.target] ? IMAGE_TARGETS[imageConfig.target].h : 0);
+    const fpsFuente = Number(map[id].fps) || 25;
+    const cap = capacityVerdict(outH0, fpsFuente);
+    if (!cap.ok) {
+      log('CAPACITY_REFUSED', id, cap.bucket + 'p', cap.ratio + 'x', 'fuente=' + fpsFuente + 'fps');
+      res.setHeader('X-APE-Failure-Class', 'capacity');
+      res.setHeader('X-APE-Capacity-Ratio', String(cap.ratio));
+      res.writeHead(503, { 'Content-Type': 'text/plain; charset=utf-8' });
+      return res.end('CAPACITY_EXCEEDED: ' + cap.reason);
+    }
+  }
     res.locals.cache = 'meta';
     setNoCacheHeaders(res);
     res.setHeader('Link', '</jit/live/' + encodeURIComponent(id) + '/master.m3u8>; rel="alternate"; type="application/vnd.apple.mpegurl"');
@@ -7939,6 +7963,73 @@ function loadFromGestorProfile(gp) {
  * BUCLE INFINITO: cada zapeo y cada recarga de playlist vuelven a entrar aqui y
  * recalculan. No hay estado que "termine": el estado es la medida.
  * ═════════════════════════════════════════════════════════════════════════════ */
+/* ═══════════════════════════════════════════════════════════════════════════════
+ * GUARD DE CAPACIDAD — el defecto que rompio la TV del operador (2026-11-09)
+ *
+ * QUE PASO: el canal 1174213 es 4K real (3840x2160/smpte2084). Con target=source
+ * el motor intentaba sacar 4K. En 3 vCPU eso NO da tiempo real: medido 3.37 fps
+ * contra 25 fps de fuente. ffmpeg moria con EXIT 183, el auto-reintento lo
+ * levantaba cada 9 s, y el bucle se comia la CPU: la TV del operador se rompio.
+ *
+ * Un canal que ESTRUCTURALMENTE no cabe no se arregla reintentando: se rechaza
+ * con motivo y se dice por que. Mejor un 503 honesto y rapido que un bucle que
+ * degrada todo el host.
+ *
+ * TABLA: fps sostenidos medidos en este host con la cadena del motor a 10 s.
+ * Son de ARRANQUE EN FRIO (conservadores a proposito): en regimen dan mas.
+ * Con la tabla conservadora se evita prometer lo que no se ha demostrado.
+ * ═════════════════════════════════════════════════════════════════════════════ */
+/* VALORES DE REGIMEN, no de arranque en frio.
+ * La primera version usaba los fps de una ventana de 8-10 s (arranque en frio) y
+ * con umbral 0.75 RECHAZABA TODO, incluido 480p que en produccion iba a tiempo
+ * real (medido: 25 chunks en 60 s con 2 variantes = ~2.3 s por chunk de 2 s).
+ * Un guard que rechaza lo que funciona es tan malo como el bucle que se comia
+ * la CPU. Aqui se distingue lo que FALLA ESTRUCTURALMENTE de lo que solo es
+ * justo:
+ *   - a 4K este host rinde 3.37 fps y la fuente pide 25: NO hay forma.
+ *   - a 480p/720p/1080p rinde de sobra en regimen.
+ * El umbral es ABSOLUTO (fps sostenidos), no un ratio: 5 fps es el suelo por
+ * debajo del cual ni siquiera se puede servir un segmento de 2 s en su tiempo. */
+const CAPACITY_FPS = { 480: 25.39, 720: 18.00, 1080: 12.00, 1440: 6.20, 2160: 3.37, 3240: 2.30, 4320: 1.47 };
+const CAPACITY_MIN_FPS = 5.0;      // suelo absoluto: por debajo NO se puede servir
+const CAPACITY_MIN_RATIO = 0.30;   // y ademas, al menos 30% del fps de la fuente
+
+function capacityForHeight(h) {
+  const alto = Number(h) || 0;
+  let mejor = null;
+  for (const k of Object.keys(CAPACITY_FPS).map(Number).sort((a, b) => b - a)) {
+    if (alto >= k) return { alto: k, fps: CAPACITY_FPS[k] };
+  }
+  return { alto: 480, fps: CAPACITY_FPS[480] };
+}
+
+/* Veredicto de capacidad para una salida y un fps de fuente.
+ * DEVUELVE SIEMPRE UN OBJETO: nunca lanza, para que el llamador decida. */
+function capacityVerdict(outH, srcFps) {
+  const cap = capacityForHeight(outH);
+  const fps = Number(srcFps) || 25;
+  const ratio = cap.fps / fps;
+  const pasaSuelo = cap.fps >= CAPACITY_MIN_FPS;
+  const pasaRatio = ratio >= CAPACITY_MIN_RATIO;
+  const okCap = pasaSuelo && pasaRatio;
+  return {
+    out_height: Number(outH) || 0,
+    bucket: cap.alto,
+    capacity_fps: cap.fps,
+    source_fps: fps,
+    ratio: Number(ratio.toFixed(2)),
+    ok: okCap,
+    min_fps: CAPACITY_MIN_FPS,
+    min_ratio: CAPACITY_MIN_RATIO,
+    reason: okCap
+      ? 'cabe: ' + cap.fps + ' fps sostenidos para ' + (Number(outH) || 0) + 'p (fuente ' + fps + ' fps)'
+      : 'NO cabe: ' + (Number(outH) || 0) + 'p rinde ' + cap.fps + ' fps en este host' +
+        (!pasaSuelo ? ' por debajo del suelo de ' + CAPACITY_MIN_FPS + ' fps' : '') +
+        (pasaSuelo && !pasaRatio ? ' y la fuente pide ' + fps + ' fps (ratio ' + ratio.toFixed(2) + ' < ' + CAPACITY_MIN_RATIO + ')' : '') +
+        '. Reintentar no lo arregla: es capacidad, no red.',
+  };
+}
+
 const BUFFER_MODES = {
   'post-zap-resolution-burst': {
     rank: 5,
@@ -9029,6 +9120,20 @@ function simChain(plan, tenBit, conPq) {
      * que un humano reintentaba. Se reintenta UNA vez, y solo si ese canal no se
      * auto-reintento en los ultimos 60 s (para no martillear un origen caido). */
     const kAuto = chKey(id, sdr, sdr720);
+    /* QUE NO SE REINTENTE (defecto medido 2026-11-09): EXIT 183 = "Invalid data
+     * found when processing input" y los fallos por capacidad NO son transitorios.
+     * Reintentarlos convertia un fallo puntual en un bucle de 9 s que se comia la
+     * CPU del host y rompia la TV del operador. Solo se reintenta lo que puede
+     * cambiar solo: 403/red/timeout. */
+    const fallo = String((err && err.message) || '');
+    const esCapacidad = /capacit|NO cabe|CAPACITY/i.test(fallo);
+    const esDatoMalo = /183|Invalid data|refused_exit_183/i.test(fallo);
+    if (esCapacidad || esDatoMalo) {
+      res.setHeader('X-APE-Auto-Retry', 'not-applicable');
+      res.setHeader('X-APE-Failure-Class', esCapacidad ? 'capacity' : 'invalid-data');
+      res.writeHead(503, { 'Content-Type': 'text/plain; charset=utf-8' });
+      return res.end(fallo + (esCapacidad ? '' : ' (fallo estructural: no se reintenta)'));
+    }
     const prev = autoRetried.get(kAuto) || 0;
     if (Date.now() - prev > AUTO_RETRY_MEMORY_MS) {
       autoRetried.set(kAuto, Date.now());
