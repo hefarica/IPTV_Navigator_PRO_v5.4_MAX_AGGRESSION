@@ -19,7 +19,7 @@
     base: (window.APE_JIT_BASE || 'https://iptv-ape.duckdns.org') + '/jit',
     config: null, effectiveFilter: '', capacity: null, live: null,
     profiles: null, matrix: null, plan: null, catalog: null,
-    declared: null, gov: null, cascade: null, fallback: null, rules: null, autoRow: null, optimized: null, llm: null, align: null, alignApplied: null, alignAll: null, alignAllApplied: null, persist: null, prisma: null, prismaEmit: null,
+    declared: null, gov: null, cascade: null, fallback: null, rules: null, autoRow: null, optimized: null, llm: null, align: null, alignApplied: null, alignAll: null, alignAllApplied: null, persist: null, prisma: null, prismaEmit: null, services: null, prismaMaster: null,
     busy: false, lastError: null, log: [],
     build: { profile: 'P4.5', w: 1280, h: 720, target: 'UHD_4K', codec: 'hvc1',
              player: 'onn-4k', recipe: 'balanced', fps: 25,
@@ -1809,6 +1809,123 @@
     });
   }
 
+  /* ── ESTADO DE SERVICIOS (vive en TELEMETRÍA) ─────────────────────────────
+   * Responde: "¿el servicio está arriba?" con TRES señales independientes por
+   * servicio (unit systemd, puerto escuchando, HTTP contestando). Un servicio
+   * solo se pinta ARRIBA si las señales coinciden; una discrepancia se declara.
+   * Si un dato no se pudo medir, se dice "no computado" — nunca se asume. */
+  function serviceSection(root) {
+    var SVC = S.services || {};
+    var lista = SVC.services || {};
+    var keys = Object.keys(lista);
+    if (!keys.length) return;   // sin datos no se inventa un panel
+
+    var allUp = SVC.all_up === true;
+    var color = allUp ? '#10b981' : '#ef4444';
+    var icono = allUp ? '🟢' : '🔴';
+
+    root.appendChild(sec(icono + ' Servicios — ' + (allUp ? 'TODO ARRIBA' : 'HAY ALGO ABAJO'), color));
+
+    function hms(seg) {
+      if (seg === null || seg === undefined) return 'no computado';
+      var d = Math.floor(seg / 86400), h = Math.floor((seg % 86400) / 3600),
+          m = Math.floor((seg % 3600) / 60);
+      if (d > 0) return d + 'd ' + h + 'h';
+      if (h > 0) return h + 'h ' + m + 'm';
+      return m + 'm';
+    }
+
+    keys.forEach(function (k) {
+      var s = lista[k] || {};
+      var up = (s.verdict === 'UP');
+      var c = up ? '#10b981' : '#ef4444';
+      var sig = (s.signals || []);
+      var sigTxt = sig.length ? sig.join(' + ') : 'sin señal';
+      root.appendChild(el('div', {
+        style: 'background:rgba(15,23,42,.6);border-left:3px solid ' + c +
+               ';border-radius:8px;padding:8px 10px;margin-bottom:6px'
+      }, [
+        el('div', { style: 'display:flex;justify-content:space-between;align-items:center' }, [
+          el('span', { style: 'font-size:.78rem;font-weight:600;color:#e2e8f0' },
+             [(s.label || k)]),
+          el('span', { style: 'font-size:.62rem;font-weight:700;color:' + c },
+             [(s.verdict || '?') + ' · ' + sigTxt])
+        ]),
+        el('div', { style: 'font-size:.62rem;color:#94a3b8;margin-top:2px' }, [
+          'systemd: ' + (s.state || '?') +
+          ' · puerto ' + (s.port || '?') + ': ' + (s.port_up === true ? 'escucha' : (s.port_up === false ? 'NO escucha' : 'no computado')) +
+          (s.http_status !== undefined && s.http_status !== null ? ' · HTTP ' + s.http_status : '') +
+          ' · uptime ' + hms(s.uptime_sec)
+        ]),
+        s.reason ? el('div', { style: 'font-size:.58rem;color:#f59e0b;margin-top:2px' }, [s.reason]) : null
+      ]));
+    });
+
+    /* motor PRISMA */
+    var pe = SVC.prisma_engine || {};
+    if (pe.lanes_http !== undefined && pe.lanes_http !== null) {
+      var pec = pe.up ? '#10b981' : '#ef4444';
+      root.appendChild(el('div', {
+        style: 'background:rgba(15,23,42,.6);border-left:3px solid ' + pec +
+               ';border-radius:8px;padding:8px 10px;margin-bottom:6px'
+      }, [
+        el('div', { style: 'display:flex;justify-content:space-between;align-items:center' }, [
+          el('span', { style: 'font-size:.78rem;font-weight:600;color:#e2e8f0' }, ['♊ Motor PRISMA del JIT']),
+          el('span', { style: 'font-size:.62rem;font-weight:700;color:' + pec },
+             [(pe.up ? 'UP' : 'DOWN') + ' · /image/prisma/lanes'])
+        ]),
+        el('div', { style: 'font-size:.62rem;color:#94a3b8;margin-top:2px' },
+           ['HTTP ' + pe.lanes_http])
+      ]));
+    }
+
+    /* agente del device */
+    var ag = SVC.agent || {};
+    var agUp = (ag.daemon_running === true);
+    var agColor = ag.daemon_running === null ? '#64748b' : (agUp ? '#10b981' : '#ef4444');
+    root.appendChild(el('div', {
+      style: 'background:rgba(15,23,42,.6);border-left:3px solid ' + agColor +
+             ';border-radius:8px;padding:8px 10px;margin-bottom:6px'
+    }, [
+      el('div', { style: 'display:flex;justify-content:space-between;align-items:center' }, [
+        el('span', { style: 'font-size:.78rem;font-weight:600;color:#e2e8f0' }, ['📱 Agente APK (device)']),
+        el('span', { style: 'font-size:.62rem;font-weight:700;color:' + agColor },
+           [ag.daemon_running === null ? 'NO COMPUTADO' : (agUp ? 'UP' : 'DOWN')])
+      ]),
+      el('div', { style: 'font-size:.62rem;color:#94a3b8;margin-top:2px' }, [
+        ag.last_seen ? ('último contacto ' + ag.last_seen + ' (hace ' + hms(ag.age_sec) + ')')
+                     : 'sin telemetría del agente'
+      ]),
+      ag.reason ? el('div', { style: 'font-size:.58rem;color:#94a3b8;margin-top:2px' }, [ag.reason]) : null
+    ]));
+
+    /* toggle real del master PRISMA (POST, como el widget) */
+    var masterOn = !!(S.prismaMaster && S.prismaMaster.master_enabled);
+    var bTog = el('button', { class: 'go', style: 'background:' + (masterOn ? '#065f46' : '#334155') },
+      ['PRISMA master: ' + (masterOn ? 'ACTIVADO' : 'APAGADO') + ' — pulsar para cambiar']);
+    bTog.addEventListener('click', function () {
+      var nuevo = masterOn ? 'off' : 'on';
+      fetch('https://iptv-ape.duckdns.org/prisma/api/prisma-control.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: 'action=master&value=' + nuevo
+      }).then(function (r) { return r.json(); })
+        .then(function (j) {
+          logLine('PRISMA master -> ' + nuevo + ' (ok=' + j.ok + ')');
+          S.prismaMaster = { master_enabled: !!j.master_enabled };
+          render(document.getElementById('ape-image-panel'));
+        })
+        .catch(function (e) { logLine('PRISMA master: ' + e.message); });
+    });
+    root.appendChild(el('div', { class: 'row', style: 'margin-top:8px' }, [bTog]));
+
+    root.appendChild(el('div', { class: 'decl', style: 'margin-top:6px' }, [
+      'Un servicio se marca ARRIBA solo si systemd Y puerto coinciden (y HTTP si aplica). ' +
+      'Si un dato no se pudo medir, dice "no computado": no se asume ni arriba ni abajo.'
+    ]));
+  }
+
+
   function render(root) {
     if (!root) return;
     /* Las secciones reciben un NODO contenedor, no un array: antes se les pasaba
@@ -1828,6 +1945,7 @@
     ]));
 
     buildSection(nodes);
+    serviceSection(nodes);
     prismaSection(nodes);
     llmSection(nodes);
     persistSection(nodes);
@@ -1872,7 +1990,12 @@
       api('/image/gestor/pending').catch(function () { return null; }),
       /* PRISMA: en el mismo Promise.all por la misma razon que la persistencia */
       api('/image/prisma/lanes').catch(function () { return null; }),
-      api('/image/prisma/all').catch(function () { return null; })
+      api('/image/prisma/all').catch(function () { return null; }),
+      /* estado de servicios: en el MISMO Promise.all por la misma razon */
+      fetch('https://iptv-ape.duckdns.org/prisma/api/prisma-service-status.php', { cache: 'no-store' })
+        .then(function (x) { return x.json(); }).catch(function () { return null; }),
+      fetch('https://iptv-ape.duckdns.org/prisma/api/prisma-control.php', { cache: 'no-store' })
+        .then(function (x) { return x.json(); }).catch(function () { return null; })
     ]).then(function (r) {
       S.config = r[0] ? r[0].config : null;
       S.effectiveFilter = (r[0] && r[0].effective_filter) || '';
@@ -1896,6 +2019,8 @@
         lanes: (r[14] && r[14].ok) ? r[14] : {},
         all: (r[15] && r[15].ok) ? (r[15].profiles || {}) : {}
       };
+      S.services = (r[16] || {});
+      S.prismaMaster = (r[17] || {});
       if (S.config && S.config.profile) S.build.profile = S.config.profile;
       render(root);
       if (S.build.profile) loadProfile(S.build.profile);
