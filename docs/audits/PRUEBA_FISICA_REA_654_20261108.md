@@ -4867,3 +4867,66 @@ perfil incluyendo una columna **MODO** (real en gris, emulado en violeta).
 - **El LLM nunca se ejecuto con key real**: falta la key del operador.
 - **Los `.5` derivados no son los del LAB**: son un clon con modo emulado. El LAB
   v24 trae valores calibrados distintos, y ese import no esta disponible aqui.
+
+---
+
+# 68 · Verificacion integral: 23/23 PASS
+
+`tools/lab/ape-jit/verify_integral.py` comprueba contra el sistema real cada
+promesa del objetivo. **23 PASS · 0 FAIL.**
+
+| Comprobacion | Medido |
+|---|---|
+| motor responde | ok=True |
+| estado de la key | configured=False, source=ninguna |
+| la key no esta puesta (honesto) | el LLM cae al determinista |
+| **12 perfiles** | **perfiles=12** |
+| **6.750 campos** | **campos=6.750** |
+| propuestas | **1.576** |
+| cascadas | **262** |
+| los 6 emulados usan modo emulado | emulados=6 |
+| cascada preserva la escalera ABR | 7680 > 3840 > 2560 > 2048 |
+| **gate 3x alcanzable en los 12** | **cumplen=12/12** |
+| apply de los 12 | perfiles=12 |
+| **apply sin fallos** | **aplicados=1.576, fallos=0** |
+| **P0 conserva su 8K** | resolution=7680x4320 |
+| ley servida | 7.203 B |
+| gate 3.00x en la ley | X = 3.00x = 200 % |
+| gate risk 10 en la ley | risk <= 10 |
+| panel servido | 75.836 B / 74.625 chars |
+| panel tiene el boton LLM | campo de key + guardar |
+| panel alinea los 12 | boton de 12 |
+| index carga la ley | linea ~4689 |
+| la ley es un `<script src>` real | ley@260668 |
+| cache-buster del panel | versionado |
+
+## 68.1 · Tres defectos del PROPIO test, no del sistema
+
+Al escribirlo aparecieron tres falsos negativos que conviene registrar para no
+repetirlos:
+
+1. **`Argument list too long` (E2BIG)** al mandar el apply de 6.750 campos como
+   `-d <json>`. El limite de un argumento ronda 128 KB. **Se manda por archivo**
+   con `--data-binary @file`.
+
+2. **Rutas inventadas.** Probe `/image/llm/status`, `/image/llm/key`,
+   `/image/profile/llm/status`, `/jit/llm/status` — **las cuatro dan 404**. Las
+   reales son **`/image/llm-key`** y **`/image/llm-status`** (33 rutas medidas de
+   `server.js`).
+
+3. **Bytes vs caracteres.** El panel mide **75.836 B** pero `len(texto)` da
+   **74.625**: los emojis de los botones (🗂, 💾) son multibyte. Medir el texto
+   hacia parecer que se habia **perdido contenido**. Se mide con
+   `urllib.read()`.
+
+4. **Un check con la asercion invertida**: `pos_law > pos_mgr_comment` daba FAIL
+   con `260668 > 260737`. Ademas **el Gestor no esta como `<script src>`** (su
+   nombre solo aparece en comentarios: se monta en runtime), asi que ese orden no
+   es exigible. El check correcto es que la ley sea un `<script src>` real.
+
+## 68.2 · Lo unico que no se puede verificar aqui
+
+**El LLM nunca ha ejecutado con una clave real.** `configured=False,
+source=ninguna` es el estado medido. Lo verificado es el **camino de fallo**: sin
+key, `/align-llm` devuelve `used:false, source:'deterministico'` y las mismas
+propuestas. **Eso es honesto, pero no es lo mismo que haberlo probado con key.**
