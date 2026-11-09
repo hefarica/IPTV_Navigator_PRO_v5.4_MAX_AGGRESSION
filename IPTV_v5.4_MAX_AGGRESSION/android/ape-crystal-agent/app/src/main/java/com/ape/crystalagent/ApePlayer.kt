@@ -57,6 +57,19 @@ class ApePlayer(private val ctx: Context) {
     // nada) ⇒ varios tickers vivos; y al soltar la instancia el latido moría (silencio de 35–45 s).
     private val mainHandler: Handler by lazy { Handler(Looper.getMainLooper()) }
 
+    /* ── HARDENING: trial del efecto de imagen ────────────────────────────────
+     * El efecto GL deja el pipeline roto en este device (documentado arriba en
+     * el companion). "Quitarlo a mitad NO recupera", asi que la unica salida
+     * segura es REPREPARAR la reproduccion sin efectos.
+     * Estados en prefs "ape":
+     *   effects_trial=1      intento en curso (se escribe antes de engancharlo)
+     *   effects_poisoned=1   un intento fallo: no se vuelve a enganchar solo
+     */
+    @Volatile private var effectTrialActive = false
+    private fun prefs() = ctx.getSharedPreferences("ape", Context.MODE_PRIVATE)
+    private fun effectsPoisoned(): Boolean =
+        runCatching { prefs().getInt("effects_poisoned", 0) == 1 }.getOrDefault(false)
+
     fun build(): ExoPlayer {
         // 4K-first: buffer/caché máximos y selección de la mejor variante real.
         val policy = PlaybackPolicy.fromSync(ctx)
@@ -96,16 +109,69 @@ class ApePlayer(private val ctx: Context) {
                 override fun onPlayerError(error: PlaybackException) {
                     mainHandler.post { attemptDecoderFallback(p, error) }
                 }
+
+                /* Sello de exito del trial: si llego un frame con efectos ON, el
+                 * pipeline GL funciona y se limpia la marca. */
+                override fun onRenderedFirstFrame() {
+                    Log.i(TAG, "primer frame renderizado (efectos " +
+                        (if (suppressVideoEffects) "OFF" else "ON") + ")")
+                    if (effectTrialActive) {
+                        effectTrialActive = false
+                        runCatching {
+                            prefs().edit().putInt("effects_trial", 0).putInt("effects_poisoned", 0).apply()
+                        }
+                        Log.i(TAG, "EFFECT_TRIAL OK: el efecto GL entrega frames")
+                    }
+                }
             })
+            /* HARDENING: si un intento previo rompio el render, no se reintenta solo. */
+            if (!suppressVideoEffects && effectsPoisoned()) {
+                suppressVideoEffects = true
+                runCatching { prefs().edit().putInt("effects_trial", 0).apply() }
+                Log.w(TAG, "EFFECT_POISONED: efecto GL saltado (un intento previo dejo negro el render)")
+            }
             if (!suppressVideoEffects) {
                 runCatching {
                     @Suppress("UNCHECKED_CAST")
                     p.setVideoEffects(FluidBridge.effects(ctx) as List<Effect>)
                 }.onFailure { Log.w(TAG, "Fluid effects: ${it.message}") }
+                armEffectTrial(p)
             } else {
                 Log.w(TAG, "efectos GL desactivados por diagnóstico")
             }
         }
+    }
+
+    /**
+     * HARDENING — vigila el enganche del efecto. Si en EFFECT_TRIAL_MS no llego
+     * ningun frame, marca el efecto como envenenado y REPREPARA la reproduccion
+     * sin el: quitar solo el efecto no recupera (pipeline roto).
+     */
+    private fun armEffectTrial(p: ExoPlayer) {
+        effectTrialActive = true
+        runCatching { prefs().edit().putInt("effects_trial", 1).apply() }
+        val task = object : Runnable {
+            override fun run() {
+                if (!effectTrialActive) return
+                effectTrialActive = false
+                suppressVideoEffects = true
+                runCatching {
+                    prefs().edit().putInt("effects_trial", 0).putInt("effects_poisoned", 1).apply()
+                }
+                Log.w(TAG, "EFFECT_TRIAL FALLO: sin primer frame en ${EFFECT_TRIAL_MS}ms con " +
+                    "efectos ON -> se desactivan y se REPREPARA (no basta con quitarlos)")
+                mainHandler.post {
+                    runCatching { p.setVideoEffects(emptyList()) }
+                        .onFailure { Log.w(TAG, "quitar efectos: ${it.message}") }
+                    val u = currentUrl
+                    if (!u.isNullOrEmpty()) {
+                        runCatching { openMedia(p, u, currentUa, currentHeaders) }
+                            .onFailure { Log.w(TAG, "repreparar sin efectos: ${it.message}") }
+                    }
+                }
+            }
+        }
+        mainHandler.postDelayed(task, EFFECT_TRIAL_MS)
     }
 
     fun playChannel(player: ExoPlayer, url: String, ua: String = DEFAULT_UA,
@@ -466,6 +532,8 @@ class ApePlayer(private val ctx: Context) {
         const val TAG = "ApePlayer"
         /** Periodo del ÚNICO latido global (buffer + guard). */
         const val TICK_MS = 2_000L
+        /** Ventana del trial del efecto GL antes de declararlo fallido. */
+        const val EFFECT_TRIAL_MS = 8_000L
         const val DEFAULT_UA = "Mozilla/5.0 (Web0S; Linux/SmartTV) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.6045.213 Safari/537.36 WebAppManager"
 
         // ── NF-01/NF-02 (BG9): latido GLOBAL único ──────────────────────────────────────
