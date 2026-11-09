@@ -5915,6 +5915,24 @@ const server = http.createServer((req, res) => {
     /* Catalogo IDEMPOTENTE + POLIMORFICO + ISOMORFICO (jit_catalog_build.js).
      * Cada entrada apunta al resolver con el perfil derivado de la fuente y un
      * sello de contrato; el resolver decide master vs media por UA en el zap. */
+  /* Catalogo CORTO "TV calidad" (JIT bajo demanda). Solo los canales que el
+   * operador quiere ver bien; el resto sigue en el catalogo rapido. El JIT
+   * arranca al abrir uno de estos y solo uno a la vez (single-slot medido). */
+  const qm = u.pathname.match(/^\/playlist-calidad(?:-([A-Za-z0-9_-]+))?\.m3u8$/);
+  if (qm) {
+    const sufijo = qm[1] || 'max';
+    const f = path.join(path.dirname(MAP_FILE), 'APE_JIT_LIST_CALIDAD_' + sufijo + '.m3u8');
+    if (!fs.existsSync(f)) {
+      res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
+      return res.end('catalogo de calidad no generado: node jit_quality_catalog.js --version ' + sufijo);
+    }
+    setNoCacheHeaders(res);
+    res.setHeader('X-APE-Catalog', 'jit-on-demand');
+    res.setHeader('X-APE-Quality-Set', sufijo);
+    res.writeHead(200, { 'Content-Type': MIME['.m3u8'] });
+    return fs.createReadStream(f).pipe(res);
+  }
+
     if (u.pathname === '/playlist-idempotente.m3u8' || u.pathname === '/APE_JIT_LIST_IDEMPOTENTE.m3u8') {
       const f = path.join(path.dirname(MAP_FILE), 'APE_JIT_LIST_IDEMPOTENTE.m3u8');
       if (!fs.existsSync(f)) {

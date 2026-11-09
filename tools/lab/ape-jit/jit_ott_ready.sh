@@ -71,6 +71,16 @@ for ua in "OTT Navigator/1.7.0.0 ExoPlayer" "VLC/3.0.19 LibVLC/3.0.19"; do
 done
 echo
 
+echo "── CATALOGO DE CALIDAD (JIT bajo demanda) ──"
+qcode=$(curl -s -o /tmp/rd_q.m3u8 -w '%{http_code}' --max-time 120 "$PUB/jit/playlist-calidad.m3u8")
+qn=$(grep -c '^#EXTINF' /tmp/rd_q.m3u8 2>/dev/null || echo 0)
+if [ "$qcode" = "200" ] && [ "$qn" -gt 0 ]; then
+  ok "calidad: HTTP 200  $qn canales  $PUB/jit/playlist-calidad.m3u8"
+else
+  avi "catalogo de calidad HTTP $qcode ($qn canales) — generar con jit_quality_catalog.js"
+fi
+echo
+
 echo "── JIT: puede producir? ──"
 segs=$(curl -sL --max-time 60 "$JIT/live/1/media_0.m3u8" 2>/dev/null | grep -vc '^#')
 if [ "$segs" -gt 0 ]; then ok "canal 1 produce ($segs segmentos)"; else avi "canal 1 sin segmentos ahora (arranque en frio o fuente caida)"; fi
@@ -104,6 +114,9 @@ if [ "$fallos" -eq 0 ]; then
   echo " PEGUE ESTA URL EN OTT NAVIGATOR:"
   echo "   Ajustes -> Proveedor -> Anadir proveedor -> Lista de reproduccion"
   echo "   $CATALOGO"
+  echo
+  echo " O PARA CALIDAD BAJO DEMANDA (JIT, 932 canales 4K):"
+  echo "   $PUB/jit/playlist-calidad.m3u8"
 else
   printf ' VEREDICTO: %d FALLO(S), %d aviso(s) — NO dar de alta aun\n' "$fallos" "$avisos"
 fi
