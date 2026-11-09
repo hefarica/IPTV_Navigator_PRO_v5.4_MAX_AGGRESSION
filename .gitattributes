@@ -18,3 +18,23 @@
 # bloque [t114] de arriba; simplemente no cubria .json.
 *.json    text eol=lf
 *.yaml    text eol=lf
+
+# [2026-11-09] Faltaban las extensiones que EL MANIFIESTO DE DESPLIEGUE usa y los
+# ficheros SIN extension. Sintoma medido en el gate de paridad del pipeline:
+#   PARIDAD-ROTA /usr/local/bin/ara-skill            (repo=059d4fb62c48 remoto=758d7ef05bb6)
+#   PARIDAD-ROTA /etc/systemd/system/ape-canary@.service (repo=e07048e3c6d2 remoto=d1dc2a135be8)
+# Mismo tamano (4978 B / 783 B), MISMAS lineas, contenido identico: la unica
+# diferencia era el fin de linea. `git check-attr` lo confirmo:
+#   _vps_stage/canary/ara-skill           : text: unspecified · eol: unspecified
+#   _vps_stage/canary/ape-canary@.service : text: unspecified · eol: unspecified
+# Sin regla, core.autocrlf=true en Windows deja CRLF en el arbol de trabajo y el
+# sha256 crudo no es el del blob. Es el MISMO patron que [t114] y [2026-11-08],
+# solo que esas reglas no cubrian .conf/.sql/.txt/.service ni los sin extension.
+*.conf     text eol=lf
+*.sql      text eol=lf
+*.txt      text eol=lf
+*.service  text eol=lf
+# Los ficheros sin extension del stage canario: la regla por ruta, no por glob de
+# extension, porque no tienen.
+_vps_stage/canary/*    text eol=lf
+_vps_stage/deploy/*    text eol=lf
