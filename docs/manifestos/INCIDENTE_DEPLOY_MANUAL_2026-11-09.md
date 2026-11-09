@@ -155,6 +155,48 @@ funciona es tan malo como el bucle.
 
 ---
 
+## 6-bis. Por qué `dry-run` NUNCA va a estar verde (y no es un bug)
+
+Medido en `_vps_stage/deploy/verify.sh:97-115`:
+
+```bash
+if [ "$want" = "$got" ]; then
+    PARIDAD-OK
+elif [ "$DRY" = "1" ] && [ "$got" = "AUSENTE" ]; then
+    PARIDAD-PENDIENTE (dry-run)   # SOLO si el fichero NO existe en el VPS
+else
+    PARIDAD-ROTA ; parity_bad=$((parity_bad+1))
+fi
+if [ "$parity_bad" -ne 0 ]; then exit 2 ; fi
+```
+
+El gate tolera divergencia **solo cuando el fichero no existe**. Si existe y
+difiere, `dry-run` falla — y `dry-run` no puede arreglarlo porque no escribe.
+
+**Es deliberado**, y su comentario lo explica: *"Regla dura: NO se declara success
+si el sha256 del fichero instalado no es EXACTAMENTE el del repo. Esto es lo que
+faltaba: el deploy decía success con `ape_gateway.lua` en 11.748 B mientras el
+repo tenía 21.327 B."*
+
+**Consecuencia práctica:** con divergencia preexistente, perseguir un `dry-run`
+verde es imposible. Lo que hay que leer es el **grafo de jobs**:
+
+```
+1 · inventory        success
+2 · preflight+dry-run success
+3 · validate         success   <- de aquí depende el deploy
+5 · verify           failure   (compara contra el VPS vivo)
+4 · deploy           skipped   (solo porque mode era dry-run)
+```
+
+`deploy` tiene `needs: validate`, **no** `needs: verify`. En `mode=deploy` el
+job 4 corre y **después** el job 5 valida el resultado contra el VPS ya
+actualizado. `verify` corre también en dry-run como línea base (t91), y ahí es
+donde falla — pero eso no bloquea el deploy.
+
+**No se toca el gate.** Debilitarlo en dry-run reintroduciría justo la mentira que
+existe para impedir.
+
 ## 7. El límite honesto de este documento
 
 - **No puedo demostrar qué síntoma causó exactamente qué cambio** de los ~26
