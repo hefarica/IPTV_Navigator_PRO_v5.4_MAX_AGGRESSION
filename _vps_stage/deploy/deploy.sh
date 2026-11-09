@@ -130,6 +130,58 @@ fi
 rsh "nginx -s reload" || { c_bad "   reload falló → ROLLBACK"; "$DEPLOY_DIR/rollback.sh" "$STAMP" --yes; exit 8; }
 c_ok "   desplegado y recargado"
 
+# ── [2026-11-09] REINICIO DE SERVICIOS QUE NO SON NGINX ──────────────────────
+# HUECO QUE ESTO CIERRA, medido: el manifiesto instala /opt/ape-jit/server.js,
+# pero deploy.sh solo recargaba nginx. El proceso vivo seguia ejecutando el
+# codigo ANTERIOR en memoria: el sha256 del fichero coincidia con el repo y el
+# motor corria lo viejo. Es el mismo patron de mentira que el gate de paridad
+# existe para impedir, solo que en la capa del proceso.
+#
+# REGLA DE ESTADO (no negociable): solo se reinicia lo que YA estaba activo.
+# Si estaba parado se deja parado. Arrancar un servicio que el operador detuvo a
+# proposito seria cambiar produccion sin que lo pidiera — justo lo que este
+# pipeline existe para impedir.
+restart_if_was_active() {
+  _svc="$1"; _why="$2"
+  [ -n "$_svc" ] || return 0
+  _was="$(rsh "systemctl is-active '$_svc' 2>/dev/null || true" | tr -d '[:space:]')"
+  if [ "$_was" != "active" ]; then
+    c_warn "   $_svc NO estaba activo ('${_was:-desconocido}'): se deja como estaba, NO se arranca"
+    return 0
+  fi
+  c_hdr "3b · reinicio $_svc ($_why)"
+  if ! rsh "systemctl restart '$_svc'"; then
+    c_bad "   restart de $_svc fallo → ROLLBACK"
+    "$DEPLOY_DIR/rollback.sh" "$STAMP" --yes || true
+    exit 16
+  fi
+  _now="$(rsh "systemctl is-active '$_svc' 2>/dev/null || true" | tr -d '[:space:]')"
+  if [ "$_now" != "active" ]; then
+    c_bad "   $_svc no quedo activo tras el restart ('$_now') → ROLLBACK"
+    "$DEPLOY_DIR/rollback.sh" "$STAMP" --yes || true
+    exit 17
+  fi
+  c_ok "   $_svc reiniciado y activo"
+}
+
+# unit de systemd nueva o cambiada -> daemon-reload antes de cualquier restart
+case "$STAGED_LIST" in
+  *ape-canary@.service*)
+    rsh "systemctl daemon-reload" && c_ok "   daemon-reload (unit ape-canary@.service instalada)" ;;
+esac
+# el motor JIT solo si se instalo SU fichero
+case "$STAGED_LIST" in
+  *ape-jit/server.js*) restart_if_was_active ape-jit "server.js instalado" ;;
+  *ape-jit/jit_*|*ape-jit/*.py|*ape-jit/*.sh)
+    restart_if_was_active ape-jit "herramienta del JIT instalada" ;;
+esac
+# el worker del canary lo invoca el timer: toma el fichero nuevo sin reinicio
+case "$STAGED_LIST" in
+  *ape-pulse-canary-worker.sh*)
+    c_ok "   worker del canary instalado: el timer lo relanza, sin reinicio" ;;
+esac
+
+
 c_hdr "4 · verificación (smoke)"
 if ! "$DEPLOY_DIR/verify.sh"; then
   c_bad "   verify.sh falló → ROLLBACK automático"
