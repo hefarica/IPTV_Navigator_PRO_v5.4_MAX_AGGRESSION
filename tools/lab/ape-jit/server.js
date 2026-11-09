@@ -7662,6 +7662,122 @@ function loadFromGestorProfile(gp) {
     }));
   }
 
+  /* ═══════════════════════════════════════════════════════════════════════════
+   * API DE CONFIGURACION PARA LA APK — la flecha REA -> VPS del contrato
+   *
+   * "La primera comunicacion del diagrama —REA configurando el VPS— es una
+   *  integracion que debe implementarse y verificarse."
+   *
+   * GET  /jit/api/config  -> config vigente + URL ESTABLE del catalogo + contrato
+   * POST /jit/api/config  -> aplica configuracion y CONFIRMA
+   *
+   * Garantias:
+   *   IDEMPOTENTE  si el resultado normalizado es igual al vigente, responde
+   *                changed:false y NO escribe en disco. Reenviar la misma config
+   *                N veces deja el mismo estado y no toca nada.
+   *   ATOMICO      escribe .tmp y hace rename(): o entra entera o no entra.
+   *   FAIL-CLOSED  sin /opt/ape-jit/api-key.txt las ESCRITURAS se rechazan (401).
+   *                La LECTURA queda abierta: el estado no es secreto.
+   *   HONESTO      responde con lo que quedo aplicado, no con lo que se pidio.
+   * ═══════════════════════════════════════════════════════════════════════════ */
+  if (u.pathname === '/jit/api/config' || u.pathname === '/api/config') {
+    setBaseHeaders(res);
+    setNoCacheHeaders(res);
+    const base = publicBase(req);
+    const catalogo = base + '/playlist-resolver.m3u8';
+    const contrato = {
+      version: 'ape-jit-catalog/1.0.0',
+      mode: 'idempotente+polimorfico+isomorfico',
+      catalog_url: catalogo,
+      catalog_alt: base + '/playlist-idempotente.m3u8',
+      note: 'El alta del proveedor en OTT la hace el operador; no hay Intent publico.',
+    };
+
+    if (req.method === 'GET') {
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      return res.end(JSON.stringify({
+        ok: true,
+        config: imageConfig,
+        source: imageConfigSource,
+        contract: contrato,
+      }));
+    }
+
+    if (req.method === 'POST') {
+      /* FAIL-CLOSED: sin key no se escribe. Leer si se puede. */
+      let keyEsperada = '';
+      try { keyEsperada = String(fs.readFileSync('/opt/ape-jit/api-key.txt', 'utf8')).trim(); } catch (_) { }
+      if (!keyEsperada) {
+        res.writeHead(503, { 'Content-Type': 'application/json' });
+        return res.end(JSON.stringify({
+          ok: false,
+          error: 'escritura deshabilitada: falta /opt/ape-jit/api-key.txt',
+          hint: 'crear el fichero con la clave compartida para habilitar POST',
+          contract: contrato,
+        }));
+      }
+      const recibida = String(req.headers['x-ape-key'] || '');
+      if (recibida !== keyEsperada) {
+        res.writeHead(401, { 'Content-Type': 'application/json' });
+        return res.end(JSON.stringify({ ok: false, error: 'X-APE-Key invalida' }));
+      }
+
+      let body = '';
+      let tooBig = false;
+      req.on('data', (chunk) => {
+        body += chunk;
+        if (body.length > 16384) { tooBig = true; req.destroy(); }
+      });
+      req.on('end', () => {
+        if (tooBig) {
+          res.writeHead(413, { 'Content-Type': 'application/json' });
+          return res.end(JSON.stringify({ ok: false, error: 'body demasiado grande' }));
+        }
+        let patch;
+        try { patch = JSON.parse(body || '{}'); }
+        catch (e) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          return res.end(JSON.stringify({ ok: false, error: 'JSON invalido' }));
+        }
+        const norm = normalizeImageConfig(patch);
+        if (!norm.ok) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          return res.end(JSON.stringify({ ok: false, errors: norm.errors, config: imageConfig }));
+        }
+        /* IDEMPOTENCIA: comparar el normalizado con el vigente. */
+        const a = JSON.stringify(norm.config);
+        const b = JSON.stringify(imageConfig);
+        if (a === b) {
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          return res.end(JSON.stringify({
+            ok: true, changed: false,
+            applied: imageConfig, source: imageConfigSource, contract: contrato,
+            note: 'configuracion identica a la vigente: no se escribio nada',
+          }));
+        }
+        try {
+          fs.writeFileSync(IMAGE_CONFIG_FILE + '.tmp', JSON.stringify(norm.config, null, 2));
+          fs.renameSync(IMAGE_CONFIG_FILE + '.tmp', IMAGE_CONFIG_FILE);
+        } catch (e) {
+          log('API_CONFIG_WRITE_FAILED', e.message);
+          res.writeHead(500, { 'Content-Type': 'application/json' });
+          return res.end(JSON.stringify({ ok: false, error: 'no se pudo persistir: ' + e.message }));
+        }
+        imageConfig = norm.config;
+        imageConfigSource = 'api:' + new Date().toISOString();
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        return res.end(JSON.stringify({
+          ok: true, changed: true,
+          applied: imageConfig, source: imageConfigSource, contract: contrato,
+        }));
+      });
+      return;
+    }
+
+    res.writeHead(405, { 'Content-Type': 'application/json' });
+    return res.end(JSON.stringify({ ok: false, error: 'metodo no permitido' }));
+  }
+
   if (u.pathname === '/image/config' || u.pathname === '/image/capacity') {
     setBaseHeaders(res);
     setNoCacheHeaders(res);
