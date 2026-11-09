@@ -56,10 +56,15 @@
       });
   }
 
-  function post(path, body) {
-    return api(path, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
-    }).catch(function (e) { return { ok: false, error: String((e && e.message) || e) }; });
+  function post(path, body, timeoutMs) {
+    var opts = { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) };
+    // el LLM puede tardar: se permite un timeout mayor solo en esa ruta
+    if (timeoutMs && typeof AbortController !== 'undefined') {
+      var ctl = new AbortController();
+      opts.signal = ctl.signal;
+      setTimeout(function () { try { ctl.abort(); } catch (e) {} }, timeoutMs);
+    }
+    return api(path, opts).catch(function (e) { return { ok: false, error: String((e && e.message) || e) }; });
   }
 
   function logLine(t) {
@@ -676,6 +681,11 @@
     var bAlign = el('button', { class: 'go', id: 'aip-align' }, ['🔗 Proponer alineación']);
     bAlign.addEventListener('click', doAlign);
     // solo se puede aplicar si hay una propuesta pendiente
+    var bAlignLLM = el('button', { class: 'go', id: 'aip-align-llm',
+      style: 'background:#8b5cf622;border-color:#8b5cf655;color:#c4b5fd' },
+      ['🤖 Proponer con LLM']);
+    bAlignLLM.title = 'La determinista se calcula primero; el LLM puede anadir campos y la validacion por reglas decide.';
+    bAlignLLM.addEventListener('click', doAlignLLM);
     var bApplyAlign = el('button', { class: 'pri', id: 'aip-align-apply',
       style: (S.align && S.align.ok && S.align.proposed > 0) ? '' : 'opacity:.4;cursor:not-allowed' },
       ['💾 Guardar en el Gestor (' + ((S.align && S.align.proposed) || 0) + ' cambios)']);
@@ -683,7 +693,7 @@
       if (!S.align || !S.align.ok || !S.align.proposed) { logLine('no hay propuesta pendiente'); return; }
       doApplyAlign();
     });
-    root.appendChild(el('div', { class: 'row', style: 'margin-top:10px' }, [bAlign, bApplyAlign]));
+    root.appendChild(el('div', { class: 'row', style: 'margin-top:10px' }, [bAlign, bAlignLLM, bApplyAlign]));
 
     if (S.align && S.align.ok) renderAlign(root);
     else if (S.align) root.appendChild(warn('alinear: ' + (S.align.error || 'error')));
@@ -709,6 +719,29 @@
   /* GUARDA la alineacion: pide al motor el perfil ya modificado y lo escribe en
    * el SSOT del Gestor (APE_PROFILES_CONFIG en localStorage). Es el unico punto
    * donde el cambio SALE de la propuesta y se vuelve real. */
+  /* PROPUESTA CON LLM: determinista + lo que el LLM anada, validado. */
+  function doAlignLLM() {
+    var b = readBuild();
+    var pe = document.getElementById('aip-al-profile');
+    var pid = pe ? pe.value : 'P0';
+    S.busy = true;
+    post('/image/profile/align-llm', {
+      profile: pid,
+      inW: b.w, inH: b.h, inFps: b.inFps,
+      outW: b.outW, outH: b.outH,
+      player: b.player, mode: b.mode
+    }, 90000).then(function (r) {
+      S.busy = false;
+      S.align = r;
+      if (!r || !r.ok) { logLine('align-llm fallo: ' + ((r && r.error) || '?')); render(document.getElementById('ape-image-panel')); return; }
+      var src = (r.llm && r.llm.used) ? 'LLM' : 'deterministico';
+      logLine('ALINEACION [' + src + '] ' + r.profile + ': ' + r.proposed + ' cambios' +
+              (r.llm && r.llm.extra_over_deterministic ? ' (' + r.llm.extra_over_deterministic + ' extra del LLM)' : '') +
+              (r.llm && r.llm.rejected && r.llm.rejected.length ? ' · ' + r.llm.rejected.length + ' rechazados' : ''));
+      render(document.getElementById('ape-image-panel'));
+    });
+  }
+
   function doApplyAlign() {
     var a = S.align;
     if (!a || !a.gestorProfile) { logLine('falta el perfil del gestor en la propuesta'); return; }
@@ -788,6 +821,22 @@
         (a.objective.cost.viable ? '' : ' (NO VIABLE en este host)')
       ]));
       (a.objective.impossible || []).forEach(function (i) { box.appendChild(warn('IMPOSIBLE: ' + i)); });
+    }
+    // detalle del LLM
+    if (a.llm) {
+      var L = a.llm;
+      var lb = el('div', { style: 'margin-top:8px;padding:7px 10px;border-radius:8px;font-size:.73rem;' +
+        'background:rgba(139,92,246,.1);border:1px solid rgba(139,92,246,.35);color:#c4b5fd' }, [
+        'LLM: ' + (L.used ? ('usado (' + L.ms + ' ms) · ' + (L.extra_over_deterministic || 0) + ' campos extra · ' +
+          (L.applied || 0) + ' aplicados, ' + ((L.rejected || []).length) + ' rechazados')
+          : ('no usado: ' + L.error))
+      ]);
+      if (L.razon) lb.appendChild(el('div', { style: 'margin-top:3px' }, ['razón: ' + L.razon]));
+      if (L.riesgo) lb.appendChild(el('div', { style: 'margin-top:3px;color:#fbbf24' }, ['riesgo: ' + L.riesgo]));
+      (L.rejected || []).slice(0, 4).forEach(function (rj) {
+        lb.appendChild(el('div', { style: 'margin-top:2px;color:#f87171;font-size:.7rem' }, ['descartado: ' + rj]));
+      });
+      box.appendChild(lb);
     }
     // resultado del guardado
     if (S.alignApplied) {

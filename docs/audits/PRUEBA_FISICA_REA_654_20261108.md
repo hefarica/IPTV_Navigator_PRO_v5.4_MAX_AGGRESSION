@@ -4451,3 +4451,96 @@ pueda aplicarle las diferencias.
 - **`enabledCategories`** (32): no se toca.
 - **El modo cascada para `prefetch_segments`/`parallel_downloads`**: se pone el
   mismo valor en todos los niveles.
+
+---
+
+# 63 · Niveles L1-L7 alineados + LLM sobre los 577 campos
+
+## 63.1 · La escalera de calidad, alineada
+
+`quality_levels` tiene L1-L7 con `{label, condition, resolution, bitrate_mbps, hdr,
+video_filter}`. Antes solo se alineaba `primary`. Ahora **los siete niveles**:
+
+**Medido, P0 con 720p@30 -> 4K REAL:**
+
+| Nivel | Resolucion | Bitrate | HDR |
+|---|---|---|---|
+| **L1** | **3840x2160** | **28 Mbps** | hdr10 |
+| L2 | 2560x1440 | 18 Mbps | hdr10 |
+| L3 | 2048x1080 | 12 Mbps | hdr10 |
+| L4 | 1920x1080 | 8 Mbps | hdr10 |
+| L5 | 1280x720 | 5 Mbps | sdr |
+| L6 | 854x480 | 3 Mbps | sdr |
+| L7 | 854x480 | 2 Mbps | sdr |
+
+**Escalera desciende: SI** (3840 > 2560 > 2048 > 1920 > 1280 > 854 > 854). Una
+escalera plana mata el ABR: el player no tiene a donde bajar.
+
+**HDR coherente con el codec**: sin Main10 (p. ej. AVC) el `hdr` baja a `sdr` en
+todos los niveles. **No se declara HDR que el codec no puede sostener.**
+
+**Filtros por nivel**: L1 lleva la cadena completa del objetivo; L2-L3 llevan la
+cadena sin `nlmeans` (no tiene sentido a 1080p); L4-L7 van sin filtros.
+
+## 63.2 · 134 cambios de 577
+
+| Seccion | Campos | Cambian |
+|---|---|---|
+| settings | 18 | 12 |
+| vlcopt | 27 | 13 |
+| kodiprop | 6 | 5 |
+| enabledCategories | 32 | **0** |
+| headerOverrides | 230 | 44 |
+| prefetch_config | 8 | 8 |
+| **quality_levels** | **8** | **8** |
+| headers | 242 | 44 |
+
+**APPLY medido: 134 aplicados, 0 fallidos.**
+
+## 63.3 · El LLM sobre los 577 campos
+
+`POST /jit/image/profile/align-llm` — **tres capas**, igual que en la cadena:
+
+1. **La determinista calcula primero** (los 134 cambios). Es la red.
+2. **El LLM recibe el perfil completo** (secciones truncadas a 40 claves para no
+   reventar el contexto) **+ la propuesta determinista**, y puede **anadir campos
+   que la base no toco**.
+3. **Validacion campo a campo** con reglas duras:
+   - `msize` impar en [3,23] — **0 rompe la cadena**
+   - `gradfun.strength` [0,51,64], `radius` [4,32]
+   - `bitrate` >= 1 Mbps, `bufferSeconds` [2,600]
+   - **no degradar audio** (rechaza `mono`/`stereo_only`)
+   - **no aplanar la escalera** de `quality_levels`
+
+**La determinista manda**: el LLM solo **anade** campos que la base no toco. Si el
+LLM propone algo que la base ya decidio, gana la base.
+
+**Sin key, medido:**
+```json
+"llm": { "used": false, "error": "sin key del LLM", "ms": 0, "source": "deterministico" }
+```
+Propone los mismos 134 cambios. El panel funciona.
+
+## 63.4 · El prompt del LLM lleva la doctrina
+
+No se le pide "optimiza": se le dan **8 reglas duras** y el significado de cada
+seccion. Sin eso el modelo inventa `-ac 2` (degrada 5.1), aplana la escalera o pone
+`msize=0`. Las reglas van en el system prompt y **ademas** se revalidan en el codigo:
+un prompt no es un gate.
+
+## 63.5 · Desplegado
+
+`vps-image-panel.js` **67.289 -> 70.023 B** con el boton **«🤖 Proponer con LLM»** y
+el detalle de la propuesta (usado/no usado, ms, extras, rechazados, razon, riesgo).
+Cache-buster `?v=20261108-align3`. Test 27/27.
+
+## 63.6 · Lo que sigue faltando
+
+- **`enabledCategories`** (32): no se toca. Activar/desactivar familias de headers
+  por modo no esta implementado.
+- **Cascada de `prefetch_segments`/`parallel_downloads`**: se pone el mismo valor en
+  los cuatro niveles.
+- **Los 3.366 campos de los 6 perfiles**: se alinea un perfil por llamada; no hay
+  alineacion de los seis de golpe.
+- **El LLM nunca se ha ejecutado con una key real** en esta sesion: solo se ha
+  verificado el camino de fallo.
