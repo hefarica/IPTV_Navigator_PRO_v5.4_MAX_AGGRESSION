@@ -45,6 +45,17 @@ _vps_stage/canary/ape-canary@.service	/etc/systemd/system/ape-canary@.service	64
 # CI/CD: la unica forma de aplicarlos era a mano, que es lo que NO se debe hacer.
 # Se declaran aqui para que deploy-vps.yml los gestione (backup, install, verify
 # y rollback incluidos).
-tools/lab/ape-jit/server.js	/opt/ape-jit/server.js	644	root:root	motor JIT: resolver, playlist, guard de capacidad
-IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/pulse.php	/var/www/html/prisma/api/pulse.php	644	www-data:www-data	pulse polimorfico
-vps/bin/ape-pulse-canary-worker.sh	/opt/ape-pulse/ape-pulse-canary-worker.sh	755	root:root	worker del canary con guarda jit_busy
+#
+# HUECO CONOCIDO Y DECLARADO (no resuelto a proposito): deploy.sh instala el
+# fichero y hace `nginx -t` + `nginx -s reload`, pero NO reinicia ape-jit ni
+# ape-pulse. Verificado: deploy.sh, verify.sh y deploy-vps.yml dan 0 referencias
+# a `systemctl restart ape-jit`. Consecuencia: instalar server.js deja el proceso
+# vivo con el codigo ANTERIOR en memoria — el sha256 coincidiria y el motor
+# seguiria ejecutando lo viejo. Es el mismo patron de mentira que el gate de
+# paridad existe para impedir, en otra capa. Arreglo pendiente: un paso post-install
+# que reinicie el servicio SOLO si se instalo su fichero, y que valide /health.
+# No se anade aqui porque un `systemctl restart` mal colocado en el pipeline puede
+# tumbar produccion, y esa decision es del operador.
+tools/lab/ape-jit/server.js	/opt/ape-jit/server.js	644	root:root	motor JIT: resolver, playlist, guard de capacidad [OJO: necesita systemctl restart ape-jit, deploy.sh NO lo hace]
+IPTV_v5.4_MAX_AGGRESSION/vps/prisma/api/pulse.php	/var/www/html/prisma/api/pulse.php	644	www-data:www-data	pulse polimorfico (php-fpm recarga solo, sin reinicio)
+vps/bin/ape-pulse-canary-worker.sh	/opt/ape-pulse/ape-pulse-canary-worker.sh	755	root:root	worker del canary con guarda jit_busy [OJO: lo invoca el timer, toma el fichero nuevo en el proximo ciclo]
