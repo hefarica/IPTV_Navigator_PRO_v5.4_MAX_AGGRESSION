@@ -19,7 +19,7 @@
     base: (window.APE_JIT_BASE || 'https://iptv-ape.duckdns.org') + '/jit',
     config: null, effectiveFilter: '', capacity: null, live: null,
     profiles: null, matrix: null, plan: null, catalog: null,
-    declared: null, gov: null, cascade: null, fallback: null, rules: null, autoRow: null, optimized: null, llm: null, align: null, alignApplied: null,
+    declared: null, gov: null, cascade: null, fallback: null, rules: null, autoRow: null, optimized: null, llm: null, align: null, alignApplied: null, alignAll: null, alignAllApplied: null,
     busy: false, lastError: null, log: [],
     build: { profile: 'P4.5', w: 1280, h: 720, target: 'UHD_4K', codec: 'hvc1',
              player: 'onn-4k', recipe: 'balanced', fps: 25,
@@ -694,6 +694,20 @@
       doApplyAlign();
     });
     root.appendChild(el('div', { class: 'row', style: 'margin-top:10px' }, [bAlign, bAlignLLM, bApplyAlign]));
+    // los SEIS de golpe: 6 x 577 = 3.366 campos
+    var bAll = el('button', { class: 'go', id: 'aip-align-all',
+      style: 'background:#0ea5e922;border-color:#0ea5e955;color:#7dd3fc' },
+      ['🗂 Alinear los 6 perfiles']);
+    bAll.title = 'Recorre los 6 perfiles del Gestor (3.366 campos) y devuelve la propuesta de cada uno.';
+    bAll.addEventListener('click', doAlignAll);
+    var bAllApply = el('button', { class: 'pri', id: 'aip-align-all-apply',
+      style: (S.alignAll && S.alignAll.ok) ? 'background:#0ea5e9;color:#001' : 'opacity:.4;cursor:not-allowed' },
+      ['💾 Guardar los 6 (' + ((S.alignAll && S.alignAll.totals && S.alignAll.totals.proposed) || 0) + ')']);
+    bAllApply.addEventListener('click', function () {
+      if (!S.alignAll || !S.alignAll.ok) { logLine('no hay propuesta de los 6 pendiente'); return; }
+      doApplyAll();
+    });
+    root.appendChild(el('div', { class: 'row', style: 'margin-top:8px' }, [bAll, bAllApply]));
 
     if (S.align && S.align.ok) renderAlign(root);
     else if (S.align) root.appendChild(warn('alinear: ' + (S.align.error || 'error')));
@@ -719,6 +733,63 @@
   /* GUARDA la alineacion: pide al motor el perfil ya modificado y lo escribe en
    * el SSOT del Gestor (APE_PROFILES_CONFIG en localStorage). Es el unico punto
    * donde el cambio SALE de la propuesta y se vuelve real. */
+  /* LOS SEIS PERFILES DE GOLPE: 6 x 577 = 3.366 campos */
+  function doAlignAll() {
+    var b = readBuild();
+    S.busy = true;
+    post('/image/profile/align-all', {
+      inW: b.w, inH: b.h, inFps: b.inFps,
+      outW: b.outW, outH: b.outH,
+      player: b.player, mode: b.mode
+    }, 180000).then(function (r) {
+      S.busy = false;
+      S.alignAll = r;
+      if (!r || !r.ok) { logLine('align-all fallo: ' + ((r && r.error) || '?')); render(document.getElementById('ape-image-panel')); return; }
+      var t = r.totals || {};
+      logLine('6 PERFILES: ' + (t.fields || 0) + ' campos, ' + (t.proposed || 0) +
+              ' propuestos, ' + (t.cascade || 0) + ' en cascada');
+      render(document.getElementById('ape-image-panel'));
+    });
+  }
+
+  function doApplyAll() {
+    var A = S.alignAll;
+    if (!A || !A.ok) { logLine('no hay propuesta de los 6'); return; }
+    var payload = { profiles: {} };
+    Object.keys(A.profiles || {}).forEach(function (pid) {
+      var p = A.profiles[pid];
+      if (p && p.gestorProfile && p.diffs) {
+        payload.profiles[pid] = { gestorProfile: p.gestorProfile, diffs: p.diffs };
+      }
+    });
+    post('/image/profile/align-all/apply', payload, 180000).then(function (r) {
+      if (!r || !r.ok) { logLine('apply-all fallo: ' + ((r && r.error) || '?')); return; }
+      // persistir los 6 en el SSOT del gestor
+      var wrote = false, how = '';
+      try {
+        if (window.APE_PROFILES_CONFIG && typeof window.APE_PROFILES_CONFIG === 'object') {
+          Object.keys(r.profiles || {}).forEach(function (pid) {
+            if (r.profiles[pid] && r.profiles[pid].profile) window.APE_PROFILES_CONFIG[pid] = r.profiles[pid].profile;
+          });
+          if (window.APE_PROFILES_CONFIG.save) { window.APE_PROFILES_CONFIG.save(); wrote = true; how = 'APE_PROFILES_CONFIG.save()'; }
+          else {
+            try { localStorage.setItem('APE_PROFILES_CONFIG', JSON.stringify(window.APE_PROFILES_CONFIG)); wrote = true; how = 'localStorage'; }
+            catch (e2) { how = 'no se pudo persistir: ' + e2.message; }
+          }
+        } else if (window.ProfileManagerV9 && typeof window.ProfileManagerV9.loadProfiles === 'function') {
+          window.ProfileManagerV9.loadProfiles(); wrote = true; how = 'ProfileManagerV9.loadProfiles()';
+        } else {
+          how = 'no hay SSOT del gestor en esta pagina';
+        }
+      } catch (e) { how = 'error al escribir: ' + e.message; }
+      S.alignAllApplied = { totals: r.totals, wrote: wrote, how: how };
+      logLine('6 PERFILES GUARDADOS: ' + (r.totals && r.totals.applied) + ' campos aplicados' +
+              (r.totals && r.totals.failed ? ' · ' + r.totals.failed + ' fallos' : '') +
+              ' · ' + (wrote ? how : how));
+      render(document.getElementById('ape-image-panel'));
+    });
+  }
+
   /* PROPUESTA CON LLM: determinista + lo que el LLM anada, validado. */
   function doAlignLLM() {
     var b = readBuild();
@@ -837,6 +908,40 @@
         lb.appendChild(el('div', { style: 'margin-top:2px;color:#f87171;font-size:.7rem' }, ['descartado: ' + rj]));
       });
       box.appendChild(lb);
+    }
+    // propuesta de los 6
+    if (S.alignAll && S.alignAll.ok) {
+      var A = S.alignAll, t = A.totals || {};
+      var ab = el('div', { style: 'margin-top:10px;padding:8px 10px;border-radius:8px;font-size:.74rem;' +
+        'background:rgba(14,165,233,.10);border:1px solid rgba(14,165,233,.4);color:#7dd3fc' }, [
+        'LOS ' + (t.profiles || 0) + ' PERFILES: ' + (t.fields || 0) + ' campos · ' +
+        (t.proposed || 0) + ' propuestos · ' + (t.cascade || 0) + ' en cascada · ' + (t.unchanged || 0) + ' heredados'
+      ]);
+      var tg = el('table', { style: 'width:100%;margin-top:6px;font-size:.7rem;border-collapse:collapse' });
+      var hr = el('tr', {});
+      ['PERFIL', 'CAMPOS', 'PROPONE', 'CASCADA'].forEach(function (h) {
+        hr.appendChild(el('th', { style: 'text-align:left;padding:2px 6px;color:#64748b;font-weight:600' }, [h]));
+      });
+      tg.appendChild(hr);
+      Object.keys(A.profiles || {}).sort().forEach(function (pid) {
+        var p = A.profiles[pid];
+        var tr = el('tr', {});
+        [pid, p.totalFields, p.proposed, p.cascadeCount].forEach(function (v, i) {
+          tr.appendChild(el('td', { style: 'padding:2px 6px;color:' + (i === 2 ? '#38bdf8' : '#94a3b8') }, [String(v)]));
+        });
+        tg.appendChild(tr);
+      });
+      ab.appendChild(tg);
+      box.appendChild(ab);
+    }
+    // resultado del guardado de los 6
+    if (S.alignAllApplied) {
+      var AA = S.alignAllApplied;
+      box.appendChild(el('div', { style: 'margin-top:8px;padding:8px 10px;border-radius:8px;font-size:.76rem;' +
+        'background:rgba(16,185,129,.14);border:1px solid rgba(16,185,129,.45);color:#6ee7b7' }, [
+        '6 PERFILES GUARDADOS: ' + AA.totals.applied + ' campos aplicados' +
+        (AA.totals.failed ? ' · ' + AA.totals.failed + ' fallaron' : '') + ' · ' + AA.how
+      ]));
     }
     // resultado del guardado
     if (S.alignApplied) {

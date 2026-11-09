@@ -1315,6 +1315,31 @@ function alignmentTargetsFull(obj, gestorProfile) {
   };
 }
 
+/* Resolucion EFECTIVA de un perfil.
+ *
+ * LEY ANTI-DEGRADACION: la resolucion nativa del perfil es un SUELO. Si P0 es 8K
+ * y el modulo de imagen produce 4K, el perfil NO baja a 4K: se queda en 8K.
+ * El modulo puede SUBIR (P5 480p -> 4K es upscaling deseado), pero nunca BAJAR.
+ *
+ * BUG MEDIDO antes de esto: alinear los 6 perfiles con salida 4K ponia P0 (8K)
+ * en 3840x2160, degradando el perfil de maxima calidad. */
+function effectiveOutput(gestorProfile, obj) {
+  const native = parseRes((gestorProfile && gestorProfile.settings && gestorProfile.settings.resolution) || '');
+  const ow = obj.output.width, oh = obj.output.height;
+  if (!native) return { width: ow, height: oh, nativeFloor: null, raised: false };
+  // el suelo es la nativa; el techo es el mayor de nativa y salida
+  const w = Math.max(native.w, ow);
+  const h = Math.max(native.h, oh);
+  return { width: w, height: h, nativeFloor: native.w + 'x' + native.h, raised: (w > ow || h > oh) };
+}
+function parseRes(str) {
+  const m = String(str || '').match(/^(\d+)x(\d+)$/);
+  if (!m) return null;
+  const w = Number(m[1]), h = Number(m[2]);
+  if (!Number.isFinite(w) || !Number.isFinite(h) || w < 16 || h < 16) return null;
+  return { w: w, h: h };
+}
+
 /* Genera la cascada correcta para un campo, preservando la escalera ABR. */
 function mapCascade(cur, key, target, obj) {
   const n = String(cur).split(',').length;
@@ -1362,7 +1387,11 @@ function mapCascade(cur, key, target, obj) {
 
 /* Compara TODAS las secciones y devuelve la propuesta completa. */
 function proposeAlignmentFull(gestorProfile, obj) {
-  const t = alignmentTargetsFull(obj, gestorProfile);
+  // la resolucion nativa del perfil es un SUELO: nunca se degrada
+  const eff = effectiveOutput(gestorProfile, obj);
+  const objEff = Object.assign({}, obj, { output: { width: eff.width, height: eff.height,
+    pixels: eff.width * eff.height } });
+  const t = alignmentTargetsFull(objEff, gestorProfile);
   const diffs = [];
   let unchanged = 0;
 
@@ -1375,7 +1404,7 @@ function proposeAlignmentFull(gestorProfile, obj) {
       after = target;                       // campo nuevo
     } else if (cascadeAllowed && isCascadeValue(cur)) {
       // CASCADA: se preserva la escalera; el nivel 0 es el objetivo
-      after = mapCascade(cur, key, target, obj);
+      after = mapCascade(cur, key, target, objEff);
     } else {
       after = target;
     }
@@ -1409,7 +1438,7 @@ function proposeAlignmentFull(gestorProfile, obj) {
     cmp('prefetch_config', k, t.prefetch_config[k], 'prefetch escalado al buffer y al bitrate');
   }
   // quality_levels L1-L7 (escalera completa)
-  for (const d of alignQualityLevels(gestorProfile, obj)) diffs.push(d);
+  for (const d of alignQualityLevels(gestorProfile, objEff)) diffs.push(d);
   // quality_levels.primary
   if (gestorProfile.quality_levels && gestorProfile.quality_levels.primary) {
     const cur = gestorProfile.quality_levels.primary;
@@ -1435,6 +1464,10 @@ function proposeAlignmentFull(gestorProfile, obj) {
     ok: true,
     profile: gestorProfile.id || null,
     mode: obj.mode,
+    // resolucion efectiva del perfil (nativo como suelo)
+    resolution: eff.width + 'x' + eff.height,
+    nativeFloor: eff.nativeFloor,
+    raisedOverModule: eff.raised,
     totalFields,
     proposed: diffs.length,
     unchanged: Math.max(0, totalFields - diffs.length),
@@ -4499,6 +4532,91 @@ const server = http.createServer((req, res) => {
   /* Que perfiles del gestor conoce el motor (para que el panel pueda listarlos) */
   /* APLICA la alineacion: devuelve el perfil nuevo para que el panel lo guarde */
   /* ALINEACION CON LLM: determinista primero, el LLM mejora, se valida */
+  /* ALINEA LOS 6 PERFILES DE GOLPE: 6 x 577 = 3.366 campos */
+  /* APLICA la alineacion de los 6 perfiles: devuelve los 6 perfiles nuevos */
+  if (u.pathname === '/image/profile/align-all/apply' && req.method === 'POST') {
+    let body = '';
+    let tooBig = false;
+    req.on('data', (c) => { body += c; if (body.length > 8 * 1024 * 1024) { tooBig = true; req.destroy(); } });
+    req.on('end', () => {
+      if (tooBig) { res.writeHead(413, { 'Content-Type': 'application/json' }); return res.end(JSON.stringify({ ok: false, error: 'body grande (>8MB)' })); }
+      let pl;
+      try { pl = JSON.parse(body || '{}'); } catch (_) {
+        res.writeHead(400, { 'Content-Type': 'application/json' }); return res.end(JSON.stringify({ ok: false, error: 'JSON invalido' }));
+      }
+      const inProfiles = pl.profiles;
+      if (!inProfiles || typeof inProfiles !== 'object') {
+        setBaseHeaders(res); setNoCacheHeaders(res);
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        return res.end(JSON.stringify({ ok: false, error: 'se requiere {profiles: {P0:{gestorProfile,diffs}, ...}}' }));
+      }
+      const out = { ok: true, profiles: {}, totals: { profiles: 0, applied: 0, failed: 0 } };
+      for (const pid of Object.keys(inProfiles)) {
+        const item = inProfiles[pid];
+        if (!item || !item.gestorProfile || !Array.isArray(item.diffs)) continue;
+        const r = applyAlignment(item.gestorProfile, item.diffs);
+        out.profiles[pid] = r;
+        out.totals.profiles++;
+        out.totals.applied += r.applied;
+        out.totals.failed += r.failed.length;
+      }
+      setBaseHeaders(res); setNoCacheHeaders(res);
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      return res.end(JSON.stringify(out));
+    });
+    return;
+  }
+
+  if (u.pathname === '/image/profile/align-all' && req.method === 'POST') {
+    let body = '';
+    let tooBig = false;
+    req.on('data', (c) => { body += c; if (body.length > 1024 * 1024) { tooBig = true; req.destroy(); } });
+    req.on('end', () => {
+      if (tooBig) { res.writeHead(413, { 'Content-Type': 'application/json' }); return res.end(JSON.stringify({ ok: false, error: 'body grande' })); }
+      let pl;
+      try { pl = JSON.parse(body || '{}'); } catch (_) {
+        res.writeHead(400, { 'Content-Type': 'application/json' }); return res.end(JSON.stringify({ ok: false, error: 'JSON invalido' }));
+      }
+      const all = loadGestorProfiles();
+      if (!all) {
+        setBaseHeaders(res); setNoCacheHeaders(res);
+        res.writeHead(503, { 'Content-Type': 'application/json' });
+        return res.end(JSON.stringify({ ok: false, error: 'no hay perfiles del gestor cargados' }));
+      }
+      const obj = objective({
+        inW: pl.inW, inH: pl.inH, inFps: pl.inFps,
+        outW: pl.outW, outH: pl.outH,
+        player: pl.player || 'onn-4k', mode: pl.mode || 'real'
+      });
+      if (!obj.ok) {
+        setBaseHeaders(res); setNoCacheHeaders(res);
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        return res.end(JSON.stringify(obj));
+      }
+      const out = {
+        ok: true, mode: obj.mode, output: obj.output,
+        profiles: {}, totals: { profiles: 0, fields: 0, proposed: 0, unchanged: 0, cascade: 0 }
+      };
+      for (const pid of Object.keys(all)) {
+        const gp = all[pid];
+        if (!gp || typeof gp !== 'object') continue;
+        const p = proposeAlignmentFull(gp, obj);
+        p.gestorProfile = gp;
+        out.profiles[pid] = p;
+        out.totals.profiles++;
+        out.totals.fields += p.totalFields;
+        out.totals.proposed += p.proposed;
+        out.totals.unchanged += p.unchanged;
+        out.totals.cascade += p.cascadeCount;
+      }
+      out.note = 'PROPUESTA de los ' + out.totals.profiles + ' perfiles. No se aplico nada.';
+      setBaseHeaders(res); setNoCacheHeaders(res);
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      return res.end(JSON.stringify(out));
+    });
+    return;
+  }
+
   if (u.pathname === '/image/profile/align-llm' && req.method === 'POST') {
     let body = '';
     let tooBig = false;

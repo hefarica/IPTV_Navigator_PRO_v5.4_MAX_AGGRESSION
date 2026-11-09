@@ -4544,3 +4544,78 @@ Cache-buster `?v=20261108-align3`. Test 27/27.
   alineacion de los seis de golpe.
 - **El LLM nunca se ha ejecutado con una key real** en esta sesion: solo se ha
   verificado el camino de fallo.
+
+---
+
+# 64 · Los 6 perfiles de golpe: 3.366 campos
+
+## 64.1 · Medido
+
+`POST /jit/image/profile/align-all` recorre **los seis perfiles** del Gestor.
+
+| Perfil | Campos | Propuestos | Cascada |
+|---|---|---|---|
+| P0 | 577 | 134 | 22 |
+| P1 | 577 | 134 | 22 |
+| P2 | **484** | **117** | 21 |
+| P3 | 577 | 137 | 22 |
+| P4 | 576 | 135 | 22 |
+| P5 | 575 | 137 | 22 |
+| **TOTAL** | **3.366** | **792** | **131** |
+
+`POST /jit/image/profile/align-all/apply` devuelve los seis perfiles nuevos.
+**Medido: 794 aplicados, 0 fallidos** (antes del fix de resolucion; 792 despues).
+
+## 64.2 · P2 es distinto y el motor no lo finge
+
+**P2 tiene 484 campos, no 577.** Su `quality_levels` **no tiene L1-L7**: solo
+`primary`, y con otro esquema (`resolution`, `bitrate` como CSV, `fps`, `codec`,
+`profile`).
+
+**El motor solo alinea lo que existe.** No inventa los siete niveles que ese perfil
+no tiene. Por eso el conteo de `quality_levels` en P2 es 1 y no 8.
+
+## 64.3 · DEFECTO GRAVE corregido: la resolucion nativa es un SUELO
+
+**Antes del fix**, alinear los seis perfiles con salida 4K ponia **P0 (8K nativo) en
+3840x2160**. Eso **degrada el perfil de maxima calidad**, en violacion directa de la
+Ley Anti-Degradacion.
+
+**La regla correcta**: `resolucion_efectiva = max(resolucion_nativa, salida_del_modulo)`.
+
+| Perfil | Nativa (suelo) | Efectiva | ¿Sube? |
+|---|---|---|---|
+| **P0** | **7680x4320** | **7680x4320** | **si (8K)** |
+| P1 | 3840x2160 | 3840x2160 | no |
+| P2 | 3840x2160 | 3840x2160 | no |
+| P3 | 1920x1080 | 3840x2160 | no (upscaling) |
+| P4 | 1280x720 | 3840x2160 | no (upscaling) |
+| P5 | 854x480 | 3840x2160 | no (upscaling) |
+
+**Nunca baja. Puede subir** — que es el upscaling que el operador pidio.
+
+## 64.4 · Cambio de rol que hay que declarar
+
+**P5 es `SD_FAILSAFE_UNIVERSAL` con 854x480 nativos.** Al alinearlo a la salida 4K
+del modulo, **deja de ser el failsafe SD**. Si el operador quiere conservar ese rol,
+P5 debe excluirse de la alineacion o alinearse contra una salida menor.
+
+**El motor no decide eso por su cuenta**: aplica `max()` y **reporta `nativeFloor`,
+`resolution` y `raisedOverModule`** por perfil, para que la decision sea informada.
+
+## 64.5 · Desplegado
+
+- `POST /jit/image/profile/align-all` — propuesta de los seis
+- `POST /jit/image/profile/align-all/apply` — devuelve los seis perfiles nuevos
+- Panel: **«🗂 Alinear los 6 perfiles»** y **«💾 Guardar los 6 (N)»**, con tabla por
+  perfil (campos, propuestos, cascada) y el resultado del guardado declarando por
+  donde persistio.
+- `vps-image-panel.js` **70.023 -> 75.683 B**. Cache-buster `?v=20261108-align4`.
+
+## 64.6 · Lo que sigue faltando
+
+- **El LLM nunca se ejecuto con key real** en esta sesion.
+- **La cascada de `prefetch_segments`/`parallel_downloads`**: en el perfil son valores
+  unicos, no CSV; no hay cascada que preservar ahi. Solo los headers la tienen.
+- **`enabledCategories`**: verificado que **las 32 categorias estan completas en los
+  seis perfiles**. No hay nada que alinear.
