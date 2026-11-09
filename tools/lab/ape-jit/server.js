@@ -4663,6 +4663,13 @@ const liveKids = new Set();
 // entre la peticion y el spawn hay una espera: waitForFile NO debe interpretar
 // esa espera como 'stream stopped' o el handler devuelve 503 en cada arranque.
 const booting = new Set();
+/* Memoria de auto-reintento: evita bucle cuando el origen falla de verdad.
+ * Medido 2026-11-09: tras un arranque fallido (origen 403 / timeout) el JIT
+ * quedaba con 0 ffmpeg y devolvia 503 hasta que ALGUIEN reintentaba. Un player
+ * que no reintenta se quedaba sin canal. Se reintenta UNA vez y se recuerda. */
+const autoRetried = new Map();   // chKey -> ts del ultimo auto-reintento
+const AUTO_RETRY_MS = 2000;      // espera antes del reintento
+const AUTO_RETRY_MEMORY_MS = 60000;
 const startFailures = new Map();
 function chKey(id, sdr, sdr720) { return id + '|' + (sdr720 ? 'h' : sdr ? 's' : 'n'); }
 
@@ -4800,6 +4807,23 @@ async function start(id, spec, sdr, sdr720) {
   child.on('exit', (code, sig) => {
     liveKids.delete(child);
     log('EXIT', id, code, sig || '');
+    /* FALLO RAPIDO EN ORIGEN CAIDO (medido 2026-11-09): un 403 del proveedor
+     * mataba ffmpeg en menos de 1 s, pero NO marcaba startFailures, asi que
+     * waitForFile esperaba los 30 s completos —y con auto-reintento, 65 s— para
+     * un canal que ya se sabia caido. Un player no debe esperar 65 s para que le
+     * digan que la fuente rechaza el acceso.
+     * Si el hijo muere con codigo != 0 y no dejo playlist, se registra el fallo
+     * y waitForFile responde en el siguiente tick (200 ms).
+     * start() limpia startFailures al empezar, asi que un canal que se recupera
+     * se auto-sana en la siguiente peticion. */
+    try {
+      const kFail = chKey(id, isSdr, is720);
+      if (code !== 0 && !fs.existsSync(path.join(dir, 'master.m3u8')) &&
+          !startFailures.has(kFail)) {
+        startFailures.set(kFail, 'source_refused_exit_' + code);
+        log('START_FAIL_FAST', id, 'exit=' + code + ' sin playlist');
+      }
+    } catch (_) { }
     if (current && current.child === child) current = null;
     // HARDENING (bug C): solo se borra si este dir esta PENDIENTE de reaping.
     // Si no lo esta, el dir pertenece a un stream vivo (uno nuevo que arranco
@@ -7948,8 +7972,36 @@ function loadFromGestorProfile(gp) {
     if (!res.writableEnded) res.end('output unavailable');
   };
   if (waitName) return waitForFile(id, waitName, (err) => {
-    if (err) { res.writeHead(503, { 'Content-Type': 'text/plain' }); return res.end(err.message); }
-    serve().catch(serveError);
+    if (!err) return serve().catch(serveError);
+
+    /* AUTO-RECUPERACION (defecto medido): sin esto el 503 se quedaba fijo hasta
+     * que un humano reintentaba. Se reintenta UNA vez, y solo si ese canal no se
+     * auto-reintento en los ultimos 60 s (para no martillear un origen caido). */
+    const kAuto = chKey(id, sdr, sdr720);
+    const prev = autoRetried.get(kAuto) || 0;
+    if (Date.now() - prev > AUTO_RETRY_MEMORY_MS) {
+      autoRetried.set(kAuto, Date.now());
+      setTimeout(() => {
+        booting.add(kAuto);
+        start(id, map[id], sdr, sdr720)
+          .catch((e) => recordStartFailure(id, sdr, sdr720, e))
+          .finally(() => setTimeout(() => booting.delete(kAuto), BOOT_GRACE_MS));
+        waitForFile(id, waitName, (err2) => {
+          if (err2) {
+            res.setHeader('X-APE-Auto-Retry', 'failed-once');
+            res.writeHead(503, { 'Content-Type': 'text/plain' });
+            return res.end(err2.message);
+          }
+          res.setHeader('X-APE-Auto-Retry', 'recovered');
+          serve().catch(serveError);
+        }, sdr, sdr720);
+      }, AUTO_RETRY_MS);
+      return;
+    }
+
+    res.setHeader('X-APE-Auto-Retry', 'suppressed-60s');
+    res.writeHead(503, { 'Content-Type': 'text/plain' });
+    return res.end(err.message);
   }, sdr, sdr720);
   serve().catch(serveError);
 });
