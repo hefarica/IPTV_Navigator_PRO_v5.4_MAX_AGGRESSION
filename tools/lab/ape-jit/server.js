@@ -8064,6 +8064,294 @@ function playlistBufferLines(buffer) {
   return out;
 }
 
+  /* ═══════════════════════════════════════════════════════════════════════════
+   * /jit/tune — PROBE SIN SER PROBE
+   *
+   * PEDIDO: "este log se pasara a JIT, que en base a esto ira al LLM y al perfil
+   * del Gestor de Perfiles y hara el ajuste que quedara grabado. Con esto en los
+   * logs tendran que aparecer que metricas y que headers o valores fueron
+   * cambiados por ajuste, y con ello una futura lista que se genere ya saldra
+   * ajustada. Es un probe sin ser probe: se aprovecha la data generada viendo TV."
+   *
+   * ES UN PROBE SIN SER PROBE porque NO se lanza un sondeo sintetico: se usan las
+   * metricas de la reproduccion REAL (segmentos producidos vs esperados, fps
+   * sostenido). El televidente mirando la TV ES el probe.
+   *
+   * QUE HACE
+   *   1. Deriva el TECHO REAL de resolucion a partir de la capacidad medida:
+   *      es la mayor resolucion cuya tasa >= 1.2x el fps de la fuente. Ese 1.2 es
+   *      el umbral que el propio LAB_PROFILES declara para measured_viable.
+   *      Si ninguna llega, se queda la mas rapida y se DECLARA que no es viable.
+   *   2. Si hay key del LLM, se le pide el ajuste fino DENTRO de ese techo
+   *      (callLLMAlign), y se valida que no proponga algo imposible.
+   *      Sin key NO se inventa: se aplica el techo deterministico y se declara
+   *      source=heuristic.
+   *   3. Graba en GESTOR_STORE (atómico) + copia de seguridad + journal jsonl.
+   *   4. Devuelve la lista de cambios con before/after/reason para que el log y
+   *      la respuesta digan EXACTAMENTE que metrica y que valor se movio.
+   *
+   * La lista siguiente hereda el ajuste porque el generador lee GESTOR_STORE.
+   * ═══════════════════════════════════════════════════════════════════════════ */
+/* LLM de AJUSTE — prompt compacto y propio.
+ *
+ * POR QUE NO SE REUTILIZA callLLMAlign: esa via manda el Gestor de Perfiles
+ * completo (miles de campos) con max_tokens 4000. Medido 2026-11-09: la key
+ * responde en 1 s a una peticion minima, pero con ese prompt el motor se pasaba
+ * de los 25 s y caia al techo deterministico. Para ajustar por metricas NO hace
+ * falta el Gestor entero: bastan las capacidades, el techo y la config actual.
+ * Se pide JSON corto, con max_tokens acotado y su propio timeout.
+ */
+async function callLLMTune(metrics, currentCfg) {
+  const apiKey = readLLMKey();
+  if (!apiKey) return { error: 'sin key del LLM' };
+  const endpoint = process.env.LLM_ENDPOINT || 'https://api.deepseek.com/chat/completions';
+  const sistema = [
+    'Eres el ajustador de un motor de video IPV en un VPS de 3 vCPU.',
+    'Recibes metricas de una prueba de capacidad y la configuracion viva.',
+    'Devuelve SOLO JSON con esta forma:',
+    '{"profile":"P0|P0.5|P1|P1.5|P2|P2.5|P3|P3.5|P4|P4.5|P5|P5.5",',
+    ' "recipe":"none|light|balanced|temporal",',
+    ' "x265_threads":1-3,',
+    ' "reason":"una frase corta"}',
+    'REGLAS DURAS: no propongas una resolucion por encima del techo viable;',
+    'no bajes ten_bit; no bajes fps. Si no hay mejora clara, repite la config actual.',
+    'PROHIBIDO responder con prosa: solo el JSON.',
+  ].join('\n');
+  const usuario = JSON.stringify({
+    metricas: metrics,
+    config_actual: {
+      profile: currentCfg.profile, recipe: currentCfg.recipe,
+      x265_threads: currentCfg.x265_threads, ten_bit: currentCfg.ten_bit,
+    },
+  });
+  const body = {
+    model: LLM_MODEL,
+    messages: [{ role: 'system', content: sistema }, { role: 'user', content: usuario }],
+    temperature: 0.1,
+    max_tokens: 300,
+    response_format: { type: 'json_object' },
+  };
+  const ctl = new AbortController();
+  const timer = setTimeout(() => ctl.abort(), Number(process.env.LLM_TUNE_TIMEOUT_MS) || 20000);
+  try {
+    const r = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + apiKey },
+      body: JSON.stringify(body), signal: ctl.signal,
+    });
+    if (!r.ok) { const t = await r.text(); return { error: 'HTTP ' + r.status + ': ' + t.slice(0, 140) }; }
+    const j = await r.json();
+    const txt = j && j.choices && j.choices[0] && j.choices[0].message && j.choices[0].message.content;
+    if (!txt) return { error: 'respuesta sin contenido' };
+    let parsed;
+    try { parsed = JSON.parse(txt); } catch (_) {
+      const m = txt.match(/\{[\s\S]*\}/);
+      if (!m) return { error: 'el LLM no devolvio JSON' };
+      try { parsed = JSON.parse(m[0]); } catch (e2) { return { error: 'JSON invalido: ' + e2.message }; }
+    }
+    return { ok: true, data: parsed };
+  } catch (e) {
+    return { error: 'timeout o red: ' + (e && e.name === 'AbortError' ? 'abortado' : e.message) };
+  } finally { clearTimeout(timer); }
+}
+
+  if (u.pathname === '/jit/tune') {
+    setBaseHeaders(res); setNoCacheHeaders(res);
+    const TUNE_JOURNAL = process.env.TUNE_JOURNAL || '/opt/ape-jit/tune-journal.jsonl';
+    const leerAjustes = () => {
+      try {
+        return fs.readFileSync(TUNE_JOURNAL, 'utf8').trim().split('\n').filter(Boolean).map((l) => { try { return JSON.parse(l); } catch (_) { return null; } }).filter(Boolean);
+      } catch (_) { return []; }
+    };
+
+    if (req.method === 'GET') {
+      const all = leerAjustes();
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      return res.end(JSON.stringify({ ok: true, count: all.length, last: all.slice(-10) }));
+    }
+    if (req.method !== 'POST') {
+      res.writeHead(405, { 'Content-Type': 'application/json' });
+      return res.end(JSON.stringify({ ok: false, error: 'metodo no permitido' }));
+    }
+
+    let body = '';
+    let tooBig = false;
+    req.on('data', (c) => { body += c; if (body.length > 32768) { tooBig = true; req.destroy(); } });
+    req.on('end', async () => {
+      if (tooBig) { res.writeHead(413, { 'Content-Type': 'application/json' }); return res.end(JSON.stringify({ ok: false, error: 'body grande' })); }
+      let pl;
+      try { pl = JSON.parse(body || '{}'); } catch (_) { res.writeHead(400, { 'Content-Type': 'application/json' }); return res.end(JSON.stringify({ ok: false, error: 'JSON invalido' })); }
+
+      const ch = String(pl.channel || '').replace(/[^A-Za-z0-9._-]/g, '') || '-';
+      const srcFps = Number(pl.source_fps) || 0;
+      const cap = pl.capacity && typeof pl.capacity === 'object' ? pl.capacity : null;
+      const produced = Number(pl.produced_segments_per_min);
+      const expected = Number(pl.expected_segments_per_min);
+
+      if (!cap || !Object.keys(cap).length) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        return res.end(JSON.stringify({ ok: false, error: 'faltan las capacidades medidas (capacity: {"480p":fps, "1080p":fps, ...})' }));
+      }
+      if (!srcFps) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        return res.end(JSON.stringify({ ok: false, error: 'falta source_fps: sin el no hay contra que comparar' }));
+      }
+
+      /* ── 1. TECHO DETERMINISTICO: la mayor resolucion que sostiene 1.2x ── */
+      const UMBRAL = 1.2;
+      const orden = [['480p', 480], ['720p', 720], ['1080p', 1080], ['1440p', 1440], ['2160p', 2160], ['3240p', 3240], ['4320p', 4320]];
+      const filas = [];
+      for (const [nombre, alto] of orden) {
+        const fps = Number(cap[nombre]);
+        if (!Number.isFinite(fps) || fps <= 0) continue;
+        filas.push({ resolucion: nombre, alto, fps, ratio: Number((fps / srcFps).toFixed(2)), viable: fps >= srcFps * UMBRAL });
+      }
+      if (!filas.length) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        return res.end(JSON.stringify({ ok: false, error: 'ninguna capacidad es numerica' }));
+      }
+      const viables = filas.filter((f) => f.viable);
+      const techo = viables.length ? viables[viables.length - 1] : filas[0];
+      const degradado = produced > 0 && expected > 0 ? Number((produced / expected).toFixed(3)) : null;
+
+      /* ── 2. AJUSTE DETERMINISTICO (siempre; base de todo) ── */
+      const cambios = [];
+      const push = (metric, before, after, reason) => {
+        if (String(before) !== String(after)) cambios.push({ metric, before, after, reason });
+      };
+      const cfgAntes = imageConfig;
+      // perfil: el que corresponde al techo alcanzable
+      const perfilPorAlto = { 480: 'P5', 720: 'P4', 1080: 'P3', 1440: 'P4', 2160: 'P1' };
+      const perfilObjetivo = perfilPorAlto[techo.alto] || 'P5';
+      push('profile', cfgAntes.profile, perfilObjetivo,
+        'techo real ' + techo.resolucion + ' a ' + techo.fps + ' fps = ' + techo.ratio +
+        'x el fps de la fuente; el umbral que el LAB exige es ' + UMBRAL + 'x');
+      // si se degrada en produccion, se aprieta el encoder antes que bajar resolucion
+      if (degradado !== null && degradado < 0.95) {
+        push('x265_threads', cfgAntes.x265_threads, 3,
+          'produccion ' + degradado + 'x de lo esperado: se dan los 3 nucleos al encoder');
+        /* 'light' ES el sharpen-only del motor: buildImageFilterChain hace
+         * `if (r === 'light') return sharpen`. Poner 'sharpen_only' aqui era un
+         * valor INVALIDO y normalizeImageConfig lo rechazaba -> no persistia. */
+        push('recipe', cfgAntes.recipe, 'light',
+          'se quita el denoise temporal (hqdn3d) para bajar el coste por frame sin perder resolucion');
+      }
+      // PQ solo si la fuente tiene camino; si el host no llega al techo 4K, no se promete HDR 4K
+      if (techo.alto < 2160) {
+        push('ten_bit', cfgAntes.ten_bit, true, 'se mantiene 10-bit real (no se baja profundidad)');
+      }
+
+      /* ── 3. LLM (opcional) DENTRO DEL TECHO ── */
+      let fuente = 'heuristic';
+      let llmNota = 'sin key del LLM: solo techo deterministico';
+      const apiKey = readLLMKey();
+      if (apiKey) {
+        try {
+          /* callLLMAlign espera un objetivo con output.width/height (es el mismo
+           * shape que usa la alineacion del Gestor). Pasarlo incompleto lanzaba
+           * "Cannot read properties of undefined (reading 'width')". */
+          /* FORMA EXACTA que espera callLLMAlign:
+           *   base.diffs[]            -> llmAlignUserPrompt hace base.diffs.map(...)
+           *   obj.mode/output/chain/cost/fields -> los lee tal cual
+           * Pasarlo con otro shape lanzaba "reading 'map'" y "reading 'width'". */
+          const base = {
+            diffs: cambios.map((c) => ({ path: c.metric, before: c.before, after: c.after })),
+          };
+          const obj = {
+            mode: 'tune-por-visualizacion-real',
+            output: { width: Math.round(techo.alto * 16 / 9 / 2) * 2, height: techo.alto },
+            chain: cfgAntes.recipe,
+            cost: {
+              capacity: filas,
+              ceiling: techo.resolucion,
+              ceiling_ratio: techo.ratio,
+              production_ratio: degradado,
+              source_fps: srcFps,
+              umbral_viable: UMBRAL,
+            },
+            fields: {
+              profile: cfgAntes.profile, target: cfgAntes.target, recipe: cfgAntes.recipe,
+              x265_threads: cfgAntes.x265_threads, ten_bit: cfgAntes.ten_bit,
+            },
+            forbid: ['proponer una resolucion por encima del techo', 'bajar ten_bit', 'bajar fps'],
+          };
+          const r = await callLLMTune({ coste: obj.cost, techo: techo.resolucion, viable: techo.viable, umbral: UMBRAL }, cfgAntes);
+          if (r && r.ok && r.data) {
+            fuente = 'llm+heuristic';
+            const d = r.data;
+            /* VALIDACION: el LLM no puede saltarse el techo ni degradar */
+            const perfilOk = ['P0','P0.5','P1','P1.5','P2','P2.5','P3','P3.5','P4','P4.5','P5','P5.5'].includes(d.profile);
+            const recetaOk = ['none','light','balanced','temporal'].includes(d.recipe);
+            const altoPorPerfil = { P0:4320, 'P0.5':3240, P1:2160, 'P1.5':3240, P2:2160, 'P2.5':3240,
+                                    P3:1080, 'P3.5':3240, P4:720, 'P4.5':3240, P5:480, 'P5.5':3240 };
+            const altoLlm = altoPorPerfil[d.profile] || 0;
+            if (!perfilOk || !recetaOk) {
+              llmNota = 'propuesta del LLM RECHAZADA: valores fuera del vocabulario (' +
+                String(d.profile) + '/' + String(d.recipe) + ')';
+            } else if (altoLlm > techo.alto) {
+              llmNota = 'propuesta del LLM RECHAZADA: ' + d.profile + ' (' + altoLlm +
+                'p) supera el techo viable ' + techo.resolucion + ' (' + techo.alto + 'p)';
+            } else {
+              if (d.profile && d.profile !== cfgAntes.profile) {
+                cambios.push({ metric: 'profile', before: cfgAntes.profile, after: d.profile,
+                  reason: 'LLM: ' + String(d.reason || '').slice(0, 90) });
+              }
+              if (d.recipe && d.recipe !== cfgAntes.recipe) {
+                cambios.push({ metric: 'recipe', before: cfgAntes.recipe, after: d.recipe,
+                  reason: 'LLM: ' + String(d.reason || '').slice(0, 90) });
+              }
+              const th = Number(d.x265_threads);
+              if (Number.isFinite(th) && th >= 1 && th <= 3 && th !== cfgAntes.x265_threads) {
+                cambios.push({ metric: 'x265_threads', before: cfgAntes.x265_threads, after: th,
+                  reason: 'LLM: ' + String(d.reason || '').slice(0, 90) });
+              }
+              llmNota = 'el LLM refino dentro del techo: ' + String(d.reason || '').slice(0, 120);
+            }
+          } else if (r && r.error) {
+            llmNota = 'LLM no disponible: ' + r.error + ' (se aplica el techo deterministico)';
+          }
+        } catch (e) { llmNota = 'LLM fallo: ' + e.message; }
+      }
+
+      /* ── 4. APLICAR Y GRABAR (atomico + backup + journal) ── */
+      const aplicado = {};
+      for (const c of cambios) if (c.metric !== 'llm' && c.after !== undefined) aplicado[c.metric] = c.after;
+      let persistido = false;
+      let registro_validacion = null;
+      if (Object.keys(aplicado).length) {
+        const norm = normalizeImageConfig(aplicado);
+        if (norm.ok) {
+          try {
+            const cfgNueva = alignTargetToProfile(norm.config);
+            fs.writeFileSync(IMAGE_CONFIG_FILE + '.tmp', JSON.stringify(cfgNueva, null, 2));
+            fs.renameSync(IMAGE_CONFIG_FILE + '.tmp', IMAGE_CONFIG_FILE);
+            imageConfig = cfgNueva;
+            imageConfigSource = 'tune:' + new Date().toISOString();
+            persistido = true;
+          } catch (e) { log('TUNE_WRITE_FAILED', e.message); }
+        } else {
+          log('TUNE_REJECTED', JSON.stringify(norm.errors));
+          registro_validacion = norm.errors;
+        }
+      }
+
+      const registro = {
+        at: new Date().toISOString(), channel: ch,
+        metrics: { source_fps: srcFps, capacity: filas, ceiling: techo, production_ratio: degradado },
+        adjustments: cambios, persisted: persistido, source: fuente, llm: llmNota,
+        validation_errors: registro_validacion,
+        config_after: { profile: imageConfig.profile, target: imageConfig.target,
+                        recipe: imageConfig.recipe, x265_threads: imageConfig.x265_threads },
+      };
+      try { fs.appendFileSync(TUNE_JOURNAL, JSON.stringify(registro) + '\n'); } catch (_) { }
+      for (const c of cambios) log('TUNE', ch, c.metric, String(c.before) + ' -> ' + String(c.after), '|', c.reason.slice(0, 90));
+
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      return res.end(JSON.stringify(Object.assign({ ok: true }, registro)));
+    });
+    return;
+  }
+
   if (u.pathname === '/jit/signal') {
     setBaseHeaders(res); setNoCacheHeaders(res);
 
