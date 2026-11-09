@@ -93,9 +93,19 @@ object PrismaProfile {
                 Log.w(TAG, "carriles pedidos SIN motor en el APK (no se aplican): $sinMotor")
             }
 
+            /* Claves de GL. Las cuatro primeras son del perfil; las tres
+             * ultimas (sharpen/denoise/microcontrast) son la RECETA DE UPSCALE
+             * que calcula el motor por factor de escala. Faltaban y por eso
+             * "GL publicado en prefs: sharpen=null denoise=null micro=null"
+             * en la primera corrida real en el ONN: el plan llegaba, pero el
+             * efecto no recibia los valores del upscale. */
             val gl = LinkedHashMap<String, Float>()
-            for (k in listOf("acerado", "dnr", "vibrancia", "microcontraste")) {
+            val clavesGl = listOf("acerado", "dnr", "vibrancia", "microcontraste",
+                                  "sharpen", "denoise", "microcontrast")
+            for (k in clavesGl) {
                 val v = (if (preGl != null) base(preGl + k) else null) ?: base("gl." + k)
+                // vibrancia y microcontraste del perfil admiten >1 en la receta;
+                // se acotan a 1 para el shader, que espera [0,1].
                 v?.toFloatOrNull()?.let { gl[k] = it.coerceIn(0f, 1f) }
             }
 

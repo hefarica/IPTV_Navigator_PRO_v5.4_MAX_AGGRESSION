@@ -6660,6 +6660,18 @@ function loadFromGestorProfile(gp) {
       detalle[pidp] = { decode: p.decodePx, fps: p.sourceFps, activos: p.activos,
                         glSafeKey: safe };
     }
+    /* Bloque PLANO por defecto: PrismaProfile.read(ctx) sin perfil de canal lee
+     * prisma.* a secas. Se rellena con el perfil por defecto del gobierno, para
+     * que una lista tenga plan global ademas de los 12 por perfil. */
+    const defPid = (governance && governance.defaultProfile && allP[governance.defaultProfile])
+      ? governance.defaultProfile
+      : (allP['P4.5'] ? 'P4.5' : Object.keys(allP)[0]);
+    if (defPid) {
+      const dflt = prismaPlanFor(defPid, allP[defPid]);
+      for (const [k, v] of Object.entries(dflt.emit.fields.prisma)) fields.prisma[k] = v;
+      for (const [k, v] of Object.entries(dflt.emit.fields.gl)) fields.gl[k] = v;
+      fields.prisma.default_profile = defPid;
+    }
     const doc = { profile: 'ALL', fields: fields };
     const json = JSON.stringify(doc);
     const b64 = Buffer.from(json, 'utf8').toString('base64');
@@ -6669,7 +6681,7 @@ function loadFromGestorProfile(gp) {
     const lines = chunks.map((c, i) => '#EXT-X-APE-LAB-METADATA:' + (i + 1) + '/' + chunks.length + ':' + c);
     setBaseHeaders(res); setNoCacheHeaders(res);
     res.writeHead(200, { 'Content-Type': 'application/json' });
-    return res.end(JSON.stringify({ ok: true, profiles: detalle, json: doc,
+    return res.end(JSON.stringify({ ok: true, defaultProfile: defPid, profiles: detalle, json: doc,
       bytes: Buffer.byteLength(json, 'utf8'), base64Bytes: b64.length,
       chunks: chunks.length, lines: lines }));
   }

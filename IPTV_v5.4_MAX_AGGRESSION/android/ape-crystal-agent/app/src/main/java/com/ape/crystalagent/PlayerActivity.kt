@@ -29,15 +29,22 @@ class PlayerActivity : Activity() {
         val url = intent.getStringExtra("url")
         if (url.isNullOrEmpty()) { finish(); return }
         val ua = intent.getStringExtra("ua")
-        /* Efectos de imagen: lo explicito manda. Si NO hay extra "effects", se
-         * encienden SOLO cuando la lista trae un plan PRISMA activo: eso es un
-         * opt-in explicito del operador en su propia lista, no un default.
-         * Sin plan ⇒ siguen OFF (comportamiento estabilizado de siempre). */
+        /* Efectos de imagen: SOLO con "effects=on" explicito.
+         *
+         * MEDIDO EN EL ONN 4K (2026-11-08) — A/B con captura de pantalla:
+         *   effects=on  -> 16.280 B de PNG  = PANTALLA NEGRA
+         *   effects=off -> 1.694.782 B      = video real
+         * La cadena CrystalGlEffect (FluidBridge.effectsFor -> configure() con
+         * outputWidth/Height) NO entrega frames en este device. Se habia puesto
+         * un auto-encendido cuando la lista trae plan PRISMA; se retira porque
+         * metia una regresion de pantalla negra al operador.
+         * Hasta que se arregle CrystalGlEffect, los efectos quedan OPT-IN y se
+         * sabe roto: no se encienden solos. */
         val effectsExtra = intent.getStringExtra("effects")
         ApePlayer.suppressVideoEffects = when (effectsExtra) {
-            "on" -> false
+            "on" -> false     // pedido explicito (ojo: hoy deja pantalla negra)
             "off" -> true
-            else -> !PrismaProfile.hasActivePlan(this)
+            else -> true      // default: SIN efectos
         }
 
         val a = ApePlayer(this); ape = a
