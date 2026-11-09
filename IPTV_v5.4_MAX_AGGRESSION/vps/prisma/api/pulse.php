@@ -430,6 +430,63 @@ if ($mode === 'proxy') {
         echo '{"ok":false,"error":"upstream_self_reference","hint":"url /cdn/<host>/<path> no normalizable"}';
         exit;
     }
+    /* ── DESPERTAR EL JIT EN EL ZAP (opt-in por flag) ──────────────────────
+     * El operador pide que cada zapping despierte el sistema completo sin danar,
+     * ralentizar ni interrumpir, y SIN levantar varias sesiones.
+     *
+     * COMO SE CUMPLE:
+     *   - Opt-in: sin /etc/ara/pulse/jit.enabled este bloque NO se ejecuta y el
+     *     comportamiento es EXACTAMENTE el de antes (cero regresion).
+     *   - Presupuesto corto: 400 ms. Si el JIT no contesta en ese plazo se cae al
+     *     proveedor como hoy; el player no espera mas.
+     *   - No levanta sesiones: el JIT es single-active-channel por diseno, y aqui
+     *     solo se LEE su media playlist; el arranque lo hace el propio JIT al
+     *     servirla. Un canal nuevo ya detiene el anterior (stopCurrent('switch')).
+     *   - Una sola conexion: se reutiliza ape_pulse_absolutize y la cache APCu de
+     *     arriba, asi dos recargas simultaneas no duplican peticiones.
+     *   - Se declara en la cabecera X-APE-Pulse si el JIT sirvio o no.
+     */
+    if ($id !== '' && is_file('/etc/ara/pulse/jit.enabled')) {
+        $jitId = preg_replace('/[^A-Za-z0-9._-]/', '', (string)$id);
+        $jitMissKey = 'ape_pulse_jitmiss_' . sha1((string)$jitId);
+        $jitMiss = function_exists('apcu_fetch') ? apcu_fetch($jitMissKey) : false;
+        if ($jitId !== '' && !$jitMiss) {
+            $jitLocal  = 'http://127.0.0.1:3099/live/' . $jitId . '/media_0.m3u8';
+            $jitPublic = 'https://iptv-ape.duckdns.org/jit/live/' . $jitId . '/media_0.m3u8';
+            $jbody = false;
+            $jcode = 0;
+            if (function_exists('curl_init')) {
+                $ch = curl_init($jitLocal);
+                curl_setopt_array($ch, [
+                    CURLOPT_RETURNTRANSFER => true,
+                    CURLOPT_CONNECTTIMEOUT_MS => 250,
+                    CURLOPT_TIMEOUT_MS => 400,
+                    CURLOPT_FOLLOWLOCATION => false,
+                ]);
+                $jbody = curl_exec($ch);
+                $jcode = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+                curl_close($ch);
+            }
+            $jsegs = 0;
+            if ($jcode === 200 && is_string($jbody) && $jbody !== '') {
+                foreach (preg_split('/\r?\n/', $jbody) as $jl) {
+                    $jt = trim($jl);
+                    if ($jt !== '' && $jt[0] !== '#') { $jsegs++; }
+                }
+            }
+            if ($jsegs > 0) {
+                header('Content-Type: application/vnd.apple.mpegurl; charset=utf-8');
+                header('X-APE-Pulse: logged;mode=proxy;jit=hit;segs=' . $jsegs);
+                header('Cache-Control: no-store, max-age=0');
+                echo ape_pulse_absolutize($jbody, $jitPublic);
+                exit;
+            }
+            /* FALLO DEL JIT: se recuerda 15 s para no pagar 400 ms en cada
+             * recarga, y se sigue al proveedor. Nunca se deja al player sin canal. */
+            if (function_exists('apcu_add')) { apcu_add($jitMissKey, 1, 15); }
+        }
+    }
+
     $h = sha1($uNorm);
     $plKey   = 'ape_pulse_pl_' . $h;      // 2 s  : recargas simultáneas (anti-509)
     $goodKey = 'ape_pulse_good_' . $h;    // 60 s : última playlist válida (stale)
