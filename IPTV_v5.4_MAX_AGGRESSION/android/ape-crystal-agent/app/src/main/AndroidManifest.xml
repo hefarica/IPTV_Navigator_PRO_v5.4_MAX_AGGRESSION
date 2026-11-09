@@ -53,6 +53,32 @@
             android:configChanges="keyboard|keyboardHidden|orientation|screenSize|screenLayout|smallestScreenSize|uiMode"
             android:launchMode="singleTask" />
 
+        <!-- 657: receptor de REPRODUCTOR EXTERNO (fusion REA).
+             Es la actividad que aparece en el selector de Android cuando OTT
+             Navigator o TiviMate hacen "Abrir en reproductor externo".
+             Recibe ACTION_VIEW con la URL y las cabeceras, valida la peticion y
+             la reenvia a .PlayerActivity (mismo paquete, sin salto de app).
+             Sin este <intent-filter> la app NO aparece en ese selector y la
+             ruta B del manual es inalcanzable. -->
+        <activity
+            android:name="com.ape.rea.ReaExternalPlayerActivity"
+            android:exported="true"
+            android:label="REA · Reproductor externo"
+            android:configChanges="keyboard|keyboardHidden|orientation|screenSize|screenLayout|smallestScreenSize|uiMode"
+            android:launchMode="singleTask">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="http" />
+                <data android:scheme="https" />
+                <data android:mimeType="application/x-mpegURL" />
+                <data android:mimeType="application/vnd.apple.mpegurl" />
+                <data android:mimeType="video/*" />
+                <data android:mimeType="audio/*" />
+            </intent-filter>
+        </activity>
+
         <service
             android:name=".AgentService"
             android:exported="false" />
