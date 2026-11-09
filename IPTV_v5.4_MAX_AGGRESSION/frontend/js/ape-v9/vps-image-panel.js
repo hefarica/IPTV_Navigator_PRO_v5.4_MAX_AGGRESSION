@@ -697,14 +697,14 @@
     // los SEIS de golpe: 6 x 577 = 3.366 campos
     var bAll = el('button', { class: 'go', id: 'aip-align-all',
       style: 'background:#0ea5e922;border-color:#0ea5e955;color:#7dd3fc' },
-      ['🗂 Alinear los 6 perfiles']);
-    bAll.title = 'Recorre los 6 perfiles del Gestor (3.366 campos) y devuelve la propuesta de cada uno.';
+      ['🗂 Alinear los 12 perfiles']);
+    bAll.title = 'Recorre los 12 perfiles del Gestor (6.750 campos: 6 reales + 6 emulados .5) y devuelve la propuesta de cada uno.';
     bAll.addEventListener('click', doAlignAll);
     var bAllApply = el('button', { class: 'pri', id: 'aip-align-all-apply',
       style: (S.alignAll && S.alignAll.ok) ? 'background:#0ea5e9;color:#001' : 'opacity:.4;cursor:not-allowed' },
-      ['💾 Guardar los 6 (' + ((S.alignAll && S.alignAll.totals && S.alignAll.totals.proposed) || 0) + ')']);
+      ['💾 Guardar los 12 (' + ((S.alignAll && S.alignAll.totals && S.alignAll.totals.proposed) || 0) + ')']);
     bAllApply.addEventListener('click', function () {
-      if (!S.alignAll || !S.alignAll.ok) { logLine('no hay propuesta de los 6 pendiente'); return; }
+      if (!S.alignAll || !S.alignAll.ok) { logLine('no hay propuesta de los 12 pendiente'); return; }
       doApplyAll();
     });
     root.appendChild(el('div', { class: 'row', style: 'margin-top:8px' }, [bAll, bAllApply]));
@@ -746,7 +746,7 @@
       S.alignAll = r;
       if (!r || !r.ok) { logLine('align-all fallo: ' + ((r && r.error) || '?')); render(document.getElementById('ape-image-panel')); return; }
       var t = r.totals || {};
-      logLine('6 PERFILES: ' + (t.fields || 0) + ' campos, ' + (t.proposed || 0) +
+      logLine('12 PERFILES: ' + (t.fields || 0) + ' campos, ' + (t.proposed || 0) +
               ' propuestos, ' + (t.cascade || 0) + ' en cascada');
       render(document.getElementById('ape-image-panel'));
     });
@@ -754,7 +754,7 @@
 
   function doApplyAll() {
     var A = S.alignAll;
-    if (!A || !A.ok) { logLine('no hay propuesta de los 6'); return; }
+    if (!A || !A.ok) { logLine('no hay propuesta de los 12'); return; }
     var payload = { profiles: {} };
     Object.keys(A.profiles || {}).forEach(function (pid) {
       var p = A.profiles[pid];
@@ -783,7 +783,7 @@
         }
       } catch (e) { how = 'error al escribir: ' + e.message; }
       S.alignAllApplied = { totals: r.totals, wrote: wrote, how: how };
-      logLine('6 PERFILES GUARDADOS: ' + (r.totals && r.totals.applied) + ' campos aplicados' +
+      logLine('12 PERFILES GUARDADOS: ' + (r.totals && r.totals.applied) + ' campos aplicados' +
               (r.totals && r.totals.failed ? ' · ' + r.totals.failed + ' fallos' : '') +
               ' · ' + (wrote ? how : how));
       render(document.getElementById('ape-image-panel'));
@@ -919,15 +919,16 @@
       ]);
       var tg = el('table', { style: 'width:100%;margin-top:6px;font-size:.7rem;border-collapse:collapse' });
       var hr = el('tr', {});
-      ['PERFIL', 'CAMPOS', 'PROPONE', 'CASCADA'].forEach(function (h) {
+      ['PERFIL', 'CAMPOS', 'PROPONE', 'CASCADA', 'MODO'].forEach(function (h) {
         hr.appendChild(el('th', { style: 'text-align:left;padding:2px 6px;color:#64748b;font-weight:600' }, [h]));
       });
       tg.appendChild(hr);
       Object.keys(A.profiles || {}).sort().forEach(function (pid) {
         var p = A.profiles[pid];
         var tr = el('tr', {});
-        [pid, p.totalFields, p.proposed, p.cascadeCount].forEach(function (v, i) {
-          tr.appendChild(el('td', { style: 'padding:2px 6px;color:' + (i === 2 ? '#38bdf8' : '#94a3b8') }, [String(v)]));
+        [pid, p.totalFields, p.proposed, p.cascadeCount, (p.appliedMode || '-')].forEach(function (v, i) {
+          var col = i === 2 ? '#38bdf8' : (i === 4 ? (String(v) === 'emulado' ? '#a78bfa' : '#64748b') : '#94a3b8');
+          tr.appendChild(el('td', { style: 'padding:2px 6px;color:' + col }, [String(v)]));
         });
         tg.appendChild(tr);
       });
@@ -939,7 +940,7 @@
       var AA = S.alignAllApplied;
       box.appendChild(el('div', { style: 'margin-top:8px;padding:8px 10px;border-radius:8px;font-size:.76rem;' +
         'background:rgba(16,185,129,.14);border:1px solid rgba(16,185,129,.45);color:#6ee7b7' }, [
-        '6 PERFILES GUARDADOS: ' + AA.totals.applied + ' campos aplicados' +
+        '12 PERFILES GUARDADOS: ' + AA.totals.applied + ' campos aplicados' +
         (AA.totals.failed ? ' · ' + AA.totals.failed + ' fallaron' : '') + ' · ' + AA.how
       ]));
     }

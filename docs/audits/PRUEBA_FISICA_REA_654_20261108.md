@@ -4792,3 +4792,78 @@ Anti-Degradacion. Con el suelo, P1 **conserva sus 40**.
   que no existe.
 - **Sigue haciendo falta una medicion real.** El ratio solo se computa con una
   muestra de Resource Timing; sin ella el estado es `NO_MEASUREMENT`.
+
+---
+
+# 67 · Los 12 perfiles: 6.750 campos
+
+## 67.1 · Faltaban seis perfiles
+
+El Gestor JS conoce **12 ids** — `APE_6K_IDS = ['P0.5','P1.5','P2.5','P3.5','P4.5','P5.5']`
+en `profile-manager-v9.js`. El HTML del operador pinta **12 tabs**. Pero
+`APE_ALL_PROFILES_OPTIMIZED.json` trae **solo 6**.
+
+**Los `.5` llegan por el import del LAB v24** (`data.profiles_calibrated`). Sin ese
+import **no existen**, y el modulo de imagen solo podia alinear 6 de los 12 que el
+operador ve.
+
+## 67.2 · Derivacion honesta, sin tocar el JSON
+
+Si un `.5` no esta, se **deriva de su base** marcando el modo:
+
+```
+P0.5 = copia de P0  + _mode:'emulado' + _derived_from:'P0' + _derived_note
+```
+
+**No se inventan valores nuevos.** Se copia la base y **se declara el origen**. Cuando
+el LAB aporte el `.5` real, **este gana y la derivacion no se usa**
+(`if (all[pid]) continue;`).
+
+Los derivados tienen **3 campos mas** que su base (580 vs 577): los tres de la
+derivacion.
+
+## 67.3 · Medido: 12 perfiles, 6.750 campos
+
+| Perfil | Campos | Propone | Cascada | Modo | Resolucion |
+|---|---|---|---|---|---|
+| P0 | 577 | 132 | 22 | real | 7680x4320 |
+| **P0.5** | **580** | **130** | 22 | **emulado** | 7680x4320 |
+| P1 | 577 | 133 | 22 | real | 3840x2160 |
+| **P1.5** | **580** | **131** | 22 | **emulado** | 3840x2160 |
+| P2 | 484 | 117 | 21 | real | 3840x2160 |
+| **P2.5** | **487** | **116** | 21 | **emulado** | 3840x2160 |
+| P3 | 577 | 137 | 22 | real | 3840x2160 |
+| **P3.5** | **580** | **135** | 22 | **emulado** | 3840x2160 |
+| P4 | 576 | 135 | 22 | real | 3840x2160 |
+| **P4.5** | **579** | **136** | 22 | **emulado** | 3840x2160 |
+| P5 | 575 | 137 | 22 | real | 3840x2160 |
+| **P5.5** | **578** | **137** | 22 | **emulado** | 3840x2160 |
+| **TOTAL** | **6.750** | **1.576** | **262** | | |
+
+## 67.4 · Defecto corregido: el `.5` se alineaba como real
+
+Antes del fix, **P0.5 daba exactamente los mismos 132 cambios que P0** porque el
+motor usaba el modo global del request. **Un perfil emulado alineado como real es
+una mentira**: no lleva la cadena sintetica (nlmeans, minterpolate, cas, gradfun).
+
+**Ahora el perfil manda**: si declara `_mode`, se reconstruye la funcion objetivo con
+ese modo y se reporta `appliedMode`. Medido despues:
+
+```
+P0.5  emulado  bitrate 92      P2.5  emulado  bitrate 32
+P0    real     (sin cambio)    P2    real     bitrate 28
+```
+
+**Si la reconstruccion falla, se cae al objetivo global**: nunca se rompe la respuesta.
+
+## 67.5 · Panel
+
+**«🗂 Alinear los 12 perfiles»** y **«💾 Guardar los 12 (N)»**, con la tabla por
+perfil incluyendo una columna **MODO** (real en gris, emulado en violeta).
+`vps-image-panel.js` **75.683 -> 75.836 B**. Cache-buster `?v=20261109-12p`.
+
+## 67.6 · Lo que sigue faltando
+
+- **El LLM nunca se ejecuto con key real**: falta la key del operador.
+- **Los `.5` derivados no son los del LAB**: son un clon con modo emulado. El LAB
+  v24 trae valores calibrados distintos, y ese import no esta disponible aqui.

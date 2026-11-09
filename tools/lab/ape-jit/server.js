@@ -1404,7 +1404,30 @@ function mapCascade(cur, key, target, obj) {
 }
 
 /* Compara TODAS las secciones y devuelve la propuesta completa. */
-function proposeAlignmentFull(gestorProfile, obj) {
+function proposeAlignmentFull(gestorProfile, objIn) {
+  /* EL PERFIL MANDA EN SU MODO.
+   *
+   * Los .5 son la capa EMULADA de la doctrina 6K. Si el perfil declara
+   * `_mode: 'emulado'` hay que evaluarlo con la funcion objetivo emulada
+   * (cadena sintetica: nlmeans, minterpolate, cas, gradfun), NO con la real.
+   * MEDIDO antes de esto: P0.5 daba exactamente los mismos 132 cambios que P0
+   * porque el motor usaba el modo global pasado por el request. Un perfil
+   * emulado alineado como real es una mentira.
+   *
+   * Si la reconstruccion falla (p. ej. el modo emulado no admite esa salida),
+   * se cae al objetivo global: nunca se rompe la respuesta. */
+  let obj = objIn;
+  const profileMode = (gestorProfile && gestorProfile._mode) || null;
+  if (profileMode && profileMode !== objIn.mode) {
+    try {
+      const alt = objective({
+        inW: objIn.input.width, inH: objIn.input.height, inFps: objIn.input.fps,
+        outW: objIn.output.width, outH: objIn.output.height,
+        player: objIn.player || 'onn-4k', mode: profileMode
+      });
+      if (alt && alt.ok) obj = alt;
+    } catch (_) { /* se queda el global */ }
+  }
   // la resolucion nativa del perfil es un SUELO: nunca se degrada
   const eff = effectiveOutput(gestorProfile, obj);
   const objEff = Object.assign({}, obj, { output: { width: eff.width, height: eff.height,
@@ -1486,6 +1509,9 @@ function proposeAlignmentFull(gestorProfile, obj) {
     resolution: eff.width + 'x' + eff.height,
     nativeFloor: eff.nativeFloor,
     raisedOverModule: eff.raised,
+    // que modo se uso de verdad para ESTE perfil
+    appliedMode: obj.mode,
+    profileModeDeclared: (gestorProfile && gestorProfile._mode) || null,
     totalFields,
     proposed: diffs.length,
     unchanged: Math.max(0, totalFields - diffs.length),
@@ -1586,6 +1612,45 @@ function clearLLMKey() {
  * El motor devuelve una PROPUESTA campo a campo: antes, despues y razon. NO
  * aplica. El operador confirma con el boton.
  */
+/* LOS SEIS EMULADOS (.5): la capa sintetica de la doctrina 6K.
+ *
+ * MEDIDO 2026-11-08: el Gestor JS conoce 12 ids (P0..P5 y P0.5..P5.5, ver
+ * APE_6K_IDS en profile-manager-v9.js) pero APE_ALL_PROFILES_OPTIMIZED.json
+ * solo trae 6. Los .5 llegan por el import del LAB v24 (data.profiles_calibrated);
+ * sin ese import NO existen, y el modulo de imagen solo podia alinear 6.
+ *
+ * Solucion honesta, sin tocar el JSON: si un .5 no esta, se DERIVA de su base
+ * marcando el modo como emulado. No se inventan valores nuevos: se copia la base
+ * y se declara `_derived_from` + `_mode`. Asi el motor ya le aplica la cadena
+ * sintetica (objective() distingue EMULADO de REAL) y el operador puede alinear
+ * los 12. Cuando el LAB aporte el .5 real, este gana y la derivacion no se usa.
+ */
+const EMULATED_SUFFIX_IDS = ['P0.5','P1.5','P2.5','P3.5','P4.5','P5.5'];
+
+function deriveEmulatedProfile(baseId, base) {
+  const out = JSON.parse(JSON.stringify(base || {}));
+  out.id = baseId;
+  out.name = String(base && base.name ? base.name : baseId) + ' (6K EMULADO)';
+  out._derived_from = String(base && base.id ? base.id : baseId.replace(/\.5$/, ''));
+  out._mode = 'emulado';
+  out._derived_note = 'derivado de ' + out._derived_from +
+    ' con modo emulado: la capa sintetica (.5) no estaba en el JSON del Gestor';
+  return out;
+}
+
+/* Completa los 12 ids: los 6 reales + los 6 emulados derivados si faltan. */
+function withEmulatedProfiles(all) {
+  if (!all || typeof all !== 'object') return all;
+  for (const pid of EMULATED_SUFFIX_IDS) {
+    if (all[pid]) continue;                       // el LAB ya lo trajo: gana
+    const baseId = pid.replace(/\.5$/, '');
+    const base = all[baseId];
+    if (!base) continue;
+    all[pid] = deriveEmulatedProfile(pid, base);
+  }
+  return all;
+}
+
 function loadGestorProfiles() {
   try {
     const raw = JSON.parse(fs.readFileSync(PROFILES_JSON, 'utf8'));
@@ -4515,7 +4580,7 @@ const server = http.createServer((req, res) => {
       // el perfil del gestor: el que manda el panel, o el fichero si no viene
       let gp = pl.gestorProfile;
       if (!gp) {
-        const all = loadGestorProfiles();
+        const all = withEmulatedProfiles(loadGestorProfiles());
         if (all) {
           const base = pid.split('.')[0];
           gp = all[base] || all[pid];
@@ -4595,7 +4660,7 @@ const server = http.createServer((req, res) => {
       try { pl = JSON.parse(body || '{}'); } catch (_) {
         res.writeHead(400, { 'Content-Type': 'application/json' }); return res.end(JSON.stringify({ ok: false, error: 'JSON invalido' }));
       }
-      const all = loadGestorProfiles();
+      const all = withEmulatedProfiles(loadGestorProfiles());
       if (!all) {
         setBaseHeaders(res); setNoCacheHeaders(res);
         res.writeHead(503, { 'Content-Type': 'application/json' });
