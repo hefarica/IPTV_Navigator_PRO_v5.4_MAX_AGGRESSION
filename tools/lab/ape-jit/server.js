@@ -4036,6 +4036,16 @@ function buildGovernedLineup(opts) {
         + ';SUGGESTED=' + engineBest.profile
         + ';ACTION=keep_operator_choice');
     }
+    /* #EXTATTRFROMURL: OTT consulta esta URL al INICIAR el canal y espera una
+     * entrada M3U con UNA url. Asi el perfil y la preparacion del JIT se deciden
+     * en el zap, no al generar el catalogo: el catalogo queda estable y el
+     * servidor manda. Verificado: /jit/resolve responde 200 y la cadena
+     * master->media->segmento da 200. La URL directa se mantiene como respaldo
+     * para clientes que ignoren la directiva (si no, se quedarian sin canal). */
+    if (o.extattr) {
+      lines.push('#EXTATTRFROMURL:' + base + '/jit/resolve?channel=' +
+        encodeURIComponent(id) + '&p=' + encodeURIComponent(prof));
+    }
     lines.push(base + '/jit/go/' + encodeURIComponent(id) + '?p=' + encodeURIComponent(prof) + '&e=' + encodeURIComponent(engine));
     lines.push('');
     emitted++;
@@ -5066,6 +5076,31 @@ function sendStatic(req, res, file, type, kind) {
   fs.createReadStream(file).pipe(res);
 }
 
+/* Nombres de canal para el resolver. El mapa de trabajo (/opt/ape-jit/current/
+ * channels.json) solo trae {url, ua}: sin nombre. El catalogo publicado si los
+ * tiene, asi que se indexa una vez y se cachea. Si no hay catalogo, se devuelve
+ * null y el llamador usa "Canal <id>" (honesto: no se inventa un nombre). */
+let _namesCache = { at: 0, map: new Map() };
+function namesFor(id) {
+  const now = Date.now();
+  if (now - _namesCache.at > 300000) {
+    _namesCache = { at: now, map: new Map() };
+    const candidatos = [
+      '/opt/ape-jit/current/catalog-names.json',
+      '/var/www/html/jit/catalog-names.json'
+    ];
+    for (const p of candidatos) {
+      try {
+        if (!fs.existsSync(p)) continue;
+        const j = JSON.parse(fs.readFileSync(p, 'utf8'));
+        for (const k of Object.keys(j)) _namesCache.map.set(String(k), String(j[k]));
+        break;
+      } catch (_) { }
+    }
+  }
+  return _namesCache.map.get(String(id)) || null;
+}
+
 function publicBase(req) {
   const proto = (req.headers['x-forwarded-proto'] || 'https').split(',')[0].trim();
   return proto + '://' + (req.headers.host || 'iptv-ape.duckdns.org') + '/jit';
@@ -5848,6 +5883,23 @@ const server = http.createServer((req, res) => {
     return res.end();
   }
   const u = new URL(req.url, 'http://localhost');
+    /* Catalogo con #EXTATTRFROMURL: OTT consulta /jit/resolve al iniciar cada
+     * canal y el servidor decide perfil y prepara el JIT en el zap. Se sirve un
+     * fichero generado aparte (APE_JIT_LIST_EXTATTR.m3u8): el catalogo de
+     * produccion NO se toca. Si no se genero, 404 con la razon en vez de servir
+     * una lista sin la directiva y fingir que la tiene. */
+    if (u.pathname === '/playlist-resolver.m3u8') {
+      const f = path.join(path.dirname(MAP_FILE), 'APE_JIT_LIST_EXTATTR.m3u8');
+      if (!fs.existsSync(f)) {
+        res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
+        return res.end('catalogo con resolver no generado: jit_extattr_index.py');
+      }
+      setNoCacheHeaders(res);
+      res.setHeader('X-APE-Catalog', 'extattr-from-url');
+      res.setHeader('X-APE-Resolver', '/jit/resolve');
+      res.writeHead(200, { 'Content-Type': MIME['.m3u8'] });
+      return fs.createReadStream(f).pipe(res);
+    }
   if (u.pathname === '/playlist.m3u8') {
     const f = path.join(path.dirname(MAP_FILE), 'APE_JIT_LIST.m3u8');
     if (!fs.existsSync(f)) { res.writeHead(404); return res.end('playlist not built'); }
@@ -5913,6 +5965,74 @@ const server = http.createServer((req, res) => {
     res.writeHead(200, { 'Content-Type': 'application/json' });
     return res.end(JSON.stringify(metaJson(req, id)));
   }
+
+    /* ═══════════════════════════════════════════════════════════════════════
+     * RESOLVER DE CANAL — el endpoint que consume #EXTATTRFROMURL de OTT
+     *
+     * OTT Navigator documenta #EXTATTRFROMURL: al iniciar un canal consulta una
+     * URL y espera una entrada M3U con UNA URL multimedia. Sin URL, la ignora.
+     *
+     * Conecta OTT con el servidor EN CADA APERTURA DE CANAL sin depender de un
+     * Intent de alta de proveedor (que no existe). El catalogo es estable; la
+     * decision de perfil y la preparacion del JIT ocurren aqui, en el zap.
+     *
+     *   GET /jit/resolve?channel=<id>[&p=<perfil>]
+     *   -> 200 M3U con #EXTINF + UNA url | 400 invalido | 404 desconocido
+     *
+     * Conserva tvg-id y nombre porque OTT los usa para casar la guia EPG.
+     * ═══════════════════════════════════════════════════════════════════════ */
+    if (u.pathname === '/resolve' || u.pathname === '/jit/resolve') {
+      const id = safeId(String(u.searchParams.get('channel') || ''));
+      if (!id) {
+        res.writeHead(400, { 'Content-Type': 'text/plain; charset=utf-8' });
+        return res.end('#EXTM3U\n# ERROR: parametro channel invalido\n');
+      }
+      const map = loadMap();
+      const row = map[id];
+      if (!row || !row.url) {
+        /* Sin URL de relleno: fingir un canal inexistente es peor que fallar. */
+        res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
+        return res.end('#EXTM3U\n# ERROR: canal ' + id + ' no existe en el mapa\n');
+      }
+      const qp = String(u.searchParams.get('p') || '');
+      const prof = (qp && profileMatrix[qp]) ? qp : profileForChannel(id);
+      if (qp && profileMatrix[qp] && imageConfig.profile !== qp) {
+        imageConfig.profile = qp;
+        imageConfigSource = 'resolve:' + qp;
+        imageConfig.force_transcode = true;
+        try { fs.writeFileSync(IMAGE_CONFIG_FILE, JSON.stringify(imageConfig, null, 2)); } catch (_) {}
+        if (current) { try { stopCurrent('resolve-profile-change'); } catch (_) {} }
+      }
+      governorApplied = { profile: prof, channel: id, at: new Date().toISOString(), via: 'extattrfromurl' };
+
+      const base = publicBase(req);
+      const name = String(row.name || row.title || namesFor(id) || ('Canal ' + id))
+        .replace(/[\r\n,]/g, ' ');
+      const grp = String(row.group || 'APE');
+      const logo = row.logo ? ' tvg-logo="' + String(row.logo).replace(/"/g, '') + '"' : '';
+      /* publicBase() YA termina en /jit: añadir otro daba /jit/jit/live/... y el
+       * player recibia un 404. Medido en la primera prueba del resolver. */
+      const target = base + '/live/' + encodeURIComponent(id) + '/master.m3u8';
+
+      const out = [
+        '#EXTM3U',
+        '#EXTINF:-1 tvg-id="' + id + '" tvg-name="' + name + '"' + logo +
+          ' group-title="' + grp + '",' + name,
+        target,
+        ''
+      ].join('\n');
+
+      res.locals.cache = 'resolve';
+      setNoCacheHeaders(res);
+      res.writeHead(200, {
+        'Content-Type': 'audio/x-mpegurl; charset=utf-8',
+        'Cache-Control': 'no-store, max-age=0',
+        'X-APE-Resolved-Channel': id,
+        'X-APE-Resolved-Profile': prof,
+        'X-APE-Profile': prof
+      });
+      return res.end(out);
+    }
 
   if (u.pathname === '/catalog.json') {
     const map = loadMap();
@@ -7294,7 +7414,7 @@ function loadFromGestorProfile(gp) {
       return res.end(JSON.stringify({ ok: false, error: 'motor desconocido: ' + engine + '. validos: ' + Object.keys(PLAYER_ENGINES).join(',') }));
     }
     const base = String(u.searchParams.get('base') || ((req.headers['x-forwarded-proto'] || 'https') + '://' + (req.headers.host || 'iptv-ape.duckdns.org')));
-    const lin = buildGovernedLineup({ engine, base });
+    const lin = buildGovernedLineup({ engine, base, extattr: u.searchParams.get('extattr') === '1' });
     setBaseHeaders(res);
     setNoCacheHeaders(res);
     res.writeHead(200, { 'Content-Type': 'audio/x-mpegurl; charset=utf-8' });
