@@ -88,7 +88,11 @@ function estructura(texto) {
   return out;
 }
 
-async function httpOk(url, timeoutMs = 12000) {
+/* Timeout por defecto 30 s: el PRIMER segmento tras un arranque en frio del JIT
+ * tarda mas que un segmento caliente (ffmpeg tiene que escribir el chunk). Con
+ * 12 s se producia un HTTP 0 que parecia un fallo del catalogo y era del
+ * instrumento. Medido 2026-11-09: canal 1 en frio -> abortado; caliente -> 215 B. */
+async function httpOk(url, timeoutMs = 30000) {
   try {
     const ac = new AbortController();
     const to = setTimeout(() => ac.abort(), timeoutMs);
@@ -165,11 +169,20 @@ async function main() {
   if (!noNet && sample > 0) {
     console.log();
     console.log('  ── RED (muestra ' + sample + ', NO el 100%: el JIT es de un canal a la vez) ──');
+    console.log('  NOTA: cada canal muestreado ARRANCA el JIT y detiene el anterior');
+    console.log('        (single-active-channel). Por eso se calienta antes y se muestrea');
+    console.log('        en serie: dos canales a la vez no pueden estar vivos.');
     const lineas = texto.split(/\r?\n/);
     const urls = [];
     for (let i = 0; i < lineas.length && urls.length < sample; i++) {
       const t = lineas[i].trim();
       if (t && !t.startsWith('#')) urls.push(t);
+    }
+    /* CALENTAMIENTO: se resuelve el primer canal y se espera a que el JIT
+     * produzca. Sin esto el muestreo mide el arranque en frio, no el catalogo. */
+    if (urls.length) {
+      await httpOk(urls[0]);
+      await new Promise((r) => setTimeout(r, 6000));
     }
     for (const u of urls) {
       const r = await httpOk(u);
@@ -184,8 +197,24 @@ async function main() {
         if (segs > 0) {
           const seg = r.body.split(/\r?\n/).filter((x) => x.trim() && !x.trim().startsWith('#')).pop();
           const abs = new URL(seg, u).toString();
-          const rs = await httpOk(abs);
-          ok(rs.code === 200 && rs.body.length > 0, '  segmento carga: HTTP ' + rs.code + ' ' + (rs.body.length) + ' B');
+          let rs = await httpOk(abs);
+          /* UN 503 DEL JIT NO ES UN DEFECTO DEL CATALOGO. Medido 2026-11-09: el
+           * proveedor limita por rafaga (responde 200 con 1 B, o 403 a los
+           * segmentos) y entonces el JIT no arranca y devuelve 503 "startup
+           * timeout" — que es la respuesta CORRECTA. Un sondeo a 12 canales del
+           * origen dio OK=11, VACIO=1: la fuente esta sana, el fallo era del
+           * instrumento por martillear. Se reintenta una vez y, si sigue, se
+           * reporta como AVISO transitorio, no como FALLO. */
+          if (rs.code === 503 || rs.code === 0) {
+            await new Promise((r) => setTimeout(r, 2500));
+            rs = await httpOk(abs);
+          }
+          if (rs.code === 503) {
+            warn(false, '  segmento 503 transitorio (origen limitando o JIT sin arrancar): ' +
+              (rs.body || '').slice(0, 60));
+          } else {
+            ok(rs.code === 200 && rs.body.length > 0, '  segmento carga: HTTP ' + rs.code + ' ' + (rs.body.length) + ' B');
+          }
         }
       }
     }
