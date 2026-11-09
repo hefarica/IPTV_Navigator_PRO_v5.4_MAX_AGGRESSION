@@ -364,7 +364,13 @@
                 `🛡️ P4 (HD Stable): ${stats.P4 || 0}\n` +
                 `❄️ P5 (SD Failsafe): ${stats.P5 || 0}\n` +
                 `----------------------------------\n` +
-                `⚠️ Errores técnicos: ${stats.errors || 0}\n\n` +
+                `⚠️ Errores técnicos: ${stats.errors || 0}\n` +
+                `──────────────────────────────────\n` +
+                `📐 Universo de perfiles: ${stats.profileSource || '?'}\n` +
+                `🔎 Detección de resolución por fuente:\n` +
+                Object.entries(stats.sources || {})
+                    .sort((a, b) => b[1] - a[1])
+                    .map(([k, v]) => `   ${k}: ${v}`).join('\n') + `\n\n` +
                 `Los canales ahora muestran el perfil sugerido en la tabla.`;
 
             // Opcional: Podríamos crear un modal HTML real más tarde. 

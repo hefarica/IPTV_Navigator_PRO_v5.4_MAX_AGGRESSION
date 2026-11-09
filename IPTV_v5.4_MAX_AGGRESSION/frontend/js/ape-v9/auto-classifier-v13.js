@@ -61,46 +61,48 @@ class ChannelAutoClassifier {
      * @returns {Object} Resultado con {suggestedProfile, qualityScore, estimatedBitrate, reason}
      */
     classifyChannel(channel) {
-        const { resolution, fps, codec, bitrate } = channel;
+        const { fps, codec, bitrate } = channel || {};
 
-        // 1. Normalizar y validar datos
-        const normalizedCodec = this._normalizeCodec(codec);
-        const pixels = this._getPixels(resolution, channel); // ✅ v13.1.3: Pasar canal para detección AUTO
-        const parsedFps = parseInt(fps) || 30;
+        // 1. Detectar pixeles con procedencia (width/height, resolution, name, group)
+        const det = this._detectPixels(channel);
+        const pixels = det.pixels;
+
+        // 2. Normalizar codec. `codecKnown` evita el bono fantasma: antes
+        //    _normalizeCodec(undefined) devolvia 'H264' y regalaba +10 a los
+        //    perfiles AVC1, que es lo que hacia ganar a P4 en todos los canales.
+        const codecRaw = (codec === undefined || codec === null) ? '' : String(codec).trim();
+        const codecKnown = codecRaw.length > 0;
+        const normalizedCodec = this._normalizeCodec(codecRaw || undefined);
+        // fps desconocido NO es 30: si no viene declarado no se penaliza a
+        // ningun perfil por fps (Ley Anti-Degradacion: no degradar por ausencia
+        // de dato). Antes 4K sin fps caia a P2 solo por el default 30.
+        const fpsRaw = parseInt(fps);
+        const fpsKnown = !isNaN(fpsRaw) && fpsRaw > 0;
+        const parsedFps = fpsKnown ? fpsRaw : 30;
         const parsedBitrate = parseInt(bitrate) || 0;
 
         if (!pixels) {
             return {
-                suggestedProfile: 'P5',
-                qualityScore: 0,
+                suggestedProfile: 'P5', qualityScore: 0,
                 reason: 'Resolución no reconocida',
-                estimatedBitrate: 0,
+                estimatedBitrate: 0, pixels: 0, detectSource: det.source,
                 error: true
             };
         }
 
-        // 2. Calcular bitrate estimado óptimo
         const bpp = this._getBPP(normalizedCodec, pixels);
-        const estimatedBitrate = (pixels * parsedFps * bpp) / 1000000; // En Mbps
+        const estimatedBitrate = (pixels * parsedFps * bpp) / 1000000;
 
-        // 3. Calcular score de calidad (0-100)
         let qualityScore = 0;
         if (parsedBitrate > 0 && estimatedBitrate > 0) {
             qualityScore = Math.min(100, (parsedBitrate / estimatedBitrate) * 100);
         }
 
-        // 4. Bono de Directivas por Metadatos (HEVC, HDR, UHD)
         const directiveBonus = this._calculateDirectiveBonus(channel);
         qualityScore += directiveBonus;
 
-        // 5. Asignar perfil basado en características (Ajustado por SSOT y Upward-Bias)
         const suggestedProfile = this._determineProfile(
-            resolution,
-            parsedFps,
-            normalizedCodec,
-            qualityScore,
-            pixels,
-            directiveBonus > 0 // Flag para indicar que tiene bono de calidad
+            pixels, parsedFps, normalizedCodec, qualityScore, codecKnown, directiveBonus > 0, fpsKnown
         );
 
         return {
@@ -108,8 +110,10 @@ class ChannelAutoClassifier {
             qualityScore: Math.round(Math.min(100, qualityScore)),
             estimatedBitrate: Math.round(estimatedBitrate * 10) / 10,
             actualBitrate: parsedBitrate,
+            pixels: pixels,
+            detectSource: det.source,
             directiveBonusApplied: directiveBonus > 0,
-            reason: this._generateReason(suggestedProfile, resolution, parsedFps, normalizedCodec, qualityScore, directiveBonus > 0)
+            reason: this._generateReason(suggestedProfile, this._resLabel(pixels), parsedFps, normalizedCodec, qualityScore, directiveBonus > 0)
         };
     }
 
@@ -129,7 +133,10 @@ class ChannelAutoClassifier {
             P4: 0,
             P5: 0,
             avgQualityScore: 0,
-            errors: 0
+            errors: 0,
+            // de donde salio la resolucion de cada canal (medible, no afirmado)
+            sources: {},
+            profileSource: null
         };
 
         let totalQuality = 0;
@@ -153,9 +160,13 @@ class ChannelAutoClassifier {
                 stats[result.suggestedProfile]++;
             }
             totalQuality += result.qualityScore;
+            const src = result.detectSource || 'desconocida';
+            stats.sources[src] = (stats.sources[src] || 0) + 1;
         });
+        stats.profileSource = this._universeSource || 'ninguna';
 
-        stats.avgQualityScore = Math.round(totalQuality / (channels.length - stats.errors));
+        const den = channels.length - stats.errors;
+        stats.avgQualityScore = den > 0 ? Math.round(totalQuality / den) : 0;
 
         return {
             results,
@@ -168,58 +179,57 @@ class ChannelAutoClassifier {
      * Determina el perfil óptimo basado en la configuración real de los perfiles.
      * v13.5: Motor de Matching Atómico (Resolution-Driven)
      */
-    _determineProfile(resolution, fps, codec, qualityScore, pixels, hasBonus = false) {
-        const config = window.APE_PROFILES_CONFIG;
-        if (!config) return this._determineProfileStatic(resolution, fps, codec, qualityScore, pixels);
+    _determineProfile(pixels, fps, codec, qualityScore, codecKnown, hasBonus = false, fpsKnown = false) {
+        const universe = this._getProfileUniverse();
+        if (!universe) return 'P5';
 
-        const profiles = config.getAllProfiles();
         let bestMatch = 'P5';
         let highestScore = -1;
+        const weights = this.atomicConfig || { resolutionWeight: 0.75 };
 
-        Object.entries(profiles).forEach(([id, profile]) => {
+        for (const [id, profile] of Object.entries(universe)) {
             let score = 0;
-            const settings = profile.settings || {};
+            const profilePixels = profile._res || 0;
 
-            // 1. Matching por Píxeles (SSOT - Peso 75% en v13.5)
-            const profilePixels = this._getPixels(settings.resolution);
-            if (profilePixels > 0) {
+            // 1. Pixeles (75%)
+            if (profilePixels > 0 && pixels > 0) {
                 const diff = Math.abs(pixels - profilePixels);
                 const maxDiff = Math.max(pixels, profilePixels);
-                const pixelMatch = 1 - (diff / maxDiff);
-                score += pixelMatch * (this.atomicConfig.resolutionWeight * 100);
+                score += (1 - (diff / maxDiff)) * 100 * weights.resolutionWeight;
             }
 
-            // 2. Matching por FPS (Peso 15%)
-            const profileFps = parseInt(settings.fps) || 30;
-            const fpsDiff = Math.abs(fps - profileFps);
-            const fpsMatch = 1 - (fpsDiff / Math.max(fps, profileFps, 1));
-            score += fpsMatch * 15;
-
-            // 3. Matching por Codec (Peso 10%)
-            const profileCodec = this._normalizeCodec(settings.codec);
-            if (profileCodec === codec) {
-                score += 10;
+            // 2. FPS (15%) SOLO si el canal declara fps. Con fps desconocido el
+            //    componente es neutro y no hunde a los perfiles de 60.
+            if (fpsKnown) {
+                const profileFps = profile._fps || 30;
+                score += (1 - (Math.abs(fps - profileFps) / Math.max(fps, profileFps, 1))) * 15;
             }
 
-            // 4. Upward-Bias: Bono por nivel de perfil para prevenir downgrades
-            // Los perfiles con IDs menores (P0, P1...) reciben un ligero empuje
-            const profileNum = parseInt(id.replace('P', ''));
-            if (!isNaN(profileNum)) {
-                score += (6 - profileNum) * 0.5; // Bono de hasta 3 puntos por ser perfil premium
+            // 3. Codec (10%) SOLO si el canal declara codec
+            if (codecKnown && profile._codec === codec) score += 10;
+
+            // 4. Sesgo ascendente por nivel. Los .5 quedan por debajo de su base
+            //    para que NUNCA ganen por accidente: son sintesis opt-in.
+            const num = parseFloat(String(id).replace('P', ''));
+            if (!isNaN(num)) {
+                score += profile._emulated ? (6 - num) * 0.5 - 1.0 : (6 - num) * 0.5;
             }
 
-            // Bono extra si el canal ya traía bono de metadatos calientes
-            if (hasBonus && profileNum <= 2) {
-                score += 5; // Empuje extra hacia P0-P2 si detectamos UHD/HEVC
-            }
+            if (hasBonus && !isNaN(num) && num <= 2) score += 5;
 
-            if (score > highestScore) {
-                highestScore = score;
-                bestMatch = id;
-            }
-        });
-
+            if (score > highestScore) { highestScore = score; bestMatch = id; }
+        }
         return bestMatch;
+    }
+
+    /* Etiqueta legible de una cantidad de pixeles */
+    _resLabel(pixels) {
+        if (!pixels) return 'desconocida';
+        if (pixels >= 33177600) return '8K';
+        if (pixels >= 8294400) return '4K';
+        if (pixels >= 2073600) return 'FHD';
+        if (pixels >= 921600) return 'HD';
+        return 'SD';
     }
 
     /**
@@ -269,6 +279,161 @@ class ChannelAutoClassifier {
      * Obtiene pixels de una resolución
      * v13.1.3: Manejo especial para "AUTO" - intenta detectar calidad real
      */
+
+    /* ═══════════════════════════════════════════════════════════════════════
+     * UNIVERSO DE PERFILES — fuente canonica
+     *
+     * BUG MEDIDO 2026-11-08 (Chromium, preview local 5500):
+     * el clasificador matcheaba contra APE_PROFILES_CONFIG, cuyas resoluciones
+     * estaban CRUZADAS:
+     *     P1 "4K UHD"     -> declaraba 7680x4320  (8K)
+     *     P2 "2K QHD"     -> declaraba 3840x2160  (4K)
+     *     P3 "FHD 1080p"  -> declaraba 3840x2160  (4K)
+     *     P4 "HD 720p"    -> declaraba 3840x2160  (4K)
+     *     P5 "SD 480p"    -> declaraba 3840x2160  (4K)
+     * Con P2..P5 empatados en 3840x2160 (75% del peso) y fps=120 en los seis,
+     * el desempate lo daba el codec + el sesgo: P4 ganaba SIEMPRE.
+     * Resultado real: P0=0 P1=0 P2=939 P3=5690 P4=14595 P5=0.
+     *
+     * El Gestor (APE_ALL_PROFILES_OPTIMIZED.json) y APE_LAB_V8_PROFILES SI
+     * tienen la escalera correcta: 8K / 4K / 4K / 1080p / 720p / 480p.
+     * Aqui se prefiere esa fuente y se derivan los 6 emulados (.5) para que el
+     * universo sean los 12 canonicos del Gestor.
+     * ═══════════════════════════════════════════════════════════════════════ */
+    _getProfileUniverse() {
+        if (this._universe && this._universeAt === (this._universeStamp || 0)) return this._universe;
+
+        let raw = null, source = 'ninguna';
+        // 1. canonico del Gestor, si el loader ya lo dejo en window
+        if (window.__APE_CANONICAL_PROFILES) {
+            raw = window.__APE_CANONICAL_PROFILES.profiles || window.__APE_CANONICAL_PROFILES;
+            source = 'gestor-json';
+        }
+        // 2. LAB v8 (sincrono y con la escalera correcta)
+        if (!raw && window.APE_LAB_V8_PROFILES) {
+            raw = window.APE_LAB_V8_PROFILES;
+            source = 'lab-v8';
+        }
+        // 3. config como ultimo recurso
+        if (!raw && window.APE_PROFILES_CONFIG) {
+            const c = window.APE_PROFILES_CONFIG;
+            raw = (typeof c.getAllProfiles === 'function') ? c.getAllProfiles() : c.profiles;
+            source = 'profiles-config';
+        }
+        if (!raw) return null;
+
+        const out = {};
+        Object.keys(raw).forEach((id) => {
+            const p = raw[id] || {};
+            out[id] = Object.assign({}, p, {
+                _res: this._profileResolution(p),
+                _fps: parseInt((p.settings || {}).fps) || parseInt(p.fps) || 30,
+                _codec: this._normalizeCodec((p.settings || {}).codec || p.codec),
+                _emulated: false
+            });
+        });
+        // derivar la capa .5 (los 6 emulados) si el JSON no la trae
+        ['P0', 'P1', 'P2', 'P3', 'P4', 'P5'].forEach((baseId) => {
+            const pid = baseId + '.5';
+            if (out[pid] || !out[baseId]) return;
+            const b = out[baseId];
+            out[pid] = Object.assign({}, b, {
+                id: pid,
+                name: String(b.name || baseId) + ' (6K EMULADO)',
+                _emulated: true,
+                _derived_from: baseId,
+                // misma resolucion que su base: el .5 es sintesis, no un pixel real
+                _res: b._res
+            });
+        });
+        this._universe = out;
+        this._universeSource = source;
+        this._universeAt = this._universeStamp || 0;
+        return out;
+    }
+
+    /* Resolucion pixeles de un perfil: settings.resolution manda, pero se
+     * acepta resolution, quality_levels.L1 y el nombre por si el perfil viejo
+     * viene cruzado. */
+    _profileResolution(profile) {
+        const st = profile.settings || {};
+        let r = st.resolution || profile.resolution || null;
+        if (!r && profile.quality_levels && profile.quality_levels.L1) {
+            r = profile.quality_levels.L1.resolution || null;
+        }
+        let px = this._getPixels(r);
+        if (!px) {
+            // ultimo recurso: la resolucion mas alta de sus quality_levels
+            const ql = profile.quality_levels || {};
+            for (const k of ['L1', 'L2', 'L3', 'L4', 'L5']) {
+                if (ql[k] && ql[k].resolution) { px = this._getPixels(ql[k].resolution); if (px) break; }
+            }
+        }
+        return px || 0;
+    }
+
+    /* ═══════════════════════════════════════════════════════════════════════
+     * DETECCION DE RESOLUCION DEL CANAL
+     *
+     * BUG MEDIDO: _getPixels solo miraba channel.width/height, channel.name y
+     * tier. NO miraba channel.group (group-title) — que es donde practicamente
+     * todas las listas IPTV declaran la calidad — ni channel.video.resolution
+     * (la forma canonica del normalizador). Sin eso, ~todo caia al fallback
+     * HD (1280x720) y el reparto se degeneraba.
+     * Ahora se devuelve tambien POR QUE campo se detecto, para que el reporte
+     * lo demuestre en vez de afirmarlo.
+     * ═══════════════════════════════════════════════════════════════════════ */
+    _detectPixels(channel) {
+        if (!channel) return { pixels: 0, source: 'sin-canal' };
+
+        // 1. width/height explicitos
+        const w1 = parseInt(channel.width) || 0;
+        const h1 = parseInt(channel.height) || 0;
+        if (w1 && h1) return { pixels: w1 * h1, source: 'width/height' };
+
+        const v = channel.video || {};
+        const w2 = parseInt(v.width) || 0;
+        const h2 = parseInt(v.height) || 0;
+        if (w2 && h2) return { pixels: w2 * h2, source: 'video.width/height' };
+
+        // 2. cadena de resolucion explicita
+        const cands = [
+            ['resolution', channel.resolution],
+            ['video.resolution', v.resolution],
+            ['resolution_real', channel.resolution_real || v.resolution_real],
+            ['quality', channel.quality],
+            ['tier', channel.qualityTier || channel.tier]
+        ];
+        for (const [label, val] of cands) {
+            if (!val) continue;
+            const str = String(val).toUpperCase().replace(/\s/g, '');
+            if (str === 'AUTO' || str === 'UNKNOWN' || str === '-') continue;
+            const px = this._getPixels(String(val));
+            if (px) return { pixels: px, source: label };
+        }
+
+        // 3. palabras clave en nombre + grupo + categoria
+        const blob = [
+            channel.name, channel.tvgName, channel.tvg_name, channel.streamName,
+            channel.group, channel.groupTitle, channel.group_title,
+            channel.category_name, channel.category, channel.description
+        ].filter(Boolean).join(' ').toUpperCase();
+
+        const tiers = [
+            ['8K',   /\b8K\b|UHD.?8K|4320P/],
+            ['4K',   /\b4K\b|\bUHD\b|2160P|ULTRA.?HD/],
+            ['FHD',  /\bFHD\b|\bFULL.?HD\b|1080[PI]?\b/],
+            ['HD',   /\bHD\b|\b720P\b|\bHDTV\b/],
+            ['SD',   /\bSD\b|\b480P\b|\b576P\b|\b360P\b|\b240P\b/]
+        ];
+        for (const [label, re] of tiers) {
+            if (re.test(blob)) return { pixels: this.resolutionMap[label], source: 'name+group:' + label };
+        }
+
+        // 4. fallback honesto: se declara como tal
+        return { pixels: this.resolutionMap['HD'], source: 'fallback-HD' };
+    }
+
     _getPixels(resolution, channel = null) {
         if (!resolution) return 0;
 
@@ -411,5 +576,41 @@ class ChannelAutoClassifier {
 if (typeof window !== 'undefined') {
     window.ChannelAutoClassifier = ChannelAutoClassifier;
     window.autoClassifier = new ChannelAutoClassifier();
+
+    /* ═══════════════════════════════════════════════════════════════════════
+     * CARGA DEL UNIVERSO CANONICO DEL GESTOR
+     *
+     * El operador definio que los perfiles del Gestor de Perfiles APE v9.0 son
+     * la fuente canonica de la auto-clasificacion. Se cargan aqui y se dejan en
+     * window.__APE_CANONICAL_PROFILES; _getProfileUniverse() los prefiere sobre
+     * APE_PROFILES_CONFIG (cuyas resoluciones estaban cruzadas) y sobre LAB v8.
+     * Si la carga falla, el clasificador sigue con LAB v8 y lo declara.
+     * ═══════════════════════════════════════════════════════════════════════ */
+    (function loadCanonicalProfiles() {
+        const rutas = [
+            'js/ape-v9/APE_ALL_PROFILES_OPTIMIZED.json',
+            './js/ape-v9/APE_ALL_PROFILES_OPTIMIZED.json',
+            'IPTV_v5.4_MAX_AGGRESSION/frontend/js/ape-v9/APE_ALL_PROFILES_OPTIMIZED.json'
+        ];
+        const probar = (i) => {
+            if (i >= rutas.length) return;   // se queda con LAB v8
+            if (typeof fetch !== 'function') return;
+            fetch(rutas[i], { cache: 'no-store' })
+                .then((r) => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+                .then((j) => {
+                    const p = j.profiles || j;
+                    if (!p || !Object.keys(p).length) throw new Error('vacio');
+                    window.__APE_CANONICAL_PROFILES = p;
+                    // invalidar el cache del universo para que se recalcule
+                    const C = window.autoClassifier;
+                    if (C) { C._universe = null; C._universeStamp = (C._universeStamp || 0) + 1; }
+                    console.log('%c[CLASSIFY] universo canonico del Gestor cargado (' +
+                        Object.keys(p).length + ' perfiles reales + capa .5 derivada)',
+                        'color:#10b981;font-weight:bold');
+                })
+                .catch(() => probar(i + 1));
+        };
+        probar(0);
+    })();
     console.log('%c🎯 Auto-Classifier Global cargado', 'color: #10b981; font-weight: bold;');
 }
