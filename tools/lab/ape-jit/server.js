@@ -399,7 +399,7 @@ const COMMON_INPUTS = [
 
 function enumeratePlans(opts) {
   const o = opts || {};
-  const profiles = o.profiles && o.profiles.length ? o.profiles : Object.keys(profileMatrix);
+  const profiles = o.profiles && o.profiles.length ? o.profiles : catalogProfileIds();
   const inputs = o.inputs && o.inputs.length
     ? COMMON_INPUTS.filter((i) => o.inputs.includes(i.name))
     : COMMON_INPUTS;
@@ -3516,6 +3516,17 @@ const RECIPE_PRESETS = {
  * Dada la seleccion del operador, devuelve el perfil COMPLETO resuelto, con
  * todo lo que falte relleno y una lista explicita de lo que NO se puede cumplir.
  */
+function catalogProfileIds() {
+  try {
+    const all = withEmulatedProfiles(loadGestorProfiles());
+    if (all && typeof all === 'object') {
+      const ids = Object.keys(all);
+      if (ids.length) return ids;
+    }
+  } catch (_) { /* cae a la matriz */ }
+  return Object.keys(profileMatrix);
+}
+
 function declareProfile(opts) {
   const o = opts || {};
   const profileId = String(o.profile || 'P4.5');
@@ -3682,7 +3693,7 @@ const ENGINE_PLAYER = {
 function bestProfileForEngine(engine) {
   const pid = ENGINE_PLAYER[engine] || 'generic';
   const caps = PLAYER_CAPS[pid] || PLAYER_CAPS.generic;
-  const ids = Object.keys(profileMatrix)
+  const ids = catalogProfileIds()
     .map((k) => ({ k, w: profileMatrix[k].outW, h: profileMatrix[k].outH }))
     .sort((x, y) => (y.w * y.h) - (x.w * x.h));
   for (const it of ids) {
@@ -5025,7 +5036,7 @@ const server = http.createServer((req, res) => {
       codecs: Object.entries(CODEC_CATALOG).map(([id, c]) => ({ id, label: c.label, family: c.family, profile: c.profile, encoder: c.encoder, notes: c.notes })),
       players: Object.entries(PLAYER_CAPS).map(([id, p]) => ({ id, label: p.label, maxW: p.maxW, maxH: p.maxH, codecs: p.codecs, hdr: p.hdr, main10: p.main10, evidence: p.evidence })),
       recipes: Object.entries(RECIPE_PRESETS).map(([id, r]) => ({ id, label: r.label, chain: r.chain, params: r.params })),
-      profiles: Object.keys(profileMatrix),
+      profiles: catalogProfileIds(),
       counts: { targets: Object.keys(OUTPUT_TARGETS).length, codecs: Object.keys(CODEC_CATALOG).length,
                 players: Object.keys(PLAYER_CAPS).length, recipes: Object.keys(RECIPE_PRESETS).length }
     }));
@@ -5051,13 +5062,211 @@ const server = http.createServer((req, res) => {
   }
 
   /* PERFIL COMPLETO: al seleccionar un perfil trae su config actual resuelta */
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * CAMPOS DEL GESTOR -> CAMPOS DEL MODULO DE IMAGEN
+ *
+ * BUG MEDIDO 2026-11-08: `/image/profile/{pid}/full` devolvia SIEMPRE los
+ * mismos valores (codec hvc1, crf 20, preset ultrafast, seg 2, hqdn3d 0.6) para
+ * P0 y para P5. `load` se construia de profileMatrix + transformRules +
+ * ruleParams (defaults del motor) y NUNCA llamaba a loadGestorProfiles().
+ * Por eso al cambiar `aip-b-profile` el select cambiaba de nombre pero los
+ * valores seguian siendo los del motor, no los del perfil elegido.
+ *
+ * Ahora `load` se lee del perfil REAL del Gestor:
+ *   settings.resolution      -> outW / outH
+ *   settings.fps             -> outFps / inFps
+ *   settings.codec           -> codec (normalizado al nombre del motor)
+ *   settings.bitrate         -> bitrate
+ *   settings.segment_duration_s -> seg_duration
+ *   quality_levels.L1.*      -> hdr, resolucion por nivel
+ *   vlcopt.video-filter      -> hqdn3d / unsharp / atadenoise / nlmeans
+ * y solo si el Gestor no tiene el campo se cae al default del motor.
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+
+/* IDs de perfil que el modulo debe ofrecer.
+ *
+ * BUG MEDIDO 2026-11-08: /image/catalog devolvia Object.keys(profileMatrix),
+ * que solo tiene P0..P5 (6). El Gestor tiene 12: los 6 reales mas los 6
+ * emulados (.5). El select `aip-b-profile` se llenaba con esa lista corta, asi
+ * que el operador no podia elegir P0.5..P5.5 aunque existieran en el Gestor.
+ * La fuente es el GESTOR; la matriz es solo el respaldo si no hay Gestor.
+ */
+
+
+/* Normaliza el codec del Gestor al nombre que usa el modulo. */
+function gestorCodecToEngine(c) {
+  var s = String(c || '').toLowerCase();
+  if (/av1|av01/.test(s)) return 'av01';
+  if (/vvc|h266/.test(s)) return 'vvc1';
+  if (/dvh1|dvhe|dolby/.test(s)) return 'dvh1';
+  if (/h265|h\.265|hevc|hvc1|hev1/.test(s)) return 'hvc1';
+  if (/vp9|vp09/.test(s)) return 'vp09';
+  if (/h264|h\.264|avc/.test(s)) return 'avc1';
+  if (/mpeg2|mp2v/.test(s)) return 'mp2v';
+  return null;
+}
+
+/* Parte una cadena ffmpeg en filtros de nivel superior (respeta llaves). */
+function splitFilterChain(chain) {
+  var out = [], depth = 0, buf = '';
+  var s = String(chain || '');
+  for (var i = 0; i < s.length; i++) {
+    var ch = s[i];
+    if (ch === '{') depth++;
+    else if (ch === '}') depth--;
+    if (ch === ',' && depth === 0) { out.push(buf); buf = ''; }
+    else buf += ch;
+  }
+  if (buf.trim()) out.push(buf);
+  return out;
+}
+
+/* Lee los parametros de un filtro: por nombre (k=v) o posicionales. */
+function filterParams(piece, positionalNames) {
+  var name = String(piece).split('=')[0].split('{')[0].trim();
+  var rest = '';
+  if (piece.indexOf('{') >= 0 && piece.indexOf('}') >= 0) {
+    rest = piece.slice(piece.indexOf('{') + 1, piece.lastIndexOf('}'));
+  } else if (piece.indexOf('=') >= 0) {
+    rest = piece.slice(piece.indexOf('=') + 1);
+  }
+  var parts = rest.split(/[:,]/).map(function (x) { return x.trim(); }).filter(Boolean);
+  var o = { name: name, named: {}, positional: [] };
+  parts.forEach(function (p) {
+    if (p.indexOf('=') > 0) {
+      var kv = p.split('=');
+      o.named[kv[0].trim()] = kv[1].trim();
+    } else {
+      o.positional.push(p);
+    }
+  });
+  if (positionalNames && o.positional.length) {
+    positionalNames.forEach(function (n, i) {
+      if (o.positional[i] !== undefined && o.named[n] === undefined) o.named[n] = o.positional[i];
+    });
+  }
+  return o;
+}
+
+function numOr(v, d) {
+  var n = Number(v);
+  return isFinite(n) ? n : d;
+}
+
+/* Extrae los seis filtros del modulo desde la cadena del Gestor. */
+function parseGestorChain(chain) {
+  var res = { hqdn3d: null, unsharp: null, atadenoise: null, nlmeans: null,
+              gradfun: null, bwdif: null, cas: null, chain: String(chain || '') };
+  if (!chain) return res;
+  splitFilterChain(chain).forEach(function (piece) {
+    var nm = String(piece).split('=')[0].split('{')[0].trim().toLowerCase();
+    if (nm === 'hqdn3d') {
+      var p = filterParams(piece, ['luma_spatial', 'chroma_spatial', 'luma_tmp', 'chroma_tmp']);
+      var g = p.named;
+      res.hqdn3d = {
+        luma_spatial: numOr(g.luma_spatial !== undefined ? g.luma_spatial : g.lu, null),
+        chroma_spatial: numOr(g.chroma_spatial !== undefined ? g.chroma_spatial : g.la, null),
+        luma_tmp: numOr(g.luma_tmp !== undefined ? g.luma_tmp : g.lt, null),
+        chroma_tmp: numOr(g.chroma_tmp !== undefined ? g.chroma_tmp : g.ct, null)
+      };
+    } else if (nm === 'unsharp') {
+      var q = filterParams(piece, ['luma_msize_x', 'luma_msize_y', 'luma_amount',
+                                   'chroma_msize_x', 'chroma_msize_y', 'chroma_amount']);
+      var h = q.named;
+      res.unsharp = {
+        luma_amount: numOr(h.luma_amount, null),
+        luma_msize: numOr(h.luma_msize_x, null),
+        chroma_amount: numOr(h.chroma_amount, null),
+        chroma_msize: numOr(h.chroma_msize_x, null)
+      };
+    } else if (nm === 'atadenoise') {
+      var a = filterParams(piece, []).named;
+      res.atadenoise = { s: numOr(a.s, null), a: numOr(a.a, null), b: numOr(a.b, null) };
+    } else if (nm === 'nlmeans') {
+      var n = filterParams(piece, []).named;
+      res.nlmeans = { s: numOr(n.s, null), p: numOr(n.p, null), r: numOr(n.r, null) };
+    } else if (nm === 'gradfun') {
+      var gr = filterParams(piece, []).named;
+      res.gradfun = { radius: numOr(gr.radius, null), strength: numOr(gr.strength, null) };
+    } else if (nm === 'bwdif' || nm === 'yadif') {
+      res.bwdif = { filter: nm, mode: numOr(filterParams(piece, []).named.mode, null) };
+    } else if (nm === 'cas') {
+      res.cas = { strength: numOr(filterParams(piece, []).named.strength, null) };
+    }
+  });
+  return res;
+}
+
+/* Construye `load` desde el perfil REAL del Gestor.
+ * Devuelve null si no hay perfil del Gestor. Los campos ausentes quedan null
+ * para que el llamador caiga al default del motor. */
+function loadFromGestorProfile(gp) {
+  if (!gp || typeof gp !== 'object') return null;
+  var st = gp.settings || {};
+  var ql = gp.quality_levels || {};
+  var vo = gp.vlcopt || {};
+  var L1 = (ql && typeof ql.L1 === 'object' && ql.L1) || {};
+  // la cadena real: vlcopt.video-filter manda; si no, la de L1
+  var chain = String(vo['video-filter'] || L1.video_filter || '');
+  var f = parseGestorChain(chain);
+  var res = String(st.resolution || L1.resolution || '');
+  var m = res.match(/^(\d+)\s*x\s*(\d+)$/i);
+  return {
+    source: 'gestor',
+    resolution: res || null,
+    outW: m ? Number(m[1]) : null,
+    outH: m ? Number(m[2]) : null,
+    outFps: st.fps != null ? Number(st.fps) : null,
+    inFps: st.fps != null ? Number(st.fps) : null,
+    codec: gestorCodecToEngine(st.codec),
+    codecRaw: st.codec || null,
+    bitrate: st.bitrate != null ? Number(st.bitrate) : null,
+    mode: gp._mode || 'real',
+    hdr: L1.hdr || (gp.color && (gp.color.hdr_mode || gp.color.hdrMode)) || null,
+    seg_duration: st.segment_duration_s != null ? Number(st.segment_duration_s) : null,
+    strategy: st.strategy || null,
+    // filtros parseados de la cadena REAL del Gestor
+    hqdn3d: f.hqdn3d,
+    unsharp: f.unsharp,
+    atadenoise: f.atadenoise,
+    nlmeans: f.nlmeans,
+    gradfun: f.gradfun,
+    bwdif: f.bwdif,
+    cas: f.cas,
+    filterChain: chain,
+    levels: Object.keys(ql).filter(function (k) { return /^L[0-9]$/.test(k); })
+      .sort().map(function (k) {
+        return {
+          level: k,
+          resolution: (ql[k] || {}).resolution || null,
+          hdr: (ql[k] || {}).hdr || null,
+          bitrate_mbps: (ql[k] || {}).bitrate_mbps || null
+        };
+      })
+  };
+}
+
   if (u.pathname.match(/^\/image\/profile\/[^/]+\/full$/)) {
     const pid = decodeURIComponent(u.pathname.split('/')[3] || '');
-    const row = profileMatrix[pid];
+    /* La matriz solo tiene P0..P5. Los emulados (.5) NO estaban, asi que /full
+     * les devolvia 404 y el panel se quedaba sin datos al elegirlos. Ahora se
+     * deriva la fila de su base y se marca `emulated`. */
+    let row = profileMatrix[pid];
+    let rowDerivedFrom = null;
+    if (!row) {
+      const baseId = String(pid).split('.')[0];
+      if (profileMatrix[baseId]) {
+        row = Object.assign({}, profileMatrix[baseId], { profile: pid, emulated: true });
+        rowDerivedFrom = baseId;
+      }
+    }
     if (!row) {
       setBaseHeaders(res); setNoCacheHeaders(res);
       res.writeHead(404, { 'Content-Type': 'application/json' });
-      return res.end(JSON.stringify({ ok: false, error: 'perfil inexistente: ' + pid }));
+      return res.end(JSON.stringify({ ok: false, error: 'perfil inexistente: ' + pid,
+                                      validos: catalogProfileIds() }));
     }
     const q = u.searchParams;
     /* Las REGLAS de este perfil, con todos sus campos ya cargados. Es lo que el
@@ -5083,24 +5292,52 @@ const server = http.createServer((req, res) => {
       ok: true,
       profile: pid,
       matrix: row,
+      rowDerivedFrom: rowDerivedFrom,
+      emulated: !!row.emulated,
       rules: myRules,
       ruleCount: myRules.length,
-      // TODO lo que el panel debe rellenar, ya resuelto
-      load: {
-        input: tpl ? tpl.input : null,
-        inFps: tpl ? tpl.inFps : null,
-        outW: row.outW, outH: row.outH,
-        outFps: tpl ? tpl.outFps : null,
-        codec: tpl ? tpl.codec : 'hvc1',
-        recipe: tpl ? tpl.recipe : 'balanced',
-        dither: tpl ? (tpl.dither || row.dither) : row.dither,
-        mode: tpl ? (tpl.mode || 'real') : 'real',
-        preset: tplParams.preset, crf: tplParams.crf, audio: tplParams.audio,
-        hqdn3d: tplParams.hqdn3d, unsharp: tplParams.unsharp, atadenoise: tplParams.atadenoise,
-        seg_duration: tplParams.seg_duration, window_size: tplParams.window_size,
-        extra_window_size: tplParams.extra_window_size, gop_seconds: tplParams.gop_seconds,
-        x265_threads: tplParams.x265_threads
-      },
+      /* load = perfil REAL del Gestor, con el motor solo como respaldo.
+       * source dice de donde salio cada cosa para que el panel lo muestre. */
+      load: (function () {
+        var gestorAll = loadGestorProfiles();
+        var gp = null;
+        if (gestorAll) gp = gestorAll[pid] || gestorAll[String(pid).split('.')[0]] || null;
+        var G = loadFromGestorProfile(gp) || {};
+        function pick(g, m) { return (g !== undefined && g !== null && g !== '') ? g : m; }
+        var out = {
+          source: G.source || 'motor',
+          fromGestor: !!G.source,
+          // resolucion: la del Gestor manda
+          outW: pick(G.outW, row.outW),
+          outH: pick(G.outH, row.outH),
+          outFps: pick(G.outFps, tpl ? tpl.outFps : null),
+          inFps: pick(G.inFps, tpl ? tpl.inFps : null),
+          input: tpl ? tpl.input : null,
+          codec: pick(G.codec, tpl ? tpl.codec : 'hvc1'),
+          codecRaw: G.codecRaw || null,
+          bitrate: pick(G.bitrate, null),
+          recipe: tpl ? tpl.recipe : 'balanced',
+          dither: tpl ? (tpl.dither || row.dither) : row.dither,
+          mode: pick(G.mode, tpl ? (tpl.mode || 'real') : 'real'),
+          hdr: G.hdr || null,
+          strategy: G.strategy || null,
+          preset: tplParams.preset, crf: tplParams.crf, audio: tplParams.audio,
+          hqdn3d: G.hqdn3d || tplParams.hqdn3d,
+          unsharp: G.unsharp || tplParams.unsharp,
+          atadenoise: G.atadenoise || tplParams.atadenoise,
+          nlmeans: G.nlmeans || null,
+          gradfun: G.gradfun || null,
+          cas: G.cas || null,
+          seg_duration: pick(G.seg_duration, tplParams.seg_duration),
+          window_size: tplParams.window_size,
+          extra_window_size: tplParams.extra_window_size,
+          gop_seconds: tplParams.gop_seconds,
+          x265_threads: tplParams.x265_threads,
+          levels: G.levels || [],
+          filterChain: G.filterChain || null
+        };
+        return out;
+      })(),
       resolved: r
     }));
   }
@@ -5575,20 +5812,31 @@ const server = http.createServer((req, res) => {
   }
 
   if (u.pathname === '/image/gestor/profiles') {
-    const all = loadGestorProfiles();
+    /* BUG MEDIDO 2026-11-08: este endpoint usaba loadGestorProfiles() SIN
+     * withEmulatedProfiles(), asi que devolvia 6 perfiles. El panel lo usa para
+     * llenar el select `aip-al-profile` (Perfil del gestor en el bloque LLM) y
+     * el operador solo veia P0..P5 aunque el Gestor tiene 12.
+     * Ahora devuelve la totalidad: los 6 reales + los 6 emulados (.5). */
+    const all = withEmulatedProfiles(loadGestorProfiles());
     setBaseHeaders(res); setNoCacheHeaders(res);
     if (!all) {
       res.writeHead(404, { 'Content-Type': 'application/json' });
       return res.end(JSON.stringify({ ok: false, error: 'no se pudo leer ' + PROFILES_JSON }));
     }
+    const ids = Object.keys(all);
     res.writeHead(200, { 'Content-Type': 'application/json' });
     return res.end(JSON.stringify({
       ok: true,
-      count: Object.keys(all).length,
-      profiles: Object.keys(all).map((k) => ({
+      count: ids.length,
+      realCount: ids.filter((k) => k.indexOf('.') < 0).length,
+      emulatedCount: ids.filter((k) => k.indexOf('.') >= 0).length,
+      source: 'gestor + capa emulada',
+      profiles: ids.map((k) => ({
         id: k,
         name: all[k].name || k,
         level: all[k].level,
+        emulated: k.indexOf('.') >= 0,
+        derivedFrom: all[k]._derived_from || null,
         fields: countFields(all[k]),
         sections: Object.keys(all[k]).filter((x) => typeof all[k][x] === 'object')
       }))

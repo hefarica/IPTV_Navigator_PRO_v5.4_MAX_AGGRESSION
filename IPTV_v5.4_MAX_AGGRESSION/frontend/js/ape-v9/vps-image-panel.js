@@ -578,53 +578,68 @@
     if (e && v != null && v !== '') e.value = String(v);
   }
 
+  /* Carga un perfil del Gestor en el constructor del modulo.
+   *
+   * BUG MEDIDO EN CHROMIUM 2026-11-08 (se selecciono P0.5 y se leyo el DOM).
+   * Esta funcion escribia el DOM con setVal() y DESPUES llamaba render(), pero
+   * render() reconstruye todo desde S.config y S.build. Como solo se actualizaba
+   * S.build.profile, el render borraba los valores recien puestos y el modulo
+   * volvia a los defaults del motor (codec hvc1, crf 20, hqdn3d 0.6) para
+   * CUALQUIER perfil elegido. Sintoma exacto del operador: "no agrega los valores
+   * que estan en los campos homologos del gestor".
+   * Ahora se escribe el ESTADO y render() lo pinta. */
   function loadProfile(pid) {
     if (!pid) return;
     S.build.profile = pid;
-    api('/image/profile/' + encodeURIComponent(pid) + '/full?player=' +
-        encodeURIComponent(S.build.player) + '&w=' + S.build.w + '&h=' + S.build.h)
-      .then(function (r) {
-        if (!r || !r.ok || !r.load) { logLine('perfil ' + pid + ': sin datos'); return; }
-        var L = r.load;
-        var bands = { '480p': [854, 480], '576p': [1024, 576], '720p': [1280, 720],
-                      '1080p': [1920, 1080], '1440p': [2560, 1440], '4K': [3840, 2160], '8K': [7680, 4320] };
-        // ENTRADA
-        if (L.input && bands[L.input]) {
-          setVal('aip-b-w', bands[L.input][0]);
-          setVal('aip-b-h', bands[L.input][1]);
-        }
-        // SALIDA
-        setVal('aip-b-outW', L.outW);
-        setVal('aip-b-outH', L.outH);
-        setVal('aip-b-outFps', L.outFps || '');
-        setVal('aip-b-codec', L.codec);
-        setVal('aip-b-recipe', L.recipe);
-        setVal('aip-b-dither', L.dither);
-        setVal('aip-b-mode', L.mode);
-        // ENCODER
-        setVal('aip-b-preset', L.preset);
-        setVal('aip-b-crf', L.crf);
-        setVal('aip-b-audio', L.audio);
-        setVal('aip-b-gop', L.gop_seconds);
-        // FILTROS (los seis)
-        setVal('aip-hq-ls', (L.hqdn3d || {}).luma_spatial);
-        setVal('aip-hq-cs', (L.hqdn3d || {}).chroma_spatial);
-        setVal('aip-hq-lt', (L.hqdn3d || {}).luma_tmp);
-        setVal('aip-hq-ct', (L.hqdn3d || {}).chroma_tmp);
-        setVal('aip-us-am', (L.unsharp || {}).luma_amount);
-        setVal('aip-us-ms', (L.unsharp || {}).luma_msize);
-        setVal('aip-at-s', (L.atadenoise || {}).s);
-        // EMPAQUETADO
-        setVal('aip-seg', L.seg_duration);
-        setVal('aip-win', L.window_size);
-        setVal('aip-exw', L.extra_window_size);
-        setVal('aip-thr', L.x265_threads);
-        logLine('perfil ' + pid + ' cargado (' + (r.ruleCount || 0) + ' reglas, ' +
-                (r.matrix ? r.matrix.outW + 'x' + r.matrix.outH : 'sin matriz') + ')');
-        var root = document.getElementById('ape-image-panel');
-        if (root) render(root);
-      })
-      .catch(function (e) { logLine('perfil ' + pid + ': ' + e.message); });
+    var url = '/image/profile/' + encodeURIComponent(pid) + '/full?player=' +
+              encodeURIComponent(S.build.player) + '&w=' + S.build.w + '&h=' + S.build.h;
+    api(url).then(function (r) {
+      if (!r || !r.ok || !r.load) { logLine('perfil ' + pid + ': sin datos'); return; }
+      var L = r.load || {};
+      var bands = { '480p': [854, 480], '576p': [1024, 576], '720p': [1280, 720],
+                    '1080p': [1920, 1080], '1440p': [2560, 1440], '4K': [3840, 2160], '8K': [7680, 4320] };
+      if (L.input && bands[L.input]) {
+        S.build.inband = L.input;
+        S.build.w = bands[L.input][0];
+        S.build.h = bands[L.input][1];
+      }
+      if (L.inFps) S.build.inFps = Number(L.inFps);
+      if (L.outW != null) S.build.outW = Number(L.outW);
+      if (L.outH != null) S.build.outH = Number(L.outH);
+      if (L.outFps != null && L.outFps !== '') S.build.outFps = L.outFps;
+      if (L.codec) S.build.codec = L.codec;
+      if (L.mode) S.build.mode = L.mode;
+      if (L.recipe) S.build.recipe = L.recipe;
+      if (L.dither) S.build.dither = L.dither;
+      S.build.loadedFrom = L.source || 'motor';
+      S.build.loadedHdr = L.hdr || null;
+      S.build.loadedBitrate = (L.bitrate != null) ? L.bitrate : null;
+      S.build.loadedChain = L.filterChain || null;
+      S.build.loadedCodecRaw = L.codecRaw || null;
+      S.build.loadedLevels = L.levels || [];
+      S.build.emulated = !!r.emulated;
+      S.build.rowDerivedFrom = r.rowDerivedFrom || null;
+      S.config = Object.assign({}, S.config || {});
+      if (L.preset) S.config.preset = L.preset;
+      if (L.crf != null) S.config.crf = L.crf;
+      if (L.audio) S.config.audio = L.audio;
+      if (L.gop_seconds != null) S.config.gop_seconds = L.gop_seconds;
+      if (L.hqdn3d) S.config.hqdn3d = L.hqdn3d;
+      if (L.unsharp) S.config.unsharp = L.unsharp;
+      if (L.atadenoise) S.config.atadenoise = L.atadenoise;
+      if (L.seg_duration != null) S.config.seg_duration = L.seg_duration;
+      if (L.window_size != null) S.config.window_size = L.window_size;
+      if (L.extra_window_size != null) S.config.extra_window_size = L.extra_window_size;
+      if (L.x265_threads != null) S.config.x265_threads = L.x265_threads;
+      logLine('perfil ' + pid + ' cargado desde ' + (L.source || 'motor') +
+              ': ' + (L.outW || '?') + 'x' + (L.outH || '?') +
+              ' @ ' + (L.outFps || '?') + 'fps · codec ' + (L.codecRaw || L.codec || '?') +
+              ' · ' + (L.bitrate != null ? L.bitrate : '?') + ' Mbps' +
+              (L.filterChain ? ' · cadena del Gestor' : '') +
+              (r.emulated ? ' · EMULADO' : ''));
+      var root = document.getElementById('ape-image-panel');
+      if (root) render(root);
+    }).catch(function (e) { logLine('perfil ' + pid + ': ' + e.message); });
   }
 
   /* ── LLM + ALINEACION CON EL GESTOR DE PERFILES ───────────────────────── */
