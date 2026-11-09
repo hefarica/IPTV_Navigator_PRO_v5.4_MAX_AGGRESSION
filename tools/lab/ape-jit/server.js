@@ -5139,6 +5139,278 @@ function metaJson(req, id) {
   };
 }
 
+/* ═══════════════════════════════════════════════════════════════════════════
+ * APE PRISMA — Quality Uplift Post-Processor, medido contra el APK real
+ *
+ * El widget del panel declara 6 carriles. Se audito cada uno contra el codigo
+ * Android (UltraEnhancePipeline.kt, GlslEnhancePipeline.kt, LcevcSyntheticPipeline.kt,
+ * MediaEnhanceApiPipeline.kt, TfliteInferenceEngine.kt, ApePlayer.kt) y contra
+ * los assets reales.
+ *
+ *   cmaf             NO APLICA     contenedor, no filtro. Media3 lo interpreta.
+ *   lcevc            DEGRADADO     LcevcSyntheticPipeline es un unsharp de CPU.
+ *   hdr10plus        NO DISPONIBLE no hay tone mapper dinamico en el APK.
+ *   ai_sr            DEGRADADO     sr_unsharp_f32.tflite es baseline de pesos fijos.
+ *   quantum_pixel    IMPOSIBLE     8000 nits / 12-bit / 4:4:4 no existen.
+ *   fake_4k_upscaler DEGRADADO     RIFE es blend lineal; MEMC HW no existe en MT8696.
+ *
+ * Motor REAL que el widget NO expone: CAR/denoise (Motor 1) y GLSL (Motor 4).
+ * Un carril solo se emite ACTIVO si hay motor real detras.
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+const PRISMA_LANES = {
+  cmaf: {
+    id: 'cmaf', label: 'CMAF Packaging', engine: null, state: 'NO_APLICA',
+    reason: 'El empaquetado CMAF/fMP4 lo resuelve el VPS y lo interpreta Media3. En el APK no hay motor de reempaquetado: es contenedor, no filtro.',
+    evidence: 'ApePlayer.kt:153 (HlsMediaSource); no existe muxer propio en android/'
+  },
+  lcevc: {
+    id: 'lcevc', label: 'LCEVC Enhancement', engine: 'LcevcSyntheticPipeline',
+    state: 'DEGRADADO',
+    reason: 'NO es V-Nova LCEVC. Es un residual sintetico por CPU (unsharp). La dependencia real no existe publicamente.',
+    evidence: 'LcevcSyntheticPipeline.kt (proceso en CPU); com.v-nova.lcevc 404 en Maven Central y Google',
+    params: { residualStrength: { min: 0.0, max: 1.0, def: 0.6 } }
+  },
+  hdr10plus: {
+    id: 'hdr10plus', label: 'HDR10+ Dynamic', engine: null, state: 'NO_DISPONIBLE',
+    reason: 'No hay tone mapper dinamico ni generacion de SEI HDR10+ en el APK. El HDR del proveedor pasa tal cual por Media3.',
+    evidence: 'Sin tone mapping ni ST 2094-40 en android/'
+  },
+  ai_sr: {
+    id: 'ai_sr', label: 'AI Super Resolution',
+    engine: 'TfliteInferenceEngine(sr_unsharp_f32.tflite) + GlslEnhancePipeline',
+    state: 'DEGRADADO',
+    reason: 'El .tflite es un baseline de pesos fijos (unsharp), no una red entrenada. Uplift modesto; a 4K el coste de GL es alto.',
+    evidence: 'UltraEnhancePipeline.kt:77-79; assets = car_denoise_f32 / sr_unsharp_f32 / rife_blend_f32',
+    params: { level: { min: 0, max: 3, def: 2 } }
+  },
+  quantum_pixel: {
+    id: 'quantum_pixel', label: 'Quantum Pixel', engine: null, state: 'IMPOSIBLE',
+    reason: '8000 nits, 12-bit y 4:4:4 no existen en el display ni en el decoder. Declararlo viola la doctrina de no mentir la senal.',
+    evidence: 'APK cap 3840x2160 y 8K solo presentacion (ApePlayer.kt:252,259-261); sin 12-bit en Display4K.kt'
+  },
+  fake_4k_upscaler: {
+    id: 'fake_4k_upscaler', label: 'Fake 4K Upscaler',
+    engine: 'TfliteInferenceEngine(rife_blend_f32.tflite) + GlslEnhancePipeline',
+    state: 'DEGRADADO',
+    reason: 'RIFE es blend lineal, no red entrenada. El modo lo decide un benchmark (<=20ms 60->120, <=50ms 30->60). MEMC de hardware NO existe en MT8696.',
+    evidence: 'UltraEnhancePipeline.kt:81-92,153-167; memc/memc_mode null en MT8696',
+    params: { mode: { values: ['off', '30_60', '60_120'], def: '30_60' } }
+  }
+};
+
+const PRISMA_EXTRA_ENGINES = {
+  car_denoise: {
+    id: 'car_denoise', label: 'CAR denoise (Motor 1)',
+    engine: 'TfliteInferenceEngine(car_denoise_f32.tflite)',
+    state: 'REAL', params: { level: { min: 0, max: 3, def: 2 } },
+    evidence: 'UltraEnhancePipeline.kt:66-70,144-145'
+  },
+  glsl: {
+    id: 'glsl', label: 'GLSL shaders (Motor 4)', engine: 'GlslEnhancePipeline',
+    state: 'REAL',
+    params: {
+      acerado: { min: 0, max: 1, def: 0.4 },
+      dnr: { min: 0, max: 1, def: 0.16 },
+      vibrancia: { min: 0, max: 1, def: 0.07 },
+      microcontraste: { min: 0, max: 1, def: 0.08 }
+    },
+    evidence: 'PlaybackPolicy:21-35 · ApePlayer.kt:252,259-261'
+  }
+};
+
+const PRISMA_APK_CEILING = {
+  maxDecodeW: 3840, maxDecodeH: 2160,
+  eightK: 'solo presentacion: NUNCA se decodifica',
+  glCap: '3840x2160', hwMemc: false, twelveBit: false, realLcevc: false
+};
+
+/* GATES, no costes inventados.
+ *
+ * El limite real no es un "presupuesto" abstracto: es la resolucion que el APK
+ * DECODIFICA (cap 3840x2160, 8K nunca) y el fps de la fuente. Procesar cada
+ * frame con una inferencia encarece el coste con los pixeles, y el readback de
+ * GL a 4K mata el presupuesto (medido en la auditoria del APK).
+ *
+ * Por eso cada motor tiene un TECHO DE DECODIFICACION medido, no un peso. */
+const PRISMA_GATES = {
+  glsl:             { maxDecodePx: 3840 * 2160, maxDegraded: 0, note: 'GPU shader, coste bajo, cabe hasta 4K' },
+  car_denoise:      { maxDecodePx: 2560 * 1440, maxDegraded: 0, note: 'inferencia por frame: no cabe a 4K' },
+  lcevc:            { maxDecodePx: 1920 * 1080, maxDegraded: 1, note: 'unsharp CPU: 1080p es su techo' },
+  ai_sr:            { maxDecodePx: 1280 * 720,  maxDegraded: 2, note: 'inferencia de superresolucion: solo SD/HD' },
+  fake_4k_upscaler: { maxDecodePx: 1280 * 720,  maxDegraded: 2, note: 'RIFE duplica las inferencias: solo SD/HD' }
+};
+
+/* Pixeles que el APK realmente decodifica para este perfil (nunca 8K). */
+function prismaDecodePx(profile) {
+  const st = (profile && profile.settings) || {};
+  const m = String(st.resolution || '').match(/^(\d+)\s*x\s*(\d+)$/i);
+  const w = m ? Number(m[1]) : 1920;
+  const h = m ? Number(m[2]) : 1080;
+  return Math.min(w, PRISMA_APK_CEILING.maxDecodeW) * Math.min(h, PRISMA_APK_CEILING.maxDecodeH);
+}
+
+function prismaBudgetFor(profile) {
+  // se conserva por compatibilidad: 1.0 = 1080p, escala con los pixeles
+  const px = prismaDecodePx(profile);
+  return Math.max(0.15, Math.min(1, (1920 * 1080) / px));
+}
+
+function prismaPlanFor(pid, profile) {
+  const decodePx = prismaDecodePx(profile);
+  const st = (profile && profile.settings) || {};
+  const fps = parseInt(st.fps) || 30;
+  const out = { profile: pid, decodePx: decodePx,
+                decodeLabel: Math.round(Math.sqrt(decodePx)) + 'px',
+                sourceFps: fps,
+                apkCeiling: PRISMA_APK_CEILING, lanes: {}, extra: {}, emit: {} };
+
+  // inicializar filas
+  for (const [id, L] of Object.entries(PRISMA_LANES)) {
+    out.lanes[id] = { id: id, label: L.label, state: L.state, engine: L.engine,
+                      reason: L.reason, evidence: L.evidence, enabled: false, params: null };
+  }
+  for (const [id, E] of Object.entries(PRISMA_EXTRA_ENGINES)) {
+    out.extra[id] = { id: id, label: E.label, state: E.state, engine: E.engine,
+                      evidence: E.evidence, enabled: false, params: {} };
+  }
+
+  /* 1. MARCAR LOS QUE NO TIENEN MOTOR. Nunca se activan, se digan lo que se digan. */
+  for (const [id, L] of Object.entries(PRISMA_LANES)) {
+    if (L.state === 'NO_APLICA' || L.state === 'NO_DISPONIBLE' || L.state === 'IMPOSIBLE') {
+      out.lanes[id].blocked = true;
+      out.lanes[id].gate = 'sin motor en el APK (' + L.state + ')';
+    }
+  }
+
+  /* 2. MOTORES REALES: se activan si la resolucion de DECODIFICACION lo permite. */
+  for (const [id, E] of Object.entries(PRISMA_EXTRA_ENGINES)) {
+    const g = PRISMA_GATES[id] || { maxDecodePx: 1920 * 1080 };
+    const row = out.extra[id];
+    const cabe = decodePx <= g.maxDecodePx;
+    row.gate = 'techo ' + Math.round(Math.sqrt(g.maxDecodePx)) + 'px · decodifica ' +
+               Math.round(Math.sqrt(decodePx)) + 'px · ' + (g.note || '');
+    if (cabe) {
+      row.enabled = true;
+      for (const k of Object.keys(E.params || {})) {
+        const spec = E.params[k];
+        row.params[k] = (spec && spec.def !== undefined) ? spec.def : spec;
+      }
+    } else {
+      row.blockedBy = 'la resolucion decodificada supera el techo del motor';
+    }
+  }
+
+  /* 3. CARRILES DEGRADADOS: como maximo tantos como permita el gate del perfil,
+   *    ordenados del mas barato al mas caro, y respetando el techo de cada uno. */
+  const degradables = ['lcevc', 'ai_sr', 'fake_4k_upscaler']
+    .map((id) => ({ id: id, g: PRISMA_GATES[id], L: PRISMA_LANES[id] }))
+    .filter((x) => x.g && x.L && !out.lanes[x.id].blocked);
+
+  // cuantos degradados caben a esta resolucion
+  let cupo = 0;
+  for (const g of Object.values(PRISMA_GATES)) {
+    if (decodePx <= g.maxDecodePx && g.maxDegraded > cupo) cupo = g.maxDegraded;
+  }
+  if (decodePx > 1920 * 1080) cupo = 0;   // por encima de 1080p, cero degradados
+
+  let puestos = 0;
+  for (const d of degradables) {
+    const row = out.lanes[d.id];
+    const cabeRes = decodePx <= d.g.maxDecodePx;
+    // fake_4k solo tiene sentido si la fuente es <=30fps (interpolar 60->120 no aporta)
+    const cabeFps = (d.id !== 'fake_4k_upscaler') || (fps <= 30);
+    row.gate = 'techo ' + Math.round(Math.sqrt(d.g.maxDecodePx)) + 'px · cupo ' +
+               d.g.maxDegraded + ' · ' + (d.g.note || '');
+    if (cabeRes && cabeFps && puestos < cupo) {
+      row.enabled = true;
+      puestos++;
+      const P = d.L.params || {};
+      row.params = {};
+      for (const k of Object.keys(P)) {
+        const spec = P[k];
+        row.params[k] = (spec && spec.def !== undefined) ? spec.def : spec;
+      }
+    } else {
+      row.blockedBy = !cabeRes ? 'supera el techo de decodificacion del carril'
+        : (!cabeFps ? 'la fuente ya va a ' + fps + 'fps: interpolar no aporta'
+          : 'cupo de carriles degradados agotado a esta resolucion');
+    }
+  }
+
+  /* 4. EMISION: solo lo que de verdad se va a aplicar. */
+  out.emit = {
+    extinf: { 'ape-profile': pid },
+    fields: {
+      prisma: { decode: String(decodePx), fps: String(fps),
+                cmaf: '0', lcevc: '0', hdr10plus: '0', ai_sr: '0',
+                quantum_pixel: '0', fake_4k_upscaler: '0',
+                car_denoise: '0', glsl: '0' },
+      gl: {}
+    }
+  };
+  for (const [id, row] of Object.entries(out.lanes)) {
+    if (!row.blocked) out.emit.fields.prisma[id] = row.enabled ? '1' : '0';
+  }
+  for (const [id, row] of Object.entries(out.extra)) {
+    out.emit.fields.prisma[id] = row.enabled ? '1' : '0';
+    if (id === 'glsl' && row.enabled) {
+      for (const k of Object.keys(row.params)) out.emit.fields.gl[k] = String(row.params[k]);
+    }
+  }
+  if (out.lanes.fake_4k_upscaler && out.lanes.fake_4k_upscaler.enabled) {
+    out.emit.fields.prisma.fake_4k_mode = String(out.lanes.fake_4k_upscaler.params.mode);
+  }
+  if (out.lanes.ai_sr && out.lanes.ai_sr.enabled) {
+    out.emit.fields.prisma.ai_sr_level = String(out.lanes.ai_sr.params.level);
+  }
+  if (out.lanes.lcevc && out.lanes.lcevc.enabled) {
+    out.emit.fields.prisma.lcevc_strength = String(out.lanes.lcevc.params.residualStrength);
+  }
+  out.activos = Object.values(out.lanes).filter((r) => r.enabled).map((r) => r.id)
+    .concat(Object.values(out.extra).filter((r) => r.enabled).map((r) => r.id));
+  return out;
+}
+
+function prismaEmitLabMetadata(pid, profile) {
+  const plan = prismaPlanFor(pid, profile);
+  const doc = { profile: pid, fields: plan.emit.fields };
+  const json = JSON.stringify(doc);
+  const b64 = Buffer.from(json, 'utf8').toString('base64');
+  const CHUNK = 240;
+  const chunks = [];
+  for (let i = 0; i < b64.length; i += CHUNK) chunks.push(b64.slice(i, i + CHUNK));
+  const lines = chunks.map((c, i) => '#EXT-X-APE-LAB-METADATA:' + (i + 1) + '/' + chunks.length + ':' + c);
+  return { profile: pid, json: doc, bytes: Buffer.byteLength(json, 'utf8'),
+           base64Bytes: b64.length, chunks: chunks.length, lines: lines,
+           singleLine: '#EXT-X-APE-LAB-METADATA:' + b64, plan: plan };
+}
+
+function prismaGlobal() {
+  const rows = Object.values(PRISMA_LANES).map((L) => ({
+    id: L.id, label: L.label, state: L.state, engine: L.engine, evidence: L.evidence
+  }));
+  const cuenta = {};
+  rows.forEach((r) => { cuenta[r.state] = (cuenta[r.state] || 0) + 1; });
+  return {
+    ok: true, total: rows.length,
+    reales: rows.filter((r) => r.state === 'REAL').length,
+    degradados: rows.filter((r) => r.state === 'DEGRADADO').length,
+    noAplican: rows.filter((r) => r.state === 'NO_APLICA' || r.state === 'NO_DISPONIBLE').length,
+    imposibles: rows.filter((r) => r.state === 'IMPOSIBLE').length,
+    cuenta: cuenta, lanes: rows,
+    extraEngines: Object.values(PRISMA_EXTRA_ENGINES).map((E) => ({
+      id: E.id, label: E.label, state: E.state, engine: E.engine, evidence: E.evidence
+    })),
+    apkCeiling: PRISMA_APK_CEILING,
+    contrato: {
+      extinf: 'ape-profile="Px" (ListLoader.kt:90)',
+      labMetadata: '#EXT-X-APE-LAB-METADATA:i/n:<base64> (ListLoader.kt:59-81)',
+      aplanado: 'fields.<seccion>.<clave> -> LabMetadataStore.get(ctx,"seccion.clave") (LabMetadataStore.kt:26-66)'
+    }
+  };
+}
+
 const server = http.createServer((req, res) => {
   installTiming(req, res);
   setBaseHeaders(res);
@@ -6250,6 +6522,81 @@ function loadFromGestorProfile(gp) {
       return res.end(JSON.stringify(r));
     });
     return;
+  }
+
+  /* ── APE PRISMA: carriles medidos contra el APK ─────────────────────────── */
+
+  if (u.pathname === '/image/prisma/lanes') {
+    setBaseHeaders(res); setNoCacheHeaders(res);
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    return res.end(JSON.stringify(prismaGlobal()));
+  }
+
+  if (u.pathname === '/image/prisma/plan') {
+    const pidp = String(u.searchParams.get('profile') || 'P3');
+    const allP = withEmulatedProfiles(loadGestorProfiles()) || {};
+    const gp = allP[pidp] || allP[pidp.split('.')[0]];
+    setBaseHeaders(res); setNoCacheHeaders(res);
+    if (!gp) {
+      res.writeHead(404, { 'Content-Type': 'application/json' });
+      return res.end(JSON.stringify({ ok: false, error: 'perfil no encontrado: ' + pidp,
+                                      validos: Object.keys(allP) }));
+    }
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    return res.end(JSON.stringify(Object.assign({ ok: true }, prismaPlanFor(pidp, gp))));
+  }
+
+  if (u.pathname === '/image/prisma/emit') {
+    const pidp = String(u.searchParams.get('profile') || 'P3');
+    const allP = withEmulatedProfiles(loadGestorProfiles()) || {};
+    const gp = allP[pidp] || allP[pidp.split('.')[0]];
+    setBaseHeaders(res); setNoCacheHeaders(res);
+    if (!gp) {
+      res.writeHead(404, { 'Content-Type': 'application/json' });
+      return res.end(JSON.stringify({ ok: false, error: 'perfil no encontrado: ' + pidp }));
+    }
+    const e = prismaEmitLabMetadata(pidp, gp);
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    return res.end(JSON.stringify(Object.assign({ ok: true }, e)));
+  }
+
+  /* Plan de los 12 perfiles en UN payload: el APK elige por ape-profile del canal. */
+  if (u.pathname === '/image/prisma/emit-all') {
+    const allP = withEmulatedProfiles(loadGestorProfiles()) || {};
+    const fields = { prisma: {}, gl: {} };
+    const detalle = {};
+    for (const pidp of Object.keys(allP)) {
+      const p = prismaPlanFor(pidp, allP[pidp]);
+      const safe = String(pidp).replace(/[^A-Za-z0-9]/g, '_');   // P0.5 -> P0_5
+      fields.prisma[safe] = {};
+      for (const [k, v] of Object.entries(p.emit.fields.prisma)) fields.prisma[safe][k] = v;
+      if (Object.keys(p.emit.fields.gl).length) fields.gl[safe] = p.emit.fields.gl;
+      detalle[pidp] = { decode: p.decodePx, fps: p.sourceFps, activos: p.activos,
+                        glSafeKey: safe };
+    }
+    const doc = { profile: 'ALL', fields: fields };
+    const json = JSON.stringify(doc);
+    const b64 = Buffer.from(json, 'utf8').toString('base64');
+    const CHUNK = 240;
+    const chunks = [];
+    for (let i = 0; i < b64.length; i += CHUNK) chunks.push(b64.slice(i, i + CHUNK));
+    const lines = chunks.map((c, i) => '#EXT-X-APE-LAB-METADATA:' + (i + 1) + '/' + chunks.length + ':' + c);
+    setBaseHeaders(res); setNoCacheHeaders(res);
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    return res.end(JSON.stringify({ ok: true, profiles: detalle, json: doc,
+      bytes: Buffer.byteLength(json, 'utf8'), base64Bytes: b64.length,
+      chunks: chunks.length, lines: lines }));
+  }
+
+  if (u.pathname === '/image/prisma/all') {
+    const allP = withEmulatedProfiles(loadGestorProfiles()) || {};
+    const out = { ok: true, profiles: {} };
+    for (const pidp of Object.keys(allP)) {
+      out.profiles[pidp] = prismaPlanFor(pidp, allP[pidp]);
+    }
+    setBaseHeaders(res); setNoCacheHeaders(res);
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    return res.end(JSON.stringify(out));
   }
 
   if (u.pathname === '/image/llm-status') {

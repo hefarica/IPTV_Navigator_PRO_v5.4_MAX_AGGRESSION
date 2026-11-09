@@ -19,7 +19,7 @@
     base: (window.APE_JIT_BASE || 'https://iptv-ape.duckdns.org') + '/jit',
     config: null, effectiveFilter: '', capacity: null, live: null,
     profiles: null, matrix: null, plan: null, catalog: null,
-    declared: null, gov: null, cascade: null, fallback: null, rules: null, autoRow: null, optimized: null, llm: null, align: null, alignApplied: null, alignAll: null, alignAllApplied: null, persist: null,
+    declared: null, gov: null, cascade: null, fallback: null, rules: null, autoRow: null, optimized: null, llm: null, align: null, alignApplied: null, alignAll: null, alignAllApplied: null, persist: null, prisma: null, prismaEmit: null,
     busy: false, lastError: null, log: [],
     build: { profile: 'P4.5', w: 1280, h: 720, target: 'UHD_4K', codec: 'hvc1',
              player: 'onn-4k', recipe: 'balanced', fps: 25,
@@ -1692,7 +1692,9 @@
       api('/image/gestor/state').catch(function () { return null; }),
       api('/image/gestor/backups').catch(function () { return null; }),
       api('/image/gestor/journal?limit=10').catch(function () { return null; }),
-      api('/image/gestor/pending').catch(function () { return null; })
+      api('/image/gestor/pending').catch(function () { return null; }),
+      api('/image/prisma/lanes').catch(function () { return null; }),
+      api('/image/prisma/all').catch(function () { return null; })
     ]).then(function (r) {
       S.persist = {
         state: (r[0] && r[0].state) || {},
@@ -1702,6 +1704,108 @@
         pendingDir: (r[3] && r[3].dir) || ''
       };
       return S.persist;
+    });
+  }
+
+  /* ── APE PRISMA ───────────────────────────────────────────────────────────
+   * Los 6 carriles del widget, MEDIDOS contra el APK. Se muestra el estado real
+   * de cada uno (no "Standby" para todo) y el plan por perfil que se emite en
+   * #EXT-X-APE-LAB-METADATA. Un carril sin motor en el APK aparece bloqueado
+   * con su razon; nunca se pinta como si se aplicara. */
+  function prismaSection(root) {
+    var P = S.prisma || {};
+    var G = P.lanes || {};
+    var all = P.all || {};
+
+    var cuenta = G.cuenta || {};
+    var resumen = (G.reales || 0) + ' real · ' + (G.degradados || 0) + ' degradado · ' +
+                  (G.noAplican || 0) + ' sin motor · ' + (G.imposibles || 0) + ' imposible';
+    root.appendChild(sec('🔮 APE PRISMA — ' + resumen, '#a855f7'));
+
+    root.appendChild(el('div', { class: 'stat', style: 'margin-bottom:8px' }, [
+      'Medido contra el APK: techo de decodificación ' +
+      ((G.apkCeiling && G.apkCeiling.maxDecodeW) || '?') + 'x' +
+      ((G.apkCeiling && G.apkCeiling.maxDecodeH) || '?') +
+      ' · 8K ' + ((G.apkCeiling && G.apkCeiling.eightK) || '?') +
+      '. Un carril solo se enciende si hay motor detrás.'
+    ]));
+
+    /* tabla de carriles con su estado real */
+    var colores = { REAL: '#10b981', DEGRADADO: '#f59e0b', NO_APLICA: '#64748b',
+                    NO_DISPONIBLE: '#64748b', IMPOSIBLE: '#ef4444' };
+    (G.lanes || []).forEach(function (L) {
+      var c = colores[L.state] || '#64748b';
+      root.appendChild(el('div', {
+        style: 'background:rgba(15,23,42,.6);border-left:3px solid ' + c +
+               ';border-radius:8px;padding:8px 10px;margin-bottom:6px'
+      }, [
+        el('div', { style: 'display:flex;justify-content:space-between;align-items:center' }, [
+          el('span', { style: 'font-size:.78rem;font-weight:600;color:#e2e8f0' }, [L.label]),
+          el('span', { style: 'font-size:.62rem;font-weight:700;color:' + c }, [L.state])
+        ]),
+        el('div', { style: 'font-size:.62rem;color:#94a3b8;margin-top:2px' }, [
+          L.engine ? ('motor: ' + L.engine) : 'motor: NINGUNO en el APK'
+        ]),
+        el('div', { style: 'font-size:.58rem;color:#64748b;margin-top:2px' }, [L.evidence || ''])
+      ]));
+    });
+
+    /* motores reales que el widget NO expone */
+    if ((G.extraEngines || []).length) {
+      root.appendChild(el('div', { class: 'decl', style: 'margin-top:8px' }, [
+        '➕ Motores REALES que el widget no expone: ' +
+        G.extraEngines.map(function (E) { return E.label; }).join(' · ')
+      ]));
+    }
+
+    /* matriz por perfil */
+    var pids = Object.keys(all);
+    if (pids.length) {
+      root.appendChild(sec('📊 Plan por perfil (lo que se emite en la lista)', '#7c3aed'));
+      root.appendChild(el('div', { class: 'out' }, [
+        pids.map(function (pid) {
+          var p = all[pid] || {};
+          var on = (p.activos || []);
+          return String(pid).padEnd(6) + ' decode ' + String(p.decodePx || 0).padEnd(9) +
+                 ' fps ' + String(p.sourceFps || 0).padEnd(4) + ' → ' + (on.join(', ') || 'nada');
+        }).join('\n')
+      ]));
+    }
+
+    /* payload emitible */
+    var bEmit = el('button', { class: 'go', id: 'aip-prisma-emit' },
+      ['⬇ Ver payload LAB-METADATA (12 perfiles)']);
+    bEmit.addEventListener('click', function () {
+      api('/image/prisma/emit-all')
+        .then(function (r) {
+          if (!r || !r.ok) { logLine('prisma: sin datos'); return; }
+          S.prismaEmit = r;
+          logLine('PRISMA emit: ' + r.bytes + ' B json, ' + r.base64Bytes + ' B base64, ' +
+                  r.chunks + ' chunks en #EXT-X-APE-LAB-METADATA');
+          render(document.getElementById('ape-image-panel'));
+        })
+        .catch(function (e) { logLine('prisma emit: ' + e.message); });
+    });
+    root.appendChild(el('div', { class: 'row', style: 'margin-top:8px' }, [bEmit]));
+
+    if (S.prismaEmit && S.prismaEmit.lines) {
+      root.appendChild(el('div', { class: 'out', style: 'margin-top:8px' }, [
+        S.prismaEmit.lines.slice(0, 3).join('\n') +
+        (S.prismaEmit.lines.length > 3 ? '\n… (' + S.prismaEmit.lines.length + ' líneas)' : '')
+      ]));
+    }
+  }
+
+  function loadPrisma() {
+    return Promise.all([
+      api('/image/prisma/lanes').catch(function () { return null; }),
+      api('/image/prisma/all').catch(function () { return null; })
+    ]).then(function (r) {
+      S.prisma = {
+        lanes: (r[0] && r[0].ok) ? r[0] : {},
+        all: (r[1] && r[1].ok) ? (r[1].profiles || {}) : {}
+      };
+      return S.prisma;
     });
   }
 
@@ -1724,6 +1828,7 @@
     ]));
 
     buildSection(nodes);
+    prismaSection(nodes);
     llmSection(nodes);
     persistSection(nodes);
     rulesSection(nodes);
@@ -1764,7 +1869,10 @@
       api('/image/gestor/state').catch(function () { return null; }),
       api('/image/gestor/backups').catch(function () { return null; }),
       api('/image/gestor/journal?limit=10').catch(function () { return null; }),
-      api('/image/gestor/pending').catch(function () { return null; })
+      api('/image/gestor/pending').catch(function () { return null; }),
+      /* PRISMA: en el mismo Promise.all por la misma razon que la persistencia */
+      api('/image/prisma/lanes').catch(function () { return null; }),
+      api('/image/prisma/all').catch(function () { return null; })
     ]).then(function (r) {
       S.config = r[0] ? r[0].config : null;
       S.effectiveFilter = (r[0] && r[0].effective_filter) || '';
@@ -1783,6 +1891,10 @@
         journal: (r[12] && r[12].events) || [],
         pending: (r[13] && r[13].pending) || [],
         pendingDir: (r[13] && r[13].dir) || ''
+      };
+      S.prisma = {
+        lanes: (r[14] && r[14].ok) ? r[14] : {},
+        all: (r[15] && r[15].ok) ? (r[15].profiles || {}) : {}
       };
       if (S.config && S.config.profile) S.build.profile = S.config.profile;
       render(root);

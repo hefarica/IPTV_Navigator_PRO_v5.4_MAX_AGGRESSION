@@ -34,6 +34,10 @@ class UltraEnhancePipeline(private val ctx: Context, private val cfg: Config) {
 
     @Volatile var levels = EnhanceLevelSet(); private set
 
+    /* Plan del perfil vigente. Lo escribe la metadata LAB de la lista
+     * (fields.prisma.*) y lo lee PrismaProfile. Sin el, passthrough. */
+    @Volatile var prismaPlan = PrismaProfile.Plan(); private set
+
     private var carModel: TfliteInferenceEngine? = null
     private var esrganModel: TfliteInferenceEngine? = null
     private var rifeModel: TfliteInferenceEngine? = null
@@ -49,7 +53,7 @@ class UltraEnhancePipeline(private val ctx: Context, private val cfg: Config) {
     @Volatile private var lcevcPresent = false
 
     /** FASE 0 — negocia qué motores soporta el SoC. Idempotente, todo guardado. */
-    fun negotiate(): EnhanceLevelSet {
+    fun negotiate(channelProfile: String? = null): EnhanceLevelSet {
         if (!cfg.enhanceEnabled) { Log.i(TAG, "UltraEnhance DESACTIVADO (Config.enhanceEnabled=false)"); return EnhanceLevelSet() }
         Log.i(TAG, "Negociando capacidades UltraEnhance...")
 
@@ -58,7 +62,8 @@ class UltraEnhancePipeline(private val ctx: Context, private val cfg: Config) {
             mediaEnhance = MediaEnhanceApiPipeline(ctx)
             if (mediaEnhance!!.isSupported()) {
                 levels = EnhanceLevelSet(mediaEnhanceApi = true, glslShaders = true)
-                Log.i(TAG, "Motor 5 ACTIVO: Media Enhancement API")
+                prismaPlan = PrismaProfile.read(ctx, channelProfile)
+                Log.i(TAG, "Motor 5 ACTIVO: Media Enhancement API (sustituye a 1-4) · $prismaPlan")
                 return levels
             }
         }.onFailure { Log.w(TAG, "Motor 5 n/a: ${it.message}") }
@@ -95,15 +100,72 @@ class UltraEnhancePipeline(private val ctx: Context, private val cfg: Config) {
         runCatching { glsl = GlslEnhancePipeline(ctx) }
             .onFailure { Log.w(TAG, "GLSL init: ${it.message}") }
 
-        levels = EnhanceLevelSet(
+        val socLevels = EnhanceLevelSet(
             artifactRemoval = car,
             superResolution = sr,
             frameInterp = fi,
             glslShaders = glsl != null,
             mediaEnhanceApi = false
         )
-        Log.i(TAG, "UltraEnhance negociado: $levels")
+        Log.i(TAG, "UltraEnhance negociado (SoC): $socLevels")
+
+        /* PRISMA: el perfil del canal manda. El SoC negocia lo que PUEDE; el
+         * perfil decide que SE QUIERE. Se aplica la interseccion, que es lo
+         * unico que de verdad se ejecuta. */
+        prismaPlan = PrismaProfile.read(ctx, channelProfile)
+        levels = PrismaProfile.applyTo(prismaPlan, socLevels)
+        if (levels.glslShaders) {
+            runCatching {
+                glsl?.configure(
+                    sharpness = PrismaProfile.glSharpness(prismaPlan),
+                    denoise = PrismaProfile.glDenoise(prismaPlan)
+                )
+            }.onFailure { Log.w(TAG, "GL configure con plan PRISMA: ${it.message}") }
+        }
+        Log.i(TAG, "UltraEnhance efectivo (PRISMA): $levels")
         return levels
+    }
+
+    /**
+     * Reajusta PRISMA para el perfil del canal que se va a reproducir.
+     *
+     * `negotiate()` corre una vez al arrancar el servicio, cuando aun no hay
+     * canal. La lista trae el perfil por canal en `ape-profile` del #EXTINF
+     * (ListLoader.kt:90 -> IptvChannel.profile) y el plan de cada perfil viaja
+     * en la metadata LAB. El player llama aqui al cambiar de canal.
+     *
+     * Devuelve los niveles efectivos para que el llamador sepa que encendio.
+     */
+    fun renegotiateFor(channelProfile: String?): EnhanceLevelSet {
+        if (!cfg.enhanceEnabled) return EnhanceLevelSet()
+        return runCatching {
+            val socLevels = EnhanceLevelSet(
+                artifactRemoval = carModel != null,
+                superResolution = when {
+                    lcevc != null -> SrMode.LCEVC_SYNTHETIC
+                    esrganModel != null -> SrMode.ESRGAN_LITE
+                    else -> SrMode.NONE
+                },
+                frameInterp = levels.frameInterp,
+                glslShaders = glsl != null,
+                mediaEnhanceApi = levels.mediaEnhanceApi
+            )
+            prismaPlan = PrismaProfile.read(ctx, channelProfile)
+            levels = PrismaProfile.applyTo(prismaPlan, socLevels)
+            if (levels.glslShaders) {
+                runCatching {
+                    glsl?.configure(
+                        sharpness = PrismaProfile.glSharpness(prismaPlan),
+                        denoise = PrismaProfile.glDenoise(prismaPlan)
+                    )
+                }.onFailure { Log.w(TAG, "GL configure: ${it.message}") }
+            }
+            Log.i(TAG, "PRISMA reajustado para '$channelProfile' -> $levels")
+            levels
+        }.getOrElse {
+            Log.w(TAG, "renegotiateFor fallo: ${it.message} (mantiene niveles)")
+            levels
+        }
     }
 
     private fun benchmarkRife(): Long {
