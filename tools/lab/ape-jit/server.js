@@ -684,6 +684,32 @@ function loadRules() {
   saveRules();
 }
 
+/* Condiciones de senal medidas por el canary, por canal. El JIT las usa para
+ * ajustar sus parametros: la fila de la TABLA DE 16 REGLAS que aplica es funcion
+ * de la ENTRADA real, no de una suposicion. Persisten para que el ajuste
+ * sobreviva a reinicios y el canary pueda re-ejecutar lo mismo. */
+const CHANNEL_SIGNAL_FILE = process.env.CHANNEL_SIGNAL_FILE || '/opt/ape-jit/channel-signals.json';
+let channelSignals = null;
+function loadChannelSignals() {
+  if (channelSignals) return channelSignals;
+  try {
+    if (fs.existsSync(CHANNEL_SIGNAL_FILE)) {
+      const raw = JSON.parse(fs.readFileSync(CHANNEL_SIGNAL_FILE, 'utf8'));
+      if (raw && typeof raw === 'object' && !Array.isArray(raw)) { channelSignals = raw; return channelSignals; }
+    }
+  } catch (_) { }
+  channelSignals = {};
+  return channelSignals;
+}
+function saveChannelSignals(all) {
+  channelSignals = all || {};
+  try {
+    fs.writeFileSync(CHANNEL_SIGNAL_FILE + '.tmp', JSON.stringify(channelSignals, null, 2));
+    fs.renameSync(CHANNEL_SIGNAL_FILE + '.tmp', CHANNEL_SIGNAL_FILE);
+    return true;
+  } catch (e) { log('SIGNAL_WRITE_FAILED', e.message); return false; }
+}
+
 function saveRules() {
   try { fs.writeFileSync(RULES_FILE, JSON.stringify(transformRules, null, 2)); return true; }
   catch (_) { return false; }
@@ -7722,6 +7748,231 @@ function loadFromGestorProfile(gp) {
    *                La LECTURA queda abierta: el estado no es secreto.
    *   HONESTO      responde con lo que quedo aplicado, no con lo que se pidio.
    * ═══════════════════════════════════════════════════════════════════════════ */
+  /* ═══════════════════════════════════════════════════════════════════════════
+   * GET /jit/recipe — LA RECETA REAL QUE EL JIT VA A EJECUTAR
+   *
+   * POR QUE EXISTE (hallazgo medido 2026-11-09):
+   *   El canary validaba visualmente UNA receta y el JIT aplicaba OTRA distinta:
+   *     canary: deblock, smartblur, yuv444p, 4K lanczos, noise, unsharp 0.8, eq, 8-bit
+   *     JIT   : hqdn3d, unsharp 0.2, scale+pad al target, zscale->PQ, 10-bit
+   *   La prueba visual del canary NO aplicaba a lo que se entrega. Aqui el JIT
+   *   publica su cadena por etapas para que el canary (y cualquier auditor) valide
+   *   EXACTAMENTE lo que se ejecuta, no una version parecida.
+   *
+   * Devuelve las etapas por separado para que el validador pueda sustituir solo la
+   * geometria (su prueba es 4K fija) sin tocar el resto de la cadena.
+   * ═══════════════════════════════════════════════════════════════════════════ */
+  /* ═══════════════════════════════════════════════════════════════════════════
+   * /jit/signal — EL CANARY MIDE, EL JIT AJUSTA, EL CANARY EJECUTA
+   *
+   * PEDIDO DEL OPERADOR: "que el canary reporte al JIT las condiciones de la
+   * senal y el jit ajuste sus parametros para que el canary los ejecute, y el jit
+   * vivira ajustando sus parametros en torno a eso, para todo tipo de tabla de
+   * reglas ENTRADA -> SALIDA (16 reglas) por resolucion, y sus valores."
+   *
+   * EL BUCLE:
+   *   1. el canary sondea la fuente (ffprobe) y reporta aqui las condiciones
+   *   2. el JIT deriva la BANDA de entrada y busca en SU TABLA DE 16 REGLAS la
+   *      fila que casa por (banda, fps de entrada)
+   *   3. devuelve los parametros de esa fila Y la cadena ffmpeg ya montada
+   *   4. el canary ejecuta EXACTAMENTE esa cadena (geometria a 4K para su prueba)
+   *   5. lo reportado queda guardado por canal, asi el JIT ajusta en vivo
+   *
+   * POST { channel, width, height, fps, bitrate_kbps?, codec?, interlaced?,
+   *        color?: {transfer, primaries, unknown} }
+   * GET  /jit/signal            -> todas las senales conocidas
+   * GET  /jit/signal?channel=N  -> una
+   * ═══════════════════════════════════════════════════════════════════════════ */
+  if (u.pathname === '/jit/signal') {
+    setBaseHeaders(res); setNoCacheHeaders(res);
+
+    const banda = (w, h) => {
+      const ancho = Number(w) || 0;
+      if (ancho >= 3000) return '4K';
+      if (ancho >= 1700) return '1080p';
+      if (ancho >= 1000) return '720p';
+      if (ancho >= 600) return '480p';
+      return null;
+    };
+    /* Busca en la tabla de reglas la fila que casa con la ENTRADA real.
+     * Prioridad: misma banda + mismo fps > misma banda > misma banda con fps
+     * distinto (se declara) > la primera de la banda. Nunca inventa una fila. */
+    const elegirRegla = (bnd, fpsIn) => {
+      loadRules();
+      const deBanda = (transformRules || []).filter((r) => r && r.input === bnd);
+      if (!deBanda.length) return { regla: null, motivo: 'no hay regla para la banda ' + bnd };
+      const f = Number(fpsIn) || 0;
+      let r = deBanda.find((x) => Number(x.inFps) === f);
+      let exacto = !!r;
+      if (!r) r = deBanda[0];
+      return {
+        regla: r, exacto,
+        motivo: exacto
+          ? 'regla exacta ' + bnd + '@' + f
+          : 'no hay regla ' + bnd + '@' + f + '; se usa la primera de la banda (' +
+            bnd + '@' + (r.inFps || '?') + ') y se declara',
+      };
+    };
+    /* Cadena ffmpeg a partir de una fila de la tabla. Mismas etapas que el motor
+     * real: fmt 10-bit -> filtros de la fila -> geometria de SALIDA -> PQ. */
+    /* GUARD DE COLOR (medido 2026-11-09): zscale->PQ SOLO si el color de entrada
+     * tiene camino a PQ. Con smpte170m / bt470bg / desconocido, ffmpeg falla con
+     * "code 3074: no path between colorspaces" y NO se escribe nada (el canary
+     * recibe CANARY_FAIL y el player un 503). El motor real ya tenia esta guarda
+     * en la ruta de produccion; el endpoint de senal no la tenia. */
+    const colorAPq = (color) => {
+      if (!color) return false;
+      if (color.unknown) return false;
+      const t = String(color.transfer || '').toLowerCase();
+      if (!t) return false;
+      // transferencias que SI tienen camino a PQ
+      const vale = ['bt709', 'bt2020-10', 'bt2020-12', 'smpte2084', 'arib-std-b67', 'linear'];
+      return vale.includes(t);
+    };
+    const cadenaDeRegla = (r, ancho, alto, conPq) => {
+      if (!r) return null;
+      const parts = [];
+      parts.push('format=yuv420p10le');
+      if (r.recipe && r.recipe !== 'none') {
+        const h = r.hqdn3d || {};
+        const u = r.unsharp || {};
+        if (r.recipe === 'temporal') {
+          const a = r.atadenoise || {};
+          parts.push('atadenoise=0a=' + (a.a != null ? a.a : 0.02) + ':0b=' + (a.b != null ? a.b : 0.04));
+        } else if (h.luma_spatial != null) {
+          parts.push('hqdn3d=' + h.luma_spatial + ':' + (h.chroma_spatial != null ? h.chroma_spatial : 0.45) +
+                     ':' + (h.luma_tmp != null ? h.luma_tmp : 0.9) + ':' + (h.chroma_tmp != null ? h.chroma_tmp : 0.7));
+        }
+        if (u.luma_amount != null) {
+          const m = u.luma_msize || 5;
+          parts.push('unsharp=' + m + ':' + m + ':' + u.luma_amount + ':' + m + ':' + m + ':0');
+        }
+      }
+      parts.push('scale=w=' + ancho + ':h=' + alto +
+        ':force_original_aspect_ratio=decrease:force_divisible_by=2:flags=lanczos');
+      parts.push('pad=' + ancho + ':' + alto + ':(ow-iw)/2:(oh-ih)/2');
+      if (conPq !== false) {
+        parts.push('zscale=t=linear:npl=100,format=gbrpf32le,' +
+          'zscale=p=bt2020:t=smpte2084:m=bt2020nc:r=limited,format=yuv420p10le');
+      } else {
+        // sin camino a PQ: se mantiene 10-bit real, NO se finge HDR
+        parts.push('format=yuv420p10le');
+      }
+      return parts.join(',');
+    };
+
+    if (req.method === 'GET') {
+      const q = u.searchParams.get('channel');
+      const sig = loadChannelSignals();
+      if (q) {
+        const one = sig[String(q)];
+        if (!one) { res.writeHead(404, { 'Content-Type': 'application/json' }); return res.end(JSON.stringify({ ok: false, error: 'canal sin senal medida', channel: q })); }
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        return res.end(JSON.stringify({ ok: true, channel: String(q), signal: one }));
+      }
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      return res.end(JSON.stringify({ ok: true, count: Object.keys(sig).length, signals: sig }));
+    }
+
+    if (req.method !== 'POST') {
+      res.writeHead(405, { 'Content-Type': 'application/json' });
+      return res.end(JSON.stringify({ ok: false, error: 'metodo no permitido' }));
+    }
+
+    let body = '';
+    let tooBig = false;
+    req.on('data', (c) => { body += c; if (body.length > 16384) { tooBig = true; req.destroy(); } });
+    req.on('end', () => {
+      if (tooBig) { res.writeHead(413, { 'Content-Type': 'application/json' }); return res.end(JSON.stringify({ ok: false, error: 'body grande' })); }
+      let pl;
+      try { pl = JSON.parse(body || '{}'); } catch (_) { res.writeHead(400, { 'Content-Type': 'application/json' }); return res.end(JSON.stringify({ ok: false, error: 'JSON invalido' })); }
+
+      const ch = String(pl.channel || '').replace(/[^A-Za-z0-9._-]/g, '');
+      if (!ch) { res.writeHead(400, { 'Content-Type': 'application/json' }); return res.end(JSON.stringify({ ok: false, error: 'falta channel' })); }
+      const w = Number(pl.width) || 0, h = Number(pl.height) || 0, fpsIn = Number(pl.fps) || 0;
+      if (!w || !h) { res.writeHead(400, { 'Content-Type': 'application/json' }); return res.end(JSON.stringify({ ok: false, error: 'faltan width/height medidos' })); }
+
+      const bnd = banda(w, h);
+      const { regla, exacto, motivo } = elegirRegla(bnd, fpsIn);
+      if (!regla) {
+        res.writeHead(422, { 'Content-Type': 'application/json' });
+        return res.end(JSON.stringify({ ok: false, error: motivo, signal: { width: w, height: h, fps: fpsIn, band: bnd } }));
+      }
+      const outW = Number(regla.outW) || 1920;
+      const outH = Number(regla.outH) || 1080;
+      const pqOk = colorAPq(pl.color);
+      const cadena = cadenaDeRegla(regla, outW, outH, pqOk);
+
+      const registro = {
+        channel: ch,
+        measured: {
+          width: w, height: h, fps: fpsIn,
+          bitrate_kbps: pl.bitrate_kbps != null ? Number(pl.bitrate_kbps) : null,
+          codec: pl.codec || null,
+          interlaced: !!pl.interlaced,
+          color: pl.color || null,
+          at: new Date().toISOString(),
+        },
+        band: bnd,
+        rule_id: regla.id,
+        rule_exact: exacto,
+        reason: motivo,
+        params: {
+          codec: regla.codec, recipe: regla.recipe, dither: regla.dither || 'ordered',
+          mode: regla.mode || 'real', preset: regla.preset || 'ultrafast', crf: regla.crf,
+          audio: regla.audio || 'preserve',
+          outW, outH, outFps: Number(regla.outFps) || null,
+          hqdn3d: regla.hqdn3d || null, unsharp: regla.unsharp || null,
+          atadenoise: regla.atadenoise || null,
+          seg_duration: regla.seg_duration, window_size: regla.window_size,
+          extra_window_size: regla.extra_window_size, gop_seconds: regla.gop_seconds,
+        },
+        chain_out: cadena,
+        chain_4k_test: cadenaDeRegla(regla, 3840, 2160, pqOk),
+        pq_applied: pqOk,
+        pq_reason: pqOk
+          ? 'el transfer de la fuente tiene camino a PQ'
+          : 'sin camino a PQ (' + ((pl.color && pl.color.transfer) || 'color desconocido') +
+            '): se mantiene 10-bit real y NO se finge HDR',
+      };
+      const all = loadChannelSignals();
+      all[ch] = registro;
+      saveChannelSignals(all);
+      log('SIGNAL', ch, bnd + '@' + fpsIn, '-> regla', regla.id, exacto ? 'exacta' : 'declarada');
+
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      return res.end(JSON.stringify(Object.assign({ ok: true }, registro)));
+    });
+    return;
+  }
+
+  if (u.pathname === '/jit/recipe' || u.pathname === '/recipe') {
+    setBaseHeaders(res); setNoCacheHeaders(res);
+    const cfg = imageConfig;
+    const imageFilters = buildImageFilterChain(cfg);
+    const pixelFmt = cfg.ten_bit ? 'format=yuv420p10le' : 'format=yuv420p';
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    return res.end(JSON.stringify({
+      ok: true,
+      recipe: {
+        name: cfg.recipe,
+        ten_bit: !!cfg.ten_bit,
+        pixel_fmt: pixelFmt,
+        image_filters: imageFilters,
+        deint: 'bwdif=mode=send_field:parity=auto:deint=interlaced (SOLO si la fuente es entrelazada)',
+        geometry_template: 'scale=w=${width}:h=${height}:force_original_aspect_ratio=decrease:force_divisible_by=2:flags=lanczos,pad=${width}:${height}:(ow-iw)/2:(oh-ih)/2',
+        hdr_template: ',zscale=t=linear:npl=100,format=gbrpf32le,zscale=p=bt2020:t=smpte2084:m=bt2020nc:r=limited,format=yuv420p10le',
+        hdr_when_color_unknown: ',format=yuv420p10le (sin zscale: con color desconocido zscale rompe la cadena con code 3074)',
+        full_template: pixelFmt + (imageFilters ? ',' + imageFilters : '') + ',<geometry><hdr>',
+        effective_filter_for_this_config: buildImageFilterChain(cfg),
+        unsharp: cfg.unsharp, hqdn3d: cfg.hqdn3d, atadenoise: cfg.atadenoise,
+        target: cfg.target, profile: cfg.profile,
+        note: 'El canary debe validar ESTAS etapas (sustituyendo <geometry> por su 4K). ' +
+              'Si valida otra cadena, su prueba no aplica a lo que se entrega.',
+      },
+    }));
+  }
+
   if (u.pathname === '/jit/api/config' || u.pathname === '/api/config') {
     setBaseHeaders(res);
     setNoCacheHeaders(res);
