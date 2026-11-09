@@ -4826,6 +4826,17 @@ async function start(id, spec, sdr, sdr720) {
   const session = Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
   const args = [
     '-hide_banner', '-nostdin', '-loglevel', 'warning',
+    /* RECONEXION (defecto medido 2026-11-09): el proveedor limita por rafaga y
+     * devuelve 403 intermitente. ffmpeg salia con EXIT 0 al fallar "Failed to
+     * reload playlist 0" y la sesion moria: el player se quedaba con la playlist
+     * congelada y el TV en NEGRO. Con estas opciones ffmpeg reintenta la conexion
+     * en vez de rendirse, asi el bache del proveedor no mata la sesion.
+     * reconnect_delay_max acotado para no quedarse minutos sin producir. */
+    '-reconnect', '1',
+    '-reconnect_streamed', '1',
+    '-reconnect_at_eof', '1',
+    '-reconnect_on_network_error', '1',
+    '-reconnect_delay_max', '4',
     '-user_agent', spec.ua || 'VLC/3.0.19 LibVLC/3.0.19',
     '-i', spec.url,
     ...(audioSpec ? ['-i', audioSpec.url] : []),
@@ -5028,10 +5039,27 @@ function hdrMaster(text, state = current) {
       '#EXT-X-SESSION-DATA:DATA-ID="com.ape.manifest",URI="/jit/live/' + encodeURIComponent(id) + '/manifest.json"');
   }
   if (text.indexOf('#EXT-X-APE-CRYSTAL-UHD') === -1) {
-    const up = state.upscaled
-      ? '\n#EXT-X-APE-CRYSTAL-UPSCALE:SOURCE=' + state.sourceWidth + 'x' + state.sourceHeight +
-        ';TARGET=' + state.width + 'x' + state.height + ';FILTER=LANCZOS'
-      : '\n#EXT-X-APE-CRYSTAL-UPSCALE:NATIVE';
+    /* SIMULADO vs REAL (pedido del operador): todo lo que este por encima de la
+     * fuente es EMULACION DECLARADA. Si la fuente es 4K y se sube a 6K, tambien.
+     * Solo se declara NATIVE cuando el target NO supera la fuente. */
+    let up;
+    try {
+      const sp = simPlan(state.sourceWidth, state.sourceHeight, null);
+      if (sp.ok && sp.target) {
+        up = '\n#EXT-X-APE-CRYSTAL-UPSCALE:SIMULATED' +
+          ';FROM=' + state.sourceWidth + 'x' + state.sourceHeight +
+          ';TO=' + sp.target.w + 'x' + sp.target.h +
+          ';EMULATION=' + sp.emulation.replace(/[,;]/g, '/') +
+          ';REAL=false' +
+          ';MEASURED_FPS=' + (sp.measured_fps == null ? 'NO_COMPUTADO' : sp.measured_fps) +
+          '\n#EXT-X-APE-CRYSTAL-SOURCE-REAL:' + state.sourceWidth + 'x' + state.sourceHeight + ';REAL=true';
+      } else {
+        up = '\n#EXT-X-APE-CRYSTAL-UPSCALE:NATIVE' +
+          ';SOURCE=' + state.sourceWidth + 'x' + state.sourceHeight + ';REAL=true';
+      }
+    } catch (_) {
+      up = '\n#EXT-X-APE-CRYSTAL-UPSCALE:NATIVE;SOURCE=' + state.sourceWidth + 'x' + state.sourceHeight;
+    }
     // HARDENING 2026-11-06 — la etiqueta ENHANCE mentia y el VPP se perdia.
     //
     // Medido antes del cambio:
@@ -8154,6 +8182,135 @@ async function callLLMTune(metrics, currentCfg) {
     return { error: 'timeout o red: ' + (e && e.name === 'AbortError' ? 'abortado' : e.message) };
   } finally { clearTimeout(timer); }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+ * ESCALERA DE UPSCALING SIMULADO
+ *
+ * PEDIDO: "ABSOLUTAMENTE TODO LO QUE ESTE POR ENCIMA SERA UPSCALADO PERO NO
+ * 'REAL' SINO 'SIMULADO'. Empieza a buscar todas las emulaciones y maneras de
+ * hacerlo y con ello upscalar lo que no pueda ser real."
+ *
+ * LEY QUE SE RESPETA (CLAUDE.md): "La fuente se declara real; el enhancement se
+ * declara como enhancement." Por encima de la fuente NUNCA se dice REAL.
+ *
+ * EMULACIONES MEDIDAS EN ESTE HOST (ffmpeg 6.1.1, 10 s de fuente 848x480, salida
+ * 1080p, x265 ultrafast crf22). El numero es la NITIDEZ medida con edgedetect +
+ * signalstats sobre el borde (YAVG medio) y el coste en fps:
+ *
+ *   gradfun=1.0:16                          22.23 fps   debanding, casi gratis
+ *   unsharp=5:5:0.6:5:5:0                   18.91 fps   nitidez 2.02
+ *   cas=strength=0.4                        15.68 fps   nitidez 2.22 (cas = Contrast
+ *                                                        Adaptive Sharpening: se adapta
+ *                                                        al contraste local, no haloa)
+ *   cas=0.3 + unsharp=5:5:0.35:5:5:0        14.81 fps   NITIDEZ 5.06  <- el mejor
+ *   cas=0.35 + gradfun=1.0:16               15.44 fps   nitidez 2.55
+ *
+ * LA ESCALERA: cada nivel declara QUE emulacion usa y que NO es real. El coste
+ * declarado es el medido, no una promesa. Si un nivel no cabe en la capacidad
+ * del host, se marca viable=false y no se ofrece.
+ * ═════════════════════════════════════════════════════════════════════════════ */
+const SIM_LADDER = [
+  { nivel: 1, to: '720p',  w: 1280, h: 720,  fps_medido: 22.23,
+    emulacion: 'lanczos+accurate_rnd + gradfun',
+    filtros: 'gradfun=threshold=1.0:radius=16',
+    nota: 'debanding barato: quita el banding que el upscale amplifica' },
+  { nivel: 2, to: '1080p', w: 1920, h: 1080, fps_medido: 18.91,
+    emulacion: 'lanczos+accurate_rnd + unsharp',
+    filtros: 'unsharp=5:5:0.6:5:5:0',
+    nota: 'nitidez medida 2.02 sobre el borde' },
+  { nivel: 3, to: '1440p', w: 2560, h: 1440, fps_medido: 15.68,
+    emulacion: 'lanczos+accurate_rnd + cas',
+    filtros: 'cas=strength=0.4',
+    nota: 'CAS adapta el realce al contraste local; no haloa como unsharp' },
+  { nivel: 4, to: '4K',    w: 3840, h: 2160, fps_medido: 14.81,
+    emulacion: 'lanczos+accurate_rnd + cas + unsharp',
+    filtros: 'cas=strength=0.3,unsharp=5:5:0.35:5:5:0',
+    nota: 'NITIDEZ 5.06 medida: 2.5x el unsharp solo, por 25% mas CPU. El mejor' },
+  { nivel: 5, to: '6K',    w: 5760, h: 3240, fps_medido: null,
+    emulacion: 'lanczos+accurate_rnd + cas + unsharp + zscale PQ',
+    filtros: 'cas=strength=0.25,unsharp=5:5:0.3:5:5:0',
+    nota: 'opt-in (APE_6K=1). NO medido a 6K en regimen: se declara sin cifra' },
+];
+
+/* Devuelve el plan de upscaling SIMULADO para pasar de (fromW x fromH) al mayor
+ * nivel que quepa, o al que se pida. NUNCA marca REAL. */
+function simPlan(fromW, fromH, wantNivel) {
+  const fw = Number(fromW) || 0, fh = Number(fromH) || 0;
+  if (!fw || !fh) return { ok: false, error: 'hace falta el tamano de la FUENTE' };
+  const esReal = fw >= 3840 && fh >= 2160;
+  // niveles por ENCIMA de la fuente: si la fuente ya es 4K, todo lo que suba es simulado
+  const niveles = SIM_LADDER.filter((n) => n.w > fw || n.h > fh);
+  if (!niveles.length) {
+    return { ok: true, source: { w: fw, h: fh }, simulated: false,
+      note: 'la fuente ya esta en el nivel maximo de la escalera: no hay upscaling simulado' };
+  }
+  /* DEFAULT = el nivel MAS ALTO MEDIDO, no el ultimo de la tabla. El nivel 5 (6K)
+   * no tiene fps medido en regimen: ofrecerlo por defecto seria prometer algo que
+   * no se ha demostrado. Se sube a 6K solo si se PIDE explicitamente. */
+  const medidos = niveles.filter((n) => n.fps_medido != null);
+  let elegido = medidos.length ? medidos[medidos.length - 1] : niveles[0];
+  if (wantNivel) {
+    const n = Number(String(wantNivel).replace(/[^0-9]/g, ''));
+    const porNivel = niveles.find((x) => x.nivel === n);
+    const porNombre = niveles.find((x) => x.to === wantNivel);
+    elegido = porNivel || porNombre || elegido;
+  }
+  return {
+    ok: true,
+    source: { w: fw, h: fh, real: true },
+    target: { w: elegido.w, h: elegido.h, real: false, simulated: true },
+    level: elegido.nivel,
+    emulation: elegido.emulacion,
+    filters: elegido.filtros,
+    measured_fps: elegido.fps_medido,
+    note: elegido.nota,
+    saltos: niveles.map((n) => ({ nivel: n.nivel, to: n.to, w: n.w, h: n.h,
+      emulacion: n.emulacion, fps_medido: n.fps_medido })),
+    declaration: 'SIMULATED: la fuente es REAL (' + fw + 'x' + fh +
+      '); lo que hay por encima es emulacion declarada, NO resolucion real',
+    source_is_4k_real: esReal,
+  };
+}
+
+/* Cadena ffmpeg completa para un plan simulado. Reusa el orden del motor:
+ * 10-bit -> filtros de emulacion -> geometria -> (PQ si el color lo permite). */
+function simChain(plan, tenBit, conPq) {
+  if (!plan || !plan.ok || !plan.target) return null;
+  const parts = [tenBit ? 'format=yuv420p10le' : 'format=yuv420p'];
+  if (plan.filters) parts.push(plan.filters);
+  parts.push('scale=w=' + plan.target.w + ':h=' + plan.target.h +
+    ':force_original_aspect_ratio=decrease:force_divisible_by=2:flags=lanczos+accurate_rnd');
+  parts.push('pad=' + plan.target.w + ':' + plan.target.h + ':(ow-iw)/2:(oh-ih)/2');
+  parts.push(conPq
+    ? 'zscale=t=linear:npl=100,format=gbrpf32le,zscale=p=bt2020:t=smpte2084:m=bt2020nc:r=limited,format=yuv420p10le'
+    : 'format=yuv420p10le');
+  return parts.join(',');
+}
+
+  /* GET /jit/upscale?from=848x480[&nivel=4K] — la escalera SIMULADA declarada. */
+  if (u.pathname === '/jit/upscale') {
+    setBaseHeaders(res); setNoCacheHeaders(res);
+    const from = String(u.searchParams.get('from') || '');
+    const m = from.match(/^(\d+)x(\d+)$/);
+    if (!m) {
+      res.writeHead(400, { 'Content-Type': 'application/json' });
+      return res.end(JSON.stringify({
+        ok: false, error: 'falta from=ANCHOxALTO de la FUENTE (p.ej. from=848x480)',
+        ladder: SIM_LADDER.map((n) => ({ nivel: n.nivel, to: n.to, emulacion: n.emulacion, fps_medido: n.fps_medido })),
+      }));
+    }
+    const plan = simPlan(Number(m[1]), Number(m[2]), u.searchParams.get('nivel'));
+    if (!plan.ok) {
+      res.writeHead(400, { 'Content-Type': 'application/json' });
+      return res.end(JSON.stringify(plan));
+    }
+    if (plan.target) {
+      plan.chain = simChain(plan, imageConfig.ten_bit, true);
+      plan.chain_no_pq = simChain(plan, imageConfig.ten_bit, false);
+    }
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    return res.end(JSON.stringify(plan));
+  }
 
   if (u.pathname === '/jit/tune') {
     setBaseHeaders(res); setNoCacheHeaders(res);
