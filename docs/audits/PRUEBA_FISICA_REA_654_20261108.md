@@ -4351,3 +4351,103 @@ Con ajuste por codec (AV1 −25 %, AVC +40 %) y +15 % en emulado. Medido: **4K =
 tipo password, guardar/borrar, modelo y origen) y **Alinear Gestor de Perfiles**
 (selector de los 6 perfiles, boton de propuesta y tabla antes/despues).
 Cache-buster `?v=20261108-align`. md5 servido == md5 en disco. Test 27/27.
+
+---
+
+# 62 · Alineacion de los 577 campos, con cascada ABR y guardado
+
+## 62.1 · De 27 a 127 cambios
+
+La primera version alineaba 27 campos. Ahora recorre **las ocho secciones** del
+perfil y propone **127 cambios de 577**, con **22 en cascada**.
+
+**Medido, P0 con 720p@30 -> 4K REAL:**
+
+| Seccion | Campos | Cambian |
+|---|---|---|
+| `settings` | 18 | **12** |
+| `vlcopt` | 27 | **13** |
+| `kodiprop` | 6 | **5** |
+| `enabledCategories` | 32 | 0 |
+| `headerOverrides` | 230 | **44** |
+| `prefetch_config` | 8 | **8** |
+| `quality_levels` | 8 | **1** |
+| `headers` | 242 | **44** |
+
+**450 campos se heredan sin tocar.** Medido en EMULADO: 125 cambios (otros valores).
+
+## 62.2 · La cascada: 22 campos, y conserva la escalera ABR
+
+**226 de los 242 headers son CSV de 4 niveles.** No son listas: son la **cadena de
+fallback**. Se transforma cada nivel **preservando la escalera**:
+
+```
+X-APE-RESOLUTION      7680x4320,3840x2160,2560x1440,1920x1080
+                   -> 3840x2160,2560x1440,2048x1080,1920x1080
+X-APE-BITRATE         80,50,30,20        ->  28,18,12,8
+X-APE-TARGET-BITRATE  80000000,...,20000000 -> 28000000,18200000,11830000,7689500
+X-HEVC-Level          6.2,6.1,6.0,5.2    ->  5.1,5.0,4.1,4.0
+X-Segment-Duration    1,2,4,6            ->  2,3,4,5
+```
+
+**Nivel 0 = salida objetivo; los siguientes bajan por la escalera del repo**
+(8K > 4K > 1440p > 2048x1080 > 1080p > 720p > 480p), con bitrate al 65 % por
+escalon y cadencia limitada a 30 en los niveles bajos.
+
+## 62.3 · Dos defectos que la medicion destapo
+
+**a) La cascada se aplanaba.** La primera version ponia el mismo valor en todos los
+niveles: `3840x2160,3840x2160,3840x2160,3840x2160`. **Eso mata el ABR**: el player
+no tiene a donde bajar. Se sustituyo por una escalera real.
+
+**b) El TARGET-BITRATE daba 28 BILLONES.**
+
+```
+80000000,50000000,30000000,20000000  ->  28000000000000,...   (x1e6 de mas)
+```
+
+El target **ya venia en bps** y el codigo lo volvia a multiplicar. Corregido: **la
+unidad la dice el valor, no el nombre del campo**. Medido despues: **0 valores de
+bitrate fuera de rango**.
+
+## 62.4 · El guardado: de propuesta a cambio real
+
+`POST /jit/image/profile/align/apply` recibe el perfil y las diferencias, y devuelve
+el **perfil nuevo completo**. Medido: **127 aplicados, 0 fallidos**.
+
+Verificacion del perfil resultante:
+
+```
+settings.resolution      3840x2160
+settings.codec           H265
+settings.fps             30
+settings.bitrate         28
+vlcopt.network-caching   21000
+headers.X-APE-RESOLUTION 3840x2160,2560x1440,2048x1080,1920x1080
+headers.X-APE-BITRATE    28,18,12,8
+```
+
+**El boton «💾 Guardar en el Gestor»** escribe el perfil en el SSOT del Gestor
+(`APE_PROFILES_CONFIG` / `localStorage`) y **declara por donde guardo**. Si no hay
+SSOT en la pagina, lo dice: *"el perfil nuevo se devuelve pero no se persiste"* — no
+finge que guardo.
+
+## 62.5 · Nuevo endpoint
+
+`GET /jit/image/gestor/profile/{id}` — el perfil crudo del gestor, para que el panel
+pueda aplicarle las diferencias.
+
+## 62.6 · Desplegado
+
+`vps-image-panel.js` **64.173 -> 67.289 B**. Cache-buster `?v=20261108-align2`.
+`doApplyAlign` y `aip-align-apply` presentes. Test 27/27.
+
+## 62.7 · Lo que sigue faltando
+
+- **El LLM aplicado a los 577 campos**: hoy la alineacion es determinista; el LLM
+  solo optimiza la cadena del modulo de imagen.
+- **`quality_levels` L1-L7**: solo se alinea `primary`; las condiciones y
+  resoluciones de cada nivel no se recalculan.
+- **`enabledCategories`** (32): no se toca.
+- **El modo cascada para `prefetch_segments`/`parallel_downloads`**: se pone el
+  mismo valor en todos los niveles.

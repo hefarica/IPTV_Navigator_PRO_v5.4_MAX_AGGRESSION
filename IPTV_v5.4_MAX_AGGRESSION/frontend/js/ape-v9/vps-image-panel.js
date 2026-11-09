@@ -19,7 +19,7 @@
     base: (window.APE_JIT_BASE || 'https://iptv-ape.duckdns.org') + '/jit',
     config: null, effectiveFilter: '', capacity: null, live: null,
     profiles: null, matrix: null, plan: null, catalog: null,
-    declared: null, gov: null, cascade: null, fallback: null, rules: null, autoRow: null, optimized: null, llm: null, align: null,
+    declared: null, gov: null, cascade: null, fallback: null, rules: null, autoRow: null, optimized: null, llm: null, align: null, alignApplied: null,
     busy: false, lastError: null, log: [],
     build: { profile: 'P4.5', w: 1280, h: 720, target: 'UHD_4K', codec: 'hvc1',
              player: 'onn-4k', recipe: 'balanced', fps: 25,
@@ -675,7 +675,15 @@
 
     var bAlign = el('button', { class: 'go', id: 'aip-align' }, ['🔗 Proponer alineación']);
     bAlign.addEventListener('click', doAlign);
-    root.appendChild(el('div', { class: 'row', style: 'margin-top:10px' }, [bAlign]));
+    // solo se puede aplicar si hay una propuesta pendiente
+    var bApplyAlign = el('button', { class: 'pri', id: 'aip-align-apply',
+      style: (S.align && S.align.ok && S.align.proposed > 0) ? '' : 'opacity:.4;cursor:not-allowed' },
+      ['💾 Guardar en el Gestor (' + ((S.align && S.align.proposed) || 0) + ' cambios)']);
+    bApplyAlign.addEventListener('click', function () {
+      if (!S.align || !S.align.ok || !S.align.proposed) { logLine('no hay propuesta pendiente'); return; }
+      doApplyAlign();
+    });
+    root.appendChild(el('div', { class: 'row', style: 'margin-top:10px' }, [bAlign, bApplyAlign]));
 
     if (S.align && S.align.ok) renderAlign(root);
     else if (S.align) root.appendChild(warn('alinear: ' + (S.align.error || 'error')));
@@ -694,6 +702,45 @@
       S.align = r;
       logLine(r && r.ok ? ('alineacion: ' + r.proposed + ' cambios de ' + r.totalFields + ' campos (' + pid + ')')
                         : ('fallo alinear: ' + (r && r.error)));
+      render(document.getElementById('ape-image-panel'));
+    });
+  }
+
+  /* GUARDA la alineacion: pide al motor el perfil ya modificado y lo escribe en
+   * el SSOT del Gestor (APE_PROFILES_CONFIG en localStorage). Es el unico punto
+   * donde el cambio SALE de la propuesta y se vuelve real. */
+  function doApplyAlign() {
+    var a = S.align;
+    if (!a || !a.gestorProfile) { logLine('falta el perfil del gestor en la propuesta'); return; }
+    post('/image/profile/align/apply', {
+      gestorProfile: a.gestorProfile,
+      diffs: a.diffs
+    }).then(function (r) {
+      if (!r || !r.ok) { logLine('apply fallo: ' + ((r && r.error) || '?')); return; }
+      // se escribe en el SSOT del gestor si existe
+      var wrote = false, how = '';
+      try {
+        if (window.APE_PROFILES_CONFIG && typeof window.APE_PROFILES_CONFIG === 'object') {
+          var pid = r.profile.id;
+          window.APE_PROFILES_CONFIG[pid] = r.profile;
+          // persistir si el modulo expone save
+          if (window.APE_PROFILES_CONFIG.save) { window.APE_PROFILES_CONFIG.save(); wrote = true; how = 'APE_PROFILES_CONFIG.save()'; }
+          else {
+            try {
+              localStorage.setItem('APE_PROFILES_CONFIG', JSON.stringify(window.APE_PROFILES_CONFIG));
+              wrote = true; how = 'localStorage';
+            } catch (e2) { how = 'no se pudo persistir: ' + e2.message; }
+          }
+        } else if (window.ProfileManagerV9 && typeof window.ProfileManagerV9.loadProfiles === 'function') {
+          window.ProfileManagerV9.loadProfiles();
+          wrote = true; how = 'ProfileManagerV9.loadProfiles()';
+        } else {
+          how = 'no hay SSOT del gestor en esta pagina: el perfil nuevo se devuelve pero no se persiste';
+        }
+      } catch (e) { how = 'error al escribir: ' + e.message; }
+      S.alignApplied = { applied: r.applied, failed: r.failed, wrote: wrote, how: how, profile: r.profile };
+      logLine('ALINEADO ' + r.profile.id + ': ' + r.applied + ' campos aplicados' +
+              (wrote ? ' · guardado en ' + how : ' · ' + how));
       render(document.getElementById('ape-image-panel'));
     });
   }
@@ -741,6 +788,16 @@
         (a.objective.cost.viable ? '' : ' (NO VIABLE en este host)')
       ]));
       (a.objective.impossible || []).forEach(function (i) { box.appendChild(warn('IMPOSIBLE: ' + i)); });
+    }
+    // resultado del guardado
+    if (S.alignApplied) {
+      var ap = S.alignApplied;
+      box.appendChild(el('div', { style: 'margin-top:8px;padding:8px 10px;border-radius:8px;' +
+        'background:rgba(16,185,129,.12);border:1px solid rgba(16,185,129,.4);color:#6ee7b7;font-size:.76rem' }, [
+        'GUARDADO: ' + ap.applied + ' campos aplicados' +
+        (ap.failed && ap.failed.length ? ' · ' + ap.failed.length + ' fallaron' : '') +
+        ' · ' + ap.how
+      ]));
     }
     root.appendChild(box);
   }
