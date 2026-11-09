@@ -746,8 +746,11 @@
       S.alignAll = r;
       if (!r || !r.ok) { logLine('align-all fallo: ' + ((r && r.error) || '?')); render(document.getElementById('ape-image-panel')); return; }
       var t = r.totals || {};
+      var ree = 0;
+      Object.keys(r.profiles || {}).forEach(function (k) { ree += (r.profiles[k].rejected || 0); });
       logLine('12 PERFILES: ' + (t.fields || 0) + ' campos, ' + (t.proposed || 0) +
-              ' propuestos, ' + (t.cascade || 0) + ' en cascada');
+              ' propuestos, ' + (t.cascade || 0) + ' en cascada' +
+              (ree ? ' · ' + ree + ' PRESERVADOS (no se tocan)' : ''));
       render(document.getElementById('ape-image-panel'));
     });
   }
@@ -782,7 +785,7 @@
           how = 'no hay SSOT del gestor en esta pagina';
         }
       } catch (e) { how = 'error al escribir: ' + e.message; }
-      S.alignAllApplied = { totals: r.totals, wrote: wrote, how: how };
+      S.alignAllApplied = { totals: r.totals, inv: r.invariants, wrote: wrote, how: how };
       logLine('12 PERFILES GUARDADOS: ' + (r.totals && r.totals.applied) + ' campos aplicados' +
               (r.totals && r.totals.failed ? ' · ' + r.totals.failed + ' fallos' : '') +
               ' · ' + (wrote ? how : how));
@@ -919,20 +922,49 @@
       ]);
       var tg = el('table', { style: 'width:100%;margin-top:6px;font-size:.7rem;border-collapse:collapse' });
       var hr = el('tr', {});
-      ['PERFIL', 'CAMPOS', 'PROPONE', 'CASCADA', 'MODO'].forEach(function (h) {
+      ['PERFIL', 'CAMPOS', 'PROPONE', 'CASCADA', 'PRESERVA', 'MODO'].forEach(function (h) {
         hr.appendChild(el('th', { style: 'text-align:left;padding:2px 6px;color:#64748b;font-weight:600' }, [h]));
       });
       tg.appendChild(hr);
       Object.keys(A.profiles || {}).sort().forEach(function (pid) {
         var p = A.profiles[pid];
         var tr = el('tr', {});
-        [pid, p.totalFields, p.proposed, p.cascadeCount, (p.appliedMode || '-')].forEach(function (v, i) {
-          var col = i === 2 ? '#38bdf8' : (i === 4 ? (String(v) === 'emulado' ? '#a78bfa' : '#64748b') : '#94a3b8');
-          tr.appendChild(el('td', { style: 'padding:2px 6px;color:' + col }, [String(v)]));
-        });
+        // PRESERVA = campos que la Ley de Preservacion dejo intactos (no se borran,
+        // no se vacian, no cambian de niveles de cascada).
+        [pid, p.totalFields, p.proposed, p.cascadeCount, (p.rejected || 0), (p.appliedMode || '-')]
+          .forEach(function (v, i) {
+            var col = i === 2 ? '#38bdf8'
+                    : i === 4 ? ((v > 0) ? '#fbbf24' : '#475569')
+                    : i === 5 ? (String(v) === 'emulado' ? '#a78bfa' : '#64748b')
+                    : '#94a3b8';
+            tr.appendChild(el('td', { style: 'padding:2px 6px;color:' + col }, [String(v)]));
+          });
         tg.appendChild(tr);
       });
       ab.appendChild(tg);
+      // desglose por regla: por que se preservo cada campo
+      var reglas = {};
+      Object.keys(A.profiles || {}).forEach(function (pid) {
+        var rr = A.profiles[pid].rejectedByRule || {};
+        Object.keys(rr).forEach(function (k) { reglas[k] = (reglas[k] || 0) + rr[k]; });
+      });
+      var LBL = {
+        NO_BLANK_VALUES: 'valor vacio rechazado',
+        BLANK_PRESERVED: 'el original estaba en blanco: se deja igual',
+        CSV_PRESERVED: 'una lista no se aplana a un solo valor',
+        CASCADE_LENGTH: 'la cascada no tenia 4 niveles: se deja intacta',
+        KEEP_IF_BETTER: 'el valor actual ya era mejor'
+      };
+      if (Object.keys(reglas).length) {
+        var lb = el('div', { style: 'margin-top:6px;padding:6px 8px;border-radius:6px;' +
+          'background:rgba(251,191,36,.10);border:1px solid rgba(251,191,36,.35);color:#fbbf24;font-size:.7rem' },
+          ['PRESERVADOS por regla (nada se borra, nada se vacia, las cascadas siguen de 4):']);
+        Object.keys(reglas).sort().forEach(function (k) {
+          lb.appendChild(el('div', { style: 'margin-top:2px;color:#fcd34d' },
+            [String(reglas[k]) + ' · ' + (LBL[k] || k)]));
+        });
+        ab.appendChild(lb);
+      }
       box.appendChild(ab);
     }
     // resultado del guardado de los 6
@@ -941,7 +973,9 @@
       box.appendChild(el('div', { style: 'margin-top:8px;padding:8px 10px;border-radius:8px;font-size:.76rem;' +
         'background:rgba(16,185,129,.14);border:1px solid rgba(16,185,129,.45);color:#6ee7b7' }, [
         '12 PERFILES GUARDADOS: ' + AA.totals.applied + ' campos aplicados' +
-        (AA.totals.failed ? ' · ' + AA.totals.failed + ' fallaron' : '') + ' · ' + AA.how
+        (AA.totals.failed ? ' · ' + AA.totals.failed + ' fallaron' : '') +
+        (AA.totals.violations ? ' · ' + AA.totals.violations + ' VIOLACIONES' : ' · invariantes OK') +
+        ' · ' + AA.how
       ]));
     }
     // resultado del guardado

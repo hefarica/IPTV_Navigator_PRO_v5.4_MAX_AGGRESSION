@@ -4930,3 +4930,89 @@ repetirlos:
 source=ninguna` es el estado medido. Lo verificado es el **camino de fallo**: sin
 key, `/align-llm` devuelve `used:false, source:'deterministico'` y las mismas
 propuestas. **Eso es honesto, pero no es lo mismo que haberlo probado con key.**
+
+---
+
+# 69 · Ley de Preservacion: nada se borra, nada se vacia, las cascadas siguen de 4
+
+Instruccion del operador (2026-11-08): *"tiene que usar los mismos campos que
+encuentre implementados... NO acepta que elimine campos, como minimo que los deje
+igual... recortar o colocar menos headers no lo hace mejor... tiene prohibido borrar
+valores y dejarlos en blanco, las cascadas son de 4... nunca cascadas con 3 valores."*
+
+Se implemento como **gate**, no como recomendacion: `preservation-law-v1.js`
+(10.838 B) mas su copia embebida en el motor.
+
+## 69.1 · Las seis invariantes
+
+| Regla | Significado | Efecto medido |
+|---|---|---|
+| `NO_BLANK_VALUES` | ningun valor queda vacio/null/undefined | **rechaza el diff** |
+| `BLANK_PRESERVED` | si el original ya estaba en blanco, se deja igual | **2 casos** |
+| `CSV_PRESERVED` | una lista con comas nunca se aplana a un solo valor | **rechaza el diff** |
+| `CASCADE_LENGTH` | cascada = exactamente 4 niveles, o intacta | **199 de 4, 0 rotas** |
+| `KEEP_IF_BETTER` | si el actual ya es mejor, no se toca | **78 casos** |
+| `NO_DELETE_FIELDS` | ningun campo desaparece | **verificado en el apply** |
+
+## 69.2 · Tres defectos reales que el gate destapo
+
+**a) Cascadas que se aplanaban a un escalar (360 rechazos).**
+`X-Screen-Resolution` y `X-HEVC-Level` caian al `else` de `cmp()` y se proponian como
+valor unico, destruyendo la lista. Ahora: **cualquier valor con comas o se regenera
+como cascada de 4 o se deja intacto**.
+
+**b) Enumeraciones tratadas como cascada.**
+`X-HEVC-Level` tiene **5** niveles (`6.1,6.0,5.1,5.0,4.1`) y `X-Frame-Rates` **6**
+(`120,24,25,30,50,60`). **No son cascadas de fallback**: son enumeraciones de valores
+validos. Se anadio `CASCADE_FIELDS` con la lista explicita de los que si lo son
+(23 campos). Fuera de ella, un CSV **nunca se toca**.
+
+**c) 412 CSV no numericos se aplanaban.**
+`X-APE-STRATEGY` (`ultra-aggressive,...`), `X-Prefetch-Enabled`
+(`true,adaptive,auto,false`), `X-HLSjs-Events-Listener`. **Aplanarlos es recortar.**
+Ahora la regla usa `indexOf(',')`, no solo la deteccion numerica.
+
+## 69.3 · Medido antes y despues
+
+| | Antes del gate | Con el gate |
+|---|---|---|
+| Campos del Gestor | 6.750 | **6.750** (identico) |
+| Propuestos | 1.576 | **710** |
+| Cascadas | 262 (varias rotas) | **199, todas de 4 niveles** |
+| CSV aplanados | 412 | **0** |
+| Campos en blanco | algunos | **0** (2 preservados por estar ya en blanco) |
+| Valores empeorados | 78 | **0** (78 preservados) |
+
+**El gate no reduce la calidad: impide que la alineacion destruya lo que ya estaba
+bien.** Las 866 propuestas que desaparecen son exactamente las que aplanaban listas,
+rompian cascadas o empeoraban valores.
+
+## 69.4 · Invariantes de cierre sobre el apply real
+
+`verify_preservation.py`, medido contra la VPS:
+
+```
+APPLY: 12 perfiles | 710 aplicados | 0 fallos | violaciones: 0
+
+PERFIL  SIN PERDIDA   CASCADAS   SIN BLANCOS   OK
+P0..P5.5     OK          OK          OK        SI   (los 12)
+INVARIANTES GLOBALES: TODAS OK
+P0 resolution: 7680x4320   bitrate: 80
+```
+
+Las tres comprobaciones se hacen sobre el **perfil resultante**, no sobre la
+intencion: `verifyNoFieldLost`, `verifyCascadesIntact`, `verifyNoBlanks`.
+
+## 69.5 · Panel
+
+Columna **PRESERVA** en la tabla (ambar cuando hay campos preservados) y un desglose
+por regla con su motivo en lenguaje llano. `vps-image-panel.js` **75.836 -> 77.684 B**,
+`preservation-law-v1.js` **10.838 B** cargada en el index junto a `sufficiency-law`.
+Cache-buster `?v=20261109-presl`. Test 27/27.
+
+## 69.6 · Lo que sigue sin cambiar
+
+- **P5 sigue subiendo a 4K** al alinearlo contra 4K. La ley no lo decide: es una
+  decision del operador sobre el rol `SD_FAILSAFE`.
+- **El LLM no ha corrido con clave real.** Sin key, el motor cae al determinista.
+- **Los `.5` siguen siendo derivados**, no los del LAB v24.

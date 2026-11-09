@@ -1333,6 +1333,265 @@ function alignmentTargetsFull(obj, gestorProfile) {
   };
 }
 
+/* ═══════════════════════════════════════════════════════════════════════════
+ * LEY DE PRESERVACION — invariantes duras de la alineacion
+ *
+ * El operador (2026-11-08): "tiene que usar los mismos campos que encuentre
+ * implementados, pero mejorando u organizando su valor en cascada, NO acepta que
+ * elimine campos, como minimo que los deje igual... recortar o colocar menos
+ * headers NO lo hace mejor... tiene prohibido borrar valores y dejarlos en
+ * blanco, las cascadas son de 4... nunca cascadas con 3 valores."
+ *
+ * Esto NO es una recomendacion: es un GATE. Cada diff propuesto pasa por
+ * guardDiff() y si viola una regla se DESCARTA y se reporta con su motivo.
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+/* CAMPOS QUE SON CASCADA DE FALLBACK.
+ *
+ * MEDIDO: de los 242 headers, muchos son CSV pero NO son cascada:
+ *   X-HEVC-Level    6.1,6.0,5.1,5.0,4.1   (5 valores: NIVELES validos)
+ *   X-Frame-Rates   120,24,25,30,50,60    (6 valores: ENUMERACION)
+ *   X-APE-STRATEGY  ultra-aggressive,...  (dialectos)
+ * Tratarlos como cascada hacia que el gate rechazara 344 diffs por
+ * CASCADE_LENGTH. Solo los de esta lista representan niveles de calidad
+ * descendente y por tanto se regeneran como escalera de exactamente 4. */
+var CASCADE_FIELDS = {
+  'X-APE-RESOLUTION': true, 'X-Screen-Resolution': true,
+  'X-Max-Resolution': true, 'X-Stream-Resolution': true,
+  'X-APE-BITRATE': true, 'X-APE-TARGET-BITRATE': true,
+  'X-Max-Bitrate': true, 'X-Stream-Bitrate': true,
+  'X-APE-FPS': true, 'X-Stream-FPS': true, 'X-Max-Framerate': true,
+  'X-Color-Depth': true, 'X-Pixel-Format': true,
+  'X-Segment-Duration': true, 'X-Segment-Duration-S': true,
+  'X-APE-Prefetch-Segments': true, 'X-Prefetch-Segments': true,
+  'X-Parallel-Segments': true, 'X-Concurrent-Downloads': true,
+  'X-Network-Caching': true, 'X-Live-Caching': true, 'X-File-Caching': true,
+  'X-Sharpen-Sigma': true
+};
+
+var PRESERVATION_LAW = {
+  // 1. Ningun campo del perfil puede desaparecer.
+  NO_DELETE_FIELDS: true,
+  // 2. Ningun valor puede quedar vacio, null, undefined o solo espacios.
+  NO_BLANK_VALUES: true,
+  // 3. El numero de headers no puede bajar (recortar no es mejorar).
+  NO_REDUCE_HEADERS: true,
+  // 4. Una cascada tiene EXACTAMENTE 4 niveles. Si el valor actual tiene 4 y el
+  //    nuevo no, se deja INTACTA. Nunca 3, nunca 5.
+  CASCADE_LENGTH: 4,
+  // 5. Si el valor actual ya es el mejor segun la metrica del campo, no se toca.
+  KEEP_IF_BETTER: true,
+  // 6. Se pueden AGREGAR campos; nunca es obligatorio.
+  ALLOW_ADD: true,
+  VERSION: '1.0'
+};
+
+/* Campos donde MAYOR es mejor (calidad y margen). Todo lo que no este aqui se
+ * rige por el valor calculado del motor: no se compara, se aplica. */
+var HIGHER_IS_BETTER = {
+  resolution: true, bitrate: true, fps: true, buffer: true, bufferSeconds: true,
+  playerBuffer: true, t1: true, t2: true,
+  'network-caching': true, 'live-caching': true, 'file-caching': true,
+  'clock-jitter': true, 'http-max-retries': true,
+  'inputstream.adaptive.max_resolution': true,
+  'inputstream.adaptive.max_bitrate': true,
+  'inputstream.adaptive.min_bandwidth': true,
+  min_bandwidth_mbps: true, prefetch_segments: true, parallel_downloads: true,
+  buffer_target_seconds: true, segments_ahead: true, parallel_workers: true,
+  'X-APE-RESOLUTION': true, 'X-APE-BITRATE': true, 'X-APE-TARGET-BITRATE': true,
+  'X-APE-FPS': true, 'X-Max-Resolution': true, 'X-Max-Bitrate': true,
+  'X-Stream-Resolution': true, 'X-Stream-Bitrate': true, 'X-Min-Bitrate': true,
+  'X-Network-Caching': true, 'X-Live-Caching': true, 'X-File-Caching': true,
+  'X-Buffer-Target': true, 'X-Buffer-Max': true, 'X-Buffer-Min': true,
+  'X-APE-Prefetch-Segments': true, 'X-Prefetch-Segments': true,
+  'X-Parallel-Segments': true, 'X-Concurrent-Downloads': true
+};
+
+/* ¿El valor esta vacio segun la ley? Vacio, null, undefined, solo espacios. */
+function isBlankValue(v) {
+  if (v === null || v === undefined) return true;
+  var s = String(v);
+  if (s.trim() === '') return true;
+  // "null"/"undefined"/"NaN" como texto tambien son un valor borrado disfrazado
+  if (/^(null|undefined|nan|none)$/i.test(s.trim())) return true;
+  return false;
+}
+
+/* ¿El valor tiene forma de cascada? CSV de numeros o de WxH. */
+function cascadeLen(v) {
+  var s = String(v);
+  if (s.indexOf(',') < 0) return 0;
+  var parts = s.split(',');
+  var allNumeric = parts.every(function (p) {
+    p = p.trim();
+    return /^-?\d+(\.\d+)?$/.test(p) || /^\d+x\d+$/.test(p);
+  });
+  return allNumeric ? parts.length : 0;
+}
+
+/* Primer numero de un valor (para comparar resoluciones, bitrates, etc.). */
+function firstNumber(v) {
+  var s = String(v);
+  var m = s.match(/-?\d+(\.\d+)?/);
+  return m ? Number(m[0]) : null;
+}
+
+/* Compara dos valores numericos segun la metrica del campo.
+ * Devuelve true si `after` es ESTRICTAMENTE PEOR que `before`. */
+function isWorse(key, before, after) {
+  if (!HIGHER_IS_BETTER[key]) return false;   // no comparable: no se juzga
+  var b = firstNumber(before), a = firstNumber(after);
+  if (b === null || a === null) return false;
+  return a < b;                                // menor = peor en estos campos
+}
+
+/* GATE: valida UN diff contra la ley. Devuelve {ok, motivo}. */
+function guardDiff(d, gestorProfile) {
+  var L = PRESERVATION_LAW;
+  var path = String(d.path || '');
+  var sec = path.split('.')[0];
+  var key = path.split('.').slice(1).join('.');
+  var before = d.before;
+  var after = d.after;
+
+  // ── 2. NO DEJAR EN BLANCO (la regla mas dura) ──────────────────────────
+  if (L.NO_BLANK_VALUES && isBlankValue(after)) {
+    return { ok: false, regla: 'NO_BLANK_VALUES', motivo: path + ': el valor propuesto esta vacio' };
+  }
+
+  // Un valor que YA estaba en blanco no se toca: se deja igual (instruccion
+  // del operador: "solo omita los que encuentre en blanco... o los deja igual").
+  if (L.NO_BLANK_VALUES && before !== null && before !== undefined && isBlankValue(before)) {
+    return { ok: false, regla: 'BLANK_PRESERVED', motivo: path + ': el original estaba en blanco, se deja igual' };
+  }
+
+  // ── 4. CASCADAS DE 4 ───────────────────────────────────────────────────
+  var nBefore = cascadeLen(before);
+  var nAfter = cascadeLen(after);
+  if (nBefore > 0) {
+    // era una cascada: el resultado tiene que seguir siendo de 4
+    if (nAfter !== L.CASCADE_LENGTH) {
+      return {
+        ok: false, regla: 'CASCADE_LENGTH',
+        motivo: path + ': la cascada tenia ' + nBefore + ' niveles y el resultado ' +
+                (nAfter === 0 ? 'deja de ser cascada' : 'tiene ' + nAfter) +
+                '; se exige ' + L.CASCADE_LENGTH + ' o dejarla intacta'
+      };
+    }
+    if (nBefore !== L.CASCADE_LENGTH && nAfter !== nBefore) {
+      return {
+        ok: false, regla: 'CASCADE_LENGTH',
+        motivo: path + ': la cascada original tenia ' + nBefore + ' niveles; no se cambia a ' + nAfter
+      };
+    }
+  } else if (nAfter > 0 && nAfter !== L.CASCADE_LENGTH) {
+    // convertir un escalar en cascada SOLO es legal si da exactamente 4
+    return {
+      ok: false, regla: 'CASCADE_LENGTH',
+      motivo: path + ': se intenta crear una cascada de ' + nAfter + ' niveles; se exige ' + L.CASCADE_LENGTH
+    };
+  }
+
+  // ── 4bis. UN CSV NO SE APLANA ──────────────────────────────────────────
+  // Si el original tenia comas, el resultado tiene que seguir teniendolas.
+  // Aplanar una lista a un valor unico es recortar, y recortar no es mejorar.
+  if (before !== null && before !== undefined && String(before).indexOf(',') >= 0 &&
+      String(after).indexOf(',') < 0) {
+    return {
+      ok: false, regla: 'CSV_PRESERVED',
+      motivo: path + ': el original era una lista de ' + String(before).split(',').length +
+              ' valores y se intenta aplanar a uno solo'
+    };
+  }
+
+  // ── 5. SI EL ACTUAL ES MEJOR, NO SE TOCA ───────────────────────────────
+  if (L.KEEP_IF_BETTER && before !== null && before !== undefined && isWorse(key, before, after)) {
+    return {
+      ok: false, regla: 'KEEP_IF_BETTER',
+      motivo: path + ': el actual (' + String(before).slice(0, 24) + ') es mejor que el propuesto (' +
+              String(after).slice(0, 24) + '); se deja quieto'
+    };
+  }
+
+  return { ok: true, regla: null, motivo: null };
+}
+
+/* Aplica el gate a TODA la lista de diffs. Devuelve los aceptados y los
+ * rechazados con su motivo, mas el conteo por regla. */
+function guardDiffs(diffs, gestorProfile) {
+  var aceptados = [];
+  var rechazados = [];
+  var porRegla = {};
+  for (var i = 0; i < (diffs || []).length; i++) {
+    var d = diffs[i];
+    var g = guardDiff(d, gestorProfile);
+    if (g.ok) {
+      aceptados.push(d);
+    } else {
+      rechazados.push({ path: d.path, regla: g.regla, motivo: g.motivo, before: d.before, after: d.after });
+      porRegla[g.regla] = (porRegla[g.regla] || 0) + 1;
+    }
+  }
+  return { aceptados: aceptados, rechazados: rechazados, porRegla: porRegla };
+}
+
+/* Invariante de CIERRE: tras aplicar los diffs, el perfil debe conservar
+ * TODAS las claves que tenia. Se comprueba comparando los conjuntos. */
+function verifyNoFieldLost(beforeProfile, afterProfile) {
+  var perdidos = [];
+  if (!beforeProfile || !afterProfile) return { ok: true, perdidos: perdidos, total: 0 };
+  for (var sec in beforeProfile) {
+    if (!Object.prototype.hasOwnProperty.call(beforeProfile, sec)) continue;
+    var b = beforeProfile[sec];
+    if (!b || typeof b !== 'object' || Array.isArray(b)) continue;
+    var a = afterProfile[sec];
+    if (!a || typeof a !== 'object') { perdidos.push(sec + '.* (seccion completa)'); continue; }
+    for (var k in b) {
+      if (!Object.prototype.hasOwnProperty.call(b, k)) continue;
+      if (!Object.prototype.hasOwnProperty.call(a, k)) perdidos.push(sec + '.' + k);
+    }
+  }
+  return { ok: perdidos.length === 0, perdidos: perdidos.slice(0, 20), total: perdidos.length };
+}
+
+/* Invariante de cierre: ninguna cascada termino con un numero distinto de 4. */
+function verifyCascadesIntact(beforeProfile, afterProfile) {
+  var rotas = [];
+  if (!beforeProfile || !afterProfile) return { ok: true, rotas: rotas };
+  for (var sec in beforeProfile) {
+    var b = beforeProfile[sec];
+    if (!b || typeof b !== 'object' || Array.isArray(b)) continue;
+    var a = afterProfile[sec];
+    if (!a || typeof a !== 'object') continue;
+    for (var k in b) {
+      var nb = cascadeLen(b[k]);
+      if (nb === 0) continue;
+      var na = cascadeLen(a[k]);
+      if (na !== nb) rotas.push(sec + '.' + k + ': ' + nb + ' -> ' + na);
+    }
+  }
+  return { ok: rotas.length === 0, rotas: rotas.slice(0, 20), total: rotas.length };
+}
+
+/* Invariante de cierre: ningun valor que antes no estaba en blanco quedo en blanco. */
+function verifyNoBlanks(beforeProfile, afterProfile) {
+  var vacios = [];
+  if (!beforeProfile || !afterProfile) return { ok: true, vacios: vacios };
+  for (var sec in beforeProfile) {
+    var b = beforeProfile[sec];
+    if (!b || typeof b !== 'object' || Array.isArray(b)) continue;
+    var a = afterProfile[sec];
+    if (!a || typeof a !== 'object') continue;
+    for (var k in b) {
+      if (isBlankValue(b[k])) continue;          // ya estaba en blanco: no cuenta
+      if (isBlankValue(a[k])) vacios.push(sec + '.' + k);
+    }
+  }
+  return { ok: vacios.length === 0, vacios: vacios.slice(0, 20), total: vacios.length };
+}
+
+
+
 /* Resolucion EFECTIVA de un perfil.
  *
  * LEY ANTI-DEGRADACION: la resolucion nativa del perfil es un SUELO. Si P0 es 8K
@@ -1443,8 +1702,23 @@ function proposeAlignmentFull(gestorProfile, objIn) {
     let after;
     if (cur == null) {
       after = target;                       // campo nuevo
-    } else if (cascadeAllowed && isCascadeValue(cur)) {
-      // CASCADA: se preserva la escalera; el nivel 0 es el objetivo
+    } else if (String(cur).indexOf(',') >= 0) {
+      /* REGLA DURA: un valor con comas NUNCA se convierte en escalar.
+       *
+       * MEDIDO: 412 campos CSV se aplanaban a un valor unico. No eran solo los
+       * numericos: X-APE-STRATEGY ("ultra-aggressive,..."), X-Prefetch-Enabled
+       * ("true,adaptive,auto,false"), X-HLSjs-Events-Listener, etc. Aplanarlos
+       * un valor ES recortar, y el operador lo prohibe.
+       *
+       * Un CSV es una de dos cosas:
+       *   a) cascada de fallback (CASCADE_FIELDS) con EXACTAMENTE 4 niveles
+       *      -> se regenera como escalera
+       *   b) cualquier otra cosa (enumeracion, dialectos, booleanos)
+       *      -> se deja INTACTA byte a byte
+       */
+      if (!(cascadeAllowed && CASCADE_FIELDS[key])) { unchanged++; return; }
+      const lv0 = String(cur).split(',').length;
+      if (lv0 !== PRESERVATION_LAW.CASCADE_LENGTH) { unchanged++; return; }
       after = mapCascade(cur, key, target, objEff);
     } else {
       after = target;
@@ -1501,8 +1775,21 @@ function proposeAlignmentFull(gestorProfile, objIn) {
   }
 
   const totalFields = countFields(gestorProfile);
+
+  /* GATE DE PRESERVACION (preservation-law-v1.js).
+   * Todo diff pasa por guardDiff. Lo que viola una regla se DESCARTA y se
+   * reporta con su motivo. Nunca se borra un campo, nunca se deja en blanco y
+   * ninguna cascada cambia de 4 niveles. */
+  const guarded = guardDiffs(diffs, gestorProfile);
+  const diffsOk = guarded.aceptados;
+  const rechazados = guarded.rechazados;
+  const porRegla = guarded.porRegla;
+
   return {
     ok: true,
+    rejected: rechazados.length,
+    rejectedByRule: porRegla,
+    rejectedDetail: rechazados.slice(0, 12),
     profile: gestorProfile.id || null,
     mode: obj.mode,
     // resolucion efectiva del perfil (nativo como suelo)
@@ -1513,14 +1800,14 @@ function proposeAlignmentFull(gestorProfile, objIn) {
     appliedMode: obj.mode,
     profileModeDeclared: (gestorProfile && gestorProfile._mode) || null,
     totalFields,
-    proposed: diffs.length,
-    unchanged: Math.max(0, totalFields - diffs.length),
-    cascadeCount: diffs.filter((d) => d.cascade).length,
+    proposed: diffsOk.length,
+    unchanged: Math.max(0, totalFields - diffsOk.length),
+    cascadeCount: diffsOk.filter((d) => d.cascade).length,
     sections: Object.keys(gestorProfile).filter((k) => typeof gestorProfile[k] === 'object')
       .map((s) => ({ section: s, fields: Object.keys(gestorProfile[s]).length,
-                     changed: diffs.filter((d) => d.path.startsWith(s + '.')).length })),
-    diffs,
-    note: 'PROPUESTA. No se ha aplicado nada. Confirma con /image/profile/align/apply.'
+                     changed: diffsOk.filter((d) => d.path.startsWith(s + '.')).length })),
+    diffs: diffsOk,
+    note: 'PROPUESTA. No se ha aplicado nada. Los campos se conservan: nada se borra, nada queda en blanco, las cascadas siguen de 4.'
   };
 }
 
@@ -4638,10 +4925,19 @@ const server = http.createServer((req, res) => {
         const item = inProfiles[pid];
         if (!item || !item.gestorProfile || !Array.isArray(item.diffs)) continue;
         const r = applyAlignment(item.gestorProfile, item.diffs);
+        r.invariants = {
+          noFieldLost: verifyNoFieldLost(item.gestorProfile, r.profile),
+          cascadesIntact: verifyCascadesIntact(item.gestorProfile, r.profile),
+          noBlanks: verifyNoBlanks(item.gestorProfile, r.profile)
+        };
+        r.invariants.ok = r.invariants.noFieldLost.ok &&
+                          r.invariants.cascadesIntact.ok &&
+                          r.invariants.noBlanks.ok;
         out.profiles[pid] = r;
         out.totals.profiles++;
         out.totals.applied += r.applied;
         out.totals.failed += r.failed.length;
+        if (!r.invariants.ok) out.totals.violations = (out.totals.violations || 0) + 1;
       }
       setBaseHeaders(res); setNoCacheHeaders(res);
       res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -4782,6 +5078,18 @@ const server = http.createServer((req, res) => {
         return res.end(JSON.stringify({ ok: false, error: 'se requieren gestorProfile y diffs' }));
       }
       const r = applyAlignment(pl.gestorProfile, pl.diffs);
+      /* INVARIANTES DE CIERRE sobre el resultado real, no sobre la intencion:
+       *  - ningun campo del perfil original desaparece
+       *  - ninguna cascada cambia de numero de niveles
+       *  - ningun valor que no estaba en blanco queda en blanco */
+      r.invariants = {
+        noFieldLost: verifyNoFieldLost(pl.gestorProfile, r.profile),
+        cascadesIntact: verifyCascadesIntact(pl.gestorProfile, r.profile),
+        noBlanks: verifyNoBlanks(pl.gestorProfile, r.profile)
+      };
+      r.invariants.ok = r.invariants.noFieldLost.ok &&
+                        r.invariants.cascadesIntact.ok &&
+                        r.invariants.noBlanks.ok;
       setBaseHeaders(res); setNoCacheHeaders(res);
       res.writeHead(200, { 'Content-Type': 'application/json' });
       return res.end(JSON.stringify(r));
