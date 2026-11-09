@@ -32,7 +32,9 @@
 # solo que esas reglas no cubrian .conf/.sql/.txt/.service ni los sin extension.
 *.conf     text eol=lf
 *.sql      text eol=lf
-*.txt      text eol=lf
+# *.txt global ensuciaba los dos *_vba_dump.txt* (fuera del manifiesto) dejandolos
+# modificados para siempre. Se limita a la ruta que el manifiesto SI despliega.
+_vps_stage/skills/corpus/*.txt  text eol=lf
 *.service  text eol=lf
 # Los ficheros sin extension del stage canario: la regla por ruta, no por glob de
 # extension, porque no tienen.
